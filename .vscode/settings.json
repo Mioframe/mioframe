@@ -1,0 +1,5 @@
+{
+  "npm.packageManager": "bun",
+  "typescript.tsdk": "node_modules/typescript/lib",
+  "eslint.format.enable": true
+}
