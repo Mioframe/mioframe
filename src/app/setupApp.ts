@@ -1,12 +1,13 @@
 import { createApp } from 'vue';
-import AppComponent from './App.vue';
+import '@fortawesome/fontawesome-free/css/all.css';
+import FileManager from './FileManager.vue';
 import './styles/styles.scss';
 
 /**
  * Инициализация и настройка Vue приложения
  */
 export const setupApp = () => {
-  const app = createApp(AppComponent);
+  const app = createApp(FileManager);
 
   return app;
 };
