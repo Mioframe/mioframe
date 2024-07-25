@@ -5,15 +5,16 @@ import EntityList from './EntryList.vue';
 import { ContextMenu } from '../../shared/ui/ContextMenu';
 import { onClickOutside } from '@vueuse/core';
 import { isFileSystemDirectoryHandle } from '../../shared/lib/typeGuards';
+import type { DirectoryEntry, FileEntry } from './model';
 
 const props = defineProps<{
-  handle: FileSystemFileHandle | FileSystemDirectoryHandle;
+  entry: FileEntry | DirectoryEntry;
   opened?: boolean;
 }>();
 
 const emit = defineEmits<{
   'update:opened': [opened: boolean];
-  click: [FileSystemFileHandle | FileSystemDirectoryHandle];
+  click: [FileEntry | DirectoryEntry];
 }>();
 
 const stateOpened = ref<boolean>(false);
@@ -27,11 +28,9 @@ const toggleOpened = () => {
   emit('update:opened', stateOpened.value);
 };
 
-const label = computed(() => props.handle.name);
+const label = computed(() => props.entry.name);
 
-const onClickEntity = (
-  fsHandle: FileSystemDirectoryHandle | FileSystemFileHandle,
-) => {
+const onClickEntity = (fsHandle: FileEntry | DirectoryEntry) => {
   emit('click', fsHandle);
 };
 
@@ -51,9 +50,7 @@ const onContextMenu = ({ clientX, clientY }: MouseEvent) => {
 };
 
 defineSlots<{
-  contextMenu(props: {
-    handle: FileSystemFileHandle | FileSystemDirectoryHandle;
-  }): unknown;
+  contextMenu(props: { entry: FileEntry | DirectoryEntry }): unknown;
 }>();
 </script>
 
@@ -64,14 +61,14 @@ defineSlots<{
         type="button"
         class="button is-link is-flex-grow-1"
         :class="{ 'is-active': stateOpened }"
-        @click="onClickEntity(handle)"
+        @click="onClickEntity(entry)"
         @contextmenu.prevent="onContextMenu"
       >
         {{ label }}
       </button>
 
       <button
-        v-if="isFileSystemDirectoryHandle(handle)"
+        v-if="isFileSystemDirectoryHandle(entry)"
         class="button is-link"
         :class="{ 'is-active': stateOpened }"
         type="button"
@@ -89,16 +86,16 @@ defineSlots<{
       ref="refIgnoreContextMenu"
       :origin-position="contextMenuPosition"
     >
-      <slot name="contextMenu" :handle="handle" />
+      <slot name="contextMenu" :entry="entry" />
     </ContextMenu>
 
     <EntityList
-      v-if="isFileSystemDirectoryHandle(handle) && stateOpened"
-      :directory-handle="handle"
+      v-if="'getDirectoryList' in entry && stateOpened"
+      :directory-entry="entry"
       @click="emit('click', $event)"
     >
-      <template #contextMenu="{ handle: handleMenu }">
-        <slot name="contextMenu" :handle="handleMenu" />
+      <template #contextMenu="{ entry: contextEntry }">
+        <slot name="contextMenu" :entry="contextEntry" />
       </template>
     </EntityList>
   </li>

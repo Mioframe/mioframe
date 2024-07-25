@@ -1,1 +1,1 @@
-export { default as MountedDirectory } from './MountedDirectory.vue';
+export { default as MountedDirectoryWidget } from './MountedDirectoryWidget.vue';

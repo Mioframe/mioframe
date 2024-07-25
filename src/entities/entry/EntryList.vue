@@ -2,47 +2,41 @@
 import { watchEffect } from 'vue';
 import { ref } from 'vue';
 import EntityListItem from './EntryListItem.vue';
+import type { DirectoryEntry, FileEntry } from './model';
 
 const props = defineProps<{
-  directoryHandle: FileSystemDirectoryHandle;
+  directoryEntry: DirectoryEntry;
 }>();
 
-const entityList = ref<
-  Map<string, FileSystemDirectoryHandle | FileSystemFileHandle>
->(new Map());
+const entityList = ref<Map<string, DirectoryEntry | FileEntry>>(new Map());
 
-const updateEntityList = async (directoryHandle: FileSystemDirectoryHandle) => {
-  entityList.value.clear();
-  for await (const [name, handle] of directoryHandle.entries()) {
-    entityList.value.set(name, handle);
-  }
+const updateEntityList = async (directoryEntry: DirectoryEntry) => {
+  entityList.value = await directoryEntry.getDirectoryList();
 };
 
 watchEffect(() => {
-  void updateEntityList(props.directoryHandle);
+  void updateEntityList(props.directoryEntry);
 });
 
 const emit = defineEmits<{
-  click: [fsHandle: FileSystemDirectoryHandle | FileSystemFileHandle];
+  click: [entry: DirectoryEntry | FileEntry];
 }>();
 
 defineSlots<{
-  contextMenu(props: {
-    handle: FileSystemFileHandle | FileSystemDirectoryHandle;
-  }): unknown;
+  contextMenu(props: { entry: DirectoryEntry | FileEntry }): unknown;
 }>();
 </script>
 
 <template>
   <ul class="menu-list">
     <EntityListItem
-      v-for="[name, handle] in entityList"
+      v-for="[name, entry] in entityList"
       :key="name"
-      :handle="handle"
-      @click="emit('click', handle)"
+      :entry="entry"
+      @click="emit('click', entry)"
     >
       <template #contextMenu>
-        <slot name="contextMenu" :handle />
+        <slot name="contextMenu" :entry />
       </template>
     </EntityListItem>
   </ul>
