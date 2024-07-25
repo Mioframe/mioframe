@@ -1,12 +1,15 @@
 <script setup lang="ts">
 import { reactive } from 'vue';
-import { MountedDirectory } from '../widgets/MountedDirectory';
+import { MountedDirectoryWidget } from '../widgets/MountedDirectory';
+import type { DirectoryEntry } from '../entities/entry';
+import { createDirectoryEntry } from '../entities/entry';
 
-const mountedDirectories = reactive<Set<FileSystemDirectoryHandle>>(new Set());
+const mountedDirectories = reactive<Set<DirectoryEntry>>(new Set());
 
 const mountDirectory = async () => {
   if ('showDirectoryPicker' in globalThis) {
-    mountedDirectories.add(await globalThis.showDirectoryPicker());
+    const entry = createDirectoryEntry(await globalThis.showDirectoryPicker());
+    mountedDirectories.add(entry);
   }
 };
 </script>
@@ -31,10 +34,10 @@ const mountDirectory = async () => {
 
         <hr />
 
-        <MountedDirectory
-          v-for="handle in mountedDirectories"
-          :key="handle.name"
-          :handle
+        <MountedDirectoryWidget
+          v-for="entry in mountedDirectories"
+          :key="entry.name"
+          :entry="entry"
         />
       </div>
     </div>
