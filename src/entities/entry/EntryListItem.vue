@@ -4,7 +4,6 @@ import { ref, watchEffect } from 'vue';
 import EntityList from './EntryList.vue';
 import { ContextMenu } from '../../shared/ui/ContextMenu';
 import { onClickOutside } from '@vueuse/core';
-import { isFileSystemDirectoryHandle } from '../../shared/lib/typeGuards';
 import type { DirectoryEntry, FileEntry } from './model';
 
 const props = defineProps<{
@@ -34,7 +33,7 @@ const onClickEntity = (fsHandle: FileEntry | DirectoryEntry) => {
   emit('click', fsHandle);
 };
 
-const contextMenuPosition = ref<{ x: number; y: number }>();
+const contextMenuPosition = ref<{ clientX: number; clientY: number }>();
 
 const refIgnoreContextMenu = ref<HTMLElement>();
 
@@ -44,8 +43,8 @@ onClickOutside(refIgnoreContextMenu, () => {
 
 const onContextMenu = ({ clientX, clientY }: MouseEvent) => {
   contextMenuPosition.value = {
-    x: clientX,
-    y: clientY,
+    clientX,
+    clientY,
   };
 };
 
@@ -68,7 +67,7 @@ defineSlots<{
       </button>
 
       <button
-        v-if="isFileSystemDirectoryHandle(entry)"
+        v-if="'list' in entry"
         class="button is-link"
         :class="{ 'is-active': stateOpened }"
         type="button"
@@ -90,7 +89,7 @@ defineSlots<{
     </ContextMenu>
 
     <EntityList
-      v-if="'getDirectoryList' in entry && stateOpened"
+      v-if="'list' in entry && stateOpened"
       :directory-entry="entry"
       @click="emit('click', $event)"
     >

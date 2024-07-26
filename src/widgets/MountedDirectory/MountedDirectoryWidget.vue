@@ -1,27 +1,39 @@
 <script setup lang="ts">
 import { shallowRef } from 'vue';
-import type { DirectoryEntry } from '../../entities/entry';
+import type { DirectoryEntry, Entry } from '../../entities/entry';
 import { EntryList } from '../../entities/entry';
 import { CreateDirectoryForm } from '../../features/createDirectory';
-import { isFileSystemDirectoryHandle } from '../../shared/lib/typeGuards';
 import { ModalCard } from '../../shared/ui/ModalCard';
+import { RemoveEntryForm } from '../../features/removeEntry';
 
 defineProps<{
   entry: DirectoryEntry;
 }>();
 
-const handleToCreateDirectory = shallowRef<FileSystemDirectoryHandle>();
+const entryForAddingDirectory = shallowRef<DirectoryEntry>();
 
-const onClickAddDirectory = (directoryHandle: FileSystemDirectoryHandle) => {
-  handleToCreateDirectory.value = directoryHandle;
+const onClickAddDirectory = (directoryHandle: DirectoryEntry) => {
+  entryForAddingDirectory.value = directoryHandle;
 };
 
 const onCancelCreateDirectory = () => {
-  handleToCreateDirectory.value = undefined;
+  entryForAddingDirectory.value = undefined;
 };
 
 const onCreateDirectory = () => {
-  handleToCreateDirectory.value = undefined;
+  entryForAddingDirectory.value = undefined;
+};
+
+const entryToBeRemoved = shallowRef<Entry>();
+
+const onRemoved = () => {
+  entryToBeRemoved.value = undefined;
+};
+
+const onCancelRemoved = onRemoved;
+
+const onRemove = (entry: Entry) => {
+  entryToBeRemoved.value = entry;
 };
 </script>
 
@@ -29,26 +41,39 @@ const onCreateDirectory = () => {
   <p class="menu-label">{{ entry.name }}</p>
 
   <EntryList :directory-entry="entry">
-    <template #contextMenu="{ entry: handleMenu }">
+    <template #contextMenu="{ entry: entryMenu }">
+      <span class="dropdown-item">
+        {{ entryMenu.name }}
+      </span>
+
       <button
-        v-if="isFileSystemDirectoryHandle(handleMenu)"
+        v-if="'createDirectory' in entryMenu"
         type="button"
         class="dropdown-item"
-        @click="onClickAddDirectory(handleMenu)"
+        @click="onClickAddDirectory(entryMenu)"
       >
         add Directory
       </button>
 
-      <!-- todo: для удаления понадобится изменённая модель entry -->
-      <button type="button" class="dropdown-item">delete</button>
+      <button type="button" class="dropdown-item" @click="onRemove(entryMenu)">
+        remove
+      </button>
     </template>
   </EntryList>
 
-  <ModalCard v-if="handleToCreateDirectory">
+  <ModalCard v-if="entryForAddingDirectory">
     <CreateDirectoryForm
-      :parent-handle="handleToCreateDirectory"
+      :parent-entry="entryForAddingDirectory"
       @cancel="onCancelCreateDirectory"
       @created="onCreateDirectory"
+    />
+  </ModalCard>
+
+  <ModalCard v-if="entryToBeRemoved">
+    <RemoveEntryForm
+      :entry="entryToBeRemoved"
+      @cancel="onCancelRemoved"
+      @removed="onRemoved"
     />
   </ModalCard>
 </template>

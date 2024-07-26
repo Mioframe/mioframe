@@ -1,22 +1,13 @@
 <script lang="ts" setup>
-import { watchEffect } from 'vue';
-import { ref } from 'vue';
 import EntityListItem from './EntryListItem.vue';
 import type { DirectoryEntry, FileEntry } from './model';
+import { computed } from 'vue';
 
 const props = defineProps<{
   directoryEntry: DirectoryEntry;
 }>();
 
-const entityList = ref<Map<string, DirectoryEntry | FileEntry>>(new Map());
-
-const updateEntityList = async (directoryEntry: DirectoryEntry) => {
-  entityList.value = await directoryEntry.getDirectoryList();
-};
-
-watchEffect(() => {
-  void updateEntityList(props.directoryEntry);
-});
+const entityList = computed(() => props.directoryEntry.list);
 
 const emit = defineEmits<{
   click: [entry: DirectoryEntry | FileEntry];
@@ -35,8 +26,8 @@ defineSlots<{
       :entry="entry"
       @click="emit('click', entry)"
     >
-      <template #contextMenu>
-        <slot name="contextMenu" :entry />
+      <template #contextMenu="{ entry: contextEntry }">
+        <slot name="contextMenu" :entry="contextEntry" />
       </template>
     </EntityListItem>
   </ul>

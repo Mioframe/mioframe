@@ -1,37 +1,27 @@
 <script setup lang="ts">
-import { isString } from 'lodash-es';
 import { ref } from 'vue';
-import type { DirectoryEntry } from '../../entities/entry';
+import type { Entry } from '../../entities/entry';
 
 const props = defineProps<{
-  parentEntry: DirectoryEntry;
+  entry: Entry;
 }>();
 
-const name = ref<string>();
-
 const emit = defineEmits<{
-  created: [createdDirectoryHandler: DirectoryEntry];
   cancel: [];
+  removed: [];
 }>();
 
 const loading = ref(0);
 
 const onSubmit = async () => {
-  if (!loading.value) {
-    loading.value += 1;
-    try {
-      if (isString(name.value)) {
-        const directoryEntry = await props.parentEntry.createDirectory(
-          name.value,
-        );
-        emit('created', directoryEntry);
-      }
-    } finally {
-      loading.value -= 1;
-    }
+  loading.value += 1;
+  try {
+    await props.entry.remove();
+    emit('removed');
+  } finally {
+    loading.value -= 1;
   }
 };
-
 const onClickCancel = () => {
   emit('cancel');
 };
@@ -42,18 +32,12 @@ const onClickCancel = () => {
     class="block-spacing is-flex is-flex-direction-column"
     @submit.prevent="onSubmit"
   >
-    <div class="field">
-      <label class="label">Directory name</label>
-
-      <div class="control">
-        <input v-model="name" class="input" type="text" placeholder="name" />
-      </div>
-    </div>
+    <p>Are you sure you want to remove "{{ props.entry.name }}"?</p>
 
     <div class="field is-grouped">
       <div class="control">
         <button class="button" type="submit" :class="{ 'is-loading': loading }">
-          Create
+          Remove
         </button>
       </div>
 
