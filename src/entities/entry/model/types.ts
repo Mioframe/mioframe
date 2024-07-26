@@ -10,10 +10,6 @@ export type DirectoryList = Map<string, DirectoryEntry | FileEntry>;
 
 export interface DirectoryEntry extends Entry {
   /**
-   * Creates a Map with the contents of this directory
-   */
-  getDirectoryList: () => Promise<DirectoryList>;
-  /**
    * Creates a subdirectory
    */
   createDirectory: (name: string) => Promise<DirectoryEntry>;
@@ -37,6 +33,10 @@ export interface DirectoryEntry extends Entry {
    * Rename this directory by copying the contents to a new directory
    */
   rename: (newName: string) => Promise<DirectoryEntry>;
+  /**
+   * Reactive map of directory contents
+   */
+  readonly list: DirectoryList;
 }
 
 export interface FileEntry extends Entry {

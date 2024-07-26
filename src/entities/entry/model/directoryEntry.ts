@@ -1,6 +1,8 @@
+import { reactive } from 'vue';
 import { createEntry } from './entry';
 import { createFileEntry } from './fileEntry';
 import type { DirectoryEntry, DirectoryList } from './types';
+import { difference } from 'lodash-es';
 
 export const createDirectoryEntry = (
   currentHandle: FileSystemDirectoryHandle,
@@ -8,24 +10,38 @@ export const createDirectoryEntry = (
 ): DirectoryEntry => {
   const currentEntry = createEntry(currentHandle, parentEntry);
 
-  const entityList: DirectoryList = new Map();
+  const stateEntryList = reactive<DirectoryList>(new Map());
 
-  const getDirectoryList = async () => {
-    entityList.clear();
+  const updateDirectoryList = async () => {
+    const nowEntryList: DirectoryList = new Map();
     for await (const [name, handle] of currentHandle.entries()) {
       switch (handle.kind) {
         case 'directory':
-          entityList.set(
+          nowEntryList.set(
             name,
             createDirectoryEntry(handle, currentDirectoryEntry),
           );
           break;
         case 'file':
-          entityList.set(name, createFileEntry(handle, currentDirectoryEntry));
+          nowEntryList.set(
+            name,
+            createFileEntry(handle, currentDirectoryEntry),
+          );
           break;
       }
     }
-    return entityList;
+
+    const stateNames = Array.from(stateEntryList.keys());
+    const nowNames = Array.from(nowEntryList.keys());
+
+    const deletedNames = difference(stateNames, nowNames);
+
+    deletedNames.forEach((name) => stateEntryList.delete(name));
+    nowEntryList.forEach((entry, name) => {
+      if (!stateEntryList.has(name)) {
+        stateEntryList.set(name, entry);
+      }
+    });
   };
 
   const createDirectory = async (name: string) => {
@@ -33,7 +49,14 @@ export const createDirectoryEntry = (
       create: true,
     });
 
-    return createDirectoryEntry(directoryHandle, parentEntry);
+    const directoryEntry = createDirectoryEntry(
+      directoryHandle,
+      currentDirectoryEntry,
+    );
+
+    stateEntryList.set(name, directoryEntry);
+
+    return directoryEntry;
   };
 
   const writeFile = async (name: string, file?: File) => {
@@ -45,17 +68,23 @@ export const createDirectoryEntry = (
       await writable.write(file);
       await writable.close();
     }
-    return createFileEntry(newFileHandle, currentDirectoryEntry);
+
+    const fileEntry = createFileEntry(newFileHandle, currentDirectoryEntry);
+
+    stateEntryList.set(name, fileEntry);
+
+    return fileEntry;
   };
 
   const removeByName = async (name: string) => {
     await currentHandle.removeEntry(name);
+    stateEntryList.delete(name);
   };
 
   const copyTo = async (dest: DirectoryEntry) => {
     const newDirectoryEntry = await dest.createDirectory(currentEntry.name);
 
-    const directoryList = await getDirectoryList();
+    const directoryList = currentDirectoryEntry.list;
 
     for (const [, entry] of directoryList) {
       await entry.copyTo(newDirectoryEntry);
@@ -67,7 +96,7 @@ export const createDirectoryEntry = (
   const moveTo = async (dest: DirectoryEntry) => {
     const newDirectoryEntry = await dest.createDirectory(currentEntry.name);
 
-    const directoryList = await getDirectoryList();
+    const directoryList = currentDirectoryEntry.list;
 
     for (const [, entry] of directoryList) {
       await entry.moveTo(newDirectoryEntry);
@@ -81,7 +110,7 @@ export const createDirectoryEntry = (
   const rename = async (newName: string) => {
     if (parentEntry) {
       const newDirectoryEntry = await parentEntry.createDirectory(newName);
-      const directoryList = await getDirectoryList();
+      const directoryList = currentDirectoryEntry.list;
 
       for (const [, entry] of directoryList) {
         await entry.moveTo(newDirectoryEntry);
@@ -96,13 +125,16 @@ export const createDirectoryEntry = (
 
   const currentDirectoryEntry = {
     ...currentEntry,
-    getDirectoryList,
     createDirectory,
     writeFile,
     removeByName,
     copyTo,
     moveTo,
     rename,
+    get list() {
+      void updateDirectoryList();
+      return stateEntryList;
+    },
   };
 
   return currentDirectoryEntry;
