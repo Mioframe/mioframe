@@ -1,10 +1,11 @@
 <script lang="ts" setup>
 import EntityListItem from './EntryListItem.vue';
-import type { DirectoryEntry, FileEntry } from './model';
+import type { DirectoryEntry, Entry, FileEntry } from './model';
 import { computed } from 'vue';
 
 const props = defineProps<{
   directoryEntry: DirectoryEntry;
+  activeEntry?: Entry;
 }>();
 
 const entityList = computed(() => props.directoryEntry.list);
@@ -24,7 +25,8 @@ defineSlots<{
       v-for="[name, entry] in entityList"
       :key="name"
       :entry="entry"
-      @click="emit('click', entry)"
+      :active-entry="activeEntry"
+      @click="emit('click', $event)"
     >
       <template #contextMenu="{ entry: contextEntry }">
         <slot name="contextMenu" :entry="contextEntry" />

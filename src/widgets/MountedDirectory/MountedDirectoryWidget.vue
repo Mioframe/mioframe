@@ -1,11 +1,12 @@
 <script setup lang="ts">
 import { shallowRef } from 'vue';
-import type { DirectoryEntry, Entry } from '../../entities/entry';
+import type { DirectoryEntry, Entry, FileEntry } from '../../entities/entry';
 import { EntryList } from '../../entities/entry';
 import { CreateDirectoryForm } from '../../features/createDirectory';
 import { ModalCard } from '../../shared/ui/ModalCard';
 import { RemoveEntryForm } from '../../features/removeEntry';
 import { AddFileForm } from '../../features/addFile';
+import { MoveEntryForm } from '../../features/moveEntry';
 
 defineProps<{
   entry: DirectoryEntry;
@@ -53,6 +54,20 @@ const onCancelWriteFile = () => {
 
 const onWrittenFile = () => {
   entryForWriteFile.value = undefined;
+};
+
+const sourceMoveEntry = shallowRef<DirectoryEntry | FileEntry>();
+
+const onClickMoveTo = (entry: DirectoryEntry | FileEntry) => {
+  sourceMoveEntry.value = entry;
+};
+
+const onCancelMove = () => {
+  sourceMoveEntry.value = undefined;
+};
+
+const onMovedEntry = () => {
+  sourceMoveEntry.value = undefined;
 };
 </script>
 
@@ -112,6 +127,20 @@ const onWrittenFile = () => {
       </button>
 
       <button
+        v-if="'moveTo' in entryMenu"
+        type="button"
+        class="dropdown-item"
+        :title="`move ${entryMenu.name}`"
+        @click="onClickMoveTo(entryMenu)"
+      >
+        <span class="icon is-small">
+          <i class="fa-solid fa-arrow-right-arrow-left" />
+        </span>
+
+        <span class="ml-2">move to</span>
+      </button>
+
+      <button
         type="button"
         class="dropdown-item"
         :title="`remove \'${entryMenu.name}\'`"
@@ -145,6 +174,15 @@ const onWrittenFile = () => {
       :directory-entry="entryForWriteFile"
       @cancel="onCancelWriteFile"
       @written="onWrittenFile"
+    />
+  </ModalCard>
+
+  <ModalCard v-if="sourceMoveEntry">
+    <MoveEntryForm
+      :entry="sourceMoveEntry"
+      :target-entry="entry"
+      @cancel="onCancelMove"
+      @moved="onMovedEntry"
     />
   </ModalCard>
 </template>

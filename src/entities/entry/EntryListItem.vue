@@ -4,11 +4,12 @@ import { ref, watchEffect } from 'vue';
 import EntityList from './EntryList.vue';
 import { ContextMenu } from '../../shared/ui/ContextMenu';
 import { onClickOutside } from '@vueuse/core';
-import type { DirectoryEntry, FileEntry } from './model';
+import type { DirectoryEntry, Entry, FileEntry } from './model';
 
 const props = defineProps<{
   entry: FileEntry | DirectoryEntry;
   opened?: boolean;
+  activeEntry?: Entry;
 }>();
 
 const emit = defineEmits<{
@@ -59,7 +60,7 @@ defineSlots<{
       <button
         type="button"
         class="button is-link is-flex-grow-1"
-        :class="{ 'is-active': stateOpened }"
+        :class="{ 'is-active': activeEntry === entry }"
         @click="onClickEntity(entry)"
         @contextmenu.prevent="onContextMenu"
       >
@@ -91,6 +92,7 @@ defineSlots<{
     <EntityList
       v-if="'list' in entry && stateOpened"
       :directory-entry="entry"
+      :active-entry="activeEntry"
       @click="emit('click', $event)"
     >
       <template #contextMenu="{ entry: contextEntry }">
