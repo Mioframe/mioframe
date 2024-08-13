@@ -5,6 +5,7 @@ import { EntryList } from '../../entities/entry';
 import { CreateDirectoryForm } from '../../features/createDirectory';
 import { ModalCard } from '../../shared/ui/ModalCard';
 import { RemoveEntryForm } from '../../features/removeEntry';
+import { AddFileForm } from '../../features/addFile';
 
 defineProps<{
   entry: DirectoryEntry;
@@ -38,6 +39,20 @@ const onCancelRemoved = onRemoved;
 
 const onRemove = (entry: Entry) => {
   entryToBeRemoved.value = entry;
+};
+
+const entryForWriteFile = shallowRef<DirectoryEntry>();
+
+const onClickAddFile = (directoryEntry: DirectoryEntry) => {
+  entryForWriteFile.value = directoryEntry;
+};
+
+const onCancelWriteFile = () => {
+  entryForWriteFile.value = undefined;
+};
+
+const onWrittenFile = () => {
+  entryForWriteFile.value = undefined;
 };
 </script>
 
@@ -79,7 +94,21 @@ const onRemove = (entry: Entry) => {
           <i class="fa-solid fa-folder-plus" />
         </span>
 
-        <span> create directory</span>
+        <span class="ml-2">create directory</span>
+      </button>
+
+      <button
+        v-if="'writeFile' in entryMenu"
+        type="button"
+        class="dropdown-item"
+        title="add file"
+        @click="onClickAddFile(entryMenu)"
+      >
+        <span class="icon is-small">
+          <i class="fa-solid fa-file-circle-plus" />
+        </span>
+
+        <span class="ml-2">add file</span>
       </button>
 
       <button
@@ -89,7 +118,8 @@ const onRemove = (entry: Entry) => {
         @click="onRemove(entryMenu)"
       >
         <span class="icon is-small"><i class="fa-solid fa-trash" /></span>
-        remove
+
+        <span class="ml-2">remove</span>
       </button>
     </template>
   </EntryList>
@@ -107,6 +137,14 @@ const onRemove = (entry: Entry) => {
       :entry="entryToBeRemoved"
       @cancel="onCancelRemoved"
       @removed="onRemoved"
+    />
+  </ModalCard>
+
+  <ModalCard v-if="entryForWriteFile">
+    <AddFileForm
+      :directory-entry="entryForWriteFile"
+      @cancel="onCancelWriteFile"
+      @written="onWrittenFile"
     />
   </ModalCard>
 </template>
