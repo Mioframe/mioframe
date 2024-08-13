@@ -77,7 +77,7 @@ export const createDirectoryEntry = (
   };
 
   const removeByName = async (name: string) => {
-    await currentHandle.removeEntry(name);
+    await currentHandle.removeEntry(name, { recursive: true });
     stateEntryList.delete(name);
   };
 

@@ -12,6 +12,10 @@ const mountDirectory = async () => {
     mountedDirectories.add(entry);
   }
 };
+
+const unmountDirectory = (entry: DirectoryEntry) => {
+  mountedDirectories.delete(entry);
+};
 </script>
 
 <template>
@@ -27,6 +31,10 @@ const mountDirectory = async () => {
               class="button is-link"
               @click="mountDirectory"
             >
+              <span class="icon">
+                <i class="fa-solid fa-plug" />
+              </span>
+
               <span> mount directory </span>
             </button>
           </li>
@@ -38,7 +46,20 @@ const mountDirectory = async () => {
           v-for="entry in mountedDirectories"
           :key="entry.name"
           :entry="entry"
-        />
+        >
+          <template #buttonAddons>
+            <button
+              class="button is-small"
+              type="button"
+              :title="`unmount ${entry.name}`"
+              @click="unmountDirectory(entry)"
+            >
+              <span class="icon is-small">
+                <i class="fa-solid fa-eject" />
+              </span>
+            </button>
+          </template>
+        </MountedDirectoryWidget>
       </div>
     </div>
   </div>
