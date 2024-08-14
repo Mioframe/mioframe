@@ -1,12 +1,19 @@
 <script setup lang="ts">
-import { shallowRef } from 'vue';
-import type { DirectoryEntry, Entry, FileEntry } from '../../entities/entry';
+import type { DirectoryEntry } from '../../entities/entry';
 import { EntryList } from '../../entities/entry';
-import { CreateDirectoryForm } from '../../features/createDirectory';
+import {
+  CreateDirectoryForm,
+  useCreateDirectoryFeature,
+} from '../../features/createDirectory';
 import { ModalCard } from '../../shared/ui/ModalCard';
-import { RemoveEntryForm } from '../../features/removeEntry';
-import { AddFileForm } from '../../features/addFile';
-import { MoveEntryForm } from '../../features/moveEntry';
+import {
+  RemoveEntryForm,
+  useRemoveEntryFeature,
+} from '../../features/removeEntry';
+import { AddFileForm, useWriteFileFeature } from '../../features/addFile';
+import { MoveEntryForm, useMoveEntryFeature } from '../../features/moveEntry';
+import { useCopyEntryFeature } from '../../features/copyEntry';
+import CopyEntryForm from '../../features/copyEntry/CopyEntryForm.vue';
 
 defineProps<{
   entry: DirectoryEntry;
@@ -16,59 +23,40 @@ defineSlots<{
   buttonAddons: () => unknown;
 }>();
 
-const entryForAddingDirectory = shallowRef<DirectoryEntry>();
+const {
+  directoryCreateDestination,
+  clearDirectoryDestination: onCancelCreateDirectory,
+  setDirectoryDestination: onClickCreateDirectory,
+  clearDirectoryDestination: onCreateDirectory,
+} = useCreateDirectoryFeature();
 
-const onClickCreateDirectory = (directoryHandle: DirectoryEntry) => {
-  entryForAddingDirectory.value = directoryHandle;
-};
+const {
+  fileWriteDestination,
+  clearFileWriteDestination: onCancelWriteFile,
+  setFileWriteDestination: onClickAddFile,
+  clearFileWriteDestination: onWrittenFile,
+} = useWriteFileFeature();
 
-const onCancelCreateDirectory = () => {
-  entryForAddingDirectory.value = undefined;
-};
+const {
+  entryToBeRemoved,
+  clearEntryToBeRemoved: onCancelRemoved,
+  setEntryToBeRemoved: onRemove,
+  clearEntryToBeRemoved: onRemoved,
+} = useRemoveEntryFeature();
 
-const onCreateDirectory = () => {
-  entryForAddingDirectory.value = undefined;
-};
+const {
+  clearSourceMoveEntry: onCancelMove,
+  setSourceMoveEntry: onClickMoveTo,
+  clearSourceMoveEntry: onMovedEntry,
+  sourceMoveEntry,
+} = useMoveEntryFeature();
 
-const entryToBeRemoved = shallowRef<Entry>();
-
-const onRemoved = () => {
-  entryToBeRemoved.value = undefined;
-};
-
-const onCancelRemoved = onRemoved;
-
-const onRemove = (entry: Entry) => {
-  entryToBeRemoved.value = entry;
-};
-
-const entryForWriteFile = shallowRef<DirectoryEntry>();
-
-const onClickAddFile = (directoryEntry: DirectoryEntry) => {
-  entryForWriteFile.value = directoryEntry;
-};
-
-const onCancelWriteFile = () => {
-  entryForWriteFile.value = undefined;
-};
-
-const onWrittenFile = () => {
-  entryForWriteFile.value = undefined;
-};
-
-const sourceMoveEntry = shallowRef<DirectoryEntry | FileEntry>();
-
-const onClickMoveTo = (entry: DirectoryEntry | FileEntry) => {
-  sourceMoveEntry.value = entry;
-};
-
-const onCancelMove = () => {
-  sourceMoveEntry.value = undefined;
-};
-
-const onMovedEntry = () => {
-  sourceMoveEntry.value = undefined;
-};
+const {
+  clearCopyableEntry: onCancelCopy,
+  clearCopyableEntry: onCopiedEntry,
+  copyableEntry,
+  setCopyableEntry: onClickCopyTo,
+} = useCopyEntryFeature();
 </script>
 
 <template>
@@ -127,6 +115,20 @@ const onMovedEntry = () => {
       </button>
 
       <button
+        v-if="'copyTo' in entryMenu"
+        type="button"
+        class="dropdown-item"
+        :title="`move ${entryMenu.name}`"
+        @click="onClickCopyTo(entryMenu)"
+      >
+        <span class="icon is-small">
+          <i class="fa-solid fa-copy" />
+        </span>
+
+        <span class="ml-2">copy to</span>
+      </button>
+
+      <button
         v-if="'moveTo' in entryMenu"
         type="button"
         class="dropdown-item"
@@ -153,9 +155,9 @@ const onMovedEntry = () => {
     </template>
   </EntryList>
 
-  <ModalCard v-if="entryForAddingDirectory">
+  <ModalCard v-if="directoryCreateDestination">
     <CreateDirectoryForm
-      :parent-entry="entryForAddingDirectory"
+      :parent-entry="directoryCreateDestination"
       @cancel="onCancelCreateDirectory"
       @created="onCreateDirectory"
     />
@@ -169,9 +171,9 @@ const onMovedEntry = () => {
     />
   </ModalCard>
 
-  <ModalCard v-if="entryForWriteFile">
+  <ModalCard v-if="fileWriteDestination">
     <AddFileForm
-      :directory-entry="entryForWriteFile"
+      :directory-entry="fileWriteDestination"
       @cancel="onCancelWriteFile"
       @written="onWrittenFile"
     />
@@ -179,10 +181,19 @@ const onMovedEntry = () => {
 
   <ModalCard v-if="sourceMoveEntry">
     <MoveEntryForm
-      :entry="sourceMoveEntry"
-      :target-entry="entry"
+      :source-entry="sourceMoveEntry"
+      :accessible-destination="entry"
       @cancel="onCancelMove"
       @moved="onMovedEntry"
+    />
+  </ModalCard>
+
+  <ModalCard v-if="copyableEntry">
+    <CopyEntryForm
+      :source-entry="copyableEntry"
+      :accessible-destination="entry"
+      @cancel="onCancelCopy"
+      @copied="onCopiedEntry"
     />
   </ModalCard>
 </template>

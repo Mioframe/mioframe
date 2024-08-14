@@ -82,6 +82,14 @@ export const createDirectoryEntry = (
   };
 
   const copyTo = async (dest: DirectoryEntry) => {
+    const currentPath = currentEntry.path;
+
+    if (childHasParent(dest.path, currentPath)) {
+      throw new Error(
+        `impossible to copy "${currentPath.join('/')}" to "${dest.path.join('/')}"`,
+      );
+    }
+
     const newDirectoryEntry = await dest.createDirectory(currentEntry.name);
 
     const directoryList = currentDirectoryEntry.list;
@@ -94,6 +102,14 @@ export const createDirectoryEntry = (
   };
 
   const moveTo = async (dest: DirectoryEntry) => {
+    const parentPath = parentEntry?.path ?? [];
+
+    if (childHasParent(dest.path, parentPath)) {
+      throw new Error(
+        `impossible to move "${currentEntry.name}" from "${parentPath.join('/')}" to "${dest.path.join('/')}"`,
+      );
+    }
+
     const newDirectoryEntry = await dest.createDirectory(currentEntry.name);
 
     const directoryList = currentDirectoryEntry.list;
@@ -123,7 +139,24 @@ export const createDirectoryEntry = (
     throw new Error('root Entry cannot be renamed');
   };
 
-  const currentDirectoryEntry = {
+  const childHasParent = (
+    childPath: string[],
+    parentPath: string[],
+  ): boolean => {
+    if (parentPath.length > childPath.length) {
+      return false;
+    }
+
+    for (let i = 0; i < parentPath.length; i++) {
+      if (childPath[i] !== parentPath[i]) {
+        return false;
+      }
+    }
+
+    return true;
+  };
+
+  const currentDirectoryEntry: DirectoryEntry = {
     ...currentEntry,
     createDirectory,
     writeFile,
@@ -136,6 +169,8 @@ export const createDirectoryEntry = (
       return stateEntryList;
     },
   };
+
+  void updateDirectoryList();
 
   return currentDirectoryEntry;
 };

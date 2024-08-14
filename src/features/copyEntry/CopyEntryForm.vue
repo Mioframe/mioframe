@@ -10,7 +10,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   cancel: [];
-  moved: [newEntry: FileEntry | DirectoryEntry];
+  copied: [newEntry: FileEntry | DirectoryEntry];
 }>();
 
 const destinationDirectoryEntry = shallowRef<DirectoryEntry>();
@@ -21,10 +21,10 @@ const onSubmit = async () => {
   loading.value += 1;
   try {
     if (destinationDirectoryEntry.value) {
-      const newEntry = await props.sourceEntry.moveTo(
+      const newEntry = await props.sourceEntry.copyTo(
         destinationDirectoryEntry.value,
       );
-      emit('moved', newEntry);
+      emit('copied', newEntry);
     }
   } finally {
     loading.value -= 1;
@@ -49,12 +49,12 @@ const onClickTargetDirectory = () => {
 
 <template>
   <form
-    class="block-spacing is-flex is-flex-direction-column move-form"
+    class="block-spacing is-flex is-flex-direction-column copy-form"
     @submit.prevent="onSubmit"
   >
     <div class="field is-overflow-y-auto is-flex is-flex-direction-column">
       <label class="label">
-        Select the destination directory to move "{{ sourceEntry.name }}"
+        Select the destination directory for copying "{{ sourceEntry.name }}"
       </label>
 
       <div class="menu is-overflow-y-auto">
@@ -85,7 +85,7 @@ const onClickTargetDirectory = () => {
     <div class="field is-grouped">
       <div class="control">
         <button class="button" type="submit" :class="{ 'is-loading': loading }">
-          Move
+          Paste
         </button>
       </div>
 
@@ -104,7 +104,7 @@ const onClickTargetDirectory = () => {
 </template>
 
 <style lang="scss" scoped>
-.move-form {
+.copy-form {
   max-height: 100%;
 }
 </style>

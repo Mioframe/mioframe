@@ -12,10 +12,15 @@ export const createEntry = (
     }
   };
 
+  const path = (parentEntry?.path ?? []).concat([currentHandle.name]);
+
   return {
     get name() {
       return currentHandle.name;
     },
     remove,
+    get path() {
+      return path;
+    },
   };
 };
