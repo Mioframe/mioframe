@@ -4,6 +4,7 @@ export interface Entry {
    * Removes this Entry
    */
   remove: () => Promise<void>;
+  readonly path: string[];
 }
 
 export type DirectoryList = Map<string, DirectoryEntry | FileEntry>;
