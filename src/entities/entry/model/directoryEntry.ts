@@ -124,19 +124,25 @@ export const createDirectoryEntry = (
   };
 
   const rename = async (newName: string) => {
-    if (parentEntry) {
-      const newDirectoryEntry = await parentEntry.createDirectory(newName);
-      const directoryList = currentDirectoryEntry.list;
-
-      for (const [, entry] of directoryList) {
-        await entry.moveTo(newDirectoryEntry);
-      }
-
-      await currentEntry.remove();
-
-      return newDirectoryEntry;
+    if (!parentEntry) {
+      throw new Error('root Entry cannot be renamed');
     }
-    throw new Error('root Entry cannot be renamed');
+
+    const directoryList = currentDirectoryEntry.list;
+
+    if (directoryList.has(newName)) {
+      throw new Error(`"${parentEntry.name}" already contains "${newName}"`);
+    }
+
+    const newDirectoryEntry = await parentEntry.createDirectory(newName);
+
+    for (const [, entry] of directoryList) {
+      await entry.moveTo(newDirectoryEntry);
+    }
+
+    await currentEntry.remove();
+
+    return newDirectoryEntry;
   };
 
   const childHasParent = (

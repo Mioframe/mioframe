@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { DirectoryEntry } from '../../entities/entry';
+import type { DirectoryEntry, FileEntry } from '../../entities/entry';
 import { EntryList } from '../../entities/entry';
 import {
   CreateDirectoryForm,
@@ -14,6 +14,10 @@ import { AddFileForm, useWriteFileFeature } from '../../features/addFile';
 import { MoveEntryForm, useMoveEntryFeature } from '../../features/moveEntry';
 import { useCopyEntryFeature } from '../../features/copyEntry';
 import CopyEntryForm from '../../features/copyEntry/CopyEntryForm.vue';
+import {
+  RenameEntryForm,
+  useRenameEntryFeature,
+} from '../../features/renameEntry';
 
 defineProps<{
   entry: DirectoryEntry;
@@ -57,6 +61,13 @@ const {
   copyableEntry,
   setCopyableEntry: onClickCopyTo,
 } = useCopyEntryFeature();
+
+const {
+  clearRenameEntry: onCancelRename,
+  clearRenameEntry: onRenamed,
+  selectedRenameEntry,
+  setRenameEntry: onClickRename,
+} = useRenameEntryFeature();
 </script>
 
 <template>
@@ -112,6 +123,20 @@ const {
         </span>
 
         <span class="ml-2">add file</span>
+      </button>
+
+      <button
+        v-if="'rename' in entryMenu"
+        type="button"
+        class="dropdown-item"
+        :title="`rename ${entryMenu.name}`"
+        @click="onClickRename(entryMenu)"
+      >
+        <span class="icon is-small">
+          <i class="fa-solid fa-i-cursor" />
+        </span>
+
+        <span class="ml-2">rename</span>
       </button>
 
       <button
@@ -194,6 +219,14 @@ const {
       :accessible-destination="entry"
       @cancel="onCancelCopy"
       @copied="onCopiedEntry"
+    />
+  </ModalCard>
+
+  <ModalCard v-if="selectedRenameEntry">
+    <RenameEntryForm
+      :entry="selectedRenameEntry"
+      @cancel="onCancelRename"
+      @renamed="onRenamed"
     />
   </ModalCard>
 </template>
