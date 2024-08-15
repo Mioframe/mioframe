@@ -12,6 +12,12 @@ export const createFileEntry = (
   };
 
   const rename = async (newName: string) => {
+    const directoryList = parentEntry.list;
+
+    if (directoryList.has(newName)) {
+      throw new Error(`"${parentEntry.name}" already contains "${newName}"`);
+    }
+
     const file = await read();
     const newEntry = await parentEntry.writeFile(newName, file);
     await currentEntry.remove();
