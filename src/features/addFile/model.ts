@@ -1,10 +1,10 @@
 import { shallowRef } from 'vue';
-import type { DirectoryEntry } from '../../entities/entry';
+import type { DirectoryEntryRef } from '../../entities/entry';
 
 export const useWriteFileFeature = () => {
-  const fileWriteDestination = shallowRef<DirectoryEntry>();
+  const fileWriteDestination = shallowRef<DirectoryEntryRef>();
 
-  const setFileWriteDestination = (destinationEntry: DirectoryEntry) => {
+  const setFileWriteDestination = (destinationEntry: DirectoryEntryRef) => {
     fileWriteDestination.value = destinationEntry;
   };
 

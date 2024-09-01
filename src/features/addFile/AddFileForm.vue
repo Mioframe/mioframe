@@ -1,13 +1,13 @@
 <script lang="ts" setup>
 import { ref } from 'vue';
-import type { DirectoryEntry, FileEntry } from '../../entities/entry';
+import type { DirectoryEntryRef, FileEntryRef } from '../../entities/entry';
 
 const props = defineProps<{
-  directoryEntry: DirectoryEntry;
+  directoryEntry: DirectoryEntryRef;
 }>();
 
 const emit = defineEmits<{
-  written: [fileEntry: FileEntry];
+  written: [fileEntry: FileEntryRef];
   cancel: [];
 }>();
 

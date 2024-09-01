@@ -1,10 +1,10 @@
 import { shallowRef } from 'vue';
-import type { DirectoryEntry, FileEntry } from '../../entities/entry';
+import type { DirectoryEntryRef, FileEntryRef } from '../../entities/entry';
 
 export const useCopyEntryFeature = () => {
-  const copyableEntry = shallowRef<DirectoryEntry | FileEntry>();
+  const copyableEntry = shallowRef<DirectoryEntryRef | FileEntryRef>();
 
-  const setCopyableEntry = (entry: DirectoryEntry | FileEntry) => {
+  const setCopyableEntry = (entry: DirectoryEntryRef | FileEntryRef) => {
     copyableEntry.value = entry;
   };
 

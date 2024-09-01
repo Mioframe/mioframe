@@ -1,19 +1,21 @@
 <script setup lang="ts">
 import { reactive } from 'vue';
 import { MountedDirectoryWidget } from '../widgets/MountedDirectory';
-import type { DirectoryEntry } from '../entities/entry';
-import { createDirectoryEntry } from '../entities/entry';
+import type { DirectoryEntryRef } from '../entities/entry';
+import { createRootDirectoryEntryRef } from '../entities/entry';
 
-const mountedDirectories = reactive<Set<DirectoryEntry>>(new Set());
+const mountedDirectories = reactive<Set<DirectoryEntryRef>>(new Set());
 
 const mountDirectory = async () => {
   if ('showDirectoryPicker' in globalThis) {
-    const entry = createDirectoryEntry(await globalThis.showDirectoryPicker());
+    const entry: DirectoryEntryRef = createRootDirectoryEntryRef(
+      await globalThis.showDirectoryPicker(),
+    );
     mountedDirectories.add(entry);
   }
 };
 
-const unmountDirectory = (entry: DirectoryEntry) => {
+const unmountDirectory = (entry: DirectoryEntryRef) => {
   mountedDirectories.delete(entry);
 };
 </script>

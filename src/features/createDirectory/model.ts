@@ -1,10 +1,10 @@
 import { shallowRef } from 'vue';
-import type { DirectoryEntry } from '../../entities/entry';
+import type { DirectoryEntryRef } from '../../entities/entry';
 
 export const useCreateDirectoryFeature = () => {
-  const directoryCreateDestination = shallowRef<DirectoryEntry>();
+  const directoryCreateDestination = shallowRef<DirectoryEntryRef>();
 
-  const setDirectoryDestination = (directoryDestination: DirectoryEntry) => {
+  const setDirectoryDestination = (directoryDestination: DirectoryEntryRef) => {
     directoryCreateDestination.value = directoryDestination;
   };
 

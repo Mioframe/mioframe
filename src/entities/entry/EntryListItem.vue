@@ -4,17 +4,17 @@ import { ref, watchEffect } from 'vue';
 import EntityList from './EntryList.vue';
 import { ContextMenu } from '../../shared/ui/ContextMenu';
 import { onClickOutside } from '@vueuse/core';
-import type { DirectoryEntry, Entry, FileEntry } from './model';
+import type { DirectoryEntryRef, EntryRef, FileEntryRef } from './model';
 
 const props = defineProps<{
-  entry: FileEntry | DirectoryEntry;
+  entry: FileEntryRef | DirectoryEntryRef;
   opened?: boolean;
-  activeEntry?: Entry;
+  activeEntry?: EntryRef;
 }>();
 
 const emit = defineEmits<{
   'update:opened': [opened: boolean];
-  click: [FileEntry | DirectoryEntry];
+  click: [FileEntryRef | DirectoryEntryRef];
 }>();
 
 const stateOpened = ref<boolean>(false);
@@ -30,7 +30,7 @@ const toggleOpened = () => {
 
 const label = computed(() => props.entry.name);
 
-const onClickEntity = (fsHandle: FileEntry | DirectoryEntry) => {
+const onClickEntity = (fsHandle: FileEntryRef | DirectoryEntryRef) => {
   emit('click', fsHandle);
 };
 
@@ -50,7 +50,7 @@ const onContextMenu = ({ clientX, clientY }: MouseEvent) => {
 };
 
 defineSlots<{
-  contextMenu(props: { entry: FileEntry | DirectoryEntry }): unknown;
+  contextMenu(props: { entry: FileEntryRef | DirectoryEntryRef }): unknown;
 }>();
 </script>
 
