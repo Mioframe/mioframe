@@ -1,19 +1,19 @@
 <script setup lang="ts">
 import { ref, shallowRef } from 'vue';
-import type { DirectoryEntry, FileEntry } from '../../entities/entry';
+import type { DirectoryEntryRef, FileEntryRef } from '../../entities/entry';
 import { EntryList } from '../../entities/entry';
 
 const props = defineProps<{
-  sourceEntry: FileEntry | DirectoryEntry;
-  accessibleDestination: DirectoryEntry;
+  sourceEntry: DirectoryEntryRef | FileEntryRef;
+  accessibleDestination: DirectoryEntryRef;
 }>();
 
 const emit = defineEmits<{
   cancel: [];
-  copied: [newEntry: FileEntry | DirectoryEntry];
+  copied: [newEntry: DirectoryEntryRef | FileEntryRef];
 }>();
 
-const destinationDirectoryEntry = shallowRef<DirectoryEntry>();
+const destinationDirectoryEntry = shallowRef<DirectoryEntryRef>();
 
 const loading = ref(0);
 
@@ -36,7 +36,7 @@ const onClickCancel = () => {
   emit('cancel');
 };
 
-const onClickTargetEntry = (targetEntry: DirectoryEntry | FileEntry) => {
+const onClickTargetEntry = (targetEntry: DirectoryEntryRef | FileEntryRef) => {
   if ('list' in targetEntry) {
     destinationDirectoryEntry.value = targetEntry;
   }

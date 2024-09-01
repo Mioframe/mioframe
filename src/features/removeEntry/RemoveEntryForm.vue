@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { ref } from 'vue';
-import type { Entry } from '../../entities/entry';
+import type { EntryRef } from '../../entities/entry';
 
 const props = defineProps<{
-  entry: Entry;
+  entry: EntryRef;
 }>();
 
 const emit = defineEmits<{

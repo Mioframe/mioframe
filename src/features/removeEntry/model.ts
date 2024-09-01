@@ -1,14 +1,14 @@
 import { shallowRef } from 'vue';
-import type { Entry } from '../../entities/entry';
+import type { EntryRef } from '../../entities/entry';
 
 export const useRemoveEntryFeature = () => {
-  const entryToBeRemoved = shallowRef<Entry>();
+  const entryToBeRemoved = shallowRef<EntryRef>();
 
   const clearEntryToBeRemoved = () => {
     entryToBeRemoved.value = undefined;
   };
 
-  const setEntryToBeRemoved = (entry: Entry) => {
+  const setEntryToBeRemoved = (entry: EntryRef) => {
     entryToBeRemoved.value = entry;
   };
 

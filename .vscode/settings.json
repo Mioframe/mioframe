@@ -8,5 +8,6 @@
     "fortawesome",
     "vyachean",
     "zenfs"
-  ]
+  ],
+  "todo-tree.regex.regexCaseSensitive": false
 }

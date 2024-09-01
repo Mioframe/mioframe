@@ -1,10 +1,10 @@
 import { shallowRef } from 'vue';
-import type { DirectoryEntry, FileEntry } from '../../entities/entry';
+import type { DirectoryEntryRef, FileEntryRef } from '../../entities/entry';
 
 export const useMoveEntryFeature = () => {
-  const sourceMoveEntry = shallowRef<DirectoryEntry | FileEntry>();
+  const sourceMoveEntry = shallowRef<DirectoryEntryRef | FileEntryRef>();
 
-  const setSourceMoveEntry = (entry: DirectoryEntry | FileEntry) => {
+  const setSourceMoveEntry = (entry: DirectoryEntryRef | FileEntryRef) => {
     sourceMoveEntry.value = entry;
   };
 

@@ -1,21 +1,21 @@
 <script lang="ts" setup>
 import EntityListItem from './EntryListItem.vue';
-import type { DirectoryEntry, Entry, FileEntry } from './model';
 import { computed } from 'vue';
+import type { DirectoryEntryRef, EntryRef, FileEntryRef } from './model';
 
 const props = defineProps<{
-  directoryEntry: DirectoryEntry;
-  activeEntry?: Entry;
+  directoryEntry: DirectoryEntryRef;
+  activeEntry?: EntryRef;
 }>();
 
 const entityList = computed(() => props.directoryEntry.list);
 
 const emit = defineEmits<{
-  click: [entry: DirectoryEntry | FileEntry];
+  click: [entry: DirectoryEntryRef | FileEntryRef];
 }>();
 
 defineSlots<{
-  contextMenu(props: { entry: DirectoryEntry | FileEntry }): unknown;
+  contextMenu(props: { entry: DirectoryEntryRef | FileEntryRef }): unknown;
 }>();
 </script>
 

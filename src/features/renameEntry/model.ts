@@ -1,10 +1,12 @@
 import { shallowRef } from 'vue';
-import type { DirectoryEntry, FileEntry } from '../../entities/entry';
+import type { DirectoryEntryRef, FileEntryRef } from '../../entities/entry';
 
 export const useRenameEntryFeature = () => {
-  const selectedRenameEntry = shallowRef<DirectoryEntry | FileEntry>();
+  const selectedRenameEntry = shallowRef<DirectoryEntryRef | FileEntryRef>();
 
-  const setRenameEntry = (directoryDestination: DirectoryEntry | FileEntry) => {
+  const setRenameEntry = (
+    directoryDestination: DirectoryEntryRef | FileEntryRef,
+  ) => {
     selectedRenameEntry.value = directoryDestination;
   };
 

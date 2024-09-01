@@ -1,16 +1,16 @@
 <script setup lang="ts">
 import { isString } from 'lodash-es';
 import { ref } from 'vue';
-import type { DirectoryEntry } from '../../entities/entry';
+import type { DirectoryEntryRef } from '../../entities/entry';
 
 const props = defineProps<{
-  parentEntry: DirectoryEntry;
+  parentEntry: DirectoryEntryRef;
 }>();
 
 const name = ref<string>();
 
 const emit = defineEmits<{
-  created: [createdDirectoryHandler: DirectoryEntry];
+  created: [createdDirectoryHandler: DirectoryEntryRef];
   cancel: [];
 }>();
 
