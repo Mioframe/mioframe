@@ -1,0 +1,1 @@
+export { createFSStorageAdapter } from './createFSStorageAdapter';

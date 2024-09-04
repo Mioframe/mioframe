@@ -19,7 +19,10 @@ export interface DirectoryEntryApi extends EntryApi {
   /**
    * Writes a file to this directory
    */
-  writeFile: (name: string, file?: File) => Promise<FileEntryApi>;
+  writeFile: (
+    name: string,
+    file?: FileSystemWriteChunkType,
+  ) => Promise<FileEntryApi>;
   /**
    * Removes Entry from this directory
    */

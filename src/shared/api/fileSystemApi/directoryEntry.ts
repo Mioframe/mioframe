@@ -51,7 +51,7 @@ export const createDirectoryEntryApi = (
     return directoryEntry;
   };
 
-  const writeFile = async (name: string, file?: File) => {
+  const writeFile = async (name: string, file?: FileSystemWriteChunkType) => {
     const newFileHandle = await currentHandle.getFileHandle(name, {
       create: true,
     });
