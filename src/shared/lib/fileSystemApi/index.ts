@@ -1,4 +1,4 @@
-export type * from '../types';
+export type * from './types';
 export { createDirectoryEntryApi } from './directoryEntry';
 export { createFileEntryApi } from './fileEntry';
 

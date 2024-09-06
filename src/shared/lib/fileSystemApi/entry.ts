@@ -1,9 +1,9 @@
-import type { DirectoryEntryApi, EntryApi } from '../types';
+import type { DirectoryEntryFSApi, EntryFileSystemApi } from './types';
 
 export const createEntryApi = (
   currentHandle: FileSystemHandle,
-  parentEntryApi?: DirectoryEntryApi,
-): EntryApi => {
+  parentEntryApi?: DirectoryEntryFSApi,
+): EntryFileSystemApi => {
   const remove = async () => {
     if (parentEntryApi) {
       await parentEntryApi.removeByName(currentHandle.name);

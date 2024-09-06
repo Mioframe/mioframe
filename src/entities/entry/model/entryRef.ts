@@ -1,12 +1,12 @@
 import { reactive, computed, shallowRef, watch } from 'vue';
-import type { DirectoryEntryApi, FileEntryApi } from '../../../shared/api';
-import { createDirectoryEntryApi } from '../../../shared/api';
+import type { DirectoryEntryFSApi, FileEntryFSApi } from '../../../shared/lib/fileSystemApi';
+import { createDirectoryEntryApi } from '../../../shared/lib/fileSystemApi';
 import type { DirectoryEntryRef, DirectoryList, FileEntryRef } from './types';
 import { difference } from 'lodash-es';
 
-const directoryRegistry = new WeakMap<DirectoryEntryRef, DirectoryEntryApi>();
+const directoryRegistry = new WeakMap<DirectoryEntryRef, DirectoryEntryFSApi>();
 
-const createFileEntryRef = (fileEntryApi: FileEntryApi): FileEntryRef => {
+const createFileEntryRef = (fileEntryApi: FileEntryFSApi): FileEntryRef => {
   const fileEntryApiRef = shallowRef(fileEntryApi);
 
   const name = computed(() => fileEntryApiRef.value.getName());
@@ -55,7 +55,7 @@ const createFileEntryRef = (fileEntryApi: FileEntryApi): FileEntryRef => {
 };
 
 const createDirectoryEntryRef = (
-  directoryEntryApi: DirectoryEntryApi,
+  directoryEntryApi: DirectoryEntryFSApi,
 ): DirectoryEntryRef => {
   const currentApiRef = shallowRef(directoryEntryApi);
 
