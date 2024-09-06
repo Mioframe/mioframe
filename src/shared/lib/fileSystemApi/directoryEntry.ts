@@ -1,17 +1,11 @@
 import { createEntryApi } from './entry';
 import { createFileEntryApi } from './fileEntry';
-import type { DirectoryEntryApi, DirectoryList } from '../types';
-
-/*
-для каждого провайдера своя точка входа в api.
-у api одинаковый интерфейс, пока этого достаточно для реализации.
-промежуточную обработку поведенческих ошибок сделать позже, оно касается бизнес процессов
-*/
+import type { DirectoryEntryFSApi, DirectoryList } from './types';
 
 export const createDirectoryEntryApi = (
   currentHandle: FileSystemDirectoryHandle,
-  parentEntry?: DirectoryEntryApi,
-): DirectoryEntryApi => {
+  parentEntry?: DirectoryEntryFSApi,
+): DirectoryEntryFSApi => {
   const currentEntry = createEntryApi(currentHandle, parentEntry);
 
   const getList = async () => {
@@ -73,7 +67,7 @@ export const createDirectoryEntryApi = (
     void triggerWatchers();
   };
 
-  const copyTo = async (dest: DirectoryEntryApi) => {
+  const copyTo = async (dest: DirectoryEntryFSApi) => {
     const currentPath = currentEntry.getPath();
 
     const destPath = dest.getPath();
@@ -97,7 +91,7 @@ export const createDirectoryEntryApi = (
     return newDirectoryEntry;
   };
 
-  const moveTo = async (dest: DirectoryEntryApi) => {
+  const moveTo = async (dest: DirectoryEntryFSApi) => {
     const parentPath = parentEntry?.getPath() ?? [];
 
     if (childHasParent(dest.getPath(), parentPath)) {
@@ -180,7 +174,7 @@ export const createDirectoryEntryApi = (
     }
   };
 
-  const currentDirectoryEntry: DirectoryEntryApi = {
+  const currentDirectoryEntry: DirectoryEntryFSApi = {
     ...currentEntry,
     createDirectory,
     writeFile,

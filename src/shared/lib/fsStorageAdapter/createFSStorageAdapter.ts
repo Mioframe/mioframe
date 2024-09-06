@@ -3,7 +3,7 @@ import type {
   StorageKey,
   Chunk,
 } from '@automerge/automerge-repo';
-import type { DirectoryEntryApi, FileEntryApi } from '../../api';
+import type { DirectoryEntryFSApi, FileEntryFSApi } from '../fileSystemApi';
 import type { FileName } from './types';
 import { KEY_SEPARATE, zodFileName, zodStorageKey } from './types';
 
@@ -14,7 +14,7 @@ export const fileNameToKey = (fileName: unknown): StorageKey =>
   zodStorageKey.parse(zodFileName.parse(fileName).split(KEY_SEPARATE));
 
 export const createFSStorageAdapter = (
-  directoryEntryApi: DirectoryEntryApi,
+  directoryEntryApi: DirectoryEntryFSApi,
 ): StorageAdapterInterface => {
   const load = async (key: StorageKey): Promise<Uint8Array | undefined> => {
     const fileName = keyToFileName(key);
@@ -48,7 +48,7 @@ export const createFSStorageAdapter = (
 
     const listFromDirectory = await directoryEntryApi.getList();
 
-    const fileList: { key: StorageKey; entry: FileEntryApi }[] = [];
+    const fileList: { key: StorageKey; entry: FileEntryFSApi }[] = [];
 
     listFromDirectory.forEach((entry, name) => {
       if (name.startsWith(keyPrefixString) && 'read' in entry) {
@@ -72,7 +72,7 @@ export const createFSStorageAdapter = (
     const keyPrefixString = keyPrefix.join(KEY_SEPARATE);
     const listFromDirectory = await directoryEntryApi.getList();
 
-    const removeEntryList: FileEntryApi[] = [];
+    const removeEntryList: FileEntryFSApi[] = [];
 
     listFromDirectory.forEach((entry, name) => {
       if ('read' in entry && name.startsWith(keyPrefixString)) {

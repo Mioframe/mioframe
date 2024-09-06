@@ -1,6 +1,6 @@
 export type EntryPath = string[];
 
-export interface EntryApi {
+export interface EntryFileSystemApi {
   getName: () => string;
   /**
    * Removes this Entry
@@ -9,20 +9,20 @@ export interface EntryApi {
   getPath: () => EntryPath;
 }
 
-export type DirectoryList = Map<string, DirectoryEntryApi | FileEntryApi>;
+export type DirectoryList = Map<string, DirectoryEntryFSApi | FileEntryFSApi>;
 
-export interface DirectoryEntryApi extends EntryApi {
+export interface DirectoryEntryFSApi extends EntryFileSystemApi {
   /**
    * Creates a subdirectory
    */
-  createDirectory: (name: string) => Promise<DirectoryEntryApi>;
+  createDirectory: (name: string) => Promise<DirectoryEntryFSApi>;
   /**
    * Writes a file to this directory
    */
   writeFile: (
     name: string,
     file?: FileSystemWriteChunkType,
-  ) => Promise<FileEntryApi>;
+  ) => Promise<FileEntryFSApi>;
   /**
    * Removes Entry from this directory
    */
@@ -30,15 +30,15 @@ export interface DirectoryEntryApi extends EntryApi {
   /**b
    * Copies this directory to the destination directory
    */
-  copyTo: (dest: DirectoryEntryApi) => Promise<DirectoryEntryApi>;
+  copyTo: (dest: DirectoryEntryFSApi) => Promise<DirectoryEntryFSApi>;
   /**
    * Moves this directory to the destination directory by means of copying and deleting this
    */
-  moveTo: (dest: DirectoryEntryApi) => Promise<DirectoryEntryApi>;
+  moveTo: (dest: DirectoryEntryFSApi) => Promise<DirectoryEntryFSApi>;
   /**
    * Rename this directory by copying the contents to a new directory
    */
-  rename: (newName: string) => Promise<DirectoryEntryApi>;
+  rename: (newName: string) => Promise<DirectoryEntryFSApi>;
   /**
    * Get map of directory contents
    */
@@ -53,7 +53,7 @@ export interface DirectoryEntryApi extends EntryApi {
   removeWatcher: (handler: (list: DirectoryList) => unknown) => void;
 }
 
-export interface FileEntryApi extends EntryApi {
+export interface FileEntryFSApi extends EntryFileSystemApi {
   /**
    * Reads this file
    */
@@ -61,13 +61,13 @@ export interface FileEntryApi extends EntryApi {
   /**
    * Renames this file by copying and creating with the same contents
    */
-  rename: (newName: string) => Promise<FileEntryApi>;
+  rename: (newName: string) => Promise<FileEntryFSApi>;
   /**
    * Copies the file to the destination directory
    */
-  copyTo: (dest: DirectoryEntryApi) => Promise<FileEntryApi>;
+  copyTo: (dest: DirectoryEntryFSApi) => Promise<FileEntryFSApi>;
   /**
    * Moves this file to the destination directory by copying and deleting this file
    */
-  moveTo: (dest: DirectoryEntryApi) => Promise<FileEntryApi>;
+  moveTo: (dest: DirectoryEntryFSApi) => Promise<FileEntryFSApi>;
 }
