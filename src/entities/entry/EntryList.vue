@@ -1,14 +1,23 @@
 <script lang="ts" setup>
-import EntityListItem from './EntryListItem.vue';
 import { computed } from 'vue';
-import type { DirectoryEntryRef, EntryRef, FileEntryRef } from './model';
+import type { DirectoryEntryRef, DirectoryList, FileEntryRef } from './model';
+import { TreeList } from '../../shared/ui/TreeMenu';
 
 const props = defineProps<{
   directoryEntry: DirectoryEntryRef;
-  activeEntry?: EntryRef;
+  activeEntry?: DirectoryEntryRef | FileEntryRef;
 }>();
 
-const entityList = computed(() => props.directoryEntry.list);
+const entityList = computed((): DirectoryList => props.directoryEntry.list);
+
+const activeKey = computed(() => {
+  if (props.activeEntry) {
+    for (const [key] of entityList.value) {
+      return key;
+    }
+  }
+  return undefined;
+});
 
 const emit = defineEmits<{
   click: [entry: DirectoryEntryRef | FileEntryRef];
@@ -17,26 +26,16 @@ const emit = defineEmits<{
 defineSlots<{
   contextMenu(props: { entry: DirectoryEntryRef | FileEntryRef }): unknown;
 }>();
+
+const onClick = (_: string, item: DirectoryEntryRef | FileEntryRef) => {
+  emit('click', item);
+};
 </script>
 
 <template>
-  <ul class="menu-list">
-    <EntityListItem
-      v-for="[name, entry] in entityList"
-      :key="name"
-      :entry="entry"
-      :active-entry="activeEntry"
-      @click="emit('click', $event)"
-    >
-      <template #contextMenu="{ entry: contextEntry }">
-        <slot name="contextMenu" :entry="contextEntry" />
-      </template>
-    </EntityListItem>
-  </ul>
+  <TreeList :list="entityList" :active-key="activeKey" @click="onClick">
+    <template #contextMenu="{ item }">
+      <slot name="contextMenu" :entry="item" />
+    </template>
+  </TreeList>
 </template>
-
-<style lang="scss" scoped>
-.menu-list {
-  --bulma-menu-nested-list-margin: 0.75em 0 0.75em 0.75em;
-}
-</style>

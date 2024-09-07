@@ -72,7 +72,7 @@ const {
 
 <template>
   <div class="menu-label is-flex is-justify-content-space-between">
-    {{ entry.name }}
+    {{ entry.label }}
     <div class="buttons has-addons">
       <slot name="buttonAddons" />
 
@@ -92,7 +92,7 @@ const {
   <EntryList :directory-entry="entry">
     <template #contextMenu="{ entry: entryMenu }">
       <span class="dropdown-item">
-        {{ entryMenu.name }}
+        {{ entryMenu.label }}
       </span>
 
       <hr class="dropdown-divider" />
@@ -129,7 +129,7 @@ const {
         v-if="'rename' in entryMenu"
         type="button"
         class="dropdown-item"
-        :title="`rename ${entryMenu.name}`"
+        :title="`rename ${entryMenu.label}`"
         @click="onClickRename(entryMenu)"
       >
         <span class="icon is-small">
@@ -143,7 +143,7 @@ const {
         v-if="'copyTo' in entryMenu"
         type="button"
         class="dropdown-item"
-        :title="`move ${entryMenu.name}`"
+        :title="`move ${entryMenu.label}`"
         @click="onClickCopyTo(entryMenu)"
       >
         <span class="icon is-small">
@@ -157,7 +157,7 @@ const {
         v-if="'moveTo' in entryMenu"
         type="button"
         class="dropdown-item"
-        :title="`move ${entryMenu.name}`"
+        :title="`move ${entryMenu.label}`"
         @click="onClickMoveTo(entryMenu)"
       >
         <span class="icon is-small">
@@ -170,7 +170,7 @@ const {
       <button
         type="button"
         class="dropdown-item"
-        :title="`remove \'${entryMenu.name}\'`"
+        :title="`remove \'${entryMenu.label}\'`"
         @click="onRemove(entryMenu)"
       >
         <span class="icon is-small"><i class="fa-solid fa-trash" /></span>

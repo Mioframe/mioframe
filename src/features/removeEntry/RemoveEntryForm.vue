@@ -32,7 +32,7 @@ const onClickCancel = () => {
     class="block-spacing is-flex is-flex-direction-column"
     @submit.prevent="onSubmit"
   >
-    <p>Are you sure you want to remove "{{ props.entry.name }}"?</p>
+    <p>Are you sure you want to remove "{{ props.entry.label }}"?</p>
 
     <div class="field is-grouped">
       <div class="control">

@@ -46,14 +46,14 @@ const unmountDirectory = (entry: DirectoryEntryRef) => {
 
         <MountedDirectoryWidget
           v-for="entry in mountedDirectories"
-          :key="entry.name"
+          :key="entry.label"
           :entry="entry"
         >
           <template #buttonAddons>
             <button
               class="button is-small"
               type="button"
-              :title="`unmount ${entry.name}`"
+              :title="`unmount ${entry.label}`"
               @click="unmountDirectory(entry)"
             >
               <span class="icon is-small">

@@ -54,7 +54,7 @@ const onClickTargetDirectory = () => {
   >
     <div class="field is-overflow-y-auto is-flex is-flex-direction-column">
       <label class="label">
-        Select the destination directory to move "{{ sourceEntry.name }}"
+        Select the destination directory to move "{{ sourceEntry.label }}"
       </label>
 
       <div class="menu is-overflow-y-auto">
@@ -69,7 +69,7 @@ const onClickTargetDirectory = () => {
               }"
               @click="onClickTargetDirectory"
             >
-              <span>{{ accessibleDestination.name }}</span>
+              <span>{{ accessibleDestination.label }}</span>
             </button>
 
             <EntryList
