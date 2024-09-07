@@ -1,5 +1,8 @@
 import { reactive, computed, shallowRef, watch } from 'vue';
-import type { DirectoryEntryFSApi, FileEntryFSApi } from '../../../shared/lib/fileSystemApi';
+import type {
+  DirectoryEntryFSApi,
+  FileEntryFSApi,
+} from '../../../shared/lib/fileSystemApi';
 import { createDirectoryEntryApi } from '../../../shared/lib/fileSystemApi';
 import type { DirectoryEntryRef, DirectoryList, FileEntryRef } from './types';
 import { difference } from 'lodash-es';
@@ -9,7 +12,7 @@ const directoryRegistry = new WeakMap<DirectoryEntryRef, DirectoryEntryFSApi>();
 const createFileEntryRef = (fileEntryApi: FileEntryFSApi): FileEntryRef => {
   const fileEntryApiRef = shallowRef(fileEntryApi);
 
-  const name = computed(() => fileEntryApiRef.value.getName());
+  const label = computed(() => fileEntryApiRef.value.getName());
   const path = computed(() => fileEntryApiRef.value.getPath());
   const read = () => fileEntryApiRef.value.read();
   const remove = () => fileEntryApiRef.value.remove();
@@ -42,7 +45,7 @@ const createFileEntryRef = (fileEntryApi: FileEntryFSApi): FileEntryRef => {
   };
 
   const currentEntry: FileEntryRef = reactive({
-    name,
+    label,
     path,
     read,
     remove,
@@ -167,7 +170,7 @@ const createDirectoryEntryRef = (
   };
 
   const list = computed((): DirectoryList => stateDirectoryList);
-  const name = computed(() => currentApiRef.value.getName());
+  const label = computed(() => currentApiRef.value.getName());
   const path = computed(() => currentApiRef.value.getPath());
 
   const currentDirectoryEntry: DirectoryEntryRef = reactive({
@@ -180,7 +183,7 @@ const createDirectoryEntryRef = (
       return list;
     },
     moveTo,
-    name,
+    label,
     path,
     remove,
     rename,
