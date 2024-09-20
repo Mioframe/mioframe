@@ -1,6 +1,6 @@
 export {
   createFSStorageAdapter,
-  fileNameToKey,
+  fileNameToPartialKey as fileNameToKey,
 } from './createFSStorageAdapter';
 export { zodFileName, zodDocumentId } from './types';
 export type * from './types';

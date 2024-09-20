@@ -17,7 +17,7 @@ const emit = defineEmits<{
 </script>
 
 <template>
-  <div class="modal is-active">
+  <dialog open class="modal is-active" role="dialog">
     <div class="modal-background" />
 
     <div class="modal-card">
@@ -49,5 +49,13 @@ const emit = defineEmits<{
       type="button"
       @click="emit('clickClose')"
     />
-  </div>
+  </dialog>
 </template>
+
+<style lang="css" scoped>
+dialog.modal {
+  width: 100%;
+  height: 100%;
+  background: transparent;
+}
+</style>

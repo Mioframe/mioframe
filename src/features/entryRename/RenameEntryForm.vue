@@ -1,16 +1,20 @@
 <script setup lang="ts">
 import { isString } from 'lodash-es';
-import { ref } from 'vue';
-import type { DirectoryEntryRef } from '../../entities/entry';
+import { ref, watchEffect } from 'vue';
+import type { DirectoryEntryRef, FileEntryRef } from '../../entities/entry';
 
 const props = defineProps<{
-  parentEntry: DirectoryEntryRef;
+  entry: DirectoryEntryRef | FileEntryRef;
 }>();
 
-const name = ref<string>();
+const stateName = ref<string>();
+
+watchEffect(() => {
+  stateName.value = props.entry.label;
+});
 
 const emit = defineEmits<{
-  created: [createdDirectoryHandler: DirectoryEntryRef];
+  renamed: [renamedEntry: DirectoryEntryRef | FileEntryRef];
   cancel: [];
 }>();
 
@@ -20,11 +24,9 @@ const onSubmit = async () => {
   if (!loading.value) {
     loading.value += 1;
     try {
-      if (isString(name.value)) {
-        const directoryEntry = await props.parentEntry.createDirectory(
-          name.value,
-        );
-        emit('created', directoryEntry);
+      if (isString(stateName.value)) {
+        const renamedEntry = await props.entry.rename(stateName.value);
+        emit('renamed', renamedEntry);
       }
     } finally {
       loading.value -= 1;
@@ -43,7 +45,7 @@ const onClickCancel = () => {
     @submit.prevent="onSubmit"
   >
     <div class="field">
-      <label class="label">Directory name</label>
+      <label class="label">Name</label>
 
       <div class="control">
         <input v-model="name" class="input" type="text" placeholder="name" />
@@ -53,7 +55,7 @@ const onClickCancel = () => {
     <div class="field is-grouped">
       <div class="control">
         <button class="button" type="submit" :class="{ 'is-loading': loading }">
-          Create
+          Rename
         </button>
       </div>
 

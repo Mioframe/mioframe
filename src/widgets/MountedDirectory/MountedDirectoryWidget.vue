@@ -4,20 +4,20 @@ import { EntryList } from '../../entities/entry';
 import {
   CreateDirectoryForm,
   useCreateDirectoryFeature,
-} from '../../features/createDirectory';
+} from '../../features/entryCreateDirectory';
 import { ModalCard } from '../../shared/ui/ModalCard';
 import {
   RemoveEntryForm,
   useRemoveEntryFeature,
-} from '../../features/removeEntry';
-import { AddFileForm, useWriteFileFeature } from '../../features/addFile';
-import { MoveEntryForm, useMoveEntryFeature } from '../../features/moveEntry';
-import { useCopyEntryFeature } from '../../features/copyEntry';
-import CopyEntryForm from '../../features/copyEntry/CopyEntryForm.vue';
+} from '../../features/entryRemove';
+import { AddFileForm, useWriteFileFeature } from '../../features/entryAddFile';
+import { MoveEntryForm, useMoveEntryFeature } from '../../features/entryMove';
+import { useCopyEntryFeature } from '../../features/entryCopy';
+import CopyEntryForm from '../../features/entryCopy/CopyEntryForm.vue';
 import {
   RenameEntryForm,
   useRenameEntryFeature,
-} from '../../features/renameEntry';
+} from '../../features/entryRename';
 
 defineProps<{
   entry: DirectoryEntryRef;
