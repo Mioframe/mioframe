@@ -1,23 +1,46 @@
-import type {
-  StorageAdapterInterface,
-  StorageKey,
-  Chunk,
-} from '@automerge/automerge-repo';
+import type { StorageAdapterInterface, Chunk } from '@automerge/automerge-repo';
 import type { DirectoryEntryFSApi, FileEntryFSApi } from '../fileSystemApi';
-import type { FileName } from './types';
-import { KEY_SEPARATE, zodFileName, zodStorageKey } from './types';
+import type {
+  FileName,
+  PartialFileName,
+  PartialStorageKey,
+  StorageKey,
+} from './types';
+import {
+  KEY_SEPARATE,
+  zodPartialFileName,
+  zodPartialStorageKey,
+} from './types';
+import { createLogModule } from '../logger';
+import { parseSelf } from '../validateZodScheme';
 
-export const keyToFileName = (key: unknown): FileName =>
-  zodFileName.parse(zodStorageKey.parse(key).join(KEY_SEPARATE));
+export const partialKeyToFileName = (
+  key: PartialStorageKey,
+): PartialFileName => {
+  log.debug('keyToFileName', key);
+  return parseSelf(
+    parseSelf(key, zodPartialStorageKey).join(KEY_SEPARATE),
+    zodPartialFileName,
+  );
+};
 
-export const fileNameToKey = (fileName: unknown): StorageKey =>
-  zodStorageKey.parse(zodFileName.parse(fileName).split(KEY_SEPARATE));
+export const fileNameToPartialKey = (fileName: unknown): PartialStorageKey =>
+  parseSelf(
+    parseSelf(fileName, zodPartialFileName).split(KEY_SEPARATE),
+    zodPartialStorageKey,
+  );
+
+const log = createLogModule('createFSStorageAdapter');
 
 export const createFSStorageAdapter = (
   directoryEntryApi: DirectoryEntryFSApi,
 ): StorageAdapterInterface => {
-  const load = async (key: StorageKey): Promise<Uint8Array | undefined> => {
-    const fileName = keyToFileName(key);
+  const load = async (
+    key: PartialStorageKey,
+  ): Promise<Uint8Array | undefined> => {
+    log.debug('load', key);
+
+    const fileName = partialKeyToFileName(key);
 
     const listFromDirectory = await directoryEntryApi.getList();
 
@@ -32,27 +55,36 @@ export const createFSStorageAdapter = (
   };
 
   const save = async (key: StorageKey, data: Uint8Array) => {
-    const fileName = keyToFileName(key);
+    log.debug('save', key);
+
+    const fileName = partialKeyToFileName(key);
 
     await directoryEntryApi.writeFile(fileName, data);
   };
 
   const remove = async (key: StorageKey) => {
-    const fileName = keyToFileName(key);
+    log.debug('remove', key);
+
+    const fileName = partialKeyToFileName(key);
 
     await directoryEntryApi.removeByName(fileName);
   };
 
-  const loadRange = async (keyPrefix: StorageKey): Promise<Chunk[]> => {
-    const keyPrefixString = keyPrefix.join(KEY_SEPARATE);
+  const loadRange = async (keyPrefix: PartialStorageKey): Promise<Chunk[]> => {
+    log.debug('loadRange', keyPrefix);
+
+    const keyPrefixString: PartialFileName = parseSelf(
+      keyPrefix.join(KEY_SEPARATE),
+      zodPartialFileName,
+    );
 
     const listFromDirectory = await directoryEntryApi.getList();
 
-    const fileList: { key: StorageKey; entry: FileEntryFSApi }[] = [];
+    const fileList: { key: PartialStorageKey; entry: FileEntryFSApi }[] = [];
 
     listFromDirectory.forEach((entry, name) => {
       if (name.startsWith(keyPrefixString) && 'read' in entry) {
-        const key = fileNameToKey(name);
+        const key = fileNameToPartialKey(name);
 
         fileList.push({ key, entry });
       }
@@ -68,8 +100,14 @@ export const createFSStorageAdapter = (
     return chunkList;
   };
 
-  const removeRange = async (keyPrefix: StorageKey) => {
-    const keyPrefixString = keyPrefix.join(KEY_SEPARATE);
+  const removeRange = async (keyPrefix: PartialStorageKey) => {
+    log.debug('removeRange', keyPrefix);
+
+    const keyPrefixString: PartialFileName = parseSelf(
+      keyPrefix.join(KEY_SEPARATE),
+      zodPartialFileName,
+    );
+
     const listFromDirectory = await directoryEntryApi.getList();
 
     const removeEntryList: FileEntryFSApi[] = [];

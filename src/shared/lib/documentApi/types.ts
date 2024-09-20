@@ -1,25 +1,37 @@
-import type { Doc } from '@automerge/automerge-repo';
+import type { Doc, DocumentId } from '@automerge/automerge-repo';
 import type { ReadonlyDeep } from 'type-fest';
 import type { TypeOf } from 'zod';
 import { object, string, unknown } from 'zod';
 
 export const zodDocument = object({
   name: string(),
+  type: string(),
   body: unknown(),
 });
 
-export type Document = TypeOf<typeof zodDocument>;
+/**
+ * Conflict-free Replicated Document
+ */
+export type CRDocument = TypeOf<typeof zodDocument>;
 
-export interface DocumentApi<T = unknown> {
+export interface DocumentApi<T extends CRDocument = CRDocument> {
   doc(): Promise<ReadonlyDeep<Doc<T>> | undefined>;
   delete(): void;
   change(callback: (doc: T) => void): void;
+  on: (event: 'change', fn: (payload: { doc: T }) => unknown) => void;
+  off: (event: 'change', fn: (payload: { doc: T }) => unknown) => void;
 }
 
 export interface FolderApi {
   create: <Z extends typeof zodDocument>(
     initialValue: TypeOf<Z>,
-    zod: Z,
   ) => Promise<DocumentApi<TypeOf<Z>>>;
-  getContent: () => Promise<Map<string, unknown>>;
+  remove: (documentId: DocumentId) => Promise<void>;
+  getContent: () => Promise<Map<DocumentId, DocumentApi>>;
+  onChange: (
+    handler: (content: Map<DocumentId, DocumentApi>) => unknown,
+  ) => unknown;
+  offChange: (
+    handler: (content: Map<DocumentId, DocumentApi>) => unknown,
+  ) => unknown;
 }

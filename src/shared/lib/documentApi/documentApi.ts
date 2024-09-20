@@ -1,34 +1,67 @@
-import type { TypeOf } from 'zod';
+import { createLogModule } from '../logger';
+import { parseSelf } from '../validateZodScheme';
 import type { DocumentApi } from './types';
-import { zodDocument } from './types';
-import type { ReadonlyDeep } from 'type-fest';
-import type { ChangeFn, Doc } from '@automerge/automerge-repo/slim';
+import { zodDocument, type CRDocument } from './types';
+import type { ChangeFn } from '@automerge/automerge-repo/slim';
 
-export const createDocumentApi = <
-  Z extends typeof zodDocument = typeof zodDocument,
->(
-  docHandle: DocumentApi,
-  zod?: Z,
-): DocumentApi<TypeOf<Z>> => {
-  const usedZod = zod ?? zodDocument;
+const { debug } = createLogModule('createDocumentApi');
 
-  const doc = async () =>
-    usedZod.parse(await docHandle.doc()) as ReadonlyDeep<Doc<TypeOf<Z>>>;
+export const createDocumentApi = (docHandle: DocumentApi): DocumentApi => {
+  const doc = async () => {
+    debug('doc');
+    const originalDoc = await docHandle.doc();
+
+    const parsedDoc = parseSelf(originalDoc, zodDocument);
+    return parsedDoc;
+  };
 
   const del = () => {
+    debug('del');
     docHandle.delete();
   };
 
-  const change = (callback: ChangeFn<TypeOf<Z>>) => {
+  const change = (callback: ChangeFn<CRDocument>) => {
+    debug('change');
     docHandle.change((doc) => {
-      callback(usedZod.parse(doc));
+      callback(parseSelf(doc, zodDocument));
     });
   };
 
-  const documentApi: DocumentApi<TypeOf<Z>> = {
+  const eventsMap = new Map<
+    // outside
+    (payload: { doc: CRDocument }) => unknown,
+    // inside
+    (payload: { doc: CRDocument }) => unknown
+  >();
+
+  const on = (
+    event: 'change',
+    fn: (payload: { doc: CRDocument }) => unknown,
+  ) => {
+    const insideFn = ({ doc }: { doc: CRDocument }) => {
+      fn({ doc: parseSelf(doc, zodDocument) });
+    };
+    eventsMap.set(fn, insideFn);
+    docHandle.on(event, insideFn);
+  };
+
+  const off = (
+    event: 'change',
+    fn: (payload: { doc: CRDocument }) => unknown,
+  ) => {
+    const insideFn = eventsMap.get(fn);
+    if (insideFn) {
+      docHandle.off(event, insideFn);
+      eventsMap.delete(fn);
+    }
+  };
+
+  const documentApi: DocumentApi = {
     doc,
     delete: del,
     change,
+    on,
+    off,
   };
 
   return documentApi;
