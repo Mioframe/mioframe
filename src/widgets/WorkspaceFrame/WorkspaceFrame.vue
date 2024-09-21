@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, toRef, watchEffect } from 'vue';
 import type { DocumentApi } from '../../shared/lib/documentApi';
-import { useDocument } from '../../entities/database/useDocument';
+import { useDocument } from '../../entities/document/useDocument';
 import { createLogModule } from '../../shared/lib/logger';
 import { DocumentEditForm } from '../../features/documentEdit';
 

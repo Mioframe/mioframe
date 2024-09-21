@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { useDocument } from '../database/useDocument';
+import { useDocument } from './useDocument';
 import type { DocumentApi } from '../../shared/lib/documentApi';
 import { computed, toRef } from 'vue';
 import { TreeItem } from '../../shared/ui/TreeMenu';
