@@ -10,3 +10,12 @@
 .block-spacing {
   gap: var(--bulma-block-spacing);
 }
+
+:root {
+  --bulma-body-overflow-y: auto;
+}
+.select {
+  select {
+    width: 100%;
+  }
+}

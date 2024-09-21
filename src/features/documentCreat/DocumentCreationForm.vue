@@ -35,6 +35,10 @@ const autofocusElement = ref<HTMLElement>();
 watchEffect(() => {
   autofocusElement.value?.focus();
 });
+
+const documentTypeOptions = ['any'];
+
+const documentType = ref<string>(documentTypeOptions[0]);
 </script>
 
 <template>
@@ -57,6 +61,18 @@ watchEffect(() => {
           required
         />
       </div>
+    </div>
+
+    <div class="select">
+      <select v-model="documentType">
+        <option
+          v-for="option in documentTypeOptions"
+          :key="option"
+          :value="option"
+        >
+          {{ option }}
+        </option>
+      </select>
     </div>
 
     <div class="field is-grouped">

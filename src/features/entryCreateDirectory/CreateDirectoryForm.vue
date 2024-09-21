@@ -46,7 +46,12 @@ const onClickCancel = () => {
       <label class="label">Directory name</label>
 
       <div class="control">
-        <input v-model="name" class="input" type="text" placeholder="name" />
+        <input
+          v-model="stateName"
+          class="input"
+          type="text"
+          placeholder="name"
+        />
       </div>
     </div>
 

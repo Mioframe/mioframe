@@ -2,7 +2,7 @@ import type { PartialDeep } from 'type-fest';
 import type { ColumnId } from './column';
 import { generateColumnId, zodColumnId } from './column';
 import { zodDocument, type CRDocument, type DocumentApi } from '../documentApi';
-import { putObject } from '../putObject';
+import { putObject } from '../changeObject/putObject';
 import type { ItemId } from './item';
 import { generateItemId, zodItemId } from './item';
 import type { AnyColumn } from './column';
@@ -12,8 +12,6 @@ import { zodColumnMap } from './column/column';
 import { parseSelf } from '../validateZodScheme';
 
 const zodValue = unknown();
-
-type Value = TypeOf<typeof zodValue>;
 
 const zodItem = record(zodColumnId, zodValue);
 

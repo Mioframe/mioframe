@@ -3,6 +3,7 @@ import { computed, ref, toRef, watchEffect } from 'vue';
 import type { DocumentApi } from '../../shared/lib/documentApi';
 import { useDocument } from '../../entities/database/useDocument';
 import { createLogModule } from '../../shared/lib/logger';
+import { DocumentEditForm } from '../../features/documentEdit';
 
 const { debug } = createLogModule('WorkspaceFarame');
 
@@ -41,10 +42,8 @@ const documentType = computed(() => doc.value?.type ?? 'unknown');
 
 <template>
   <div class="is-flex is-flex-direction-column is-flex-grow-1">
-    <form class="is-flex" @submit.prevent>
-      <div class="field">
-        <label class="label">Name</label>
-
+    <form class="is-flex is-align-items-center is-gap-1" @submit.prevent>
+      <div class="field is-flex-grow-1">
         <div class="control">
           <input
             v-model="stateName"
@@ -57,12 +56,14 @@ const documentType = computed(() => doc.value?.type ?? 'unknown');
         </div>
       </div>
 
-      <span class="tag is-light"> {{ documentType }} </span>
+      <span class="tag is-light is-medium"> {{ documentType }} </span>
     </form>
 
     <slot :document-api :document-type>
-      <pre>{{ doc }}</pre>
-      TODO: добавить json редактор по умолчанию json-editor-vue
+      <DocumentEditForm
+        :document-api
+        class="is-flex is-flex-direction-column is-flex-grow-1"
+      />
     </slot>
   </div>
 </template>

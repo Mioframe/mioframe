@@ -1,8 +1,8 @@
 import { type Ref, ref, watch, readonly } from 'vue';
 import type { DocumentApi, CRDocument } from '../../shared/lib/documentApi';
-import { putObject } from '../../shared/lib/putObject';
 import { tryOnScopeDispose } from '@vueuse/core';
 import { createLogModule } from '../../shared/lib/logger';
+import { replaceObject } from '../../shared/lib/changeObject';
 
 const { debug } = createLogModule('useDocument');
 
@@ -11,7 +11,7 @@ export const useDocument = (documentApi: Ref<DocumentApi | undefined>) => {
 
   const handlerChange = ({ doc: newDoc }: { doc: CRDocument }) => {
     if (docState.value) {
-      putObject(docState.value, newDoc);
+      replaceObject(docState.value, newDoc);
     } else {
       docState.value = newDoc;
     }

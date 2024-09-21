@@ -11,6 +11,7 @@ import { ModalCard } from '../../shared/ui/ModalCard';
 import type { DocumentId } from '@automerge/automerge-repo';
 import { DocumentRemoveForm } from '../../features/documentRemove';
 import { WorkspaceFrame } from '../WorkspaceFrame';
+import SlidingPanel from '../../shared/ui/SlidingPanel/SlidingPanel.vue';
 
 const { pickedDirectoryHandler, showPicker } = usePickDirectory();
 
@@ -52,7 +53,10 @@ const selectedDocumentApi = shallowRef<DocumentApi>();
 
 const onClickFolder = (_documentId: DocumentId, documentApi: DocumentApi) => {
   selectedDocumentApi.value = documentApi;
+  openBottomMenu.value = false;
 };
+
+const openBottomMenu = ref(true);
 </script>
 
 <template>
@@ -64,60 +68,73 @@ const onClickFolder = (_documentId: DocumentId, documentApi: DocumentApi) => {
       :document-api="selectedDocumentApi"
     />
 
-    <div class="menu">
-      <MenuFolder :documents-map="documentsMap" @click="onClickFolder">
-        <template #contextMenu="{ documentId, documentName }">
-          <span class="dropdown-item">
-            {{ documentName }}
+    <SlidingPanel class="bottom-panel">
+      <div class="card">
+        <button
+          type="button"
+          class="button is-transparent is-small is-fullwidth is-ghost"
+        >
+          <span class="icon">
+            <i class="fa-solid fa-chevron-up" />
           </span>
+        </button>
 
-          <hr class="dropdown-divider" />
+        <div class="menu">
+          <MenuFolder :documents-map="documentsMap" @click="onClickFolder">
+            <template #contextMenu="{ documentId, documentName }">
+              <span class="dropdown-item">
+                {{ documentName }}
+              </span>
 
-          <button
-            type="button"
-            class="dropdown-item"
-            title="create new directory"
-            @click="onClickRemove(documentId)"
-          >
-            <span class="icon is-small">
-              <i class="fa-solid fa-trash" />
-            </span>
+              <hr class="dropdown-divider" />
 
-            <span class="ml-2">remove</span>
-          </button>
-        </template>
-      </MenuFolder>
+              <button
+                type="button"
+                class="dropdown-item"
+                title="create new directory"
+                @click="onClickRemove(documentId)"
+              >
+                <span class="icon is-small">
+                  <i class="fa-solid fa-trash" />
+                </span>
 
-      <ul class="menu-list">
-        <li v-if="folderApi">
-          <button
-            type="button"
-            class="button is-link"
-            @click="onClickCreateDocument"
-          >
-            <span class="icon">
-              <i class="fa-solid fa-plus" />
-            </span>
+                <span class="ml-2">remove</span>
+              </button>
+            </template>
+          </MenuFolder>
 
-            <span> create document </span>
-          </button>
-        </li>
+          <ul class="menu-list">
+            <li v-if="folderApi">
+              <button
+                type="button"
+                class="button is-link"
+                @click="onClickCreateDocument"
+              >
+                <span class="icon">
+                  <i class="fa-solid fa-plus" />
+                </span>
 
-        <li>
-          <button
-            type="button"
-            class="button is-link"
-            @click="onClickSelectDirectory"
-          >
-            <span class="icon">
-              <i class="fa-solid fa-plug" />
-            </span>
+                <span> create document </span>
+              </button>
+            </li>
 
-            <span> directory selection </span>
-          </button>
-        </li>
-      </ul>
-    </div>
+            <li>
+              <button
+                type="button"
+                class="button is-link"
+                @click="onClickSelectDirectory"
+              >
+                <span class="icon">
+                  <i class="fa-solid fa-plug" />
+                </span>
+
+                <span> directory selection </span>
+              </button>
+            </li>
+          </ul>
+        </div>
+      </div>
+    </SlidingPanel>
 
     <ModalCard v-if="folderApi && isDisplayedDocumentCreationForm">
       <CreateDocumentForm
@@ -137,3 +154,9 @@ const onClickFolder = (_documentId: DocumentId, documentApi: DocumentApi) => {
     </ModalCard>
   </div>
 </template>
+
+<style lang="scss" scoped>
+.bottom-panel {
+  --sliding-panel-min-height: 71px;
+}
+</style>
