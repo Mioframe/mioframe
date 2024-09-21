@@ -1,11 +1,6 @@
 import type { StorageAdapterInterface, Chunk } from '@automerge/automerge-repo';
 import type { DirectoryEntryFSApi, FileEntryFSApi } from '../fileSystemApi';
-import type {
-  FileName,
-  PartialFileName,
-  PartialStorageKey,
-  StorageKey,
-} from './types';
+import type { PartialFileName, PartialStorageKey, StorageKey } from './types';
 import {
   KEY_SEPARATE,
   zodPartialFileName,

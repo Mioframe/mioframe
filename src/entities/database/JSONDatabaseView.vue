@@ -2,10 +2,9 @@
 import { computed, ref, shallowRef } from 'vue';
 import type { FolderApi } from '../../shared/lib/documentApi';
 import { createFolderApi } from '../../shared/lib/documentApi';
-import { type DataBaseStateLatest } from '../../shared/lib/databaseDocument/model';
 import { createDirectoryEntryApi } from '../../shared/lib/fileSystemApi';
 import type { DocumentId } from '@automerge/automerge-repo';
-import { putObject } from '../../shared/lib/putObject';
+import { putObject } from '../../shared/lib/changeObject/putObject';
 import { createLogModule } from '../../shared/lib/logger';
 import { uniqueId } from 'lodash-es';
 import { useDocument } from './useDocument';
@@ -16,8 +15,6 @@ import { useFolder } from './temp';
  */
 
 const log = createLogModule('JSONDatabaseView');
-
-const databaseJSON = ref<DataBaseStateLatest>();
 
 const fsDirectoryHandle = shallowRef<FileSystemDirectoryHandle>();
 

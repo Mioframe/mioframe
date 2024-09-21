@@ -5,6 +5,7 @@ import { isObject } from 'lodash-es';
  * @param target - mutable object
  * @param source - object with new values
  */
+
 export const putObject = <T extends object, S extends object>(
   target: T,
   source: S,
