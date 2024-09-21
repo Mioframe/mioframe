@@ -2,7 +2,7 @@
 import { JSONEditor } from 'vanilla-jsoneditor';
 import { computed, ref, shallowRef, toRef, watch, watchEffect } from 'vue';
 import type { DocumentApi } from '../../shared/lib/documentApi';
-import { useDocument } from '../../entities/database/useDocument';
+import { useDocument } from '../../entities/document/useDocument';
 import { cloneDeep } from 'lodash-es';
 import { createLogModule } from '../../shared/lib/logger';
 import { isUnknownRecord } from '../../shared/lib/changeObject/isUnknownRecord';

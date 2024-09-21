@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, shallowRef } from 'vue';
-import { useFolder } from '../../entities/database/temp';
+import { useFolder } from '../../entities/folder/useFolder';
 import { MenuFolder } from '../../entities/folder';
 import type { DocumentApi, FolderApi } from '../../shared/lib/documentApi';
 import { createFolderApi } from '../../shared/lib/documentApi';

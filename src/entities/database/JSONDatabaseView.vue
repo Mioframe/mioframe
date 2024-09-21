@@ -7,8 +7,8 @@ import type { DocumentId } from '@automerge/automerge-repo';
 import { putObject } from '../../shared/lib/changeObject/putObject';
 import { createLogModule } from '../../shared/lib/logger';
 import { uniqueId } from 'lodash-es';
-import { useDocument } from './useDocument';
-import { useFolder } from './temp';
+import { useDocument } from '../document/useDocument';
+import { useFolder } from '../folder/useFolder';
 
 /**
  * Прочесть Database в виде json

@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import { TempMainView } from '../widgets/TempMainView';
+import { MainView } from '../widgets/MainView';
 </script>
 
 <template>
   <div class="is-flex is-flex-grow-1 is-flex-direction-column">
-    <TempMainView />
+    <MainView />
   </div>
 </template>
