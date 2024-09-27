@@ -2,7 +2,7 @@ import type { ZodLiteral } from 'zod';
 import { object, string, type TypeOf } from 'zod';
 import { defineId } from '../../defineId';
 
-export const zodGeneralColumnDescription = <
+export const zodGeneralProperyDescription = <
   L extends string,
   ZOD_TYPE_NAME extends ZodLiteral<L> = ZodLiteral<L>,
 >(
@@ -13,14 +13,14 @@ export const zodGeneralColumnDescription = <
     type: zodType,
   });
 
-export type GeneralColumnDescription<T extends string> = TypeOf<
-  ReturnType<typeof zodGeneralColumnDescription<T>>
+export type GeneralPropertyDescription<T extends string> = TypeOf<
+  ReturnType<typeof zodGeneralProperyDescription<T>>
 >;
 
-export const createColumn = <T extends string>(
+export const createProperty = <T extends string>(
   type: T,
   name: string,
-): GeneralColumnDescription<T> => ({
+): GeneralPropertyDescription<T> => ({
   name,
   type,
 });
@@ -32,7 +32,7 @@ export interface ValidateValue {
   (value: unknown): boolean;
 }
 
-export const { generateId: generateColumnId, zodId: zodColumnId } =
-  defineId('columnId');
+export const { generateId: generatePropertyId, zodId: zodPropertyId } =
+  defineId('propertyId');
 
-export type ColumnId = TypeOf<typeof zodColumnId>;
+export type PropertyId = TypeOf<typeof zodPropertyId>;

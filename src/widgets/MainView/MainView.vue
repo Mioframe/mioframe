@@ -12,6 +12,11 @@ import type { DocumentId } from '@automerge/automerge-repo';
 import { DocumentRemoveForm } from '../../features/documentRemove';
 import { WorkspaceFrame } from '../WorkspaceFrame';
 import SlidingPanel from '../../shared/ui/SlidingPanel/SlidingPanel.vue';
+import DocumentPanel from '../DocumentPanel/DocumentPanel.vue';
+import { createDatabaseApi } from '../../shared/lib/databaseDocument/createDatabaseApi';
+import { createLogModule } from '../../shared/lib/logger';
+
+const { debug } = createLogModule('MainView');
 
 const { pickedDirectoryHandler, showPicker } = usePickDirectory();
 
@@ -52,6 +57,8 @@ const onRemoved = onCancelRemove;
 const selectedDocumentApi = shallowRef<DocumentApi>();
 
 const onClickFolder = (_documentId: DocumentId, documentApi: DocumentApi) => {
+  const databaseApi = createDatabaseApi(documentApi);
+  debug('onClickFolder', databaseApi);
   selectedDocumentApi.value = documentApi;
   openBottomMenu.value = false;
 };
@@ -78,6 +85,11 @@ const openBottomMenu = ref(true);
             <i class="fa-solid fa-chevron-up" />
           </span>
         </button>
+
+        <DocumentPanel
+          v-if="selectedDocumentApi"
+          :document-api="selectedDocumentApi"
+        />
 
         <div class="menu">
           <MenuFolder :documents-map="documentsMap" @click="onClickFolder">

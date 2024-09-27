@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, watchEffect } from 'vue';
 import type { DocumentApi, FolderApi } from '../../shared/lib/documentApi';
+import { DATABASE_DOCUMENT_TYPE } from '../../shared/lib/databaseDocument';
 
 const props = defineProps<{
   folderApi: FolderApi;
@@ -19,7 +20,7 @@ const onSubmitCreate = async () => {
   }
   const newDocumentApi: DocumentApi = await props.folderApi.create({
     name: stateName.value,
-    type: 'any',
+    type: documentType.value,
   });
 
   emit('created', newDocumentApi);
@@ -36,9 +37,11 @@ watchEffect(() => {
   autofocusElement.value?.focus();
 });
 
-const documentTypeOptions = ['any'];
+const documentTypeOptions = ['any', DATABASE_DOCUMENT_TYPE] as const;
 
-const documentType = ref<string>(documentTypeOptions[0]);
+const documentType = ref<(typeof documentTypeOptions)[number]>(
+  documentTypeOptions[0],
+);
 </script>
 
 <template>

@@ -1,5 +1,8 @@
 import type { UnknownRecord } from 'type-fest';
 import { isUnknownRecord } from './isUnknownRecord';
+import { createLogModule } from '../logger';
+
+const { debug } = createLogModule('replaceObject');
 
 /**
  * overwrites all values from source to target
@@ -10,6 +13,8 @@ export const replaceObject = <T extends UnknownRecord, S extends UnknownRecord>(
   target: T,
   source: S,
 ) => {
+  debug('1', target, source);
+
   const targetKeys = new Set<string | number | symbol>(Object.keys(target));
 
   (<(keyof S)[]>Object.keys(source)).forEach((sourceKey) => {
@@ -39,4 +44,5 @@ export const replaceObject = <T extends UnknownRecord, S extends UnknownRecord>(
   });
 
   console.log(targetKeys, JSON.stringify(target));
+  debug('end', target, source);
 };

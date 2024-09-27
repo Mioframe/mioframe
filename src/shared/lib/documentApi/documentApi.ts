@@ -38,7 +38,9 @@ export const createDocumentApi = (docHandle: DocumentApi): DocumentApi => {
     event: 'change',
     fn: (payload: { doc: CRDocument }) => unknown,
   ) => {
+    debug('on change');
     const insideFn = ({ doc }: { doc: CRDocument }) => {
+      debug('change handler');
       fn({ doc: parseSelf(doc, zodDocument) });
     };
     eventsMap.set(fn, insideFn);
@@ -49,6 +51,7 @@ export const createDocumentApi = (docHandle: DocumentApi): DocumentApi => {
     event: 'change',
     fn: (payload: { doc: CRDocument }) => unknown,
   ) => {
+    debug('off change');
     const insideFn = eventsMap.get(fn);
     if (insideFn) {
       docHandle.off(event, insideFn);
