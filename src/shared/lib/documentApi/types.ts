@@ -14,6 +14,7 @@ export const zodDocument = object({
  */
 export type CRDocument = TypeOf<typeof zodDocument>;
 
+// частично совместим с DocHandle
 export interface DocumentApi<T extends CRDocument = CRDocument> {
   doc(): Promise<ReadonlyDeep<Doc<T>> | undefined>;
   delete(): void;

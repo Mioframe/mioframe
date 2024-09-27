@@ -1,4 +1,4 @@
-import type { ColumnId } from './column';
+import type { PropertyId } from './property';
 
 export interface GeneralView {
   name: string;
@@ -11,7 +11,7 @@ export type AnyView = GeneralView;
 
 export interface TableView extends GeneralView {
   type: 'TableView';
-  hiddenColumns: ColumnId[];
+  hiddenColumns: PropertyId[];
 }
 
 export type ViewMap = { [VIEW_ID: ViewId]: AnyView };
