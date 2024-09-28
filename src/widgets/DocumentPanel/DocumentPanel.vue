@@ -4,17 +4,27 @@ import { DbPropertyCreateForm } from '../../features/databasePropertyCreate';
 import { computed, ref, toRef } from 'vue';
 import type { DocumentApi } from '../../shared/lib/documentApi';
 import { useDocument } from '../../entities/document';
+import type { Item } from '../../shared/lib/databaseDocument';
 import { DATABASE_DOCUMENT_TYPE } from '../../shared/lib/databaseDocument';
 import { DbPropertyRemoveForm } from '../../features/databasePropertyRemove';
 import { DbItemAdd } from '../../features/databaseItemAdd';
+import { PropertyStingField } from '../../features/propertyStringEdit';
+import { useDatabaseDocument } from '../../entities/database/useDatabaseDocument';
+import { createDatabaseApi } from '../../shared/lib/databaseDocument/createDatabaseApi';
+import { PropertyNumberField } from '../../features/propertyNumberEdit';
+import { PropertyBooleanField } from '../../features/propertyBooleanEdit';
 
 const props = defineProps<{
   documentApi: DocumentApi;
 }>();
 
-const refDocumentApi = toRef(() => props.documentApi);
+const documentApiRef = toRef(() => props.documentApi);
 
-const { doc } = useDocument(refDocumentApi);
+const { doc } = useDocument(documentApiRef);
+
+const databaseApiRef = computed(() => createDatabaseApi(props.documentApi));
+
+const { properties: databaseProperies } = useDatabaseDocument(databaseApiRef);
 
 const documentType = computed(() => doc.value?.type);
 
@@ -31,6 +41,17 @@ const isShowPropertyRemove = ref(false);
 const isShowItemAdd = ref(false);
 
 const hasItemAdd = hasAddProperty;
+
+const onAddItem = () => {
+  databaseApiRef.value.addItem(stateNewItem.value);
+  isShowItemAdd.value = false;
+};
+
+const onCancelAddItem = () => {
+  isShowItemAdd.value = false;
+};
+
+const stateNewItem = ref<Item>({});
 </script>
 
 <template>
@@ -79,12 +100,33 @@ const hasItemAdd = hasAddProperty;
       />
     </ModalCard>
 
-    <ModalCard v-if="isShowItemAdd">
+    <ModalCard v-if="isShowItemAdd && databaseProperies">
       <DbItemAdd
-        :document-api="documentApi"
-        @canceled="isShowItemAdd = false"
-        @added="isShowItemAdd = false"
-      />
+        :properties="databaseProperies"
+        @submit="onAddItem"
+        @cancel="onCancelAddItem"
+      >
+        <template #string="{ property, propertyId }">
+          <PropertyStingField
+            v-model:value="stateNewItem[propertyId]"
+            :label="property.name"
+          />
+        </template>
+
+        <template #number="{ property, propertyId }">
+          <PropertyNumberField
+            v-model:value="stateNewItem[propertyId]"
+            :label="property.name"
+          />
+        </template>
+
+        <template #boolean="{ property, propertyId }">
+          <PropertyBooleanField
+            v-model:value="stateNewItem[propertyId]"
+            :label="property.name"
+          />
+        </template>
+      </DbItemAdd>
     </ModalCard>
   </form>
 </template>

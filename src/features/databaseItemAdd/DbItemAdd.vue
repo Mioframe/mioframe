@@ -1,52 +1,56 @@
 <script setup lang="ts">
-import { computed, ref, toRef } from 'vue';
-import type { AnyProperty, Item } from '../../shared/lib/databaseDocument';
+import { computed } from 'vue';
+import type { AnyProperty } from '../../shared/lib/databaseDocument';
 import {
-  zodDatabaseDocument,
+  PROPERTY_TYPE_BOOLEAN,
+  PROPERTY_TYPE_NUMBER,
+  PROPERTY_TYPE_STRING,
   type PropertyId,
 } from '../../shared/lib/databaseDocument';
-import type { DocumentApi } from '../../shared/lib/documentApi';
-import { createDatabaseApi } from '../../shared/lib/databaseDocument/createDatabaseApi';
-import { useDocument } from '../../entities/document';
-import { is } from '../../shared/lib/validateZodScheme';
-import PropertyField from './properties/PropertyField.vue';
 import { isNil, pickBy } from 'lodash-es';
-import type { ItemId } from '../../shared/lib/databaseDocument/item';
+import type {
+  BooleanPropertyDescription,
+  NumberPropertyDescription,
+  PropertiesMap,
+  StringPropertyDescription,
+} from '../../shared/lib/databaseDocument/property';
 
 const props = defineProps<{
-  documentApi: DocumentApi;
+  properties: PropertiesMap;
 }>();
 
 const emit = defineEmits<{
-  added: [itemId: ItemId];
-  canceled: [];
+  submit: [];
+  cancel: [];
 }>();
 
-const stateItem = ref<Item>({});
-
-const documentApi = toRef(() => props.documentApi);
-
-const { doc } = useDocument(documentApi);
-
-const propertiesMap = computed(
-  (): Record<PropertyId, AnyProperty> | undefined => {
-    if (is(doc.value, zodDatabaseDocument)) {
-      return pickBy(doc.value.body.properties, (v) => !isNil(v));
-    }
-    return undefined;
-  },
+const filteredProperties = computed(
+  (): Record<PropertyId, AnyProperty> =>
+    pickBy(props.properties, (v) => !isNil(v)),
 );
 
 const onSubmit = () => {
-  const itemId = createDatabaseApi(props.documentApi).addItem(stateItem.value);
-
-  emit('added', itemId);
+  emit('submit');
 };
 
 const onClickCancel = () => {
-  stateItem.value = {};
-  emit('canceled');
+  emit('cancel');
 };
+
+defineSlots<{
+  string: (props: {
+    property: StringPropertyDescription;
+    propertyId: PropertyId;
+  }) => unknown;
+  number: (props: {
+    property: NumberPropertyDescription;
+    propertyId: PropertyId;
+  }) => unknown;
+  boolean: (props: {
+    property: BooleanPropertyDescription;
+    propertyId: PropertyId;
+  }) => unknown;
+}>();
 </script>
 
 <template>
@@ -54,12 +58,28 @@ const onClickCancel = () => {
     class="block-spacing is-flex is-flex-direction-column"
     @submit.prevent="onSubmit"
   >
-    <PropertyField
-      v-for="(property, propertyId) in propertiesMap"
-      :key="propertyId"
-      v-model:value="stateItem[propertyId]"
-      :property="property"
-    />
+    <template v-for="(property, propertyId) in filteredProperties">
+      <slot
+        v-if="property.type === PROPERTY_TYPE_STRING"
+        name="string"
+        :property
+        :property-id
+      />
+
+      <slot
+        v-else-if="property.type === PROPERTY_TYPE_NUMBER"
+        name="number"
+        :property
+        :property-id
+      />
+
+      <slot
+        v-else-if="property.type === PROPERTY_TYPE_BOOLEAN"
+        name="boolean"
+        :property
+        :property-id
+      />
+    </template>
 
     <div class="field is-grouped">
       <div class="control">

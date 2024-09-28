@@ -2,7 +2,7 @@
 import { computed } from 'vue';
 
 const props = defineProps<{
-  value?: boolean;
+  value?: unknown;
   label: string;
 }>();
 
@@ -10,8 +10,8 @@ const emit = defineEmits<{
   'update:value': [value?: boolean];
 }>();
 
-const modelValue = computed({
-  get: () => props.value,
+const modelValue = computed<boolean>({
+  get: () => !!props.value,
   set: (v) => {
     emit('update:value', v);
   },

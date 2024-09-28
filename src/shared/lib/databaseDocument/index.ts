@@ -1,10 +1,10 @@
 export {
   type AnyProperty,
-  type BooleanColumnDescription,
-  type NumberColumnDescription,
+  type BooleanPropertyDescription as BooleanColumnDescription,
+  type NumberPropertyDescription as NumberColumnDescription,
   type PropertiesMap,
   type PropertyId,
-  type StringColumnDescription,
+  type StringPropertyDescription as StringColumnDescription,
   createBooleanColumn,
   createNumberColumn,
   createStringColumn,
