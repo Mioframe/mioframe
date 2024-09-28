@@ -1,19 +1,20 @@
 <script setup lang="ts">
+import { isNumber } from 'lodash-es';
 import { computed, ref } from 'vue';
 
-const stateValue = ref<string>();
+const stateValue = ref<number>();
 
 const props = defineProps<{
-  value?: string;
+  value?: unknown;
   label: string;
 }>();
 
 const emit = defineEmits<{
-  'update:value': [value?: string];
+  'update:value': [value?: number];
 }>();
 
-const modelValue = computed({
-  get: () => props.value ?? stateValue.value,
+const modelValue = computed<number | undefined>({
+  get: () => (isNumber(props.value) ? props.value : stateValue.value),
   set: (v) => {
     stateValue.value = v;
     emit('update:value', stateValue.value);
@@ -27,9 +28,9 @@ const modelValue = computed({
 
     <div class="control">
       <input
-        v-model="modelValue"
+        v-model.number="modelValue"
         class="input"
-        type="text"
+        type="number"
         :placeholder="label"
       />
     </div>

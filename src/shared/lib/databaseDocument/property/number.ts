@@ -8,9 +8,9 @@ export const zodNumberPropertyDescription = zodGeneralProperyDescription(
   literal(PROPERTY_TYPE_NUMBER),
 );
 
-export type NumberColumnDescription = TypeOf<
+export type NumberPropertyDescription = TypeOf<
   typeof zodNumberPropertyDescription
 >;
 
-export const createNumberColumn = (name: string): NumberColumnDescription =>
+export const createNumberColumn = (name: string): NumberPropertyDescription =>
   createProperty(PROPERTY_TYPE_NUMBER, name);

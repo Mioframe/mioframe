@@ -1,16 +1,16 @@
 export { type PropertyId, generatePropertyId, zodPropertyId } from './general';
 export {
-  type StringColumnDescription,
+  type StringPropertyDescription,
   createStringColumn,
   PROPERTY_TYPE_STRING,
 } from './string';
 export {
-  type NumberColumnDescription,
+  type NumberPropertyDescription,
   createNumberColumn,
   PROPERTY_TYPE_NUMBER,
 } from './number';
 export {
-  type BooleanColumnDescription,
+  type BooleanPropertyDescription,
   createBooleanColumn,
   PROPERTY_TYPE_BOOLEAN,
 } from './boolean';

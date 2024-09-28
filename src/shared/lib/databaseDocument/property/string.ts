@@ -8,9 +8,9 @@ export const zodStringPropertyDescription = zodGeneralProperyDescription(
   literal(PROPERTY_TYPE_STRING),
 );
 
-export type StringColumnDescription = TypeOf<
+export type StringPropertyDescription = TypeOf<
   typeof zodStringPropertyDescription
 >;
 
-export const createStringColumn = (name: string): StringColumnDescription =>
+export const createStringColumn = (name: string): StringPropertyDescription =>
   createProperty(PROPERTY_TYPE_STRING, name);
