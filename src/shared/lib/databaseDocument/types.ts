@@ -13,11 +13,13 @@ const zodItem = record(zodPropertyId, zodValue);
 
 export type Item = TypeOf<typeof zodItem>;
 
-const zodData = record(zodItemId, zodItem);
+const zodDatabaseData = record(zodItemId, zodItem);
+
+export type DatabaseData = TypeOf<typeof zodDatabaseData>;
 
 const zodDatabaseStateV1 = object({
   version: literal(1),
-  data: zodData,
+  data: zodDatabaseData,
   properties: zodPropertiesMap,
 });
 

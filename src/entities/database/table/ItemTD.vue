@@ -1,3 +1,3 @@
 <template>
-  <td>value</td>
+  <td><slot /></td>
 </template>

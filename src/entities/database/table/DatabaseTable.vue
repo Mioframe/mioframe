@@ -9,12 +9,14 @@ const props = defineProps<{
 }>();
 
 const properties = computed(() => props.databaseState.properties);
+
+const data = computed(() => props.databaseState.data);
 </script>
 
 <template>
   <table class="table">
-    <PropertyTHead :properies="properties" />
+    <PropertyTHead :properties />
 
-    <ItemTBody />
+    <ItemTBody :data="data" :properties />
   </table>
 </template>

@@ -9,14 +9,14 @@ import PropertyTH from './PropertyTH.vue';
 import type { Entries } from 'type-fest';
 
 const props = defineProps<{
-  properies: PropertiesMap;
+  properties: PropertiesMap;
 }>();
 
 const propertyList = computed(() => {
   const filteredEntries: [PropertyId, AnyProperty][] = [];
 
-  for (const [key, value] of <Entries<typeof props.properies>>(
-    Object.entries(props.properies)
+  for (const [key, value] of <Entries<typeof props.properties>>(
+    Object.entries(props.properties)
   )) {
     if (value !== undefined) {
       filteredEntries.push([key, value]);

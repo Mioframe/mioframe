@@ -8,7 +8,7 @@ defineProps<{
 </script>
 
 <template>
-  <section>
-    <DatabaseTable :database-state />
+  <section class="is-flex">
+    <DatabaseTable :database-state class="is-flex-grow-1" />
   </section>
 </template>

@@ -6,6 +6,7 @@ import type { DocumentApi } from '../../shared/lib/documentApi';
 import { useDocument } from '../../entities/document';
 import { DATABASE_DOCUMENT_TYPE } from '../../shared/lib/databaseDocument';
 import { DbPropertyRemoveForm } from '../../features/databasePropertyRemove';
+import { DbItemAdd } from '../../features/databaseItemAdd';
 
 const props = defineProps<{
   documentApi: DocumentApi;
@@ -26,15 +27,27 @@ const hasAddProperty = computed(
 const hasRemoveProperty = hasAddProperty;
 
 const isShowPropertyRemove = ref(false);
+
+const isShowItemAdd = ref(false);
+
+const hasItemAdd = hasAddProperty;
 </script>
 
 <template>
   <form class="document-panel">
     <div class="tabs is-fullwidth">
       <ul>
+        <li v-if="hasItemAdd">
+          <a @click="isShowItemAdd = true">
+            <span class="icon is-small"><i class="fas fa-plus" /></span>
+
+            <span>Add Item</span>
+          </a>
+        </li>
+
         <li v-if="hasAddProperty">
           <a @click="isShowPropertyCreate = true">
-            <span class="icon is-small"><i class="fas fa-plus" /></span>
+            <span class="icon is-small"><i class="fas fa-square-plus" /></span>
 
             <span>Add Property</span>
           </a>
@@ -47,8 +60,6 @@ const isShowPropertyRemove = ref(false);
             <span>Remove Property</span>
           </a>
         </li>
-
-        <li><a>Add Item</a></li>
       </ul>
     </div>
 
@@ -65,6 +76,14 @@ const isShowPropertyRemove = ref(false);
         :document-api="documentApi"
         @canceled="isShowPropertyRemove = false"
         @removed="isShowPropertyRemove = false"
+      />
+    </ModalCard>
+
+    <ModalCard v-if="isShowItemAdd">
+      <DbItemAdd
+        :document-api="documentApi"
+        @canceled="isShowItemAdd = false"
+        @added="isShowItemAdd = false"
       />
     </ModalCard>
   </form>
