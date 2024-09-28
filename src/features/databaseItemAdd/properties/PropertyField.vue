@@ -1,10 +1,14 @@
 <script setup lang="ts">
 import { useVModel } from '@vueuse/core';
 import {
+  PROPERTY_TYPE_BOOLEAN,
+  PROPERTY_TYPE_NUMBER,
   PROPERTY_TYPE_STRING,
   type AnyProperty,
 } from '../../../shared/lib/databaseDocument';
 import PropertyStingField from './PropertyStingField.vue';
+import PropertyNumberField from './PropertyNumberField.vue';
+import PropertyBooleanField from './PropertyBooleanField.vue';
 
 const props = defineProps<{
   property: AnyProperty;
@@ -13,7 +17,7 @@ const props = defineProps<{
 }>();
 
 const emit = defineEmits<{
-  'update:value': [value: any];
+  'update:value': [value: any]; // todo: попробовать any заменить на тип
 }>();
 
 const vModel = useVModel(props, 'value', emit);
@@ -26,9 +30,15 @@ const vModel = useVModel(props, 'value', emit);
     :label="property.name"
   />
 
-  <div v-else class="field">
-    <div class="notification">
-      property {{ property.name }} has no change field
-    </div>
-  </div>
+  <PropertyNumberField
+    v-else-if="property.type === PROPERTY_TYPE_NUMBER"
+    v-model:value="vModel"
+    :label="property.name"
+  />
+
+  <PropertyBooleanField
+    v-else-if="property.type === PROPERTY_TYPE_BOOLEAN"
+    v-model:value="vModel"
+    :label="property.name"
+  />
 </template>
