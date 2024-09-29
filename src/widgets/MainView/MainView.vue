@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, shallowRef } from 'vue';
+import { computed, ref, shallowRef, watch } from 'vue';
 import { useFolder } from '../../entities/folder/useFolder';
 import { MenuFolder } from '../../entities/folder';
 import type { DocumentApi, FolderApi } from '../../shared/lib/documentApi';
@@ -28,7 +28,15 @@ const folderApi = computed((): FolderApi | undefined =>
 
 const onClickSelectDirectory = showPicker;
 
-const { content: documentsMap } = useFolder(folderApi);
+const { content: contentFolderMap } = useFolder(folderApi);
+
+const contentFolderSize = computed(() => contentFolderMap.value.size);
+
+watch(contentFolderSize, (contentFolderSize) => {
+  setTimeout(() => {
+    isOpenPanel.value = !!contentFolderSize;
+  }, 0);
+});
 
 const isDisplayedDocumentCreationForm = ref(false);
 
@@ -38,6 +46,7 @@ const onClickCreateDocument = () => {
 
 const onCancelCreateDocument = () => {
   isDisplayedDocumentCreationForm.value = false;
+  isOpenPanel.value = true;
 };
 
 const onCreatedDocument = onCancelCreateDocument;
@@ -61,28 +70,38 @@ const onClickFolder = (_documentId: DocumentId, documentApi: DocumentApi) => {
   debug('onClickFolder', databaseApi);
   selectedDocumentApi.value = documentApi;
   openBottomMenu.value = false;
+  isOpenPanel.value = false;
 };
 
 const openBottomMenu = ref(true);
+
+const isOpenPanel = ref(true);
 </script>
 
 <template>
   <div
-    class="is-flex is-flex-direction-column is-flex-grow-1 is-justify-content-flex-end"
+    class="is-flex is-flex-direction-column is-flex-grow-1 is-justify-content-flex-end is-overflow-auto"
   >
     <WorkspaceFrame
       v-if="selectedDocumentApi"
       :document-api="selectedDocumentApi"
+      class="is-flex-grow-1 is-flex-shrink-1"
     />
 
-    <SlidingPanel class="bottom-panel">
+    <SlidingPanel v-model:open="isOpenPanel" class="bottom-panel">
       <div class="card">
         <button
           type="button"
           class="button is-transparent is-small is-fullwidth is-ghost"
+          @click="isOpenPanel = !isOpenPanel"
         >
           <span class="icon">
-            <i class="fa-solid fa-chevron-up" />
+            <i
+              class="fa-solid fa-chevron-up"
+              :class="{
+                'fa-flip-vertical': isOpenPanel,
+              }"
+            />
           </span>
         </button>
 
@@ -92,7 +111,7 @@ const openBottomMenu = ref(true);
         />
 
         <div class="menu">
-          <MenuFolder :documents-map="documentsMap" @click="onClickFolder">
+          <MenuFolder :documents-map="contentFolderMap" @click="onClickFolder">
             <template #contextMenu="{ documentId, documentName }">
               <span class="dropdown-item">
                 {{ documentName }}

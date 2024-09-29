@@ -7,6 +7,13 @@ import { DocumentEditForm } from '../../features/documentEdit';
 import DatabaseView from '../../entities/database/DatabaseView.vue';
 import { zodDatabaseDocument } from '../../shared/lib/databaseDocument/types';
 import { is } from '../../shared/lib/validateZodScheme';
+import ValueBooleanInline from '../../entities/value/ValueBooleanInline.vue';
+import {
+  PROPERTY_TYPE_BOOLEAN,
+  PROPERTY_TYPE_NUMBER,
+  PROPERTY_TYPE_STRING,
+} from '../../shared/lib/databaseDocument';
+import { ValueNumberInline, ValueStringInline } from '../../entities/value';
 
 const { debug } = createLogModule('WorkspaceFarame');
 
@@ -48,7 +55,7 @@ const databaseDocumentState = computed(() =>
 </script>
 
 <template>
-  <div class="is-flex is-flex-direction-column is-flex-grow-1">
+  <div class="is-flex is-flex-direction-column is-flex-grow-1 is-overflow-auto">
     <form class="" @submit.prevent>
       <section class="is-flex is-align-items-center is-gap-1">
         <div class="field is-flex-grow-1">
@@ -72,7 +79,24 @@ const databaseDocumentState = computed(() =>
       <DatabaseView
         v-if="databaseDocumentState"
         :database-state="databaseDocumentState"
-      />
+      >
+        <template #value="{ property, value }">
+          <ValueBooleanInline
+            v-if="property?.type === PROPERTY_TYPE_BOOLEAN"
+            :value
+          />
+
+          <ValueNumberInline
+            v-else-if="property?.type === PROPERTY_TYPE_NUMBER"
+            :value
+          />
+
+          <ValueStringInline
+            v-else-if="property?.type === PROPERTY_TYPE_STRING"
+            :value
+          />
+        </template>
+      </DatabaseView>
 
       <DocumentEditForm
         v-else
