@@ -17,11 +17,11 @@ export const useDatabaseDocument = (
 
   let offChange: (() => void) | undefined;
 
-  const changeDatabaseState = (doc: DatabaseDocument) => {
+  const changeDatabaseState = (doc?: DatabaseDocument) => {
     if (!databaseState.value) {
-      databaseState.value = cloneDeep(doc.body);
+      databaseState.value = cloneDeep(doc?.body);
     } else {
-      replaceObject(databaseState.value, doc.body);
+      replaceObject(databaseState.value, doc?.body ?? {});
     }
   };
 

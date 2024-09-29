@@ -18,4 +18,4 @@ export const migrationsMap: {
   0: (doc: CRDocument) => {
     putObject(doc, { body: initialDatabaseStateV1() });
   },
-};
+} as const;

@@ -22,7 +22,11 @@ const documentApiRef = toRef(() => props.documentApi);
 
 const { doc } = useDocument(documentApiRef);
 
-const databaseApiRef = computed(() => createDatabaseApi(props.documentApi));
+const databaseApiRef = computed(() =>
+  doc.value?.type === DATABASE_DOCUMENT_TYPE
+    ? createDatabaseApi(props.documentApi)
+    : undefined,
+);
 
 const { properties: databaseProperies } = useDatabaseDocument(databaseApiRef);
 
@@ -34,16 +38,20 @@ const hasAddProperty = computed(
   () => documentType.value === DATABASE_DOCUMENT_TYPE,
 );
 
-const hasRemoveProperty = hasAddProperty;
+const hasRemoveProperty = computed(
+  () => databaseProperies.value && Object.keys(databaseProperies.value).length,
+);
 
 const isShowPropertyRemove = ref(false);
 
 const isShowItemAdd = ref(false);
 
-const hasItemAdd = hasAddProperty;
+const hasItemAdd = computed(
+  () => databaseProperies.value && Object.keys(databaseProperies.value).length,
+);
 
 const onAddItem = () => {
-  databaseApiRef.value.addItem(stateNewItem.value);
+  databaseApiRef.value?.addItem(stateNewItem.value);
   isShowItemAdd.value = false;
 };
 
