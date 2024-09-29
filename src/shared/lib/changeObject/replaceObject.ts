@@ -43,6 +43,5 @@ export const replaceObject = <T extends UnknownRecord, S extends UnknownRecord>(
     delete target[key];
   });
 
-  console.log(targetKeys, JSON.stringify(target));
   debug('end', target, source);
 };

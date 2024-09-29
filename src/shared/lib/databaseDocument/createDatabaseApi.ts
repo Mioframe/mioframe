@@ -17,13 +17,35 @@ import {
 } from './types';
 import { migrationsMap } from './migrations';
 import { createLogModule } from '../logger';
-import { cloneDeep, isNumber, isObject } from 'lodash-es';
+import { cloneDeep, isNumber, isObject, keys, toInteger } from 'lodash-es';
 
 const { debug } = createLogModule('createDatabaseApi');
 
+const documentUpdate = (doc: CRDocument): DatabaseDocument => {
+  debug('documentUpdate', cloneDeep(doc));
+  const dbDocument = parseSelf(doc, zodDatabaseExtentionDocument);
+
+  const currentVersion: number =
+    'body' in dbDocument
+      ? isObject(dbDocument.body)
+        ? 'version' in dbDocument.body
+          ? isNumber(dbDocument.body.version)
+            ? dbDocument.body.version
+            : 0
+          : 0
+        : 0
+      : 0;
+
+  if (currentVersion in migrationsMap) {
+    migrationsMap[currentVersion](doc);
+    return documentUpdate(doc);
+  }
+  return parseSelf(doc, zodDatabaseDocument);
+};
+
 export const createDatabaseApi = (documentApi: DocumentApi): DatabaseApi => {
-  const documentUpdate = (doc: CRDocument): DatabaseDocument => {
-    debug('documentUpdate', cloneDeep(doc));
+  const migrate = async <D>(doc: D): Promise<DatabaseDocument> => {
+    debug('migrate', doc);
     const dbDocument = parseSelf(doc, zodDatabaseExtentionDocument);
 
     const currentVersion: number =
@@ -37,9 +59,15 @@ export const createDatabaseApi = (documentApi: DocumentApi): DatabaseApi => {
           : 0
         : 0;
 
-    if (currentVersion in migrationsMap) {
-      migrationsMap[currentVersion](doc);
-      return documentUpdate(doc);
+    const latestVersion = Math.max(...keys(migrationsMap).map(toInteger));
+
+    debug('migrate', currentVersion, latestVersion);
+
+    if (latestVersion >= currentVersion) {
+      documentApi.change((doc) => {
+        documentUpdate(doc);
+      });
+      return parseSelf(await documentApi.doc(), zodDatabaseDocument);
     }
     return parseSelf(doc, zodDatabaseDocument);
   };
@@ -73,7 +101,7 @@ export const createDatabaseApi = (documentApi: DocumentApi): DatabaseApi => {
       // eslint-disable-next-line @typescript-eslint/no-dynamic-delete -- delete any property
       delete body.properties[propertyId];
 
-      // putObject(body.properties, { [columnId]: undefined });
+      // todo: добавить параметр очистки data от значений
     });
   };
 
@@ -106,8 +134,11 @@ export const createDatabaseApi = (documentApi: DocumentApi): DatabaseApi => {
   };
 
   const read = async (): Promise<DatabaseDocument> => {
+    debug('read');
     const doc = await documentApi.doc();
-    return parseSelf(doc, zodDatabaseDocument);
+
+    debug('read', doc);
+    return await migrate(doc);
   };
 
   const onChange = (fn: (doc: DatabaseDocument) => unknown) => {
