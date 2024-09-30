@@ -5,6 +5,7 @@ import { tryOnScopeDispose } from '@vueuse/core';
 import { createLogModule } from '../../shared/lib/logger';
 import { replaceObject } from '../../shared/lib/changeObject';
 import type { ReadonlyDeep } from 'type-fest';
+import { cloneDeep } from 'lodash-es';
 
 const { debug } = createLogModule('useDocument');
 
@@ -42,6 +43,7 @@ export const useDocument = <T extends CRDocument>(
       if (documentApi) {
         documentApi.on('change', handlerChange);
         const newDoc = await documentApi.doc();
+        debug('watch documentApi newDoc', cloneDeep(newDoc));
         if (newDoc) {
           handlerChange({ doc: newDoc });
         }
