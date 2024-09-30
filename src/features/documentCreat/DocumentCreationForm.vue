@@ -14,11 +14,11 @@ const emit = defineEmits<{
 
 const stateName = ref<string>();
 
-const onSubmitCreate = async () => {
+const onSubmitCreate = () => {
   if (!stateName.value?.length) {
     throw new Error('name is undefined');
   }
-  const newDocumentApi: DocumentApi = await props.folderApi.create({
+  const newDocumentApi: DocumentApi = props.folderApi.create({
     name: stateName.value,
     type: documentType.value,
   });

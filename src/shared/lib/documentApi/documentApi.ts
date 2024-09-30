@@ -3,7 +3,7 @@ import { createLogModule } from '../logger';
 import { parseSelf } from '../validateZodScheme';
 import type { DocumentApi } from './types';
 import { zodDocument, type CRDocument } from './types';
-import type { ChangeFn } from '@automerge/automerge-repo/slim';
+import type { ChangeFn } from '@automerge/automerge-repo';
 
 const { debug } = createLogModule('createDocumentApi');
 

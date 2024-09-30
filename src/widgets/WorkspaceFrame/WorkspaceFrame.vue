@@ -5,7 +5,10 @@ import { useDocument } from '../../entities/document/useDocument';
 import { createLogModule } from '../../shared/lib/logger';
 import { DocumentEditForm } from '../../features/documentEdit';
 import DatabaseView from '../../entities/database/DatabaseView.vue';
-import { zodDatabaseDocument } from '../../shared/lib/databaseDocument/types';
+import {
+  DATABASE_DOCUMENT_TYPE,
+  zodDatabaseDocument,
+} from '../../shared/lib/databaseDocument/types';
 import { is } from '../../shared/lib/validateZodScheme';
 import ValueBooleanInline from '../../entities/value/ValueBooleanInline.vue';
 import {
@@ -16,6 +19,10 @@ import {
 import { ValueNumberInline, ValueStringInline } from '../../entities/value';
 import { ContextBtn } from '../../shared/ui/ContextButton';
 import type { MenuItem } from '../../shared/ui/ContextButton/ContextButton.vue';
+import { ModalCard } from '../../shared/ui/ModalCard';
+import { DbItemRemoveForm } from '../../features/databaseItemRemove';
+import { createDatabaseApi } from '../../shared/lib/databaseDocument/createDatabaseApi';
+import type { ItemId } from '../../shared/lib/databaseDocument/item';
 
 const { debug } = createLogModule('WorkspaceFarame');
 
@@ -51,6 +58,12 @@ const onChangeName = () => {
 
 const documentType = computed(() => doc.value?.type ?? 'unknown');
 
+const databaseApi = computed(() =>
+  documentType.value === DATABASE_DOCUMENT_TYPE
+    ? createDatabaseApi(documentApi.value)
+    : undefined,
+);
+
 const databaseDocumentState = computed(() =>
   is(doc.value, zodDatabaseDocument) ? doc.value.body : undefined,
 );
@@ -63,8 +76,17 @@ const contextItemMenu: MenuItem<ItemEvents>[] = [
   { eventName: ItemEvents.delete, label: 'delete' },
 ];
 
-const onClickContextItem = (eventName: ItemEvents) => {
-  // todo: добавить фичи для items
+const itemIdToRemove = ref<ItemId>();
+
+const onClickContextItem = (eventName: ItemEvents, itemId: ItemId) => {
+  switch (eventName) {
+    case ItemEvents.delete:
+      itemIdToRemove.value = itemId;
+      break;
+
+    default:
+      break;
+  }
 };
 </script>
 
@@ -111,11 +133,11 @@ const onClickContextItem = (eventName: ItemEvents) => {
           />
         </template>
 
-        <template #itemActions>
+        <template #itemActions="{ itemId }">
           <ContextBtn
             class="is-small"
             :menu="contextItemMenu"
-            @click="onClickContextItem"
+            @click="onClickContextItem($event, itemId)"
           >
             <template #[ItemEvents.delete]>
               <i class="fa-solid fa-eraser" />
@@ -130,5 +152,14 @@ const onClickContextItem = (eventName: ItemEvents) => {
         class="is-flex is-flex-direction-column is-flex-grow-1"
       />
     </slot>
+
+    <ModalCard v-if="databaseApi && itemIdToRemove">
+      <DbItemRemoveForm
+        :database-api="databaseApi"
+        :item-id="itemIdToRemove"
+        @cancel="itemIdToRemove = undefined"
+        @removed="itemIdToRemove = undefined"
+      />
+    </ModalCard>
   </div>
 </template>

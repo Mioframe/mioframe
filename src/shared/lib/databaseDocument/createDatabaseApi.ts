@@ -13,7 +13,7 @@ import {
   type Item,
   type DatabaseDocument,
   zodDatabaseDocument,
-  zodDatabaseExtentionDocument,
+  zodDatabaseType,
 } from './types';
 import { migrationsMap } from './migrations';
 import { createLogModule } from '../logger';
@@ -23,7 +23,7 @@ const { debug } = createLogModule('createDatabaseApi');
 
 const documentUpdate = (doc: CRDocument): DatabaseDocument => {
   debug('documentUpdate', cloneDeep(doc));
-  const dbDocument = parseSelf(doc, zodDatabaseExtentionDocument);
+  const dbDocument = parseSelf(doc, zodDatabaseType);
 
   const currentVersion: number =
     'body' in dbDocument
@@ -46,7 +46,7 @@ const documentUpdate = (doc: CRDocument): DatabaseDocument => {
 export const createDatabaseApi = (documentApi: DocumentApi): DatabaseApi => {
   const migrate = async <D>(doc: D): Promise<DatabaseDocument> => {
     debug('migrate', doc);
-    const dbDocument = parseSelf(doc, zodDatabaseExtentionDocument);
+    const dbDocument = parseSelf(doc, zodDatabaseType);
 
     const currentVersion: number =
       'body' in dbDocument
