@@ -11,10 +11,14 @@
     }
   "
 >
-import { onClickOutside } from '@vueuse/core';
 import { computed, ref, watchEffect } from 'vue';
 import { ContextMenu } from '../ContextMenu';
 import TreeList from './TreeList.vue';
+import { createLogModule } from '../../lib/logger';
+import { onInteractionOutside } from '../../lib/onInteractionOutside';
+import type { MaybeElement } from '@vueuse/core';
+
+const { debug } = createLogModule('TreeItem');
 
 const props = defineProps<{
   item: T;
@@ -47,17 +51,27 @@ const onClickItem = (key: K, item: T) => {
 
 const contextMenuPosition = ref<{ clientX: number; clientY: number }>();
 
-const refIgnoreContextMenu = ref<HTMLElement>();
+const refContextMenu = ref<MaybeElement>();
+const refContextMenuButton = ref<MaybeElement>();
 
-onClickOutside(refIgnoreContextMenu, () => {
-  contextMenuPosition.value = undefined;
-});
+onInteractionOutside(
+  refContextMenu,
+  () => {
+    contextMenuPosition.value = undefined;
+  },
+  {
+    ignore: [refContextMenuButton],
+  },
+);
 
 const onContextMenu = ({ clientX, clientY }: MouseEvent) => {
-  contextMenuPosition.value = {
-    clientX,
-    clientY,
-  };
+  debug('onContextMenu', contextMenuPosition.value);
+  contextMenuPosition.value = contextMenuPosition.value
+    ? undefined
+    : {
+        clientX,
+        clientY,
+      };
 };
 
 defineSlots<{
@@ -76,7 +90,6 @@ const hasSublist = computed(() => 'list' in props.item);
         :class="{ 'is-active': stateOpened }"
         type="button"
         @click="toggleOpened"
-        @contextmenu.prevent="onContextMenu"
       >
         <i
           class="fa-solid fa-caret-down"
@@ -89,7 +102,6 @@ const hasSublist = computed(() => 'list' in props.item);
         class="button is-link is-flex-grow-1"
         :class="{ 'is-active': activeKey === itemKey }"
         @click="onClickItem(itemKey, item)"
-        @contextmenu.prevent="onContextMenu"
       >
         <span v-if="!hasSublist" class="icon">
           <i class="fa-solid fa-minus fa-xs" />
@@ -99,11 +111,20 @@ const hasSublist = computed(() => 'list' in props.item);
           {{ label }}
         </span>
       </button>
+
+      <button
+        ref="refContextMenuButton"
+        class="button is-link"
+        type="button"
+        @click="onContextMenu"
+      >
+        <i class="fa-solid fa-ellipsis-vertical" />
+      </button>
     </div>
 
     <ContextMenu
       v-if="contextMenuPosition"
-      ref="refIgnoreContextMenu"
+      v-model:ref-dropdown="refContextMenu"
       :origin-position="contextMenuPosition"
     >
       <slot :key="itemKey" name="contextMenu" :item="item" />
