@@ -31,7 +31,7 @@ export type DataBaseStateLatest = TypeOf<typeof zodDataBaseStateLatest>;
 
 export const DATABASE_DOCUMENT_TYPE = 'database';
 
-export const zodDatabaseExtentionDocument = object({
+export const zodDatabaseType = object({
   type: literal(DATABASE_DOCUMENT_TYPE),
 });
 
@@ -39,10 +39,17 @@ export const zodDatabaseExtentionBodyDocument = object({
   body: zodDataBaseStateLatest,
 });
 
-export const zodDatabaseDocument = intersection(
+export const zodDatabaseTypeDocument = intersection(
   zodDocument,
-  zodDatabaseExtentionDocument,
-).and(zodDatabaseExtentionBodyDocument);
+  zodDatabaseType,
+);
+
+export type DatabaseTypeDocument = TypeOf<typeof zodDatabaseTypeDocument>;
+
+export const zodDatabaseDocument = intersection(
+  zodDatabaseTypeDocument,
+  zodDatabaseExtentionBodyDocument,
+);
 
 export type DatabaseDocument = TypeOf<typeof zodDatabaseDocument>;
 

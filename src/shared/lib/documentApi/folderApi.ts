@@ -1,10 +1,8 @@
 import type {
   DeleteDocumentPayload,
   DocumentId,
-} from '@automerge/automerge-repo/slim';
-import { Repo } from '@automerge/automerge-repo/slim';
-import { next as Automerge } from '@automerge/automerge/slim';
-import wasmUrl from '@automerge/automerge/automerge.wasm?url';
+} from '@automerge/automerge-repo';
+import { Repo } from '@automerge/automerge-repo';
 import type { DirectoryEntryFSApi } from '../fileSystemApi';
 import type { zodDocument } from './types';
 import { type DocumentApi, type FolderApi } from './types';
@@ -27,25 +25,26 @@ const THROTTLE_EVENTS = 1e3 / 10;
 export const createFolderApi = (
   directoryEntryApi: DirectoryEntryFSApi,
 ): FolderApi => {
-  let repo: Repo | undefined;
+  const repo = new Repo({
+    storage: createFSStorageAdapter(directoryEntryApi),
+  });
 
-  const getRepo = async () => {
-    if (!Automerge.isWasmInitialized()) {
-      await Automerge.initializeWasm(wasmUrl);
-    }
+  const onAddDocument = throttle(() => {
+    debug('onAddDocument');
+    void getFSContent().then((content) => {
+      changeEvents.forEach((handler) => handler(content));
+    });
+  }, THROTTLE_EVENTS);
 
-    if (!repo) {
-      debug('create Repo');
-      repo = new Repo({
-        storage: createFSStorageAdapter(directoryEntryApi),
-      });
+  const onDeleteDocument = throttle(({ documentId }: DeleteDocumentPayload) => {
+    debug('onDeleteDocument');
+    void getFSContent([documentId]).then((content) => {
+      changeEvents.forEach((handler) => handler(content));
+    });
+  }, THROTTLE_EVENTS);
 
-      repo.on('document', onAddDocument);
-      repo.on('delete-document', onDeleteDocument);
-    }
-
-    return repo;
-  };
+  repo.on('document', onAddDocument);
+  repo.on('delete-document', onDeleteDocument);
 
   const fsContentMapState = new Map<DocumentId, DocumentApi>();
 
@@ -78,7 +77,7 @@ export const createFolderApi = (
 
     for (const documentId of currentDocumentSet) {
       if (!fsContentMapState.has(documentId)) {
-        const docHandle: DocumentApi = (await getRepo()).find(documentId);
+        const docHandle: DocumentApi = repo.find(documentId);
 
         fsContentMapState.set(documentId, createDocumentApi(docHandle));
       }
@@ -87,12 +86,8 @@ export const createFolderApi = (
     return fsContentMapState;
   };
 
-  const create = async <Z extends typeof zodDocument>(
-    initialValue: TypeOf<Z>,
-  ) => {
+  const create = <Z extends typeof zodDocument>(initialValue: TypeOf<Z>) => {
     debug('create', initialValue);
-
-    const repo = await getRepo();
 
     return createDocumentApi(repo.create(initialValue));
   };
@@ -100,20 +95,6 @@ export const createFolderApi = (
   const changeEvents = new Set<
     (content: Map<DocumentId, DocumentApi>) => unknown
   >();
-
-  const onAddDocument = throttle(() => {
-    debug('onAddDocument');
-    void getFSContent().then((content) => {
-      changeEvents.forEach((handler) => handler(content));
-    });
-  }, THROTTLE_EVENTS);
-
-  const onDeleteDocument = throttle(({ documentId }: DeleteDocumentPayload) => {
-    debug('onDeleteDocument');
-    void getFSContent([documentId]).then((content) => {
-      changeEvents.forEach((handler) => handler(content));
-    });
-  }, THROTTLE_EVENTS);
 
   const onChange = (fn: (content: Map<DocumentId, DocumentApi>) => unknown) => {
     changeEvents.add(fn);
@@ -124,10 +105,9 @@ export const createFolderApi = (
     changeEvents.delete(fn);
   };
 
-  const remove = async (documentId: DocumentId) => {
+  const remove = (documentId: DocumentId) => {
     debug('remove', documentId);
 
-    const repo = await getRepo();
     repo.delete(documentId);
   };
 

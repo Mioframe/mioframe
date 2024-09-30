@@ -1,4 +1,4 @@
-import { isObject } from 'lodash-es';
+import { isObject, isUndefined } from 'lodash-es';
 
 /**
  * overwrites modified values from source to target
@@ -19,6 +19,11 @@ export const putObject = <T extends object, S extends object>(
       if (sourceValue !== targetValue) {
         if (isObject(targetValue) && isObject(sourceValue)) {
           putObject(targetValue, sourceValue);
+        } else if (isUndefined(sourceValue)) {
+          // eslint-disable-next-line @typescript-eslint/ban-ts-comment -- everything is ok, it's just a deletion
+          // @ts-expect-error
+          // eslint-disable-next-line @typescript-eslint/no-dynamic-delete -- `undefined` is not a valid JSON data type
+          delete target[sourceKey];
         } else {
           // eslint-disable-next-line @typescript-eslint/ban-ts-comment -- replace property
           // @ts-expect-error

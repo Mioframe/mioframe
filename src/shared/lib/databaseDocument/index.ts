@@ -22,6 +22,6 @@ export {
   type Item,
   zodDataBaseStateLatest,
   zodDatabaseDocument,
-  zodDatabaseExtentionDocument,
+  zodDatabaseType,
   DATABASE_DOCUMENT_TYPE,
 } from './types';

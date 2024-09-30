@@ -26,8 +26,8 @@ export interface DocumentApi<T extends CRDocument = CRDocument> {
 export interface FolderApi {
   create: <Z extends typeof zodDocument>(
     initialValue: TypeOf<Z>,
-  ) => Promise<DocumentApi<TypeOf<Z>>>;
-  remove: (documentId: DocumentId) => Promise<void>;
+  ) => DocumentApi<TypeOf<Z>>;
+  remove: (documentId: DocumentId) => void;
   getContent: () => Promise<Map<DocumentId, DocumentApi>>;
   onChange: (
     handler: (content: Map<DocumentId, DocumentApi>) => unknown,

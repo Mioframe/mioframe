@@ -3,7 +3,7 @@ import { computed, ref, shallowRef } from 'vue';
 import type { FolderApi } from '../../shared/lib/documentApi';
 import { createFolderApi } from '../../shared/lib/documentApi';
 import { createDirectoryEntryApi } from '../../shared/lib/fileSystemApi';
-import type { DocumentId } from '@automerge/automerge-repo';
+import type { DocumentId } from '@automerge/automerge-repo/';
 import { putObject } from '../../shared/lib/changeObject/putObject';
 import { createLogModule } from '../../shared/lib/logger';
 import { uniqueId } from 'lodash-es';
