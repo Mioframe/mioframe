@@ -1,15 +1,17 @@
-<script lang="ts" setup generic="E extends string">
+<script lang="ts" setup generic="E extends string | number = string | number">
 import { ref } from 'vue';
 import ContextMenu from '../ContextMenu/ContextMenu.vue';
 import type { MaybeElement } from '@vueuse/core';
 import { onInteractionOutside } from '../../lib/onInteractionOutside';
 
+export interface MenuItem<E extends string | number = string | number> {
+  label: string;
+  eventName: E;
+}
+
 defineProps<{
   title?: string;
-  menu: {
-    label: string;
-    eventName: E;
-  }[];
+  menu: MenuItem<E>[];
 }>();
 
 const emit = defineEmits<{
@@ -47,7 +49,8 @@ defineSlots<{
 <template>
   <button
     ref="refContextMenuButton"
-    class="button is-link"
+    class="button"
+    :class="$attrs.class"
     type="button"
     @click="onContextMenu"
   >
@@ -71,14 +74,12 @@ defineSlots<{
       v-for="{ eventName, label } in menu"
       :key="eventName"
       type="button"
-      class="dropdown-item"
-      title="create new directory"
+      class="dropdown-item is-flex is-align-items-center"
       @click="emit('click', eventName)"
     >
       <span class="icon is-small">
-        <slot :name="eventName">
-          <i class="fa-solid fa-point" />
-        </slot>
+        <!-- eslint-disable-next-line vue/require-explicit-slots -->
+        <slot :name="eventName"> <i class="fa-solid fa-circle" /> </slot>
       </span>
 
       <span class="ml-2">{{ label }}</span>

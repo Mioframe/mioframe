@@ -10,6 +10,7 @@ import type { Entries } from 'type-fest';
 
 const props = defineProps<{
   properties: PropertiesMap;
+  showActionsColumn?: boolean;
 }>();
 
 const propertyList = computed(() => {
@@ -30,6 +31,8 @@ const propertyList = computed(() => {
 <template>
   <thead>
     <tr>
+      <th v-if="showActionsColumn" />
+
       <PropertyTH
         v-for="[id, property] in propertyList"
         :key="id"

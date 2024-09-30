@@ -14,6 +14,8 @@ import {
   PROPERTY_TYPE_STRING,
 } from '../../shared/lib/databaseDocument';
 import { ValueNumberInline, ValueStringInline } from '../../entities/value';
+import { ContextBtn } from '../../shared/ui/ContextButton';
+import type { MenuItem } from '../../shared/ui/ContextButton/ContextButton.vue';
 
 const { debug } = createLogModule('WorkspaceFarame');
 
@@ -52,6 +54,18 @@ const documentType = computed(() => doc.value?.type ?? 'unknown');
 const databaseDocumentState = computed(() =>
   is(doc.value, zodDatabaseDocument) ? doc.value.body : undefined,
 );
+
+enum ItemEvents {
+  delete,
+}
+
+const contextItemMenu: MenuItem<ItemEvents>[] = [
+  { eventName: ItemEvents.delete, label: 'delete' },
+];
+
+const onClickContextItem = (eventName: ItemEvents) => {
+  // todo: добавить фичи для items
+};
 </script>
 
 <template>
@@ -95,6 +109,18 @@ const databaseDocumentState = computed(() =>
             v-else-if="property?.type === PROPERTY_TYPE_STRING"
             :value
           />
+        </template>
+
+        <template #itemActions>
+          <ContextBtn
+            class="is-small"
+            :menu="contextItemMenu"
+            @click="onClickContextItem"
+          >
+            <template #[ItemEvents.delete]>
+              <i class="fa-solid fa-eraser" />
+            </template>
+          </ContextBtn>
         </template>
       </DatabaseView>
 
