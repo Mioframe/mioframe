@@ -1,6 +1,7 @@
 import type { UnknownRecord } from 'type-fest';
 import { isUnknownRecord } from './isUnknownRecord';
 import { createLogModule } from '../logger';
+import { cloneDeep } from 'lodash-es';
 
 const { debug } = createLogModule('replaceObject');
 
@@ -28,13 +29,13 @@ export const replaceObject = <T extends UnknownRecord, S extends UnknownRecord>(
         } else {
           // eslint-disable-next-line @typescript-eslint/ban-ts-comment -- replace property
           // @ts-expect-error
-          target[sourceKey] = sourceValue;
+          target[sourceKey] = cloneDeep(sourceValue);
         }
       }
     } else {
       // eslint-disable-next-line @typescript-eslint/ban-ts-comment -- create new property
       // @ts-expect-error
-      target[sourceKey] = sourceValue;
+      target[sourceKey] = cloneDeep(sourceValue);
     }
   });
 

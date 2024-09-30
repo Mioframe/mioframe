@@ -1,3 +1,4 @@
+import { cloneDeep } from 'lodash-es';
 import { createLogModule } from '../logger';
 import { parseSelf } from '../validateZodScheme';
 import type { DocumentApi } from './types';
@@ -12,6 +13,7 @@ export const createDocumentApi = (docHandle: DocumentApi): DocumentApi => {
     const originalDoc = await docHandle.doc();
 
     const parsedDoc = parseSelf(originalDoc, zodDocument);
+    debug('doc return', cloneDeep(parsedDoc));
     return parsedDoc;
   };
 
