@@ -58,3 +58,19 @@ export const zodPartialFileName = custom<
 });
 
 export type PartialFileName = TypeOf<typeof zodPartialFileName>;
+
+export interface FileEntryApiForAdapter {
+  read: () => Promise<File>;
+  remove: () => Promise<void>;
+}
+
+export interface DirectoryEntryApiForAdapter {
+  getList: () => Promise<
+    Map<string, FileEntryApiForAdapter | DirectoryEntryApiForAdapter>
+  >;
+  writeFile: (
+    name: string,
+    file?: FileSystemWriteChunkType,
+  ) => Promise<FileEntryApiForAdapter>;
+  removeByName: (name: string) => Promise<void>;
+}
