@@ -1,17 +1,17 @@
 import type { AdvancedGDrive } from './getGDrive';
-import type { FileGDriveApi } from './types';
+import type { GDriveFile } from './types';
 
-export const createGDriveFileApi = (
+export const createGDriveFile = (
   gdrive: AdvancedGDrive,
   fileId: string,
   name: string,
-): FileGDriveApi => {
+): GDriveFile => {
   const currentFileId = fileId;
   let currentName = name;
 
   const getName = () => currentName;
 
-  const rename = async (newName: string): Promise<FileGDriveApi> => {
+  const rename = async (newName: string): Promise<GDriveFile> => {
     await gdrive.files.update(
       { fileId: currentFileId },
       {
@@ -21,7 +21,7 @@ export const createGDriveFileApi = (
 
     currentName = newName;
 
-    return currentApi;
+    return currentGDriveFile;
   };
 
   const remove = async () => {
@@ -39,12 +39,12 @@ export const createGDriveFileApi = (
     return file;
   };
 
-  const currentApi: FileGDriveApi = {
+  const currentGDriveFile: GDriveFile = {
     getName,
     rename,
     remove,
     read,
   };
 
-  return currentApi;
+  return currentGDriveFile;
 };

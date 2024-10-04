@@ -4,7 +4,7 @@ import {
   zodDatabaseDocument,
   type PropertyId,
 } from '../../shared/lib/databaseDocument';
-import type { DocumentApi } from '../../shared/lib/documentApi';
+import type { CFRDocument } from '../../shared/lib/cfrDocument';
 import { createDatabaseApi } from '../../shared/lib/databaseDocument/createDatabaseApi';
 import { useDocument } from '../../entities/document';
 import { is } from '../../shared/lib/validateZodScheme';
@@ -15,7 +15,7 @@ const emit = defineEmits<{
 }>();
 
 const props = defineProps<{
-  documentApi: DocumentApi;
+  documentApi: CFRDocument;
 }>();
 
 const selectedPropertyId = ref<PropertyId>();

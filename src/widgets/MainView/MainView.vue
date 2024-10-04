@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import { computed, ref, shallowRef, watch } from 'vue';
-import { useFolder } from '../../entities/folder/useFolder';
+import { useDocumentFolder } from '../../entities/folder/useDocumentFolder';
 import { MenuFolder } from '../../entities/folder';
-import type { DocumentApi, FolderApi } from '../../shared/lib/documentApi';
-import { createFolderApi } from '../../shared/lib/documentApi';
-import { createDirectoryEntryApi } from '../../shared/lib/fileSystemApi';
+import type { CFRDocument, DocumentFolder } from '../../shared/lib/cfrDocument';
+import { createDocumentFolder } from '../../shared/lib/cfrDocument';
+import { createLocalDirectory } from '../../shared/lib/localFileSystem';
 import { usePickDirectory } from '../../features/directoryPick';
 import CreateDocumentForm from '../../features/documentCreat/DocumentCreationForm.vue';
 import { ModalCard } from '../../shared/ui/ModalCard';
@@ -14,21 +14,21 @@ import { WorkspaceFrame } from '../WorkspaceFrame';
 import SlidingPanel from '../../shared/ui/SlidingPanel/SlidingPanel.vue';
 import DocumentPanel from '../DocumentPanel/DocumentPanel.vue';
 import { createDatabaseApi } from '../../shared/lib/databaseDocument/createDatabaseApi';
-import { createLogModule } from '../../shared/lib/logger';
+import { createLogger } from '../../shared/lib/logger';
 
-const { debug } = createLogModule('MainView');
+const { debug } = createLogger('MainView');
 
 const { pickedDirectoryHandler, showPicker } = usePickDirectory();
 
-const folderApi = computed((): FolderApi | undefined =>
+const folderApi = computed((): DocumentFolder | undefined =>
   pickedDirectoryHandler.value
-    ? createFolderApi(createDirectoryEntryApi(pickedDirectoryHandler.value))
+    ? createDocumentFolder(createLocalDirectory(pickedDirectoryHandler.value))
     : undefined,
 );
 
 const onClickSelectDirectory = showPicker;
 
-const { content: contentFolderMap } = useFolder(folderApi);
+const { content: contentFolderMap } = useDocumentFolder(folderApi);
 
 const contentFolderSize = computed(() => contentFolderMap.value.size);
 
@@ -63,9 +63,9 @@ const onCancelRemove = () => {
 
 const onRemoved = onCancelRemove;
 
-const selectedDocumentApi = shallowRef<DocumentApi>();
+const selectedDocumentApi = shallowRef<CFRDocument>();
 
-const onClickFolder = (_documentId: DocumentId, documentApi: DocumentApi) => {
+const onClickFolder = (_documentId: DocumentId, documentApi: CFRDocument) => {
   const databaseApi = createDatabaseApi(documentApi);
   debug('onClickFolder', databaseApi);
   selectedDocumentApi.value = documentApi;

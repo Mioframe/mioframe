@@ -1,11 +1,11 @@
-import { createEntryApi } from './entry';
-import type { DirectoryEntryFSApi, FileEntryFSApi } from './types';
+import { createLocalEntry } from './entry';
+import type { LocalDirectory, LocalFile } from './types';
 
-export const createFileEntryApi = (
+export const createLocalFile = (
   currentHandle: FileSystemFileHandle,
-  parentEntry: DirectoryEntryFSApi,
-): FileEntryFSApi => {
-  const currentEntry = createEntryApi(currentHandle, parentEntry);
+  parentEntry: LocalDirectory,
+): LocalFile => {
+  const currentEntry = createLocalEntry(currentHandle, parentEntry);
 
   const read = async () => {
     return await currentHandle.getFile();
@@ -26,12 +26,12 @@ export const createFileEntryApi = (
     return newEntry;
   };
 
-  const copyTo = async (dest: DirectoryEntryFSApi) => {
+  const copyTo = async (dest: LocalDirectory) => {
     const file = await read();
     return await dest.writeFile(currentEntry.getName(), file);
   };
 
-  const moveTo = async (dest: DirectoryEntryFSApi) => {
+  const moveTo = async (dest: LocalDirectory) => {
     const newEntry = await copyTo(dest);
     await currentEntry.remove();
     return newEntry;

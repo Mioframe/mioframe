@@ -7,6 +7,7 @@ export const usePickDirectory = () => {
     pickedDirectoryHandler.value = await showDirectoryPicker({
       mode: 'readwrite', // todo: добавить опцию открыть в режиме чтения
     });
+    return pickedDirectoryHandler.value;
   };
 
   return {

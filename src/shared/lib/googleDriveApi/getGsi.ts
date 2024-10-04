@@ -1,6 +1,6 @@
-import { createLogModule } from '../logger';
+import { createLogger } from '../logger';
 
-const { debug } = createLogModule('getGsi');
+const { debug } = createLogger('getGsi');
 
 let gsi: undefined | typeof google;
 

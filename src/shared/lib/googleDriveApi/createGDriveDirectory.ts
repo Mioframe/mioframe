@@ -1,17 +1,17 @@
-import { createLogModule } from '../logger';
-import { createGDriveFileApi } from './createGDriveFileApi';
+import { createLogger } from '../logger';
+import { createGDriveFile as createGDriveFile } from './createGDriveFile';
 import type { AdvancedGDrive } from './getGDrive';
-import type { FileGDriveApi } from './types';
-import { GOOGLE_FOLDER_MIME_TYPE, type DirectoryGDriveApi } from './types';
+import type { GDriveFile } from './types';
+import { GOOGLE_FOLDER_MIME_TYPE, type GDriveDirectory } from './types';
 
-const { debug } = createLogModule('createGDriveDirectoryApi');
+const { debug } = createLogger('createGDriveDirectory');
 
-export const createGDriveDirectoryApi = (
+export const createGDriveDirectory = (
   gdrive: AdvancedGDrive,
-  folderId: string,
-  name: string,
-): DirectoryGDriveApi => {
-  const currentFolderId = folderId;
+  gDriveFolderId: string = 'root',
+  name: string = 'root',
+): GDriveDirectory => {
+  const currentGDriveFolderId = gDriveFolderId;
   let currentName = name;
 
   const createDirectory = async (name: string) => {
@@ -21,19 +21,19 @@ export const createGDriveDirectoryApi = (
       resource: {
         name,
         mimeType: GOOGLE_FOLDER_MIME_TYPE,
-        parents: [currentFolderId],
+        parents: [currentGDriveFolderId],
       },
     });
 
     if (folderId) {
-      return createGDriveDirectoryApi(gdrive, folderId, name);
+      return createGDriveDirectory(gdrive, folderId, name);
     }
     throw new Error('failed to create directory');
   };
 
-  const rename = async (newName: string): Promise<DirectoryGDriveApi> => {
+  const rename = async (newName: string): Promise<GDriveDirectory> => {
     await gdrive.files.update(
-      { fileId: currentFolderId },
+      { fileId: currentGDriveFolderId },
       {
         name: newName,
       },
@@ -41,34 +41,33 @@ export const createGDriveDirectoryApi = (
 
     currentName = newName;
 
-    return currentApi;
+    return currentGDriveDirectory;
   };
 
   const getName = () => currentName;
 
   const remove = async () => {
-    await gdrive.files.delete({ fileId: currentFolderId });
+    await gdrive.files.delete({ fileId: currentGDriveFolderId });
   };
 
   const getList = async (): Promise<
-    Map<string, DirectoryGDriveApi | FileGDriveApi>
+    Map<string, GDriveDirectory | GDriveFile>
   > => {
-    const contentMap: Map<string, DirectoryGDriveApi | FileGDriveApi> =
-      new Map();
+    const contentMap: Map<string, GDriveDirectory | GDriveFile> = new Map();
 
     const {
       result: { files },
     } = await gdrive.files.list({
-      q: `'${folderId}' in parents`,
+      q: `'${gDriveFolderId}' in parents`,
       fields: 'files(id, name, mimeType)',
     });
 
     files?.forEach(({ name, id, mimeType }) => {
       if (name && id && mimeType)
         if (mimeType === GOOGLE_FOLDER_MIME_TYPE) {
-          contentMap.set(name, createGDriveDirectoryApi(gdrive, id, name));
+          contentMap.set(name, createGDriveDirectory(gdrive, id, name));
         } else {
-          contentMap.set(name, createGDriveFileApi(gdrive, id, name));
+          contentMap.set(name, createGDriveFile(gdrive, id, name));
         }
     });
 
@@ -78,13 +77,13 @@ export const createGDriveDirectoryApi = (
   const writeFile = async (
     name: string,
     file?: FileSystemWriteChunkType,
-  ): Promise<FileGDriveApi> => {
+  ): Promise<GDriveFile> => {
     const {
       result: { id: fileId },
     } = await gdrive.files.create({
       resource: {
         name,
-        parents: [currentFolderId],
+        parents: [currentGDriveFolderId],
       },
     });
     if (!fileId) {
@@ -94,7 +93,7 @@ export const createGDriveDirectoryApi = (
       const { result } = await gdrive.uploadFile(fileId, file);
       debug('result', result);
     }
-    return createGDriveFileApi(gdrive, fileId, name);
+    return createGDriveFile(gdrive, fileId, name);
   };
 
   const removeByName = async (name: string) => {
@@ -103,7 +102,7 @@ export const createGDriveDirectoryApi = (
     await file?.remove();
   };
 
-  const currentApi: DirectoryGDriveApi = {
+  const currentGDriveDirectory: GDriveDirectory = {
     createDirectory,
     rename,
     getName,
@@ -113,5 +112,5 @@ export const createGDriveDirectoryApi = (
     removeByName,
   };
 
-  return currentApi;
+  return currentGDriveDirectory;
 };

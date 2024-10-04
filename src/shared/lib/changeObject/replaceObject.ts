@@ -1,9 +1,9 @@
 import type { UnknownRecord } from 'type-fest';
 import { isUnknownRecord } from './isUnknownRecord';
-import { createLogModule } from '../logger';
+import { createLogger } from '../logger';
 import { cloneDeep } from 'lodash-es';
 
-const { debug } = createLogModule('replaceObject');
+const { debug } = createLogger('replaceObject');
 
 /**
  * overwrites all values from source to target

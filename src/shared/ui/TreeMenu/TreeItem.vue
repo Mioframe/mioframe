@@ -14,11 +14,11 @@
 import { computed, ref, watchEffect } from 'vue';
 import { ContextMenu } from '../ContextMenu';
 import TreeList from './TreeList.vue';
-import { createLogModule } from '../../lib/logger';
+import { createLogger } from '../../lib/logger';
 import { onInteractionOutside } from '../../lib/onInteractionOutside';
 import type { MaybeElement } from '@vueuse/core';
 
-const { debug } = createLogModule('TreeItem');
+const { debug } = createLogger('TreeItem');
 
 const props = defineProps<{
   item: T;
