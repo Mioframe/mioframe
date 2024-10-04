@@ -1,6 +1,11 @@
 import type { StorageAdapterInterface, Chunk } from '@automerge/automerge-repo';
-import type { DirectoryEntryFSApi, FileEntryFSApi } from '../fileSystemApi';
-import type { PartialFileName, PartialStorageKey, StorageKey } from './types';
+import type {
+  DirectoryEntryApiForAdapter,
+  FileEntryApiForAdapter,
+  PartialFileName,
+  PartialStorageKey,
+  StorageKey,
+} from './types';
 import {
   KEY_SEPARATE,
   zodPartialFileName,
@@ -28,7 +33,7 @@ export const fileNameToPartialKey = (fileName: unknown): PartialStorageKey =>
 const log = createLogModule('createFSStorageAdapter');
 
 export const createFSStorageAdapter = (
-  directoryEntryApi: DirectoryEntryFSApi,
+  directoryEntryApi: DirectoryEntryApiForAdapter,
 ): StorageAdapterInterface => {
   const load = async (
     key: PartialStorageKey,
@@ -75,7 +80,10 @@ export const createFSStorageAdapter = (
 
     const listFromDirectory = await directoryEntryApi.getList();
 
-    const fileList: { key: PartialStorageKey; entry: FileEntryFSApi }[] = [];
+    const fileList: {
+      key: PartialStorageKey;
+      entry: FileEntryApiForAdapter;
+    }[] = [];
 
     listFromDirectory.forEach((entry, name) => {
       if (name.startsWith(keyPrefixString) && 'read' in entry) {
@@ -105,7 +113,7 @@ export const createFSStorageAdapter = (
 
     const listFromDirectory = await directoryEntryApi.getList();
 
-    const removeEntryList: FileEntryFSApi[] = [];
+    const removeEntryList: FileEntryApiForAdapter[] = [];
 
     listFromDirectory.forEach((entry, name) => {
       if ('read' in entry && name.startsWith(keyPrefixString)) {
