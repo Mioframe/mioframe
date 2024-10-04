@@ -1,28 +1,28 @@
-export type EntryPath = string[];
+export type LocalEntryPath = string[];
 
-export interface EntryFileSystemApi {
+export interface LocalEntry {
   getName: () => string;
   /**
    * Removes this Entry
    */
   remove: () => Promise<void>;
-  getPath: () => EntryPath;
+  getPath: () => LocalEntryPath;
 }
 
-export type DirectoryList = Map<string, DirectoryEntryFSApi | FileEntryFSApi>;
+export type LocalDirectoryContent = Map<string, LocalDirectory | LocalFile>;
 
-export interface DirectoryEntryFSApi extends EntryFileSystemApi {
+export interface LocalDirectory extends LocalEntry {
   /**
    * Creates a subdirectory
    */
-  createDirectory: (name: string) => Promise<DirectoryEntryFSApi>;
+  createDirectory: (name: string) => Promise<LocalDirectory>;
   /**
    * Writes a file to this directory
    */
   writeFile: (
     name: string,
     file?: FileSystemWriteChunkType,
-  ) => Promise<FileEntryFSApi>;
+  ) => Promise<LocalFile>;
   /**
    * Removes Entry from this directory
    */
@@ -30,30 +30,30 @@ export interface DirectoryEntryFSApi extends EntryFileSystemApi {
   /**b
    * Copies this directory to the destination directory
    */
-  copyTo: (dest: DirectoryEntryFSApi) => Promise<DirectoryEntryFSApi>;
+  copyTo: (dest: LocalDirectory) => Promise<LocalDirectory>;
   /**
    * Moves this directory to the destination directory by means of copying and deleting this
    */
-  moveTo: (dest: DirectoryEntryFSApi) => Promise<DirectoryEntryFSApi>;
+  moveTo: (dest: LocalDirectory) => Promise<LocalDirectory>;
   /**
    * Rename this directory by copying the contents to a new directory
    */
-  rename: (newName: string) => Promise<DirectoryEntryFSApi>;
+  rename: (newName: string) => Promise<LocalDirectory>;
   /**
    * Get map of directory contents
    */
-  getList: () => Promise<DirectoryList>;
+  getList: () => Promise<LocalDirectoryContent>;
   /**
    * Adding directory state watcher
    */
-  addWatcher: (handler: (list: DirectoryList) => unknown) => void;
+  addWatcher: (handler: (list: LocalDirectoryContent) => unknown) => void;
   /**
    * Remove directory state watcher
    */
-  removeWatcher: (handler: (list: DirectoryList) => unknown) => void;
+  removeWatcher: (handler: (list: LocalDirectoryContent) => unknown) => void;
 }
 
-export interface FileEntryFSApi extends EntryFileSystemApi {
+export interface LocalFile extends LocalEntry {
   /**
    * Reads this file
    */
@@ -61,13 +61,13 @@ export interface FileEntryFSApi extends EntryFileSystemApi {
   /**
    * Renames this file by copying and creating with the same contents
    */
-  rename: (newName: string) => Promise<FileEntryFSApi>;
+  rename: (newName: string) => Promise<LocalFile>;
   /**
    * Copies the file to the destination directory
    */
-  copyTo: (dest: DirectoryEntryFSApi) => Promise<FileEntryFSApi>;
+  copyTo: (dest: LocalDirectory) => Promise<LocalFile>;
   /**
    * Moves this file to the destination directory by copying and deleting this file
    */
-  moveTo: (dest: DirectoryEntryFSApi) => Promise<FileEntryFSApi>;
+  moveTo: (dest: LocalDirectory) => Promise<LocalFile>;
 }

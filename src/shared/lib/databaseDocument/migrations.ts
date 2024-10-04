@@ -1,5 +1,5 @@
 import { putObject } from '../changeObject';
-import type { CRDocument } from '../documentApi';
+import type { DocumentContent } from '../cfrDocument';
 import type { DataBaseStateV1 } from './types';
 
 export const initialDatabaseStateV1 = (): DataBaseStateV1 => ({
@@ -13,9 +13,9 @@ export const initialDatabaseStateV1 = (): DataBaseStateV1 => ({
  * Запускать последжовательные миграции начиная с нужной версии до конца
  */
 export const migrationsMap: {
-  [CURRENT_VERSION: number]: <D extends CRDocument>(doc: D) => void;
+  [CURRENT_VERSION: number]: <D extends DocumentContent>(doc: D) => void;
 } = {
-  0: (doc: CRDocument) => {
+  0: (doc: DocumentContent) => {
     putObject(doc, { body: initialDatabaseStateV1() });
   },
 } as const;

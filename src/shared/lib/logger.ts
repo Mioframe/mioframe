@@ -34,7 +34,7 @@ const getContrastingColorsFromHSL = (
   return { lightColor, darkColor };
 };
 
-export const createLogModule = (moduleName: string) => {
+export const createLogger = (moduleName: string) => {
   const log = (message: string, ...args: unknown[]) => {
     // eslint-disable-next-line no-console -- for logger
     console.log(...colorStrings(moduleName, message), ...args);

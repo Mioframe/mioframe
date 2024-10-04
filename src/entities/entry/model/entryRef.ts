@@ -1,15 +1,15 @@
 import { reactive, computed, shallowRef, watch } from 'vue';
 import type {
-  DirectoryEntryFSApi,
-  FileEntryFSApi,
-} from '../../../shared/lib/fileSystemApi';
-import { createDirectoryEntryApi } from '../../../shared/lib/fileSystemApi';
+  LocalDirectory,
+  LocalFile,
+} from '../../../shared/lib/localFileSystem';
+import { createLocalDirectory } from '../../../shared/lib/localFileSystem';
 import type { DirectoryEntryRef, DirectoryList, FileEntryRef } from './types';
 import { difference } from 'lodash-es';
 
-const directoryRegistry = new WeakMap<DirectoryEntryRef, DirectoryEntryFSApi>();
+const directoryRegistry = new WeakMap<DirectoryEntryRef, LocalDirectory>();
 
-const createFileEntryRef = (fileEntryApi: FileEntryFSApi): FileEntryRef => {
+const createFileEntryRef = (fileEntryApi: LocalFile): FileEntryRef => {
   const fileEntryApiRef = shallowRef(fileEntryApi);
 
   const label = computed(() => fileEntryApiRef.value.getName());
@@ -58,7 +58,7 @@ const createFileEntryRef = (fileEntryApi: FileEntryFSApi): FileEntryRef => {
 };
 
 const createDirectoryEntryRef = (
-  directoryEntryApi: DirectoryEntryFSApi,
+  directoryEntryApi: LocalDirectory,
 ): DirectoryEntryRef => {
   const currentApiRef = shallowRef(directoryEntryApi);
 
@@ -196,7 +196,7 @@ const createDirectoryEntryRef = (
 export const createRootDirectoryEntryRef = (
   rootHandler: FileSystemDirectoryHandle,
 ): DirectoryEntryRef => {
-  const roodDirectoryEntryApi = createDirectoryEntryApi(rootHandler);
+  const roodDirectoryEntryApi = createLocalDirectory(rootHandler);
 
   const rootEntry = createDirectoryEntryRef(roodDirectoryEntryApi);
 

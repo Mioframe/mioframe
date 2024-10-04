@@ -1,13 +1,13 @@
 <script setup lang="ts">
 import { computed, ref, toRef, watchEffect } from 'vue';
-import type { DocumentApi } from '../../shared/lib/documentApi';
-import { useDocument } from '../../entities/document/useDocument';
-import { createLogModule } from '../../shared/lib/logger';
+import type { CFRDocument } from '../../shared/lib/cfrDocument';
+import { useCFRDocument } from '../../entities/document/useCFRDocument';
+import { createLogger } from '../../shared/lib/logger';
 import { DocumentEditForm } from '../../features/documentEdit';
 import DatabaseView from '../../entities/database/DatabaseView.vue';
 import {
   DATABASE_DOCUMENT_TYPE,
-  zodDatabaseDocument,
+  zodDatabaseDocumentContent,
 } from '../../shared/lib/databaseDocument/types';
 import { is } from '../../shared/lib/validateZodScheme';
 import ValueBooleanInline from '../../entities/value/ValueBooleanInline.vue';
@@ -24,19 +24,19 @@ import { DbItemRemoveForm } from '../../features/databaseItemRemove';
 import { createDatabaseApi } from '../../shared/lib/databaseDocument/createDatabaseApi';
 import type { ItemId } from '../../shared/lib/databaseDocument/item';
 
-const { debug } = createLogModule('WorkspaceFarame');
+const { debug } = createLogger('WorkspaceFarame');
 
 const props = defineProps<{
-  documentApi: DocumentApi;
+  documentApi: CFRDocument;
 }>();
 
 defineSlots<{
-  default(p: { documentApi: DocumentApi; documentType: string }): unknown;
+  default(p: { documentApi: CFRDocument; documentType: string }): unknown;
 }>();
 
 const documentApi = toRef(() => props.documentApi);
 
-const { doc, cahnge } = useDocument(documentApi);
+const { doc, cahnge } = useCFRDocument(documentApi);
 
 const stateName = ref<string>();
 
@@ -65,7 +65,7 @@ const databaseApi = computed(() =>
 );
 
 const databaseDocumentState = computed(() =>
-  is(doc.value, zodDatabaseDocument) ? doc.value.body : undefined,
+  is(doc.value, zodDatabaseDocumentContent) ? doc.value.body : undefined,
 );
 
 enum ItemEvents {

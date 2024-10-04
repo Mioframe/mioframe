@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import { ref } from 'vue';
 import type { ItemId } from '../../shared/lib/databaseDocument/item';
-import type { DatabaseApi } from '../../shared/lib/databaseDocument';
+import type { DatabaseDocument } from '../../shared/lib/databaseDocument';
 
 const props = defineProps<{
-  databaseApi: DatabaseApi;
+  databaseApi: DatabaseDocument;
   itemId: ItemId;
 }>();
 

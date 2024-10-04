@@ -1,30 +1,30 @@
 <script setup lang="ts">
 import { computed, ref, shallowRef } from 'vue';
-import type { FolderApi } from '../../shared/lib/documentApi';
-import { createFolderApi } from '../../shared/lib/documentApi';
-import { createDirectoryEntryApi } from '../../shared/lib/fileSystemApi';
+import type { DocumentFolder } from '../../shared/lib/cfrDocument';
+import { createDocumentFolder } from '../../shared/lib/cfrDocument';
+import { createLocalDirectory } from '../../shared/lib/localFileSystem';
 import type { DocumentId } from '@automerge/automerge-repo/';
 import { putObject } from '../../shared/lib/changeObject/putObject';
-import { createLogModule } from '../../shared/lib/logger';
+import { createLogger } from '../../shared/lib/logger';
 import { uniqueId } from 'lodash-es';
-import { useDocument } from '../document/useDocument';
-import { useFolder } from '../folder/useFolder';
+import { useCFRDocument } from '../document/useCFRDocument';
+import { useDocumentFolder } from '../folder/useDocumentFolder';
 
 /**
  * Прочесть Database в виде json
  */
 
-const log = createLogModule('JSONDatabaseView');
+const log = createLogger('JSONDatabaseView');
 
 const fsDirectoryHandle = shallowRef<FileSystemDirectoryHandle>();
 
-const folderApi = computed((): FolderApi | undefined =>
+const documentFolder = computed((): DocumentFolder | undefined =>
   fsDirectoryHandle.value
-    ? createFolderApi(createDirectoryEntryApi(fsDirectoryHandle.value))
+    ? createDocumentFolder(createLocalDirectory(fsDirectoryHandle.value))
     : undefined,
 );
 
-const { content: documentsMap, createDocument } = useFolder(folderApi);
+const { content: documentsMap, createDocument } = useDocumentFolder(documentFolder);
 
 const onCLickChooseDirectory = async () => {
   fsDirectoryHandle.value = await window.showDirectoryPicker();
@@ -39,14 +39,14 @@ const onClickCreateDocument = () => {
 
 const selectedDocumentId = ref<DocumentId>();
 
-const selectedDocumentApi = computed(() =>
+const selectedCFRDocument = computed(() =>
   selectedDocumentId.value
     ? documentsMap.value.get(selectedDocumentId.value)
     : undefined,
 );
 
-const { doc: selectedDocument, cahnge: changeDocument } =
-  useDocument(selectedDocumentApi);
+const { doc: selectedDocumentContent, cahnge: changeDocument } =
+  useCFRDocument(selectedCFRDocument);
 
 const onClickChangeDoc = () => {
   changeDocument((doc) => {
@@ -84,7 +84,7 @@ const onClickChangeDoc = () => {
     </select>
 
     <pre>
-        {{ selectedDocument }}
+        {{ selectedDocumentContent }}
     </pre>
   </div>
 </template>

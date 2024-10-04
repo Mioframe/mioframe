@@ -2,7 +2,7 @@
 import { ModalCard } from '../../shared/ui/ModalCard';
 import { DbPropertyCreateForm } from '../../features/databasePropertyCreate';
 import { computed, ref, toRef } from 'vue';
-import type { DocumentApi } from '../../shared/lib/documentApi';
+import type { CFRDocument } from '../../shared/lib/cfrDocument';
 import { useDocument } from '../../entities/document';
 import type { Item } from '../../shared/lib/databaseDocument';
 import { DATABASE_DOCUMENT_TYPE } from '../../shared/lib/databaseDocument';
@@ -15,7 +15,7 @@ import { PropertyNumberField } from '../../features/propertyNumberEdit';
 import { PropertyBooleanField } from '../../features/propertyBooleanEdit';
 
 const props = defineProps<{
-  documentApi: DocumentApi;
+  documentApi: CFRDocument;
 }>();
 
 const documentApiRef = toRef(() => props.documentApi);

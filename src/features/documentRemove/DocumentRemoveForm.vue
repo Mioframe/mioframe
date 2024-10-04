@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import { ref } from 'vue';
-import type { FolderApi } from '../../shared/lib/documentApi';
+import type { DocumentFolder } from '../../shared/lib/cfrDocument';
 import type { DocumentId } from '@automerge/automerge-repo';
 
 const props = defineProps<{
-  folderApi: FolderApi;
+  folderApi: DocumentFolder;
   documentId: DocumentId;
   documentName?: string;
 }>();

@@ -1,27 +1,27 @@
-import { createEntryApi } from './entry';
-import { createFileEntryApi } from './fileEntry';
-import type { DirectoryEntryFSApi, DirectoryList } from './types';
+import { createLocalEntry } from './entry';
+import { createLocalFile } from './file';
+import type { LocalDirectory, LocalDirectoryContent } from './types';
 
-export const createDirectoryEntryApi = (
+export const createLocalDirectory = (
   currentHandle: FileSystemDirectoryHandle,
-  parentEntry?: DirectoryEntryFSApi,
-): DirectoryEntryFSApi => {
-  const currentEntry = createEntryApi(currentHandle, parentEntry);
+  parentEntry?: LocalDirectory,
+): LocalDirectory => {
+  const currentEntry = createLocalEntry(currentHandle, parentEntry);
 
   const getList = async () => {
-    const nowEntryList: DirectoryList = new Map();
+    const nowEntryList: LocalDirectoryContent = new Map();
     for await (const [name, handle] of currentHandle.entries()) {
       switch (handle.kind) {
         case 'directory':
           nowEntryList.set(
             name,
-            createDirectoryEntryApi(handle, currentDirectoryEntry),
+            createLocalDirectory(handle, currentDirectoryEntry),
           );
           break;
         case 'file':
           nowEntryList.set(
             name,
-            createFileEntryApi(handle, currentDirectoryEntry),
+            createLocalFile(handle, currentDirectoryEntry),
           );
           break;
       }
@@ -35,7 +35,7 @@ export const createDirectoryEntryApi = (
       create: true,
     });
 
-    const directoryEntry = createDirectoryEntryApi(
+    const directoryEntry = createLocalDirectory(
       directoryHandle,
       currentDirectoryEntry,
     );
@@ -55,7 +55,7 @@ export const createDirectoryEntryApi = (
       await writable.close();
     }
 
-    const fileEntry = createFileEntryApi(newFileHandle, currentDirectoryEntry);
+    const fileEntry = createLocalFile(newFileHandle, currentDirectoryEntry);
 
     void triggerWatchers();
 
@@ -67,7 +67,7 @@ export const createDirectoryEntryApi = (
     void triggerWatchers();
   };
 
-  const copyTo = async (dest: DirectoryEntryFSApi) => {
+  const copyTo = async (dest: LocalDirectory) => {
     const currentPath = currentEntry.getPath();
 
     const destPath = dest.getPath();
@@ -91,7 +91,7 @@ export const createDirectoryEntryApi = (
     return newDirectoryEntry;
   };
 
-  const moveTo = async (dest: DirectoryEntryFSApi) => {
+  const moveTo = async (dest: LocalDirectory) => {
     const parentPath = parentEntry?.getPath() ?? [];
 
     if (childHasParent(dest.getPath(), parentPath)) {
@@ -156,13 +156,13 @@ export const createDirectoryEntryApi = (
     return true;
   };
 
-  const watchersSet = new Set<(list: DirectoryList) => unknown>();
+  const watchersSet = new Set<(list: LocalDirectoryContent) => unknown>();
 
-  const addWatcher = (handler: (list: DirectoryList) => unknown) => {
+  const addWatcher = (handler: (list: LocalDirectoryContent) => unknown) => {
     watchersSet.add(handler);
   };
 
-  const removeWatcher = (handler: (list: DirectoryList) => unknown) => {
+  const removeWatcher = (handler: (list: LocalDirectoryContent) => unknown) => {
     watchersSet.delete(handler);
   };
 
@@ -174,7 +174,7 @@ export const createDirectoryEntryApi = (
     }
   };
 
-  const currentDirectoryEntry: DirectoryEntryFSApi = {
+  const currentDirectoryEntry: LocalDirectory = {
     ...currentEntry,
     createDirectory,
     writeFile,

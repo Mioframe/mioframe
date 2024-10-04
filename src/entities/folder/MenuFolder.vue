@@ -1,10 +1,10 @@
 <script setup lang="ts">
-import type { DocumentApi } from '../../shared/lib/documentApi';
+import type { CFRDocument } from '../../shared/lib/cfrDocument';
 import DocumentMenuItem from '../document/DocumentMenuItem.vue';
 import type { DocumentId } from '@automerge/automerge-repo';
 
 defineProps<{
-  documentsMap: ReadonlyMap<DocumentId, DocumentApi>;
+  documentsMap: ReadonlyMap<DocumentId, CFRDocument>;
 }>();
 
 defineSlots<{
@@ -12,12 +12,12 @@ defineSlots<{
 }>();
 
 const emit = defineEmits<{
-  click: [documentId: DocumentId, documentApi: DocumentApi];
+  click: [documentId: DocumentId, documentApi: CFRDocument];
 }>();
 
 const onClickDocumentItem = (
   documentId: DocumentId,
-  documentApi: DocumentApi,
+  documentApi: CFRDocument,
 ) => {
   emit('click', documentId, documentApi);
 };
@@ -28,7 +28,7 @@ const onClickDocumentItem = (
     <DocumentMenuItem
       v-for="[id, api] in documentsMap"
       :key="id"
-      :document-api="api"
+      :cfrDocument="api"
       :document-id="id"
       @click="onClickDocumentItem"
     >

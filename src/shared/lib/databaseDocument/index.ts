@@ -17,11 +17,11 @@ export {
 export {
   type DataBaseStateLatest,
   type DataBaseStateV1,
-  type DatabaseApi,
   type DatabaseDocument,
+  type DatabaseDocumentContent,
   type Item,
   zodDataBaseStateLatest,
-  zodDatabaseDocument,
+  zodDatabaseDocumentContent as zodDatabaseDocument,
   zodDatabaseType,
   DATABASE_DOCUMENT_TYPE,
 } from './types';

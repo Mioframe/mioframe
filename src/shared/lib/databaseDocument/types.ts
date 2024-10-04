@@ -5,7 +5,7 @@ import type { TypeOf } from 'zod';
 import { intersection, literal, object, record, unknown } from 'zod';
 import { zodPropertiesMap } from './property/property';
 import { zodPropertyId } from './property/general';
-import { zodDocument } from '../documentApi';
+import { zodDocumentContent } from '../cfrDocument';
 
 const zodValue = unknown();
 
@@ -40,20 +40,20 @@ export const zodDatabaseExtentionBodyDocument = object({
 });
 
 export const zodDatabaseTypeDocument = intersection(
-  zodDocument,
+  zodDocumentContent,
   zodDatabaseType,
 );
 
 export type DatabaseTypeDocument = TypeOf<typeof zodDatabaseTypeDocument>;
 
-export const zodDatabaseDocument = intersection(
+export const zodDatabaseDocumentContent = intersection(
   zodDatabaseTypeDocument,
   zodDatabaseExtentionBodyDocument,
 );
 
-export type DatabaseDocument = TypeOf<typeof zodDatabaseDocument>;
+export type DatabaseDocumentContent = TypeOf<typeof zodDatabaseDocumentContent>;
 
-export interface DatabaseApi {
+export interface DatabaseDocument {
   addProperty: (property: AnyProperty) => PropertyId;
   removeProperty: (propertyId: PropertyId) => void;
   updateProperty: (
@@ -65,9 +65,9 @@ export interface DatabaseApi {
   removeItem: (itemId: ItemId) => void;
   updateItem: (itemId: ItemId, partialItem: PartialDeep<Item>) => void;
 
-  read: () => Promise<DatabaseDocument>;
+  read: () => Promise<DatabaseDocumentContent>;
 
-  onChange: (fn: (doc: DatabaseDocument) => unknown) => () => void;
+  onChange: (fn: (doc: DatabaseDocumentContent) => unknown) => () => void;
 
   // addView(): void;
   // removeView(): void;

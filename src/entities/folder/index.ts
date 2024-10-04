@@ -1,2 +1,2 @@
 export { default as MenuFolder } from './MenuFolder.vue';
-export { useFolder } from './useFolder';
+export { useDocumentFolder as useFolder } from './useDocumentFolder';
