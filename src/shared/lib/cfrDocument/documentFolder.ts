@@ -1,6 +1,7 @@
 import type {
   DeleteDocumentPayload,
   DocumentId,
+  DocumentPayload,
 } from '@automerge/automerge-repo';
 import { Repo } from '@automerge/automerge-repo';
 import type {
@@ -32,12 +33,16 @@ export const createDocumentFolder = (
     storage: createFSStorageAdapter(directory),
   });
 
-  const onAddDocument = throttle(() => {
-    debug('onAddDocument');
-    void getFSContent().then((content) => {
-      changeEvents.forEach((handler) => handler(content));
-    });
-  }, THROTTLE_EVENTS);
+  const onAddDocument = throttle(
+    ({ handle: { documentId }, isNew }: DocumentPayload) => {
+      debug('onAddDocument');
+      const extentions = isNew ? [documentId] : undefined;
+      void getFSContent(extentions).then((content) => {
+        changeEvents.forEach((handler) => handler(content));
+      });
+    },
+    THROTTLE_EVENTS,
+  );
 
   const onDeleteDocument = throttle(({ documentId }: DeleteDocumentPayload) => {
     debug('onDeleteDocument');
@@ -73,7 +78,10 @@ export const createDocumentFolder = (
     }
 
     for (const [documentId] of fsContentMapState) {
-      if (!currentDocumentSet.has(documentId)) {
+      if (
+        !currentDocumentSet.has(documentId) &&
+        !exceptionsSet?.has(documentId)
+      ) {
         fsContentMapState.delete(documentId);
       }
     }
@@ -94,7 +102,15 @@ export const createDocumentFolder = (
   ) => {
     debug('create', initialValue);
 
-    return createCFRDocument(repo.create(initialValue));
+    const docHandle = repo.create(initialValue);
+
+    const newCFRDocument = createCFRDocument(docHandle);
+
+    const documentId = docHandle.documentId;
+
+    fsContentMapState.set(documentId, newCFRDocument);
+
+    return newCFRDocument;
   };
 
   const changeEvents = new Set<
@@ -114,6 +130,7 @@ export const createDocumentFolder = (
     debug('remove', documentId);
 
     repo.delete(documentId);
+    fsContentMapState.delete(documentId);
   };
 
   const folder: DocumentFolder = {
