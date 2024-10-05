@@ -3,9 +3,8 @@ import { computed, shallowRef } from 'vue';
 import { usePickDirectory } from './usePickDirectory';
 import type { LocalDirectory } from '../../shared/lib/localFileSystem';
 import { createLocalDirectory } from '../../shared/lib/localFileSystem';
-import { getGDrive } from '../../shared/lib/googleDriveApi/getGDrive';
-import { createGDriveDirectory } from '../../shared/lib/googleDriveApi/createGDriveDirectory';
-import type { GDriveDirectory } from '../../shared/lib/googleDriveApi/types';
+import { getGDrive, createGDriveDirectory } from '../../shared/lib/googleDrive';
+import type { GDriveDirectory } from '../../shared/lib/googleDrive';
 
 const canUseLocalDirectory = computed(() => 'showDirectoryPicker' in global);
 
@@ -46,7 +45,7 @@ const onClickSelectGDrive = async () => {
   }
 };
 
-// const folderApi = computed(() =>
+// const documentFolder = computed(() =>
 //   gDriveDirectory.value
 //     ? createDocumentFolder(gDriveDirectory.value)
 //     : localDirectory.value

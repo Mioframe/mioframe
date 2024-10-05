@@ -11,12 +11,12 @@ import { replaceObject } from '../../shared/lib/changeObject/replaceObject';
 const { debug } = createLogger('DocumentEditForm');
 
 const props = defineProps<{
-  documentApi: CFRDocument;
+  cfrDocument: CFRDocument;
 }>();
 
-const documentApi = toRef(() => props.documentApi);
+const cfrDocument = toRef(() => props.cfrDocument);
 
-const { doc, cahnge } = useCFRDocument(documentApi);
+const { doc, cahnge } = useCFRDocument(cfrDocument);
 
 const mainElement = ref<HTMLElement>();
 

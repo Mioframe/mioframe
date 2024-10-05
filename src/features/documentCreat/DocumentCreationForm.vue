@@ -4,11 +4,11 @@ import type { CFRDocument, DocumentFolder } from '../../shared/lib/cfrDocument';
 import { DATABASE_DOCUMENT_TYPE } from '../../shared/lib/databaseDocument';
 
 const props = defineProps<{
-  folderApi: DocumentFolder;
+  documentFolder: DocumentFolder;
 }>();
 
 const emit = defineEmits<{
-  created: [documentApi: CFRDocument];
+  created: [cfrDocument: CFRDocument];
   cancel: [];
 }>();
 
@@ -18,12 +18,12 @@ const onSubmitCreate = () => {
   if (!stateName.value?.length) {
     throw new Error('name is undefined');
   }
-  const newDocumentApi: CFRDocument = props.folderApi.create({
+  const newCFRDocument: CFRDocument = props.documentFolder.create({
     name: stateName.value,
     type: documentType.value,
   });
 
-  emit('created', newDocumentApi);
+  emit('created', newCFRDocument);
 };
 
 const onResetCreate = () => {

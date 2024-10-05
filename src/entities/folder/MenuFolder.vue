@@ -12,23 +12,23 @@ defineSlots<{
 }>();
 
 const emit = defineEmits<{
-  click: [documentId: DocumentId, documentApi: CFRDocument];
+  click: [documentId: DocumentId, cfrDocument: CFRDocument];
 }>();
 
 const onClickDocumentItem = (
   documentId: DocumentId,
-  documentApi: CFRDocument,
+  cfrDocument: CFRDocument,
 ) => {
-  emit('click', documentId, documentApi);
+  emit('click', documentId, cfrDocument);
 };
 </script>
 
 <template>
   <ul class="menu-list">
     <DocumentMenuItem
-      v-for="[id, api] in documentsMap"
+      v-for="[id, cfrDocument] in documentsMap"
       :key="id"
-      :cfrDocument="api"
+      :cfr-document="cfrDocument"
       :document-id="id"
       @click="onClickDocumentItem"
     >

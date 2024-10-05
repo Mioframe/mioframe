@@ -20,7 +20,9 @@ const emit = defineEmits<{
 
 const cfrDocumentRef = useCFRDocument(toRef(() => props.cfrDocument));
 
-const documentName = computed(() => cfrDocumentRef.doc.value?.name ?? 'nameless');
+const documentName = computed(
+  () => cfrDocumentRef.doc.value?.name ?? 'nameless',
+);
 
 const onClickItem = () => {
   emit('click', props.documentId, props.cfrDocument);

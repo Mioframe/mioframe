@@ -5,7 +5,7 @@ import type { CFRDocument } from './types';
 import { zodDocumentContent, type DocumentContent } from './types';
 import type { ChangeFn } from '@automerge/automerge-repo';
 
-const { debug } = createLogger('createDocumentApi');
+const { debug } = createLogger('createCFRDocument');
 
 export const createCFRDocument = (docHandle: CFRDocument): CFRDocument => {
   const doc = async () => {

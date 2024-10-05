@@ -19,7 +19,7 @@ import { migrationsMap } from './migrations';
 import { createLogger } from '../logger';
 import { cloneDeep, isNumber, isObject, keys, toInteger } from 'lodash-es';
 
-const { debug } = createLogger('createDatabaseApi');
+const { debug } = createLogger('createDatabaseDocument');
 
 const documentUpdate = (doc: DocumentContent): DatabaseDocumentContent => {
   debug('documentUpdate', cloneDeep(doc));
@@ -43,7 +43,9 @@ const documentUpdate = (doc: DocumentContent): DatabaseDocumentContent => {
   return parseSelf(doc, zodDatabaseDocumentContent);
 };
 
-export const createDatabaseApi = (documentApi: CFRDocument): DatabaseDocument => {
+export const createDatabaseDocument = (
+  cfrDocument: CFRDocument,
+): DatabaseDocument => {
   const migrate = async <D>(doc: D): Promise<DatabaseDocumentContent> => {
     debug('migrate', doc);
     const dbDocument = parseSelf(doc, zodDatabaseType);
@@ -64,10 +66,10 @@ export const createDatabaseApi = (documentApi: CFRDocument): DatabaseDocument =>
     debug('migrate', currentVersion, latestVersion);
 
     if (latestVersion >= currentVersion) {
-      documentApi.change((doc) => {
+      cfrDocument.change((doc) => {
         documentUpdate(doc);
       });
-      return parseSelf(await documentApi.doc(), zodDatabaseDocumentContent);
+      return parseSelf(await cfrDocument.doc(), zodDatabaseDocumentContent);
     }
     return parseSelf(doc, zodDatabaseDocumentContent);
   };
@@ -75,7 +77,7 @@ export const createDatabaseApi = (documentApi: CFRDocument): DatabaseDocument =>
   const addProperty = (column: AnyProperty): PropertyId => {
     const columnId = generatePropertyId();
 
-    documentApi.change((doc) => {
+    cfrDocument.change((doc) => {
       const { body } = documentUpdate(doc);
 
       body.properties[columnId] = column;
@@ -88,7 +90,7 @@ export const createDatabaseApi = (documentApi: CFRDocument): DatabaseDocument =>
     columnId: PropertyId,
     column: PartialDeep<AnyProperty>,
   ) => {
-    documentApi.change((doc) => {
+    cfrDocument.change((doc) => {
       const { body } = documentUpdate(doc);
 
       putObject(body.properties, { [columnId]: column });
@@ -96,7 +98,7 @@ export const createDatabaseApi = (documentApi: CFRDocument): DatabaseDocument =>
   };
 
   const removeProperty = (propertyId: PropertyId) => {
-    documentApi.change((doc) => {
+    cfrDocument.change((doc) => {
       const { body } = documentUpdate(doc);
       // eslint-disable-next-line @typescript-eslint/no-dynamic-delete -- delete any property
       delete body.properties[propertyId];
@@ -108,7 +110,7 @@ export const createDatabaseApi = (documentApi: CFRDocument): DatabaseDocument =>
   const addItem = (item: Item) => {
     const itemId = generateItemId();
 
-    documentApi.change((doc) => {
+    cfrDocument.change((doc) => {
       const { body } = documentUpdate(doc);
 
       putObject(body.data, { [itemId]: item });
@@ -118,7 +120,7 @@ export const createDatabaseApi = (documentApi: CFRDocument): DatabaseDocument =>
   };
 
   const updateItem = (itemId: ItemId, partialItem: PartialDeep<Item>) => {
-    documentApi.change((doc) => {
+    cfrDocument.change((doc) => {
       const { body } = documentUpdate(doc);
 
       putObject(body.data, { [itemId]: partialItem });
@@ -126,7 +128,7 @@ export const createDatabaseApi = (documentApi: CFRDocument): DatabaseDocument =>
   };
 
   const removeItem = (itemId: ItemId) => {
-    documentApi.change((doc) => {
+    cfrDocument.change((doc) => {
       const { body } = documentUpdate(doc);
 
       putObject(body.data, { [itemId]: undefined });
@@ -135,7 +137,7 @@ export const createDatabaseApi = (documentApi: CFRDocument): DatabaseDocument =>
 
   const read = async (): Promise<DatabaseDocumentContent> => {
     debug('read');
-    const doc = await documentApi.doc();
+    const doc = await cfrDocument.doc();
 
     debug('read', doc);
     return await migrate(doc);
@@ -145,16 +147,16 @@ export const createDatabaseApi = (documentApi: CFRDocument): DatabaseDocument =>
     const insideFn = ({ doc }: { doc: DocumentContent }) =>
       fn(parseSelf(doc, zodDatabaseDocumentContent));
 
-    documentApi.on('change', insideFn);
+    cfrDocument.on('change', insideFn);
 
     const off = () => {
-      documentApi.off('change', insideFn);
+      cfrDocument.off('change', insideFn);
     };
 
     return off;
   };
 
-  const api: DatabaseDocument = {
+  const databaseDocument: DatabaseDocument = {
     addProperty,
     updateProperty,
     removeProperty,
@@ -167,5 +169,5 @@ export const createDatabaseApi = (documentApi: CFRDocument): DatabaseDocument =>
     onChange,
   };
 
-  return api;
+  return databaseDocument;
 };

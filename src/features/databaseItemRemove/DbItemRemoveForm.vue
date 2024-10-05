@@ -4,7 +4,7 @@ import type { ItemId } from '../../shared/lib/databaseDocument/item';
 import type { DatabaseDocument } from '../../shared/lib/databaseDocument';
 
 const props = defineProps<{
-  databaseApi: DatabaseDocument;
+  databaseDocument: DatabaseDocument;
   itemId: ItemId;
 }>();
 
@@ -18,7 +18,7 @@ const loading = ref(0);
 const onSubmit = () => {
   loading.value += 1;
   try {
-    props.databaseApi.removeItem(props.itemId);
+    props.databaseDocument.removeItem(props.itemId);
     emit('removed');
   } finally {
     loading.value -= 1;

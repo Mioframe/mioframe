@@ -3,8 +3,12 @@ import type {
   DocumentId,
 } from '@automerge/automerge-repo';
 import { Repo } from '@automerge/automerge-repo';
-import type { DirectoryApiForFolderApi, zodDocumentContent } from './types';
-import { type CFRDocument, type DocumentFolder } from './types';
+import type {
+  DirectoryForDocumentFolder,
+  zodDocumentContent,
+  CFRDocument,
+  DocumentFolder,
+} from './types';
 import {
   createFSStorageAdapter,
   zodDocumentId,
@@ -17,15 +21,15 @@ import { createLogger } from '../logger';
 import { throttle } from 'lodash-es';
 import { parseSelf } from '../validateZodScheme';
 
-const { debug } = createLogger('folderApi');
+const { debug } = createLogger('createDocumentFolder');
 
 const THROTTLE_EVENTS = 1e3 / 10;
 
 export const createDocumentFolder = (
-  directoryApi: DirectoryApiForFolderApi,
+  directory: DirectoryForDocumentFolder,
 ): DocumentFolder => {
   const repo = new Repo({
-    storage: createFSStorageAdapter(directoryApi),
+    storage: createFSStorageAdapter(directory),
   });
 
   const onAddDocument = throttle(() => {
@@ -51,7 +55,7 @@ export const createDocumentFolder = (
     exceptions?: DocumentId[],
   ): Promise<Map<DocumentId, CFRDocument>> => {
     const exceptionsSet = exceptions ? new Set(exceptions) : undefined;
-    const directoryList = await directoryApi.getList();
+    const directoryList = await directory.getList();
 
     const currentDocumentSet = new Set<DocumentId>();
 

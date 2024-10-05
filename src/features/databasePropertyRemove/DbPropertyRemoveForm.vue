@@ -5,8 +5,8 @@ import {
   type PropertyId,
 } from '../../shared/lib/databaseDocument';
 import type { CFRDocument } from '../../shared/lib/cfrDocument';
-import { createDatabaseApi } from '../../shared/lib/databaseDocument/createDatabaseApi';
-import { useDocument } from '../../entities/document';
+import { createDatabaseDocument } from '../../shared/lib/databaseDocument/createDatabaseDocument';
+import { useCFRDocument } from '../../entities/document';
 import { is } from '../../shared/lib/validateZodScheme';
 
 const emit = defineEmits<{
@@ -15,14 +15,14 @@ const emit = defineEmits<{
 }>();
 
 const props = defineProps<{
-  documentApi: CFRDocument;
+  cfrDocument: CFRDocument;
 }>();
 
 const selectedPropertyId = ref<PropertyId>();
 
-const documentApi = toRef(() => props.documentApi);
+const cfrDocument = toRef(() => props.cfrDocument);
 
-const { doc } = useDocument(documentApi);
+const { doc } = useCFRDocument(cfrDocument);
 
 const propertiesMap = computed(() => {
   if (is(doc.value, zodDatabaseDocument)) {
@@ -34,7 +34,7 @@ const propertiesMap = computed(() => {
 const onSubmit = () => {
   const propertyId = selectedPropertyId.value;
   if (propertyId) {
-    createDatabaseApi(props.documentApi).removeProperty(propertyId);
+    createDatabaseDocument(props.cfrDocument).removeProperty(propertyId);
 
     emit('removed', propertyId);
   }
