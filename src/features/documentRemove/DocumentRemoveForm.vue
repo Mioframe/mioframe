@@ -4,7 +4,7 @@ import type { DocumentFolder } from '../../shared/lib/cfrDocument';
 import type { DocumentId } from '@automerge/automerge-repo';
 
 const props = defineProps<{
-  folderApi: DocumentFolder;
+  documentFolder: DocumentFolder;
   documentId: DocumentId;
   documentName?: string;
 }>();
@@ -16,10 +16,10 @@ const emit = defineEmits<{
 
 const loading = ref(0);
 
-const onSubmit = async () => {
+const onSubmit = () => {
   loading.value += 1;
   try {
-    await props.folderApi.remove(props.documentId);
+    props.documentFolder.remove(props.documentId);
     emit('removed');
   } finally {
     loading.value -= 1;

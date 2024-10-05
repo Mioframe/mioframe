@@ -21,22 +21,22 @@ import { ContextBtn } from '../../shared/ui/ContextButton';
 import type { MenuItem } from '../../shared/ui/ContextButton/ContextButton.vue';
 import { ModalCard } from '../../shared/ui/ModalCard';
 import { DbItemRemoveForm } from '../../features/databaseItemRemove';
-import { createDatabaseApi } from '../../shared/lib/databaseDocument/createDatabaseApi';
+import { createDatabaseDocument } from '../../shared/lib/databaseDocument/createDatabaseDocument';
 import type { ItemId } from '../../shared/lib/databaseDocument/item';
 
 const { debug } = createLogger('WorkspaceFarame');
 
 const props = defineProps<{
-  documentApi: CFRDocument;
+  cfrDocument: CFRDocument;
 }>();
 
 defineSlots<{
-  default(p: { documentApi: CFRDocument; documentType: string }): unknown;
+  default(p: { cfrDocument: CFRDocument; documentType: string }): unknown;
 }>();
 
-const documentApi = toRef(() => props.documentApi);
+const cfrDocument = toRef(() => props.cfrDocument);
 
-const { doc, cahnge } = useCFRDocument(documentApi);
+const { doc, cahnge } = useCFRDocument(cfrDocument);
 
 const stateName = ref<string>();
 
@@ -58,9 +58,9 @@ const onChangeName = () => {
 
 const documentType = computed(() => doc.value?.type ?? 'unknown');
 
-const databaseApi = computed(() =>
+const databaseDocument = computed(() =>
   documentType.value === DATABASE_DOCUMENT_TYPE
-    ? createDatabaseApi(documentApi.value)
+    ? createDatabaseDocument(cfrDocument.value)
     : undefined,
 );
 
@@ -111,7 +111,7 @@ const onClickContextItem = (eventName: ItemEvents, itemId: ItemId) => {
       </section>
     </form>
 
-    <slot :document-api :document-type>
+    <slot :cfr-document :document-type>
       <DatabaseView
         v-if="databaseDocumentState"
         :database-state="databaseDocumentState"
@@ -148,14 +148,14 @@ const onClickContextItem = (eventName: ItemEvents, itemId: ItemId) => {
 
       <DocumentEditForm
         v-else
-        :document-api
+        :cfr-document
         class="is-flex is-flex-direction-column is-flex-grow-1"
       />
     </slot>
 
-    <ModalCard v-if="databaseApi && itemIdToRemove">
+    <ModalCard v-if="databaseDocument && itemIdToRemove">
       <DbItemRemoveForm
-        :database-api="databaseApi"
+        :database-document="databaseDocument"
         :item-id="itemIdToRemove"
         @cancel="itemIdToRemove = undefined"
         @removed="itemIdToRemove = undefined"

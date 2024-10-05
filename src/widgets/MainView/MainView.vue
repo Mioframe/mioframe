@@ -13,14 +13,14 @@ import { DocumentRemoveForm } from '../../features/documentRemove';
 import { WorkspaceFrame } from '../WorkspaceFrame';
 import SlidingPanel from '../../shared/ui/SlidingPanel/SlidingPanel.vue';
 import DocumentPanel from '../DocumentPanel/DocumentPanel.vue';
-import { createDatabaseApi } from '../../shared/lib/databaseDocument/createDatabaseApi';
+import { createDatabaseDocument } from '../../shared/lib/databaseDocument/createDatabaseDocument';
 import { createLogger } from '../../shared/lib/logger';
 
 const { debug } = createLogger('MainView');
 
 const { pickedDirectoryHandler, showPicker } = usePickDirectory();
 
-const folderApi = computed((): DocumentFolder | undefined =>
+const documentFolder = computed((): DocumentFolder | undefined =>
   pickedDirectoryHandler.value
     ? createDocumentFolder(createLocalDirectory(pickedDirectoryHandler.value))
     : undefined,
@@ -28,7 +28,7 @@ const folderApi = computed((): DocumentFolder | undefined =>
 
 const onClickSelectDirectory = showPicker;
 
-const { content: contentFolderMap } = useDocumentFolder(folderApi);
+const { content: contentFolderMap } = useDocumentFolder(documentFolder);
 
 const contentFolderSize = computed(() => contentFolderMap.value.size);
 
@@ -63,12 +63,12 @@ const onCancelRemove = () => {
 
 const onRemoved = onCancelRemove;
 
-const selectedDocumentApi = shallowRef<CFRDocument>();
+const selectedCFRDocument = shallowRef<CFRDocument>();
 
-const onClickFolder = (_documentId: DocumentId, documentApi: CFRDocument) => {
-  const databaseApi = createDatabaseApi(documentApi);
-  debug('onClickFolder', databaseApi);
-  selectedDocumentApi.value = documentApi;
+const onClickFolder = (_documentId: DocumentId, cfrDocument: CFRDocument) => {
+  const databaseDocument = createDatabaseDocument(cfrDocument);
+  debug('onClickFolder', databaseDocument);
+  selectedCFRDocument.value = cfrDocument;
   openBottomMenu.value = false;
   isOpenPanel.value = false;
 };
@@ -83,8 +83,8 @@ const isOpenPanel = ref(true);
     class="is-flex is-flex-direction-column is-flex-grow-1 is-justify-content-flex-end is-overflow-auto"
   >
     <WorkspaceFrame
-      v-if="selectedDocumentApi"
-      :document-api="selectedDocumentApi"
+      v-if="selectedCFRDocument"
+      :cfr-document="selectedCFRDocument"
       class="is-flex-grow-1 is-flex-shrink-1"
     />
 
@@ -106,8 +106,8 @@ const isOpenPanel = ref(true);
         </button>
 
         <DocumentPanel
-          v-if="selectedDocumentApi"
-          :document-api="selectedDocumentApi"
+          v-if="selectedCFRDocument"
+          :cfr-document="selectedCFRDocument"
         />
 
         <div class="menu">
@@ -135,7 +135,7 @@ const isOpenPanel = ref(true);
           </MenuFolder>
 
           <ul class="menu-list">
-            <li v-if="folderApi">
+            <li v-if="documentFolder">
               <button
                 type="button"
                 class="button is-link"
@@ -167,17 +167,17 @@ const isOpenPanel = ref(true);
       </div>
     </SlidingPanel>
 
-    <ModalCard v-if="folderApi && isDisplayedDocumentCreationForm">
+    <ModalCard v-if="documentFolder && isDisplayedDocumentCreationForm">
       <CreateDocumentForm
-        :folder-api="folderApi"
+        :document-folder="documentFolder"
         @cancel="onCancelCreateDocument"
         @created="onCreatedDocument"
       />
     </ModalCard>
 
-    <ModalCard v-if="folderApi && documentIdForRemove">
+    <ModalCard v-if="documentFolder && documentIdForRemove">
       <DocumentRemoveForm
-        :folder-api="folderApi"
+        :document-folder="documentFolder"
         :document-id="documentIdForRemove"
         @cancel="onCancelRemove"
         @removed="onRemoved"

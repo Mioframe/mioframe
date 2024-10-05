@@ -38,4 +38,4 @@ export interface DocumentFolder {
   ) => unknown;
 }
 
-export interface DirectoryApiForFolderApi extends DirectoryForAdapter {}
+export interface DirectoryForDocumentFolder extends DirectoryForAdapter {}

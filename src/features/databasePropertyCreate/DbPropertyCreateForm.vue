@@ -6,7 +6,7 @@ import {
 } from '../../shared/lib/databaseDocument/property/property';
 import type { PropertyId } from '../../shared/lib/databaseDocument';
 import type { CFRDocument } from '../../shared/lib/cfrDocument';
-import { createDatabaseApi } from '../../shared/lib/databaseDocument/createDatabaseApi';
+import { createDatabaseDocument } from '../../shared/lib/databaseDocument/createDatabaseDocument';
 
 const stateName = ref<string>();
 
@@ -18,12 +18,12 @@ const emit = defineEmits<{
 }>();
 
 const props = defineProps<{
-  documentApi: CFRDocument;
+  cfrDocument: CFRDocument;
 }>();
 
 const onSubmit = () => {
   if (stateName.value?.length && stateType.value) {
-    const { addProperty } = createDatabaseApi(props.documentApi);
+    const { addProperty } = createDatabaseDocument(props.cfrDocument);
 
     const propertyId = addProperty({
       name: stateName.value,
