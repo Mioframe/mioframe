@@ -3,32 +3,28 @@ import { computed, ref, shallowRef, watch } from 'vue';
 import { useDocumentFolder } from '../../entities/folder/useDocumentFolder';
 import { MenuFolder } from '../../entities/folder';
 import type { CFRDocument, DocumentFolder } from '../../shared/lib/cfrDocument';
-import { createDocumentFolder } from '../../shared/lib/cfrDocument';
-import { createLocalDirectory } from '../../shared/lib/localFileSystem';
-import { usePickDirectory } from '../../features/directoryPick';
-import CreateDocumentForm from '../../features/documentCreat/DocumentCreationForm.vue';
+import { CreateDocumentForm } from '../../features/documentCreat';
 import { ModalCard } from '../../shared/ui/ModalCard';
 import type { DocumentId } from '@automerge/automerge-repo';
 import { DocumentRemoveForm } from '../../features/documentRemove';
 import { WorkspaceFrame } from '../WorkspaceFrame';
-import SlidingPanel from '../../shared/ui/SlidingPanel/SlidingPanel.vue';
-import DocumentPanel from '../DocumentPanel/DocumentPanel.vue';
+import { SlidingPanel } from '../../shared/ui/SlidingPanel';
+import { DocumentPanel } from '../DocumentPanel';
 import { createDatabaseDocument } from '../../shared/lib/databaseDocument/createDatabaseDocument';
 import { createLogger } from '../../shared/lib/logger';
+import DirectoryPickForm from '../../features/directoryPick/DirectoryPickForm.vue';
 
 const { debug } = createLogger('MainView');
 
-const { pickedDirectoryHandler, showPicker } = usePickDirectory();
+const selectedDocumentFolder = ref<DocumentFolder>();
 
-const documentFolder = computed((): DocumentFolder | undefined =>
-  pickedDirectoryHandler.value
-    ? createDocumentFolder(createLocalDirectory(pickedDirectoryHandler.value))
-    : undefined,
-);
+const openSelectDirectory = ref(false);
 
-const onClickSelectDirectory = showPicker;
+const onClickSelectDirectory = () => {
+  openSelectDirectory.value = true;
+};
 
-const { content: contentFolderMap } = useDocumentFolder(documentFolder);
+const { content: contentFolderMap } = useDocumentFolder(selectedDocumentFolder);
 
 const contentFolderSize = computed(() => contentFolderMap.value.size);
 
@@ -76,6 +72,15 @@ const onClickFolder = (_documentId: DocumentId, cfrDocument: CFRDocument) => {
 const openBottomMenu = ref(true);
 
 const isOpenPanel = ref(true);
+
+const onSubmitDirectoryPick = (documentFolder: DocumentFolder) => {
+  selectedDocumentFolder.value = documentFolder;
+  openSelectDirectory.value = false;
+};
+
+const onCancelDirectoryPick = () => {
+  openSelectDirectory.value = false;
+};
 </script>
 
 <template>
@@ -135,7 +140,7 @@ const isOpenPanel = ref(true);
           </MenuFolder>
 
           <ul class="menu-list">
-            <li v-if="documentFolder">
+            <li v-if="selectedDocumentFolder">
               <button
                 type="button"
                 class="button is-link"
@@ -167,17 +172,24 @@ const isOpenPanel = ref(true);
       </div>
     </SlidingPanel>
 
-    <ModalCard v-if="documentFolder && isDisplayedDocumentCreationForm">
+    <ModalCard v-if="openSelectDirectory">
+      <DirectoryPickForm
+        @submit="onSubmitDirectoryPick"
+        @cancel="onCancelDirectoryPick"
+      />
+    </ModalCard>
+
+    <ModalCard v-if="selectedDocumentFolder && isDisplayedDocumentCreationForm">
       <CreateDocumentForm
-        :document-folder="documentFolder"
+        :document-folder="selectedDocumentFolder"
         @cancel="onCancelCreateDocument"
         @created="onCreatedDocument"
       />
     </ModalCard>
 
-    <ModalCard v-if="documentFolder && documentIdForRemove">
+    <ModalCard v-if="selectedDocumentFolder && documentIdForRemove">
       <DocumentRemoveForm
-        :document-folder="documentFolder"
+        :document-folder="selectedDocumentFolder"
         :document-id="documentIdForRemove"
         @cancel="onCancelRemove"
         @removed="onRemoved"

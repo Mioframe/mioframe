@@ -28,16 +28,8 @@ export const createGDriveFile = (
     await gdrive.files.delete({ fileId: currentFileId });
   };
 
-  const read = async (): Promise<File> => {
-    const { body } = await gdrive.files.get({
-      fileId: currentFileId,
-      alt: 'media',
-    });
-
-    const file = new File([body], currentName);
-
-    return file;
-  };
+  const read = async (): Promise<File> =>
+    await gdrive.downloadFile(currentFileId, currentName);
 
   const currentGDriveFile: GDriveFile = {
     getName,

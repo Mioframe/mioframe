@@ -1,10 +1,7 @@
-import { createLogger } from '../logger';
 import { createGDriveFile as createGDriveFile } from './createGDriveFile';
 import type { AdvancedGDrive } from './getGDrive';
 import type { GDriveFile } from './types';
 import { GOOGLE_FOLDER_MIME_TYPE, type GDriveDirectory } from './types';
-
-const { debug } = createLogger('createGDriveDirectory');
 
 export const createGDriveDirectory = (
   gdrive: AdvancedGDrive,
@@ -90,8 +87,7 @@ export const createGDriveDirectory = (
       throw new Error('failed to create file');
     }
     if (file) {
-      const { result } = await gdrive.uploadFile(fileId, file);
-      debug('result', result);
+      await gdrive.uploadFile(fileId, file);
     }
     return createGDriveFile(gdrive, fileId, name);
   };
