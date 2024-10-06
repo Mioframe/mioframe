@@ -2,8 +2,9 @@ import type { Doc, DocumentId } from '@automerge/automerge-repo';
 import type { ReadonlyDeep } from 'type-fest';
 import type { TypeOf } from 'zod';
 import { object, string, unknown } from 'zod';
+import type { DirectoryForAdapter } from '../fsStorageAdapter';
 
-export const zodDocument = object({
+export const zodDocumentContent = object({
   name: string(),
   type: string(),
   body: unknown(),
@@ -12,10 +13,10 @@ export const zodDocument = object({
 /**
  * Conflict-free Replicated Document
  */
-export type CRDocument = TypeOf<typeof zodDocument>;
+export type DocumentContent = TypeOf<typeof zodDocumentContent>;
 
 // частично совместим с DocHandle
-export interface DocumentApi<T extends CRDocument = CRDocument> {
+export interface CFRDocument<T extends DocumentContent = DocumentContent> {
   doc(): Promise<ReadonlyDeep<Doc<T>> | undefined>;
   delete(): void;
   change(callback: (doc: T) => void): void;
@@ -23,16 +24,18 @@ export interface DocumentApi<T extends CRDocument = CRDocument> {
   off: (event: 'change', fn: (payload: { doc: T }) => unknown) => void;
 }
 
-export interface FolderApi {
-  create: <Z extends typeof zodDocument>(
+export interface DocumentFolder {
+  create: <Z extends typeof zodDocumentContent>(
     initialValue: TypeOf<Z>,
-  ) => DocumentApi<TypeOf<Z>>;
+  ) => CFRDocument<TypeOf<Z>>;
   remove: (documentId: DocumentId) => void;
-  getContent: () => Promise<Map<DocumentId, DocumentApi>>;
+  getContent: () => Promise<Map<DocumentId, CFRDocument>>;
   onChange: (
-    handler: (content: Map<DocumentId, DocumentApi>) => unknown,
+    handler: (content: Map<DocumentId, CFRDocument>) => unknown,
   ) => unknown;
   offChange: (
-    handler: (content: Map<DocumentId, DocumentApi>) => unknown,
+    handler: (content: Map<DocumentId, CFRDocument>) => unknown,
   ) => unknown;
 }
+
+export interface DirectoryForDocumentFolder extends DirectoryForAdapter {}

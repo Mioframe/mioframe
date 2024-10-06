@@ -2,33 +2,33 @@
 import { ModalCard } from '../../shared/ui/ModalCard';
 import { DbPropertyCreateForm } from '../../features/databasePropertyCreate';
 import { computed, ref, toRef } from 'vue';
-import type { DocumentApi } from '../../shared/lib/documentApi';
-import { useDocument } from '../../entities/document';
+import type { CFRDocument } from '../../shared/lib/cfrDocument';
+import { useCFRDocument } from '../../entities/document';
 import type { Item } from '../../shared/lib/databaseDocument';
 import { DATABASE_DOCUMENT_TYPE } from '../../shared/lib/databaseDocument';
 import { DbPropertyRemoveForm } from '../../features/databasePropertyRemove';
 import { DbItemAdd } from '../../features/databaseItemAdd';
 import { PropertyStingField } from '../../features/propertyStringEdit';
 import { useDatabaseDocument } from '../../entities/database/useDatabaseDocument';
-import { createDatabaseApi } from '../../shared/lib/databaseDocument/createDatabaseApi';
+import { createDatabaseDocument } from '../../shared/lib/databaseDocument/createDatabaseDocument';
 import { PropertyNumberField } from '../../features/propertyNumberEdit';
 import { PropertyBooleanField } from '../../features/propertyBooleanEdit';
 
 const props = defineProps<{
-  documentApi: DocumentApi;
+  cfrDocument: CFRDocument;
 }>();
 
-const documentApiRef = toRef(() => props.documentApi);
+const cfrDocument = toRef(() => props.cfrDocument);
 
-const { doc } = useDocument(documentApiRef);
+const { doc } = useCFRDocument(cfrDocument);
 
-const databaseApiRef = computed(() =>
+const databaseDocument = computed(() =>
   doc.value?.type === DATABASE_DOCUMENT_TYPE
-    ? createDatabaseApi(props.documentApi)
+    ? createDatabaseDocument(props.cfrDocument)
     : undefined,
 );
 
-const { properties: databaseProperies } = useDatabaseDocument(databaseApiRef);
+const { properties: databaseProperies } = useDatabaseDocument(databaseDocument);
 
 const documentType = computed(() => doc.value?.type);
 
@@ -51,7 +51,7 @@ const hasItemAdd = computed(
 );
 
 const onAddItem = () => {
-  databaseApiRef.value?.addItem(stateNewItem.value);
+  databaseDocument.value?.addItem(stateNewItem.value);
   isShowItemAdd.value = false;
 };
 
@@ -94,7 +94,7 @@ const stateNewItem = ref<Item>({});
 
     <ModalCard v-if="isShowPropertyCreate">
       <DbPropertyCreateForm
-        :document-api="documentApi"
+        :cfr-document="cfrDocument"
         @canceled="isShowPropertyCreate = false"
         @created="isShowPropertyCreate = false"
       />
@@ -102,7 +102,7 @@ const stateNewItem = ref<Item>({});
 
     <ModalCard v-if="isShowPropertyRemove">
       <DbPropertyRemoveForm
-        :document-api="documentApi"
+        :cfr-document="cfrDocument"
         @canceled="isShowPropertyRemove = false"
         @removed="isShowPropertyRemove = false"
       />

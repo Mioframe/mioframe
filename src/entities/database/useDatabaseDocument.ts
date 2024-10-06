@@ -3,21 +3,21 @@ import type { PartialDeep } from 'type-fest';
 import { type Ref, ref, watch, computed } from 'vue';
 import { replaceObject } from '../../shared/lib/changeObject';
 import type {
-  DatabaseApi,
+  DatabaseDocument,
   DataBaseStateLatest,
   AnyProperty,
   PropertyId,
-  DatabaseDocument,
+  DatabaseDocumentContent,
 } from '../../shared/lib/databaseDocument';
 
 export const useDatabaseDocument = (
-  databaseApi: Ref<DatabaseApi | undefined>,
+  databaseDocumentRef: Ref<DatabaseDocument | undefined>,
 ) => {
   const databaseState = ref<DataBaseStateLatest>();
 
   let offChange: (() => void) | undefined;
 
-  const changeDatabaseState = (doc?: DatabaseDocument) => {
+  const changeDatabaseState = (doc?: DatabaseDocumentContent) => {
     if (!databaseState.value) {
       databaseState.value = cloneDeep(doc?.body);
     } else {
@@ -26,13 +26,13 @@ export const useDatabaseDocument = (
   };
 
   watch(
-    databaseApi,
-    async (databaseApi) => {
+    databaseDocumentRef,
+    async (databaseDocument) => {
       offChange?.();
       offChange = undefined;
-      if (databaseApi) {
-        offChange = databaseApi.onChange(changeDatabaseState);
-        const doc = await databaseApi.read();
+      if (databaseDocument) {
+        offChange = databaseDocument.onChange(changeDatabaseState);
+        const doc = await databaseDocument.read();
         changeDatabaseState(doc);
       }
     },
@@ -40,16 +40,16 @@ export const useDatabaseDocument = (
   );
 
   const addProperty = (property: AnyProperty) =>
-    databaseApi.value?.addProperty(property);
+    databaseDocumentRef.value?.addProperty(property);
 
   const removeProperty = (propertyId: PropertyId) => {
-    databaseApi.value?.removeProperty(propertyId);
+    databaseDocumentRef.value?.removeProperty(propertyId);
   };
 
   const updateProperty = (
     propertyId: PropertyId,
     partialProperty: PartialDeep<AnyProperty>,
-  ) => databaseApi.value?.updateProperty(propertyId, partialProperty);
+  ) => databaseDocumentRef.value?.updateProperty(propertyId, partialProperty);
 
   const properties = computed(() => databaseState.value?.properties);
 

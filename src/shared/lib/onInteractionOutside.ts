@@ -1,6 +1,6 @@
 import type { MaybeRef } from 'vue';
 import { onBeforeUnmount, computed, watch } from 'vue';
-import { createLogModule } from './logger';
+import { createLogger } from './logger';
 import { toValue, unrefElement, type MaybeElementRef } from '@vueuse/core';
 import { throttle } from 'lodash-es';
 
@@ -12,7 +12,7 @@ type InteractionOutsideOptions = {
   throttleWait?: number; // Опция для троттлинга
 };
 
-const { debug } = createLogModule('onInteractionOutside');
+const { debug } = createLogger('onInteractionOutside');
 
 export const onInteractionOutside = (
   target: MaybeElementRef, // Массив targetRef

@@ -1,22 +1,22 @@
 <script setup lang="ts">
 import { JSONEditor } from 'vanilla-jsoneditor';
 import { computed, ref, shallowRef, toRef, watch, watchEffect } from 'vue';
-import type { DocumentApi } from '../../shared/lib/documentApi';
-import { useDocument } from '../../entities/document/useDocument';
+import type { CFRDocument } from '../../shared/lib/cfrDocument';
+import { useCFRDocument } from '../../entities/document/useCFRDocument';
 import { cloneDeep } from 'lodash-es';
-import { createLogModule } from '../../shared/lib/logger';
+import { createLogger } from '../../shared/lib/logger';
 import { isUnknownRecord } from '../../shared/lib/changeObject/isUnknownRecord';
 import { replaceObject } from '../../shared/lib/changeObject/replaceObject';
 
-const { debug } = createLogModule('DocumentEditForm');
+const { debug } = createLogger('DocumentEditForm');
 
 const props = defineProps<{
-  documentApi: DocumentApi;
+  cfrDocument: CFRDocument;
 }>();
 
-const documentApi = toRef(() => props.documentApi);
+const cfrDocument = toRef(() => props.cfrDocument);
 
-const { doc, cahnge } = useDocument(documentApi);
+const { doc, cahnge } = useCFRDocument(cfrDocument);
 
 const mainElement = ref<HTMLElement>();
 

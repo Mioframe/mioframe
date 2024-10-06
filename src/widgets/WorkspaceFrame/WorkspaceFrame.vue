@@ -1,13 +1,13 @@
 <script setup lang="ts">
 import { computed, ref, toRef, watchEffect } from 'vue';
-import type { DocumentApi } from '../../shared/lib/documentApi';
-import { useDocument } from '../../entities/document/useDocument';
-import { createLogModule } from '../../shared/lib/logger';
+import type { CFRDocument } from '../../shared/lib/cfrDocument';
+import { useCFRDocument } from '../../entities/document/useCFRDocument';
+import { createLogger } from '../../shared/lib/logger';
 import { DocumentEditForm } from '../../features/documentEdit';
 import DatabaseView from '../../entities/database/DatabaseView.vue';
 import {
   DATABASE_DOCUMENT_TYPE,
-  zodDatabaseDocument,
+  zodDatabaseDocumentContent,
 } from '../../shared/lib/databaseDocument/types';
 import { is } from '../../shared/lib/validateZodScheme';
 import ValueBooleanInline from '../../entities/value/ValueBooleanInline.vue';
@@ -21,22 +21,22 @@ import { ContextBtn } from '../../shared/ui/ContextButton';
 import type { MenuItem } from '../../shared/ui/ContextButton/ContextButton.vue';
 import { ModalCard } from '../../shared/ui/ModalCard';
 import { DbItemRemoveForm } from '../../features/databaseItemRemove';
-import { createDatabaseApi } from '../../shared/lib/databaseDocument/createDatabaseApi';
+import { createDatabaseDocument } from '../../shared/lib/databaseDocument/createDatabaseDocument';
 import type { ItemId } from '../../shared/lib/databaseDocument/item';
 
-const { debug } = createLogModule('WorkspaceFarame');
+const { debug } = createLogger('WorkspaceFarame');
 
 const props = defineProps<{
-  documentApi: DocumentApi;
+  cfrDocument: CFRDocument;
 }>();
 
 defineSlots<{
-  default(p: { documentApi: DocumentApi; documentType: string }): unknown;
+  default(p: { cfrDocument: CFRDocument; documentType: string }): unknown;
 }>();
 
-const documentApi = toRef(() => props.documentApi);
+const cfrDocument = toRef(() => props.cfrDocument);
 
-const { doc, cahnge } = useDocument(documentApi);
+const { doc, cahnge } = useCFRDocument(cfrDocument);
 
 const stateName = ref<string>();
 
@@ -58,14 +58,14 @@ const onChangeName = () => {
 
 const documentType = computed(() => doc.value?.type ?? 'unknown');
 
-const databaseApi = computed(() =>
+const databaseDocument = computed(() =>
   documentType.value === DATABASE_DOCUMENT_TYPE
-    ? createDatabaseApi(documentApi.value)
+    ? createDatabaseDocument(cfrDocument.value)
     : undefined,
 );
 
 const databaseDocumentState = computed(() =>
-  is(doc.value, zodDatabaseDocument) ? doc.value.body : undefined,
+  is(doc.value, zodDatabaseDocumentContent) ? doc.value.body : undefined,
 );
 
 enum ItemEvents {
@@ -111,7 +111,7 @@ const onClickContextItem = (eventName: ItemEvents, itemId: ItemId) => {
       </section>
     </form>
 
-    <slot :document-api :document-type>
+    <slot :cfr-document :document-type>
       <DatabaseView
         v-if="databaseDocumentState"
         :database-state="databaseDocumentState"
@@ -148,14 +148,14 @@ const onClickContextItem = (eventName: ItemEvents, itemId: ItemId) => {
 
       <DocumentEditForm
         v-else
-        :document-api
+        :cfr-document
         class="is-flex is-flex-direction-column is-flex-grow-1"
       />
     </slot>
 
-    <ModalCard v-if="databaseApi && itemIdToRemove">
+    <ModalCard v-if="databaseDocument && itemIdToRemove">
       <DbItemRemoveForm
-        :database-api="databaseApi"
+        :database-document="databaseDocument"
         :item-id="itemIdToRemove"
         @cancel="itemIdToRemove = undefined"
         @removed="itemIdToRemove = undefined"

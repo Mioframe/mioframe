@@ -1,12 +1,12 @@
 <script setup lang="ts">
-import { useDocument } from './useDocument';
-import type { DocumentApi } from '../../shared/lib/documentApi';
+import { useCFRDocument } from './useCFRDocument';
+import type { CFRDocument } from '../../shared/lib/cfrDocument';
 import { computed, toRef } from 'vue';
 import { TreeItem } from '../../shared/ui/TreeMenu';
 import type { DocumentId } from '@automerge/automerge-repo';
 
 const props = defineProps<{
-  documentApi: DocumentApi;
+  cfrDocument: CFRDocument;
   documentId: DocumentId;
 }>();
 
@@ -15,17 +15,17 @@ defineSlots<{
 }>();
 
 const emit = defineEmits<{
-  click: [documentId: DocumentId, documentApi: DocumentApi];
+  click: [documentId: DocumentId, cfrDocument: CFRDocument];
 }>();
 
-const documentApi = toRef(() => props.documentApi);
+const cfrDocumentRef = useCFRDocument(toRef(() => props.cfrDocument));
 
-const document = useDocument(documentApi);
-
-const documentName = computed(() => document.doc.value?.name ?? 'nameless');
+const documentName = computed(
+  () => cfrDocumentRef.doc.value?.name ?? 'nameless',
+);
 
 const onClickItem = () => {
-  emit('click', props.documentId, props.documentApi);
+  emit('click', props.documentId, props.cfrDocument);
 };
 </script>
 

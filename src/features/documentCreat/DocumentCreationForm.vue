@@ -1,14 +1,14 @@
 <script setup lang="ts">
 import { ref, watchEffect } from 'vue';
-import type { DocumentApi, FolderApi } from '../../shared/lib/documentApi';
+import type { CFRDocument, DocumentFolder } from '../../shared/lib/cfrDocument';
 import { DATABASE_DOCUMENT_TYPE } from '../../shared/lib/databaseDocument';
 
 const props = defineProps<{
-  folderApi: FolderApi;
+  documentFolder: DocumentFolder;
 }>();
 
 const emit = defineEmits<{
-  created: [documentApi: DocumentApi];
+  created: [cfrDocument: CFRDocument];
   cancel: [];
 }>();
 
@@ -18,12 +18,12 @@ const onSubmitCreate = () => {
   if (!stateName.value?.length) {
     throw new Error('name is undefined');
   }
-  const newDocumentApi: DocumentApi = props.folderApi.create({
+  const newCFRDocument: CFRDocument = props.documentFolder.create({
     name: stateName.value,
     type: documentType.value,
   });
 
-  emit('created', newDocumentApi);
+  emit('created', newCFRDocument);
 };
 
 const onResetCreate = () => {

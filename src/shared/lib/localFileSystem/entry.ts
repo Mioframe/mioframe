@@ -1,19 +1,19 @@
-import type { DirectoryEntryFSApi, EntryFileSystemApi } from './types';
+import type { LocalDirectory, LocalEntry } from './types';
 
-export const createEntryApi = (
+export const createLocalEntry = (
   currentHandle: FileSystemHandle,
-  parentEntryApi?: DirectoryEntryFSApi,
-): EntryFileSystemApi => {
+  parentLocalDirectory?: LocalDirectory,
+): LocalEntry => {
   const remove = async () => {
-    if (parentEntryApi) {
-      await parentEntryApi.removeByName(currentHandle.name);
+    if (parentLocalDirectory) {
+      await parentLocalDirectory.removeByName(currentHandle.name);
     } else {
       throw new Error('root Entry cannot be remove');
     }
   };
 
   const getPath = () => {
-    const parentPath = parentEntryApi?.getPath() ?? [];
+    const parentPath = parentLocalDirectory?.getPath() ?? [];
 
     return parentPath.concat([getName()]);
   };
