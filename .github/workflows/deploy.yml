@@ -26,6 +26,8 @@ jobs:
     - name: Install dependencies
       run: bun install
     - name: Build
+      env:
+        VITE_GOOGLE_CLIENT_ID: ${{ secrets.VITE_GOOGLE_CLIENT_ID }}
       run: bun run build
     - name: Setup Pages
       uses: actions/configure-pages@v5
