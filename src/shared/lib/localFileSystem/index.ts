@@ -1,5 +1,5 @@
 export type * from './types';
-export { createDirectoryEntryApi } from './directoryEntry';
-export { createFileEntryApi } from './fileEntry';
+export { createLocalDirectory } from './directory';
+export { createLocalFile } from './file';
 
 // todo: добавить обработку поведения (копирование/переименование с перезаписью, перемещение с перезаписью и т.п.)

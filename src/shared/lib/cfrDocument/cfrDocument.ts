@@ -1,18 +1,18 @@
 import { cloneDeep } from 'lodash-es';
-import { createLogModule } from '../logger';
+import { createLogger } from '../logger';
 import { parseSelf } from '../validateZodScheme';
-import type { DocumentApi } from './types';
-import { zodDocument, type CRDocument } from './types';
+import type { CFRDocument } from './types';
+import { zodDocumentContent, type DocumentContent } from './types';
 import type { ChangeFn } from '@automerge/automerge-repo';
 
-const { debug } = createLogModule('createDocumentApi');
+const { debug } = createLogger('createCFRDocument');
 
-export const createDocumentApi = (docHandle: DocumentApi): DocumentApi => {
+export const createCFRDocument = (docHandle: CFRDocument): CFRDocument => {
   const doc = async () => {
     debug('doc');
     const originalDoc = await docHandle.doc();
 
-    const parsedDoc = parseSelf(originalDoc, zodDocument);
+    const parsedDoc = parseSelf(originalDoc, zodDocumentContent);
     debug('doc return', cloneDeep(parsedDoc));
     return parsedDoc;
   };
@@ -22,28 +22,28 @@ export const createDocumentApi = (docHandle: DocumentApi): DocumentApi => {
     docHandle.delete();
   };
 
-  const change = (callback: ChangeFn<CRDocument>) => {
+  const change = (callback: ChangeFn<DocumentContent>) => {
     debug('change');
     docHandle.change((doc) => {
-      callback(parseSelf(doc, zodDocument));
+      callback(parseSelf(doc, zodDocumentContent));
     });
   };
 
   const eventsMap = new Map<
     // outside
-    (payload: { doc: CRDocument }) => unknown,
+    (payload: { doc: DocumentContent }) => unknown,
     // inside
-    (payload: { doc: CRDocument }) => unknown
+    (payload: { doc: DocumentContent }) => unknown
   >();
 
   const on = (
     event: 'change',
-    fn: (payload: { doc: CRDocument }) => unknown,
+    fn: (payload: { doc: DocumentContent }) => unknown,
   ) => {
     debug('on change');
-    const insideFn = ({ doc }: { doc: CRDocument }) => {
+    const insideFn = ({ doc }: { doc: DocumentContent }) => {
       debug('change handler');
-      fn({ doc: parseSelf(doc, zodDocument) });
+      fn({ doc: parseSelf(doc, zodDocumentContent) });
     };
     eventsMap.set(fn, insideFn);
     docHandle.on(event, insideFn);
@@ -51,7 +51,7 @@ export const createDocumentApi = (docHandle: DocumentApi): DocumentApi => {
 
   const off = (
     event: 'change',
-    fn: (payload: { doc: CRDocument }) => unknown,
+    fn: (payload: { doc: DocumentContent }) => unknown,
   ) => {
     debug('off change');
     const insideFn = eventsMap.get(fn);
@@ -61,7 +61,7 @@ export const createDocumentApi = (docHandle: DocumentApi): DocumentApi => {
     }
   };
 
-  const documentApi: DocumentApi = {
+  const cfrDocument: CFRDocument = {
     doc,
     delete: del,
     change,
@@ -69,5 +69,5 @@ export const createDocumentApi = (docHandle: DocumentApi): DocumentApi => {
     off,
   };
 
-  return documentApi;
+  return cfrDocument;
 };

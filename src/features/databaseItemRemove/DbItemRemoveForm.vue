@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import { ref } from 'vue';
 import type { ItemId } from '../../shared/lib/databaseDocument/item';
-import type { DatabaseApi } from '../../shared/lib/databaseDocument';
+import type { DatabaseDocument } from '../../shared/lib/databaseDocument';
 
 const props = defineProps<{
-  databaseApi: DatabaseApi;
+  databaseDocument: DatabaseDocument;
   itemId: ItemId;
 }>();
 
@@ -18,7 +18,7 @@ const loading = ref(0);
 const onSubmit = () => {
   loading.value += 1;
   try {
-    props.databaseApi.removeItem(props.itemId);
+    props.databaseDocument.removeItem(props.itemId);
     emit('removed');
   } finally {
     loading.value -= 1;

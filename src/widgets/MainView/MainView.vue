@@ -1,34 +1,30 @@
 <script setup lang="ts">
 import { computed, ref, shallowRef, watch } from 'vue';
-import { useFolder } from '../../entities/folder/useFolder';
+import { useDocumentFolder } from '../../entities/folder/useDocumentFolder';
 import { MenuFolder } from '../../entities/folder';
-import type { DocumentApi, FolderApi } from '../../shared/lib/documentApi';
-import { createFolderApi } from '../../shared/lib/documentApi';
-import { createDirectoryEntryApi } from '../../shared/lib/fileSystemApi';
-import { usePickDirectory } from '../../features/directoryPick';
-import CreateDocumentForm from '../../features/documentCreat/DocumentCreationForm.vue';
+import type { CFRDocument, DocumentFolder } from '../../shared/lib/cfrDocument';
+import { CreateDocumentForm } from '../../features/documentCreat';
 import { ModalCard } from '../../shared/ui/ModalCard';
 import type { DocumentId } from '@automerge/automerge-repo';
 import { DocumentRemoveForm } from '../../features/documentRemove';
 import { WorkspaceFrame } from '../WorkspaceFrame';
-import SlidingPanel from '../../shared/ui/SlidingPanel/SlidingPanel.vue';
-import DocumentPanel from '../DocumentPanel/DocumentPanel.vue';
-import { createDatabaseApi } from '../../shared/lib/databaseDocument/createDatabaseApi';
-import { createLogModule } from '../../shared/lib/logger';
+import { SlidingPanel } from '../../shared/ui/SlidingPanel';
+import { DocumentPanel } from '../DocumentPanel';
+import { createDatabaseDocument } from '../../shared/lib/databaseDocument/createDatabaseDocument';
+import { createLogger } from '../../shared/lib/logger';
+import DirectoryPickForm from '../../features/directoryPick/DirectoryPickForm.vue';
 
-const { debug } = createLogModule('MainView');
+const { debug } = createLogger('MainView');
 
-const { pickedDirectoryHandler, showPicker } = usePickDirectory();
+const selectedDocumentFolder = ref<DocumentFolder>();
 
-const folderApi = computed((): FolderApi | undefined =>
-  pickedDirectoryHandler.value
-    ? createFolderApi(createDirectoryEntryApi(pickedDirectoryHandler.value))
-    : undefined,
-);
+const openSelectDirectory = ref(false);
 
-const onClickSelectDirectory = showPicker;
+const onClickSelectDirectory = () => {
+  openSelectDirectory.value = true;
+};
 
-const { content: contentFolderMap } = useFolder(folderApi);
+const { content: contentFolderMap } = useDocumentFolder(selectedDocumentFolder);
 
 const contentFolderSize = computed(() => contentFolderMap.value.size);
 
@@ -63,12 +59,12 @@ const onCancelRemove = () => {
 
 const onRemoved = onCancelRemove;
 
-const selectedDocumentApi = shallowRef<DocumentApi>();
+const selectedCFRDocument = shallowRef<CFRDocument>();
 
-const onClickFolder = (_documentId: DocumentId, documentApi: DocumentApi) => {
-  const databaseApi = createDatabaseApi(documentApi);
-  debug('onClickFolder', databaseApi);
-  selectedDocumentApi.value = documentApi;
+const onClickFolder = (_documentId: DocumentId, cfrDocument: CFRDocument) => {
+  const databaseDocument = createDatabaseDocument(cfrDocument);
+  debug('onClickFolder', databaseDocument);
+  selectedCFRDocument.value = cfrDocument;
   openBottomMenu.value = false;
   isOpenPanel.value = false;
 };
@@ -76,6 +72,15 @@ const onClickFolder = (_documentId: DocumentId, documentApi: DocumentApi) => {
 const openBottomMenu = ref(true);
 
 const isOpenPanel = ref(true);
+
+const onSubmitDirectoryPick = (documentFolder: DocumentFolder) => {
+  selectedDocumentFolder.value = documentFolder;
+  openSelectDirectory.value = false;
+};
+
+const onCancelDirectoryPick = () => {
+  openSelectDirectory.value = false;
+};
 </script>
 
 <template>
@@ -83,8 +88,8 @@ const isOpenPanel = ref(true);
     class="is-flex is-flex-direction-column is-flex-grow-1 is-justify-content-flex-end is-overflow-auto"
   >
     <WorkspaceFrame
-      v-if="selectedDocumentApi"
-      :document-api="selectedDocumentApi"
+      v-if="selectedCFRDocument"
+      :cfr-document="selectedCFRDocument"
       class="is-flex-grow-1 is-flex-shrink-1"
     />
 
@@ -106,8 +111,8 @@ const isOpenPanel = ref(true);
         </button>
 
         <DocumentPanel
-          v-if="selectedDocumentApi"
-          :document-api="selectedDocumentApi"
+          v-if="selectedCFRDocument"
+          :cfr-document="selectedCFRDocument"
         />
 
         <div class="menu">
@@ -135,7 +140,7 @@ const isOpenPanel = ref(true);
           </MenuFolder>
 
           <ul class="menu-list">
-            <li v-if="folderApi">
+            <li v-if="selectedDocumentFolder">
               <button
                 type="button"
                 class="button is-link"
@@ -167,17 +172,24 @@ const isOpenPanel = ref(true);
       </div>
     </SlidingPanel>
 
-    <ModalCard v-if="folderApi && isDisplayedDocumentCreationForm">
+    <ModalCard v-if="openSelectDirectory">
+      <DirectoryPickForm
+        @submit="onSubmitDirectoryPick"
+        @cancel="onCancelDirectoryPick"
+      />
+    </ModalCard>
+
+    <ModalCard v-if="selectedDocumentFolder && isDisplayedDocumentCreationForm">
       <CreateDocumentForm
-        :folder-api="folderApi"
+        :document-folder="selectedDocumentFolder"
         @cancel="onCancelCreateDocument"
         @created="onCreatedDocument"
       />
     </ModalCard>
 
-    <ModalCard v-if="folderApi && documentIdForRemove">
+    <ModalCard v-if="selectedDocumentFolder && documentIdForRemove">
       <DocumentRemoveForm
-        :folder-api="folderApi"
+        :document-folder="selectedDocumentFolder"
         :document-id="documentIdForRemove"
         @cancel="onCancelRemove"
         @removed="onRemoved"

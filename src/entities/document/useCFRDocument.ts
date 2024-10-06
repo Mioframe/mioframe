@@ -1,29 +1,32 @@
 import type { DeepReadonly } from 'vue';
 import { type Ref, ref, watch, readonly } from 'vue';
-import type { DocumentApi, CRDocument } from '../../shared/lib/documentApi';
+import type {
+  CFRDocument,
+  DocumentContent,
+} from '../../shared/lib/cfrDocument';
 import { tryOnScopeDispose } from '@vueuse/core';
-import { createLogModule } from '../../shared/lib/logger';
+import { createLogger } from '../../shared/lib/logger';
 import { replaceObject } from '../../shared/lib/changeObject';
 import type { ReadonlyDeep } from 'type-fest';
 import { cloneDeep } from 'lodash-es';
 
-const { debug } = createLogModule('useDocument');
+const { debug } = createLogger('useDocument');
 
-type RefDocument<T extends CRDocument = CRDocument> = {
+type RefCFRDocument<T extends DocumentContent = DocumentContent> = {
   doc: Readonly<Ref<DeepReadonly<T> | undefined, DeepReadonly<T> | undefined>>;
   cahnge: (
     callback: (doc: { name: string; type: string; body?: unknown }) => void,
   ) => void;
 };
 
-export const useDocument = <T extends CRDocument>(
-  documentApi: Ref<DocumentApi<T> | undefined>,
-): RefDocument => {
+export const useCFRDocument = <T extends DocumentContent>(
+  cfrDocument: Ref<CFRDocument<T> | undefined>,
+): RefCFRDocument => {
   const docState = ref<T>();
 
   const handlerChange = ({ doc: newDoc }: { doc: ReadonlyDeep<T> | T }) => {
     debug('handlerChange', newDoc);
-    if (documentApi.value) {
+    if (cfrDocument.value) {
       if (!docState.value) {
         docState.value = {} as T;
       }
@@ -33,17 +36,17 @@ export const useDocument = <T extends CRDocument>(
   };
 
   watch(
-    documentApi,
-    async (documentApi, old) => {
-      debug('watch documentApi', documentApi, old);
+    cfrDocument,
+    async (cfrDocument, old) => {
+      debug('watch cfrDocument', cfrDocument, old);
       if (old) {
         old.off('change', handlerChange);
       }
 
-      if (documentApi) {
-        documentApi.on('change', handlerChange);
-        const newDoc = await documentApi.doc();
-        debug('watch documentApi newDoc', cloneDeep(newDoc));
+      if (cfrDocument) {
+        cfrDocument.on('change', handlerChange);
+        const newDoc = await cfrDocument.doc();
+        debug('watch cfrDocument newDoc', cloneDeep(newDoc));
         if (newDoc) {
           handlerChange({ doc: newDoc });
         }
@@ -53,12 +56,12 @@ export const useDocument = <T extends CRDocument>(
   );
 
   tryOnScopeDispose(() => {
-    documentApi.value?.off('change', handlerChange);
+    cfrDocument.value?.off('change', handlerChange);
   });
 
   return {
     doc: readonly(docState),
-    cahnge: (...args: Parameters<DocumentApi['change']>) =>
-      documentApi.value?.change(...args),
+    cahnge: (...args: Parameters<CFRDocument['change']>) =>
+      cfrDocument.value?.change(...args),
   };
 };

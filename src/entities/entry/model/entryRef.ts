@@ -1,32 +1,32 @@
 import { reactive, computed, shallowRef, watch } from 'vue';
 import type {
-  DirectoryEntryFSApi,
-  FileEntryFSApi,
-} from '../../../shared/lib/fileSystemApi';
-import { createDirectoryEntryApi } from '../../../shared/lib/fileSystemApi';
+  LocalDirectory,
+  LocalFile,
+} from '../../../shared/lib/localFileSystem';
+import { createLocalDirectory } from '../../../shared/lib/localFileSystem';
 import type { DirectoryEntryRef, DirectoryList, FileEntryRef } from './types';
 import { difference } from 'lodash-es';
 
-const directoryRegistry = new WeakMap<DirectoryEntryRef, DirectoryEntryFSApi>();
+const directoryRegistry = new WeakMap<DirectoryEntryRef, LocalDirectory>();
 
-const createFileEntryRef = (fileEntryApi: FileEntryFSApi): FileEntryRef => {
-  const fileEntryApiRef = shallowRef(fileEntryApi);
+const createFileRef = (localFile: LocalFile): FileEntryRef => {
+  const localFileRef = shallowRef(localFile);
 
-  const label = computed(() => fileEntryApiRef.value.getName());
-  const path = computed(() => fileEntryApiRef.value.getPath());
-  const read = () => fileEntryApiRef.value.read();
-  const remove = () => fileEntryApiRef.value.remove();
+  const label = computed(() => localFileRef.value.getName());
+  const path = computed(() => localFileRef.value.getPath());
+  const read = () => localFileRef.value.read();
+  const remove = () => localFileRef.value.remove();
 
   const rename = async (newName: string) => {
-    fileEntryApiRef.value = await fileEntryApiRef.value.rename(newName);
+    localFileRef.value = await localFileRef.value.rename(newName);
     return currentEntry;
   };
 
   const copyTo = async (dest: DirectoryEntryRef) => {
-    const destApi = directoryRegistry.get(dest);
+    const destLocalDirectory = directoryRegistry.get(dest);
 
-    if (destApi) {
-      fileEntryApiRef.value = await fileEntryApiRef.value.copyTo(destApi);
+    if (destLocalDirectory) {
+      localFileRef.value = await localFileRef.value.copyTo(destLocalDirectory);
       return currentEntry;
     } else {
       throw new Error('destination directory is missing');
@@ -34,10 +34,10 @@ const createFileEntryRef = (fileEntryApi: FileEntryFSApi): FileEntryRef => {
   };
 
   const moveTo = async (dest: DirectoryEntryRef) => {
-    const destApi = directoryRegistry.get(dest);
+    const destLocalDirectory = directoryRegistry.get(dest);
 
-    if (destApi) {
-      fileEntryApiRef.value = await fileEntryApiRef.value.moveTo(destApi);
+    if (destLocalDirectory) {
+      localFileRef.value = await localFileRef.value.moveTo(destLocalDirectory);
       return currentEntry;
     } else {
       throw new Error('destination directory is missing');
@@ -58,14 +58,14 @@ const createFileEntryRef = (fileEntryApi: FileEntryFSApi): FileEntryRef => {
 };
 
 const createDirectoryEntryRef = (
-  directoryEntryApi: DirectoryEntryFSApi,
+  localDirectory: LocalDirectory,
 ): DirectoryEntryRef => {
-  const currentApiRef = shallowRef(directoryEntryApi);
+  const localDirectoryRef = shallowRef(localDirectory);
 
   const stateDirectoryList: DirectoryList = reactive(new Map());
 
   const updateDirectoryList = async () => {
-    const nowEntryList = await currentApiRef.value.getList();
+    const nowEntryList = await localDirectoryRef.value.getList();
 
     const stateNames = Array.from(stateDirectoryList.keys());
     const nowNames = Array.from(nowEntryList.keys());
@@ -80,26 +80,27 @@ const createDirectoryEntryRef = (
           stateDirectoryList.set(name, directoryEntryRef);
           directoryRegistry.set(directoryEntryRef, entry);
         } else {
-          stateDirectoryList.set(name, createFileEntryRef(entry));
+          stateDirectoryList.set(name, createFileRef(entry));
         }
       }
     });
   };
 
   watch(
-    currentApiRef,
-    (currentApiRef, oldCurrentApiRef) => {
-      oldCurrentApiRef?.removeWatcher(updateDirectoryList);
-      currentApiRef.addWatcher(updateDirectoryList);
+    localDirectoryRef,
+    (localDirectory, oldLocalDirectory) => {
+      oldLocalDirectory?.removeWatcher(updateDirectoryList);
+      localDirectory.addWatcher(updateDirectoryList);
     },
     { immediate: true },
   );
 
   const createDirectory = async (name: string): Promise<DirectoryEntryRef> => {
-    const newDirectoryApi = await currentApiRef.value.createDirectory(name);
-    const newDirectoryEntry = createDirectoryEntryRef(newDirectoryApi);
+    const newLocalDirectory =
+      await localDirectoryRef.value.createDirectory(name);
+    const newDirectoryEntry = createDirectoryEntryRef(newLocalDirectory);
 
-    directoryRegistry.set(newDirectoryEntry, newDirectoryApi);
+    directoryRegistry.set(newDirectoryEntry, newLocalDirectory);
 
     return newDirectoryEntry;
   };
@@ -107,14 +108,15 @@ const createDirectoryEntryRef = (
   const copyTo = async (
     dest: DirectoryEntryRef,
   ): Promise<DirectoryEntryRef> => {
-    const destApi = directoryRegistry.get(dest);
+    const destLocalDirectory = directoryRegistry.get(dest);
 
-    if (destApi) {
-      const newDirectoryApi = await currentApiRef.value.copyTo(destApi);
+    if (destLocalDirectory) {
+      const newLocalDirectory =
+        await localDirectoryRef.value.copyTo(destLocalDirectory);
 
-      const newDirectoryEntry = createDirectoryEntryRef(newDirectoryApi);
+      const newDirectoryEntry = createDirectoryEntryRef(newLocalDirectory);
 
-      directoryRegistry.set(newDirectoryEntry, newDirectoryApi);
+      directoryRegistry.set(newDirectoryEntry, newLocalDirectory);
 
       return newDirectoryEntry;
     } else {
@@ -125,14 +127,15 @@ const createDirectoryEntryRef = (
   const moveTo = async (
     dest: DirectoryEntryRef,
   ): Promise<DirectoryEntryRef> => {
-    const destApi = directoryRegistry.get(dest);
+    const destLocalDirectory = directoryRegistry.get(dest);
 
-    if (destApi) {
-      const newDirectoryApi = await currentApiRef.value.moveTo(destApi);
+    if (destLocalDirectory) {
+      const newLocalDirectory =
+        await localDirectoryRef.value.moveTo(destLocalDirectory);
 
-      const newDirectoryEntry = createDirectoryEntryRef(newDirectoryApi);
+      const newDirectoryEntry = createDirectoryEntryRef(newLocalDirectory);
 
-      directoryRegistry.set(newDirectoryEntry, newDirectoryApi);
+      directoryRegistry.set(newDirectoryEntry, newLocalDirectory);
 
       return newDirectoryEntry;
     } else {
@@ -141,17 +144,17 @@ const createDirectoryEntryRef = (
   };
 
   const remove = async () => {
-    await currentApiRef.value.remove();
+    await localDirectoryRef.value.remove();
     directoryRegistry.delete(currentDirectoryEntry);
-    currentApiRef.value.removeWatcher(updateDirectoryList);
+    localDirectoryRef.value.removeWatcher(updateDirectoryList);
   };
 
   const rename = async (newName: string): Promise<DirectoryEntryRef> => {
-    const newDirectoryEntryApi = await currentApiRef.value.rename(newName);
+    const newLocalDirectory = await localDirectoryRef.value.rename(newName);
 
-    currentApiRef.value = newDirectoryEntryApi;
+    localDirectoryRef.value = newLocalDirectory;
 
-    directoryRegistry.set(currentDirectoryEntry, newDirectoryEntryApi);
+    directoryRegistry.set(currentDirectoryEntry, newLocalDirectory);
 
     return currentDirectoryEntry;
   };
@@ -160,9 +163,9 @@ const createDirectoryEntryRef = (
     name: string,
     file?: File,
   ): Promise<FileEntryRef> => {
-    const fileApi = await currentApiRef.value.writeFile(name, file);
+    const localFile = await localDirectoryRef.value.writeFile(name, file);
 
-    const fileEntry = createFileEntryRef(fileApi);
+    const fileEntry = createFileRef(localFile);
 
     stateDirectoryList.set(name, fileEntry);
 
@@ -170,8 +173,8 @@ const createDirectoryEntryRef = (
   };
 
   const list = computed((): DirectoryList => stateDirectoryList);
-  const label = computed(() => currentApiRef.value.getName());
-  const path = computed(() => currentApiRef.value.getPath());
+  const label = computed(() => localDirectoryRef.value.getName());
+  const path = computed(() => localDirectoryRef.value.getPath());
 
   const currentDirectoryEntry: DirectoryEntryRef = reactive({
     createDirectory,
@@ -196,9 +199,9 @@ const createDirectoryEntryRef = (
 export const createRootDirectoryEntryRef = (
   rootHandler: FileSystemDirectoryHandle,
 ): DirectoryEntryRef => {
-  const roodDirectoryEntryApi = createDirectoryEntryApi(rootHandler);
+  const roodLocalDirectory = createLocalDirectory(rootHandler);
 
-  const rootEntry = createDirectoryEntryRef(roodDirectoryEntryApi);
+  const rootEntry = createDirectoryEntryRef(roodLocalDirectory);
 
   return rootEntry;
 };
