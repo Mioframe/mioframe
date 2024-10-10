@@ -47,11 +47,11 @@ const onClickSelectGDrive = async () => {
     const gDrive = await getGDrive(GDRIVE_CLIENT_ID, ['file']);
     if (gDrive) {
       const rootGDDirectory = createGDriveDirectory(gDrive, 'root', 'root');
-      const gList = await rootGDDirectory.getList();
+      const gList = await rootGDDirectory.get();
 
       let gDirectory = gList.get(G_DIRECTORY_NAME);
 
-      if (!gDirectory || !('getList' in gDirectory)) {
+      if (!gDirectory || !('get' in gDirectory)) {
         gDirectory = await rootGDDirectory.createDirectory(G_DIRECTORY_NAME);
       }
 

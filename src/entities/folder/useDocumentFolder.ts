@@ -29,7 +29,7 @@ export const useDocumentFolder = (
       oldDocumentFolder?.offChange(onChangeFolder);
       documentFolder?.onChange(onChangeFolder);
       if (documentFolder) {
-        onChangeFolder(await documentFolder.getContent());
+        onChangeFolder(await documentFolder.get());
       } else {
         folderContent.value.clear();
       }

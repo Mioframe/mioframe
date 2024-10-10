@@ -60,7 +60,7 @@ export const createDocumentFolder = (
     exceptions?: DocumentId[],
   ): Promise<Map<DocumentId, CFRDocument>> => {
     const exceptionsSet = exceptions ? new Set(exceptions) : undefined;
-    const directoryList = await directory.getList();
+    const directoryList = await directory.get();
 
     const currentDocumentSet = new Set<DocumentId>();
 
@@ -134,7 +134,7 @@ export const createDocumentFolder = (
   };
 
   const folder: DocumentFolder = {
-    getContent: getFSContent,
+    get: getFSContent,
     create,
     onChange,
     offChange,

@@ -1,11 +1,11 @@
 <script lang="ts" setup>
 import { computed } from 'vue';
-import type { DirectoryEntryRef, DirectoryList, FileEntryRef } from './model';
+import type { LocalDirectoryRef, DirectoryList, LocalFileRef } from './model';
 import { TreeList } from '../../shared/ui/TreeMenu';
 
 const props = defineProps<{
-  directoryEntry: DirectoryEntryRef;
-  activeEntry?: DirectoryEntryRef | FileEntryRef;
+  directoryEntry: LocalDirectoryRef;
+  activeEntry?: LocalDirectoryRef | LocalFileRef;
 }>();
 
 const entityList = computed((): DirectoryList => props.directoryEntry.list);
@@ -20,14 +20,14 @@ const activeKey = computed(() => {
 });
 
 const emit = defineEmits<{
-  click: [entry: DirectoryEntryRef | FileEntryRef];
+  click: [entry: LocalDirectoryRef | LocalFileRef];
 }>();
 
 defineSlots<{
-  contextMenu(props: { entry: DirectoryEntryRef | FileEntryRef }): unknown;
+  contextMenu(props: { entry: LocalDirectoryRef | LocalFileRef }): unknown;
 }>();
 
-const onClick = (_: string, item: DirectoryEntryRef | FileEntryRef) => {
+const onClick = (_: string, item: LocalDirectoryRef | LocalFileRef) => {
   emit('click', item);
 };
 </script>

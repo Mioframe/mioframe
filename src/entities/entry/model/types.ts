@@ -10,36 +10,36 @@ export interface EntryRef {
   readonly path: string[];
 }
 
-export type DirectoryList = Map<string, DirectoryEntryRef | FileEntryRef>;
+export type DirectoryList = Map<string, LocalDirectoryRef | LocalFileRef>;
 
-export interface DirectoryEntryRef extends EntryRef {
+export interface LocalDirectoryRef extends EntryRef {
   /**
    * Creates a subdirectory
    */
-  createDirectory: (name: string) => Promise<DirectoryEntryRef>;
+  createDirectory: (name: string) => Promise<LocalDirectoryRef>;
   /**
    * Writes a file to this directory
    */
-  writeFile: (name: string, file?: File) => Promise<FileEntryRef>;
+  writeFile: (name: string, file?: File) => Promise<LocalFileRef>;
   /**
    * Copies this directory to the destination directory
    */
-  copyTo: (dest: DirectoryEntryRef) => Promise<DirectoryEntryRef>;
+  copyTo: (dest: LocalDirectoryRef) => Promise<LocalDirectoryRef>;
   /**
    * Moves this directory to the destination directory by means of copying and deleting this
    */
-  moveTo: (dest: DirectoryEntryRef) => Promise<DirectoryEntryRef>;
+  moveTo: (dest: LocalDirectoryRef) => Promise<LocalDirectoryRef>;
   /**
    * Rename this directory by copying the contents to a new directory
    */
-  rename: (newName: string) => Promise<DirectoryEntryRef>;
+  rename: (newName: string) => Promise<LocalDirectoryRef>;
   /**
    * Reactive map of directory contents
    */
   readonly list: DirectoryList;
 }
 
-export interface FileEntryRef extends EntryRef {
+export interface LocalFileRef extends EntryRef {
   /**
    * Reads this file
    */
@@ -47,13 +47,13 @@ export interface FileEntryRef extends EntryRef {
   /**
    * Renames this file by copying and creating with the same contents
    */
-  rename: (newName: string) => Promise<FileEntryRef>;
+  rename: (newName: string) => Promise<LocalFileRef>;
   /**
    * Copies the file to the destination directory
    */
-  copyTo: (dest: DirectoryEntryRef) => Promise<FileEntryRef>;
+  copyTo: (dest: LocalDirectoryRef) => Promise<LocalFileRef>;
   /**
    * Moves this file to the destination directory by copying and deleting this file
    */
-  moveTo: (dest: DirectoryEntryRef) => Promise<FileEntryRef>;
+  moveTo: (dest: LocalDirectoryRef) => Promise<LocalFileRef>;
 }

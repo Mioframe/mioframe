@@ -42,7 +42,7 @@ export interface LocalDirectory extends LocalEntry {
   /**
    * Get map of directory contents
    */
-  getList: () => Promise<LocalDirectoryContent>;
+  get: () => Promise<LocalDirectoryContent>;
   /**
    * Adding directory state watcher
    */

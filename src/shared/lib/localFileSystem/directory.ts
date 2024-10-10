@@ -82,7 +82,7 @@ export const createLocalDirectory = (
 
     const newDirectoryEntry = await dest.createDirectory(currentEntryName);
 
-    const directoryList = await currentDirectoryEntry.getList();
+    const directoryList = await currentDirectoryEntry.get();
 
     for (const [, entry] of directoryList) {
       await entry.copyTo(newDirectoryEntry);
@@ -104,7 +104,7 @@ export const createLocalDirectory = (
       currentEntry.getName(),
     );
 
-    const directoryList = await currentDirectoryEntry.getList();
+    const directoryList = await currentDirectoryEntry.get();
 
     for (const [, entry] of directoryList) {
       await entry.moveTo(newDirectoryEntry);
@@ -120,7 +120,7 @@ export const createLocalDirectory = (
       throw new Error('root Entry cannot be renamed');
     }
 
-    const directoryList = await currentDirectoryEntry.getList();
+    const directoryList = await currentDirectoryEntry.get();
 
     if (directoryList.has(newName)) {
       throw new Error(
@@ -168,7 +168,7 @@ export const createLocalDirectory = (
 
   const triggerWatchers = async () => {
     if (watchersSet.size > 0) {
-      const directoryList = await currentDirectoryEntry.getList();
+      const directoryList = await currentDirectoryEntry.get();
 
       watchersSet.forEach((watcher) => watcher(directoryList));
     }
@@ -182,7 +182,7 @@ export const createLocalDirectory = (
     copyTo,
     moveTo,
     rename,
-    getList,
+    get: getList,
     addWatcher,
     removeWatcher,
   };

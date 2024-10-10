@@ -42,7 +42,7 @@ export const createStorageAdapter = (
 
     const fileName = partialKeyToFileName(key);
 
-    const listFromDirectory = await directory.getList();
+    const listFromDirectory = await directory.get();
 
     const entry = listFromDirectory.get(fileName);
     if (entry && 'read' in entry) {
@@ -78,7 +78,7 @@ export const createStorageAdapter = (
       zodPartialFileName,
     );
 
-    const listFromDirectory = await directory.getList();
+    const listFromDirectory = await directory.get();
 
     const fileList: {
       key: PartialStorageKey;
@@ -111,7 +111,7 @@ export const createStorageAdapter = (
       zodPartialFileName,
     );
 
-    const listFromDirectory = await directory.getList();
+    const listFromDirectory = await directory.get();
 
     const removeEntryList: FileForAdapter[] = [];
 

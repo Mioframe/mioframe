@@ -33,7 +33,7 @@ const emit = defineEmits<{
         />
       </header>
 
-      <section class="modal-card-body">
+      <section class="modal-card-body is-flex is-flex-direction-column">
         <slot />
       </section>
 
