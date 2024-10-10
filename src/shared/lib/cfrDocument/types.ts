@@ -29,7 +29,7 @@ export interface DocumentFolder {
     initialValue: TypeOf<Z>,
   ) => CFRDocument<TypeOf<Z>>;
   remove: (documentId: DocumentId) => void;
-  getContent: () => Promise<Map<DocumentId, CFRDocument>>;
+  get: () => Promise<Map<DocumentId, CFRDocument>>;
   onChange: (
     handler: (content: Map<DocumentId, CFRDocument>) => unknown,
   ) => unknown;

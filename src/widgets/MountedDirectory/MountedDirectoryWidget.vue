@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { DirectoryEntryRef } from '../../entities/entry';
+import type { LocalDirectoryRef } from '../../entities/entry';
 import { EntryList } from '../../entities/entry';
 import {
   CreateDirectoryForm,
@@ -20,7 +20,7 @@ import {
 } from '../../features/entryRename';
 
 defineProps<{
-  entry: DirectoryEntryRef;
+  entry: LocalDirectoryRef;
 }>();
 
 defineSlots<{

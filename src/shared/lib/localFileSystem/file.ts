@@ -12,7 +12,7 @@ export const createLocalFile = (
   };
 
   const rename = async (newName: string) => {
-    const directoryList = await parentEntry.getList();
+    const directoryList = await parentEntry.get();
 
     if (directoryList.has(newName)) {
       throw new Error(

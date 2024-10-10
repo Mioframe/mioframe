@@ -2,7 +2,11 @@
 import { computed, ref, shallowRef, watch } from 'vue';
 import { useDocumentFolder } from '../../entities/folder/useDocumentFolder';
 import { MenuFolder } from '../../entities/folder';
-import type { CFRDocument, DocumentFolder } from '../../shared/lib/cfrDocument';
+import {
+  createDocumentFolder,
+  type CFRDocument,
+  type DocumentFolder,
+} from '../../shared/lib/cfrDocument';
 import { CreateDocumentForm } from '../../features/documentCreat';
 import { ModalCard } from '../../shared/ui/ModalCard';
 import type { DocumentId } from '@automerge/automerge-repo';
@@ -13,6 +17,8 @@ import { DocumentPanel } from '../DocumentPanel';
 import { createDatabaseDocument } from '../../shared/lib/databaseDocument/createDatabaseDocument';
 import { createLogger } from '../../shared/lib/logger';
 import DirectoryPickForm from '../../features/directoryPick/DirectoryPickForm.vue';
+import { GDriveDirectoryPickerForm } from '../../features/gDriveDirectoryPicker';
+import type { GDriveDirectory } from '../../shared/lib/googleDrive';
 
 const { debug } = createLogger('MainView');
 
@@ -80,6 +86,21 @@ const onSubmitDirectoryPick = (documentFolder: DocumentFolder) => {
 
 const onCancelDirectoryPick = () => {
   openSelectDirectory.value = false;
+};
+
+const openSelectGDirectory = ref(false);
+
+const onClickSelectGDirectory = () => {
+  openSelectGDirectory.value = true;
+};
+
+const onSelectGDirectory = (directory: GDriveDirectory) => {
+  selectedDocumentFolder.value = createDocumentFolder(directory);
+  openSelectGDirectory.value = false;
+};
+
+const onCancelSelectGDirectory = () => {
+  openSelectGDirectory.value = false;
 };
 </script>
 
@@ -164,7 +185,21 @@ const onCancelDirectoryPick = () => {
                   <i class="fa-solid fa-plug" />
                 </span>
 
-                <span> directory selection </span>
+                <span> select directory </span>
+              </button>
+            </li>
+
+            <li>
+              <button
+                type="button"
+                class="button is-link"
+                @click="onClickSelectGDirectory"
+              >
+                <span class="icon">
+                  <i class="fa-solid fa-google-drive" />
+                </span>
+
+                <span> select google drive directory </span>
               </button>
             </li>
           </ul>
@@ -193,6 +228,13 @@ const onCancelDirectoryPick = () => {
         :document-id="documentIdForRemove"
         @cancel="onCancelRemove"
         @removed="onRemoved"
+      />
+    </ModalCard>
+
+    <ModalCard v-if="openSelectGDirectory">
+      <GDriveDirectoryPickerForm
+        @submit="onSelectGDirectory"
+        @cancel="onCancelSelectGDirectory"
       />
     </ModalCard>
   </div>

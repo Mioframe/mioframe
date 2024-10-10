@@ -1,7 +1,7 @@
 export interface GDriveDirectory {
   getName: () => string;
   rename: (newName: string) => Promise<GDriveDirectory>;
-  getList: () => Promise<Map<string, GDriveFile | GDriveDirectory>>;
+  get: () => Promise<Map<string, GDriveFile | GDriveDirectory>>;
   writeFile: (
     name: string,
     file?: FileSystemWriteChunkType,
@@ -9,6 +9,14 @@ export interface GDriveDirectory {
   removeByName: (name: string) => Promise<void>;
   remove: () => Promise<void>;
   createDirectory: (name: string) => Promise<GDriveDirectory>;
+  /**
+   * Adding directory state watcher
+   */
+  addWatcher: (handler: (list: GDriveDirectoryContent) => unknown) => void;
+  /**
+   * Remove directory state watcher
+   */
+  removeWatcher: (handler: (list: GDriveDirectoryContent) => unknown) => void;
 }
 
 export interface GDriveFile {
@@ -19,3 +27,5 @@ export interface GDriveFile {
 }
 
 export const GOOGLE_FOLDER_MIME_TYPE = 'application/vnd.google-apps.folder';
+
+export type GDriveDirectoryContent = Map<string, GDriveDirectory | GDriveFile>;

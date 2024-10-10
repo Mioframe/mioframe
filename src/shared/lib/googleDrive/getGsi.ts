@@ -36,34 +36,36 @@ const resolveRequestAccess: {
   reject: (error: google.accounts.oauth2.ClientConfigError) => unknown;
 }[] = [];
 
-const requestAccess = async (clientId: string, scopes: string[]) => {
+export const requestAccess = async (clientId: string, scopes: string[]) => {
   debug('requestAccess');
   const gsi = await getGsi();
 
-  return new Promise((resolve, reject) => {
-    resolveRequestAccess.push({ resolve, reject });
+  return new Promise<google.accounts.oauth2.TokenResponse>(
+    (resolve, reject) => {
+      resolveRequestAccess.push({ resolve, reject });
 
-    if (!tokenClient) {
-      debug('requestAccess', 'initTokenClient');
-      tokenClient = gsi.accounts.oauth2.initTokenClient({
-        client_id: clientId,
-        scope: scopes.join(' '),
-        callback: (tokenResponse) => {
-          stateToken = tokenResponse;
-          resolveRequestAccess.shift()?.resolve(tokenResponse);
-        },
-        error_callback: (error) => {
-          resolveRequestAccess.shift()?.reject(error);
-        },
-      });
-      tokenClient.requestAccessToken();
-    } else {
-      debug('requestAccess', 'requestAccessToken');
-      tokenClient.requestAccessToken({
-        scope: scopes.join(' '),
-      });
-    }
-  });
+      if (!tokenClient) {
+        debug('requestAccess', 'initTokenClient');
+        tokenClient = gsi.accounts.oauth2.initTokenClient({
+          client_id: clientId,
+          scope: scopes.join(' '),
+          callback: (tokenResponse) => {
+            stateToken = tokenResponse;
+            resolveRequestAccess.shift()?.resolve(tokenResponse);
+          },
+          error_callback: (error) => {
+            resolveRequestAccess.shift()?.reject(error);
+          },
+        });
+        tokenClient.requestAccessToken();
+      } else {
+        debug('requestAccess', 'requestAccessToken');
+        tokenClient.requestAccessToken({
+          scope: scopes.join(' '),
+        });
+      }
+    },
+  );
 };
 
 const checkAccess = async (scopes: [string, ...string[]]) => {

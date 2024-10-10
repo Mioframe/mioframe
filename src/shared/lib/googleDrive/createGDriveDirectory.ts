@@ -1,6 +1,6 @@
 import { createGDriveFile as createGDriveFile } from './createGDriveFile';
 import type { AdvancedGDrive } from './getGDrive';
-import type { GDriveFile } from './types';
+import type { GDriveDirectoryContent, GDriveFile } from './types';
 import { GOOGLE_FOLDER_MIME_TYPE, type GDriveDirectory } from './types';
 
 export const createGDriveDirectory = (
@@ -23,6 +23,7 @@ export const createGDriveDirectory = (
     });
 
     if (folderId) {
+      void triggerWatchers();
       return createGDriveDirectory(gdrive, folderId, name);
     }
     throw new Error('failed to create directory');
@@ -38,6 +39,7 @@ export const createGDriveDirectory = (
 
     currentName = newName;
 
+    void triggerWatchers();
     return currentGDriveDirectory;
   };
 
@@ -45,9 +47,10 @@ export const createGDriveDirectory = (
 
   const remove = async () => {
     await gdrive.files.delete({ fileId: currentGDriveFolderId });
+    void triggerWatchers();
   };
 
-  const getList = async (): Promise<
+  const getMap = async (): Promise<
     Map<string, GDriveDirectory | GDriveFile>
   > => {
     const contentMap: Map<string, GDriveDirectory | GDriveFile> = new Map();
@@ -89,13 +92,35 @@ export const createGDriveDirectory = (
     if (file) {
       await gdrive.uploadFile(fileId, file);
     }
+    void triggerWatchers();
     return createGDriveFile(gdrive, fileId, name);
   };
 
   const removeByName = async (name: string) => {
-    const list = await getList();
+    const list = await getMap();
     const file = list.get(name);
     await file?.remove();
+    void triggerWatchers();
+  };
+
+  const watchersSet = new Set<(list: GDriveDirectoryContent) => unknown>();
+
+  const addWatcher = (handler: (list: GDriveDirectoryContent) => unknown) => {
+    watchersSet.add(handler);
+  };
+
+  const removeWatcher = (
+    handler: (list: GDriveDirectoryContent) => unknown,
+  ) => {
+    watchersSet.delete(handler);
+  };
+
+  const triggerWatchers = async () => {
+    if (watchersSet.size > 0) {
+      const directoryList = await currentGDriveDirectory.get();
+
+      watchersSet.forEach((watcher) => watcher(directoryList));
+    }
   };
 
   const currentGDriveDirectory: GDriveDirectory = {
@@ -103,9 +128,11 @@ export const createGDriveDirectory = (
     rename,
     getName,
     remove,
-    getList,
+    get: getMap,
     writeFile,
     removeByName,
+    addWatcher,
+    removeWatcher,
   };
 
   return currentGDriveDirectory;
