@@ -1,10 +1,19 @@
 import { difference } from 'lodash-es';
-import { computed, isRef, reactive, toValue, watch, type MaybeRef } from 'vue';
+import type { Promisable } from 'type-fest';
+import {
+  computed,
+  isRef,
+  reactive,
+  ref,
+  toValue,
+  watch,
+  type MaybeRef,
+} from 'vue';
 
 export interface AsyncMap<K extends string | number, T> {
-  get: () => Promise<Map<K, T>>;
-  addWatcher: (handler: (map: Map<K, T>) => unknown) => void;
-  removeWatcher: (handler: (map: Map<K, T>) => unknown) => void;
+  get: () => Promisable<Map<K, T>>;
+  addWatcher?: (handler: (map: Map<K, T>) => unknown) => void;
+  removeWatcher?: (handler: (map: Map<K, T>) => unknown) => void;
 }
 
 export const useAsyncMap = <K extends string | number, T>(
@@ -13,23 +22,28 @@ export const useAsyncMap = <K extends string | number, T>(
   const stateMap: Map<K, T> = reactive(new Map());
 
   const fetchMap = async () => {
-    const asyncMapValue = toValue(asyncMap);
-    if (asyncMapValue) {
-      const nowMap = await asyncMapValue.get();
+    loading.value += 1;
+    try {
+      const asyncMapValue = toValue(asyncMap);
+      if (asyncMapValue) {
+        const nowMap = await asyncMapValue.get();
 
-      const stateKeys = Array.from(stateMap.keys());
-      const nowKeys = Array.from(nowMap.keys());
+        const stateKeys = Array.from(stateMap.keys());
+        const nowKeys = Array.from(nowMap.keys());
 
-      const deletedKeys = difference(stateKeys, nowKeys);
+        const deletedKeys = difference(stateKeys, nowKeys);
 
-      deletedKeys.forEach((key) => stateMap.delete(key));
-      nowMap.forEach((item, key) => {
-        if (!stateMap.has(key)) {
-          stateMap.set(key, item);
-        }
-      });
-    } else {
-      stateMap.clear();
+        deletedKeys.forEach((key) => stateMap.delete(key));
+        nowMap.forEach((item, key) => {
+          if (!stateMap.has(key)) {
+            stateMap.set(key, item);
+          }
+        });
+      } else {
+        stateMap.clear();
+      }
+    } finally {
+      loading.value -= 1;
     }
   };
 
@@ -37,16 +51,18 @@ export const useAsyncMap = <K extends string | number, T>(
     watch(
       asyncMap,
       (asyncMap, oldAsyncMap) => {
-        oldAsyncMap?.removeWatcher(fetchMap);
-        asyncMap?.addWatcher(fetchMap);
+        oldAsyncMap?.removeWatcher?.(fetchMap);
+        asyncMap?.addWatcher?.(fetchMap);
       },
       { immediate: true },
     );
   } else {
-    asyncMap?.addWatcher(fetchMap);
+    asyncMap?.addWatcher?.(fetchMap);
   }
 
   const map = computed((): Map<K, T> => stateMap);
+
+  const loading = ref(0);
 
   return {
     map,
@@ -57,5 +73,6 @@ export const useAsyncMap = <K extends string | number, T>(
     delete: (key: K) => {
       stateMap.delete(key);
     },
+    loading: computed(() => !!loading.value),
   };
 };

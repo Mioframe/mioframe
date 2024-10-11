@@ -29,3 +29,7 @@ export interface GDriveFile {
 export const GOOGLE_FOLDER_MIME_TYPE = 'application/vnd.google-apps.folder';
 
 export type GDriveDirectoryContent = Map<string, GDriveDirectory | GDriveFile>;
+
+export interface GDriveSpaces {
+  get: () => Map<string, GDriveDirectory>;
+}
