@@ -23,6 +23,7 @@ const props = defineProps<{
   opened?: boolean;
   activeKey?: K;
   activeItem?: T;
+  filter?: (v: [K, T]) => boolean;
 }>();
 
 const emit = defineEmits<{
@@ -30,10 +31,12 @@ const emit = defineEmits<{
   click: [key: K, item: T];
 }>();
 
-const stateOpened = ref<boolean>(false);
+const stateOpened = ref<boolean>();
+
+const hasSublist = computed(() => 'get' in props.item);
 
 watchEffect(() => {
-  stateOpened.value = props.opened;
+  stateOpened.value = hasSublist.value ? props.opened : undefined;
 });
 
 const toggleOpened = () => {
@@ -71,11 +74,27 @@ const onContextMenu = ({ clientX, clientY }: MouseEvent) => {
 };
 
 const slots = defineSlots<{
-  contextMenu(props: { key: K; item: T }): unknown;
-  label(props: { key: K; item: T }): unknown;
+  contextMenu(props: {
+    key: K;
+    item: T;
+    listOpen?: boolean;
+    loading?: boolean;
+  }): unknown;
+  label(props: {
+    key: K;
+    item: T;
+    listOpen?: boolean;
+    loading?: boolean;
+  }): unknown;
+  icon(props: {
+    key: K;
+    item: T;
+    listOpen?: boolean;
+    loading?: boolean;
+  }): unknown;
 }>();
 
-const hasSublist = computed(() => 'get' in props.item);
+const loading = ref<boolean>();
 </script>
 
 <template>
@@ -88,10 +107,20 @@ const hasSublist = computed(() => 'get' in props.item);
         type="button"
         @click="toggleOpened"
       >
-        <i
-          class="fa-solid fa-caret-down"
-          :class="{ 'fa-flip-vertical': stateOpened }"
-        />
+        <span class="icon">
+          <slot
+            :key="itemKey"
+            name="icon"
+            :item
+            :list-open="stateOpened"
+            :loading
+          >
+            <i
+              class="fa-solid fa-caret-down"
+              :class="{ 'fa-flip-vertical': stateOpened }"
+            />
+          </slot>
+        </span>
       </button>
 
       <button
@@ -101,11 +130,25 @@ const hasSublist = computed(() => 'get' in props.item);
         @click="onClickItem(itemKey, item)"
       >
         <span v-if="!hasSublist" class="icon">
-          <i class="fa-solid fa-minus fa-xs" />
+          <slot
+            :key="itemKey"
+            name="icon"
+            :item
+            :list-open="stateOpened"
+            :loading
+          >
+            <i class="fa-solid fa-minus fa-xs" />
+          </slot>
         </span>
 
         <span :class="{ 'ml-3': !hasSublist }">
-          <slot :key="itemKey" name="label" :item />
+          <slot
+            :key="itemKey"
+            name="label"
+            :item
+            :list-open="stateOpened"
+            :loading
+          />
         </span>
       </button>
 
@@ -125,25 +168,52 @@ const hasSublist = computed(() => 'get' in props.item);
       v-model:ref-dropdown="refContextMenu"
       :origin-position="contextMenuPosition"
     >
-      <slot :key="itemKey" name="contextMenu" :item="item" />
+      <slot
+        :key="itemKey"
+        name="contextMenu"
+        :item="item"
+        :list-open="stateOpened"
+        :loading
+      />
     </ContextMenu>
 
     <TreeMap
       v-if="'get' in item && stateOpened"
+      v-model:loading="loading"
       :map="item"
       :active-key
       :active-item
+      :filter
       @click="onClickItem"
     >
       <template #label="scoped">
-        <slot :key="scoped.key" name="label" :item="scoped.item" />
+        <slot
+          :key="scoped.key"
+          name="label"
+          :item="scoped.item"
+          :list-open="scoped.listOpen"
+          :loading="scoped.loading"
+        />
       </template>
 
-      <template
-        v-if="!!slots.contextMenu"
-        #contextMenu="{ key: contextKey, item: contextItem }"
-      >
-        <slot :key="contextKey" name="contextMenu" :item="contextItem" />
+      <template v-if="!!slots.contextMenu" #contextMenu="scoped">
+        <slot
+          :key="scoped.key"
+          name="contextMenu"
+          :item="scoped.item"
+          :list-open="scoped.listOpen"
+          :loading="scoped.loading"
+        />
+      </template>
+
+      <template v-if="!!slots.icon" #icon="scoped">
+        <slot
+          :key="scoped.key"
+          name="icon"
+          :item="scoped.item"
+          :list-open="scoped.listOpen"
+          :loading="scoped.loading"
+        />
       </template>
     </TreeMap>
   </li>

@@ -16,18 +16,20 @@ import { SlidingPanel } from '../../shared/ui/SlidingPanel';
 import { DocumentPanel } from '../DocumentPanel';
 import { createDatabaseDocument } from '../../shared/lib/databaseDocument/createDatabaseDocument';
 import { createLogger } from '../../shared/lib/logger';
-import DirectoryPickForm from '../../features/directoryPick/DirectoryPickForm.vue';
 import { GDriveDirectoryPickerForm } from '../../features/gDriveDirectoryPicker';
 import type { GDriveDirectory } from '../../shared/lib/googleDrive';
+import { usePickLocalDirectory } from '../../features/localDirectoryPick';
 
 const { debug } = createLogger('MainView');
 
-const selectedDocumentFolder = ref<DocumentFolder>();
+const selectedDocumentFolder = shallowRef<DocumentFolder>();
 
-const openSelectDirectory = ref(false);
+const { openLocalDirectoryPicker } = usePickLocalDirectory();
 
-const onClickSelectDirectory = () => {
-  openSelectDirectory.value = true;
+const onClickSelectDirectory = async () => {
+  const localDirectory = await openLocalDirectoryPicker();
+
+  selectedDocumentFolder.value = createDocumentFolder(localDirectory);
 };
 
 const { content: contentFolderMap } = useDocumentFolder(selectedDocumentFolder);
@@ -78,15 +80,6 @@ const onClickFolder = (_documentId: DocumentId, cfrDocument: CFRDocument) => {
 const openBottomMenu = ref(true);
 
 const isOpenPanel = ref(true);
-
-const onSubmitDirectoryPick = (documentFolder: DocumentFolder) => {
-  selectedDocumentFolder.value = documentFolder;
-  openSelectDirectory.value = false;
-};
-
-const onCancelDirectoryPick = () => {
-  openSelectDirectory.value = false;
-};
 
 const openSelectGDirectory = ref(false);
 
@@ -185,7 +178,7 @@ const onCancelSelectGDirectory = () => {
                   <i class="fa-solid fa-plug" />
                 </span>
 
-                <span> select directory </span>
+                <span> select local directory </span>
               </button>
             </li>
 
@@ -196,7 +189,7 @@ const onCancelSelectGDirectory = () => {
                 @click="onClickSelectGDirectory"
               >
                 <span class="icon">
-                  <i class="fa-solid fa-google-drive" />
+                  <i class="fa-brands fa-google-drive" />
                 </span>
 
                 <span> select google drive directory </span>
@@ -206,13 +199,6 @@ const onCancelSelectGDirectory = () => {
         </div>
       </div>
     </SlidingPanel>
-
-    <ModalCard v-if="openSelectDirectory">
-      <DirectoryPickForm
-        @submit="onSubmitDirectoryPick"
-        @cancel="onCancelDirectoryPick"
-      />
-    </ModalCard>
 
     <ModalCard v-if="selectedDocumentFolder && isDisplayedDocumentCreationForm">
       <CreateDocumentForm

@@ -91,11 +91,10 @@ export const useRootDirectoryEntry = (
   gDriveFolderId?: string,
   name?: string,
 ): UseGDriveDirectory => {
-  const roodLocalDirectory = createGDriveDirectory(
-    gdrive,
+  const roodLocalDirectory = createGDriveDirectory(gdrive, {
     gDriveFolderId,
     name,
-  );
+  });
 
   return useGDriveDirectory(roodLocalDirectory);
 };

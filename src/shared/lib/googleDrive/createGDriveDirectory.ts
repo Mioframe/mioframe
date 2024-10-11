@@ -3,10 +3,24 @@ import type { AdvancedGDrive } from './getGDrive';
 import type { GDriveDirectoryContent, GDriveFile } from './types';
 import { GOOGLE_FOLDER_MIME_TYPE, type GDriveDirectory } from './types';
 
+export enum SPACE {
+  // user drive
+  MyDrive,
+  // drive with shared data
+  SharedWithMe,
+}
+
 export const createGDriveDirectory = (
   gdrive: AdvancedGDrive,
-  gDriveFolderId: string = 'root',
-  name: string = 'root',
+  {
+    gDriveFolderId = 'root',
+    name = 'root',
+    space = SPACE.MyDrive,
+  }: {
+    gDriveFolderId?: string;
+    name?: string;
+    space?: SPACE;
+  } = {},
 ): GDriveDirectory => {
   const currentGDriveFolderId = gDriveFolderId;
   let currentName = name;
@@ -24,7 +38,7 @@ export const createGDriveDirectory = (
 
     if (folderId) {
       void triggerWatchers();
-      return createGDriveDirectory(gdrive, folderId, name);
+      return createGDriveDirectory(gdrive, { gDriveFolderId: folderId, name });
     }
     throw new Error('failed to create directory');
   };
@@ -55,17 +69,28 @@ export const createGDriveDirectory = (
   > => {
     const contentMap: Map<string, GDriveDirectory | GDriveFile> = new Map();
 
+    const spaces = space === SPACE.MyDrive ? 'drive' : undefined;
+
+    let q = `'${gDriveFolderId}' in parents`;
+    if (space === SPACE.SharedWithMe && gDriveFolderId === 'root') {
+      q = 'sharedWithMe';
+    }
+
     const {
       result: { files },
     } = await gdrive.files.list({
-      q: `'${gDriveFolderId}' in parents`,
+      q,
       fields: 'files(id, name, mimeType)',
+      spaces,
     });
 
     files?.forEach(({ name, id, mimeType }) => {
       if (name && id && mimeType)
         if (mimeType === GOOGLE_FOLDER_MIME_TYPE) {
-          contentMap.set(name, createGDriveDirectory(gdrive, id, name));
+          contentMap.set(
+            name,
+            createGDriveDirectory(gdrive, { gDriveFolderId: id, name }),
+          );
         } else {
           contentMap.set(name, createGDriveFile(gdrive, id, name));
         }
