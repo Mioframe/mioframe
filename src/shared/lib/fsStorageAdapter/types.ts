@@ -65,7 +65,7 @@ export interface FileForAdapter {
 }
 
 export interface DirectoryForAdapter {
-  getList: () => Promise<Map<string, FileForAdapter | DirectoryForAdapter>>;
+  get: () => Promise<Map<string, FileForAdapter | DirectoryForAdapter>>;
   writeFile: (
     name: string,
     file?: FileSystemWriteChunkType,

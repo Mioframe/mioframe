@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import { isString } from 'lodash-es';
 import { ref, watchEffect } from 'vue';
-import type { DirectoryEntryRef, FileEntryRef } from '../../entities/entry';
+import type { LocalDirectoryRef, LocalFileRef } from '../../entities/entry';
 
 const props = defineProps<{
-  entry: DirectoryEntryRef | FileEntryRef;
+  entry: LocalDirectoryRef | LocalFileRef;
 }>();
 
 const stateName = ref<string>();
@@ -14,7 +14,7 @@ watchEffect(() => {
 });
 
 const emit = defineEmits<{
-  renamed: [renamedEntry: DirectoryEntryRef | FileEntryRef];
+  renamed: [renamedEntry: LocalDirectoryRef | LocalFileRef];
   cancel: [];
 }>();
 

@@ -2,7 +2,11 @@
 import { computed, ref, shallowRef, watch } from 'vue';
 import { useDocumentFolder } from '../../entities/folder/useDocumentFolder';
 import { MenuFolder } from '../../entities/folder';
-import type { CFRDocument, DocumentFolder } from '../../shared/lib/cfrDocument';
+import {
+  createDocumentFolder,
+  type CFRDocument,
+  type DocumentFolder,
+} from '../../shared/lib/cfrDocument';
 import { CreateDocumentForm } from '../../features/documentCreat';
 import { ModalCard } from '../../shared/ui/ModalCard';
 import type { DocumentId } from '@automerge/automerge-repo';
@@ -12,16 +16,20 @@ import { SlidingPanel } from '../../shared/ui/SlidingPanel';
 import { DocumentPanel } from '../DocumentPanel';
 import { createDatabaseDocument } from '../../shared/lib/databaseDocument/createDatabaseDocument';
 import { createLogger } from '../../shared/lib/logger';
-import DirectoryPickForm from '../../features/directoryPick/DirectoryPickForm.vue';
+import { GDriveDirectoryPickerForm } from '../../features/gDriveDirectoryPicker';
+import type { GDriveDirectory } from '../../shared/lib/googleDrive';
+import { usePickLocalDirectory } from '../../features/localDirectoryPick';
 
 const { debug } = createLogger('MainView');
 
-const selectedDocumentFolder = ref<DocumentFolder>();
+const selectedDocumentFolder = shallowRef<DocumentFolder>();
 
-const openSelectDirectory = ref(false);
+const { openLocalDirectoryPicker } = usePickLocalDirectory();
 
-const onClickSelectDirectory = () => {
-  openSelectDirectory.value = true;
+const onClickSelectDirectory = async () => {
+  const localDirectory = await openLocalDirectoryPicker();
+
+  selectedDocumentFolder.value = createDocumentFolder(localDirectory);
 };
 
 const { content: contentFolderMap } = useDocumentFolder(selectedDocumentFolder);
@@ -31,7 +39,7 @@ const contentFolderSize = computed(() => contentFolderMap.value.size);
 watch(contentFolderSize, (contentFolderSize) => {
   setTimeout(() => {
     isOpenPanel.value = !!contentFolderSize;
-  }, 0);
+  }, 100);
 });
 
 const isDisplayedDocumentCreationForm = ref(false);
@@ -73,13 +81,19 @@ const openBottomMenu = ref(true);
 
 const isOpenPanel = ref(true);
 
-const onSubmitDirectoryPick = (documentFolder: DocumentFolder) => {
-  selectedDocumentFolder.value = documentFolder;
-  openSelectDirectory.value = false;
+const openSelectGDirectory = ref(false);
+
+const onClickSelectGDirectory = () => {
+  openSelectGDirectory.value = true;
 };
 
-const onCancelDirectoryPick = () => {
-  openSelectDirectory.value = false;
+const onSelectGDirectory = (directory: GDriveDirectory) => {
+  selectedDocumentFolder.value = createDocumentFolder(directory);
+  openSelectGDirectory.value = false;
+};
+
+const onCancelSelectGDirectory = () => {
+  openSelectGDirectory.value = false;
 };
 </script>
 
@@ -164,20 +178,27 @@ const onCancelDirectoryPick = () => {
                   <i class="fa-solid fa-plug" />
                 </span>
 
-                <span> directory selection </span>
+                <span> select local directory </span>
+              </button>
+            </li>
+
+            <li>
+              <button
+                type="button"
+                class="button is-link"
+                @click="onClickSelectGDirectory"
+              >
+                <span class="icon">
+                  <i class="fa-brands fa-google-drive" />
+                </span>
+
+                <span> select google drive directory </span>
               </button>
             </li>
           </ul>
         </div>
       </div>
     </SlidingPanel>
-
-    <ModalCard v-if="openSelectDirectory">
-      <DirectoryPickForm
-        @submit="onSubmitDirectoryPick"
-        @cancel="onCancelDirectoryPick"
-      />
-    </ModalCard>
 
     <ModalCard v-if="selectedDocumentFolder && isDisplayedDocumentCreationForm">
       <CreateDocumentForm
@@ -193,6 +214,13 @@ const onCancelDirectoryPick = () => {
         :document-id="documentIdForRemove"
         @cancel="onCancelRemove"
         @removed="onRemoved"
+      />
+    </ModalCard>
+
+    <ModalCard v-if="openSelectGDirectory">
+      <GDriveDirectoryPickerForm
+        @submit="onSelectGDirectory"
+        @cancel="onCancelSelectGDirectory"
       />
     </ModalCard>
   </div>

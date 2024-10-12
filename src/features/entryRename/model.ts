@@ -1,11 +1,11 @@
 import { shallowRef } from 'vue';
-import type { DirectoryEntryRef, FileEntryRef } from '../../entities/entry';
+import type { LocalDirectoryRef, LocalFileRef } from '../../entities/entry';
 
 export const useRenameEntryFeature = () => {
-  const selectedRenameEntry = shallowRef<DirectoryEntryRef | FileEntryRef>();
+  const selectedRenameEntry = shallowRef<LocalDirectoryRef | LocalFileRef>();
 
   const setRenameEntry = (
-    directoryDestination: DirectoryEntryRef | FileEntryRef,
+    directoryDestination: LocalDirectoryRef | LocalFileRef,
   ) => {
     selectedRenameEntry.value = directoryDestination;
   };
