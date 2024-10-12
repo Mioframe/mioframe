@@ -39,7 +39,7 @@ const contentFolderSize = computed(() => contentFolderMap.value.size);
 watch(contentFolderSize, (contentFolderSize) => {
   setTimeout(() => {
     isOpenPanel.value = !!contentFolderSize;
-  }, 0);
+  }, 100);
 });
 
 const isDisplayedDocumentCreationForm = ref(false);
