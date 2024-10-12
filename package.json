@@ -12,6 +12,8 @@
     "@automerge/automerge-repo": "^1.2.1",
     "@automerge/automerge-repo-storage-indexeddb": "^1.2.1",
     "@fortawesome/fontawesome-free": "^6.6.0",
+    "@noction/vue-bezier": "^1.12.0",
+    "@sentry/vue": "^8.34.0",
     "@vueuse/components": "^10.11.1",
     "@vueuse/core": "^10.11.1",
     "bulma": "^1.0.2",
@@ -21,10 +23,11 @@
     "vanilla-jsoneditor": "^0.23.8",
     "vite-plugin-top-level-await": "^1.4.4",
     "vite-plugin-wasm": "^3.3.0",
-    "vue": "^3.5.11",
+    "vue": "^3.5.12",
     "zod": "^3.23.8"
   },
   "devDependencies": {
+    "@sentry/vite-plugin": "^2.22.5",
     "@types/gapi": "^0.0.47",
     "@types/gapi.client.drive-v3": "^0.0.5",
     "@types/google.accounts": "^0.0.15",
