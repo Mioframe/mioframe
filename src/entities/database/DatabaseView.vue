@@ -17,6 +17,7 @@ const slots = defineSlots<{
     property: AnyProperty | undefined;
     propertyId: PropertyId;
     value: unknown;
+    itemId: ItemId;
   }): unknown;
   itemActions(props: { item: Item; itemId: ItemId }): unknown;
 }>();
@@ -25,8 +26,8 @@ const slots = defineSlots<{
 <template>
   <section class="is-flex is-overflow-auto">
     <DatabaseTable :database-state class="is-flex-grow-1">
-      <template #value="{ property, propertyId, value }">
-        <slot name="value" :property :property-id :value />
+      <template #value="{ property, propertyId, value, itemId }">
+        <slot name="value" :property :property-id :value :item-id />
       </template>
 
       <template v-if="!!slots.itemActions" #itemActions="scope">

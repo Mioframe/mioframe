@@ -81,6 +81,7 @@ const getColorClass = (color?: COLOR) => {
     pointer-events: all;
     display: inline-block;
     width: 343px;
+    z-index: 100;
   }
 }
 </style>
