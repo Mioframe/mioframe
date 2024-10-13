@@ -107,6 +107,12 @@ const onCancelSelectGDirectory = () => {
       class="is-flex-grow-1 is-flex-shrink-1"
     />
 
+    <div v-else class="is-flex-grow-1 is-flex-shrink-1 content">
+      <h1>Welcome</h1>
+
+      <p>To continue, select the directory where your data is stored.</p>
+    </div>
+
     <SlidingPanel v-model:open="isOpenPanel" class="bottom-panel">
       <div class="card">
         <button

@@ -3,7 +3,7 @@ import { computed } from 'vue';
 
 const props = defineProps<{
   value?: unknown;
-  label: string;
+  label?: string;
 }>();
 
 const emit = defineEmits<{

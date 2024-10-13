@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, toRef } from 'vue';
 import {
-  zodDatabaseDocument,
+  zodDatabaseDocumentContent,
   type PropertyId,
 } from '../../shared/lib/databaseDocument';
 import type { CFRDocument } from '../../shared/lib/cfrDocument';
@@ -25,7 +25,7 @@ const cfrDocument = toRef(() => props.cfrDocument);
 const { doc } = useCFRDocument(cfrDocument);
 
 const propertiesMap = computed(() => {
-  if (is(doc.value, zodDatabaseDocument)) {
+  if (is(doc.value, zodDatabaseDocumentContent)) {
     return doc.value.body.properties;
   }
   return undefined;

@@ -6,7 +6,7 @@ const stateValue = ref<number>();
 
 const props = defineProps<{
   value?: unknown;
-  label: string;
+  label?: string;
 }>();
 
 const emit = defineEmits<{
@@ -24,7 +24,7 @@ const modelValue = computed<number | undefined>({
 
 <template>
   <div class="field">
-    <label class="label">{{ label }}</label>
+    <label v-if="label?.length" class="label">{{ label }}</label>
 
     <div class="control">
       <input
