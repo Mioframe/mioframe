@@ -1,10 +1,10 @@
 export {
   type AnyProperty,
-  type BooleanPropertyDescription as BooleanColumnDescription,
-  type NumberPropertyDescription as NumberColumnDescription,
+  type BooleanPropertyDescription,
+  type NumberPropertyDescription,
   type PropertiesMap,
   type PropertyId,
-  type StringPropertyDescription as StringColumnDescription,
+  type StringPropertyDescription,
   createBooleanColumn,
   createNumberColumn,
   createStringColumn,
@@ -20,8 +20,14 @@ export {
   type DatabaseDocument,
   type DatabaseDocumentContent,
   type Item,
+  type DatabaseData,
+  type DatabaseTypeDocument,
   zodDataBaseStateLatest,
-  zodDatabaseDocumentContent as zodDatabaseDocument,
+  zodDatabaseDocumentContent,
   zodDatabaseType,
   DATABASE_DOCUMENT_TYPE,
+  zodDatabaseExtentionBodyDocument,
+  zodDatabaseTypeDocument,
 } from './types';
+export { createDatabaseDocument } from './createDatabaseDocument';
+export { type ItemId, generateItemId, zodItemId } from './item';

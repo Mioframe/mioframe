@@ -4,25 +4,11 @@ import type { CFRDocument } from '../../shared/lib/cfrDocument';
 import { useCFRDocument } from '../../entities/document/useCFRDocument';
 import { createLogger } from '../../shared/lib/logger';
 import { DocumentEditForm } from '../../features/documentEdit';
-import DatabaseView from '../../entities/database/DatabaseView.vue';
 import {
   DATABASE_DOCUMENT_TYPE,
-  zodDatabaseDocumentContent,
-} from '../../shared/lib/databaseDocument/types';
-import { is } from '../../shared/lib/validateZodScheme';
-import ValueBooleanInline from '../../entities/value/ValueBooleanInline.vue';
-import {
-  PROPERTY_TYPE_BOOLEAN,
-  PROPERTY_TYPE_NUMBER,
-  PROPERTY_TYPE_STRING,
+  createDatabaseDocument,
 } from '../../shared/lib/databaseDocument';
-import { ValueNumberInline, ValueStringInline } from '../../entities/value';
-import { ContextBtn } from '../../shared/ui/ContextButton';
-import type { MenuItem } from '../../shared/ui/ContextButton/ContextButton.vue';
-import { ModalCard } from '../../shared/ui/ModalCard';
-import { DbItemRemoveForm } from '../../features/databaseItemRemove';
-import { createDatabaseDocument } from '../../shared/lib/databaseDocument/createDatabaseDocument';
-import type { ItemId } from '../../shared/lib/databaseDocument/item';
+import DatabaseWidget from './DatabaseWidget.vue';
 
 const { debug } = createLogger('WorkspaceFarame');
 
@@ -63,31 +49,6 @@ const databaseDocument = computed(() =>
     ? createDatabaseDocument(cfrDocument.value)
     : undefined,
 );
-
-const databaseDocumentState = computed(() =>
-  is(doc.value, zodDatabaseDocumentContent) ? doc.value.body : undefined,
-);
-
-enum ItemEvents {
-  delete,
-}
-
-const contextItemMenu: MenuItem<ItemEvents>[] = [
-  { eventName: ItemEvents.delete, label: 'delete' },
-];
-
-const itemIdToRemove = ref<ItemId>();
-
-const onClickContextItem = (eventName: ItemEvents, itemId: ItemId) => {
-  switch (eventName) {
-    case ItemEvents.delete:
-      itemIdToRemove.value = itemId;
-      break;
-
-    default:
-      break;
-  }
-};
 </script>
 
 <template>
@@ -112,39 +73,10 @@ const onClickContextItem = (eventName: ItemEvents, itemId: ItemId) => {
     </form>
 
     <slot :cfr-document :document-type>
-      <DatabaseView
-        v-if="databaseDocumentState"
-        :database-state="databaseDocumentState"
-      >
-        <template #value="{ property, value }">
-          <ValueBooleanInline
-            v-if="property?.type === PROPERTY_TYPE_BOOLEAN"
-            :value
-          />
-
-          <ValueNumberInline
-            v-else-if="property?.type === PROPERTY_TYPE_NUMBER"
-            :value
-          />
-
-          <ValueStringInline
-            v-else-if="property?.type === PROPERTY_TYPE_STRING"
-            :value
-          />
-        </template>
-
-        <template #itemActions="{ itemId }">
-          <ContextBtn
-            class="is-small"
-            :menu="contextItemMenu"
-            @click="onClickContextItem($event, itemId)"
-          >
-            <template #[ItemEvents.delete]>
-              <i class="fa-solid fa-eraser" />
-            </template>
-          </ContextBtn>
-        </template>
-      </DatabaseView>
+      <DatabaseWidget
+        v-if="databaseDocument"
+        :database-document="databaseDocument"
+      />
 
       <DocumentEditForm
         v-else
@@ -152,14 +84,5 @@ const onClickContextItem = (eventName: ItemEvents, itemId: ItemId) => {
         class="is-flex is-flex-direction-column is-flex-grow-1"
       />
     </slot>
-
-    <ModalCard v-if="databaseDocument && itemIdToRemove">
-      <DbItemRemoveForm
-        :database-document="databaseDocument"
-        :item-id="itemIdToRemove"
-        @cancel="itemIdToRemove = undefined"
-        @removed="itemIdToRemove = undefined"
-      />
-    </ModalCard>
   </div>
 </template>
