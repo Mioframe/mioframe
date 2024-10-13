@@ -27,6 +27,7 @@ const slots = defineSlots<{
     property: AnyProperty | undefined;
     propertyId: PropertyId;
     value: unknown;
+    itemId: ItemId;
   }): unknown;
   itemActions(props: { item: Item; itemId: ItemId }): unknown;
 }>();
@@ -41,7 +42,7 @@ const slots = defineSlots<{
       :item="item"
     >
       <template #value="{ property, propertyId, value }">
-        <slot name="value" :property :property-id :value />
+        <slot name="value" :property :property-id :value :item-id />
       </template>
 
       <template v-if="!!slots.itemActions" #actions>

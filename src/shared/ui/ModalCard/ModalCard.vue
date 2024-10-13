@@ -1,9 +1,14 @@
 <script setup lang="ts">
-defineProps<{
+import { useCurrentElement } from '@vueuse/core';
+import { useFocusTrap } from '@vueuse/integrations/useFocusTrap';
+import { nextTick, onBeforeUnmount, watchEffect } from 'vue';
+
+const props = defineProps<{
   showHead?: boolean;
   title?: string;
   showCloseBtn?: boolean;
   showFoot?: boolean;
+  unlockFocus?: boolean;
 }>();
 
 defineSlots<{
@@ -14,6 +19,24 @@ defineSlots<{
 const emit = defineEmits<{
   clickClose: [];
 }>();
+
+const currentElement = useCurrentElement();
+
+const { activate, deactivate } = useFocusTrap(currentElement);
+
+// eslint-disable-next-line @typescript-eslint/no-misused-promises -- for await render
+watchEffect(async () => {
+  if (props.unlockFocus) {
+    deactivate();
+  } else {
+    await nextTick();
+    activate();
+  }
+});
+
+onBeforeUnmount(() => {
+  deactivate();
+});
 </script>
 
 <template>

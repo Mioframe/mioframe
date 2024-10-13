@@ -10,5 +10,6 @@
     "vyachean",
     "zenfs"
   ],
-  "todo-tree.regex.regexCaseSensitive": false
+  "todo-tree.regex.regexCaseSensitive": false,
+  "editor.formatOnSave": true
 }
