@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import type {
-  AnyProperty,
+  UnknownProperty,
   DataBaseStateLatest,
   Item,
   PropertyId,
@@ -9,18 +9,22 @@ import type {
 import ItemTBody from './ItemTBody.vue';
 import PropertyTHead from './PropertyTHead.vue';
 import type { ItemId } from '../../../shared/lib/databaseDocument/item';
+import { pickDictionaryBy } from '@shared/lib/pickDictionaryBy';
+import { isNil } from 'lodash-es';
 
 const props = defineProps<{
   databaseState: DataBaseStateLatest;
 }>();
 
-const properties = computed(() => props.databaseState.properties);
+const properties = computed(() =>
+  pickDictionaryBy(props.databaseState.properties, (v) => !isNil(v)),
+);
 
 const data = computed(() => props.databaseState.data);
 
 const slots = defineSlots<{
   value(props: {
-    property: AnyProperty | undefined;
+    property: UnknownProperty | undefined;
     propertyId: PropertyId;
     value: unknown;
     itemId: ItemId;
@@ -51,6 +55,8 @@ const slots = defineSlots<{
 
 <style lang="scss" scoped>
 .table {
+  height: 100%;
+
   &__head {
     position: sticky;
     top: 0;

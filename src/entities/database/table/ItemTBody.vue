@@ -7,15 +7,15 @@ import type {
 import ItemTR from './ItemTR.vue';
 import { isNil, pickBy } from 'lodash-es';
 import type {
-  AnyProperty,
-  PropertiesMap,
+  UnknownProperty,
+  UnknownPropertiesMap,
   PropertyId,
 } from '../../../shared/lib/databaseDocument';
 import type { ItemId } from '../../../shared/lib/databaseDocument/item';
 
 const props = defineProps<{
   data: DatabaseData;
-  properties: PropertiesMap;
+  properties: UnknownPropertiesMap;
 }>();
 
 const filteredData = computed(
@@ -24,7 +24,7 @@ const filteredData = computed(
 
 const slots = defineSlots<{
   value(props: {
-    property: AnyProperty | undefined;
+    property: UnknownProperty | undefined;
     propertyId: PropertyId;
     value: unknown;
     itemId: ItemId;

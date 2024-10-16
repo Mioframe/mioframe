@@ -1,26 +1,25 @@
 <script setup lang="ts">
 import { ref } from 'vue';
-import {
-  ValueBooleanInline,
-  ValueNumberInline,
-  ValueStringInline,
-} from '../../entities/value';
-import {
-  type AnyProperty,
-  PROPERTY_TYPE_BOOLEAN,
-  PROPERTY_TYPE_NUMBER,
-  PROPERTY_TYPE_STRING,
-} from '../../shared/lib/databaseDocument';
+import { type UnknownProperty } from '../../shared/lib/databaseDocument';
 import PopOver from '../../shared/ui/PopOver/PopOver.vue';
-import { PropertyBooleanField } from '../../features/propertyBooleanEdit';
+import { BooleanPropertyField } from '../../features/booleanPropertyEdit';
 import { onInteractionOutside } from '../../shared/lib/onInteractionOutside';
 import { type MaybeElement } from '@vueuse/core';
-import { PropertyNumberField } from '../../features/propertyNumberEdit';
-import { PropertyStingField } from '../../features/propertyStringEdit';
+import { NumberPropertyField } from '../../features/numberPropertyEdit';
+import { StingPropertyField } from '../../features/stringPropertyEdit';
 import { useFirstFocus } from '../../shared/lib/useFirstFocus';
+import { PROPERTY_TYPE_STRING } from '@entity/stringProperty';
+import { PROPERTY_TYPE_BOOLEAN } from '@entity/booleanProperty/boolean';
+import { PROPERTY_TYPE_NUMBER } from '@entity/numberProperty/number';
+import BooleanValue from '@entity/booleanProperty/BooleanValue.vue';
+import NumberValue from '@entity/numberProperty/NumberValue.vue';
+import StringValue from '@entity/stringProperty/StringValue.vue';
+import { PROPERTY_TYPE_DATE } from '@entity/dateProperty/date';
+import DateValue from '@entity/dateProperty/DateValue.vue';
+import { DatePropertyField } from '@feature/datePropertyEdit';
 
 const props = defineProps<{
-  property: AnyProperty;
+  property: UnknownProperty;
   value: unknown;
   editable?: boolean;
 }>();
@@ -70,20 +69,13 @@ useFirstFocus(refPopover, { initialValue: true });
     :tabindex="editable ? 0 : undefined"
     @click="onClickRoot"
   >
-    <ValueBooleanInline
-      v-if="property?.type === PROPERTY_TYPE_BOOLEAN"
-      :value
-    />
+    <BooleanValue v-if="property?.type === PROPERTY_TYPE_BOOLEAN" :value />
 
-    <ValueNumberInline
-      v-else-if="property?.type === PROPERTY_TYPE_NUMBER"
-      :value
-    />
+    <NumberValue v-else-if="property?.type === PROPERTY_TYPE_NUMBER" :value />
 
-    <ValueStringInline
-      v-else-if="property?.type === PROPERTY_TYPE_STRING"
-      :value
-    />
+    <StringValue v-else-if="property?.type === PROPERTY_TYPE_STRING" :value />
+
+    <DateValue v-else-if="property?.type === PROPERTY_TYPE_DATE" :value />
 
     <PopOver
       v-if="positionEditForm"
@@ -92,22 +84,29 @@ useFirstFocus(refPopover, { initialValue: true });
     >
       <div class="card value-widget-inline__edit-popover">
         <div class="card-content">
-          <PropertyBooleanField
+          <BooleanPropertyField
             v-if="property?.type === PROPERTY_TYPE_BOOLEAN"
             :value
             :label="property.name"
             @update:value="onUpdateValue"
           />
 
-          <PropertyNumberField
+          <NumberPropertyField
             v-else-if="property?.type === PROPERTY_TYPE_NUMBER"
             :value
             :label="property.name"
             @update:value="onUpdateValue"
           />
 
-          <PropertyStingField
+          <StingPropertyField
             v-else-if="property?.type === PROPERTY_TYPE_STRING"
+            :value
+            :label="property.name"
+            @update:value="onUpdateValue"
+          />
+
+          <DatePropertyField
+            v-else-if="property?.type === PROPERTY_TYPE_DATE"
             :value
             :label="property.name"
             @update:value="onUpdateValue"

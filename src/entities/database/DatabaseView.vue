@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type {
-  AnyProperty,
+  UnknownProperty,
   DataBaseStateLatest,
   Item,
   PropertyId,
@@ -14,7 +14,7 @@ defineProps<{
 
 const slots = defineSlots<{
   value(props: {
-    property: AnyProperty | undefined;
+    property: UnknownProperty | undefined;
     propertyId: PropertyId;
     value: unknown;
     itemId: ItemId;
