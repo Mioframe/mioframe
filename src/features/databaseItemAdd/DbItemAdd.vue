@@ -1,33 +1,23 @@
-<script setup lang="ts">
-import { computed } from 'vue';
-import type { AnyProperty } from '../../shared/lib/databaseDocument';
-import {
-  PROPERTY_TYPE_BOOLEAN,
-  PROPERTY_TYPE_NUMBER,
-  PROPERTY_TYPE_STRING,
-  type PropertyId,
-} from '../../shared/lib/databaseDocument';
-import { isNil, pickBy } from 'lodash-es';
-import type {
-  BooleanPropertyDescription,
-  NumberPropertyDescription,
-  PropertiesMap,
-  StringPropertyDescription,
-} from '../../shared/lib/databaseDocument/property';
+<script
+  setup
+  lang="ts"
+  generic="
+    T extends string,
+    GP extends GeneralProperty<T>,
+    PM extends PropertiesMap<GP>
+  "
+>
+import type { PropertiesMap } from '@/shared/lib/databaseDocument/property/property';
+import type { GeneralProperty } from '@/shared/lib/databaseDocument/property/general';
 
-const props = defineProps<{
-  properties: PropertiesMap;
+defineProps<{
+  properties: PM;
 }>();
 
 const emit = defineEmits<{
   submit: [];
   cancel: [];
 }>();
-
-const filteredProperties = computed(
-  (): Record<PropertyId, AnyProperty> =>
-    pickBy(props.properties, (v) => !isNil(v)),
-);
 
 const onSubmit = () => {
   emit('submit');
@@ -38,17 +28,9 @@ const onClickCancel = () => {
 };
 
 defineSlots<{
-  string: (props: {
-    property: StringPropertyDescription;
-    propertyId: PropertyId;
-  }) => unknown;
-  number: (props: {
-    property: NumberPropertyDescription;
-    propertyId: PropertyId;
-  }) => unknown;
-  boolean: (props: {
-    property: BooleanPropertyDescription;
-    propertyId: PropertyId;
+  property: (props: {
+    propertyId: keyof PM;
+    property: PM[keyof PM];
   }) => unknown;
 }>();
 </script>
@@ -58,27 +40,8 @@ defineSlots<{
     class="block-spacing is-flex is-flex-direction-column"
     @submit.prevent="onSubmit"
   >
-    <template v-for="(property, propertyId) in filteredProperties">
-      <slot
-        v-if="property.type === PROPERTY_TYPE_STRING"
-        name="string"
-        :property
-        :property-id
-      />
-
-      <slot
-        v-else-if="property.type === PROPERTY_TYPE_NUMBER"
-        name="number"
-        :property
-        :property-id
-      />
-
-      <slot
-        v-else-if="property.type === PROPERTY_TYPE_BOOLEAN"
-        name="boolean"
-        :property
-        :property-id
-      />
+    <template v-for="(property, propertyId) in properties">
+      <slot name="property" :property="property" :property-id />
     </template>
 
     <div class="field is-grouped">

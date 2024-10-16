@@ -11,5 +11,6 @@
     "zenfs"
   ],
   "todo-tree.regex.regexCaseSensitive": false,
-  "editor.formatOnSave": true
+  "editor.formatOnSave": true,
+  "eslint.useFlatConfig": true
 }

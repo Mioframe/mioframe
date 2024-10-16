@@ -1,4 +1,4 @@
-import { cloneDeep } from 'lodash-es';
+import { cloneDeep, isNil } from 'lodash-es';
 import { type Ref, ref, watch, computed } from 'vue';
 import { replaceObject } from '../../shared/lib/changeObject';
 import type {
@@ -6,6 +6,7 @@ import type {
   DataBaseStateLatest,
   DatabaseDocumentContent,
 } from '../../shared/lib/databaseDocument';
+import { pickDictionaryBy } from '@/shared/lib/pickDictionaryBy';
 
 export const useDatabaseDocument = (
   databaseDocumentRef: Ref<DatabaseDocument | undefined>,
@@ -38,7 +39,11 @@ export const useDatabaseDocument = (
 
   const state = computed(() => databaseState.value);
 
-  const properties = computed(() => state.value?.properties);
+  const properties = computed(() =>
+    state.value?.properties
+      ? pickDictionaryBy(state.value.properties, (v) => !isNil(v))
+      : undefined,
+  );
 
   return {
     properties,

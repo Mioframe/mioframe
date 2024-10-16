@@ -1,9 +1,9 @@
 import type { PartialDeep } from 'type-fest';
-import type { AnyProperty, PropertyId } from './property';
+import type { UnknownProperty, PropertyId } from './property';
 import { zodItemId, type ItemId } from './item';
 import type { TypeOf } from 'zod';
 import { intersection, literal, object, record, unknown } from 'zod';
-import { zodPropertiesMap } from './property/property';
+import { zodUnknownPropertiesMap } from './property/property';
 import { zodPropertyId } from './property/general';
 import { zodDocumentContent } from '../cfrDocument';
 
@@ -20,7 +20,7 @@ export type DatabaseData = TypeOf<typeof zodDatabaseData>;
 const zodDatabaseStateV1 = object({
   version: literal(1),
   data: zodDatabaseData,
-  properties: zodPropertiesMap,
+  properties: zodUnknownPropertiesMap,
 });
 
 export type DataBaseStateV1 = TypeOf<typeof zodDatabaseStateV1>;
@@ -54,11 +54,11 @@ export const zodDatabaseDocumentContent = intersection(
 export type DatabaseDocumentContent = TypeOf<typeof zodDatabaseDocumentContent>;
 
 export interface DatabaseDocument {
-  addProperty: (property: AnyProperty) => PropertyId;
+  addProperty: (property: UnknownProperty) => PropertyId;
   removeProperty: (propertyId: PropertyId) => void;
   updateProperty: (
     propertyId: PropertyId,
-    partialProperty: PartialDeep<AnyProperty>,
+    partialProperty: PartialDeep<UnknownProperty>,
   ) => void;
 
   addItem: (item: Item) => ItemId;

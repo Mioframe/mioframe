@@ -1,25 +1,15 @@
-export { type PropertyId, generatePropertyId, zodPropertyId } from './general';
 export {
-  type StringPropertyDescription,
-  createStringColumn,
-  PROPERTY_TYPE_STRING,
-} from './string';
-export {
-  type NumberPropertyDescription,
-  createNumberColumn,
-  PROPERTY_TYPE_NUMBER,
-} from './number';
-export {
-  type BooleanPropertyDescription,
-  createBooleanColumn,
-  PROPERTY_TYPE_BOOLEAN,
-} from './boolean';
+  type PropertyId,
+  generatePropertyId,
+  zodPropertyId,
+  type GeneralProperty,
+  type ValidateValue,
+  createProperty,
+  zodGeneralPropery,
+} from './general';
 export type {
-  AnyProperty,
-  PropertiesMap,
-  ALL_TYPE_PROPERTIES,
-  PropertyType,
-  zodAnyProperty,
-  zodPropertiesMap,
-  zodPropertyType,
+  UnknownProperty,
+  UnknownPropertiesMap,
+  zodUnknownProperty,
+  zodUnknownPropertiesMap,
 } from './property';

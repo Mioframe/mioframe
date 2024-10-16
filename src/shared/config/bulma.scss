@@ -14,8 +14,24 @@
 :root {
   --bulma-body-overflow-y: auto;
 }
+
 .select {
   select {
     width: 100%;
   }
+}
+
+.radio,
+.checkbox {
+
+  input {
+
+    &[type=checkbox],
+    &[type=radio] {
+      height: 1lh;
+      width: 1lh;
+      vertical-align: middle;
+    }
+  }
+
 }

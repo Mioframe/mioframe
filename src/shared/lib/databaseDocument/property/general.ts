@@ -1,10 +1,10 @@
-import type { ZodLiteral } from 'zod';
+import type { ZodLiteral, ZodString, ZodUnknown } from 'zod';
 import { object, string, type TypeOf } from 'zod';
 import { defineId } from '../../defineId';
 
-export const zodGeneralProperyDescription = <
-  L extends string,
-  ZOD_TYPE_NAME extends ZodLiteral<L> = ZodLiteral<L>,
+export const zodGeneralPropery = <
+  L,
+  ZOD_TYPE_NAME extends ZodLiteral<L> | ZodUnknown | ZodString = ZodLiteral<L>,
 >(
   zodType: ZOD_TYPE_NAME,
 ) =>
@@ -13,14 +13,14 @@ export const zodGeneralProperyDescription = <
     type: zodType,
   });
 
-export type GeneralPropertyDescription<T extends string> = TypeOf<
-  ReturnType<typeof zodGeneralProperyDescription<T>>
+export type GeneralProperty<T = unknown> = TypeOf<
+  ReturnType<typeof zodGeneralPropery<T>>
 >;
 
 export const createProperty = <T extends string>(
   type: T,
   name: string,
-): GeneralPropertyDescription<T> => ({
+): GeneralProperty<T> => ({
   name,
   type,
 });
