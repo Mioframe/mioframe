@@ -45,6 +45,7 @@ const itemIdToRemove = ref<ItemId>();
 
 const onClickContextItem = (eventName: ItemEvents, itemId: ItemId) => {
   switch (eventName) {
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- will be supplemented
     case ItemEvents.delete:
       itemIdToRemove.value = itemId;
       break;
@@ -64,6 +65,7 @@ const onClickContextItem = (eventName: ItemEvents, itemId: ItemId) => {
         :property
         :value
         editable
+        class="button is-decorationless"
         @update:value="onChangeValue($event, propertyId, itemId)"
       />
     </template>
@@ -92,3 +94,9 @@ const onClickContextItem = (eventName: ItemEvents, itemId: ItemId) => {
     />
   </ModalCard>
 </template>
+
+<style lang="scss">
+.button.is-decorationless {
+  --bulma-button-text-decoration: none;
+}
+</style>

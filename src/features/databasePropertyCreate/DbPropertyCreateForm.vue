@@ -1,14 +1,24 @@
 <script setup lang="ts">
 import { ref } from 'vue';
-import {
-  ALL_TYPE_PROPERTIES,
-  type PropertyType,
-} from '../../shared/lib/databaseDocument/property/property';
-import type { PropertyId } from '../../shared/lib/databaseDocument';
+import { type PropertyId } from '../../shared/lib/databaseDocument';
 import type { CFRDocument } from '../../shared/lib/cfrDocument';
 import { createDatabaseDocument } from '../../shared/lib/databaseDocument/createDatabaseDocument';
+import { PROPERTY_TYPE_STRING } from '@entity/stringProperty';
+import type { ValueOf } from 'type-fest/source/value-of';
+import { PROPERTY_TYPE_NUMBER } from '@entity/numberProperty/number';
+import { PROPERTY_TYPE_BOOLEAN } from '@entity/booleanProperty/boolean';
+import { PROPERTY_TYPE_DATE } from '@entity/dateProperty/date';
 
 const stateName = ref<string>();
+
+const propertyTypeList = {
+  PROPERTY_TYPE_STRING,
+  PROPERTY_TYPE_NUMBER,
+  PROPERTY_TYPE_BOOLEAN,
+  PROPERTY_TYPE_DATE,
+} as const;
+
+type PropertyType = ValueOf<typeof propertyTypeList>;
 
 const stateType = ref<PropertyType>();
 
@@ -39,8 +49,6 @@ const onClickCancel = () => {
   stateType.value = undefined;
   emit('canceled');
 };
-
-const propertyTypeList = Object.values(ALL_TYPE_PROPERTIES);
 </script>
 
 <template>

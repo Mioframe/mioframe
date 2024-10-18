@@ -4,7 +4,7 @@ import type { CFRDocument, DocumentContent } from '../cfrDocument';
 import { parseSelf } from '../validateZodScheme';
 import { generateItemId, type ItemId } from './item';
 import {
-  type AnyProperty,
+  type UnknownProperty,
   type PropertyId,
   generatePropertyId,
 } from './property';
@@ -74,7 +74,7 @@ export const createDatabaseDocument = (
     return parseSelf(doc, zodDatabaseDocumentContent);
   };
 
-  const addProperty = (column: AnyProperty): PropertyId => {
+  const addProperty = (column: UnknownProperty): PropertyId => {
     const columnId = generatePropertyId();
 
     cfrDocument.change((doc) => {
@@ -88,7 +88,7 @@ export const createDatabaseDocument = (
 
   const updateProperty = (
     columnId: PropertyId,
-    column: PartialDeep<AnyProperty>,
+    column: PartialDeep<UnknownProperty>,
   ) => {
     cfrDocument.change((doc) => {
       const { body } = documentUpdate(doc);

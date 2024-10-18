@@ -8,11 +8,16 @@ import type { Item } from '../../shared/lib/databaseDocument';
 import { DATABASE_DOCUMENT_TYPE } from '../../shared/lib/databaseDocument';
 import { DbPropertyRemoveForm } from '../../features/databasePropertyRemove';
 import { DbItemAdd } from '../../features/databaseItemAdd';
-import { PropertyStingField } from '../../features/propertyStringEdit';
+import { StingPropertyField } from '../../features/stringPropertyEdit';
 import { useDatabaseDocument } from '../../entities/database/useDatabaseDocument';
 import { createDatabaseDocument } from '../../shared/lib/databaseDocument/createDatabaseDocument';
-import { PropertyNumberField } from '../../features/propertyNumberEdit';
-import { PropertyBooleanField } from '../../features/propertyBooleanEdit';
+import { NumberPropertyField } from '../../features/numberPropertyEdit';
+import { BooleanPropertyField } from '../../features/booleanPropertyEdit';
+import { PROPERTY_TYPE_STRING } from '@entity/stringProperty';
+import { PROPERTY_TYPE_BOOLEAN } from '@entity/booleanProperty/boolean';
+import { PROPERTY_TYPE_NUMBER } from '@entity/numberProperty/number';
+import { PROPERTY_TYPE_DATE } from '@entity/dateProperty/date';
+import { DatePropertyField } from '@feature/datePropertyEdit';
 
 const props = defineProps<{
   cfrDocument: CFRDocument;
@@ -114,22 +119,27 @@ const stateNewItem = ref<Item>({});
         @submit="onAddItem"
         @cancel="onCancelAddItem"
       >
-        <template #string="{ property, propertyId }">
-          <PropertyStingField
+        <template #property="{ property, propertyId }">
+          <StingPropertyField
+            v-if="property.type === PROPERTY_TYPE_STRING"
             v-model:value="stateNewItem[propertyId]"
             :label="property.name"
           />
-        </template>
 
-        <template #number="{ property, propertyId }">
-          <PropertyNumberField
+          <NumberPropertyField
+            v-else-if="property.type === PROPERTY_TYPE_NUMBER"
             v-model:value="stateNewItem[propertyId]"
             :label="property.name"
           />
-        </template>
 
-        <template #boolean="{ property, propertyId }">
-          <PropertyBooleanField
+          <BooleanPropertyField
+            v-else-if="property.type === PROPERTY_TYPE_BOOLEAN"
+            v-model:value="stateNewItem[propertyId]"
+            :label="property.name"
+          />
+
+          <DatePropertyField
+            v-else-if="property.type === PROPERTY_TYPE_DATE"
             v-model:value="stateNewItem[propertyId]"
             :label="property.name"
           />

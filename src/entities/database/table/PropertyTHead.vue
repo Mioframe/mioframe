@@ -1,31 +1,25 @@
-<script setup lang="ts">
-import { computed } from 'vue';
+<script
+  setup
+  lang="ts"
+  generic="PT extends string, P extends GeneralProperty<PT>"
+>
 import type {
-  AnyProperty,
-  PropertiesMap,
+  GeneralProperty,
   PropertyId,
-} from '../../../shared/lib/databaseDocument';
-import PropertyTH from './PropertyTH.vue';
-import type { Entries } from 'type-fest';
+} from '@shared/lib/databaseDocument/property/general';
+import type { PropertiesMap } from '@shared/lib/databaseDocument/property/property';
 
-const props = defineProps<{
-  properties: PropertiesMap;
+defineProps<{
+  properties: PropertiesMap<P>;
   showActionsColumn?: boolean;
 }>();
 
-const propertyList = computed(() => {
-  const filteredEntries: [PropertyId, AnyProperty][] = [];
-
-  for (const [key, value] of <Entries<typeof props.properties>>(
-    Object.entries(props.properties)
-  )) {
-    if (value !== undefined) {
-      filteredEntries.push([key, value]);
-    }
-  }
-
-  return filteredEntries;
-});
+defineSlots<{
+  property(props: {
+    property: PropertiesMap<P>[PropertyId];
+    id: PropertyId;
+  }): unknown;
+}>();
 </script>
 
 <template>
@@ -33,11 +27,11 @@ const propertyList = computed(() => {
     <tr>
       <th v-if="showActionsColumn" />
 
-      <PropertyTH
-        v-for="[id, property] in propertyList"
-        :key="id"
-        :name="property.name"
-      />
+      <th v-for="(property, id) in properties" :key="id">
+        <slot :id name="property" :property>
+          {{ property.name }}
+        </slot>
+      </th>
     </tr>
   </thead>
 </template>

@@ -1,18 +1,9 @@
 export {
-  type AnyProperty,
-  type BooleanPropertyDescription,
-  type NumberPropertyDescription,
-  type PropertiesMap,
+  type UnknownProperty,
+  type UnknownPropertiesMap,
   type PropertyId,
-  type StringPropertyDescription,
-  createBooleanColumn,
-  createNumberColumn,
-  createStringColumn,
   generatePropertyId,
   zodPropertyId,
-  PROPERTY_TYPE_BOOLEAN,
-  PROPERTY_TYPE_NUMBER,
-  PROPERTY_TYPE_STRING,
 } from './property';
 export {
   type DataBaseStateLatest,
