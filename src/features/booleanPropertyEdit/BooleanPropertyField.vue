@@ -8,6 +8,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   'update:value': [value?: boolean];
+  keydown: [payload: KeyboardEvent];
 }>();
 
 const modelValue = computed<boolean>({
@@ -21,7 +22,11 @@ const modelValue = computed<boolean>({
 <template>
   <div class="field">
     <label class="checkbox">
-      <input v-model="modelValue" type="checkbox" />
+      <input
+        v-model="modelValue"
+        type="checkbox"
+        @keydown.enter="$emit('keydown', $event)"
+      />
       {{ label }}
     </label>
   </div>

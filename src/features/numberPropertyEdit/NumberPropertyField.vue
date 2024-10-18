@@ -11,6 +11,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   'update:value': [value?: number];
+  keydown: [payload: KeyboardEvent];
 }>();
 
 const modelValue = computed<number | undefined>({
@@ -31,7 +32,9 @@ const modelValue = computed<number | undefined>({
         v-model.number="modelValue"
         class="input"
         type="number"
+        step="any"
         :placeholder="label"
+        @keydown="$emit('keydown', $event)"
       />
     </div>
   </div>

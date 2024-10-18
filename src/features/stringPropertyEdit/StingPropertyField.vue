@@ -11,6 +11,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   'update:value': [value?: string];
+  keydown: [payload: KeyboardEvent];
 }>();
 
 const modelValue = computed<string | undefined>({
@@ -32,6 +33,7 @@ const modelValue = computed<string | undefined>({
         class="input"
         type="text"
         :placeholder="label"
+        @keydown="$emit('keydown', $event)"
       />
     </div>
   </div>

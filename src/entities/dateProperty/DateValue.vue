@@ -22,10 +22,10 @@ const dayjsValue = computed(() => {
 const formatValue = computed(() => dayjsValue.value?.format('l'));
 
 const datetime = computed(() => dayjsValue.value?.format('YYYY-MM-DD'));
-
-// todo: разместить date в таблице
 </script>
 
 <template>
-  <time :datetime>{{ formatValue }}</time>
+  <time v-if="formatValue" :datetime>{{ formatValue }}</time>
+
+  <span v-else>undefined</span>
 </template>

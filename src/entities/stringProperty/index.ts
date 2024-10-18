@@ -4,3 +4,5 @@ export {
   createStringProperty as createStringColumn,
   zodStringProperty,
 } from './string';
+
+export { default as StringValue } from './StringValue.vue';
