@@ -4,9 +4,14 @@
 
 <style lang="scss" scoped>
 td {
+  vertical-align: middle;
+  &::before {
+    content: '';
+    display: inline-block;
+    vertical-align: middle;
+  }
   > * {
-    display: block;
-    height: 100%;
+    vertical-align: middle;
   }
 }
 </style>

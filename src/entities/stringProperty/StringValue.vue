@@ -5,5 +5,5 @@ defineProps<{
 </script>
 
 <template>
-  <span>{{ value }}</span>
+  <span>{{ value ?? 'undefined' }}</span>
 </template>

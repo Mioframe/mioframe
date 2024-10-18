@@ -16,6 +16,8 @@ import { BooleanPropertyField } from '../../features/booleanPropertyEdit';
 import { PROPERTY_TYPE_STRING } from '@entity/stringProperty';
 import { PROPERTY_TYPE_BOOLEAN } from '@entity/booleanProperty/boolean';
 import { PROPERTY_TYPE_NUMBER } from '@entity/numberProperty/number';
+import { PROPERTY_TYPE_DATE } from '@entity/dateProperty/date';
+import { DatePropertyField } from '@feature/datePropertyEdit';
 
 const props = defineProps<{
   cfrDocument: CFRDocument;
@@ -132,6 +134,12 @@ const stateNewItem = ref<Item>({});
 
           <BooleanPropertyField
             v-else-if="property.type === PROPERTY_TYPE_BOOLEAN"
+            v-model:value="stateNewItem[propertyId]"
+            :label="property.name"
+          />
+
+          <DatePropertyField
+            v-else-if="property.type === PROPERTY_TYPE_DATE"
             v-model:value="stateNewItem[propertyId]"
             :label="property.name"
           />
