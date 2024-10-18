@@ -20,7 +20,7 @@ export const onInteractionOutside = (
   options: InteractionOutsideOptions = {},
 ) => {
   const {
-    events = ['click', 'touchstart', 'keydown'],
+    events = ['click', 'touchstart', 'keydown', 'visibilitychange'],
     throttleWait = 1e3 / 3,
     ignore = [],
   } = options;

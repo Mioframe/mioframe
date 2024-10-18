@@ -1,11 +1,9 @@
 <script setup lang="ts">
 defineProps<{
-  name: string;
+  value: unknown;
 }>();
 </script>
 
 <template>
-  <th>
-    {{ name }}
-  </th>
+  <span>{{ value ?? 'undefined' }}</span>
 </template>

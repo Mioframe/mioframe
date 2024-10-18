@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { isNumber } from 'lodash-es';
+import { isString } from 'lodash-es';
 import { computed, ref } from 'vue';
 
-const stateValue = ref<number>();
+const stateValue = ref<string>();
 
 const props = defineProps<{
   value?: unknown;
@@ -10,11 +10,12 @@ const props = defineProps<{
 }>();
 
 const emit = defineEmits<{
-  'update:value': [value?: number];
+  'update:value': [value?: string];
+  keydown: [payload: KeyboardEvent];
 }>();
 
-const modelValue = computed<number | undefined>({
-  get: () => (isNumber(props.value) ? props.value : stateValue.value),
+const modelValue = computed<string | undefined>({
+  get: () => (isString(props.value) ? props.value : stateValue.value),
   set: (v) => {
     stateValue.value = v;
     emit('update:value', stateValue.value);
@@ -28,10 +29,11 @@ const modelValue = computed<number | undefined>({
 
     <div class="control">
       <input
-        v-model.number="modelValue"
+        v-model="modelValue"
         class="input"
-        type="number"
+        type="text"
         :placeholder="label"
+        @keydown="$emit('keydown', $event)"
       />
     </div>
   </div>

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, toRef, watchEffect } from 'vue';
+import { computed, toRef } from 'vue';
 import type { CFRDocument } from '../../shared/lib/cfrDocument';
 import { useCFRDocument } from '../../entities/document/useCFRDocument';
 import { createLogger } from '../../shared/lib/logger';
@@ -9,6 +9,9 @@ import {
   createDatabaseDocument,
 } from '../../shared/lib/databaseDocument';
 import DatabaseWidget from './DatabaseWidget.vue';
+import ValueWidgetInline from '@widget/ValueWidgetInline/ValueWidgetInline.vue';
+import { PROPERTY_TYPE_STRING } from '@entity/stringProperty';
+import { isString } from 'lodash-es';
 
 const { debug } = createLogger('WorkspaceFarame');
 
@@ -24,22 +27,17 @@ const cfrDocument = toRef(() => props.cfrDocument);
 
 const { doc, cahnge } = useCFRDocument(cfrDocument);
 
-const stateName = ref<string>();
-
 const documentName = computed(() => doc.value?.name);
 
-watchEffect(() => {
-  debug('watchEffect');
-  stateName.value = documentName.value;
-});
-
-const onChangeName = () => {
+const onChangeName = (v: unknown) => {
   debug('onChangeName');
-  cahnge((doc) => {
-    if (stateName.value && stateName.value !== doc.name) {
-      doc.name = stateName.value;
-    }
-  });
+  if (isString(v)) {
+    cahnge((doc) => {
+      if (v !== doc.name) {
+        doc.name = v;
+      }
+    });
+  }
 };
 
 const documentType = computed(() => doc.value?.type ?? 'unknown');
@@ -54,19 +52,17 @@ const databaseDocument = computed(() =>
 <template>
   <div class="is-flex is-flex-direction-column is-flex-grow-1 is-overflow-auto">
     <form class="" @submit.prevent>
-      <section class="is-flex is-align-items-center is-gap-1">
-        <div class="field is-flex-grow-1">
-          <div class="control">
-            <input
-              v-model="stateName"
-              class="input"
-              type="text"
-              placeholder="name"
-              required
-              @change="onChangeName"
-            />
-          </div>
-        </div>
+      <section class="is-flex is-align-items-center p-2">
+        <ValueWidgetInline
+          class="is-size-1 is-flex-grow-1"
+          editable
+          :value="documentName"
+          :property="{
+            name: 'Document name',
+            type: PROPERTY_TYPE_STRING,
+          }"
+          @update:value="onChangeName"
+        />
 
         <span class="tag is-light is-medium"> {{ documentType }} </span>
       </section>
