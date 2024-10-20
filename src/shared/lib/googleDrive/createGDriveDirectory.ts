@@ -1,5 +1,5 @@
+import type { AdvancedGDrive } from '../googleApi/types';
 import { createGDriveFile as createGDriveFile } from './createGDriveFile';
-import type { AdvancedGDrive } from './getGDrive';
 import type { GDriveDirectoryContent, GDriveFile } from './types';
 import { GOOGLE_FOLDER_MIME_TYPE, type GDriveDirectory } from './types';
 

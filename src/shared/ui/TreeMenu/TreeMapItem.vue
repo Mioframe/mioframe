@@ -222,5 +222,6 @@ const loading = ref<boolean>();
 <style lang="scss" scoped>
 .button {
   width: auto;
+  white-space: initial;
 }
 </style>
