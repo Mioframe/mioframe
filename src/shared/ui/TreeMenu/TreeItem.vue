@@ -99,7 +99,7 @@ const hasSublist = computed(() => 'list' in props.item);
 
       <button
         type="button"
-        class="button is-link is-flex-grow-1"
+        class="button is-link is-flex-grow-1 ellipsis"
         :class="{ 'is-active': activeKey === itemKey }"
         @click="onClickItem(itemKey, item)"
       >
@@ -146,5 +146,10 @@ const hasSublist = computed(() => 'list' in props.item);
 <style lang="scss" scoped>
 .button {
   width: auto;
+}
+
+.ellipsis {
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 </style>
