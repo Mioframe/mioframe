@@ -80,5 +80,6 @@ dialog.modal {
   width: 100%;
   height: 100%;
   background: transparent;
+  justify-content: flex-end;
 }
 </style>

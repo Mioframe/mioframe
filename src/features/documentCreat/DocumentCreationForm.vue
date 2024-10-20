@@ -37,7 +37,7 @@ watchEffect(() => {
   autofocusElement.value?.focus();
 });
 
-const documentTypeOptions = ['any', DATABASE_DOCUMENT_TYPE] as const;
+const documentTypeOptions = [DATABASE_DOCUMENT_TYPE, 'any'] as const;
 
 const documentType = ref<(typeof documentTypeOptions)[number]>(
   documentTypeOptions[0],

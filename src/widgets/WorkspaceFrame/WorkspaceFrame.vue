@@ -54,7 +54,7 @@ const databaseDocument = computed(() =>
     <form class="" @submit.prevent>
       <section class="is-flex is-align-items-center p-2">
         <ValueWidgetInline
-          class="is-size-1 is-flex-grow-1"
+          class="title is-flex-grow-1"
           editable
           :value="documentName"
           :property="{

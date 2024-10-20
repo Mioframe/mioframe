@@ -1,30 +1,31 @@
-<script setup lang="ts">
-import type {
-  GDriveDirectory,
-  GDriveFile,
-  GDriveSpaces,
-} from '../../shared/lib/googleDrive';
+<script
+  setup
+  lang="ts"
+  generic="
+    O extends object,
+    K extends string | number,
+    T extends AsyncMap<K, T> | O
+  "
+>
+import type { AsyncMap } from '@shared/ui/TreeMenu/useAsyncMap';
 import TreeMap from '../../shared/ui/TreeMenu/TreeMap.vue';
 
 defineProps<{
-  gDriveDirectory: GDriveDirectory | GDriveSpaces;
-  activeKey?: string;
-  activeItem?: GDriveDirectory | GDriveFile;
-  filter?: ([key, item]: [string, GDriveDirectory | GDriveFile]) => boolean;
+  gDriveDirectory: AsyncMap<K, T>;
+  activeKey?: K;
+  activeItem?: T;
+  filter?: ([key, item]: [K, T]) => boolean;
 }>();
 
 const slots = defineSlots<{
-  contextMenu(props: {
-    key: string;
-    item: GDriveDirectory | GDriveFile;
-  }): unknown;
+  contextMenu(props: { key: K; item: T }): unknown;
 }>();
 
 const emit = defineEmits<{
-  click: [key: string, item: GDriveDirectory | GDriveFile];
+  click: [key: K, item: T];
 }>();
 
-const onClick = (key: string, item: GDriveDirectory | GDriveFile) => {
+const onClick = (key: K, item: T) => {
   emit('click', key, item);
 };
 </script>
