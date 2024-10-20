@@ -1,4 +1,4 @@
-import type { AdvancedGDrive } from './getGDrive';
+import type { AdvancedGDrive } from '../googleApi/types';
 import type { GDriveFile } from './types';
 
 export const createGDriveFile = (

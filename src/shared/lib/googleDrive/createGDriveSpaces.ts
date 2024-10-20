@@ -1,5 +1,5 @@
+import type { AdvancedGDrive } from '../googleApi/types';
 import { createGDriveDirectory, SPACE } from './createGDriveDirectory';
-import type { AdvancedGDrive } from './getGDrive';
 import type { GDriveDirectory, GDriveSpaces } from './types';
 
 export const createGDriveSpaces = (gdrive: AdvancedGDrive): GDriveSpaces => {

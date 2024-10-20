@@ -6,8 +6,8 @@ import {
   type GDriveFile,
 } from '../../shared/lib/googleDrive';
 import type { UseGDriveDirectory, UseGDriveFile } from './types';
-import type { AdvancedGDrive } from '../../shared/lib/googleDrive/getGDrive';
 import { useAsyncMap } from '../../shared/ui/TreeMenu/useAsyncMap';
+import type { AdvancedGDrive } from '@shared/lib/googleApi/types';
 
 export const useGDriveFile = (
   gDriveFile: MaybeRef<GDriveFile>,
