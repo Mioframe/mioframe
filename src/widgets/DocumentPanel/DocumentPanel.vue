@@ -69,32 +69,39 @@ const stateNewItem = ref<Item>({});
 
 <template>
   <form class="document-panel">
-    <div class="tabs is-fullwidth">
-      <ul>
-        <li v-if="hasItemAdd">
-          <a @click="isShowItemAdd = true">
-            <span class="icon is-small"><i class="fas fa-plus" /></span>
+    <div class="button-grid">
+      <button
+        v-if="hasItemAdd"
+        type="button"
+        class="button"
+        @click="isShowItemAdd = true"
+      >
+        <span class="icon is-small"><i class="fas fa-plus" /></span>
 
-            <span>Add Item</span>
-          </a>
-        </li>
+        <span>Add Item</span>
+      </button>
 
-        <li v-if="hasAddProperty">
-          <a @click="isShowPropertyCreate = true">
-            <span class="icon is-small"><i class="fas fa-square-plus" /></span>
+      <button
+        v-if="hasAddProperty"
+        type="button"
+        class="button"
+        @click="isShowPropertyCreate = true"
+      >
+        <span class="icon is-small"><i class="fas fa-square-plus" /></span>
 
-            <span>Add Property</span>
-          </a>
-        </li>
+        <span>Add Property</span>
+      </button>
 
-        <li v-if="hasRemoveProperty">
-          <a @click="isShowPropertyRemove = true">
-            <span class="icon is-small"><i class="fas fa-trash" /></span>
+      <button
+        v-if="hasRemoveProperty"
+        type="button"
+        class="button"
+        @click="isShowPropertyRemove = true"
+      >
+        <span class="icon is-small"><i class="fas fa-trash" /></span>
 
-            <span>Remove Property</span>
-          </a>
-        </li>
-      </ul>
+        <span>Remove Property</span>
+      </button>
     </div>
 
     <ModalCard v-if="isShowPropertyCreate">

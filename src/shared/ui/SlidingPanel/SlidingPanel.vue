@@ -82,6 +82,7 @@ watch([trayScrollY, refTray], ([trayScrollY]) => {
   &__content {
     background: var(--sliding-panel-background);
     pointer-events: all;
+    min-height: var(--sliding-panel-min-height);
   }
 }
 </style>

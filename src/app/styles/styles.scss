@@ -1,6 +1,9 @@
 @import '../../shared/config/bulma.scss';
+@import '@shared/ui/ButtonGrid';
 
-html,body,#app {
+html,
+body,
+#app {
     height: 100dvh;
     width: 100vw;
     display: flex;
