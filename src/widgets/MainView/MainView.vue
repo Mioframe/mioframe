@@ -24,7 +24,8 @@ const { debug } = createLogger('MainView');
 
 const selectedDocumentFolder = shallowRef<DocumentFolder>();
 
-const { openLocalDirectoryPicker } = usePickLocalDirectory();
+const { openLocalDirectoryPicker, isSupport: isSupportLocalDirectory } =
+  usePickLocalDirectory();
 
 const onClickSelectDirectory = async () => {
   const localDirectory = await openLocalDirectoryPicker();
@@ -158,50 +159,42 @@ const onCancelSelectGDirectory = () => {
               </button>
             </template>
           </MenuFolder>
+        </div>
 
-          <ul class="menu-list">
-            <li v-if="selectedDocumentFolder">
-              <button
-                type="button"
-                class="button is-link"
-                @click="onClickCreateDocument"
-              >
-                <span class="icon">
-                  <i class="fa-solid fa-plus" />
-                </span>
+        <div class="button-grid">
+          <button
+            v-if="selectedDocumentFolder"
+            type="button"
+            class="button"
+            @click="onClickCreateDocument"
+          >
+            <span class="icon">
+              <i class="fa-solid fa-plus" />
+            </span>
 
-                <span> create document </span>
-              </button>
-            </li>
+            <span> create document </span>
+          </button>
 
-            <li>
-              <button
-                type="button"
-                class="button is-link"
-                @click="onClickSelectDirectory"
-              >
-                <span class="icon">
-                  <i class="fa-solid fa-plug" />
-                </span>
+          <button
+            v-if="isSupportLocalDirectory"
+            type="button"
+            class="button"
+            @click="onClickSelectDirectory"
+          >
+            <span class="icon">
+              <i class="fa-solid fa-plug" />
+            </span>
 
-                <span> select local directory </span>
-              </button>
-            </li>
+            <span> select local directory </span>
+          </button>
 
-            <li>
-              <button
-                type="button"
-                class="button is-link"
-                @click="onClickSelectGDirectory"
-              >
-                <span class="icon">
-                  <i class="fa-brands fa-google-drive" />
-                </span>
+          <button type="button" class="button" @click="onClickSelectGDirectory">
+            <span class="icon">
+              <i class="fa-brands fa-google-drive" />
+            </span>
 
-                <span> select google drive directory </span>
-              </button>
-            </li>
-          </ul>
+            <span> select google drive directory </span>
+          </button>
         </div>
       </div>
     </SlidingPanel>
@@ -234,6 +227,10 @@ const onCancelSelectGDirectory = () => {
 
 <style lang="scss" scoped>
 .bottom-panel {
-  --sliding-panel-min-height: 71px;
+  --sliding-panel-min-height: 134px;
+
+  .card {
+    min-height: var(--sliding-panel-min-height);
+  }
 }
 </style>
