@@ -10,6 +10,7 @@ defineSlots<{
 const props = defineProps<{
   // eslint-disable-next-line vue/no-unused-properties -- use in useVModel
   open?: boolean;
+  right?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -24,16 +25,20 @@ const refContent = ref<HTMLElement>();
 
 const { height: contentHeight } = useElementSize(refContent);
 
-const { y: trayScrollY } = useScroll(refTray, { behavior: 'smooth' });
+const { y: trayScrollY, x: trayScrollX } = useScroll(refTray, {
+  behavior: 'smooth',
+});
 
 watch(
   [modelOpen, refTray],
   ([modelOpen]) => {
     if (!modelOpen) {
       trayScrollY.value = 0;
+      trayScrollX.value = 0;
     } else {
-      if (trayScrollY.value === 0) {
+      if (trayScrollY.value === 0 || trayScrollX.value === 0) {
         trayScrollY.value = contentHeight.value;
+        trayScrollX.value = refContent.value?.scrollWidth ?? 0;
       }
     }
   },
@@ -48,7 +53,12 @@ watch([trayScrollY, refTray], ([trayScrollY]) => {
 </script>
 
 <template>
-  <div class="sliding-panel">
+  <div
+    class="sliding-panel"
+    :class="{
+      _right: right,
+    }"
+  >
     <div ref="refTray" class="sliding-panel__tray">
       <div ref="refContent" class="sliding-panel__content">
         <slot />
@@ -60,9 +70,17 @@ watch([trayScrollY, refTray], ([trayScrollY]) => {
 <style lang="scss" scoped>
 .sliding-panel {
   --sliding-panel-min-height: 100px;
+  --sliding-panel-min-width: 100px;
   --sliding-panel-background: transparent;
   height: var(--sliding-panel-min-height);
   min-height: var(--sliding-panel-min-height);
+
+  &._right {
+    height: initial;
+    min-height: initial;
+    width: var(--sliding-panel-min-width);
+    min-width: var(--sliding-panel-min-width);
+  }
 
   &__tray {
     position: fixed;
@@ -77,12 +95,28 @@ watch([trayScrollY, refTray], ([trayScrollY]) => {
     scrollbar-width: none;
     height: 100dvh;
     box-sizing: border-box;
+
+    .sliding-panel._right & {
+      overflow-y: initial;
+      overflow-x: auto;
+      padding-top: 0;
+      padding-left: calc(100vw - var(--sliding-panel-min-width));
+      width: 100vw;
+      display: flex;
+      align-items: center;
+    }
   }
 
   &__content {
     background: var(--sliding-panel-background);
     pointer-events: all;
     min-height: var(--sliding-panel-min-height);
+
+    .sliding-panel._right & {
+      min-height: initial;
+      width: min-content;
+      min-width: var(--sliding-panel-min-width);
+    }
   }
 }
 </style>
