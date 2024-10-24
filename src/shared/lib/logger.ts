@@ -1,3 +1,6 @@
+import type { MaybeRef } from 'vue';
+import { toValue } from 'vue';
+
 const stringToHue = (str: string): number => {
   // Простой хеш на основе суммы кодов символов
   let hash = 0;
@@ -45,5 +48,8 @@ export const createLogger = (moduleName: string) => {
     console.debug(...colorStrings(moduleName, message), ...args);
   };
 
-  return { log, debug };
+  const debugRef = (message: string, ...args: MaybeRef<unknown>[]) => {
+    debug(message, ...args.map(toValue));
+  };
+  return { log, debug, debugRef };
 };
