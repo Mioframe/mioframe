@@ -19,12 +19,17 @@ import { createLogger } from '../../shared/lib/logger';
 import { GDriveDirectoryPickerForm } from '../../features/gDriveDirectoryPicker';
 import type { GDriveDirectory } from '../../shared/lib/googleDrive';
 import { usePickLocalDirectory } from '../../features/localDirectoryPick';
+import type { MaybeElement } from '@vueuse/core';
+import { useMediaQuery } from '@vueuse/core';
+import { onInteractionOutside } from '@shared/lib/onInteractionOutside';
+import { vElementHover } from '@vueuse/components';
 
 const { debug } = createLogger('MainView');
 
 const selectedDocumentFolder = shallowRef<DocumentFolder>();
 
-const { openLocalDirectoryPicker } = usePickLocalDirectory();
+const { openLocalDirectoryPicker, isSupport: isSupportLocalDirectory } =
+  usePickLocalDirectory();
 
 const onClickSelectDirectory = async () => {
   const localDirectory = await openLocalDirectoryPicker();
@@ -95,29 +100,49 @@ const onSelectGDirectory = (directory: GDriveDirectory) => {
 const onCancelSelectGDirectory = () => {
   openSelectGDirectory.value = false;
 };
+
+const isLandscape = useMediaQuery('(orientation: landscape)');
+
+const refSlidingPanel = ref<MaybeElement>();
+
+onInteractionOutside(refSlidingPanel, () => {
+  if (isLandscape.value) {
+    isOpenPanel.value = false;
+  }
+});
+
+const onHoverPanel = (state: boolean) => {
+  if (isLandscape.value && state) {
+    isOpenPanel.value = state;
+  }
+};
 </script>
 
 <template>
-  <div
-    class="is-flex is-flex-direction-column is-flex-grow-1 is-justify-content-flex-end is-overflow-auto"
-  >
+  <div class="main-view">
     <WorkspaceFrame
       v-if="selectedCFRDocument"
       :cfr-document="selectedCFRDocument"
-      class="is-flex-grow-1 is-flex-shrink-1"
+      class="main-view__workspace-frame"
     />
 
-    <div v-else class="is-flex-grow-1 is-flex-shrink-1 content p-2">
+    <div v-else class="main-view__workspace-frame content p-2">
       <h1>Welcome</h1>
 
       <p>To continue, select the directory where your data is stored.</p>
     </div>
 
-    <SlidingPanel v-model:open="isOpenPanel" class="bottom-panel">
-      <div class="card">
+    <SlidingPanel
+      ref="refSlidingPanel"
+      v-model:open="isOpenPanel"
+      v-element-hover="onHoverPanel"
+      class="main-view__panel panel"
+      :right="isLandscape"
+    >
+      <div class="card panel__card">
         <button
           type="button"
-          class="button is-transparent is-small is-fullwidth is-ghost"
+          class="panel__toggle button is-transparent is-small is-fullwidth is-ghost"
           @click="isOpenPanel = !isOpenPanel"
         >
           <span class="icon">
@@ -135,7 +160,7 @@ const onCancelSelectGDirectory = () => {
           :cfr-document="selectedCFRDocument"
         />
 
-        <div class="menu">
+        <div class="panel__menu-list menu">
           <MenuFolder :documents-map="contentFolderMap" @click="onClickFolder">
             <template #contextMenu="{ documentId, documentName }">
               <span class="dropdown-item">
@@ -158,50 +183,42 @@ const onCancelSelectGDirectory = () => {
               </button>
             </template>
           </MenuFolder>
+        </div>
 
-          <ul class="menu-list">
-            <li v-if="selectedDocumentFolder">
-              <button
-                type="button"
-                class="button is-link"
-                @click="onClickCreateDocument"
-              >
-                <span class="icon">
-                  <i class="fa-solid fa-plus" />
-                </span>
+        <div class="button-grid">
+          <button
+            v-if="selectedDocumentFolder"
+            type="button"
+            class="button"
+            @click="onClickCreateDocument"
+          >
+            <span class="icon">
+              <i class="fa-solid fa-plus" />
+            </span>
 
-                <span> create document </span>
-              </button>
-            </li>
+            <span> create document </span>
+          </button>
 
-            <li>
-              <button
-                type="button"
-                class="button is-link"
-                @click="onClickSelectDirectory"
-              >
-                <span class="icon">
-                  <i class="fa-solid fa-plug" />
-                </span>
+          <button
+            v-if="isSupportLocalDirectory"
+            type="button"
+            class="button"
+            @click="onClickSelectDirectory"
+          >
+            <span class="icon">
+              <i class="fa-solid fa-plug" />
+            </span>
 
-                <span> select local directory </span>
-              </button>
-            </li>
+            <span> select local directory </span>
+          </button>
 
-            <li>
-              <button
-                type="button"
-                class="button is-link"
-                @click="onClickSelectGDirectory"
-              >
-                <span class="icon">
-                  <i class="fa-brands fa-google-drive" />
-                </span>
+          <button type="button" class="button" @click="onClickSelectGDirectory">
+            <span class="icon">
+              <i class="fa-brands fa-google-drive" />
+            </span>
 
-                <span> select google drive directory </span>
-              </button>
-            </li>
-          </ul>
+            <span> select google drive directory </span>
+          </button>
         </div>
       </div>
     </SlidingPanel>
@@ -233,7 +250,64 @@ const onCancelSelectGDirectory = () => {
 </template>
 
 <style lang="scss" scoped>
-.bottom-panel {
-  --sliding-panel-min-height: 71px;
+.main-view {
+  display: flex;
+  flex-direction: column;
+  flex-grow: 1;
+  justify-content: flex-end;
+  overflow: auto;
+
+  &__workspace-frame {
+    flex-grow: 1;
+    flex-shrink: 1;
+  }
+
+  &__panel {
+    --sliding-panel-min-height: 134px;
+    --sliding-panel-min-width: 30px;
+    .card {
+      min-height: var(--sliding-panel-min-height);
+    }
+  }
+
+  @media screen and (orientation: landscape) {
+    flex-direction: row;
+    gap: 8px;
+
+    &__panel {
+      width: 320px;
+      max-width: 35vw;
+      max-height: 100%;
+      overflow-y: auto;
+      align-self: center;
+      .card {
+        max-height: 100%;
+        min-height: auto;
+        overflow-y: auto;
+      }
+    }
+  }
+}
+
+.panel {
+  &__card {
+    @media screen and (orientation: landscape) {
+      width: 30vw;
+      min-width: 320px;
+    }
+  }
+
+  &__toggle {
+    @media screen and (orientation: landscape) {
+      width: var(--sliding-panel-min-width);
+      transform: rotate(-90deg);
+    }
+  }
+
+  &__menu-list {
+    @media screen and (orientation: landscape) {
+      overflow-x: auto;
+    }
+  }
 }
 </style>
