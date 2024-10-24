@@ -21,8 +21,11 @@ export const usePickLocalDirectory = (
     return pickedLocalDirectory.value;
   };
 
+  const isSupport = typeof showDirectoryPicker === 'function';
+
   return {
     openLocalDirectoryPicker,
     pickedLocalDirectory: readonly(pickedLocalDirectory),
+    isSupport,
   };
 };

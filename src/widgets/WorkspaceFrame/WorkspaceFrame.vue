@@ -51,22 +51,20 @@ const databaseDocument = computed(() =>
 
 <template>
   <div class="is-flex is-flex-direction-column is-flex-grow-1 is-overflow-auto">
-    <form class="" @submit.prevent>
-      <section class="is-flex is-align-items-center p-2">
-        <ValueWidgetInline
-          class="title is-flex-grow-1"
-          editable
-          :value="documentName"
-          :property="{
-            name: 'Document name',
-            type: PROPERTY_TYPE_STRING,
-          }"
-          @update:value="onChangeName"
-        />
+    <section class="is-flex is-align-items-center p-2">
+      <ValueWidgetInline
+        class="title is-flex-grow-1"
+        editable
+        :value="documentName"
+        :property="{
+          name: 'Document name',
+          type: PROPERTY_TYPE_STRING,
+        }"
+        @update:value="onChangeName"
+      />
 
-        <span class="tag is-light is-medium"> {{ documentType }} </span>
-      </section>
-    </form>
+      <span class="tag is-light is-medium"> {{ documentType }} </span>
+    </section>
 
     <slot :cfr-document :document-type>
       <DatabaseWidget
