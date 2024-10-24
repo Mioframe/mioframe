@@ -19,7 +19,10 @@ import { createLogger } from '../../shared/lib/logger';
 import { GDriveDirectoryPickerForm } from '../../features/gDriveDirectoryPicker';
 import type { GDriveDirectory } from '../../shared/lib/googleDrive';
 import { usePickLocalDirectory } from '../../features/localDirectoryPick';
+import type { MaybeElement } from '@vueuse/core';
 import { useMediaQuery } from '@vueuse/core';
+import { onInteractionOutside } from '@shared/lib/onInteractionOutside';
+import { vElementHover } from '@vueuse/components';
 
 const { debug } = createLogger('MainView');
 
@@ -99,6 +102,20 @@ const onCancelSelectGDirectory = () => {
 };
 
 const isLandscape = useMediaQuery('(orientation: landscape)');
+
+const refSlidingPanel = ref<MaybeElement>();
+
+onInteractionOutside(refSlidingPanel, () => {
+  if (isLandscape.value) {
+    isOpenPanel.value = false;
+  }
+});
+
+const onHoverPanel = (state: boolean) => {
+  if (isLandscape.value && state) {
+    isOpenPanel.value = state;
+  }
+};
 </script>
 
 <template>
@@ -116,7 +133,9 @@ const isLandscape = useMediaQuery('(orientation: landscape)');
     </div>
 
     <SlidingPanel
+      ref="refSlidingPanel"
       v-model:open="isOpenPanel"
+      v-element-hover="onHoverPanel"
       class="main-view__panel panel"
       :right="isLandscape"
     >
