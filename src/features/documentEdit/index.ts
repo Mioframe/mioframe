@@ -1,1 +1,5 @@
-export { default as DocumentEditForm } from './DocumentEditForm.vue';
+import { defineAsyncComponent } from 'vue';
+
+export const DocumentEditForm = defineAsyncComponent(
+  () => import('./DocumentJsonEditForm.vue'),
+);
