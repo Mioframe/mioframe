@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, shallowRef, watch } from 'vue';
+import { computed, ref, shallowRef, watch, watchEffect } from 'vue';
 import { useDocumentFolder } from '../../entities/folder/useDocumentFolder';
 import { MenuFolder } from '../../entities/folder';
 import {
@@ -24,7 +24,7 @@ import { useMediaQuery } from '@vueuse/core';
 import { onInteractionOutside } from '@shared/lib/onInteractionOutside';
 import { vElementHover } from '@vueuse/components';
 
-const { debug } = createLogger('MainView');
+const { debug, debugRef } = createLogger('MainView');
 
 const selectedDocumentFolder = shallowRef<DocumentFolder>();
 
@@ -43,6 +43,7 @@ const contentFolderSize = computed(() => contentFolderMap.value.size);
 
 watch(contentFolderSize, (contentFolderSize) => {
   setTimeout(() => {
+    debug('contentFolderSize', !!contentFolderSize);
     isOpenPanel.value = !!contentFolderSize;
   }, 100);
 });
@@ -106,15 +107,30 @@ const isLandscape = useMediaQuery('(orientation: landscape)');
 const refSlidingPanel = ref<MaybeElement>();
 
 onInteractionOutside(refSlidingPanel, () => {
+  debug('onInteractionOutside');
   if (isLandscape.value) {
     isOpenPanel.value = false;
   }
 });
 
+watchEffect(() => {
+  debugRef('isOpenPanel', isOpenPanel);
+});
+
+const isHoverPanel = ref(false);
+
 const onHoverPanel = (state: boolean) => {
-  if (isLandscape.value && state) {
-    isOpenPanel.value = state;
+  isHoverPanel.value = state;
+};
+
+watchEffect(() => {
+  if (isLandscape.value && isHoverPanel.value) {
+    isOpenPanel.value = true;
   }
+});
+
+const onClickTogglePanelBtn = () => {
+  isOpenPanel.value = !isOpenPanel.value;
 };
 </script>
 
@@ -139,11 +155,19 @@ const onHoverPanel = (state: boolean) => {
       class="main-view__panel panel"
       :right="isLandscape"
     >
-      <div class="card panel__card">
+      <div
+        class="card panel__card"
+        :class="{
+          'has-background-primary': !isOpenPanel,
+        }"
+      >
         <button
           type="button"
-          class="panel__toggle button is-transparent is-small is-fullwidth is-ghost"
-          @click="isOpenPanel = !isOpenPanel"
+          class="panel__toggle button is-transparent is-small is-fullwidth"
+          :class="{
+            'is-primary': !isOpenPanel,
+          }"
+          @pointerdown="onClickTogglePanelBtn"
         >
           <span class="icon">
             <i
@@ -280,24 +304,29 @@ const onHoverPanel = (state: boolean) => {
       max-height: 100%;
       overflow-y: auto;
       align-self: center;
-      .card {
-        max-height: 100%;
-        min-height: auto;
-        overflow-y: auto;
-      }
     }
   }
 }
 
 .panel {
   &__card {
+    transition-duration: var(--bulma-duration);
+    transition-property: background-color;
+
     @media screen and (orientation: landscape) {
+      max-height: 100%;
+      min-height: auto;
+      overflow-y: auto;
+
       width: 30vw;
       min-width: 320px;
     }
   }
 
   &__toggle {
+    border: 0;
+    box-shadow: none;
+
     @media screen and (orientation: landscape) {
       width: var(--sliding-panel-min-width);
       transform: rotate(-90deg);
