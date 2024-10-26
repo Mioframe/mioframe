@@ -1,6 +1,9 @@
 <script setup lang="ts">
 import { ref, toRef } from 'vue';
-import { DatabaseView, useDatabaseDocument } from '../../entities/database';
+import {
+  DatabaseTableView,
+  useDatabaseDocument,
+} from '../../entities/database';
 import type { MenuItem } from '../../shared/ui/ContextButton';
 import { ContextBtn } from '../../shared/ui/ContextButton';
 import ValueWidgetInline from '../ValueWidgetInline/ValueWidgetInline.vue';
@@ -57,7 +60,8 @@ const onClickContextItem = (eventName: ItemEvents, itemId: ItemId) => {
 </script>
 
 <template>
-  <DatabaseView v-if="state" :database-state="state">
+  <DatabaseTableView v-if="state" :database-state="state">
+    <!-- todo: где то тут определяются вьюшки документов? -->
     <template #value="{ property, value, itemId, propertyId }">
       <!-- todo: поменять на слот? -->
       <ValueWidgetInline
@@ -81,7 +85,7 @@ const onClickContextItem = (eventName: ItemEvents, itemId: ItemId) => {
         </template>
       </ContextBtn>
     </template>
-  </DatabaseView>
+  </DatabaseTableView>
 
   <div v-else>// todo: придумать текст, пока состояние базы отсутствует</div>
 

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, shallowRef, watch, watchEffect } from 'vue';
+import { computed, ref, shallowRef, watch } from 'vue';
 import { useDocumentFolder } from '../../entities/folder/useDocumentFolder';
 import { MenuFolder } from '../../entities/folder';
 import {
@@ -12,19 +12,16 @@ import { ModalCard } from '../../shared/ui/ModalCard';
 import type { DocumentId } from '@automerge/automerge-repo';
 import { DocumentRemoveForm } from '../../features/documentRemove';
 import { WorkspaceFrame } from '../WorkspaceFrame';
-import { SlidingPanel } from '../../shared/ui/SlidingPanel';
 import { DocumentPanel } from '../DocumentPanel';
 import { createDatabaseDocument } from '../../shared/lib/databaseDocument/createDatabaseDocument';
 import { createLogger } from '../../shared/lib/logger';
 import { GDriveDirectoryPickerForm } from '../../features/gDriveDirectoryPicker';
 import type { GDriveDirectory } from '../../shared/lib/googleDrive';
 import { usePickLocalDirectory } from '../../features/localDirectoryPick';
-import type { MaybeElement } from '@vueuse/core';
-import { useMediaQuery } from '@vueuse/core';
-import { onInteractionOutside } from '@shared/lib/onInteractionOutside';
-import { vElementHover } from '@vueuse/components';
+import WelcomeMessage from './WelcomeMessage.vue';
+import { ViewWithPanelLayout } from '@shared/ui/ViewWithPanelLayout';
 
-const { debug, debugRef } = createLogger('MainView');
+const { debug } = createLogger('MainView');
 
 const selectedDocumentFolder = shallowRef<DocumentFolder>();
 
@@ -79,11 +76,8 @@ const onClickFolder = (_documentId: DocumentId, cfrDocument: CFRDocument) => {
   const databaseDocument = createDatabaseDocument(cfrDocument);
   debug('onClickFolder', databaseDocument);
   selectedCFRDocument.value = cfrDocument;
-  openBottomMenu.value = false;
   isOpenPanel.value = false;
 };
-
-const openBottomMenu = ref(true);
 
 const isOpenPanel = ref(true);
 
@@ -101,90 +95,26 @@ const onSelectGDirectory = (directory: GDriveDirectory) => {
 const onCancelSelectGDirectory = () => {
   openSelectGDirectory.value = false;
 };
-
-const isLandscape = useMediaQuery('(orientation: landscape)');
-
-const refSlidingPanel = ref<MaybeElement>();
-
-onInteractionOutside(refSlidingPanel, () => {
-  debug('onInteractionOutside');
-  if (isLandscape.value) {
-    isOpenPanel.value = false;
-  }
-});
-
-watchEffect(() => {
-  debugRef('isOpenPanel', isOpenPanel);
-});
-
-const isHoverPanel = ref(false);
-
-const onHoverPanel = (state: boolean) => {
-  isHoverPanel.value = state;
-};
-
-watchEffect(() => {
-  if (isLandscape.value && isHoverPanel.value) {
-    isOpenPanel.value = true;
-  }
-});
-
-const onClickTogglePanelBtn = () => {
-  isOpenPanel.value = !isOpenPanel.value;
-};
 </script>
 
 <template>
-  <div class="main-view">
+  <ViewWithPanelLayout v-model:open-panel="isOpenPanel">
     <WorkspaceFrame
       v-if="selectedCFRDocument"
       :cfr-document="selectedCFRDocument"
-      class="main-view__workspace-frame"
+      class="is-flex-grow-1"
     />
 
-    <div v-else class="main-view__workspace-frame content p-2">
-      <h1>Welcome</h1>
+    <WelcomeMessage v-else class="is-flex-grow-1" />
 
-      <p>To continue, select the directory where your data is stored.</p>
-    </div>
-
-    <SlidingPanel
-      ref="refSlidingPanel"
-      v-model:open="isOpenPanel"
-      v-element-hover="onHoverPanel"
-      class="main-view__panel panel"
-      :right="isLandscape"
-    >
-      <div
-        class="card panel__card"
-        :class="{
-          'has-background-primary': !isOpenPanel,
-        }"
-      >
-        <button
-          type="button"
-          class="panel__toggle button is-transparent is-small is-fullwidth"
-          :class="{
-            'is-primary': !isOpenPanel,
-          }"
-          @pointerdown="onClickTogglePanelBtn"
-        >
-          <span class="icon">
-            <i
-              class="fa-solid fa-chevron-up"
-              :class="{
-                'fa-flip-vertical': isOpenPanel,
-              }"
-            />
-          </span>
-        </button>
-
+    <template #panel>
+      <div class="p-1 block-spacing is-flex is-flex-direction-column">
         <DocumentPanel
           v-if="selectedCFRDocument"
           :cfr-document="selectedCFRDocument"
         />
 
-        <div class="panel__menu-list menu">
+        <div class="menu card is-shadowless is-overflow-x-auto">
           <MenuFolder :documents-map="contentFolderMap" @click="onClickFolder">
             <template #contextMenu="{ documentId, documentName }">
               <span class="dropdown-item">
@@ -245,7 +175,7 @@ const onClickTogglePanelBtn = () => {
           </button>
         </div>
       </div>
-    </SlidingPanel>
+    </template>
 
     <ModalCard v-if="selectedDocumentFolder && isDisplayedDocumentCreationForm">
       <CreateDocumentForm
@@ -270,73 +200,5 @@ const onClickTogglePanelBtn = () => {
         @cancel="onCancelSelectGDirectory"
       />
     </ModalCard>
-  </div>
+  </ViewWithPanelLayout>
 </template>
-
-<style lang="scss" scoped>
-.main-view {
-  display: flex;
-  flex-direction: column;
-  flex-grow: 1;
-  justify-content: flex-end;
-  overflow: auto;
-
-  &__workspace-frame {
-    flex-grow: 1;
-    flex-shrink: 1;
-  }
-
-  &__panel {
-    --sliding-panel-min-height: 134px;
-    --sliding-panel-min-width: 30px;
-    .card {
-      min-height: var(--sliding-panel-min-height);
-    }
-  }
-
-  @media screen and (orientation: landscape) {
-    flex-direction: row;
-    gap: 8px;
-
-    &__panel {
-      width: 320px;
-      max-width: 35vw;
-      max-height: 100%;
-      overflow-y: auto;
-      align-self: center;
-    }
-  }
-}
-
-.panel {
-  &__card {
-    transition-duration: var(--bulma-duration);
-    transition-property: background-color;
-
-    @media screen and (orientation: landscape) {
-      max-height: 100%;
-      min-height: auto;
-      overflow-y: auto;
-
-      width: 30vw;
-      min-width: 320px;
-    }
-  }
-
-  &__toggle {
-    border: 0;
-    box-shadow: none;
-
-    @media screen and (orientation: landscape) {
-      width: var(--sliding-panel-min-width);
-      transform: rotate(-90deg);
-    }
-  }
-
-  &__menu-list {
-    @media screen and (orientation: landscape) {
-      overflow-x: auto;
-    }
-  }
-}
-</style>
