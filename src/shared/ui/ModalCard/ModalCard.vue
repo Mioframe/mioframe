@@ -56,7 +56,7 @@ onBeforeUnmount(() => {
         />
       </header>
 
-      <section class="modal-card-body is-flex is-flex-direction-column">
+      <section class="modal-card-body card is-flex is-flex-direction-column">
         <slot />
       </section>
 
@@ -81,5 +81,9 @@ dialog.modal {
   height: 100%;
   background: transparent;
   justify-content: flex-end;
+
+  @media screen and (orientation: landscape) {
+    justify-content: center;
+  }
 }
 </style>

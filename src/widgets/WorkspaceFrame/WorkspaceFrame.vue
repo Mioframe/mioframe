@@ -20,7 +20,7 @@ const props = defineProps<{
 }>();
 
 defineSlots<{
-  default(p: { cfrDocument: CFRDocument; documentType: string }): unknown;
+  default(props: { cfrDocument: CFRDocument; documentType: string }): unknown;
 }>();
 
 const cfrDocument = toRef(() => props.cfrDocument);
@@ -67,6 +67,7 @@ const databaseDocument = computed(() =>
     </section>
 
     <slot :cfr-document :document-type>
+      <!-- todo: тут определяются редакторы документов по их типу -->
       <DatabaseWidget
         v-if="databaseDocument"
         :database-document="databaseDocument"
