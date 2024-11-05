@@ -381,7 +381,7 @@ export const useGoogleApi = defineStore('googleApi', () => {
     authTokenState.value = null;
   };
 
-  const userinfo = ref<gapi.client.oauth2.Userinfo>();
+  const userInfo = ref<gapi.client.oauth2.Userinfo>();
 
   const updateUserinfo = async () => {
     if (loading.updateUserinfo) {
@@ -399,12 +399,12 @@ export const useGoogleApi = defineStore('googleApi', () => {
           const { result } = await oauth2.userinfo.get();
           debug('watchEffect', { result });
           if (isEqual(authTokenState.value, snapshotTokenState)) {
-            userinfo.value = result;
+            userInfo.value = result;
             return;
           }
         }
       }
-      userinfo.value = undefined;
+      userInfo.value = undefined;
     } finally {
       loading.updateUserinfo -= 1;
     }
@@ -417,7 +417,7 @@ export const useGoogleApi = defineStore('googleApi', () => {
     removeToken,
     getGAPI,
     getOauth2,
-    userinfo,
+    userInfo,
     requestAccessToken,
     loading,
   };

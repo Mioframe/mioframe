@@ -45,8 +45,15 @@ export const useDatabaseDocument = (
       : undefined,
   );
 
+  const views = computed(() =>
+    state.value?.views
+      ? pickDictionaryBy(state.value.views, (v) => !isNil(v))
+      : {},
+  );
+
   return {
     properties,
     state,
+    views,
   };
 };

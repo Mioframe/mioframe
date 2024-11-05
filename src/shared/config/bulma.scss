@@ -9,11 +9,6 @@
 @use "bulma/sass/base/skeleton";
 @use "bulma/sass/helpers";
 
-
-.block-spacing {
-  gap: var(--bulma-block-spacing);
-}
-
 :root {
   --bulma-body-overflow-y: auto;
 
@@ -42,6 +37,10 @@
 
 }
 
+.block-spacing {
+  gap: var(--bulma-block-spacing);
+}
+
 .select {
   select {
     width: 100%;
@@ -61,4 +60,9 @@
     }
   }
 
+}
+
+.is-fullwidth {
+  width: 100%;
+  grid-column: 1 / -1;
 }

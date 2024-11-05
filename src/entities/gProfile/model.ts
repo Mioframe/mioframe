@@ -7,7 +7,7 @@ const { debug } = createLogger('GProfileCard model');
 export const useGProfile = () => {
   const googleApi = useGoogleApi();
 
-  const profile = computed(() => googleApi.userinfo);
+  const profile = computed(() => googleApi.userInfo);
 
   watchEffect(() => {
     debug('profile', profile.value);

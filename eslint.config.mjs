@@ -12,6 +12,14 @@ const eslintConfig = [
     },
     vue: true,
   }),
+  {
+    rules: {
+      '@typescript-eslint/no-empty-object-type': [
+        'error',
+        { allowInterfaces: 'with-single-extends' },
+      ],
+    },
+  },
 ];
 
 export default eslintConfig;

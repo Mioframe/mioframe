@@ -16,7 +16,7 @@ const props = defineProps<{
 
 const cfrDocument = toRef(() => props.cfrDocument);
 
-const { doc, cahnge } = useCFRDocument(cfrDocument);
+const { doc, change } = useCFRDocument(cfrDocument);
 
 const mainElement = ref<HTMLElement>();
 
@@ -24,7 +24,7 @@ const editor = shallowRef<JSONEditor>();
 
 const onChangeJSON = (value: unknown) => {
   debug('onChangeJSON', value);
-  cahnge((doc) => {
+  change((doc) => {
     if (!isUnknownRecord(doc.body)) {
       doc.body = value;
     } else if (isUnknownRecord(value)) {

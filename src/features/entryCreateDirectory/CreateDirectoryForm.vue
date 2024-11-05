@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { isString } from 'lodash-es';
+import { isUndefined } from 'lodash-es';
 import { ref } from 'vue';
 import type { LocalDirectoryRef } from '../../entities/entry';
 
@@ -20,7 +20,7 @@ const onSubmit = async () => {
   if (!loading.value) {
     loading.value += 1;
     try {
-      if (isString(stateName.value)) {
+      if (!isUndefined(stateName.value)) {
         const directoryEntry = await props.parentEntry.createDirectory(
           stateName.value,
         );

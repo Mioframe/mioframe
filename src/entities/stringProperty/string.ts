@@ -2,12 +2,12 @@ import type { TypeOf } from 'zod';
 import { literal } from 'zod';
 import {
   createProperty,
-  zodGeneralPropery,
+  zodGeneralProperty,
 } from '../../shared/lib/databaseDocument/property/general';
 
 export const PROPERTY_TYPE_STRING = 'string';
 
-export const zodStringProperty = zodGeneralPropery(
+export const zodStringProperty = zodGeneralProperty(
   literal(PROPERTY_TYPE_STRING),
 );
 

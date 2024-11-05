@@ -9,6 +9,8 @@
 >
 import type { PropertiesMap } from '@/shared/lib/databaseDocument/property/property';
 import type { GeneralProperty } from '@/shared/lib/databaseDocument/property/general';
+import FormLayout from '@shared/ui/FormLayout.vue';
+import UIButton from '@shared/ui/Button/UIButton.vue';
 
 defineProps<{
   properties: PM;
@@ -36,24 +38,15 @@ defineSlots<{
 </script>
 
 <template>
-  <form
-    class="block-spacing is-flex is-flex-direction-column"
-    @submit.prevent="onSubmit"
-  >
+  <FormLayout @submit="onSubmit">
     <template v-for="(property, propertyId) in properties">
-      <slot name="property" :property="property" :property-id />
+      <slot name="property" :property :property-id />
     </template>
 
-    <div class="field is-grouped">
-      <div class="control">
-        <button class="button" type="submit">Add</button>
-      </div>
+    <template #actions>
+      <UIButton type="submit" primary>Add</UIButton>
 
-      <div class="control">
-        <button class="button" type="button" @click="onClickCancel">
-          Cancel
-        </button>
-      </div>
-    </div>
-  </form>
+      <UIButton @click="onClickCancel"> Cancel </UIButton>
+    </template>
+  </FormLayout>
 </template>
