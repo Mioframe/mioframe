@@ -2,6 +2,7 @@
 import { ref } from 'vue';
 import type { ItemId } from '../../shared/lib/databaseDocument/item';
 import type { DatabaseDocument } from '../../shared/lib/databaseDocument';
+import { UIButton } from '@shared/ui/Button';
 
 const props = defineProps<{
   databaseDocument: DatabaseDocument;
@@ -36,23 +37,10 @@ const onClickCancel = () => {
   >
     <p>Are you sure you want to remove item?</p>
 
-    <div class="field is-grouped">
-      <div class="control">
-        <button class="button" type="submit" :class="{ 'is-loading': loading }">
-          Remove
-        </button>
-      </div>
+    <div class="button-grid">
+      <UIButton type="submit" :loading="!!loading" danger> Remove </UIButton>
 
-      <div class="control">
-        <button
-          class="button"
-          type="button"
-          :disabled="!!loading"
-          @click="onClickCancel"
-        >
-          Cancel
-        </button>
-      </div>
+      <UIButton :disabled="!!loading" @click="onClickCancel"> Cancel </UIButton>
     </div>
   </form>
 </template>

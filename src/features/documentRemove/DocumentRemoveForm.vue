@@ -2,6 +2,7 @@
 import { ref } from 'vue';
 import type { DocumentFolder } from '../../shared/lib/cfrDocument';
 import type { DocumentId } from '@automerge/automerge-repo';
+import { UIButton } from '@shared/ui/Button';
 
 const props = defineProps<{
   documentFolder: DocumentFolder;
@@ -43,23 +44,10 @@ const onClickCancel = () => {
       ?
     </p>
 
-    <div class="field is-grouped">
-      <div class="control">
-        <button class="button" type="submit" :class="{ 'is-loading': loading }">
-          Remove
-        </button>
-      </div>
+    <div class="button-grid">
+      <UIButton type="submit" :loading="!!loading" danger> Remove </UIButton>
 
-      <div class="control">
-        <button
-          class="button"
-          type="button"
-          :disabled="!!loading"
-          @click="onClickCancel"
-        >
-          Cancel
-        </button>
-      </div>
+      <UIButton :disabled="!!loading" @click="onClickCancel"> Cancel </UIButton>
     </div>
   </form>
 </template>

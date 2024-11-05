@@ -4,13 +4,22 @@
   "eslint.format.enable": true,
   "cSpell.words": [
     "automerge",
+    "bezier",
     "bulma",
     "fontawesome",
     "fortawesome",
+    "fullwidth",
+    "GAPI",
+    "jsoneditor",
+    "noction",
+    "pinia",
+    "vueuse",
     "vyachean",
+    "wicg",
     "zenfs"
   ],
   "todo-tree.regex.regexCaseSensitive": false,
   "editor.formatOnSave": true,
-  "eslint.useFlatConfig": true
+  "eslint.useFlatConfig": true,
+  "cSpell.language": "en, ru"
 }

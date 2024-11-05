@@ -14,7 +14,7 @@ const { debug } = createLogger('useDocument');
 
 type RefCFRDocument<T extends DocumentContent = DocumentContent> = {
   doc: Readonly<Ref<DeepReadonly<T> | undefined, DeepReadonly<T> | undefined>>;
-  cahnge: (
+  change: (
     callback: (doc: { name: string; type: string; body?: unknown }) => void,
   ) => void;
 };
@@ -61,7 +61,7 @@ export const useCFRDocument = <T extends DocumentContent>(
 
   return {
     doc: readonly(docState),
-    cahnge: (...args: Parameters<CFRDocument['change']>) =>
+    change: (...args: Parameters<CFRDocument['change']>) =>
       cfrDocument.value?.change(...args),
   };
 };

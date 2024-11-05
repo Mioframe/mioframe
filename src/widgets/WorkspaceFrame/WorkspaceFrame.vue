@@ -4,6 +4,7 @@ import type { CFRDocument } from '../../shared/lib/cfrDocument';
 import { useCFRDocument } from '../../entities/document/useCFRDocument';
 import { createLogger } from '../../shared/lib/logger';
 import { DocumentEditForm } from '../../features/documentEdit';
+import type { ViewId } from '../../shared/lib/databaseDocument';
 import {
   DATABASE_DOCUMENT_TYPE,
   createDatabaseDocument,
@@ -13,26 +14,29 @@ import ValueWidgetInline from '@widget/ValueWidgetInline/ValueWidgetInline.vue';
 import { PROPERTY_TYPE_STRING } from '@entity/stringProperty';
 import { isString } from 'lodash-es';
 
-const { debug } = createLogger('WorkspaceFarame');
+const { debug } = createLogger('WorkspaceFrame');
 
 const props = defineProps<{
   cfrDocument: CFRDocument;
 }>();
 
 defineSlots<{
-  default(p: { cfrDocument: CFRDocument; documentType: string }): unknown;
+  default(props: { cfrDocument: CFRDocument; documentType: string }): unknown;
 }>();
+
+const selectedViewId = defineModel<ViewId>('selectedViewId');
 
 const cfrDocument = toRef(() => props.cfrDocument);
 
-const { doc, cahnge } = useCFRDocument(cfrDocument);
+const { doc, change } = useCFRDocument(cfrDocument);
 
 const documentName = computed(() => doc.value?.name);
 
+// todo: вынести в feature
 const onChangeName = (v: unknown) => {
   debug('onChangeName');
   if (isString(v)) {
-    cahnge((doc) => {
+    change((doc) => {
       if (v !== doc.name) {
         doc.name = v;
       }
@@ -63,13 +67,15 @@ const databaseDocument = computed(() =>
         @update:value="onChangeName"
       />
 
-      <span class="tag is-light is-medium"> {{ documentType }} </span>
+      <span class="tag is-medium"> {{ documentType }} </span>
     </section>
 
     <slot :cfr-document :document-type>
+      <!-- todo: тут определяются виджеты документов по их типу -->
       <DatabaseWidget
         v-if="databaseDocument"
         :database-document="databaseDocument"
+        :selected-view-id
       />
 
       <DocumentEditForm

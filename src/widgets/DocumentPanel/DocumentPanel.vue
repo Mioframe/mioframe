@@ -1,23 +1,23 @@
 <script setup lang="ts">
-import { ModalCard } from '../../shared/ui/ModalCard';
-import { DbPropertyCreateForm } from '../../features/databasePropertyCreate';
-import { computed, ref, toRef } from 'vue';
-import type { CFRDocument } from '../../shared/lib/cfrDocument';
-import { useCFRDocument } from '../../entities/document';
-import type { Item } from '../../shared/lib/databaseDocument';
-import { DATABASE_DOCUMENT_TYPE } from '../../shared/lib/databaseDocument';
-import { DbPropertyRemoveForm } from '../../features/databasePropertyRemove';
-import { DbItemAdd } from '../../features/databaseItemAdd';
-import { StingPropertyField } from '../../features/stringPropertyEdit';
-import { useDatabaseDocument } from '../../entities/database/useDatabaseDocument';
-import { createDatabaseDocument } from '../../shared/lib/databaseDocument/createDatabaseDocument';
-import { NumberPropertyField } from '../../features/numberPropertyEdit';
-import { BooleanPropertyField } from '../../features/booleanPropertyEdit';
+import { toRef } from 'vue';
+import { ModalCard } from '@shared/ui/ModalCard';
+import type { CFRDocument } from '@/shared/lib/cfrDocument';
+import { useCFRDocument } from '@entity/document';
 import { PROPERTY_TYPE_STRING } from '@entity/stringProperty';
-import { PROPERTY_TYPE_BOOLEAN } from '@entity/booleanProperty/boolean';
-import { PROPERTY_TYPE_NUMBER } from '@entity/numberProperty/number';
-import { PROPERTY_TYPE_DATE } from '@entity/dateProperty/date';
+import { PROPERTY_TYPE_BOOLEAN } from '@entity/booleanProperty';
+import { PROPERTY_TYPE_NUMBER } from '@entity/numberProperty';
+import { PROPERTY_TYPE_DATE } from '@entity/dateProperty';
+import { ViewList } from '@entity/documentView';
+import { DbPropertyCreateForm } from '@feature/databasePropertyCreate';
+import { DbPropertyRemoveForm } from '@feature/databasePropertyRemove';
+import { DbItemAdd } from '@feature/databaseItemAdd';
+import { StingPropertyField } from '@feature/stringPropertyEdit';
+import { NumberPropertyField } from '@feature/numberPropertyEdit';
+import { BooleanPropertyField } from '@feature/booleanPropertyEdit';
 import { DatePropertyField } from '@feature/datePropertyEdit';
+import { DatabaseViewAddForm } from '@feature/databaseViewAdd';
+import { UIButton } from '@shared/ui/Button';
+import { setupDatabaseDocument } from '../MainView/setupDatabaseDocument';
 
 const props = defineProps<{
   cfrDocument: CFRDocument;
@@ -27,82 +27,107 @@ const cfrDocument = toRef(() => props.cfrDocument);
 
 const { doc } = useCFRDocument(cfrDocument);
 
-const databaseDocument = computed(() =>
-  doc.value?.type === DATABASE_DOCUMENT_TYPE
-    ? createDatabaseDocument(props.cfrDocument)
-    : undefined,
-);
+const {
+  databaseProperties,
+  databaseViews,
+  hasAddProperty,
+  hasRemoveProperty,
+  isShowPropertyCreate,
+  isShowPropertyRemove,
+  isShowItemAdd,
+  hasItemAdd,
+  onAddItem,
+  onCancelAddItem,
+  stateNewItem,
+  isShowViewAdd,
+  isShowViewList,
+  onSubmitViewAdd,
+  selectedView,
+  selectedViewId,
+} = setupDatabaseDocument(cfrDocument, doc);
 
-const { properties: databaseProperies } = useDatabaseDocument(databaseDocument);
-
-const documentType = computed(() => doc.value?.type);
-
-const isShowPropertyCreate = ref(false);
-
-const hasAddProperty = computed(
-  () => documentType.value === DATABASE_DOCUMENT_TYPE,
-);
-
-const hasRemoveProperty = computed(
-  () => databaseProperies.value && Object.keys(databaseProperies.value).length,
-);
-
-const isShowPropertyRemove = ref(false);
-
-const isShowItemAdd = ref(false);
-
-const hasItemAdd = computed(
-  () => databaseProperies.value && Object.keys(databaseProperies.value).length,
-);
-
-const onAddItem = () => {
-  databaseDocument.value?.addItem(stateNewItem.value);
-  isShowItemAdd.value = false;
-};
-
-const onCancelAddItem = () => {
-  isShowItemAdd.value = false;
-};
-
-const stateNewItem = ref<Item>({});
+// todo: вынести в общий виджет
 </script>
 
 <template>
-  <form class="document-panel">
+  <div class="document-panel">
     <div class="button-grid">
-      <button
+      <div class="buttons has-addons">
+        <UIButton class="is-flex-grow-1" :label="selectedView.name">
+          <template #icon>
+            <i class="fa-solid fa-sliders" />
+          </template>
+        </UIButton>
+
+        <UIButton
+          :active="isShowViewList"
+          @click="isShowViewList = !isShowViewList"
+        >
+          <template #icon>
+            <i class="fa-solid fa-caret-down" />
+          </template>
+        </UIButton>
+      </div>
+
+      <ViewList
+        v-if="isShowViewList && databaseViews"
+        class="card is-fullwidth is-shadowless is-overflow-x-auto"
+        :views="databaseViews"
+      >
+        <template #default="{ id, view }">
+          <UIButton
+            :label="view.name"
+            :active="selectedViewId === id"
+            @click="selectedViewId = id"
+          >
+            <template #icon>
+              <i class="fa-solid fa-table" />
+            </template>
+          </UIButton>
+        </template>
+
+        <template #after>
+          <li>
+            <UIButton label="Add view" @click="isShowViewAdd = true">
+              <template #icon>
+                <i class="fa-solid fa-plus" />
+              </template>
+            </UIButton>
+          </li>
+        </template>
+      </ViewList>
+
+      <UIButton
         v-if="hasItemAdd"
-        type="button"
-        class="button"
+        label="Add Item"
         @click="isShowItemAdd = true"
       >
-        <span class="icon is-small"><i class="fas fa-plus" /></span>
+        <template #icon><i class="fas fa-plus" /></template>
+      </UIButton>
 
-        <span>Add Item</span>
-      </button>
-
-      <button
+      <UIButton
         v-if="hasAddProperty"
-        type="button"
-        class="button"
+        label="Add Property"
         @click="isShowPropertyCreate = true"
       >
-        <span class="icon is-small"><i class="fas fa-square-plus" /></span>
+        <template #icon><i class="fas fa-square-plus" /></template>
+      </UIButton>
 
-        <span>Add Property</span>
-      </button>
-
-      <button
+      <UIButton
         v-if="hasRemoveProperty"
-        type="button"
-        class="button"
+        label="Remove Property"
         @click="isShowPropertyRemove = true"
       >
-        <span class="icon is-small"><i class="fas fa-trash" /></span>
-
-        <span>Remove Property</span>
-      </button>
+        <template #icon><i class="fas fa-trash" /></template>
+      </UIButton>
     </div>
+
+    <ModalCard v-if="isShowViewAdd">
+      <DatabaseViewAddForm
+        @submit="onSubmitViewAdd"
+        @cancel="isShowViewAdd = false"
+      />
+    </ModalCard>
 
     <ModalCard v-if="isShowPropertyCreate">
       <DbPropertyCreateForm
@@ -120,9 +145,9 @@ const stateNewItem = ref<Item>({});
       />
     </ModalCard>
 
-    <ModalCard v-if="isShowItemAdd && databaseProperies">
+    <ModalCard v-if="isShowItemAdd && databaseProperties">
       <DbItemAdd
-        :properties="databaseProperies"
+        :properties="databaseProperties"
         @submit="onAddItem"
         @cancel="onCancelAddItem"
       >
@@ -153,5 +178,5 @@ const stateNewItem = ref<Item>({});
         </template>
       </DbItemAdd>
     </ModalCard>
-  </form>
+  </div>
 </template>
