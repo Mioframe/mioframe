@@ -1,100 +1,84 @@
 <script setup lang="ts">
-import { computed, ref, shallowRef, watch } from 'vue';
-import { useDocumentFolder } from '../../entities/folder/useDocumentFolder';
-import { MenuFolder } from '../../entities/folder';
-import {
-  createDocumentFolder,
-  type CFRDocument,
-  type DocumentFolder,
-} from '../../shared/lib/cfrDocument';
-import { CreateDocumentForm } from '../../features/documentCreat';
-import { ModalCard } from '../../shared/ui/ModalCard';
-import type { DocumentId } from '@automerge/automerge-repo';
-import { DocumentRemoveForm } from '../../features/documentRemove';
+import { ref } from 'vue';
+import { MenuFolder } from '@entity/folder';
+import { CreateDocumentForm } from '@feature/documentCreate';
+import { ModalCard } from '@shared/ui/ModalCard';
+import { DocumentRemoveForm } from '@feature/documentRemove';
 import { WorkspaceFrame } from '../WorkspaceFrame';
-import { DocumentPanel } from '../DocumentPanel';
-import { createDatabaseDocument } from '../../shared/lib/databaseDocument/createDatabaseDocument';
-import { createLogger } from '../../shared/lib/logger';
-import { GDriveDirectoryPickerForm } from '../../features/gDriveDirectoryPicker';
-import type { GDriveDirectory } from '../../shared/lib/googleDrive';
-import { usePickLocalDirectory } from '../../features/localDirectoryPick';
+import { GDriveDirectoryPickerForm } from '@feature/gDriveDirectoryPicker';
 import WelcomeMessage from './WelcomeMessage.vue';
 import { ViewWithPanelLayout } from '@shared/ui/ViewWithPanelLayout';
-
-const { debug } = createLogger('MainView');
-
-const selectedDocumentFolder = shallowRef<DocumentFolder>();
-
-const { openLocalDirectoryPicker, isSupport: isSupportLocalDirectory } =
-  usePickLocalDirectory();
-
-const onClickSelectDirectory = async () => {
-  const localDirectory = await openLocalDirectoryPicker();
-
-  selectedDocumentFolder.value = createDocumentFolder(localDirectory);
-};
-
-const { content: contentFolderMap } = useDocumentFolder(selectedDocumentFolder);
-
-const contentFolderSize = computed(() => contentFolderMap.value.size);
-
-watch(contentFolderSize, (contentFolderSize) => {
-  setTimeout(() => {
-    debug('contentFolderSize', !!contentFolderSize);
-    isOpenPanel.value = !!contentFolderSize;
-  }, 100);
-});
-
-const isDisplayedDocumentCreationForm = ref(false);
-
-const onClickCreateDocument = () => {
-  isDisplayedDocumentCreationForm.value = true;
-};
-
-const onCancelCreateDocument = () => {
-  isDisplayedDocumentCreationForm.value = false;
-  isOpenPanel.value = true;
-};
-
-const onCreatedDocument = onCancelCreateDocument;
-
-const documentIdForRemove = ref<DocumentId>();
-
-const onClickRemove = (documentId: DocumentId) => {
-  documentIdForRemove.value = documentId;
-};
-
-const onCancelRemove = () => {
-  documentIdForRemove.value = undefined;
-};
-
-const onRemoved = onCancelRemove;
-
-const selectedCFRDocument = shallowRef<CFRDocument>();
-
-const onClickFolder = (_documentId: DocumentId, cfrDocument: CFRDocument) => {
-  const databaseDocument = createDatabaseDocument(cfrDocument);
-  debug('onClickFolder', databaseDocument);
-  selectedCFRDocument.value = cfrDocument;
-  isOpenPanel.value = false;
-};
+import { UIButton } from '@shared/ui/Button';
+import { setupDocumentCreate } from './setupDocumentCreate';
+import { setupGoogleDirectoryChoice } from './setupGoogleDirectoryChoice';
+import { setupFolderChoice } from './setupFolderChoice';
+import { setupDocumentRemove } from './setupDocumentRemove';
+import { setupDocumentChoice } from './setupDocumentChoice';
+import { setupDatabaseDocument } from '@widget/MainView/setupDatabaseDocument';
+import { useCFRDocument } from '@entity/document';
+import { ViewList } from '@entity/documentView';
+import { DatabaseViewAddForm } from '@feature/databaseViewAdd';
+import { DbPropertyCreateForm } from '@feature/databasePropertyCreate';
+import { DbPropertyRemoveForm } from '@feature/databasePropertyRemove';
+import { DbItemAdd } from '@feature/databaseItemAdd';
+import { StingPropertyField } from '@feature/stringPropertyEdit';
+import { PROPERTY_TYPE_STRING } from '@entity/stringProperty';
+import { NumberPropertyField } from '@feature/numberPropertyEdit';
+import { PROPERTY_TYPE_NUMBER } from '@entity/numberProperty';
+import { BooleanPropertyField } from '@feature/booleanPropertyEdit';
+import { PROPERTY_TYPE_BOOLEAN } from '@entity/booleanProperty';
+import { DatePropertyField } from '@feature/datePropertyEdit';
+import { PROPERTY_TYPE_DATE } from '@entity/dateProperty';
 
 const isOpenPanel = ref(true);
 
-const openSelectGDirectory = ref(false);
+const {
+  contentFolderMap,
+  isSupportLocalDirectory,
+  onClickSelectDirectory,
+  selectedDocumentFolder,
+} = setupFolderChoice(isOpenPanel);
 
-const onClickSelectGDirectory = () => {
-  openSelectGDirectory.value = true;
-};
+const {
+  onCancelSelectGDirectory,
+  onClickSelectGDirectory,
+  onSelectGDirectory,
+  openSelectGDirectory,
+} = setupGoogleDirectoryChoice(selectedDocumentFolder);
 
-const onSelectGDirectory = (directory: GDriveDirectory) => {
-  selectedDocumentFolder.value = createDocumentFolder(directory);
-  openSelectGDirectory.value = false;
-};
+const {
+  isDisplayedDocumentCreationForm,
+  onCancelCreateDocument,
+  onClickCreateDocument,
+  onCreatedDocument,
+} = setupDocumentCreate(isOpenPanel);
 
-const onCancelSelectGDirectory = () => {
-  openSelectGDirectory.value = false;
-};
+const { documentIdForRemove, onCancelRemove, onClickRemove, onRemoved } =
+  setupDocumentRemove();
+
+const { onClickFolderDocument, selectedCFRDocument } =
+  setupDocumentChoice(isOpenPanel);
+
+const { doc } = useCFRDocument(selectedCFRDocument);
+
+const {
+  databaseProperties,
+  databaseViews,
+  hasAddProperty,
+  hasRemoveProperty,
+  isShowPropertyCreate,
+  isShowPropertyRemove,
+  isShowItemAdd,
+  hasItemAdd,
+  onAddItem,
+  onCancelAddItem,
+  stateNewItem,
+  isShowViewAdd,
+  isShowViewList,
+  onSubmitViewAdd,
+  selectedView,
+  selectedViewId,
+} = setupDatabaseDocument(selectedCFRDocument, doc);
 </script>
 
 <template>
@@ -103,19 +87,148 @@ const onCancelSelectGDirectory = () => {
       v-if="selectedCFRDocument"
       :cfr-document="selectedCFRDocument"
       class="is-flex-grow-1"
+      :selected-view-id
     />
 
     <WelcomeMessage v-else class="is-flex-grow-1" />
 
     <template #panel>
       <div class="p-1 block-spacing is-flex is-flex-direction-column">
-        <DocumentPanel
-          v-if="selectedCFRDocument"
-          :cfr-document="selectedCFRDocument"
-        />
+        <div v-if="selectedCFRDocument" class="document-panel">
+          <div class="button-grid">
+            <div class="buttons has-addons">
+              <UIButton class="is-flex-grow-1" :label="selectedView.name">
+                <template #icon>
+                  <i class="fa-solid fa-sliders" />
+                </template>
+              </UIButton>
+
+              <UIButton
+                :active="isShowViewList"
+                @click="isShowViewList = !isShowViewList"
+              >
+                <template #icon>
+                  <i class="fa-solid fa-caret-down" />
+                </template>
+              </UIButton>
+            </div>
+
+            <ViewList
+              v-if="isShowViewList && databaseViews"
+              class="card is-fullwidth is-shadowless is-overflow-x-auto"
+              :views="databaseViews"
+            >
+              <template #default="{ id, view }">
+                <UIButton
+                  :label="view.name"
+                  :active="selectedViewId === id"
+                  @click="selectedViewId = id"
+                >
+                  <template #icon>
+                    <i class="fa-solid fa-table" />
+                  </template>
+                </UIButton>
+              </template>
+
+              <template #after>
+                <li>
+                  <UIButton label="Add view" @click="isShowViewAdd = true">
+                    <template #icon>
+                      <i class="fa-solid fa-plus" />
+                    </template>
+                  </UIButton>
+                </li>
+              </template>
+            </ViewList>
+
+            <UIButton
+              v-if="hasItemAdd"
+              label="Add Item"
+              @click="isShowItemAdd = true"
+            >
+              <template #icon><i class="fas fa-plus" /></template>
+            </UIButton>
+
+            <UIButton
+              v-if="hasAddProperty"
+              label="Add Property"
+              @click="isShowPropertyCreate = true"
+            >
+              <template #icon><i class="fas fa-square-plus" /></template>
+            </UIButton>
+
+            <UIButton
+              v-if="hasRemoveProperty"
+              label="Remove Property"
+              @click="isShowPropertyRemove = true"
+            >
+              <template #icon><i class="fas fa-trash" /></template>
+            </UIButton>
+          </div>
+
+          <ModalCard v-if="isShowViewAdd">
+            <DatabaseViewAddForm
+              @submit="onSubmitViewAdd"
+              @cancel="isShowViewAdd = false"
+            />
+          </ModalCard>
+
+          <ModalCard v-if="isShowPropertyCreate">
+            <DbPropertyCreateForm
+              :cfr-document="selectedCFRDocument"
+              @canceled="isShowPropertyCreate = false"
+              @created="isShowPropertyCreate = false"
+            />
+          </ModalCard>
+
+          <ModalCard v-if="isShowPropertyRemove">
+            <DbPropertyRemoveForm
+              :cfr-document="selectedCFRDocument"
+              @canceled="isShowPropertyRemove = false"
+              @removed="isShowPropertyRemove = false"
+            />
+          </ModalCard>
+
+          <ModalCard v-if="isShowItemAdd && databaseProperties">
+            <DbItemAdd
+              :properties="databaseProperties"
+              @submit="onAddItem"
+              @cancel="onCancelAddItem"
+            >
+              <template #property="{ property, propertyId }">
+                <StingPropertyField
+                  v-if="property.type === PROPERTY_TYPE_STRING"
+                  v-model:value="stateNewItem[propertyId]"
+                  :label="property.name"
+                />
+
+                <NumberPropertyField
+                  v-else-if="property.type === PROPERTY_TYPE_NUMBER"
+                  v-model:value="stateNewItem[propertyId]"
+                  :label="property.name"
+                />
+
+                <BooleanPropertyField
+                  v-else-if="property.type === PROPERTY_TYPE_BOOLEAN"
+                  v-model:value="stateNewItem[propertyId]"
+                  :label="property.name"
+                />
+
+                <DatePropertyField
+                  v-else-if="property.type === PROPERTY_TYPE_DATE"
+                  v-model:value="stateNewItem[propertyId]"
+                  :label="property.name"
+                />
+              </template>
+            </DbItemAdd>
+          </ModalCard>
+        </div>
 
         <div class="menu card is-shadowless is-overflow-x-auto">
-          <MenuFolder :documents-map="contentFolderMap" @click="onClickFolder">
+          <MenuFolder
+            :documents-map="contentFolderMap"
+            @click="onClickFolderDocument"
+          >
             <template #contextMenu="{ documentId, documentName }">
               <span class="dropdown-item">
                 {{ documentName }}
@@ -140,39 +253,34 @@ const onCancelSelectGDirectory = () => {
         </div>
 
         <div class="button-grid">
-          <button
+          <UIButton
             v-if="selectedDocumentFolder"
-            type="button"
-            class="button"
+            label="create document"
             @click="onClickCreateDocument"
           >
-            <span class="icon">
+            <template #icon>
               <i class="fa-solid fa-plus" />
-            </span>
+            </template>
+          </UIButton>
 
-            <span> create document </span>
-          </button>
-
-          <button
+          <UIButton
             v-if="isSupportLocalDirectory"
-            type="button"
-            class="button"
+            label="select local directory"
             @click="onClickSelectDirectory"
           >
-            <span class="icon">
+            <template #icon>
               <i class="fa-solid fa-plug" />
-            </span>
+            </template>
+          </UIButton>
 
-            <span> select local directory </span>
-          </button>
-
-          <button type="button" class="button" @click="onClickSelectGDirectory">
-            <span class="icon">
+          <UIButton
+            label="select google drive directory"
+            @click="onClickSelectGDirectory"
+          >
+            <template #icon>
               <i class="fa-brands fa-google-drive" />
-            </span>
-
-            <span> select google drive directory </span>
-          </button>
+            </template>
+          </UIButton>
         </div>
       </div>
     </template>

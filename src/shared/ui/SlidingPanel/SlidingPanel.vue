@@ -80,6 +80,7 @@ watch([trayScrollY, refTray], ([trayScrollY]) => {
     min-height: initial;
     width: var(--sliding-panel-min-width);
     min-width: var(--sliding-panel-min-width);
+    scroll-snap-align: start end;
   }
 
   &__tray {

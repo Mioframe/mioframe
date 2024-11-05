@@ -5,11 +5,13 @@ export {
   type GeneralProperty,
   type ValidateValue,
   createProperty,
-  zodGeneralPropery,
+  zodGeneralProperty as zodGeneralPropery,
 } from './general';
-export type {
-  UnknownProperty,
-  UnknownPropertiesMap,
+export {
+  type UnknownProperty,
+  type UnknownPropertiesMap,
   zodUnknownProperty,
   zodUnknownPropertiesMap,
+  zodUnknownPropertyType,
+  type PropertiesMap,
 } from './property';

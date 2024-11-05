@@ -1,31 +1,11 @@
 import type { PartialDeep } from 'type-fest';
-import type { UnknownProperty, PropertyId } from './property';
-import { zodItemId, type ItemId } from './item';
 import type { TypeOf } from 'zod';
-import { intersection, literal, object, record, unknown } from 'zod';
-import { zodUnknownPropertiesMap } from './property/property';
-import { zodPropertyId } from './property/general';
+import { intersection, literal, object } from 'zod';
+import type { UnknownProperty, PropertyId } from './property';
+import { zodDataBaseStateLatest } from './versions';
+import type { View, ViewId } from './view';
+import type { Item, ItemId } from './item';
 import { zodDocumentContent } from '../cfrDocument';
-
-const zodValue = unknown();
-
-const zodItem = record(zodPropertyId, zodValue);
-
-export type Item = TypeOf<typeof zodItem>;
-
-const zodDatabaseData = record(zodItemId, zodItem);
-
-export type DatabaseData = TypeOf<typeof zodDatabaseData>;
-
-const zodDatabaseStateV1 = object({
-  version: literal(1),
-  data: zodDatabaseData,
-  properties: zodUnknownPropertiesMap,
-});
-
-export type DataBaseStateV1 = TypeOf<typeof zodDatabaseStateV1>;
-
-export const zodDataBaseStateLatest = zodDatabaseStateV1;
 
 export type DataBaseStateLatest = TypeOf<typeof zodDataBaseStateLatest>;
 
@@ -35,7 +15,7 @@ export const zodDatabaseType = object({
   type: literal(DATABASE_DOCUMENT_TYPE),
 });
 
-export const zodDatabaseExtentionBodyDocument = object({
+export const zodDatabaseExtensionBodyDocument = object({
   body: zodDataBaseStateLatest,
 });
 
@@ -48,7 +28,7 @@ export type DatabaseTypeDocument = TypeOf<typeof zodDatabaseTypeDocument>;
 
 export const zodDatabaseDocumentContent = intersection(
   zodDatabaseTypeDocument,
-  zodDatabaseExtentionBodyDocument,
+  zodDatabaseExtensionBodyDocument,
 );
 
 export type DatabaseDocumentContent = TypeOf<typeof zodDatabaseDocumentContent>;
@@ -69,7 +49,7 @@ export interface DatabaseDocument {
 
   onChange: (fn: (doc: DatabaseDocumentContent) => unknown) => () => void;
 
-  // addView(): void;
+  addView: (view: View) => ViewId;
   // removeView(): void;
   // updateView(): void;
 }

@@ -1,17 +1,15 @@
 <script setup lang="ts">
 import { computed } from 'vue';
-import type {
-  DatabaseData,
-  Item,
-} from '../../../shared/lib/databaseDocument/types';
 import ItemTR from './ItemTR.vue';
 import { isNil, pickBy } from 'lodash-es';
 import type {
   UnknownProperty,
   UnknownPropertiesMap,
   PropertyId,
-} from '../../../shared/lib/databaseDocument';
-import type { ItemId } from '../../../shared/lib/databaseDocument/item';
+  DatabaseData,
+  Item,
+  ItemId,
+} from '@shared/lib/databaseDocument';
 
 const props = defineProps<{
   data: DatabaseData;

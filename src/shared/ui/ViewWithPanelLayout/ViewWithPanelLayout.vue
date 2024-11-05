@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, watch, watchEffect } from 'vue';
+import { computed, ref, watchEffect } from 'vue';
 import { SlidingPanel } from '../SlidingPanel';
 import { useMediaQuery, type MaybeElement } from '@vueuse/core';
 import { onInteractionOutside } from '@shared/lib/onInteractionOutside';
@@ -132,7 +132,8 @@ watchEffect(() => {
       overflow-y: auto;
 
       width: 30vw;
-      min-width: 320px;
+      min-width: 420px;
+      max-width: 70vw;
     }
   }
 
