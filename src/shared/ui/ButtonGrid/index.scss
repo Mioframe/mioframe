@@ -1,9 +1,8 @@
 .button-grid {
     display: grid;
     gap: 8px;
-    padding: 8px;
     grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    grid-auto-rows: 1fr;
+    grid-auto-rows: min-content;
 
     >.button {
         white-space: initial;

@@ -1,6 +1,9 @@
 <script setup lang="ts">
-import { ref, toRef } from 'vue';
-import { DatabaseView, useDatabaseDocument } from '../../entities/database';
+import { computed, ref, toRef } from 'vue';
+import {
+  DatabaseTableView,
+  useDatabaseDocument,
+} from '../../entities/database';
 import type { MenuItem } from '../../shared/ui/ContextButton';
 import { ContextBtn } from '../../shared/ui/ContextButton';
 import ValueWidgetInline from '../ValueWidgetInline/ValueWidgetInline.vue';
@@ -8,11 +11,14 @@ import type {
   DatabaseDocument,
   ItemId,
   PropertyId,
+  View,
+  ViewId,
 } from '../../shared/lib/databaseDocument';
 import { toRefs } from '@vueuse/core';
 import { ModalCard } from '../../shared/ui/ModalCard';
 import { DbItemRemoveForm } from '../../features/databaseItemRemove';
 import { debounce } from 'lodash-es';
+import { VIEW_LAYOUT } from '@shared/lib/databaseDocument/view/general';
 
 const props = defineProps<{
   databaseDocument: DatabaseDocument;
@@ -22,7 +28,7 @@ const databaseDocumentRef = toRef(() => props.databaseDocument);
 
 const { updateItem } = toRefs(databaseDocumentRef);
 
-const { state } = useDatabaseDocument(databaseDocumentRef);
+const { state, views } = useDatabaseDocument(databaseDocumentRef);
 
 const onChangeValue = debounce(
   (v: unknown, propertyId: PropertyId, itemId: ItemId) => {
@@ -54,10 +60,34 @@ const onClickContextItem = (eventName: ItemEvents, itemId: ItemId) => {
       throw new Error('in context menu unhandled event');
   }
 };
+
+const selectedViewId = defineModel<ViewId>('selectedViewId');
+
+const view = computed((): View => {
+  if (views.value) {
+    if (selectedViewId.value && selectedViewId.value in views.value) {
+      return views.value[selectedViewId.value];
+    }
+    const anyView = Object.values(views.value).at(0);
+    if (anyView) {
+      return anyView;
+    }
+  }
+  return {
+    layout: VIEW_LAYOUT.TABLE,
+    name: 'default',
+  };
+});
+
+// todo: объединить виджеты в один и разделить логику в use
 </script>
 
 <template>
-  <DatabaseView v-if="state" :database-state="state">
+  <DatabaseTableView
+    v-if="state && view?.layout === VIEW_LAYOUT.TABLE"
+    :database-state="state"
+  >
+    <!-- todo: где то тут определяются вьюшки документов? -->
     <template #value="{ property, value, itemId, propertyId }">
       <!-- todo: поменять на слот? -->
       <ValueWidgetInline
@@ -81,7 +111,9 @@ const onClickContextItem = (eventName: ItemEvents, itemId: ItemId) => {
         </template>
       </ContextBtn>
     </template>
-  </DatabaseView>
+  </DatabaseTableView>
+
+  <pre v-else-if="view?.layout === VIEW_LAYOUT.JSON">{{ state }}</pre>
 
   <div v-else>// todo: придумать текст, пока состояние базы отсутствует</div>
 

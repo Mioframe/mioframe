@@ -8,6 +8,7 @@ import type { ValueOf } from 'type-fest/source/value-of';
 import { PROPERTY_TYPE_NUMBER } from '@entity/numberProperty/number';
 import { PROPERTY_TYPE_BOOLEAN } from '@entity/booleanProperty/boolean';
 import { PROPERTY_TYPE_DATE } from '@entity/dateProperty/date';
+import { UIButton } from '@shared/ui/Button';
 
 const stateName = ref<string>();
 
@@ -83,16 +84,10 @@ const onClickCancel = () => {
       </div>
     </div>
 
-    <div class="field is-grouped">
-      <div class="control">
-        <button class="button" type="submit">Create</button>
-      </div>
+    <div class="button-grid">
+      <UIButton type="submit" primary>Create</UIButton>
 
-      <div class="control">
-        <button class="button" type="button" @click="onClickCancel">
-          Cancel
-        </button>
-      </div>
+      <UIButton @click="onClickCancel"> Cancel </UIButton>
     </div>
   </form>
 </template>

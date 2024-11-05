@@ -12,6 +12,7 @@ import { useGoogleApi } from '@shared/lib/googleApi/useGoogleApi';
 import { GDriveScope } from '@shared/lib/googleApi/types';
 import { createPreviouslyCreatedFolders } from './previouslyCreatedFolders';
 import { sum, values } from 'lodash-es';
+import FormLayout from '@shared/ui/FormLayout.vue';
 
 const emit = defineEmits<{
   submit: [directory: GDriveDirectory];
@@ -38,7 +39,7 @@ const previouslyCreatedFolders = shallowRef<{
 
 const googleApi = useGoogleApi();
 
-const fetchRootDirectiry = async () => {
+const fetchRootDirectory = async () => {
   const gDrive = await googleApi.getGDrive([GDriveScope.all]);
 
   if (gDrive) {
@@ -47,13 +48,13 @@ const fetchRootDirectiry = async () => {
   }
 };
 
-const userinfo = computed(() => googleApi.userinfo);
+const userInfo = computed(() => googleApi.userInfo);
 
 watch(
-  userinfo,
-  (userinfo) => {
-    if (userinfo) {
-      void fetchRootDirectiry();
+  userInfo,
+  (userInfo) => {
+    if (userInfo) {
+      void fetchRootDirectory();
     } else {
       rootGDriveDirectory.value = undefined;
     }
@@ -76,7 +77,7 @@ const onClickLogin = async () => {
   await googleApi.requestAccessToken([GDriveScope.all]);
 };
 
-const onClickUnlogin = () => {
+const onClickLogout = () => {
   rootGDriveDirectory.value = undefined;
   previouslyCreatedFolders.value = undefined;
   googleApi.removeToken();
@@ -86,13 +87,10 @@ const onClickUnlogin = () => {
 </script>
 
 <template>
-  <form
-    class="is-flex is-flex-direction-column is-gap-2 is-overflow-auto"
-    @submit.prevent="onSubmit"
-  >
+  <FormLayout @submit="onSubmit">
     <div class="field">
       <button
-        v-if="!userinfo"
+        v-if="!userInfo"
         type="button"
         class="button is-fullwidth"
         :class="{
@@ -109,12 +107,12 @@ const onClickUnlogin = () => {
 
       <GUserCard
         v-else
-        :email="userinfo.email"
-        :name="userinfo.name"
-        :picture="userinfo.picture"
+        :email="userInfo.email"
+        :name="userInfo.name"
+        :picture="userInfo.picture"
       >
         <template #mediaRight>
-          <button type="button" class="button" @click="onClickUnlogin">
+          <button type="button" class="button" @click="onClickLogout">
             logout
           </button>
         </template>
@@ -133,7 +131,7 @@ const onClickUnlogin = () => {
     </div>
 
     <div v-if="rootGDriveDirectory" class="field">
-      <span class="label">GDrive</span>
+      <span class="label">Google Drive</span>
 
       <GDriveDirectoryList
         :g-drive-directory="rootGDriveDirectory"
@@ -143,7 +141,7 @@ const onClickUnlogin = () => {
       />
     </div>
 
-    <div class="field is-grouped">
+    <template #actions>
       <button
         class="button is-primary"
         type="submit"
@@ -153,6 +151,6 @@ const onClickUnlogin = () => {
       </button>
 
       <button class="button" type="reset" @click="onClickCancel">Cancel</button>
-    </div>
-  </form>
+    </template>
+  </FormLayout>
 </template>

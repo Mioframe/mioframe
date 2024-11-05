@@ -2,6 +2,7 @@
 import { ref, watchEffect } from 'vue';
 import type { CFRDocument, DocumentFolder } from '../../shared/lib/cfrDocument';
 import { DATABASE_DOCUMENT_TYPE } from '../../shared/lib/databaseDocument';
+import { UIButton } from '@shared/ui/Button';
 
 const props = defineProps<{
   documentFolder: DocumentFolder;
@@ -78,14 +79,10 @@ const documentType = ref<(typeof documentTypeOptions)[number]>(
       </select>
     </div>
 
-    <div class="field is-grouped">
-      <div class="control">
-        <button class="button is-link" type="submit">Create</button>
-      </div>
+    <div class="button-grid">
+      <UIButton type="submit" primary>Create</UIButton>
 
-      <div class="control">
-        <button class="button is-link is-light" type="reset">Cancel</button>
-      </div>
+      <UIButton class="button" type="reset">Cancel</UIButton>
     </div>
   </form>
 </template>

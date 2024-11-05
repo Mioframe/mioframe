@@ -45,7 +45,7 @@ const selectedCFRDocument = computed(() =>
     : undefined,
 );
 
-const { doc: selectedDocumentContent, cahnge: changeDocument } =
+const { doc: selectedDocumentContent, change: changeDocument } =
   useCFRDocument(selectedCFRDocument);
 
 const onClickChangeDoc = () => {

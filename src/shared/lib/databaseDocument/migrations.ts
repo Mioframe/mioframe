@@ -1,21 +1,18 @@
 import { putObject } from '../changeObject';
 import type { DocumentContent } from '../cfrDocument';
-import type { DataBaseStateV1 } from './types';
-
-export const initialDatabaseStateV1 = (): DataBaseStateV1 => ({
-  version: 1,
-  properties: {},
-  data: {},
-});
+import { initialDatabaseStateV1, initialDatabaseStateV2 } from './versions';
 
 /**
  * Миграция должна проверять текущую версию документа
- * Запускать последжовательные миграции начиная с нужной версии до конца
+ * Запускать последовательные миграции начиная с нужной версии до конца
  */
 export const migrationsMap: {
-  [CURRENT_VERSION: number]: <D extends DocumentContent>(doc: D) => void;
+  [CURRENT_VERSION: number]: (doc: DocumentContent) => void;
 } = {
   0: (doc: DocumentContent) => {
     putObject(doc, { body: initialDatabaseStateV1() });
+  },
+  1: (doc: DocumentContent) => {
+    putObject(doc, { body: initialDatabaseStateV2() });
   },
 } as const;

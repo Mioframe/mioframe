@@ -8,6 +8,7 @@ import type { CFRDocument } from '../../shared/lib/cfrDocument';
 import { createDatabaseDocument } from '../../shared/lib/databaseDocument/createDatabaseDocument';
 import { useCFRDocument } from '../../entities/document';
 import { is } from '../../shared/lib/validateZodScheme';
+import { UIButton } from '@shared/ui/Button';
 
 const emit = defineEmits<{
   removed: [propertyId: PropertyId];
@@ -65,16 +66,10 @@ const onClickCancel = () => {
       </div>
     </div>
 
-    <div class="field is-grouped">
-      <div class="control">
-        <button class="button" type="submit">Remove</button>
-      </div>
+    <div class="button-grid">
+      <UIButton type="submit" danger> Remove </UIButton>
 
-      <div class="control">
-        <button class="button" type="button" @click="onClickCancel">
-          Cancel
-        </button>
-      </div>
+      <UIButton @click="onClickCancel"> Cancel </UIButton>
     </div>
   </form>
 </template>

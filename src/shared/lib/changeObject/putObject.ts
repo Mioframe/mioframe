@@ -1,4 +1,5 @@
 import { isObject, isUndefined } from 'lodash-es';
+import type { PartialDeep } from 'type-fest';
 
 /**
  * overwrites modified values from source to target
@@ -6,11 +7,11 @@ import { isObject, isUndefined } from 'lodash-es';
  * @param source - object with new values
  */
 
-export const putObject = <T extends object, S extends object>(
+export const putObject = <T extends object>(
   target: T,
-  source: S,
+  source: PartialDeep<T>,
 ) => {
-  (<(keyof S)[]>Object.keys(source)).forEach((sourceKey) => {
+  (<(keyof typeof source)[]>Object.keys(source)).forEach((sourceKey) => {
     const sourceValue = source[sourceKey];
     if (sourceKey in target) {
       // eslint-disable-next-line @typescript-eslint/ban-ts-comment -- checked sourceKey in target

@@ -1,13 +1,13 @@
 import {
   createProperty,
-  zodGeneralPropery,
+  zodGeneralProperty,
 } from '@/shared/lib/databaseDocument/property/general';
 import type { TypeOf } from 'zod';
 import { literal } from 'zod';
 
 export const PROPERTY_TYPE_BOOLEAN = 'boolean';
 
-export const zodBooleanProperty = zodGeneralPropery(
+export const zodBooleanProperty = zodGeneralProperty(
   literal(PROPERTY_TYPE_BOOLEAN),
 );
 
