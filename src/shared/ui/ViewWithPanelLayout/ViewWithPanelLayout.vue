@@ -4,6 +4,11 @@ import { SlidingPanel } from '../SlidingPanel';
 import { useMediaQuery, type MaybeElement } from '@vueuse/core';
 import { onInteractionOutside } from '@shared/lib/onInteractionOutside';
 import { vElementHover } from '@vueuse/components';
+import { createLogger } from '@shared/lib/logger';
+import { UIButton } from '../Button';
+import { ButtonGroup } from '../ButtonGroup';
+
+const { debug } = createLogger('ViewWithPanelLayout');
 
 defineSlots<{
   default(): unknown;
@@ -17,12 +22,18 @@ const openModel = defineModel<boolean>('openPanel');
 const localStateOpenPanel = ref(true);
 
 const isOpenPanel = computed({
-  get: () => openModel.value ?? localStateOpenPanel.value,
+  get: () =>
+    isPinPanel.value
+      ? localStateOpenPanel.value
+      : (openModel.value ?? localStateOpenPanel.value),
   set: (v: boolean) => {
+    debug('set isOpenPanel', v);
     openModel.value = v;
     localStateOpenPanel.value = v;
   },
 });
+
+const isPinPanel = ref(false);
 
 const isHoverPanel = ref(false);
 
@@ -33,17 +44,20 @@ const onHoverPanel = (state: boolean) => {
 const isLandscape = useMediaQuery('(orientation: landscape)');
 
 const onClickTogglePanelBtn = () => {
+  debug('onClickTogglePanelBtn');
   isOpenPanel.value = !isOpenPanel.value;
 };
 
 onInteractionOutside(refSlidingPanel, () => {
-  if (isLandscape.value) {
+  debug('onInteractionOutside');
+  if (!isPinPanel.value && isLandscape.value) {
     isOpenPanel.value = false;
   }
 });
 
 watchEffect(() => {
-  if (isLandscape.value && isHoverPanel.value) {
+  debug('watchEffect');
+  if (!isPinPanel.value && isLandscape.value && isHoverPanel.value) {
     isOpenPanel.value = true;
   }
 });
@@ -69,23 +83,37 @@ watchEffect(() => {
           'has-background-primary': !isOpenPanel,
         }"
       >
-        <button
-          type="button"
-          class="panel__toggle button is-transparent is-small is-fullwidth"
-          :class="{
-            'is-primary': !isOpenPanel,
-          }"
-          @pointerdown="onClickTogglePanelBtn"
-        >
-          <span class="icon">
-            <i
-              class="fa-solid fa-chevron-up"
-              :class="{
-                'fa-flip-vertical': isOpenPanel,
-              }"
-            />
-          </span>
-        </button>
+        <ButtonGroup>
+          <UIButton
+            class="panel__toggle is-small is-borderless is-shadowless"
+            :primary="!isOpenPanel"
+            :grow="!isLandscape"
+            @pointerdown="onClickTogglePanelBtn"
+          >
+            <template #icon>
+              <i
+                class="fa-solid fa-chevron-up"
+                :class="{
+                  'fa-rotate-270': isLandscape && !isOpenPanel,
+                  'fa-rotate-90': isLandscape && isOpenPanel,
+                  'fa-flip-vertical': !isLandscape && isOpenPanel,
+                }"
+              />
+            </template>
+          </UIButton>
+
+          <UIButton
+            class="is-small is-borderless is-shadowless"
+            :primary="!isOpenPanel"
+            @click="isPinPanel = !isPinPanel"
+          >
+            <template #icon>
+              <i v-if="isPinPanel" class="fa-solid fa-thumbtack-slash" />
+
+              <i v-else class="fa-solid fa-thumbtack" />
+            </template>
+          </UIButton>
+        </ButtonGroup>
 
         <slot name="panel" />
       </div>
@@ -138,12 +166,8 @@ watchEffect(() => {
   }
 
   &__toggle {
-    border: 0;
-    box-shadow: none;
-
     @media screen and (orientation: landscape) {
       width: var(--sliding-panel-min-width);
-      transform: rotate(-90deg);
     }
   }
 

@@ -49,7 +49,7 @@ defineSlots<{
 <template>
   <button
     ref="refContextMenuButton"
-    class="button"
+    class="button is-flex-shrink-1"
     :class="$attrs.class"
     type="button"
     @click="onContextMenu"

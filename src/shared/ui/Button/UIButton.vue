@@ -1,5 +1,8 @@
 <script setup lang="ts">
-defineProps<{
+import { isNumber } from 'lodash-es';
+import { computed } from 'vue';
+
+const props = defineProps<{
   label?: string;
   primary?: boolean;
   active?: boolean;
@@ -7,12 +10,21 @@ defineProps<{
   disabled?: boolean;
   loading?: boolean;
   danger?: boolean;
+  grow?: number | boolean;
 }>();
 
 const slots = defineSlots<{
   default(): unknown;
   icon(): unknown;
 }>();
+
+const growClass = computed(() =>
+  isNumber(props.grow)
+    ? `is-flex-grow-${props.grow}`
+    : props.grow
+      ? 'is-flex-grow-1'
+      : undefined,
+);
 </script>
 
 <template>
@@ -20,12 +32,15 @@ const slots = defineSlots<{
     :type="type ?? 'button'"
     :disabled="disabled"
     class="button"
-    :class="{
-      'is-primary': primary,
-      'is-active': active,
-      'is-loading': loading,
-      'is-danger': danger,
-    }"
+    :class="[
+      {
+        'is-primary': primary,
+        'is-active': active,
+        'is-loading': loading,
+        'is-danger': danger,
+      },
+      growClass,
+    ]"
   >
     <span v-if="!!slots.icon" class="icon">
       <slot name="icon" />

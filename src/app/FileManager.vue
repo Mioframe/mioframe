@@ -28,11 +28,7 @@ const unmountDirectory = (entry: LocalDirectoryRef) => {
       <div class="menu">
         <ul class="menu-list">
           <li>
-            <button
-              type="button"
-              class="button is-link"
-              @click="mountDirectory"
-            >
+            <button type="button" class="button" @click="mountDirectory">
               <span class="icon">
                 <i class="fa-solid fa-plug" />
               </span>

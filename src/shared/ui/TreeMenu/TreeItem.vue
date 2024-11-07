@@ -17,6 +17,7 @@ import TreeList from './TreeList.vue';
 import { createLogger } from '../../lib/logger';
 import { onInteractionOutside } from '../../lib/onInteractionOutside';
 import type { MaybeElement } from '@vueuse/core';
+import { ButtonGroup } from '../ButtonGroup';
 
 const { debug } = createLogger('TreeItem');
 
@@ -78,15 +79,15 @@ defineSlots<{
   contextMenu(props: { key: K; item: T }): unknown;
 }>();
 
-const hasSublist = computed(() => 'list' in props.item);
+const hasSubList = computed(() => 'list' in props.item);
 </script>
 
 <template>
   <li>
-    <div class="buttons has-addons is-flex-wrap-nowrap">
+    <ButtonGroup>
       <button
-        v-if="hasSublist"
-        class="button is-link"
+        v-if="hasSubList"
+        class="button"
         :class="{ 'is-active': stateOpened }"
         type="button"
         @click="toggleOpened"
@@ -99,28 +100,28 @@ const hasSublist = computed(() => 'list' in props.item);
 
       <button
         type="button"
-        class="button is-link is-flex-grow-1 ellipsis"
+        class="button is-flex-grow-1 ellipsis"
         :class="{ 'is-active': activeKey === itemKey }"
         @click="onClickItem(itemKey, item)"
       >
-        <span v-if="!hasSublist" class="icon">
+        <span v-if="!hasSubList" class="icon">
           <i class="fa-solid fa-minus fa-xs" />
         </span>
 
-        <span :class="{ 'ml-3': !hasSublist }">
+        <span :class="{ 'ml-3': !hasSubList }">
           {{ label }}
         </span>
       </button>
 
       <button
         ref="refContextMenuButton"
-        class="button is-link"
+        class="button"
         type="button"
         @click="onContextMenu"
       >
         <i class="fa-solid fa-ellipsis-vertical" />
       </button>
-    </div>
+    </ButtonGroup>
 
     <ContextMenu
       v-if="contextMenuPosition"

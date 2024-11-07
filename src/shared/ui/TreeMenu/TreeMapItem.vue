@@ -14,6 +14,7 @@ import { onInteractionOutside } from '../../lib/onInteractionOutside';
 import type { MaybeElement } from '@vueuse/core';
 import { type AsyncMap } from './useAsyncMap';
 import TreeMap from './TreeMap.vue';
+import { ButtonGroup } from '../ButtonGroup';
 
 const { debug } = createLogger('TreeItem');
 
@@ -33,10 +34,10 @@ const emit = defineEmits<{
 
 const stateOpened = ref<boolean>();
 
-const hasSublist = computed(() => 'get' in props.item);
+const hasSubList = computed(() => 'get' in props.item);
 
 watchEffect(() => {
-  stateOpened.value = hasSublist.value ? props.opened : undefined;
+  stateOpened.value = hasSubList.value ? props.opened : undefined;
 });
 
 const toggleOpened = () => {
@@ -99,10 +100,10 @@ const loading = ref<boolean>();
 
 <template>
   <li>
-    <div class="buttons has-addons is-flex-wrap-nowrap">
+    <ButtonGroup>
       <button
-        v-if="hasSublist"
-        class="button is-link"
+        v-if="hasSubList"
+        class="button"
         :class="{ 'is-active': stateOpened }"
         type="button"
         @click="toggleOpened"
@@ -125,11 +126,11 @@ const loading = ref<boolean>();
 
       <button
         type="button"
-        class="button is-link is-flex-grow-1"
+        class="button is-flex-grow-1"
         :class="{ 'is-active': activeKey === itemKey || activeItem === item }"
         @click="onClickItem(itemKey, item)"
       >
-        <span v-if="!hasSublist" class="icon">
+        <span v-if="!hasSubList" class="icon">
           <slot
             :key="itemKey"
             name="icon"
@@ -141,7 +142,7 @@ const loading = ref<boolean>();
           </slot>
         </span>
 
-        <span :class="{ 'ml-3': !hasSublist }">
+        <span :class="{ 'ml-3': !hasSubList }">
           <slot
             :key="itemKey"
             name="label"
@@ -155,13 +156,13 @@ const loading = ref<boolean>();
       <button
         v-if="!!slots.contextMenu"
         ref="refContextMenuButton"
-        class="button is-link"
+        class="button"
         type="button"
         @click="onContextMenu"
       >
         <i class="fa-solid fa-ellipsis-vertical" />
       </button>
-    </div>
+    </ButtonGroup>
 
     <ContextMenu
       v-if="contextMenuPosition"

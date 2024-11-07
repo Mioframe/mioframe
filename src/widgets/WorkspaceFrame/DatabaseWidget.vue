@@ -64,14 +64,12 @@ const onClickContextItem = (eventName: ItemEvents, itemId: ItemId) => {
 const selectedViewId = defineModel<ViewId>('selectedViewId');
 
 const view = computed((): View => {
-  if (views.value) {
-    if (selectedViewId.value && selectedViewId.value in views.value) {
-      return views.value[selectedViewId.value];
-    }
-    const anyView = Object.values(views.value).at(0);
-    if (anyView) {
-      return anyView;
-    }
+  if (selectedViewId.value && selectedViewId.value in views.value) {
+    return views.value[selectedViewId.value];
+  }
+  const anyView = Object.values(views.value).at(0);
+  if (anyView) {
+    return anyView;
   }
   return {
     layout: VIEW_LAYOUT.TABLE,
