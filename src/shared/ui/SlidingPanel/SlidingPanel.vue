@@ -1,5 +1,10 @@
 <script setup lang="ts">
-import { useElementSize, useScroll, useVModel } from '@vueuse/core';
+import {
+  useElementSize,
+  useScroll,
+  useVModel,
+  watchDebounced,
+} from '@vueuse/core';
 import type { EmptyObject } from 'type-fest';
 import { ref, watch } from 'vue';
 
@@ -33,23 +38,33 @@ watch(
   [modelOpen, refTray],
   ([modelOpen]) => {
     if (!modelOpen) {
-      trayScrollY.value = 0;
-      trayScrollX.value = 0;
+      if (props.right) {
+        trayScrollX.value = 0;
+      } else {
+        trayScrollY.value = 0;
+      }
     } else {
       if (trayScrollY.value === 0 || trayScrollX.value === 0) {
-        trayScrollY.value = contentHeight.value;
-        trayScrollX.value = refContent.value?.scrollWidth ?? 0;
+        if (props.right) {
+          trayScrollX.value = refContent.value?.scrollWidth ?? 0;
+        } else {
+          trayScrollY.value = contentHeight.value;
+        }
       }
     }
   },
   { immediate: true },
 );
 
-watch([trayScrollY, refTray], ([trayScrollY]) => {
-  if (modelOpen.value !== !!trayScrollY) {
-    modelOpen.value = !!trayScrollY;
-  }
-});
+watchDebounced(
+  [trayScrollY, refTray],
+  ([trayScrollY]) => {
+    if (modelOpen.value !== !!trayScrollY) {
+      modelOpen.value = !!trayScrollY;
+    }
+  },
+  { debounce: 300 },
+);
 </script>
 
 <template>
@@ -80,7 +95,6 @@ watch([trayScrollY, refTray], ([trayScrollY]) => {
     min-height: initial;
     width: var(--sliding-panel-min-width);
     min-width: var(--sliding-panel-min-width);
-    scroll-snap-align: start end;
   }
 
   &__tray {

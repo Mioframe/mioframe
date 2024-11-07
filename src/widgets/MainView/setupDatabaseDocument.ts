@@ -5,9 +5,15 @@ import {
   createDatabaseDocument,
   DATABASE_DOCUMENT_TYPE,
 } from '@shared/lib/databaseDocument';
-import { cloneDeep } from 'lodash-es';
+import type { MenuItem } from '@shared/ui/ContextButton';
+import { toValue } from '@vueuse/core';
+import { cloneDeep, get } from 'lodash-es';
 import type { Ref } from 'vue';
 import { computed, ref } from 'vue';
+
+export enum ViewAction {
+  delete,
+}
 
 export const setupDatabaseDocument = (
   cfrDocument: Ref<CFRDocument | undefined>,
@@ -87,9 +93,41 @@ export const setupDatabaseDocument = (
     },
   );
 
+  const removeViewId = ref<ViewId>();
+
+  const removeView = computed(
+    () => removeViewId.value && get(databaseViews.value, removeViewId.value),
+  );
+
+  const onRemoveDatabaseView = () =>
+    removeViewId.value &&
+    toValue(databaseDocument)?.removeView(removeViewId.value);
+
+  const onCancelRemoveDatabaseView = () => {
+    removeViewId.value = undefined;
+  };
+
+  const contextViewMenu: MenuItem<ViewAction>[] = [
+    {
+      eventName: ViewAction.delete,
+      label: 'delete',
+    },
+  ];
+
+  const onClickViewContextBtn = (action: ViewAction, viewId: ViewId) => {
+    switch (action) {
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- will be supplemented
+      case ViewAction.delete: {
+        removeViewId.value = viewId;
+        break;
+      }
+    }
+  };
+
   return {
     databaseProperties,
     databaseViews,
+
     isShowPropertyCreate,
     hasAddProperty,
     hasRemoveProperty,
@@ -104,5 +142,11 @@ export const setupDatabaseDocument = (
     onSubmitViewAdd,
     selectedViewId,
     selectedView,
+
+    removeView,
+    onRemoveDatabaseView,
+    contextViewMenu,
+    onClickViewContextBtn,
+    onCancelRemoveDatabaseView,
   };
 };

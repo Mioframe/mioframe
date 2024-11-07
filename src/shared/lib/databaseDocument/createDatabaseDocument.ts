@@ -18,6 +18,7 @@ import {
 import { migrationsMap } from './migrations';
 import { createLogger } from '../logger';
 import { get, isNumber, isObject, keys, toInteger } from 'lodash-es';
+import type { ViewId } from './view';
 import { generateViewId, type View } from './view';
 import { ZodError } from 'zod';
 
@@ -217,6 +218,14 @@ export const createDatabaseDocument = (
     return viewId;
   };
 
+  const removeView = (viewId: ViewId) => {
+    cfrDocument.change((doc) => {
+      const { body } = documentUpdate(doc);
+
+      delete body.views?.[viewId];
+    });
+  };
+
   const databaseDocument: DatabaseDocument = {
     addProperty,
     updateProperty,
@@ -230,6 +239,7 @@ export const createDatabaseDocument = (
     onChange,
 
     addView,
+    removeView,
   };
 
   return databaseDocument;

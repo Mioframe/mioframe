@@ -50,6 +50,6 @@ export interface DatabaseDocument {
   onChange: (fn: (doc: DatabaseDocumentContent) => unknown) => () => void;
 
   addView: (view: View) => ViewId;
-  // removeView(): void;
+  removeView: (viewId: ViewId) => void;
   // updateView(): void;
 }

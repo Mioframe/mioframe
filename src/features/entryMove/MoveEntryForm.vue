@@ -62,7 +62,7 @@ const onClickTargetDirectory = () => {
           <li>
             <button
               type="button"
-              class="button is-link"
+              class="button"
               :class="{
                 'is-active':
                   destinationDirectoryEntry === accessibleDestination,

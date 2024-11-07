@@ -14,7 +14,10 @@ import { setupGoogleDirectoryChoice } from './setupGoogleDirectoryChoice';
 import { setupFolderChoice } from './setupFolderChoice';
 import { setupDocumentRemove } from './setupDocumentRemove';
 import { setupDocumentChoice } from './setupDocumentChoice';
-import { setupDatabaseDocument } from '@widget/MainView/setupDatabaseDocument';
+import {
+  setupDatabaseDocument,
+  ViewAction,
+} from '@widget/MainView/setupDatabaseDocument';
 import { useCFRDocument } from '@entity/document';
 import { ViewList } from '@entity/documentView';
 import { DatabaseViewAddForm } from '@feature/databaseViewAdd';
@@ -29,6 +32,9 @@ import { BooleanPropertyField } from '@feature/booleanPropertyEdit';
 import { PROPERTY_TYPE_BOOLEAN } from '@entity/booleanProperty';
 import { DatePropertyField } from '@feature/datePropertyEdit';
 import { PROPERTY_TYPE_DATE } from '@entity/dateProperty';
+import { DatabaseViewRemoveForm } from '@feature/databaseViewRemove';
+import { ContextBtn } from '@shared/ui/ContextButton';
+import { ButtonGroup } from '@shared/ui/ButtonGroup';
 
 const isOpenPanel = ref(true);
 
@@ -78,6 +84,11 @@ const {
   onSubmitViewAdd,
   selectedView,
   selectedViewId,
+  onRemoveDatabaseView,
+  onCancelRemoveDatabaseView,
+  removeView,
+  contextViewMenu,
+  onClickViewContextBtn,
 } = setupDatabaseDocument(selectedCFRDocument, doc);
 </script>
 
@@ -119,15 +130,27 @@ const {
               :views="databaseViews"
             >
               <template #default="{ id, view }">
-                <UIButton
-                  :label="view.name"
-                  :active="selectedViewId === id"
-                  @click="selectedViewId = id"
-                >
-                  <template #icon>
-                    <i class="fa-solid fa-table" />
-                  </template>
-                </UIButton>
+                <ButtonGroup>
+                  <UIButton
+                    :label="view.name"
+                    :active="selectedViewId === id"
+                    grow
+                    @click="selectedViewId = id"
+                  >
+                    <template #icon>
+                      <i class="fa-solid fa-table" />
+                    </template>
+                  </UIButton>
+
+                  <ContextBtn
+                    :menu="contextViewMenu"
+                    @click="onClickViewContextBtn($event, id)"
+                  >
+                    <template #[ViewAction.delete]>
+                      <i class="fa-solid fa-eraser" />
+                    </template>
+                  </ContextBtn>
+                </ButtonGroup>
               </template>
 
               <template #after>
@@ -306,6 +329,14 @@ const {
       <GDriveDirectoryPickerForm
         @submit="onSelectGDirectory"
         @cancel="onCancelSelectGDirectory"
+      />
+    </ModalCard>
+
+    <ModalCard v-if="removeView">
+      <DatabaseViewRemoveForm
+        :name="removeView.name"
+        @remove="onRemoveDatabaseView"
+        @cancel="onCancelRemoveDatabaseView"
       />
     </ModalCard>
   </ViewWithPanelLayout>
