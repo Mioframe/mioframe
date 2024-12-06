@@ -2,17 +2,22 @@
   lang="ts"
   setup
   generic="
-    O extends object,
     K extends string | number,
-    T extends AsyncMap<K, T> | O
+    T extends
+      | {
+          children: IterableCollection<K, T>;
+        }
+      | object
   "
 >
-import { computed, toRef, watchEffect } from 'vue';
-import { useAsyncMap, type AsyncMap } from './useAsyncMap';
-import TreeMapItem from './TreeMapItem.vue';
+import { toRef, watchEffect } from 'vue';
+import type { IterableCollection } from './useIterable';
+import { useIterable } from './useIterable';
+import TreeIterableItem from './TreeIterableItem.vue';
+import { createLogger } from '@shared/lib/logger';
 
 const props = defineProps<{
-  map: AsyncMap<K, T>;
+  collection: IterableCollection<K, T>;
   activeKey?: K;
   activeItem?: T;
   filter?: (v: [K, T]) => boolean;
@@ -42,36 +47,41 @@ const slots = defineSlots<{
     listOpen?: boolean;
     loading?: boolean;
   }): unknown;
+  after(): unknown;
 }>();
 
 const onClick = (key: K, item: T) => {
   emit('click', key, item);
 };
 
-const { map: mapRef, fetchMap, loading } = useAsyncMap(toRef(() => props.map));
+const { debug } = createLogger('TreeIterable');
 
 watchEffect(() => {
-  emit('update:loading', loading.value);
+  debug('props.collection', props.collection);
 });
 
-const filteredMap = computed(() => {
-  if (props.filter) {
-    return Array.from(mapRef.value).filter(props.filter);
-  }
-  return mapRef.value;
+const { collection: collectionRef, loading: loadingIterable } = useIterable<
+  [K, T]
+>(
+  toRef(() => props.collection),
+  toRef(() => props.filter),
+);
+
+watchEffect(() => {
+  emit('update:loading', loadingIterable.value);
 });
 
-void fetchMap();
+const activeKey2 = toRef(() => props.activeKey);
 </script>
 
 <template>
   <ul class="menu-list">
-    <TreeMapItem
-      v-for="[key, item] in filteredMap"
+    <TreeIterableItem
+      v-for="[key, item] in collectionRef"
       :key="key"
       :item-key="key"
       :item="item"
-      :active-key
+      :active-key="activeKey2"
       :active-item
       :filter
       @click="onClick"
@@ -105,7 +115,9 @@ void fetchMap();
           :loading="scoped.loading"
         />
       </template>
-    </TreeMapItem>
+    </TreeIterableItem>
+
+    <slot name="after" />
   </ul>
 </template>
 

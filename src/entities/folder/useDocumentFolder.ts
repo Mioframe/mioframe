@@ -1,37 +1,43 @@
-import { readonly, ref, watch, type Ref } from 'vue';
+import { computed, shallowRef, watch, type Ref } from 'vue';
 import type {
   CFRDocument,
   DocumentFolder,
   zodDocumentContent,
 } from '../../shared/lib/cfrDocument';
 import type { DocumentId } from '@automerge/automerge-repo';
-import { tryOnScopeDispose } from '@vueuse/core';
-import { updateMap } from '../../shared/lib/updateMap';
+import { toValue, tryOnScopeDispose } from '@vueuse/core';
 import type { TypeOf } from 'zod';
 import { createLogger } from '../../shared/lib/logger';
+import type { IterableCollection } from '@shared/ui/TreeMenu/useIterable';
+import { from } from 'ix/Ix.asynciterable';
+import { map } from 'ix/Ix.asynciterable.operators';
+import { createReactiveCFRDocument } from '@entity/document';
+import type { ReactiveCFRDocument } from '@entity/document/createReactiveCFRDocument';
 
 const { debug } = createLogger('useFolder');
 
 export const useDocumentFolder = (
   documentFolderRef: Ref<DocumentFolder | undefined>,
 ) => {
-  const folderContent = ref(new Map<DocumentId, CFRDocument>());
+  const folderContent =
+    shallowRef<IterableCollection<DocumentId, CFRDocument>>();
 
-  const onChangeFolder = (newContent: Map<DocumentId, CFRDocument>) => {
-    debug('onChangeFolder', newContent);
-    updateMap(newContent, folderContent.value);
+  const onChangeFolder = (
+    newContent: IterableCollection<DocumentId, CFRDocument>,
+  ) => {
+    folderContent.value = newContent;
   };
 
   watch(
     documentFolderRef,
-    async (documentFolder, oldDocumentFolder) => {
+    (documentFolder, oldDocumentFolder) => {
       debug('watch documentFolderRef', documentFolder, oldDocumentFolder);
       oldDocumentFolder?.offChange(onChangeFolder);
       documentFolder?.onChange(onChangeFolder);
       if (documentFolder) {
-        onChangeFolder(await documentFolder.get());
+        onChangeFolder(documentFolder.children);
       } else {
-        folderContent.value.clear();
+        folderContent.value = undefined;
       }
     },
     { immediate: true },
@@ -45,8 +51,20 @@ export const useDocumentFolder = (
     documentFolderRef.value?.offChange(onChangeFolder);
   });
 
+  const content = computed(() => {
+    const content = toValue(folderContent.value);
+    if (content) {
+      return from(content).pipe(
+        map(([id, doc]): [DocumentId, ReactiveCFRDocument] => {
+          return [id, createReactiveCFRDocument(doc)];
+        }),
+      );
+    }
+    return undefined;
+  });
+
   return {
-    content: readonly(folderContent),
+    content,
     createDocument,
   };
 };

@@ -11,7 +11,7 @@ export enum SPACE {
 }
 
 export const createGDriveDirectory = (
-  gdrive: AdvancedGDrive,
+  gDrive: AdvancedGDrive,
   {
     gDriveFolderId = 'root',
     name = 'root',
@@ -28,7 +28,7 @@ export const createGDriveDirectory = (
   const createDirectory = async (name: string) => {
     const {
       result: { id: folderId },
-    } = await gdrive.files.create({
+    } = await gDrive.files.create({
       resource: {
         name,
         mimeType: GOOGLE_FOLDER_MIME_TYPE,
@@ -37,14 +37,14 @@ export const createGDriveDirectory = (
     });
 
     if (folderId) {
-      void triggerWatchers();
-      return createGDriveDirectory(gdrive, { gDriveFolderId: folderId, name });
+      triggerWatchers();
+      return createGDriveDirectory(gDrive, { gDriveFolderId: folderId, name });
     }
     throw new Error('failed to create directory');
   };
 
   const rename = async (newName: string): Promise<GDriveDirectory> => {
-    await gdrive.files.update(
+    await gDrive.files.update(
       { fileId: currentGDriveFolderId },
       {
         name: newName,
@@ -53,16 +53,50 @@ export const createGDriveDirectory = (
 
     currentName = newName;
 
-    void triggerWatchers();
+    triggerWatchers();
     return currentGDriveDirectory;
   };
 
   const getName = () => currentName;
 
   const remove = async () => {
-    await gdrive.files.delete({ fileId: currentGDriveFolderId });
-    void triggerWatchers();
+    await gDrive.files.delete({ fileId: currentGDriveFolderId });
+    triggerWatchers();
   };
+
+  async function* childrenIterator(): AsyncIterator<
+    [string, GDriveDirectory | GDriveFile]
+  > {
+    const spaces = space === SPACE.MyDrive ? 'drive' : undefined;
+
+    let q = `'${gDriveFolderId}' in parents`;
+    if (space === SPACE.SharedWithMe && gDriveFolderId === 'root') {
+      q = 'sharedWithMe';
+    }
+
+    const {
+      result: { files = [] },
+    } = await gDrive.files.list({
+      q,
+      fields: 'files(id, name, mimeType)',
+      spaces,
+    });
+
+    for (const { name, id, mimeType } of files) {
+      if (name && id && mimeType)
+        if (mimeType === GOOGLE_FOLDER_MIME_TYPE) {
+          yield [
+            name,
+            createGDriveDirectory(gDrive, {
+              gDriveFolderId: id,
+              name,
+            }),
+          ];
+        } else {
+          yield [name, createGDriveFile(gDrive, id, name)];
+        }
+    }
+  }
 
   const getMap = async (): Promise<
     Map<string, GDriveDirectory | GDriveFile>
@@ -78,7 +112,7 @@ export const createGDriveDirectory = (
 
     const {
       result: { files },
-    } = await gdrive.files.list({
+    } = await gDrive.files.list({
       q,
       fields: 'files(id, name, mimeType)',
       spaces,
@@ -89,10 +123,10 @@ export const createGDriveDirectory = (
         if (mimeType === GOOGLE_FOLDER_MIME_TYPE) {
           contentMap.set(
             name,
-            createGDriveDirectory(gdrive, { gDriveFolderId: id, name }),
+            createGDriveDirectory(gDrive, { gDriveFolderId: id, name }),
           );
         } else {
-          contentMap.set(name, createGDriveFile(gdrive, id, name));
+          contentMap.set(name, createGDriveFile(gDrive, id, name));
         }
     });
 
@@ -105,7 +139,7 @@ export const createGDriveDirectory = (
   ): Promise<GDriveFile> => {
     const {
       result: { id: fileId },
-    } = await gdrive.files.create({
+    } = await gDrive.files.create({
       resource: {
         name,
         parents: [currentGDriveFolderId],
@@ -115,17 +149,17 @@ export const createGDriveDirectory = (
       throw new Error('failed to create file');
     }
     if (file) {
-      await gdrive.uploadFile(fileId, file);
+      await gDrive.uploadFile(fileId, file);
     }
-    void triggerWatchers();
-    return createGDriveFile(gdrive, fileId, name);
+    triggerWatchers();
+    return createGDriveFile(gDrive, fileId, name);
   };
 
   const removeByName = async (name: string) => {
     const list = await getMap();
     const file = list.get(name);
     await file?.remove();
-    void triggerWatchers();
+    triggerWatchers();
   };
 
   const watchersSet = new Set<(list: GDriveDirectoryContent) => unknown>();
@@ -140,11 +174,11 @@ export const createGDriveDirectory = (
     watchersSet.delete(handler);
   };
 
-  const triggerWatchers = async () => {
+  const triggerWatchers = () => {
     if (watchersSet.size > 0) {
-      const directoryList = await currentGDriveDirectory.get();
-
-      watchersSet.forEach((watcher) => watcher(directoryList));
+      watchersSet.forEach((watcher) =>
+        watcher(currentGDriveDirectory.children),
+      );
     }
   };
 
@@ -153,7 +187,9 @@ export const createGDriveDirectory = (
     rename,
     getName,
     remove,
-    get: getMap,
+    children: {
+      [Symbol.asyncIterator]: childrenIterator,
+    },
     writeFile,
     removeByName,
     addWatcher,

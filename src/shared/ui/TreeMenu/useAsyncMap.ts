@@ -1,78 +1,44 @@
-import { difference } from 'lodash-es';
-import type { Promisable } from 'type-fest';
-import {
-  computed,
-  isRef,
-  reactive,
-  ref,
-  toValue,
-  watch,
-  type MaybeRef,
-} from 'vue';
+import type { Ref } from 'vue';
+import { computed, reactive, watchEffect } from 'vue';
+import type { IterableCollection } from './useIterable';
+import { useIterable, type ItemWithChildren } from './useIterable';
 
-export interface AsyncMap<K extends string | number, T> {
-  get: () => Promisable<Map<K, T>>;
-  addWatcher?: (handler: (map: Map<K, T>) => unknown) => void;
-  removeWatcher?: (handler: (map: Map<K, T>) => unknown) => void;
-}
+export interface AsyncMap<K extends string | number, T>
+  extends ItemWithChildren<K, T> {}
 
-export const useAsyncMap = <K extends string | number, T>(
-  asyncMap: MaybeRef<AsyncMap<K, T> | undefined>,
-) => {
-  const stateMap: Map<K, T> = reactive(new Map());
+const syncCollectionWithMap = <K, T>(
+  collection: Iterable<[K, T]>,
+  map: Map<K, T>,
+): void => {
+  const processedKeys = new Set<K>();
 
-  const fetchMap = async () => {
-    loading.value += 1;
-    try {
-      const asyncMapValue = toValue(asyncMap);
-      if (asyncMapValue) {
-        const nowMap = await asyncMapValue.get();
-
-        const stateKeys = Array.from(stateMap.keys());
-        const nowKeys = Array.from(nowMap.keys());
-
-        const deletedKeys = difference(stateKeys, nowKeys);
-
-        deletedKeys.forEach((key) => stateMap.delete(key));
-        nowMap.forEach((item, key) => {
-          if (!stateMap.has(key)) {
-            stateMap.set(key, item);
-          }
-        });
-      } else {
-        stateMap.clear();
-      }
-    } finally {
-      loading.value -= 1;
-    }
-  };
-
-  if (isRef(asyncMap)) {
-    watch(
-      asyncMap,
-      (asyncMap, oldAsyncMap) => {
-        oldAsyncMap?.removeWatcher?.(fetchMap);
-        asyncMap?.addWatcher?.(fetchMap);
-      },
-      { immediate: true },
-    );
-  } else {
-    asyncMap?.addWatcher?.(fetchMap);
+  for (const [key, value] of collection) {
+    map.set(key, value);
+    processedKeys.add(key);
   }
 
-  const map = computed((): Map<K, T> => stateMap);
+  for (const key of map.keys()) {
+    if (!processedKeys.has(key)) {
+      map.delete(key);
+    }
+  }
+};
 
-  const loading = ref(0);
+export const useMapFromCollection = <K extends string | number, T>(
+  iterableCollection: Ref<IterableCollection<K, T> | undefined>,
+) => {
+  const { collection, loading } = useIterable(iterableCollection);
+
+  const stateMap: Map<K, T> = reactive(new Map());
+
+  watchEffect(() => {
+    syncCollectionWithMap(collection.value, stateMap);
+  });
+
+  const map = computed((): ReadonlyMap<K, T> => stateMap);
 
   return {
     map,
-    fetchMap,
-    set: (key: K, value: T) => {
-      stateMap.set(key, value);
-    },
-    delete: (key: K) => {
-      stateMap.delete(key);
-    },
     loading: computed(() => !!loading.value),
   };
 };

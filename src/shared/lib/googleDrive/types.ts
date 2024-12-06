@@ -1,7 +1,11 @@
-export interface GDriveDirectory {
+import type {
+  IterableCollection,
+  ItemWithChildren,
+} from '@shared/ui/TreeMenu/useIterable';
+
+export type GDriveDirectory = {
   getName: () => string;
   rename: (newName: string) => Promise<GDriveDirectory>;
-  get: () => Promise<Map<string, GDriveFile | GDriveDirectory>>;
   writeFile: (
     name: string,
     file?: FileSystemWriteChunkType,
@@ -12,24 +16,30 @@ export interface GDriveDirectory {
   /**
    * Adding directory state watcher
    */
-  addWatcher: (handler: (list: GDriveDirectoryContent) => unknown) => void;
+  addWatcher: (
+    handler: (iterableCollection: GDriveDirectoryContent) => unknown,
+  ) => void;
   /**
    * Remove directory state watcher
    */
-  removeWatcher: (handler: (list: GDriveDirectoryContent) => unknown) => void;
-}
+  removeWatcher: (
+    handler: (iterableCollection: GDriveDirectoryContent) => unknown,
+  ) => void;
+} & ItemWithChildren<string, GDriveFile | GDriveDirectory>;
 
-export interface GDriveFile {
+export type GDriveFile = {
   getName: () => string;
   read: () => Promise<File>;
   remove: () => Promise<void>;
   rename: (newName: string) => Promise<GDriveFile>;
-}
+};
 
 export const GOOGLE_FOLDER_MIME_TYPE = 'application/vnd.google-apps.folder';
 
-export type GDriveDirectoryContent = Map<string, GDriveDirectory | GDriveFile>;
+export type GDriveDirectoryContent = IterableCollection<
+  string,
+  GDriveDirectory | GDriveFile
+>;
 
-export interface GDriveSpaces {
-  get: () => Map<string, GDriveDirectory>;
-}
+export interface GDriveSpaces
+  extends ItemWithChildren<string, GDriveDirectory | GDriveFile> {}

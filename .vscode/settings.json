@@ -3,6 +3,8 @@
   "typescript.tsdk": "node_modules/typescript/lib",
   "eslint.format.enable": true,
   "cSpell.words": [
+    "asynciterable",
+    "asynciterablex",
     "automerge",
     "bezier",
     "bulma",
@@ -13,6 +15,7 @@
     "jsoneditor",
     "noction",
     "pinia",
+    "Promisable",
     "vueuse",
     "vyachean",
     "wicg",

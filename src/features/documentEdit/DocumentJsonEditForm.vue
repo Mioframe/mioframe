@@ -1,8 +1,7 @@
 <script setup lang="ts">
 import { JSONEditor } from 'vanilla-jsoneditor';
 import { computed, ref, shallowRef, toRef, watch, watchEffect } from 'vue';
-import type { CFRDocument } from '../../shared/lib/cfrDocument';
-import { useCFRDocument } from '../../entities/document/useCFRDocument';
+import type { ReactiveCFRDocument } from '../../entities/document/createReactiveCFRDocument';
 import { cloneDeep } from 'lodash-es';
 import { createLogger } from '../../shared/lib/logger';
 import { isUnknownRecord } from '../../shared/lib/changeObject/isUnknownRecord';
@@ -11,12 +10,10 @@ import { replaceObject } from '../../shared/lib/changeObject/replaceObject';
 const { debug } = createLogger('DocumentEditForm');
 
 const props = defineProps<{
-  cfrDocument: CFRDocument;
+  reactiveCfrDocument: ReactiveCFRDocument;
 }>();
 
-const cfrDocument = toRef(() => props.cfrDocument);
-
-const { doc, change } = useCFRDocument(cfrDocument);
+const reactiveCFRDocument = toRef(() => props.reactiveCfrDocument);
 
 const mainElement = ref<HTMLElement>();
 
@@ -24,7 +21,7 @@ const editor = shallowRef<JSONEditor>();
 
 const onChangeJSON = (value: unknown) => {
   debug('onChangeJSON', value);
-  change((doc) => {
+  reactiveCFRDocument.value.change((doc) => {
     if (!isUnknownRecord(doc.body)) {
       doc.body = value;
     } else if (isUnknownRecord(value)) {
@@ -34,7 +31,7 @@ const onChangeJSON = (value: unknown) => {
   });
 };
 
-const docBody = computed(() => doc.value?.body);
+const docBody = computed(() => reactiveCFRDocument.value.doc?.body);
 
 const getContentJson = () => {
   if (editor.value) {

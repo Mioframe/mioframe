@@ -1,17 +1,18 @@
 import type { DocumentId } from '@automerge/automerge-repo';
-import type { CFRDocument } from '@shared/lib/cfrDocument';
-import type { Ref } from 'vue';
+import type { ReactiveCFRDocument } from '@entity/document/createReactiveCFRDocument';
 import { shallowRef } from 'vue';
 
-export const setupDocumentChoice = (isOpenPanel: Ref<boolean>) => {
-  const selectedCFRDocument = shallowRef<CFRDocument>();
+export const setupDocumentChoice = () => {
+  const selectedReactiveCFRDocument = shallowRef<ReactiveCFRDocument>();
   const onClickFolderDocument = (
     _documentId: DocumentId,
-    cfrDocument: CFRDocument,
+    cfrDocument: ReactiveCFRDocument,
   ) => {
-    selectedCFRDocument.value = cfrDocument;
-    isOpenPanel.value = false;
+    selectedReactiveCFRDocument.value = cfrDocument;
   };
 
-  return { selectedCFRDocument, onClickFolderDocument };
+  return {
+    selectedReactiveCFRDocument,
+    onClickFolderDocument,
+  };
 };

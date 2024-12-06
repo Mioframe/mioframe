@@ -1,6 +1,11 @@
+import { from, some } from 'ix/Ix.asynciterable';
 import { createLocalEntry } from './entry';
 import { createLocalFile } from './file';
-import type { LocalDirectory, LocalDirectoryContent } from './types';
+import type { LocalDirectory, LocalDirectoryContent, LocalFile } from './types';
+import { map } from 'ix/Ix.asynciterable.operators';
+import { createLogger } from '../logger';
+
+const { debug } = createLogger('directory');
 
 export const createLocalDirectory = (
   currentHandle: FileSystemDirectoryHandle,
@@ -8,26 +13,20 @@ export const createLocalDirectory = (
 ): LocalDirectory => {
   const currentEntry = createLocalEntry(currentHandle, parentEntry);
 
-  const getList = async () => {
-    const nowEntryList: LocalDirectoryContent = new Map();
-    for await (const [name, handle] of currentHandle.entries()) {
-      switch (handle.kind) {
-        case 'directory':
-          nowEntryList.set(
-            name,
-            createLocalDirectory(handle, currentDirectoryEntry),
-          );
-          break;
-        case 'file':
-          nowEntryList.set(
-            name,
-            createLocalFile(handle, currentDirectoryEntry),
-          );
-          break;
-      }
-    }
+  const createContentIterable = () => {
+    return from(currentHandle.entries()).pipe(
+      map(([name, handle]): [string, LocalDirectory | LocalFile] => {
+        debug('createContentIterable map', [name, handle]);
 
-    return nowEntryList;
+        switch (handle.kind) {
+          case 'directory':
+            return [name, createLocalDirectory(handle, currentDirectoryEntry)];
+
+          case 'file':
+            return [name, createLocalFile(handle, currentDirectoryEntry)];
+        }
+      }),
+    );
   };
 
   const createDirectory = async (name: string) => {
@@ -40,7 +39,7 @@ export const createLocalDirectory = (
       currentDirectoryEntry,
     );
 
-    void triggerWatchers();
+    triggerWatchers();
 
     return directoryEntry;
   };
@@ -57,14 +56,14 @@ export const createLocalDirectory = (
 
     const fileEntry = createLocalFile(newFileHandle, currentDirectoryEntry);
 
-    void triggerWatchers();
+    triggerWatchers();
 
     return fileEntry;
   };
 
   const removeByName = async (name: string) => {
     await currentHandle.removeEntry(name, { recursive: true });
-    void triggerWatchers();
+    triggerWatchers();
   };
 
   const copyTo = async (dest: LocalDirectory) => {
@@ -82,11 +81,9 @@ export const createLocalDirectory = (
 
     const newDirectoryEntry = await dest.createDirectory(currentEntryName);
 
-    const directoryList = await currentDirectoryEntry.get();
-
-    for (const [, entry] of directoryList) {
+    await from(currentDirectoryEntry.children).forEach(async ([, entry]) => {
       await entry.copyTo(newDirectoryEntry);
-    }
+    });
 
     return newDirectoryEntry;
   };
@@ -104,11 +101,9 @@ export const createLocalDirectory = (
       currentEntry.getName(),
     );
 
-    const directoryList = await currentDirectoryEntry.get();
-
-    for (const [, entry] of directoryList) {
+    await from(currentDirectoryEntry.children).forEach(async ([, entry]) => {
       await entry.moveTo(newDirectoryEntry);
-    }
+    });
 
     await currentEntry.remove();
 
@@ -120,9 +115,11 @@ export const createLocalDirectory = (
       throw new Error('root Entry cannot be renamed');
     }
 
-    const directoryList = await currentDirectoryEntry.get();
+    const isAlreadyContains = await some(from(currentDirectoryEntry.children), {
+      predicate: ([name]) => name === newName,
+    });
 
-    if (directoryList.has(newName)) {
+    if (isAlreadyContains) {
       throw new Error(
         `"${parentEntry.getName()}" already contains "${newName}"`,
       );
@@ -130,9 +127,9 @@ export const createLocalDirectory = (
 
     const newDirectoryEntry = await parentEntry.createDirectory(newName);
 
-    for (const [, entry] of directoryList) {
+    await from(currentDirectoryEntry.children).forEach(async ([, entry]) => {
       await entry.moveTo(newDirectoryEntry);
-    }
+    });
 
     await currentEntry.remove();
 
@@ -166,11 +163,9 @@ export const createLocalDirectory = (
     watchersSet.delete(handler);
   };
 
-  const triggerWatchers = async () => {
+  const triggerWatchers = () => {
     if (watchersSet.size > 0) {
-      const directoryList = await currentDirectoryEntry.get();
-
-      watchersSet.forEach((watcher) => watcher(directoryList));
+      watchersSet.forEach((watcher) => watcher(currentDirectoryEntry.children));
     }
   };
 
@@ -182,7 +177,9 @@ export const createLocalDirectory = (
     copyTo,
     moveTo,
     rename,
-    get: getList,
+    get children() {
+      return createContentIterable();
+    },
     addWatcher,
     removeWatcher,
   };

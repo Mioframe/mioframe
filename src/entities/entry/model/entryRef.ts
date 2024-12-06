@@ -6,6 +6,7 @@ import type {
 import { createLocalDirectory } from '../../../shared/lib/localFileSystem';
 import type { LocalDirectoryRef, DirectoryList, LocalFileRef } from './types';
 import { difference } from 'lodash-es';
+import { from } from 'ix/Ix.asynciterable';
 
 const directoryRegistry = new WeakMap<LocalDirectoryRef, LocalDirectory>();
 
@@ -65,17 +66,14 @@ const createLocalDirectoryRef = (
   const stateDirectoryList: DirectoryList = reactive(new Map());
 
   const updateDirectoryList = async () => {
-    const nowEntryList = await localDirectoryRef.value.get();
-
     const stateNames = Array.from(stateDirectoryList.keys());
-    const nowNames = Array.from(nowEntryList.keys());
+    const nowNames: string[] = [];
 
-    const deletedNames = difference(stateNames, nowNames);
+    await from(localDirectoryRef.value.children).forEach(([name, entry]) => {
+      nowNames.push(name);
 
-    deletedNames.forEach((name) => stateDirectoryList.delete(name));
-    nowEntryList.forEach((entry, name) => {
       if (!stateDirectoryList.has(name)) {
-        if ('get' in entry) {
+        if ('children' in entry) {
           const directoryEntryRef = createLocalDirectoryRef(entry);
           stateDirectoryList.set(name, directoryEntryRef);
           directoryRegistry.set(directoryEntryRef, entry);
@@ -84,6 +82,10 @@ const createLocalDirectoryRef = (
         }
       }
     });
+
+    const deletedNames = difference(stateNames, nowNames);
+
+    deletedNames.forEach((name) => stateDirectoryList.delete(name));
   };
 
   watch(

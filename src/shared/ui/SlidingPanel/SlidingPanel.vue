@@ -126,6 +126,7 @@ watchDebounced(
     background: var(--sliding-panel-background);
     pointer-events: all;
     min-height: var(--sliding-panel-min-height);
+    max-height: 100dvh;
 
     .sliding-panel._right & {
       min-height: initial;

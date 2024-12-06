@@ -6,7 +6,6 @@ import {
   type GDriveFile,
 } from '../../shared/lib/googleDrive';
 import type { UseGDriveDirectory, UseGDriveFile } from './types';
-import { useAsyncMap } from '../../shared/ui/TreeMenu/useAsyncMap';
 import type { AdvancedGDrive } from '@shared/lib/googleApi/types';
 
 export const useGDriveFile = (
@@ -36,9 +35,6 @@ export const useGDriveFile = (
 export const useGDriveDirectory = (
   gDriveDirectory: MaybeRef<GDriveDirectory>,
 ): UseGDriveDirectory => {
-  const { map: stateDirectoryList, fetchMap: updateDirectoryList } =
-    useAsyncMap(gDriveDirectory);
-
   const createDirectory = async (name: string): Promise<GDriveDirectory> => {
     const newGDriveDirectory =
       await toValue(gDriveDirectory).createDirectory(name);
@@ -48,7 +44,6 @@ export const useGDriveDirectory = (
 
   const remove = async () => {
     await toValue(gDriveDirectory).remove();
-    toValue(gDriveDirectory).removeWatcher(updateDirectoryList);
   };
 
   const rename = async (newName: string): Promise<GDriveDirectory> => {
@@ -63,20 +58,11 @@ export const useGDriveDirectory = (
     return localFile;
   };
 
-  const map = computed(
-    (): Map<string, GDriveDirectory | GDriveFile> => stateDirectoryList.value,
-  );
-
   const label = computed(() => toValue(gDriveDirectory).getName());
 
   const currentDirectoryEntry: UseGDriveDirectory = {
     createDirectory,
-    get map() {
-      if (!map.value.size) {
-        void updateDirectoryList();
-      }
-      return map;
-    },
+    children: computed(() => toValue(gDriveDirectory).children),
     label,
     remove,
     rename,
@@ -87,11 +73,11 @@ export const useGDriveDirectory = (
 };
 
 export const useRootDirectoryEntry = (
-  gdrive: AdvancedGDrive,
+  gDrive: AdvancedGDrive,
   gDriveFolderId?: string,
   name?: string,
 ): UseGDriveDirectory => {
-  const roodLocalDirectory = createGDriveDirectory(gdrive, {
+  const roodLocalDirectory = createGDriveDirectory(gDrive, {
     gDriveFolderId,
     name,
   });

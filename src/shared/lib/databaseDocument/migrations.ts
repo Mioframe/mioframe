@@ -13,6 +13,6 @@ export const migrationsMap: {
     putObject(doc, { body: initialDatabaseStateV1() });
   },
   1: (doc: DocumentContent) => {
-    putObject(doc, { body: initialDatabaseStateV2() });
+    putObject(doc, { body: initialDatabaseStateV2() }); // todo: может сменить body на другое свойство? отдельное свойство для db
   },
 } as const;

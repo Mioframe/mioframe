@@ -1,3 +1,8 @@
+import type {
+  ItemWithChildren,
+  IterableCollection,
+} from '@shared/ui/TreeMenu/useIterable';
+
 export type LocalEntryPath = string[];
 
 export interface LocalEntry {
@@ -9,9 +14,14 @@ export interface LocalEntry {
   getPath: () => LocalEntryPath;
 }
 
-export type LocalDirectoryContent = Map<string, LocalDirectory | LocalFile>;
+export type LocalDirectoryContent = IterableCollection<
+  string,
+  LocalDirectory | LocalFile
+>;
 
-export interface LocalDirectory extends LocalEntry {
+export interface LocalDirectory
+  extends LocalEntry,
+    ItemWithChildren<string, LocalDirectory | LocalFile> {
   /**
    * Creates a subdirectory
    */
@@ -42,7 +52,7 @@ export interface LocalDirectory extends LocalEntry {
   /**
    * Get map of directory contents
    */
-  get: () => Promise<LocalDirectoryContent>;
+  // get: () => Promise<LocalDirectoryContent>;
   /**
    * Adding directory state watcher
    */

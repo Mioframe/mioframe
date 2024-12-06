@@ -1,7 +1,6 @@
 import type { StorageAdapterInterface, Chunk } from '@automerge/automerge-repo';
 import type {
   DirectoryForAdapter,
-  FileForAdapter,
   PartialFileName,
   PartialStorageKey,
   StorageKey,
@@ -14,6 +13,8 @@ import {
 import { createLogger } from '../logger';
 import { parseSelf } from '../validateZodScheme';
 import { useNotifications } from '../../ui/Notifications';
+import { find, from } from 'ix/Ix.asynciterable';
+import { filter, map } from 'ix/Ix.asynciterable.operators';
 
 export const partialKeyToFileName = (
   key: PartialStorageKey,
@@ -46,9 +47,11 @@ export const createStorageAdapter = (
 
       const fileName = partialKeyToFileName(key);
 
-      const listFromDirectory = await directory.get();
+      const [, entry] =
+        (await find(from(directory.children), {
+          predicate: ([name]) => name === fileName,
+        })) ?? [];
 
-      const entry = listFromDirectory.get(fileName);
       if (entry && 'read' in entry) {
         const file = await entry.read();
 
@@ -97,27 +100,30 @@ export const createStorageAdapter = (
         zodPartialFileName,
       );
 
-      const listFromDirectory = await directory.get();
+      const chunkList: Chunk[] = [];
 
-      const fileList: {
-        key: PartialStorageKey;
-        entry: FileForAdapter;
-      }[] = [];
+      await from(directory.children)
+        .pipe(
+          filter(([name, entry]) => {
+            debug('loadRange filter', { name, keyPrefixString });
+            return 'read' in entry && name.startsWith(keyPrefixString);
+          }),
+          map(async ([name, entry]): Promise<Chunk> => {
+            debug('loadRange map', name, entry);
+            return {
+              key: fileNameToPartialKey(name),
+              data:
+                'read' in entry
+                  ? new Uint8Array(await (await entry.read()).arrayBuffer())
+                  : undefined,
+            };
+          }),
+        )
+        .forEach((v) => {
+          chunkList.push(v);
+        });
 
-      listFromDirectory.forEach((entry, name) => {
-        if (name.startsWith(keyPrefixString) && 'read' in entry) {
-          const key = fileNameToPartialKey(name);
-
-          fileList.push({ key, entry });
-        }
-      });
-
-      const chunkList: Chunk[] = await Promise.all(
-        fileList.map(async ({ key, entry }) => ({
-          key,
-          data: new Uint8Array(await (await entry.read()).arrayBuffer()),
-        })),
-      );
+      debug('loadRange chunkList', chunkList);
 
       return chunkList;
     } catch (error) {
@@ -135,17 +141,11 @@ export const createStorageAdapter = (
         zodPartialFileName,
       );
 
-      const listFromDirectory = await directory.get();
-
-      const removeEntryList: FileForAdapter[] = [];
-
-      listFromDirectory.forEach((entry, name) => {
+      await from(directory.children).forEach(async ([name, entry]) => {
         if ('read' in entry && name.startsWith(keyPrefixString)) {
-          removeEntryList.push(entry);
+          await entry.remove();
         }
       });
-
-      await Promise.all(removeEntryList.map((entry) => entry.remove()));
     } catch (error) {
       pushError('error deleting file range', error);
       throw error;

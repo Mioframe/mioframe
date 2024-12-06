@@ -2,7 +2,7 @@ import type { AdvancedGDrive } from '../googleApi/types';
 import { createGDriveDirectory, SPACE } from './createGDriveDirectory';
 import type { GDriveDirectory, GDriveSpaces } from './types';
 
-export const createGDriveSpaces = (gdrive: AdvancedGDrive): GDriveSpaces => {
+export const createGDriveSpaces = (gDrive: AdvancedGDrive): GDriveSpaces => {
   let spacesMap: Map<string, GDriveDirectory> | undefined;
 
   const getSpaces = (): Map<string, GDriveDirectory> => {
@@ -11,14 +11,14 @@ export const createGDriveSpaces = (gdrive: AdvancedGDrive): GDriveSpaces => {
 
       spacesMap.set(
         'Shared with me',
-        createGDriveDirectory(gdrive, {
+        createGDriveDirectory(gDrive, {
           space: SPACE.SharedWithMe,
         }),
       );
 
       spacesMap.set(
         'My Drive',
-        createGDriveDirectory(gdrive, {
+        createGDriveDirectory(gDrive, {
           space: SPACE.MyDrive,
         }),
       );
@@ -27,6 +27,6 @@ export const createGDriveSpaces = (gdrive: AdvancedGDrive): GDriveSpaces => {
   };
 
   return {
-    get: getSpaces,
+    children: getSpaces(),
   };
 };

@@ -1,11 +1,7 @@
 <script
   setup
   lang="ts"
-  generic="
-    T extends string,
-    GP extends GeneralProperty<T>,
-    PM extends PropertiesMap<GP>
-  "
+  generic="T, GP extends GeneralProperty<T>, PM extends PropertiesMap<GP>"
 >
 import type { PropertiesMap } from '@/shared/lib/databaseDocument/property/property';
 import type { GeneralProperty } from '@/shared/lib/databaseDocument/property/general';

@@ -1,39 +1,36 @@
-<script
-  setup
-  lang="ts"
-  generic="
-    O extends object,
-    K extends string | number,
-    T extends AsyncMap<K, T> | O
-  "
->
-import type { AsyncMap } from '@shared/ui/TreeMenu/useAsyncMap';
-import TreeMap from '../../shared/ui/TreeMenu/TreeMap.vue';
+<script setup lang="ts">
+import type { GDriveDirectory, GDriveFile } from '@shared/lib/googleDrive';
+import TreeIterable from '@shared/ui/TreeMenu/TreeIterable.vue';
+import type { IterableCollection } from '@shared/ui/TreeMenu/useIterable';
 
 defineProps<{
-  gDriveDirectory: AsyncMap<K, T>;
-  activeKey?: K;
-  activeItem?: T;
-  filter?: ([key, item]: [K, T]) => boolean;
+  collection: IterableCollection<string, GDriveDirectory | GDriveFile>;
+  activeKey?: string;
+  activeItem?: GDriveDirectory | GDriveFile;
+  filter?: ([key, item]: [string, GDriveDirectory | GDriveFile]) => boolean;
 }>();
 
 const slots = defineSlots<{
-  contextMenu(props: { key: K; item: T }): unknown;
+  contextMenu(props: {
+    key: string;
+    item: GDriveDirectory | GDriveFile;
+  }): unknown;
 }>();
 
 const emit = defineEmits<{
-  click: [key: K, item: T];
+  click: [key: string, item: GDriveDirectory | GDriveFile];
 }>();
 
-const onClick = (key: K, item: T) => {
+const onClick = (key: string, item: GDriveDirectory | GDriveFile) => {
   emit('click', key, item);
 };
 </script>
 
 <template>
   <div class="menu is-overflow-auto">
-    <TreeMap
-      :map="gDriveDirectory"
+    <TreeIterable
+      v-if="collection"
+      :collection
       :active-key
       :active-item
       :filter
@@ -50,13 +47,16 @@ const onClick = (key: K, item: T) => {
       <template #icon="{ item, listOpen, loading }">
         <i v-if="loading" class="fa-solid fa-spinner fa-spin-pulse" />
 
-        <i v-else-if="'get' in item && !listOpen" class="fa-solid fa-folder" />
+        <i
+          v-else-if="'collection' in item && !listOpen"
+          class="fa-solid fa-folder"
+        />
 
         <i
-          v-else-if="'get' in item && listOpen"
+          v-else-if="'collection' in item && listOpen"
           class="fa-regular fa-folder-open"
         />
       </template>
-    </TreeMap>
+    </TreeIterable>
   </div>
 </template>

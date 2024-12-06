@@ -1,8 +1,4 @@
-import type {
-  DeleteDocumentPayload,
-  DocumentId,
-  DocumentPayload,
-} from '@automerge/automerge-repo';
+import type { DocumentId, DocumentPayload } from '@automerge/automerge-repo';
 import { Repo } from '@automerge/automerge-repo';
 import type {
   DirectoryForDocumentFolder,
@@ -21,6 +17,9 @@ import { fileNameToPartialKey } from '../fsStorageAdapter/createFSStorageAdapter
 import { createLogger } from '../logger';
 import { throttle } from 'lodash-es';
 import { parseSelf } from '../validateZodScheme';
+import { from } from 'ix/Ix.asynciterable';
+import { distinct, filter, map } from 'ix/Ix.asynciterable.operators';
+import type { IterableCollection } from '@shared/ui/TreeMenu/useIterable';
 
 const { debug } = createLogger('createDocumentFolder');
 
@@ -36,66 +35,41 @@ export const createDocumentFolder = (
   const onAddDocument = throttle(
     ({ handle: { documentId }, isNew }: DocumentPayload) => {
       debug('onAddDocument');
-      const extentions = isNew ? [documentId] : undefined;
-      void getFSContent(extentions).then((content) => {
-        changeEvents.forEach((handler) => handler(content));
-      });
+      const extensions = isNew ? [documentId] : undefined;
+      changeEvents.forEach((handler) =>
+        handler(createChildrenContentIterable(extensions)),
+      );
     },
     THROTTLE_EVENTS,
   );
 
-  const onDeleteDocument = throttle(({ documentId }: DeleteDocumentPayload) => {
+  const onDeleteDocument = throttle(() => {
     debug('onDeleteDocument');
-    void getFSContent([documentId]).then((content) => {
-      changeEvents.forEach((handler) => handler(content));
-    });
+    changeEvents.forEach((handler) => handler(createChildrenContentIterable()));
   }, THROTTLE_EVENTS);
 
   repo.on('document', onAddDocument);
   repo.on('delete-document', onDeleteDocument);
 
-  const fsContentMapState = new Map<DocumentId, CFRDocument>();
-
-  const getFSContent = async (
+  function createChildrenContentIterable(
     exceptions?: DocumentId[],
-  ): Promise<Map<DocumentId, CFRDocument>> => {
+  ): AsyncIterable<[DocumentId, CFRDocument]> {
     const exceptionsSet = exceptions ? new Set(exceptions) : undefined;
-    const directoryList = await directory.get();
 
-    const currentDocumentSet = new Set<DocumentId>();
-
-    for (const [entryName] of directoryList) {
-      if (zodFileName.safeParse(entryName).success) {
-        const documentId: DocumentId = parseSelf(
-          fileNameToPartialKey(entryName)[0],
-          zodDocumentId,
-        );
-
-        if (!exceptionsSet?.has(documentId)) {
-          currentDocumentSet.add(documentId);
-        }
-      }
-    }
-
-    for (const [documentId] of fsContentMapState) {
-      if (
-        !currentDocumentSet.has(documentId) &&
-        !exceptionsSet?.has(documentId)
-      ) {
-        fsContentMapState.delete(documentId);
-      }
-    }
-
-    for (const documentId of currentDocumentSet) {
-      if (!fsContentMapState.has(documentId)) {
+    return from(directory.children).pipe(
+      filter(([entryName]) => zodFileName.safeParse(entryName).success),
+      map(
+        ([entryName]): DocumentId =>
+          parseSelf(fileNameToPartialKey(entryName)[0], zodDocumentId),
+      ),
+      distinct(),
+      filter((documentId: DocumentId) => !exceptionsSet?.has(documentId)),
+      map((documentId: DocumentId): [DocumentId, CFRDocument] => {
         const docHandle: CFRDocument = repo.find(documentId);
-
-        fsContentMapState.set(documentId, createCFRDocument(docHandle));
-      }
-    }
-
-    return fsContentMapState;
-  };
+        return [documentId, createCFRDocument(docHandle)];
+      }),
+    );
+  }
 
   const create = <Z extends typeof zodDocumentContent>(
     initialValue: TypeOf<Z>,
@@ -106,22 +80,20 @@ export const createDocumentFolder = (
 
     const newCFRDocument = createCFRDocument(docHandle);
 
-    const documentId = docHandle.documentId;
-
-    fsContentMapState.set(documentId, newCFRDocument);
-
     return newCFRDocument;
   };
 
   const changeEvents = new Set<
-    (content: Map<DocumentId, CFRDocument>) => unknown
+    (content: IterableCollection<DocumentId, CFRDocument>) => unknown
   >();
 
-  const onChange = (fn: (content: Map<DocumentId, CFRDocument>) => unknown) => {
+  const onChange = (
+    fn: (content: IterableCollection<DocumentId, CFRDocument>) => unknown,
+  ) => {
     changeEvents.add(fn);
   };
   const offChange = (
-    fn: (content: Map<DocumentId, CFRDocument>) => unknown,
+    fn: (content: IterableCollection<DocumentId, CFRDocument>) => unknown,
   ) => {
     changeEvents.delete(fn);
   };
@@ -130,15 +102,16 @@ export const createDocumentFolder = (
     debug('remove', documentId);
 
     repo.delete(documentId);
-    fsContentMapState.delete(documentId);
   };
 
   const folder: DocumentFolder = {
-    get: getFSContent,
     create,
     onChange,
     offChange,
     remove,
+    get children() {
+      return createChildrenContentIterable();
+    },
   };
 
   return folder;
