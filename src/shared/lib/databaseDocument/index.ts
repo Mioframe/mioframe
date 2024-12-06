@@ -7,7 +7,7 @@ export {
 } from './property';
 export {
   type DataBaseStateLatest,
-  type DatabaseDocument,
+  type DatabaseDocument as DatabaseDocument,
   type DatabaseDocumentContent,
   type DatabaseTypeDocument,
   zodDatabaseDocumentContent,
@@ -16,7 +16,7 @@ export {
   zodDatabaseExtensionBodyDocument,
   zodDatabaseTypeDocument,
 } from './types';
-export { createDatabaseDocument } from './createDatabaseDocument';
+export { useDatabaseDocument as createDatabaseDocument } from './useDatabaseDocument';
 export {
   type ItemId,
   generateItemId,

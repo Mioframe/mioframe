@@ -1,29 +1,32 @@
-<script setup lang="ts" generic="V extends View">
+<script setup lang="ts">
 import type { View, ViewId } from '@shared/lib/databaseDocument';
+import type { ViewsMap } from '@shared/lib/databaseDocument/versions';
+import TreeIterable from '@shared/ui/TreeMenu/TreeIterable.vue';
+import { computed } from 'vue';
 
-defineProps<{
-  views: Record<ViewId, V>;
+const props = defineProps<{
+  views: ViewsMap;
 }>();
 
-defineSlots<{
-  default(props: { id: ViewId; view: V }): unknown;
+const slots = defineSlots<{
+  default(props: { id: ViewId; view: View }): unknown;
   before(): unknown;
   after(): unknown;
 }>();
+
+const collection = computed(() => props.views);
 </script>
 
 <template>
   <aside class="menu">
-    <ul class="menu-list">
-      <li v-for="(view, id) in views" :key="id">
-        <slot :id :view>
-          <span class="menu-item">
-            {{ view.name }}
-          </span>
-        </slot>
-      </li>
+    <TreeIterable :collection>
+      <template #label="{ item: view }">
+        {{ view.name }}
+      </template>
 
-      <slot name="after" />
-    </ul>
+      <template v-if="!!slots.after">
+        <slot name="after" />
+      </template>
+    </TreeIterable>
   </aside>
 </template>

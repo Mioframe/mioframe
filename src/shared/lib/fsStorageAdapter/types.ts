@@ -1,5 +1,6 @@
 import type { DocumentId } from '@automerge/automerge-repo';
 import { isValidDocumentId } from '@automerge/automerge-repo';
+import type { ItemWithChildren } from '@shared/ui/TreeMenu/useIterable';
 import { isString } from 'lodash-es';
 import type { TypeOf } from 'zod';
 import { custom, literal, string, tuple, union } from 'zod';
@@ -64,8 +65,9 @@ export interface FileForAdapter {
   remove: () => Promise<void>;
 }
 
-export interface DirectoryForAdapter {
-  get: () => Promise<Map<string, FileForAdapter | DirectoryForAdapter>>;
+export interface DirectoryForAdapter
+  extends ItemWithChildren<string, FileForAdapter | DirectoryForAdapter> {
+  // get: () => Promise<Map<string, FileForAdapter | DirectoryForAdapter>>;
   writeFile: (
     name: string,
     file?: FileSystemWriteChunkType,

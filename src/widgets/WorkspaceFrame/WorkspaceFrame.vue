@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, toRef } from 'vue';
 import type { CFRDocument } from '../../shared/lib/cfrDocument';
-import { useCFRDocument } from '../../entities/document/useCFRDocument';
+import type { ReactiveCFRDocument } from '../../entities/document/createReactiveCFRDocument';
 import { createLogger } from '../../shared/lib/logger';
 import { DocumentEditForm } from '../../features/documentEdit';
 import type { ViewId } from '../../shared/lib/databaseDocument';
@@ -17,7 +17,7 @@ import { isString } from 'lodash-es';
 const { debug } = createLogger('WorkspaceFrame');
 
 const props = defineProps<{
-  cfrDocument: CFRDocument;
+  reactiveCFRDocument: ReactiveCFRDocument;
 }>();
 
 defineSlots<{
@@ -26,17 +26,15 @@ defineSlots<{
 
 const selectedViewId = defineModel<ViewId>('selectedViewId');
 
-const cfrDocument = toRef(() => props.cfrDocument);
+const reactiveCFRDocument = toRef(() => props.reactiveCFRDocument);
 
-const { doc, change } = useCFRDocument(cfrDocument);
-
-const documentName = computed(() => doc.value?.name);
+const documentName = computed(() => reactiveCFRDocument.value.doc?.name);
 
 // todo: вынести в feature
 const onChangeName = (v: unknown) => {
   debug('onChangeName');
   if (isString(v)) {
-    change((doc) => {
+    reactiveCFRDocument.value.change((doc) => {
       if (v !== doc.name) {
         doc.name = v;
       }
@@ -44,11 +42,13 @@ const onChangeName = (v: unknown) => {
   }
 };
 
-const documentType = computed(() => doc.value?.type ?? 'unknown');
+const documentType = computed(
+  () => reactiveCFRDocument.value.doc?.type ?? 'unknown',
+);
 
-const databaseDocument = computed(() =>
-  documentType.value === DATABASE_DOCUMENT_TYPE
-    ? createDatabaseDocument(cfrDocument.value)
+const selectedDatabaseDocument = computed(() =>
+  reactiveCFRDocument.value.doc?.type === DATABASE_DOCUMENT_TYPE
+    ? createDatabaseDocument(reactiveCFRDocument)
     : undefined,
 );
 </script>
@@ -70,17 +70,17 @@ const databaseDocument = computed(() =>
       <span class="tag is-medium"> {{ documentType }} </span>
     </section>
 
-    <slot :cfr-document :document-type>
+    <slot :reactive-c-f-r-document :document-type>
       <!-- todo: тут определяются виджеты документов по их типу -->
       <DatabaseWidget
-        v-if="databaseDocument"
-        :database-document="databaseDocument"
+        v-if="selectedDatabaseDocument"
+        :database-document="selectedDatabaseDocument"
         :selected-view-id
       />
 
       <DocumentEditForm
         v-else
-        :cfr-document
+        :reactive-cfr-document="reactiveCFRDocument"
         class="is-flex is-flex-direction-column is-flex-grow-1"
       />
     </slot>

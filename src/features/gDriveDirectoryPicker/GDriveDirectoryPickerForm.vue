@@ -1,10 +1,6 @@
 <script setup lang="ts">
 import { computed, shallowRef, watch } from 'vue';
-import type {
-  GDriveDirectory,
-  GDriveFile,
-  GDriveSpaces,
-} from '../../shared/lib/googleDrive';
+import type { GDriveDirectory, GDriveFile } from '../../shared/lib/googleDrive';
 import { GDriveDirectoryList } from '../../entities/gDrive';
 import { createGDriveSpaces } from '../../shared/lib/googleDrive/createGDriveSpaces';
 import GUserCard from '../../entities/gProfile/GProfileCard.vue';
@@ -13,16 +9,20 @@ import { GDriveScope } from '@shared/lib/googleApi/types';
 import { createPreviouslyCreatedFolders } from './previouslyCreatedFolders';
 import { sum, values } from 'lodash-es';
 import FormLayout from '@shared/ui/FormLayout.vue';
+import type { IterableCollection } from '@shared/ui/TreeMenu/useIterable';
 
 const emit = defineEmits<{
   submit: [directory: GDriveDirectory];
   cancel: [];
 }>();
 
-const selectedGDriveDirectory = shallowRef<GDriveDirectory>();
+const selectedGDriveDirectory = shallowRef<GDriveDirectory | GDriveFile>();
 
 const onSubmit = () => {
-  if (selectedGDriveDirectory.value) {
+  if (
+    selectedGDriveDirectory.value &&
+    'writeFile' in selectedGDriveDirectory.value
+  ) {
     emit('submit', selectedGDriveDirectory.value);
   }
 };
@@ -31,11 +31,11 @@ const onClickCancel = () => {
   emit('cancel');
 };
 
-const rootGDriveDirectory = shallowRef<GDriveDirectory | GDriveSpaces>();
+const rootGDriveDirectory =
+  shallowRef<IterableCollection<string, GDriveDirectory | GDriveFile>>();
 
-const previouslyCreatedFolders = shallowRef<{
-  get: () => Promise<Map<string, GDriveDirectory>>;
-}>();
+const previouslyCreatedFolders =
+  shallowRef<IterableCollection<string, GDriveDirectory | GDriveFile>>();
 
 const googleApi = useGoogleApi();
 
@@ -43,8 +43,9 @@ const fetchRootDirectory = async () => {
   const gDrive = await googleApi.getGDrive([GDriveScope.all]);
 
   if (gDrive) {
-    rootGDriveDirectory.value = createGDriveSpaces(gDrive);
-    previouslyCreatedFolders.value = createPreviouslyCreatedFolders(gDrive);
+    rootGDriveDirectory.value = createGDriveSpaces(gDrive).children;
+    previouslyCreatedFolders.value =
+      createPreviouslyCreatedFolders(gDrive).children;
   }
 };
 
@@ -62,14 +63,14 @@ watch(
   { immediate: true },
 );
 
-const onClickList = (_key: string, item: GDriveDirectory | GDriveFile) => {
-  if ('get' in item && item.getName() !== 'root') {
+const onClickList = (_key: unknown, item: GDriveDirectory | GDriveFile) => {
+  if ('children' in item && item.getName() !== 'root') {
     selectedGDriveDirectory.value = item;
   }
 };
 
-const filterFolders = ([, item]: [string, GDriveDirectory | GDriveFile]) =>
-  'get' in item;
+const filterFolders = ([, item]: [unknown, GDriveDirectory | GDriveFile]) =>
+  'children' in item;
 
 const googleLoading = computed(() => sum(values(googleApi.loading)));
 
@@ -123,7 +124,7 @@ const onClickLogout = () => {
       <span class="label">folders with documents</span>
 
       <GDriveDirectoryList
-        :g-drive-directory="previouslyCreatedFolders"
+        :collection="previouslyCreatedFolders"
         :active-item="selectedGDriveDirectory"
         :filter="filterFolders"
         @click="onClickList"
@@ -134,7 +135,7 @@ const onClickLogout = () => {
       <span class="label">Google Drive</span>
 
       <GDriveDirectoryList
-        :g-drive-directory="rootGDriveDirectory"
+        :collection="rootGDriveDirectory"
         :active-item="selectedGDriveDirectory"
         :filter="filterFolders"
         @click="onClickList"

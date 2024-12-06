@@ -12,6 +12,8 @@ export const createCFRDocument = (docHandle: CFRDocument): CFRDocument => {
     debug('doc');
     const originalDoc = await docHandle.doc();
 
+    debug('doc originalDoc', { originalDoc: cloneDeep(originalDoc) });
+
     const parsedDoc = parseSelf(originalDoc, zodDocumentContent);
     debug('doc return', cloneDeep(parsedDoc));
     return parsedDoc;

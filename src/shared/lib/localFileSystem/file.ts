@@ -1,3 +1,4 @@
+import { from, some } from 'ix/Ix.asynciterable';
 import { createLocalEntry } from './entry';
 import type { LocalDirectory, LocalFile } from './types';
 
@@ -12,9 +13,11 @@ export const createLocalFile = (
   };
 
   const rename = async (newName: string) => {
-    const directoryList = await parentEntry.get();
+    const isAlreadyContains = await some(from(parentEntry.children), {
+      predicate: ([name]) => name === newName,
+    });
 
-    if (directoryList.has(newName)) {
+    if (isAlreadyContains) {
       throw new Error(
         `"${parentEntry.getName()}" already contains "${newName}"`,
       );

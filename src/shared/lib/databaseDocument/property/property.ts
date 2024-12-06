@@ -16,6 +16,6 @@ export const zodUnknownPropertiesMap = record(
 
 export type UnknownPropertiesMap = TypeOf<typeof zodUnknownPropertiesMap>;
 
-export type PropertiesMap<T extends GeneralProperty> = {
+export type PropertiesMap<T extends GeneralProperty = GeneralProperty> = {
   [K in PropertyId]: T;
 };

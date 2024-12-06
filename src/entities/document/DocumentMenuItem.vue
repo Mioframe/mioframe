@@ -1,12 +1,11 @@
 <script setup lang="ts">
-import { useCFRDocument } from './useCFRDocument';
-import type { CFRDocument } from '../../shared/lib/cfrDocument';
-import { computed, toRef } from 'vue';
-import { TreeItem } from '../../shared/ui/TreeMenu';
+import type { ReactiveCFRDocument } from './createReactiveCFRDocument';
+import { computed } from 'vue';
 import type { DocumentId } from '@automerge/automerge-repo';
+import { TreeIterableItem } from '@shared/ui/TreeMenu';
 
 const props = defineProps<{
-  cfrDocument: CFRDocument;
+  reactiveCFRDocument: ReactiveCFRDocument;
   documentId: DocumentId;
 }>();
 
@@ -15,25 +14,21 @@ defineSlots<{
 }>();
 
 const emit = defineEmits<{
-  click: [documentId: DocumentId, cfrDocument: CFRDocument];
+  click: [documentId: DocumentId, reactiveCFRDocument: ReactiveCFRDocument];
 }>();
 
-const cfrDocumentRef = useCFRDocument(toRef(() => props.cfrDocument));
-
 const documentName = computed(
-  () => cfrDocumentRef.doc.value?.name ?? 'nameless',
+  () => props.reactiveCFRDocument.doc?.name ?? 'unknown',
 );
 
 const onClickItem = () => {
-  emit('click', props.documentId, props.cfrDocument);
+  emit('click', props.documentId, props.reactiveCFRDocument);
 };
 </script>
 
 <template>
-  <TreeItem
-    :item="{
-      label: documentName,
-    }"
+  <TreeIterableItem
+    :item="props.reactiveCFRDocument"
     :item-key="documentId"
     @click="onClickItem"
   >
@@ -44,5 +39,5 @@ const onClickItem = () => {
         name="contextMenu"
       />
     </template>
-  </TreeItem>
+  </TreeIterableItem>
 </template>

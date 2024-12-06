@@ -1,6 +1,8 @@
 {
   "recommendations": [
-    "Vue.volar",
-    "streetsidesoftware.code-spell-checker-russian"
+    "streetsidesoftware.code-spell-checker-russian",
+    "yoavbls.pretty-ts-errors",
+    "gruntfuggly.todo-tree",
+    "dbaeumer.vscode-eslint"
   ]
 }

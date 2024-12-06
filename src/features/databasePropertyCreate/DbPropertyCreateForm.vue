@@ -1,14 +1,13 @@
 <script setup lang="ts">
 import { ref } from 'vue';
-import { type PropertyId } from '../../shared/lib/databaseDocument';
-import type { CFRDocument } from '../../shared/lib/cfrDocument';
-import { createDatabaseDocument } from '../../shared/lib/databaseDocument/createDatabaseDocument';
+import type { UnknownProperty } from '../../shared/lib/databaseDocument';
 import { PROPERTY_TYPE_STRING } from '@entity/stringProperty';
 import type { ValueOf } from 'type-fest/source/value-of';
 import { PROPERTY_TYPE_NUMBER } from '@entity/numberProperty/number';
 import { PROPERTY_TYPE_BOOLEAN } from '@entity/booleanProperty/boolean';
 import { PROPERTY_TYPE_DATE } from '@entity/dateProperty/date';
 import { UIButton } from '@shared/ui/Button';
+import FormLayout from '@shared/ui/FormLayout.vue';
 
 const stateName = ref<string>();
 
@@ -24,24 +23,16 @@ type PropertyType = ValueOf<typeof propertyTypeList>;
 const stateType = ref<PropertyType>();
 
 const emit = defineEmits<{
-  created: [propertyId: PropertyId];
+  created: [property: UnknownProperty];
   canceled: [];
-}>();
-
-const props = defineProps<{
-  cfrDocument: CFRDocument;
 }>();
 
 const onSubmit = () => {
   if (stateName.value?.length && stateType.value) {
-    const { addProperty } = createDatabaseDocument(props.cfrDocument);
-
-    const propertyId = addProperty({
+    emit('created', {
       name: stateName.value,
       type: stateType.value,
     });
-
-    emit('created', propertyId);
   }
 };
 
@@ -53,10 +44,7 @@ const onClickCancel = () => {
 </script>
 
 <template>
-  <form
-    class="block-spacing is-flex is-flex-direction-column"
-    @submit.prevent="onSubmit"
-  >
+  <FormLayout @submit.prevent="onSubmit">
     <div class="field">
       <label class="label">Property name</label>
 
@@ -84,10 +72,10 @@ const onClickCancel = () => {
       </div>
     </div>
 
-    <div class="button-grid">
+    <template #actions>
       <UIButton type="submit" primary>Create</UIButton>
 
       <UIButton @click="onClickCancel"> Cancel </UIButton>
-    </div>
-  </form>
+    </template>
+  </FormLayout>
 </template>

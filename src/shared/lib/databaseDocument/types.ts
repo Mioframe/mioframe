@@ -1,11 +1,13 @@
 import type { PartialDeep } from 'type-fest';
 import type { TypeOf } from 'zod';
 import { intersection, literal, object } from 'zod';
-import type { UnknownProperty, PropertyId } from './property';
+import type { UnknownProperty, PropertyId, PropertiesMap } from './property';
+import type { ViewsMap } from './versions';
 import { zodDataBaseStateLatest } from './versions';
 import type { View, ViewId } from './view';
-import type { Item, ItemId } from './item';
+import type { DatabaseData, Item, ItemId } from './item';
 import { zodDocumentContent } from '../cfrDocument';
+import type { ComputedRef } from 'vue';
 
 export type DataBaseStateLatest = TypeOf<typeof zodDataBaseStateLatest>;
 
@@ -16,7 +18,7 @@ export const zodDatabaseType = object({
 });
 
 export const zodDatabaseExtensionBodyDocument = object({
-  body: zodDataBaseStateLatest,
+  body: zodDataBaseStateLatest, // todo: может сменить body на другое свойство? отдельное свойство для db
 });
 
 export const zodDatabaseTypeDocument = intersection(
@@ -34,6 +36,23 @@ export const zodDatabaseDocumentContent = intersection(
 export type DatabaseDocumentContent = TypeOf<typeof zodDatabaseDocumentContent>;
 
 export interface DatabaseDocument {
+  /**
+   * Всё содержимое документа
+   */
+  content: ComputedRef<DatabaseDocumentContent | undefined>;
+  /**
+   * Перечень свойств
+   */
+  properties: ComputedRef<PropertiesMap | undefined>;
+  /**
+   * Перечень представлений
+   */
+  views: ComputedRef<ViewsMap | undefined>;
+  /**
+   * Перечень данных
+   */
+  data: ComputedRef<DatabaseData | undefined>;
+
   addProperty: (property: UnknownProperty) => PropertyId;
   removeProperty: (propertyId: PropertyId) => void;
   updateProperty: (
@@ -44,10 +63,6 @@ export interface DatabaseDocument {
   addItem: (item: Item) => ItemId;
   removeItem: (itemId: ItemId) => void;
   updateItem: (itemId: ItemId, partialItem: PartialDeep<Item>) => void;
-
-  read: () => Promise<DatabaseDocumentContent>;
-
-  onChange: (fn: (doc: DatabaseDocumentContent) => unknown) => () => void;
 
   addView: (view: View) => ViewId;
   removeView: (viewId: ViewId) => void;

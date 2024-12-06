@@ -18,7 +18,6 @@ import {
   setupDatabaseDocument,
   ViewAction,
 } from '@widget/MainView/setupDatabaseDocument';
-import { useCFRDocument } from '@entity/document';
 import { ViewList } from '@entity/documentView';
 import { DatabaseViewAddForm } from '@feature/databaseViewAdd';
 import { DbPropertyCreateForm } from '@feature/databasePropertyCreate';
@@ -39,11 +38,11 @@ import { ButtonGroup } from '@shared/ui/ButtonGroup';
 const isOpenPanel = ref(true);
 
 const {
-  contentFolderMap,
+  folderContents,
   isSupportLocalDirectory,
   onClickSelectDirectory,
   selectedDocumentFolder,
-} = setupFolderChoice(isOpenPanel);
+} = setupFolderChoice();
 
 const {
   onCancelSelectGDirectory,
@@ -57,15 +56,15 @@ const {
   onCancelCreateDocument,
   onClickCreateDocument,
   onCreatedDocument,
-} = setupDocumentCreate(isOpenPanel);
+} = setupDocumentCreate();
 
 const { documentIdForRemove, onCancelRemove, onClickRemove, onRemoved } =
   setupDocumentRemove();
 
-const { onClickFolderDocument, selectedCFRDocument } =
-  setupDocumentChoice(isOpenPanel);
-
-const { doc } = useCFRDocument(selectedCFRDocument);
+const {
+  onClickFolderDocument,
+  selectedReactiveCFRDocument: refSelectedCFRDocument,
+} = setupDocumentChoice();
 
 const {
   databaseProperties,
@@ -73,7 +72,10 @@ const {
   hasAddProperty,
   hasRemoveProperty,
   isShowPropertyCreate,
+
   isShowPropertyRemove,
+  onRemoveProperty,
+
   isShowItemAdd,
   hasItemAdd,
   onAddItem,
@@ -89,14 +91,14 @@ const {
   removeView,
   contextViewMenu,
   onClickViewContextBtn,
-} = setupDatabaseDocument(selectedCFRDocument, doc);
+} = setupDatabaseDocument(refSelectedCFRDocument);
 </script>
 
 <template>
   <ViewWithPanelLayout v-model:open-panel="isOpenPanel">
     <WorkspaceFrame
-      v-if="selectedCFRDocument"
-      :cfr-document="selectedCFRDocument"
+      v-if="refSelectedCFRDocument"
+      :reactive-c-f-r-document="refSelectedCFRDocument"
       class="is-flex-grow-1"
       :selected-view-id
     />
@@ -105,10 +107,10 @@ const {
 
     <template #panel>
       <div class="p-1 block-spacing is-flex is-flex-direction-column">
-        <div v-if="selectedCFRDocument" class="document-panel">
+        <div v-if="refSelectedCFRDocument" class="document-panel">
           <div class="button-grid">
-            <div class="buttons has-addons">
-              <UIButton class="is-flex-grow-1" :label="selectedView.name">
+            <ButtonGroup>
+              <UIButton class="is-flex-grow-1" :label="selectedView?.name">
                 <template #icon>
                   <i class="fa-solid fa-sliders" />
                 </template>
@@ -122,7 +124,7 @@ const {
                   <i class="fa-solid fa-caret-down" />
                 </template>
               </UIButton>
-            </div>
+            </ButtonGroup>
 
             <ViewList
               v-if="isShowViewList && databaseViews"
@@ -131,6 +133,12 @@ const {
             >
               <template #default="{ id, view }">
                 <ButtonGroup>
+                  <UIButton>
+                    <template #icon>
+                      <i class="fa-solid fa-grip-vertical" />
+                    </template>
+                  </UIButton>
+
                   <UIButton
                     :label="view.name"
                     :active="selectedViewId === id"
@@ -198,17 +206,17 @@ const {
 
           <ModalCard v-if="isShowPropertyCreate">
             <DbPropertyCreateForm
-              :cfr-document="selectedCFRDocument"
+              :cfr-document="refSelectedCFRDocument"
               @canceled="isShowPropertyCreate = false"
               @created="isShowPropertyCreate = false"
             />
           </ModalCard>
 
-          <ModalCard v-if="isShowPropertyRemove">
+          <ModalCard v-if="isShowPropertyRemove && databaseProperties">
             <DbPropertyRemoveForm
-              :cfr-document="selectedCFRDocument"
+              :properties="databaseProperties"
               @canceled="isShowPropertyRemove = false"
-              @removed="isShowPropertyRemove = false"
+              @remove="onRemoveProperty"
             />
           </ModalCard>
 
@@ -249,7 +257,8 @@ const {
 
         <div class="menu card is-shadowless is-overflow-x-auto">
           <MenuFolder
-            :documents-map="contentFolderMap"
+            v-if="folderContents"
+            :folder-contents="folderContents"
             @click="onClickFolderDocument"
           >
             <template #contextMenu="{ documentId, documentName }">

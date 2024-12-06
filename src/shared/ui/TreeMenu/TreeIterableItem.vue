@@ -2,28 +2,26 @@
   lang="ts"
   setup
   generic="
-    O extends object,
     K extends string | number,
-    T extends AsyncMap<K, T> | O
+    T extends Partial<{} | ItemWithChildren<K, T>>
   "
 >
 import { computed, ref, watchEffect } from 'vue';
 import { ContextMenu } from '../ContextMenu';
-import { createLogger } from '../../lib/logger';
 import { onInteractionOutside } from '../../lib/onInteractionOutside';
 import type { MaybeElement } from '@vueuse/core';
-import { type AsyncMap } from './useAsyncMap';
-import TreeMap from './TreeMap.vue';
 import { ButtonGroup } from '../ButtonGroup';
-
-const { debug } = createLogger('TreeItem');
+import type { IterableCollection } from './useIterable';
+import { isItemWithChildren, type ItemWithChildren } from './useIterable';
+import TreeIterable from './TreeIterable.vue';
+import { UIButton } from '../Button';
 
 const props = defineProps<{
-  item: T;
   itemKey: K;
-  opened?: boolean;
+  item: T;
   activeKey?: K;
   activeItem?: T;
+  opened?: boolean;
   filter?: (v: [K, T]) => boolean;
 }>();
 
@@ -34,10 +32,18 @@ const emit = defineEmits<{
 
 const stateOpened = ref<boolean>();
 
-const hasSubList = computed(() => 'get' in props.item);
+const children = computed((): IterableCollection<K, T> | undefined => {
+  const item = props.item;
+  if (isItemWithChildren<typeof item, K, T>(item)) {
+    return item.children;
+  }
+  return undefined;
+});
+
+const hasSubCollection = computed(() => children.value);
 
 watchEffect(() => {
-  stateOpened.value = hasSubList.value ? props.opened : undefined;
+  stateOpened.value = hasSubCollection.value ? props.opened : undefined;
 });
 
 const toggleOpened = () => {
@@ -65,7 +71,6 @@ onInteractionOutside(
 );
 
 const onContextMenu = ({ clientX, clientY }: MouseEvent) => {
-  debug('onContextMenu', contextMenuPosition.value);
   contextMenuPosition.value = contextMenuPosition.value
     ? undefined
     : {
@@ -101,14 +106,12 @@ const loading = ref<boolean>();
 <template>
   <li>
     <ButtonGroup>
-      <button
-        v-if="hasSubList"
-        class="button"
-        :class="{ 'is-active': stateOpened }"
-        type="button"
+      <UIButton
+        v-if="hasSubCollection"
+        :active="stateOpened"
         @click="toggleOpened"
       >
-        <span class="icon">
+        <template #icon>
           <slot
             :key="itemKey"
             name="icon"
@@ -121,16 +124,16 @@ const loading = ref<boolean>();
               :class="{ 'fa-flip-vertical': stateOpened }"
             />
           </slot>
-        </span>
-      </button>
+        </template>
+      </UIButton>
 
-      <button
-        type="button"
-        class="button is-flex-grow-1"
-        :class="{ 'is-active': activeKey === itemKey || activeItem === item }"
+      <!-- fixme: заменить тело элемента (UIButton) на слот -->
+      <UIButton
+        grow
+        :active="activeKey === itemKey || activeItem === item"
         @click="onClickItem(itemKey, item)"
       >
-        <span v-if="!hasSubList" class="icon">
+        <template v-if="!hasSubCollection" #icon>
           <slot
             :key="itemKey"
             name="icon"
@@ -140,9 +143,9 @@ const loading = ref<boolean>();
           >
             <i class="fa-solid fa-minus fa-xs" />
           </slot>
-        </span>
+        </template>
 
-        <span :class="{ 'ml-3': !hasSubList }">
+        <span :class="{ 'ml-3': !hasSubCollection }">
           <slot
             :key="itemKey"
             name="label"
@@ -151,7 +154,7 @@ const loading = ref<boolean>();
             :loading
           />
         </span>
-      </button>
+      </UIButton>
 
       <button
         v-if="!!slots.contextMenu"
@@ -160,7 +163,9 @@ const loading = ref<boolean>();
         type="button"
         @click="onContextMenu"
       >
-        <i class="fa-solid fa-ellipsis-vertical" />
+        <span class="icon">
+          <i class="fa-solid fa-ellipsis-vertical" />
+        </span>
       </button>
     </ButtonGroup>
 
@@ -178,10 +183,10 @@ const loading = ref<boolean>();
       />
     </ContextMenu>
 
-    <TreeMap
-      v-if="'get' in item && stateOpened"
+    <TreeIterable
+      v-if="children && stateOpened"
       v-model:loading="loading"
-      :map="item"
+      :collection="children"
       :active-key
       :active-item
       :filter
@@ -216,7 +221,7 @@ const loading = ref<boolean>();
           :loading="scoped.loading"
         />
       </template>
-    </TreeMap>
+    </TreeIterable>
   </li>
 </template>
 

@@ -2,7 +2,7 @@
 import { toRef } from 'vue';
 import { ModalCard } from '@shared/ui/ModalCard';
 import type { CFRDocument } from '@/shared/lib/cfrDocument';
-import { useCFRDocument } from '@entity/document';
+import { createReactiveCFRDocument } from '@entity/document';
 import { PROPERTY_TYPE_STRING } from '@entity/stringProperty';
 import { PROPERTY_TYPE_BOOLEAN } from '@entity/booleanProperty';
 import { PROPERTY_TYPE_NUMBER } from '@entity/numberProperty';
@@ -25,7 +25,7 @@ const props = defineProps<{
 
 const cfrDocument = toRef(() => props.cfrDocument);
 
-const { doc } = useCFRDocument(cfrDocument);
+const reactiveCFRDocument = createReactiveCFRDocument(cfrDocument);
 
 const {
   databaseProperties,
@@ -44,7 +44,7 @@ const {
   onSubmitViewAdd,
   selectedView,
   selectedViewId,
-} = setupDatabaseDocument(cfrDocument, doc);
+} = setupDatabaseDocument(reactiveCFRDocument);
 
 // todo: вынести в общий виджет
 </script>
@@ -53,7 +53,7 @@ const {
   <div class="document-panel">
     <div class="button-grid">
       <div class="buttons has-addons">
-        <UIButton class="is-flex-grow-1" :label="selectedView.name">
+        <UIButton class="is-flex-grow-1" :label="selectedView?.name">
           <template #icon>
             <i class="fa-solid fa-sliders" />
           </template>
@@ -137,9 +137,9 @@ const {
       />
     </ModalCard>
 
-    <ModalCard v-if="isShowPropertyRemove">
+    <ModalCard v-if="isShowPropertyRemove && databaseProperties">
       <DbPropertyRemoveForm
-        :cfr-document="cfrDocument"
+        :properties="databaseProperties"
         @canceled="isShowPropertyRemove = false"
         @removed="isShowPropertyRemove = false"
       />

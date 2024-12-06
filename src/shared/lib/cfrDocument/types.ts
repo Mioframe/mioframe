@@ -3,6 +3,10 @@ import type { ReadonlyDeep } from 'type-fest';
 import type { TypeOf } from 'zod';
 import { object, string, unknown } from 'zod';
 import type { DirectoryForAdapter } from '../fsStorageAdapter';
+import type {
+  ItemWithChildren,
+  IterableCollection,
+} from '@shared/ui/TreeMenu/useIterable';
 
 export const zodDocumentContent = object({
   name: string(),
@@ -24,17 +28,17 @@ export interface CFRDocument<T extends DocumentContent = DocumentContent> {
   off: (event: 'change', fn: (payload: { doc: T }) => unknown) => void;
 }
 
-export interface DocumentFolder {
+export interface DocumentFolder
+  extends ItemWithChildren<DocumentId, CFRDocument> {
   create: <Z extends typeof zodDocumentContent>(
     initialValue: TypeOf<Z>,
   ) => CFRDocument<TypeOf<Z>>;
   remove: (documentId: DocumentId) => void;
-  get: () => Promise<Map<DocumentId, CFRDocument>>;
   onChange: (
-    handler: (content: Map<DocumentId, CFRDocument>) => unknown,
+    handler: (content: IterableCollection<DocumentId, CFRDocument>) => unknown,
   ) => unknown;
   offChange: (
-    handler: (content: Map<DocumentId, CFRDocument>) => unknown,
+    handler: (content: IterableCollection<DocumentId, CFRDocument>) => unknown,
   ) => unknown;
 }
 

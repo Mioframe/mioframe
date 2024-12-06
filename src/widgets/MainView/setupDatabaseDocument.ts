@@ -1,14 +1,15 @@
-import { useDatabaseDocument } from '@entity/database';
-import type { CFRDocument, DocumentContent } from '@shared/lib/cfrDocument';
-import type { Item, View, ViewId } from '@shared/lib/databaseDocument';
-import {
-  createDatabaseDocument,
-  DATABASE_DOCUMENT_TYPE,
+import type { ReactiveCFRDocument } from '@entity/document/createReactiveCFRDocument';
+import type {
+  Item,
+  PropertyId,
+  View,
+  ViewId,
 } from '@shared/lib/databaseDocument';
+import { useDatabaseDocument } from '@shared/lib/databaseDocument/useDatabaseDocument';
 import type { MenuItem } from '@shared/ui/ContextButton';
-import { toValue } from '@vueuse/core';
+import type { MaybeRef } from '@vueuse/core';
+import { first } from 'ix/iterable/first';
 import { cloneDeep, get } from 'lodash-es';
-import type { Ref } from 'vue';
 import { computed, ref } from 'vue';
 
 export enum ViewAction {
@@ -16,21 +17,21 @@ export enum ViewAction {
 }
 
 export const setupDatabaseDocument = (
-  cfrDocument: Ref<CFRDocument | undefined>,
-  doc: Ref<DocumentContent | undefined>,
+  reactiveCFRDocument: MaybeRef<ReactiveCFRDocument | undefined>,
 ) => {
-  const databaseDocument = computed(() =>
-    cfrDocument.value && doc.value?.type === DATABASE_DOCUMENT_TYPE
-      ? createDatabaseDocument(cfrDocument.value)
-      : undefined,
-  );
-
-  const { properties: databaseProperties, views: databaseViews } =
-    useDatabaseDocument(databaseDocument);
+  const {
+    properties: databaseProperties,
+    views: databaseViews,
+    content,
+    addItem,
+    addView,
+    removeView: removeViewFromDB,
+    removeProperty,
+  } = useDatabaseDocument(reactiveCFRDocument);
 
   const isShowPropertyCreate = ref(false);
 
-  const hasAddProperty = computed(() => !!databaseDocument.value);
+  const hasAddProperty = computed(() => !!content.value?.type);
 
   const hasRemoveProperty = computed(
     () =>
@@ -49,7 +50,7 @@ export const setupDatabaseDocument = (
   const stateNewItem = ref<Item>({});
 
   const onAddItem = () => {
-    databaseDocument.value?.addItem(cloneDeep(stateNewItem.value));
+    addItem(cloneDeep(stateNewItem.value));
     stateNewItem.value = {};
     isShowItemAdd.value = false;
   };
@@ -64,34 +65,30 @@ export const setupDatabaseDocument = (
   const isShowViewAdd = ref(false);
 
   const onSubmitViewAdd = (view: View) => {
-    databaseDocument.value?.addView(view);
+    addView(view);
     isShowViewAdd.value = false;
   };
 
   const selectedViewId = ref<ViewId>();
 
-  const selectedView = computed(
-    (): {
-      name: string;
-    } => {
-      const id = selectedViewId.value;
-      const views = databaseViews.value;
+  const selectedView = computed((): View | undefined => {
+    const id = selectedViewId.value;
+    const views = databaseViews.value;
 
+    if (views) {
       if (id && id in views) {
         return views[id];
       }
 
-      const firstView = Object.values(databaseViews.value).at(0);
+      const [, firstView] = first(views) ?? [];
 
       if (firstView) {
         return firstView;
       }
+    }
 
-      return {
-        name: 'default',
-      };
-    },
-  );
+    return undefined;
+  });
 
   const removeViewId = ref<ViewId>();
 
@@ -99,9 +96,11 @@ export const setupDatabaseDocument = (
     () => removeViewId.value && get(databaseViews.value, removeViewId.value),
   );
 
-  const onRemoveDatabaseView = () =>
-    removeViewId.value &&
-    toValue(databaseDocument)?.removeView(removeViewId.value);
+  const onRemoveDatabaseView = () => {
+    if (removeViewId.value) {
+      removeViewFromDB(removeViewId.value);
+    }
+  };
 
   const onCancelRemoveDatabaseView = () => {
     removeViewId.value = undefined;
@@ -124,14 +123,22 @@ export const setupDatabaseDocument = (
     }
   };
 
+  const onRemoveProperty = (propertyId: PropertyId) => {
+    removeProperty(propertyId);
+    isShowPropertyRemove.value = false;
+  };
+
   return {
     databaseProperties,
     databaseViews,
 
     isShowPropertyCreate,
     hasAddProperty,
+
     hasRemoveProperty,
     isShowPropertyRemove,
+    onRemoveProperty,
+
     isShowItemAdd,
     hasItemAdd,
     onAddItem,
