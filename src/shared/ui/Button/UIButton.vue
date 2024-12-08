@@ -11,6 +11,7 @@ const props = defineProps<{
   loading?: boolean;
   danger?: boolean;
   grow?: number | boolean;
+  shadow?: boolean;
 }>();
 
 const slots = defineSlots<{
@@ -38,6 +39,7 @@ const growClass = computed(() =>
         'is-active': active,
         'is-loading': loading,
         'is-danger': danger,
+        'is-shadowless': !shadow,
       },
       growClass,
     ]"

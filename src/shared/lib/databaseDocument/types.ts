@@ -21,25 +21,24 @@ export const zodDatabaseExtensionBodyDocument = object({
   body: zodDataBaseStateLatest, // todo: может сменить body на другое свойство? отдельное свойство для db
 });
 
-export const zodDatabaseTypeDocument = intersection(
-  zodDocumentContent,
-  zodDatabaseType,
-);
+export const zodDatabaseTypeDocument =
+  zodDocumentContent.merge(zodDatabaseType);
 
 export type DatabaseTypeDocument = TypeOf<typeof zodDatabaseTypeDocument>;
 
-export const zodDatabaseDocumentContent = intersection(
-  zodDatabaseTypeDocument,
-  zodDatabaseExtensionBodyDocument,
+export const zodDatabaseDocumentWithContent = zodDatabaseTypeDocument.merge(
+  zodDatabaseExtensionBodyDocument.partial(),
 );
 
-export type DatabaseDocumentContent = TypeOf<typeof zodDatabaseDocumentContent>;
+export type DatabaseDocumentWithContent = TypeOf<
+  typeof zodDatabaseDocumentWithContent
+>;
 
 export interface DatabaseDocument {
   /**
    * Всё содержимое документа
    */
-  content: ComputedRef<DatabaseDocumentContent | undefined>;
+  content: ComputedRef<DatabaseDocumentWithContent | undefined>;
   /**
    * Перечень свойств
    */

@@ -40,7 +40,7 @@ const onClick = (key: string, item: GDriveDirectory | GDriveFile) => {
         <slot :key name="contextMenu" :item />
       </template>
 
-      <template #label="{ key }">
+      <template #item="{ key }">
         {{ key }}
       </template>
 

@@ -11,24 +11,27 @@ import {
   zodPartialStorageKey,
 } from './types';
 import { createLogger } from '../logger';
-import { parseSelf } from '../validateZodScheme';
+import { checkSchema } from '../validateZodScheme';
 import { useNotifications } from '../../ui/Notifications';
 import { find, from } from 'ix/Ix.asynciterable';
 import { filter, map } from 'ix/Ix.asynciterable.operators';
+import { isNil } from 'lodash-es';
 
 export const partialKeyToFileName = (
   key: PartialStorageKey,
-): PartialFileName => {
+): PartialFileName | undefined => {
   debug('keyToFileName', key);
-  return parseSelf(
-    parseSelf(key, zodPartialStorageKey).join(KEY_SEPARATE),
+  return checkSchema(
+    checkSchema(key, zodPartialStorageKey)?.join(KEY_SEPARATE),
     zodPartialFileName,
   );
 };
 
-export const fileNameToPartialKey = (fileName: unknown): PartialStorageKey =>
-  parseSelf(
-    parseSelf(fileName, zodPartialFileName).split(KEY_SEPARATE),
+export const fileNameToPartialKey = (
+  fileName: unknown,
+): PartialStorageKey | undefined =>
+  checkSchema(
+    checkSchema(fileName, zodPartialFileName)?.split(KEY_SEPARATE),
     zodPartialStorageKey,
   );
 
@@ -70,7 +73,9 @@ export const createStorageAdapter = (
       debug('save', key);
 
       const fileName = partialKeyToFileName(key);
-
+      if (!fileName) {
+        throw new Error('fileName is undefined');
+      }
       await directory.writeFile(fileName, data);
     } catch (error) {
       pushError('file saving error', error);
@@ -83,7 +88,9 @@ export const createStorageAdapter = (
       debug('remove', key);
 
       const fileName = partialKeyToFileName(key);
-
+      if (!fileName) {
+        throw new Error('fileName is undefined');
+      }
       await directory.removeByName(fileName);
     } catch (error) {
       pushError('file deletion error', error);
@@ -95,7 +102,7 @@ export const createStorageAdapter = (
     try {
       debug('loadRange', keyPrefix);
 
-      const keyPrefixString: PartialFileName = parseSelf(
+      const keyPrefixString: PartialFileName | undefined = checkSchema(
         keyPrefix.join(KEY_SEPARATE),
         zodPartialFileName,
       );
@@ -106,18 +113,28 @@ export const createStorageAdapter = (
         .pipe(
           filter(([name, entry]) => {
             debug('loadRange filter', { name, keyPrefixString });
-            return 'read' in entry && name.startsWith(keyPrefixString);
+            return (
+              'read' in entry &&
+              !!keyPrefixString &&
+              name.startsWith(keyPrefixString)
+            );
           }),
-          map(async ([name, entry]): Promise<Chunk> => {
+          map(async ([name, entry]): Promise<Chunk | undefined> => {
             debug('loadRange map', name, entry);
-            return {
-              key: fileNameToPartialKey(name),
-              data:
-                'read' in entry
-                  ? new Uint8Array(await (await entry.read()).arrayBuffer())
-                  : undefined,
-            };
+
+            const key = fileNameToPartialKey(name);
+
+            if (key) {
+              return {
+                key,
+                data:
+                  'read' in entry
+                    ? new Uint8Array(await (await entry.read()).arrayBuffer())
+                    : undefined,
+              };
+            }
           }),
+          filter((v) => !isNil(v)),
         )
         .forEach((v) => {
           chunkList.push(v);
@@ -136,13 +153,17 @@ export const createStorageAdapter = (
     try {
       debug('removeRange', keyPrefix);
 
-      const keyPrefixString: PartialFileName = parseSelf(
+      const keyPrefixString: PartialFileName | undefined = checkSchema(
         keyPrefix.join(KEY_SEPARATE),
         zodPartialFileName,
       );
 
       await from(directory.children).forEach(async ([name, entry]) => {
-        if ('read' in entry && name.startsWith(keyPrefixString)) {
+        if (
+          'read' in entry &&
+          keyPrefixString &&
+          name.startsWith(keyPrefixString)
+        ) {
           await entry.remove();
         }
       });

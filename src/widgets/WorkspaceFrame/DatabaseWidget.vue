@@ -119,7 +119,11 @@ const view = computed((): View => {
 
   <pre v-else-if="view?.layout === VIEW_LAYOUT.JSON">{{ state }}</pre>
 
-  <div v-else>// todo: придумать текст, пока состояние базы отсутствует</div>
+  <div v-else>
+    <p class="notification is-warning">Не выбран вид по умолчанию</p>
+
+    <pre>{{ databaseDocument.content ?? 'undefined' }}</pre>
+  </div>
 
   <ModalCard v-if="databaseDocument && itemIdToRemove">
     <DbItemRemoveForm

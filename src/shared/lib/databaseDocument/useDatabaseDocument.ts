@@ -1,7 +1,6 @@
 import type { PartialDeep } from 'type-fest';
 import { putObject } from '../changeObject';
-import type { DocumentContent } from '../cfrDocument';
-import { parseSelf } from '../validateZodScheme';
+import { checkSchema, is } from '../validateZodScheme';
 import type { Item } from './item';
 import { generateItemId, type ItemId } from './item';
 import {
@@ -9,15 +8,16 @@ import {
   type PropertyId,
   generatePropertyId,
 } from './property';
+import type { DatabaseTypeDocument } from './types';
 import {
   type DatabaseDocument,
-  type DatabaseDocumentContent,
-  zodDatabaseDocumentContent,
-  zodDatabaseType,
+  type DatabaseDocumentWithContent,
+  zodDatabaseDocumentWithContent,
+  zodDatabaseTypeDocument,
 } from './types';
-import { migrationsMap } from './migrations';
+import { applyDatabaseDocumentMigration } from './migrations';
 import { createLogger } from '../logger';
-import { get, isNil, isNumber, isObject } from 'lodash-es';
+import { get, isNil } from 'lodash-es';
 import type { ViewId } from './view';
 import { generateViewId, type View } from './view';
 import { ZodError } from 'zod';
@@ -29,68 +29,20 @@ import type { ViewsMap } from './versions';
 
 const { debug } = createLogger('createDatabaseDocument');
 
-const readVersion = (doc: unknown) => {
-  const dbDocument = parseSelf(doc, zodDatabaseType);
-
-  const currentVersion: number =
-    'body' in dbDocument
-      ? isObject(dbDocument.body)
-        ? 'version' in dbDocument.body
-          ? isNumber(dbDocument.body.version)
-            ? dbDocument.body.version
-            : 0
-          : 0
-        : 0
-      : 0;
-
-  return currentVersion;
-};
-
 /**
  * Обновление версии документа, проведение миграций
  * @param doc
  * @returns
  */
-const documentUpdate = (doc: DocumentContent): DatabaseDocumentContent => {
-  const currentVersion: number = readVersion(doc);
-
-  if (currentVersion in migrationsMap) {
-    migrationsMap[currentVersion](doc);
-    return documentUpdate(doc);
-  }
-  return parseSelf(doc, zodDatabaseDocumentContent);
+const documentUpdate = (
+  doc: DatabaseTypeDocument,
+): DatabaseDocumentWithContent => {
+  return applyDatabaseDocumentMigration(doc);
 };
 
 export const useDatabaseDocument = (
   reactiveCFRDocument: MaybeRef<ReactiveCFRDocument | undefined>,
 ): DatabaseDocument => {
-  // миграции запускать только при записи
-  // const migrate = async (doc: unknown): Promise<DatabaseDocumentContent> => {
-  //   debug('migrate', doc);
-
-  //   const currentVersion: number = readVersion(doc);
-
-  //   debug('migrate', currentVersion, latestVersion);
-
-  //   try {
-  //     if (latestVersion >= currentVersion) {
-  //       reactiveCFRDocument.change((doc) => {
-  //         documentUpdate(doc);
-  //       });
-  //       return parseSelf(reactiveCFRDocument.doc, zodDatabaseDocumentContent);
-  //     }
-
-  //     return parseSelf(doc, zodDatabaseDocumentContent);
-  //   } catch (error) {
-  //     if (error instanceof ZodError) {
-  //       return fixDocument(reactiveCFRDocument, error);
-  //     }
-  //     throw error;
-  //   }
-  // };
-
-  // const documentChange = () => {};
-
   /**
    * Исправление документа, очистка от невалидных данных
    * @param doc
@@ -119,7 +71,7 @@ export const useDatabaseDocument = (
           });
         })?.();
 
-        return parseSelf(newDoc, zodDatabaseDocumentContent);
+        return checkSchema(newDoc, zodDatabaseDocumentWithContent);
       } catch (error) {
         if (error instanceof ZodError) {
           return fixDocument(document, error);
@@ -135,9 +87,16 @@ export const useDatabaseDocument = (
     const columnId = generatePropertyId();
 
     toValue(reactiveCFRDocument)?.change((doc) => {
-      const { body } = documentUpdate(doc);
-
-      body.properties[columnId] = column;
+      if (is(doc, zodDatabaseTypeDocument)) {
+        const databaseDocument = documentUpdate(doc);
+        putObject(databaseDocument, {
+          body: {
+            properties: {
+              [columnId]: column,
+            },
+          },
+        });
+      }
     });
 
     return columnId;
@@ -148,19 +107,27 @@ export const useDatabaseDocument = (
     column: PartialDeep<UnknownProperty>,
   ) => {
     toValue(reactiveCFRDocument)?.change((doc) => {
-      const { body } = documentUpdate(doc);
+      if (is(doc, zodDatabaseTypeDocument)) {
+        const databaseDocument = documentUpdate(doc);
 
-      putObject(body.properties, { [columnId]: column });
+        putObject(databaseDocument, {
+          body: {
+            properties: { [columnId]: column },
+          },
+        });
+      }
     });
   };
 
   const removeProperty = (propertyId: PropertyId) => {
     toValue(reactiveCFRDocument)?.change((doc) => {
-      const { body } = documentUpdate(doc);
-      // eslint-disable-next-line @typescript-eslint/no-dynamic-delete -- delete any property
-      delete body.properties[propertyId];
+      if (is(doc, zodDatabaseTypeDocument)) {
+        const databaseDocument = documentUpdate(doc);
 
-      // todo: добавить параметр очистки data от значений
+        delete databaseDocument.body?.properties[propertyId];
+
+        // todo: добавить параметр очистки data от значений
+      }
     });
   };
 
@@ -168,9 +135,15 @@ export const useDatabaseDocument = (
     const itemId = generateItemId();
 
     toValue(reactiveCFRDocument)?.change((doc) => {
-      const { body } = documentUpdate(doc);
+      if (is(doc, zodDatabaseTypeDocument)) {
+        const databaseDocument = documentUpdate(doc);
 
-      putObject(body.data, { [itemId]: item });
+        putObject(databaseDocument, {
+          body: {
+            data: { [itemId]: item },
+          },
+        });
+      }
     });
 
     return itemId;
@@ -178,17 +151,29 @@ export const useDatabaseDocument = (
 
   const updateItem = (itemId: ItemId, partialItem: PartialDeep<Item>) => {
     toValue(reactiveCFRDocument)?.change((doc) => {
-      const { body } = documentUpdate(doc);
+      if (is(doc, zodDatabaseTypeDocument)) {
+        const databaseDocument = documentUpdate(doc);
 
-      putObject(body.data, { [itemId]: partialItem });
+        putObject(databaseDocument, {
+          body: {
+            data: { [itemId]: partialItem },
+          },
+        });
+      }
     });
   };
 
   const removeItem = (itemId: ItemId) => {
     toValue(reactiveCFRDocument)?.change((doc) => {
-      const { body } = documentUpdate(doc);
+      if (is(doc, zodDatabaseTypeDocument)) {
+        const databaseDocument = documentUpdate(doc);
 
-      putObject(body.data, { [itemId]: undefined });
+        putObject(databaseDocument, {
+          body: {
+            data: { [itemId]: undefined },
+          },
+        });
+      }
     });
   };
 
@@ -196,9 +181,11 @@ export const useDatabaseDocument = (
     const viewId = generateViewId();
 
     toValue(reactiveCFRDocument)?.change((doc) => {
-      const { body } = documentUpdate(doc);
+      if (is(doc, zodDatabaseTypeDocument)) {
+        const databaseDocument = documentUpdate(doc);
 
-      putObject(body, { views: { [viewId]: view } });
+        putObject(databaseDocument, { body: { views: { [viewId]: view } } });
+      }
     });
 
     return viewId;
@@ -206,27 +193,32 @@ export const useDatabaseDocument = (
 
   const removeView = (viewId: ViewId) => {
     toValue(reactiveCFRDocument)?.change((doc) => {
-      const { body } = documentUpdate(doc);
+      if (is(doc, zodDatabaseTypeDocument)) {
+        const databaseDocument = documentUpdate(doc);
 
-      delete body.views?.[viewId];
+        delete databaseDocument.body?.views?.[viewId];
+      }
     });
   };
 
   const content = computed(
     () =>
-      zodDatabaseDocumentContent.safeParse(toValue(reactiveCFRDocument)?.doc)
-        .data,
+      zodDatabaseDocumentWithContent.safeParse(
+        toValue(reactiveCFRDocument)?.doc,
+      ).data,
   );
 
   const properties = computed(() =>
-    content.value?.body.properties
+    content.value?.body?.properties
       ? pickDictionaryBy(content.value.body.properties, (v) => !isNil(v))
       : undefined,
   );
 
-  const views = computed((): ViewsMap | undefined => content.value?.body.views);
+  const views = computed(
+    (): ViewsMap | undefined => content.value?.body?.views,
+  );
 
-  const data = computed(() => content.value?.body.data);
+  const data = computed(() => content.value?.body?.data);
 
   const databaseDocument: DatabaseDocument = {
     content,

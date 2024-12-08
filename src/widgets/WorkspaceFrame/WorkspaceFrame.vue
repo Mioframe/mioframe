@@ -7,7 +7,7 @@ import { DocumentEditForm } from '../../features/documentEdit';
 import type { ViewId } from '../../shared/lib/databaseDocument';
 import {
   DATABASE_DOCUMENT_TYPE,
-  createDatabaseDocument,
+  useDatabaseDocument,
 } from '../../shared/lib/databaseDocument';
 import DatabaseWidget from './DatabaseWidget.vue';
 import ValueWidgetInline from '@widget/ValueWidgetInline/ValueWidgetInline.vue';
@@ -48,7 +48,7 @@ const documentType = computed(
 
 const selectedDatabaseDocument = computed(() =>
   reactiveCFRDocument.value.doc?.type === DATABASE_DOCUMENT_TYPE
-    ? createDatabaseDocument(reactiveCFRDocument)
+    ? useDatabaseDocument(reactiveCFRDocument.value)
     : undefined,
 );
 </script>

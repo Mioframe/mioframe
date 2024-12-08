@@ -9,6 +9,7 @@
   :deep() {
     > .button {
       width: auto;
+      box-shadow: none;
     }
   }
 }

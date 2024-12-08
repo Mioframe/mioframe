@@ -18,15 +18,17 @@ const collection = computed(() => props.views);
 </script>
 
 <template>
-  <aside class="menu">
+  <section class="menu">
     <TreeIterable :collection>
-      <template #label="{ item: view }">
-        {{ view.name }}
+      <template #item="{ item: view, key }">
+        <slot :id="key" :view>
+          <span> {{ view.name }} </span>
+        </slot>
       </template>
 
       <template v-if="!!slots.after">
         <slot name="after" />
       </template>
     </TreeIterable>
-  </aside>
+  </section>
 </template>

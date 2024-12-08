@@ -2,10 +2,10 @@
   lang="ts"
   setup
   generic="
-    K extends string | number,
-    T extends
+    Key extends string | number,
+    Item extends
       | {
-          children: IterableCollection<K, T>;
+          children: IterableCollection<Key, Item>;
         }
       | object
   "
@@ -14,54 +14,48 @@ import { toRef, watchEffect } from 'vue';
 import type { IterableCollection } from './useIterable';
 import { useIterable } from './useIterable';
 import TreeIterableItem from './TreeIterableItem.vue';
-import { createLogger } from '@shared/lib/logger';
 
 const props = defineProps<{
-  collection: IterableCollection<K, T>;
-  activeKey?: K;
-  activeItem?: T;
-  filter?: (v: [K, T]) => boolean;
+  collection: IterableCollection<Key, Item>;
+  activeKey?: Key;
+  activeItem?: Item;
+  filter?: (v: [Key, Item]) => boolean;
 }>();
 
 const emit = defineEmits<{
-  click: [key: K, item: T];
+  click: [key: Key, item: Item];
   'update:loading': [loading: boolean];
 }>();
 
 const slots = defineSlots<{
   contextMenu(props: {
-    key: K;
-    item: T;
-    listOpen?: boolean;
-    loading?: boolean;
-  }): unknown;
-  label(props: {
-    key: K;
-    item: T;
+    key: Key;
+    item: Item;
     listOpen?: boolean;
     loading?: boolean;
   }): unknown;
   icon(props: {
-    key: K;
-    item: T;
+    key: Key;
+    item: Item;
     listOpen?: boolean;
     loading?: boolean;
   }): unknown;
   after(): unknown;
+  item(props: {
+    key: Key;
+    item: Item;
+    listOpen?: boolean;
+    loading?: boolean;
+    activeItem?: Item;
+  }): unknown;
 }>();
 
-const onClick = (key: K, item: T) => {
+const onClick = (key: Key, item: Item) => {
   emit('click', key, item);
 };
 
-const { debug } = createLogger('TreeIterable');
-
-watchEffect(() => {
-  debug('props.collection', props.collection);
-});
-
 const { collection: collectionRef, loading: loadingIterable } = useIterable<
-  [K, T]
+  [Key, Item]
 >(
   toRef(() => props.collection),
   toRef(() => props.filter),
@@ -86,14 +80,8 @@ const activeKey2 = toRef(() => props.activeKey);
       :filter
       @click="onClick"
     >
-      <template #label="scoped">
-        <slot
-          :key="scoped.key"
-          name="label"
-          :item="scoped.item"
-          :list-open="scoped.listOpen"
-          :loading="scoped.loading"
-        />
+      <template #item="scopeItem">
+        <slot name="item" v-bind="scopeItem" />
       </template>
 
       <template v-if="!!slots.contextMenu" #contextMenu="scoped">

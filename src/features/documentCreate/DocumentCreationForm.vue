@@ -1,15 +1,12 @@
 <script setup lang="ts">
 import { ref, watchEffect } from 'vue';
-import type { CFRDocument, DocumentFolder } from '../../shared/lib/cfrDocument';
+import type { DocumentContent } from '../../shared/lib/cfrDocument';
 import { DATABASE_DOCUMENT_TYPE } from '../../shared/lib/databaseDocument';
 import { UIButton } from '@shared/ui/Button';
-
-const props = defineProps<{
-  documentFolder: DocumentFolder;
-}>();
+import FormLayout from '@shared/ui/FormLayout.vue';
 
 const emit = defineEmits<{
-  created: [cfrDocument: CFRDocument];
+  create: [documentContent: DocumentContent];
   cancel: [];
 }>();
 
@@ -19,12 +16,12 @@ const onSubmitCreate = () => {
   if (!stateName.value?.length) {
     throw new Error('name is undefined');
   }
-  const newCFRDocument: CFRDocument = props.documentFolder.create({
+
+  emit('create', {
     name: stateName.value,
     type: documentType.value,
+    version: 1,
   });
-
-  emit('created', newCFRDocument);
 };
 
 const onResetCreate = () => {
@@ -46,11 +43,7 @@ const documentType = ref<(typeof documentTypeOptions)[number]>(
 </script>
 
 <template>
-  <form
-    class="block-spacing is-flex is-flex-direction-column"
-    @submit="onSubmitCreate"
-    @reset="onResetCreate"
-  >
+  <FormLayout @submit="onSubmitCreate" @reset="onResetCreate">
     <div class="field">
       <label class="label">Name</label>
 
@@ -79,10 +72,10 @@ const documentType = ref<(typeof documentTypeOptions)[number]>(
       </select>
     </div>
 
-    <div class="button-grid">
+    <template #actions>
       <UIButton type="submit" primary>Create</UIButton>
 
-      <UIButton class="button" type="reset">Cancel</UIButton>
-    </div>
-  </form>
+      <UIButton type="reset">Cancel</UIButton>
+    </template>
+  </FormLayout>
 </template>
