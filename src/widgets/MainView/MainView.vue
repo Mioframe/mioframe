@@ -55,8 +55,8 @@ const {
   isDisplayedDocumentCreationForm,
   onCancelCreateDocument,
   onClickCreateDocument,
-  onCreatedDocument,
-} = setupDocumentCreate();
+  onCreateDocument,
+} = setupDocumentCreate(selectedDocumentFolder);
 
 const { documentIdForRemove, onCancelRemove, onClickRemove, onRemoved } =
   setupDocumentRemove();
@@ -69,7 +69,7 @@ const {
 const {
   databaseProperties,
   databaseViews,
-  hasAddProperty,
+  isDatabaseType: hasAddProperty,
   hasRemoveProperty,
   isShowPropertyCreate,
 
@@ -109,7 +109,7 @@ const {
       <div class="p-1 block-spacing is-flex is-flex-direction-column">
         <div v-if="refSelectedCFRDocument" class="document-panel">
           <div class="button-grid">
-            <ButtonGroup>
+            <ButtonGroup class="is-shadowless">
               <UIButton class="is-flex-grow-1" :label="selectedView?.name">
                 <template #icon>
                   <i class="fa-solid fa-sliders" />
@@ -132,33 +132,31 @@ const {
               :views="databaseViews"
             >
               <template #default="{ id, view }">
-                <ButtonGroup>
-                  <UIButton>
-                    <template #icon>
-                      <i class="fa-solid fa-grip-vertical" />
-                    </template>
-                  </UIButton>
+                <UIButton>
+                  <template #icon>
+                    <i class="fa-solid fa-grip-vertical" />
+                  </template>
+                </UIButton>
 
-                  <UIButton
-                    :label="view.name"
-                    :active="selectedViewId === id"
-                    grow
-                    @click="selectedViewId = id"
-                  >
-                    <template #icon>
-                      <i class="fa-solid fa-table" />
-                    </template>
-                  </UIButton>
+                <UIButton
+                  :label="view.name"
+                  :active="selectedViewId === id"
+                  grow
+                  @click="selectedViewId = id"
+                >
+                  <template #icon>
+                    <i class="fa-solid fa-table" />
+                  </template>
+                </UIButton>
 
-                  <ContextBtn
-                    :menu="contextViewMenu"
-                    @click="onClickViewContextBtn($event, id)"
-                  >
-                    <template #[ViewAction.delete]>
-                      <i class="fa-solid fa-eraser" />
-                    </template>
-                  </ContextBtn>
-                </ButtonGroup>
+                <ContextBtn
+                  :menu="contextViewMenu"
+                  @click="onClickViewContextBtn($event, id)"
+                >
+                  <template #[ViewAction.delete]>
+                    <i class="fa-solid fa-eraser" />
+                  </template>
+                </ContextBtn>
               </template>
 
               <template #after>
@@ -317,11 +315,10 @@ const {
       </div>
     </template>
 
-    <ModalCard v-if="selectedDocumentFolder && isDisplayedDocumentCreationForm">
+    <ModalCard v-if="isDisplayedDocumentCreationForm">
       <CreateDocumentForm
-        :document-folder="selectedDocumentFolder"
         @cancel="onCancelCreateDocument"
-        @created="onCreatedDocument"
+        @create="onCreateDocument"
       />
     </ModalCard>
 

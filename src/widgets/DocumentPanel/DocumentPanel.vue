@@ -2,7 +2,7 @@
 import { toRef } from 'vue';
 import { ModalCard } from '@shared/ui/ModalCard';
 import type { CFRDocument } from '@/shared/lib/cfrDocument';
-import { createReactiveCFRDocument } from '@entity/document';
+import { reactiveCFRDocument } from '@entity/document';
 import { PROPERTY_TYPE_STRING } from '@entity/stringProperty';
 import { PROPERTY_TYPE_BOOLEAN } from '@entity/booleanProperty';
 import { PROPERTY_TYPE_NUMBER } from '@entity/numberProperty';
@@ -18,6 +18,7 @@ import { DatePropertyField } from '@feature/datePropertyEdit';
 import { DatabaseViewAddForm } from '@feature/databaseViewAdd';
 import { UIButton } from '@shared/ui/Button';
 import { setupDatabaseDocument } from '../MainView/setupDatabaseDocument';
+import { ButtonGroup } from '@shared/ui/ButtonGroup';
 
 const props = defineProps<{
   cfrDocument: CFRDocument;
@@ -25,12 +26,12 @@ const props = defineProps<{
 
 const cfrDocument = toRef(() => props.cfrDocument);
 
-const reactiveCFRDocument = createReactiveCFRDocument(cfrDocument);
+const refCFRDocument = reactiveCFRDocument(cfrDocument);
 
 const {
   databaseProperties,
   databaseViews,
-  hasAddProperty,
+  isDatabaseType: hasAddProperty,
   hasRemoveProperty,
   isShowPropertyCreate,
   isShowPropertyRemove,
@@ -44,7 +45,7 @@ const {
   onSubmitViewAdd,
   selectedView,
   selectedViewId,
-} = setupDatabaseDocument(reactiveCFRDocument);
+} = setupDatabaseDocument(refCFRDocument);
 
 // todo: вынести в общий виджет
 </script>
@@ -52,7 +53,7 @@ const {
 <template>
   <div class="document-panel">
     <div class="button-grid">
-      <div class="buttons has-addons">
+      <ButtonGroup>
         <UIButton class="is-flex-grow-1" :label="selectedView?.name">
           <template #icon>
             <i class="fa-solid fa-sliders" />
@@ -67,7 +68,7 @@ const {
             <i class="fa-solid fa-caret-down" />
           </template>
         </UIButton>
-      </div>
+      </ButtonGroup>
 
       <ViewList
         v-if="isShowViewList && databaseViews"

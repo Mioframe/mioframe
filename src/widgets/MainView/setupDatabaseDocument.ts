@@ -1,9 +1,10 @@
 import type { ReactiveCFRDocument } from '@entity/document/createReactiveCFRDocument';
-import type {
-  Item,
-  PropertyId,
-  View,
-  ViewId,
+import {
+  DATABASE_DOCUMENT_TYPE,
+  type Item,
+  type PropertyId,
+  type View,
+  type ViewId,
 } from '@shared/lib/databaseDocument';
 import { useDatabaseDocument } from '@shared/lib/databaseDocument/useDatabaseDocument';
 import type { MenuItem } from '@shared/ui/ContextButton';
@@ -31,7 +32,9 @@ export const setupDatabaseDocument = (
 
   const isShowPropertyCreate = ref(false);
 
-  const hasAddProperty = computed(() => !!content.value?.type);
+  const isDatabaseType = computed(
+    () => content.value?.type === DATABASE_DOCUMENT_TYPE,
+  );
 
   const hasRemoveProperty = computed(
     () =>
@@ -133,7 +136,7 @@ export const setupDatabaseDocument = (
     databaseViews,
 
     isShowPropertyCreate,
-    hasAddProperty,
+    isDatabaseType,
 
     hasRemoveProperty,
     isShowPropertyRemove,

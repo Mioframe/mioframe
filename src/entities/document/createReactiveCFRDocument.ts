@@ -8,53 +8,54 @@ import type { MaybeRef } from '@vueuse/core';
 import { toValue, tryOnScopeDispose } from '@vueuse/core';
 import { createLogger } from '../../shared/lib/logger';
 import { replaceObject } from '../../shared/lib/changeObject';
-import type { ReadonlyDeep } from 'type-fest';
-import { cloneDeep } from 'lodash-es';
+import { cloneDeep, throttle } from 'lodash-es';
 
 const { debug } = createLogger('createReactiveCFRDocument');
 
-type ReadCFRDocument<T extends DocumentContent = DocumentContent> = {
-  doc: Ref<DeepReadonly<T | undefined>>;
+type ReadCFRDocument = {
+  doc: Ref<DeepReadonly<DocumentContent> | undefined>;
   change: (
-    callback: (doc: { name: string; type: string; body?: unknown }) => void,
-  ) => (() => ReturnType<CFRDocument<T>['doc']>) | undefined;
+    callback: (doc: DocumentContent) => unknown,
+  ) => (() => Promise<DocumentContent | undefined>) | undefined;
 };
 
-export type ReactiveCFRDocument<T extends DocumentContent = DocumentContent> =
-  Reactive<ReadCFRDocument<T>>;
+export type ReactiveCFRDocument = Reactive<ReadCFRDocument>;
 
-export const createReactiveCFRDocument = <T extends DocumentContent>(
-  cfrDocument: MaybeRef<CFRDocument<T> | undefined>,
-): ReactiveCFRDocument<T> => {
-  const docState = ref<T>();
+/**
+ * Реактивное чтение CFRDocument
+ * @param cfrDocument
+ * @returns
+ */
+export const reactiveCFRDocument = <CFRDoc extends CFRDocument>(
+  cfrDocument: MaybeRef<CFRDoc | undefined>,
+): ReactiveCFRDocument => {
+  const documentState = ref<DocumentContent>();
 
-  const handlerChange = ({ doc: newDoc }: { doc: ReadonlyDeep<T> | T }) => {
-    debug('handlerChange', newDoc);
-    const doc = toValue(cfrDocument);
-    if (doc) {
-      if (!docState.value) {
-        docState.value = {} as T;
+  const updateRefDoc = throttle(
+    ({ doc: newDoc }: { doc?: DocumentContent }) => {
+      debug('handlerChange', newDoc);
+      const doc = toValue(cfrDocument);
+      if (doc) {
+        replaceObject(documentState, { value: newDoc });
       }
-      replaceObject(docState.value, newDoc);
-    }
-    debug('handlerChange end', docState.value, newDoc);
-  };
+      debug('handlerChange end', documentState.value, newDoc);
+    },
+    1e3 / 20,
+  );
 
   const onChangeCFRDocument = async (
-    cfrDocument: CFRDocument<T> | undefined,
-    old?: CFRDocument<T>,
+    cfrDocument: CFRDoc | undefined,
+    oldCfrDocument?: CFRDoc,
   ) => {
-    debug('watch cfrDocument', cfrDocument, old);
-    if (old) {
-      old.off('change', handlerChange);
-    }
+    debug('watch cfrDocument', cfrDocument, oldCfrDocument);
+    oldCfrDocument?.off('change', updateRefDoc);
 
     if (cfrDocument) {
-      cfrDocument.on('change', handlerChange);
+      cfrDocument.on('change', updateRefDoc);
       const newDoc = await cfrDocument.doc();
       debug('watch cfrDocument newDoc', cloneDeep(newDoc));
       if (newDoc) {
-        handlerChange({ doc: newDoc });
+        updateRefDoc({ doc: newDoc });
       }
     }
   };
@@ -66,20 +67,21 @@ export const createReactiveCFRDocument = <T extends DocumentContent>(
   }
 
   tryOnScopeDispose(() => {
-    toValue(cfrDocument)?.off('change', handlerChange);
+    toValue(cfrDocument)?.off('change', updateRefDoc);
   });
 
-  return reactive({
-    doc: readonly(docState),
+  return reactive<ReadCFRDocument>({
+    doc: readonly(documentState),
     change: (
-      ...args: Parameters<CFRDocument['change']>
-    ): (() => ReturnType<CFRDocument<T>['doc']>) | undefined => {
+      callback: (doc: DocumentContent) => unknown,
+    ): (() => Promise<DocumentContent | undefined>) | undefined => {
       const doc = toValue(cfrDocument);
       if (doc) {
-        doc.change(...args);
+        doc.change(callback);
 
-        return async (): ReturnType<CFRDocument<T>['doc']> => {
-          return await doc.doc();
+        return async (): Promise<DocumentContent | undefined> => {
+          updateRefDoc({ doc: await doc.doc() });
+          return documentState.value;
         };
       }
     },

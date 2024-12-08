@@ -41,6 +41,8 @@ const onClickCancel = () => {
   stateType.value = undefined;
   emit('canceled');
 };
+
+// FIXME: не работает добавление свойства.
 </script>
 
 <template>

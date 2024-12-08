@@ -1,4 +1,8 @@
-import type { DocumentId, DocumentPayload } from '@automerge/automerge-repo';
+import type {
+  DocHandle,
+  DocumentId,
+  DocumentPayload,
+} from '@automerge/automerge-repo';
 import { Repo } from '@automerge/automerge-repo';
 import type {
   DirectoryForDocumentFolder,
@@ -15,8 +19,8 @@ import { createCFRDocument } from './cfrDocument';
 import type { TypeOf } from 'zod';
 import { fileNameToPartialKey } from '../fsStorageAdapter/createFSStorageAdapter';
 import { createLogger } from '../logger';
-import { throttle } from 'lodash-es';
-import { parseSelf } from '../validateZodScheme';
+import { isNil, throttle } from 'lodash-es';
+import { checkSchema } from '../validateZodScheme';
 import { from } from 'ix/Ix.asynciterable';
 import { distinct, filter, map } from 'ix/Ix.asynciterable.operators';
 import type { IterableCollection } from '@shared/ui/TreeMenu/useIterable';
@@ -58,14 +62,14 @@ export const createDocumentFolder = (
 
     return from(directory.children).pipe(
       filter(([entryName]) => zodFileName.safeParse(entryName).success),
-      map(
-        ([entryName]): DocumentId =>
-          parseSelf(fileNameToPartialKey(entryName)[0], zodDocumentId),
+      map(([entryName]): DocumentId | undefined =>
+        checkSchema(fileNameToPartialKey(entryName)?.[0], zodDocumentId),
       ),
       distinct(),
-      filter((documentId: DocumentId) => !exceptionsSet?.has(documentId)),
-      map((documentId: DocumentId): [DocumentId, CFRDocument] => {
-        const docHandle: CFRDocument = repo.find(documentId);
+      filter((v) => !isNil(v)),
+      filter((documentId) => !exceptionsSet?.has(documentId)),
+      map((documentId): [DocumentId, CFRDocument] => {
+        const docHandle: DocHandle<unknown> = repo.find(documentId);
         return [documentId, createCFRDocument(docHandle)];
       }),
     );

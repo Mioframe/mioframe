@@ -1,17 +1,23 @@
-import type { Doc, DocumentId } from '@automerge/automerge-repo';
-import type { ReadonlyDeep } from 'type-fest';
+import type { DocumentId } from '@automerge/automerge-repo';
 import type { TypeOf } from 'zod';
-import { object, string, unknown } from 'zod';
+import { number, object, string, unknown } from 'zod';
 import type { DirectoryForAdapter } from '../fsStorageAdapter';
 import type {
   ItemWithChildren,
   IterableCollection,
 } from '@shared/ui/TreeMenu/useIterable';
 
+import type { AutomergeValue } from '@automerge/automerge';
+
+export type AutomergeMap = {
+  [Key in string]?: AutomergeValue;
+};
+
 export const zodDocumentContent = object({
   name: string(),
   type: string(),
   body: unknown(),
+  version: number().int(),
 });
 
 /**
@@ -19,20 +25,26 @@ export const zodDocumentContent = object({
  */
 export type DocumentContent = TypeOf<typeof zodDocumentContent>;
 
-// частично совместим с DocHandle
-export interface CFRDocument<T extends DocumentContent = DocumentContent> {
-  doc(): Promise<ReadonlyDeep<Doc<T>> | undefined>;
+// частично совместим с DocHandle // TODO: может следует разделить CFRDocument и DocHandle
+export interface CFRDocument {
+  doc(): Promise<DocumentContent | undefined>;
   delete(): void;
-  change(callback: (doc: T) => void): void;
-  on: (event: 'change', fn: (payload: { doc: T }) => unknown) => void;
-  off: (event: 'change', fn: (payload: { doc: T }) => unknown) => void;
+  change(callback: (doc: DocumentContent) => void): void;
+  on: (
+    event: 'change',
+    fn: (payload: { doc?: DocumentContent }) => unknown,
+  ) => void;
+  off: (
+    event: 'change',
+    fn: (payload: { doc?: DocumentContent }) => unknown,
+  ) => void;
 }
 
 export interface DocumentFolder
   extends ItemWithChildren<DocumentId, CFRDocument> {
   create: <Z extends typeof zodDocumentContent>(
     initialValue: TypeOf<Z>,
-  ) => CFRDocument<TypeOf<Z>>;
+  ) => CFRDocument;
   remove: (documentId: DocumentId) => void;
   onChange: (
     handler: (content: IterableCollection<DocumentId, CFRDocument>) => unknown,

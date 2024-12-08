@@ -1,16 +1,15 @@
 import { isObject, isUndefined } from 'lodash-es';
-import type { PartialDeep } from 'type-fest';
+import type { MergeDeep } from 'type-fest';
 
 /**
  * overwrites modified values from source to target
  * @param target - mutable object
  * @param source - object with new values
  */
-
-export const putObject = <T extends object>(
+export const putObject = <T extends object, S extends object>(
   target: T,
-  source: PartialDeep<T>,
-) => {
+  source: S,
+): MergeDeep<T, S> => {
   (<(keyof typeof source)[]>Object.keys(source)).forEach((sourceKey) => {
     const sourceValue = source[sourceKey];
     if (sourceKey in target) {
@@ -37,4 +36,6 @@ export const putObject = <T extends object>(
       target[sourceKey] = sourceValue;
     }
   });
+
+  return target as MergeDeep<T, S>;
 };

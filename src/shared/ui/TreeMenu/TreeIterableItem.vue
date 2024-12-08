@@ -2,8 +2,8 @@
   lang="ts"
   setup
   generic="
-    K extends string | number,
-    T extends Partial<{} | ItemWithChildren<K, T>>
+    Key extends string | number,
+    Item extends Partial<{} | ItemWithChildren<Key, Item>>
   "
 >
 import { computed, ref, watchEffect } from 'vue';
@@ -17,24 +17,24 @@ import TreeIterable from './TreeIterable.vue';
 import { UIButton } from '../Button';
 
 const props = defineProps<{
-  itemKey: K;
-  item: T;
-  activeKey?: K;
-  activeItem?: T;
+  itemKey: Key;
+  item: Item;
+  activeKey?: Key;
+  activeItem?: Item;
   opened?: boolean;
-  filter?: (v: [K, T]) => boolean;
+  filter?: (v: [Key, Item]) => boolean;
 }>();
 
 const emit = defineEmits<{
   'update:opened': [opened: boolean];
-  click: [key: K, item: T];
+  click: [key: Key, item: Item];
 }>();
 
 const stateOpened = ref<boolean>();
 
-const children = computed((): IterableCollection<K, T> | undefined => {
+const children = computed((): IterableCollection<Key, Item> | undefined => {
   const item = props.item;
-  if (isItemWithChildren<typeof item, K, T>(item)) {
+  if (isItemWithChildren<typeof item, Key, Item>(item)) {
     return item.children;
   }
   return undefined;
@@ -51,7 +51,7 @@ const toggleOpened = () => {
   emit('update:opened', stateOpened.value);
 };
 
-const onClickItem = (key: K, item: T) => {
+const onClickItem = (key: Key, item: Item) => {
   emit('click', key, item);
 };
 
@@ -81,22 +81,23 @@ const onContextMenu = ({ clientX, clientY }: MouseEvent) => {
 
 const slots = defineSlots<{
   contextMenu(props: {
-    key: K;
-    item: T;
-    listOpen?: boolean;
-    loading?: boolean;
-  }): unknown;
-  label(props: {
-    key: K;
-    item: T;
+    key: Key;
+    item: Item;
     listOpen?: boolean;
     loading?: boolean;
   }): unknown;
   icon(props: {
-    key: K;
-    item: T;
+    key: Key;
+    item: Item;
     listOpen?: boolean;
     loading?: boolean;
+  }): unknown;
+  item(props: {
+    key: Key;
+    item: Item;
+    listOpen?: boolean;
+    loading?: boolean;
+    activeItem?: Item;
   }): unknown;
 }>();
 
@@ -127,34 +128,14 @@ const loading = ref<boolean>();
         </template>
       </UIButton>
 
-      <!-- fixme: заменить тело элемента (UIButton) на слот -->
-      <UIButton
-        grow
-        :active="activeKey === itemKey || activeItem === item"
-        @click="onClickItem(itemKey, item)"
-      >
-        <template v-if="!hasSubCollection" #icon>
-          <slot
-            :key="itemKey"
-            name="icon"
-            :item
-            :list-open="stateOpened"
-            :loading
-          >
-            <i class="fa-solid fa-minus fa-xs" />
-          </slot>
-        </template>
-
-        <span :class="{ 'ml-3': !hasSubCollection }">
-          <slot
-            :key="itemKey"
-            name="label"
-            :item
-            :list-open="stateOpened"
-            :loading
-          />
-        </span>
-      </UIButton>
+      <slot
+        :key="itemKey"
+        name="item"
+        :item
+        :active-item
+        :list-open="stateOpened"
+        :loading
+      />
 
       <button
         v-if="!!slots.contextMenu"
@@ -192,16 +173,6 @@ const loading = ref<boolean>();
       :filter
       @click="onClickItem"
     >
-      <template #label="scoped">
-        <slot
-          :key="scoped.key"
-          name="label"
-          :item="scoped.item"
-          :list-open="scoped.listOpen"
-          :loading="scoped.loading"
-        />
-      </template>
-
       <template v-if="!!slots.contextMenu" #contextMenu="scoped">
         <slot
           :key="scoped.key"

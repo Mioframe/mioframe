@@ -26,7 +26,6 @@ const onChangeJSON = (value: unknown) => {
       doc.body = value;
     } else if (isUnknownRecord(value)) {
       replaceObject(doc.body, value);
-      debug(JSON.stringify(doc.body), JSON.stringify(value));
     }
   });
 };

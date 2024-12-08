@@ -11,7 +11,7 @@ import { createLogger } from '../../shared/lib/logger';
 import type { IterableCollection } from '@shared/ui/TreeMenu/useIterable';
 import { from } from 'ix/Ix.asynciterable';
 import { map } from 'ix/Ix.asynciterable.operators';
-import { createReactiveCFRDocument } from '@entity/document';
+import { reactiveCFRDocument } from '@entity/document';
 import type { ReactiveCFRDocument } from '@entity/document/createReactiveCFRDocument';
 
 const { debug } = createLogger('useFolder');
@@ -56,7 +56,7 @@ export const useDocumentFolder = (
     if (content) {
       return from(content).pipe(
         map(([id, doc]): [DocumentId, ReactiveCFRDocument] => {
-          return [id, createReactiveCFRDocument(doc)];
+          return [id, reactiveCFRDocument(doc)];
         }),
       );
     }

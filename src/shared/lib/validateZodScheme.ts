@@ -1,4 +1,4 @@
-import type { TypeOf, ZodType } from 'zod';
+import { type TypeOf, type ZodType } from 'zod';
 
 export const is = <Z extends ZodType>(
   value: unknown,
@@ -8,14 +8,11 @@ export const is = <Z extends ZodType>(
 /**
  * checks value without creating a new one
  */
-export const parseSelf = <Z extends ZodType>(
-  value: unknown,
+export function checkSchema<Z extends ZodType, T>(
+  value: T,
   zod: Z,
-): TypeOf<Z> => {
-  const { success } = zod.safeParse(value);
-
-  if (success) {
-    return value;
-  }
-  return undefined;
-};
+): T extends TypeOf<Z> ? T : TypeOf<Z> | undefined;
+export function checkSchema<Z extends ZodType>(value: unknown, zod: Z) {
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-return -- method "is" checked the type
+  return is(value, zod) ? value : undefined;
+}
