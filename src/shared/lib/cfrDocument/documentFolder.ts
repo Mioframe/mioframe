@@ -25,7 +25,7 @@ import { from } from 'ix/Ix.asynciterable';
 import { distinct, filter, map } from 'ix/Ix.asynciterable.operators';
 import type { IterableCollection } from '@shared/ui/TreeMenu/useIterable';
 
-const { debug } = createLogger('createDocumentFolder');
+const { debug } = createLogger('documentFolder');
 
 const THROTTLE_EVENTS = 1e3 / 10;
 

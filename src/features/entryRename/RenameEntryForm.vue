@@ -2,6 +2,7 @@
 import { isString } from 'lodash-es';
 import { ref, watchEffect } from 'vue';
 import type { LocalDirectoryRef, LocalFileRef } from '../../entities/entry';
+import FormLayout from '@shared/ui/FormLayout.vue';
 
 const props = defineProps<{
   entry: LocalDirectoryRef | LocalFileRef;
@@ -40,10 +41,7 @@ const onClickCancel = () => {
 </script>
 
 <template>
-  <form
-    class="block-spacing is-flex is-flex-direction-column"
-    @submit.prevent="onSubmit"
-  >
+  <FormLayout @submit="onSubmit">
     <div class="field">
       <label class="label">Name</label>
 
@@ -57,23 +55,19 @@ const onClickCancel = () => {
       </div>
     </div>
 
-    <div class="field is-grouped">
-      <div class="control">
-        <button class="button" type="submit" :class="{ 'is-loading': loading }">
-          Rename
-        </button>
-      </div>
+    <template #actions>
+      <button class="button" type="submit" :class="{ 'is-loading': loading }">
+        Rename
+      </button>
 
-      <div class="control">
-        <button
-          class="button"
-          type="button"
-          :disabled="!!loading"
-          @click="onClickCancel"
-        >
-          Cancel
-        </button>
-      </div>
-    </div>
-  </form>
+      <button
+        class="button"
+        type="button"
+        :disabled="!!loading"
+        @click="onClickCancel"
+      >
+        Cancel
+      </button>
+    </template>
+  </FormLayout>
 </template>

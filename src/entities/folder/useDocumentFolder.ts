@@ -56,6 +56,7 @@ export const useDocumentFolder = (
     if (content) {
       return from(content).pipe(
         map(([id, doc]): [DocumentId, ReactiveCFRDocument] => {
+          debug('map doc', doc);
           return [id, reactiveCFRDocument(doc)];
         }),
       );

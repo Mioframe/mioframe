@@ -1,4 +1,4 @@
-import { isObject } from 'lodash-es';
+import { cloneDeep, isObject } from 'lodash-es';
 import { createLogger } from '../logger';
 import { checkSchema } from '../validateZodScheme';
 import type { CFRDocument } from './types';
@@ -15,10 +15,10 @@ export const createCFRDocument = (
     debug('doc');
     const originalDoc = await docHandle.doc();
 
-    // debug('doc originalDoc', { originalDoc: cloneDeep(originalDoc) });
+    debug('doc originalDoc', () => ({ originalDoc: cloneDeep(originalDoc) }));
 
     const parsedDoc = checkSchema(originalDoc, zodDocumentContent);
-    // debug('doc return', cloneDeep(parsedDoc));
+    debug('doc parsedDoc', () => cloneDeep(parsedDoc));
     return parsedDoc;
   };
 

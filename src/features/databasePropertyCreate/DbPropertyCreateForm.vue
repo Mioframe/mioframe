@@ -23,13 +23,13 @@ type PropertyType = ValueOf<typeof propertyTypeList>;
 const stateType = ref<PropertyType>();
 
 const emit = defineEmits<{
-  created: [property: UnknownProperty];
+  create: [property: UnknownProperty];
   canceled: [];
 }>();
 
 const onSubmit = () => {
   if (stateName.value?.length && stateType.value) {
-    emit('created', {
+    emit('create', {
       name: stateName.value,
       type: stateType.value,
     });
@@ -46,7 +46,7 @@ const onClickCancel = () => {
 </script>
 
 <template>
-  <FormLayout @submit.prevent="onSubmit">
+  <FormLayout @submit="onSubmit">
     <div class="field">
       <label class="label">Property name</label>
 

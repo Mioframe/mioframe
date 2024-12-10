@@ -10,7 +10,7 @@ import { createLogger } from '../../shared/lib/logger';
 import { replaceObject } from '../../shared/lib/changeObject';
 import { cloneDeep, throttle } from 'lodash-es';
 
-const { debug } = createLogger('createReactiveCFRDocument');
+const { debug } = createLogger('reactiveCFRDocument');
 
 type ReadCFRDocument = {
   doc: Ref<DeepReadonly<DocumentContent> | undefined>;
@@ -33,14 +33,17 @@ export const reactiveCFRDocument = <CFRDoc extends CFRDocument>(
 
   const updateRefDoc = throttle(
     ({ doc: newDoc }: { doc?: DocumentContent }) => {
-      debug('handlerChange', newDoc);
-      const doc = toValue(cfrDocument);
-      if (doc) {
-        replaceObject(documentState, { value: newDoc });
+      debug('updateRefDoc', newDoc);
+      if (newDoc && !documentState.value) {
+        documentState.value = cloneDeep(newDoc);
+      } else if (newDoc && documentState.value) {
+        replaceObject(documentState.value, newDoc);
+      } else {
+        documentState.value = undefined;
       }
-      debug('handlerChange end', documentState.value, newDoc);
+      debug('updateRefDoc end', documentState.value, newDoc);
     },
-    1e3 / 20,
+    1e3 / 10,
   );
 
   const onChangeCFRDocument = async (
@@ -65,6 +68,7 @@ export const reactiveCFRDocument = <CFRDoc extends CFRDocument>(
   } else {
     void onChangeCFRDocument(cfrDocument);
   }
+  debug('initial cfrDocument', cfrDocument);
 
   tryOnScopeDispose(() => {
     toValue(cfrDocument)?.off('change', updateRefDoc);

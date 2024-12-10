@@ -7,6 +7,7 @@ import {
   createDocumentFolder,
   type DocumentFolder,
 } from '../../shared/lib/cfrDocument';
+import FormLayout from '@shared/ui/FormLayout.vue';
 
 const emit = defineEmits<{
   submit: [documentFolder: DocumentFolder];
@@ -49,10 +50,7 @@ const onClickCancel = () => {
 </script>
 
 <template>
-  <form
-    class="is-flex is-flex-direction-column is-gap-2"
-    @submit.prevent="onSubmit"
-  >
+  <FormLayout @submit="onSubmit">
     <button
       class="button"
       type="button"
@@ -67,10 +65,10 @@ const onClickCancel = () => {
       <span>select local directory</span>
     </button>
 
-    <div class="field is-grouped">
+    <template #actions>
       <button class="button is-primary" type="submit">Apply</button>
 
       <button class="button" type="reset" @click="onClickCancel">Cancel</button>
-    </div>
-  </form>
+    </template>
+  </FormLayout>
 </template>

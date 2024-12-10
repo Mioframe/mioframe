@@ -99,7 +99,7 @@ const view = computed((): View => {
         :property
         :value
         editable
-        class="button is-decorationless"
+        class="button is-decorationless is-multiline has-text-left"
         @update:value="onChangeValue($event, propertyId, itemId)"
       />
     </template>

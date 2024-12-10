@@ -3,6 +3,8 @@ import { ref } from 'vue';
 import type { ItemId } from '../../shared/lib/databaseDocument/item';
 import type { DatabaseDocument } from '../../shared/lib/databaseDocument';
 import { UIButton } from '@shared/ui/Button';
+import FormLayout from '@shared/ui/FormLayout.vue';
+import { ButtonGrid } from '@shared/ui/ButtonGrid';
 
 const props = defineProps<{
   databaseDocument: DatabaseDocument;
@@ -31,16 +33,16 @@ const onClickCancel = () => {
 </script>
 
 <template>
-  <form
+  <FormLayout
     class="block-spacing is-flex is-flex-direction-column"
-    @submit.prevent="onSubmit"
+    @submit="onSubmit"
   >
     <p>Are you sure you want to remove item?</p>
 
-    <div class="button-grid">
+    <ButtonGrid>
       <UIButton type="submit" :loading="!!loading" danger> Remove </UIButton>
 
       <UIButton :disabled="!!loading" @click="onClickCancel"> Cancel </UIButton>
-    </div>
-  </form>
+    </ButtonGrid>
+  </FormLayout>
 </template>

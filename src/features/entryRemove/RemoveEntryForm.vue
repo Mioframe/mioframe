@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue';
 import type { EntryRef } from '../../entities/entry';
+import FormLayout from '@shared/ui/FormLayout.vue';
 
 const props = defineProps<{
   entry: EntryRef;
@@ -28,29 +29,22 @@ const onClickCancel = () => {
 </script>
 
 <template>
-  <form
-    class="block-spacing is-flex is-flex-direction-column"
-    @submit.prevent="onSubmit"
-  >
+  <FormLayout @submit="onSubmit">
     <p>Are you sure you want to remove "{{ props.entry.label }}"?</p>
 
-    <div class="field is-grouped">
-      <div class="control">
-        <button class="button" type="submit" :class="{ 'is-loading': loading }">
-          Remove
-        </button>
-      </div>
+    <template #actions>
+      <button class="button" type="submit" :class="{ 'is-loading': loading }">
+        Remove
+      </button>
 
-      <div class="control">
-        <button
-          class="button"
-          type="button"
-          :disabled="!!loading"
-          @click="onClickCancel"
-        >
-          Cancel
-        </button>
-      </div>
-    </div>
-  </form>
+      <button
+        class="button"
+        type="button"
+        :disabled="!!loading"
+        @click="onClickCancel"
+      >
+        Cancel
+      </button>
+    </template>
+  </FormLayout>
 </template>

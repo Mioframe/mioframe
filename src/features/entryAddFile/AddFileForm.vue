@@ -1,6 +1,7 @@
 <script lang="ts" setup>
 import { ref } from 'vue';
 import type { LocalDirectoryRef, LocalFileRef } from '../../entities/entry';
+import FormLayout from '@shared/ui/FormLayout.vue';
 
 const props = defineProps<{
   directoryEntry: LocalDirectoryRef;
@@ -51,10 +52,7 @@ const onChangeFileInput = ({ target }: Event) => {
 </script>
 
 <template>
-  <form
-    class="block-spacing is-flex is-flex-direction-column"
-    @submit.prevent="onSubmit"
-  >
+  <FormLayout @submit="onSubmit">
     <div class="field">
       <label class="label">File name</label>
 
@@ -96,23 +94,19 @@ const onChangeFileInput = ({ target }: Event) => {
       </label>
     </div>
 
-    <div class="field is-grouped">
-      <div class="control">
-        <button class="button" type="submit" :class="{ 'is-loading': loading }">
-          Add
-        </button>
-      </div>
+    <template #actions>
+      <button class="button" type="submit" :class="{ 'is-loading': loading }">
+        Add
+      </button>
 
-      <div class="control">
-        <button
-          class="button"
-          type="button"
-          :disabled="!!loading"
-          @click="onClickCancel"
-        >
-          Cancel
-        </button>
-      </div>
-    </div>
-  </form>
+      <button
+        class="button"
+        type="button"
+        :disabled="!!loading"
+        @click="onClickCancel"
+      >
+        Cancel
+      </button>
+    </template>
+  </FormLayout>
 </template>

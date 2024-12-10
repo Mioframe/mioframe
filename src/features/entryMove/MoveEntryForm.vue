@@ -2,6 +2,7 @@
 import { ref, shallowRef } from 'vue';
 import type { LocalDirectoryRef, LocalFileRef } from '../../entities/entry';
 import { EntryList } from '../../entities/entry';
+import FormLayout from '@shared/ui/FormLayout.vue';
 
 const props = defineProps<{
   sourceEntry: LocalDirectoryRef | LocalFileRef;
@@ -48,10 +49,7 @@ const onClickTargetDirectory = () => {
 </script>
 
 <template>
-  <form
-    class="block-spacing is-flex is-flex-direction-column move-form"
-    @submit.prevent="onSubmit"
-  >
+  <FormLayout class="move-form" @submit="onSubmit">
     <div class="field is-overflow-y-auto is-flex is-flex-direction-column">
       <label class="label">
         Select the destination directory to move "{{ sourceEntry.label }}"
@@ -82,25 +80,21 @@ const onClickTargetDirectory = () => {
       </div>
     </div>
 
-    <div class="field is-grouped">
-      <div class="control">
-        <button class="button" type="submit" :class="{ 'is-loading': loading }">
-          Move
-        </button>
-      </div>
+    <template #actions>
+      <button class="button" type="submit" :class="{ 'is-loading': loading }">
+        Move
+      </button>
 
-      <div class="control">
-        <button
-          class="button"
-          type="button"
-          :disabled="!!loading"
-          @click="onClickCancel"
-        >
-          Cancel
-        </button>
-      </div>
-    </div>
-  </form>
+      <button
+        class="button"
+        type="button"
+        :disabled="!!loading"
+        @click="onClickCancel"
+      >
+        Cancel
+      </button>
+    </template>
+  </FormLayout>
 </template>
 
 <style lang="scss" scoped>

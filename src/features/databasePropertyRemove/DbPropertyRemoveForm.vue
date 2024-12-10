@@ -3,6 +3,7 @@ import { ref } from 'vue';
 import { type PropertyId } from '../../shared/lib/databaseDocument';
 import { UIButton } from '@shared/ui/Button';
 import type { PropertiesMap } from '@shared/lib/databaseDocument/property';
+import FormLayout from '@shared/ui/FormLayout.vue';
 
 const emit = defineEmits<{
   remove: [propertyId: PropertyId];
@@ -29,10 +30,7 @@ const onClickCancel = () => {
 </script>
 
 <template>
-  <form
-    class="block-spacing is-flex is-flex-direction-column"
-    @submit.prevent="onSubmit"
-  >
+  <FormLayout @submit="onSubmit">
     <div class="field">
       <label class="label">Property to be removed</label>
 
@@ -47,10 +45,10 @@ const onClickCancel = () => {
       </div>
     </div>
 
-    <div class="button-grid">
+    <template #actions>
       <UIButton type="submit" danger> Remove </UIButton>
 
       <UIButton @click="onClickCancel"> Cancel </UIButton>
-    </div>
-  </form>
+    </template>
+  </FormLayout>
 </template>

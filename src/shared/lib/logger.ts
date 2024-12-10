@@ -1,3 +1,4 @@
+import { isFunction } from 'lodash-es';
 import type { MaybeRef } from 'vue';
 import { toValue } from 'vue';
 
@@ -45,7 +46,11 @@ export const createLogger = (moduleName: string) => {
 
   const debug = (message: string, ...args: unknown[]) => {
     // eslint-disable-next-line no-console -- for logger
-    console.debug(...colorStrings(moduleName, message), ...args);
+    console.debug(
+      ...colorStrings(moduleName, message),
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-return -- for logger
+      ...args.map((v) => (import.meta.env.DEV && isFunction(v) ? v() : v)),
+    );
   };
 
   const debugRef = (message: string, ...args: MaybeRef<unknown>[]) => {

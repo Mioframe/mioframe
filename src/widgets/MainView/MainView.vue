@@ -34,6 +34,7 @@ import { PROPERTY_TYPE_DATE } from '@entity/dateProperty';
 import { DatabaseViewRemoveForm } from '@feature/databaseViewRemove';
 import { ContextBtn } from '@shared/ui/ContextButton';
 import { ButtonGroup } from '@shared/ui/ButtonGroup';
+import { ButtonGrid } from '@shared/ui/ButtonGrid';
 
 const isOpenPanel = ref(true);
 
@@ -70,8 +71,10 @@ const {
   databaseProperties,
   databaseViews,
   isDatabaseType: hasAddProperty,
+
   hasRemoveProperty,
   isShowPropertyCreate,
+  onCreateProperty,
 
   isShowPropertyRemove,
   onRemoveProperty,
@@ -80,15 +83,19 @@ const {
   hasItemAdd,
   onAddItem,
   onCancelAddItem,
+
   stateNewItem,
   isShowViewAdd,
   isShowViewList,
   onSubmitViewAdd,
+
   selectedView,
   selectedViewId,
+
   onRemoveDatabaseView,
   onCancelRemoveDatabaseView,
   removeView,
+
   contextViewMenu,
   onClickViewContextBtn,
 } = setupDatabaseDocument(refSelectedCFRDocument);
@@ -108,7 +115,7 @@ const {
     <template #panel>
       <div class="p-1 block-spacing is-flex is-flex-direction-column">
         <div v-if="refSelectedCFRDocument" class="document-panel">
-          <div class="button-grid">
+          <ButtonGrid>
             <ButtonGroup class="is-shadowless">
               <UIButton class="is-flex-grow-1" :label="selectedView?.name">
                 <template #icon>
@@ -193,7 +200,7 @@ const {
             >
               <template #icon><i class="fas fa-trash" /></template>
             </UIButton>
-          </div>
+          </ButtonGrid>
 
           <ModalCard v-if="isShowViewAdd">
             <DatabaseViewAddForm
@@ -204,9 +211,8 @@ const {
 
           <ModalCard v-if="isShowPropertyCreate">
             <DbPropertyCreateForm
-              :cfr-document="refSelectedCFRDocument"
               @canceled="isShowPropertyCreate = false"
-              @created="isShowPropertyCreate = false"
+              @create="onCreateProperty"
             />
           </ModalCard>
 
@@ -282,7 +288,7 @@ const {
           </MenuFolder>
         </div>
 
-        <div class="button-grid">
+        <ButtonGrid>
           <UIButton
             v-if="selectedDocumentFolder"
             label="create document"
@@ -311,7 +317,7 @@ const {
               <i class="fa-brands fa-google-drive" />
             </template>
           </UIButton>
-        </div>
+        </ButtonGrid>
       </div>
     </template>
 

@@ -3,6 +3,7 @@ import { ref } from 'vue';
 import type { DocumentFolder } from '../../shared/lib/cfrDocument';
 import type { DocumentId } from '@automerge/automerge-repo';
 import { UIButton } from '@shared/ui/Button';
+import FormLayout from '@shared/ui/FormLayout.vue';
 
 const props = defineProps<{
   documentFolder: DocumentFolder;
@@ -32,10 +33,7 @@ const onClickCancel = () => {
 </script>
 
 <template>
-  <form
-    class="block-spacing is-flex is-flex-direction-column"
-    @submit.prevent="onSubmit"
-  >
+  <FormLayout @submit="onSubmit">
     <p>
       Are you sure you want to remove
       <template v-if="documentName?.length"> "{{ documentName }}" </template>
@@ -44,10 +42,10 @@ const onClickCancel = () => {
       ?
     </p>
 
-    <div class="button-grid">
+    <template #actions>
       <UIButton type="submit" :loading="!!loading" danger> Remove </UIButton>
 
       <UIButton :disabled="!!loading" @click="onClickCancel"> Cancel </UIButton>
-    </div>
-  </form>
+    </template>
+  </FormLayout>
 </template>

@@ -17,7 +17,7 @@ export const zodDocumentContent = object({
   name: string(),
   type: string(),
   body: unknown(),
-  version: number().int(),
+  version: number().int().optional(),
 });
 
 /**

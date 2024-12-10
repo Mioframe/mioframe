@@ -19,6 +19,7 @@ import { DatabaseViewAddForm } from '@feature/databaseViewAdd';
 import { UIButton } from '@shared/ui/Button';
 import { setupDatabaseDocument } from '../MainView/setupDatabaseDocument';
 import { ButtonGroup } from '@shared/ui/ButtonGroup';
+import { ButtonGrid } from '@shared/ui/ButtonGrid';
 
 const props = defineProps<{
   cfrDocument: CFRDocument;
@@ -52,7 +53,7 @@ const {
 
 <template>
   <div class="document-panel">
-    <div class="button-grid">
+    <ButtonGrid>
       <ButtonGroup>
         <UIButton class="is-flex-grow-1" :label="selectedView?.name">
           <template #icon>
@@ -121,7 +122,7 @@ const {
       >
         <template #icon><i class="fas fa-trash" /></template>
       </UIButton>
-    </div>
+    </ButtonGrid>
 
     <ModalCard v-if="isShowViewAdd">
       <DatabaseViewAddForm
