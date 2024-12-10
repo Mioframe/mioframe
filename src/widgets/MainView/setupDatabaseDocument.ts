@@ -1,4 +1,5 @@
 import type { ReactiveCFRDocument } from '@entity/document/createReactiveCFRDocument';
+import type { UnknownProperty } from '@shared/lib/databaseDocument';
 import {
   DATABASE_DOCUMENT_TYPE,
   type Item,
@@ -28,9 +29,15 @@ export const setupDatabaseDocument = (
     addView,
     removeView: removeViewFromDB,
     removeProperty,
+    addProperty,
   } = useDatabaseDocument(reactiveCFRDocument);
 
   const isShowPropertyCreate = ref(false);
+
+  const onCreateProperty = (property: UnknownProperty) => {
+    addProperty(property);
+    isShowPropertyCreate.value = false;
+  };
 
   const isDatabaseType = computed(
     () => content.value?.type === DATABASE_DOCUMENT_TYPE,
@@ -136,6 +143,8 @@ export const setupDatabaseDocument = (
     databaseViews,
 
     isShowPropertyCreate,
+    onCreateProperty,
+
     isDatabaseType,
 
     hasRemoveProperty,
@@ -146,6 +155,7 @@ export const setupDatabaseDocument = (
     hasItemAdd,
     onAddItem,
     onCancelAddItem,
+
     stateNewItem,
     isShowViewList,
     isShowViewAdd,

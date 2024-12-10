@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { UIButton } from '@shared/ui/Button';
+import { ButtonGrid } from '@shared/ui/ButtonGrid';
 import FormLayout from '@shared/ui/FormLayout.vue';
 
 defineProps<{
@@ -29,10 +30,10 @@ const onClickCancel = () => {
       ?
     </p>
 
-    <div class="button-grid">
+    <ButtonGrid>
       <UIButton type="submit" danger> Remove </UIButton>
 
       <UIButton @click="onClickCancel"> Cancel </UIButton>
-    </div>
+    </ButtonGrid>
   </FormLayout>
 </template>

@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { ButtonGrid } from './ButtonGrid';
+
 defineEmits<{
   submit: [];
 }>();
@@ -16,8 +18,8 @@ defineSlots<{
   >
     <slot />
 
-    <div class="field button-grid">
+    <ButtonGrid class="field">
       <slot name="actions" />
-    </div>
+    </ButtonGrid>
   </form>
 </template>

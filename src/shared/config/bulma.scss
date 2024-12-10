@@ -70,3 +70,11 @@
 .is-borderless {
   border: 0;
 }
+
+*:not(:last-child) {
+  margin-bottom: initial !important;
+}
+
+.is-multiline {
+  white-space: normal !important;
+}

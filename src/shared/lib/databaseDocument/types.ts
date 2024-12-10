@@ -1,6 +1,6 @@
 import type { PartialDeep } from 'type-fest';
 import type { TypeOf } from 'zod';
-import { intersection, literal, object } from 'zod';
+import { literal, object } from 'zod';
 import type { UnknownProperty, PropertyId, PropertiesMap } from './property';
 import type { ViewsMap } from './versions';
 import { zodDataBaseStateLatest } from './versions';

@@ -2,6 +2,7 @@
 import { isUndefined } from 'lodash-es';
 import { ref } from 'vue';
 import type { LocalDirectoryRef } from '../../entities/entry';
+import FormLayout from '@shared/ui/FormLayout.vue';
 
 const props = defineProps<{
   parentEntry: LocalDirectoryRef;
@@ -10,7 +11,7 @@ const props = defineProps<{
 const stateName = ref<string>();
 
 const emit = defineEmits<{
-  created: [createdDirectoryHandler: LocalDirectoryRef];
+  create: [createdDirectoryHandler: LocalDirectoryRef];
   cancel: [];
 }>();
 
@@ -24,7 +25,7 @@ const onSubmit = async () => {
         const directoryEntry = await props.parentEntry.createDirectory(
           stateName.value,
         );
-        emit('created', directoryEntry);
+        emit('create', directoryEntry);
       }
     } finally {
       loading.value -= 1;
@@ -38,10 +39,7 @@ const onClickCancel = () => {
 </script>
 
 <template>
-  <form
-    class="block-spacing is-flex is-flex-direction-column"
-    @submit.prevent="onSubmit"
-  >
+  <FormLayout @submit="onSubmit">
     <div class="field">
       <label class="label">Directory name</label>
 
@@ -55,23 +53,19 @@ const onClickCancel = () => {
       </div>
     </div>
 
-    <div class="field is-grouped">
-      <div class="control">
-        <button class="button" type="submit" :class="{ 'is-loading': loading }">
-          Create
-        </button>
-      </div>
+    <template #actions>
+      <button class="button" type="submit" :class="{ 'is-loading': loading }">
+        Create
+      </button>
 
-      <div class="control">
-        <button
-          class="button"
-          type="button"
-          :disabled="!!loading"
-          @click="onClickCancel"
-        >
-          Cancel
-        </button>
-      </div>
-    </div>
-  </form>
+      <button
+        class="button"
+        type="button"
+        :disabled="!!loading"
+        @click="onClickCancel"
+      >
+        Cancel
+      </button>
+    </template>
+  </FormLayout>
 </template>
