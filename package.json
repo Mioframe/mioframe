@@ -17,7 +17,7 @@
     "@automerge/automerge-repo-storage-indexeddb": "^1.2.1",
     "@fortawesome/fontawesome-free": "^6.7.1",
     "@noction/vue-bezier": "^1.12.0",
-    "@sentry/vue": "^8.42.0",
+    "@sentry/vue": "^8.44.0",
     "@vueuse/components": "^11.3.0",
     "@vueuse/core": "^10.11.1",
     "@vueuse/integrations": "^11.3.0",
@@ -34,9 +34,10 @@
     "vite-plugin-wasm": "^3.3.0",
     "vue": "^3.5.13",
     "vue-draggable-plus": "^0.5.6",
-    "zod": "^3.24.0"
+    "zod": "^3.24.1"
   },
   "devDependencies": {
+    "@faker-js/faker": "^9.3.0",
     "@sentry/vite-plugin": "^2.22.7",
     "@types/gapi": "^0.0.47",
     "@types/gapi.client.drive-v3": "^0.0.5",

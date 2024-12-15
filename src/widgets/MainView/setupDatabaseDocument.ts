@@ -1,5 +1,8 @@
 import type { ReactiveCFRDocument } from '@entity/document/createReactiveCFRDocument';
-import type { UnknownProperty } from '@shared/lib/databaseDocument';
+import type {
+  SortDescription,
+  UnknownProperty,
+} from '@shared/lib/databaseDocument';
 import {
   DATABASE_DOCUMENT_TYPE,
   type Item,
@@ -30,12 +33,14 @@ export const setupDatabaseDocument = (
     removeView: removeViewFromDB,
     removeProperty,
     addProperty,
+    toggleSortDirection,
+    addSortDescription,
   } = useDatabaseDocument(reactiveCFRDocument);
 
   const isShowPropertyCreate = ref(false);
 
-  const onCreateProperty = (property: UnknownProperty) => {
-    addProperty(property);
+  const onCreateProperty = async (property: UnknownProperty) => {
+    await addProperty(property);
     isShowPropertyCreate.value = false;
   };
 
@@ -59,8 +64,8 @@ export const setupDatabaseDocument = (
 
   const stateNewItem = ref<Item>({});
 
-  const onAddItem = () => {
-    addItem(cloneDeep(stateNewItem.value));
+  const onAddItem = async () => {
+    await addItem(cloneDeep(stateNewItem.value));
     stateNewItem.value = {};
     isShowItemAdd.value = false;
   };
@@ -74,8 +79,8 @@ export const setupDatabaseDocument = (
 
   const isShowViewAdd = ref(false);
 
-  const onSubmitViewAdd = (view: View) => {
-    addView(view);
+  const onSubmitViewAdd = async (view: View) => {
+    await addView(view);
     isShowViewAdd.value = false;
   };
 
@@ -106,9 +111,9 @@ export const setupDatabaseDocument = (
     () => removeViewId.value && get(databaseViews.value, removeViewId.value),
   );
 
-  const onRemoveDatabaseView = () => {
+  const onRemoveDatabaseView = async () => {
     if (removeViewId.value) {
-      removeViewFromDB(removeViewId.value);
+      await removeViewFromDB(removeViewId.value);
     }
   };
 
@@ -133,9 +138,25 @@ export const setupDatabaseDocument = (
     }
   };
 
-  const onRemoveProperty = (propertyId: PropertyId) => {
-    removeProperty(propertyId);
+  const onRemoveProperty = async (propertyId: PropertyId) => {
+    await removeProperty(propertyId);
     isShowPropertyRemove.value = false;
+  };
+
+  const isShowViewSettings = ref(false);
+
+  const onAddSortDescription = async (sortDescription: SortDescription) => {
+    const viewId = selectedViewId.value;
+    if (viewId) {
+      await addSortDescription(viewId, sortDescription);
+    }
+  };
+
+  const onToggleSortDirection = async (propertyId: PropertyId) => {
+    const viewId = selectedViewId.value;
+    if (viewId) {
+      await toggleSortDirection(viewId, propertyId);
+    }
   };
 
   return {
@@ -168,5 +189,9 @@ export const setupDatabaseDocument = (
     contextViewMenu,
     onClickViewContextBtn,
     onCancelRemoveDatabaseView,
+
+    isShowViewSettings,
+    onAddSortDescription,
+    onToggleSortDirection,
   };
 };

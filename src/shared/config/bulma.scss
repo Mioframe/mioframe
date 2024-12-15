@@ -68,11 +68,11 @@
 }
 
 .is-borderless {
-  border: 0;
+  border-width: 0;
 }
 
 *:not(:last-child) {
-  margin-bottom: initial !important;
+  margin-bottom: 0 !important;
 }
 
 .is-multiline {

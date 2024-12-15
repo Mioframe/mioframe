@@ -1,6 +1,6 @@
 <script
-  lang="ts"
   setup
+  lang="ts"
   generic="
     Key extends string | number,
     Item extends
@@ -10,12 +10,10 @@
       | object
   "
 >
-import { toRef, watchEffect } from 'vue';
+import TreeIterable from './TreeIterable.vue';
 import type { IterableCollection } from './useIterable';
-import { useIterable } from './useIterable';
-import TreeIterableItem from './TreeIterableItem.vue';
 
-const props = defineProps<{
+defineProps<{
   collection?: IterableCollection<Key, Item>;
   activeKey?: Key;
   activeItem?: Item;
@@ -54,33 +52,22 @@ const onClick = (key: Key, item: Item) => {
   emit('click', key, item);
 };
 
-const { collection: collectionRef, loading: loadingIterable } = useIterable<
-  [Key, Item]
->(
-  toRef(() => props.collection),
-  toRef(() => props.filter),
-);
-
-watchEffect(() => {
-  emit('update:loading', loadingIterable.value);
-});
-
-const activeKey2 = toRef(() => props.activeKey);
+const onLoading = (loading: boolean) => {
+  emit('update:loading', loading);
+};
 </script>
 
 <template>
-  <ul class="menu-list">
-    <TreeIterableItem
-      v-for="[key, item] in collectionRef"
-      :key="key"
-      :item-key="key"
-      :item="item"
-      :active-key="activeKey2"
+  <section class="menu">
+    <TreeIterable
+      :collection
       :active-item
+      :active-key
       :filter
       @click="onClick"
+      @update:loading="onLoading"
     >
-      <template #item="scopeItem">
+      <template v-if="!!slots.item" #item="scopeItem">
         <slot name="item" v-bind="scopeItem" />
       </template>
 
@@ -103,14 +90,10 @@ const activeKey2 = toRef(() => props.activeKey);
           :loading="scoped.loading"
         />
       </template>
-    </TreeIterableItem>
 
-    <slot name="after" />
-  </ul>
+      <template v-if="!!slots.after" #after>
+        <slot name="after" />
+      </template>
+    </TreeIterable>
+  </section>
 </template>
-
-<style lang="scss" scoped>
-.menu-list {
-  --bulma-menu-nested-list-margin: 0.75em 0 0.75em 0.75em;
-}
-</style>

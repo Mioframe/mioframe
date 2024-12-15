@@ -1,9 +1,11 @@
 import type { TypeOf } from 'zod';
-import { object, string } from 'zod';
+import { array, object, optional, string } from 'zod';
+import { zodSortDescription } from './sorting';
 
 export const zodView = object({
   name: string(),
   layout: string(),
+  sorting: optional(array(zodSortDescription)),
 });
 
 export type View = TypeOf<typeof zodView>;
