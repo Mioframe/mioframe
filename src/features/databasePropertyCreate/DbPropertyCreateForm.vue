@@ -42,7 +42,6 @@ const onClickCancel = () => {
   emit('canceled');
 };
 
-// FIXME: не работает добавление свойства.
 </script>
 
 <template>

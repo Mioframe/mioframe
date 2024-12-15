@@ -35,6 +35,7 @@ import { DatabaseViewRemoveForm } from '@feature/databaseViewRemove';
 import { ContextBtn } from '@shared/ui/ContextButton';
 import { ButtonGroup } from '@shared/ui/ButtonGroup';
 import { ButtonGrid } from '@shared/ui/ButtonGrid';
+import { DBViewSettingsForm } from '@feature/databaseViewSettings';
 
 const isOpenPanel = ref(true);
 
@@ -70,7 +71,7 @@ const {
 const {
   databaseProperties,
   databaseViews,
-  isDatabaseType: hasAddProperty,
+  isDatabaseType,
 
   hasRemoveProperty,
   isShowPropertyCreate,
@@ -98,6 +99,10 @@ const {
 
   contextViewMenu,
   onClickViewContextBtn,
+  isShowViewSettings,
+
+  onAddSortDescription,
+  onToggleSortDirection,
 } = setupDatabaseDocument(refSelectedCFRDocument);
 </script>
 
@@ -116,8 +121,12 @@ const {
       <div class="p-1 block-spacing is-flex is-flex-direction-column">
         <div v-if="refSelectedCFRDocument" class="document-panel">
           <ButtonGrid>
-            <ButtonGroup class="is-shadowless">
-              <UIButton class="is-flex-grow-1" :label="selectedView?.name">
+            <ButtonGroup>
+              <UIButton
+                class="is-flex-grow-1"
+                :label="selectedView?.name"
+                @click="isShowViewSettings = !isShowViewSettings"
+              >
                 <template #icon>
                   <i class="fa-solid fa-sliders" />
                 </template>
@@ -134,7 +143,7 @@ const {
             </ButtonGroup>
 
             <ViewList
-              v-if="isShowViewList && databaseViews"
+              v-if="isShowViewList"
               class="card is-fullwidth is-shadowless is-overflow-x-auto"
               :views="databaseViews"
             >
@@ -186,7 +195,7 @@ const {
             </UIButton>
 
             <UIButton
-              v-if="hasAddProperty"
+              v-if="isDatabaseType"
               label="Add Property"
               @click="isShowPropertyCreate = true"
             >
@@ -349,6 +358,21 @@ const {
         :name="removeView.name"
         @remove="onRemoveDatabaseView"
         @cancel="onCancelRemoveDatabaseView"
+      />
+    </ModalCard>
+
+    <ModalCard
+      v-if="isShowViewSettings && databaseProperties"
+      show-close-btn
+      show-head
+      title="View settings"
+      @click-close="isShowViewSettings = false"
+    >
+      <DBViewSettingsForm
+        :properties="databaseProperties"
+        :sorting="selectedView?.sorting"
+        @add-sorting="onAddSortDescription"
+        @toggle-sorting="onToggleSortDirection"
       />
     </ModalCard>
   </ViewWithPanelLayout>

@@ -4,8 +4,9 @@ import { literal, object } from 'zod';
 import type { UnknownProperty, PropertyId, PropertiesMap } from './property';
 import type { ViewsMap } from './versions';
 import { zodDataBaseStateLatest } from './versions';
-import type { View, ViewId } from './view';
+import type { SortDescription, View, ViewId } from './view';
 import type { DatabaseData, Item, ItemId } from './item';
+import type { DocumentContent } from '../cfrDocument';
 import { zodDocumentContent } from '../cfrDocument';
 import type { ComputedRef } from 'vue';
 
@@ -34,6 +35,8 @@ export type DatabaseDocumentWithContent = TypeOf<
   typeof zodDatabaseDocumentWithContent
 >;
 
+export type MutationFn = (doc: DocumentContent) => unknown;
+
 export interface DatabaseDocument {
   /**
    * Всё содержимое документа
@@ -52,18 +55,25 @@ export interface DatabaseDocument {
    */
   data: ComputedRef<DatabaseData | undefined>;
 
-  addProperty: (property: UnknownProperty) => PropertyId;
-  removeProperty: (propertyId: PropertyId) => void;
+  addProperty: (property: UnknownProperty) => Promise<PropertyId>;
+  removeProperty: (propertyId: PropertyId) => Promise<void>;
   updateProperty: (
     propertyId: PropertyId,
     partialProperty: PartialDeep<UnknownProperty>,
-  ) => void;
+  ) => Promise<void>;
 
-  addItem: (item: Item) => ItemId;
-  removeItem: (itemId: ItemId) => void;
-  updateItem: (itemId: ItemId, partialItem: PartialDeep<Item>) => void;
+  addItem: (item: Item) => Promise<ItemId>;
+  removeItem: (itemId: ItemId) => Promise<void>;
+  updateItem: (itemId: ItemId, partialItem: PartialDeep<Item>) => Promise<void>;
 
-  addView: (view: View) => ViewId;
-  removeView: (viewId: ViewId) => void;
-  // updateView(): void;
+  addView: (view: View) => Promise<ViewId>;
+  removeView: (viewId: ViewId) => Promise<void>;
+  addSortDescription: (
+    viewId: ViewId,
+    sortDescription: SortDescription,
+  ) => Promise<void>;
+  toggleSortDirection: (
+    viewId: ViewId,
+    propertyId: PropertyId,
+  ) => Promise<void>;
 }
