@@ -19,6 +19,7 @@ import { computed, ref } from 'vue';
 
 export enum ViewAction {
   delete,
+  rename,
 }
 
 export const setupDatabaseDocument = (
@@ -35,6 +36,7 @@ export const setupDatabaseDocument = (
     addProperty,
     toggleSortDirection,
     addSortDescription,
+    renameView,
   } = useDatabaseDocument(reactiveCFRDocument);
 
   const isShowPropertyCreate = ref(false);
@@ -123,18 +125,46 @@ export const setupDatabaseDocument = (
 
   const contextViewMenu: MenuItem<ViewAction>[] = [
     {
+      eventName: ViewAction.rename,
+      label: 'rename',
+    },
+    {
       eventName: ViewAction.delete,
       label: 'delete',
     },
   ];
 
+  const renameViewId = ref<ViewId>();
+
   const onClickViewContextBtn = (action: ViewAction, viewId: ViewId) => {
     switch (action) {
-      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- will be supplemented
       case ViewAction.delete: {
         removeViewId.value = viewId;
         break;
       }
+      case ViewAction.rename: {
+        renameViewId.value = viewId;
+        break;
+      }
+      default: {
+        // eslint-disable-next-line @typescript-eslint/restrict-template-expressions -- for untreated actions
+        throw new Error(`unhandled context menu action "${action}"`);
+      }
+    }
+  };
+
+  const viewNameBeforeRenaming = computed(() => {
+    const viewId = renameViewId.value;
+    if (viewId) {
+      return databaseViews.value?.[viewId]?.name;
+    }
+    return undefined;
+  });
+
+  const onRenameView = async (newName: string) => {
+    if (renameViewId.value) {
+      await renameView(renameViewId.value, newName);
+      renameViewId.value = undefined;
     }
   };
 
@@ -159,6 +189,15 @@ export const setupDatabaseDocument = (
     }
   };
 
+  const onSelectView = (viewId: ViewId) => {
+    selectedViewId.value = viewId;
+    isShowViewList.value = false;
+  };
+
+  const onClickShowSettings = () => {
+    isShowViewSettings.value = !!selectedViewId.value;
+  };
+
   return {
     databaseProperties,
     databaseViews,
@@ -178,11 +217,17 @@ export const setupDatabaseDocument = (
     onCancelAddItem,
 
     stateNewItem,
+
     isShowViewList,
     isShowViewAdd,
     onSubmitViewAdd,
+
+    viewNameBeforeRenaming,
+    onRenameView,
+
     selectedViewId,
     selectedView,
+    onSelectView,
 
     removeView,
     onRemoveDatabaseView,
@@ -191,6 +236,7 @@ export const setupDatabaseDocument = (
     onCancelRemoveDatabaseView,
 
     isShowViewSettings,
+    onClickShowSettings,
     onAddSortDescription,
     onToggleSortDirection,
   };

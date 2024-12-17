@@ -9,7 +9,6 @@ import type { PropertyId } from '../property';
 import type { SortDescription } from './sorting';
 import { SORT_DIRECTION } from './sorting';
 
-
 export const addViewMutation = (
   change: (mutation: MutationFn) => unknown,
   view: View,
@@ -129,6 +128,34 @@ export const toggleSortDirectionMutation = async (
           views: {
             [viewId]: {
               sorting,
+            },
+          },
+        },
+      });
+
+      resolve();
+    });
+  });
+
+export const renameViewMutation = async (
+  change: (mutation: MutationFn) => unknown,
+  viewId: ViewId,
+  newName: string,
+): Promise<void> =>
+  new Promise((resolve, reject) => {
+    change((doc) => {
+      if (!is(doc, zodDatabaseTypeDocument)) {
+        reject(new Error('document is not DatabaseTypeDocument'));
+        return;
+      }
+
+      const databaseDocument = applyDatabaseDocumentMigration(doc);
+
+      putObject(databaseDocument, {
+        body: {
+          views: {
+            [viewId]: {
+              name: newName,
             },
           },
         },

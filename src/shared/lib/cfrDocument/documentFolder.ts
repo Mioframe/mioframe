@@ -1,8 +1,4 @@
-import type {
-  DocHandle,
-  DocumentId,
-  DocumentPayload,
-} from '@automerge/automerge-repo';
+import type { DocHandle, DocumentId } from '@automerge/automerge-repo';
 import { Repo } from '@automerge/automerge-repo';
 import type {
   DirectoryForDocumentFolder,
@@ -36,16 +32,9 @@ export const createDocumentFolder = (
     storage: createFSStorageAdapter(directory),
   });
 
-  const onAddDocument = throttle(
-    ({ handle: { documentId }, isNew }: DocumentPayload) => {
-      debug('onAddDocument');
-      const extensions = isNew ? [documentId] : undefined;
-      changeEvents.forEach((handler) =>
-        handler(createChildrenContentIterable(extensions)),
-      );
-    },
-    THROTTLE_EVENTS,
-  );
+  const onAddDocument = throttle(() => {
+    changeEvents.forEach((handler) => handler(createChildrenContentIterable()));
+  }, THROTTLE_EVENTS);
 
   const onDeleteDocument = throttle(() => {
     debug('onDeleteDocument');
@@ -55,11 +44,9 @@ export const createDocumentFolder = (
   repo.on('document', onAddDocument);
   repo.on('delete-document', onDeleteDocument);
 
-  function createChildrenContentIterable(
-    exceptions?: DocumentId[],
-  ): AsyncIterable<[DocumentId, CFRDocument]> {
-    const exceptionsSet = exceptions ? new Set(exceptions) : undefined;
-
+  function createChildrenContentIterable(): AsyncIterable<
+    [DocumentId, CFRDocument]
+  > {
     return from(directory.children).pipe(
       filter(([entryName]) => zodFileName.safeParse(entryName).success),
       map(([entryName]): DocumentId | undefined =>
@@ -67,7 +54,6 @@ export const createDocumentFolder = (
       ),
       distinct(),
       filter((v) => !isNil(v)),
-      filter((documentId) => !exceptionsSet?.has(documentId)),
       map((documentId): [DocumentId, CFRDocument] => {
         const docHandle: DocHandle<unknown> = repo.find(documentId);
         return [documentId, createCFRDocument(docHandle)];

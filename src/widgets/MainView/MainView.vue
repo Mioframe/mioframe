@@ -36,6 +36,7 @@ import { ContextBtn } from '@shared/ui/ContextButton';
 import { ButtonGroup } from '@shared/ui/ButtonGroup';
 import { ButtonGrid } from '@shared/ui/ButtonGrid';
 import { DBViewSettingsForm } from '@feature/databaseViewSettings';
+import { DatabaseViewRenameForm } from '@feature/databaseViewRename';
 
 const isOpenPanel = ref(true);
 
@@ -92,6 +93,7 @@ const {
 
   selectedView,
   selectedViewId,
+  onSelectView,
 
   onRemoveDatabaseView,
   onCancelRemoveDatabaseView,
@@ -100,9 +102,13 @@ const {
   contextViewMenu,
   onClickViewContextBtn,
   isShowViewSettings,
+  onClickShowSettings,
 
   onAddSortDescription,
   onToggleSortDirection,
+
+  onRenameView,
+  viewNameBeforeRenaming,
 } = setupDatabaseDocument(refSelectedCFRDocument);
 </script>
 
@@ -125,7 +131,7 @@ const {
               <UIButton
                 class="is-flex-grow-1"
                 :label="selectedView?.name"
-                @click="isShowViewSettings = !isShowViewSettings"
+                @click="onClickShowSettings"
               >
                 <template #icon>
                   <i class="fa-solid fa-sliders" />
@@ -147,7 +153,7 @@ const {
               class="card is-fullwidth is-shadowless is-overflow-x-auto"
               :views="databaseViews"
             >
-              <template #default="{ id, view }">
+              <template #default="{ id: viewId, view }">
                 <UIButton>
                   <template #icon>
                     <i class="fa-solid fa-grip-vertical" />
@@ -156,9 +162,9 @@ const {
 
                 <UIButton
                   :label="view.name"
-                  :active="selectedViewId === id"
+                  :active="selectedViewId === viewId"
                   grow
-                  @click="selectedViewId = id"
+                  @click="onSelectView(viewId)"
                 >
                   <template #icon>
                     <i class="fa-solid fa-table" />
@@ -167,10 +173,14 @@ const {
 
                 <ContextBtn
                   :menu="contextViewMenu"
-                  @click="onClickViewContextBtn($event, id)"
+                  @click="onClickViewContextBtn($event, viewId)"
                 >
                   <template #[ViewAction.delete]>
                     <i class="fa-solid fa-eraser" />
+                  </template>
+
+                  <template #[ViewAction.rename]>
+                    <i class="fa-solid fa-pencil" />
                   </template>
                 </ContextBtn>
               </template>
@@ -362,7 +372,7 @@ const {
     </ModalCard>
 
     <ModalCard
-      v-if="isShowViewSettings && databaseProperties"
+      v-if="isShowViewSettings && databaseProperties && selectedView"
       show-close-btn
       show-head
       title="View settings"
@@ -370,9 +380,16 @@ const {
     >
       <DBViewSettingsForm
         :properties="databaseProperties"
-        :sorting="selectedView?.sorting"
+        :sorting="selectedView.sorting"
         @add-sorting="onAddSortDescription"
         @toggle-sorting="onToggleSortDirection"
+      />
+    </ModalCard>
+
+    <ModalCard v-if="viewNameBeforeRenaming">
+      <DatabaseViewRenameForm
+        :name="viewNameBeforeRenaming"
+        @submit="onRenameView"
       />
     </ModalCard>
   </ViewWithPanelLayout>

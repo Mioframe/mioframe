@@ -82,7 +82,7 @@ const onClickToggleDirection = (propertyId: PropertyId) => {
 
 <template>
   <FormLayout>
-    <span class="title is-4">Sorting</span>
+    <span class="title is-4">Sorting data</span>
 
     <UIMenu :collection="propertySortCollection">
       <template
@@ -94,7 +94,7 @@ const onClickToggleDirection = (propertyId: PropertyId) => {
           },
         }"
       >
-        <UIButton :label="name" />
+        <UIButton grow :label="name" />
 
         <SortDirectionBtn
           :direction

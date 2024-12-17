@@ -49,7 +49,6 @@ const onClickTogglePanelBtn = () => {
 };
 
 onInteractionOutside(refSlidingPanel, () => {
-  debug('onInteractionOutside');
   if (!isPinPanel.value && isLandscape.value) {
     isOpenPanel.value = false;
   }
