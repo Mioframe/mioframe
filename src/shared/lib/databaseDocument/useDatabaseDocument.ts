@@ -23,6 +23,7 @@ import {
   addSortDescriptionMutation,
   addViewMutation,
   removeViewMutation,
+  renameViewMutation,
   toggleSortDirectionMutation,
 } from './view/mutations';
 
@@ -115,6 +116,10 @@ export const useDatabaseDocument = (
     );
   };
 
+  const renameView = async (viewId: ViewId, newName: string) => {
+    await renameViewMutation(getDocumentValue().change, viewId, newName);
+  };
+
   const databaseDocument: DatabaseDocument = {
     content,
     properties,
@@ -131,6 +136,7 @@ export const useDatabaseDocument = (
 
     addView,
     removeView,
+    renameView,
     addSortDescription,
     toggleSortDirection,
   };

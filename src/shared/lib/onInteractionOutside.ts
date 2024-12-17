@@ -1,6 +1,5 @@
 import type { MaybeRef } from 'vue';
 import { onBeforeUnmount, computed, watch } from 'vue';
-import { createLogger } from './logger';
 import { toValue, unrefElement, type MaybeElementRef } from '@vueuse/core';
 import { throttle } from 'lodash-es';
 
@@ -11,8 +10,6 @@ type InteractionOutsideOptions = {
   events?: EventTypes[]; // Типизация событий на основе WindowEventMap
   throttleWait?: number; // Опция для троттлинга
 };
-
-const { debug } = createLogger('onInteractionOutside');
 
 export const onInteractionOutside = (
   target: MaybeElementRef, // Массив targetRef
@@ -26,7 +23,6 @@ export const onInteractionOutside = (
   } = options;
 
   const handleInteraction = throttle((event: Event) => {
-    debug('handleInteraction');
     const eventTarget = event.target instanceof Node ? event.target : undefined;
     if (!eventTarget) {
       return;
@@ -51,13 +47,11 @@ export const onInteractionOutside = (
   watch(
     hasTarget,
     (hasTarget) => {
-      debug('hasTarget', hasTarget);
       if (hasTarget) {
         events.forEach((event) => {
           window.addEventListener(event, handleInteraction, true);
         });
       } else {
-        debug('remove events');
         events.forEach((event) => {
           window.removeEventListener(event, handleInteraction, true);
         });

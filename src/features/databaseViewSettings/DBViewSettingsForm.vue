@@ -3,7 +3,7 @@ import type {
   PropertiesMap,
   PropertyId,
 } from '@shared/lib/databaseDocument/property';
-import DBPropertySortingForm from './DBPropertySortingForm.vue';
+import DatabaseDataSortingForm from './DatabaseDataSortingForm.vue';
 import type { SortDescription } from '@shared/lib/databaseDocument';
 
 defineProps<{
@@ -27,7 +27,7 @@ const onAddSorting = (description: SortDescription) => {
 
 <template>
   <div>
-    <DBPropertySortingForm
+    <DatabaseDataSortingForm
       :properties
       :sorting
       @toggle-direction="onToggleSortDirection"

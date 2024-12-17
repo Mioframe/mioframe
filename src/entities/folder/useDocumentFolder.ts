@@ -25,6 +25,7 @@ export const useDocumentFolder = (
   const onChangeFolder = (
     newContent: IterableCollection<DocumentId, CFRDocument>,
   ) => {
+    debug('onChangeFolder');
     folderContent.value = newContent;
   };
 
@@ -53,6 +54,7 @@ export const useDocumentFolder = (
 
   const content = computed(() => {
     const content = toValue(folderContent.value);
+    debug('computed content', content);
     if (content) {
       return from(content).pipe(
         map(([id, doc]): [DocumentId, ReactiveCFRDocument] => {

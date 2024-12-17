@@ -68,6 +68,8 @@ export interface DatabaseDocument {
 
   addView: (view: View) => Promise<ViewId>;
   removeView: (viewId: ViewId) => Promise<void>;
+  renameView: (viewId: ViewId, newName: string) => Promise<void>;
+
   addSortDescription: (
     viewId: ViewId,
     sortDescription: SortDescription,
