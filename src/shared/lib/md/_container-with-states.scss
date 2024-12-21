@@ -12,11 +12,16 @@
     top: var(--md-ripple-y, 50%);
     left: var(--md-ripple-x, 50%);
     background: radial-gradient(
-        var(--md-ripple-color, rgb(from var(--md-content-color) r g b / 10%)) 65%,
+        var(
+                --md-ripple-color,
+                rgb(from var(--md-content-color) r g b / var(--md-sys-state-pressed-state-layer-opacity, 10%))
+            )
+            65%,
         transparent 71%
     );
     transform: translate(-50%, -50%) scale(0);
     pointer-events: none;
+    transition: animation-duration 0.1s;
 }
 
 .md {
@@ -36,20 +41,25 @@
             position: absolute;
             top: 0;
             left: 0;
-            transition: background-color 0.3s;
+            transition-property: background-color;
+            transition-duration: var(--md-sys-motion-duration-short4);
         }
 
         &:hover,
         &_hover {
             &::before {
-                background-color: rgba(from var(--md-content-color) r g b / 8%);
+                background-color: rgba(
+                    from var(--md-content-color) r g b / var(--md-sys-state-hover-state-layer-opacity, 8%)
+                );
             }
         }
 
         &:focus-visible,
         &_focus {
             &::before {
-                background-color: rgba(from var(--md-content-color) r g b / 10%);
+                background-color: rgba(
+                    from var(--md-content-color) r g b / var(--md-sys-state-focus-state-layer-opacity, 10%)
+                );
             }
         }
 
@@ -72,6 +82,7 @@
                 @extend %ripple;
                 transform: translate(-50%, -50%) scale(1);
                 opacity: 1;
+                animation-duration: var(--md-sys-motion-duration-extra-long4) !important;
             }
         }
 
@@ -81,7 +92,7 @@
 
             &::after {
                 @extend %ripple;
-                animation-duration: 1s;
+                animation-duration: var(--md-sys-motion-duration-short4, 0.2s);
                 animation-fill-mode: forwards;
                 animation-name: md-state-pressed;
             }
@@ -93,7 +104,7 @@
 
             &::after {
                 @extend %ripple;
-                animation-duration: 0.5s;
+                animation-duration: var(--md-sys-motion-duration-short4, 0.2s);
                 animation-fill-mode: forwards;
                 animation-name: md-state-unpressed;
             }
