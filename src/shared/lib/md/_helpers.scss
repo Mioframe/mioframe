@@ -1,0 +1,53 @@
+@use "sass:meta";
+@use "sass:map";
+@use "tokens";
+
+@mixin generate-custom-properties($map, $prefix: "") {
+    @each $key, $value in $map {
+        $new-key: #{$prefix}#{$key};
+
+        @if meta.type-of($value) == "map" {
+            @include generate-custom-properties($value, $new-key + "-");
+        } @else {
+            --#{$new-key}: #{$value};
+        }
+    }
+}
+
+@mixin elevateToShadow($elevate-level) {
+    @if $elevate-level == 0 {
+        box-shadow: none;
+    } @else if $elevate-level == 1 {
+        box-shadow:
+            0px 1px 3px 1px rgba(0, 0, 0, 0.15),
+            0px 1px 2px 0px rgba(0, 0, 0, 0.3);
+
+        @media (prefers-color-scheme: dark) {
+            box-shadow:
+                0px 1px 2px 0px rgba(0, 0, 0, 0.3),
+                0px 1px 3px 1px rgba(0, 0, 0, 0.15);
+        }
+    } @else if $elevate-level == 2 {
+        box-shadow:
+            0px 2px 6px 2px rgba(0, 0, 0, 0.15),
+            0px 1px 2px 0px rgba(0, 0, 0, 0.3);
+
+        @media (prefers-color-scheme: dark) {
+            box-shadow:
+                0px 1px 2px 0px rgba(0, 0, 0, 0.3),
+                0px 2px 6px 2px rgba(0, 0, 0, 0.15);
+        }
+    } @else if $elevate-level == 3 {
+        box-shadow:
+            0px 1px 3px 0px rgba(0, 0, 0, 0.3),
+            0px 4px 8px 3px rgba(0, 0, 0, 0.15);
+    } @else if $elevate-level == 4 {
+        box-shadow:
+            0px 2px 3px 0px rgba(0, 0, 0, 0.3),
+            0px 6px 10px 4px rgba(0, 0, 0, 0.15);
+    } @else if $elevate-level == 5 {
+        box-shadow:
+            0px 4px 4px 0px rgba(0, 0, 0, 0.3),
+            0px 8px 12px 6px rgba(0, 0, 0, 0.15);
+    }
+}

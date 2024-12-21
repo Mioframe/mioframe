@@ -3,6 +3,7 @@
     "streetsidesoftware.code-spell-checker-russian",
     "yoavbls.pretty-ts-errors",
     "gruntfuggly.todo-tree",
-    "dbaeumer.vscode-eslint"
+    "dbaeumer.vscode-eslint",
+    "sibiraj-s.vscode-scss-formatter"
   ]
 }
