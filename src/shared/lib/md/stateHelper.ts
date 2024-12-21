@@ -1,4 +1,4 @@
-import './_paint-for-canvas.scss';
+import './_container-with-states.scss';
 import type { Directive } from 'vue';
 
 const STATE = {
@@ -36,24 +36,42 @@ const onPress = ({
   offsetY,
   clientX,
   clientY,
-}: MouseEvent) => {
+}: {
+  currentTarget: EventTarget | null;
+  offsetX?: number;
+  offsetY?: number;
+  clientX?: number;
+  clientY?: number;
+}) => {
   if (currentTarget instanceof HTMLElement) {
     const rect = currentTarget.getBoundingClientRect();
 
-    currentTarget.style.setProperty(
-      '--md-ripple-size',
-      `${
-        Math.max(
-          Math.hypot(rect.left - clientX, rect.top - clientY),
-          Math.hypot(rect.right - clientX, rect.top - clientY),
-          Math.hypot(rect.left - clientX, rect.bottom - clientY),
-          Math.hypot(rect.right - clientX, rect.bottom - clientY),
-        ) * 2
-      }px`,
-    );
+    if (clientX && clientY) {
+      currentTarget.style.setProperty(
+        '--md-ripple-size',
+        `${
+          Math.max(
+            Math.hypot(rect.left - clientX, rect.top - clientY),
+            Math.hypot(rect.right - clientX, rect.top - clientY),
+            Math.hypot(rect.left - clientX, rect.bottom - clientY),
+            Math.hypot(rect.right - clientX, rect.bottom - clientY),
+          ) * 2
+        }px`,
+      );
+    } else {
+      currentTarget.style.setProperty(
+        '--md-ripple-size',
+        `${Math.max(rect.width, rect.height)}px`,
+      );
+    }
 
-    currentTarget.style.setProperty('--md-ripple-y', `${offsetY}px`);
-    currentTarget.style.setProperty('--md-ripple-x', `${offsetX}px`);
+    if (offsetY && offsetX) {
+      currentTarget.style.setProperty('--md-ripple-y', `${offsetY}px`);
+      currentTarget.style.setProperty('--md-ripple-x', `${offsetX}px`);
+    } else {
+      currentTarget.style.setProperty('--md-ripple-y', null);
+      currentTarget.style.setProperty('--md-ripple-x', null);
+    }
 
     currentTarget.classList.add(STATE.press);
 
@@ -63,7 +81,11 @@ const onPress = ({
   }
 };
 
-const onUnpressed = ({ currentTarget }: MouseEvent) => {
+const onUnpressed = ({
+  currentTarget,
+}: {
+  currentTarget: EventTarget | null;
+}) => {
   if (
     currentTarget instanceof HTMLElement &&
     currentTarget.classList.contains(STATE.press)
@@ -75,20 +97,38 @@ const onUnpressed = ({ currentTarget }: MouseEvent) => {
   }
 };
 
+const actionKeys = [' ', 'Enter'];
+
+const onKeydown = ({ key, currentTarget }: KeyboardEvent) => {
+  if (actionKeys.includes(key)) {
+    onPress({ currentTarget });
+  }
+};
+
+const onKeyup = ({ key, currentTarget }: KeyboardEvent) => {
+  if (actionKeys.includes(key)) {
+    onUnpressed({ currentTarget });
+  }
+};
+
 export const vPressedState: Directive = {
   mounted: (el) => {
     if (el instanceof HTMLElement) {
       el.addEventListener('mousedown', onPress);
+      el.addEventListener('keydown', onKeydown);
       el.addEventListener('mouseleave', onUnpressed);
       el.addEventListener('mouseup', onUnpressed);
+      el.addEventListener('keyup', onKeyup);
       el.addEventListener('animationend', onAnimationEnd);
     }
   },
   beforeUnmount: (el) => {
     if (el instanceof HTMLElement) {
       el.removeEventListener('mousedown', onPress);
+      el.removeEventListener('keydown', onKeydown);
       el.removeEventListener('mouseleave', onUnpressed);
       el.removeEventListener('mouseup', onUnpressed);
+      el.removeEventListener('keyup', onKeyup);
       el.removeEventListener('animationend', onAnimationEnd);
     }
   },
