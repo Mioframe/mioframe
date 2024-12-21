@@ -37,12 +37,13 @@ export default defineConfig({
     rollupOptions: {
       output: {
         manualChunks(id) {
-          // Получаем все зависимости из package.json
-          const allDependencies = { ...dependencies, ...devDependencies };
           // Перебираем зависимости
-          for (const [name] of Object.entries(allDependencies)) {
+          for (const name of Object.keys({
+            ...dependencies,
+            ...devDependencies,
+          })) {
             if (id.includes(`node_modules/${name}`)) {
-              return `vendor/${name}`; // Создаем чанк по имени пакета
+              return `vendor/${name}`;
             }
           }
         },

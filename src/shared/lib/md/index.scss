@@ -1,0 +1,16 @@
+@use "sass:meta";
+@use "tokens";
+@use "helpers";
+
+@forward "tokens";
+@forward "helpers";
+@forward "functions";
+@forward "paint-for-canvas";
+
+:root {
+    @include helpers.generate-custom-properties(tokens.$md-light-tokens);
+
+    @media (prefers-color-scheme: dark) {
+        @include helpers.generate-custom-properties(tokens.$md-dark-tokens);
+    }
+}

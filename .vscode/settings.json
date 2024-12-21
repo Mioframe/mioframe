@@ -15,9 +15,11 @@
     "fullwidth",
     "GAPI",
     "jsoneditor",
+    "mdui",
     "noction",
     "pinia",
     "Promisable",
+    "typescale",
     "vueuse",
     "vyachean",
     "wicg",
@@ -26,5 +28,5 @@
   "todo-tree.regex.regexCaseSensitive": false,
   "editor.formatOnSave": true,
   "eslint.useFlatConfig": true,
-  "cSpell.language": "en, ru"
+  "cSpell.language": "en, ru",
 }
