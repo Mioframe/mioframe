@@ -34,6 +34,8 @@ defineProps<{
 
 .md-button {
   @extend .md-container;
+  transition-property: box-shadow;
+  transition-duration: var(--md-sys-motion-duration-short4, 0.2s);
 
   &._elevated {
     --md-container-color: var(--md-sys-color-surface-container-low);

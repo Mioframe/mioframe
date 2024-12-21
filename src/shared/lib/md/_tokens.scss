@@ -10,48 +10,48 @@ $md-light-tokens: (
         ref: (
             palette: (
                 // primary
-                primary10: fn.toRGB(#21005d),
-                primary30: fn.toRGB(#4f378b),
-                primary40: fn.toRGB(#6750a4),
-                primary80: fn.toRGB(#d0bcff),
-                primary90: fn.toRGB(#eaddff),
-                primary100: fn.toRGB(#ffffff),
+                primary10: #21005d,
+                primary30: #4f378b,
+                primary40: #6750a4,
+                primary80: #d0bcff,
+                primary90: #eaddff,
+                primary100: #ffffff,
                 // secondary
-                secondary10: fn.toRGB(#1d192b),
-                secondary30: fn.toRGB(#4a4458),
-                secondary40: fn.toRGB(#625b71),
-                secondary80: fn.toRGB(#ccc2dc),
-                secondary90: fn.toRGB(#e8def8),
-                secondary100: fn.toRGB(#ffffff),
+                secondary10: #1d192b,
+                secondary30: #4a4458,
+                secondary40: #625b71,
+                secondary80: #ccc2dc,
+                secondary90: #e8def8,
+                secondary100: #ffffff,
                 // tertiary
-                tertiary10: fn.toRGB(#31111d),
-                tertiary30: fn.toRGB(#633b48),
-                tertiary40: fn.toRGB(#7d5260),
-                tertiary80: fn.toRGB(#efb8c8),
-                tertiary90: fn.toRGB(#ffd8e4),
-                tertiary100: fn.toRGB(#ffffff),
+                tertiary10: #31111d,
+                tertiary30: #633b48,
+                tertiary40: #7d5260,
+                tertiary80: #efb8c8,
+                tertiary90: #ffd8e4,
+                tertiary100: #ffffff,
                 // error
-                error30: fn.toRGB(#8c1d18),
-                error40: fn.toRGB(#b3261e),
-                error90: fn.toRGB(#f9dedc),
-                error100: fn.toRGB(#ffffff),
+                error30: #8c1d18,
+                error40: #b3261e,
+                error90: #f9dedc,
+                error100: #ffffff,
                 // neutral
-                neutral0: fn.toRGB(#000000),
-                neutral10: fn.toRGB(#1d1b20),
-                neutral20: fn.toRGB(#322f35),
-                neutral87: fn.toRGB(#ded8e1),
-                neutral90: fn.toRGB(#e6e0e9),
-                neutral92: fn.toRGB(#ece6f0),
-                neutral94: fn.toRGB(#f3edf7),
-                neutral95: fn.toRGB(#f5eff7),
-                neutral96: fn.toRGB(#f7f2fa),
-                neutral98: fn.toRGB(#fef7ff),
-                neutral100: fn.toRGB(#ffffff),
+                neutral0: #000000,
+                neutral10: #1d1b20,
+                neutral20: #322f35,
+                neutral87: #ded8e1,
+                neutral90: #e6e0e9,
+                neutral92: #ece6f0,
+                neutral94: #f3edf7,
+                neutral95: #f5eff7,
+                neutral96: #f7f2fa,
+                neutral98: #fef7ff,
+                neutral100: #ffffff,
                 // neutral-variant
-                neutral-variant30: fn.toRGB(#49454f),
-                neutral-variant50: fn.toRGB(#79747e),
-                neutral-variant80: fn.toRGB(#cac4d0),
-                neutral-variant90: fn.toRGB(#e7e0ec)
+                neutral-variant30: #49454f,
+                neutral-variant50: #79747e,
+                neutral-variant80: #cac4d0,
+                neutral-variant90: #e7e0ec
             ),
             typeface: (
                 plain: (
@@ -151,6 +151,44 @@ $md-light-tokens: (
                 ),
                 pressed: (
                     state-layer-opacity: 0.1
+                )
+            ),
+            motion: (
+                easing: (
+                    emphasized: (
+                        standard: cubic-bezier(0.2, 0, 0, 1),
+                        accelerate: cubic-bezier(0.3, 0, 0.8, 0.15),
+                        decelerate: cubic-bezier(0.05, 0.7, 0.1, 1)
+                    ),
+                    standard: (
+                        index: cubic-bezier(0.2, 0, 0, 1),
+                        accelerate: cubic-bezier(0.3, 0, 1, 1),
+                        decelerate: cubic-bezier(0, 0, 0, 1)
+                    ),
+                    legacy: (
+                        index: cubic-bezier(0.4, 0, 0.2, 1),
+                        accelerate: cubic-bezier(0.4, 0, 1, 1),
+                        decelerate: cubic-bezier(0, 0, 0.2, 1)
+                    ),
+                    linear: cubic-bezier(0, 0, 1, 1)
+                ),
+                duration: (
+                    short1: 50ms,
+                    short2: 100ms,
+                    short3: 150ms,
+                    short4: 200ms,
+                    medium1: 250ms,
+                    medium2: 300ms,
+                    medium3: 350ms,
+                    medium4: 400ms,
+                    long1: 450ms,
+                    long2: 500ms,
+                    long3: 550ms,
+                    long4: 600ms,
+                    extra-long1: 700ms,
+                    extra-long2: 800ms,
+                    extra-long3: 900ms,
+                    extra-long4: 1000ms
                 )
             )
         )
