@@ -55,7 +55,12 @@
         }
 
         &:focus-visible,
-        &_focus {
+        &_focused {
+            outline-style: solid;
+            outline-color: var(--md-sys-color-secondary);
+            outline-width: var(--md-sys-state-focus-indicator-thickness);
+            outline-offset: var(--md-sys-state-focus-indicator-outer-offset);
+
             &::before {
                 background-color: rgba(
                     from var(--md-content-color) r g b / var(--md-sys-state-focus-state-layer-opacity, 10%)
