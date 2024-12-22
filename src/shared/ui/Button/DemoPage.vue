@@ -1,14 +1,30 @@
 <script setup lang="ts">
 import MDButton from './MDButton.vue';
+
+const types = ['elevated', 'filled', 'tonal', 'outlined', 'text'] as const;
 </script>
 
 <template>
   <div class="grid">
-    <MDButton type="elevated" label="elevated default" />
+    <div v-for="type in types" :key="type" class="grid">
+      <MDButton :type :label="`${type} enabled`" />
 
-    <MDButton type="elevated" label="elevated hover" class="md-button_hover" />
+      <MDButton :type disabled :label="`${type} disable`" />
 
-    <MDButton type="elevated" disabled label="elevated disabled" />
+      <MDButton :type :label="`${type} hovered`" class="md-container_hover" />
+
+      <MDButton
+        :type
+        :label="`${type} focused`"
+        class="md-button_focused md-container_focused"
+      />
+
+      <MDButton :type :label="`${type} pressed`" class="md-container_press" />
+
+      <MDButton :type :label="`${type} icon`">
+        <template #icon> <i class="fa-solid fa-star" /> </template>
+      </MDButton>
+    </div>
   </div>
 </template>
 

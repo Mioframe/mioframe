@@ -32,14 +32,10 @@ const startAnimationUnpressed = (el: HTMLElement) => {
 
 const onPress = ({
   currentTarget,
-  offsetX,
-  offsetY,
   clientX,
   clientY,
 }: {
   currentTarget: EventTarget | null;
-  offsetX?: number;
-  offsetY?: number;
   clientX?: number;
   clientY?: number;
 }) => {
@@ -58,17 +54,16 @@ const onPress = ({
           ) * 2
         }px`,
       );
+
+      const offsetX = clientX - rect.left;
+      const offsetY = clientY - rect.top;
+      currentTarget.style.setProperty('--md-ripple-y', `${offsetY}px`);
+      currentTarget.style.setProperty('--md-ripple-x', `${offsetX}px`);
     } else {
       currentTarget.style.setProperty(
         '--md-ripple-size',
         `${Math.max(rect.width, rect.height)}px`,
       );
-    }
-
-    if (offsetY && offsetX) {
-      currentTarget.style.setProperty('--md-ripple-y', `${offsetY}px`);
-      currentTarget.style.setProperty('--md-ripple-x', `${offsetX}px`);
-    } else {
       currentTarget.style.setProperty('--md-ripple-y', null);
       currentTarget.style.setProperty('--md-ripple-x', null);
     }
