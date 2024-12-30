@@ -5,6 +5,7 @@ import MainApp from './MainApp.vue';
 import { setupSentry } from './setupSentry';
 import { createPinia } from 'pinia';
 import { router } from './router';
+import { createHead } from '@unhead/vue';
 
 /**
  * Инициализация и настройка Vue приложения
@@ -17,6 +18,9 @@ export const setupApp = () => {
   if (SENTRY_DSN?.length && import.meta.env.PROD) {
     setupSentry(app, SENTRY_DSN);
   }
+
+  const head = createHead();
+  app.use(head);
 
   app.use(router);
 

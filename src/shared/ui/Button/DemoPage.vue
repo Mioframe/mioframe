@@ -1,12 +1,22 @@
 <script setup lang="ts">
 import MDButton from './MDButton.vue';
+import MDFab from './MDFab.vue';
+import MDFabContainer from './MDFabContainer.vue';
 
-const types = ['elevated', 'filled', 'tonal', 'outlined', 'text'] as const;
+const buttonTypes = [
+  'elevated',
+  'filled',
+  'tonal',
+  'outlined',
+  'text',
+] as const;
+
+const fabTypes = ['primary', 'branded', 'secondary', 'tertiary'] as const;
 </script>
 
 <template>
   <div class="grid">
-    <div v-for="type in types" :key="type" class="grid">
+    <div v-for="type in buttonTypes" :key="`buttonTypes${type}`" class="grid">
       <MDButton :type :label="`${type} enabled`" />
 
       <MDButton :type disabled :label="`${type} disable`" />
@@ -25,6 +35,14 @@ const types = ['elevated', 'filled', 'tonal', 'outlined', 'text'] as const;
         <template #icon> <i class="fa-solid fa-star" /> </template>
       </MDButton>
     </div>
+
+    <MDFabContainer v-for="type in fabTypes" :key="`fabTypes${type}`">
+      <MDFab size="small" :type />
+
+      <MDFab :type />
+
+      <MDFab size="large" :type />
+    </MDFabContainer>
   </div>
 </template>
 

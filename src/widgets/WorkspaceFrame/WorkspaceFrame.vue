@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { computed, toRef } from 'vue';
-import type { CFRDocument } from '../../shared/lib/cfrDocument';
 import type { ReactiveCFRDocument } from '../../entities/document/createReactiveCFRDocument';
 import { createLogger } from '../../shared/lib/logger';
 import { DocumentEditForm } from '../../features/documentEdit';
@@ -13,20 +12,21 @@ import DatabaseWidget from './DatabaseWidget.vue';
 import ValueWidgetInline from '@widget/ValueWidgetInline/ValueWidgetInline.vue';
 import { PROPERTY_TYPE_STRING } from '@entity/stringProperty';
 import { isString } from 'lodash-es';
+import type { EmptyObject } from 'type-fest';
 
 const { debug } = createLogger('WorkspaceFrame');
 
 const props = defineProps<{
-  reactiveCFRDocument: ReactiveCFRDocument;
+  reactiveCfrDocument: ReactiveCFRDocument;
 }>();
 
 defineSlots<{
-  default(props: { cfrDocument: CFRDocument; documentType: string }): unknown;
+  default(props: EmptyObject): unknown;
 }>();
 
 const selectedViewId = defineModel<ViewId>('selectedViewId');
 
-const reactiveCFRDocument = toRef(() => props.reactiveCFRDocument);
+const reactiveCFRDocument = toRef(() => props.reactiveCfrDocument);
 
 const documentName = computed(() => reactiveCFRDocument.value.doc?.name);
 
@@ -70,7 +70,7 @@ const selectedDatabaseDocument = computed(() =>
       <span class="tag is-medium"> {{ documentType }} </span>
     </section>
 
-    <slot :reactive-c-f-r-document :document-type>
+    <slot>
       <!-- todo: тут определяются виджеты документов по их типу -->
       <DatabaseWidget
         v-if="selectedDatabaseDocument"
