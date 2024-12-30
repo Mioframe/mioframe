@@ -17,11 +17,15 @@
     "jsoneditor",
     "mdui",
     "noction",
+    "OPFS",
+    "opsz",
     "pinia",
     "Promisable",
     "typescale",
+    "unhead",
     "vueuse",
     "vyachean",
+    "wght",
     "wicg",
     "zenfs"
   ],
@@ -29,4 +33,5 @@
   "editor.formatOnSave": true,
   "eslint.useFlatConfig": true,
   "cSpell.language": "en, ru",
+  "vue.server.hybridMode": true,
 }

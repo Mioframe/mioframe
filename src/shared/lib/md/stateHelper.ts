@@ -2,9 +2,9 @@ import './_container-with-states.scss';
 import type { Directive } from 'vue';
 
 const STATE = {
-  press: 'md-container_press',
-  pressed: 'md-container_pressed',
-  unPressed: 'md-container_unpressed',
+  press: 'md-state_press',
+  pressed: 'md-state_pressed',
+  unPressed: 'md-state_unpressed',
 } as const;
 
 const startAnimationPressed = (el: HTMLElement) => {

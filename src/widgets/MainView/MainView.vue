@@ -8,7 +8,7 @@ import { WorkspaceFrame } from '../WorkspaceFrame';
 import { GDriveDirectoryPickerForm } from '@feature/gDriveDirectoryPicker';
 import WelcomeMessage from './WelcomeMessage.vue';
 import { ViewWithPanelLayout } from '@shared/ui/ViewWithPanelLayout';
-import { UIButton } from '@shared/ui/Button';
+import { MDButton, UIButton } from '@shared/ui/Button';
 import { setupDocumentCreate } from './setupDocumentCreate';
 import { setupGoogleDirectoryChoice } from './setupGoogleDirectoryChoice';
 import { setupFolderChoice } from './setupFolderChoice';
@@ -116,7 +116,7 @@ const {
   <ViewWithPanelLayout v-model:open-panel="isOpenPanel">
     <WorkspaceFrame
       v-if="refSelectedCFRDocument"
-      :reactive-c-f-r-document="refSelectedCFRDocument"
+      :reactive-cfr-document="refSelectedCFRDocument"
       class="is-flex-grow-1"
       :selected-view-id
     />
@@ -308,7 +308,7 @@ const {
         </div>
 
         <ButtonGrid>
-          <UIButton
+          <MDButton
             v-if="selectedDocumentFolder"
             label="create document"
             @click="onClickCreateDocument"
@@ -316,26 +316,23 @@ const {
             <template #icon>
               <i class="fa-solid fa-plus" />
             </template>
-          </UIButton>
+          </MDButton>
 
-          <UIButton
+          <MDButton
             v-if="isSupportLocalDirectory"
-            label="select local directory"
+            label="local folder"
             @click="onClickSelectDirectory"
           >
             <template #icon>
               <i class="fa-solid fa-plug" />
             </template>
-          </UIButton>
+          </MDButton>
 
-          <UIButton
-            label="select google drive directory"
-            @click="onClickSelectGDirectory"
-          >
+          <MDButton label="google drive" @click="onClickSelectGDirectory">
             <template #icon>
               <i class="fa-brands fa-google-drive" />
             </template>
-          </UIButton>
+          </MDButton>
         </ButtonGrid>
       </div>
     </template>
