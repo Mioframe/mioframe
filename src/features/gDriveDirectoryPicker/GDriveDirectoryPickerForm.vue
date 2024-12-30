@@ -10,6 +10,7 @@ import { createPreviouslyCreatedFolders } from './previouslyCreatedFolders';
 import { sum, values } from 'lodash-es';
 import FormLayout from '@shared/ui/FormLayout.vue';
 import type { IterableCollection } from '@shared/ui/TreeMenu/useIterable';
+import { MDButton } from '@shared/ui/Button';
 
 const emit = defineEmits<{
   submit: [directory: GDriveDirectory];
@@ -90,21 +91,20 @@ const onClickLogout = () => {
 <template>
   <FormLayout @submit="onSubmit">
     <div class="field">
-      <button
+      <MDButton
         v-if="!userInfo"
-        type="button"
-        class="button is-fullwidth"
+        type="filled"
+        class="is-fullwidth"
         :class="{
           'is-loading': googleLoading,
         }"
+        label="use google"
         @click="onClickLogin"
       >
-        <span class="icon">
+        <template #icon>
           <i class="fa-brands fa-google" />
-        </span>
-
-        <span> use google </span>
-      </button>
+        </template>
+      </MDButton>
 
       <GUserCard
         v-else
@@ -143,15 +143,14 @@ const onClickLogout = () => {
     </div>
 
     <template #actions>
-      <button
-        class="button is-primary"
-        type="submit"
+      <MDButton
+        form-action="submit"
         :disabled="!selectedGDriveDirectory"
-      >
-        Apply
-      </button>
+        label="Apply"
+        type="tonal"
+      />
 
-      <button class="button" type="reset" @click="onClickCancel">Cancel</button>
+      <MDButton label="Cancel" form-action="reset" @click="onClickCancel" />
     </template>
   </FormLayout>
 </template>

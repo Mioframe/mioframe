@@ -66,7 +66,11 @@ $md-light-tokens: (
         sys: (
             shape: (
                 corner: (
-                    full: Circular
+                    full: Circular,
+                    medium: fn.dp(12),
+                    large: fn.dp(16),
+                    extra-large: fn.dp(28),
+                    extra-small: fn.dp(4)
                 )
             ),
             color: (
@@ -136,6 +140,13 @@ $md-light-tokens: (
                     size: 14pt,
                     weight: var(--md-ref-typeface-weight-medium),
                     tracking: 0.1pt
+                ),
+                body-small: (
+                    font: var(--md-ref-typeface-plain),
+                    line-height: 16pt,
+                    size: 12pt,
+                    weight: var(--md-ref-typeface-weight-regular),
+                    tracking: 0.4pt
                 )
             ),
             state: (

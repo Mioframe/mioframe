@@ -53,8 +53,8 @@ export const useGoogleApi = defineStore('googleApi', () => {
     try {
       loading.loadApi += 1;
       const gapiUrl = '//apis.google.com/js/api.js';
-      /* @vite-ignore */
-      await import(gapiUrl);
+
+      await import(/* @vite-ignore */ gapiUrl);
     } finally {
       loading.loadApi -= 1;
     }
