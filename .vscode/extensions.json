@@ -4,7 +4,8 @@
     "yoavbls.pretty-ts-errors",
     "gruntfuggly.todo-tree",
     "dbaeumer.vscode-eslint",
-    "sibiraj-s.vscode-scss-formatter",
-    "vue.volar"
+    "vue.volar",
+    "csstools.postcss",
+    "esbenp.prettier-vscode"
   ]
 }

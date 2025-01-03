@@ -97,7 +97,7 @@ const onClickTargetDirectory = () => {
   </FormLayout>
 </template>
 
-<style lang="scss" scoped>
+<style scoped>
 .copy-form {
   max-height: 100%;
 }

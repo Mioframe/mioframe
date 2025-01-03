@@ -196,7 +196,7 @@ const loading = ref<boolean>();
   </li>
 </template>
 
-<style lang="scss" scoped>
+<style scoped>
 .button {
   width: auto;
   white-space: initial;

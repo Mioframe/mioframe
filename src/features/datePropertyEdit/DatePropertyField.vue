@@ -39,7 +39,7 @@ const modelValue = computed<string | undefined>({
   </div>
 </template>
 
-<style lang="scss" scoped>
+<style scoped>
 input[type='date'] {
   @media (prefers-color-scheme: dark) {
     color-scheme: dark;

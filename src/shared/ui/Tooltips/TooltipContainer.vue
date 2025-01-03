@@ -111,7 +111,7 @@ const tooltipStyle = computed(
   </div>
 </template>
 
-<style lang="scss" scoped>
+<style scoped>
 .tooltip-container {
   &__tooltip {
     position: fixed;

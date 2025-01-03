@@ -82,7 +82,7 @@ watchDebounced(
   </div>
 </template>
 
-<style lang="scss" scoped>
+<style scoped>
 .sliding-panel {
   --sliding-panel-min-height: 100px;
   --sliding-panel-min-width: 100px;

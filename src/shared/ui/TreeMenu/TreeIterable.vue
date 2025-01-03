@@ -109,7 +109,7 @@ const activeKey2 = toRef(() => props.activeKey);
   </ul>
 </template>
 
-<style lang="scss" scoped>
+<style scoped>
 .menu-list {
   --bulma-menu-nested-list-margin: 0.75em 0 0.75em 0.75em;
 }

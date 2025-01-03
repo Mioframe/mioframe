@@ -5,13 +5,19 @@ import { MDSymbol } from '@shared/ui/Icon';
 import { setupDocumentChoice } from '@widget/MainView/setupDocumentChoice';
 import { setupDocumentRemove } from '@widget/MainView/setupDocumentRemove';
 import { setupFolderChoice } from '@widget/MainView/setupFolderChoice';
-import { vMdTooltip } from '@shared/ui/Tooltips';
+import { ref } from 'vue';
 
 const { folderContents } = setupFolderChoice();
 
 const { onClickFolderDocument } = setupDocumentChoice();
 
 const { onClickRemove } = setupDocumentRemove();
+
+const isShowCreateDocument = ref(false);
+
+const onClickCreateDocument = () => {
+  isShowCreateDocument.value = true;
+};
 </script>
 
 <template>
@@ -44,13 +50,13 @@ const { onClickRemove } = setupDocumentRemove();
     </MenuFolder>
 
     <MDFabContainer class="document-explorer-widget__fab-container">
-      <MDFab v-md-tooltip="'Create folder'" size="small">
+      <MDFab tooltip="Create folder" size="small">
         <template #icon>
           <MDSymbol name="create_new_folder" />
         </template>
       </MDFab>
 
-      <MDFab v-md-tooltip="'Create document'">
+      <MDFab tooltip="Create document" @click="onClickCreateDocument">
         <template #icon>
           <MDSymbol name="edit_document" />
         </template>
@@ -59,7 +65,7 @@ const { onClickRemove } = setupDocumentRemove();
   </div>
 </template>
 
-<style lang="scss" scoped>
+<style scoped>
 .document-explorer-widget {
   position: relative;
   flex: 1 0;

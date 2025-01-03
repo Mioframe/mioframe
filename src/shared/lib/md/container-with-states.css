@@ -1,0 +1,130 @@
+/* .ripple, */
+.md-state.md-state_press::after,
+.md-state.md-state_pressed::after,
+.md-state.md-state_unpressed::after {
+    content: "";
+    display: block;
+    position: absolute;
+    width: var(--md-ripple-size, max(100vw, 100vh));
+    height: var(--md-ripple-size, max(100vw, 100vh));
+    padding: calc(var(--md-ripple-size, max(100vw, 100vh)) * 0.1);
+    box-sizing: content-box;
+    border-radius: 50%;
+    top: var(--md-ripple-y, 50%);
+    left: var(--md-ripple-x, 50%);
+    background: radial-gradient(var(--md-ripple-color,
+                rgb(from var(--md-content-color) r g b / var(--md-sys-state-pressed-state-layer-opacity, 10%))) 65%,
+            transparent 71%);
+    transform: translate(-50%, -50%) scale(0);
+    pointer-events: none;
+    transition: animation-duration 0.1s;
+}
+
+.md {
+    &-state {
+        background-color: var(--md-container-color);
+        color: var(--md-content-color);
+        position: relative;
+        overflow: hidden;
+        transition-property: box-shadow;
+        transition-duration: var(--md-sys-motion-duration-short4);
+
+        &::before {
+            content: "";
+            pointer-events: none;
+            display: block;
+            width: 100%;
+            height: 100%;
+            background-color: transparent;
+            position: absolute;
+            top: 0;
+            left: 0;
+            transition-property: background-color;
+            transition-duration: var(--md-sys-motion-duration-short4);
+        }
+
+        &:hover,
+        &.md-state_hover {
+            &::before {
+                background-color: rgba(from var(--md-content-color) r g b / var(--md-sys-state-hover-state-layer-opacity, 8%));
+            }
+        }
+
+        &:focus-visible,
+        &.md-state_focused {
+            outline-style: solid;
+            outline-color: var(--md-sys-color-secondary);
+            outline-width: var(--md-sys-state-focus-indicator-thickness);
+            outline-offset: var(--md-sys-state-focus-indicator-outer-offset);
+
+            &::before {
+                background-color: rgba(from var(--md-content-color) r g b / var(--md-sys-state-focus-state-layer-opacity, 10%));
+            }
+        }
+
+        &.md-state_drag {
+            &::before {
+                background-color: rgba(from var(--md-content-color) r g b / 16%);
+            }
+        }
+
+        &:disabled,
+        &.md-state_disabled {
+            pointer-events: none;
+        }
+
+        &.md-state_press {
+            position: relative;
+            overflow: hidden;
+
+            &::after {
+                transform: translate(-50%, -50%) scale(1);
+                opacity: 1;
+                animation-duration: var(--md-sys-motion-duration-extra-long4) !important;
+            }
+        }
+
+        &.md-state_pressed {
+            position: relative;
+            overflow: hidden;
+
+            &::after {
+                animation-duration: var(--md-sys-motion-duration-short4, 0.2s);
+                animation-fill-mode: forwards;
+                animation-name: md-state-pressed;
+            }
+        }
+
+        &.md-state_unpressed {
+            position: relative;
+            overflow: hidden;
+
+            &::after {
+                animation-duration: var(--md-sys-motion-duration-short4, 0.2s);
+                animation-fill-mode: forwards;
+                animation-name: md-state-unpressed;
+            }
+        }
+    }
+}
+
+@keyframes md-state-pressed {
+    0% {
+        transform: translate(-50%, -50%) scale(0);
+    }
+
+    100% {
+        transform: translate(-50%, -50%) scale(1);
+    }
+}
+
+@keyframes md-state-unpressed {
+    0% {
+        transform: translate(-50%, -50%) scale(1);
+    }
+
+    100% {
+        opacity: 0;
+        transform: translate(-50%, -50%) scale(1);
+    }
+}

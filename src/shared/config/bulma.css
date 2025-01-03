@@ -1,13 +1,4 @@
-@use "bulma/sass/utilities";
-@use "bulma/sass/themes";
-@use "bulma/sass/base";
-@use "bulma/sass/elements";
-@use "bulma/sass/form";
-@use "bulma/sass/components";
-@use "bulma/sass/grid";
-@use "bulma/sass/layout";
-@use "bulma/sass/base/skeleton";
-@use "bulma/sass/helpers";
+@import "bulma/css/bulma.css";
 
 :root {
   --bulma-body-overflow-y: auto;
@@ -34,7 +25,6 @@
   --bulma-scheme-s: 50%;
   --bulma-light-l: 22%;
   --bulma-dark-l: 17%;
-
 }
 
 .block-spacing {
@@ -49,17 +39,15 @@
 
 .radio,
 .checkbox {
-
   input {
 
-    &[type=checkbox],
-    &[type=radio] {
+    &[type="checkbox"],
+    &[type="radio"] {
       height: 1lh;
       width: 1lh;
       vertical-align: middle;
     }
   }
-
 }
 
 .is-fullwidth {

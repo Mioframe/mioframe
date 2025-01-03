@@ -63,7 +63,7 @@ const unmountDirectory = (entry: LocalDirectoryRef) => {
   </div>
 </template>
 
-<style lang="scss" scoped>
+<style scoped>
 hr {
   --bulma-hr-margin: 0.75em 0;
 }

@@ -52,7 +52,7 @@ onBeforeUnmount(() => {
   </Teleport>
 </template>
 
-<style lang="scss" scoped>
+<style scoped>
 .popover {
   position: fixed;
   z-index: 1;
