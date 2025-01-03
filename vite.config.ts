@@ -6,6 +6,12 @@ import { sentryVitePlugin } from '@sentry/vite-plugin';
 import { VitePWA } from 'vite-plugin-pwa';
 import { fileURLToPath, URL } from 'node:url';
 import { dependencies, devDependencies } from './package.json';
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment -- missing types
+// @ts-expect-error
+import initial from 'postcss-initial';
+import atImport from 'postcss-import';
+import presetEnv from 'postcss-preset-env';
+import nested from 'postcss-nested';
 
 // https://vitejs.dev/config/
 export default defineConfig({
@@ -48,6 +54,11 @@ export default defineConfig({
           }
         },
       },
+    },
+  },
+  css: {
+    postcss: {
+      plugins: [atImport, nested, initial, presetEnv],
     },
   },
 });

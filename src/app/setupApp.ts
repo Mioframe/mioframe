@@ -1,6 +1,6 @@
 import { createApp } from 'vue';
 import '@fortawesome/fontawesome-free/css/all.css';
-import './styles/styles.scss';
+import './styles/styles.css';
 import MainApp from './MainApp.vue';
 import { setupSentry } from './setupSentry';
 import { createPinia } from 'pinia';

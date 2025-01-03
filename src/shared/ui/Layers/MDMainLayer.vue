@@ -19,15 +19,14 @@ defineSlots<{
   </main>
 </template>
 
-<style lang="scss" scoped>
-@use '../../lib/md';
+<style scoped>
 
 .layer {
   flex-grow: 1;
   display: flex;
   flex-direction: column-reverse;
-  padding-left: md.dp(16);
-  padding-right: md.dp(16);
+  padding-left: 16px;
+  padding-right: 16px;
 
   &__navigation {
     flex-grow: 1;

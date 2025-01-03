@@ -135,7 +135,7 @@ const view = computed((): View => {
   </ModalCard>
 </template>
 
-<style lang="scss">
+<style>
 .button.is-decorationless {
   --bulma-button-text-decoration: none;
 }

@@ -20,7 +20,7 @@ defineSlots<{
   </div>
 </template>
 
-<style lang="scss" scoped>
+<style scoped>
 .md-pane {
   &_fixed {
   }

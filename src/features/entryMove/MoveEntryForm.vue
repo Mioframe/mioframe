@@ -97,7 +97,7 @@ const onClickTargetDirectory = () => {
   </FormLayout>
 </template>
 
-<style lang="scss" scoped>
+<style scoped>
 .move-form {
   max-height: 100%;
 }

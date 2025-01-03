@@ -1,5 +1,5 @@
-@use "../../shared/lib/md";
-@use "../../shared/config/bulma.scss";
+@import "../../shared/lib/md/index.css";
+@import "../../shared/config/bulma.css";
 
 html,
 body,

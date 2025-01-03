@@ -144,7 +144,7 @@ const hasSubList = computed(() => 'list' in props.item);
   </li>
 </template>
 
-<style lang="scss" scoped>
+<style scoped>
 .button {
   width: auto;
 }

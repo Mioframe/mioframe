@@ -1,10 +1,11 @@
-import './_container-with-states.scss';
+import './container-with-states.css';
 import type { Directive } from 'vue';
 
 const STATE = {
   press: 'md-state_press',
   pressed: 'md-state_pressed',
   unPressed: 'md-state_unpressed',
+  main: 'md-state',
 } as const;
 
 const startAnimationPressed = (el: HTMLElement) => {
@@ -109,6 +110,7 @@ const onKeyup = ({ key, currentTarget }: KeyboardEvent) => {
 export const vPressedState: Directive = {
   mounted: (el) => {
     if (el instanceof HTMLElement) {
+      el.classList.add(STATE.main);
       el.addEventListener('mousedown', onPress);
       el.addEventListener('keydown', onKeydown);
       el.addEventListener('mouseleave', onUnpressed);

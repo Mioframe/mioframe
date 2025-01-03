@@ -35,7 +35,7 @@ onBeforeUnmount(() => {
   </PopOver>
 </template>
 
-<style lang="scss" scoped>
+<style scoped>
 .dropdown {
   z-index: 10;
 }

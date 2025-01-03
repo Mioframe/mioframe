@@ -4,14 +4,12 @@
   </div>
 </template>
 
-<style lang="scss" scoped>
-@use '../../lib/md';
-
+<style scoped>
 .md-fab-container {
   display: flex;
   flex-direction: column;
   pointer-events: none;
-  padding-bottom: md.dp(16);
+  padding-bottom: 16px;
   align-items: center;
 
   :deep() {
@@ -20,10 +18,10 @@
     }
 
     > .md-fab {
-      margin-top: md.dp(16);
+      margin-top: 16px;
 
       &:not(.md-fab_small) {
-        margin-top: md.dp(24);
+        margin-top: 24px;
       }
     }
   }

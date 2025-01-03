@@ -59,7 +59,7 @@ const getColorClass = (color?: COLOR) => {
   </SlideYUpTransition>
 </template>
 
-<style lang="scss" scoped>
+<style scoped>
 .notification-list {
   position: fixed;
   pointer-events: none;
