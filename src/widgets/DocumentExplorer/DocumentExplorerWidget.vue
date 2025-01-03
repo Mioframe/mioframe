@@ -1,13 +1,14 @@
 <script setup lang="ts">
 import { MenuFolder } from '@entity/folder';
+import { DocumentCreationDialog } from '@feature/documentCreate';
 import { MDFab, MDFabContainer } from '@shared/ui/Button';
 import { MDSymbol } from '@shared/ui/Icon';
 import { setupDocumentChoice } from '@widget/MainView/setupDocumentChoice';
 import { setupDocumentRemove } from '@widget/MainView/setupDocumentRemove';
 import { setupFolderChoice } from '@widget/MainView/setupFolderChoice';
-import { ref } from 'vue';
+import { computed, ref } from 'vue';
 
-const { folderContents } = setupFolderChoice();
+const { folderContents, selectedDocumentFolder } = setupFolderChoice();
 
 const { onClickFolderDocument } = setupDocumentChoice();
 
@@ -15,8 +16,12 @@ const { onClickRemove } = setupDocumentRemove();
 
 const isShowCreateDocument = ref(false);
 
+const currentFolder = computed(() => selectedDocumentFolder.value);
+
 const onClickCreateDocument = () => {
-  isShowCreateDocument.value = true;
+  if (currentFolder.value) {
+    isShowCreateDocument.value = true;
+  }
 };
 </script>
 
@@ -62,6 +67,13 @@ const onClickCreateDocument = () => {
         </template>
       </MDFab>
     </MDFabContainer>
+
+    <DocumentCreationDialog
+      v-if="isShowCreateDocument && currentFolder"
+      :folder="currentFolder"
+      @cancel="isShowCreateDocument = false"
+      @create="isShowCreateDocument = false"
+    />
   </div>
 </template>
 
