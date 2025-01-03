@@ -129,7 +129,7 @@ const stateValue = ref<unknown>();
   </PopOver>
 </template>
 
-<style lang="scss" scoped>
+<style scoped>
 .value-widget-inline {
   &._editable {
     cursor: pointer;

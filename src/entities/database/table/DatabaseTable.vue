@@ -53,7 +53,7 @@ const slots = defineSlots<{
   </table>
 </template>
 
-<style lang="scss" scoped>
+<style scoped>
 .table {
   height: 100%;
 

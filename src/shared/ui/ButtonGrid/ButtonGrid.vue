@@ -2,4 +2,4 @@
   <div class="button-grid"><slot /></div>
 </template>
 
-<style lang="scss" src="./index.scss"></style>
+<style src="./index.scss"></style>

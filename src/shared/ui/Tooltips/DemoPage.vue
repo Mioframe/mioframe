@@ -8,7 +8,7 @@ import MDPlainTooltip from './MDPlainTooltip.vue';
   </div>
 </template>
 
-<style lang="scss" scoped>
+<style scoped>
 .grid {
   display: flex;
   flex-wrap: wrap;

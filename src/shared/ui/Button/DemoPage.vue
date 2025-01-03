@@ -37,16 +37,16 @@ const fabTypes = ['primary', 'branded', 'secondary', 'tertiary'] as const;
     </div>
 
     <MDFabContainer v-for="type in fabTypes" :key="`fabTypes${type}`">
-      <MDFab size="small" :type />
+      <MDFab tooltip="small" size="small" :type />
 
-      <MDFab :type />
+      <MDFab tooltip="default" :type />
 
-      <MDFab size="large" :type />
+      <MDFab tooltip="large" size="large" :type />
     </MDFabContainer>
   </div>
 </template>
 
-<style lang="scss" scoped>
+<style scoped>
 .grid {
   display: flex;
   flex-wrap: wrap;

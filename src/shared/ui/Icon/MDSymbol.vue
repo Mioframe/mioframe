@@ -23,7 +23,7 @@ watchEffect(() => {
   <i class="md-symbol" :class="[classSymbol]">{{ name }} </i>
 </template>
 
-<style lang="scss" scoped>
+<style scoped>
 .md-symbol {
   --md-symbol-fill: 0;
   --md-symbol-wght: 400;

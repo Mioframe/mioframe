@@ -41,26 +41,23 @@ const buttonType = toRef(() => props.type ?? 'outlined');
   </button>
 </template>
 
-<style lang="scss" scoped>
-@use '../../lib/md';
-
+<style scoped>
 .md-button {
-  @include md.md-state;
   transition-property: box-shadow, color, background-color, padding;
   transition-duration: var(--md-sys-motion-duration-short4, 0.2s);
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: md.dp(20);
-  height: md.dp(40);
-  padding-left: md.dp(25);
-  padding-right: md.dp(25);
+  border-radius: 20px;
+  height: 40px;
+  padding-left: 25px;
+  padding-right: 25px;
   font-family: var(--md-sys-typescale-label-large-font);
   line-height: var(--md-sys-typescale-label-large-line-height);
   font-size: var(--md-sys-typescale-label-large-size);
   font-weight: var(--md-sys-typescale-label-large-weight);
   letter-spacing: var(--md-sys-typescale-label-large-tracking);
-  --md-button-icon-size: md.dp(18);
+  --md-button-icon-size: 18px;
 
   &__icon {
     display: inline-flex;
@@ -76,26 +73,26 @@ const buttonType = toRef(() => props.type ?? 'outlined');
   }
 
   &_icon {
-    padding-left: md.dp(16);
-    gap: md.dp(8);
+    padding-left: 16px;
+    gap: 8px;
   }
 
   &_elevated {
     --md-container-color: var(--md-sys-color-surface-container-low);
     --md-content-color: var(--md-sys-color-primary);
-    @include md.elevateToShadow(1);
+    box-shadow: var(--md-sys-elevation-level1);
 
     &:disabled {
       --md-container-color: rgb(
         from var(--md-sys-color-on-surface) r g b / 0.12
       );
       --md-content-color: rgb(from var(--md-sys-color-on-surface) r g b / 0.38);
-      @include md.elevateToShadow(0);
+      box-shadow: var(--md-sys-elevation-level0);
     }
 
     &:hover {
       --md-content-color: var(--md-sys-color-primary);
-      @include md.elevateToShadow(2);
+      box-shadow: var(--md-sys-elevation-level2);
     }
 
     &:focus-visible,
@@ -107,7 +104,7 @@ const buttonType = toRef(() => props.type ?? 'outlined');
     --md-container-color: var(--md-sys-color-primary);
     --md-content-color: var(--md-sys-color-on-primary);
     --md-button-icon-color: var(--md-sys-color-on-primary);
-    @include md.elevateToShadow(0);
+    box-shadow: var(--md-sys-elevation-level0);
 
     &:disabled {
       --md-container-color: rgb(
@@ -122,14 +119,14 @@ const buttonType = toRef(() => props.type ?? 'outlined');
     &:hover {
       --md-content-color: var(--md-sys-color-on-primary);
       --md-button-icon-color: var(--md-sys-color-on-primary);
-      @include md.elevateToShadow(1);
+      box-shadow: var(--md-sys-elevation-level1);
     }
 
     &:focus-visible,
     &.md-button_focused {
       --md-content-color: var(--md-sys-color-on-primary);
       --md-button-icon-color: var(--md-sys-color-on-primary);
-      @include md.elevateToShadow(0);
+      box-shadow: var(--md-sys-elevation-level0);
     }
   }
 
@@ -137,7 +134,7 @@ const buttonType = toRef(() => props.type ?? 'outlined');
     --md-container-color: var(--md-sys-color-secondary-container);
     --md-content-color: var(--md-sys-color-on-secondary-container);
     --md-button-icon-color: var(--md-sys-color-on-secondary-container);
-    @include md.elevateToShadow(0);
+    box-shadow: var(--md-sys-elevation-level0);
 
     &:disabled {
       --md-container-color: rgb(
@@ -152,12 +149,12 @@ const buttonType = toRef(() => props.type ?? 'outlined');
     &:hover {
       --md-content-color: var(--md-sys-color-on-secondary-container);
       --md-button-icon-color: var(--md-sys-color-on-secondary-container);
-      @include md.elevateToShadow(1);
+      box-shadow: var(--md-sys-elevation-level1);
     }
 
     &:focus-visible,
     &.md-button_focused {
-      @include md.elevateToShadow(0);
+      box-shadow: var(--md-sys-elevation-level0);
       --md-content-color: var(--md-sys-color-on-secondary-container);
       --md-button-icon-color: var(--md-sys-color-on-secondary-container);
     }
@@ -166,11 +163,11 @@ const buttonType = toRef(() => props.type ?? 'outlined');
   &_outlined {
     border-style: solid;
     border-color: var(--md-sys-color-outline);
-    border-width: md.dp(1);
+    border-width: 1px;
     box-sizing: border-box;
     --md-content-color: var(--md-sys-color-primary);
-    @include md.elevateToShadow(0);
     --md-button-icon-color: var(--md-sys-color-primary);
+    box-shadow: var(--md-sys-elevation-level0);
 
     &:disabled {
       --md-content-color: rgb(from var(--md-sys-color-on-surface) r g b / 0.38);
@@ -196,12 +193,12 @@ const buttonType = toRef(() => props.type ?? 'outlined');
   &_text {
     --md-content-color: var(--md-sys-color-primary);
     --md-button-icon-color: var(--md-sys-color-primary);
-    padding-left: md.dp(12);
-    padding-right: md.dp(12);
-    @include md.elevateToShadow(0);
+    padding-left: 12px;
+    padding-right: 12px;
+    box-shadow: var(--md-sys-elevation-level0);
 
     &.md-button_icon {
-      padding-right: md.dp(16);
+      padding-right: 16px;
     }
 
     &:disabled {

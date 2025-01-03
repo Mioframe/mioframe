@@ -1,0 +1,4 @@
+@custom-media --md-window-medium (min-width: 600px);
+@custom-media --md-window-expanded (min-width: 840px);
+@custom-media --md-window-large (min-width: 1200px);
+@custom-media --md-window-extra-large (min-width: 1600px);
