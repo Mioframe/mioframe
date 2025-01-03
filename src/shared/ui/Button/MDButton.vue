@@ -15,6 +15,10 @@ defineSlots<{
   icon(): unknown;
 }>();
 
+defineEmits<{
+  click: [event: MouseEvent];
+}>();
+
 const buttonType = toRef(() => props.type ?? 'outlined');
 </script>
 
@@ -32,6 +36,7 @@ const buttonType = toRef(() => props.type ?? 'outlined');
         'md-button_icon': !!$slots.icon,
       },
     ]"
+    @click="$emit('click', $event)"
   >
     <span v-if="!!$slots.icon" class="md-button__icon"
       ><slot name="icon"
