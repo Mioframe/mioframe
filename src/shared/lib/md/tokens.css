@@ -39,7 +39,7 @@
   --md-ref-palette-neutral10: #1d1b20;
   --md-ref-palette-neutral17: #2b2930;
   --md-ref-palette-neutral20: #322f35;
-  --md-ref-palette-neutral22: red;
+  --md-ref-palette-neutral22: #36343b;
   --md-ref-palette-neutral87: #ded8e1;
   --md-ref-palette-neutral90: #e6e0e9;
   --md-ref-palette-neutral92: #ece6f0;
@@ -69,6 +69,7 @@
   --md-sys-shape-corner-large: 16px;
   --md-sys-shape-corner-extra-large: 28px;
   --md-sys-shape-corner-extra-small: 4px;
+  --md-sys-shape-corner-extra-small-top: 4px 4px 0 0;
 
   /* md.sys.color */
   /* primary */
@@ -293,6 +294,13 @@
   --md-sys-typescale-body-medium-size: 14pt;
   --md-sys-typescale-body-medium-weight: var(--md-ref-typeface-weight-regular);
   --md-sys-typescale-body-medium-tracking: 0.25pt;
+
+  /* md.sys.typescale.body-large */
+  --md-sys-typescale-body-large-font: var(--md-ref-typeface-plain);
+  --md-sys-typescale-body-large-line-height: 24pt;
+  --md-sys-typescale-body-large-size: 16pt;
+  --md-sys-typescale-body-large-weight: var(--md-ref-typeface-weight-regular);
+  --md-sys-typescale-body-large-tracking: 0.5pt;
 
   /* md.sys.typescale.headline-small */
   --md-sys-typescale-headline-small-font: var(--md-ref-typeface-brand);
