@@ -28,6 +28,10 @@ if (import.meta.env.DEV) {
         path: 'tooltips',
         component: () => import('@shared/ui/Tooltips/DemoPage.vue'),
       },
+      {
+        path: 'text-field',
+        component: () => import('@shared/ui/TextField/DemoPage.vue'),
+      },
     ],
   });
 }

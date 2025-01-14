@@ -4,10 +4,10 @@
 html,
 body,
 #app {
-    height: 100dvh;
-    width: 100vw;
-    display: flex;
-    flex-direction: column;
-    overflow: auto;
-    transition: background 1s;
+  height: 100dvh;
+  width: 100vw;
+  display: flex;
+  flex-direction: column;
+  overflow: auto;
+  transition: background 1s;
 }

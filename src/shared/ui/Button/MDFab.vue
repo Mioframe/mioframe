@@ -55,6 +55,7 @@ const typeClass = computed(() => {
   --md-content-color: var(--md-fab-icon-color);
   width: 56px;
   height: 56px;
+  border: 0;
   border-radius: var(--md-fab-container-shape);
   box-shadow: var(--md-sys-elevation-level3);
 
