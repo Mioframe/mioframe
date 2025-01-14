@@ -53,6 +53,7 @@ const buttonType = toRef(() => props.type ?? 'outlined');
   display: flex;
   align-items: center;
   justify-content: center;
+  border: 0;
   border-radius: 20px;
   height: 40px;
   padding-left: 25px;

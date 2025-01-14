@@ -19,8 +19,7 @@ export const setupApp = () => {
     setupSentry(app, SENTRY_DSN);
   }
 
-  const head = createHead();
-  app.use(head);
+  app.use(createHead());
 
   app.use(router);
 

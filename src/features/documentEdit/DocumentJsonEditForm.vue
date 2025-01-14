@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { JSONEditor } from 'vanilla-jsoneditor';
+import { createJSONEditor, type JsonEditor } from 'vanilla-jsoneditor';
 import { computed, ref, shallowRef, toRef, watch, watchEffect } from 'vue';
 import type { ReactiveCFRDocument } from '../../entities/document/createReactiveCFRDocument';
 import { cloneDeep } from 'lodash-es';
@@ -17,7 +17,7 @@ const reactiveCFRDocument = toRef(() => props.reactiveCfrDocument);
 
 const mainElement = ref<HTMLElement>();
 
-const editor = shallowRef<JSONEditor>();
+const editor = shallowRef<JsonEditor>();
 
 const onChangeJSON = (value: unknown) => {
   debug('onChangeJSON', value);
@@ -58,11 +58,11 @@ watch(
       await editor.value.destroy();
     }
     if (target) {
-      editor.value = new JSONEditor({
+      editor.value = createJSONEditor({
         target,
         props: {
           content: { json: null },
-          onChange: (updatedContent) => {
+          onChange: (updatedContent: { json: unknown } | { text: string }) => {
             debug('onChange', updatedContent);
 
             const contentJson: unknown =

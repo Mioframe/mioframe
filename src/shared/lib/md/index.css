@@ -1,2 +1,6 @@
 @import "./tokens.css";
 @import "./container-with-states.css";
+
+:root {
+  --one-pt: 1px;
+}
