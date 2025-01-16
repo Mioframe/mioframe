@@ -32,6 +32,10 @@ if (import.meta.env.DEV) {
         path: 'text-field',
         component: () => import('@shared/ui/TextField/DemoPage.vue'),
       },
+      {
+        path: 'progress-indicators',
+        component: () => import('@shared/ui/ProgressIndicators/DemoPage.vue'),
+      },
     ],
   });
 }
