@@ -2,11 +2,13 @@
 import { computed } from 'vue';
 import { vPressedState } from '@shared/lib/md/stateHelper';
 import { vMdTooltip } from '../Tooltips';
+import { MDCircularProgressIndicator } from '../ProgressIndicators';
 
 const props = defineProps<{
   size?: 'small' | 'large';
   type?: 'primary' | 'branded' | 'secondary' | 'surface' | 'tertiary';
   tooltip: string;
+  loading?: number | boolean;
 }>();
 
 defineSlots<{
@@ -30,13 +32,15 @@ const typeClass = computed(() => {
   <button
     v-pressed-state
     v-md-tooltip="tooltip"
-    class="md-fab"
+    class="md-fab md-state"
     :class="[sizeClass, typeClass]"
     type="button"
     @click="$emit('click', $event)"
   >
     <span class="md-fab__icon">
-      <slot name="icon">
+      <MDCircularProgressIndicator v-if="loading" />
+
+      <slot v-else name="icon">
         <div class="empty-icon" />
       </slot>
     </span>

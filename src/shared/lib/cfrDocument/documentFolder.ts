@@ -61,7 +61,7 @@ export const createDocumentFolder = (
     );
   }
 
-  const create = <Z extends typeof zodDocumentContent>(
+  const createDocument = <Z extends typeof zodDocumentContent>(
     initialValue: TypeOf<Z>,
   ) => {
     debug('create', initialValue);
@@ -94,14 +94,21 @@ export const createDocumentFolder = (
     repo.delete(documentId);
   };
 
+  const createFolder = async (name: string): Promise<DocumentFolder> => {
+    const newDirectory = await directory.createDirectory(name);
+
+    return createDocumentFolder(newDirectory);
+  };
+
   const folder: DocumentFolder = {
-    create,
+    createDocument,
     onChange,
     offChange,
     remove,
     get children() {
       return createChildrenContentIterable();
     },
+    createFolder,
   };
 
   return folder;

@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { vPressedState } from '@shared/lib/md/stateHelper';
 import { toRef } from 'vue';
+import { MDCircularProgressIndicator } from '../ProgressIndicators';
+import { isNumber } from 'lodash-es';
 
 const props = defineProps<{
   formAction?: 'submit' | 'reset';
@@ -9,6 +11,7 @@ const props = defineProps<{
   disabled?: boolean;
   pressed?: boolean;
   focused?: boolean;
+  loading?: number | boolean;
 }>();
 
 defineSlots<{
@@ -27,27 +30,35 @@ const buttonType = toRef(() => props.type ?? 'outlined');
     v-pressed-state
     :disabled="disabled"
     :type="formAction ?? 'button'"
-    class="md-button"
+    class="md-button md-state"
     :class="[
       `md-button_${buttonType}`,
       {
         'md-button_pressed': pressed,
         'md-button_focused': focused,
         'md-button_icon': !!$slots.icon,
+        'md-button_loading': loading,
       },
     ]"
     @click="$emit('click', $event)"
   >
-    <span v-if="!!$slots.icon" class="md-button__icon"
-      ><slot name="icon"
-    /></span>
+    <span v-if="!!$slots.icon" class="md-button__icon">
+      <slot name="icon" />
+    </span>
 
     <span v-if="label" class="md-button__label-text">{{ label }}</span>
+
+    <MDCircularProgressIndicator
+      v-if="loading"
+      class="md-button__progress-indicator"
+      :progress="isNumber(loading) ? loading : undefined"
+    />
   </button>
 </template>
 
 <style scoped>
 .md-button {
+  /* position: relative; */
   transition-property: box-shadow, color, background-color, padding;
   transition-duration: var(--md-sys-motion-duration-short4, 0.2s);
   display: flex;
@@ -72,10 +83,28 @@ const buttonType = toRef(() => props.type ?? 'outlined');
     width: var(--md-button-icon-size, 1lh);
     height: var(--md-button-icon-size, 1lh);
     color: var(--md-button-icon-color, inherit);
+    transition-property: opacity;
+    transition-duration: var(--md-sys-motion-duration-short4, 0.2s);
+
+    .md-button_loading & {
+      opacity: 0;
+    }
   }
 
   &__label-text {
     white-space: nowrap;
+    transition-property: opacity;
+    transition-duration: var(--md-sys-motion-duration-short4, 0.2s);
+
+    .md-button_loading & {
+      opacity: 0;
+    }
+  }
+
+  &__progress-indicator {
+    position: absolute;
+    width: 24px;
+    height: 24px;
   }
 
   &_icon {

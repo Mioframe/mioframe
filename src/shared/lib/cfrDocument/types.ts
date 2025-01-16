@@ -42,9 +42,10 @@ export interface CFRDocument {
 
 export interface DocumentFolder
   extends ItemWithChildren<DocumentId, CFRDocument> {
-  create: <Z extends typeof zodDocumentContent>(
+  createDocument: <Z extends typeof zodDocumentContent>(
     initialValue: TypeOf<Z>,
   ) => CFRDocument;
+  createFolder: (name: string) => Promise<DocumentFolder>;
   remove: (documentId: DocumentId) => void;
   onChange: (
     handler: (content: IterableCollection<DocumentId, CFRDocument>) => unknown,
@@ -54,4 +55,6 @@ export interface DocumentFolder
   ) => unknown;
 }
 
-export interface DirectoryForDocumentFolder extends DirectoryForAdapter {}
+export interface DirectoryForDocumentFolder extends DirectoryForAdapter {
+  createDirectory: (name: string) => Promise<DirectoryForDocumentFolder>;
+}
