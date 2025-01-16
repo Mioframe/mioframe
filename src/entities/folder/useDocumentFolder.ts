@@ -46,7 +46,7 @@ export const useDocumentFolder = (
 
   const createDocument = <Z extends typeof zodDocumentContent>(
     initialValue: TypeOf<Z>,
-  ) => documentFolderRef.value?.create(initialValue);
+  ) => documentFolderRef.value?.createDocument(initialValue);
 
   tryOnScopeDispose(() => {
     documentFolderRef.value?.offChange(onChangeFolder);

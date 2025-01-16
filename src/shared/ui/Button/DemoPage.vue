@@ -34,6 +34,8 @@ const fabTypes = ['primary', 'branded', 'secondary', 'tertiary'] as const;
       <MDButton :type :label="`${type} icon`">
         <template #icon> <i class="fa-solid fa-star" /> </template>
       </MDButton>
+
+      <MDButton :type label="loading" loading />
     </div>
 
     <MDFabContainer v-for="type in fabTypes" :key="`fabTypes${type}`">
@@ -42,6 +44,10 @@ const fabTypes = ['primary', 'branded', 'secondary', 'tertiary'] as const;
       <MDFab tooltip="default" :type />
 
       <MDFab tooltip="large" size="large" :type />
+
+      <MDFab tooltip="small loading" size="small" :type loading />
+
+      <MDFab tooltip="loading" size="large" :type loading />
     </MDFabContainer>
   </div>
 </template>

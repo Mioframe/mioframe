@@ -20,7 +20,7 @@ const onCreate = () => {
     throw new Error('name is undefined');
   }
 
-  props.folder.create({
+  props.folder.createDocument({
     name: stateName.value,
     type: documentType.value,
     version: 1,

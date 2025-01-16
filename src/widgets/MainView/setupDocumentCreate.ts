@@ -19,7 +19,7 @@ export const setupDocumentCreate = (
   const onCreateDocument = (documentContent: DocumentContent) => {
     const folder = toValue(documentFolder);
     if (folder) {
-      folder.create(documentContent);
+      folder.createDocument(documentContent);
       isDisplayedDocumentCreationForm.value = false;
     }
   };

@@ -35,4 +35,7 @@
   "eslint.useFlatConfig": true,
   "cSpell.language": "en, ru",
   "vue.server.hybridMode": true,
+  "vue.inlayHints.destructuredProps": true,
+  "vue.inlayHints.inlineHandlerLeading": true,
+  "vue.inlayHints.missingProps": true,
 }
