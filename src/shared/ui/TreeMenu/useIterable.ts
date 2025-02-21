@@ -1,22 +1,23 @@
-import { createLogger } from '@shared/lib/logger';
 import { from } from 'ix/asynciterable';
 import { filter, takeWhile } from 'ix/asynciterable/operators';
 import { isFunction, isNil, isObject } from 'lodash-es';
 import type { Ref } from 'vue';
-import { computed, ref, toRef, watch, watchEffect } from 'vue';
+import { computed, ref, toRef, watch } from 'vue';
 
-const { debug, debugRef } = createLogger('useIterable');
+export type Collection<T> = AsyncIterable<T> | Iterable<T>;
 
-export type IterableCollection<
-  Key extends string | number,
-  Value,
-> = AnyIterableInput<[Key, Value]>;
+export type Dictionary<K, V> = Collection<[K, V]>;
 
-export type AnyIterableInput<T> = AsyncIterable<T> | Iterable<T>;
-// | (() => AsyncIterableInput<T>);
+export interface ItemWithChildren1<K extends string | number, T> {
+  children: Collection<[K, T]>;
+}
 
-export interface ItemWithChildren<K extends string | number, T> {
-  children: IterableCollection<K, T>;
+export interface ItemWithChildren2<V extends [string | number, unknown]> {
+  children: Collection<V>;
+}
+
+export interface ItemWithChildren<T extends [string | number, unknown]> {
+  children: Collection<T>;
 }
 
 const hasIterator = <T>(v: unknown): v is Iterable<T> =>
@@ -31,28 +32,25 @@ const hasAsyncIterator = <T>(v: unknown): v is AsyncIterable<T> =>
 
 export const isItemWithChildren = <
   V,
-  K extends string | number = string | number,
-  T = unknown,
+  T extends [string | number, unknown] = [string | number, unknown],
 >(
   v: V,
-): v is V & ItemWithChildren<K, T> =>
+): v is V & ItemWithChildren<T> =>
   isObject(v) &&
   'children' in v &&
   (isFunction(v.children) ||
     (isObject(v.children) &&
       (hasIterator(v.children) || hasAsyncIterator(v.children))));
 
-export const useIterable = <T>(
-  iterable: Ref<AnyIterableInput<T> | undefined>,
+export const useCollection = <T>(
+  collection: Ref<Collection<T> | undefined>,
   filterPredicate?: Ref<undefined | ((value: T, index: number) => boolean)>,
 ) => {
-  const stateIterable = <Ref<T[]>>ref<T[]>([]);
+  const stateCollection = <Ref<T[]>>ref<T[]>([]);
 
   const loading = ref(0);
 
-  const updateIterable = async (iterableValue: AnyIterableInput<T>) => {
-    debug('updateIterable', { iterableValue });
-
+  const updateCollection = async (iterableValue: Collection<T>) => {
     const source = isFunction(iterableValue) ? iterableValue() : iterableValue;
 
     const operations = [
@@ -64,14 +62,12 @@ export const useIterable = <T>(
       await from(source)
         .pipe(
           takeWhile(() => {
-            debug('takeWhile');
-            return iterableValue === iterable.value;
+            return iterableValue === collection.value;
           }),
           ...operations,
         )
         .forEach((value, index) => {
-          debug('forEach', value, index);
-          stateIterable.value.splice(index, 1, value);
+          stateCollection.value.splice(index, 1, value);
         });
     } finally {
       loading.value -= 1;
@@ -79,27 +75,22 @@ export const useIterable = <T>(
   };
 
   watch(
-    iterable,
+    collection,
     (iterableValue, old) => {
-      debug('iterable', iterableValue);
       if (iterableValue) {
         if (iterableValue !== old) {
-          stateIterable.value.length = 0;
+          stateCollection.value.length = 0;
         }
-        void updateIterable(iterableValue);
+        void updateCollection(iterableValue);
       } else {
-        stateIterable.value.length = 0;
+        stateCollection.value.length = 0;
       }
     },
     { immediate: true },
   );
 
-  watchEffect(() => {
-    debugRef('stateIterable', stateIterable);
-  });
-
   return {
-    collection: toRef(() => stateIterable.value),
+    collection: toRef(() => stateCollection.value),
     loading: computed(() => loading.value > 0),
   };
 };

@@ -1,15 +1,15 @@
 import { shallowRef, readonly } from 'vue';
 import {
   createLocalDirectory,
-  type LocalDirectory,
+  type RefLocalDirectory,
 } from '../../shared/lib/localFileSystem';
 
 export const usePickLocalDirectory = (
   mode: FileSystemPermissionMode = 'read',
 ) => {
-  const pickedLocalDirectory = shallowRef<LocalDirectory>();
+  const pickedLocalDirectory = shallowRef<RefLocalDirectory>();
 
-  const openLocalDirectoryPicker = async (): Promise<LocalDirectory> => {
+  const openLocalDirectoryPicker = async (): Promise<RefLocalDirectory> => {
     const fileSystemDirectoryHandle = await showDirectoryPicker({
       mode,
     });

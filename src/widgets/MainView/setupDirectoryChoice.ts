@@ -1,17 +1,15 @@
-import { useDocumentFolder } from '@entity/folder/useDocumentFolder';
 import { usePickLocalDirectory } from '@feature/localDirectoryPick';
 import { useOriginPrivateFSDirectory } from '@feature/originPrivateFileSystemPick';
-import type { DocumentFolder } from '@shared/lib/cfrDocument';
-import { createDocumentFolder } from '@shared/lib/cfrDocument';
-import { shallowRef } from 'vue';
+import type { RefDirectory } from '@shared/lib/refFileSystem';
+import { computed, shallowRef } from 'vue';
 
-export const setupFolderChoice = () => {
-  const selectedDocumentFolder = shallowRef<DocumentFolder>();
+export const setupDirectoryChoice = () => {
+  const selectedDirectory = shallowRef<RefDirectory>();
 
   const { openOriginPrivateFS } = useOriginPrivateFSDirectory();
 
   void openOriginPrivateFS().then((v) => {
-    selectedDocumentFolder.value = createDocumentFolder(v);
+    selectedDirectory.value = v;
   });
 
   const { openLocalDirectoryPicker, isSupport: isSupportLocalDirectory } =
@@ -20,16 +18,16 @@ export const setupFolderChoice = () => {
   const onClickSelectDirectory = async () => {
     const localDirectory = await openLocalDirectoryPicker();
 
-    selectedDocumentFolder.value = createDocumentFolder(localDirectory);
+    selectedDirectory.value = localDirectory;
   };
 
-  const { content: folderContents } = useDocumentFolder(selectedDocumentFolder);
+  const entries = computed(() => selectedDirectory.value?.entries);
 
   return {
-    selectedDocumentFolder,
+    selectedDirectory,
     openLocalDirectoryPicker,
     isSupportLocalDirectory,
     onClickSelectDirectory,
-    folderContents,
+    entries,
   };
 };

@@ -9,6 +9,7 @@
   display: flex;
   flex-direction: column;
   pointer-events: none;
+  background-color: transparent;
   padding-bottom: 16px;
   align-items: center;
 

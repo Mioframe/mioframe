@@ -3,7 +3,7 @@
   setup
   generic="
     Key extends string | number,
-    Item extends Partial<{} | ItemWithChildren<Key, Item>>
+    Item extends Partial<{} | ItemWithChildren<[Key, Item]>>
   "
 >
 import { computed, ref, watchEffect } from 'vue';
@@ -11,7 +11,7 @@ import { ContextMenu } from '../ContextMenu';
 import { onInteractionOutside } from '../../lib/onInteractionOutside';
 import type { MaybeElement } from '@vueuse/core';
 import { ButtonGroup } from '../ButtonGroup';
-import type { IterableCollection } from './useIterable';
+import type { Collection } from './useIterable';
 import { isItemWithChildren, type ItemWithChildren } from './useIterable';
 import TreeIterable from './TreeIterable.vue';
 import { UIButton } from '../Button';
@@ -32,9 +32,9 @@ const emit = defineEmits<{
 
 const stateOpened = ref<boolean>();
 
-const children = computed((): IterableCollection<Key, Item> | undefined => {
+const children = computed((): Collection<[Key, Item]> | undefined => {
   const item = props.item;
-  if (isItemWithChildren<typeof item, Key, Item>(item)) {
+  if (isItemWithChildren<typeof item, [Key, Item]>(item)) {
     return item.children;
   }
   return undefined;

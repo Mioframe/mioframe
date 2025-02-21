@@ -1,18 +1,25 @@
-import type { DeepReadonly, Reactive } from 'vue';
-import { type Ref, ref, watch, readonly, reactive, isRef } from 'vue';
-import type {
-  CFRDocument,
-  DocumentContent,
-} from '../../shared/lib/cfrDocument';
+import type { ComputedRef, DeepReadonly, Reactive } from 'vue';
+import {
+  type Ref,
+  ref,
+  watch,
+  readonly,
+  reactive,
+  isRef,
+  toValue,
+  computed,
+} from 'vue';
+import type { CFRDocument, DocumentContent } from '@shared/lib/cfrDocument';
 import type { MaybeRef } from '@vueuse/core';
-import { toValue, tryOnScopeDispose } from '@vueuse/core';
-import { createLogger } from '../../shared/lib/logger';
-import { replaceObject } from '../../shared/lib/changeObject';
+import { tryOnScopeDispose } from '@vueuse/core';
+import { createLogger } from '@shared/lib/logger';
+import { replaceObject } from '@shared/lib/changeObject';
 import { cloneDeep, throttle } from 'lodash-es';
 
 const { debug } = createLogger('reactiveCFRDocument');
 
 type ReadCFRDocument = {
+  name: ComputedRef<string>;
   doc: Ref<DeepReadonly<DocumentContent> | undefined>;
   change: (
     callback: (doc: DocumentContent) => unknown,
@@ -74,7 +81,10 @@ export const reactiveCFRDocument = <CFRDoc extends CFRDocument>(
     toValue(cfrDocument)?.off('change', updateRefDoc);
   });
 
+  const documentName = computed(() => documentState.value?.name ?? 'nameless');
+
   return reactive<ReadCFRDocument>({
+    name: documentName,
     doc: readonly(documentState),
     change: (
       callback: (doc: DocumentContent) => unknown,

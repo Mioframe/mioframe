@@ -1,5 +1,9 @@
-import type { ValueKeyIterateeTypeGuard } from 'lodash';
 import { pickBy as lodashPickBy } from 'lodash-es';
+
+type ValueKeyIterateeTypeGuard<T, S extends T> = (
+  value: T,
+  key: string,
+) => value is S;
 
 export const pickDictionaryBy = <
   K extends string | number | symbol,

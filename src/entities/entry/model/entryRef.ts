@@ -1,16 +1,16 @@
 import { reactive, computed, shallowRef, watch } from 'vue';
 import type {
-  LocalDirectory,
-  LocalFile,
+  RefLocalDirectory,
+  RefLocalFile,
 } from '../../../shared/lib/localFileSystem';
 import { createLocalDirectory } from '../../../shared/lib/localFileSystem';
 import type { LocalDirectoryRef, DirectoryList, LocalFileRef } from './types';
 import { difference } from 'lodash-es';
 import { from } from 'ix/Ix.asynciterable';
 
-const directoryRegistry = new WeakMap<LocalDirectoryRef, LocalDirectory>();
+const directoryRegistry = new WeakMap<LocalDirectoryRef, RefLocalDirectory>();
 
-const createLocalFileRef = (localFile: LocalFile): LocalFileRef => {
+const createLocalFileRef = (localFile: RefLocalFile): LocalFileRef => {
   const localFileRef = shallowRef(localFile);
 
   const label = computed(() => localFileRef.value.getName());
@@ -59,7 +59,7 @@ const createLocalFileRef = (localFile: LocalFile): LocalFileRef => {
 };
 
 const createLocalDirectoryRef = (
-  localDirectory: LocalDirectory,
+  localDirectory: RefLocalDirectory,
 ): LocalDirectoryRef => {
   const localDirectoryRef = shallowRef(localDirectory);
 

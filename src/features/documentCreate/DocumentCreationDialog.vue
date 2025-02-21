@@ -1,11 +1,22 @@
-<script setup lang="ts">
+<script
+  setup
+  lang="ts"
+  generic="
+    F extends {
+      createDocument: (document: {
+        name: string;
+        type: string;
+        version: number;
+      }) => void;
+    }
+  "
+>
 import { ref, watchEffect } from 'vue';
-import type { DocumentFolder } from '../../shared/lib/cfrDocument';
 import { DATABASE_DOCUMENT_TYPE } from '../../shared/lib/databaseDocument';
 import { MDDialog } from '@shared/ui/Dialog';
 
 const props = defineProps<{
-  folder: DocumentFolder;
+  documentRepository: F;
 }>();
 
 const emit = defineEmits<{
@@ -20,7 +31,7 @@ const onCreate = () => {
     throw new Error('name is undefined');
   }
 
-  props.folder.createDocument({
+  props.documentRepository.createDocument({
     name: stateName.value,
     type: documentType.value,
     version: 1,

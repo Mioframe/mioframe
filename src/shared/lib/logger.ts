@@ -18,7 +18,7 @@ const colorStrings = (...strList: string[]): string[] => {
     pre.push(
       `color:${darkColor};background-color:${lightColor};padding:2px;border:1px solid ${darkColor};border-radius:5px;`,
     );
-    pre.push('');
+    pre.push(' ');
     return pre;
   }, []);
 

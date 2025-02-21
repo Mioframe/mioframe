@@ -1,6 +1,6 @@
 import type { MaybeRef } from 'vue';
-import { onBeforeUnmount, computed, watch } from 'vue';
-import { toValue, unrefElement, type MaybeElementRef } from '@vueuse/core';
+import { onBeforeUnmount, computed, watch, toValue } from 'vue';
+import { unrefElement, type MaybeElementRef } from '@vueuse/core';
 import { throttle } from 'lodash-es';
 
 type EventTypes = keyof WindowEventMap;
@@ -12,7 +12,7 @@ type InteractionOutsideOptions = {
 };
 
 export const onInteractionOutside = (
-  target: MaybeElementRef, // Массив targetRef
+  target: MaybeElementRef,
   callback: () => void,
   options: InteractionOutsideOptions = {},
 ) => {

@@ -10,6 +10,7 @@ const props = defineProps<{
   cancelLabel: string;
   applyLabel: string;
   hasCancelAction?: boolean;
+  loading?: boolean;
 }>();
 
 defineSlots<{
@@ -61,7 +62,12 @@ const dialogType = computed(() => props.type ?? 'basic');
           @click="$emit('cancel')"
         />
 
-        <MDButton :label="applyLabel" type="text" @click="$emit('apply')" />
+        <MDButton
+          :label="applyLabel"
+          :loading
+          type="text"
+          @click="$emit('apply')"
+        />
       </div>
     </div>
   </dialog>
@@ -92,7 +98,8 @@ const dialogType = computed(() => props.type ?? 'basic');
     max-width: min(560px, 100dvw);
     width: fit-content;
 
-    background-color: var(--md-sys-color-surface-container-high);
+    --md-container-color: var(--md-sys-color-surface-container-high);
+    background-color: var(--md-container-color);
     box-shadow: var(--md-sys-elevation-level3);
   }
 

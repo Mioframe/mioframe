@@ -1,9 +1,10 @@
-import type { LocalDirectory, LocalEntry } from './types';
+import { computed, reactive } from 'vue';
+import type { RefLocalDirectory, RefLocalEntry } from './types';
 
 export const createLocalEntry = (
   currentHandle: FileSystemHandle,
-  parentLocalDirectory?: LocalDirectory,
-): LocalEntry => {
+  parentLocalDirectory?: RefLocalDirectory,
+): RefLocalEntry => {
   const remove = async () => {
     if (parentLocalDirectory) {
       await parentLocalDirectory.removeByName(currentHandle.name);
@@ -13,16 +14,16 @@ export const createLocalEntry = (
   };
 
   const getPath = () => {
-    const parentPath = parentLocalDirectory?.getPath() ?? [];
+    const parentPath = parentLocalDirectory?.path ?? [];
 
     return parentPath.concat([getName()]);
   };
 
   const getName = () => currentHandle.name;
 
-  return {
-    getName,
+  return reactive({
     remove,
-    getPath,
-  };
+    name: computed(() => getName()),
+    path: computed(() => getPath()),
+  });
 };

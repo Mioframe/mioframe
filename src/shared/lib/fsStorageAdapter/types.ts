@@ -49,7 +49,7 @@ export type FileName = TypeOf<typeof zodFileName>;
 export const zodPartialFileName = custom<
   | `${DocumentId}${typeof KEY_SEPARATE}${ChangedType}${typeof KEY_SEPARATE}${Hash}`
   | `${DocumentId}${typeof KEY_SEPARATE}${ChangedType}`
-  | `${DocumentId}`
+  | DocumentId
 >((data) => {
   if (isString(data)) {
     const array = data.split(KEY_SEPARATE);
@@ -60,16 +60,25 @@ export const zodPartialFileName = custom<
 
 export type PartialFileName = TypeOf<typeof zodPartialFileName>;
 
-export interface FileForAdapter {
+/**
+ * Файл для адаптера automerge-repo
+ */
+export interface FileForStorageAdapter {
   read: () => Promise<File>;
   remove: () => Promise<void>;
 }
 
-export interface DirectoryForAdapter
-  extends ItemWithChildren<string, FileForAdapter | DirectoryForAdapter> {
+/**
+ * Директория для адаптера automerge-repo
+ * минимальный набор методов для работы с файловой системой
+ */
+export interface DirectoryForStorageAdapter
+  extends ItemWithChildren<
+    [string, FileForStorageAdapter | DirectoryForStorageAdapter]
+  > {
   writeFile: (
     name: string,
     file?: FileSystemWriteChunkType,
-  ) => Promise<FileForAdapter>;
+  ) => Promise<FileForStorageAdapter>;
   removeByName: (name: string) => Promise<void>;
 }

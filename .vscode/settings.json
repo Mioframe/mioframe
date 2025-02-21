@@ -1,5 +1,5 @@
 {
-  "npm.packageManager": "bun",
+  "npm.packageManager": "pnpm",
   "typescript.tsdk": "node_modules/typescript/lib",
   "eslint.format.enable": true,
   "cSpell.words": [
