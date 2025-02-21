@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref } from 'vue';
-import { MenuFolder } from '@entity/folder';
+import { MenuFolder } from '@entity/directory';
 import { CreateDocumentForm } from '@feature/documentCreate';
 import { ModalCard } from '@shared/ui/ModalCard';
 import { DocumentRemoveForm } from '@feature/documentRemove';
@@ -11,7 +11,7 @@ import { ViewWithPanelLayout } from '@shared/ui/ViewWithPanelLayout';
 import { MDButton, UIButton } from '@shared/ui/Button';
 import { setupDocumentCreate } from './setupDocumentCreate';
 import { setupGoogleDirectoryChoice } from './setupGoogleDirectoryChoice';
-import { setupFolderChoice } from './setupFolderChoice';
+import { setupDirectoryChoice } from './setupDirectoryChoice';
 import { setupDocumentRemove } from './setupDocumentRemove';
 import { setupDocumentChoice } from './setupDocumentChoice';
 import {
@@ -44,8 +44,8 @@ const {
   folderContents,
   isSupportLocalDirectory,
   onClickSelectDirectory,
-  selectedDocumentFolder,
-} = setupFolderChoice();
+  selectedDirectory: selectedDocumentFolder,
+} = setupDirectoryChoice();
 
 const {
   onCancelSelectGDirectory,

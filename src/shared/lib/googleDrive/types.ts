@@ -1,5 +1,5 @@
 import type {
-  IterableCollection,
+  Collection,
   ItemWithChildren,
 } from '@shared/ui/TreeMenu/useIterable';
 
@@ -25,7 +25,7 @@ export type GDriveDirectory = {
   removeWatcher: (
     handler: (iterableCollection: GDriveDirectoryContent) => unknown,
   ) => void;
-} & ItemWithChildren<string, GDriveFile | GDriveDirectory>;
+} & ItemWithChildren<[string, GDriveFile | GDriveDirectory]>;
 
 export type GDriveFile = {
   getName: () => string;
@@ -36,10 +36,9 @@ export type GDriveFile = {
 
 export const GOOGLE_FOLDER_MIME_TYPE = 'application/vnd.google-apps.folder';
 
-export type GDriveDirectoryContent = IterableCollection<
-  string,
-  GDriveDirectory | GDriveFile
+export type GDriveDirectoryContent = Collection<
+  [string, GDriveDirectory | GDriveFile]
 >;
 
 export interface GDriveSpaces
-  extends ItemWithChildren<string, GDriveDirectory | GDriveFile> {}
+  extends ItemWithChildren<[string, GDriveDirectory | GDriveFile]> {}

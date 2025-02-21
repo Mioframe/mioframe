@@ -1,6 +1,6 @@
 import type { StorageAdapterInterface, Chunk } from '@automerge/automerge-repo';
 import type {
-  DirectoryForAdapter,
+  DirectoryForStorageAdapter,
   PartialFileName,
   PartialStorageKey,
   StorageKey,
@@ -22,7 +22,7 @@ export const partialKeyToFileName = (
 ): PartialFileName | undefined => {
   debug('keyToFileName', key);
   return checkSchema(
-    checkSchema(key, zodPartialStorageKey)?.join(KEY_SEPARATE),
+    checkSchema(key, zodPartialStorageKey).join(KEY_SEPARATE),
     zodPartialFileName,
   );
 };
@@ -38,7 +38,7 @@ export const fileNameToPartialKey = (
 const { debug } = createLogger('createStorageAdapter');
 
 export const createStorageAdapter = (
-  directory: DirectoryForAdapter,
+  directory: DirectoryForStorageAdapter,
 ): StorageAdapterInterface => {
   const { pushError } = useNotifications();
 

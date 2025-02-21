@@ -5,16 +5,16 @@
     Key extends string | number,
     Item extends
       | {
-          children: IterableCollection<Key, Item>;
+          children: Collection<[Key, Item]>;
         }
       | object
   "
 >
 import TreeIterable from './TreeIterable.vue';
-import type { IterableCollection } from './useIterable';
+import type { Collection } from './useIterable';
 
 defineProps<{
-  collection?: IterableCollection<Key, Item>;
+  collection?: Collection<[Key, Item]>;
   activeKey?: Key;
   activeItem?: Item;
   filter?: (v: [Key, Item]) => boolean;

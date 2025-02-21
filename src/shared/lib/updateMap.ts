@@ -1,4 +1,4 @@
-import type { AnyIterableInput } from '@shared/ui/TreeMenu/useIterable';
+import type { Collection } from '@shared/ui/TreeMenu/useIterable';
 import { from } from 'ix/Ix.asynciterable';
 
 /**
@@ -12,7 +12,7 @@ import { from } from 'ix/Ix.asynciterable';
  * @template K, V
  */
 export const updateMap = async <K, V>(
-  sourceMap: AnyIterableInput<[K, V]>,
+  sourceMap: Collection<[K, V]>,
   targetMap: Map<K, V>,
 ) => {
   const targetKeys = new Set(targetMap.keys());
