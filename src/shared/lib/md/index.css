@@ -4,3 +4,7 @@
 :root {
   --one-pt: 1px;
 }
+
+* {
+  background-color: var(--md-container-color);
+}

@@ -1,12 +1,12 @@
 import {
   createLocalDirectory,
-  type LocalDirectory,
+  type RefLocalDirectory,
 } from '../../shared/lib/localFileSystem';
 
 const DOCUMENT_FOLDER_NAME = 'Documents';
 
 export const useOriginPrivateFSDirectory = () => {
-  const openOriginPrivateFS = async (): Promise<LocalDirectory> => {
+  const openOriginPrivateFS = async (): Promise<RefLocalDirectory> => {
     const rootDirectoryHandle = await navigator.storage.getDirectory();
 
     const documentsDirectoryHandle =

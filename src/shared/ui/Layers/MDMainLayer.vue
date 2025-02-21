@@ -6,12 +6,12 @@ defineSlots<{
 </script>
 
 <template>
-  <main class="layer">
-    <nav v-if="!!$slots.navigation" class="layer__navigation">
+  <main class="md-layer">
+    <nav v-if="!!$slots.navigation" class="md-layer__navigation">
       <slot name="navigation" />
     </nav>
 
-    <section class="layer__body body">
+    <section class="md-layer__body body">
       <div class="body__first-pane">
         <slot name="firstPane" />
       </div>
@@ -20,13 +20,13 @@ defineSlots<{
 </template>
 
 <style scoped>
-
-.layer {
+.md-layer {
   flex-grow: 1;
   display: flex;
   flex-direction: column-reverse;
   padding-left: 16px;
   padding-right: 16px;
+  --md-container-color: var(--md-sys-color-surface);
 
   &__navigation {
     flex-grow: 1;

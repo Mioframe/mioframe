@@ -16,15 +16,22 @@ import type { TypeOf } from 'zod';
 import { fileNameToPartialKey } from '../fsStorageAdapter/createFSStorageAdapter';
 import { createLogger } from '../logger';
 import { isNil, throttle } from 'lodash-es';
-import { checkSchema } from '../validateZodScheme';
+import { is } from '../validateZodScheme';
+import type { AsyncIterableX } from 'ix/Ix.asynciterable';
 import { from } from 'ix/Ix.asynciterable';
 import { distinct, filter, map } from 'ix/Ix.asynciterable.operators';
-import type { IterableCollection } from '@shared/ui/TreeMenu/useIterable';
+import type { Collection } from '@shared/ui/TreeMenu/useIterable';
 
 const { debug } = createLogger('documentFolder');
 
 const THROTTLE_EVENTS = 1e3 / 10;
 
+/**
+ * Создание папки с документами
+ * @param directory - директория для хранения документов
+ * @returns
+ * @deprecated - упразднить и упростить до простой работы с файловой системой через GeneralFileSystem. Не смешивать с документами и их репозиториями.
+ */
 export const createDocumentFolder = (
   directory: DirectoryForDocumentFolder,
 ): DocumentFolder => {
@@ -32,33 +39,58 @@ export const createDocumentFolder = (
     storage: createFSStorageAdapter(directory),
   });
 
-  const onAddDocument = throttle(() => {
+  const onChangeFolder = throttle(() => {
     changeEvents.forEach((handler) => handler(createChildrenContentIterable()));
   }, THROTTLE_EVENTS);
 
-  const onDeleteDocument = throttle(() => {
-    debug('onDeleteDocument');
-    changeEvents.forEach((handler) => handler(createChildrenContentIterable()));
-  }, THROTTLE_EVENTS);
+  repo.on('document', onChangeFolder);
+  repo.on('delete-document', onChangeFolder);
 
-  repo.on('document', onAddDocument);
-  repo.on('delete-document', onDeleteDocument);
-
-  function createChildrenContentIterable(): AsyncIterable<
-    [DocumentId, CFRDocument]
+  function createChildrenContentIterable(): Collection<
+    [DocumentId, CFRDocument] | [string, DocumentFolder]
   > {
-    return from(directory.children).pipe(
-      filter(([entryName]) => zodFileName.safeParse(entryName).success),
-      map(([entryName]): DocumentId | undefined =>
-        checkSchema(fileNameToPartialKey(entryName)?.[0], zodDocumentId),
+    const source = from(directory.children);
+
+    const folders: AsyncIterableX<
+      [string, DocumentFolder] | [DocumentId, CFRDocument]
+    > = source.pipe(
+      map(
+        ([name, entry]):
+          | [string, DocumentFolder]
+          | [DocumentId]
+          | undefined => {
+          if ('writeFile' in entry) {
+            return [name, createDocumentFolder(entry)];
+          }
+          if (is(name, zodFileName)) {
+            const documentId = fileNameToPartialKey(name)?.[0];
+            if (documentId) {
+              return [documentId];
+            }
+          }
+          return undefined;
+        },
       ),
       distinct(),
       filter((v) => !isNil(v)),
-      map((documentId): [DocumentId, CFRDocument] => {
-        const docHandle: DocHandle<unknown> = repo.find(documentId);
-        return [documentId, createCFRDocument(docHandle)];
-      }),
+      map(
+        ([key, value]):
+          | [DocumentId, CFRDocument]
+          | [string, DocumentFolder]
+          | undefined => {
+          if (is(key, zodDocumentId)) {
+            const documentId: DocumentId = key;
+            const docHandle: DocHandle<unknown> = repo.find(documentId);
+            return [documentId, createCFRDocument(docHandle)];
+          } else if (value) {
+            return [key, value];
+          }
+        },
+      ),
+      filter((v) => !isNil(v)),
     );
+
+    return folders;
   }
 
   const createDocument = <Z extends typeof zodDocumentContent>(
@@ -74,16 +106,22 @@ export const createDocumentFolder = (
   };
 
   const changeEvents = new Set<
-    (content: IterableCollection<DocumentId, CFRDocument>) => unknown
+    (
+      content: Collection<[DocumentId, CFRDocument] | [string, DocumentFolder]>,
+    ) => unknown
   >();
 
   const onChange = (
-    fn: (content: IterableCollection<DocumentId, CFRDocument>) => unknown,
+    fn: (
+      content: Collection<[DocumentId, CFRDocument] | [string, DocumentFolder]>,
+    ) => unknown,
   ) => {
     changeEvents.add(fn);
   };
   const offChange = (
-    fn: (content: IterableCollection<DocumentId, CFRDocument>) => unknown,
+    fn: (
+      content: Collection<[DocumentId, CFRDocument] | [string, DocumentFolder]>,
+    ) => unknown,
   ) => {
     changeEvents.delete(fn);
   };
@@ -97,15 +135,22 @@ export const createDocumentFolder = (
   const createFolder = async (name: string): Promise<DocumentFolder> => {
     const newDirectory = await directory.createDirectory(name);
 
+    onChangeFolder();
+
     return createDocumentFolder(newDirectory);
   };
 
   const folder: DocumentFolder = {
+    get name() {
+      return directory.getName();
+    },
     createDocument,
     onChange,
     offChange,
     remove,
-    get children() {
+    get children(): Collection<
+      [DocumentId, CFRDocument] | [string, DocumentFolder]
+    > {
       return createChildrenContentIterable();
     },
     createFolder,

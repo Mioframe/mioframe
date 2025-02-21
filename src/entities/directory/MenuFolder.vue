@@ -1,12 +1,20 @@
 <script setup lang="ts">
 import { TreeIterable } from '@shared/ui/TreeMenu';
 import type { DocumentId } from '@automerge/automerge-repo';
-import type { IterableCollection } from '@shared/ui/TreeMenu/useIterable';
+import type { Collection } from '@shared/ui/TreeMenu/useIterable';
 import type { ReactiveCFRDocument } from '@entity/document/createReactiveCFRDocument';
 import { UIButton } from '@shared/ui/Button';
+import { computed } from 'vue';
+import { from } from 'ix/Ix.asynciterable';
+import { filter } from 'ix/Ix.asynciterable.operators';
+import type { DocumentFolder } from '@shared/lib/cfrDocument';
+import { zodDocumentId } from '@shared/lib/fsStorageAdapter';
+import { is } from '@shared/lib/validateZodScheme';
 
-defineProps<{
-  folderContents: IterableCollection<DocumentId, ReactiveCFRDocument>;
+const { folderContents } = defineProps<{
+  folderContents: Collection<
+    [DocumentId, ReactiveCFRDocument] | [string, DocumentFolder]
+  >;
 }>();
 
 defineSlots<{
@@ -26,11 +34,21 @@ const onClickDocumentItem = (
 ) => {
   emit('click', documentId, reactiveCFRDocument);
 };
+
+const filteredContents = computed(
+  (): Collection<[DocumentId, ReactiveCFRDocument]> =>
+    from(folderContents).pipe(
+      filter(
+        (arg0): arg0 is [DocumentId, ReactiveCFRDocument] =>
+          is(arg0[0], zodDocumentId) && 'doc' in arg0[1],
+      ),
+    ),
+);
 </script>
 
 <template>
   <ul class="menu-list">
-    <TreeIterable :collection="folderContents" @click="onClickDocumentItem">
+    <TreeIterable :collection="filteredContents" @click="onClickDocumentItem">
       <template #item="{ item, key }">
         <UIButton grow @click="onClickDocumentItem(key, item)">
           <template #icon>

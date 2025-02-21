@@ -1,32 +1,48 @@
 import { from, some } from 'ix/Ix.asynciterable';
 import { createLocalEntry } from './entry';
 import { createLocalFile } from './file';
-import type { LocalDirectory, LocalDirectoryContent, LocalFile } from './types';
+import type { RefLocalDirectory, RefLocalFile } from './types';
 import { map } from 'ix/Ix.asynciterable.operators';
 import { createLogger } from '../logger';
+import { reactive } from 'vue';
+import { updateMap } from '../updateMap';
 
 const { debug } = createLogger('directory');
 
 export const createLocalDirectory = (
   currentHandle: FileSystemDirectoryHandle,
-  parentEntry?: LocalDirectory,
-): LocalDirectory => {
-  const currentEntry = createLocalEntry(currentHandle, parentEntry);
+  parentRefDirectory?: RefLocalDirectory,
+): RefLocalDirectory => {
+  const currentEntry = createLocalEntry(currentHandle, parentRefDirectory);
 
-  const createContentIterable = () => {
-    return from(currentHandle.entries()).pipe(
-      map(([name, handle]): [string, LocalDirectory | LocalFile] => {
-        debug('createContentIterable map', [name, handle]);
+  const stateEntries = reactive<Map<string, RefLocalDirectory | RefLocalFile>>(
+    new Map(),
+  );
 
-        switch (handle.kind) {
-          case 'directory':
-            return [name, createLocalDirectory(handle, currentDirectoryEntry)];
+  const updateEntries = async () => {
+    const tempEntries = new Map<string, RefLocalDirectory | RefLocalFile>();
+    await from(currentHandle.entries())
+      .pipe(
+        map(([name, handle]): [string, RefLocalDirectory | RefLocalFile] => {
+          debug('createContentIterable map', [name, handle]);
 
-          case 'file':
-            return [name, createLocalFile(handle, currentDirectoryEntry)];
-        }
-      }),
-    );
+          switch (handle.kind) {
+            case 'directory':
+              return [
+                name,
+                createLocalDirectory(handle, currentDirectoryEntry),
+              ];
+
+            case 'file':
+              return [name, createLocalFile(handle, currentDirectoryEntry)];
+          }
+        }),
+      )
+      .forEach(([name, entry]) => {
+        tempEntries.set(name, entry);
+      });
+
+    await updateMap(tempEntries, stateEntries);
   };
 
   const createDirectory = async (name: string) => {
@@ -39,7 +55,7 @@ export const createLocalDirectory = (
       currentDirectoryEntry,
     );
 
-    triggerWatchers();
+    stateEntries.set(name, directoryEntry);
 
     return directoryEntry;
   };
@@ -56,20 +72,21 @@ export const createLocalDirectory = (
 
     const fileEntry = createLocalFile(newFileHandle, currentDirectoryEntry);
 
-    triggerWatchers();
+    stateEntries.set(name, fileEntry);
 
     return fileEntry;
   };
 
   const removeByName = async (name: string) => {
     await currentHandle.removeEntry(name, { recursive: true });
-    triggerWatchers();
+
+    stateEntries.delete(name);
   };
 
-  const copyTo = async (dest: LocalDirectory) => {
-    const currentPath = currentEntry.getPath();
+  const copyTo = async (dest: RefLocalDirectory) => {
+    const currentPath = currentEntry.path;
 
-    const destPath = dest.getPath();
+    const destPath = dest.path;
 
     if (childHasParent(destPath, currentPath)) {
       throw new Error(
@@ -77,31 +94,29 @@ export const createLocalDirectory = (
       );
     }
 
-    const currentEntryName = currentEntry.getName();
+    const currentEntryName = currentEntry.name;
 
     const newDirectoryEntry = await dest.createDirectory(currentEntryName);
 
-    await from(currentDirectoryEntry.children).forEach(async ([, entry]) => {
+    await from(currentDirectoryEntry.entries).forEach(async ([, entry]) => {
       await entry.copyTo(newDirectoryEntry);
     });
 
     return newDirectoryEntry;
   };
 
-  const moveTo = async (dest: LocalDirectory) => {
-    const parentPath = parentEntry?.getPath() ?? [];
+  const moveTo = async (dest: RefLocalDirectory) => {
+    const parentPath = parentRefDirectory?.path ?? [];
 
-    if (childHasParent(dest.getPath(), parentPath)) {
+    if (childHasParent(dest.path, parentPath)) {
       throw new Error(
-        `impossible to move "${currentEntry.getName()}" from "${parentPath.join('/')}" to "${dest.getPath().join('/')}"`,
+        `impossible to move "${currentEntry.name}" from "${parentPath.join('/')}" to "${dest.path.join('/')}"`,
       );
     }
 
-    const newDirectoryEntry = await dest.createDirectory(
-      currentEntry.getName(),
-    );
+    const newDirectoryEntry = await dest.createDirectory(currentEntry.name);
 
-    await from(currentDirectoryEntry.children).forEach(async ([, entry]) => {
+    await from(currentDirectoryEntry.entries).forEach(async ([, entry]) => {
       await entry.moveTo(newDirectoryEntry);
     });
 
@@ -111,23 +126,23 @@ export const createLocalDirectory = (
   };
 
   const rename = async (newName: string) => {
-    if (!parentEntry) {
+    if (!parentRefDirectory) {
       throw new Error('root Entry cannot be renamed');
     }
 
-    const isAlreadyContains = await some(from(currentDirectoryEntry.children), {
+    const isAlreadyContains = await some(from(currentDirectoryEntry.entries), {
       predicate: ([name]) => name === newName,
     });
 
     if (isAlreadyContains) {
       throw new Error(
-        `"${parentEntry.getName()}" already contains "${newName}"`,
+        `"${parentRefDirectory.name}" already contains "${newName}"`,
       );
     }
 
-    const newDirectoryEntry = await parentEntry.createDirectory(newName);
+    const newDirectoryEntry = await parentRefDirectory.createDirectory(newName);
 
-    await from(currentDirectoryEntry.children).forEach(async ([, entry]) => {
+    await from(currentDirectoryEntry.entries).forEach(async ([, entry]) => {
       await entry.moveTo(newDirectoryEntry);
     });
 
@@ -153,23 +168,7 @@ export const createLocalDirectory = (
     return true;
   };
 
-  const watchersSet = new Set<(list: LocalDirectoryContent) => unknown>();
-
-  const addWatcher = (handler: (list: LocalDirectoryContent) => unknown) => {
-    watchersSet.add(handler);
-  };
-
-  const removeWatcher = (handler: (list: LocalDirectoryContent) => unknown) => {
-    watchersSet.delete(handler);
-  };
-
-  const triggerWatchers = () => {
-    if (watchersSet.size > 0) {
-      watchersSet.forEach((watcher) => watcher(currentDirectoryEntry.children));
-    }
-  };
-
-  const currentDirectoryEntry: LocalDirectory = {
+  const currentDirectoryEntry: RefLocalDirectory = reactive({
     ...currentEntry,
     createDirectory,
     writeFile,
@@ -177,12 +176,13 @@ export const createLocalDirectory = (
     copyTo,
     moveTo,
     rename,
-    get children() {
-      return createContentIterable();
+    get entries() {
+      if (stateEntries.size === 0) {
+        void updateEntries();
+      }
+      return stateEntries;
     },
-    addWatcher,
-    removeWatcher,
-  };
+  });
 
   return currentDirectoryEntry;
 };

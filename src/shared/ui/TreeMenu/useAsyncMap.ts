@@ -1,12 +1,12 @@
 import type { Ref } from 'vue';
 import { computed, reactive, watchEffect } from 'vue';
-import type { IterableCollection } from './useIterable';
-import { useIterable, type ItemWithChildren } from './useIterable';
+import type { Dictionary } from './useIterable';
+import { useCollection, type ItemWithChildren } from './useIterable';
 
 export interface AsyncMap<K extends string | number, T>
-  extends ItemWithChildren<K, T> {}
+  extends ItemWithChildren<[K, T]> {}
 
-const syncCollectionWithMap = <K, T>(
+const syncIterableWithMap = <K, T>(
   collection: Iterable<[K, T]>,
   map: Map<K, T>,
 ): void => {
@@ -24,21 +24,21 @@ const syncCollectionWithMap = <K, T>(
   }
 };
 
-export const useMapFromCollection = <K extends string | number, T>(
-  iterableCollection: Ref<IterableCollection<K, T> | undefined>,
+export const useDictionary = <K extends string | number, V>(
+  iterableCollection: Ref<Dictionary<K, V> | undefined>,
 ) => {
-  const { collection, loading } = useIterable(iterableCollection);
+  const { collection, loading } = useCollection(iterableCollection);
 
-  const stateMap: Map<K, T> = reactive(new Map());
+  const stateMap: Map<K, V> = reactive(new Map());
 
   watchEffect(() => {
-    syncCollectionWithMap(collection.value, stateMap);
+    syncIterableWithMap(collection.value, stateMap);
   });
 
-  const map = computed((): ReadonlyMap<K, T> => stateMap);
+  const dictionary = computed((): ReadonlyMap<K, V> => stateMap);
 
   return {
-    map,
+    dictionary,
     loading: computed(() => !!loading.value),
   };
 };

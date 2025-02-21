@@ -5,18 +5,18 @@
     Key extends string | number,
     Item extends
       | {
-          children: IterableCollection<Key, Item>;
+          children: Collection<[Key, Item]>;
         }
       | object
   "
 >
 import { toRef, watchEffect } from 'vue';
-import type { IterableCollection } from './useIterable';
-import { useIterable } from './useIterable';
+import type { Collection } from './useIterable';
+import { useCollection } from './useIterable';
 import TreeIterableItem from './TreeIterableItem.vue';
 
 const props = defineProps<{
-  collection?: IterableCollection<Key, Item>;
+  collection?: Collection<[Key, Item]>;
   activeKey?: Key;
   activeItem?: Item;
   filter?: (v: [Key, Item]) => boolean;
@@ -54,7 +54,7 @@ const onClick = (key: Key, item: Item) => {
   emit('click', key, item);
 };
 
-const { collection: collectionRef, loading: loadingIterable } = useIterable<
+const { collection: collectionRef, loading: loadingIterable } = useCollection<
   [Key, Item]
 >(
   toRef(() => props.collection),

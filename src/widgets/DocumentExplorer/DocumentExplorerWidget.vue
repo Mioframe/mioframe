@@ -1,61 +1,91 @@
 <script setup lang="ts">
-import { MenuFolder } from '@entity/folder';
-import { DocumentCreationDialog } from '@feature/documentCreate';
-import { MDFab, MDFabContainer } from '@shared/ui/Button';
+import { DirectoryContentList } from '@entity/directory';
+// import { DocumentCreationDialog } from '@feature/documentCreate';
+import { DirectoryCreateDialog } from '@feature/directoryCreate';
+import type { RefDirectory, RefFile } from '@shared/lib/refFileSystem';
+import { MDFab, MDFabContainer, MDIconButton } from '@shared/ui/Button';
+import { MDMenus } from '@shared/ui/ContextMenu';
 import { MDSymbol } from '@shared/ui/Icon';
-import { setupDocumentChoice } from '@widget/MainView/setupDocumentChoice';
-import { setupDocumentRemove } from '@widget/MainView/setupDocumentRemove';
-import { setupFolderChoice } from '@widget/MainView/setupFolderChoice';
-import { computed, ref } from 'vue';
+import type { MaybeElement } from '@vueuse/core';
+// import { setupDocumentChoice } from '@widget/MainView/setupDocumentChoice';
+// import { setupDocumentRemove } from '@widget/MainView/setupDocumentRemove';
+import { setupDirectoryChoice } from '@widget/MainView/setupDirectoryChoice';
+import { ref, shallowRef } from 'vue';
+import EntryContextMenu from './EntryContextMenu.vue';
 
-const { folderContents, selectedDocumentFolder } = setupFolderChoice();
+const { selectedDirectory: currentDirectory, entries } = setupDirectoryChoice();
 
-const { onClickFolderDocument } = setupDocumentChoice();
+// const { onClickFolderDocument } = setupDocumentChoice();
 
-const { onClickRemove } = setupDocumentRemove();
+// const { onClickRemove } = setupDocumentRemove();
 
 const isShowCreateDocument = ref(false);
 
-const currentFolder = computed(() => selectedDocumentFolder.value);
-
 const onClickCreateDocument = () => {
-  if (currentFolder.value) {
+  if (currentDirectory.value) {
     isShowCreateDocument.value = true;
   }
 };
+
+const isShowCreateDirectory = ref(false);
+
+const onClickCreateDirectory = () => {
+  isShowCreateDirectory.value = true;
+};
+
+const contextMenuEntry = shallowRef<RefDirectory | RefFile>();
+const contextTargetBtn = shallowRef<MaybeElement>();
 </script>
 
 <template>
   <div class="document-explorer-widget">
-    <MenuFolder
+    <DirectoryContentList
+      v-if="entries"
+      class="document-explorer-widget__content-list"
+      :entries="entries"
+    >
+      <template #trailing="{ entry }">
+        <EntryContextMenu />
+      </template>
+    </DirectoryContentList>
+
+    <div v-else class="document-explorer-widget__empty">empty</div>
+
+    <!--
+      <MenuFolder
       v-if="folderContents"
       :folder-contents="folderContents"
       @click="onClickFolderDocument"
-    >
+      >
       <template #contextMenu="{ documentId, documentName }">
-        <span class="dropdown-item">
-          {{ documentName }}
-        </span>
+      <span class="dropdown-item">
+      {{ documentName }}
+      </span>
 
-        <hr class="dropdown-divider" />
+      <hr class="dropdown-divider" />
 
-        <button
-          type="button"
-          class="dropdown-item"
-          title="create new directory"
-          @click="onClickRemove(documentId)"
-        >
-          <span class="icon is-small">
-            <i class="fa-solid fa-trash" />
-          </span>
+      <button
+      type="button"
+      class="dropdown-item"
+      title="create new directory"
+      @click="onClickRemove(documentId)"
+      >
+      <span class="icon is-small">
+      <i class="fa-solid fa-trash" />
+      </span>
 
-          <span class="ml-2">remove</span>
-        </button>
+      <span class="ml-2">remove</span>
+      </button>
       </template>
-    </MenuFolder>
+      </MenuFolder> 
+    -->
 
     <MDFabContainer class="document-explorer-widget__fab-container">
-      <MDFab tooltip="Create folder" size="small">
+      <MDFab
+        tooltip="Create directory"
+        size="small"
+        @click="onClickCreateDirectory"
+      >
         <template #icon>
           <MDSymbol name="create_new_folder" />
         </template>
@@ -68,11 +98,20 @@ const onClickCreateDocument = () => {
       </MDFab>
     </MDFabContainer>
 
-    <DocumentCreationDialog
+    <!--
+      <DocumentCreationDialog
       v-if="isShowCreateDocument && currentFolder"
-      :folder="currentFolder"
+      :document-repository="currentFolder"
       @cancel="isShowCreateDocument = false"
-      @create="isShowCreateDocument = false"
+      @created="isShowCreateDocument = false"
+      /> 
+    -->
+
+    <DirectoryCreateDialog
+      v-if="isShowCreateDirectory && currentDirectory"
+      :parent-directory="currentDirectory"
+      @cancel="isShowCreateDirectory = false"
+      @created="isShowCreateDirectory = false"
     />
   </div>
 </template>

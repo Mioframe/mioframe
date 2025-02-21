@@ -9,7 +9,7 @@ import { GDriveScope } from '@shared/lib/googleApi/types';
 import { createPreviouslyCreatedFolders } from './previouslyCreatedFolders';
 import { sum, values } from 'lodash-es';
 import FormLayout from '@shared/ui/FormLayout.vue';
-import type { IterableCollection } from '@shared/ui/TreeMenu/useIterable';
+import type { Collection } from '@shared/ui/TreeMenu/useIterable';
 import { MDButton } from '@shared/ui/Button';
 
 const emit = defineEmits<{
@@ -33,10 +33,10 @@ const onClickCancel = () => {
 };
 
 const rootGDriveDirectory =
-  shallowRef<IterableCollection<string, GDriveDirectory | GDriveFile>>();
+  shallowRef<Collection<[string, GDriveDirectory | GDriveFile]>>();
 
 const previouslyCreatedFolders =
-  shallowRef<IterableCollection<string, GDriveDirectory | GDriveFile>>();
+  shallowRef<Collection<[string, GDriveDirectory | GDriveFile]>>();
 
 const googleApi = useGoogleApi();
 

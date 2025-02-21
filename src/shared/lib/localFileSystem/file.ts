@@ -1,50 +1,51 @@
 import { from, some } from 'ix/Ix.asynciterable';
 import { createLocalEntry } from './entry';
-import type { LocalDirectory, LocalFile } from './types';
+import type { RefLocalDirectory, RefLocalFile } from './types';
+import { reactive } from 'vue';
 
 export const createLocalFile = (
   currentHandle: FileSystemFileHandle,
-  parentEntry: LocalDirectory,
-): LocalFile => {
-  const currentEntry = createLocalEntry(currentHandle, parentEntry);
+  parentRefDirectory: RefLocalDirectory,
+): RefLocalFile => {
+  const currentEntry = createLocalEntry(currentHandle, parentRefDirectory);
 
   const read = async () => {
     return await currentHandle.getFile();
   };
 
   const rename = async (newName: string) => {
-    const isAlreadyContains = await some(from(parentEntry.children), {
+    const isAlreadyContains = await some(from(parentRefDirectory.entries), {
       predicate: ([name]) => name === newName,
     });
 
     if (isAlreadyContains) {
       throw new Error(
-        `"${parentEntry.getName()}" already contains "${newName}"`,
+        `"${parentRefDirectory.name}" already contains "${newName}"`,
       );
     }
 
     const file = await read();
-    const newEntry = await parentEntry.writeFile(newName, file);
+    const newEntry = await parentRefDirectory.writeFile(newName, file);
     await currentEntry.remove();
     return newEntry;
   };
 
-  const copyTo = async (dest: LocalDirectory) => {
+  const copyTo = async (dest: RefLocalDirectory) => {
     const file = await read();
-    return await dest.writeFile(currentEntry.getName(), file);
+    return await dest.writeFile(currentEntry.name, file);
   };
 
-  const moveTo = async (dest: LocalDirectory) => {
+  const moveTo = async (dest: RefLocalDirectory) => {
     const newEntry = await copyTo(dest);
     await currentEntry.remove();
     return newEntry;
   };
 
-  return {
+  return reactive({
     ...currentEntry,
     rename,
     read,
     copyTo,
     moveTo,
-  };
+  });
 };

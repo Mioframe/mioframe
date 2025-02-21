@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, shallowRef } from 'vue';
 import { usePickLocalDirectory } from './usePickLocalDirectory';
-import { type LocalDirectory } from '../../shared/lib/localFileSystem';
+import { type RefLocalDirectory } from '../../shared/lib/localFileSystem';
 import { type GDriveDirectory } from '../../shared/lib/googleDrive';
 import {
   createDocumentFolder,
@@ -14,7 +14,7 @@ const emit = defineEmits<{
   cancel: [];
 }>();
 
-const selectedLocalDirectory = shallowRef<LocalDirectory>();
+const selectedLocalDirectory = shallowRef<RefLocalDirectory>();
 
 const selectedGDriveDirectory = shallowRef<GDriveDirectory>();
 
