@@ -12,6 +12,10 @@
   background-color: transparent;
   padding-bottom: 16px;
   align-items: center;
+  align-self: flex-end;
+  justify-self: flex-end;
+  margin-top: auto;
+  margin-left: auto;
 
   :deep() {
     > * {
