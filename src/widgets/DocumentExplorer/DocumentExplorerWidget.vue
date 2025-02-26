@@ -1,15 +1,15 @@
 <script setup lang="ts">
 import { DirectoryContentList } from '@entity/directory';
 import { DirectoryCreateDialog } from '@feature/directoryCreate';
-import type { RefEntry } from '@shared/lib/refFileSystem';
+import type { RefDirectory, RefEntry } from '@shared/lib/refFileSystem';
 import { MDFab, MDFabContainer } from '@shared/ui/Button';
 import { MDSymbol } from '@shared/ui/Icon';
 import { setupDirectoryChoice } from '@widget/MainView/setupDirectoryChoice';
-import { ref, shallowRef } from 'vue';
+import { computed, ref, shallowRef, watchEffect } from 'vue';
 import EntryContextMenu from './EntryContextMenu.vue';
 import { RemoveEntryDialog } from '@feature/entryRemove';
 
-const { selectedDirectory: currentDirectory, entries } = setupDirectoryChoice();
+const { selectedDirectory: rootDirectory } = setupDirectoryChoice();
 
 const isShowCreateDocument = ref(false);
 
@@ -26,50 +26,35 @@ const onClickCreateDirectory = () => {
 };
 
 const entryToRemove = shallowRef<RefEntry>();
+
+const directoryTree = ref<RefDirectory[]>([]);
+
+const currentDirectory = computed(() => directoryTree.value.at(-1));
+
+const entries = computed(() => currentDirectory.value?.entries);
+
+watchEffect(() => {
+  directoryTree.value = rootDirectory.value ? [rootDirectory.value] : [];
+});
 </script>
 
 <template>
   <div class="document-explorer-widget">
+    <!-- todo: path -->
     <DirectoryContentList
       v-if="entries"
       class="document-explorer-widget__content-list"
-      :entries="entries"
+      :entries
     >
       <template #trailing="{ entry }">
         <EntryContextMenu @remove="entryToRemove = entry" />
       </template>
     </DirectoryContentList>
 
-    <div v-else class="document-explorer-widget__empty">empty</div>
-
-    <!--
-      <MenuFolder
-      v-if="folderContents"
-      :folder-contents="folderContents"
-      @click="onClickFolderDocument"
-      >
-      <template #contextMenu="{ documentId, documentName }">
-      <span class="dropdown-item">
-      {{ documentName }}
-      </span>
-
-      <hr class="dropdown-divider" />
-
-      <button
-      type="button"
-      class="dropdown-item"
-      title="create new directory"
-      @click="onClickRemove(documentId)"
-      >
-      <span class="icon is-small">
-      <i class="fa-solid fa-trash" />
-      </span>
-
-      <span class="ml-2">remove</span>
-      </button>
-      </template>
-      </MenuFolder> 
-    -->
+    <div v-else class="document-explorer-widget__empty">
+      <!-- todo -->
+      empty
+    </div>
 
     <MDFabContainer class="document-explorer-widget__fab-container">
       <MDFab
@@ -119,14 +104,17 @@ const entryToRemove = shallowRef<RefEntry>();
   position: relative;
   flex: 1 0;
   max-height: 100%;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
 
   &__content-list {
-    overflow-y: auto;
-    max-height: 100%;
+    /* overflow-y: auto; */
+    /* max-height: 100%; */
   }
 
   &__fab-container {
-    position: absolute;
+    position: sticky;
     bottom: 0;
     right: 0;
   }

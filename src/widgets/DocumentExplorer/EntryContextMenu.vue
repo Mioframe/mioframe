@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { onInteractionOutside } from '@shared/lib/onInteractionOutside';
+import { useRootElement } from '@shared/lib/useRootElement';
 import { MDIconButton } from '@shared/ui/Button';
 import { MDMenus, MDMenusListItem } from '@shared/ui/ContextMenu';
 import { MDSymbol } from '@shared/ui/Icon';
@@ -15,13 +16,21 @@ const onClickTarget = () => {
   showMenu.value = !showMenu.value;
 };
 
-onInteractionOutside(menuEl, () => {
-  showMenu.value = false;
-});
+onInteractionOutside(
+  menuEl,
+  () => {
+    showMenu.value = false;
+  },
+  {
+    ignore: [targetBtn],
+  },
+);
 
 defineEmits<{
   remove: [];
 }>();
+
+const root = useRootElement();
 </script>
 
 <template>
@@ -31,7 +40,7 @@ defineEmits<{
     </template>
   </MDIconButton>
 
-  <Teleport v-if="showMenu" to="body">
+  <Teleport v-if="showMenu" defer :to="root">
     <MDMenus ref="menuEl" :target-ref="targetBtn">
       <MDMenusListItem
         text="Remove"
