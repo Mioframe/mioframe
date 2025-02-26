@@ -26,6 +26,7 @@ defineSlots<{
   flex-direction: column-reverse;
   padding-left: 16px;
   padding-right: 16px;
+  overflow: auto;
   --md-container-color: var(--md-sys-color-surface);
 
   &__navigation {
@@ -36,6 +37,7 @@ defineSlots<{
   &__body {
     flex-grow: 1;
     flex-shrink: 0;
+    max-height: 100%;
   }
 }
 

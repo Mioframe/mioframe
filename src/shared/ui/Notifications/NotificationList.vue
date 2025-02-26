@@ -63,6 +63,7 @@ const getColorClass = (color?: COLOR) => {
 .notification-list {
   position: fixed;
   pointer-events: none;
+  background: transparent;
   top: 0;
   right: 0;
   max-height: 100dvh;

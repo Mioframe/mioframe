@@ -2,7 +2,7 @@ export interface EntryRef {
   /**
    * Name
    */
-  readonly label: string;
+  readonly name: string;
   /**
    * Removes this Entry
    */
