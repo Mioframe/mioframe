@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { onInteractionOutside } from '@shared/lib/onInteractionOutside';
 import { MDIconButton } from '@shared/ui/Button';
-import { MDMenus } from '@shared/ui/ContextMenu';
+import { MDMenus, MDMenusListItem } from '@shared/ui/ContextMenu';
 import { MDSymbol } from '@shared/ui/Icon';
 import type { MaybeElement } from '@vueuse/core';
 import { ref, shallowRef } from 'vue';
@@ -18,6 +18,10 @@ const onClickTarget = () => {
 onInteractionOutside(menuEl, () => {
   showMenu.value = false;
 });
+
+defineEmits<{
+  remove: [];
+}>();
 </script>
 
 <template>
@@ -27,5 +31,19 @@ onInteractionOutside(menuEl, () => {
     </template>
   </MDIconButton>
 
-  <MDMenus v-if="showMenu" ref="menuEl" :target-ref="targetBtn" />
+  <Teleport v-if="showMenu" to="body">
+    <MDMenus ref="menuEl" :target-ref="targetBtn">
+      <MDMenusListItem
+        text="Remove"
+        @click="
+          $emit('remove');
+          showMenu = false;
+        "
+      >
+        <template #leadingIcon>
+          <MDSymbol name="delete" />
+        </template>
+      </MDMenusListItem>
+    </MDMenus>
+  </Teleport>
 </template>

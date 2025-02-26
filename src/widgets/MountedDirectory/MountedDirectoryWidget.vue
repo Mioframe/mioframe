@@ -7,7 +7,7 @@ import {
 } from '../../features/entryCreateDirectory';
 import { ModalCard } from '../../shared/ui/ModalCard';
 import {
-  RemoveEntryForm,
+  RemoveEntryDialog,
   useRemoveEntryFeature,
 } from '../../features/entryRemove';
 import { AddFileForm, useWriteFileFeature } from '../../features/entryAddFile';
@@ -72,7 +72,7 @@ const {
 
 <template>
   <div class="menu-label is-flex is-justify-content-space-between">
-    {{ entry.label }}
+    {{ entry.name }}
     <div class="buttons has-addons">
       <slot name="buttonAddons" />
 
@@ -92,7 +92,7 @@ const {
   <EntryList :directory-entry="entry">
     <template #contextMenu="{ entry: entryMenu }">
       <span class="dropdown-item">
-        {{ entryMenu.label }}
+        {{ entryMenu.name }}
       </span>
 
       <hr class="dropdown-divider" />
@@ -129,7 +129,7 @@ const {
         v-if="'rename' in entryMenu"
         type="button"
         class="dropdown-item"
-        :title="`rename ${entryMenu.label}`"
+        :title="`rename ${entryMenu.name}`"
         @click="onClickRename(entryMenu)"
       >
         <span class="icon is-small">
@@ -143,7 +143,7 @@ const {
         v-if="'copyTo' in entryMenu"
         type="button"
         class="dropdown-item"
-        :title="`move ${entryMenu.label}`"
+        :title="`move ${entryMenu.name}`"
         @click="onClickCopyTo(entryMenu)"
       >
         <span class="icon is-small">
@@ -157,7 +157,7 @@ const {
         v-if="'moveTo' in entryMenu"
         type="button"
         class="dropdown-item"
-        :title="`move ${entryMenu.label}`"
+        :title="`move ${entryMenu.name}`"
         @click="onClickMoveTo(entryMenu)"
       >
         <span class="icon is-small">
@@ -170,7 +170,7 @@ const {
       <button
         type="button"
         class="dropdown-item"
-        :title="`remove \'${entryMenu.label}\'`"
+        :title="`remove \'${entryMenu.name}\'`"
         @click="onRemove(entryMenu)"
       >
         <span class="icon is-small"><i class="fa-solid fa-trash" /></span>
@@ -189,7 +189,7 @@ const {
   </ModalCard>
 
   <ModalCard v-if="entryToBeRemoved">
-    <RemoveEntryForm
+    <RemoveEntryDialog
       :entry="entryToBeRemoved"
       @cancel="onCancelRemoved"
       @removed="onRemoved"

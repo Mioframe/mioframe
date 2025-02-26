@@ -56,6 +56,8 @@ defineSlots<{
   font-family: var(--md-sys-typescale-body-large-font);
   min-height: var(--md-list-item-min-height);
   box-sizing: border-box;
+  flex-grow: 1;
+  text-align: start;
 
   &__leading-icon {
     display: block;

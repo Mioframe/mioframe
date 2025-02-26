@@ -1,23 +1,15 @@
 <script setup lang="ts">
 import { DirectoryContentList } from '@entity/directory';
-// import { DocumentCreationDialog } from '@feature/documentCreate';
 import { DirectoryCreateDialog } from '@feature/directoryCreate';
-import type { RefDirectory, RefFile } from '@shared/lib/refFileSystem';
-import { MDFab, MDFabContainer, MDIconButton } from '@shared/ui/Button';
-import { MDMenus } from '@shared/ui/ContextMenu';
+import type { RefEntry } from '@shared/lib/refFileSystem';
+import { MDFab, MDFabContainer } from '@shared/ui/Button';
 import { MDSymbol } from '@shared/ui/Icon';
-import type { MaybeElement } from '@vueuse/core';
-// import { setupDocumentChoice } from '@widget/MainView/setupDocumentChoice';
-// import { setupDocumentRemove } from '@widget/MainView/setupDocumentRemove';
 import { setupDirectoryChoice } from '@widget/MainView/setupDirectoryChoice';
 import { ref, shallowRef } from 'vue';
 import EntryContextMenu from './EntryContextMenu.vue';
+import { RemoveEntryDialog } from '@feature/entryRemove';
 
 const { selectedDirectory: currentDirectory, entries } = setupDirectoryChoice();
-
-// const { onClickFolderDocument } = setupDocumentChoice();
-
-// const { onClickRemove } = setupDocumentRemove();
 
 const isShowCreateDocument = ref(false);
 
@@ -33,8 +25,7 @@ const onClickCreateDirectory = () => {
   isShowCreateDirectory.value = true;
 };
 
-const contextMenuEntry = shallowRef<RefDirectory | RefFile>();
-const contextTargetBtn = shallowRef<MaybeElement>();
+const entryToRemove = shallowRef<RefEntry>();
 </script>
 
 <template>
@@ -45,7 +36,7 @@ const contextTargetBtn = shallowRef<MaybeElement>();
       :entries="entries"
     >
       <template #trailing="{ entry }">
-        <EntryContextMenu />
+        <EntryContextMenu @remove="entryToRemove = entry" />
       </template>
     </DirectoryContentList>
 
@@ -113,6 +104,13 @@ const contextTargetBtn = shallowRef<MaybeElement>();
       @cancel="isShowCreateDirectory = false"
       @created="isShowCreateDirectory = false"
     />
+
+    <RemoveEntryDialog
+      v-if="entryToRemove"
+      :entry="entryToRemove"
+      @cancel="entryToRemove = undefined"
+      @removed="entryToRemove = undefined"
+    />
   </div>
 </template>
 
@@ -120,6 +118,12 @@ const contextTargetBtn = shallowRef<MaybeElement>();
 .document-explorer-widget {
   position: relative;
   flex: 1 0;
+  max-height: 100%;
+
+  &__content-list {
+    overflow-y: auto;
+    max-height: 100%;
+  }
 
   &__fab-container {
     position: absolute;

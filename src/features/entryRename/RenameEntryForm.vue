@@ -11,7 +11,7 @@ const props = defineProps<{
 const stateName = ref<string>();
 
 watchEffect(() => {
-  stateName.value = props.entry.label;
+  stateName.value = props.entry.name;
 });
 
 const emit = defineEmits<{
