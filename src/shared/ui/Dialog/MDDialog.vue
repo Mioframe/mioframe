@@ -85,6 +85,7 @@ const dialogType = computed(() => props.type ?? 'basic');
     justify-content: center;
     align-items: center;
     background-color: transparent;
+    border: 0;
   }
 
   &__container {

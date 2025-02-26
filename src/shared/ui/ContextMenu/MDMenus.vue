@@ -3,7 +3,6 @@ import type { MaybeElement } from '@vueuse/core';
 import type { StyleValue } from 'vue';
 import { computed, ref, toRef } from 'vue';
 import { useElementBounding, useWindowSize } from '@vueuse/core';
-import MDMenusListItem from './MDMenusListItem.vue';
 import { MDListContainer } from '../Lists';
 
 const { targetRef } = defineProps<{
@@ -27,22 +26,39 @@ const { height: menusHeight, width: menusWidth } = useElementBounding(rootEl);
 
 const { height: windowHeight, width: windowWidth } = useWindowSize();
 
+const bottomSpace = computed(
+  () => windowHeight.value - targetY.value - targetHeight.value,
+);
+
 const positionTop = computed((): `${number}px` => {
-  const bottomSpace = windowHeight.value - targetY.value - targetHeight.value;
   const topSpace = targetY.value;
 
-  if (menusHeight.value < bottomSpace || topSpace < bottomSpace) {
+  if (menusHeight.value < bottomSpace.value || topSpace < bottomSpace.value) {
     return `${targetY.value + targetHeight.value}px`;
   }
 
   return `${Math.max(targetY.value - menusHeight.value, 0)}px`;
 });
 
-const positionLeft = computed((): `${number}px` => {
-  const rightSpace = windowWidth.value - targetX.value;
-  const leftSpace = targetX.value + targetWidth.value;
+const maxHeight = computed((): `${number}px` => {
+  const topSpace = targetY.value;
 
-  if (menusWidth.value < rightSpace || leftSpace < rightSpace) {
+  if (menusHeight.value < bottomSpace.value || topSpace < bottomSpace.value) {
+    return `${bottomSpace.value}px`;
+  }
+
+  return `${topSpace}px`;
+});
+
+const rightSpace = computed(() => windowWidth.value - targetX.value);
+
+const leftSpace = computed(() => targetX.value + targetWidth.value);
+
+const positionLeft = computed((): `${number}px` => {
+  if (
+    menusWidth.value < rightSpace.value ||
+    leftSpace.value < rightSpace.value
+  ) {
     return `${targetX.value}px`;
   }
 
@@ -53,21 +69,14 @@ const style = computed((): StyleValue => {
   return {
     top: positionTop.value,
     left: positionLeft.value,
+    maxHeight: maxHeight.value,
   };
 });
 </script>
 
 <template>
   <MDListContainer ref="rootEl" tag="div" class="md-menus" :style="style">
-    <slot>
-      <MDMenusListItem text="Item 1" />
-
-      <MDMenusListItem text="Item 2" />
-
-      <MDMenusListItem text="Item 3" />
-
-      <MDMenusListItem text="Item 4" />
-    </slot>
+    <slot />
   </MDListContainer>
 </template>
 
@@ -75,9 +84,12 @@ const style = computed((): StyleValue => {
 .md-menus {
   position: fixed;
   z-index: 1;
+  overflow-y: auto;
 
   border-radius: var(--md-sys-shape-corner-extra-small);
   box-shadow: var(--md-sys-elevation-level2);
   --md-container-color: var(--md-sys-color-surface-container);
+  display: flex;
+  flex-direction: column;
 }
 </style>
