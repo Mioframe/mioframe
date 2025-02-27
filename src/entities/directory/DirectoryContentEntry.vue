@@ -16,7 +16,7 @@ defineSlots<{
 </script>
 
 <template>
-  <MDListItem :headline="item.name">
+  <MDListItem :headline="item.name" is-button class="directory-content-entry">
     <template #leadingIcon>
       <MDSymbol v-if="'entries' in item" name="folder" />
 
@@ -28,3 +28,9 @@ defineSlots<{
     </template>
   </MDListItem>
 </template>
+
+<style lang="css" scoped>
+.directory-content-entry {
+  border-radius: 8px;
+}
+</style>

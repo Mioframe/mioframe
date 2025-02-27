@@ -24,10 +24,10 @@ defineSlots<{
   flex-grow: 1;
   display: flex;
   flex-direction: column-reverse;
-  padding-left: 16px;
-  padding-right: 16px;
+  /* padding-left: 16px;
+  padding-right: 16px; */
   overflow: auto;
-  --md-container-color: var(--md-sys-color-surface);
+  --md-container-color: var(--md-sys-color-surface-container);
 
   &__navigation {
     flex-grow: 1;
@@ -48,6 +48,9 @@ defineSlots<{
     display: flex;
     flex-direction: column;
     flex: 1 0;
+    padding-left: 16px;
+    padding-right: 16px;
+    overflow-y: auto;
   }
 }
 </style>
