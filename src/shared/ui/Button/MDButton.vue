@@ -40,7 +40,7 @@ const buttonType = toRef(() => props.type ?? 'outlined');
         'md-button_loading': loading,
       },
     ]"
-    @click="$emit('click', $event)"
+    @click.stop="$emit('click', $event)"
   >
     <span v-if="!!$slots.icon" class="md-button__icon">
       <slot name="icon" />

@@ -42,7 +42,7 @@ const buttonType = toRef(() => props.type ?? 'standard');
         'md-icon-button_loading': loading,
       },
     ]"
-    @click="$emit('click', $event)"
+    @click.stop="$emit('click', $event)"
   >
     <MDCircularProgressIndicator
       v-if="loading"
@@ -178,6 +178,7 @@ const buttonType = toRef(() => props.type ?? 'standard');
   &_standard {
     --md-content-color: var(--md-sys-color-on-surface-variant);
     --md-icon-button-icon-color: var(--md-content-color);
+    --md-container-color: transparent;
 
     &:disabled {
       --md-content-color: rgb(from var(--md-sys-color-on-surface) r g b / 0.38);

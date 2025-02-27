@@ -12,7 +12,9 @@ const startAnimationPressed = (el: HTMLElement) => {
   el.classList.add(STATE.pressed);
 };
 
-const onAnimationEnd = ({ animationName, currentTarget }: AnimationEvent) => {
+const onAnimationEnd = (e: AnimationEvent) => {
+  e.stopPropagation();
+  const { animationName, currentTarget } = e;
   if (currentTarget instanceof HTMLElement) {
     if (animationName.includes('md-state-pressed')) {
       currentTarget.classList.remove(STATE.pressed);
@@ -31,19 +33,17 @@ const startAnimationUnpressed = (el: HTMLElement) => {
   el.classList.add(STATE.unPressed);
 };
 
-const onPress = ({
-  currentTarget,
-  clientX,
-  clientY,
-}: {
-  currentTarget: EventTarget | null;
-  clientX?: number;
-  clientY?: number;
-}) => {
+const onPress = (e: MouseEvent | UIEvent) => {
+  e.stopPropagation();
+
+  const currentTarget = e.currentTarget;
+
   if (currentTarget instanceof HTMLElement) {
     const rect = currentTarget.getBoundingClientRect();
 
-    if (clientX && clientY) {
+    if (e instanceof MouseEvent) {
+      const { clientX, clientY } = e;
+
       currentTarget.style.setProperty(
         '--md-ripple-size',
         `${
@@ -77,11 +77,9 @@ const onPress = ({
   }
 };
 
-const onUnpressed = ({
-  currentTarget,
-}: {
-  currentTarget: EventTarget | null;
-}) => {
+const onUnpressed = (e: UIEvent) => {
+  e.stopPropagation();
+  const { currentTarget } = e;
   if (
     currentTarget instanceof HTMLElement &&
     currentTarget.classList.contains(STATE.press)
@@ -95,15 +93,18 @@ const onUnpressed = ({
 
 const actionKeys = [' ', 'Enter'];
 
-const onKeydown = ({ key, currentTarget }: KeyboardEvent) => {
+const onKeydown = (e: KeyboardEvent) => {
+  const { key } = e;
   if (actionKeys.includes(key)) {
-    onPress({ currentTarget });
+    onPress(e);
   }
 };
 
-const onKeyup = ({ key, currentTarget }: KeyboardEvent) => {
+const onKeyup = (e: KeyboardEvent) => {
+  const { key } = e;
+
   if (actionKeys.includes(key)) {
-    onUnpressed({ currentTarget });
+    onUnpressed(e);
   }
 };
 
