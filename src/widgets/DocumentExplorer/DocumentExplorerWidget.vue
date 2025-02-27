@@ -1,13 +1,18 @@
 <script setup lang="ts">
 import { DirectoryContentList } from '@entity/directory';
 import { DirectoryCreateDialog } from '@feature/directoryCreate';
-import type { RefDirectory, RefEntry } from '@shared/lib/refFileSystem';
+import type {
+  RefDirectory,
+  RefEntry,
+  RefFile,
+} from '@shared/lib/refFileSystem';
 import { MDFab, MDFabContainer } from '@shared/ui/Button';
 import { MDSymbol } from '@shared/ui/Icon';
 import { setupDirectoryChoice } from '@widget/MainView/setupDirectoryChoice';
 import { computed, ref, shallowRef, watchEffect } from 'vue';
 import EntryContextMenu from './EntryContextMenu.vue';
 import { RemoveEntryDialog } from '@feature/entryRemove';
+import { MDNavigationPath } from '@shared/ui/NavigationPath';
 
 const { selectedDirectory: rootDirectory } = setupDirectoryChoice();
 
@@ -27,24 +32,45 @@ const onClickCreateDirectory = () => {
 
 const entryToRemove = shallowRef<RefEntry>();
 
-const directoryTree = ref<RefDirectory[]>([]);
+const directoryPath = ref<RefDirectory[]>([]);
 
-const currentDirectory = computed(() => directoryTree.value.at(-1));
+const currentDirectory = computed(() => directoryPath.value.at(-1));
 
 const entries = computed(() => currentDirectory.value?.entries);
 
 watchEffect(() => {
-  directoryTree.value = rootDirectory.value ? [rootDirectory.value] : [];
+  directoryPath.value = rootDirectory.value ? [rootDirectory.value] : [];
 });
+
+const onClickPath = (indexPath: number) => {
+  directoryPath.value = directoryPath.value.slice(0, indexPath + 1);
+};
+
+const onClickEntry = (
+  _entryKey: PropertyKey,
+  entry: RefDirectory | RefFile,
+) => {
+  if ('entries' in entry) {
+    directoryPath.value.push(entry);
+  }
+};
 </script>
 
 <template>
   <div class="document-explorer-widget">
-    <!-- todo: path -->
+    <!-- // todo: add MDTopAppBar -->
+
+    <MDNavigationPath
+      :path="directoryPath"
+      class="document-explorer-widget__navigation-path"
+      @click="onClickPath"
+    />
+
     <DirectoryContentList
       v-if="entries"
       class="document-explorer-widget__content-list"
       :entries
+      @click="onClickEntry"
     >
       <template #trailing="{ entry }">
         <EntryContextMenu @remove="entryToRemove = entry" />
@@ -102,21 +128,27 @@ watchEffect(() => {
 <style scoped>
 .document-explorer-widget {
   position: relative;
-  flex: 1 0;
-  max-height: 100%;
-  overflow-y: auto;
+  flex: 1 1;
   display: flex;
   flex-direction: column;
+  border-radius: 16px;
+  --md-container-color: var(--md-sys-color-surface);
+  /* max-height: 100%; */
 
   &__content-list {
     /* overflow-y: auto; */
-    /* max-height: 100%; */
   }
 
   &__fab-container {
     position: sticky;
     bottom: 0;
     right: 0;
+  }
+
+  &__navigation-path {
+    position: sticky;
+    top: 0;
+    z-index: 1;
   }
 }
 </style>
