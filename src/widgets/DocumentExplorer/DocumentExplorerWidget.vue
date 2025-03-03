@@ -13,16 +13,17 @@ import { computed, ref, shallowRef, watchEffect } from 'vue';
 import EntryContextMenu from './EntryContextMenu.vue';
 import { RemoveEntryDialog } from '@feature/entryRemove';
 import { MDNavigationPath } from '@shared/ui/NavigationPath';
+import { MDTopAppBar } from '@shared/ui/TopAppBar';
+import { DocumentCreationDialog } from '@feature/documentCreate';
+import type { RefRepo } from '@shared/lib/cfrDocument';
+import { refRepo } from '@shared/lib/cfrDocument';
+import { some } from 'ix/iterable/some';
+import { is } from '@shared/lib/validateZodScheme';
+import { zodFileName } from '@shared/lib/fsStorageAdapter';
 
 const { selectedDirectory: rootDirectory } = setupDirectoryChoice();
 
 const isShowCreateDocument = ref(false);
-
-const onClickCreateDocument = () => {
-  if (currentDirectory.value) {
-    isShowCreateDocument.value = true;
-  }
-};
 
 const isShowCreateDirectory = ref(false);
 
@@ -54,11 +55,36 @@ const onClickEntry = (
     directoryPath.value.push(entry);
   }
 };
+
+const repositoryForNewDocument = shallowRef<RefRepo>();
+
+const onClickCreateDocument = () => {
+  if (currentDirectory.value) {
+    repositoryForNewDocument.value = refRepo(currentDirectory.value);
+  }
+};
+
+const currentRepository = computed(() => {
+  if (currentDirectory.value) {
+    const hasRepo = some(currentDirectory.value.entries, {
+      predicate: ([key]) => {
+        return is(key, zodFileName);
+      },
+    });
+
+    if (hasRepo) {
+      return refRepo(currentDirectory.value);
+    }
+  }
+  return undefined;
+});
 </script>
 
 <template>
   <div class="document-explorer-widget">
     <!-- // todo: add MDTopAppBar -->
+
+    <MDTopAppBar headline="headline" />
 
     <MDNavigationPath
       :path="directoryPath"
@@ -100,14 +126,12 @@ const onClickEntry = (
       </MDFab>
     </MDFabContainer>
 
-    <!--
-      <DocumentCreationDialog
-      v-if="isShowCreateDocument && currentFolder"
-      :document-repository="currentFolder"
-      @cancel="isShowCreateDocument = false"
-      @created="isShowCreateDocument = false"
-      /> 
-    -->
+    <DocumentCreationDialog
+      v-if="repositoryForNewDocument"
+      :repository="repositoryForNewDocument"
+      @cancel="repositoryForNewDocument = undefined"
+      @created="repositoryForNewDocument = undefined"
+    />
 
     <DirectoryCreateDialog
       v-if="isShowCreateDirectory && currentDirectory"

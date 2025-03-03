@@ -3,7 +3,7 @@
   lang="ts"
   generic="
     F extends {
-      createDocument: (document: {
+      create: (document: {
         name: string;
         type: string;
         version: number;
@@ -14,9 +14,11 @@
 import { ref, watchEffect } from 'vue';
 import { DATABASE_DOCUMENT_TYPE } from '../../shared/lib/databaseDocument';
 import { MDDialog } from '@shared/ui/Dialog';
+import { MDTextField } from '@shared/ui/TextField';
+import { MDSelect } from '@shared/ui/Select';
 
 const props = defineProps<{
-  documentRepository: F;
+  repository: F;
 }>();
 
 const emit = defineEmits<{
@@ -31,13 +33,16 @@ const onCreate = () => {
     throw new Error('name is undefined');
   }
 
-  props.documentRepository.createDocument({
-    name: stateName.value,
-    type: documentType.value,
-    version: 1,
-  });
+  const dType = documentType.value.at(0)?.labelText;
 
-  emit('created');
+  if (dType) {
+    props.repository.create({
+      name: stateName.value,
+      type: dType,
+      version: 1,
+    });
+    emit('created');
+  }
 };
 
 const onCancel = () => {
@@ -51,11 +56,14 @@ watchEffect(() => {
   autofocusElement.value?.focus();
 });
 
-const documentTypeOptions = [DATABASE_DOCUMENT_TYPE, 'any'] as const;
+const documentTypeOptions = [
+  { labelText: 'Database', value: DATABASE_DOCUMENT_TYPE },
+  { labelText: 'JSON Object', value: 'JsonObject' },
+] as const;
 
-const documentType = ref<(typeof documentTypeOptions)[number]>(
+const documentType = ref<(typeof documentTypeOptions)[number][]>([
   documentTypeOptions[0],
-);
+]);
 </script>
 
 <template>
@@ -68,32 +76,12 @@ const documentType = ref<(typeof documentTypeOptions)[number]>(
     @apply="onCreate"
     @cancel="onCancel"
   >
-    <div class="field">
-      <label class="label">Name</label>
+    <MDTextField v-model:model-value="stateName" label-text="Name" />
 
-      <div class="control">
-        <input
-          ref="autofocusElement"
-          v-model="stateName"
-          name="name"
-          class="input"
-          type="text"
-          placeholder="name of the new document"
-          required
-        />
-      </div>
-    </div>
-
-    <div class="select">
-      <select v-model="documentType">
-        <option
-          v-for="option in documentTypeOptions"
-          :key="option"
-          :value="option"
-        >
-          {{ option }}
-        </option>
-      </select>
-    </div>
+    <MDSelect
+      v-model:model-value="documentType"
+      label-text="Document type"
+      :options="documentTypeOptions"
+    />
   </MDDialog>
 </template>

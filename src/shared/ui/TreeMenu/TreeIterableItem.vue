@@ -7,7 +7,7 @@
   "
 >
 import { computed, ref, watchEffect } from 'vue';
-import { ContextMenu } from '../ContextMenu';
+import { ContextMenu } from '../Menu';
 import { onInteractionOutside } from '../../lib/onInteractionOutside';
 import type { MaybeElement } from '@vueuse/core';
 import { ButtonGroup } from '../ButtonGroup';

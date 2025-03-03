@@ -1,6 +1,6 @@
 import type { DocumentId } from '@automerge/automerge-repo';
 import { isValidDocumentId } from '@automerge/automerge-repo';
-import type { ItemWithChildren } from '@shared/ui/TreeMenu/useIterable';
+import type { Collection } from '@shared/ui/TreeMenu/useIterable';
 import { isString } from 'lodash-es';
 import type { TypeOf } from 'zod';
 import { custom, literal, string, tuple, union } from 'zod';
@@ -72,10 +72,10 @@ export interface FileForStorageAdapter {
  * Директория для адаптера automerge-repo
  * минимальный набор методов для работы с файловой системой
  */
-export interface DirectoryForStorageAdapter
-  extends ItemWithChildren<
-    [string, FileForStorageAdapter | DirectoryForStorageAdapter]
-  > {
+export interface DirectoryForStorageAdapter {
+  entries: Collection<
+    [PropertyKey, FileForStorageAdapter | DirectoryForStorageAdapter]
+  >;
   writeFile: (
     name: string,
     file?: FileSystemWriteChunkType,
