@@ -2,7 +2,7 @@
 import { onInteractionOutside } from '@shared/lib/onInteractionOutside';
 import { useRootElement } from '@shared/lib/useRootElement';
 import { MDIconButton } from '@shared/ui/Button';
-import { MDMenus, MDMenusListItem } from '@shared/ui/ContextMenu';
+import { MDMenus, MDMenusListItem } from '@shared/ui/Menu';
 import { MDSymbol } from '@shared/ui/Icon';
 import type { MaybeElement } from '@vueuse/core';
 import { ref, shallowRef } from 'vue';

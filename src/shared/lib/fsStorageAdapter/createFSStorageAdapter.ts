@@ -15,7 +15,7 @@ import { checkSchema } from '../validateZodScheme';
 import { useNotifications } from '../../ui/Notifications';
 import { find, from } from 'ix/Ix.asynciterable';
 import { filter, map } from 'ix/Ix.asynciterable.operators';
-import { isNil } from 'lodash-es';
+import { isNil, isString } from 'lodash-es';
 
 export const partialKeyToFileName = (
   key: PartialStorageKey,
@@ -51,7 +51,7 @@ export const createStorageAdapter = (
       const fileName = partialKeyToFileName(key);
 
       const [, entry] =
-        (await find(from(directory.children), {
+        (await find(from(directory.entries), {
           predicate: ([name]) => name === fileName,
         })) ?? [];
 
@@ -109,13 +109,14 @@ export const createStorageAdapter = (
 
       const chunkList: Chunk[] = [];
 
-      await from(directory.children)
+      await from(directory.entries)
         .pipe(
           filter(([name, entry]) => {
             debug('loadRange filter', { name, keyPrefixString });
             return (
               'read' in entry &&
               !!keyPrefixString &&
+              isString(name) &&
               name.startsWith(keyPrefixString)
             );
           }),
@@ -158,10 +159,11 @@ export const createStorageAdapter = (
         zodPartialFileName,
       );
 
-      await from(directory.children).forEach(async ([name, entry]) => {
+      await from(directory.entries).forEach(async ([name, entry]) => {
         if (
           'read' in entry &&
           keyPrefixString &&
+          isString(name) &&
           name.startsWith(keyPrefixString)
         ) {
           await entry.remove();

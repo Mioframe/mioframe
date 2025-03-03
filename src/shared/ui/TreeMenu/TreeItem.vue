@@ -12,7 +12,7 @@
   "
 >
 import { computed, ref, watchEffect } from 'vue';
-import { ContextMenu } from '../ContextMenu';
+import { ContextMenu } from '../Menu';
 import TreeList from './TreeList.vue';
 import { createLogger } from '../../lib/logger';
 import { onInteractionOutside } from '../../lib/onInteractionOutside';
