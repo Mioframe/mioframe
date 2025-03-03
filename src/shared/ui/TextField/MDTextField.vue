@@ -53,6 +53,10 @@ useTextareaAutosize({
 const onClickField = () => {
   inputRef.value?.focus();
 };
+
+defineEmits<{
+  focus: [];
+}>();
 </script>
 
 <template>
@@ -86,6 +90,7 @@ const onClickField = () => {
           class="md-text-field__input-text"
           :disabled
           :maxlength="maxCharacters"
+          @focus="$emit('focus')"
         />
 
         <input
@@ -97,6 +102,7 @@ const onClickField = () => {
           :disabled
           :maxlength="maxCharacters"
           :type="inputType"
+          @focus="$emit('focus')"
         />
       </div>
 

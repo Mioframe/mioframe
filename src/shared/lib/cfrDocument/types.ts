@@ -8,6 +8,7 @@ import type {
 } from '@shared/ui/TreeMenu/useIterable';
 
 import type { AutomergeValue } from '@automerge/automerge';
+import type { Reactive } from 'vue';
 
 export type AutomergeMap = {
   [Key in string]?: AutomergeValue;
@@ -41,60 +42,27 @@ export interface CFRDocument {
 }
 
 /**
- * Папка с документами
- * части документов объединены в CFRDocument
- * @deprecated - Вместо папки с документами - репозитории. Не смешивать файловую структуру с репозиториями документов.
+ * Реактивный репозиторий документов
  */
-export interface DocumentFolder
-  extends ItemWithChildren<
-    [DocumentId, CFRDocument] | [string, DocumentFolder]
-  > {
-  /**
-   * Имя папки
-   */
-  name: string;
-
+export interface RefRepo
+  extends Reactive<{
+    documents: Iterable<[DocumentId, CFRDocument]>;
+  }> {
   /**
    * Создание документа
    * @param initialValue Начальное состояние документа
    * @returns
    */
-  createDocument: <Z extends typeof zodDocumentContent>(
+  create: <Z extends typeof zodDocumentContent>(
     initialValue: TypeOf<Z>,
   ) => CFRDocument;
 
-  /**
-   * Создание подпапки
-   * @param name Название папки
-   * @returns
-   */
-  createFolder: (name: string) => Promise<DocumentFolder>;
   /**
    * Удаление документа
    * @param documentId
    * @returns
    */
   remove: (documentId: DocumentId) => void;
-  /**
-   * Подписать обработчик на изменение содержимого папки
-   * @param handler - Обработчик изменения содержимого
-   * @returns
-   */
-  onChange: (
-    handler: (
-      content: Collection<[DocumentId, CFRDocument] | [string, DocumentFolder]>,
-    ) => unknown,
-  ) => unknown;
-  /**
-   * Отписать обработчик от изменения содержимого папки
-   * @param handler - Обработчик подписанный ранее
-   * @returns
-   */
-  offChange: (
-    handler: (
-      content: Collection<[DocumentId, CFRDocument] | [string, DocumentFolder]>,
-    ) => unknown,
-  ) => unknown;
 }
 
 interface FileForDocumentFolder extends FileForStorageAdapter {}

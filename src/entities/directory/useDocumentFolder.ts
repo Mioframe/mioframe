@@ -1,7 +1,7 @@
 import { computed, shallowRef, toValue, watch, type Ref } from 'vue';
 import type {
   CFRDocument,
-  DocumentFolder,
+  RefRepo,
   zodDocumentContent,
 } from '../../shared/lib/cfrDocument';
 import type { DocumentId } from '@automerge/automerge-repo';
@@ -20,16 +20,16 @@ import { isNil } from 'lodash-es';
 const { debug } = createLogger('useFolder');
 
 export const useDirectoryEntry = (
-  documentFolderRef: Ref<DocumentFolder | undefined>,
+  documentFolderRef: Ref<RefRepo | undefined>,
 ) => {
   const folderContent =
     shallowRef<
-      Collection<[DocumentId, CFRDocument] | [string, DocumentFolder]>
+      Collection<[DocumentId, CFRDocument] | [string, RefRepo]>
     >();
 
   const onChangeFolder = (
     newContent: Collection<
-      [DocumentId, CFRDocument] | [string, DocumentFolder]
+      [DocumentId, CFRDocument] | [string, RefRepo]
     >,
   ) => {
     debug('onChangeFolder');
@@ -43,7 +43,7 @@ export const useDirectoryEntry = (
       oldDocumentFolder?.offChange(onChangeFolder);
       documentFolder?.onChange(onChangeFolder);
       if (documentFolder) {
-        onChangeFolder(documentFolder.children);
+        onChangeFolder(documentFolder.documents);
       } else {
         folderContent.value = undefined;
       }
@@ -53,7 +53,7 @@ export const useDirectoryEntry = (
 
   const createDocument = <Z extends typeof zodDocumentContent>(
     initialValue: TypeOf<Z>,
-  ) => documentFolderRef.value?.createDocument(initialValue);
+  ) => documentFolderRef.value?.create(initialValue);
 
   tryOnScopeDispose(() => {
     documentFolderRef.value?.offChange(onChangeFolder);
@@ -67,7 +67,7 @@ export const useDirectoryEntry = (
         map(
           ([key, item]):
             | [DocumentId, ReactiveCFRDocument]
-            | [string, DocumentFolder]
+            | [string, RefRepo]
             | undefined => {
             if (is(key, zodDocumentId) && 'doc' in item) {
               return [key, reactiveCFRDocument(item)];

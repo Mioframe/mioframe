@@ -1,6 +1,6 @@
 <script lang="ts" setup generic="E extends string | number = string | number">
 import { ref } from 'vue';
-import ContextMenu from '../ContextMenu/ContextMenu.vue';
+import ContextMenu from '../Menu/ContextMenu.vue';
 import type { MaybeElement } from '@vueuse/core';
 import { onInteractionOutside } from '../../lib/onInteractionOutside';
 

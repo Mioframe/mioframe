@@ -7,13 +7,13 @@ import { UIButton } from '@shared/ui/Button';
 import { computed } from 'vue';
 import { from } from 'ix/Ix.asynciterable';
 import { filter } from 'ix/Ix.asynciterable.operators';
-import type { DocumentFolder } from '@shared/lib/cfrDocument';
+import type { RefRepo } from '@shared/lib/cfrDocument';
 import { zodDocumentId } from '@shared/lib/fsStorageAdapter';
 import { is } from '@shared/lib/validateZodScheme';
 
 const { folderContents } = defineProps<{
   folderContents: Collection<
-    [DocumentId, ReactiveCFRDocument] | [string, DocumentFolder]
+    [DocumentId, ReactiveCFRDocument] | [string, RefRepo]
   >;
 }>();
 

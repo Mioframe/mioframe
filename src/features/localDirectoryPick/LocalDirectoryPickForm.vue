@@ -4,13 +4,13 @@ import { usePickLocalDirectory } from './usePickLocalDirectory';
 import { type RefLocalDirectory } from '../../shared/lib/localFileSystem';
 import { type GDriveDirectory } from '../../shared/lib/googleDrive';
 import {
-  createDocumentFolder,
-  type DocumentFolder,
+  refRepo,
+  type RefRepo,
 } from '../../shared/lib/cfrDocument';
 import FormLayout from '@shared/ui/FormLayout.vue';
 
 const emit = defineEmits<{
-  submit: [documentFolder: DocumentFolder];
+  submit: [documentFolder: RefRepo];
   cancel: [];
 }>();
 
@@ -30,9 +30,9 @@ const onClickSelectLocalDirectory = async () => {
 
 const documentFolder = computed(() =>
   selectedGDriveDirectory.value
-    ? createDocumentFolder(selectedGDriveDirectory.value)
+    ? refRepo(selectedGDriveDirectory.value)
     : selectedLocalDirectory.value
-      ? createDocumentFolder(selectedLocalDirectory.value)
+      ? refRepo(selectedLocalDirectory.value)
       : undefined,
 );
 
