@@ -4,7 +4,7 @@ import { type UnknownProperty, type PropertyId } from './property';
 import { type DatabaseDocument, zodDatabaseDocumentWithContent } from './types';
 import { isNil } from 'lodash-es';
 import type { SortDescription, View, ViewId } from './view';
-import type { ReactiveCFRDocument } from '@entity/document/createReactiveCFRDocument';
+import type { ReactiveCFRDocument } from '@entity/cfrDocument/createReactiveCFRDocument';
 import { computed, toValue } from 'vue';
 import { pickDictionaryBy } from '../pickDictionaryBy';
 import type { MaybeRef } from '@vueuse/core';

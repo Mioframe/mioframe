@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, toRef } from 'vue';
-import type { ReactiveCFRDocument } from '../../entities/document/createReactiveCFRDocument';
+import type { ReactiveCFRDocument } from '../../entities/cfrDocument/createReactiveCFRDocument';
 import { createLogger } from '../../shared/lib/logger';
 import { DocumentEditForm } from '../../features/documentEdit';
 import type { ViewId } from '../../shared/lib/databaseDocument';

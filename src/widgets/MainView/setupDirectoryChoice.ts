@@ -1,14 +1,18 @@
 import { usePickLocalDirectory } from '@feature/localDirectoryPick';
 import { useOriginPrivateFSDirectory } from '@feature/originPrivateFileSystemPick';
-import type { RefDirectory } from '@shared/lib/refFileSystem';
-import { computed, shallowRef } from 'vue';
+import { createLogger } from '@shared/lib/logger';
+import type { DirectoryFSEntry } from '@shared/lib/fileSystem';
+import { shallowRef } from 'vue';
+
+const { debug } = createLogger('setupDirectoryChoice');
 
 export const setupDirectoryChoice = () => {
-  const selectedDirectory = shallowRef<RefDirectory>();
+  const selectedDirectory = shallowRef<DirectoryFSEntry>();
 
   const { openOriginPrivateFS } = useOriginPrivateFSDirectory();
 
   void openOriginPrivateFS().then((v) => {
+    debug('openOriginPrivateFS');
     selectedDirectory.value = v;
   });
 
@@ -21,13 +25,10 @@ export const setupDirectoryChoice = () => {
     selectedDirectory.value = localDirectory;
   };
 
-  const entries = computed(() => selectedDirectory.value?.entries);
-
   return {
     selectedDirectory,
     openLocalDirectoryPicker,
     isSupportLocalDirectory,
     onClickSelectDirectory,
-    entries,
   };
 };

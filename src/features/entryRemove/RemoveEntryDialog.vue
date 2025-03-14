@@ -1,44 +1,31 @@
-<script
-  setup
-  lang="ts"
-  generic="
-    T extends {
-      name: string;
-      remove: () => unknown;
-    }
-  "
->
+<script setup lang="ts">
 import { computed, ref } from 'vue';
 import { MDDialog } from '@shared/ui/Dialog';
 
-const { entry } = defineProps<{
-  entry: T;
+const { name } = defineProps<{
+  name: string;
 }>();
 
 const emit = defineEmits<{
   cancel: [];
-  removed: [];
+  remove: [name: string];
 }>();
 
 const loading = ref(0);
 
-const onSubmit = async () => {
+const onSubmit = () => {
   loading.value += 1;
-  try {
-    await entry.remove();
-    emit('removed');
-  } finally {
-    loading.value -= 1;
-  }
+  emit('remove', name);
 };
+
 const onClickCancel = () => {
   emit('cancel');
 };
 
-const headline = computed(() => `Remove "${entry.name}"?`);
+const headline = computed(() => `Remove "${name}"?`);
 
 const supportingText = computed(
-  () => `Are you sure you want to remove "${entry.name}"?`,
+  () => `Are you sure you want to remove "${name}"?`,
 );
 </script>
 

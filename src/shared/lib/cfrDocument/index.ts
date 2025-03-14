@@ -1,3 +1,3 @@
 export type * from './types';
 export { zodDocumentContent } from './types';
-export { refRepo } from './refRepo';
+export { useDirectoryRepo } from './useDirectoryRepo';

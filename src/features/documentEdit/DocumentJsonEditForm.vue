@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { createJSONEditor, type JsonEditor } from 'vanilla-jsoneditor';
 import { computed, ref, shallowRef, toRef, watch, watchEffect } from 'vue';
-import type { ReactiveCFRDocument } from '../../entities/document/createReactiveCFRDocument';
+import type { ReactiveCFRDocument } from '../../entities/cfrDocument/createReactiveCFRDocument';
 import { cloneDeep } from 'lodash-es';
 import { createLogger } from '../../shared/lib/logger';
 import { isUnknownRecord } from '../../shared/lib/changeObject/isUnknownRecord';

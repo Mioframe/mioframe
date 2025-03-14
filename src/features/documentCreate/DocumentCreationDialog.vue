@@ -1,28 +1,18 @@
-<script
-  setup
-  lang="ts"
-  generic="
-    F extends {
-      create: (document: {
-        name: string;
-        type: string;
-        version: number;
-      }) => void;
-    }
-  "
->
+<script setup lang="ts">
 import { ref, watchEffect } from 'vue';
 import { DATABASE_DOCUMENT_TYPE } from '../../shared/lib/databaseDocument';
 import { MDDialog } from '@shared/ui/Dialog';
 import { MDTextField } from '@shared/ui/TextField';
 import { MDSelect } from '@shared/ui/Select';
 
-const props = defineProps<{
-  repository: F;
-}>();
-
 const emit = defineEmits<{
-  created: [];
+  create: [
+    document: {
+      name: string;
+      type: string;
+      version: number;
+    },
+  ];
   cancel: [];
 }>();
 
@@ -36,12 +26,11 @@ const onCreate = () => {
   const dType = documentType.value.at(0)?.labelText;
 
   if (dType) {
-    props.repository.create({
+    emit('create', {
       name: stateName.value,
       type: dType,
       version: 1,
     });
-    emit('created');
   }
 };
 

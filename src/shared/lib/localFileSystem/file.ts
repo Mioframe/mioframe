@@ -1,12 +1,12 @@
 import { from, some } from 'ix/Ix.asynciterable';
 import { createLocalEntry } from './entry';
-import type { RefLocalDirectory, RefLocalFile } from './types';
+import type { LocalDirectoryEntry, LocalFileEntry } from './types';
 import { reactive } from 'vue';
 
 export const createLocalFile = (
   currentHandle: FileSystemFileHandle,
-  parentRefDirectory: RefLocalDirectory,
-): RefLocalFile => {
+  parentRefDirectory: LocalDirectoryEntry,
+): LocalFileEntry => {
   const currentEntry = createLocalEntry(currentHandle, parentRefDirectory);
 
   const read = async () => {
@@ -30,12 +30,12 @@ export const createLocalFile = (
     return newEntry;
   };
 
-  const copyTo = async (dest: RefLocalDirectory) => {
+  const copyTo = async (dest: LocalDirectoryEntry) => {
     const file = await read();
     return await dest.writeFile(currentEntry.name, file);
   };
 
-  const moveTo = async (dest: RefLocalDirectory) => {
+  const moveTo = async (dest: LocalDirectoryEntry) => {
     const newEntry = await copyTo(dest);
     await currentEntry.remove();
     return newEntry;

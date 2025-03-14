@@ -94,3 +94,56 @@ export const useCollection = <T>(
     loading: computed(() => loading.value > 0),
   };
 };
+
+export const useIterable = <T>(
+  collection: Ref<Iterable<T> | undefined>,
+  filterPredicate?: Ref<undefined | ((value: T, index: number) => boolean)>,
+) => {
+  const stateCollection = <Ref<T[]>>ref<T[]>([]);
+
+  const loading = ref(0);
+
+  const updateCollection = async (iterableValue: Collection<T>) => {
+    const source = isFunction(iterableValue) ? iterableValue() : iterableValue;
+
+    const operations = [
+      filterPredicate?.value ? filter(filterPredicate.value) : undefined,
+    ].filter((v) => !isNil(v));
+
+    try {
+      loading.value += 1;
+      await from(source)
+        .pipe(
+          takeWhile(() => {
+            return iterableValue === collection.value;
+          }),
+          ...operations,
+        )
+        .forEach((value, index) => {
+          stateCollection.value.splice(index, 1, value);
+        });
+    } finally {
+      loading.value -= 1;
+    }
+  };
+
+  watch(
+    collection,
+    (iterableValue, old) => {
+      if (iterableValue) {
+        if (iterableValue !== old) {
+          stateCollection.value.length = 0;
+        }
+        void updateCollection(iterableValue);
+      } else {
+        stateCollection.value.length = 0;
+      }
+    },
+    { immediate: true },
+  );
+
+  return {
+    collection: toRef(() => stateCollection.value),
+    loading: computed(() => loading.value > 0),
+  };
+};

@@ -1,4 +1,4 @@
-import type { Collection } from '@shared/ui/TreeMenu/useIterable';
+import type { Collection } from '@shared/lib/useIterable';
 import { from } from 'ix/Ix.asynciterable';
 
 /**

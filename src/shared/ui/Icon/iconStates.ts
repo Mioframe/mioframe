@@ -1,40 +1,44 @@
 import { useHead } from '@unhead/vue';
+import { useStorage } from '@vueuse/core';
 import { isNil } from 'lodash-es';
 import { defineStore } from 'pinia';
-import { computed, reactive } from 'vue';
+import { computed } from 'vue';
 
 export const useIconStates = defineStore('iconStates', () => {
   const fontsUrl = 'https://fonts.googleapis.com/css2';
 
-  const roundedSymbolNameSet = reactive<Set<string>>(new Set());
+  const roundedSymbolNameSet = useStorage<string[]>('roundedSymbolNameSet', []);
 
   const symbolRoundedLink = computed(() =>
-    roundedSymbolNameSet.size
+    roundedSymbolNameSet.value.length
       ? {
           rel: 'stylesheet',
-          href: `${fontsUrl}?family=Material+Symbols+Rounded&icon_names=${[...roundedSymbolNameSet.values()].sort().join(',')}`,
+          href: `${fontsUrl}?family=Material+Symbols+Rounded&icon_names=${roundedSymbolNameSet.value.sort().join(',')}`,
         }
       : undefined,
   );
 
-  const outlinedSymbolNameSet = reactive<Set<string>>(new Set());
+  const outlinedSymbolNameSet = useStorage<string[]>(
+    'outlinedSymbolNameSet',
+    [],
+  );
 
   const symbolOutlinedLink = computed(() =>
-    outlinedSymbolNameSet.size
+    outlinedSymbolNameSet.value.length
       ? {
           rel: 'stylesheet',
-          href: `${fontsUrl}?family=Material+Symbols+Outlined&icon_names=${[...outlinedSymbolNameSet.values()].sort().join(',')}`,
+          href: `${fontsUrl}?family=Material+Symbols+Outlined&icon_names=${outlinedSymbolNameSet.value.sort().join(',')}`,
         }
       : undefined,
   );
 
-  const sharpSymbolNameSet = reactive<Set<string>>(new Set());
+  const sharpSymbolNameSet = useStorage<string[]>('sharpSymbolNameSet', []);
 
   const symbolSharpLink = computed(() =>
-    sharpSymbolNameSet.size
+    sharpSymbolNameSet.value.length
       ? {
           rel: 'stylesheet',
-          href: `${fontsUrl}?family=Material+Symbols+Sharp&icon_names=${[...sharpSymbolNameSet.values()].sort().join(',')}`,
+          href: `${fontsUrl}?family=Material+Symbols+Sharp&icon_names=${sharpSymbolNameSet.value.sort().join(',')}`,
         }
       : undefined,
   );
@@ -54,15 +58,24 @@ export const useIconStates = defineStore('iconStates', () => {
     symbolName: string,
   ) => {
     switch (styleName) {
-      case 'rounded':
-        roundedSymbolNameSet.add(symbolName);
+      case 'rounded': {
+        if (!roundedSymbolNameSet.value.includes(symbolName)) {
+          roundedSymbolNameSet.value.push(symbolName);
+        }
         break;
-      case 'outlined':
-        outlinedSymbolNameSet.add(symbolName);
+      }
+      case 'outlined': {
+        if (!outlinedSymbolNameSet.value.includes(symbolName)) {
+          outlinedSymbolNameSet.value.push(symbolName);
+        }
         break;
-      case 'sharp':
-        sharpSymbolNameSet.add(symbolName);
+      }
+      case 'sharp': {
+        if (!sharpSymbolNameSet.value.includes(symbolName)) {
+          sharpSymbolNameSet.value.push(symbolName);
+        }
         break;
+      }
     }
   };
 

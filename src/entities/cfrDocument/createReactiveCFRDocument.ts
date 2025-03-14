@@ -9,7 +9,7 @@ import {
   toValue,
   computed,
 } from 'vue';
-import type { CFRDocument, DocumentContent } from '@shared/lib/cfrDocument';
+import type { UseCFRDocument, DocumentContent } from '@shared/lib/cfrDocument';
 import type { MaybeRef } from '@vueuse/core';
 import { tryOnScopeDispose } from '@vueuse/core';
 import { createLogger } from '@shared/lib/logger';
@@ -33,7 +33,7 @@ export type ReactiveCFRDocument = Reactive<ReadCFRDocument>;
  * @param cfrDocument
  * @returns
  */
-export const reactiveCFRDocument = <CFRDoc extends CFRDocument>(
+export const reactiveCFRDocument = <CFRDoc extends UseCFRDocument>(
   cfrDocument: MaybeRef<CFRDoc | undefined>,
 ): ReactiveCFRDocument => {
   const documentState = ref<DocumentContent>();
@@ -62,7 +62,7 @@ export const reactiveCFRDocument = <CFRDoc extends CFRDocument>(
 
     if (cfrDocument) {
       cfrDocument.on('change', updateRefDoc);
-      const newDoc = await cfrDocument.doc();
+      const newDoc = await cfrDocument.readDoc();
       debug('watch cfrDocument newDoc', cloneDeep(newDoc));
       if (newDoc) {
         updateRefDoc({ doc: newDoc });
@@ -94,7 +94,7 @@ export const reactiveCFRDocument = <CFRDoc extends CFRDocument>(
         doc.change(callback);
 
         return async (): Promise<DocumentContent | undefined> => {
-          updateRefDoc({ doc: await doc.doc() });
+          updateRefDoc({ doc: await doc.readDoc() });
           return documentState.value;
         };
       }
