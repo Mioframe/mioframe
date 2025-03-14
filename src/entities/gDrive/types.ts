@@ -1,6 +1,6 @@
 import type { ComputedRef } from 'vue';
 import type { GDriveDirectory, GDriveFile } from '../../shared/lib/googleDrive';
-import type { Collection } from '@shared/ui/TreeMenu/useIterable';
+import type { Collection } from '@shared/lib/useIterable';
 
 export interface UseGDriveEntry {
   readonly label: ComputedRef<string>;

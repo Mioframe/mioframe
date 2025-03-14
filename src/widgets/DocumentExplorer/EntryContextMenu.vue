@@ -27,7 +27,7 @@ onInteractionOutside(
 );
 
 defineEmits<{
-  remove: [];
+  removeEntry: [];
 }>();
 
 const root = useRootElement();
@@ -45,7 +45,7 @@ const root = useRootElement();
       <MDMenusListItem
         text="Remove"
         @click="
-          $emit('remove');
+          $emit('removeEntry');
           showMenu = false;
         "
       >

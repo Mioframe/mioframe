@@ -1,6 +1,6 @@
 import { isFunction } from 'lodash-es';
 import type { MaybeRef } from 'vue';
-import { toValue } from 'vue';
+import { toValue, watchEffect } from 'vue';
 
 const stringToHue = (str: string): number => {
   // Простой хеш на основе суммы кодов символов
@@ -56,5 +56,15 @@ export const createLogger = (moduleName: string) => {
   const debugRef = (message: string, ...args: MaybeRef<unknown>[]) => {
     debug(message, ...args.map(toValue));
   };
-  return { log, debug, debugRef };
+
+  const watchDebug = (message: string, ...args: MaybeRef<unknown>[]) =>
+    watchEffect(() => {
+      // eslint-disable-next-line no-console -- for logger
+      console.debug(
+        ...colorStrings(moduleName, '👀', message),
+
+        ...args.map(toValue),
+      );
+    });
+  return { log, debug, debugRef, watchDebug };
 };

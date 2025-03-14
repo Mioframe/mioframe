@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { GDriveDirectory, GDriveFile } from '@shared/lib/googleDrive';
 import TreeIterable from '@shared/ui/TreeMenu/TreeIterable.vue';
-import type { Collection } from '@shared/ui/TreeMenu/useIterable';
+import type { Collection } from '@shared/lib/useIterable';
 
 defineProps<{
   collection: Collection<[string, GDriveDirectory | GDriveFile]>;

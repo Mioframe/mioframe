@@ -1,90 +1,114 @@
 <script setup lang="ts">
-import { DirectoryContentList } from '@entity/directory';
+import { computed, ref, watchEffect } from 'vue';
 import { DirectoryCreateDialog } from '@feature/directoryCreate';
-import type {
-  RefDirectory,
-  RefEntry,
-  RefFile,
-} from '@shared/lib/refFileSystem';
+import type { FileFSEntry } from '@shared/lib/fileSystem';
+import {
+  isDirectoryRef,
+  useDirectory,
+  type DirectoryFSEntry,
+} from '@shared/lib/fileSystem';
 import { MDFab, MDFabContainer } from '@shared/ui/Button';
 import { MDSymbol } from '@shared/ui/Icon';
 import { setupDirectoryChoice } from '@widget/MainView/setupDirectoryChoice';
-import { computed, ref, shallowRef, watchEffect } from 'vue';
 import EntryContextMenu from './EntryContextMenu.vue';
 import { RemoveEntryDialog } from '@feature/entryRemove';
 import { MDNavigationPath } from '@shared/ui/NavigationPath';
-import { MDTopAppBar } from '@shared/ui/TopAppBar';
 import { DocumentCreationDialog } from '@feature/documentCreate';
-import type { RefRepo } from '@shared/lib/cfrDocument';
-import { refRepo } from '@shared/lib/cfrDocument';
-import { some } from 'ix/iterable/some';
-import { is } from '@shared/lib/validateZodScheme';
-import { zodFileName } from '@shared/lib/fsStorageAdapter';
+import type { DocumentContent } from '@shared/lib/cfrDocument';
+import { useDirectoryRepo } from '@shared/lib/cfrDocument';
+import { createLogger } from '@shared/lib/logger';
+import { MDListContainer, MDListItem } from '@shared/ui/Lists';
+import { CFRDocumentMDListItem } from '@entity/cfrDocument';
+import { vPressedState } from '@shared/lib/md/stateHelper';
+
+const { watchDebug, debug } = createLogger('DocumentExplorerWidget.vue');
 
 const { selectedDirectory: rootDirectory } = setupDirectoryChoice();
 
-const isShowCreateDocument = ref(false);
-
-const isShowCreateDirectory = ref(false);
+const isShowCreateDirectoryForm = ref(false);
 
 const onClickCreateDirectory = () => {
-  isShowCreateDirectory.value = true;
+  isShowCreateDirectoryForm.value = true;
 };
 
-const entryToRemove = shallowRef<RefEntry>();
+type FSEntry = DirectoryFSEntry | FileFSEntry;
 
-const directoryPath = ref<RefDirectory[]>([]);
+const entryNameToRemove = ref<string>();
 
-const currentDirectory = computed(() => directoryPath.value.at(-1));
-
-const entries = computed(() => currentDirectory.value?.entries);
+const directoryPath = ref<DirectoryFSEntry[]>([]);
 
 watchEffect(() => {
   directoryPath.value = rootDirectory.value ? [rootDirectory.value] : [];
 });
 
+const currentDirectoryEntry = computed(() => directoryPath.value.at(-1));
+
+watchDebug('currentDirectoryEntry', currentDirectoryEntry);
+
+const { entries: currentDirectoryEntries, removeByName } = useDirectory(
+  currentDirectoryEntry,
+);
+
+watchDebug('directoryEntries', () =>
+  Array.from(currentDirectoryEntries.value.values()),
+);
+
 const onClickPath = (indexPath: number) => {
-  directoryPath.value = directoryPath.value.slice(0, indexPath + 1);
+  debug('onClickPath', indexPath);
+
+  const start = indexPath + 1;
+  const count = directoryPath.value.length - start;
+
+  directoryPath.value.splice(start, count);
 };
 
-const onClickEntry = (
-  _entryKey: PropertyKey,
-  entry: RefDirectory | RefFile,
-) => {
-  if ('entries' in entry) {
+const onClickEntry = (_entryKey: PropertyKey, entry: FSEntry) => {
+  if (isDirectoryRef(entry)) {
     directoryPath.value.push(entry);
   }
 };
 
-const repositoryForNewDocument = shallowRef<RefRepo>();
+const showFormNewDocument = ref(false);
 
 const onClickCreateDocument = () => {
-  if (currentDirectory.value) {
-    repositoryForNewDocument.value = refRepo(currentDirectory.value);
+  if (currentDirectoryEntry.value) {
+    showFormNewDocument.value = true;
   }
 };
 
-const currentRepository = computed(() => {
-  if (currentDirectory.value) {
-    const hasRepo = some(currentDirectory.value.entries, {
-      predicate: ([key]) => {
-        return is(key, zodFileName);
-      },
-    });
+const { documents: currentRepoDocuments, create: createDocument } =
+  useDirectoryRepo(currentDirectoryEntry);
 
-    if (hasRepo) {
-      return refRepo(currentDirectory.value);
-    }
+watchDebug('documents', () => Array.from(currentRepoDocuments.value));
+
+const onClickRemoveEntry = (entry: FSEntry) => {
+  entryNameToRemove.value = entry.name;
+};
+
+const onCreateNewDocument = (document: DocumentContent) => {
+  createDocument(document);
+  showFormNewDocument.value = false;
+};
+
+const onCreateDirectory = async (name: string) => {
+  // TODO: добавить вывод ошибок
+  if (currentDirectoryEntry.value) {
+    await currentDirectoryEntry.value.createDirectory(name);
+    isShowCreateDirectoryForm.value = false;
   }
-  return undefined;
-});
+};
+
+const onRemoveEntry = async (name: string) => {
+  await removeByName(name);
+  entryNameToRemove.value = undefined;
+};
+
+// FIXME: повторное открытие репы не считывает документы
 </script>
 
 <template>
   <div class="document-explorer-widget">
-    <!-- // todo: add MDTopAppBar -->
-
-    <MDTopAppBar headline="headline" />
+    <!-- <MDTopAppBar headline="headline" /> -->
 
     <MDNavigationPath
       :path="directoryPath"
@@ -92,59 +116,75 @@ const currentRepository = computed(() => {
       @click="onClickPath"
     />
 
-    <DirectoryContentList
-      v-if="entries"
-      class="document-explorer-widget__content-list"
-      :entries
-      @click="onClickEntry"
-    >
-      <template #trailing="{ entry }">
-        <EntryContextMenu @remove="entryToRemove = entry" />
-      </template>
-    </DirectoryContentList>
-
-    <div v-else class="document-explorer-widget__empty">
-      <!-- todo -->
-      empty
-    </div>
-
     <MDFabContainer class="document-explorer-widget__fab-container">
-      <MDFab
-        tooltip="Create directory"
-        size="small"
-        @click="onClickCreateDirectory"
-      >
-        <template #icon>
-          <MDSymbol name="create_new_folder" />
-        </template>
-      </MDFab>
+      <template #content>
+        <MDListContainer
+          tag="div"
+          class="document-explorer-widget__content-list"
+        >
+          <CFRDocumentMDListItem
+            v-for="[docId, docHandle] in currentRepoDocuments"
+            :key="docId"
+            :doc-handle="docHandle"
+          />
 
-      <MDFab tooltip="Create document" @click="onClickCreateDocument">
-        <template #icon>
-          <MDSymbol name="edit_document" />
-        </template>
-      </MDFab>
+          <MDListItem
+            v-for="[entryKey, entry] in currentDirectoryEntries"
+            :key="entryKey"
+            v-pressed-state
+            :headline="entry.name"
+            is-button
+            @click="onClickEntry(entryKey, entry)"
+          >
+            <template #leadingIcon>
+              <MDSymbol v-if="'entries' in entry" name="folder" />
+
+              <MDSymbol v-else name="draft" />
+            </template>
+
+            <template #trailingIcon>
+              <EntryContextMenu @remove-entry="onClickRemoveEntry(entry)" />
+            </template>
+          </MDListItem>
+        </MDListContainer>
+      </template>
+
+      <template #buttons>
+        <MDFab
+          tooltip="Create directory"
+          size="small"
+          @click="onClickCreateDirectory"
+        >
+          <template #icon>
+            <MDSymbol name="create_new_folder" />
+          </template>
+        </MDFab>
+
+        <MDFab tooltip="Create document" @click="onClickCreateDocument">
+          <template #icon>
+            <MDSymbol name="edit_document" />
+          </template>
+        </MDFab>
+      </template>
     </MDFabContainer>
 
     <DocumentCreationDialog
-      v-if="repositoryForNewDocument"
-      :repository="repositoryForNewDocument"
-      @cancel="repositoryForNewDocument = undefined"
-      @created="repositoryForNewDocument = undefined"
+      v-if="showFormNewDocument"
+      @cancel="showFormNewDocument = false"
+      @create="onCreateNewDocument"
     />
 
     <DirectoryCreateDialog
-      v-if="isShowCreateDirectory && currentDirectory"
-      :parent-directory="currentDirectory"
-      @cancel="isShowCreateDirectory = false"
-      @created="isShowCreateDirectory = false"
+      v-if="isShowCreateDirectoryForm"
+      @cancel="isShowCreateDirectoryForm = false"
+      @create="onCreateDirectory"
     />
 
     <RemoveEntryDialog
-      v-if="entryToRemove"
-      :entry="entryToRemove"
-      @cancel="entryToRemove = undefined"
-      @removed="entryToRemove = undefined"
+      v-if="entryNameToRemove"
+      :name="entryNameToRemove"
+      @cancel="entryNameToRemove = undefined"
+      @remove="onRemoveEntry"
     />
   </div>
 </template>
@@ -157,22 +197,26 @@ const currentRepository = computed(() => {
   flex-direction: column;
   border-radius: 16px;
   --md-container-color: var(--md-sys-color-surface);
-  /* max-height: 100%; */
-
-  &__content-list {
-    /* overflow-y: auto; */
-  }
+  overflow-y: auto;
 
   &__fab-container {
-    position: sticky;
+    /* position: fixed;
     bottom: 0;
-    right: 0;
+    right: var(--md-pane-padding); */
   }
 
   &__navigation-path {
-    position: sticky;
-    top: 0;
-    z-index: 1;
+    /* position: sticky; */
+    /* top: 0; */
+    /* z-index: 1; */
+  }
+
+  &__content-list {
+    /* overflow-y: auto; */
+    /* background: transparent;
+    flex: 1 1;
+    display: flex;
+    flex-direction: column; */
   }
 }
 </style>

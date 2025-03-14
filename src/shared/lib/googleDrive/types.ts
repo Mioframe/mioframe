@@ -1,7 +1,7 @@
 import type {
   Collection,
   ItemWithChildren,
-} from '@shared/ui/TreeMenu/useIterable';
+} from '@shared/lib/useIterable';
 
 export type GDriveDirectory = {
   getName: () => string;

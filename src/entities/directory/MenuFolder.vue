@@ -1,19 +1,19 @@
 <script setup lang="ts">
 import { TreeIterable } from '@shared/ui/TreeMenu';
 import type { DocumentId } from '@automerge/automerge-repo';
-import type { Collection } from '@shared/ui/TreeMenu/useIterable';
-import type { ReactiveCFRDocument } from '@entity/document/createReactiveCFRDocument';
+import type { Collection } from '@shared/lib/useIterable';
+import type { ReactiveCFRDocument } from '@entity/cfrDocument/createReactiveCFRDocument';
 import { UIButton } from '@shared/ui/Button';
 import { computed } from 'vue';
 import { from } from 'ix/Ix.asynciterable';
 import { filter } from 'ix/Ix.asynciterable.operators';
-import type { RefRepo } from '@shared/lib/cfrDocument';
+import type { RepoRef } from '@shared/lib/cfrDocument';
 import { zodDocumentId } from '@shared/lib/fsStorageAdapter';
 import { is } from '@shared/lib/validateZodScheme';
 
 const { folderContents } = defineProps<{
   folderContents: Collection<
-    [DocumentId, ReactiveCFRDocument] | [string, RefRepo]
+    [DocumentId, ReactiveCFRDocument] | [string, RepoRef]
   >;
 }>();
 

@@ -1,20 +1,20 @@
 <script setup lang="ts">
 import { computed, shallowRef } from 'vue';
 import { usePickLocalDirectory } from './usePickLocalDirectory';
-import { type RefLocalDirectory } from '../../shared/lib/localFileSystem';
+import { type LocalDirectoryEntry } from '../../shared/lib/localFileSystem';
 import { type GDriveDirectory } from '../../shared/lib/googleDrive';
 import {
-  refRepo,
-  type RefRepo,
+  useDirectoryRepo,
+  type RepoRef,
 } from '../../shared/lib/cfrDocument';
 import FormLayout from '@shared/ui/FormLayout.vue';
 
 const emit = defineEmits<{
-  submit: [documentFolder: RefRepo];
+  submit: [documentFolder: RepoRef];
   cancel: [];
 }>();
 
-const selectedLocalDirectory = shallowRef<RefLocalDirectory>();
+const selectedLocalDirectory = shallowRef<LocalDirectoryEntry>();
 
 const selectedGDriveDirectory = shallowRef<GDriveDirectory>();
 
@@ -30,9 +30,9 @@ const onClickSelectLocalDirectory = async () => {
 
 const documentFolder = computed(() =>
   selectedGDriveDirectory.value
-    ? refRepo(selectedGDriveDirectory.value)
+    ? useDirectoryRepo(selectedGDriveDirectory.value)
     : selectedLocalDirectory.value
-      ? refRepo(selectedLocalDirectory.value)
+      ? useDirectoryRepo(selectedLocalDirectory.value)
       : undefined,
 );
 

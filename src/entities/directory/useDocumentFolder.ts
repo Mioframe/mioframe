@@ -1,18 +1,18 @@
 import { computed, shallowRef, toValue, watch, type Ref } from 'vue';
 import type {
-  CFRDocument,
-  RefRepo,
+  UseCFRDocument,
+  RepoRef,
   zodDocumentContent,
 } from '../../shared/lib/cfrDocument';
 import type { DocumentId } from '@automerge/automerge-repo';
 import { tryOnScopeDispose } from '@vueuse/core';
 import type { TypeOf } from 'zod';
 import { createLogger } from '../../shared/lib/logger';
-import type { Collection } from '@shared/ui/TreeMenu/useIterable';
+import type { Collection } from '@shared/lib/useIterable';
 import { from } from 'ix/Ix.asynciterable';
 import { filter, map } from 'ix/Ix.asynciterable.operators';
-import { reactiveCFRDocument } from '@entity/document';
-import type { ReactiveCFRDocument } from '@entity/document/createReactiveCFRDocument';
+import { reactiveCFRDocument } from '@entity/cfrDocument';
+import type { ReactiveCFRDocument } from '@entity/cfrDocument/createReactiveCFRDocument';
 import { zodDocumentId } from '@shared/lib/fsStorageAdapter';
 import { is } from '@shared/lib/validateZodScheme';
 import { isNil } from 'lodash-es';
@@ -20,16 +20,16 @@ import { isNil } from 'lodash-es';
 const { debug } = createLogger('useFolder');
 
 export const useDirectoryEntry = (
-  documentFolderRef: Ref<RefRepo | undefined>,
+  documentFolderRef: Ref<RepoRef | undefined>,
 ) => {
   const folderContent =
     shallowRef<
-      Collection<[DocumentId, CFRDocument] | [string, RefRepo]>
+      Collection<[DocumentId, UseCFRDocument] | [string, RepoRef]>
     >();
 
   const onChangeFolder = (
     newContent: Collection<
-      [DocumentId, CFRDocument] | [string, RefRepo]
+      [DocumentId, UseCFRDocument] | [string, RepoRef]
     >,
   ) => {
     debug('onChangeFolder');
@@ -67,7 +67,7 @@ export const useDirectoryEntry = (
         map(
           ([key, item]):
             | [DocumentId, ReactiveCFRDocument]
-            | [string, RefRepo]
+            | [string, RepoRef]
             | undefined => {
             if (is(key, zodDocumentId) && 'doc' in item) {
               return [key, reactiveCFRDocument(item)];
