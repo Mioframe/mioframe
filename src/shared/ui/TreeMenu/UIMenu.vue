@@ -11,7 +11,7 @@
   "
 >
 import TreeIterable from './TreeIterable.vue';
-import type { Collection } from './useIterable';
+import type { Collection } from '../../lib/useIterable';
 
 defineProps<{
   collection?: Collection<[Key, Item]>;

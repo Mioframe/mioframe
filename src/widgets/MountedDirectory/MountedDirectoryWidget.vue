@@ -190,7 +190,7 @@ const {
 
   <ModalCard v-if="entryToBeRemoved">
     <RemoveEntryDialog
-      :entry="entryToBeRemoved"
+      :name="entryToBeRemoved"
       @cancel="onCancelRemoved"
       @removed="onRemoved"
     />

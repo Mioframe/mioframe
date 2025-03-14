@@ -1,6 +1,10 @@
 import type { MaybeRef } from 'vue';
-import { onBeforeUnmount, computed, watch, toValue } from 'vue';
-import { unrefElement, type MaybeElementRef } from '@vueuse/core';
+import { computed, watch, toValue } from 'vue';
+import {
+  tryOnScopeDispose,
+  unrefElement,
+  type MaybeElementRef,
+} from '@vueuse/core';
 import { throttle } from 'lodash-es';
 
 type EventTypes = keyof WindowEventMap;
@@ -60,7 +64,7 @@ export const onInteractionOutside = (
     { immediate: true },
   );
 
-  onBeforeUnmount(() => {
+  tryOnScopeDispose(() => {
     events.forEach((event) => {
       window.removeEventListener(event, handleInteraction, true);
     });

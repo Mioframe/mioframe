@@ -1,49 +1,58 @@
 import { from, some } from 'ix/Ix.asynciterable';
 import { createLocalEntry } from './entry';
 import { createLocalFile } from './file';
-import type { RefLocalDirectory, RefLocalFile } from './types';
-import { map } from 'ix/Ix.asynciterable.operators';
+import type { LocalDirectoryEntry, LocalFileEntry } from './types';
 import { createLogger } from '../logger';
-import { reactive } from 'vue';
-import { updateMap } from '../updateMap';
+import { WeakValueMap } from '../WeakValueMap';
+import type { DirectoryEntryEventMap } from '../fileSystem/DirectoryFSEntry';
 
 const { debug } = createLogger('directory');
 
-export const createLocalDirectory = (
-  currentHandle: FileSystemDirectoryHandle,
-  parentRefDirectory?: RefLocalDirectory,
-): RefLocalDirectory => {
-  const currentEntry = createLocalEntry(currentHandle, parentRefDirectory);
+const cacheDirectories = new WeakValueMap<string, LocalDirectoryEntry>();
 
-  const stateEntries = reactive<Map<string, RefLocalDirectory | RefLocalFile>>(
-    new Map(),
+export function createLocalDirectory(
+  currentHandle: FileSystemDirectoryHandle,
+  parentLocalDirectoryEntry: LocalDirectoryEntry,
+): LocalDirectoryEntry;
+export function createLocalDirectory(
+  currentHandle: FileSystemDirectoryHandle,
+  parentLocalDirectoryEntry: undefined,
+  rootName: string,
+): LocalDirectoryEntry;
+export function createLocalDirectory(
+  currentHandle: FileSystemDirectoryHandle,
+  parentLocalDirectoryEntry?: LocalDirectoryEntry,
+  rootName?: string,
+): LocalDirectoryEntry {
+  const currentEntry = createLocalEntry(
+    currentHandle,
+    parentLocalDirectoryEntry,
+    rootName,
   );
 
-  const updateEntries = async () => {
-    const tempEntries = new Map<string, RefLocalDirectory | RefLocalFile>();
-    await from(currentHandle.entries())
-      .pipe(
-        map(([name, handle]): [string, RefLocalDirectory | RefLocalFile] => {
-          debug('createContentIterable map', [name, handle]);
+  const stringPath = currentEntry.path.join('/');
 
-          switch (handle.kind) {
-            case 'directory':
-              return [
-                name,
-                createLocalDirectory(handle, currentDirectoryEntry),
-              ];
+  const cachedDirectoryEntry = cacheDirectories.get(stringPath);
 
-            case 'file':
-              return [name, createLocalFile(handle, currentDirectoryEntry)];
-          }
-        }),
-      )
-      .forEach(([name, entry]) => {
-        tempEntries.set(name, entry);
-      });
+  if (cachedDirectoryEntry) {
+    return cachedDirectoryEntry;
+  }
 
-    await updateMap(tempEntries, stateEntries);
-  };
+  async function* entries(): AsyncIterableIterator<
+    [string, LocalDirectoryEntry | LocalFileEntry]
+  > {
+    for await (const [name, handle] of currentHandle.entries()) {
+      debug('createContentIterable map', [name, handle]);
+      switch (handle.kind) {
+        case 'directory':
+          yield [name, createLocalDirectory(handle, currentDirectoryEntry)];
+          break;
+        case 'file':
+          yield [name, createLocalFile(handle, currentDirectoryEntry)];
+          break;
+      }
+    }
+  }
 
   const createDirectory = async (name: string) => {
     const directoryHandle = await currentHandle.getDirectoryHandle(name, {
@@ -55,7 +64,9 @@ export const createLocalDirectory = (
       currentDirectoryEntry,
     );
 
-    stateEntries.set(name, directoryEntry);
+    setForListenersOfAddingEntry.forEach((listener) =>
+      listener(name, directoryEntry),
+    );
 
     return directoryEntry;
   };
@@ -72,18 +83,19 @@ export const createLocalDirectory = (
 
     const fileEntry = createLocalFile(newFileHandle, currentDirectoryEntry);
 
-    stateEntries.set(name, fileEntry);
+    setForListenersOfAddingEntry.forEach((listener) =>
+      listener(name, fileEntry),
+    );
 
     return fileEntry;
   };
 
   const removeByName = async (name: string) => {
     await currentHandle.removeEntry(name, { recursive: true });
-
-    stateEntries.delete(name);
+    setForListenersOfRemovingEntry.forEach((listener) => listener(name));
   };
 
-  const copyTo = async (dest: RefLocalDirectory) => {
+  const copyTo = async (dest: LocalDirectoryEntry) => {
     const currentPath = currentEntry.path;
 
     const destPath = dest.path;
@@ -98,15 +110,15 @@ export const createLocalDirectory = (
 
     const newDirectoryEntry = await dest.createDirectory(currentEntryName);
 
-    await from(currentDirectoryEntry.entries).forEach(async ([, entry]) => {
+    await from(currentDirectoryEntry.entries()).forEach(async ([, entry]) => {
       await entry.copyTo(newDirectoryEntry);
     });
 
     return newDirectoryEntry;
   };
 
-  const moveTo = async (dest: RefLocalDirectory) => {
-    const parentPath = parentRefDirectory?.path ?? [];
+  const moveTo = async (dest: LocalDirectoryEntry) => {
+    const parentPath = parentLocalDirectoryEntry?.path ?? [];
 
     if (childHasParent(dest.path, parentPath)) {
       throw new Error(
@@ -116,7 +128,7 @@ export const createLocalDirectory = (
 
     const newDirectoryEntry = await dest.createDirectory(currentEntry.name);
 
-    await from(currentDirectoryEntry.entries).forEach(async ([, entry]) => {
+    await from(currentDirectoryEntry.entries()).forEach(async ([, entry]) => {
       await entry.moveTo(newDirectoryEntry);
     });
 
@@ -126,23 +138,27 @@ export const createLocalDirectory = (
   };
 
   const rename = async (newName: string) => {
-    if (!parentRefDirectory) {
+    if (!parentLocalDirectoryEntry) {
       throw new Error('root Entry cannot be renamed');
     }
 
-    const isAlreadyContains = await some(from(currentDirectoryEntry.entries), {
-      predicate: ([name]) => name === newName,
-    });
+    const isAlreadyContains = await some(
+      from(currentDirectoryEntry.entries()),
+      {
+        predicate: ([name]) => name === newName,
+      },
+    );
 
     if (isAlreadyContains) {
       throw new Error(
-        `"${parentRefDirectory.name}" already contains "${newName}"`,
+        `"${parentLocalDirectoryEntry.name}" already contains "${newName}"`,
       );
     }
 
-    const newDirectoryEntry = await parentRefDirectory.createDirectory(newName);
+    const newDirectoryEntry =
+      await parentLocalDirectoryEntry.createDirectory(newName);
 
-    await from(currentDirectoryEntry.entries).forEach(async ([, entry]) => {
+    await from(currentDirectoryEntry.entries()).forEach(async ([, entry]) => {
       await entry.moveTo(newDirectoryEntry);
     });
 
@@ -168,7 +184,48 @@ export const createLocalDirectory = (
     return true;
   };
 
-  const currentDirectoryEntry: RefLocalDirectory = reactive({
+  const setForListenersOfAddingEntry = new Set<DirectoryEntryEventMap['add']>();
+  const setForListenersOfRemovingEntry = new Set<
+    DirectoryEntryEventMap['remove']
+  >();
+
+  const on = <N extends keyof DirectoryEntryEventMap>(
+    name: N,
+    listener: DirectoryEntryEventMap[N],
+  ) => {
+    switch (name) {
+      case 'add':
+        setForListenersOfAddingEntry.add(listener);
+        break;
+      case 'remove':
+        setForListenersOfRemovingEntry.add(
+          <DirectoryEntryEventMap['remove']>listener,
+        );
+        break;
+      default:
+        throw new Error('unknown event name');
+    }
+  };
+
+  const off = <N extends keyof DirectoryEntryEventMap>(
+    name: N,
+    listener: DirectoryEntryEventMap[N],
+  ) => {
+    switch (name) {
+      case 'add':
+        setForListenersOfAddingEntry.delete(listener);
+        break;
+      case 'remove':
+        setForListenersOfRemovingEntry.delete(
+          <DirectoryEntryEventMap['remove']>listener,
+        );
+        break;
+      default:
+        throw new Error('unknown event name');
+    }
+  };
+
+  const currentDirectoryEntry: LocalDirectoryEntry = {
     ...currentEntry,
     createDirectory,
     writeFile,
@@ -176,13 +233,12 @@ export const createLocalDirectory = (
     copyTo,
     moveTo,
     rename,
-    get entries() {
-      if (stateEntries.size === 0) {
-        void updateEntries();
-      }
-      return stateEntries;
-    },
-  });
+    entries,
+    on,
+    off,
+  };
+
+  cacheDirectories.set(stringPath, currentDirectoryEntry);
 
   return currentDirectoryEntry;
-};
+}

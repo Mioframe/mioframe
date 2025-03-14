@@ -1,21 +1,10 @@
-<script
-  setup
-  lang="ts"
-  generic="
-    D extends { createDirectory: (name: string) => Promise<RefDirectory> }
-  "
->
-import type { RefDirectory } from '@shared/lib/refFileSystem';
+<script setup lang="ts">
 import { MDDialog } from '@shared/ui/Dialog';
 import { MDTextField } from '@shared/ui/TextField';
 import { ref } from 'vue';
 
-const { parentDirectory } = defineProps<{
-  parentDirectory: D;
-}>();
-
 const emit = defineEmits<{
-  created: [name: string, directory: RefDirectory];
+  create: [name: string];
   cancel: [];
 }>();
 
@@ -23,22 +12,11 @@ const loading = ref(false);
 
 const errorText = ref<string>();
 
-const onApply = async () => {
-  try {
-    if (!loading.value && directoryName.value) {
-      errorText.value = undefined;
-      loading.value = true;
-      const newDirectory = await parentDirectory.createDirectory(
-        directoryName.value,
-      );
-      emit('created', directoryName.value, newDirectory);
-    }
-  } catch (error) {
-    if (error instanceof Error) {
-      errorText.value = error.message;
-    }
-  } finally {
-    loading.value = false;
+const onApply = () => {
+  if (!loading.value && directoryName.value) {
+    errorText.value = undefined;
+    loading.value = true;
+    emit('create', directoryName.value);
   }
 };
 

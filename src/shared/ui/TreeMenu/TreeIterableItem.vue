@@ -11,8 +11,8 @@ import { ContextMenu } from '../Menu';
 import { onInteractionOutside } from '../../lib/onInteractionOutside';
 import type { MaybeElement } from '@vueuse/core';
 import { ButtonGroup } from '../ButtonGroup';
-import type { Collection } from './useIterable';
-import { isItemWithChildren, type ItemWithChildren } from './useIterable';
+import type { Collection } from '../../lib/useIterable';
+import { isItemWithChildren, type ItemWithChildren } from '../../lib/useIterable';
 import TreeIterable from './TreeIterable.vue';
 import { UIButton } from '../Button';
 

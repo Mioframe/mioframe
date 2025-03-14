@@ -1,16 +1,19 @@
 import { reactive, computed, shallowRef, watch } from 'vue';
 import type {
-  RefLocalDirectory,
-  RefLocalFile,
+  LocalDirectoryEntry,
+  LocalFileEntry,
 } from '../../../shared/lib/localFileSystem';
 import { createLocalDirectory } from '../../../shared/lib/localFileSystem';
 import type { LocalDirectoryRef, DirectoryList, LocalFileRef } from './types';
 import { difference } from 'lodash-es';
 import { from } from 'ix/Ix.asynciterable';
 
-const directoryRegistry = new WeakMap<LocalDirectoryRef, RefLocalDirectory>();
+const directoryRegistry = new WeakMap<
+  LocalDirectoryEntry,
+  LocalDirectoryEntry
+>();
 
-const createLocalFileRef = (localFile: RefLocalFile): LocalFileRef => {
+const createLocalFileRef = (localFile: LocalFileEntry): LocalFileEntry => {
   const localFileRef = shallowRef(localFile);
 
   const label = computed(() => localFileRef.value.getName());
@@ -23,7 +26,7 @@ const createLocalFileRef = (localFile: RefLocalFile): LocalFileRef => {
     return currentEntry;
   };
 
-  const copyTo = async (dest: LocalDirectoryRef) => {
+  const copyTo = async (dest: LocalDirectoryEntry) => {
     const destLocalDirectory = directoryRegistry.get(dest);
 
     if (destLocalDirectory) {
@@ -34,7 +37,7 @@ const createLocalFileRef = (localFile: RefLocalFile): LocalFileRef => {
     }
   };
 
-  const moveTo = async (dest: LocalDirectoryRef) => {
+  const moveTo = async (dest: LocalDirectoryEntry) => {
     const destLocalDirectory = directoryRegistry.get(dest);
 
     if (destLocalDirectory) {
@@ -45,7 +48,7 @@ const createLocalFileRef = (localFile: RefLocalFile): LocalFileRef => {
     }
   };
 
-  const currentEntry: LocalFileRef = reactive({
+  const currentEntry: LocalFileEntry = reactive({
     label,
     path,
     read,
@@ -59,8 +62,8 @@ const createLocalFileRef = (localFile: RefLocalFile): LocalFileRef => {
 };
 
 const createLocalDirectoryRef = (
-  localDirectory: RefLocalDirectory,
-): LocalDirectoryRef => {
+  localDirectory: LocalDirectoryEntry,
+): LocalDirectoryEntry => {
   const localDirectoryRef = shallowRef(localDirectory);
 
   const stateDirectoryList: DirectoryList = reactive(new Map());
@@ -97,7 +100,9 @@ const createLocalDirectoryRef = (
     { immediate: true },
   );
 
-  const createDirectory = async (name: string): Promise<LocalDirectoryRef> => {
+  const createDirectory = async (
+    name: string,
+  ): Promise<LocalDirectoryEntry> => {
     const newLocalDirectory =
       await localDirectoryRef.value.createDirectory(name);
     const newDirectoryEntry = createLocalDirectoryRef(newLocalDirectory);
@@ -108,8 +113,8 @@ const createLocalDirectoryRef = (
   };
 
   const copyTo = async (
-    dest: LocalDirectoryRef,
-  ): Promise<LocalDirectoryRef> => {
+    dest: LocalDirectoryEntry,
+  ): Promise<LocalDirectoryEntry> => {
     const destLocalDirectory = directoryRegistry.get(dest);
 
     if (destLocalDirectory) {
@@ -127,8 +132,8 @@ const createLocalDirectoryRef = (
   };
 
   const moveTo = async (
-    dest: LocalDirectoryRef,
-  ): Promise<LocalDirectoryRef> => {
+    dest: LocalDirectoryEntry,
+  ): Promise<LocalDirectoryEntry> => {
     const destLocalDirectory = directoryRegistry.get(dest);
 
     if (destLocalDirectory) {
@@ -151,7 +156,7 @@ const createLocalDirectoryRef = (
     localDirectoryRef.value.removeWatcher(updateDirectoryList);
   };
 
-  const rename = async (newName: string): Promise<LocalDirectoryRef> => {
+  const rename = async (newName: string): Promise<LocalDirectoryEntry> => {
     const newLocalDirectory = await localDirectoryRef.value.rename(newName);
 
     localDirectoryRef.value = newLocalDirectory;
@@ -164,7 +169,7 @@ const createLocalDirectoryRef = (
   const writeFile = async (
     name: string,
     file?: File,
-  ): Promise<LocalFileRef> => {
+  ): Promise<LocalFileEntry> => {
     const localFile = await localDirectoryRef.value.writeFile(name, file);
 
     const fileEntry = createLocalFileRef(localFile);
@@ -178,7 +183,7 @@ const createLocalDirectoryRef = (
   const label = computed(() => localDirectoryRef.value.getName());
   const path = computed(() => localDirectoryRef.value.getPath());
 
-  const currentDirectoryEntry: LocalDirectoryRef = reactive({
+  const currentDirectoryEntry: LocalDirectoryEntry = reactive({
     createDirectory,
     copyTo,
     get list() {
@@ -200,7 +205,7 @@ const createLocalDirectoryRef = (
 
 export const createRootDirectoryEntryRef = (
   rootHandler: FileSystemDirectoryHandle,
-): LocalDirectoryRef => {
+): LocalDirectoryEntry => {
   const roodLocalDirectory = createLocalDirectory(rootHandler);
 
   const rootEntry = createLocalDirectoryRef(roodLocalDirectory);

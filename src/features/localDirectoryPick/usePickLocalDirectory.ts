@@ -1,21 +1,24 @@
 import { shallowRef, readonly } from 'vue';
 import {
   createLocalDirectory,
-  type RefLocalDirectory,
+  type LocalDirectoryEntry,
 } from '../../shared/lib/localFileSystem';
+import { uniqueId } from 'lodash-es';
 
 export const usePickLocalDirectory = (
   mode: FileSystemPermissionMode = 'read',
 ) => {
-  const pickedLocalDirectory = shallowRef<RefLocalDirectory>();
+  const pickedLocalDirectory = shallowRef<LocalDirectoryEntry>();
 
-  const openLocalDirectoryPicker = async (): Promise<RefLocalDirectory> => {
+  const openLocalDirectoryPicker = async (): Promise<LocalDirectoryEntry> => {
     const fileSystemDirectoryHandle = await showDirectoryPicker({
       mode,
     });
 
     pickedLocalDirectory.value = createLocalDirectory(
       fileSystemDirectoryHandle,
+      undefined,
+      uniqueId(fileSystemDirectoryHandle.name),
     );
 
     return pickedLocalDirectory.value;

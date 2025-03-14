@@ -1,7 +1,8 @@
 import type { Ref } from 'vue';
 import { computed, reactive, watchEffect } from 'vue';
-import type { Dictionary } from './useIterable';
-import { useCollection, type ItemWithChildren } from './useIterable';
+import type { Dictionary } from '../../lib/useIterable';
+import type { ItemWithChildren } from '@shared/lib/useAsyncIterable';
+import { useCollection } from '@shared/lib/useAsyncIterable';
 
 export interface AsyncMap<K extends string | number, T>
   extends ItemWithChildren<[K, T]> {}

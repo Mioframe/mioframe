@@ -11,9 +11,9 @@
   "
 >
 import { toRef, watchEffect } from 'vue';
-import type { Collection } from './useIterable';
-import { useCollection } from './useIterable';
 import TreeIterableItem from './TreeIterableItem.vue';
+import type { Collection } from '@shared/lib/useAsyncIterable';
+import { useCollection } from '@shared/lib/useAsyncIterable';
 
 const props = defineProps<{
   collection?: Collection<[Key, Item]>;

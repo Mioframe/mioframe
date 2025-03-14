@@ -2,13 +2,10 @@ import type { DocumentId } from '@automerge/automerge-repo';
 import type { TypeOf } from 'zod';
 import { number, object, string, unknown } from 'zod';
 import type { FileForStorageAdapter } from '../fsStorageAdapter';
-import type {
-  ItemWithChildren,
-  Collection,
-} from '@shared/ui/TreeMenu/useIterable';
+import type { ItemWithChildren } from '@shared/lib/useIterable';
 
 import type { AutomergeValue } from '@automerge/automerge';
-import type { Reactive } from 'vue';
+import type { ComputedRef, Reactive } from 'vue';
 
 export type AutomergeMap = {
   [Key in string]?: AutomergeValue;
@@ -26,27 +23,21 @@ export const zodDocumentContent = object({
  */
 export type DocumentContent = TypeOf<typeof zodDocumentContent>;
 
-// частично совместим с DocHandle // TODO: может следует разделить CFRDocument и DocHandle
-export interface CFRDocument {
-  doc(): Promise<DocumentContent | undefined>;
-  delete(): void;
+export interface UseCFRDocument {
+  content: ComputedRef<DocumentContent>;
+  name: ComputedRef<string>;
+  readDoc(): Promise<DocumentContent>;
+  remove(): void;
   change(callback: (doc: DocumentContent) => void): void;
-  on: (
-    event: 'change',
-    fn: (payload: { doc?: DocumentContent }) => unknown,
-  ) => void;
-  off: (
-    event: 'change',
-    fn: (payload: { doc?: DocumentContent }) => unknown,
-  ) => void;
 }
 
 /**
  * Реактивный репозиторий документов
+ * @deprecated
  */
-export interface RefRepo
+export interface RepoRef
   extends Reactive<{
-    documents: Iterable<[DocumentId, CFRDocument]>;
+    documents: Iterable<[DocumentId, UseCFRDocument]>;
   }> {
   /**
    * Создание документа
@@ -55,7 +46,7 @@ export interface RefRepo
    */
   create: <Z extends typeof zodDocumentContent>(
     initialValue: TypeOf<Z>,
-  ) => CFRDocument;
+  ) => UseCFRDocument;
 
   /**
    * Удаление документа

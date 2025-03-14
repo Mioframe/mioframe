@@ -45,11 +45,13 @@ defineSlots<{
   display: flex;
 
   &__first-pane {
+    --md-pane-padding: 16px;
+
     display: flex;
     flex-direction: column;
     flex: 1 0;
-    padding-left: 16px;
-    padding-right: 16px;
+    padding-left: var(--md-pane-padding);
+    padding-right: var(--md-pane-padding);
     overflow-y: auto;
   }
 }

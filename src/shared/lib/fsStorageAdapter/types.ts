@@ -1,7 +1,7 @@
 import type { DocumentId } from '@automerge/automerge-repo';
 import { isValidDocumentId } from '@automerge/automerge-repo';
-import type { Collection } from '@shared/ui/TreeMenu/useIterable';
 import { isString } from 'lodash-es';
+import type { Promisable } from 'type-fest';
 import type { TypeOf } from 'zod';
 import { custom, literal, string, tuple, union } from 'zod';
 
@@ -31,7 +31,7 @@ export type PartialStorageKey = TypeOf<typeof zodPartialStorageKey>;
 
 export const KEY_SEPARATE = '_';
 
-export const zodFileName =
+export const zodAutomergeFileName =
   custom<`${DocumentId}${typeof KEY_SEPARATE}${ChangedType}${typeof KEY_SEPARATE}${Hash}`>(
     (data) => {
       if (isString(data)) {
@@ -44,9 +44,9 @@ export const zodFileName =
     },
   );
 
-export type FileName = TypeOf<typeof zodFileName>;
+export type AutomergeFileName = TypeOf<typeof zodAutomergeFileName>;
 
-export const zodPartialFileName = custom<
+export const zodPartialAutomergeFileName = custom<
   | `${DocumentId}${typeof KEY_SEPARATE}${ChangedType}${typeof KEY_SEPARATE}${Hash}`
   | `${DocumentId}${typeof KEY_SEPARATE}${ChangedType}`
   | DocumentId
@@ -58,14 +58,16 @@ export const zodPartialFileName = custom<
   return false;
 });
 
-export type PartialFileName = TypeOf<typeof zodPartialFileName>;
+export type PartialAutomergeFileName = TypeOf<
+  typeof zodPartialAutomergeFileName
+>;
 
 /**
  * Файл для адаптера automerge-repo
  */
 export interface FileForStorageAdapter {
-  read: () => Promise<File>;
-  remove: () => Promise<void>;
+  read: () => Promisable<File>;
+  remove: () => Promisable<void>;
 }
 
 /**
@@ -73,12 +75,12 @@ export interface FileForStorageAdapter {
  * минимальный набор методов для работы с файловой системой
  */
 export interface DirectoryForStorageAdapter {
-  entries: Collection<
+  entries(): AsyncIterableIterator<
     [PropertyKey, FileForStorageAdapter | DirectoryForStorageAdapter]
   >;
   writeFile: (
     name: string,
     file?: FileSystemWriteChunkType,
-  ) => Promise<FileForStorageAdapter>;
-  removeByName: (name: string) => Promise<void>;
+  ) => Promisable<FileForStorageAdapter>;
+  removeByName: (name: string) => Promisable<void>;
 }

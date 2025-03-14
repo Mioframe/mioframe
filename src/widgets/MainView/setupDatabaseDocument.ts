@@ -1,4 +1,4 @@
-import type { ReactiveCFRDocument } from '@entity/document/createReactiveCFRDocument';
+import type { ReactiveCFRDocument } from '@entity/cfrDocument/createReactiveCFRDocument';
 import type {
   SortDescription,
   UnknownProperty,

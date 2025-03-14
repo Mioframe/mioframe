@@ -1,9 +1,9 @@
-import type { DocumentContent, RefRepo } from '@shared/lib/cfrDocument';
+import type { DocumentContent, RepoRef } from '@shared/lib/cfrDocument';
 import { toValue, type MaybeRef } from '@vueuse/core';
 import { computed, ref } from 'vue';
 
 export const setupDocumentCreate = (
-  documentFolder: MaybeRef<RefRepo | undefined>,
+  documentFolder: MaybeRef<RepoRef | undefined>,
 ) => {
   const showForm = ref(false);
   const isDisplayedDocumentCreationForm = computed({

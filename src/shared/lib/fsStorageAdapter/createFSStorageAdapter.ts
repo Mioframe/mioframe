@@ -1,29 +1,29 @@
 import type { StorageAdapterInterface, Chunk } from '@automerge/automerge-repo';
 import type {
   DirectoryForStorageAdapter,
-  PartialFileName,
+  PartialAutomergeFileName,
   PartialStorageKey,
   StorageKey,
 } from './types';
 import {
   KEY_SEPARATE,
-  zodPartialFileName,
+  zodPartialAutomergeFileName,
   zodPartialStorageKey,
 } from './types';
 import { createLogger } from '../logger';
 import { checkSchema } from '../validateZodScheme';
-import { useNotifications } from '../../ui/Notifications';
-import { find, from } from 'ix/Ix.asynciterable';
+import { find, from, toArray } from 'ix/Ix.asynciterable';
 import { filter, map } from 'ix/Ix.asynciterable.operators';
 import { isNil, isString } from 'lodash-es';
+import { useNotifications } from '@shared/ui/Notifications';
 
 export const partialKeyToFileName = (
   key: PartialStorageKey,
-): PartialFileName | undefined => {
+): PartialAutomergeFileName | undefined => {
   debug('keyToFileName', key);
   return checkSchema(
     checkSchema(key, zodPartialStorageKey).join(KEY_SEPARATE),
-    zodPartialFileName,
+    zodPartialAutomergeFileName,
   );
 };
 
@@ -31,11 +31,11 @@ export const fileNameToPartialKey = (
   fileName: unknown,
 ): PartialStorageKey | undefined =>
   checkSchema(
-    checkSchema(fileName, zodPartialFileName)?.split(KEY_SEPARATE),
+    checkSchema(fileName, zodPartialAutomergeFileName)?.split(KEY_SEPARATE),
     zodPartialStorageKey,
   );
 
-const { debug } = createLogger('createStorageAdapter');
+const { debug } = createLogger('createFSStorageAdapter');
 
 export const createStorageAdapter = (
   directory: DirectoryForStorageAdapter,
@@ -45,13 +45,12 @@ export const createStorageAdapter = (
   const load = async (
     key: PartialStorageKey,
   ): Promise<Uint8Array | undefined> => {
+    debug('load', key);
     try {
-      debug('load', key);
-
       const fileName = partialKeyToFileName(key);
 
       const [, entry] =
-        (await find(from(directory.entries), {
+        (await find(from(directory.entries()), {
           predicate: ([name]) => name === fileName,
         })) ?? [];
 
@@ -69,9 +68,8 @@ export const createStorageAdapter = (
   };
 
   const save = async (key: StorageKey, data: Uint8Array) => {
+    debug('save', key);
     try {
-      debug('save', key);
-
       const fileName = partialKeyToFileName(key);
       if (!fileName) {
         throw new Error('fileName is undefined');
@@ -84,9 +82,8 @@ export const createStorageAdapter = (
   };
 
   const remove = async (key: StorageKey) => {
+    debug('remove', key);
     try {
-      debug('remove', key);
-
       const fileName = partialKeyToFileName(key);
       if (!fileName) {
         throw new Error('fileName is undefined');
@@ -99,18 +96,15 @@ export const createStorageAdapter = (
   };
 
   const loadRange = async (keyPrefix: PartialStorageKey): Promise<Chunk[]> => {
+    debug('loadRange', keyPrefix);
     try {
-      debug('loadRange', keyPrefix);
-
-      const keyPrefixString: PartialFileName | undefined = checkSchema(
+      const keyPrefixString: PartialAutomergeFileName | undefined = checkSchema(
         keyPrefix.join(KEY_SEPARATE),
-        zodPartialFileName,
+        zodPartialAutomergeFileName,
       );
 
-      const chunkList: Chunk[] = [];
-
-      await from(directory.entries)
-        .pipe(
+      const chunkList: Chunk[] = await toArray(
+        from(directory.entries()).pipe(
           filter(([name, entry]) => {
             debug('loadRange filter', { name, keyPrefixString });
             return (
@@ -136,10 +130,8 @@ export const createStorageAdapter = (
             }
           }),
           filter((v) => !isNil(v)),
-        )
-        .forEach((v) => {
-          chunkList.push(v);
-        });
+        ),
+      );
 
       debug('loadRange chunkList', chunkList);
 
@@ -151,15 +143,14 @@ export const createStorageAdapter = (
   };
 
   const removeRange = async (keyPrefix: PartialStorageKey) => {
+    debug('removeRange', keyPrefix);
     try {
-      debug('removeRange', keyPrefix);
-
-      const keyPrefixString: PartialFileName | undefined = checkSchema(
+      const keyPrefixString: PartialAutomergeFileName | undefined = checkSchema(
         keyPrefix.join(KEY_SEPARATE),
-        zodPartialFileName,
+        zodPartialAutomergeFileName,
       );
 
-      await from(directory.entries).forEach(async ([name, entry]) => {
+      await from(directory.entries()).forEach(async ([name, entry]) => {
         if (
           'read' in entry &&
           keyPrefixString &&

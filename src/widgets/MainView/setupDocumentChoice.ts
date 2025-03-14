@@ -1,5 +1,5 @@
 import type { DocumentId } from '@automerge/automerge-repo';
-import type { ReactiveCFRDocument } from '@entity/document/createReactiveCFRDocument';
+import type { ReactiveCFRDocument } from '@entity/cfrDocument/createReactiveCFRDocument';
 import { shallowRef } from 'vue';
 
 export const setupDocumentChoice = () => {
