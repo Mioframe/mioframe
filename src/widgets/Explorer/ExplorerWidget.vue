@@ -23,7 +23,6 @@ import { FSEntryMDListItem } from '@entity/fsEntry';
 import { defineContextButtonList, MDContextMenuButton } from '@shared/ui/Menu';
 import { DocumentRemoveDialog } from '@feature/documentRemove';
 import type { DocHandle, DocumentId } from '@automerge/automerge-repo';
-import FixedPlaceholder from '@shared/ui/Layers/FixedPlaceholder.vue';
 
 const { watchDebug, debug } = createLogger('DocumentExplorerWidget.vue');
 

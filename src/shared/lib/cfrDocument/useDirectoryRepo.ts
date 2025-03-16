@@ -1,6 +1,12 @@
 import { Repo, type DocumentId } from '@automerge/automerge-repo';
-import { some } from 'ix/Ix.iterable';
-import { type MaybeRefOrGetter, toRef, toValue, shallowRef, watch } from 'vue';
+import {
+  type MaybeRefOrGetter,
+  toRef,
+  toValue,
+  shallowRef,
+  watch,
+  computed,
+} from 'vue';
 import { zodAutomergeFileName } from '../fsStorageAdapter';
 import {
   createStorageAdapter as createFSStorageAdapter,
@@ -38,10 +44,21 @@ export const useDirectoryRepo = (
     Array.from(directoryEntries.value.values()),
   );
 
-  const hasDocumentFile = (): boolean =>
-    some(directoryEntries.value, {
-      predicate: ([name]) => is(name, zodAutomergeFileName),
-    });
+  const directoryEntriesNames = useReduce(
+    directoryEntries,
+    (acc: string[], [name]) => {
+      if (!acc.includes(name)) {
+        acc.push(name);
+      }
+    },
+    [],
+  );
+
+  const hasDocumentFile = computed((): boolean =>
+    directoryEntriesNames.value.some((name) => is(name, zodAutomergeFileName)),
+  );
+
+  watchDebug('hasDocumentFile', hasDocumentFile);
 
   const currentRepo = shallowRef<Repo>();
 
@@ -75,16 +92,14 @@ export const useDirectoryRepo = (
   };
 
   watch(
-    [directoryReady, currentRepo],
-    ([directoryReady, currentRepo]) => {
-      if (directoryReady && !currentRepo && hasDocumentFile()) {
+    [directoryReady, currentRepo, hasDocumentFile],
+    ([directoryReady, currentRepo, hasDocumentFile]) => {
+      if (directoryReady && !currentRepo && hasDocumentFile) {
         initialRepo();
       }
     },
     { immediate: true },
   );
-
-  watchDebug('directoryEntries', directoryEntries);
 
   const directoryDocumentIdList = useReduce(
     directoryEntries,
@@ -104,8 +119,6 @@ export const useDirectoryRepo = (
     create: repoCreate,
     remove: repoRemove,
   } = useRepo(currentRepo, directoryDocumentIdList);
-
-  watchDebug('documents', () => Array.from(documents.value.values()));
 
   const create = (...params: Parameters<typeof repoCreate>) => {
     initialRepo();
