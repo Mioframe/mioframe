@@ -75,11 +75,6 @@ export const useCFRDocument = (
     });
   };
 
-  const remove = () => {
-    debug('remove');
-    docHandleRef.value.delete();
-  };
-
   const change = (callback: ChangeFn<DocumentContent>) => {
     debug('change');
     docHandleRef.value.change((doc) => {
@@ -126,7 +121,6 @@ export const useCFRDocument = (
     name: computed(() => content.value.name),
     content,
     readDoc,
-    remove,
     change,
   };
 

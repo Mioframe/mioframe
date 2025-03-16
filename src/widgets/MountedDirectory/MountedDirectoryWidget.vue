@@ -7,7 +7,7 @@ import {
 } from '../../features/entryCreateDirectory';
 import { ModalCard } from '../../shared/ui/ModalCard';
 import {
-  RemoveEntryDialog,
+  FSEntryRemoveDialog,
   useRemoveEntryFeature,
 } from '../../features/entryRemove';
 import { AddFileForm, useWriteFileFeature } from '../../features/entryAddFile';
@@ -189,7 +189,7 @@ const {
   </ModalCard>
 
   <ModalCard v-if="entryToBeRemoved">
-    <RemoveEntryDialog
+    <FSEntryRemoveDialog
       :name="entryToBeRemoved"
       @cancel="onCancelRemoved"
       @removed="onRemoved"

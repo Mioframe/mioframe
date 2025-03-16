@@ -5,7 +5,7 @@ import MainApp from './MainApp.vue';
 import { setupSentry } from './setupSentry';
 import { createPinia } from 'pinia';
 import { router } from './router';
-import { createHead } from '@unhead/vue';
+import { createHead } from '@unhead/vue/client';
 
 /**
  * Инициализация и настройка Vue приложения

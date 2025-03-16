@@ -8,14 +8,14 @@ const { name } = defineProps<{
 
 const emit = defineEmits<{
   cancel: [];
-  remove: [name: string];
+  apply: [name: string];
 }>();
 
 const loading = ref(0);
 
 const onSubmit = () => {
   loading.value += 1;
-  emit('remove', name);
+  emit('apply', name);
 };
 
 const onClickCancel = () => {

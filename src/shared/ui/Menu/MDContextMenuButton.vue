@@ -1,4 +1,8 @@
-<script setup lang="ts">
+<script
+  setup
+  lang="ts"
+  generic="K extends PropertyKey, T extends ContextButtonDescription"
+>
 import { onInteractionOutside } from '@shared/lib/onInteractionOutside';
 import { useRootElement } from '@shared/lib/useRootElement';
 import { MDIconButton } from '@shared/ui/Button';
@@ -6,6 +10,11 @@ import { MDMenus, MDMenusListItem } from '@shared/ui/Menu';
 import { MDSymbol } from '@shared/ui/Icon';
 import type { MaybeElement } from '@vueuse/core';
 import { ref, shallowRef } from 'vue';
+import type { ContextButtonDescription } from './types';
+
+const {} = defineProps<{
+  btns: Iterable<[K, T]>;
+}>();
 
 const showMenu = ref(false);
 
@@ -26,8 +35,8 @@ onInteractionOutside(
   },
 );
 
-defineEmits<{
-  removeEntry: [];
+const emit = defineEmits<{
+  click: [key: K];
 }>();
 
 const root = useRootElement();
@@ -43,14 +52,16 @@ const root = useRootElement();
   <Teleport v-if="showMenu" defer :to="root">
     <MDMenus ref="menuEl" :target-ref="targetBtn">
       <MDMenusListItem
-        text="Remove"
+        v-for="[key, { symbolName, text }] in btns"
+        :key
+        :text
         @click="
-          $emit('removeEntry');
+          $emit('click', key);
           showMenu = false;
         "
       >
         <template #leadingIcon>
-          <MDSymbol name="delete" />
+          <MDSymbol :name="symbolName" />
         </template>
       </MDMenusListItem>
     </MDMenus>

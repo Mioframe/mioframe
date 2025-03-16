@@ -17,6 +17,8 @@ const { debug, watchDebug } = createLogger('useDirectoryRepo');
 
 const cacheRepo = new WeakValueMap<DirectoryFSEntry, Repo>();
 
+// FIXME: при удалении файла, не пропадает документ
+
 /**
  * Использование директории как репозитория документов
  * @param directory - директория для хранения документов

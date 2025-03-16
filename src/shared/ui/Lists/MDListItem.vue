@@ -1,5 +1,5 @@
 <script setup lang="ts">
-defineProps<{
+const { isButton } = defineProps<{
   headline: string;
   supportingText?: string;
   isButton?: boolean;
@@ -10,6 +10,16 @@ defineSlots<{
   trailingIcon: () => unknown;
   leadingAvatarContainer: () => unknown;
 }>();
+
+const emit = defineEmits<{
+  click: [e: MouseEvent];
+}>();
+
+const onClick = (e: MouseEvent) => {
+  if (isButton) {
+    emit('click', e);
+  }
+};
 </script>
 
 <template>
@@ -17,6 +27,7 @@ defineSlots<{
     :is="isButton ? 'button' : 'li'"
     class="md-list-item"
     :type="isButton ? 'button' : undefined"
+    @click="onClick"
   >
     <span v-if="!!$slots.leadingIcon" class="md-list-item__leading-icon">
       <slot name="leadingIcon" />
@@ -47,6 +58,7 @@ defineSlots<{
 .md-list-item {
   --md-list-item-horizontal-gap: 16px;
   --md-list-item-min-height: 56px;
+  --md-list-item-border-radius: 0;
 
   display: flex;
   padding: 8px var(--md-list-item-horizontal-gap);
@@ -56,8 +68,8 @@ defineSlots<{
   font-family: var(--md-sys-typescale-body-large-font);
   min-height: var(--md-list-item-min-height);
   box-sizing: border-box;
-  flex-grow: 1;
   text-align: start;
+  border-radius: var(--md-list-item-border-radius);
 
   &__leading-icon {
     display: block;

@@ -26,9 +26,8 @@ export type DocumentContent = TypeOf<typeof zodDocumentContent>;
 export interface UseCFRDocument {
   content: ComputedRef<DocumentContent>;
   name: ComputedRef<string>;
-  readDoc(): Promise<DocumentContent>;
-  remove(): void;
-  change(callback: (doc: DocumentContent) => void): void;
+  readDoc: () => Promise<DocumentContent>;
+  change: (callback: (doc: DocumentContent) => void) => void;
 }
 
 /**
