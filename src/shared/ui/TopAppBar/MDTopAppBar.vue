@@ -56,7 +56,7 @@ defineSlots<{
   }
 
   &_on-scroll {
-    box-shadow: var(--md-sys-elevation-level2);
+    /* box-shadow: var(--md-sys-elevation-level2); */
   }
 }
 </style>

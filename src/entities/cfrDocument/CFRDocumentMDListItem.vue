@@ -11,6 +11,10 @@ const props = defineProps<{
   isButton?: boolean;
 }>();
 
+const emit = defineEmits<{
+  click: [e: MouseEvent];
+}>();
+
 const slots = defineSlots<{
   leadingIcon: () => unknown;
   trailingIcon: () => unknown;
@@ -23,7 +27,12 @@ const { name: headline } = useCFRDocument(docHandle);
 </script>
 
 <template>
-  <MDListItem :headline :supporting-text :is-button>
+  <MDListItem
+    :headline
+    :supporting-text
+    :is-button
+    @click="emit('click', $event)"
+  >
     <template #leadingIcon>
       <slot name="leadingIcon">
         <MDSymbol name="description" />

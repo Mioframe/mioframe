@@ -1,2 +1,2 @@
-export { default as RemoveEntryDialog } from './RemoveEntryDialog.vue';
+export { default as FSEntryRemoveDialog } from './FSEntryRemoveDialog.vue';
 export { useRemoveEntryFeature } from './model';

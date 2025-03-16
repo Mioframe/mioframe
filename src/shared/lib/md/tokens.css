@@ -36,7 +36,9 @@
 
   /* md.ref.palette.neutral */
   --md-ref-palette-neutral0: #000000;
+  --md-ref-palette-neutral6: red; /* FIXME: Отсутствует цвет */
   --md-ref-palette-neutral10: #1d1b20;
+  --md-ref-palette-neutral12: #211f26;
   --md-ref-palette-neutral17: #2b2930;
   --md-ref-palette-neutral20: #322f35;
   --md-ref-palette-neutral22: #36343b;
