@@ -34,7 +34,6 @@ defineEmits<{
 .md-navigation-path {
   display: flex;
   flex-wrap: wrap;
-  background: transparent;
   pointer-events: none;
 
   &__separator {

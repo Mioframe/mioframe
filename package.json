@@ -18,7 +18,7 @@
     "@fortawesome/fontawesome-free": "^6.7.2",
     "@noction/vue-bezier": "^1.12.0",
     "@sentry/vue": "^8.55.0",
-    "@unhead/vue": "^1.11.20",
+    "@unhead/vue": "2.0.0-rc.13",
     "@vueuse/components": "^12.8.2",
     "@vueuse/core": "^12.8.2",
     "@vueuse/integrations": "^12.8.2",

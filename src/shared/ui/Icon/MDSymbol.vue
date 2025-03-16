@@ -1,21 +1,30 @@
 <script setup lang="ts">
 import { computed, watchEffect } from 'vue';
-import { useIconStates } from './iconStates';
+import { MaterialSymbolsFamily, useIconStates } from './iconStates';
 
-const props = defineProps<{
+const { name, style = 'rounded' } = defineProps<{
   // from https://fonts.google.com/icons
   name: string;
   style?: 'rounded' | 'outlined' | 'sharp';
 }>();
 
-const styleSetting = computed(() => props.style ?? 'rounded');
+const styleSetting = computed(() => {
+  switch (style) {
+    case 'outlined':
+      return MaterialSymbolsFamily.Outlined;
+    case 'sharp':
+      return MaterialSymbolsFamily.Sharp;
+    default:
+      return MaterialSymbolsFamily.Rounded;
+  }
+});
 
-const classSymbol = computed(() => `material-symbols-${styleSetting.value}`);
+const classSymbol = computed(() => `material-symbols-${style}`);
 
-const { loadSymbol } = useIconStates();
+const { push } = useIconStates();
 
 watchEffect(() => {
-  loadSymbol(styleSetting.value, props.name);
+  push(styleSetting.value, name);
 });
 </script>
 

@@ -1,8 +1,22 @@
 <script setup lang="ts">
-defineSlots<{
+import { computed } from 'vue';
+import { useWindowSizeClass, WindowClass } from './useWindowSizeClass';
+
+const { showSecond = false } = defineProps<{
+  showSecond?: boolean;
+}>();
+
+const slots = defineSlots<{
   navigation(): unknown;
   firstPane(): unknown;
+  secondPane(): unknown;
 }>();
+
+const { windowClass } = useWindowSizeClass();
+
+const isShowFirstPane = computed(
+  () => !showSecond || windowClass.value !== WindowClass.Compact,
+);
 </script>
 
 <template>
@@ -12,8 +26,12 @@ defineSlots<{
     </nav>
 
     <section class="md-layer__body body">
-      <div class="body__first-pane">
+      <div v-if="isShowFirstPane" class="body__first-pane">
         <slot name="firstPane" />
+      </div>
+
+      <div v-if="showSecond" class="body__second-pane">
+        <slot name="secondPane" />
       </div>
     </section>
   </main>
@@ -44,14 +62,14 @@ defineSlots<{
 .body {
   display: flex;
 
+  &__second-pane,
   &__first-pane {
     --md-pane-padding: 16px;
 
     display: flex;
     flex-direction: column;
     flex: 1 0;
-    padding-left: var(--md-pane-padding);
-    padding-right: var(--md-pane-padding);
+    padding: 4px var(--md-pane-padding);
     overflow-y: auto;
   }
 }

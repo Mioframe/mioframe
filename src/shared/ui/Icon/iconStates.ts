@@ -1,85 +1,81 @@
+import { createLogger } from '@shared/lib/logger';
 import { useHead } from '@unhead/vue';
-import { useStorage } from '@vueuse/core';
-import { isNil } from 'lodash-es';
-import { defineStore } from 'pinia';
+import { createGlobalState, useStorage } from '@vueuse/core';
+import { merge } from 'lodash-es';
+import type { Entries, ValueOf } from 'type-fest';
 import { computed } from 'vue';
 
-export const useIconStates = defineStore('iconStates', () => {
+const { debug, watchDebug } = createLogger('iconStates');
+
+export const MaterialSymbolsFamily = {
+  Rounded: 'Material+Symbols+Rounded',
+  Outlined: 'Material+Symbols+Outlined',
+  Sharp: 'Material+Symbols+Sharp',
+} as const;
+
+type State = {
+  [K in ValueOf<typeof MaterialSymbolsFamily>]: string[];
+};
+
+export const useIconStates = createGlobalState(() => {
   const fontsUrl = 'https://fonts.googleapis.com/css2';
 
-  const roundedSymbolNameSet = useStorage<string[]>('roundedSymbolNameSet', []);
+  const state = useStorage<State>(
+    'UsedMaterialSymbols',
+    {
+      [MaterialSymbolsFamily.Outlined]: [],
+      [MaterialSymbolsFamily.Rounded]: [],
+      [MaterialSymbolsFamily.Sharp]: [],
+    },
+    localStorage,
+    { mergeDefaults: (storage, defaults) => merge(storage, defaults) },
+  );
 
-  const symbolRoundedLink = computed(() =>
-    roundedSymbolNameSet.value.length
-      ? {
+  const iconNames = (nameSet: string[]) =>
+    nameSet
+      .filter((v) => !!v)
+      .sort()
+      .join(',');
+
+  const links = computed(() =>
+    (<Entries<State>>Object.entries(state.value)).reduce<
+      {
+        rel: 'stylesheet';
+        href: string;
+      }[]
+    >((acc, [family, names]) => {
+      if (names.length) {
+        acc.push({
           rel: 'stylesheet',
-          href: `${fontsUrl}?family=Material+Symbols+Rounded&icon_names=${roundedSymbolNameSet.value.sort().join(',')}`,
-        }
-      : undefined,
+          href: `${fontsUrl}?family=${family}&icon_names=${iconNames(names)}`,
+        });
+      }
+      return acc;
+    }, []),
   );
 
-  const outlinedSymbolNameSet = useStorage<string[]>(
-    'outlinedSymbolNameSet',
-    [],
-  );
+  useHead({
+    link: () => links.value,
+  });
 
-  const symbolOutlinedLink = computed(() =>
-    outlinedSymbolNameSet.value.length
-      ? {
-          rel: 'stylesheet',
-          href: `${fontsUrl}?family=Material+Symbols+Outlined&icon_names=${outlinedSymbolNameSet.value.sort().join(',')}`,
-        }
-      : undefined,
-  );
+  watchDebug('links', links);
 
-  const sharpSymbolNameSet = useStorage<string[]>('sharpSymbolNameSet', []);
-
-  const symbolSharpLink = computed(() =>
-    sharpSymbolNameSet.value.length
-      ? {
-          rel: 'stylesheet',
-          href: `${fontsUrl}?family=Material+Symbols+Sharp&icon_names=${sharpSymbolNameSet.value.sort().join(',')}`,
-        }
-      : undefined,
-  );
-
-  useHead(
-    computed(() => ({
-      link: [
-        symbolRoundedLink.value,
-        symbolOutlinedLink.value,
-        symbolSharpLink.value,
-      ].filter((v) => !isNil(v)),
-    })),
-  );
-
-  const loadSymbol = (
-    styleName: 'rounded' | 'outlined' | 'sharp',
-    symbolName: string,
+  const push = (
+    family: ValueOf<typeof MaterialSymbolsFamily>,
+    name: string,
   ) => {
-    switch (styleName) {
-      case 'rounded': {
-        if (!roundedSymbolNameSet.value.includes(symbolName)) {
-          roundedSymbolNameSet.value.push(symbolName);
-        }
-        break;
-      }
-      case 'outlined': {
-        if (!outlinedSymbolNameSet.value.includes(symbolName)) {
-          outlinedSymbolNameSet.value.push(symbolName);
-        }
-        break;
-      }
-      case 'sharp': {
-        if (!sharpSymbolNameSet.value.includes(symbolName)) {
-          sharpSymbolNameSet.value.push(symbolName);
-        }
-        break;
+    debug('push', state);
+    if (name.length) {
+      const names = state.value[family];
+      if (!names.includes(name)) {
+        names.push(name);
+        names.sort();
       }
     }
   };
 
   return {
-    loadSymbol,
+    links,
+    push,
   };
 });
