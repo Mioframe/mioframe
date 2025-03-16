@@ -18,9 +18,6 @@ const emit = defineEmits<{
 const loading = ref(0);
 
 const onApply = () => {
-  // loading.value += 1;
-  // docHandle.delete(); // FIXME: удаление документа не удаляет файлы? документ не удаляется
-  // loading.value -= 1;
   emit('apply', docHandle.documentId);
 };
 
