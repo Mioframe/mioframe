@@ -1,11 +1,9 @@
-import { createLogger } from '@shared/lib/logger';
+import { useReduce } from '@shared/lib/useReduce';
 import { useHead } from '@unhead/vue';
 import { createGlobalState, useStorage } from '@vueuse/core';
 import { merge } from 'lodash-es';
 import type { Entries, ValueOf } from 'type-fest';
 import { computed } from 'vue';
-
-const { debug, watchDebug } = createLogger('iconStates');
 
 export const MaterialSymbolsFamily = {
   Rounded: 'Material+Symbols+Rounded',
@@ -37,34 +35,37 @@ export const useIconStates = createGlobalState(() => {
       .sort()
       .join(',');
 
-  const links = computed(() =>
-    (<Entries<State>>Object.entries(state.value)).reduce<
-      {
+  const stateEntries = computed(
+    () => <Entries<State>>Object.entries(state.value),
+  );
+
+  const links = useReduce(
+    stateEntries,
+    (
+      acc: {
         rel: 'stylesheet';
         href: string;
-      }[]
-    >((acc, [family, names]) => {
+      }[],
+      [family, names],
+    ) => {
       if (names.length) {
         acc.push({
           rel: 'stylesheet',
           href: `${fontsUrl}?family=${family}&icon_names=${iconNames(names)}`,
         });
       }
-      return acc;
-    }, []),
+    },
+    [],
   );
 
-  useHead({
-    link: () => links.value,
+  const head = useHead({
+    link: links,
   });
-
-  watchDebug('links', links);
 
   const push = (
     family: ValueOf<typeof MaterialSymbolsFamily>,
     name: string,
   ) => {
-    debug('push', state);
     if (name.length) {
       const names = state.value[family];
       if (!names.includes(name)) {
@@ -72,6 +73,9 @@ export const useIconStates = createGlobalState(() => {
         names.sort();
       }
     }
+    head.patch({
+      link: links.value,
+    });
   };
 
   return {
