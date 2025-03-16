@@ -19,7 +19,6 @@ export const useRepo = (
   watchDebug('currentRepo', currentRepo);
 
   const documentsForSearch = toRef(() => toValue(searchDocuments));
-  watchDebug('documentsForSearch', documentsForSearch);
 
   const documentsMap = shallowReactive<Map<DocumentId, DocHandle<unknown>>>(
     new Map(),
@@ -98,7 +97,7 @@ export const useRepo = (
         });
       }
     },
-    { immediate: true },
+    { immediate: true, deep: true },
   );
 
   tryOnScopeDispose(() => {
