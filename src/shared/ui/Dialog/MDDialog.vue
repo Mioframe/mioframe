@@ -27,50 +27,52 @@ const dialogType = computed(() => props.type ?? 'basic');
 </script>
 
 <template>
-  <dialog
-    :open="!hide"
-    class="md-dialog md-dialog__scrim"
-    :class="[
-      {
-        'md-dialog_has-icon': !!$slots.icon,
-      },
-      `md-dialog_${dialogType}-type`,
-    ]"
-  >
-    <div class="md-dialog__container">
-      <div v-if="!!$slots.icon" class="md-dialog__icon">
-        <slot name="icon" />
-      </div>
+  <Teleport to="body">
+    <dialog
+      :open="!hide"
+      class="md-dialog md-dialog__scrim"
+      :class="[
+        {
+          'md-dialog_has-icon': !!$slots.icon,
+        },
+        `md-dialog_${dialogType}-type`,
+      ]"
+    >
+      <div class="md-dialog__container">
+        <div v-if="!!$slots.icon" class="md-dialog__icon">
+          <slot name="icon" />
+        </div>
 
-      <div class="md-dialog__headline">
-        {{ headline }}
-      </div>
+        <div class="md-dialog__headline">
+          {{ headline }}
+        </div>
 
-      <div class="md-dialog__supporting-text">
-        {{ supportingText }}
-      </div>
+        <div class="md-dialog__supporting-text">
+          {{ supportingText }}
+        </div>
 
-      <div v-if="!!$slots.default" class="md-dialog__body">
-        <slot />
-      </div>
+        <div v-if="!!$slots.default" class="md-dialog__body">
+          <slot />
+        </div>
 
-      <div class="md-dialog__actions">
-        <MDButton
-          v-if="hasCancelAction"
-          :label="cancelLabel"
-          type="text"
-          @click="$emit('cancel')"
-        />
+        <div class="md-dialog__actions">
+          <MDButton
+            v-if="hasCancelAction"
+            :label="cancelLabel"
+            type="text"
+            @click="$emit('cancel')"
+          />
 
-        <MDButton
-          :label="applyLabel"
-          :loading
-          type="text"
-          @click="$emit('apply')"
-        />
+          <MDButton
+            :label="applyLabel"
+            :loading
+            type="text"
+            @click="$emit('apply')"
+          />
+        </div>
       </div>
-    </div>
-  </dialog>
+    </dialog>
+  </Teleport>
 </template>
 
 <style scoped>
