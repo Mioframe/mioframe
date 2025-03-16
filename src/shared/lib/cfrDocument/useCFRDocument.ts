@@ -18,7 +18,7 @@ const defaultDocumentContent = (): DocumentContent => ({
 });
 
 export const useCFRDocument = (
-  docHandle: MaybeRefOrGetter<DocHandle<unknown>>,
+  docHandle: MaybeRefOrGetter<DocHandle<unknown> | undefined>,
 ): UseCFRDocument => {
   const debugId = uniqueId('useCFRDocument');
 
@@ -32,7 +32,7 @@ export const useCFRDocument = (
     debug('readDoc', debugId);
     const stateDocHandler = docHandleRef.value;
     debug('readDoc stateDocHandler', stateDocHandler);
-    const originalDoc = await stateDocHandler.doc();
+    const originalDoc = await stateDocHandler?.doc();
     debug('readDoc originalDoc', originalDoc);
     if (stateDocHandler === docHandleRef.value) {
       debug('doc originalDoc', () => ({ originalDoc: cloneDeep(originalDoc) }));
@@ -44,35 +44,6 @@ export const useCFRDocument = (
     }
 
     return contentState.value;
-  };
-
-  const readDoc1 = () => {
-    return new Promise((resolve, reject) => {
-      setTimeout(() => {
-        try {
-          debug('readDoc', debugId, docHandleRef.value);
-          const stateDocHandler = docHandleRef.value;
-          debug('readDoc stateDocHandler', stateDocHandler);
-          void stateDocHandler.doc().then((originalDoc) => {
-            debug('readDoc originalDoc', originalDoc);
-            if (stateDocHandler === docHandleRef.value) {
-              debug('doc originalDoc', () => ({
-                originalDoc: cloneDeep(originalDoc),
-              }));
-              const parsedDoc = checkSchema(originalDoc, zodDocumentContent);
-              if (parsedDoc) {
-                replaceObject(contentState.value, parsedDoc);
-                debug('doc parsedDoc', () => cloneDeep(parsedDoc));
-              }
-            }
-            resolve(contentState.value);
-          });
-        } catch (e) {
-          // eslint-disable-next-line @typescript-eslint/prefer-promise-reject-errors
-          reject(e);
-        }
-      }, 100);
-    });
   };
 
   const change = (callback: ChangeFn<DocumentContent>) => {
@@ -96,7 +67,7 @@ export const useCFRDocument = (
     docHandleRef,
     (docHandle, oldDocHandle) => {
       oldDocHandle?.off('change', updateDoc);
-      docHandle.on('change', updateDoc);
+      docHandle?.on('change', updateDoc);
       if (alreadyRead) {
         void readDoc();
       }
@@ -114,7 +85,7 @@ export const useCFRDocument = (
 
   tryOnScopeDispose(() => {
     debug('tryOnScopeDispose', debugId);
-    docHandleRef.value.off('change', updateDoc);
+    docHandleRef.value?.off('change', updateDoc);
   });
 
   const useCFRDocumentInterface: UseCFRDocument = {
