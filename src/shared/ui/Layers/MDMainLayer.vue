@@ -1,9 +1,17 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { useWindowSizeClass, WindowClass } from './useWindowSizeClass';
+import { MDTopAppBar } from '../TopAppBar';
+import { MDIconButton } from '../Button';
+import { MDSymbol } from '../Icon';
 
-const { showSecond = false } = defineProps<{
+const { showSecond = false, secondHeadline = '' } = defineProps<{
   showSecond?: boolean;
+  secondHeadline?: string;
+}>();
+
+const emit = defineEmits<{
+  clickCloseSecond: [];
 }>();
 
 const slots = defineSlots<{
@@ -17,11 +25,15 @@ const { windowClass } = useWindowSizeClass();
 const isShowFirstPane = computed(
   () => !showSecond || windowClass.value !== WindowClass.Compact,
 );
+
+const onClickBack = () => {
+  emit('clickCloseSecond');
+};
 </script>
 
 <template>
   <main class="md-layer">
-    <nav v-if="!!$slots.navigation" class="md-layer__navigation">
+    <nav v-if="!!slots.navigation" class="md-layer__navigation">
       <slot name="navigation" />
     </nav>
 
@@ -31,7 +43,21 @@ const isShowFirstPane = computed(
       </div>
 
       <div v-if="showSecond" class="body__second-pane">
-        <slot name="secondPane" />
+        <div class="body__container">
+          <MDTopAppBar :headline="secondHeadline">
+            <template #leadingNavigation>
+              <MDIconButton tooltip="back" @click="onClickBack">
+                <template #icon>
+                  <MDSymbol v-if="isShowFirstPane" name="close" />
+
+                  <MDSymbol v-else name="arrow_back" />
+                </template>
+              </MDIconButton>
+            </template>
+          </MDTopAppBar>
+
+          <slot name="secondPane" />
+        </div>
       </div>
     </section>
   </main>
@@ -70,6 +96,17 @@ const isShowFirstPane = computed(
     flex-direction: column;
     flex: 1 0;
     padding: 4px var(--md-pane-padding);
+    overflow-y: auto;
+  }
+
+  &__container {
+    position: relative;
+    flex: 1 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    border-radius: 16px;
+    --md-container-color: var(--md-sys-color-surface);
     overflow-y: auto;
   }
 }
