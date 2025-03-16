@@ -23,6 +23,7 @@ import { FSEntryMDListItem } from '@entity/fsEntry';
 import { defineContextButtonList, MDContextMenuButton } from '@shared/ui/Menu';
 import { DocumentRemoveDialog } from '@feature/documentRemove';
 import type { DocHandle, DocumentId } from '@automerge/automerge-repo';
+import { DocumentRenameDialog } from '@feature/documentRename';
 
 const { watchDebug, debug } = createLogger('DocumentExplorerWidget.vue');
 
@@ -134,9 +135,11 @@ const onClickFSEntryContextAction = (
 
 enum DocumentContextEvent {
   remove,
+  rename,
 }
 
 const documentContextBtns = defineContextButtonList([
+  [DocumentContextEvent.rename, { text: 'Rename', symbolName: 'edit' }],
   [
     DocumentContextEvent.remove,
     { text: 'Remove', symbolName: 'delete_forever' },
@@ -149,9 +152,12 @@ const onClickDocumentContextAction = (
   document: DocHandle<unknown>,
 ) => {
   switch (key) {
-    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- действий будет больше
     case DocumentContextEvent.remove: {
       documentIdToRemove.value = docId;
+      break;
+    }
+    case DocumentContextEvent.rename: {
+      documentToRename.value = document;
       break;
     }
 
@@ -179,6 +185,8 @@ const onClickDocument = (
 ) => {
   emit('clickDocument', documentId, docHandle);
 };
+
+const documentToRename = shallowRef<DocHandle<unknown>>();
 </script>
 
 <template>
@@ -274,6 +282,13 @@ const onClickDocument = (
       :doc-handle="documentToRemove"
       @cancel="documentIdToRemove = undefined"
       @apply="onDocumentRemoveApply"
+    />
+
+    <DocumentRenameDialog
+      v-if="documentToRename"
+      :doc-handle="documentToRename"
+      @renamed="documentToRename = undefined"
+      @cancel="documentToRename = undefined"
     />
   </div>
 </template>
