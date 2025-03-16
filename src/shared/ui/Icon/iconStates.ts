@@ -43,6 +43,7 @@ export const useIconStates = createGlobalState(() => {
     stateEntries,
     (
       acc: {
+        key: string;
         rel: 'stylesheet';
         href: string;
       }[],
@@ -50,6 +51,7 @@ export const useIconStates = createGlobalState(() => {
     ) => {
       if (names.length) {
         acc.push({
+          key: `stylesheet${family}`,
           rel: 'stylesheet',
           href: `${fontsUrl}?family=${family}&icon_names=${iconNames(names)}`,
         });
