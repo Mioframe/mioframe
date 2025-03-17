@@ -41,7 +41,6 @@ const onClickCancel = () => {
   stateType.value = undefined;
   emit('canceled');
 };
-
 </script>
 
 <template>

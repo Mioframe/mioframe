@@ -1,29 +1,39 @@
 <script setup lang="ts">
-import { computed } from 'vue';
 import { MDButton } from '../Button';
 
-const props = defineProps<{
+const {
+  applyLabel,
+  cancelLabel = 'Cancel',
+  hasCancelAction,
+  headline,
+  hide,
+  loading,
+  supportingText,
+  type: dialogType = 'basic',
+} = defineProps<{
   hide?: boolean;
   headline: string;
   supportingText: string;
   type?: 'basic' | 'full-screen';
-  cancelLabel: string;
+  cancelLabel?: string;
   applyLabel: string;
   hasCancelAction?: boolean;
   loading?: boolean;
 }>();
 
-defineSlots<{
+const slots = defineSlots<{
   default(): unknown;
   icon(): unknown;
 }>();
 
-defineEmits<{
+const emit = defineEmits<{
   cancel: [];
   apply: [];
 }>();
 
-const dialogType = computed(() => props.type ?? 'basic');
+const onSubmit = () => {
+  emit('apply');
+};
 </script>
 
 <template>
@@ -38,8 +48,8 @@ const dialogType = computed(() => props.type ?? 'basic');
         `md-dialog_${dialogType}-type`,
       ]"
     >
-      <div class="md-dialog__container">
-        <div v-if="!!$slots.icon" class="md-dialog__icon">
+      <form class="md-dialog__container" @submit.prevent="onSubmit">
+        <div v-if="!!slots.icon" class="md-dialog__icon">
           <slot name="icon" />
         </div>
 
@@ -51,7 +61,7 @@ const dialogType = computed(() => props.type ?? 'basic');
           {{ supportingText }}
         </div>
 
-        <div v-if="!!$slots.default" class="md-dialog__body">
+        <div v-if="!!slots.default" class="md-dialog__body">
           <slot />
         </div>
 
@@ -67,10 +77,11 @@ const dialogType = computed(() => props.type ?? 'basic');
             :label="applyLabel"
             :loading
             type="text"
+            form-action="submit"
             @click="$emit('apply')"
           />
         </div>
-      </div>
+      </form>
     </dialog>
   </Teleport>
 </template>

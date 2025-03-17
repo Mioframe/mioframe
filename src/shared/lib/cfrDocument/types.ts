@@ -24,9 +24,10 @@ export const zodDocumentContent = object({
 export type DocumentContent = TypeOf<typeof zodDocumentContent>;
 
 export interface UseCFRDocument {
-  content: ComputedRef<DocumentContent>;
-  name: ComputedRef<string>;
-  readDoc: () => Promise<DocumentContent>;
+  content: ComputedRef<DocumentContent | undefined>;
+  name: ComputedRef<string | undefined>;
+  documentType: ComputedRef<string | undefined>;
+  readDoc: () => Promise<DocumentContent | undefined>;
   change: (callback: (doc: DocumentContent) => void) => void;
 }
 

@@ -23,7 +23,7 @@ const onCreate = () => {
     throw new Error('name is undefined');
   }
 
-  const dType = documentType.value.at(0)?.labelText;
+  const dType = documentType.value.at(0)?.value;
 
   if (dType) {
     emit('create', {
