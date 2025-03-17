@@ -2,8 +2,7 @@
 import FixedPlaceholder from '../Layers/FixedPlaceholder.vue';
 
 defineSlots<{
-  content(): unknown;
-  buttons(): unknown;
+  default(): unknown;
 }>();
 </script>
 
@@ -13,7 +12,7 @@ defineSlots<{
     priority-width="placeholder"
   >
     <div class="md-fab-container">
-      <slot name="buttons" />
+      <slot name="default" />
     </div>
   </FixedPlaceholder>
 </template>

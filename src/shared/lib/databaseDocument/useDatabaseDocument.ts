@@ -4,8 +4,7 @@ import { type UnknownProperty, type PropertyId } from './property';
 import { type DatabaseDocument, zodDatabaseDocumentWithContent } from './types';
 import { isNil } from 'lodash-es';
 import type { SortDescription, View, ViewId } from './view';
-import type { ReactiveCFRDocument } from '@entity/cfrDocument/createReactiveCFRDocument';
-import { computed, toValue } from 'vue';
+import { computed } from 'vue';
 import { pickDictionaryBy } from '../pickDictionaryBy';
 import type { MaybeRef } from '@vueuse/core';
 import type { ViewsMap } from './versions';
@@ -26,15 +25,17 @@ import {
   renameViewMutation,
   toggleSortDirectionMutation,
 } from './view/mutations';
+import type { DocHandle } from '@automerge/automerge-repo';
+import { useCFRDocument } from '../cfrDocument/useCFRDocument';
 
 export const useDatabaseDocument = (
-  reactiveCFRDocument: MaybeRef<ReactiveCFRDocument | undefined>,
+  docHandleRef: MaybeRef<DocHandle<unknown> | undefined>,
 ): DatabaseDocument => {
+  const { change, content: unknownTypeContent } = useCFRDocument(docHandleRef);
+
   const content = computed(
     () =>
-      zodDatabaseDocumentWithContent.safeParse(
-        toValue(reactiveCFRDocument)?.doc,
-      ).data,
+      zodDatabaseDocumentWithContent.safeParse(unknownTypeContent.value).data,
   );
 
   const properties = computed(() =>
@@ -49,75 +50,57 @@ export const useDatabaseDocument = (
 
   const data = computed(() => content.value?.body?.data);
 
-  const getDocumentValue = () => {
-    const doc = toValue(reactiveCFRDocument);
-
-    if (!doc) {
-      throw new Error('document missing');
-    }
-
-    return doc;
-  };
-
   const addProperty = async (column: UnknownProperty): Promise<PropertyId> => {
-    return await addPropertyMutation(getDocumentValue().change, column);
+    return await addPropertyMutation(change, column);
   };
 
   const updateProperty = async (
     columnId: PropertyId,
     column: PartialDeep<UnknownProperty>,
   ) => {
-    await updatePropertyMutation(getDocumentValue().change, columnId, column);
+    await updatePropertyMutation(change, columnId, column);
   };
 
   const removeProperty = async (propertyId: PropertyId) => {
-    await removePropertyMutation(getDocumentValue().change, propertyId);
+    await removePropertyMutation(change, propertyId);
   };
 
   const addItem = async (item: Item) => {
-    return await addItemMutation(getDocumentValue().change, item);
+    return await addItemMutation(change, item);
   };
 
   const updateItem = async (itemId: ItemId, partialItem: PartialDeep<Item>) => {
-    await updateItemMutation(getDocumentValue().change, itemId, partialItem);
+    await updateItemMutation(change, itemId, partialItem);
   };
 
   const removeItem = async (itemId: ItemId) => {
-    await removeItemMutation(getDocumentValue().change, itemId);
+    await removeItemMutation(change, itemId);
   };
 
   const addView = async (view: View) => {
-    return await addViewMutation(getDocumentValue().change, view);
+    return await addViewMutation(change, view);
   };
 
   const removeView = async (viewId: ViewId) => {
-    await removeViewMutation(getDocumentValue().change, viewId);
+    await removeViewMutation(change, viewId);
   };
 
   const addSortDescription = async (
     viewId: ViewId,
     sortDescription: SortDescription,
   ) => {
-    await addSortDescriptionMutation(
-      getDocumentValue().change,
-      viewId,
-      sortDescription,
-    );
+    await addSortDescriptionMutation(change, viewId, sortDescription);
   };
 
   const toggleSortDirection = async (
     viewId: ViewId,
     propertyId: PropertyId,
   ) => {
-    await toggleSortDirectionMutation(
-      getDocumentValue().change,
-      viewId,
-      propertyId,
-    );
+    await toggleSortDirectionMutation(change, viewId, propertyId);
   };
 
   const renameView = async (viewId: ViewId, newName: string) => {
-    await renameViewMutation(getDocumentValue().change, viewId, newName);
+    await renameViewMutation(change, viewId, newName);
   };
 
   const databaseDocument: DatabaseDocument = {

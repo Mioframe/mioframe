@@ -5,7 +5,7 @@ import type { UseCFRDocument } from './types';
 import { zodDocumentContent, type DocumentContent } from './types';
 import type { ChangeFn, DocHandle } from '@automerge/automerge-repo';
 import { applyCFRDocumentMigration } from './migrations';
-import type { MaybeRefOrGetter } from 'vue';
+import type { MaybeRefOrGetter, Ref } from 'vue';
 import { computed, ref, toRef, toValue, watch } from 'vue';
 import { replaceObject } from '../changeObject';
 import { tryOnScopeDispose } from '@vueuse/core';
@@ -17,6 +17,73 @@ const defaultDocumentContent = (): DocumentContent => ({
   type: 'unknown',
 });
 
+type CFRDocumentState = {
+  documentContent: Ref<DocumentContent>;
+  numberOfUsers: number;
+  alreadyRead: boolean;
+};
+
+const cfrDocumentStateCache = new WeakMap<
+  DocHandle<unknown>,
+  CFRDocumentState
+>();
+
+const createCache = (docHandle: DocHandle<unknown>) => {
+  const state: CFRDocumentState = {
+    alreadyRead: false,
+    documentContent: ref<DocumentContent>(defaultDocumentContent()),
+    numberOfUsers: 0,
+  };
+
+  docHandle.on('change', updateDoc);
+
+  cfrDocumentStateCache.set(docHandle, state);
+
+  return state;
+};
+
+const deleteCache = (docHandle: DocHandle<unknown>) => {
+  docHandle.off('change', updateDoc);
+  cfrDocumentStateCache.delete(docHandle);
+};
+
+const tryDeleteCache = (docHandle: DocHandle<unknown>) => {
+  const numberOfUsers =
+    cfrDocumentStateCache.get(docHandle)?.numberOfUsers ?? 0;
+  if (numberOfUsers <= 0) {
+    deleteCache(docHandle);
+  }
+};
+
+const disposeState = (docHandle: DocHandle<unknown>) => {
+  const cachedState = cfrDocumentStateCache.get(docHandle);
+  if (cachedState) {
+    cachedState.numberOfUsers -= 1;
+    tryDeleteCache(docHandle);
+  }
+};
+
+const useState = (docHandle: DocHandle<unknown>): CFRDocumentState => {
+  const cachedState = cfrDocumentStateCache.get(docHandle);
+  if (!cachedState) {
+    return createCache(docHandle);
+  }
+  return cachedState;
+};
+
+const updateDoc = ({
+  doc: originalDoc,
+  handle,
+}: {
+  doc?: unknown;
+  handle: DocHandle<unknown>;
+}) => {
+  const { documentContent } = useState(handle);
+  debug('updateDoc originalDoc', originalDoc);
+  const parsedDoc = checkSchema(originalDoc, zodDocumentContent);
+  replaceObject(documentContent.value, parsedDoc ?? defaultDocumentContent());
+};
+
 export const useCFRDocument = (
   docHandle: MaybeRefOrGetter<DocHandle<unknown> | undefined>,
 ): UseCFRDocument => {
@@ -26,70 +93,88 @@ export const useCFRDocument = (
 
   debug('start', debugId);
 
-  const contentState = ref<DocumentContent>(defaultDocumentContent());
-
   const readDoc = async () => {
     debug('readDoc', debugId);
     const stateDocHandler = docHandleRef.value;
-    debug('readDoc stateDocHandler', stateDocHandler);
-    const originalDoc = await stateDocHandler?.doc();
-    debug('readDoc originalDoc', originalDoc);
-    if (stateDocHandler === docHandleRef.value) {
-      debug('doc originalDoc', () => ({ originalDoc: cloneDeep(originalDoc) }));
-      const parsedDoc = checkSchema(originalDoc, zodDocumentContent);
-      if (parsedDoc) {
-        replaceObject(contentState.value, parsedDoc);
-        debug('doc parsedDoc', () => cloneDeep(parsedDoc));
-      }
-    }
+    if (stateDocHandler) {
+      const { documentContent } = useState(stateDocHandler);
 
-    return contentState.value;
+      const originalDoc = await stateDocHandler.doc();
+      debug('readDoc originalDoc', originalDoc);
+      if (stateDocHandler === docHandleRef.value) {
+        debug('doc originalDoc', () => ({
+          originalDoc: cloneDeep(originalDoc),
+        }));
+        const parsedDoc = checkSchema(originalDoc, zodDocumentContent);
+        if (parsedDoc) {
+          replaceObject(documentContent.value, parsedDoc);
+          debug('doc parsedDoc', () => cloneDeep(parsedDoc));
+        }
+      }
+      return documentContent.value;
+    }
+    return undefined;
   };
 
   const change = (callback: ChangeFn<DocumentContent>) => {
     debug('change');
-    docHandleRef.value.change((doc) => {
+    docHandleRef.value?.change((doc) => {
       if (isObject(doc)) {
         callback(applyCFRDocumentMigration(doc));
       }
     });
   };
 
-  const updateDoc = ({ doc: originalDoc }: { doc?: unknown }) => {
-    debug('updateDoc originalDoc', originalDoc);
-    const parsedDoc = checkSchema(originalDoc, zodDocumentContent);
-    replaceObject(contentState.value, parsedDoc ?? defaultDocumentContent());
-  };
-
-  let alreadyRead = false;
-
   watch(
     docHandleRef,
     (docHandle, oldDocHandle) => {
-      oldDocHandle?.off('change', updateDoc);
-      docHandle?.on('change', updateDoc);
-      if (alreadyRead) {
-        void readDoc();
+      if (oldDocHandle) {
+        disposeState(oldDocHandle);
+      }
+
+      if (docHandle) {
+        const cachedState = cfrDocumentStateCache.get(docHandle);
+        if (cachedState) {
+          cachedState.numberOfUsers += 1;
+        } else {
+          const state = useState(docHandle);
+          state.numberOfUsers += 1;
+
+          if (state.alreadyRead) {
+            void readDoc();
+          }
+        }
       }
     },
     { immediate: true },
   );
 
   const content = computed(() => {
-    if (!alreadyRead) {
-      alreadyRead = true;
-      void readDoc();
+    const docHandle = toValue(docHandleRef);
+    if (docHandle) {
+      const state = useState(docHandle);
+      if (!state.alreadyRead) {
+        state.alreadyRead = true;
+        void readDoc();
+      }
+      return state.documentContent.value;
     }
-    return contentState.value;
+
+    return undefined;
   });
 
   tryOnScopeDispose(() => {
+    const docHandle = toValue(docHandleRef);
+    if (docHandle) {
+      disposeState(docHandle);
+    }
+
     debug('tryOnScopeDispose', debugId);
-    docHandleRef.value?.off('change', updateDoc);
   });
 
   const useCFRDocumentInterface: UseCFRDocument = {
-    name: computed(() => content.value.name),
+    name: computed(() => content.value?.name),
+    documentType: computed(() => content.value?.type),
     content,
     readDoc,
     change,
