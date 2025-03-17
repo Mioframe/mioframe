@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, toRef } from 'vue';
-import { DatabaseTableView } from '../../entities/database';
+import { DatabaseTableView } from '../../entities/databaseDocument';
 import type { MenuItem } from '@shared/ui/ContextButton';
 import { ContextBtn } from '@shared/ui/ContextButton';
 import ValueWidgetInline from '../ValueWidgetInline/ValueWidgetInline.vue';

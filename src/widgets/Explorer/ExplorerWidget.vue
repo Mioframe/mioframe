@@ -238,7 +238,7 @@ const documentToRename = shallowRef<DocHandle<unknown>>();
       </MDListContainer>
 
       <MDFabContainer class="document-explorer-widget__fab-container">
-        <template #buttons>
+        <template #default>
           <MDFab
             tooltip="Create directory"
             size="small"

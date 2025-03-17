@@ -18,6 +18,9 @@ import { cloneDeep, throttle } from 'lodash-es';
 
 const { debug } = createLogger('reactiveCFRDocument');
 
+/**
+ * @deprecated
+ */
 type ReadCFRDocument = {
   name: ComputedRef<string>;
   doc: Ref<DeepReadonly<DocumentContent> | undefined>;
@@ -31,6 +34,7 @@ export type ReactiveCFRDocument = Reactive<ReadCFRDocument>;
 /**
  * Реактивное чтение CFRDocument
  * @param cfrDocument
+ * @deprecated
  * @returns
  */
 export const reactiveCFRDocument = <CFRDoc extends UseCFRDocument>(
