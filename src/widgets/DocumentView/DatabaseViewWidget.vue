@@ -2,7 +2,7 @@
 import type { DocHandle } from '@automerge/automerge-repo';
 import { DbItemAddDialog } from '@feature/databaseItemAdd';
 import DatabasePropertyCreationDialog from '@feature/databasePropertyCreate/DatabasePropertyCreationDialog.vue';
-import type { UnknownProperty } from '@shared/lib/databaseDocument';
+import type { Item, UnknownProperty } from '@shared/lib/databaseDocument';
 import { useDatabaseDocument } from '@shared/lib/databaseDocument';
 import { MDFab, MDFabContainer } from '@shared/ui/Button';
 import { MDSymbol } from '@shared/ui/Icon';
@@ -48,6 +48,11 @@ const isShowAddItem = ref(false);
 const onClickAddItem = () => {
   isShowAddItem.value = true;
 };
+
+const onAddItem = async (item: Item) => {
+  await addItem(item);
+  isShowAddItem.value = false;
+};
 </script>
 
 <template>
@@ -57,12 +62,16 @@ const onClickAddItem = () => {
     <pre>{{ data }}</pre>
 
     <MDFabContainer class="database-view__fab-container">
-      <MDFab tooltip="addProperty" size="small" @click="onClickAddProperty">
-        <MDSymbol name="contextual_token_add" />
+      <MDFab tooltip="Add property" size="small" @click="onClickAddProperty">
+        <template #icon>
+          <MDSymbol name="contextual_token_add" />
+        </template>
       </MDFab>
 
-      <MDFab tooltip="addItem" @click="onClickAddItem">
-        <MDSymbol name="add" />
+      <MDFab tooltip="Add item" @click="onClickAddItem">
+        <template #icon>
+          <MDSymbol name="add" />
+        </template>
       </MDFab>
     </MDFabContainer>
 
@@ -75,7 +84,12 @@ const onClickAddItem = () => {
       @cancel="isShowAddProperty = false"
     />
 
-    <DbItemAddDialog v-if="isShowAddItem && properties" :properties />
+    <DbItemAddDialog
+      v-if="isShowAddItem && properties"
+      :properties
+      @add="onAddItem"
+      @cancel="isShowAddItem = false"
+    />
   </div>
 </template>
 

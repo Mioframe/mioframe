@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { MDTextField } from '@shared/ui/TextField';
 import { isString } from 'lodash-es';
 import { computed, ref } from 'vue';
 
@@ -6,7 +7,7 @@ const stateValue = ref<string>();
 
 const props = defineProps<{
   value?: unknown;
-  label?: string;
+  label: string;
 }>();
 
 const emit = defineEmits<{
@@ -24,17 +25,9 @@ const modelValue = computed<string | undefined>({
 </script>
 
 <template>
-  <div class="field">
-    <label v-if="label?.length" class="label">{{ label }}</label>
-
-    <div class="control">
-      <input
-        v-model="modelValue"
-        class="input"
-        type="text"
-        :placeholder="label"
-        @keydown="$emit('keydown', $event)"
-      />
-    </div>
-  </div>
+  <MDTextField
+    v-model:model-value="modelValue"
+    :label-text="label"
+    @keydown="$emit('keydown', $event)"
+  />
 </template>

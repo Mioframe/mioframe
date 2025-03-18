@@ -6,7 +6,7 @@ import { BooleanPropertyField } from '../../features/booleanPropertyEdit';
 import { onInteractionOutside } from '../../shared/lib/onInteractionOutside';
 import { type MaybeElement } from '@vueuse/core';
 import { NumberPropertyField } from '../../features/numberPropertyEdit';
-import { StingPropertyField } from '../../features/stringPropertyEdit';
+import { StringPropertyField } from '../../features/stringPropertyEdit';
 import { useFirstFocus } from '../../shared/lib/useFirstFocus';
 import { PROPERTY_TYPE_STRING } from '@entity/stringProperty';
 import { PROPERTY_TYPE_BOOLEAN } from '@entity/booleanProperty/boolean';
@@ -111,7 +111,7 @@ const stateValue = ref<unknown>();
           @keydown.enter="closeEditor"
         />
 
-        <StingPropertyField
+        <StringPropertyField
           v-else-if="property?.type === PROPERTY_TYPE_STRING"
           v-model:value="stateValue"
           :label="property.name"
