@@ -2,6 +2,7 @@
 import { computed } from 'vue';
 import { MDSymbol } from '../Icon';
 import { isUndefined } from 'lodash-es';
+import { vPressedState } from '@shared/lib/md/stateHelper';
 
 const {
   error,
@@ -53,39 +54,41 @@ const onClickContainer = () => {
 </script>
 
 <template>
-  <div
-    class="md-checkbox"
+  <button
+    v-pressed-state
+    type="button"
+    class="md-checkbox md-state"
     :class="{
       'md-checkbox_selected': stateValue === true,
       'md-checkbox_indeterminate': isUndefined(stateValue),
       'md-checkbox_error': error,
       'md-checkbox_disabled': disabled,
     }"
+    @click="onClickContainer"
   >
     <input
       v-model="stateValue"
       type="checkbox"
       :disabled
       class="md-checkbox__input"
+      tabindex="-1"
     />
 
-    <button
-      type="button"
-      class="md-checkbox__container"
-      @click="onClickContainer"
-    >
+    <div class="md-checkbox__container">
       <MDSymbol
         v-if="symbolName"
         class="md-checkbox__icon"
         :name="symbolName"
       />
-    </button>
-  </div>
+    </div>
+  </button>
 </template>
 
 <style lang="css" scoped>
 .md-checkbox {
-  display: inline-block;
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
   width: 40px;
   height: 40px;
   border-radius: 20px;
