@@ -11,6 +11,8 @@ import StringPropertyField from './StringPropertyField.vue';
 import { is } from '@shared/lib/validateZodScheme';
 import BooleanPropertyField from './BooleanPropertyField.vue';
 import type { Item } from '@shared/lib/databaseDocument';
+import NumberPropertyField from './NumberPropertyField.vue';
+import { zodNumberProperty } from '@entity/numberProperty';
 
 const { properties } = defineProps<{
   properties: PropertiesMap;
@@ -50,12 +52,17 @@ const onCancel = () => {
           :property
         />
 
+        <NumberPropertyField
+          v-else-if="is(property, zodNumberProperty)"
+          v-model:model-value="itemState[propertyId]"
+          :property
+        />
+
         <BooleanPropertyField
           v-else-if="is(property, zodBooleanProperty)"
           v-model:model-value="itemState[propertyId]"
+          :property
         />
-        <!-- TODO: добавить подпись к boolean -->
-        <!-- TODO: добавить тип Number -->
 
         <div v-else>
           don't have a field for property "{{ property.name }}" with type "{{
@@ -72,7 +79,7 @@ const onCancel = () => {
   &__body {
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 16px;
   }
 }
 </style>
