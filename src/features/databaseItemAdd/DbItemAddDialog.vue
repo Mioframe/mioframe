@@ -1,14 +1,36 @@
-<script setup lang="ts" generic="P extends PropertiesMap">
-import type { PropertiesMap } from '@shared/lib/databaseDocument/property';
+<script setup lang="ts">
+import { zodBooleanProperty } from '@entity/booleanProperty';
+import { zodStringProperty } from '@entity/stringProperty';
+import type {
+  PropertiesMap,
+  PropertyId,
+} from '@shared/lib/databaseDocument/property';
 import { MDDialog } from '@shared/ui/Dialog';
+import { ref } from 'vue';
+import StringPropertyField from './StringPropertyField.vue';
+import { is } from '@shared/lib/validateZodScheme';
+import BooleanPropertyField from './BooleanPropertyField.vue';
+import type { Item } from '@shared/lib/databaseDocument';
 
 const { properties } = defineProps<{
-  properties: P;
+  properties: PropertiesMap;
 }>();
 
-defineSlots<{
-  default(props: { properties: P }): unknown;
+const emit = defineEmits<{
+  add: [item: Item];
+  cancel: [];
 }>();
+
+const itemState = ref<{ [K: PropertyId]: unknown }>({});
+
+const onApply = () => {
+  emit('add', itemState.value);
+};
+
+const onCancel = () => {
+  itemState.value = {};
+  emit('cancel');
+};
 </script>
 
 <template>
@@ -16,11 +38,31 @@ defineSlots<{
     headline="Add item"
     supporting-text="Fill in the properties of the new item."
     apply-label="Add"
-    class="db-item-add-dialog"
+    has-cancel-action
+    @apply="onApply"
+    @cancel="onCancel"
   >
-    //TODO: генерировать форму на основе описания свойств
     <div class="db-item-add-dialog__body">
-      <slot :properties> // TODO: зациклить слот до одного поля </slot>
+      <template v-for="(property, propertyId) in properties" :key="propertyId">
+        <StringPropertyField
+          v-if="is(property, zodStringProperty)"
+          v-model:model-value="itemState[propertyId]"
+          :property
+        />
+
+        <BooleanPropertyField
+          v-else-if="is(property, zodBooleanProperty)"
+          v-model:model-value="itemState[propertyId]"
+        />
+        <!-- TODO: добавить подпись к boolean -->
+        <!-- TODO: добавить тип Number -->
+
+        <div v-else>
+          don't have a field for property "{{ property.name }}" with type "{{
+            property.type
+          }}"
+        </div>
+      </template>
     </div>
   </MDDialog>
 </template>

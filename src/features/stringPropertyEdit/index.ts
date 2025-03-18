@@ -1,1 +1,1 @@
-export { default as StingPropertyField } from './StingPropertyField.vue';
+export { default as StringPropertyField } from './StringPropertyField.vue';
