@@ -23,7 +23,7 @@ import { DatabaseViewAddForm } from '@feature/databaseViewAdd';
 import { DbPropertyCreateForm } from '@feature/databasePropertyCreate';
 import { DbPropertyRemoveForm } from '@feature/databasePropertyRemove';
 import { DbItemAdd } from '@feature/databaseItemAdd';
-import { StingPropertyField } from '@feature/stringPropertyEdit';
+import { StringPropertyField } from '@feature/stringPropertyEdit';
 import { PROPERTY_TYPE_STRING } from '@entity/stringProperty';
 import { NumberPropertyField } from '@feature/numberPropertyEdit';
 import { PROPERTY_TYPE_NUMBER } from '@entity/numberProperty';
@@ -250,7 +250,7 @@ const {
               @cancel="onCancelAddItem"
             >
               <template #property="{ property, propertyId }">
-                <StingPropertyField
+                <StringPropertyField
                   v-if="property.type === PROPERTY_TYPE_STRING"
                   v-model:value="stateNewItem[propertyId]"
                   :label="property.name"

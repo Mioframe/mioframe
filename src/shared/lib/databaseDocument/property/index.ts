@@ -5,7 +5,7 @@ export {
   type GeneralProperty,
   type ValidateValue,
   createProperty,
-  zodGeneralProperty as zodGeneralPropery,
+  zodGeneralProperty,
 } from './general';
 export {
   type UnknownProperty,

@@ -2,7 +2,7 @@
 import type { DocHandle } from '@automerge/automerge-repo';
 import { useCFRDocument } from '@shared/lib/cfrDocument/useCFRDocument';
 import { toRef } from 'vue';
-import DatabaseView from './DatabaseView.vue';
+import DatabaseView from './DatabaseViewWidget.vue';
 import { DATABASE_DOCUMENT_TYPE } from '@shared/lib/databaseDocument';
 
 /**
