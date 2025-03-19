@@ -6,7 +6,9 @@ import type { Item, UnknownProperty } from '@shared/lib/databaseDocument';
 import { useDatabaseDocument } from '@shared/lib/databaseDocument';
 import { MDFab, MDFabContainer } from '@shared/ui/Button';
 import { MDSymbol } from '@shared/ui/Icon';
+import { MDTable } from '@shared/ui/Table';
 import { ref, toRef } from 'vue';
+import DatabaseViewTable from './DatabaseViewTable.vue';
 
 const { docHandle } = defineProps<{
   docHandle: DocHandle<unknown>;
@@ -57,9 +59,14 @@ const onAddItem = async (item: Item) => {
 
 <template>
   <div class="database-view">
-    <pre>{{ properties }}</pre>
+    <DatabaseViewTable
+      v-if="properties && data"
+      class="database-view__table"
+      :properties
+      :data
+    />
 
-    <pre>{{ data }}</pre>
+    <div v-else>empty</div>
 
     <MDFabContainer class="database-view__fab-container">
       <MDFab tooltip="Add property" size="small" @click="onClickAddProperty">
@@ -97,11 +104,21 @@ const onAddItem = async (item: Item) => {
 .database-view {
   display: flex;
   flex-direction: column;
-  flex: 1 1;
+  flex: 1 0;
   overflow: auto;
 
   &__fab-container {
     margin-top: auto;
+    flex-shrink: 0;
+    position: sticky;
+    bottom: 0;
+  }
+
+  &__table {
+    flex-shrink: 0;
+    flex-grow: 1;
+    /* overflow: auto; */
+    padding: 16px;
   }
 }
 </style>

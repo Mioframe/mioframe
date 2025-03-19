@@ -156,6 +156,9 @@ const onSubmit = () => {
 
   &__body {
     margin-top: 24px;
+    gap: 16px;
+    display: flex;
+    flex-direction: column;
   }
 
   &__actions {

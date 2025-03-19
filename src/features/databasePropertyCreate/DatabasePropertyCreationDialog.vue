@@ -67,10 +67,15 @@ const onCancel = () => {
     @apply="onCreate"
     @cancel="onCancel"
   >
-    <MDTextField v-model:model-value="stateName" label-text="Name" />
+    <MDTextField
+      v-model:model-value="stateName"
+      label-text="Name"
+      class="database-property-creation__field"
+    />
 
     <MDSelect
       v-model:model-value="selectedType"
+      class="database-property-creation__field"
       label-text="Property type"
       :options="propertyTypeOptions"
     />
