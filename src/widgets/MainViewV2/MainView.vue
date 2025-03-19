@@ -3,7 +3,7 @@ import type { DocHandle, DocumentId } from '@automerge/automerge-repo';
 import { useCFRDocument } from '@shared/lib/cfrDocument/useCFRDocument';
 import { MDMainLayer } from '@shared/ui/Layers';
 import DocumentViewWidget from '@widget/DocumentView/DocumentViewWidget.vue';
-import { ExplorerWidget } from '@widget/Explorer';
+import { RepoExplorerWidget } from '@widget/RepoExplorer';
 import { shallowRef } from 'vue';
 
 const openedDocument = shallowRef<DocHandle<unknown>>();
@@ -30,7 +30,7 @@ const onClickDocumentBack = () => {
     @click-close-second="onClickDocumentBack"
   >
     <template #firstPane>
-      <ExplorerWidget @click-document="onClickDocument" />
+      <RepoExplorerWidget @click-document="onClickDocument" />
     </template>
 
     <template v-if="openedDocument" #secondPane>
