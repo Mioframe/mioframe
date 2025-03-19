@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, ref, watchEffect } from 'vue';
 import { useWindowSizeClass, WindowClass } from './useWindowSizeClass';
 import { MDTopAppBar } from '../TopAppBar';
 import { MDIconButton } from '../Button';
 import { MDSymbol } from '../Icon';
+import { useCssVar } from '@vueuse/core';
 
 const { showSecond = false, secondHeadline = '' } = defineProps<{
   showSecond?: boolean;
@@ -29,6 +30,31 @@ const isShowFirstPane = computed(
 const onClickBack = () => {
   emit('clickCloseSecond');
 };
+
+const firstPaneSize = computed((): number => {
+  if (isShowFirstPane.value) {
+    if (windowClass.value === WindowClass.Medium) {
+      return 50;
+    }
+    if (showSecond) {
+      return 30;
+    }
+    return 100;
+  }
+  return 0;
+});
+
+const bodyRef = ref<HTMLElement>();
+
+const firstPaneSizeCssVar = useCssVar('--md-first-pane-width', bodyRef);
+const secondPaneSizeCssVar = useCssVar('--md-second-pane-width', bodyRef);
+
+watchEffect(() => {
+  firstPaneSizeCssVar.value = `${firstPaneSize.value}%`;
+});
+watchEffect(() => {
+  secondPaneSizeCssVar.value = `${100 - firstPaneSize.value}%`;
+});
 </script>
 
 <template>
@@ -37,7 +63,7 @@ const onClickBack = () => {
       <slot name="navigation" />
     </nav>
 
-    <section class="md-layer__body body">
+    <section ref="bodyRef" class="md-layer__body body">
       <div v-if="isShowFirstPane" class="body__first-pane">
         <slot name="firstPane" />
       </div>
@@ -94,9 +120,19 @@ const onClickBack = () => {
 
     display: flex;
     flex-direction: column;
-    flex: 1 0;
+    /* flex: 1 1; */
+    flex-grow: 1;
     padding: 4px var(--md-pane-padding);
     overflow-y: auto;
+  }
+
+  &__first-pane {
+    /* width: var(--md-first-pane-width, auto); */
+    flex-basis: var(--md-first-pane-width, auto);
+  }
+
+  &__second-pane {
+    flex-basis: var(--md-second-pane-width, auto);
   }
 
   &__container {

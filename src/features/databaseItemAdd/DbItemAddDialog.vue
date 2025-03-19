@@ -44,33 +44,31 @@ const onCancel = () => {
     @apply="onApply"
     @cancel="onCancel"
   >
-    <div class="db-item-add-dialog__body">
-      <template v-for="(property, propertyId) in properties" :key="propertyId">
-        <StringPropertyField
-          v-if="is(property, zodStringProperty)"
-          v-model:model-value="itemState[propertyId]"
-          :property
-        />
+    <template v-for="(property, propertyId) in properties" :key="propertyId">
+      <StringPropertyField
+        v-if="is(property, zodStringProperty)"
+        v-model:model-value="itemState[propertyId]"
+        :property
+      />
 
-        <NumberPropertyField
-          v-else-if="is(property, zodNumberProperty)"
-          v-model:model-value="itemState[propertyId]"
-          :property
-        />
+      <NumberPropertyField
+        v-else-if="is(property, zodNumberProperty)"
+        v-model:model-value="itemState[propertyId]"
+        :property
+      />
 
-        <BooleanPropertyField
-          v-else-if="is(property, zodBooleanProperty)"
-          v-model:model-value="itemState[propertyId]"
-          :property
-        />
+      <BooleanPropertyField
+        v-else-if="is(property, zodBooleanProperty)"
+        v-model:model-value="itemState[propertyId]"
+        :property
+      />
 
-        <div v-else>
-          don't have a field for property "{{ property.name }}" with type "{{
-            property.type
-          }}"
-        </div>
-      </template>
-    </div>
+      <div v-else>
+        don't have a field for property "{{ property.name }}" with type "{{
+          property.type
+        }}"
+      </div>
+    </template>
   </MDDialog>
 </template>
 
