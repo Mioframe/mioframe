@@ -4,11 +4,12 @@ import { DbItemAddDialog } from '@feature/databaseItemAdd';
 import DatabasePropertyCreationDialog from '@feature/databasePropertyCreate/DatabasePropertyCreationDialog.vue';
 import type { Item, UnknownProperty } from '@shared/lib/databaseDocument';
 import { useDatabaseDocument } from '@shared/lib/databaseDocument';
-import { MDFab, MDFabContainer } from '@shared/ui/Button';
+import { MDButton, MDFab, MDFabContainer } from '@shared/ui/Button';
 import { MDSymbol } from '@shared/ui/Icon';
 import { MDTable } from '@shared/ui/Table';
 import { ref, toRef } from 'vue';
 import DatabaseViewTable from './DatabaseViewTable.vue';
+import { MDBottomSheet } from '@shared/ui/Sheets';
 
 const { docHandle } = defineProps<{
   docHandle: DocHandle<unknown>;
@@ -68,22 +69,39 @@ const onAddItem = async (item: Item) => {
 
     <div v-else>empty</div>
 
-    <MDFabContainer class="database-view__fab-container">
-      <MDFab tooltip="Add property" size="small" @click="onClickAddProperty">
-        <template #icon>
-          <MDSymbol name="contextual_token_add" />
-        </template>
-      </MDFab>
+    <div class="database-view__controls">
+      <MDFabContainer class="database-view__fab-container">
+        <MDFab tooltip="Add property" size="small" @click="onClickAddProperty">
+          <template #icon>
+            <MDSymbol name="contextual_token_add" />
+          </template>
+        </MDFab>
 
-      <MDFab tooltip="Add item" @click="onClickAddItem">
-        <template #icon>
-          <MDSymbol name="add" />
+        <MDFab tooltip="Add item" @click="onClickAddItem">
+          <template #icon>
+            <MDSymbol name="add" />
+          </template>
+        </MDFab>
+      </MDFabContainer>
+
+      <MDBottomSheet class="database-view__sheet sheet">
+        <template #head>
+          <div class="sheet__head">
+            <MDButton label="button 1" />
+
+            <MDButton label="button 2" />
+
+            <!-- todo: сделать MDNavigationBar для кнопок -->
+          </div>
         </template>
-      </MDFab>
-    </MDFabContainer>
+
+        <MDButton label="button 3" />
+
+        <MDButton label="button 4" />
+      </MDBottomSheet>
+    </div>
 
     <!-- TODO: создать нижний бар для кнопок -->
-    <!-- TODO: создать MD таблицу из MDList -->
 
     <DatabasePropertyCreationDialog
       v-if="isShowAddProperty"
@@ -107,11 +125,12 @@ const onAddItem = async (item: Item) => {
   flex: 1 0;
   overflow: auto;
 
-  &__fab-container {
+  &__controls {
     margin-top: auto;
     flex-shrink: 0;
     position: sticky;
     bottom: 0;
+    background: transparent;
   }
 
   &__table {
@@ -119,6 +138,12 @@ const onAddItem = async (item: Item) => {
     flex-grow: 1;
     /* overflow: auto; */
     padding: 16px;
+  }
+}
+
+.sheet {
+  &__head {
+    display: flex;
   }
 }
 </style>
