@@ -68,6 +68,7 @@
   /* md.ref.typeface */
   --md-ref-typeface-plain: Roboto, Arial, Helvetica, sans-serif;
   --md-ref-typeface-weight-medium: 500;
+  --md-ref-typeface-weight-bold: 700;
   --md-ref-typeface-weight-regular: 400;
   --md-ref-typeface-brand: Roboto, Arial, Helvetica, sans-serif;
 
@@ -287,6 +288,15 @@
     0px 8px 12px 6px rgba(0, 0, 0, 0.15);
 
   /* md.sys.typescale */
+  /* md.sys.typescale.label-medium */
+  --md-sys-typescale-label-medium-font: var(--md-ref-typeface-plain);
+  --md-sys-typescale-label-medium-line-height: 16pt;
+  --md-sys-typescale-label-medium-size: 12pt;
+  --md-sys-typescale-label-medium-weight: var(--md-ref-typeface-weight-medium);
+  --md-sys-typescale-label-medium-weight-prominent: var(
+    --md-ref-typeface-weight-bold
+  );
+  --md-sys-typescale-label-medium-tracking: 0.5pt;
   /* md.sys.typescale.label-large */
   --md-sys-typescale-label-large-font: var(--md-ref-typeface-plain);
   --md-sys-typescale-label-large-line-height: 20pt;
