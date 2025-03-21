@@ -141,7 +141,7 @@ const windowClassModifier = computed(() => {
     overflow-y: auto;
 
     .md-layer_compact & {
-      --md-pane-padding: 0;
+      --md-pane-padding: 0px;
       padding: 0 var(--md-pane-padding);
     }
   }
