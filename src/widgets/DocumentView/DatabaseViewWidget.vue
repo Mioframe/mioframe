@@ -6,10 +6,10 @@ import type { Item, UnknownProperty } from '@shared/lib/databaseDocument';
 import { useDatabaseDocument } from '@shared/lib/databaseDocument';
 import { MDButton, MDFab, MDFabContainer } from '@shared/ui/Button';
 import { MDSymbol } from '@shared/ui/Icon';
-import { MDTable } from '@shared/ui/Table';
 import { ref, toRef } from 'vue';
 import DatabaseViewTable from './DatabaseViewTable.vue';
 import { MDBottomSheet } from '@shared/ui/Sheets';
+import { defineBarButtons, MDButtonsBar } from '@shared/ui/ButtonsBar';
 
 const { docHandle } = defineProps<{
   docHandle: DocHandle<unknown>;
@@ -56,6 +56,38 @@ const onAddItem = async (item: Item) => {
   await addItem(item);
   isShowAddItem.value = false;
 };
+
+enum Action {
+  addItem,
+  addProperty,
+}
+
+const firstLineButtons = defineBarButtons([
+  {
+    label: 'Add item',
+    iconName: 'add',
+    action: Action.addItem,
+  },
+  {
+    label: 'Add property',
+    iconName: 'contextual_token_add',
+    action: Action.addProperty,
+  },
+]);
+
+const onClickButtonsBar = (item: (typeof firstLineButtons)[number]) => {
+  switch (item.action) {
+    case Action.addItem: {
+      isShowAddItem.value = true;
+      break;
+    }
+    case Action.addProperty: {
+      isShowAddProperty.value = true;
+    }
+    default:
+      throw new Error('unknown action');
+  }
+};
 </script>
 
 <template>
@@ -70,30 +102,26 @@ const onAddItem = async (item: Item) => {
     <div v-else>empty</div>
 
     <div class="database-view__controls">
-      <MDFabContainer class="database-view__fab-container">
+      <!--
+        <MDFabContainer class="database-view__fab-container">
         <MDFab tooltip="Add property" size="small" @click="onClickAddProperty">
-          <template #icon>
-            <MDSymbol name="contextual_token_add" />
-          </template>
+        <template #icon>
+        <MDSymbol name="contextual_token_add" />
+        </template>
         </MDFab>
 
         <MDFab tooltip="Add item" @click="onClickAddItem">
-          <template #icon>
-            <MDSymbol name="add" />
-          </template>
+        <template #icon>
+        <MDSymbol name="add" />
+        </template>
         </MDFab>
-      </MDFabContainer>
+        </MDFabContainer> 
+      -->
 
       <MDBottomSheet class="database-view__sheet sheet">
         <template #head>
-          <div class="sheet__head">
-            <MDButton label="button 1" />
-
-            <MDButton label="button 2" />
-
-            <!-- todo: сделать MDNavigationBar для кнопок -->
-          </div>
-        </template>
+          <MDButtonsBar :buttons="firstLineButtons" @click="onClickButtonsBar"
+        /></template>
 
         <MDButton label="button 3" />
 

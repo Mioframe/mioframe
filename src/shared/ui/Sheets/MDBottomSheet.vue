@@ -52,8 +52,6 @@ watchEffect(() => {
 watchEffect(() => {
   placeholderTopCssVar.value = `${placeholderTop.value}px`;
 });
-
-// TODO: доделать лист
 </script>
 
 <template>

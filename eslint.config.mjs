@@ -18,6 +18,7 @@ const eslintConfig = [
         'error',
         { allowInterfaces: 'with-single-extends' },
       ],
+      'vue/camelcase': 'off',
     },
   },
 ];
