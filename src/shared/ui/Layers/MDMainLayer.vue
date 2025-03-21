@@ -55,10 +55,27 @@ watchEffect(() => {
 watchEffect(() => {
   secondPaneSizeCssVar.value = `${100 - firstPaneSize.value}%`;
 });
+
+const windowClassModifier = computed(() => {
+  switch (windowClass.value) {
+    case WindowClass.Compact:
+      return 'md-layer_compact';
+    case WindowClass.Medium:
+      return 'md-layer_medium';
+    case WindowClass.Expanded:
+      return 'md-layer_expanded';
+    case WindowClass.Large:
+      return 'md-layer_large';
+    case WindowClass.ExtraLarge:
+      return 'md-layer_extra-large';
+    default:
+      return undefined;
+  }
+});
 </script>
 
 <template>
-  <main class="md-layer">
+  <main class="md-layer" :class="[windowClassModifier]">
     <nav v-if="!!slots.navigation" class="md-layer__navigation">
       <slot name="navigation" />
     </nav>
@@ -94,8 +111,6 @@ watchEffect(() => {
   flex-grow: 1;
   display: flex;
   flex-direction: column-reverse;
-  /* padding-left: 16px;
-  padding-right: 16px; */
   overflow: auto;
   --md-container-color: var(--md-sys-color-surface-container);
 
@@ -124,6 +139,11 @@ watchEffect(() => {
     flex-grow: 1;
     padding: 4px var(--md-pane-padding);
     overflow-y: auto;
+
+    .md-layer_compact & {
+      --md-pane-padding: 0;
+      padding: 0 var(--md-pane-padding);
+    }
   }
 
   &__first-pane {
