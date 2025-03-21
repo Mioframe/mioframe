@@ -308,6 +308,7 @@ const documentToRename = shallowRef<DocHandle<unknown>>();
     position: sticky;
     bottom: 0;
     flex-shrink: 0;
+    margin-right: calc(16px - var(--md-pane-padding, 0));
   }
 
   &__navigation-path {
