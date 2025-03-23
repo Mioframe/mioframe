@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, shallowRef, watchEffect } from 'vue';
+import { computed, ref, shallowRef } from 'vue';
 import { DirectoryCreateDialog } from '@feature/directoryCreate';
 import type { FileFSEntry } from '@shared/lib/fileSystem';
 import {
@@ -9,7 +9,6 @@ import {
 } from '@shared/lib/fileSystem';
 import { MDFab, MDFabContainer } from '@shared/ui/Button';
 import { MDSymbol } from '@shared/ui/Icon';
-import { setupDirectoryChoice } from '@widget/MainView/setupDirectoryChoice';
 import { FSEntryRemoveDialog } from '@feature/entryRemove';
 import { MDNavigationPath } from '@shared/ui/NavigationPath';
 import { DocumentCreationDialog } from '@feature/documentCreate';
@@ -24,14 +23,18 @@ import { defineContextButtonList, MDContextMenuButton } from '@shared/ui/Menu';
 import { DocumentRemoveDialog } from '@feature/documentRemove';
 import type { DocHandle, DocumentId } from '@automerge/automerge-repo';
 import { DocumentRenameDialog } from '@feature/documentRename';
+import { clone } from 'lodash-es';
 
 const { watchDebug, debug } = createLogger('DocumentExplorerWidget.vue');
 
-const emit = defineEmits<{
-  clickDocument: [id: DocumentId, doc: DocHandle<unknown>];
+const { directoryPath } = defineProps<{
+  directoryPath: DirectoryFSEntry[];
 }>();
 
-const { selectedDirectory: rootDirectory } = setupDirectoryChoice();
+const emit = defineEmits<{
+  clickDocument: [id: DocumentId, doc: DocHandle<unknown>];
+  'update:directoryPath': [directoryPath: DirectoryFSEntry[]];
+}>();
 
 const isShowCreateDirectoryForm = ref(false);
 
@@ -43,13 +46,7 @@ type FSEntry = DirectoryFSEntry | FileFSEntry;
 
 const entryNameToRemove = ref<string>();
 
-const directoryPath = ref<DirectoryFSEntry[]>([]);
-
-watchEffect(() => {
-  directoryPath.value = rootDirectory.value ? [rootDirectory.value] : [];
-});
-
-const currentDirectoryEntry = computed(() => directoryPath.value.at(-1));
+const currentDirectoryEntry = computed(() => directoryPath.at(-1));
 
 watchDebug('currentDirectoryEntry', currentDirectoryEntry);
 
@@ -64,14 +61,22 @@ const onClickPath = (indexPath: number) => {
   debug('onClickPath', indexPath);
 
   const start = indexPath + 1;
-  const count = directoryPath.value.length - start;
+  const count = directoryPath.length - start;
 
-  directoryPath.value.splice(start, count);
+  const path = clone(directoryPath);
+
+  path.splice(start, count);
+
+  emit('update:directoryPath', path);
 };
 
 const onClickEntry = (_entryKey: PropertyKey, entry: FSEntry) => {
   if (isDirectoryRef(entry)) {
-    directoryPath.value.push(entry);
+    const path = clone(directoryPath);
+
+    path.push(entry);
+
+    emit('update:directoryPath', path);
   }
 };
 
@@ -187,6 +192,8 @@ const onClickDocument = (
 };
 
 const documentToRename = shallowRef<DocHandle<unknown>>();
+
+// FIXME: хранить состояние открытого пути глобально
 </script>
 
 <template>
