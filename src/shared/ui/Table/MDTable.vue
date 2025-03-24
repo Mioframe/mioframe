@@ -26,6 +26,7 @@
 
     thead {
       position: sticky;
+      z-index: 1;
       top: 0;
       --md-container-color: var(--md-sys-color-surface-variant);
       --md-content-color: var(--md-sys-color-on-surface-variant);
