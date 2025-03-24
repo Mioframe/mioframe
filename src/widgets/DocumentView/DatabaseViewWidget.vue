@@ -2,14 +2,21 @@
 import type { DocHandle } from '@automerge/automerge-repo';
 import { DbItemAddDialog } from '@feature/databaseItemAdd';
 import DatabasePropertyCreationDialog from '@feature/databasePropertyCreate/DatabasePropertyCreationDialog.vue';
-import type { Item, UnknownProperty } from '@shared/lib/databaseDocument';
+import type {
+  Item,
+  PropertyId,
+  UnknownProperty,
+} from '@shared/lib/databaseDocument';
 import { useDatabaseDocument } from '@shared/lib/databaseDocument';
-import { MDButton, MDFab, MDFabContainer } from '@shared/ui/Button';
-import { MDSymbol } from '@shared/ui/Icon';
-import { ref, toRef } from 'vue';
+import { computed, ref, toRef } from 'vue';
 import DatabaseViewTable from './DatabaseViewTable.vue';
 import { MDBottomSheet } from '@shared/ui/Sheets';
 import { defineBarButtons, MDButtonsBar } from '@shared/ui/ButtonsBar';
+import { DatabasePropertyList } from '@entity/databaseProperty';
+import { defineContextButtonList, MDContextMenuButton } from '@shared/ui/Menu';
+import type { GeneralProperty } from '@shared/lib/databaseDocument/property';
+import { DatabasePropertyRemoveDialog } from '@feature/databasePropertyRemove';
+import { DatabasePropertyRenameDialog } from '@feature/databasePropertyRename';
 
 const { docHandle } = defineProps<{
   docHandle: DocHandle<unknown>;
@@ -37,20 +44,12 @@ const {
 
 const isShowAddProperty = ref(false);
 
-const onClickAddProperty = () => {
-  isShowAddProperty.value = true;
-};
-
 const onCreateProperty = async (property: UnknownProperty) => {
   await addProperty(property);
   isShowAddProperty.value = false;
 };
 
 const isShowAddItem = ref(false);
-
-const onClickAddItem = () => {
-  isShowAddItem.value = true;
-};
 
 const onAddItem = async (item: Item) => {
   await addItem(item);
@@ -83,9 +82,74 @@ const onClickButtonsBar = (item: (typeof firstLineButtons)[number]) => {
     }
     case Action.addProperty: {
       isShowAddProperty.value = true;
+      break;
     }
     default:
       throw new Error('unknown action');
+  }
+};
+
+enum PropertyAction {
+  remove,
+  rename,
+}
+
+const propertyContextBtns = defineContextButtonList([
+  [
+    PropertyAction.remove,
+    {
+      text: 'Remove',
+      symbolName: 'delete',
+    },
+  ],
+  [
+    PropertyAction.rename,
+    {
+      text: 'Rename',
+      symbolName: 'edit',
+    },
+  ],
+]);
+
+const removePropertyId = ref<PropertyId>();
+
+const onApplyRemoveProperty = async (propertyId: PropertyId) => {
+  await removeProperty(propertyId);
+  removePropertyId.value = undefined;
+};
+
+const renamePropertyId = ref<PropertyId>();
+
+const renamePropertyName = computed(() =>
+  renamePropertyId.value && properties.value
+    ? properties.value[renamePropertyId.value].name
+    : undefined,
+);
+
+const onApplyRenameProperty = async (propertyId: PropertyId, name: string) => {
+  await updateProperty(propertyId, {
+    name,
+  });
+  renamePropertyId.value = undefined;
+};
+
+const onClickPropertyContextAction = (
+  action: PropertyAction,
+  propertyId: PropertyId,
+  property: GeneralProperty,
+) => {
+  switch (action) {
+    case PropertyAction.remove: {
+      removePropertyId.value = propertyId;
+      break;
+    }
+    case PropertyAction.rename: {
+      renamePropertyId.value = propertyId;
+      break;
+    }
+
+    default:
+      throw new Error('unknown property action');
   }
 };
 </script>
@@ -102,34 +166,32 @@ const onClickButtonsBar = (item: (typeof firstLineButtons)[number]) => {
     <div v-else>empty</div>
 
     <div class="database-view__controls">
-      <!--
-        <MDFabContainer class="database-view__fab-container">
-        <MDFab tooltip="Add property" size="small" @click="onClickAddProperty">
-        <template #icon>
-        <MDSymbol name="contextual_token_add" />
-        </template>
-        </MDFab>
-
-        <MDFab tooltip="Add item" @click="onClickAddItem">
-        <template #icon>
-        <MDSymbol name="add" />
-        </template>
-        </MDFab>
-        </MDFabContainer> 
-      -->
-
       <MDBottomSheet class="database-view__sheet sheet">
         <template #head>
-          <MDButtonsBar :buttons="firstLineButtons" @click="onClickButtonsBar"
-        /></template>
+          <MDButtonsBar
+            :buttons="firstLineButtons"
+            @click="onClickButtonsBar"
+          />
+        </template>
 
-        <MDButton label="button 3" />
-
-        <MDButton label="button 4" />
+        <div class="sheet__body">
+          <DatabasePropertyList
+            v-if="properties"
+            :properties="properties"
+            class="sheet__property-list"
+          >
+            <template #trailingIcon="{ property, propertyId }">
+              <MDContextMenuButton
+                :btns="propertyContextBtns"
+                @click="
+                  onClickPropertyContextAction($event, propertyId, property)
+                "
+              />
+            </template>
+          </DatabasePropertyList>
+        </div>
       </MDBottomSheet>
     </div>
-
-    <!-- TODO: создать нижний бар для кнопок -->
 
     <DatabasePropertyCreationDialog
       v-if="isShowAddProperty"
@@ -142,6 +204,19 @@ const onClickButtonsBar = (item: (typeof firstLineButtons)[number]) => {
       :properties
       @add="onAddItem"
       @cancel="isShowAddItem = false"
+    />
+
+    <DatabasePropertyRemoveDialog
+      v-if="removePropertyId"
+      @apply="onApplyRemoveProperty(removePropertyId)"
+      @cancel="removePropertyId = undefined"
+    />
+
+    <DatabasePropertyRenameDialog
+      v-if="renamePropertyId"
+      :name="renamePropertyName"
+      @apply="onApplyRenameProperty(renamePropertyId, $event)"
+      @cancel="renamePropertyId = undefined"
     />
   </div>
 </template>
@@ -172,6 +247,14 @@ const onClickButtonsBar = (item: (typeof firstLineButtons)[number]) => {
 .sheet {
   &__head {
     display: flex;
+  }
+
+  &__body {
+    padding: 16px;
+  }
+
+  &__property-list {
+    --md-list-container-border-radius: 16px;
   }
 }
 </style>

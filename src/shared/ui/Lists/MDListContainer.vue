@@ -16,10 +16,13 @@ defineSlots<{
 
 <style scoped>
 .md-list-container {
+  --md-list-container-border-radius: 0px;
+
   list-style-type: none;
   padding: 8px 0;
   margin: 0;
   display: flex;
   flex-direction: column;
+  border-radius: var(--md-list-container-border-radius);
 }
 </style>

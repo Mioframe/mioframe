@@ -58,7 +58,7 @@ const onClick = (e: MouseEvent) => {
 .md-list-item {
   --md-list-item-horizontal-gap: 16px;
   --md-list-item-min-height: 56px;
-  --md-list-item-border-radius: 0;
+  --md-list-item-border-radius: 0px;
 
   display: flex;
   padding: 8px var(--md-list-item-horizontal-gap);
@@ -70,6 +70,27 @@ const onClick = (e: MouseEvent) => {
   box-sizing: border-box;
   text-align: start;
   border-radius: var(--md-list-item-border-radius);
+
+  &:first-child {
+    border-top-right-radius: max(
+      var(--md-list-item-border-radius),
+      var(--md-list-container-border-radius)
+    );
+    border-top-left-radius: max(
+      var(--md-list-item-border-radius),
+      var(--md-list-container-border-radius)
+    );
+  }
+  &:last-child {
+    border-bottom-right-radius: max(
+      var(--md-list-item-border-radius),
+      var(--md-list-container-border-radius)
+    );
+    border-bottom-left-radius: max(
+      var(--md-list-item-border-radius),
+      var(--md-list-container-border-radius)
+    );
+  }
 
   &__leading-icon {
     display: block;
