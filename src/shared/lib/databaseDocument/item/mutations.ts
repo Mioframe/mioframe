@@ -1,6 +1,6 @@
 import { is } from '@shared/lib/validateZodScheme';
 import { zodDatabaseTypeDocument, type MutationFn } from '../types';
-import type { Item } from './data';
+import type { DatabaseItem } from './data';
 import type { ItemId } from './id';
 import { generateItemId } from './id';
 import { putObject } from '@shared/lib/changeObject';
@@ -9,7 +9,7 @@ import type { PartialDeep } from 'type-fest';
 
 export const addItemMutation = (
   change: (mutation: MutationFn) => unknown,
-  item: Item,
+  item: DatabaseItem,
 ): Promise<ItemId> =>
   new Promise((resolve, reject) => {
     change((doc) => {
@@ -35,7 +35,7 @@ export const addItemMutation = (
 export const updateItemMutation = (
   change: (mutation: MutationFn) => unknown,
   itemId: ItemId,
-  partialItem: PartialDeep<Item>,
+  partialItem: PartialDeep<DatabaseItem>,
 ): Promise<void> =>
   new Promise((resolve, reject) => {
     change((doc) => {
