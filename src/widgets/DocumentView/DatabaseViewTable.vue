@@ -1,9 +1,10 @@
 <script setup lang="ts">
+import { DatabaseValueSpan } from '@entity/databaseValue';
 import type { DatabaseData } from '@shared/lib/databaseDocument';
 import type { PropertiesMap } from '@shared/lib/databaseDocument/property';
 import { MDTable } from '@shared/ui/Table';
 
-const {} = defineProps<{
+const { data } = defineProps<{
   properties: PropertiesMap;
   data: DatabaseData;
 }>();
@@ -22,7 +23,7 @@ const {} = defineProps<{
     <tbody>
       <tr v-for="(item, itemId) in data" :key="itemId">
         <td v-for="(property, propertyId) in properties" :key="propertyId">
-          {{ item[propertyId] }}
+          <DatabaseValueSpan :item :property-id :property />
         </td>
       </tr>
     </tbody>

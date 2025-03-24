@@ -124,6 +124,7 @@ const onSubmit = () => {
     justify-content: center;
     align-items: center;
     color: var(--md-sys-color-secondary);
+    margin: 0 auto;
   }
 
   &__headline {
@@ -139,6 +140,7 @@ const onSubmit = () => {
 
     .md-dialog_has-icon & {
       text-align: center;
+      margin-top: 16px;
     }
   }
 

@@ -39,7 +39,7 @@ export const useDatabaseDocument = (
   );
 
   const properties = computed(() =>
-    content.value?.body?.properties
+    content.value?.body
       ? pickDictionaryBy(content.value.body.properties, (v) => !isNil(v))
       : undefined,
   );
@@ -48,7 +48,11 @@ export const useDatabaseDocument = (
     (): ViewsMap | undefined => content.value?.body?.views,
   );
 
-  const data = computed(() => content.value?.body?.data);
+  const data = computed(() =>
+    content.value?.body
+      ? pickDictionaryBy(content.value.body.data, (v) => !isNil(v))
+      : undefined,
+  );
 
   const addProperty = async (column: UnknownProperty): Promise<PropertyId> => {
     return await addPropertyMutation(change, column);
