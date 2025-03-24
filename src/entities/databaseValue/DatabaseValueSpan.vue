@@ -21,6 +21,15 @@ const value = computed(() => (item ? item[propertyId] : undefined));
       {{ value }}
     </template>
 
-    <MDSymbol v-else name="unknown_med" />
+    <MDSymbol v-else name="unknown_med" class="database-value-span__empty" />
   </span>
 </template>
+
+<style lang="css" scoped>
+.database-value-span {
+  &__empty {
+    --md-content-color: var(--md-sys-color-secondary);
+    opacity: 0.5;
+  }
+}
+</style>
