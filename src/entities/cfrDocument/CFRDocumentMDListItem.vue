@@ -3,7 +3,7 @@ import type { DocHandle } from '@automerge/automerge-repo';
 import { useCFRDocument } from '@shared/lib/cfrDocument/useCFRDocument';
 import { MDSymbol } from '@shared/ui/Icon';
 import { MDListItem } from '@shared/ui/Lists';
-import { toRef } from 'vue';
+import { computed, toRef } from 'vue';
 
 const props = defineProps<{
   docHandle: DocHandle<unknown>;
@@ -23,7 +23,9 @@ const slots = defineSlots<{
 
 const docHandle = toRef(() => props.docHandle);
 
-const { name: headline } = useCFRDocument(docHandle);
+const { name } = useCFRDocument(docHandle);
+
+const headline = computed(() => name.value ?? 'Untitled Document');
 </script>
 
 <template>

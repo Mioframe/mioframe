@@ -1,10 +1,5 @@
 <script setup lang="ts">
-import {
-  tryOnScopeDispose,
-  useCssVar,
-  useElementBounding,
-  useElementSize,
-} from '@vueuse/core';
+import { useCssVar, useElementBounding, useElementSize } from '@vueuse/core';
 import { ref, watchEffect } from 'vue';
 
 const { priorityWidth = 'content', priorityHeight = 'content' } = defineProps<{
@@ -22,7 +17,6 @@ const {
   left: placeholderLeft,
   width: placeholderWidth,
   height: placeholderHeight,
-  update: updatePlaceholderState,
 } = useElementBounding(placeholder);
 
 const content = ref<HTMLDivElement>();
@@ -63,23 +57,6 @@ watchEffect(() => {
   contentHeightCssVar.value =
     priorityHeight === 'content' ? `${contentHeight.value}px` : undefined;
 });
-
-// const timeoutUpdatePlaceholderState = setInterval(() => {
-//   updatePlaceholderState();
-// }, 1e3);
-
-// const eventListener = () => {
-//   setTimeout(() => {
-//     updatePlaceholderState();
-//   }, 100);
-// };
-
-// document.addEventListener('click', eventListener);
-
-// tryOnScopeDispose(() => {
-// clearInterval(timeoutUpdatePlaceholderState);
-// document.removeEventListener('click', eventListener);
-// });
 </script>
 
 <template>

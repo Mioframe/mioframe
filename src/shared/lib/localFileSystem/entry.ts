@@ -1,4 +1,3 @@
-import { computed, reactive } from 'vue';
 import type { LocalDirectoryEntry, LocalGeneralEntry } from './types';
 
 export const createLocalEntry = (
@@ -22,9 +21,13 @@ export const createLocalEntry = (
 
   const getName = () => rootName ?? currentHandle.name;
 
-  return reactive({
+  return {
     remove,
-    name: computed(() => getName()),
-    path: computed(() => getPath()),
-  });
+    get name() {
+      return getName();
+    },
+    get path() {
+      return getPath();
+    },
+  };
 };

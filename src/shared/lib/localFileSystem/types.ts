@@ -1,4 +1,8 @@
-import type { DirectoryFSEntry, GeneralFSEntry, FileFSEntry } from '../fileSystem';
+import type {
+  DirectoryFSEntry,
+  GeneralFSEntry,
+  FileFSEntry,
+} from '../fileSystem';
 
 export type LocalEntryPath = string[];
 

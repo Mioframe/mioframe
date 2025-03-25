@@ -1,10 +1,9 @@
 <script setup lang="ts">
 import type { GDriveDirectory, GDriveFile } from '@shared/lib/googleDrive';
 import TreeIterable from '@shared/ui/TreeMenu/TreeIterable.vue';
-import type { Collection } from '@shared/lib/useIterable';
 
 defineProps<{
-  collection: Collection<[string, GDriveDirectory | GDriveFile]>;
+  collection: Iterable<[string, GDriveDirectory | GDriveFile]>;
   activeKey?: string;
   activeItem?: GDriveDirectory | GDriveFile;
   filter?: ([key, item]: [string, GDriveDirectory | GDriveFile]) => boolean;

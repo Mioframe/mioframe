@@ -5,6 +5,7 @@ import type { LocalDirectoryEntry, LocalFileEntry } from './types';
 import { createLogger } from '../logger';
 import { WeakValueMap } from '../WeakValueMap';
 import type { DirectoryEntryEventMap } from '../fileSystem/DirectoryFSEntry';
+import { copyDirectoryTo, moveDirectoryTo } from '../fileSystem/utils';
 
 const { debug } = createLogger('directory');
 
@@ -96,45 +97,11 @@ export function createLocalDirectory(
   };
 
   const copyTo = async (dest: LocalDirectoryEntry) => {
-    const currentPath = currentEntry.path;
-
-    const destPath = dest.path;
-
-    if (childHasParent(destPath, currentPath)) {
-      throw new Error(
-        `impossible to copy "${currentPath.join('/')}" to "${destPath.join('/')}"`,
-      );
-    }
-
-    const currentEntryName = currentEntry.name;
-
-    const newDirectoryEntry = await dest.createDirectory(currentEntryName);
-
-    await from(currentDirectoryEntry.entries()).forEach(async ([, entry]) => {
-      await entry.copyTo(newDirectoryEntry);
-    });
-
-    return newDirectoryEntry;
+    return await copyDirectoryTo(dest, currentDirectoryEntry);
   };
 
   const moveTo = async (dest: LocalDirectoryEntry) => {
-    const parentPath = parentLocalDirectoryEntry?.path ?? [];
-
-    if (childHasParent(dest.path, parentPath)) {
-      throw new Error(
-        `impossible to move "${currentEntry.name}" from "${parentPath.join('/')}" to "${dest.path.join('/')}"`,
-      );
-    }
-
-    const newDirectoryEntry = await dest.createDirectory(currentEntry.name);
-
-    await from(currentDirectoryEntry.entries()).forEach(async ([, entry]) => {
-      await entry.moveTo(newDirectoryEntry);
-    });
-
-    await currentEntry.remove();
-
-    return newDirectoryEntry;
+    return await moveDirectoryTo(dest, currentDirectoryEntry);
   };
 
   const rename = async (newName: string) => {
@@ -165,23 +132,6 @@ export function createLocalDirectory(
     await currentEntry.remove();
 
     return newDirectoryEntry;
-  };
-
-  const childHasParent = (
-    childPath: string[],
-    parentPath: string[],
-  ): boolean => {
-    if (parentPath.length > childPath.length) {
-      return false;
-    }
-
-    for (let i = 0; i < parentPath.length; i++) {
-      if (childPath[i] !== parentPath[i]) {
-        return false;
-      }
-    }
-
-    return true;
   };
 
   const setForListenersOfAddingEntry = new Set<DirectoryEntryEventMap['add']>();
