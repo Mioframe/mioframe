@@ -284,7 +284,7 @@ export const useGoogleApi = defineStore('googleApi', () => {
   //   });
   // };
 
-  let gdrive: AdvancedGDrive | undefined;
+  let gDrive: AdvancedGDrive | undefined;
 
   const getGDrive = async (scopes: [GDriveScope, ...GDriveScope[]]) => {
     loading.getGDrive += 1;
@@ -292,7 +292,7 @@ export const useGoogleApi = defineStore('googleApi', () => {
       const gapi = await getGAPI();
 
       if (await checkGrantedAndRequestAccess(scopes)) {
-        if (!gdrive) {
+        if (!gDrive) {
           await gapi.client.init({
             clientId,
             discoveryDocs: [
@@ -300,7 +300,7 @@ export const useGoogleApi = defineStore('googleApi', () => {
             ],
           });
 
-          gdrive = {
+          gDrive = {
             ...gapi.client.drive,
             uploadFile: async (
               fileId: string,
@@ -369,7 +369,7 @@ export const useGoogleApi = defineStore('googleApi', () => {
             },
           };
         }
-        return gdrive;
+        return gDrive;
       }
       return undefined;
     } finally {
@@ -389,15 +389,11 @@ export const useGoogleApi = defineStore('googleApi', () => {
     }
     try {
       loading.updateUserinfo += 1;
-      debug('watchEffect', { authTokenState: authTokenState.value });
       if (authTokenState.value) {
         const snapshotTokenState = cloneDeep(authTokenState.value);
-        debug('watchEffect', { snapshotTokenState });
         const oauth2 = await getOauth2();
-        debug('watchEffect', { oauth2 });
         if (oauth2) {
           const { result } = await oauth2.userinfo.get();
-          debug('watchEffect', { result });
           if (isEqual(authTokenState.value, snapshotTokenState)) {
             userInfo.value = result;
             return;

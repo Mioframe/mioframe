@@ -1,6 +1,5 @@
 import type { ComputedRef } from 'vue';
 import type { GDriveDirectory, GDriveFile } from '../../shared/lib/googleDrive';
-import type { Collection } from '@shared/lib/useIterable';
 
 export interface UseGDriveEntry {
   readonly label: ComputedRef<string>;
@@ -11,7 +10,7 @@ export interface UseGDriveDirectory extends UseGDriveEntry {
   createDirectory: (name: string) => Promise<GDriveDirectory>;
   writeFile: (name: string, file?: File) => Promise<GDriveFile>;
   rename: (newName: string) => Promise<GDriveDirectory>;
-  children: ComputedRef<Collection<[string, GDriveDirectory | GDriveFile]>>;
+  children: ComputedRef<Iterable<[string, GDriveDirectory | GDriveFile]>>;
 }
 
 export interface UseGDriveFile extends UseGDriveEntry {

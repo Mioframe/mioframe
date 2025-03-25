@@ -123,7 +123,6 @@ const fsEntryContextBtns = defineContextButtonList([
 const onClickFSEntryContextAction = (
   key: FSEntryContextEvent,
   entryKey: string,
-  entry: FileFSEntry | DirectoryFSEntry,
 ) => {
   switch (key) {
     // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- действий будет больше
@@ -238,7 +237,7 @@ const documentToRename = shallowRef<DocHandle<unknown>>();
           <template #trailingIcon>
             <MDContextMenuButton
               :btns="fsEntryContextBtns"
-              @click="onClickFSEntryContextAction($event, entryKey, entry)"
+              @click="onClickFSEntryContextAction($event, entryKey)"
             />
           </template>
         </FSEntryMDListItem>

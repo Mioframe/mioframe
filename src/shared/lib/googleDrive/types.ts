@@ -1,7 +1,11 @@
+import type { ItemWithChildren } from '@shared/lib/useIterable';
 import type {
-  Collection,
-  ItemWithChildren,
-} from '@shared/lib/useIterable';
+  DirectoryFSEntry,
+  FileFSEntry,
+  GeneralFSEntry,
+} from '../fileSystem';
+import type { AdvancedGDrive } from '../googleApi/types';
+import type { SPACE } from './createDirectoryGDriveEntry';
 
 export type GDriveDirectory = {
   getName: () => string;
@@ -25,7 +29,8 @@ export type GDriveDirectory = {
   removeWatcher: (
     handler: (iterableCollection: GDriveDirectoryContent) => unknown,
   ) => void;
-} & ItemWithChildren<[string, GDriveFile | GDriveDirectory]>;
+  children: () => AsyncIterator<[string, GDriveDirectory | GDriveFile]>;
+};
 
 export type GDriveFile = {
   getName: () => string;
@@ -36,9 +41,19 @@ export type GDriveFile = {
 
 export const GOOGLE_FOLDER_MIME_TYPE = 'application/vnd.google-apps.folder';
 
-export type GDriveDirectoryContent = Collection<
+export type GDriveDirectoryContent = Iterable<
   [string, GDriveDirectory | GDriveFile]
 >;
 
 export interface GDriveSpaces
   extends ItemWithChildren<[string, GDriveDirectory | GDriveFile]> {}
+
+export interface GDriveEntry extends GeneralFSEntry {}
+
+export interface DirectoryGDriveEntry extends DirectoryFSEntry {
+  gDrive: AdvancedGDrive;
+  gDriveFolderId: string;
+  gDriveSpace: SPACE;
+}
+
+export interface FileGDriveEntry extends FileFSEntry {}

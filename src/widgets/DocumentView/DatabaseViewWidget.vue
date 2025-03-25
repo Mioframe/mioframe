@@ -14,7 +14,6 @@ import { MDBottomSheet } from '@shared/ui/Sheets';
 import { defineBarButtons, MDButtonsBar } from '@shared/ui/ButtonsBar';
 import { DatabasePropertyList } from '@entity/databaseProperty';
 import { defineContextButtonList, MDContextMenuButton } from '@shared/ui/Menu';
-import type { GeneralProperty } from '@shared/lib/databaseDocument/property';
 import { DatabasePropertyRemoveDialog } from '@feature/databasePropertyRemove';
 import { DatabasePropertyRenameDialog } from '@feature/databasePropertyRename';
 
@@ -27,19 +26,10 @@ const docHandleRef = toRef(() => docHandle);
 const {
   addItem,
   addProperty,
-  addSortDescription,
-  addView,
-  content,
   data,
   properties,
-  removeItem,
   removeProperty,
-  removeView,
-  renameView,
-  toggleSortDirection,
-  updateItem,
   updateProperty,
-  views,
 } = useDatabaseDocument(docHandleRef);
 
 const isShowAddProperty = ref(false);
@@ -136,7 +126,6 @@ const onApplyRenameProperty = async (propertyId: PropertyId, name: string) => {
 const onClickPropertyContextAction = (
   action: PropertyAction,
   propertyId: PropertyId,
-  property: GeneralProperty,
 ) => {
   switch (action) {
     case PropertyAction.remove: {
@@ -180,12 +169,10 @@ const onClickPropertyContextAction = (
             :properties="properties"
             class="sheet__property-list"
           >
-            <template #trailingIcon="{ property, propertyId }">
+            <template #trailingIcon="{ propertyId }">
               <MDContextMenuButton
                 :btns="propertyContextBtns"
-                @click="
-                  onClickPropertyContextAction($event, propertyId, property)
-                "
+                @click="onClickPropertyContextAction($event, propertyId)"
               />
             </template>
           </DatabasePropertyList>

@@ -1,7 +1,7 @@
 import { from, some } from 'ix/Ix.asynciterable';
 import { createLocalEntry } from './entry';
 import type { LocalDirectoryEntry, LocalFileEntry } from './types';
-import { reactive } from 'vue';
+import { moveFileTo } from '../fileSystem/utils';
 
 export const createLocalFile = (
   currentHandle: FileSystemFileHandle,
@@ -14,7 +14,7 @@ export const createLocalFile = (
   };
 
   const rename = async (newName: string) => {
-    const isAlreadyContains = await some(from(parentRefDirectory.entries), {
+    const isAlreadyContains = await some(from(parentRefDirectory.entries()), {
       predicate: ([name]) => name === newName,
     });
 
@@ -36,16 +36,16 @@ export const createLocalFile = (
   };
 
   const moveTo = async (dest: LocalDirectoryEntry) => {
-    const newEntry = await copyTo(dest);
-    await currentEntry.remove();
-    return newEntry;
+    return await moveFileTo(dest, currentLocalFileEntry);
   };
 
-  return reactive({
+  const currentLocalFileEntry = {
     ...currentEntry,
     rename,
     read,
     copyTo,
     moveTo,
-  });
+  };
+
+  return currentLocalFileEntry;
 };

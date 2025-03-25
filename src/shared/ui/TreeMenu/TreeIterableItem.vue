@@ -11,8 +11,10 @@ import { ContextMenu } from '../Menu';
 import { onInteractionOutside } from '../../lib/onInteractionOutside';
 import type { MaybeElement } from '@vueuse/core';
 import { ButtonGroup } from '../ButtonGroup';
-import type { Collection } from '../../lib/useIterable';
-import { isItemWithChildren, type ItemWithChildren } from '../../lib/useIterable';
+import {
+  isItemWithChildren,
+  type ItemWithChildren,
+} from '../../lib/useIterable';
 import TreeIterable from './TreeIterable.vue';
 import { UIButton } from '../Button';
 
@@ -32,7 +34,7 @@ const emit = defineEmits<{
 
 const stateOpened = ref<boolean>();
 
-const children = computed((): Collection<[Key, Item]> | undefined => {
+const children = computed((): Iterable<[Key, Item]> | undefined => {
   const item = props.item;
   if (isItemWithChildren<typeof item, [Key, Item]>(item)) {
     return item.children;
