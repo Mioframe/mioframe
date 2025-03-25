@@ -10,7 +10,7 @@
  */
 
 import type { Ref } from 'vue';
-import { ref, shallowRef, watchEffect } from 'vue';
+import { ref, watchEffect } from 'vue';
 
 /**
  * Default clearer function to reset the accumulator.

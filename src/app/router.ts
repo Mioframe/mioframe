@@ -1,13 +1,9 @@
 import type { RouteRecordRaw } from 'vue-router';
 import { createRouter, createWebHistory } from 'vue-router';
-import FileManager from './FileManager.vue';
-import MainView from '@widget/MainView/MainView.vue';
 
 const routes: RouteRecordRaw[] = [
-  { path: '/', component: MainView },
-  { path: '/file-manager', component: FileManager },
   {
-    path: '/v2',
+    path: '/',
     component: () => import('@widget/MainViewV2/MainView.vue'),
   },
 ];
