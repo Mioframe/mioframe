@@ -4,9 +4,18 @@ import NotificationList from '../shared/ui/Notifications/NotificationList.vue';
 </script>
 
 <template>
-  <div class="is-flex is-flex-grow-1 is-flex-direction-column is-overflow-auto">
+  <div class="main">
     <RouterView />
   </div>
 
   <NotificationList />
 </template>
+
+<style lang="css" scoped>
+.main {
+  display: flex;
+  flex-grow: 1;
+  flex-direction: column;
+  overflow: auto;
+}
+</style>
