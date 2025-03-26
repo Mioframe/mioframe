@@ -4,6 +4,7 @@ import { useCFRDocument } from '@shared/lib/cfrDocument/useCFRDocument';
 import type { DirectoryFSEntry } from '@shared/lib/fileSystem';
 import { MDMainLayer } from '@shared/ui/Layers';
 import DocumentViewWidget from '@widget/DocumentView/DocumentViewWidget.vue';
+import { HomeWidget } from '@widget/HomeWidget';
 import { setupDirectoryChoice } from '@widget/MainView/setupDirectoryChoice';
 import { RepoExplorerWidget } from '@widget/RepoExplorer';
 import { shallowRef, watchEffect } from 'vue';
@@ -24,12 +25,6 @@ const onClickDocumentBack = () => {
 };
 
 const directoryPath = shallowRef<DirectoryFSEntry[]>([]);
-
-const { selectedDirectory: rootDirectory } = setupDirectoryChoice();
-
-watchEffect(() => {
-  directoryPath.value = rootDirectory.value ? [rootDirectory.value] : [];
-});
 </script>
 
 <template>
@@ -40,7 +35,13 @@ watchEffect(() => {
     @click-close-second="onClickDocumentBack"
   >
     <template #firstPane>
+      <HomeWidget
+        v-if="!directoryPath.length"
+        v-model:directory-path="directoryPath"
+      />
+
       <RepoExplorerWidget
+        v-else
         v-model:directory-path="directoryPath"
         @click-document="onClickDocument"
       />
