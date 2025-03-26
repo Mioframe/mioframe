@@ -7,7 +7,7 @@ import {
   useDirectory,
   type DirectoryFSEntry,
 } from '@shared/lib/fileSystem';
-import { MDFab, MDFabContainer } from '@shared/ui/Button';
+import { MDFab, MDFabContainer, MDIconButton } from '@shared/ui/Button';
 import { MDSymbol } from '@shared/ui/Icon';
 import { FSEntryRemoveDialog } from '@feature/entryRemove';
 import { MDNavigationPath } from '@shared/ui/NavigationPath';
@@ -15,7 +15,7 @@ import { DocumentCreationDialog } from '@feature/documentCreate';
 import type { DocumentContent } from '@shared/lib/cfrDocument';
 import { useDirectoryRepo } from '@shared/lib/cfrDocument';
 import { createLogger } from '@shared/lib/logger';
-import { MDListContainer } from '@shared/ui/Lists';
+import { MDListContainer, MDListItem } from '@shared/ui/Lists';
 import { CFRDocumentMDListItem } from '@entity/cfrDocument';
 import { vPressedState } from '@shared/lib/md/stateHelper';
 import { FSEntryMDListItem } from '@entity/fsEntry';
@@ -24,6 +24,9 @@ import { DocumentRemoveDialog } from '@feature/documentRemove';
 import type { DocHandle, DocumentId } from '@automerge/automerge-repo';
 import { DocumentRenameDialog } from '@feature/documentRename';
 import { clone } from 'lodash-es';
+import MDPaneContainer from '@shared/ui/Layers/MDPaneContainer.vue';
+import { createLocalDirectory } from '@shared/lib/localFileSystem';
+import { MDTopAppBar } from '@shared/ui/TopAppBar';
 
 const { watchDebug, debug } = createLogger('DocumentExplorerWidget.vue');
 
@@ -192,12 +195,28 @@ const onClickDocument = (
 
 const documentToRename = shallowRef<DocHandle<unknown>>();
 
-// FIXME: хранить состояние открытого пути глобально
+const rootDirectory = computed(() => directoryPath.at(0));
+
+const onClickBack = () => {
+  const path = clone(directoryPath);
+
+  path.pop();
+
+  emit('update:directoryPath', path);
+};
 </script>
 
 <template>
-  <div class="document-explorer-widget">
-    <!-- <MDTopAppBar headline="headline" /> -->
+  <MDPaneContainer class="document-explorer-widget">
+    <MDTopAppBar v-if="rootDirectory" :headline="rootDirectory.name">
+      <template #leadingNavigation>
+        <MDIconButton tooltip="Navigate up" @click="onClickBack">
+          <template #icon>
+            <MDSymbol name="arrow_back" />
+          </template>
+        </MDIconButton>
+      </template>
+    </MDTopAppBar>
 
     <MDNavigationPath
       :path="directoryPath"
@@ -296,20 +315,11 @@ const documentToRename = shallowRef<DocHandle<unknown>>();
       @renamed="documentToRename = undefined"
       @cancel="documentToRename = undefined"
     />
-  </div>
+  </MDPaneContainer>
 </template>
 
 <style scoped>
 .document-explorer-widget {
-  position: relative;
-  flex: 1 1;
-  display: flex;
-  flex-direction: column;
-  justify-content: flex-start;
-  border-radius: 16px;
-  --md-container-color: var(--md-sys-color-surface);
-  overflow-y: auto;
-
   &__fab-container {
     position: sticky;
     bottom: 0;
@@ -336,6 +346,7 @@ const documentToRename = shallowRef<DocHandle<unknown>>();
     flex: 1 1;
     display: flex;
     flex-direction: column;
+    padding: 0 8px;
   }
 }
 </style>

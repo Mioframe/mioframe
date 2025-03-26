@@ -10,3 +10,7 @@
   background-color: var(--md-container-color);
   color: var(--md-content-color, currentColor);
 }
+
+button {
+  cursor: pointer;
+}
