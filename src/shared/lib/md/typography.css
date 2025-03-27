@@ -1,0 +1,32 @@
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  margin: 0;
+}
+
+.md.sys.typescale.display-small {
+  font-family: var(--md-sys-typescale-display-small-font);
+  font-weight: var(--md-sys-typescale-display-small-weight);
+  font-size: var(--md-sys-typescale-display-small-size);
+  line-height: var(--md-sys-typescale-display-small-line-height);
+  letter-spacing: var(--md-sys-typescale-display-small-tracking);
+}
+
+.md.sys.typescale.title-medium {
+  font-family: var(--md-sys-typescale-title-medium-font);
+  font-weight: var(--md-sys-typescale-title-medium-weight);
+  font-size: var(--md-sys-typescale-title-medium-size);
+  line-height: var(--md-sys-typescale-title-medium-line-height);
+  letter-spacing: var(--md-sys-typescale-title-medium-tracking);
+}
+
+.md.sys.typescale.label-large {
+  font-family: var(--md-sys-typescale-label-large-font);
+  line-height: var(--md-sys-typescale-label-large-line-height);
+  font-size: var(--md-sys-typescale-label-large-size);
+  font-weight: var(--md-sys-typescale-label-large-weight);
+  letter-space: var(--md-sys-typescale-label-large-tracking);
+}
