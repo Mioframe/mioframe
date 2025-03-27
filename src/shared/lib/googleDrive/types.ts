@@ -5,7 +5,6 @@ import type {
   GeneralFSEntry,
 } from '../fileSystem';
 import type { AdvancedGDrive } from '../googleApi/types';
-import type { SPACE } from './createDirectoryGDriveEntry';
 
 export type GDriveDirectory = {
   getName: () => string;
@@ -52,8 +51,20 @@ export interface GDriveEntry extends GeneralFSEntry {}
 
 export interface DirectoryGDriveEntry extends DirectoryFSEntry {
   gDrive: AdvancedGDrive;
-  gDriveFolderId: string;
-  gDriveSpace: SPACE;
+  gDriveFileId: string;
+  gDriveSpace: GDriveSpace;
 }
 
-export interface FileGDriveEntry extends FileFSEntry {}
+export interface FileGDriveEntry extends FileFSEntry {
+  gDrive: AdvancedGDrive;
+  gDriveFileId: string;
+  gDriveSpace: GDriveSpace;
+}
+
+export enum GDriveSpace {
+  // user drive
+  MyDrive,
+  // drive with shared data
+  SharedWithMe,
+  appDataFolder,
+}

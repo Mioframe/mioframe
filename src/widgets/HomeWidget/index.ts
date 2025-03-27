@@ -1,1 +1,1 @@
-export { default as HomeWidget } from './HomeWidget.vue';
+export { default as HomeWidget } from './HomePane.vue';

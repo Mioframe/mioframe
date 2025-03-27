@@ -1,20 +1,27 @@
 import { useGoogleApi } from '@shared/lib/googleApi/useGoogleApi';
-import { createLogger } from '@shared/lib/logger';
-import { computed, watchEffect } from 'vue';
-
-const { debug } = createLogger('GProfileCard model');
+import { USERINFO_SCOPE, loadGoogle } from '@shared/lib/googleApi/utils';
+import { computed } from 'vue';
 
 export const useGProfile = () => {
-  const googleApi = useGoogleApi();
+  const {
+    requestAccess: checkGrantedAndRequestAccess,
+    userInfo,
+    removeToken,
+  } = useGoogleApi();
 
-  const profile = computed(() => googleApi.userInfo);
+  const profile = computed(() => userInfo.value);
 
-  watchEffect(() => {
-    debug('profile', profile.value);
-  });
+  const login = async () => {
+    await checkGrantedAndRequestAccess(
+      await loadGoogle(),
+      USERINFO_SCOPE.userinfoEmail,
+      USERINFO_SCOPE.userinfoProfile,
+    );
+  };
 
   return {
-    remove: googleApi.removeToken,
+    remove: removeToken,
     profile,
+    login,
   };
 };

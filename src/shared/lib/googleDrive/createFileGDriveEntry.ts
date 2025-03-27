@@ -2,13 +2,18 @@ import type { DirectoryFSEntry, FileFSEntry } from '../fileSystem';
 import { copyFileTo, moveFileTo } from '../fileSystem/utils';
 import type { AdvancedGDrive } from '../googleApi/types';
 import { createGDriveEntry } from './gDriveEntry';
-import type { DirectoryGDriveEntry, FileGDriveEntry } from './types';
+import type {
+  DirectoryGDriveEntry,
+  FileGDriveEntry,
+  GDriveSpace,
+} from './types';
 
 export const createFileGDriveEntry = (
   gDrive: AdvancedGDrive,
   fileId: string,
   name: string,
   parentEntry: DirectoryGDriveEntry,
+  space: GDriveSpace,
 ): FileGDriveEntry => {
   const currentFileId = fileId;
   const currentName = name;
@@ -34,12 +39,12 @@ export const createFileGDriveEntry = (
         fileId: currentFileId,
         resource: {
           name: currentName,
-          parents: [dest.gDriveFolderId],
+          parents: [dest.gDriveFileId],
         },
       });
 
       if (newFileId && newName) {
-        return createFileGDriveEntry(gDrive, newFileId, newName, dest);
+        return createFileGDriveEntry(gDrive, newFileId, newName, dest, space);
       }
     }
     return await copyFileTo(dest, currentFileGDriveEntry);
@@ -52,7 +57,7 @@ export const createFileGDriveEntry = (
       await dest.gDrive.files.update(
         {
           fileId: currentFileId,
-          addParents: dest.gDriveFolderId,
+          addParents: dest.gDriveFileId,
         },
         {},
       );
@@ -75,6 +80,11 @@ export const createFileGDriveEntry = (
     read,
     copyTo,
     moveTo,
+    gDrive,
+    get gDriveFileId() {
+      return currentFileId;
+    },
+    gDriveSpace: space,
   };
 
   return currentFileGDriveEntry;
