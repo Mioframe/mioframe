@@ -123,6 +123,7 @@ const animateValue = computed(
 
 <style lang="css" scoped>
 .md-circular-progress-indicator {
+  --md-container-color: transparent;
   display: inline-block;
 
   &__empty {

@@ -68,6 +68,7 @@ const emit = defineEmits<{
   font-weight: var(--md-sys-typescale-label-medium-weight);
   --md-content-color: var(md-sys-color-on-surface);
   padding: 12dp 0 16dp;
+  border: 0;
   min-width: 48dp;
   display: flex;
   flex-direction: column;

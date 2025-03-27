@@ -4,37 +4,37 @@ import type {
 } from '../fileSystem/DirectoryFSEntry';
 import { copyDirectoryTo, moveDirectoryTo } from '../fileSystem/utils';
 import type { AdvancedGDrive } from '../googleApi/types';
+import { createLogger } from '../logger';
 import { WeakValueMap } from '../WeakValueMap';
 import { createFileGDriveEntry } from './createFileGDriveEntry';
 import { createGDriveEntry } from './gDriveEntry';
 import {
+  GDriveSpace,
   GOOGLE_FOLDER_MIME_TYPE,
   type DirectoryGDriveEntry,
   type FileGDriveEntry,
 } from './types';
 
-export enum SPACE {
-  // user drive
-  MyDrive,
-  // drive with shared data
-  SharedWithMe,
-}
+const { debug } = createLogger('createDirectoryGDriveEntry');
 
 const cacheDirectories = new WeakValueMap<string, DirectoryGDriveEntry>();
 
 export const createDirectoryGDriveEntry = (
   gDrive: AdvancedGDrive,
-  gDriveFolderId = 'root',
+  space = GDriveSpace.appDataFolder,
+  gDriveFolderId?: string,
   name = 'root',
   parentEntry?: DirectoryGDriveEntry,
-  space = SPACE.MyDrive,
 ): DirectoryGDriveEntry => {
-  const currentGDriveFolderId = gDriveFolderId;
+  const currentGDriveFolderId =
+    gDriveFolderId ??
+    (space === GDriveSpace.appDataFolder ? 'appDataFolder' : 'root');
+
   const currentName = name;
 
   const currentEntry = createGDriveEntry(
     gDrive,
-    name,
+    currentName,
     currentGDriveFolderId,
     parentEntry,
   );
@@ -50,10 +50,18 @@ export const createDirectoryGDriveEntry = (
   async function* entries(): AsyncIterableIterator<
     [string, DirectoryGDriveEntry | FileGDriveEntry]
   > {
-    const spaces = space === SPACE.MyDrive ? 'drive' : undefined;
+    const spaces =
+      space === GDriveSpace.appDataFolder
+        ? 'appDataFolder'
+        : space === GDriveSpace.MyDrive
+          ? 'drive'
+          : undefined;
 
-    let q = `'${gDriveFolderId}' in parents`;
-    if (space === SPACE.SharedWithMe && gDriveFolderId === 'root') {
+    let q = `'${currentGDriveFolderId}' in parents`;
+    if (
+      space === GDriveSpace.SharedWithMe &&
+      currentGDriveFolderId === 'root'
+    ) {
       q = 'sharedWithMe';
     }
 
@@ -72,10 +80,10 @@ export const createDirectoryGDriveEntry = (
             name,
             createDirectoryGDriveEntry(
               gDrive,
+              space,
               fileId,
               name,
               currentDirectoryGDriveEntry,
-              space,
             ),
           ];
         } else {
@@ -86,6 +94,7 @@ export const createDirectoryGDriveEntry = (
               fileId,
               name,
               currentDirectoryGDriveEntry,
+              space,
             ),
           ];
         }
@@ -106,6 +115,7 @@ export const createDirectoryGDriveEntry = (
     if (folderId) {
       const directoryEntry = createDirectoryGDriveEntry(
         gDrive,
+        space,
         folderId,
         name,
         currentDirectoryGDriveEntry,
@@ -144,6 +154,7 @@ export const createDirectoryGDriveEntry = (
       fileId,
       name,
       currentDirectoryGDriveEntry,
+      space,
     );
 
     setForListenersOfAddingEntry.forEach((listener) =>
@@ -154,10 +165,15 @@ export const createDirectoryGDriveEntry = (
   };
 
   const removeByName = async (name: string) => {
+    debug('removeByName', { name });
     for await (const [fileName, entry] of entries()) {
       if (fileName === name) {
-        await entry.remove();
+        debug('removeByName', { name, entry });
+
+        await gDrive.files.delete({ fileId: entry.gDriveFileId }); // FIXME: происходит двойной запрос на удаление
+
         setForListenersOfRemovingEntry.forEach((listener) => listener(name));
+
         return;
       }
     }
@@ -216,7 +232,7 @@ export const createDirectoryGDriveEntry = (
       await dest.gDrive.files.update(
         {
           fileId: currentGDriveFolderId,
-          addParents: dest.gDriveFolderId,
+          addParents: dest.gDriveFileId,
         },
         {},
       );
@@ -237,16 +253,16 @@ export const createDirectoryGDriveEntry = (
         fileId: currentGDriveFolderId,
         resource: {
           name: currentName,
-          parents: [dest.gDriveFolderId],
+          parents: [dest.gDriveFileId],
         },
       });
 
       return createDirectoryGDriveEntry(
         gDrive,
+        dest.gDriveSpace,
         fileId,
         name,
         dest,
-        dest.gDriveSpace,
       );
     } else {
       return await copyDirectoryTo(dest, currentDirectoryGDriveEntry);
@@ -271,7 +287,7 @@ export const createDirectoryGDriveEntry = (
     copyTo,
     moveTo,
     gDrive,
-    gDriveFolderId,
+    gDriveFileId: currentGDriveFolderId,
     gDriveSpace: space,
   };
 

@@ -68,7 +68,7 @@ export const createStorageAdapter = (
   };
 
   const save = async (key: StorageKey, data: Uint8Array) => {
-    debug('save', key);
+    debug('save', { key });
     try {
       const fileName = partialKeyToFileName(key);
       if (!fileName) {
@@ -82,7 +82,7 @@ export const createStorageAdapter = (
   };
 
   const remove = async (key: StorageKey) => {
-    debug('remove', key);
+    debug('remove', { key });
     try {
       const fileName = partialKeyToFileName(key);
       if (!fileName) {

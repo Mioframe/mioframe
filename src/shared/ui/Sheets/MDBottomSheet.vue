@@ -116,6 +116,7 @@ watchEffect(() => {
     padding: 12px;
     margin: auto;
     display: block;
+    border: 0;
     &::after {
       content: '';
       display: block;

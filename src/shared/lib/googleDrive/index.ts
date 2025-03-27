@@ -1,8 +1,6 @@
 export type * from './types';
-export {
-  createDirectoryGDriveEntry,
-  SPACE,
-} from './createDirectoryGDriveEntry';
+export { GDriveSpace } from './types';
+export { createDirectoryGDriveEntry } from './createDirectoryGDriveEntry';
 export { createFileGDriveEntry } from './createFileGDriveEntry';
 
 // fixme: нужен адаптер гугл диска как сетевой комуникации, т.к. в оффлайн режиме работа с диском невозможна
