@@ -1,11 +1,14 @@
 <script setup lang="ts">
-const { isButton } = defineProps<{
+import { computed } from 'vue';
+
+const { isButton, isDiv } = defineProps<{
   headline: string;
   supportingText?: string;
   isButton?: boolean;
+  isDiv?: boolean;
 }>();
 
-defineSlots<{
+const slots = defineSlots<{
   leadingIcon: () => unknown;
   trailingIcon: () => unknown;
   leadingAvatarContainer: () => unknown;
@@ -20,21 +23,25 @@ const onClick = (e: MouseEvent) => {
     emit('click', e);
   }
 };
+
+const elementType = computed(() =>
+  isButton ? 'button' : isDiv ? 'div' : 'li',
+);
 </script>
 
 <template>
   <component
-    :is="isButton ? 'button' : 'li'"
+    :is="elementType"
     class="md-list-item"
     :type="isButton ? 'button' : undefined"
     @click="onClick"
   >
-    <span v-if="!!$slots.leadingIcon" class="md-list-item__leading-icon">
+    <span v-if="!!slots.leadingIcon" class="md-list-item__leading-icon">
       <slot name="leadingIcon" />
     </span>
 
     <span
-      v-if="!!$slots.leadingAvatarContainer"
+      v-if="!!slots.leadingAvatarContainer"
       class="md-list-item__leading-avatar-container"
     >
       <slot name="leadingAvatarContainer" />
@@ -48,7 +55,7 @@ const onClick = (e: MouseEvent) => {
       </span>
     </div>
 
-    <span v-if="!!$slots.trailingIcon" class="md-list-item__trailing-icon">
+    <span v-if="!!slots.trailingIcon" class="md-list-item__trailing-icon">
       <slot name="trailingIcon" />
     </span>
   </component>
@@ -75,21 +82,21 @@ const onClick = (e: MouseEvent) => {
   &:first-child {
     border-top-right-radius: max(
       var(--md-list-item-border-radius),
-      var(--md-list-container-border-radius)
+      var(--md-list-container-border-radius, 0px)
     );
     border-top-left-radius: max(
       var(--md-list-item-border-radius),
-      var(--md-list-container-border-radius)
+      var(--md-list-container-border-radius, 0px)
     );
   }
   &:last-child {
     border-bottom-right-radius: max(
       var(--md-list-item-border-radius),
-      var(--md-list-container-border-radius)
+      var(--md-list-container-border-radius, 0px)
     );
     border-bottom-left-radius: max(
       var(--md-list-item-border-radius),
-      var(--md-list-container-border-radius)
+      var(--md-list-container-border-radius, 0px)
     );
   }
 
@@ -138,9 +145,12 @@ const onClick = (e: MouseEvent) => {
   }
 
   &__leading-avatar-container {
-    display: block;
+    display: flex;
+    justify-content: center;
+    align-items: center;
     width: 40px;
     height: 40px;
+    overflow: hidden;
   }
 
   &__trailing-icon {

@@ -78,7 +78,6 @@ const onSubmit = () => {
             :loading
             type="text"
             form-action="submit"
-            @click="$emit('apply')"
           />
         </div>
       </form>

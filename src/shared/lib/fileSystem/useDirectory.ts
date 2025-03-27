@@ -10,11 +10,19 @@ import {
 import type { DirectoryFSEntry } from './DirectoryFSEntry';
 import type { FileFSEntry } from './FileFSEntry';
 import { tryOnScopeDispose } from '@vueuse/core';
+import { createLogger } from '../logger';
+import { uniqueId } from 'lodash-es';
+
+const { debug } = createLogger('useDirectory');
 
 export const useDirectory = (
   directoryEntry: MaybeRefOrGetter<DirectoryFSEntry | undefined>,
 ) => {
+  const debugId = uniqueId('useDirectory');
+
   const directoryRef = toRef(() => toValue(directoryEntry));
+
+  debug('start', { id: debugId, name: directoryRef.value?.name });
 
   const loadingRef = ref(false);
   const readyRef = ref(false);
@@ -28,6 +36,7 @@ export const useDirectory = (
   const currentLoadId = ref(0);
 
   async function loadDirectory() {
+    debug('loadDirectory', { name: directoryRef.value?.name });
     currentLoadId.value++;
     const thisLoadId = currentLoadId.value;
     readyRef.value = false;
@@ -92,6 +101,8 @@ export const useDirectory = (
   };
 
   const removeByName = async (name: string): Promise<void> => {
+    debug('removeByName', { name });
+
     if (!directoryRef.value) {
       throw new Error('missing directory');
     }
@@ -108,8 +119,16 @@ export const useDirectory = (
     entriesReactiveState.delete(key);
   };
 
+  let read = false;
+
   const useDirectoryInterface = {
-    entries: computed(() => entriesReactiveState),
+    entries: computed(() => {
+      if (!read) {
+        void loadDirectory();
+        read = true;
+      }
+      return entriesReactiveState;
+    }),
     loading: computed(() => loadingRef.value),
     error: computed(() => errorRef.value),
     reload: loadDirectory,
@@ -122,7 +141,9 @@ export const useDirectory = (
   watch(
     directoryRef,
     (directory, oldDirectory) => {
-      void loadDirectory();
+      if (read) {
+        void loadDirectory();
+      }
       if (oldDirectory) {
         oldDirectory.off('add', onAdd);
         oldDirectory.off('remove', onRemove);

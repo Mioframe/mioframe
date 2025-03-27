@@ -30,7 +30,7 @@ defineSlots<{
   margin: 0;
   display: flex;
   flex-direction: column;
-  border-radius: var(--md-list-container-border-radius);
+  border-radius: var(--md-list-container-border-radius, 0px);
 
   &_grid {
     display: grid;

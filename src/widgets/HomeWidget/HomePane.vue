@@ -5,6 +5,13 @@ import { MDSymbol } from '@shared/ui/Icon';
 import { MDPaneContainer } from '@shared/ui/Layers';
 import { MDListContainer, MDListItem } from '@shared/ui/Lists';
 import { vPressedState } from '@shared/lib/md/stateHelper';
+import {
+  createDirectoryGDriveEntry,
+  GDriveSpace,
+} from '@shared/lib/googleDrive';
+import { useGoogleApi } from '@shared/lib/googleApi/useGoogleApi';
+import GoogleDriveWidget from './GoogleDriveWidget.vue';
+import { GOOGLE_DRIVE_SCOPE } from '@shared/lib/googleApi/utils';
 
 const { directoryPath = [] } = defineProps<{
   directoryPath: DirectoryFSEntry[];
@@ -19,6 +26,20 @@ const onClickBrowserStorage = async () => {
   emit('update:directoryPath', [
     createLocalDirectory(rootDirectoryHandle, undefined, 'Browser Storage'),
   ]);
+};
+
+const { getGDrive } = useGoogleApi();
+
+const onClickGDriveAppFolder = async () => {
+  // TODO: перенести кнопки диска в виджет для диска
+  const gDrive = await getGDrive(GOOGLE_DRIVE_SCOPE.appdata);
+
+  const directoryGDriveEntry = createDirectoryGDriveEntry(
+    gDrive,
+    GDriveSpace.appDataFolder,
+  );
+
+  emit('update:directoryPath', [directoryGDriveEntry]);
 };
 </script>
 
@@ -63,9 +84,12 @@ const onClickBrowserStorage = async () => {
       </MDListItem>
 
       <MDListItem
-        headline="App Data"
+        v-pressed-state
+        headline="App Folder"
         class="storage-list__item"
         supporting-text="from Google Drive"
+        is-button
+        @click="onClickGDriveAppFolder"
       >
         <template #leadingIcon>
           <MDSymbol name="cloud_lock" />
@@ -78,6 +102,8 @@ const onClickBrowserStorage = async () => {
         </template>
       </MDListItem>
     </MDListContainer>
+    <!-- TODO: отдельный блок для Google Drive -->
+    <GoogleDriveWidget />
   </MDPaneContainer>
 </template>
 

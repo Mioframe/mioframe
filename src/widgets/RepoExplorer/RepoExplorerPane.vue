@@ -15,7 +15,7 @@ import { DocumentCreationDialog } from '@feature/documentCreate';
 import type { DocumentContent } from '@shared/lib/cfrDocument';
 import { useDirectoryRepo } from '@shared/lib/cfrDocument';
 import { createLogger } from '@shared/lib/logger';
-import { MDListContainer, MDListItem } from '@shared/ui/Lists';
+import { MDListContainer } from '@shared/ui/Lists';
 import { CFRDocumentMDListItem } from '@entity/cfrDocument';
 import { vPressedState } from '@shared/lib/md/stateHelper';
 import { FSEntryMDListItem } from '@entity/fsEntry';
@@ -25,7 +25,6 @@ import type { DocHandle, DocumentId } from '@automerge/automerge-repo';
 import { DocumentRenameDialog } from '@feature/documentRename';
 import { clone } from 'lodash-es';
 import MDPaneContainer from '@shared/ui/Layers/MDPaneContainer.vue';
-import { createLocalDirectory } from '@shared/lib/localFileSystem';
 import { MDTopAppBar } from '@shared/ui/TopAppBar';
 
 const { watchDebug, debug } = createLogger('DocumentExplorerWidget.vue');
@@ -111,6 +110,7 @@ const onCreateDirectory = async (name: string) => {
 };
 
 const onRemoveEntry = async (name: string) => {
+  debug('onRemoveEntry', name);
   await removeEntryByName(name);
   entryNameToRemove.value = undefined;
 };

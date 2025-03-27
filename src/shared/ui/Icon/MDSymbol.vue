@@ -34,6 +34,7 @@ watchEffect(() => {
 
 <style scoped>
 .md-symbol {
+  --md-container-color: transparent;
   --md-symbol-fill: 0;
   --md-symbol-wght: 400;
   --md-symbol-opsz: 24;
