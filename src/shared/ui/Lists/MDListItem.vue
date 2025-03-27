@@ -151,6 +151,7 @@ const elementType = computed(() =>
     width: 40px;
     height: 40px;
     overflow: hidden;
+    flex-shrink: 0;
   }
 
   &__trailing-icon {
