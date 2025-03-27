@@ -5,15 +5,11 @@ import { MDSymbol } from '@shared/ui/Icon';
 import { MDPaneContainer } from '@shared/ui/Layers';
 import { MDListContainer, MDListItem } from '@shared/ui/Lists';
 import { vPressedState } from '@shared/lib/md/stateHelper';
-import {
-  createDirectoryGDriveEntry,
-  GDriveSpace,
-} from '@shared/lib/googleDrive';
-import { useGoogleApi } from '@shared/lib/googleApi/useGoogleApi';
 import GoogleDriveWidget from './GoogleDriveWidget.vue';
-import { GOOGLE_DRIVE_SCOPE } from '@shared/lib/googleApi/utils';
+import { useModel } from 'vue';
+import { MDDivider } from '@shared/ui/Divider';
 
-const { directoryPath = [] } = defineProps<{
+const props = defineProps<{
   directoryPath: DirectoryFSEntry[];
 }>();
 
@@ -21,30 +17,26 @@ const emit = defineEmits<{
   'update:directoryPath': [directoryPath: DirectoryFSEntry[]];
 }>();
 
+const directoryPath = useModel(props, 'directoryPath');
+
 const onClickBrowserStorage = async () => {
   const rootDirectoryHandle = await navigator.storage.getDirectory();
   emit('update:directoryPath', [
     createLocalDirectory(rootDirectoryHandle, undefined, 'Browser Storage'),
   ]);
 };
-
-const { getGDrive } = useGoogleApi();
-
-const onClickGDriveAppFolder = async () => {
-  // TODO: перенести кнопки диска в виджет для диска
-  const gDrive = await getGDrive(GOOGLE_DRIVE_SCOPE.appdata);
-
-  const directoryGDriveEntry = createDirectoryGDriveEntry(
-    gDrive,
-    GDriveSpace.appDataFolder,
-  );
-
-  emit('update:directoryPath', [directoryGDriveEntry]);
-};
 </script>
 
 <template>
   <MDPaneContainer class="home-widget">
+    <h2 class="md sys typescale title-medium">Google Drive</h2>
+
+    <GoogleDriveWidget v-model:directory-path="directoryPath" />
+
+    <MDDivider />
+
+    <h2 class="md sys typescale title-medium">Local Storage</h2>
+
     <MDListContainer
       type="grid"
       class="home-widget__storage-list storage-list"
@@ -63,53 +55,18 @@ const onClickGDriveAppFolder = async () => {
         </template>
       </MDListItem>
 
-      <MDListItem
-        headline="My Drive"
-        class="storage-list__item"
-        supporting-text="from Google Drive"
-      >
-        <template #leadingIcon>
-          <MDSymbol name="cloud" />
-        </template>
-      </MDListItem>
-
-      <MDListItem
-        headline="Shared"
-        class="storage-list__item"
-        supporting-text="from Google Drive"
-      >
-        <template #leadingIcon>
-          <MDSymbol name="folder_shared" />
-        </template>
-      </MDListItem>
-
-      <MDListItem
-        v-pressed-state
-        headline="App Folder"
-        class="storage-list__item"
-        supporting-text="from Google Drive"
-        is-button
-        @click="onClickGDriveAppFolder"
-      >
-        <template #leadingIcon>
-          <MDSymbol name="cloud_lock" />
-        </template>
-      </MDListItem>
-
       <MDListItem headline="Local Folder" class="storage-list__item">
         <template #leadingIcon>
           <MDSymbol name="folder" />
         </template>
       </MDListItem>
     </MDListContainer>
-    <!-- TODO: отдельный блок для Google Drive -->
-    <GoogleDriveWidget />
   </MDPaneContainer>
 </template>
 
 <style lang="css" scoped>
 .home-widget {
-  padding: 0 8px;
+  padding: 8px;
 }
 
 .storage-list {
