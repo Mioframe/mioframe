@@ -60,90 +60,123 @@ const onClickGDriveAppFolder = async () => {
 
   emit('update:directoryPath', [directoryGDriveEntry]);
 };
+
+const onClickMyDrive = async () => {
+  const gDrive = await getGDrive(GOOGLE_DRIVE_SCOPE.all);
+
+  const directoryGDriveEntry = createDirectoryGDriveEntry(
+    gDrive,
+    GDriveSpace.MyDrive,
+  );
+
+  emit('update:directoryPath', [directoryGDriveEntry]);
+};
+
+const onClickShared = async () => {
+  const gDrive = await getGDrive(GOOGLE_DRIVE_SCOPE.all);
+
+  const directoryGDriveEntry = createDirectoryGDriveEntry(
+    gDrive,
+    GDriveSpace.SharedWithMe,
+  );
+
+  emit('update:directoryPath', [directoryGDriveEntry]);
+};
 </script>
 
 <template>
-  <MDListContainer tag="div" type="grid" class="google-drive-widget">
-    <MDListItem
-      v-if="!profile"
-      v-pressed-state
-      headline="Use Google Drive"
-      class="google-drive-widget__use-btn"
-      is-button
-      @click="onClickUseGDrive"
-    >
-      <template #leadingAvatarContainer>
-        <img
-          src="https://fonts.gstatic.com/s/i/productlogos/drive_2020q4/v8/web-64dp/logo_drive_2020q4_color_2x_web_64dp.png"
-          class="google-drive-widget__g-drive-logo"
-        />
-      </template>
-    </MDListItem>
+  <div class="google-drive-widget">
+    <MDListContainer tag="div" class="google-drive-widget__header">
+      <MDListItem
+        v-if="!profile"
+        v-pressed-state
+        headline="Use Google Drive"
+        class="google-drive-widget__use-btn"
+        is-button
+        @click="onClickUseGDrive"
+      >
+        <template #leadingAvatarContainer>
+          <img
+            src="https://fonts.gstatic.com/s/i/productlogos/drive_2020q4/v8/web-64dp/logo_drive_2020q4_color_2x_web_64dp.png"
+            class="google-drive-widget__g-drive-logo"
+          />
+        </template>
+      </MDListItem>
 
-    <MDListItem
+      <MDListItem
+        v-else
+        :headline="profile.name ?? 'unknown name'"
+        :supporting-text="profile.email"
+        is-div
+        class="google-drive-widget__profile profile"
+      >
+        <template #leadingAvatarContainer>
+          <img class="profile__avatar" :src="profile.picture" />
+        </template>
+
+        <template #trailingIcon>
+          <MDContextMenuButton
+            :btns="profileContextMenu"
+            @click="onClickContextProfile"
+          />
+        </template>
+      </MDListItem>
+    </MDListContainer>
+
+    <MDListContainer
       v-if="profile"
-      :headline="profile.name ?? 'unknown name'"
-      :supporting-text="profile.email"
-      is-div
-      class="google-drive-widget__profile profile"
+      tag="div"
+      type="grid"
+      class="google-drive-widget__content"
     >
-      <template #leadingAvatarContainer>
-        <img class="profile__avatar" :src="profile.picture" />
-      </template>
+      <MDListItem
+        v-pressed-state
+        headline="App Folder"
+        class="google-drive-widget__item"
+        supporting-text="Available only for this application"
+        is-button
+        @click="onClickGDriveAppFolder"
+      >
+        <template #leadingIcon>
+          <MDSymbol name="cloud_lock" />
+        </template>
+      </MDListItem>
 
-      <template #trailingIcon>
-        <MDContextMenuButton
-          :btns="profileContextMenu"
-          @click="onClickContextProfile"
-        />
-      </template>
-    </MDListItem>
+      <MDListItem
+        v-pressed-state
+        headline="My Drive"
+        class="google-drive-widget__item"
+        supporting-text="The contents of your drive"
+        is-button
+        @click="onClickMyDrive"
+      >
+        <template #leadingIcon>
+          <MDSymbol name="cloud" />
+        </template>
+      </MDListItem>
 
-    <MDListItem
-      v-pressed-state
-      headline="App Folder"
-      class="google-drive-widget__item"
-      supporting-text="Available only for this application"
-      is-button
-      @click="onClickGDriveAppFolder"
-    >
-      <template #leadingIcon>
-        <MDSymbol name="cloud_lock" />
-      </template>
-    </MDListItem>
-
-    <MDListItem
-      v-pressed-state
-      headline="My Drive"
-      class="google-drive-widget__item"
-      supporting-text="The contents of your drive"
-      is-button
-    >
-      <template #leadingIcon>
-        <MDSymbol name="cloud" />
-      </template>
-    </MDListItem>
-
-    <MDListItem
-      v-pressed-state
-      headline="Shared"
-      class="google-drive-widget__item"
-      supporting-text="Items shared with me"
-      is-button
-    >
-      <template #leadingIcon>
-        <MDSymbol name="folder_shared" />
-      </template>
-    </MDListItem>
-  </MDListContainer>
+      <MDListItem
+        v-pressed-state
+        headline="Shared"
+        class="google-drive-widget__item"
+        supporting-text="Items shared with me"
+        is-button
+        @click="onClickShared"
+      >
+        <template #leadingIcon>
+          <MDSymbol name="folder_shared" />
+        </template>
+      </MDListItem>
+    </MDListContainer>
+  </div>
 </template>
 
 <style lang="css" scoped>
 .google-drive-widget {
   --md-list-container-radius: 16px;
 
-  &__profile {
-    grid-column: 1 / -1;
+  &__header {
+    padding-bottom: 0;
   }
 
   &__item,

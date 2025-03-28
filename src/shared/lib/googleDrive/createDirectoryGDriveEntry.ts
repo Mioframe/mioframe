@@ -23,14 +23,24 @@ export const createDirectoryGDriveEntry = (
   gDrive: AdvancedGDrive,
   space = GDriveSpace.appDataFolder,
   gDriveFolderId?: string,
-  name = 'root',
+  name?: string,
   parentEntry?: DirectoryGDriveEntry,
 ): DirectoryGDriveEntry => {
   const currentGDriveFolderId =
     gDriveFolderId ??
-    (space === GDriveSpace.appDataFolder ? 'appDataFolder' : 'root');
+    (space === GDriveSpace.appDataFolder
+      ? 'appDataFolder'
+      : space === GDriveSpace.MyDrive
+        ? 'root'
+        : 'root');
 
-  const currentName = name;
+  const currentName =
+    name ??
+    (space === GDriveSpace.appDataFolder
+      ? 'App Data Folder'
+      : space === GDriveSpace.MyDrive
+        ? 'Google My Drive'
+        : 'Shared With Me');
 
   const currentEntry = createGDriveEntry(
     gDrive,
