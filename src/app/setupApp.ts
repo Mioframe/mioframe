@@ -4,7 +4,6 @@ import './styles/styles.css';
 import MainApp from './MainApp.vue';
 import { setupSentry } from './setupSentry';
 import { createPinia } from 'pinia';
-import { router } from './router';
 import { createHead } from '@unhead/vue/client';
 
 /**
@@ -20,8 +19,6 @@ export const setupApp = () => {
   }
 
   app.use(createHead());
-
-  app.use(router);
 
   app.use(createPinia());
 
