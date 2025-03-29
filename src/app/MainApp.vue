@@ -1,11 +1,11 @@
 <script setup lang="ts">
-import { RouterView } from 'vue-router';
+import { MainView } from '@widget/MainViewV2';
 import NotificationList from '../shared/ui/Notifications/NotificationList.vue';
 </script>
 
 <template>
   <div class="main">
-    <RouterView />
+    <MainView />
   </div>
 
   <NotificationList />
