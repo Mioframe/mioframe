@@ -5,9 +5,8 @@ import type { DirectoryFSEntry } from '@shared/lib/fileSystem';
 import { MDMainLayer } from '@shared/ui/Layers';
 import DocumentViewWidget from '@widget/DocumentView/DocumentViewWidget.vue';
 import { HomeWidget } from '@widget/HomeWidget';
-import { setupDirectoryChoice } from '@widget/MainView/setupDirectoryChoice';
 import { RepoExplorerWidget } from '@widget/RepoExplorer';
-import { shallowRef, watchEffect } from 'vue';
+import { shallowRef } from 'vue';
 
 const openedDocument = shallowRef<DocHandle<unknown>>();
 
