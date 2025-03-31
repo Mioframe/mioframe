@@ -5,8 +5,8 @@ const rootMountElement = document.getElementById('app');
 
 if (rootMountElement) {
   const app = setupApp();
-  app.mount(rootMountElement);
   setupRootElement(app, rootMountElement);
+  app.mount(rootMountElement);
 }
 
 if (import.meta.env.DEV) {
