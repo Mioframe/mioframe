@@ -1,10 +1,9 @@
 import type { App, Directive } from 'vue';
-import { createApp, reactive, ref } from 'vue';
+import { createApp, shallowReactive } from 'vue';
 import TooltipContainer from './TooltipContainer.vue';
-import type { Pinia } from 'pinia';
-import { createPinia, defineStore } from 'pinia';
+import { createGlobalState } from '@vueuse/core';
+import { setupRootElement } from '@shared/lib/useRootElement';
 
-let pinia: Pinia | undefined = undefined;
 let tooltipApp: App<Element> | undefined;
 
 export const initTooltipApp = () => {
@@ -14,93 +13,90 @@ export const initTooltipApp = () => {
   tooltipApp = createApp(TooltipContainer);
   const tooltipRootContainer = document.createElement('div');
   document.body.appendChild(tooltipRootContainer);
-  if (!pinia) {
-    pinia = createPinia();
-  }
-  tooltipApp.use(pinia);
+  setupRootElement(tooltipApp, tooltipRootContainer);
   tooltipApp.mount(tooltipRootContainer);
 };
 
-export const useTooltip = defineStore('tooltip', () => {
-  const tooltipCollection = reactive<Map<HTMLElement, string>>(new Map());
+export const useTooltip = createGlobalState(() => {
+  const registeredTooltip = new WeakMap<HTMLElement, string>();
 
-  const tooltipState = ref<{
-    text: string | undefined;
-    targetElement: HTMLElement | undefined;
-  }>({ text: undefined, targetElement: undefined });
-
-  const setTooltip = (text: string, el: HTMLElement) => {
-    tooltipState.value.text = text;
-    tooltipState.value.targetElement = el;
-  };
-
-  const clearTooltip = () => {
-    tooltipState.value.targetElement = undefined;
-    tooltipState.value.text = undefined;
-  };
-
-  let showTooltipTimeout: ReturnType<typeof setTimeout> | undefined;
+  const showTooltipTimeout = new WeakMap<
+    HTMLElement,
+    ReturnType<typeof setTimeout>
+  >();
 
   const showTooltip = (el: HTMLElement) => {
-    const text = tooltipCollection.get(el);
+    const text = registeredTooltip.get(el);
     if (text) {
-      setTooltip(text, el);
+      showerTooltips.clear();
+      showerTooltips.set(el, text);
     }
   };
 
-  const hideTooltip = () => {
-    clearTooltip();
+  const hideTooltip = (el: HTMLElement) => {
+    showerTooltips.delete(el);
   };
 
   const onMouseEnter = ({ target }: MouseEvent) => {
     if (target instanceof HTMLElement) {
-      clearTimeout(showTooltipTimeout);
-      clearTimeout(hideTooltipTimeout);
-      showTooltipTimeout = setTimeout(() => {
-        showTooltip(target);
-      }, 300);
+      clearTimeout(showTooltipTimeout.get(target));
+      clearTimeout(hideTooltipTimeout.get(target));
+      showTooltipTimeout.set(
+        target,
+        setTimeout(() => {
+          showTooltip(target);
+        }, 300),
+      );
     }
   };
 
-  let hideTooltipTimeout: ReturnType<typeof setTimeout> | undefined;
+  const hideTooltipTimeout = new WeakMap<
+    HTMLElement,
+    ReturnType<typeof setTimeout>
+  >();
 
-  const onMouseLeave = () => {
-    clearTimeout(showTooltipTimeout);
-    clearTimeout(hideTooltipTimeout);
-    hideTooltipTimeout = setTimeout(() => {
-      hideTooltip();
-    }, 1.5e3);
+  const onMouseLeave = ({ target }: MouseEvent) => {
+    if (target instanceof HTMLElement) {
+      clearTimeout(showTooltipTimeout.get(target));
+      clearTimeout(hideTooltipTimeout.get(target));
+      hideTooltipTimeout.set(
+        target,
+        setTimeout(() => {
+          hideTooltip(target);
+        }, 1.5e3),
+      );
+    }
   };
 
-  const addTooltip = (el: HTMLElement, text: string) => {
-    tooltipCollection.set(el, text);
+  const onMountedTarget = (el: HTMLElement, text: string) => {
+    registeredTooltip.set(el, text);
     el.addEventListener('mouseenter', onMouseEnter);
     el.addEventListener('mouseleave', onMouseLeave);
   };
 
-  const removeTooltip = (el: HTMLElement) => {
-    tooltipCollection.delete(el);
+  const onUnmountTarget = (el: HTMLElement) => {
+    showerTooltips.delete(el);
+    registeredTooltip.delete(el);
     el.removeEventListener('mouseenter', onMouseEnter);
     el.removeEventListener('mouseleave', onMouseLeave);
   };
 
+  const showerTooltips = shallowReactive<Map<HTMLElement, string>>(new Map());
+
   return {
-    tooltipState,
-    addTooltip,
-    removeTooltip,
+    showerTooltips,
+    onMountedTarget,
+    onUnmountTarget,
   };
 });
 
 export const vMdTooltip: Directive<HTMLElement, string> = {
-  created: () => {
-    initTooltipApp();
-  },
   mounted(el, { value }) {
-    const { addTooltip } = useTooltip(pinia);
-    addTooltip(el, value);
+    const { onMountedTarget } = useTooltip();
+    onMountedTarget(el, value);
   },
   beforeUnmount(el) {
-    const { removeTooltip } = useTooltip(pinia);
-    removeTooltip(el);
+    const { onUnmountTarget } = useTooltip();
+    onUnmountTarget(el);
   },
 };
