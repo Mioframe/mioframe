@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useRootElement } from '@shared/lib/useRootElement';
 import { MDButton } from '../Button';
 
 const {
@@ -34,10 +35,12 @@ const emit = defineEmits<{
 const onSubmit = () => {
   emit('apply');
 };
+
+const rootEl = useRootElement();
 </script>
 
 <template>
-  <Teleport to="body">
+  <Teleport :to="rootEl">
     <dialog
       :open="!hide"
       class="md-dialog md-dialog__scrim"

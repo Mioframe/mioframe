@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { MainView } from '@widget/MainViewV2';
 import NotificationList from '../shared/ui/Notifications/NotificationList.vue';
+import TooltipContainer from '@shared/ui/Tooltips/TooltipContainer.vue';
 </script>
 
 <template>
@@ -9,6 +10,8 @@ import NotificationList from '../shared/ui/Notifications/NotificationList.vue';
   </div>
 
   <NotificationList />
+
+  <TooltipContainer />
 </template>
 
 <style lang="css" scoped>

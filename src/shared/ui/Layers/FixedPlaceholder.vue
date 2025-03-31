@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useRootElement } from '@shared/lib/useRootElement';
 import { useCssVar, useElementBounding, useElementSize } from '@vueuse/core';
 import { ref, watchEffect } from 'vue';
 
@@ -57,11 +58,12 @@ watchEffect(() => {
   contentHeightCssVar.value =
     priorityHeight === 'content' ? `${contentHeight.value}px` : undefined;
 });
+const rootEl = useRootElement();
 </script>
 
 <template>
   <div ref="placeholder" class="fixed-placeholder">
-    <Teleport to="body">
+    <Teleport :to="rootEl">
       <div ref="content" class="fixed-placeholder__content">
         <slot />
       </div>
