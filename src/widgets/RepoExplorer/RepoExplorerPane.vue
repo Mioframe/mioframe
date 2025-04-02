@@ -26,8 +26,9 @@ import { DocumentRenameDialog } from '@feature/documentRename';
 import { clone } from 'lodash-es';
 import MDPaneContainer from '@shared/ui/Layers/MDPaneContainer.vue';
 import { MDTopAppBar } from '@shared/ui/TopAppBar';
+import { FSEntryRenameDialog } from '@feature/entryRename';
 
-const { watchDebug, debug } = createLogger('DocumentExplorerWidget.vue');
+const { watchDebug, debug } = createLogger('RepoExplorerWidget.vue');
 
 const { directoryPath } = defineProps<{
   directoryPath: DirectoryFSEntry[];
@@ -46,7 +47,7 @@ const onClickCreateDirectory = () => {
 
 type FSEntry = DirectoryFSEntry | FileFSEntry;
 
-const entryNameToRemove = ref<string>();
+const entryKeyToRemove = ref<string>();
 
 const currentDirectoryEntry = computed(() => directoryPath.at(-1));
 
@@ -112,26 +113,32 @@ const onCreateDirectory = async (name: string) => {
 const onRemoveEntry = async (name: string) => {
   debug('onRemoveEntry', name);
   await removeEntryByName(name);
-  entryNameToRemove.value = undefined;
+  entryKeyToRemove.value = undefined;
 };
 
 enum FSEntryContextEvent {
   remove,
+  rename,
 }
 
 const fsEntryContextBtns = defineContextButtonList([
+  [FSEntryContextEvent.rename, { text: 'Rename', symbolName: 'edit' }],
   [FSEntryContextEvent.remove, { text: 'Remove', symbolName: 'delete' }],
 ]);
+
+const entryKeyToRename = ref<string>();
 
 const onClickFSEntryContextAction = (
   key: FSEntryContextEvent,
   entryKey: string,
 ) => {
   switch (key) {
-    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- действий будет больше
     case FSEntryContextEvent.remove: {
-      entryNameToRemove.value = entryKey;
-
+      entryKeyToRemove.value = entryKey;
+      break;
+    }
+    case FSEntryContextEvent.rename: {
+      entryKeyToRename.value = entryKey;
       break;
     }
 
@@ -203,6 +210,25 @@ const onClickBack = () => {
   path.pop();
 
   emit('update:directoryPath', path);
+};
+
+const loadingRename = ref(0);
+
+const onRenameEntry = async (newName: string) => {
+  loadingRename.value += 1;
+  try {
+    if (entryKeyToRename.value) {
+      const entry = currentDirectoryEntries.value.get(entryKeyToRename.value);
+      if (entry) {
+        await entry.rename(newName);
+        entryKeyToRename.value = undefined;
+        return;
+      }
+    }
+    throw new Error('unknown entry to rename');
+  } finally {
+    loadingRename.value -= 1;
+  }
 };
 </script>
 
@@ -296,9 +322,9 @@ const onClickBack = () => {
     />
 
     <FSEntryRemoveDialog
-      v-if="entryNameToRemove"
-      :name="entryNameToRemove"
-      @cancel="entryNameToRemove = undefined"
+      v-if="entryKeyToRemove"
+      :name="entryKeyToRemove"
+      @cancel="entryKeyToRemove = undefined"
       @apply="onRemoveEntry"
     />
 
@@ -314,6 +340,14 @@ const onClickBack = () => {
       :doc-handle="documentToRename"
       @renamed="documentToRename = undefined"
       @cancel="documentToRename = undefined"
+    />
+
+    <FSEntryRenameDialog
+      v-if="entryKeyToRename"
+      :name="entryKeyToRename"
+      :loading="!!loadingRename"
+      @cancel="entryKeyToRename = undefined"
+      @rename="onRenameEntry"
     />
   </MDPaneContainer>
 </template>

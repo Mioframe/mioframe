@@ -21,9 +21,11 @@ const propertyTypeList = {
 
 type PropertyType = ValueOf<typeof propertyTypeList>;
 
-const selectedType = ref<{ labelText: PropertyType }[]>();
+const selectedType = ref<{ labelText: PropertyType }[]>([
+  { labelText: propertyTypeList.PROPERTY_TYPE_STRING },
+]);
 
-const stateType = computed(() => selectedType.value?.at(0)?.labelText);
+const stateType = computed(() => selectedType.value.at(0)?.labelText);
 
 const emit = defineEmits<{
   create: [property: UnknownProperty];

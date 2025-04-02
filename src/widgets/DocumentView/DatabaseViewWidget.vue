@@ -16,6 +16,7 @@ import { DatabasePropertyList } from '@entity/databaseProperty';
 import { defineContextButtonList, MDContextMenuButton } from '@shared/ui/Menu';
 import { DatabasePropertyRemoveDialog } from '@feature/databasePropertyRemove';
 import { DatabasePropertyRenameDialog } from '@feature/databasePropertyRename';
+import { EmptySymbol } from '@shared/ui/EmptySymbol';
 
 const { docHandle } = defineProps<{
   docHandle: DocHandle<unknown>;
@@ -152,7 +153,7 @@ const onClickPropertyContextAction = (
       :data
     />
 
-    <div v-else>empty</div>
+    <EmptySymbol v-else class="database-view__empty" />
 
     <div class="database-view__controls">
       <MDBottomSheet class="database-view__sheet sheet">

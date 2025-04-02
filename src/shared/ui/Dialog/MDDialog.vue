@@ -3,6 +3,7 @@ import { useRootElement } from '@shared/lib/useRootElement';
 import { MDButton } from '../Button';
 import { useFocusTrap } from '@vueuse/integrations/useFocusTrap';
 import { onBeforeUnmount, ref, watchEffect } from 'vue';
+import { onKeyStroke } from '@vueuse/core';
 
 const {
   applyLabel,
@@ -35,7 +36,15 @@ const emit = defineEmits<{
 }>();
 
 const onSubmit = () => {
-  emit('apply');
+  if (!loading) {
+    emit('apply');
+  }
+};
+
+const onCancel = () => {
+  if (!loading && hasCancelAction) {
+    emit('cancel');
+  }
 };
 
 const rootEl = useRootElement();
@@ -49,16 +58,20 @@ const { activate: lockFocus, deactivate: unlockFocus } = useFocusTrap(
   },
 );
 
-onBeforeUnmount(() => {
-  unlockFocus();
-});
-
 watchEffect(() => {
   if (hide) {
     unlockFocus();
   } else {
     lockFocus();
   }
+});
+
+onKeyStroke('Escape', () => {
+  onCancel();
+});
+
+onBeforeUnmount(() => {
+  unlockFocus();
 });
 </script>
 
@@ -97,7 +110,7 @@ watchEffect(() => {
             v-if="hasCancelAction"
             :label="cancelLabel"
             type="text"
-            @click="$emit('cancel')"
+            @click="onCancel"
           />
 
           <MDButton
