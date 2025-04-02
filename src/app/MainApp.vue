@@ -2,6 +2,7 @@
 import { MainView } from '@widget/MainViewV2';
 import NotificationList from '../shared/ui/Notifications/NotificationList.vue';
 import TooltipContainer from '@shared/ui/Tooltips/TooltipContainer.vue';
+import { SnackbarContainer } from '@shared/ui/Snackbar';
 </script>
 
 <template>
@@ -10,6 +11,8 @@ import TooltipContainer from '@shared/ui/Tooltips/TooltipContainer.vue';
   </div>
 
   <NotificationList />
+
+  <SnackbarContainer />
 
   <TooltipContainer />
 </template>
