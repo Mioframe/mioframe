@@ -94,13 +94,13 @@ export const useGoogleApi = createGlobalState(() => {
     google?: typeof window.google,
     ...scopes: [GOOGLE_SCOPES, ...GOOGLE_SCOPES[]]
   ) => {
-    debug('checkGrantedAndRequestAccess');
+    debug('requestAccess');
 
     const g = google ?? (await loadGoogle());
 
     const firstCheck = checkGranted(g, ...scopes);
 
-    debug('checkGrantedAndRequestAccess', { firstCheck });
+    debug('requestAccess', { firstCheck });
 
     if (!firstCheck) {
       if (!clientId) {
@@ -112,7 +112,7 @@ export const useGoogleApi = createGlobalState(() => {
 
       const secondCheck = checkGranted(g, ...scopes);
 
-      debug('checkGrantedAndRequestAccess', { secondCheck });
+      debug('requestAccess', { secondCheck });
 
       return secondCheck;
     }

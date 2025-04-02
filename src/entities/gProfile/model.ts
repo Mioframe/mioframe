@@ -4,7 +4,7 @@ import { computed } from 'vue';
 
 export const useGProfile = () => {
   const {
-    requestAccess: checkGrantedAndRequestAccess,
+    requestAccess: requestAccess,
     userInfo,
     removeToken,
   } = useGoogleApi();
@@ -12,7 +12,7 @@ export const useGProfile = () => {
   const profile = computed(() => userInfo.value);
 
   const login = async () => {
-    await checkGrantedAndRequestAccess(
+    await requestAccess(
       await loadGoogle(),
       USERINFO_SCOPE.userinfoEmail,
       USERINFO_SCOPE.userinfoProfile,
