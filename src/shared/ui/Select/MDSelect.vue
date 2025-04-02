@@ -56,6 +56,8 @@ const onClickOption = (option: T) => {
   }
   showMenu.value = false;
 };
+
+// FIXME: добавить лёгкий поиск и навигацию клавиатурой
 </script>
 
 <template>

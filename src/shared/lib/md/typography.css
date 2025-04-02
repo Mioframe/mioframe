@@ -7,6 +7,14 @@ h6 {
   margin: 0;
 }
 
+.md.sys.typescale.display-large {
+  font-family: var(--md-sys-typescale-display-large-font);
+  font-weight: var(--md-sys-typescale-display-large-weight);
+  font-size: var(--md-sys-typescale-display-large-size);
+  line-height: var(--md-sys-typescale-display-large-line-height);
+  letter-spacing: var(--md-sys-typescale-display-large-tracking);
+}
+
 .md.sys.typescale.display-small {
   font-family: var(--md-sys-typescale-display-small-font);
   font-weight: var(--md-sys-typescale-display-small-weight);
