@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { useRootElement } from '@shared/lib/useRootElement';
 import { MDButton } from '../Button';
-import { useCurrentElement } from '@vueuse/core';
 import { useFocusTrap } from '@vueuse/integrations/useFocusTrap';
 import { onBeforeUnmount, ref, watchEffect } from 'vue';
 
