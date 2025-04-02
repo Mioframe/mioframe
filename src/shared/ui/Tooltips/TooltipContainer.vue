@@ -28,6 +28,7 @@ const rootEl = useRootElement();
 .tooltip-container {
   &__tooltip {
     position: fixed;
+    z-index: 1;
   }
 }
 </style>
