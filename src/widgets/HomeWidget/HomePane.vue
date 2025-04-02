@@ -10,10 +10,6 @@ const props = defineProps<{
   directoryPath: DirectoryFSEntry[];
 }>();
 
-// const emit = defineEmits<{
-//   'update:directoryPath': [directoryPath: DirectoryFSEntry[]];
-// }>();
-
 const directoryPath = useModel(props, 'directoryPath');
 </script>
 
