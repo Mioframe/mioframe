@@ -11,7 +11,6 @@ import {
   GDriveSpace,
 } from '@shared/lib/googleDrive';
 import type { DirectoryFSEntry } from '@shared/lib/fileSystem';
-import { useSnackbar } from '@shared/ui/Snackbar';
 
 const emit = defineEmits<{
   'update:directoryPath': [directoryPath: DirectoryFSEntry[]];
@@ -45,81 +44,43 @@ const onClickContextProfile = (key: ProfileContextAction) => {
   }
 };
 
-const { addSnackbar } = useSnackbar();
-
 const onClickUseGDrive = async () => {
-  try {
-    await login();
-  } catch (error) {
-    addSnackbar({
-      text: `Error: ${
-        error instanceof Error ? error.message : 'error using google'
-      }`,
-    });
-    throw error;
-  }
+  await login();
 };
 
 const { getGDrive } = useGoogleApi();
 
 const onClickGDriveAppFolder = async () => {
-  try {
-    const gDrive = await getGDrive(GOOGLE_DRIVE_SCOPE.appdata);
+  const gDrive = await getGDrive(GOOGLE_DRIVE_SCOPE.appdata);
 
-    const directoryGDriveEntry = createDirectoryGDriveEntry(
-      gDrive,
-      GDriveSpace.appDataFolder,
-    );
+  const directoryGDriveEntry = createDirectoryGDriveEntry(
+    gDrive,
+    GDriveSpace.appDataFolder,
+  );
 
-    emit('update:directoryPath', [directoryGDriveEntry]);
-  } catch (error) {
-    addSnackbar({
-      text: `Error: ${
-        error instanceof Error ? error.message : 'error using google drive api'
-      }`,
-    });
-    throw error;
-  }
+  emit('update:directoryPath', [directoryGDriveEntry]);
 };
 
 const onClickMyDrive = async () => {
-  try {
-    const gDrive = await getGDrive(GOOGLE_DRIVE_SCOPE.all);
+  const gDrive = await getGDrive(GOOGLE_DRIVE_SCOPE.all);
 
-    const directoryGDriveEntry = createDirectoryGDriveEntry(
-      gDrive,
-      GDriveSpace.MyDrive,
-    );
+  const directoryGDriveEntry = createDirectoryGDriveEntry(
+    gDrive,
+    GDriveSpace.MyDrive,
+  );
 
-    emit('update:directoryPath', [directoryGDriveEntry]);
-  } catch (error) {
-    addSnackbar({
-      text: `Error: ${
-        error instanceof Error ? error.message : 'error using google drive api'
-      }`,
-    });
-    throw error;
-  }
+  emit('update:directoryPath', [directoryGDriveEntry]);
 };
 
 const onClickShared = async () => {
-  try {
-    const gDrive = await getGDrive(GOOGLE_DRIVE_SCOPE.all);
+  const gDrive = await getGDrive(GOOGLE_DRIVE_SCOPE.all);
 
-    const directoryGDriveEntry = createDirectoryGDriveEntry(
-      gDrive,
-      GDriveSpace.SharedWithMe,
-    );
+  const directoryGDriveEntry = createDirectoryGDriveEntry(
+    gDrive,
+    GDriveSpace.SharedWithMe,
+  );
 
-    emit('update:directoryPath', [directoryGDriveEntry]);
-  } catch (error) {
-    addSnackbar({
-      text: `Error: ${
-        error instanceof Error ? error.message : 'error using google drive api'
-      }`,
-    });
-    throw error;
-  }
+  emit('update:directoryPath', [directoryGDriveEntry]);
 };
 </script>
 

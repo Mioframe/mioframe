@@ -58,11 +58,7 @@ const onClickClose = () => {
   --md-content-color: var(--md-sys-color-inverse-on-surface);
   box-shadow: var(--md-sys-elevation-level3);
   border-radius: var(--md-sys-shape-corner-extra-small);
-  padding: max(
-      calc((48dp - var(--md-sys-typescale-body-medium-line-height)) / 2),
-      0px
-    )
-    16px;
+  padding: 4px 16px;
 
   &__text {
     font-family: var(--md-sys-typescale-body-medium-font);
