@@ -4,4 +4,4 @@ export {
   createBooleanProperty,
   zodBooleanProperty,
 } from './boolean';
-export { default as BooleanValue } from './BooleanValue.vue';
+export { default as BooleanInline } from './BooleanInline.vue';

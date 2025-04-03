@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { DatabaseValueSpan } from '@entity/databaseValue';
 import type { DatabaseData } from '@shared/lib/databaseDocument';
 import type { PropertiesMap } from '@shared/lib/databaseDocument/property';
 import { MDTable } from '@shared/ui/Table';
+import EditableInlineValue from '@widget/DocumentView/Database/EditableInlineValue.vue';
 
 const { data } = defineProps<{
   properties: PropertiesMap;
@@ -23,7 +23,7 @@ const { data } = defineProps<{
     <tbody>
       <tr v-for="(item, itemId) in data" :key="itemId">
         <td v-for="(property, propertyId) in properties" :key="propertyId">
-          <DatabaseValueSpan :item :property-id :property />
+          <EditableInlineValue :item :property-id :property />
         </td>
       </tr>
     </tbody>

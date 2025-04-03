@@ -54,7 +54,7 @@ const onCreate = () => {
 
 const onCancel = () => {
   stateName.value = undefined;
-  selectedType.value = undefined;
+  selectedType.value = [];
   emit('cancel');
 };
 </script>

@@ -9,7 +9,6 @@ import type {
 } from '@shared/lib/databaseDocument';
 import { useDatabaseDocument } from '@shared/lib/databaseDocument';
 import { computed, ref, toRef } from 'vue';
-import DatabaseViewTable from './DatabaseViewTable.vue';
 import { MDBottomSheet } from '@shared/ui/Sheets';
 import { defineBarButtons, MDButtonsBar } from '@shared/ui/ButtonsBar';
 import { DatabasePropertyList } from '@entity/databaseProperty';
@@ -17,6 +16,7 @@ import { defineContextButtonList, MDContextMenuButton } from '@shared/ui/Menu';
 import { DatabasePropertyRemoveDialog } from '@feature/databasePropertyRemove';
 import { DatabasePropertyRenameDialog } from '@feature/databasePropertyRename';
 import { EmptySymbol } from '@shared/ui/EmptySymbol';
+import DatabaseViewTable from './DatabaseViewTable.vue';
 
 const { docHandle } = defineProps<{
   docHandle: DocHandle<unknown>;

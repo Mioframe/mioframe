@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useRootElement } from '@shared/lib/useRootElement';
 import type { MaybeElement } from '@vueuse/core';
 import { useElementSize, useWindowSize } from '@vueuse/core';
 import type { CSSProperties } from 'vue';
@@ -13,13 +14,13 @@ const props = defineProps<{
 const emit = defineEmits<{
   'update:refEl': [refEl: MaybeElement];
 }>();
-const rootEl = ref<HTMLElement>();
+const popoverEl = ref<HTMLElement>();
 
 watchEffect(() => {
-  emit('update:refEl', rootEl.value);
+  emit('update:refEl', popoverEl.value);
 });
 
-const { width: rootElWidth, height: rootElHeight } = useElementSize(rootEl);
+const { width: rootElWidth, height: rootElHeight } = useElementSize(popoverEl);
 
 const { width: windowWidth, height: windowHeight } = useWindowSize();
 
@@ -42,11 +43,18 @@ defineSlots<{
 onBeforeUnmount(() => {
   emit('update:refEl', undefined);
 });
+
+const rootEl = useRootElement();
 </script>
 
 <template>
-  <Teleport to="body">
-    <div ref="rootEl" class="popover" :style="mainStyle" :class="$attrs.class">
+  <Teleport :to="rootEl">
+    <div
+      ref="popoverEl"
+      class="popover"
+      :style="mainStyle"
+      :class="$attrs.class"
+    >
       <slot />
     </div>
   </Teleport>
