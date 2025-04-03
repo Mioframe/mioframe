@@ -12,16 +12,11 @@ const {} = defineProps<{
 </script>
 
 <template>
-  <span class="value-inline">
-    <BooleanInline v-if="property?.type === PROPERTY_TYPE_BOOLEAN" :value />
+  <BooleanInline v-if="property?.type === PROPERTY_TYPE_BOOLEAN" :value />
 
-    <NumberSpan v-else-if="property?.type === PROPERTY_TYPE_NUMBER" :value />
+  <NumberSpan v-else-if="property?.type === PROPERTY_TYPE_NUMBER" :value />
 
-    <StringValueSpan
-      v-else-if="property?.type === PROPERTY_TYPE_STRING"
-      :value
-    />
+  <StringValueSpan v-else-if="property?.type === PROPERTY_TYPE_STRING" :value />
 
-    <DateValueInline v-else-if="property?.type === PROPERTY_TYPE_DATE" :value />
-  </span>
+  <DateValueInline v-else-if="property?.type === PROPERTY_TYPE_DATE" :value />
 </template>

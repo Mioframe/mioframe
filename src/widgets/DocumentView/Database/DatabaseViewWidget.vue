@@ -4,6 +4,7 @@ import { DbItemAddDialog } from '@feature/databaseItemAdd';
 import DatabasePropertyCreationDialog from '@feature/databasePropertyCreate/DatabasePropertyCreationDialog.vue';
 import type {
   Item,
+  ItemId,
   PropertyId,
   UnknownProperty,
 } from '@shared/lib/databaseDocument';
@@ -17,6 +18,7 @@ import { DatabasePropertyRemoveDialog } from '@feature/databasePropertyRemove';
 import { DatabasePropertyRenameDialog } from '@feature/databasePropertyRename';
 import { EmptySymbol } from '@shared/ui/EmptySymbol';
 import DatabaseViewTable from './DatabaseViewTable.vue';
+import type { DatabaseValue } from '@shared/lib/databaseDocument/item/data';
 
 const { docHandle } = defineProps<{
   docHandle: DocHandle<unknown>;
@@ -31,6 +33,7 @@ const {
   properties,
   removeProperty,
   updateProperty,
+  updateItem,
 } = useDatabaseDocument(docHandleRef);
 
 const isShowAddProperty = ref(false);
@@ -142,6 +145,16 @@ const onClickPropertyContextAction = (
       throw new Error('unknown property action');
   }
 };
+
+const onChangeValue = async (
+  itemId: ItemId,
+  propertyId: PropertyId,
+  value: DatabaseValue,
+) => {
+  await updateItem(itemId, {
+    [propertyId]: value,
+  });
+};
 </script>
 
 <template>
@@ -151,6 +164,7 @@ const onClickPropertyContextAction = (
       class="database-view__table"
       :properties
       :data
+      @change-value="onChangeValue"
     />
 
     <EmptySymbol v-else class="database-view__empty" />

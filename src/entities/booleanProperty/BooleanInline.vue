@@ -11,5 +11,5 @@ const convertedValue = computed(() => (isBoolean(value) ? value : undefined));
 </script>
 
 <template>
-  <MDCheckbox :model-value="convertedValue" @click.prevent />
+  <MDCheckbox :model-value="convertedValue" indeterminate />
 </template>
