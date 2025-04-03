@@ -1,6 +1,6 @@
 import type { UseFocusOptions } from '@vueuse/core';
 import { unrefElement, useFocus, type MaybeElementRef } from '@vueuse/core';
-import { computed } from 'vue';
+import { computed, watchEffect } from 'vue';
 
 export const useFirstFocus = (
   target: MaybeElementRef,
@@ -14,5 +14,11 @@ export const useFirstFocus = (
     return focusableEl instanceof HTMLElement ? focusableEl : undefined;
   });
 
-  useFocus(focusableTarget, options);
+  const { focused } = useFocus(focusableTarget, options);
+
+  watchEffect(() => {
+    if (options?.initialValue) {
+      focused.value = !!focusableTarget.value;
+    }
+  });
 };
