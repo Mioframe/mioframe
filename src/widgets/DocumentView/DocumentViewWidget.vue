@@ -2,8 +2,8 @@
 import type { DocHandle } from '@automerge/automerge-repo';
 import { useCFRDocument } from '@shared/lib/cfrDocument/useCFRDocument';
 import { toRef } from 'vue';
-import DatabaseView from './DatabaseViewWidget.vue';
 import { DATABASE_DOCUMENT_TYPE } from '@shared/lib/databaseDocument';
+import DatabaseViewWidget from './Database/DatabaseViewWidget.vue';
 
 /**
  * Виджет просмотра документа
@@ -18,7 +18,7 @@ const { content, documentType } = useCFRDocument(toRef(() => docHandle));
 
 <template>
   <div class="document-view-widget">
-    <DatabaseView
+    <DatabaseViewWidget
       v-if="documentType === DATABASE_DOCUMENT_TYPE"
       :doc-handle="docHandle"
     />

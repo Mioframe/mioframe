@@ -56,6 +56,7 @@ const onClickField = () => {
 
 defineEmits<{
   focus: [];
+  keydown: [payload: KeyboardEvent];
 }>();
 </script>
 
@@ -91,6 +92,7 @@ defineEmits<{
           :disabled
           :maxlength="maxCharacters"
           @focus="$emit('focus')"
+          @keydown="$emit('keydown', $event)"
         />
 
         <input
@@ -103,6 +105,7 @@ defineEmits<{
           :maxlength="maxCharacters"
           :type="inputType"
           @focus="$emit('focus')"
+          @keydown="$emit('keydown', $event)"
         />
       </div>
 

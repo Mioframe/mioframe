@@ -76,6 +76,7 @@
       padding: 12px;
       font-weight: inherit;
       border-bottom: var(--md-table-border);
+      text-align: left;
 
       &:first-child {
         border-left: var(--md-table-border);

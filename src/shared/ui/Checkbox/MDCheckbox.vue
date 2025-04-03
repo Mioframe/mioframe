@@ -92,6 +92,7 @@ const onClickContainer = () => {
   width: 40px;
   height: 40px;
   border-radius: 20px;
+  border: 0;
 
   &__container {
     width: 18px;
