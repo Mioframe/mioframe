@@ -120,6 +120,11 @@ export const vPressedState: Directive = {
       el.addEventListener('animationend', onAnimationEnd);
     }
   },
+  updated: (el) => {
+    if (el instanceof HTMLElement) {
+      el.classList.add(STATE.main);
+    }
+  },
   beforeUnmount: (el) => {
     if (el instanceof HTMLElement) {
       el.removeEventListener('mousedown', onPress);

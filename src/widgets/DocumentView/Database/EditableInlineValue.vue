@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watchEffect } from 'vue';
+import { computed, ref, watchEffect } from 'vue';
 import type { PropertyId } from '../../../shared/lib/databaseDocument';
 import { PopOver } from '../../../shared/ui/PopOver';
 import { onInteractionOutside } from '../../../shared/lib/onInteractionOutside';
@@ -20,9 +20,9 @@ import {
 import type { DatabaseItem } from '@shared/lib/databaseDocument/item/data';
 import type { GeneralProperty } from '@shared/lib/databaseDocument/property';
 import ValueInline from './ValueInline.vue';
+import { useBooleanEdit } from '@feature/booleanPropertyEdit';
 
 const {
-  editable,
   item = {},
   property,
   propertyId,
@@ -30,22 +30,40 @@ const {
   item: DatabaseItem | undefined;
   property: GeneralProperty;
   propertyId: PropertyId;
-  editable?: boolean;
 }>();
 
 const emit = defineEmits<{
   'update:value': [value: unknown];
 }>();
 
+const initialValue = computed(() => item[propertyId]);
+
 const positionEditForm = ref<{
   clientY: number;
   clientX: number;
 }>();
 
-const onClickRoot = ({ target }: MouseEvent) => {
-  if (!editable) {
+const stateValue = ref<unknown>();
+
+watchEffect(() => {
+  stateValue.value = initialValue.value;
+});
+
+const tryEmitValue = () => {
+  if (!isEqual(item[propertyId], stateValue.value)) {
+    emit('update:value', stateValue.value);
+  }
+};
+
+const { toggleBoolean } = useBooleanEdit(stateValue);
+
+const onClick = ({ target }: MouseEvent) => {
+  if (is(property, zodBooleanProperty)) {
+    toggleBoolean();
+    tryEmitValue();
     return;
   }
+
   if (target instanceof HTMLElement) {
     const { top, left } = target.getBoundingClientRect();
 
@@ -59,47 +77,27 @@ const onClickRoot = ({ target }: MouseEvent) => {
 const refPopover = ref<MaybeElement>();
 
 const closeEditor = () => {
-  if (!isEqual(item[propertyId], stateValue.value)) {
-    emit('update:value', stateValue.value);
-  }
+  tryEmitValue();
 
   positionEditForm.value = undefined;
-  stateValue.value = undefined;
 };
 
 onInteractionOutside(refPopover, closeEditor);
 
 useFirstFocus(refPopover, { initialValue: true });
-
-const stateValue = ref<unknown>();
-
-watchEffect(() => {
-  stateValue.value = item[propertyId];
-});
 </script>
 
 <template>
-  <component
-    :is="editable ? 'a' : 'span'"
-    class="inline-value"
-    :class="[
-      $attrs.class,
-      {
-        'inline-value_editable': editable,
-      },
-    ]"
-    :tabindex="editable ? 0 : undefined"
-    @click="onClickRoot"
-  >
-    <ValueInline :property :value="stateValue" />
-  </component>
+  <a class="editable-inline-value" tabindex="0" @click="onClick">
+    <ValueInline :property :value="initialValue" />
+  </a>
 
   <PopOver
     v-if="positionEditForm"
     v-model:ref-el="refPopover"
     :origin-position="positionEditForm"
   >
-    <div class="inline-value__edit-popover">
+    <div class="editable-inline-value__edit-popover">
       <BooleanPropertyField
         v-if="is(property, zodBooleanProperty)"
         v-model="stateValue"
@@ -135,13 +133,20 @@ watchEffect(() => {
 </template>
 
 <style scoped>
-.inline-value {
-  &_editable {
-    cursor: pointer;
+.editable-inline-value {
+  cursor: pointer;
+  text-decoration: wavy underline transparent;
+  transition-property: text-decoration;
+  transition-duration: 0.1s;
+
+  &:hover {
+    text-decoration: wavy underline
+      rgb(from var(--md-content-color) r g b / 0.5);
   }
 
   &__edit-popover {
     --md-container-color: var(--md-sys-color-background);
+    --md-content-color: var(--md-sys-color-on-background);
     padding: 8px;
     border-radius: 8px;
     box-shadow: var(--md-sys-elevation-level1);

@@ -163,6 +163,7 @@ const windowClassModifier = computed(() => {
     justify-content: flex-start;
     border-radius: 16px;
     --md-container-color: var(--md-sys-color-surface);
+    --md-content-color: var(--md-sys-color-on-surface);
     overflow-y: auto;
   }
 }
