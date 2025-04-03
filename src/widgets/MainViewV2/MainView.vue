@@ -2,11 +2,12 @@
 import type { DocHandle, DocumentId } from '@automerge/automerge-repo';
 import { useCFRDocument } from '@shared/lib/cfrDocument/useCFRDocument';
 import type { DirectoryFSEntry } from '@shared/lib/fileSystem';
+import { onBack } from '@shared/lib/onBack';
 import { MDMainLayer } from '@shared/ui/Layers';
 import DocumentViewWidget from '@widget/DocumentView/DocumentViewWidget.vue';
 import { HomeWidget } from '@widget/HomeWidget';
 import { RepoExplorerWidget } from '@widget/RepoExplorer';
-import { shallowRef } from 'vue';
+import { ref, shallowRef } from 'vue';
 
 const openedDocument = shallowRef<DocHandle<unknown>>();
 
@@ -23,7 +24,19 @@ const onClickDocumentBack = () => {
   openedDocument.value = undefined;
 };
 
-const directoryPath = shallowRef<DirectoryFSEntry[]>([]);
+const directoryPath = ref<DirectoryFSEntry[]>([]);
+
+onBack(() => {
+  if (openedDocument.value) {
+    openedDocument.value = undefined;
+    return false;
+  }
+  if (directoryPath.value.length > 0) {
+    directoryPath.value.pop();
+    return false;
+  }
+  return true;
+});
 </script>
 
 <template>

@@ -90,17 +90,17 @@ enum PropertyAction {
 
 const propertyContextBtns = defineContextButtonList([
   [
-    PropertyAction.remove,
-    {
-      text: 'Remove',
-      symbolName: 'delete',
-    },
-  ],
-  [
     PropertyAction.rename,
     {
       text: 'Rename',
       symbolName: 'edit',
+    },
+  ],
+  [
+    PropertyAction.remove,
+    {
+      text: 'Remove',
+      symbolName: 'delete',
     },
   ],
 ]);
