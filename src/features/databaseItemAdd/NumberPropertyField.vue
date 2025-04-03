@@ -11,6 +11,7 @@ const { property, modelValue: value } = defineProps<{
 
 const emit = defineEmits<{
   'update:modelValue': [value: number];
+  keydown: [payload: KeyboardEvent];
 }>();
 
 const labelText = computed(() => property.name);
@@ -24,5 +25,10 @@ const vModel = computed({
 </script>
 
 <template>
-  <MDTextField v-model:model-value="vModel" :label-text input-type="number" />
+  <MDTextField
+    v-model:model-value="vModel"
+    :label-text
+    input-type="number"
+    @keydown="$emit('keydown', $event)"
+  />
 </template>
