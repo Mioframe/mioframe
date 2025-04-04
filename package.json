@@ -24,6 +24,7 @@
     "@vueuse/integrations": "^13.0.0",
     "bulma": "^1.0.3",
     "dayjs": "^1.11.13",
+    "detect-browser-back-navigation": "^1.0.2",
     "file-type": "^20.4.1",
     "focus-trap": "^7.6.4",
     "ix": "^7.0.0",
