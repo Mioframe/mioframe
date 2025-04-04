@@ -41,6 +41,9 @@ importers:
       dayjs:
         specifier: ^1.11.13
         version: 1.11.13
+      detect-browser-back-navigation:
+        specifier: ^1.0.2
+        version: 1.0.2
       file-type:
         specifier: ^20.4.1
         version: 20.4.1
@@ -1263,8 +1266,8 @@ packages:
   '@maxim_mazurok/gapi.client.discovery-v1@0.1.20200806':
     resolution: {integrity: sha512-Wl6UfmZVDdWbY3PUu8E2ULk9RPLjnMqp/iOA4tcK8Ne+U/GmlnWP/e34IaZNGArfl7iXJNOG+/3Rj9L9jQyF9Q==}
 
-  '@maxim_mazurok/gapi.client.drive-v3@0.0.20250323':
-    resolution: {integrity: sha512-7T3pfTCn01a+PFN7My+rdT/SMOQ9fe5B3AVlgTR26brUMFSFIka9bVDCdK2vuNeOfdFhZ9Gze3EEWPtDLwT+rg==}
+  '@maxim_mazurok/gapi.client.drive-v3@0.0.20250401':
+    resolution: {integrity: sha512-yAdKB89VS1mHLoUSxptE4X77dqu1w7goZpN26PMladlkgycOG81sIUZNzomObEOeQdtnJ+8FG4Ae4YJbYFidTg==}
 
   '@maxim_mazurok/gapi.client.oauth2-v2@0.0.20200213':
     resolution: {integrity: sha512-CtMeicnExqTAoAok72PqqknL1p2sLVbAqB/4rpsbi2LYPy26ln23W+mZUB9uYl6Rt7a0DCqJdohdF40Q/dZv/w==}
@@ -2190,6 +2193,10 @@ packages:
   define-properties@1.2.1:
     resolution: {integrity: sha512-8QmQKqEASLd5nx0U1B1okLElbUuuttJ/AnYmRXbbbGDWh6uS208EjD4Xqq/I9wK7u0v6O08XhTWnt5XtEbR6Dg==}
     engines: {node: '>= 0.4'}
+
+  detect-browser-back-navigation@1.0.2:
+    resolution: {integrity: sha512-fL7UCUGE5Is1yAcIRlmdIegs3PZPCS08hy7LCrx6oNhhmlFGs9lR8HEDLE9MryinScyeq/u2l+tSZQ0T4qmfqw==}
+    engines: {node: '>=12'}
 
   detect-libc@2.0.3:
     resolution: {integrity: sha512-bwy0MGW55bG41VqxxypOsdSdGqLwXPI/focwgTYCFMbdUiBAxLg9CFzG08sz2aqzknwiX7Hkl0bQENjg8iLByw==}
@@ -5087,7 +5094,7 @@ snapshots:
       '@types/gapi.client': 1.0.8
       '@types/gapi.client.discovery-v1': 0.0.4
 
-  '@maxim_mazurok/gapi.client.drive-v3@0.0.20250323':
+  '@maxim_mazurok/gapi.client.drive-v3@0.0.20250401':
     dependencies:
       '@types/gapi.client': 1.0.8
       '@types/gapi.client.discovery-v1': 0.0.4
@@ -5432,7 +5439,7 @@ snapshots:
 
   '@types/gapi.client.drive-v3@0.0.5':
     dependencies:
-      '@maxim_mazurok/gapi.client.drive-v3': 0.0.20250323
+      '@maxim_mazurok/gapi.client.drive-v3': 0.0.20250401
 
   '@types/gapi.client.oauth2-v2@0.0.4':
     dependencies:
@@ -6011,6 +6018,8 @@ snapshots:
       define-data-property: 1.1.4
       has-property-descriptors: 1.0.2
       object-keys: 1.1.1
+
+  detect-browser-back-navigation@1.0.2: {}
 
   detect-libc@2.0.3:
     optional: true
