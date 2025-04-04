@@ -1,6 +1,7 @@
 import { createGlobalState, tryOnScopeDispose } from '@vueuse/core';
 import { createLogger } from './logger';
 import type { Promisable } from 'type-fest';
+import detectBackButton from 'detect-browser-back-navigation';
 
 const { debug } = createLogger('onBack');
 
@@ -9,57 +10,17 @@ type Handler = () => Promisable<boolean | undefined>;
 const useBackHandler = createGlobalState(() => {
   const handlerList: Handler[] = [];
 
-  const addFakeState = () => {
-    if (!window.history.state) {
-      window.history.pushState(
-        { id: Date.now() },
-        document.title,
-        window.location.href,
-      );
-    }
-    debug('addFakeState', {
-      length: window.history.length,
-      state: window.history.state,
-    });
-    window.history.pushState(
-      { id: Date.now() },
-      document.title,
-      window.location.href,
-    );
-    debug('addFakeState 2', {
-      length: window.history.length,
-      state: window.history.state,
-    });
-  };
-
-  const goBack = () => {
-    debug('goBack');
-    window.history.back();
-  };
-
-  const popstateListener = async () => {
-    debug('popstateListener', {
-      length: window.history.length,
-      state: window.history.state,
-    });
+  const backBtnListener = async () => {
+    debug('backBtnListener');
     const result = await handlerList.at(-1)?.();
-
-    debug('popstateListener 2', { result });
-
-    if (result === false) {
-      addFakeState();
-    } else {
-      goBack();
-    }
-    debug('popstateListener 3', {
-      length: window.history.length,
-      state: window.history.state,
+    unDetectBackBtn();
+    unDetectBackBtn = detectBackButton(() => {
+      void backBtnListener();
     });
   };
 
-  addFakeState();
-  window.addEventListener('popstate', () => {
-    void popstateListener();
+  let unDetectBackBtn = detectBackButton(() => {
+    void backBtnListener();
   });
 
   const addHandler = (handler: Handler) => {
@@ -77,6 +38,10 @@ const useBackHandler = createGlobalState(() => {
   };
 });
 
+/**
+ * @deprecated - работает ужасно, браузеры неадекватно ведут себя, похоже на кеширование состояния страницы. заменить на роутинг
+ * @param handler
+ */
 export const onBack = (handler: Handler) => {
   const { addHandler, removeHandler } = useBackHandler();
 
