@@ -1,10 +1,10 @@
-import type { LocalDirectoryEntry, LocalGeneralEntry } from './types';
+import type { DirectoryLocalEntry, GeneralLocalEntry } from './types';
 
 export const createLocalEntry = (
   currentHandle: FileSystemHandle,
-  parentLocalDirectory?: LocalDirectoryEntry,
+  parentLocalDirectory?: DirectoryLocalEntry,
   rootName?: string,
-): LocalGeneralEntry => {
+): GeneralLocalEntry => {
   const remove = async () => {
     if (parentLocalDirectory) {
       await parentLocalDirectory.removeByName(currentHandle.name);

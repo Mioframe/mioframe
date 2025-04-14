@@ -63,8 +63,8 @@ export interface FileGDriveEntry extends FileFSEntry {
 
 export enum GDriveSpace {
   // user drive
-  MyDrive,
+  MyDrive = 'My Drive',
   // drive with shared data
-  SharedWithMe,
-  appDataFolder,
+  SharedWithMe = 'Shared With Me',
+  appDataFolder = 'App Data Folder',
 }

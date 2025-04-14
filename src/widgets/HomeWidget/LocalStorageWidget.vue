@@ -7,23 +7,25 @@ import type { DirectoryFSEntry } from '@shared/lib/fileSystem';
 import { createLocalDirectory } from '@shared/lib/localFileSystem';
 
 const emit = defineEmits<{
-  'update:directoryPath': [directoryPath: DirectoryFSEntry[]];
+  openDirectory: [directory: DirectoryFSEntry];
 }>();
 
 const onClickBrowserStorage = async () => {
   const rootDirectoryHandle = await navigator.storage.getDirectory();
-  emit('update:directoryPath', [
+  emit(
+    'openDirectory',
     createLocalDirectory(rootDirectoryHandle, undefined, 'Browser Storage'),
-  ]);
+  );
 };
 
 const isSupportDirectoryPicker = 'showDirectoryPicker' in window;
 
 const onClickLocalFolder = async () => {
   const dirHandle = await window.showDirectoryPicker();
-  emit('update:directoryPath', [
+  emit(
+    'openDirectory',
     createLocalDirectory(dirHandle, undefined, dirHandle.name),
-  ]);
+  );
 };
 </script>
 

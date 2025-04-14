@@ -1,7 +1,7 @@
-import { from, some } from 'ix/Ix.asynciterable';
+import { find, from, some } from 'ix/Ix.asynciterable';
 import { createLocalEntry } from './entry';
 import { createLocalFile } from './file';
-import type { LocalDirectoryEntry, LocalFileEntry } from './types';
+import type { DirectoryLocalEntry, FileLocalEntry } from './types';
 import { createLogger } from '../logger';
 import { WeakValueMap } from '../WeakValueMap';
 import type { DirectoryEntryEventMap } from '../fileSystem/DirectoryFSEntry';
@@ -9,22 +9,22 @@ import { copyDirectoryTo, moveDirectoryTo } from '../fileSystem/utils';
 
 const { debug } = createLogger('directory');
 
-const cacheDirectories = new WeakValueMap<string, LocalDirectoryEntry>();
+const cacheDirectories = new WeakValueMap<string, DirectoryLocalEntry>();
 
 export function createLocalDirectory(
   currentHandle: FileSystemDirectoryHandle,
-  parentLocalDirectoryEntry: LocalDirectoryEntry,
-): LocalDirectoryEntry;
+  parentLocalDirectoryEntry: DirectoryLocalEntry,
+): DirectoryLocalEntry;
 export function createLocalDirectory(
   currentHandle: FileSystemDirectoryHandle,
   parentLocalDirectoryEntry: undefined,
   rootName: string,
-): LocalDirectoryEntry;
+): DirectoryLocalEntry;
 export function createLocalDirectory(
   currentHandle: FileSystemDirectoryHandle,
-  parentLocalDirectoryEntry?: LocalDirectoryEntry,
+  parentLocalDirectoryEntry?: DirectoryLocalEntry,
   rootName?: string,
-): LocalDirectoryEntry {
+): DirectoryLocalEntry {
   const currentEntry = createLocalEntry(
     currentHandle,
     parentLocalDirectoryEntry,
@@ -40,7 +40,7 @@ export function createLocalDirectory(
   }
 
   async function* entries(): AsyncIterableIterator<
-    [string, LocalDirectoryEntry | LocalFileEntry]
+    [string, DirectoryLocalEntry | FileLocalEntry]
   > {
     for await (const [name, handle] of currentHandle.entries()) {
       debug('createContentIterable map', [name, handle]);
@@ -96,11 +96,11 @@ export function createLocalDirectory(
     setForListenersOfRemovingEntry.forEach((listener) => listener(name));
   };
 
-  const copyTo = async (dest: LocalDirectoryEntry) => {
+  const copyTo = async (dest: DirectoryLocalEntry) => {
     return await copyDirectoryTo(dest, currentDirectoryEntry);
   };
 
-  const moveTo = async (dest: LocalDirectoryEntry) => {
+  const moveTo = async (dest: DirectoryLocalEntry) => {
     return await moveDirectoryTo(dest, currentDirectoryEntry);
   };
 
@@ -175,7 +175,16 @@ export function createLocalDirectory(
     }
   };
 
-  const currentDirectoryEntry: LocalDirectoryEntry = {
+  const get = async (name: string) => {
+    const [, entry] =
+      (await find(entries(), {
+        predicate: ([nameEntry]) => nameEntry === name,
+      })) ?? [];
+
+    return entry;
+  };
+
+  const currentDirectoryEntry: DirectoryLocalEntry = {
     ...currentEntry,
     createDirectory,
     writeFile,
@@ -184,6 +193,7 @@ export function createLocalDirectory(
     moveTo,
     rename,
     entries,
+    get,
     on,
     off,
   };
