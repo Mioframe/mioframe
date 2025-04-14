@@ -6,8 +6,8 @@ import type {
 
 export type LocalEntryPath = string[];
 
-export interface LocalGeneralEntry extends GeneralFSEntry {}
+export interface GeneralLocalEntry extends GeneralFSEntry {}
 
-export interface LocalDirectoryEntry extends DirectoryFSEntry {}
+export interface DirectoryLocalEntry extends DirectoryFSEntry {}
 
-export interface LocalFileEntry extends FileFSEntry {}
+export interface FileLocalEntry extends FileFSEntry {}

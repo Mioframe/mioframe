@@ -2,28 +2,29 @@
 import type { DirectoryFSEntry } from '@shared/lib/fileSystem';
 import { MDPaneContainer } from '@shared/ui/Layers';
 import GoogleDriveWidget from './GoogleDriveWidget.vue';
-import { useModel } from 'vue';
 import { MDDivider } from '@shared/ui/Divider';
 import LocalStorageWidget from './LocalStorageWidget.vue';
 
-const props = defineProps<{
-  directoryPath: DirectoryFSEntry[];
+const emit = defineEmits<{
+  openDirectory: [directory: DirectoryFSEntry];
 }>();
 
-const directoryPath = useModel(props, 'directoryPath');
+const onOpenDirectory = (directory: DirectoryFSEntry) => {
+  emit('openDirectory', directory);
+};
 </script>
 
 <template>
   <MDPaneContainer class="home-widget">
     <h2 class="md sys typescale title-medium">Google Drive</h2>
 
-    <GoogleDriveWidget v-model:directory-path="directoryPath" />
+    <GoogleDriveWidget @open-directory="onOpenDirectory" />
 
     <MDDivider />
 
     <h2 class="md sys typescale title-medium">Local Storage</h2>
 
-    <LocalStorageWidget v-model:directory-path="directoryPath" />
+    <LocalStorageWidget @open-directory="onOpenDirectory" />
   </MDPaneContainer>
 </template>
 

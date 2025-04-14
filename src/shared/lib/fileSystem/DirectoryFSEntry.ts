@@ -9,7 +9,14 @@ export type DirectoryEntryEventMap = {
 };
 
 export interface DirectoryFSEntry extends GeneralFSEntry {
+  /**
+   * Gets all entries in this directory
+   */
   entries(): AsyncIterableIterator<[string, DirectoryFSEntry | FileFSEntry]>;
+  /**
+   * Gets the entry by name
+   */
+  get: (name: string) => Promise<DirectoryFSEntry | FileFSEntry | undefined>;
 
   /**
    * Creates a subdirectory
@@ -26,7 +33,7 @@ export interface DirectoryFSEntry extends GeneralFSEntry {
    * Removes Entry from this directory
    */
   removeByName: (name: string) => Promise<void>;
-  /**b
+  /**
    * Copies this directory to the destination directory
    */
   copyTo: (dest: DirectoryFSEntry) => Promise<DirectoryFSEntry>;
