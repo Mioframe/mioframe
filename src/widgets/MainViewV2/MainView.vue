@@ -3,12 +3,12 @@ import type { DocHandle, DocumentId } from '@automerge/automerge-repo';
 import { useCFRDocument } from '@shared/lib/cfrDocument/useCFRDocument';
 import type { DirectoryFSEntry } from '@shared/lib/fileSystem';
 import { createLogger } from '@shared/lib/logger';
-import { onBack } from '@shared/lib/onBack';
 import { MDMainLayer } from '@shared/ui/Layers';
 import DocumentViewWidget from '@widget/DocumentView/DocumentViewWidget.vue';
 import { HomeWidget } from '@widget/HomeWidget';
 import { RepoExplorerWidget } from '@widget/RepoExplorer';
-import { ref, shallowRef } from 'vue';
+import { shallowRef } from 'vue';
+import { useDirectoryRouter } from './useDirectoryExplorer';
 
 const { debug } = createLogger('MainView');
 
@@ -27,22 +27,15 @@ const onClickDocumentBack = () => {
   openedDocument.value = undefined;
 };
 
-const directoryPath = ref<DirectoryFSEntry[]>([]);
+const onOpenDirectory = (directory: DirectoryFSEntry) => {
+  replace([directory]);
+};
 
-onBack(() => {
-  debug('onBack', !!openedDocument.value, directoryPath.value.length);
-  if (openedDocument.value) {
-    openedDocument.value = undefined;
-    return false;
-  }
-  if (directoryPath.value.length > 0) {
-    directoryPath.value.pop();
-    debug('onBack 2', !!openedDocument.value, directoryPath.value.length);
+const { directoryStack, replace } = useDirectoryRouter();
 
-    return false;
-  }
-  return true;
-});
+const onUpdateDirectoryPath = (path: DirectoryFSEntry[]) => {
+  replace(path);
+};
 </script>
 
 <template>
@@ -54,13 +47,14 @@ onBack(() => {
   >
     <template #firstPane>
       <HomeWidget
-        v-if="!directoryPath.length"
-        v-model:directory-path="directoryPath"
+        v-if="!directoryStack.length"
+        @open-directory="onOpenDirectory"
       />
 
       <RepoExplorerWidget
         v-else
-        v-model:directory-path="directoryPath"
+        :directory-path="directoryStack"
+        @update:directory-path="onUpdateDirectoryPath"
         @click-document="onClickDocument"
       />
     </template>

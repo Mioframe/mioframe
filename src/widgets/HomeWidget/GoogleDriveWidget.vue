@@ -13,7 +13,7 @@ import {
 import type { DirectoryFSEntry } from '@shared/lib/fileSystem';
 
 const emit = defineEmits<{
-  'update:directoryPath': [directoryPath: DirectoryFSEntry[]];
+  openDirectory: [directory: DirectoryFSEntry];
 }>();
 
 const { profile, remove, login } = useGProfile();
@@ -58,7 +58,7 @@ const onClickGDriveAppFolder = async () => {
     GDriveSpace.appDataFolder,
   );
 
-  emit('update:directoryPath', [directoryGDriveEntry]);
+  emit('openDirectory', directoryGDriveEntry);
 };
 
 const onClickMyDrive = async () => {
@@ -69,7 +69,7 @@ const onClickMyDrive = async () => {
     GDriveSpace.MyDrive,
   );
 
-  emit('update:directoryPath', [directoryGDriveEntry]);
+  emit('openDirectory', directoryGDriveEntry);
 };
 
 const onClickShared = async () => {
@@ -80,7 +80,7 @@ const onClickShared = async () => {
     GDriveSpace.SharedWithMe,
   );
 
-  emit('update:directoryPath', [directoryGDriveEntry]);
+  emit('openDirectory', directoryGDriveEntry);
 };
 </script>
 

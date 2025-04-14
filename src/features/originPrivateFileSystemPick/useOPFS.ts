@@ -1,12 +1,12 @@
 import {
   createLocalDirectory,
-  type LocalDirectoryEntry,
+  type DirectoryLocalEntry,
 } from '../../shared/lib/localFileSystem';
 
 const DOCUMENT_FOLDER_NAME = 'Origin private file system';
 
 export const useOriginPrivateFSDirectory = () => {
-  const openOriginPrivateFS = async (): Promise<LocalDirectoryEntry> => {
+  const openOriginPrivateFS = async (): Promise<DirectoryLocalEntry> => {
     const rootDirectoryHandle = await navigator.storage.getDirectory();
 
     return createLocalDirectory(

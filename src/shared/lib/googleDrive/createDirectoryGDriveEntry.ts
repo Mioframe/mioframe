@@ -34,13 +34,7 @@ export const createDirectoryGDriveEntry = (
         ? 'root'
         : 'root');
 
-  const currentName =
-    name ??
-    (space === GDriveSpace.appDataFolder
-      ? 'App Data Folder'
-      : space === GDriveSpace.MyDrive
-        ? 'Google My Drive'
-        : 'Shared With Me');
+  const currentName = name ?? space;
 
   const currentEntry = createGDriveEntry(
     gDrive,

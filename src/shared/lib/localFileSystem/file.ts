@@ -1,12 +1,12 @@
 import { from, some } from 'ix/Ix.asynciterable';
 import { createLocalEntry } from './entry';
-import type { LocalDirectoryEntry, LocalFileEntry } from './types';
+import type { DirectoryLocalEntry, FileLocalEntry } from './types';
 import { moveFileTo } from '../fileSystem/utils';
 
 export const createLocalFile = (
   currentHandle: FileSystemFileHandle,
-  parentRefDirectory: LocalDirectoryEntry,
-): LocalFileEntry => {
+  parentRefDirectory: DirectoryLocalEntry,
+): FileLocalEntry => {
   const currentEntry = createLocalEntry(currentHandle, parentRefDirectory);
 
   const read = async () => {
@@ -30,12 +30,12 @@ export const createLocalFile = (
     return newEntry;
   };
 
-  const copyTo = async (dest: LocalDirectoryEntry) => {
+  const copyTo = async (dest: DirectoryLocalEntry) => {
     const file = await read();
     return await dest.writeFile(currentEntry.name, file);
   };
 
-  const moveTo = async (dest: LocalDirectoryEntry) => {
+  const moveTo = async (dest: DirectoryLocalEntry) => {
     return await moveFileTo(dest, currentLocalFileEntry);
   };
 
