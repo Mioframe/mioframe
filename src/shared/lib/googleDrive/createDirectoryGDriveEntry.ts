@@ -1,3 +1,4 @@
+import { find } from 'ix/Ix.asynciterable';
 import type {
   DirectoryEntryEventMap,
   DirectoryFSEntry,
@@ -68,6 +69,8 @@ export const createDirectoryGDriveEntry = (
     ) {
       q = 'sharedWithMe';
     }
+
+    // todo: вынести формирование запроса в отдельную функцию
 
     const {
       result: { files = [] },
@@ -273,6 +276,16 @@ export const createDirectoryGDriveEntry = (
     }
   };
 
+  const get = async (name: string) => {
+    // TODO: оптимизировать получение одного элемента
+    const [, entry] =
+      (await find(entries(), {
+        predicate: ([nameEntry]) => nameEntry === name,
+      })) ?? [];
+
+    return entry;
+  };
+
   const currentDirectoryGDriveEntry: DirectoryGDriveEntry = {
     ...currentEntry,
     get name() {
@@ -282,6 +295,7 @@ export const createDirectoryGDriveEntry = (
       return currentEntry.path;
     },
     entries,
+    get,
     createDirectory,
     writeFile,
     removeByName,
