@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import { computed, ref, shallowRef } from 'vue';
 import { DirectoryCreateDialog } from '@feature/directoryCreate';
-import type { FileFSEntry } from '@shared/lib/fileSystem';
 import {
   isDirectoryRef,
   useDirectory,
   type DirectoryFSEntry,
+  type FileFSEntry,
 } from '@shared/lib/fileSystem';
 import { MDFab, MDFabContainer, MDIconButton } from '@shared/ui/Button';
 import { MDSymbol } from '@shared/ui/Icon';
@@ -23,20 +23,16 @@ import { defineContextButtonList, MDContextMenuButton } from '@shared/ui/Menu';
 import { DocumentRemoveDialog } from '@feature/documentRemove';
 import type { DocHandle, DocumentId } from '@automerge/automerge-repo';
 import { DocumentRenameDialog } from '@feature/documentRename';
-import { clone } from 'lodash-es';
-import MDPaneContainer from '@shared/ui/Layers/MDPaneContainer.vue';
+import { MDPaneContainer } from '@shared/ui/Layers';
 import { MDTopAppBar } from '@shared/ui/TopAppBar';
 import { FSEntryRenameDialog } from '@feature/entryRename';
+import { useRepoExplorer } from '@widget/RepoExplorer/useRepoExplorer';
+import { clone } from 'lodash-es';
 
 const { watchDebug, debug } = createLogger('RepoExplorerWidget.vue');
 
-const { directoryPath } = defineProps<{
-  directoryPath: DirectoryFSEntry[];
-}>();
-
 const emit = defineEmits<{
   clickDocument: [id: DocumentId, doc: DocHandle<unknown>];
-  'update:directoryPath': [directoryPath: DirectoryFSEntry[]];
 }>();
 
 const isShowCreateDirectoryForm = ref(false);
@@ -49,44 +45,58 @@ type FSEntry = DirectoryFSEntry | FileFSEntry;
 
 const entryKeyToRemove = ref<string>();
 
-const currentDirectoryEntry = computed(() => directoryPath.at(-1));
+const {
+  currentDirectory,
+  go: directoryGo,
+  up: directoryUp,
+  state: directoryState,
+} = useRepoExplorer();
 
-watchDebug('currentDirectoryEntry', currentDirectoryEntry);
+const directoryPath = computed(
+  () => directoryState.value?.path.map((name) => ({ name })) ?? [],
+);
+
+watchDebug('currentDirectory', currentDirectory);
 
 const { entries: currentDirectoryEntries, removeByName: removeEntryByName } =
-  useDirectory(currentDirectoryEntry);
+  useDirectory(currentDirectory);
 
 watchDebug('directoryEntries', () =>
   Array.from(currentDirectoryEntries.value.values()),
 );
 
-const onClickPath = (indexPath: number) => {
+const onClickPath = async (indexPath: number) => {
   debug('onClickPath', indexPath);
 
   const start = indexPath + 1;
-  const count = directoryPath.length - start;
 
-  const path = clone(directoryPath);
+  if (directoryState.value?.path) {
+    const count = directoryState.value.path.length - start;
 
-  path.splice(start, count);
+    const path = clone(directoryState.value.path);
 
-  emit('update:directoryPath', path);
+    path.splice(start, count);
+
+    await directoryGo({
+      ...directoryState.value,
+      path,
+    });
+  }
 };
 
-const onClickEntry = (_entryKey: PropertyKey, entry: FSEntry) => {
-  if (isDirectoryRef(entry)) {
-    const path = clone(directoryPath);
-
-    path.push(entry);
-
-    emit('update:directoryPath', path);
+const onClickEntry = async (_entryKey: PropertyKey, entry: FSEntry) => {
+  if (directoryState.value && isDirectoryRef(entry)) {
+    await directoryGo({
+      ...directoryState.value,
+      path: entry.path,
+    });
   }
 };
 
 const showFormNewDocument = ref(false);
 
 const onClickCreateDocument = () => {
-  if (currentDirectoryEntry.value) {
+  if (currentDirectory.value) {
     showFormNewDocument.value = true;
   }
 };
@@ -95,7 +105,7 @@ const {
   documents: currentRepoDocuments,
   create: createDocument,
   remove: removeDocument,
-} = useDirectoryRepo(currentDirectoryEntry);
+} = useDirectoryRepo(currentDirectory);
 
 const onCreateNewDocument = (document: DocumentContent) => {
   createDocument(document);
@@ -104,8 +114,8 @@ const onCreateNewDocument = (document: DocumentContent) => {
 
 const onCreateDirectory = async (name: string) => {
   // TODO: добавить вывод ошибок
-  if (currentDirectoryEntry.value) {
-    await currentDirectoryEntry.value.createDirectory(name);
+  if (currentDirectory.value) {
+    await currentDirectory.value.createDirectory(name);
     isShowCreateDirectoryForm.value = false;
   }
 };
@@ -202,14 +212,16 @@ const onClickDocument = (
 
 const documentToRename = shallowRef<DocHandle<unknown>>();
 
-const rootDirectory = computed(() => directoryPath.at(0));
+const title = computed((): string | undefined => {
+  if (directoryState.value) {
+    return directoryState.value.provider;
+  }
 
-const onClickBack = () => {
-  const path = clone(directoryPath);
+  return undefined;
+});
 
-  path.pop();
-
-  emit('update:directoryPath', path);
+const onClickBack = async () => {
+  await directoryUp();
 };
 
 const loadingRename = ref(0);
@@ -234,7 +246,7 @@ const onRenameEntry = async (newName: string) => {
 
 <template>
   <MDPaneContainer class="document-explorer-widget">
-    <MDTopAppBar v-if="rootDirectory" :headline="rootDirectory.name">
+    <MDTopAppBar v-if="title" :headline="title">
       <template #leadingNavigation>
         <MDIconButton tooltip="Navigate up" @click="onClickBack">
           <template #icon>

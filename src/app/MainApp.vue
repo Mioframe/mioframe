@@ -4,6 +4,7 @@ import NotificationList from '../shared/ui/Notifications/NotificationList.vue';
 import TooltipContainer from '@shared/ui/Tooltips/TooltipContainer.vue';
 import { SnackbarContainer, useSnackbar } from '@shared/ui/Snackbar';
 import { onErrorCaptured } from 'vue';
+import AlertContainer from '@shared/ui/Dialog/Alert/AlertContainer.vue';
 
 const { addSnackbar } = useSnackbar();
 
@@ -18,6 +19,8 @@ onErrorCaptured((error) => {
   <div class="main">
     <MainView />
   </div>
+
+  <AlertContainer />
 
   <NotificationList />
 
