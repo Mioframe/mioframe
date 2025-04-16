@@ -3,29 +3,36 @@ import { MDListItem } from '@shared/ui/Lists';
 import MDListContainer from '@shared/ui/Lists/MDListContainer.vue';
 import { vPressedState } from '@shared/lib/md/stateHelper';
 import { MDSymbol } from '@shared/ui/Icon';
-import type { DirectoryFSEntry } from '@shared/lib/fileSystem';
-import { createLocalDirectory } from '@shared/lib/localFileSystem';
+import { useRepoExplorer } from '@widget/RepoExplorer/useRepoExplorer';
+import { OPFS } from '@widget/RepoExplorer/repoExplorerState';
+import { useBrowserStorage } from './useBrowserStorage';
+import type { DirectoryLocalEntry } from '@shared/lib/localFileSystem';
 
-const emit = defineEmits<{
-  openDirectory: [directory: DirectoryFSEntry];
-}>();
+const { go } = useRepoExplorer();
+
+const { mounted } = useBrowserStorage();
 
 const onClickBrowserStorage = async () => {
-  const rootDirectoryHandle = await navigator.storage.getDirectory();
-  emit(
-    'openDirectory',
-    createLocalDirectory(rootDirectoryHandle, undefined, 'Browser Storage'),
-  );
+  await go({
+    provider: 'browser',
+    path: [OPFS],
+  });
 };
 
 const isSupportDirectoryPicker = 'showDirectoryPicker' in window;
 
 const onClickLocalFolder = async () => {
-  const dirHandle = await window.showDirectoryPicker();
-  emit(
-    'openDirectory',
-    createLocalDirectory(dirHandle, undefined, dirHandle.name),
-  );
+  await go({
+    provider: 'browser',
+    path: [],
+  });
+};
+
+const onClickMountedItem = async (item: DirectoryLocalEntry) => {
+  await go({
+    provider: 'browser',
+    path: item.path,
+  });
 };
 </script>
 
@@ -52,6 +59,21 @@ const onClickLocalFolder = async () => {
       supporting-text="Folder on your device"
       is-button
       @click="onClickLocalFolder"
+    >
+      <template #leadingIcon>
+        <MDSymbol name="folder" />
+      </template>
+    </MDListItem>
+
+    <MDListItem
+      v-for="[name, item] in mounted"
+      :key="name"
+      v-pressed-state
+      :headline="name"
+      class="local-storage-widget__item"
+      supporting-text="Folder on your device"
+      is-button
+      @click="onClickMountedItem(item)"
     >
       <template #leadingIcon>
         <MDSymbol name="folder" />
