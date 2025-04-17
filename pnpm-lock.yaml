@@ -108,6 +108,9 @@ importers:
       '@types/wicg-file-system-access':
         specifier: ^2023.10.5
         version: 2023.10.5
+      '@vitejs/plugin-basic-ssl':
+        specifier: ^2.0.0
+        version: 2.0.0(vite@6.2.3(@types/node@22.13.13)(terser@5.39.0))
       '@vitejs/plugin-vue':
         specifier: ^5.2.3
         version: 5.2.3(vite@6.2.3(@types/node@22.13.13)(terser@5.39.0))(vue@3.5.13(typescript@5.8.2))
@@ -1269,8 +1272,8 @@ packages:
   '@maxim_mazurok/gapi.client.discovery-v1@0.1.20200806':
     resolution: {integrity: sha512-Wl6UfmZVDdWbY3PUu8E2ULk9RPLjnMqp/iOA4tcK8Ne+U/GmlnWP/e34IaZNGArfl7iXJNOG+/3Rj9L9jQyF9Q==}
 
-  '@maxim_mazurok/gapi.client.drive-v3@0.0.20250401':
-    resolution: {integrity: sha512-yAdKB89VS1mHLoUSxptE4X77dqu1w7goZpN26PMladlkgycOG81sIUZNzomObEOeQdtnJ+8FG4Ae4YJbYFidTg==}
+  '@maxim_mazurok/gapi.client.drive-v3@0.0.20250402':
+    resolution: {integrity: sha512-0eGC74Hq8KW0y5bPbwRT5vR5A4oRjfwenHhuqhjZ87+rTVGSL3kaRbg+AvRj3elOewBuvasFLoCA3eemkyznPQ==}
 
   '@maxim_mazurok/gapi.client.oauth2-v2@0.0.20200213':
     resolution: {integrity: sha512-CtMeicnExqTAoAok72PqqknL1p2sLVbAqB/4rpsbi2LYPy26ln23W+mZUB9uYl6Rt7a0DCqJdohdF40Q/dZv/w==}
@@ -1769,6 +1772,12 @@ packages:
     resolution: {integrity: sha512-QkgWNZ9ZWXhhTYZL2JJs33YwmJP7Ix8l28hofV0qM2txlIVhp747bdxdD/eMysMusbvvtHtMgvPEQE6kByqUTw==}
     peerDependencies:
       vue: '>=3.5.13'
+
+  '@vitejs/plugin-basic-ssl@2.0.0':
+    resolution: {integrity: sha512-gc9Tjg8bUxBVSTzeWT3Njc0Cl3PakHFKdNfABnZWiUgbxqmHDEn7uECv3fHVylxoYgNzAcmU7ZrILz+BwSo3sA==}
+    engines: {node: ^18.0.0 || ^20.0.0 || >=22.0.0}
+    peerDependencies:
+      vite: ^6.0.0
 
   '@vitejs/plugin-vue@5.2.3':
     resolution: {integrity: sha512-IYSLEQj4LgZZuoVpdSUCw3dIynTWQgPlaRP6iAvMle4My0HdYwr5g5wQAfwOeHQBmYwEkqF70nRpSilr6PoUDg==}
@@ -5103,7 +5112,7 @@ snapshots:
       '@types/gapi.client': 1.0.8
       '@types/gapi.client.discovery-v1': 0.0.4
 
-  '@maxim_mazurok/gapi.client.drive-v3@0.0.20250401':
+  '@maxim_mazurok/gapi.client.drive-v3@0.0.20250402':
     dependencies:
       '@types/gapi.client': 1.0.8
       '@types/gapi.client.discovery-v1': 0.0.4
@@ -5448,7 +5457,7 @@ snapshots:
 
   '@types/gapi.client.drive-v3@0.0.5':
     dependencies:
-      '@maxim_mazurok/gapi.client.drive-v3': 0.0.20250401
+      '@maxim_mazurok/gapi.client.drive-v3': 0.0.20250402
 
   '@types/gapi.client.oauth2-v2@0.0.4':
     dependencies:
@@ -5566,6 +5575,10 @@ snapshots:
       hookable: 5.5.3
       unhead: 2.0.0
       vue: 3.5.13(typescript@5.8.2)
+
+  '@vitejs/plugin-basic-ssl@2.0.0(vite@6.2.3(@types/node@22.13.13)(terser@5.39.0))':
+    dependencies:
+      vite: 6.2.3(@types/node@22.13.13)(terser@5.39.0)
 
   '@vitejs/plugin-vue@5.2.3(vite@6.2.3(@types/node@22.13.13)(terser@5.39.0))(vue@3.5.13(typescript@5.8.2))':
     dependencies:

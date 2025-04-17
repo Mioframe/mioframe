@@ -7,6 +7,7 @@ import { useRepoExplorer } from '@widget/RepoExplorer/useRepoExplorer';
 import { OPFS } from '@widget/RepoExplorer/repoExplorerState';
 import { useBrowserStorage } from './useBrowserStorage';
 import type { DirectoryLocalEntry } from '@shared/lib/localFileSystem';
+import { computed } from 'vue';
 
 const { go } = useRepoExplorer();
 
@@ -34,13 +35,16 @@ const onClickMountedItem = async (item: DirectoryLocalEntry) => {
     path: item.path,
   });
 };
+
+const isMountedOPFS = computed(() => mounted.value.has(OPFS));
 </script>
 
 <template>
   <MDListContainer class="local-storage-widget" type="grid">
     <MDListItem
+      v-if="!isMountedOPFS"
       v-pressed-state
-      headline="Browser Storage"
+      :headline="OPFS"
       class="local-storage-widget__item"
       is-button
       supporting-text="Storage inside your browser"
@@ -54,7 +58,7 @@ const onClickMountedItem = async (item: DirectoryLocalEntry) => {
     <MDListItem
       v-if="isSupportDirectoryPicker"
       v-pressed-state
-      headline="Local Folder"
+      headline="Select Local Folder"
       class="local-storage-widget__item"
       supporting-text="Folder on your device"
       is-button
