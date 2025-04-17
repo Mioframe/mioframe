@@ -126,6 +126,7 @@ export const useRepoExplorer = createGlobalState(() => {
     if (query) {
       const path = query.path.join('/');
       return await router.push({
+        path: currentRoute.path,
         query: {
           ...currentRoute.query,
           ...query,
@@ -141,8 +142,9 @@ export const useRepoExplorer = createGlobalState(() => {
         : {};
 
       return await router.push({
+        path: currentRoute.path,
         query: {
-          ...router.currentRoute.value.query,
+          ...currentRoute.query,
           ...emptyQuery,
         },
       });
@@ -153,8 +155,9 @@ export const useRepoExplorer = createGlobalState(() => {
     if (query) {
       const path = query.path.join('/');
       return await router.replace({
+        path: currentRoute.path,
         query: {
-          ...router.currentRoute.value.query,
+          ...currentRoute.query,
           ...query,
           path,
         },
@@ -168,8 +171,9 @@ export const useRepoExplorer = createGlobalState(() => {
         : {};
 
       return await router.replace({
+        path: currentRoute.path,
         query: {
-          ...router.currentRoute.value.query,
+          ...currentRoute.query,
           ...emptyQuery,
         },
       });

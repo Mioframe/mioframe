@@ -9,8 +9,8 @@ import { dependencies, devDependencies } from './package.json';
 import basicSsl from '@vitejs/plugin-basic-ssl';
 
 // https://vitejs.dev/config/
-export default defineConfig(({ mode }) => {
-  const devPlugins = mode === 'development' ? [basicSsl()] : [];
+export default defineConfig(({ mode, isPreview }) => {
+  const devPlugins = mode === 'development' || isPreview ? [basicSsl()] : [];
 
   return {
     base: '',
@@ -54,6 +54,9 @@ export default defineConfig(({ mode }) => {
           },
         },
       },
+    },
+    define: {
+      __BUILD_DATE__: JSON.stringify(new Date().toISOString()),
     },
   };
 });
