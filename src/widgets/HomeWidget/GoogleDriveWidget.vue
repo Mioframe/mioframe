@@ -4,17 +4,10 @@ import { defineContextButtonList, MDContextMenuButton } from '@shared/ui/Menu';
 import { vPressedState } from '@shared/lib/md/stateHelper';
 import { useGProfile } from '@entity/gProfile';
 import { MDSymbol } from '@shared/ui/Icon';
-import { useGoogleApi } from '@shared/lib/googleApi/useGoogleApi';
-import { GOOGLE_DRIVE_SCOPE } from '@shared/lib/googleApi/utils';
-import {
-  createDirectoryGDriveEntry,
-  GDriveSpace,
-} from '@shared/lib/googleDrive';
-import type { DirectoryFSEntry } from '@shared/lib/fileSystem';
+import { GDriveSpace } from '@shared/lib/googleDrive';
+import { useRepoExplorer } from '@widget/RepoExplorer/useRepoExplorer';
 
-const emit = defineEmits<{
-  openDirectory: [directory: DirectoryFSEntry];
-}>();
+const { go } = useRepoExplorer();
 
 const { profile, remove, login } = useGProfile();
 
@@ -48,39 +41,37 @@ const onClickUseGDrive = async () => {
   await login();
 };
 
-const { getGDrive } = useGoogleApi();
-
 const onClickGDriveAppFolder = async () => {
-  const gDrive = await getGDrive(GOOGLE_DRIVE_SCOPE.appdata);
-
-  const directoryGDriveEntry = createDirectoryGDriveEntry(
-    gDrive,
-    GDriveSpace.appDataFolder,
-  );
-
-  emit('openDirectory', directoryGDriveEntry);
+  const email = profile.value?.email;
+  if (email) {
+    await go({
+      provider: 'Google Drive',
+      path: [GDriveSpace.appDataFolder],
+      email,
+    });
+  }
 };
 
 const onClickMyDrive = async () => {
-  const gDrive = await getGDrive(GOOGLE_DRIVE_SCOPE.all);
-
-  const directoryGDriveEntry = createDirectoryGDriveEntry(
-    gDrive,
-    GDriveSpace.MyDrive,
-  );
-
-  emit('openDirectory', directoryGDriveEntry);
+  const email = profile.value?.email;
+  if (email) {
+    await go({
+      provider: 'Google Drive',
+      path: [GDriveSpace.MyDrive],
+      email,
+    });
+  }
 };
 
 const onClickShared = async () => {
-  const gDrive = await getGDrive(GOOGLE_DRIVE_SCOPE.all);
-
-  const directoryGDriveEntry = createDirectoryGDriveEntry(
-    gDrive,
-    GDriveSpace.SharedWithMe,
-  );
-
-  emit('openDirectory', directoryGDriveEntry);
+  const email = profile.value?.email;
+  if (email) {
+    await go({
+      provider: 'Google Drive',
+      path: [GDriveSpace.SharedWithMe],
+      email,
+    });
+  }
 };
 </script>
 

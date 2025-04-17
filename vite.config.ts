@@ -24,7 +24,7 @@ export default defineConfig(({ mode, isPreview }) => {
         authToken: process.env.SENTRY_AUTH_TOKEN,
       }),
       VitePWA({ registerType: 'autoUpdate' }),
-      ...devPlugins,
+      // ...devPlugins,
     ],
     server: {
       host: true,

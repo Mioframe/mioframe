@@ -5,7 +5,7 @@ import {
   useStorage,
 } from '@vueuse/core';
 import { createLogger } from '../logger';
-import { computed, watchEffect } from 'vue';
+import { computed, ref, watchEffect } from 'vue';
 import { toNumber } from 'lodash-es';
 import type { GOOGLE_DRIVE_SCOPE, GOOGLE_SCOPES } from './utils';
 import {
@@ -167,11 +167,17 @@ export const useGoogleApi = createGlobalState(() => {
   );
 
   const removeToken = () => {
-    tokenResponse.value = null;
-    tokenReceiptTime.value = null;
+    if (tokenResponse.value) {
+      tokenResponse.value = null;
+    }
+    if (tokenReceiptTime.value) {
+      tokenReceiptTime.value = null;
+    }
   };
 
   const google = asyncComputed(() => loadGoogle(), undefined, { lazy: true });
+
+  const userInfoEvaluating = ref(false);
 
   const userInfo = asyncComputed(
     async () => {
@@ -199,6 +205,7 @@ export const useGoogleApi = createGlobalState(() => {
     undefined,
     {
       lazy: true,
+      evaluating: userInfoEvaluating,
     },
   );
 
@@ -221,6 +228,7 @@ export const useGoogleApi = createGlobalState(() => {
   return {
     removeToken,
     userInfo,
+    userInfoEvaluating,
     gDrive,
     requestAccess,
     getGDrive,
