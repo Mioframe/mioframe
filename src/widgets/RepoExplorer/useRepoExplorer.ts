@@ -4,7 +4,7 @@ import type { DirectoryGDriveEntry } from '@shared/lib/googleDrive';
 import { GDriveSpace } from '@shared/lib/googleDrive';
 import { createDirectoryGDriveEntry } from '@shared/lib/googleDrive';
 import { asyncComputed, createGlobalState } from '@vueuse/core';
-import { useRouter } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 import type { RepoExplorerState } from './repoExplorerState';
 import { useRepoExplorerState } from './repoExplorerState';
 import { useBrowserStorage } from '@widget/BrowserStorage/useBrowserStorage';
@@ -48,6 +48,7 @@ const { watchDebug, debug } = createLogger('useRepoExplorer');
 
 export const useRepoExplorer = createGlobalState(() => {
   const router = useRouter();
+  const currentRoute = useRoute();
 
   const { state } = useRepoExplorerState();
 
@@ -126,7 +127,7 @@ export const useRepoExplorer = createGlobalState(() => {
       const path = query.path.join('/');
       return await router.push({
         query: {
-          ...router.currentRoute.value.query,
+          ...currentRoute.query,
           ...query,
           path,
         },
