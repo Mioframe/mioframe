@@ -1,8 +1,5 @@
-import { useGoogleApi } from '@shared/lib/googleApi/useGoogleApi';
-import { GOOGLE_DRIVE_SCOPE } from '@shared/lib/googleApi/utils';
 import type { DirectoryGDriveEntry } from '@shared/lib/googleDrive';
 import { GDriveSpace } from '@shared/lib/googleDrive';
-import { createDirectoryGDriveEntry } from '@shared/lib/googleDrive';
 import { asyncComputed, createGlobalState } from '@vueuse/core';
 import { useRoute, useRouter } from 'vue-router';
 import type { RepoExplorerState } from './repoExplorerState';
@@ -11,38 +8,8 @@ import { useBrowserStorage } from '@widget/BrowserStorage/useBrowserStorage';
 import type { DirectoryLocalEntry } from '@shared/lib/localFileSystem';
 import { createLogger } from '@shared/lib/logger';
 import { isEnumValue } from '@shared/lib/typeGuards';
-import { nextTick } from 'vue';
-
-export const useGoogleStorage = createGlobalState(() => {
-  const { getGDrive, userInfo, removeToken } = useGoogleApi();
-
-  const get = async (email: string, space: GDriveSpace) => {
-    if (userInfo.value?.email !== email) {
-      throw new Error('Wrong user is logged into google');
-    }
-    const gDrive = await getGDrive(
-      space === GDriveSpace.appDataFolder
-        ? GOOGLE_DRIVE_SCOPE.appdata
-        : GOOGLE_DRIVE_SCOPE.all,
-    );
-
-    const entry = createDirectoryGDriveEntry(gDrive, space);
-
-    return entry;
-  };
-
-  const getAndRequest = async (email: string, space: GDriveSpace) => {
-    if (userInfo.value?.email !== email) {
-      removeToken();
-    }
-    return get(email, space);
-  };
-
-  return {
-    get,
-    getAndRequest,
-  };
-});
+import { useGoogleStorage } from './useGoogleStorage';
+import { computed, nextTick } from 'vue';
 
 const { watchDebug, debug } = createLogger('useRepoExplorer');
 
@@ -54,15 +21,19 @@ export const useRepoExplorer = createGlobalState(() => {
 
   watchDebug('state', state);
 
+  const path = computed(() => state.value?.path);
+
+  watchDebug('path', path);
+
   const { getAndRequestMountDirectory } = useBrowserStorage();
-  const { getAndRequest } = useGoogleStorage();
+  const { getAndRequest: getAndRequestGDriveSpace } = useGoogleStorage();
 
   const rootEntry = asyncComputed(
     async (): Promise<
       undefined | DirectoryLocalEntry | DirectoryGDriveEntry
     > => {
       debug('rootEntry', 'start');
-      const rootName = state.value?.path.at(0);
+      const rootName = path.value?.at(0);
       switch (state.value?.provider) {
         case 'browser': {
           await nextTick();
@@ -77,7 +48,8 @@ export const useRepoExplorer = createGlobalState(() => {
         }
         case 'Google Drive': {
           if (isEnumValue(rootName, GDriveSpace)) {
-            return await getAndRequest(state.value.email, rootName);
+            await nextTick(); // FIXME: запрашивает авторизацию при правильном email
+            return await getAndRequestGDriveSpace(state.value.email, rootName);
           }
         }
       }
@@ -117,6 +89,7 @@ export const useRepoExplorer = createGlobalState(() => {
     undefined,
     {
       lazy: true,
+      shallow: true,
     },
   );
 
