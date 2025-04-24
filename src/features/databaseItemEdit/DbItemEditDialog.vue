@@ -6,27 +6,43 @@ import type {
   PropertyId,
 } from '@shared/lib/databaseDocument/property';
 import { MDDialog } from '@shared/ui/Dialog';
-import { ref } from 'vue';
+import { ref, watchEffect } from 'vue';
 import StringPropertyField from './StringPropertyField.vue';
 import { is } from '@shared/lib/validateZodScheme';
 import BooleanPropertyField from './BooleanPropertyField.vue';
 import type { Item } from '@shared/lib/databaseDocument';
 import NumberPropertyField from './NumberPropertyField.vue';
 import { zodNumberProperty } from '@entity/numberProperty';
+import { zodDateProperty } from '@entity/dateProperty';
+import DatePropertyField from './DatePropertyField.vue';
 
-const { properties } = defineProps<{
+const {
+  properties,
+  item = {},
+  headline = 'Edit item',
+  supportingText = 'Fill in the item properties.',
+  applyLabel = 'Apply',
+} = defineProps<{
   properties: PropertiesMap;
+  item?: Item;
+  headline?: string;
+  supportingText?: string;
+  applyLabel?: string;
 }>();
 
 const emit = defineEmits<{
-  add: [item: Item];
+  apply: [item: Item];
   cancel: [];
 }>();
 
 const itemState = ref<{ [K: PropertyId]: unknown }>({});
 
+watchEffect(() => {
+  itemState.value = item;
+});
+
 const onApply = () => {
-  emit('add', itemState.value);
+  emit('apply', itemState.value);
 };
 
 const onCancel = () => {
@@ -37,9 +53,9 @@ const onCancel = () => {
 
 <template>
   <MDDialog
-    headline="Add item"
-    supporting-text="Fill in the properties of the new item."
-    apply-label="Add"
+    :headline
+    :supporting-text
+    :apply-label
     has-cancel-action
     @apply="onApply"
     @cancel="onCancel"
@@ -59,6 +75,12 @@ const onCancel = () => {
 
       <BooleanPropertyField
         v-else-if="is(property, zodBooleanProperty)"
+        v-model:model-value="itemState[propertyId]"
+        :property
+      />
+
+      <DatePropertyField
+        v-else-if="is(property, zodDateProperty)"
         v-model:model-value="itemState[propertyId]"
         :property
       />

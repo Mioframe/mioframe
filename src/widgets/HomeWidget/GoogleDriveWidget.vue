@@ -4,10 +4,6 @@ import { defineContextButtonList, MDContextMenuButton } from '@shared/ui/Menu';
 import { vPressedState } from '@shared/lib/md/stateHelper';
 import { useGProfile } from '@entity/gProfile';
 import { MDSymbol } from '@shared/ui/Icon';
-import { GDriveSpace } from '@shared/lib/googleDrive';
-import { useRepoExplorer } from '@widget/RepoExplorer/useRepoExplorer';
-
-const { go } = useRepoExplorer();
 
 const { profile, remove, login } = useGProfile();
 
@@ -41,38 +37,11 @@ const onClickUseGDrive = async () => {
   await login();
 };
 
-const onClickGDriveAppFolder = async () => {
-  const email = profile.value?.email;
-  if (email) {
-    await go({
-      provider: 'Google Drive',
-      path: [GDriveSpace.appDataFolder],
-      email,
-    });
-  }
-};
+const onClickGDriveAppFolder = async () => {};
 
-const onClickMyDrive = async () => {
-  const email = profile.value?.email;
-  if (email) {
-    await go({
-      provider: 'Google Drive',
-      path: [GDriveSpace.MyDrive],
-      email,
-    });
-  }
-};
+const onClickMyDrive = async () => {};
 
-const onClickShared = async () => {
-  const email = profile.value?.email;
-  if (email) {
-    await go({
-      provider: 'Google Drive',
-      path: [GDriveSpace.SharedWithMe],
-      email,
-    });
-  }
-};
+const onClickShared = async () => {};
 </script>
 
 <template>

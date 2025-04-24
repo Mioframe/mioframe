@@ -4,7 +4,6 @@ import { createGlobalState } from '@vueuse/core';
 import { isString } from 'lodash-es';
 import { computed } from 'vue';
 import { useRoute } from 'vue-router';
-import { string } from 'zod';
 
 /**
  * Path to the directory
@@ -20,16 +19,9 @@ interface QueryPath {
 
 export const OPFS = 'Origin private file system';
 
-interface BrowserStorageParams extends QueryPath {
+export interface RepoExplorerState extends QueryPath {
   provider: 'browser';
 }
-
-interface GoogleDriveParams extends QueryPath {
-  provider: 'Google Drive';
-  email: string;
-}
-
-export type RepoExplorerState = BrowserStorageParams | GoogleDriveParams;
 
 const { watchDebug } = createLogger('repoExplorerState');
 
@@ -53,33 +45,11 @@ export const useRepoExplorerState = createGlobalState(() => {
 
   watchDebug('providerQuery', providerQuery);
 
-  const browserStorageParams = computed(
-    (): BrowserStorageParams | undefined => {
-      if (providerQuery.value === 'browser' && pathQuery.value) {
-        return {
-          provider: providerQuery.value,
-          path: pathQuery.value,
-        };
-      }
-
-      return undefined;
-    },
-  );
-
-  const emailQuery = computed(
-    () => string().email().safeParse(route.query.email).data,
-  );
-
-  const googleDriveParams = computed((): GoogleDriveParams | undefined => {
-    if (
-      providerQuery.value === 'Google Drive' &&
-      pathQuery.value &&
-      emailQuery.value
-    ) {
+  const repoExplorerState = computed((): RepoExplorerState | undefined => {
+    if (providerQuery.value === 'browser' && pathQuery.value) {
       return {
         provider: providerQuery.value,
         path: pathQuery.value,
-        email: emailQuery.value,
       };
     }
 
@@ -87,8 +57,7 @@ export const useRepoExplorerState = createGlobalState(() => {
   });
 
   const state = computed(
-    (): RepoExplorerState | undefined =>
-      browserStorageParams.value ?? googleDriveParams.value ?? undefined,
+    (): RepoExplorerState | undefined => repoExplorerState.value,
   );
 
   return {

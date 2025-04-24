@@ -8,15 +8,15 @@ import { useFirstFocus } from '../../../shared/lib/useFirstFocus';
 import { zodStringProperty } from '@entity/stringProperty';
 import { zodBooleanProperty } from '@entity/booleanProperty/boolean';
 import { zodNumberProperty } from '@entity/numberProperty/number';
-import { PROPERTY_TYPE_DATE } from '@entity/dateProperty/date';
-import { DatePropertyField } from '@feature/datePropertyEdit';
+import { zodDateProperty } from '@entity/dateProperty/date';
 import { isEqual } from 'lodash-es';
-import BooleanPropertyField from '@feature/databaseItemAdd/BooleanPropertyField.vue';
 import { is } from '@shared/lib/validateZodScheme';
 import {
   NumberPropertyField,
   StringPropertyField,
-} from '@feature/databaseItemAdd';
+  BooleanPropertyField,
+  DatePropertyField,
+} from '@feature/databaseItemEdit';
 import type { DatabaseItem } from '@shared/lib/databaseDocument/item/data';
 import type { GeneralProperty } from '@shared/lib/databaseDocument/property';
 import ValueInline from './ValueInline.vue';
@@ -123,8 +123,9 @@ useFirstFocus(refPopover, { initialValue: true });
       />
 
       <DatePropertyField
-        v-else-if="property?.type === PROPERTY_TYPE_DATE"
-        v-model:value="stateValue"
+        v-else-if="is(property, zodDateProperty)"
+        v-model="stateValue"
+        :property
         :label="property.name"
         @keydown.enter="closeEditor"
       />
@@ -135,13 +136,14 @@ useFirstFocus(refPopover, { initialValue: true });
 <style scoped>
 .editable-inline-value {
   cursor: pointer;
-  text-decoration: wavy underline transparent;
-  transition-property: text-decoration;
+  text-decoration-style: dashed;
+  text-decoration-line: underline;
+  text-decoration-color: transparent;
+  transition-property: text-decoration-color;
   transition-duration: 0.1s;
 
   &:hover {
-    text-decoration: wavy underline
-      rgb(from var(--md-content-color) r g b / 0.5);
+    text-decoration-color: rgb(from var(--md-content-color) r g b / 0.5);
   }
 
   &__edit-popover {
