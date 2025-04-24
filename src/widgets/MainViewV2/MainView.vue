@@ -4,7 +4,7 @@ import { useCFRDocument } from '@shared/lib/cfrDocument/useCFRDocument';
 import { MDMainLayer } from '@shared/ui/Layers';
 import DocumentViewWidget from '@widget/DocumentView/DocumentViewWidget.vue';
 import { HomeWidget } from '@widget/HomeWidget';
-import { RepoExplorerWidget } from '@widget/RepoExplorer';
+import { RepoExplorerPane } from '@widget/RepoExplorer';
 import { shallowRef } from 'vue';
 import { useRepoExplorer } from '../RepoExplorer/useRepoExplorer';
 
@@ -40,7 +40,7 @@ const onOpenDirectory = () => {
     <template #firstPane>
       <HomeWidget v-if="!currentDirectory" @open-directory="onOpenDirectory" />
 
-      <RepoExplorerWidget v-else @click-document="onClickDocument" />
+      <RepoExplorerPane v-else @click-document="onClickDocument" />
     </template>
 
     <template v-if="openedDocument" #secondPane>

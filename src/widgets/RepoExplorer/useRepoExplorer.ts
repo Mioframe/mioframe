@@ -1,15 +1,12 @@
 import type { DirectoryGDriveEntry } from '@shared/lib/googleDrive';
-import { GDriveSpace } from '@shared/lib/googleDrive';
 import { asyncComputed, createGlobalState } from '@vueuse/core';
 import { useRoute, useRouter } from 'vue-router';
-import type { RepoExplorerState } from './repoExplorerState';
-import { useRepoExplorerState } from './repoExplorerState';
 import { useBrowserStorage } from '@widget/BrowserStorage/useBrowserStorage';
 import type { DirectoryLocalEntry } from '@shared/lib/localFileSystem';
 import { createLogger } from '@shared/lib/logger';
-import { isEnumValue } from '@shared/lib/typeGuards';
-import { useGoogleStorage } from './useGoogleStorage';
 import { computed, nextTick } from 'vue';
+import type { RepoExplorerState } from './repoExplorerState';
+import { useRepoExplorerState } from './repoExplorerState';
 
 const { watchDebug, debug } = createLogger('useRepoExplorer');
 
@@ -26,7 +23,6 @@ export const useRepoExplorer = createGlobalState(() => {
   watchDebug('path', path);
 
   const { getAndRequestMountDirectory } = useBrowserStorage();
-  const { getAndRequest: getAndRequestGDriveSpace } = useGoogleStorage();
 
   const rootEntry = asyncComputed(
     async (): Promise<
@@ -45,12 +41,6 @@ export const useRepoExplorer = createGlobalState(() => {
             });
           }
           return entry;
-        }
-        case 'Google Drive': {
-          if (isEnumValue(rootName, GDriveSpace)) {
-            await nextTick(); // FIXME: запрашивает авторизацию при правильном email
-            return await getAndRequestGDriveSpace(state.value.email, rootName);
-          }
         }
       }
       return undefined;

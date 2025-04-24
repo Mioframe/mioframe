@@ -1,1 +1,1 @@
-export { default as RepoExplorerWidget } from './RepoExplorerPane.vue';
+export { default as RepoExplorerPane } from './RepoExplorerPane.vue';

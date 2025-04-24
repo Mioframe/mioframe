@@ -26,7 +26,7 @@ const gapi = undefined;
 // eslint-disable-next-line @typescript-eslint/no-unused-vars -- to protect typing
 const google = undefined;
 
-const { debug } = createLogger('useGoogleApi');
+const { debug, watchDebug } = createLogger('useGoogleApi');
 
 export const useGoogleApi = createGlobalState(() => {
   debug('useGoogleApi');
@@ -85,20 +85,36 @@ export const useGoogleApi = createGlobalState(() => {
   };
 
   /**
+   * Запрос нового токена
+   */
+  const requestToken = async (
+    ...scopes: [GOOGLE_SCOPES, ...GOOGLE_SCOPES[]]
+  ) => {
+    if (!clientId) {
+      throw new Error('clientId missing');
+    }
+    const g = await loadGoogle();
+
+    tokenResponse.value = await requestAccessToken(clientId, g, scopes);
+    tokenReceiptTime.value = Date.now();
+
+    return tokenResponse.value;
+  };
+
+  /**
    * Проверка доступа и запрос авторизации при отсутствии
    * @param clientId
    * @param scopes
    * @returns
    */
   const requestAccess = async (
-    google?: typeof window.google,
     ...scopes: [GOOGLE_SCOPES, ...GOOGLE_SCOPES[]]
   ) => {
     debug('requestAccess');
 
-    const g = google ?? (await loadGoogle());
+    const google = await loadGoogle();
 
-    const firstCheck = checkGranted(g, ...scopes);
+    const firstCheck = checkGranted(google, ...scopes);
 
     debug('requestAccess', { firstCheck });
 
@@ -107,10 +123,9 @@ export const useGoogleApi = createGlobalState(() => {
         throw new Error('clientId missing');
       }
 
-      tokenResponse.value = await requestAccessToken(clientId, g, scopes);
-      tokenReceiptTime.value = Date.now();
+      await requestToken(...scopes);
 
-      const secondCheck = checkGranted(g, ...scopes);
+      const secondCheck = checkGranted(google, ...scopes);
 
       debug('requestAccess', { secondCheck });
 
@@ -166,6 +181,9 @@ export const useGoogleApi = createGlobalState(() => {
     { lazy: true },
   );
 
+  /**
+   * Удаление токена google и разлогин пользователя
+   */
   const removeToken = () => {
     if (tokenResponse.value) {
       tokenResponse.value = null;
@@ -175,9 +193,16 @@ export const useGoogleApi = createGlobalState(() => {
     }
   };
 
-  const google = asyncComputed(() => loadGoogle(), undefined, { lazy: true });
+  const googleEvaluating = ref(false);
+  const google = asyncComputed(() => loadGoogle(), undefined, {
+    // todo: переделать asyncComputed?
+    lazy: true,
+    evaluating: googleEvaluating,
+  });
 
   const userInfoEvaluating = ref(false);
+
+  watchDebug('userInfoEvaluating', userInfoEvaluating);
 
   const userInfo = asyncComputed(
     async () => {
@@ -212,7 +237,7 @@ export const useGoogleApi = createGlobalState(() => {
   const getGDrive = async (
     ...scopes: [GOOGLE_DRIVE_SCOPE, ...GOOGLE_DRIVE_SCOPE[]]
   ) => {
-    await requestAccess(google.value, ...scopes);
+    await requestAccess(...scopes);
 
     if (gDrive.value) {
       return gDrive.value;

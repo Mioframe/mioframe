@@ -43,14 +43,23 @@ export const useGoogleStorage = createGlobalState(() => {
   const { alert } = useAlert();
 
   const getAndRequest = async (email: string, space: GDriveSpace) => {
-    debug('getAndRequest', email, space);
-    if (!userInfoEvaluating.value && currentEmail.value !== email) {
+    const currentEmail = userInfo.value?.email;
+
+    debug(
+      'getAndRequest',
+      email,
+      space,
+      userInfoEvaluating.value,
+      currentEmail,
+    );
+
+    if (currentEmail !== email) {
       await alert(
         'Invalid Google Drive user email',
         `To continue, the user with the email "${email}" must log in.`,
       );
       removeToken();
-      await requestAccess(undefined, USERINFO_SCOPE.userinfoEmail);
+      await requestAccess(USERINFO_SCOPE.userinfoEmail);
     }
     return get(email, space);
   };
