@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { DocHandle } from '@automerge/automerge-repo';
-import { DbItemAddDialog } from '@feature/databaseItemAdd';
+import { DbItemAddDialog } from '@feature/databaseItemEdit';
 import DatabasePropertyCreationDialog from '@feature/databasePropertyCreate/DatabasePropertyCreationDialog.vue';
 import type {
   Item,
@@ -241,7 +241,7 @@ const onChangeValue = async (
   &__table {
     flex-shrink: 0;
     flex-grow: 1;
-    /* overflow: auto; */
+    overflow: auto;
     padding: 16px;
   }
 }
