@@ -7,3 +7,4 @@
  */
 
 export { default as DBViewSettingsForm } from './DBViewSettingsForm.vue';
+export { default as DBViewPropertySortForm } from './DBViewPropertySortForm.vue';

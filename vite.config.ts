@@ -10,7 +10,22 @@ import basicSsl from '@vitejs/plugin-basic-ssl';
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode, isPreview }) => {
-  const devPlugins = mode === 'development' || isPreview ? [basicSsl()] : [];
+  const sslPlugins = mode === 'development' || isPreview ? [basicSsl()] : [];
+  const pwaPlugins =
+    mode === 'production' || isPreview
+      ? [VitePWA({ registerType: 'autoUpdate' })]
+      : [];
+
+  const sentryPlugins =
+    mode === 'production' || isPreview
+      ? [
+          sentryVitePlugin({
+            org: 'vb-ak',
+            project: 'self-base',
+            authToken: process.env.SENTRY_AUTH_TOKEN,
+          }),
+        ]
+      : [];
 
   return {
     base: '',
@@ -18,13 +33,9 @@ export default defineConfig(({ mode, isPreview }) => {
       vue(),
       wasm(),
       topLevelAwait(),
-      sentryVitePlugin({
-        org: 'vb-ak',
-        project: 'self-base',
-        authToken: process.env.SENTRY_AUTH_TOKEN,
-      }),
-      VitePWA({ registerType: 'autoUpdate' }),
-      // ...devPlugins,
+      ...sentryPlugins,
+      ...pwaPlugins,
+      ...sslPlugins,
     ],
     server: {
       host: true,

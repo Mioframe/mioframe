@@ -58,14 +58,17 @@ const buttonType = toRef(() => props.type ?? 'outlined');
 
 <style scoped>
 .md-button {
-  /* position: relative; */
-  transition-property: box-shadow, color, background-color, padding;
+  --md-button-border-radius: 20px;
+  --md-button-icon-size: 18px;
+
+  transition-property:
+    box-shadow, color, background-color, padding, border-radius;
   transition-duration: var(--md-sys-motion-duration-short4, 0.2s);
   display: flex;
   align-items: center;
   justify-content: center;
   border: 0;
-  border-radius: 20px;
+  border-radius: var(--md-button-border-radius);
   height: 40px;
   padding-left: 25px;
   padding-right: 25px;
@@ -74,7 +77,6 @@ const buttonType = toRef(() => props.type ?? 'outlined');
   font-size: var(--md-sys-typescale-label-large-size);
   font-weight: var(--md-sys-typescale-label-large-weight);
   letter-spacing: var(--md-sys-typescale-label-large-tracking);
-  --md-button-icon-size: 18px;
 
   &__icon {
     display: inline-flex;

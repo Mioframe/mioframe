@@ -88,6 +88,7 @@ const rootEl = useRootElement();
     height: var(--placeholder-height);
     background: transparent;
     pointer-events: none;
+    z-index: 1;
 
     :deep(> *) {
       pointer-events: all;

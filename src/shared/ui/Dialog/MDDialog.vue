@@ -129,10 +129,11 @@ onBeforeUnmount(() => {
 .md-dialog {
   &__scrim {
     position: fixed;
+    z-index: 1;
     top: 0;
     left: 0;
-    width: 100vw;
-    height: 100vh;
+    width: 100dvw;
+    height: 100dvh;
     display: flex;
     justify-content: center;
     align-items: center;
@@ -145,7 +146,7 @@ onBeforeUnmount(() => {
     padding: 24px;
     border-radius: 28px;
     height: fit-content;
-    max-height: 100dvh;
+    max-height: 100%;
     overflow-y: auto;
     min-width: 280px;
     max-width: min(560px, 100dvw);
