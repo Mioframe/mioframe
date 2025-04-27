@@ -28,10 +28,4 @@ export {
   zodValue,
 } from './item';
 export type * from './view';
-export {
-  createView,
-  generateViewId,
-  zodView,
-  zodViewId,
-  SORT_DIRECTION,
-} from './view';
+export { generateViewId, zodView, zodViewId, SORT_DIRECTION } from './view';

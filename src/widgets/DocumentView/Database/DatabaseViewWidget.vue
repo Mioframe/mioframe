@@ -7,9 +7,10 @@ import type {
   ItemId,
   PropertyId,
   UnknownProperty,
+  ViewId,
 } from '@shared/lib/databaseDocument';
 import { useDatabaseDocument } from '@shared/lib/databaseDocument';
-import { computed, ref, toRef } from 'vue';
+import { computed, ref, shallowRef, toRef } from 'vue';
 import { MDBottomSheet } from '@shared/ui/Sheets';
 import { defineBarButtons, MDButtonsBar } from '@shared/ui/ButtonsBar';
 import { DatabasePropertyList } from '@entity/databaseProperty';
@@ -19,6 +20,8 @@ import { DatabasePropertyRenameDialog } from '@feature/databasePropertyRename';
 import { EmptySymbol } from '@shared/ui/EmptySymbol';
 import DatabaseViewTable from './DatabaseViewTable.vue';
 import type { DatabaseValue } from '@shared/lib/databaseDocument/item/data';
+import DatabaseDataSortingForm from '@feature/databaseViewSettings/DatabaseDataSortingForm.vue';
+import DatabaseViewPresetSettingsWidget from './DatabaseViewPresetSettingsWidget.vue';
 
 const { docHandle } = defineProps<{
   docHandle: DocHandle<unknown>;
@@ -155,6 +158,8 @@ const onChangeValue = async (
     [propertyId]: value,
   });
 };
+
+const selectedViewId = shallowRef<ViewId>();
 </script>
 
 <template>
@@ -179,6 +184,11 @@ const onChangeValue = async (
         </template>
 
         <div class="sheet__body">
+          <DatabaseViewPresetSettingsWidget
+            v-model:selected-view-id="selectedViewId"
+            :doc-handle
+          />
+
           <DatabasePropertyList
             v-if="properties"
             :properties="properties"
@@ -191,6 +201,8 @@ const onChangeValue = async (
               />
             </template>
           </DatabasePropertyList>
+
+          <DatabaseDataSortingForm v-if="properties" :properties />
         </div>
       </MDBottomSheet>
     </div>

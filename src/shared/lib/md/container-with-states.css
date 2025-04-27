@@ -35,7 +35,7 @@
     position: relative;
     overflow: hidden;
     transition-property: box-shadow, border-color, background-color, color,
-      grid-template;
+      z-index, grid-template;
     transition-duration: var(--md-sys-motion-duration-short4);
     transition-timing-function: var(--md-sys-motion-easing-standard-index);
 
@@ -94,6 +94,9 @@
     &.md-state_press {
       position: relative;
       overflow: hidden;
+      --md-button-border-radius: var(
+        --md-sys-shape-corner-extra-small
+      ) !important;
 
       &::after {
         transform: translate(-50%, -50%) scale(1);

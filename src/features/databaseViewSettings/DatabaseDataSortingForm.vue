@@ -78,12 +78,12 @@ const onAddSortableProperty = () => {
 const onClickToggleDirection = (propertyId: PropertyId) => {
   emit('toggleDirection', propertyId);
 };
+
+// TODO: переделать в MD
 </script>
 
 <template>
   <FormLayout>
-    <span class="title is-4">Sorting data</span>
-
     <UIMenu :collection="propertySortCollection">
       <template
         #item="{

@@ -34,6 +34,7 @@ watchEffect(() => {
 
 <style scoped>
 .md-symbol {
+  --md-symbol-size: 24px;
   --md-container-color: transparent;
   --md-symbol-fill: 0;
   --md-symbol-wght: 400;
@@ -45,5 +46,7 @@ watchEffect(() => {
     'wght' var(--md-symbol-wght),
     'GRAD' var(--md-symbol-grad),
     'opsz' var(--md-symbol-opsz);
+
+  font-size: var(--md-symbol-size);
 }
 </style>
