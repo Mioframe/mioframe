@@ -61,8 +61,8 @@ function defaultClearer(acc: any): void {
  *
  * @returns A ref containing the accumulator (of type A) that is updated reactively as the source changes.
  */
-export function useReduce<T, A>(
-  source: Ref<Iterable<T>>,
+export function useReduce<A, T>(
+  source: Ref<Iterable<T> | undefined>,
   reducer: (acc: A, item: T, index: number) => void,
   initialValue: A,
   clearer?: (acc: A) => void,
@@ -75,10 +75,12 @@ export function useReduce<T, A>(
     (clearer || defaultClearer)(result.value);
 
     let index = 0;
-    // Iterate over the source and update the accumulator in place.
-    for (const item of source.value) {
-      reducer(result.value, item, index);
-      index++;
+    if (source.value) {
+      // Iterate over the source and update the accumulator in place.
+      for (const item of source.value) {
+        reducer(result.value, item, index);
+        index++;
+      }
     }
   });
 

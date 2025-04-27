@@ -1,11 +1,13 @@
 <script setup lang="ts" generic="T extends ButtonDescription">
+import { computed } from 'vue';
 import { MDSymbol } from '../Icon';
 import type { ButtonDescription } from './types';
 import { vPressedState } from '@shared/lib/md/stateHelper';
+import { isArray } from 'lodash-es';
 
-const { elevation } = defineProps<{
+const { elevation, enable } = defineProps<{
   buttons: Iterable<T>;
-  enable?: T[];
+  enable?: T[] | T;
   elevation?: boolean;
 }>();
 
@@ -16,6 +18,8 @@ defineSlots<{
 const emit = defineEmits<{
   click: [item: T];
 }>();
+
+const enableList = computed(() => (isArray(enable) ? enable : [enable]));
 </script>
 
 <template>
@@ -32,7 +36,7 @@ const emit = defineEmits<{
       type="button"
       class="md-buttons-bar__item item md-state"
       :class="{
-        item_enable: enable?.includes(item),
+        item_enable: enableList?.includes(item),
       }"
       @click="emit('click', item)"
     >

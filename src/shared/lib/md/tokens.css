@@ -76,12 +76,13 @@
   /* md.sys.shape */
   /* md.sys.shape.corner */
   --md-sys-shape-corner-full: 50%;
+  --md-sys-shape-corner-extra-small: 4px;
+  --md-sys-shape-corner-small: 8px;
   --md-sys-shape-corner-medium: 12px;
   --md-sys-shape-corner-large: 16px;
   --md-sys-shape-corner-extra-large: 28px;
   --md-sys-shape-corner-extra-large-top: var(--md-sys-shape-corner-extra-large)
     var(--md-sys-shape-corner-extra-large) 0 0;
-  --md-sys-shape-corner-extra-small: 4px;
   --md-sys-shape-corner-extra-small-top: var(--md-sys-shape-corner-extra-small)
     var(--md-sys-shape-corner-extra-small) 0 0;
 
