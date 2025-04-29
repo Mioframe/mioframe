@@ -6,8 +6,8 @@
 import type {
   GeneralProperty,
   PropertyId,
-} from '@shared/lib/databaseDocument/property/general';
-import type { PropertiesMap } from '@shared/lib/databaseDocument/property/property';
+} from '@shared/lib/databaseDocument/state/v1/property/general';
+import type { PropertiesMap } from '@shared/lib/databaseDocument/state/v1/property/property';
 
 defineProps<{
   properties: PropertiesMap<P>;

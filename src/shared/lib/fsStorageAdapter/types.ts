@@ -2,8 +2,8 @@ import type { DocumentId } from '@automerge/automerge-repo';
 import { isValidDocumentId } from '@automerge/automerge-repo';
 import { isString } from 'lodash-es';
 import type { Promisable } from 'type-fest';
-import type { TypeOf } from 'zod';
-import { custom, literal, string, tuple, union } from 'zod';
+import type { output } from '@zod/mini';
+import { custom, literal, string, tuple, union } from '@zod/mini';
 
 export const zodDocumentId = custom<DocumentId>(
   (val) => isValidDocumentId(val) || val === 'storage-adapter-id',
@@ -11,15 +11,18 @@ export const zodDocumentId = custom<DocumentId>(
 
 export const zodHash = string();
 
-export type Hash = TypeOf<typeof zodHash>;
+export type Hash = output<typeof zodHash>;
 
-export const zodChangedType = literal('snapshot').or(literal('incremental'));
+export const zodChangedType = union([
+  literal('snapshot'),
+  literal('incremental'),
+]);
 
-export type ChangedType = TypeOf<typeof zodChangedType>;
+export type ChangedType = output<typeof zodChangedType>;
 
 export const zodStorageKey = tuple([zodDocumentId, zodChangedType, zodHash]);
 
-export type StorageKey = TypeOf<typeof zodStorageKey>;
+export type StorageKey = output<typeof zodStorageKey>;
 
 export const zodPartialStorageKey = union([
   tuple([zodDocumentId]),
@@ -27,7 +30,7 @@ export const zodPartialStorageKey = union([
   tuple([zodDocumentId, zodChangedType, zodHash]),
 ]);
 
-export type PartialStorageKey = TypeOf<typeof zodPartialStorageKey>;
+export type PartialStorageKey = output<typeof zodPartialStorageKey>;
 
 export const KEY_SEPARATE = '_';
 
@@ -44,7 +47,7 @@ export const zodAutomergeFileName =
     },
   );
 
-export type AutomergeFileName = TypeOf<typeof zodAutomergeFileName>;
+export type AutomergeFileName = output<typeof zodAutomergeFileName>;
 
 export const zodPartialAutomergeFileName = custom<
   | `${DocumentId}${typeof KEY_SEPARATE}${ChangedType}${typeof KEY_SEPARATE}${Hash}`
@@ -58,7 +61,7 @@ export const zodPartialAutomergeFileName = custom<
   return false;
 });
 
-export type PartialAutomergeFileName = TypeOf<
+export type PartialAutomergeFileName = output<
   typeof zodPartialAutomergeFileName
 >;
 

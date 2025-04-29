@@ -15,6 +15,7 @@ const { debug } = createLogger('useCFRDocument');
 const defaultDocumentContent = (): DocumentContent => ({
   name: 'unknown',
   type: 'unknown',
+  body: undefined,
 });
 
 type CFRDocumentState = {

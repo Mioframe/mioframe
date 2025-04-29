@@ -1,8 +1,10 @@
-import type { EnumLike } from 'zod';
-import { nativeEnum } from 'zod';
+import { enum as zodEnum } from '@zod/mini';
 import { is } from '../validateZodScheme';
+
+type EnumValue = string | number;
+type EnumLike = Readonly<Record<string, EnumValue>>;
 
 export const isEnumValue = <E extends EnumLike>(
   value: unknown,
   enumLike: E,
-): value is E[keyof E] => is(value, nativeEnum(enumLike));
+): value is E[keyof E] => is(value, zodEnum(enumLike));

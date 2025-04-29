@@ -1,25 +1,30 @@
 <script setup lang="ts">
-import type { DatabaseData, ItemId } from '@shared/lib/databaseDocument';
-import type { DatabaseValue } from '@shared/lib/databaseDocument/item/data';
 import type {
-  PropertiesMap,
-  PropertyId,
-} from '@shared/lib/databaseDocument/property';
+  DatabaseData,
+  DatabaseItemId,
+  DatabasePropertyId,
+  DatabaseUnknownPropertiesMap,
+  DatabaseValue,
+} from '@shared/lib/databaseDocument/state';
 import { MDTable } from '@shared/ui/Table';
 import EditableInlineValue from '@widget/DocumentView/Database/EditableInlineValue.vue';
 
 const { data } = defineProps<{
-  properties: PropertiesMap;
+  properties: DatabaseUnknownPropertiesMap;
   data: DatabaseData;
 }>();
 
 const emit = defineEmits<{
-  changeValue: [itemId: ItemId, propertyId: PropertyId, value: DatabaseValue];
+  changeValue: [
+    itemId: DatabaseItemId,
+    propertyId: DatabasePropertyId,
+    value: DatabaseValue,
+  ];
 }>();
 
 const onChangeValue = (
-  itemId: ItemId,
-  propertyId: PropertyId,
+  itemId: DatabaseItemId,
+  propertyId: DatabasePropertyId,
   value: DatabaseValue,
 ) => {
   emit('changeValue', itemId, propertyId, value);

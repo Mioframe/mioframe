@@ -1,12 +1,14 @@
-import type { DatabaseDocument, ViewId } from '@shared/lib/databaseDocument';
-import { toValue, type MaybeRef } from '@vueuse/core';
+import type { UseDatabaseDocument } from '@shared/lib/databaseDocument/types';
+import type { DatabaseViewId } from '@shared/lib/databaseDocument/state';
+import { type MaybeRef } from '@vueuse/core';
+import { toValue } from 'vue';
 
 export const useDatabaseViewRemove = (
-  databaseDocument: MaybeRef<DatabaseDocument | undefined>,
+  databaseDocument: MaybeRef<UseDatabaseDocument | undefined>,
 ) => {
-  const remove = (viewId: ViewId) => {
+  const remove = (viewId: DatabaseViewId) =>
     toValue(databaseDocument)?.removeView(viewId);
-  };
+
   return {
     remove,
   };

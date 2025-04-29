@@ -1,5 +1,5 @@
 import { uid } from 'uid/secure';
-import { string, custom } from 'zod';
+import { string, length, templateLiteral, literal } from '@zod/mini';
 
 const ANY_ID = 'anyId';
 
@@ -9,13 +9,10 @@ export const defineId = <P extends string = typeof ANY_ID>(
 ) => {
   const generateId = (): `${P}${string}` => `${prefix}${uid(uidLength)}`;
 
-  const zodId = custom<`${P}${string}`>(
-    (data) =>
-      string()
-        .startsWith(prefix)
-        .length(prefix.length + uidLength)
-        .safeParse(data).success,
-  );
+  const zodId = templateLiteral([
+    literal(prefix),
+    string().check(length(uidLength)),
+  ]);
 
   return {
     generateId,

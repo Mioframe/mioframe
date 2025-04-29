@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { PropertiesMap } from '@shared/lib/databaseDocument/property';
+import type { PropertiesMap } from '@shared/lib/databaseDocument/state/v1/property';
 import { MDListContainer, MDListItem } from '@shared/ui/Lists';
 
 const { properties } = defineProps<{

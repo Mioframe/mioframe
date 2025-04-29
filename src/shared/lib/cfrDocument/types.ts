@@ -1,6 +1,6 @@
 import type { DocumentId } from '@automerge/automerge-repo';
-import type { TypeOf } from 'zod';
-import { number, object, string, unknown } from 'zod';
+import type { output } from '@zod/mini';
+import { int, object, optional, string, unknown } from '@zod/mini';
 import type { FileForStorageAdapter } from '../fsStorageAdapter';
 import type { ItemWithChildren } from '@shared/lib/useIterable';
 
@@ -15,13 +15,13 @@ export const zodDocumentContent = object({
   name: string(),
   type: string(),
   body: unknown(),
-  version: number().int().optional(),
+  version: optional(int()),
 });
 
 /**
  * Conflict-free Replicated Document
  */
-export type DocumentContent = TypeOf<typeof zodDocumentContent>;
+export type DocumentContent = output<typeof zodDocumentContent>;
 
 export interface UseCFRDocument {
   content: ComputedRef<DocumentContent | undefined>;
@@ -45,7 +45,7 @@ export interface RepoRef
    * @returns
    */
   create: <Z extends typeof zodDocumentContent>(
-    initialValue: TypeOf<Z>,
+    initialValue: output<Z>,
   ) => UseCFRDocument;
 
   /**

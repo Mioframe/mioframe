@@ -4,15 +4,10 @@ import { DATABASE_DOCUMENT_TYPE } from '../../shared/lib/databaseDocument';
 import { MDDialog } from '@shared/ui/Dialog';
 import { MDTextField } from '@shared/ui/TextField';
 import { MDSelect } from '@shared/ui/Select';
+import type { DocumentContent } from '@shared/lib/cfrDocument';
 
 const emit = defineEmits<{
-  create: [
-    document: {
-      name: string;
-      type: string;
-      version: number;
-    },
-  ];
+  create: [document: DocumentContent];
   cancel: [];
 }>();
 
@@ -30,6 +25,7 @@ const onCreate = () => {
       name: stateName.value,
       type: dType,
       version: 1,
+      body: {},
     });
   }
 };

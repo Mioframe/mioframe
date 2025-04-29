@@ -4,17 +4,17 @@ import { zodStringProperty } from '@entity/stringProperty';
 import type {
   PropertiesMap,
   PropertyId,
-} from '@shared/lib/databaseDocument/property';
+} from '@shared/lib/databaseDocument/state/v1/property';
 import { MDDialog } from '@shared/ui/Dialog';
 import { ref, watchEffect } from 'vue';
 import StringPropertyField from './StringPropertyField.vue';
 import { is } from '@shared/lib/validateZodScheme';
 import BooleanPropertyField from './BooleanPropertyField.vue';
-import type { Item } from '@shared/lib/databaseDocument';
 import NumberPropertyField from './NumberPropertyField.vue';
 import { zodNumberProperty } from '@entity/numberProperty';
 import { zodDateProperty } from '@entity/dateProperty';
 import DatePropertyField from './DatePropertyField.vue';
+import type { DatabaseItem } from '@shared/lib/databaseDocument/state';
 
 const {
   properties,
@@ -24,14 +24,14 @@ const {
   applyLabel = 'Apply',
 } = defineProps<{
   properties: PropertiesMap;
-  item?: Item;
+  item?: DatabaseItem;
   headline?: string;
   supportingText?: string;
   applyLabel?: string;
 }>();
 
 const emit = defineEmits<{
-  apply: [item: Item];
+  apply: [item: DatabaseItem];
   cancel: [];
 }>();
 

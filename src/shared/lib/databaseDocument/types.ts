@@ -1,16 +1,26 @@
 import type { PartialDeep } from 'type-fest';
-import type { TypeOf } from 'zod';
-import { literal, object } from 'zod';
-import type { UnknownProperty, PropertyId, PropertiesMap } from './property';
-import type { ViewsMap } from './versions';
-import { zodDataBaseStateLatest } from './versions';
-import type { SortDescription, View, ViewId } from './view';
-import type { DatabaseData, Item, ItemId } from './item';
+import type { output } from '@zod/mini';
+import { extend, partial } from '@zod/mini';
+import { literal, object } from '@zod/mini';
+import type {
+  DatabaseData,
+  DatabaseItem,
+  DatabaseItemId,
+  DatabasePropertyId,
+  DatabaseSortDescription,
+  DatabaseState,
+  DatabaseUnknownPropertiesMap,
+  DatabaseUnknownProperty,
+  DatabaseView,
+  DatabaseViewId,
+} from './state';
+import { zodDatabaseState } from './state';
 import type { DocumentContent } from '../cfrDocument';
 import { zodDocumentContent } from '../cfrDocument';
 import type { ComputedRef } from 'vue';
+import type { ReadonlyMapDeep } from 'type-fest/source/readonly-deep';
 
-export type DataBaseStateLatest = TypeOf<typeof zodDataBaseStateLatest>;
+export type DataBaseStateLatest = DatabaseState;
 
 export const DATABASE_DOCUMENT_TYPE = 'database';
 
@@ -19,63 +29,75 @@ export const zodDatabaseType = object({
 });
 
 export const zodDatabaseExtensionBodyDocument = object({
-  body: zodDataBaseStateLatest, // todo: может сменить body на другое свойство? отдельное свойство для db
+  body: zodDatabaseState, // todo: может сменить body на другое свойство? отдельное свойство для db
 });
 
-export const zodDatabaseTypeDocument =
-  zodDocumentContent.merge(zodDatabaseType);
-
-export type DatabaseTypeDocument = TypeOf<typeof zodDatabaseTypeDocument>;
-
-export const zodDatabaseDocumentWithContent = zodDatabaseTypeDocument.merge(
-  zodDatabaseExtensionBodyDocument.partial(),
+export const zodDatabaseTypeDocument = extend(
+  zodDocumentContent,
+  zodDatabaseType,
 );
 
-export type DatabaseDocumentWithContent = TypeOf<
+export type DatabaseTypeDocument = output<typeof zodDatabaseTypeDocument>;
+
+export const zodDatabaseDocumentWithContent = extend(
+  zodDatabaseTypeDocument,
+  partial(zodDatabaseExtensionBodyDocument),
+);
+
+export type DatabaseDocumentWithContent = output<
   typeof zodDatabaseDocumentWithContent
 >;
 
 export type MutationFn = (doc: DocumentContent) => unknown;
 
-export interface DatabaseDocument {
+export type UseDatabaseDocument = {
   /**
    * Всё содержимое документа
    */
   content: ComputedRef<DatabaseDocumentWithContent | undefined>;
+
   /**
    * Перечень свойств
    */
-  properties: ComputedRef<PropertiesMap | undefined>;
-  /**
-   * Перечень представлений
-   */
-  views: ComputedRef<ViewsMap | undefined>;
+  properties: ComputedRef<DatabaseUnknownPropertiesMap | undefined>;
+  addProperty: (
+    property: DatabaseUnknownProperty,
+  ) => Promise<DatabasePropertyId>;
+  removeProperty: (propertyId: DatabasePropertyId) => Promise<void>;
+  updateProperty: (
+    propertyId: DatabasePropertyId,
+    partialProperty: PartialDeep<DatabaseUnknownProperty>,
+  ) => Promise<void>;
+
   /**
    * Перечень данных
    */
   data: ComputedRef<DatabaseData | undefined>;
-
-  addProperty: (property: UnknownProperty) => Promise<PropertyId>;
-  removeProperty: (propertyId: PropertyId) => Promise<void>;
-  updateProperty: (
-    propertyId: PropertyId,
-    partialProperty: PartialDeep<UnknownProperty>,
+  addItem: (item: DatabaseItem) => Promise<DatabaseItemId>;
+  removeItem: (itemId: DatabaseItemId) => Promise<void>;
+  updateItem: (
+    itemId: DatabaseItemId,
+    partialItem: PartialDeep<DatabaseItem>,
   ) => Promise<void>;
 
-  addItem: (item: Item) => Promise<ItemId>;
-  removeItem: (itemId: ItemId) => Promise<void>;
-  updateItem: (itemId: ItemId, partialItem: PartialDeep<Item>) => Promise<void>;
-
-  addView: (view: View) => Promise<ViewId>;
-  removeView: (viewId: ViewId) => Promise<void>;
-  renameView: (viewId: ViewId, newName: string) => Promise<void>;
+  /**
+   * Перечень представлений
+   */
+  views: ComputedRef<ReadonlyMapDeep<DatabaseViewId, DatabaseView>>;
+  addView: (view: DatabaseView) => Promise<DatabaseViewId>;
+  removeView: (viewId: DatabaseViewId) => Promise<void>;
+  renameView: (viewId: DatabaseViewId, newName: string) => Promise<void>;
+  updateView: (
+    viewId: DatabaseViewId,
+    view: PartialDeep<DatabaseView>,
+  ) => Promise<void>;
 
   addSortDescription: (
-    viewId: ViewId,
-    sortDescription: SortDescription,
+    viewId: DatabaseViewId,
+    sortDescription: DatabaseSortDescription,
   ) => Promise<void>;
   toggleSortDirection: (
-    viewId: ViewId,
-    propertyId: PropertyId,
+    viewId: DatabaseViewId,
+    propertyId: DatabasePropertyId,
   ) => Promise<void>;
-}
+};

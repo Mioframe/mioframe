@@ -8,7 +8,7 @@ import { PROPERTY_TYPE_NUMBER } from '@entity/numberProperty';
 import { PROPERTY_TYPE_BOOLEAN } from '@entity/booleanProperty';
 import { PROPERTY_TYPE_DATE } from '@entity/dateProperty';
 import type { ValueOf } from 'type-fest';
-import type { UnknownProperty } from '@shared/lib/databaseDocument';
+import type { DatabaseUnknownProperty } from '@shared/lib/databaseDocument/state';
 
 const stateName = ref<string>();
 
@@ -28,7 +28,7 @@ const selectedType = ref<{ labelText: PropertyType }[]>([
 const stateType = computed(() => selectedType.value.at(0)?.labelText);
 
 const emit = defineEmits<{
-  create: [property: UnknownProperty];
+  create: [property: DatabaseUnknownProperty];
   cancel: [];
 }>();
 

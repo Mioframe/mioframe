@@ -3,31 +3,32 @@ import { computed } from 'vue';
 import ItemTR from './ItemTR.vue';
 import { isNil, pickBy } from 'lodash-es';
 import type {
-  UnknownProperty,
-  UnknownPropertiesMap,
-  PropertyId,
   DatabaseData,
-  Item,
-  ItemId,
-} from '@shared/lib/databaseDocument';
+  DatabaseItem,
+  DatabaseItemId,
+  DatabasePropertyId,
+  DatabaseUnknownPropertiesMap,
+  DatabaseUnknownProperty,
+} from '@shared/lib/databaseDocument/state';
 
 const props = defineProps<{
   data: DatabaseData;
-  properties: UnknownPropertiesMap;
+  properties: DatabaseUnknownPropertiesMap;
 }>();
 
 const filteredData = computed(
-  (): Record<ItemId, Item> => pickBy(props.data, (v) => !isNil(v)),
+  (): Record<DatabaseItemId, DatabaseItem> =>
+    pickBy(props.data, (v) => !isNil(v)),
 );
 
 const slots = defineSlots<{
   value(props: {
-    property: UnknownProperty | undefined;
-    propertyId: PropertyId;
+    property: DatabaseUnknownProperty | undefined;
+    propertyId: DatabasePropertyId;
     value: unknown;
-    itemId: ItemId;
+    itemId: DatabaseItemId;
   }): unknown;
-  itemActions(props: { item: Item; itemId: ItemId }): unknown;
+  itemActions(props: { item: DatabaseItem; itemId: DatabaseItemId }): unknown;
 }>();
 </script>
 

@@ -1,22 +1,22 @@
 <script setup lang="ts">
 import type {
-  UnknownProperty,
-  Item,
-  UnknownPropertiesMap,
-  PropertyId,
-} from '../../../shared/lib/databaseDocument';
+  DatabaseItem,
+  DatabasePropertyId,
+  DatabaseUnknownPropertiesMap,
+  DatabaseUnknownProperty,
+} from '@shared/lib/databaseDocument/state';
 import ItemTD from './ItemTD.vue';
 
 defineProps<{
-  properties: UnknownPropertiesMap;
-  item: Item;
+  properties: DatabaseUnknownPropertiesMap;
+  item: DatabaseItem;
 }>();
 
 const slots = defineSlots<{
   value(props: {
     value: unknown;
-    property: UnknownProperty | undefined;
-    propertyId: PropertyId;
+    property: DatabaseUnknownProperty | undefined;
+    propertyId: DatabasePropertyId;
   }): unknown;
   actions: () => unknown;
 }>();

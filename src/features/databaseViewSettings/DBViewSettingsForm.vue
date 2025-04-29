@@ -2,25 +2,25 @@
 import type {
   PropertiesMap,
   PropertyId,
-} from '@shared/lib/databaseDocument/property';
+} from '@shared/lib/databaseDocument/state/v1/property';
 import DatabaseDataSortingForm from './DatabaseDataSortingForm.vue';
-import type { SortDescription } from '@shared/lib/databaseDocument';
+import type { DatabaseSortDescription } from '@shared/lib/databaseDocument/state';
 
 defineProps<{
   properties: PropertiesMap;
-  sorting?: SortDescription[];
+  sorting?: DatabaseSortDescription[];
 }>();
 
 const emit = defineEmits<{
   toggleSorting: [propertyId: PropertyId];
-  addSorting: [SortDescription];
+  addSorting: [DatabaseSortDescription];
 }>();
 
 const onToggleSortDirection = (propertyId: PropertyId) => {
   emit('toggleSorting', propertyId);
 };
 
-const onAddSorting = (description: SortDescription) => {
+const onAddSorting = (description: DatabaseSortDescription) => {
   emit('addSorting', description);
 };
 </script>

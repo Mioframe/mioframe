@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { ref } from 'vue';
-import type { UnknownProperty } from '../../shared/lib/databaseDocument';
 import { PROPERTY_TYPE_STRING } from '@entity/stringProperty';
 import type { ValueOf } from 'type-fest/source/value-of';
 import { PROPERTY_TYPE_NUMBER } from '@entity/numberProperty/number';
@@ -8,6 +7,7 @@ import { PROPERTY_TYPE_BOOLEAN } from '@entity/booleanProperty/boolean';
 import { PROPERTY_TYPE_DATE } from '@entity/dateProperty/date';
 import { UIButton } from '@shared/ui/Button';
 import FormLayout from '@shared/ui/FormLayout.vue';
+import type { DatabaseUnknownProperty } from '@shared/lib/databaseDocument/state';
 
 const stateName = ref<string>();
 
@@ -23,7 +23,7 @@ type PropertyType = ValueOf<typeof propertyTypeList>;
 const stateType = ref<PropertyType>();
 
 const emit = defineEmits<{
-  create: [property: UnknownProperty];
+  create: [property: DatabaseUnknownProperty];
   canceled: [];
 }>();
 

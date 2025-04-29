@@ -1,25 +1,25 @@
 <script setup lang="ts">
 import type {
-  UnknownProperty,
-  DataBaseStateLatest,
-  Item,
-  PropertyId,
-} from '../../shared/lib/databaseDocument';
-import type { ItemId } from '../../shared/lib/databaseDocument/item';
+  DatabaseItem,
+  DatabaseItemId,
+  DatabasePropertyId,
+  DatabaseState,
+  DatabaseUnknownProperty,
+} from '@shared/lib/databaseDocument/state';
 import DatabaseTable from './table/DatabaseTable.vue';
 
 defineProps<{
-  databaseState: DataBaseStateLatest;
+  databaseState: DatabaseState;
 }>();
 
 const slots = defineSlots<{
   value(props: {
-    property: UnknownProperty | undefined;
-    propertyId: PropertyId;
+    property: DatabaseUnknownProperty | undefined;
+    propertyId: DatabasePropertyId;
     value: unknown;
-    itemId: ItemId;
+    itemId: DatabaseItemId;
   }): unknown;
-  itemActions(props: { item: Item; itemId: ItemId }): unknown;
+  itemActions(props: { item: DatabaseItem; itemId: DatabaseItemId }): unknown;
 }>();
 </script>
 

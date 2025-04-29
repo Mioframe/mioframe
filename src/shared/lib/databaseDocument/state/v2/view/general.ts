@@ -1,5 +1,14 @@
-import type { TypeOf } from 'zod';
-import { array, literal, object, optional, string, union, unknown } from 'zod';
+import type { output } from '@zod/mini';
+import {
+  array,
+  extend,
+  literal,
+  object,
+  optional,
+  string,
+  union,
+  unknown,
+} from '@zod/mini';
 import { zodSortDescription } from './sorting';
 
 export enum VIEW_LAYOUT {
@@ -12,15 +21,15 @@ const zodGeneralView = object({
   layout: unknown(),
 });
 
-const zodTableView = zodGeneralView.extend({
+export const zodTableView = extend(zodGeneralView, {
   layout: literal(VIEW_LAYOUT.TABLE),
   sorting: optional(array(zodSortDescription)),
 });
 
-const zodJsonView = zodGeneralView.extend({
+const zodJsonView = extend(zodGeneralView, {
   layout: literal(VIEW_LAYOUT.JSON),
 });
 
 export const zodView = union([zodTableView, zodJsonView]);
 
-export type View = TypeOf<typeof zodView>;
+export type View = output<typeof zodView>;
