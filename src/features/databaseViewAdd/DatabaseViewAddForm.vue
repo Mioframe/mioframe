@@ -1,8 +1,7 @@
 <script setup lang="ts">
-import { VIEW_LAYOUT } from '@shared/lib/databaseDocument/view/general';
+import { VIEW_LAYOUT } from '@shared/lib/databaseDocument/state/v2/view/general';
 import { UIButton } from '@shared/ui/Button';
 import FormLayout from '@shared/ui/FormLayout.vue';
-import type { ValueOf } from 'type-fest';
 import { reactive } from 'vue';
 
 const emit = defineEmits<{
@@ -16,7 +15,7 @@ const emit = defineEmits<{
 }>();
 
 const formState = reactive<{
-  layout: ValueOf<typeof VIEW_LAYOUT>;
+  layout: VIEW_LAYOUT;
   name: string | undefined;
 }>({
   layout: VIEW_LAYOUT.TABLE,

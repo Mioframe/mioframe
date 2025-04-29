@@ -1,0 +1,1 @@
+export { useDatabaseDocument } from './useDatabaseDocument';

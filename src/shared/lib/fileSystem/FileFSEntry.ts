@@ -1,7 +1,8 @@
-import { object, function as zodFunction } from 'zod';
+import { interface as zodInterface } from '@zod/mini';
 import { is } from '../validateZodScheme';
 import { isGeneralFSEntry, type GeneralFSEntry } from './GeneralFSEntry';
 import type { DirectoryFSEntry } from './DirectoryFSEntry';
+import { zodFunction } from '../zodFunction';
 
 export interface FileFSEntry extends GeneralFSEntry {
   /**
@@ -26,7 +27,7 @@ export const isFileFSEntry = (value: unknown): value is FileFSEntry =>
   isGeneralFSEntry(value) &&
   is(
     value,
-    object({
+    zodInterface({
       read: zodFunction(),
       rename: zodFunction(),
       copyTo: zodFunction(),

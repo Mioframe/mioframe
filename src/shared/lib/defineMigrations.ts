@@ -34,7 +34,7 @@ type ApplyMigration<Ops extends MigrateFunction[], T extends EmptyObject> = (
  * Creates a method for applying migrations
  * @argument migrations - list of migration methods
  */
-export function defineMigration<
+export function defineMigrations<
   T extends object,
   Ops extends MigrateFunction[],
 >(...migrations: Ops & MigrateConstraint<T, Ops>): ApplyMigration<Ops, T> {

@@ -1,18 +1,18 @@
 <script setup lang="ts">
-import type { PropertiesMap } from '@shared/lib/databaseDocument/property';
-import type { Item } from '@shared/lib/databaseDocument';
+import type { PropertiesMap } from '@shared/lib/databaseDocument/state/v1/property';
 import DbItemEditDialog from './DbItemEditDialog.vue';
+import type { DatabaseItem } from '@shared/lib/databaseDocument/state';
 
 const { properties } = defineProps<{
   properties: PropertiesMap;
 }>();
 
 const emit = defineEmits<{
-  add: [item: Item];
+  add: [item: DatabaseItem];
   cancel: [];
 }>();
 
-const onApply = (newItem: Item) => {
+const onApply = (newItem: DatabaseItem) => {
   emit('add', newItem);
 };
 

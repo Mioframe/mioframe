@@ -2,7 +2,7 @@
 import type {
   GeneralProperty,
   PropertiesMap,
-} from '@shared/lib/databaseDocument/property';
+} from '@shared/lib/databaseDocument/state/v1/property';
 import { MDListContainer, MDListItem } from '@shared/ui/Lists';
 import { toString } from 'lodash-es';
 

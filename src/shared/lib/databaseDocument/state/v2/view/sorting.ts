@@ -1,7 +1,7 @@
-import type { TypeOf } from 'zod';
-import { array, literal, object, optional, union } from 'zod';
-import { zodItemId } from '../item';
-import { zodPropertyId } from '../property';
+import type { output } from '@zod/mini';
+import { array, literal, object, optional, union } from '@zod/mini';
+import { zodPropertyId } from '../../v1/property';
+import { zodItemId } from '../../v1/item';
 
 export const SORT_DIRECTION = {
   ascending: 'ascending',
@@ -13,7 +13,7 @@ export const zodSortDirection = union([
   literal(SORT_DIRECTION.descending),
 ]);
 
-export type SortDirection = TypeOf<typeof zodSortDirection>;
+export type SortDirection = output<typeof zodSortDirection>;
 
 export const zodSortDescription = object({
   propertyId: zodPropertyId,
@@ -21,4 +21,4 @@ export const zodSortDescription = object({
   manual: optional(array(zodItemId)),
 });
 
-export type SortDescription = TypeOf<typeof zodSortDescription>;
+export type SortDescription = output<typeof zodSortDescription>;

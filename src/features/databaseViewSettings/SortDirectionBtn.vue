@@ -1,12 +1,10 @@
 <script setup lang="ts">
-import {
-  SORT_DIRECTION,
-  type SortDirection,
-} from '@shared/lib/databaseDocument';
+import type { DatabaseSortDirection } from '@shared/lib/databaseDocument/state';
+import { SORT_DIRECTION } from '@shared/lib/databaseDocument/state';
 import { UIButton } from '@shared/ui/Button';
 
 defineProps<{
-  direction: SortDirection;
+  direction: DatabaseSortDirection;
 }>();
 
 const emit = defineEmits<{

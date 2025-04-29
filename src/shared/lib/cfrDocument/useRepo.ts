@@ -1,7 +1,7 @@
 import type { DocHandle, DocumentId } from '@automerge/automerge-repo';
 import type { Repo } from '@automerge/automerge-repo';
 import type { zodDocumentContent } from './types';
-import type { TypeOf } from 'zod';
+import type { output } from '@zod/mini';
 import type { MaybeRefOrGetter } from 'vue';
 import { computed, shallowReactive, toRef, toValue, watch } from 'vue';
 import { from } from 'ix/iterable';
@@ -46,7 +46,7 @@ export const useRepo = (
   watchDebug('documents', documents);
 
   const create = <Z extends typeof zodDocumentContent>(
-    initialValue: TypeOf<Z>,
+    initialValue: output<Z>,
   ) => {
     const repo = toValue(currentRepo);
     if (!repo) {

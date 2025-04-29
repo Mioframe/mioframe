@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { VIEW_LAYOUT } from '@shared/lib/databaseDocument/view/general';
+import { DB_VIEW_LAYOUT } from '@shared/lib/databaseDocument/state';
 import { MDDialog } from '@shared/ui/Dialog';
 import MDTextField from '@shared/ui/TextField/MDTextField.vue';
 import type { ValueOf } from 'type-fest';
@@ -16,10 +16,10 @@ const emit = defineEmits<{
 }>();
 
 const formState = reactive<{
-  layout: ValueOf<typeof VIEW_LAYOUT>;
+  layout: ValueOf<typeof DB_VIEW_LAYOUT>;
   name: string | undefined;
 }>({
-  layout: VIEW_LAYOUT.TABLE,
+  layout: DB_VIEW_LAYOUT.TABLE,
   name: undefined,
 });
 

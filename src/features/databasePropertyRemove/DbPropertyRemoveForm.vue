@@ -1,12 +1,12 @@
 <script setup lang="ts">
 import { ref } from 'vue';
-import { type PropertyId } from '../../shared/lib/databaseDocument';
 import { UIButton } from '@shared/ui/Button';
-import type { PropertiesMap } from '@shared/lib/databaseDocument/property';
+import type { PropertiesMap } from '@shared/lib/databaseDocument/state/v1/property';
 import FormLayout from '@shared/ui/FormLayout.vue';
+import type { DatabasePropertyId } from '@shared/lib/databaseDocument/state';
 
 const emit = defineEmits<{
-  remove: [propertyId: PropertyId];
+  remove: [propertyId: DatabasePropertyId];
   canceled: [];
 }>();
 
@@ -14,7 +14,7 @@ defineProps<{
   properties: PropertiesMap;
 }>();
 
-const selectedPropertyId = ref<PropertyId>();
+const selectedPropertyId = ref<DatabasePropertyId>();
 
 const onSubmit = () => {
   const propertyId = selectedPropertyId.value;

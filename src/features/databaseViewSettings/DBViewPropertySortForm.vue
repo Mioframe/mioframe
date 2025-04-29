@@ -2,7 +2,7 @@
 import type {
   PropertiesMap,
   PropertyId,
-} from '@shared/lib/databaseDocument/property';
+} from '@shared/lib/databaseDocument/state/v1/property';
 import { MDListContainer, MDListItem } from '@shared/ui/Lists';
 import { useSortable } from '@vueuse/integrations/useSortable';
 import { shallowRef, useTemplateRef, watchEffect } from 'vue';

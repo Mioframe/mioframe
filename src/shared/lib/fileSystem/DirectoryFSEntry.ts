@@ -1,7 +1,8 @@
-import { object, function as zodFunction } from 'zod';
+import { interface as zodInterface } from '@zod/mini';
 import { is } from '../validateZodScheme';
 import { isGeneralFSEntry, type GeneralFSEntry } from './GeneralFSEntry';
 import type { FileFSEntry } from './FileFSEntry';
+import { zodFunction } from '../zodFunction';
 
 export type DirectoryEntryEventMap = {
   add: (key: string, entry: DirectoryFSEntry | FileFSEntry) => unknown;
@@ -60,7 +61,7 @@ export const isDirectoryRef = (value: unknown): value is DirectoryFSEntry =>
   isGeneralFSEntry(value) &&
   is(
     value,
-    object({
+    zodInterface({
       entries: zodFunction(),
       createDirectory: zodFunction(),
       writeFile: zodFunction(),

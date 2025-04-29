@@ -1,35 +1,31 @@
 <script setup lang="ts">
 import { computed } from 'vue';
-import type {
-  UnknownProperty,
-  DataBaseStateLatest,
-  Item,
-  PropertyId,
-} from '../../../shared/lib/databaseDocument';
 import ItemTBody from './ItemTBody.vue';
 import PropertyTHead from './PropertyTHead.vue';
-import type { ItemId } from '../../../shared/lib/databaseDocument/item';
-import { pickDictionaryBy } from '@shared/lib/pickDictionaryBy';
-import { isNil } from 'lodash-es';
+import type {
+  DatabaseItem,
+  DatabaseItemId,
+  DatabasePropertyId,
+  DatabaseState,
+  DatabaseUnknownProperty,
+} from '@shared/lib/databaseDocument/state';
 
 const props = defineProps<{
-  databaseState: DataBaseStateLatest;
+  databaseState: DatabaseState;
 }>();
 
-const properties = computed(() =>
-  pickDictionaryBy(props.databaseState.properties, (v) => !isNil(v)),
-);
+const properties = computed(() => props.databaseState.properties);
 
 const data = computed(() => props.databaseState.data);
 
 const slots = defineSlots<{
   value(props: {
-    property: UnknownProperty | undefined;
-    propertyId: PropertyId;
+    property: DatabaseUnknownProperty | undefined;
+    propertyId: DatabasePropertyId;
     value: unknown;
-    itemId: ItemId;
+    itemId: DatabaseItemId;
   }): unknown;
-  itemActions(props: { item: Item; itemId: ItemId }): unknown;
+  itemActions(props: { item: DatabaseItem; itemId: DatabaseItemId }): unknown;
 }>();
 </script>
 

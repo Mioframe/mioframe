@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { computed, ref, watchEffect } from 'vue';
-import type { PropertyId } from '../../../shared/lib/databaseDocument';
 import { PopOver } from '../../../shared/ui/PopOver';
 import { onInteractionOutside } from '../../../shared/lib/onInteractionOutside';
 import { type MaybeElement } from '@vueuse/core';
@@ -17,10 +16,13 @@ import {
   BooleanPropertyField,
   DatePropertyField,
 } from '@feature/databaseItemEdit';
-import type { DatabaseItem } from '@shared/lib/databaseDocument/item/data';
-import type { GeneralProperty } from '@shared/lib/databaseDocument/property';
+import type { GeneralProperty } from '@shared/lib/databaseDocument/state/v1/property';
 import ValueInline from './ValueInline.vue';
 import { useBooleanEdit } from '@feature/booleanPropertyEdit';
+import type {
+  DatabaseItem,
+  DatabasePropertyId,
+} from '@shared/lib/databaseDocument/state';
 
 const {
   item = {},
@@ -29,7 +31,7 @@ const {
 } = defineProps<{
   item: DatabaseItem | undefined;
   property: GeneralProperty;
-  propertyId: PropertyId;
+  propertyId: DatabasePropertyId;
 }>();
 
 const emit = defineEmits<{
