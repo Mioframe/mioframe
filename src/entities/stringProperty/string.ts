@@ -1,9 +1,9 @@
-import type { TypeOf } from 'zod';
-import { literal } from 'zod';
+import type { output } from '@zod/mini';
+import { literal } from '@zod/mini';
 import {
   createProperty,
   zodGeneralProperty,
-} from '../../shared/lib/databaseDocument/property/general';
+} from '../../shared/lib/databaseDocument/state/v1/property/general';
 
 export const PROPERTY_TYPE_STRING = 'string';
 
@@ -11,7 +11,7 @@ export const zodStringProperty = zodGeneralProperty(
   literal(PROPERTY_TYPE_STRING),
 );
 
-export type StringProperty = TypeOf<typeof zodStringProperty>;
+export type StringProperty = output<typeof zodStringProperty>;
 
 export const createStringProperty = (name: string): StringProperty =>
   createProperty(PROPERTY_TYPE_STRING, name);

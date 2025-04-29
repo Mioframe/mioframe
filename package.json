@@ -23,10 +23,11 @@
     "@vueuse/core": "^13.1.0",
     "@vueuse/integrations": "^13.1.0",
     "@vueuse/router": "^13.1.0",
+    "@zod/mini": "^4.0.0-beta.20250424T163858",
     "bulma": "^1.0.4",
     "dayjs": "^1.11.13",
     "detect-browser-back-navigation": "^1.0.2",
-    "file-type": "^20.4.1",
+    "file-type": "^20.5.0",
     "focus-trap": "^7.6.4",
     "ix": "^7.0.0",
     "lodash-es": "^4.17.21",
@@ -36,8 +37,7 @@
     "uid": "^2.0.2",
     "vanilla-jsoneditor": "^3.3.1",
     "vue": "^3.5.13",
-    "vue-router": "^4.5.0",
-    "zod": "^3.24.3"
+    "vue-router": "^4.5.1"
   },
   "devDependencies": {
     "@faker-js/faker": "^9.7.0",
@@ -60,7 +60,7 @@
     "postcss-load-config": "^6.0.1",
     "postcss-nested": "^7.0.2",
     "postcss-preset-env": "^10.1.6",
-    "type-fest": "^4.40.0",
+    "type-fest": "^4.40.1",
     "typescript": "^5.8.3",
     "vite": "^6.3.3",
     "vite-plugin-pwa": "^1.0.0",
@@ -68,7 +68,7 @@
     "vite-plugin-wasm": "^3.4.1",
     "vue-tsc": "^2.2.10"
   },
-  "packageManager": "pnpm@10.9.0",
+  "packageManager": "pnpm@10.10.0+sha512.d615db246fe70f25dcfea6d8d73dee782ce23e2245e3c4f6f888249fb568149318637dca73c2c5c8ef2a4ca0d5657fb9567188bfab47f566d1ee6ce987815c39",
   "pnpm": {
     "onlyBuiltDependencies": [
       "@sentry/cli",

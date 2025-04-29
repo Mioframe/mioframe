@@ -1,5 +1,5 @@
 import { putObject } from '../changeObject';
-import { defineMigration } from '../defineMigration';
+import { defineMigrations } from '../defineMigrations';
 import type { MergeDeep } from 'type-fest';
 import type { Doc } from '@automerge/automerge-repo';
 import { type DocumentContent } from './types';
@@ -23,7 +23,7 @@ const readVersion = (doc: unknown) => {
 export const applyCFRDocumentMigration = (
   data: object,
 ): Doc<DocumentContent> => {
-  return defineMigration((doc: object): MergeDeep<object, DocumentContent> => {
+  return defineMigrations((doc: object): MergeDeep<object, DocumentContent> => {
     debug('first migration', () => cloneDeep(doc));
     return putObject(doc, {
       name: 'new document',

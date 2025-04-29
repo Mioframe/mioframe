@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import type { DocHandle } from '@automerge/automerge-repo';
 import { DatabaseViewCreateDialog } from '@feature/databaseViewAdd';
-import { useDatabaseDocument, type ViewId } from '@shared/lib/databaseDocument';
-import { VIEW_LAYOUT } from '@shared/lib/databaseDocument/view/general';
+import DatabaseViewListDialog from '@feature/databaseViewSettings/DatabaseViewListDialog.vue';
+import { useDatabaseDocument } from '@shared/lib/databaseDocument';
+import type { DatabaseViewId } from '@shared/lib/databaseDocument/state/v2';
+import { VIEW_LAYOUT } from '@shared/lib/databaseDocument/state/v2/view/general';
 import { useReduce } from '@shared/lib/useReduce';
 import { MDChip } from '@shared/ui/Chips';
 import { MDSymbol } from '@shared/ui/Icon';
@@ -23,7 +25,7 @@ const { views, addView } = useDatabaseDocument(docHandleRef);
 
 const viewsRef = toRef(() => views.value);
 
-const selectedViewId = defineModel<ViewId>('selectedViewId');
+const selectedViewId = defineModel<DatabaseViewId>('selectedViewId');
 
 const viewButtons = useReduce(
   viewsRef,
@@ -33,18 +35,14 @@ const viewButtons = useReduce(
       viewId,
     });
   },
-  <{ label: string; viewId: ViewId }[]>[],
+  <{ label: string; viewId: DatabaseViewId }[]>[],
 );
 
-const onClickViewChip = (viewId: ViewId) => {
+const onClickViewChip = (viewId: DatabaseViewId) => {
   selectedViewId.value = viewId;
 };
 
 const isShowAddView = shallowRef(false);
-
-const onClickAddView = () => {
-  isShowAddView.value = true;
-};
 
 const isShowSettingUpViews = shallowRef(false);
 
@@ -53,9 +51,11 @@ const onClickSettingUpViews = () => {
 };
 
 const onAddView = async ({ name }: { name: string }) => {
+  const order = views.value.size;
   await addView({
     name,
     layout: VIEW_LAYOUT.TABLE,
+    order,
   });
 
   isShowAddView.value = false;
@@ -99,7 +99,12 @@ const onCancelAddView = () => {
       @cancel="onCancelAddView"
     />
 
-    <!-- // todo: добавить окно настройки списка пресетов -->
+    <DatabaseViewListDialog
+      v-if="isShowSettingUpViews"
+      :doc-handle="docHandle"
+      @cancel="isShowSettingUpViews = false"
+      @completed="isShowSettingUpViews = false"
+    />
   </div>
 </template>
 

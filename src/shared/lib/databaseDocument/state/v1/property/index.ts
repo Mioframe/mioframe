@@ -1,15 +1,12 @@
 export {
-  type PropertyId,
   generatePropertyId,
   zodPropertyId,
   type GeneralProperty,
-  type ValidateValue,
   createProperty,
   zodGeneralProperty,
+  type PropertyId,
 } from './general';
 export {
-  type UnknownProperty,
-  type UnknownPropertiesMap,
   zodUnknownProperty,
   zodUnknownPropertiesMap,
   zodUnknownPropertyType,

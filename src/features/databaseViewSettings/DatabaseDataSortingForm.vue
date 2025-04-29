@@ -1,13 +1,8 @@
 <script setup lang="ts">
-import {
-  SORT_DIRECTION,
-  type PropertyId,
-  type SortDescription,
-} from '@shared/lib/databaseDocument';
 import type {
   GeneralProperty,
   PropertiesMap,
-} from '@shared/lib/databaseDocument/property';
+} from '@shared/lib/databaseDocument/state/v1/property';
 import { UIButton } from '@shared/ui/Button';
 import FormLayout from '@shared/ui/FormLayout.vue';
 import type { Option } from '@shared/ui/Select';
@@ -16,19 +11,24 @@ import { UIMenu } from '@shared/ui/TreeMenu';
 import type { Entries } from 'type-fest';
 import { computed, ref } from 'vue';
 import SortDirectionBtn from './SortDirectionBtn.vue';
+import {
+  SORT_DIRECTION,
+  type DatabasePropertyId,
+  type DatabaseSortDescription,
+} from '@shared/lib/databaseDocument/state';
 
 const props = defineProps<{
   properties: PropertiesMap;
-  sorting?: SortDescription[];
+  sorting?: DatabaseSortDescription[];
 }>();
 
 const emit = defineEmits<{
-  toggleDirection: [PropertyId];
-  addSorting: [SortDescription];
+  toggleDirection: [DatabasePropertyId];
+  addSorting: [DatabaseSortDescription];
 }>();
 
 const propertySortCollection = computed(
-  (): [number, SortDescription & { property: GeneralProperty }][] =>
+  (): [number, DatabaseSortDescription & { property: GeneralProperty }][] =>
     props.sorting?.map(({ direction, propertyId, manual }, index) => [
       index,
       {
@@ -41,9 +41,11 @@ const propertySortCollection = computed(
 );
 
 const propertyOptions = computed(
-  (): (Option<PropertyId, PropertyId> & { property: GeneralProperty })[] =>
+  (): (Option<DatabasePropertyId, DatabasePropertyId> & {
+    property: GeneralProperty;
+  })[] =>
     (<Entries<typeof props.properties>>Object.entries(props.properties)).reduce<
-      (Option<PropertyId, PropertyId> & {
+      (Option<DatabasePropertyId, DatabasePropertyId> & {
         property: GeneralProperty;
       })[]
     >((acc, [id, property]) => {
@@ -58,7 +60,7 @@ const propertyOptions = computed(
     }, []),
 );
 
-const selectedProperty = ref<[PropertyId] | []>([]);
+const selectedProperty = ref<[DatabasePropertyId] | []>([]);
 
 const onAddSortableProperty = () => {
   const [property] = selectedProperty.value;
@@ -75,7 +77,7 @@ const onAddSortableProperty = () => {
   }
 };
 
-const onClickToggleDirection = (propertyId: PropertyId) => {
+const onClickToggleDirection = (propertyId: DatabasePropertyId) => {
   emit('toggleDirection', propertyId);
 };
 

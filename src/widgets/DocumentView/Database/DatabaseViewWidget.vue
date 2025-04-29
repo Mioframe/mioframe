@@ -2,13 +2,6 @@
 import type { DocHandle } from '@automerge/automerge-repo';
 import { DbItemAddDialog } from '@feature/databaseItemEdit';
 import DatabasePropertyCreationDialog from '@feature/databasePropertyCreate/DatabasePropertyCreationDialog.vue';
-import type {
-  Item,
-  ItemId,
-  PropertyId,
-  UnknownProperty,
-  ViewId,
-} from '@shared/lib/databaseDocument';
 import { useDatabaseDocument } from '@shared/lib/databaseDocument';
 import { computed, ref, shallowRef, toRef } from 'vue';
 import { MDBottomSheet } from '@shared/ui/Sheets';
@@ -19,9 +12,16 @@ import { DatabasePropertyRemoveDialog } from '@feature/databasePropertyRemove';
 import { DatabasePropertyRenameDialog } from '@feature/databasePropertyRename';
 import { EmptySymbol } from '@shared/ui/EmptySymbol';
 import DatabaseViewTable from './DatabaseViewTable.vue';
-import type { DatabaseValue } from '@shared/lib/databaseDocument/item/data';
 import DatabaseDataSortingForm from '@feature/databaseViewSettings/DatabaseDataSortingForm.vue';
 import DatabaseViewPresetSettingsWidget from './DatabaseViewPresetSettingsWidget.vue';
+import type { DatabaseViewId } from '@shared/lib/databaseDocument/state/v2';
+import type {
+  DatabaseItem,
+  DatabaseItemId,
+  DatabasePropertyId,
+  DatabaseUnknownProperty,
+  DatabaseValue,
+} from '@shared/lib/databaseDocument/state';
 
 const { docHandle } = defineProps<{
   docHandle: DocHandle<unknown>;
@@ -41,14 +41,14 @@ const {
 
 const isShowAddProperty = ref(false);
 
-const onCreateProperty = async (property: UnknownProperty) => {
+const onCreateProperty = async (property: DatabaseUnknownProperty) => {
   await addProperty(property);
   isShowAddProperty.value = false;
 };
 
 const isShowAddItem = ref(false);
 
-const onAddItem = async (item: Item) => {
+const onAddItem = async (item: DatabaseItem) => {
   await addItem(item);
   isShowAddItem.value = false;
 };
@@ -108,14 +108,14 @@ const propertyContextBtns = defineContextButtonList([
   ],
 ]);
 
-const removePropertyId = ref<PropertyId>();
+const removePropertyId = ref<DatabasePropertyId>();
 
-const onApplyRemoveProperty = async (propertyId: PropertyId) => {
+const onApplyRemoveProperty = async (propertyId: DatabasePropertyId) => {
   await removeProperty(propertyId);
   removePropertyId.value = undefined;
 };
 
-const renamePropertyId = ref<PropertyId>();
+const renamePropertyId = ref<DatabasePropertyId>();
 
 const renamePropertyName = computed(() =>
   renamePropertyId.value && properties.value
@@ -123,7 +123,10 @@ const renamePropertyName = computed(() =>
     : undefined,
 );
 
-const onApplyRenameProperty = async (propertyId: PropertyId, name: string) => {
+const onApplyRenameProperty = async (
+  propertyId: DatabasePropertyId,
+  name: string,
+) => {
   await updateProperty(propertyId, {
     name,
   });
@@ -132,7 +135,7 @@ const onApplyRenameProperty = async (propertyId: PropertyId, name: string) => {
 
 const onClickPropertyContextAction = (
   action: PropertyAction,
-  propertyId: PropertyId,
+  propertyId: DatabasePropertyId,
 ) => {
   switch (action) {
     case PropertyAction.remove: {
@@ -150,8 +153,8 @@ const onClickPropertyContextAction = (
 };
 
 const onChangeValue = async (
-  itemId: ItemId,
-  propertyId: PropertyId,
+  itemId: DatabaseItemId,
+  propertyId: DatabasePropertyId,
   value: DatabaseValue,
 ) => {
   await updateItem(itemId, {
@@ -159,7 +162,7 @@ const onChangeValue = async (
   });
 };
 
-const selectedViewId = shallowRef<ViewId>();
+const selectedViewId = shallowRef<DatabaseViewId>();
 </script>
 
 <template>
