@@ -3,7 +3,7 @@
   lang="ts"
   generic="Key extends string | number, Value, T extends Option<Key, Value>"
 >
-import { isArray, isUndefined } from 'lodash-es';
+import { isArray, isNonNullish } from 'remeda';
 import type { Option } from './types';
 import { computed } from 'vue';
 
@@ -26,7 +26,7 @@ const valueModel = computed({
     return props.multiple ? props.value : props.value.at(0);
   },
   set: (v) => {
-    const updatedValue: Value[] = isUndefined(v) ? [] : isArray(v) ? v : [v];
+    const updatedValue: Value[] = !isNonNullish(v) ? [] : isArray(v) ? v : [v];
     emit('update:value', updatedValue);
   },
 });

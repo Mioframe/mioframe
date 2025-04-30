@@ -27,7 +27,7 @@ import { MDPaneContainer } from '@shared/ui/Layers';
 import { MDTopAppBar } from '@shared/ui/TopAppBar';
 import { FSEntryRenameDialog } from '@feature/entryRename';
 import { useRepoExplorer } from '@widget/RepoExplorer/useRepoExplorer';
-import { clone } from 'lodash-es';
+import { clone } from 'remeda';
 
 const { watchDebug, debug } = createLogger('RepoExplorerWidget.vue');
 

@@ -3,7 +3,7 @@ import {
   createLocalDirectory,
   type DirectoryLocalEntry,
 } from '../../shared/lib/localFileSystem';
-import { uniqueId } from 'lodash-es';
+import { uniqueId } from '@shared/lib/uniqueId';
 
 export const usePickLocalDirectory = (
   mode: FileSystemPermissionMode = 'read',

@@ -4,7 +4,6 @@ import type {
   PropertiesMap,
 } from '@shared/lib/databaseDocument/state/v1/property';
 import { MDListContainer, MDListItem } from '@shared/ui/Lists';
-import { toString } from 'lodash-es';
 
 defineProps<{
   properties: PropertiesMap<P>;
@@ -24,7 +23,7 @@ const slots = defineSlots<{
       v-for="(property, propertyId) in properties"
       :key="propertyId"
       :headline="property.name"
-      :supporting-text="toString(property.type)"
+      :supporting-text="String(property.type)"
     >
       <template v-if="!!slots.trailingIcon" #trailingIcon>
         <slot name="trailingIcon" :property :property-id />

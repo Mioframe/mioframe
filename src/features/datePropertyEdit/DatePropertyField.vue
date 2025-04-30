@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { isString } from 'lodash-es';
+import { isString } from 'remeda';
 import { computed, ref } from 'vue';
 
 const stateValue = ref<string>();

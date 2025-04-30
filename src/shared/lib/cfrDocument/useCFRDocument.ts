@@ -1,4 +1,3 @@
-import { cloneDeep, isObject, uniqueId } from 'lodash-es';
 import { createLogger } from '../logger';
 import { checkSchema } from '../validateZodScheme';
 import type { UseCFRDocument } from './types';
@@ -9,6 +8,8 @@ import type { MaybeRefOrGetter, Ref } from 'vue';
 import { computed, ref, toRef, toValue, watch } from 'vue';
 import { replaceObject } from '../changeObject';
 import { tryOnScopeDispose } from '@vueuse/core';
+import { uniqueId } from '../uniqueId';
+import { clone, isObjectType } from 'remeda';
 
 const { debug } = createLogger('useCFRDocument');
 
@@ -104,12 +105,12 @@ export const useCFRDocument = (
       debug('readDoc originalDoc', originalDoc);
       if (stateDocHandler === docHandleRef.value) {
         debug('doc originalDoc', () => ({
-          originalDoc: cloneDeep(originalDoc),
+          originalDoc: clone(originalDoc),
         }));
         const parsedDoc = checkSchema(originalDoc, zodDocumentContent);
         if (parsedDoc) {
           replaceObject(documentContent.value, parsedDoc);
-          debug('doc parsedDoc', () => cloneDeep(parsedDoc));
+          debug('doc parsedDoc', () => clone(parsedDoc));
         }
       }
       return documentContent.value;
@@ -120,7 +121,7 @@ export const useCFRDocument = (
   const change = (callback: ChangeFn<DocumentContent>) => {
     debug('change');
     docHandleRef.value?.change((doc) => {
-      if (isObject(doc)) {
+      if (isObjectType(doc)) {
         callback(applyCFRDocumentMigration(doc));
       }
     });

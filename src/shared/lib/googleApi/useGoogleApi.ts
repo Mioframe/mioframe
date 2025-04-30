@@ -6,7 +6,6 @@ import {
 } from '@vueuse/core';
 import { createLogger } from '../logger';
 import { computed, ref, watchEffect } from 'vue';
-import { toNumber } from 'lodash-es';
 import type { GOOGLE_DRIVE_SCOPE, GOOGLE_SCOPES } from './utils';
 import {
   USERINFO_SCOPE,
@@ -49,7 +48,7 @@ export const useGoogleApi = createGlobalState(() => {
 
   const tokenExpirationTime = computed(() =>
     tokenReceiptTime.value && tokenResponse.value
-      ? tokenReceiptTime.value + toNumber(tokenResponse.value.expires_in) * 1e3
+      ? tokenReceiptTime.value + Number(tokenResponse.value.expires_in) * 1e3
       : 0,
   );
 

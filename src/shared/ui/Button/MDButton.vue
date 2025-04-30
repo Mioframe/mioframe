@@ -2,7 +2,7 @@
 import { vPressedState } from '@shared/lib/md/stateHelper';
 import { toRef } from 'vue';
 import { MDCircularProgressIndicator } from '../ProgressIndicators';
-import { isNumber } from 'lodash-es';
+import { isNumber } from 'remeda';
 
 const props = defineProps<{
   formAction?: 'submit' | 'reset';

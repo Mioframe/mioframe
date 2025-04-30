@@ -1,4 +1,4 @@
-import { isObject, isUndefined } from 'lodash-es';
+import { isNullish, isObjectType } from 'remeda';
 import type { MergeDeep, PartialDeep } from 'type-fest';
 
 /**
@@ -21,9 +21,9 @@ export function putObject<T extends object, S extends object>(
       // @ts-expect-error
       const targetValue: unknown = target[sourceKey];
       if (sourceValue !== targetValue) {
-        if (isObject(targetValue) && isObject(sourceValue)) {
+        if (isObjectType(targetValue) && isObjectType(sourceValue)) {
           putObject(targetValue, sourceValue);
-        } else if (isUndefined(sourceValue)) {
+        } else if (isNullish(sourceValue)) {
           // eslint-disable-next-line @typescript-eslint/ban-ts-comment -- everything is ok, it's just a deletion
           // @ts-expect-error
           // eslint-disable-next-line @typescript-eslint/no-dynamic-delete -- `undefined` is not a valid JSON data type

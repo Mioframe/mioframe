@@ -1,6 +1,7 @@
 import { from } from 'ix/asynciterable';
 import { filter, takeWhile } from 'ix/asynciterable/operators';
-import { isFunction, isNil, isObject } from 'lodash-es';
+import { isFunction } from 'lodash-es';
+import { isNullish, isObjectType } from 'remeda';
 import type { Ref } from 'vue';
 import { computed, ref, toRef, watch } from 'vue';
 
@@ -21,12 +22,12 @@ export interface ItemWithChildren<T extends [string | number, unknown]> {
 }
 
 const hasIterator = <T>(v: unknown): v is Iterable<T> =>
-  isObject(v) &&
+  isObjectType(v) &&
   Symbol.iterator in v &&
   typeof v[Symbol.iterator] === 'function';
 
 const hasAsyncIterator = <T>(v: unknown): v is AsyncIterable<T> =>
-  isObject(v) &&
+  isObjectType(v) &&
   Symbol.asyncIterator in v &&
   typeof v[Symbol.asyncIterator] === 'function';
 
@@ -36,10 +37,10 @@ export const isItemWithChildren = <
 >(
   v: V,
 ): v is V & ItemWithChildren<T> =>
-  isObject(v) &&
+  isObjectType(v) &&
   'children' in v &&
   (isFunction(v.children) ||
-    (isObject(v.children) &&
+    (isObjectType(v.children) &&
       (hasIterator(v.children) || hasAsyncIterator(v.children))));
 
 export const useCollection = <T>(
@@ -55,7 +56,7 @@ export const useCollection = <T>(
 
     const operations = [
       filterPredicate?.value ? filter(filterPredicate.value) : undefined,
-    ].filter((v) => !isNil(v));
+    ].filter((v) => !isNullish(v));
 
     try {
       loading.value += 1;
@@ -108,7 +109,7 @@ export const useIterable = <T>(
 
     const operations = [
       filterPredicate?.value ? filter(filterPredicate.value) : undefined,
-    ].filter((v) => !isNil(v));
+    ].filter((v) => !isNullish(v));
 
     try {
       loading.value += 1;

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
-import { uniqueId } from 'lodash-es';
 import { useTextareaAutosize } from '@vueuse/core';
+import { uniqueId } from '@shared/lib/uniqueId';
 
 const { inputType = 'text', type = 'outlined' } = defineProps<{
   labelText: string;

@@ -1,9 +1,8 @@
-import { useReduce } from '@shared/lib/useReduce';
+import { useReduceRecord } from '@shared/lib/useReduce';
 import { useHead } from '@unhead/vue';
 import { createGlobalState, useStorage } from '@vueuse/core';
-import { merge } from 'lodash-es';
-import type { Entries, ValueOf } from 'type-fest';
-import { computed } from 'vue';
+import { merge } from 'remeda';
+import type { ValueOf } from 'type-fest';
 
 export const MaterialSymbolsFamily = {
   Rounded: 'Material+Symbols+Rounded',
@@ -35,19 +34,16 @@ export const useIconStates = createGlobalState(() => {
       .sort()
       .join(',');
 
-  const stateEntries = computed(
-    () => <Entries<State>>Object.entries(state.value),
-  );
-
-  const links = useReduce(
-    stateEntries,
+  const links = useReduceRecord(
+    state,
     (
       acc: {
         key: string;
         rel: 'stylesheet';
         href: string;
       }[],
-      [family, names],
+      names,
+      family,
     ) => {
       if (names.length) {
         acc.push({

@@ -61,7 +61,7 @@ function defaultClearer(acc: any): void {
  *
  * @returns A ref containing the accumulator (of type A) that is updated reactively as the source changes.
  */
-export function useReduce<A, T>(
+export function useReduceIterable<A, T>(
   source: Ref<Iterable<T> | undefined>,
   reducer: (acc: A, item: T, index: number) => void,
   initialValue: A,
@@ -81,6 +81,55 @@ export function useReduce<A, T>(
         reducer(result.value, item, index);
         index++;
       }
+    }
+  });
+
+  return result;
+}
+
+export function useReduceRecord<A, K extends PropertyKey, V>(
+  source: Ref<Record<K, V> | undefined>,
+  reducer: (acc: A, value: V, key: K, index: number) => void,
+  initialValue: A,
+  clearer?: (acc: A) => void,
+): Ref<A> {
+  const result = <Ref<A>>ref(initialValue);
+
+  watchEffect(() => {
+    (clearer || defaultClearer)(result.value);
+
+    let index = 0;
+    if (source.value) {
+      for (const key in source.value) {
+        if (Object.hasOwnProperty.call(source.value, key)) {
+          const value = source.value[key];
+          reducer(result.value, value, key, index);
+          index++;
+        }
+      }
+    }
+  });
+
+  return result;
+}
+
+export function useReduceMap<A, K, V>(
+  source: Ref<Map<K, V> | undefined>,
+  reducer: (acc: A, value: V, key: K, index: number) => void,
+  initialValue: A,
+  clearer?: (acc: A) => void,
+): Ref<A> {
+  const result = <Ref<A>>ref(initialValue);
+
+  watchEffect(() => {
+    (clearer || defaultClearer)(result.value);
+
+    if (source.value) {
+      let index = 0;
+      source.value.forEach((value, key) => {
+        reducer(result.value, value, key, index);
+        index += 1;
+      });
     }
   });
 

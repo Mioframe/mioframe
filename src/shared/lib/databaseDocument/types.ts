@@ -1,7 +1,12 @@
 import type { PartialDeep } from 'type-fest';
-import type { output } from '@zod/mini';
-import { extend, partial } from '@zod/mini';
-import { literal, object } from '@zod/mini';
+import {
+  extend,
+  literal,
+  object,
+  partial,
+  type core,
+  type output,
+} from '@zod/mini';
 import type {
   DatabaseData,
   DatabaseItem,
@@ -13,12 +18,13 @@ import type {
   DatabaseUnknownProperty,
   DatabaseView,
   DatabaseViewId,
+  DatabaseViewsMap,
 } from './state';
 import { zodDatabaseState } from './state';
 import type { DocumentContent } from '../cfrDocument';
 import { zodDocumentContent } from '../cfrDocument';
 import type { ComputedRef } from 'vue';
-import type { ReadonlyMapDeep } from 'type-fest/source/readonly-deep';
+import type { ReadonlyDeep } from 'type-fest';
 
 export type DataBaseStateLatest = DatabaseState;
 
@@ -54,12 +60,14 @@ export type UseDatabaseDocument = {
   /**
    * Всё содержимое документа
    */
-  content: ComputedRef<DatabaseDocumentWithContent | undefined>;
+  content: ComputedRef<ReadonlyDeep<DatabaseDocumentWithContent> | undefined>;
 
   /**
    * Перечень свойств
    */
-  properties: ComputedRef<DatabaseUnknownPropertiesMap | undefined>;
+  properties: ComputedRef<
+    ReadonlyDeep<DatabaseUnknownPropertiesMap> | undefined
+  >;
   addProperty: (
     property: DatabaseUnknownProperty,
   ) => Promise<DatabasePropertyId>;
@@ -72,7 +80,7 @@ export type UseDatabaseDocument = {
   /**
    * Перечень данных
    */
-  data: ComputedRef<DatabaseData | undefined>;
+  data: ComputedRef<ReadonlyDeep<DatabaseData> | undefined>;
   addItem: (item: DatabaseItem) => Promise<DatabaseItemId>;
   removeItem: (itemId: DatabaseItemId) => Promise<void>;
   updateItem: (
@@ -83,7 +91,7 @@ export type UseDatabaseDocument = {
   /**
    * Перечень представлений
    */
-  views: ComputedRef<ReadonlyMapDeep<DatabaseViewId, DatabaseView>>;
+  views: ComputedRef<ReadonlyDeep<DatabaseViewsMap> | undefined>;
   addView: (view: DatabaseView) => Promise<DatabaseViewId>;
   removeView: (viewId: DatabaseViewId) => Promise<void>;
   renameView: (viewId: DatabaseViewId, newName: string) => Promise<void>;
@@ -100,4 +108,16 @@ export type UseDatabaseDocument = {
     viewId: DatabaseViewId,
     propertyId: DatabasePropertyId,
   ) => Promise<void>;
+
+  /**
+   * Ошибки чтения документа
+   */
+  documentError: ComputedRef<
+    core.$ZodError<DatabaseDocumentWithContent> | undefined
+  >;
+
+  /**
+   * Принудительное применение миграций
+   */
+  forceApplyMigration: () => Promise<void>;
 };
