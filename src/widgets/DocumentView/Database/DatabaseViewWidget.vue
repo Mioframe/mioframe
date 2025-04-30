@@ -37,6 +37,7 @@ const {
   removeProperty,
   updateProperty,
   updateItem,
+  documentError,
 } = useDatabaseDocument(docHandleRef);
 
 const isShowAddProperty = ref(false);
@@ -167,8 +168,12 @@ const selectedViewId = shallowRef<DatabaseViewId>();
 
 <template>
   <div class="database-view">
+    <div v-if="documentError" class="database-view__error">
+      <pre>{{ documentError }}</pre>
+    </div>
+
     <DatabaseViewTable
-      v-if="properties && data"
+      v-else-if="properties && data"
       class="database-view__table"
       :properties
       :data

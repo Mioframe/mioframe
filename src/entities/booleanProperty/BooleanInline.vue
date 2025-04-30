@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { MDCheckbox } from '@shared/ui/Checkbox';
-import { isBoolean } from 'lodash-es';
+import { isBoolean } from 'remeda';
 import { computed } from 'vue';
 
 const { value } = defineProps<{

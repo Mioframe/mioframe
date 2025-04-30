@@ -16,7 +16,7 @@ import { useDirectory, type DirectoryFSEntry } from '../fileSystem';
 import { is } from '../validateZodScheme';
 import { useRepo } from './useRepo';
 import { createLogger } from '../logger';
-import { useReduce } from '../useReduce';
+import { useReduceIterable, useReduceMap } from '../useReduce';
 import { WeakValueMap } from '../WeakValueMap';
 
 const { debug, watchDebug } = createLogger('useDirectoryRepo');
@@ -44,9 +44,9 @@ export const useDirectoryRepo = (
     Array.from(directoryEntries.value.values()),
   );
 
-  const directoryEntriesNames = useReduce(
+  const directoryEntriesNames = useReduceMap(
     directoryEntries,
-    (acc: string[], [name]) => {
+    (acc: string[], _, name) => {
       if (!acc.includes(name)) {
         acc.push(name);
       }
@@ -101,11 +101,11 @@ export const useDirectoryRepo = (
     { immediate: true },
   );
 
-  const directoryDocumentIdList = useReduce(
+  const directoryDocumentIdList = useReduceIterable(
     directoryEntries,
-    (acc, [key]) => {
-      if (is(key, zodAutomergeFileName)) {
-        const id = fileNameToPartialKey(key)?.[0];
+    (acc, [fileName]) => {
+      if (is(fileName, zodAutomergeFileName)) {
+        const id = fileNameToPartialKey(fileName)?.[0];
         if (id) {
           acc.add(id);
         }

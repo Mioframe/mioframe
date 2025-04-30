@@ -1,7 +1,11 @@
 import { is } from '@shared/lib/validateZodScheme';
 import { putObject } from '@shared/lib/changeObject';
 import type { DataBaseStateLatest } from '../types';
-import type { DatabasePropertyId, DatabaseSortDescription } from '../state';
+import type {
+  DatabasePropertyId,
+  DatabaseSortDescription,
+  DatabaseState,
+} from '../state';
 import {
   generateViewId,
   SORT_DIRECTION,
@@ -69,11 +73,11 @@ export const addSortDescriptionMutation = (
 };
 
 export const toggleSortDirectionMutation = (
-  views: DatabaseViewsMap,
+  body: DatabaseState,
   viewId: DatabaseViewId,
   propertyId: DatabasePropertyId,
 ) => {
-  const view = views[viewId];
+  const view = body.views?.[viewId];
 
   if (!is(view, zodDatabaseTableView)) {
     throw new Error(`view "${viewId}" is not table layout`);
@@ -100,21 +104,21 @@ export const toggleSortDirectionMutation = (
     });
   }
 
-  putObject(views, {
-    [viewId]: {
-      sorting,
-    },
+  putObject(view, {
+    sorting,
   });
 };
 
 export const renameViewMutation = (
-  views: DatabaseViewsMap,
+  body: DatabaseState,
   viewId: DatabaseViewId,
   newName: string,
 ) => {
-  putObject(views, {
-    [viewId]: {
-      name: newName,
+  putObject(body, {
+    views: {
+      [viewId]: {
+        name: newName,
+      },
     },
   });
 };

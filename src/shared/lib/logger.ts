@@ -1,4 +1,4 @@
-import { isFunction } from 'lodash-es';
+import { isFunction } from 'remeda';
 import type { MaybeRef } from 'vue';
 import { toValue, watchEffect } from 'vue';
 
@@ -48,7 +48,7 @@ export const createLogger = (moduleName: string) => {
     // eslint-disable-next-line no-console -- for logger
     console.debug(
       ...colorStrings(moduleName, message),
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-return -- for logger
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-call -- for logger
       ...args.map((v) => (import.meta.env.DEV && isFunction(v) ? v() : v)),
     );
   };

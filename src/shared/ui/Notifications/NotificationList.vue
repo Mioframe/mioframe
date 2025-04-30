@@ -4,7 +4,7 @@ import type { Notification } from './types';
 import { COLOR } from './types';
 import '@noction/vue-bezier/styles';
 import { SlideYUpTransition } from '@noction/vue-bezier';
-import { isUndefined } from 'lodash-es';
+import { isNullish } from 'remeda';
 
 const { notificationMap: notificationSet, removeNotification } =
   useNotifications();
@@ -14,7 +14,7 @@ const onClickDelete = (notification: Notification) => {
 };
 
 const getColorClass = (color?: COLOR) => {
-  return isUndefined(color) ? undefined : `is-${COLOR[color]}`;
+  return isNullish(color) ? undefined : `is-${COLOR[color]}`;
 };
 
 // todo: добавить web уведомления если страница в фоне и есть доступ

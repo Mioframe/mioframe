@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { isInteger } from 'lodash-es';
 import { computed, ref } from 'vue';
 
 const { progress = 0 } = defineProps<{
@@ -20,7 +19,7 @@ const strokeLinecap = computed<
   'butt' | 'round' | 'square' | 'inherit' | undefined
 >(() => (progress === 1 ? undefined : 'round'));
 
-const gap = computed(() => (isInteger(progress) ? 0 : width.value * 2));
+const gap = computed(() => (Number.isInteger(progress) ? 0 : width.value * 2));
 
 const progressLineLength = computed(() => {
   return perimeter.value * progress - gap.value;

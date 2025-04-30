@@ -68,6 +68,9 @@ importers:
       pinia:
         specifier: ^3.0.2
         version: 3.0.2(typescript@5.8.3)(vue@3.5.13(typescript@5.8.3))
+      remeda:
+        specifier: ^2.21.3
+        version: 2.21.3
       sortablejs:
         specifier: ^1.15.6
         version: 1.15.6
@@ -144,6 +147,9 @@ importers:
       postcss-preset-env:
         specifier: ^10.1.6
         version: 10.1.6(postcss@8.5.3)
+      terser:
+        specifier: ^5.39.0
+        version: 5.39.0
       type-fest:
         specifier: ^4.40.1
         version: 4.40.1
@@ -1275,8 +1281,8 @@ packages:
   '@maxim_mazurok/gapi.client.discovery-v1@0.1.20200806':
     resolution: {integrity: sha512-Wl6UfmZVDdWbY3PUu8E2ULk9RPLjnMqp/iOA4tcK8Ne+U/GmlnWP/e34IaZNGArfl7iXJNOG+/3Rj9L9jQyF9Q==}
 
-  '@maxim_mazurok/gapi.client.drive-v3@0.0.20250422':
-    resolution: {integrity: sha512-4OvPJOYK+QsACWN6E01yq4BIwLY8m49aFRWUXKvkTjKNipQClLyjs5FIEfpMZtHFE6ITmLhgpi9yjyt1ZjrTfQ==}
+  '@maxim_mazurok/gapi.client.drive-v3@0.0.20250427':
+    resolution: {integrity: sha512-Z/Wd32C9c3DKOIWhtG4qov2ftNSEkFLqquPCWnfbJRp9CnLhKgP8SykqGIOONFGpFQqBn4xs99KZrQeUvDSCdA==}
 
   '@maxim_mazurok/gapi.client.oauth2-v2@0.0.20200213':
     resolution: {integrity: sha512-CtMeicnExqTAoAok72PqqknL1p2sLVbAqB/4rpsbi2LYPy26ln23W+mZUB9uYl6Rt7a0DCqJdohdF40Q/dZv/w==}
@@ -3332,6 +3338,9 @@ packages:
     resolution: {integrity: sha512-cnE+y8bz4NhMjISKbgeVJtqNbtf5QpjZP+Bslo+UqkIt9QPnX9q095eiRRASJG1/tz6dlNr6Z5NsBiWYokp6EQ==}
     hasBin: true
 
+  remeda@2.21.3:
+    resolution: {integrity: sha512-XXrZdLA10oEOQhLLzEJEiFFSKi21REGAkHdImIb4rt/XXy8ORGXh5HCcpUOsElfPNDb+X6TA/+wkh+p2KffYmg==}
+
   require-from-string@2.0.2:
     resolution: {integrity: sha512-Xf0nWe6RseziFMu+Ap9biiUbmplq6S9/p+7w7YXP/JBHhrUDDUhwa+vANyubuqfZWTveU//DYVGsDG7RKL/vEw==}
     engines: {node: '>=0.10.0'}
@@ -5118,7 +5127,7 @@ snapshots:
       '@types/gapi.client': 1.0.8
       '@types/gapi.client.discovery-v1': 0.0.4
 
-  '@maxim_mazurok/gapi.client.drive-v3@0.0.20250422':
+  '@maxim_mazurok/gapi.client.drive-v3@0.0.20250427':
     dependencies:
       '@types/gapi.client': 1.0.8
       '@types/gapi.client.discovery-v1': 0.0.4
@@ -5461,7 +5470,7 @@ snapshots:
 
   '@types/gapi.client.drive-v3@0.0.5':
     dependencies:
-      '@maxim_mazurok/gapi.client.drive-v3': 0.0.20250422
+      '@maxim_mazurok/gapi.client.drive-v3': 0.0.20250427
 
   '@types/gapi.client.oauth2-v2@0.0.4':
     dependencies:
@@ -7254,6 +7263,10 @@ snapshots:
   regjsparser@0.12.0:
     dependencies:
       jsesc: 3.0.2
+
+  remeda@2.21.3:
+    dependencies:
+      type-fest: 4.40.1
 
   require-from-string@2.0.2: {}
 

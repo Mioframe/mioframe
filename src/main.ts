@@ -9,7 +9,7 @@ debug('Application build date', new Date(__BUILD_DATE__).toLocaleString());
 const rootMountElement = document.getElementById('app');
 
 if (rootMountElement) {
-  const app = setupApp();
+  const app = await setupApp();
   setupRootElement(app, rootMountElement);
   app.mount(rootMountElement);
 }

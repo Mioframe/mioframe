@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import ItemTR from './ItemTR.vue';
-import { isNil, pickBy } from 'lodash-es';
 import type {
   DatabaseData,
   DatabaseItem,
@@ -16,10 +15,7 @@ const props = defineProps<{
   properties: DatabaseUnknownPropertiesMap;
 }>();
 
-const filteredData = computed(
-  (): Record<DatabaseItemId, DatabaseItem> =>
-    pickBy(props.data, (v) => !isNil(v)),
-);
+const filteredData = computed((): DatabaseData => props.data);
 
 const slots = defineSlots<{
   value(props: {

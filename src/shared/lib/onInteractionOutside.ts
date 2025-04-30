@@ -5,7 +5,7 @@ import {
   unrefElement,
   type MaybeElementRef,
 } from '@vueuse/core';
-import { throttle } from 'lodash-es';
+import { throttle } from './throttle';
 
 type EventTypes = keyof WindowEventMap;
 

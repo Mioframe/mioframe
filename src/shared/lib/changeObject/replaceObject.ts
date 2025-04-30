@@ -1,5 +1,5 @@
+import { clone } from 'remeda';
 import { isUnknownRecord } from './isUnknownRecord';
-import { cloneDeep } from 'lodash-es';
 
 /**
  * overwrites all values from source to target
@@ -22,11 +22,11 @@ export const replaceObject = <S extends object>(
         if (isUnknownRecord(targetValue) && isUnknownRecord(sourceValue)) {
           replaceObject(targetValue, sourceValue);
         } else {
-          target[sourceKey] = cloneDeep(sourceValue);
+          target[sourceKey] = clone(sourceValue);
         }
       }
     } else {
-      target[sourceKey] = cloneDeep(sourceValue);
+      target[sourceKey] = clone(sourceValue);
     }
   });
 

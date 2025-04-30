@@ -1,9 +1,9 @@
 import type { DocumentId } from '@automerge/automerge-repo';
 import { isValidDocumentId } from '@automerge/automerge-repo';
-import { isString } from 'lodash-es';
 import type { Promisable } from 'type-fest';
 import type { output } from '@zod/mini';
 import { custom, literal, string, tuple, union } from '@zod/mini';
+import { isString } from 'remeda';
 
 export const zodDocumentId = custom<DocumentId>(
   (val) => isValidDocumentId(val) || val === 'storage-adapter-id',

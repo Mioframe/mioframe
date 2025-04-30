@@ -1,13 +1,14 @@
 import { reactive } from 'vue';
 import { COLOR, type Notification } from './types';
-import { isString, uniqueId } from 'lodash-es';
+import { uniqueId } from '@shared/lib/uniqueId';
+import { isString } from 'remeda';
 
 export const defineNotifications = () => {
   const notificationMap: Map<Notification, string> = reactive(new Map());
 
   const useNotifications = () => {
     const pushNotification = (notification: Notification) => {
-      const id = uniqueId();
+      const id = uniqueId('notification');
       notificationMap.set(notification, id);
 
       if (notification.timeout !== Infinity) {

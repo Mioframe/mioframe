@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { sample } from 'lodash-es';
+import { sample } from 'remeda';
 
 const symbols = [
   '🕳️',
@@ -23,7 +23,7 @@ const symbols = [
   '(╥﹏╥)',
 ];
 
-const randomSymbol = sample(symbols);
+const [randomSymbol] = sample(symbols, 1);
 </script>
 
 <template>

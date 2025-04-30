@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { isNumber } from 'lodash-es';
+import { isNumber } from 'remeda';
 import { computed } from 'vue';
 
 const props = defineProps<{

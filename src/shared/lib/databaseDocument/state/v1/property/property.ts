@@ -1,13 +1,13 @@
 import { string } from '@zod/mini';
 import type { GeneralProperty, PropertyId } from './general';
 import { zodGeneralProperty, zodPropertyId } from './general';
-import { zodRequireRecord } from '@shared/lib/zodRequireRecord';
+import { zodOnlyRecord } from '@shared/lib/zodRecord';
 
 export const zodUnknownPropertyType = string();
 
 export const zodUnknownProperty = zodGeneralProperty(zodUnknownPropertyType);
 
-export const zodUnknownPropertiesMap = zodRequireRecord(
+export const zodUnknownPropertiesMap = zodOnlyRecord(
   zodPropertyId,
   zodUnknownProperty,
 );

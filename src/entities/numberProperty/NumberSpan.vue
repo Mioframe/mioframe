@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { MDSymbol } from '@shared/ui/Icon';
-import { isUndefined } from 'lodash-es';
+import { isNullish } from 'remeda';
 
 defineProps<{
   value: unknown;
@@ -10,7 +10,7 @@ defineProps<{
 <template>
   <span class="number">
     <MDSymbol
-      v-if="isUndefined(value)"
+      v-if="isNullish(value)"
       name="unknown_med"
       class="number__empty"
     />

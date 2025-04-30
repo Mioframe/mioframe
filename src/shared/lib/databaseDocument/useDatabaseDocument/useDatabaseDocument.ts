@@ -8,9 +8,7 @@ import {
   zodDatabaseDocumentWithContent,
   zodDatabaseTypeDocument,
 } from '../types';
-import { isNil } from 'lodash-es';
 import { computed } from 'vue';
-import { pickDictionaryBy } from '../../pickDictionaryBy';
 import type { MaybeRef } from '@vueuse/core';
 import {
   addPropertyMutation,
@@ -19,9 +17,8 @@ import {
 } from './propertyMutations';
 import type { DocHandle } from '@automerge/automerge-repo';
 import { useCFRDocument } from '../../cfrDocument/useCFRDocument';
-import type { ReadonlyMapDeep } from 'type-fest/source/readonly-deep';
 import { is } from '../../validateZodScheme';
-import { applyDatabaseDocumentMigration } from '../migrations';
+import { migrateBody, migrateDatabaseDocument } from '../migrations';
 import { putObject } from '../../changeObject';
 import { createLogger } from '../../logger';
 import {
@@ -39,12 +36,14 @@ import type {
   DatabaseUnknownProperty,
   DatabaseView,
   DatabaseViewId,
+  DatabaseViewsMap,
 } from '../state';
 import {
   addItemMutation,
   removeItemMutation,
   updateItemMutation,
 } from './itemMutations';
+import { safeParse, core } from '@zod/mini';
 
 const { debug, watchDebug } = createLogger('useDatabaseDocument');
 
@@ -67,8 +66,7 @@ export const useDatabaseDocument = (
           return;
         }
 
-        const databaseBody: DataBaseStateLatest =
-          applyDatabaseDocumentMigration(doc);
+        const databaseBody: DataBaseStateLatest = migrateDatabaseDocument(doc);
 
         const result = update(databaseBody);
 
@@ -76,11 +74,27 @@ export const useDatabaseDocument = (
       });
     });
 
-  const parseDocumentContent = computed(() =>
-    zodDatabaseDocumentWithContent.safeParse(unknownTypeContent.value),
+  const parseDocumentContent = computed(
+    (): core.util.SafeParseResult<
+      core.output<typeof zodDatabaseDocumentWithContent>
+    > => {
+      try {
+        return safeParse(
+          zodDatabaseDocumentWithContent,
+          unknownTypeContent.value,
+        );
+      } catch (error) {
+        if (error instanceof core.$ZodError) {
+          return {
+            success: false,
+            error,
+          };
+        }
+        throw error;
+      }
+    },
   );
 
-  // TODO: добавить возможность принудительного запуска миграций в случае ошибок
   const documentError = computed(() => parseDocumentContent.value.error);
 
   const content = computed(
@@ -92,21 +106,11 @@ export const useDatabaseDocument = (
 
   const properties = computed(() => body.value?.properties);
 
-  const views = computed((): ReadonlyMapDeep<DatabaseViewId, DatabaseView> => {
-    const views = body.value?.views;
-
-    const entries: [DatabaseViewId, DatabaseView][] | undefined = views
-      ? <[DatabaseViewId, DatabaseView][]>Object.entries(views)
-      : undefined;
-
-    return new Map<DatabaseViewId, DatabaseView>(entries);
+  const views = computed((): DatabaseViewsMap | undefined => {
+    return body.value?.views;
   });
 
-  const data = computed(() =>
-    body.value
-      ? pickDictionaryBy(body.value.data, (v) => !isNil(v))
-      : undefined,
-  );
+  const data = computed(() => body.value?.data);
 
   const addProperty = async (
     column: DatabaseUnknownProperty,
@@ -193,7 +197,12 @@ export const useDatabaseDocument = (
       });
     });
 
-  const databaseDocument = {
+  const forceApplyMigration = () =>
+    updateDatabaseDocument((body) => {
+      migrateBody(body, 0);
+    });
+
+  const databaseDocument: UseDatabaseDocument = {
     content,
     properties,
     views,
@@ -215,6 +224,8 @@ export const useDatabaseDocument = (
     updateView,
 
     documentError,
+
+    forceApplyMigration,
   };
 
   return databaseDocument;

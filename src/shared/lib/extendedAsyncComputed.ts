@@ -1,8 +1,8 @@
 import { tryOnScopeDispose } from '@vueuse/core';
 import { until } from '@vueuse/core';
-import { uniqueId } from 'lodash-es';
 import type { WatchHandle } from 'vue';
 import { computed, reactive, ref, watchEffect } from 'vue';
+import { uniqueId } from './uniqueId';
 
 export const lazyAsyncComputed = <T>(callback: () => T | Promise<T>) => {
   const data = ref<T>();
@@ -15,7 +15,7 @@ export const lazyAsyncComputed = <T>(callback: () => T | Promise<T>) => {
   const fetchData = async () => {
     status.value = 'loading';
     error.value = undefined;
-    fetchingId = uniqueId();
+    fetchingId = uniqueId('fetch');
     const id = fetchingId;
     try {
       const result = await callback();

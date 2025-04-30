@@ -8,7 +8,6 @@ import { zodStringProperty } from '@entity/stringProperty';
 import { zodBooleanProperty } from '@entity/booleanProperty/boolean';
 import { zodNumberProperty } from '@entity/numberProperty/number';
 import { zodDateProperty } from '@entity/dateProperty/date';
-import { isEqual } from 'lodash-es';
 import { is } from '@shared/lib/validateZodScheme';
 import {
   NumberPropertyField,
@@ -23,6 +22,7 @@ import type {
   DatabaseItem,
   DatabasePropertyId,
 } from '@shared/lib/databaseDocument/state';
+import { isDeepEqual } from 'remeda';
 
 const {
   item = {},
@@ -52,7 +52,7 @@ watchEffect(() => {
 });
 
 const tryEmitValue = () => {
-  if (!isEqual(item[propertyId], stateValue.value)) {
+  if (!isDeepEqual(item[propertyId], stateValue.value)) {
     emit('update:value', stateValue.value);
   }
 };

@@ -1,12 +1,13 @@
 import type { output } from '@zod/mini';
-import { extend, literal, optional, record } from '@zod/mini';
+import { extend, literal, optional } from '@zod/mini';
 import type { DatabaseState as DataBaseStateV1 } from '../v1';
 import { zodDatabaseState as zodDatabaseStateV1 } from '../v1';
 import { defineVersionState } from '../defineVersion';
 import { putObject } from '@shared/lib/changeObject';
 import { zodView, zodViewId } from './view';
+import { zodOnlyRecord } from '@shared/lib/zodRecord';
 
-export const zodDatabaseViewsMap = record(zodViewId, zodView);
+export const zodDatabaseViewsMap = zodOnlyRecord(zodViewId, zodView);
 
 export type DatabaseViewsMap = output<typeof zodDatabaseViewsMap>;
 
