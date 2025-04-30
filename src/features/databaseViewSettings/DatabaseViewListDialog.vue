@@ -7,7 +7,11 @@ import { MDListContainer, MDListItem } from '@shared/ui/Lists';
 import { ref, shallowRef, toRef, watchEffect } from 'vue';
 import { useSortable } from '@vueuse/integrations/useSortable';
 import { templateRef } from '@vueuse/core';
-import type { DatabaseView, DatabaseViewId } from '@shared/lib/databaseDocument/state/v2';
+import type {
+  DatabaseView,
+  DatabaseViewId,
+} from '@shared/lib/databaseDocument/state/v2';
+import { objectEntries } from '@shared/lib/objectEntries';
 
 const { docHandle } = defineProps<{
   docHandle: DocHandle<unknown>;
@@ -25,10 +29,12 @@ const { views, updateView } = useDatabaseDocument(docHandleRef);
 const stateViewList = shallowRef<[DatabaseViewId, DatabaseView][]>([]);
 
 watchEffect(() => {
-  views.value.forEach((view, viewId) => {
-    stateViewList.value.push([viewId, writableDeepClone(view)]);
-  });
-  stateViewList.value.sort(([, { order: a }], [, { order: b }]) => a - b);
+  if (views.value) {
+    objectEntries(views.value).forEach(([viewId, view]) => {
+      stateViewList.value.push([viewId, writableDeepClone(view)]);
+    });
+    stateViewList.value.sort(([, { order: a }], [, { order: b }]) => a - b);
+  }
 });
 
 const onApply = async () => {

@@ -1,5 +1,5 @@
+import { uniqueId } from '@shared/lib/uniqueId';
 import { createGlobalState, until } from '@vueuse/core';
-import { uniqueId } from 'lodash-es';
 import { nextTick, reactive } from 'vue';
 
 type AlertDescription = {
@@ -12,8 +12,9 @@ export const useAlertState = createGlobalState(() => {
   const alertSet = reactive(new Set<AlertDescription>());
 
   const alert = async (headline: string, supportingText: string) => {
+    const id = uniqueId('alert');
     const alertDescription: AlertDescription = {
-      id: uniqueId('alert'),
+      id,
       headline,
       supportingText,
     };

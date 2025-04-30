@@ -3,7 +3,7 @@ import { computed } from 'vue';
 import { MDSymbol } from '../Icon';
 import type { ButtonDescription } from './types';
 import { vPressedState } from '@shared/lib/md/stateHelper';
-import { isArray } from 'lodash-es';
+import { isArray } from 'remeda';
 
 const { elevation, enable } = defineProps<{
   buttons: Iterable<T>;

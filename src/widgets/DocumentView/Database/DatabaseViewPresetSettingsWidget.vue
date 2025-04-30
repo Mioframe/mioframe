@@ -5,7 +5,7 @@ import DatabaseViewListDialog from '@feature/databaseViewSettings/DatabaseViewLi
 import { useDatabaseDocument } from '@shared/lib/databaseDocument';
 import type { DatabaseViewId } from '@shared/lib/databaseDocument/state/v2';
 import { VIEW_LAYOUT } from '@shared/lib/databaseDocument/state/v2/view/general';
-import { useReduce } from '@shared/lib/useReduce';
+import { useReduceRecord } from '@shared/lib/useReduce';
 import { MDChip } from '@shared/ui/Chips';
 import { MDSymbol } from '@shared/ui/Icon';
 import { shallowRef, toRef } from 'vue';
@@ -27,9 +27,9 @@ const viewsRef = toRef(() => views.value);
 
 const selectedViewId = defineModel<DatabaseViewId>('selectedViewId');
 
-const viewButtons = useReduce(
+const viewButtons = useReduceRecord(
   viewsRef,
-  (acc, [viewId, { name }]) => {
+  (acc, { name }, viewId) => {
     acc.push({
       label: name,
       viewId,
@@ -51,7 +51,7 @@ const onClickSettingUpViews = () => {
 };
 
 const onAddView = async ({ name }: { name: string }) => {
-  const order = views.value.size;
+  const order = views.value ? Object.keys(views.value).length : 0;
   await addView({
     name,
     layout: VIEW_LAYOUT.TABLE,

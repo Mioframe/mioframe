@@ -2,12 +2,12 @@ import { from } from 'ix/Ix.asynciterable';
 import type { DirectoryFSEntry } from './DirectoryFSEntry';
 import type { FileFSEntry } from './FileFSEntry';
 import { createLogger } from '../logger';
-import { isEqual, slice } from 'lodash-es';
+import { isDeepEqual } from 'remeda';
 
 const isNestedPath = (dest: string[], target: string[]) => {
   return (
     dest.length >= target.length &&
-    isEqual(slice(dest, 0, target.length), target)
+    isDeepEqual(dest.slice(0, target.length), target)
   );
 };
 

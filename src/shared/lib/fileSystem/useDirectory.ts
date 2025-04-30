@@ -11,7 +11,7 @@ import type { DirectoryFSEntry } from './DirectoryFSEntry';
 import type { FileFSEntry } from './FileFSEntry';
 import { tryOnScopeDispose } from '@vueuse/core';
 import { createLogger } from '../logger';
-import { uniqueId } from 'lodash-es';
+import { uniqueId } from '../uniqueId';
 
 const { debug } = createLogger('useDirectory');
 

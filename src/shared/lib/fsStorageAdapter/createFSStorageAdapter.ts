@@ -14,8 +14,8 @@ import { createLogger } from '../logger';
 import { checkSchema } from '../validateZodScheme';
 import { find, from, toArray } from 'ix/Ix.asynciterable';
 import { filter, map } from 'ix/Ix.asynciterable.operators';
-import { isNil, isString } from 'lodash-es';
 import { useNotifications } from '@shared/ui/Notifications';
+import { isNullish, isString } from 'remeda';
 
 export const partialKeyToFileName = (
   key: PartialStorageKey,
@@ -129,7 +129,7 @@ export const createStorageAdapter = (
               };
             }
           }),
-          filter((v) => !isNil(v)),
+          filter((v) => !isNullish(v)),
         ),
       );
 

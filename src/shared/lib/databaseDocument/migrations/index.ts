@@ -2,17 +2,17 @@ import { defineMigrations } from '../../defineMigrations';
 import { checkSchema } from '../../validateZodScheme';
 import type { DatabaseTypeDocument } from '../types';
 import { zodDatabaseType } from '../types';
-import { isNumber, isObject } from 'lodash-es';
 import type { DatabaseState as DatabaseStateV1 } from '../state/v1';
 import { databaseState as databaseStateV1 } from '../state/v1';
 import { databaseState as databaseStateV2 } from '../state/v2';
+import { isNumber, isObjectType } from 'remeda';
 
 const readDatabaseVersion = (doc: unknown) => {
   const dbDocument = checkSchema(doc, zodDatabaseType);
 
   const currentVersion: number =
     dbDocument && 'body' in dbDocument
-      ? isObject(dbDocument.body)
+      ? isObjectType(dbDocument.body)
         ? 'version' in dbDocument.body
           ? isNumber(dbDocument.body.version)
             ? dbDocument.body.version
@@ -24,15 +24,7 @@ const readDatabaseVersion = (doc: unknown) => {
   return currentVersion;
 };
 
-export const applyDatabaseDocumentMigration = (data: DatabaseTypeDocument) => {
-  const currentDatabaseVersion = readDatabaseVersion(data);
-
-  if (!isObject(data.body)) {
-    data.body = {};
-  }
-
-  const bodyV0 = data.body as object;
-
+export const migrateBody = (bodyV0: object, currentDatabaseVersion: number) => {
   const latestBody = defineMigrations(
     (bodyV0: object) => {
       return databaseStateV1.migration(bodyV0);
@@ -44,4 +36,16 @@ export const applyDatabaseDocumentMigration = (data: DatabaseTypeDocument) => {
   )(bodyV0, currentDatabaseVersion);
 
   return latestBody;
+};
+
+export const migrateDatabaseDocument = (data: DatabaseTypeDocument) => {
+  const currentDatabaseVersion = readDatabaseVersion(data);
+
+  if (!isObjectType(data.body)) {
+    data.body = {};
+  }
+
+  const bodyV0 = data.body as object;
+
+  return migrateBody(bodyV0, currentDatabaseVersion);
 };

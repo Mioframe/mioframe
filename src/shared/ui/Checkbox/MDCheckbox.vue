@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { MDSymbol } from '../Icon';
-import { isUndefined } from 'lodash-es';
 import { vPressedState } from '@shared/lib/md/stateHelper';
+import { isNullish } from 'remeda';
 
 const {
   error,
@@ -60,7 +60,7 @@ const onClickContainer = () => {
     class="md-checkbox md-state"
     :class="{
       'md-checkbox_selected': stateValue === true,
-      'md-checkbox_indeterminate': isUndefined(stateValue),
+      'md-checkbox_indeterminate': isNullish(stateValue),
       'md-checkbox_error': error,
       'md-checkbox_disabled': disabled,
     }"
