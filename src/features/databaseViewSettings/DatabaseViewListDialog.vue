@@ -33,7 +33,9 @@ watchEffect(() => {
     objectEntries(views.value).forEach(([viewId, view]) => {
       stateViewList.value.push([viewId, writableDeepClone(view)]);
     });
-    stateViewList.value.sort(([, { order: a }], [, { order: b }]) => a - b);
+    stateViewList.value.sort(
+      ([, { order: a = 0 }], [, { order: b = 0 }]) => a - b,
+    );
   }
 });
 

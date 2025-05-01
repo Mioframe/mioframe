@@ -4,10 +4,10 @@ import type { DatabaseState as DataBaseStateV1 } from '../v1';
 import { zodDatabaseState as zodDatabaseStateV1 } from '../v1';
 import { defineVersionState } from '../defineVersion';
 import { putObject } from '@shared/lib/changeObject';
-import { zodView, zodViewId } from './view';
+import { zodDatabaseView, zodDatabaseViewId } from './view';
 import { zodOnlyRecord } from '@shared/lib/zodRecord';
 
-export const zodDatabaseViewsMap = zodOnlyRecord(zodViewId, zodView);
+export const zodDatabaseViewsMap = zodOnlyRecord(zodDatabaseViewId, zodDatabaseView);
 
 export type DatabaseViewsMap = output<typeof zodDatabaseViewsMap>;
 
