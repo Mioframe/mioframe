@@ -14,6 +14,7 @@ import type { ContextButtonDescription } from './types';
 
 const {} = defineProps<{
   btns: Iterable<[K, T]>;
+  disabledTeleport?: boolean;
 }>();
 
 const showMenu = ref(false);
@@ -40,6 +41,11 @@ const emit = defineEmits<{
 }>();
 
 const root = useRootElement();
+
+const onClick = (key: K) => {
+  emit('click', key);
+  showMenu.value = false;
+};
 </script>
 
 <template>
@@ -49,16 +55,13 @@ const root = useRootElement();
     </template>
   </MDIconButton>
 
-  <Teleport v-if="showMenu" defer :to="root">
+  <Teleport v-if="showMenu" defer :to="root" :disabled="disabledTeleport">
     <MDMenus ref="menuEl" :target-ref="targetBtn">
       <MDMenusListItem
         v-for="[key, { symbolName, text }] in btns"
         :key
         :text
-        @click="
-          $emit('click', key);
-          showMenu = false;
-        "
+        @click="onClick(key)"
       >
         <template #leadingIcon>
           <MDSymbol :name="symbolName" />
