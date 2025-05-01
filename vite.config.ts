@@ -51,6 +51,14 @@ export default defineConfig(({ mode, isPreview }) => {
     },
     build: {
       minify: mode === 'production' || isPreview ? 'terser' : false,
+      terserOptions: {
+        compress: {
+          booleans_as_integers: true,
+          ecma: 2020,
+          module: true,
+          passes: 2,
+        },
+      },
       rollupOptions: {
         output: {
           manualChunks(id) {
@@ -59,7 +67,6 @@ export default defineConfig(({ mode, isPreview }) => {
               ...dependencies,
               ...devDependencies,
             })) {
-              // console.log(id, name);
               if (id.includes(`/${name}`)) {
                 return `vendor/${name}`;
               }

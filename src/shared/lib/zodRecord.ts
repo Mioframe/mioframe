@@ -1,6 +1,6 @@
-import type { output } from '@zod/mini';
-import { type core, safeParse, transform } from '@zod/mini';
-import { forEachObj, isObjectType, set } from 'remeda';
+import type { output, core } from '@zod/mini';
+import { safeParse, transform } from '@zod/mini';
+import { forEachObj, isObjectType } from 'remeda';
 
 export const zodOnlyRecord = <
   K extends core.$ZodType<PropertyKey, PropertyKey>,
@@ -9,7 +9,7 @@ export const zodOnlyRecord = <
   keyType: K,
   valueType: V,
 ) =>
-  transform((data): Record<output<K>, output<V>> => {
+  transform((data, ctx) => {
     const newObj = <Record<output<K>, output<V>>>{};
 
     if (isObjectType(data)) {
@@ -24,11 +24,17 @@ export const zodOnlyRecord = <
             value,
           );
           if (successValue) {
-            set(newObj, parsedKey, parsedValue);
+            newObj[parsedKey] = parsedValue;
           }
         }
       });
+      return newObj;
     }
+    ctx.issues.push({
+      code: 'custom',
+      message: 'Not a object',
+      input: data,
+    });
 
     return newObj;
   });

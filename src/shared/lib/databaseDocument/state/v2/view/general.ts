@@ -20,7 +20,7 @@ export enum VIEW_LAYOUT {
 const zodGeneralView = object({
   name: string(),
   layout: unknown(),
-  order: int(),
+  order: optional(int()),
 });
 
 export const zodTableView = extend(zodGeneralView, {
