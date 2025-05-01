@@ -33,6 +33,10 @@ const postcssPlugins = [
   nested(),
   presetEnv(),
   customCssUnits({
+    baseUnit: '--one-p',
+    customUnit: 'step',
+  }),
+  customCssUnits({
     baseUnit: '--one-pt',
     customUnit: 'pt',
   }),

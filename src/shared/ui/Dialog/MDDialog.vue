@@ -22,7 +22,7 @@ const {
   cancelLabel?: string;
   applyLabel: string;
   hasCancelAction?: boolean;
-  loading?: boolean;
+  loading?: boolean | number;
 }>();
 
 const slots = defineSlots<{
