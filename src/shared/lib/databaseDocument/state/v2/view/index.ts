@@ -1,9 +1,9 @@
-export { type View, zodView, VIEW_LAYOUT, zodTableView } from './general';
-export { type ViewId, generateViewId, zodViewId } from './viewId';
+export { type View as DatabaseView, zodView as zodDatabaseView, VIEW_LAYOUT as DB_VIEW_LAYOUT, zodTableView as zodDatabaseTableView } from './general';
+export { type ViewId as DatabaseViewId, generateViewId, zodViewId as zodDatabaseViewId } from './viewId';
 export {
   type SortDescription,
   type SortDirection,
   SORT_DIRECTION,
-  zodSortDescription,
-  zodSortDirection,
+  zodSortDescription as zodDatabaseSortDescription,
+  zodSortDirection as zodDatabaseSortDirection,
 } from './sorting';
