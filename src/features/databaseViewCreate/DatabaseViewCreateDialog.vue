@@ -1,17 +1,17 @@
 <script setup lang="ts">
+import type { DatabaseView } from '@shared/lib/databaseDocument/state';
 import { DB_VIEW_LAYOUT } from '@shared/lib/databaseDocument/state';
 import { MDDialog } from '@shared/ui/Dialog';
 import { MDTextField } from '@shared/ui/TextField';
 import type { ValueOf } from 'type-fest';
 import { reactive } from 'vue';
 
+const {} = defineProps<{
+  loading?: boolean | number;
+}>();
+
 const emit = defineEmits<{
-  submit: [
-    {
-      name: string;
-      layout: string;
-    },
-  ];
+  submit: [DatabaseView];
   cancel: [];
 }>();
 
@@ -39,6 +39,7 @@ const onCancel = () => {
 
 <template>
   <MDDialog
+    :loading
     headline="Add view"
     supporting-text="Enter the name of the new data view."
     apply-label="Create"

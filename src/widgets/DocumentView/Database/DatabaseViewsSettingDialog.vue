@@ -2,7 +2,7 @@
 import type { DocHandle } from '@automerge/automerge-repo';
 import { useDatabaseDocument } from '@shared/lib/databaseDocument';
 import { MDDialog } from '@shared/ui/Dialog';
-import { ref, toRef, watch } from 'vue';
+import { ref, toRef, watchEffect } from 'vue';
 import { MDButton } from '@shared/ui/Button';
 import { MDSymbol } from '@shared/ui/Icon';
 import { DatabaseViewSortingList } from '@feature/databaseViewSorting';
@@ -11,6 +11,7 @@ import type {
   DatabaseViewId,
 } from '@shared/lib/databaseDocument/state';
 import { writableDeepClone } from '@shared/lib/writableDeepClone';
+import { DatabaseViewCreateDialog } from '@feature/databaseViewCreate';
 
 const { docHandle } = defineProps<{
   docHandle: DocHandle<unknown>;
@@ -23,23 +24,23 @@ const emit = defineEmits<{
 
 const docHandleRef = toRef(() => docHandle);
 
-const { updateView, viewsList } = useDatabaseDocument(docHandleRef);
+const { updateView, viewsList, addView } = useDatabaseDocument(docHandleRef);
 
 const stateViewList = ref<[DatabaseViewId, DatabaseView][]>([]);
 
-watch(
-  viewsList,
-  (viewsList) => {
-    stateViewList.value = viewsList ? writableDeepClone(viewsList) : [];
-  },
-  { immediate: true },
-);
+// watch(
+//   viewsList,
+//   (viewsList) => {
+//     stateViewList.value = viewsList ? writableDeepClone(viewsList) : [];
+//   },
+//   { immediate: true },
+// );
 
-// watchEffect(() => {
-//   stateViewList.value = viewsList.value
-//     ? writableDeepClone(viewsList.value)
-//     : [];
-// });
+watchEffect(() => {
+  stateViewList.value = viewsList.value
+    ? writableDeepClone(viewsList.value)
+    : [];
+});
 
 const onApply = async () => {
   loading.value += 1;
@@ -62,6 +63,20 @@ const onCancel = () => {
 };
 
 const loading = ref(0);
+
+const isShowCreateDialog = ref(false);
+
+const loadingCreateView = ref(0);
+
+const onSubmitViewCreate = async (view: DatabaseView) => {
+  loadingCreateView.value += 1;
+  try {
+    await addView(view);
+    isShowCreateDialog.value = false;
+  } finally {
+    loadingCreateView.value -= 1;
+  }
+};
 </script>
 
 <template>
@@ -80,12 +95,19 @@ const loading = ref(0);
     />
 
     <section>
-      <MDButton label="Add new view">
+      <MDButton label="Add new view" @click="isShowCreateDialog = true">
         <template #icon>
           <MDSymbol name="add" />
         </template>
       </MDButton>
     </section>
+
+    <DatabaseViewCreateDialog
+      v-if="isShowCreateDialog"
+      :loading="loadingCreateView"
+      @cancel="isShowCreateDialog = false"
+      @submit="onSubmitViewCreate"
+    />
   </MDDialog>
 </template>
 
