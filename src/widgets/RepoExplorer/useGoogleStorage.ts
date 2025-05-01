@@ -8,7 +8,7 @@ import {
   GDriveSpace,
 } from '@shared/lib/googleDrive';
 import { createLogger } from '@shared/lib/logger';
-import { useAlert } from '@shared/ui/Dialog';
+import { useDialog } from '@shared/ui/Dialog';
 import { createGlobalState } from '@vueuse/core';
 import { computed } from 'vue';
 
@@ -40,7 +40,7 @@ export const useGoogleStorage = createGlobalState(() => {
     return entry;
   };
 
-  const { alert } = useAlert();
+  const { alert } = useDialog();
 
   const getAndRequest = async (email: string, space: GDriveSpace) => {
     const currentEmail = userInfo.value?.email;

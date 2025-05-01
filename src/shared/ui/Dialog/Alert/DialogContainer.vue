@@ -1,31 +1,38 @@
 <script setup lang="ts">
 import { useRootElement } from '@shared/lib/useRootElement';
 import MDDialog from '../MDDialog.vue';
-import { useAlertState } from './useAlert';
+import { useDialogState } from './useDialog';
+import { MDSymbol } from '@shared/ui/Icon';
 
 const rootElement = useRootElement();
 
-const { onApply, alertSet } = useAlertState();
+const { alertSet } = useDialogState();
 </script>
 
 <template>
   <Teleport :to="rootElement">
-    <div class="alert-container">
+    <div class="dialog-container">
       <MDDialog
         v-for="item in alertSet"
         :key="item.id"
         :headline="item.headline"
         :supporting-text="item.supportingText"
-        apply-label="OK"
+        :apply-label="item.confirmLabel ?? 'Ok'"
+        :has-cancel-action="item.type === 'confirm'"
         class="alert-container__dialog"
-        @apply="onApply(item)"
-      />
+        @apply="item.callback(true)"
+        @cancel="item.callback(false)"
+      >
+        <template v-if="item.symbolName" #icon>
+          <MDSymbol :name="item.symbolName" />
+        </template>
+      </MDDialog>
     </div>
   </Teleport>
 </template>
 
 <style lang="css" scoped>
-.alert-container {
+.dialog-container {
   position: fixed;
   top: 0;
   left: 0;

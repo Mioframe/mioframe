@@ -1,3 +1,4 @@
+import { useVibrate } from '@vueuse/core';
 import './container-with-states.css';
 import type { Directive } from 'vue';
 
@@ -33,10 +34,14 @@ const startAnimationUnpressed = (el: HTMLElement) => {
   el.classList.add(STATE.unPressed);
 };
 
+const { vibrate } = useVibrate();
+
 const onPress = (e: MouseEvent | UIEvent) => {
   e.stopPropagation();
 
   const currentTarget = e.currentTarget;
+
+  vibrate([5]);
 
   if (currentTarget instanceof HTMLElement) {
     const rect = currentTarget.getBoundingClientRect();

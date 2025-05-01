@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { DocHandle } from '@automerge/automerge-repo';
 import { useDatabaseDocument } from '@shared/lib/databaseDocument';
-import { MDDialog } from '@shared/ui/Dialog';
+import { MDDialog, useDialog as useDialog } from '@shared/ui/Dialog';
 import { ref, toRef, watchEffect } from 'vue';
 import { MDButton } from '@shared/ui/Button';
 import { MDSymbol } from '@shared/ui/Icon';
@@ -12,6 +12,7 @@ import type {
 } from '@shared/lib/databaseDocument/state';
 import { writableDeepClone } from '@shared/lib/writableDeepClone';
 import { DatabaseViewCreateDialog } from '@feature/databaseViewCreate';
+import { defineContextButtonList, MDContextMenuBtn } from '@shared/ui/Menu';
 
 const { docHandle } = defineProps<{
   docHandle: DocHandle<unknown>;
@@ -24,7 +25,8 @@ const emit = defineEmits<{
 
 const docHandleRef = toRef(() => docHandle);
 
-const { updateView, viewsList, addView } = useDatabaseDocument(docHandleRef);
+const { updateView, viewsList, addView, removeView } =
+  useDatabaseDocument(docHandleRef);
 
 const stateViewList = ref<[DatabaseViewId, DatabaseView][]>([]);
 
@@ -77,6 +79,41 @@ const onSubmitViewCreate = async (view: DatabaseView) => {
     loadingCreateView.value -= 1;
   }
 };
+
+enum CONTEXT_ACTION {
+  remove,
+  rename,
+}
+
+const contextMenu = defineContextButtonList([
+  [
+    CONTEXT_ACTION.remove,
+    {
+      symbolName: 'delete',
+      text: 'remove',
+    },
+  ],
+]);
+
+const { confirm } = useDialog();
+
+const onClickContextMenu = async (
+  viewId: DatabaseViewId,
+  action: CONTEXT_ACTION,
+) => {
+  if (action === CONTEXT_ACTION.remove) {
+    if (
+      await confirm(
+        'Remove view?',
+        'Are you sure you want to delete View presets?',
+        'Remove',
+        'delete',
+      )
+    ) {
+      await removeView(viewId);
+    }
+  }
+};
 </script>
 
 <template>
@@ -92,7 +129,15 @@ const onSubmitViewCreate = async (view: DatabaseView) => {
     <DatabaseViewSortingList
       v-if="stateViewList"
       v-model:views-list="stateViewList"
-    />
+    >
+      <template #trailingIcon="{ viewId }">
+        <MDContextMenuBtn
+          :btns="contextMenu"
+          disabled-teleport
+          @click="onClickContextMenu(viewId, $event)"
+        />
+      </template>
+    </DatabaseViewSortingList>
 
     <section>
       <MDButton label="Add new view" @click="isShowCreateDialog = true">
@@ -113,15 +158,5 @@ const onSubmitViewCreate = async (view: DatabaseView) => {
 
 <style lang="css" scoped>
 .database-view-list-dialog {
-  &__list {
-    overflow-y: auto;
-    flex-shrink: 1;
-    --md-list-container-border-radius: 16px;
-    gap: 4px;
-  }
-
-  &__item {
-    --md-list-item-border-radius: 8px;
-  }
 }
 </style>
