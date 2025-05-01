@@ -147,6 +147,8 @@ onBeforeUnmount(() => {
     border-radius: 28px;
     height: fit-content;
     max-height: 100%;
+    display: flex;
+    flex-direction: column;
     overflow-y: auto;
     min-width: 280px;
     max-width: min(560px, 100dvw);
@@ -201,6 +203,7 @@ onBeforeUnmount(() => {
     gap: 16px;
     display: flex;
     flex-direction: column;
+    overflow-y: auto;
   }
 
   &__actions {
