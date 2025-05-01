@@ -1,6 +1,6 @@
 import type { DirectoryLocalEntry } from '@shared/lib/localFileSystem';
 import { createLocalDirectory } from '@shared/lib/localFileSystem';
-import { useAlert } from '@shared/ui/Dialog';
+import { useDialog } from '@shared/ui/Dialog';
 import { createGlobalState } from '@vueuse/core';
 import { OPFS } from '@widget/RepoExplorer/repoExplorerState';
 import { computed, shallowReactive } from 'vue';
@@ -28,7 +28,7 @@ export const useBrowserStorage = createGlobalState(() => {
     return entry;
   };
 
-  const { alert } = useAlert();
+  const { alert } = useDialog();
 
   const requestMountDirectory = async (
     name: string,

@@ -199,7 +199,8 @@ onBeforeUnmount(() => {
   }
 
   &__body {
-    margin-top: 24px;
+    margin-top: 12px;
+    padding-top: 12px;
     gap: 16px;
     display: flex;
     flex-direction: column;

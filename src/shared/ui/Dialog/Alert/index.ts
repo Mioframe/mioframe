@@ -1,2 +1,2 @@
-export { useAlert } from './useAlert';
-export { default as AlertContainer } from './AlertContainer.vue';
+export { useDialog } from './useDialog';
+export { default as DialogContainer } from './DialogContainer.vue';
