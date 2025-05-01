@@ -1,4 +1,4 @@
-import type { PartialDeep } from 'type-fest';
+import type { Entries, PartialDeep } from 'type-fest';
 import {
   extend,
   literal,
@@ -92,6 +92,7 @@ export type UseDatabaseDocument = {
    * Перечень представлений
    */
   views: ComputedRef<ReadonlyDeep<DatabaseViewsMap> | undefined>;
+  viewsList: ComputedRef<ReadonlyDeep<Entries<DatabaseViewsMap> | undefined>>;
   addView: (view: DatabaseView) => Promise<DatabaseViewId>;
   removeView: (viewId: DatabaseViewId) => Promise<void>;
   renameView: (viewId: DatabaseViewId, newName: string) => Promise<void>;

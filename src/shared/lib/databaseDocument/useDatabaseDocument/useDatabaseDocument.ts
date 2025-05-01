@@ -44,6 +44,7 @@ import {
   updateItemMutation,
 } from './itemMutations';
 import { safeParse, core } from '@zod/mini';
+import { entries, pipe, sort } from 'remeda';
 
 const { debug, watchDebug } = createLogger('useDatabaseDocument');
 
@@ -190,22 +191,39 @@ export const useDatabaseDocument = (
   const updateView = async (
     viewId: DatabaseViewId,
     view: PartialDeep<DatabaseView>,
-  ) =>
-    updateDatabaseDocument((body) => {
-      putObject(body, {
+  ) => {
+    await updateDatabaseDocument((body) => {
+      if (!body.views) {
+        body.views = {};
+      }
+
+      const views = body.views;
+
+      putObject(views, {
         [viewId]: view,
       });
     });
+  };
 
   const forceApplyMigration = () =>
     updateDatabaseDocument((body) => {
       migrateBody(body, 0);
     });
 
+  const viewsList = computed(() => {
+    if (views.value) {
+      return pipe(
+        entries(views.value),
+        sort(([, { order: a = 0 }], [, { order: b = 0 }]) => a - b),
+      );
+    }
+
+    return undefined;
+  });
+
   const databaseDocument: UseDatabaseDocument = {
     content,
     properties,
-    views,
     data,
 
     addProperty,
@@ -216,6 +234,8 @@ export const useDatabaseDocument = (
     updateItem,
     removeItem,
 
+    views,
+    viewsList,
     addView,
     removeView,
     renameView,
