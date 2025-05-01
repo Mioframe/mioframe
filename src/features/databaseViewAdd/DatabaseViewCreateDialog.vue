@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { DB_VIEW_LAYOUT } from '@shared/lib/databaseDocument/state';
 import { MDDialog } from '@shared/ui/Dialog';
-import MDTextField from '@shared/ui/TextField/MDTextField.vue';
+import { MDTextField } from '@shared/ui/TextField';
 import type { ValueOf } from 'type-fest';
 import { reactive } from 'vue';
 
@@ -31,6 +31,7 @@ const onSubmit = () => {
     });
   }
 };
+
 const onCancel = () => {
   emit('cancel');
 };

@@ -1,14 +1,14 @@
 <script setup lang="ts">
 import type { DocHandle } from '@automerge/automerge-repo';
 import { DatabaseViewCreateDialog } from '@feature/databaseViewAdd';
-import DatabaseViewListDialog from '@feature/databaseViewSettings/DatabaseViewListDialog.vue';
 import { useDatabaseDocument } from '@shared/lib/databaseDocument';
 import type { DatabaseViewId } from '@shared/lib/databaseDocument/state/v2';
 import { VIEW_LAYOUT } from '@shared/lib/databaseDocument/state/v2/view/general';
-import { useReduceRecord } from '@shared/lib/useReduce';
+import { useReduceIterable } from '@shared/lib/useReduce';
 import { MDChip } from '@shared/ui/Chips';
 import { MDSymbol } from '@shared/ui/Icon';
 import { shallowRef, toRef } from 'vue';
+import DatabaseViewSettingDialog from './DatabaseViewSettingDialog.vue';
 
 /**
  * Виджет настроек отображения данных.
@@ -21,15 +21,13 @@ const { docHandle } = defineProps<{
 
 const docHandleRef = toRef(() => docHandle);
 
-const { views, addView } = useDatabaseDocument(docHandleRef);
-
-const viewsRef = toRef(() => views.value);
+const { views, addView, viewsList } = useDatabaseDocument(docHandleRef);
 
 const selectedViewId = defineModel<DatabaseViewId>('selectedViewId');
 
-const viewButtons = useReduceRecord(
-  viewsRef,
-  (acc, { name }, viewId) => {
+const viewButtons = useReduceIterable(
+  viewsList,
+  (acc, [viewId, { name }]) => {
     acc.push({
       label: name,
       viewId,
@@ -99,7 +97,7 @@ const onCancelAddView = () => {
       @cancel="onCancelAddView"
     />
 
-    <DatabaseViewListDialog
+    <DatabaseViewSettingDialog
       v-if="isShowSettingUpViews"
       :doc-handle="docHandle"
       @cancel="isShowSettingUpViews = false"
