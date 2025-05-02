@@ -53,7 +53,7 @@ export default defineConfig(({ mode, isPreview }) => {
       minify: mode === 'production' || isPreview ? 'terser' : false,
       terserOptions: {
         compress: {
-          booleans_as_integers: true,
+          booleans_as_integers: false,
           ecma: 2020,
           module: true,
           passes: 2,
