@@ -25,6 +25,7 @@ import type { DocumentContent } from '../cfrDocument';
 import { zodDocumentContent } from '../cfrDocument';
 import type { ComputedRef } from 'vue';
 import type { ReadonlyDeep } from 'type-fest';
+import type { ViewId } from './state/v2/view/viewId';
 
 export type DataBaseStateLatest = DatabaseState;
 
@@ -91,15 +92,18 @@ export type UseDatabaseDocument = {
   /**
    * Перечень представлений
    */
-  views: ComputedRef<ReadonlyDeep<DatabaseViewsMap> | undefined>;
-  viewsList: ComputedRef<ReadonlyDeep<Entries<DatabaseViewsMap> | undefined>>;
-  addView: (view: DatabaseView) => Promise<DatabaseViewId>;
-  removeView: (viewId: DatabaseViewId) => Promise<void>;
-  renameView: (viewId: DatabaseViewId, newName: string) => Promise<void>;
-  updateView: (
-    viewId: DatabaseViewId,
-    view: PartialDeep<DatabaseView>,
-  ) => Promise<void>;
+  view: {
+    state: ComputedRef<ReadonlyDeep<DatabaseViewsMap> | undefined>;
+    list: ComputedRef<ReadonlyDeep<Entries<DatabaseViewsMap> | undefined>>;
+    get: (id: ViewId) => DatabaseView | undefined;
+    add: (view: DatabaseView) => Promise<DatabaseViewId>;
+    remove: (viewId: DatabaseViewId) => Promise<void>;
+    rename: (viewId: DatabaseViewId, newName: string) => Promise<void>;
+    update: (
+      viewId: DatabaseViewId,
+      view: PartialDeep<DatabaseView>,
+    ) => Promise<void>;
+  };
 
   addSortDescription: (
     viewId: DatabaseViewId,
