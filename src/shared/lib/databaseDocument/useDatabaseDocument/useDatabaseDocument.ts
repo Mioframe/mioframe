@@ -45,6 +45,7 @@ import {
 } from './itemMutations';
 import { safeParse, core } from '@zod/mini';
 import { entries, pipe, sort } from 'remeda';
+import type { ViewId } from '../state/v2/view/viewId';
 
 const { debug, watchDebug } = createLogger('useDatabaseDocument');
 
@@ -107,7 +108,7 @@ export const useDatabaseDocument = (
 
   const properties = computed(() => body.value?.properties);
 
-  const views = computed((): DatabaseViewsMap | undefined => {
+  const viewsState = computed((): DatabaseViewsMap | undefined => {
     return body.value?.views;
   });
 
@@ -211,15 +212,19 @@ export const useDatabaseDocument = (
     });
 
   const viewsList = computed(() => {
-    if (views.value) {
+    if (viewsState.value) {
       return pipe(
-        entries(views.value),
+        entries(viewsState.value),
         sort(([, { order: a = 0 }], [, { order: b = 0 }]) => a - b),
       );
     }
 
     return undefined;
   });
+
+  const getView = (id: ViewId) => {
+    return viewsState.value?.[id];
+  };
 
   const databaseDocument: UseDatabaseDocument = {
     content,
@@ -234,14 +239,17 @@ export const useDatabaseDocument = (
     updateItem,
     removeItem,
 
-    views,
-    viewsList,
-    addView,
-    removeView,
-    renameView,
+    view: {
+      state: viewsState,
+      list: viewsList,
+      get: getView,
+      add: addView,
+      remove: removeView,
+      rename: renameView,
+      update: updateView,
+    },
     addSortDescription,
     toggleSortDirection,
-    updateView,
 
     documentError,
 

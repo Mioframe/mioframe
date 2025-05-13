@@ -2,7 +2,7 @@
 import type { DocHandle } from '@automerge/automerge-repo';
 import { useDatabaseDocument } from '@shared/lib/databaseDocument';
 import { MDDialog, useDialog as useDialog } from '@shared/ui/Dialog';
-import { ref, toRef, watchEffect } from 'vue';
+import { computed, ref, toRef, watchEffect } from 'vue';
 import { MDButton } from '@shared/ui/Button';
 import { MDSymbol } from '@shared/ui/Icon';
 import { DatabaseViewSortingList } from '@feature/databaseViewSorting';
@@ -13,6 +13,7 @@ import type {
 import { writableDeepClone } from '@shared/lib/writableDeepClone';
 import { DatabaseViewCreateDialog } from '@feature/databaseViewCreate';
 import { defineContextButtonList, MDContextMenuBtn } from '@shared/ui/Menu';
+import { DatabaseViewRenameDialog } from '@feature/databaseViewRename';
 
 const { docHandle } = defineProps<{
   docHandle: DocHandle<unknown>;
@@ -25,8 +26,15 @@ const emit = defineEmits<{
 
 const docHandleRef = toRef(() => docHandle);
 
-const { updateView, viewsList, addView, removeView } =
-  useDatabaseDocument(docHandleRef);
+const {
+  view: {
+    update: updateView,
+    list: viewsList,
+    add: addView,
+    remove: removeView,
+    get: getView,
+  },
+} = useDatabaseDocument(docHandleRef);
 
 const stateViewList = ref<[DatabaseViewId, DatabaseView][]>([]);
 
@@ -87,6 +95,13 @@ enum CONTEXT_ACTION {
 
 const contextMenu = defineContextButtonList([
   [
+    CONTEXT_ACTION.rename,
+    {
+      symbolName: 'edit',
+      text: 'rename',
+    },
+  ],
+  [
     CONTEXT_ACTION.remove,
     {
       symbolName: 'delete',
@@ -101,17 +116,49 @@ const onClickContextMenu = async (
   viewId: DatabaseViewId,
   action: CONTEXT_ACTION,
 ) => {
-  if (action === CONTEXT_ACTION.remove) {
-    if (
-      await confirm(
-        'Remove view?',
-        'Are you sure you want to delete View presets?',
-        'Remove',
-        'delete',
-      )
-    ) {
-      await removeView(viewId);
+  switch (action) {
+    case CONTEXT_ACTION.remove: {
+      if (
+        await confirm(
+          'Remove view?',
+          'Are you sure you want to delete View presets?',
+          'Remove',
+          'delete',
+        )
+      ) {
+        await removeView(viewId);
+      }
+
+      break;
     }
+
+    case CONTEXT_ACTION.rename: {
+      renameViewId.value = viewId;
+      break;
+    }
+
+    default:
+      break;
+  }
+};
+
+const loadingRenameView = ref(0);
+
+const renameViewId = ref<DatabaseViewId>();
+
+const oldNameOnRenameView = computed(
+  () => (renameViewId.value && getView(renameViewId.value)?.name) || 'unknown',
+);
+
+const onSubmitViewRename = async (viewId: DatabaseViewId, newName: string) => {
+  loadingRenameView.value += 1;
+  try {
+    await updateView(viewId, {
+      name: newName,
+    });
+    renameViewId.value = undefined;
+  } finally {
+    loadingRenameView.value -= 1;
   }
 };
 </script>
@@ -152,6 +199,14 @@ const onClickContextMenu = async (
       :loading="loadingCreateView"
       @cancel="isShowCreateDialog = false"
       @submit="onSubmitViewCreate"
+    />
+
+    <DatabaseViewRenameDialog
+      v-if="renameViewId"
+      :name="oldNameOnRenameView"
+      :loading="loadingRenameView"
+      @cancel="renameViewId = undefined"
+      @apply="onSubmitViewRename(renameViewId, $event)"
     />
   </MDDialog>
 </template>
