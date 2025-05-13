@@ -21,7 +21,9 @@ const { docHandle } = defineProps<{
 
 const docHandleRef = toRef(() => docHandle);
 
-const { views, addView, viewsList } = useDatabaseDocument(docHandleRef);
+const {
+  view: { state: views, add: addView, list: viewsList },
+} = useDatabaseDocument(docHandleRef);
 
 const selectedViewId = defineModel<DatabaseViewId>('selectedViewId');
 

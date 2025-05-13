@@ -34,5 +34,10 @@ defineSlots<{
   --md-container-color: inherit;
   --md-list-item-horizontal-gap: 12px;
   --md-list-item-min-height: 48px;
+  :deep {
+    .md-list-item__headline::first-letter {
+      text-transform: uppercase;
+    }
+  }
 }
 </style>
