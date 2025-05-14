@@ -22,7 +22,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        node-version: [lts]
+        node-version: [lts/*]
     steps:
       - uses: actions/checkout@v4
       - name: Install pnpm
