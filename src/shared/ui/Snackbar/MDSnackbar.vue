@@ -29,7 +29,7 @@ const onClickClose = () => {
 
     <MDButton
       v-if="actionLabel"
-      type="text"
+      color="text"
       class="md-snackbar__action"
       :label="actionLabel"
       @click="onClickAction"

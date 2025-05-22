@@ -68,6 +68,7 @@ watchEffect(() => {
   height: 100%;
   background: transparent;
   overflow: hidden;
+  border-radius: inherit;
 
   &::before {
     content: '';

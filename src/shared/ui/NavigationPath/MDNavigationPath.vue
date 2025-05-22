@@ -22,7 +22,7 @@ defineEmits<{
 
       <MDButton
         :label="item.name"
-        type="text"
+        color="text"
         class="md-navigation-path__item"
         @click="$emit('click', indexPath, item)"
       />
