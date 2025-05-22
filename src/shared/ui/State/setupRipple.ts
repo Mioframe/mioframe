@@ -1,9 +1,6 @@
 import { uniqueId, type UniqueId } from '@shared/lib/uniqueId';
 import { reactive, ref } from 'vue';
 import { RippleAnimation } from './types';
-import { createLogger } from '@shared/lib/logger';
-
-const { debug } = createLogger('setupRipple');
 
 export const setupRipple = () => {
   type RippleId = UniqueId<'ripple'>;
@@ -60,8 +57,6 @@ export const setupRipple = () => {
   };
 
   const onAnimationend = (id: RippleId, animation: RippleAnimation) => {
-    debug('onAnimationend', id, animation);
-
     if (animation === RippleAnimation.leave) {
       rippleSet.delete(id);
     }

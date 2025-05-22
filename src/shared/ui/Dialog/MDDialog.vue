@@ -109,14 +109,14 @@ onBeforeUnmount(() => {
           <MDButton
             v-if="hasCancelAction"
             :label="cancelLabel"
-            type="text"
+            color="text"
             @click="onCancel"
           />
 
           <MDButton
             :label="applyLabel"
             :loading
-            type="text"
+            color="text"
             form-action="submit"
           />
         </div>

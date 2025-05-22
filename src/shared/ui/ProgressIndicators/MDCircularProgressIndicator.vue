@@ -126,11 +126,11 @@ const animateValue = computed(
   display: inline-block;
 
   &__empty {
-    stroke: var(--md-sys-color-secondary-container);
+    stroke: var(--md-container-color);
   }
 
   &__progress {
-    stroke: var(--md-sys-color-primary);
+    stroke: var(--md-content-color);
   }
 }
 </style>

@@ -1,9 +1,9 @@
 /* TODO: перенести в отдельный компонент обёртку */
 
 /* .ripple, */
-/* .md-state.md-state_press::after,
-.md-state.md-state_pressed::after,
-.md-state.md-state_unpressed::after {
+.md-old-state.md-old-state_press::after,
+.md-old-state.md-old-state_pressed::after,
+.md-old-state.md-old-state_unpressed::after {
   content: "";
   display: block;
   position: absolute;
@@ -31,11 +31,9 @@
 }
 
 .md {
-  &-state {
+  &-old-state {
     --md-ripple-duration: var(--md-sys-motion-duration-short4, 0.2s);
-    --md-ripple-duration: 5s;
     --md-ripple-duration-long: var(--md-sys-motion-duration-extra-long4);
-    --md-ripple-duration-long: 20s;
 
     background-color: var(--md-container-color);
     color: var(--md-content-color, currentColor);
@@ -61,7 +59,7 @@
     }
 
     &:hover,
-    &.md-state_hover {
+    &.md-old-state_hover {
       &::before {
         background-color: rgb(
           from var(--md-content-color, currentColor) r g b /
@@ -71,7 +69,7 @@
     }
 
     &:focus-visible,
-    &.md-state_focused {
+    &.md-old-state_focused {
       outline-style: solid;
       outline-color: var(--md-sys-color-secondary);
       outline-width: var(--md-sys-state-focus-indicator-thickness);
@@ -85,7 +83,7 @@
       }
     }
 
-    &.md-state_drag {
+    &.md-old-state_drag {
       &::before {
         background-color: rgb(
           from var(--md-content-color, currentColor) r g b / 16%
@@ -94,11 +92,11 @@
     }
 
     &:disabled,
-    &.md-state_disabled {
+    &.md-old-state_disabled {
       pointer-events: none;
     }
 
-    &.md-state_press {
+    &.md-old-state_press {
       position: relative;
       overflow: hidden;
       --md-button-border-radius: var(
@@ -112,31 +110,31 @@
       }
     }
 
-    &.md-state_pressed {
+    &.md-old-state_pressed {
       position: relative;
       overflow: hidden;
 
       &::after {
         animation-duration: var(--md-ripple-duration);
         animation-fill-mode: forwards;
-        animation-name: md-state-pressed;
+        animation-name: md-old-state-pressed;
       }
     }
 
-    &.md-state_unpressed {
+    &.md-old-state_unpressed {
       position: relative;
       overflow: hidden;
 
       &::after {
         animation-duration: var(--md-ripple-duration);
         animation-fill-mode: forwards;
-        animation-name: md-state-unpressed;
+        animation-name: md-old-state-unpressed;
       }
     }
   }
 }
 
-@keyframes md-state-pressed {
+@keyframes md-old-state-pressed {
   0% {
     transform: translate(-50%, -50%) scale(0);
   }
@@ -146,7 +144,7 @@
   }
 }
 
-@keyframes md-state-unpressed {
+@keyframes md-old-state-unpressed {
   0% {
     transform: translate(-50%, -50%) scale(1);
   }
@@ -155,4 +153,4 @@
     opacity: 0;
     transform: translate(-50%, -50%) scale(1);
   }
-} */
+}
