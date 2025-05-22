@@ -1,11 +1,12 @@
 <script setup lang="ts">
-import { MainView } from '@widget/MainViewV2';
+// import { MainView } from '@widget/MainViewV2';
 import NotificationList from '../shared/ui/Notifications/NotificationList.vue';
 import TooltipContainer from '@shared/ui/Tooltips/TooltipContainer.vue';
 import { SnackbarContainer, useSnackbar } from '@shared/ui/Snackbar';
 import { onErrorCaptured } from 'vue';
 import DialogContainer from '@shared/ui/Dialog/Alert/DialogContainer.vue';
 import { useHead } from '@unhead/vue';
+import { RouterView } from 'vue-router';
 
 const { addSnackbar } = useSnackbar();
 
@@ -28,7 +29,8 @@ useHead({
 
 <template>
   <div class="main">
-    <MainView />
+    <RouterView />
+    <!-- <MainView /> -->
   </div>
 
   <DialogContainer />

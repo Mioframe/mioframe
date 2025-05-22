@@ -1,24 +1,25 @@
 import type { output } from '@zod/mini';
-import { array, literal, object, optional, union } from '@zod/mini';
+import { array, object, tuple, union, enum as zodEnum } from '@zod/mini';
 import { zodPropertyId } from '../../v1/property';
 import { zodItemId } from '../../v1/item';
 
-export const SORT_DIRECTION = {
-  ascending: 'ascending',
-  descending: 'descending',
-} as const;
+export enum SORT_DIRECTION {
+  ascending,
+  descending,
+}
 
-export const zodSortDirection = union([
-  literal(SORT_DIRECTION.ascending),
-  literal(SORT_DIRECTION.descending),
-]);
+export const zodDatabaseSortDirection = zodEnum(SORT_DIRECTION);
 
-export type SortDirection = output<typeof zodSortDirection>;
-
-export const zodSortDescription = object({
+export const zodDatabaseSortDescription = object({
   propertyId: zodPropertyId,
-  direction: zodSortDirection,
-  manual: optional(array(zodItemId)),
+  direction: zodDatabaseSortDirection,
 });
 
-export type SortDescription = output<typeof zodSortDescription>;
+export type DatabaseSort = output<typeof zodDatabaseSortDescription>;
+
+export const zodDatabaseSortList = union([
+  tuple([array(zodItemId)], zodDatabaseSortDescription),
+  array(zodDatabaseSortDescription),
+]);
+
+export type DatabaseSortList = output<typeof zodDatabaseSortList>;

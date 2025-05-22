@@ -1,6 +1,5 @@
 import type { output } from '@zod/mini';
 import {
-  array,
   extend,
   int,
   literal,
@@ -10,9 +9,9 @@ import {
   union,
   unknown,
 } from '@zod/mini';
-import { zodSortDescription } from './sorting';
+import { zodDatabaseSortList } from './sorting';
 
-export enum VIEW_LAYOUT {
+export enum DB_VIEW_LAYOUT {
   JSON = 'json',
   TABLE = 'table',
 }
@@ -23,15 +22,15 @@ const zodGeneralView = object({
   order: optional(int()),
 });
 
-export const zodTableView = extend(zodGeneralView, {
-  layout: literal(VIEW_LAYOUT.TABLE),
-  sorting: optional(array(zodSortDescription)),
+export const zodDatabaseTableView = extend(zodGeneralView, {
+  layout: literal(DB_VIEW_LAYOUT.TABLE),
+  sorting: optional(zodDatabaseSortList),
 });
 
 const zodJsonView = extend(zodGeneralView, {
-  layout: literal(VIEW_LAYOUT.JSON),
+  layout: literal(DB_VIEW_LAYOUT.JSON),
 });
 
-export const zodView = union([zodTableView, zodJsonView]);
+export const zodDatabaseView = union([zodDatabaseTableView, zodJsonView]);
 
-export type View = output<typeof zodView>;
+export type DatabaseView = output<typeof zodDatabaseView>;

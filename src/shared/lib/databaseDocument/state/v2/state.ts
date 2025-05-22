@@ -7,7 +7,10 @@ import { putObject } from '@shared/lib/changeObject';
 import { zodDatabaseView, zodDatabaseViewId } from './view';
 import { zodOnlyRecord } from '@shared/lib/zodRecord';
 
-export const zodDatabaseViewsMap = zodOnlyRecord(zodDatabaseViewId, zodDatabaseView);
+export const zodDatabaseViewsMap = zodOnlyRecord(
+  zodDatabaseViewId,
+  zodDatabaseView,
+);
 
 export type DatabaseViewsMap = output<typeof zodDatabaseViewsMap>;
 
@@ -26,3 +29,5 @@ export const databaseState = defineVersionState(
 );
 
 export const zodDatabaseState = databaseState.zod;
+
+export type DatabaseState = output<typeof zodDatabaseState>;
