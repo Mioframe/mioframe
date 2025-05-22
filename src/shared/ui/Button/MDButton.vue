@@ -1,17 +1,24 @@
 <script setup lang="ts">
-import { vPressedState } from '@shared/lib/md/stateHelper';
-import { toRef } from 'vue';
 import { MDCircularProgressIndicator } from '../ProgressIndicators';
 import { isNumber } from 'remeda';
+import { MDState } from '../State';
 
-const props = defineProps<{
-  formAction?: 'submit' | 'reset';
-  type?: 'elevated' | 'filled' | 'tonal' | 'outlined' | 'text';
+const {
+  color = 'filled',
+  formAction = 'button',
+  type = 'default',
+  size = 'small',
+  shape = 'round',
+} = defineProps<{
+  formAction?: 'submit' | 'reset' | 'button';
+  color?: 'elevated' | 'filled' | 'tonal' | 'outlined' | 'text';
   label?: string;
   disabled?: boolean;
-  pressed?: boolean;
-  focused?: boolean;
   loading?: number | boolean;
+  type?: 'default' | 'toggle';
+  size?: 'extra-small' | 'small' | 'medium' | 'large' | 'extra-large';
+  shape?: 'round' | 'square';
+  selected?: boolean;
 }>();
 
 defineSlots<{
@@ -21,45 +28,52 @@ defineSlots<{
 defineEmits<{
   click: [event: MouseEvent];
 }>();
-
-const buttonType = toRef(() => props.type ?? 'outlined');
 </script>
 
 <template>
-  <button
-    v-pressed-state
+  <MDState
+    tag="button"
     :disabled="disabled"
-    :type="formAction ?? 'button'"
-    class="md-button md-state"
+    :type="formAction"
+    class="md-button"
     :class="[
-      `md-button_${buttonType}`,
+      `md-button_color-${color}`,
+      `md-button_type-${type}`,
+      `md-button_size-${size}`,
+      `md-button_shape-${shape}`,
       {
-        'md-button_pressed': pressed,
-        'md-button_focused': focused,
         'md-button_icon': !!$slots.icon,
         'md-button_loading': loading,
+        'md-button_selected': selected,
       },
     ]"
     @click.stop="$emit('click', $event)"
   >
-    <span v-if="!!$slots.icon" class="md-button__icon">
-      <slot name="icon" />
-    </span>
+    <div class="md-button__content">
+      <span v-if="!!$slots.icon" class="md-button__icon">
+        <slot name="icon" />
+      </span>
 
-    <span v-if="label" class="md-button__label-text">{{ label }}</span>
+      <span v-if="label" class="md-button__label-text">{{ label }}</span>
 
-    <MDCircularProgressIndicator
-      v-if="loading"
-      class="md-button__progress-indicator"
-      :progress="isNumber(loading) ? loading : undefined"
-    />
-  </button>
+      <MDCircularProgressIndicator
+        v-if="loading"
+        class="md-button__progress-indicator"
+        :progress="isNumber(loading) ? loading : undefined"
+      />
+    </div>
+  </MDState>
 </template>
 
 <style scoped>
 .md-button {
   --md-button-border-radius: 20px;
   --md-button-icon-size: 18px;
+  --md-button-height: 40px;
+  --md-button-padding: 16px;
+  --md-button-icon-gap: 8px;
+  --md-target-width: max(48px, 100%);
+  --md-target-height: max(48px, 100%);
 
   transition-property:
     box-shadow, color, background-color, padding, border-radius;
@@ -69,14 +83,22 @@ const buttonType = toRef(() => props.type ?? 'outlined');
   justify-content: center;
   border: 0;
   border-radius: var(--md-button-border-radius);
-  height: 40px;
-  padding-left: 25px;
-  padding-right: 25px;
+  height: var(--md-button-height);
+  padding-left: var(--md-button-padding);
+  padding-right: var(--md-button-padding);
   font-family: var(--md-sys-typescale-label-large-font);
   line-height: var(--md-sys-typescale-label-large-line-height);
   font-size: var(--md-sys-typescale-label-large-size);
   font-weight: var(--md-sys-typescale-label-large-weight);
   letter-spacing: var(--md-sys-typescale-label-large-tracking);
+
+  &__content {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    --md-container-color: transparent;
+    gap: var(--md-button-icon-gap);
+  }
 
   &__icon {
     display: inline-flex;
@@ -87,6 +109,7 @@ const buttonType = toRef(() => props.type ?? 'outlined');
     color: var(--md-button-icon-color, inherit);
     transition-property: opacity;
     transition-duration: var(--md-sys-motion-duration-short4, 0.2s);
+    --md-container-color: transparent;
 
     .md-button_loading & {
       opacity: 0;
@@ -97,6 +120,7 @@ const buttonType = toRef(() => props.type ?? 'outlined');
     white-space: nowrap;
     transition-property: opacity;
     transition-duration: var(--md-sys-motion-duration-short4, 0.2s);
+    background: none;
 
     .md-button_loading & {
       opacity: 0;
@@ -109,43 +133,75 @@ const buttonType = toRef(() => props.type ?? 'outlined');
     height: 24px;
   }
 
-  &_icon {
-    padding-left: 16px;
-    gap: 8px;
+  &.md-button_shape-round {
+    --md-button-border-radius: var(--md-button-height);
   }
 
-  &_elevated {
+  &.md-button_color-elevated {
     --md-container-color: var(--md-sys-color-surface-container-low);
     --md-content-color: var(--md-sys-color-primary);
     box-shadow: var(--md-sys-elevation-level1);
 
+    &.md-button_type-toggle {
+      --md-container-color: var(--md-sys-color-surface-container-low);
+      --md-content-color: var(--md-sys-color-primary);
+
+      &.md-button_selected {
+        --md-container-color: var(--md-sys-color-primary);
+        --md-content-color: var(--md-sys-color-on-primary);
+      }
+    }
+
+    &.md-state_disabled,
     &:disabled {
       --md-container-color: rgb(
-        from var(--md-sys-color-on-surface) r g b / 0.12
+        from var(--md-sys-color-on-surface) r g b / 0.1
       );
       --md-content-color: rgb(from var(--md-sys-color-on-surface) r g b / 0.38);
       box-shadow: var(--md-sys-elevation-level0);
     }
 
+    &.md-state_hover,
     &:hover {
       --md-content-color: var(--md-sys-color-primary);
       box-shadow: var(--md-sys-elevation-level2);
+
+      &.md-button_selected {
+        --md-content-color: var(--md-sys-color-on-primary);
+      }
     }
 
-    /* &:focus-visible,
-    &.md-button_focused {
-    } */
+    &.md-state_focused,
+    &:focus-visible {
+      --md-content-color: var(--md-sys-color-primary);
+      box-shadow: var(--md-sys-elevation-level1);
+
+      &.md-button_selected {
+        --md-content-color: var(--md-sys-color-on-primary);
+      }
+    }
   }
 
-  &_filled {
+  &.md-button_color-filled {
     --md-container-color: var(--md-sys-color-primary);
     --md-content-color: var(--md-sys-color-on-primary);
     --md-button-icon-color: var(--md-sys-color-on-primary);
     box-shadow: var(--md-sys-elevation-level0);
 
+    &.md-button_type-toggle {
+      --md-container-color: var(--md-sys-color-surface-container);
+      --md-content-color: var(--md-sys-color-on-surface-variant);
+
+      &.md-button_selected {
+        --md-container-color: var(--md-sys-color-primary);
+        --md-content-color: var(--md-sys-color-on-primary);
+      }
+    }
+
+    &.md-state_disabled,
     &:disabled {
       --md-container-color: rgb(
-        from var(--md-sys-color-on-surface) r g b / 0.12
+        from var(--md-sys-color-on-surface) r g b / 0.1
       );
       --md-content-color: rgb(from var(--md-sys-color-on-surface) r g b / 0.38);
       --md-button-icon-color: rgb(
@@ -153,29 +209,29 @@ const buttonType = toRef(() => props.type ?? 'outlined');
       );
     }
 
+    &.md-state_hover,
     &:hover {
-      --md-content-color: var(--md-sys-color-on-primary);
-      --md-button-icon-color: var(--md-sys-color-on-primary);
       box-shadow: var(--md-sys-elevation-level1);
-    }
-
-    &:focus-visible,
-    &.md-button_focused {
-      --md-content-color: var(--md-sys-color-on-primary);
-      --md-button-icon-color: var(--md-sys-color-on-primary);
-      box-shadow: var(--md-sys-elevation-level0);
     }
   }
 
-  &_tonal {
+  &.md-button_color-tonal {
     --md-container-color: var(--md-sys-color-secondary-container);
     --md-content-color: var(--md-sys-color-on-secondary-container);
     --md-button-icon-color: var(--md-sys-color-on-secondary-container);
     box-shadow: var(--md-sys-elevation-level0);
 
+    &.md-button_type-toggle {
+      &.md-button_selected {
+        --md-container-color: var(--md-sys-color-secondary);
+        --md-content-color: var(--md-sys-color-on-secondary);
+      }
+    }
+
+    &.md-state_disabled,
     &:disabled {
       --md-container-color: rgb(
-        from var(--md-sys-color-on-surface) r g b / 0.12
+        from var(--md-sys-color-on-surface) r g b / 0.1
       );
       --md-content-color: rgb(from var(--md-sys-color-on-surface) r g b / 0.38);
       --md-button-icon-color: rgb(
@@ -183,6 +239,7 @@ const buttonType = toRef(() => props.type ?? 'outlined');
       );
     }
 
+    &.md-state_hover,
     &:hover {
       --md-content-color: var(--md-sys-color-on-secondary-container);
       --md-button-icon-color: var(--md-sys-color-on-secondary-container);
@@ -190,22 +247,29 @@ const buttonType = toRef(() => props.type ?? 'outlined');
     }
 
     &:focus-visible,
-    &.md-button_focused {
+    &.md-state_focused {
       box-shadow: var(--md-sys-elevation-level0);
       --md-content-color: var(--md-sys-color-on-secondary-container);
       --md-button-icon-color: var(--md-sys-color-on-secondary-container);
     }
   }
 
-  &_outlined {
+  &.md-button_color-outlined {
     border-style: solid;
-    border-color: var(--md-sys-color-outline);
+    border-color: var(--md-sys-color-outline-variant);
     border-width: 1px;
     box-sizing: border-box;
-    --md-content-color: var(--md-sys-color-primary);
-    --md-button-icon-color: var(--md-sys-color-primary);
+    --md-content-color: var(--md-sys-color-on-surface-variant);
     box-shadow: var(--md-sys-elevation-level0);
 
+    &.md-button_type-toggle {
+      &.md-button_selected {
+        --md-container-color: var(--md-sys-color-inverse-surface);
+        --md-content-color: var(--md-sys-color-inverse-on-surface);
+      }
+    }
+
+    &.md-state_disabled,
     &:disabled {
       --md-content-color: rgb(from var(--md-sys-color-on-surface) r g b / 0.38);
       --md-button-icon-color: rgb(
@@ -214,6 +278,7 @@ const buttonType = toRef(() => props.type ?? 'outlined');
       outline-color: rgb(from var(--md-sys-color-on-surface) r g b / 0.12);
     }
 
+    &.md-state_hover,
     &:hover {
       --md-content-color: var(--md-sys-color-primary);
       --button-icon-color: var(--md-sys-color-primary);
@@ -221,15 +286,14 @@ const buttonType = toRef(() => props.type ?? 'outlined');
     }
 
     &:focus-visible,
-    &.md-button_focused {
+    &.md-state_focused {
       --md-content-color: var(--md-sys-color-on-secondary-container);
       --md-button-icon-color: var(--md-sys-color-on-secondary-container);
     }
   }
 
-  &_text {
+  &.md-button_color-text {
     --md-content-color: var(--md-sys-color-primary);
-    --md-button-icon-color: var(--md-sys-color-primary);
     padding-left: 12px;
     padding-right: 12px;
     box-shadow: var(--md-sys-elevation-level0);
@@ -238,6 +302,7 @@ const buttonType = toRef(() => props.type ?? 'outlined');
       padding-right: 16px;
     }
 
+    &.md-state_disabled,
     &:disabled {
       --md-content-color: rgb(from var(--md-sys-color-on-surface) r g b / 0.38);
       --md-button-icon-color: rgb(
@@ -245,15 +310,93 @@ const buttonType = toRef(() => props.type ?? 'outlined');
       );
     }
 
+    &.md-state_hover,
     &:hover {
       --md-content-color: var(--md-sys-color-primary);
       --md-button-icon-color: var(--md-sys-color-primary);
     }
 
     &:focus-visible,
-    &.md-button_focused {
+    &.md-state_focused {
       --md-content-color: var(--md-sys-color-primary);
       --md-button-icon-color: var(--md-sys-color-primary);
+    }
+  }
+
+  &.md-button_size {
+    &-extra-small {
+      --md-button-height: 32px;
+      --md-button-padding: 12px;
+      --md-button-icon-gap: 4px;
+
+      &.md-button_shape-square {
+        --md-button-border-radius: 12px;
+      }
+
+      &.md-state_pressed,
+      &:active {
+        --md-button-border-radius: 8px;
+      }
+    }
+
+    &-small {
+      --md-button-height: 40px;
+      --md-button-padding: 16px;
+      --md-button-icon-gap: 8px;
+
+      &.md-button_shape-square {
+        --md-button-border-radius: 12px;
+      }
+
+      &.md-state_pressed,
+      &:active {
+        --md-button-border-radius: 8px;
+      }
+    }
+
+    &-medium {
+      --md-button-height: 56px;
+      --md-button-padding: 24px;
+      --md-button-icon-gap: 8px;
+
+      &.md-button_shape-square {
+        --md-button-border-radius: 16px;
+      }
+
+      &.md-state_pressed,
+      &:active {
+        --md-button-border-radius: 12px;
+      }
+    }
+
+    &-large {
+      --md-button-height: 96px;
+      --md-button-padding: 48px;
+      --md-button-icon-gap: 12px;
+
+      &.md-button_shape-square {
+        --md-button-border-radius: 28px;
+      }
+
+      &.md-state_pressed,
+      &:active {
+        --md-button-border-radius: 16px;
+      }
+    }
+
+    &-extra-large {
+      --md-button-height: 136px;
+      --md-button-padding: 64px;
+      --md-button-icon-gap: 16px;
+
+      &.md-button_shape-square {
+        --md-button-border-radius: 28px;
+      }
+
+      &.md-state_pressed,
+      &:active {
+        --md-button-border-radius: 16px;
+      }
     }
   }
 }

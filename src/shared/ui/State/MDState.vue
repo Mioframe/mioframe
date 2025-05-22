@@ -37,7 +37,10 @@ const hoverModel = defineModel<boolean>('hover');
 
 syncRefs(userHover, hoverModel);
 
-const { focused: userFocused } = useFirstFocus(refEl, { useTarget: true });
+const { focused: userFocused } = useFirstFocus(refEl, {
+  useTarget: true,
+  focusVisible: true,
+});
 
 const focusedModel = defineModel<boolean>('focused', { default: false });
 
@@ -73,8 +76,6 @@ const onTouchStart = ({
     onPressDown(element, clientX, clientY);
   }
 };
-
-// TODO: добавить слои и состояния по MD
 </script>
 
 <template>
@@ -121,10 +122,44 @@ const onTouchStart = ({
 <style lang="css" scoped>
 .md-state {
   position: relative;
+  --md-content-color: inherit;
+  --md-container-color: inherit;
+  /* FIXME: target-offset разделить на размеры ширины и высоты */
+  --md-target-offset: 4px;
+  --md-target-width: calc(100% + var(--md-target-offset) * 2);
+  --md-target-height: calc(100% + var(--md-target-offset) * 2);
+  --md-focus-indicator-thickness: var(
+    --md-sys-state-focus-indicator-thickness,
+    3px
+  );
+  --md-focus-indicator-offset: var(
+    --md-sys-state-focus-indicator-outer-offset,
+    2px
+  );
+
+  &__layer {
+    display: block;
+    position: absolute;
+    z-index: 0;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    border-radius: inherit;
+    background: none;
+    background-color: rgb(from var(--md-content-color) r g b / 0);
+    transition-property: background, background-color;
+    transition-duration: var(--md-sys-motion-duration-short4, 0.2s);
+  }
 
   &__ripple {
     position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
     z-index: 0;
+    border-radius: inherit;
 
     --md-ripple-color: var(--md-content-color, currentColor);
 
@@ -143,8 +178,8 @@ const onTouchStart = ({
   &__target {
     position: absolute;
     z-index: 1;
-    width: calc(100% + 8px);
-    height: calc(100% + 8px);
+    width: var(--md-target-width);
+    height: var(--md-target-height);
     border-radius: inherit;
     background: transparent;
     top: 50%;
@@ -152,15 +187,40 @@ const onTouchStart = ({
     transform: translate(-50%, -50%);
   }
 
-  &_pressed {
+  &:disabled,
+  &.md-state_disabled {
+    pointer-events: none;
+  }
+
+  &:hover,
+  &.md-state_hover {
+    .md-state__layer {
+      background-color: rgb(from var(--md-content-color) r g b / 8%);
+    }
+  }
+
+  &:active,
+  &.md-state_pressed {
+    .md-state__layer {
+      background-color: rgb(from var(--md-content-color) r g b / 10%);
+    }
     .md-state__ripple {
       --md-ripple-duration: var(--md-ripple-duration-long);
     }
   }
 
-  &:disabled,
-  &_disabled {
-    pointer-events: none;
+  &:focus-visible,
+  &.md-state_focused {
+    outline: var(--md-focus-indicator-thickness) solid
+      var(
+        --md-sys-color-secondary,
+        var(--md-container-color, rgb(88, 174, 255))
+      );
+    outline-offset: var(--md-focus-indicator-offset);
+
+    .md-state__layer {
+      background-color: rgb(from var(--md-content-color) r g b / 10%);
+    }
   }
 }
 </style>

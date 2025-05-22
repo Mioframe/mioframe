@@ -3,10 +3,10 @@ import './container-with-states.css';
 import type { Directive } from 'vue';
 
 const STATE = {
-  press: 'md-state_press',
-  pressed: 'md-state_pressed',
-  unPressed: 'md-state_unpressed',
-  main: 'md-state',
+  press: 'md-old-state_press',
+  pressed: 'md-old-state_pressed',
+  unPressed: 'md-old-state_unpressed',
+  main: 'md-old-state',
 } as const;
 
 const startAnimationPressed = (el: HTMLElement) => {
@@ -17,14 +17,14 @@ const onAnimationEnd = (e: AnimationEvent) => {
   e.stopPropagation();
   const { animationName, currentTarget } = e;
   if (currentTarget instanceof HTMLElement) {
-    if (animationName.includes('md-state-pressed')) {
+    if (animationName.includes('md-old-state-pressed')) {
       currentTarget.classList.remove(STATE.pressed);
       if (!currentTarget.classList.contains(STATE.press)) {
         startAnimationUnpressed(currentTarget);
       }
     }
 
-    if (animationName.includes('md-state-unpressed')) {
+    if (animationName.includes('md-old-state-unpressed')) {
       currentTarget.classList.remove(STATE.unPressed);
     }
   }

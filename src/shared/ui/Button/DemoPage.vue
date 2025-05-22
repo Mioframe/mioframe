@@ -12,30 +12,57 @@ const buttonTypes = [
 ] as const;
 
 const fabTypes = ['primary', 'branded', 'secondary', 'tertiary'] as const;
+
+const buttonSizes = [
+  'extra-small',
+  'small',
+  'medium',
+  'large',
+  'extra-large',
+] as const;
 </script>
 
 <template>
   <div class="grid">
-    <div v-for="type in buttonTypes" :key="`buttonTypes${type}`" class="grid">
-      <MDButton :type :label="`${type} enabled`" />
+    <div v-for="color in buttonTypes" :key="`buttonTypes${color}`" class="grid">
+      <MDButton :color :label="`${color} enabled`" />
 
-      <MDButton :type disabled :label="`${type} disable`" />
+      <MDButton :color disabled :label="`${color} disable`" />
 
-      <MDButton :type :label="`${type} hovered`" class="md-container_hover" />
+      <MDButton :color :label="`${color} hovered`" class="md-state_hover" />
 
-      <MDButton
-        :type
-        :label="`${type} focused`"
-        class="md-button_focused md-container_focused"
-      />
+      <MDButton :color :label="`${color} focused`" class="md-state_focused" />
 
-      <MDButton :type :label="`${type} pressed`" class="md-container_press" />
+      <MDButton :color :label="`${color} pressed`" class="md-state_pressed" />
 
-      <MDButton :type :label="`${type} icon`">
+      <MDButton :color :label="`${color} icon`">
         <template #icon> <i class="fa-solid fa-star" /> </template>
       </MDButton>
 
-      <MDButton :type label="loading" loading />
+      <MDButton :color label="loading" loading />
+
+      <MDButton :color label="unselected" type="toggle" />
+
+      <MDButton :color label="selected" type="toggle" selected />
+    </div>
+
+    <div class="grid">
+      <MDButton
+        v-for="size in buttonSizes"
+        :key="size"
+        :size
+        :label="`size ${size}`"
+      />
+    </div>
+
+    <div class="grid">
+      <MDButton
+        v-for="size in buttonSizes"
+        :key="size"
+        :size
+        :label="`size ${size}`"
+        shape="square"
+      />
     </div>
 
     <MDFabContainer v-for="type in fabTypes" :key="`fabTypes${type}`">
