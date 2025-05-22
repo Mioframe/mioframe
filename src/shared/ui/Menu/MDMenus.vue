@@ -91,5 +91,7 @@ const style = computed((): StyleValue => {
   --md-container-color: var(--md-sys-color-surface-container);
   display: flex;
   flex-direction: column;
+
+  --md-list-container-border-radius: 0px;
 }
 </style>

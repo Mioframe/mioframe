@@ -45,7 +45,6 @@ import {
 } from './itemMutations';
 import { safeParse, core } from '@zod/mini';
 import { entries, pipe, sort } from 'remeda';
-import type { ViewId } from '../state/v2/view/viewId';
 
 const { debug, watchDebug } = createLogger('useDatabaseDocument');
 
@@ -222,7 +221,7 @@ export const useDatabaseDocument = (
     return undefined;
   });
 
-  const getView = (id: ViewId) => {
+  const getView = (id: DatabaseViewId) => {
     return viewsState.value?.[id];
   };
 

@@ -1,5 +1,7 @@
+/* TODO: перенести в отдельный компонент обёртку */
+
 /* .ripple, */
-.md-state.md-state_press::after,
+/* .md-state.md-state_press::after,
 .md-state.md-state_pressed::after,
 .md-state.md-state_unpressed::after {
   content: "";
@@ -30,6 +32,11 @@
 
 .md {
   &-state {
+    --md-ripple-duration: var(--md-sys-motion-duration-short4, 0.2s);
+    --md-ripple-duration: 5s;
+    --md-ripple-duration-long: var(--md-sys-motion-duration-extra-long4);
+    --md-ripple-duration-long: 20s;
+
     background-color: var(--md-container-color);
     color: var(--md-content-color, currentColor);
     position: relative;
@@ -101,9 +108,7 @@
       &::after {
         transform: translate(-50%, -50%) scale(1);
         opacity: 1;
-        animation-duration: var(
-          --md-sys-motion-duration-extra-long4
-        ) !important;
+        animation-duration: var(--md-ripple-duration-long) !important;
       }
     }
 
@@ -112,7 +117,7 @@
       overflow: hidden;
 
       &::after {
-        animation-duration: var(--md-sys-motion-duration-short4, 0.2s);
+        animation-duration: var(--md-ripple-duration);
         animation-fill-mode: forwards;
         animation-name: md-state-pressed;
       }
@@ -123,7 +128,7 @@
       overflow: hidden;
 
       &::after {
-        animation-duration: var(--md-sys-motion-duration-short4, 0.2s);
+        animation-duration: var(--md-ripple-duration);
         animation-fill-mode: forwards;
         animation-name: md-state-unpressed;
       }
@@ -150,4 +155,4 @@
     opacity: 0;
     transform: translate(-50%, -50%) scale(1);
   }
-}
+} */

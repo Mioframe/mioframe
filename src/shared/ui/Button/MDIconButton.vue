@@ -4,6 +4,7 @@ import { toRef } from 'vue';
 import { MDCircularProgressIndicator } from '../ProgressIndicators';
 import { vMdTooltip } from '../Tooltips';
 import { isNumber } from 'remeda';
+import { MDSymbol } from '../Icon';
 
 const props = defineProps<{
   formAction?: 'submit' | 'reset';
@@ -13,6 +14,7 @@ const props = defineProps<{
   focused?: boolean;
   loading?: number | boolean;
   tooltip: string;
+  mdSymbolName?: string;
 }>();
 
 defineSlots<{
@@ -50,8 +52,10 @@ const buttonType = toRef(() => props.type ?? 'standard');
       :progress="isNumber(loading) ? loading : undefined"
     />
 
-    <span v-else-if="!!$slots.icon" class="md-icon-button__icon">
-      <slot name="icon" />
+    <span v-else class="md-icon-button__icon">
+      <slot name="icon">
+        <MDSymbol v-if="mdSymbolName" :name="mdSymbolName" />
+      </slot>
     </span>
   </button>
 </template>
@@ -61,7 +65,6 @@ const buttonType = toRef(() => props.type ?? 'standard');
   --md-icon-button-size: 40px;
   --md-icon-button-icon-size: 24px;
 
-  /* position: relative; */
   transition-property: box-shadow, color, background-color, padding;
   transition-duration: var(--md-sys-motion-duration-short4, 0.2s);
   display: flex;
