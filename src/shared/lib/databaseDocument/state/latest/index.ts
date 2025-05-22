@@ -14,6 +14,7 @@ export type {
   DatabaseView,
   DatabaseViewId,
   DatabaseViewsMap,
+  DatabaseSortList,
 } from './zodTypes';
 
 export {
@@ -37,12 +38,11 @@ export {
 export {
   DB_VIEW_LAYOUT,
   SORT_DIRECTION,
-  type SortDescription,
-  type SortDirection,
   databaseState,
   generateViewId,
-  zodDatabaseSortDescription,
   zodDatabaseSortDirection,
+  zodDatabaseSortList,
+  zodDatabaseSortDescription,
   zodDatabaseState,
   zodDatabaseTableView,
   zodDatabaseView,

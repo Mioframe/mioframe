@@ -23,7 +23,7 @@ defineSlots<{
 
 <style scoped>
 .md-list-container {
-  --md-list-container-border-radius: 0px;
+  --md-list-container-border-radius: 16px;
 
   list-style-type: none;
   padding: 8px 0;

@@ -1,6 +1,8 @@
 let idCounter = 0;
 
-export const uniqueId = <S extends string>(prefix: S): `${S}${number}` => {
+export type UniqueId<S extends string> = `${S}${number}`;
+
+export const uniqueId = <S extends string>(prefix: S): UniqueId<S> => {
   const id = ++idCounter;
   return `${prefix}${id}`;
 };

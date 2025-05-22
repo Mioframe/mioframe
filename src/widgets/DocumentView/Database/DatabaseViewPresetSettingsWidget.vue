@@ -3,12 +3,13 @@ import type { DocHandle } from '@automerge/automerge-repo';
 import { DatabaseViewCreateDialog } from '@feature/databaseViewCreate';
 import { useDatabaseDocument } from '@shared/lib/databaseDocument';
 import type { DatabaseViewId } from '@shared/lib/databaseDocument/state/v2';
-import { VIEW_LAYOUT } from '@shared/lib/databaseDocument/state/v2/view/general';
+import { DB_VIEW_LAYOUT } from '@shared/lib/databaseDocument/state/v2/view/general';
 import { useReduceIterable } from '@shared/lib/useReduce';
 import { MDChip } from '@shared/ui/Chips';
 import { MDSymbol } from '@shared/ui/Icon';
 import { shallowRef, toRef } from 'vue';
 import DatabaseViewSettingDialog from './DatabaseViewsSettingDialog.vue';
+import { DatabaseItemSortingSection } from '@feature/databaseItemSorting';
 
 /**
  * Виджет настроек отображения данных.
@@ -23,6 +24,7 @@ const docHandleRef = toRef(() => docHandle);
 
 const {
   view: { state: views, add: addView, list: viewsList },
+  properties,
 } = useDatabaseDocument(docHandleRef);
 
 const selectedViewId = defineModel<DatabaseViewId>('selectedViewId');
@@ -54,7 +56,7 @@ const onAddView = async ({ name }: { name: string }) => {
   const order = views.value ? Object.keys(views.value).length : 0;
   await addView({
     name,
-    layout: VIEW_LAYOUT.TABLE,
+    layout: DB_VIEW_LAYOUT.TABLE,
     order,
   });
 
@@ -91,6 +93,7 @@ const onCancelAddView = () => {
     </div>
     <!-- панель фильтрации -->
     <!-- панель сортировки -->
+    <DatabaseItemSortingSection v-if="properties" :property="properties" />
     <!-- панель настройки шаблона отображения -->
 
     <DatabaseViewCreateDialog

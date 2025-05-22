@@ -32,6 +32,10 @@ if (import.meta.env.DEV) {
         path: 'progress-indicators',
         component: () => import('@shared/ui/ProgressIndicators/DemoPage.vue'),
       },
+      {
+        path: 'state',
+        component: () => import('@shared/ui/State/DemoPage.vue'),
+      },
     ],
   });
 }
