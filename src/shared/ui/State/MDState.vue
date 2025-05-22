@@ -4,6 +4,7 @@ import { setupRipple } from './setupRipple';
 import { syncRef, syncRefs, useElementHover } from '@vueuse/core';
 import { useTemplateRef, defineModel } from 'vue';
 import { useFirstFocus } from '@shared/lib/useFirstFocus';
+import { debounce } from 'lodash-es';
 
 const { tag = 'div' } = defineProps<{
   disabled?: boolean;
@@ -76,6 +77,25 @@ const onTouchStart = ({
     onPressDown(element, clientX, clientY);
   }
 };
+
+const onKeyDown = debounce(
+  ({ currentTarget, key }: KeyboardEvent) => {
+    if (key === ' ' || key === 'Enter') {
+      if (currentTarget instanceof Element) {
+        onPressDown(currentTarget, 0, 0);
+      }
+    }
+  },
+  500,
+  {
+    leading: true,
+  },
+);
+
+const onKeyUp = () => {
+  onKeyDown.cancel();
+  onPressUp();
+};
 </script>
 
 <template>
@@ -97,6 +117,8 @@ const onTouchStart = ({
     @mouseleave="onMouseleave"
     @touchend="onTouchEnd"
     @touchcancel="onTouchCancel"
+    @keydown="onKeyDown"
+    @keyup="onKeyUp"
   >
     <div class="md-state__layer" />
 
