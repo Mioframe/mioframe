@@ -1,5 +1,5 @@
-import type { output, core } from '@zod/mini';
-import { safeParse, transform } from '@zod/mini';
+import type { output, core } from 'zod/v4-mini';
+import { safeParse, transform } from 'zod/v4-mini';
 import { forEachObj, isObjectType } from 'remeda';
 
 export const zodOnlyRecord = <

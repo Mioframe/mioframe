@@ -1,7 +1,7 @@
 import type { DocHandle, DocumentId } from '@automerge/automerge-repo';
 import type { Repo } from '@automerge/automerge-repo';
 import type { zodDocumentContent } from './types';
-import type { output } from '@zod/mini';
+import type { output } from 'zod/v4-mini';
 import type { MaybeRefOrGetter } from 'vue';
 import { computed, shallowReactive, toRef, toValue, watch } from 'vue';
 import { from } from 'ix/iterable';

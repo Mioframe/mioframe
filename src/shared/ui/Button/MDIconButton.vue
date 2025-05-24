@@ -13,7 +13,7 @@ const props = defineProps<{
   pressed?: boolean;
   focused?: boolean;
   loading?: number | boolean;
-  tooltip: string;
+  tooltip: string; // TODO: добавить функционал RichTooltip
   mdSymbolName?: string;
 }>();
 
@@ -26,6 +26,8 @@ defineEmits<{
 }>();
 
 const buttonType = toRef(() => props.type ?? 'standard');
+
+// TODO: обновить кнопки до m3 expressive для комфортного размещения в list
 </script>
 
 <template>

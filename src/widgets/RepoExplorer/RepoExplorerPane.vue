@@ -19,7 +19,7 @@ import { MDListContainer } from '@shared/ui/Lists';
 import { CFRDocumentMDListItem } from '@entity/cfrDocument';
 import { vPressedState } from '@shared/lib/md/stateHelper';
 import { FSEntryMDListItem } from '@entity/fsEntry';
-import { defineContextButtonList, MDContextMenuButton } from '@shared/ui/Menu';
+import { defineMenuButtonList, MDContextMenuButton } from '@shared/ui/Menu';
 import { DocumentRemoveDialog } from '@feature/documentRemove';
 import type { DocHandle, DocumentId } from '@automerge/automerge-repo';
 import { DocumentRenameDialog } from '@feature/documentRename';
@@ -131,7 +131,7 @@ enum FSEntryContextEvent {
   rename,
 }
 
-const fsEntryContextBtns = defineContextButtonList([
+const fsEntryContextBtns = defineMenuButtonList([
   [FSEntryContextEvent.rename, { text: 'Rename', symbolName: 'edit' }],
   [FSEntryContextEvent.remove, { text: 'Remove', symbolName: 'delete' }],
 ]);
@@ -162,7 +162,7 @@ enum DocumentContextEvent {
   rename,
 }
 
-const documentContextBtns = defineContextButtonList([
+const documentContextBtns = defineMenuButtonList([
   [DocumentContextEvent.rename, { text: 'Rename', symbolName: 'edit' }],
   [
     DocumentContextEvent.remove,

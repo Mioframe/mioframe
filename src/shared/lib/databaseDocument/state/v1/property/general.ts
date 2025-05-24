@@ -1,5 +1,5 @@
-import type { core } from '@zod/mini';
-import { object, string, type output } from '@zod/mini';
+import type { core } from 'zod/v4-mini';
+import { object, string, type output } from 'zod/v4-mini';
 import { defineId } from '../../../../defineId';
 import type { Primitive } from 'type-fest';
 

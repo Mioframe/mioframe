@@ -10,6 +10,8 @@ import { MDSymbol } from '@shared/ui/Icon';
 import { shallowRef, toRef } from 'vue';
 import DatabaseViewSettingDialog from './DatabaseViewsSettingDialog.vue';
 import { DatabaseItemSortingSection } from '@feature/databaseItemSorting';
+import { MD_SYS_TYPESCALE } from '@shared/lib/md';
+import { MDIconButton } from '@shared/ui/Button';
 
 /**
  * Виджет настроек отображения данных.
@@ -93,7 +95,14 @@ const onCancelAddView = () => {
     </div>
     <!-- панель фильтрации -->
     <!-- панель сортировки -->
-    <DatabaseItemSortingSection v-if="properties" :property="properties" />
+    <div class="database-view-preset-settings-widget__subtitle md-margin-top-2">
+      <span :class="MD_SYS_TYPESCALE.title.small">Sorting settings</span>
+
+      <!-- TODO: добавить RichTooltip с объяснением настройки -->
+      <MDIconButton tooltip="description" md-symbol-name="info" />
+    </div>
+
+    <DatabaseItemSortingSection v-if="properties" :property-map="properties" />
     <!-- панель настройки шаблона отображения -->
 
     <DatabaseViewCreateDialog
@@ -116,5 +125,12 @@ const onCancelAddView = () => {
   display: flex;
   overflow-x: auto;
   gap: 8px;
+}
+
+.database-view-preset-settings-widget {
+  &__subtitle {
+    display: flex;
+    align-items: center;
+  }
 }
 </style>

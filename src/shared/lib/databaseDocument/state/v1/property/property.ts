@@ -1,4 +1,4 @@
-import { string } from '@zod/mini';
+import { string } from 'zod/v4-mini';
 import type { GeneralProperty, PropertyId } from './general';
 import { zodGeneralProperty, zodPropertyId } from './general';
 import { zodOnlyRecord } from '@shared/lib/zodRecord';

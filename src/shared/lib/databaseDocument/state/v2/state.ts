@@ -1,5 +1,5 @@
-import type { output } from '@zod/mini';
-import { extend, literal, optional } from '@zod/mini';
+import type { output } from 'zod/v4-mini';
+import { extend, literal, optional } from 'zod/v4-mini';
 import type { DatabaseState as DataBaseStateV1 } from '../v1';
 import { zodDatabaseState as zodDatabaseStateV1 } from '../v1';
 import { defineVersionState } from '../defineVersion';

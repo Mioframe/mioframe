@@ -1,19 +1,35 @@
-<script setup lang="ts">
+<script
+  setup
+  lang="ts"
+  generic="K extends PropertyKey, T extends MenuButtonDescription"
+>
 import type { MaybeElement } from '@vueuse/core';
 import type { StyleValue } from 'vue';
-import { computed, ref, toRef } from 'vue';
+import { computed, toRef, useTemplateRef } from 'vue';
 import { useElementBounding, useWindowSize } from '@vueuse/core';
 import { MDListContainer } from '../Lists';
+import type { MenuButtonDescription } from './types';
+import MDMenusListItem from './MDMenusListItem.vue';
+import { MDSymbol } from '../Icon';
 
 const { targetRef } = defineProps<{
   targetRef: MaybeElement;
+  btns?: Iterable<[K, T]>;
 }>();
 
 defineSlots<{
   default(): unknown;
 }>();
 
-const rootEl = ref<HTMLElement>();
+const emit = defineEmits<{
+  click: [key: K];
+}>();
+
+const onClick = (key: K) => {
+  emit('click', key);
+};
+
+const rootEl = useTemplateRef('rootEl');
 
 const {
   x: targetX,
@@ -76,7 +92,18 @@ const style = computed((): StyleValue => {
 
 <template>
   <MDListContainer ref="rootEl" tag="div" class="md-menus" :style="style">
-    <slot />
+    <slot>
+      <MDMenusListItem
+        v-for="[key, { symbolName, text }] in btns"
+        :key
+        :text
+        @click="onClick(key)"
+      >
+        <template #leadingIcon>
+          <MDSymbol :name="symbolName" />
+        </template>
+      </MDMenusListItem>
+    </slot>
   </MDListContainer>
 </template>
 

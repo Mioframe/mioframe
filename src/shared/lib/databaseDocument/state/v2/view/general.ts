@@ -1,4 +1,4 @@
-import type { output } from '@zod/mini';
+import type { output } from 'zod/v4-mini';
 import {
   extend,
   int,
@@ -8,7 +8,7 @@ import {
   string,
   union,
   unknown,
-} from '@zod/mini';
+} from 'zod/v4-mini';
 import { zodDatabaseSortList } from './sorting';
 
 export enum DB_VIEW_LAYOUT {
