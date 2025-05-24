@@ -2,17 +2,22 @@
 import MDRipple from './MDRipple.vue';
 import { setupRipple } from './setupRipple';
 import { syncRef, syncRefs, useElementHover } from '@vueuse/core';
-import { useTemplateRef, defineModel } from 'vue';
+import { useTemplateRef, defineModel, computed } from 'vue';
 import { useFirstFocus } from '@shared/lib/useFirstFocus';
 import { debounce } from 'lodash-es';
 
-const { tag = 'div' } = defineProps<{
+const { is = 'div', disableRipple } = defineProps<{
   disabled?: boolean;
   // TODO: реализовать dragged когда понадобится
   dragged?: boolean;
 
-  tag?: 'button' | 'a' | 'div';
+  is?: 'button' | 'a' | 'div' | 'li';
+  disableRipple?: boolean;
 }>();
+
+const enableRipple = computed(
+  () => !disableRipple || ['button', 'a'].includes(is),
+);
 
 defineSlots<{
   default: () => unknown;
@@ -24,7 +29,7 @@ const {
   pressed: userPressed,
   onAnimationend,
   rippleSet,
-} = setupRipple();
+} = setupRipple(enableRipple);
 
 const pressedModel = defineModel<boolean>('pressed');
 
@@ -100,7 +105,7 @@ const onKeyUp = () => {
 
 <template>
   <component
-    :is="tag"
+    :is="is"
     ref="refEl"
     :disabled
     class="md-state"
@@ -133,20 +138,16 @@ const onKeyUp = () => {
       @animationend="onAnimationend(id, $event)"
     />
 
-    <div class="md-state__content">
-      <slot />
-    </div>
-
     <div class="md-state__target" />
+
+    <slot />
   </component>
 </template>
 
 <style lang="css" scoped>
 .md-state {
-  position: relative;
   --md-content-color: inherit;
   --md-container-color: inherit;
-  /* FIXME: target-offset разделить на размеры ширины и высоты */
   --md-target-offset: 4px;
   --md-target-width: calc(100% + var(--md-target-offset) * 2);
   --md-target-height: calc(100% + var(--md-target-offset) * 2);
@@ -158,6 +159,8 @@ const onKeyUp = () => {
     --md-sys-state-focus-indicator-outer-offset,
     2px
   );
+
+  position: relative;
 
   &__layer {
     display: block;
@@ -191,15 +194,14 @@ const onKeyUp = () => {
     --md-ripple-duration: var(--md-ripple-duration-short);
   }
 
-  &__content {
-    position: relative;
-    z-index: 1;
-    background: none;
+  :deep(> *) {
+    z-index: 0;
+    --md-container-color: transparent;
   }
 
   &__target {
     position: absolute;
-    z-index: 1;
+    z-index: 0;
     width: var(--md-target-width);
     height: var(--md-target-height);
     border-radius: inherit;

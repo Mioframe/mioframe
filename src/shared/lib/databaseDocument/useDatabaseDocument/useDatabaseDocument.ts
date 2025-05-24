@@ -43,7 +43,8 @@ import {
   removeItemMutation,
   updateItemMutation,
 } from './itemMutations';
-import { safeParse, core } from '@zod/mini';
+import type { core } from 'zod/v4-mini';
+import { safeParse } from 'zod/v4-mini';
 import { entries, pipe, sort } from 'remeda';
 
 const { debug, watchDebug } = createLogger('useDatabaseDocument');
@@ -79,20 +80,20 @@ export const useDatabaseDocument = (
     (): core.util.SafeParseResult<
       core.output<typeof zodDatabaseDocumentWithContent>
     > => {
-      try {
-        return safeParse(
-          zodDatabaseDocumentWithContent,
-          unknownTypeContent.value,
-        );
-      } catch (error) {
-        if (error instanceof core.$ZodError) {
-          return {
-            success: false,
-            error,
-          };
-        }
-        throw error;
-      }
+      // try {
+      return safeParse(
+        zodDatabaseDocumentWithContent,
+        unknownTypeContent.value,
+      );
+      // } catch (error) {
+      //   if (error instanceof core.$ZodError) {
+      //     return {
+      //       success: false,
+      //       error,
+      //     };
+      //   }
+      //   throw error;
+      // }
     },
   );
 

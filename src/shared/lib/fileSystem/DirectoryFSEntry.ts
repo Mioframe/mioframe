@@ -1,4 +1,4 @@
-import { interface as zodInterface } from '@zod/mini';
+import { object as zodInterface } from 'zod/v4-mini';
 import { is } from '../validateZodScheme';
 import { isGeneralFSEntry, type GeneralFSEntry } from './GeneralFSEntry';
 import type { FileFSEntry } from './FileFSEntry';

@@ -1,5 +1,4 @@
-import type { ContextButtonList } from './types';
+import type { MenuButtonList } from './types';
 
-export const defineContextButtonList = <T extends ContextButtonList>(
-  value: T,
-): T => value;
+export const defineMenuButtonList = <T extends MenuButtonList>(value: T): T =>
+  value;

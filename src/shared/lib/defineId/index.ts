@@ -1,5 +1,5 @@
 import { uid } from 'uid/secure';
-import { string, length, templateLiteral, literal } from '@zod/mini';
+import { string, length, templateLiteral, literal } from 'zod/v4-mini';
 
 const ANY_ID = 'anyId';
 

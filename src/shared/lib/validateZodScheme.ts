@@ -1,4 +1,4 @@
-import type { output, ZodMiniType } from '@zod/mini';
+import type { output, ZodMiniType } from 'zod/v4-mini';
 
 export const is = <Z extends ZodMiniType>(
   value: unknown,

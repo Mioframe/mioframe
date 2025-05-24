@@ -1,5 +1,5 @@
-import type { output } from '@zod/mini';
-import { array, object, tuple, union, enum as zodEnum } from '@zod/mini';
+import type { output } from 'zod/v4-mini';
+import { array, object, tuple, union, enum as zodEnum } from 'zod/v4-mini';
 import { zodPropertyId } from '../../v1/property';
 import { zodItemId } from '../../v1/item';
 
@@ -18,7 +18,7 @@ export const zodDatabaseSortDescription = object({
 export type DatabaseSort = output<typeof zodDatabaseSortDescription>;
 
 export const zodDatabaseSortList = union([
-  tuple([array(zodItemId)], zodDatabaseSortDescription),
+  // tuple([array(zodItemId)], zodDatabaseSortDescription), // TODO: manual проще сделать отдельным полем
   array(zodDatabaseSortDescription),
 ]);
 

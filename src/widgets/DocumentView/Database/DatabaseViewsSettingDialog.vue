@@ -12,7 +12,7 @@ import type {
 } from '@shared/lib/databaseDocument/state';
 import { writableDeepClone } from '@shared/lib/writableDeepClone';
 import { DatabaseViewCreateDialog } from '@feature/databaseViewCreate';
-import { defineContextButtonList, MDContextMenuBtn } from '@shared/ui/Menu';
+import { defineMenuButtonList, MDContextMenuBtn } from '@shared/ui/Menu';
 import { DatabaseViewRenameDialog } from '@feature/databaseViewRename';
 
 const { docHandle } = defineProps<{
@@ -93,7 +93,7 @@ enum CONTEXT_ACTION {
   rename,
 }
 
-const contextMenu = defineContextButtonList([
+const contextMenu = defineMenuButtonList([
   [
     CONTEXT_ACTION.rename,
     {

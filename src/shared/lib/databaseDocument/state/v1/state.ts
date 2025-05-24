@@ -1,5 +1,5 @@
-import type { output } from '@zod/mini';
-import { literal, object } from '@zod/mini';
+import type { output } from 'zod/v4-mini';
+import { literal, object } from 'zod/v4-mini';
 import { zodUnknownPropertiesMap } from './property';
 import { defineVersionState } from '../defineVersion';
 import type { EmptyObject } from 'type-fest';

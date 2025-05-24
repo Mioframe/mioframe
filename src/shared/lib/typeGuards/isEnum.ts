@@ -1,4 +1,4 @@
-import { enum as zodEnum } from '@zod/mini';
+import { enum as zodEnum } from 'zod/v4-mini';
 import { is } from '../validateZodScheme';
 
 type EnumValue = string | number;

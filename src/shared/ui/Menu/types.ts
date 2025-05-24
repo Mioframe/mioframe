@@ -1,9 +1,6 @@
-export interface ContextButtonDescription {
+export interface MenuButtonDescription {
   text: string;
   symbolName: string;
 }
 
-export type ContextButtonList = Iterable<
-  [PropertyKey, ContextButtonDescription]
->;
-
+export type MenuButtonList = Iterable<[PropertyKey, MenuButtonDescription]>;

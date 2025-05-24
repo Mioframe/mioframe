@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue';
+import { MDState } from '../State';
 
 const { isButton, isDiv } = defineProps<{
   headline: string;
@@ -24,18 +25,11 @@ const onClick = (e: MouseEvent) => {
   }
 };
 
-const elementType = computed(() =>
-  isButton ? 'button' : isDiv ? 'div' : 'li',
-);
+const tag = computed(() => (isButton ? 'button' : isDiv ? 'div' : 'li'));
 </script>
 
 <template>
-  <component
-    :is="elementType"
-    class="md-list-item"
-    :type="isButton ? 'button' : undefined"
-    @click="onClick"
-  >
+  <MDState :is="tag" class="md-list-item" @click="onClick">
     <span v-if="!!slots.leadingIcon" class="md-list-item__leading-icon">
       <slot name="leadingIcon" />
     </span>
@@ -58,7 +52,7 @@ const elementType = computed(() =>
     <span v-if="!!slots.trailingIcon" class="md-list-item__trailing-icon">
       <slot name="trailingIcon" />
     </span>
-  </component>
+  </MDState>
 </template>
 
 <style scoped>

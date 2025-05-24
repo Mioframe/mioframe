@@ -1,8 +1,8 @@
 import type { DocumentId } from '@automerge/automerge-repo';
 import { isValidDocumentId } from '@automerge/automerge-repo';
 import type { Promisable } from 'type-fest';
-import type { output } from '@zod/mini';
-import { custom, literal, string, tuple, union } from '@zod/mini';
+import type { output } from 'zod/v4-mini';
+import { custom, literal, string, tuple, union } from 'zod/v4-mini';
 import { isString } from 'remeda';
 
 export const zodDocumentId = custom<DocumentId>(
