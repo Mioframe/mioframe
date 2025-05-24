@@ -1,5 +1,5 @@
-import type { core, output } from '@zod/mini';
-import { custom } from '@zod/mini';
+import type { core, output } from 'zod/v4-mini';
+import { custom } from 'zod/v4-mini';
 
 export const zodFunction = <
   I extends core.$ZodTuple | undefined = undefined,

@@ -1,11 +1,12 @@
 @import "./tokens.css";
 @import "./container-with-states.css";
 @import "./typography.css";
+@import "./space.css";
 
 :root {
   --one-pt: 1px;
   --one-dp: 1px;
-  --one-p: 4px;
+  --one-step: 4px;
   --md-container-color: var(--md-sys-color-surface);
   --md-content-color: var(--md-sys-color-on-surface);
 }

@@ -1,4 +1,4 @@
-import { record, unknown } from '@zod/mini';
+import { record, unknown } from 'zod/v4-mini';
 import { zodItemId } from './id';
 import { zodPropertyId } from '../property';
 import { zodOnlyRecord } from '@shared/lib/zodRecord';

@@ -1,8 +1,11 @@
 import { uniqueId, type UniqueId } from '@shared/lib/uniqueId';
-import { reactive, ref } from 'vue';
+import type { MaybeRef } from 'vue';
+import { computed, reactive, ref, toValue } from 'vue';
 import { RippleAnimation } from './types';
 
-export const setupRipple = () => {
+export const setupRipple = (enable?: MaybeRef<boolean>) => {
+  const enableRef = computed(() => toValue(enable));
+
   type RippleId = UniqueId<'ripple'>;
 
   type RippleOptions = {
@@ -19,32 +22,34 @@ export const setupRipple = () => {
   const lastRippleId = ref<RippleId>();
 
   const onPressDown = (element: Element, clientX: number, clientY: number) => {
-    const { left, top, right, bottom } = element.getBoundingClientRect();
-    const offsetX = clientX - left;
-    const offsetY = clientY - top;
-
-    const diameter =
-      Math.max(
-        Math.hypot(left - clientX, top - clientY),
-        Math.hypot(right - clientX, top - clientY),
-        Math.hypot(left - clientX, bottom - clientY),
-        Math.hypot(right - clientX, bottom - clientY),
-      ) * 2;
-
     pressed.value = true;
 
-    const id = uniqueId('ripple');
+    if (enableRef.value) {
+      const { left, top, right, bottom } = element.getBoundingClientRect();
+      const offsetX = clientX - left;
+      const offsetY = clientY - top;
 
-    const options = reactive<RippleOptions>({
-      state: 'enter',
-      offsetX,
-      offsetY,
-      diameter,
-    });
+      const diameter =
+        Math.max(
+          Math.hypot(left - clientX, top - clientY),
+          Math.hypot(right - clientX, top - clientY),
+          Math.hypot(left - clientX, bottom - clientY),
+          Math.hypot(right - clientX, bottom - clientY),
+        ) * 2;
 
-    rippleSet.set(id, options);
+      const id = uniqueId('ripple');
 
-    lastRippleId.value = id;
+      const options = reactive<RippleOptions>({
+        state: 'enter',
+        offsetX,
+        offsetY,
+        diameter,
+      });
+
+      rippleSet.set(id, options);
+
+      lastRippleId.value = id;
+    }
   };
 
   const onPressUp = () => {

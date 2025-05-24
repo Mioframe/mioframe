@@ -1,4 +1,4 @@
-import type { output } from '@zod/mini';
+import type { output } from 'zod/v4-mini';
 
 import type {
   zodDatabaseData,

@@ -32,7 +32,7 @@ defineEmits<{
 
 <template>
   <MDState
-    tag="button"
+    is="button"
     :disabled="disabled"
     :type="formAction"
     class="md-button"

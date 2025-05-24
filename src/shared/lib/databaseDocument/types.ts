@@ -6,7 +6,7 @@ import {
   partial,
   type core,
   type output,
-} from '@zod/mini';
+} from 'zod/v4-mini';
 import type {
   DatabaseData,
   DatabaseItem,
@@ -40,14 +40,14 @@ export const zodDatabaseExtensionBodyDocument = object({
 
 export const zodDatabaseTypeDocument = extend(
   zodDocumentContent,
-  zodDatabaseType,
+  zodDatabaseType.shape,
 );
 
 export type DatabaseTypeDocument = output<typeof zodDatabaseTypeDocument>;
 
 export const zodDatabaseDocumentWithContent = extend(
   zodDatabaseTypeDocument,
-  partial(zodDatabaseExtensionBodyDocument),
+  partial(zodDatabaseExtensionBodyDocument).shape,
 );
 
 export type DatabaseDocumentWithContent = output<

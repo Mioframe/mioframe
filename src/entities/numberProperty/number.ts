@@ -1,5 +1,5 @@
-import type { output } from '@zod/mini';
-import { literal } from '@zod/mini';
+import type { output } from 'zod/v4-mini';
+import { literal } from 'zod/v4-mini';
 import {
   createProperty,
   zodGeneralProperty,

@@ -7,7 +7,7 @@ import { computed, ref, shallowRef, toRef } from 'vue';
 import { MDBottomSheet } from '@shared/ui/Sheets';
 import { defineBarButtons, MDButtonsBar } from '@shared/ui/ButtonsBar';
 import { DatabasePropertyList } from '@entity/databaseProperty';
-import { defineContextButtonList, MDContextMenuButton } from '@shared/ui/Menu';
+import { defineMenuButtonList, MDContextMenuButton } from '@shared/ui/Menu';
 import { DatabasePropertyRemoveDialog } from '@feature/databasePropertyRemove';
 import { DatabasePropertyRenameDialog } from '@feature/databasePropertyRename';
 import { EmptySymbol } from '@shared/ui/EmptySymbol';
@@ -92,7 +92,7 @@ enum PropertyAction {
   rename,
 }
 
-const propertyContextBtns = defineContextButtonList([
+const propertyContextBtns = defineMenuButtonList([
   [
     PropertyAction.rename,
     {

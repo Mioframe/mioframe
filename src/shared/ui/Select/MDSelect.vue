@@ -1,6 +1,6 @@
 <script setup lang="ts" generic="T extends { labelText: string }">
 import type { MaybeElement } from '@vueuse/core';
-import { MDMenus, MDMenusListItem } from '../Menu';
+import { MDMenuContainer, MDMenusListItem } from '../Menu';
 import { MDTextField } from '../TextField';
 import { computed, ref } from 'vue';
 import { MDSymbol } from '../Icon';
@@ -80,7 +80,7 @@ const onClickOption = (option: T) => {
     </template>
   </MDTextField>
 
-  <MDMenus v-if="showMenu" ref="menusRef" :target-ref="textFiledRef">
+  <MDMenuContainer v-if="showMenu" ref="menusRef" :target-ref="textFiledRef">
     <MDMenusListItem
       v-for="(option, optionIndex) in options"
       :key="optionIndex"
@@ -95,7 +95,7 @@ const onClickOption = (option: T) => {
         <slot name="trailingIcon" :option />
       </template>
     </MDMenusListItem>
-  </MDMenus>
+  </MDMenuContainer>
 </template>
 
 <style lang="css" scoped>

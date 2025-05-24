@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { MDListContainer, MDListItem } from '@shared/ui/Lists';
-import { defineContextButtonList, MDContextMenuButton } from '@shared/ui/Menu';
+import { defineMenuButtonList, MDContextMenuButton } from '@shared/ui/Menu';
 import { vPressedState } from '@shared/lib/md/stateHelper';
 import { useGProfile } from '@entity/gProfile';
 import { MDSymbol } from '@shared/ui/Icon';
@@ -11,7 +11,7 @@ enum ProfileContextAction {
   logout,
 }
 
-const profileContextMenu = defineContextButtonList([
+const profileContextMenu = defineMenuButtonList([
   [
     ProfileContextAction.logout,
     {

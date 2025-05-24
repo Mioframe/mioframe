@@ -1,4 +1,4 @@
-import type { core, output } from '@zod/mini';
+import type { core, output } from 'zod/v4-mini';
 
 /**
  * Определение нового состояния с мутацией
