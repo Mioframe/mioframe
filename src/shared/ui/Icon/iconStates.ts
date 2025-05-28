@@ -1,8 +1,8 @@
 import { useReduceRecord } from '@shared/lib/useReduce';
 import { useHead } from '@unhead/vue';
 import { createGlobalState, useStorage } from '@vueuse/core';
-import { merge } from 'remeda';
 import type { ValueOf } from 'type-fest';
+import { merge } from 'es-toolkit';
 
 export const MaterialSymbolsFamily = {
   Rounded: 'Material+Symbols+Rounded',
@@ -25,7 +25,9 @@ export const useIconStates = createGlobalState(() => {
       [MaterialSymbolsFamily.Sharp]: [],
     },
     localStorage,
-    { mergeDefaults: (storage, defaults) => merge(storage, defaults) },
+    {
+      mergeDefaults: (storage, defaults) => merge(storage, defaults),
+    },
   );
 
   const iconNames = (nameSet: string[]) =>

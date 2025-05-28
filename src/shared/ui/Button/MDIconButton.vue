@@ -3,7 +3,7 @@ import { vPressedState } from '@shared/lib/md/stateHelper';
 import { toRef } from 'vue';
 import { MDCircularProgressIndicator } from '../ProgressIndicators';
 import { vMdTooltip } from '../Tooltips';
-import { isNumber } from 'remeda';
+import { isNumber } from 'es-toolkit/compat';
 import { MDSymbol } from '../Icon';
 
 const props = defineProps<{
@@ -13,12 +13,13 @@ const props = defineProps<{
   pressed?: boolean;
   focused?: boolean;
   loading?: number | boolean;
-  tooltip: string; // TODO: добавить функционал RichTooltip
+  tooltip: string;
   mdSymbolName?: string;
 }>();
 
 defineSlots<{
   icon(): unknown;
+  tooltipContainer(): unknown; // TODO: содержимое для RichTooltip
 }>();
 
 defineEmits<{

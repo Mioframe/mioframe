@@ -4,7 +4,7 @@ import type {
   DatabasePropertyId,
 } from '@shared/lib/databaseDocument/state';
 import { MDSymbol } from '@shared/ui/Icon';
-import { isDefined } from 'remeda';
+import { isUndefined } from 'es-toolkit';
 import { computed } from 'vue';
 
 const { item, propertyId } = defineProps<{
@@ -17,7 +17,7 @@ const value = computed(() => (item ? item[propertyId] : undefined));
 
 <template>
   <span class="database-value-span">
-    <template v-if="isDefined(value)">
+    <template v-if="!isUndefined(value)">
       {{ value }}
     </template>
 

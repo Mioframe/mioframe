@@ -1,7 +1,6 @@
 import type { Entries } from 'type-fest';
 
 /**
- * @deprecated - use { entries } from 'remeda'
  * @param v
  * @returns
  */

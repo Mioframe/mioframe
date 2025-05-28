@@ -15,7 +15,7 @@ import type {
 import type {
   zodDatabaseState,
   zodDatabaseSortDescription,
-  zodDatabaseSortList,
+  zodDatabaseSortMap,
   zodDatabaseSortDirection,
   zodDatabaseTableView,
   zodDatabaseView,
@@ -38,7 +38,7 @@ export type DatabaseUnknownPropertyType = output<
 >;
 
 export type DatabaseSortDescription = output<typeof zodDatabaseSortDescription>;
-export type DatabaseSortList = output<typeof zodDatabaseSortList>;
+export type DatabaseSortMap = output<typeof zodDatabaseSortMap>;
 export type DatabaseSortDirection = output<typeof zodDatabaseSortDirection>;
 export type DatabaseTableView = output<typeof zodDatabaseTableView>;
 export type DatabaseView = output<typeof zodDatabaseView>;

@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { dayjs } from '@shared/lib/dayjs';
 import { Dayjs } from 'dayjs';
-import { isNonNullish, isNumber, isString } from 'remeda';
+import { isNil, isString } from 'es-toolkit';
+import { isNumber } from 'es-toolkit/compat';
 import { computed } from 'vue';
 
 const props = defineProps<{
@@ -11,7 +12,7 @@ const props = defineProps<{
 const dayjsValue = computed(() => {
   const v = props.value;
   if (
-    isNonNullish(v) &&
+    !isNil(v) &&
     (isString(v) || isNumber(v) || v instanceof Date || v instanceof Dayjs)
   ) {
     return dayjs(v);
