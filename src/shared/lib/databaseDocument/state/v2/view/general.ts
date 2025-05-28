@@ -9,7 +9,7 @@ import {
   union,
   unknown,
 } from 'zod/v4-mini';
-import { zodDatabaseSortList } from './sorting';
+import { zodDatabaseSortMap } from './sorting';
 
 export enum DB_VIEW_LAYOUT {
   JSON = 'json',
@@ -20,11 +20,11 @@ const zodGeneralView = object({
   name: string(),
   layout: unknown(),
   order: optional(int()),
+  sorting: optional(zodDatabaseSortMap),
 });
 
 export const zodDatabaseTableView = extend(zodGeneralView, {
   layout: literal(DB_VIEW_LAYOUT.TABLE),
-  sorting: optional(zodDatabaseSortList),
 });
 
 const zodJsonView = extend(zodGeneralView, {

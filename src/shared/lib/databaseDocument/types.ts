@@ -13,6 +13,7 @@ import type {
   DatabaseItemId,
   DatabasePropertyId,
   DatabaseSortDescription,
+  DatabaseSortMap,
   DatabaseState,
   DatabaseUnknownPropertiesMap,
   DatabaseUnknownProperty,
@@ -94,7 +95,7 @@ export type UseDatabaseDocument = {
   view: {
     state: ComputedRef<ReadonlyDeep<DatabaseViewsMap> | undefined>;
     list: ComputedRef<ReadonlyDeep<Entries<DatabaseViewsMap> | undefined>>;
-    get: (id: DatabaseViewId) => DatabaseView | undefined;
+    get: (id: DatabaseViewId) => ReadonlyDeep<DatabaseView> | undefined;
     add: (view: DatabaseView) => Promise<DatabaseViewId>;
     remove: (viewId: DatabaseViewId) => Promise<void>;
     rename: (viewId: DatabaseViewId, newName: string) => Promise<void>;
@@ -103,15 +104,6 @@ export type UseDatabaseDocument = {
       view: PartialDeep<DatabaseView>,
     ) => Promise<void>;
   };
-
-  addSortDescription: (
-    viewId: DatabaseViewId,
-    sortDescription: DatabaseSortDescription,
-  ) => Promise<void>;
-  toggleSortDirection: (
-    viewId: DatabaseViewId,
-    propertyId: DatabasePropertyId,
-  ) => Promise<void>;
 
   /**
    * Ошибки чтения документа

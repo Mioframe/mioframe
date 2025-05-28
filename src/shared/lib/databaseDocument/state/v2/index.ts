@@ -6,10 +6,10 @@ export {
   zodDatabaseViewsMap,
 } from './state';
 export {
-  type DatabaseSort as DatabaseSortDescription,
+  type DatabaseSortDescription,
   type DatabaseView,
   type DatabaseViewId,
-  type DatabaseSortList,
+  type DatabaseSortMap,
   SORT_DIRECTION,
   DB_VIEW_LAYOUT,
   generateViewId,
@@ -17,6 +17,6 @@ export {
   zodDatabaseTableView,
   zodDatabaseView,
   zodDatabaseViewId,
-  zodDatabaseSortDescription as zodDatabaseSortDescription,
-  zodDatabaseSortList,
+  zodDatabaseSortDescription,
+  zodDatabaseSortMap,
 } from './view';

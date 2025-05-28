@@ -2,33 +2,48 @@
 import {
   SORT_DIRECTION,
   type DatabasePropertyId,
-  type DatabaseSortList,
+  type DatabaseSortMap,
   type DatabaseUnknownPropertiesMap,
 } from '@shared/lib/databaseDocument/state';
+import { objectEntries } from '@shared/lib/objectEntries';
 import { useReduceIterable } from '@shared/lib/useReduce';
-import { writableDeepClone } from '@shared/lib/writableDeepClone';
 import { MDIconButton } from '@shared/ui/Button';
 import { MDSymbol } from '@shared/ui/Icon';
 import { MDListContainer, MDListItem } from '@shared/ui/Lists';
 import { MDMenu, defineMenuButtonList } from '@shared/ui/Menu';
 import type { MaybeElement } from '@vueuse/core';
 import { difference, isArray, keys } from 'remeda';
-import { computed, ref, useTemplateRef, watchEffect } from 'vue';
+import { computed, ref, useTemplateRef } from 'vue';
 
 /**
  * Порядок сортировки по значениям свойств.
  * - на первом месте опциональна ручная сортировка (в будущем)
  */
 
-const { sortList, propertyMap } = defineProps<{
+const { propertyMap } = defineProps<{
   propertyMap: DatabaseUnknownPropertiesMap;
-  sortList?: DatabaseSortList;
 }>();
 
-const sortListState = ref<DatabaseSortList>([]);
+const sortMapModel = defineModel<DatabaseSortMap>('sortMap', {
+  required: true,
+});
 
-watchEffect(() => {
-  sortListState.value = writableDeepClone(sortList) ?? [];
+const sortList = computed({
+  get: () =>
+    objectEntries(sortMapModel.value)
+      .sort(([, { priority: a }], [, { priority: b }]) => a - b)
+      .map(([id, { direction }]) => ({
+        id,
+        direction,
+      })),
+  set: (v: { id: DatabasePropertyId; direction: SORT_DIRECTION }[]) => {
+    v.forEach(({ direction, id }, priority) => {
+      sortMapModel.value[id] = {
+        direction,
+        priority,
+      };
+    });
+  },
 });
 
 /**
@@ -48,10 +63,10 @@ const addBtnRef = useTemplateRef<MaybeElement>('addBtn');
 const showAddPropertyMenu = ref(false);
 
 const propertyWithSorting = useReduceIterable(
-  sortListState,
+  sortList,
   (acc, item) => {
     if (!isArray(item)) {
-      acc.push(item.propertyId);
+      acc.push(item.id);
     }
   },
   <DatabasePropertyId[]>[],
@@ -75,17 +90,17 @@ const menu = computed(() =>
   ),
 );
 
-const onClickMenuProperty = (propertyId: DatabasePropertyId) => {
-  sortListState.value.push({
-    propertyId,
+const onClickMenuProperty = (id: DatabasePropertyId) => {
+  sortList.value.push({
+    id,
     direction: SORT_DIRECTION.ascending,
   });
   showAddPropertyMenu.value = false;
 };
 
 const sortingList = useReduceIterable(
-  sortListState,
-  (acc, { direction, propertyId: id }) => {
+  sortList,
+  (acc, { direction, id }) => {
     const { name } = propertyMap[id];
 
     acc.push({
@@ -109,16 +124,16 @@ const sortingList = useReduceIterable(
 );
 
 const onClickRemove = (id: DatabasePropertyId) => {
-  const foundIndex = sortListState.value.findIndex(
-    ({ propertyId }) => propertyId === id,
+  const foundIndex = sortList.value.findIndex(
+    ({ id: propertyId }) => propertyId === id,
   );
 
-  sortListState.value.splice(foundIndex, 1);
+  sortList.value.splice(foundIndex, 1);
 };
 
 const onClickToggleDirection = (id: DatabasePropertyId) => {
-  const sortDescription = sortListState.value.find(
-    ({ propertyId }) => propertyId === id,
+  const sortDescription = sortList.value.find(
+    ({ id: propertyId }) => propertyId === id,
   );
 
   if (sortDescription) {
