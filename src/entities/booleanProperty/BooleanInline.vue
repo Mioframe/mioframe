@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { MDCheckbox } from '@shared/ui/Checkbox';
-import { isBoolean } from 'remeda';
+import { isBoolean } from 'es-toolkit';
 import { computed } from 'vue';
 
 const { value } = defineProps<{

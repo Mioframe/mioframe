@@ -10,10 +10,10 @@ export {
   zodDatabaseViewId,
 } from './viewId';
 export {
-  type DatabaseSort,
-  type DatabaseSortList,
+  type DatabaseSortDescription,
+  type DatabaseSortMap,
   SORT_DIRECTION,
   zodDatabaseSortDescription,
   zodDatabaseSortDirection,
-  zodDatabaseSortList,
+  zodDatabaseSortMap,
 } from './sorting';

@@ -5,7 +5,8 @@ import type { FileForStorageAdapter } from '../fsStorageAdapter';
 import type { ItemWithChildren } from '@shared/lib/useIterable';
 
 import type { AutomergeValue } from '@automerge/automerge';
-import type { ComputedRef, Reactive } from 'vue';
+import type { ComputedRef, Reactive, WritableComputedRef } from 'vue';
+import type { ReadonlyDeep } from 'type-fest';
 
 export type AutomergeMap = {
   [Key in string]?: AutomergeValue;
@@ -24,10 +25,14 @@ export const zodDocumentContent = object({
 export type DocumentContent = output<typeof zodDocumentContent>;
 
 export interface UseCFRDocument {
-  content: ComputedRef<DocumentContent | undefined>;
-  name: ComputedRef<string | undefined>;
-  documentType: ComputedRef<string | undefined>;
-  readDoc: () => Promise<DocumentContent | undefined>;
+  content: ComputedRef<ReadonlyDeep<DocumentContent> | undefined>;
+  /**
+   * no stable
+   */
+  writableContent: WritableComputedRef<DocumentContent | undefined>;
+  name: ComputedRef<ReadonlyDeep<string> | undefined>;
+  documentType: ComputedRef<ReadonlyDeep<string> | undefined>;
+  readDoc: () => Promise<ReadonlyDeep<DocumentContent> | undefined>;
   change: (callback: (doc: DocumentContent) => void) => void;
 }
 

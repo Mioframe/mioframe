@@ -2,7 +2,7 @@
 import { useTooltip } from './directiveTooltip';
 
 import { FadeTransition } from '@noction/vue-bezier';
-import TooltipItem from './TooltipItem.vue';
+import PlainTooltipItem from './PlainTooltipItem.vue';
 import { useRootElement } from '@shared/lib/useRootElement';
 
 const { showerTooltips } = useTooltip();
@@ -13,7 +13,7 @@ const rootEl = useRootElement();
 <template>
   <Teleport :to="rootEl">
     <FadeTransition group>
-      <TooltipItem
+      <PlainTooltipItem
         v-for="([targetElement, text], index) in showerTooltips"
         :key="text + index"
         class="tooltip-container__tooltip"

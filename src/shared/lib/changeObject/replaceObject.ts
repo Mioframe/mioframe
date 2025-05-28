@@ -1,4 +1,4 @@
-import { clone } from 'remeda';
+import { cloneDeep } from 'es-toolkit';
 import { isUnknownRecord } from './isUnknownRecord';
 
 /**
@@ -22,11 +22,11 @@ export const replaceObject = <S extends object>(
         if (isUnknownRecord(targetValue) && isUnknownRecord(sourceValue)) {
           replaceObject(targetValue, sourceValue);
         } else {
-          target[sourceKey] = clone(sourceValue);
+          target[sourceKey] = cloneDeep(sourceValue);
         }
       }
     } else {
-      target[sourceKey] = clone(sourceValue);
+      target[sourceKey] = cloneDeep(sourceValue);
     }
   });
 

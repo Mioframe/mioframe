@@ -9,7 +9,8 @@ import { computed, ref, toRef, toValue, watch } from 'vue';
 import { replaceObject } from '../changeObject';
 import { tryOnScopeDispose } from '@vueuse/core';
 import { uniqueId } from '../uniqueId';
-import { clone, isObjectType } from 'remeda';
+import { cloneDeep } from 'es-toolkit';
+import { isObjectLike } from 'es-toolkit/compat';
 
 const { debug } = createLogger('useCFRDocument');
 
@@ -30,6 +31,11 @@ const cfrDocumentStateCache = new WeakMap<
   CFRDocumentState
 >();
 
+/**
+ * Создание реактивного кеша состояния документа
+ * @param docHandle
+ * @returns
+ */
 const createCache = (docHandle: DocHandle<unknown>) => {
   const state: CFRDocumentState = {
     alreadyRead: false,
@@ -37,18 +43,26 @@ const createCache = (docHandle: DocHandle<unknown>) => {
     numberOfUsers: 0,
   };
 
-  docHandle.on('change', updateDoc);
+  docHandle.on('change', updateCache);
 
   cfrDocumentStateCache.set(docHandle, state);
 
   return state;
 };
 
+/**
+ * Отключение обновления и удаление кэша
+ * @param docHandle
+ */
 const deleteCache = (docHandle: DocHandle<unknown>) => {
-  docHandle.off('change', updateDoc);
+  docHandle.off('change', updateCache);
   cfrDocumentStateCache.delete(docHandle);
 };
 
+/**
+ * Безопасное удаление кэша при отсутствии потребителей
+ * @param docHandle
+ */
 const tryDeleteCache = (docHandle: DocHandle<unknown>) => {
   const numberOfUsers =
     cfrDocumentStateCache.get(docHandle)?.numberOfUsers ?? 0;
@@ -57,7 +71,11 @@ const tryDeleteCache = (docHandle: DocHandle<unknown>) => {
   }
 };
 
-const disposeState = (docHandle: DocHandle<unknown>) => {
+/**
+ * Уменьшение потребителей кэша
+ * @param docHandle
+ */
+const disposeCache = (docHandle: DocHandle<unknown>) => {
   const cachedState = cfrDocumentStateCache.get(docHandle);
   if (cachedState) {
     cachedState.numberOfUsers -= 1;
@@ -65,7 +83,12 @@ const disposeState = (docHandle: DocHandle<unknown>) => {
   }
 };
 
-const useState = (docHandle: DocHandle<unknown>): CFRDocumentState => {
+/**
+ * Получение кэшированного состояния документа
+ * @param docHandle
+ * @returns
+ */
+const getCache = (docHandle: DocHandle<unknown>): CFRDocumentState => {
   const cachedState = cfrDocumentStateCache.get(docHandle);
   if (!cachedState) {
     return createCache(docHandle);
@@ -73,14 +96,17 @@ const useState = (docHandle: DocHandle<unknown>): CFRDocumentState => {
   return cachedState;
 };
 
-const updateDoc = ({
+/**
+ * Обновление кэшированного состояния документа
+ */
+const updateCache = ({
   doc: originalDoc,
   handle,
 }: {
   doc?: unknown;
   handle: DocHandle<unknown>;
 }) => {
-  const { documentContent } = useState(handle);
+  const { documentContent } = getCache(handle);
   debug('updateDoc originalDoc', originalDoc);
   const parsedDoc = checkSchema(originalDoc, zodDocumentContent);
   replaceObject(documentContent.value, parsedDoc ?? defaultDocumentContent());
@@ -99,18 +125,18 @@ export const useCFRDocument = (
     debug('readDoc', debugId);
     const stateDocHandler = docHandleRef.value;
     if (stateDocHandler) {
-      const { documentContent } = useState(stateDocHandler);
+      const { documentContent } = getCache(stateDocHandler);
 
       const originalDoc = await stateDocHandler.doc();
       debug('readDoc originalDoc', originalDoc);
       if (stateDocHandler === docHandleRef.value) {
         debug('doc originalDoc', () => ({
-          originalDoc: clone(originalDoc),
+          originalDoc: cloneDeep(originalDoc),
         }));
         const parsedDoc = checkSchema(originalDoc, zodDocumentContent);
         if (parsedDoc) {
           replaceObject(documentContent.value, parsedDoc);
-          debug('doc parsedDoc', () => clone(parsedDoc));
+          debug('doc parsedDoc', () => cloneDeep(parsedDoc));
         }
       }
       return documentContent.value;
@@ -118,10 +144,14 @@ export const useCFRDocument = (
     return undefined;
   };
 
+  /**
+   * Обновление документа с миграцией
+   * @param callback
+   */
   const change = (callback: ChangeFn<DocumentContent>) => {
     debug('change');
     docHandleRef.value?.change((doc) => {
-      if (isObjectType(doc)) {
+      if (isObjectLike(doc)) {
         callback(applyCFRDocumentMigration(doc));
       }
     });
@@ -131,30 +161,28 @@ export const useCFRDocument = (
     docHandleRef,
     (docHandle, oldDocHandle) => {
       if (oldDocHandle) {
-        disposeState(oldDocHandle);
+        disposeCache(oldDocHandle);
       }
 
       if (docHandle) {
-        const cachedState = cfrDocumentStateCache.get(docHandle);
-        if (cachedState) {
-          cachedState.numberOfUsers += 1;
-        } else {
-          const state = useState(docHandle);
-          state.numberOfUsers += 1;
+        const state = getCache(docHandle);
+        state.numberOfUsers += 1;
 
-          if (state.alreadyRead) {
-            void readDoc();
-          }
+        if (state.alreadyRead) {
+          void readDoc();
         }
       }
     },
     { immediate: true },
   );
 
+  /**
+   * Состояния документа только для чтения
+   */
   const content = computed(() => {
     const docHandle = toValue(docHandleRef);
     if (docHandle) {
-      const state = useState(docHandle);
+      const state = getCache(docHandle);
       if (!state.alreadyRead) {
         state.alreadyRead = true;
         void readDoc();
@@ -165,10 +193,24 @@ export const useCFRDocument = (
     return undefined;
   });
 
+  /**
+   * Реактивно связанное состояние документа
+   */
+  const writableContent = computed({
+    get: () => content.value,
+    set: (content) => {
+      if (content) {
+        change((oldContent) => {
+          replaceObject(oldContent, content);
+        });
+      }
+    },
+  });
+
   tryOnScopeDispose(() => {
     const docHandle = toValue(docHandleRef);
     if (docHandle) {
-      disposeState(docHandle);
+      disposeCache(docHandle);
     }
 
     debug('tryOnScopeDispose', debugId);
@@ -178,6 +220,7 @@ export const useCFRDocument = (
     name: computed(() => content.value?.name),
     documentType: computed(() => content.value?.type),
     content,
+    writableContent,
     readDoc,
     change,
   };

@@ -1,7 +1,7 @@
 import type { output } from 'zod/v4-mini';
-import { array, object, tuple, union, enum as zodEnum } from 'zod/v4-mini';
+import { int, object, enum as zodEnum } from 'zod/v4-mini';
 import { zodPropertyId } from '../../v1/property';
-import { zodItemId } from '../../v1/item';
+import { zodOnlyRecord } from '@shared/lib/zodRecord';
 
 export enum SORT_DIRECTION {
   ascending,
@@ -11,15 +11,15 @@ export enum SORT_DIRECTION {
 export const zodDatabaseSortDirection = zodEnum(SORT_DIRECTION);
 
 export const zodDatabaseSortDescription = object({
-  propertyId: zodPropertyId,
   direction: zodDatabaseSortDirection,
+  priority: int(),
 });
 
-export type DatabaseSort = output<typeof zodDatabaseSortDescription>;
+export type DatabaseSortDescription = output<typeof zodDatabaseSortDescription>;
 
-export const zodDatabaseSortList = union([
-  // tuple([array(zodItemId)], zodDatabaseSortDescription), // TODO: manual проще сделать отдельным полем
-  array(zodDatabaseSortDescription),
-]);
+export const zodDatabaseSortMap = zodOnlyRecord(
+  zodPropertyId,
+  zodDatabaseSortDescription,
+);
 
-export type DatabaseSortList = output<typeof zodDatabaseSortList>;
+export type DatabaseSortMap = output<typeof zodDatabaseSortMap>;

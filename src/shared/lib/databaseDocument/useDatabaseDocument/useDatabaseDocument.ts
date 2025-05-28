@@ -248,8 +248,6 @@ export const useDatabaseDocument = (
       rename: renameView,
       update: updateView,
     },
-    addSortDescription,
-    toggleSortDirection,
 
     documentError,
 
