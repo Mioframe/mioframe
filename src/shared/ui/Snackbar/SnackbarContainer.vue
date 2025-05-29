@@ -1,20 +1,20 @@
 <script setup lang="ts">
 import { FadeTransition } from '@noction/vue-bezier';
-import { useRootElement } from '@shared/lib/useRootElement';
 import MDSnackbar from './MDSnackbar.vue';
 import { useSnackbar } from './useSnackbar';
-
-const rootEl = useRootElement();
+import { useClosestParentFrame } from '@shared/lib/useClosestParentFrame';
 
 const { currentSnackbar, closeSnackbar } = useSnackbar();
 
 const onClickClose = () => {
   closeSnackbar();
 };
+
+const targetTeleport = useClosestParentFrame();
 </script>
 
 <template>
-  <Teleport :to="rootEl">
+  <Teleport defer :to="targetTeleport">
     <div v-if="currentSnackbar" class="snackbar-container">
       <FadeTransition group>
         <MDSnackbar

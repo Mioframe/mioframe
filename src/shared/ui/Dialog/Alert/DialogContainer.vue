@@ -1,16 +1,16 @@
 <script setup lang="ts">
-import { useRootElement } from '@shared/lib/useRootElement';
+import { useClosestParentFrame } from '@shared/lib/useClosestParentFrame';
 import MDDialog from '../MDDialog.vue';
 import { useDialogState } from './useDialog';
 import { MDSymbol } from '@shared/ui/Icon';
 
-const rootElement = useRootElement();
+const targetTeleport = useClosestParentFrame();
 
 const { alertSet } = useDialogState();
 </script>
 
 <template>
-  <Teleport :to="rootElement">
+  <Teleport defer :to="targetTeleport">
     <div class="dialog-container">
       <MDDialog
         v-for="item in alertSet"

@@ -8,7 +8,7 @@ import type {
 import { MDDialog } from '@shared/ui/Dialog';
 import { ref, watchEffect } from 'vue';
 import StringPropertyField from './StringPropertyField.vue';
-import { is } from '@shared/lib/validateZodScheme';
+import { zodIs } from '@shared/lib/validateZodScheme';
 import BooleanPropertyField from './BooleanPropertyField.vue';
 import NumberPropertyField from './NumberPropertyField.vue';
 import { zodNumberProperty } from '@entity/numberProperty';
@@ -62,25 +62,25 @@ const onCancel = () => {
   >
     <template v-for="(property, propertyId) in properties" :key="propertyId">
       <StringPropertyField
-        v-if="is(property, zodStringProperty)"
+        v-if="zodIs(property, zodStringProperty)"
         v-model:model-value="itemState[propertyId]"
         :property
       />
 
       <NumberPropertyField
-        v-else-if="is(property, zodNumberProperty)"
+        v-else-if="zodIs(property, zodNumberProperty)"
         v-model:model-value="itemState[propertyId]"
         :property
       />
 
       <BooleanPropertyField
-        v-else-if="is(property, zodBooleanProperty)"
+        v-else-if="zodIs(property, zodBooleanProperty)"
         v-model:model-value="itemState[propertyId]"
         :property
       />
 
       <DatePropertyField
-        v-else-if="is(property, zodDateProperty)"
+        v-else-if="zodIs(property, zodDateProperty)"
         v-model:model-value="itemState[propertyId]"
         :property
       />

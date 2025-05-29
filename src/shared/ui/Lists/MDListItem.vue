@@ -60,6 +60,7 @@ const tag = computed(() => (isButton ? 'button' : isDiv ? 'div' : 'li'));
   --md-list-item-horizontal-gap: 16px;
   --md-list-item-min-height: 56px;
   --md-list-item-border-radius: 0px;
+  --md-target-offset: 0px;
 
   display: flex;
   padding: 8px var(--md-list-item-horizontal-gap);

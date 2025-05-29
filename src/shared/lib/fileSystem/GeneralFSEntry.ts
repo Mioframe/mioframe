@@ -1,5 +1,5 @@
 import type { Promisable } from 'type-fest';
-import { is } from '../validateZodScheme';
+import { zodIs } from '../validateZodScheme';
 import { array, object, string } from 'zod/v4-mini';
 import { zodFunction } from '../zodFunction';
 
@@ -15,10 +15,10 @@ export interface GeneralFSEntry {
 }
 
 export const isEntryPath = (value: unknown): value is EntryPath =>
-  is(value, array(string()));
+  zodIs(value, array(string()));
 
 export const isGeneralFSEntry = (value: unknown): value is GeneralFSEntry =>
-  is(
+  zodIs(
     value,
     object({
       name: string(),

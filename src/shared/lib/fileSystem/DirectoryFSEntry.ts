@@ -1,5 +1,5 @@
 import { object as zodInterface } from 'zod/v4-mini';
-import { is } from '../validateZodScheme';
+import { zodIs } from '../validateZodScheme';
 import { isGeneralFSEntry, type GeneralFSEntry } from './GeneralFSEntry';
 import type { FileFSEntry } from './FileFSEntry';
 import { zodFunction } from '../zodFunction';
@@ -59,7 +59,7 @@ export interface DirectoryFSEntry extends GeneralFSEntry {
 
 export const isDirectoryRef = (value: unknown): value is DirectoryFSEntry =>
   isGeneralFSEntry(value) &&
-  is(
+  zodIs(
     value,
     zodInterface({
       entries: zodFunction(),

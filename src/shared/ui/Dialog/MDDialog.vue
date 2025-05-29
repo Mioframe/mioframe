@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import { useRootElement } from '@shared/lib/useRootElement';
 import { MDButton } from '../Button';
 import { useFocusTrap } from '@vueuse/integrations/useFocusTrap';
 import { onBeforeUnmount, ref, watchEffect } from 'vue';
 import { onKeyStroke } from '@vueuse/core';
+import { useClosestParentFrame } from '@shared/lib/useClosestParentFrame';
 
 const {
   applyLabel,
@@ -47,8 +47,6 @@ const onCancel = () => {
   }
 };
 
-const rootEl = useRootElement();
-
 const dialogEl = ref<HTMLDialogElement>();
 
 const { activate: lockFocus, deactivate: unlockFocus } = useFocusTrap(
@@ -73,10 +71,12 @@ onKeyStroke('Escape', () => {
 onBeforeUnmount(() => {
   unlockFocus();
 });
+
+const targetTeleport = useClosestParentFrame();
 </script>
 
 <template>
-  <Teleport :to="rootEl">
+  <Teleport defer :to="targetTeleport">
     <dialog
       ref="dialogEl"
       :open="!hide"

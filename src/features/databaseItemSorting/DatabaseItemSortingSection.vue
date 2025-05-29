@@ -6,6 +6,7 @@ import {
   type DatabaseUnknownPropertiesMap,
 } from '@shared/lib/databaseDocument/state';
 import { objectEntries } from '@shared/lib/objectEntries';
+import { useDeepModel } from '@shared/lib/useDeepModel';
 import { useReduceIterable } from '@shared/lib/useReduce';
 import { MDIconButton } from '@shared/ui/Button';
 import { MDSymbol } from '@shared/ui/Icon';
@@ -20,31 +21,28 @@ import { computed, ref, useTemplateRef } from 'vue';
  * - на первом месте опциональна ручная сортировка (в будущем)
  */
 
-const { propertyMap } = defineProps<{
+const props = defineProps<{
   propertyMap: DatabaseUnknownPropertiesMap;
+  // eslint-disable-next-line vue/no-unused-properties -- use in useDeepModel
+  sortMap: DatabaseSortMap;
 }>();
 
-const sortMapModel = defineModel<DatabaseSortMap>('sortMap', {
-  required: true,
-});
+const emit = defineEmits<{
+  'update:sortMap': [DatabaseSortMap];
+}>();
 
-const sortList = computed({
-  get: () =>
-    objectEntries(sortMapModel.value)
-      .sort(([, { priority: a }], [, { priority: b }]) => a - b)
-      .map(([id, { direction }]) => ({
-        id,
-        direction,
-      })),
-  set: (v: { id: DatabasePropertyId; direction: SORT_DIRECTION }[]) => {
-    v.forEach(({ direction, id }, priority) => {
-      sortMapModel.value[id] = {
-        direction,
-        priority,
-      };
-    });
-  },
-});
+const propertyMapRef = computed(() => props.propertyMap);
+
+const sortMapModel = useDeepModel(props, 'sortMap', emit);
+
+const sortList = computed(() =>
+  objectEntries(sortMapModel.value)
+    .sort(([, { priority: a }], [, { priority: b }]) => a - b)
+    .map(([id, { direction }]) => ({
+      id,
+      direction,
+    })),
+);
 
 /**
  * TODO: настройка сортировки
@@ -72,7 +70,7 @@ const propertyWithSorting = useReduceIterable(
   <DatabasePropertyId[]>[],
 );
 
-const propertyList = computed(() => keys(propertyMap));
+const propertyList = computed(() => keys(propertyMapRef.value));
 
 const propertyWithoutSorting = computed(() =>
   difference(propertyList.value, propertyWithSorting.value),
@@ -83,7 +81,7 @@ const menu = computed(() =>
     propertyWithoutSorting.value.map((id) => [
       id,
       {
-        text: propertyMap[id].name,
+        text: propertyMapRef.value[id].name,
         symbolName: 'add',
       },
     ]),
@@ -101,7 +99,7 @@ const onClickMenuProperty = (id: DatabasePropertyId) => {
 const sortingList = useReduceIterable(
   sortList,
   (acc, { direction, id }) => {
-    const { name } = propertyMap[id];
+    const { name } = propertyMapRef.value[id];
 
     acc.push({
       id,

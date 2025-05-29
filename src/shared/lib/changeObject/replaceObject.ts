@@ -6,7 +6,7 @@ import { isUnknownRecord } from './isUnknownRecord';
  * @param target - mutable object
  * @param source - object with new values
  */
-export const replaceObject = <S extends object>(
+export const deepReplaceJSONObject = <S extends object>(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any -- it doesn't matter what the target object is
   target: Record<any, any>,
   source: S,
@@ -20,7 +20,7 @@ export const replaceObject = <S extends object>(
       const targetValue: unknown = target[sourceKey];
       if (sourceValue !== targetValue) {
         if (isUnknownRecord(targetValue) && isUnknownRecord(sourceValue)) {
-          replaceObject(targetValue, sourceValue);
+          deepReplaceJSONObject(targetValue, sourceValue);
         } else {
           target[sourceKey] = cloneDeep(sourceValue);
         }

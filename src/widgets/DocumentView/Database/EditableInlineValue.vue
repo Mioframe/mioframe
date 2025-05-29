@@ -8,7 +8,7 @@ import { zodStringProperty } from '@entity/stringProperty';
 import { zodBooleanProperty } from '@entity/booleanProperty/boolean';
 import { zodNumberProperty } from '@entity/numberProperty/number';
 import { zodDateProperty } from '@entity/dateProperty/date';
-import { is } from '@shared/lib/validateZodScheme';
+import { zodIs } from '@shared/lib/validateZodScheme';
 import {
   NumberPropertyField,
   StringPropertyField,
@@ -60,7 +60,7 @@ const tryEmitValue = () => {
 const { toggleBoolean } = useBooleanEdit(stateValue);
 
 const onClick = ({ target }: MouseEvent) => {
-  if (is(property, zodBooleanProperty)) {
+  if (zodIs(property, zodBooleanProperty)) {
     toggleBoolean();
     tryEmitValue();
     return;
@@ -101,7 +101,7 @@ useFirstFocus(refPopover, { initialValue: true });
   >
     <div class="editable-inline-value__edit-popover">
       <BooleanPropertyField
-        v-if="is(property, zodBooleanProperty)"
+        v-if="zodIs(property, zodBooleanProperty)"
         v-model="stateValue"
         :property
         :label="property.name"
@@ -109,7 +109,7 @@ useFirstFocus(refPopover, { initialValue: true });
       />
 
       <NumberPropertyField
-        v-else-if="is(property, zodNumberProperty)"
+        v-else-if="zodIs(property, zodNumberProperty)"
         v-model="stateValue"
         :property
         :label="property.name"
@@ -117,7 +117,7 @@ useFirstFocus(refPopover, { initialValue: true });
       />
 
       <StringPropertyField
-        v-else-if="is(property, zodStringProperty)"
+        v-else-if="zodIs(property, zodStringProperty)"
         v-model="stateValue"
         :property
         :label="property.name"
@@ -125,7 +125,7 @@ useFirstFocus(refPopover, { initialValue: true });
       />
 
       <DatePropertyField
-        v-else-if="is(property, zodDateProperty)"
+        v-else-if="zodIs(property, zodDateProperty)"
         v-model="stateValue"
         :property
         :label="property.name"
