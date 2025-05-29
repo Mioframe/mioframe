@@ -1,148 +1,28 @@
 import { createLogger } from '../logger';
-import { checkSchema } from '../validateZodScheme';
+import { is } from '../validateZodScheme';
 import type { UseCFRDocument } from './types';
 import { zodDocumentContent, type DocumentContent } from './types';
 import type { ChangeFn, DocHandle } from '@automerge/automerge-repo';
 import { applyCFRDocumentMigration } from './migrations';
-import type { MaybeRefOrGetter, Ref } from 'vue';
-import { computed, ref, toRef, toValue, watch } from 'vue';
-import { replaceObject } from '../changeObject';
-import { tryOnScopeDispose } from '@vueuse/core';
+import type { MaybeRefOrGetter } from 'vue';
+import { computed } from 'vue';
 import { uniqueId } from '../uniqueId';
-import { cloneDeep } from 'es-toolkit';
 import { isObjectLike } from 'es-toolkit/compat';
+import { defineCachedDocHandle } from './useDocHandle';
+import type { UnknownRecord } from 'type-fest';
 
 const { debug } = createLogger('useCFRDocument');
 
-const defaultDocumentContent = (): DocumentContent => ({
-  name: 'unknown',
-  type: 'unknown',
-  body: undefined,
-});
+const useDocHandle = defineCachedDocHandle();
 
-type CFRDocumentState = {
-  documentContent: Ref<DocumentContent>;
-  numberOfUsers: number;
-  alreadyRead: boolean;
-};
-
-const cfrDocumentStateCache = new WeakMap<
-  DocHandle<unknown>,
-  CFRDocumentState
->();
-
-/**
- * Создание реактивного кеша состояния документа
- * @param docHandle
- * @returns
- */
-const createCache = (docHandle: DocHandle<unknown>) => {
-  const state: CFRDocumentState = {
-    alreadyRead: false,
-    documentContent: ref<DocumentContent>(defaultDocumentContent()),
-    numberOfUsers: 0,
-  };
-
-  docHandle.on('change', updateCache);
-
-  cfrDocumentStateCache.set(docHandle, state);
-
-  return state;
-};
-
-/**
- * Отключение обновления и удаление кэша
- * @param docHandle
- */
-const deleteCache = (docHandle: DocHandle<unknown>) => {
-  docHandle.off('change', updateCache);
-  cfrDocumentStateCache.delete(docHandle);
-};
-
-/**
- * Безопасное удаление кэша при отсутствии потребителей
- * @param docHandle
- */
-const tryDeleteCache = (docHandle: DocHandle<unknown>) => {
-  const numberOfUsers =
-    cfrDocumentStateCache.get(docHandle)?.numberOfUsers ?? 0;
-  if (numberOfUsers <= 0) {
-    deleteCache(docHandle);
-  }
-};
-
-/**
- * Уменьшение потребителей кэша
- * @param docHandle
- */
-const disposeCache = (docHandle: DocHandle<unknown>) => {
-  const cachedState = cfrDocumentStateCache.get(docHandle);
-  if (cachedState) {
-    cachedState.numberOfUsers -= 1;
-    tryDeleteCache(docHandle);
-  }
-};
-
-/**
- * Получение кэшированного состояния документа
- * @param docHandle
- * @returns
- */
-const getCache = (docHandle: DocHandle<unknown>): CFRDocumentState => {
-  const cachedState = cfrDocumentStateCache.get(docHandle);
-  if (!cachedState) {
-    return createCache(docHandle);
-  }
-  return cachedState;
-};
-
-/**
- * Обновление кэшированного состояния документа
- */
-const updateCache = ({
-  doc: originalDoc,
-  handle,
-}: {
-  doc?: unknown;
-  handle: DocHandle<unknown>;
-}) => {
-  const { documentContent } = getCache(handle);
-  debug('updateDoc originalDoc', originalDoc);
-  const parsedDoc = checkSchema(originalDoc, zodDocumentContent);
-  replaceObject(documentContent.value, parsedDoc ?? defaultDocumentContent());
-};
-
-export const useCFRDocument = (
-  docHandle: MaybeRefOrGetter<DocHandle<unknown> | undefined>,
+export const useCFRDocument = <T extends object = UnknownRecord>(
+  docHandle: MaybeRefOrGetter<DocHandle<T> | undefined>,
 ): UseCFRDocument => {
   const debugId = uniqueId('useCFRDocument');
 
-  const docHandleRef = toRef(() => toValue(docHandle));
+  const { doc, change: docHandleChange } = useDocHandle(docHandle);
 
   debug('start', debugId);
-
-  const readDoc = async () => {
-    debug('readDoc', debugId);
-    const stateDocHandler = docHandleRef.value;
-    if (stateDocHandler) {
-      const { documentContent } = getCache(stateDocHandler);
-
-      const originalDoc = await stateDocHandler.doc();
-      debug('readDoc originalDoc', originalDoc);
-      if (stateDocHandler === docHandleRef.value) {
-        debug('doc originalDoc', () => ({
-          originalDoc: cloneDeep(originalDoc),
-        }));
-        const parsedDoc = checkSchema(originalDoc, zodDocumentContent);
-        if (parsedDoc) {
-          replaceObject(documentContent.value, parsedDoc);
-          debug('doc parsedDoc', () => cloneDeep(parsedDoc));
-        }
-      }
-      return documentContent.value;
-    }
-    return undefined;
-  };
 
   /**
    * Обновление документа с миграцией
@@ -150,78 +30,24 @@ export const useCFRDocument = (
    */
   const change = (callback: ChangeFn<DocumentContent>) => {
     debug('change');
-    docHandleRef.value?.change((doc) => {
+    docHandleChange((doc) => {
       if (isObjectLike(doc)) {
         callback(applyCFRDocumentMigration(doc));
       }
     });
   };
 
-  watch(
-    docHandleRef,
-    (docHandle, oldDocHandle) => {
-      if (oldDocHandle) {
-        disposeCache(oldDocHandle);
-      }
-
-      if (docHandle) {
-        const state = getCache(docHandle);
-        state.numberOfUsers += 1;
-
-        if (state.alreadyRead) {
-          void readDoc();
-        }
-      }
-    },
-    { immediate: true },
-  );
-
   /**
    * Состояния документа только для чтения
    */
-  const content = computed(() => {
-    const docHandle = toValue(docHandleRef);
-    if (docHandle) {
-      const state = getCache(docHandle);
-      if (!state.alreadyRead) {
-        state.alreadyRead = true;
-        void readDoc();
-      }
-      return state.documentContent.value;
-    }
-
-    return undefined;
-  });
-
-  /**
-   * Реактивно связанное состояние документа
-   */
-  const writableContent = computed({
-    get: () => content.value,
-    set: (content) => {
-      if (content) {
-        change((oldContent) => {
-          replaceObject(oldContent, content);
-        });
-      }
-    },
-  });
-
-  tryOnScopeDispose(() => {
-    const docHandle = toValue(docHandleRef);
-    if (docHandle) {
-      disposeCache(docHandle);
-    }
-
-    debug('tryOnScopeDispose', debugId);
-  });
+  const content = computed((): DocumentContent | undefined =>
+    is(doc.value, zodDocumentContent) ? doc.value : undefined,
+  );
 
   const useCFRDocumentInterface: UseCFRDocument = {
     name: computed(() => content.value?.name),
     documentType: computed(() => content.value?.type),
     content,
-    writableContent,
-    readDoc,
     change,
   };
 

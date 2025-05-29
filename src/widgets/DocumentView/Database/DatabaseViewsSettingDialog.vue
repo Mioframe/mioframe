@@ -14,9 +14,10 @@ import { writableDeepClone } from '@shared/lib/writableDeepClone';
 import { DatabaseViewCreateDialog } from '@feature/databaseViewCreate';
 import { defineMenuButtonList, MDContextMenuBtn } from '@shared/ui/Menu';
 import { DatabaseViewRenameDialog } from '@feature/databaseViewRename';
+import type { UnknownRecord } from 'type-fest';
 
 const { docHandle } = defineProps<{
-  docHandle: DocHandle<unknown>;
+  docHandle: DocHandle<UnknownRecord>;
 }>();
 
 const emit = defineEmits<{
