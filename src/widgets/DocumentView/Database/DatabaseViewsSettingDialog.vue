@@ -181,7 +181,6 @@ const onSubmitViewRename = async (viewId: DatabaseViewId, newName: string) => {
       <template #trailingIcon="{ viewId }">
         <MDContextMenuBtn
           :btns="contextMenu"
-          disabled-teleport
           @click="onClickContextMenu(viewId, $event)"
         />
       </template>

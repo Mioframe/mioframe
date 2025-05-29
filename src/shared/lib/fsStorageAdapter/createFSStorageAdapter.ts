@@ -11,7 +11,7 @@ import {
   zodPartialStorageKey,
 } from './types';
 import { createLogger } from '../logger';
-import { is } from '../validateZodScheme';
+import { zodIs } from '../validateZodScheme';
 import { find, from, toArray } from 'ix/Ix.asynciterable';
 import { filter, map } from 'ix/Ix.asynciterable.operators';
 import { useNotifications } from '@shared/ui/Notifications';
@@ -22,10 +22,10 @@ export const partialKeyToFileName = (
 ): PartialAutomergeFileName | undefined => {
   debug('keyToFileName', key);
 
-  const partialStorageKey = is(key, zodPartialStorageKey) ? key : undefined;
+  const partialStorageKey = zodIs(key, zodPartialStorageKey) ? key : undefined;
   const maybePartialAutomergeFileName = partialStorageKey?.join(KEY_SEPARATE);
 
-  return is(maybePartialAutomergeFileName, zodPartialAutomergeFileName)
+  return zodIs(maybePartialAutomergeFileName, zodPartialAutomergeFileName)
     ? maybePartialAutomergeFileName
     : undefined;
 };
@@ -33,13 +33,13 @@ export const partialKeyToFileName = (
 export const fileNameToPartialKey = (
   fileName: unknown,
 ): PartialStorageKey | undefined => {
-  const partialAutomergeFileName = is(fileName, zodPartialAutomergeFileName)
+  const partialAutomergeFileName = zodIs(fileName, zodPartialAutomergeFileName)
     ? fileName
     : undefined;
 
   const maybePartialStorageKey = partialAutomergeFileName?.split(KEY_SEPARATE);
 
-  return is(maybePartialStorageKey, zodPartialStorageKey)
+  return zodIs(maybePartialStorageKey, zodPartialStorageKey)
     ? maybePartialStorageKey
     : undefined;
 };
@@ -109,7 +109,7 @@ export const createStorageAdapter = (
     try {
       const maybePartialAutomergeFileName = keyPrefix.join(KEY_SEPARATE);
 
-      const keyPrefixString: PartialAutomergeFileName | undefined = is(
+      const keyPrefixString: PartialAutomergeFileName | undefined = zodIs(
         maybePartialAutomergeFileName,
         zodPartialAutomergeFileName,
       )
@@ -160,7 +160,7 @@ export const createStorageAdapter = (
     try {
       const maybePartialAutomergeFileName = keyPrefix.join(KEY_SEPARATE);
 
-      const keyPrefixString: PartialAutomergeFileName | undefined = is(
+      const keyPrefixString: PartialAutomergeFileName | undefined = zodIs(
         maybePartialAutomergeFileName,
         zodPartialAutomergeFileName,
       )

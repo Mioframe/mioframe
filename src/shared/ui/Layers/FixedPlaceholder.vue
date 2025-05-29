@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { useRootElement } from '@shared/lib/useRootElement';
+import { useClosestParentFrame } from '@shared/lib/useClosestParentFrame';
 import { useCssVar, useElementBounding, useElementSize } from '@vueuse/core';
 import { ref, watchEffect } from 'vue';
 
@@ -58,12 +58,13 @@ watchEffect(() => {
   contentHeightCssVar.value =
     priorityHeight === 'content' ? `${contentHeight.value}px` : undefined;
 });
-const rootEl = useRootElement();
+
+const targetTeleport = useClosestParentFrame();
 </script>
 
 <template>
   <div ref="placeholder" class="fixed-placeholder">
-    <Teleport :to="rootEl">
+    <Teleport defer :to="targetTeleport">
       <div ref="content" class="fixed-placeholder__content">
         <slot />
       </div>

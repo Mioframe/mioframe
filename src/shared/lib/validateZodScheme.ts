@@ -1,6 +1,6 @@
 import type { output, ZodMiniType } from 'zod/v4-mini';
 
-export const is = <Z extends ZodMiniType>(
+export const zodIs = <Z extends ZodMiniType>(
   value: unknown,
   zod: Z,
 ): value is output<Z> => zod.safeParse(value).success;
@@ -9,9 +9,27 @@ export const is = <Z extends ZodMiniType>(
  * checks value without creating a new one
  * @deprecated - use is(value, zod)
  */
-export const checkSchema = <Z extends ZodMiniType>(
+export const zodCheck = <Z extends ZodMiniType>(
   value: unknown,
   zod: Z,
 ): output<Z> | undefined =>
   // eslint-disable-next-line @typescript-eslint/no-unsafe-return -- Here is the correct check
-  is(value, zod) ? value : undefined;
+  zodIs(value, zod) ? value : undefined;
+
+/**
+ * Checking zod scheme without cloning values
+ * @param value
+ * @param zod
+ * @returns
+ */
+export const zodSafeCheck = <Z extends ZodMiniType>(value: unknown, zod: Z) => {
+  const { success, error } = zod.safeParse(value);
+
+  return success
+    ? {
+        data: <output<Z>>value,
+      }
+    : {
+        error,
+      };
+};

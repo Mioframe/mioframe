@@ -1,4 +1,4 @@
-import type { PartialDeep, UnknownRecord } from 'type-fest';
+import type { Entries, PartialDeep, UnknownRecord } from 'type-fest';
 import type {
   UseDatabaseDocument,
   DataBaseStateLatest,
@@ -17,22 +17,19 @@ import {
 } from './propertyMutations';
 import type { DocHandle } from '@automerge/automerge-repo';
 import { useCFRDocument } from '../../cfrDocument/useCFRDocument';
-import { is } from '../../validateZodScheme';
+import { zodIs, zodSafeCheck } from '../../validateZodScheme';
 import { migrateBody, migrateDatabaseDocument } from '../migrations';
 import { putObject } from '../../changeObject';
 import { createLogger } from '../../logger';
 import {
-  addSortDescriptionMutation,
   addViewMutation,
   removeViewMutation,
   renameViewMutation,
-  toggleSortDirectionMutation,
 } from './viewMutations';
 import type {
   DatabaseItem,
   DatabaseItemId,
   DatabasePropertyId,
-  DatabaseSortDescription,
   DatabaseUnknownProperty,
   DatabaseView,
   DatabaseViewId,
@@ -43,8 +40,6 @@ import {
   removeItemMutation,
   updateItemMutation,
 } from './itemMutations';
-import type { core } from 'zod/v4-mini';
-import { safeParse } from 'zod/v4-mini';
 import { entries, pipe, sort } from 'remeda';
 
 const { debug, watchDebug } = createLogger('useDatabaseDocument');
@@ -63,7 +58,7 @@ export const useDatabaseDocument = (
   ): Promise<R> =>
     new Promise((resolve, reject) => {
       change((doc) => {
-        if (!is(doc, zodDatabaseTypeDocument)) {
+        if (!zodIs(doc, zodDatabaseTypeDocument)) {
           reject(new Error('document is not DatabaseTypeDocument'));
           return;
         }
@@ -76,25 +71,8 @@ export const useDatabaseDocument = (
       });
     });
 
-  const parseDocumentContent = computed(
-    (): core.util.SafeParseResult<
-      core.output<typeof zodDatabaseDocumentWithContent>
-    > => {
-      // try {
-      return safeParse(
-        zodDatabaseDocumentWithContent,
-        unknownTypeContent.value,
-      );
-      // } catch (error) {
-      //   if (error instanceof core.$ZodError) {
-      //     return {
-      //       success: false,
-      //       error,
-      //     };
-      //   }
-      //   throw error;
-      // }
-    },
+  const parseDocumentContent = computed(() =>
+    zodSafeCheck(unknownTypeContent.value, zodDatabaseDocumentWithContent),
   );
 
   const documentError = computed(() => parseDocumentContent.value.error);
@@ -165,24 +143,6 @@ export const useDatabaseDocument = (
     });
   };
 
-  const addSortDescription = async (
-    viewId: DatabaseViewId,
-    sortDescription: DatabaseSortDescription,
-  ) => {
-    await updateDatabaseDocument((body) => {
-      addSortDescriptionMutation(body, viewId, sortDescription);
-    });
-  };
-
-  const toggleSortDirection = async (
-    viewId: DatabaseViewId,
-    propertyId: DatabasePropertyId,
-  ) => {
-    await updateDatabaseDocument((body) => {
-      toggleSortDirectionMutation(body, viewId, propertyId);
-    });
-  };
-
   const renameView = async (viewId: DatabaseViewId, newName: string) => {
     await updateDatabaseDocument((body) => {
       renameViewMutation(body, viewId, newName);
@@ -211,16 +171,18 @@ export const useDatabaseDocument = (
       migrateBody(body, 0);
     });
 
-  const viewsList = computed(() => {
-    if (viewsState.value) {
-      return pipe(
-        entries(viewsState.value),
-        sort(([, { order: a = 0 }], [, { order: b = 0 }]) => a - b),
-      );
-    }
+  const viewsList = computed(
+    (): Readonly<Entries<DatabaseViewsMap>> | undefined => {
+      if (viewsState.value) {
+        return pipe(
+          entries(viewsState.value),
+          sort(([, { order: a = 0 }], [, { order: b = 0 }]) => a - b),
+        );
+      }
 
-    return undefined;
-  });
+      return undefined;
+    },
+  );
 
   const getView = (id: DatabaseViewId) => {
     return viewsState.value?.[id];

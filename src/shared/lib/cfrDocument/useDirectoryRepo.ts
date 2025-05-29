@@ -13,7 +13,7 @@ import {
   fileNameToPartialKey,
 } from '../fsStorageAdapter/createFSStorageAdapter';
 import { useDirectory, type DirectoryFSEntry } from '../fileSystem';
-import { is } from '../validateZodScheme';
+import { zodIs } from '../validateZodScheme';
 import { useRepo } from './useRepo';
 import { createLogger } from '../logger';
 import { useReduceIterable, useReduceMap } from '../useReduce';
@@ -55,7 +55,7 @@ export const useDirectoryRepo = (
   );
 
   const hasDocumentFile = computed((): boolean =>
-    directoryEntriesNames.value.some((name) => is(name, zodAutomergeFileName)),
+    directoryEntriesNames.value.some((name) => zodIs(name, zodAutomergeFileName)),
   );
 
   watchDebug('hasDocumentFile', hasDocumentFile);
@@ -104,7 +104,7 @@ export const useDirectoryRepo = (
   const directoryDocumentIdList = useReduceIterable(
     directoryEntries,
     (acc, [fileName]) => {
-      if (is(fileName, zodAutomergeFileName)) {
+      if (zodIs(fileName, zodAutomergeFileName)) {
         const id = fileNameToPartialKey(fileName)?.[0];
         if (id) {
           acc.add(id);

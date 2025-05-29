@@ -13,7 +13,7 @@ const props = defineProps<{
   pressed?: boolean;
   focused?: boolean;
   loading?: number | boolean;
-  tooltip: string;
+  tooltip: string; // FIXME: v-md-tooltip зависает
   mdSymbolName?: string;
 }>();
 
@@ -34,10 +34,9 @@ const buttonType = toRef(() => props.type ?? 'standard');
 <template>
   <button
     v-pressed-state
-    v-md-tooltip="tooltip"
     :disabled="disabled"
     :type="formAction ?? 'button'"
-    class="md-icon-button md-state"
+    class="md-icon-button"
     :class="[
       `md-icon-button_${buttonType}`,
       {

@@ -1,4 +1,4 @@
-import { is } from '@shared/lib/validateZodScheme';
+import { zodIs } from '@shared/lib/validateZodScheme';
 import { putObject } from '@shared/lib/changeObject';
 import type { DataBaseStateLatest } from '../types';
 import type {
@@ -46,7 +46,7 @@ export const addSortDescriptionMutation = (
 ) => {
   const view = body.views?.[viewId];
 
-  if (!is(view, zodDatabaseTableView)) {
+  if (!zodIs(view, zodDatabaseTableView)) {
     throw new Error(`view "${viewId}" is not table layout`);
   }
 
@@ -79,7 +79,7 @@ export const toggleSortDirectionMutation = (
 ) => {
   const view = body.views?.[viewId];
 
-  if (!is(view, zodDatabaseTableView)) {
+  if (!zodIs(view, zodDatabaseTableView)) {
     throw new Error(`view "${viewId}" is not table layout`);
   }
 

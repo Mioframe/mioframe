@@ -12,8 +12,6 @@ import type {
   DatabaseItem,
   DatabaseItemId,
   DatabasePropertyId,
-  DatabaseSortDescription,
-  DatabaseSortMap,
   DatabaseState,
   DatabaseUnknownPropertiesMap,
   DatabaseUnknownProperty,
@@ -25,7 +23,6 @@ import { zodDatabaseState } from './state';
 import type { DocumentContent } from '../cfrDocument';
 import { zodDocumentContent } from '../cfrDocument';
 import type { ComputedRef } from 'vue';
-import type { ReadonlyDeep } from 'type-fest';
 
 export type DataBaseStateLatest = DatabaseState;
 
@@ -61,14 +58,12 @@ export type UseDatabaseDocument = {
   /**
    * Всё содержимое документа
    */
-  content: ComputedRef<ReadonlyDeep<DatabaseDocumentWithContent> | undefined>;
+  content: ComputedRef<DatabaseDocumentWithContent | undefined>;
 
   /**
    * Перечень свойств
    */
-  properties: ComputedRef<
-    ReadonlyDeep<DatabaseUnknownPropertiesMap> | undefined
-  >;
+  properties: ComputedRef<DatabaseUnknownPropertiesMap | undefined>;
   addProperty: (
     property: DatabaseUnknownProperty,
   ) => Promise<DatabasePropertyId>;
@@ -81,7 +76,7 @@ export type UseDatabaseDocument = {
   /**
    * Перечень данных
    */
-  data: ComputedRef<ReadonlyDeep<DatabaseData> | undefined>;
+  data: ComputedRef<DatabaseData | undefined>;
   addItem: (item: DatabaseItem) => Promise<DatabaseItemId>;
   removeItem: (itemId: DatabaseItemId) => Promise<void>;
   updateItem: (
@@ -93,9 +88,9 @@ export type UseDatabaseDocument = {
    * Перечень представлений
    */
   view: {
-    state: ComputedRef<ReadonlyDeep<DatabaseViewsMap> | undefined>;
-    list: ComputedRef<ReadonlyDeep<Entries<DatabaseViewsMap> | undefined>>;
-    get: (id: DatabaseViewId) => ReadonlyDeep<DatabaseView> | undefined;
+    state: ComputedRef<DatabaseViewsMap | undefined>;
+    list: ComputedRef<Readonly<Entries<DatabaseViewsMap>> | undefined>;
+    get: (id: DatabaseViewId) => DatabaseView | undefined;
     add: (view: DatabaseView) => Promise<DatabaseViewId>;
     remove: (viewId: DatabaseViewId) => Promise<void>;
     rename: (viewId: DatabaseViewId, newName: string) => Promise<void>;

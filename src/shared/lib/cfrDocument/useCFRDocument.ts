@@ -1,5 +1,5 @@
 import { createLogger } from '../logger';
-import { is } from '../validateZodScheme';
+import { zodIs } from '../validateZodScheme';
 import type { UseCFRDocument } from './types';
 import { zodDocumentContent, type DocumentContent } from './types';
 import type { ChangeFn, DocHandle } from '@automerge/automerge-repo';
@@ -41,7 +41,7 @@ export const useCFRDocument = <T extends object = UnknownRecord>(
    * Состояния документа только для чтения
    */
   const content = computed((): DocumentContent | undefined =>
-    is(doc.value, zodDocumentContent) ? doc.value : undefined,
+    zodIs(doc.value, zodDocumentContent) ? doc.value : undefined,
   );
 
   const useCFRDocumentInterface: UseCFRDocument = {

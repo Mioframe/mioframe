@@ -7,16 +7,15 @@ import { DB_VIEW_LAYOUT } from '@shared/lib/databaseDocument/state/v2/view/gener
 import { useReduceIterable } from '@shared/lib/useReduce';
 import { MDChip } from '@shared/ui/Chips';
 import { MDSymbol } from '@shared/ui/Icon';
-import { computed, shallowRef, toRef } from 'vue';
+import { computed, shallowRef, toRef, watchEffect } from 'vue';
 import DatabaseViewSettingDialog from './DatabaseViewsSettingDialog.vue';
 import { DatabaseItemSortingSection } from '@feature/databaseItemSorting';
 import { MD_SYS_TYPESCALE } from '@shared/lib/md';
 import { MDIconButton } from '@shared/ui/Button';
-import type {
-  DatabaseSortMap,
-  DatabaseView,
-} from '@shared/lib/databaseDocument/state';
 import type { UnknownRecord } from 'type-fest';
+import { createLogger } from '@shared/lib/logger';
+
+const { debug } = createLogger('DatabaseViewPresetSettingsWidget');
 
 /**
  * Виджет настроек отображения данных.
@@ -30,25 +29,23 @@ const { docHandle } = defineProps<{
 const docHandleRef = toRef(() => docHandle);
 
 const {
-  view: { state: views, add: addView, list: viewsList, get: getView, update },
+  view: { state: views, add: addView, list: viewsList },
   properties,
 } = useDatabaseDocument(docHandleRef);
 
 const selectedViewId = defineModel<DatabaseViewId>('selectedViewId');
 
-const selectedView = computed({
-  get: () => (selectedViewId.value ? getView(selectedViewId.value) : undefined),
-  set: async (view: DatabaseView) => {
-    if (selectedViewId.value) {
-      await update(selectedViewId.value, view);
-    }
-  },
-});
+const selectedView = computed(() =>
+  selectedViewId.value ? views.value?.[selectedViewId.value] : undefined,
+);
 
-const selectedSortMap = computed({
-  get: () => selectedView.value?.sorting,
-  set: (v: DatabaseSortMap) => {},
-});
+const selectedSortMap = computed(() => selectedView.value?.sorting);
+
+// watchEffect(() => {
+//   if (selectedView.value && !('sorting' in selectedView.value)) {
+//     selectedView.value['sorting'] = {};
+//   }
+// });
 
 const viewButtons = useReduceIterable(
   viewsList,
@@ -126,6 +123,7 @@ const onCancelAddView = () => {
       v-model:sort-map="selectedSortMap"
       :property-map="properties"
     />
+
     <!-- панель настройки шаблона отображения -->
 
     <DatabaseViewCreateDialog
