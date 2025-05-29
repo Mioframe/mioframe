@@ -1,5 +1,5 @@
 import { defineMigrations } from '../../defineMigrations';
-import { checkSchema } from '../../validateZodScheme';
+import { zodCheck } from '../../validateZodScheme';
 import type { DatabaseTypeDocument } from '../types';
 import { zodDatabaseType } from '../types';
 import type { DatabaseState as DatabaseStateV1 } from '../state/v1';
@@ -8,7 +8,7 @@ import { databaseState as databaseStateV2 } from '../state/v2';
 import { isNumber, isObjectType } from 'remeda';
 
 const readDatabaseVersion = (doc: unknown) => {
-  const dbDocument = checkSchema(doc, zodDatabaseType);
+  const dbDocument = zodCheck(doc, zodDatabaseType);
 
   const currentVersion: number =
     dbDocument && 'body' in dbDocument

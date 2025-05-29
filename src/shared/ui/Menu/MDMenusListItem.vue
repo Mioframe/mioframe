@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { MDListItem } from '../Lists';
-import { vPressedState } from '@shared/lib/md/stateHelper';
 
 defineProps<{
   text: string;
@@ -13,12 +12,7 @@ defineSlots<{
 </script>
 
 <template>
-  <MDListItem
-    v-pressed-state
-    class="md-menus-list-item"
-    :headline="text"
-    is-button
-  >
+  <MDListItem class="md-menus-list-item" :headline="text" is-button>
     <template v-if="!!$slots.leadingIcon" #leadingIcon>
       <slot name="leadingIcon" />
     </template>

@@ -1,5 +1,5 @@
-import { clone } from 'remeda';
+import { cloneDeep } from 'es-toolkit';
 import type { WritableDeep } from 'type-fest';
 
 export const writableDeepClone = <T>(v: T): WritableDeep<T> =>
-  <WritableDeep<T>>clone(v);
+  <WritableDeep<T>>cloneDeep(v);

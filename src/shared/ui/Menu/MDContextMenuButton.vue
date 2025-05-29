@@ -10,9 +10,8 @@ import { ref, useTemplateRef } from 'vue';
 import type { MenuButtonDescription } from './types';
 import MDMenu from './MDMenu.vue';
 
-const {} = defineProps<{
+const { btns } = defineProps<{
   btns: Iterable<[K, T]>;
-  disabledTeleport?: boolean;
 }>();
 
 const showMenu = ref(false);
@@ -43,7 +42,6 @@ const onClick = (key: K) => {
   <MDMenu
     v-model:show="showMenu"
     :target-el="targetBtn"
-    :disabled-teleport
     :btns
     @click="onClick"
   />

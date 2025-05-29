@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { useRootElement } from '@shared/lib/useRootElement';
+import { useClosestParentFrame } from '@shared/lib/useClosestParentFrame';
 import type { MaybeElement } from '@vueuse/core';
 import { useElementSize, useWindowSize } from '@vueuse/core';
 import type { CSSProperties } from 'vue';
@@ -44,11 +44,11 @@ onBeforeUnmount(() => {
   emit('update:refEl', undefined);
 });
 
-const rootEl = useRootElement();
+const targetTeleport = useClosestParentFrame();
 </script>
 
 <template>
-  <Teleport :to="rootEl">
+  <Teleport defer :to="targetTeleport">
     <div
       ref="popoverEl"
       class="popover"
