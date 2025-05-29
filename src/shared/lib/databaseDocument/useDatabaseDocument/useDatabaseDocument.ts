@@ -1,4 +1,4 @@
-import type { PartialDeep } from 'type-fest';
+import type { PartialDeep, UnknownRecord } from 'type-fest';
 import type {
   UseDatabaseDocument,
   DataBaseStateLatest,
@@ -50,7 +50,7 @@ import { entries, pipe, sort } from 'remeda';
 const { debug, watchDebug } = createLogger('useDatabaseDocument');
 
 export const useDatabaseDocument = (
-  docHandleRef: MaybeRef<DocHandle<unknown> | undefined>,
+  docHandleRef: MaybeRef<DocHandle<UnknownRecord> | undefined>,
 ): UseDatabaseDocument => {
   debug('setup');
 

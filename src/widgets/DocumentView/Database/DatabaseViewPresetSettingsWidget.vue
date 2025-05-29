@@ -16,6 +16,7 @@ import type {
   DatabaseSortMap,
   DatabaseView,
 } from '@shared/lib/databaseDocument/state';
+import type { UnknownRecord } from 'type-fest';
 
 /**
  * Виджет настроек отображения данных.
@@ -23,7 +24,7 @@ import type {
  */
 
 const { docHandle } = defineProps<{
-  docHandle: DocHandle<unknown>;
+  docHandle: DocHandle<UnknownRecord>;
 }>();
 
 const docHandleRef = toRef(() => docHandle);

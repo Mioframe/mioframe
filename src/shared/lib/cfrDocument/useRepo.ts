@@ -7,6 +7,7 @@ import { computed, shallowReactive, toRef, toValue, watch } from 'vue';
 import { from } from 'ix/iterable';
 import { createLogger } from '../logger';
 import { tryOnScopeDispose } from '@vueuse/core';
+import type { UnknownRecord } from 'type-fest';
 
 const { debug, watchDebug } = createLogger('useRepo');
 
@@ -20,14 +21,14 @@ export const useRepo = (
 
   const documentsForSearch = toRef(() => toValue(searchDocuments));
 
-  const documentsMap = shallowReactive<Map<DocumentId, DocHandle<unknown>>>(
-    new Map(),
-  );
+  const documentsMap = shallowReactive<
+    Map<DocumentId, DocHandle<UnknownRecord>>
+  >(new Map());
 
   const onDocument = ({
     handle,
   }: {
-    handle: DocHandle<unknown>;
+    handle: DocHandle<UnknownRecord>;
     isNew: boolean;
   }) => {
     if (!documentsMap.has(handle.documentId)) {
@@ -39,7 +40,7 @@ export const useRepo = (
     documentsMap.delete(documentId);
   };
 
-  const documents = computed((): Map<DocumentId, DocHandle<unknown>> => {
+  const documents = computed((): Map<DocumentId, DocHandle<UnknownRecord>> => {
     return documentsMap;
   });
 
@@ -90,7 +91,7 @@ export const useRepo = (
           debug('forEach', documentId, newRepo);
           if (!documentsMap.has(documentId)) {
             debug('!documentsMap.has', documentId, newRepo);
-            const handle = newRepo.find(documentId);
+            const handle = newRepo.find<UnknownRecord>(documentId);
             debug('documentsMap.set(documentId, handle)');
             documentsMap.set(documentId, handle);
           }

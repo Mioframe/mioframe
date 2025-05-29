@@ -4,9 +4,10 @@ import { MDDialog } from '@shared/ui/Dialog';
 import { MDTextField } from '@shared/ui/TextField';
 import type { DocHandle } from '@automerge/automerge-repo';
 import { useCFRDocument } from '@shared/lib/cfrDocument/useCFRDocument';
+import type { UnknownRecord } from 'type-fest';
 
 const { docHandle } = defineProps<{
-  docHandle: DocHandle<unknown>;
+  docHandle: DocHandle<UnknownRecord>;
 }>();
 
 const emit = defineEmits<{

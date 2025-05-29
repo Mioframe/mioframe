@@ -28,11 +28,12 @@ import { MDTopAppBar } from '@shared/ui/TopAppBar';
 import { FSEntryRenameDialog } from '@feature/entryRename';
 import { useRepoExplorer } from '@widget/RepoExplorer/useRepoExplorer';
 import { clone } from 'remeda';
+import type { UnknownRecord } from 'type-fest';
 
 const { watchDebug, debug } = createLogger('RepoExplorerWidget.vue');
 
 const emit = defineEmits<{
-  clickDocument: [id: DocumentId, doc: DocHandle<unknown>];
+  clickDocument: [id: DocumentId, doc: DocHandle<UnknownRecord>];
 }>();
 
 const isShowCreateDirectoryForm = ref(false);
@@ -173,7 +174,7 @@ const documentContextBtns = defineMenuButtonList([
 const onClickDocumentContextAction = (
   key: DocumentContextEvent,
   docId: DocumentId,
-  document: DocHandle<unknown>,
+  document: DocHandle<UnknownRecord>,
 ) => {
   switch (key) {
     case DocumentContextEvent.remove: {
@@ -205,12 +206,12 @@ const onDocumentRemoveApply = (documentId: DocumentId) => {
 
 const onClickDocument = (
   documentId: DocumentId,
-  docHandle: DocHandle<unknown>,
+  docHandle: DocHandle<UnknownRecord>,
 ) => {
   emit('clickDocument', documentId, docHandle);
 };
 
-const documentToRename = shallowRef<DocHandle<unknown>>();
+const documentToRename = shallowRef<DocHandle<UnknownRecord>>();
 
 const title = computed((): string | undefined => {
   if (directoryState.value) {

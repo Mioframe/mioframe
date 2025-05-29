@@ -3,10 +3,11 @@ import type { DocHandle } from '@automerge/automerge-repo';
 import { useCFRDocument } from '@shared/lib/cfrDocument/useCFRDocument';
 import { MDSymbol } from '@shared/ui/Icon';
 import { MDListItem } from '@shared/ui/Lists';
+import type { UnknownRecord } from 'type-fest';
 import { computed, toRef } from 'vue';
 
 const props = defineProps<{
-  docHandle: DocHandle<unknown>;
+  docHandle: DocHandle<UnknownRecord>;
   supportingText?: string;
   isButton?: boolean;
 }>();
