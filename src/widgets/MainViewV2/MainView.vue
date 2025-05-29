@@ -7,16 +7,17 @@ import { HomeWidget } from '@widget/HomeWidget';
 import { RepoExplorerPane } from '@widget/RepoExplorer';
 import { shallowRef } from 'vue';
 import { useRepoExplorer } from '../RepoExplorer/useRepoExplorer';
+import type { UnknownRecord } from 'type-fest';
 
 const { currentDirectory } = useRepoExplorer();
 
-const openedDocument = shallowRef<DocHandle<unknown>>();
+const openedDocument = shallowRef<DocHandle<UnknownRecord>>();
 
 const { name: openedDocumentName } = useCFRDocument(openedDocument);
 
 const onClickDocument = (
   _documentId: DocumentId,
-  docHandle: DocHandle<unknown>,
+  docHandle: DocHandle<UnknownRecord>,
 ) => {
   openedDocument.value = docHandle;
 };

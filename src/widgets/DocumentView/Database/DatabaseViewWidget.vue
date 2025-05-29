@@ -22,9 +22,10 @@ import type {
   DatabaseUnknownProperty,
   DatabaseValue,
 } from '@shared/lib/databaseDocument/state';
+import type { UnknownRecord } from 'type-fest';
 
 const { docHandle } = defineProps<{
-  docHandle: DocHandle<unknown>;
+  docHandle: DocHandle<UnknownRecord>;
 }>();
 
 const docHandleRef = toRef(() => docHandle);

@@ -7,11 +7,11 @@ export const is = <Z extends ZodMiniType>(
 
 /**
  * checks value without creating a new one
+ * @deprecated - use is(value, zod)
  */
-export function checkSchema<Z extends ZodMiniType, T>(
-  value: T,
+export const checkSchema = <Z extends ZodMiniType>(
+  value: unknown,
   zod: Z,
-): T extends output<Z> ? T : output<Z> | undefined;
-export function checkSchema<Z extends ZodMiniType>(value: unknown, zod: Z) {
-  return is(value, zod) ? value : undefined;
-}
+): output<Z> | undefined =>
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-return -- Here is the correct check
+  is(value, zod) ? value : undefined;
