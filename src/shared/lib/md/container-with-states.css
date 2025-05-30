@@ -1,7 +1,7 @@
-/* TODO: перенести в отдельный компонент обёртку */
+todo: перенести в отдельный компонент обёртку;
 
 /* .ripple, */
-.md-old-state.md-old-state_press::after,
+/* .md-old-state.md-old-state_press::after,
 .md-old-state.md-old-state_pressed::after,
 .md-old-state.md-old-state_unpressed::after {
   content: "";
@@ -153,4 +153,4 @@
     opacity: 0;
     transform: translate(-50%, -50%) scale(1);
   }
-}
+} */

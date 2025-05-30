@@ -113,6 +113,9 @@ const onKeyup = (e: KeyboardEvent) => {
   }
 };
 
+/**
+ * @deprecated
+ */
 export const vPressedState: Directive = {
   mounted: (el) => {
     if (el instanceof HTMLElement) {

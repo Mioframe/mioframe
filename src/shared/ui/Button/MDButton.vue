@@ -75,9 +75,9 @@ defineEmits<{
   --md-target-width: max(48px, 100%);
   --md-target-height: max(48px, 100%);
 
-  transition-property:
+  /* transition-property:
     box-shadow, color, background-color, padding, border-radius;
-  transition-duration: var(--md-sys-motion-duration-short4, 0.2s);
+  transition-duration: var(--md-sys-motion-duration-short4, 0.2s); */
   display: flex;
   align-items: center;
   justify-content: center;
@@ -154,10 +154,6 @@ defineEmits<{
 
     &.md-state_disabled,
     &:disabled {
-      --md-container-color: rgb(
-        from var(--md-sys-color-on-surface) r g b / 0.1
-      );
-      --md-content-color: rgb(from var(--md-sys-color-on-surface) r g b / 0.38);
       box-shadow: var(--md-sys-elevation-level0);
     }
 
@@ -198,17 +194,6 @@ defineEmits<{
       }
     }
 
-    &.md-state_disabled,
-    &:disabled {
-      --md-container-color: rgb(
-        from var(--md-sys-color-on-surface) r g b / 0.1
-      );
-      --md-content-color: rgb(from var(--md-sys-color-on-surface) r g b / 0.38);
-      --md-button-icon-color: rgb(
-        from var(--md-sys-color-on-surface) r g b / 0.38
-      );
-    }
-
     &.md-state_hover,
     &:hover {
       box-shadow: var(--md-sys-elevation-level1);
@@ -226,17 +211,6 @@ defineEmits<{
         --md-container-color: var(--md-sys-color-secondary);
         --md-content-color: var(--md-sys-color-on-secondary);
       }
-    }
-
-    &.md-state_disabled,
-    &:disabled {
-      --md-container-color: rgb(
-        from var(--md-sys-color-on-surface) r g b / 0.1
-      );
-      --md-content-color: rgb(from var(--md-sys-color-on-surface) r g b / 0.38);
-      --md-button-icon-color: rgb(
-        from var(--md-sys-color-on-surface) r g b / 0.38
-      );
     }
 
     &.md-state_hover,
@@ -271,10 +245,6 @@ defineEmits<{
 
     &.md-state_disabled,
     &:disabled {
-      --md-content-color: rgb(from var(--md-sys-color-on-surface) r g b / 0.38);
-      --md-button-icon-color: rgb(
-        from var(--md-sys-color-on-surface) r g b / 0.38
-      );
       outline-color: rgb(from var(--md-sys-color-on-surface) r g b / 0.12);
     }
 
@@ -300,14 +270,6 @@ defineEmits<{
 
     &.md-button_icon {
       padding-right: 16px;
-    }
-
-    &.md-state_disabled,
-    &:disabled {
-      --md-content-color: rgb(from var(--md-sys-color-on-surface) r g b / 0.38);
-      --md-button-icon-color: rgb(
-        from var(--md-sys-color-on-surface) r g b / 0.38
-      );
     }
 
     &.md-state_hover,

@@ -51,7 +51,7 @@ export const useIconStates = createGlobalState(() => {
         acc.push({
           key: `stylesheet${family}`,
           rel: 'stylesheet',
-          href: `${fontsUrl}?family=${family}&icon_names=${iconNames(names)}`,
+          href: `${fontsUrl}?family=${family}:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&icon_names=${iconNames(names)}`,
         });
       }
     },
