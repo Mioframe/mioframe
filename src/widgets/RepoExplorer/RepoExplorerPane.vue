@@ -17,7 +17,6 @@ import { useDirectoryRepo } from '@shared/lib/cfrDocument';
 import { createLogger } from '@shared/lib/logger';
 import { MDListContainer } from '@shared/ui/Lists';
 import { CFRDocumentMDListItem } from '@entity/cfrDocument';
-import { vPressedState } from '@shared/lib/md/stateHelper';
 import { FSEntryMDListItem } from '@entity/fsEntry';
 import { defineMenuButtonList, MDContextMenuButton } from '@shared/ui/Menu';
 import { DocumentRemoveDialog } from '@feature/documentRemove';
@@ -268,7 +267,6 @@ const onRenameEntry = async (newName: string) => {
         <CFRDocumentMDListItem
           v-for="[docId, docHandle] in currentRepoDocuments"
           :key="docId"
-          v-pressed-state
           :doc-handle="docHandle"
           class="document-explorer-widget__list-item"
           is-button
@@ -285,7 +283,6 @@ const onRenameEntry = async (newName: string) => {
         <FSEntryMDListItem
           v-for="[entryKey, entry] in currentDirectoryEntries"
           :key="entryKey"
-          v-pressed-state
           is-button
           :entry
           :entry-key

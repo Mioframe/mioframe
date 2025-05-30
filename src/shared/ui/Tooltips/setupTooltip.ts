@@ -1,5 +1,9 @@
 import type { MaybeElementRef } from '@vueuse/core';
-import { useElementBounding, useWindowSize } from '@vueuse/core';
+import {
+  useElementBounding,
+  useElementSize,
+  useWindowSize,
+} from '@vueuse/core';
 import type { StyleValue } from 'vue';
 import { computed } from 'vue';
 
@@ -7,8 +11,6 @@ export const setupTooltip = (
   targetElementRef: MaybeElementRef,
   tooltipEl: MaybeElementRef,
 ) => {
-  //
-
   const {
     x: targetX,
     y: targetY,
@@ -17,7 +19,7 @@ export const setupTooltip = (
   } = useElementBounding(targetElementRef);
 
   const { width: tooltipWidth, height: tooltipHeight } =
-    useElementBounding(tooltipEl);
+    useElementSize(tooltipEl);
 
   // offset from target
   const padding = 8;

@@ -1,7 +1,9 @@
 <script setup lang="ts">
+import IconButtonDemo from './demo/IconButtonDemo.vue';
 import MDButton from './MDButton.vue';
 import MDFab from './MDFab.vue';
 import MDFabContainer from './MDFabContainer.vue';
+import { MD_SYS_TYPESCALE } from '@shared/lib/md';
 
 const buttonTypes = [
   'elevated',
@@ -20,10 +22,14 @@ const buttonSizes = [
   'large',
   'extra-large',
 ] as const;
+
+const iconButtonColor = ['filled', 'tonal', 'outlined', 'standard'] as const;
 </script>
 
 <template>
   <div class="grid">
+    <h2 :class="MD_SYS_TYPESCALE.headline.large">MDButton</h2>
+
     <div v-for="color in buttonTypes" :key="`buttonTypes${color}`" class="grid">
       <MDButton :color :label="`${color} enabled`" />
 
@@ -76,16 +82,33 @@ const buttonSizes = [
 
       <MDFab tooltip="loading" size="large" :type loading />
     </MDFabContainer>
+
+    <IconButtonDemo />
   </div>
 </template>
 
 <style scoped>
 .grid {
   display: flex;
+  width: 100%;
+  flex-grow: 1;
+  flex-shrink: 0;
   flex-wrap: wrap;
   padding: 16px;
   gap: 16px;
   justify-content: center;
   align-items: center;
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    flex-grow: 1;
+    flex-shrink: 0;
+    width: 100%;
+    text-align: center;
+  }
 }
 </style>

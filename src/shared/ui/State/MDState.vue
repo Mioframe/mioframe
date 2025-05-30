@@ -160,6 +160,10 @@ const onKeyUp = () => {
     2px
   );
 
+  transition-property:
+    box-shadow, color, background-color, padding, border-radius;
+  transition-duration: var(--md-sys-motion-duration-short4, 0.2s);
+
   position: relative;
 
   &__layer {
@@ -214,6 +218,12 @@ const onKeyUp = () => {
   &:disabled,
   &.md-state_disabled {
     pointer-events: none;
+    --md-container-color: rgb(
+      from var(--md-sys-color-on-surface) r g b / 0.1
+    ) !important;
+    --md-content-color: rgb(
+      from var(--md-sys-color-on-surface) r g b / 0.38
+    ) !important;
   }
 
   &:hover,

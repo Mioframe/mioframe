@@ -9,7 +9,6 @@
 >
 import { MDListContainer } from '@shared/ui/Lists';
 import DirectoryContentEntry from './DirectoryContentEntry.vue';
-import { vPressedState } from '@shared/lib/md/stateHelper';
 
 const { entries } = defineProps<{
   entries: Iterable<[PropertyKey, Entry]>;
@@ -29,7 +28,6 @@ const emit = defineEmits<{
     <DirectoryContentEntry
       v-for="[entryKey, entry] in entries"
       :key="entryKey"
-      v-pressed-state
       :entry="entry"
       @click="emit('click', entryKey, entry)"
     >
