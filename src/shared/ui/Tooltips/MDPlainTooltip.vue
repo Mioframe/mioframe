@@ -1,13 +1,43 @@
 <script setup lang="ts">
-defineProps<{
+import { useClosestParentFrame } from '@shared/lib/useClosestParentFrame';
+import { setupTooltip } from './setupTooltip';
+import { computed, useTemplateRef } from 'vue';
+import { refDebounced, useElementHover, useParentElement } from '@vueuse/core';
+
+const { targetElement } = defineProps<{
   text: string;
+  targetElement?: HTMLElement | SVGElement;
+  disabledTeleport?: boolean;
 }>();
+
+const parentEl = useParentElement();
+
+const targetElementRef = computed(() => targetElement ?? parentEl.value);
+
+const targetTeleport = useClosestParentFrame();
+
+const tooltipEl = useTemplateRef('tooltipEl');
+
+const { tooltipStyle } = setupTooltip(targetElementRef, tooltipEl);
+
+const hovered = useElementHover(targetElementRef);
+
+const show = refDebounced(hovered, 1.5e3);
 </script>
 
 <template>
-  <div class="md-plain-tooltip">
-    {{ text }}
-  </div>
+  <Teleport :to="targetTeleport" defer :disabled="disabledTeleport">
+    <Transition>
+      <div
+        v-show="show"
+        ref="tooltipEl"
+        class="md-plain-tooltip"
+        :style="tooltipStyle"
+      >
+        {{ text }}
+      </div>
+    </Transition>
+  </Teleport>
 </template>
 
 <style scoped>
@@ -28,5 +58,21 @@ defineProps<{
   font-size: var(--md-sys-typescale-body-small-size);
   font-weight: var(--md-sys-typescale-body-small-weight);
   letter-spacing: var(--md-sys-typescale-body-small-tracking);
+
+  position: fixed;
+  z-index: 1;
+
+  transition-property: transform, opacity;
+  transition-duration: 0.2s;
+
+  &.v-leave-to,
+  &.v-enter-from {
+    transform: scaleY(0);
+  }
+
+  &.v-leave-from,
+  &.v-enter-to {
+    transform: scaleY(1);
+  }
 }
 </style>

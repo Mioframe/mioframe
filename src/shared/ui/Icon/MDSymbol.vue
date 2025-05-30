@@ -34,19 +34,19 @@ watchEffect(() => {
 
 <style scoped>
 .md-symbol {
-  --md-symbol-size: 24px;
+  --md-symbol-size: inherit;
   --md-container-color: transparent;
-  --md-symbol-fill: 0;
-  --md-symbol-wght: 400;
-  --md-symbol-opsz: 24;
-  --md-symbol-grad: 0;
+  --md-symbol-fill: inherit;
+  --md-symbol-wght: inherit;
+  --md-symbol-opsz: inherit;
+  --md-symbol-grad: inherit;
 
   font-variation-settings:
-    'FILL' var(--md-symbol-fill),
-    'wght' var(--md-symbol-wght),
-    'GRAD' var(--md-symbol-grad),
-    'opsz' var(--md-symbol-opsz);
+    'FILL' var(--md-symbol-fill, 0),
+    'wght' var(--md-symbol-wght, 400),
+    'GRAD' var(--md-symbol-grad, 0),
+    'opsz' var(--md-symbol-opsz, 24);
 
-  font-size: var(--md-symbol-size);
+  font-size: var(--md-symbol-size, 24px);
 }
 </style>
