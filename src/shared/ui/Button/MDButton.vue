@@ -91,6 +91,8 @@ defineEmits<{
   font-size: var(--md-sys-typescale-label-large-size);
   font-weight: var(--md-sys-typescale-label-large-weight);
   letter-spacing: var(--md-sys-typescale-label-large-tracking);
+  background-color: var(--md-container-color);
+  color: var(--md-content-color);
 
   &__content {
     display: flex;

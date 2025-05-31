@@ -6,7 +6,7 @@ const targetEl = useTemplateRef('targetEl');
 </script>
 
 <template>
-  <Story title="Plain Tooltip">
+  <Story title="Tooltips/Plain Tooltip">
     <Variant title="easy to using">
       <button type="button">
         button with Plain Tooltip
