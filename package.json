@@ -10,7 +10,10 @@
   "scripts": {
     "dev": "vite",
     "build": "vue-tsc -b && vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "story:dev": "histoire dev",
+    "story:build": "histoire build",
+    "story:preview": "histoire preview"
   },
   "dependencies": {
     "@automerge/automerge": "^2.2.9",
@@ -31,7 +34,6 @@
     "ix": "^7.0.0",
     "lodash-es": "^4.17.21",
     "modern-normalize": "^3.0.1",
-    "pinia": "^3.0.2",
     "remeda": "^2.22.3",
     "sortablejs": "^1.15.6",
     "uid": "^2.0.2",
@@ -42,6 +44,7 @@
   },
   "devDependencies": {
     "@faker-js/faker": "^9.8.0",
+    "@histoire/plugin-vue": "1.0.0-alpha.2",
     "@sentry/vite-plugin": "^3.5.0",
     "@types/gapi": "^0.0.47",
     "@types/gapi.client.drive-v3": "^0.0.5",
@@ -54,6 +57,7 @@
     "@vitejs/plugin-vue": "^5.2.4",
     "@vyachean/eslint-config": "^2.0.2",
     "eslint": "^9.27.0",
+    "histoire": "1.0.0-alpha.2",
     "postcss": "^8.5.4",
     "postcss-custom-css-units": "^0.1.0",
     "postcss-import": "^16.1.0",

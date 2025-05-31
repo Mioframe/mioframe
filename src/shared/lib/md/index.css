@@ -12,7 +12,7 @@
 }
 
 * {
-  background-color: var(--md-container-color);
+  /* background-color: var(--md-container-color); TODO: лучше точечно задавать фон компонентов. */
   color: var(--md-content-color, currentColor);
 }
 
