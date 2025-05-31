@@ -1,10 +1,11 @@
+import { defineConfig } from 'eslint/config';
 import { config } from '@vyachean/eslint-config';
 import { dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const currentDirectory = dirname(fileURLToPath(import.meta.url));
 
-const eslintConfig = [
+const eslintConfig = defineConfig([
   ...config({
     tsParserOptions: {
       projectService: true,
@@ -21,6 +22,17 @@ const eslintConfig = [
       'vue/camelcase': 'off',
     },
   },
-];
+  {
+    files: ['**/*.story.vue'],
+    rules: {
+      'vue/no-undef-components': [
+        'error',
+        {
+          ignorePatterns: ['Story', 'Variant'],
+        },
+      ],
+    },
+  },
+]);
 
 export default eslintConfig;

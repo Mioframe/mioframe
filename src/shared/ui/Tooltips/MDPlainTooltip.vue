@@ -6,7 +6,7 @@ import { refDebounced, useElementHover, useParentElement } from '@vueuse/core';
 
 const { targetElement } = defineProps<{
   text: string;
-  targetElement?: HTMLElement | SVGElement;
+  targetElement?: HTMLElement | SVGElement | null;
   disabledTeleport?: boolean;
 }>();
 
