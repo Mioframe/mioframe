@@ -28,7 +28,7 @@ const eslintConfig = defineConfig([
       'vue/no-undef-components': [
         'error',
         {
-          ignorePatterns: ['Story', 'Variant'],
+          ignorePatterns: ['Story', 'Variant', 'Hst*'],
         },
       ],
     },
