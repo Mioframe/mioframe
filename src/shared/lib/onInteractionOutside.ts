@@ -34,7 +34,9 @@ export const onInteractionOutside = (
 
     const ignoreList = toValue(ignore).map(unrefElement);
 
-    const containers = [unrefElement(target), ...ignoreList];
+    const targetEl = unrefElement(target);
+
+    const containers = [targetEl, ...ignoreList];
 
     const isInside = containers.some(
       (container) =>
