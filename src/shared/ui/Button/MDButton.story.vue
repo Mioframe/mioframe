@@ -37,19 +37,25 @@ const shape = ref<ArrayValues<typeof shapeOptions>['value']>();
 </script>
 
 <template>
-  <Story title="Buttons/Button">
-    <Variant>
-      <template #controls>
-        <HstSelect v-model="color" :options="colorOptions" title="color" />
+  <Story title="Buttons/Buttons">
+    <template #controls>
+      <HstSelect v-model="color" :options="colorOptions" title="color" />
 
-        <HstSelect v-model="type" :options="typeOptions" title="type" />
+      <HstSelect v-model="type" :options="typeOptions" title="type" />
 
-        <HstSelect v-model="size" :options="sizeOptions" title="size" />
+      <HstSelect v-model="size" :options="sizeOptions" title="size" />
 
-        <HstSelect v-model="shape" :options="shapeOptions" title="shape" />
-      </template>
+      <HstSelect v-model="shape" :options="shapeOptions" title="shape" />
+    </template>
 
-      <MDButton label="Label" :color :type :shape :size />
-    </Variant>
+    <MDButton label="Label" :color :type :shape :size />
   </Story>
 </template>
+
+<docs lang="md">
+# Buttons
+
+Buttons prompt most actions in a UI
+
+Соответствует Buttons - [Material Design 3](https://m3.material.io/components/buttons/overview)
+</docs>

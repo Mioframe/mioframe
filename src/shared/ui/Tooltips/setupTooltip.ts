@@ -4,6 +4,7 @@ import {
   useElementSize,
   useWindowSize,
 } from '@vueuse/core';
+import { isNumber } from 'es-toolkit/compat';
 import type { StyleValue } from 'vue';
 import { computed } from 'vue';
 
@@ -18,8 +19,11 @@ export const setupTooltip = (
     height: targetHeight,
   } = useElementBounding(targetElementRef);
 
-  const { width: tooltipWidth, height: tooltipHeight } =
-    useElementSize(tooltipEl);
+  const { width: tooltipWidth, height: tooltipHeight } = useElementSize(
+    tooltipEl,
+    undefined,
+    { box: 'border-box' },
+  );
 
   // offset from target
   const padding = 8;
@@ -28,77 +32,214 @@ export const setupTooltip = (
 
   const { height: windowHeight, width: windowWidth } = useWindowSize();
 
-  const hasSpaceAbove = computed(
+  const topPositionY = computed(
+    () => targetY.value - padding - tooltipHeight.value,
+  );
+
+  const centerPositionY = computed(
+    () => targetY.value + targetHeight.value / 2 - tooltipHeight.value / 2,
+  );
+
+  const bottomPositionY = computed(
+    () => targetY.value + targetHeight.value + padding,
+  );
+
+  const leftPositionX = computed(
+    () => targetX.value - padding - tooltipWidth.value,
+  );
+
+  const centerPositionX = computed(
+    () => targetX.value + targetWidth.value / 2 - tooltipWidth.value / 2,
+  );
+
+  const rightPositionX = computed(
+    () => targetX.value + targetWidth.value + padding,
+  );
+
+  const hasTopHeight = computed(() => topPositionY.value - margin >= 0);
+
+  const hasBottomHeight = computed(
     () =>
-      targetY.value - tooltipHeight.value - margin - padding >= 0 &&
+      bottomPositionY.value + tooltipHeight.value + margin <=
+      windowHeight.value,
+  );
+
+  const hasTopSpace = computed(
+    () =>
+      // check top side
+      hasTopHeight.value &&
+      // check right side
       targetX.value + targetWidth.value / 2 + tooltipWidth.value / 2 + margin <=
         windowWidth.value &&
-      targetX.value + targetWidth.value / 2 - tooltipWidth.value / 2 - margin >=
-        0,
+      // check left side
+      centerPositionX.value - margin >= 0,
   );
 
-  const hasSpaceBelow = computed(
+  const hasBottomSpace = computed(
     () =>
-      targetY.value +
-        targetHeight.value +
-        padding +
-        tooltipHeight.value +
-        margin <=
-        windowHeight.value &&
+      // check bottom side
+      hasBottomHeight.value &&
+      // check right side
       targetX.value + targetWidth.value / 2 + tooltipWidth.value / 2 + margin <=
         windowWidth.value &&
-      targetX.value + targetWidth.value / 2 - tooltipWidth.value / 2 - margin >=
-        0,
+      // check left side
+      centerPositionX.value - margin >= 0,
   );
 
-  const hasSpaceRight = computed(
+  const hasRightWidth = computed(
     () =>
-      targetX.value +
-        targetWidth.value +
-        padding +
-        tooltipWidth.value +
-        margin <=
-      0 + windowWidth.value,
+      rightPositionX.value + tooltipWidth.value + margin <= windowWidth.value,
   );
 
-  const hasSpaceLeft = computed(
-    () => targetX.value - tooltipWidth.value - margin - padding >= 0,
+  const hasRightSpace = computed(
+    () =>
+      // check right side
+      hasRightWidth.value &&
+      // check top side
+      centerPositionY.value - margin >= 0 &&
+      // check bottom side
+      centerPositionY.value + tooltipHeight.value + margin <=
+        windowHeight.value,
   );
 
-  const tooltipPosition = computed((): { x: number; y: number } => {
-    if (hasSpaceAbove.value) {
-      return {
-        y: targetY.value - tooltipHeight.value - padding,
-        x: targetX.value + targetWidth.value / 2 - tooltipWidth.value / 2,
-      };
-    } else if (hasSpaceBelow.value) {
-      return {
-        y: targetY.value + targetHeight.value + padding,
-        x: targetX.value + targetWidth.value / 2 - tooltipWidth.value / 2,
-      };
-    } else if (hasSpaceRight.value) {
-      return {
-        y: targetY.value + targetHeight.value / 2 - tooltipHeight.value / 2,
-        x: targetX.value + targetWidth.value + padding,
-      };
-    } else if (hasSpaceLeft.value) {
-      return {
-        y: targetY.value + targetHeight.value / 2 - tooltipHeight.value / 2,
-        x: targetX.value - padding - tooltipWidth.value,
-      };
+  const hasLeftSpace = computed(
+    () =>
+      // check left side
+      hasLeftWidth.value &&
+      // check top side
+      centerPositionY.value - margin >= 0 &&
+      // check bottom side
+      centerPositionY.value + tooltipHeight.value + margin <=
+        windowHeight.value,
+  );
+
+  const hasLeftWidth = computed(() => leftPositionX.value - margin >= 0);
+
+  const topLeftPosition = computed(() => ({
+    y: topPositionY.value,
+    x: leftPositionX.value,
+  }));
+
+  const topCenterPosition = computed(() => ({
+    y: topPositionY.value,
+    x: centerPositionX.value,
+  }));
+
+  const topRightPosition = computed(() => ({
+    y: topPositionY.value,
+    x: rightPositionX.value,
+  }));
+
+  const centerRightPosition = computed(() => ({
+    y: centerPositionY.value,
+    x: rightPositionX.value,
+  }));
+
+  const bottomRightPosition = computed(() => ({
+    y: bottomPositionY.value,
+    x: rightPositionX.value,
+  }));
+
+  const bottomCenterPosition = computed(() => ({
+    y: bottomPositionY.value,
+    x: centerPositionX.value,
+  }));
+
+  const bottomLeftPosition = computed(() => ({
+    y: bottomPositionY.value,
+    x: leftPositionX.value,
+  }));
+
+  const centerLeftPosition = computed(() => ({
+    y: centerPositionY.value,
+    x: leftPositionX.value,
+  }));
+
+  /**
+   * preferred positioning for Plain Tooltip
+   */
+  const sidePosition = computed((): { x: number; y: number } | undefined => {
+    if (hasTopSpace.value) {
+      return topCenterPosition.value;
+    }
+    if (hasRightSpace.value) {
+      return centerRightPosition.value;
+    }
+    if (hasBottomSpace.value) {
+      return bottomCenterPosition.value;
+    }
+    if (hasLeftSpace.value) {
+      return centerLeftPosition.value;
     }
 
-    return { x: 0, y: 0 };
+    return undefined;
   });
 
-  const tooltipStyle = computed(
-    (): StyleValue => ({
-      top: `${tooltipPosition.value.y}px`,
-      left: `${tooltipPosition.value.x}px`,
-    }),
-  );
+  /**
+   * preferred positioning for Rich Tooltip
+   */
+  const diagonalPosition = computed(() => {
+    if (hasBottomHeight.value && hasRightWidth.value) {
+      return bottomRightPosition.value;
+    }
+    if (hasBottomHeight.value && hasLeftWidth.value) {
+      return bottomLeftPosition.value;
+    }
+    if (hasTopHeight.value && hasLeftWidth.value) {
+      return topLeftPosition.value;
+    }
+    if (hasTopHeight.value && hasRightWidth.value) {
+      return topRightPosition.value;
+    }
+    return undefined;
+  });
+
+  const partiallyAvailablePosition = computed(() => ({
+    y: hasTopHeight.value
+      ? topPositionY.value
+      : hasBottomHeight.value
+        ? bottomPositionY.value
+        : undefined,
+    x: hasRightWidth.value
+      ? rightPositionX.value
+      : hasLeftWidth.value
+        ? leftPositionX.value
+        : undefined,
+  }));
+
+  const toPx = (num: number) => `${num}px` as const;
+
+  const coordinatesToPosition = ({ x, y }: { x?: number; y?: number }) => ({
+    top: isNumber(y) ? toPx(y) : undefined,
+    left: isNumber(x) ? toPx(x) : undefined,
+  });
+
+  const plainTooltipStyle = computed((): StyleValue => {
+    if (sidePosition.value) {
+      return coordinatesToPosition(sidePosition.value);
+    }
+
+    if (diagonalPosition.value) {
+      return coordinatesToPosition(diagonalPosition.value);
+    }
+
+    return coordinatesToPosition(partiallyAvailablePosition.value);
+  });
+
+  const richTooltipStyle = computed((): StyleValue => {
+    if (diagonalPosition.value) {
+      return coordinatesToPosition(diagonalPosition.value);
+    }
+
+    if (sidePosition.value) {
+      return coordinatesToPosition(sidePosition.value);
+    }
+
+    return coordinatesToPosition(partiallyAvailablePosition.value);
+  });
 
   return {
-    tooltipStyle,
+    plainTooltipStyle,
+    richTooltipStyle,
   };
 };
