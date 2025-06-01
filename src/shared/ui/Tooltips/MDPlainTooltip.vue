@@ -18,7 +18,10 @@ const targetTeleport = useClosestParentFrame();
 
 const tooltipEl = useTemplateRef('tooltipEl');
 
-const { tooltipStyle } = setupTooltip(targetElementRef, tooltipEl);
+const { plainTooltipStyle: tooltipStyle } = setupTooltip(
+  targetElementRef,
+  tooltipEl,
+);
 
 const hovered = useElementHover(targetElementRef);
 
@@ -63,7 +66,7 @@ const show = refDebounced(hovered, 1.5e3);
   z-index: 1;
 
   transition-property: transform, opacity;
-  transition-duration: 0.2s;
+  transition-duration: var(--md-sys-motion-duration-medium1);
 
   &.v-leave-to,
   &.v-enter-from {

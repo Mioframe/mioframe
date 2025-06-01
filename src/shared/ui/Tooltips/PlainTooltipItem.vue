@@ -13,7 +13,7 @@ const { targetElement } = defineProps<{
 
 const targetElementRef = toRef(() => targetElement);
 
-const { tooltipStyle } = setupTooltip(targetElementRef, tooltipEl);
+const { plainTooltipStyle: tooltipStyle } = setupTooltip(targetElementRef, tooltipEl);
 </script>
 
 <template>
