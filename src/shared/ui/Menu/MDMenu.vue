@@ -77,7 +77,7 @@ onInteractionOutside(
       ref="rootEl"
       :target-ref="targetRef"
       :btns
-      class="md-menu"
+      class="md md-menu"
       @click="onClick"
     >
       <slot />

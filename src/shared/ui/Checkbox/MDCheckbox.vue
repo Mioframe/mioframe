@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { MDSymbol } from '../Icon';
-import { vPressedState } from '@shared/lib/md/stateHelper';
 import { isNullish } from 'remeda';
 
 const {
@@ -55,9 +54,8 @@ const onClickContainer = () => {
 
 <template>
   <button
-    v-pressed-state
     type="button"
-    class="md-checkbox md-state"
+    class="md md-checkbox"
     :class="{
       'md-checkbox_selected': stateValue === true,
       'md-checkbox_indeterminate': isNullish(stateValue),
@@ -74,7 +72,7 @@ const onClickContainer = () => {
       tabindex="-1"
     />
 
-    <div class="md-checkbox__container">
+    <div class="md md-checkbox__container">
       <MDSymbol
         v-if="symbolName"
         class="md-checkbox__icon"
@@ -116,6 +114,7 @@ const onClickContainer = () => {
   &__input {
     opacity: 0;
     pointer-events: none;
+    background-color: transparent;
     position: absolute;
   }
 

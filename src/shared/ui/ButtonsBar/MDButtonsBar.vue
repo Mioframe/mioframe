@@ -2,7 +2,6 @@
 import { computed } from 'vue';
 import { MDSymbol } from '../Icon';
 import type { ButtonDescription } from './types';
-import { vPressedState } from '@shared/lib/md/stateHelper';
 import { isArray } from 'remeda';
 
 const { elevation, enable } = defineProps<{
@@ -24,7 +23,7 @@ const enableList = computed(() => (isArray(enable) ? enable : [enable]));
 
 <template>
   <div
-    class="md-buttons-bar"
+    class="md md-buttons-bar"
     :class="{
       'md-button-bar_elevation': elevation,
     }"
@@ -32,9 +31,8 @@ const enableList = computed(() => (isArray(enable) ? enable : [enable]));
     <button
       v-for="(item, itemIndex) in buttons"
       :key="itemIndex"
-      v-pressed-state
       type="button"
-      class="md-buttons-bar__item item md-state"
+      class="md-buttons-bar__item md item"
       :class="{
         item_enable: enableList?.includes(item),
       }"
@@ -93,7 +91,6 @@ const enableList = computed(() => (isArray(enable) ? enable : [enable]));
     display: flex;
     justify-content: center;
     align-items: center;
-    --md-container-color: transparent;
 
     &::before {
       content: '';

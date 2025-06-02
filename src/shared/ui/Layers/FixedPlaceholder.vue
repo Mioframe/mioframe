@@ -18,7 +18,9 @@ const {
   left: placeholderLeft,
   width: placeholderWidth,
   height: placeholderHeight,
-} = useElementBounding(placeholder);
+} = useElementBounding(placeholder, {
+  updateTiming: 'next-frame',
+});
 
 const content = ref<HTMLDivElement>();
 const { width: contentWidth, height: contentHeight } = useElementSize(content);

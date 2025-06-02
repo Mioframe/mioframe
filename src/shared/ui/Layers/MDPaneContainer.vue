@@ -1,5 +1,5 @@
 <template>
-  <div class="md-pane-container">
+  <div class="md md-pane-container">
     <slot />
   </div>
 </template>

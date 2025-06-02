@@ -12,7 +12,7 @@ defineSlots<{
 </script>
 
 <template>
-  <div class="md-top-app-bar md-top-app-bar_on-scroll">
+  <div class="md md-top-app-bar md-top-app-bar_on-scroll">
     <slot name="leadingNavigation" />
 
     <span class="md-top-app-bar__headline">
@@ -31,8 +31,6 @@ defineSlots<{
 <style lang="css" scoped>
 .md-top-app-bar {
   display: flex;
-  /* --md-container-color: var(--md-sys-color-surface-container); */
-  /* --md-content-color: var(--md-sys-color-on-surface); */
   min-height: 64px;
   padding: 0 16px;
   gap: 24px;

@@ -74,7 +74,7 @@ onInteractionOutside(tooltipEl, () => {
       <div
         v-if="computedShow"
         ref="tooltipEl"
-        class="md-rich-tooltip"
+        class="md md-rich-tooltip"
         :style="richTooltipStyle"
       >
         <div
@@ -102,7 +102,6 @@ onInteractionOutside(tooltipEl, () => {
 <style lang="css" scoped>
 .md-rich-tooltip {
   --md-container-color: var(--md-sys-color-surface-container);
-  background-color: var(--md-container-color);
   box-shadow: var(--md-sys-elevation-level2);
   border-radius: var(--md-sys-shape-corner-medium);
   padding: 12px 16px 8px;
