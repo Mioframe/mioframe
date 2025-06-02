@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { MDCircularProgressIndicator } from '../ProgressIndicators';
-import { MDPlainTooltip } from '../Tooltips';
+import { MDPlainTooltip, MDRichTooltip } from '../Tooltips';
 import { MDSymbol } from '../Icon';
 import { MDState } from '../State';
 
@@ -25,7 +25,8 @@ const {
   pressed?: boolean;
   focused?: boolean;
   loading?: number | boolean;
-  tooltip: string; // FIXME: v-md-tooltip зависает
+  tooltip: string;
+  showTooltipOnClick?: boolean;
   mdSymbolName?: string;
   type?: 'default' | 'toggle';
   selected?: boolean;
@@ -40,9 +41,9 @@ const {
   shape?: 'round' | 'square';
 }>();
 
-defineSlots<{
+const slots = defineSlots<{
   icon(): unknown;
-  tooltipContainer(): unknown; // TODO: содержимое для RichTooltip
+  richTooltipContent(): unknown;
 }>();
 
 const emit = defineEmits<{
@@ -85,7 +86,18 @@ const emit = defineEmits<{
       :progress="loading === true ? 0 : loading"
     />
 
-    <MDPlainTooltip :text="tooltip" />
+    <MDRichTooltip
+      v-if="slots.richTooltipContent"
+      :subhead="tooltip"
+      use-hover
+      :use-click="showTooltipOnClick"
+    >
+      <template #text>
+        <slot name="richTooltipContent" />
+      </template>
+    </MDRichTooltip>
+
+    <MDPlainTooltip v-else :text="tooltip" />
   </MDState>
 </template>
 
