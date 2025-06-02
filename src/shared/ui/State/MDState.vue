@@ -108,7 +108,7 @@ const onKeyUp = () => {
     :is="is"
     ref="refEl"
     :disabled
-    class="md-state"
+    class="md md-state"
     :class="{
       'md-state_hover': userHover,
       'md-state_disabled': disabled,

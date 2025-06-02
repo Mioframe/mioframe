@@ -57,7 +57,7 @@ const emit = defineEmits<{
     is="button"
     :disabled="disabled"
     :type="formAction ?? 'button'"
-    class="md-icon-button"
+    class="md md-icon-button"
     :class="[
       `md-icon-button_color-${color}`,
       `md-icon-button_type-${type}`,
@@ -112,7 +112,6 @@ const emit = defineEmits<{
     var(--md-icon-button-trailing-space) - var(--md-icon-button-border-width)
   );
   border-radius: var(--md-icon-button-container-shape);
-  background-color: var(--md-container-color);
 
   &__icon {
     display: inline-flex;
@@ -153,27 +152,6 @@ const emit = defineEmits<{
         --md-symbol-fill: 1;
       }
     }
-
-    /* &:disabled {
-      --md-container-color: rgb(
-        from var(--md-sys-color-on-surface) r g b / 0.12
-      );
-      --md-content-color: rgb(from var(--md-sys-color-on-surface) r g b / 0.38);
-      --md-icon-button-icon-color: rgb(
-        from var(--md-sys-color-on-surface) r g b / 0.38
-      );
-    }
-
-    &:hover {
-      --md-content-color: var(--md-sys-color-on-primary);
-      --md-icon-button-icon-color: var(--md-sys-color-on-primary);
-    }
-
-    &:focus-visible,
-    &.md-icon-button_focused {
-      --md-content-color: var(--md-sys-color-on-primary);
-      --md-icon-button-icon-color: var(--md-sys-color-on-primary);
-    } */
   }
 
   &_color-tonal {
@@ -192,27 +170,6 @@ const emit = defineEmits<{
         --md-symbol-fill: 1;
       }
     }
-
-    /* &:disabled {
-      --md-container-color: rgb(
-        from var(--md-sys-color-on-surface) r g b / 0.12
-      );
-      --md-content-color: rgb(from var(--md-sys-color-on-surface) r g b / 0.38);
-      --md-icon-button-icon-color: rgb(
-        from var(--md-sys-color-on-surface) r g b / 0.38
-      );
-    }
-
-    &:hover {
-      --md-content-color: var(--md-sys-color-on-secondary-container);
-      --md-icon-button-icon-color: var(--md-sys-color-on-secondary-container);
-    }
-
-    &:focus-visible,
-    &.md-icon-button_focused {
-      --md-content-color: var(--md-sys-color-on-secondary-container);
-      --md-icon-button-icon-color: var(--md-sys-color-on-secondary-container);
-    } */
   }
 
   &_color-outlined {
@@ -223,7 +180,6 @@ const emit = defineEmits<{
     --md-content-color: var(--md-sys-color-on-surface-variant);
     --md-symbol-fill: 1;
 
-    /* FIXME: доделать на образце */
     &.md-icon-button_type-toggle {
       border-color: var(--md-sys-color-outline);
       --md-container-color: transparent;
@@ -237,20 +193,6 @@ const emit = defineEmits<{
         --md-symbol-fill: 1;
       }
     }
-
-    /* &:disabled {
-      --md-content-color: rgb(from var(--md-sys-color-on-surface) r g b / 0.38);
-      --md-icon-button-icon-color: rgb(
-        from var(--md-sys-color-on-surface) r g b / 0.38
-      );
-      outline-color: rgb(from var(--md-sys-color-on-surface) r g b / 0.12);
-    }
-
-    &:focus-visible,
-    &.md-icon-button_focused {
-      --md-content-color: var(--md-sys-color-on-secondary-container);
-      --md-icon-button-icon-color: var(--md-sys-color-on-secondary-container);
-    } */
   }
 
   &_color-standard {
@@ -269,19 +211,6 @@ const emit = defineEmits<{
         --md-symbol-fill: 1;
       }
     }
-
-    /* &:disabled {
-      --md-content-color: rgb(from var(--md-sys-color-on-surface) r g b / 0.38);
-      --md-icon-button-icon-color: rgb(
-        from var(--md-sys-color-on-surface) r g b / 0.38
-      );
-    }
-
-    &:focus-visible,
-    &.md-icon-button_focused {
-      --md-content-color: var(--md-sys-color-primary);
-      --md-icon-button-icon-color: var(--md-sys-color-primary);
-    } */
   }
 
   &_size {

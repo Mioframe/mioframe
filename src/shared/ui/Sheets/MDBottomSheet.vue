@@ -36,7 +36,7 @@ const {
   bottom: placeholderBottom,
   width: placeholderWidth,
   top: placeholderTop,
-} = useElementBounding(placeholderEl);
+} = useElementBounding(placeholderEl, { immediate: true });
 
 watchEffect(() => {
   placeholderWidthCssVar.value = `${placeholderWidth.value}px`;
@@ -57,8 +57,8 @@ watchEffect(() => {
 <template>
   <div ref="placeholderEl" class="md-bottom-sheet">
     <FixedPlaceholder priority-height="content" priority-width="placeholder">
-      <div ref="scrimEl" class="md-bottom-sheet__scrim">
-        <div class="md-bottom-sheet__container">
+      <div ref="scrimEl" class="md md-bottom-sheet__scrim">
+        <div class="md md-bottom-sheet__container">
           <div ref="headEl" class="md-bottom-sheet__head">
             <button type="button" class="md-bottom-sheet__drag-handle" />
 
@@ -82,8 +82,8 @@ watchEffect(() => {
   flex-shrink: 0;
   position: sticky;
   bottom: 0;
-  --md-container-color: transparent;
   pointer-events: none;
+  background-color: transparent;
 
   &__scrim {
     height: var(--md-bottom-sheet-placeholder-bottom);
@@ -91,12 +91,11 @@ watchEffect(() => {
     position: fixed;
     top: 0;
     overflow-y: auto;
-    /* padding-top: var(--md-bottom-sheet-placeholder-top); */
     padding: var(--md-bottom-sheet-placeholder-top) 100px 0;
     margin: 0 -100px;
     scrollbar-width: none;
-    --md-container-color: transparent;
     pointer-events: none;
+    background-color: transparent;
     box-sizing: border-box;
     overscroll-behavior-y: none;
   }

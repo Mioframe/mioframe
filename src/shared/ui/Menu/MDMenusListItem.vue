@@ -12,7 +12,7 @@ defineSlots<{
 </script>
 
 <template>
-  <MDListItem class="md-menus-list-item" :headline="text" is-button>
+  <MDListItem class="md md-menus-list-item" :headline="text" is-button>
     <template v-if="!!$slots.leadingIcon" #leadingIcon>
       <slot name="leadingIcon" />
     </template>

@@ -35,7 +35,6 @@ watchEffect(() => {
 <style scoped>
 .md-symbol {
   --md-symbol-size: inherit;
-  --md-container-color: transparent;
   --md-symbol-fill: inherit;
   --md-symbol-wght: inherit;
   --md-symbol-opsz: inherit;

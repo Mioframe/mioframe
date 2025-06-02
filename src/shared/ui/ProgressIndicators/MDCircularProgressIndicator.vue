@@ -71,7 +71,7 @@ const animateValue = computed(
     :width="size"
     :height="size"
     :viewBox
-    class="md-circular-progress-indicator"
+    class="md md-circular-progress-indicator"
   >
     <circle
       v-if="emptyLineLength > 0 && progress"

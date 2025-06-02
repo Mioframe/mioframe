@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { computed } from 'vue';
-import { vPressedState } from '@shared/lib/md/stateHelper';
 import { vMdTooltip } from '../Tooltips';
 import { MDCircularProgressIndicator } from '../ProgressIndicators';
 
@@ -26,13 +25,14 @@ const sizeClass = computed(() => {
 const typeClass = computed(() => {
   return `md-fab_${props.type ?? 'primary'}`;
 });
+
+// FIXME: обновить реализацию
 </script>
 
 <template>
   <button
-    v-pressed-state
     v-md-tooltip="tooltip"
-    class="md-fab md-state"
+    class="md md-fab"
     :class="[sizeClass, typeClass]"
     type="button"
     @click="$emit('click', $event)"
@@ -117,7 +117,8 @@ const typeClass = computed(() => {
   .empty-icon {
     box-sizing: border-box;
     border: 1px solid currentColor;
-    background: linear-gradient(
+    background:
+      linear-gradient(
         45deg,
         currentColor 25%,
         transparent 25%,

@@ -73,7 +73,7 @@ defineEmits<{
       `md-text-field_${type}-type`,
     ]"
   >
-    <div class="md-text-field__container" @click="onClickField">
+    <div class="md md-text-field__container" @click="onClickField">
       <span v-if="!!$slots.leadingIcon" class="md-text-field__leading-icon">
         <slot name="leadingIcon" />
       </span>

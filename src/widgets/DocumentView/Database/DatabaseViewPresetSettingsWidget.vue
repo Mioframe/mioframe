@@ -7,15 +7,12 @@ import { DB_VIEW_LAYOUT } from '@shared/lib/databaseDocument/state/v2/view/gener
 import { useReduceIterable } from '@shared/lib/useReduce';
 import { MDChip } from '@shared/ui/Chips';
 import { MDSymbol } from '@shared/ui/Icon';
-import { computed, shallowRef, toRef, watchEffect } from 'vue';
+import { computed, shallowRef, toRef } from 'vue';
 import DatabaseViewSettingDialog from './DatabaseViewsSettingDialog.vue';
 import { DatabaseItemSortingSection } from '@feature/databaseItemSorting';
 import { MD_SYS_TYPESCALE } from '@shared/lib/md';
 import { MDIconButton } from '@shared/ui/Button';
 import type { UnknownRecord } from 'type-fest';
-import { createLogger } from '@shared/lib/logger';
-
-const { debug } = createLogger('DatabaseViewPresetSettingsWidget');
 
 /**
  * Виджет настроек отображения данных.

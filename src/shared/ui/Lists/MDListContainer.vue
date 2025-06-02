@@ -12,7 +12,7 @@ defineSlots<{
 <template>
   <component
     :is="tag"
-    class="md-list-container"
+    class="md md-list-container"
     :class="{
       'md-list-container_grid': type === 'grid',
     }"

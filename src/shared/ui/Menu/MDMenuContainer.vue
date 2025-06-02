@@ -91,7 +91,7 @@ const style = computed((): StyleValue => {
 </script>
 
 <template>
-  <MDListContainer ref="rootEl" tag="div" class="md-menus" :style="style">
+  <MDListContainer ref="rootEl" tag="div" class="md md-menus" :style="style">
     <slot>
       <MDMenusListItem
         v-for="[key, { symbolName, text }] in btns"
