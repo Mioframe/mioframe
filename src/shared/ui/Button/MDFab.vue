@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
-import { vMdTooltip } from '../Tooltips';
 import { MDCircularProgressIndicator } from '../ProgressIndicators';
+import { MDPlainTooltip } from '../Tooltips';
 
 const props = defineProps<{
   size?: 'small' | 'large';
@@ -31,7 +31,6 @@ const typeClass = computed(() => {
 
 <template>
   <button
-    v-md-tooltip="tooltip"
     class="md md-fab"
     :class="[sizeClass, typeClass]"
     type="button"
@@ -44,6 +43,8 @@ const typeClass = computed(() => {
         <div class="empty-icon" />
       </slot>
     </span>
+
+    <MDPlainTooltip :text="tooltip" />
   </button>
 </template>
 

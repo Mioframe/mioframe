@@ -111,8 +111,16 @@ const onCancelAddView = () => {
     <div class="database-view-preset-settings-widget__subtitle md-margin-top-2">
       <span :class="MD_SYS_TYPESCALE.title.small">Sorting settings</span>
 
-      <!-- TODO: добавить RichTooltip с объяснением настройки -->
-      <MDIconButton disabled tooltip="description" md-symbol-name="info" />
+      <MDIconButton
+        tooltip="Control display order"
+        md-symbol-name="info"
+        class="md-margin-left-2"
+        show-tooltip-on-click
+      >
+        <template #richTooltipContent>
+          TODO: добавить объяснение использования настройки
+        </template>
+      </MDIconButton>
     </div>
 
     <DatabaseItemSortingSection

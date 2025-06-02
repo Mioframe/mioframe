@@ -38,14 +38,17 @@ const getContrastingColorsFromHSL = (
   return { lightColor, darkColor };
 };
 
+console.debug(() => 'test');
+
+/**
+ * @deprecated - use default console
+ */
 export const createLogger = (moduleName: string) => {
   const log = (message: string, ...args: unknown[]) => {
-    // eslint-disable-next-line no-console -- for logger
     console.log(...colorStrings(moduleName, message), ...args);
   };
 
   const debug = (message: string, ...args: unknown[]) => {
-    // eslint-disable-next-line no-console -- for logger
     console.debug(
       ...colorStrings(moduleName, message),
       // eslint-disable-next-line @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-call -- for logger
@@ -59,12 +62,29 @@ export const createLogger = (moduleName: string) => {
 
   const watchDebug = (message: string, ...args: MaybeRef<unknown>[]) =>
     watchEffect(() => {
-      // eslint-disable-next-line no-console -- for logger
       console.debug(
         ...colorStrings(moduleName, '👀', message),
 
         ...args.map(toValue),
       );
     });
+
   return { log, debug, debugRef, watchDebug };
 };
+
+export const debugWrapper =
+  <P extends [], R>(fn: (...args: P) => R): ((...args: P) => R) =>
+  (...args: P): R => {
+    console.groupCollapsed(`DEBUG: call ${fn.name || 'anonymous function'}`);
+    console.debug('Arguments:', args);
+
+    const start = performance.now();
+    const result: R = fn(...args);
+    const end = performance.now();
+
+    console.debug('Result:', result);
+    console.debug(`lead time: ${(end - start).toFixed(3)} ms`);
+    console.groupEnd();
+
+    return result;
+  };

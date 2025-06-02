@@ -15,6 +15,7 @@ const eslintConfig = defineConfig([
   }),
   {
     rules: {
+      'no-console': 'off',
       '@typescript-eslint/no-empty-object-type': [
         'error',
         { allowInterfaces: 'with-single-extends' },

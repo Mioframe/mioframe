@@ -10,10 +10,7 @@ import { computed, nextTick, ref, shallowRef, toValue, watch } from 'vue';
 import { isUnknownRecord, replaceObject } from '../changeObject';
 import { createGlobalState, tryOnScopeDispose } from '@vueuse/core';
 import { defineReadonlyDeep } from '../readonlyDeep';
-import { createLogger } from '../logger';
 import type { UnknownRecord } from 'type-fest';
-
-const { debug } = createLogger('useDocHandle');
 
 const createDocHandleRefState = <T extends object>(docHandle: DocHandle<T>) => {
   const docRef = ref<T | UnknownRecord>({});
@@ -22,7 +19,6 @@ const createDocHandleRefState = <T extends object>(docHandle: DocHandle<T>) => {
    * Изменение состояния без триггера
    */
   const programReplaceDocRef = (doc: Doc<T> | undefined) => {
-    debug('programReplaceDocRef', doc);
     watchHandle.pause();
     if (doc) {
       replaceObject(docRef.value, doc);
@@ -106,16 +102,17 @@ export const defineCachedDocHandle = createGlobalState(() => {
   const getCachedDocHandlerState = <T extends object>(
     docHandle: DocHandle<T>,
   ) => {
+    const countUsers = (usersDocHandleState.get(docHandle) ?? 0) + 1;
+    usersDocHandleState.set(docHandle, countUsers);
+
     const cachedDocHandleState = cacheDocHandleState.get(docHandle);
+
     if (cachedDocHandleState) {
       return cachedDocHandleState;
     }
 
     const docHandleRefState = createDocHandleRefState(docHandle);
     cacheDocHandleState.set(docHandle, docHandleRefState);
-
-    const countUsers = (usersDocHandleState.get(docHandle) ?? 0) + 1;
-    usersDocHandleState.set(docHandle, countUsers);
 
     if (countUsers === 1) {
       void docHandleRefState.read();

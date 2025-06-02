@@ -90,6 +90,9 @@ export const useTooltip = createGlobalState(() => {
   };
 });
 
+/**
+ * @deprecated - use MDPlainTooltip component
+ */
 export const vMdTooltip: Directive<HTMLElement, string> = {
   mounted(el, { value }) {
     const { onMountedTarget } = useTooltip();
