@@ -35,7 +35,7 @@ defineEmits<{
     is="button"
     :disabled="disabled"
     :type="formAction"
-    class="md-button"
+    class="md md-button"
     :class="[
       `md-button_color-${color}`,
       `md-button_type-${type}`,
@@ -75,9 +75,6 @@ defineEmits<{
   --md-target-width: max(48px, 100%);
   --md-target-height: max(48px, 100%);
 
-  /* transition-property:
-    box-shadow, color, background-color, padding, border-radius;
-  transition-duration: var(--md-sys-motion-duration-short4, 0.2s); */
   display: flex;
   align-items: center;
   justify-content: center;
@@ -91,14 +88,11 @@ defineEmits<{
   font-size: var(--md-sys-typescale-label-large-size);
   font-weight: var(--md-sys-typescale-label-large-weight);
   letter-spacing: var(--md-sys-typescale-label-large-tracking);
-  background-color: var(--md-container-color);
-  color: var(--md-content-color);
 
   &__content {
     display: flex;
     justify-content: center;
     align-items: center;
-    --md-container-color: transparent;
     gap: var(--md-button-icon-gap);
   }
 
@@ -111,7 +105,6 @@ defineEmits<{
     color: var(--md-button-icon-color, inherit);
     transition-property: opacity;
     transition-duration: var(--md-sys-motion-duration-short4, 0.2s);
-    --md-container-color: transparent;
 
     .md-button_loading & {
       opacity: 0;

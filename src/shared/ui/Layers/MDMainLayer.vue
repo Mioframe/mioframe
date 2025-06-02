@@ -75,7 +75,7 @@ const windowClassModifier = computed(() => {
 </script>
 
 <template>
-  <main class="md-layer" :class="[windowClassModifier]">
+  <main class="md md-layer" :class="[windowClassModifier]">
     <nav v-if="!!slots.navigation" class="md-layer__navigation">
       <slot name="navigation" />
     </nav>
@@ -86,7 +86,7 @@ const windowClassModifier = computed(() => {
       </div>
 
       <div v-if="showSecond" class="body__second-pane">
-        <div class="body__container">
+        <div class="md body__container">
           <MDTopAppBar :headline="secondHeadline">
             <template #leadingNavigation>
               <MDIconButton tooltip="back" @click="onClickBack">
@@ -113,6 +113,7 @@ const windowClassModifier = computed(() => {
   flex-direction: column-reverse;
   overflow: auto;
   --md-container-color: var(--md-sys-color-surface-container);
+  --md-content-color: var(--md-sys-color-on-surface);
 
   &__navigation {
     flex-grow: 1;
@@ -135,10 +136,10 @@ const windowClassModifier = computed(() => {
 
     display: flex;
     flex-direction: column;
-    /* flex: 1 1; */
     flex-grow: 1;
     padding: 4px var(--md-pane-padding);
     overflow-y: auto;
+    transition: none;
 
     .md-layer_compact & {
       --md-pane-padding: 0px;
@@ -147,7 +148,6 @@ const windowClassModifier = computed(() => {
   }
 
   &__first-pane {
-    /* width: var(--md-first-pane-width, auto); */
     flex-basis: var(--md-first-pane-width, auto);
   }
 

@@ -1,5 +1,4 @@
 <script setup lang="ts" generic="T extends 'assist' | 'filter'">
-import { vPressedState } from '@shared/lib/md/stateHelper';
 import MDSymbol from '../Icon/MDSymbol.vue';
 
 const { type: chipType, selected = false } = defineProps<{
@@ -17,8 +16,7 @@ const slots = defineSlots<{
 
 <template>
   <button
-    v-pressed-state
-    class="md-assist-chip"
+    class="md md-assist-chip"
     :class="[
       `md-assist-chip_${chipType}`,
       {
@@ -106,7 +104,6 @@ const slots = defineSlots<{
     letter-spacing: var(--md-sys-typescale-label-large-tracking);
     --md-content-color: var(--md-sys-color-on-surface);
     white-space: nowrap;
-    --md-container-color: transparent;
 
     .md-assist-chip__leading-icon + & {
       margin-left: 8px;
@@ -136,7 +133,6 @@ const slots = defineSlots<{
     width: 18dp;
     height: 18dp;
     --md-content-color: var(--md-sys-color-primary);
-    --md-container-color: transparent;
 
     margin-left: -8px;
 

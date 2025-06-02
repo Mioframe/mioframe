@@ -51,7 +51,7 @@ const targetTeleport = useClosestParentFrame();
   <Teleport defer :to="targetTeleport">
     <div
       ref="popoverEl"
-      class="popover"
+      class="md popover"
       :style="mainStyle"
       :class="$attrs.class"
     >

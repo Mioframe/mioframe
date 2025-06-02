@@ -9,16 +9,15 @@ const routes: RouteRecordRaw[] = [
 ];
 
 if (import.meta.env.DEV) {
+  /**
+   * ⚠️ deprecated - use histoire
+   */
   routes.push({
     path: '/ui',
     children: [
       {
         path: 'layers',
         component: () => import('@shared/ui/Layers/DemoPage.vue'),
-      },
-      {
-        path: 'button',
-        component: () => import('@shared/ui/Button/DemoPage.vue'),
       },
       {
         path: 'tooltips',

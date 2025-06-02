@@ -88,7 +88,7 @@ const targetTeleport = useClosestParentFrame();
         `md-dialog_${dialogType}-type`,
       ]"
     >
-      <form class="md-dialog__container" @submit.prevent="onSubmit">
+      <form class="md md-dialog__container" @submit.prevent="onSubmit">
         <div v-if="!!slots.icon" class="md-dialog__icon">
           <slot name="icon" />
         </div>
@@ -155,7 +155,6 @@ const targetTeleport = useClosestParentFrame();
     width: fit-content;
 
     --md-container-color: var(--md-sys-color-surface-container-high);
-    background-color: var(--md-container-color);
     box-shadow: var(--md-sys-elevation-level3);
   }
 
@@ -165,7 +164,7 @@ const targetTeleport = useClosestParentFrame();
     display: flex;
     justify-content: center;
     align-items: center;
-    color: var(--md-sys-color-secondary);
+    --md-content-color: : var(--md-sys-color-secondary);
     margin: 0 auto;
   }
 
@@ -178,7 +177,7 @@ const targetTeleport = useClosestParentFrame();
     font-weight: var(--md-sys-typescale-headline-small-weight);
     letter-spacing: var(--md-sys-typescale-headline-small-tracking);
 
-    color: var(--md-sys-color-on-surface);
+    --md-content-color: var(--md-sys-color-on-surface);
 
     .md-dialog_has-icon & {
       text-align: center;

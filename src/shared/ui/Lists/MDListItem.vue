@@ -29,7 +29,7 @@ const tag = computed(() => (isButton ? 'button' : isDiv ? 'div' : 'li'));
 </script>
 
 <template>
-  <MDState :is="tag" class="md-list-item" @click="onClick">
+  <MDState :is="tag" class="md md-list-item" @click="onClick">
     <span v-if="!!slots.leadingIcon" class="md-list-item__leading-icon">
       <slot name="leadingIcon" />
     </span>

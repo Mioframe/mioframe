@@ -32,7 +32,7 @@ const show = refDebounced(hovered, 1.5e3);
   <Teleport :to="targetTeleport" defer :disabled="disabledTeleport">
     <Transition>
       <div
-        v-show="show"
+        v-if="show"
         ref="tooltipEl"
         class="md-plain-tooltip"
         :style="tooltipStyle"

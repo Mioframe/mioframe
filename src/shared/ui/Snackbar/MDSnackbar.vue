@@ -22,7 +22,7 @@ const onClickClose = () => {
 </script>
 
 <template>
-  <div class="md-snackbar">
+  <div class="md md-snackbar">
     <div class="md-snackbar__text">
       {{ text }}
     </div>
@@ -37,7 +37,7 @@ const onClickClose = () => {
 
     <MDIconButton
       tooltip="close"
-      class="md-snackbar__close-button"
+      class="md md-snackbar__close-button"
       @click="onClickClose"
     >
       <template #icon>
