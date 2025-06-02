@@ -7,14 +7,12 @@ import { VitePWA } from 'vite-plugin-pwa';
 import { fileURLToPath, URL } from 'node:url';
 import { dependencies, devDependencies } from './package.json';
 import basicSsl from '@vitejs/plugin-basic-ssl';
+import TurboConsole from 'unplugin-turbo-console/vite';
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode, isPreview }) => {
   const sslPlugins = mode === 'development' || isPreview ? [basicSsl()] : [];
-  const pwaPlugins =
-    mode === 'production' || isPreview
-      ? [VitePWA({ registerType: 'autoUpdate' })]
-      : [];
+  const pwaPlugins = mode === 'production' || isPreview ? [VitePWA()] : [];
 
   const sentryPlugins =
     mode === 'production' || isPreview
@@ -30,6 +28,7 @@ export default defineConfig(({ mode, isPreview }) => {
   return {
     base: '',
     plugins: [
+      TurboConsole(),
       vue(),
       wasm(),
       topLevelAwait(),

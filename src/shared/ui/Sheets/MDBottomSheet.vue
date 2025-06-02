@@ -60,7 +60,7 @@ watchEffect(() => {
       <div ref="scrimEl" class="md md-bottom-sheet__scrim">
         <div class="md md-bottom-sheet__container">
           <div ref="headEl" class="md-bottom-sheet__head">
-            <button type="button" class="md-bottom-sheet__drag-handle" />
+            <button type="button" class="md md-bottom-sheet__drag-handle" />
 
             <div class="md-bottom-sheet__head-content">
               <slot name="head" />

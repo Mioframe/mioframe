@@ -534,7 +534,7 @@
       var(--unknownColor)
     );
     --md-sys-color-on-surface-variant: var(
-      --md-ref-palette-neutral-variant30,
+      --md-ref-palette-neutral-variant80,
       var(--unknownColor)
     );
     --md-sys-color-surface-container-highest: var(
@@ -546,7 +546,7 @@
       var(--unknownColor)
     );
     --md-sys-color-surface-container: var(
-      --md-ref-palette-neutral94,
+      --md-ref-palette-neutral12,
       var(--unknownColor)
     );
     --md-sys-color-surface-container-low: var(
