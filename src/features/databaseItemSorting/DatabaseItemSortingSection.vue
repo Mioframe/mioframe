@@ -14,22 +14,10 @@ import { MDSymbol } from '@shared/ui/Icon';
 import { MDListContainer, MDListItem } from '@shared/ui/Lists';
 import { MDMenu, defineMenuButtonList } from '@shared/ui/Menu';
 import type { MaybeElement } from '@vueuse/core';
-import {
-  moveArrayElement,
-  useSortable,
-} from '@vueuse/integrations/useSortable';
-import { cloneDeep } from 'es-toolkit';
-import { isNumber, isUndefined } from 'es-toolkit/compat';
-import { difference, isArray, keys } from 'remeda';
-import {
-  computed,
-  nextTick,
-  ref,
-  toValue,
-  useTemplateRef,
-  watch,
-  watchEffect,
-} from 'vue';
+import { useSortable } from '@vueuse/integrations/useSortable';
+import { keys } from 'es-toolkit/compat';
+import { difference } from 'remeda';
+import { computed, ref, useTemplateRef, watch } from 'vue';
 
 /**
  * Порядок сортировки по значениям свойств.
@@ -117,7 +105,9 @@ const propertyWithSorting = useReduceIterable(
   <DatabasePropertyId[]>[],
 );
 
-const propertyList = computed(() => keys(propertyMapRef.value));
+const propertyList = computed(
+  () => <(keyof typeof propertyMapRef.value)[]>keys(propertyMapRef.value),
+);
 
 const propertyWithoutSorting = computed(() =>
   difference(propertyList.value, propertyWithSorting.value),
@@ -169,6 +159,7 @@ const onClickToggleDirection = (id: DatabasePropertyId) => {
 const listContainerRef = useTemplateRef('listContainerRef');
 
 // TODO: совместить с MDListContainer и состоянием drag у элементов
+// TODO: добавить отклик на кнопки
 useSortable(listContainerRef, stateSortList, {
   animation: 200,
   delay: 900, // time in milliseconds to define when the sorting should start
