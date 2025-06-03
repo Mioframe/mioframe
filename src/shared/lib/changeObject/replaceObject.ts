@@ -1,5 +1,6 @@
 import { cloneDeep } from 'es-toolkit';
 import { isUnknownRecord } from './isUnknownRecord';
+import { isArray, isNil, keys } from 'es-toolkit/compat';
 
 /**
  * overwrites all values from source to target
@@ -11,9 +12,9 @@ export const deepReplaceJSONObject = <S extends object>(
   target: Record<any, any>,
   source: S,
 ): target is S => {
-  const targetKeys = new Set<string | number | symbol>(Object.keys(target));
+  const targetKeys = new Set<string | number | symbol>(keys(target).reverse());
 
-  (<(keyof S)[]>Object.keys(source)).forEach((sourceKey) => {
+  (<(keyof S)[]>keys(source)).forEach((sourceKey) => {
     targetKeys.delete(sourceKey);
     const sourceValue = source[sourceKey];
     if (sourceKey in target) {
@@ -35,6 +36,17 @@ export const deepReplaceJSONObject = <S extends object>(
     // eslint-disable-next-line @typescript-eslint/no-dynamic-delete -- delete remaining keys
     delete target[key];
   });
+
+  if (isArray(target)) {
+    let newIndex = 0;
+    for (let i = 0; i < target.length; i++) {
+      const value = target[i];
+      if (i in target && !isNil(value)) {
+        target[newIndex++] = value;
+      }
+    }
+    target.length = newIndex;
+  }
 
   return true;
 };

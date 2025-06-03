@@ -1,4 +1,4 @@
-import { putObject } from '../changeObject';
+import { deepPutJSONObject } from '../changeObject';
 import { defineMigrations } from '../defineMigrations';
 import type { MergeDeep } from 'type-fest';
 import type { Doc } from '@automerge/automerge-repo';
@@ -25,7 +25,7 @@ export const applyCFRDocumentMigration = (
 ): Doc<DocumentContent> => {
   return defineMigrations((doc: object): MergeDeep<object, DocumentContent> => {
     debug('first migration', () => clone(doc));
-    return putObject(doc, {
+    return deepPutJSONObject(doc, {
       name: 'new document',
       type: 'unknown',
       ...doc,

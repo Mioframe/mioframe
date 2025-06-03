@@ -7,7 +7,7 @@ import { DB_VIEW_LAYOUT } from '@shared/lib/databaseDocument/state/v2/view/gener
 import { useReduceIterable } from '@shared/lib/useReduce';
 import { MDChip } from '@shared/ui/Chips';
 import { MDSymbol } from '@shared/ui/Icon';
-import { computed, shallowRef, toRef } from 'vue';
+import { computed, shallowRef, toRef, watchEffect } from 'vue';
 import DatabaseViewSettingDialog from './DatabaseViewsSettingDialog.vue';
 import { DatabaseItemSortingSection } from '@feature/databaseItemSorting';
 import { MD_SYS_TYPESCALE } from '@shared/lib/md';
@@ -32,17 +32,23 @@ const {
 
 const selectedViewId = defineModel<DatabaseViewId>('selectedViewId');
 
+watchEffect(() => {
+  if (viewsList.value?.length && !selectedViewId.value) {
+    selectedViewId.value = viewsList.value.at(0)?.[0];
+  }
+});
+
 const selectedView = computed(() =>
   selectedViewId.value ? views.value?.[selectedViewId.value] : undefined,
 );
 
 const selectedSortMap = computed(() => selectedView.value?.sorting);
 
-// watchEffect(() => {
-//   if (selectedView.value && !('sorting' in selectedView.value)) {
-//     selectedView.value['sorting'] = {};
-//   }
-// });
+watchEffect(() => {
+  if (selectedView.value && !('sorting' in selectedView.value)) {
+    selectedView.value['sorting'] = {};
+  }
+});
 
 const viewButtons = useReduceIterable(
   viewsList,
@@ -107,6 +113,7 @@ const onCancelAddView = () => {
       </MDChip>
     </div>
     <!-- панель фильтрации -->
+
     <!-- панель сортировки -->
     <div class="database-view-preset-settings-widget__subtitle md-margin-top-2">
       <span :class="MD_SYS_TYPESCALE.title.small">Sorting settings</span>
@@ -128,6 +135,7 @@ const onCancelAddView = () => {
       v-model:sort-map="selectedSortMap"
       :property-map="properties"
     />
+    <!-- / панель сортировки -->
 
     <!-- панель настройки шаблона отображения -->
 
