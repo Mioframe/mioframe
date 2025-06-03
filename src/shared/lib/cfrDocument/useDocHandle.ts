@@ -7,7 +7,7 @@ import type {
 } from '@automerge/automerge-repo';
 import type { MaybeRefOrGetter, Ref } from 'vue';
 import { computed, nextTick, ref, shallowRef, toValue, watch } from 'vue';
-import { isUnknownRecord, replaceObject } from '../changeObject';
+import { isUnknownRecord, deepReplaceJSONObject } from '../changeObject';
 import { createGlobalState, tryOnScopeDispose } from '@vueuse/core';
 import { defineReadonlyDeep } from '../readonlyDeep';
 import type { UnknownRecord } from 'type-fest';
@@ -21,7 +21,7 @@ const createDocHandleRefState = <T extends object>(docHandle: DocHandle<T>) => {
   const programReplaceDocRef = (doc: Doc<T> | undefined) => {
     watchHandle.pause();
     if (doc) {
-      replaceObject(docRef.value, doc);
+      deepReplaceJSONObject(docRef.value, doc);
     }
     void nextTick(() => {
       watchHandle.resume();
@@ -55,7 +55,7 @@ const createDocHandleRefState = <T extends object>(docHandle: DocHandle<T>) => {
       if (docState) {
         docHandle.change((doc) => {
           if (isUnknownRecord(doc)) {
-            replaceObject(doc, docState);
+            deepReplaceJSONObject(doc, docState);
           }
         });
       }

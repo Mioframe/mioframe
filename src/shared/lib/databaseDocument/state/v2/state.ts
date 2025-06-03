@@ -3,7 +3,7 @@ import { extend, literal, optional } from 'zod/v4-mini';
 import type { DatabaseState as DataBaseStateV1 } from '../v1';
 import { zodDatabaseState as zodDatabaseStateV1 } from '../v1';
 import { defineVersionState } from '../defineVersion';
-import { putObject } from '@shared/lib/changeObject';
+import { deepPutJSONObject } from '@shared/lib/changeObject';
 import { zodDatabaseView, zodDatabaseViewId } from './view';
 import { zodOnlyRecord } from '@shared/lib/zodRecord';
 
@@ -20,7 +20,7 @@ export const databaseState = defineVersionState(
     views: optional(zodDatabaseViewsMap),
   }),
   (oldState: DataBaseStateV1) => {
-    return putObject(oldState, {
+    return deepPutJSONObject(oldState, {
       version: 2,
       properties: {},
       data: {},

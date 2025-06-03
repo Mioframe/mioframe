@@ -1,3 +1,3 @@
 export { isUnknownRecord } from './isUnknownRecord';
-export { deepPutJSONObject as putObject } from './putObject';
-export { deepReplaceJSONObject as replaceObject } from './replaceObject';
+export { deepPutJSONObject as deepPutJSONObject } from './putObject';
+export { deepReplaceJSONObject as deepReplaceJSONObject } from './replaceObject';
