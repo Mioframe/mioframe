@@ -12,7 +12,6 @@ import { DatabasePropertyRemoveDialog } from '@feature/databasePropertyRemove';
 import { DatabasePropertyRenameDialog } from '@feature/databasePropertyRename';
 import { EmptySymbol } from '@shared/ui/EmptySymbol';
 import DatabaseViewTable from './DatabaseViewTable.vue';
-import DatabaseDataSortingForm from '@feature/databaseViewSettings/DatabaseDataSortingForm.vue';
 import DatabaseViewPresetSettingsWidget from './DatabaseViewPresetSettingsWidget.vue';
 import type { DatabaseViewId } from '@shared/lib/databaseDocument/state/v2';
 import type {
@@ -210,8 +209,6 @@ const selectedViewId = shallowRef<DatabaseViewId>();
               />
             </template>
           </DatabasePropertyList>
-
-          <DatabaseDataSortingForm v-if="properties" :properties />
         </div>
       </MDBottomSheet>
     </div>
