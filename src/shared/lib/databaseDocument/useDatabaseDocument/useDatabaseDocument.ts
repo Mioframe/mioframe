@@ -19,7 +19,7 @@ import type { DocHandle } from '@automerge/automerge-repo';
 import { useCFRDocument } from '../../cfrDocument/useCFRDocument';
 import { zodIs, zodSafeCheck } from '../../validateZodScheme';
 import { migrateBody, migrateDatabaseDocument } from '../migrations';
-import { putObject } from '../../changeObject';
+import { deepPutJSONObject } from '../../changeObject';
 import { createLogger } from '../../logger';
 import {
   addViewMutation,
@@ -160,7 +160,7 @@ export const useDatabaseDocument = (
 
       const views = body.views;
 
-      putObject(views, {
+      deepPutJSONObject(views, {
         [viewId]: view,
       });
     });
