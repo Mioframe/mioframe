@@ -16,7 +16,11 @@ defineSlots<{
 </script>
 
 <template>
-  <MDListItem :headline="item.name" is-button class="directory-content-entry">
+  <MDListItem
+    :headline="item.name"
+    tag="button"
+    class="directory-content-entry"
+  >
     <template #leadingIcon>
       <MDSymbol v-if="'entries' in item" name="folder" />
 

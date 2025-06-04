@@ -33,7 +33,7 @@ const headline = computed(() => name.value ?? 'Untitled Document');
   <MDListItem
     :headline
     :supporting-text
-    :is-button
+    :tag="isButton ? 'button' : undefined"
     @click="emit('click', $event)"
   >
     <template #leadingIcon>

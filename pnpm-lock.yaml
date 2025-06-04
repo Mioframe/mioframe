@@ -62,6 +62,9 @@ importers:
       modern-normalize:
         specifier: ^3.0.1
         version: 3.0.1
+      parse-duration:
+        specifier: ^2.1.4
+        version: 2.1.4
       remeda:
         specifier: ^2.22.5
         version: 2.22.5
@@ -1476,8 +1479,8 @@ packages:
   '@maxim_mazurok/gapi.client.discovery-v1@0.1.20200806':
     resolution: {integrity: sha512-Wl6UfmZVDdWbY3PUu8E2ULk9RPLjnMqp/iOA4tcK8Ne+U/GmlnWP/e34IaZNGArfl7iXJNOG+/3Rj9L9jQyF9Q==}
 
-  '@maxim_mazurok/gapi.client.drive-v3@0.0.20250527':
-    resolution: {integrity: sha512-t76Brhwzc76NJBO6HmC6ea8aSEyhgBm5693Swi86oCzxsXVKahbHtbCZawSZ8IIh9Mli2kGUQinlWUKJIRGLgA==}
+  '@maxim_mazurok/gapi.client.drive-v3@0.0.20250530':
+    resolution: {integrity: sha512-HceVifWGB+aM0CZxbmRqsxbXt9tmS8bpergynE6pJ/FOTySIW6H0RApxgw1MabXAzZjqSdnL/qO0sjRfyvXt0w==}
 
   '@maxim_mazurok/gapi.client.oauth2-v2@0.0.20200213':
     resolution: {integrity: sha512-CtMeicnExqTAoAok72PqqknL1p2sLVbAqB/4rpsbi2LYPy26ln23W+mZUB9uYl6Rt7a0DCqJdohdF40Q/dZv/w==}
@@ -3629,6 +3632,9 @@ packages:
   parent-module@1.0.1:
     resolution: {integrity: sha512-GQ2EWRpQV8/o+Aw8YqtfZZPfNRWZYkbidE9k5rpl/hC3vtHHBfGm2Ifi6qWV+coDGkrUKZAxE3Lot5kcsRlh+g==}
     engines: {node: '>=6'}
+
+  parse-duration@2.1.4:
+    resolution: {integrity: sha512-b98m6MsCh+akxfyoz9w9dt0AlH2dfYLOBss5SdDsr9pkhKNvkWBXU/r8A4ahmIGByBOLV2+4YwfCuFxbDDaGyg==}
 
   parse5@7.3.0:
     resolution: {integrity: sha512-IInvU7fabl34qmi9gY8XOVxhYyMyuH2xUNpb2q8/Y+7552KlejkRvqvD19nMoUW/uQGGbqNpA6Tufu5FL5BZgw==}
@@ -6206,7 +6212,7 @@ snapshots:
       '@types/gapi.client': 1.0.8
       '@types/gapi.client.discovery-v1': 0.0.4
 
-  '@maxim_mazurok/gapi.client.drive-v3@0.0.20250527':
+  '@maxim_mazurok/gapi.client.drive-v3@0.0.20250530':
     dependencies:
       '@types/gapi.client': 1.0.8
       '@types/gapi.client.discovery-v1': 0.0.4
@@ -6637,7 +6643,7 @@ snapshots:
 
   '@types/gapi.client.drive-v3@0.0.5':
     dependencies:
-      '@maxim_mazurok/gapi.client.drive-v3': 0.0.20250527
+      '@maxim_mazurok/gapi.client.drive-v3': 0.0.20250530
 
   '@types/gapi.client.oauth2-v2@0.0.4':
     dependencies:
@@ -8518,6 +8524,8 @@ snapshots:
   parent-module@1.0.1:
     dependencies:
       callsites: 3.1.0
+
+  parse-duration@2.1.4: {}
 
   parse5@7.3.0:
     dependencies:
