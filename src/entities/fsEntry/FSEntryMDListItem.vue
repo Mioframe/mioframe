@@ -29,7 +29,7 @@ const slots = defineSlots<{
 <template>
   <MDListItem
     :headline="entry.name"
-    :is-button
+    :tag="isButton ? 'button' : undefined"
     :supporting-text
     @click="$emit('click', entryKey, entry)"
   >

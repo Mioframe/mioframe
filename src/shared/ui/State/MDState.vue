@@ -1,15 +1,13 @@
 <script setup lang="ts">
 import MDRipple from './MDRipple.vue';
 import { setupRipple } from './setupRipple';
-import { syncRef, syncRefs, useElementHover } from '@vueuse/core';
+import { syncRef, syncRefs, useElementHover, useVibrate } from '@vueuse/core';
 import { useTemplateRef, defineModel, computed } from 'vue';
 import { useFirstFocus } from '@shared/lib/useFirstFocus';
 import { debounce } from 'lodash-es';
 
 const { is = 'div', disableRipple } = defineProps<{
   disabled?: boolean;
-  // TODO: реализовать dragged когда понадобится
-  dragged?: boolean;
 
   is?: 'button' | 'a' | 'div' | 'li';
   disableRipple?: boolean;
@@ -101,6 +99,14 @@ const onKeyUp = () => {
   onKeyDown.cancel();
   onPressUp();
 };
+
+const { vibrate } = useVibrate();
+
+const onClickState = () => {
+  vibrate([10]);
+};
+
+// FIXME: в firefox после удержания остаётся нежелательный эффект состояния
 </script>
 
 <template>
@@ -124,6 +130,7 @@ const onKeyUp = () => {
     @touchcancel="onTouchCancel"
     @keydown="onKeyDown"
     @keyup="onKeyUp"
+    @click="onClickState"
   >
     <div class="md-state__layer" />
 
@@ -255,6 +262,31 @@ const onKeyUp = () => {
     .md-state__layer {
       background-color: rgb(from var(--md-content-color) r g b / 10%);
     }
+  }
+
+  &.md-state_dragged-chosen,
+  &.md-state_dragged,
+  &.md-state_dragged-fallback {
+    opacity: 1 !important;
+    /* transition-duration: 0s; */
+    box-shadow: var(--md-sys-elevation-level2);
+    z-index: 1;
+    border-radius: 6step !important;
+
+    .md-state__layer {
+      /* transition-duration: 0s; */
+      background-color: rgb(from var(--md-content-color) r g b / 16%);
+    }
+    .md-state__ripple {
+      opacity: 0;
+      /* transition-duration: 0s; */
+
+      /* --md-ripple-duration: 0s; */
+    }
+  }
+
+  &.md-state_dragged-ghost {
+    opacity: 0 !important;
   }
 }
 </style>

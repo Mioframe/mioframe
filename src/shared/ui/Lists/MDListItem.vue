@@ -1,12 +1,10 @@
 <script setup lang="ts">
-import { computed } from 'vue';
 import { MDState } from '../State';
 
-const { isButton, isDiv } = defineProps<{
+const { tag = 'li' } = defineProps<{
   headline: string;
   supportingText?: string;
-  isButton?: boolean;
-  isDiv?: boolean;
+  tag?: 'div' | 'button' | 'li';
 }>();
 
 const slots = defineSlots<{
@@ -20,12 +18,10 @@ const emit = defineEmits<{
 }>();
 
 const onClick = (e: MouseEvent) => {
-  if (isButton) {
+  if (tag === 'button') {
     emit('click', e);
   }
 };
-
-const tag = computed(() => (isButton ? 'button' : isDiv ? 'div' : 'li'));
 </script>
 
 <template>

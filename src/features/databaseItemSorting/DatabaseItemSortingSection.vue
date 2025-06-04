@@ -11,13 +11,12 @@ import { useDeepModel } from '@shared/lib/useDeepModel';
 import { useReduceIterable } from '@shared/lib/useReduce';
 import { MDIconButton } from '@shared/ui/Button';
 import { MDSymbol } from '@shared/ui/Icon';
-import { MDListContainer, MDListItem } from '@shared/ui/Lists';
+import { MDList, MDListContainer, MDListItem } from '@shared/ui/Lists';
 import { MDMenu, defineMenuButtonList } from '@shared/ui/Menu';
 import type { MaybeElement } from '@vueuse/core';
-import { useSortable } from '@vueuse/integrations/useSortable';
 import { keys } from 'es-toolkit/compat';
 import { difference } from 'remeda';
-import { computed, ref, useTemplateRef, watch } from 'vue';
+import { computed, nextTick, ref, useTemplateRef, watch } from 'vue';
 
 /**
  * Порядок сортировки по значениям свойств.
@@ -40,34 +39,20 @@ const sortMapModel = useDeepModel(props, 'sortMap', emit);
 
 const stateSortList = ref<
   {
-    id: DatabasePropertyId;
+    key: DatabasePropertyId;
     direction: SORT_DIRECTION;
+    headline: string;
+    supportingText?: string;
   }[]
 >([]);
 
-watch(
-  sortMapModel,
-  (sortMapModel) => {
-    deepReplaceJSONObject(
-      stateSortList.value,
-      objectEntries(sortMapModel)
-        .sort(([, { priority: a }], [, { priority: b }]) => a - b)
-        .map(([id, { direction }]) => ({
-          id,
-          direction,
-        })),
-    );
-  },
-  { immediate: true, deep: true },
-);
-
-watch(
+const watchHandlerStateSortList = watch(
   stateSortList,
   (stateSortList) => {
     deepReplaceJSONObject(
       sortMapModel.value,
       stateSortList.reduce<DatabaseSortMap>(
-        (acc, { direction, id }, priority) => ({
+        (acc, { direction, key: id }, priority) => ({
           ...acc,
           [id]: {
             direction,
@@ -79,6 +64,31 @@ watch(
     );
   },
   { deep: true },
+);
+
+const watchHandlerSortMapModel = watch(
+  sortMapModel,
+  (sortMapModel) => {
+    watchHandlerStateSortList.pause();
+    deepReplaceJSONObject(
+      stateSortList.value,
+      objectEntries(sortMapModel)
+        .sort(([, { priority: a }], [, { priority: b }]) => a - b)
+        .map(([id, { direction }]) => ({
+          key: id,
+          direction,
+          headline: propertyMapRef.value[id].name,
+          supportingText:
+            direction === SORT_DIRECTION.ascending
+              ? 'Sort by ascending'
+              : 'Sort by descending',
+        })),
+    );
+    void nextTick(() => {
+      watchHandlerStateSortList.resume();
+    });
+  },
+  { immediate: true, deep: true },
 );
 
 /**
@@ -100,7 +110,7 @@ const showAddPropertyMenu = ref(false);
 const propertyWithSorting = useReduceIterable(
   stateSortList,
   (acc, item) => {
-    acc.push(item.id);
+    acc.push(item.key);
   },
   <DatabasePropertyId[]>[],
 );
@@ -127,15 +137,17 @@ const menu = computed(() =>
 
 const onClickMenuProperty = (id: DatabasePropertyId) => {
   stateSortList.value.push({
-    id,
+    key: id,
     direction: SORT_DIRECTION.ascending,
+    headline: propertyMapRef.value[id].name,
+    supportingText: 'Sort by ascending',
   });
   showAddPropertyMenu.value = false;
 };
 
 const onClickRemove = (id: DatabasePropertyId) => {
   const foundIndex = stateSortList.value.findIndex(
-    ({ id: propertyId }) => propertyId === id,
+    ({ key: propertyId }) => propertyId === id,
   );
 
   stateSortList.value.splice(foundIndex, 1);
@@ -143,7 +155,7 @@ const onClickRemove = (id: DatabasePropertyId) => {
 
 const onClickToggleDirection = (id: DatabasePropertyId) => {
   const sortDescription = stateSortList.value.find(
-    ({ id: propertyId }) => propertyId === id,
+    ({ key: propertyId }) => propertyId === id,
   );
 
   if (sortDescription) {
@@ -155,16 +167,6 @@ const onClickToggleDirection = (id: DatabasePropertyId) => {
         : SORT_DIRECTION.ascending;
   }
 };
-
-const listContainerRef = useTemplateRef('listContainerRef');
-
-// TODO: совместить с MDListContainer и состоянием drag у элементов
-// TODO: добавить отклик на кнопки
-useSortable(listContainerRef, stateSortList, {
-  animation: 200,
-  delay: 900, // time in milliseconds to define when the sorting should start
-  delayOnTouchOnly: false, // only delay if user is using touch
-});
 </script>
 
 <template>
@@ -172,15 +174,15 @@ useSortable(listContainerRef, stateSortList, {
     <MDListContainer ref="listContainerRef" tag="div">
       <MDListItem
         v-for="item in stateSortList"
-        :key="item.id"
-        :headline="propertyMap[item.id].name"
+        :key="item.key"
+        :headline="propertyMap[item.key].name"
         :supporting-text="
           item.direction === SORT_DIRECTION.ascending
             ? 'Sort by ascending'
             : 'Sort by descending'
         "
-        is-button
-        @click="onClickToggleDirection(item.id)"
+        tag="button"
+        @click="onClickToggleDirection(item.key)"
       >
         <template #leadingIcon>
           <MDSymbol
@@ -196,7 +198,7 @@ useSortable(listContainerRef, stateSortList, {
           <MDIconButton
             tooltip="Remove sorting"
             md-symbol-name="delete"
-            @click="onClickRemove(item.id)"
+            @click="onClickRemove(item.key)"
           />
         </template>
       </MDListItem>
@@ -205,7 +207,7 @@ useSortable(listContainerRef, stateSortList, {
         v-if="propertyWithoutSorting.length"
         ref="addBtn"
         headline="Add sorting"
-        is-button
+        tag="button"
         @click="showAddPropertyMenu = !showAddPropertyMenu"
       >
         <template #leadingIcon>
@@ -213,6 +215,30 @@ useSortable(listContainerRef, stateSortList, {
         </template>
       </MDListItem>
     </MDListContainer>
+
+    <MDList
+      v-model:list="stateSortList"
+      sortable
+      @click-item="onClickToggleDirection($event.key)"
+    >
+      <template #leadingIcon="{ item }">
+        <MDSymbol
+          name="sort"
+          :class="{
+            flip: item.direction === SORT_DIRECTION.ascending,
+          }"
+          class="handle"
+        />
+      </template>
+
+      <template #trailingIcon="{ item }">
+        <MDIconButton
+          tooltip="Remove sorting"
+          md-symbol-name="delete"
+          @click="onClickRemove(item.key)"
+        />
+      </template>
+    </MDList>
 
     <MDMenu
       v-model:show="showAddPropertyMenu"
