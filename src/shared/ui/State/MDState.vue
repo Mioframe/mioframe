@@ -107,6 +107,7 @@ const onClickState = () => {
 };
 
 // FIXME: в firefox после удержания остаётся нежелательный эффект состояния
+// FIXME: в chrome при нажатии кнопки подсвечиваются синим
 </script>
 
 <template>
@@ -120,7 +121,6 @@ const onClickState = () => {
       'md-state_disabled': disabled,
       'md-state_focused': userFocused,
       'md-state_pressed': userPressed,
-      'md-state_dragged': dragged,
     }"
     @mousedown="onMouseDown"
     @touchstart="onTouchStart"

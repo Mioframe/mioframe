@@ -66,7 +66,7 @@ const watchHandlerStateSortList = watch(
   { deep: true },
 );
 
-const watchHandlerSortMapModel = watch(
+watch(
   sortMapModel,
   (sortMapModel) => {
     watchHandlerStateSortList.pause();
