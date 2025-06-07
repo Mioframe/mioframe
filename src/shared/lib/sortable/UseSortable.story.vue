@@ -1,0 +1,115 @@
+<script setup lang="ts">
+import { ref, useTemplateRef } from 'vue';
+// import { useSortable } from './useSortableGPT';
+import { useSortable } from './useSortable';
+
+const list = ref(new Array(40).fill(0).map((_, index) => `item_${index}`));
+
+const isGrid = ref(false);
+
+const containerEl = useTemplateRef('containerEl');
+
+const { draggableItem } = useSortable(containerEl, list);
+</script>
+
+<template>
+  <Story title="use function/useSortable">
+    <template #controls>
+      <HstCheckbox v-model="isGrid" />
+    </template>
+
+    <div
+      ref="containerEl"
+      class="container"
+      :class="{
+        _grid: isGrid,
+      }"
+    >
+      <TransitionGroup name="list">
+        <div
+          v-for="item in list"
+          :key="item"
+          class="item"
+          draggable="true"
+          :class="{
+            _draggable: draggableItem === item,
+          }"
+        >
+          {{ item }}
+        </div>
+      </TransitionGroup>
+    </div>
+
+    <pre>{{ list }}</pre>
+  </Story>
+</template>
+
+<style lang="css" scoped>
+.container {
+  gap: 16px;
+  padding: 16px;
+  flex-direction: column;
+  display: flex;
+
+  &._grid {
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+
+  .item {
+    display: inline-block;
+    padding: 6px;
+    border: 1px solid blue;
+    background: lightblue;
+    cursor: grab;
+
+    &::before {
+      content: 'default';
+      display: block;
+      pointer-events: none;
+    }
+
+    &.sortable-ghost {
+      background-color: rebeccapurple;
+      &::before {
+        content: 'ghost';
+      }
+    }
+    &.sortable-chosen {
+      background-color: tomato;
+      &::before {
+        content: 'chosen';
+      }
+    }
+    &._draggable {
+      background-color: yellowgreen;
+      &::before {
+        content: 'drag';
+      }
+    }
+    &.sortable-fallback {
+      background-color: olive;
+      &::before {
+        content: 'fallback';
+      }
+    }
+  }
+
+  .list-move,
+  .list-enter-active,
+  .list-leave-active {
+    transition: all 0.5s ease;
+  }
+
+  .list-enter-from,
+  .list-leave-to {
+    opacity: 0;
+    transform: translateX(30px);
+  }
+
+  .list-leave-active {
+    position: absolute;
+    pointer-events: none;
+  }
+}
+</style>

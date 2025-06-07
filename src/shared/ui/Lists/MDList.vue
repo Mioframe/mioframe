@@ -16,9 +16,9 @@ import {
 import MDListContainer from './MDListContainer.vue';
 import MDListItem from './MDListItem.vue';
 import { deepReplaceJSONObject } from '@shared/lib/changeObject';
-import { useSortable } from '@vueuse/integrations/useSortable.mjs';
 import { unrefElement, useVibrate } from '@vueuse/core';
 import parseDuration from 'parse-duration';
+import { useSortable } from '@shared/lib/sortable';
 
 const { list, sortable, isItemButton } = defineProps<{
   list: T[];
@@ -86,44 +86,10 @@ const delayDuration = computed(
 
 const { vibrate } = useVibrate();
 
-const { option: sortableOption } = useSortable(containerRef, stateList, {
-  // eslint-disable-next-line vue/no-ref-object-reactivity-loss -- for initialize
-  animation: animationDuration.value,
-  // eslint-disable-next-line vue/no-ref-object-reactivity-loss -- for initialize
-  delay: delayDuration.value, // todo: на телефонах работает странно
-  delayOnTouchOnly: true,
-  forceFallback: true,
+// TODO: useSortable от vueuse перестаёт работать при изменении элементов в контейнере
+// TODO: useSortable от vueuse запускается при монтировании, а не при появлении целевого
 
-  dragClass: 'md-state_dragged-grab',
-  swapClass: 'md-state_dragged-swap',
-  ghostClass: 'md-state_dragged-ghost',
-  chosenClass: 'md-state_dragged-chosen',
-  selectedClass: 'md-state_dragged-selected',
-  fallbackClass: 'md-state_dragged-fallback',
-
-  onStart: () => {
-    // vibrate([10]);
-  },
-  onSelect: () => {
-    vibrate([10]);
-  },
-  onChoose: (e) => {
-    // e.target.classList.add()
-    vibrate([10]);
-  },
-});
-
-watchEffect(() => {
-  sortableOption('disabled', !sortable);
-});
-
-watchEffect(() => {
-  sortableOption('animation', animationDuration.value);
-});
-
-watchEffect(() => {
-  sortableOption('delay', delayDuration.value);
-});
+const {} = useSortable(containerRef, stateList);
 
 const onClickItem = (item: T, index: number) => {
   emit('clickItem', item, index);
