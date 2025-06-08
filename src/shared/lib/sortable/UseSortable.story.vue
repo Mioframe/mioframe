@@ -98,7 +98,7 @@ const { draggableItem } = useSortable(containerEl, list);
   .list-move,
   .list-enter-active,
   .list-leave-active {
-    transition: all 0.5s ease;
+    transition: all 0.2s linear;
   }
 
   .list-enter-from,
