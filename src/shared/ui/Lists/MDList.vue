@@ -5,19 +5,10 @@
     T extends { headline: string; key: PropertyKey; supportingText?: string }
   "
 >
-import {
-  computed,
-  nextTick,
-  shallowRef,
-  useTemplateRef,
-  watch,
-  watchEffect,
-} from 'vue';
+import type { Ref } from 'vue';
+import { computed, nextTick, ref, useTemplateRef, watch } from 'vue';
 import MDListContainer from './MDListContainer.vue';
 import MDListItem from './MDListItem.vue';
-import { deepReplaceJSONObject } from '@shared/lib/changeObject';
-import { unrefElement, useVibrate } from '@vueuse/core';
-import parseDuration from 'parse-duration';
 import { useSortable } from '@shared/lib/sortable';
 
 const { list, sortable, isItemButton } = defineProps<{
@@ -38,25 +29,31 @@ const slots = defineSlots<{
   trailingIcon: (p: { item: T; index: number }) => unknown;
 }>();
 
-const stateList = shallowRef<T[]>([]);
+const listProp = computed(() => list);
 
-const watchHandleStateList = watch(
-  stateList,
+const listState: Ref<T[]> = ref([]);
+
+const watchHandleListState = watch(
+  listState,
   (list) => {
     if (sortable) {
+      watchHandleListProp.pause();
       emit('update:list', list);
+      void nextTick(() => {
+        watchHandleListProp.resume();
+      });
     }
   },
   { deep: true },
 );
 
-watch(
-  () => list,
+const watchHandleListProp = watch(
+  listProp,
   (list) => {
-    watchHandleStateList.pause();
-    deepReplaceJSONObject(stateList.value, list);
+    watchHandleListState.pause();
+    // listState.value = list;
     void nextTick(() => {
-      watchHandleStateList.resume();
+      watchHandleListState.resume();
     });
   },
   { immediate: true, deep: true },
@@ -64,44 +61,24 @@ watch(
 
 const containerRef = useTemplateRef('containerRef');
 
-const computedStyle = computed(() => {
-  const el = unrefElement(containerRef);
-
-  return el ? window.getComputedStyle(el) : undefined;
-});
-
-const animationDuration = computed(
-  () =>
-    parseDuration(
-      computedStyle.value?.getPropertyValue('--md-sys-motion-duration-short4'),
-    ) ?? 200,
+const { draggableItem } = useSortable(
+  computed(() => (sortable ? containerRef.value : undefined)),
+  listProp,
 );
-
-const delayDuration = computed(
-  () =>
-    parseDuration(
-      computedStyle.value?.getPropertyValue('--md-sys-motion-duration-long2'),
-    ) ?? 1e3,
-);
-
-const { vibrate } = useVibrate();
-
-// TODO: useSortable от vueuse перестаёт работать при изменении элементов в контейнере
-// TODO: useSortable от vueuse запускается при монтировании, а не при появлении целевого
-
-const {} = useSortable(containerRef, stateList);
 
 const onClickItem = (item: T, index: number) => {
   emit('clickItem', item, index);
 };
 
-const itemTag = computed((): 'button' | 'li' =>
-  sortable || isItemButton ? 'button' : 'li',
+const itemTag = computed((): 'button' | 'li' | 'a' | 'div' =>
+  sortable ? 'a' : isItemButton ? 'button' : 'li',
 );
 
 const containerTag = computed((): 'ul' | 'div' =>
   itemTag.value === 'li' ? 'ul' : 'div',
 );
+
+// TODO: нужно ли делать listState или сортировка будет манипулировать listProp?
 </script>
 
 <template>
@@ -111,52 +88,54 @@ const containerTag = computed((): 'ul' | 'div' =>
     :tag="containerTag"
     class="md-list"
   >
-    <MDListItem
-      v-for="(item, index) in list"
-      :key="item.key"
-      :headline="item.headline"
-      :supporting-text="item.supportingText"
-      :tag="itemTag"
-      @click="onClickItem(item, index)"
-    >
-      <template v-if="!!slots.leadingAvatarContainer" #leadingAvatarContainer>
-        <slot name="leadingAvatarContainer" :item :index />
-      </template>
+    <TransitionGroup name="md-list">
+      <MDListItem
+        v-for="(item, index) in listProp"
+        :key="item.key"
+        :headline="item.headline"
+        :supporting-text="item.supportingText"
+        :tag="itemTag"
+        :class="{
+          'md-state_drag': item === draggableItem,
+        }"
+        :draggable="sortable"
+        @click="onClickItem(item, index)"
+      >
+        <template v-if="!!slots.leadingAvatarContainer" #leadingAvatarContainer>
+          <slot name="leadingAvatarContainer" :item :index />
+        </template>
 
-      <template v-if="!!slots.leadingIcon" #leadingIcon>
-        <slot name="leadingIcon" :item :index />
-      </template>
+        <template v-if="!!slots.leadingIcon" #leadingIcon>
+          <slot name="leadingIcon" :item :index />
+        </template>
 
-      <template v-if="!!slots.trailingIcon" #trailingIcon>
-        <slot name="trailingIcon" :item :index />
-      </template>
-    </MDListItem>
+        <template v-if="!!slots.trailingIcon" #trailingIcon>
+          <slot name="trailingIcon" :item :index />
+        </template>
+      </MDListItem>
+    </TransitionGroup>
   </MDListContainer>
 </template>
 
 <style lang="css" scoped>
 .md-list {
   user-select: none;
-}
-</style>
 
-<style lang="css">
-.dragClass {
-  border: 1px solid red !important;
-}
-.swapClass {
-  border: 1px solid blue !important;
-}
-.ghostClass {
-  border: 1px solid yellow !important;
-}
-.chosenClass {
-  border: 1px solid green !important;
-}
-.fallbackClass {
-  border: 1px solid chocolate !important;
-}
-.selectedClass {
-  border: 1px solid aqua !important;
+  &-move,
+  &-enter-active,
+  &-leave-active {
+    transition: all 0.2s linear;
+    pointer-events: none;
+  }
+
+  &-enter-from,
+  &-leave-to {
+    opacity: 0;
+  }
+
+  &-leave-active {
+    position: absolute;
+    pointer-events: none;
+  }
 }
 </style>

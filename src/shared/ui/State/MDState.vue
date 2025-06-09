@@ -114,7 +114,7 @@ const onClickState = () => {
   <component
     :is="is"
     ref="refEl"
-    :disabled
+    :disabled="disabled ? true : undefined"
     class="md md-state"
     :class="{
       'md-state_hover': userHover,
