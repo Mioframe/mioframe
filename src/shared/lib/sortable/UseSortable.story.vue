@@ -1,41 +1,49 @@
 <script setup lang="ts">
-import { ref, useTemplateRef } from 'vue';
-// import { useSortable } from './useSortableGPT';
+import { reactive, ref, useTemplateRef } from 'vue';
 import { useSortable } from './useSortable';
 
-const list = ref(new Array(40).fill(0).map((_, index) => `item_${index}`));
+const list = ref(
+  new Array(40)
+    .fill(0)
+    .map((_, index) => ({ id: index, label: `item_${index}` })),
+);
 
-const isGrid = ref(false);
+const state = reactive({
+  isGrid: false,
+});
 
 const containerEl = useTemplateRef('containerEl');
 
 const { draggableItem } = useSortable(containerEl, list);
+
+Object.assign(window, { ref });
 </script>
 
 <template>
   <Story title="use function/useSortable">
     <template #controls>
-      <HstCheckbox v-model="isGrid" />
+      <HstCheckbox v-model="state.isGrid" title="grid" />
     </template>
 
     <div
       ref="containerEl"
       class="container"
       :class="{
-        _grid: isGrid,
+        _grid: state.isGrid,
       }"
     >
       <TransitionGroup name="list">
         <div
           v-for="item in list"
-          :key="item"
+          :key="item.id"
+          type="button"
           class="item"
           draggable="true"
           :class="{
             _draggable: draggableItem === item,
           }"
         >
-          {{ item }}
+          {{ item.label }}
         </div>
       </TransitionGroup>
     </div>
@@ -104,7 +112,6 @@ const { draggableItem } = useSortable(containerEl, list);
   .list-enter-from,
   .list-leave-to {
     opacity: 0;
-    transform: translateX(30px);
   }
 
   .list-leave-active {

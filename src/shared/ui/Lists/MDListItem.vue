@@ -4,7 +4,8 @@ import { MDState } from '../State';
 const { tag = 'li' } = defineProps<{
   headline: string;
   supportingText?: string;
-  tag?: 'div' | 'button' | 'li';
+  tag?: 'div' | 'button' | 'li' | 'a';
+  draggable?: boolean;
 }>();
 
 const slots = defineSlots<{
@@ -25,7 +26,12 @@ const onClick = (e: MouseEvent) => {
 </script>
 
 <template>
-  <MDState :is="tag" class="md md-list-item" @click="onClick">
+  <MDState
+    :is="tag"
+    class="md md-list-item"
+    :draggable="draggable ? 'true' : undefined"
+    @click="onClick"
+  >
     <span v-if="!!slots.leadingIcon" class="md-list-item__leading-icon">
       <slot name="leadingIcon" />
     </span>
