@@ -5,60 +5,89 @@ import {
 } from '@vueuse/core';
 import { debounce, throttle } from 'es-toolkit';
 import { indexOf, isUndefined } from 'es-toolkit/compat';
-import type { Ref } from 'vue';
-import { computed, shallowRef } from 'vue';
+import type { MaybeRefOrGetter } from 'vue';
+import { computed, shallowRef, toValue } from 'vue';
 
-export const useSortable = <T>(container: MaybeElementRef, list: Ref<T[]>) => {
+export const useSortable = <T>(
+  container: MaybeElementRef,
+  listReactive: MaybeRefOrGetter<T[]>,
+) => {
   const containerElRef = computed(() => unrefElement(container));
 
-  const childrenIndexOf = (el: Element) =>
-    indexOf(el.parentElement?.children, el);
+  const childrenIndexOf = (el: Element) => {
+    if (el.parentElement?.children) {
+      const index = indexOf(el.parentElement.children, el);
+      if (index >= 0) {
+        return index;
+      }
+    }
+    return undefined;
+  };
 
-  const draggableItem = shallowRef<T | undefined>();
+  const currentIndexRef = shallowRef<number>();
+
+  const closestDraggable = (
+    el: EventTarget | Element | HTMLElement | null,
+  ): Element | undefined => {
+    if (el instanceof HTMLElement) {
+      if (el.draggable) {
+        return el;
+      }
+    }
+
+    if (el instanceof Element) {
+      const foundClosest = el.closest('[draggable="true"]') ?? undefined;
+
+      return foundClosest;
+    }
+    return undefined;
+  };
 
   let lastOverElement: EventTarget | Element | null | undefined = undefined;
 
   const onDrag = throttle((overElement: EventTarget | Element | null) => {
-    if (lastOverElement === overElement) {
+    console.log('onDrag');
+
+    const overDraggableElement = closestDraggable(overElement);
+
+    if (!overDraggableElement || lastOverElement === overDraggableElement) {
       return;
     }
-    lastOverElement = overElement;
+
+    lastOverElement = overDraggableElement;
 
     if (
-      overElement instanceof Element &&
-      overElement.parentElement === containerElRef.value
+      overDraggableElement instanceof Element &&
+      overDraggableElement.parentElement === containerElRef.value
     ) {
-      const overIndex = childrenIndexOf(overElement);
+      const overIndex = childrenIndexOf(overDraggableElement);
 
-      const overItem = list.value.at(overIndex);
+      if (!isUndefined(overIndex) && overIndex !== currentIndexRef.value) {
+        if (!isUndefined(currentIndexRef.value)) {
+          const list = toValue(listReactive);
 
-      if (
-        !isUndefined(draggableItem.value) &&
-        overItem !== draggableItem.value
-      ) {
-        console.log('from', draggableItem.value, 'to', overItem);
-        moveItem(draggableItem.value, overIndex);
+          const [movedItem]: T[] = list.splice(currentIndexRef.value, 1);
+
+          list.splice(overIndex, 0, movedItem);
+
+          currentIndexRef.value = overIndex;
+        }
       }
     }
   }, 1e3 / 20);
 
-  const moveItem = (item: T, newIndex: number) => {
-    const oldIndex = list.value.indexOf(item);
-    if (oldIndex !== newIndex) {
-      const [movedItem]: T[] = list.value.splice(oldIndex, 1);
-      list.value.splice(newIndex, 0, movedItem);
-    }
-  };
-
   const onDragStart = (target: Element | EventTarget | null) => {
+    console.log('onDragStart');
+
     if (target instanceof Element) {
       const currentIndex = childrenIndexOf(target);
-      draggableItem.value = list.value.at(currentIndex);
+
+      currentIndexRef.value = currentIndex;
     }
   };
 
   const onDragEnd = () => {
-    draggableItem.value = undefined;
+    currentIndexRef.value = undefined;
   };
 
   useEventListener(containerElRef, 'dragstart', (e: DragEvent) => {
@@ -71,7 +100,9 @@ export const useSortable = <T>(container: MaybeElementRef, list: Ref<T[]>) => {
   useEventListener(containerElRef, 'dragenter', (e: DragEvent) => {
     cancelPseudoDrag();
 
-    onDrag(e.target);
+    const { target } = e;
+
+    onDrag(target);
   });
 
   useEventListener(
@@ -86,8 +117,11 @@ export const useSortable = <T>(container: MaybeElementRef, list: Ref<T[]>) => {
 
   useEventListener(containerElRef, 'dragend', onDragEnd);
 
-  // примерное значение удержания элемента для начала замены нативного dnd, должен быть больше реального значения
-  const holdTouchTimeout = 600;
+  /**
+   * Native DnD response timeout.
+   * @default 600 // it's a little longer than the response time in chromium on android
+   *  */
+  const nativeDnDResponseTimeout = 600;
 
   let timeoutPseudoDragStart: ReturnType<typeof setTimeout> | undefined =
     undefined;
@@ -103,8 +137,12 @@ export const useSortable = <T>(container: MaybeElementRef, list: Ref<T[]>) => {
     timeoutPseudoDragStart = setTimeout(() => {
       usePseudoDrag = true;
 
+      if (!isUndefined(navigator) && 'vibrate' in navigator) {
+        navigator.vibrate([10]);
+      }
+
       onDragStart(e.target);
-    }, holdTouchTimeout);
+    }, nativeDnDResponseTimeout);
   });
 
   const onTouchMove = throttle(
@@ -117,7 +155,7 @@ export const useSortable = <T>(container: MaybeElementRef, list: Ref<T[]>) => {
   useEventListener(containerElRef, 'touchmove', (e: TouchEvent) => {
     clearTimeout(timeoutPseudoDragStart);
 
-    if (usePseudoDrag && draggableItem.value) {
+    if (usePseudoDrag && !isUndefined(currentIndexRef.value)) {
       e.preventDefault();
 
       onTouchMove(e);
@@ -141,7 +179,12 @@ export const useSortable = <T>(container: MaybeElementRef, list: Ref<T[]>) => {
   });
 
   return {
-    draggableItem: computed(() => draggableItem.value),
+    draggableItem: computed(() =>
+      isUndefined(currentIndexRef.value)
+        ? undefined
+        : toValue(listReactive).at(currentIndexRef.value),
+    ),
+    draggableIndex: computed(() => currentIndexRef.value),
   };
 };
 

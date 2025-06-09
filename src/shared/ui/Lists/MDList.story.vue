@@ -13,6 +13,12 @@ const list = ref(
 
 <template>
   <Story title="List">
-    <MDList v-model:list="list" />
+    <Variant title="Simple">
+      <MDList :list="list" />
+    </Variant>
+
+    <Variant title="Sortable">
+      <MDList :list sortable />
+    </Variant>
   </Story>
 </template>
