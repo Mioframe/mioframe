@@ -2,6 +2,7 @@
 const { tag = 'ul', type = 'list' } = defineProps<{
   tag?: 'ul' | 'div';
   type?: 'list' | 'grid';
+  transition?: boolean;
 }>();
 
 defineSlots<{
@@ -17,7 +18,11 @@ defineSlots<{
       'md-list-container_grid': type === 'grid',
     }"
   >
-    <slot />
+    <TransitionGroup v-if="transition" name="transition">
+      <slot />
+    </TransitionGroup>
+
+    <slot v-else />
   </component>
 </template>
 
@@ -40,6 +45,28 @@ defineSlots<{
 
     --md-list-container-border-radius: 8px;
     --md-list-item-border-radius: 8px;
+  }
+
+  :deep() {
+    .transition {
+      &-move,
+      &-enter-active,
+      &-leave-active {
+        /* transition: all 0.2s linear; */
+        transition-duration: var(--md-sys-motion-duration-short4);
+        transition-property: all;
+      }
+
+      &-enter-from,
+      &-leave-to {
+        opacity: 0;
+      }
+
+      &-leave-active {
+        position: absolute;
+        pointer-events: none;
+      }
+    }
   }
 }
 </style>

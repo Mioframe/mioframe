@@ -119,13 +119,14 @@ const onCancelAddView = () => {
       <span :class="MD_SYS_TYPESCALE.title.small">Sorting settings</span>
 
       <MDIconButton
-        tooltip="Control display order"
+        tooltip="Managing content sorting"
         md-symbol-name="info"
         class="md-margin-left-2"
         show-tooltip-on-click
       >
         <template #richTooltipContent>
-          TODO: добавить объяснение использования настройки
+          Drag and drop items to change sort priority.<br />
+          Click on an item to change sort direction.
         </template>
       </MDIconButton>
     </div>

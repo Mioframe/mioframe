@@ -264,6 +264,7 @@ const onClickState = () => {
     }
   }
 
+  &.md-state_drag,
   &.md-state_dragged-chosen,
   &.md-state_dragged,
   &.md-state_dragged-fallback {

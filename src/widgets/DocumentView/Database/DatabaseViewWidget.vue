@@ -246,7 +246,6 @@ const selectedViewId = shallowRef<DatabaseViewId>();
   display: flex;
   flex-direction: column;
   flex: 1 0;
-  overflow: auto;
 
   &__controls {
     margin-top: auto;
@@ -259,7 +258,6 @@ const selectedViewId = shallowRef<DatabaseViewId>();
   &__table {
     flex-shrink: 0;
     flex-grow: 1;
-    overflow: auto;
     padding: 16px;
   }
 }
