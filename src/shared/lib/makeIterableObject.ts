@@ -1,4 +1,4 @@
-import { isNullish } from 'remeda';
+import { isNil } from 'es-toolkit';
 
 type IterableObject<T extends object> = T &
   Iterable<[keyof T, Exclude<T[keyof T], undefined | null>]>;
@@ -10,7 +10,7 @@ export const makeIterableObject = <T extends Record<string, unknown>>(
     (<IterableObject<T>>obj)[Symbol.iterator] = function* () {
       for (const key in this) {
         const value = this[key];
-        if (Object.hasOwn(this, key) && !isNullish(value)) {
+        if (Object.hasOwn(this, key) && !isNil(value)) {
           yield [key, value] as [
             keyof T,
             Exclude<T[keyof T], undefined | null>,

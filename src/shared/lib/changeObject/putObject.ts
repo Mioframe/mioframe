@@ -1,4 +1,5 @@
-import { isNullish, isObjectType } from 'remeda';
+import { isNil } from 'es-toolkit';
+import { isObjectLike } from 'es-toolkit/compat';
 import type { MergeDeep, PartialDeep } from 'type-fest';
 
 /**
@@ -21,9 +22,9 @@ export function deepPutJSONObject<T extends object, S extends object>(
       // @ts-expect-error
       const targetValue: unknown = target[sourceKey];
       if (sourceValue !== targetValue) {
-        if (isObjectType(targetValue) && isObjectType(sourceValue)) {
+        if (isObjectLike(targetValue) && isObjectLike(sourceValue)) {
           deepPutJSONObject(targetValue, sourceValue);
-        } else if (isNullish(sourceValue)) {
+        } else if (isNil(sourceValue)) {
           // eslint-disable-next-line @typescript-eslint/ban-ts-comment -- everything is ok, it's just a deletion
           // @ts-expect-error
           // eslint-disable-next-line @typescript-eslint/no-dynamic-delete -- `undefined` is not a valid JSON data type

@@ -22,7 +22,7 @@ import type {
   DatabaseItem,
   DatabasePropertyId,
 } from '@shared/lib/databaseDocument/state';
-import { isDeepEqual } from 'remeda';
+import { isEqual } from 'es-toolkit';
 
 const {
   item = {},
@@ -52,7 +52,7 @@ watchEffect(() => {
 });
 
 const tryEmitValue = () => {
-  if (!isDeepEqual(item[propertyId], stateValue.value)) {
+  if (!isEqual(item[propertyId], stateValue.value)) {
     emit('update:value', stateValue.value);
   }
 };

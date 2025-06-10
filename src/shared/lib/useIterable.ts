@@ -2,7 +2,7 @@ import { from } from 'ix/iterable';
 import type { MaybeRefOrGetter, Ref } from 'vue';
 import { computed, ref, toRef, toValue, watch } from 'vue';
 import { createLogger } from './logger';
-import { isFunction, isObjectType } from 'remeda';
+import { isFunction, isObjectLike } from 'es-toolkit/compat';
 
 export type Dictionary<K, V> = Iterable<[K, V]>;
 
@@ -19,12 +19,12 @@ export interface ItemWithChildren<T extends [string | number, unknown]> {
 }
 
 const hasIterator = <T>(v: unknown): v is Iterable<T> =>
-  isObjectType(v) &&
+  isObjectLike(v) &&
   Symbol.iterator in v &&
   typeof v[Symbol.iterator] === 'function';
 
 const hasAsyncIterator = <T>(v: unknown): v is AsyncIterable<T> =>
-  isObjectType(v) &&
+  isObjectLike(v) &&
   Symbol.asyncIterator in v &&
   typeof v[Symbol.asyncIterator] === 'function';
 
@@ -34,10 +34,10 @@ export const isItemWithChildren = <
 >(
   v: V,
 ): v is V & ItemWithChildren<T> =>
-  isObjectType(v) &&
+  isObjectLike(v) &&
   'children' in v &&
   (isFunction(v.children) ||
-    (isObjectType(v.children) &&
+    (isObjectLike(v.children) &&
       (hasIterator(v.children) || hasAsyncIterator(v.children))));
 
 const { debug } = createLogger('useIterable');

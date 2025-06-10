@@ -4,7 +4,7 @@ import { setupRipple } from './setupRipple';
 import { syncRef, syncRefs, useElementHover, useVibrate } from '@vueuse/core';
 import { useTemplateRef, defineModel, computed } from 'vue';
 import { useFirstFocus } from '@shared/lib/useFirstFocus';
-import { debounce } from 'lodash-es';
+import { debounce } from 'es-toolkit';
 
 const { is = 'div', disableRipple } = defineProps<{
   disabled?: boolean;

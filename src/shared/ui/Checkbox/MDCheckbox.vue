@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { MDSymbol } from '../Icon';
-import { isNullish } from 'remeda';
+import { isNil } from 'es-toolkit';
 
 const {
   error,
@@ -58,7 +58,7 @@ const onClickContainer = () => {
     class="md md-checkbox"
     :class="{
       'md-checkbox_selected': stateValue === true,
-      'md-checkbox_indeterminate': isNullish(stateValue),
+      'md-checkbox_indeterminate': isNil(stateValue),
       'md-checkbox_error': error,
       'md-checkbox_disabled': disabled,
     }"

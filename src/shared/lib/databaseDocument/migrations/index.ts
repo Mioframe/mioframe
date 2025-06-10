@@ -5,14 +5,15 @@ import { zodDatabaseType } from '../types';
 import type { DatabaseState as DatabaseStateV1 } from '../state/v1';
 import { databaseState as databaseStateV1 } from '../state/v1';
 import { databaseState as databaseStateV2 } from '../state/v2';
-import { isNumber, isObjectType } from 'remeda';
+import { isNumber } from 'remeda';
+import { isObjectLike } from 'es-toolkit/compat';
 
 const readDatabaseVersion = (doc: unknown) => {
   const dbDocument = zodCheck(doc, zodDatabaseType);
 
   const currentVersion: number =
     dbDocument && 'body' in dbDocument
-      ? isObjectType(dbDocument.body)
+      ? isObjectLike(dbDocument.body)
         ? 'version' in dbDocument.body
           ? isNumber(dbDocument.body.version)
             ? dbDocument.body.version
@@ -41,7 +42,7 @@ export const migrateBody = (bodyV0: object, currentDatabaseVersion: number) => {
 export const migrateDatabaseDocument = (data: DatabaseTypeDocument) => {
   const currentDatabaseVersion = readDatabaseVersion(data);
 
-  if (!isObjectType(data.body)) {
+  if (!isObjectLike(data.body)) {
     data.body = {};
   }
 

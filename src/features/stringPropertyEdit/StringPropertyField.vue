@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { MDTextField } from '@shared/ui/TextField';
-import { isString } from 'remeda';
+import { isString } from 'es-toolkit';
 import { computed, ref } from 'vue';
 
 const stateValue = ref<string>();

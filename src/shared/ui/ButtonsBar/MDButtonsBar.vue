@@ -2,7 +2,7 @@
 import { computed } from 'vue';
 import { MDSymbol } from '../Icon';
 import type { ButtonDescription } from './types';
-import { isArray } from 'remeda';
+import { isArray } from 'es-toolkit/compat';
 
 const { elevation, enable } = defineProps<{
   buttons: Iterable<T>;
