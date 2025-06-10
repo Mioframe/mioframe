@@ -15,9 +15,8 @@ import { MDSymbol } from '@shared/ui/Icon';
 import { MDListContainer, MDListItem } from '@shared/ui/Lists';
 import { MDMenu, defineMenuButtonList } from '@shared/ui/Menu';
 import type { MaybeElement } from '@vueuse/core';
-import { debounce } from 'es-toolkit';
+import { debounce, difference } from 'es-toolkit';
 import { keys } from 'es-toolkit/compat';
-import { difference } from 'remeda';
 import { computed, nextTick, ref, toValue, useTemplateRef, watch } from 'vue';
 
 /**

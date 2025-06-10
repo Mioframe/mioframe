@@ -1,7 +1,7 @@
 import { reactive } from 'vue';
 import { COLOR, type Notification } from './types';
 import { uniqueId } from '@shared/lib/uniqueId';
-import { isString } from 'remeda';
+import { isString } from 'es-toolkit';
 
 export const defineNotifications = () => {
   const notificationMap: Map<Notification, string> = reactive(new Map());
@@ -22,8 +22,8 @@ export const defineNotifications = () => {
       };
     };
 
-    const removeNotification = (norification: Notification) => {
-      notificationMap.delete(norification);
+    const removeNotification = (notification: Notification) => {
+      notificationMap.delete(notification);
     };
 
     const pushError = (title: string, e: unknown, timeout = 10e3) => {

@@ -1,7 +1,7 @@
 import type { EntryPath } from '@shared/lib/fileSystem';
 import { createLogger } from '@shared/lib/logger';
 import { createGlobalState } from '@vueuse/core';
-import { isString } from 'remeda';
+import { isString } from 'es-toolkit';
 import { computed } from 'vue';
 import { useRoute } from 'vue-router';
 

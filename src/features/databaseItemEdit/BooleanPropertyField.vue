@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { BooleanProperty } from '@entity/booleanProperty';
 import { MDCheckbox } from '@shared/ui/Checkbox';
-import { isDefined } from 'remeda';
+import { isUndefined } from 'es-toolkit';
 import { computed } from 'vue';
 
 const { modelValue, property } = defineProps<{
@@ -14,7 +14,7 @@ const emit = defineEmits<{
 }>();
 
 const value = computed({
-  get: () => (!isDefined(modelValue) ? modelValue : !!modelValue),
+  get: () => (isUndefined(modelValue) ? modelValue : !!modelValue),
   set: (v: boolean | undefined) => {
     emit('update:modelValue', v);
   },

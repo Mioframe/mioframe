@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { isNumber } from 'remeda';
+import { isNumber } from 'es-toolkit/compat';
 import { computed, ref } from 'vue';
 
 const stateValue = ref<number>();

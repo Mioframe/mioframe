@@ -1,7 +1,7 @@
+import { isNil } from 'es-toolkit';
+import { isFunction, isObjectLike } from 'es-toolkit/compat';
 import { from } from 'ix/asynciterable';
 import { filter, takeWhile } from 'ix/asynciterable/operators';
-import { isFunction } from 'lodash-es';
-import { isNullish, isObjectType } from 'remeda';
 import type { Ref } from 'vue';
 import { computed, ref, toRef, watch } from 'vue';
 
@@ -22,12 +22,12 @@ export interface ItemWithChildren<T extends [string | number, unknown]> {
 }
 
 const hasIterator = <T>(v: unknown): v is Iterable<T> =>
-  isObjectType(v) &&
+  isObjectLike(v) &&
   Symbol.iterator in v &&
   typeof v[Symbol.iterator] === 'function';
 
 const hasAsyncIterator = <T>(v: unknown): v is AsyncIterable<T> =>
-  isObjectType(v) &&
+  isObjectLike(v) &&
   Symbol.asyncIterator in v &&
   typeof v[Symbol.asyncIterator] === 'function';
 
@@ -37,10 +37,10 @@ export const isItemWithChildren = <
 >(
   v: V,
 ): v is V & ItemWithChildren<T> =>
-  isObjectType(v) &&
+  isObjectLike(v) &&
   'children' in v &&
   (isFunction(v.children) ||
-    (isObjectType(v.children) &&
+    (isObjectLike(v.children) &&
       (hasIterator(v.children) || hasAsyncIterator(v.children))));
 
 export const useCollection = <T>(
@@ -52,11 +52,13 @@ export const useCollection = <T>(
   const loading = ref(0);
 
   const updateCollection = async (iterableValue: Collection<T>) => {
-    const source = isFunction(iterableValue) ? iterableValue() : iterableValue;
+    const source: any = isFunction(iterableValue)
+      ? iterableValue()
+      : iterableValue;
 
     const operations = [
       filterPredicate?.value ? filter(filterPredicate.value) : undefined,
-    ].filter((v) => !isNullish(v));
+    ].filter((v) => !isNil(v));
 
     try {
       loading.value += 1;
@@ -105,11 +107,13 @@ export const useIterable = <T>(
   const loading = ref(0);
 
   const updateCollection = async (iterableValue: Collection<T>) => {
-    const source = isFunction(iterableValue) ? iterableValue() : iterableValue;
+    const source: any = isFunction(iterableValue)
+      ? iterableValue()
+      : iterableValue;
 
     const operations = [
       filterPredicate?.value ? filter(filterPredicate.value) : undefined,
-    ].filter((v) => !isNullish(v));
+    ].filter((v) => !isNil(v));
 
     try {
       loading.value += 1;

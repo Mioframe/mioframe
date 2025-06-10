@@ -1,6 +1,6 @@
 <script setup lang="ts">
+import { isNumber } from 'es-toolkit/compat';
 import { MDCircularProgressIndicator } from '../ProgressIndicators';
-import { isNumber } from 'remeda';
 import { MDState } from '../State';
 
 const {

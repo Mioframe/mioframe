@@ -7,14 +7,12 @@ export const zodIs = <Z extends ZodMiniType>(
 
 /**
  * checks value without creating a new one
- * @deprecated - use is(value, zod)
+ * @deprecated - use zodIs(value, zod)
  */
 export const zodCheck = <Z extends ZodMiniType>(
   value: unknown,
   zod: Z,
-): output<Z> | undefined =>
-  // eslint-disable-next-line @typescript-eslint/no-unsafe-return -- Here is the correct check
-  zodIs(value, zod) ? value : undefined;
+): output<Z> | undefined => (zodIs(value, zod) ? value : undefined);
 
 /**
  * Checking zod scheme without cloning values
