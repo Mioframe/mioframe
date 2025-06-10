@@ -15,8 +15,6 @@ const state = reactive({
 const containerEl = useTemplateRef('containerEl');
 
 const { draggableItem } = useSortable(containerEl, list);
-
-Object.assign(window, { ref });
 </script>
 
 <template>
@@ -32,7 +30,7 @@ Object.assign(window, { ref });
         _grid: state.isGrid,
       }"
     >
-      <TransitionGroup name="list">
+      <TransitionGroup name="transition">
         <div
           v-for="item in list"
           :key="item.id"
@@ -77,46 +75,30 @@ Object.assign(window, { ref });
       pointer-events: none;
     }
 
-    &.sortable-ghost {
-      background-color: rebeccapurple;
-      &::before {
-        content: 'ghost';
-      }
-    }
-    &.sortable-chosen {
-      background-color: tomato;
-      &::before {
-        content: 'chosen';
-      }
-    }
     &._draggable {
       background-color: yellowgreen;
       &::before {
         content: 'drag';
       }
     }
-    &.sortable-fallback {
-      background-color: olive;
-      &::before {
-        content: 'fallback';
-      }
+  }
+
+  .transition {
+    &-move,
+    &-enter-active,
+    &-leave-active {
+      transition: all 0.2s linear;
     }
-  }
 
-  .list-move,
-  .list-enter-active,
-  .list-leave-active {
-    transition: all 0.2s linear;
-  }
+    &-enter-from,
+    &-leave-to {
+      opacity: 0;
+    }
 
-  .list-enter-from,
-  .list-leave-to {
-    opacity: 0;
-  }
-
-  .list-leave-active {
-    position: absolute;
-    pointer-events: none;
+    &-leave-active {
+      position: absolute;
+      pointer-events: none;
+    }
   }
 }
 </style>

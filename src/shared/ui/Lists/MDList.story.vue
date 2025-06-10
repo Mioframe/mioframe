@@ -16,9 +16,5 @@ const list = ref(
     <Variant title="Simple">
       <MDList :list="list" />
     </Variant>
-
-    <Variant title="Sortable">
-      <MDList :list sortable />
-    </Variant>
   </Story>
 </template>

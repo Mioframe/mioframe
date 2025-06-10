@@ -11,7 +11,6 @@
   --md-table-border-radius: 8px;
   --md-table-border-color: var(--md-sys-color-surface-variant);
   --md-table-border: 1px solid var(--md-table-border-color);
-  --md-table-background: var(--md-container-color);
 
   table {
     width: 100%;
@@ -20,9 +19,11 @@
   }
 
   :deep() {
-    thead,
-    tr {
-      background-color: var(--md-table-background);
+    caption,
+    th,
+    td {
+      background-color: var(--md-container-color);
+      color: var(--md-content-color);
     }
 
     thead {
