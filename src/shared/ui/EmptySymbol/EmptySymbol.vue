@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { sample } from 'remeda';
+import { sampleSize } from 'es-toolkit/compat';
 
 const symbols = [
   '🕳️',
@@ -23,7 +23,7 @@ const symbols = [
   '(╥﹏╥)',
 ];
 
-const [randomSymbol] = sample(symbols, 1);
+const [randomSymbol] = sampleSize(symbols, 1);
 </script>
 
 <template>

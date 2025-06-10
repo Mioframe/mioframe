@@ -15,7 +15,7 @@ import { zodIs } from '../validateZodScheme';
 import { find, from, toArray } from 'ix/Ix.asynciterable';
 import { filter, map } from 'ix/Ix.asynciterable.operators';
 import { useNotifications } from '@shared/ui/Notifications';
-import { isNullish, isString } from 'remeda';
+import { isNil, isString } from 'es-toolkit';
 
 export const partialKeyToFileName = (
   key: PartialStorageKey,
@@ -142,7 +142,7 @@ export const createStorageAdapter = (
               };
             }
           }),
-          filter((v) => !isNullish(v)),
+          filter((v) => !isNil(v)),
         ),
       );
 

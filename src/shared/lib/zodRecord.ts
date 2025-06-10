@@ -1,6 +1,6 @@
 import type { output, core } from 'zod/v4-mini';
 import { safeParse, transform } from 'zod/v4-mini';
-import { forEachObj, isObjectType } from 'remeda';
+import { forEach, isObjectLike } from 'es-toolkit/compat';
 
 export const zodOnlyRecord = <
   K extends core.$ZodType<PropertyKey, PropertyKey>,
@@ -12,8 +12,8 @@ export const zodOnlyRecord = <
   transform((data, ctx) => {
     const newObj = <Record<output<K>, output<V>>>{};
 
-    if (isObjectType(data)) {
-      forEachObj(data, (value, key) => {
+    if (isObjectLike(data)) {
+      forEach(data, (value, key) => {
         const { success: successKey, data: parsedKey } = safeParse(
           keyType,
           key,

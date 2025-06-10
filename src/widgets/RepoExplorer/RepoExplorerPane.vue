@@ -26,8 +26,8 @@ import { MDPaneContainer } from '@shared/ui/Layers';
 import { MDTopAppBar } from '@shared/ui/TopAppBar';
 import { FSEntryRenameDialog } from '@feature/entryRename';
 import { useRepoExplorer } from '@widget/RepoExplorer/useRepoExplorer';
-import { clone } from 'remeda';
 import type { UnknownRecord } from 'type-fest';
+import { cloneDeep } from 'es-toolkit';
 
 const { watchDebug, debug } = createLogger('RepoExplorerWidget.vue');
 
@@ -73,7 +73,7 @@ const onClickPath = async (indexPath: number) => {
   if (directoryState.value?.path) {
     const count = directoryState.value.path.length - start;
 
-    const path = clone(directoryState.value.path);
+    const path = cloneDeep(directoryState.value.path);
 
     path.splice(start, count);
 

@@ -1,4 +1,4 @@
-import { isFunction } from 'remeda';
+import { isFunction } from 'es-toolkit';
 import type { MaybeRef } from 'vue';
 import { toValue, watchEffect } from 'vue';
 
@@ -51,7 +51,7 @@ export const createLogger = (moduleName: string) => {
   const debug = (message: string, ...args: unknown[]) => {
     console.debug(
       ...colorStrings(moduleName, message),
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-call -- for logger
+
       ...args.map((v) => (import.meta.env.DEV && isFunction(v) ? v() : v)),
     );
   };

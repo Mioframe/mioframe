@@ -1,6 +1,6 @@
 import { uniqueId } from '@shared/lib/uniqueId';
 import { createGlobalState, until } from '@vueuse/core';
-import { isBoolean } from 'remeda';
+import { isBoolean } from 'es-toolkit';
 import { nextTick, reactive, ref } from 'vue';
 
 type AlertDescription = {
