@@ -19,7 +19,7 @@ const emit = defineEmits<{
 }>();
 
 const onClick = (e: MouseEvent) => {
-  if (tag === 'button') {
+  if (['button', 'a'].includes(tag)) {
     emit('click', e);
   }
 };
