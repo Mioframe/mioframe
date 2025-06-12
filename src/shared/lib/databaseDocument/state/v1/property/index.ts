@@ -1,10 +1,10 @@
 export {
   generatePropertyId,
-  zodPropertyId,
+  zodDatabasePropertyId as zodPropertyId,
   type GeneralProperty,
   createProperty,
   zodGeneralProperty,
-  type PropertyId,
+  type DatabasePropertyId as PropertyId,
 } from './general';
 export {
   zodUnknownProperty,
