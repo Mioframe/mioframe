@@ -91,7 +91,7 @@ const onKeyDown = debounce(
   },
   500,
   {
-    leading: true,
+    edges: ['leading'],
   },
 );
 

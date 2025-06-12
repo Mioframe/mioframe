@@ -19,6 +19,7 @@ import type {
   DatabaseViewId,
   DatabaseViewsMap,
 } from './state';
+export * from './state';
 import { zodDatabaseState } from './state';
 import type { DocumentContent } from '../cfrDocument';
 import { zodDocumentContent } from '../cfrDocument';
