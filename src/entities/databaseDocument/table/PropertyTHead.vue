@@ -5,7 +5,7 @@
 >
 import type {
   GeneralProperty,
-  PropertyId,
+  DatabasePropertyId,
 } from '@shared/lib/databaseDocument/state/v1/property/general';
 import type { PropertiesMap } from '@shared/lib/databaseDocument/state/v1/property/property';
 
@@ -16,8 +16,8 @@ defineProps<{
 
 defineSlots<{
   property(props: {
-    property: PropertiesMap<P>[PropertyId];
-    id: PropertyId;
+    property: PropertiesMap<P>[DatabasePropertyId];
+    id: DatabasePropertyId;
   }): unknown;
 }>();
 </script>

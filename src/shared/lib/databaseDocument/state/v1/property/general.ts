@@ -29,7 +29,7 @@ export const createProperty = <T extends string>(
   type,
 });
 
-export const { generateId: generatePropertyId, zodId: zodPropertyId } =
+export const { generateId: generatePropertyId, zodId: zodDatabasePropertyId } =
   defineId('propertyId');
 
-export type PropertyId = output<typeof zodPropertyId>;
+export type DatabasePropertyId = output<typeof zodDatabasePropertyId>;
