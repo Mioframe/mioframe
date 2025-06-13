@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import type { DocHandle } from '@automerge/automerge-repo';
 import { DatabaseViewCreateDialog } from '@feature/databaseViewCreate';
 import { useDatabaseDocument } from '@shared/lib/databaseDocument';
 import type { DatabaseViewId } from '@shared/lib/databaseDocument/state/v2';
@@ -12,7 +11,7 @@ import DatabaseViewSettingDialog from './DatabaseViewsSettingDialog.vue';
 import { DatabaseItemSortingSection } from '@feature/databaseItemSorting';
 import { MD_SYS_TYPESCALE } from '@shared/lib/md';
 import { MDIconButton } from '@shared/ui/Button';
-import type { UnknownRecord } from 'type-fest';
+import type { DocHandle } from '@shared/lib/cfrDocument/automergeTypes';
 
 /**
  * Виджет настроек отображения данных.
@@ -20,7 +19,7 @@ import type { UnknownRecord } from 'type-fest';
  */
 
 const { docHandle } = defineProps<{
-  docHandle: DocHandle<UnknownRecord>;
+  docHandle: DocHandle;
 }>();
 
 const docHandleRef = toRef(() => docHandle);

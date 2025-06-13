@@ -20,19 +20,21 @@ import { CFRDocumentMDListItem } from '@entity/cfrDocument';
 import { FSEntryMDListItem } from '@entity/fsEntry';
 import { defineMenuButtonList, MDContextMenuButton } from '@shared/ui/Menu';
 import { DocumentRemoveDialog } from '@feature/documentRemove';
-import type { DocHandle, DocumentId } from '@automerge/automerge-repo';
 import { DocumentRenameDialog } from '@feature/documentRename';
 import { MDPaneContainer } from '@shared/ui/Layers';
 import { MDTopAppBar } from '@shared/ui/TopAppBar';
 import { FSEntryRenameDialog } from '@feature/entryRename';
 import { useRepoExplorer } from '@widget/RepoExplorer/useRepoExplorer';
-import type { UnknownRecord } from 'type-fest';
 import { cloneDeep } from 'es-toolkit';
+import type {
+  DocHandle,
+  DocumentId,
+} from '@shared/lib/cfrDocument/automergeTypes';
 
 const { watchDebug, debug } = createLogger('RepoExplorerWidget.vue');
 
 const emit = defineEmits<{
-  clickDocument: [id: DocumentId, doc: DocHandle<UnknownRecord>];
+  clickDocument: [id: DocumentId, doc: DocHandle];
 }>();
 
 const isShowCreateDirectoryForm = ref(false);
@@ -173,7 +175,7 @@ const documentContextBtns = defineMenuButtonList([
 const onClickDocumentContextAction = (
   key: DocumentContextEvent,
   docId: DocumentId,
-  document: DocHandle<UnknownRecord>,
+  document: DocHandle,
 ) => {
   switch (key) {
     case DocumentContextEvent.remove: {
@@ -203,14 +205,11 @@ const onDocumentRemoveApply = (documentId: DocumentId) => {
   documentIdToRemove.value = undefined;
 };
 
-const onClickDocument = (
-  documentId: DocumentId,
-  docHandle: DocHandle<UnknownRecord>,
-) => {
+const onClickDocument = (documentId: DocumentId, docHandle: DocHandle) => {
   emit('clickDocument', documentId, docHandle);
 };
 
-const documentToRename = shallowRef<DocHandle<UnknownRecord>>();
+const documentToRename = shallowRef<DocHandle>();
 
 const title = computed((): string | undefined => {
   if (directoryState.value) {

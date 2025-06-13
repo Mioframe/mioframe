@@ -1,16 +1,16 @@
-import type {
-  ChangeFn,
-  Doc,
-  DocHandle,
-  DocHandleChangePayload,
-  DocHandleDeletePayload,
-} from '@automerge/automerge-repo';
 import type { MaybeRefOrGetter, Ref } from 'vue';
 import { computed, nextTick, ref, shallowRef, toValue, watch } from 'vue';
 import { isUnknownRecord, deepReplaceJSONObject } from '../changeObject';
 import { createGlobalState, tryOnScopeDispose } from '@vueuse/core';
 import { defineReadonlyDeep } from '../readonlyDeep';
 import type { UnknownRecord } from 'type-fest';
+import type {
+  ChangeFn,
+  Doc,
+  DocHandle,
+  DocHandleChangePayload,
+  DocHandleDeletePayload,
+} from './automergeTypes';
 
 const createDocHandleRefState = <T extends object>(docHandle: DocHandle<T>) => {
   const docRef = ref<T | UnknownRecord>({});

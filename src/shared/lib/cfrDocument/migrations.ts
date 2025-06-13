@@ -1,11 +1,11 @@
 import { deepPutJSONObject } from '../changeObject';
 import { defineMigrations } from '../defineMigrations';
 import type { MergeDeep } from 'type-fest';
-import type { Doc } from '@automerge/automerge-repo';
 import { type DocumentContent } from './types';
 import { createLogger } from '../logger';
 import { isNumber, isObjectLike } from 'es-toolkit/compat';
 import { cloneDeep } from 'es-toolkit';
+import type { Doc } from './automergeTypes';
 
 const { debug } = createLogger('cfrDocumentMigrations');
 

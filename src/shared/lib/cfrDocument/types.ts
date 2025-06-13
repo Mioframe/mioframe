@@ -1,11 +1,10 @@
-import type { DocumentId } from '@automerge/automerge-repo';
 import type { output } from 'zod/v4-mini';
 import { int, object, optional, string, unknown } from 'zod/v4-mini';
 import type { FileForStorageAdapter } from '../fsStorageAdapter';
 import type { ItemWithChildren } from '@shared/lib/useIterable';
 
-import type { AutomergeValue } from '@automerge/automerge';
 import type { ComputedRef, Reactive } from 'vue';
+import type { AutomergeValue, DocumentId } from './automergeTypes';
 
 export type AutomergeMap = {
   [Key in string]?: AutomergeValue;
