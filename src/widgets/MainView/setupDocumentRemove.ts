@@ -1,4 +1,4 @@
-import type { DocumentId } from '@automerge/automerge-repo';
+import type { DocumentId } from '@shared/lib/cfrDocument/automergeTypes';
 import { ref } from 'vue';
 
 export const setupDocumentRemove = () => {

@@ -1,13 +1,13 @@
 import { zodIs } from '../validateZodScheme';
 import type { UseCFRDocument } from './types';
 import { zodDocumentContent, type DocumentContent } from './types';
-import type { ChangeFn, DocHandle } from '@automerge/automerge-repo';
 import { applyCFRDocumentMigration } from './migrations';
 import type { MaybeRefOrGetter } from 'vue';
 import { computed } from 'vue';
 import { isObjectLike } from 'es-toolkit/compat';
 import { defineCachedDocHandle } from './useDocHandle';
 import type { UnknownRecord } from 'type-fest';
+import type { ChangeFn, DocHandle } from './automergeTypes';
 
 const useDocHandle = defineCachedDocHandle();
 

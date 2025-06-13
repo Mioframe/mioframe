@@ -1,4 +1,3 @@
-import type { DocHandle, DocumentId } from '@automerge/automerge-repo';
 import type { Repo } from '@automerge/automerge-repo';
 import type { zodDocumentContent } from './types';
 import type { output } from 'zod/v4-mini';
@@ -8,6 +7,7 @@ import { from } from 'ix/iterable';
 import { createLogger } from '../logger';
 import { tryOnScopeDispose } from '@vueuse/core';
 import type { UnknownRecord } from 'type-fest';
+import type { DocHandle, DocumentId } from './automergeTypes';
 
 const { debug, watchDebug } = createLogger('useRepo');
 
@@ -21,16 +21,9 @@ export const useRepo = (
 
   const documentsForSearch = toRef(() => toValue(searchDocuments));
 
-  const documentsMap = shallowReactive<
-    Map<DocumentId, DocHandle<UnknownRecord>>
-  >(new Map());
+  const documentsMap = shallowReactive<Map<DocumentId, DocHandle>>(new Map());
 
-  const onDocument = ({
-    handle,
-  }: {
-    handle: DocHandle<UnknownRecord>;
-    isNew: boolean;
-  }) => {
+  const onDocument = ({ handle }: { handle: DocHandle; isNew: boolean }) => {
     if (!documentsMap.has(handle.documentId)) {
       documentsMap.set(handle.documentId, handle);
     }
@@ -40,7 +33,7 @@ export const useRepo = (
     documentsMap.delete(documentId);
   };
 
-  const documents = computed((): Map<DocumentId, DocHandle<UnknownRecord>> => {
+  const documents = computed((): Map<DocumentId, DocHandle> => {
     return documentsMap;
   });
 

@@ -1,17 +1,16 @@
 <script setup lang="ts">
-import type { DocHandle } from '@automerge/automerge-repo';
 import { useCFRDocument } from '@shared/lib/cfrDocument/useCFRDocument';
 import { toRef } from 'vue';
 import { DATABASE_DOCUMENT_TYPE } from '@shared/lib/databaseDocument';
 import DatabaseViewWidget from './Database/DatabaseViewWidget.vue';
-import type { UnknownRecord } from 'type-fest';
+import type { DocHandle } from '@shared/lib/cfrDocument/automergeTypes';
 
 /**
  * Виджет просмотра документа
  */
 
 const { docHandle } = defineProps<{
-  docHandle: DocHandle<UnknownRecord>;
+  docHandle: DocHandle;
 }>();
 
 const { content, documentType } = useCFRDocument(toRef(() => docHandle));

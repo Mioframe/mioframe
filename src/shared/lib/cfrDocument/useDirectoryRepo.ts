@@ -1,4 +1,4 @@
-import { Repo, type DocumentId } from '@automerge/automerge-repo';
+import { Repo } from '@automerge/automerge-repo';
 import {
   type MaybeRefOrGetter,
   toRef,
@@ -18,6 +18,7 @@ import { useRepo } from './useRepo';
 import { createLogger } from '../logger';
 import { useReduceIterable, useReduceMap } from '../useReduce';
 import { WeakValueMap } from '../WeakValueMap';
+import type { DocumentId } from './automergeTypes';
 
 const { debug, watchDebug } = createLogger('useDirectoryRepo');
 
@@ -55,7 +56,9 @@ export const useDirectoryRepo = (
   );
 
   const hasDocumentFile = computed((): boolean =>
-    directoryEntriesNames.value.some((name) => zodIs(name, zodAutomergeFileName)),
+    directoryEntriesNames.value.some((name) =>
+      zodIs(name, zodAutomergeFileName),
+    ),
   );
 
   watchDebug('hasDocumentFile', hasDocumentFile);
