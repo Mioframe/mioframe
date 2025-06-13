@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { ref } from 'vue';
 import type { RepoRef } from '../../shared/lib/cfrDocument';
-import type { DocumentId } from '@automerge/automerge-repo';
 import { UIButton } from '@shared/ui/Button';
 import FormLayout from '@shared/ui/FormLayout.vue';
+import type { DocumentId } from '@shared/lib/cfrDocument/automergeTypes';
 
 const props = defineProps<{
   documentFolder: RepoRef;

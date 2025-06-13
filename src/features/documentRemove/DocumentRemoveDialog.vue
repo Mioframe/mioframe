@@ -1,12 +1,14 @@
 <script setup lang="ts">
 import { computed, ref, toRef } from 'vue';
 import { MDDialog } from '@shared/ui/Dialog';
-import type { DocHandle, DocumentId } from '@automerge/automerge-repo';
 import { useCFRDocument } from '@shared/lib/cfrDocument/useCFRDocument';
-import type { UnknownRecord } from 'type-fest';
+import type {
+  DocHandle,
+  DocumentId,
+} from '@shared/lib/cfrDocument/automergeTypes';
 
 const { docHandle } = defineProps<{
-  docHandle: DocHandle<UnknownRecord>;
+  docHandle: DocHandle;
 }>();
 
 const docHandleRef = toRef(() => docHandle);
@@ -28,10 +30,10 @@ const onClickCancel = () => {
 
 const { name } = useCFRDocument(docHandleRef);
 
-const headline = computed(() => `Remove "${name.value}"?`);
+const headline = computed(() => `Remove "${name.value ?? 'unknown'}"?`);
 
 const supportingText = computed(
-  () => `Are you sure you want to remove "${name.value}"?`,
+  () => `Are you sure you want to remove "${name.value ?? 'unknown'}"?`,
 );
 </script>
 

@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import type { DocHandle } from '@automerge/automerge-repo';
 import { useDatabaseDocument } from '@shared/lib/databaseDocument';
 import { MDDialog, useDialog as useDialog } from '@shared/ui/Dialog';
 import { computed, ref, toRef, watchEffect } from 'vue';
@@ -14,10 +13,10 @@ import { writableDeepClone } from '@shared/lib/writableDeepClone';
 import { DatabaseViewCreateDialog } from '@feature/databaseViewCreate';
 import { defineMenuButtonList, MDContextMenuBtn } from '@shared/ui/Menu';
 import { DatabaseViewRenameDialog } from '@feature/databaseViewRename';
-import type { UnknownRecord } from 'type-fest';
+import type { DocHandle } from '@shared/lib/cfrDocument/automergeTypes';
 
 const { docHandle } = defineProps<{
-  docHandle: DocHandle<UnknownRecord>;
+  docHandle: DocHandle;
 }>();
 
 const emit = defineEmits<{

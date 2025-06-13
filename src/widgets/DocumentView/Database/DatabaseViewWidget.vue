@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import type { DocHandle } from '@automerge/automerge-repo';
 import { DbItemAddDialog } from '@feature/databaseItemEdit';
 import DatabasePropertyCreationDialog from '@feature/databasePropertyCreate/DatabasePropertyCreationDialog.vue';
 import { useDatabaseDocument } from '@shared/lib/databaseDocument';
@@ -21,10 +20,10 @@ import type {
   DatabaseUnknownProperty,
   DatabaseValue,
 } from '@shared/lib/databaseDocument/state';
-import type { UnknownRecord } from 'type-fest';
+import type { DocHandle } from '@shared/lib/cfrDocument/automergeTypes';
 
 const { docHandle } = defineProps<{
-  docHandle: DocHandle<UnknownRecord>;
+  docHandle: DocHandle;
 }>();
 
 const docHandleRef = toRef(() => docHandle);

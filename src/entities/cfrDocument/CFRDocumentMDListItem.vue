@@ -1,13 +1,12 @@
 <script setup lang="ts">
-import type { DocHandle } from '@automerge/automerge-repo';
+import type { DocHandle } from '@shared/lib/cfrDocument/automergeTypes';
 import { useCFRDocument } from '@shared/lib/cfrDocument/useCFRDocument';
 import { MDSymbol } from '@shared/ui/Icon';
 import { MDListItem } from '@shared/ui/Lists';
-import type { UnknownRecord } from 'type-fest';
 import { computed, toRef } from 'vue';
 
 const props = defineProps<{
-  docHandle: DocHandle<UnknownRecord>;
+  docHandle: DocHandle;
   supportingText?: string;
   isButton?: boolean;
 }>();

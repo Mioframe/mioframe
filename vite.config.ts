@@ -28,10 +28,10 @@ export default defineConfig(({ mode, isPreview }) => {
   return {
     base: '',
     plugins: [
-      TurboConsole(),
       vue(),
       wasm(),
       topLevelAwait(),
+      TurboConsole(),
       ...sentryPlugins,
       ...pwaPlugins,
       ...sslPlugins,

@@ -1,4 +1,3 @@
-import type { StorageAdapterInterface, Chunk } from '@automerge/automerge-repo';
 import type {
   DirectoryForStorageAdapter,
   PartialAutomergeFileName,
@@ -16,6 +15,10 @@ import { find, from, toArray } from 'ix/Ix.asynciterable';
 import { filter, map } from 'ix/Ix.asynciterable.operators';
 import { useNotifications } from '@shared/ui/Notifications';
 import { isNil, isString } from 'es-toolkit';
+import type {
+  Chunk,
+  StorageAdapterInterface,
+} from '../cfrDocument/automergeTypes';
 
 export const partialKeyToFileName = (
   key: PartialStorageKey,

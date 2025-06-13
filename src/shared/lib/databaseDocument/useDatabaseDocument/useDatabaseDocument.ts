@@ -1,4 +1,4 @@
-import type { Entries, PartialDeep, UnknownRecord } from 'type-fest';
+import type { Entries, PartialDeep } from 'type-fest';
 import type {
   UseDatabaseDocument,
   DataBaseStateLatest,
@@ -15,7 +15,6 @@ import {
   removePropertyMutation,
   updatePropertyMutation,
 } from './propertyMutations';
-import type { DocHandle } from '@automerge/automerge-repo';
 import { useCFRDocument } from '../../cfrDocument/useCFRDocument';
 import { zodIs, zodSafeCheck } from '../../validateZodScheme';
 import { migrateBody, migrateDatabaseDocument } from '../migrations';
@@ -41,11 +40,12 @@ import {
   updateItemMutation,
 } from './itemMutations';
 import { entries, pipe, sort } from 'remeda';
+import type { DocHandle } from '@shared/lib/cfrDocument/automergeTypes';
 
 const { debug, watchDebug } = createLogger('useDatabaseDocument');
 
 export const useDatabaseDocument = (
-  docHandleRef: MaybeRef<DocHandle<UnknownRecord> | undefined>,
+  docHandleRef: MaybeRef<DocHandle | undefined>,
 ): UseDatabaseDocument => {
   debug('setup');
 
