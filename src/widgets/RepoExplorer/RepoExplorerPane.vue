@@ -27,14 +27,14 @@ import { FSEntryRenameDialog } from '@feature/entryRename';
 import { useRepoExplorer } from '@widget/RepoExplorer/useRepoExplorer';
 import { cloneDeep } from 'es-toolkit';
 import type {
-  DocHandle,
-  DocumentId,
+  AMDocHandle,
+  AMDocumentId,
 } from '@shared/lib/cfrDocument/automergeTypes';
 
 const { watchDebug, debug } = createLogger('RepoExplorerWidget.vue');
 
 const emit = defineEmits<{
-  clickDocument: [id: DocumentId, doc: DocHandle];
+  clickDocument: [id: AMDocumentId, doc: AMDocHandle];
 }>();
 
 const isShowCreateDirectoryForm = ref(false);
@@ -174,8 +174,8 @@ const documentContextBtns = defineMenuButtonList([
 
 const onClickDocumentContextAction = (
   key: DocumentContextEvent,
-  docId: DocumentId,
-  document: DocHandle,
+  docId: AMDocumentId,
+  document: AMDocHandle,
 ) => {
   switch (key) {
     case DocumentContextEvent.remove: {
@@ -192,7 +192,7 @@ const onClickDocumentContextAction = (
   }
 };
 
-const documentIdToRemove = shallowRef<DocumentId>();
+const documentIdToRemove = shallowRef<AMDocumentId>();
 
 const documentToRemove = computed(() =>
   documentIdToRemove.value
@@ -200,16 +200,16 @@ const documentToRemove = computed(() =>
     : undefined,
 );
 
-const onDocumentRemoveApply = (documentId: DocumentId) => {
+const onDocumentRemoveApply = (documentId: AMDocumentId) => {
   removeDocument(documentId);
   documentIdToRemove.value = undefined;
 };
 
-const onClickDocument = (documentId: DocumentId, docHandle: DocHandle) => {
+const onClickDocument = (documentId: AMDocumentId, docHandle: AMDocHandle) => {
   emit('clickDocument', documentId, docHandle);
 };
 
-const documentToRename = shallowRef<DocHandle>();
+const documentToRename = shallowRef<AMDocHandle>();
 
 const title = computed((): string | undefined => {
   if (directoryState.value) {

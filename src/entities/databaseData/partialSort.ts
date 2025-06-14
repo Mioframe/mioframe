@@ -43,7 +43,14 @@ const multiPathCompare = (
   return 0;
 };
 
-// Алгоритм: Quickselect + сортировка диапазона
+/**
+ * partial selection sort
+ * @param arr
+ * @param comparePathList
+ * @param firstIndex
+ * @param lastIndex
+ * @returns
+ */
 export const partialSort = <T>(
   arr: T[],
   comparePathList?: ComparePath[],

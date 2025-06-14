@@ -3,19 +3,19 @@ import { computed, ref, toRef } from 'vue';
 import { MDDialog } from '@shared/ui/Dialog';
 import { useCFRDocument } from '@shared/lib/cfrDocument/useCFRDocument';
 import type {
-  DocHandle,
-  DocumentId,
+  AMDocHandle,
+  AMDocumentId,
 } from '@shared/lib/cfrDocument/automergeTypes';
 
 const { docHandle } = defineProps<{
-  docHandle: DocHandle;
+  docHandle: AMDocHandle;
 }>();
 
 const docHandleRef = toRef(() => docHandle);
 
 const emit = defineEmits<{
   cancel: [];
-  apply: [documentId: DocumentId];
+  apply: [documentId: AMDocumentId];
 }>();
 
 const loading = ref(0);

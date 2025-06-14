@@ -11,7 +11,7 @@ import DatabaseViewSettingDialog from './DatabaseViewsSettingDialog.vue';
 import { DatabaseItemSortingSection } from '@feature/databaseItemSorting';
 import { MD_SYS_TYPESCALE } from '@shared/lib/md';
 import { MDIconButton } from '@shared/ui/Button';
-import type { DocHandle } from '@shared/lib/cfrDocument/automergeTypes';
+import type { AMDocHandle } from '@shared/lib/cfrDocument/automergeTypes';
 
 /**
  * Виджет настроек отображения данных.
@@ -19,7 +19,7 @@ import type { DocHandle } from '@shared/lib/cfrDocument/automergeTypes';
  */
 
 const { docHandle } = defineProps<{
-  docHandle: DocHandle;
+  docHandle: AMDocHandle;
 }>();
 
 const docHandleRef = toRef(() => docHandle);

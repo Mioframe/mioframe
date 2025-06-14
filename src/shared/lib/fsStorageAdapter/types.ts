@@ -3,9 +3,9 @@ import { isString } from 'es-toolkit';
 import type { Promisable } from 'type-fest';
 import type { output } from 'zod/v4-mini';
 import { custom, literal, string, tuple, union } from 'zod/v4-mini';
-import type { DocumentId } from '../cfrDocument/automergeTypes';
+import type { AMDocumentId } from '../cfrDocument/automergeTypes';
 
-export const zodDocumentId = custom<DocumentId>(
+export const zodDocumentId = custom<AMDocumentId>(
   (val) => isValidDocumentId(val) || val === 'storage-adapter-id',
 );
 
@@ -35,7 +35,7 @@ export type PartialStorageKey = output<typeof zodPartialStorageKey>;
 export const KEY_SEPARATE = '_';
 
 export const zodAutomergeFileName =
-  custom<`${DocumentId}${typeof KEY_SEPARATE}${ChangedType}${typeof KEY_SEPARATE}${Hash}`>(
+  custom<`${AMDocumentId}${typeof KEY_SEPARATE}${ChangedType}${typeof KEY_SEPARATE}${Hash}`>(
     (data) => {
       if (isString(data)) {
         const array = data.split(KEY_SEPARATE);
@@ -50,9 +50,9 @@ export const zodAutomergeFileName =
 export type AutomergeFileName = output<typeof zodAutomergeFileName>;
 
 export const zodPartialAutomergeFileName = custom<
-  | `${DocumentId}${typeof KEY_SEPARATE}${ChangedType}${typeof KEY_SEPARATE}${Hash}`
-  | `${DocumentId}${typeof KEY_SEPARATE}${ChangedType}`
-  | DocumentId
+  | `${AMDocumentId}${typeof KEY_SEPARATE}${ChangedType}${typeof KEY_SEPARATE}${Hash}`
+  | `${AMDocumentId}${typeof KEY_SEPARATE}${ChangedType}`
+  | AMDocumentId
 >((data) => {
   if (isString(data)) {
     const array = data.split(KEY_SEPARATE);

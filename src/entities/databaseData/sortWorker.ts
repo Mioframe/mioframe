@@ -1,17 +1,13 @@
 import { expose } from 'comlink';
-import {
-  type ComparePath,
-  type DatabaseData,
-  type SortWorkerApi,
-  type Sorting,
-  SORT_DIRECTION,
-} from './types';
+import { type ComparePath, type SortWorkerApi } from './types';
 import { objectEntries } from '@shared/lib/objectEntries';
 import { partialSort } from './partialSort';
+import type { DatabaseSortMap } from '@shared/lib/databaseDocument';
+import { type DatabaseData } from '@shared/lib/databaseDocument';
 
 const sortData = (
   data: DatabaseData,
-  sorting?: Sorting,
+  sorting?: DatabaseSortMap,
   firstIndex?: number,
   lastIndex?: number,
 ) => {
@@ -22,10 +18,7 @@ const sortData = (
   const comparePathList: ComparePath[] | undefined = sorting
     ? Object.entries(sorting)
         .sort(([, { priority: a }], [, { priority: b }]) => a - b)
-        .map(([id, { direction }]) => [
-          direction === SORT_DIRECTION.descending,
-          id,
-        ])
+        .map(([id, { direction }]) => [direction, id])
     : undefined;
 
   return partialSort(
