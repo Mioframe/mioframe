@@ -20,10 +20,10 @@ import type {
   DatabaseUnknownProperty,
   DatabaseValue,
 } from '@shared/lib/databaseDocument/state';
-import type { DocHandle } from '@shared/lib/cfrDocument/automergeTypes';
+import type { AMDocHandle } from '@shared/lib/cfrDocument/automergeTypes';
 
 const { docHandle } = defineProps<{
-  docHandle: DocHandle;
+  docHandle: AMDocHandle;
 }>();
 
 const docHandleRef = toRef(() => docHandle);

@@ -16,8 +16,8 @@ import { filter, map } from 'ix/Ix.asynciterable.operators';
 import { useNotifications } from '@shared/ui/Notifications';
 import { isNil, isString } from 'es-toolkit';
 import type {
-  Chunk,
-  StorageAdapterInterface,
+  AMChunk,
+  AMStorageAdapterInterface,
 } from '../cfrDocument/automergeTypes';
 
 export const partialKeyToFileName = (
@@ -51,7 +51,7 @@ const { debug } = createLogger('createFSStorageAdapter');
 
 export const createStorageAdapter = (
   directory: DirectoryForStorageAdapter,
-): StorageAdapterInterface => {
+): AMStorageAdapterInterface => {
   const { pushError } = useNotifications();
 
   const load = async (
@@ -107,7 +107,7 @@ export const createStorageAdapter = (
     }
   };
 
-  const loadRange = async (keyPrefix: PartialStorageKey): Promise<Chunk[]> => {
+  const loadRange = async (keyPrefix: PartialStorageKey): Promise<AMChunk[]> => {
     debug('loadRange', keyPrefix);
     try {
       const maybePartialAutomergeFileName = keyPrefix.join(KEY_SEPARATE);
@@ -119,7 +119,7 @@ export const createStorageAdapter = (
         ? maybePartialAutomergeFileName
         : undefined;
 
-      const chunkList: Chunk[] = await toArray(
+      const chunkList: AMChunk[] = await toArray(
         from(directory.entries()).pipe(
           filter(([name, entry]) => {
             debug('loadRange filter', { name, keyPrefixString });
@@ -130,7 +130,7 @@ export const createStorageAdapter = (
               name.startsWith(keyPrefixString)
             );
           }),
-          map(async ([name, entry]): Promise<Chunk | undefined> => {
+          map(async ([name, entry]): Promise<AMChunk | undefined> => {
             debug('loadRange map', name, entry);
 
             const key = fileNameToPartialKey(name);
@@ -186,7 +186,7 @@ export const createStorageAdapter = (
     }
   };
 
-  const adapter: StorageAdapterInterface = {
+  const adapter: AMStorageAdapterInterface = {
     load,
     save,
     remove,

@@ -13,10 +13,10 @@ import { writableDeepClone } from '@shared/lib/writableDeepClone';
 import { DatabaseViewCreateDialog } from '@feature/databaseViewCreate';
 import { defineMenuButtonList, MDContextMenuBtn } from '@shared/ui/Menu';
 import { DatabaseViewRenameDialog } from '@feature/databaseViewRename';
-import type { DocHandle } from '@shared/lib/cfrDocument/automergeTypes';
+import type { AMDocHandle } from '@shared/lib/cfrDocument/automergeTypes';
 
 const { docHandle } = defineProps<{
-  docHandle: DocHandle;
+  docHandle: AMDocHandle;
 }>();
 
 const emit = defineEmits<{

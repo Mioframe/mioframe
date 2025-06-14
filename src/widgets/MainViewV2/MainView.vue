@@ -7,17 +7,17 @@ import { RepoExplorerPane } from '@widget/RepoExplorer';
 import { shallowRef } from 'vue';
 import { useRepoExplorer } from '../RepoExplorer/useRepoExplorer';
 import type {
-  DocHandle,
-  DocumentId,
+  AMDocHandle,
+  AMDocumentId,
 } from '@shared/lib/cfrDocument/automergeTypes';
 
 const { currentDirectory } = useRepoExplorer();
 
-const openedDocument = shallowRef<DocHandle>();
+const openedDocument = shallowRef<AMDocHandle>();
 
 const { name: openedDocumentName } = useCFRDocument(openedDocument);
 
-const onClickDocument = (_documentId: DocumentId, docHandle: DocHandle) => {
+const onClickDocument = (_documentId: AMDocumentId, docHandle: AMDocHandle) => {
   openedDocument.value = docHandle;
 };
 

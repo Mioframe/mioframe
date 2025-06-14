@@ -7,13 +7,13 @@ import { from } from 'ix/iterable';
 import { createLogger } from '../logger';
 import { tryOnScopeDispose } from '@vueuse/core';
 import type { UnknownRecord } from 'type-fest';
-import type { DocHandle, DocumentId } from './automergeTypes';
+import type { AMDocHandle, AMDocumentId } from './automergeTypes';
 
 const { debug, watchDebug } = createLogger('useRepo');
 
 export const useRepo = (
   repo: MaybeRefOrGetter<Repo | undefined>,
-  searchDocuments?: MaybeRefOrGetter<Iterable<DocumentId>>,
+  searchDocuments?: MaybeRefOrGetter<Iterable<AMDocumentId>>,
 ) => {
   const currentRepo = toRef(() => toValue(repo));
 
@@ -21,19 +21,19 @@ export const useRepo = (
 
   const documentsForSearch = toRef(() => toValue(searchDocuments));
 
-  const documentsMap = shallowReactive<Map<DocumentId, DocHandle>>(new Map());
+  const documentsMap = shallowReactive<Map<AMDocumentId, AMDocHandle>>(new Map());
 
-  const onDocument = ({ handle }: { handle: DocHandle; isNew: boolean }) => {
+  const onDocument = ({ handle }: { handle: AMDocHandle; isNew: boolean }) => {
     if (!documentsMap.has(handle.documentId)) {
       documentsMap.set(handle.documentId, handle);
     }
   };
 
-  const onDeleteDocument = ({ documentId }: { documentId: DocumentId }) => {
+  const onDeleteDocument = ({ documentId }: { documentId: AMDocumentId }) => {
     documentsMap.delete(documentId);
   };
 
-  const documents = computed((): Map<DocumentId, DocHandle> => {
+  const documents = computed((): Map<AMDocumentId, AMDocHandle> => {
     return documentsMap;
   });
 
@@ -49,7 +49,7 @@ export const useRepo = (
     repo.create(initialValue);
   };
 
-  const remove = (documentId: DocumentId) => {
+  const remove = (documentId: AMDocumentId) => {
     const repo = toValue(currentRepo);
     if (!repo) {
       throw new Error('repository missing');

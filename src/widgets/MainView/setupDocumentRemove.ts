@@ -1,9 +1,9 @@
-import type { DocumentId } from '@shared/lib/cfrDocument/automergeTypes';
+import type { AMDocumentId } from '@shared/lib/cfrDocument/automergeTypes';
 import { ref } from 'vue';
 
 export const setupDocumentRemove = () => {
-  const documentIdForRemove = ref<DocumentId>();
-  const onClickRemove = (documentId: DocumentId) => {
+  const documentIdForRemove = ref<AMDocumentId>();
+  const onClickRemove = (documentId: AMDocumentId) => {
     documentIdForRemove.value = documentId;
   };
   const onCancelRemove = () => {
