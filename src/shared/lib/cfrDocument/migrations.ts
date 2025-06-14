@@ -5,7 +5,7 @@ import { type DocumentContent } from './types';
 import { createLogger } from '../logger';
 import { isNumber, isObjectLike } from 'es-toolkit/compat';
 import { cloneDeep } from 'es-toolkit';
-import type { Doc } from './automergeTypes';
+import type { AMDoc } from './automergeTypes';
 
 const { debug } = createLogger('cfrDocumentMigrations');
 
@@ -23,7 +23,7 @@ const readVersion = (doc: unknown) => {
 
 export const applyCFRDocumentMigration = (
   data: object,
-): Doc<DocumentContent> => {
+): AMDoc<DocumentContent> => {
   return defineMigrations((doc: object): MergeDeep<object, DocumentContent> => {
     debug('first migration', () => cloneDeep(doc));
     return deepPutJSONObject(doc, {

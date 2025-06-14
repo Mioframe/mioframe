@@ -3,20 +3,18 @@ import { ref, computed, watch, toValue } from 'vue';
 import type {
   DatabaseData,
   DatabaseItem,
+  DatabaseItemId,
   DatabaseView,
+  DatabaseViewId,
 } from '@shared/lib/databaseDocument';
-import {
-  useDatabaseDocument,
-  type DatabaseItemId,
-  type DatabaseViewId,
-} from '@shared/lib/databaseDocument';
+import { useDatabaseDocument } from '@shared/lib/databaseDocument';
 import { debounce } from 'perfect-debounce';
 import { useReduceIterable } from '@shared/lib/useReduce';
 import { useSortWorker } from './useSortWorker';
-import type { DocHandle } from '@shared/lib/cfrDocument/automergeTypes';
+import type { AMDocHandle } from '@shared/lib/cfrDocument/automergeTypes';
 
-export function useDataWorker(
-  docHandle: MaybeRefOrGetter<DocHandle | undefined>,
+export function useOrderedDatabaseData(
+  docHandle: MaybeRefOrGetter<AMDocHandle | undefined>,
   viewId: MaybeRefOrGetter<DatabaseViewId | undefined>,
 ) {
   const orderOfItems = ref<DatabaseItemId[]>([]);
@@ -42,7 +40,7 @@ export function useDataWorker(
       if (databaseData && databaseView) {
         orderOfItems.value = await worker.sortData(databaseData, databaseView);
       } else {
-        orderOfItems.value = []; // FIXME:
+        orderOfItems.value = [];
       }
     },
     500,

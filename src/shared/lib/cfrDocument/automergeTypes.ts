@@ -1,49 +1,21 @@
-import type {
-  ChangeFn as OriginalChangeFn,
-  DocHandleChangePayload as OriginalDocHandleChangePayload,
-  DocHandleDeletePayload as OriginalDocHandleDeletePayload,
-  StorageAdapterInterface as OriginalStorageAdapterInterface,
-} from '@automerge/automerge-repo';
-import type { AutomergeValue as OriginalAutomergeValue } from '@automerge/automerge';
-
+import type * as AMRR from '@automerge/automerge-repo';
+import type * as AMR from '@automerge/automerge';
 import type { UnknownRecord } from 'type-fest';
 
-export interface DocHandle<T = UnknownRecord> {
-  documentId: DocumentId;
-  //   addListener: DocHandle1<T>['addListener'];
-  addListener(n: 'change', f: (p: DocHandleChangePayload<T>) => void): void;
-  addListener(n: 'delete', f: (p: DocHandleDeletePayload<T>) => void): void;
-  removeListener(
-    event: 'delete',
-    fn?: (payload: DocHandleDeletePayload<T>) => void,
-  ): DocHandle<T>;
-  removeListener(
-    event: 'change',
-    fn?: (payload: DocHandleChangePayload<T>) => void,
-  ): DocHandle<T>;
-  change(callback: OriginalChangeFn<T>): void;
-  doc(): Promise<Doc<T> | undefined>;
-}
+export type AMDocHandle<T extends object = UnknownRecord> = AMRR.DocHandle<T>;
 
-export type DocumentId = string & { __documentId: true };
+export type AMDocumentId = AMRR.DocumentId;
 
-export type Doc<T> = {
-  readonly [P in keyof T]: T[P];
-};
+export type AMDoc<T extends object = UnknownRecord> = AMRR.Doc<T>;
 
-export type AutomergeValue = OriginalAutomergeValue;
+export type AMValue = AMR.AutomergeValue;
 
-export type ChangeFn<T> = OriginalChangeFn<T>;
+export type AMChangeFn<T> = AMRR.ChangeFn<T>;
 
-export type DocHandleChangePayload<T> = OriginalDocHandleChangePayload<T>;
+export type AMDocHandleChangePayload<T> = AMRR.DocHandleChangePayload<T>;
 
-export type DocHandleDeletePayload<T> = OriginalDocHandleDeletePayload<T>;
+export type AMDocHandleDeletePayload<T> = AMRR.DocHandleDeletePayload<T>;
 
-export type StorageAdapterInterface = OriginalStorageAdapterInterface;
+export type AMStorageAdapterInterface = AMRR.StorageAdapterInterface;
 
-type StorageKey = string[];
-
-export type Chunk = {
-  key: StorageKey;
-  data: Uint8Array | undefined;
-};
+export type AMChunk = AMRR.Chunk;

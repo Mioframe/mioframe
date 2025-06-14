@@ -1,2 +1,2 @@
-export { useDataWorker } from './useDatabaseDataWorker';
+export { useOrderedDatabaseData } from './useOrderedDatabaseData';
 export { useSortWorker } from './useSortWorker';

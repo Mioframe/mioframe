@@ -4,10 +4,10 @@ import type { FileForStorageAdapter } from '../fsStorageAdapter';
 import type { ItemWithChildren } from '@shared/lib/useIterable';
 
 import type { ComputedRef, Reactive } from 'vue';
-import type { AutomergeValue, DocumentId } from './automergeTypes';
+import type { AMValue, AMDocumentId } from './automergeTypes';
 
 export type AutomergeMap = {
-  [Key in string]?: AutomergeValue;
+  [Key in string]?: AMValue;
 };
 
 export const zodDocumentContent = object({
@@ -35,7 +35,7 @@ export interface UseCFRDocument {
  */
 export interface RepoRef
   extends Reactive<{
-    documents: Iterable<[DocumentId, UseCFRDocument]>;
+    documents: Iterable<[AMDocumentId, UseCFRDocument]>;
   }> {
   /**
    * Создание документа
@@ -51,7 +51,7 @@ export interface RepoRef
    * @param documentId
    * @returns
    */
-  remove: (documentId: DocumentId) => void;
+  remove: (documentId: AMDocumentId) => void;
 }
 
 interface FileForDocumentFolder extends FileForStorageAdapter {}

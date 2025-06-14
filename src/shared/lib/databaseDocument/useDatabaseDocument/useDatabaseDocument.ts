@@ -40,12 +40,12 @@ import {
   updateItemMutation,
 } from './itemMutations';
 import { entries, pipe, sort } from 'remeda';
-import type { DocHandle } from '@shared/lib/cfrDocument/automergeTypes';
+import type { AMDocHandle } from '@shared/lib/cfrDocument/automergeTypes';
 
 const { debug, watchDebug } = createLogger('useDatabaseDocument');
 
 export const useDatabaseDocument = (
-  docHandleRef: MaybeRef<DocHandle | undefined>,
+  docHandleRef: MaybeRef<AMDocHandle | undefined>,
 ): UseDatabaseDocument => {
   debug('setup');
 

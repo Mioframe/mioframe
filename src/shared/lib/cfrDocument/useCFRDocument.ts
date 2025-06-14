@@ -7,12 +7,12 @@ import { computed } from 'vue';
 import { isObjectLike } from 'es-toolkit/compat';
 import { defineCachedDocHandle } from './useDocHandle';
 import type { UnknownRecord } from 'type-fest';
-import type { ChangeFn, DocHandle } from './automergeTypes';
+import type { AMChangeFn, AMDocHandle } from './automergeTypes';
 
 const useDocHandle = defineCachedDocHandle();
 
 export const useCFRDocument = <T extends object = UnknownRecord>(
-  docHandle: MaybeRefOrGetter<DocHandle<T> | undefined>,
+  docHandle: MaybeRefOrGetter<AMDocHandle<T> | undefined>,
 ): UseCFRDocument => {
   const { doc, change: docHandleChange } = useDocHandle(docHandle);
 
@@ -20,7 +20,7 @@ export const useCFRDocument = <T extends object = UnknownRecord>(
    * Обновление документа с миграцией
    * @param callback
    */
-  const change = (callback: ChangeFn<DocumentContent>) => {
+  const change = (callback: AMChangeFn<DocumentContent>) => {
     docHandleChange((doc) => {
       if (isObjectLike(doc)) {
         callback(applyCFRDocumentMigration(doc));
