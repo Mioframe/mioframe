@@ -6,11 +6,16 @@ import type {
   DatabaseUnknownProperty,
 } from '@shared/lib/databaseDocument/state';
 import ItemTD from './ItemTD.vue';
+import { toRefs } from '@vueuse/core';
+import { useWrapStrictRecord } from '@shared/lib/strictRecord';
 
-defineProps<{
-  properties: DatabaseUnknownPropertiesMap;
-  item: DatabaseItem;
-}>();
+const { properties } =
+  toRefs(
+    defineProps<{
+      properties: DatabaseUnknownPropertiesMap;
+      item: DatabaseItem;
+    }>(),
+  );
 
 const slots = defineSlots<{
   value(props: {
@@ -20,6 +25,8 @@ const slots = defineSlots<{
   }): unknown;
   actions: () => unknown;
 }>();
+
+const propertiesCollection = useWrapStrictRecord(properties);
 </script>
 
 <template>
@@ -28,7 +35,10 @@ const slots = defineSlots<{
       <slot name="actions" />
     </ItemTD>
 
-    <ItemTD v-for="(property, propertyId) in properties" :key="propertyId">
+    <ItemTD
+      v-for="[propertyId, property] in propertiesCollection"
+      :key="propertyId"
+    >
       <slot name="value" :value="item[propertyId]" :property :property-id />
     </ItemTD>
   </tr>

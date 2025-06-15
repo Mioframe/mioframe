@@ -5,7 +5,7 @@ import { useCFRDocument } from '@shared/lib/cfrDocument/useCFRDocument';
 import type {
   AMDocHandle,
   AMDocumentId,
-} from '@shared/lib/cfrDocument/automergeTypes';
+} from '@shared/lib/automerge/automergeTypes';
 
 const { docHandle } = defineProps<{
   docHandle: AMDocHandle;

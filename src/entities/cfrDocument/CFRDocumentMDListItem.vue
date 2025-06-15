@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { AMDocHandle } from '@shared/lib/cfrDocument/automergeTypes';
+import type { AMDocHandle } from '@shared/lib/automerge/automergeTypes';
 import { useCFRDocument } from '@shared/lib/cfrDocument/useCFRDocument';
 import { MDSymbol } from '@shared/ui/Icon';
 import { MDListItem } from '@shared/ui/Lists';

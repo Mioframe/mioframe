@@ -4,11 +4,7 @@ import type { FileForStorageAdapter } from '../fsStorageAdapter';
 import type { ItemWithChildren } from '@shared/lib/useIterable';
 
 import type { ComputedRef, Reactive } from 'vue';
-import type { AMValue, AMDocumentId } from './automergeTypes';
-
-export type AutomergeMap = {
-  [Key in string]?: AMValue;
-};
+import type { AMDocumentId } from '../automerge/automergeTypes';
 
 export const zodDocumentContent = object({
   name: string(),

@@ -8,13 +8,16 @@ import type {
   DatabasePropertyId,
   DatabaseState,
   DatabaseUnknownProperty,
-} from '@shared/lib/databaseDocument/state';
+  PropertiesMap,
+} from '@shared/lib/databaseDocument';
 
 const props = defineProps<{
   databaseState: DatabaseState;
 }>();
 
-const properties = computed(() => props.databaseState.properties);
+const properties = computed(
+  (): PropertiesMap => props.databaseState.properties,
+);
 
 const data = computed(() => props.databaseState.data);
 

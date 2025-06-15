@@ -1,4 +1,4 @@
-import type { Entries, PartialDeep } from 'type-fest';
+import type { PartialDeep } from 'type-fest';
 import type {
   UseDatabaseDocument,
   DataBaseStateLatest,
@@ -39,8 +39,9 @@ import {
   removeItemMutation,
   updateItemMutation,
 } from './itemMutations';
-import { entries, pipe, sort } from 'remeda';
-import type { AMDocHandle } from '@shared/lib/cfrDocument/automergeTypes';
+import type { AMDocHandle } from '@shared/lib/automerge/automergeTypes';
+import type { RecordEntries } from '@shared/lib/objectEntries';
+import { recordEntries } from '@shared/lib/objectEntries';
 
 const { debug, watchDebug } = createLogger('useDatabaseDocument');
 
@@ -172,11 +173,10 @@ export const useDatabaseDocument = (
     });
 
   const viewsList = computed(
-    (): Readonly<Entries<DatabaseViewsMap>> | undefined => {
+    (): Readonly<RecordEntries<DatabaseViewsMap>> | undefined => {
       if (viewsState.value) {
-        return pipe(
-          entries(viewsState.value),
-          sort(([, { order: a = 0 }], [, { order: b = 0 }]) => a - b),
+        return recordEntries(viewsState.value).sort(
+          ([, { order: a = 0 }], [, { order: b = 0 }]) => a - b,
         );
       }
 

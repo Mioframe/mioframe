@@ -1,10 +1,7 @@
 <script setup lang="ts">
 import { zodBooleanProperty } from '@entity/booleanProperty';
 import { zodStringProperty } from '@entity/stringProperty';
-import type {
-  PropertiesMap,
-  PropertyId,
-} from '@shared/lib/databaseDocument/state/v1/property';
+import type { PropertiesMap } from '@shared/lib/databaseDocument/state/v1/property';
 import { MDDialog } from '@shared/ui/Dialog';
 import { ref, watchEffect } from 'vue';
 import StringPropertyField from './StringPropertyField.vue';
@@ -15,30 +12,35 @@ import { zodNumberProperty } from '@entity/numberProperty';
 import { zodDateProperty } from '@entity/dateProperty';
 import DatePropertyField from './DatePropertyField.vue';
 import type { DatabaseItem } from '@shared/lib/databaseDocument/state';
+import { toRefs } from '@vueuse/core';
+import { useWrapStrictRecord } from '@shared/lib/strictRecord';
 
-const {
-  properties,
-  item = {},
-  headline = 'Edit item',
-  supportingText = 'Fill in the item properties.',
-  applyLabel = 'Apply',
-} = defineProps<{
-  properties: PropertiesMap;
-  item?: DatabaseItem;
-  headline?: string;
-  supportingText?: string;
-  applyLabel?: string;
-}>();
+const { properties, item, headline, supportingText, applyLabel } = toRefs(
+  withDefaults(
+    defineProps<{
+      properties: PropertiesMap;
+      item?: DatabaseItem;
+      headline?: string;
+      supportingText?: string;
+      applyLabel?: string;
+    }>(),
+    {
+      headline: 'Edit item',
+      supportingText: 'Fill in the item properties.',
+      applyLabel: 'Apply',
+    },
+  ),
+);
 
 const emit = defineEmits<{
   apply: [item: DatabaseItem];
   cancel: [];
 }>();
 
-const itemState = ref<{ [K: PropertyId]: unknown }>({});
+const itemState = ref<DatabaseItem>({});
 
 watchEffect(() => {
-  itemState.value = item;
+  itemState.value = item.value ?? {};
 });
 
 const onApply = () => {
@@ -49,6 +51,8 @@ const onCancel = () => {
   itemState.value = {};
   emit('cancel');
 };
+
+const propertiesCollection = useWrapStrictRecord(properties);
 </script>
 
 <template>
@@ -60,7 +64,10 @@ const onCancel = () => {
     @apply="onApply"
     @cancel="onCancel"
   >
-    <template v-for="(property, propertyId) in properties" :key="propertyId">
+    <template
+      v-for="[propertyId, property] in propertiesCollection"
+      :key="propertyId"
+    >
       <StringPropertyField
         v-if="zodIs(property, zodStringProperty)"
         v-model:model-value="itemState[propertyId]"

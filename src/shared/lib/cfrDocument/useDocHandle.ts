@@ -10,7 +10,7 @@ import type {
   AMDocHandle,
   AMDocHandleChangePayload,
   AMDocHandleDeletePayload,
-} from './automergeTypes';
+} from '../automerge/automergeTypes';
 
 const createDocHandleRefState = <T extends object>(
   docHandle: AMDocHandle<T>,

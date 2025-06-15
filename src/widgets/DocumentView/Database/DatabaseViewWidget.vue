@@ -20,7 +20,8 @@ import type {
   DatabaseUnknownProperty,
   DatabaseValue,
 } from '@shared/lib/databaseDocument/state';
-import type { AMDocHandle } from '@shared/lib/cfrDocument/automergeTypes';
+import type { AMDocHandle } from '@shared/lib/automerge/automergeTypes';
+import { useWrapStrictRecord } from '@shared/lib/strictRecord';
 
 const { docHandle } = defineProps<{
   docHandle: AMDocHandle;
@@ -38,6 +39,8 @@ const {
   updateItem,
   documentError,
 } = useDatabaseDocument(docHandleRef);
+
+const propertiesCollection = useWrapStrictRecord(properties);
 
 const isShowAddProperty = ref(false);
 
@@ -118,8 +121,8 @@ const onApplyRemoveProperty = async (propertyId: DatabasePropertyId) => {
 const renamePropertyId = ref<DatabasePropertyId>();
 
 const renamePropertyName = computed(() =>
-  renamePropertyId.value && properties.value
-    ? properties.value[renamePropertyId.value].name
+  renamePropertyId.value
+    ? propertiesCollection.value?.get(renamePropertyId.value)?.name
     : undefined,
 );
 
@@ -173,6 +176,8 @@ const selectedViewId = shallowRef<DatabaseViewId>();
 
     <DatabaseViewTable
       v-else-if="properties && data"
+      :doc-handle
+      :view-id="selectedViewId"
       class="database-view__table"
       :properties
       :data

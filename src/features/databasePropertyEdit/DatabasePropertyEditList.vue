@@ -1,10 +1,15 @@
 <script setup lang="ts">
 import type { PropertiesMap } from '@shared/lib/databaseDocument/state/v1/property';
+import { useWrapStrictRecord } from '@shared/lib/strictRecord';
 import { MDListContainer, MDListItem } from '@shared/ui/Lists';
+import { toRefs } from 'vue';
 
-const { properties } = defineProps<{
-  properties: PropertiesMap;
-}>();
+const { properties } =
+  toRefs(
+    defineProps<{
+      properties: PropertiesMap;
+    }>(),
+  );
 
 const slots = defineSlots<{
   trailingIcon<K extends keyof PropertiesMap>(p: {
@@ -12,12 +17,14 @@ const slots = defineSlots<{
     propertyId: K;
   }): unknown;
 }>();
+
+const propertyCollection = useWrapStrictRecord(properties);
 </script>
 
 <template>
   <MDListContainer>
     <MDListItem
-      v-for="(property, propertyId) in properties"
+      v-for="[propertyId, property] in propertyCollection"
       :key="propertyId"
       :headline="property.name"
     >

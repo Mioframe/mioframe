@@ -1,10 +1,9 @@
 import type { core } from 'zod/v4-mini';
 import { object, string, type output } from 'zod/v4-mini';
 import { defineId } from '../../../../defineId';
-import type { Primitive } from 'type-fest';
 
 export const zodGeneralProperty = <
-  L extends Primitive,
+  L extends string,
   ZOD_TYPE_NAME extends
     | core.$ZodLiteral<L>
     | core.$ZodUnknown
@@ -17,7 +16,7 @@ export const zodGeneralProperty = <
     type: zodType,
   });
 
-export type GeneralProperty<T extends Primitive = Primitive> = output<
+export type GeneralProperty<T extends string = string> = output<
   ReturnType<typeof zodGeneralProperty<T>>
 >;
 

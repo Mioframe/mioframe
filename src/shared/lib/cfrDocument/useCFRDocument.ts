@@ -7,7 +7,7 @@ import { computed } from 'vue';
 import { isObjectLike } from 'es-toolkit/compat';
 import { defineCachedDocHandle } from './useDocHandle';
 import type { UnknownRecord } from 'type-fest';
-import type { AMChangeFn, AMDocHandle } from './automergeTypes';
+import type { AMChangeFn, AMDocHandle } from '../automerge/automergeTypes';
 
 const useDocHandle = defineCachedDocHandle();
 

@@ -3,7 +3,7 @@ import { isString } from 'es-toolkit';
 import type { Promisable } from 'type-fest';
 import type { output } from 'zod/v4-mini';
 import { custom, literal, string, tuple, union } from 'zod/v4-mini';
-import type { AMDocumentId } from '../cfrDocument/automergeTypes';
+import type { AMDocumentId } from '../automerge/automergeTypes';
 
 export const zodDocumentId = custom<AMDocumentId>(
   (val) => isValidDocumentId(val) || val === 'storage-adapter-id',

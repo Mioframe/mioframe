@@ -10,7 +10,7 @@ export type ComparePath = [SORT_DIRECTION] | [SORT_DIRECTION, ...string[]];
 export interface SortWorkerApi {
   sortData: (
     data: DatabaseData,
-    sorting: DatabaseSortMap,
+    sorting?: DatabaseSortMap,
     firstIndex?: number,
     lastIndex?: number,
   ) => DatabaseItemId[];

@@ -1,17 +1,19 @@
 import type { MaybeRefOrGetter } from 'vue';
-import { ref, computed, watch, toValue } from 'vue';
+import { ref, computed, watch, toValue, watchEffect } from 'vue';
 import type {
   DatabaseData,
   DatabaseItem,
   DatabaseItemId,
   DatabaseView,
   DatabaseViewId,
+  DatabaseSortMap,
 } from '@shared/lib/databaseDocument';
 import { useDatabaseDocument } from '@shared/lib/databaseDocument';
 import { debounce } from 'perfect-debounce';
 import { useReduceIterable } from '@shared/lib/useReduce';
 import { useSortWorker } from './useSortWorker';
-import type { AMDocHandle } from '@shared/lib/cfrDocument/automergeTypes';
+import type { AMDocHandle } from '@shared/lib/automerge/automergeTypes';
+import { cloneDeep } from 'es-toolkit';
 
 export function useOrderedDatabaseData(
   docHandle: MaybeRefOrGetter<AMDocHandle | undefined>,
@@ -23,7 +25,7 @@ export function useOrderedDatabaseData(
 
   const { data: databaseData, view } = useDatabaseDocument(docHandleRef);
 
-  const currentView = computed(() => {
+  const currentView = computed((): DatabaseView | undefined => {
     const id = toValue(viewId);
 
     if (id) {
@@ -33,12 +35,16 @@ export function useOrderedDatabaseData(
     return undefined;
   });
 
-  const worker = useSortWorker();
+  const { sortData } = useSortWorker();
 
   const applyView = debounce(
     async (databaseData?: DatabaseData, databaseView?: DatabaseView) => {
-      if (databaseData && databaseView) {
-        orderOfItems.value = await worker.sortData(databaseData, databaseView);
+      console.debug('applyView', databaseData, databaseView);
+
+      const sorting: DatabaseSortMap | undefined = databaseView?.sorting;
+
+      if (databaseData && sorting) {
+        orderOfItems.value = await sortData(databaseData, sorting);
       } else {
         orderOfItems.value = [];
       }
@@ -50,7 +56,7 @@ export function useOrderedDatabaseData(
   watch(
     [databaseData, currentView],
     ([databaseData, databaseView]) => {
-      void applyView(databaseData, databaseView);
+      void applyView(cloneDeep(databaseData), cloneDeep(databaseView));
     },
     {
       immediate: true,
@@ -61,6 +67,7 @@ export function useOrderedDatabaseData(
   const itemList = useReduceIterable(
     orderOfItems,
     (acc, id) => {
+      console.debug('useReduceIterable');
       const item = databaseData.value?.[id];
       if (item) {
         acc.push([id, item]);
@@ -68,6 +75,10 @@ export function useOrderedDatabaseData(
     },
     <[DatabaseItemId, DatabaseItem][]>[],
   );
+
+  watchEffect(() => {
+    console.debug('orderOfItems', cloneDeep(orderOfItems.value));
+  });
 
   return {
     orderOfItems: computed(() => orderOfItems.value),

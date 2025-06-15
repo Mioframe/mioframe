@@ -6,17 +6,17 @@ import {
   type DatabaseSortMap,
   type DatabaseUnknownPropertiesMap,
 } from '@shared/lib/databaseDocument/state';
-import { objectEntries } from '@shared/lib/objectEntries';
+import { recordEntries } from '@shared/lib/objectEntries';
 import { useSortable } from '@shared/lib/sortable';
+import { useWrapStrictRecord } from '@shared/lib/strictRecord';
 import { useDeepModel } from '@shared/lib/useDeepModel';
 import { useReduceIterable } from '@shared/lib/useReduce';
 import { MDIconButton } from '@shared/ui/Button';
 import { MDSymbol } from '@shared/ui/Icon';
 import { MDListContainer, MDListItem } from '@shared/ui/Lists';
 import { MDMenu, defineMenuButtonList } from '@shared/ui/Menu';
-import type { MaybeElement } from '@vueuse/core';
+import { type MaybeElement } from '@vueuse/core';
 import { debounce, difference } from 'es-toolkit';
-import { keys } from 'es-toolkit/compat';
 import { computed, nextTick, ref, toValue, useTemplateRef, watch } from 'vue';
 
 /**
@@ -34,7 +34,7 @@ const emit = defineEmits<{
   'update:sortMap': [DatabaseSortMap];
 }>();
 
-const propertyMapRef = computed(() => props.propertyMap);
+const propertyCollection = useWrapStrictRecord(() => props.propertyMap);
 
 const sortMapModel = useDeepModel(props, 'sortMap', emit);
 
@@ -73,16 +73,16 @@ const sortListStateWatchHandler = watch(
 
 const sortMapModelWatchHandler = watch(
   sortMapModel,
-  (sortMapModel) => {
+  (sortMapModel: DatabaseSortMap) => {
     sortListStateWatchHandler.pause();
     deepReplaceJSONObject(
       sortListState.value,
-      objectEntries(sortMapModel)
+      recordEntries(sortMapModel)
         .sort(([, { priority: a }], [, { priority: b }]) => a - b)
         .map(([id, { direction }]) => ({
           key: id,
           direction,
-          headline: propertyMapRef.value[id].name,
+          headline: propertyCollection.value.get(id)?.name,
           supportingText:
             direction === SORT_DIRECTION.ascending
               ? 'Sort by ascending'
@@ -96,18 +96,6 @@ const sortMapModelWatchHandler = watch(
   { immediate: true, deep: true },
 );
 
-/**
- * TODO: настройка сортировки
- *
- * список свойств
- * leadingIcon и supporting-text сообщают о направлении сортировки
- * нажатие на элемент списка меняет направление сортировки
- * в trailingIcon кнопка удаления сортировки из списка
- *
- * в конце списка кнопка добавления сортировки раскрывающая доступные свойства для сортировки
- *
- */
-
 const addBtnRef = useTemplateRef<MaybeElement>('addBtn');
 
 const showAddPropertyMenu = ref(false);
@@ -120,8 +108,8 @@ const propertyWithSorting = useReduceIterable(
   <DatabasePropertyId[]>[],
 );
 
-const propertyList = computed(
-  () => <(keyof typeof propertyMapRef.value)[]>keys(propertyMapRef.value),
+const propertyList = computed(() =>
+  Array.from(propertyCollection.value.keys()),
 );
 
 const propertyWithoutSorting = computed(() =>
@@ -133,7 +121,7 @@ const menu = computed(() =>
     propertyWithoutSorting.value.map((id) => [
       id,
       {
-        text: propertyMapRef.value[id].name,
+        text: propertyCollection.value.get(id)?.name ?? 'unknown property',
         symbolName: 'add',
       },
     ]),
@@ -144,7 +132,7 @@ const onClickMenuProperty = (id: DatabasePropertyId) => {
   sortListState.value.push({
     key: id,
     direction: SORT_DIRECTION.ascending,
-    headline: propertyMapRef.value[id].name,
+    headline: propertyCollection.value.get(id)?.name ?? 'unknown property',
     supportingText: 'Sort by ascending',
   });
   showAddPropertyMenu.value = false;
@@ -185,7 +173,7 @@ const { draggableItem } = useSortable(listContainerRef, sortListState);
       <MDListItem
         v-for="item in sortListState"
         :key="item.key"
-        :headline="propertyMap[item.key].name"
+        :headline="propertyCollection.get(item.key)?.name ?? 'unknown property'"
         :supporting-text="
           item.direction === SORT_DIRECTION.ascending
             ? 'Sort by ascending'
