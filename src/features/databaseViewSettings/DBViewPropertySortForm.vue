@@ -6,19 +6,16 @@ import type {
 import { useWrapStrictRecord } from '@shared/lib/strictRecord';
 import { MDListContainer, MDListItem } from '@shared/ui/Lists';
 import { useSortable } from '@vueuse/integrations/useSortable';
-import { shallowRef, toRefs, useTemplateRef, watchEffect } from 'vue';
+import { shallowRef, useTemplateRef, watchEffect } from 'vue';
 
-const { properties } =
-  toRefs(
-    defineProps<{
-      properties: PropertiesMap;
-    }>(),
-  );
+const { properties } = defineProps<{
+  properties: PropertiesMap;
+}>();
 
 const el = useTemplateRef('container');
 const list = shallowRef<PropertyId[]>([]);
 
-const propertiesCollection = useWrapStrictRecord(properties);
+const propertiesCollection = useWrapStrictRecord(() => properties);
 
 watchEffect(() => {
   list.value = Array.from(propertiesCollection.value.keys());

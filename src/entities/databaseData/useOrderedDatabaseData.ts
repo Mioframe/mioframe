@@ -39,8 +39,6 @@ export function useOrderedDatabaseData(
 
   const applyView = debounce(
     async (databaseData?: DatabaseData, databaseView?: DatabaseView) => {
-      console.debug('applyView', databaseData, databaseView);
-
       const sorting: DatabaseSortMap | undefined = databaseView?.sorting;
 
       if (databaseData && sorting) {

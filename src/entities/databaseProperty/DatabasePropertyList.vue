@@ -6,14 +6,10 @@ import type {
 } from '@shared/lib/databaseDocument/state/v1/property';
 import { useWrapStrictRecord } from '@shared/lib/strictRecord';
 import { MDListContainer, MDListItem } from '@shared/ui/Lists';
-import { toRefs } from '@vueuse/core';
 
-const { properties } =
-  toRefs(
-    defineProps<{
-      properties: PropertiesMap<P>;
-    }>(),
-  );
+const { properties } = defineProps<{
+  properties: PropertiesMap<P>;
+}>();
 
 const slots = defineSlots<{
   trailingIcon<K extends DatabasePropertyId>(p: {
@@ -22,7 +18,7 @@ const slots = defineSlots<{
   }): unknown;
 }>();
 
-const propertyCollection = useWrapStrictRecord(properties);
+const propertyCollection = useWrapStrictRecord(() => properties);
 </script>
 
 <template>
