@@ -21,15 +21,17 @@ const sortData = (
   const comparePathList: ComparePath[] | undefined = sorting
     ? recordEntries(sorting)
         .sort(([, { priority: a }], [, { priority: b }]) => a - b)
-        .map(([id, { direction }]) => [direction, id])
+        .map(([id, { direction }]) => [direction, '1', id])
     : undefined;
 
-  return partialSort(
+  const sortResult = partialSort(
     entries,
     comparePathList,
     firstIndex ?? 0,
     lastIndex ?? entries.length - 1,
   ).map(([id]) => id);
+
+  return sortResult;
 };
 
 const sortWorkerApi: SortWorkerApi = {
