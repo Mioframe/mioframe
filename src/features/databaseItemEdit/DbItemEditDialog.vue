@@ -14,20 +14,19 @@ import DatePropertyField from './DatePropertyField.vue';
 import type { DatabaseItem } from '@shared/lib/databaseDocument/state';
 import { useWrapStrictRecord } from '@shared/lib/strictRecord';
 
-const { applyLabel, headline, item, properties, supportingText } = withDefaults(
-  defineProps<{
-    properties: PropertiesMap;
-    item?: DatabaseItem;
-    headline?: string;
-    supportingText?: string;
-    applyLabel?: string;
-  }>(),
-  {
-    headline: 'Edit item',
-    supportingText: 'Fill in the item properties.',
-    applyLabel: 'Apply',
-  },
-);
+const {
+  applyLabel = 'Apply',
+  headline = 'Edit item',
+  item,
+  properties,
+  supportingText = 'Fill in the item properties.',
+} = defineProps<{
+  properties: PropertiesMap;
+  item?: DatabaseItem;
+  headline?: string;
+  supportingText?: string;
+  applyLabel?: string;
+}>();
 
 const emit = defineEmits<{
   apply: [item: DatabaseItem];

@@ -1,5 +1,4 @@
 <script setup lang="ts">
-// import { MainView } from '@widget/MainViewV2';
 import NotificationList from '../shared/ui/Notifications/NotificationList.vue';
 import TooltipContainer from '@shared/ui/Tooltips/TooltipContainer.vue';
 import { SnackbarContainer, useSnackbar } from '@shared/ui/Snackbar';
@@ -30,7 +29,6 @@ useHead({
 <template>
   <div class="main">
     <RouterView />
-    <!-- <MainView /> -->
   </div>
 
   <DialogContainer />
