@@ -11,7 +11,7 @@ import DatabaseViewSettingDialog from './DatabaseViewsSettingDialog.vue';
 import { DatabaseItemSortingSection } from '@feature/databaseItemSorting';
 import { MD_SYS_TYPESCALE } from '@shared/lib/md';
 import { MDIconButton } from '@shared/ui/Button';
-import type { AMDocHandle } from '@shared/lib/cfrDocument/automergeTypes';
+import type { AMDocHandle } from '@shared/lib/automerge/automergeTypes';
 
 /**
  * Виджет настроек отображения данных.

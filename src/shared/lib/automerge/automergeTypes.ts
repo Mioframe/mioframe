@@ -8,7 +8,11 @@ export type AMDocumentId = AMRR.DocumentId;
 
 export type AMDoc<T extends object = UnknownRecord> = AMRR.Doc<T>;
 
-export type AMValue = AMR.AutomergeValue;
+export type AMValue = AMR.ScalarValue | AMMapObject | Array<AMValue> | AMR.Text;
+
+export type AMMapObject = {
+  [P in string]?: AMValue;
+};
 
 export type AMChangeFn<T> = AMRR.ChangeFn<T>;
 

@@ -3,19 +3,25 @@ import type {
   PropertiesMap,
   PropertyId,
 } from '@shared/lib/databaseDocument/state/v1/property';
+import { useWrapStrictRecord } from '@shared/lib/strictRecord';
 import { MDListContainer, MDListItem } from '@shared/ui/Lists';
 import { useSortable } from '@vueuse/integrations/useSortable';
-import { shallowRef, useTemplateRef, watchEffect } from 'vue';
+import { shallowRef, toRefs, useTemplateRef, watchEffect } from 'vue';
 
-const { properties } = defineProps<{
-  properties: PropertiesMap;
-}>();
+const { properties } =
+  toRefs(
+    defineProps<{
+      properties: PropertiesMap;
+    }>(),
+  );
 
 const el = useTemplateRef('container');
 const list = shallowRef<PropertyId[]>([]);
 
+const propertiesCollection = useWrapStrictRecord(properties);
+
 watchEffect(() => {
-  list.value = <(keyof typeof properties)[]>Object.keys(properties);
+  list.value = Array.from(propertiesCollection.value.keys());
 });
 
 useSortable(el, list, {
@@ -31,9 +37,9 @@ useSortable(el, list, {
   <div class="db-view-property-sort-form">
     <MDListContainer ref="container">
       <MDListItem
-        v-for="propertyId in list"
+        v-for="[propertyId, property] in propertiesCollection"
         :key="propertyId"
-        :headline="properties[propertyId].name"
+        :headline="property.name"
       />
     </MDListContainer>
   </div>

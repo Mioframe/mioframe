@@ -5,7 +5,7 @@ import { type DocumentContent } from './types';
 import { createLogger } from '../logger';
 import { isNumber, isObjectLike } from 'es-toolkit/compat';
 import { cloneDeep } from 'es-toolkit';
-import type { AMDoc } from './automergeTypes';
+import type { AMDoc } from '../automerge/automergeTypes';
 
 const { debug } = createLogger('cfrDocumentMigrations');
 

@@ -1,7 +1,7 @@
 import type { output } from 'zod/v4-mini';
 import { int, object, enum as zodEnum } from 'zod/v4-mini';
 import { zodPropertyId } from '../../v1/property';
-import { zodOnlyRecord } from '@shared/lib/zodRecord';
+import { zodStrictRecord } from '@shared/lib/strictRecord/zodStrictRecord';
 
 export enum SORT_DIRECTION {
   ascending,
@@ -17,7 +17,7 @@ export const zodDatabaseSortDescription = object({
 
 export type DatabaseSortDescription = output<typeof zodDatabaseSortDescription>;
 
-export const zodDatabaseSortMap = zodOnlyRecord(
+export const zodDatabaseSortMap = zodStrictRecord(
   zodPropertyId,
   zodDatabaseSortDescription,
 );

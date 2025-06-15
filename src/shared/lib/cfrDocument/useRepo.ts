@@ -7,7 +7,7 @@ import { from } from 'ix/iterable';
 import { createLogger } from '../logger';
 import { tryOnScopeDispose } from '@vueuse/core';
 import type { UnknownRecord } from 'type-fest';
-import type { AMDocHandle, AMDocumentId } from './automergeTypes';
+import type { AMDocHandle, AMDocumentId } from '../automerge/automergeTypes';
 
 const { debug, watchDebug } = createLogger('useRepo');
 

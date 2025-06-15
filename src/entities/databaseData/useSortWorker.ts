@@ -9,6 +9,6 @@ export const useSortWorker = createGlobalState(() => {
 
   return {
     partialSort: loggingDelay(partialSort, 'partialSort'),
-    sortData: loggingDelay(sortData, 'sortData'),
+    sortData,
   };
 });

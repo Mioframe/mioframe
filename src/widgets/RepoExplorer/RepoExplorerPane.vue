@@ -29,7 +29,7 @@ import { cloneDeep } from 'es-toolkit';
 import type {
   AMDocHandle,
   AMDocumentId,
-} from '@shared/lib/cfrDocument/automergeTypes';
+} from '@shared/lib/automerge/automergeTypes';
 
 const { watchDebug, debug } = createLogger('RepoExplorerWidget.vue');
 

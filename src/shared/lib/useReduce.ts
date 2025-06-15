@@ -72,7 +72,7 @@ export function useReduceIterable<A, T>(
 
   watchEffect(() => {
     // Clear the accumulator using the provided clearer, or the defaultClearer if none is provided.
-    (clearer || defaultClearer)(result.value);
+    (clearer ?? defaultClearer)(result.value);
 
     let index = 0;
     if (source.value) {

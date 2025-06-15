@@ -3,7 +3,7 @@ import { ref, toRef, watchEffect } from 'vue';
 import { MDDialog } from '@shared/ui/Dialog';
 import { MDTextField } from '@shared/ui/TextField';
 import { useCFRDocument } from '@shared/lib/cfrDocument/useCFRDocument';
-import type { AMDocHandle } from '@shared/lib/cfrDocument/automergeTypes';
+import type { AMDocHandle } from '@shared/lib/automerge/automergeTypes';
 
 const { docHandle } = defineProps<{
   docHandle: AMDocHandle;

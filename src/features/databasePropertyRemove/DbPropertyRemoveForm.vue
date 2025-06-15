@@ -1,18 +1,24 @@
 <script setup lang="ts">
-import { ref } from 'vue';
+import { ref, toRefs } from 'vue';
 import { UIButton } from '@shared/ui/Button';
 import type { PropertiesMap } from '@shared/lib/databaseDocument/state/v1/property';
 import FormLayout from '@shared/ui/FormLayout.vue';
 import type { DatabasePropertyId } from '@shared/lib/databaseDocument/state';
+import { useWrapStrictRecord } from '@shared/lib/strictRecord';
 
 const emit = defineEmits<{
   remove: [propertyId: DatabasePropertyId];
   canceled: [];
 }>();
 
-defineProps<{
-  properties: PropertiesMap;
-}>();
+const { properties } =
+  toRefs(
+    defineProps<{
+      properties: PropertiesMap;
+    }>(),
+  );
+
+const propertyCollection = useWrapStrictRecord(properties);
 
 const selectedPropertyId = ref<DatabasePropertyId>();
 
@@ -38,7 +44,11 @@ const onClickCancel = () => {
         <select v-model="selectedPropertyId">
           <option disabled />
 
-          <option v-for="(property, id) in properties" :key="id" :value="id">
+          <option
+            v-for="[id, property] in propertyCollection"
+            :key="id"
+            :value="id"
+          >
             {{ property.name }}
           </option>
         </select>

@@ -1,4 +1,4 @@
-import type { Entries, PartialDeep } from 'type-fest';
+import type { PartialDeep } from 'type-fest';
 import {
   extend,
   literal,
@@ -24,6 +24,7 @@ import { zodDatabaseState } from './state';
 import type { DocumentContent } from '../cfrDocument';
 import { zodDocumentContent } from '../cfrDocument';
 import type { ComputedRef } from 'vue';
+import type { RecordEntries } from '../objectEntries';
 
 export type DataBaseStateLatest = DatabaseState;
 
@@ -90,7 +91,7 @@ export type UseDatabaseDocument = {
    */
   view: {
     state: ComputedRef<DatabaseViewsMap | undefined>;
-    list: ComputedRef<Readonly<Entries<DatabaseViewsMap>> | undefined>;
+    list: ComputedRef<Readonly<RecordEntries<DatabaseViewsMap>> | undefined>;
     get: (id: DatabaseViewId) => DatabaseView | undefined;
     add: (view: DatabaseView) => Promise<DatabaseViewId>;
     remove: (viewId: DatabaseViewId) => Promise<void>;
