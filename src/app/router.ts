@@ -1,10 +1,12 @@
+import { MainView } from '@widget/MainViewV2';
 import type { RouteRecordRaw } from 'vue-router';
 import { createRouter, createWebHistory } from 'vue-router';
 
 const routes: RouteRecordRaw[] = [
   {
-    path: '/',
-    component: () => import('@widget/MainViewV2/MainView.vue'),
+    path: '',
+    name: 'main',
+    component: MainView,
   },
 ];
 
@@ -40,6 +42,6 @@ if (import.meta.env.DEV) {
 }
 
 export const router = createRouter({
-  history: createWebHistory(),
+  history: createWebHistory(window.location.pathname),
   routes,
 });
