@@ -9,7 +9,7 @@ import { useRepoExplorer } from '../RepoExplorer/useRepoExplorer';
 import type {
   AMDocHandle,
   AMDocumentId,
-} from '@shared/lib/cfrDocument/automergeTypes';
+} from '@shared/lib/automerge/automergeTypes';
 
 const { currentDirectory } = useRepoExplorer();
 

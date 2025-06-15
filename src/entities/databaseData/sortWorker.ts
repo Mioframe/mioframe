@@ -1,8 +1,11 @@
 import { expose } from 'comlink';
 import { type ComparePath, type SortWorkerApi } from './types';
-import { objectEntries } from '@shared/lib/objectEntries';
+import { recordEntries } from '@shared/lib/objectEntries';
 import { partialSort } from './partialSort';
-import type { DatabaseSortMap } from '@shared/lib/databaseDocument';
+import type {
+  DatabaseItemId,
+  DatabaseSortMap,
+} from '@shared/lib/databaseDocument';
 import { type DatabaseData } from '@shared/lib/databaseDocument';
 
 const sortData = (
@@ -10,13 +13,13 @@ const sortData = (
   sorting?: DatabaseSortMap,
   firstIndex?: number,
   lastIndex?: number,
-) => {
-  const entries = objectEntries(data);
+): DatabaseItemId[] => {
+  const entries = recordEntries(data);
 
   // todo: фильтрация до сортировки
 
   const comparePathList: ComparePath[] | undefined = sorting
-    ? Object.entries(sorting)
+    ? recordEntries(sorting)
         .sort(([, { priority: a }], [, { priority: b }]) => a - b)
         .map(([id, { direction }]) => [direction, id])
     : undefined;

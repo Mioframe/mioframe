@@ -7,9 +7,11 @@ import type {
   GeneralProperty,
   DatabasePropertyId,
 } from '@shared/lib/databaseDocument/state/v1/property/general';
-import type { PropertiesMap } from '@shared/lib/databaseDocument/state/v1/property/property';
+import type { PropertiesMap } from '@shared/lib/databaseDocument';
+import { useWrapStrictRecord } from '@shared/lib/strictRecord';
+import { computed } from 'vue';
 
-defineProps<{
+const { properties } = defineProps<{
   properties: PropertiesMap<P>;
   showActionsColumn?: boolean;
 }>();
@@ -20,6 +22,10 @@ defineSlots<{
     id: DatabasePropertyId;
   }): unknown;
 }>();
+
+const propertiesRef = computed(() => properties);
+
+const propertiesCollection = useWrapStrictRecord(propertiesRef);
 </script>
 
 <template>
@@ -27,7 +33,7 @@ defineSlots<{
     <tr>
       <th v-if="showActionsColumn" />
 
-      <th v-for="(property, id) in properties" :key="id">
+      <th v-for="[id, property] in propertiesCollection" :key="id">
         <slot :id name="property" :property>
           {{ property.name }}
         </slot>

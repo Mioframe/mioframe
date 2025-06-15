@@ -18,7 +18,7 @@ import { isNil, isString } from 'es-toolkit';
 import type {
   AMChunk,
   AMStorageAdapterInterface,
-} from '../cfrDocument/automergeTypes';
+} from '../automerge/automergeTypes';
 
 export const partialKeyToFileName = (
   key: PartialStorageKey,

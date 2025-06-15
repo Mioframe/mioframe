@@ -9,13 +9,16 @@ import type {
   DatabaseUnknownPropertiesMap,
   DatabaseUnknownProperty,
 } from '@shared/lib/databaseDocument/state';
+import { useWrapStrictRecord } from '@shared/lib/strictRecord';
 
-const props = defineProps<{
+const { data } = defineProps<{
   data: DatabaseData;
   properties: DatabaseUnknownPropertiesMap;
 }>();
 
-const filteredData = computed((): DatabaseData => props.data);
+const dataRef = computed(() => data);
+
+const filteredData = useWrapStrictRecord(dataRef);
 
 const slots = defineSlots<{
   value(props: {
@@ -31,7 +34,7 @@ const slots = defineSlots<{
 <template>
   <tbody>
     <ItemTR
-      v-for="(item, itemId) in filteredData"
+      v-for="[itemId, item] in filteredData"
       :key="itemId"
       :properties="properties"
       :item="item"

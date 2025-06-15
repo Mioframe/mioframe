@@ -1,26 +1,34 @@
 <script setup lang="ts" generic="P extends GeneralProperty">
+import type { DatabasePropertyId } from '@shared/lib/databaseDocument';
 import type {
   GeneralProperty,
   PropertiesMap,
 } from '@shared/lib/databaseDocument/state/v1/property';
+import { useWrapStrictRecord } from '@shared/lib/strictRecord';
 import { MDListContainer, MDListItem } from '@shared/ui/Lists';
+import { toRefs } from '@vueuse/core';
 
-defineProps<{
-  properties: PropertiesMap<P>;
-}>();
+const { properties } =
+  toRefs(
+    defineProps<{
+      properties: PropertiesMap<P>;
+    }>(),
+  );
 
 const slots = defineSlots<{
-  trailingIcon<K extends keyof PropertiesMap<P>>(p: {
+  trailingIcon<K extends DatabasePropertyId>(p: {
     property: PropertiesMap<P>[K];
     propertyId: K;
   }): unknown;
 }>();
+
+const propertyCollection = useWrapStrictRecord(properties);
 </script>
 
 <template>
   <MDListContainer>
     <MDListItem
-      v-for="(property, propertyId) in properties"
+      v-for="[propertyId, property] in propertyCollection"
       :key="propertyId"
       :headline="property.name"
       :supporting-text="String(property.type)"

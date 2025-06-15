@@ -18,7 +18,7 @@ import { useRepo } from './useRepo';
 import { createLogger } from '../logger';
 import { useReduceIterable, useReduceMap } from '../useReduce';
 import { WeakValueMap } from '../WeakValueMap';
-import type { AMDocumentId } from './automergeTypes';
+import type { AMDocumentId } from '../automerge/automergeTypes';
 
 const { debug, watchDebug } = createLogger('useDirectoryRepo');
 

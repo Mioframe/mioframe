@@ -5,9 +5,9 @@ import { zodDatabaseState as zodDatabaseStateV1 } from '../v1';
 import { defineVersionState } from '../defineVersion';
 import { deepPutJSONObject } from '@shared/lib/changeObject';
 import { zodDatabaseView, zodDatabaseViewId } from './view';
-import { zodOnlyRecord } from '@shared/lib/zodRecord';
+import { zodStrictRecord } from '@shared/lib/strictRecord/zodStrictRecord';
 
-export const zodDatabaseViewsMap = zodOnlyRecord(
+export const zodDatabaseViewsMap = zodStrictRecord(
   zodDatabaseViewId,
   zodDatabaseView,
 );

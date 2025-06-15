@@ -3,7 +3,7 @@ import { ref } from 'vue';
 import type { RepoRef } from '../../shared/lib/cfrDocument';
 import { UIButton } from '@shared/ui/Button';
 import FormLayout from '@shared/ui/FormLayout.vue';
-import type { AMDocumentId } from '@shared/lib/cfrDocument/automergeTypes';
+import type { AMDocumentId } from '@shared/lib/automerge/automergeTypes';
 
 const props = defineProps<{
   documentFolder: RepoRef;
