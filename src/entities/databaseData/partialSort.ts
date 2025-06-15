@@ -1,31 +1,25 @@
 import quickselect from 'quickselect';
 import type { ComparePath } from './types';
-import { get, isNumber, isObject } from 'es-toolkit/compat';
-import { isBoolean, isString } from 'es-toolkit';
+import { get, isObject } from 'es-toolkit/compat';
 
 const singlePathCompare = (
-  aItem: unknown,
-  bItem: unknown,
-  [desc, path]: ComparePath,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- support any
+  aItem: any,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- support any
+  bItem: any,
+  [desc, ...path]: ComparePath,
 ) => {
   let a = aItem;
   let b = bItem;
 
-  if (path?.length && isObject(a) && isObject(b)) {
-    a = get(a, path);
-    b = get(b, path);
+  if (path.length && isObject(a) && isObject(b)) {
+    a = get(a, path) ?? -1;
+    b = get(b, path) ?? -1;
   }
 
   const direction = desc ? -1 : 1;
 
-  if (
-    (isString(a) || isNumber(a) || isBoolean(a)) &&
-    (isString(b) || isNumber(b) || isBoolean(b))
-  ) {
-    return a < b ? -direction : a > b ? direction : 0;
-  }
-
-  return 0;
+  return a < b ? -direction : a > b ? direction : 0;
 };
 
 const multiPathCompare = (
@@ -63,7 +57,7 @@ export const partialSort = <T>(
 
   quickselect(arr, firstIndex, 0, arr.length - 1, compareFn);
 
-  const slicedArr = arr.slice(firstIndex, lastIndex);
+  const slicedArr = arr.slice(firstIndex, lastIndex + 1);
 
   if (compareFn) {
     return slicedArr.sort(compareFn);

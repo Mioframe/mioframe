@@ -12,18 +12,17 @@ import type {
 import { useWrapStrictRecord } from '@shared/lib/strictRecord';
 import { MDTable } from '@shared/ui/Table';
 import EditableInlineValue from '@widget/DocumentView/Database/EditableInlineValue.vue';
-import { toRefs } from 'vue';
+import { toRefs, defineProps } from 'vue';
 
-const { docHandle, viewId, properties } =
-  toRefs(
-    defineProps<{
-      properties: DatabaseUnknownPropertiesMap;
-      data: DatabaseData;
+const props = defineProps<{
+  properties: DatabaseUnknownPropertiesMap;
+  data: DatabaseData;
 
-      docHandle: AMDocHandle;
-      viewId?: DatabaseViewId;
-    }>(),
-  );
+  docHandle: AMDocHandle;
+  viewId?: DatabaseViewId;
+}>();
+
+const { docHandle, viewId, properties } = toRefs(props);
 
 const propertiesCollection = useWrapStrictRecord(properties);
 

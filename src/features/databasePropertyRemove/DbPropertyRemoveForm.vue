@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, toRefs } from 'vue';
+import { ref } from 'vue';
 import { UIButton } from '@shared/ui/Button';
 import type { PropertiesMap } from '@shared/lib/databaseDocument/state/v1/property';
 import FormLayout from '@shared/ui/FormLayout.vue';
@@ -11,14 +11,11 @@ const emit = defineEmits<{
   canceled: [];
 }>();
 
-const { properties } =
-  toRefs(
-    defineProps<{
-      properties: PropertiesMap;
-    }>(),
-  );
+const { properties } = defineProps<{
+  properties: PropertiesMap;
+}>();
 
-const propertyCollection = useWrapStrictRecord(properties);
+const propertyCollection = useWrapStrictRecord(() => properties);
 
 const selectedPropertyId = ref<DatabasePropertyId>();
 

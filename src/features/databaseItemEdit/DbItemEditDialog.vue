@@ -12,24 +12,21 @@ import { zodNumberProperty } from '@entity/numberProperty';
 import { zodDateProperty } from '@entity/dateProperty';
 import DatePropertyField from './DatePropertyField.vue';
 import type { DatabaseItem } from '@shared/lib/databaseDocument/state';
-import { toRefs } from '@vueuse/core';
 import { useWrapStrictRecord } from '@shared/lib/strictRecord';
 
-const { properties, item, headline, supportingText, applyLabel } = toRefs(
-  withDefaults(
-    defineProps<{
-      properties: PropertiesMap;
-      item?: DatabaseItem;
-      headline?: string;
-      supportingText?: string;
-      applyLabel?: string;
-    }>(),
-    {
-      headline: 'Edit item',
-      supportingText: 'Fill in the item properties.',
-      applyLabel: 'Apply',
-    },
-  ),
+const { applyLabel, headline, item, properties, supportingText } = withDefaults(
+  defineProps<{
+    properties: PropertiesMap;
+    item?: DatabaseItem;
+    headline?: string;
+    supportingText?: string;
+    applyLabel?: string;
+  }>(),
+  {
+    headline: 'Edit item',
+    supportingText: 'Fill in the item properties.',
+    applyLabel: 'Apply',
+  },
 );
 
 const emit = defineEmits<{
@@ -40,7 +37,7 @@ const emit = defineEmits<{
 const itemState = ref<DatabaseItem>({});
 
 watchEffect(() => {
-  itemState.value = item.value ?? {};
+  itemState.value = item ?? {};
 });
 
 const onApply = () => {
@@ -52,7 +49,7 @@ const onCancel = () => {
   emit('cancel');
 };
 
-const propertiesCollection = useWrapStrictRecord(properties);
+const propertiesCollection = useWrapStrictRecord(() => properties);
 </script>
 
 <template>
