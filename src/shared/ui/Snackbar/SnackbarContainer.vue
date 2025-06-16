@@ -33,6 +33,7 @@ const targetTeleport = useClosestParentFrame();
 <style scoped>
 .snackbar-container {
   position: fixed;
+  z-index: 2;
   left: 16px;
   right: 16px;
   bottom: 16px;

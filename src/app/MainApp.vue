@@ -10,6 +10,7 @@ import { RouterView } from 'vue-router';
 const { addSnackbar } = useSnackbar();
 
 onErrorCaptured((error) => {
+  console.log('AAAAAAAAAAAAAAAAAAAAA');
   addSnackbar({
     text: `Error: ${error.message}`,
   });
