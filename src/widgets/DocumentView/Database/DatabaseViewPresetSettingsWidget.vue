@@ -31,12 +31,6 @@ const {
 
 const selectedViewId = defineModel<DatabaseViewId>('selectedViewId');
 
-watchEffect(() => {
-  if (viewsList.value?.length && !selectedViewId.value) {
-    selectedViewId.value = viewsList.value.at(0)?.[0];
-  }
-});
-
 const selectedView = computed(() =>
   selectedViewId.value ? views.value?.[selectedViewId.value] : undefined,
 );
