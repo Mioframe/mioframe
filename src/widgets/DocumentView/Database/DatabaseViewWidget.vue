@@ -2,7 +2,7 @@
 import { DbItemAddDialog } from '@feature/databaseItemEdit';
 import DatabasePropertyCreationDialog from '@feature/databasePropertyCreate/DatabasePropertyCreationDialog.vue';
 import { useDatabaseDocument } from '@shared/lib/databaseDocument';
-import { computed, ref, shallowRef, toRef } from 'vue';
+import { computed, ref, shallowRef, toRef, watchEffect } from 'vue';
 import { MDBottomSheet } from '@shared/ui/Sheets';
 import { defineBarButtons, MDButtonsBar } from '@shared/ui/ButtonsBar';
 import { DatabasePropertyList } from '@entity/databaseProperty';
@@ -38,6 +38,7 @@ const {
   updateProperty,
   updateItem,
   documentError,
+  view: { list: viewList },
 } = useDatabaseDocument(docHandleRef);
 
 const propertiesCollection = useWrapStrictRecord(properties);
@@ -61,7 +62,7 @@ enum Action {
   addProperty,
 }
 
-const firstLineButtons = defineBarButtons([
+const firstLineButtonsDescription = defineBarButtons([
   {
     label: 'Add item',
     iconName: 'add',
@@ -74,7 +75,9 @@ const firstLineButtons = defineBarButtons([
   },
 ]);
 
-const onClickButtonsBar = (item: (typeof firstLineButtons)[number]) => {
+const onClickButtonsBar = (
+  item: (typeof firstLineButtonsDescription)[number],
+) => {
   switch (item.action) {
     case Action.addItem: {
       isShowAddItem.value = true;
@@ -166,6 +169,22 @@ const onChangeValue = async (
 };
 
 const selectedViewId = shallowRef<DatabaseViewId>();
+
+watchEffect(() => {
+  if (!selectedViewId.value) {
+    selectedViewId.value = viewList.value?.at(0)?.[0];
+  }
+});
+
+const filteredFirstLineButtons = computed(() =>
+  firstLineButtonsDescription.filter((btn) => {
+    if (btn.action === Action.addItem) {
+      return !!propertiesCollection.value?.size;
+    }
+
+    return true;
+  }),
+);
 </script>
 
 <template>
@@ -190,7 +209,7 @@ const selectedViewId = shallowRef<DatabaseViewId>();
       <MDBottomSheet class="database-view__sheet sheet">
         <template #head>
           <MDButtonsBar
-            :buttons="firstLineButtons"
+            :buttons="filteredFirstLineButtons"
             @click="onClickButtonsBar"
           />
         </template>
