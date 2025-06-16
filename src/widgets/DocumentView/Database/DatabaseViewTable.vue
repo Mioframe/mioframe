@@ -2,7 +2,6 @@
 import { useOrderedDatabaseData } from '@entity/databaseData';
 import type { AMDocHandle } from '@shared/lib/cfrDocument';
 import type {
-  DatabaseData,
   DatabaseItemId,
   DatabasePropertyId,
   DatabaseUnknownPropertiesMap,
@@ -16,7 +15,6 @@ import { toRefs, defineProps } from 'vue';
 
 const props = defineProps<{
   properties: DatabaseUnknownPropertiesMap;
-  data: DatabaseData;
 
   docHandle: AMDocHandle;
   viewId?: DatabaseViewId;
