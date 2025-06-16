@@ -26,7 +26,7 @@ const typeClass = computed(() => {
   return `md-fab_${props.type ?? 'primary'}`;
 });
 
-// FIXME: обновить реализацию
+// FIXME: обновить внешний вид кнопки
 </script>
 
 <template>

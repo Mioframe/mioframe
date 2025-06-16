@@ -194,12 +194,11 @@ const filteredFirstLineButtons = computed(() =>
     </div>
 
     <DatabaseViewTable
-      v-else-if="properties && data"
+      v-else-if="properties"
       :doc-handle
       :view-id="selectedViewId"
       class="database-view__table"
       :properties
-      :data
       @change-value="onChangeValue"
     />
 

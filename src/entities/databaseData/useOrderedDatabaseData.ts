@@ -41,7 +41,7 @@ export function useOrderedDatabaseData(
     async (databaseData?: DatabaseData, databaseView?: DatabaseView) => {
       const sorting: DatabaseSortMap | undefined = databaseView?.sorting;
 
-      if (databaseData && sorting) {
+      if (databaseData) {
         orderOfItems.value = await sortData(databaseData, sorting);
       } else {
         orderOfItems.value = [];
