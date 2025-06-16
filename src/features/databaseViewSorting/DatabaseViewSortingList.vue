@@ -3,20 +3,18 @@ import type {
   DatabaseView,
   DatabaseViewId,
 } from '@shared/lib/databaseDocument/state';
+import { useSortable } from '@shared/lib/sortable';
 import { MDIconButton } from '@shared/ui/Button';
 import { MDSymbol } from '@shared/ui/Icon';
 import { MDListContainer, MDListItem } from '@shared/ui/Lists';
-import { templateRef } from '@vueuse/core';
-import { useSortable } from '@vueuse/integrations/useSortable';
+import { useTemplateRef } from 'vue';
 
 const viewsList = defineModel<[DatabaseViewId, DatabaseView][]>('viewsList');
 
-const listContainer = templateRef('listContainer');
+const listContainer =
+  useTemplateRef<InstanceType<typeof MDListContainer>>('listContainer');
 
-useSortable(listContainer, viewsList, {
-  animation: 150,
-  handle: '.database-view-list__grab',
-});
+const { draggableIndex } = useSortable(listContainer, viewsList);
 
 const slots = defineSlots<{
   trailingIcon: (p: { viewId: DatabaseViewId }) => unknown;
@@ -24,13 +22,22 @@ const slots = defineSlots<{
 </script>
 
 <template>
-  <MDListContainer ref="listContainer" class="database-view-list">
+  <MDListContainer
+    ref="listContainer"
+    class="database-view-list"
+    transition
+    tag="div"
+  >
     <MDListItem
       v-for="([viewId, view], index) in viewsList"
       :key="viewId"
+      tag="button"
       class="database-view-list__item"
       :headline="view.name"
-      :supporting-text="`${index} / ${view.order}`"
+      draggable
+      :class="{
+        'md-state_grab': draggableIndex === index,
+      }"
     >
       <template #leadingAvatarContainer>
         <MDIconButton tooltip="drag" class="database-view-list__grab">
