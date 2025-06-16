@@ -2,16 +2,17 @@
 import { useOrderedDatabaseData } from '@entity/databaseData';
 import type { AMDocHandle } from '@shared/lib/cfrDocument';
 import type {
+  DatabaseItem,
   DatabaseItemId,
   DatabasePropertyId,
   DatabaseUnknownPropertiesMap,
-  DatabaseValue,
+  DatabaseUnknownProperty,
   DatabaseViewId,
 } from '@shared/lib/databaseDocument/state';
 import { useWrapStrictRecord } from '@shared/lib/strictRecord';
 import { MDTable } from '@shared/ui/Table';
-import EditableInlineValue from '@widget/DocumentView/Database/EditableInlineValue.vue';
-import { toRefs, defineProps } from 'vue';
+import type { EmptyObject } from 'type-fest';
+import { toRefs } from 'vue';
 
 const props = defineProps<{
   properties: DatabaseUnknownPropertiesMap;
@@ -20,27 +21,20 @@ const props = defineProps<{
   viewId?: DatabaseViewId;
 }>();
 
+const slots = defineSlots<{
+  value: (p: {
+    item: DatabaseItem;
+    itemId: DatabaseItemId;
+    property: DatabaseUnknownProperty;
+    propertyId: DatabasePropertyId;
+  }) => unknown;
+  action: (p: { item: DatabaseItem; itemId: DatabaseItemId }) => unknown;
+  actionHead: (p: EmptyObject) => unknown;
+}>();
+
 const { docHandle, viewId, properties } = toRefs(props);
 
 const propertiesCollection = useWrapStrictRecord(properties);
-
-const emit = defineEmits<{
-  changeValue: [
-    itemId: DatabaseItemId,
-    propertyId: DatabasePropertyId,
-    value: DatabaseValue,
-  ];
-}>();
-
-const onChangeValue = (
-  itemId: DatabaseItemId,
-  propertyId: DatabasePropertyId,
-  value: DatabaseValue,
-) => {
-  emit('changeValue', itemId, propertyId, value);
-};
-
-// TODO: переделать в Entity
 
 const { itemList } = useOrderedDatabaseData(docHandle, viewId);
 </script>
@@ -55,6 +49,10 @@ const { itemList } = useOrderedDatabaseData(docHandle, viewId);
         >
           {{ name }}
         </th>
+
+        <th v-if="!!slots.action || !!slots.actionHead">
+          <slot name="actionHead" />
+        </th>
       </tr>
     </thead>
 
@@ -64,12 +62,13 @@ const { itemList } = useOrderedDatabaseData(docHandle, viewId);
           v-for="[propertyId, property] in propertiesCollection"
           :key="propertyId"
         >
-          <EditableInlineValue
-            :item
-            :property-id
-            :property
-            @update:value="onChangeValue(itemId, propertyId, $event)"
-          />
+          <slot name="value" :item :item-id :property-id :property>
+            {{ item[propertyId] }}
+          </slot>
+        </td>
+
+        <td v-if="!!slots.action || !!slots.actionHead">
+          <slot name="action" :item :item-id />
         </td>
       </tr>
     </tbody>
