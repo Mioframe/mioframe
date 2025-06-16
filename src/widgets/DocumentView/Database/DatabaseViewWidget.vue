@@ -6,11 +6,14 @@ import { computed, ref, shallowRef, toRef, watchEffect } from 'vue';
 import { MDBottomSheet } from '@shared/ui/Sheets';
 import { defineBarButtons, MDButtonsBar } from '@shared/ui/ButtonsBar';
 import { DatabasePropertyList } from '@entity/databaseProperty';
-import { defineMenuButtonList, MDContextMenuButton } from '@shared/ui/Menu';
+import {
+  defineMenuButtonList,
+  MDContextMenuBtn,
+  MDContextMenuButton,
+} from '@shared/ui/Menu';
 import { DatabasePropertyRemoveDialog } from '@feature/databasePropertyRemove';
 import { DatabasePropertyRenameDialog } from '@feature/databasePropertyRename';
 import { EmptySymbol } from '@shared/ui/EmptySymbol';
-import DatabaseViewTable from './DatabaseViewTable.vue';
 import DatabaseViewPresetSettingsWidget from './DatabaseViewPresetSettingsWidget.vue';
 import type { DatabaseViewId } from '@shared/lib/databaseDocument/state/v2';
 import type {
@@ -22,6 +25,9 @@ import type {
 } from '@shared/lib/databaseDocument/state';
 import type { AMDocHandle } from '@shared/lib/automerge/automergeTypes';
 import { useWrapStrictRecord } from '@shared/lib/strictRecord';
+import { DocumentDatabaseTable } from '@entity/documentDatabase';
+import EditableInlineValue from './EditableInlineValue.vue';
+import { useSnackbar } from '@shared/ui/Snackbar';
 
 const { docHandle } = defineProps<{
   docHandle: AMDocHandle;
@@ -32,7 +38,6 @@ const docHandleRef = toRef(() => docHandle);
 const {
   addItem,
   addProperty,
-  data,
   properties,
   removeProperty,
   updateProperty,
@@ -185,6 +190,28 @@ const filteredFirstLineButtons = computed(() =>
     return true;
   }),
 );
+
+enum ITEM_CONTEXT_ACTION {
+  remove,
+}
+
+const itemContextualButtons = defineMenuButtonList([
+  [ITEM_CONTEXT_ACTION.remove, { symbolName: 'delete', text: 'remove' }],
+]);
+
+const { addSnackbar } = useSnackbar();
+
+const onClickItemContextBtn = (
+  action: ITEM_CONTEXT_ACTION,
+  itemId: DatabaseItemId,
+) => {
+  console.log('onClickItemContextBtn', action, itemId);
+
+  addSnackbar({
+    text: 'work in progress',
+  });
+  // TODO: сделать удаление элемента
+};
 </script>
 
 <template>
@@ -193,14 +220,30 @@ const filteredFirstLineButtons = computed(() =>
       <pre>{{ documentError }}</pre>
     </div>
 
-    <DatabaseViewTable
+    <DocumentDatabaseTable
       v-else-if="properties"
       :doc-handle
       :view-id="selectedViewId"
       class="database-view__table"
       :properties
       @change-value="onChangeValue"
-    />
+    >
+      <template #value="{ item, itemId, property, propertyId }">
+        <EditableInlineValue
+          :item
+          :property-id
+          :property
+          @update:value="onChangeValue(itemId, propertyId, $event)"
+        />
+      </template>
+
+      <template #action="{ itemId }">
+        <MDContextMenuBtn
+          :btns="itemContextualButtons"
+          @click="onClickItemContextBtn($event, itemId)"
+        />
+      </template>
+    </DocumentDatabaseTable>
 
     <EmptySymbol v-else class="database-view__empty" />
 

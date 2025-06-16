@@ -10,8 +10,9 @@ import { ref, useTemplateRef } from 'vue';
 import type { MenuButtonDescription } from './types';
 import MDMenu from './MDMenu.vue';
 
-const { btns } = defineProps<{
+const { btns, tooltip = 'options' } = defineProps<{
   btns: Iterable<[K, T]>;
+  tooltip?: string;
 }>();
 
 const showMenu = ref(false);
@@ -33,7 +34,7 @@ const onClick = (key: K) => {
 </script>
 
 <template>
-  <MDIconButton ref="targetBtn" tooltip="options" @click="onClickTarget">
+  <MDIconButton ref="targetBtn" :tooltip @click="onClickTarget">
     <template #icon>
       <MDSymbol name="more_vert" />
     </template>
