@@ -27,7 +27,7 @@ const onClickLabel = () => {
 
 <template>
   <div class="boolean-property-field">
-    <MDCheckbox v-model:model-value="value" />
+    <MDCheckbox v-model:model-value="value" indeterminate />
 
     <label class="boolean-property-field__label" @click="onClickLabel">
       {{ property.name }}
