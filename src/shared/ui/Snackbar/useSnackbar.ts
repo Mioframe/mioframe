@@ -26,7 +26,7 @@ export const useSnackbar = createGlobalState(() => {
 
   const removeSnackbar = (options: Snackbar) => {
     const index = state.snackbarQueue.indexOf(options);
-    if (index !== -1) {
+    if (index >= 0) {
       if (index === 0) {
         clearCurrentTimer();
       }
