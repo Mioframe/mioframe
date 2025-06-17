@@ -21,6 +21,7 @@ const eslintConfig = defineConfig([
         { allowInterfaces: 'with-single-extends' },
       ],
       'vue/camelcase': 'off',
+      '@typescript-eslint/no-unnecessary-condition': 'warn',
     },
   },
   {
