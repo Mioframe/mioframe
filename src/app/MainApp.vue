@@ -10,7 +10,6 @@ import { RouterView } from 'vue-router';
 const { addSnackbar } = useSnackbar();
 
 onErrorCaptured((error) => {
-  console.log('AAAAAAAAAAAAAAAAAAAAA');
   addSnackbar({
     text: `Error: ${error.message}`,
   });
@@ -24,6 +23,10 @@ useHead({
         'width=device-width, initial-scale=1.0, interactive-widget=resizes-content',
     },
   ],
+});
+
+addSnackbar({
+  text: `Version from ${new Date(__BUILD_DATE__).toLocaleString()}`,
 });
 </script>
 
