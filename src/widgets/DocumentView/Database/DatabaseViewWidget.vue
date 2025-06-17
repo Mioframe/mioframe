@@ -28,6 +28,7 @@ import { useWrapStrictRecord } from '@shared/lib/strictRecord';
 import { DocumentDatabaseTable } from '@entity/documentDatabase';
 import EditableInlineValue from './EditableInlineValue.vue';
 import { useSnackbar } from '@shared/ui/Snackbar';
+import { useDatabaseItemRemove } from '@feature/databaseItemRemove';
 
 const { docHandle } = defineProps<{
   docHandle: AMDocHandle;
@@ -201,16 +202,23 @@ const itemContextualButtons = defineMenuButtonList([
 
 const { addSnackbar } = useSnackbar();
 
+const { remove: removeItem } = useDatabaseItemRemove(docHandleRef);
+
 const onClickItemContextBtn = (
   action: ITEM_CONTEXT_ACTION,
   itemId: DatabaseItemId,
 ) => {
-  console.log('onClickItemContextBtn', action, itemId);
+  switch (action) {
+    case ITEM_CONTEXT_ACTION.remove:
+      removeItem(itemId);
+      break;
 
-  addSnackbar({
-    text: 'work in progress',
-  });
-  // TODO: сделать удаление элемента
+    default:
+      addSnackbar({
+        text: 'work in progress',
+      });
+      break;
+  }
 };
 </script>
 
