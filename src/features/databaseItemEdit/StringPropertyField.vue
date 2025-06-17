@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import type { StringProperty } from '@entity/stringProperty';
 import { MDTextField } from '@shared/ui/TextField';
+import { isNil } from 'es-toolkit';
+import { toString } from 'es-toolkit/compat';
 import { computed } from 'vue';
 
 const { property, modelValue: value } = defineProps<{
@@ -16,9 +18,14 @@ const emit = defineEmits<{
 const labelText = computed(() => property.name);
 
 const vModel = computed({
-  get: () => String(value),
+  get: () => {
+    if (isNil(value)) {
+      return '';
+    }
+    return toString(value);
+  },
   set: (v: string) => {
-    emit('update:modelValue', v);
+    emit('update:modelValue', v.trim());
   },
 });
 </script>
