@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, watchEffect } from 'vue';
-import { MaterialSymbolsFamily, useIconStates } from './iconStates';
+import { MaterialSymbolsFamily, useIconStates } from './useIconStates';
 
 const { name, style = 'rounded' } = defineProps<{
   // from https://fonts.google.com/icons

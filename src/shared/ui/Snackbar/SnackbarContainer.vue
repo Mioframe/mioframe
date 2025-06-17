@@ -15,9 +15,10 @@ const targetTeleport = useClosestParentFrame();
 
 <template>
   <Teleport defer :to="targetTeleport">
-    <div v-if="currentSnackbar" class="snackbar-container">
+    <div class="snackbar-container">
       <FadeTransition group>
         <MDSnackbar
+          v-if="currentSnackbar"
           :key="currentSnackbar.id"
           class="snackbar-container__snackbar"
           :text="currentSnackbar.text"

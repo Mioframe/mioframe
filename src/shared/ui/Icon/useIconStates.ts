@@ -1,8 +1,8 @@
-import { useReduceRecord } from '@shared/lib/useReduce';
-import { useHead } from '@unhead/vue';
 import { createGlobalState, useStorage } from '@vueuse/core';
 import type { ValueOf } from 'type-fest';
 import { merge } from 'es-toolkit';
+import { computed } from 'vue';
+import { objectEntries } from '@shared/lib/objectEntries';
 
 export const MaterialSymbolsFamily = {
   Rounded: 'Material+Symbols+Rounded',
@@ -36,30 +36,28 @@ export const useIconStates = createGlobalState(() => {
       .sort()
       .join(',');
 
-  const links = useReduceRecord(
-    state,
-    (
-      acc: {
-        key: string;
-        rel: 'stylesheet';
-        href: string;
-      }[],
-      names,
-      family,
-    ) => {
-      if (names.length) {
-        acc.push({
-          key: `stylesheet${family}`,
-          rel: 'stylesheet',
-          href: `${fontsUrl}?family=${family}:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&icon_names=${iconNames(names)}`,
-        });
-      }
-    },
-    [],
-  );
+  const links = computed(() => {
+    return objectEntries(state.value).reduce(
+      (
+        acc: {
+          key?: string;
+          rel: 'stylesheet';
+          href: string;
+        }[],
+        [family, names],
+      ) => {
+        if (names.length) {
+          acc.push({
+            key: `stylesheet${family}`,
+            rel: 'stylesheet',
+            href: `${fontsUrl}?family=${family}:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&icon_names=${iconNames(names)}`,
+          });
+        }
 
-  const head = useHead({
-    link: links,
+        return acc;
+      },
+      [],
+    );
   });
 
   const push = (
@@ -73,10 +71,12 @@ export const useIconStates = createGlobalState(() => {
         names.sort();
       }
     }
-    head.patch({
-      link: links.value,
-    });
   };
+
+  // useHead don't work in global state
+  // useHead({
+  //   link: links,
+  // });
 
   return {
     links,

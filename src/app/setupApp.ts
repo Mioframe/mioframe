@@ -19,7 +19,21 @@ export const setupApp = async (app: App = createApp(MainApp)) => {
 
   app.use(router);
 
-  app.use(createHead());
+  app.use(
+    createHead({
+      init: [
+        {
+          meta: [
+            {
+              name: 'viewport',
+              content:
+                'width=device-width, initial-scale=1.0, interactive-widget=resizes-content',
+            },
+          ],
+        },
+      ],
+    }),
+  );
 
   return app;
 };
