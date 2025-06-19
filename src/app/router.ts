@@ -12,7 +12,7 @@ const routes: RouteRecordRaw[] = [
 
 if (import.meta.env.DEV) {
   /**
-   * ⚠️ deprecated - use histoire
+   * ⚠️ deprecated - use playground
    */
   routes.push({
     path: '/ui',
@@ -24,10 +24,6 @@ if (import.meta.env.DEV) {
       {
         path: 'tooltips',
         component: () => import('@shared/ui/Tooltips/DemoPage.vue'),
-      },
-      {
-        path: 'text-field',
-        component: () => import('@shared/ui/TextField/DemoPage.vue'),
       },
       {
         path: 'progress-indicators',
@@ -42,6 +38,8 @@ if (import.meta.env.DEV) {
 }
 
 export const router = createRouter({
-  history: createWebHistory(window.location.pathname),
+  history: createWebHistory(
+    import.meta.env.PROD ? window.location.pathname : undefined,
+  ),
   routes,
 });

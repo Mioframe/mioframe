@@ -1,7 +1,10 @@
 <script
   setup
   lang="ts"
-  generic="K extends PropertyKey, T extends MenuButtonDescription"
+  generic="
+    K extends PropertyKey = PropertyKey,
+    T extends MenuButtonDescription = MenuButtonDescription
+  "
 >
 import type { MaybeElement } from '@vueuse/core';
 import type { StyleValue } from 'vue';

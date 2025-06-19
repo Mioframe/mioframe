@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { BooleanProperty } from '@entity/booleanProperty';
+import { uniqueId } from '@shared/lib/uniqueId';
 import { MDCheckbox } from '@shared/ui/Checkbox';
 import { isUndefined } from 'es-toolkit';
 import { computed } from 'vue';
@@ -20,16 +21,14 @@ const value = computed({
   },
 });
 
-const onClickLabel = () => {
-  value.value = !value.value;
-};
+const id = uniqueId('BooleanPropertyField');
 </script>
 
 <template>
   <div class="boolean-property-field">
-    <MDCheckbox v-model:model-value="value" indeterminate />
+    <MDCheckbox :id v-model:model-value="value" indeterminate />
 
-    <label class="boolean-property-field__label" @click="onClickLabel">
+    <label class="boolean-property-field__label" :for="id">
       {{ property.name }}
     </label>
   </div>
