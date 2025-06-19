@@ -1,16 +1,30 @@
 <script setup lang="ts" generic="T extends { labelText: string }">
-import { computed, nextTick, ref, useTemplateRef, watchEffect } from 'vue';
-import { onKeyStroke, useFocusWithin, type MaybeElement } from '@vueuse/core';
+import {
+  computed,
+  nextTick,
+  ref,
+  useTemplateRef,
+  watch,
+  watchEffect,
+} from 'vue';
+import {
+  onKeyStroke,
+  refAutoReset,
+  unrefElement,
+  useFocusWithin,
+  type MaybeElement,
+} from '@vueuse/core';
 import { useFocusTrap } from '@vueuse/integrations/useFocusTrap';
 import { onInteractionOutside } from '@shared/lib/onInteractionOutside';
 import { MDMenuContainer, MDMenusListItem } from '../Menu';
 import { MDSymbol } from '../Icon';
 import { MDFieldContainer } from '../TextField';
 import { MDChip } from '../Chips';
+import { isArray } from 'es-toolkit/compat';
 
-const { multiple = false } = defineProps<{
+const { multiple = false, options } = defineProps<{
   labelText: string;
-  options: Iterable<T>;
+  options: T[];
   supportingText?: string;
   type?: 'filled' | 'outlined';
   disabled?: boolean;
@@ -56,11 +70,6 @@ const onClickOption = (option: T) => {
   showMenu.value = false;
 };
 
-// FIXME: добавить лёгкий поиск
-/**
- * Сделать классическую фильтрацию списка или повторить стандартный select?
- */
-
 const onClickField = () => {
   showMenu.value = true;
 };
@@ -92,6 +101,38 @@ onKeyStroke('Escape', () => {
 });
 
 const firstValue = computed(() => modelValue.value.at(0));
+
+const tempInput = refAutoReset<string | undefined>(undefined, 500);
+
+const optionsRef = useTemplateRef('optionsRef');
+
+watch(tempInput, (tempInput) => {
+  if (tempInput) {
+    const foundIndex = options.findIndex(({ labelText }) =>
+      labelText.includes(tempInput),
+    );
+
+    if (foundIndex >= 0 && isArray(optionsRef.value)) {
+      const foundRef = optionsRef.value.at(foundIndex);
+
+      if (foundRef) {
+        const foundEl = unrefElement(foundRef);
+
+        if (foundEl instanceof HTMLElement) {
+          foundEl.focus();
+        }
+      }
+    }
+  }
+});
+
+onKeyStroke(true, ({ key }) => {
+  if (focusedField.value || showMenu.value) {
+    if (/^.$/.test(key)) {
+      tempInput.value = tempInput.value ? tempInput.value + key : key;
+    }
+  }
+});
 </script>
 
 <template>
@@ -126,6 +167,8 @@ const firstValue = computed(() => modelValue.value.at(0));
             {{ firstValue.labelText }}
           </span>
         </template>
+
+        {{ tempInput }}
       </div>
     </template>
 
@@ -140,8 +183,9 @@ const firstValue = computed(() => modelValue.value.at(0));
     :target-ref="fieldContainerRef"
   >
     <MDMenusListItem
-      v-for="(option, optionIndex) in options"
-      :key="optionIndex"
+      v-for="option in options"
+      :key="option.labelText"
+      ref="optionsRef"
       :text="option.labelText"
       @click="onClickOption(option)"
     >
