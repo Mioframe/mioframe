@@ -3,6 +3,7 @@ import { useTemplateRef } from 'vue';
 import { uniqueId } from '@shared/lib/uniqueId';
 import type { EmptyObject } from 'type-fest';
 import { useFirstFocus } from '@shared/lib/useFirstFocus';
+import { useFocusWithin } from '@vueuse/core';
 
 const { type = 'outlined', numberCharacters = 0 } = defineProps<{
   labelText: string;
@@ -25,17 +26,22 @@ const id = uniqueId('MDFieldContainer');
 
 const containerRef = useTemplateRef<HTMLElement>('containerRef');
 
-const { focused } = useFirstFocus(containerRef, {
+const { focused: containerFirstFocused } = useFirstFocus(containerRef, {
   initialValue: false,
 });
 
 const onClickField = () => {
-  focused.value = true;
+  containerFirstFocused.value = true;
 };
+
+const filedContainer = useTemplateRef('filedContainer');
+
+const { focused: fieldFocused } = useFocusWithin(filedContainer);
 </script>
 
 <template>
   <section
+    ref="filedContainer"
     class="md-field-container"
     :class="[
       {
@@ -43,6 +49,7 @@ const onClickField = () => {
         'md-field-container_filled': filled,
         'md-field-container_disabled': disabled,
         'md-field-container_error': error,
+        'md-field-container_focused': fieldFocused,
       },
       `md-field-container_${type}-type`,
     ]"
@@ -144,18 +151,21 @@ const onClickField = () => {
       border-color: var(--md-sys-color-on-surface);
     }
 
-    .md-field-container:focus-within & {
+    .md-field-container:focus-within &,
+    .md-field-container.md-field-container_focused & {
       border-bottom: 2px solid var(--md-sys-color-primary);
       padding-bottom: 6px;
     }
 
-    .md-field-container_outlined-type:focus-within & {
+    .md-field-container_outlined-type:focus-within,
+    .md-field-container_outlined-type.md-field-container_focused & {
       border: 2px solid var(--md-sys-color-primary);
       padding: 6px 14px;
     }
 
     .md-field-container_error &,
-    .md-field-container_error.md-field-container:focus-within & {
+    .md-field-container_error.md-field-container:focus-within,
+    .md-field-container_error.md-field-container.md-field-container_focused & {
       border-color: var(--md-sys-color-error);
     }
 
@@ -207,11 +217,13 @@ const onClickField = () => {
     }
 
     .md-field-container:focus-within &,
+    .md-field-container.md-field-container_focused &,
     .md-field-container_filled & {
       line-height: var(--md-sys-typescale-body-small-line-height);
       font-size: var(--md-sys-typescale-body-small-size);
     }
     .md-field-container_outlined-type:focus-within &,
+    .md-field-container_outlined-type.md-field-container_focused &,
     .md-field-container_outlined-type.md-field-container_filled & {
       position: absolute;
       top: -8px;
@@ -232,12 +244,14 @@ const onClickField = () => {
       color: var(--md-sys-color-on-surface);
     }
 
-    .md-field-container:focus-within & {
+    .md-field-container:focus-within &,
+    .md-field-container.md-field-container_focused & {
       color: var(--md-sys-color-primary);
     }
 
     .md-field-container_error &,
-    .md-field-container_error.md-field-container:focus-within & {
+    .md-field-container_error.md-field-container:focus-within &,
+    .md-field-container_error.md-field-container.md-field-container_focused & {
       color: var(--md-sys-color-error);
     }
 
@@ -268,7 +282,8 @@ const onClickField = () => {
       color: var(--md-sys-color-on-surface);
     }
 
-    .md-field-container:focus-within & {
+    .md-field-container:focus-within &,
+    .md-field-container.md-field-container_focused & {
       color: var(--md-sys-color-on-surface-variant);
     }
   }
@@ -292,7 +307,8 @@ const onClickField = () => {
     grid-area: trailing-icon;
 
     .md-field-container_error &,
-    .md-field-container_error.md-field-container:focus-within & {
+    .md-field-container_error.md-field-container:focus-within &,
+    .md-field-container_error.md-field-container.md-field-container_focused & {
       color: var(--md-sys-color-error);
     }
 
@@ -316,7 +332,8 @@ const onClickField = () => {
     transition-timing-function: var(--md-sys-motion-easing-standard-index);
     scrollbar-width: none;
 
-    .md-field-container_empty:not(:focus-within) & {
+    .md-field-container_empty:not(:focus-within) &,
+    .md-field-container_empty:not(.md-field-container_focused) & {
       opacity: 0;
       height: 0 !important;
       min-height: 0 !important;
@@ -331,7 +348,8 @@ const onClickField = () => {
       color: var(--md-sys-color-on-surface);
     }
 
-    .md-field-container:focus-within & {
+    .md-field-container:focus-within &,
+    .md-field-container.md-field-container_focused & {
       color: var(--md-sys-color-on-surface);
     }
 
@@ -367,12 +385,14 @@ const onClickField = () => {
       color: var(--md-sys-color-on-surface-variant);
     }
 
-    .md-field-container:focus-within & {
+    .md-field-container:focus-within &,
+    .md-field-container.md-field-container_focused & {
       color: var(--md-sys-color-on-surface-variant);
     }
 
     .md-field-container_error &,
-    .md-field-container_error.md-field-container:focus-within & {
+    .md-field-container_error.md-field-container:focus-within &,
+    .md-field-container_error.md-field-container.md-field-container_focused & {
       color: var(--md-sys-color-error);
     }
 
