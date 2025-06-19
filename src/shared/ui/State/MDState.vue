@@ -258,6 +258,7 @@ const onClickState = () => {
         var(--md-container-color, rgb(88, 174, 255))
       );
     outline-offset: var(--md-focus-indicator-offset);
+    z-index: 1;
 
     .md-state__layer {
       background-color: rgb(from var(--md-content-color) r g b / 10%);

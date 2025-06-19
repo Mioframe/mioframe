@@ -5,6 +5,7 @@ import './styles/styles.css';
 import MainApp from './MainApp.vue';
 import { createHead } from '@unhead/vue/client';
 import { router } from './router';
+import { setupPlayground } from '@shared/lib/playground';
 
 /**
  * Инициализация и настройка Vue приложения
@@ -15,6 +16,25 @@ export const setupApp = async (app: App = createApp(MainApp)) => {
   if (SENTRY_DSN?.length && import.meta.env.PROD) {
     const { setupSentry } = await import('./setupSentry');
     setupSentry(app, SENTRY_DSN);
+  }
+
+  if (import.meta.env.DEV) {
+    setupPlayground(router, [
+      {
+        name: 'Select',
+        component: () => import('@shared/ui/Select/SelectPlayground.vue'),
+      },
+      {
+        name: 'FieldContainer',
+        component: () =>
+          import('@shared/ui/TextField/MDFieldContainerPlayground.vue'),
+      },
+      {
+        name: 'TextField',
+        component: () =>
+          import('@shared/ui/TextField/MDTextFieldPlayground.vue'),
+      },
+    ]);
   }
 
   app.use(router);

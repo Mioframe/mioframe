@@ -1,10 +1,11 @@
 <script setup lang="ts" generic="T extends { labelText: string }">
-import type { MaybeElement } from '@vueuse/core';
+import { onKeyStroke, useFocusWithin, type MaybeElement } from '@vueuse/core';
 import { MDMenuContainer, MDMenusListItem } from '../Menu';
 import { MDTextField } from '../TextField';
-import { computed, ref } from 'vue';
+import { computed, nextTick, ref, useTemplateRef, watchEffect } from 'vue';
 import { MDSymbol } from '../Icon';
 import { onInteractionOutside } from '@shared/lib/onInteractionOutside';
+import { useFocusTrap } from '@vueuse/integrations/useFocusTrap';
 
 const { multiple = false } = defineProps<{
   labelText: string;
@@ -21,11 +22,12 @@ const slots = defineSlots<{
   trailingIcon: (props: { option: T }) => unknown;
 }>();
 
-const textFiledRef = ref<MaybeElement>();
-const menusRef = ref<MaybeElement>();
+const textFiledRef = useTemplateRef<MaybeElement>('textFiledRef');
+const menusRef = useTemplateRef<MaybeElement>('menusRef');
 
 const modelValue = defineModel<T[]>({
   default: [],
+  required: true,
 });
 
 const printText = computed(() =>
@@ -57,13 +59,60 @@ const onClickOption = (option: T) => {
   showMenu.value = false;
 };
 
-// FIXME: добавить лёгкий поиск и навигацию клавиатурой
+// FIXME: добавить лёгкий поиск
+/**
+ * Сделать классическую фильтрацию списка или повторить стандартный select?
+ */
+
+const onClickField = () => {
+  showMenu.value = true;
+};
+
+const { focused: focusedField } = useFocusWithin(textFiledRef);
+
+const { activate: activateMenuFocusTrap, deactivate: deactivateMenuFocusTrap } =
+  useFocusTrap(menusRef, {
+    isKeyForward: ({ key }) => ['Tab', 'ArrowDown', 'ArrowRight'].includes(key),
+    isKeyBackward: ({ key }) => ['ArrowUp', 'ArrowLeft'].includes(key),
+  });
+
+watchEffect(() => {
+  if (showMenu.value) {
+    void nextTick(activateMenuFocusTrap);
+  } else {
+    void nextTick(deactivateMenuFocusTrap);
+  }
+});
+
+onKeyStroke(['ArrowDown', 'ArrowUp'], () => {
+  if (focusedField.value) {
+    showMenu.value = true;
+  }
+});
+
+onKeyStroke('Escape', () => {
+  showMenu.value = false;
+});
+
+const hideSelection = ref(false);
+
+const onFocusField = ({ currentTarget }: FocusEvent) => {
+  hideSelection.value = true;
+  if (currentTarget instanceof HTMLInputElement) {
+    const length = currentTarget.value.length;
+    void setTimeout(() => {
+      currentTarget.setSelectionRange(length, length);
+      hideSelection.value = false;
+    }, 0);
+  }
+};
 </script>
 
 <template>
   <MDTextField
     ref="textFiledRef"
-    v-model="printText"
+    :model-value="printText"
+    readonly
     :label-text
     :supporting-text
     :type
@@ -72,8 +121,10 @@ const onClickOption = (option: T) => {
     class="md-select"
     :class="{
       'md-select_open': showMenu,
+      'md-select_hide-selection': hideSelection,
     }"
-    @focus="showMenu = true"
+    @click="onClickField"
+    @focus="onFocusField"
   >
     <template #trailingIcon>
       <MDSymbol name="arrow_drop_down" class="md-select__symbol-arrow" />
@@ -100,6 +151,14 @@ const onClickOption = (option: T) => {
 
 <style lang="css" scoped>
 .md-select {
+  &_hide-selection {
+    :deep() {
+      input::selection {
+        background: none;
+      }
+    }
+  }
+
   &__symbol-arrow {
     transition-property: transform;
     transition-duration: var(--md-sys-motion-duration-short4);

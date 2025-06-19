@@ -13,6 +13,7 @@ const {
   disabled?: boolean;
   indeterminate?: boolean;
   modelValue?: boolean | undefined;
+  id?: string;
 }>();
 
 const emit = defineEmits<{
@@ -54,6 +55,7 @@ const onClickContainer = () => {
 
 <template>
   <button
+    :id
     type="button"
     class="md md-checkbox"
     :class="{

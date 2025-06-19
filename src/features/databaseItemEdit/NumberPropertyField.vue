@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { NumberProperty } from '@entity/numberProperty';
 import { MDTextField } from '@shared/ui/TextField';
+import { toNumber, toString } from 'es-toolkit/compat';
 import { computed } from 'vue';
 
 const { property, modelValue: value } = defineProps<{
@@ -16,9 +17,9 @@ const emit = defineEmits<{
 const labelText = computed(() => property.name);
 
 const vModel = computed({
-  get: () => Number(value).toString(),
+  get: () => toString(value),
   set: (v: string) => {
-    emit('update:modelValue', Number(v));
+    emit('update:modelValue', toNumber(v));
   },
 });
 </script>
