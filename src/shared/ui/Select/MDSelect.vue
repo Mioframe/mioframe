@@ -1,11 +1,12 @@
 <script setup lang="ts" generic="T extends { labelText: string }">
-import { onKeyStroke, useFocusWithin, type MaybeElement } from '@vueuse/core';
-import { MDMenuContainer, MDMenusListItem } from '../Menu';
-import { MDTextField } from '../TextField';
 import { computed, nextTick, ref, useTemplateRef, watchEffect } from 'vue';
-import { MDSymbol } from '../Icon';
-import { onInteractionOutside } from '@shared/lib/onInteractionOutside';
+import { onKeyStroke, useFocusWithin, type MaybeElement } from '@vueuse/core';
 import { useFocusTrap } from '@vueuse/integrations/useFocusTrap';
+import { onInteractionOutside } from '@shared/lib/onInteractionOutside';
+import { MDMenuContainer, MDMenusListItem } from '../Menu';
+import { MDSymbol } from '../Icon';
+import { MDFieldContainer } from '../TextField';
+import { MDChip } from '../Chips';
 
 const { multiple = false } = defineProps<{
   labelText: string;
@@ -22,7 +23,7 @@ const slots = defineSlots<{
   trailingIcon: (props: { option: T }) => unknown;
 }>();
 
-const textFiledRef = useTemplateRef<MaybeElement>('textFiledRef');
+const fieldContainerRef = useTemplateRef<MaybeElement>('fieldContainerRef');
 const menusRef = useTemplateRef<MaybeElement>('menusRef');
 
 const modelValue = defineModel<T[]>({
@@ -30,14 +31,10 @@ const modelValue = defineModel<T[]>({
   required: true,
 });
 
-const printText = computed(() =>
-  modelValue.value.map((option) => option.labelText).join(', '),
-);
-
 const showMenu = ref(false);
 
 onInteractionOutside(
-  textFiledRef,
+  fieldContainerRef,
   () => {
     showMenu.value = false;
   },
@@ -68,7 +65,7 @@ const onClickField = () => {
   showMenu.value = true;
 };
 
-const { focused: focusedField } = useFocusWithin(textFiledRef);
+const { focused: focusedField } = useFocusWithin(fieldContainerRef);
 
 const { activate: activateMenuFocusTrap, deactivate: deactivateMenuFocusTrap } =
   useFocusTrap(menusRef, {
@@ -94,25 +91,12 @@ onKeyStroke('Escape', () => {
   showMenu.value = false;
 });
 
-const hideSelection = ref(false);
-
-const onFocusField = ({ currentTarget }: FocusEvent) => {
-  hideSelection.value = true;
-  if (currentTarget instanceof HTMLInputElement) {
-    const length = currentTarget.value.length;
-    void setTimeout(() => {
-      currentTarget.setSelectionRange(length, length);
-      hideSelection.value = false;
-    }, 0);
-  }
-};
+const firstValue = computed(() => modelValue.value.at(0));
 </script>
 
 <template>
-  <MDTextField
-    ref="textFiledRef"
-    :model-value="printText"
-    readonly
+  <MDFieldContainer
+    ref="fieldContainerRef"
     :label-text
     :supporting-text
     :type
@@ -121,17 +105,40 @@ const onFocusField = ({ currentTarget }: FocusEvent) => {
     class="md-select"
     :class="{
       'md-select_open': showMenu,
-      'md-select_hide-selection': hideSelection,
+      'md-field-container_focused': showMenu,
     }"
+    :filled="modelValue.length > 0"
     @click="onClickField"
-    @focus="onFocusField"
   >
+    <template #default>
+      <div class="md-select__value-container" tabindex="0">
+        <template v-if="multiple">
+          <MDChip
+            v-for="(value, indexValue) in modelValue"
+            :key="indexValue"
+            :label="value.labelText"
+            type="assist"
+          />
+        </template>
+
+        <template v-else>
+          <span v-if="firstValue">
+            {{ firstValue.labelText }}
+          </span>
+        </template>
+      </div>
+    </template>
+
     <template #trailingIcon>
       <MDSymbol name="arrow_drop_down" class="md-select__symbol-arrow" />
     </template>
-  </MDTextField>
+  </MDFieldContainer>
 
-  <MDMenuContainer v-if="showMenu" ref="menusRef" :target-ref="textFiledRef">
+  <MDMenuContainer
+    v-if="showMenu"
+    ref="menusRef"
+    :target-ref="fieldContainerRef"
+  >
     <MDMenusListItem
       v-for="(option, optionIndex) in options"
       :key="optionIndex"
@@ -151,12 +158,14 @@ const onFocusField = ({ currentTarget }: FocusEvent) => {
 
 <style lang="css" scoped>
 .md-select {
-  &_hide-selection {
-    :deep() {
-      input::selection {
-        background: none;
-      }
-    }
+  cursor: pointer;
+
+  &__value-container {
+    all: unset;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1step;
+    cursor: pointer;
   }
 
   &__symbol-arrow {
