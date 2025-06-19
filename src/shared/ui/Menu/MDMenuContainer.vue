@@ -18,6 +18,7 @@ import { MDSymbol } from '../Icon';
 const { targetRef } = defineProps<{
   targetRef: MaybeElement;
   btns?: Iterable<[K, T]>;
+  transition?: boolean;
 }>();
 
 defineSlots<{
@@ -94,7 +95,13 @@ const style = computed((): StyleValue => {
 </script>
 
 <template>
-  <MDListContainer ref="rootEl" tag="div" class="md md-menus" :style="style">
+  <MDListContainer
+    ref="rootEl"
+    tag="div"
+    class="md md-menus"
+    :style="style"
+    :transition
+  >
     <slot>
       <MDMenusListItem
         v-for="[key, { symbolName, text }] in btns"
