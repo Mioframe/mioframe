@@ -24,17 +24,6 @@ const eslintConfig = defineConfig([
       '@typescript-eslint/no-unnecessary-condition': 'warn',
     },
   },
-  {
-    files: ['**/*.story.vue'],
-    rules: {
-      'vue/no-undef-components': [
-        'error',
-        {
-          ignorePatterns: ['Story', 'Variant', 'Hst*'],
-        },
-      ],
-    },
-  },
 ]);
 
 export default eslintConfig;
