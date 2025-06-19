@@ -16,7 +16,7 @@ const { type = 'outlined', numberCharacters = 0 } = defineProps<{
   numberCharacters?: number;
 }>();
 
-defineSlots<{
+const slots = defineSlots<{
   default(p: { id: string }): unknown;
   leadingIcon(p: EmptyObject): unknown;
   trailingIcon(p: EmptyObject): unknown;
@@ -55,10 +55,7 @@ const { focused: fieldFocused } = useFocusWithin(filedContainer);
     ]"
   >
     <div class="md md-field-container__container" @click="onClickField">
-      <span
-        v-if="!!$slots.leadingIcon"
-        class="md-field-container__leading-icon"
-      >
+      <span v-if="!!slots.leadingIcon" class="md-field-container__leading-icon">
         <slot name="leadingIcon" />
       </span>
 
@@ -73,7 +70,7 @@ const { focused: fieldFocused } = useFocusWithin(filedContainer);
       </div>
 
       <span
-        v-if="!!$slots.trailingIcon"
+        v-if="!!slots.trailingIcon"
         class="md-field-container__trailing-icon"
       >
         <slot name="trailingIcon" />
