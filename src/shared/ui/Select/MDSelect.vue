@@ -1,4 +1,8 @@
-<script setup lang="ts" generic="T extends { labelText: string }">
+<script
+  setup
+  lang="ts"
+  generic="T extends { labelText: string } = { labelText: string }"
+>
 import {
   computed,
   nextTick,

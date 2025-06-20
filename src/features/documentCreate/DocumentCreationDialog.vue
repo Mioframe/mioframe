@@ -44,7 +44,7 @@ watchEffect(() => {
 const documentTypeOptions = [
   { labelText: 'Database', value: DATABASE_DOCUMENT_TYPE },
   { labelText: 'JSON Object', value: 'JsonObject' },
-] as const;
+];
 
 const documentType = ref<(typeof documentTypeOptions)[number][]>([
   documentTypeOptions[0],
