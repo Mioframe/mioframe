@@ -1,10 +1,12 @@
 <script setup lang="ts">
 import { PlaygroundStory } from '@shared/lib/playground';
 import MDFieldContainer from './MDFieldContainer.vue';
+import { useQueryState } from '@shared/lib/useQueryState';
+import type { ComponentProps } from 'vue-component-type-helpers';
 
 const typeOptions = ['filled', 'outlined', undefined] as const;
 
-const initialState = {
+const state = useQueryState<ComponentProps<typeof MDFieldContainer>>('state', {
   labelText: 'labelText',
   disabled: false,
   error: false,
@@ -13,12 +15,12 @@ const initialState = {
   type: undefined,
   filled: undefined,
   numberCharacters: undefined,
-};
+});
 </script>
 
 <template>
-  <PlaygroundStory :initial-state>
-    <template #controllers="{ state }">
+  <PlaygroundStory>
+    <template #controllers>
       <label>
         labelText
         <input v-model="state.labelText" placeholder="labelText" />
@@ -64,7 +66,7 @@ const initialState = {
       </label>
     </template>
 
-    <template #space="{ state }">
+    <template #space>
       <MDFieldContainer
         :label-text="state.labelText"
         :disabled="state.disabled"

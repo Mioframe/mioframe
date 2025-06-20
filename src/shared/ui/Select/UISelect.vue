@@ -1,10 +1,10 @@
 <script
   setup
   lang="ts"
-  generic="Key extends string | number, Value, T extends Option<Key, Value>"
+  generic="Key extends string | number, Value, T extends OptionOld<Key, Value>"
 >
 import { isArray } from 'es-toolkit/compat';
-import type { Option } from './types';
+import type { OptionOld } from './types';
 import { computed } from 'vue';
 import { isNil } from 'es-toolkit';
 

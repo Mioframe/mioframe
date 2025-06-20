@@ -30,7 +30,7 @@ const navigation = computed(() =>
 </script>
 
 <template>
-  <div class="playground">
+  <div class="playground md">
     <PlaygroundNavigation
       v-if="navigation"
       class="playground__navigation"
