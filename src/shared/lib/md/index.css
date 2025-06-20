@@ -1,5 +1,4 @@
 @import "./tokens.css";
-/* @import "./container-with-states.css"; */
 @import "./typography.css";
 @import "./space.css";
 
@@ -28,4 +27,9 @@
   button& {
     cursor: pointer;
   }
+}
+
+input,
+select {
+  background-color: unset;
 }

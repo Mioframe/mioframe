@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { PlaygroundStory } from '@shared/lib/playground';
 import MDTextField from './MDTextField.vue';
+import { useQueryState } from '@shared/lib/useQueryState';
+import type { ComponentProps } from 'vue-component-type-helpers';
 
 const inputTypeOptions = [
   'number',
@@ -22,7 +24,7 @@ const inputTypeOptions = [
 
 const typeOptions = ['filled', 'outlined', undefined] as const;
 
-const initialState = {
+const state = useQueryState<ComponentProps<typeof MDTextField>>('state', {
   labelText: 'labelText',
   modelValue: undefined,
   disabled: false,
@@ -32,12 +34,12 @@ const initialState = {
   readonly: undefined,
   supportingText: undefined,
   type: undefined,
-};
+});
 </script>
 
 <template>
-  <PlaygroundStory :initial-state>
-    <template #controllers="{ state }">
+  <PlaygroundStory>
+    <template #controllers>
       <pre>{{ state.modelValue }}</pre>
 
       <label>
@@ -93,7 +95,7 @@ const initialState = {
       </label>
     </template>
 
-    <template #space="{ state }">
+    <template #space>
       <MDTextField
         v-model:model-value="state.modelValue"
         :label-text="state.labelText"
