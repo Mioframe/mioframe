@@ -25,6 +25,7 @@ import { MDSymbol } from '../Icon';
 import { MDFieldContainer } from '../TextField';
 import { MDChip } from '../Chips';
 import { isArray } from 'es-toolkit/compat';
+import { differenceWith, isEqual } from 'es-toolkit';
 
 const { multiple = false, options } = defineProps<{
   labelText: string;
@@ -41,13 +42,17 @@ const slots = defineSlots<{
   trailingIcon: (props: { option: T }) => unknown;
 }>();
 
-const fieldContainerRef = useTemplateRef<MaybeElement>('fieldContainerRef');
-const menusRef = useTemplateRef<MaybeElement>('menusRef');
-
 const modelValue = defineModel<T[]>({
   default: [],
   required: true,
 });
+
+const fieldContainerRef = useTemplateRef<MaybeElement>('fieldContainerRef');
+const menusRef = useTemplateRef<MaybeElement>('menusRef');
+
+const filteredOptions = computed(() =>
+  differenceWith(options, modelValue.value, isEqual),
+);
 
 const showMenu = ref(false);
 
@@ -112,7 +117,7 @@ const optionsRef = useTemplateRef('optionsRef');
 
 watch(tempInput, (tempInput) => {
   if (tempInput) {
-    const foundIndex = options.findIndex(({ labelText }) =>
+    const foundIndex = filteredOptions.value.findIndex(({ labelText }) =>
       labelText.includes(tempInput),
     );
 
@@ -135,8 +140,16 @@ onKeyStroke(true, ({ key }) => {
     if (/^.$/.test(key)) {
       tempInput.value = tempInput.value ? tempInput.value + key : key;
     }
+
+    if (key === 'Backspace') {
+      modelValue.value.splice(modelValue.value.length - 1, 1);
+    }
   }
 });
+
+const onClickValue = (_value: T, index: number) => {
+  modelValue.value.splice(index, 1);
+};
 </script>
 
 <template>
@@ -163,7 +176,12 @@ onKeyStroke(true, ({ key }) => {
             :key="indexValue"
             :label="value.labelText"
             type="assist"
-          />
+            @click="onClickValue(value, indexValue)"
+          >
+            <template #trailingIcon>
+              <MDSymbol name="close" />
+            </template>
+          </MDChip>
         </template>
 
         <template v-else>
@@ -187,7 +205,7 @@ onKeyStroke(true, ({ key }) => {
     :target-ref="fieldContainerRef"
   >
     <MDMenusListItem
-      v-for="option in options"
+      v-for="option in filteredOptions"
       :key="option.labelText"
       ref="optionsRef"
       :text="option.labelText"

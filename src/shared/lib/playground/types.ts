@@ -2,7 +2,7 @@ import type { RouteComponent } from 'vue-router';
 
 export type PlaygroundPage = {
   name: string;
-  component: RouteComponent | (() => Promise<RouteComponent>);
+  component: () => Promise<RouteComponent>;
   subPages?: PlaygroundPage[];
 };
 

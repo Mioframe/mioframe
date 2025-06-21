@@ -34,6 +34,10 @@ export const setupApp = async (app: App = createApp(MainApp)) => {
         component: () =>
           import('@shared/ui/TextField/MDTextFieldPlayground.vue'),
       },
+      {
+        name: 'Chips',
+        component: () => import('@shared/ui/Chips/MDChipPlayground.vue'),
+      },
     ]);
   }
 
