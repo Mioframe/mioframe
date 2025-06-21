@@ -6,7 +6,7 @@ import { useQueryState } from '@shared/lib/useQueryState';
 
 const options = Array(15)
   .fill(0)
-  .map((_, index) => ({ labelText: `option #${index}` }));
+  .map((_, index) => `option #${index}`);
 
 const typeOptions = ['filled', 'outlined', undefined];
 
