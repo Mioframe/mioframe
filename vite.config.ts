@@ -12,7 +12,14 @@ import TurboConsole from 'unplugin-turbo-console/vite';
 // https://vitejs.dev/config/
 export default defineConfig(({ mode, isPreview }) => {
   const sslPlugins = mode === 'development' || isPreview ? [basicSsl()] : [];
-  const pwaPlugins = mode === 'production' || isPreview ? [VitePWA()] : [];
+  const pwaPlugins =
+    mode === 'production' || isPreview
+      ? [
+          VitePWA({
+            includeAssets: ['fonts.googleapis.com/css2', 'fonts.gstatic.com'],
+          }),
+        ]
+      : [];
 
   const sentryPlugins =
     mode === 'production' || isPreview
