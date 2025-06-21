@@ -1,7 +1,13 @@
 <script setup lang="ts">
 import MDRipple from './MDRipple.vue';
 import { setupRipple } from './setupRipple';
-import { syncRef, syncRefs, useElementHover, useVibrate } from '@vueuse/core';
+import {
+  syncRef,
+  syncRefs,
+  tryOnScopeDispose,
+  useElementHover,
+  useVibrate,
+} from '@vueuse/core';
 import { useTemplateRef, defineModel, computed } from 'vue';
 import { useFirstFocus } from '@shared/lib/useFirstFocus';
 import { debounce } from 'es-toolkit';
@@ -105,6 +111,10 @@ const { vibrate } = useVibrate();
 const onClickState = () => {
   vibrate([10]);
 };
+
+tryOnScopeDispose(() => {
+  onKeyUp();
+});
 
 // FIXME: в firefox после удержания остаётся нежелательный эффект состояния
 // FIXME: в chrome при нажатии кнопки подсвечиваются синим

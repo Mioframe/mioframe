@@ -3,16 +3,22 @@ import { PlaygroundStory } from '@shared/lib/playground';
 import { useQueryState } from '@shared/lib/useQueryState';
 import type { ComponentProps } from 'vue-component-type-helpers';
 import MDChip from './MDChip.vue';
+import { MDSymbol } from '../Icon';
 
-type Props = ComponentProps<typeof MDChip>;
+interface State extends ComponentProps<typeof MDChip> {
+  leadingIcon: boolean;
+  trailingIcon: boolean;
+}
 
-const typeOptions: Props['type'][] = ['assist', 'filter'];
+const typeOptions: State['type'][] = ['assist', 'filter', 'input'];
 
-const state = useQueryState<Props>('state', {
+const state = useQueryState<State>('state', {
   label: 'label',
   type: 'assist',
   elevated: undefined,
   selected: undefined,
+  leadingIcon: false,
+  trailingIcon: false,
 });
 </script>
 
@@ -42,6 +48,16 @@ const state = useQueryState<Props>('state', {
         selected
         <input v-model="state.selected" type="checkbox" />
       </label>
+
+      <label>
+        leadingIcon
+        <input v-model="state.leadingIcon" type="checkbox" />
+      </label>
+
+      <label>
+        trailingIcon
+        <input v-model="state.trailingIcon" type="checkbox" />
+      </label>
     </template>
 
     <template #space>
@@ -50,7 +66,15 @@ const state = useQueryState<Props>('state', {
         :label="state.label"
         :selected="state.selected"
         :type="state.type"
-      />
+      >
+        <template v-if="state.leadingIcon" #leadingIcon>
+          <MDSymbol name="broken_image" />
+        </template>
+
+        <template v-if="state.trailingIcon" #trailingIcon>
+          <MDSymbol name="broken_image" />
+        </template>
+      </MDChip>
     </template>
   </PlaygroundStory>
 </template>
