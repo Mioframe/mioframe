@@ -89,6 +89,7 @@ const { activate: activateMenuFocusTrap, deactivate: deactivateMenuFocusTrap } =
   useFocusTrap(menusRef, {
     isKeyForward: ({ key }) => ['Tab', 'ArrowDown', 'ArrowRight'].includes(key),
     isKeyBackward: ({ key }) => ['ArrowUp', 'ArrowLeft'].includes(key),
+    allowOutsideClick: true,
   });
 
 watchEffect(() => {
@@ -99,8 +100,9 @@ watchEffect(() => {
   }
 });
 
-onKeyStroke(['ArrowDown', 'ArrowUp'], () => {
+onKeyStroke(['ArrowDown', 'ArrowUp'], (e) => {
   if (focusedField.value) {
+    e.preventDefault();
     showMenu.value = true;
   }
 });
@@ -135,6 +137,12 @@ watch(tempInput, (tempInput) => {
   }
 });
 
+const removeValue = (opt: { value?: T; index?: number }) => {
+  modelValue.value = modelValue.value.filter(
+    (value, index) => !(value === opt.value || index === opt.index),
+  );
+};
+
 onKeyStroke(true, ({ key }) => {
   if (focusedField.value || showMenu.value) {
     if (/^.$/.test(key)) {
@@ -142,13 +150,13 @@ onKeyStroke(true, ({ key }) => {
     }
 
     if (key === 'Backspace') {
-      modelValue.value.splice(modelValue.value.length - 1, 1);
+      removeValue({ index: modelValue.value.length - 1 });
     }
   }
 });
 
-const onClickValue = (_value: T, index: number) => {
-  modelValue.value.splice(index, 1);
+const onClickValue = (value: T, index: number) => {
+  removeValue({ index, value });
 };
 </script>
 
@@ -173,15 +181,11 @@ const onClickValue = (_value: T, index: number) => {
         <template v-if="multiple">
           <MDChip
             v-for="(value, indexValue) in modelValue"
-            :key="indexValue"
+            :key="value.labelText"
             :label="value.labelText"
-            type="assist"
-            @click="onClickValue(value, indexValue)"
-          >
-            <template #trailingIcon>
-              <MDSymbol name="close" />
-            </template>
-          </MDChip>
+            type="input"
+            @click.stop="onClickValue(value, indexValue)"
+          />
         </template>
 
         <template v-else>
