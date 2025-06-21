@@ -1,7 +1,7 @@
 <script
   setup
   lang="ts"
-  generic="T extends { labelText: string } = { labelText: string }"
+  generic="T extends { labelText: string } | Primitive = { labelText: string }"
 >
 import {
   computed,
@@ -24,8 +24,9 @@ import { MDMenuContainer, MDMenusListItem } from '../Menu';
 import { MDSymbol } from '../Icon';
 import { MDFieldContainer } from '../TextField';
 import { MDChip } from '../Chips';
-import { isArray } from 'es-toolkit/compat';
+import { isArray, isObject, toString } from 'es-toolkit/compat';
 import { differenceWith, isEqual } from 'es-toolkit';
+import type { Primitive } from 'type-fest';
 
 const { multiple = false, options } = defineProps<{
   labelText: string;
@@ -36,6 +37,13 @@ const { multiple = false, options } = defineProps<{
   error?: boolean;
   multiple?: boolean;
 }>();
+
+const getLabel = (v: T): string => {
+  if (isObject(v) && 'labelText' in v) {
+    return v.labelText;
+  }
+  return toString(v);
+};
 
 const slots = defineSlots<{
   leadingIcon: (props: { option: T }) => unknown;
@@ -119,9 +127,11 @@ const optionsRef = useTemplateRef('optionsRef');
 
 watch(tempInput, (tempInput) => {
   if (tempInput) {
-    const foundIndex = filteredOptions.value.findIndex(({ labelText }) =>
-      labelText.includes(tempInput),
-    );
+    const foundIndex = filteredOptions.value.findIndex((value) => {
+      const labelText = getLabel(value);
+
+      return labelText.includes(tempInput);
+    });
 
     if (foundIndex >= 0 && isArray(optionsRef.value)) {
       const foundRef = optionsRef.value.at(foundIndex);
@@ -181,8 +191,8 @@ const onClickValue = (value: T, index: number) => {
         <template v-if="multiple">
           <MDChip
             v-for="(value, indexValue) in modelValue"
-            :key="value.labelText"
-            :label="value.labelText"
+            :key="getLabel(value)"
+            :label="getLabel(value)"
             type="input"
             @click.stop="onClickValue(value, indexValue)"
           />
@@ -190,7 +200,7 @@ const onClickValue = (value: T, index: number) => {
 
         <template v-else>
           <span v-if="firstValue">
-            {{ firstValue.labelText }}
+            {{ getLabel(firstValue) }}
           </span>
         </template>
 
@@ -210,9 +220,9 @@ const onClickValue = (value: T, index: number) => {
   >
     <MDMenusListItem
       v-for="option in filteredOptions"
-      :key="option.labelText"
+      :key="getLabel(option)"
       ref="optionsRef"
-      :text="option.labelText"
+      :text="getLabel(option)"
       @click="onClickOption(option)"
     >
       <template v-if="!!slots.leadingIcon" #leadingIcon>
