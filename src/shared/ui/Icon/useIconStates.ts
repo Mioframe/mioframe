@@ -43,6 +43,7 @@ export const useIconStates = createGlobalState(() => {
           key?: string;
           rel: 'stylesheet';
           href: string;
+          crossorigin: 'anonymous';
         }[],
         [family, names],
       ) => {
@@ -50,6 +51,7 @@ export const useIconStates = createGlobalState(() => {
           acc.push({
             key: `stylesheet${family}`,
             rel: 'stylesheet',
+            crossorigin: 'anonymous',
             href: `${fontsUrl}?family=${family}:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&icon_names=${iconNames(names)}`,
           });
         }
