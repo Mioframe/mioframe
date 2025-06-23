@@ -3,7 +3,7 @@ import vue from '@vitejs/plugin-vue';
 import wasm from 'vite-plugin-wasm';
 import topLevelAwait from 'vite-plugin-top-level-await';
 import { sentryVitePlugin } from '@sentry/vite-plugin';
-import { VitePWA } from 'vite-plugin-pwa';
+import { VitePWA, cachePreset } from 'vite-plugin-pwa';
 import { fileURLToPath, URL } from 'node:url';
 import { dependencies, devDependencies } from './package.json';
 import basicSsl from '@vitejs/plugin-basic-ssl';
@@ -16,7 +16,9 @@ export default defineConfig(({ mode, isPreview }) => {
     mode === 'production' || isPreview
       ? [
           VitePWA({
-            includeAssets: ['fonts.googleapis.com/css2', 'fonts.gstatic.com'],
+            workbox: {
+              runtimeCaching: cachePreset,
+            },
           }),
         ]
       : [];
