@@ -14,11 +14,13 @@ export type AMMapObject = {
   [P in string]?: AMValue;
 };
 
-export type AMChangeFn<T> = AMRR.ChangeFn<T>;
+export type AMChangeFn<T extends object = UnknownRecord> = AMRR.ChangeFn<T>;
 
-export type AMDocHandleChangePayload<T> = AMRR.DocHandleChangePayload<T>;
+export type AMDocHandleChangePayload<T extends object = UnknownRecord> =
+  AMRR.DocHandleChangePayload<T>;
 
-export type AMDocHandleDeletePayload<T> = AMRR.DocHandleDeletePayload<T>;
+export type AMDocHandleDeletePayload<T extends object = UnknownRecord> =
+  AMRR.DocHandleDeletePayload<T>;
 
 export type AMStorageAdapterInterface = AMRR.StorageAdapterInterface;
 
