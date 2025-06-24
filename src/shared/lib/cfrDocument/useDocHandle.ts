@@ -1,6 +1,6 @@
 import type { MaybeRefOrGetter, Ref } from 'vue';
 import { computed, nextTick, ref, shallowRef, toValue, watch } from 'vue';
-import { isUnknownRecord, deepReplaceJSONObject } from '../changeObject';
+import { isUnknownRecord, deepReplaceJsonObject } from '../changeObject';
 import { createGlobalState, tryOnScopeDispose } from '@vueuse/core';
 import { defineReadonlyDeep } from '../readonlyDeep';
 import type { UnknownRecord } from 'type-fest';
@@ -23,7 +23,7 @@ const createDocHandleRefState = <T extends object>(
   const programReplaceDocRef = (doc: AMDoc<T> | undefined) => {
     watchHandle.pause();
     if (doc) {
-      deepReplaceJSONObject(docRef.value, doc);
+      deepReplaceJsonObject(docRef.value, doc);
     }
     void nextTick(() => {
       watchHandle.resume();
@@ -57,7 +57,7 @@ const createDocHandleRefState = <T extends object>(
       if (docState) {
         docHandle.change((doc) => {
           if (isUnknownRecord(doc)) {
-            deepReplaceJSONObject(doc, docState);
+            deepReplaceJsonObject(doc, docState);
           }
         });
       }

@@ -7,7 +7,7 @@ import { isArray, isNil, keys } from 'es-toolkit/compat';
  * @param target - mutable object
  * @param source - object with new values
  */
-export const deepReplaceJSONObject = <S extends object>(
+export const deepReplaceJsonObject = <S extends object>(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any -- it doesn't matter what the target object is
   target: Record<any, any>,
   source: S,
@@ -21,7 +21,7 @@ export const deepReplaceJSONObject = <S extends object>(
       const targetValue: unknown = target[sourceKey];
       if (sourceValue !== targetValue) {
         if (isUnknownRecord(targetValue) && isUnknownRecord(sourceValue)) {
-          deepReplaceJSONObject(targetValue, sourceValue);
+          deepReplaceJsonObject(targetValue, sourceValue);
         } else {
           target[sourceKey] = cloneDeep(sourceValue);
         }
