@@ -7,11 +7,11 @@ import type { MergeDeep, PartialDeep } from 'type-fest';
  * @param target - mutable object
  * @param source - object with new values
  */
-export function deepPutJSONObject<
+export function deepPutJsonObject<
   T extends object,
   S extends PartialDeep<T> | object,
 >(target: T, source: S): MergeDeep<T, S>;
-export function deepPutJSONObject<T extends object, S extends object>(
+export function deepPutJsonObject<T extends object, S extends object>(
   target: T,
   source: S,
 ): MergeDeep<T, S> {
@@ -23,7 +23,7 @@ export function deepPutJSONObject<T extends object, S extends object>(
       const targetValue: unknown = target[sourceKey];
       if (sourceValue !== targetValue) {
         if (isObjectLike(targetValue) && isObjectLike(sourceValue)) {
-          deepPutJSONObject(targetValue, sourceValue);
+          deepPutJsonObject(targetValue, sourceValue);
         } else if (isNil(sourceValue)) {
           // eslint-disable-next-line @typescript-eslint/ban-ts-comment -- everything is ok, it's just a deletion
           // @ts-expect-error

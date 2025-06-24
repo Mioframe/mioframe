@@ -18,7 +18,7 @@ import {
 import { useCFRDocument } from '../../cfrDocument/useCFRDocument';
 import { zodIs, zodSafeCheck } from '../../validateZodScheme';
 import { migrateBody, migrateDatabaseDocument } from '../migrations';
-import { deepPutJSONObject } from '../../changeObject';
+import { deepPutJsonObject } from '../../changeObject';
 import { createLogger } from '../../logger';
 import {
   addViewMutation,
@@ -161,7 +161,7 @@ export const useDatabaseDocument = (
 
       const views = body.views;
 
-      deepPutJSONObject(views, {
+      deepPutJsonObject(views, {
         [viewId]: view,
       });
     });

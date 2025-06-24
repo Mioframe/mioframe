@@ -1,5 +1,5 @@
 import { generatePropertyId } from '../state/v1/property/general';
-import { deepPutJSONObject } from '@shared/lib/changeObject';
+import { deepPutJsonObject } from '@shared/lib/changeObject';
 import type { PartialDeep } from 'type-fest';
 import type {
   DatabasePropertyId,
@@ -13,7 +13,7 @@ export const addPropertyMutation = (
 ): DatabasePropertyId => {
   const columnId = generatePropertyId();
 
-  deepPutJSONObject(properties, {
+  deepPutJsonObject(properties, {
     [columnId]: column,
   });
 
@@ -25,7 +25,7 @@ export const updatePropertyMutation = (
   columnId: DatabasePropertyId,
   column: PartialDeep<DatabaseUnknownProperty>,
 ): void => {
-  deepPutJSONObject(properties, { [columnId]: column });
+  deepPutJsonObject(properties, { [columnId]: column });
 };
 
 export const removePropertyMutation = (
