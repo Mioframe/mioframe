@@ -109,17 +109,6 @@ watchEffect(() => {
   }
 });
 
-onKeyStroke(['ArrowDown', 'ArrowUp'], (e) => {
-  if (focusedField.value) {
-    e.preventDefault();
-    showMenu.value = true;
-  }
-});
-
-onKeyStroke('Escape', () => {
-  showMenu.value = false;
-});
-
 const firstValue = computed(() => modelValue.value.at(0));
 
 const tempInput = refAutoReset<string | undefined>(undefined, 500);
@@ -157,6 +146,7 @@ const removeValue = (opt: { value?: T; index?: number }) => {
 onKeyStroke(true, ({ key }) => {
   if (focusedField.value || showMenu.value) {
     if (/^.$/.test(key)) {
+      // key navigation
       tempInput.value = tempInput.value ? tempInput.value + key : key;
     }
 
@@ -164,6 +154,17 @@ onKeyStroke(true, ({ key }) => {
       removeValue({ index: modelValue.value.length - 1 });
     }
   }
+});
+
+onKeyStroke(['ArrowDown', 'ArrowUp'], (e) => {
+  if (focusedField.value) {
+    e.preventDefault();
+    showMenu.value = true;
+  }
+});
+
+onKeyStroke('Escape', () => {
+  showMenu.value = false;
 });
 
 const onClickValue = (value: T, index: number) => {
