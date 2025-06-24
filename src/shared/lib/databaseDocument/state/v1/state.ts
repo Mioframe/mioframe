@@ -3,7 +3,7 @@ import { literal, object } from 'zod/v4-mini';
 import { zodUnknownPropertiesMap } from './property';
 import { defineVersionState } from '../defineVersion';
 import type { EmptyObject } from 'type-fest';
-import { deepPutJSONObject } from '@shared/lib/changeObject';
+import { deepPutJsonObject } from '@shared/lib/changeObject';
 import { zodDatabaseData } from './item';
 
 export const databaseState = defineVersionState(
@@ -13,7 +13,7 @@ export const databaseState = defineVersionState(
     properties: zodUnknownPropertiesMap,
   }),
   (oldState: EmptyObject) => {
-    return deepPutJSONObject(oldState, {
+    return deepPutJsonObject(oldState, {
       version: 1,
       properties: {},
       data: {},

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { deepReplaceJSONObject } from '@shared/lib/changeObject';
+import { deepReplaceJsonObject } from '@shared/lib/changeObject';
 import {
   SORT_DIRECTION,
   type DatabasePropertyId,
@@ -51,7 +51,7 @@ const sortListStateWatchHandler = watch(
   sortListState,
   debounce(() => {
     sortMapModelWatchHandler.pause();
-    deepReplaceJSONObject(
+    deepReplaceJsonObject(
       sortMapModel.value,
       toValue(sortListState).reduce<DatabaseSortMap>(
         (acc, { direction, key: id }, priority) => ({
@@ -75,7 +75,7 @@ const sortMapModelWatchHandler = watch(
   sortMapModel,
   (sortMapModel: DatabaseSortMap) => {
     sortListStateWatchHandler.pause();
-    deepReplaceJSONObject(
+    deepReplaceJsonObject(
       sortListState.value,
       recordEntries(sortMapModel)
         .sort(([, { priority: a }], [, { priority: b }]) => a - b)

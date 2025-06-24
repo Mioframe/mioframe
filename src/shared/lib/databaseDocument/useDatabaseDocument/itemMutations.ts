@@ -1,4 +1,4 @@
-import { deepPutJSONObject } from '@shared/lib/changeObject';
+import { deepPutJsonObject } from '@shared/lib/changeObject';
 import type { PartialDeep } from 'type-fest';
 import type { DatabaseData, DatabaseItem, DatabaseItemId } from '../state';
 import { generateItemId } from '../state';
@@ -9,7 +9,7 @@ export const addItemMutation = (
 ): DatabaseItemId => {
   const itemId = generateItemId();
 
-  deepPutJSONObject(data, { [itemId]: item });
+  deepPutJsonObject(data, { [itemId]: item });
 
   return itemId;
 };
@@ -19,12 +19,12 @@ export const updateItemMutation = (
   itemId: DatabaseItemId,
   partialItem: PartialDeep<DatabaseItem>,
 ): void => {
-  deepPutJSONObject(data, { [itemId]: partialItem });
+  deepPutJsonObject(data, { [itemId]: partialItem });
 };
 
 export const removeItemMutation = (
   data: DatabaseData,
   itemId: DatabaseItemId,
 ): void => {
-  deepPutJSONObject(data, { [itemId]: undefined });
+  deepPutJsonObject(data, { [itemId]: undefined });
 };
