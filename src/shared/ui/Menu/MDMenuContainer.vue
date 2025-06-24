@@ -10,9 +10,8 @@ import type { MaybeElement } from '@vueuse/core';
 import type { StyleValue } from 'vue';
 import { computed, toRef, useTemplateRef } from 'vue';
 import { useElementBounding, useWindowSize } from '@vueuse/core';
-import { MDListContainer } from '../Lists';
+import { MDListContainer, MDListItem } from '../Lists';
 import type { MenuButtonDescription } from './types';
-import MDMenusListItem from './MDMenusListItem.vue';
 import { MDSymbol } from '../Icon';
 
 const { targetRef } = defineProps<{
@@ -103,16 +102,18 @@ const style = computed((): StyleValue => {
     :transition
   >
     <slot>
-      <MDMenusListItem
-        v-for="[key, { symbolName, text }] in btns"
+      <MDListItem
+        v-for="[key, { symbolName, text: headline }] in btns"
         :key
-        :text
+        :headline
+        tag="button"
+        type="button"
         @click="onClick(key)"
       >
         <template #leadingIcon>
           <MDSymbol :name="symbolName" />
         </template>
-      </MDMenusListItem>
+      </MDListItem>
     </slot>
   </MDListContainer>
 </template>
@@ -130,5 +131,16 @@ const style = computed((): StyleValue => {
   flex-direction: column;
 
   --md-list-container-border-radius: 0px;
+
+  --md-list-item-horizontal-gap: 12px;
+  --md-list-item-min-height: 48px;
+
+  --md-list-item-container-color: var(--md-container-color);
+
+  :deep() {
+    .md-list-item__headline::first-letter {
+      text-transform: uppercase;
+    }
+  }
 }
 </style>

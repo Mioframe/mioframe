@@ -11,6 +11,8 @@ import type { AMDocHandle, AMDocumentId } from '../automerge/automergeTypes';
 
 const { debug, watchDebug } = createLogger('useRepo');
 
+// TODO: добавить кеширование как defineCachedDocHandle
+
 export const useRepo = (
   repo: MaybeRefOrGetter<Repo | undefined>,
   searchDocuments?: MaybeRefOrGetter<Iterable<AMDocumentId>>,
@@ -21,7 +23,9 @@ export const useRepo = (
 
   const documentsForSearch = toRef(() => toValue(searchDocuments));
 
-  const documentsMap = shallowReactive<Map<AMDocumentId, AMDocHandle>>(new Map());
+  const documentsMap = shallowReactive<Map<AMDocumentId, AMDocHandle>>(
+    new Map(),
+  );
 
   const onDocument = ({ handle }: { handle: AMDocHandle; isNew: boolean }) => {
     if (!documentsMap.has(handle.documentId)) {
