@@ -1,77 +1,18 @@
-import {
-  computed,
-  ref,
-  shallowReactive,
-  toRef,
-  toValue,
-  watch,
-  type MaybeRefOrGetter,
-} from 'vue';
+import { computed, ref, shallowReactive, type MaybeRefOrGetter } from 'vue';
 import type { DirectoryFSEntry } from './DirectoryFSEntry';
 import type { FileFSEntry } from './FileFSEntry';
-import { tryOnScopeDispose } from '@vueuse/core';
 import { createLogger } from '../logger';
-import { uniqueId } from '../uniqueId';
+import { defineGlobalWeakCache, useGlobalWeakCache } from '../globalWeakCache';
 
 const { debug } = createLogger('useDirectory');
 
 export const useDirectory = (
   directoryEntry: MaybeRefOrGetter<DirectoryFSEntry | undefined>,
 ) => {
-  const debugId = uniqueId('useDirectory');
-
-  const directoryRef = toRef(() => toValue(directoryEntry));
-
-  debug('start', { id: debugId, name: directoryRef.value?.name });
-
-  const loadingRef = ref(false);
-  const readyRef = ref(false);
-
-  const errorRef = ref<Error>();
-
-  const entriesReactiveState = shallowReactive<
-    Map<string, DirectoryFSEntry | FileFSEntry>
-  >(new Map());
-
-  const currentLoadId = ref(0);
-
-  async function loadDirectory() {
-    debug('loadDirectory', { name: directoryRef.value?.name });
-    currentLoadId.value++;
-    const thisLoadId = currentLoadId.value;
-    readyRef.value = false;
-
-    const initialDir = toValue(directoryRef);
-    if (!initialDir) {
-      entriesReactiveState.clear();
-      loadingRef.value = false;
-      errorRef.value = undefined;
-      return;
-    }
-
-    loadingRef.value = true;
-    errorRef.value = undefined;
-    entriesReactiveState.clear();
-
-    try {
-      for await (const [key, entry] of initialDir.entries()) {
-        const currentDir = toValue(directoryRef);
-        if (currentDir !== initialDir || currentLoadId.value !== thisLoadId) {
-          break;
-        }
-        entriesReactiveState.set(key, entry);
-      }
-    } catch (err) {
-      if (currentLoadId.value === thisLoadId) {
-        errorRef.value = err instanceof Error ? err : new Error(String(err));
-      }
-    } finally {
-      if (currentLoadId.value === thisLoadId) {
-        loadingRef.value = false;
-        readyRef.value = true;
-      }
-    }
-  }
+  const { state: directoryRef } = useGlobalWeakCache(
+    directoryRefCache,
+    directoryEntry,
+  );
 
   const createDirectory = async (name: string): Promise<DirectoryFSEntry> => {
     if (!directoryRef.value) {
@@ -79,8 +20,6 @@ export const useDirectory = (
     }
 
     const newEntry = await directoryRef.value.createDirectory(name);
-
-    entriesReactiveState.set(name, newEntry);
 
     return newEntry;
   };
@@ -95,8 +34,6 @@ export const useDirectory = (
 
     const newEntry = await directoryRef.value.writeFile(name, file);
 
-    entriesReactiveState.set(name, newEntry);
-
     return newEntry;
   };
 
@@ -108,61 +45,120 @@ export const useDirectory = (
     }
 
     await directoryRef.value.removeByName(name);
-
-    entriesReactiveState.delete(name);
   };
-
-  const onAdd = (key: string, value: DirectoryFSEntry | FileFSEntry) => {
-    entriesReactiveState.set(key, value);
-  };
-  const onRemove = (key: string) => {
-    entriesReactiveState.delete(key);
-  };
-
-  let read = false;
 
   const useDirectoryInterface = {
-    entries: computed(() => {
-      if (!read) {
-        void loadDirectory();
-        read = true;
-      }
-      return entriesReactiveState;
-    }),
-    loading: computed(() => loadingRef.value),
-    error: computed(() => errorRef.value),
-    reload: loadDirectory,
+    entries: computed(() => directoryRef.value?.entries.value),
+    loading: computed(() => directoryRef.value?.loading.value),
+    error: computed(() => directoryRef.value?.error.value),
+    reload: () => directoryRef.value?.reload(),
     createDirectory,
     writeFile,
     removeByName,
-    ready: computed(() => readyRef.value),
+    ready: computed(() => directoryRef.value?.ready),
   };
-
-  watch(
-    directoryRef,
-    (directory, oldDirectory) => {
-      if (read) {
-        void loadDirectory();
-      }
-      if (oldDirectory) {
-        oldDirectory.off('add', onAdd);
-        oldDirectory.off('remove', onRemove);
-      }
-      if (directory) {
-        directory.on('add', onAdd);
-        directory.on('remove', onRemove);
-      }
-    },
-    { immediate: true },
-  );
-
-  tryOnScopeDispose(() => {
-    const directory = toValue(directoryRef);
-    if (directory) {
-      directory.off('add', onAdd);
-      directory.off('remove', onRemove);
-    }
-  });
 
   return useDirectoryInterface;
 };
+
+export const directoryRefCache = defineGlobalWeakCache(
+  (directoryFSEntry: DirectoryFSEntry) => {
+    let read = false;
+    const readyRef = ref(false);
+    const loadingRef = ref(false);
+    const errorRef = ref<Error>();
+    const entriesReactiveState = shallowReactive<
+      Map<string, DirectoryFSEntry | FileFSEntry>
+    >(new Map());
+
+    const loadDirectory = async () => {
+      read = true;
+
+      readyRef.value = false;
+
+      loadingRef.value = true;
+      errorRef.value = undefined;
+      entriesReactiveState.clear();
+
+      try {
+        for await (const [key, entry] of directoryFSEntry.entries()) {
+          entriesReactiveState.set(key, entry);
+        }
+      } catch (err) {
+        errorRef.value = err instanceof Error ? err : new Error(String(err));
+      } finally {
+        loadingRef.value = false;
+        readyRef.value = true;
+      }
+    };
+
+    const onAdd = (key: string, value: DirectoryFSEntry | FileFSEntry) => {
+      entriesReactiveState.set(key, value);
+    };
+
+    const onRemove = (key: string) => {
+      entriesReactiveState.delete(key);
+    };
+
+    const addListeners = () => {
+      directoryFSEntry.on('add', onAdd);
+      directoryFSEntry.on('remove', onRemove);
+    };
+
+    const removeListeners = () => {
+      directoryFSEntry.off('add', onAdd);
+      directoryFSEntry.off('remove', onRemove);
+    };
+
+    const writeFile = async (
+      name: string,
+      file?: FileSystemWriteChunkType,
+    ): Promise<FileFSEntry> => {
+      const newEntry = await directoryFSEntry.writeFile(name, file);
+
+      entriesReactiveState.set(name, newEntry);
+
+      return newEntry;
+    };
+
+    const removeByName = async (name: string): Promise<void> => {
+      await directoryFSEntry.removeByName(name);
+
+      entriesReactiveState.delete(name);
+    };
+
+    const createDirectory = async (name: string): Promise<DirectoryFSEntry> => {
+      const newEntry = await directoryFSEntry.createDirectory(name);
+
+      entriesReactiveState.set(name, newEntry);
+
+      return newEntry;
+    };
+
+    return {
+      entries: computed(() => {
+        if (!read) {
+          void loadDirectory();
+          read = true;
+        }
+        return entriesReactiveState;
+      }),
+      loading: computed(() => loadingRef.value),
+      error: computed(() => errorRef.value),
+      ready: computed(() => readyRef.value),
+      reload: loadDirectory,
+      addListeners,
+      removeListeners,
+      writeFile,
+      removeByName,
+      createDirectory,
+    };
+  },
+  (_key, value) => {
+    value.addListeners();
+    void value.reload();
+  },
+  (_key, value) => {
+    value?.removeListeners();
+  },
+);

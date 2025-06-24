@@ -41,10 +41,6 @@ export const useDirectoryRepo = (
   const { entries: directoryEntries, ready: directoryReady } =
     useDirectory(currentDirectory);
 
-  watchDebug('directoryEntries', () =>
-    Array.from(directoryEntries.value.values()),
-  );
-
   const directoryEntriesNames = useReduceMap(
     directoryEntries,
     (acc: string[], _, name) => {

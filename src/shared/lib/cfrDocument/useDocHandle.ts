@@ -1,7 +1,6 @@
-import type { MaybeRefOrGetter, Ref } from 'vue';
-import { computed, nextTick, ref, shallowRef, toValue, watch } from 'vue';
+import type { MaybeRefOrGetter } from 'vue';
+import { computed, nextTick, ref, toValue, watch } from 'vue';
 import { isUnknownRecord, deepReplaceJsonObject } from '../changeObject';
-import { createGlobalState, tryOnScopeDispose } from '@vueuse/core';
 import { defineReadonlyDeep } from '../readonlyDeep';
 import type { UnknownRecord } from 'type-fest';
 import type {
@@ -11,19 +10,20 @@ import type {
   AMDocHandleChangePayload,
   AMDocHandleDeletePayload,
 } from '../automerge/automergeTypes';
+import { defineGlobalWeakCache, useGlobalWeakCache } from '../globalWeakCache';
 
-const createDocHandleRefState = <T extends object>(
-  docHandle: AMDocHandle<T>,
-) => {
-  const docRef = ref<T | UnknownRecord>({});
+const createDocHandleRefState = (docHandle: AMDocHandle) => {
+  const docRef = ref<UnknownRecord>({});
 
   /**
    * Изменение состояния без триггера
    */
-  const programReplaceDocRef = (doc: AMDoc<T> | undefined) => {
+  const programReplaceDocRef = (doc: AMDoc | undefined) => {
     watchHandle.pause();
     if (doc) {
       deepReplaceJsonObject(docRef.value, doc);
+    } else {
+      docRef.value = {};
     }
     void nextTick(() => {
       watchHandle.resume();
@@ -33,7 +33,7 @@ const createDocHandleRefState = <T extends object>(
   /**
    * Обработка события изменения из automerge
    */
-  const onChangeDoc = ({ doc }: AMDocHandleChangePayload<T>) => {
+  const onChangeDoc = ({ doc }: AMDocHandleChangePayload) => {
     programReplaceDocRef(doc);
   };
 
@@ -42,7 +42,7 @@ const createDocHandleRefState = <T extends object>(
   /**
    * Обработка события удаления из automerge
    */
-  const onDeleteDoc = ({}: AMDocHandleDeletePayload<T>) => {
+  const onDeleteDoc = ({}: AMDocHandleDeletePayload) => {
     programReplaceDocRef(undefined);
   };
 
@@ -79,7 +79,7 @@ const createDocHandleRefState = <T extends object>(
    * Чтение документа и актуализация состояния
    */
   const read = async () => {
-    const doc: AMDoc<T> | undefined = await docHandle.doc();
+    const doc: AMDoc | undefined = await docHandle.doc();
 
     programReplaceDocRef(doc);
 
@@ -93,93 +93,35 @@ const createDocHandleRefState = <T extends object>(
   };
 };
 
-export const defineCachedDocHandle = createGlobalState(() => {
-  const cacheDocHandleState = new WeakMap<
-    AMDocHandle<object>,
-    { doc: Ref; dispose: () => unknown }
-  >();
+export const globalCacheDocHandle = defineGlobalWeakCache(
+  createDocHandleRefState,
+  (_k, v) => {
+    void v.read();
+  },
+  (_k, v) => {
+    v?.dispose();
+  },
+);
 
-  const usersDocHandleState = new WeakMap<AMDocHandle<object>, number>();
+export const useDocHandle = (
+  docHandle: MaybeRefOrGetter<AMDocHandle | undefined>,
+) => {
+  const docHandleRef = computed(() => toValue(docHandle));
 
-  const getCachedDocHandlerState = <T extends object>(
-    docHandle: AMDocHandle<T>,
-  ) => {
-    const countUsers = (usersDocHandleState.get(docHandle) ?? 0) + 1;
-    usersDocHandleState.set(docHandle, countUsers);
-
-    const cachedDocHandleState = cacheDocHandleState.get(docHandle);
-
-    if (cachedDocHandleState) {
-      return cachedDocHandleState;
-    }
-
-    const docHandleRefState = createDocHandleRefState(docHandle);
-    cacheDocHandleState.set(docHandle, docHandleRefState);
-
-    if (countUsers === 1) {
-      void docHandleRefState.read();
-    }
-
-    return docHandleRefState;
+  const change = (callback: AMChangeFn) => {
+    docHandleRef.value?.change(callback);
   };
 
-  const tryDisposeDocHandle = <T extends object>(docHandle: AMDocHandle<T>) => {
-    const oldCountUsers = usersDocHandleState.get(docHandle) ?? 0;
+  const { state } = useGlobalWeakCache(globalCacheDocHandle, docHandleRef);
 
-    usersDocHandleState.set(docHandle, oldCountUsers - 1);
-
-    if ((usersDocHandleState.get(docHandle) ?? 0) <= 0) {
-      const cachedDocHandlerState = cacheDocHandleState.get(docHandle);
-      cachedDocHandlerState?.dispose();
-      cacheDocHandleState.delete(docHandle);
-    }
+  return {
+    /**
+     * Изменяемое состояние документа
+     */
+    doc: computed(() => toValue(toValue(state)?.doc)),
+    /**
+     * Мутация документа
+     */
+    change,
   };
-
-  const useDocHandle = <T extends object = UnknownRecord>(
-    docHandle: MaybeRefOrGetter<AMDocHandle<T> | undefined>,
-  ) => {
-    const docHandleRef = computed(() => toValue(docHandle));
-
-    const cachedState = shallowRef<{
-      doc: Ref<T | undefined>;
-    }>();
-
-    watch(
-      docHandleRef,
-      (docHandle, oldDocHandle) => {
-        if (oldDocHandle) {
-          tryDisposeDocHandle(oldDocHandle);
-        }
-        if (docHandle) {
-          cachedState.value = getCachedDocHandlerState(docHandle);
-        } else {
-          cachedState.value = undefined;
-        }
-      },
-      { immediate: true },
-    );
-
-    tryOnScopeDispose(() => {
-      if (docHandleRef.value) {
-        tryDisposeDocHandle(docHandleRef.value);
-      }
-    });
-
-    const change = (callback: AMChangeFn<T>) => {
-      docHandleRef.value?.change(callback);
-    };
-
-    return {
-      /**
-       * Изменяемое состояние документа
-       */
-      doc: computed(() => toValue(toValue(cachedState)?.doc)),
-      /**
-       * Мутация документа
-       */
-      change,
-    };
-  };
-
-  return useDocHandle;
-});
+};

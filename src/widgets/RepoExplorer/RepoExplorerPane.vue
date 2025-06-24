@@ -63,10 +63,6 @@ watchDebug('currentDirectory', currentDirectory);
 const { entries: currentDirectoryEntries, removeByName: removeEntryByName } =
   useDirectory(currentDirectory);
 
-watchDebug('directoryEntries', () =>
-  Array.from(currentDirectoryEntries.value.values()),
-);
-
 const onClickPath = async (indexPath: number) => {
   debug('onClickPath', indexPath);
 
@@ -229,7 +225,7 @@ const onRenameEntry = async (newName: string) => {
   loadingRename.value += 1;
   try {
     if (entryKeyToRename.value) {
-      const entry = currentDirectoryEntries.value.get(entryKeyToRename.value);
+      const entry = currentDirectoryEntries.value?.get(entryKeyToRename.value);
       if (entry) {
         await entry.rename(newName);
         entryKeyToRename.value = undefined;
