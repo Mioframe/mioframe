@@ -59,41 +59,49 @@ const onClick = (e: MouseEvent) => {
 
 <style scoped>
 .md-list-item {
-  --md-list-item-horizontal-gap: 16px;
-  --md-list-item-min-height: 56px;
-  --md-list-item-border-radius: 0px;
+  --horizontal-gap: var(--md-list-item-horizontal-gap, 16px);
+  --min-height: var(--md-list-item-min-height, 56px);
+  --border-radius: var(--md-list-item-border-radius, 0px);
+
+  --md-container-color: var(
+    --md-list-item-container-color,
+    var(--md-sys-color-surface)
+  );
+  --md-content-color: var(
+    --md-list-item-content-color,
+    var(--md-sys-color-on-surface)
+  );
+
   --md-target-offset: 0px;
-  --md-focus-indicator-offset: 0px;
+  --md-focus-indicator-offset: -2px;
 
   display: flex;
-  padding: 8px var(--md-list-item-horizontal-gap);
+  padding: 8px var(--horizontal-gap);
   align-items: center;
-  --md-container-color: var(--md-sys-color-surface);
-  --md-content-color: var(--md-sys-color-on-surface);
   font-family: var(--md-sys-typescale-body-large-font);
   min-height: var(--md-list-item-min-height);
   box-sizing: border-box;
   text-align: start;
-  border-radius: var(--md-list-item-border-radius);
+  border-radius: var(--border-radius);
   border-width: 0;
 
   &:first-child {
     border-top-right-radius: max(
-      var(--md-list-item-border-radius),
+      var(--border-radius),
       var(--md-list-container-border-radius, 0px)
     );
     border-top-left-radius: max(
-      var(--md-list-item-border-radius),
+      var(--border-radius),
       var(--md-list-container-border-radius, 0px)
     );
   }
   &:last-child {
     border-bottom-right-radius: max(
-      var(--md-list-item-border-radius),
+      var(--border-radius),
       var(--md-list-container-border-radius, 0px)
     );
     border-bottom-left-radius: max(
-      var(--md-list-item-border-radius),
+      var(--border-radius),
       var(--md-list-container-border-radius, 0px)
     );
   }
@@ -114,7 +122,7 @@ const onClick = (e: MouseEvent) => {
 
     .md-list-item__leading-avatar-container ~ &,
     .md-list-item__leading-icon ~ & {
-      margin-left: var(--md-list-item-horizontal-gap);
+      margin-left: var(--horizontal-gap);
     }
   }
 
@@ -153,7 +161,7 @@ const onClick = (e: MouseEvent) => {
   }
 
   &__trailing-icon {
-    margin-left: var(--md-list-item-horizontal-gap);
+    margin-left: var(--horizontal-gap);
 
     color: var(--md-sys-color-on-surface-variant);
   }
