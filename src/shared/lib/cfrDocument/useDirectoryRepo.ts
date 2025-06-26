@@ -11,7 +11,7 @@ import type { RepoRef } from './useRepo';
 import { useRepoRef } from './useRepo';
 import {
   createGlobalWeakCache,
-  defineGlobalWeakCache,
+  defineGlobalWeakCacheRef,
 } from '../globalWeakCache';
 import { useDirectoryFSEntryRef } from '../fileSystem/useDirectoryFSEntryRef';
 import type { AMDocumentId } from '../automerge';
@@ -21,7 +21,7 @@ import { isEqual } from 'es-toolkit';
 
 export interface DirectoryRepo extends RepoRef {}
 
-const useDirectoryRepoRefCacheApi = createGlobalWeakCache(
+const useDirectoryRepoCache = createGlobalWeakCache(
   (directory: DirectoryFSEntry): DirectoryRepo => {
     const repoState = shallowRef<Repo>();
 
@@ -116,6 +116,4 @@ const useDirectoryRepoRefCacheApi = createGlobalWeakCache(
  * @param directory - директория для хранения документов
  * @returns
  */
-export const useDirectoryRepo = defineGlobalWeakCache(
-  useDirectoryRepoRefCacheApi,
-);
+export const useDirectoryRepo = defineGlobalWeakCacheRef(useDirectoryRepoCache);
