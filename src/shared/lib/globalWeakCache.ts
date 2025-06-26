@@ -98,10 +98,10 @@ export const createUseGlobalWeakCache = <K extends WeakKey, V extends object>(
 ) => {
   const globalCache = createGlobalWeakCache(setupCache);
 
-  return defineGlobalWeakCache(globalCache);
+  return defineGlobalWeakCacheRef(globalCache);
 };
 
-export const defineGlobalWeakCache =
+export const defineGlobalWeakCacheRef =
   <K extends WeakKey, V>(useGlobalCacheApi: UseGlobalCacheApi<K, V>) =>
   (rawKey: MaybeRefOrGetter<K | undefined>) =>
     useGlobalWeakCacheByKey(useGlobalCacheApi, rawKey);

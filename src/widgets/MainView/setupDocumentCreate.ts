@@ -1,6 +1,6 @@
-import type { DocumentContent, RepoRef } from '@shared/lib/cfrDocument';
-import { toValue, type MaybeRef } from '@vueuse/core';
-import { computed, ref } from 'vue';
+import type { CFRDocumentContent, RepoRef } from '@shared/lib/cfrDocument';
+import { type MaybeRef } from '@vueuse/core';
+import { computed, ref, toValue } from 'vue';
 
 export const setupDocumentCreate = (
   documentFolder: MaybeRef<RepoRef | undefined>,
@@ -16,7 +16,7 @@ export const setupDocumentCreate = (
   const onCancelCreateDocument = () => {
     isDisplayedDocumentCreationForm.value = false;
   };
-  const onCreateDocument = (documentContent: DocumentContent) => {
+  const onCreateDocument = (documentContent: CFRDocumentContent) => {
     const folder = toValue(documentFolder);
     if (folder) {
       folder.create(documentContent);

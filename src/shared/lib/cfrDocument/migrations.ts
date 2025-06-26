@@ -1,13 +1,9 @@
 import { deepPutJsonObject } from '../changeObject';
 import { defineMigrations } from '../defineMigrations';
 import type { MergeDeep } from 'type-fest';
-import { type DocumentContent } from './types';
-import { createLogger } from '../logger';
+import { type CFRDocumentContent } from './types';
 import { isNumber, isObjectLike } from 'es-toolkit/compat';
-import { cloneDeep } from 'es-toolkit';
 import type { AMDoc } from '../automerge/automergeTypes';
-
-const { debug } = createLogger('cfrDocumentMigrations');
 
 const readVersion = (doc: unknown) => {
   const currentVersion: number = isObjectLike(doc)
@@ -23,14 +19,15 @@ const readVersion = (doc: unknown) => {
 
 export const applyCFRDocumentMigration = (
   data: object,
-): AMDoc<DocumentContent> => {
-  return defineMigrations((doc: object): MergeDeep<object, DocumentContent> => {
-    debug('first migration', () => cloneDeep(doc));
-    return deepPutJsonObject(doc, {
-      name: 'new document',
-      type: 'unknown',
-      ...doc,
-      version: 1,
-    });
-  })(data, readVersion(data));
+): AMDoc<CFRDocumentContent> => {
+  return defineMigrations(
+    (doc: object): MergeDeep<object, CFRDocumentContent> => {
+      return deepPutJsonObject(doc, {
+        name: 'new document',
+        type: 'unknown',
+        ...doc,
+        version: 1,
+      });
+    },
+  )(data, readVersion(data));
 };
