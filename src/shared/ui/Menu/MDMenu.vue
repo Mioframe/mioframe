@@ -4,15 +4,12 @@
   generic="K extends PropertyKey, T extends MenuButtonDescription"
 >
 import type { MaybeElement } from '@vueuse/core';
-import { computed, ref, useTemplateRef, watch } from 'vue';
+import { computed, ref, useTemplateRef } from 'vue';
 import { syncRef } from '@vueuse/core';
 import { onInteractionOutside } from '@shared/lib/onInteractionOutside';
 import MDMenuContainer from './MDMenuContainer.vue';
 import type { MenuButtonDescription } from './types';
 import { useClosestParentFrame } from '@shared/lib/useClosestParentFrame';
-import { createLogger } from '@shared/lib/logger';
-
-const { debug } = createLogger('MDMenu');
 
 const { targetEl, outsideIgnore } = defineProps<{
   targetEl: MaybeElement;
@@ -37,14 +34,6 @@ const rootEl = useTemplateRef<MaybeElement>('rootEl');
 const targetRef = computed(() => targetEl);
 
 const targetTeleport = useClosestParentFrame();
-
-watch(
-  targetTeleport,
-  (el) => {
-    debug('targetTeleport', el);
-  },
-  { immediate: true },
-);
 
 const modelShow = defineModel<boolean>('show', { default: false });
 

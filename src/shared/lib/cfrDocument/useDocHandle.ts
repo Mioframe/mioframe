@@ -1,5 +1,4 @@
-import type { MaybeRefOrGetter } from 'vue';
-import { computed, nextTick, ref, toValue, watch } from 'vue';
+import { nextTick, reactive, ref, watch } from 'vue';
 import { isUnknownRecord, deepReplaceJsonObject } from '../changeObject';
 import { defineReadonlyDeep } from '../readonlyDeep';
 import type { UnknownRecord } from 'type-fest';
@@ -10,9 +9,21 @@ import type {
   AMDocHandleChangePayload,
   AMDocHandleDeletePayload,
 } from '../automerge/automergeTypes';
-import { defineGlobalWeakCache, useGlobalWeakCache } from '../globalWeakCache';
+import {
+  createGlobalWeakCache,
+  defineGlobalWeakCache,
+} from '../globalWeakCache';
+import { tryOnScopeDispose } from '@vueuse/core';
+import type { ReadonlyObjectDeep } from 'type-fest/source/readonly-deep';
+import { once } from 'es-toolkit';
 
-const createDocHandleRefState = (docHandle: AMDocHandle) => {
+export type DocHandleRef = {
+  docRef: UnknownRecord;
+  doc: () => Promise<ReadonlyObjectDeep<AMDoc> | undefined>;
+  change: (callback: AMChangeFn) => void;
+};
+
+const createDocHandleRefState = (docHandle: AMDocHandle): DocHandleRef => {
   const docRef = ref<UnknownRecord>({});
 
   /**
@@ -37,8 +48,6 @@ const createDocHandleRefState = (docHandle: AMDocHandle) => {
     programReplaceDocRef(doc);
   };
 
-  docHandle.addListener('change', onChangeDoc);
-
   /**
    * Обработка события удаления из automerge
    */
@@ -46,15 +55,13 @@ const createDocHandleRefState = (docHandle: AMDocHandle) => {
     programReplaceDocRef(undefined);
   };
 
-  docHandle.addListener('delete', onDeleteDoc);
-
   /**
    * Обработка изменения состояния пользователем
    */
   const watchHandle = watch(
     docRef,
     (docState) => {
-      if (docState) {
+      if (isUnknownRecord(docState)) {
         docHandle.change((doc) => {
           if (isUnknownRecord(doc)) {
             deepReplaceJsonObject(doc, docState);
@@ -66,19 +73,9 @@ const createDocHandleRefState = (docHandle: AMDocHandle) => {
   );
 
   /**
-   * Отключение обработок событий
-   */
-  const dispose = () => {
-    docHandle.removeListener('change', onChangeDoc);
-    docHandle.removeListener('delete', onDeleteDoc);
-
-    watchHandle.stop();
-  };
-
-  /**
    * Чтение документа и актуализация состояния
    */
-  const read = async () => {
+  const doc = async () => {
     const doc: AMDoc | undefined = await docHandle.doc();
 
     programReplaceDocRef(doc);
@@ -86,42 +83,38 @@ const createDocHandleRefState = (docHandle: AMDocHandle) => {
     return defineReadonlyDeep(doc);
   };
 
-  return {
-    doc: docRef,
-    dispose,
-    read,
+  const change = (callback: AMChangeFn) => {
+    docHandle.change(callback);
   };
+
+  tryOnScopeDispose(() => {
+    docHandle.removeListener('change', onChangeDoc);
+    docHandle.removeListener('delete', onDeleteDoc);
+
+    watchHandle.stop();
+  });
+
+  const onceInit = once(() => {
+    docHandle.addListener('change', onChangeDoc);
+    docHandle.addListener('delete', onDeleteDoc);
+
+    void doc();
+  });
+
+  const docHandleRef: DocHandleRef = reactive({
+    get docRef() {
+      onceInit();
+      return docRef;
+    },
+    doc,
+    change,
+  });
+
+  return docHandleRef;
 };
 
-export const globalCacheDocHandle = defineGlobalWeakCache(
+export const useDocHandleRefApi = createGlobalWeakCache(
   createDocHandleRefState,
-  (_k, v) => {
-    void v.read();
-  },
-  (_k, v) => {
-    v?.dispose();
-  },
 );
 
-export const useDocHandle = (
-  docHandle: MaybeRefOrGetter<AMDocHandle | undefined>,
-) => {
-  const docHandleRef = computed(() => toValue(docHandle));
-
-  const change = (callback: AMChangeFn) => {
-    docHandleRef.value?.change(callback);
-  };
-
-  const { state } = useGlobalWeakCache(globalCacheDocHandle, docHandleRef);
-
-  return {
-    /**
-     * Изменяемое состояние документа
-     */
-    doc: computed(() => toValue(toValue(state)?.doc)),
-    /**
-     * Мутация документа
-     */
-    change,
-  };
-};
+export const useDocHandleRef = defineGlobalWeakCache(useDocHandleRefApi);

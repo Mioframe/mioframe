@@ -7,6 +7,7 @@ import DialogContainer from '@shared/ui/Dialog/Alert/DialogContainer.vue';
 import { RouterView } from 'vue-router';
 import { useIconStates } from '@shared/ui/Icon/useIconStates';
 import { useHead } from '@unhead/vue';
+import PerformanceOverlay from '@shared/ui/PerformanceOverlay.vue';
 
 const { addSnackbar } = useSnackbar();
 
@@ -40,6 +41,8 @@ addSnackbar({
   <SnackbarContainer />
 
   <TooltipContainer />
+
+  <PerformanceOverlay />
 </template>
 
 <style lang="css" scoped>

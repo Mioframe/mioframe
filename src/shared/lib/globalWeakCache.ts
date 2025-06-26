@@ -1,103 +1,107 @@
-import type { MaybeRefOrGetter } from '@vueuse/core';
 import { createGlobalState, tryOnScopeDispose } from '@vueuse/core';
-import { computed, shallowRef, toValue, watch } from 'vue';
+import type { ComputedRef } from 'vue';
+import { effectScope, watch, computed, shallowRef, toValue } from 'vue';
+import type { MaybeRefOrGetter } from '@vueuse/core';
+import { isUndefined, toString } from 'es-toolkit/compat';
 
-type GlobalWeakCache<K extends WeakKey, V extends object> = () => {
+type GlobalCache<K extends WeakKey, V> = {
+  getCache: (key: K) => V;
   tryDisposeCache: (key: K) => void;
-  getState: (key: K) => V;
 };
 
-/**
- * Global weak cache
- * to save memory on storing repetitive complex entities
- * @param createStateFn - entity constructor based on key reference
- * @param handleFirstInitial - callback after first entity created
- * @param handleDispose - callback before deleting entity
- * @returns
- */
-export const defineGlobalWeakCache = <K extends WeakKey, V extends object>(
-  createStateFn: (key: K) => V,
-  handleFirstInitial?: (key: K, value: V) => unknown,
-  handleDispose?: (key: K, value?: V) => unknown,
-): GlobalWeakCache<K, V> =>
-  createGlobalState(
-    (): { tryDisposeCache: (key: K) => void; getState: (key: K) => V } => {
-      const cacheValueState = new WeakMap<K, V>();
+type UseGlobalCacheApi<K extends WeakKey, V> = () => GlobalCache<K, V>;
 
-      const usersState = new WeakMap<K, number>();
+export const createGlobalWeakCache = <K extends WeakKey, V extends object>(
+  setupCache: (key: K) => V,
+): UseGlobalCacheApi<K, V> =>
+  createGlobalState((): GlobalCache<K, V> => {
+    const cacheMap = new WeakMap<
+      K,
+      { scope: ReturnType<typeof effectScope>; state: V }
+    >();
+    const usageCount = new WeakMap<K, number>();
 
-      const getState = (key: K) => {
-        const countUsers = (usersState.get(key) ?? 0) + 1;
-        usersState.set(key, countUsers);
+    const getCache = (key: K): V => {
+      const existing = cacheMap.get(key);
+      if (existing) {
+        usageCount.set(key, (usageCount.get(key) ?? 0) + 1);
+        return existing.state;
+      }
+      const scope = effectScope();
+      const maybeState = scope.run(() => setupCache(key));
+      if (maybeState === undefined) {
+        throw new Error(
+          `Unable to initialize cache for key "${toString(key)}": effectScope is inactive.`,
+        );
+      }
+      const state = maybeState;
+      cacheMap.set(key, { scope, state });
+      usageCount.set(key, 1);
+      return state;
+    };
 
-        const cachedValueState = cacheValueState.get(key);
+    function tryDisposeCache(key: K): void {
+      const prev = usageCount.get(key) ?? 0;
+      const next = Math.max(prev - 1, 0);
+      usageCount.set(key, next);
+      if (next === 0 && cacheMap.has(key)) {
+        const cache = cacheMap.get(key);
+        cache?.scope.stop();
+        cacheMap.delete(key);
+      }
+    }
 
-        if (cachedValueState) {
-          return cachedValueState;
-        }
+    return { getCache, tryDisposeCache };
+  });
 
-        const valueState = createStateFn(key);
-        cacheValueState.set(key, valueState);
+export const useGlobalWeakCacheByKey = <K extends WeakKey, V>(
+  useGlobalCache: () => GlobalCache<K, V>,
+  rawKey: MaybeRefOrGetter<K | undefined>,
+): ComputedRef<V | undefined> => {
+  const keyRef = computed(() => toValue(rawKey));
 
-        if (countUsers === 1) {
-          handleFirstInitial?.(key, valueState);
-        }
+  const stateRef = shallowRef<V>();
 
-        return valueState;
-      };
-
-      const tryDisposeCache = (key: K) => {
-        const oldCountUsers = usersState.get(key) ?? 0;
-
-        usersState.set(key, oldCountUsers - 1);
-
-        if ((usersState.get(key) ?? 0) <= 0) {
-          const cachedValueState = cacheValueState.get(key);
-          handleDispose?.(key, cachedValueState);
-          cacheValueState.delete(key);
-        }
-      };
-
-      return {
-        tryDisposeCache,
-        getState,
-      };
-    },
-  );
-
-export const useGlobalWeakCache = <K extends WeakKey, V extends object>(
-  globalWeakCache: GlobalWeakCache<K, V>,
-  key: MaybeRefOrGetter<K | undefined>,
-) => {
-  const { getState, tryDisposeCache } = globalWeakCache();
-
-  const keyRef = computed(() => toValue(key));
-
-  const cachedState = shallowRef<V>();
+  const { getCache, tryDisposeCache } = useGlobalCache();
 
   watch(
     keyRef,
-    (key, oldKey) => {
-      if (oldKey) {
-        tryDisposeCache(oldKey);
+    (key, prevKey) => {
+      if (!isUndefined(prevKey)) {
+        tryDisposeCache(prevKey);
       }
-      if (key) {
-        cachedState.value = getState(key);
+      if (!isUndefined(key)) {
+        const state = getCache(key);
+        stateRef.value = state;
       } else {
-        cachedState.value = undefined;
+        stateRef.value = undefined;
       }
     },
-    { immediate: true },
+    { immediate: true, flush: 'sync' },
   );
 
   tryOnScopeDispose(() => {
     const key = toValue(keyRef);
-    if (key) {
+    if (!isUndefined(key)) {
       tryDisposeCache(key);
     }
   });
 
-  return {
-    state: computed(() => toValue(cachedState)),
-  };
+  return computed(() => stateRef.value);
 };
+
+/**
+ * @deprecated
+ */
+export const createUseGlobalWeakCache = <K extends WeakKey, V extends object>(
+  setupCache: (key: K) => V,
+) => {
+  const globalCache = createGlobalWeakCache(setupCache);
+
+  return defineGlobalWeakCache(globalCache);
+};
+
+export const defineGlobalWeakCache =
+  <K extends WeakKey, V>(useGlobalCacheApi: UseGlobalCacheApi<K, V>) =>
+  (rawKey: MaybeRefOrGetter<K | undefined>) =>
+    useGlobalWeakCacheByKey(useGlobalCacheApi, rawKey);
