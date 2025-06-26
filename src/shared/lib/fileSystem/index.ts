@@ -4,4 +4,6 @@ export { isFileFSEntry } from './FileFSEntry';
 export type { FileFSEntry } from './FileFSEntry';
 export { isEntryPath, isGeneralFSEntry } from './GeneralFSEntry';
 export type { EntryPath, GeneralFSEntry } from './GeneralFSEntry';
-export { useDirectory } from './useDirectory';
+export { useDirectory } from './useDirectoryFSEntryRef';
+
+// TODO: выделить работу с репозиториями в отдельный поток

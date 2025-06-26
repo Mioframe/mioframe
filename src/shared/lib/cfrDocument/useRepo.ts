@@ -1,116 +1,165 @@
-import type { Repo } from '@automerge/automerge-repo';
+import type { DocumentId, Repo } from '@automerge/automerge-repo';
 import type { zodDocumentContent } from './types';
 import type { output } from 'zod/v4-mini';
-import type { MaybeRefOrGetter } from 'vue';
-import { computed, shallowReactive, toRef, toValue, watch } from 'vue';
-import { from } from 'ix/iterable';
-import { createLogger } from '../logger';
-import { tryOnScopeDispose } from '@vueuse/core';
+import type { MaybeRefOrGetter, ShallowReactive } from 'vue';
+import {
+  computed,
+  reactive,
+  shallowReactive,
+  toRef,
+  toValue,
+  watch,
+} from 'vue';
 import type { UnknownRecord } from 'type-fest';
 import type { AMDocHandle, AMDocumentId } from '../automerge/automergeTypes';
+import {
+  createGlobalWeakCache,
+  defineGlobalWeakCache,
+} from '../globalWeakCache';
+import { tryOnScopeDispose } from '@vueuse/core';
+import { isEqual, once, throttle } from 'es-toolkit';
 
-const { debug, watchDebug } = createLogger('useRepo');
+export type RepoRef = {
+  create: <Z extends typeof zodDocumentContent>(
+    initialValue: output<Z>,
+  ) => void;
+  remove: (documentId: AMDocumentId) => void;
+  find: (documentList: DocumentId[] | Set<DocumentId>) => void;
+  map: ShallowReactive<Map<DocumentId, AMDocHandle>>;
+};
 
-// TODO: добавить кеширование как defineCachedDocHandle
+const useRepoRefCacheApi = createGlobalWeakCache((repo: Repo): RepoRef => {
+  const mapRef = shallowReactive<Map<AMDocumentId, AMDocHandle>>(new Map());
 
-export const useRepo = (
-  repo: MaybeRefOrGetter<Repo | undefined>,
-  searchDocuments?: MaybeRefOrGetter<Iterable<AMDocumentId>>,
-) => {
-  const currentRepo = toRef(() => toValue(repo));
-
-  watchDebug('currentRepo', currentRepo);
-
-  const documentsForSearch = toRef(() => toValue(searchDocuments));
-
-  const documentsMap = shallowReactive<Map<AMDocumentId, AMDocHandle>>(
-    new Map(),
-  );
-
-  const onDocument = ({ handle }: { handle: AMDocHandle; isNew: boolean }) => {
-    if (!documentsMap.has(handle.documentId)) {
-      documentsMap.set(handle.documentId, handle);
+  const addDocToState = (docHandle: AMDocHandle) => {
+    const documentId = docHandle.documentId;
+    if (!mapRef.has(documentId)) {
+      mapRef.set(documentId, docHandle);
     }
   };
 
-  const onDeleteDocument = ({ documentId }: { documentId: AMDocumentId }) => {
-    documentsMap.delete(documentId);
+  const removeDocFromState = (documentId: AMDocumentId) => {
+    mapRef.delete(documentId);
   };
 
-  const documents = computed((): Map<AMDocumentId, AMDocHandle> => {
-    return documentsMap;
-  });
+  const onDocument = ({ handle }: { handle: AMDocHandle; isNew: boolean }) => {
+    addDocToState(handle);
+  };
 
-  watchDebug('documents', documents);
+  const onDeleteDocument = ({ documentId }: { documentId: AMDocumentId }) => {
+    removeDocFromState(documentId);
+  };
+
+  const addEventListeners = () => {
+    repo.on('document', onDocument);
+
+    repo.on('delete-document', onDeleteDocument);
+  };
 
   const create = <Z extends typeof zodDocumentContent>(
     initialValue: output<Z>,
   ) => {
-    const repo = toValue(currentRepo);
-    if (!repo) {
-      throw new Error('repository missing');
-    }
     repo.create(initialValue);
   };
 
   const remove = (documentId: AMDocumentId) => {
-    const repo = toValue(currentRepo);
-    if (!repo) {
-      throw new Error('repository missing');
-    }
-
     repo.delete(documentId);
   };
 
+  const documentSearchSet = shallowReactive<Set<DocumentId>>(new Set());
+
+  const documentSearchSetWatchHandle = watch(
+    documentSearchSet,
+    throttle((documentSearchSet: Set<DocumentId>) => {
+      documentSearchSet.forEach((documentId) => {
+        if (!mapRef.has(documentId)) {
+          // TODO: repo.find длительная операция
+          const handle = repo.find<UnknownRecord>(documentId);
+          addDocToState(handle);
+        }
+      });
+    }, 500),
+  );
+
+  documentSearchSetWatchHandle.pause();
+
+  const find = (documentList: DocumentId[] | Set<DocumentId>) => {
+    documentList.forEach((documentId) => {
+      documentSearchSet.add(documentId);
+    });
+  };
+
+  tryOnScopeDispose(() => {
+    repo.off('document', onDocument);
+
+    repo.off('delete-document', onDeleteDocument);
+  });
+
+  const onceInit = once(() => {
+    addEventListeners();
+    documentSearchSetWatchHandle.resume();
+  });
+
+  const repoRef: RepoRef = shallowReactive({
+    create,
+    remove,
+    find,
+    get map() {
+      onceInit();
+      return mapRef;
+    },
+  });
+
+  return repoRef;
+});
+
+const useRepoCache = defineGlobalWeakCache(useRepoRefCacheApi);
+
+export const useRepoRef = (
+  repo: MaybeRefOrGetter<Repo | undefined>,
+  searchDocuments?: MaybeRefOrGetter<AMDocumentId[] | Set<AMDocumentId>>,
+) => {
+  const cache = useRepoCache(repo);
+
+  const documentsForSearch = toRef(() => toValue(searchDocuments));
+
+  const create = <Z extends typeof zodDocumentContent>(
+    initialValue: output<Z>,
+  ) => {
+    if (!cache.value) {
+      throw new Error('repository missing');
+    }
+    cache.value.create(initialValue);
+  };
+
+  const remove = (documentId: AMDocumentId) => {
+    if (!cache.value) {
+      throw new Error('repository missing');
+    }
+    cache.value.remove(documentId);
+  };
+
+  const map = computed(() => cache.value?.map);
+
+  const find = (documentList: DocumentId[] | Set<DocumentId>) =>
+    cache.value?.find(documentList);
+
   watch(
-    [currentRepo, documentsForSearch],
-    ([newRepo, documentsForSearch], [oldRepo]) => {
-      if (newRepo !== oldRepo) {
-        debug('newRepo !== oldRepo');
-
-        documentsMap.clear();
-
-        if (oldRepo) {
-          oldRepo.off('document', onDocument);
-
-          oldRepo.off('delete-document', onDeleteDocument);
-        }
-        if (newRepo) {
-          newRepo.on('document', onDocument);
-
-          newRepo.on('delete-document', onDeleteDocument);
-        }
-      }
-
-      debug('watch documentsForSearch', documentsForSearch);
-      if (documentsForSearch && newRepo) {
-        from(documentsForSearch).forEach((documentId) => {
-          debug('forEach', documentId, newRepo);
-          if (!documentsMap.has(documentId)) {
-            debug('!documentsMap.has', documentId, newRepo);
-            const handle = newRepo.find<UnknownRecord>(documentId);
-            debug('documentsMap.set(documentId, handle)');
-            documentsMap.set(documentId, handle);
-          }
-        });
+    documentsForSearch,
+    (documentsForSearch, old) => {
+      if (documentsForSearch && !isEqual(documentsForSearch, old)) {
+        find(documentsForSearch);
       }
     },
     { immediate: true, deep: true },
   );
 
-  tryOnScopeDispose(() => {
-    debug('tryOnScopeDispose');
-    const repo = toValue(currentRepo);
-    if (repo) {
-      repo.off('document', onDocument);
-
-      repo.off('delete-document', onDeleteDocument);
-    }
-  });
-
-  return {
+  const repoRef = reactive({
     create,
     remove,
-    documents,
-  };
+    map,
+    find,
+  });
+
+  return repoRef;
 };

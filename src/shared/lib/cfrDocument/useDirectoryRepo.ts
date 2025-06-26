@@ -1,137 +1,121 @@
 import { Repo } from '@automerge/automerge-repo';
-import {
-  type MaybeRefOrGetter,
-  toRef,
-  toValue,
-  shallowRef,
-  watch,
-  computed,
-} from 'vue';
+import { shallowRef, watch, computed, reactive } from 'vue';
 import { zodAutomergeFileName } from '../fsStorageAdapter';
 import {
   createStorageAdapter as createFSStorageAdapter,
   fileNameToPartialKey,
 } from '../fsStorageAdapter/createFSStorageAdapter';
-import { useDirectory, type DirectoryFSEntry } from '../fileSystem';
+import { type DirectoryFSEntry } from '../fileSystem';
 import { zodIs } from '../validateZodScheme';
-import { useRepo } from './useRepo';
-import { createLogger } from '../logger';
-import { useReduceIterable, useReduceMap } from '../useReduce';
-import { WeakValueMap } from '../WeakValueMap';
-import type { AMDocumentId } from '../automerge/automergeTypes';
-
-const { debug, watchDebug } = createLogger('useDirectoryRepo');
-
-const cacheRepo = new WeakValueMap<DirectoryFSEntry, Repo>();
+import type { RepoRef } from './useRepo';
+import { useRepoRef } from './useRepo';
+import {
+  createGlobalWeakCache,
+  defineGlobalWeakCache,
+} from '../globalWeakCache';
+import { useDirectoryFSEntryRef } from '../fileSystem/useDirectoryFSEntryRef';
+import type { AMDocumentId } from '../automerge';
+import { isEqual } from 'es-toolkit';
 
 // FIXME: при удалении файла, не пропадает документ
+
+export interface DirectoryRepo extends RepoRef {}
+
+const useDirectoryRepoRefCacheApi = createGlobalWeakCache(
+  (directory: DirectoryFSEntry): DirectoryRepo => {
+    const repoState = shallowRef<Repo>();
+
+    const directoryRef = useDirectoryFSEntryRef(directory);
+
+    const directoryDocumentIds = computed<AMDocumentId[]>(
+      (oldState): AMDocumentId[] => {
+        const entriesMap = directoryRef.value?.entries;
+
+        const list: AMDocumentId[] = [];
+
+        if (entriesMap) {
+          for (const [name] of entriesMap) {
+            if (zodIs(name, zodAutomergeFileName)) {
+              const maybePartialKey = fileNameToPartialKey(name);
+
+              if (maybePartialKey) {
+                const [id] = maybePartialKey;
+                if (!list.includes(id)) {
+                  list.push(id);
+                }
+              }
+            }
+          }
+        }
+
+        if (oldState && isEqual(oldState, list)) {
+          return oldState;
+        }
+
+        return list;
+      },
+    );
+
+    const hasDocumentsFile = computed(() => {
+      const entriesMap = directoryRef.value?.entries;
+
+      if (entriesMap) {
+        for (const [name] of entriesMap) {
+          if (zodIs(name, zodAutomergeFileName)) {
+            return true;
+          }
+        }
+      }
+
+      return false;
+    });
+
+    const initialRepo = (): Repo => {
+      if (!repoState.value) {
+        repoState.value = new Repo({
+          storage: createFSStorageAdapter(directory),
+        });
+      }
+      return repoState.value;
+    };
+
+    watch(
+      hasDocumentsFile,
+      (hasDocuments) => {
+        if (hasDocuments) {
+          initialRepo();
+        }
+      },
+      { immediate: true, flush: 'sync' },
+    );
+
+    const repoRefs = useRepoRef(repoState, directoryDocumentIds);
+
+    const directoryRepo: DirectoryRepo = reactive({
+      map: computed(() => repoRefs.map ?? new Map()),
+      find: (...args: Parameters<typeof repoRefs.find>) => {
+        initialRepo();
+        repoRefs.find(...args);
+      },
+      create: (...args: Parameters<typeof repoRefs.create>) => {
+        initialRepo();
+        repoRefs.create(...args);
+      },
+      remove: (...args: Parameters<typeof repoRefs.remove>) => {
+        initialRepo();
+        repoRefs.remove(...args);
+      },
+    });
+
+    return directoryRepo;
+  },
+);
 
 /**
  * Использование директории как репозитория документов
  * @param directory - директория для хранения документов
  * @returns
  */
-export const useDirectoryRepo = (
-  directory: MaybeRefOrGetter<DirectoryFSEntry | undefined>,
-) => {
-  debug('start');
-
-  const currentDirectory = toRef(() => toValue(directory));
-
-  const { entries: directoryEntries, ready: directoryReady } =
-    useDirectory(currentDirectory);
-
-  const directoryEntriesNames = useReduceMap(
-    directoryEntries,
-    (acc: string[], _, name) => {
-      if (!acc.includes(name)) {
-        acc.push(name);
-      }
-    },
-    [],
-  );
-
-  const hasDocumentFile = computed((): boolean =>
-    directoryEntriesNames.value.some((name) =>
-      zodIs(name, zodAutomergeFileName),
-    ),
-  );
-
-  watchDebug('hasDocumentFile', hasDocumentFile);
-
-  const currentRepo = shallowRef<Repo>();
-
-  watchDebug('currentRepo', currentRepo);
-
-  watch(
-    currentDirectory,
-    () => {
-      currentRepo.value = undefined;
-    },
-    { immediate: true },
-  );
-
-  const initialRepo = (): Repo => {
-    if (!currentDirectory.value) {
-      throw new Error('missing directory');
-    }
-    if (!currentRepo.value) {
-      const cachedRepo = cacheRepo.get(currentDirectory.value);
-      if (cachedRepo) {
-        currentRepo.value = cachedRepo;
-      } else {
-        const newRepo = new Repo({
-          storage: createFSStorageAdapter(currentDirectory.value),
-        });
-        cacheRepo.set(currentDirectory.value, newRepo);
-        currentRepo.value = newRepo;
-      }
-    }
-    return currentRepo.value;
-  };
-
-  watch(
-    [directoryReady, currentRepo, hasDocumentFile],
-    ([directoryReady, currentRepo, hasDocumentFile]) => {
-      if (directoryReady && !currentRepo && hasDocumentFile) {
-        initialRepo();
-      }
-    },
-    { immediate: true },
-  );
-
-  const directoryDocumentIdList = useReduceIterable(
-    directoryEntries,
-    (acc, [fileName]) => {
-      if (zodIs(fileName, zodAutomergeFileName)) {
-        const id = fileNameToPartialKey(fileName)?.[0];
-        if (id) {
-          acc.add(id);
-        }
-      }
-    },
-    new Set<AMDocumentId>(),
-  );
-
-  const {
-    documents,
-    create: repoCreate,
-    remove: repoRemove,
-  } = useRepo(currentRepo, directoryDocumentIdList);
-
-  const create = (...params: Parameters<typeof repoCreate>) => {
-    initialRepo();
-    repoCreate(...params);
-  };
-
-  const remove = (...params: Parameters<typeof repoRemove>) => {
-    initialRepo();
-    repoRemove(...params);
-  };
-
-  return {
-    create,
-    remove,
-    documents,
-  };
-};
+export const useDirectoryRepo = defineGlobalWeakCache(
+  useDirectoryRepoRefCacheApi,
+);

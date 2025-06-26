@@ -1,25 +1,36 @@
-import { computed, ref, shallowReactive, type MaybeRefOrGetter } from 'vue';
+import type { ShallowReactive } from 'vue';
+import {
+  computed,
+  reactive,
+  ref,
+  shallowReactive,
+  type MaybeRefOrGetter,
+} from 'vue';
 import type { DirectoryFSEntry } from './DirectoryFSEntry';
 import type { FileFSEntry } from './FileFSEntry';
-import { createLogger } from '../logger';
-import { defineGlobalWeakCache, useGlobalWeakCache } from '../globalWeakCache';
+import {
+  createGlobalWeakCache,
+  defineGlobalWeakCache,
+} from '../globalWeakCache';
+import { tryOnScopeDispose } from '@vueuse/core';
+import { once } from 'es-toolkit';
 
-const { debug } = createLogger('useDirectory');
-
+/**
+ * @deprecated - use useDirectoryRef
+ * @param directoryFSEntry
+ * @returns
+ */
 export const useDirectory = (
-  directoryEntry: MaybeRefOrGetter<DirectoryFSEntry | undefined>,
+  directoryFSEntry: MaybeRefOrGetter<DirectoryFSEntry | undefined>,
 ) => {
-  const { state: directoryRef } = useGlobalWeakCache(
-    directoryRefCache,
-    directoryEntry,
-  );
+  const cache = useDirectoryFSEntryRef(directoryFSEntry);
 
   const createDirectory = async (name: string): Promise<DirectoryFSEntry> => {
-    if (!directoryRef.value) {
+    if (!cache.value) {
       throw new Error('missing directory');
     }
 
-    const newEntry = await directoryRef.value.createDirectory(name);
+    const newEntry = await cache.value.createDirectory(name);
 
     return newEntry;
   };
@@ -28,42 +39,53 @@ export const useDirectory = (
     name: string,
     file?: FileSystemWriteChunkType,
   ): Promise<FileFSEntry> => {
-    if (!directoryRef.value) {
+    if (!cache.value) {
       throw new Error('missing directory');
     }
 
-    const newEntry = await directoryRef.value.writeFile(name, file);
+    const newEntry = await cache.value.writeFile(name, file);
 
     return newEntry;
   };
 
   const removeByName = async (name: string): Promise<void> => {
-    debug('removeByName', { name });
-
-    if (!directoryRef.value) {
+    if (!cache.value) {
       throw new Error('missing directory');
     }
 
-    await directoryRef.value.removeByName(name);
+    await cache.value.removeByName(name);
   };
 
-  const useDirectoryInterface = {
-    entries: computed(() => directoryRef.value?.entries.value),
-    loading: computed(() => directoryRef.value?.loading.value),
-    error: computed(() => directoryRef.value?.error.value),
-    reload: () => directoryRef.value?.reload(),
+  const useDirectoryInterface = reactive({
+    entries: computed(() => cache.value?.entries),
+    loading: computed(() => cache.value?.loading),
+    error: computed(() => cache.value?.error),
+    reload: () => cache.value?.reload(),
     createDirectory,
     writeFile,
     removeByName,
-    ready: computed(() => directoryRef.value?.ready),
-  };
+    ready: computed(() => cache.value?.ready),
+  });
 
   return useDirectoryInterface;
 };
 
-export const directoryRefCache = defineGlobalWeakCache(
-  (directoryFSEntry: DirectoryFSEntry) => {
-    let read = false;
+type DirectoryFSEntryRef = {
+  entries: ShallowReactive<Map<string, FileFSEntry | DirectoryFSEntry>>;
+  loading: boolean;
+  error: Error | undefined;
+  ready: boolean;
+  reload: () => Promise<void>;
+  writeFile: (
+    name: string,
+    file?: FileSystemWriteChunkType,
+  ) => Promise<FileFSEntry>;
+  removeByName: (name: string) => Promise<void>;
+  createDirectory: (name: string) => Promise<DirectoryFSEntry>;
+};
+
+export const useDirectoryFSEntryCache = createGlobalWeakCache(
+  (directoryFSEntry: DirectoryFSEntry): DirectoryFSEntryRef => {
     const readyRef = ref(false);
     const loadingRef = ref(false);
     const errorRef = ref<Error>();
@@ -72,8 +94,6 @@ export const directoryRefCache = defineGlobalWeakCache(
     >(new Map());
 
     const loadDirectory = async () => {
-      read = true;
-
       readyRef.value = false;
 
       loadingRef.value = true;
@@ -105,11 +125,6 @@ export const directoryRefCache = defineGlobalWeakCache(
       directoryFSEntry.on('remove', onRemove);
     };
 
-    const removeListeners = () => {
-      directoryFSEntry.off('add', onAdd);
-      directoryFSEntry.off('remove', onRemove);
-    };
-
     const writeFile = async (
       name: string,
       file?: FileSystemWriteChunkType,
@@ -135,30 +150,36 @@ export const directoryRefCache = defineGlobalWeakCache(
       return newEntry;
     };
 
-    return {
-      entries: computed(() => {
-        if (!read) {
-          void loadDirectory();
-          read = true;
-        }
+    const onDisposeCache = () => {
+      directoryFSEntry.off('add', onAdd);
+      directoryFSEntry.off('remove', onRemove);
+    };
+
+    tryOnScopeDispose(onDisposeCache);
+
+    const onceInit = once(() => {
+      addListeners();
+      void loadDirectory();
+    });
+
+    const directoryCacheApiRef: DirectoryFSEntryRef = reactive({
+      get entries() {
+        onceInit();
         return entriesReactiveState;
-      }),
-      loading: computed(() => loadingRef.value),
-      error: computed(() => errorRef.value),
-      ready: computed(() => readyRef.value),
+      },
+      loading: loadingRef,
+      error: errorRef,
+      ready: readyRef,
       reload: loadDirectory,
-      addListeners,
-      removeListeners,
       writeFile,
       removeByName,
       createDirectory,
-    };
+    });
+
+    return directoryCacheApiRef;
   },
-  (_key, value) => {
-    value.addListeners();
-    void value.reload();
-  },
-  (_key, value) => {
-    value?.removeListeners();
-  },
+);
+
+export const useDirectoryFSEntryRef = defineGlobalWeakCache(
+  useDirectoryFSEntryCache,
 );
