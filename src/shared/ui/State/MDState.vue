@@ -19,13 +19,19 @@ const { is = 'div', disableRipple } = defineProps<{
   disableRipple?: boolean;
 }>();
 
-const enableRipple = computed(
-  () => !disableRipple || ['button', 'a'].includes(is),
-);
+const emit = defineEmits<{
+  click: [MouseEvent];
+  mouseup: [MouseEvent];
+  mousedown: [MouseEvent];
+}>();
 
 defineSlots<{
   default: () => unknown;
 }>();
+
+const enableRipple = computed(
+  () => !disableRipple || ['button', 'a'].includes(is),
+);
 
 const {
   onPressUp,
@@ -68,13 +74,20 @@ const onTouchCancel = () => {
   onPressUp();
 };
 
-const onMouseDown = ({ clientX, clientY, currentTarget }: MouseEvent) => {
+const onMouseDown = (e: MouseEvent) => {
+  emit('mousedown', e);
+
+  const { clientX, clientY, currentTarget } = e;
+
   if (currentTarget instanceof Element) {
+    e.stopPropagation();
     onPressDown(currentTarget, clientX, clientY);
   }
 };
 
-const onMouseUp = () => {
+const onMouseUp = (e: MouseEvent) => {
+  emit('mouseup', e);
+  e.stopPropagation();
   onPressUp();
 };
 
@@ -108,7 +121,8 @@ const onKeyUp = () => {
 
 const { vibrate } = useVibrate();
 
-const onClickState = () => {
+const onClickState = (e: MouseEvent) => {
+  emit('click', e);
   vibrate([10]);
 };
 
@@ -245,17 +259,16 @@ tryOnScopeDispose(() => {
 
   &:hover,
   &.md-state_hover {
-    .md-state__layer {
+    > .md-state__layer {
       background-color: rgb(from var(--md-content-color) r g b / 8%);
     }
   }
 
-  &:active,
   &.md-state_pressed {
-    .md-state__layer {
+    > .md-state__layer {
       background-color: rgb(from var(--md-content-color) r g b / 10%);
     }
-    .md-state__ripple {
+    > .md-state__ripple {
       --md-ripple-duration: var(--md-ripple-duration-long);
     }
   }
@@ -270,7 +283,7 @@ tryOnScopeDispose(() => {
     outline-offset: var(--md-focus-indicator-offset);
     z-index: 1;
 
-    .md-state__layer {
+    > .md-state__layer {
       background-color: rgb(from var(--md-content-color) r g b / 10%);
     }
   }
@@ -285,11 +298,11 @@ tryOnScopeDispose(() => {
     z-index: 1;
     border-radius: 6step !important;
 
-    .md-state__layer {
+    > .md-state__layer {
       /* transition-duration: 0s; */
       background-color: rgb(from var(--md-content-color) r g b / 16%);
     }
-    .md-state__ripple {
+    > .md-state__ripple {
       opacity: 0;
       /* transition-duration: 0s; */
 

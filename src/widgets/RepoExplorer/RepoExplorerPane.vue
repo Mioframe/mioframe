@@ -3,7 +3,6 @@ import { computed, ref, shallowRef } from 'vue';
 import { DirectoryCreateDialog } from '@feature/directoryCreate';
 import {
   isDirectoryRef,
-  useDirectory,
   type DirectoryFSEntry,
   type FileFSEntry,
 } from '@shared/lib/fileSystem';
@@ -13,8 +12,6 @@ import { FSEntryRemoveDialog } from '@feature/entryRemove';
 import { MDNavigationPath } from '@shared/ui/NavigationPath';
 import { DocumentCreationDialog } from '@feature/documentCreate';
 import type { DocumentContent } from '@shared/lib/cfrDocument';
-import { useDirectoryRepo } from '@shared/lib/cfrDocument';
-import { createLogger } from '@shared/lib/logger';
 import { MDListContainer } from '@shared/ui/Lists';
 import { CFRDocumentMDListItem } from '@entity/cfrDocument';
 import { FSEntryMDListItem } from '@entity/fsEntry';
@@ -30,8 +27,8 @@ import type {
   AMDocHandle,
   AMDocumentId,
 } from '@shared/lib/automerge/automergeTypes';
-
-const { watchDebug, debug } = createLogger('RepoExplorerWidget.vue');
+import { useDirectoryFSEntryRef } from '@shared/lib/fileSystem/useDirectoryFSEntryRef';
+import { useDirectoryRepo } from '@shared/lib/cfrDocument/useDirectoryRepo';
 
 const emit = defineEmits<{
   clickDocument: [id: AMDocumentId, doc: AMDocHandle];
@@ -58,14 +55,9 @@ const directoryPath = computed(
   () => directoryState.value?.path.map((name) => ({ name })) ?? [],
 );
 
-watchDebug('currentDirectory', currentDirectory);
-
-const { entries: currentDirectoryEntries, removeByName: removeEntryByName } =
-  useDirectory(currentDirectory);
+const directoryRef = useDirectoryFSEntryRef(currentDirectory);
 
 const onClickPath = async (indexPath: number) => {
-  debug('onClickPath', indexPath);
-
   const start = indexPath + 1;
 
   if (directoryState.value?.path) {
@@ -99,14 +91,14 @@ const onClickCreateDocument = () => {
   }
 };
 
-const {
-  documents: currentRepoDocuments,
-  create: createDocument,
-  remove: removeDocument,
-} = useDirectoryRepo(currentDirectory);
+const directoryRepoRef = useDirectoryRepo(currentDirectory);
+
+const currentRepoDocuments = computed(
+  () => directoryRepoRef.value?.map,
+);
 
 const onCreateNewDocument = (document: DocumentContent) => {
-  createDocument(document);
+  directoryRepoRef.value?.create(document);
   showFormNewDocument.value = false;
 };
 
@@ -119,8 +111,7 @@ const onCreateDirectory = async (name: string) => {
 };
 
 const onRemoveEntry = async (name: string) => {
-  debug('onRemoveEntry', name);
-  await removeEntryByName(name);
+  await directoryRef.value?.removeByName(name);
   entryKeyToRemove.value = undefined;
 };
 
@@ -192,12 +183,12 @@ const documentIdToRemove = shallowRef<AMDocumentId>();
 
 const documentToRemove = computed(() =>
   documentIdToRemove.value
-    ? currentRepoDocuments.value.get(documentIdToRemove.value)
+    ? currentRepoDocuments.value?.get(documentIdToRemove.value)
     : undefined,
 );
 
 const onDocumentRemoveApply = (documentId: AMDocumentId) => {
-  removeDocument(documentId);
+  directoryRepoRef.value?.remove(documentId);
   documentIdToRemove.value = undefined;
 };
 
@@ -225,7 +216,7 @@ const onRenameEntry = async (newName: string) => {
   loadingRename.value += 1;
   try {
     if (entryKeyToRename.value) {
-      const entry = currentDirectoryEntries.value?.get(entryKeyToRename.value);
+      const entry = directoryRef.value?.entries.get(entryKeyToRename.value);
       if (entry) {
         await entry.rename(newName);
         entryKeyToRename.value = undefined;
@@ -276,7 +267,7 @@ const onRenameEntry = async (newName: string) => {
         </CFRDocumentMDListItem>
 
         <FSEntryMDListItem
-          v-for="[entryKey, entry] in currentDirectoryEntries"
+          v-for="[entryKey, entry] in directoryRef?.entries"
           :key="entryKey"
           is-button
           :entry
