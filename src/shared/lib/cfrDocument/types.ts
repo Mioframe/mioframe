@@ -3,7 +3,7 @@ import { int, object, optional, string, unknown } from 'zod/v4-mini';
 import type { FileForStorageAdapter } from '../fsStorageAdapter';
 import type { ItemWithChildren } from '@shared/lib/useIterable';
 
-import type { ComputedRef, Reactive } from 'vue';
+import type { Reactive } from 'vue';
 import type { AMDocumentId } from '../automerge/automergeTypes';
 
 export const zodDocumentContent = object({
@@ -16,13 +16,11 @@ export const zodDocumentContent = object({
 /**
  * Conflict-free Replicated Document
  */
-export type DocumentContent = output<typeof zodDocumentContent>;
+export type CFRDocumentContent = output<typeof zodDocumentContent>;
 
-export interface UseCFRDocument {
-  content: ComputedRef<DocumentContent | undefined>;
-  name: ComputedRef<string | undefined>;
-  documentType: ComputedRef<string | undefined>;
-  change: (callback: (doc: DocumentContent) => void) => void;
+export interface CFRDocument {
+  content: CFRDocumentContent | undefined;
+  change: (callback: (doc: CFRDocumentContent) => void) => void;
 }
 
 /**
@@ -31,7 +29,7 @@ export interface UseCFRDocument {
  */
 export interface RepoRef
   extends Reactive<{
-    documents: Iterable<[AMDocumentId, UseCFRDocument]>;
+    documents: Iterable<[AMDocumentId, CFRDocument]>;
   }> {
   /**
    * Создание документа
@@ -40,7 +38,7 @@ export interface RepoRef
    */
   create: <Z extends typeof zodDocumentContent>(
     initialValue: output<Z>,
-  ) => UseCFRDocument;
+  ) => CFRDocument;
 
   /**
    * Удаление документа

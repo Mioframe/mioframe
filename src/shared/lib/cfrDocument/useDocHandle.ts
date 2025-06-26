@@ -11,7 +11,7 @@ import type {
 } from '../automerge/automergeTypes';
 import {
   createGlobalWeakCache,
-  defineGlobalWeakCache,
+  defineGlobalWeakCacheRef,
 } from '../globalWeakCache';
 import { tryOnScopeDispose } from '@vueuse/core';
 import type { ReadonlyObjectDeep } from 'type-fest/source/readonly-deep';
@@ -117,4 +117,4 @@ export const useDocHandleRefApi = createGlobalWeakCache(
   createDocHandleRefState,
 );
 
-export const useDocHandleRef = defineGlobalWeakCache(useDocHandleRefApi);
+export const useDocHandleRef = defineGlobalWeakCacheRef(useDocHandleRefApi);

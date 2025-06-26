@@ -10,7 +10,7 @@ import type { DirectoryFSEntry } from './DirectoryFSEntry';
 import type { FileFSEntry } from './FileFSEntry';
 import {
   createGlobalWeakCache,
-  defineGlobalWeakCache,
+  defineGlobalWeakCacheRef,
 } from '../globalWeakCache';
 import { tryOnScopeDispose } from '@vueuse/core';
 import { once } from 'es-toolkit';
@@ -180,6 +180,6 @@ export const useDirectoryFSEntryCache = createGlobalWeakCache(
   },
 );
 
-export const useDirectoryFSEntryRef = defineGlobalWeakCache(
+export const useDirectoryFSEntryRef = defineGlobalWeakCacheRef(
   useDirectoryFSEntryCache,
 );

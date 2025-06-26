@@ -14,7 +14,7 @@ import type { UnknownRecord } from 'type-fest';
 import type { AMDocHandle, AMDocumentId } from '../automerge/automergeTypes';
 import {
   createGlobalWeakCache,
-  defineGlobalWeakCache,
+  defineGlobalWeakCacheRef,
 } from '../globalWeakCache';
 import { tryOnScopeDispose } from '@vueuse/core';
 import { isEqual, once, throttle } from 'es-toolkit';
@@ -113,7 +113,7 @@ const useRepoRefCacheApi = createGlobalWeakCache((repo: Repo): RepoRef => {
   return repoRef;
 });
 
-const useRepoCache = defineGlobalWeakCache(useRepoRefCacheApi);
+const useRepoCache = defineGlobalWeakCacheRef(useRepoRefCacheApi);
 
 export const useRepoRef = (
   repo: MaybeRefOrGetter<Repo | undefined>,

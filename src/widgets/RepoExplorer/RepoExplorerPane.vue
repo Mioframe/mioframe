@@ -11,7 +11,7 @@ import { MDSymbol } from '@shared/ui/Icon';
 import { FSEntryRemoveDialog } from '@feature/entryRemove';
 import { MDNavigationPath } from '@shared/ui/NavigationPath';
 import { DocumentCreationDialog } from '@feature/documentCreate';
-import type { DocumentContent } from '@shared/lib/cfrDocument';
+import type { CFRDocumentContent } from '@shared/lib/cfrDocument';
 import { MDListContainer } from '@shared/ui/Lists';
 import { CFRDocumentMDListItem } from '@entity/cfrDocument';
 import { FSEntryMDListItem } from '@entity/fsEntry';
@@ -97,7 +97,7 @@ const currentRepoDocuments = computed(
   () => directoryRepoRef.value?.map,
 );
 
-const onCreateNewDocument = (document: DocumentContent) => {
+const onCreateNewDocument = (document: CFRDocumentContent) => {
   directoryRepoRef.value?.create(document);
   showFormNewDocument.value = false;
 };

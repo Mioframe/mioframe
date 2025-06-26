@@ -21,7 +21,7 @@ import type {
 } from './state';
 export * from './state';
 import { zodDatabaseState } from './state';
-import type { DocumentContent } from '../cfrDocument';
+import type { CFRDocumentContent } from '../cfrDocument';
 import { zodDocumentContent } from '../cfrDocument';
 import type { ComputedRef } from 'vue';
 import type { RecordEntries } from '../objectEntries';
@@ -54,7 +54,7 @@ export type DatabaseDocumentWithContent = output<
   typeof zodDatabaseDocumentWithContent
 >;
 
-export type MutationFn = (doc: DocumentContent) => unknown;
+export type MutationFn = (doc: CFRDocumentContent) => unknown;
 
 export type UseDatabaseDocument = {
   /**
