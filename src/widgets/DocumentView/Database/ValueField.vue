@@ -1,8 +1,12 @@
 <script setup lang="ts">
-import { BooleanValueField, zodBooleanProperty } from '@entity/databaseBoolean';
-import { DateValueField, zodDateProperty } from '@entity/databaseDate';
-import { NumberValueField, zodNumberProperty } from '@entity/databaseNumber';
-import { StringValueField, zodStringProperty } from '@entity/databaseString';
+import { zodBooleanProperty } from '@entity/databaseBoolean';
+import { zodDateProperty } from '@entity/databaseDate';
+import { zodNumberProperty } from '@entity/databaseNumber';
+import { zodStringProperty } from '@entity/databaseString';
+import { BooleanValueField } from '@feature/booleanValueEdit';
+import { DateValueField } from '@feature/dateValueEdit';
+import { NumberValueField } from '@feature/numberValueEdit';
+import { StringValueField } from '@feature/stringValueEdit';
 import type { DatabaseUnknownProperty } from '@shared/lib/databaseDocument';
 import { zodIs } from '@shared/lib/validateZodScheme';
 

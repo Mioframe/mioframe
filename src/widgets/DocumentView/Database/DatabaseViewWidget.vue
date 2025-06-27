@@ -1,5 +1,13 @@
 <script setup lang="ts">
 import { DbItemAddDialog } from '@feature/databaseItemEdit';
+import type {
+  DatabaseItem,
+  DatabaseItemId,
+  DatabasePropertyId,
+  DatabaseUnknownProperty,
+  DatabaseValue,
+  DatabaseViewId,
+} from '@shared/lib/databaseDocument';
 import { useDatabaseDocument } from '@shared/lib/databaseDocument';
 import { computed, ref, shallowRef, toRef, watchEffect } from 'vue';
 import { MDBottomSheet } from '@shared/ui/Sheets';
@@ -14,14 +22,6 @@ import { DatabasePropertyRemoveDialog } from '@feature/databasePropertyRemove';
 import { DatabasePropertyRenameDialog } from '@feature/databasePropertyRename';
 import { EmptySymbol } from '@shared/ui/EmptySymbol';
 import DatabaseViewPresetSettingsWidget from './DatabaseViewPresetSettingsWidget.vue';
-import type { DatabaseViewId } from '@shared/lib/databaseDocument/state/v2';
-import type {
-  DatabaseItem,
-  DatabaseItemId,
-  DatabasePropertyId,
-  DatabaseUnknownProperty,
-  DatabaseValue,
-} from '@shared/lib/databaseDocument/state';
 import type { AMDocHandle } from '@shared/lib/automerge/automergeTypes';
 import { useWrapStrictRecord } from '@shared/lib/strictRecord';
 import { DocumentDatabaseTable } from '@entity/documentDatabase';
@@ -30,6 +30,7 @@ import { useSnackbar } from '@shared/ui/Snackbar';
 import { useDatabaseItemRemove } from '@feature/databaseItemRemove';
 import { DatabasePropertyCreationDialog } from '@feature/databasePropertyCreate';
 import type { DirectoryFSEntry } from '@shared/lib/fileSystem';
+import ValueField from './ValueField.vue';
 
 const { docHandle, directory } = defineProps<{
   docHandle: AMDocHandle;
@@ -300,7 +301,11 @@ const onClickItemContextBtn = (
       :properties
       @add="onAddItem"
       @cancel="isShowAddItem = false"
-    />
+    >
+      <template #valueField="{ property, update, value }">
+        <ValueField :property :value @update:value="update" />
+      </template>
+    </DbItemAddDialog>
 
     <DatabasePropertyRemoveDialog
       v-if="removePropertyId"
