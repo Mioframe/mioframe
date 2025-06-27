@@ -1,18 +1,13 @@
 <script setup lang="ts">
-import { zodBooleanProperty } from '@entity/databaseBoolean';
-import { zodStringProperty } from '@entity/databaseString';
-import type { PropertiesMap } from '@shared/lib/databaseDocument/state/v1/property';
-import { MDDialog } from '@shared/ui/Dialog';
 import { ref, watchEffect } from 'vue';
-import StringPropertyField from './StringPropertyField.vue';
-import { zodIs } from '@shared/lib/validateZodScheme';
-import BooleanPropertyField from './BooleanPropertyField.vue';
-import NumberPropertyField from './NumberPropertyField.vue';
-import { zodNumberProperty } from '@entity/databaseNumber';
-import { zodDateProperty } from '@entity/databaseDate';
-import DatePropertyField from './DatePropertyField.vue';
-import type { DatabaseItem } from '@shared/lib/databaseDocument/state';
+import { MDDialog } from '@shared/ui/Dialog';
 import { useWrapStrictRecord } from '@shared/lib/strictRecord';
+import type {
+  DatabaseItem,
+  DatabasePropertyId,
+  GeneralProperty,
+  PropertiesMap,
+} from '@shared/lib/databaseDocument';
 
 const {
   applyLabel = 'Apply',
@@ -33,6 +28,14 @@ const emit = defineEmits<{
   cancel: [];
 }>();
 
+defineSlots<{
+  valueField(p: {
+    property: GeneralProperty;
+    value: unknown;
+    update: (value: unknown) => void;
+  }): unknown;
+}>();
+
 const itemState = ref<DatabaseItem>({});
 
 watchEffect(() => {
@@ -49,6 +52,10 @@ const onCancel = () => {
 };
 
 const propertiesCollection = useWrapStrictRecord(() => properties);
+
+const onUpdateValue = (propertyId: DatabasePropertyId, value: unknown) => {
+  itemState.value[propertyId] = value;
+};
 </script>
 
 <template>
@@ -64,35 +71,12 @@ const propertiesCollection = useWrapStrictRecord(() => properties);
       v-for="[propertyId, property] in propertiesCollection"
       :key="propertyId"
     >
-      <StringPropertyField
-        v-if="zodIs(property, zodStringProperty)"
-        v-model:model-value="itemState[propertyId]"
+      <slot
+        name="valueField"
         :property
+        :value="itemState[propertyId]"
+        :update="(value: unknown) => onUpdateValue(propertyId, value)"
       />
-
-      <NumberPropertyField
-        v-else-if="zodIs(property, zodNumberProperty)"
-        v-model:model-value="itemState[propertyId]"
-        :property
-      />
-
-      <BooleanPropertyField
-        v-else-if="zodIs(property, zodBooleanProperty)"
-        v-model:model-value="itemState[propertyId]"
-        :property
-      />
-
-      <DatePropertyField
-        v-else-if="zodIs(property, zodDateProperty)"
-        v-model:model-value="itemState[propertyId]"
-        :property
-      />
-
-      <div v-else>
-        don't have a field for property "{{ property.name }}" with type "{{
-          property.type
-        }}"
-      </div>
     </template>
   </MDDialog>
 </template>
