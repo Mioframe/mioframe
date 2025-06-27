@@ -29,9 +29,10 @@ import type {
 } from '@shared/lib/automerge/automergeTypes';
 import { useDirectoryFSEntryRef } from '@shared/lib/fileSystem/useDirectoryFSEntryRef';
 import { useDirectoryRepo } from '@shared/lib/cfrDocument/useDirectoryRepo';
+import { useSnackbar } from '@shared/ui/Snackbar';
 
 const emit = defineEmits<{
-  clickDocument: [id: AMDocumentId, doc: AMDocHandle];
+  clickDocument: [id: AMDocumentId, directory: DirectoryFSEntry];
 }>();
 
 const isShowCreateDirectoryForm = ref(false);
@@ -93,20 +94,27 @@ const onClickCreateDocument = () => {
 
 const directoryRepoRef = useDirectoryRepo(currentDirectory);
 
-const currentRepoDocuments = computed(
-  () => directoryRepoRef.value?.map,
-);
+const currentRepoDocuments = computed(() => directoryRepoRef.value?.map);
 
 const onCreateNewDocument = (document: CFRDocumentContent) => {
   directoryRepoRef.value?.create(document);
   showFormNewDocument.value = false;
 };
 
+const { addSnackbar } = useSnackbar();
+
 const onCreateDirectory = async (name: string) => {
-  // TODO: добавить вывод ошибок
-  if (currentDirectory.value) {
+  try {
+    if (!currentDirectory.value) {
+      throw new Error('Failed to create a directory');
+    }
     await currentDirectory.value.createDirectory(name);
     isShowCreateDirectoryForm.value = false;
+  } catch (error) {
+    addSnackbar({
+      text:
+        error instanceof Error ? error.message : 'Failed to create a directory',
+    });
   }
 };
 
@@ -192,8 +200,10 @@ const onDocumentRemoveApply = (documentId: AMDocumentId) => {
   documentIdToRemove.value = undefined;
 };
 
-const onClickDocument = (documentId: AMDocumentId, docHandle: AMDocHandle) => {
-  emit('clickDocument', documentId, docHandle);
+const onClickDocument = (documentId: AMDocumentId) => {
+  if (currentDirectory.value) {
+    emit('clickDocument', documentId, currentDirectory.value);
+  }
 };
 
 const documentToRename = shallowRef<AMDocHandle>();
@@ -256,7 +266,7 @@ const onRenameEntry = async (newName: string) => {
           :doc-handle="docHandle"
           class="document-explorer-widget__list-item"
           is-button
-          @click="onClickDocument(docId, docHandle)"
+          @click="onClickDocument(docId)"
         >
           <template #trailingIcon>
             <MDContextMenuButton

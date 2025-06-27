@@ -1,25 +1,39 @@
 <script setup lang="ts">
 import { useCFRDocument } from '@shared/lib/cfrDocument/useCFRDocument';
-import { toRef } from 'vue';
+import { computed } from 'vue';
 import { DATABASE_DOCUMENT_TYPE } from '@shared/lib/databaseDocument';
 import DatabaseViewWidget from './Database/DatabaseViewWidget.vue';
-import type { AMDocHandle } from '@shared/lib/automerge/automergeTypes';
+import type { AMDocumentId } from '@shared/lib/automerge/automergeTypes';
+import type { DirectoryFSEntry } from '@shared/lib/fileSystem';
+import { useDirectoryRepo } from '@shared/lib/cfrDocument';
 
 /**
  * Виджет просмотра документа
  */
 
-const { docHandle } = defineProps<{
-  docHandle: AMDocHandle;
+const { directory, documentId } = defineProps<{
+  directory: DirectoryFSEntry;
+  documentId: AMDocumentId;
 }>();
 
-const { content, documentType } = useCFRDocument(toRef(() => docHandle));
+const directoryRef = computed(() => directory);
+
+const repo = useDirectoryRepo(directoryRef);
+
+const docHandle = computed(() => repo.value?.map.get(documentId));
+
+const cfrDocument = useCFRDocument(docHandle);
+
+const content = computed(() => cfrDocument.content);
+
+const documentType = computed(() => content.value?.type);
 </script>
 
 <template>
   <div class="document-view-widget">
     <DatabaseViewWidget
-      v-if="documentType === DATABASE_DOCUMENT_TYPE"
+      v-if="docHandle && documentType === DATABASE_DOCUMENT_TYPE"
+      :directory="directory"
       :doc-handle="docHandle"
     />
 

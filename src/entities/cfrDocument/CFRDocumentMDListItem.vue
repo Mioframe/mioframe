@@ -23,9 +23,11 @@ const slots = defineSlots<{
 
 const docHandle = toRef(() => props.docHandle);
 
-const { name } = useCFRDocument(docHandle);
+const cfrDocument = useCFRDocument(docHandle);
 
-const headline = computed(() => name.value ?? 'Untitled Document');
+const headline = computed(
+  () => cfrDocument.content?.name ?? 'Untitled Document',
+);
 </script>
 
 <template>

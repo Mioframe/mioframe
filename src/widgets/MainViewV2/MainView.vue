@@ -1,24 +1,42 @@
 <script setup lang="ts">
-import { useCFRDocument } from '@shared/lib/cfrDocument/useCFRDocument';
 import { MDMainLayer } from '@shared/ui/Layers';
 import DocumentViewWidget from '@widget/DocumentView/DocumentViewWidget.vue';
 import { HomeWidget } from '@widget/HomeWidget';
 import { RepoExplorerPane } from '@widget/RepoExplorer';
-import { shallowRef } from 'vue';
+import { computed, ref } from 'vue';
 import { useRepoExplorer } from '../RepoExplorer/useRepoExplorer';
-import type {
-  AMDocHandle,
-  AMDocumentId,
-} from '@shared/lib/automerge/automergeTypes';
+import type { AMDocumentId } from '@shared/lib/automerge/automergeTypes';
+import type { DirectoryFSEntry } from '@shared/lib/fileSystem';
+import { useDocumentFolder } from '@shared/lib/cfrDocument/useDocumentFolder';
 
 const { currentDirectory } = useRepoExplorer();
 
-const openedDocument = shallowRef<AMDocHandle>();
+const openedDocument = ref<{
+  documentId: AMDocumentId;
+  directory: DirectoryFSEntry;
+}>();
 
-const { name: openedDocumentName } = useCFRDocument(openedDocument);
+const openedDirectory = computed(() => openedDocument.value?.directory);
 
-const onClickDocument = (_documentId: AMDocumentId, docHandle: AMDocHandle) => {
-  openedDocument.value = docHandle;
+const documentFolder = useDocumentFolder(openedDirectory);
+
+const openedDocumentId = computed(() => openedDocument.value?.documentId);
+
+const openedDocumentName = computed(() =>
+  openedDocumentId.value
+    ? documentFolder.value?.documentMap.get(openedDocumentId.value)?.content
+        ?.name
+    : undefined,
+);
+
+const onClickDocument = (
+  documentId: AMDocumentId,
+  directory: DirectoryFSEntry,
+) => {
+  openedDocument.value = {
+    documentId,
+    directory,
+  };
 };
 
 const onClickDocumentBack = () => {
@@ -44,7 +62,10 @@ const onOpenDirectory = () => {
     </template>
 
     <template v-if="openedDocument" #secondPane>
-      <DocumentViewWidget :doc-handle="openedDocument" />
+      <DocumentViewWidget
+        :document-id="openedDocument.documentId"
+        :directory="openedDocument.directory"
+      />
     </template>
   </MDMainLayer>
 </template>

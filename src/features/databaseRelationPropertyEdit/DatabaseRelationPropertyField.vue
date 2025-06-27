@@ -1,41 +1,68 @@
 <script setup lang="ts">
-import { CFRDocumentMDListItem } from '@entity/cfrDocument';
 import type { Relation } from '@entity/databaseRelation';
-import type { AMDocHandle } from '@shared/lib/cfrDocument';
-import { useDirectoryRepo, type AMDocumentId } from '@shared/lib/cfrDocument';
-import { useCFRDocument } from '@shared/lib/cfrDocument/useCFRDocument';
-import { useRepo } from '@shared/lib/cfrDocument/useRepo';
+import { type AMDocumentId } from '@shared/lib/cfrDocument';
+import { useDocumentFolder } from '@shared/lib/cfrDocument/useDocumentFolder';
 import type { DirectoryFSEntry } from '@shared/lib/fileSystem';
 import { MDSelect } from '@shared/ui/Select';
-import { computed, shallowRef, toRef } from 'vue';
+import { computed, reactive, shallowRef, watch } from 'vue';
 
 const { directory } = defineProps<{
   directory: DirectoryFSEntry;
 }>();
 
-type DatabaseDocumentOption = { labelText: string; docHandle: AMDocHandle };
+const relationModel = defineModel<Relation>();
+
+type DatabaseDocumentOption = { labelText: string; documentId: AMDocumentId };
 
 const selectedDocumentOptions = shallowRef<DatabaseDocumentOption[]>([]);
 
-const { documents } = useDirectoryRepo(toRef(() => directory));
+const directoryRef = computed(() => directory);
 
-const documentList = computed(() => Array.from(documents.value.entries()));
+const documentFolder = useDocumentFolder(directoryRef);
 
-const {} = useCFRDocument;
+const documentMap = computed(() => documentFolder.value?.documentMap);
 
-// todo: для формирования опций расширить интерфейс useRepo добавлением реактивным чтением документов
-const databaseDocumentOptions = computed((): DatabaseDocumentOption[] =>
-  documentList.value.map(([id, docHandle]) => ({
-    docHandle,
-    labelText: '',
-  })),
+const documentNamesMap = reactive(new Map<AMDocumentId, string>());
+
+watch(
+  documentMap,
+  (documentMap) => {
+    const oldNames = new Set(documentNamesMap.keys());
+    documentMap?.forEach((doc, documentId) => {
+      oldNames.delete(documentId);
+      if (!documentNamesMap.has(documentId)) {
+        const name = doc.content?.name;
+        if (name) {
+          documentNamesMap.set(documentId, name);
+        }
+      }
+    });
+
+    oldNames.forEach((documentId) => {
+      documentNamesMap.delete(documentId);
+    });
+  },
+  { immediate: true },
 );
+
+const documentOptionList = computed((): DatabaseDocumentOption[] =>
+  Array.from(documentNamesMap.entries()).map(
+    ([documentId, name]): DatabaseDocumentOption => ({
+      labelText: name,
+      documentId,
+    }),
+  ),
+);
+
+watch(selectedDocumentOptions, ([{ documentId }]) => {
+  relationModel.value = { ...relationModel.value, documentId };
+});
 </script>
 
 <template>
   <MDSelect
     v-model:model-value="selectedDocumentOptions"
     label-text="Database Document"
-    :options="databaseDocumentOptions"
+    :options="documentOptionList"
   />
 </template>

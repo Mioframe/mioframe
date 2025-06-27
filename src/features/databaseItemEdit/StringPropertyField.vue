@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { StringProperty } from '@entity/stringProperty';
+import type { StringProperty } from '@entity/databaseString';
 import { MDTextField } from '@shared/ui/TextField';
 import { isNil } from 'es-toolkit';
 import { toString } from 'es-toolkit/compat';

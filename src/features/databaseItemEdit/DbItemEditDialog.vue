@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { zodBooleanProperty } from '@entity/booleanProperty';
-import { zodStringProperty } from '@entity/stringProperty';
+import { zodBooleanProperty } from '@entity/databaseBoolean';
+import { zodStringProperty } from '@entity/databaseString';
 import type { PropertiesMap } from '@shared/lib/databaseDocument/state/v1/property';
 import { MDDialog } from '@shared/ui/Dialog';
 import { ref, watchEffect } from 'vue';
@@ -8,8 +8,8 @@ import StringPropertyField from './StringPropertyField.vue';
 import { zodIs } from '@shared/lib/validateZodScheme';
 import BooleanPropertyField from './BooleanPropertyField.vue';
 import NumberPropertyField from './NumberPropertyField.vue';
-import { zodNumberProperty } from '@entity/numberProperty';
-import { zodDateProperty } from '@entity/dateProperty';
+import { zodNumberProperty } from '@entity/databaseNumber';
+import { zodDateProperty } from '@entity/databaseDate';
 import DatePropertyField from './DatePropertyField.vue';
 import type { DatabaseItem } from '@shared/lib/databaseDocument/state';
 import { useWrapStrictRecord } from '@shared/lib/strictRecord';
