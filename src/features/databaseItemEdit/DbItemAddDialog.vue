@@ -1,5 +1,8 @@
 <script setup lang="ts">
-import type { PropertiesMap } from '@shared/lib/databaseDocument/state/v1/property';
+import type {
+  GeneralProperty,
+  PropertiesMap,
+} from '@shared/lib/databaseDocument/state/v1/property';
 import DbItemEditDialog from './DbItemEditDialog.vue';
 import type { DatabaseItem } from '@shared/lib/databaseDocument/state';
 
@@ -10,6 +13,14 @@ const { properties } = defineProps<{
 const emit = defineEmits<{
   add: [item: DatabaseItem];
   cancel: [];
+}>();
+
+defineSlots<{
+  valueField(p: {
+    property: GeneralProperty;
+    value: unknown;
+    update: (value: unknown) => void;
+  }): unknown;
 }>();
 
 const onApply = (newItem: DatabaseItem) => {
@@ -29,7 +40,11 @@ const onCancel = () => {
     apply-label="Add"
     @apply="onApply"
     @cancel="onCancel"
-  />
+  >
+    <template #valueField="{ property, update, value }">
+      <slot name="valueField" :property :update :value />
+    </template>
+  </DbItemEditDialog>
 </template>
 
 <style lang="css" scoped>
