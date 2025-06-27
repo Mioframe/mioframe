@@ -4,10 +4,10 @@ import DocumentViewWidget from '@widget/DocumentView/DocumentViewWidget.vue';
 import { HomeWidget } from '@widget/HomeWidget';
 import { RepoExplorerPane } from '@widget/RepoExplorer';
 import { computed, ref } from 'vue';
-import { useRepoExplorer } from '../RepoExplorer/useRepoExplorer';
 import type { AMDocumentId } from '@shared/lib/automerge/automergeTypes';
 import type { DirectoryFSEntry } from '@shared/lib/fileSystem';
 import { useDocumentFolder } from '@shared/lib/cfrDocument/useDocumentFolder';
+import { useRepoExplorer } from '@widget/RepoExplorer/useRepoExplorer';
 
 const { currentDirectory } = useRepoExplorer();
 

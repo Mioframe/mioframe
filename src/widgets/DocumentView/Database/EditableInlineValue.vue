@@ -1,28 +1,20 @@
 <script setup lang="ts">
 import { computed, ref, watchEffect } from 'vue';
-import { PopOver } from '../../../shared/ui/PopOver';
-import { onInteractionOutside } from '../../../shared/lib/onInteractionOutside';
 import { type MaybeElement } from '@vueuse/core';
-import { useFirstFocus } from '../../../shared/lib/useFirstFocus';
-import { zodStringProperty } from '@entity/databaseString';
 import { zodBooleanProperty } from '@entity/databaseBoolean/boolean';
-import { zodNumberProperty } from '@entity/databaseNumber/model';
-import { zodDateProperty } from '@entity/databaseDate/date';
 import { zodIs } from '@shared/lib/validateZodScheme';
-import {
-  NumberPropertyField,
-  StringPropertyField,
-  BooleanPropertyField,
-  DatePropertyField,
-} from '@feature/databaseItemEdit';
-import type { GeneralProperty } from '@shared/lib/databaseDocument/state/v1/property';
 import ValueInline from './ValueInline.vue';
 import { useBooleanEdit } from '@feature/booleanPropertyEdit';
+import { isEqual } from 'es-toolkit';
+import ValueField from './ValueField.vue';
+import { onInteractionOutside } from '@shared/lib/onInteractionOutside';
+import { useFirstFocus } from '@shared/lib/useFirstFocus';
+import { PopOver } from '@shared/ui/PopOver';
 import type {
   DatabaseItem,
   DatabasePropertyId,
-} from '@shared/lib/databaseDocument/state';
-import { isEqual } from 'es-toolkit';
+  GeneralProperty,
+} from '@shared/lib/databaseDocument';
 
 const {
   item = {},
@@ -100,35 +92,9 @@ useFirstFocus(refPopover, { initialValue: true });
     :origin-position="positionEditForm"
   >
     <div class="editable-inline-value__edit-popover">
-      <BooleanPropertyField
-        v-if="zodIs(property, zodBooleanProperty)"
-        v-model="stateValue"
+      <ValueField
+        v-model:value="stateValue"
         :property
-        :label="property.name"
-        @keydown.enter="closeEditor"
-      />
-
-      <NumberPropertyField
-        v-else-if="zodIs(property, zodNumberProperty)"
-        v-model="stateValue"
-        :property
-        :label="property.name"
-        @keydown.enter="closeEditor"
-      />
-
-      <StringPropertyField
-        v-else-if="zodIs(property, zodStringProperty)"
-        v-model="stateValue"
-        :property
-        :label="property.name"
-        @keydown.enter="closeEditor"
-      />
-
-      <DatePropertyField
-        v-else-if="zodIs(property, zodDateProperty)"
-        v-model="stateValue"
-        :property
-        :label="property.name"
         @keydown.enter="closeEditor"
       />
     </div>

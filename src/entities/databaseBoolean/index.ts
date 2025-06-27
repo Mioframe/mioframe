@@ -5,3 +5,4 @@ export {
   zodBooleanProperty,
 } from './boolean';
 export { default as BooleanInline } from './BooleanValueInline.vue';
+export { default as BooleanValueField } from './BooleanValueField.vue';
