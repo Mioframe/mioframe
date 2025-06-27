@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { MDButton } from '../Button';
 import { useFocusTrap } from '@vueuse/integrations/useFocusTrap';
-import { onBeforeUnmount, ref, watchEffect } from 'vue';
+import { onBeforeUnmount, useTemplateRef, watchEffect } from 'vue';
 import { onKeyStroke } from '@vueuse/core';
 import { useClosestParentFrame } from '@shared/lib/useClosestParentFrame';
 
@@ -47,14 +47,11 @@ const onCancel = () => {
   }
 };
 
-const dialogEl = ref<HTMLDialogElement>();
+const formEl = useTemplateRef('formEl');
 
-const { activate: lockFocus, deactivate: unlockFocus } = useFocusTrap(
-  dialogEl,
-  {
-    immediate: true,
-  },
-);
+const { activate: lockFocus, deactivate: unlockFocus } = useFocusTrap(formEl, {
+  immediate: true,
+});
 
 watchEffect(() => {
   if (hide) {
@@ -78,7 +75,6 @@ const targetTeleport = useClosestParentFrame();
 <template>
   <Teleport defer :to="targetTeleport">
     <dialog
-      ref="dialogEl"
       :open="!hide"
       class="md-dialog md-dialog__scrim"
       :class="[
@@ -88,7 +84,11 @@ const targetTeleport = useClosestParentFrame();
         `md-dialog_${dialogType}-type`,
       ]"
     >
-      <form class="md md-dialog__container" @submit.prevent="onSubmit">
+      <form
+        ref="formEl"
+        class="md md-dialog__container"
+        @submit.prevent="onSubmit"
+      >
         <div v-if="!!slots.icon" class="md-dialog__icon">
           <slot name="icon" />
         </div>

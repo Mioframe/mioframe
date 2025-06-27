@@ -91,8 +91,10 @@ const useDirectoryRepoCache = createGlobalWeakCache(
 
     const repoRefs = useRepoRef(repoState, directoryDocumentIds);
 
+    const map = computed(() => repoRefs.map ?? new Map());
+
     const directoryRepo: DirectoryRepo = reactive({
-      map: computed(() => repoRefs.map ?? new Map()),
+      map,
       find: (...args: Parameters<typeof repoRefs.find>) => {
         initialRepo();
         repoRefs.find(...args);

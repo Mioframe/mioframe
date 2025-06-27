@@ -1,1 +1,1 @@
-export { default as DbPropertyCreateForm } from './DbPropertyCreateForm.vue';
+export { default as DatabasePropertyCreationDialog } from './DatabasePropertyCreationDialog.vue';

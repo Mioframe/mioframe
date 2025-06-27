@@ -28,12 +28,15 @@ const onClickCancel = () => {
   emit('cancel');
 };
 
-const { name } = useCFRDocument(docHandleRef);
+const cfrDocument = useCFRDocument(docHandleRef);
 
-const headline = computed(() => `Remove "${name.value ?? 'unknown'}"?`);
+const headline = computed(
+  () => `Remove "${cfrDocument.content?.name ?? 'unknown'}"?`,
+);
 
 const supportingText = computed(
-  () => `Are you sure you want to remove "${name.value ?? 'unknown'}"?`,
+  () =>
+    `Are you sure you want to remove "${cfrDocument.content?.name ?? 'unknown'}"?`,
 );
 </script>
 

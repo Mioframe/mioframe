@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { NumberProperty } from '@entity/numberProperty';
+import type { NumberProperty } from '@entity/databaseNumber';
 import { MDTextField } from '@shared/ui/TextField';
 import { toNumber, toString } from 'es-toolkit/compat';
 import { computed } from 'vue';

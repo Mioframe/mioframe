@@ -4,6 +4,7 @@ import { MDDialog } from '@shared/ui/Dialog';
 import { MDTextField } from '@shared/ui/TextField';
 import { useCFRDocument } from '@shared/lib/cfrDocument/useCFRDocument';
 import type { AMDocHandle } from '@shared/lib/automerge/automergeTypes';
+import { toRefs } from '@vueuse/core';
 
 const { docHandle } = defineProps<{
   docHandle: AMDocHandle;
@@ -14,12 +15,14 @@ const emit = defineEmits<{
   cancel: [];
 }>();
 
-const { name: oldName, change } = useCFRDocument(toRef(() => docHandle));
+const cfrDocument = useCFRDocument(toRef(() => docHandle));
+
+const { content, change } = toRefs(cfrDocument);
 
 const stateName = ref<string>();
 
 watchEffect(() => {
-  stateName.value = oldName.value;
+  stateName.value = content.value?.name;
 });
 
 const onApply = () => {
@@ -29,7 +32,7 @@ const onApply = () => {
 
   const newName = stateName.value;
 
-  change((doc) => (doc.name = newName));
+  change.value((doc) => (doc.name = newName));
 
   emit('renamed');
 };

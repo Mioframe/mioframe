@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { DbItemAddDialog } from '@feature/databaseItemEdit';
-import DatabasePropertyCreationDialog from '@feature/databasePropertyCreate/DatabasePropertyCreationDialog.vue';
 import { useDatabaseDocument } from '@shared/lib/databaseDocument';
 import { computed, ref, shallowRef, toRef, watchEffect } from 'vue';
 import { MDBottomSheet } from '@shared/ui/Sheets';
@@ -29,9 +28,12 @@ import { DocumentDatabaseTable } from '@entity/documentDatabase';
 import EditableInlineValue from './EditableInlineValue.vue';
 import { useSnackbar } from '@shared/ui/Snackbar';
 import { useDatabaseItemRemove } from '@feature/databaseItemRemove';
+import { DatabasePropertyCreationDialog } from '@feature/databasePropertyCreate';
+import type { DirectoryFSEntry } from '@shared/lib/fileSystem';
 
-const { docHandle } = defineProps<{
+const { docHandle, directory } = defineProps<{
   docHandle: AMDocHandle;
+  directory: DirectoryFSEntry;
 }>();
 
 const docHandleRef = toRef(() => docHandle);
@@ -288,6 +290,7 @@ const onClickItemContextBtn = (
 
     <DatabasePropertyCreationDialog
       v-if="isShowAddProperty"
+      :directory="directory"
       @create="onCreateProperty"
       @cancel="isShowAddProperty = false"
     />

@@ -59,7 +59,7 @@ export const useDocumentFolderCache = createGlobalWeakCache(
           stopScope();
         }
       },
-      { immediate: true },
+      { immediate: true, deep: true },
     );
 
     tryOnScopeDispose(() => {

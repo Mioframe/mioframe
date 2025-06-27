@@ -3,12 +3,38 @@ import { computed, ref } from 'vue';
 import { MDDialog } from '@shared/ui/Dialog';
 import { MDTextField } from '@shared/ui/TextField';
 import { MDSelect } from '@shared/ui/Select';
-import { PROPERTY_TYPE_STRING } from '@entity/stringProperty';
-import { PROPERTY_TYPE_NUMBER } from '@entity/numberProperty';
-import { PROPERTY_TYPE_BOOLEAN } from '@entity/booleanProperty';
-import { PROPERTY_TYPE_DATE } from '@entity/dateProperty';
+import type { StringProperty } from '@entity/databaseString';
+import { PROPERTY_TYPE_STRING } from '@entity/databaseString';
+import type { NumberProperty } from '@entity/databaseNumber';
+import { PROPERTY_TYPE_NUMBER } from '@entity/databaseNumber';
+import type { BooleanProperty } from '@entity/databaseBoolean';
+import { PROPERTY_TYPE_BOOLEAN } from '@entity/databaseBoolean';
+import type { DateProperty } from '@entity/databaseDate';
+import { PROPERTY_TYPE_DATE } from '@entity/databaseDate';
 import type { ValueOf } from 'type-fest';
-import type { DatabaseUnknownProperty } from '@shared/lib/databaseDocument/state';
+import type { Relation, RelationProperty } from '@entity/databaseRelation';
+import { PROPERTY_TYPE_RELATION } from '@entity/databaseRelation/model';
+import { objectEntries } from '@shared/lib/objectEntries';
+import { pascalCase } from 'es-toolkit';
+import { useSnackbar } from '@shared/ui/Snackbar';
+import DatabaseRelationPropertyField from '@feature/databaseRelationPropertyEdit/DatabaseRelationPropertyField.vue';
+import type { DirectoryFSEntry } from '@shared/lib/fileSystem';
+
+const { directory } = defineProps<{
+  directory: DirectoryFSEntry;
+}>();
+
+const emit = defineEmits<{
+  create: [
+    property:
+      | StringProperty
+      | NumberProperty
+      | BooleanProperty
+      | DateProperty
+      | RelationProperty,
+  ];
+  cancel: [];
+}>();
 
 const stateName = ref<string>();
 
@@ -17,44 +43,78 @@ const propertyTypeList = {
   PROPERTY_TYPE_NUMBER,
   PROPERTY_TYPE_BOOLEAN,
   PROPERTY_TYPE_DATE,
+  PROPERTY_TYPE_RELATION,
 } as const;
 
 type PropertyType = ValueOf<typeof propertyTypeList>;
 
-const selectedType = ref<{ labelText: PropertyType }[]>([
-  { labelText: propertyTypeList.PROPERTY_TYPE_STRING },
-]);
+type PropertyTypeOption = {
+  labelText: string;
+  propertyType: PropertyType;
+};
 
-const stateType = computed(() => selectedType.value.at(0)?.labelText);
-
-const emit = defineEmits<{
-  create: [property: DatabaseUnknownProperty];
-  cancel: [];
-}>();
-
-const propertyTypeOptions = Object.entries(propertyTypeList).reduce<
-  {
-    labelText: PropertyType;
-  }[]
+const propertyTypeOptions = objectEntries(propertyTypeList).reduce<
+  PropertyTypeOption[]
 >((acc, [, value]) => {
   acc.push({
-    labelText: value,
+    labelText: pascalCase(value),
+    propertyType: value,
   });
   return acc;
 }, []);
 
+const typeSelectModel = ref<PropertyTypeOption[]>([propertyTypeOptions[0]]);
+
+const selectedPropertyType = computed(
+  () => typeSelectModel.value.at(0)?.propertyType,
+);
+
+const relationModel = ref<Relation>();
+
+const newProperty = computed(
+  ():
+    | undefined
+    | StringProperty
+    | NumberProperty
+    | BooleanProperty
+    | DateProperty
+    | RelationProperty => {
+    const name = stateName.value;
+    const type = selectedPropertyType.value;
+
+    if (name && type) {
+      if (type === PROPERTY_TYPE_RELATION) {
+        if (relationModel.value) {
+          return {
+            name,
+            type,
+            relation: relationModel.value,
+          };
+        }
+      } else {
+        return {
+          name,
+          type,
+        };
+      }
+    }
+    return undefined;
+  },
+);
+
+const { addSnackbar } = useSnackbar();
+
 const onCreate = () => {
-  if (stateName.value?.length && stateType.value) {
-    emit('create', {
-      name: stateName.value,
-      type: stateType.value,
-    });
+  if (newProperty.value) {
+    emit('create', newProperty.value);
+  } else {
+    addSnackbar({ text: 'Property is not fully filled' });
   }
 };
 
 const onCancel = () => {
   stateName.value = undefined;
-  selectedType.value = [];
+  typeSelectModel.value = [];
   emit('cancel');
 };
 </script>
@@ -76,10 +136,16 @@ const onCancel = () => {
     />
 
     <MDSelect
-      v-model:model-value="selectedType"
+      v-model:model-value="typeSelectModel"
       class="database-property-creation__field"
       label-text="Property type"
       :options="propertyTypeOptions"
+    />
+
+    <DatabaseRelationPropertyField
+      v-if="selectedPropertyType === PROPERTY_TYPE_RELATION"
+      v-model:model-value="relationModel"
+      :directory="directory"
     />
   </MDDialog>
 </template>

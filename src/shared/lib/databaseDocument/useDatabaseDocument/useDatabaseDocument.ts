@@ -9,7 +9,7 @@ import {
   zodDatabaseTypeDocument,
 } from '../types';
 import { computed } from 'vue';
-import type { MaybeRef } from '@vueuse/core';
+import { toRefs, type MaybeRef } from '@vueuse/core';
 import {
   addPropertyMutation,
   removePropertyMutation,
@@ -19,7 +19,6 @@ import { useCFRDocument } from '../../cfrDocument/useCFRDocument';
 import { zodIs, zodSafeCheck } from '../../validateZodScheme';
 import { migrateBody, migrateDatabaseDocument } from '../migrations';
 import { deepPutJsonObject } from '../../changeObject';
-import { createLogger } from '../../logger';
 import {
   addViewMutation,
   removeViewMutation,
@@ -43,22 +42,18 @@ import type { AMDocHandle } from '@shared/lib/automerge/automergeTypes';
 import type { RecordEntries } from '@shared/lib/objectEntries';
 import { recordEntries } from '@shared/lib/objectEntries';
 
-const { debug, watchDebug } = createLogger('useDatabaseDocument');
-
 export const useDatabaseDocument = (
   docHandleRef: MaybeRef<AMDocHandle | undefined>,
 ): UseDatabaseDocument => {
-  debug('setup');
+  const cfrDocument = useCFRDocument(docHandleRef);
 
-  const { change, content: unknownTypeContent } = useCFRDocument(docHandleRef);
-
-  watchDebug('unknownTypeContent', unknownTypeContent);
+  const { change, content: unknownTypeContent } = toRefs(cfrDocument);
 
   const updateDatabaseDocument = <R>(
     update: (doc: DataBaseStateLatest) => R,
   ): Promise<R> =>
     new Promise((resolve, reject) => {
-      change((doc) => {
+      change.value((doc) => {
         if (!zodIs(doc, zodDatabaseTypeDocument)) {
           reject(new Error('document is not DatabaseTypeDocument'));
           return;
