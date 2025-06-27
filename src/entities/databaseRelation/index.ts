@@ -1,1 +1,1 @@
-export { type Relation } from './types';
+export { type Relation, type RelationProperty } from './model';

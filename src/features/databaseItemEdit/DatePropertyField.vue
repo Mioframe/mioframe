@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { DateProperty } from '@entity/dateProperty';
+import type { DateProperty } from '@entity/databaseDate';
 import { MDTextField } from '@shared/ui/TextField';
 import { computed } from 'vue';
 

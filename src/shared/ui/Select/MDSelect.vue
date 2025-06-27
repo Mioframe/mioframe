@@ -89,7 +89,7 @@ const onClickOption = (option: T) => {
 };
 
 const onClickField = () => {
-  showMenu.value = true;
+  showMenu.value = filteredOptions.value.length > 0;
 };
 
 const { focused: focusedField } = useFocusWithin(fieldContainerRef);
@@ -112,7 +112,7 @@ watchEffect(() => {
 onKeyStroke(['ArrowDown', 'ArrowUp'], (e) => {
   if (focusedField.value) {
     e.preventDefault();
-    showMenu.value = true;
+    showMenu.value = filteredOptions.value.length > 0;
   }
 });
 
@@ -172,76 +172,82 @@ const onClickValue = (value: T, index: number) => {
 </script>
 
 <template>
-  <MDFieldContainer
-    ref="fieldContainerRef"
-    :label-text
-    :supporting-text
-    :type
-    :disabled
-    :error
+  <div
     class="md-select"
     :class="{
       'md-select_open': showMenu,
       'md-field-container_focused': showMenu,
     }"
-    :filled="modelValue.length > 0"
-    @click="onClickField"
   >
-    <template #default>
-      <div class="md-select__value-container" tabindex="0">
-        <template v-if="multiple">
-          <MDChip
-            v-for="(value, indexValue) in modelValue"
-            :key="getLabel(value)"
-            :label="getLabel(value)"
-            type="input"
-            @click.stop="onClickValue(value, indexValue)"
-          />
-        </template>
-
-        <template v-else>
-          <span v-if="firstValue">
-            {{ getLabel(firstValue) }}
-          </span>
-        </template>
-
-        {{ tempInput }}
-      </div>
-    </template>
-
-    <template #trailingIcon>
-      <MDSymbol name="arrow_drop_down" class="md-select__symbol-arrow" />
-    </template>
-  </MDFieldContainer>
-
-  <MDMenuContainer
-    v-if="showMenu"
-    ref="menusRef"
-    :target-ref="fieldContainerRef"
-  >
-    <MDListItem
-      v-for="option in filteredOptions"
-      :key="getLabel(option)"
-      ref="optionsRef"
-      :headline="getLabel(option)"
-      tag="button"
-      type="button"
-      @click="onClickOption(option)"
+    <MDFieldContainer
+      ref="fieldContainerRef"
+      :label-text
+      :supporting-text
+      :type
+      :disabled
+      :error
+      class="md-select__field"
+      :filled="modelValue.length > 0"
+      @click="onClickField"
     >
-      <template v-if="!!slots.leadingIcon" #leadingIcon>
-        <slot name="leadingIcon" :option />
+      <template #default>
+        <div class="md-select__value-container" tabindex="0">
+          <template v-if="multiple">
+            <MDChip
+              v-for="(value, indexValue) in modelValue"
+              :key="getLabel(value)"
+              :label="getLabel(value)"
+              type="input"
+              @click.stop="onClickValue(value, indexValue)"
+            />
+          </template>
+
+          <template v-else>
+            <span v-if="firstValue">
+              {{ getLabel(firstValue) }}
+            </span>
+          </template>
+
+          {{ tempInput }}
+        </div>
       </template>
 
-      <template v-if="!!slots.trailingIcon" #trailingIcon>
-        <slot name="trailingIcon" :option />
+      <template #trailingIcon>
+        <MDSymbol name="arrow_drop_down" class="md-select__symbol-arrow" />
       </template>
-    </MDListItem>
-  </MDMenuContainer>
+    </MDFieldContainer>
+
+    <MDMenuContainer
+      v-if="showMenu"
+      ref="menusRef"
+      :target-ref="fieldContainerRef"
+    >
+      <MDListItem
+        v-for="option in filteredOptions"
+        :key="getLabel(option)"
+        ref="optionsRef"
+        :headline="getLabel(option)"
+        tag="button"
+        type="button"
+        @click="onClickOption(option)"
+      >
+        <template v-if="!!slots.leadingIcon" #leadingIcon>
+          <slot name="leadingIcon" :option />
+        </template>
+
+        <template v-if="!!slots.trailingIcon" #trailingIcon>
+          <slot name="trailingIcon" :option />
+        </template>
+      </MDListItem>
+    </MDMenuContainer>
+  </div>
 </template>
 
 <style lang="css" scoped>
 .md-select {
-  cursor: pointer;
+  &__field {
+    cursor: pointer;
+  }
 
   &__value-container {
     all: unset;

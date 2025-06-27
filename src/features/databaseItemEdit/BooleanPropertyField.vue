@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { BooleanProperty } from '@entity/booleanProperty';
+import type { BooleanProperty } from '@entity/databaseBoolean';
 import { uniqueId } from '@shared/lib/uniqueId';
 import { MDCheckbox } from '@shared/ui/Checkbox';
 import { isUndefined } from 'es-toolkit';

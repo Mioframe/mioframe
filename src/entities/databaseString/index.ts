@@ -5,4 +5,4 @@ export {
   zodStringProperty,
 } from './string';
 
-export { default as StringValueSpan } from './StringValueSpan.vue';
+export { default as StringValueInline } from './StringValueInline.vue';

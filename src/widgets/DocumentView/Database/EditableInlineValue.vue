@@ -4,10 +4,10 @@ import { PopOver } from '../../../shared/ui/PopOver';
 import { onInteractionOutside } from '../../../shared/lib/onInteractionOutside';
 import { type MaybeElement } from '@vueuse/core';
 import { useFirstFocus } from '../../../shared/lib/useFirstFocus';
-import { zodStringProperty } from '@entity/stringProperty';
-import { zodBooleanProperty } from '@entity/booleanProperty/boolean';
-import { zodNumberProperty } from '@entity/numberProperty/number';
-import { zodDateProperty } from '@entity/dateProperty/date';
+import { zodStringProperty } from '@entity/databaseString';
+import { zodBooleanProperty } from '@entity/databaseBoolean/boolean';
+import { zodNumberProperty } from '@entity/databaseNumber/model';
+import { zodDateProperty } from '@entity/databaseDate/date';
 import { zodIs } from '@shared/lib/validateZodScheme';
 import {
   NumberPropertyField,
