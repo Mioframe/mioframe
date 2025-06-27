@@ -6,4 +6,3 @@ export {
 } from './string';
 
 export { default as StringValueInline } from './StringValueInline.vue';
-export { default as StringValueField } from './StringValueField.vue';

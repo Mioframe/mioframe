@@ -5,4 +5,3 @@ export {
   createDateProperty,
   zodDateProperty,
 } from './date';
-export { default as DateValueField } from './DateValueField.vue';
