@@ -46,8 +46,6 @@ export const useSortable = <T>(
   let lastOverElement: EventTarget | Element | null | undefined = undefined;
 
   const onDrag = throttle((overElement: EventTarget | Element | null) => {
-    console.log('onDrag');
-
     const overDraggableElement = closestDraggable(overElement);
 
     if (!overDraggableElement || lastOverElement === overDraggableElement) {
@@ -77,8 +75,6 @@ export const useSortable = <T>(
   }, 1e3 / 20);
 
   const onDragStart = (target: Element | EventTarget | null) => {
-    console.log('onDragStart');
-
     if (target instanceof Element) {
       const currentIndex = childrenIndexOf(target);
 

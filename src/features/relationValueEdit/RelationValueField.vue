@@ -4,8 +4,9 @@ import {
   type RelationProperty,
   type RelationValue,
 } from '@entity/databaseRelation';
+import type { AMDocHandle } from '@shared/lib/cfrDocument';
 import { useDirectoryRepo } from '@shared/lib/cfrDocument';
-import type { DatabaseItemId } from '@shared/lib/databaseDocument';
+import { type DatabaseItemId } from '@shared/lib/databaseDocument';
 import type { DirectoryFSEntry } from '@shared/lib/fileSystem';
 import { zodIs } from '@shared/lib/validateZodScheme';
 import { computed } from 'vue';
@@ -18,6 +19,13 @@ const { directory, property, value } = defineProps<{
 
 const emit = defineEmits<{
   'update:value': [value: DatabaseItemId[]];
+}>();
+
+const slots = defineSlots<{
+  data: (p: {
+    onSelect: (itemId: DatabaseItemId) => void;
+    docHandle: AMDocHandle;
+  }) => unknown;
 }>();
 
 const relationValue = computed<RelationValue>(() =>
@@ -50,6 +58,6 @@ const docHandle = computed(() =>
   <div class="relation-value-field">
     <!-- фильтрация -->
     <!-- // виджет Data с кнопками выбора -->
-    <slot name="data" :on-select />
+    <slot v-if="docHandle" name="data" :on-select :doc-handle />
   </div>
 </template>
