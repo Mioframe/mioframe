@@ -51,6 +51,7 @@ const formEl = useTemplateRef('formEl');
 
 const { activate: lockFocus, deactivate: unlockFocus } = useFocusTrap(formEl, {
   immediate: true,
+  allowOutsideClick: true,
 });
 
 watchEffect(() => {
