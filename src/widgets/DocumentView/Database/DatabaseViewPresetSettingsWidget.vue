@@ -16,7 +16,6 @@ import { DatabaseItemSortingSection } from '@feature/databaseItemSorting';
 import { MD_SYS_TYPESCALE } from '@shared/lib/md';
 import { MDIconButton } from '@shared/ui/Button';
 import type { AMDocHandle } from '@shared/lib/automerge/automergeTypes';
-import { toRefs } from '@vueuse/core';
 import { throttle } from 'es-toolkit';
 
 /**
@@ -32,7 +31,7 @@ const docHandleRef = toRef(() => docHandle);
 
 const databaseDocument = useDatabaseDocument(docHandleRef);
 
-const { properties } = toRefs(databaseDocument);
+const properties = computed(() => databaseDocument.content?.body?.properties);
 
 const databaseViewsMap = useDatabaseViewsMap(docHandleRef);
 
