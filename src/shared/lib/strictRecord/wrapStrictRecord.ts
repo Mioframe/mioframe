@@ -2,19 +2,23 @@ import { isNil, isNotNil } from 'es-toolkit';
 import { hasOwnKey } from '../hasOwnKey';
 import type { StrictRecord } from './types';
 
-export type WrapStrictRecord<K extends string, V> = {
+export interface ReadonlyWrapStrictRecord<K extends string, V> {
   entries: () => IterableIterator<[K, V]>;
   keys: () => IterableIterator<K>;
   values: () => IterableIterator<V>;
   has: (key: K) => boolean;
   get: (key: K) => V | undefined;
+  forEach: (callbackfn: (value: V, key: K) => void) => void;
+  [Symbol.iterator](): IterableIterator<[K, V]>;
   readonly size: number;
+}
+
+export interface WrapStrictRecord<K extends string, V>
+  extends ReadonlyWrapStrictRecord<K, V> {
+  set: (key: K, value: V) => void;
   delete: (key: K) => boolean;
   remove: (key: K) => boolean;
-  forEach: (callbackfn: (value: V, key: K) => void) => void;
-  set: (key: K, value: V) => void;
-  [Symbol.iterator](): IterableIterator<[K, V]>;
-};
+}
 
 export const wrapStrictRecord = <K extends string, V>(
   collectionObj: StrictRecord<K, V>,

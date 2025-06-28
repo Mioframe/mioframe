@@ -1,6 +1,10 @@
 <script setup lang="ts">
 import { DatabaseViewCreateDialog } from '@feature/databaseViewCreate';
-import { useDatabaseDocument } from '@shared/lib/databaseDocument';
+import {
+  useDatabaseDocument,
+  useDatabaseView,
+  useDatabaseViewsMap,
+} from '@shared/lib/databaseDocument';
 import type { DatabaseViewId } from '@shared/lib/databaseDocument/state/v2';
 import { DB_VIEW_LAYOUT } from '@shared/lib/databaseDocument/state/v2/view/general';
 import { useReduceIterable } from '@shared/lib/useReduce';
@@ -12,6 +16,8 @@ import { DatabaseItemSortingSection } from '@feature/databaseItemSorting';
 import { MD_SYS_TYPESCALE } from '@shared/lib/md';
 import { MDIconButton } from '@shared/ui/Button';
 import type { AMDocHandle } from '@shared/lib/automerge/automergeTypes';
+import { toRefs } from '@vueuse/core';
+import { throttle } from 'es-toolkit';
 
 /**
  * Виджет настроек отображения данных.
@@ -24,24 +30,27 @@ const { docHandle } = defineProps<{
 
 const docHandleRef = toRef(() => docHandle);
 
-const {
-  view: { state: views, add: addView, list: viewsList },
-  properties,
-} = useDatabaseDocument(docHandleRef);
+const databaseDocument = useDatabaseDocument(docHandleRef);
+
+const { properties } = toRefs(databaseDocument);
+
+const databaseViewsMap = useDatabaseViewsMap(docHandleRef);
 
 const selectedViewId = defineModel<DatabaseViewId>('selectedViewId');
 
-const selectedView = computed(() =>
-  selectedViewId.value ? views.value?.[selectedViewId.value] : undefined,
+const selectedView = useDatabaseView(docHandleRef, selectedViewId);
+
+const selectedSortMap = computed(() => selectedView.view?.sorting);
+
+watchEffect(
+  throttle(() => {
+    if (!selectedView.view?.sorting) {
+      void selectedView.update({});
+    }
+  }, 1e3),
 );
 
-const selectedSortMap = computed(() => selectedView.value?.sorting);
-
-watchEffect(() => {
-  if (selectedView.value && !('sorting' in selectedView.value)) {
-    selectedView.value['sorting'] = {};
-  }
-});
+const viewsList = computed(() => databaseViewsMap.list);
 
 const viewButtons = useReduceIterable(
   viewsList,
@@ -67,8 +76,8 @@ const onClickSettingUpViews = () => {
 };
 
 const onAddView = async ({ name }: { name: string }) => {
-  const order = views.value ? Object.keys(views.value).length : 0;
-  await addView({
+  const order = databaseViewsMap.size ?? 0;
+  await databaseViewsMap.create({
     name,
     layout: DB_VIEW_LAYOUT.TABLE,
     order,

@@ -1,11 +1,10 @@
 import type { MaybeRefOrGetter } from 'vue';
-import { ref, computed, watch, toValue, watchEffect } from 'vue';
+import { ref, computed, watch, toValue } from 'vue';
 import type {
   DatabaseData,
   DatabaseItem,
   DatabaseItemId,
   DatabaseView,
-  DatabaseViewId,
   DatabaseSortMap,
 } from '@shared/lib/databaseDocument';
 import { useDatabaseDocument } from '@shared/lib/databaseDocument';
@@ -14,26 +13,18 @@ import { useReduceIterable } from '@shared/lib/useReduce';
 import { useSortWorker } from './useSortWorker';
 import type { AMDocHandle } from '@shared/lib/automerge/automergeTypes';
 import { cloneDeep } from 'es-toolkit';
+import { toRefs } from '@vueuse/core';
 
 export function useOrderedDatabaseData(
   docHandle: MaybeRefOrGetter<AMDocHandle | undefined>,
-  viewId: MaybeRefOrGetter<DatabaseViewId | undefined>,
+  view: MaybeRefOrGetter<DatabaseView | undefined>,
 ) {
+  const docHandleRef = computed(() => toValue(docHandle));
+  const viewRef = computed(() => toValue(view));
+
   const orderOfItems = ref<DatabaseItemId[]>([]);
 
-  const docHandleRef = computed(() => toValue(docHandle));
-
-  const { data: databaseData, view } = useDatabaseDocument(docHandleRef);
-
-  const currentView = computed((): DatabaseView | undefined => {
-    const id = toValue(viewId);
-
-    if (id) {
-      return view.state.value?.[id];
-    }
-
-    return undefined;
-  });
+  const { data: databaseData } = toRefs(useDatabaseDocument(docHandleRef));
 
   const { sortData } = useSortWorker();
 
@@ -52,7 +43,7 @@ export function useOrderedDatabaseData(
   );
 
   watch(
-    [databaseData, currentView],
+    [databaseData, viewRef],
     ([databaseData, databaseView]) => {
       void applyView(cloneDeep(databaseData), cloneDeep(databaseView));
     },
@@ -65,7 +56,6 @@ export function useOrderedDatabaseData(
   const itemList = useReduceIterable(
     orderOfItems,
     (acc, id) => {
-      console.debug('useReduceIterable');
       const item = databaseData.value?.[id];
       if (item) {
         acc.push([id, item]);
@@ -73,10 +63,6 @@ export function useOrderedDatabaseData(
     },
     <[DatabaseItemId, DatabaseItem][]>[],
   );
-
-  watchEffect(() => {
-    console.debug('orderOfItems', cloneDeep(orderOfItems.value));
-  });
 
   return {
     orderOfItems: computed(() => orderOfItems.value),

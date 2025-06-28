@@ -8,9 +8,13 @@ import { computed, toValue, type MaybeRefOrGetter } from 'vue';
 export const useDatabaseItemRemove = (
   docHandler: MaybeRefOrGetter<AMDocHandle>,
 ) => {
-  const { content } = useDatabaseDocument(computed(() => toValue(docHandler)));
+  const docHandlerRef = computed(() => toValue(docHandler));
 
-  const data = useWrapStrictRecord(computed(() => content.value?.body?.data));
+  const databaseDocument = useDatabaseDocument(docHandlerRef);
+
+  const data = useWrapStrictRecord(
+    computed(() => databaseDocument.content?.body?.data),
+  );
 
   const { addSnackbar } = useSnackbar();
 
