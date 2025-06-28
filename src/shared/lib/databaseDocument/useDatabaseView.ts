@@ -1,7 +1,7 @@
 import { computed, reactive, toValue, type MaybeRefOrGetter } from 'vue';
 import type { AMDocHandle } from '../automerge';
 import type { DatabaseView, DatabaseViewId } from './state';
-import { useDatabaseViewsMap } from './useDatabaseViewMap';
+import { useDatabaseViewsMap } from './useDatabaseViewsMap';
 
 export const useDatabaseView = (
   rawDocHandle: MaybeRefOrGetter<AMDocHandle | undefined>,

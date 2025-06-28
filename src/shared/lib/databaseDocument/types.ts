@@ -11,11 +11,7 @@ import type {
   DatabaseData,
   DatabaseItem,
   DatabaseItemId,
-  DatabasePropertyId,
   DatabaseState,
-  DatabaseUnknownPropertiesMap,
-  DatabaseUnknownProperty,
-  DatabaseViewId,
 } from './state';
 export * from './state';
 import { zodDatabaseState } from './state';
@@ -62,32 +58,6 @@ export type DatabaseDocument = {
   update: <R>(fn: (doc: DataBaseStateLatest) => R) => Promise<R>;
 
   /**
-   * Перечень свойств
-   */
-
-  /**
-   * @deprecated - перенести в отдельную use композицию
-   */
-  properties: DatabaseUnknownPropertiesMap | undefined;
-  /**
-   * @deprecated - перенести в отдельную use композицию
-   */
-  addProperty: (
-    property: DatabaseUnknownProperty,
-  ) => Promise<DatabasePropertyId>;
-  /**
-   * @deprecated - перенести в отдельную use композицию
-   */
-  removeProperty: (propertyId: DatabasePropertyId) => Promise<void>;
-  /**
-   * @deprecated - перенести в отдельную use композицию
-   */
-  updateProperty: (
-    propertyId: DatabasePropertyId,
-    partialProperty: PartialDeep<DatabaseUnknownProperty>,
-  ) => Promise<void>;
-
-  /**
    * Перечень данных
    */
   /**
@@ -109,25 +79,6 @@ export type DatabaseDocument = {
     itemId: DatabaseItemId,
     partialItem: PartialDeep<DatabaseItem>,
   ) => Promise<void>;
-
-  /**
-   * Перечень представлений
-   */
-  /**
-   * @deprecated - перенести в отдельную use композицию
-   */
-  view: {
-    // state: DatabaseViewsMap | undefined;
-    // list: Readonly<RecordEntries<DatabaseViewsMap>> | undefined;
-    // get: (id: DatabaseViewId) => DatabaseView | undefined;
-    // add: (view: DatabaseView) => Promise<DatabaseViewId>;
-    // remove: (viewId: DatabaseViewId) => Promise<void>;
-    rename: (viewId: DatabaseViewId, newName: string) => Promise<void>;
-    // update: (
-    //   viewId: DatabaseViewId,
-    //   view: PartialDeep<DatabaseView>,
-    // ) => Promise<void>;
-  };
 
   /**
    * Ошибки чтения документа

@@ -187,9 +187,9 @@ export const useDatabaseDocument = (
     content,
     update: updateDatabaseDocument,
 
-    properties,
     data,
 
+    properties,
     addProperty,
     updateProperty,
     removeProperty,
