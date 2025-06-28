@@ -1,6 +1,6 @@
 import type { PartialDeep } from 'type-fest';
 import type {
-  UseDatabaseDocument,
+  DatabaseDocument,
   DataBaseStateLatest,
   DatabaseDocumentWithContent,
 } from '../types';
@@ -8,7 +8,7 @@ import {
   zodDatabaseDocumentWithContent,
   zodDatabaseTypeDocument,
 } from '../types';
-import { computed } from 'vue';
+import { computed, reactive } from 'vue';
 import { toRefs, type MaybeRef } from '@vueuse/core';
 import {
   addPropertyMutation,
@@ -44,7 +44,7 @@ import { recordEntries } from '@shared/lib/objectEntries';
 
 export const useDatabaseDocument = (
   docHandleRef: MaybeRef<AMDocHandle | undefined>,
-): UseDatabaseDocument => {
+): DatabaseDocument => {
   const cfrDocument = useCFRDocument(docHandleRef);
 
   const { change, content: unknownTypeContent } = toRefs(cfrDocument);
@@ -183,8 +183,10 @@ export const useDatabaseDocument = (
     return viewsState.value?.[id];
   };
 
-  const databaseDocument: UseDatabaseDocument = {
+  const databaseDocument: DatabaseDocument = reactive({
     content,
+    update: updateDatabaseDocument,
+
     properties,
     data,
 
@@ -209,7 +211,7 @@ export const useDatabaseDocument = (
     documentError,
 
     forceApplyMigration,
-  };
+  });
 
   return databaseDocument;
 };

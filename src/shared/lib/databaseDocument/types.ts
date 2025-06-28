@@ -15,16 +15,12 @@ import type {
   DatabaseState,
   DatabaseUnknownPropertiesMap,
   DatabaseUnknownProperty,
-  DatabaseView,
   DatabaseViewId,
-  DatabaseViewsMap,
 } from './state';
 export * from './state';
 import { zodDatabaseState } from './state';
 import type { CFRDocumentContent } from '../cfrDocument';
 import { zodDocumentContent } from '../cfrDocument';
-import type { ComputedRef } from 'vue';
-import type { RecordEntries } from '../objectEntries';
 
 export type DataBaseStateLatest = DatabaseState;
 
@@ -56,20 +52,36 @@ export type DatabaseDocumentWithContent = output<
 
 export type MutationFn = (doc: CFRDocumentContent) => unknown;
 
-export type UseDatabaseDocument = {
+// TODO: упростить API, разделить на композиции
+export type DatabaseDocument = {
   /**
    * Всё содержимое документа
    */
-  content: ComputedRef<DatabaseDocumentWithContent | undefined>;
+  content: DatabaseDocumentWithContent | undefined;
+
+  update: <R>(fn: (doc: DataBaseStateLatest) => R) => Promise<R>;
 
   /**
    * Перечень свойств
    */
-  properties: ComputedRef<DatabaseUnknownPropertiesMap | undefined>;
+
+  /**
+   * @deprecated - перенести в отдельную use композицию
+   */
+  properties: DatabaseUnknownPropertiesMap | undefined;
+  /**
+   * @deprecated - перенести в отдельную use композицию
+   */
   addProperty: (
     property: DatabaseUnknownProperty,
   ) => Promise<DatabasePropertyId>;
+  /**
+   * @deprecated - перенести в отдельную use композицию
+   */
   removeProperty: (propertyId: DatabasePropertyId) => Promise<void>;
+  /**
+   * @deprecated - перенести в отдельную use композицию
+   */
   updateProperty: (
     propertyId: DatabasePropertyId,
     partialProperty: PartialDeep<DatabaseUnknownProperty>,
@@ -78,9 +90,21 @@ export type UseDatabaseDocument = {
   /**
    * Перечень данных
    */
-  data: ComputedRef<DatabaseData | undefined>;
+  /**
+   * @deprecated - перенести в отдельную use композицию
+   */
+  data: DatabaseData | undefined;
+  /**
+   * @deprecated - перенести в отдельную use композицию
+   */
   addItem: (item: DatabaseItem) => Promise<DatabaseItemId>;
+  /**
+   * @deprecated - перенести в отдельную use композицию
+   */
   removeItem: (itemId: DatabaseItemId) => Promise<void>;
+  /**
+   * @deprecated - перенести в отдельную use композицию
+   */
   updateItem: (
     itemId: DatabaseItemId,
     partialItem: PartialDeep<DatabaseItem>,
@@ -89,25 +113,26 @@ export type UseDatabaseDocument = {
   /**
    * Перечень представлений
    */
+  /**
+   * @deprecated - перенести в отдельную use композицию
+   */
   view: {
-    state: ComputedRef<DatabaseViewsMap | undefined>;
-    list: ComputedRef<Readonly<RecordEntries<DatabaseViewsMap>> | undefined>;
-    get: (id: DatabaseViewId) => DatabaseView | undefined;
-    add: (view: DatabaseView) => Promise<DatabaseViewId>;
-    remove: (viewId: DatabaseViewId) => Promise<void>;
+    // state: DatabaseViewsMap | undefined;
+    // list: Readonly<RecordEntries<DatabaseViewsMap>> | undefined;
+    // get: (id: DatabaseViewId) => DatabaseView | undefined;
+    // add: (view: DatabaseView) => Promise<DatabaseViewId>;
+    // remove: (viewId: DatabaseViewId) => Promise<void>;
     rename: (viewId: DatabaseViewId, newName: string) => Promise<void>;
-    update: (
-      viewId: DatabaseViewId,
-      view: PartialDeep<DatabaseView>,
-    ) => Promise<void>;
+    // update: (
+    //   viewId: DatabaseViewId,
+    //   view: PartialDeep<DatabaseView>,
+    // ) => Promise<void>;
   };
 
   /**
    * Ошибки чтения документа
    */
-  documentError: ComputedRef<
-    core.$ZodError<DatabaseDocumentWithContent> | undefined
-  >;
+  documentError: core.$ZodError<DatabaseDocumentWithContent> | undefined;
 
   /**
    * Принудительное применение миграций

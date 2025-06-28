@@ -2,6 +2,9 @@ import { isFunction } from 'es-toolkit';
 import type { MaybeRef } from 'vue';
 import { toValue, watchEffect } from 'vue';
 
+/**
+ * @deprecated - use normal console as printing source file link is not supported
+ */
 export const createLogger = (moduleName: string) => {
   const log = (message: string, ...args: unknown[]) => {
     console.log(moduleName, message, ...args);

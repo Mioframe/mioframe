@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { useDatabaseDocument } from '@shared/lib/databaseDocument';
+import { useDatabaseViewsMap } from '@shared/lib/databaseDocument';
 import { MDDialog, useDialog as useDialog } from '@shared/ui/Dialog';
 import { computed, ref, toRef, watchEffect } from 'vue';
 import { MDButton } from '@shared/ui/Button';
@@ -26,29 +26,13 @@ const emit = defineEmits<{
 
 const docHandleRef = toRef(() => docHandle);
 
-const {
-  view: {
-    update: updateView,
-    list: viewsList,
-    add: addView,
-    remove: removeView,
-    get: getView,
-  },
-} = useDatabaseDocument(docHandleRef);
-
 const stateViewList = ref<[DatabaseViewId, DatabaseView][]>([]);
 
-// watch(
-//   viewsList,
-//   (viewsList) => {
-//     stateViewList.value = viewsList ? writableDeepClone(viewsList) : [];
-//   },
-//   { immediate: true },
-// );
+const databaseViewsMap = useDatabaseViewsMap(docHandleRef);
 
 watchEffect(() => {
-  stateViewList.value = viewsList.value
-    ? writableDeepClone(viewsList.value)
+  stateViewList.value = databaseViewsMap.list
+    ? writableDeepClone(databaseViewsMap.list)
     : [];
 });
 
@@ -57,7 +41,7 @@ const onApply = async () => {
   try {
     await Promise.all(
       stateViewList.value.map(async ([viewId], index) => {
-        await updateView(viewId, {
+        await databaseViewsMap.update(viewId, {
           order: index,
         });
       }),
@@ -81,7 +65,7 @@ const loadingCreateView = ref(0);
 const onSubmitViewCreate = async (view: DatabaseView) => {
   loadingCreateView.value += 1;
   try {
-    await addView(view);
+    await databaseViewsMap.create(view);
     isShowCreateDialog.value = false;
   } finally {
     loadingCreateView.value -= 1;
@@ -126,7 +110,7 @@ const onClickContextMenu = async (
           'delete',
         )
       ) {
-        await removeView(viewId);
+        await databaseViewsMap.remove(viewId);
       }
 
       break;
@@ -147,13 +131,15 @@ const loadingRenameView = ref(0);
 const renameViewId = ref<DatabaseViewId>();
 
 const oldNameOnRenameView = computed(
-  () => (renameViewId.value && getView(renameViewId.value)?.name) || 'unknown',
+  () =>
+    (renameViewId.value && databaseViewsMap.get(renameViewId.value)?.name) ||
+    'unknown',
 );
 
 const onSubmitViewRename = async (viewId: DatabaseViewId, newName: string) => {
   loadingRenameView.value += 1;
   try {
-    await updateView(viewId, {
+    await databaseViewsMap.update(viewId, {
       name: newName,
     });
     renameViewId.value = undefined;
