@@ -25,3 +25,5 @@ export const zodRelationProperty = extend(
 export type RelationProperty = output<typeof zodRelationProperty>;
 
 export const zodRelationValue = array(zodDatabaseItemId);
+
+export type RelationValue = output<typeof zodRelationValue>;

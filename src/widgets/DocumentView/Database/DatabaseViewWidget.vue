@@ -8,8 +8,11 @@ import type {
   DatabaseValue,
   DatabaseViewId,
 } from '@shared/lib/databaseDocument';
-import { useDatabaseDocument } from '@shared/lib/databaseDocument';
-import { computed, ref, shallowRef, toRef, watchEffect } from 'vue';
+import {
+  useDatabaseDocument,
+  useDatabaseViewsMap,
+} from '@shared/lib/databaseDocument';
+import { computed, ref, shallowRef, toRefs, watchEffect } from 'vue';
 import { MDBottomSheet } from '@shared/ui/Sheets';
 import { defineBarButtons, MDButtonsBar } from '@shared/ui/ButtonsBar';
 import { DatabasePropertyList } from '@entity/databaseProperty';
@@ -20,24 +23,23 @@ import {
 } from '@shared/ui/Menu';
 import { DatabasePropertyRemoveDialog } from '@feature/databasePropertyRemove';
 import { DatabasePropertyRenameDialog } from '@feature/databasePropertyRename';
-import { EmptySymbol } from '@shared/ui/EmptySymbol';
 import DatabaseViewPresetSettingsWidget from './DatabaseViewPresetSettingsWidget.vue';
 import type { AMDocHandle } from '@shared/lib/automerge/automergeTypes';
 import { useWrapStrictRecord } from '@shared/lib/strictRecord';
-import { DocumentDatabaseTable } from '@entity/documentDatabase';
 import EditableInlineValue from './EditableInlineValue.vue';
 import { useSnackbar } from '@shared/ui/Snackbar';
 import { useDatabaseItemRemove } from '@feature/databaseItemRemove';
 import { DatabasePropertyCreationDialog } from '@feature/databasePropertyCreate';
 import type { DirectoryFSEntry } from '@shared/lib/fileSystem';
 import ValueField from './ValueField.vue';
+import DatabaseViewLayout from './DatabaseViewLayout.vue';
 
-const { docHandle, directory } = defineProps<{
+const props = defineProps<{
   docHandle: AMDocHandle;
   directory: DirectoryFSEntry;
 }>();
 
-const docHandleRef = toRef(() => docHandle);
+const { directory, docHandle } = toRefs(props);
 
 const {
   addItem,
@@ -47,8 +49,7 @@ const {
   updateProperty,
   updateItem,
   documentError,
-  view: { list: viewList },
-} = useDatabaseDocument(docHandleRef);
+} = useDatabaseDocument(docHandle);
 
 const propertiesCollection = useWrapStrictRecord(properties);
 
@@ -179,9 +180,11 @@ const onChangeValue = async (
 
 const selectedViewId = shallowRef<DatabaseViewId>();
 
+const databaseViewMap = useDatabaseViewsMap(docHandle);
+
 watchEffect(() => {
   if (!selectedViewId.value) {
-    selectedViewId.value = viewList.value?.at(0)?.[0];
+    selectedViewId.value = databaseViewMap.list?.at(0)?.[0];
   }
 });
 
@@ -205,7 +208,7 @@ const itemContextualButtons = defineMenuButtonList([
 
 const { addSnackbar } = useSnackbar();
 
-const { remove: removeItem } = useDatabaseItemRemove(docHandleRef);
+const { remove: removeItem } = useDatabaseItemRemove(docHandle);
 
 const onClickItemContextBtn = (
   action: ITEM_CONTEXT_ACTION,
@@ -231,14 +234,7 @@ const onClickItemContextBtn = (
       <pre>{{ documentError }}</pre>
     </div>
 
-    <DocumentDatabaseTable
-      v-else-if="properties"
-      :doc-handle
-      :view-id="selectedViewId"
-      class="database-view__table"
-      :properties
-      @change-value="onChangeValue"
-    >
+    <DatabaseViewLayout :doc-handle :view-id="selectedViewId">
       <template #value="{ item, itemId, property, propertyId }">
         <EditableInlineValue
           :item
@@ -254,9 +250,7 @@ const onClickItemContextBtn = (
           @click="onClickItemContextBtn($event, itemId)"
         />
       </template>
-    </DocumentDatabaseTable>
-
-    <EmptySymbol v-else class="database-view__empty" />
+    </DatabaseViewLayout>
 
     <div class="database-view__controls">
       <MDBottomSheet class="database-view__sheet sheet">

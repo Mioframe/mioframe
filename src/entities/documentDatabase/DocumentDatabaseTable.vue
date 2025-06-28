@@ -5,10 +5,10 @@ import type {
   DatabaseItem,
   DatabaseItemId,
   DatabasePropertyId,
+  DatabaseTableView,
   DatabaseUnknownPropertiesMap,
   DatabaseUnknownProperty,
-  DatabaseViewId,
-} from '@shared/lib/databaseDocument/state';
+} from '@shared/lib/databaseDocument';
 import { useWrapStrictRecord } from '@shared/lib/strictRecord';
 import { MDTable } from '@shared/ui/Table';
 import type { EmptyObject } from 'type-fest';
@@ -16,9 +16,8 @@ import { toRefs } from 'vue';
 
 const props = defineProps<{
   properties: DatabaseUnknownPropertiesMap;
-
   docHandle: AMDocHandle;
-  viewId?: DatabaseViewId;
+  view: DatabaseTableView;
 }>();
 
 const slots = defineSlots<{
@@ -32,11 +31,11 @@ const slots = defineSlots<{
   actionHead: (p: EmptyObject) => unknown;
 }>();
 
-const { docHandle, viewId, properties } = toRefs(props);
+const { docHandle, view, properties } = toRefs(props);
 
 const propertiesCollection = useWrapStrictRecord(properties);
 
-const { itemList } = useOrderedDatabaseData(docHandle, viewId);
+const { itemList } = useOrderedDatabaseData(docHandle, view);
 </script>
 
 <template>

@@ -1,6 +1,9 @@
 export {
+  PROPERTY_TYPE_RELATION,
+  zodRelationProperty,
+  zodRelationValue,
   type Relation,
   type RelationProperty,
-  PROPERTY_TYPE_RELATION,
+  type RelationValue,
 } from './model';
 export { default as RelationValueInline } from './RelationValueInline.vue';
