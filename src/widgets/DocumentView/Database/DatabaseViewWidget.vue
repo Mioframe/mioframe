@@ -25,7 +25,6 @@ import { DatabasePropertyRemoveDialog } from '@feature/databasePropertyRemove';
 import { DatabasePropertyRenameDialog } from '@feature/databasePropertyRename';
 import DatabaseViewPresetSettingsWidget from './DatabaseViewPresetSettingsWidget.vue';
 import type { AMDocHandle } from '@shared/lib/automerge/automergeTypes';
-import { useWrapStrictRecord } from '@shared/lib/strictRecord';
 import EditableInlineValue from './EditableInlineValue.vue';
 import { useSnackbar } from '@shared/ui/Snackbar';
 import { useDatabaseItemRemove } from '@feature/databaseItemRemove';
@@ -33,6 +32,7 @@ import { DatabasePropertyCreationDialog } from '@feature/databasePropertyCreate'
 import type { DirectoryFSEntry } from '@shared/lib/fileSystem';
 import ValueField from './ValueField.vue';
 import DatabaseViewLayout from './DatabaseViewLayout.vue';
+import { useDatabasePropertiesMap } from '@shared/lib/databaseDocument/useDatabasePropertiesMap';
 
 const props = defineProps<{
   docHandle: AMDocHandle;
@@ -41,22 +41,17 @@ const props = defineProps<{
 
 const { directory, docHandle } = toRefs(props);
 
-const {
-  addItem,
-  addProperty,
-  properties,
-  removeProperty,
-  updateProperty,
-  updateItem,
-  documentError,
-} = useDatabaseDocument(docHandle);
+const { addItem, updateItem, documentError, content } =
+  useDatabaseDocument(docHandle);
 
-const propertiesCollection = useWrapStrictRecord(properties);
+const properties = computed(() => content?.body?.properties);
+
+const propertiesMap = useDatabasePropertiesMap(docHandle);
 
 const isShowAddProperty = ref(false);
 
 const onCreateProperty = async (property: DatabaseUnknownProperty) => {
-  await addProperty(property);
+  await propertiesMap.create(property);
   isShowAddProperty.value = false;
 };
 
@@ -127,7 +122,7 @@ const propertyContextBtns = defineMenuButtonList([
 const removePropertyId = ref<DatabasePropertyId>();
 
 const onApplyRemoveProperty = async (propertyId: DatabasePropertyId) => {
-  await removeProperty(propertyId);
+  await propertiesMap.remove(propertyId);
   removePropertyId.value = undefined;
 };
 
@@ -135,7 +130,7 @@ const renamePropertyId = ref<DatabasePropertyId>();
 
 const renamePropertyName = computed(() =>
   renamePropertyId.value
-    ? propertiesCollection.value?.get(renamePropertyId.value)?.name
+    ? propertiesMap.get(renamePropertyId.value)?.name
     : undefined,
 );
 
@@ -143,7 +138,7 @@ const onApplyRenameProperty = async (
   propertyId: DatabasePropertyId,
   name: string,
 ) => {
-  await updateProperty(propertyId, {
+  await propertiesMap.update(propertyId, {
     name,
   });
   renamePropertyId.value = undefined;
@@ -191,7 +186,7 @@ watchEffect(() => {
 const filteredFirstLineButtons = computed(() =>
   firstLineButtonsDescription.filter((btn) => {
     if (btn.action === Action.addItem) {
-      return !!propertiesCollection.value?.size;
+      return !!propertiesMap.size;
     }
 
     return true;
