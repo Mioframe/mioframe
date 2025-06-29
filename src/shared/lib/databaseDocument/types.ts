@@ -1,4 +1,3 @@
-import type { PartialDeep } from 'type-fest';
 import {
   extend,
   literal,
@@ -7,12 +6,7 @@ import {
   type core,
   type output,
 } from 'zod/v4-mini';
-import type {
-  DatabaseData,
-  DatabaseItem,
-  DatabaseItemId,
-  DatabaseState,
-} from './state';
+import type { DatabaseState } from './state';
 export * from './state';
 import { zodDatabaseState } from './state';
 import type { CFRDocumentContent } from '../cfrDocument';
@@ -56,29 +50,6 @@ export type DatabaseDocument = {
   content: DatabaseDocumentWithContent | undefined;
 
   update: <R>(fn: (doc: DataBaseStateLatest) => R) => Promise<R>;
-
-  /**
-   * Перечень данных
-   */
-  /**
-   * @deprecated - перенести в отдельную use композицию
-   */
-  data: DatabaseData | undefined;
-  /**
-   * @deprecated - перенести в отдельную use композицию
-   */
-  addItem: (item: DatabaseItem) => Promise<DatabaseItemId>;
-  /**
-   * @deprecated - перенести в отдельную use композицию
-   */
-  removeItem: (itemId: DatabaseItemId) => Promise<void>;
-  /**
-   * @deprecated - перенести в отдельную use композицию
-   */
-  updateItem: (
-    itemId: DatabaseItemId,
-    partialItem: PartialDeep<DatabaseItem>,
-  ) => Promise<void>;
 
   /**
    * Ошибки чтения документа

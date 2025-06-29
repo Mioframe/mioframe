@@ -9,6 +9,7 @@ import type {
   DatabaseViewId,
 } from '@shared/lib/databaseDocument';
 import {
+  useDatabaseData,
   useDatabaseDocument,
   useDatabaseViewsMap,
 } from '@shared/lib/databaseDocument';
@@ -41,8 +42,9 @@ const props = defineProps<{
 
 const { directory, docHandle } = toRefs(props);
 
-const { addItem, updateItem, documentError, content } =
-  useDatabaseDocument(docHandle);
+const { documentError, content } = useDatabaseDocument(docHandle);
+
+const { createItem, setValue } = useDatabaseData(docHandle);
 
 const properties = computed(() => content?.body?.properties);
 
@@ -58,7 +60,7 @@ const onCreateProperty = async (property: DatabaseUnknownProperty) => {
 const isShowAddItem = ref(false);
 
 const onAddItem = async (item: DatabaseItem) => {
-  await addItem(item);
+  await createItem(item);
   isShowAddItem.value = false;
 };
 
@@ -168,9 +170,7 @@ const onChangeValue = async (
   propertyId: DatabasePropertyId,
   value: DatabaseValue,
 ) => {
-  await updateItem(itemId, {
-    [propertyId]: value,
-  });
+  await setValue(itemId, propertyId, value);
 };
 
 const selectedViewId = shallowRef<DatabaseViewId>();
@@ -235,6 +235,7 @@ const onClickItemContextBtn = (
           :item
           :property-id
           :property
+          :directory
           @update:value="onChangeValue(itemId, propertyId, $event)"
         />
       </template>
@@ -292,7 +293,7 @@ const onClickItemContextBtn = (
       @cancel="isShowAddItem = false"
     >
       <template #valueField="{ property, update, value }">
-        <ValueField :property :value @update:value="update" />
+        <ValueField :property :value :directory @update:value="update" />
       </template>
     </DbItemAddDialog>
 

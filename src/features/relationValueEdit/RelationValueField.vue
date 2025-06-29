@@ -4,12 +4,16 @@ import {
   type RelationProperty,
   type RelationValue,
 } from '@entity/databaseRelation';
+import { DatabaseViewChipsList } from '@entity/databaseView';
 import type { AMDocHandle } from '@shared/lib/cfrDocument';
 import { useDirectoryRepo } from '@shared/lib/cfrDocument';
-import { type DatabaseItemId } from '@shared/lib/databaseDocument';
+import type {
+  DatabaseItemId,
+  DatabaseViewId,
+} from '@shared/lib/databaseDocument';
 import type { DirectoryFSEntry } from '@shared/lib/fileSystem';
 import { zodIs } from '@shared/lib/validateZodScheme';
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 
 const { directory, property, value } = defineProps<{
   value: unknown;
@@ -21,10 +25,12 @@ const emit = defineEmits<{
   'update:value': [value: DatabaseItemId[]];
 }>();
 
-const slots = defineSlots<{
+defineSlots<{
   data: (p: {
     onSelect: (itemId: DatabaseItemId) => void;
     docHandle: AMDocHandle;
+    value: DatabaseItemId[];
+    viewId: DatabaseViewId;
   }) => unknown;
 }>();
 
@@ -52,12 +58,32 @@ const documentId = computed(() => property.relation.documentId);
 const docHandle = computed(() =>
   directoryRepo.value?.map.get(documentId.value),
 );
+
+const selectedViewId = ref<DatabaseViewId>();
+
+const onClickViewChip = (viewId: DatabaseViewId) => {
+  selectedViewId.value = viewId;
+};
 </script>
 
 <template>
   <div class="relation-value-field">
-    <!-- фильтрация -->
-    <!-- // виджет Data с кнопками выбора -->
-    <slot v-if="docHandle" name="data" :on-select :doc-handle />
+    <DatabaseViewChipsList
+      v-if="docHandle"
+      class="relation-value-field__views"
+      :doc-handle
+      type="filter"
+      :selected-id="selectedViewId"
+      @click="onClickViewChip"
+    />
+
+    <slot
+      v-if="docHandle && selectedViewId"
+      name="data"
+      :on-select
+      :doc-handle
+      :value="relationValue"
+      :view-id="selectedViewId"
+    />
   </div>
 </template>

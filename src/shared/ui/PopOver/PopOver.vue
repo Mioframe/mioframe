@@ -3,7 +3,7 @@ import { useClosestParentFrame } from '@shared/lib/useClosestParentFrame';
 import type { MaybeElement } from '@vueuse/core';
 import { useElementSize, useWindowSize } from '@vueuse/core';
 import type { CSSProperties } from 'vue';
-import { computed, onBeforeUnmount, ref, watchEffect } from 'vue';
+import { computed, onBeforeUnmount, useTemplateRef, watchEffect } from 'vue';
 
 const props = defineProps<{
   originPosition?: { clientX: number; clientY: number };
@@ -14,7 +14,12 @@ const props = defineProps<{
 const emit = defineEmits<{
   'update:refEl': [refEl: MaybeElement];
 }>();
-const popoverEl = ref<HTMLElement>();
+
+defineSlots<{
+  default(): unknown;
+}>();
+
+const popoverEl = useTemplateRef('popoverEl');
 
 watchEffect(() => {
   emit('update:refEl', popoverEl.value);
@@ -25,20 +30,17 @@ const { width: rootElWidth, height: rootElHeight } = useElementSize(popoverEl);
 const { width: windowWidth, height: windowHeight } = useWindowSize();
 
 const mainStyle = computed((): CSSProperties | undefined => {
+  // TODO: добавить ограничение размера и расположения
   if (props.originPosition) {
     const { clientX, clientY } = props.originPosition;
 
     return {
-      left: `${Math.min(clientX, windowWidth.value - rootElWidth.value)}px`,
       top: `${Math.min(clientY, windowHeight.value - rootElHeight.value)}px`,
+      left: `${Math.min(clientX, windowWidth.value - rootElWidth.value)}px`,
     };
   }
   return undefined;
 });
-
-defineSlots<{
-  default(): unknown;
-}>();
 
 onBeforeUnmount(() => {
   emit('update:refEl', undefined);

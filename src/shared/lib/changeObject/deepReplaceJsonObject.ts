@@ -45,7 +45,7 @@ export const deepReplaceJsonObject = <S extends object>(
         target[newIndex++] = value;
       }
     }
-    target.length = newIndex;
+    target.splice(newIndex);
   }
 
   return true;
