@@ -15,6 +15,7 @@ import type {
   DatabasePropertyId,
   GeneralProperty,
 } from '@shared/lib/databaseDocument';
+import type { DirectoryFSEntry } from '@shared/lib/fileSystem';
 
 const {
   item = {},
@@ -24,6 +25,7 @@ const {
   item: DatabaseItem | undefined;
   property: GeneralProperty;
   propertyId: DatabasePropertyId;
+  directory: DirectoryFSEntry;
 }>();
 
 const emit = defineEmits<{
@@ -91,10 +93,13 @@ useFirstFocus(refPopover, { initialValue: true });
     v-model:ref-el="refPopover"
     :origin-position="positionEditForm"
   >
+    <!-- TODO: Изменить позиционирование PopOver как у tooltip, но с управлением приоритетного расположения -->
+
     <div class="editable-inline-value__edit-popover">
       <ValueField
         v-model:value="stateValue"
         :property
+        :directory
         @keydown.enter="closeEditor"
       />
     </div>

@@ -7,7 +7,6 @@ import {
 } from '@shared/lib/databaseDocument';
 import type { DatabaseViewId } from '@shared/lib/databaseDocument/state/v2';
 import { DB_VIEW_LAYOUT } from '@shared/lib/databaseDocument/state/v2/view/general';
-import { useReduceIterable } from '@shared/lib/useReduce';
 import { MDChip } from '@shared/ui/Chips';
 import { MDSymbol } from '@shared/ui/Icon';
 import { computed, shallowRef, toRef, watchEffect } from 'vue';
@@ -17,6 +16,7 @@ import { MD_SYS_TYPESCALE } from '@shared/lib/md';
 import { MDIconButton } from '@shared/ui/Button';
 import type { AMDocHandle } from '@shared/lib/automerge/automergeTypes';
 import { throttle } from 'es-toolkit';
+import { DatabaseViewChipsList } from '@entity/databaseView';
 
 /**
  * Виджет настроек отображения данных.
@@ -49,19 +49,6 @@ watchEffect(
   }, 1e3),
 );
 
-const viewsList = computed(() => databaseViewsMap.list);
-
-const viewButtons = useReduceIterable(
-  viewsList,
-  (acc, [viewId, { name }]) => {
-    acc.push({
-      label: name,
-      viewId,
-    });
-  },
-  <{ label: string; viewId: DatabaseViewId }[]>[],
-);
-
 const onClickViewChip = (viewId: DatabaseViewId) => {
   selectedViewId.value = viewId;
 };
@@ -88,19 +75,41 @@ const onAddView = async ({ name }: { name: string }) => {
 const onCancelAddView = () => {
   isShowAddView.value = false;
 };
+
+/* TODO: разделить на компоненты:
+  - выбор View - список view с dnd сортиовкой
+  - создание View - модельное окно с формой создания
+  - настройка View - компонуемый виджет с множестввом форм
+  - настройка сортировки
+  - настройка фильтрации
+  - ... уникальные настройки view
+*/
 </script>
 
 <template>
   <div class="database-view-preset-settings-widget">
+    <div class="database-view-preset-settings-widget__subtitle md-margin-top-2">
+      <span :class="MD_SYS_TYPESCALE.title.small">View presets</span>
+
+      <MDIconButton
+        tooltip="Managing content sorting"
+        md-symbol-name="info"
+        class="md-margin-left-2"
+        show-tooltip-on-click
+      >
+        <template #richTooltipContent>
+          Pre-configured data display sets
+        </template>
+      </MDIconButton>
+    </div>
+
     <div class="preset-section">
       <!-- панель пресетов -->
-      <MDChip
-        v-for="{ viewId, label } in viewButtons"
-        :key="viewId"
-        :label
-        :selected="selectedViewId === viewId"
+      <DatabaseViewChipsList
+        :doc-handle
         type="filter"
-        @click="onClickViewChip(viewId)"
+        :selected-id="selectedViewId"
+        @click="onClickViewChip"
       />
 
       <MDChip
@@ -116,6 +125,7 @@ const onCancelAddView = () => {
     <!-- панель фильтрации -->
 
     <!-- панель сортировки -->
+    <!-- TODO: сделать компактную версию из MDChip -->
     <div class="database-view-preset-settings-widget__subtitle md-margin-top-2">
       <span :class="MD_SYS_TYPESCALE.title.small">Sorting settings</span>
 

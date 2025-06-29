@@ -2,17 +2,23 @@
 import { zodBooleanProperty } from '@entity/databaseBoolean';
 import { zodDateProperty } from '@entity/databaseDate';
 import { zodNumberProperty } from '@entity/databaseNumber';
+import { zodRelationProperty } from '@entity/databaseRelation';
 import { zodStringProperty } from '@entity/databaseString';
 import { BooleanValueField } from '@feature/booleanValueEdit';
 import { DateValueField } from '@feature/dateValueEdit';
 import { NumberValueField } from '@feature/numberValueEdit';
+import { RelationValueField } from '@feature/relationValueEdit';
 import { StringValueField } from '@feature/stringValueEdit';
 import type { DatabaseUnknownProperty } from '@shared/lib/databaseDocument';
+import type { DirectoryFSEntry } from '@shared/lib/fileSystem';
 import { zodIs } from '@shared/lib/validateZodScheme';
+import DatabaseViewLayout from './DatabaseViewLayout.vue';
+import { MDCheckbox } from '@shared/ui/Checkbox';
 
 const {} = defineProps<{
   property: DatabaseUnknownProperty;
   value: unknown;
+  directory: DirectoryFSEntry;
 }>();
 
 const emit = defineEmits<{
@@ -52,6 +58,25 @@ const onUpdateValue = (v: unknown) => {
     :property
     @update:model-value="onUpdateValue"
   />
+
+  <RelationValueField
+    v-if="zodIs(property, zodRelationProperty)"
+    :value="value"
+    :property
+    :directory
+    @update:value="onUpdateValue"
+  >
+    <template #data="{ docHandle, onSelect, value: selectedValue, viewId }">
+      <DatabaseViewLayout :doc-handle :view-id>
+        <template #action="{ itemId }">
+          <MDCheckbox
+            :model-value="selectedValue.includes(itemId)"
+            @update:model-value="onSelect(itemId)"
+          />
+        </template>
+      </DatabaseViewLayout>
+    </template>
+  </RelationValueField>
 
   <div v-else>
     don't have a field for property "{{ property.name }}" with type "{{

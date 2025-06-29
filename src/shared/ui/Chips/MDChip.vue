@@ -7,6 +7,7 @@ const { type: chipType, selected = false } = defineProps<{
   label: string;
   type: T;
   selected?: T extends 'filter' ? boolean : undefined;
+  draggable?: boolean;
 }>();
 
 const slots = defineSlots<{
@@ -27,6 +28,7 @@ const slots = defineSlots<{
       },
     ]"
     type="button"
+    :draggable="draggable"
   >
     <div
       v-if="!!slots.leadingIcon || (chipType === 'filter' && selected)"

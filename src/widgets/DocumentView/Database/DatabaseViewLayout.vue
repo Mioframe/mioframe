@@ -1,5 +1,8 @@
 <script setup lang="ts">
-import { DocumentDatabaseTable } from '@entity/documentDatabase';
+import {
+  DocumentDatabaseJson,
+  DocumentDatabaseTable,
+} from '@entity/documentDatabase';
 import type { AMDocHandle } from '@shared/lib/automerge';
 import type {
   DatabaseItem,
@@ -71,5 +74,5 @@ const properties = computed(() => databaseDocument.content?.body?.properties);
     </template>
   </DocumentDatabaseTable>
 
-  <div v-else>Unknown view layout</div>
+  <DocumentDatabaseJson v-else :doc-handle />
 </template>

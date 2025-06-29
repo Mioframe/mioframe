@@ -7,13 +7,12 @@ import type {
   DatabaseView,
   DatabaseSortMap,
 } from '@shared/lib/databaseDocument';
-import { useDatabaseDocument } from '@shared/lib/databaseDocument';
+import { useDatabaseData } from '@shared/lib/databaseDocument';
 import { debounce } from 'perfect-debounce';
 import { useReduceIterable } from '@shared/lib/useReduce';
 import { useSortWorker } from './useSortWorker';
 import type { AMDocHandle } from '@shared/lib/automerge/automergeTypes';
 import { cloneDeep } from 'es-toolkit';
-import { toRefs } from '@vueuse/core';
 
 export function useOrderedDatabaseData(
   docHandle: MaybeRefOrGetter<AMDocHandle | undefined>,
@@ -24,7 +23,7 @@ export function useOrderedDatabaseData(
 
   const orderOfItems = ref<DatabaseItemId[]>([]);
 
-  const { data: databaseData } = toRefs(useDatabaseDocument(docHandleRef));
+  const { data: databaseData } = useDatabaseData(docHandleRef);
 
   const { sortData } = useSortWorker();
 

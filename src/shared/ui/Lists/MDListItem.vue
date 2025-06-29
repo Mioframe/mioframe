@@ -29,7 +29,7 @@ const onClick = (e: MouseEvent) => {
   <MDState
     :is="tag"
     class="md md-list-item"
-    :draggable="draggable ? 'true' : undefined"
+    :draggable="draggable"
     @click="onClick"
   >
     <span v-if="!!slots.leadingIcon" class="md-list-item__leading-icon">
