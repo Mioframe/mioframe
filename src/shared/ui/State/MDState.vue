@@ -17,6 +17,7 @@ const { is = 'div', disableRipple } = defineProps<{
 
   is?: 'button' | 'a' | 'div' | 'li';
   disableRipple?: boolean;
+  draggable?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -146,6 +147,7 @@ tryOnScopeDispose(() => {
       'md-state_focused': userFocused,
       'md-state_pressed': userPressed,
     }"
+    :draggable="draggable ? 'true' : undefined"
     @mousedown="onMouseDown"
     @touchstart="onTouchStart"
     @mouseup="onMouseUp"

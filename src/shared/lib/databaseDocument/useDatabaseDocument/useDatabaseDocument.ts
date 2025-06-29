@@ -1,4 +1,3 @@
-import type { PartialDeep } from 'type-fest';
 import type {
   DatabaseDocument,
   DataBaseStateLatest,
@@ -10,37 +9,10 @@ import {
 } from '../types';
 import { computed, reactive } from 'vue';
 import { toRefs, type MaybeRef } from '@vueuse/core';
-import {
-  addPropertyMutation,
-  removePropertyMutation,
-  updatePropertyMutation,
-} from './propertyMutations';
 import { useCFRDocument } from '../../cfrDocument/useCFRDocument';
 import { zodIs, zodSafeCheck } from '../../validateZodScheme';
 import { migrateBody, migrateDatabaseDocument } from '../migrations';
-import { deepPutJsonObject } from '../../changeObject';
-import {
-  addViewMutation,
-  removeViewMutation,
-  renameViewMutation,
-} from './viewMutations';
-import type {
-  DatabaseItem,
-  DatabaseItemId,
-  DatabasePropertyId,
-  DatabaseUnknownProperty,
-  DatabaseView,
-  DatabaseViewId,
-  DatabaseViewsMap,
-} from '../state';
-import {
-  addItemMutation,
-  removeItemMutation,
-  updateItemMutation,
-} from './itemMutations';
 import type { AMDocHandle } from '@shared/lib/automerge/automergeTypes';
-import type { RecordEntries } from '@shared/lib/objectEntries';
-import { recordEntries } from '@shared/lib/objectEntries';
 
 export const useDatabaseDocument = (
   docHandleRef: MaybeRef<AMDocHandle | undefined>,
@@ -78,135 +50,14 @@ export const useDatabaseDocument = (
       parseDocumentContent.value.data,
   );
 
-  const body = computed(() => content.value?.body);
-
-  const properties = computed(() => body.value?.properties);
-
-  const viewsState = computed((): DatabaseViewsMap | undefined => {
-    return body.value?.views;
-  });
-
-  const data = computed(() => body.value?.data);
-
-  const addProperty = async (
-    column: DatabaseUnknownProperty,
-  ): Promise<DatabasePropertyId> =>
-    await updateDatabaseDocument((body) => {
-      return addPropertyMutation(body.properties, column);
-    });
-
-  const updateProperty = async (
-    propertyId: DatabasePropertyId,
-    propertyDescription: PartialDeep<DatabaseUnknownProperty>,
-  ) =>
-    updateDatabaseDocument((body) => {
-      updatePropertyMutation(body.properties, propertyId, propertyDescription);
-    });
-
-  const removeProperty = async (propertyId: DatabasePropertyId) => {
-    await updateDatabaseDocument((body) => {
-      removePropertyMutation(body.properties, propertyId);
-    });
-  };
-
-  const addItem = async (item: DatabaseItem) =>
-    await updateDatabaseDocument((body) => {
-      return addItemMutation(body.data, item);
-    });
-
-  const updateItem = async (
-    itemId: DatabaseItemId,
-    partialItem: PartialDeep<DatabaseItem>,
-  ) => {
-    await updateDatabaseDocument((body) => {
-      updateItemMutation(body.data, itemId, partialItem);
-    });
-  };
-
-  const removeItem = async (itemId: DatabaseItemId) =>
-    updateDatabaseDocument((body) => {
-      removeItemMutation(body.data, itemId);
-    });
-
-  const addView = async (view: DatabaseView) =>
-    await updateDatabaseDocument((body) => {
-      return addViewMutation(body, view);
-    });
-
-  const removeView = async (viewId: DatabaseViewId) => {
-    await updateDatabaseDocument((body) => {
-      removeViewMutation(body, viewId);
-    });
-  };
-
-  const renameView = async (viewId: DatabaseViewId, newName: string) => {
-    await updateDatabaseDocument((body) => {
-      renameViewMutation(body, viewId, newName);
-    });
-  };
-
-  const updateView = async (
-    viewId: DatabaseViewId,
-    view: PartialDeep<DatabaseView>,
-  ) => {
-    await updateDatabaseDocument((body) => {
-      if (!body.views) {
-        body.views = {};
-      }
-
-      const views = body.views;
-
-      deepPutJsonObject(views, {
-        [viewId]: view,
-      });
-    });
-  };
-
   const forceApplyMigration = () =>
     updateDatabaseDocument((body) => {
       migrateBody(body, 0);
     });
 
-  const viewsList = computed(
-    (): Readonly<RecordEntries<DatabaseViewsMap>> | undefined => {
-      if (viewsState.value) {
-        return recordEntries(viewsState.value).sort(
-          ([, { order: a = 0 }], [, { order: b = 0 }]) => a - b,
-        );
-      }
-
-      return undefined;
-    },
-  );
-
-  const getView = (id: DatabaseViewId) => {
-    return viewsState.value?.[id];
-  };
-
   const databaseDocument: DatabaseDocument = reactive({
     content,
     update: updateDatabaseDocument,
-
-    data,
-
-    properties,
-    addProperty,
-    updateProperty,
-    removeProperty,
-
-    addItem,
-    updateItem,
-    removeItem,
-
-    view: {
-      state: viewsState,
-      list: viewsList,
-      get: getView,
-      add: addView,
-      remove: removeView,
-      rename: renameView,
-      update: updateView,
-    },
 
     documentError,
 

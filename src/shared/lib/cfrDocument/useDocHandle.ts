@@ -30,14 +30,14 @@ const createDocHandleRefState = (docHandle: AMDocHandle): DocHandleRef => {
    * Изменение состояния без триггера
    */
   const programReplaceDocRef = (doc: AMDoc | undefined) => {
-    watchHandle.pause();
+    docRefWatchHandle.pause();
     if (doc) {
       deepReplaceJsonObject(docRef.value, doc);
     } else {
       docRef.value = {};
     }
     void nextTick(() => {
-      watchHandle.resume();
+      docRefWatchHandle.resume();
     });
   };
 
@@ -58,13 +58,14 @@ const createDocHandleRefState = (docHandle: AMDocHandle): DocHandleRef => {
   /**
    * Обработка изменения состояния пользователем
    */
-  const watchHandle = watch(
+  const docRefWatchHandle = watch(
     docRef,
-    (docState) => {
-      if (isUnknownRecord(docState)) {
+    (docRef) => {
+      console.debug('watch docRef', docRef);
+      if (isUnknownRecord(docRef)) {
         docHandle.change((doc) => {
           if (isUnknownRecord(doc)) {
-            deepReplaceJsonObject(doc, docState);
+            deepReplaceJsonObject(doc, docRef);
           }
         });
       }
@@ -91,7 +92,7 @@ const createDocHandleRefState = (docHandle: AMDocHandle): DocHandleRef => {
     docHandle.removeListener('change', onChangeDoc);
     docHandle.removeListener('delete', onDeleteDoc);
 
-    watchHandle.stop();
+    docRefWatchHandle.stop();
   });
 
   const onceInit = once(() => {
