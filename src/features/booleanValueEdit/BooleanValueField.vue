@@ -8,6 +8,7 @@ import { computed } from 'vue';
 const { modelValue, property } = defineProps<{
   property: BooleanProperty;
   modelValue: unknown;
+  disabled?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -26,7 +27,7 @@ const id = uniqueId('BooleanPropertyField');
 
 <template>
   <div class="boolean-property-field">
-    <MDCheckbox :id v-model:model-value="value" indeterminate />
+    <MDCheckbox :id v-model:model-value="value" indeterminate :disabled />
 
     <label class="boolean-property-field__label" :for="id">
       {{ property.name }}

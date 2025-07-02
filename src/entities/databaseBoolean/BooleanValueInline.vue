@@ -5,11 +5,16 @@ import { computed } from 'vue';
 
 const { value } = defineProps<{
   value: unknown;
+  editable?: boolean;
 }>();
 
 const convertedValue = computed(() => (isBoolean(value) ? value : undefined));
 </script>
 
 <template>
-  <MDCheckbox :model-value="convertedValue" indeterminate />
+  <MDCheckbox
+    :model-value="convertedValue"
+    indeterminate
+    :readonly="!editable"
+  />
 </template>

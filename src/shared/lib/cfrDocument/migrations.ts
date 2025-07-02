@@ -2,13 +2,14 @@ import { deepPutJsonObject } from '../changeObject';
 import { defineMigrations } from '../defineMigrations';
 import type { MergeDeep } from 'type-fest';
 import { type CFRDocumentContent } from './types';
-import { isNumber, isObjectLike } from 'es-toolkit/compat';
 import type { AMDoc } from '../automerge/automergeTypes';
+import { isObjectLike } from '../typeGuards/isObjectLike';
+import { isInteger } from '../typeGuards/isInteger';
 
 const readVersion = (doc: unknown) => {
   const currentVersion: number = isObjectLike(doc)
     ? 'version' in doc
-      ? isNumber(doc.version) && Number.isInteger(doc.version)
+      ? isInteger(doc.version)
         ? doc.version
         : 0
       : 0

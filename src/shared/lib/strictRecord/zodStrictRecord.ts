@@ -1,7 +1,8 @@
 import type { core } from 'zod/v4-mini';
 import { safeParse, transform } from 'zod/v4-mini';
-import { forEach, isObjectLike } from 'es-toolkit/compat';
+import { forEach } from 'es-toolkit/compat';
 import type { StrictRecord } from './types';
+import { isObjectLike } from '../typeGuards';
 
 export const zodStrictRecord = <K extends string, V>(
   zodKey: core.$ZodType<K>,

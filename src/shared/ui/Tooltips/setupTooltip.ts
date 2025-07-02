@@ -12,9 +12,14 @@ export const setupTooltip = (
   targetElementRef: MaybeElementRef,
   tooltipEl: MaybeElementRef,
 ) => {
+  // offset from target
+  const padding = 8;
+  // indent from window border
+  const margin = 16;
+
   const {
-    x: targetX,
-    y: targetY,
+    x: targetLeft,
+    y: targetTop,
     width: targetWidth,
     height: targetHeight,
   } = useElementBounding(targetElementRef);
@@ -25,35 +30,30 @@ export const setupTooltip = (
     { box: 'border-box' },
   );
 
-  // offset from target
-  const padding = 8;
-  // indent from window border
-  const margin = 16;
-
   const { height: windowHeight, width: windowWidth } = useWindowSize();
 
   const topPositionY = computed(
-    () => targetY.value - padding - tooltipHeight.value,
+    () => targetTop.value - padding - tooltipHeight.value,
   );
 
   const centerPositionY = computed(
-    () => targetY.value + targetHeight.value / 2 - tooltipHeight.value / 2,
+    () => targetTop.value + targetHeight.value / 2 - tooltipHeight.value / 2,
   );
 
   const bottomPositionY = computed(
-    () => targetY.value + targetHeight.value + padding,
+    () => targetTop.value + targetHeight.value + padding,
   );
 
   const leftPositionX = computed(
-    () => targetX.value - padding - tooltipWidth.value,
+    () => targetLeft.value - padding - tooltipWidth.value,
   );
 
   const centerPositionX = computed(
-    () => targetX.value + targetWidth.value / 2 - tooltipWidth.value / 2,
+    () => targetLeft.value + targetWidth.value / 2 - tooltipWidth.value / 2,
   );
 
   const rightPositionX = computed(
-    () => targetX.value + targetWidth.value + padding,
+    () => targetLeft.value + targetWidth.value + padding,
   );
 
   const hasTopHeight = computed(() => topPositionY.value - margin >= 0);
@@ -69,7 +69,10 @@ export const setupTooltip = (
       // check top side
       hasTopHeight.value &&
       // check right side
-      targetX.value + targetWidth.value / 2 + tooltipWidth.value / 2 + margin <=
+      targetLeft.value +
+        targetWidth.value / 2 +
+        tooltipWidth.value / 2 +
+        margin <=
         windowWidth.value &&
       // check left side
       centerPositionX.value - margin >= 0,
@@ -80,7 +83,10 @@ export const setupTooltip = (
       // check bottom side
       hasBottomHeight.value &&
       // check right side
-      targetX.value + targetWidth.value / 2 + tooltipWidth.value / 2 + margin <=
+      targetLeft.value +
+        targetWidth.value / 2 +
+        tooltipWidth.value / 2 +
+        margin <=
         windowWidth.value &&
       // check left side
       centerPositionX.value - margin >= 0,
@@ -238,8 +244,31 @@ export const setupTooltip = (
     return coordinatesToPosition(partiallyAvailablePosition.value);
   });
 
+  const targetCenterX = computed(
+    () => targetLeft.value + targetWidth.value / 2,
+  );
+  const targetCenterY = computed(
+    () => targetTop.value + targetHeight.value / 2,
+  );
+
+  const alignCenterPosition = computed(() => {
+    const x = Math.max(targetCenterX.value - tooltipWidth.value / 2, margin);
+    const y = Math.max(targetCenterY.value - tooltipHeight.value / 2, margin);
+
+    return { x, y };
+  });
+
+  const alignCenterStyle = computed((): StyleValue => {
+    return {
+      ...coordinatesToPosition(alignCenterPosition.value),
+      maxWidth: `calc(100vw - ${margin * 2}px)`,
+      maxHeight: `calc(100vh - ${margin * 2}px)`,
+    };
+  });
+
   return {
     plainTooltipStyle,
     richTooltipStyle,
+    alignCenterStyle,
   };
 };

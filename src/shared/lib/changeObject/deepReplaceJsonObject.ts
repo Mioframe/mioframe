@@ -1,4 +1,4 @@
-import { cloneDeep } from 'es-toolkit';
+import { cloneDeep, isUndefined } from 'es-toolkit';
 import { isUnknownRecord } from './isUnknownRecord';
 import { isArray, isNil, keys } from 'es-toolkit/compat';
 
@@ -20,6 +20,10 @@ export const deepReplaceJsonObject = <S extends object>(
     if (sourceKey in target) {
       const targetValue: unknown = target[sourceKey];
       if (sourceValue !== targetValue) {
+        if (isUndefined(sourceValue)) {
+          // eslint-disable-next-line @typescript-eslint/no-dynamic-delete -- `undefined` is not a valid JSON data type
+          delete target[sourceKey];
+        }
         if (isUnknownRecord(targetValue) && isUnknownRecord(sourceValue)) {
           deepReplaceJsonObject(targetValue, sourceValue);
         } else {

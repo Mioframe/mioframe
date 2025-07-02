@@ -3,9 +3,11 @@ import { MD_SYS_TYPESCALE } from '@shared/lib/md';
 import { useClosestParentFrame } from '@shared/lib/useClosestParentFrame';
 import {
   refDebounced,
+  unrefElement,
   useElementHover,
   useEventListener,
   useParentElement,
+  type MaybeElement,
 } from '@vueuse/core';
 import { computed, ref, useTemplateRef } from 'vue';
 import { setupTooltip } from './setupTooltip';
@@ -20,7 +22,7 @@ const {
 } = defineProps<{
   subhead: string;
   disabledTeleport?: boolean;
-  targetElement?: HTMLElement | SVGElement | null;
+  targetElement?: MaybeElement;
   show?: boolean | undefined;
   useClick?: boolean;
   useHover?: boolean;
@@ -33,7 +35,9 @@ const slots = defineSlots<{
 
 const parentEl = useParentElement();
 
-const targetElementRef = computed(() => targetElement ?? parentEl.value);
+const targetElementRef = computed(() =>
+  unrefElement(targetElement ?? parentEl.value),
+);
 
 const targetTeleport = useClosestParentFrame();
 

@@ -38,6 +38,11 @@ export const setupApp = async (app: App = createApp(MainApp)) => {
         name: 'Chips',
         component: () => import('@shared/ui/Chips/MDChipPlayground.vue'),
       },
+      {
+        name: 'RichTooltip',
+        component: () =>
+          import('@shared/ui/Tooltips/MDRichTooltipPlayground.vue'),
+      },
     ]);
   }
 
