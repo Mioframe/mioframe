@@ -14,6 +14,7 @@ const {
   indeterminate?: boolean;
   modelValue?: boolean | undefined;
   id?: string;
+  readonly?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -63,6 +64,7 @@ const onClickContainer = () => {
       'md-checkbox_indeterminate': isNil(stateValue),
       'md-checkbox_error': error,
       'md-checkbox_disabled': disabled,
+      'md-checkbox_readonly': readonly,
     }"
     @click="onClickContainer"
   >
@@ -144,6 +146,22 @@ const onClickContainer = () => {
         from var(--md-sys-color-on-surface) r g b / 0.38
       );
       --md-content-color: var(--md-sys-color-surface);
+    }
+  }
+
+  &_readonly {
+    .md-checkbox__container {
+      border-color: var(--md-sys-color-secondary);
+    }
+
+    &.md-checkbox_indeterminate,
+    &.md-checkbox_selected {
+      pointer-events: none;
+
+      .md-checkbox__container {
+        --md-container-color: var(--md-sys-color-secondary);
+        --md-content-color: var(--md-sys-color-on-secondary);
+      }
     }
   }
 }

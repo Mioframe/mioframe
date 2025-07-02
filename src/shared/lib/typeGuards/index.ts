@@ -1,5 +1,4 @@
 export { isEnumValue } from './isEnum';
-
-export const isFileSystemDirectoryHandle = (
-  v: unknown,
-): v is FileSystemDirectoryHandle => v instanceof FileSystemDirectoryHandle;
+export { isInteger } from './isInteger';
+export { isObjectLike } from './isObjectLike';
+export { isFileSystemDirectoryHandle } from './isFileSystemDirectoryHandle';

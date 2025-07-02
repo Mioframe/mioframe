@@ -1,6 +1,6 @@
 import { isNil } from 'es-toolkit';
-import { isObjectLike } from 'es-toolkit/compat';
 import type { MergeDeep, PartialDeep } from 'type-fest';
+import { isObjectLike } from '../typeGuards';
 
 /**
  * overwrites modified values from source to target

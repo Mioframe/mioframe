@@ -60,7 +60,7 @@ const onUpdateValue = (v: unknown) => {
   />
 
   <RelationValueField
-    v-if="zodIs(property, zodRelationProperty)"
+    v-else-if="zodIs(property, zodRelationProperty)"
     :value="value"
     :property
     :directory

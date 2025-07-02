@@ -1,21 +1,19 @@
 <script setup lang="ts">
-import { computed, ref, watchEffect } from 'vue';
-import { type MaybeElement } from '@vueuse/core';
+import { computed, ref, useTemplateRef, watch, watchEffect } from 'vue';
 import { zodBooleanProperty } from '@entity/databaseBoolean/boolean';
 import { zodIs } from '@shared/lib/validateZodScheme';
 import ValueInline from './ValueInline.vue';
 import { useBooleanEdit } from '@feature/booleanPropertyEdit';
 import { isEqual } from 'es-toolkit';
 import ValueField from './ValueField.vue';
-import { onInteractionOutside } from '@shared/lib/onInteractionOutside';
 import { useFirstFocus } from '@shared/lib/useFirstFocus';
-import { PopOver } from '@shared/ui/PopOver';
 import type {
   DatabaseItem,
   DatabasePropertyId,
   GeneralProperty,
 } from '@shared/lib/databaseDocument';
 import type { DirectoryFSEntry } from '@shared/lib/fileSystem';
+import { MDOverlayTooltip } from '@shared/ui/Tooltips';
 
 const {
   item = {},
@@ -34,10 +32,7 @@ const emit = defineEmits<{
 
 const initialValue = computed(() => item[propertyId]);
 
-const positionEditForm = ref<{
-  clientY: number;
-  clientX: number;
-}>();
+const showEditForm = ref(false);
 
 const stateValue = ref<unknown>();
 
@@ -53,49 +48,44 @@ const tryEmitValue = () => {
 
 const { toggleBoolean } = useBooleanEdit(stateValue);
 
-const onClick = ({ target }: MouseEvent) => {
+const onClick = () => {
   if (zodIs(property, zodBooleanProperty)) {
     toggleBoolean();
     tryEmitValue();
     return;
   }
 
-  if (target instanceof HTMLElement) {
-    const { top, left } = target.getBoundingClientRect();
-
-    positionEditForm.value = {
-      clientY: top,
-      clientX: left,
-    };
-  }
+  showEditForm.value = true;
 };
 
-const refPopover = ref<MaybeElement>();
+const refPopover = useTemplateRef('refPopover');
 
 const closeEditor = () => {
-  tryEmitValue();
-
-  positionEditForm.value = undefined;
+  showEditForm.value = false;
 };
 
-onInteractionOutside(refPopover, closeEditor);
+watch(showEditForm, (showEditForm) => {
+  if (!showEditForm) {
+    tryEmitValue();
+  }
+});
 
 useFirstFocus(refPopover, { initialValue: true });
+
+const inlineEl = useTemplateRef('inlineEl');
 </script>
 
 <template>
-  <a class="editable-inline-value" tabindex="0" @click="onClick">
-    <ValueInline :property :value="initialValue" />
+  <a ref="inlineEl" class="editable-inline-value" tabindex="0" @click="onClick">
+    <ValueInline :property :value="initialValue" editable />
   </a>
 
-  <PopOver
-    v-if="positionEditForm"
-    v-model:ref-el="refPopover"
-    :origin-position="positionEditForm"
+  <MDOverlayTooltip
+    v-model:show="showEditForm"
+    :target-element="inlineEl"
+    @interaction-outside="closeEditor"
   >
-    <!-- TODO: Изменить позиционирование PopOver как у tooltip, но с управлением приоритетного расположения -->
-
-    <div class="editable-inline-value__edit-popover">
+    <div ref="refPopover" class="editable-inline-value__edit-popover">
       <ValueField
         v-model:value="stateValue"
         :property
@@ -103,7 +93,7 @@ useFirstFocus(refPopover, { initialValue: true });
         @keydown.enter="closeEditor"
       />
     </div>
-  </PopOver>
+  </MDOverlayTooltip>
 </template>
 
 <style scoped>
@@ -120,11 +110,11 @@ useFirstFocus(refPopover, { initialValue: true });
   }
 
   &__edit-popover {
-    --md-container-color: var(--md-sys-color-background);
-    --md-content-color: var(--md-sys-color-on-background);
-    padding: 8px;
-    border-radius: 8px;
-    box-shadow: var(--md-sys-elevation-level1);
+    /* --md-container-color: var(--md-sys-color-background);
+    --md-content-color: var(--md-sys-color-on-background); */
+    /* padding: 8px; */
+    /* border-radius: 8px; */
+    /* box-shadow: var(--md-sys-elevation-level1); */
   }
 }
 </style>

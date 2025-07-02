@@ -7,6 +7,7 @@ import type {
   DatabaseValue,
 } from './state';
 import { generateItemId, type DatabaseItem } from './state';
+import { isUndefined } from 'es-toolkit';
 
 export const useDatabaseData = (
   rawDocHandle: MaybeRefOrGetter<AMDocHandle | undefined>,
@@ -45,7 +46,12 @@ export const useDatabaseData = (
       if (!doc.data[itemId]) {
         doc.data[itemId] = {};
       }
-      doc.data[itemId][propertyId] = value;
+      if (isUndefined(value)) {
+        // eslint-disable-next-line @typescript-eslint/no-dynamic-delete -- `undefined` is not a valid JSON data type
+        delete doc.data[itemId][propertyId];
+      } else {
+        doc.data[itemId][propertyId] = value;
+      }
     });
   };
 

@@ -1,0 +1,94 @@
+<script setup lang="ts">
+import { useClosestParentFrame } from '@shared/lib/useClosestParentFrame';
+import {
+  syncRef,
+  unrefElement,
+  useParentElement,
+  type MaybeElement,
+} from '@vueuse/core';
+import { computed, ref, toRefs, useTemplateRef } from 'vue';
+import { setupTooltip } from './setupTooltip';
+import { onInteractionOutside } from '@shared/lib/onInteractionOutside';
+
+const props = defineProps<{
+  disabledTeleport?: boolean;
+  targetElement?: MaybeElement;
+}>();
+
+const { disabledTeleport, targetElement } = toRefs(props);
+
+const showModel = defineModel<boolean>('show');
+
+const emit = defineEmits<{
+  interactionOutside: [];
+}>();
+
+defineSlots<{
+  default(): unknown;
+}>();
+
+const showState = ref<boolean>();
+
+syncRef(showModel, showState);
+
+const parentEl = useParentElement();
+
+const targetElementRef = computed(() =>
+  unrefElement(targetElement.value ?? parentEl.value),
+);
+
+const targetTeleport = useClosestParentFrame();
+
+const tooltipEl = useTemplateRef('tooltipEl');
+
+const { alignCenterStyle } = setupTooltip(targetElementRef, tooltipEl);
+
+onInteractionOutside(tooltipEl, () => {
+  emit('interactionOutside');
+});
+</script>
+
+<template>
+  <Teleport :to="targetTeleport" defer :disabled="disabledTeleport">
+    <Transition>
+      <div
+        v-if="showState"
+        ref="tooltipEl"
+        class="md md-overlay-tooltip"
+        :style="alignCenterStyle"
+      >
+        <slot name="default" />
+      </div>
+    </Transition>
+  </Teleport>
+</template>
+
+<style lang="css" scoped>
+.md-overlay-tooltip {
+  --md-container-color: var(--md-sys-color-surface-container);
+  --md-content-color: var(--md-sys-color-on-surface-variant);
+
+  box-shadow: var(--md-sys-elevation-level2);
+  border-radius: var(--md-sys-shape-corner-medium);
+  padding: 12px 16px 8px;
+  box-sizing: border-box;
+
+  position: fixed;
+  z-index: 1;
+  left: 16px;
+  top: 16px;
+
+  transition-property: transform, opacity;
+  transition-duration: var(--md-sys-motion-duration-medium1);
+
+  &.v-leave-to,
+  &.v-enter-from {
+    transform: scaleY(0);
+  }
+
+  &.v-leave-from,
+  &.v-enter-to {
+    transform: scaleY(1);
+  }
+}
+</style>

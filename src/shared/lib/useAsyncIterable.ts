@@ -1,9 +1,10 @@
 import { isNil } from 'es-toolkit';
-import { isFunction, isObjectLike } from 'es-toolkit/compat';
+import { isFunction } from 'es-toolkit/compat';
 import { from } from 'ix/asynciterable';
 import { filter, takeWhile } from 'ix/asynciterable/operators';
 import type { Ref } from 'vue';
 import { computed, ref, toRef, watch } from 'vue';
+import { isObjectLike } from './typeGuards';
 
 export type Collection<T> = AsyncIterable<T> | Iterable<T>;
 
