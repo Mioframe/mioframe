@@ -5,7 +5,8 @@ import { zodDatabaseType } from '../types';
 import type { DatabaseState as DatabaseStateV1 } from '../state/v1';
 import { databaseState as databaseStateV1 } from '../state/v1';
 import { databaseState as databaseStateV2 } from '../state/v2';
-import { isObjectLike, isNumber } from 'es-toolkit/compat';
+import { isNumber } from 'es-toolkit/compat';
+import { isObjectLike } from '@shared/lib/typeGuards';
 
 const readDatabaseVersion = (doc: unknown) => {
   const dbDocument = zodIs(doc, zodDatabaseType) ? doc : undefined;

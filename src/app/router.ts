@@ -22,10 +22,6 @@ if (import.meta.env.DEV) {
         component: () => import('@shared/ui/Layers/DemoPage.vue'),
       },
       {
-        path: 'tooltips',
-        component: () => import('@shared/ui/Tooltips/DemoPage.vue'),
-      },
-      {
         path: 'progress-indicators',
         component: () => import('@shared/ui/ProgressIndicators/DemoPage.vue'),
       },

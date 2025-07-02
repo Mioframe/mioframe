@@ -1,8 +1,8 @@
 import { from } from 'ix/iterable';
 import type { MaybeRefOrGetter, Ref } from 'vue';
 import { computed, ref, toRef, toValue, watch } from 'vue';
-import { createLogger } from './logger';
-import { isFunction, isObjectLike } from 'es-toolkit/compat';
+import { isFunction } from 'es-toolkit/compat';
+import { isObjectLike } from './typeGuards';
 
 export type Dictionary<K, V> = Iterable<[K, V]>;
 
@@ -40,13 +40,9 @@ export const isItemWithChildren = <
     (isObjectLike(v.children) &&
       (hasIterator(v.children) || hasAsyncIterator(v.children))));
 
-const { debug } = createLogger('useIterable');
-
 export const useIterable = <T>(
   iterable: MaybeRefOrGetter<Iterable<T> | undefined>,
 ) => {
-  debug('start');
-
   const iterableRef = toRef(() => toValue(iterable));
 
   const stateCollection = <Ref<T[]>>ref<T[]>([]);

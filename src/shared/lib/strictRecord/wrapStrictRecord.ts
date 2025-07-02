@@ -1,5 +1,5 @@
 import { isNil, isNotNil } from 'es-toolkit';
-import { hasOwnKey } from '../hasOwnKey';
+import { hasOwnKey } from '../typeGuards/hasOwnKey';
 import type { StrictRecord } from './types';
 
 export interface ReadonlyWrapStrictRecord<K extends string, V> {

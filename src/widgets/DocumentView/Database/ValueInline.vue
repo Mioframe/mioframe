@@ -18,11 +18,16 @@ import type { GeneralProperty } from '@shared/lib/databaseDocument';
 const {} = defineProps<{
   property: GeneralProperty;
   value: unknown;
+  editable?: boolean;
 }>();
 </script>
 
 <template>
-  <BooleanInline v-if="property?.type === PROPERTY_TYPE_BOOLEAN" :value />
+  <BooleanInline
+    v-if="property?.type === PROPERTY_TYPE_BOOLEAN"
+    :value
+    :editable
+  />
 
   <NumberValueInline
     v-else-if="property?.type === PROPERTY_TYPE_NUMBER"
