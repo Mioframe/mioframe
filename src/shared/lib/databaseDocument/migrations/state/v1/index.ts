@@ -1,5 +1,5 @@
-export { zodDatabaseState, databaseState } from './state';
-export type { DatabaseState } from './state';
+export { zodDatabaseStateV1, databaseStateV1 } from './state';
+export type { DatabaseStateV1 } from './state';
 export {
   generateItemId,
   zodDatabaseData,

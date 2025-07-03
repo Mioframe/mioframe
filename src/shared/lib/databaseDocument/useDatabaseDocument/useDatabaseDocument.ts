@@ -11,7 +11,7 @@ import { computed, reactive } from 'vue';
 import { toRefs, type MaybeRef } from '@vueuse/core';
 import { useCFRDocument } from '../../cfrDocument/useCFRDocument';
 import { zodIs, zodSafeCheck } from '../../validateZodScheme';
-import { migrateBody, migrateDatabaseDocument } from '../migrations';
+import { migrateDatabaseBody, migrateDatabaseDocument } from '../migrations';
 import type { AMDocHandle } from '@shared/lib/automerge/automergeTypes';
 
 export const useDatabaseDocument = (
@@ -52,7 +52,7 @@ export const useDatabaseDocument = (
 
   const forceApplyMigration = () =>
     updateDatabaseDocument((body) => {
-      migrateBody(body, 0);
+      migrateDatabaseBody(body);
     });
 
   const databaseDocument: DatabaseDocument = reactive({

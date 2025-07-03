@@ -2,9 +2,9 @@
 import type {
   GeneralProperty,
   PropertiesMap,
-} from '@shared/lib/databaseDocument/state/v1/property';
+} from '@shared/lib/databaseDocument/migrations/state/v1/property';
 import DbItemEditDialog from './DbItemEditDialog.vue';
-import type { DatabaseItem } from '@shared/lib/databaseDocument/state';
+import type { DatabaseItem } from '@shared/lib/databaseDocument/migrations/state';
 
 const { properties } = defineProps<{
   properties: PropertiesMap;

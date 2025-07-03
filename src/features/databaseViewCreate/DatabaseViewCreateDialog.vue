@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import type { DatabaseView } from '@shared/lib/databaseDocument/state';
-import { DB_VIEW_LAYOUT } from '@shared/lib/databaseDocument/state';
+import type { DatabaseView } from '@shared/lib/databaseDocument/migrations/state';
+import { DB_VIEW_LAYOUT } from '@shared/lib/databaseDocument/migrations/state';
 import { MDDialog } from '@shared/ui/Dialog';
 import { MDTextField } from '@shared/ui/TextField';
 import type { ValueOf } from 'type-fest';

@@ -6,9 +6,9 @@ import {
   type core,
   type output,
 } from 'zod/v4-mini';
-import type { DatabaseState } from './state';
-export * from './state';
-import { zodDatabaseState } from './state';
+import type { DatabaseState } from './migrations/state';
+export * from './migrations/state';
+import { zodDatabaseState } from './migrations/state';
 import type { CFRDocumentContent } from '../cfrDocument';
 import { zodDocumentContent } from '../cfrDocument';
 
@@ -42,7 +42,6 @@ export type DatabaseDocumentWithContent = output<
 
 export type MutationFn = (doc: CFRDocumentContent) => unknown;
 
-// TODO: упростить API, разделить на композиции
 export type DatabaseDocument = {
   /**
    * Всё содержимое документа

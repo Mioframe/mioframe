@@ -1,52 +1,20 @@
-import { defineMigrations } from '../../defineMigrations';
-import { zodIs } from '../../validateZodScheme';
 import type { DatabaseTypeDocument } from '../types';
-import { zodDatabaseType } from '../types';
-import type { DatabaseState as DatabaseStateV1 } from '../state/v1';
-import { databaseState as databaseStateV1 } from '../state/v1';
-import { databaseState as databaseStateV2 } from '../state/v2';
-import { isNumber } from 'es-toolkit/compat';
-import { isObjectLike } from '@shared/lib/typeGuards';
+import { isInteger, isObjectLike } from '@shared/lib/typeGuards';
+import { applyMigrationsBody } from './applyMigrations';
 
-const readDatabaseVersion = (doc: unknown) => {
-  const dbDocument = zodIs(doc, zodDatabaseType) ? doc : undefined;
+export const migrateDatabaseBody = (body: object) => {
+  const version: number =
+    'version' in body ? (isInteger(body.version) ? body.version : 0) : 0;
 
-  const currentVersion: number =
-    dbDocument && 'body' in dbDocument
-      ? isObjectLike(dbDocument.body)
-        ? 'version' in dbDocument.body
-          ? isNumber(dbDocument.body.version)
-            ? dbDocument.body.version
-            : 0
-          : 0
-        : 0
-      : 0;
-
-  return currentVersion;
-};
-
-export const migrateBody = (bodyV0: object, currentDatabaseVersion: number) => {
-  const latestBody = defineMigrations(
-    (bodyV0: object) => {
-      return databaseStateV1.migration(bodyV0);
-    },
-
-    (bodyV1: DatabaseStateV1) => {
-      return databaseStateV2.migration(bodyV1);
-    },
-  )(bodyV0, currentDatabaseVersion);
-
-  return latestBody;
+  return applyMigrationsBody(body, version);
 };
 
 export const migrateDatabaseDocument = (data: DatabaseTypeDocument) => {
-  const currentDatabaseVersion = readDatabaseVersion(data);
-
   if (!isObjectLike(data.body)) {
     data.body = {};
   }
 
-  const bodyV0 = data.body as object;
+  const body = data.body as object;
 
-  return migrateBody(bodyV0, currentDatabaseVersion);
+  return migrateDatabaseBody(body);
 };

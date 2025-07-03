@@ -1,8 +1,8 @@
 export {
   type DatabaseViewsMap,
-  type DatabaseState,
-  databaseState,
-  zodDatabaseState,
+  type DatabaseStateV2,
+  databaseStateV2,
+  zodDatabaseStateV2,
   zodDatabaseViewsMap,
 } from './state';
 export {

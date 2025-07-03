@@ -1,5 +1,5 @@
-import { nextTick, reactive, ref, watch } from 'vue';
-import { isUnknownRecord, deepReplaceJsonObject } from '../changeObject';
+import { reactive, readonly, ref } from 'vue';
+import { deepReplaceJsonObject } from '../changeObject';
 import { defineReadonlyDeep } from '../readonlyDeep';
 import type { UnknownRecord } from 'type-fest';
 import type {
@@ -30,15 +30,11 @@ const createDocHandleRefState = (docHandle: AMDocHandle): DocHandleRef => {
    * Изменение состояния без триггера
    */
   const programReplaceDocRef = (doc: AMDoc | undefined) => {
-    docRefWatchHandle.pause();
     if (doc) {
       deepReplaceJsonObject(docRef.value, doc);
     } else {
       docRef.value = {};
     }
-    void nextTick(() => {
-      docRefWatchHandle.resume();
-    });
   };
 
   /**
@@ -54,24 +50,6 @@ const createDocHandleRefState = (docHandle: AMDocHandle): DocHandleRef => {
   const onDeleteDoc = ({}: AMDocHandleDeletePayload) => {
     programReplaceDocRef(undefined);
   };
-
-  /**
-   * Обработка изменения состояния пользователем
-   */
-  const docRefWatchHandle = watch(
-    docRef,
-    (docRef) => {
-      console.debug('watch docRef', docRef);
-      if (isUnknownRecord(docRef)) {
-        docHandle.change((doc) => {
-          if (isUnknownRecord(doc)) {
-            deepReplaceJsonObject(doc, docRef);
-          }
-        });
-      }
-    },
-    { deep: true },
-  );
 
   /**
    * Чтение документа и актуализация состояния
@@ -91,8 +69,6 @@ const createDocHandleRefState = (docHandle: AMDocHandle): DocHandleRef => {
   tryOnScopeDispose(() => {
     docHandle.removeListener('change', onChangeDoc);
     docHandle.removeListener('delete', onDeleteDoc);
-
-    docRefWatchHandle.stop();
   });
 
   const onceInit = once(() => {
@@ -105,7 +81,7 @@ const createDocHandleRefState = (docHandle: AMDocHandle): DocHandleRef => {
   const docHandleRef: DocHandleRef = reactive({
     get docRef() {
       onceInit();
-      return docRef;
+      return readonly(docRef);
     },
     doc,
     change,

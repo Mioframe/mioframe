@@ -5,7 +5,7 @@ import {
   type DatabasePropertyId,
   type DatabaseSortMap,
   type DatabaseUnknownPropertiesMap,
-} from '@shared/lib/databaseDocument/state';
+} from '@shared/lib/databaseDocument/migrations/state';
 import { recordEntries } from '@shared/lib/objectEntries';
 import { useSortable } from '@shared/lib/sortable';
 import { useWrapStrictRecord } from '@shared/lib/strictRecord';

@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import type { DatabaseSortDirection } from '@shared/lib/databaseDocument/state';
-import { SORT_DIRECTION } from '@shared/lib/databaseDocument/state';
+import type { DatabaseSortDirection } from '@shared/lib/databaseDocument/migrations/state';
+import { SORT_DIRECTION } from '@shared/lib/databaseDocument/migrations/state';
 import { UIButton } from '@shared/ui/Button';
 
 defineProps<{

@@ -1,12 +1,12 @@
 import type { output } from 'zod/v4-mini';
 import { literal, object } from 'zod/v4-mini';
 import { zodUnknownPropertiesMap } from './property';
-import { defineVersionState } from '../defineVersion';
+import { defineVersion } from '../../../../migrations/defineVersion';
 import type { EmptyObject } from 'type-fest';
 import { deepPutJsonObject } from '@shared/lib/changeObject';
 import { zodDatabaseData } from './item';
 
-export const databaseState = defineVersionState(
+export const databaseStateV1 = defineVersion(
   object({
     version: literal(1),
     data: zodDatabaseData,
@@ -21,6 +21,6 @@ export const databaseState = defineVersionState(
   },
 );
 
-export const zodDatabaseState = databaseState.zod;
+export const zodDatabaseStateV1 = databaseStateV1.schema;
 
-export type DatabaseState = output<typeof zodDatabaseState>;
+export type DatabaseStateV1 = output<typeof zodDatabaseStateV1>;

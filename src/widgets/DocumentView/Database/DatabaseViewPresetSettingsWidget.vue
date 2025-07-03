@@ -5,11 +5,11 @@ import {
   useDatabaseView,
   useDatabaseViewsMap,
 } from '@shared/lib/databaseDocument';
-import type { DatabaseViewId } from '@shared/lib/databaseDocument/state/v2';
-import { DB_VIEW_LAYOUT } from '@shared/lib/databaseDocument/state/v2/view/general';
+import type { DatabaseViewId } from '@shared/lib/databaseDocument/migrations/state/v2';
+import { DB_VIEW_LAYOUT } from '@shared/lib/databaseDocument/migrations/state/v2/view/general';
 import { MDChip } from '@shared/ui/Chips';
 import { MDSymbol } from '@shared/ui/Icon';
-import { computed, shallowRef, toRef, watchEffect } from 'vue';
+import { computed, shallowRef, toRefs, watchEffect } from 'vue';
 import DatabaseViewSettingDialog from './DatabaseViewsSettingDialog.vue';
 import { DatabaseItemSortingSection } from '@feature/databaseItemSorting';
 import { MD_SYS_TYPESCALE } from '@shared/lib/md';
@@ -23,21 +23,33 @@ import { DatabaseViewChipsList } from '@entity/databaseView';
  * Пресеты настроек, фильтры, сортировки, шаблоны отображения и т.д.
  */
 
-const { docHandle } = defineProps<{
+const props = defineProps<{
   docHandle: AMDocHandle;
 }>();
 
-const docHandleRef = toRef(() => docHandle);
+const { docHandle } = toRefs(props);
 
-const databaseDocument = useDatabaseDocument(docHandleRef);
+const databaseDocument = useDatabaseDocument(docHandle);
 
 const properties = computed(() => databaseDocument.content?.body?.properties);
 
-const databaseViewsMap = useDatabaseViewsMap(docHandleRef);
+const databaseViewsMap = useDatabaseViewsMap(docHandle);
 
-const selectedViewId = defineModel<DatabaseViewId>('selectedViewId');
+const firstViewId = computed(() => databaseViewsMap.list?.at(0)?.[0]);
 
-const selectedView = useDatabaseView(docHandleRef, selectedViewId);
+const selectedViewId = defineModel<DatabaseViewId>('selectedViewId'); // TODO: каким-то образом создаётся пустой view от чужого документа при переключении
+
+// watch(
+//   firstViewId,
+//   (firstViewId) => {
+//     if (!selectedViewId.value) {
+//       selectedViewId.value = firstViewId;
+//     }
+//   },
+//   { immediate: true },
+// );
+
+const selectedView = useDatabaseView(docHandle, selectedViewId);
 
 const selectedSortMap = computed(() => selectedView.view?.sorting);
 
