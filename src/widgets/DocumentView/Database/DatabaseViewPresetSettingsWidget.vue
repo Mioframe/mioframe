@@ -5,8 +5,8 @@ import {
   useDatabaseView,
   useDatabaseViewsMap,
 } from '@shared/lib/databaseDocument';
-import type { DatabaseViewId } from '@shared/lib/databaseDocument/migrations/state/v2';
-import { DB_VIEW_LAYOUT } from '@shared/lib/databaseDocument/migrations/state/v2/view/general';
+import type { DatabaseViewId } from '@shared/lib/databaseDocument/migrations/versions/v2';
+import { DB_VIEW_LAYOUT } from '@shared/lib/databaseDocument/migrations/versions/v2/view/general';
 import { MDChip } from '@shared/ui/Chips';
 import { MDSymbol } from '@shared/ui/Icon';
 import { computed, shallowRef, toRefs, watchEffect } from 'vue';

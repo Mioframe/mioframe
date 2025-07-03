@@ -6,9 +6,9 @@ import {
   type core,
   type output,
 } from 'zod/v4-mini';
-import type { DatabaseState } from './migrations/state';
-export * from './migrations/state';
-import { zodDatabaseState } from './migrations/state';
+import type { DatabaseState } from './migrations/versions';
+export * from './migrations/versions';
+import { zodDatabaseState } from './migrations/versions';
 import type { CFRDocumentContent } from '../cfrDocument';
 import { zodDocumentContent } from '../cfrDocument';
 

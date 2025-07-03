@@ -6,7 +6,7 @@
 import type {
   GeneralProperty,
   DatabasePropertyId,
-} from '@shared/lib/databaseDocument/migrations/state/v1/property/general';
+} from '@shared/lib/databaseDocument/migrations/versions/v1/property/general';
 import type { PropertiesMap } from '@shared/lib/databaseDocument';
 import { useWrapStrictRecord } from '@shared/lib/strictRecord';
 import { computed } from 'vue';
