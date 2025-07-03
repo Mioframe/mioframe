@@ -9,9 +9,10 @@ import {
 } from './migrations/versions';
 import { toRefs } from '@vueuse/core';
 import { deepPutJsonObject, deepReplaceJsonObject } from '../changeObject';
+import type { PartialDeep } from 'type-fest';
 
 export const useDatabasePropertiesMap = (
-  rawDocHandle: MaybeRefOrGetter<AMDocHandle>,
+  rawDocHandle: MaybeRefOrGetter<AMDocHandle | undefined>,
 ) => {
   const docHandle = computed(() => toValue(rawDocHandle));
 
@@ -52,9 +53,11 @@ export const useDatabasePropertiesMap = (
     return id;
   };
 
-  const update = async (
+  const update = async <
+    T extends DatabaseUnknownProperty = DatabaseUnknownProperty,
+  >(
     id: DatabasePropertyId,
-    partialProperty: Partial<DatabaseUnknownProperty>,
+    partialProperty: PartialDeep<T>,
   ) => {
     await updateDatabaseDocument.value((d) => {
       return deepPutJsonObject(d, {
@@ -79,8 +82,9 @@ export const useDatabasePropertiesMap = (
     propertiesMap.value?.has(id);
 
   const get = (
-    viewId: DatabasePropertyId,
-  ): DatabaseUnknownProperty | undefined => propertiesMap.value?.get(viewId);
+    propertyId: DatabasePropertyId,
+  ): DatabaseUnknownProperty | undefined =>
+    propertiesMap.value?.get(propertyId);
 
   const forEach = (
     callbackfn: (view: DatabaseUnknownProperty, id: DatabasePropertyId) => void,

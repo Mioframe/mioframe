@@ -4,7 +4,10 @@ import type {
   PropertiesMap,
 } from '@shared/lib/databaseDocument/migrations/versions/v1/property';
 import DbItemEditDialog from './DbItemEditDialog.vue';
-import type { DatabaseItem } from '@shared/lib/databaseDocument/migrations/versions';
+import type {
+  DatabaseItem,
+  DatabasePropertyId,
+} from '@shared/lib/databaseDocument/migrations/versions';
 
 const { properties } = defineProps<{
   properties: PropertiesMap;
@@ -18,6 +21,7 @@ const emit = defineEmits<{
 defineSlots<{
   valueField(p: {
     property: GeneralProperty;
+    propertyId: DatabasePropertyId;
     value: unknown;
     update: (value: unknown) => void;
   }): unknown;
@@ -34,15 +38,21 @@ const onCancel = () => {
 
 <template>
   <DbItemEditDialog
-    :properties
+    :properties="properties"
     headline="Add item"
     supporting-text="Fill in the properties of the new item."
     apply-label="Add"
     @apply="onApply"
     @cancel="onCancel"
   >
-    <template #valueField="{ property, update, value }">
-      <slot name="valueField" :property :update :value />
+    <template #valueField="{ property, update, value, propertyId }">
+      <slot
+        name="valueField"
+        :property="property"
+        :update="update"
+        :value="value"
+        :property-id="propertyId"
+      />
     </template>
   </DbItemEditDialog>
 </template>

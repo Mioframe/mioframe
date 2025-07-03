@@ -1,25 +1,30 @@
 <script setup lang="ts">
 import {
+  useRelationProperty,
   zodRelationValue,
-  type RelationProperty,
   type RelationValue,
 } from '@entity/databaseRelation';
 import { DatabaseViewChipsList } from '@entity/databaseView';
 import type { AMDocHandle } from '@shared/lib/cfrDocument';
 import { useDirectoryRepo } from '@shared/lib/cfrDocument';
-import type {
-  DatabaseItemId,
-  DatabaseViewId,
+import type { DatabasePropertyId } from '@shared/lib/databaseDocument';
+import {
+  useDatabaseViewsMap,
+  type DatabaseItemId,
+  type DatabaseViewId,
 } from '@shared/lib/databaseDocument';
 import type { DirectoryFSEntry } from '@shared/lib/fileSystem';
 import { zodIs } from '@shared/lib/validateZodScheme';
-import { computed, ref } from 'vue';
+import { computed, toRefs } from 'vue';
 
-const { directory, property, value } = defineProps<{
+const props = defineProps<{
   value: unknown;
-  property: RelationProperty;
+  propertyId: DatabasePropertyId;
   directory: DirectoryFSEntry;
+  docHandle: AMDocHandle;
 }>();
+
+const { directory, value, propertyId, docHandle } = toRefs(props);
 
 const emit = defineEmits<{
   'update:value': [value: DatabaseItemId[]];
@@ -35,7 +40,7 @@ defineSlots<{
 }>();
 
 const relationValue = computed<RelationValue>(() =>
-  zodIs(value, zodRelationValue) ? value : [],
+  zodIs(value.value, zodRelationValue) ? value.value : [],
 );
 
 const onSelect = (itemId: DatabaseItemId) => {
@@ -49,41 +54,65 @@ const onSelect = (itemId: DatabaseItemId) => {
   }
 };
 
-const directoryRef = computed(() => directory);
+const directoryRepo = useDirectoryRepo(directory);
 
-const directoryRepo = useDirectoryRepo(directoryRef);
+const relationProperty = useRelationProperty(docHandle, propertyId);
 
-const documentId = computed(() => property.relation.documentId);
-
-const docHandle = computed(() =>
-  directoryRepo.value?.map.get(documentId.value),
+const relationDocumentId = computed(
+  () => relationProperty.property?.relation.documentId,
 );
 
-const selectedViewId = ref<DatabaseViewId>();
+const relationDocHandle = computed(() =>
+  relationDocumentId.value
+    ? directoryRepo.value?.map.get(relationDocumentId.value)
+    : undefined,
+);
 
-const onClickViewChip = (viewId: DatabaseViewId) => {
-  selectedViewId.value = viewId;
+const selectedViewId = computed(
+  () =>
+    relationProperty.property?.relation.viewId ??
+    databaseViewsMap.list?.at(0)?.[0],
+);
+
+const databaseViewsMap = useDatabaseViewsMap(relationDocHandle);
+
+const onClickViewChip = async (viewId: DatabaseViewId) => {
+  await relationProperty.update({
+    viewId,
+  });
 };
 </script>
 
 <template>
   <div class="relation-value-field">
     <DatabaseViewChipsList
-      v-if="docHandle"
+      v-if="relationDocHandle"
       class="relation-value-field__views"
-      :doc-handle
+      :doc-handle="relationDocHandle"
       type="filter"
       :selected-id="selectedViewId"
       @click="onClickViewChip"
     />
 
-    <slot
-      v-if="docHandle && selectedViewId"
-      name="data"
-      :on-select
-      :doc-handle
-      :value="relationValue"
-      :view-id="selectedViewId"
-    />
+    <div
+      v-if="relationDocHandle && selectedViewId"
+      class="relation-value-field__data"
+    >
+      <slot
+        name="data"
+        :on-select="onSelect"
+        :doc-handle="relationDocHandle"
+        :value="relationValue"
+        :view-id="selectedViewId"
+      />
+    </div>
   </div>
 </template>
+
+<style lang="css" scoped>
+.relation-value-field {
+  &__data {
+    margin-top: 4step;
+  }
+}
+</style>

@@ -44,5 +44,6 @@
   "vue.server.hybridMode": true,
   "vue.inlayHints.destructuredProps": true,
   "vue.inlayHints.inlineHandlerLeading": true,
-  "vue.inlayHints.missingProps": true
+  "vue.inlayHints.missingProps": true,
+  "vue.inlayHints.vBindShorthand": true
 }

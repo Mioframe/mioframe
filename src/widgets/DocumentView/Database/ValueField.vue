@@ -9,16 +9,22 @@ import { DateValueField } from '@feature/dateValueEdit';
 import { NumberValueField } from '@feature/numberValueEdit';
 import { RelationValueField } from '@feature/relationValueEdit';
 import { StringValueField } from '@feature/stringValueEdit';
-import type { DatabaseUnknownProperty } from '@shared/lib/databaseDocument';
+import type {
+  DatabasePropertyId,
+  DatabaseUnknownProperty,
+} from '@shared/lib/databaseDocument';
 import type { DirectoryFSEntry } from '@shared/lib/fileSystem';
 import { zodIs } from '@shared/lib/validateZodScheme';
 import DatabaseViewLayout from './DatabaseViewLayout.vue';
 import { MDCheckbox } from '@shared/ui/Checkbox';
+import type { AMDocHandle } from '@shared/lib/automerge';
 
-const {} = defineProps<{
+defineProps<{
   property: DatabaseUnknownProperty;
   value: unknown;
   directory: DirectoryFSEntry;
+  propertyId: DatabasePropertyId;
+  docHandle: AMDocHandle;
 }>();
 
 const emit = defineEmits<{
@@ -34,40 +40,49 @@ const onUpdateValue = (v: unknown) => {
   <StringValueField
     v-if="zodIs(property, zodStringProperty)"
     :model-value="value"
-    :property
+    :property="property"
     @update:model-value="onUpdateValue"
   />
 
   <NumberValueField
     v-else-if="zodIs(property, zodNumberProperty)"
     :model-value="value"
-    :property
+    :property="property"
     @update:model-value="onUpdateValue"
   />
 
   <BooleanValueField
     v-else-if="zodIs(property, zodBooleanProperty)"
     :model-value="value"
-    :property
+    :property="property"
     @update:model-value="onUpdateValue"
   />
 
   <DateValueField
     v-else-if="zodIs(property, zodDateProperty)"
     :model-value="value"
-    :property
+    :property="property"
     @update:model-value="onUpdateValue"
   />
 
   <RelationValueField
     v-else-if="zodIs(property, zodRelationProperty)"
     :value="value"
-    :property
-    :directory
+    :property="property"
+    :directory="directory"
+    :property-id="propertyId"
+    :doc-handle="docHandle"
     @update:value="onUpdateValue"
   >
-    <template #data="{ docHandle, onSelect, value: selectedValue, viewId }">
-      <DatabaseViewLayout :doc-handle :view-id>
+    <template
+      #data="{
+        docHandle: relationDocHandle,
+        onSelect,
+        value: selectedValue,
+        viewId,
+      }"
+    >
+      <DatabaseViewLayout :doc-handle="relationDocHandle" :view-id="viewId">
         <template #action="{ itemId }">
           <MDCheckbox
             :model-value="selectedValue.includes(itemId)"
