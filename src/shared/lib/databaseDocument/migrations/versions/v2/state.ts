@@ -6,6 +6,7 @@ import { defineVersion } from '../../../../migrations/defineVersion';
 import { deepPutJsonObject } from '@shared/lib/changeObject';
 import { zodDatabaseView, zodDatabaseViewId } from './view';
 import { zodStrictRecord } from '@shared/lib/strictRecord/zodStrictRecord';
+import { cloneDeep } from 'es-toolkit';
 
 export const zodDatabaseViewsMap = zodStrictRecord(
   zodDatabaseViewId,
@@ -20,10 +21,13 @@ export const databaseStateV2 = defineVersion(
     views: optional(zodDatabaseViewsMap),
   }),
   (oldState: DataBaseStateV1) => {
-    return deepPutJsonObject(oldState, {
+    const clonedState = cloneDeep(oldState);
+
+    return deepPutJsonObject(clonedState, {
       version: 2,
       properties: {},
       data: {},
+      views: {},
     } as const);
   },
 );

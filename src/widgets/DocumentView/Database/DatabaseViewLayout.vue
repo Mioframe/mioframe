@@ -40,7 +40,7 @@ const { docHandle, viewId } = toRefs(props);
 
 const databaseDocument = useDatabaseDocument(docHandle);
 
-const views = computed(() => databaseDocument.content?.body?.views);
+const views = computed(() => databaseDocument.state?.views);
 
 const viewsRecord = useWrapStrictRecord(views);
 
@@ -48,7 +48,7 @@ const view = computed(() =>
   viewId.value ? viewsRecord.value?.get(viewId.value) : undefined,
 );
 
-const properties = computed(() => databaseDocument.content?.body?.properties);
+const properties = computed(() => databaseDocument.state?.properties);
 </script>
 
 <template>

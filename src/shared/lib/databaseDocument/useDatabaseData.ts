@@ -16,9 +16,9 @@ export const useDatabaseData = (
 
   const databaseDocument = useDatabaseDocument(docHandle);
 
-  const { content } = toRefs(databaseDocument);
+  const { state } = toRefs(databaseDocument);
 
-  const data = computed(() => content.value?.body?.data);
+  const data = computed(() => state.value?.data);
 
   const createItem = async (item: DatabaseItem) => {
     const itemId = generateItemId();
