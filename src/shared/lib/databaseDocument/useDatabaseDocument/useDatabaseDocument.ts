@@ -1,18 +1,20 @@
 import type {
   DatabaseDocument,
   DataBaseStateLatest,
-  DatabaseDocumentWithContent,
+  DatabaseTypeDocument,
 } from '../types';
-import {
-  zodDatabaseDocumentWithContent,
-  zodDatabaseTypeDocument,
-} from '../types';
+import { zodDatabaseTypeDocument } from '../types';
 import { computed, reactive } from 'vue';
 import { toRefs, type MaybeRef } from '@vueuse/core';
 import { useCFRDocument } from '../../cfrDocument/useCFRDocument';
 import { zodIs, zodSafeCheck } from '../../validateZodScheme';
-import { migrateDatabaseBody, migrateDatabaseDocument } from '../migrations';
+import {
+  applyMigrateDatabaseBody,
+  applyMigrateDatabaseDocument,
+} from '../migrations';
 import type { AMDocHandle } from '@shared/lib/automerge/automergeTypes';
+import { databaseBodyMigrations } from '../migrations/bodyMigrations';
+import { isObject } from 'es-toolkit/compat';
 
 export const useDatabaseDocument = (
   docHandleRef: MaybeRef<AMDocHandle | undefined>,
@@ -31,7 +33,8 @@ export const useDatabaseDocument = (
           return;
         }
 
-        const databaseBody: DataBaseStateLatest = migrateDatabaseDocument(doc);
+        const databaseBody: DataBaseStateLatest =
+          applyMigrateDatabaseDocument(doc);
 
         const result = update(databaseBody);
 
@@ -40,23 +43,31 @@ export const useDatabaseDocument = (
     });
 
   const parseDocumentContent = computed(() =>
-    zodSafeCheck(unknownTypeContent.value, zodDatabaseDocumentWithContent),
+    zodSafeCheck(unknownTypeContent.value, zodDatabaseTypeDocument),
   );
 
   const documentError = computed(() => parseDocumentContent.value.error);
 
   const content = computed(
-    (): DatabaseDocumentWithContent | undefined =>
-      parseDocumentContent.value.data,
+    (): DatabaseTypeDocument | undefined => parseDocumentContent.value.data,
+  );
+
+  const state = computed((): DataBaseStateLatest | undefined =>
+    isObject(content.value?.body)
+      ? databaseBodyMigrations.getLatestData(content.value.body)
+      : undefined,
   );
 
   const forceApplyMigration = () =>
     updateDatabaseDocument((body) => {
-      migrateDatabaseBody(body);
+      applyMigrateDatabaseBody(body);
     });
 
   const databaseDocument: DatabaseDocument = reactive({
     content,
+
+    state,
+
     update: updateDatabaseDocument,
 
     documentError,

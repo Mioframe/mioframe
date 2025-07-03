@@ -1,4 +1,5 @@
 import type { EmptyObject } from 'type-fest';
+import { deepReplaceJsonObject } from '../changeObject';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- no restrictions
 type MigrateFunction<T = any, R = any> = (input: T) => R;
@@ -13,22 +14,22 @@ type MigrateConstraint<T, Ops extends MigrateFunction[]> = Ops extends []
     : never;
 
 // Вспомогательный тип для вычисления результата
-type MigrationResult<T, Ops extends MigrateFunction[]> = Ops extends [
+type UpdateResult<T, Ops extends MigrateFunction[]> = Ops extends [
   MigrateFunction<T, infer R>,
   ...infer Rest,
 ]
   ? Rest extends MigrateFunction[]
-    ? MigrationResult<R, Rest>
+    ? UpdateResult<R, Rest>
     : R
   : T;
 
 /**
  * applying migration to data
  */
-type ApplyMigration<Ops extends MigrateFunction[], T extends EmptyObject> = (
+type CreateUpdatedData<Ops extends MigrateFunction[], T extends EmptyObject> = (
   data: object,
   version?: number,
-) => MigrationResult<T, Ops>;
+) => UpdateResult<T, Ops>;
 
 /**
  * Creates a method for applying migrations
@@ -37,8 +38,13 @@ type ApplyMigration<Ops extends MigrateFunction[], T extends EmptyObject> = (
 export function defineMigrations<
   T extends object,
   Ops extends MigrateFunction[],
->(...migrations: Ops & MigrateConstraint<T, Ops>): ApplyMigration<Ops, T> {
-  const applyMigration: ApplyMigration<Ops, T> = (
+>(
+  ...migrations: Ops & MigrateConstraint<T, Ops>
+): {
+  getLatestData: CreateUpdatedData<Ops, T>;
+  applyUpdate: (targetData: object, version?: number) => UpdateResult<T, Ops>;
+} {
+  const getLatestData: CreateUpdatedData<Ops, T> = (
     targetData: object,
     version: number = 0,
   ) =>
@@ -47,7 +53,22 @@ export function defineMigrations<
       // eslint-disable-next-line @typescript-eslint/no-unsafe-return -- there is nothing to break here
       (data, migrate) => migrate(data),
       targetData,
-    ) as MigrationResult<T, Ops>;
+    ) as UpdateResult<T, Ops>;
 
-  return applyMigration;
+  const applyUpdate = (
+    targetData: object,
+    version: number = 0,
+  ): UpdateResult<T, Ops> => {
+    const newStateData = getLatestData(targetData, version);
+
+    const updatedTarget: UpdateResult<T, Ops> = deepReplaceJsonObject(
+      targetData,
+      newStateData,
+    );
+
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-return -- don't know why unsafe
+    return updatedTarget;
+  };
+
+  return { getLatestData, applyUpdate };
 }

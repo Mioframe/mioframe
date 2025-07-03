@@ -46,14 +46,16 @@ export type DatabaseDocument = {
   /**
    * Всё содержимое документа
    */
-  content: DatabaseDocumentWithContent | undefined;
+  content: DatabaseTypeDocument | undefined;
+
+  state: DataBaseStateLatest | undefined;
 
   update: <R>(fn: (doc: DataBaseStateLatest) => R) => Promise<R>;
 
   /**
    * Ошибки чтения документа
    */
-  documentError: core.$ZodError<DatabaseDocumentWithContent> | undefined;
+  documentError: core.$ZodError<DatabaseTypeDocument> | undefined;
 
   /**
    * Принудительное применение миграций

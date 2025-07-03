@@ -42,11 +42,13 @@ const props = defineProps<{
 
 const { directory, docHandle } = toRefs(props);
 
-const { documentError, content } = useDatabaseDocument(docHandle);
+const databaseDocument = useDatabaseDocument(docHandle);
+
+const { state, documentError } = toRefs(databaseDocument);
 
 const { createItem, setValue } = useDatabaseData(docHandle);
 
-const properties = computed(() => content?.body?.properties);
+const properties = computed(() => state.value?.properties);
 
 const propertiesMap = useDatabasePropertiesMap(docHandle);
 

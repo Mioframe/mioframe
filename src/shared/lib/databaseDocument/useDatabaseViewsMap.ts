@@ -36,26 +36,20 @@ export const useDatabaseViewsMap = (
 } => {
   const docHandle = computed(() => toValue(rawDocHandle));
 
-  const { content, update: updateDatabaseDocument } = toRefs(
+  const { update: updateDatabaseDocument, state } = toRefs(
     useDatabaseDocument(docHandle),
   );
 
-  const viewStrictRecord = computed(() => content.value?.body?.views);
+  const viewStrictRecord = computed(() => state.value?.views);
 
   const viewMap = useWrapStrictRecord(viewStrictRecord);
 
   const set = async (id: DatabaseViewId, view: DatabaseView) => {
     await updateDatabaseDocument.value((d) => {
-      if (!d.views) {
-        d.views = {
-          [id]: view,
-        };
+      if (d.views[id]) {
+        deepReplaceJsonObject(d.views[id], view);
       } else {
-        if (d.views[id]) {
-          deepReplaceJsonObject(d.views[id], view);
-        } else {
-          d.views[id] = view;
-        }
+        d.views[id] = view;
       }
 
       return d;
@@ -74,6 +68,10 @@ export const useDatabaseViewsMap = (
     id: DatabaseViewId,
     partialView: Partial<DatabaseView>,
   ) => {
+    if (!has(id)) {
+      throw new Error('View for update is missing');
+    }
+
     await updateDatabaseDocument.value((d) => {
       return deepPutJsonObject(d, {
         views: {
@@ -101,7 +99,9 @@ export const useDatabaseViewsMap = (
 
   const forEach = (
     callbackfn: (view: DatabaseView, id: DatabaseViewId) => void,
-  ): void => viewMap.value?.forEach(callbackfn);
+  ): void => {
+    viewMap.value?.forEach(callbackfn);
+  };
 
   const size = computed((): number | undefined => viewMap.value?.size);
 

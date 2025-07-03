@@ -5,6 +5,7 @@ import { defineVersion } from '../../../../migrations/defineVersion';
 import type { EmptyObject } from 'type-fest';
 import { deepPutJsonObject } from '@shared/lib/changeObject';
 import { zodDatabaseData } from './item';
+import { cloneDeep } from 'es-toolkit';
 
 export const databaseStateV1 = defineVersion(
   object({
@@ -13,7 +14,9 @@ export const databaseStateV1 = defineVersion(
     properties: zodUnknownPropertiesMap,
   }),
   (oldState: EmptyObject) => {
-    return deepPutJsonObject(oldState, {
+    const clonedState = cloneDeep(oldState);
+
+    return deepPutJsonObject(clonedState, {
       version: 1,
       properties: {},
       data: {},
