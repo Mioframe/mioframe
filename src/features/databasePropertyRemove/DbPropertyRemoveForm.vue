@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { ref } from 'vue';
 import { UIButton } from '@shared/ui/Button';
-import type { PropertiesMap } from '@shared/lib/databaseDocument/state/v1/property';
+import type { PropertiesMap } from '@shared/lib/databaseDocument/migrations/state/v1/property';
 import FormLayout from '@shared/ui/FormLayout.vue';
-import type { DatabasePropertyId } from '@shared/lib/databaseDocument/state';
+import type { DatabasePropertyId } from '@shared/lib/databaseDocument/migrations/state';
 import { useWrapStrictRecord } from '@shared/lib/strictRecord';
 
 const emit = defineEmits<{

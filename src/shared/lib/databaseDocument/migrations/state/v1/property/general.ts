@@ -1,6 +1,6 @@
 import type { core } from 'zod/v4-mini';
 import { object, string, type output } from 'zod/v4-mini';
-import { defineId } from '../../../../defineId';
+import { defineId } from '../../../../../defineId';
 
 export const zodGeneralProperty = <
   L extends string,

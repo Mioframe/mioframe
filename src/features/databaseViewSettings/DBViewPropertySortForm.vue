@@ -2,7 +2,7 @@
 import type {
   PropertiesMap,
   PropertyId,
-} from '@shared/lib/databaseDocument/state/v1/property';
+} from '@shared/lib/databaseDocument/migrations/state/v1/property';
 import { useWrapStrictRecord } from '@shared/lib/strictRecord';
 import { MDListContainer, MDListItem } from '@shared/ui/Lists';
 import { useSortable } from '@vueuse/integrations/useSortable';

@@ -3,17 +3,33 @@ import type { output } from 'zod/v4-mini';
 import type {
   zodDatabaseData,
   zodDatabaseItem,
-  //   zodDatabaseState,
   zodDatabaseValue,
   zodDatabaseItemId,
   zodDatabaseUnknownPropertiesMap,
   zodDatabaseUnknownProperty,
   zodDatabaseUnknownPropertyType,
   zodDatabasePropertyId,
-} from '../v1';
+} from './v1';
+
+export {
+  type GeneralProperty,
+  type PropertiesMap,
+  type PropertyId,
+  createProperty,
+  generateItemId,
+  generatePropertyId,
+  zodDatabaseData,
+  zodDatabaseItem,
+  zodDatabaseValue,
+  zodGeneralProperty,
+  zodDatabasePropertyId,
+  zodDatabaseItemId,
+  zodDatabaseUnknownPropertiesMap,
+  zodDatabaseUnknownProperty,
+  zodDatabaseUnknownPropertyType,
+} from './v1';
 
 import type {
-  zodDatabaseState,
   zodDatabaseSortDescription,
   zodDatabaseSortMap,
   zodDatabaseSortDirection,
@@ -21,12 +37,30 @@ import type {
   zodDatabaseView,
   zodDatabaseViewId,
   zodDatabaseViewsMap,
-} from '../v2';
+} from './v2';
 
+export {
+  DB_VIEW_LAYOUT,
+  SORT_DIRECTION,
+  databaseStateV2,
+  generateViewId,
+  zodDatabaseSortDirection,
+  zodDatabaseSortMap,
+  zodDatabaseSortDescription,
+  zodDatabaseTableView,
+  zodDatabaseView,
+  zodDatabaseViewId,
+  zodDatabaseViewsMap,
+} from './v2';
+
+import { databaseStateV3 } from './v3';
+
+export const zodDatabaseState = databaseStateV3.schema;
+
+export type DatabaseState = output<typeof zodDatabaseState>;
 export type DatabaseData = output<typeof zodDatabaseData>;
 export type DatabasePropertyId = output<typeof zodDatabasePropertyId>;
 export type DatabaseItem = output<typeof zodDatabaseItem>;
-export type DatabaseState = output<typeof zodDatabaseState>;
 export type DatabaseValue = output<typeof zodDatabaseValue>;
 export type DatabaseItemId = output<typeof zodDatabaseItemId>;
 export type DatabaseUnknownPropertiesMap = output<

@@ -1,12 +1,12 @@
 import { deepPutJsonObject } from '@shared/lib/changeObject';
 import type { DataBaseStateLatest } from '../types';
-import type { DatabaseState } from '../state';
+import type { DatabaseState } from '../migrations/state';
 import {
   generateViewId,
   type DatabaseView,
   type DatabaseViewId,
   type DatabaseViewsMap,
-} from '../state';
+} from '../migrations/state';
 
 export type MutationFn = (views: DatabaseViewsMap) => unknown;
 

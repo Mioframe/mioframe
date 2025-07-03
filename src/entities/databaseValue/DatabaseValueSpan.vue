@@ -2,7 +2,7 @@
 import type {
   DatabaseItem,
   DatabasePropertyId,
-} from '@shared/lib/databaseDocument/state';
+} from '@shared/lib/databaseDocument/migrations/state';
 import { MDSymbol } from '@shared/ui/Icon';
 import { isUndefined } from 'es-toolkit';
 import { computed } from 'vue';

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { DB_VIEW_LAYOUT } from '@shared/lib/databaseDocument/state/v2/view/general';
+import { DB_VIEW_LAYOUT } from '@shared/lib/databaseDocument/migrations/state/v2/view/general';
 import { UIButton } from '@shared/ui/Button';
 import FormLayout from '@shared/ui/FormLayout.vue';
 import { reactive } from 'vue';

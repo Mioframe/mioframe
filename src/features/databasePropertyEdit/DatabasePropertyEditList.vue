@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { PropertiesMap } from '@shared/lib/databaseDocument/state/v1/property';
+import type { PropertiesMap } from '@shared/lib/databaseDocument/migrations/state/v1/property';
 import { useWrapStrictRecord } from '@shared/lib/strictRecord';
 import { MDListContainer, MDListItem } from '@shared/ui/Lists';
 

@@ -3,12 +3,12 @@ import type { AMDocHandle } from '../automerge';
 import { useDatabaseDocument } from './useDatabaseDocument';
 import { toRefs } from '@vueuse/core';
 import { useWrapStrictRecord } from '../strictRecord';
-import type { DatabaseViewsMap } from './state';
+import type { DatabaseViewsMap } from './migrations/state';
 import {
   generateViewId,
   type DatabaseView,
   type DatabaseViewId,
-} from './state';
+} from './migrations/state';
 import { deepPutJsonObject, deepReplaceJsonObject } from '../changeObject';
 import type { RecordEntries } from '../objectEntries';
 
