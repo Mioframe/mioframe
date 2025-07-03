@@ -1,5 +1,5 @@
 import { defineConfig } from 'eslint/config';
-import { config } from '@vyachean/eslint-config';
+import { config, createGlobFileList } from '@vyachean/eslint-config';
 import { dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -14,14 +14,18 @@ const eslintConfig = defineConfig([
     vue: true,
   }),
   {
+    files: createGlobFileList({ ts: true, vue: true }),
     rules: {
-      'no-console': 'warn',
+      '@typescript-eslint/no-unnecessary-condition': 'warn',
+    },
+  },
+  {
+    rules: {
       '@typescript-eslint/no-empty-object-type': [
         'error',
         { allowInterfaces: 'with-single-extends' },
       ],
       'vue/camelcase': 'off',
-      '@typescript-eslint/no-unnecessary-condition': 'warn',
     },
   },
 ]);
