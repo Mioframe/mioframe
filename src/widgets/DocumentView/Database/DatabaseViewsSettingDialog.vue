@@ -8,7 +8,7 @@ import { DatabaseViewSortingList } from '@feature/databaseViewSorting';
 import type {
   DatabaseView,
   DatabaseViewId,
-} from '@shared/lib/databaseDocument/migrations/state';
+} from '@shared/lib/databaseDocument/migrations/versions';
 import { writableDeepClone } from '@shared/lib/writableDeepClone';
 import { DatabaseViewCreateDialog } from '@feature/databaseViewCreate';
 import { defineMenuButtonList, MDContextMenuBtn } from '@shared/ui/Menu';

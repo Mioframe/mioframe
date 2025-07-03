@@ -1,6 +1,6 @@
 import { computed, reactive, toValue, type MaybeRefOrGetter } from 'vue';
 import type { AMDocHandle } from '../automerge';
-import type { DatabaseView, DatabaseViewId } from './migrations/state';
+import type { DatabaseView, DatabaseViewId } from './migrations/versions';
 import { useDatabaseViewsMap } from './useDatabaseViewsMap';
 
 export const useDatabaseView = (

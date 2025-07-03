@@ -5,7 +5,7 @@ import type {
   DatabasePropertyId,
   DatabaseState,
   DatabaseUnknownProperty,
-} from '@shared/lib/databaseDocument/migrations/state';
+} from '@shared/lib/databaseDocument/migrations/versions';
 import DatabaseTable from './table/DatabaseTable.vue';
 
 defineProps<{

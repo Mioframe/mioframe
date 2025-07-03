@@ -1,9 +1,9 @@
 import { defineMigrations } from '@shared/lib/migrations';
-import type { DatabaseStateV1 } from './state/v1';
-import { databaseStateV1 } from './state/v1';
-import { databaseStateV2 } from './state/v2';
-import type { DatabaseStateV2 } from './state/v2';
-import { databaseStateV3 } from './state/v3';
+import type { DatabaseStateV1 } from './versions/v1';
+import { databaseStateV1 } from './versions/v1';
+import { databaseStateV2 } from './versions/v2';
+import type { DatabaseStateV2 } from './versions/v2';
+import { databaseStateV3 } from './versions/v3';
 
 export const applyMigrationsBody = defineMigrations(
   (bodyV0: object) => databaseStateV1.up(bodyV0),

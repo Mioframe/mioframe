@@ -4,7 +4,7 @@ import type {
   DatabasePropertyId,
   DatabaseUnknownPropertiesMap,
   DatabaseUnknownProperty,
-} from '@shared/lib/databaseDocument/migrations/state';
+} from '@shared/lib/databaseDocument/migrations/versions';
 import ItemTD from './ItemTD.vue';
 import { useWrapStrictRecord } from '@shared/lib/strictRecord';
 

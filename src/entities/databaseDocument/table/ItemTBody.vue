@@ -8,7 +8,7 @@ import type {
   DatabasePropertyId,
   DatabaseUnknownPropertiesMap,
   DatabaseUnknownProperty,
-} from '@shared/lib/databaseDocument/migrations/state';
+} from '@shared/lib/databaseDocument/migrations/versions';
 import { useWrapStrictRecord } from '@shared/lib/strictRecord';
 
 const { data } = defineProps<{
