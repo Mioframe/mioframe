@@ -1,11 +1,11 @@
-import { generatePropertyId } from '../state/v1/property/general';
+import { generatePropertyId } from '../migrations/state/v1/property/general';
 import { deepPutJsonObject } from '@shared/lib/changeObject';
 import type { PartialDeep } from 'type-fest';
 import type {
   DatabasePropertyId,
   DatabaseUnknownPropertiesMap,
   DatabaseUnknownProperty,
-} from '../state';
+} from '../migrations/state';
 
 export const addPropertyMutation = (
   properties: DatabaseUnknownPropertiesMap,

@@ -38,11 +38,16 @@ export function defineMigrations<
   T extends object,
   Ops extends MigrateFunction[],
 >(...migrations: Ops & MigrateConstraint<T, Ops>): ApplyMigration<Ops, T> {
-  return (targetData: object, version: number = 0) =>
+  const applyMigration: ApplyMigration<Ops, T> = (
+    targetData: object,
+    version: number = 0,
+  ) =>
     // eslint-disable-next-line @typescript-eslint/no-unsafe-return -- there is nothing to break here
     migrations.slice(version).reduce(
       // eslint-disable-next-line @typescript-eslint/no-unsafe-return -- there is nothing to break here
       (data, migrate) => migrate(data),
       targetData,
     ) as MigrationResult<T, Ops>;
+
+  return applyMigration;
 }

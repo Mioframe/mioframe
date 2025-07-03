@@ -1,5 +1,5 @@
 import { deepPutJsonObject } from '../changeObject';
-import { defineMigrations } from '../defineMigrations';
+import { defineMigrations } from '../migrations/defineMigrations';
 import type { MergeDeep } from 'type-fest';
 import { type CFRDocumentContent } from './types';
 import type { AMDoc } from '../automerge/automergeTypes';

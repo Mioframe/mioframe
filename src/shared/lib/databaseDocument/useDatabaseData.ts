@@ -5,8 +5,8 @@ import type {
   DatabaseItemId,
   DatabasePropertyId,
   DatabaseValue,
-} from './state';
-import { generateItemId, type DatabaseItem } from './state';
+} from './migrations/state';
+import { generateItemId, type DatabaseItem } from './migrations/state';
 import { isUndefined } from 'es-toolkit';
 
 export const useDatabaseData = (

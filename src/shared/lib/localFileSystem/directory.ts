@@ -2,12 +2,9 @@ import { find, from, some } from 'ix/Ix.asynciterable';
 import { createLocalEntry } from './entry';
 import { createLocalFile } from './file';
 import type { DirectoryLocalEntry, FileLocalEntry } from './types';
-import { createLogger } from '../logger';
 import { WeakValueMap } from '../WeakValueMap';
 import type { DirectoryEntryEventMap } from '../fileSystem/DirectoryFSEntry';
 import { copyDirectoryTo, moveDirectoryTo } from '../fileSystem/utils';
-
-const { debug } = createLogger('directory');
 
 const cacheDirectories = new WeakValueMap<string, DirectoryLocalEntry>();
 
@@ -43,7 +40,6 @@ export function createLocalDirectory(
     [string, DirectoryLocalEntry | FileLocalEntry]
   > {
     for await (const [name, handle] of currentHandle.entries()) {
-      debug('createContentIterable map', [name, handle]);
       switch (handle.kind) {
         case 'directory':
           yield [name, createLocalDirectory(handle, currentDirectoryEntry)];

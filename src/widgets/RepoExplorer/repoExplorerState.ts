@@ -1,5 +1,4 @@
 import type { EntryPath } from '@shared/lib/fileSystem';
-import { createLogger } from '@shared/lib/logger';
 import { createGlobalState } from '@vueuse/core';
 import { isString } from 'es-toolkit';
 import { computed } from 'vue';
@@ -23,8 +22,6 @@ export interface RepoExplorerState extends QueryPath {
   provider: 'browser';
 }
 
-const { watchDebug } = createLogger('repoExplorerState');
-
 export const useRepoExplorerState = createGlobalState(() => {
   const route = useRoute();
 
@@ -34,16 +31,12 @@ export const useRepoExplorerState = createGlobalState(() => {
       .filter((v) => !!v),
   );
 
-  watchDebug('pathQuery', pathQuery);
-
   const providerQuery = computed(() => {
     if (isString(route.query.provider)) {
       return route.query.provider;
     }
     return undefined;
   });
-
-  watchDebug('providerQuery', providerQuery);
 
   const repoExplorerState = computed((): RepoExplorerState | undefined => {
     if (providerQuery.value === 'browser' && pathQuery.value) {

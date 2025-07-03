@@ -9,7 +9,6 @@ import {
   zodPartialAutomergeFileName,
   zodPartialStorageKey,
 } from './types';
-import { createLogger } from '../logger';
 import { zodIs } from '../validateZodScheme';
 import { find, from, toArray } from 'ix/Ix.asynciterable';
 import { filter, map } from 'ix/Ix.asynciterable.operators';
@@ -23,8 +22,6 @@ import type {
 export const partialKeyToFileName = (
   key: PartialStorageKey,
 ): PartialAutomergeFileName | undefined => {
-  debug('keyToFileName', key);
-
   const partialStorageKey = zodIs(key, zodPartialStorageKey) ? key : undefined;
   const maybePartialAutomergeFileName = partialStorageKey?.join(KEY_SEPARATE);
 
@@ -47,8 +44,6 @@ export const fileNameToPartialKey = (
     : undefined;
 };
 
-const { debug } = createLogger('createFSStorageAdapter');
-
 export const createStorageAdapter = (
   directory: DirectoryForStorageAdapter,
 ): AMStorageAdapterInterface => {
@@ -57,7 +52,6 @@ export const createStorageAdapter = (
   const load = async (
     key: PartialStorageKey,
   ): Promise<Uint8Array | undefined> => {
-    debug('load', key);
     try {
       const fileName = partialKeyToFileName(key);
 
@@ -80,7 +74,6 @@ export const createStorageAdapter = (
   };
 
   const save = async (key: StorageKey, data: Uint8Array) => {
-    debug('save', { key });
     try {
       const fileName = partialKeyToFileName(key);
       if (!fileName) {
@@ -94,7 +87,6 @@ export const createStorageAdapter = (
   };
 
   const remove = async (key: StorageKey) => {
-    debug('remove', { key });
     try {
       const fileName = partialKeyToFileName(key);
       if (!fileName) {
@@ -107,8 +99,9 @@ export const createStorageAdapter = (
     }
   };
 
-  const loadRange = async (keyPrefix: PartialStorageKey): Promise<AMChunk[]> => {
-    debug('loadRange', keyPrefix);
+  const loadRange = async (
+    keyPrefix: PartialStorageKey,
+  ): Promise<AMChunk[]> => {
     try {
       const maybePartialAutomergeFileName = keyPrefix.join(KEY_SEPARATE);
 
@@ -122,7 +115,6 @@ export const createStorageAdapter = (
       const chunkList: AMChunk[] = await toArray(
         from(directory.entries()).pipe(
           filter(([name, entry]) => {
-            debug('loadRange filter', { name, keyPrefixString });
             return (
               'read' in entry &&
               !!keyPrefixString &&
@@ -131,8 +123,6 @@ export const createStorageAdapter = (
             );
           }),
           map(async ([name, entry]): Promise<AMChunk | undefined> => {
-            debug('loadRange map', name, entry);
-
             const key = fileNameToPartialKey(name);
 
             if (key) {
@@ -149,8 +139,6 @@ export const createStorageAdapter = (
         ),
       );
 
-      debug('loadRange chunkList', chunkList);
-
       return chunkList;
     } catch (error) {
       pushError('error loading file range', error);
@@ -159,7 +147,6 @@ export const createStorageAdapter = (
   };
 
   const removeRange = async (keyPrefix: PartialStorageKey) => {
-    debug('removeRange', keyPrefix);
     try {
       const maybePartialAutomergeFileName = keyPrefix.join(KEY_SEPARATE);
 

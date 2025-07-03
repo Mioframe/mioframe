@@ -3,7 +3,7 @@ import type { DatabasePropertyId } from '@shared/lib/databaseDocument';
 import type {
   GeneralProperty,
   PropertiesMap,
-} from '@shared/lib/databaseDocument/state/v1/property';
+} from '@shared/lib/databaseDocument/migrations/state/v1/property';
 import { useWrapStrictRecord } from '@shared/lib/strictRecord';
 import { MDListContainer, MDListItem } from '@shared/ui/Lists';
 
