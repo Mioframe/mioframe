@@ -1,16 +1,17 @@
 import {
   zodDatabaseItemId,
+  zodDatabaseViewId,
   zodGeneralProperty,
 } from '@shared/lib/databaseDocument';
 import { zodDocumentId } from '@shared/lib/fsStorageAdapter';
 import type { output } from 'zod/v4-mini';
-import { array, extend, literal, object } from 'zod/v4-mini';
+import { array, extend, literal, object, optional } from 'zod/v4-mini';
 
 export const PROPERTY_TYPE_RELATION = 'relation';
 
 const zodRelation = object({
   documentId: zodDocumentId,
-  // TODO: понадобятся дополнительные настройки, например DatabaseView для ввода и вывода.
+  viewId: optional(zodDatabaseViewId),
 });
 
 export type Relation = output<typeof zodRelation>;

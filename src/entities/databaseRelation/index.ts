@@ -7,3 +7,4 @@ export {
   type RelationValue,
 } from './model';
 export { default as RelationValueInline } from './RelationValueInline.vue';
+export { useRelationProperty } from './useRelationProperty';

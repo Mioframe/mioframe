@@ -31,6 +31,7 @@ const emit = defineEmits<{
 defineSlots<{
   valueField(p: {
     property: GeneralProperty;
+    propertyId: DatabasePropertyId;
     value: unknown;
     update: (value: unknown) => void;
   }): unknown;
@@ -60,9 +61,9 @@ const onUpdateValue = (propertyId: DatabasePropertyId, value: unknown) => {
 
 <template>
   <MDDialog
-    :headline
-    :supporting-text
-    :apply-label
+    :headline="headline"
+    :supporting-text="supportingText"
+    :apply-label="applyLabel"
     has-cancel-action
     @apply="onApply"
     @cancel="onCancel"
@@ -73,8 +74,9 @@ const onUpdateValue = (propertyId: DatabasePropertyId, value: unknown) => {
     >
       <slot
         name="valueField"
-        :property
+        :property="property"
         :value="itemState[propertyId]"
+        :property-id="propertyId"
         :update="(value: unknown) => onUpdateValue(propertyId, value)"
       />
     </template>

@@ -14,16 +14,19 @@ import type {
 } from '@shared/lib/databaseDocument';
 import type { DirectoryFSEntry } from '@shared/lib/fileSystem';
 import { MDOverlayTooltip } from '@shared/ui/Tooltips';
+import type { AMDocHandle } from '@shared/lib/automerge';
 
 const {
   item = {},
   property,
   propertyId,
 } = defineProps<{
+  // eslint-disable-next-line vue/no-required-prop-with-default -- non-optional prop
   item: DatabaseItem | undefined;
   property: GeneralProperty;
   propertyId: DatabasePropertyId;
   directory: DirectoryFSEntry;
+  docHandle: AMDocHandle;
 }>();
 
 const emit = defineEmits<{
@@ -77,7 +80,7 @@ const inlineEl = useTemplateRef('inlineEl');
 
 <template>
   <a ref="inlineEl" class="editable-inline-value" tabindex="0" @click="onClick">
-    <ValueInline :property :value="initialValue" editable />
+    <ValueInline :property="property" :value="initialValue" editable />
   </a>
 
   <MDOverlayTooltip
@@ -88,8 +91,10 @@ const inlineEl = useTemplateRef('inlineEl');
     <div ref="refPopover" class="editable-inline-value__edit-popover">
       <ValueField
         v-model:value="stateValue"
-        :property
-        :directory
+        :property="property"
+        :directory="directory"
+        :doc-handle="docHandle"
+        :property-id="propertyId"
         @keydown.enter="closeEditor"
       />
     </div>

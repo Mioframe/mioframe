@@ -207,13 +207,14 @@ const { addSnackbar } = useSnackbar();
 
 const { remove: removeItem } = useDatabaseItemRemove(docHandle);
 
-const onClickItemContextBtn = (
+const onClickItemContextBtn = async (
   action: ITEM_CONTEXT_ACTION,
   itemId: DatabaseItemId,
 ) => {
   switch (action) {
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- for other actions
     case ITEM_CONTEXT_ACTION.remove:
-      removeItem(itemId);
+      await removeItem(itemId);
       break;
 
     default:
@@ -231,13 +232,14 @@ const onClickItemContextBtn = (
       <pre>{{ documentError }}</pre>
     </div>
 
-    <DatabaseViewLayout :doc-handle :view-id="selectedViewId">
+    <DatabaseViewLayout :doc-handle="docHandle" :view-id="selectedViewId">
       <template #value="{ item, itemId, property, propertyId }">
         <EditableInlineValue
-          :item
-          :property-id
-          :property
-          :directory
+          :item="item"
+          :property-id="propertyId"
+          :property="property"
+          :directory="directory"
+          :doc-handle="docHandle"
           @update:value="onChangeValue(itemId, propertyId, $event)"
         />
       </template>
@@ -262,7 +264,7 @@ const onClickItemContextBtn = (
         <div class="sheet__body">
           <DatabaseViewPresetSettingsWidget
             v-model:selected-view-id="selectedViewId"
-            :doc-handle
+            :doc-handle="docHandle"
           />
 
           <DatabasePropertyList
@@ -290,12 +292,19 @@ const onClickItemContextBtn = (
 
     <DbItemAddDialog
       v-if="isShowAddItem && properties"
-      :properties
+      :properties="properties"
       @add="onAddItem"
       @cancel="isShowAddItem = false"
     >
-      <template #valueField="{ property, update, value }">
-        <ValueField :property :value :directory @update:value="update" />
+      <template #valueField="{ property, update, value, propertyId }">
+        <ValueField
+          :property="property"
+          :value="value"
+          :directory="directory"
+          :property-id="propertyId"
+          :doc-handle="docHandle"
+          @update:value="update"
+        />
       </template>
     </DbItemAddDialog>
 
