@@ -15,11 +15,11 @@ export const useDatabasePropertiesMap = (
 ) => {
   const docHandle = computed(() => toValue(rawDocHandle));
 
-  const { content, update: updateDatabaseDocument } = toRefs(
+  const { update: updateDatabaseDocument, state } = toRefs(
     useDatabaseDocument(docHandle),
   );
 
-  const propertiesRef = computed(() => content.value?.body?.properties);
+  const propertiesRef = computed(() => state.value?.properties);
 
   const propertiesMap = useWrapStrictRecord(propertiesRef);
 

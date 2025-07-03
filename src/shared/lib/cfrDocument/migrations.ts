@@ -30,5 +30,5 @@ export const applyCFRDocumentMigration = (
         version: 1,
       });
     },
-  )(data, readVersion(data));
+  ).applyUpdate(data, readVersion(data));
 };

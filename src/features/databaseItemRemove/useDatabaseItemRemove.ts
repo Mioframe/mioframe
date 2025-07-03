@@ -1,27 +1,22 @@
 import type { AMDocHandle } from '@shared/lib/cfrDocument';
 import type { DatabaseItemId } from '@shared/lib/databaseDocument';
-import { useDatabaseDocument } from '@shared/lib/databaseDocument';
-import { useWrapStrictRecord } from '@shared/lib/strictRecord';
+import { useDatabaseData } from '@shared/lib/databaseDocument';
 import { useSnackbar } from '@shared/ui/Snackbar';
 import { computed, toValue, type MaybeRefOrGetter } from 'vue';
 
 export const useDatabaseItemRemove = (
-  docHandler: MaybeRefOrGetter<AMDocHandle>,
+  rawDocHandler: MaybeRefOrGetter<AMDocHandle>,
 ) => {
-  const docHandlerRef = computed(() => toValue(docHandler));
+  const docHandler = computed(() => toValue(rawDocHandler));
 
-  const databaseDocument = useDatabaseDocument(docHandlerRef);
-
-  const data = useWrapStrictRecord(
-    computed(() => databaseDocument.content?.body?.data),
-  );
+  const databaseData = useDatabaseData(docHandler);
 
   const { addSnackbar } = useSnackbar();
 
-  const remove = (itemId: DatabaseItemId) => {
-    if (data.value?.remove(itemId)) {
-      addSnackbar({ text: `Item removed` });
-    }
+  const remove = async (itemId: DatabaseItemId) => {
+    await databaseData.removeItem(itemId);
+
+    addSnackbar({ text: `Item removed` });
   };
 
   return {

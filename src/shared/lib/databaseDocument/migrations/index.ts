@@ -1,20 +1,20 @@
 import type { DatabaseTypeDocument } from '../types';
 import { isInteger, isObjectLike } from '@shared/lib/typeGuards';
-import { applyMigrationsBody } from './applyMigrations';
+import { databaseBodyMigrations } from './bodyMigrations';
 
-export const migrateDatabaseBody = (body: object) => {
+export const applyMigrateDatabaseBody = (body: object) => {
   const version: number =
     'version' in body ? (isInteger(body.version) ? body.version : 0) : 0;
 
-  return applyMigrationsBody(body, version);
+  return databaseBodyMigrations.applyUpdate(body, version);
 };
 
-export const migrateDatabaseDocument = (data: DatabaseTypeDocument) => {
+export const applyMigrateDatabaseDocument = (data: DatabaseTypeDocument) => {
   if (!isObjectLike(data.body)) {
     data.body = {};
   }
 
   const body = data.body as object;
 
-  return migrateDatabaseBody(body);
+  return applyMigrateDatabaseBody(body);
 };

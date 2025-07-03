@@ -9,13 +9,12 @@ import type { DatabaseViewId } from '@shared/lib/databaseDocument/migrations/ver
 import { DB_VIEW_LAYOUT } from '@shared/lib/databaseDocument/migrations/versions/v2/view/general';
 import { MDChip } from '@shared/ui/Chips';
 import { MDSymbol } from '@shared/ui/Icon';
-import { computed, shallowRef, toRefs, watchEffect } from 'vue';
+import { computed, shallowRef, toRefs, watch } from 'vue';
 import DatabaseViewSettingDialog from './DatabaseViewsSettingDialog.vue';
 import { DatabaseItemSortingSection } from '@feature/databaseItemSorting';
 import { MD_SYS_TYPESCALE } from '@shared/lib/md';
 import { MDIconButton } from '@shared/ui/Button';
 import type { AMDocHandle } from '@shared/lib/automerge/automergeTypes';
-import { throttle } from 'es-toolkit';
 import { DatabaseViewChipsList } from '@entity/databaseView';
 
 /**
@@ -31,35 +30,25 @@ const { docHandle } = toRefs(props);
 
 const databaseDocument = useDatabaseDocument(docHandle);
 
-const properties = computed(() => databaseDocument.content?.body?.properties);
+const properties = computed(() => databaseDocument.state?.properties);
 
 const databaseViewsMap = useDatabaseViewsMap(docHandle);
 
 const firstViewId = computed(() => databaseViewsMap.list?.at(0)?.[0]);
 
-const selectedViewId = defineModel<DatabaseViewId>('selectedViewId'); // TODO: каким-то образом создаётся пустой view от чужого документа при переключении
+const selectedViewId = defineModel<DatabaseViewId>('selectedViewId');
 
-// watch(
-//   firstViewId,
-//   (firstViewId) => {
-//     if (!selectedViewId.value) {
-//       selectedViewId.value = firstViewId;
-//     }
-//   },
-//   { immediate: true },
-// );
+watch(
+  firstViewId,
+  (firstViewId) => {
+    selectedViewId.value = firstViewId;
+  },
+  { immediate: true },
+);
 
 const selectedView = useDatabaseView(docHandle, selectedViewId);
 
 const selectedSortMap = computed(() => selectedView.view?.sorting);
-
-watchEffect(
-  throttle(() => {
-    if (!selectedView.view?.sorting) {
-      void selectedView.update({});
-    }
-  }, 1e3),
-);
 
 const onClickViewChip = (viewId: DatabaseViewId) => {
   selectedViewId.value = viewId;

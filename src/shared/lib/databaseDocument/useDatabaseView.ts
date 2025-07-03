@@ -17,6 +17,7 @@ export const useDatabaseView = (
   );
 
   const update = async (partialView: Partial<DatabaseView>) => {
+    console.log('update', partialView);
     if (viewId.value) {
       await databaseViewsMap.update(viewId.value, partialView);
     }

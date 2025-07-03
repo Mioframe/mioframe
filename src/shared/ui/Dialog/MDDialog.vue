@@ -14,6 +14,7 @@ const {
   loading,
   supportingText,
   type: dialogType = 'basic',
+  class: stylesClass,
 } = defineProps<{
   hide?: boolean;
   headline: string;
@@ -23,6 +24,7 @@ const {
   applyLabel: string;
   hasCancelAction?: boolean;
   loading?: boolean | number;
+  class?: unknown;
 }>();
 
 const slots = defineSlots<{
@@ -83,6 +85,7 @@ const targetTeleport = useClosestParentFrame();
           'md-dialog_has-icon': !!$slots.icon,
         },
         `md-dialog_${dialogType}-type`,
+        stylesClass,
       ]"
     >
       <form
