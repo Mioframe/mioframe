@@ -6,7 +6,7 @@ import {
   generatePropertyId,
   type DatabasePropertyId,
   type DatabaseUnknownProperty,
-} from './migrations/state';
+} from './migrations/versions';
 import { toRefs } from '@vueuse/core';
 import { deepPutJsonObject, deepReplaceJsonObject } from '../changeObject';
 

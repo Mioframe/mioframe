@@ -3,7 +3,7 @@ import { literal } from 'zod/v4-mini';
 import {
   createProperty,
   zodGeneralProperty,
-} from '../../shared/lib/databaseDocument/migrations/state/v1/property/general';
+} from '../../shared/lib/databaseDocument/migrations/versions/v1/property/general';
 
 export const PROPERTY_TYPE_NUMBER = 'number';
 

@@ -2,7 +2,7 @@
 import type {
   DatabaseView,
   DatabaseViewId,
-} from '@shared/lib/databaseDocument/migrations/state';
+} from '@shared/lib/databaseDocument/migrations/versions';
 import { useSortable } from '@shared/lib/sortable';
 import { MDIconButton } from '@shared/ui/Button';
 import { MDSymbol } from '@shared/ui/Icon';
