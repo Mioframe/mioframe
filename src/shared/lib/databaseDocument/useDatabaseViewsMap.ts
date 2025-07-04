@@ -25,6 +25,7 @@ export const useDatabaseViewsMap = (
   ) => void;
   size: number | undefined;
   list: readonly [DatabaseViewId, DatabaseView][] | undefined;
+  defaultView: [DatabaseViewId, DatabaseView] | undefined;
 
   set: (id: DatabaseViewId, view: DatabaseView) => Promise<void>;
   create: (view: DatabaseView) => Promise<DatabaseViewId>;
@@ -121,9 +122,12 @@ export const useDatabaseViewsMap = (
 
   const remove = async (id: DatabaseViewId) => {
     await updateDatabaseDocument.value((d) => {
-      delete d.views?.[id];
+      // eslint-disable-next-line @typescript-eslint/no-dynamic-delete -- it's for automerge
+      delete d.views[id];
     });
   };
+
+  const defaultView = computed(() => list.value?.at(0));
 
   return reactive({
     entries,
@@ -134,6 +138,7 @@ export const useDatabaseViewsMap = (
     forEach,
     size,
     list,
+    defaultView,
 
     set,
     create,
