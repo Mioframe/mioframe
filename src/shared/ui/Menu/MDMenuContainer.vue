@@ -99,14 +99,14 @@ const style = computed((): StyleValue => {
     tag="div"
     class="md md-menus"
     :style="style"
-    :transition
+    :transition="transition"
   >
     <slot>
       <MDListItem
+        is="button"
         v-for="[key, { symbolName, text: headline }] in btns"
-        :key
-        :headline
-        tag="button"
+        :key="key"
+        :headline="headline"
         type="button"
         @click="onClick(key)"
       >

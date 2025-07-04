@@ -227,7 +227,7 @@ const onClickValue = (value: T, index: number) => {
         :key="getLabel(option)"
         ref="optionsRef"
         :headline="getLabel(option)"
-        tag="button"
+        is="button"
         type="button"
         @click="onClickOption(option)"
       >

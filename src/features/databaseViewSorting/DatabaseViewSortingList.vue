@@ -33,7 +33,7 @@ const slots = defineSlots<{
     <MDListItem
       v-for="([viewId, view], index) in viewsList"
       :key="viewId"
-      tag="button"
+      is="button"
       class="database-view-list__item"
       :headline="view.name"
       draggable

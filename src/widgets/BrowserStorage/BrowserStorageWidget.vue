@@ -46,7 +46,7 @@ const isMountedOPFS = computed(() => mounted.value.has(OPFS));
       v-pressed-state
       :headline="OPFS"
       class="local-storage-widget__item"
-      tag="button"
+      is="button"
       supporting-text="Storage inside your browser"
       @click="onClickBrowserStorage"
     >
@@ -61,7 +61,7 @@ const isMountedOPFS = computed(() => mounted.value.has(OPFS));
       headline="Select Local Folder"
       class="local-storage-widget__item"
       supporting-text="Folder on your device"
-      tag="button"
+      is="button"
       @click="onClickLocalFolder"
     >
       <template #leadingIcon>
@@ -76,7 +76,7 @@ const isMountedOPFS = computed(() => mounted.value.has(OPFS));
       :headline="name"
       class="local-storage-widget__item"
       supporting-text="Folder on your device"
-      tag="button"
+      is="button"
       @click="onClickMountedItem(item)"
     >
       <template #leadingIcon>
