@@ -29,16 +29,10 @@ export const useDatabasePropertiesMap = (
     property: DatabaseUnknownProperty,
   ) => {
     await updateDatabaseDocument.value((d) => {
-      if (!d.properties) {
-        d.properties = {
-          [id]: property,
-        };
+      if (d.properties[id]) {
+        deepReplaceJsonObject(d.properties[id], property);
       } else {
-        if (d.properties[id]) {
-          deepReplaceJsonObject(d.properties[id], property);
-        } else {
-          d.properties[id] = property;
-        }
+        d.properties[id] = property;
       }
 
       return d;
@@ -94,9 +88,12 @@ export const useDatabasePropertiesMap = (
 
   const remove = async (id: DatabasePropertyId) => {
     await updateDatabaseDocument.value((d) => {
-      delete d.properties?.[id];
+      // eslint-disable-next-line @typescript-eslint/no-dynamic-delete -- it's for automerge
+      delete d.properties[id];
     });
   };
+
+  // TODO: entries, keys и values наверное лучше сделать computed с глобальным кешированием?
 
   return reactive({
     set,

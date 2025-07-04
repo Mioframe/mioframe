@@ -1,8 +1,5 @@
 <script setup lang="ts">
-import {
-  DocumentDatabaseJson,
-  DocumentDatabaseTable,
-} from '@entity/documentDatabase';
+import { DocumentDatabaseJson } from '@entity/documentDatabase';
 import type { AMDocHandle } from '@shared/lib/automerge';
 import type {
   DatabaseItem,
@@ -11,18 +8,23 @@ import type {
   DatabaseUnknownProperty,
 } from '@shared/lib/databaseDocument';
 import {
-  useDatabaseDocument,
+  useDatabaseViewsMap,
   zodDatabaseTableView,
   type DatabaseViewId,
 } from '@shared/lib/databaseDocument';
-import { useWrapStrictRecord } from '@shared/lib/strictRecord';
 import { zodIs } from '@shared/lib/validateZodScheme';
 import { computed, toRefs } from 'vue';
 import ValueInline from './ValueInline.vue';
+import { DatabaseDataTable } from '@entity/databaseData';
+import type { DirectoryFSEntry } from '@shared/lib/fileSystem';
+import type { ItemIdQuery } from '@entity/databaseData/queryTypes';
+import { useDatabasePropertiesMap } from '@shared/lib/databaseDocument/useDatabasePropertiesMap';
 
 const props = defineProps<{
   docHandle: AMDocHandle;
   viewId?: DatabaseViewId;
+  directory: DirectoryFSEntry;
+  itemIdQuery?: ItemIdQuery;
 }>();
 
 const slots = defineSlots<{
@@ -38,41 +40,47 @@ const slots = defineSlots<{
 
 const { docHandle, viewId } = toRefs(props);
 
-const databaseDocument = useDatabaseDocument(docHandle);
-
-const views = computed(() => databaseDocument.state?.views);
-
-const viewsRecord = useWrapStrictRecord(views);
+const viewsMap = useDatabaseViewsMap(docHandle);
 
 const view = computed(() =>
-  viewId.value ? viewsRecord.value?.get(viewId.value) : undefined,
+  viewId.value ? viewsMap.get(viewId.value) : viewsMap.defaultView?.[1],
 );
 
-const properties = computed(() => databaseDocument.state?.properties);
+const properties = useDatabasePropertiesMap(docHandle);
 </script>
 
 <template>
-  <DocumentDatabaseTable
-    v-if="zodIs(view, zodDatabaseTableView) && properties"
-    :doc-handle
+  <DatabaseDataTable
+    v-if="zodIs(view, zodDatabaseTableView)"
+    :doc-handle="docHandle"
     :view="view"
     class="database-view__table"
-    :properties
+    :id-query="itemIdQuery"
   >
     <template #value="{ item, itemId, property, propertyId }">
-      <slot name="value" :item :item-id :property :property-id>
-        <ValueInline :property :value="item[propertyId]" />
+      <slot
+        name="value"
+        :item="item"
+        :item-id="itemId"
+        :property="property"
+        :property-id="propertyId"
+      >
+        <ValueInline
+          :property="property"
+          :value="item[propertyId]"
+          :directory="directory"
+        />
       </slot>
     </template>
 
     <template v-if="!!slots.action" #action="{ itemId, item }">
-      <slot name="action" :item-id :item />
+      <slot name="action" :item-id="itemId" :item="item" />
     </template>
 
     <template v-if="!!slots.actionHead" #actionHead>
       <slot name="actionHead" />
     </template>
-  </DocumentDatabaseTable>
+  </DatabaseDataTable>
 
-  <DocumentDatabaseJson v-else :doc-handle />
+  <DocumentDatabaseJson v-else :doc-handle="docHandle" />
 </template>

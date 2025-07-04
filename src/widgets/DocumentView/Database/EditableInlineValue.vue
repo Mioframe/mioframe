@@ -80,7 +80,12 @@ const inlineEl = useTemplateRef('inlineEl');
 
 <template>
   <a ref="inlineEl" class="editable-inline-value" tabindex="0" @click="onClick">
-    <ValueInline :property="property" :value="initialValue" editable />
+    <ValueInline
+      :property="property"
+      :value="initialValue"
+      editable
+      :directory="directory"
+    />
   </a>
 
   <MDOverlayTooltip

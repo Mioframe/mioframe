@@ -1,23 +1,23 @@
 <script setup lang="ts">
 import { useOrderedDatabaseData } from '@entity/databaseData';
-import type { AMDocHandle } from '@shared/lib/cfrDocument';
+import type { AMDocHandle } from '@shared/lib/automerge';
 import type {
   DatabaseItem,
   DatabaseItemId,
   DatabasePropertyId,
   DatabaseTableView,
-  DatabaseUnknownPropertiesMap,
   DatabaseUnknownProperty,
 } from '@shared/lib/databaseDocument';
-import { useWrapStrictRecord } from '@shared/lib/strictRecord';
 import { MDTable } from '@shared/ui/Table';
 import type { EmptyObject } from 'type-fest';
 import { toRefs } from 'vue';
+import type { ItemIdQuery } from './queryTypes';
+import { useDatabasePropertiesMap } from '@shared/lib/databaseDocument/useDatabasePropertiesMap';
 
 const props = defineProps<{
-  properties: DatabaseUnknownPropertiesMap;
   docHandle: AMDocHandle;
   view: DatabaseTableView;
+  idQuery?: ItemIdQuery;
 }>();
 
 const slots = defineSlots<{
@@ -31,11 +31,11 @@ const slots = defineSlots<{
   actionHead: (p: EmptyObject) => unknown;
 }>();
 
-const { docHandle, view, properties } = toRefs(props);
+const { docHandle, view, idQuery } = toRefs(props);
 
-const propertiesCollection = useWrapStrictRecord(properties);
+const properties = useDatabasePropertiesMap(docHandle);
 
-const { itemList } = useOrderedDatabaseData(docHandle, view);
+const { itemList } = useOrderedDatabaseData(docHandle, view, idQuery);
 </script>
 
 <template>
@@ -43,7 +43,7 @@ const { itemList } = useOrderedDatabaseData(docHandle, view);
     <thead>
       <tr>
         <th
-          v-for="[propertyId, { name }] in propertiesCollection"
+          v-for="[propertyId, { name }] in properties.entries()"
           :key="propertyId"
         >
           {{ name }}
@@ -58,16 +58,22 @@ const { itemList } = useOrderedDatabaseData(docHandle, view);
     <tbody>
       <tr v-for="[itemId, item] in itemList" :key="itemId">
         <td
-          v-for="[propertyId, property] in propertiesCollection"
+          v-for="[propertyId, property] in properties.entries()"
           :key="propertyId"
         >
-          <slot name="value" :item :item-id :property-id :property>
+          <slot
+            name="value"
+            :item="item"
+            :item-id="itemId"
+            :property-id="propertyId"
+            :property="property"
+          >
             {{ item[propertyId] }}
           </slot>
         </td>
 
         <td v-if="!!slots.action || !!slots.actionHead">
-          <slot name="action" :item :item-id />
+          <slot name="action" :item="item" :item-id="itemId" />
         </td>
       </tr>
     </tbody>

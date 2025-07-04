@@ -13,26 +13,36 @@ import { useReduceIterable } from '@shared/lib/useReduce';
 import { useSortWorker } from './useSortWorker';
 import type { AMDocHandle } from '@shared/lib/automerge/automergeTypes';
 import { cloneDeep } from 'es-toolkit';
+import type { ItemIdQuery } from './queryTypes';
 
 export function useOrderedDatabaseData(
-  docHandle: MaybeRefOrGetter<AMDocHandle | undefined>,
-  view: MaybeRefOrGetter<DatabaseView | undefined>,
+  rawDocHandle: MaybeRefOrGetter<AMDocHandle | undefined>,
+  rawView: MaybeRefOrGetter<DatabaseView | undefined>,
+  idQuery: MaybeRefOrGetter<ItemIdQuery | undefined>,
 ) {
-  const docHandleRef = computed(() => toValue(docHandle));
-  const viewRef = computed(() => toValue(view));
+  const docHandle = computed(() => toValue(rawDocHandle));
+  const view = computed(() => toValue(rawView));
+  const idQueryRef = computed(() => toValue(idQuery));
 
   const orderOfItems = ref<DatabaseItemId[]>([]);
 
-  const { data: databaseData } = useDatabaseData(docHandleRef);
+  const { data: databaseData } = useDatabaseData(docHandle);
 
-  const { sortData } = useSortWorker();
+  const { queryData } = useSortWorker();
 
   const applyView = debounce(
-    async (databaseData?: DatabaseData, databaseView?: DatabaseView) => {
+    async (
+      databaseData?: DatabaseData,
+      databaseView?: DatabaseView,
+      idQuery?: ItemIdQuery,
+    ) => {
       const sorting: DatabaseSortMap | undefined = databaseView?.sorting;
 
       if (databaseData) {
-        orderOfItems.value = await sortData(databaseData, sorting);
+        orderOfItems.value = await queryData(databaseData, {
+          sorting,
+          idQuery,
+        });
       } else {
         orderOfItems.value = [];
       }
@@ -42,9 +52,13 @@ export function useOrderedDatabaseData(
   );
 
   watch(
-    [databaseData, viewRef],
-    ([databaseData, databaseView]) => {
-      void applyView(cloneDeep(databaseData), cloneDeep(databaseView));
+    [databaseData, view, idQueryRef],
+    ([databaseData, databaseView, idQuery]) => {
+      void applyView(
+        cloneDeep(databaseData),
+        cloneDeep(databaseView),
+        cloneDeep(idQuery),
+      );
     },
     {
       immediate: true,
