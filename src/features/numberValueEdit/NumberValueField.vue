@@ -27,7 +27,7 @@ const vModel = computed({
 <template>
   <MDTextField
     v-model:model-value="vModel"
-    :label-text
+    :label-text="labelText"
     input-type="number"
     @keydown="$emit('keydown', $event)"
   />

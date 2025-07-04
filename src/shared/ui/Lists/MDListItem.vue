@@ -1,10 +1,16 @@
-<script setup lang="ts">
+<script
+  setup
+  lang="ts"
+  generic="Is extends 'button' | 'a' | 'div' | 'li' = 'li'"
+>
 import { MDState } from '../State';
 
-const { tag = 'li' } = defineProps<{
+const { is = 'li' } = defineProps<{
   headline: string;
   supportingText?: string;
-  tag?: 'div' | 'button' | 'li' | 'a';
+  is?: Is;
+  type?: Is extends 'button' ? 'button' | 'submit' | 'reset' : false;
+
   draggable?: boolean;
 }>();
 
@@ -19,7 +25,7 @@ const emit = defineEmits<{
 }>();
 
 const onClick = (e: MouseEvent) => {
-  if (['button', 'a'].includes(tag)) {
+  if (['button', 'a'].includes(is)) {
     emit('click', e);
   }
 };
@@ -27,9 +33,10 @@ const onClick = (e: MouseEvent) => {
 
 <template>
   <MDState
-    :is="tag"
+    :is="is"
     class="md md-list-item"
     :draggable="draggable"
+    :type="type"
     @click="onClick"
   >
     <span v-if="!!slots.leadingIcon" class="md-list-item__leading-icon">

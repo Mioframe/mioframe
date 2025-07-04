@@ -18,7 +18,7 @@ defineSlots<{
 <template>
   <MDListItem
     :headline="item.name"
-    tag="button"
+    is="button"
     class="directory-content-entry"
   >
     <template #leadingIcon>

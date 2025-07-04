@@ -180,7 +180,7 @@ const { draggableItem } = useSortable(listContainerRef, sortListState);
             : 'Sort by descending'
         "
         draggable
-        tag="button"
+        is="button"
         :class="{
           'md-state_drag': item === draggableItem,
         }"
@@ -210,7 +210,7 @@ const { draggableItem } = useSortable(listContainerRef, sortListState);
       <MDListItem
         ref="addBtn"
         headline="Add sorting"
-        tag="button"
+        is="button"
         @click="showAddPropertyMenu = !showAddPropertyMenu"
       >
         <template #leadingIcon>

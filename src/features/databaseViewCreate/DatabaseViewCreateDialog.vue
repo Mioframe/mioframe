@@ -39,7 +39,7 @@ const onCancel = () => {
 
 <template>
   <MDDialog
-    :loading
+    :loading="loading"
     headline="Add view"
     supporting-text="Enter the name of the new data view."
     apply-label="Create"

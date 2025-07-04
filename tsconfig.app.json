@@ -29,9 +29,9 @@
       "@/*": ["./src/*"]
     }
   },
-  "include": ["env.d.ts", "src/**/*.ts", "src/**/*.tsx", "src/**/*.vue"]
-  // "vueCompilerOptions": {
-  //   "strictTemplates": true,
-  //   "checkUnknownProps": true
-  // }
+  "include": ["env.d.ts", "src/**/*.ts", "src/**/*.tsx", "src/**/*.vue"],
+  "vueCompilerOptions": {
+    // "strictTemplates": true,
+    "checkUnknownProps": true
+  }
 }

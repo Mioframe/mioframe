@@ -37,7 +37,7 @@ const onCancel = () => {
     cancel-label="Cancel"
     has-cancel-action
     supporting-text="Enter a name for your folder"
-    :loading
+    :loading="loading"
     @apply="onApply"
     @cancel="onCancel"
   >
