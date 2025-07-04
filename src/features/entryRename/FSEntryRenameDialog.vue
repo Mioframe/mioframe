@@ -36,7 +36,7 @@ const onCancel = () => {
     supporting-text="Enter a new name"
     apply-label="Rename"
     has-cancel-action
-    :loading
+    :loading="loading"
     @apply="onApply"
     @cancel="onCancel"
   >

@@ -4,11 +4,8 @@ import { SlidingPanel } from '../SlidingPanel';
 import { useMediaQuery, type MaybeElement } from '@vueuse/core';
 import { onInteractionOutside } from '@shared/lib/onInteractionOutside';
 import { vElementHover } from '@vueuse/components';
-import { createLogger } from '@shared/lib/logger';
 import { UIButton } from '../Button';
 import { ButtonGroup } from '../ButtonGroup';
-
-const { debug } = createLogger('ViewWithPanelLayout');
 
 defineSlots<{
   default(): unknown;
@@ -27,7 +24,6 @@ const isOpenPanel = computed({
       ? localStateOpenPanel.value
       : (openModel.value ?? localStateOpenPanel.value),
   set: (v: boolean) => {
-    debug('set isOpenPanel', v);
     openModel.value = v;
     localStateOpenPanel.value = v;
   },
@@ -44,7 +40,6 @@ const onHoverPanel = (state: boolean) => {
 const isLandscape = useMediaQuery('(orientation: landscape)');
 
 const onClickTogglePanelBtn = () => {
-  debug('onClickTogglePanelBtn');
   isOpenPanel.value = !isOpenPanel.value;
 };
 
@@ -55,7 +50,6 @@ onInteractionOutside(refSlidingPanel, () => {
 });
 
 watchEffect(() => {
-  debug('watchEffect');
   if (!isPinPanel.value && isLandscape.value && isHoverPanel.value) {
     isOpenPanel.value = true;
   }

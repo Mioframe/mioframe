@@ -52,7 +52,7 @@ const onClickShared = async () => {};
         v-pressed-state
         headline="Use Google Drive"
         class="google-drive-widget__use-btn"
-        tag="button"
+        is="button"
         @click="onClickUseGDrive"
       >
         <template #leadingAvatarContainer>
@@ -67,7 +67,7 @@ const onClickShared = async () => {};
         v-else
         :headline="profile.name ?? 'unknown name'"
         :supporting-text="profile.email"
-        tag="div"
+        is="div"
         class="google-drive-widget__profile profile"
       >
         <template #leadingAvatarContainer>
@@ -94,7 +94,7 @@ const onClickShared = async () => {};
         headline="App Folder"
         class="google-drive-widget__item"
         supporting-text="Available only for this application"
-        tag="button"
+        is="button"
         @click="onClickGDriveAppFolder"
       >
         <template #leadingIcon>
@@ -107,7 +107,7 @@ const onClickShared = async () => {};
         headline="My Drive"
         class="google-drive-widget__item"
         supporting-text="The contents of your drive"
-        tag="button"
+        is="button"
         @click="onClickMyDrive"
       >
         <template #leadingIcon>
@@ -120,7 +120,7 @@ const onClickShared = async () => {};
         headline="Shared"
         class="google-drive-widget__item"
         supporting-text="Items shared with me"
-        tag="button"
+        is="button"
         @click="onClickShared"
       >
         <template #leadingIcon>
