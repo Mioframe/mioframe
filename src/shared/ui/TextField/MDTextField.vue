@@ -56,12 +56,12 @@ defineEmits<{
 
 <template>
   <MDFieldContainer
-    :label-text
-    :disabled
-    :error
-    :max-characters
-    :supporting-text
-    :type
+    :label-text="labelText"
+    :disabled="disabled"
+    :error="error"
+    :max-characters="maxCharacters"
+    :supporting-text="supportingText"
+    :type="type"
     :filled="!!modelValue"
     :number-characters="modelValueString.length"
     class="md-text-field"
@@ -73,27 +73,27 @@ defineEmits<{
     <template #default="{ id }">
       <textarea
         v-if="inputType === 'multiline'"
-        :id
+        :id="id"
         ref="inputRef"
         v-model="modelValue"
         class="md-text-field__input-text"
-        :disabled
+        :disabled="disabled"
         :maxlength="maxCharacters"
-        :readonly
+        :readonly="readonly"
         @focus="$emit('focus', $event)"
         @keydown="$emit('keydown', $event)"
       />
 
       <input
         v-else
-        :id
+        :id="id"
         ref="inputRef"
         v-model="modelValue"
         class="md-text-field__input-text"
-        :disabled
+        :disabled="disabled"
         :maxlength="maxCharacters"
         :type="inputType"
-        :readonly
+        :readonly="readonly"
         @focus="$emit('focus', $event)"
         @keydown="$emit('keydown', $event)"
       />

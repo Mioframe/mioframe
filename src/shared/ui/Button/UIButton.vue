@@ -19,6 +19,11 @@ const slots = defineSlots<{
   icon(): unknown;
 }>();
 
+const emit = defineEmits<{
+  click: [e: MouseEvent];
+  pointerdown: [e: PointerEvent];
+}>();
+
 const growClass = computed(() =>
   isNumber(props.grow)
     ? `is-flex-grow-${props.grow}`
@@ -43,6 +48,8 @@ const growClass = computed(() =>
       },
       growClass,
     ]"
+    @pointerdown="emit('pointerdown', $event)"
+    @click="emit('click', $event)"
   >
     <span v-if="!!slots.icon" class="icon">
       <slot name="icon" />

@@ -17,7 +17,7 @@ const props = defineProps<{
 
 const { disabledTeleport, targetElement } = toRefs(props);
 
-const showModel = defineModel<boolean>('show');
+const showModel = defineModel<boolean>('show', { default: false });
 
 const emit = defineEmits<{
   interactionOutside: [];
@@ -27,7 +27,7 @@ defineSlots<{
   default(): unknown;
 }>();
 
-const showState = ref<boolean>();
+const showState = ref<boolean>(false);
 
 syncRef(showModel, showState);
 

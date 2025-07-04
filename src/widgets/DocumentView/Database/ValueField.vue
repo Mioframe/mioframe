@@ -29,6 +29,7 @@ defineProps<{
 
 const emit = defineEmits<{
   'update:value': [v: unknown];
+  keydown: [e: KeyboardEvent];
 }>();
 
 const onUpdateValue = (v: unknown) => {
@@ -42,6 +43,7 @@ const onUpdateValue = (v: unknown) => {
     :model-value="value"
     :property="property"
     @update:model-value="onUpdateValue"
+    @keydown="emit('keydown', $event)"
   />
 
   <NumberValueField
@@ -49,6 +51,7 @@ const onUpdateValue = (v: unknown) => {
     :model-value="value"
     :property="property"
     @update:model-value="onUpdateValue"
+    @keydown="emit('keydown', $event)"
   />
 
   <BooleanValueField
@@ -63,12 +66,12 @@ const onUpdateValue = (v: unknown) => {
     :model-value="value"
     :property="property"
     @update:model-value="onUpdateValue"
+    @keydown="emit('keydown', $event)"
   />
 
   <RelationValueField
     v-else-if="zodIs(property, zodRelationProperty)"
     :value="value"
-    :property="property"
     :directory="directory"
     :property-id="propertyId"
     :doc-handle="docHandle"
