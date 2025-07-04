@@ -14,6 +14,10 @@ const slots = defineSlots<{
   leadingIcon: T extends 'assist' ? () => unknown : undefined;
   trailingIcon: T extends 'filter' ? () => unknown : undefined;
 }>();
+
+const emit = defineEmits<{
+  click: [event: MouseEvent];
+}>();
 </script>
 
 <template>
@@ -29,6 +33,7 @@ const slots = defineSlots<{
     ]"
     type="button"
     :draggable="draggable"
+    @click="emit('click', $event)"
   >
     <div
       v-if="!!slots.leadingIcon || (chipType === 'filter' && selected)"

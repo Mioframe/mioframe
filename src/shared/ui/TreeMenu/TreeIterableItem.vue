@@ -118,9 +118,9 @@ const loading = ref<boolean>();
           <slot
             :key="itemKey"
             name="icon"
-            :item
+            :item="item"
             :list-open="stateOpened"
-            :loading
+            :loading="loading"
           >
             <i
               class="fa-solid fa-caret-down"
@@ -133,10 +133,10 @@ const loading = ref<boolean>();
       <slot
         :key="itemKey"
         name="item"
-        :item
-        :active-item
+        :item="item"
+        :active-item="activeItem"
         :list-open="stateOpened"
-        :loading
+        :loading="loading"
       />
 
       <button
@@ -162,17 +162,16 @@ const loading = ref<boolean>();
         name="contextMenu"
         :item="item"
         :list-open="stateOpened"
-        :loading
+        :loading="loading"
       />
     </ContextMenu>
 
     <TreeIterable
       v-if="children && stateOpened"
-      v-model:loading="loading"
       :collection="children"
-      :active-key
-      :active-item
-      :filter
+      :active-key="activeKey"
+      :active-item="activeItem"
+      :filter="filter"
       @click="onClickItem"
     >
       <template v-if="!!slots.contextMenu" #contextMenu="scoped">

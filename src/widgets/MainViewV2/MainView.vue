@@ -42,10 +42,6 @@ const onClickDocument = (
 const onClickDocumentBack = () => {
   openedDocument.value = undefined;
 };
-
-const onOpenDirectory = () => {
-  // TODO
-};
 </script>
 
 <template>
@@ -56,7 +52,7 @@ const onOpenDirectory = () => {
     @click-close-second="onClickDocumentBack"
   >
     <template #firstPane>
-      <HomeWidget v-if="!currentDirectory" @open-directory="onOpenDirectory" />
+      <HomeWidget v-if="!currentDirectory" />
 
       <RepoExplorerPane v-else @click-document="onClickDocument" />
     </template>

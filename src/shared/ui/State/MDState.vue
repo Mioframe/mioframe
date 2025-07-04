@@ -1,4 +1,8 @@
-<script setup lang="ts">
+<script
+  setup
+  lang="ts"
+  generic="Is extends 'button' | 'a' | 'div' | 'li' = 'div'"
+>
 import MDRipple from './MDRipple.vue';
 import { setupRipple } from './setupRipple';
 import {
@@ -12,10 +16,10 @@ import { useTemplateRef, defineModel, computed } from 'vue';
 import { useFirstFocus } from '@shared/lib/useFirstFocus';
 import { debounce } from 'es-toolkit';
 
-const { is = 'div', disableRipple } = defineProps<{
+const { is = 'div', disableRipple = false } = defineProps<{
+  is?: Is;
+  type?: Is extends 'button' ? 'button' | 'submit' | 'reset' : false;
   disabled?: boolean;
-
-  is?: 'button' | 'a' | 'div' | 'li';
   disableRipple?: boolean;
   draggable?: boolean;
 }>();
@@ -139,6 +143,7 @@ tryOnScopeDispose(() => {
   <component
     :is="is"
     ref="refEl"
+    :type="type"
     :disabled="disabled ? true : undefined"
     class="md md-state"
     :class="{
