@@ -82,7 +82,11 @@ const onUpdateValue = (v: unknown) => {
         viewId,
       }"
     >
-      <DatabaseViewLayout :doc-handle="relationDocHandle" :view-id="viewId">
+      <DatabaseViewLayout
+        :doc-handle="relationDocHandle"
+        :view-id="viewId"
+        :directory="directory"
+      >
         <template #action="{ itemId }">
           <MDCheckbox
             :model-value="selectedValue.includes(itemId)"

@@ -232,7 +232,11 @@ const onClickItemContextBtn = async (
       <pre>{{ documentError }}</pre>
     </div>
 
-    <DatabaseViewLayout :doc-handle="docHandle" :view-id="selectedViewId">
+    <DatabaseViewLayout
+      :doc-handle="docHandle"
+      :view-id="selectedViewId"
+      :directory="directory"
+    >
       <template #value="{ item, itemId, property, propertyId }">
         <EditableInlineValue
           :item="item"
