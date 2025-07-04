@@ -67,7 +67,7 @@ const onClickShared = async () => {};
         v-else
         :headline="profile.name ?? 'unknown name'"
         :supporting-text="profile.email"
-        is-div
+        tag="div"
         class="google-drive-widget__profile profile"
       >
         <template #leadingAvatarContainer>

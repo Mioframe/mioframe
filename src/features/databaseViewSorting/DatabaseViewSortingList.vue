@@ -9,7 +9,9 @@ import { MDSymbol } from '@shared/ui/Icon';
 import { MDListContainer, MDListItem } from '@shared/ui/Lists';
 import { useTemplateRef } from 'vue';
 
-const viewsList = defineModel<[DatabaseViewId, DatabaseView][]>('viewsList');
+const viewsList = defineModel<[DatabaseViewId, DatabaseView][]>('viewsList', {
+  default: [],
+});
 
 const listContainer =
   useTemplateRef<InstanceType<typeof MDListContainer>>('listContainer');

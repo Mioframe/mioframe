@@ -62,9 +62,9 @@ const isSelected = (viewId: DatabaseViewId): boolean => {
     <MDChip
       v-for="{ viewId, label } in viewButtons"
       :key="viewId"
-      :label
+      :label="label"
       :selected="isSelected(viewId)"
-      :type
+      :type="type"
       @click="onClickViewChip(viewId)"
     />
   </div>

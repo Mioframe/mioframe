@@ -18,7 +18,6 @@ import ValueInline from './ValueInline.vue';
 import { DatabaseDataTable } from '@entity/databaseData';
 import type { DirectoryFSEntry } from '@shared/lib/fileSystem';
 import type { ItemIdQuery } from '@entity/databaseData/queryTypes';
-import { useDatabasePropertiesMap } from '@shared/lib/databaseDocument/useDatabasePropertiesMap';
 
 const props = defineProps<{
   docHandle: AMDocHandle;
@@ -45,8 +44,6 @@ const viewsMap = useDatabaseViewsMap(docHandle);
 const view = computed(() =>
   viewId.value ? viewsMap.get(viewId.value) : viewsMap.defaultView?.[1],
 );
-
-const properties = useDatabasePropertiesMap(docHandle);
 </script>
 
 <template>
