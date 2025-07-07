@@ -3,6 +3,12 @@ import PlaygroundStore from '@shared/lib/playground/PlaygroundStory.vue';
 import MDSelect from './MDSelect.vue';
 import type { ComponentProps } from 'vue-component-type-helpers';
 import { useQueryState } from '@shared/lib/useQueryState';
+import {
+  PlaygroundOptionalBoolean,
+  PlaygroundOptionalString,
+  PlaygroundString,
+  PlaygroundUnion,
+} from '@shared/lib/playground';
 
 const options = Array(15)
   .fill(0)
@@ -25,39 +31,36 @@ const state = useQueryState<ComponentProps<typeof MDSelect>>('state', {
 <template>
   <PlaygroundStore>
     <template #controllers>
-      <label>
-        labelText
-        <input v-model="state.labelText" placeholder="labelText" />
-      </label>
+      <PlaygroundString
+        v-model:model-value="state.labelText"
+        label="labelText"
+      />
 
-      <label>
-        disabled
-        <input v-model="state.disabled" type="checkbox" />
-      </label>
+      <PlaygroundOptionalBoolean
+        v-model:model-value="state.disabled"
+        label="disabled"
+      />
 
-      <label>
-        error
-        <input v-model="state.error" type="checkbox" />
-      </label>
+      <PlaygroundOptionalBoolean
+        v-model:model-value="state.error"
+        label="error"
+      />
 
-      <label>
-        multiple
-        <input v-model="state.multiple" type="checkbox" />
-      </label>
+      <PlaygroundOptionalBoolean
+        v-model:model-value="state.multiple"
+        label="multiple"
+      />
 
-      <label>
-        supportingText
-        <input v-model="state.supportingText" />
-      </label>
+      <PlaygroundOptionalString
+        v-model:model-value="state.supportingText"
+        label="supportingText"
+      />
 
-      <label>
-        type
-        <select v-model="state.type">
-          <option v-for="option in typeOptions" :key="option" :value="option">
-            {{ option }}
-          </option>
-        </select>
-      </label>
+      <PlaygroundUnion
+        v-model:model-value="state.type"
+        label="type"
+        :options="typeOptions"
+      />
 
       <pre>{{ state.modelValue }}</pre>
     </template>
@@ -66,7 +69,7 @@ const state = useQueryState<ComponentProps<typeof MDSelect>>('state', {
       <MDSelect
         v-model="state.modelValue"
         :label-text="state.labelText"
-        :options
+        :options="options"
         :disabled="state.disabled"
         :error="state.error"
         :multiple="state.multiple"

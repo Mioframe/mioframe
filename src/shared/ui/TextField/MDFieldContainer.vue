@@ -14,6 +14,7 @@ const { type = 'outlined', numberCharacters = 0 } = defineProps<{
   maxCharacters?: number;
   filled?: boolean;
   numberCharacters?: number;
+  focused?: boolean;
 }>();
 
 const slots = defineSlots<{
@@ -49,7 +50,7 @@ const { focused: fieldFocused } = useFocusWithin(filedContainer);
         'md-field-container_filled': filled,
         'md-field-container_disabled': disabled,
         'md-field-container_error': error,
-        'md-field-container_focused': fieldFocused,
+        'md-field-container_focused': focused ?? fieldFocused,
       },
       `md-field-container_${type}-type`,
     ]"
@@ -65,7 +66,7 @@ const { focused: fieldFocused } = useFocusWithin(filedContainer);
         </label>
 
         <div ref="containerRef" class="md-field-container__input-container">
-          <slot :id />
+          <slot :id="id" />
         </div>
       </div>
 
