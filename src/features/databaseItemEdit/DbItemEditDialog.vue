@@ -69,7 +69,7 @@ const onUpdateValue = (propertyId: DatabasePropertyId, value: unknown) => {
     @cancel="onCancel"
   >
     <template
-      v-for="[propertyId, property] in propertiesCollection"
+      v-for="[propertyId, property] in propertiesCollection?.entries"
       :key="propertyId"
     >
       <slot

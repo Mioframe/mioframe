@@ -32,10 +32,15 @@ const propertiesCollection = useWrapStrictRecord(() => properties);
     </ItemTD>
 
     <ItemTD
-      v-for="[propertyId, property] in propertiesCollection"
+      v-for="[propertyId, property] in propertiesCollection?.entries"
       :key="propertyId"
     >
-      <slot name="value" :value="item[propertyId]" :property :property-id />
+      <slot
+        name="value"
+        :value="item[propertyId]"
+        :property="property"
+        :property-id="propertyId"
+      />
     </ItemTD>
   </tr>
 </template>

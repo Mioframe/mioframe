@@ -20,12 +20,16 @@ const propertyCollection = useWrapStrictRecord(() => properties);
 <template>
   <MDListContainer>
     <MDListItem
-      v-for="[propertyId, property] in propertyCollection"
+      v-for="[propertyId, property] in propertyCollection?.entries"
       :key="propertyId"
       :headline="property.name"
     >
       <template v-if="!!slots.trailingIcon" #trailingIcon>
-        <slot name="trailingIcon" :property :property-id />
+        <slot
+          name="trailingIcon"
+          :property="property"
+          :property-id="propertyId"
+        />
       </template>
     </MDListItem>
   </MDListContainer>

@@ -1,4 +1,5 @@
 <script setup lang="ts" generic="T extends 'assist' | 'filter' | 'input'">
+import { MDIconButton } from '../Button';
 import MDSymbol from '../Icon/MDSymbol.vue';
 import { MDState } from '../State';
 
@@ -17,7 +18,13 @@ const slots = defineSlots<{
 
 const emit = defineEmits<{
   click: [event: MouseEvent];
+  clickClose: [event: MouseEvent];
 }>();
+
+const onClickClose = (e: MouseEvent) => {
+  e.stopPropagation();
+  emit('clickClose', e);
+};
 </script>
 
 <template>
@@ -48,13 +55,17 @@ const emit = defineEmits<{
       {{ label }}
     </span>
 
-    <div
-      v-if="!!slots.trailingIcon || chipType === 'input'"
-      class="md-chip__trailing-icon"
-    >
-      <MDSymbol v-if="chipType === 'input'" name="close" />
+    <MDIconButton
+      v-if="chipType === 'input'"
+      tooltip="remove"
+      md-symbol-name="close"
+      size="extra-small"
+      class="md-chip__close-btn"
+      @click="onClickClose"
+    />
 
-      <slot v-else name="trailingIcon" />
+    <div v-else-if="!!slots.trailingIcon" class="md-chip__trailing-icon">
+      <slot name="trailingIcon" />
     </div>
   </MDState>
 </template>
@@ -105,6 +116,12 @@ const emit = defineEmits<{
     .md-chip:disabled & {
       --md-content-color: rgb(var(--md-sys-color-on-surface) / r g b 0.38);
     }
+  }
+
+  &__close-btn {
+    margin-right: -16px;
+    --md-target-width: 48px;
+    --md-target-height: 48px;
   }
 
   &__leading-icon {
@@ -160,8 +177,7 @@ const emit = defineEmits<{
     }
   }
 
-  &.md-state_hover,
-  &:hover {
+  &.md-state_hover {
     --md-content-color: var(--md-sys-color-on-surface);
   }
 

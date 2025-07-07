@@ -119,7 +119,7 @@ const targetTeleport = useClosestParentFrame();
 
           <MDButton
             :label="applyLabel"
-            :loading
+            :loading="loading"
             color="text"
             form-action="submit"
           />
@@ -208,10 +208,11 @@ const targetTeleport = useClosestParentFrame();
     display: flex;
     flex-direction: column;
     overflow-y: auto;
+    padding-bottom: 4px;
   }
 
   &__actions {
-    margin-top: 24px;
+    margin-top: 20px;
     display: flex;
     flex-wrap: wrap;
     justify-content: flex-end;

@@ -56,7 +56,6 @@
 
       &:last-child {
         tr:last-child {
-          th,
           td {
             border-bottom: var(--md-table-border);
 

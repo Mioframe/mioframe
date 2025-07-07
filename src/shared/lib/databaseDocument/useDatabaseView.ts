@@ -16,15 +16,21 @@ export const useDatabaseView = (
     viewId.value ? databaseViewsMap.get(viewId.value) : undefined,
   );
 
-  const update = async (partialView: Partial<DatabaseView>) => {
-    console.log('update', partialView);
+  const put = async (partialView: Partial<DatabaseView>) => {
     if (viewId.value) {
-      await databaseViewsMap.update(viewId.value, partialView);
+      await databaseViewsMap.put(viewId.value, partialView);
+    }
+  };
+
+  const update = async (mutation: (view: DatabaseView) => unknown) => {
+    if (viewId.value) {
+      await databaseViewsMap.update(viewId.value, mutation);
     }
   };
 
   return reactive({
     view,
+    put,
     update,
   });
 };

@@ -6,6 +6,7 @@ import MainApp from './MainApp.vue';
 import { createHead } from '@unhead/vue/client';
 import { router } from './router';
 import { setupPlayground } from '@shared/lib/playground';
+import { playgroundPages } from './playgroundPages';
 
 /**
  * Инициализация и настройка Vue приложения
@@ -19,31 +20,7 @@ export const setupApp = async (app: App = createApp(MainApp)) => {
   }
 
   if (import.meta.env.DEV) {
-    setupPlayground(router, [
-      {
-        name: 'Select',
-        component: () => import('@shared/ui/Select/SelectPlayground.vue'),
-      },
-      {
-        name: 'FieldContainer',
-        component: () =>
-          import('@shared/ui/TextField/MDFieldContainerPlayground.vue'),
-      },
-      {
-        name: 'TextField',
-        component: () =>
-          import('@shared/ui/TextField/MDTextFieldPlayground.vue'),
-      },
-      {
-        name: 'Chips',
-        component: () => import('@shared/ui/Chips/MDChipPlayground.vue'),
-      },
-      {
-        name: 'RichTooltip',
-        component: () =>
-          import('@shared/ui/Tooltips/MDRichTooltipPlayground.vue'),
-      },
-    ]);
+    setupPlayground(router, playgroundPages);
   }
 
   app.use(router);

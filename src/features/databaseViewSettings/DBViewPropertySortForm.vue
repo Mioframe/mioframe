@@ -3,6 +3,7 @@ import type {
   PropertiesMap,
   PropertyId,
 } from '@shared/lib/databaseDocument/migrations/versions/v1/property';
+import { shallowClone } from '@shared/lib/shallowClone';
 import { useWrapStrictRecord } from '@shared/lib/strictRecord';
 import { MDListContainer, MDListItem } from '@shared/ui/Lists';
 import { useSortable } from '@vueuse/integrations/useSortable';
@@ -18,7 +19,9 @@ const list = shallowRef<PropertyId[]>([]);
 const propertiesCollection = useWrapStrictRecord(() => properties);
 
 watchEffect(() => {
-  list.value = Array.from(propertiesCollection.value.keys());
+  if (propertiesCollection.value) {
+    list.value = shallowClone(propertiesCollection.value.keys);
+  }
 });
 
 useSortable(el, list, {
@@ -34,7 +37,7 @@ useSortable(el, list, {
   <div class="db-view-property-sort-form">
     <MDListContainer ref="container">
       <MDListItem
-        v-for="[propertyId, property] in propertiesCollection"
+        v-for="[propertyId, property] in propertiesCollection?.entries"
         :key="propertyId"
         :headline="property.name"
       />
