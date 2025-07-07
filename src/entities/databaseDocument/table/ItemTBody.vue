@@ -34,17 +34,23 @@ const slots = defineSlots<{
 <template>
   <tbody>
     <ItemTR
-      v-for="[itemId, item] in filteredData"
+      v-for="[itemId, item] in filteredData?.entries"
       :key="itemId"
       :properties="properties"
       :item="item"
     >
       <template #value="{ property, propertyId, value }">
-        <slot name="value" :property :property-id :value :item-id />
+        <slot
+          name="value"
+          :property="property"
+          :property-id="propertyId"
+          :value="value"
+          :item-id="itemId"
+        />
       </template>
 
       <template v-if="!!slots.itemActions" #actions>
-        <slot name="itemActions" :item :item-id />
+        <slot name="itemActions" :item="item" :item-id="itemId" />
       </template>
     </ItemTR>
   </tbody>

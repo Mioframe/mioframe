@@ -9,8 +9,8 @@
  * the efficiency of updating only one accumulator object.
  */
 
-import type { Ref } from 'vue';
-import { ref, watchEffect } from 'vue';
+import type { MaybeRefOrGetter, Ref } from 'vue';
+import { ref, toValue, watchEffect } from 'vue';
 
 /**
  * Default clearer function to reset the accumulator.
@@ -62,7 +62,7 @@ function defaultClearer(acc: any): void {
  * @returns A ref containing the accumulator (of type A) that is updated reactively as the source changes.
  */
 export function useReduceIterable<A, T>(
-  source: Ref<Iterable<T> | undefined>,
+  source: MaybeRefOrGetter<Iterable<T> | undefined>,
   reducer: (acc: A, item: T, index: number) => void,
   initialValue: A,
   clearer?: (acc: A) => void,
@@ -74,10 +74,12 @@ export function useReduceIterable<A, T>(
     // Clear the accumulator using the provided clearer, or the defaultClearer if none is provided.
     (clearer ?? defaultClearer)(result.value);
 
+    const sourceValue = toValue(source);
+
     let index = 0;
-    if (source.value) {
+    if (sourceValue) {
       // Iterate over the source and update the accumulator in place.
-      for (const item of source.value) {
+      for (const item of sourceValue) {
         reducer(result.value, item, index);
         index++;
       }

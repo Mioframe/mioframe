@@ -3,21 +3,20 @@ import type { AMDocHandle } from '../automerge';
 import { useDatabaseDocument } from './useDatabaseDocument';
 import { toRefs } from '@vueuse/core';
 import { useWrapStrictRecord } from '../strictRecord';
-import type { DatabaseViewsMap } from './migrations/versions';
 import {
   generateViewId,
   type DatabaseView,
   type DatabaseViewId,
 } from './migrations/versions';
 import { deepPutJsonObject, deepReplaceJsonObject } from '../changeObject';
-import type { RecordEntries } from '../objectEntries';
+import { shallowClone } from '../shallowClone';
 
 export const useDatabaseViewsMap = (
   rawDocHandle: MaybeRefOrGetter<AMDocHandle | undefined>,
 ): {
-  entries: () => IterableIterator<[DatabaseViewId, DatabaseView]> | undefined;
-  keys: () => IterableIterator<DatabaseViewId> | undefined;
-  values: () => IterableIterator<DatabaseView> | undefined;
+  entries: [DatabaseViewId, DatabaseView][] | undefined;
+  keys: DatabaseViewId[] | undefined;
+  values: DatabaseView[] | undefined;
   has: (id: DatabaseViewId) => boolean | undefined;
   get: (viewId: DatabaseViewId) => DatabaseView | undefined;
   forEach: (
@@ -29,11 +28,15 @@ export const useDatabaseViewsMap = (
 
   set: (id: DatabaseViewId, view: DatabaseView) => Promise<void>;
   create: (view: DatabaseView) => Promise<DatabaseViewId>;
-  update: (
+  put: (
     id: DatabaseViewId,
     partialView: Partial<DatabaseView>,
   ) => Promise<void>;
   remove: (id: DatabaseViewId) => Promise<void>;
+  update: (
+    id: DatabaseViewId,
+    mutation: (view: DatabaseView) => unknown,
+  ) => Promise<void>;
 } => {
   const docHandle = computed(() => toValue(rawDocHandle));
 
@@ -65,7 +68,7 @@ export const useDatabaseViewsMap = (
     return id;
   };
 
-  const update = async (
+  const put = async (
     id: DatabaseViewId,
     partialView: Partial<DatabaseView>,
   ) => {
@@ -82,15 +85,9 @@ export const useDatabaseViewsMap = (
     });
   };
 
-  const entries = ():
-    | IterableIterator<[DatabaseViewId, DatabaseView]>
-    | undefined => viewMap.value?.entries();
-
-  const keys = (): IterableIterator<DatabaseViewId> | undefined =>
-    viewMap.value?.keys();
-
-  const values = (): IterableIterator<DatabaseView> | undefined =>
-    viewMap.value?.values();
+  const entries = computed(() => viewMap.value?.entries);
+  const keys = computed(() => viewMap.value?.keys);
+  const values = computed(() => viewMap.value?.values);
 
   const has = (id: DatabaseViewId): boolean | undefined =>
     viewMap.value?.has(id);
@@ -106,18 +103,10 @@ export const useDatabaseViewsMap = (
 
   const size = computed((): number | undefined => viewMap.value?.size);
 
-  const list = computed(
-    (): Readonly<RecordEntries<DatabaseViewsMap>> | undefined => {
-      const iterator = entries();
-
-      if (iterator) {
-        return Array.from(iterator).sort(
-          ([, { order: a = 0 }], [, { order: b = 0 }]) => a - b,
-        );
-      }
-
-      return undefined;
-    },
+  const list = computed(() =>
+    shallowClone(entries.value)?.sort(
+      ([, { order: a = 0 }], [, { order: b = 0 }]) => a - b,
+    ),
   );
 
   const remove = async (id: DatabaseViewId) => {
@@ -128,6 +117,18 @@ export const useDatabaseViewsMap = (
   };
 
   const defaultView = computed(() => list.value?.at(0));
+
+  const update = (
+    viewId: DatabaseViewId,
+    mutation: (view: DatabaseView) => unknown,
+  ) => {
+    return updateDatabaseDocument.value((doc) => {
+      const view = doc.views[viewId];
+      if (view) {
+        mutation(view);
+      }
+    });
+  };
 
   return reactive({
     entries,
@@ -142,7 +143,8 @@ export const useDatabaseViewsMap = (
 
     set,
     create,
-    update,
+    put,
     remove,
+    update,
   });
 };

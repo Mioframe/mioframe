@@ -1,5 +1,11 @@
 <script setup lang="ts">
-import { PlaygroundStory } from '@shared/lib/playground';
+import {
+  PlaygroundBoolean,
+  PlaygroundOptionalBoolean,
+  PlaygroundStory,
+  PlaygroundString,
+  PlaygroundUnion,
+} from '@shared/lib/playground';
 import { useQueryState } from '@shared/lib/useQueryState';
 import type { ComponentProps } from 'vue-component-type-helpers';
 import MDChip from './MDChip.vue';
@@ -25,39 +31,33 @@ const state = useQueryState<State>('state', {
 <template>
   <PlaygroundStory>
     <template #controllers>
-      <label>
-        label
-        <input v-model="state.label" />
-      </label>
+      <PlaygroundString v-model:model-value="state.label" label="label" />
 
-      <label>
-        type
-        <select v-model="state.type">
-          <option v-for="option in typeOptions" :key="option" :value="option">
-            {{ option }}
-          </option>
-        </select>
-      </label>
+      <PlaygroundUnion
+        v-model:model-value="state.type"
+        label="type"
+        :options="typeOptions"
+      />
 
-      <label>
-        elevated
-        <input v-model="state.elevated" type="checkbox" />
-      </label>
+      <PlaygroundOptionalBoolean
+        v-model:model-value="state.elevated"
+        label="elevated"
+      />
 
-      <label>
-        selected
-        <input v-model="state.selected" type="checkbox" />
-      </label>
+      <PlaygroundOptionalBoolean
+        v-model:model-value="state.selected"
+        label="selected"
+      />
 
-      <label>
-        leadingIcon
-        <input v-model="state.leadingIcon" type="checkbox" />
-      </label>
+      <PlaygroundBoolean
+        v-model:model-value="state.leadingIcon"
+        label="leadingIcon"
+      />
 
-      <label>
-        trailingIcon
-        <input v-model="state.trailingIcon" type="checkbox" />
-      </label>
+      <PlaygroundBoolean
+        v-model:model-value="state.trailingIcon"
+        label="trailingIcon"
+      />
     </template>
 
     <template #space>

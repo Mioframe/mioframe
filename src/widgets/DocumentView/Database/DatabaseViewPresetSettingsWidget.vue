@@ -1,10 +1,6 @@
 <script setup lang="ts">
 import { DatabaseViewCreateDialog } from '@feature/databaseViewCreate';
-import {
-  useDatabaseDocument,
-  useDatabaseView,
-  useDatabaseViewsMap,
-} from '@shared/lib/databaseDocument';
+import { useDatabaseViewsMap } from '@shared/lib/databaseDocument';
 import type { DatabaseViewId } from '@shared/lib/databaseDocument';
 import { DB_VIEW_LAYOUT } from '@shared/lib/databaseDocument';
 import { MDChip } from '@shared/ui/Chips';
@@ -28,10 +24,6 @@ const props = defineProps<{
 
 const { docHandle } = toRefs(props);
 
-const databaseDocument = useDatabaseDocument(docHandle);
-
-const properties = computed(() => databaseDocument.state?.properties);
-
 const databaseViewsMap = useDatabaseViewsMap(docHandle);
 
 const firstViewId = computed(() => databaseViewsMap.list?.at(0)?.[0]);
@@ -45,10 +37,6 @@ watch(
   },
   { immediate: true },
 );
-
-const selectedView = useDatabaseView(docHandle, selectedViewId);
-
-const selectedSortMap = computed(() => selectedView.view?.sorting);
 
 const onClickViewChip = (viewId: DatabaseViewId) => {
   selectedViewId.value = viewId;
@@ -107,7 +95,7 @@ const onCancelAddView = () => {
     <div class="preset-section">
       <!-- панель пресетов -->
       <DatabaseViewChipsList
-        :doc-handle
+        :doc-handle="docHandle"
         type="filter"
         :selected-id="selectedViewId"
         @click="onClickViewChip"
@@ -143,10 +131,11 @@ const onCancelAddView = () => {
       </MDIconButton>
     </div>
 
+    <!-- FIXME: пропала сортировка -->
     <DatabaseItemSortingSection
-      v-if="properties && selectedSortMap"
-      v-model:sort-map="selectedSortMap"
-      :property-map="properties"
+      v-if="selectedViewId"
+      :doc-handle="docHandle"
+      :view-id="selectedViewId"
     />
     <!-- / панель сортировки -->
 
@@ -172,6 +161,7 @@ const onCancelAddView = () => {
   display: flex;
   overflow-x: auto;
   gap: 8px;
+  --md-target-offset: 0px;
 }
 
 .database-view-preset-settings-widget {

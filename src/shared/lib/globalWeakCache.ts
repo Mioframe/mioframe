@@ -54,7 +54,15 @@ export const createGlobalWeakCache = <K extends WeakKey, V extends object>(
     return { getCache, tryDisposeCache };
   });
 
-export const useGlobalWeakCacheByKey = <K extends WeakKey, V>(
+type UseGlobalWeakCacheByKey = <K extends WeakKey, V>(
+  useGlobalCache: () => GlobalCache<K, V>,
+  rawKey: MaybeRefOrGetter<K | undefined>,
+) => ComputedRef<V | undefined>;
+
+export const useGlobalWeakCacheByKey: UseGlobalWeakCacheByKey = <
+  K extends WeakKey,
+  V,
+>(
   useGlobalCache: () => GlobalCache<K, V>,
   rawKey: MaybeRefOrGetter<K | undefined>,
 ): ComputedRef<V | undefined> => {

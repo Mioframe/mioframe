@@ -9,10 +9,10 @@ import {
   syncRef,
   syncRefs,
   tryOnScopeDispose,
-  useElementHover,
+  useEventListener,
   useVibrate,
 } from '@vueuse/core';
-import { useTemplateRef, defineModel, computed } from 'vue';
+import { useTemplateRef, defineModel, computed, ref } from 'vue';
 import { useFirstFocus } from '@shared/lib/useFirstFocus';
 import { debounce } from 'es-toolkit';
 
@@ -52,7 +52,7 @@ syncRefs(userPressed, pressedModel);
 
 const refEl = useTemplateRef<HTMLElement>('refEl');
 
-const userHover = useElementHover(refEl);
+const userHover = ref(false);
 
 const hoverModel = defineModel<boolean>('hover');
 
@@ -67,45 +67,7 @@ const focusedModel = defineModel<boolean>('focused', { default: false });
 
 syncRef(userFocused, focusedModel);
 
-const onMouseleave = () => {
-  onPressUp();
-};
-
-const onTouchEnd = () => {
-  onPressUp();
-};
-
-const onTouchCancel = () => {
-  onPressUp();
-};
-
-const onMouseDown = (e: MouseEvent) => {
-  emit('mousedown', e);
-
-  const { clientX, clientY, currentTarget } = e;
-
-  if (currentTarget instanceof Element) {
-    e.stopPropagation();
-    onPressDown(currentTarget, clientX, clientY);
-  }
-};
-
-const onMouseUp = (e: MouseEvent) => {
-  emit('mouseup', e);
-  e.stopPropagation();
-  onPressUp();
-};
-
-const onTouchStart = ({
-  touches: [{ clientX, clientY }],
-  currentTarget: element,
-}: TouchEvent) => {
-  if (element instanceof Element) {
-    onPressDown(element, clientX, clientY);
-  }
-};
-
-const onKeyDown = debounce(
+const onKeyDownDebounce = debounce(
   ({ currentTarget, key }: KeyboardEvent) => {
     if (key === ' ' || key === 'Enter') {
       if (currentTarget instanceof Element) {
@@ -119,20 +81,73 @@ const onKeyDown = debounce(
   },
 );
 
-const onKeyUp = () => {
-  onKeyDown.cancel();
-  onPressUp();
-};
-
 const { vibrate } = useVibrate();
 
-const onClickState = (e: MouseEvent) => {
+tryOnScopeDispose(() => {
+  onKeyDownDebounce.cancel();
+  onPressUp();
+});
+
+useEventListener(refEl, 'mouseover', (e: MouseEvent) => {
+  e.stopPropagation();
+  userHover.value = true;
+});
+
+useEventListener(refEl, 'mouseout', (e: MouseEvent) => {
+  e.stopPropagation();
+  userHover.value = false;
+  onPressUp();
+});
+
+useEventListener(refEl, 'mousedown', (e: MouseEvent) => {
+  emit('mousedown', e);
+
+  const { clientX, clientY, currentTarget } = e;
+
+  if (currentTarget instanceof Element) {
+    e.stopPropagation();
+    onPressDown(currentTarget, clientX, clientY);
+  }
+});
+
+useEventListener(
+  refEl,
+  'touchstart',
+  ({ touches: [{ clientX, clientY }], currentTarget: element }: TouchEvent) => {
+    if (element instanceof Element) {
+      onPressDown(element, clientX, clientY);
+    }
+  },
+);
+
+useEventListener(refEl, 'mouseup', (e: MouseEvent) => {
+  e.stopPropagation();
+  emit('mouseup', e);
+  onPressUp();
+});
+
+useEventListener(refEl, 'mouseleave', () => {
+  onPressUp();
+});
+
+useEventListener(refEl, 'touchend', () => {
+  onPressUp();
+});
+
+useEventListener(refEl, 'touchcancel', () => {
+  onPressUp();
+});
+
+useEventListener(refEl, 'keydown', onKeyDownDebounce);
+
+useEventListener(refEl, 'keyup', () => {
+  onKeyDownDebounce.cancel();
+  onPressUp();
+});
+
+useEventListener(refEl, 'click', (e) => {
   emit('click', e);
   vibrate([10]);
-};
-
-tryOnScopeDispose(() => {
-  onKeyUp();
 });
 
 // FIXME: в firefox после удержания остаётся нежелательный эффект состояния
@@ -153,15 +168,6 @@ tryOnScopeDispose(() => {
       'md-state_pressed': userPressed,
     }"
     :draggable="draggable ? 'true' : undefined"
-    @mousedown="onMouseDown"
-    @touchstart="onTouchStart"
-    @mouseup="onMouseUp"
-    @mouseleave="onMouseleave"
-    @touchend="onTouchEnd"
-    @touchcancel="onTouchCancel"
-    @keydown="onKeyDown"
-    @keyup="onKeyUp"
-    @click="onClickState"
   >
     <div class="md-state__layer" />
 
@@ -186,9 +192,9 @@ tryOnScopeDispose(() => {
 .md-state {
   --md-content-color: inherit;
   --md-container-color: inherit;
-  --md-target-offset: 4px;
-  --md-target-width: calc(100% + var(--md-target-offset) * 2);
-  --md-target-height: calc(100% + var(--md-target-offset) * 2);
+  --md-state-target-offset: var(--md-target-offset, 4px);
+  --md-target-width: calc(100% + var(--md-state-target-offset) * 2);
+  --md-target-height: calc(100% + var(--md-state-target-offset) * 2);
   --md-focus-indicator-thickness: var(
     --md-sys-state-focus-indicator-thickness,
     3px
@@ -264,7 +270,6 @@ tryOnScopeDispose(() => {
     ) !important;
   }
 
-  &:hover,
   &.md-state_hover {
     > .md-state__layer {
       background-color: rgb(from var(--md-content-color) r g b / 8%);
