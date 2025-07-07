@@ -3,33 +3,18 @@
   lang="ts"
   generic="T extends { labelText: string } | Primitive = { labelText: string }"
 >
-import {
-  computed,
-  nextTick,
-  ref,
-  useTemplateRef,
-  watch,
-  watchEffect,
-} from 'vue';
-import {
-  onKeyStroke,
-  refAutoReset,
-  unrefElement,
-  useFocusWithin,
-  type MaybeElement,
-} from '@vueuse/core';
-import { useFocusTrap } from '@vueuse/integrations/useFocusTrap';
-import { onInteractionOutside } from '@shared/lib/onInteractionOutside';
+import { computed, toRefs, useTemplateRef } from 'vue';
+import { type MaybeElement } from '@vueuse/core';
 import { MDMenuContainer } from '../Menu';
 import { MDSymbol } from '../Icon';
 import { MDFieldContainer } from '../TextField';
 import { MDChip } from '../Chips';
-import { isArray, isObject, toString } from 'es-toolkit/compat';
-import { differenceWith, isEqual } from 'es-toolkit';
+import { isObject } from 'es-toolkit/compat';
 import type { Primitive } from 'type-fest';
 import { MDListItem } from '../Lists';
+import { useOptionsNavigation } from './useOptionsNavigation';
 
-const { multiple = false, options } = defineProps<{
+const props = defineProps<{
   labelText: string;
   options: T[];
   supportingText?: string;
@@ -39,12 +24,7 @@ const { multiple = false, options } = defineProps<{
   multiple?: boolean;
 }>();
 
-const getLabel = (v: T): string => {
-  if (isObject(v) && 'labelText' in v) {
-    return v.labelText;
-  }
-  return toString(v);
-};
+const { multiple, options } = toRefs(props);
 
 const slots = defineSlots<{
   leadingIcon: (props: { option: T }) => unknown;
@@ -57,113 +37,32 @@ const modelValue = defineModel<T[]>({
 });
 
 const fieldContainerRef = useTemplateRef<MaybeElement>('fieldContainerRef');
-const menusRef = useTemplateRef<MaybeElement>('menusRef');
-
-const filteredOptions = computed(() =>
-  differenceWith(options, modelValue.value, isEqual),
-);
-
-const showMenu = ref(false);
-
-onInteractionOutside(
-  fieldContainerRef,
-  () => {
-    showMenu.value = false;
-  },
-  {
-    ignore: [menusRef],
-  },
-);
-
-const onClickOption = (option: T) => {
-  if (modelValue.value.includes(option)) {
-    modelValue.value = modelValue.value.filter((value) => value !== option);
-  } else {
-    if (multiple) {
-      modelValue.value.push(option);
-    } else {
-      modelValue.value = [option];
-    }
-  }
-  showMenu.value = false;
-};
-
-const onClickField = () => {
-  showMenu.value = filteredOptions.value.length > 0;
-};
-
-const { focused: focusedField } = useFocusWithin(fieldContainerRef);
-
-const { activate: activateMenuFocusTrap, deactivate: deactivateMenuFocusTrap } =
-  useFocusTrap(menusRef, {
-    isKeyForward: ({ key }) => ['Tab', 'ArrowDown', 'ArrowRight'].includes(key),
-    isKeyBackward: ({ key }) => ['ArrowUp', 'ArrowLeft'].includes(key),
-    allowOutsideClick: true,
-  });
-
-watchEffect(() => {
-  if (showMenu.value) {
-    void nextTick(activateMenuFocusTrap);
-  } else {
-    void nextTick(deactivateMenuFocusTrap);
-  }
-});
-
-onKeyStroke(['ArrowDown', 'ArrowUp'], (e) => {
-  if (focusedField.value) {
-    e.preventDefault();
-    showMenu.value = filteredOptions.value.length > 0;
-  }
-});
-
-onKeyStroke('Escape', () => {
-  showMenu.value = false;
-});
+const menuContainerRef = useTemplateRef<MaybeElement>('menuContainerRef');
+const optionsElements = useTemplateRef<MaybeElement[]>('optionsRef');
 
 const firstValue = computed(() => modelValue.value.at(0));
 
-const tempInput = refAutoReset<string | undefined>(undefined, 500);
-
-const optionsRef = useTemplateRef<MaybeElement[]>('optionsRef');
-
-watch(tempInput, (tempInput) => {
-  if (tempInput) {
-    const foundIndex = filteredOptions.value.findIndex((value) => {
-      const labelText = getLabel(value);
-
-      return labelText.includes(tempInput);
-    });
-
-    if (foundIndex >= 0 && isArray(optionsRef.value)) {
-      const foundRef = optionsRef.value.at(foundIndex);
-
-      if (foundRef) {
-        const foundEl = unrefElement(foundRef);
-
-        if (foundEl instanceof HTMLElement) {
-          foundEl.focus();
-        }
-      }
-    }
+const optionToString = (v: T): string => {
+  if (isObject(v) && 'labelText' in v) {
+    return v.labelText;
   }
-});
-
-const removeValue = (opt: { value?: T; index?: number }) => {
-  modelValue.value = modelValue.value.filter(
-    (value, index) => !(value === opt.value || index === opt.index),
-  );
+  return String(v);
 };
 
-onKeyStroke(true, ({ key }) => {
-  if (focusedField.value || showMenu.value) {
-    if (/^.$/.test(key)) {
-      tempInput.value = tempInput.value ? tempInput.value + key : key;
-    }
-
-    if (key === 'Backspace') {
-      removeValue({ index: modelValue.value.length - 1 });
-    }
-  }
+const {
+  showMenu,
+  onClickFieldContainer,
+  onClickOption,
+  filteredOptions,
+  removeValue,
+} = useOptionsNavigation({
+  options,
+  optionsElements,
+  fieldContainerRef,
+  menuContainerRef,
+  multiple,
+  modelValue,
+  optionToString,
 });
 
 const onClickValue = (value: T, index: number) => {
@@ -181,34 +80,34 @@ const onClickValue = (value: T, index: number) => {
   >
     <MDFieldContainer
       ref="fieldContainerRef"
-      :label-text
-      :supporting-text
-      :type
-      :disabled
-      :error
+      :focused="showMenu"
+      :label-text="labelText"
+      :supporting-text="supportingText"
+      :type="type"
+      :disabled="disabled"
+      :error="error"
       class="md-select__field"
       :filled="modelValue.length > 0"
-      @click="onClickField"
+      @click="onClickFieldContainer"
     >
       <template #default>
         <div class="md-select__value-container" tabindex="0">
           <template v-if="multiple">
             <MDChip
               v-for="(value, indexValue) in modelValue"
-              :key="getLabel(value)"
-              :label="getLabel(value)"
+              :key="optionToString(value)"
+              :label="optionToString(value)"
               type="input"
-              @click.stop="onClickValue(value, indexValue)"
+              @click="onClickValue(value, indexValue)"
+              @click-close="onClickValue(value, indexValue)"
             />
           </template>
 
           <template v-else>
             <span v-if="firstValue">
-              {{ getLabel(firstValue) }}
+              {{ optionToString(firstValue) }}
             </span>
           </template>
-
-          {{ tempInput }}
         </div>
       </template>
 
@@ -219,24 +118,24 @@ const onClickValue = (value: T, index: number) => {
 
     <MDMenuContainer
       v-if="showMenu"
-      ref="menusRef"
+      ref="menuContainerRef"
       :target-ref="fieldContainerRef"
     >
       <MDListItem
-        v-for="option in filteredOptions"
-        :key="getLabel(option)"
-        ref="optionsRef"
-        :headline="getLabel(option)"
         is="button"
+        v-for="option in filteredOptions"
+        :key="optionToString(option)"
+        ref="optionsElements"
+        :headline="optionToString(option)"
         type="button"
         @click="onClickOption(option)"
       >
         <template v-if="!!slots.leadingIcon" #leadingIcon>
-          <slot name="leadingIcon" :option />
+          <slot name="leadingIcon" :option="option" />
         </template>
 
         <template v-if="!!slots.trailingIcon" #trailingIcon>
-          <slot name="trailingIcon" :option />
+          <slot name="trailingIcon" :option="option" />
         </template>
       </MDListItem>
     </MDMenuContainer>
@@ -253,7 +152,7 @@ const onClickValue = (value: T, index: number) => {
     all: unset;
     display: flex;
     flex-wrap: wrap;
-    gap: 1step;
+    gap: 2step 3step;
     cursor: pointer;
   }
 

@@ -114,26 +114,9 @@ const onCancelAddView = () => {
     <!-- панель фильтрации -->
 
     <!-- панель сортировки -->
-    <!-- TODO: сделать компактную версию из MDChip -->
-    <div class="database-view-preset-settings-widget__subtitle md-margin-top-2">
-      <span :class="MD_SYS_TYPESCALE.title.small">Sorting settings</span>
-
-      <MDIconButton
-        tooltip="Managing content sorting"
-        md-symbol-name="info"
-        class="md-margin-left-2"
-        show-tooltip-on-click
-      >
-        <template #richTooltipContent>
-          Drag and drop items to change sort priority.<br />
-          Click on an item to change sort direction.
-        </template>
-      </MDIconButton>
-    </div>
-
-    <!-- FIXME: пропала сортировка -->
     <DatabaseItemSortingSection
       v-if="selectedViewId"
+      class="md-margin-top-4"
       :doc-handle="docHandle"
       :view-id="selectedViewId"
     />

@@ -1,5 +1,8 @@
 import type { AMDocHandle } from '@shared/lib/automerge';
-import type { DatabasePropertyId } from '@shared/lib/databaseDocument';
+import type {
+  DatabasePropertyId,
+  DatabaseSortDescription,
+} from '@shared/lib/databaseDocument';
 import {
   SORT_DIRECTION,
   useDatabaseView,
@@ -43,10 +46,45 @@ export const useDatabaseViewSorting = (
     });
   };
 
+  const has = (propertyId: DatabasePropertyId) =>
+    sortingMap.value?.has(propertyId);
+
+  const remove = async (propertyId: DatabasePropertyId) => {
+    await databaseView.update((view) => {
+      if (view.sorting) {
+        // eslint-disable-next-line @typescript-eslint/no-dynamic-delete -- for automerge
+        delete view.sorting[propertyId];
+      }
+    });
+  };
+
+  const update = async (
+    propertyId: DatabasePropertyId,
+    mutation: (sortDescription: DatabaseSortDescription) => unknown,
+  ) => {
+    await databaseView.update((view) => {
+      if (!view.sorting) {
+        view.sorting = {};
+      }
+
+      if (!view.sorting[propertyId]) {
+        view.sorting[propertyId] = {
+          direction: SORT_DIRECTION.ascending,
+          priority: sortingMap.value?.size ?? 0,
+        };
+      }
+
+      mutation(view.sorting[propertyId]);
+    });
+  };
+
   return reactive({
     sortingList,
     keys: computed(() => sortingMap.value?.keys),
     addSorting,
     size: computed(() => sortingMap.value?.size),
+    has,
+    remove,
+    update,
   });
 };

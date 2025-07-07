@@ -146,6 +146,7 @@ useEventListener(refEl, 'keyup', () => {
 });
 
 useEventListener(refEl, 'click', (e) => {
+  e.stopPropagation();
   emit('click', e);
   vibrate([10]);
 });
