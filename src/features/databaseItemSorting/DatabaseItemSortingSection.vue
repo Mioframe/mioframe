@@ -1,23 +1,18 @@
 <script setup lang="ts">
-import { deepReplaceJsonObject } from '@shared/lib/changeObject';
-import {
+import type { AMDocHandle } from '@shared/lib/automerge';
+import type {
+  DatabaseViewId,
   SORT_DIRECTION,
-  type DatabasePropertyId,
-  type DatabaseSortMap,
-  type DatabaseUnknownPropertiesMap,
 } from '@shared/lib/databaseDocument/migrations/versions';
-import { recordEntries } from '@shared/lib/objectEntries';
-import { useSortable } from '@shared/lib/sortable';
-import { useWrapStrictRecord } from '@shared/lib/strictRecord';
-import { useDeepModel } from '@shared/lib/useDeepModel';
-import { useReduceIterable } from '@shared/lib/useReduce';
-import { MDIconButton } from '@shared/ui/Button';
-import { MDSymbol } from '@shared/ui/Icon';
-import { MDListContainer, MDListItem } from '@shared/ui/Lists';
+import { type DatabasePropertyId } from '@shared/lib/databaseDocument/migrations/versions';
 import { MDMenu, defineMenuButtonList } from '@shared/ui/Menu';
 import { type MaybeElement } from '@vueuse/core';
-import { debounce, difference } from 'es-toolkit';
-import { computed, nextTick, ref, toValue, useTemplateRef, watch } from 'vue';
+import { difference } from 'es-toolkit';
+import { computed, ref, toRefs, useTemplateRef, watchEffect } from 'vue';
+import { useDatabaseViewSorting } from './useDatabaseItemSorting';
+import { useDatabasePropertiesMap } from '@shared/lib/databaseDocument/useDatabasePropertiesMap';
+import { MDChip } from '@shared/ui/Chips';
+import { MDFieldContainer } from '@shared/ui/TextField';
 
 /**
  * Порядок сортировки по значениям свойств.
@@ -25,199 +20,90 @@ import { computed, nextTick, ref, toValue, useTemplateRef, watch } from 'vue';
  */
 
 const props = defineProps<{
-  propertyMap: DatabaseUnknownPropertiesMap;
-  // eslint-disable-next-line vue/no-unused-properties -- use in useDeepModel
-  sortMap: DatabaseSortMap;
+  docHandle: AMDocHandle;
+  viewId: DatabaseViewId;
 }>();
 
-const emit = defineEmits<{
-  'update:sortMap': [DatabaseSortMap];
-}>();
+const { docHandle, viewId } = toRefs(props);
 
-const propertyCollection = useWrapStrictRecord(() => props.propertyMap);
+const databaseViewSorting = useDatabaseViewSorting(docHandle, viewId);
 
-const sortMapModel = useDeepModel(props, 'sortMap', emit);
+const databaseProperties = useDatabasePropertiesMap(docHandle);
 
 const sortListState = ref<
   {
-    key: DatabasePropertyId;
+    propertyId: DatabasePropertyId;
     direction: SORT_DIRECTION;
-    headline: string;
-    supportingText?: string;
+    propertyName: string;
   }[]
 >([]);
 
-const sortListStateWatchHandler = watch(
-  sortListState,
-  debounce(() => {
-    sortMapModelWatchHandler.pause();
-    deepReplaceJsonObject(
-      sortMapModel.value,
-      toValue(sortListState).reduce<DatabaseSortMap>(
-        (acc, { direction, key: id }, priority) => ({
-          ...acc,
-          [id]: {
-            direction,
-            priority,
-          },
-        }),
-        {},
-      ),
-    );
-    void nextTick(() => {
-      sortMapModelWatchHandler.resume();
-    });
-  }, 1e3),
-  { deep: true },
-);
+watchEffect(() => {
+  sortListState.value.length = 0;
 
-const sortMapModelWatchHandler = watch(
-  sortMapModel,
-  (sortMapModel: DatabaseSortMap) => {
-    sortListStateWatchHandler.pause();
-    deepReplaceJsonObject(
-      sortListState.value,
-      recordEntries(sortMapModel)
-        .sort(([, { priority: a }], [, { priority: b }]) => a - b)
-        .map(([id, { direction }]) => ({
-          key: id,
-          direction,
-          headline: propertyCollection.value.get(id)?.name,
-          supportingText:
-            direction === SORT_DIRECTION.ascending
-              ? 'Sort by ascending'
-              : 'Sort by descending',
-        })),
-    );
-    void nextTick(() => {
-      sortListStateWatchHandler.resume();
-    });
-  },
-  { immediate: true, deep: true },
-);
+  databaseViewSorting.sortingList?.forEach(([propertyId, { direction }]) => {
+    const property = databaseProperties.get(propertyId);
 
-const addBtnRef = useTemplateRef<MaybeElement>('addBtn');
+    if (property) {
+      sortListState.value.push({
+        propertyId,
+        direction,
+        propertyName: property.name,
+      });
+    }
+  });
+});
+
+const addBtnRef = useTemplateRef<MaybeElement>('addBtnRef');
 
 const showAddPropertyMenu = ref(false);
 
-const propertyWithSorting = useReduceIterable(
-  sortListState,
-  (acc, item) => {
-    acc.push(item.key);
-  },
-  <DatabasePropertyId[]>[],
-);
-
-const propertyList = computed(() =>
-  Array.from(propertyCollection.value.keys()),
-);
-
 const propertyWithoutSorting = computed(() =>
-  difference(propertyList.value, propertyWithSorting.value),
+  databaseProperties.keys && databaseViewSorting.keys
+    ? difference(databaseProperties.keys, databaseViewSorting.keys)
+    : undefined,
 );
 
 const menu = computed(() =>
-  defineMenuButtonList(
-    propertyWithoutSorting.value.map((id) => [
-      id,
-      {
-        text: propertyCollection.value.get(id)?.name ?? 'unknown property',
-        symbolName: 'add',
-      },
-    ]),
-  ),
+  propertyWithoutSorting.value
+    ? defineMenuButtonList(
+        propertyWithoutSorting.value.map((id) => [
+          id,
+          {
+            text: databaseProperties.get(id)?.name ?? 'unknown property',
+            symbolName: 'add',
+          },
+        ]),
+      )
+    : undefined,
 );
 
-const onClickMenuProperty = (id: DatabasePropertyId) => {
-  sortListState.value.push({
-    key: id,
-    direction: SORT_DIRECTION.ascending,
-    headline: propertyCollection.value.get(id)?.name ?? 'unknown property',
-    supportingText: 'Sort by ascending',
-  });
+const onClickMenuProperty = async (id: DatabasePropertyId) => {
+  await databaseViewSorting.addSorting(id);
+
   showAddPropertyMenu.value = false;
 };
-
-const onClickRemove = (id: DatabasePropertyId) => {
-  const foundIndex = sortListState.value.findIndex(
-    ({ key: propertyId }) => propertyId === id,
-  );
-
-  sortListState.value.splice(foundIndex, 1);
-};
-
-const onClickToggleDirection = (id: DatabasePropertyId) => {
-  const sortDescription = sortListState.value.find(
-    ({ key: propertyId }) => propertyId === id,
-  );
-
-  if (sortDescription) {
-    const oldDirection = sortDescription.direction;
-
-    sortDescription.direction =
-      oldDirection === SORT_DIRECTION.ascending
-        ? SORT_DIRECTION.descending
-        : SORT_DIRECTION.ascending;
-  }
-};
-
-const listContainerRef =
-  useTemplateRef<InstanceType<typeof MDListContainer>>('listContainerRef');
-
-const { draggableItem } = useSortable(listContainerRef, sortListState);
 </script>
 
 <template>
   <section class="database-item-sorting-section">
-    <MDListContainer ref="listContainerRef" tag="div" transition>
-      <MDListItem
-        v-for="item in sortListState"
-        :key="item.key"
-        :headline="propertyCollection.get(item.key)?.name ?? 'unknown property'"
-        :supporting-text="
-          item.direction === SORT_DIRECTION.ascending
-            ? 'Sort by ascending'
-            : 'Sort by descending'
-        "
-        draggable
-        is="button"
-        :class="{
-          'md-state_drag': item === draggableItem,
-        }"
-        @click="onClickToggleDirection(item.key)"
-      >
-        <template #leadingIcon>
-          <MDSymbol
-            name="sort"
-            :class="{
-              flip: item.direction === SORT_DIRECTION.ascending,
-            }"
-            class="handle"
-          />
-        </template>
+    <MDFieldContainer label-text="Sorting" :filled="!!databaseViewSorting.size">
+      <div class="database-item-sorting-section__chip-list">
+        <MDChip
+          v-for="item in sortListState"
+          :key="item.propertyId"
+          type="input"
+          :label="item.propertyName"
+        />
+      </div>
+    </MDFieldContainer>
 
-        <template #trailingIcon>
-          <MDIconButton
-            tooltip="Remove sorting"
-            md-symbol-name="delete"
-            @click="onClickRemove(item.key)"
-          />
-        </template>
-      </MDListItem>
-    </MDListContainer>
-
-    <MDListContainer v-if="propertyWithoutSorting.length">
-      <MDListItem
-        ref="addBtn"
-        headline="Add sorting"
-        is="button"
-        @click="showAddPropertyMenu = !showAddPropertyMenu"
-      >
-        <template #leadingIcon>
-          <MDSymbol name="add" />
-        </template>
-      </MDListItem>
-    </MDListContainer>
+    <MDChip
+      ref="addBtnRef"
+      label="add sorting"
+      type="assist"
+      @click="showAddPropertyMenu = !showAddPropertyMenu"
+    />
 
     <MDMenu
       v-model:show="showAddPropertyMenu"
@@ -229,6 +115,14 @@ const { draggableItem } = useSortable(listContainerRef, sortListState);
 </template>
 
 <style lang="css" scoped>
+.database-item-sorting-section {
+  &__chip-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 2step 3step;
+  }
+}
+
 .flip {
   transform: rotateX(180deg);
 }

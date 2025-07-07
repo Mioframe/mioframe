@@ -62,15 +62,11 @@ export const useDatabasePropertiesMap = (
     });
   };
 
-  const entries = ():
-    | IterableIterator<[DatabasePropertyId, DatabaseUnknownProperty]>
-    | undefined => propertiesMap.value?.entries();
+  const entries = computed(() => propertiesMap.value?.entries);
 
-  const keys = (): IterableIterator<DatabasePropertyId> | undefined =>
-    propertiesMap.value?.keys();
+  const keys = computed(() => propertiesMap.value?.keys);
 
-  const values = (): IterableIterator<DatabaseUnknownProperty> | undefined =>
-    propertiesMap.value?.values();
+  const values = computed(() => propertiesMap.value?.values);
 
   const has = (id: DatabasePropertyId): boolean | undefined =>
     propertiesMap.value?.has(id);
@@ -92,8 +88,6 @@ export const useDatabasePropertiesMap = (
       delete d.properties[id];
     });
   };
-
-  // TODO: entries, keys и values наверное лучше сделать computed с глобальным кешированием?
 
   return reactive({
     set,

@@ -54,7 +54,7 @@ const { draggableItem } = useSortable(chipListContainer, chipsList);
 
 const onEndDrag = () => {
   chipsList.value.forEach(({ viewId }, index) => {
-    void databaseViewsMap.update(viewId, { order: index });
+    void databaseViewsMap.put(viewId, { order: index });
   });
 };
 

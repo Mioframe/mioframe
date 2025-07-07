@@ -43,7 +43,7 @@ const { itemList } = useOrderedDatabaseData(docHandle, view, idQuery);
     <thead>
       <tr>
         <th
-          v-for="[propertyId, { name }] in properties.entries()"
+          v-for="[propertyId, { name }] in properties.entries"
           :key="propertyId"
         >
           {{ name }}
@@ -58,7 +58,7 @@ const { itemList } = useOrderedDatabaseData(docHandle, view, idQuery);
     <tbody>
       <tr v-for="[itemId, item] in itemList" :key="itemId">
         <td
-          v-for="[propertyId, property] in properties.entries()"
+          v-for="[propertyId, property] in properties.entries"
           :key="propertyId"
         >
           <slot

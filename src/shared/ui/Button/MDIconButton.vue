@@ -50,7 +50,10 @@ const emit = defineEmits<{
   click: [event: MouseEvent];
 }>();
 
-// TODO: обновить кнопки до m3 expressive для комфортного размещения в list
+const onClick = (e: MouseEvent) => {
+  e.stopPropagation();
+  emit('click', e);
+};
 </script>
 
 <template>
@@ -72,7 +75,7 @@ const emit = defineEmits<{
         'md-icon-button_loading': loading,
       },
     ]"
-    @click.stop="emit('click', $event)"
+    @click="onClick"
   >
     <span class="md-icon-button__icon">
       <slot name="icon">

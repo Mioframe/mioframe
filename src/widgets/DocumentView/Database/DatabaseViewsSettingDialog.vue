@@ -41,7 +41,7 @@ const onApply = async () => {
   try {
     await Promise.all(
       stateViewList.value.map(async ([viewId], index) => {
-        await databaseViewsMap.update(viewId, {
+        await databaseViewsMap.put(viewId, {
           order: index,
         });
       }),
@@ -139,7 +139,7 @@ const oldNameOnRenameView = computed(
 const onSubmitViewRename = async (viewId: DatabaseViewId, newName: string) => {
   loadingRenameView.value += 1;
   try {
-    await databaseViewsMap.update(viewId, {
+    await databaseViewsMap.put(viewId, {
       name: newName,
     });
     renameViewId.value = undefined;

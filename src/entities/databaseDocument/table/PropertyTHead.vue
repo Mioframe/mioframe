@@ -33,8 +33,8 @@ const propertiesCollection = useWrapStrictRecord(propertiesRef);
     <tr>
       <th v-if="showActionsColumn" />
 
-      <th v-for="[id, property] in propertiesCollection" :key="id">
-        <slot :id name="property" :property>
+      <th v-for="[id, property] in propertiesCollection?.entries" :key="id">
+        <slot :id="id" name="property" :property="property">
           {{ property.name }}
         </slot>
       </th>

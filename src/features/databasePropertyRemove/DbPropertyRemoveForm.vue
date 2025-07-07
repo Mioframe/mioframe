@@ -1,21 +1,23 @@
 <script setup lang="ts">
-import { ref } from 'vue';
+import { ref, toRefs } from 'vue';
 import { UIButton } from '@shared/ui/Button';
-import type { PropertiesMap } from '@shared/lib/databaseDocument/migrations/versions/v1/property';
 import FormLayout from '@shared/ui/FormLayout.vue';
 import type { DatabasePropertyId } from '@shared/lib/databaseDocument/migrations/versions';
-import { useWrapStrictRecord } from '@shared/lib/strictRecord';
+import { useDatabasePropertiesMap } from '@shared/lib/databaseDocument/useDatabasePropertiesMap';
+import type { AMDocHandle } from '@shared/lib/automerge';
 
 const emit = defineEmits<{
   remove: [propertyId: DatabasePropertyId];
   canceled: [];
 }>();
 
-const { properties } = defineProps<{
-  properties: PropertiesMap;
+const props = defineProps<{
+  docHandle: AMDocHandle;
 }>();
 
-const propertyCollection = useWrapStrictRecord(() => properties);
+const { docHandle } = toRefs(props);
+
+const databaseProperties = useDatabasePropertiesMap(docHandle);
 
 const selectedPropertyId = ref<DatabasePropertyId>();
 
@@ -42,7 +44,7 @@ const onClickCancel = () => {
           <option disabled />
 
           <option
-            v-for="[id, property] in propertyCollection"
+            v-for="[id, property] in databaseProperties.entries"
             :key="id"
             :value="id"
           >
