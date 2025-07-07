@@ -1,11 +1,9 @@
 <script setup lang="ts">
 import type { AMDocHandle } from '@shared/lib/automerge';
-import type {
-  DatabaseViewId,
-  SORT_DIRECTION,
-} from '@shared/lib/databaseDocument/migrations/versions';
+import type { DatabaseViewId } from '@shared/lib/databaseDocument/migrations/versions';
+import { SORT_DIRECTION } from '@shared/lib/databaseDocument/migrations/versions';
 import { type DatabasePropertyId } from '@shared/lib/databaseDocument/migrations/versions';
-import { MDMenu, defineMenuButtonList } from '@shared/ui/Menu';
+import { MDMenuContainer } from '@shared/ui/Menu';
 import { type MaybeElement } from '@vueuse/core';
 import { difference } from 'es-toolkit';
 import { computed, ref, toRefs, useTemplateRef, watchEffect } from 'vue';
@@ -13,6 +11,9 @@ import { useDatabaseViewSorting } from './useDatabaseItemSorting';
 import { useDatabasePropertiesMap } from '@shared/lib/databaseDocument/useDatabasePropertiesMap';
 import { MDChip } from '@shared/ui/Chips';
 import { MDFieldContainer } from '@shared/ui/TextField';
+import { MDSymbol } from '@shared/ui/Icon';
+import { useOptionsNavigation } from '@shared/ui/Select';
+import { MDListItem } from '@shared/ui/Lists';
 
 /**
  * Порядок сортировки по значениям свойств.
@@ -54,63 +55,127 @@ watchEffect(() => {
   });
 });
 
-const addBtnRef = useTemplateRef<MaybeElement>('addBtnRef');
-
-const showAddPropertyMenu = ref(false);
-
 const propertyWithoutSorting = computed(() =>
-  databaseProperties.keys && databaseViewSorting.keys
-    ? difference(databaseProperties.keys, databaseViewSorting.keys)
-    : undefined,
+  difference(databaseProperties.keys ?? [], databaseViewSorting.keys ?? []),
 );
 
-const menu = computed(() =>
-  propertyWithoutSorting.value
-    ? defineMenuButtonList(
-        propertyWithoutSorting.value.map((id) => [
-          id,
-          {
-            text: databaseProperties.get(id)?.name ?? 'unknown property',
-            symbolName: 'add',
-          },
-        ]),
-      )
-    : undefined,
+const options = computed(() =>
+  propertyWithoutSorting.value.map((propertyId) => ({
+    labelText: databaseProperties.get(propertyId)?.name ?? 'unknown property',
+    propertyId,
+  })),
 );
 
-const onClickMenuProperty = async (id: DatabasePropertyId) => {
-  await databaseViewSorting.addSorting(id);
+const fieldContainerRef = useTemplateRef<MaybeElement>('fieldContainerRef');
+const menuContainerRef = useTemplateRef<MaybeElement>('menuContainerRef');
+const optionsElements = useTemplateRef<MaybeElement[]>('optionsElements');
 
-  showAddPropertyMenu.value = false;
+const optionToString = ({ propertyId }: { propertyId: DatabasePropertyId }) =>
+  databaseProperties.get(propertyId)?.name ?? 'unknown property';
+
+const sortListValue = computed({
+  get: () =>
+    databaseViewSorting.sortingList?.map(([propertyId, { direction }]) => ({
+      labelText: databaseProperties.get(propertyId)?.name ?? 'unknown property',
+      propertyId,
+      direction,
+    })) ?? [],
+  set: (list) => {
+    const deleteSortingId = new Set(databaseViewSorting.keys);
+
+    list.forEach(({ propertyId }) => {
+      deleteSortingId.delete(propertyId);
+      if (!databaseViewSorting.has(propertyId)) {
+        void databaseViewSorting.addSorting(propertyId);
+      }
+    });
+
+    deleteSortingId.forEach((propertyId) => {
+      void databaseViewSorting.remove(propertyId);
+    });
+  },
+});
+
+const { showMenu, filteredOptions, onClickOption, onClickFieldContainer } =
+  useOptionsNavigation({
+    fieldContainerRef,
+    menuContainerRef,
+    multiple: true,
+    optionsElements,
+    modelValue: sortListValue,
+    options,
+    optionToString,
+  });
+
+const onClickRemoveOption = async (propertyId: DatabasePropertyId) => {
+  await databaseViewSorting.remove(propertyId);
+};
+
+const onClickSelectedOption = async (propertyId: DatabasePropertyId) => {
+  await databaseViewSorting.update(propertyId, (description) => {
+    description.direction =
+      description.direction === SORT_DIRECTION.ascending
+        ? SORT_DIRECTION.descending
+        : SORT_DIRECTION.ascending;
+  });
 };
 </script>
 
 <template>
-  <section class="database-item-sorting-section">
-    <MDFieldContainer label-text="Sorting" :filled="!!databaseViewSorting.size">
+  <section
+    class="database-item-sorting-section"
+    :class="{ 'database-item-sorting-section_open': showMenu }"
+  >
+    <MDFieldContainer
+      ref="fieldContainerRef"
+      label-text="Sorting"
+      :filled="!!databaseViewSorting.size"
+      :focused="showMenu"
+      @click="onClickFieldContainer"
+    >
       <div class="database-item-sorting-section__chip-list">
         <MDChip
           v-for="item in sortListState"
           :key="item.propertyId"
           type="input"
           :label="item.propertyName"
-        />
+          @click-close="onClickRemoveOption(item.propertyId)"
+          @click="onClickSelectedOption(item.propertyId)"
+        >
+          <template #leadingIcon>
+            <MDSymbol
+              name="sort"
+              :class="{
+                flip: item.direction === SORT_DIRECTION.ascending,
+              }"
+            />
+          </template>
+        </MDChip>
       </div>
+
+      <template #trailingIcon>
+        <MDSymbol
+          name="arrow_drop_down"
+          class="database-item-sorting-section__symbol-arrow"
+        />
+      </template>
     </MDFieldContainer>
 
-    <MDChip
-      ref="addBtnRef"
-      label="add sorting"
-      type="assist"
-      @click="showAddPropertyMenu = !showAddPropertyMenu"
-    />
-
-    <MDMenu
-      v-model:show="showAddPropertyMenu"
-      :target-el="addBtnRef"
-      :btns="menu"
-      @click="onClickMenuProperty"
-    />
+    <MDMenuContainer
+      v-if="showMenu"
+      ref="menuContainerRef"
+      :target-ref="fieldContainerRef"
+    >
+      <MDListItem
+        is="button"
+        v-for="option in filteredOptions"
+        :key="optionToString(option)"
+        ref="optionsElements"
+        :headline="optionToString(option)"
+        type="button"
+        @click="onClickOption(option)"
+      />
+    </MDMenuContainer>
   </section>
 </template>
 
@@ -121,9 +186,15 @@ const onClickMenuProperty = async (id: DatabasePropertyId) => {
     flex-wrap: wrap;
     gap: 2step 3step;
   }
-}
 
-.flip {
-  transform: rotateX(180deg);
+  &_open {
+    .database-item-sorting-section__symbol-arrow {
+      transform: rotateX(180deg);
+    }
+  }
+
+  .flip {
+    transform: rotateX(180deg);
+  }
 }
 </style>
