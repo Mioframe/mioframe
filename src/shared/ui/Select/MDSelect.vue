@@ -1,18 +1,19 @@
 <script
   setup
   lang="ts"
-  generic="T extends { labelText: string } | Primitive = { labelText: string }"
+  generic="T extends MenuButtonDescription = MenuButtonDescription"
 >
-import { computed, toRefs, useTemplateRef } from 'vue';
-import { type MaybeElement } from '@vueuse/core';
-import { MDMenuContainer } from '../Menu';
+import { computed, ref, toRefs, toValue, useTemplateRef } from 'vue';
+import { onKeyStroke, useFocusWithin, type MaybeElement } from '@vueuse/core';
+import type { MenuButtonDescription } from '../Menu';
+import { MDMenu } from '../Menu';
 import { MDSymbol } from '../Icon';
 import { MDFieldContainer } from '../TextField';
 import { MDChip } from '../Chips';
-import { isObject } from 'es-toolkit/compat';
-import type { Primitive } from 'type-fest';
-import { MDListItem } from '../Lists';
-import { useOptionsNavigation } from './useOptionsNavigation';
+import { isNumber } from 'es-toolkit/compat';
+import { differenceWith, isEqual } from 'es-toolkit';
+import { shallowClone } from '@shared/lib/shallowClone';
+import { isObjectLike } from '@shared/lib/typeGuards';
 
 const props = defineProps<{
   labelText: string;
@@ -26,47 +27,90 @@ const props = defineProps<{
 
 const { multiple, options } = toRefs(props);
 
-const slots = defineSlots<{
-  leadingIcon: (props: { option: T }) => unknown;
-  trailingIcon: (props: { option: T }) => unknown;
-}>();
-
 const modelValue = defineModel<T[]>({
-  default: [],
   required: true,
 });
 
+defineSlots<{
+  valueContainer: () => unknown;
+}>();
+
 const fieldContainerRef = useTemplateRef<MaybeElement>('fieldContainerRef');
-const menuContainerRef = useTemplateRef<MaybeElement>('menuContainerRef');
-const optionsElements = useTemplateRef<MaybeElement[]>('optionsRef');
 
 const firstValue = computed(() => modelValue.value.at(0));
 
-const optionToString = (v: T): string => {
-  if (isObject(v) && 'labelText' in v) {
-    return v.labelText;
+const optionToString = (option: T): string => {
+  if (isObjectLike(option) && 'label' in option) {
+    return option.label;
   }
-  return String(v);
+  return String(option);
 };
 
-const {
-  showMenu,
-  onClickFieldContainer,
-  onClickOption,
-  filteredOptions,
-  removeValue,
-} = useOptionsNavigation({
-  options,
-  optionsElements,
-  fieldContainerRef,
-  menuContainerRef,
-  multiple,
-  modelValue,
-  optionToString,
+const showMenu = ref(false);
+
+const { focused: focusedField } = useFocusWithin(fieldContainerRef);
+
+const filteredOptions = computed(() =>
+  differenceWith(toValue(options), toValue(modelValue), isEqual),
+);
+
+const removeOption = ({ index, option }: { option?: T; index?: number }) => {
+  if (isNumber(index) && index >= 0) {
+    const newValue = shallowClone(modelValue.value);
+
+    newValue.splice(index, 1);
+
+    modelValue.value = newValue;
+  } else if (option) {
+    modelValue.value = modelValue.value.filter((v) => v !== option);
+  }
+};
+
+const addOption = (option: T) => {
+  if (multiple.value) {
+    modelValue.value = [...modelValue.value, option];
+  } else {
+    modelValue.value = [option];
+  }
+};
+
+onKeyStroke('Backspace', () => {
+  if (focusedField.value || showMenu.value) {
+    removeOption({ index: modelValue.value.length - 1 });
+  }
 });
 
-const onClickValue = (value: T, index: number) => {
-  removeValue({ index, value });
+onKeyStroke('Escape', () => {
+  showMenu.value = false;
+});
+
+onKeyStroke(['ArrowDown', 'ArrowUp'], (e) => {
+  if (focusedField.value) {
+    e.preventDefault();
+    showMenu.value = filteredOptions.value.length > 0;
+  }
+});
+
+const onClickFieldContainer = () => {
+  showMenu.value = filteredOptions.value.length > 0;
+};
+
+const onClickOption = (option: T) => {
+  if (modelValue.value.includes(option)) {
+    removeOption({ option });
+  } else {
+    addOption(option);
+  }
+
+  showMenu.value = false;
+};
+
+const onClickValue = (option: T, index: number) => {
+  removeOption({ index, option });
+};
+
+const onClickOutside = () => {
+  showMenu.value = false;
 };
 </script>
 
@@ -92,22 +136,24 @@ const onClickValue = (value: T, index: number) => {
     >
       <template #default>
         <div class="md-select__value-container" tabindex="0">
-          <template v-if="multiple">
-            <MDChip
-              v-for="(value, indexValue) in modelValue"
-              :key="optionToString(value)"
-              :label="optionToString(value)"
-              type="input"
-              @click="onClickValue(value, indexValue)"
-              @click-close="onClickValue(value, indexValue)"
-            />
-          </template>
+          <slot name="valueContainer">
+            <template v-if="multiple">
+              <MDChip
+                v-for="(value, indexValue) in modelValue"
+                :key="optionToString(value)"
+                :label="optionToString(value)"
+                type="input"
+                @click="onClickValue(value, indexValue)"
+                @click-close="onClickValue(value, indexValue)"
+              />
+            </template>
 
-          <template v-else>
-            <span v-if="firstValue">
-              {{ optionToString(firstValue) }}
-            </span>
-          </template>
+            <template v-else>
+              <span v-if="firstValue">
+                {{ optionToString(firstValue) }}
+              </span>
+            </template>
+          </slot>
         </div>
       </template>
 
@@ -116,29 +162,14 @@ const onClickValue = (value: T, index: number) => {
       </template>
     </MDFieldContainer>
 
-    <MDMenuContainer
+    <MDMenu
       v-if="showMenu"
-      ref="menuContainerRef"
-      :target-ref="fieldContainerRef"
-    >
-      <MDListItem
-        is="button"
-        v-for="option in filteredOptions"
-        :key="optionToString(option)"
-        ref="optionsElements"
-        :headline="optionToString(option)"
-        type="button"
-        @click="onClickOption(option)"
-      >
-        <template v-if="!!slots.leadingIcon" #leadingIcon>
-          <slot name="leadingIcon" :option="option" />
-        </template>
-
-        <template v-if="!!slots.trailingIcon" #trailingIcon>
-          <slot name="trailingIcon" :option="option" />
-        </template>
-      </MDListItem>
-    </MDMenuContainer>
+      show
+      :target-el="fieldContainerRef"
+      :btns="options"
+      @click="onClickOption"
+      @click-outside="onClickOutside"
+    />
   </div>
 </template>
 

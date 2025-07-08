@@ -1,6 +1,6 @@
 <script setup lang="ts">
-const { tag = 'ul', type = 'list' } = defineProps<{
-  tag?: 'ul' | 'div';
+const { is = 'ul', type = 'list' } = defineProps<{
+  is?: 'ul' | 'div';
   type?: 'list' | 'grid';
   transition?: boolean;
 }>();
@@ -12,7 +12,7 @@ defineSlots<{
 
 <template>
   <component
-    :is="tag"
+    :is="is"
     class="md md-list-container"
     :class="{
       'md-list-container_grid': type === 'grid',

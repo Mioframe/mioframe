@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { useDatabaseViewsMap } from '@shared/lib/databaseDocument';
 import { MDDialog, useDialog as useDialog } from '@shared/ui/Dialog';
-import { computed, ref, toRef, watchEffect } from 'vue';
+import { computed, ref, toRefs, watchEffect } from 'vue';
 import { MDButton } from '@shared/ui/Button';
 import { MDSymbol } from '@shared/ui/Icon';
 import { DatabaseViewSortingList } from '@feature/databaseViewSorting';
@@ -15,20 +15,20 @@ import { defineMenuButtonList, MDContextMenuBtn } from '@shared/ui/Menu';
 import { DatabaseViewRenameDialog } from '@feature/databaseViewRename';
 import type { AMDocHandle } from '@shared/lib/automerge/automergeTypes';
 
-const { docHandle } = defineProps<{
+const props = defineProps<{
   docHandle: AMDocHandle;
 }>();
+
+const { docHandle } = toRefs(props);
 
 const emit = defineEmits<{
   completed: [];
   cancel: [];
 }>();
 
-const docHandleRef = toRef(() => docHandle);
-
 const stateViewList = ref<[DatabaseViewId, DatabaseView][]>([]);
 
-const databaseViewsMap = useDatabaseViewsMap(docHandleRef);
+const databaseViewsMap = useDatabaseViewsMap(docHandle);
 
 watchEffect(() => {
   stateViewList.value = databaseViewsMap.list
@@ -78,27 +78,23 @@ enum CONTEXT_ACTION {
 }
 
 const contextMenu = defineMenuButtonList([
-  [
-    CONTEXT_ACTION.rename,
-    {
-      symbolName: 'edit',
-      text: 'rename',
-    },
-  ],
-  [
-    CONTEXT_ACTION.remove,
-    {
-      symbolName: 'delete',
-      text: 'remove',
-    },
-  ],
+  {
+    symbolName: 'edit',
+    label: 'rename',
+    key: CONTEXT_ACTION.rename,
+  },
+  {
+    symbolName: 'delete',
+    label: 'remove',
+    key: CONTEXT_ACTION.remove,
+  },
 ]);
 
 const { confirm } = useDialog();
 
 const onClickContextMenu = async (
   viewId: DatabaseViewId,
-  action: CONTEXT_ACTION,
+  { key: action }: { key: CONTEXT_ACTION },
 ) => {
   switch (action) {
     case CONTEXT_ACTION.remove: {
@@ -195,8 +191,3 @@ const onSubmitViewRename = async (viewId: DatabaseViewId, newName: string) => {
     />
   </MDDialog>
 </template>
-
-<style lang="css" scoped>
-.database-view-list-dialog {
-}
-</style>

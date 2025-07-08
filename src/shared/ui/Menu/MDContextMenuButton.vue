@@ -1,8 +1,4 @@
-<script
-  setup
-  lang="ts"
-  generic="K extends PropertyKey, T extends MenuButtonDescription"
->
+<script setup lang="ts" generic="T extends MenuButtonDescription">
 import { MDIconButton } from '@shared/ui/Button';
 import { MDSymbol } from '@shared/ui/Icon';
 import type { MaybeElement } from '@vueuse/core';
@@ -11,7 +7,7 @@ import type { MenuButtonDescription } from './types';
 import MDMenu from './MDMenu.vue';
 
 const { btns, tooltip = 'options' } = defineProps<{
-  btns: Iterable<[K, T]>;
+  btns: T[];
   tooltip?: string;
 }>();
 
@@ -24,26 +20,31 @@ const onClickTarget = () => {
 };
 
 const emit = defineEmits<{
-  click: [key: K];
+  click: [item: T];
 }>();
 
-const onClick = (key: K) => {
-  emit('click', key);
+const onClick = (item: T) => {
+  emit('click', item);
+  showMenu.value = false;
+};
+
+const onClickOutsideMenu = () => {
   showMenu.value = false;
 };
 </script>
 
 <template>
-  <MDIconButton ref="targetBtn" :tooltip @click="onClickTarget">
+  <MDIconButton ref="targetBtn" :tooltip="tooltip" @click="onClickTarget">
     <template #icon>
       <MDSymbol name="more_vert" />
     </template>
   </MDIconButton>
 
   <MDMenu
-    v-model:show="showMenu"
+    :show="showMenu"
     :target-el="targetBtn"
-    :btns
+    :btns="btns"
+    @click-outside="onClickOutsideMenu"
     @click="onClick"
   />
 </template>

@@ -25,15 +25,15 @@ const slots = defineSlots<{
 
 <template>
   <MDListContainer
+    is="div"
     ref="listContainer"
     class="database-view-list"
     transition
-    tag="div"
   >
     <MDListItem
+      is="button"
       v-for="([viewId, view], index) in viewsList"
       :key="viewId"
-      is="button"
       class="database-view-list__item"
       :headline="view.name"
       draggable

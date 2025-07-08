@@ -1,6 +1,7 @@
 export interface MenuButtonDescription {
-  text: string;
-  symbolName: string;
+  label: string;
+  symbolName?: string;
+  key?: PropertyKey;
 }
 
-export type MenuButtonList = Iterable<[PropertyKey, MenuButtonDescription]>;
+export type MenuButtonList = MenuButtonDescription[];

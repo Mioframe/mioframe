@@ -101,26 +101,22 @@ const onClickButtonsBar = (
   }
 };
 
-enum PropertyAction {
+enum PROPERTY_ACTION {
   remove,
   rename,
 }
 
 const propertyContextBtns = defineMenuButtonList([
-  [
-    PropertyAction.rename,
-    {
-      text: 'Rename',
-      symbolName: 'edit',
-    },
-  ],
-  [
-    PropertyAction.remove,
-    {
-      text: 'Remove',
-      symbolName: 'delete',
-    },
-  ],
+  {
+    label: 'Rename',
+    symbolName: 'edit',
+    key: PROPERTY_ACTION.rename,
+  },
+  {
+    label: 'Remove',
+    symbolName: 'delete',
+    key: PROPERTY_ACTION.remove,
+  },
 ]);
 
 const removePropertyId = ref<DatabasePropertyId>();
@@ -149,15 +145,15 @@ const onApplyRenameProperty = async (
 };
 
 const onClickPropertyContextAction = (
-  action: PropertyAction,
+  { key: action }: { key: PROPERTY_ACTION },
   propertyId: DatabasePropertyId,
 ) => {
   switch (action) {
-    case PropertyAction.remove: {
+    case PROPERTY_ACTION.remove: {
       removePropertyId.value = propertyId;
       break;
     }
-    case PropertyAction.rename: {
+    case PROPERTY_ACTION.rename: {
       renamePropertyId.value = propertyId;
       break;
     }
@@ -200,7 +196,7 @@ enum ITEM_CONTEXT_ACTION {
 }
 
 const itemContextualButtons = defineMenuButtonList([
-  [ITEM_CONTEXT_ACTION.remove, { symbolName: 'delete', text: 'remove' }],
+  { symbolName: 'delete', label: 'remove', key: ITEM_CONTEXT_ACTION.remove },
 ]);
 
 const { addSnackbar } = useSnackbar();
@@ -208,7 +204,7 @@ const { addSnackbar } = useSnackbar();
 const { remove: removeItem } = useDatabaseItemRemove(docHandle);
 
 const onClickItemContextBtn = async (
-  action: ITEM_CONTEXT_ACTION,
+  { key: action }: { key: ITEM_CONTEXT_ACTION },
   itemId: DatabaseItemId,
 ) => {
   switch (action) {

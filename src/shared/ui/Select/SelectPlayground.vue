@@ -12,7 +12,9 @@ import {
 
 const options = Array(15)
   .fill(0)
-  .map((_, index) => `option #${index}`);
+  .map((_, index) => ({
+    label: `option #${index}`,
+  }));
 
 const typeOptions = ['filled', 'outlined', undefined];
 
