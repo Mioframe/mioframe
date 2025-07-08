@@ -49,16 +49,18 @@ const propertyTypeList = {
 type PropertyType = ValueOf<typeof propertyTypeList>;
 
 type PropertyTypeOption = {
-  labelText: string;
+  label: string;
   propertyType: PropertyType;
+  key: string;
 };
 
 const propertyTypeOptions = objectEntries(propertyTypeList).reduce<
   PropertyTypeOption[]
->((acc, [, value]) => {
+>((acc, [key, value]) => {
   acc.push({
-    labelText: pascalCase(value),
+    label: pascalCase(value),
     propertyType: value,
+    key,
   });
   return acc;
 }, []);

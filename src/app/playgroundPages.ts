@@ -26,4 +26,8 @@ export const playgroundPages: PlaygroundPage[] = [
     name: 'IconButton',
     component: () => import('@shared/ui/Button/MDIconButtonPlayground.vue'),
   },
+  {
+    name: 'Menu',
+    component: () => import('@shared/ui/Menu/MDMenuPlayground.vue'),
+  },
 ];

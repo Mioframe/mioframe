@@ -3,17 +3,13 @@ import type { AMDocHandle } from '@shared/lib/automerge';
 import type { DatabaseViewId } from '@shared/lib/databaseDocument/migrations/versions';
 import { SORT_DIRECTION } from '@shared/lib/databaseDocument/migrations/versions';
 import { type DatabasePropertyId } from '@shared/lib/databaseDocument/migrations/versions';
-import { MDMenuContainer } from '@shared/ui/Menu';
-import { type MaybeElement } from '@vueuse/core';
 import { difference } from 'es-toolkit';
-import { computed, ref, toRefs, useTemplateRef, watchEffect } from 'vue';
+import { computed, ref, toRefs, watchEffect } from 'vue';
 import { useDatabaseViewSorting } from './useDatabaseItemSorting';
 import { useDatabasePropertiesMap } from '@shared/lib/databaseDocument/useDatabasePropertiesMap';
 import { MDChip } from '@shared/ui/Chips';
-import { MDFieldContainer } from '@shared/ui/TextField';
 import { MDSymbol } from '@shared/ui/Icon';
-import { useOptionsNavigation } from '@shared/ui/Select';
-import { MDListItem } from '@shared/ui/Lists';
+import { MDSelect } from '@shared/ui/Select';
 
 /**
  * Порядок сортировки по значениям свойств.
@@ -59,31 +55,24 @@ const propertyWithoutSorting = computed(() =>
   difference(databaseProperties.keys ?? [], databaseViewSorting.keys ?? []),
 );
 
-const options = computed(() =>
+const sortingOptions = computed(() =>
   propertyWithoutSorting.value.map((propertyId) => ({
-    labelText: databaseProperties.get(propertyId)?.name ?? 'unknown property',
-    propertyId,
+    label: databaseProperties.get(propertyId)?.name ?? 'unknown property',
+    key: propertyId,
   })),
 );
-
-const fieldContainerRef = useTemplateRef<MaybeElement>('fieldContainerRef');
-const menuContainerRef = useTemplateRef<MaybeElement>('menuContainerRef');
-const optionsElements = useTemplateRef<MaybeElement[]>('optionsElements');
-
-const optionToString = ({ propertyId }: { propertyId: DatabasePropertyId }) =>
-  databaseProperties.get(propertyId)?.name ?? 'unknown property';
 
 const sortListValue = computed({
   get: () =>
     databaseViewSorting.sortingList?.map(([propertyId, { direction }]) => ({
-      labelText: databaseProperties.get(propertyId)?.name ?? 'unknown property',
-      propertyId,
+      label: databaseProperties.get(propertyId)?.name ?? 'unknown property',
+      key: propertyId,
       direction,
     })) ?? [],
   set: (list) => {
     const deleteSortingId = new Set(databaseViewSorting.keys);
 
-    list.forEach(({ propertyId }) => {
+    list.forEach(({ key: propertyId }) => {
       deleteSortingId.delete(propertyId);
       if (!databaseViewSorting.has(propertyId)) {
         void databaseViewSorting.addSorting(propertyId);
@@ -95,17 +84,6 @@ const sortListValue = computed({
     });
   },
 });
-
-const { showMenu, filteredOptions, onClickOption, onClickFieldContainer } =
-  useOptionsNavigation({
-    fieldContainerRef,
-    menuContainerRef,
-    multiple: true,
-    optionsElements,
-    modelValue: sortListValue,
-    options,
-    optionToString,
-  });
 
 const onClickRemoveOption = async (propertyId: DatabasePropertyId) => {
   await databaseViewSorting.remove(propertyId);
@@ -122,61 +100,36 @@ const onClickSelectedOption = async (propertyId: DatabasePropertyId) => {
 </script>
 
 <template>
-  <section
+  <MDSelect
+    v-model:model-value="sortListValue"
     class="database-item-sorting-section"
-    :class="{ 'database-item-sorting-section_open': showMenu }"
+    label-text="Sorting"
+    :options="sortingOptions"
+    multiple
   >
-    <MDFieldContainer
-      ref="fieldContainerRef"
-      label-text="Sorting"
-      :filled="!!databaseViewSorting.size"
-      :focused="showMenu"
-      @click="onClickFieldContainer"
-    >
+    <template #valueContainer>
       <div class="database-item-sorting-section__chip-list">
+        <!-- // TODO: добавить DnD сортировку значений -->
         <MDChip
-          v-for="item in sortListState"
-          :key="item.propertyId"
+          v-for="{ direction, key: propertyId, label } in sortListValue"
+          :key="propertyId"
           type="input"
-          :label="item.propertyName"
-          @click-close="onClickRemoveOption(item.propertyId)"
-          @click="onClickSelectedOption(item.propertyId)"
+          :label="label"
+          @click-close="onClickRemoveOption(propertyId)"
+          @click="onClickSelectedOption(propertyId)"
         >
           <template #leadingIcon>
             <MDSymbol
               name="sort"
               :class="{
-                flip: item.direction === SORT_DIRECTION.ascending,
+                flip: direction === SORT_DIRECTION.ascending,
               }"
             />
           </template>
         </MDChip>
       </div>
-
-      <template #trailingIcon>
-        <MDSymbol
-          name="arrow_drop_down"
-          class="database-item-sorting-section__symbol-arrow"
-        />
-      </template>
-    </MDFieldContainer>
-
-    <MDMenuContainer
-      v-if="showMenu"
-      ref="menuContainerRef"
-      :target-ref="fieldContainerRef"
-    >
-      <MDListItem
-        is="button"
-        v-for="option in filteredOptions"
-        :key="optionToString(option)"
-        ref="optionsElements"
-        :headline="optionToString(option)"
-        type="button"
-        @click="onClickOption(option)"
-      />
-    </MDMenuContainer>
-  </section>
+    </template>
+  </MDSelect>
 </template>
 
 <style lang="css" scoped>

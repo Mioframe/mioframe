@@ -12,7 +12,7 @@ const { directory } = defineProps<{
 
 const relationModel = defineModel<Relation>();
 
-type DatabaseDocumentOption = { labelText: string; documentId: AMDocumentId };
+type DatabaseDocumentOption = { label: string; key: AMDocumentId };
 
 const selectedDocumentOptions = shallowRef<DatabaseDocumentOption[]>([]);
 
@@ -48,13 +48,13 @@ watch(
 const documentOptionList = computed((): DatabaseDocumentOption[] =>
   Array.from(documentNamesMap.entries()).map(
     ([documentId, name]): DatabaseDocumentOption => ({
-      labelText: name,
-      documentId,
+      label: name,
+      key: documentId,
     }),
   ),
 );
 
-watch(selectedDocumentOptions, ([{ documentId }]) => {
+watch(selectedDocumentOptions, ([{ key: documentId }]) => {
   relationModel.value = { ...relationModel.value, documentId };
 });
 </script>

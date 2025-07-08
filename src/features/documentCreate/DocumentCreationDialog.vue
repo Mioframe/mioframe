@@ -18,7 +18,7 @@ const onCreate = () => {
     throw new Error('name is undefined');
   }
 
-  const dType = documentType.value.at(0)?.value;
+  const dType = documentType.value.at(0)?.key;
 
   if (dType) {
     emit('create', {
@@ -42,8 +42,8 @@ watchEffect(() => {
 });
 
 const documentTypeOptions = [
-  { labelText: 'Database', value: DATABASE_DOCUMENT_TYPE },
-  { labelText: 'JSON Object', value: 'JsonObject' },
+  { label: 'Database', key: DATABASE_DOCUMENT_TYPE },
+  { label: 'JSON Object', key: 'JsonObject' },
 ];
 
 const documentType = ref<(typeof documentTypeOptions)[number][]>([
