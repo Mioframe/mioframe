@@ -7,7 +7,7 @@ import DialogContainer from '@shared/ui/Dialog/Alert/DialogContainer.vue';
 import { RouterView } from 'vue-router';
 import { useIconStates } from '@shared/ui/Icon/useIconStates';
 import { useHead } from '@unhead/vue';
-import PerformanceOverlay from '@shared/ui/PerformanceOverlay.vue';
+import { PerformanceOverlay } from '@shared/ui/performance';
 
 const { addSnackbar } = useSnackbar();
 
@@ -22,10 +22,6 @@ onErrorCaptured((error) => {
   addSnackbar({
     text: `Error: ${error.message}`,
   });
-});
-
-addSnackbar({
-  text: `Version from ${new Date(__BUILD_DATE__).toLocaleString()}`,
 });
 </script>
 
