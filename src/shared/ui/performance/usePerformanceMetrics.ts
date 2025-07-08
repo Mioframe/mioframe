@@ -51,14 +51,14 @@ export function usePerformanceMetrics(): PerformanceMetrics {
   // Initialize Web Vitals metrics
   function initWebVitals() {
     onLCP((metric: Metric) => {
-      lcp.value = metric.value;
+      lcp.value = round(metric.value, 4);
     });
     onINP((metric: Metric) => {
-      inp.value = metric.value;
+      inp.value = round(metric.value, 4);
     });
     onCLS(
       (metric: Metric) => {
-        cls.value = metric.value;
+        cls.value = round(metric.value, 4);
       },
       { reportAllChanges: true },
     );
