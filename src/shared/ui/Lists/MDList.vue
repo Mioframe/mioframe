@@ -41,26 +41,26 @@ const containerTag = computed((): 'ul' | 'div' =>
 </script>
 
 <template>
-  <MDListContainer :type="type" :tag="containerTag" class="md-list">
+  <MDListContainer :is="containerTag" :type="type" class="md-list">
     <TransitionGroup name="md-list">
       <MDListItem
+        :is="itemTag"
         v-for="(item, index) in listProp"
         :key="item.key"
         :headline="item.headline"
         :supporting-text="item.supportingText"
-        :is="itemTag"
         @click="onClickItem(item, index)"
       >
         <template v-if="!!slots.leadingAvatarContainer" #leadingAvatarContainer>
-          <slot name="leadingAvatarContainer" :item :index />
+          <slot name="leadingAvatarContainer" :item="item" :index="index" />
         </template>
 
         <template v-if="!!slots.leadingIcon" #leadingIcon>
-          <slot name="leadingIcon" :item :index />
+          <slot name="leadingIcon" :item="item" :index="index" />
         </template>
 
         <template v-if="!!slots.trailingIcon" #trailingIcon>
-          <slot name="trailingIcon" :item :index />
+          <slot name="trailingIcon" :item="item" :index="index" />
         </template>
       </MDListItem>
     </TransitionGroup>

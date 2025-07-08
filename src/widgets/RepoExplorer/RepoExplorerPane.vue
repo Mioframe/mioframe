@@ -129,14 +129,14 @@ enum FSEntryContextEvent {
 }
 
 const fsEntryContextBtns = defineMenuButtonList([
-  [FSEntryContextEvent.rename, { text: 'Rename', symbolName: 'edit' }],
-  [FSEntryContextEvent.remove, { text: 'Remove', symbolName: 'delete' }],
+  { label: 'Rename', symbolName: 'edit', key: FSEntryContextEvent.rename },
+  { label: 'Remove', symbolName: 'delete', key: FSEntryContextEvent.remove },
 ]);
 
 const entryKeyToRename = ref<string>();
 
 const onClickFSEntryContextAction = (
-  key: FSEntryContextEvent,
+  { key }: { key: FSEntryContextEvent },
   entryKey: string,
 ) => {
   switch (key) {
@@ -160,15 +160,17 @@ enum DocumentContextEvent {
 }
 
 const documentContextBtns = defineMenuButtonList([
-  [DocumentContextEvent.rename, { text: 'Rename', symbolName: 'edit' }],
-  [
-    DocumentContextEvent.remove,
-    { text: 'Remove', symbolName: 'delete_forever' },
-  ],
+  { label: 'Rename', symbolName: 'edit', key: DocumentContextEvent.rename },
+
+  {
+    label: 'Remove',
+    symbolName: 'delete_forever',
+    key: DocumentContextEvent.remove,
+  },
 ]);
 
 const onClickDocumentContextAction = (
-  key: DocumentContextEvent,
+  { key }: { key: DocumentContextEvent },
   docId: AMDocumentId,
   document: AMDocHandle,
 ) => {
@@ -259,7 +261,7 @@ const onRenameEntry = async (newName: string) => {
     />
 
     <div class="document-explorer-widget__scrollable-content">
-      <MDListContainer tag="div" class="document-explorer-widget__content-list">
+      <MDListContainer is="div" class="document-explorer-widget__content-list">
         <CFRDocumentMDListItem
           v-for="[docId, docHandle] in currentRepoDocuments"
           :key="docId"
@@ -280,8 +282,8 @@ const onRenameEntry = async (newName: string) => {
           v-for="[entryKey, entry] in directoryRef?.entries"
           :key="entryKey"
           is-button
-          :entry
-          :entry-key
+          :entry="entry"
+          :entry-key="entryKey"
           class="document-explorer-widget__list-item"
           @click="onClickEntry(entryKey, entry)"
         >

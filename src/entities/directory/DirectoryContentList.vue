@@ -24,7 +24,7 @@ const emit = defineEmits<{
 </script>
 
 <template>
-  <MDListContainer tag="div">
+  <MDListContainer is="div">
     <DirectoryContentEntry
       v-for="[entryKey, entry] in entries"
       :key="entryKey"

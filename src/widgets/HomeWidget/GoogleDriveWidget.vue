@@ -12,16 +12,14 @@ enum ProfileContextAction {
 }
 
 const profileContextMenu = defineMenuButtonList([
-  [
-    ProfileContextAction.logout,
-    {
-      text: 'Logout',
-      symbolName: 'logout',
-    },
-  ],
+  {
+    label: 'Logout',
+    symbolName: 'logout',
+    key: ProfileContextAction.logout,
+  },
 ]);
 
-const onClickContextProfile = (key: ProfileContextAction) => {
+const onClickContextProfile = ({ key }: { key: ProfileContextAction }) => {
   switch (key) {
     // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- for more actions
     case ProfileContextAction.logout:
@@ -46,13 +44,13 @@ const onClickShared = async () => {};
 
 <template>
   <div class="google-drive-widget">
-    <MDListContainer tag="div" class="google-drive-widget__header">
+    <MDListContainer is="div" class="google-drive-widget__header">
       <MDListItem
+        is="button"
         v-if="!profile"
         v-pressed-state
         headline="Use Google Drive"
         class="google-drive-widget__use-btn"
-        is="button"
         @click="onClickUseGDrive"
       >
         <template #leadingAvatarContainer>
@@ -64,10 +62,10 @@ const onClickShared = async () => {};
       </MDListItem>
 
       <MDListItem
+        is="div"
         v-else
         :headline="profile.name ?? 'unknown name'"
         :supporting-text="profile.email"
-        is="div"
         class="google-drive-widget__profile profile"
       >
         <template #leadingAvatarContainer>
@@ -84,17 +82,17 @@ const onClickShared = async () => {};
     </MDListContainer>
 
     <MDListContainer
+      is="div"
       v-if="profile"
-      tag="div"
       type="grid"
       class="google-drive-widget__content"
     >
       <MDListItem
+        is="button"
         v-pressed-state
         headline="App Folder"
         class="google-drive-widget__item"
         supporting-text="Available only for this application"
-        is="button"
         @click="onClickGDriveAppFolder"
       >
         <template #leadingIcon>
@@ -103,11 +101,11 @@ const onClickShared = async () => {};
       </MDListItem>
 
       <MDListItem
+        is="button"
         v-pressed-state
         headline="My Drive"
         class="google-drive-widget__item"
         supporting-text="The contents of your drive"
-        is="button"
         @click="onClickMyDrive"
       >
         <template #leadingIcon>
@@ -116,11 +114,11 @@ const onClickShared = async () => {};
       </MDListItem>
 
       <MDListItem
+        is="button"
         v-pressed-state
         headline="Shared"
         class="google-drive-widget__item"
         supporting-text="Items shared with me"
-        is="button"
         @click="onClickShared"
       >
         <template #leadingIcon>
