@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { usePerformanceMetrics } from './usePerformanceMetrics';
+import { CLSThresholds, INPThresholds, LCPThresholds } from 'web-vitals';
 
 const { cls, fps, inp, lcp, longTasks } = usePerformanceMetrics();
 
@@ -25,8 +26,9 @@ const buildDate = new Date(__BUILD_DATE__).toLocaleString();
       v-if="cls !== undefined"
       class="performance-overlay__item"
       :class="{
-        'performance-overlay_alarm': 0.1 < cls,
-        'performance-overlay_warn': 0.05 < cls,
+        'performance-overlay_alarm': cls > CLSThresholds[1],
+        'performance-overlay_warn':
+          cls > CLSThresholds[0] && cls <= CLSThresholds[1],
       }"
     >
       cls:{{ cls }}
@@ -36,8 +38,9 @@ const buildDate = new Date(__BUILD_DATE__).toLocaleString();
       v-if="inp !== undefined"
       class="performance-overlay__item"
       :class="{
-        'performance-overlay_alarm': 200 < inp,
-        'performance-overlay_warn': 100 < inp,
+        'performance-overlay_alarm': inp > INPThresholds[1],
+        'performance-overlay_warn':
+          inp > INPThresholds[0] && inp <= INPThresholds[1],
       }"
     >
       inp:{{ inp }}
@@ -47,8 +50,9 @@ const buildDate = new Date(__BUILD_DATE__).toLocaleString();
       v-if="lcp !== undefined"
       class="performance-overlay__item"
       :class="{
-        'performance-overlay_alarm': 2200 < lcp,
-        'performance-overlay_warn': 1100 < lcp,
+        'performance-overlay_alarm': lcp > LCPThresholds[1],
+        'performance-overlay_warn':
+          lcp > LCPThresholds[0] && lcp <= LCPThresholds[1],
       }"
     >
       lcp:{{ lcp }}
