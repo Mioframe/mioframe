@@ -35,7 +35,7 @@ const valueModel = computed({
 
 <template>
   <span class="select">
-    <select v-model="valueModel" :multiple>
+    <select v-model="valueModel" :multiple="multiple">
       <option v-for="option in options" :key="option.key" :value="option.value">
         <slot name="option" v-bind="option">
           {{ option.value }}
