@@ -1,11 +1,6 @@
-<script
-  setup
-  lang="ts"
-  generic="T extends MenuButtonDescription = MenuButtonDescription"
->
+<script setup lang="ts" generic="T extends SelectOption = SelectOption">
 import { computed, ref, toRefs, toValue, useTemplateRef } from 'vue';
 import { onKeyStroke, useFocusWithin, type MaybeElement } from '@vueuse/core';
-import type { MenuButtonDescription } from '../Menu';
 import { MDMenu } from '../Menu';
 import { MDSymbol } from '../Icon';
 import { MDFieldContainer } from '../TextField';
@@ -14,6 +9,7 @@ import { isNumber } from 'es-toolkit/compat';
 import { differenceWith, isEqual } from 'es-toolkit';
 import { shallowClone } from '@shared/lib/shallowClone';
 import { isObjectLike } from '@shared/lib/typeGuards';
+import type { SelectOption } from './types';
 
 const props = defineProps<{
   labelText: string;

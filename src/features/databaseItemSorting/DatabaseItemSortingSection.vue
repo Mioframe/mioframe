@@ -82,7 +82,9 @@ const changeSortListValueWatchHandle = watch(
     fillingSortListValueWatchHandle.pause();
     const deleteSortingId = new Set(databaseViewSorting.keys);
 
-    sortListValue.forEach(({ key: propertyId, direction }, priority) => {
+    sortListValue.forEach((sortValue, priority) => {
+      const { key: propertyId, direction } = sortValue;
+
       deleteSortingId.delete(propertyId);
 
       const sortDescription = { direction, priority };
@@ -102,18 +104,22 @@ const changeSortListValueWatchHandle = watch(
   { deep: true },
 );
 
-const fillingSortListValueWatchHandle = watchEffect(() => {
-  changeSortListValueWatchHandle.pause();
-  sortListValue.value.length = 0;
-  databaseViewSorting.sortingList?.forEach(([propertyId, { direction }]) => {
-    sortListValue.value.push({
-      label: databaseProperties.get(propertyId)?.name ?? 'unknown property',
-      key: propertyId,
-      direction,
+const fillingSortListValueWatchHandle = watch(
+  () => databaseViewSorting.sortingList,
+  (sortingList) => {
+    changeSortListValueWatchHandle.pause();
+    sortListValue.value.length = 0;
+    sortingList?.forEach(([propertyId, { direction }]) => {
+      sortListValue.value.push({
+        label: databaseProperties.get(propertyId)?.name ?? 'unknown property',
+        key: propertyId,
+        direction,
+      });
     });
-  });
-  void nextTick(changeSortListValueWatchHandle.resume);
-});
+    void nextTick(changeSortListValueWatchHandle.resume);
+  },
+  { deep: true, immediate: true },
+);
 
 const onClickRemoveOption = async (propertyId: DatabasePropertyId) => {
   await databaseViewSorting.remove(propertyId);
