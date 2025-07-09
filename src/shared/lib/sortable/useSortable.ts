@@ -77,8 +77,9 @@ export const useSortable = <T>(
   }, 1e3 / 20);
 
   const onDragStart = (target: Element | EventTarget | null) => {
-    if (target instanceof Element) {
-      const currentIndex = childrenIndexOf(target);
+    const el = closestDraggable(target);
+    if (el) {
+      const currentIndex = childrenIndexOf(el);
 
       currentIndexRef.value = currentIndex;
     }

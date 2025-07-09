@@ -1,10 +1,16 @@
 <script setup lang="ts">
-import type { DatabaseView } from '@shared/lib/databaseDocument/migrations/versions';
-import { DB_VIEW_LAYOUT } from '@shared/lib/databaseDocument/migrations/versions';
+import type { DatabaseView } from '@shared/lib/databaseDocument';
+import { DB_VIEW_LAYOUT } from '@shared/lib/databaseDocument';
+import { objectEntries } from '@shared/lib/objectEntries';
 import { MDDialog } from '@shared/ui/Dialog';
+import { MDSelect } from '@shared/ui/Select';
+import {
+  defineSelectOption,
+  defineSelectOptions,
+} from '@shared/ui/Select/defineSelectOptions';
 import { MDTextField } from '@shared/ui/TextField';
-import type { ValueOf } from 'type-fest';
-import { reactive } from 'vue';
+import { pascalCase } from 'es-toolkit';
+import { computed, reactive } from 'vue';
 
 const {} = defineProps<{
   loading?: boolean | number;
@@ -16,7 +22,7 @@ const emit = defineEmits<{
 }>();
 
 const formState = reactive<{
-  layout: ValueOf<typeof DB_VIEW_LAYOUT>;
+  layout: DB_VIEW_LAYOUT;
   name: string | undefined;
 }>({
   layout: DB_VIEW_LAYOUT.TABLE,
@@ -35,6 +41,25 @@ const onSubmit = () => {
 const onCancel = () => {
   emit('cancel');
 };
+
+const layoutOptions = defineSelectOptions(
+  objectEntries(DB_VIEW_LAYOUT).map(([key, value]) =>
+    defineSelectOption({ label: pascalCase(key), key: value }),
+  ),
+);
+
+type LayoutOption = (typeof layoutOptions)[number];
+
+const selectedLayoutOption = computed((): LayoutOption[] =>
+  layoutOptions.filter((option) => formState.layout === option.key),
+);
+
+const onChangeLayout = (selectedOptions: LayoutOption[]) => {
+  const firstOption = selectedOptions.at(0);
+  if (firstOption) {
+    formState.layout = firstOption.key;
+  }
+};
 </script>
 
 <template>
@@ -48,5 +73,12 @@ const onCancel = () => {
     @apply="onSubmit"
   >
     <MDTextField v-model:model-value="formState.name" label-text="Name" />
+
+    <MDSelect
+      :model-value="selectedLayoutOption"
+      :options="layoutOptions"
+      label-text="layout"
+      @update:model-value="onChangeLayout"
+    />
   </MDDialog>
 </template>

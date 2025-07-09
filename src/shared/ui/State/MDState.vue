@@ -28,6 +28,7 @@ const emit = defineEmits<{
   click: [MouseEvent];
   mouseup: [MouseEvent];
   mousedown: [MouseEvent];
+  contextmenu: [MouseEvent];
 }>();
 
 defineSlots<{
@@ -149,6 +150,11 @@ useEventListener(refEl, 'click', (e) => {
   e.stopPropagation();
   emit('click', e);
   vibrate([10]);
+});
+
+useEventListener(refEl, 'contextmenu', (e) => {
+  e.preventDefault();
+  emit('contextmenu', e);
 });
 
 // FIXME: в firefox после удержания остаётся нежелательный эффект состояния
