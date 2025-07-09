@@ -30,4 +30,8 @@ export const playgroundPages: PlaygroundPage[] = [
     name: 'Menu',
     component: () => import('@shared/ui/Menu/MDMenuPlayground.vue'),
   },
+  {
+    name: 'UseSortable',
+    component: () => import('@shared/lib/sortable/UseSortablePlayground.vue'),
+  },
 ];
