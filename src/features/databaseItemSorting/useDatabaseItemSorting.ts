@@ -1,4 +1,5 @@
 import type { AMDocHandle } from '@shared/lib/automerge';
+import { deepPutJsonObject } from '@shared/lib/changeObject';
 import type {
   DatabasePropertyId,
   DatabaseSortDescription,
@@ -11,6 +12,7 @@ import {
 import { shallowClone } from '@shared/lib/shallowClone';
 import { useWrapStrictRecord } from '@shared/lib/strictRecord';
 import { toRefs } from '@vueuse/core';
+import type { PartialDeep } from 'type-fest';
 import { computed, reactive, toValue, type MaybeRefOrGetter } from 'vue';
 
 export const useDatabaseViewSorting = (
@@ -34,15 +36,18 @@ export const useDatabaseViewSorting = (
     ),
   );
 
-  const addSorting = async (propertyId: DatabasePropertyId) => {
+  const addSorting = async (
+    propertyId: DatabasePropertyId,
+    sortDescription: DatabaseSortDescription = {
+      priority: sortingMap.value?.size ?? 0,
+      direction: SORT_DIRECTION.ascending,
+    },
+  ) => {
     await databaseView.update((view) => {
       if (!view.sorting) {
         view.sorting = {};
       }
-      view.sorting[propertyId] = {
-        priority: sortingMap.value?.size ?? 0,
-        direction: SORT_DIRECTION.ascending,
-      };
+      view.sorting[propertyId] = sortDescription;
     });
   };
 
@@ -78,6 +83,15 @@ export const useDatabaseViewSorting = (
     });
   };
 
+  const put = async (
+    propertyId: DatabasePropertyId,
+    partialSortDescription: PartialDeep<DatabaseSortDescription>,
+  ) => {
+    await update(propertyId, (sortDescription) => {
+      deepPutJsonObject(sortDescription, partialSortDescription);
+    });
+  };
+
   return reactive({
     sortingList,
     keys: computed(() => sortingMap.value?.keys),
@@ -86,5 +100,6 @@ export const useDatabaseViewSorting = (
     has,
     remove,
     update,
+    put,
   });
 };

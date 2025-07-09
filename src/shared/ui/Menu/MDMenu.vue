@@ -5,7 +5,14 @@
 >
 import type { MaybeElement } from '@vueuse/core';
 import type { StyleValue } from 'vue';
-import { computed, toRefs, toValue, useTemplateRef, watchEffect } from 'vue';
+import {
+  computed,
+  nextTick,
+  toRefs,
+  toValue,
+  useTemplateRef,
+  watchEffect,
+} from 'vue';
 import { unrefElement, useElementBounding, useWindowSize } from '@vueuse/core';
 import { MDListContainer, MDListItem } from '../Lists';
 import type { MenuButtonDescription } from './types';
@@ -29,6 +36,7 @@ const { targetEl, btns, outsideIgnore, show } = toRefs(props);
 const emit = defineEmits<{
   click: [menuItem: T];
   clickOutside: [];
+  deactivateFocus: [];
 }>();
 
 const onClick = (menuItem: T) => {
@@ -120,23 +128,22 @@ onInteractionOutside(
 );
 
 const { activate: activateMenuFocusTrap, deactivate: deactivateMenuFocusTrap } =
-  useFocusTrap(
-    computed(() => unrefElement(listContainerEl)),
-    {
-      isKeyForward: ({ key }) =>
-        ['Tab', 'ArrowDown', 'ArrowRight'].includes(key),
-      isKeyBackward: ({ key }) => ['ArrowUp', 'ArrowLeft'].includes(key),
-      allowOutsideClick: true,
-      initialFocus: false,
+  useFocusTrap(listContainerEl, {
+    isKeyForward: ({ key }) => ['Tab', 'ArrowDown', 'ArrowRight'].includes(key),
+    isKeyBackward: ({ key }) => ['ArrowUp', 'ArrowLeft'].includes(key),
+    allowOutsideClick: true,
+    initialFocus: false,
+    onDeactivate: () => {
+      emit('deactivateFocus');
     },
-  );
+  });
 
 watchEffect(
   () => {
     if (show.value && listContainerEl.value) {
-      activateMenuFocusTrap();
+      void nextTick(activateMenuFocusTrap);
     } else {
-      deactivateMenuFocusTrap();
+      void nextTick(deactivateMenuFocusTrap);
     }
   },
   { flush: 'post' },

@@ -1,10 +1,23 @@
 <script setup lang="ts">
+import { computed } from 'vue';
+import { usePageMemoryUsage } from './usePageMemoryUsage';
 import { usePerformanceMetrics } from './usePerformanceMetrics';
 import { CLSThresholds, INPThresholds, LCPThresholds } from 'web-vitals';
+import { isUndefined, round } from 'es-toolkit';
 
 const { cls, fps, inp, lcp, longTasks } = usePerformanceMetrics();
 
 const buildDate = new Date(__BUILD_DATE__).toLocaleString();
+
+const { memory } = usePageMemoryUsage();
+
+const memoryKB = computed(() =>
+  isUndefined(memory.value) ? undefined : round(memory.value.bytes / 1000),
+);
+
+const memoryMb = computed(() =>
+  isUndefined(memoryKB.value) ? undefined : round(memoryKB.value / 1e3, 3),
+);
 </script>
 
 <template>
@@ -20,6 +33,17 @@ const buildDate = new Date(__BUILD_DATE__).toLocaleString();
       }"
     >
       fps:{{ fps }}
+    </div>
+
+    <div
+      v-if="memoryMb !== undefined"
+      class="performance-overlay__item"
+      :class="{
+        'performance-overlay_alarm': 200 < memoryMb,
+        'performance-overlay_warn': 100 < memoryMb,
+      }"
+    >
+      memoryMb:{{ memoryMb }}
     </div>
 
     <div
