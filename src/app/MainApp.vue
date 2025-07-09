@@ -5,18 +5,9 @@ import { SnackbarContainer, useSnackbar } from '@shared/ui/Snackbar';
 import { onErrorCaptured } from 'vue';
 import DialogContainer from '@shared/ui/Dialog/Alert/DialogContainer.vue';
 import { RouterView } from 'vue-router';
-import { useIconStates } from '@shared/ui/Icon/useIconStates';
-import { useHead } from '@unhead/vue';
 import { PerformanceOverlay } from '@shared/ui/performance';
 
 const { addSnackbar } = useSnackbar();
-
-const { links } = useIconStates();
-
-// useHead don't work in global state
-useHead({
-  link: links,
-});
 
 onErrorCaptured((error) => {
   addSnackbar({
