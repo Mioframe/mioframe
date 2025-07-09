@@ -1,8 +1,10 @@
 import { createGlobalState, useStorage } from '@vueuse/core';
 import type { ValueOf } from 'type-fest';
 import { merge } from 'es-toolkit';
-import { computed } from 'vue';
+import { computed, watch } from 'vue';
 import { objectEntries } from '@shared/lib/objectEntries';
+import type { StylesheetHandle } from './loadStylesheet';
+import { loadStylesheet } from './loadStylesheet';
 
 export const MaterialSymbolsFamily = {
   Rounded: 'Material+Symbols+Rounded',
@@ -36,6 +38,33 @@ export const useIconStates = createGlobalState(() => {
       .sort()
       .join(',');
 
+  const createHref = (
+    family: ValueOf<typeof MaterialSymbolsFamily>,
+    names: string[],
+  ) =>
+    `${fontsUrl}?family=${family}:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&icon_names=${iconNames(names)}`;
+
+  const roundedHref = computed(() => {
+    const iconNames = state.value[MaterialSymbolsFamily.Rounded];
+    if (iconNames.length) {
+      return createHref(MaterialSymbolsFamily.Rounded, iconNames);
+    }
+    return undefined;
+  });
+
+  let stylesheetHandle: StylesheetHandle | undefined;
+
+  watch(
+    roundedHref,
+    async (roundedHref) => {
+      stylesheetHandle?.unload();
+      if (roundedHref) {
+        stylesheetHandle = await loadStylesheet(roundedHref);
+      }
+    },
+    { immediate: true },
+  );
+
   const links = computed(() => {
     return objectEntries(state.value).reduce(
       (
@@ -52,7 +81,7 @@ export const useIconStates = createGlobalState(() => {
             key: `stylesheet${family}`,
             rel: 'stylesheet',
             crossorigin: 'anonymous',
-            href: `${fontsUrl}?family=${family}:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&icon_names=${iconNames(names)}`,
+            href: createHref(family, names),
           });
         }
 
@@ -79,6 +108,8 @@ export const useIconStates = createGlobalState(() => {
   // useHead({
   //   link: links,
   // });
+
+  // TODO: пересобрать использовав loadStylesheet, проверить в edge на android
 
   return {
     links,

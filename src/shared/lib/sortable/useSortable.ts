@@ -1,14 +1,11 @@
 import './dnd-transition.css';
 
-import {
-  unrefElement,
-  useEventListener,
-  type MaybeElementRef,
-} from '@vueuse/core';
+import { unrefElement, type MaybeElementRef } from '@vueuse/core';
 import { debounce, throttle } from 'es-toolkit';
 import { indexOf, isUndefined } from 'es-toolkit/compat';
 import type { MaybeRefOrGetter } from 'vue';
 import { computed, shallowRef, toValue } from 'vue';
+import { useDragListener } from './useDragStartListener';
 
 export const useSortable = <T>(
   container: MaybeElementRef,
@@ -89,92 +86,23 @@ export const useSortable = <T>(
     currentIndexRef.value = undefined;
   };
 
-  useEventListener(containerElRef, 'dragstart', (e: DragEvent) => {
-    cancelPseudoDrag();
-
-    const { target } = e;
-    onDragStart(target);
-  });
-
-  useEventListener(containerElRef, 'dragenter', (e: DragEvent) => {
-    cancelPseudoDrag();
-
-    const { target } = e;
-
+  const onDragOver = debounce(({ target }: { target: EventTarget | null }) => {
     onDrag(target);
-  });
+  }, 1e3);
 
-  useEventListener(
-    containerElRef,
-    'dragover',
-    debounce((e: DragEvent) => {
-      cancelPseudoDrag();
-
-      onDrag(e.target);
-    }, 1e3),
-  );
-
-  useEventListener(containerElRef, 'dragend', onDragEnd);
-
-  /**
-   * Native DnD response timeout.
-   * @default 600 // it's a little longer than the response time in chromium on android
-   *  */
-  const nativeDnDResponseTimeout = 600;
-
-  let timeoutPseudoDragStart: ReturnType<typeof setTimeout> | undefined =
-    undefined;
-
-  let usePseudoDrag = false;
-
-  const cancelPseudoDrag = () => {
-    usePseudoDrag = false;
-    clearTimeout(timeoutPseudoDragStart);
-  };
-
-  useEventListener(containerElRef, 'touchstart', (e) => {
-    timeoutPseudoDragStart = setTimeout(() => {
-      usePseudoDrag = true;
-
-      if (!isUndefined(navigator) && 'vibrate' in navigator) {
-        navigator.vibrate([10]);
-      }
-
-      onDragStart(e.target);
-    }, nativeDnDResponseTimeout);
-  });
-
-  const onTouchMove = throttle(
-    ({ changedTouches: [{ clientX, clientY }] }: TouchEvent) => {
-      onDrag(document.elementFromPoint(clientX, clientY));
+  useDragListener(containerElRef, {
+    onDragStart: ({ target }) => {
+      onDragStart(target);
     },
-    1e3 / 120,
-  );
-
-  useEventListener(containerElRef, 'touchmove', (e: TouchEvent) => {
-    clearTimeout(timeoutPseudoDragStart);
-
-    if (usePseudoDrag && !isUndefined(currentIndexRef.value)) {
-      e.preventDefault();
-
-      onTouchMove(e);
-    }
-  });
-
-  useEventListener(containerElRef, 'touchend', () => {
-    if (usePseudoDrag) {
+    onDragOver: ({ target }) => {
+      onDragOver({ target });
+    },
+    onDragEnd: () => {
       onDragEnd();
-    }
-
-    cancelPseudoDrag();
-  });
-
-  useEventListener(containerElRef, 'touchcancel', () => {
-    if (usePseudoDrag) {
-      onDragEnd();
-    }
-
-    cancelPseudoDrag();
+    },
+    onDragEnter: ({ target }) => {
+      onDrag(target);
+    },
   });
 
   return {

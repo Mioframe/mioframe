@@ -53,6 +53,7 @@ const { draggableItem } = useSortable(containerEl, list);
             :style="{
               background: item.color,
             }"
+            @contextmenu.prevent="() => undefined"
           >
             {{ item.label }}
           </div>
