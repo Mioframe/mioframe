@@ -4,12 +4,21 @@ import type { DatabaseViewId } from '@shared/lib/databaseDocument/migrations/ver
 import { SORT_DIRECTION } from '@shared/lib/databaseDocument/migrations/versions';
 import { type DatabasePropertyId } from '@shared/lib/databaseDocument/migrations/versions';
 import { difference } from 'es-toolkit';
-import { computed, ref, toRefs, watchEffect } from 'vue';
+import {
+  computed,
+  nextTick,
+  ref,
+  toRefs,
+  useTemplateRef,
+  watch,
+  watchEffect,
+} from 'vue';
 import { useDatabaseViewSorting } from './useDatabaseItemSorting';
 import { useDatabasePropertiesMap } from '@shared/lib/databaseDocument/useDatabasePropertiesMap';
 import { MDChip } from '@shared/ui/Chips';
 import { MDSymbol } from '@shared/ui/Icon';
 import { MDSelect } from '@shared/ui/Select';
+import { useSortable } from '@shared/lib/sortable';
 
 /**
  * Порядок сортировки по значениям свойств.
@@ -59,30 +68,51 @@ const sortingOptions = computed(() =>
   propertyWithoutSorting.value.map((propertyId) => ({
     label: databaseProperties.get(propertyId)?.name ?? 'unknown property',
     key: propertyId,
+    direction: SORT_DIRECTION.ascending,
   })),
 );
 
-const sortListValue = computed({
-  get: () =>
-    databaseViewSorting.sortingList?.map(([propertyId, { direction }]) => ({
-      label: databaseProperties.get(propertyId)?.name ?? 'unknown property',
-      key: propertyId,
-      direction,
-    })) ?? [],
-  set: (list) => {
+const sortListValue = ref<
+  { label: string; key: DatabasePropertyId; direction: SORT_DIRECTION }[]
+>([]);
+
+const changeSortListValueWatchHandle = watch(
+  sortListValue,
+  (sortListValue) => {
+    fillingSortListValueWatchHandle.pause();
     const deleteSortingId = new Set(databaseViewSorting.keys);
 
-    list.forEach(({ key: propertyId }) => {
+    sortListValue.forEach(({ key: propertyId, direction }, priority) => {
       deleteSortingId.delete(propertyId);
+
+      const sortDescription = { direction, priority };
+
       if (!databaseViewSorting.has(propertyId)) {
-        void databaseViewSorting.addSorting(propertyId);
+        void databaseViewSorting.addSorting(propertyId, sortDescription);
+      } else {
+        void databaseViewSorting.put(propertyId, sortDescription);
       }
     });
 
     deleteSortingId.forEach((propertyId) => {
       void databaseViewSorting.remove(propertyId);
     });
+    void nextTick(fillingSortListValueWatchHandle.resume);
   },
+  { deep: true },
+);
+
+const fillingSortListValueWatchHandle = watchEffect(() => {
+  changeSortListValueWatchHandle.pause();
+  sortListValue.value.length = 0;
+  databaseViewSorting.sortingList?.forEach(([propertyId, { direction }]) => {
+    sortListValue.value.push({
+      label: databaseProperties.get(propertyId)?.name ?? 'unknown property',
+      key: propertyId,
+      direction,
+    });
+  });
+  void nextTick(changeSortListValueWatchHandle.resume);
 });
 
 const onClickRemoveOption = async (propertyId: DatabasePropertyId) => {
@@ -97,6 +127,10 @@ const onClickSelectedOption = async (propertyId: DatabasePropertyId) => {
         : SORT_DIRECTION.ascending;
   });
 };
+
+const chipListEl = useTemplateRef('chipListEl');
+
+const { draggableItem } = useSortable(chipListEl, sortListValue);
 </script>
 
 <template>
@@ -108,25 +142,28 @@ const onClickSelectedOption = async (propertyId: DatabasePropertyId) => {
     multiple
   >
     <template #valueContainer>
-      <div class="database-item-sorting-section__chip-list">
-        <!-- // TODO: добавить DnD сортировку значений -->
-        <MDChip
-          v-for="{ direction, key: propertyId, label } in sortListValue"
-          :key="propertyId"
-          type="input"
-          :label="label"
-          @click-close="onClickRemoveOption(propertyId)"
-          @click="onClickSelectedOption(propertyId)"
-        >
-          <template #leadingIcon>
-            <MDSymbol
-              name="sort"
-              :class="{
-                flip: direction === SORT_DIRECTION.ascending,
-              }"
-            />
-          </template>
-        </MDChip>
+      <div ref="chipListEl" class="database-item-sorting-section__chip-list">
+        <TransitionGroup name="dnd">
+          <MDChip
+            v-for="item in sortListValue"
+            :key="item.key"
+            type="input"
+            :label="item.label"
+            draggable
+            :class="{ 'md-state_drag': draggableItem?.key === item.key }"
+            @click-close="onClickRemoveOption(item.key)"
+            @click="onClickSelectedOption(item.key)"
+          >
+            <template #leadingIcon>
+              <MDSymbol
+                name="sort"
+                :class="{
+                  flip: item.direction === SORT_DIRECTION.ascending,
+                }"
+              />
+            </template>
+          </MDChip>
+        </TransitionGroup>
       </div>
     </template>
   </MDSelect>

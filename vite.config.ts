@@ -47,6 +47,10 @@ export default defineConfig(({ mode, isPreview }) => {
     ],
     server: {
       host: true,
+      headers: {
+        'Cross-Origin-Opener-Policy': 'same-origin',
+        'Cross-Origin-Embedder-Policy': 'require-corp',
+      },
     },
     resolve: {
       alias: {

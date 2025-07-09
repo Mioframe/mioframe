@@ -1,9 +1,8 @@
-import { tryOnScopeDispose } from '@vueuse/core';
-import { round } from 'es-toolkit';
+import { tryOnMounted, tryOnScopeDispose } from '@vueuse/core';
+import { once, round } from 'es-toolkit';
 import type { Ref } from 'vue';
-import { ref, onMounted } from 'vue';
-import type { Metric } from 'web-vitals';
-import { onCLS, onINP, onLCP } from 'web-vitals';
+import { ref, computed } from 'vue';
+import { onCLS, onINP, onLCP, onFCP } from 'web-vitals';
 
 export interface LongTaskEntry {
   duration: number;
@@ -15,6 +14,7 @@ export interface PerformanceMetrics {
   lcp: Ref<number | undefined>;
   inp: Ref<number | undefined>;
   cls: Ref<number | undefined>;
+  fcp: Ref<number | undefined>;
   longTasks: Ref<LongTaskEntry[]>;
 }
 
@@ -22,14 +22,47 @@ const ONE_SECOND = 1000;
 const LONG_TASK_THRESHOLD = 50; // ms
 const MAX_LONG_TASKS = 5;
 
+const onceInitialRef = <T>(
+  callback: (valueRef: Ref<T | undefined>) => unknown,
+) => {
+  const value = ref<T>();
+
+  const onceInit = once(() => {
+    callback(value);
+  });
+
+  return computed(() => {
+    onceInit();
+    return value.value;
+  });
+};
+
 /**
  * Vue composable that provides reactive performance metrics for an overlay.
  */
 export function usePerformanceMetrics(): PerformanceMetrics {
   const fps = ref<number>();
-  const lcp = ref<number>();
-  const inp = ref<number>();
-  const cls = ref<number>();
+
+  const lcp = onceInitialRef<number>((v) => {
+    onLCP(({ value }) => (v.value = round(value, 4)));
+  });
+
+  const inp = onceInitialRef<number>((v) => {
+    onINP(({ value }) => (v.value = round(value, 4)));
+  });
+
+  const cls = onceInitialRef<number>((v) => {
+    onCLS(({ value }) => (v.value = round(value, 4)), {
+      reportAllChanges: true,
+    });
+  });
+
+  const fcp = onceInitialRef<number>((v) => {
+    onFCP(({ value }) => (v.value = round(value, 4)), {
+      reportAllChanges: true,
+    });
+  });
+
   const longTasks = ref<LongTaskEntry[]>([]);
 
   let frameCount = 0;
@@ -46,22 +79,6 @@ export function usePerformanceMetrics(): PerformanceMetrics {
       lastFrameTime = now;
     }
     rafId = requestAnimationFrame(measureFPS);
-  }
-
-  // Initialize Web Vitals metrics
-  function initWebVitals() {
-    onLCP((metric: Metric) => {
-      lcp.value = round(metric.value, 4);
-    });
-    onINP((metric: Metric) => {
-      inp.value = round(metric.value, 4);
-    });
-    onCLS(
-      (metric: Metric) => {
-        cls.value = round(metric.value, 4);
-      },
-      { reportAllChanges: true },
-    );
   }
 
   // Observe long tasks
@@ -82,9 +99,8 @@ export function usePerformanceMetrics(): PerformanceMetrics {
     longTaskObserver.observe({ entryTypes: ['longtask'] });
   }
 
-  onMounted(() => {
+  tryOnMounted(() => {
     rafId = requestAnimationFrame(measureFPS);
-    initWebVitals();
     initLongTasksObserver();
   });
 
@@ -98,6 +114,7 @@ export function usePerformanceMetrics(): PerformanceMetrics {
     lcp,
     inp,
     cls,
+    fcp,
     longTasks,
   };
 }

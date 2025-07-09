@@ -46,5 +46,6 @@ const onClickOutsideMenu = () => {
     :btns="btns"
     @click-outside="onClickOutsideMenu"
     @click="onClick"
+    @deactivate-focus="showMenu = false"
   />
 </template>
