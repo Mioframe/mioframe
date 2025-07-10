@@ -26,9 +26,9 @@ watchEffect(() => {
     <input v-model="isNotUndefined" type="checkbox" />
 
     <input
-      v-model="value"
+      v-model.number="value"
       type="number"
-      :disabled="isNotUndefined"
+      :disabled="!isNotUndefined"
       :step="step"
     />
   </label>
