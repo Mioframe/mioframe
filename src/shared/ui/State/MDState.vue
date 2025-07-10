@@ -165,20 +165,14 @@ useEventListener(refEl, 'contextmenu', (e) => {
 const isDrag = ref(false);
 
 useEventListener(refEl, 'dragstart', () => {
-  if (draggable) {
-    isDrag.value = true;
-  }
+  isDrag.value = true;
 });
 
 useEventListener(refEl, 'dragend', () => {
-  if (draggable) {
-    isDrag.value = false;
-  }
+  isDrag.value = false;
 });
 useEventListener(refEl, 'drop', () => {
-  if (draggable) {
-    isDrag.value = false;
-  }
+  isDrag.value = false;
 });
 
 // FIXME: в firefox после удержания остаётся нежелательный эффект состояния
