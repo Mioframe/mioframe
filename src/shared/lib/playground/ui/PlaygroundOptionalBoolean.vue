@@ -1,20 +1,30 @@
 <script setup lang="ts">
+import { isUndefined } from 'es-toolkit';
 import { useTemplateRef, watchEffect } from 'vue';
 
 defineProps<{ label: string }>();
 
-const value = defineModel<boolean>();
+const value = defineModel<boolean | undefined>({ default: undefined });
 
 const onClickBoolean = () => {
-  value.value =
-    value.value === undefined ? true : value.value ? false : undefined;
+  value.value = isUndefined(value.value)
+    ? true
+    : value.value
+      ? false
+      : undefined;
 };
 
 const inputEl = useTemplateRef('inputEl');
 
 watchEffect(() => {
   if (inputEl.value) {
-    inputEl.value.indeterminate = value.value === undefined;
+    if (isUndefined(value.value)) {
+      inputEl.value.indeterminate = true;
+      inputEl.value.checked = false;
+    } else {
+      inputEl.value.indeterminate = false;
+      inputEl.value.checked = value.value;
+    }
   }
 });
 </script>
