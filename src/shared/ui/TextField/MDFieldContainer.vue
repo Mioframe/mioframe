@@ -1,21 +1,30 @@
 <script setup lang="ts">
-import { useTemplateRef } from 'vue';
+import { toRefs, useTemplateRef } from 'vue';
 import { uniqueId } from '@shared/lib/uniqueId';
 import type { EmptyObject } from 'type-fest';
 import { useFirstFocus } from '@shared/lib/useFirstFocus';
 import { useFocusWithin } from '@vueuse/core';
 
-const { type = 'outlined', numberCharacters = 0 } = defineProps<{
-  labelText: string;
-  supportingText?: string;
-  type?: 'filled' | 'outlined';
-  disabled?: boolean;
-  error?: boolean;
-  maxCharacters?: number;
-  filled?: boolean;
-  numberCharacters?: number;
-  focused?: boolean;
-}>();
+const props = withDefaults(
+  defineProps<{
+    labelText: string;
+    supportingText?: string;
+    type?: 'filled' | 'outlined';
+    disabled?: boolean;
+    error?: boolean;
+    maxCharacters?: number;
+    filled?: boolean;
+    numberCharacters?: number;
+    focused?: boolean | undefined;
+  }>(),
+  {
+    focused: undefined,
+    type: 'outlined',
+    numberCharacters: 0,
+  },
+);
+
+const { focused } = toRefs(props);
 
 const slots = defineSlots<{
   default(p: { id: string }): unknown;
@@ -100,10 +109,6 @@ const { focused: fieldFocused } = useFocusWithin(filedContainer);
   --md-field-container-background: var(--md-container-color);
   background-color: var(--md-field-container-background);
 
-  &.md-field-container_disabled {
-    pointer-events: none;
-  }
-
   &__container {
     --md-container-color: var(--md-sys-color-surface-container-highest);
     --md-content-color: var(--md-sys-color-on-surface);
@@ -155,14 +160,14 @@ const { focused: fieldFocused } = useFocusWithin(filedContainer);
       padding-bottom: 6px;
     }
 
-    .md-field-container_outlined-type:focus-within,
+    .md-field-container_outlined-type:focus-within &,
     .md-field-container_outlined-type.md-field-container_focused & {
       border: 2px solid var(--md-sys-color-primary);
       padding: 6px 14px;
     }
 
     .md-field-container_error &,
-    .md-field-container_error.md-field-container:focus-within,
+    .md-field-container_error.md-field-container:focus-within &,
     .md-field-container_error.md-field-container.md-field-container_focused & {
       border-color: var(--md-sys-color-error);
     }
@@ -220,6 +225,7 @@ const { focused: fieldFocused } = useFocusWithin(filedContainer);
       line-height: var(--md-sys-typescale-body-small-line-height);
       font-size: var(--md-sys-typescale-body-small-size);
     }
+
     .md-field-container_outlined-type:focus-within &,
     .md-field-container_outlined-type.md-field-container_focused &,
     .md-field-container_outlined-type.md-field-container_filled & {
@@ -330,8 +336,11 @@ const { focused: fieldFocused } = useFocusWithin(filedContainer);
     transition-timing-function: var(--md-sys-motion-easing-standard-index);
     scrollbar-width: none;
 
-    .md-field-container_empty:not(:focus-within) &,
-    .md-field-container_empty:not(.md-field-container_focused) & {
+    .md-field-container.md-field-container_empty:not(:focus-within) &,
+    .md-field-container.md-field-container_empty:not(
+        .md-field-container_focused
+      )
+      & {
       opacity: 0;
       height: 0 !important;
       min-height: 0 !important;
@@ -397,6 +406,10 @@ const { focused: fieldFocused } = useFocusWithin(filedContainer);
     .md-field-container_error:hover & {
       color: var(--md-sys-color-error);
     }
+  }
+
+  &.md-field-container_disabled {
+    pointer-events: none;
   }
 }
 </style>

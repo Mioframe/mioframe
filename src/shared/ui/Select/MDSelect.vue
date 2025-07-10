@@ -120,7 +120,7 @@ const onClickOutside = () => {
   >
     <MDFieldContainer
       ref="fieldContainerRef"
-      :focused="showMenu"
+      :focused="showMenu ? true : undefined"
       :label-text="labelText"
       :supporting-text="supportingText"
       :type="type"
