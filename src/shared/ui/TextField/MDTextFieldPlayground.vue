@@ -34,8 +34,8 @@ const typeOptions = ['filled', 'outlined', undefined] as const;
 const state = useQueryState<ComponentProps<typeof MDTextField>>('state', {
   labelText: 'labelText',
   modelValue: undefined,
-  disabled: false,
-  error: false,
+  disabled: undefined,
+  error: undefined,
   inputType: undefined,
   maxCharacters: undefined,
   readonly: undefined,
