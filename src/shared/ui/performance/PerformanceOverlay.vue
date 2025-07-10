@@ -32,7 +32,7 @@ const memoryMb = computed(() =>
         'performance-overlay_warn': 45 > fps,
       }"
     >
-      fps:{{ fps }}
+      fps: {{ fps }}
     </div>
 
     <div
@@ -43,7 +43,7 @@ const memoryMb = computed(() =>
         'performance-overlay_warn': 100 < memoryMb,
       }"
     >
-      memoryMb:{{ memoryMb }}
+      memoryMb: {{ memoryMb }}
     </div>
 
     <div
@@ -55,7 +55,7 @@ const memoryMb = computed(() =>
           cls > CLSThresholds[0] && cls <= CLSThresholds[1],
       }"
     >
-      cls:{{ cls }}
+      cls: {{ cls }}
     </div>
 
     <div
@@ -67,7 +67,7 @@ const memoryMb = computed(() =>
           inp > INPThresholds[0] && inp <= INPThresholds[1],
       }"
     >
-      inp:{{ inp }}
+      inp: {{ inp }}
     </div>
 
     <div
@@ -79,7 +79,7 @@ const memoryMb = computed(() =>
           lcp > LCPThresholds[0] && lcp <= LCPThresholds[1],
       }"
     >
-      lcp:{{ lcp }}
+      lcp: {{ lcp }}
     </div>
 
     <div v-if="longTasks.length > 0" class="performance-overlay__item">
@@ -96,7 +96,34 @@ const memoryMb = computed(() =>
   top: 0;
   right: 0;
   pointer-events: none;
-  font-size: 0.7em;
+  font-size: 0.6em;
+  opacity: 0.8;
+  color: white;
+  text-shadow:
+    0.5px 0.5px 0 #444,
+    -0.5px 0.5px 0 #444,
+    0.5px -0.5px 0 #444,
+    -0.5px -0.5px 0 #444,
+    0px 0.5px 0 #444,
+    0px -0.5px 0 #444,
+    -0.5px 0px 0 #444,
+    0.5px 0px 0 #444,
+    1px 1px 0 #444,
+    -1px 1px 0 #444,
+    1px -1px 0 #444,
+    -1px -1px 0 #444,
+    0px 1px 0 #444,
+    0px -1px 0 #444,
+    -1px 0px 0 #444,
+    1px 0px 0 #444,
+    0.5px 1px 0 #444,
+    -0.5px 1px 0 #444,
+    0.5px -1px 0 #444,
+    -0.5px -1px 0 #444,
+    1px 0.5px 0 #444,
+    -1px 0.5px 0 #444,
+    1px -0.5px 0 #444,
+    -1px -0.5px 0 #444;
 
   &_warn {
     color: orange;

@@ -34,4 +34,8 @@ export const playgroundPages: PlaygroundPage[] = [
     name: 'UseSortable',
     component: () => import('@shared/lib/sortable/UseSortablePlayground.vue'),
   },
+  {
+    name: 'Checkbox',
+    component: () => import('@shared/ui/Checkbox/MDCheckboxPlayground.vue'),
+  },
 ];
