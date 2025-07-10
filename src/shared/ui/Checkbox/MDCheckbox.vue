@@ -2,6 +2,7 @@
 import { computed } from 'vue';
 import { MDSymbol } from '../Icon';
 import { isNil } from 'es-toolkit';
+import { MDState } from '../State';
 
 const {
   error,
@@ -55,8 +56,9 @@ const onClickContainer = () => {
 </script>
 
 <template>
-  <button
-    :id
+  <MDState
+    is="button"
+    :id="id"
     type="button"
     class="md md-checkbox"
     :class="{
@@ -66,12 +68,13 @@ const onClickContainer = () => {
       'md-checkbox_disabled': disabled,
       'md-checkbox_readonly': readonly,
     }"
+    :disabled="disabled"
     @click="onClickContainer"
   >
     <input
       v-model="stateValue"
       type="checkbox"
-      :disabled
+      :disabled="disabled"
       class="md-checkbox__input"
       tabindex="-1"
     />
@@ -83,7 +86,7 @@ const onClickContainer = () => {
         :name="symbolName"
       />
     </div>
-  </button>
+  </MDState>
 </template>
 
 <style lang="css" scoped>
