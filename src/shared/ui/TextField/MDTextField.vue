@@ -121,18 +121,14 @@ defineEmits<{
     letter-spacing: var(--md-sys-typescale-body-large-tracking);
     caret-color: var(--md-sys-color-primary);
     grid-area: input-text;
-    transition-property: height, min-height;
     transition-duration: var(--md-sys-motion-duration-short4);
     transition-timing-function: var(--md-sys-motion-easing-standard-index);
     cursor: text;
     white-space: pre;
     scrollbar-width: none;
 
-    .md-text-field.md-field-container_empty:not(:focus-within) & {
-      background: red;
-      /* opacity: 0;
-      height: 0 !important;
-      min-height: 0 !important; */
+    textarea& {
+      transition-property: height;
     }
 
     .md-text-field.md-field-container_disabled & {

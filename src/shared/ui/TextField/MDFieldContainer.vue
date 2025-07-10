@@ -70,11 +70,11 @@ const { focused: fieldFocused } = useFocusWithin(filedContainer);
       </span>
 
       <div class="md-field-container__body">
-        <label class="md-field-container__label-text" :for="id">
+        <label class="md-field-container__label-text md" :for="id">
           {{ labelText }}
         </label>
 
-        <div ref="containerRef" class="md-field-container__input-container">
+        <div ref="containerRef" class="md-field-container__input-container md">
           <slot :id="id" />
         </div>
       </div>
@@ -106,75 +106,79 @@ const { focused: fieldFocused } = useFocusWithin(filedContainer);
 .md-field-container {
   position: relative;
   flex-grow: 1;
-  --md-field-container-background: var(--md-container-color);
-  background-color: var(--md-field-container-background);
+
+  --md-container-color: var(--md-sys-color-surface-container-highest);
+  --md-content-color: var(--md-sys-color-on-surface);
+
+  --border-width: 0 0 1px 0;
+  --border-color: var(--md-sys-color-on-surface-variant);
+  --border-radius: var(--md-sys-shape-corner-extra-small-top);
+  --padding: 8px 16px 7px;
+  --label-top: unset;
+  --label-left: unset;
+
+  &.md-field-container_outlined-type {
+    --md-container-color: inherit;
+    --border-radius: var(--md-sys-shape-corner-extra-small);
+    --border-width: 1px;
+    --border-color: var(--md-sys-color-outline);
+    --padding: 7px 15px 7px;
+    --label-top: 15px;
+    --label-left: 15px;
+
+    &.md-field-container_filled {
+      --label-top: -8px;
+      --label-left: 8px;
+    }
+
+    &:focus-within,
+    &.md-field-container_focused {
+      --border-width: 2px;
+      --border-color: var(--md-sys-color-primary);
+      --padding: 6px 14px;
+      --label-top: -9px;
+      --label-left: 7px;
+    }
+  }
+
+  &:hover {
+    --border-color: var(--md-sys-color-on-surface);
+  }
+
+  &.md-field-container_disabled {
+    --md-container-color: rgb(from var(--md-sys-color-on-surface) r g b / 0.04);
+    --border-color: rgb(from var(--md-sys-color-on-surface) r g b / 0.38);
+    pointer-events: none;
+  }
+
+  &.md-field-container_outlined-type.md-field-container_disabled {
+    --border-color: rgb(from var(--md-sys-color-on-surface) r g b / 0.12);
+  }
+
+  &.md-field-container_error,
+  &.md-field-container_error.md-field-container:focus-within,
+  &.md-field-container_error.md-field-container.md-field-container_focused {
+    --border-color: var(--md-sys-color-error);
+
+    &:hover {
+      --border-color: var(--md-sys-color-on-error-container);
+    }
+  }
 
   &__container {
-    --md-container-color: var(--md-sys-color-surface-container-highest);
-    --md-content-color: var(--md-sys-color-on-surface);
-
-    border-radius: var(--md-sys-shape-corner-extra-small-top);
-    border-bottom: 1px solid var(--md-sys-color-on-surface-variant);
+    border-radius: var(--border-radius);
+    border-width: var(--border-width);
+    border-style: solid;
+    border-color: var(--border-color);
 
     position: relative;
     display: flex;
     justify-content: flex-start;
     align-items: center;
     min-height: 56px;
-    padding: 8px 16px 7px;
+    padding: var(--padding);
     box-sizing: border-box;
-
-    .md-field-container_outlined-type & {
-      --md-container-color: inherit;
-
-      border-radius: var(--md-sys-shape-corner-extra-small);
-      border: 1px solid var(--md-sys-color-outline);
-      padding: 7px 15px 7px;
-    }
-
-    .md-field-container_disabled & {
-      background-color: rgb(from var(--md-sys-color-on-surface) r g b / 0.04);
-      border-bottom-color: rgb(
-        from var(--md-sys-color-on-surface) r g b / 0.38
-      );
-      pointer-events: none;
-    }
-
-    .md-field-container_outlined-type.md-field-container_disabled & {
-      border-color: rgb(from var(--md-sys-color-on-surface) r g b / 0.12);
-      background-color: inherit;
-    }
-
-    .md-field-container:hover & {
-      border-bottom: 1px solid var(--md-sys-color-on-surface);
-      padding-bottom: 7px;
-    }
-
-    .md-field-container_outlined-type:hover & {
-      border-color: var(--md-sys-color-on-surface);
-    }
-
-    .md-field-container:focus-within &,
-    .md-field-container.md-field-container_focused & {
-      border-bottom: 2px solid var(--md-sys-color-primary);
-      padding-bottom: 6px;
-    }
-
-    .md-field-container_outlined-type:focus-within &,
-    .md-field-container_outlined-type.md-field-container_focused & {
-      border: 2px solid var(--md-sys-color-primary);
-      padding: 6px 14px;
-    }
-
-    .md-field-container_error &,
-    .md-field-container_error.md-field-container:focus-within &,
-    .md-field-container_error.md-field-container.md-field-container_focused & {
-      border-color: var(--md-sys-color-error);
-    }
-
-    .md-field-container_error:hover & {
-      border-color: var(--md-sys-color-on-error-container);
-    }
+    transition-property: padding, background-color, border-width;
   }
 
   &__body {
@@ -202,17 +206,15 @@ const { focused: fieldFocused } = useFocusWithin(filedContainer);
     letter-spacing: var(--md-sys-typescale-body-large-tracking);
     grid-area: label-text;
     transition-property: height, line-height, font-size, top, left;
-    transition-duration: var(--md-sys-motion-duration-short4);
-    transition-timing-function: var(--md-sys-motion-easing-standard-index);
+
     cursor: text;
+    top: var(--label-top);
+    left: var(--label-left);
 
     .md-field-container_outlined-type & {
       display: inline-block;
       padding: 0 4px;
-
       position: absolute;
-      top: 15px;
-      left: 15px;
     }
 
     .md-field-container__leading-icon ~ & {
@@ -229,11 +231,7 @@ const { focused: fieldFocused } = useFocusWithin(filedContainer);
     .md-field-container_outlined-type:focus-within &,
     .md-field-container_outlined-type.md-field-container_focused &,
     .md-field-container_outlined-type.md-field-container_filled & {
-      position: absolute;
-      top: -8px;
       padding: 0 4px;
-      left: 8px;
-      background-color: var(--md-field-container-background);
     }
 
     .md-field-container_disabled & {
@@ -331,10 +329,12 @@ const { focused: fieldFocused } = useFocusWithin(filedContainer);
     font-weight: var(--md-sys-typescale-body-large-weight);
     letter-spacing: var(--md-sys-typescale-body-large-tracking);
     caret-color: var(--md-sys-color-primary);
-    transition-property: height, min-height;
+    transition-property: height, min-height, opacity, transform;
     transition-duration: var(--md-sys-motion-duration-short4);
     transition-timing-function: var(--md-sys-motion-easing-standard-index);
     scrollbar-width: none;
+    opacity: 1;
+    transform: scaleY(1);
 
     .md-field-container.md-field-container_empty:not(:focus-within) &,
     .md-field-container.md-field-container_empty:not(
@@ -344,6 +344,7 @@ const { focused: fieldFocused } = useFocusWithin(filedContainer);
       opacity: 0;
       height: 0 !important;
       min-height: 0 !important;
+      transform: scaleY(0);
     }
 
     .md-field-container_disabled & {
