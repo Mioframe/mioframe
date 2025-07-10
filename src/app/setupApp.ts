@@ -19,9 +19,7 @@ export const setupApp = async (app: App = createApp(MainApp)) => {
     setupSentry(app, SENTRY_DSN);
   }
 
-  if (import.meta.env.DEV) {
-    setupPlayground(router, playgroundPages);
-  }
+  setupPlayground(router, playgroundPages);
 
   app.use(router);
 

@@ -16,12 +16,17 @@ import { useTemplateRef, defineModel, computed, ref } from 'vue';
 import { useFirstFocus } from '@shared/lib/useFirstFocus';
 import { debounce } from 'es-toolkit';
 
-const { is = 'div', disableRipple = false } = defineProps<{
+const {
+  is = 'div',
+  disableRipple = false,
+  draggable,
+} = defineProps<{
   is?: Is;
   type?: Is extends 'button' ? 'button' | 'submit' | 'reset' : false;
   disabled?: boolean;
   disableRipple?: boolean;
   draggable?: boolean;
+  id?: string;
 }>();
 
 const emit = defineEmits<{
@@ -157,6 +162,25 @@ useEventListener(refEl, 'contextmenu', (e) => {
   emit('contextmenu', e);
 });
 
+const isDrag = ref(false);
+
+useEventListener(refEl, 'dragstart', () => {
+  if (draggable) {
+    isDrag.value = true;
+  }
+});
+
+useEventListener(refEl, 'dragend', () => {
+  if (draggable) {
+    isDrag.value = false;
+  }
+});
+useEventListener(refEl, 'drop', () => {
+  if (draggable) {
+    isDrag.value = false;
+  }
+});
+
 // FIXME: в firefox после удержания остаётся нежелательный эффект состояния
 // FIXME: в chrome при нажатии кнопки подсвечиваются синим
 </script>
@@ -164,6 +188,7 @@ useEventListener(refEl, 'contextmenu', (e) => {
 <template>
   <component
     :is="is"
+    :id="id"
     ref="refEl"
     :type="type"
     :disabled="disabled ? true : undefined"
@@ -173,6 +198,7 @@ useEventListener(refEl, 'contextmenu', (e) => {
       'md-state_disabled': disabled,
       'md-state_focused': userFocused,
       'md-state_pressed': userPressed,
+      'md-state_drag': isDrag,
     }"
     :draggable="draggable ? 'true' : undefined"
   >
