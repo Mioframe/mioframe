@@ -1,5 +1,12 @@
 <script setup lang="ts">
-import { PlaygroundStory } from '@shared/lib/playground';
+import {
+  PlaygroundOptionalBoolean,
+  PlaygroundOptionalNumber,
+  PlaygroundOptionalString,
+  PlaygroundStory,
+  PlaygroundString,
+  PlaygroundUnion,
+} from '@shared/lib/playground';
 import MDTextField from './MDTextField.vue';
 import { useQueryState } from '@shared/lib/useQueryState';
 import type { ComponentProps } from 'vue-component-type-helpers';
@@ -40,59 +47,52 @@ const state = useQueryState<ComponentProps<typeof MDTextField>>('state', {
 <template>
   <PlaygroundStory>
     <template #controllers>
-      <pre>{{ state.modelValue }}</pre>
+      <div>
+        value:
+        <code>{{ [state.modelValue] }}</code>
+      </div>
 
-      <label>
-        labelText
-        <input v-model="state.labelText" placeholder="labelText" />
-      </label>
+      <PlaygroundString
+        v-model:model-value="state.labelText"
+        label="labelText"
+      />
 
-      <label>
-        disabled
-        <input v-model="state.disabled" type="checkbox" />
-      </label>
+      <PlaygroundOptionalBoolean
+        v-model:model-value="state.disabled"
+        label="disabled"
+      />
 
-      <label>
-        error
-        <input v-model="state.error" type="checkbox" />
-      </label>
+      <PlaygroundOptionalBoolean
+        v-model:model-value="state.error"
+        label="error"
+      />
 
-      <label>
-        inputType
-        <select v-model="state.inputType">
-          <option
-            v-for="option in inputTypeOptions"
-            :key="option"
-            :value="option"
-          >
-            {{ option }}
-          </option>
-        </select>
-      </label>
+      <PlaygroundUnion
+        v-model:model-value="state.inputType"
+        label="inputType"
+        :options="inputTypeOptions"
+      />
 
-      <label>
-        maxCharacters
-        <input v-model="state.maxCharacters" type="number" />
-      </label>
+      <PlaygroundOptionalNumber
+        v-model:model-value="state.maxCharacters"
+        label="maxCharacters"
+      />
 
-      <label>
-        readonly
-        <input v-model="state.readonly" type="checkbox" />
-      </label>
+      <PlaygroundOptionalBoolean
+        v-model:model-value="state.readonly"
+        label="readonly"
+      />
 
-      <label>
-        supportingText
-        <input v-model="state.supportingText" type="text" />
-      </label>
+      <PlaygroundOptionalString
+        v-model:model-value="state.supportingText"
+        label="supportingText"
+      />
 
-      <label>
-        type
-        <select v-model="state.type">
-          <option v-for="option in typeOptions" :key="option" :value="option">
-            {{ option }}
-          </option>
-        </select>
-      </label>
+      <PlaygroundUnion
+        v-model:model-value="state.type"
+        label="type"
+        :options="typeOptions"
+      />
     </template>
 
     <template #space>

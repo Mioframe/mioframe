@@ -128,18 +128,19 @@ defineEmits<{
     white-space: pre;
     scrollbar-width: none;
 
-    .md-field-container_empty:not(:focus-within) & {
-      opacity: 0;
+    .md-text-field.md-field-container_empty:not(:focus-within) & {
+      background: red;
+      /* opacity: 0;
       height: 0 !important;
-      min-height: 0 !important;
+      min-height: 0 !important; */
     }
 
-    .md-field-container_disabled & {
+    .md-text-field.md-field-container_disabled & {
       pointer-events: none;
       color: rgb(from var(--md-sys-color-on-surface) r g b / 0.38);
     }
 
-    .md-text-field:hover & {
+    .md-text-field.md-text-field:hover & {
       color: var(--md-sys-color-on-surface);
     }
 
@@ -147,12 +148,12 @@ defineEmits<{
       color: var(--md-sys-color-on-surface);
     }
 
-    .md-field-container_error & {
+    .md-text-field.md-field-container_error & {
       color: var(--md-sys-color-on-surface);
       caret-color: var(--md-sys-color-error);
     }
 
-    .md-field-container_error:hover & {
+    .md-text-field.md-field-container_error:hover & {
       color: var(--md-sys-color-on-surface);
     }
   }
