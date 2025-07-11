@@ -1,0 +1,23 @@
+.md-focus-indicator {
+  position: fixed;
+  z-index: 100;
+  display: block;
+  pointer-events: none;
+  outline: 5px solid red;
+  outline: var(--md-focus-indicator-thickness) solid var(--md-sys-color-secondary,
+      var(--md-container-color, rgb(88, 174, 255)));
+  outline-offset: var(--md-focus-indicator-offset);
+  z-index: 100;
+  top: 50vh;
+  left: 50vw;
+
+  transition-timing-function: var(--md-sys-motion-easing-standard-index);
+  transition-duration: var(--md-sys-motion-duration-short2);
+  transition-property: opacity, top, left, width, height;
+
+  --md-focus-indicator-thickness: var(--md-sys-state-focus-indicator-thickness,
+      3px);
+  --md-focus-indicator-offset: var(--md-sys-state-focus-indicator-outer-offset,
+      2px);
+
+}

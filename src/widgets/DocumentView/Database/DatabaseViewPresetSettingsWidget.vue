@@ -2,16 +2,17 @@
 import { DatabaseViewCreateDialog } from '@feature/databaseViewCreate';
 import { useDatabaseViewsMap } from '@shared/lib/databaseDocument';
 import type { DatabaseViewId } from '@shared/lib/databaseDocument';
-import { DB_VIEW_LAYOUT } from '@shared/lib/databaseDocument';
 import { MDChip } from '@shared/ui/Chips';
 import { MDSymbol } from '@shared/ui/Icon';
-import { computed, shallowRef, toRefs, watch } from 'vue';
-import DatabaseViewSettingDialog from './DatabaseViewsSettingDialog.vue';
+import { computed, ref, shallowRef, toRefs, watch } from 'vue';
 import { DatabaseItemSortingSection } from '@feature/databaseItemSorting';
 import { MD_SYS_TYPESCALE } from '@shared/lib/md';
 import { MDIconButton } from '@shared/ui/Button';
 import type { AMDocHandle } from '@shared/lib/automerge/automergeTypes';
-import { DatabaseViewChipsList } from '@entity/databaseView';
+import { DatabaseViewMapEdit } from '@feature/databaseViewMapEdit';
+import { DatabaseViewRenameDialog } from '@feature/databaseViewRename';
+import { defineMenuButtonList, MDContextMenuButton } from '@shared/ui/Menu';
+import { useDialog } from '@shared/ui/Dialog';
 
 /**
  * Виджет настроек отображения данных.
@@ -44,32 +45,60 @@ const onClickViewChip = (viewId: DatabaseViewId) => {
 
 const isShowAddView = shallowRef(false);
 
-const isShowSettingUpViews = shallowRef(false);
+const renameViewId = ref<DatabaseViewId>();
 
-const onClickSettingUpViews = () => {
-  isShowSettingUpViews.value = true;
-};
+enum VIEW_CONTEXT_ACTION {
+  remove,
+  rename,
+}
 
-const onAddView = async ({ name }: { name: string }) => {
-  const order = databaseViewsMap.size ?? 0;
-  await databaseViewsMap.create({
-    name,
-    layout: DB_VIEW_LAYOUT.TABLE,
-    order,
-  });
+const viewContextMenu = defineMenuButtonList([
+  {
+    symbolName: 'edit',
+    label: 'rename',
+    key: VIEW_CONTEXT_ACTION.rename,
+  },
+  {
+    symbolName: 'delete',
+    label: 'remove',
+    key: VIEW_CONTEXT_ACTION.remove,
+  },
+]);
 
-  isShowAddView.value = false;
-};
+const { confirm } = useDialog();
 
-const onCancelAddView = () => {
-  isShowAddView.value = false;
+const onClickViewContextMenu = async (
+  viewId: DatabaseViewId,
+  { key: action }: { key: VIEW_CONTEXT_ACTION },
+) => {
+  switch (action) {
+    case VIEW_CONTEXT_ACTION.remove: {
+      if (
+        await confirm(
+          'Remove view?',
+          'Are you sure you want to delete View presets?',
+          'Remove',
+          'delete',
+        )
+      ) {
+        await databaseViewsMap.remove(viewId);
+      }
+
+      break;
+    }
+
+    case VIEW_CONTEXT_ACTION.rename: {
+      renameViewId.value = viewId;
+      break;
+    }
+
+    default:
+      break;
+  }
 };
 
 /* TODO: разделить на компоненты:
-  - выбор View - список view с dnd сортиовкой
-  - создание View - модельное окно с формой создания
   - настройка View - компонуемый виджет с множестввом форм
-  - настройка сортировки
   - настройка фильтрации
   - ... уникальные настройки view
 */
@@ -93,48 +122,50 @@ const onCancelAddView = () => {
     </div>
 
     <div class="preset-section">
-      <!-- панель пресетов -->
-      <DatabaseViewChipsList
+      <DatabaseViewMapEdit
         :doc-handle="docHandle"
-        type="filter"
-        :selected-id="selectedViewId"
-        @click="onClickViewChip"
-      />
-
-      <MDChip
-        label="Setting up views"
-        type="assist"
-        @click="onClickSettingUpViews"
+        :selected-view="selectedViewId"
+        @click-view="onClickViewChip"
       >
+        <template #trailingIcon="{ viewId }">
+          <MDContextMenuButton
+            :btns="viewContextMenu"
+            tooltip="settings view"
+            @click="onClickViewContextMenu(viewId, $event)"
+          />
+        </template>
+      </DatabaseViewMapEdit>
+
+      <MDChip label="add view" type="assist" @click="isShowAddView = true">
         <template #leadingIcon>
-          <MDSymbol name="settings" />
+          <MDSymbol name="add" />
         </template>
       </MDChip>
     </div>
-    <!-- панель фильтрации -->
+    <!-- TODO: панель фильтрации -->
 
-    <!-- панель сортировки -->
     <DatabaseItemSortingSection
       v-if="selectedViewId"
       class="md-margin-top-4"
       :doc-handle="docHandle"
       :view-id="selectedViewId"
     />
-    <!-- / панель сортировки -->
 
     <!-- панель настройки шаблона отображения -->
 
     <DatabaseViewCreateDialog
       v-if="isShowAddView"
-      @submit="onAddView"
-      @cancel="onCancelAddView"
+      :doc-handle="docHandle"
+      @created="isShowAddView = false"
+      @cancel="isShowAddView = false"
     />
 
-    <DatabaseViewSettingDialog
-      v-if="isShowSettingUpViews"
+    <DatabaseViewRenameDialog
+      v-if="renameViewId"
       :doc-handle="docHandle"
-      @cancel="isShowSettingUpViews = false"
-      @completed="isShowSettingUpViews = false"
+      :view-id="renameViewId"
+      @cancel="renameViewId = undefined"
+      @completed="renameViewId = undefined"
     />
   </div>
 </template>
@@ -143,8 +174,9 @@ const onCancelAddView = () => {
 .preset-section {
   display: flex;
   overflow-x: auto;
-  gap: 8px;
-  --md-target-offset: 0px;
+  overflow-y: hidden;
+  gap: 2step;
+  scrollbar-width: none;
 }
 
 .database-view-preset-settings-widget {

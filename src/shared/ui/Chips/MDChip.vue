@@ -64,7 +64,10 @@ const onClickClose = (e: MouseEvent) => {
       @click="onClickClose"
     />
 
-    <div v-else-if="!!slots.trailingIcon" class="md-chip__trailing-icon">
+    <div
+      v-else-if="chipType === 'filter' && !!slots.trailingIcon"
+      class="md-chip__trailing-icon"
+    >
       <slot name="trailingIcon" />
     </div>
   </MDState>
@@ -83,6 +86,7 @@ const onClickClose = (e: MouseEvent) => {
   padding: 0 16px;
   cursor: pointer;
   flex-shrink: 0;
+  min-width: 88dp;
   --md-content-color: var(--md-sys-color-on-surface);
 
   &__label-text {
@@ -92,6 +96,7 @@ const onClickClose = (e: MouseEvent) => {
     line-height: var(--md-sys-typescale-label-large-line-height);
     letter-spacing: var(--md-sys-typescale-label-large-tracking);
     white-space: nowrap;
+    flex: 1 0;
 
     .md-chip__leading-icon + & {
       margin-left: 8px;
@@ -104,12 +109,21 @@ const onClickClose = (e: MouseEvent) => {
     justify-content: center;
     align-items: center;
     width: 18dp;
-    height: 18dp;
+    min-height: 18dp;
+    max-height: 30px;
+    flex: 0 1;
 
-    :deep(> *) {
-      width: 100%;
-      height: 100%;
-      --md-symbol-size: 18px;
+    :deep() {
+      > * {
+        width: 100%;
+        height: 100%;
+        --md-symbol-size: 18dp;
+      }
+
+      .md-icon-button {
+        --md-icon-button-icon-size: 18dp;
+        --md-icon-button-padding: 0px;
+      }
     }
 
     .md-chip_disabled &,

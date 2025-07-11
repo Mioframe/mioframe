@@ -1,6 +1,5 @@
 <script setup lang="ts" generic="T extends MenuButtonDescription">
 import { MDIconButton } from '@shared/ui/Button';
-import { MDSymbol } from '@shared/ui/Icon';
 import type { MaybeElement } from '@vueuse/core';
 import { ref, useTemplateRef } from 'vue';
 import type { MenuButtonDescription } from './types';
@@ -9,6 +8,14 @@ import MDMenu from './MDMenu.vue';
 const { btns, tooltip = 'options' } = defineProps<{
   btns: T[];
   tooltip?: string;
+  size?:
+    | 'extra-small'
+    | 'small'
+    | 'medium'
+    | 'large'
+    | 'extra-large'
+    | undefined;
+  width?: 'default' | 'narrow' | 'wide' | undefined;
 }>();
 
 const showMenu = ref(false);
@@ -34,13 +41,17 @@ const onClickOutsideMenu = () => {
 </script>
 
 <template>
-  <MDIconButton ref="targetBtn" :tooltip="tooltip" @click="onClickTarget">
-    <template #icon>
-      <MDSymbol name="more_vert" />
-    </template>
-  </MDIconButton>
+  <MDIconButton
+    ref="targetBtn"
+    :size="size"
+    :tooltip="tooltip"
+    :width="width"
+    md-symbol-name="more_vert"
+    @click="onClickTarget"
+  />
 
   <MDMenu
+    v-if="btns.length"
     :show="showMenu"
     :target-el="targetBtn"
     :btns="btns"
