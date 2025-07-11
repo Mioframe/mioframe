@@ -31,12 +31,12 @@ const {
   type?: 'default' | 'toggle';
   selected?: boolean;
   /**
-   * @default 'size'
+   * @default 'small'
    */
   size?: 'extra-small' | 'small' | 'medium' | 'large' | 'extra-large';
   width?: 'narrow' | 'default' | 'wide';
   /**
-   * @default 'shape'
+   * @default 'round'
    */
   shape?: 'round' | 'square';
 }>();
@@ -108,6 +108,7 @@ const onClick = (e: MouseEvent) => {
 .md-icon-button {
   --md-icon-button-icon-size: 24px;
   --md-icon-button-border-width: 0px;
+  --md-icon-button-padding: 0px;
 
   display: flex;
   align-items: center;
@@ -121,10 +122,10 @@ const onClick = (e: MouseEvent) => {
       (var(--md-icon-button-border-width) * 2)
   );
   padding-left: calc(
-    var(--md-icon-button-leading-space) - var(--md-icon-button-border-width)
+    var(--md-icon-button-padding) - var(--md-icon-button-border-width)
   );
   padding-right: calc(
-    var(--md-icon-button-trailing-space) - var(--md-icon-button-border-width)
+    var(--md-icon-button-padding) - var(--md-icon-button-border-width)
   );
   border-radius: var(--md-icon-button-container-shape);
 
@@ -234,16 +235,13 @@ const onClick = (e: MouseEvent) => {
       --md-icon-button-icon-size: 20dp;
 
       &.md-icon-button_width-narrow {
-        --md-icon-button-leading-space: 4dp;
-        --md-icon-button-trailing-space: 4dp;
+        --md-icon-button-padding: 4dp;
       }
       &.md-icon-button_width-default {
-        --md-icon-button-leading-space: 6dp;
-        --md-icon-button-trailing-space: 6dp;
+        --md-icon-button-padding: 6dp;
       }
       &.md-icon-button_width-wide {
-        --md-icon-button-leading-space: 10dp;
-        --md-icon-button-trailing-space: 10dp;
+        --md-icon-button-padding: 10dp;
       }
 
       &.md-icon-button_shape-round {
@@ -273,16 +271,13 @@ const onClick = (e: MouseEvent) => {
       --md-icon-button-icon-size: 24dp;
 
       &.md-icon-button_width-narrow {
-        --md-icon-button-leading-space: 4dp;
-        --md-icon-button-trailing-space: 4dp;
+        --md-icon-button-padding: 4dp;
       }
       &.md-icon-button_width-default {
-        --md-icon-button-leading-space: 8dp;
-        --md-icon-button-trailing-space: 8dp;
+        --md-icon-button-padding: 8dp;
       }
       &.md-icon-button_width-wide {
-        --md-icon-button-leading-space: 14dp;
-        --md-icon-button-trailing-space: 14dp;
+        --md-icon-button-padding: 14dp;
       }
 
       &.md-icon-button_shape-round {
@@ -312,16 +307,13 @@ const onClick = (e: MouseEvent) => {
       --md-icon-button-icon-size: 24dp;
 
       &.md-icon-button_width-narrow {
-        --md-icon-button-leading-space: 12dp;
-        --md-icon-button-trailing-space: 12dp;
+        --md-icon-button-padding: 12dp;
       }
       &.md-icon-button_width-default {
-        --md-icon-button-leading-space: 16dp;
-        --md-icon-button-trailing-space: 16dp;
+        --md-icon-button-padding: 16dp;
       }
       &.md-icon-button_width-wide {
-        --md-icon-button-leading-space: 24dp;
-        --md-icon-button-trailing-space: 24dp;
+        --md-icon-button-padding: 24dp;
       }
 
       &.md-icon-button_shape-round {
@@ -351,16 +343,13 @@ const onClick = (e: MouseEvent) => {
       --md-icon-button-icon-size: 32dp;
 
       &.md-icon-button_width-narrow {
-        --md-icon-button-leading-space: 16dp;
-        --md-icon-button-trailing-space: 16dp;
+        --md-icon-button-padding: 16dp;
       }
       &.md-icon-button_width-default {
-        --md-icon-button-leading-space: 32dp;
-        --md-icon-button-trailing-space: 32dp;
+        --md-icon-button-padding: 32dp;
       }
       &.md-icon-button_width-wide {
-        --md-icon-button-leading-space: 48dp;
-        --md-icon-button-trailing-space: 48dp;
+        --md-icon-button-padding: 48dp;
       }
 
       &.md-icon-button_shape-round {
@@ -394,16 +383,13 @@ const onClick = (e: MouseEvent) => {
       --md-icon-button-icon-size: 40dp;
 
       &.md-icon-button_width-narrow {
-        --md-icon-button-leading-space: 32dp;
-        --md-icon-button-trailing-space: 32dp;
+        --md-icon-button-padding: 32dp;
       }
       &.md-icon-button_width-default {
-        --md-icon-button-leading-space: 48dp;
-        --md-icon-button-trailing-space: 48dp;
+        --md-icon-button-padding: 48dp;
       }
       &.md-icon-button_width-wide {
-        --md-icon-button-leading-space: 72dp;
-        --md-icon-button-trailing-space: 72dp;
+        --md-icon-button-padding: 72dp;
       }
 
       &.md-icon-button_shape-round {

@@ -11,6 +11,30 @@ export const useSortable = <T>(
   container: MaybeElementRef,
   listReactive: MaybeRefOrGetter<T[]>,
 ) => {
+  const onMovedItem = (from: number, to: number) => {
+    const list = toValue(listReactive);
+
+    const [movedItem]: T[] = list.splice(from, 1);
+
+    list.splice(to, 0, movedItem);
+  };
+
+  const { draggableIndex } = useSortableListener(container, onMovedItem);
+
+  return {
+    draggableItem: computed(() =>
+      isUndefined(draggableIndex.value)
+        ? undefined
+        : toValue(listReactive).at(draggableIndex.value),
+    ),
+    draggableIndex,
+  };
+};
+
+export const useSortableListener = (
+  container: MaybeElementRef,
+  onMovedItem: (fromIndex: number, toIndex: number) => unknown,
+) => {
   const containerElRef = computed(() => unrefElement(container));
 
   const childrenIndexOf = (el: Element) => {
@@ -23,7 +47,7 @@ export const useSortable = <T>(
     return undefined;
   };
 
-  const currentIndexRef = shallowRef<number>();
+  const currentDragIndex = shallowRef<number>();
 
   const closestDraggable = (
     el: EventTarget | Element | HTMLElement | null,
@@ -59,15 +83,11 @@ export const useSortable = <T>(
     ) {
       const overIndex = childrenIndexOf(overDraggableElement);
 
-      if (!isUndefined(overIndex) && overIndex !== currentIndexRef.value) {
-        if (!isUndefined(currentIndexRef.value)) {
-          const list = toValue(listReactive);
+      if (!isUndefined(overIndex) && overIndex !== currentDragIndex.value) {
+        if (!isUndefined(currentDragIndex.value)) {
+          onMovedItem(currentDragIndex.value, overIndex);
 
-          const [movedItem]: T[] = list.splice(currentIndexRef.value, 1);
-
-          list.splice(overIndex, 0, movedItem);
-
-          currentIndexRef.value = overIndex;
+          currentDragIndex.value = overIndex;
         }
       }
     }
@@ -78,12 +98,12 @@ export const useSortable = <T>(
     if (el) {
       const currentIndex = childrenIndexOf(el);
 
-      currentIndexRef.value = currentIndex;
+      currentDragIndex.value = currentIndex;
     }
   };
 
   const onDragEnd = () => {
-    currentIndexRef.value = undefined;
+    currentDragIndex.value = undefined;
   };
 
   const onDragOver = debounce(({ target }: { target: EventTarget | null }) => {
@@ -106,12 +126,7 @@ export const useSortable = <T>(
   });
 
   return {
-    draggableItem: computed(() =>
-      isUndefined(currentIndexRef.value)
-        ? undefined
-        : toValue(listReactive).at(currentIndexRef.value),
-    ),
-    draggableIndex: computed(() => currentIndexRef.value),
+    draggableIndex: computed(() => currentDragIndex.value),
   };
 };
 

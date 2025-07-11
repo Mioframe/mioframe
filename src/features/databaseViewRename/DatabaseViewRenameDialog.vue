@@ -1,32 +1,47 @@
 <script setup lang="ts">
+import type { AMDocHandle } from '@shared/lib/automerge';
+import type { DatabaseViewId } from '@shared/lib/databaseDocument';
+import { useDatabaseView } from '@shared/lib/databaseDocument';
 import { MDDialog } from '@shared/ui/Dialog';
 import { MDTextField } from '@shared/ui/TextField';
-import { ref, watchEffect } from 'vue';
+import { ref, toRefs, watchEffect } from 'vue';
 
-const { name } = defineProps<{
-  name: string;
-  loading?: number | boolean | undefined;
+const props = defineProps<{
+  docHandle: AMDocHandle;
+  viewId: DatabaseViewId;
 }>();
+
+const { docHandle, viewId } = toRefs(props);
+
+const view = useDatabaseView(docHandle, viewId);
 
 const nameState = ref<string>();
 
 watchEffect(() => {
-  nameState.value = name;
+  nameState.value = view.view?.name;
 });
 
 const emit = defineEmits<{
-  apply: [name: string];
+  completed: [name: string];
   cancel: [];
 }>();
 
-const onApply = () => {
+const loading = ref(0);
+
+const onApply = async () => {
   if (nameState.value) {
-    emit('apply', nameState.value);
+    try {
+      loading.value += 1;
+      await view.put({ name: nameState.value });
+      emit('completed', nameState.value);
+    } finally {
+      loading.value -= 1;
+    }
   }
 };
 
 const onCancel = () => {
-  nameState.value = name;
+  nameState.value = view.view?.name;
   emit('cancel');
 };
 </script>
@@ -37,7 +52,7 @@ const onCancel = () => {
     supporting-text="Give your data view a clear and meaningful name to improve organization and accessibility."
     apply-label="Rename"
     has-cancel-action
-    :loading="loading"
+    :loading="!!loading"
     @apply="onApply"
     @cancel="onCancel"
   >

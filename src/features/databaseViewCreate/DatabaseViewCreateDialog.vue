@@ -1,6 +1,11 @@
 <script setup lang="ts">
-import type { DatabaseView } from '@shared/lib/databaseDocument';
-import { DB_VIEW_LAYOUT } from '@shared/lib/databaseDocument';
+import type { AMDocHandle } from '@shared/lib/automerge';
+import { deepReplaceJsonObject } from '@shared/lib/changeObject';
+import type { DatabaseViewId } from '@shared/lib/databaseDocument';
+import {
+  DB_VIEW_LAYOUT,
+  useDatabaseViewsMap,
+} from '@shared/lib/databaseDocument';
 import { objectEntries } from '@shared/lib/objectEntries';
 import { MDDialog } from '@shared/ui/Dialog';
 import { MDSelect } from '@shared/ui/Select';
@@ -10,35 +15,52 @@ import {
 } from '@shared/ui/Select/defineSelectOptions';
 import { MDTextField } from '@shared/ui/TextField';
 import { pascalCase } from 'es-toolkit';
-import { computed, reactive } from 'vue';
+import { computed, reactive, ref, toRefs } from 'vue';
 
-const {} = defineProps<{
-  loading?: boolean | number;
+const props = defineProps<{
+  docHandle: AMDocHandle;
 }>();
 
+const { docHandle } = toRefs(props);
+
 const emit = defineEmits<{
-  submit: [DatabaseView];
+  created: [id: DatabaseViewId];
   cancel: [];
 }>();
 
-const formState = reactive<{
+const initialState = (): {
   layout: DB_VIEW_LAYOUT;
   name: string | undefined;
-}>({
+} => ({
   layout: DB_VIEW_LAYOUT.TABLE,
   name: undefined,
 });
 
-const onSubmit = () => {
+const formState = reactive(initialState());
+
+const databaseViewsMap = useDatabaseViewsMap(docHandle);
+
+const loading = ref(0);
+
+const onApply = async () => {
   if (formState.name) {
-    emit('submit', {
-      name: formState.name,
-      layout: formState.layout,
-    });
+    try {
+      loading.value += 1;
+
+      const id = await databaseViewsMap.create({
+        name: formState.name,
+        layout: formState.layout,
+        order: databaseViewsMap.size,
+      });
+      emit('created', id);
+    } finally {
+      loading.value -= 1;
+    }
   }
 };
 
 const onCancel = () => {
+  deepReplaceJsonObject(formState, initialState());
   emit('cancel');
 };
 
@@ -64,13 +86,13 @@ const onChangeLayout = (selectedOptions: LayoutOption[]) => {
 
 <template>
   <MDDialog
-    :loading="loading"
+    :loading="!!loading"
     headline="Add view"
     supporting-text="Enter the name of the new data view."
     apply-label="Create"
     has-cancel-action
     @cancel="onCancel"
-    @apply="onSubmit"
+    @apply="onApply"
   >
     <MDTextField v-model:model-value="formState.name" label-text="Name" />
 

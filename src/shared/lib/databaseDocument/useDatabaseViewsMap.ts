@@ -2,7 +2,7 @@ import { computed, reactive, toValue, type MaybeRefOrGetter } from 'vue';
 import type { AMDocHandle } from '../automerge';
 import { useDatabaseDocument } from './useDatabaseDocument';
 import { toRefs } from '@vueuse/core';
-import { useWrapStrictRecord } from '../strictRecord';
+import { useWrapStrictRecord, wrapStrictRecord } from '../strictRecord';
 import {
   generateViewId,
   type DatabaseView,
@@ -10,34 +10,11 @@ import {
 } from './migrations/versions';
 import { deepPutJsonObject, deepReplaceJsonObject } from '../changeObject';
 import { shallowClone } from '../shallowClone';
+import { moveArrayValue } from '../moveArrayValue';
 
 export const useDatabaseViewsMap = (
   rawDocHandle: MaybeRefOrGetter<AMDocHandle | undefined>,
-): {
-  entries: [DatabaseViewId, DatabaseView][] | undefined;
-  keys: DatabaseViewId[] | undefined;
-  values: DatabaseView[] | undefined;
-  has: (id: DatabaseViewId) => boolean | undefined;
-  get: (viewId: DatabaseViewId) => DatabaseView | undefined;
-  forEach: (
-    callbackfn: (view: DatabaseView, id: DatabaseViewId) => void,
-  ) => void;
-  size: number | undefined;
-  list: readonly [DatabaseViewId, DatabaseView][] | undefined;
-  defaultView: [DatabaseViewId, DatabaseView] | undefined;
-
-  set: (id: DatabaseViewId, view: DatabaseView) => Promise<void>;
-  create: (view: DatabaseView) => Promise<DatabaseViewId>;
-  put: (
-    id: DatabaseViewId,
-    partialView: Partial<DatabaseView>,
-  ) => Promise<void>;
-  remove: (id: DatabaseViewId) => Promise<void>;
-  update: (
-    id: DatabaseViewId,
-    mutation: (view: DatabaseView) => unknown,
-  ) => Promise<void>;
-} => {
+) => {
   const docHandle = computed(() => toValue(rawDocHandle));
 
   const { update: updateDatabaseDocument, state } = toRefs(
@@ -130,6 +107,24 @@ export const useDatabaseViewsMap = (
     });
   };
 
+  const changeOrder = (from: number, to: number) =>
+    updateDatabaseDocument.value((doc) => {
+      const views = wrapStrictRecord(doc.views);
+
+      const tempArray = Array.from(views.values());
+
+      tempArray.sort(
+        ({ order: a = tempArray.length }, { order: b = tempArray.length }) =>
+          a - b,
+      );
+
+      moveArrayValue(tempArray, from, to);
+
+      tempArray.forEach((view, index) => {
+        view.order = index;
+      });
+    });
+
   return reactive({
     entries,
     keys,
@@ -146,5 +141,6 @@ export const useDatabaseViewsMap = (
     put,
     remove,
     update,
+    changeOrder,
   });
 };

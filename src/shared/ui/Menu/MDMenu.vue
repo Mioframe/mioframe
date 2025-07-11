@@ -96,11 +96,14 @@ const positionLeft = computed((): `${number}px` => {
   return `${Math.max(targetX.value + targetWidth.value - menusWidth.value, 0)}px`;
 });
 
+const minWidth = computed((): `${number}px` => `${targetWidth.value}px`);
+
 const containerStyle = computed(
   (): StyleValue => ({
     top: positionTop.value,
     left: positionLeft.value,
     maxHeight: maxHeight.value,
+    minWidth: minWidth.value,
   }),
 );
 
