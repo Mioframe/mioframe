@@ -12,9 +12,10 @@ import {
   useEventListener,
   useVibrate,
 } from '@vueuse/core';
-import { useTemplateRef, defineModel, computed, ref } from 'vue';
+import { useTemplateRef, defineModel, computed, ref, watchEffect } from 'vue';
 import { useFirstFocus } from '@shared/lib/useFirstFocus';
 import { debounce } from 'es-toolkit';
+import { useFocusIndicator } from './useFocusIndicator';
 
 const {
   is = 'div',
@@ -67,6 +68,16 @@ syncRefs(userHover, hoverModel);
 const { focused: userFocused } = useFirstFocus(refEl, {
   useTarget: true,
   focusVisible: true,
+});
+
+const { showFocus, removeFocus } = useFocusIndicator();
+
+watchEffect(() => {
+  if (userFocused.value) {
+    showFocus(refEl.value);
+  } else {
+    removeFocus(refEl.value);
+  }
 });
 
 const focusedModel = defineModel<boolean>('focused', { default: false });
@@ -175,6 +186,10 @@ useEventListener(refEl, 'drop', () => {
   isDrag.value = false;
 });
 
+tryOnScopeDispose(() => {
+  removeFocus(refEl.value);
+});
+
 // FIXME: в firefox после удержания остаётся нежелательный эффект состояния
 // FIXME: в chrome при нажатии кнопки подсвечиваются синим
 </script>
@@ -220,16 +235,8 @@ useEventListener(refEl, 'drop', () => {
   --md-content-color: inherit;
   --md-container-color: inherit;
   --md-state-target-offset: var(--md-target-offset, 4px);
-  --md-target-width: calc(100% + var(--md-state-target-offset) * 2);
-  --md-target-height: calc(100% + var(--md-state-target-offset) * 2);
-  --md-focus-indicator-thickness: var(
-    --md-sys-state-focus-indicator-thickness,
-    3px
-  );
-  --md-focus-indicator-offset: var(
-    --md-sys-state-focus-indicator-outer-offset,
-    2px
-  );
+  --md-target-width: max(calc(100% + var(--md-state-target-offset) * 2), 48px);
+  --md-target-height: max(calc(100% + var(--md-state-target-offset) * 2), 48px);
 
   transition-property:
     box-shadow, color, background-color, padding, border-radius;
@@ -314,12 +321,7 @@ useEventListener(refEl, 'drop', () => {
 
   &:focus-visible,
   &.md-state_focused {
-    outline: var(--md-focus-indicator-thickness) solid
-      var(
-        --md-sys-color-secondary,
-        var(--md-container-color, rgb(88, 174, 255))
-      );
-    outline-offset: var(--md-focus-indicator-offset);
+    outline: none;
     z-index: 1;
 
     > .md-state__layer {

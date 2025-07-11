@@ -113,7 +113,7 @@ const { focused: fieldFocused } = useFocusWithin(filedContainer);
   --border-width: 0 0 1px 0;
   --border-color: var(--md-sys-color-on-surface-variant);
   --border-radius: var(--md-sys-shape-corner-extra-small-top);
-  --padding: 8px 16px 7px;
+  --padding: 8px 16px;
   --label-top: unset;
   --label-left: unset;
 
@@ -122,9 +122,9 @@ const { focused: fieldFocused } = useFocusWithin(filedContainer);
     --border-radius: var(--md-sys-shape-corner-extra-small);
     --border-width: 1px;
     --border-color: var(--md-sys-color-outline);
-    --padding: 7px 15px 7px;
-    --label-top: 15px;
-    --label-left: 15px;
+    --padding: 8px 16px 8px;
+    --label-top: 16px;
+    --label-left: 16px;
 
     &.md-field-container_filled {
       --label-top: -8px;
@@ -135,9 +135,9 @@ const { focused: fieldFocused } = useFocusWithin(filedContainer);
     &.md-field-container_focused {
       --border-width: 2px;
       --border-color: var(--md-sys-color-primary);
-      --padding: 6px 14px;
-      --label-top: -9px;
-      --label-left: 7px;
+      --padding: 8px 16px;
+      --label-top: -8px;
+      --label-left: 8px;
     }
   }
 
@@ -166,11 +166,6 @@ const { focused: fieldFocused } = useFocusWithin(filedContainer);
   }
 
   &__container {
-    border-radius: var(--border-radius);
-    border-width: var(--border-width);
-    border-style: solid;
-    border-color: var(--border-color);
-
     position: relative;
     display: flex;
     justify-content: flex-start;
@@ -178,7 +173,23 @@ const { focused: fieldFocused } = useFocusWithin(filedContainer);
     min-height: 56px;
     padding: var(--padding);
     box-sizing: border-box;
-    transition-property: padding, background-color, border-width;
+
+    &::before {
+      content: '';
+      display: block;
+      position: absolute;
+      top: 0;
+      right: 0;
+      bottom: 0;
+      left: 0;
+
+      border-radius: var(--border-radius);
+      border-width: var(--border-width);
+      border-style: solid;
+      border-color: var(--border-color);
+      transition-property: border-radius, border-width, border-color;
+      transition-duration: var(--md-sys-motion-duration-short4, 0.2s);
+    }
   }
 
   &__body {
