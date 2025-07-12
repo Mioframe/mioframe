@@ -1,6 +1,5 @@
 import type { App } from 'vue';
 import { createApp } from 'vue';
-import '@fortawesome/fontawesome-free/css/all.css';
 import './styles/styles.css';
 import MainApp from './MainApp.vue';
 import { createHead } from '@unhead/vue/client';

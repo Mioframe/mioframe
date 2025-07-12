@@ -1,35 +1,34 @@
 <script setup lang="ts">
-import { computed, watchEffect } from 'vue';
-import { MaterialSymbolsFamily, useIconStates } from './useIconStates';
+import { computed, toRefs, watch } from 'vue';
+import { useIconStates } from './useMaterialDesignSymbols';
 
-const { name, style = 'rounded' } = defineProps<{
+const props = defineProps<{
   // from https://fonts.google.com/icons
   name: string;
-  style?: 'rounded' | 'outlined' | 'sharp';
 }>();
 
-const styleSetting = computed(() => {
-  switch (style) {
-    case 'outlined':
-      return MaterialSymbolsFamily.Outlined;
-    case 'sharp':
-      return MaterialSymbolsFamily.Sharp;
-    default:
-      return MaterialSymbolsFamily.Rounded;
-  }
-});
+const { name } = toRefs(props);
 
-const classSymbol = computed(() => `material-symbols-${style}`);
+const { addLoadSymbol, loadedSymbols } = useIconStates();
 
-const { push } = useIconStates();
+const ready = computed(() => loadedSymbols.has(name.value));
 
-watchEffect(() => {
-  push(styleSetting.value, name);
-});
+watch(
+  name,
+  (name) => {
+    addLoadSymbol(name);
+  },
+  { immediate: true },
+);
 </script>
 
 <template>
-  <i class="md-symbol" :class="[classSymbol]">{{ name }} </i>
+  <i
+    class="md-symbol md material-symbols-rounded"
+    :class="[{ 'md-symbol_not-ready': !ready }]"
+  >
+    {{ name }}
+  </i>
 </template>
 
 <style scoped>
@@ -47,5 +46,13 @@ watchEffect(() => {
     'opsz' var(--md-symbol-opsz, 24);
 
   font-size: var(--md-symbol-size, 24px);
+  opacity: 1;
+
+  &_not-ready {
+    display: inline-block;
+    opacity: 0;
+    width: 0;
+    overflow: hidden;
+  }
 }
 </style>
