@@ -8,6 +8,8 @@ const { value } = defineProps<{
   editable?: boolean;
 }>();
 
+const emit = defineEmits<{ click: [] }>();
+
 const convertedValue = computed(() => (isBoolean(value) ? value : undefined));
 </script>
 
@@ -16,5 +18,6 @@ const convertedValue = computed(() => (isBoolean(value) ? value : undefined));
     :model-value="convertedValue"
     indeterminate
     :readonly="!editable"
+    @click="emit('click')"
   />
 </template>

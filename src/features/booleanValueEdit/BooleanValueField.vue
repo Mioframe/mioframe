@@ -27,7 +27,12 @@ const id = uniqueId('BooleanPropertyField');
 
 <template>
   <div class="boolean-property-field">
-    <MDCheckbox :id v-model:model-value="value" indeterminate :disabled />
+    <MDCheckbox
+      :id="id"
+      v-model:model-value="value"
+      indeterminate
+      :disabled="disabled"
+    />
 
     <label class="boolean-property-field__label" :for="id">
       {{ property.name }}
