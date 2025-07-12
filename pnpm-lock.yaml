@@ -65,6 +65,9 @@ importers:
       match-sorter:
         specifier: ^8.0.3
         version: 8.0.3
+      material-symbols:
+        specifier: ^0.32.0
+        version: 0.32.0
       modern-normalize:
         specifier: ^3.0.1
         version: 3.0.1
@@ -1337,8 +1340,8 @@ packages:
   '@maxim_mazurok/gapi.client.discovery-v1@0.1.20200806':
     resolution: {integrity: sha512-Wl6UfmZVDdWbY3PUu8E2ULk9RPLjnMqp/iOA4tcK8Ne+U/GmlnWP/e34IaZNGArfl7iXJNOG+/3Rj9L9jQyF9Q==}
 
-  '@maxim_mazurok/gapi.client.drive-v3@0.0.20250701':
-    resolution: {integrity: sha512-2fB0teR9zGfW+33P7GDHBkh84nGPfnmtm291kvW/UVaPqle6Jlbqq2jt6PMUgkgHxBcLVWshUwRBHg7A6voV4Q==}
+  '@maxim_mazurok/gapi.client.drive-v3@0.0.20250710':
+    resolution: {integrity: sha512-tjYygFCnkk3GvlgAYDIhSGa4yujubj8mwkzoWabxVH3lejqeU/1+ZSf4FCRfzYYOMiRzDoo7zb2WMTttV1iKOw==}
 
   '@maxim_mazurok/gapi.client.oauth2-v2@0.0.20200213':
     resolution: {integrity: sha512-CtMeicnExqTAoAok72PqqknL1p2sLVbAqB/4rpsbi2LYPy26ln23W+mZUB9uYl6Rt7a0DCqJdohdF40Q/dZv/w==}
@@ -3075,6 +3078,9 @@ packages:
 
   match-sorter@8.0.3:
     resolution: {integrity: sha512-BnR/YBS1iO94R3EcseKkb7kJ2w2su5CWmywHvFYv70HQ2syqca79JefoGocMK+G1NOdpV2kt0G3uQb5hcdFtIA==}
+
+  material-symbols@0.32.0:
+    resolution: {integrity: sha512-qpYGTPbaIUo7pgZF5WipR6bBACxf7+Q3sIZgayWCI3Upbo7lkCdR2CP0k1sLru34wP74ewZiKUvUr2P6iTUqHw==}
 
   math-intrinsics@1.1.0:
     resolution: {integrity: sha512-/IXtbwEk5HTPyEwyKX6hGkYXxM9nbj64B+ilVJnC/R6B0pH5G4V3b0pVbL7DBj4tkhBAppbQUlf6F6Xl9LHu1g==}
@@ -5464,7 +5470,7 @@ snapshots:
       '@types/gapi.client': 1.0.8
       '@types/gapi.client.discovery-v1': 0.0.4
 
-  '@maxim_mazurok/gapi.client.drive-v3@0.0.20250701':
+  '@maxim_mazurok/gapi.client.drive-v3@0.0.20250710':
     dependencies:
       '@types/gapi.client': 1.0.8
       '@types/gapi.client.discovery-v1': 0.0.4
@@ -5875,7 +5881,7 @@ snapshots:
 
   '@types/gapi.client.drive-v3@0.0.5':
     dependencies:
-      '@maxim_mazurok/gapi.client.drive-v3': 0.0.20250701
+      '@maxim_mazurok/gapi.client.drive-v3': 0.0.20250710
 
   '@types/gapi.client.oauth2-v2@0.0.4':
     dependencies:
@@ -7233,6 +7239,8 @@ snapshots:
     dependencies:
       '@babel/runtime': 7.27.6
       remove-accents: 0.5.0
+
+  material-symbols@0.32.0: {}
 
   math-intrinsics@1.1.0: {}
 
