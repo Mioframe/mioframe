@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import { toRefs, useTemplateRef } from 'vue';
+import { ref, toRefs, useTemplateRef } from 'vue';
 import { uniqueId } from '@shared/lib/uniqueId';
 import type { EmptyObject } from 'type-fest';
 import { useFirstFocus } from '@shared/lib/useFirstFocus';
-import { useFocusWithin } from '@vueuse/core';
+import { unrefElement } from '@vueuse/core';
 
 const props = withDefaults(
   defineProps<{
@@ -46,7 +46,16 @@ const onClickField = () => {
 
 const filedContainer = useTemplateRef('filedContainer');
 
-const { focused: fieldFocused } = useFocusWithin(filedContainer);
+const fieldFocused = ref(false);
+
+const onFocusIn = () => {
+  fieldFocused.value = true;
+};
+
+const onFocusOut = () => {
+  fieldFocused.value =
+    unrefElement(filedContainer)?.matches(':focus-within') ?? false;
+};
 </script>
 
 <template>
@@ -63,6 +72,8 @@ const { focused: fieldFocused } = useFocusWithin(filedContainer);
       },
       `md-field-container_${type}-type`,
     ]"
+    @focusin="onFocusIn"
+    @focusout="onFocusOut"
   >
     <div class="md md-field-container__container" @click="onClickField">
       <span v-if="!!slots.leadingIcon" class="md-field-container__leading-icon">
@@ -347,8 +358,7 @@ const { focused: fieldFocused } = useFocusWithin(filedContainer);
     opacity: 1;
     transform: scaleY(1);
 
-    .md-field-container.md-field-container_empty:not(:focus-within) &,
-    .md-field-container.md-field-container_empty:not(
+    .md-field-container.md-field-container_empty:not(:focus-within):not(
         .md-field-container_focused
       )
       & {
