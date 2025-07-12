@@ -10,6 +10,8 @@ import { differenceWith, isEqual } from 'es-toolkit';
 import { shallowClone } from '@shared/lib/shallowClone';
 import { isObjectLike } from '@shared/lib/typeGuards';
 import type { SelectOption } from './types';
+import { useOnEscapeKeyStacked } from '@shared/lib/useOnEscapeKeyStacked';
+import { useOnBack } from '@shared/lib/useOnBack';
 
 const props = defineProps<{
   labelText: string;
@@ -76,8 +78,20 @@ onKeyStroke('Backspace', () => {
   }
 });
 
-onKeyStroke('Escape', () => {
-  showMenu.value = false;
+useOnEscapeKeyStacked(() => {
+  if (showMenu.value) {
+    showMenu.value = false;
+    return false;
+  }
+  return true;
+});
+
+useOnBack(() => {
+  if (showMenu.value) {
+    showMenu.value = false;
+    return false;
+  }
+  return true;
 });
 
 onKeyStroke(['ArrowDown', 'ArrowUp'], (e) => {
