@@ -16,7 +16,7 @@
   color: var(--md-content-color, currentColor);
 
   transition-property: box-shadow, color, background-color, padding,
-    border-radius;
+    border-radius, opacity;
   transition-duration: var(--md-sys-motion-duration-short4, 0.2s);
 
   * {

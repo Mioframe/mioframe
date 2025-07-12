@@ -32,6 +32,7 @@
     "focus-trap": "^7.6.5",
     "ix": "^7.0.0",
     "match-sorter": "^8.0.3",
+    "material-symbols": "^0.32.0",
     "modern-normalize": "^3.0.1",
     "parse-duration": "^2.1.4",
     "perfect-debounce": "^1.0.0",
@@ -78,7 +79,7 @@
     "vue-component-type-helpers": "^3.0.1",
     "vue-tsc": "^3.0.1"
   },
-  "packageManager": "pnpm@10.12.4+sha512.5ea8b0deed94ed68691c9bad4c955492705c5eeb8a87ef86bc62c74a26b037b08ff9570f108b2e4dbd1dd1a9186fea925e527f141c648e85af45631074680184",
+  "packageManager": "pnpm@10.13.1+sha512.37ebf1a5c7a30d5fabe0c5df44ee8da4c965ca0c5af3dbab28c3a1681b70a256218d05c81c9c0dcf767ef6b8551eb5b960042b9ed4300c59242336377e01cfad",
   "pnpm": {
     "onlyBuiltDependencies": [
       "@sentry/cli",
