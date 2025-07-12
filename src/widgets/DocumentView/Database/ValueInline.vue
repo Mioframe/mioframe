@@ -24,6 +24,8 @@ const {} = defineProps<{
   editable?: boolean;
   directory: DirectoryFSEntry;
 }>();
+
+const emit = defineEmits<{ click: [] }>();
 </script>
 
 <template>
@@ -31,21 +33,25 @@ const {} = defineProps<{
     v-if="property?.type === PROPERTY_TYPE_BOOLEAN"
     :value="value"
     :editable="editable"
+    @click="emit('click')"
   />
 
   <NumberValueInline
     v-else-if="property?.type === PROPERTY_TYPE_NUMBER"
     :value="value"
+    @click="emit('click')"
   />
 
   <StringValueInline
     v-else-if="property?.type === PROPERTY_TYPE_STRING"
     :value="value"
+    @click="emit('click')"
   />
 
   <DateValueInline
     v-else-if="property?.type === PROPERTY_TYPE_DATE"
     :value="value"
+    @click="emit('click')"
   />
 
   <RelationValueInline
@@ -53,6 +59,7 @@ const {} = defineProps<{
     :value="value"
     :property="property"
     :directory="directory"
+    @click="emit('click')"
   >
     <template
       #default="{

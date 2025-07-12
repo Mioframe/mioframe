@@ -79,12 +79,18 @@ const inlineEl = useTemplateRef('inlineEl');
 </script>
 
 <template>
-  <a ref="inlineEl" class="editable-inline-value" tabindex="0" @click="onClick">
+  <a
+    ref="inlineEl"
+    class="editable-inline-value md"
+    tabindex="0"
+    @click="onClick"
+  >
     <ValueInline
       :property="property"
       :value="initialValue"
       editable
       :directory="directory"
+      @click="onClick"
     />
   </a>
 
@@ -117,14 +123,6 @@ const inlineEl = useTemplateRef('inlineEl');
 
   &:hover {
     text-decoration-color: rgb(from var(--md-content-color) r g b / 0.5);
-  }
-
-  &__edit-popover {
-    /* --md-container-color: var(--md-sys-color-background);
-    --md-content-color: var(--md-sys-color-on-background); */
-    /* padding: 8px; */
-    /* border-radius: 8px; */
-    /* box-shadow: var(--md-sys-elevation-level1); */
   }
 }
 </style>

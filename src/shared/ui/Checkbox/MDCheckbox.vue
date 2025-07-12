@@ -20,6 +20,7 @@ const {
 
 const emit = defineEmits<{
   'update:modelValue': [v: boolean | undefined];
+  click: [];
 }>();
 
 const stateValue = computed({
@@ -43,6 +44,7 @@ const symbolName = computed(() =>
 );
 
 const onClickContainer = () => {
+  emit('click');
   if (indeterminate) {
     stateValue.value = stateValue.value
       ? undefined
