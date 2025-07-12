@@ -2,8 +2,9 @@
 import { MDButton } from '../Button';
 import { useFocusTrap } from '@vueuse/integrations/useFocusTrap';
 import { onBeforeUnmount, useTemplateRef, watchEffect } from 'vue';
-import { onKeyStroke } from '@vueuse/core';
 import { useClosestParentFrame } from '@shared/lib/useClosestParentFrame';
+import { useOnEscapeKeyStacked } from '@shared/lib/useOnEscapeKeyStacked';
+import { useOnBack } from '@shared/lib/useOnBack';
 
 const {
   applyLabel,
@@ -64,7 +65,11 @@ watchEffect(() => {
   }
 });
 
-onKeyStroke('Escape', () => {
+useOnEscapeKeyStacked(() => {
+  onCancel();
+});
+
+useOnBack(() => {
   onCancel();
 });
 
