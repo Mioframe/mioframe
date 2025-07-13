@@ -87,6 +87,9 @@ watch(
 
 const showOverlayWatchHandle = watch(showOverlay, (showOverlay) => {
   showWatchHandle.pause();
+  if (!showOverlay && show.value) {
+    onCancel();
+  }
   show.value = showOverlay;
   void nextTick(showWatchHandle.resume);
 });
