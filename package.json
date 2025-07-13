@@ -34,6 +34,7 @@
     "match-sorter": "^8.0.3",
     "material-symbols": "^0.32.0",
     "modern-normalize": "^3.0.1",
+    "p-limit": "^6.2.0",
     "parse-duration": "^2.1.4",
     "perfect-debounce": "^1.0.0",
     "quickselect": "^3.0.0",

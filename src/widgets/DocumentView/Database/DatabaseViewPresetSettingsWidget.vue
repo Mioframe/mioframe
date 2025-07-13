@@ -67,6 +67,14 @@ const viewContextMenu = defineMenuButtonList([
 
 const { confirm } = useDialog();
 
+const openRenameDialog = (viewId: DatabaseViewId) => {
+  renameViewId.value = viewId;
+};
+
+const closeRenameDialog = () => {
+  renameViewId.value = undefined;
+};
+
 const onClickViewContextMenu = async (
   viewId: DatabaseViewId,
   { key: action }: { key: VIEW_CONTEXT_ACTION },
@@ -88,7 +96,7 @@ const onClickViewContextMenu = async (
     }
 
     case VIEW_CONTEXT_ACTION.rename: {
-      renameViewId.value = viewId;
+      openRenameDialog(viewId);
       break;
     }
 
@@ -154,7 +162,7 @@ const onClickViewContextMenu = async (
     <!-- панель настройки шаблона отображения -->
 
     <DatabaseViewCreateDialog
-      v-if="isShowAddView"
+      v-model:show="isShowAddView"
       :doc-handle="docHandle"
       @created="isShowAddView = false"
       @cancel="isShowAddView = false"
@@ -162,8 +170,10 @@ const onClickViewContextMenu = async (
 
     <DatabaseViewRenameDialog
       v-if="renameViewId"
+      :show="!!renameViewId"
       :doc-handle="docHandle"
       :view-id="renameViewId"
+      @update:show="(show) => show || closeRenameDialog()"
       @cancel="renameViewId = undefined"
       @completed="renameViewId = undefined"
     />

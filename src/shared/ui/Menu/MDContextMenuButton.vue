@@ -1,7 +1,7 @@
 <script setup lang="ts" generic="T extends MenuButtonDescription">
 import { MDIconButton } from '@shared/ui/Button';
 import type { MaybeElement } from '@vueuse/core';
-import { ref, useTemplateRef } from 'vue';
+import { nextTick, ref, useTemplateRef } from 'vue';
 import type { MenuButtonDescription } from './types';
 import MDMenu from './MDMenu.vue';
 
@@ -30,9 +30,10 @@ const emit = defineEmits<{
   click: [item: T];
 }>();
 
-const onClick = (item: T) => {
-  emit('click', item);
+const onClick = async (item: T) => {
   showMenu.value = false;
+  await nextTick();
+  emit('click', item);
 };
 
 const onClickOutsideMenu = () => {
@@ -52,7 +53,7 @@ const onClickOutsideMenu = () => {
 
   <MDMenu
     v-if="btns.length"
-    :show="showMenu"
+    v-model:show="showMenu"
     :target-el="targetBtn"
     :btns="btns"
     @click-outside="onClickOutsideMenu"

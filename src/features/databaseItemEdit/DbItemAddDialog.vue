@@ -18,6 +18,8 @@ const emit = defineEmits<{
   cancel: [];
 }>();
 
+const show = defineModel<boolean>('show', { required: true });
+
 defineSlots<{
   valueField(p: {
     property: GeneralProperty;
@@ -38,6 +40,7 @@ const onCancel = () => {
 
 <template>
   <DbItemEditDialog
+    v-model:show="show"
     :properties="properties"
     headline="Add item"
     supporting-text="Fill in the properties of the new item."

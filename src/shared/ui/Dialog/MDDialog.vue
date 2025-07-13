@@ -1,23 +1,22 @@
 <script setup lang="ts">
 import { MDButton } from '../Button';
 import { useFocusTrap } from '@vueuse/integrations/useFocusTrap';
-import { onBeforeUnmount, useTemplateRef, watchEffect } from 'vue';
+import { nextTick, onBeforeUnmount, useTemplateRef, watch } from 'vue';
 import { useClosestParentFrame } from '@shared/lib/useClosestParentFrame';
 import { useOnEscapeKeyStacked } from '@shared/lib/useOnEscapeKeyStacked';
-import { useOnBack } from '@shared/lib/useOnBack';
+import { useOverlayNavigation } from '@shared/lib/useOverlayNavigation';
+import { uniqueId } from '@shared/lib/uniqueId';
 
 const {
   applyLabel,
   cancelLabel = 'Cancel',
   hasCancelAction,
   headline,
-  hide,
   loading,
   supportingText,
   type: dialogType = 'basic',
   class: stylesClass,
 } = defineProps<{
-  hide?: boolean;
   headline: string;
   supportingText: string;
   type?: 'basic' | 'full-screen';
@@ -38,6 +37,8 @@ const emit = defineEmits<{
   apply: [];
 }>();
 
+const show = defineModel<boolean>('show', { required: true });
+
 const onSubmit = () => {
   if (!loading) {
     emit('apply');
@@ -47,6 +48,7 @@ const onSubmit = () => {
 const onCancel = () => {
   if (!loading && hasCancelAction) {
     emit('cancel');
+    showOverlay.value = false;
   }
 };
 
@@ -57,19 +59,7 @@ const { activate: lockFocus, deactivate: unlockFocus } = useFocusTrap(formEl, {
   allowOutsideClick: true,
 });
 
-watchEffect(() => {
-  if (hide) {
-    unlockFocus();
-  } else {
-    lockFocus();
-  }
-});
-
 useOnEscapeKeyStacked(() => {
-  onCancel();
-});
-
-useOnBack(() => {
   onCancel();
 });
 
@@ -78,12 +68,45 @@ onBeforeUnmount(() => {
 });
 
 const targetTeleport = useClosestParentFrame();
+
+const { show: showOverlay } = useOverlayNavigation(uniqueId('dialog'));
+
+watch(
+  [showOverlay, formEl],
+  ([showOverlay, formEl]) => {
+    if (showOverlay && formEl) {
+      void nextTick(() => {
+        lockFocus();
+      });
+    } else {
+      unlockFocus();
+    }
+  },
+  { flush: 'post' },
+);
+
+const showOverlayWatchHandle = watch(showOverlay, (showOverlay) => {
+  showWatchHandle.pause();
+  show.value = showOverlay;
+  void nextTick(showWatchHandle.resume);
+});
+
+const showWatchHandle = watch(
+  show,
+  (show) => {
+    showOverlayWatchHandle.pause();
+    showOverlay.value = show;
+    void nextTick(showOverlayWatchHandle.resume);
+  },
+  { immediate: true },
+);
 </script>
 
 <template>
   <Teleport defer :to="targetTeleport">
     <dialog
-      :open="!hide"
+      v-if="showOverlay"
+      :open="showOverlay"
       class="md-dialog md-dialog__scrim"
       :class="[
         {

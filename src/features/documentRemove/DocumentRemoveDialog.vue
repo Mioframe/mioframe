@@ -11,6 +11,8 @@ const { docHandle } = defineProps<{
   docHandle: AMDocHandle;
 }>();
 
+const show = defineModel<boolean>('show', { required: true });
+
 const docHandleRef = toRef(() => docHandle);
 
 const emit = defineEmits<{
@@ -42,8 +44,9 @@ const supportingText = computed(
 
 <template>
   <MDDialog
-    :headline
-    :supporting-text
+    v-model:show="show"
+    :headline="headline"
+    :supporting-text="supportingText"
     cancel-label="Cancel"
     apply-label="Remove"
     :loading="!!loading"

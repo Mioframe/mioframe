@@ -28,6 +28,8 @@ const emit = defineEmits<{
   cancel: [];
 }>();
 
+const show = defineModel<boolean>('show', { required: true });
+
 defineSlots<{
   valueField(p: {
     property: GeneralProperty;
@@ -61,6 +63,7 @@ const onUpdateValue = (propertyId: DatabasePropertyId, value: unknown) => {
 
 <template>
   <MDDialog
+    v-model:show="show"
     :headline="headline"
     :supporting-text="supportingText"
     :apply-label="applyLabel"

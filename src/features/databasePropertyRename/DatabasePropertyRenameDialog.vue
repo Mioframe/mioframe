@@ -19,6 +19,8 @@ const emit = defineEmits<{
   cancel: [];
 }>();
 
+const show = defineModel<boolean>('show', { required: true });
+
 const onApply = () => {
   if (stateName.value?.length) {
     emit('apply', stateName.value);
@@ -33,6 +35,7 @@ const onCancel = () => {
 
 <template>
   <MDDialog
+    v-model:show="show"
     headline="Rename property"
     supporting-text="Enter a new property name"
     apply-label="Save"
