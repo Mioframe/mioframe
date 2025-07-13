@@ -11,6 +11,8 @@ const emit = defineEmits<{
   cancel: [];
 }>();
 
+const show = defineModel<boolean>('show', { required: true });
+
 const stateName = ref<string>();
 
 const onCreate = () => {
@@ -53,6 +55,7 @@ const documentType = ref<(typeof documentTypeOptions)[number][]>([
 
 <template>
   <MDDialog
+    v-model:show="show"
     headline="Create Document"
     supporting-text="Think of a name and select the type of the new document."
     apply-label="Create"

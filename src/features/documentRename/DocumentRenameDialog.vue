@@ -15,6 +15,8 @@ const emit = defineEmits<{
   cancel: [];
 }>();
 
+const show = defineModel<boolean>('show', { required: true });
+
 const cfrDocument = useCFRDocument(toRef(() => docHandle));
 
 const { content, change } = toRefs(cfrDocument);
@@ -45,6 +47,7 @@ const onCancel = () => {
 
 <template>
   <MDDialog
+    v-model:show="show"
     headline="Rename Document"
     supporting-text="Change the document title or leave it as is."
     apply-label="Apply"

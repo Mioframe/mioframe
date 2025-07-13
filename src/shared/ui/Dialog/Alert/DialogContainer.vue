@@ -15,6 +15,7 @@ const { alertSet } = useDialogState();
       <MDDialog
         v-for="item in alertSet"
         :key="item.id"
+        :show="alertSet.has(item)"
         :headline="item.headline"
         :supporting-text="item.supportingText"
         :apply-label="item.confirmLabel ?? 'Ok'"

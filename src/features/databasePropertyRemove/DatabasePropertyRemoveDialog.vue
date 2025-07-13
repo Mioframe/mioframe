@@ -6,10 +6,13 @@ const emit = defineEmits<{
   apply: [];
   cancel: [];
 }>();
+
+const show = defineModel<boolean>('show', { required: true });
 </script>
 
 <template>
   <MDDialog
+    v-model:show="show"
     headline="Remove property?"
     supporting-text="Are you sure you want to delete the property and its data?"
     apply-label="Remove"
