@@ -36,7 +36,6 @@ const props = defineProps<{
   btns: T[];
   transition?: boolean;
   outsideIgnore?: MaybeElement[];
-  // show: boolean;
 }>();
 
 const { targetEl, btns, outsideIgnore } = toRefs(props);

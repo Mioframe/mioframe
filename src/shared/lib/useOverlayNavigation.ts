@@ -31,7 +31,6 @@ export const useOverlayNavigationState = createGlobalState(() => {
   };
 
   const close = async (id: string) => {
-    debugger;
     if (stack.value.includes(id)) {
       if (stack.value.at(-1) === id) {
         router.back();
