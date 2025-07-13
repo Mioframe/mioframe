@@ -5,7 +5,7 @@ import {
   unrefElement,
   type MaybeElementRef,
 } from '@vueuse/core';
-import { throttleDeprecated } from './throttle';
+import { throttle } from 'es-toolkit';
 
 type EventTypes = keyof WindowEventMap;
 
@@ -17,7 +17,7 @@ type InteractionOutsideOptions = {
 
 export const onInteractionOutside = (
   target: MaybeElementRef,
-  callback: () => void,
+  callback: () => unknown,
   options: InteractionOutsideOptions = {},
 ) => {
   const {
@@ -26,7 +26,7 @@ export const onInteractionOutside = (
     ignore = [],
   } = options;
 
-  const handleInteraction = throttleDeprecated((event: Event) => {
+  const handleInteraction = throttle((event: Event) => {
     const eventTarget = event.target instanceof Node ? event.target : undefined;
     if (!eventTarget) {
       return;

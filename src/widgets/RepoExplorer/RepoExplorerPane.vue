@@ -22,7 +22,7 @@ import { MDPaneContainer } from '@shared/ui/Layers';
 import { MDTopAppBar } from '@shared/ui/TopAppBar';
 import { FSEntryRenameDialog } from '@feature/entryRename';
 import { useRepoExplorer } from '@widget/RepoExplorer/useRepoExplorer';
-import { cloneDeep } from 'es-toolkit';
+import { cloneDeep, isUndefined } from 'es-toolkit';
 import type {
   AMDocHandle,
   AMDocumentId,
@@ -240,6 +240,15 @@ const onRenameEntry = async (newName: string) => {
     loadingRename.value -= 1;
   }
 };
+
+const showFSEntryRenameDialog = computed({
+  get: () => !isUndefined(entryKeyToRename),
+  set: (v) => {
+    if (!v) {
+      entryKeyToRename.value = undefined;
+    }
+  },
+});
 </script>
 
 <template>
@@ -355,8 +364,8 @@ const onRenameEntry = async (newName: string) => {
 
     <FSEntryRenameDialog
       v-if="entryKeyToRename"
+      v-model:show="showFSEntryRenameDialog"
       :name="entryKeyToRename"
-      :show="!!entryKeyToRename"
       :loading="!!loadingRename"
       @cancel="entryKeyToRename = undefined"
       @rename="onRenameEntry"
