@@ -285,6 +285,7 @@ const onClickItemContextBtn = async (
 
     <DatabasePropertyCreationDialog
       v-if="isShowAddProperty"
+      v-model:show="isShowAddProperty"
       :directory="directory"
       @create="onCreateProperty"
       @cancel="isShowAddProperty = false"
@@ -292,6 +293,7 @@ const onClickItemContextBtn = async (
 
     <DbItemAddDialog
       v-if="isShowAddItem && properties"
+      v-model:show="isShowAddItem"
       :properties="properties"
       @add="onAddItem"
       @cancel="isShowAddItem = false"
@@ -310,6 +312,7 @@ const onClickItemContextBtn = async (
 
     <DatabasePropertyRemoveDialog
       v-if="removePropertyId"
+      :show="!!removePropertyId"
       @apply="onApplyRemoveProperty(removePropertyId)"
       @cancel="removePropertyId = undefined"
     />
@@ -317,6 +320,7 @@ const onClickItemContextBtn = async (
     <DatabasePropertyRenameDialog
       v-if="renamePropertyId"
       :name="renamePropertyName"
+      :show="!!renamePropertyId"
       @apply="onApplyRenameProperty(renamePropertyId, $event)"
       @cancel="renamePropertyId = undefined"
     />

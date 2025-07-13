@@ -8,6 +8,8 @@ const emit = defineEmits<{
   cancel: [];
 }>();
 
+const show = defineModel<boolean>('show', { required: true });
+
 const loading = ref(false);
 
 const errorText = ref<string>();
@@ -32,6 +34,7 @@ const onCancel = () => {
 
 <template>
   <MDDialog
+    v-model:show="show"
     headline="Create a New Folder"
     apply-label="Create"
     cancel-label="Cancel"

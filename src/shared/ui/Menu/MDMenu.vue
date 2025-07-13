@@ -11,9 +11,15 @@ import {
   toRefs,
   toValue,
   useTemplateRef,
+  watch,
   watchEffect,
 } from 'vue';
-import { unrefElement, useElementBounding, useWindowSize } from '@vueuse/core';
+import {
+  syncRefs,
+  unrefElement,
+  useElementBounding,
+  useWindowSize,
+} from '@vueuse/core';
 import { MDListContainer, MDListItem } from '../Lists';
 import type { MenuButtonDescription } from './types';
 import { MDSymbol } from '../Icon';
@@ -22,22 +28,26 @@ import { onInteractionOutside } from '@shared/lib/onInteractionOutside';
 import { useFocusTrap } from '@vueuse/integrations/useFocusTrap';
 import { useKeyboardSearch } from '@shared/lib/useKeyboardSearch';
 import { isUndefined } from 'es-toolkit';
+import { useOverlayNavigation } from '@shared/lib/useOverlayNavigation';
+import { uniqueId } from '@shared/lib/uniqueId';
 
 const props = defineProps<{
   targetEl: MaybeElement;
   btns: T[];
   transition?: boolean;
   outsideIgnore?: MaybeElement[];
-  show: boolean;
+  // show: boolean;
 }>();
 
-const { targetEl, btns, outsideIgnore, show } = toRefs(props);
+const { targetEl, btns, outsideIgnore } = toRefs(props);
 
 const emit = defineEmits<{
   click: [menuItem: T];
   clickOutside: [];
   deactivateFocus: [];
 }>();
+
+const show = defineModel<boolean>('show', { required: true });
 
 const onClick = (menuItem: T) => {
   emit('click', menuItem);
@@ -181,13 +191,21 @@ watchEffect(() => {
     }
   }
 });
+
+const { show: showOverlay } = useOverlayNavigation(uniqueId('menu'));
+
+watch(show, (show) => {
+  showOverlay.value = show;
+});
+
+syncRefs(showOverlay, show);
 </script>
 
 <template>
   <Teleport defer :to="targetTeleport">
     <MDListContainer
       is="div"
-      v-if="show"
+      v-if="showOverlay"
       ref="listContainerEl"
       class="md md-menu"
       :style="containerStyle"

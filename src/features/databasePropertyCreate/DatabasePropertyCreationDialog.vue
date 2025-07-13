@@ -36,6 +36,8 @@ const emit = defineEmits<{
   cancel: [];
 }>();
 
+const show = defineModel<boolean>('show', { required: true });
+
 const stateName = ref<string>();
 
 const propertyTypeList = {
@@ -123,6 +125,7 @@ const onCancel = () => {
 
 <template>
   <MDDialog
+    v-model:show="show"
     headline="Create Property"
     supporting-text="Enter a name and select the type of the new property."
     apply-label="Create"

@@ -11,6 +11,8 @@ const emit = defineEmits<{
   apply: [name: string];
 }>();
 
+const show = defineModel<boolean>('show', { required: true });
+
 const loading = ref(0);
 
 const onSubmit = () => {
@@ -31,8 +33,9 @@ const supportingText = computed(
 
 <template>
   <MDDialog
-    :headline
-    :supporting-text
+    v-model:show="show"
+    :headline="headline"
+    :supporting-text="supportingText"
     cancel-label="Cancel"
     apply-label="Remove"
     :loading="!!loading"

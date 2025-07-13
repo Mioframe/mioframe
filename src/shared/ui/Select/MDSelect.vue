@@ -11,7 +11,6 @@ import { shallowClone } from '@shared/lib/shallowClone';
 import { isObjectLike } from '@shared/lib/typeGuards';
 import type { SelectOption } from './types';
 import { useOnEscapeKeyStacked } from '@shared/lib/useOnEscapeKeyStacked';
-import { useOnBack } from '@shared/lib/useOnBack';
 
 const props = defineProps<{
   labelText: string;
@@ -79,14 +78,6 @@ onKeyStroke('Backspace', () => {
 });
 
 useOnEscapeKeyStacked(() => {
-  if (showMenu.value) {
-    showMenu.value = false;
-    return false;
-  }
-  return true;
-});
-
-useOnBack(() => {
   if (showMenu.value) {
     showMenu.value = false;
     return false;
@@ -173,8 +164,8 @@ const onClickOutside = () => {
     </MDFieldContainer>
 
     <MDMenu
-      v-if="showMenu"
-      show
+      v-if="options.length"
+      v-model:show="showMenu"
       :target-el="fieldContainerRef"
       :btns="options"
       @click="onClickOption"

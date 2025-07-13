@@ -318,19 +318,20 @@ const onRenameEntry = async (newName: string) => {
     </div>
 
     <DocumentCreationDialog
-      v-if="showFormNewDocument"
+      v-model:show="showFormNewDocument"
       @cancel="showFormNewDocument = false"
       @create="onCreateNewDocument"
     />
 
     <DirectoryCreateDialog
-      v-if="isShowCreateDirectoryForm"
+      v-model:show="isShowCreateDirectoryForm"
       @cancel="isShowCreateDirectoryForm = false"
       @create="onCreateDirectory"
     />
 
     <FSEntryRemoveDialog
       v-if="entryKeyToRemove"
+      :show="!!entryKeyToRemove"
       :name="entryKeyToRemove"
       @cancel="entryKeyToRemove = undefined"
       @apply="onRemoveEntry"
@@ -338,6 +339,7 @@ const onRenameEntry = async (newName: string) => {
 
     <DocumentRemoveDialog
       v-if="documentToRemove"
+      :show="!!documentToRemove"
       :doc-handle="documentToRemove"
       @cancel="documentIdToRemove = undefined"
       @apply="onDocumentRemoveApply"
@@ -345,6 +347,7 @@ const onRenameEntry = async (newName: string) => {
 
     <DocumentRenameDialog
       v-if="documentToRename"
+      :show="!!documentToRename"
       :doc-handle="documentToRename"
       @renamed="documentToRename = undefined"
       @cancel="documentToRename = undefined"
@@ -353,6 +356,7 @@ const onRenameEntry = async (newName: string) => {
     <FSEntryRenameDialog
       v-if="entryKeyToRename"
       :name="entryKeyToRename"
+      :show="!!entryKeyToRename"
       :loading="!!loadingRename"
       @cancel="entryKeyToRename = undefined"
       @rename="onRenameEntry"
