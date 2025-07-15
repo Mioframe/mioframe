@@ -1,12 +1,12 @@
 <script setup lang="ts">
 import { PlaygroundStory } from '@shared/lib/playground';
 import MDFieldContainer from './MDFieldContainer.vue';
-import { useQueryState } from '@shared/lib/useQueryState';
+import { useQueryValue } from '@shared/lib/useQueryState';
 import type { ComponentProps } from 'vue-component-type-helpers';
 
 const typeOptions = ['filled', 'outlined', undefined] as const;
 
-const state = useQueryState<ComponentProps<typeof MDFieldContainer>>('state', {
+const state = useQueryValue<ComponentProps<typeof MDFieldContainer>>('state', {
   labelText: 'labelText',
   disabled: false,
   error: false,

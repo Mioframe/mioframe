@@ -2,7 +2,7 @@ import type { DirectoryLocalEntry } from '@shared/lib/localFileSystem';
 import { createLocalDirectory } from '@shared/lib/localFileSystem';
 import { useDialog } from '@shared/ui/Dialog';
 import { createGlobalState } from '@vueuse/core';
-import { OPFS } from '@widget/RepoExplorer/repoExplorerState';
+import { OPFS } from '@widget/MainViewV2/useRepoExplorerState';
 import { computed, shallowReactive } from 'vue';
 
 export const useBrowserStorage = createGlobalState(() => {

@@ -12,7 +12,7 @@ import {
   useEventListener,
   useVibrate,
 } from '@vueuse/core';
-import { useTemplateRef, defineModel, computed, ref, watchEffect } from 'vue';
+import { useTemplateRef, computed, ref, watchEffect } from 'vue';
 import { useFirstFocus } from '@shared/lib/useFirstFocus';
 import { debounce } from 'es-toolkit';
 import { useFocusIndicator } from './useFocusIndicator';

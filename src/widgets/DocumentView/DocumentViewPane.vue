@@ -1,26 +1,25 @@
 <script setup lang="ts">
 import { useCFRDocument } from '@shared/lib/cfrDocument/useCFRDocument';
-import { computed } from 'vue';
+import { computed, toRefs } from 'vue';
 import { DATABASE_DOCUMENT_TYPE } from '@shared/lib/databaseDocument';
 import DatabaseViewWidget from './Database/DatabaseViewWidget.vue';
-import type { AMDocumentId } from '@shared/lib/automerge/automergeTypes';
+import { MDPaneContainer } from '@shared/ui/Layers';
 import type { DirectoryFSEntry } from '@shared/lib/fileSystem';
+import type { AMDocumentId } from '@shared/lib/automerge';
 import { useDirectoryRepo } from '@shared/lib/cfrDocument';
 
-/**
- * Виджет просмотра документа
- */
-
-const { directory, documentId } = defineProps<{
+const props = defineProps<{
   directory: DirectoryFSEntry;
   documentId: AMDocumentId;
 }>();
 
-const directoryRef = computed(() => directory);
+const { directory, documentId } = toRefs(props);
 
-const repo = useDirectoryRepo(directoryRef);
+const directoryRepo = useDirectoryRepo(directory);
 
-const docHandle = computed(() => repo.value?.map.get(documentId));
+const docHandle = computed(() =>
+  documentId.value ? directoryRepo.value?.map.get(documentId.value) : undefined,
+);
 
 const cfrDocument = useCFRDocument(docHandle);
 
@@ -30,23 +29,14 @@ const documentType = computed(() => content.value?.type);
 </script>
 
 <template>
-  <div class="document-view-widget">
+  <MDPaneContainer>
+    <!-- TODO: добавить шапку с названием документа и кнопкой закрытия документа -->
     <DatabaseViewWidget
-      v-if="docHandle && documentType === DATABASE_DOCUMENT_TYPE"
+      v-if="directory && docHandle && documentType === DATABASE_DOCUMENT_TYPE"
       :directory="directory"
       :doc-handle="docHandle"
     />
 
     <pre v-else>{{ content }}</pre>
-  </div>
+  </MDPaneContainer>
 </template>
-
-<style lang="css" scoped>
-.document-view-widget {
-  position: relative;
-  flex: 1 1;
-  display: flex;
-  flex-direction: column;
-  overflow-y: auto;
-}
-</style>

@@ -1,38 +1,42 @@
 <script setup lang="ts">
 import { MDListItem } from '@shared/ui/Lists';
 import MDListContainer from '@shared/ui/Lists/MDListContainer.vue';
-import { vPressedState } from '@shared/lib/md/stateHelper';
 import { MDSymbol } from '@shared/ui/Icon';
-import { useRepoExplorer } from '@widget/RepoExplorer/useRepoExplorer';
-import { OPFS } from '@widget/RepoExplorer/repoExplorerState';
+import {
+  OPFS,
+  useRepoExplorerState,
+} from '@widget/MainViewV2/useRepoExplorerState';
 import { useBrowserStorage } from './useBrowserStorage';
 import type { DirectoryLocalEntry } from '@shared/lib/localFileSystem';
 import { computed } from 'vue';
 
-const { go } = useRepoExplorer();
+const { open } = useRepoExplorerState();
 
 const { mounted } = useBrowserStorage();
 
 const onClickBrowserStorage = async () => {
-  await go({
+  await open({
     provider: 'browser',
     path: [OPFS],
+    document: undefined,
   });
 };
 
 const isSupportDirectoryPicker = 'showDirectoryPicker' in window;
 
 const onClickLocalFolder = async () => {
-  await go({
+  await open({
     provider: 'browser',
     path: [],
+    document: undefined,
   });
 };
 
 const onClickMountedItem = async (item: DirectoryLocalEntry) => {
-  await go({
+  await open({
     provider: 'browser',
     path: item.path,
+    document: undefined,
   });
 };
 
@@ -42,11 +46,10 @@ const isMountedOPFS = computed(() => mounted.value.has(OPFS));
 <template>
   <MDListContainer class="local-storage-widget" type="grid">
     <MDListItem
+      is="button"
       v-if="!isMountedOPFS"
-      v-pressed-state
       :headline="OPFS"
       class="local-storage-widget__item"
-      is="button"
       supporting-text="Storage inside your browser"
       @click="onClickBrowserStorage"
     >
@@ -56,12 +59,11 @@ const isMountedOPFS = computed(() => mounted.value.has(OPFS));
     </MDListItem>
 
     <MDListItem
+      is="button"
       v-if="isSupportDirectoryPicker"
-      v-pressed-state
       headline="Select Local Folder"
       class="local-storage-widget__item"
       supporting-text="Folder on your device"
-      is="button"
       @click="onClickLocalFolder"
     >
       <template #leadingIcon>
@@ -70,13 +72,12 @@ const isMountedOPFS = computed(() => mounted.value.has(OPFS));
     </MDListItem>
 
     <MDListItem
+      is="button"
       v-for="[name, item] in mounted"
       :key="name"
-      v-pressed-state
       :headline="name"
       class="local-storage-widget__item"
       supporting-text="Folder on your device"
-      is="button"
       @click="onClickMountedItem(item)"
     >
       <template #leadingIcon>

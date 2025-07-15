@@ -6,7 +6,7 @@ import {
   PlaygroundString,
   PlaygroundUnion,
 } from '@shared/lib/playground';
-import { useQueryState } from '@shared/lib/useQueryState';
+import { useQueryValue } from '@shared/lib/useQueryState';
 import type { ComponentProps } from 'vue-component-type-helpers';
 import MDIconButton from './MDIconButton.vue';
 
@@ -37,7 +37,7 @@ const typeOptions = ['default', 'toggle', undefined] as const;
 
 const widthOptions = ['default', 'narrow', 'wide', undefined] as const;
 
-const state = useQueryState<State>('state', {
+const state = useQueryValue<State>('state', {
   tooltip: 'tooltip',
   color: undefined,
   disabled: undefined,

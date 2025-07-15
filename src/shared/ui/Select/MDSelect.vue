@@ -164,7 +164,7 @@ const onClickOutside = () => {
     </MDFieldContainer>
 
     <MDMenu
-      v-if="options.length"
+      v-if="options.length && showMenu"
       v-model:show="showMenu"
       :target-el="fieldContainerRef"
       :btns="options"
