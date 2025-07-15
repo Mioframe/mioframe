@@ -162,6 +162,7 @@ const onClickViewContextMenu = async (
     <!-- панель настройки шаблона отображения -->
 
     <DatabaseViewCreateDialog
+      v-if="isShowAddView"
       v-model:show="isShowAddView"
       :doc-handle="docHandle"
       @created="isShowAddView = false"

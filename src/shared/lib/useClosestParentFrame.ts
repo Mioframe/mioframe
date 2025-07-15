@@ -1,14 +1,14 @@
 import { unrefElement, useCurrentElement } from '@vueuse/core';
 import { computed } from 'vue';
 
-interface MaybeElement {
-  parentElement: MaybeElement | Element | null | undefined;
+interface WithParent {
+  parentElement: WithParent | Element | null | undefined;
 }
 
 export const useClosestParentFrame = () => {
   const currentElement = useCurrentElement();
 
-  const findParentElement = (maybeEl: MaybeElement | Element) => {
+  const findParentElement = (maybeEl: WithParent | Element) => {
     if (maybeEl instanceof Element) {
       return maybeEl;
     }
