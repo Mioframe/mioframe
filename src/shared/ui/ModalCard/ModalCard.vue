@@ -35,16 +35,13 @@ watchEffect(async () => {
   }
 });
 
-onBeforeUnmount(() => {
-  deactivate();
-});
-
 const showCard = ref(false);
 
 onMounted(() => {
   showCard.value = true;
 });
 onBeforeUnmount(() => {
+  deactivate();
   showCard.value = false;
 });
 </script>

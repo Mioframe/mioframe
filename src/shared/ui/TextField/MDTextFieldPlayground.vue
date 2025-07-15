@@ -8,7 +8,7 @@ import {
   PlaygroundUnion,
 } from '@shared/lib/playground';
 import MDTextField from './MDTextField.vue';
-import { useQueryState } from '@shared/lib/useQueryState';
+import { useQueryValue } from '@shared/lib/useQueryState';
 import type { ComponentProps } from 'vue-component-type-helpers';
 
 const inputTypeOptions = [
@@ -31,7 +31,7 @@ const inputTypeOptions = [
 
 const typeOptions = ['filled', 'outlined', undefined] as const;
 
-const state = useQueryState<ComponentProps<typeof MDTextField>>('state', {
+const state = useQueryValue<ComponentProps<typeof MDTextField>>('state', {
   labelText: 'labelText',
   modelValue: undefined,
   disabled: undefined,

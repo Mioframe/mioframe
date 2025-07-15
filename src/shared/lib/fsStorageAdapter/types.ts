@@ -6,7 +6,8 @@ import { custom, literal, string, tuple, union } from 'zod/v4-mini';
 import type { AMDocumentId } from '../automerge/automergeTypes';
 
 export const zodDocumentId = custom<AMDocumentId>(
-  (val) => isValidDocumentId(val) || val === 'storage-adapter-id',
+  (val: unknown): val is AMDocumentId =>
+    (isString(val) && isValidDocumentId(val)) || val === 'storage-adapter-id',
 );
 
 export const zodHash = string();

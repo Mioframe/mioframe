@@ -1,6 +1,7 @@
 import { MainView } from '@widget/MainViewV2';
 import type { RouteRecordRaw } from 'vue-router';
 import { createRouter, createWebHistory } from 'vue-router';
+import qs from 'use-qs';
 
 const routes: RouteRecordRaw[] = [
   {
@@ -38,4 +39,6 @@ export const router = createRouter({
     import.meta.env.PROD ? window.location.pathname : undefined,
   ),
   routes,
+  parseQuery: qs.parse,
+  stringifyQuery: qs.stringify,
 });

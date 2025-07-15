@@ -1,31 +1,48 @@
 <script setup lang="ts">
 import { MDButton } from '../Button';
 import { useFocusTrap } from '@vueuse/integrations/useFocusTrap';
-import { nextTick, onBeforeUnmount, useTemplateRef, watch } from 'vue';
+import {
+  nextTick,
+  onBeforeUnmount,
+  toRefs,
+  toValue,
+  useTemplateRef,
+  watch,
+} from 'vue';
 import { useClosestParentFrame } from '@shared/lib/useClosestParentFrame';
 import { useOnEscapeKeyStacked } from '@shared/lib/useOnEscapeKeyStacked';
 import { useOverlayNavigation } from '@shared/lib/useOverlayNavigation';
 import { uniqueId } from '@shared/lib/uniqueId';
 
+const props = withDefaults(
+  defineProps<{
+    headline: string;
+    supportingText: string;
+    type?: 'basic' | 'full-screen';
+    cancelLabel?: string;
+    applyLabel: string;
+    hasCancelAction?: boolean;
+    loading?: boolean | number;
+    class?: unknown;
+    /**
+     * @constant
+     */
+    id?: string;
+  }>(),
+  { id: uniqueId('dialog'), cancelLabel: 'Cancel', type: 'basic' },
+);
+
 const {
   applyLabel,
-  cancelLabel = 'Cancel',
+  cancelLabel,
   hasCancelAction,
   headline,
   loading,
   supportingText,
-  type: dialogType = 'basic',
+  type: dialogType,
   class: stylesClass,
-} = defineProps<{
-  headline: string;
-  supportingText: string;
-  type?: 'basic' | 'full-screen';
-  cancelLabel?: string;
-  applyLabel: string;
-  hasCancelAction?: boolean;
-  loading?: boolean | number;
-  class?: unknown;
-}>();
+  id,
+} = toRefs(props);
 
 const slots = defineSlots<{
   default(): unknown;
@@ -40,13 +57,13 @@ const emit = defineEmits<{
 const show = defineModel<boolean>('show', { required: true });
 
 const onSubmit = () => {
-  if (!loading) {
+  if (!loading.value) {
     emit('apply');
   }
 };
 
 const onCancel = () => {
-  if (!loading && hasCancelAction) {
+  if (!loading.value && hasCancelAction.value) {
     emit('cancel');
     showOverlay.value = false;
   }
@@ -69,7 +86,7 @@ onBeforeUnmount(() => {
 
 const targetTeleport = useClosestParentFrame();
 
-const { show: showOverlay } = useOverlayNavigation(uniqueId('dialog'));
+const { show: showOverlay } = useOverlayNavigation(toValue(id));
 
 watch(
   [showOverlay, formEl],

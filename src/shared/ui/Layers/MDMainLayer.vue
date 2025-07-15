@@ -1,19 +1,7 @@
 <script setup lang="ts">
-import { computed, ref, watchEffect } from 'vue';
+import { computed, ref, watchEffect, useTemplateRef } from 'vue';
 import { useWindowSizeClass, WindowClass } from './useWindowSizeClass';
-import { MDTopAppBar } from '../TopAppBar';
-import { MDIconButton } from '../Button';
-import { MDSymbol } from '../Icon';
 import { useCssVar } from '@vueuse/core';
-
-const { showSecond = false, secondHeadline = '' } = defineProps<{
-  showSecond?: boolean;
-  secondHeadline?: string;
-}>();
-
-const emit = defineEmits<{
-  clickCloseSecond: [];
-}>();
 
 const slots = defineSlots<{
   navigation(): unknown;
@@ -23,20 +11,20 @@ const slots = defineSlots<{
 
 const { windowClass } = useWindowSizeClass();
 
-const isShowFirstPane = computed(
-  () => !showSecond || windowClass.value !== WindowClass.Compact,
-);
+const secondPaneEmptyInner = useTemplateRef('secondPaneEmptyInner');
 
-const onClickBack = () => {
-  emit('clickCloseSecond');
-};
+const isShowSecondPane = computed(() => !secondPaneEmptyInner.value);
+
+const isShowFirstPane = computed(
+  () => !isShowSecondPane.value || windowClass.value !== WindowClass.Compact,
+);
 
 const firstPaneSize = computed((): number => {
   if (isShowFirstPane.value) {
     if (windowClass.value === WindowClass.Medium) {
       return 50;
     }
-    if (showSecond) {
+    if (isShowSecondPane.value) {
       return 30;
     }
     return 100;
@@ -85,22 +73,10 @@ const windowClassModifier = computed(() => {
         <slot name="firstPane" />
       </div>
 
-      <div v-if="showSecond" class="body__second-pane">
-        <div class="md body__container">
-          <MDTopAppBar :headline="secondHeadline">
-            <template #leadingNavigation>
-              <MDIconButton tooltip="back" @click="onClickBack">
-                <template #icon>
-                  <MDSymbol v-if="isShowFirstPane" name="close" />
-
-                  <MDSymbol v-else name="arrow_back" />
-                </template>
-              </MDIconButton>
-            </template>
-          </MDTopAppBar>
-
-          <slot name="secondPane" />
-        </div>
+      <div v-show="isShowSecondPane" class="body__second-pane">
+        <slot name="secondPane">
+          <i ref="secondPaneEmptyInner" />
+        </slot>
       </div>
     </section>
   </main>

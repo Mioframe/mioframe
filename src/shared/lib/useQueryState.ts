@@ -4,7 +4,7 @@ import type { MaybeRef, Reactive } from 'vue';
 import { nextTick, reactive, toValue, watch, watchEffect } from 'vue';
 import queryString from 'use-qs';
 
-export const useQueryState = <P extends object>(
+export const useQueryValue = <P extends object>(
   queryRootName: string,
   initialState: P,
   mode?: MaybeRef<'push' | 'replace'>,

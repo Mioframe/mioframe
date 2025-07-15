@@ -21,8 +21,7 @@ import { DocumentRenameDialog } from '@feature/documentRename';
 import { MDPaneContainer } from '@shared/ui/Layers';
 import { MDTopAppBar } from '@shared/ui/TopAppBar';
 import { FSEntryRenameDialog } from '@feature/entryRename';
-import { useRepoExplorer } from '@widget/RepoExplorer/useRepoExplorer';
-import { cloneDeep, isUndefined } from 'es-toolkit';
+import { isUndefined } from 'es-toolkit';
 import type {
   AMDocHandle,
   AMDocumentId,
@@ -30,10 +29,7 @@ import type {
 import { useDirectoryFSEntryRef } from '@shared/lib/fileSystem/useDirectoryFSEntryRef';
 import { useDirectoryRepo } from '@shared/lib/cfrDocument/useDirectoryRepo';
 import { useSnackbar } from '@shared/ui/Snackbar';
-
-const emit = defineEmits<{
-  clickDocument: [id: AMDocumentId, directory: DirectoryFSEntry];
-}>();
+import { useRepoExplorerState } from '../useRepoExplorerState';
 
 const isShowCreateDirectoryForm = ref(false);
 
@@ -46,39 +42,31 @@ type FSEntry = DirectoryFSEntry | FileFSEntry;
 const entryKeyToRemove = ref<string>();
 
 const {
-  currentDirectory,
-  go: directoryGo,
-  up: directoryUp,
-  state: directoryState,
-} = useRepoExplorer();
+  directoryEntry: currentDirectory,
+  open,
+  up: openParent,
+  state: repoExplorerState,
+} = useRepoExplorerState();
 
-const directoryPath = computed(
-  () => directoryState.value?.path.map((name) => ({ name })) ?? [],
+const directoryPath = computed(() =>
+  repoExplorerState.path?.map((name) => ({ name })),
 );
 
 const directoryRef = useDirectoryFSEntryRef(currentDirectory);
 
 const onClickPath = async (indexPath: number) => {
-  const start = indexPath + 1;
-
-  if (directoryState.value?.path) {
-    const count = directoryState.value.path.length - start;
-
-    const path = cloneDeep(directoryState.value.path);
-
-    path.splice(start, count);
-
-    await directoryGo({
-      ...directoryState.value,
-      path,
+  if (repoExplorerState.path) {
+    await open({
+      ...repoExplorerState,
+      path: repoExplorerState.path.slice(0, indexPath),
     });
   }
 };
 
 const onClickEntry = async (_entryKey: PropertyKey, entry: FSEntry) => {
-  if (directoryState.value && isDirectoryRef(entry)) {
-    await directoryGo({
-      ...directoryState.value,
+  if (isDirectoryRef(entry)) {
+    await open({
+      ...repoExplorerState,
       path: entry.path,
     });
   }
@@ -202,24 +190,24 @@ const onDocumentRemoveApply = (documentId: AMDocumentId) => {
   documentIdToRemove.value = undefined;
 };
 
-const onClickDocument = (documentId: AMDocumentId) => {
+const onClickDocument = async (documentId: AMDocumentId) => {
   if (currentDirectory.value) {
-    emit('clickDocument', documentId, currentDirectory.value);
+    await open({
+      provider: repoExplorerState.provider,
+      path: currentDirectory.value.path,
+      document: documentId,
+    });
   }
 };
 
 const documentToRename = shallowRef<AMDocHandle>();
 
 const title = computed((): string | undefined => {
-  if (directoryState.value) {
-    return directoryState.value.provider;
-  }
-
-  return undefined;
+  return repoExplorerState.provider;
 });
 
 const onClickBack = async () => {
-  await directoryUp();
+  await openParent();
 };
 
 const loadingRename = ref(0);
@@ -264,6 +252,7 @@ const showFSEntryRenameDialog = computed({
     </MDTopAppBar>
 
     <MDNavigationPath
+      v-if="directoryPath"
       :path="directoryPath"
       class="document-explorer-widget__navigation-path"
       @click="onClickPath"
