@@ -14,12 +14,7 @@ import {
   watch,
   watchEffect,
 } from 'vue';
-import {
-  syncRefs,
-  unrefElement,
-  useElementBounding,
-  useWindowSize,
-} from '@vueuse/core';
+import { unrefElement, useElementBounding, useWindowSize } from '@vueuse/core';
 import { MDListContainer, MDListItem } from '../Lists';
 import type { MenuButtonDescription } from './types';
 import { MDSymbol } from '../Icon';
@@ -152,10 +147,12 @@ const { activate: activateMenuFocusTrap, deactivate: deactivateMenuFocusTrap } =
 
 watchEffect(
   () => {
-    if (show.value && listContainerEl.value) {
-      void nextTick(activateMenuFocusTrap);
-    } else {
-      void nextTick(deactivateMenuFocusTrap);
+    if (listContainerEl.value) {
+      if (show.value) {
+        void nextTick(activateMenuFocusTrap);
+      } else {
+        void nextTick(deactivateMenuFocusTrap);
+      }
     }
   },
   { flush: 'post' },
@@ -193,11 +190,21 @@ watchEffect(() => {
 
 const { show: showOverlay } = useOverlayNavigation(uniqueId('menu'));
 
-watch(show, (show) => {
-  showOverlay.value = show;
+const showOverlayWatchHandler = watch(showOverlay, (showOverlay) => {
+  showWatchHandler.pause();
+  show.value = showOverlay;
+  void nextTick(showWatchHandler.resume);
 });
 
-syncRefs(showOverlay, show);
+const showWatchHandler = watch(
+  show,
+  (show) => {
+    showOverlayWatchHandler.pause();
+    showOverlay.value = show;
+    void nextTick(showOverlayWatchHandler.resume);
+  },
+  { immediate: true },
+);
 </script>
 
 <template>

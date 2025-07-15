@@ -29,7 +29,7 @@ const props = withDefaults(
      */
     id?: string;
   }>(),
-  { id: uniqueId('dialog'), cancelLabel: 'Cancel', type: 'basic' },
+  { cancelLabel: 'Cancel', type: 'basic' },
 );
 
 const {
@@ -86,7 +86,9 @@ onBeforeUnmount(() => {
 
 const targetTeleport = useClosestParentFrame();
 
-const { show: showOverlay } = useOverlayNavigation(toValue(id));
+const { show: showOverlay } = useOverlayNavigation(
+  toValue(id) ?? uniqueId('dialog'),
+);
 
 watch(
   [showOverlay, formEl],
