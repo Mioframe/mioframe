@@ -1,7 +1,7 @@
 export interface MenuButtonDescription {
   label: string;
+  key: PropertyKey;
   symbolName?: string;
-  key?: PropertyKey;
 }
 
 export type MenuButtonList = MenuButtonDescription[];

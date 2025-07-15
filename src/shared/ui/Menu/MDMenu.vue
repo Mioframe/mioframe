@@ -212,8 +212,8 @@ syncRefs(showOverlay, show);
     >
       <MDListItem
         is="button"
-        v-for="(item, index) in btns"
-        :key="item.key ?? index"
+        v-for="item in btns"
+        :key="item.key"
         :headline="item.label"
         type="button"
         @click="onClick(item)"

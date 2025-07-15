@@ -6,7 +6,7 @@ import {
   PlaygroundString,
   PlaygroundUnion,
 } from '@shared/lib/playground';
-import { useQueryState } from '@shared/lib/useQueryState';
+import { useQueryValue } from '@shared/lib/useQueryState';
 import type { ComponentProps } from 'vue-component-type-helpers';
 import MDChip from './MDChip.vue';
 import { MDSymbol } from '../Icon';
@@ -18,7 +18,7 @@ interface State extends ComponentProps<typeof MDChip> {
 
 const typeOptions: State['type'][] = ['assist', 'filter', 'input'];
 
-const state = useQueryState<State>('state', {
+const state = useQueryValue<State>('state', {
   label: 'label',
   type: 'assist',
   elevated: undefined,

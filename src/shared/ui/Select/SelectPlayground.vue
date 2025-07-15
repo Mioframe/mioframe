@@ -2,23 +2,27 @@
 import PlaygroundStore from '@shared/lib/playground/PlaygroundStory.vue';
 import MDSelect from './MDSelect.vue';
 import type { ComponentProps } from 'vue-component-type-helpers';
-import { useQueryState } from '@shared/lib/useQueryState';
+import { useQueryValue } from '@shared/lib/useQueryState';
 import {
   PlaygroundOptionalBoolean,
   PlaygroundOptionalString,
   PlaygroundString,
   PlaygroundUnion,
 } from '@shared/lib/playground';
+import type { SelectOption } from './types';
 
 const options = Array(15)
   .fill(0)
-  .map((_, index) => ({
-    label: `option #${index}`,
-  }));
+  .map(
+    (_, index): SelectOption => ({
+      label: `option #${index}`,
+      key: index,
+    }),
+  );
 
 const typeOptions = ['filled', 'outlined', undefined];
 
-const state = useQueryState<ComponentProps<typeof MDSelect>>('state', {
+const state = useQueryValue<ComponentProps<typeof MDSelect>>('state', {
   labelText: 'labelText',
   modelValue: [],
   options: [],

@@ -2,12 +2,12 @@
 import { PlaygroundStory } from '@shared/lib/playground';
 import MDRichTooltip from './MDRichTooltip.vue';
 import { MDButton } from '../Button';
-import { useQueryState } from '@shared/lib/useQueryState';
+import { useQueryValue } from '@shared/lib/useQueryState';
 import type { ComponentProps } from 'vue-component-type-helpers';
 import { useTemplateRef } from 'vue';
 import type { VueInstance } from '@vueuse/core';
 
-const state = useQueryState<ComponentProps<typeof MDRichTooltip>>('state', {
+const state = useQueryValue<ComponentProps<typeof MDRichTooltip>>('state', {
   subhead: '',
   useHover: undefined,
   useClick: undefined,
