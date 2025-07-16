@@ -11,13 +11,13 @@ const targetTeleport = useClosestParentFrame();
 </script>
 
 <template>
-  <Teleport defer :to="targetTeleport">
+  <Teleport :to="targetTeleport">
     <FadeTransition group>
       <PlainTooltipItem
         v-for="([targetElement, text], index) in showerTooltips"
         :key="text + index"
         class="tooltip-container__tooltip"
-        :text
+        :text="text"
         :target-element="targetElement"
       />
     </FadeTransition>

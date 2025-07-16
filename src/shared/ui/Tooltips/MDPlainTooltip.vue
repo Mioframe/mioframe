@@ -29,7 +29,7 @@ const show = refDebounced(hovered, 1.5e3);
 </script>
 
 <template>
-  <Teleport :to="targetTeleport" defer :disabled="disabledTeleport">
+  <Teleport :to="targetTeleport"  :disabled="disabledTeleport">
     <Transition>
       <div
         v-if="show"

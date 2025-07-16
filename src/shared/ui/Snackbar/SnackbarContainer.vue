@@ -14,7 +14,7 @@ const targetTeleport = useClosestParentFrame();
 </script>
 
 <template>
-  <Teleport defer :to="targetTeleport">
+  <Teleport :to="targetTeleport">
     <div class="snackbar-container">
       <FadeTransition group>
         <MDSnackbar

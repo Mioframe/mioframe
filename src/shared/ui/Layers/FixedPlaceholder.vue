@@ -66,7 +66,7 @@ const targetTeleport = useClosestParentFrame();
 
 <template>
   <div ref="placeholder" class="fixed-placeholder">
-    <Teleport defer :to="targetTeleport">
+    <Teleport :to="targetTeleport">
       <div ref="content" class="fixed-placeholder__content">
         <slot />
       </div>
