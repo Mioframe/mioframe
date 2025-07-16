@@ -38,4 +38,8 @@ export const playgroundPages: PlaygroundPage[] = [
     name: 'Checkbox',
     component: () => import('@shared/ui/Checkbox/MDCheckboxPlayground.vue'),
   },
+  {
+    name: 'FAB',
+    component: () => import('@shared/ui/Button/MDFabPlayground.vue'),
+  },
 ];

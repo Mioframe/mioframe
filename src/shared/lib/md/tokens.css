@@ -82,6 +82,7 @@
   --md-sys-shape-corner-small: 8px;
   --md-sys-shape-corner-medium: 12px;
   --md-sys-shape-corner-large: 16px;
+  --md-sys-shape-corner-large-increased: 20dp;
   --md-sys-shape-corner-extra-large: 28px;
   --md-sys-shape-corner-extra-large-top: var(--md-sys-shape-corner-extra-large)
     var(--md-sys-shape-corner-extra-large) 0 0;
