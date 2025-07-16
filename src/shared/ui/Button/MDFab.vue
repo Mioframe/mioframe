@@ -2,13 +2,25 @@
 import { computed } from 'vue';
 import { MDCircularProgressIndicator } from '../ProgressIndicators';
 import { MDPlainTooltip } from '../Tooltips';
+import { MDState } from '../State';
+import { MDSymbol } from '../Icon';
 
-const props = defineProps<{
-  size?: 'small' | 'large';
-  type?: 'primary' | 'branded' | 'secondary' | 'surface' | 'tertiary';
-  tooltip: string;
-  loading?: number | boolean;
-}>();
+const props = withDefaults(
+  defineProps<{
+    size?: 'medium' | 'large';
+    color?:
+      | 'primary'
+      | 'secondary'
+      | 'tertiary'
+      | 'tonal-primary'
+      | 'tonal-secondary'
+      | 'tonal-tertiary';
+    tooltip: string;
+    loading?: number | boolean;
+    mdSymbol?: string;
+  }>(),
+  { color: 'primary' },
+);
 
 defineSlots<{
   icon(): unknown;
@@ -23,68 +35,74 @@ const sizeClass = computed(() => {
 });
 
 const typeClass = computed(() => {
-  return `md-fab_${props.type ?? 'primary'}`;
+  return `md-fab_${props.color}`;
 });
-
-// FIXME: обновить внешний вид кнопки
 </script>
 
 <template>
-  <button
+  <MDState
+    is="button"
     class="md md-fab"
     :class="[sizeClass, typeClass]"
-    type="button"
     @click="$emit('click', $event)"
   >
     <span class="md-fab__icon">
       <MDCircularProgressIndicator v-if="loading" />
 
       <slot v-else name="icon">
-        <div class="empty-icon" />
+        <MDSymbol v-if="mdSymbol" :name="mdSymbol" />
+
+        <div v-else class="empty-icon" />
       </slot>
     </span>
 
     <MDPlainTooltip :text="tooltip" />
-  </button>
+  </MDState>
 </template>
 
 <style scoped>
 .md-fab {
+  --md-fab-icon-size: 24dp;
+  --md-fab-container-size: 56dp;
+  --md-fab-container-shape: var(--md-sys-shape-corner-large);
+  --md-container-color: var(--md-fab-container-color);
+  --md-content-color: var(--md-fab-icon-color);
+
   display: flex;
   justify-content: center;
   align-items: center;
-  --md-fab-container-shape: var(--md-sys-shape-corner-large);
-  --md-fab-icon-size: 24px;
-
-  --md-container-color: var(--md-fab-container-color);
-  --md-content-color: var(--md-fab-icon-color);
-  width: 56px;
-  height: 56px;
+  width: var(--md-fab-container-size);
+  height: var(--md-fab-container-size);
   border: 0;
   border-radius: var(--md-fab-container-shape);
   box-shadow: var(--md-sys-elevation-level3);
 
   &_primary {
+    --md-fab-container-color: var(--md-sys-color-primary);
+    --md-fab-icon-color: var(--md-sys-color-on-primary);
+  }
+
+  &_secondary {
+    --md-fab-container-color: var(--md-sys-color-secondary);
+    --md-fab-icon-color: var(--md-sys-color-on-secondary);
+  }
+
+  &_tertiary {
+    --md-fab-container-color: var(--md-sys-color-tertiary);
+    --md-fab-icon-color: var(--md-sys-color-on-tertiary);
+  }
+
+  &_tonal-primary {
     --md-fab-container-color: var(--md-sys-color-primary-container);
     --md-fab-icon-color: var(--md-sys-color-on-primary-container);
   }
 
-  &_branded {
-    --md-fab-container-color: var(--md-sys-color-surface-container-high);
-    --md-fab-icon-color: var(--md-sys-color-surface-tint);
-  }
-
-  &_secondary {
+  &_tonal-secondary {
     --md-fab-container-color: var(--md-sys-color-secondary-container);
     --md-fab-icon-color: var(--md-sys-color-on-secondary-container);
   }
 
-  &_surface {
-    --md-fab-container-color: var(--md-sys-color-surface-container-high);
-    --md-fab-icon-color: var(--md-sys-color-surface-tint);
-  }
-
-  &_tertiary {
+  &_tonal-tertiary {
     --md-fab-container-color: var(--md-sys-color-tertiary-container);
     --md-fab-icon-color: var(--md-sys-color-on-tertiary-container);
   }
@@ -102,16 +120,15 @@ const typeClass = computed(() => {
     align-items: center;
   }
 
-  &_small {
-    width: 40px;
-    height: 40px;
-    --md-fab-container-shape: var(--md-sys-shape-corner-medium);
+  &_medium {
+    --md-fab-container-size: 80dp;
+    --md-fab-icon-size: 28dp;
+    --md-fab-container-shape: var(--md-sys-shape-corner-large-increased);
   }
 
   &_large {
-    width: 96px;
-    height: 96px;
-    --md-fab-icon-size: 36px;
+    --md-fab-container-size: 96dp;
+    --md-fab-icon-size: 36dp;
     --md-fab-container-shape: var(--md-sys-shape-corner-extra-large);
   }
 

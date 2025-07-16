@@ -15,7 +15,6 @@ import {
 } from '@shared/lib/databaseDocument';
 import { computed, ref, shallowRef, toRefs, watchEffect } from 'vue';
 import { MDBottomSheet } from '@shared/ui/Sheets';
-import { defineBarButtons, MDButtonsBar } from '@shared/ui/ButtonsBar';
 import { DatabasePropertyList } from '@entity/databaseProperty';
 import {
   defineMenuButtonList,
@@ -34,6 +33,7 @@ import type { DirectoryFSEntry } from '@shared/lib/fileSystem';
 import ValueField from './ValueField.vue';
 import DatabaseViewLayout from './DatabaseViewLayout.vue';
 import { useDatabasePropertiesMap } from '@shared/lib/databaseDocument/useDatabasePropertiesMap';
+import { MDFab, MDFabContainer } from '@shared/ui/Button';
 
 const props = defineProps<{
   docHandle: AMDocHandle;
@@ -64,41 +64,6 @@ const isShowAddItem = ref(false);
 const onAddItem = async (item: DatabaseItem) => {
   await createItem(item);
   isShowAddItem.value = false;
-};
-
-enum Action {
-  addItem,
-  addProperty,
-}
-
-const firstLineButtonsDescription = defineBarButtons([
-  {
-    label: 'Add item',
-    iconName: 'add',
-    action: Action.addItem,
-  },
-  {
-    label: 'Add property',
-    iconName: 'contextual_token_add',
-    action: Action.addProperty,
-  },
-]);
-
-const onClickButtonsBar = (
-  item: (typeof firstLineButtonsDescription)[number],
-) => {
-  switch (item.action) {
-    case Action.addItem: {
-      isShowAddItem.value = true;
-      break;
-    }
-    case Action.addProperty: {
-      isShowAddProperty.value = true;
-      break;
-    }
-    default:
-      throw new Error('unknown action');
-  }
 };
 
 enum PROPERTY_ACTION {
@@ -181,16 +146,6 @@ watchEffect(() => {
   }
 });
 
-const filteredFirstLineButtons = computed(() =>
-  firstLineButtonsDescription.filter((btn) => {
-    if (btn.action === Action.addItem) {
-      return !!propertiesMap.size;
-    }
-
-    return true;
-  }),
-);
-
 enum ITEM_CONTEXT_ACTION {
   remove,
 }
@@ -220,6 +175,14 @@ const onClickItemContextBtn = async (
       break;
   }
 };
+
+const onClickAddItem = () => {
+  isShowAddItem.value = true;
+};
+
+const onClickAddProperty = () => {
+  isShowAddProperty.value = true;
+};
 </script>
 
 <template>
@@ -232,6 +195,7 @@ const onClickItemContextBtn = async (
       :doc-handle="docHandle"
       :view-id="selectedViewId"
       :directory="directory"
+      class="database-view__layout"
     >
       <template #value="{ item, itemId, property, propertyId }">
         <EditableInlineValue
@@ -252,15 +216,24 @@ const onClickItemContextBtn = async (
       </template>
     </DatabaseViewLayout>
 
+    <MDFabContainer class="database-view__fab-container">
+      <MDFab
+        tooltip="Add property"
+        md-symbol="contextual_token_add"
+        @click="onClickAddProperty"
+      />
+
+      <MDFab
+        v-if="propertiesMap.size"
+        tooltip="Add item"
+        md-symbol="forms_add_on"
+        size="medium"
+        @click="onClickAddItem"
+      />
+    </MDFabContainer>
+
     <div class="database-view__controls">
       <MDBottomSheet class="database-view__sheet sheet">
-        <template #head>
-          <MDButtonsBar
-            :buttons="filteredFirstLineButtons"
-            @click="onClickButtonsBar"
-          />
-        </template>
-
         <div class="sheet__body">
           <DatabaseViewPresetSettingsWidget
             v-model:selected-view-id="selectedViewId"
@@ -332,6 +305,7 @@ const onClickItemContextBtn = async (
   display: flex;
   flex-direction: column;
   flex: 1 0;
+  overflow-y: auto;
 
   &__controls {
     margin-top: auto;
@@ -345,6 +319,14 @@ const onClickItemContextBtn = async (
     flex-shrink: 0;
     flex-grow: 1;
     padding: 16px;
+  }
+
+  &__layout {
+    overflow: visible;
+  }
+
+  &__fab-container {
+    bottom: 7step;
   }
 }
 

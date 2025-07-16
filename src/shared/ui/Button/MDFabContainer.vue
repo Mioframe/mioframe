@@ -33,6 +33,9 @@ defineSlots<{
 
   &__placeholder {
     display: flex;
+    position: sticky;
+    bottom: 0;
+    flex-shrink: 0;
   }
 
   :deep() {
