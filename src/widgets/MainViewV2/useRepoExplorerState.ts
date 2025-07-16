@@ -113,16 +113,18 @@ export const useRepoExplorerState = createGlobalState(
 
     const { getAndRequestMountDirectory } = useBrowserStorage();
 
+    const rootName = computed(() => path.value?.at(0));
+
     const rootEntry = asyncComputed(
       async (): Promise<
         undefined | DirectoryLocalEntry | DirectoryGDriveEntry
       > => {
-        const rootName = path.value?.at(0);
         switch (provider.value) {
           case 'browser': {
+            // TODO: разделить провайдеры на точки входа, OFPS отдельно от пользовательских, rootEntry получать через watch
             await nextTick();
-            const entry = await getAndRequestMountDirectory(rootName);
-            if (!rootName) {
+            const entry = await getAndRequestMountDirectory(rootName.value);
+            if (!rootName.value) {
               await put(
                 {
                   path: [entry.name],

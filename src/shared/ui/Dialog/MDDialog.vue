@@ -125,7 +125,7 @@ const showWatchHandle = watch(
 </script>
 
 <template>
-  <Teleport defer :to="targetTeleport">
+  <Teleport :to="targetTeleport">
     <dialog
       v-if="showOverlay"
       :open="showOverlay"
