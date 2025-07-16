@@ -296,17 +296,17 @@ const showFSEntryRenameDialog = computed({
 
       <MDFabContainer class="document-explorer-widget__fab-container">
         <template #default>
-          <MDFab
-            tooltip="Create directory"
-            size="small"
-            @click="onClickCreateDirectory"
-          >
+          <MDFab tooltip="Create directory" @click="onClickCreateDirectory">
             <template #icon>
               <MDSymbol name="create_new_folder" />
             </template>
           </MDFab>
 
-          <MDFab tooltip="Create document" @click="onClickCreateDocument">
+          <MDFab
+            tooltip="Create document"
+            size="medium"
+            @click="onClickCreateDocument"
+          >
             <template #icon>
               <MDSymbol name="edit_document" />
             </template>
