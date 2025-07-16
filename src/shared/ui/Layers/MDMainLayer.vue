@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, watchEffect, useTemplateRef } from 'vue';
+import { computed, watchEffect, useTemplateRef } from 'vue';
 import { useWindowSizeClass, WindowClass } from './useWindowSizeClass';
 import { useCssVar } from '@vueuse/core';
 
@@ -32,7 +32,7 @@ const firstPaneSize = computed((): number => {
   return 0;
 });
 
-const bodyRef = ref<HTMLElement>();
+const bodyRef = useTemplateRef('bodyRef');
 
 const firstPaneSizeCssVar = useCssVar('--md-first-pane-width', bodyRef);
 const secondPaneSizeCssVar = useCssVar('--md-second-pane-width', bodyRef);

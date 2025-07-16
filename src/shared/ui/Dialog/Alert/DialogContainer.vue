@@ -10,7 +10,7 @@ const { alertSet } = useDialogState();
 </script>
 
 <template>
-  <Teleport defer :to="targetTeleport">
+  <Teleport  :to="targetTeleport">
     <div class="dialog-container">
       <MDDialog
         v-for="item in alertSet"

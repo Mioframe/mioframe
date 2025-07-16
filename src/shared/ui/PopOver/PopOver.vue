@@ -50,7 +50,7 @@ const targetTeleport = useClosestParentFrame();
 </script>
 
 <template>
-  <Teleport defer :to="targetTeleport">
+  <Teleport :to="targetTeleport">
     <div
       ref="popoverEl"
       class="md popover"

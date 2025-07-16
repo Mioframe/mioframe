@@ -49,7 +49,7 @@ onInteractionOutside(tooltipEl, () => {
 </script>
 
 <template>
-  <Teleport :to="targetTeleport" defer :disabled="disabledTeleport">
+  <Teleport :to="targetTeleport" :disabled="disabledTeleport">
     <Transition>
       <div
         v-if="showState"

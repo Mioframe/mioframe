@@ -208,7 +208,7 @@ const showWatchHandler = watch(
 </script>
 
 <template>
-  <Teleport defer :to="targetTeleport">
+  <Teleport :to="targetTeleport">
     <MDListContainer
       is="div"
       v-if="showOverlay"
