@@ -216,10 +216,11 @@ const onClickAddProperty = () => {
       </template>
     </DatabaseViewLayout>
 
-    <MDFabContainer class="database-view__fab-container">
+    <MDFabContainer class="database-view__fab-container" auto-hide>
       <MDFab
         tooltip="Add property"
         md-symbol="contextual_token_add"
+        color="tonal-primary"
         @click="onClickAddProperty"
       />
 
@@ -228,6 +229,7 @@ const onClickAddProperty = () => {
         tooltip="Add item"
         md-symbol="forms_add_on"
         size="medium"
+        color="primary"
         @click="onClickAddItem"
       />
     </MDFabContainer>
