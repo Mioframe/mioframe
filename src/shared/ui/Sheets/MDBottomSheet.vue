@@ -86,7 +86,7 @@ watchEffect(() => {
   background-color: transparent;
 
   &__scrim {
-    height: var(--md-bottom-sheet-placeholder-bottom);
+    height: 100dvh;
     width: calc((var(--md-bottom-sheet-placeholder-width) + 200px));
     position: fixed;
     top: 0;
