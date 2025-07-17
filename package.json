@@ -22,7 +22,6 @@
     "@vueuse/core": "^13.5.0",
     "@vueuse/integrations": "^13.5.0",
     "@vueuse/router": "^13.5.0",
-    "bulma": "^1.0.4",
     "comlink": "^4.4.2",
     "dayjs": "^1.11.13",
     "es-toolkit": "^1.39.7",
