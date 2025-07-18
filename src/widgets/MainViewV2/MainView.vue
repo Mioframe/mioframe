@@ -1,13 +1,13 @@
 <script setup lang="ts">
 import { MDMainLayer } from '@shared/ui/Layers';
 
-import { HomeWidget } from '@widget/HomeWidget';
+import { HomeWidget } from '@widget/Home';
 import { RepoExplorerPane } from '@widget/MainViewV2/RepoExplorer';
 import { computed } from 'vue';
-import { useRepoExplorerState } from '@widget/MainViewV2/useRepoExplorerState';
+import { useRepoExplorerNavigate } from '@widget/MainViewV2/useRepoExplorerNavigate';
 import DocumentViewPane from '@widget/DocumentView/DocumentViewPane.vue';
 
-const { directoryEntry: currentDirectory, state } = useRepoExplorerState();
+const { directoryEntry: currentDirectory, state } = useRepoExplorerNavigate();
 
 const directory = computed(() => currentDirectory.value);
 

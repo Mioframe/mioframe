@@ -29,7 +29,7 @@ import type {
 import { useDirectoryFSEntryRef } from '@shared/lib/fileSystem/useDirectoryFSEntryRef';
 import { useDirectoryRepo } from '@shared/lib/cfrDocument/useDirectoryRepo';
 import { useSnackbar } from '@shared/ui/Snackbar';
-import { useRepoExplorerState } from '../useRepoExplorerState';
+import { useRepoExplorerNavigate } from '../useRepoExplorerNavigate';
 
 const isShowCreateDirectoryForm = ref(false);
 
@@ -46,7 +46,7 @@ const {
   open,
   up: openParent,
   state: repoExplorerState,
-} = useRepoExplorerState();
+} = useRepoExplorerNavigate();
 
 const directoryPath = computed(() =>
   repoExplorerState.path?.map((name) => ({ name })),
@@ -58,7 +58,7 @@ const onClickPath = async (indexPath: number) => {
   if (repoExplorerState.path) {
     await open({
       ...repoExplorerState,
-      path: repoExplorerState.path.slice(0, indexPath),
+      path: repoExplorerState.path.slice(0, indexPath + 1),
     });
   }
 };
@@ -193,7 +193,6 @@ const onDocumentRemoveApply = (documentId: AMDocumentId) => {
 const onClickDocument = async (documentId: AMDocumentId) => {
   if (currentDirectory.value) {
     await open({
-      provider: repoExplorerState.provider,
       path: currentDirectory.value.path,
       document: documentId,
     });
@@ -203,7 +202,7 @@ const onClickDocument = async (documentId: AMDocumentId) => {
 const documentToRename = shallowRef<AMDocHandle>();
 
 const title = computed((): string | undefined => {
-  return repoExplorerState.provider;
+  return repoExplorerState.path?.at(-1);
 });
 
 const onClickBack = async () => {

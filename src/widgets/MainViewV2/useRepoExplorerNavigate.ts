@@ -1,28 +1,19 @@
 import type { AMDocHandle } from '@shared/lib/automerge';
 import { useDirectoryRepo } from '@shared/lib/cfrDocument';
 import { zodDocumentId } from '@shared/lib/fsStorageAdapter';
-import type { DirectoryGDriveEntry } from '@shared/lib/googleDrive';
 import type { DirectoryLocalEntry } from '@shared/lib/localFileSystem';
 import { asyncComputed, createGlobalState } from '@vueuse/core';
-import { useBrowserStorage } from '@widget/BrowserStorage/useBrowserStorage';
 import type { PartialDeep, ReadonlyDeep } from 'type-fest';
 import type { ComputedRef } from 'vue';
-import { computed, nextTick, reactive, readonly } from 'vue';
+import { computed, reactive, readonly } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import type { output } from 'zod/v4-mini';
-import { array, literal, object, string, union } from 'zod/v4-mini';
+import { array, object, string } from 'zod/v4-mini';
+import { useMountedDirectories } from '@entity/mountedDirectories/useMountedDirectories';
 
 const zodPath = array(string());
 
-export const OPFS = 'Origin private file system';
-
-const zodProvider = union([literal('browser')]);
-
 export interface RepoExplorerState {
-  /**
-   * Провайдер директорий
-   */
-  provider: output<typeof zodProvider> | undefined;
   /**
    * Путь к директории
    */
@@ -41,7 +32,7 @@ interface UseRepoExplorerState {
   open: (state: RepoExplorerState) => Promise<void>;
 }
 
-export const useRepoExplorerState = createGlobalState(
+export const useRepoExplorerNavigate = createGlobalState(
   (): UseRepoExplorerState => {
     const route = useRoute();
     const router = useRouter();
@@ -57,13 +48,6 @@ export const useRepoExplorerState = createGlobalState(
         object({
           document: zodDocumentId,
         }).safeParse(route.query).data?.document,
-    );
-
-    const provider = computed(
-      () =>
-        object({
-          provider: zodProvider,
-        }).safeParse(route.query).data?.provider,
     );
 
     const set = async (
@@ -85,7 +69,6 @@ export const useRepoExplorerState = createGlobalState(
       await set(
         {
           path: path.value,
-          provider: provider.value,
           document: state.document,
           ...state,
         },
@@ -97,51 +80,24 @@ export const useRepoExplorerState = createGlobalState(
       await put({
         path: path.value?.length ? path.value.slice(0, -1) : undefined,
         document: undefined,
-        provider: path.value?.length ? provider.value : undefined,
       });
     };
 
     const open = async (
       state: RepoExplorerState = {
         path: undefined,
-        provider: undefined,
         document: undefined,
       },
     ) => {
       await set(state, 'push');
     };
 
-    const { getAndRequestMountDirectory } = useBrowserStorage();
-
     const rootName = computed(() => path.value?.at(0));
 
-    const rootEntry = asyncComputed(
-      async (): Promise<
-        undefined | DirectoryLocalEntry | DirectoryGDriveEntry
-      > => {
-        switch (provider.value) {
-          case 'browser': {
-            // TODO: разделить провайдеры на точки входа, OFPS отдельно от пользовательских, rootEntry получать через watch
-            await nextTick();
-            const entry = await getAndRequestMountDirectory(rootName.value);
-            if (!rootName.value) {
-              await put(
-                {
-                  path: [entry.name],
-                },
-                'replace',
-              );
-            }
-            return entry;
-          }
-        }
-        return undefined;
-      },
-      undefined,
-      {
-        lazy: true,
-        shallow: true,
-      },
+    const { get: getMountedDirectory } = useMountedDirectories();
+
+    const rootEntry = computed(() =>
+      rootName.value ? getMountedDirectory(rootName.value) : undefined,
     );
 
     const currentDirectory = asyncComputed(
@@ -179,15 +135,14 @@ export const useRepoExplorerState = createGlobalState(
         : undefined,
     );
 
+    const state: RepoExplorerState = reactive({
+      path,
+      document: documentId,
+    });
+
     return {
-      state: readonly(
-        reactive({
-          path,
-          provider,
-          document: documentId,
-        }),
-      ),
-      directoryEntry: currentDirectory,
+      state: readonly(state),
+      directoryEntry: computed(() => currentDirectory.value),
       documentHandle,
       up,
       open,
