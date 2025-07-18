@@ -41,8 +41,6 @@ export const useSnackbar = createGlobalState(() => {
       snackbar.timeout = Math.min(Math.max(snackbar.timeout ?? 7e3, 4e3), 10e3);
       delete snackbar.callback;
       delete snackbar.actionLabel;
-    } else {
-      delete snackbar.timeout;
     }
 
     state.snackbarQueue.push(snackbar);

@@ -19,6 +19,11 @@ export function createLocalDirectory(
 ): DirectoryLocalEntry;
 export function createLocalDirectory(
   currentHandle: FileSystemDirectoryHandle,
+  parentLocalDirectoryEntry?: undefined,
+  rootName?: string,
+): DirectoryLocalEntry;
+export function createLocalDirectory(
+  currentHandle: FileSystemDirectoryHandle,
   parentLocalDirectoryEntry?: DirectoryLocalEntry,
   rootName?: string,
 ): DirectoryLocalEntry {
