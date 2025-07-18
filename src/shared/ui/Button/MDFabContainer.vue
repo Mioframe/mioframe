@@ -23,18 +23,22 @@ const scrollDirection = ref<'top' | 'bottom'>();
 useEventListener(
   parentEl,
   'scroll',
-  throttle(() => {
-    if (parentEl.value) {
-      if (lastScrollTop && parentEl.value.scrollTop > lastScrollTop) {
-        scrollDirection.value = 'bottom';
-      } else if (lastScrollTop && parentEl.value.scrollTop < lastScrollTop) {
-        scrollDirection.value = 'top';
-      } else {
-        scrollDirection.value = undefined;
+  throttle(
+    () => {
+      if (parentEl.value) {
+        if (lastScrollTop && parentEl.value.scrollTop > lastScrollTop) {
+          scrollDirection.value = 'bottom';
+        } else if (lastScrollTop && parentEl.value.scrollTop < lastScrollTop) {
+          scrollDirection.value = 'top';
+        } else {
+          scrollDirection.value = undefined;
+        }
+        lastScrollTop = parentEl.value.scrollTop;
       }
-      lastScrollTop = parentEl.value.scrollTop;
-    }
-  }, 300),
+    },
+    300,
+    { edges: ['leading', 'trailing'] },
+  ),
 );
 
 const show = computed(

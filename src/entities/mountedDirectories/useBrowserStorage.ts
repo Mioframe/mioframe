@@ -1,11 +1,11 @@
+import { OPFS } from '@feature/mountDirectoryFromBrowser/useMountDirectoryFromBrowser';
 import type { DirectoryLocalEntry } from '@shared/lib/localFileSystem';
 import { createLocalDirectory } from '@shared/lib/localFileSystem';
 import { useDialog } from '@shared/ui/Dialog';
 import { createGlobalState } from '@vueuse/core';
-import { OPFS } from '@widget/MainViewV2/useRepoExplorerState';
 import { computed, shallowReactive } from 'vue';
 
-export const useBrowserStorage = createGlobalState(() => {
+export const useBrowserSourceMounted = createGlobalState(() => {
   const mounted = shallowReactive<Map<string, DirectoryLocalEntry>>(new Map());
 
   const mount = (

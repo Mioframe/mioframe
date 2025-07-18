@@ -2,21 +2,18 @@
 import { MDListItem } from '@shared/ui/Lists';
 import MDListContainer from '@shared/ui/Lists/MDListContainer.vue';
 import { MDSymbol } from '@shared/ui/Icon';
-import {
-  OPFS,
-  useRepoExplorerState,
-} from '@widget/MainViewV2/useRepoExplorerState';
-import { useBrowserStorage } from './useBrowserStorage';
+import { useRepoExplorerNavigate } from '@widget/MainViewV2/useRepoExplorerNavigate';
+import { useBrowserSourceMounted } from '../../entities/mountedDirectories/useBrowserStorage';
 import type { DirectoryLocalEntry } from '@shared/lib/localFileSystem';
 import { computed } from 'vue';
+import { OPFS } from '@feature/mountDirectoryFromBrowser/useMountDirectoryFromBrowser';
 
-const { open } = useRepoExplorerState();
+const { open } = useRepoExplorerNavigate();
 
-const { mounted } = useBrowserStorage();
+const { mounted } = useBrowserSourceMounted();
 
 const onClickBrowserStorage = async () => {
   await open({
-    provider: 'browser',
     path: [OPFS],
     document: undefined,
   });
@@ -26,7 +23,6 @@ const isSupportDirectoryPicker = 'showDirectoryPicker' in window;
 
 const onClickLocalFolder = async () => {
   await open({
-    provider: 'browser',
     path: [],
     document: undefined,
   });
@@ -34,7 +30,6 @@ const onClickLocalFolder = async () => {
 
 const onClickMountedItem = async (item: DirectoryLocalEntry) => {
   await open({
-    provider: 'browser',
     path: item.path,
     document: undefined,
   });

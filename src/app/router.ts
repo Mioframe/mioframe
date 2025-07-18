@@ -1,7 +1,7 @@
 import { MainView } from '@widget/MainViewV2';
-import type { RouteRecordRaw } from 'vue-router';
+import type { LocationQueryRaw, RouteRecordRaw } from 'vue-router';
 import { createRouter, createWebHistory } from 'vue-router';
-import qs from 'use-qs';
+import qs from 'query-string';
 
 const routes: RouteRecordRaw[] = [
   {
@@ -34,11 +34,19 @@ if (import.meta.env.DEV) {
   });
 }
 
+const queryStringOptions: qs.ParseOptions | qs.StringifyOptions = {
+  arrayFormat: 'index',
+  parseBooleans: true,
+  parseNumbers: true,
+  skipNull: true,
+};
+
 export const router = createRouter({
   history: createWebHistory(
     import.meta.env.PROD ? window.location.pathname : undefined,
   ),
   routes,
-  parseQuery: qs.parse,
-  stringifyQuery: qs.stringify,
+  parseQuery: (search: string) => qs.parse(search, queryStringOptions),
+  stringifyQuery: (query: LocationQueryRaw) =>
+    qs.stringify(query, queryStringOptions),
 });

@@ -2,7 +2,7 @@ import { useRouteQuery } from '@vueuse/router';
 import { cloneDeep, isString, merge, toMerged } from 'es-toolkit';
 import type { MaybeRef, Reactive } from 'vue';
 import { nextTick, reactive, toValue, watch, watchEffect } from 'vue';
-import queryString from 'use-qs';
+import queryString from 'query-string';
 
 export const useQueryValue = <P extends object>(
   queryRootName: string,
