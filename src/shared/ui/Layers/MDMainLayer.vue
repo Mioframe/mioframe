@@ -6,7 +6,7 @@ import { useCssVar } from '@vueuse/core';
 const slots = defineSlots<{
   navigation(): unknown;
   firstPane(): unknown;
-  secondPane(): unknown;
+  secondPane(p: { showFirstPane: boolean }): unknown;
 }>();
 
 const { windowClass } = useWindowSizeClass();
@@ -74,7 +74,7 @@ const windowClassModifier = computed(() => {
       </div>
 
       <div v-show="isShowSecondPane" class="body__second-pane">
-        <slot name="secondPane">
+        <slot name="secondPane" :show-first-pane="isShowFirstPane">
           <i ref="secondPaneEmptyInner" />
         </slot>
       </div>

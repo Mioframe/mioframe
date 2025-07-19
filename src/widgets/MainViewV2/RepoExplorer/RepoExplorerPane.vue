@@ -30,6 +30,7 @@ import { useDirectoryFSEntryRef } from '@shared/lib/fileSystem/useDirectoryFSEnt
 import { useDirectoryRepo } from '@shared/lib/cfrDocument/useDirectoryRepo';
 import { useSnackbar } from '@shared/ui/Snackbar';
 import { useRepoExplorerNavigate } from '../useRepoExplorerNavigate';
+import { useRouter } from 'vue-router';
 
 const isShowCreateDirectoryForm = ref(false);
 
@@ -44,7 +45,6 @@ const entryKeyToRemove = ref<string>();
 const {
   directoryEntry: currentDirectory,
   open,
-  up: openParent,
   state: repoExplorerState,
 } = useRepoExplorerNavigate();
 
@@ -205,8 +205,10 @@ const title = computed((): string | undefined => {
   return repoExplorerState.path?.at(-1);
 });
 
-const onClickBack = async () => {
-  await openParent();
+const router = useRouter();
+
+const onClickBack = () => {
+  router.back();
 };
 
 const loadingRename = ref(0);
@@ -242,7 +244,7 @@ const showFSEntryRenameDialog = computed({
   <MDPaneContainer class="document-explorer-widget">
     <MDTopAppBar v-if="title" :headline="title">
       <template #leadingNavigation>
-        <MDIconButton tooltip="Navigate up" @click="onClickBack">
+        <MDIconButton tooltip="Back" @click="onClickBack">
           <template #icon>
             <MDSymbol name="arrow_back" />
           </template>

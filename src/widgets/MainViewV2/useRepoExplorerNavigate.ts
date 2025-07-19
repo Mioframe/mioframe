@@ -30,6 +30,7 @@ interface UseRepoExplorerState {
   documentHandle: ComputedRef<AMDocHandle | undefined>;
   up: () => Promise<void>;
   open: (state: RepoExplorerState) => Promise<void>;
+  closeDocument: () => Promise<void>;
 }
 
 export const useRepoExplorerNavigate = createGlobalState(
@@ -77,10 +78,12 @@ export const useRepoExplorerNavigate = createGlobalState(
     };
 
     const up = async () => {
-      await put({
-        path: path.value?.length ? path.value.slice(0, -1) : undefined,
-        document: undefined,
-      });
+      await put(
+        {
+          path: path.value?.length ? path.value.slice(0, -1) : undefined,
+        },
+        'push',
+      );
     };
 
     const open = async (
@@ -140,12 +143,22 @@ export const useRepoExplorerNavigate = createGlobalState(
       document: documentId,
     });
 
+    const closeDocument = async () => {
+      await put(
+        {
+          document: undefined,
+        },
+        'push',
+      );
+    };
+
     return {
       state: readonly(state),
       directoryEntry: computed(() => currentDirectory.value),
       documentHandle,
       up,
       open,
+      closeDocument,
     };
   },
 );
