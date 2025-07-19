@@ -71,6 +71,8 @@ const onClickRenameDocument = () => {
       v-if="docHandle"
       v-model:show="showRenameDocument"
       :doc-handle="docHandle"
+      @renamed="showRenameDocument = false"
+      @cancel="showRenameDocument = false"
     />
   </MDPaneContainer>
 </template>
