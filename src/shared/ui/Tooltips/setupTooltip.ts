@@ -252,8 +252,14 @@ export const setupTooltip = (
   );
 
   const alignCenterPosition = computed(() => {
-    const x = Math.max(targetCenterX.value - tooltipWidth.value / 2, margin);
-    const y = Math.max(targetCenterY.value - tooltipHeight.value / 2, margin);
+    const x = Math.min(
+      Math.max(targetCenterX.value - tooltipWidth.value / 2, margin),
+      windowWidth.value - tooltipWidth.value - margin,
+    );
+    const y = Math.min(
+      Math.max(targetCenterY.value - tooltipHeight.value / 2, margin),
+      windowHeight.value - tooltipHeight.value - margin,
+    );
 
     return { x, y };
   });
