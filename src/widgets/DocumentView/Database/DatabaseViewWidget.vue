@@ -34,6 +34,7 @@ import ValueField from './ValueField.vue';
 import DatabaseViewLayout from './DatabaseViewLayout.vue';
 import { useDatabasePropertiesMap } from '@shared/lib/databaseDocument/useDatabasePropertiesMap';
 import { MDFab, MDFabContainer } from '@shared/ui/Button';
+import { MD_SYS_TYPESCALE } from '@shared/lib/md';
 
 const props = defineProps<{
   docHandle: AMDocHandle;
@@ -216,6 +217,8 @@ const onClickAddProperty = () => {
       </template>
     </DatabaseViewLayout>
 
+    <!-- TODO: заменить на toolbar для Database -->
+
     <MDFabContainer class="database-view__fab-container" auto-hide>
       <MDFab
         tooltip="Add property"
@@ -242,18 +245,21 @@ const onClickAddProperty = () => {
             :doc-handle="docHandle"
           />
 
-          <DatabasePropertyList
-            v-if="properties"
-            :properties="properties"
-            class="sheet__property-list"
-          >
-            <template #trailingIcon="{ propertyId }">
-              <MDContextMenuButton
-                :btns="propertyContextBtns"
-                @click="onClickPropertyContextAction($event, propertyId)"
-              />
-            </template>
-          </DatabasePropertyList>
+          <section v-if="properties" class="md-margin-top-4">
+            <span :class="MD_SYS_TYPESCALE.title.small">Properties</span>
+
+            <DatabasePropertyList
+              :properties="properties"
+              class="sheet__property-list"
+            >
+              <template #trailingIcon="{ propertyId }">
+                <MDContextMenuButton
+                  :btns="propertyContextBtns"
+                  @click="onClickPropertyContextAction($event, propertyId)"
+                />
+              </template>
+            </DatabasePropertyList>
+          </section>
         </div>
       </MDBottomSheet>
     </div>

@@ -82,6 +82,7 @@ const targetTeleport = useClosestParentFrame();
   position: relative;
   width: var(--content-width);
   height: var(--content-height);
+  flex-shrink: 0;
 
   &__content {
     position: fixed;

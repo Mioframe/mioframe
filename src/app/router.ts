@@ -2,6 +2,7 @@ import { MainView } from '@widget/MainViewV2';
 import type { LocationQueryRaw, RouteRecordRaw } from 'vue-router';
 import { createRouter, createWebHistory } from 'vue-router';
 import qs from 'query-string';
+import { queryStringOptions } from '@shared/config/queryStringOptions';
 
 const routes: RouteRecordRaw[] = [
   {
@@ -33,13 +34,6 @@ if (import.meta.env.DEV) {
     ],
   });
 }
-
-const queryStringOptions: qs.ParseOptions | qs.StringifyOptions = {
-  arrayFormat: 'index',
-  parseBooleans: true,
-  parseNumbers: true,
-  skipNull: true,
-};
 
 export const router = createRouter({
   history: createWebHistory(

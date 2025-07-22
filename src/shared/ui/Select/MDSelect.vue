@@ -186,6 +186,7 @@ const onClickOutside = () => {
     flex-wrap: wrap;
     gap: 2step 3step;
     cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
   }
 
   &__symbol-arrow {

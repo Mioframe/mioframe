@@ -77,7 +77,7 @@
   /* md.sys */
   /* md.sys.shape */
   /* md.sys.shape.corner */
-  --md-sys-shape-corner-full: 50%;
+  --md-sys-shape-corner-full: 50cqmin;
   --md-sys-shape-corner-extra-small: 4px;
   --md-sys-shape-corner-small: 8px;
   --md-sys-shape-corner-medium: 12px;
