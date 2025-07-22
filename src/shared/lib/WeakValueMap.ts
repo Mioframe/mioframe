@@ -1,7 +1,3 @@
-import { createLogger } from './logger';
-
-const { debug } = createLogger('WeakValueMap');
-
 /**
  * Коллекция с сильными ключами и слабыми значениями.
  *
@@ -21,7 +17,6 @@ export class WeakValueMap<K, V extends object> implements Iterable<[K, V]> {
   constructor() {
     this.#map = new Map<K, WeakRef<V>>();
     this.#registry = new FinalizationRegistry((key: K) => {
-      debug('FinalizationRegistry', key);
       this.#map.delete(key);
     });
   }

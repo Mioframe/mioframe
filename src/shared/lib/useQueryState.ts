@@ -3,6 +3,7 @@ import { cloneDeep, isString, merge, toMerged } from 'es-toolkit';
 import type { MaybeRef, Reactive } from 'vue';
 import { nextTick, reactive, toValue, watch, watchEffect } from 'vue';
 import queryString from 'query-string';
+import { queryStringOptions } from '@shared/config/queryStringOptions';
 
 export const useQueryValue = <P extends object>(
   queryRootName: string,
@@ -16,13 +17,16 @@ export const useQueryValue = <P extends object>(
     transform: {
       get: (v: unknown) => {
         if (isString(v)) {
-          return toMerged(initialState, queryString.parse(v));
+          return toMerged(
+            initialState,
+            queryString.parse(v, queryStringOptions),
+          );
         }
 
         return initialState;
       },
       set: (v: P) => {
-        return queryString.stringify(cloneDeep(v));
+        return queryString.stringify(cloneDeep(v), queryStringOptions);
       },
     },
   });

@@ -25,8 +25,9 @@ export const useClosestParentFrame = () => {
       const el = findParentElement(maybeEl);
       if (el) {
         return (
-          el.closest('dialog, [role="dialog"], [data-v-app], body') ||
-          document.body
+          el.closest(
+            '.md-pane-container, dialog, [role="dialog"], [data-v-app], body',
+          ) || document.body
         );
       }
     }

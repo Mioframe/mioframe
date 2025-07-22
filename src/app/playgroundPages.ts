@@ -42,4 +42,8 @@ export const playgroundPages: PlaygroundPage[] = [
     name: 'FAB',
     component: () => import('@shared/ui/Button/MDFabPlayground.vue'),
   },
+  {
+    name: 'Toolbar',
+    component: () => import('@shared/ui/Toolbar/MDToolbarPlayground.vue'),
+  },
 ];
