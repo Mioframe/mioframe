@@ -32,6 +32,7 @@
     "material-symbols": "latest",
     "modern-normalize": "^3.0.1",
     "p-limit": "^6.2.0",
+    "parse-duration": "^2.1.4",
     "perfect-debounce": "^1.0.0",
     "query-string": "^9.2.2",
     "quickselect": "^3.0.0",
@@ -45,7 +46,7 @@
   },
   "devDependencies": {
     "@faker-js/faker": "^9.9.0",
-    "@sentry/vite-plugin": "^3.6.0",
+    "@sentry/vite-plugin": "^3.6.1",
     "@types/gapi": "^0.0.47",
     "@types/gapi.client.drive-v3": "^0.0.5",
     "@types/gapi.client.oauth2-v2": "^0.0.4",
@@ -73,8 +74,8 @@
     "vite-plugin-pwa": "^1.0.1",
     "vite-plugin-top-level-await": "^1.6.0",
     "vite-plugin-wasm": "^3.5.0",
-    "vue-component-type-helpers": "^3.0.2",
-    "vue-tsc": "^3.0.2"
+    "vue-component-type-helpers": "^3.0.3",
+    "vue-tsc": "^3.0.3"
   },
   "packageManager": "pnpm@10.13.1+sha512.37ebf1a5c7a30d5fabe0c5df44ee8da4c965ca0c5af3dbab28c3a1681b70a256218d05c81c9c0dcf767ef6b8551eb5b960042b9ed4300c59242336377e01cfad",
   "pnpm": {

@@ -106,6 +106,8 @@ const onClick = (e: MouseEvent) => {
 
 <style scoped>
 .md-icon-button {
+  --md-icon-button-container-height: unset;
+  --md-icon-button-container-shape: unset;
   --md-icon-button-icon-size: 24px;
   --md-icon-button-border-width: 0px;
   --md-icon-button-padding: 0px;

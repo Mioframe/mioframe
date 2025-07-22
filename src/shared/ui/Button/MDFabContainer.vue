@@ -89,7 +89,6 @@ const show = computed(
     display: flex;
     position: sticky;
     bottom: 0;
-    flex-shrink: 0;
     margin-right: calc(16px - var(--md-pane-padding, 0));
   }
 
@@ -136,6 +135,5 @@ const show = computed(
       }
     }
   }
-  /* } */
 }
 </style>

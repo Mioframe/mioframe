@@ -1,0 +1,66 @@
+@property --md-ripple-opacity {
+  syntax: "<number>";
+  inherits: true;
+  initial-value: 1;
+}
+@property --md-ripple-scale {
+  syntax: "<number>";
+  inherits: true;
+  initial-value: 1;
+}
+
+.md-ripple {
+  --md-ripple-color: var(--md-content-color, currentColor);
+  --md-ripple-duration-long: var(--md-sys-motion-duration-extra-long4, 1s);
+  --md-ripple-duration-short: var(--md-sys-motion-duration-short4, 0.2s);
+  --md-ripple-duration: var(--md-sys-motion-duration-short4, 0.2s);
+
+  --md-ripple-opacity: 1;
+  --md-ripple-scale: 0;
+  --md-ripple-y: unset;
+  --md-ripple-x: unset;
+  --md-ripple-diameter: unset;
+
+  display: block;
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  width: 100%;
+  height: 100%;
+  background: transparent;
+  overflow: hidden;
+  border-radius: inherit;
+  animation-duration: var(--md-ripple-duration);
+  transition-duration: var(--md-ripple-duration);
+
+  &::before {
+    content: "";
+    display: block;
+    position: absolute;
+    top: var(--md-ripple-y, 50%);
+    left: var(--md-ripple-x, 50%);
+    width: calc(var(--md-ripple-diameter, 140%) + 15%);
+    height: calc(var(--md-ripple-diameter, 140%) + 15%);
+    border-radius: 50%;
+    padding: 10%;
+    transform: translate(-50%, -50%) scale(var(--md-ripple-scale));
+    opacity: var(--md-ripple-opacity);
+    animation-duration: var(--md-ripple-duration);
+    transition-duration: var(--md-ripple-duration);
+    transition-property: opacity, transform;
+
+    background: radial-gradient(
+      rgb(
+          from var(--md-ripple-color, var(--md-content-color, currentColor)) r g
+            b / var(--md-sys-state-pressed-state-layer-opacity, 10%)
+        )
+        65%,
+      transparent 71%
+    );
+  }
+}
