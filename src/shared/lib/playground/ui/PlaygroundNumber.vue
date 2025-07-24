@@ -1,5 +1,5 @@
 <script setup lang="ts">
-defineProps<{ label: string }>();
+defineProps<{ label: string; step?: number; min?: number; max?: number }>();
 
 const value = defineModel<number>({ required: true });
 </script>
@@ -7,6 +7,6 @@ const value = defineModel<number>({ required: true });
 <template>
   <label>
     {{ label }}
-    <input v-model="value" type="number" />
+    <input v-model="value" type="number" :step="step" :min="min" :max="max" />
   </label>
 </template>

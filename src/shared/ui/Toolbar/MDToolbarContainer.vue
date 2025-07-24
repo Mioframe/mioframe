@@ -1,6 +1,6 @@
 <script setup lang="ts">
+import { TeleportWithPlaceholder } from '@shared/lib/teleport';
 import { toRefs } from 'vue';
-import FixedPlaceholder from '../Layers/FixedPlaceholder.vue';
 
 const props = withDefaults(
   defineProps<{
@@ -20,7 +20,7 @@ defineSlots<{
 </script>
 
 <template>
-  <FixedPlaceholder
+  <TeleportWithPlaceholder
     class="md-toolbar__placeholder"
     priority-height="content"
     priority-width="placeholder"
@@ -38,7 +38,7 @@ defineSlots<{
         <slot />
       </div>
     </div>
-  </FixedPlaceholder>
+  </TeleportWithPlaceholder>
 </template>
 
 <style lang="css" scoped>
