@@ -34,7 +34,7 @@ const navigation = computed(() =>
     <PlaygroundNavigation
       v-if="navigation"
       class="playground__navigation"
-      :navigation
+      :navigation="navigation"
     />
 
     <div class="playground__main">
@@ -46,8 +46,8 @@ const navigation = computed(() =>
 <style lang="css" scoped>
 .playground {
   display: flex;
-  min-height: 100vh;
-  width: 100vw;
+  min-height: 100dvh;
+  width: 100dvw;
 
   &__navigation {
     overflow-y: auto;

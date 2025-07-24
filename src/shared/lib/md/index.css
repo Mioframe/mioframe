@@ -10,6 +10,12 @@
   --md-content-color: var(--md-sys-color-on-surface);
 }
 
+html,
+body {
+  background-color: var(--md-container-color);
+  color: var(--md-content-color, currentColor);
+}
+
 /* базовый класс всех MD элементов и блоков */
 .md {
   background-color: var(--md-container-color);

@@ -9,7 +9,9 @@
   --md-pane-container-shape: 16px;
 
   position: relative;
-  flex: 1 1;
+  flex-grow: 1;
+  flex-shrink: 1;
+  height: 100%;
   display: flex;
   flex-direction: column;
   justify-content: flex-start;
