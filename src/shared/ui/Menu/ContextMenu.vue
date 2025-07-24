@@ -28,7 +28,11 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <PopOver v-model:ref-el="dropdownEl" :origin-position class="dropdown">
+  <PopOver
+    v-model:ref-el="dropdownEl"
+    :origin-position="originPosition"
+    class="dropdown"
+  >
     <div class="dropdown-content">
       <slot />
     </div>

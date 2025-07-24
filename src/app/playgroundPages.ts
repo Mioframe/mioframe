@@ -46,4 +46,8 @@ export const playgroundPages: PlaygroundPage[] = [
     name: 'Toolbar',
     component: () => import('@shared/ui/Toolbar/MDToolbarPlayground.vue'),
   },
+  {
+    name: 'BottomSheet',
+    component: () => import('@shared/ui/Sheets/MDBottomSheetPlayground.vue'),
+  },
 ];

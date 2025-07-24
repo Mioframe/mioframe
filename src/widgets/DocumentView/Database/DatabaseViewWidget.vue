@@ -35,6 +35,7 @@ import DatabaseViewLayout from './DatabaseViewLayout.vue';
 import { useDatabasePropertiesMap } from '@shared/lib/databaseDocument/useDatabasePropertiesMap';
 import { MDFab, MDFabContainer } from '@shared/ui/Button';
 import { MD_SYS_TYPESCALE } from '@shared/lib/md';
+import MDBottomSheetSection from '@shared/ui/Sheets/MDBottomSheetSection.vue';
 
 const props = defineProps<{
   docHandle: AMDocHandle;
@@ -238,29 +239,35 @@ const onClickAddProperty = () => {
     </MDFabContainer>
 
     <div class="database-view__controls">
-      <MDBottomSheet class="database-view__sheet sheet">
-        <div class="sheet__body">
+      <MDBottomSheet class="database-view__sheet sheet" show>
+        <MDBottomSheetSection
+          class="md-padding-left-4 md-padding-right-4"
+          scroll-snap-align="end"
+        >
           <DatabaseViewPresetSettingsWidget
             v-model:selected-view-id="selectedViewId"
             :doc-handle="docHandle"
           />
+        </MDBottomSheetSection>
 
-          <section v-if="properties" class="md-margin-top-4">
-            <span :class="MD_SYS_TYPESCALE.title.small">Properties</span>
+        <MDBottomSheetSection
+          v-if="properties"
+          class="md-padding-top-4 md-padding-left-4 md-padding-right-4"
+        >
+          <span :class="MD_SYS_TYPESCALE.title.small">Properties</span>
 
-            <DatabasePropertyList
-              :properties="properties"
-              class="sheet__property-list"
-            >
-              <template #trailingIcon="{ propertyId }">
-                <MDContextMenuButton
-                  :btns="propertyContextBtns"
-                  @click="onClickPropertyContextAction($event, propertyId)"
-                />
-              </template>
-            </DatabasePropertyList>
-          </section>
-        </div>
+          <DatabasePropertyList
+            :properties="properties"
+            class="sheet__property-list"
+          >
+            <template #trailingIcon="{ propertyId }">
+              <MDContextMenuButton
+                :btns="propertyContextBtns"
+                @click="onClickPropertyContextAction($event, propertyId)"
+              />
+            </template>
+          </DatabasePropertyList>
+        </MDBottomSheetSection>
       </MDBottomSheet>
     </div>
 

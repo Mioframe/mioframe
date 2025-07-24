@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { computed, ref, toRefs } from 'vue';
-import FixedPlaceholder from '../Layers/FixedPlaceholder.vue';
 import { useEventListener, useParentElement } from '@vueuse/core';
 import { isUndefined, throttle } from 'es-toolkit';
+import { TeleportWithPlaceholder } from '@shared/lib/teleport';
 
 const props = defineProps<{
   autoHide?: boolean;
@@ -50,9 +50,10 @@ const show = computed(
 </script>
 
 <template>
-  <FixedPlaceholder
+  <TeleportWithPlaceholder
     class="md-fab-container__placeholder"
     priority-width="placeholder"
+    with-placeholder
     :class="{
       'md-fab-container_auto-hide': autoHide,
     }"
@@ -68,7 +69,7 @@ const show = computed(
         <slot name="default" />
       </div>
     </Transition>
-  </FixedPlaceholder>
+  </TeleportWithPlaceholder>
 </template>
 
 <style scoped>
