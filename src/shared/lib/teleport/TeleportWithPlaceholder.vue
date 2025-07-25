@@ -27,9 +27,6 @@ const {
   computed(() =>
     enableCalculatePosition.value ? placeholderEl.value : undefined,
   ),
-  {
-    updateTiming: 'next-frame',
-  },
 );
 
 const contentEl = useTemplateRef('contentEl');
