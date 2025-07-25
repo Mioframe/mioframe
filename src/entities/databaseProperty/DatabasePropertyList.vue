@@ -1,30 +1,33 @@
-<script setup lang="ts" generic="P extends GeneralProperty">
-import type { DatabasePropertyId } from '@shared/lib/databaseDocument';
+<script setup lang="ts">
+import type { AMDocHandle } from '@shared/lib/automerge';
 import type {
-  GeneralProperty,
-  PropertiesMap,
-} from '@shared/lib/databaseDocument/migrations/versions/v1/property';
-import { useWrapStrictRecord } from '@shared/lib/strictRecord';
+  DatabasePropertyId,
+  DatabaseUnknownProperty,
+} from '@shared/lib/databaseDocument';
+import { useDatabasePropertiesMap } from '@shared/lib/databaseDocument/useDatabasePropertiesMap';
 import { MDListContainer, MDListItem } from '@shared/ui/Lists';
+import { toRefs } from 'vue';
 
-const { properties } = defineProps<{
-  properties: PropertiesMap<P>;
+const props = defineProps<{
+  docHandle: AMDocHandle;
 }>();
+
+const { docHandle } = toRefs(props);
 
 const slots = defineSlots<{
-  trailingIcon<K extends DatabasePropertyId>(p: {
-    property: PropertiesMap<P>[K];
-    propertyId: K;
-  }): unknown;
+  trailingIcon: (p: {
+    property: DatabaseUnknownProperty;
+    propertyId: DatabasePropertyId;
+  }) => unknown;
 }>();
 
-const propertyCollection = useWrapStrictRecord(() => properties);
+const propertiesMap = useDatabasePropertiesMap(docHandle);
 </script>
 
 <template>
   <MDListContainer>
     <MDListItem
-      v-for="[propertyId, property] in propertyCollection?.entries"
+      v-for="[propertyId, property] in propertiesMap.entries"
       :key="propertyId"
       :headline="property.name"
       :supporting-text="String(property.type)"

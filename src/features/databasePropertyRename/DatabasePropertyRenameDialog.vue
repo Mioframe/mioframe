@@ -1,29 +1,40 @@
 <script setup lang="ts">
+import type { AMDocHandle } from '@shared/lib/automerge';
+import type { DatabasePropertyId } from '@shared/lib/databaseDocument';
+import { useDatabasePropertiesMap } from '@shared/lib/databaseDocument/useDatabasePropertiesMap';
 import { MDDialog } from '@shared/ui/Dialog';
 import { MDSymbol } from '@shared/ui/Icon';
 import { MDTextField } from '@shared/ui/TextField';
-import { ref, watchEffect } from 'vue';
+import { computed, ref, toRefs, watchEffect } from 'vue';
 
-const { name } = defineProps<{
-  name?: string;
+const props = defineProps<{
+  docHandle: AMDocHandle;
+  propertyId: DatabasePropertyId;
 }>();
+
+const { docHandle, propertyId } = toRefs(props);
+
+const propertyMap = useDatabasePropertiesMap(docHandle);
+
+const currentName = computed(() => propertyMap.get(propertyId.value)?.name);
 
 const stateName = ref<string>();
 
 watchEffect(() => {
-  stateName.value = name;
+  stateName.value = currentName.value;
 });
 
 const emit = defineEmits<{
-  apply: [newName: string];
+  renamed: [newName: string];
   cancel: [];
 }>();
 
 const show = defineModel<boolean>('show', { required: true });
 
-const onApply = () => {
+const onApply = async () => {
   if (stateName.value?.length) {
-    emit('apply', stateName.value);
+    await propertyMap.put(propertyId.value, { name: stateName.value });
+    emit('renamed', stateName.value);
   }
 };
 

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, ref, toRefs } from 'vue';
 import { MDDialog } from '@shared/ui/Dialog';
 import { MDTextField } from '@shared/ui/TextField';
 import { MDSelect } from '@shared/ui/Select';
@@ -19,13 +19,20 @@ import { pascalCase } from 'es-toolkit';
 import { useSnackbar } from '@shared/ui/Snackbar';
 import DatabaseRelationPropertyField from '@feature/databaseRelationPropertyEdit/DatabaseRelationPropertyField.vue';
 import type { DirectoryFSEntry } from '@shared/lib/fileSystem';
+import type { AMDocHandle } from '@shared/lib/automerge';
+import { useDatabasePropertiesMap } from '@shared/lib/databaseDocument/useDatabasePropertiesMap';
+import type { DatabasePropertyId } from '@shared/lib/databaseDocument';
 
-const { directory } = defineProps<{
+const props = defineProps<{
   directory: DirectoryFSEntry;
+  docHandle: AMDocHandle;
 }>();
 
+const { directory, docHandle } = toRefs(props);
+
 const emit = defineEmits<{
-  create: [
+  created: [
+    id: DatabasePropertyId,
     property:
       | StringProperty
       | NumberProperty
@@ -108,9 +115,12 @@ const newProperty = computed(
 
 const { addSnackbar } = useSnackbar();
 
-const onCreate = () => {
+const propertiesMap = useDatabasePropertiesMap(docHandle);
+
+const onCreate = async () => {
   if (newProperty.value) {
-    emit('create', newProperty.value);
+    const id = await propertiesMap.create(newProperty.value);
+    emit('created', id, newProperty.value);
   } else {
     addSnackbar({ text: 'Property is not fully filled' });
   }

@@ -36,7 +36,7 @@ export const useRelationProperty = (
     const id = toValue(propertyId);
 
     if (id) {
-      await properties.update<RelationProperty>(id, {
+      await properties.put<RelationProperty>(id, {
         relation,
       });
     }

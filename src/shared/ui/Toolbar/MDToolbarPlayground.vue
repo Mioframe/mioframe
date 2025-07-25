@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import {
+  PlaygroundNumber,
   PlaygroundOptionalBoolean,
   PlaygroundStory,
   PlaygroundUnion,
@@ -9,14 +10,19 @@ import { MDIconButton } from '../Button';
 import { useQueryValue } from '@shared/lib/useQueryState';
 import type { ComponentProps } from 'vue-component-type-helpers';
 import { MDPaneContainer } from '../Layers';
+import { MDListContainer, MDListItem } from '../Lists';
 
-interface State extends ComponentProps<typeof MDToolbarContainer> {}
+interface State extends ComponentProps<typeof MDToolbarContainer> {
+  numberItems: number;
+}
 
 const state = useQueryValue<State>('state', {
   type: 'docked',
   centerAligned: undefined,
   color: undefined,
   layout: undefined,
+  autoHide: undefined,
+  numberItems: 10,
 });
 
 const typeOptions: State['type'][] = ['docked', 'floating'];
@@ -27,10 +33,22 @@ const layoutOptions: State['layout'][] = [undefined, 'horizontal', 'vertical'];
 <template>
   <PlaygroundStory>
     <template #controllers>
+      <PlaygroundNumber
+        v-model:model-value="state.numberItems"
+        label="numberItems"
+        :min="0"
+        :step="1"
+      />
+
       <PlaygroundUnion
         v-model:model-value="state.type"
         label="type"
         :options="typeOptions"
+      />
+
+      <PlaygroundOptionalBoolean
+        v-model:model-value="state.autoHide"
+        label="autoHide"
       />
 
       <PlaygroundOptionalBoolean
@@ -53,15 +71,20 @@ const layoutOptions: State['layout'][] = [undefined, 'horizontal', 'vertical'];
 
     <template #space>
       <MDPaneContainer class="container">
-        <button v-for="i in 16" :key="i" type="button" class="md-margin-top-6">
-          {{ i }}
-        </button>
+        <MDListContainer>
+          <MDListItem
+            v-for="i in state.numberItems"
+            :key="i"
+            :headline="`item ${i}`"
+          />
+        </MDListContainer>
 
         <MDToolbarContainer
           :type="state.type"
           :center-aligned="state.centerAligned"
           :color="state.color"
           :layout="state.layout"
+          :auto-hide="state.autoHide"
           class="md-margin-top-4"
         >
           <MDIconButton tooltip="view settings" md-symbol-name="view_quilt" />

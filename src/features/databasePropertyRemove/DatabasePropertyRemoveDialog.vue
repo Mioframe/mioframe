@@ -1,13 +1,31 @@
 <script setup lang="ts">
+import type { AMDocHandle } from '@shared/lib/automerge';
+import type { DatabasePropertyId } from '@shared/lib/databaseDocument';
+import { useDatabasePropertiesMap } from '@shared/lib/databaseDocument/useDatabasePropertiesMap';
 import { MDDialog } from '@shared/ui/Dialog';
 import { MDSymbol } from '@shared/ui/Icon';
+import { toRefs } from 'vue';
+
+const props = defineProps<{
+  docHandle: AMDocHandle;
+  propertyId: DatabasePropertyId;
+}>();
+
+const { docHandle, propertyId } = toRefs(props);
+
+const propertyMap = useDatabasePropertiesMap(docHandle);
 
 const emit = defineEmits<{
-  apply: [];
+  removed: [];
   cancel: [];
 }>();
 
 const show = defineModel<boolean>('show', { required: true });
+
+const onApplyRemoveProperty = async () => {
+  await propertyMap.remove(propertyId.value);
+  emit('removed');
+};
 </script>
 
 <template>
@@ -17,7 +35,7 @@ const show = defineModel<boolean>('show', { required: true });
     supporting-text="Are you sure you want to delete the property and its data?"
     apply-label="Remove"
     has-cancel-action
-    @apply="emit('apply')"
+    @apply="onApplyRemoveProperty"
     @cancel="emit('cancel')"
   >
     <template #icon>
