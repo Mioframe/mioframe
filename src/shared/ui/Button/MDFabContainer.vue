@@ -79,7 +79,6 @@ const show = computed(
     right: 0;
     bottom: 0;
     left: 0;
-    margin-right: calc(16px - var(--md-pane-padding, 0));
     flex-shrink: 0;
     width: 100%;
   }
