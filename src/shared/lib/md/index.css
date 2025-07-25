@@ -39,3 +39,7 @@ input,
 select {
   background-color: unset;
 }
+
+* {
+  margin: 0;
+}

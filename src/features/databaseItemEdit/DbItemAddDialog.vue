@@ -1,20 +1,22 @@
 <script setup lang="ts">
-import type {
-  GeneralProperty,
-  PropertiesMap,
-} from '@shared/lib/databaseDocument/migrations/versions/v1/property';
+import type { GeneralProperty } from '@shared/lib/databaseDocument/migrations/versions/v1/property';
 import DbItemEditDialog from './DbItemEditDialog.vue';
 import type {
   DatabaseItem,
   DatabasePropertyId,
 } from '@shared/lib/databaseDocument/migrations/versions';
+import type { AMDocHandle } from '@shared/lib/automerge';
+import { toRefs } from 'vue';
+import { useDatabaseData } from '@shared/lib/databaseDocument';
 
-const { properties } = defineProps<{
-  properties: PropertiesMap;
+const props = defineProps<{
+  docHandle: AMDocHandle;
 }>();
 
+const { docHandle } = toRefs(props);
+
 const emit = defineEmits<{
-  add: [item: DatabaseItem];
+  added: [item: DatabaseItem];
   cancel: [];
 }>();
 
@@ -29,8 +31,11 @@ defineSlots<{
   }): unknown;
 }>();
 
-const onApply = (newItem: DatabaseItem) => {
-  emit('add', newItem);
+const databaseData = useDatabaseData(docHandle);
+
+const onApply = async (newItem: DatabaseItem) => {
+  await databaseData.createItem(newItem);
+  emit('added', newItem);
 };
 
 const onCancel = () => {
@@ -41,7 +46,7 @@ const onCancel = () => {
 <template>
   <DbItemEditDialog
     v-model:show="show"
-    :properties="properties"
+    :doc-handle="docHandle"
     headline="Add item"
     supporting-text="Fill in the properties of the new item."
     apply-label="Add"
