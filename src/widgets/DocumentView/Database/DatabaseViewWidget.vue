@@ -1,10 +1,7 @@
 <script setup lang="ts">
-import { DbItemAddDialog } from '@feature/databaseItemEdit';
 import type {
-  DatabaseItem,
   DatabaseItemId,
   DatabasePropertyId,
-  DatabaseUnknownProperty,
   DatabaseValue,
   DatabaseViewId,
 } from '@shared/lib/databaseDocument';
@@ -13,29 +10,15 @@ import {
   useDatabaseDocument,
   useDatabaseViewsMap,
 } from '@shared/lib/databaseDocument';
-import { computed, ref, shallowRef, toRefs, watchEffect } from 'vue';
-import { MDBottomSheet } from '@shared/ui/Sheets';
-import { DatabasePropertyList } from '@entity/databaseProperty';
-import {
-  defineMenuButtonList,
-  MDContextMenuBtn,
-  MDContextMenuButton,
-} from '@shared/ui/Menu';
-import { DatabasePropertyRemoveDialog } from '@feature/databasePropertyRemove';
-import { DatabasePropertyRenameDialog } from '@feature/databasePropertyRename';
-import DatabaseViewPresetSettingsWidget from './DatabaseViewPresetSettingsWidget.vue';
+import { shallowRef, toRefs, watchEffect } from 'vue';
+import { defineMenuButtonList, MDContextMenuBtn } from '@shared/ui/Menu';
 import type { AMDocHandle } from '@shared/lib/automerge/automergeTypes';
 import EditableInlineValue from './EditableInlineValue.vue';
 import { useSnackbar } from '@shared/ui/Snackbar';
 import { useDatabaseItemRemove } from '@feature/databaseItemRemove';
-import { DatabasePropertyCreationDialog } from '@feature/databasePropertyCreate';
 import type { DirectoryFSEntry } from '@shared/lib/fileSystem';
-import ValueField from './ValueField.vue';
 import DatabaseViewLayout from './DatabaseViewLayout.vue';
-import { useDatabasePropertiesMap } from '@shared/lib/databaseDocument/useDatabasePropertiesMap';
-import { MDFab, MDFabContainer } from '@shared/ui/Button';
-import { MD_SYS_TYPESCALE } from '@shared/lib/md';
-import MDBottomSheetSection from '@shared/ui/Sheets/MDBottomSheetSection.vue';
+import DatabaseToolbar from './DatabaseToolbar.vue';
 
 const props = defineProps<{
   docHandle: AMDocHandle;
@@ -46,89 +29,9 @@ const { directory, docHandle } = toRefs(props);
 
 const databaseDocument = useDatabaseDocument(docHandle);
 
-const { state, documentError } = toRefs(databaseDocument);
+const { documentError } = toRefs(databaseDocument);
 
-const { createItem, setValue } = useDatabaseData(docHandle);
-
-const properties = computed(() => state.value?.properties);
-
-const propertiesMap = useDatabasePropertiesMap(docHandle);
-
-const isShowAddProperty = ref(false);
-
-const onCreateProperty = async (property: DatabaseUnknownProperty) => {
-  await propertiesMap.create(property);
-  isShowAddProperty.value = false;
-};
-
-const isShowAddItem = ref(false);
-
-const onAddItem = async (item: DatabaseItem) => {
-  await createItem(item);
-  isShowAddItem.value = false;
-};
-
-enum PROPERTY_ACTION {
-  remove,
-  rename,
-}
-
-const propertyContextBtns = defineMenuButtonList([
-  {
-    label: 'Rename',
-    symbolName: 'edit',
-    key: PROPERTY_ACTION.rename,
-  },
-  {
-    label: 'Remove',
-    symbolName: 'delete',
-    key: PROPERTY_ACTION.remove,
-  },
-]);
-
-const removePropertyId = ref<DatabasePropertyId>();
-
-const onApplyRemoveProperty = async (propertyId: DatabasePropertyId) => {
-  await propertiesMap.remove(propertyId);
-  removePropertyId.value = undefined;
-};
-
-const renamePropertyId = ref<DatabasePropertyId>();
-
-const renamePropertyName = computed(() =>
-  renamePropertyId.value
-    ? propertiesMap.get(renamePropertyId.value)?.name
-    : undefined,
-);
-
-const onApplyRenameProperty = async (
-  propertyId: DatabasePropertyId,
-  name: string,
-) => {
-  await propertiesMap.update(propertyId, {
-    name,
-  });
-  renamePropertyId.value = undefined;
-};
-
-const onClickPropertyContextAction = (
-  { key: action }: { key: PROPERTY_ACTION },
-  propertyId: DatabasePropertyId,
-) => {
-  switch (action) {
-    case PROPERTY_ACTION.remove: {
-      removePropertyId.value = propertyId;
-      break;
-    }
-    case PROPERTY_ACTION.rename: {
-      renamePropertyId.value = propertyId;
-      break;
-    }
-
-    default:
-      throw new Error('unknown property action');
-  }
-};
+const { setValue } = useDatabaseData(docHandle);
 
 const onChangeValue = async (
   itemId: DatabaseItemId,
@@ -177,14 +80,6 @@ const onClickItemContextBtn = async (
       break;
   }
 };
-
-const onClickAddItem = () => {
-  isShowAddItem.value = true;
-};
-
-const onClickAddProperty = () => {
-  isShowAddProperty.value = true;
-};
 </script>
 
 <template>
@@ -218,99 +113,10 @@ const onClickAddProperty = () => {
       </template>
     </DatabaseViewLayout>
 
-    <!-- TODO: заменить на toolbar для Database -->
-
-    <MDFabContainer class="database-view__fab-container" auto-hide>
-      <MDFab
-        tooltip="Add property"
-        md-symbol="contextual_token_add"
-        color="tonal-primary"
-        @click="onClickAddProperty"
-      />
-
-      <MDFab
-        v-if="propertiesMap.size"
-        tooltip="Add item"
-        md-symbol="forms_add_on"
-        size="medium"
-        color="primary"
-        @click="onClickAddItem"
-      />
-    </MDFabContainer>
-
-    <div class="database-view__controls">
-      <MDBottomSheet class="database-view__sheet sheet" show>
-        <MDBottomSheetSection
-          class="md-padding-left-4 md-padding-right-4"
-          scroll-snap-align="end"
-        >
-          <DatabaseViewPresetSettingsWidget
-            v-model:selected-view-id="selectedViewId"
-            :doc-handle="docHandle"
-          />
-        </MDBottomSheetSection>
-
-        <MDBottomSheetSection
-          v-if="properties"
-          class="md-padding-top-4 md-padding-left-4 md-padding-right-4"
-        >
-          <span :class="MD_SYS_TYPESCALE.title.small">Properties</span>
-
-          <DatabasePropertyList
-            :properties="properties"
-            class="sheet__property-list"
-          >
-            <template #trailingIcon="{ propertyId }">
-              <MDContextMenuButton
-                :btns="propertyContextBtns"
-                @click="onClickPropertyContextAction($event, propertyId)"
-              />
-            </template>
-          </DatabasePropertyList>
-        </MDBottomSheetSection>
-      </MDBottomSheet>
-    </div>
-
-    <DatabasePropertyCreationDialog
-      v-if="isShowAddProperty"
-      v-model:show="isShowAddProperty"
+    <DatabaseToolbar
+      v-model:selected-view-id="selectedViewId"
+      :doc-handle="docHandle"
       :directory="directory"
-      @create="onCreateProperty"
-      @cancel="isShowAddProperty = false"
-    />
-
-    <DbItemAddDialog
-      v-if="isShowAddItem && properties"
-      v-model:show="isShowAddItem"
-      :properties="properties"
-      @add="onAddItem"
-      @cancel="isShowAddItem = false"
-    >
-      <template #valueField="{ property, update, value, propertyId }">
-        <ValueField
-          :property="property"
-          :value="value"
-          :directory="directory"
-          :property-id="propertyId"
-          :doc-handle="docHandle"
-          @update:value="update"
-        />
-      </template>
-    </DbItemAddDialog>
-
-    <DatabasePropertyRemoveDialog
-      v-if="removePropertyId"
-      :show="!!removePropertyId"
-      @apply="onApplyRemoveProperty(removePropertyId)"
-      @cancel="removePropertyId = undefined"
-    />
-
-    <DatabasePropertyRenameDialog
-      v-if="renamePropertyId"
-      :name="renamePropertyName"
-      :show="!!renamePropertyId"
-      @apply="onApplyRenameProperty(renamePropertyId, $event)"
-      @cancel="renamePropertyId = undefined"
     />
   </div>
 </template>

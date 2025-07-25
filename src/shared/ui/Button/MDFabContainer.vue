@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { computed, ref, toRefs } from 'vue';
-import { useEventListener, useParentElement } from '@vueuse/core';
-import { isUndefined, throttle } from 'es-toolkit';
+import { computed, ref, toRefs, watchEffect } from 'vue';
+import { useParentElement, useScroll } from '@vueuse/core';
+import { isUndefined } from 'es-toolkit';
 import { TeleportWithPlaceholder } from '@shared/lib/teleport';
 
 const props = defineProps<{
@@ -16,36 +16,23 @@ defineSlots<{
 
 const parentEl = useParentElement();
 
-let lastScrollTop: number | undefined = undefined;
+const lastScrollDirection = ref<'top' | 'bottom'>();
 
-const scrollDirection = ref<'top' | 'bottom'>();
+const { directions } = useScroll(parentEl);
 
-useEventListener(
-  parentEl,
-  'scroll',
-  throttle(
-    () => {
-      if (parentEl.value) {
-        if (lastScrollTop && parentEl.value.scrollTop > lastScrollTop) {
-          scrollDirection.value = 'bottom';
-        } else if (lastScrollTop && parentEl.value.scrollTop < lastScrollTop) {
-          scrollDirection.value = 'top';
-        } else {
-          scrollDirection.value = undefined;
-        }
-        lastScrollTop = parentEl.value.scrollTop;
-      }
-    },
-    300,
-    { edges: ['leading', 'trailing'] },
-  ),
-);
+watchEffect(() => {
+  if (directions.top) {
+    lastScrollDirection.value = 'top';
+  } else if (directions.bottom) {
+    lastScrollDirection.value = 'bottom';
+  }
+});
 
 const show = computed(
   () =>
     !autoHide.value ||
-    isUndefined(scrollDirection.value) ||
-    scrollDirection.value === 'top',
+    isUndefined(lastScrollDirection.value) ||
+    lastScrollDirection.value === 'top',
 );
 </script>
 
@@ -89,8 +76,12 @@ const show = computed(
   &__placeholder {
     display: flex;
     position: sticky;
+    right: 0;
     bottom: 0;
+    left: 0;
     margin-right: calc(16px - var(--md-pane-padding, 0));
+    flex-shrink: 0;
+    width: 100%;
   }
 
   &_auto-hide {
@@ -105,11 +96,27 @@ const show = computed(
   }
 
   &.v {
-    &-enter-active,
-    &-leave-active {
-      transition-property: transform, opacity;
-      transition-duration: var(--md-sys-motion-duration-medium1);
+    &-enter,
+    &-leave {
+      &-active {
+        transition-property: transform, opacity;
+      }
     }
+
+    &-leave-active {
+      transition-timing-function: var(
+        var(--md-sys-motion-easing-emphasized-accelerate)
+      );
+      transition-duration: var(--md-sys-motion-duration-short4);
+    }
+
+    &-enter-active {
+      transition-timing-function: var(
+        var(--md-sys-motion-easing-emphasized-decelerate)
+      );
+      transition-duration: var(--md-sys-motion-duration-long2);
+    }
+
     &-leave-to,
     &-enter-from {
       opacity: 0;

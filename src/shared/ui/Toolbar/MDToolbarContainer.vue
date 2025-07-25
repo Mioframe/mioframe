@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { TeleportWithPlaceholder } from '@shared/lib/teleport';
-import { toRefs } from 'vue';
+import { useParentElement, useScroll } from '@vueuse/core';
+import { isUndefined } from 'es-toolkit';
+import { computed, ref, toRefs, watchEffect } from 'vue';
 
 const props = withDefaults(
   defineProps<{
@@ -8,15 +10,37 @@ const props = withDefaults(
     layout?: 'horizontal' | 'vertical';
     color?: 'standard' | 'vibrant';
     centerAligned?: boolean;
+    autoHide?: boolean;
   }>(),
   { layout: 'horizontal', color: 'standard' },
 );
 
-const {} = toRefs(props);
+const { autoHide } = toRefs(props);
 
 defineSlots<{
   default: () => unknown;
 }>();
+
+const parentEl = useParentElement();
+
+const lastScrollDirection = ref<'top' | 'bottom'>();
+
+const { directions } = useScroll(parentEl);
+
+watchEffect(() => {
+  if (directions.top) {
+    lastScrollDirection.value = 'top';
+  } else if (directions.bottom) {
+    lastScrollDirection.value = 'bottom';
+  }
+});
+
+const show = computed(
+  () =>
+    !autoHide.value ||
+    isUndefined(lastScrollDirection.value) ||
+    lastScrollDirection.value === 'top',
+);
 </script>
 
 <template>
@@ -24,20 +48,30 @@ defineSlots<{
     class="md-toolbar__placeholder"
     priority-height="content"
     priority-width="placeholder"
+    with-placeholder
+    :class="{
+      'md-toolbar_auto-hide': autoHide,
+    }"
   >
-    <div
-      class="md-toolbar"
-      :class="[
-        `md-toolbar_type-${type}`,
-        `md-toolbar_layout-${layout}`,
-        `md-toolbar_color-${color}`,
-        { 'md-toolbar_center-aligned': centerAligned },
-      ]"
-    >
-      <div class="md-toolbar__container md">
-        <slot />
+    <Transition>
+      <div
+        v-if="show"
+        class="md-toolbar"
+        :class="[
+          `md-toolbar_type-${type}`,
+          `md-toolbar_layout-${layout}`,
+          `md-toolbar_color-${color}`,
+          {
+            'md-toolbar_center-aligned': centerAligned,
+            'md-toolbar_auto-hide': autoHide,
+          },
+        ]"
+      >
+        <div class="md-toolbar__container md">
+          <slot />
+        </div>
       </div>
-    </div>
+    </Transition>
   </TeleportWithPlaceholder>
 </template>
 
@@ -174,7 +208,57 @@ defineSlots<{
 
   &__placeholder {
     position: sticky;
+    right: 0;
     bottom: 0;
+    left: 0;
+    margin-top: auto;
+    width: 100%;
+    flex-shrink: 0;
+  }
+
+  &_auto-hide {
+    &.md-toolbar__placeholder {
+      height: 0;
+    }
+    &.md-toolbar {
+      position: absolute;
+      bottom: 0;
+      right: 0;
+      left: 0;
+    }
+  }
+
+  &.v {
+    &-enter,
+    &-leave {
+      &-active {
+        transition-property: transform, opacity;
+      }
+    }
+
+    &-leave-active {
+      transition-timing-function: var(
+        var(--md-sys-motion-easing-emphasized-accelerate)
+      );
+      transition-duration: var(--md-sys-motion-duration-short4);
+    }
+
+    &-enter-active {
+      transition-timing-function: var(
+        var(--md-sys-motion-easing-emphasized-decelerate)
+      );
+      transition-duration: var(--md-sys-motion-duration-long2);
+    }
+
+    &-enter-from,
+    &-leave-to {
+      transform: translateY(
+        calc(100vh - var(--teleport-placeholder-top) + 100%)
+      );
+      &.md-toolbar__placeholder {
+        height: 0;
+      }
+    }
   }
 }
 </style>

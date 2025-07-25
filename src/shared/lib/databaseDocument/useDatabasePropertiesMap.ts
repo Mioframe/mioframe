@@ -47,7 +47,7 @@ export const useDatabasePropertiesMap = (
     return id;
   };
 
-  const update = async <
+  const put = async <
     T extends DatabaseUnknownProperty = DatabaseUnknownProperty,
   >(
     id: DatabasePropertyId,
@@ -99,7 +99,7 @@ export const useDatabasePropertiesMap = (
     values,
     keys,
     entries,
-    update,
+    put,
     create,
   });
 };

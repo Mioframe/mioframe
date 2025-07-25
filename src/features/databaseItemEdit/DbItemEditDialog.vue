@@ -1,27 +1,30 @@
 <script setup lang="ts">
-import { ref, watchEffect } from 'vue';
+import { ref, toRefs, watchEffect } from 'vue';
 import { MDDialog } from '@shared/ui/Dialog';
-import { useWrapStrictRecord } from '@shared/lib/strictRecord';
 import type {
   DatabaseItem,
   DatabasePropertyId,
   GeneralProperty,
-  PropertiesMap,
 } from '@shared/lib/databaseDocument';
+import type { AMDocHandle } from '@shared/lib/automerge';
+import { useDatabasePropertiesMap } from '@shared/lib/databaseDocument/useDatabasePropertiesMap';
 
-const {
-  applyLabel = 'Apply',
-  headline = 'Edit item',
-  item,
-  properties,
-  supportingText = 'Fill in the item properties.',
-} = defineProps<{
-  properties: PropertiesMap;
-  item?: DatabaseItem;
-  headline?: string;
-  supportingText?: string;
-  applyLabel?: string;
-}>();
+const props = withDefaults(
+  defineProps<{
+    docHandle: AMDocHandle;
+    item?: DatabaseItem;
+    headline?: string;
+    supportingText?: string;
+    applyLabel?: string;
+  }>(),
+  {
+    applyLabel: 'Apply',
+    headline: 'Edit item',
+    supportingText: 'Fill in the item properties.',
+  },
+);
+
+const { applyLabel, headline, supportingText, item, docHandle } = toRefs(props);
 
 const emit = defineEmits<{
   apply: [item: DatabaseItem];
@@ -42,7 +45,7 @@ defineSlots<{
 const itemState = ref<DatabaseItem>({});
 
 watchEffect(() => {
-  itemState.value = item ?? {};
+  itemState.value = item.value ?? {};
 });
 
 const onApply = () => {
@@ -54,7 +57,7 @@ const onCancel = () => {
   emit('cancel');
 };
 
-const propertiesCollection = useWrapStrictRecord(() => properties);
+const propertyMap = useDatabasePropertiesMap(docHandle);
 
 const onUpdateValue = (propertyId: DatabasePropertyId, value: unknown) => {
   itemState.value[propertyId] = value;
@@ -72,7 +75,7 @@ const onUpdateValue = (propertyId: DatabasePropertyId, value: unknown) => {
     @cancel="onCancel"
   >
     <template
-      v-for="[propertyId, property] in propertiesCollection?.entries"
+      v-for="[propertyId, property] in propertyMap.entries"
       :key="propertyId"
     >
       <slot
