@@ -5,7 +5,7 @@ import {
   useScroll,
   useWindowSize,
 } from '@vueuse/core';
-import { isBoolean } from 'es-toolkit';
+import { isBoolean, throttle } from 'es-toolkit';
 import { computed, toRefs, useTemplateRef, watch, watchEffect } from 'vue';
 
 const props = withDefaults(
@@ -32,8 +32,18 @@ defineSlots<{
 
 const containerEl = useTemplateRef('containerEl');
 
-const { arrivedState: containerArrivedState, y: containerScrollY } =
-  useScroll(containerEl);
+const { arrivedState: containerArrivedState, y: containerScrollY } = useScroll(
+  containerEl,
+  { throttle: 1e3 / 20, idle: 1e3 / 15 },
+);
+
+const scrollYCssVar = useCssVar('--md-bottom-sheet-scroll-y', containerEl);
+
+watchEffect(
+  throttle(() => {
+    scrollYCssVar.value = `${containerScrollY.value}px`;
+  }, 1e3 / 10),
+);
 
 const sheetWidthCssVar = useCssVar('--md-bottom-sheet-width', containerEl);
 
@@ -136,6 +146,7 @@ tryOnBeforeUnmount(() => {
   --md-bottom-sheet-border-radius: var(--md-sys-shape-corner-extra-large-top);
   --md-bottom-sheet-shadow: var(--md-sys-elevation-level1);
   --md-bottom-sheet-container-color: var(--md-sys-color-surface-container-low);
+  --md-bottom-sheet-scroll-y: unset;
 
   --offset-for-shadow: 100px;
 
@@ -213,6 +224,32 @@ tryOnBeforeUnmount(() => {
 
   &.mb-bottom-sheet-container_fullscreen {
     --md-bottom-sheet-border-radius: 0;
+  }
+
+  &.v {
+    &-enter-active,
+    &-leave-active {
+      transition-property: transform;
+    }
+
+    &-leave-active {
+      transition-timing-function: var(
+        var(--md-sys-motion-easing-emphasized-accelerate)
+      );
+      transition-duration: var(--md-sys-motion-duration-short4);
+    }
+
+    &-enter-active {
+      transition-timing-function: var(
+        var(--md-sys-motion-easing-emphasized-decelerate)
+      );
+      transition-duration: var(--md-sys-motion-duration-long2);
+    }
+
+    &-leave-to,
+    &-enter-from {
+      transform: translateY(calc(28px + var(--md-bottom-sheet-scroll-y, 100%)));
+    }
   }
 }
 </style>

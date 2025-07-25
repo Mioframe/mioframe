@@ -36,18 +36,3 @@ defineSlots<{
     </template>
   </TeleportWithPlaceholder>
 </template>
-
-<style lang="css" scoped>
-.v {
-  &-enter-active,
-  &-leave-active {
-    transition-property: transform;
-    transition-duration: var(--md-sys-motion-duration-medium1);
-  }
-
-  &-leave-to,
-  &-enter-from {
-    transform: translateY(100%);
-  }
-}
-</style>
