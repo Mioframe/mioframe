@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import NotificationList from '../shared/ui/Notifications/NotificationList.vue';
-import TooltipContainer from '@shared/ui/Tooltips/TooltipContainer.vue';
 import { SnackbarContainer, useSnackbar } from '@shared/ui/Snackbar';
 import { onErrorCaptured } from 'vue';
 import DialogContainer from '@shared/ui/Dialog/Alert/DialogContainer.vue';
@@ -26,8 +25,6 @@ onErrorCaptured((error) => {
   <NotificationList />
 
   <SnackbarContainer />
-
-  <TooltipContainer />
 
   <PerformanceOverlay />
 </template>

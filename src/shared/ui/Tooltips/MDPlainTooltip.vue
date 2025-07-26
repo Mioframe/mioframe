@@ -1,26 +1,58 @@
 <script setup lang="ts">
 import { useClosestParentFrame } from '@shared/lib/useClosestParentFrame';
-import { setupTooltip } from './setupTooltip';
-import { computed, useTemplateRef } from 'vue';
-import { refDebounced, useElementHover, useParentElement } from '@vueuse/core';
+import { computed, toRefs, useTemplateRef } from 'vue';
+import type { MaybeElement } from '@vueuse/core';
+import {
+  refDebounced,
+  unrefElement,
+  useElementHover,
+  useParentElement,
+} from '@vueuse/core';
+import { autoUpdate, flip, offset, shift, useFloating } from '@floating-ui/vue';
 
-const { targetElement } = defineProps<{
-  text: string;
-  targetElement?: HTMLElement | SVGElement | null;
-  disabledTeleport?: boolean;
-}>();
+const props = withDefaults(
+  defineProps<{
+    text: string;
+    target?: MaybeElement;
+    disabledTeleport?: boolean;
+    placement?: 'bottom' | 'left' | 'right' | 'top';
+  }>(),
+  {
+    placement: 'top',
+  },
+);
+
+const { target, placement } = toRefs(props);
 
 const parentEl = useParentElement();
 
-const targetElementRef = computed(() => targetElement ?? parentEl.value);
+const targetElementRef = computed(
+  () => unrefElement(target.value) ?? parentEl.value,
+);
 
 const targetTeleport = useClosestParentFrame();
 
 const tooltipEl = useTemplateRef('tooltipEl');
 
-const { plainTooltipStyle: tooltipStyle } = setupTooltip(
+const { floatingStyles: tooltipStyle } = useFloating(
   targetElementRef,
   tooltipEl,
+
+  {
+    strategy: 'fixed',
+    placement,
+    middleware: [
+      offset(8),
+      flip({
+        padding: 16,
+        fallbackAxisSideDirection: 'end',
+      }),
+      shift({
+        padding: 16,
+      }),
+    ],
+    whileElementsMounted: autoUpdate,
+  },
 );
 
 const hovered = useElementHover(targetElementRef);
@@ -29,7 +61,7 @@ const show = refDebounced(hovered, 1.5e3);
 </script>
 
 <template>
-  <Teleport :to="targetTeleport"  :disabled="disabledTeleport">
+  <Teleport :to="targetTeleport" :disabled="disabledTeleport">
     <Transition>
       <div
         v-if="show"

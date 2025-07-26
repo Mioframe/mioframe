@@ -15,6 +15,7 @@
   "dependencies": {
     "@automerge/automerge": "^2.2.9",
     "@automerge/automerge-repo": "^1.2.1",
+    "@floating-ui/vue": "^1.1.7",
     "@noction/vue-bezier": "^1.12.0",
     "@sentry/vue": "^9.40.0",
     "@unhead/vue": "^2.0.12",
