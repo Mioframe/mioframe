@@ -10,7 +10,7 @@ import {
   useDatabaseDocument,
   useDatabaseViewsMap,
 } from '@shared/lib/databaseDocument';
-import { shallowRef, toRefs, watchEffect } from 'vue';
+import { shallowRef, toRefs, watch } from 'vue';
 import { defineMenuButtonList, MDContextMenuBtn } from '@shared/ui/Menu';
 import type { AMDocHandle } from '@shared/lib/automerge/automergeTypes';
 import EditableInlineValue from './EditableInlineValue.vue';
@@ -45,10 +45,8 @@ const selectedViewId = shallowRef<DatabaseViewId>();
 
 const databaseViewMap = useDatabaseViewsMap(docHandle);
 
-watchEffect(() => {
-  if (!selectedViewId.value) {
-    selectedViewId.value = databaseViewMap.list?.at(0)?.[0];
-  }
+watch(docHandle, () => {
+  selectedViewId.value = databaseViewMap.list?.at(0)?.[0];
 });
 
 enum ITEM_CONTEXT_ACTION {

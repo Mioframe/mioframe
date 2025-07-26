@@ -1,13 +1,14 @@
 <script setup lang="ts">
 import { DatabaseViewCreateDialog } from '@feature/databaseViewCreate';
-import { DatabaseViewMapEdit } from '@feature/databaseViewMapEdit';
+import { DatabaseViewListEdit } from '@feature/databaseViewMapEdit';
 import { DatabaseViewRenameDialog } from '@feature/databaseViewRename';
 import type { AMDocHandle } from '@shared/lib/automerge';
 import type { DatabaseViewId } from '@shared/lib/databaseDocument';
 import { useDatabaseViewsMap } from '@shared/lib/databaseDocument';
 import { MD_SYS_TYPESCALE } from '@shared/lib/md';
 import { MDIconButton } from '@shared/ui/Button';
-import { MDChip } from '@shared/ui/Chips';
+import MDButton from '@shared/ui/Button/MDButton.vue';
+import { MDCheckbox } from '@shared/ui/Checkbox';
 import { useDialog } from '@shared/ui/Dialog';
 import { MDSymbol } from '@shared/ui/Icon';
 import { defineMenuButtonList, MDContextMenuButton } from '@shared/ui/Menu';
@@ -28,8 +29,10 @@ const { confirm } = useDialog();
 
 const databaseViewsMap = useDatabaseViewsMap(docHandle);
 
-const onClickViewChip = (viewId: DatabaseViewId) => {
-  selectedViewId.value = viewId;
+const onChangeSelectedViewId = (viewId: DatabaseViewId, checked?: boolean) => {
+  if (checked) {
+    selectedViewId.value = viewId;
+  }
 };
 
 enum VIEW_CONTEXT_ACTION {
@@ -125,11 +128,18 @@ const closeRenameDialog = () => {
       </div>
 
       <div class="db-views-sheet__body">
-        <DatabaseViewMapEdit
+        <DatabaseViewListEdit
+          class="db-views-sheet__list"
           :doc-handle="docHandle"
-          :selected-view="selectedViewId"
-          @click-view="onClickViewChip"
+          @click-view="onChangeSelectedViewId($event, true)"
         >
+          <template #leadingIcon="{ viewId }">
+            <MDCheckbox
+              :model-value="viewId === selectedViewId"
+              @update:model-value="onChangeSelectedViewId(viewId, $event)"
+            />
+          </template>
+
           <template #trailingIcon="{ viewId }">
             <MDContextMenuButton
               :btns="viewContextMenu"
@@ -137,13 +147,15 @@ const closeRenameDialog = () => {
               @click="onClickViewContextMenu(viewId, $event)"
             />
           </template>
-        </DatabaseViewMapEdit>
+        </DatabaseViewListEdit>
 
-        <MDChip label="add view" type="assist" @click="isShowAddView = true">
-          <template #leadingIcon>
-            <MDSymbol name="add" />
-          </template>
-        </MDChip>
+        <div class="db-views-sheet__actions">
+          <MDButton label="add view" @click="isShowAddView = true">
+            <template #icon>
+              <MDSymbol name="add" />
+            </template>
+          </MDButton>
+        </div>
       </div>
     </MDBottomSheetSection>
 
@@ -179,10 +191,11 @@ const closeRenameDialog = () => {
   }
 
   &__body {
-    display: flex;
-    flex-wrap: wrap;
     margin-top: 2step;
-    gap: 2step;
+  }
+
+  &__actions {
+    margin-top: 2step;
   }
 }
 </style>
