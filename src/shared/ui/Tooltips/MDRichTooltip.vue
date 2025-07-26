@@ -9,24 +9,28 @@ import {
   useParentElement,
   type MaybeElement,
 } from '@vueuse/core';
-import { computed, ref, useTemplateRef } from 'vue';
-import { setupTooltip } from './setupTooltip';
+import { computed, ref, toRefs, useTemplateRef } from 'vue';
 import { onInteractionOutside } from '@shared/lib/onInteractionOutside';
+import { autoUpdate, flip, offset, shift, useFloating } from '@floating-ui/vue';
 
-const {
-  subhead,
-  targetElement,
-  show = undefined,
-  useClick,
-  useHover,
-} = defineProps<{
-  subhead: string;
-  disabledTeleport?: boolean;
-  targetElement?: MaybeElement;
-  show?: boolean | undefined;
-  useClick?: boolean;
-  useHover?: boolean;
-}>();
+const props = withDefaults(
+  defineProps<{
+    subhead: string;
+    disabledTeleport?: boolean;
+    targetElement?: MaybeElement;
+    show?: boolean | undefined;
+    useClick?: boolean;
+    useHover?: boolean;
+    placement?: 'top-start' | 'top-end' | 'bottom-end' | 'bottom-start';
+  }>(),
+  {
+    show: undefined,
+    placement: 'top-end',
+  },
+);
+
+const { subhead, targetElement, show, useClick, useHover, placement } =
+  toRefs(props);
 
 const slots = defineSlots<{
   text(): unknown;
@@ -36,7 +40,7 @@ const slots = defineSlots<{
 const parentEl = useParentElement();
 
 const targetElementRef = computed(() =>
-  unrefElement(targetElement ?? parentEl.value),
+  unrefElement(targetElement.value ?? parentEl.value),
 );
 
 const targetTeleport = useClosestParentFrame();
@@ -44,7 +48,7 @@ const targetTeleport = useClosestParentFrame();
 const hoveredTarget = useElementHover(targetElementRef);
 
 const generalHovered = computed(
-  () => useHover && (hoveredTarget.value || hoveredTooltip.value),
+  () => useHover.value && (hoveredTarget.value || hoveredTooltip.value),
 );
 
 const tooltipEl = useTemplateRef('tooltipEl');
@@ -54,15 +58,35 @@ const hoveredTooltip = useElementHover(tooltipEl);
 const debounceHovered = refDebounced(generalHovered, 1.5e3);
 
 const computedShow = computed(
-  () => show ?? (showOnClick.value || debounceHovered.value),
+  () => show.value ?? (showOnClick.value || debounceHovered.value),
 );
 
-const { richTooltipStyle } = setupTooltip(targetElementRef, tooltipEl);
+const { floatingStyles: richTooltipStyle } = useFloating(
+  targetElementRef,
+  tooltipEl,
+  {
+    strategy: 'fixed',
+    placement,
+    middleware: [
+      offset(({ rects }) => ({
+        alignmentAxis: -rects.floating.width - 8,
+        mainAxis: 8,
+      })),
+      flip({
+        padding: 16,
+      }),
+      shift({
+        padding: 16,
+      }),
+    ],
+    whileElementsMounted: autoUpdate,
+  },
+);
 
 const showOnClick = ref(false);
 
 useEventListener(targetElementRef, 'click', () => {
-  if (useClick) {
+  if (useClick.value) {
     showOnClick.value = true;
   }
 });
