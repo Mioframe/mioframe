@@ -116,8 +116,8 @@ const onClick = (e: MouseEvent) => {
 
   &__leading-icon {
     display: block;
-    width: 24px;
-    height: 24px;
+    min-width: 24px;
+    min-height: 24px;
 
     color: var(--md-sys-color-on-surface-variant);
   }
