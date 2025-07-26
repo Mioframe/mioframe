@@ -3,8 +3,7 @@
   lang="ts"
   generic="T extends MenuButtonDescription = MenuButtonDescription"
 >
-import type { MaybeElement } from '@vueuse/core';
-import type { StyleValue } from 'vue';
+import type { MaybeElement, VueInstance } from '@vueuse/core';
 import {
   computed,
   nextTick,
@@ -14,7 +13,7 @@ import {
   watch,
   watchEffect,
 } from 'vue';
-import { unrefElement, useElementBounding, useWindowSize } from '@vueuse/core';
+import { unrefElement } from '@vueuse/core';
 import { MDListContainer, MDListItem } from '../Lists';
 import type { MenuButtonDescription } from './types';
 import { MDSymbol } from '../Icon';
@@ -25,6 +24,7 @@ import { useKeyboardSearch } from '@shared/lib/useKeyboardSearch';
 import { isUndefined } from 'es-toolkit';
 import { useOverlayNavigation } from '@shared/lib/useOverlayNavigation';
 import { uniqueId } from '@shared/lib/uniqueId';
+import { autoUpdate, flip, shift, size, useFloating } from '@floating-ui/vue';
 
 const props = defineProps<{
   targetEl: MaybeElement;
@@ -47,68 +47,37 @@ const onClick = (menuItem: T) => {
   emit('click', menuItem);
 };
 
-const listContainerEl = useTemplateRef('listContainerEl');
+const listContainerEl = useTemplateRef<
+  HTMLElement | VueInstance | null | undefined
+>('listContainerEl');
 
-const {
-  x: targetX,
-  y: targetY,
-  height: targetHeight,
-  width: targetWidth,
-} = useElementBounding(targetEl);
-
-const { height: menusHeight, width: menusWidth } =
-  useElementBounding(listContainerEl);
-
-const { height: windowHeight, width: windowWidth } = useWindowSize();
-
-const bottomSpace = computed(
-  () => windowHeight.value - targetY.value - targetHeight.value,
-);
-
-const positionTop = computed((): `${number}px` => {
-  const topSpace = targetY.value;
-
-  if (menusHeight.value < bottomSpace.value || topSpace < bottomSpace.value) {
-    return `${targetY.value + targetHeight.value}px`;
-  }
-
-  return `${Math.max(targetY.value - menusHeight.value, 0)}px`;
-});
-
-const maxHeight = computed((): `${number}px` => {
-  const topSpace = targetY.value;
-
-  if (menusHeight.value < bottomSpace.value || topSpace < bottomSpace.value) {
-    return `${bottomSpace.value}px`;
-  }
-
-  return `${topSpace}px`;
-});
-
-const rightSpace = computed(() => windowWidth.value - targetX.value);
-
-const leftSpace = computed(() => targetX.value + targetWidth.value);
-
-const positionLeft = computed((): `${number}px` => {
-  if (
-    menusWidth.value < rightSpace.value ||
-    leftSpace.value < rightSpace.value
-  ) {
-    return `${targetX.value}px`;
-  }
-
-  return `${Math.max(targetX.value + targetWidth.value - menusWidth.value, 0)}px`;
-});
-
-const minWidth = computed((): `${number}px` => `${targetWidth.value}px`);
-
-const containerStyle = computed(
-  (): StyleValue => ({
-    top: positionTop.value,
-    left: positionLeft.value,
-    maxHeight: maxHeight.value,
-    minWidth: minWidth.value,
-  }),
+const { floatingStyles: containerStyle } = useFloating(
+  targetEl,
+  listContainerEl,
+  {
+    strategy: 'fixed',
+    placement: 'bottom-start',
+    middleware: [
+      flip({
+        padding: 16,
+      }),
+      shift({ padding: 16, crossAxis: true }),
+      size({
+        padding: 16,
+        apply({
+          elements,
+          rects: {
+            reference: { width },
+          },
+        }) {
+          Object.assign(elements.floating.style, {
+            minWidth: `${width}px`,
+          });
+        },
+      }),
+    ],
+    whileElementsMounted: autoUpdate,
+  },
 );
 
 const hasSomeSymbol = computed(() =>

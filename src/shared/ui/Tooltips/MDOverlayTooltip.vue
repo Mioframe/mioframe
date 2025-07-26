@@ -7,8 +7,8 @@ import {
   type MaybeElement,
 } from '@vueuse/core';
 import { computed, ref, toRefs, useTemplateRef } from 'vue';
-import { setupTooltip } from './setupTooltip';
 import { onInteractionOutside } from '@shared/lib/onInteractionOutside';
+import { autoUpdate, offset, shift, useFloating } from '@floating-ui/vue';
 
 const props = defineProps<{
   disabledTeleport?: boolean;
@@ -41,7 +41,22 @@ const targetTeleport = useClosestParentFrame();
 
 const tooltipEl = useTemplateRef('tooltipEl');
 
-const { alignCenterStyle } = setupTooltip(targetElementRef, tooltipEl);
+const { floatingStyles: alignCenterStyle } = useFloating(
+  targetElementRef,
+  tooltipEl,
+  {
+    strategy: 'fixed',
+    transform: false,
+    middleware: [
+      offset(
+        ({ rects }) => -rects.reference.height / 2 - rects.floating.height / 2,
+      ),
+
+      shift({ padding: 16 }),
+    ],
+    whileElementsMounted: autoUpdate,
+  },
+);
 
 onInteractionOutside(tooltipEl, () => {
   emit('interactionOutside');
@@ -77,6 +92,8 @@ onInteractionOutside(tooltipEl, () => {
   z-index: 1;
   left: 16px;
   top: 16px;
+  max-width: calc(100dvw - 32px);
+  max-height: calc(100dvw - 32px);
 
   transition-property: transform, opacity;
   transition-duration: var(--md-sys-motion-duration-medium1);

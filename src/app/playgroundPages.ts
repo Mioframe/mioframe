@@ -23,6 +23,10 @@ export const playgroundPages: PlaygroundPage[] = [
     component: () => import('@shared/ui/Tooltips/MDRichTooltipPlayground.vue'),
   },
   {
+    name: 'PlainTooltip',
+    component: () => import('@shared/ui/Tooltips/MDPlainTooltipPlayground.vue'),
+  },
+  {
     name: 'IconButton',
     component: () => import('@shared/ui/Button/MDIconButtonPlayground.vue'),
   },

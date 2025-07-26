@@ -1,54 +1,74 @@
 <script setup lang="ts">
-import { PlaygroundStory } from '@shared/lib/playground';
+import {
+  PlaygroundOptionalBoolean,
+  PlaygroundStory,
+  PlaygroundString,
+  PlaygroundUnion,
+} from '@shared/lib/playground';
 import MDRichTooltip from './MDRichTooltip.vue';
 import { MDButton } from '../Button';
 import { useQueryValue } from '@shared/lib/useQueryState';
 import type { ComponentProps } from 'vue-component-type-helpers';
 import { useTemplateRef } from 'vue';
-import type { VueInstance } from '@vueuse/core';
+import { UseDraggable } from '@vueuse/components';
 
-const state = useQueryValue<ComponentProps<typeof MDRichTooltip>>('state', {
+interface State extends ComponentProps<typeof MDRichTooltip> {}
+
+const state = useQueryValue<State>('state', {
   subhead: '',
   useHover: undefined,
   useClick: undefined,
   show: undefined,
   disabledTeleport: undefined,
+  placement: undefined,
 });
 
-const targetEl = useTemplateRef<VueInstance>('targetEl');
+const targetEl = useTemplateRef('target');
+
+const placementOptions: State['placement'][] = [
+  'top-start',
+  'top-end',
+  'bottom-end',
+  'bottom-start',
+  undefined,
+];
 </script>
 
 <template>
   <PlaygroundStory>
     <template #controllers>
-      <label>
-        subhead
-        <input v-model="state.subhead" type="text" />
-      </label>
+      <PlaygroundString v-model="state.subhead" label="subhead" />
 
-      <label>
-        useHover
-        <input v-model="state.useHover" type="checkbox" />
-      </label>
+      <PlaygroundOptionalBoolean v-model="state.useHover" label="useHover" />
 
-      <label>
-        useClick
-        <input v-model="state.useClick" type="checkbox" />
-      </label>
+      <PlaygroundOptionalBoolean v-model="state.useClick" label="useClick" />
 
-      <label>
-        show
-        <input v-model="state.show" type="checkbox" />
-      </label>
+      <PlaygroundOptionalBoolean v-model="state.show" label="show" />
 
-      <label>
-        disabledTeleport
-        <input v-model="state.disabledTeleport" type="checkbox" />
-      </label>
+      <PlaygroundOptionalBoolean
+        v-model="state.disabledTeleport"
+        label="disabledTeleport"
+      />
+
+      <PlaygroundUnion
+        v-model="state.placement"
+        label="placement"
+        :options="placementOptions"
+      />
     </template>
 
     <template #space>
-      <MDButton ref="targetEl" label="rich tooltip trigger" />
+      <UseDraggable
+        ref="target"
+        class="target"
+        :initial-value="{
+          x: 100,
+          y: 100,
+        }"
+      >
+        Target element<br />
+        Drag me for change position!
+      </UseDraggable>
 
       <MDRichTooltip
         :target-element="targetEl"
@@ -57,9 +77,10 @@ const targetEl = useTemplateRef<VueInstance>('targetEl');
         :use-click="state.useClick"
         :disabled-teleport="state.disabledTeleport"
         :show="state.show"
+        :placement="state.placement"
       >
         <template #text>
-          text text text text text text text text text text text text text text
+          text text text text text text <br />
           text text text text text text
         </template>
 
@@ -81,5 +102,15 @@ const targetEl = useTemplateRef<VueInstance>('targetEl');
   gap: 16px;
   justify-content: center;
   align-items: center;
+}
+
+.target {
+  position: fixed;
+  display: block;
+  background: skyblue;
+  padding: 20px;
+  cursor: move;
+  user-select: none;
+  transition-duration: 0;
 }
 </style>
