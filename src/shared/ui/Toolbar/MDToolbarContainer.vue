@@ -107,6 +107,7 @@ const show = computed(
     var(--md-toolbar-margin-from-screen) var(--md-toolbar-margin-from-screen);
   display: flex;
   justify-content: center;
+  pointer-events: none;
 
   &_color {
     &-standard {
@@ -204,6 +205,10 @@ const show = computed(
 
     border-radius: var(--md-toolbar-container-shape);
     box-shadow: var(--md-toolbar-container-elevation);
+
+    &:deep(> *) {
+      pointer-events: all;
+    }
   }
 
   &__placeholder {
