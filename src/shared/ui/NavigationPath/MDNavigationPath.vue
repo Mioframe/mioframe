@@ -1,5 +1,5 @@
 <script setup lang="ts" generic="T extends { name: string }">
-import { MDButton } from '../Button';
+import { MDButton, MDIconButton } from '../Button';
 import { MDSymbol } from '../Icon';
 
 const {} = defineProps<{
@@ -7,12 +7,21 @@ const {} = defineProps<{
 }>();
 
 defineEmits<{
-  click: [indexPath: number, item: T];
+  click: [indexPath: number, item?: T];
 }>();
 </script>
 
 <template>
   <div class="md-navigation-path">
+    <MDIconButton
+      tooltip="home"
+      md-symbol-name="home"
+      class="md-navigation-path__item"
+      @click="$emit('click', -1)"
+    />
+
+    <MDSymbol class="md-navigation-path__separator" name="chevron_right" />
+
     <template v-for="(item, indexPath) in path" :key="indexPath">
       <MDSymbol
         v-if="indexPath > 0"

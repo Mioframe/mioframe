@@ -27,17 +27,17 @@ import { uniqueId } from '@shared/lib/uniqueId';
 import { autoUpdate, flip, shift, size, useFloating } from '@floating-ui/vue';
 
 const props = defineProps<{
-  targetEl: MaybeElement;
+  target: MaybeElement;
   btns: T[];
   transition?: boolean;
   outsideIgnore?: MaybeElement[];
 }>();
 
-const { targetEl, btns, outsideIgnore } = toRefs(props);
+const { target, btns, outsideIgnore } = toRefs(props);
 
 const emit = defineEmits<{
   click: [menuItem: T];
-  clickOutside: [];
+  interactionOutside: [];
   deactivateFocus: [];
 }>();
 
@@ -52,10 +52,11 @@ const listContainerEl = useTemplateRef<
 >('listContainerEl');
 
 const { floatingStyles: containerStyle } = useFloating(
-  targetEl,
+  target,
   listContainerEl,
   {
     strategy: 'fixed',
+    transform: false,
     placement: 'bottom-start',
     middleware: [
       flip({
@@ -88,15 +89,15 @@ const targetTeleport = useClosestParentFrame();
 
 const ignoreElements = computed(() => {
   if (outsideIgnore.value) {
-    return [targetEl.value, ...outsideIgnore.value];
+    return [target.value, ...outsideIgnore.value];
   }
-  return [targetEl.value];
+  return [target.value];
 });
 
 onInteractionOutside(
   listContainerEl,
   () => {
-    emit('clickOutside');
+    emit('interactionOutside');
   },
   {
     ignore: ignoreElements,

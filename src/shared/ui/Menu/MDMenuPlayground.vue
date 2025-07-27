@@ -28,7 +28,7 @@ const btns = new Array(10).fill(0).map((_, index) => ({
         @click="state.show = !state.show"
       />
 
-      <MDMenu v-model:show="state.show" :target-el="targetEl" :btns="btns" />
+      <MDMenu v-model:show="state.show" :target="targetEl" :btns="btns" />
     </template>
   </PlaygroundStory>
 </template>

@@ -92,6 +92,9 @@ export const useDatabaseViewSorting = (
     });
   };
 
+  const get = (propertyId: DatabasePropertyId) =>
+    sortingMap.value?.get(propertyId);
+
   return reactive({
     sortingList,
     keys: computed(() => sortingMap.value?.keys),
@@ -101,5 +104,6 @@ export const useDatabaseViewSorting = (
     remove,
     update,
     put,
+    get,
   });
 };

@@ -12,6 +12,10 @@ withDefaults(
   },
 );
 
+defineSlots<{
+  leadingIcon: (p: { name: string; directory: DirectoryFSEntry }) => unknown;
+}>();
+
 const emit = defineEmits<{
   click: [directory: DirectoryFSEntry];
 }>();
@@ -31,6 +35,10 @@ const onClickDirectory = (directory: DirectoryFSEntry) => {
       :key="name"
       :headline="name"
       @click="onClickDirectory(directory)"
-    />
+    >
+      <template #leadingIcon>
+        <slot name="leadingIcon" v-bind="{ name, directory }" />
+      </template>
+    </MDListItem>
   </MDListContainer>
 </template>

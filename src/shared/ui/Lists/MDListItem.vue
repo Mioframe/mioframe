@@ -87,7 +87,7 @@ const onClick = (e: MouseEvent) => {
   padding: 8px var(--horizontal-gap);
   align-items: center;
   font-family: var(--md-sys-typescale-body-large-font);
-  min-height: var(--md-list-item-min-height);
+  min-height: var(--min-height);
   box-sizing: border-box;
   text-align: start;
   border-radius: var(--border-radius);
@@ -115,7 +115,7 @@ const onClick = (e: MouseEvent) => {
   }
 
   &__leading-icon {
-    display: block;
+    display: flex;
     min-width: 24px;
     min-height: 24px;
 
