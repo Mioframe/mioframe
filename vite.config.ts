@@ -28,7 +28,7 @@ export default defineConfig(({ mode, isPreview }) => {
       ? [
           sentryVitePlugin({
             org: 'vb-ak',
-            project: 'self-base',
+            project: 'beaver',
             authToken: process.env.SENTRY_AUTH_TOKEN,
           }),
         ]
