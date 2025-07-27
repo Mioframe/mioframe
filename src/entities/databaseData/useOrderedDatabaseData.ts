@@ -1,73 +1,53 @@
 import type { MaybeRefOrGetter } from 'vue';
-import { ref, computed, watch, toValue } from 'vue';
+import { computed, toValue } from 'vue';
 import type {
-  DatabaseData,
   DatabaseItem,
   DatabaseItemId,
   DatabaseView,
   DatabaseSortMap,
 } from '@shared/lib/databaseDocument';
 import { useDatabaseData } from '@shared/lib/databaseDocument';
-import { debounce } from 'perfect-debounce';
 import { useReduceIterable } from '@shared/lib/useReduce';
 import { useSortWorker } from './useSortWorker';
 import type { AMDocHandle } from '@shared/lib/automerge/automergeTypes';
 import { cloneDeep } from 'es-toolkit';
 import type { ItemIdQuery } from './queryTypes';
+import { asyncComputed } from '@vueuse/core';
 
 export function useOrderedDatabaseData(
   rawDocHandle: MaybeRefOrGetter<AMDocHandle | undefined>,
   rawView: MaybeRefOrGetter<DatabaseView | undefined>,
-  idQuery: MaybeRefOrGetter<ItemIdQuery | undefined>,
+  rawIdQuery: MaybeRefOrGetter<ItemIdQuery | undefined>,
 ) {
   const docHandle = computed(() => toValue(rawDocHandle));
   const view = computed(() => toValue(rawView));
-  const idQueryRef = computed(() => toValue(idQuery));
-
-  const orderOfItems = ref<DatabaseItemId[]>([]);
+  const idQuery = computed(() => toValue(rawIdQuery));
 
   const { data: databaseData } = useDatabaseData(docHandle);
 
   const { queryData } = useSortWorker();
 
-  const applyView = debounce(
-    async (
-      databaseData?: DatabaseData,
-      databaseView?: DatabaseView,
-      idQuery?: ItemIdQuery,
-    ) => {
-      const sorting: DatabaseSortMap | undefined = databaseView?.sorting;
+  const orderOfItems = asyncComputed(
+    async () => {
+      const sorting: DatabaseSortMap | undefined = view.value?.sorting;
 
-      if (databaseData) {
-        orderOfItems.value = await queryData(databaseData, {
-          sorting,
-          idQuery,
-        });
-      } else {
-        orderOfItems.value = [];
+      if (databaseData.value) {
+        return await queryData(
+          databaseData.value,
+          cloneDeep({
+            sorting,
+            idQuery: idQuery.value,
+          }),
+        );
       }
+      return [];
     },
-    500,
-    { leading: true, trailing: true },
-  );
-
-  watch(
-    [databaseData, view, idQueryRef],
-    ([databaseData, databaseView, idQuery]) => {
-      void applyView(
-        cloneDeep(databaseData),
-        cloneDeep(databaseView),
-        cloneDeep(idQuery),
-      );
-    },
-    {
-      immediate: true,
-      deep: true,
-    },
+    [],
+    { lazy: true },
   );
 
   const itemList = useReduceIterable(
-    orderOfItems,
+    () => orderOfItems.value,
     (acc, id) => {
       const item = databaseData.value?.[id];
       if (item) {

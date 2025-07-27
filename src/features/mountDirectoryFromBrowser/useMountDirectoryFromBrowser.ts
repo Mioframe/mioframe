@@ -55,7 +55,7 @@ export const useMountDirectoryFromBrowser = () => {
         undefined,
         OPFSName,
       );
-      mount(directoryFSEntry, 'Origin private file system');
+      mount(directoryFSEntry, OPFSName);
     }
   };
 

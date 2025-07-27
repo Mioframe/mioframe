@@ -45,9 +45,13 @@ const selectedViewId = shallowRef<DatabaseViewId>();
 
 const databaseViewMap = useDatabaseViewsMap(docHandle);
 
-watch(docHandle, () => {
-  selectedViewId.value = databaseViewMap.list?.at(0)?.[0];
-});
+watch(
+  docHandle,
+  () => {
+    selectedViewId.value = databaseViewMap.list?.at(0)?.[0];
+  },
+  { immediate: true },
+);
 
 enum ITEM_CONTEXT_ACTION {
   remove,

@@ -1,11 +1,11 @@
 <script setup lang="ts">
-import { DatabaseItemSortingSection } from '@feature/databaseItemSorting';
+import DatabaseItemSortingListSection from '@feature/databaseItemSorting/DatabaseItemSortingListSection.vue';
 import type { AMDocHandle } from '@shared/lib/automerge';
 import type { DatabaseViewId } from '@shared/lib/databaseDocument';
 import { MDBottomSheet, MDBottomSheetSection } from '@shared/ui/Sheets';
 
 defineProps<{
-  selectedViewId?: DatabaseViewId;
+  viewId?: DatabaseViewId;
   docHandle: AMDocHandle;
 }>();
 
@@ -25,10 +25,10 @@ const onUpdateCollapsed = (collapsed: boolean) => {
     @update:collapsed="onUpdateCollapsed"
   >
     <MDBottomSheetSection scroll-snap-align="end" class="md-padding-4">
-      <DatabaseItemSortingSection
-        v-if="selectedViewId"
+      <DatabaseItemSortingListSection
+        v-if="viewId"
         :doc-handle="docHandle"
-        :view-id="selectedViewId"
+        :view-id="viewId"
       />
     </MDBottomSheetSection>
   </MDBottomSheet>

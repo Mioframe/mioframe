@@ -1,1 +1,1 @@
-export { default as DatabaseItemSortingSection } from './DatabaseItemSortingSection.vue';
+export { default as DatabaseItemSortingSelect } from './DatabaseItemSortingSelect.vue';
