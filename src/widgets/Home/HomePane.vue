@@ -5,6 +5,8 @@ import { MDPaneContainer } from '@shared/ui/Layers';
 import { useMountDirectoryFromBrowser } from '@feature/mountDirectoryFromBrowser';
 import { useRepoExplorerNavigate } from '@widget/MainViewV2/useRepoExplorerNavigate';
 import type { DirectoryFSEntry } from '@shared/lib/fileSystem';
+import { MDSymbol } from '@shared/ui/Icon';
+import { OPFSName } from '@feature/mountDirectoryFromBrowser/useMountDirectoryFromBrowser';
 
 const { mountUserDirectory } = useMountDirectoryFromBrowser();
 const { open: openDirectory } = useRepoExplorerNavigate();
@@ -20,7 +22,11 @@ const onClickMountedDirectory = async ({ name }: DirectoryFSEntry) => {
 
 <template>
   <MDPaneContainer class="home">
-    <MountedDirectoriesList is="button" @click="onClickMountedDirectory" />
+    <MountedDirectoriesList is="button" @click="onClickMountedDirectory">
+      <template #leadingIcon="{ name }">
+        <MDSymbol v-if="name === OPFSName" name="folder_special" />
+      </template>
+    </MountedDirectoriesList>
 
     <MDFabContainer class="home__fab-container">
       <MDFab

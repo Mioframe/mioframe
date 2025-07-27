@@ -57,8 +57,8 @@ const directoryRef = useDirectoryFSEntryRef(currentDirectory);
 const onClickPath = async (indexPath: number) => {
   if (repoExplorerState.path) {
     await open({
-      ...repoExplorerState,
       path: repoExplorerState.path.slice(0, indexPath + 1),
+      document: undefined,
     });
   }
 };

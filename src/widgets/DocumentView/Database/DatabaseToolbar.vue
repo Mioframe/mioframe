@@ -69,7 +69,7 @@ const isShowAddItem = ref(false);
 
     <DatabaseSortSheet
       v-model:show="showSortSettings"
-      :selected-view-id="selectedViewId"
+      :view-id="selectedViewId"
       :doc-handle="docHandle"
     />
 

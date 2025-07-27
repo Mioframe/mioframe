@@ -51,8 +51,7 @@ const { floatingStyles: alignCenterStyle } = useFloating(
       offset(
         ({ rects }) => -rects.reference.height / 2 - rects.floating.height / 2,
       ),
-
-      shift({ padding: 16 }),
+      shift({ padding: 16, crossAxis: true }),
     ],
     whileElementsMounted: autoUpdate,
   },
@@ -93,7 +92,8 @@ onInteractionOutside(tooltipEl, () => {
   left: 16px;
   top: 16px;
   max-width: calc(100dvw - 32px);
-  max-height: calc(100dvw - 32px);
+  max-height: calc(100dvh - 32px);
+  overflow: auto;
 
   transition-property: transform, opacity;
   transition-duration: var(--md-sys-motion-duration-medium1);

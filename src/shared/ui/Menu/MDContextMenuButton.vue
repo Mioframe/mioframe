@@ -54,9 +54,9 @@ const onClickOutsideMenu = () => {
   <MDMenu
     v-if="btns.length"
     v-model:show="showMenu"
-    :target-el="targetBtn"
+    :target="targetBtn"
     :btns="btns"
-    @click-outside="onClickOutsideMenu"
+    @interaction-outside="onClickOutsideMenu"
     @click="onClick"
     @deactivate-focus="showMenu = false"
   />
