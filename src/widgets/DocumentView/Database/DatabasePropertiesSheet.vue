@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { DatabasePropertyList } from '@entity/databaseProperty';
-import { DatabasePropertyCreationDialog } from '@feature/databasePropertyCreate';
 import { DatabasePropertyRemoveDialog } from '@feature/databasePropertyRemove';
 import { DatabasePropertyRenameDialog } from '@feature/databasePropertyRename';
 import type { AMDocHandle } from '@shared/lib/automerge';
@@ -12,7 +11,7 @@ import { MDSymbol } from '@shared/ui/Icon';
 import { defineMenuButtonList, MDContextMenuButton } from '@shared/ui/Menu';
 import { MDBottomSheet, MDBottomSheetSection } from '@shared/ui/Sheets';
 import { ref, toRefs } from 'vue';
-import ValueField from './ValueField.vue';
+import PropertyCreateDialogWidget from './PropertyCreateDialogWidget.vue';
 
 const props = defineProps<{
   docHandle: AMDocHandle;
@@ -102,8 +101,6 @@ const isShowAddProperty = ref(false);
           </template>
         </MDButton>
       </div>
-
-      <!-- TODO: добавить кнопку добавления свойства -->
     </MDBottomSheetSection>
 
     <DatabasePropertyRemoveDialog
@@ -124,23 +121,12 @@ const isShowAddProperty = ref(false);
       @cancel="renamePropertyId = undefined"
     />
 
-    <DatabasePropertyCreationDialog
+    <PropertyCreateDialogWidget
       v-if="isShowAddProperty"
       v-model:show="isShowAddProperty"
-      :directory="directory"
       :doc-handle="docHandle"
-      @created="isShowAddProperty = false"
-      @cancel="isShowAddProperty = false"
-    >
-      <template #defaultField="property">
-        <ValueField
-          :property="property"
-          :value="property.default"
-          :directory="directory"
-          @update:value="property.onUpdateValue"
-        />
-      </template>
-    </DatabasePropertyCreationDialog>
+      :directory="directory"
+    />
   </MDBottomSheet>
 </template>
 
