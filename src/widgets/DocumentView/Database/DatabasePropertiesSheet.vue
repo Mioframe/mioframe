@@ -12,6 +12,7 @@ import { MDSymbol } from '@shared/ui/Icon';
 import { defineMenuButtonList, MDContextMenuButton } from '@shared/ui/Menu';
 import { MDBottomSheet, MDBottomSheetSection } from '@shared/ui/Sheets';
 import { ref, toRefs } from 'vue';
+import ValueField from './ValueField.vue';
 
 const props = defineProps<{
   docHandle: AMDocHandle;
@@ -130,7 +131,16 @@ const isShowAddProperty = ref(false);
       :doc-handle="docHandle"
       @created="isShowAddProperty = false"
       @cancel="isShowAddProperty = false"
-    />
+    >
+      <template #defaultField="property">
+        <ValueField
+          :property="property"
+          :value="property.default"
+          :directory="directory"
+          @update:value="property.onUpdateValue"
+        />
+      </template>
+    </DatabasePropertyCreationDialog>
   </MDBottomSheet>
 </template>
 

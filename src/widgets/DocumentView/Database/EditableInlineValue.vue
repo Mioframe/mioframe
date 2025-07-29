@@ -10,11 +10,11 @@ import { useFirstFocus } from '@shared/lib/useFirstFocus';
 import type {
   DatabaseItem,
   DatabasePropertyId,
+  DatabaseUnknownProperty,
   GeneralProperty,
 } from '@shared/lib/databaseDocument';
 import type { DirectoryFSEntry } from '@shared/lib/fileSystem';
 import { MDOverlayTooltip } from '@shared/ui/Tooltips';
-import type { AMDocHandle } from '@shared/lib/automerge';
 
 const {
   item = {},
@@ -26,11 +26,11 @@ const {
   property: GeneralProperty;
   propertyId: DatabasePropertyId;
   directory: DirectoryFSEntry;
-  docHandle: AMDocHandle;
 }>();
 
 const emit = defineEmits<{
   'update:value': [value: unknown];
+  'update:property': [property: DatabaseUnknownProperty];
 }>();
 
 const initialValue = computed(() => item[propertyId]);
@@ -76,6 +76,10 @@ watch(showEditForm, (showEditForm) => {
 useFirstFocus(refPopover, { initialValue: true });
 
 const inlineEl = useTemplateRef('inlineEl');
+
+const onUpdateProperty = (v: DatabaseUnknownProperty) => {
+  emit('update:property', v);
+};
 </script>
 
 <template>
@@ -104,9 +108,8 @@ const inlineEl = useTemplateRef('inlineEl');
         v-model:value="stateValue"
         :property="property"
         :directory="directory"
-        :doc-handle="docHandle"
-        :property-id="propertyId"
         @keydown.enter="closeEditor"
+        @update:property="onUpdateProperty"
       />
     </div>
   </MDOverlayTooltip>

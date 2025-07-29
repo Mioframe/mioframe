@@ -1,5 +1,5 @@
 import type { core } from 'zod/v4-mini';
-import { object, string, type output } from 'zod/v4-mini';
+import { object, optional, string, unknown, type output } from 'zod/v4-mini';
 import { defineId } from '../../../../../defineId';
 
 export const zodGeneralProperty = <
@@ -14,6 +14,7 @@ export const zodGeneralProperty = <
   object({
     name: string(),
     type: zodType,
+    default: optional(unknown()),
   });
 
 export type GeneralProperty<T extends string = string> = output<
