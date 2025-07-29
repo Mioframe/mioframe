@@ -24,25 +24,25 @@ const show = defineModel<boolean>('show', { required: true });
     @created="show = false"
     @cancel="show = false"
   >
-    <template #after="property">
+    <template #after="{ property, onUpdateProperty, onUpdateDefaultValue }">
       <DatabaseRelationPropertyEditSection
         v-if="zodIs(property, zodRelationProperty)"
         :property="property"
         :directory="directory"
-        @update:property="property.onUpdateProperty"
+        @update:property="onUpdateProperty"
       />
 
       <DatabaseBooleanPropertyEditSection
         v-else-if="zodIs(property, zodBooleanProperty)"
         :property="property"
-        @update:property="property.onUpdateProperty"
+        @update:property="onUpdateProperty"
       />
 
       <ValueField
         :property="{ ...property, name: 'default value' }"
         :value="property.default"
         :directory="directory"
-        @update:value="property.onUpdateValue"
+        @update:value="onUpdateDefaultValue"
       />
     </template>
   </DatabasePropertyCreationDialog>

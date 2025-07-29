@@ -1,22 +1,25 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, toRefs, toValue } from 'vue';
 import { MDSymbol } from '../Icon';
 import { isNil } from 'es-toolkit';
 import { MDState } from '../State';
+import { toggleBoolean } from './toggleBoolean';
 
-const {
-  error,
-  disabled,
-  indeterminate,
-  modelValue = undefined,
-} = defineProps<{
-  error?: boolean;
-  disabled?: boolean;
-  indeterminate?: boolean;
-  modelValue?: boolean | undefined;
-  id?: string;
-  readonly?: boolean;
-}>();
+const props = withDefaults(
+  defineProps<{
+    error?: boolean;
+    disabled?: boolean;
+    indeterminate?: boolean;
+    modelValue?: boolean | undefined;
+    id?: string;
+    readonly?: boolean;
+  }>(),
+  {
+    modelValue: undefined,
+  },
+);
+
+const { error, disabled, indeterminate, modelValue } = toRefs(props);
 
 const emit = defineEmits<{
   'update:modelValue': [v: boolean | undefined];
@@ -25,10 +28,10 @@ const emit = defineEmits<{
 
 const stateValue = computed({
   get: () => {
-    if (indeterminate) {
-      return modelValue;
+    if (indeterminate.value) {
+      return modelValue.value;
     }
-    return !!modelValue;
+    return !!modelValue.value;
   },
   set: (v: boolean | undefined) => {
     emit('update:modelValue', v);
@@ -45,15 +48,8 @@ const symbolName = computed(() =>
 
 const onClickContainer = () => {
   emit('click');
-  if (indeterminate) {
-    stateValue.value = stateValue.value
-      ? undefined
-      : stateValue.value === undefined
-        ? false
-        : true;
-  } else {
-    stateValue.value = !stateValue.value;
-  }
+
+  stateValue.value = toggleBoolean(stateValue.value, toValue(indeterminate));
 };
 </script>
 
