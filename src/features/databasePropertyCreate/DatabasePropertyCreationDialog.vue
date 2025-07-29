@@ -1,58 +1,48 @@
 <script setup lang="ts">
-import { computed, ref, toRefs } from 'vue';
+import { computed, ref, toRefs, watchEffect } from 'vue';
 import { MDDialog } from '@shared/ui/Dialog';
 import { MDTextField } from '@shared/ui/TextField';
 import { MDSelect } from '@shared/ui/Select';
-import type { StringProperty } from '@entity/databaseString';
 import { PROPERTY_TYPE_STRING } from '@entity/databaseString';
-import type { NumberProperty } from '@entity/databaseNumber';
 import { PROPERTY_TYPE_NUMBER } from '@entity/databaseNumber';
-import type { BooleanProperty } from '@entity/databaseBoolean';
 import { PROPERTY_TYPE_BOOLEAN } from '@entity/databaseBoolean';
-import type { DateProperty } from '@entity/databaseDate';
 import { PROPERTY_TYPE_DATE } from '@entity/databaseDate';
-import type { ValueOf } from 'type-fest';
-import type { Relation, RelationProperty } from '@entity/databaseRelation';
+import type { PartialDeep } from 'type-fest';
+import { type ValueOf } from 'type-fest';
 import { PROPERTY_TYPE_RELATION } from '@entity/databaseRelation/model';
 import { objectEntries } from '@shared/lib/objectEntries';
 import { pascalCase, toMerged } from 'es-toolkit';
 import { useSnackbar } from '@shared/ui/Snackbar';
-import DatabaseRelationPropertyField from '@feature/databaseRelationPropertyEdit/DatabaseRelationPropertyField.vue';
-import type { DirectoryFSEntry } from '@shared/lib/fileSystem';
 import type { AMDocHandle } from '@shared/lib/automerge';
 import { useDatabasePropertiesMap } from '@shared/lib/databaseDocument/useDatabasePropertiesMap';
-import type { DatabasePropertyId } from '@shared/lib/databaseDocument';
+import type {
+  DatabasePropertyId,
+  DatabaseUnknownProperty,
+} from '@shared/lib/databaseDocument';
+import { zodIs } from '@shared/lib/validateZodScheme';
+import { zodUnknownProperty } from '@shared/lib/databaseDocument/migrations/versions/v1/property';
 
 const props = defineProps<{
-  directory: DirectoryFSEntry;
   docHandle: AMDocHandle;
 }>();
 
-const { directory, docHandle } = toRefs(props);
+const { docHandle } = toRefs(props);
 
-type Property =
-  | StringProperty
-  | NumberProperty
-  | BooleanProperty
-  | DateProperty
-  | RelationProperty;
-
-type DefaultSlotProps = Property & {
+type AfterSlotScope = DatabaseUnknownProperty & {
   onUpdateValue: (v: unknown) => void;
+  onUpdateProperty: (v: DatabaseUnknownProperty) => void;
 };
 
 const emit = defineEmits<{
-  created: [id: DatabasePropertyId, property: Property];
+  created: [id: DatabasePropertyId, property: DatabaseUnknownProperty];
   cancel: [];
 }>();
 
 const show = defineModel<boolean>('show', { required: true });
 
 defineSlots<{
-  defaultField: (p: DefaultSlotProps) => unknown;
+  after: (p: AfterSlotScope) => unknown;
 }>();
-
-const stateName = ref<string>();
 
 const propertyTypeList = {
   PROPERTY_TYPE_STRING,
@@ -81,44 +71,22 @@ const propertyTypeOptions = objectEntries(propertyTypeList).reduce<
   return acc;
 }, []);
 
+const partialPropertyState = ref<PartialDeep<DatabaseUnknownProperty>>({});
+
 const typeSelectModel = ref<PropertyTypeOption[]>([propertyTypeOptions[0]]);
 
-const selectedPropertyType = computed(
-  () => typeSelectModel.value.at(0)?.propertyType,
-);
-
-const defaultValueState = ref<unknown>();
+watchEffect(() => {
+  partialPropertyState.value.type = typeSelectModel.value.at(0)?.propertyType;
+});
 
 const onUpdateValue = (value: unknown) => {
-  defaultValueState.value = value;
+  partialPropertyState.value.default = value;
 };
 
-const relationModel = ref<Relation>();
-
-const newProperty = computed((): undefined | Property => {
-  const name = stateName.value;
-  const type = selectedPropertyType.value;
-  const value = defaultValueState.value;
-
-  if (name && type) {
-    if (type === PROPERTY_TYPE_RELATION) {
-      if (relationModel.value) {
-        return {
-          name,
-          type,
-          relation: relationModel.value,
-          default: value,
-        };
-      }
-    } else {
-      return {
-        name,
-        type,
-        default: value,
-      };
-    }
-  }
-  return undefined;
+const assembledProperty = computed((): undefined | DatabaseUnknownProperty => {
+  return zodIs(partialPropertyState.value, zodUnknownProperty)
+    ? partialPropertyState.value
+    : undefined;
 });
 
 const { addSnackbar } = useSnackbar();
@@ -126,25 +94,29 @@ const { addSnackbar } = useSnackbar();
 const propertiesMap = useDatabasePropertiesMap(docHandle);
 
 const onCreate = async () => {
-  if (newProperty.value) {
-    const id = await propertiesMap.create(newProperty.value);
-    emit('created', id, newProperty.value);
+  if (assembledProperty.value) {
+    const id = await propertiesMap.create(assembledProperty.value);
+    emit('created', id, assembledProperty.value);
   } else {
     addSnackbar({ text: 'Property is not fully filled' });
   }
 };
 
 const onCancel = () => {
-  stateName.value = undefined;
+  partialPropertyState.value = {};
   typeSelectModel.value = [];
   emit('cancel');
 };
 
-const defaultProperty = computed((): DefaultSlotProps | undefined =>
-  newProperty.value
-    ? toMerged(newProperty.value, {
+const onUpdateProperty = (v: DatabaseUnknownProperty) => {
+  partialPropertyState.value = v;
+};
+
+const afterSlotScope = computed((): AfterSlotScope | undefined =>
+  assembledProperty.value
+    ? toMerged(assembledProperty.value, {
         onUpdateValue,
-        name: 'default value',
+        onUpdateProperty,
       })
     : undefined,
 );
@@ -162,7 +134,7 @@ const defaultProperty = computed((): DefaultSlotProps | undefined =>
     @cancel="onCancel"
   >
     <MDTextField
-      v-model:model-value="stateName"
+      v-model:model-value="partialPropertyState.name"
       label-text="Name"
       class="database-property-creation__field"
     />
@@ -174,12 +146,6 @@ const defaultProperty = computed((): DefaultSlotProps | undefined =>
       :options="propertyTypeOptions"
     />
 
-    <DatabaseRelationPropertyField
-      v-if="selectedPropertyType === PROPERTY_TYPE_RELATION"
-      v-model:model-value="relationModel"
-      :directory="directory"
-    />
-
-    <slot v-if="defaultProperty" name="defaultField" :="defaultProperty" />
+    <slot v-if="afterSlotScope" name="after" :="afterSlotScope" />
   </MDDialog>
 </template>
