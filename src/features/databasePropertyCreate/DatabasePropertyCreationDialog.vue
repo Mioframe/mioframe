@@ -11,7 +11,7 @@ import type { PartialDeep } from 'type-fest';
 import { type ValueOf } from 'type-fest';
 import { PROPERTY_TYPE_RELATION } from '@entity/databaseRelation/model';
 import { objectEntries } from '@shared/lib/objectEntries';
-import { pascalCase, toMerged } from 'es-toolkit';
+import { pascalCase } from 'es-toolkit';
 import { useSnackbar } from '@shared/ui/Snackbar';
 import type { AMDocHandle } from '@shared/lib/automerge';
 import { useDatabasePropertiesMap } from '@shared/lib/databaseDocument/useDatabasePropertiesMap';
@@ -28,11 +28,6 @@ const props = defineProps<{
 
 const { docHandle } = toRefs(props);
 
-type AfterSlotScope = DatabaseUnknownProperty & {
-  onUpdateValue: (v: unknown) => void;
-  onUpdateProperty: (v: DatabaseUnknownProperty) => void;
-};
-
 const emit = defineEmits<{
   created: [id: DatabasePropertyId, property: DatabaseUnknownProperty];
   cancel: [];
@@ -41,7 +36,11 @@ const emit = defineEmits<{
 const show = defineModel<boolean>('show', { required: true });
 
 defineSlots<{
-  after: (p: AfterSlotScope) => unknown;
+  after: (p: {
+    property: DatabaseUnknownProperty;
+    onUpdateDefaultValue: (v: unknown) => void;
+    onUpdateProperty: (v: DatabaseUnknownProperty) => void;
+  }) => unknown;
 }>();
 
 const propertyTypeList = {
@@ -79,7 +78,7 @@ watchEffect(() => {
   partialPropertyState.value.type = typeSelectModel.value.at(0)?.propertyType;
 });
 
-const onUpdateValue = (value: unknown) => {
+const onUpdateDefaultValue = (value: unknown) => {
   partialPropertyState.value.default = value;
 };
 
@@ -111,15 +110,6 @@ const onCancel = () => {
 const onUpdateProperty = (v: DatabaseUnknownProperty) => {
   partialPropertyState.value = v;
 };
-
-const afterSlotScope = computed((): AfterSlotScope | undefined =>
-  assembledProperty.value
-    ? toMerged(assembledProperty.value, {
-        onUpdateValue,
-        onUpdateProperty,
-      })
-    : undefined,
-);
 </script>
 
 <template>
@@ -146,6 +136,12 @@ const afterSlotScope = computed((): AfterSlotScope | undefined =>
       :options="propertyTypeOptions"
     />
 
-    <slot v-if="afterSlotScope" name="after" :="afterSlotScope" />
+    <slot
+      v-if="assembledProperty"
+      name="after"
+      :property="assembledProperty"
+      :on-update-default-value="onUpdateDefaultValue"
+      :on-update-property="onUpdateProperty"
+    />
   </MDDialog>
 </template>
