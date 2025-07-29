@@ -3,8 +3,7 @@ import { computed, ref, useTemplateRef, watch, watchEffect } from 'vue';
 import { zodBooleanProperty } from '@entity/databaseBoolean/boolean';
 import { zodIs } from '@shared/lib/validateZodScheme';
 import ValueInline from './ValueInline.vue';
-import { useBooleanEdit } from '@feature/booleanPropertyEdit';
-import { isEqual } from 'es-toolkit';
+import { isEqual, isUndefined } from 'es-toolkit';
 import ValueField from './ValueField.vue';
 import { useFirstFocus } from '@shared/lib/useFirstFocus';
 import type {
@@ -15,6 +14,7 @@ import type {
 } from '@shared/lib/databaseDocument';
 import type { DirectoryFSEntry } from '@shared/lib/fileSystem';
 import { MDOverlayTooltip } from '@shared/ui/Tooltips';
+import { toggleBoolean } from '@shared/ui/Checkbox';
 
 const {
   item = {},
@@ -49,11 +49,12 @@ const tryEmitValue = () => {
   }
 };
 
-const { toggleBoolean } = useBooleanEdit(stateValue);
-
 const onClick = () => {
   if (zodIs(property, zodBooleanProperty)) {
-    toggleBoolean();
+    stateValue.value = toggleBoolean(
+      isUndefined(stateValue.value) ? stateValue.value : !!stateValue.value,
+      property.indeterminate,
+    );
     tryEmitValue();
     return;
   }
