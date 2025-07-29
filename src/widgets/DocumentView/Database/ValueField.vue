@@ -9,31 +9,30 @@ import { DateValueField } from '@feature/dateValueEdit';
 import { NumberValueField } from '@feature/numberValueEdit';
 import { RelationValueField } from '@feature/relationValueEdit';
 import { StringValueField } from '@feature/stringValueEdit';
-import type {
-  DatabasePropertyId,
-  DatabaseUnknownProperty,
-} from '@shared/lib/databaseDocument';
+import type { DatabaseUnknownProperty } from '@shared/lib/databaseDocument';
 import type { DirectoryFSEntry } from '@shared/lib/fileSystem';
 import { zodIs } from '@shared/lib/validateZodScheme';
 import DatabaseViewLayout from './DatabaseViewLayout.vue';
 import { MDCheckbox } from '@shared/ui/Checkbox';
-import type { AMDocHandle } from '@shared/lib/automerge';
 
 defineProps<{
   property: DatabaseUnknownProperty;
   value: unknown;
   directory: DirectoryFSEntry;
-  propertyId: DatabasePropertyId;
-  docHandle: AMDocHandle;
 }>();
 
 const emit = defineEmits<{
   'update:value': [v: unknown];
+  'update:property': [v: DatabaseUnknownProperty];
   keydown: [e: KeyboardEvent];
 }>();
 
 const onUpdateValue = (v: unknown) => {
   emit('update:value', v);
+};
+
+const onUpdateProperty = (v: DatabaseUnknownProperty) => {
+  emit('update:property', v);
 };
 </script>
 
@@ -73,9 +72,9 @@ const onUpdateValue = (v: unknown) => {
     v-else-if="zodIs(property, zodRelationProperty)"
     :value="value"
     :directory="directory"
-    :property-id="propertyId"
-    :doc-handle="docHandle"
+    :property="property"
     @update:value="onUpdateValue"
+    @update:property="onUpdateProperty"
   >
     <template
       #data="{

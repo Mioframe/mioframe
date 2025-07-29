@@ -1,6 +1,13 @@
 <script setup lang="ts">
 import type { AMDocHandle } from '@shared/lib/automerge';
-import { type DatabaseViewId } from '@shared/lib/databaseDocument';
+import type {
+  DatabasePropertyId,
+  DatabaseUnknownProperty,
+} from '@shared/lib/databaseDocument';
+import {
+  useDatabasePropertiesMap,
+  type DatabaseViewId,
+} from '@shared/lib/databaseDocument';
 import { MDIconButton } from '@shared/ui/Button';
 import MDToolbarContainer from '@shared/ui/Toolbar/MDToolbarContainer.vue';
 import { ref, toRefs } from 'vue';
@@ -27,6 +34,15 @@ const showSortSettings = ref(false);
 const showPropertySettings = ref(false);
 
 const isShowAddItem = ref(false);
+
+const propertiesMap = useDatabasePropertiesMap(docHandle);
+
+const onUpdateProperty = async (
+  propertyId: DatabasePropertyId,
+  v: DatabaseUnknownProperty,
+) => {
+  await propertiesMap.put(propertyId, v);
+};
 </script>
 
 <template>
@@ -91,9 +107,8 @@ const isShowAddItem = ref(false);
           :property="property"
           :value="value"
           :directory="directory"
-          :property-id="propertyId"
-          :doc-handle="docHandle"
           @update:value="update"
+          @update:property="onUpdateProperty(propertyId, $event)"
         />
       </template>
     </DbItemAddDialog>

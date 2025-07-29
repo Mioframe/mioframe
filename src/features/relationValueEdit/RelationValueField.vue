@@ -1,15 +1,10 @@
 <script setup lang="ts">
-import {
-  useRelationProperty,
-  zodRelationValue,
-  type RelationValue,
-} from '@entity/databaseRelation';
+import type { RelationProperty } from '@entity/databaseRelation';
+import { zodRelationValue, type RelationValue } from '@entity/databaseRelation';
 import { DatabaseViewChipsList } from '@entity/databaseView';
 import type { AMDocHandle } from '@shared/lib/cfrDocument';
 import { useDirectoryRepo } from '@shared/lib/cfrDocument';
-import type { DatabasePropertyId } from '@shared/lib/databaseDocument';
 import {
-  useDatabaseViewsMap,
   type DatabaseItemId,
   type DatabaseViewId,
 } from '@shared/lib/databaseDocument';
@@ -19,15 +14,15 @@ import { computed, toRefs } from 'vue';
 
 const props = defineProps<{
   value: unknown;
-  propertyId: DatabasePropertyId;
   directory: DirectoryFSEntry;
-  docHandle: AMDocHandle;
+  property: RelationProperty;
 }>();
 
-const { directory, value, propertyId, docHandle } = toRefs(props);
+const { directory, value, property } = toRefs(props);
 
 const emit = defineEmits<{
   'update:value': [value: DatabaseItemId[]];
+  'update:property': [property: RelationProperty];
 }>();
 
 defineSlots<{
@@ -56,11 +51,7 @@ const onSelect = (itemId: DatabaseItemId) => {
 
 const directoryRepo = useDirectoryRepo(directory);
 
-const relationProperty = useRelationProperty(docHandle, propertyId);
-
-const relationDocumentId = computed(
-  () => relationProperty.property?.relation.documentId,
-);
+const relationDocumentId = computed(() => property.value.relation.documentId);
 
 const relationDocHandle = computed(() =>
   relationDocumentId.value
@@ -68,19 +59,14 @@ const relationDocHandle = computed(() =>
     : undefined,
 );
 
-const selectedViewId = computed(
-  () =>
-    relationProperty.property?.relation.viewId ??
-    databaseViewsMap.list?.at(0)?.[0],
-);
-
-const databaseViewsMap = useDatabaseViewsMap(relationDocHandle);
-
-const onClickViewChip = async (viewId: DatabaseViewId) => {
-  await relationProperty.update({
-    viewId,
+const onClickViewChip = (viewId: DatabaseViewId) => {
+  emit('update:property', {
+    ...property.value,
+    relation: { ...property.value.relation, viewId },
   });
 };
+
+const viewId = computed(() => property.value.relation.viewId);
 </script>
 
 <template>
@@ -90,20 +76,17 @@ const onClickViewChip = async (viewId: DatabaseViewId) => {
       class="relation-value-field__views"
       :doc-handle="relationDocHandle"
       type="filter"
-      :selected-id="selectedViewId"
+      :selected-id="viewId"
       @click="onClickViewChip"
     />
 
-    <div
-      v-if="relationDocHandle && selectedViewId"
-      class="relation-value-field__data"
-    >
+    <div v-if="relationDocHandle && viewId" class="relation-value-field__data">
       <slot
         name="data"
         :on-select="onSelect"
         :doc-handle="relationDocHandle"
         :value="relationValue"
-        :view-id="selectedViewId"
+        :view-id="viewId"
       />
     </div>
   </div>

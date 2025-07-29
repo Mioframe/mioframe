@@ -15,7 +15,7 @@ import type { ValueOf } from 'type-fest';
 import type { Relation, RelationProperty } from '@entity/databaseRelation';
 import { PROPERTY_TYPE_RELATION } from '@entity/databaseRelation/model';
 import { objectEntries } from '@shared/lib/objectEntries';
-import { pascalCase } from 'es-toolkit';
+import { pascalCase, toMerged } from 'es-toolkit';
 import { useSnackbar } from '@shared/ui/Snackbar';
 import DatabaseRelationPropertyField from '@feature/databaseRelationPropertyEdit/DatabaseRelationPropertyField.vue';
 import type { DirectoryFSEntry } from '@shared/lib/fileSystem';
@@ -30,20 +30,27 @@ const props = defineProps<{
 
 const { directory, docHandle } = toRefs(props);
 
+type Property =
+  | StringProperty
+  | NumberProperty
+  | BooleanProperty
+  | DateProperty
+  | RelationProperty;
+
+type DefaultSlotProps = Property & {
+  onUpdateValue: (v: unknown) => void;
+};
+
 const emit = defineEmits<{
-  created: [
-    id: DatabasePropertyId,
-    property:
-      | StringProperty
-      | NumberProperty
-      | BooleanProperty
-      | DateProperty
-      | RelationProperty,
-  ];
+  created: [id: DatabasePropertyId, property: Property];
   cancel: [];
 }>();
 
 const show = defineModel<boolean>('show', { required: true });
+
+defineSlots<{
+  defaultField: (p: DefaultSlotProps) => unknown;
+}>();
 
 const stateName = ref<string>();
 
@@ -80,38 +87,39 @@ const selectedPropertyType = computed(
   () => typeSelectModel.value.at(0)?.propertyType,
 );
 
+const defaultValueState = ref<unknown>();
+
+const onUpdateValue = (value: unknown) => {
+  defaultValueState.value = value;
+};
+
 const relationModel = ref<Relation>();
 
-const newProperty = computed(
-  ():
-    | undefined
-    | StringProperty
-    | NumberProperty
-    | BooleanProperty
-    | DateProperty
-    | RelationProperty => {
-    const name = stateName.value;
-    const type = selectedPropertyType.value;
+const newProperty = computed((): undefined | Property => {
+  const name = stateName.value;
+  const type = selectedPropertyType.value;
+  const value = defaultValueState.value;
 
-    if (name && type) {
-      if (type === PROPERTY_TYPE_RELATION) {
-        if (relationModel.value) {
-          return {
-            name,
-            type,
-            relation: relationModel.value,
-          };
-        }
-      } else {
+  if (name && type) {
+    if (type === PROPERTY_TYPE_RELATION) {
+      if (relationModel.value) {
         return {
           name,
           type,
+          relation: relationModel.value,
+          default: value,
         };
       }
+    } else {
+      return {
+        name,
+        type,
+        default: value,
+      };
     }
-    return undefined;
-  },
-);
+  }
+  return undefined;
+});
 
 const { addSnackbar } = useSnackbar();
 
@@ -131,6 +139,15 @@ const onCancel = () => {
   typeSelectModel.value = [];
   emit('cancel');
 };
+
+const defaultProperty = computed((): DefaultSlotProps | undefined =>
+  newProperty.value
+    ? toMerged(newProperty.value, {
+        onUpdateValue,
+        name: 'default value',
+      })
+    : undefined,
+);
 </script>
 
 <template>
@@ -162,5 +179,7 @@ const onCancel = () => {
       v-model:model-value="relationModel"
       :directory="directory"
     />
+
+    <slot v-if="defaultProperty" name="defaultField" :="defaultProperty" />
   </MDDialog>
 </template>
