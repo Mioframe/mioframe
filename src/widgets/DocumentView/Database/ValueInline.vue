@@ -17,46 +17,51 @@ import type { GeneralProperty } from '@shared/lib/databaseDocument';
 import DatabaseViewLayout from './DatabaseViewLayout.vue';
 import { zodIs } from '@shared/lib/validateZodScheme';
 import type { DirectoryFSEntry } from '@shared/lib/fileSystem';
+import { computed, toRefs } from 'vue';
 
-const {} = defineProps<{
+const props = defineProps<{
   property: GeneralProperty;
   value: unknown;
   editable?: boolean;
   directory: DirectoryFSEntry;
 }>();
 
+const { value, property } = toRefs(props);
+
 const emit = defineEmits<{ click: [] }>();
+
+const printValue = computed(() => value.value ?? property.value.default);
 </script>
 
 <template>
   <BooleanInline
     v-if="property?.type === PROPERTY_TYPE_BOOLEAN"
-    :value="value"
+    :value="printValue"
     :editable="editable"
     @click="emit('click')"
   />
 
   <NumberValueInline
     v-else-if="property?.type === PROPERTY_TYPE_NUMBER"
-    :value="value"
+    :value="printValue"
     @click="emit('click')"
   />
 
   <StringValueInline
     v-else-if="property?.type === PROPERTY_TYPE_STRING"
-    :value="value"
+    :value="printValue"
     @click="emit('click')"
   />
 
   <DateValueInline
     v-else-if="property?.type === PROPERTY_TYPE_DATE"
-    :value="value"
+    :value="printValue"
     @click="emit('click')"
   />
 
   <RelationValueInline
     v-else-if="zodIs(property, zodRelationProperty)"
-    :value="value"
+    :value="printValue"
     :property="property"
     :directory="directory"
     @click="emit('click')"

@@ -2,12 +2,14 @@
 import type {
   DatabaseItemId,
   DatabasePropertyId,
+  DatabaseUnknownProperty,
   DatabaseValue,
   DatabaseViewId,
 } from '@shared/lib/databaseDocument';
 import {
   useDatabaseData,
   useDatabaseDocument,
+  useDatabasePropertiesMap,
   useDatabaseViewsMap,
 } from '@shared/lib/databaseDocument';
 import { shallowRef, toRefs, watch } from 'vue';
@@ -82,6 +84,15 @@ const onClickItemContextBtn = async (
       break;
   }
 };
+
+const propertiesMap = useDatabasePropertiesMap(docHandle);
+
+const onUpdateProperty = async (
+  propertyId: DatabasePropertyId,
+  v: DatabaseUnknownProperty,
+) => {
+  await propertiesMap.put(propertyId, v);
+};
 </script>
 
 <template>
@@ -102,8 +113,8 @@ const onClickItemContextBtn = async (
           :property-id="propertyId"
           :property="property"
           :directory="directory"
-          :doc-handle="docHandle"
           @update:value="onChangeValue(itemId, propertyId, $event)"
+          @update:property="onUpdateProperty(propertyId, $event)"
         />
       </template>
 

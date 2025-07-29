@@ -1,7 +1,7 @@
 export {
   PROPERTY_TYPE_STRING,
   type StringProperty,
-  createStringProperty as createStringColumn,
+  createStringProperty,
   zodStringProperty,
 } from './string';
 
