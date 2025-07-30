@@ -8,6 +8,7 @@ import type {
 } from './migrations/versions';
 import { generateItemId, type DatabaseItem } from './migrations/versions';
 import { isUndefined } from 'es-toolkit';
+import { deepReplaceJsonObject } from '../changeObject';
 
 export const useDatabaseData = (
   rawDocHandle: MaybeRefOrGetter<AMDocHandle | undefined>,
@@ -26,6 +27,8 @@ export const useDatabaseData = (
     await databaseDocument.update((doc) => {
       doc.data[itemId] = item;
     });
+
+    return itemId;
   };
 
   const removeItem = async (itemId: DatabaseItemId) => {
@@ -58,8 +61,21 @@ export const useDatabaseData = (
   const getValue = (itemId: DatabaseItemId, propertyId: DatabasePropertyId) =>
     getItem(itemId)?.[propertyId];
 
+  const setItem = async (itemId: DatabaseItemId, item: DatabaseItem) => {
+    await databaseDocument.update((doc) => {
+      const refItem = doc.data[itemId] ?? {};
+
+      deepReplaceJsonObject(refItem, item);
+
+      if (doc.data[itemId] !== refItem) {
+        doc.data[itemId] = refItem;
+      }
+    });
+  };
+
   return {
     createItem,
+    setItem,
     removeItem,
     getItem,
     setValue,
