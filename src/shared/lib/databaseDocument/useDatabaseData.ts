@@ -1,4 +1,4 @@
-import { computed, toRefs, toValue, type MaybeRefOrGetter } from 'vue';
+import { computed, toValue, type MaybeRefOrGetter } from 'vue';
 import type { AMDocHandle } from '../automerge';
 import { useDatabaseDocument } from './useDatabaseDocument';
 import type {
@@ -17,9 +17,7 @@ export const useDatabaseData = (
 
   const databaseDocument = useDatabaseDocument(docHandle);
 
-  const { state } = toRefs(databaseDocument);
-
-  const data = computed(() => state.value?.data);
+  const data = computed(() => databaseDocument.state?.data);
 
   const createItem = async (item: DatabaseItem) => {
     const itemId = generateItemId();
