@@ -4,6 +4,7 @@ import { useDatabaseDocument } from './useDatabaseDocument';
 import { toRefs } from '@vueuse/core';
 import { useWrapStrictRecord, wrapStrictRecord } from '../strictRecord';
 import {
+  DB_VIEW_LAYOUT,
   generateViewId,
   type DatabaseView,
   type DatabaseViewId,
@@ -93,7 +94,13 @@ export const useDatabaseViewsMap = (
     });
   };
 
-  const defaultView = computed(() => list.value?.at(0));
+  const defaultView = computed(
+    (): DatabaseView =>
+      list.value?.at(0)?.[1] ?? {
+        layout: DB_VIEW_LAYOUT.TABLE,
+        name: 'default view',
+      },
+  );
 
   const update = (
     viewId: DatabaseViewId,

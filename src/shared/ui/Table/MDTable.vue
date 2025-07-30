@@ -87,6 +87,9 @@
     }
 
     tbody {
+      position: relative;
+      z-index: 0;
+
       td {
         font-weight: 400;
       }
