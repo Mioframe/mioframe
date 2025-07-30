@@ -2,12 +2,11 @@
 import type { GeneralProperty } from '@shared/lib/databaseDocument/migrations/versions/v1/property';
 import DbItemEditDialog from './DbItemEditDialog.vue';
 import type {
-  DatabaseItem,
+  DatabaseItemId,
   DatabasePropertyId,
 } from '@shared/lib/databaseDocument/migrations/versions';
 import type { AMDocHandle } from '@shared/lib/automerge';
 import { toRefs } from 'vue';
-import { useDatabaseData } from '@shared/lib/databaseDocument';
 
 const props = defineProps<{
   docHandle: AMDocHandle;
@@ -16,7 +15,7 @@ const props = defineProps<{
 const { docHandle } = toRefs(props);
 
 const emit = defineEmits<{
-  added: [item: DatabaseItem];
+  added: [id: DatabaseItemId];
   cancel: [];
 }>();
 
@@ -31,11 +30,8 @@ defineSlots<{
   }): unknown;
 }>();
 
-const databaseData = useDatabaseData(docHandle);
-
-const onApply = async (newItem: DatabaseItem) => {
-  await databaseData.createItem(newItem);
-  emit('added', newItem);
+const onCreated = (id: DatabaseItemId) => {
+  emit('added', id);
 };
 
 const onCancel = () => {
@@ -50,7 +46,7 @@ const onCancel = () => {
     headline="Add item"
     supporting-text="Fill in the properties of the new item."
     apply-label="Add"
-    @apply="onApply"
+    @created="onCreated"
     @cancel="onCancel"
   >
     <template #valueField="{ property, update, value, propertyId }">

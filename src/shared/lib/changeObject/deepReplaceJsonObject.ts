@@ -35,7 +35,12 @@ export const deepReplaceJsonObject = <S extends object>(
           }
         }
       } else {
-        target[sourceKey] = cloneDeep(sourceValue);
+        if (isUndefined(sourceValue)) {
+          // eslint-disable-next-line @typescript-eslint/no-dynamic-delete -- delete keys with undefined value
+          delete target[sourceKey];
+        } else {
+          target[sourceKey] = cloneDeep(sourceValue);
+        }
       }
     });
 
