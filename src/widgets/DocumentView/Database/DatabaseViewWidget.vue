@@ -24,6 +24,7 @@ import DatabaseToolbar from './DatabaseToolbar.vue';
 import { DbItemEditDialog } from '@feature/databaseItemEdit';
 import { isUndefined } from 'es-toolkit';
 import ValueField from './ValueField.vue';
+import { MD_SYS_TYPESCALE } from '@shared/lib/md';
 
 const props = defineProps<{
   docHandle: AMDocHandle;
@@ -112,6 +113,8 @@ const onUpdateProperty = async (
 ) => {
   await propertiesMap.put(propertyId, v);
 };
+
+const hasProperties = computed(() => !!propertiesMap.size);
 </script>
 
 <template>
@@ -120,7 +123,17 @@ const onUpdateProperty = async (
       <pre>{{ documentError }}</pre>
     </div>
 
+    <div v-if="!hasProperties" class="database-view__without-properties">
+      <h2 :class="MD_SYS_TYPESCALE.headline.large">Missing properties.</h2>
+
+      <section :class="MD_SYS_TYPESCALE.body.medium">
+        To start working with the database, create at least one property using
+        the toolbar.
+      </section>
+    </div>
+
     <DatabaseViewLayout
+      v-else
       :doc-handle="docHandle"
       :view-id="selectedViewId"
       :directory="directory"
@@ -197,8 +210,15 @@ const onUpdateProperty = async (
     overflow: visible;
   }
 
-  &__fab-container {
-    bottom: 7step;
+  &__without-properties {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4step;
+    flex-grow: 1;
+    text-align: center;
+    padding: 4step;
   }
 }
 

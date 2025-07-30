@@ -41,8 +41,10 @@ const { docHandle, viewId } = toRefs(props);
 
 const viewsMap = useDatabaseViewsMap(docHandle);
 
-const view = computed(() =>
-  viewId.value ? viewsMap.get(viewId.value) : viewsMap.defaultView?.[1],
+const view = computed(
+  () =>
+    (viewId.value ? viewsMap.get(viewId.value) : viewsMap.defaultView) ??
+    viewsMap.defaultView,
 );
 </script>
 

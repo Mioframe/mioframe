@@ -10,7 +10,7 @@ import {
 } from '@shared/lib/databaseDocument';
 import { MDIconButton } from '@shared/ui/Button';
 import MDToolbarContainer from '@shared/ui/Toolbar/MDToolbarContainer.vue';
-import { ref, toRefs } from 'vue';
+import { computed, ref, toRefs } from 'vue';
 import DatabaseViewsSheet from './DatabaseViewsSheet.vue';
 import DatabaseSortSheet from './DatabaseSortSheet.vue';
 import DatabasePropertiesSheet from './DatabasePropertiesSheet.vue';
@@ -43,23 +43,28 @@ const onUpdateProperty = async (
 ) => {
   await propertiesMap.put(propertyId, v);
 };
+
+const hasProperties = computed(() => !!propertiesMap.size);
 </script>
 
 <template>
   <MDToolbarContainer type="floating" auto-hide>
     <MDIconButton
+      v-if="hasProperties"
       tooltip="view settings"
       md-symbol-name="view_quilt"
       @click="showViewSettings = !showViewSettings"
     />
 
     <MDIconButton
+      v-if="hasProperties"
       tooltip="sort"
       md-symbol-name="sort_by_alpha"
       @click="showSortSettings = !showSortSettings"
     />
 
     <MDIconButton
+      v-if="hasProperties"
       tooltip="add item"
       md-symbol-name="add"
       color="filled"
