@@ -5,7 +5,7 @@ import type {
 } from '../types';
 import { zodDatabaseTypeDocument } from '../types';
 import { computed, reactive } from 'vue';
-import { toRefs, type MaybeRef } from '@vueuse/core';
+import { type MaybeRef } from '@vueuse/core';
 import { useCFRDocument } from '../../cfrDocument/useCFRDocument';
 import { zodIs, zodSafeCheck } from '../../validateZodScheme';
 import {
@@ -21,13 +21,11 @@ export const useDatabaseDocument = (
 ): DatabaseDocument => {
   const cfrDocument = useCFRDocument(docHandleRef);
 
-  const { change, content: unknownTypeContent } = toRefs(cfrDocument);
-
   const updateDatabaseDocument = <R>(
     update: (doc: DataBaseStateLatest) => R,
   ): Promise<R> =>
     new Promise((resolve, reject) => {
-      change.value((doc) => {
+      cfrDocument.change((doc) => {
         if (!zodIs(doc, zodDatabaseTypeDocument)) {
           reject(new Error('document is not DatabaseTypeDocument'));
           return;
@@ -43,7 +41,7 @@ export const useDatabaseDocument = (
     });
 
   const parseDocumentContent = computed(() =>
-    zodSafeCheck(unknownTypeContent.value, zodDatabaseTypeDocument),
+    zodSafeCheck(cfrDocument.content, zodDatabaseTypeDocument),
   );
 
   const documentError = computed(() => parseDocumentContent.value.error);

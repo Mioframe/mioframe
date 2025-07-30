@@ -15,7 +15,6 @@ import {
 } from '../globalWeakCache';
 import { tryOnScopeDispose } from '@vueuse/core';
 import type { ReadonlyObjectDeep } from 'type-fest/source/readonly-deep';
-import { once } from 'es-toolkit';
 
 export type DocHandleRef = {
   docRef: UnknownRecord;
@@ -66,21 +65,34 @@ const createDocHandleRefState = (docHandle: AMDocHandle): DocHandleRef => {
     docHandle.change(callback);
   };
 
+  let isInitialized = false;
+
   tryOnScopeDispose(() => {
-    docHandle.removeListener('change', onChangeDoc);
-    docHandle.removeListener('delete', onDeleteDoc);
+    dispose();
   });
 
-  const onceInit = once(() => {
-    docHandle.addListener('change', onChangeDoc);
-    docHandle.addListener('delete', onDeleteDoc);
+  const dispose = () => {
+    if (isInitialized) {
+      docHandle.removeListener('change', onChangeDoc);
+      docHandle.removeListener('delete', onDeleteDoc);
+      isInitialized = false;
+    }
+  };
 
-    void doc();
-  });
+  const init = () => {
+    if (!isInitialized) {
+      isInitialized = true;
+
+      docHandle.addListener('change', onChangeDoc);
+      docHandle.addListener('delete', onDeleteDoc);
+
+      void doc();
+    }
+  };
 
   const docHandleRef: DocHandleRef = reactive({
     get docRef() {
-      onceInit();
+      init();
       return readonly(docRef);
     },
     doc,
