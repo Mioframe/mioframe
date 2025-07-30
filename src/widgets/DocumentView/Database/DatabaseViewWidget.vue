@@ -12,7 +12,7 @@ import {
   useDatabasePropertiesMap,
   useDatabaseViewsMap,
 } from '@shared/lib/databaseDocument';
-import { shallowRef, toRefs, watch } from 'vue';
+import { computed, shallowRef, toRefs, watch } from 'vue';
 import { defineMenuButtonList, MDContextMenuBtn } from '@shared/ui/Menu';
 import type { AMDocHandle } from '@shared/lib/automerge/automergeTypes';
 import EditableInlineValue from './EditableInlineValue.vue';
@@ -21,6 +21,9 @@ import { useDatabaseItemRemove } from '@feature/databaseItemRemove';
 import type { DirectoryFSEntry } from '@shared/lib/fileSystem';
 import DatabaseViewLayout from './DatabaseViewLayout.vue';
 import DatabaseToolbar from './DatabaseToolbar.vue';
+import { DbItemEditDialog } from '@feature/databaseItemEdit';
+import { isUndefined } from 'es-toolkit';
+import ValueField from './ValueField.vue';
 
 const props = defineProps<{
   docHandle: AMDocHandle;
@@ -56,10 +59,12 @@ watch(
 );
 
 enum ITEM_CONTEXT_ACTION {
+  edit,
   remove,
 }
 
 const itemContextualButtons = defineMenuButtonList([
+  { symbolName: 'edit_note', label: 'edit', key: ITEM_CONTEXT_ACTION.edit },
   { symbolName: 'delete', label: 'remove', key: ITEM_CONTEXT_ACTION.remove },
 ]);
 
@@ -67,15 +72,29 @@ const { addSnackbar } = useSnackbar();
 
 const { remove: removeItem } = useDatabaseItemRemove(docHandle);
 
+const editedItemId = shallowRef<DatabaseItemId>();
+const isShowEditItemDialog = computed({
+  get: () => !isUndefined(editedItemId.value),
+  set: (v) => {
+    if (!v) {
+      editedItemId.value = undefined;
+    }
+  },
+});
+
 const onClickItemContextBtn = async (
   { key: action }: { key: ITEM_CONTEXT_ACTION },
   itemId: DatabaseItemId,
 ) => {
   switch (action) {
-    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- for other actions
     case ITEM_CONTEXT_ACTION.remove:
       await removeItem(itemId);
       break;
+
+    case ITEM_CONTEXT_ACTION.edit: {
+      editedItemId.value = itemId;
+      break;
+    }
 
     default:
       addSnackbar({
@@ -131,6 +150,25 @@ const onUpdateProperty = async (
       :doc-handle="docHandle"
       :directory="directory"
     />
+
+    <DbItemEditDialog
+      v-if="isShowEditItemDialog"
+      v-model:show="isShowEditItemDialog"
+      :doc-handle="docHandle"
+      :item-id="editedItemId"
+      apply-label="Save"
+      @cancel="isShowEditItemDialog = false"
+      @updated="isShowEditItemDialog = false"
+    >
+      <template #valueField="{ property, update, value }">
+        <ValueField
+          :property="property"
+          :value="value"
+          :directory="directory"
+          @update:value="update"
+        />
+      </template>
+    </DbItemEditDialog>
   </div>
 </template>
 

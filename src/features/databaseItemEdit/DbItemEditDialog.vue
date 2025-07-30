@@ -1,10 +1,12 @@
 <script setup lang="ts">
-import { ref, toRefs, watchEffect } from 'vue';
+import { computed, ref, toRefs, watchEffect } from 'vue';
 import { MDDialog } from '@shared/ui/Dialog';
-import type {
-  DatabaseItem,
-  DatabasePropertyId,
-  GeneralProperty,
+import {
+  useDatabaseData,
+  type DatabaseItem,
+  type DatabaseItemId,
+  type DatabasePropertyId,
+  type GeneralProperty,
 } from '@shared/lib/databaseDocument';
 import type { AMDocHandle } from '@shared/lib/automerge';
 import { useDatabasePropertiesMap } from '@shared/lib/databaseDocument/useDatabasePropertiesMap';
@@ -12,7 +14,7 @@ import { useDatabasePropertiesMap } from '@shared/lib/databaseDocument/useDataba
 const props = withDefaults(
   defineProps<{
     docHandle: AMDocHandle;
-    item?: DatabaseItem;
+    itemId?: DatabaseItemId;
     headline?: string;
     supportingText?: string;
     applyLabel?: string;
@@ -24,10 +26,12 @@ const props = withDefaults(
   },
 );
 
-const { applyLabel, headline, supportingText, item, docHandle } = toRefs(props);
+const { applyLabel, headline, supportingText, itemId, docHandle } =
+  toRefs(props);
 
 const emit = defineEmits<{
-  apply: [item: DatabaseItem];
+  updated: [item: DatabaseItem];
+  created: [id: DatabaseItemId];
   cancel: [];
 }>();
 
@@ -44,12 +48,24 @@ defineSlots<{
 
 const itemState = ref<DatabaseItem>({});
 
+const databaseData = useDatabaseData(docHandle);
+
+const currentItemState = computed(() =>
+  itemId.value ? databaseData.getItem(itemId.value) : undefined,
+);
+
 watchEffect(() => {
-  itemState.value = item.value ?? {};
+  itemState.value = currentItemState.value ?? {};
 });
 
-const onApply = () => {
-  emit('apply', itemState.value);
+const onApply = async () => {
+  if (itemId.value) {
+    await databaseData.setItem(itemId.value, itemState.value);
+    emit('updated', itemState.value);
+  } else {
+    const id = await databaseData.createItem(itemState.value);
+    emit('created', id);
+  }
 };
 
 const onCancel = () => {
