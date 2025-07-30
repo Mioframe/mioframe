@@ -39,7 +39,7 @@ const { itemList } = useOrderedDatabaseData(docHandle, view, idQuery);
 </script>
 
 <template>
-  <MDTable>
+  <MDTable class="db-data-table">
     <thead>
       <tr>
         <th
@@ -49,7 +49,10 @@ const { itemList } = useOrderedDatabaseData(docHandle, view, idQuery);
           {{ name }}
         </th>
 
-        <th v-if="!!slots.action || !!slots.actionHead">
+        <th
+          v-if="!!slots.action || !!slots.actionHead"
+          class="db-data-table__action"
+        >
           <slot name="actionHead" />
         </th>
       </tr>
@@ -72,10 +75,24 @@ const { itemList } = useOrderedDatabaseData(docHandle, view, idQuery);
           </slot>
         </td>
 
-        <td v-if="!!slots.action || !!slots.actionHead">
+        <td
+          v-if="!!slots.action || !!slots.actionHead"
+          class="db-data-table__action"
+        >
           <slot name="action" :item="item" :item-id="itemId" />
         </td>
       </tr>
     </tbody>
   </MDTable>
 </template>
+
+<style lang="css" scoped>
+.db-data-table {
+  &__action {
+    position: sticky;
+    right: 0;
+    left: 0;
+    z-index: 1;
+  }
+}
+</style>

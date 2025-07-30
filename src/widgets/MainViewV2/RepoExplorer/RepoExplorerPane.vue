@@ -381,6 +381,7 @@ const showFSEntryRenameDialog = computed({
     position: sticky;
     top: 0;
     flex-shrink: 0;
+    padding-left: 4step;
   }
 
   &__content-list {

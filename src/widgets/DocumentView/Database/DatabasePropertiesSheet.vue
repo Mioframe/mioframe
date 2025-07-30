@@ -79,10 +79,16 @@ const isShowAddProperty = ref(false);
     class="db-properties-sheet"
     @update:collapsed="onUpdateCollapsed"
   >
-    <MDBottomSheetSection class="md-padding-4" scroll-snap-align="end">
+    <MDBottomSheetSection
+      class="db-properties-sheet__section"
+      scroll-snap-align="end"
+    >
       <span :class="MD_SYS_TYPESCALE.title.small">Properties</span>
 
-      <DatabasePropertyList :doc-handle="docHandle" class="md-margin-top-4">
+      <DatabasePropertyList
+        class="db-properties-sheet__property-list"
+        :doc-handle="docHandle"
+      >
         <template #trailingIcon="{ propertyId }">
           <MDContextMenuButton
             :btns="propertyContextBtns"
@@ -132,11 +138,23 @@ const isShowAddProperty = ref(false);
 
 <style lang="css" scoped>
 .db-properties-sheet {
+  &__section {
+    display: flex;
+    flex-direction: column;
+    gap: 4step;
+    padding: 0 4step 4step;
+  }
+
+  &__property-list {
+    &:empty {
+      display: none;
+    }
+  }
+
   &__actions {
     display: flex;
     flex-wrap: wrap;
     gap: 2step;
-    margin-top: 2step;
   }
 }
 </style>
