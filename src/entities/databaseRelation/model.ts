@@ -9,7 +9,7 @@ import { array, extend, literal, object, optional } from 'zod/v4-mini';
 
 export const PROPERTY_TYPE_RELATION = 'relation';
 
-const zodRelation = object({
+export const zodRelation = object({
   documentId: zodDocumentId,
   viewId: optional(zodDatabaseViewId),
 });
