@@ -8,6 +8,8 @@ import ValueField from './ValueField.vue';
 import { zodBooleanProperty } from '@entity/databaseBoolean';
 import { DatabaseBooleanPropertyEditSection } from '@feature/databaseBooleanPropertyEdit';
 import { zodIs } from '@shared/lib/validateZodScheme';
+import { extend, optional } from 'zod/v4-mini';
+import { zodRelation } from '@entity/databaseRelation/model';
 
 defineProps<{
   docHandle: AMDocHandle;
@@ -15,6 +17,10 @@ defineProps<{
 }>();
 
 const show = defineModel<boolean>('show', { required: true });
+
+const zodPartialRelation = extend(zodRelationProperty, {
+  relation: optional(zodRelation),
+});
 </script>
 
 <template>
@@ -26,7 +32,7 @@ const show = defineModel<boolean>('show', { required: true });
   >
     <template #after="{ property, onUpdateProperty, onUpdateDefaultValue }">
       <DatabaseRelationPropertyEditSection
-        v-if="zodIs(property, zodRelationProperty)"
+        v-if="zodIs(property, zodPartialRelation)"
         :property="property"
         :directory="directory"
         @update:property="onUpdateProperty"
@@ -43,6 +49,7 @@ const show = defineModel<boolean>('show', { required: true });
         :value="property.default"
         :directory="directory"
         @update:value="onUpdateDefaultValue"
+        @update:property="onUpdateProperty"
       />
     </template>
   </DatabasePropertyCreationDialog>
