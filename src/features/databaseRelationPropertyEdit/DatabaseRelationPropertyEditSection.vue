@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { RelationProperty } from '@entity/databaseRelation';
+import type { Relation, RelationProperty } from '@entity/databaseRelation';
 import DatabaseRelationPropertyField from './DatabaseRelationPropertyField.vue';
 import type { DirectoryFSEntry } from '@shared/lib/fileSystem';
 import { computed } from 'vue';
@@ -8,7 +8,11 @@ defineProps<{
   directory: DirectoryFSEntry;
 }>();
 
-const propertyModel = defineModel<RelationProperty>('property', {
+interface PartialRelationProperty extends Omit<RelationProperty, 'relation'> {
+  relation?: Relation;
+}
+
+const propertyModel = defineModel<PartialRelationProperty>('property', {
   required: true,
 });
 
