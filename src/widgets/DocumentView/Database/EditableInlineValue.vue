@@ -107,6 +107,7 @@ const onUpdateProperty = (v: DatabaseUnknownProperty) => {
     <div ref="refPopover" class="editable-inline-value__edit-popover">
       <ValueField
         v-model:value="stateValue"
+        class="editable-inline-value__value-field"
         :property="property"
         :directory="directory"
         @keydown.enter="closeEditor"
@@ -127,6 +128,13 @@ const onUpdateProperty = (v: DatabaseUnknownProperty) => {
 
   &:hover {
     text-decoration-color: rgb(from var(--md-content-color) r g b / 0.5);
+  }
+
+  &__edit-popover {
+    display: flex;
+    flex-direction: column;
+    overflow: auto;
+    padding-top: 1step;
   }
 }
 </style>

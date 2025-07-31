@@ -94,8 +94,19 @@ const viewId = computed(() => property.value.relation.viewId);
 
 <style lang="css" scoped>
 .relation-value-field {
+  display: flex;
+  flex-direction: column;
+  overflow: auto;
+
   &__data {
     margin-top: 4step;
+    display: flex;
+    flex-direction: column;
+    overflow: auto;
+  }
+
+  &__views {
+    --md-target-offset: 0px;
   }
 }
 </style>
