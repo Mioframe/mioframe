@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { TeleportWithPlaceholder } from '@shared/lib/teleport';
-import { useParentElement, useScroll } from '@vueuse/core';
+import type { MaybeElement } from '@vueuse/core';
+import { unrefElement, useParentElement, useScroll } from '@vueuse/core';
 import { isUndefined } from 'es-toolkit';
 import { computed, ref, toRefs, watchEffect } from 'vue';
 
@@ -11,11 +12,12 @@ const props = withDefaults(
     color?: 'standard' | 'vibrant';
     centerAligned?: boolean;
     autoHide?: boolean;
+    autoHideTarget?: MaybeElement;
   }>(),
   { layout: 'horizontal', color: 'standard' },
 );
 
-const { autoHide } = toRefs(props);
+const { autoHide, autoHideTarget } = toRefs(props);
 
 defineSlots<{
   default: () => unknown;
@@ -23,9 +25,13 @@ defineSlots<{
 
 const parentEl = useParentElement();
 
+const autoHideTargetEl = computed(() =>
+  autoHide.value ? (unrefElement(autoHideTarget) ?? parentEl.value) : undefined,
+);
+
 const lastScrollDirection = ref<'top' | 'bottom'>();
 
-const { directions } = useScroll(parentEl);
+const { directions } = useScroll(autoHideTargetEl);
 
 watchEffect(() => {
   if (directions.top) {

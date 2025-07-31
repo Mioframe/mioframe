@@ -12,7 +12,7 @@ import {
   useDatabasePropertiesMap,
   useDatabaseViewsMap,
 } from '@shared/lib/databaseDocument';
-import { computed, shallowRef, toRefs, watch } from 'vue';
+import { computed, shallowRef, toRefs, useTemplateRef, watch } from 'vue';
 import { defineMenuButtonList, MDContextMenuBtn } from '@shared/ui/Menu';
 import type { AMDocHandle } from '@shared/lib/automerge/automergeTypes';
 import EditableInlineValue from './EditableInlineValue.vue';
@@ -115,6 +115,8 @@ const onUpdateProperty = async (
 };
 
 const hasProperties = computed(() => !!propertiesMap.size);
+
+const databaseViewLayoutRef = useTemplateRef('databaseViewLayoutRef');
 </script>
 
 <template>
@@ -134,6 +136,7 @@ const hasProperties = computed(() => !!propertiesMap.size);
 
     <DatabaseViewLayout
       v-else
+      ref="databaseViewLayoutRef"
       :doc-handle="docHandle"
       :view-id="selectedViewId"
       :directory="directory"
@@ -162,6 +165,7 @@ const hasProperties = computed(() => !!propertiesMap.size);
       v-model:selected-view-id="selectedViewId"
       :doc-handle="docHandle"
       :directory="directory"
+      :auto-hide-target="databaseViewLayoutRef"
     />
 
     <DbItemEditDialog
@@ -190,7 +194,8 @@ const hasProperties = computed(() => !!propertiesMap.size);
   display: flex;
   flex-direction: column;
   flex: 1 0;
-  overflow-y: auto;
+  overflow: auto;
+  padding: 0 4step 4step;
 
   &__controls {
     margin-top: auto;
@@ -201,13 +206,7 @@ const hasProperties = computed(() => !!propertiesMap.size);
   }
 
   &__table {
-    flex-shrink: 0;
     flex-grow: 1;
-    padding: 16px;
-  }
-
-  &__layout {
-    overflow: visible;
   }
 
   &__without-properties {
