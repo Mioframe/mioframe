@@ -94,6 +94,8 @@ onInteractionOutside(tooltipEl, () => {
   max-width: calc(100dvw - 32px);
   max-height: calc(100dvh - 32px);
   overflow: auto;
+  display: flex;
+  flex-direction: column;
 
   transition-property: transform, opacity;
   transition-duration: var(--md-sys-motion-duration-medium1);

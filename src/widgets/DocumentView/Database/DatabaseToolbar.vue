@@ -17,13 +17,15 @@ import DatabasePropertiesSheet from './DatabasePropertiesSheet.vue';
 import { DbItemAddDialog } from '@feature/databaseItemEdit';
 import ValueField from './ValueField.vue';
 import type { DirectoryFSEntry } from '@shared/lib/fileSystem';
+import type { MaybeElement } from '@vueuse/core';
 
 const props = defineProps<{
   docHandle: AMDocHandle;
   directory: DirectoryFSEntry;
+  autoHideTarget?: MaybeElement;
 }>();
 
-const { docHandle, directory } = toRefs(props);
+const { docHandle, directory, autoHideTarget } = toRefs(props);
 
 const selectedViewId = defineModel<DatabaseViewId>('selectedViewId');
 
@@ -48,7 +50,11 @@ const hasProperties = computed(() => !!propertiesMap.size);
 </script>
 
 <template>
-  <MDToolbarContainer type="floating" auto-hide>
+  <MDToolbarContainer
+    type="floating"
+    auto-hide
+    :auto-hide-target="autoHideTarget"
+  >
     <MDIconButton
       v-if="hasProperties"
       tooltip="view settings"

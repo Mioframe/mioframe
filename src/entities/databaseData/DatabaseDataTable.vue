@@ -51,7 +51,7 @@ const { itemList } = useOrderedDatabaseData(docHandle, view, idQuery);
 
         <th
           v-if="!!slots.action || !!slots.actionHead"
-          class="db-data-table__action"
+          class="db-data-table__actions"
         >
           <slot name="actionHead" />
         </th>
@@ -77,7 +77,7 @@ const { itemList } = useOrderedDatabaseData(docHandle, view, idQuery);
 
         <td
           v-if="!!slots.action || !!slots.actionHead"
-          class="db-data-table__action"
+          class="db-data-table__actions"
         >
           <slot name="action" :item="item" :item-id="itemId" />
         </td>
@@ -88,11 +88,20 @@ const { itemList } = useOrderedDatabaseData(docHandle, view, idQuery);
 
 <style lang="css" scoped>
 .db-data-table {
-  &__action {
+  th&__actions,
+  td&__actions {
     position: sticky;
     right: 0;
     left: 0;
+    z-index: -1;
+    pointer-events: none;
+
+    background: transparent;
     z-index: 1;
+
+    :deep(> *) {
+      pointer-events: all;
+    }
   }
 }
 </style>
