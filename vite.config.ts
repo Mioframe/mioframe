@@ -16,6 +16,10 @@ export default defineConfig(({ mode, isPreview }) => {
     mode === 'production' || isPreview
       ? [
           VitePWA({
+            manifest: {
+              theme_color: undefined,
+              background_color: undefined,
+            },
             workbox: {
               runtimeCaching: cachePreset,
             },
