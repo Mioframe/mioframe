@@ -1,4 +1,4 @@
-import type { DocumentId, Repo } from '@automerge/automerge-repo';
+import type { Repo } from '@automerge/automerge-repo';
 import type { zodDocumentContent } from './types';
 import type { output } from 'zod/v4-mini';
 import type { MaybeRefOrGetter, ShallowReactive } from 'vue';
@@ -24,15 +24,15 @@ export type RepoRef = {
     initialValue: output<Z>,
   ) => void;
   remove: (documentId: AMDocumentId) => void;
-  find: (documentList: DocumentId[] | Set<DocumentId>) => void;
-  map: ShallowReactive<Map<DocumentId, AMDocHandle>>;
+  find: (documentList: AMDocumentId[] | Set<AMDocumentId>) => void;
+  map: ShallowReactive<Map<AMDocumentId, AMDocHandle>>;
 };
 
 const useRepoRefCacheApi = createGlobalWeakCache((repo: Repo): RepoRef => {
   const mapRef = shallowReactive<Map<AMDocumentId, AMDocHandle>>(new Map());
 
   const addDocToState = (docHandle: AMDocHandle) => {
-    const documentId = docHandle.documentId;
+    const documentId: AMDocumentId = docHandle.documentId;
     if (!mapRef.has(documentId)) {
       mapRef.set(documentId, docHandle);
     }
@@ -66,11 +66,11 @@ const useRepoRefCacheApi = createGlobalWeakCache((repo: Repo): RepoRef => {
     repo.delete(documentId);
   };
 
-  const documentSearchSet = shallowReactive<Set<DocumentId>>(new Set());
+  const documentSearchSet = shallowReactive<Set<AMDocumentId>>(new Set());
 
   const documentSearchSetWatchHandle = watch(
     documentSearchSet,
-    throttle((documentSearchSet: Set<DocumentId>) => {
+    throttle((documentSearchSet: Set<AMDocumentId>) => {
       documentSearchSet.forEach((documentId) => {
         if (!mapRef.has(documentId)) {
           // TODO: repo.find длительная операция
@@ -83,7 +83,7 @@ const useRepoRefCacheApi = createGlobalWeakCache((repo: Repo): RepoRef => {
 
   documentSearchSetWatchHandle.pause();
 
-  const find = (documentList: DocumentId[] | Set<DocumentId>) => {
+  const find = (documentList: AMDocumentId[] | Set<AMDocumentId>) => {
     documentList.forEach((documentId) => {
       documentSearchSet.add(documentId);
     });
@@ -141,7 +141,7 @@ export const useRepoRef = (
 
   const map = computed(() => cache.value?.map);
 
-  const find = (documentList: DocumentId[] | Set<DocumentId>) =>
+  const find = (documentList: AMDocumentId[] | Set<AMDocumentId>) =>
     cache.value?.find(documentList);
 
   watch(

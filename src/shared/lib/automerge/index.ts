@@ -1,1 +1,1 @@
-export type * from './automergeTypes';
+export * from './automergeTypes';

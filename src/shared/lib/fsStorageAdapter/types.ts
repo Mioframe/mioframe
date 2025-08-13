@@ -1,14 +1,14 @@
-import { isValidDocumentId } from '@automerge/automerge-repo';
-import { isString } from 'es-toolkit';
 import type { Promisable } from 'type-fest';
 import type { output } from 'zod/v4-mini';
-import { custom, literal, string, tuple, union } from 'zod/v4-mini';
-import type { AMDocumentId } from '../automerge/automergeTypes';
-
-export const zodDocumentId = custom<AMDocumentId>(
-  (val: unknown): val is AMDocumentId =>
-    (isString(val) && isValidDocumentId(val)) || val === 'storage-adapter-id',
-);
+import {
+  literal,
+  optional,
+  string,
+  templateLiteral,
+  tuple,
+  union,
+} from 'zod/v4-mini';
+import { zodSimpleDocumentId, zodStrictDocumentId } from '../automerge';
 
 export const zodHash = string();
 
@@ -21,46 +21,72 @@ export const zodChangedType = union([
 
 export type ChangedType = output<typeof zodChangedType>;
 
-export const zodStorageKey = tuple([zodDocumentId, zodChangedType, zodHash]);
-
-export type StorageKey = output<typeof zodStorageKey>;
+const zodStorageAdapterId = literal('storage-adapter-id');
 
 export const zodPartialStorageKey = union([
-  tuple([zodDocumentId]),
-  tuple([zodDocumentId, zodChangedType]),
-  tuple([zodDocumentId, zodChangedType, zodHash]),
+  tuple([zodStorageAdapterId]),
+  tuple([zodStrictDocumentId]),
+  tuple([zodStrictDocumentId, zodChangedType]),
+  tuple([zodStrictDocumentId, zodChangedType, zodHash]),
 ]);
 
 export type PartialStorageKey = output<typeof zodPartialStorageKey>;
 
 export const KEY_SEPARATE = '_';
 
-export const zodAutomergeFileName =
-  custom<`${AMDocumentId}${typeof KEY_SEPARATE}${ChangedType}${typeof KEY_SEPARATE}${Hash}`>(
-    (data) => {
-      if (isString(data)) {
-        const array = data.split(KEY_SEPARATE);
-        if (array.length === 3) {
-          return zodStorageKey.safeParse(array).success;
-        }
-      }
-      return false;
-    },
-  );
+export const fileExtension = 'automerge';
+
+const zodFileExtension = literal(`.${fileExtension}`);
+
+export const zodAutomergeFileName = union([
+  zodStorageAdapterId,
+  templateLiteral([zodStorageAdapterId, zodFileExtension]),
+  zodSimpleDocumentId,
+  templateLiteral([zodSimpleDocumentId, zodFileExtension]),
+  templateLiteral([zodSimpleDocumentId, KEY_SEPARATE, zodChangedType]),
+  templateLiteral([
+    zodSimpleDocumentId,
+    KEY_SEPARATE,
+    zodChangedType,
+    zodFileExtension,
+  ]),
+  templateLiteral([
+    zodSimpleDocumentId,
+    KEY_SEPARATE,
+    zodChangedType,
+    KEY_SEPARATE,
+    zodHash,
+  ]),
+  templateLiteral([
+    zodSimpleDocumentId,
+    KEY_SEPARATE,
+    zodChangedType,
+    KEY_SEPARATE,
+    zodHash,
+    zodFileExtension,
+  ]),
+]);
 
 export type AutomergeFileName = output<typeof zodAutomergeFileName>;
 
-export const zodPartialAutomergeFileName = custom<
-  | `${AMDocumentId}${typeof KEY_SEPARATE}${ChangedType}${typeof KEY_SEPARATE}${Hash}`
-  | `${AMDocumentId}${typeof KEY_SEPARATE}${ChangedType}`
-  | AMDocumentId
->((data) => {
-  if (isString(data)) {
-    const array = data.split(KEY_SEPARATE);
-    return zodPartialStorageKey.safeParse(array).success;
-  }
-  return false;
-});
+export const zodStorageKey = union([
+  tuple([zodStorageAdapterId]),
+  tuple([zodStrictDocumentId, zodChangedType, zodHash]),
+]);
+
+export type StorageKey = output<typeof zodStorageKey>;
+
+export const zodPartialAutomergeFileName = templateLiteral([
+  zodSimpleDocumentId,
+  optional(
+    templateLiteral([
+      KEY_SEPARATE,
+      zodChangedType,
+      optional(templateLiteral([KEY_SEPARATE, zodHash])),
+    ]),
+  ),
+  optional(zodFileExtension),
+]);
 
 export type PartialAutomergeFileName = output<
   typeof zodPartialAutomergeFileName

@@ -5,6 +5,7 @@ import type {
   StorageKey,
 } from './types';
 import {
+  fileExtension,
   KEY_SEPARATE,
   zodPartialAutomergeFileName,
   zodPartialStorageKey,
@@ -23,11 +24,15 @@ export const partialKeyToFileName = (
   key: PartialStorageKey,
 ): PartialAutomergeFileName | undefined => {
   const partialStorageKey = zodIs(key, zodPartialStorageKey) ? key : undefined;
-  const maybePartialAutomergeFileName = partialStorageKey?.join(KEY_SEPARATE);
 
-  return zodIs(maybePartialAutomergeFileName, zodPartialAutomergeFileName)
-    ? maybePartialAutomergeFileName
-    : undefined;
+  if (partialStorageKey) {
+    const maybePartialAutomergeFileName = `${partialStorageKey.join(KEY_SEPARATE)}.${fileExtension}`;
+    return zodIs(maybePartialAutomergeFileName, zodPartialAutomergeFileName)
+      ? maybePartialAutomergeFileName
+      : undefined;
+  }
+
+  return undefined;
 };
 
 export const fileNameToPartialKey = (
@@ -37,7 +42,9 @@ export const fileNameToPartialKey = (
     ? fileName
     : undefined;
 
-  const maybePartialStorageKey = partialAutomergeFileName?.split(KEY_SEPARATE);
+  const maybePartialStorageKey = partialAutomergeFileName
+    ?.replace(`.${fileExtension}`, '')
+    .split(KEY_SEPARATE);
 
   return zodIs(maybePartialStorageKey, zodPartialStorageKey)
     ? maybePartialStorageKey
