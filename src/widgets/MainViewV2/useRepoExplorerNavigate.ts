@@ -1,6 +1,6 @@
 import type { AMDocHandle } from '@shared/lib/automerge';
+import { zodStrictDocumentId } from '@shared/lib/automerge';
 import { useDirectoryRepo } from '@shared/lib/cfrDocument';
-import { zodDocumentId } from '@shared/lib/fsStorageAdapter';
 import type { DirectoryLocalEntry } from '@shared/lib/localFileSystem';
 import { asyncComputed, createGlobalState } from '@vueuse/core';
 import type { PartialDeep, ReadonlyDeep } from 'type-fest';
@@ -21,7 +21,7 @@ export interface RepoExplorerState {
   /**
    * Выбранный документ в директории
    */
-  document: output<typeof zodDocumentId> | undefined;
+  document: output<typeof zodStrictDocumentId> | undefined;
 }
 
 interface UseRepoExplorerState {
@@ -47,7 +47,7 @@ export const useRepoExplorerNavigate = createGlobalState(
     const documentId = computed(
       () =>
         object({
-          document: zodDocumentId,
+          document: zodStrictDocumentId,
         }).safeParse(route.query).data?.document,
     );
 
