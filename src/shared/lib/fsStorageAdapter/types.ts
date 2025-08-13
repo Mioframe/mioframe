@@ -71,7 +71,14 @@ export type StorageKey = output<typeof zodStorageKey>;
 
 export const zodPartialAutomergeFileName = union([
   zodSimpleDocumentId,
+  templateLiteral([zodSimpleDocumentId, zodFileExtension]),
   templateLiteral([zodSimpleDocumentId, KEY_SEPARATE, zodChangedType]),
+  templateLiteral([
+    zodSimpleDocumentId,
+    KEY_SEPARATE,
+    zodChangedType,
+    zodFileExtension,
+  ]),
   templateLiteral([
     zodSimpleDocumentId,
     KEY_SEPARATE,

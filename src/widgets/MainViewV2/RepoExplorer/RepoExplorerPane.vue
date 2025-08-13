@@ -31,6 +31,9 @@ import { useDirectoryRepo } from '@shared/lib/cfrDocument/useDirectoryRepo';
 import { useSnackbar } from '@shared/ui/Snackbar';
 import { useRepoExplorerNavigate } from '../useRepoExplorerNavigate';
 import { useRouter } from 'vue-router';
+import { zodIs } from '@shared/lib/validateZodScheme';
+import { zodAutomergeFileName } from '@shared/lib/fsStorageAdapter';
+import { useReduceMap } from '@shared/lib/useReduce';
 
 const isShowCreateDirectoryForm = ref(false);
 
@@ -53,6 +56,17 @@ const directoryPath = computed(() =>
 );
 
 const directoryRef = useDirectoryFSEntryRef(currentDirectory);
+
+const directoryEntries = useReduceMap(
+  computed(() => directoryRef.value?.entries),
+  (map, entry, key) => {
+    // TODO: добавить фильтрацию файлов в настройки
+    if (!zodIs(key, zodAutomergeFileName)) {
+      map.set(key, entry);
+    }
+  },
+  new Map<string, DirectoryFSEntry | FileFSEntry>(),
+);
 
 const onClickPath = async (indexPath: number) => {
   if (repoExplorerState.path) {
@@ -278,7 +292,7 @@ const showFSEntryRenameDialog = computed({
         </CFRDocumentMDListItem>
 
         <FSEntryMDListItem
-          v-for="[entryKey, entry] in directoryRef?.entries"
+          v-for="[entryKey, entry] in directoryEntries"
           :key="entryKey"
           is-button
           :entry="entry"
