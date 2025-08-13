@@ -147,6 +147,7 @@ const { height: targetHeight, width: targetWidth } = useElementSize(
     background: transparent;
     pointer-events: none;
     z-index: 1;
+    transition-property: none;
 
     :deep(> *) {
       pointer-events: all;
