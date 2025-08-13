@@ -1,13 +1,6 @@
 import type { Promisable } from 'type-fest';
 import type { output } from 'zod/v4-mini';
-import {
-  literal,
-  optional,
-  string,
-  templateLiteral,
-  tuple,
-  union,
-} from 'zod/v4-mini';
+import { literal, string, templateLiteral, tuple, union } from 'zod/v4-mini';
 import { zodSimpleDocumentId, zodStrictDocumentId } from '../automerge';
 
 export const zodHash = string();
@@ -76,16 +69,24 @@ export const zodStorageKey = union([
 
 export type StorageKey = output<typeof zodStorageKey>;
 
-export const zodPartialAutomergeFileName = templateLiteral([
+export const zodPartialAutomergeFileName = union([
   zodSimpleDocumentId,
-  optional(
-    templateLiteral([
-      KEY_SEPARATE,
-      zodChangedType,
-      optional(templateLiteral([KEY_SEPARATE, zodHash])),
-    ]),
-  ),
-  optional(zodFileExtension),
+  templateLiteral([zodSimpleDocumentId, KEY_SEPARATE, zodChangedType]),
+  templateLiteral([
+    zodSimpleDocumentId,
+    KEY_SEPARATE,
+    zodChangedType,
+    KEY_SEPARATE,
+    zodHash,
+  ]),
+  templateLiteral([
+    zodSimpleDocumentId,
+    KEY_SEPARATE,
+    zodChangedType,
+    KEY_SEPARATE,
+    zodHash,
+    zodFileExtension,
+  ]),
 ]);
 
 export type PartialAutomergeFileName = output<
