@@ -14,7 +14,7 @@ import {
   defineGlobalWeakCacheRef,
 } from '../globalWeakCache';
 import { useDirectoryFSEntryRef } from '../fileSystem/useDirectoryFSEntryRef';
-import type { AMDocumentId } from '../automerge';
+import { zodStrictDocumentId, type AMDocumentId } from '../automerge';
 import { isEqual } from 'es-toolkit';
 
 // FIXME: при удалении файла, не пропадает документ
@@ -40,7 +40,7 @@ const useDirectoryRepoCache = createGlobalWeakCache(
 
               if (maybePartialKey) {
                 const [id] = maybePartialKey;
-                if (!list.includes(id)) {
+                if (zodIs(id, zodStrictDocumentId) && !list.includes(id)) {
                   list.push(id);
                 }
               }
