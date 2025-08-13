@@ -114,6 +114,7 @@ const show = computed(
   display: flex;
   justify-content: center;
   pointer-events: none;
+  transform: translateY(0);
 
   &_color {
     &-standard {
@@ -269,6 +270,11 @@ const show = computed(
       &.md-toolbar__placeholder {
         height: 0;
       }
+    }
+
+    &-enter-to,
+    &-leave-from {
+      transform: translateY(0);
     }
   }
 }

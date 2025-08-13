@@ -25,15 +25,8 @@ export const partialKeyToFileName = (
 ): PartialAutomergeFileName | undefined => {
   const partialStorageKey = zodIs(key, zodPartialStorageKey) ? key : undefined;
 
-  console.debug('partialStorageKey', partialStorageKey);
-
   if (partialStorageKey) {
     const maybePartialAutomergeFileName = `${partialStorageKey.join(KEY_SEPARATE)}.${fileExtension}`;
-
-    console.debug(
-      'maybePartialAutomergeFileName',
-      maybePartialAutomergeFileName,
-    );
 
     return zodIs(maybePartialAutomergeFileName, zodPartialAutomergeFileName)
       ? maybePartialAutomergeFileName
@@ -90,7 +83,6 @@ export const createStorageAdapter = (
 
   const save = async (key: StorageKey, data: Uint8Array) => {
     try {
-      console.debug(key);
       const fileName = partialKeyToFileName(key);
       if (!fileName) {
         throw new Error('fileName is undefined');
