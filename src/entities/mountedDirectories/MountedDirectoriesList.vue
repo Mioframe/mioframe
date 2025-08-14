@@ -20,7 +20,7 @@ const emit = defineEmits<{
   click: [directory: DirectoryFSEntry];
 }>();
 
-const { map: mountedMap } = useMountedDirectories();
+const { map: mountedDirectories } = useMountedDirectories();
 
 const onClickDirectory = (directory: DirectoryFSEntry) => {
   emit('click', directory);
@@ -31,13 +31,14 @@ const onClickDirectory = (directory: DirectoryFSEntry) => {
   <MDListContainer>
     <MDListItem
       :is="is"
-      v-for="[name, directory] in mountedMap"
+      v-for="[name, { entry, description }] in mountedDirectories"
       :key="name"
       :headline="name"
-      @click="onClickDirectory(directory)"
+      :supporting-text="description"
+      @click="onClickDirectory(entry)"
     >
       <template #leadingIcon>
-        <slot name="leadingIcon" v-bind="{ name, directory }" />
+        <slot name="leadingIcon" v-bind="{ name, directory: entry }" />
       </template>
     </MDListItem>
   </MDListContainer>
