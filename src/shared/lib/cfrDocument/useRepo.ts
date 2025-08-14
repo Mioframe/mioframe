@@ -42,7 +42,7 @@ const useRepoRefCacheApi = createGlobalWeakCache((repo: Repo): RepoRef => {
     mapRef.delete(documentId);
   };
 
-  const onDocument = ({ handle }: { handle: AMDocHandle; isNew: boolean }) => {
+  const onDocument = ({ handle }: { handle: AMDocHandle }) => {
     addDocToState(handle);
   };
 
@@ -70,14 +70,14 @@ const useRepoRefCacheApi = createGlobalWeakCache((repo: Repo): RepoRef => {
 
   const documentSearchSetWatchHandle = watch(
     documentSearchSet,
-    throttle((documentSearchSet: Set<AMDocumentId>) => {
-      documentSearchSet.forEach((documentId) => {
+    throttle(async (documentSearchSet: Set<AMDocumentId>) => {
+      for (const documentId of documentSearchSet) {
         if (!mapRef.has(documentId)) {
-          // TODO: repo.find длительная операция
-          const handle = repo.find<UnknownRecord>(documentId);
+          // TODO: repo.find длительная операция?
+          const handle = await repo.find<UnknownRecord>(documentId);
           addDocToState(handle);
         }
-      });
+      }
     }, 500),
   );
 

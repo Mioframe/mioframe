@@ -21,7 +21,7 @@ export type AMDocumentId = output<typeof zodStrictDocumentId>;
 
 export type AMDoc<T extends object = UnknownRecord> = AMRR.Doc<T>;
 
-export type AMValue = AMR.ScalarValue | AMMapObject | Array<AMValue> | AMR.Text;
+export type AMValue = AMR.ScalarValue | AMMapObject | Array<AMValue>;
 
 export type AMMapObject = {
   [P in string]?: AMValue;
