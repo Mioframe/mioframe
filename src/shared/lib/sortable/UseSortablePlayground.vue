@@ -44,7 +44,6 @@ const { draggableItem } = useSortable(containerEl, list);
           <div
             v-for="item in list"
             :key="item.id"
-            type="button"
             class="item"
             draggable="true"
             :class="{

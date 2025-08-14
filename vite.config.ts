@@ -22,6 +22,7 @@ export default defineConfig(({ mode, isPreview }) => {
             },
             workbox: {
               runtimeCaching: cachePreset,
+              maximumFileSizeToCacheInBytes: 10e6,
             },
           }),
         ]
