@@ -90,21 +90,23 @@ export function useReduceIterable<A, T>(
 }
 
 export function useReduceRecord<A, K extends PropertyKey, V>(
-  source: Ref<Record<K, V> | undefined>,
+  source: MaybeRefOrGetter<Record<K, V> | undefined>,
   reducer: (acc: A, value: V, key: K, index: number) => void,
   initialValue: A,
   clearer?: (acc: A) => void,
-): Ref<A> {
+): Readonly<Ref<A>> {
   const result = <Ref<A>>ref(initialValue);
 
   watchEffect(() => {
     (clearer || defaultClearer)(result.value);
 
+    const s = toValue(source);
+
     let index = 0;
-    if (source.value) {
-      for (const key in source.value) {
-        if (Object.hasOwnProperty.call(source.value, key)) {
-          const value = source.value[key];
+    if (s) {
+      for (const key in s) {
+        if (Object.hasOwnProperty.call(s, key)) {
+          const value = s[key];
           reducer(result.value, value, key, index);
           index++;
         }

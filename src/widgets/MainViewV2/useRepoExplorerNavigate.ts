@@ -100,7 +100,7 @@ export const useRepoExplorerNavigate = createGlobalState(
     const { get: getMountedDirectory } = useMountedDirectories();
 
     const rootEntry = computed(() =>
-      rootName.value ? getMountedDirectory(rootName.value) : undefined,
+      rootName.value ? getMountedDirectory(rootName.value)?.entry : undefined,
     );
 
     const currentDirectory = asyncComputed(
