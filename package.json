@@ -13,8 +13,8 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@automerge/automerge": "^2.2.9",
-    "@automerge/automerge-repo": "^1.2.1",
+    "@automerge/automerge": "^3.1.1",
+    "@automerge/automerge-repo": "^2.2.0",
     "@floating-ui/vue": "^1.1.8",
     "@noction/vue-bezier": "^1.12.0",
     "@sentry/vue": "^9.46.0",

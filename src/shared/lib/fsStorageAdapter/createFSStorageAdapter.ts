@@ -81,7 +81,7 @@ export const createStorageAdapter = (
     }
   };
 
-  const save = async (key: StorageKey, data: Uint8Array) => {
+  const save = async (key: StorageKey, data: Uint8Array<ArrayBuffer>) => {
     try {
       const fileName = partialKeyToFileName(key);
       if (!fileName) {
