@@ -6,6 +6,7 @@ import {
   useWindowSize,
 } from '@vueuse/core';
 import { isBoolean, throttle } from 'es-toolkit';
+import { toNumber } from 'es-toolkit/compat';
 import { computed, toRefs, useTemplateRef, watch, watchEffect } from 'vue';
 
 const props = withDefaults(
@@ -51,6 +52,13 @@ watchEffect(() => {
   sheetWidthCssVar.value = width.value ? `${width.value}px` : undefined;
 });
 
+const dragHandleHeightCssVar = useCssVar(
+  '--md-bottom-sheet-drag-height',
+  containerEl,
+);
+
+const dragHandleHeight = computed(() => toNumber(dragHandleHeightCssVar.value));
+
 const headerEl = useTemplateRef('headerEl');
 
 const onClickDragHandle = () => {
@@ -75,7 +83,7 @@ const collapsedState = computed(() => containerArrivedState.top);
 const { height: windowHeight } = useWindowSize();
 
 const fullscreen = computed(
-  () => containerScrollY.value >= windowHeight.value - 28,
+  () => containerScrollY.value >= windowHeight.value - dragHandleHeight.value,
 );
 
 watch(fullscreen, (fullscreen) => {
@@ -147,6 +155,7 @@ tryOnBeforeUnmount(() => {
   --md-bottom-sheet-shadow: var(--md-sys-elevation-level1);
   --md-bottom-sheet-container-color: var(--md-sys-color-surface-container-low);
   --md-bottom-sheet-scroll-y: unset;
+  --md-bottom-sheet-drag-height: 28px;
 
   --offset-for-shadow: 100px;
 
@@ -172,7 +181,7 @@ tryOnBeforeUnmount(() => {
   &::before {
     content: '';
     display: block;
-    height: calc(100dvh - var(--md-bottom-sheet-min-height) - 28px);
+    height: calc(100dvh - var(--md-bottom-sheet-min-height));
     flex-shrink: 0;
     scroll-snap-align: start;
   }
@@ -181,21 +190,21 @@ tryOnBeforeUnmount(() => {
     content: '';
     display: block;
     position: absolute;
-    height: 28px;
+    height: var(--md-bottom-sheet-drag-height);
     box-shadow: var(--md-bottom-sheet-shadow);
     border-radius: var(--md-bottom-sheet-border-radius);
     transition-duration: var(--md-sys-motion-duration-short4);
     transition-property: border-radius;
 
     flex-shrink: 0;
-    top: calc(100dvh - var(--md-bottom-sheet-min-height) - 28px);
+    top: calc(100dvh - var(--md-bottom-sheet-min-height));
     max-width: 640px;
     width: calc(100% - var(--offset-for-shadow) * 2);
     z-index: -1;
   }
 
   &__drag-handle {
-    padding: 12px;
+    height: var(--md-bottom-sheet-drag-height);
     margin: auto;
     display: block;
     border: 0;
@@ -208,6 +217,7 @@ tryOnBeforeUnmount(() => {
       width: 32px;
       height: 4px;
       border-radius: 2px;
+      margin: auto;
     }
   }
 
@@ -248,7 +258,12 @@ tryOnBeforeUnmount(() => {
 
     &-leave-to,
     &-enter-from {
-      transform: translateY(calc(28px + var(--md-bottom-sheet-scroll-y, 100%)));
+      transform: translateY(
+        calc(
+          var(--md-bottom-sheet-drag-height) +
+            var(--md-bottom-sheet-scroll-y, 100%)
+        )
+      );
     }
   }
 }
