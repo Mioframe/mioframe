@@ -14,7 +14,7 @@ import { useFirstFocus } from '@shared/lib/useFirstFocus';
 import { useFocusIndicator } from './useFocusIndicator';
 import { useRipple } from './useRipple';
 import { usePressed } from './usePressed';
-import { useHover } from './useHover';
+import { useHover } from '@shared/lib/useHover';
 
 const {
   is = 'div',
@@ -147,6 +147,8 @@ useRipple(computed(() => (enableRipple.value ? refEl.value : undefined)));
   --md-state-target-offset: var(--md-target-offset, 4px);
   --md-target-width: max(calc(100% + var(--md-state-target-offset) * 2), 48px);
   --md-target-height: max(calc(100% + var(--md-state-target-offset) * 2), 48px);
+
+  user-select: none;
 
   transition-property:
     box-shadow, color, background-color, padding, border-radius;
