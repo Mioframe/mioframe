@@ -119,6 +119,7 @@ const windowClassModifier = computed(() => {
 
     .md-layer_compact & {
       --md-pane-padding: 0px;
+      --md-pane-container-shape: 0px;
       padding: 0 var(--md-pane-padding);
     }
   }
