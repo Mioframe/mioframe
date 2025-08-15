@@ -49,7 +49,7 @@ const useGlobalHover = createGlobalState(() => {
       { immediate: true },
     );
 
-    return computed(() => el.value === lastTarget.value);
+    return computed(() => el.value && el.value === lastTarget.value);
   };
 });
 

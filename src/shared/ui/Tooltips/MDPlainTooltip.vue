@@ -2,13 +2,9 @@
 import { useClosestParentFrame } from '@shared/lib/useClosestParentFrame';
 import { computed, toRefs, useTemplateRef } from 'vue';
 import type { MaybeElement } from '@vueuse/core';
-import {
-  refDebounced,
-  unrefElement,
-  useElementHover,
-  useParentElement,
-} from '@vueuse/core';
+import { refDebounced, unrefElement, useParentElement } from '@vueuse/core';
 import { autoUpdate, flip, offset, shift, useFloating } from '@floating-ui/vue';
+import { useHover } from '@shared/lib/useHover';
 
 const props = withDefaults(
   defineProps<{
@@ -55,7 +51,7 @@ const { floatingStyles: tooltipStyle } = useFloating(
   },
 );
 
-const hovered = useElementHover(targetElementRef);
+const hovered = useHover(targetElementRef);
 
 const show = refDebounced(hovered, 1.5e3);
 </script>
