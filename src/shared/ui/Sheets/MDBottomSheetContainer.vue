@@ -5,7 +5,7 @@ import {
   useScroll,
   useWindowSize,
 } from '@vueuse/core';
-import { isBoolean, throttle } from 'es-toolkit';
+import { isBoolean, round, throttle } from 'es-toolkit';
 import { toNumber } from 'es-toolkit/compat';
 import { computed, toRefs, useTemplateRef, watch, watchEffect } from 'vue';
 
@@ -13,11 +13,12 @@ const props = withDefaults(
   defineProps<{
     width?: number;
     collapsed?: boolean | undefined;
+    type?: 'standard' | 'modal';
   }>(),
-  { collapsed: undefined },
+  { collapsed: undefined, type: 'standard' },
 );
 
-const { width, collapsed: collapsedProp } = toRefs(props);
+const { width, collapsed: collapsedProp, type: sheetType } = toRefs(props);
 
 const modelFullscreen = defineModel<boolean>('fullscreen', {
   default: undefined,
@@ -25,6 +26,7 @@ const modelFullscreen = defineModel<boolean>('fullscreen', {
 
 const emit = defineEmits<{
   'update:collapsed': [boolean];
+  clickContainer: [];
 }>();
 
 defineSlots<{
@@ -40,9 +42,10 @@ const { arrivedState: containerArrivedState, y: containerScrollY } = useScroll(
 
 const scrollYCssVar = useCssVar('--md-bottom-sheet-scroll-y', containerEl);
 
-watchEffect(
-  throttle(() => {
-    scrollYCssVar.value = `${containerScrollY.value}px`;
+watch(
+  containerScrollY,
+  throttle((containerScrollY: number) => {
+    scrollYCssVar.value = `${round(containerScrollY)}px`;
   }, 1e3 / 10),
 );
 
@@ -68,12 +71,11 @@ const onClickDragHandle = () => {
 
       if (firstSection instanceof Element) {
         firstSection.scrollIntoView({
-          behavior: 'smooth',
           block: 'nearest',
         });
       }
     } else {
-      containerEl.value.scrollTo({ top: 0, behavior: 'smooth' });
+      containerEl.value.scrollTo({ top: 0 });
     }
   }
 };
@@ -95,14 +97,12 @@ watchEffect(() => {
     if (collapsedProp.value) {
       containerEl.value.scrollTo({
         top: 0,
-        behavior: 'smooth',
       });
     } else {
       const firstSection = headerEl.value?.nextElementSibling;
 
       if (firstSection instanceof Element) {
         firstSection.scrollIntoView({
-          behavior: 'smooth',
           block: 'nearest',
         });
       }
@@ -116,11 +116,14 @@ watch(collapsedState, (collapsed) => {
   }
 });
 
+const onClickContainer = () => {
+  emit('clickContainer');
+};
+
 tryOnBeforeUnmount(() => {
   if (containerEl.value instanceof Element) {
     containerEl.value.scrollTo({
       top: 0,
-      behavior: 'smooth',
     });
   }
 });
@@ -130,10 +133,14 @@ tryOnBeforeUnmount(() => {
   <div
     ref="containerEl"
     class="md md-bottom-sheet-container"
-    :class="{
-      'mb-bottom-sheet-container_collapsed': collapsedState,
-      'mb-bottom-sheet-container_fullscreen': fullscreen,
-    }"
+    :class="[
+      `md-bottom-sheet-container_type-${sheetType}`,
+      {
+        'mb-bottom-sheet-container_collapsed': collapsedState,
+        'mb-bottom-sheet-container_fullscreen': fullscreen,
+      },
+    ]"
+    @click.self="onClickContainer"
   >
     <div ref="headerEl" class="md-bottom-sheet-container__header md">
       <button
@@ -236,10 +243,16 @@ tryOnBeforeUnmount(() => {
     --md-bottom-sheet-border-radius: 0;
   }
 
+  &.md-bottom-sheet-container_type-modal {
+    background-color: rgb(from var(--md-sys-color-scrim) r g b / 10%);
+    box-shadow: 0 -100dvh 0 rgb(from var(--md-sys-color-scrim) r g b / 10%);
+    pointer-events: all;
+  }
+
   &.v {
     &-enter-active,
     &-leave-active {
-      transition-property: transform;
+      transition-property: transform, background-color, box-shadow;
     }
 
     &-leave-active {
@@ -254,16 +267,18 @@ tryOnBeforeUnmount(() => {
         var(--md-sys-motion-easing-emphasized-decelerate)
       );
       transition-duration: var(--md-sys-motion-duration-long2);
+
+      scroll-behavior: auto;
     }
 
     &-leave-to,
     &-enter-from {
-      transform: translateY(
-        calc(
-          var(--md-bottom-sheet-drag-height) +
-            var(--md-bottom-sheet-scroll-y, 100%)
-        )
-      );
+      &.md-bottom-sheet-container_type-modal {
+        background-color: transparent;
+        box-shadow: 0 -100dvh 0 transparent;
+      }
+
+      transform: translateY(calc(var(--md-bottom-sheet-scroll-y, 100%)));
     }
   }
 }

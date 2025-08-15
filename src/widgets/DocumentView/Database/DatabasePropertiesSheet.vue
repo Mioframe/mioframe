@@ -76,8 +76,10 @@ const isShowAddProperty = ref(false);
   <MDBottomSheet
     :show="show"
     :collapsed="false"
+    type="modal"
     class="db-properties-sheet"
     @update:collapsed="onUpdateCollapsed"
+    @click-container="show = false"
   >
     <MDBottomSheetSection
       class="db-properties-sheet__section"

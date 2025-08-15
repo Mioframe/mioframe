@@ -106,7 +106,9 @@ const closeRenameDialog = () => {
   <MDBottomSheet
     :show="show"
     :collapsed="false"
+    type="modal"
     @update:collapsed="onUpdateCollapsed"
+    @click-container="show = false"
   >
     <MDBottomSheetSection
       scroll-snap-align="end"

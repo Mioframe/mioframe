@@ -22,7 +22,9 @@ const onUpdateCollapsed = (collapsed: boolean) => {
   <MDBottomSheet
     :show="show"
     :collapsed="false"
+    type="modal"
     @update:collapsed="onUpdateCollapsed"
+    @click-container="show = false"
   >
     <MDBottomSheetSection scroll-snap-align="end" class="md-padding-4">
       <DatabaseItemSortingListSection
