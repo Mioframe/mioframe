@@ -4,6 +4,7 @@ import MDBottomSheetContainer from './MDBottomSheetContainer.vue';
 
 defineProps<{
   show: boolean;
+  type?: 'standard' | 'modal';
 }>();
 
 const fullscreen = defineModel<boolean>('fullscreen', {
@@ -13,6 +14,10 @@ const fullscreen = defineModel<boolean>('fullscreen', {
 const collapsed = defineModel<boolean>('collapsed', {
   default: undefined,
 });
+
+const emit = defineEmits<{
+  clickContainer: [];
+}>();
 
 defineSlots<{
   default: () => unknown;
@@ -29,6 +34,8 @@ defineSlots<{
           v-model:fullscreen="fullscreen"
           :width="targetWidth"
           class="md-bottom-sheet__container"
+          :type="type"
+          @click-container="emit('clickContainer')"
         >
           <slot />
         </MDBottomSheetContainer>
