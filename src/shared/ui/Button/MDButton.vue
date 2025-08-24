@@ -75,9 +75,10 @@ defineEmits<{
   --md-target-width: max(48px, 100%);
   --md-target-height: max(48px, 100%);
 
-  display: flex;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
+  vertical-align: middle;
   border: 0;
   border-radius: var(--md-button-border-radius);
   height: var(--md-button-height);
@@ -166,6 +167,7 @@ defineEmits<{
     &:focus-visible {
       --md-content-color: var(--md-sys-color-primary);
       box-shadow: var(--md-sys-elevation-level1);
+      z-index: 1;
 
       &.md-button_selected {
         --md-content-color: var(--md-sys-color-on-primary);
@@ -192,6 +194,7 @@ defineEmits<{
     &.md-state_hover,
     &:hover {
       box-shadow: var(--md-sys-elevation-level1);
+      z-index: 1;
     }
   }
 
@@ -213,6 +216,7 @@ defineEmits<{
       --md-content-color: var(--md-sys-color-on-secondary-container);
       --md-button-icon-color: var(--md-sys-color-on-secondary-container);
       box-shadow: var(--md-sys-elevation-level1);
+      z-index: 1;
     }
 
     &:focus-visible,

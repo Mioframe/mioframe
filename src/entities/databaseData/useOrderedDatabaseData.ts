@@ -37,6 +37,7 @@ export function useOrderedDatabaseData(
           cloneDeep({
             sorting,
             idQuery: idQuery.value,
+            filter: view.value?.filter,
           }),
         );
       }

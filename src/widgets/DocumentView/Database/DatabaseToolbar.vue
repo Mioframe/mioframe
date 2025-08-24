@@ -18,6 +18,7 @@ import { DbItemAddDialog } from '@feature/databaseItemEdit';
 import ValueField from './ValueField.vue';
 import type { DirectoryFSEntry } from '@shared/lib/fileSystem';
 import type { MaybeElement } from '@vueuse/core';
+import DatabaseFiltersSheet from './DatabaseFiltersSheet.vue';
 
 const props = defineProps<{
   docHandle: AMDocHandle;
@@ -34,6 +35,8 @@ const showViewSettings = ref(false);
 const showSortSettings = ref(false);
 
 const showPropertySettings = ref(false);
+
+const showFilterSettings = ref(false);
 
 const isShowAddItem = ref(false);
 
@@ -78,9 +81,12 @@ const hasProperties = computed(() => !!propertiesMap.size);
       @click="isShowAddItem = !isShowAddItem"
     />
 
-    <!-- <MDIconButton tooltip="filter" md-symbol-name="filter_alt" /> -->
-
-    <!-- TODO: добавить кнопку добавление записи -->
+    <MDIconButton
+      v-if="hasProperties"
+      tooltip="filter"
+      md-symbol-name="filter_alt"
+      @click="showFilterSettings = !showFilterSettings"
+    />
 
     <MDIconButton
       tooltip="configure properties"
@@ -103,6 +109,14 @@ const hasProperties = computed(() => !!propertiesMap.size);
     <DatabasePropertiesSheet
       v-model:show="showPropertySettings"
       :doc-handle="docHandle"
+      :directory="directory"
+    />
+
+    <DatabaseFiltersSheet
+      v-if="selectedViewId"
+      v-model:show="showFilterSettings"
+      :doc-handle="docHandle"
+      :view-id="selectedViewId"
       :directory="directory"
     />
 

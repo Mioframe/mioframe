@@ -1,13 +1,14 @@
 import type { MaybeRef } from 'vue';
 import { computed, watch, toValue } from 'vue';
 import {
+  createGlobalState,
   tryOnScopeDispose,
   unrefElement,
   type MaybeElementRef,
 } from '@vueuse/core';
 import { throttle } from 'es-toolkit';
 
-type EventTypes = keyof WindowEventMap;
+type EventTypes = keyof DocumentEventMap;
 
 type InteractionOutsideOptions = {
   ignore?: MaybeRef<MaybeElementRef[]>;
@@ -15,13 +16,74 @@ type InteractionOutsideOptions = {
   throttleWait?: number; // Опция для троттлинга
 };
 
+const useDocumentEventListeners = createGlobalState(() => {
+  const state: {
+    [K in keyof DocumentEventMap]?: ((ev: DocumentEventMap[K]) => unknown)[];
+  } = {};
+
+  // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-parameters -- for window.addEventListener
+  const documentAddEventListener = <K extends keyof DocumentEventMap>(
+    type: K,
+  ) => {
+    document.addEventListener(
+      type,
+      (ev: DocumentEventMap[K]) => {
+        state[type]?.toReversed().forEach((listener) => {
+          listener(ev);
+        });
+      },
+      { capture: true },
+    );
+  };
+
+  const add = <K extends keyof DocumentEventMap>(
+    type: K,
+    listener: (ev: DocumentEventMap[K]) => unknown,
+  ) => {
+    if (!state[type]) {
+      documentAddEventListener(type);
+      state[type] = [];
+    }
+    state[type].push(listener);
+  };
+
+  const remove = <K extends keyof DocumentEventMap>(
+    type: K,
+    listener: (ev: DocumentEventMap[K]) => unknown,
+  ) => {
+    if (state[type]) {
+      const index = state[type].indexOf(listener);
+      if (index >= 0) {
+        state[type].splice(index, 1);
+      }
+    }
+  };
+
+  return {
+    add,
+    remove,
+  };
+});
+
+function defineType<T>(value: T): T {
+  return value;
+}
+
 export const onInteractionOutside = (
   target: MaybeElementRef,
   callback: () => unknown,
   options: InteractionOutsideOptions = {},
 ) => {
+  const defaultEvents = defineType<EventTypes[]>([
+    'click',
+    'touchstart',
+    'keydown',
+    'visibilitychange',
+    'wheel',
+  ]);
+
   const {
-    events = ['click', 'touchstart', 'keydown', 'visibilitychange', 'wheel'],
+    events = defaultEvents,
     throttleWait = 1e3 / 3,
     ignore = [],
   } = options;
@@ -50,16 +112,19 @@ export const onInteractionOutside = (
 
   const hasTarget = computed(() => !!unrefElement(target));
 
+  const { add: documentAddEventListener, remove: documentRemoveEventListener } =
+    useDocumentEventListeners();
+
   watch(
     hasTarget,
     (hasTarget) => {
       if (hasTarget) {
         events.forEach((event) => {
-          window.addEventListener(event, handleInteraction, true);
+          documentAddEventListener(event, handleInteraction);
         });
       } else {
         events.forEach((event) => {
-          window.removeEventListener(event, handleInteraction, true);
+          documentRemoveEventListener(event, handleInteraction);
         });
       }
     },
@@ -68,7 +133,7 @@ export const onInteractionOutside = (
 
   tryOnScopeDispose(() => {
     events.forEach((event) => {
-      window.removeEventListener(event, handleInteraction, true);
+      documentRemoveEventListener(event, handleInteraction);
     });
   });
 };

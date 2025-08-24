@@ -78,6 +78,7 @@ const onClickClose = (e: MouseEvent) => {
   position: relative;
   display: inline-flex;
   align-items: center;
+  vertical-align: middle;
   border-radius: var(--md-sys-shape-corner-small);
   height: 32dp;
   border-color: var(--md-sys-color-outline-variant);

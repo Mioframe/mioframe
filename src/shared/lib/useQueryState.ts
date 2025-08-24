@@ -1,7 +1,7 @@
 import { useRouteQuery } from '@vueuse/router';
 import { cloneDeep, isString, merge, toMerged } from 'es-toolkit';
 import type { MaybeRef, Reactive } from 'vue';
-import { nextTick, reactive, toValue, watch, watchEffect } from 'vue';
+import { nextTick, reactive, toValue, watch } from 'vue';
 import queryString from 'query-string';
 import { queryStringOptions } from '@shared/config/queryStringOptions';
 
@@ -35,7 +35,7 @@ export const useQueryValue = <P extends object>(
     localState,
     (localState) => {
       queryWatchHandle.pause();
-      queryState.value = toValue(localState);
+      merge(queryState.value, toValue(localState));
       void nextTick(() => {
         queryWatchHandle.resume();
       });
@@ -43,15 +43,19 @@ export const useQueryValue = <P extends object>(
     { deep: true },
   );
 
-  const queryWatchHandle = watchEffect(() => {
-    localStateWatchHandle.pause();
+  const queryWatchHandle = watch(
+    queryState,
+    (queryState) => {
+      localStateWatchHandle.pause();
 
-    merge(localState, queryState.value);
+      merge(localState, queryState);
 
-    void nextTick(() => {
-      localStateWatchHandle.resume();
-    });
-  });
+      void nextTick(() => {
+        localStateWatchHandle.resume();
+      });
+    },
+    { immediate: true, deep: true },
+  );
 
   return localState;
 };

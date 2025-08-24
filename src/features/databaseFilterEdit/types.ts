@@ -1,0 +1,18 @@
+export enum OPERATOR_LABEL {
+  $eq = '=',
+  $ne = '≠',
+  $lt = '<',
+  $gt = '>',
+  $lte = '≤',
+  $gte = '≥',
+  $in = 'specified in',
+  $nin = 'not specified in',
+  $all = 'everything in',
+  $mod = 'modulus',
+  $exists = 'exists',
+  $size = 'size',
+  $not = '¬',
+  $or = 'or',
+  $nor = 'not or',
+  $and = 'and',
+}

@@ -4,12 +4,12 @@ import {
   DB_VIEW_LAYOUT,
   generateViewId,
   zodDatabaseViewsMap,
-} from './v2';
-import type { DatabaseStateV2, DatabaseViewsMap } from './v2/state';
+} from '../v2';
+import type { DatabaseStateV2, DatabaseViewsMap } from '../v2/state';
 import { extend, literal } from 'zod/v4-mini';
 import { deepPutJsonObject } from '@shared/lib/changeObject';
 import { isEmpty } from 'es-toolkit/compat';
-import type { DatabaseTableView } from '.';
+import type { DatabaseTableView } from '..';
 import { cloneDeep } from 'es-toolkit';
 
 export const databaseStateV3 = defineVersion(

@@ -1,5 +1,6 @@
 import type {
   DatabaseData,
+  DatabaseFilter,
   DatabaseItem,
   DatabaseItemId,
   DatabaseSortMap,
@@ -16,6 +17,7 @@ export type QueryDataFn = <TSchemaItem extends DatabaseItem = DatabaseItem>(
     itemQuery?: Query<TSchemaItem>;
     idQuery?: Query<DatabaseItemId>;
     sorting?: DatabaseSortMap;
+    filter?: DatabaseFilter;
     slice?: {
       first?: number;
       last?: number;

@@ -161,10 +161,11 @@ tryOnBeforeUnmount(() => {
   --md-bottom-sheet-border-radius: var(--md-sys-shape-corner-extra-large-top);
   --md-bottom-sheet-shadow: var(--md-sys-elevation-level1);
   --md-bottom-sheet-container-color: var(--md-sys-color-surface-container-low);
+  --md-bottom-sheet-content-color: var(--md-sys-color-surface-on-container-low);
   --md-bottom-sheet-scroll-y: unset;
   --md-bottom-sheet-drag-height: 28px;
 
-  --offset-for-shadow: 100px;
+  --offset-for-shadow: 50vw;
 
   height: 100dvh;
   width: calc((var(--md-bottom-sheet-width) + var(--offset-for-shadow) * 2));
@@ -234,6 +235,7 @@ tryOnBeforeUnmount(() => {
     top: 0;
     z-index: 1;
     --md-container-color: var(--md-bottom-sheet-container-color);
+    --md-content-color: var(--md-bottom-sheet-content-color);
     max-width: 640px;
     width: 100%;
     pointer-events: all;
