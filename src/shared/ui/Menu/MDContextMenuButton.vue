@@ -1,12 +1,12 @@
-<script setup lang="ts" generic="T extends MenuButtonDescription">
+<script setup lang="ts" generic="T extends MenuButtonDescription<T>">
 import { MDIconButton } from '@shared/ui/Button';
 import type { MaybeElement } from '@vueuse/core';
 import { nextTick, ref, useTemplateRef } from 'vue';
-import type { MenuButtonDescription } from './types';
+import type { MenuButtonDescription, MenuButtonList } from './types';
 import MDMenu from './MDMenu.vue';
 
 const { btns, tooltip = 'options' } = defineProps<{
-  btns: T[];
+  btns: MenuButtonList<T>;
   tooltip?: string;
   size?:
     | 'extra-small'

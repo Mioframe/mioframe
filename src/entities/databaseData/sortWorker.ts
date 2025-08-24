@@ -4,6 +4,7 @@ import type { RecordEntries } from '@shared/lib/objectEntries';
 import { recordEntries } from '@shared/lib/objectEntries';
 import { partialSort } from './partialSort';
 import type {
+  DatabaseFilter,
   DatabaseItem,
   DatabaseItemId,
   DatabaseSortMap,
@@ -49,10 +50,12 @@ const queryData = <TSchemaItem extends DatabaseItem = DatabaseItem>(
     itemQuery,
     slice: { first, last } = {},
     sorting,
+    filter,
   }: {
     itemQuery?: Query<TSchemaItem>;
     idQuery?: Query<DatabaseItemId>;
     sorting?: DatabaseSortMap;
+    filter?: DatabaseFilter;
     slice?: {
       first?: number;
       last?: number;
@@ -62,11 +65,12 @@ const queryData = <TSchemaItem extends DatabaseItem = DatabaseItem>(
   const entries = isArray(data) ? data : recordEntries(data);
 
   const filteredEntries =
-    itemQuery || idQuery
+    itemQuery || idQuery || filter
       ? entries.filter(
           ([id, item]) =>
             (idQuery ? sift(idQuery)(id) : true) &&
-            (itemQuery ? sift(itemQuery)(item) : true),
+            (itemQuery ? sift(itemQuery)(item) : true) &&
+            (filter ? sift(filter)(item) : true),
         )
       : entries;
 

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, toRefs, watch } from 'vue';
+import { computed, toRefs } from 'vue';
 import { useIconStates } from './useMaterialDesignSymbols';
 
 const props = defineProps<{
@@ -9,17 +9,11 @@ const props = defineProps<{
 
 const { name } = toRefs(props);
 
-const { addLoadSymbol, loadedSymbols } = useIconStates();
+const { useLoadSymbol, loadedSymbols } = useIconStates();
 
 const ready = computed(() => loadedSymbols.has(name.value));
 
-watch(
-  name,
-  (name) => {
-    addLoadSymbol(name);
-  },
-  { immediate: true },
-);
+useLoadSymbol(name);
 </script>
 
 <template>

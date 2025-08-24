@@ -1,5 +1,6 @@
-import { createGlobalState, useStorage } from '@vueuse/core';
+import { createGlobalState, tryOnScopeDispose, useStorage } from '@vueuse/core';
 import { debounce, merge, uniq } from 'es-toolkit';
+import type { Ref } from 'vue';
 import { ref, shallowReactive, watch } from 'vue';
 import { array, object, string } from 'zod/v4-mini';
 import qs from 'query-string';
@@ -61,13 +62,18 @@ export const useIconStates = createGlobalState(() => {
       const oldLinks = searchStylesheetLinks(url);
 
       if (!loadedAllSymbols.value) {
-        if (isEdgeOnAndroid()) {
-          await import('material-symbols/rounded.css');
-          loadedAllSymbols.value = true;
-        } else {
-          await loadStylesheet(`${url}&icon_names=${names.join(',')}`);
+        try {
+          if (isEdgeOnAndroid()) {
+            await import('material-symbols/rounded.css');
+            loadedAllSymbols.value = true;
+          } else {
+            await loadStylesheet(`${url}&icon_names=${names.join(',')}`);
+          }
+          await awaitFont('Material Symbols Rounded');
+        } catch {
+          symbolsUsed.value.length = 0;
+          symbolsUsed.value = Array.from(usedSymbols).sort();
         }
-        await awaitFont('Material Symbols Rounded');
       }
 
       oldLinks.forEach((el) => {
@@ -87,14 +93,36 @@ export const useIconStates = createGlobalState(() => {
 
   watch(symbolsUsed, debounceLoadFond, { immediate: true, deep: true });
 
+  const usedSymbols = new Set<string>();
+
   const addLoadSymbol = (name: string) => {
+    usedSymbols.add(name);
+
     if (!symbolsUsed.value.includes(name)) {
       symbolsUsed.value.push(name);
     }
   };
 
+  const useLoadSymbol = (name: Ref<string>) => {
+    watch(
+      name,
+      (name, oldName) => {
+        if (oldName) {
+          usedSymbols.delete(oldName);
+        }
+
+        addLoadSymbol(name);
+      },
+      { immediate: true },
+    );
+
+    tryOnScopeDispose(() => {
+      usedSymbols.delete(name.value);
+    });
+  };
+
   return {
-    addLoadSymbol,
+    useLoadSymbol,
     loadedSymbols,
   };
 });

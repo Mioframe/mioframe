@@ -1,0 +1,41 @@
+.filter-block {
+  display: inline-flex;
+  flex-wrap: wrap;
+  justify-content: flex-start;
+  align-items: center;
+  position: relative;
+  padding: 2step;
+  gap: var(--gap);
+  border-radius: var(--border-radius);
+  --border-radius: 4step;
+  --gap: 2step;
+
+  &__actions {
+    display: inline-flex;
+    gap: 2step;
+    justify-content: center;
+    align-items: center;
+
+    &:empty {
+      display: none;
+    }
+  }
+
+  &__body {
+    display: inline-flex;
+    flex-wrap: wrap;
+    justify-content: flex-start;
+    align-items: flex-start;
+    gap: var(--gap);
+  }
+
+  &&_even {
+    --md-container-color: var(--md-sys-color-surface);
+    --md-content-color: var(--md-sys-color-on-surface);
+  }
+
+  &&_odd {
+    --md-container-color: var(--md-sys-color-surface-container);
+    --md-content-color: var(--md-sys-color-on-surface-container);
+  }
+}
