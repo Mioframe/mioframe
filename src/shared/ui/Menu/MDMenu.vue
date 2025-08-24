@@ -1,12 +1,9 @@
-<script
-  setup
-  lang="ts"
-  generic="T extends MenuButtonDescription = MenuButtonDescription"
->
+<script setup lang="ts" generic="T extends MenuButtonDescription<T>">
 import type { MaybeElement, VueInstance } from '@vueuse/core';
 import {
   computed,
   nextTick,
+  ref,
   toRefs,
   toValue,
   useTemplateRef,
@@ -14,9 +11,8 @@ import {
   watchEffect,
 } from 'vue';
 import { unrefElement } from '@vueuse/core';
-import { MDListContainer, MDListItem } from '../Lists';
-import type { MenuButtonDescription } from './types';
-import { MDSymbol } from '../Icon';
+import { MDListContainer } from '../Lists';
+import type { MenuButtonDescription, MenuButtonList } from './types';
 import { useClosestParentFrame } from '@shared/lib/useClosestParentFrame';
 import { onInteractionOutside } from '@shared/lib/onInteractionOutside';
 import { useFocusTrap } from '@vueuse/integrations/useFocusTrap';
@@ -25,15 +21,25 @@ import { isUndefined } from 'es-toolkit';
 import { useOverlayNavigation } from '@shared/lib/useOverlayNavigation';
 import { uniqueId } from '@shared/lib/uniqueId';
 import { autoUpdate, flip, shift, size, useFloating } from '@floating-ui/vue';
+import MDMenuItem from './MDMenuItem.vue';
 
-const props = defineProps<{
-  target: MaybeElement;
-  btns: T[];
-  transition?: boolean;
-  outsideIgnore?: MaybeElement[];
-}>();
+const props = withDefaults(
+  defineProps<{
+    target: MaybeElement;
+    btns: MenuButtonList<T>;
+    transition?: boolean;
+    outsideIgnore?: MaybeElement[];
+    disabledTeleport?: boolean;
+    id?: PropertyKey;
+    placement?: 'bottom-start' | 'right-start';
+  }>(),
+  {
+    id: () => uniqueId('menu'),
+    placement: 'bottom-start',
+  },
+);
 
-const { target, btns, outsideIgnore } = toRefs(props);
+const { target, btns, outsideIgnore, id, placement } = toRefs(props);
 
 const emit = defineEmits<{
   click: [menuItem: T];
@@ -41,9 +47,9 @@ const emit = defineEmits<{
   deactivateFocus: [];
 }>();
 
-const show = defineModel<boolean>('show', { required: true });
+const showModel = defineModel<boolean>('show', { required: true });
 
-const onClick = (menuItem: T) => {
+const onClickItem = (menuItem: T) => {
   emit('click', menuItem);
 };
 
@@ -57,7 +63,7 @@ const { floatingStyles: containerStyle } = useFloating(
   {
     strategy: 'fixed',
     transform: false,
-    placement: 'bottom-start',
+    placement,
     middleware: [
       flip({
         padding: 16,
@@ -70,19 +76,17 @@ const { floatingStyles: containerStyle } = useFloating(
           rects: {
             reference: { width },
           },
+          availableHeight,
         }) {
           Object.assign(elements.floating.style, {
             minWidth: `${width}px`,
+            maxHeight: `${availableHeight}px`,
           });
         },
       }),
     ],
     whileElementsMounted: autoUpdate,
   },
-);
-
-const hasSomeSymbol = computed(() =>
-  btns.value.some(({ symbolName }) => !!symbolName),
 );
 
 const targetTeleport = useClosestParentFrame();
@@ -98,6 +102,7 @@ onInteractionOutside(
   listContainerEl,
   () => {
     emit('interactionOutside');
+    showQuery.value = false;
   },
   {
     ignore: ignoreElements,
@@ -115,17 +120,23 @@ const { activate: activateMenuFocusTrap, deactivate: deactivateMenuFocusTrap } =
     },
   });
 
-watchEffect(
-  () => {
-    if (listContainerEl.value) {
-      if (show.value) {
+const { show: showQuery } = useOverlayNavigation(
+  // eslint-disable-next-line vue/no-ref-object-reactivity-loss -- static props
+  id.value,
+);
+
+watch(
+  [showQuery, listContainerEl],
+  ([showQuery, listContainerEl]) => {
+    if (listContainerEl) {
+      if (showQuery) {
         void nextTick(activateMenuFocusTrap);
       } else {
         void nextTick(deactivateMenuFocusTrap);
       }
     }
   },
-  { flush: 'post' },
+  { immediate: true },
 );
 
 const searchList = computed(() => btns.value.map(({ label }) => label));
@@ -149,7 +160,7 @@ const foundRef = computed(() =>
 );
 
 watchEffect(() => {
-  if (show.value) {
+  if (showQuery.value) {
     const foundEl = toValue(foundRef);
 
     if (foundEl instanceof HTMLElement) {
@@ -158,47 +169,42 @@ watchEffect(() => {
   }
 });
 
-const { show: showOverlay } = useOverlayNavigation(uniqueId('menu'));
-
-const showOverlayWatchHandler = watch(showOverlay, (showOverlay) => {
+const showOverlayWatchHandler = watch(showQuery, async (showOverlay) => {
   showWatchHandler.pause();
-  show.value = showOverlay;
-  void nextTick(showWatchHandler.resume);
+  showModel.value = showOverlay;
+  await nextTick(showWatchHandler.resume);
 });
 
 const showWatchHandler = watch(
-  show,
-  (show) => {
+  showModel,
+  async (show) => {
     showOverlayWatchHandler.pause();
-    showOverlay.value = show;
-    void nextTick(showOverlayWatchHandler.resume);
+    showQuery.value = show;
+    await nextTick(showOverlayWatchHandler.resume);
   },
   { immediate: true },
 );
+
+const showSubmenu = ref<boolean>();
 </script>
 
 <template>
-  <Teleport :to="targetTeleport">
+  <Teleport :to="targetTeleport" :disabled="disabledTeleport">
     <MDListContainer
       is="div"
-      v-if="showOverlay"
+      v-if="showQuery"
       ref="listContainerEl"
       class="md md-menu"
       :style="containerStyle"
       :transition="transition"
     >
-      <MDListItem
-        is="button"
+      <MDMenuItem
         v-for="item in btns"
         :key="item.key"
-        :headline="item.label"
-        type="button"
-        @click="onClick(item)"
-      >
-        <template v-if="hasSomeSymbol" #leadingIcon>
-          <MDSymbol v-if="item.symbolName" :name="item.symbolName" />
-        </template>
-      </MDListItem>
+        :item="item"
+        @click="onClickItem"
+        @update:show-submenu="showSubmenu = $event"
+      />
     </MDListContainer>
   </Teleport>
 </template>

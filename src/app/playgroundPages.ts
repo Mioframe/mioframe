@@ -54,4 +54,9 @@ export const playgroundPages: PlaygroundPage[] = [
     name: 'BottomSheet',
     component: () => import('@shared/ui/Sheets/MDBottomSheetPlayground.vue'),
   },
+  {
+    name: 'DatabaseNestedFilterString',
+    component: () =>
+      import('@entity/databaseFilter/DatabaseNestedFilterStringPlayground.vue'),
+  },
 ];

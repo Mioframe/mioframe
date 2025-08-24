@@ -5,7 +5,7 @@ import { MDMenu } from '../Menu';
 import { MDSymbol } from '../Icon';
 import { MDFieldContainer } from '../TextField';
 import { MDChip } from '../Chips';
-import { isNumber } from 'es-toolkit/compat';
+import { isNumber, toString } from 'es-toolkit/compat';
 import { differenceWith, isEqual } from 'es-toolkit';
 import { shallowClone } from '@shared/lib/shallowClone';
 import { isObjectLike } from '@shared/lib/typeGuards';
@@ -40,7 +40,7 @@ const optionToString = (option: T): string => {
   if (isObjectLike(option) && 'label' in option) {
     return option.label;
   }
-  return String(option);
+  return toString(option);
 };
 
 const showMenu = ref(false);
@@ -58,8 +58,8 @@ const removeOption = ({ index, option }: { option?: T; index?: number }) => {
     newValue.splice(index, 1);
 
     modelValue.value = newValue;
-  } else if (option) {
-    modelValue.value = modelValue.value.filter((v) => v !== option);
+  } else if (option && modelValue.value.length > 1) {
+    modelValue.value = modelValue.value.filter(({ key }) => key !== option.key);
   }
 };
 
@@ -97,7 +97,8 @@ const onClickFieldContainer = () => {
 };
 
 const onClickOption = (option: T) => {
-  if (modelValue.value.includes(option)) {
+  const { key } = option;
+  if (modelValue.value.some((option) => option.key === key)) {
     removeOption({ option });
   } else {
     addOption(option);

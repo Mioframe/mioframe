@@ -31,6 +31,7 @@ watchEffect(() => {
 
   pointer-events: all;
   --md-container-color: var(--md-bottom-sheet-container-color);
+  --md-content-color: var(--md-bottom-sheet-content-color);
   max-width: 640px;
   position: relative;
   display: flex;

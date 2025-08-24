@@ -112,9 +112,10 @@ const onClick = (e: MouseEvent) => {
   --md-icon-button-border-width: 0px;
   --md-icon-button-padding: 0px;
 
-  display: flex;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
+  vertical-align: middle;
   border: 0;
   padding: 0;
   border-width: var(--md-icon-button-border-width);

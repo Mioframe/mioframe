@@ -1,10 +1,10 @@
-import { computed } from 'vue';
+import { computed, onBeforeUnmount } from 'vue';
 import type { LocationQuery } from 'vue-router';
 import { useRoute, useRouter } from 'vue-router';
 import { uniqueId } from './uniqueId';
 import { createGlobalState, tryOnScopeDispose, until } from '@vueuse/core';
 import pLimit from 'p-limit';
-import { isArray } from 'es-toolkit/compat';
+import { isArray, toString } from 'es-toolkit/compat';
 import { isNil } from 'es-toolkit';
 
 const layerActionQueue = pLimit(1);
@@ -15,27 +15,37 @@ export const useOverlayNavigationState = createGlobalState(() => {
 
   const paramKey = 'overlay';
 
-  const stack = computed((): string[] => {
+  const stackQuery = computed((): string[] => {
     const q = route.query[paramKey];
     if (!q) return [];
-    return isArray(q) ? q.filter((v) => !isNil(v)) : [q];
+    return isArray(q) ? q.filter((v) => !isNil(v)).map(toString) : [q];
   });
 
-  const open = async (id: string) => {
-    if (!stack.value.includes(id)) {
+  const open = async (id: PropertyKey) => {
+    const stringId = toString(id);
+    if (!stackQuery.value.includes(stringId)) {
       await router.push({
-        query: { ...route.query, [paramKey]: [...stack.value, id] },
+        query: {
+          ...route.query,
+          [paramKey]: [
+            ...stackQuery.value.filter((x) => usedIds.includes(x)),
+            stringId,
+          ],
+        },
       });
     }
-    await until(() => stack.value.includes(id)).toBeTruthy();
+    await until(() => stackQuery.value.includes(stringId)).toBeTruthy();
   };
 
-  const close = async (id: string) => {
-    if (stack.value.includes(id)) {
-      if (stack.value.at(-1) === id) {
+  const close = async (id: PropertyKey) => {
+    const stringId = toString(id);
+    if (stackQuery.value.includes(stringId)) {
+      if (stackQuery.value.at(-1) === stringId) {
         router.back();
       } else {
-        const filteredStack = stack.value.filter((x) => x !== id);
+        const filteredStack = stackQuery.value.filter(
+          (x) => x !== stringId && usedIds.includes(x),
+        );
         const query: LocationQuery = {
           ...route.query,
           [paramKey]: filteredStack,
@@ -47,34 +57,54 @@ export const useOverlayNavigationState = createGlobalState(() => {
         await router.replace({ query });
       }
     }
-    await until(() => !stack.value.includes(id)).toBeTruthy();
+    await until(() => !stackQuery.value.includes(stringId)).toBeTruthy();
   };
 
-  const useOverlay = (id: string) => {
+  const usedIds: string[] = [];
+
+  const useOverlay = (id: PropertyKey) => {
+    const stringId = toString(id);
+
+    usedIds.push(stringId);
+
     const show = computed<boolean>({
       get() {
-        return stack.value.includes(id);
+        const included = stackQuery.value.includes(stringId);
+        return included;
       },
       set(v) {
-        if (v) {
-          void layerActionQueue(() => open(id));
-        } else {
-          void layerActionQueue(() => close(id));
+        if (v && !show.value) {
+          void layerActionQueue(async () => {
+            await open(id);
+          });
+        } else if (!v && show.value) {
+          void layerActionQueue(async () => {
+            await close(id);
+          });
         }
       },
     });
+
+    tryOnScopeDispose(() => {
+      const index = usedIds.indexOf(stringId);
+
+      if (index >= 0) {
+        usedIds.splice(index, 1);
+      }
+    });
+
     return { show };
   };
 
-  return { useOverlay, stack };
+  return { useOverlay, stack: stackQuery };
 });
 
-export const useOverlayNavigation = (id: string = uniqueId('overlay')) => {
+export const useOverlayNavigation = (id: PropertyKey = uniqueId('overlay')) => {
   const { useOverlay } = useOverlayNavigationState();
 
   const { show } = useOverlay(id);
 
-  tryOnScopeDispose(() => {
+  onBeforeUnmount(() => {
     show.value = false;
   });
 

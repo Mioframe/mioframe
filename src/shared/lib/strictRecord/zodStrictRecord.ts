@@ -1,4 +1,4 @@
-import type { core } from 'zod/v4-mini';
+import type { core, ZodMiniType } from 'zod/v4-mini';
 import { safeParse, transform } from 'zod/v4-mini';
 import { forEach } from 'es-toolkit/compat';
 import type { StrictRecord } from './types';
@@ -7,7 +7,7 @@ import { isObjectLike } from '../typeGuards';
 export const zodStrictRecord = <K extends string, V>(
   zodKey: core.$ZodType<K>,
   zodValue: core.$ZodType<V>,
-) =>
+): ZodMiniType<StrictRecord<K, V>> =>
   transform((data, ctx): StrictRecord<K, V> => {
     const newObj = <StrictRecord<K, V>>{};
 

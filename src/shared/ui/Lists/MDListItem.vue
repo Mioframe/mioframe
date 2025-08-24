@@ -18,6 +18,7 @@ const slots = defineSlots<{
   leadingIcon: () => unknown;
   trailingIcon: () => unknown;
   leadingAvatarContainer: () => unknown;
+  supportingText: () => unknown;
 }>();
 
 const emit = defineEmits<{
@@ -54,9 +55,12 @@ const onClick = (e: MouseEvent) => {
     <div class="md-list-item__body">
       <span class="md-list-item__headline">{{ headline }}</span>
 
-      <span v-if="supportingText" class="md-list-item__supporting-text">
-        {{ supportingText }}
-      </span>
+      <div
+        v-if="supportingText || !!slots.supportingText"
+        class="md-list-item__supporting-text"
+      >
+        <slot name="supportingText">{{ supportingText }}</slot>
+      </div>
     </div>
 
     <span v-if="!!slots.trailingIcon" class="md-list-item__trailing-icon">

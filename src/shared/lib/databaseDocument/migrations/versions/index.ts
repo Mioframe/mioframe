@@ -1,4 +1,4 @@
-import type { output } from 'zod/v4-mini';
+import type { output } from 'zod/mini';
 
 import type {
   zodDatabaseData,
@@ -37,6 +37,12 @@ import type {
   zodDatabaseView,
   zodDatabaseViewId,
   zodDatabaseViewsMap,
+  zodDatabaseFilter,
+  zodDatabaseLogicalCondition,
+  zodDatabaseLogicalFilterList,
+  zodDatabaseFieldFilter,
+  zodDatabaseNestedFilter,
+  zodDatabaseUnaryCondition,
 } from './v2';
 
 export {
@@ -51,6 +57,16 @@ export {
   zodDatabaseView,
   zodDatabaseViewId,
   zodDatabaseViewsMap,
+  zodDatabaseFilter,
+  zodDatabaseLogicalCondition,
+  zodDatabaseLogicalFilterList,
+  zodDatabaseFieldFilter,
+  zodDatabaseNestedFilter,
+  zodDatabaseUnaryCondition,
+  zodLOGICAL_FILTER_OPERATOR,
+  zodUNARY_FILTER_OPERATOR,
+  UNARY_FILTER_OPERATOR,
+  LOGICAL_FILTER_OPERATOR,
 } from './v2';
 
 import { databaseStateV3 } from './v3';
@@ -58,11 +74,16 @@ import { databaseStateV3 } from './v3';
 export const zodDatabaseState = databaseStateV3.schema;
 
 export type DatabaseState = output<typeof zodDatabaseState>;
+
 export type DatabaseData = output<typeof zodDatabaseData>;
-export type DatabasePropertyId = output<typeof zodDatabasePropertyId>;
+
+// Item
+export type DatabaseItemId = output<typeof zodDatabaseItemId>;
 export type DatabaseItem = output<typeof zodDatabaseItem>;
 export type DatabaseValue = output<typeof zodDatabaseValue>;
-export type DatabaseItemId = output<typeof zodDatabaseItemId>;
+
+// Property
+export type DatabasePropertyId = output<typeof zodDatabasePropertyId>;
 export type DatabaseUnknownPropertiesMap = output<
   typeof zodDatabaseUnknownPropertiesMap
 >;
@@ -71,10 +92,25 @@ export type DatabaseUnknownPropertyType = output<
   typeof zodDatabaseUnknownPropertyType
 >;
 
-export type DatabaseSortDescription = output<typeof zodDatabaseSortDescription>;
-export type DatabaseSortMap = output<typeof zodDatabaseSortMap>;
-export type DatabaseSortDirection = output<typeof zodDatabaseSortDirection>;
+// View
 export type DatabaseTableView = output<typeof zodDatabaseTableView>;
 export type DatabaseView = output<typeof zodDatabaseView>;
 export type DatabaseViewId = output<typeof zodDatabaseViewId>;
 export type DatabaseViewsMap = output<typeof zodDatabaseViewsMap>;
+
+// Sort
+export type DatabaseSortDescription = output<typeof zodDatabaseSortDescription>;
+export type DatabaseSortMap = output<typeof zodDatabaseSortMap>;
+export type DatabaseSortDirection = output<typeof zodDatabaseSortDirection>;
+
+// Filter
+export type DatabaseFilter = output<typeof zodDatabaseFilter>;
+export type DatabaseLogicalCondition = output<
+  typeof zodDatabaseLogicalCondition
+>;
+export type DatabaseLogicalFilterList = output<
+  typeof zodDatabaseLogicalFilterList
+>;
+export type DatabaseFieldFilter = output<typeof zodDatabaseFieldFilter>;
+export type DatabaseNestedFilter = output<typeof zodDatabaseNestedFilter>;
+export type DatabaseUnaryCondition = output<typeof zodDatabaseUnaryCondition>;
