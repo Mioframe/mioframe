@@ -19,14 +19,18 @@ import type {
   AMStorageAdapterInterface,
 } from '../automerge/automergeTypes';
 import { useSnackbar } from '@shared/ui/Snackbar';
+import { toString } from 'es-toolkit/compat';
 
 export const partialKeyToFileName = (
   key: PartialStorageKey,
+  { withExtension = true }: { withExtension: boolean },
 ): PartialAutomergeFileName | undefined => {
   const partialStorageKey = zodIs(key, zodPartialStorageKey) ? key : undefined;
 
   if (partialStorageKey) {
-    const maybePartialAutomergeFileName = `${partialStorageKey.join(KEY_SEPARATE)}.${fileExtension}`;
+    const maybePartialAutomergeFileName = withExtension
+      ? `${partialStorageKey.join(KEY_SEPARATE)}.${fileExtension}`
+      : partialStorageKey.join(KEY_SEPARATE);
 
     return zodIs(maybePartialAutomergeFileName, zodPartialAutomergeFileName)
       ? maybePartialAutomergeFileName
@@ -57,16 +61,25 @@ export const createStorageAdapter = (
 ): AMStorageAdapterInterface => {
   const { addSnackbar } = useSnackbar();
 
+  const findEntry = async (key: PartialStorageKey) => {
+    const fileName = partialKeyToFileName(key, { withExtension: false });
+    if (fileName) {
+      const [, entry] =
+        (await find(from(directory.entries()), {
+          predicate: ([name]) => toString(name).startsWith(fileName),
+        })) ?? [];
+
+      return entry;
+    }
+
+    return undefined;
+  };
+
   const load = async (
     key: PartialStorageKey,
   ): Promise<Uint8Array | undefined> => {
     try {
-      const fileName = partialKeyToFileName(key);
-
-      const [, entry] =
-        (await find(from(directory.entries()), {
-          predicate: ([name]) => name === fileName,
-        })) ?? [];
+      const entry = await findEntry(key);
 
       if (entry && 'read' in entry) {
         const file = await entry.read();
@@ -106,11 +119,11 @@ export const createStorageAdapter = (
 
   const remove = async (key: StorageKey) => {
     try {
-      const fileName = partialKeyToFileName(key);
-      if (!fileName) {
-        throw new Error('fileName is undefined');
+      const entry = await findEntry(key);
+
+      if (entry && 'remove' in entry) {
+        await entry.remove();
       }
-      await directory.removeByName(fileName);
     } catch (error) {
       addSnackbar({
         text: error instanceof Error ? error.message : 'file deletion error',
