@@ -35,6 +35,7 @@ export default defineConfig(({ mode, isPreview }) => {
             org: 'vb-ak',
             project: 'beaver',
             authToken: process.env.SENTRY_AUTH_TOKEN,
+            telemetry: false,
           }),
         ]
       : [];

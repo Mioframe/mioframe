@@ -1,5 +1,4 @@
 import '~console/vue-devtools';
-import { setupRootElement } from '@shared/lib/useRootElement';
 import { setupApp } from './app/setupApp';
 
 console.info(
@@ -11,7 +10,6 @@ const rootMountElement = document.getElementById('app');
 
 if (rootMountElement) {
   const app = await setupApp();
-  setupRootElement(app, rootMountElement);
   app.mount(rootMountElement);
 }
 
