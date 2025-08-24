@@ -68,6 +68,7 @@ export default defineConfig(({ mode, isPreview }) => {
       },
     },
     build: {
+      sourcemap: !!sentryPlugins.length,
       minify: mode === 'production' || isPreview ? 'terser' : false,
       terserOptions: {
         compress: {
