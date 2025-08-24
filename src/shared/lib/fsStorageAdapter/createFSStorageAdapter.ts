@@ -13,12 +13,12 @@ import {
 import { zodIs } from '../validateZodScheme';
 import { find, from, toArray } from 'ix/Ix.asynciterable';
 import { filter, map } from 'ix/Ix.asynciterable.operators';
-import { useNotifications } from '@shared/ui/Notifications';
 import { isNil, isString } from 'es-toolkit';
 import type {
   AMChunk,
   AMStorageAdapterInterface,
 } from '../automerge/automergeTypes';
+import { useSnackbar } from '@shared/ui/Snackbar';
 
 export const partialKeyToFileName = (
   key: PartialStorageKey,
@@ -55,7 +55,7 @@ export const fileNameToPartialKey = (
 export const createStorageAdapter = (
   directory: DirectoryForStorageAdapter,
 ): AMStorageAdapterInterface => {
-  const { pushError } = useNotifications();
+  const { addSnackbar } = useSnackbar();
 
   const load = async (
     key: PartialStorageKey,
@@ -76,7 +76,12 @@ export const createStorageAdapter = (
 
       return undefined;
     } catch (error) {
-      pushError('file loading error', error);
+      addSnackbar({
+        text: error instanceof Error ? error.message : 'file loading error',
+      });
+
+      console.error(error);
+
       throw error;
     }
   };
@@ -89,7 +94,12 @@ export const createStorageAdapter = (
       }
       await directory.writeFile(fileName, data);
     } catch (error) {
-      pushError('file saving error', error);
+      addSnackbar({
+        text: error instanceof Error ? error.message : 'file saving error',
+      });
+
+      console.error(error);
+
       throw error;
     }
   };
@@ -102,7 +112,12 @@ export const createStorageAdapter = (
       }
       await directory.removeByName(fileName);
     } catch (error) {
-      pushError('file deletion error', error);
+      addSnackbar({
+        text: error instanceof Error ? error.message : 'file deletion error',
+      });
+
+      console.error(error);
+
       throw error;
     }
   };
@@ -149,7 +164,13 @@ export const createStorageAdapter = (
 
       return chunkList;
     } catch (error) {
-      pushError('error loading file range', error);
+      addSnackbar({
+        text:
+          error instanceof Error ? error.message : 'error loading file range',
+      });
+
+      console.error(error);
+
       throw error;
     }
   };
@@ -176,7 +197,13 @@ export const createStorageAdapter = (
         }
       });
     } catch (error) {
-      pushError('error deleting file range', error);
+      addSnackbar({
+        text:
+          error instanceof Error ? error.message : 'error deleting file range',
+      });
+
+      console.error(error);
+
       throw error;
     }
   };
