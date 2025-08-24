@@ -80,7 +80,7 @@ export const createStorageAdapter = (
         text: error instanceof Error ? error.message : 'file loading error',
       });
 
-      console.error(error);
+      console.debug('load', key);
 
       throw error;
     }
@@ -98,7 +98,7 @@ export const createStorageAdapter = (
         text: error instanceof Error ? error.message : 'file saving error',
       });
 
-      console.error(error);
+      console.debug('save', data);
 
       throw error;
     }
@@ -116,7 +116,7 @@ export const createStorageAdapter = (
         text: error instanceof Error ? error.message : 'file deletion error',
       });
 
-      console.error(error);
+      console.debug('remove', key);
 
       throw error;
     }
@@ -169,7 +169,7 @@ export const createStorageAdapter = (
           error instanceof Error ? error.message : 'error loading file range',
       });
 
-      console.error(error);
+      console.debug('loadRange', keyPrefix);
 
       throw error;
     }
@@ -202,7 +202,7 @@ export const createStorageAdapter = (
           error instanceof Error ? error.message : 'error deleting file range',
       });
 
-      console.error(error);
+      console.debug('removeRange', keyPrefix);
 
       throw error;
     }
