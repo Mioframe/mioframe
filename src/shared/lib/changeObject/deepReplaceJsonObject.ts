@@ -1,4 +1,4 @@
-import { cloneDeep, isUndefined } from 'es-toolkit';
+import { cloneDeep, isString, isUndefined } from 'es-toolkit';
 import { isUnknownRecord } from './isUnknownRecord';
 import { isArray, isNil } from 'es-toolkit/compat';
 import { keys } from '../objectKeys';
@@ -12,7 +12,12 @@ export const deepReplaceJsonObject = <S extends object>(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any -- it doesn't matter what the target object is
   target: Record<any, any>,
   source: S,
+  options: {
+    trimString?: boolean;
+  } = {},
 ): S => {
+  const { trimString = false } = options;
+
   if (!Object.is(target, source)) {
     const targetKeys = new Set<string | number | symbol>(
       keys(target).reverse(),
@@ -29,7 +34,9 @@ export const deepReplaceJsonObject = <S extends object>(
             delete target[sourceKey];
           }
           if (isUnknownRecord(targetValue) && isUnknownRecord(sourceValue)) {
-            deepReplaceJsonObject(targetValue, sourceValue);
+            deepReplaceJsonObject(targetValue, sourceValue, options);
+          } else if (trimString && isString(sourceValue)) {
+            target[sourceKey] = sourceValue.trim();
           } else {
             target[sourceKey] = cloneDeep(sourceValue);
           }
@@ -38,6 +45,8 @@ export const deepReplaceJsonObject = <S extends object>(
         if (isUndefined(sourceValue)) {
           // eslint-disable-next-line @typescript-eslint/no-dynamic-delete -- delete keys with undefined value
           delete target[sourceKey];
+        } else if (trimString && isString(sourceValue)) {
+          target[sourceKey] = sourceValue.trim();
         } else {
           target[sourceKey] = cloneDeep(sourceValue);
         }

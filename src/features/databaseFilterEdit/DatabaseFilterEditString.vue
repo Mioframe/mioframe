@@ -36,7 +36,7 @@ const filter = computed({
       if (!view.filter) {
         view.filter = {};
       }
-      deepReplaceJsonObject(view.filter, v);
+      deepReplaceJsonObject(view.filter, v, { trimString: true });
     });
   },
 });
