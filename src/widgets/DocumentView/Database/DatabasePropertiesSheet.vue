@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { DatabasePropertyList } from '@entity/databaseProperty';
 import { DatabasePropertyRemoveDialog } from '@feature/databasePropertyRemove';
-import { DatabasePropertyRenameDialog } from '@feature/databasePropertyRename';
 import type { AMDocHandle } from '@shared/lib/automerge';
 import type { DatabasePropertyId } from '@shared/lib/databaseDocument';
 import type { DirectoryFSEntry } from '@shared/lib/fileSystem';
@@ -12,6 +11,13 @@ import { defineMenuButtonList, MDContextMenuButton } from '@shared/ui/Menu';
 import { MDBottomSheet, MDBottomSheetSection } from '@shared/ui/Sheets';
 import { ref, toRefs } from 'vue';
 import PropertyCreateDialogWidget from './PropertyCreateDialogWidget.vue';
+import { DatabasePropertyEditDialog } from '@feature/databasePropertyEdit';
+import { DatabaseRelationPropertyEditSection } from '@feature/databaseRelationPropertyEdit';
+import { zodIs } from '@shared/lib/validateZodScheme';
+import { zodRelationProperty } from '@entity/databaseRelation';
+import { DatabaseBooleanPropertyEditSection } from '@feature/databaseBooleanPropertyEdit';
+import { zodBooleanProperty } from '@entity/databaseBoolean';
+import ValueField from './ValueField.vue';
 
 const props = defineProps<{
   docHandle: AMDocHandle;
@@ -24,14 +30,14 @@ const show = defineModel<boolean>('show', { required: true });
 
 enum PROPERTY_ACTION {
   remove,
-  rename,
+  edit,
 }
 
 const propertyContextBtns = defineMenuButtonList([
   {
-    label: 'Rename',
+    label: 'Edit',
     symbolName: 'edit',
-    key: PROPERTY_ACTION.rename,
+    key: PROPERTY_ACTION.edit,
   },
   {
     label: 'Remove',
@@ -42,7 +48,7 @@ const propertyContextBtns = defineMenuButtonList([
 
 const removePropertyId = ref<DatabasePropertyId>();
 
-const renamePropertyId = ref<DatabasePropertyId>();
+const editPropertyId = ref<DatabasePropertyId>();
 
 const onClickPropertyContextAction = (
   { key: action }: { key: PROPERTY_ACTION },
@@ -53,8 +59,8 @@ const onClickPropertyContextAction = (
       removePropertyId.value = propertyId;
       break;
     }
-    case PROPERTY_ACTION.rename: {
-      renamePropertyId.value = propertyId;
+    case PROPERTY_ACTION.edit: {
+      editPropertyId.value = propertyId;
       break;
     }
 
@@ -120,14 +126,38 @@ const isShowAddProperty = ref(false);
       @cancel="removePropertyId = undefined"
     />
 
-    <DatabasePropertyRenameDialog
-      v-if="renamePropertyId"
+    <DatabasePropertyEditDialog
+      v-if="editPropertyId"
       :doc-handle="docHandle"
-      :property-id="renamePropertyId"
-      :show="!!renamePropertyId"
-      @apply="renamePropertyId = undefined"
-      @cancel="renamePropertyId = undefined"
-    />
+      :property-id="editPropertyId"
+      :show="!!editPropertyId"
+      @edited="editPropertyId = undefined"
+      @cancel="editPropertyId = undefined"
+    >
+      <template #after="{ property, onUpdateProperty, onUpdateDefaultValue }">
+        <!-- // TODO: это секция уникальных настроек свойств, используется в создании и редактировании, объединить в общий виджет? -->
+        <DatabaseRelationPropertyEditSection
+          v-if="zodIs(property, zodRelationProperty)"
+          :property="property"
+          :directory="directory"
+          @update:property="onUpdateProperty"
+        />
+
+        <DatabaseBooleanPropertyEditSection
+          v-else-if="zodIs(property, zodBooleanProperty)"
+          :property="property"
+          @update:property="onUpdateProperty"
+        />
+
+        <ValueField
+          :property="property"
+          :value="property.default"
+          :directory="directory"
+          @update:value="onUpdateDefaultValue"
+          @update:property="onUpdateProperty"
+        />
+      </template>
+    </DatabasePropertyEditDialog>
 
     <PropertyCreateDialogWidget
       v-if="isShowAddProperty"
