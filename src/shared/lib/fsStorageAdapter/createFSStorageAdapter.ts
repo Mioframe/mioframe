@@ -23,7 +23,9 @@ import { toString } from 'es-toolkit/compat';
 
 export const partialKeyToFileName = (
   key: PartialStorageKey,
-  { withExtension = true }: { withExtension: boolean },
+  { withExtension = true }: { withExtension: boolean } = {
+    withExtension: true,
+  },
 ): PartialAutomergeFileName | undefined => {
   const partialStorageKey = zodIs(key, zodPartialStorageKey) ? key : undefined;
 
