@@ -61,7 +61,7 @@ export const useDatabaseFilterMutation = <
       if (!isObjectLike(filter[key]) || !isObjectLike(value)) {
         filter[key] = value;
       } else {
-        deepReplaceJsonObject(filter[key], value);
+        deepReplaceJsonObject(filter[key], value, { trimString: true });
       }
     });
   };

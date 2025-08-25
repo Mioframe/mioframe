@@ -1,4 +1,4 @@
-import { isNil } from 'es-toolkit';
+import { cloneDeep, isNil, isString } from 'es-toolkit';
 import type { MergeDeep, PartialDeep } from 'type-fest';
 import { isObjectLike } from '../typeGuards';
 
@@ -10,11 +10,22 @@ import { isObjectLike } from '../typeGuards';
 export function deepPutJsonObject<
   T extends object,
   S extends PartialDeep<T> | object,
->(target: T, source: S): MergeDeep<T, S>;
+>(
+  target: T,
+  source: S,
+  options?: {
+    trimString?: boolean;
+  },
+): MergeDeep<T, S>;
 export function deepPutJsonObject<T extends object, S extends object>(
   target: T,
   source: S,
+  options: {
+    trimString?: boolean;
+  } = {},
 ): MergeDeep<T, S> {
+  const { trimString = false } = options;
+
   (<(keyof typeof source)[]>Object.keys(source)).forEach((sourceKey) => {
     const sourceValue = source[sourceKey];
     if (sourceKey in target) {
@@ -29,12 +40,20 @@ export function deepPutJsonObject<T extends object, S extends object>(
           // @ts-expect-error
           // eslint-disable-next-line @typescript-eslint/no-dynamic-delete -- `undefined` is not a valid JSON data type
           delete target[sourceKey];
+        } else if (trimString && isString(sourceValue)) {
+          // eslint-disable-next-line @typescript-eslint/ban-ts-comment -- replace property
+          // @ts-expect-error
+          target[sourceKey] = sourceValue.trim();
         } else {
           // eslint-disable-next-line @typescript-eslint/ban-ts-comment -- replace property
           // @ts-expect-error
-          target[sourceKey] = sourceValue;
+          target[sourceKey] = cloneDeep(sourceValue);
         }
       }
+    } else if (trimString && isString(sourceValue)) {
+      // eslint-disable-next-line @typescript-eslint/ban-ts-comment -- replace property
+      // @ts-expect-error
+      target[sourceKey] = sourceValue.trim();
     } else {
       // eslint-disable-next-line @typescript-eslint/ban-ts-comment -- create new property
       // @ts-expect-error
