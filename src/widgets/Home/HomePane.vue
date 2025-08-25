@@ -3,7 +3,7 @@ import MountedDirectoriesList from '@entity/mountedDirectories/MountedDirectorie
 import { MDFab, MDFabContainer } from '@shared/ui/Button';
 import { MDPaneContainer } from '@shared/ui/Layers';
 import { useMountDirectoryFromBrowser } from '@feature/mountDirectoryFromBrowser';
-import { useRepoExplorerNavigate } from '@widget/MainViewV2/useRepoExplorerNavigate';
+import { useRepoExplorerNavigate } from '@widget/MainView/useRepoExplorerNavigate';
 import type { DirectoryFSEntry } from '@shared/lib/fileSystem';
 import { MDSymbol } from '@shared/ui/Icon';
 import { OPFSName } from '@feature/mountDirectoryFromBrowser/useMountDirectoryFromBrowser';
