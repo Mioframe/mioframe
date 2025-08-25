@@ -25,7 +25,7 @@ const vModel = computed({
     return toString(value);
   },
   set: (v: string) => {
-    emit('update:modelValue', v.trim());
+    emit('update:modelValue', v);
   },
 });
 </script>

@@ -7,7 +7,7 @@ import type {
   DatabaseValue,
 } from './migrations/versions';
 import { generateItemId, type DatabaseItem } from './migrations/versions';
-import { isUndefined } from 'es-toolkit';
+import { isString, isUndefined } from 'es-toolkit';
 import { deepReplaceJsonObject } from '../changeObject';
 
 export const useDatabaseData = (
@@ -50,6 +50,8 @@ export const useDatabaseData = (
       if (isUndefined(value)) {
         // eslint-disable-next-line @typescript-eslint/no-dynamic-delete -- `undefined` is not a valid JSON data type
         delete doc.data[itemId][propertyId];
+      } else if (isString(value)) {
+        doc.data[itemId][propertyId] = value.trim();
       } else {
         doc.data[itemId][propertyId] = value;
       }
@@ -61,13 +63,11 @@ export const useDatabaseData = (
 
   const setItem = async (itemId: DatabaseItemId, item: DatabaseItem) => {
     await databaseDocument.update((doc) => {
-      const refItem = doc.data[itemId] ?? {};
-
-      deepReplaceJsonObject(refItem, item);
-
-      if (doc.data[itemId] !== refItem) {
-        doc.data[itemId] = refItem;
+      if (!doc.data[itemId]) {
+        doc.data[itemId] = {};
       }
+
+      deepReplaceJsonObject(doc.data[itemId], item, { trimString: true });
     });
   };
 
