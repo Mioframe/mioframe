@@ -10,12 +10,13 @@ import {
   PlaygroundUnion,
 } from '@shared/lib/playground';
 import type { SelectOption } from './types';
+import { simpleFaker } from '@faker-js/faker';
 
-const options = Array(15)
+const options = Array(simpleFaker.number.int({ min: 5, max: 15 }))
   .fill(0)
   .map(
     (_, index): SelectOption => ({
-      label: `option #${index}`,
+      label: simpleFaker.string.alphanumeric({ length: { min: 3, max: 20 } }),
       key: index,
     }),
   );
