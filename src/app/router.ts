@@ -1,4 +1,4 @@
-import { MainView } from '@widget/MainViewV2';
+import { MainView } from '@widget/MainView';
 import type { LocationQueryRaw, RouteRecordRaw } from 'vue-router';
 import { createRouter, createWebHistory } from 'vue-router';
 import qs from 'query-string';

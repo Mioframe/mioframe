@@ -2,9 +2,9 @@
 import { MDMainLayer } from '@shared/ui/Layers';
 
 import { HomeWidget } from '@widget/Home';
-import { RepoExplorerPane } from '@widget/MainViewV2/RepoExplorer';
+import { RepoExplorerPane } from '@widget/MainView/RepoExplorer';
 import { computed } from 'vue';
-import { useRepoExplorerNavigate } from '@widget/MainViewV2/useRepoExplorerNavigate';
+import { useRepoExplorerNavigate } from '@widget/MainView/useRepoExplorerNavigate';
 import DocumentViewPane from '@widget/DocumentView/DocumentViewPane.vue';
 import { MDIconButton } from '@shared/ui/Button';
 import { useRouter } from 'vue-router';
