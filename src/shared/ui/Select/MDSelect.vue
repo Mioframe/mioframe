@@ -93,7 +93,7 @@ onKeyStroke(['ArrowDown', 'ArrowUp'], (e) => {
 });
 
 const onClickFieldContainer = () => {
-  showMenu.value = filteredOptions.value.length > 0;
+  showMenu.value = showMenu.value ? false : filteredOptions.value.length > 0;
 };
 
 const onClickOption = (option: T) => {
