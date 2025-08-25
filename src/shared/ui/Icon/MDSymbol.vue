@@ -20,6 +20,7 @@ useLoadSymbol(name);
   <i
     class="md-symbol md material-symbols-rounded"
     :class="[{ 'md-symbol_not-ready': !ready }]"
+    translate="no"
   >
     {{ name }}
   </i>
