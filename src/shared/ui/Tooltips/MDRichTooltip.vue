@@ -61,7 +61,7 @@ const computedShow = computed(
   () => show.value ?? (showOnClick.value || debounceHovered.value),
 );
 
-const { floatingStyles: richTooltipStyle } = useFloating(
+const { floatingStyles: richTooltipStyle, update } = useFloating(
   targetElementRef,
   tooltipEl,
   {
@@ -82,6 +82,8 @@ const { floatingStyles: richTooltipStyle } = useFloating(
     whileElementsMounted: autoUpdate,
   },
 );
+
+useEventListener(window.visualViewport, 'resize', update);
 
 const showOnClick = ref(false);
 

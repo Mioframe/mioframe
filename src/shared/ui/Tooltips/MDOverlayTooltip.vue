@@ -3,6 +3,7 @@ import { useClosestParentFrame } from '@shared/lib/useClosestParentFrame';
 import {
   syncRef,
   unrefElement,
+  useEventListener,
   useParentElement,
   type MaybeElement,
 } from '@vueuse/core';
@@ -41,7 +42,7 @@ const targetTeleport = useClosestParentFrame();
 
 const tooltipEl = useTemplateRef('tooltipEl');
 
-const { floatingStyles: alignCenterStyle } = useFloating(
+const { floatingStyles: alignCenterStyle, update } = useFloating(
   targetElementRef,
   tooltipEl,
   {
@@ -56,6 +57,8 @@ const { floatingStyles: alignCenterStyle } = useFloating(
     whileElementsMounted: autoUpdate,
   },
 );
+
+useEventListener(window.visualViewport, 'resize', update);
 
 onInteractionOutside(tooltipEl, () => {
   emit('interactionOutside');

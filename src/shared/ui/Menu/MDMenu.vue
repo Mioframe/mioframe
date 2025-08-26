@@ -10,7 +10,7 @@ import {
   watch,
   watchEffect,
 } from 'vue';
-import { unrefElement } from '@vueuse/core';
+import { unrefElement, useEventListener } from '@vueuse/core';
 import { MDListContainer } from '../Lists';
 import type { MenuButtonDescription, MenuButtonList } from './types';
 import { useClosestParentFrame } from '@shared/lib/useClosestParentFrame';
@@ -57,7 +57,7 @@ const listContainerEl = useTemplateRef<
   HTMLElement | VueInstance | null | undefined
 >('listContainerEl');
 
-const { floatingStyles: containerStyle } = useFloating(
+const { floatingStyles: containerStyle, update } = useFloating(
   target,
   listContainerEl,
   {
@@ -88,6 +88,8 @@ const { floatingStyles: containerStyle } = useFloating(
     whileElementsMounted: autoUpdate,
   },
 );
+
+useEventListener(window.visualViewport, 'resize', update);
 
 const targetTeleport = useClosestParentFrame();
 
