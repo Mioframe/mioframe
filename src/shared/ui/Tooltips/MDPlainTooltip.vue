@@ -2,7 +2,12 @@
 import { useClosestParentFrame } from '@shared/lib/useClosestParentFrame';
 import { computed, toRefs, useTemplateRef } from 'vue';
 import type { MaybeElement } from '@vueuse/core';
-import { refDebounced, unrefElement, useParentElement } from '@vueuse/core';
+import {
+  refDebounced,
+  unrefElement,
+  useEventListener,
+  useParentElement,
+} from '@vueuse/core';
 import { autoUpdate, flip, offset, shift, useFloating } from '@floating-ui/vue';
 import { useHover } from '@shared/lib/useHover';
 
@@ -30,7 +35,7 @@ const targetTeleport = useClosestParentFrame();
 
 const tooltipEl = useTemplateRef('tooltipEl');
 
-const { floatingStyles: tooltipStyle } = useFloating(
+const { floatingStyles: tooltipStyle, update } = useFloating(
   targetElementRef,
   tooltipEl,
 
@@ -50,6 +55,8 @@ const { floatingStyles: tooltipStyle } = useFloating(
     whileElementsMounted: autoUpdate,
   },
 );
+
+useEventListener(window.visualViewport, 'resize', update);
 
 const hovered = useHover(targetElementRef);
 
