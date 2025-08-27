@@ -75,6 +75,7 @@ const onClick = (e: MouseEvent) => {
         'md-icon-button_loading': loading,
       },
     ]"
+    :aria-label="tooltip"
     @click="onClick"
   >
     <span class="md-icon-button__icon">

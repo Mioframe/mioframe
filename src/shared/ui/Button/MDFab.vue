@@ -42,6 +42,7 @@ const typeClass = computed(() => {
 <template>
   <MDState
     is="button"
+    :aria-label="tooltip"
     class="md md-fab"
     :class="[sizeClass, typeClass]"
     @click="$emit('click', $event)"

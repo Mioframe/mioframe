@@ -33,6 +33,7 @@ defineEmits<{
 <template>
   <MDState
     is="button"
+    :aria-label="label"
     :disabled="disabled"
     :type="formAction"
     class="md md-button"

@@ -32,6 +32,7 @@ const props = withDefaults(
     disabledTeleport?: boolean;
     id?: PropertyKey;
     placement?: 'bottom-start' | 'right-start';
+    ariaLabel?: string;
   }>(),
   {
     id: () => uniqueId('menu'),
@@ -199,6 +200,7 @@ const showSubmenu = ref<boolean>();
       class="md md-menu"
       :style="containerStyle"
       :transition="transition"
+      :aria-label="ariaLabel"
     >
       <MDMenuItem
         v-for="item in btns"

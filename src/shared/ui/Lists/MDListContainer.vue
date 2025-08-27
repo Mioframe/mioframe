@@ -17,6 +17,7 @@ defineSlots<{
     :class="{
       'md-list-container_grid': type === 'grid',
     }"
+    role="list"
   >
     <TransitionGroup v-if="transition" name="transition">
       <slot />
