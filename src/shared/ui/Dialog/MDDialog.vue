@@ -122,6 +122,8 @@ const showWatchHandle = watch(
   },
   { immediate: true },
 );
+
+const dialogTitleId = uniqueId('dialogTitle');
 </script>
 
 <template>
@@ -137,6 +139,7 @@ const showWatchHandle = watch(
         `md-dialog_${dialogType}-type`,
         stylesClass,
       ]"
+      :aria-labelledby="dialogTitleId"
     >
       <form
         ref="formEl"
@@ -147,7 +150,7 @@ const showWatchHandle = watch(
           <slot name="icon" />
         </div>
 
-        <div class="md-dialog__headline">
+        <div :id="dialogTitleId" class="md-dialog__headline">
           {{ headline }}
         </div>
 

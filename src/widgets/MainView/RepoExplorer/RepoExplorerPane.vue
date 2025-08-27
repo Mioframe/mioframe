@@ -283,9 +283,10 @@ const showFSEntryRenameDialog = computed({
           is-button
           @click="onClickDocument(docId)"
         >
-          <template #trailingIcon>
+          <template #trailingIcon="{ documentName }">
             <MDContextMenuButton
               :btns="documentContextBtns"
+              :tooltip="`options ${documentName}`"
               @click="onClickDocumentContextAction($event, docId, docHandle)"
             />
           </template>
@@ -300,9 +301,10 @@ const showFSEntryRenameDialog = computed({
           class="document-explorer-widget__list-item"
           @click="onClickEntry(entryKey, entry)"
         >
-          <template #trailingIcon>
+          <template #trailingIcon="{ entryName }">
             <MDContextMenuButton
               :btns="fsEntryContextBtns"
+              :tooltip="`options ${entryName}`"
               @click="onClickFSEntryContextAction($event, entryKey)"
             />
           </template>

@@ -17,20 +17,20 @@ const {} = defineProps<{
   isButton?: boolean;
 }>();
 
-const emit = defineEmits<{
+defineEmits<{
   click: [entryKey: Key, entry: Entry];
 }>();
 
 const slots = defineSlots<{
-  trailingIcon(): unknown;
+  trailingIcon(p: { entryName: string }): unknown;
 }>();
 </script>
 
 <template>
   <MDListItem
-    :headline="entry.name"
     :is="isButton ? 'button' : undefined"
-    :supporting-text
+    :headline="entry.name"
+    :supporting-text="supportingText"
     @click="$emit('click', entryKey, entry)"
   >
     <template #leadingIcon>
@@ -40,7 +40,7 @@ const slots = defineSlots<{
     </template>
 
     <template v-if="!!slots.trailingIcon" #trailingIcon>
-      <slot name="trailingIcon" />
+      <slot name="trailingIcon" :entry-name="entry.name" />
     </template>
   </MDListItem>
 </template>

@@ -39,6 +39,7 @@ const onClick = (e: MouseEvent) => {
     :draggable="draggable"
     :type="type"
     :disable-ripple="is === 'li'"
+    role="listitem"
     @click="onClick"
   >
     <span v-if="!!slots.leadingIcon" class="md-list-item__leading-icon">

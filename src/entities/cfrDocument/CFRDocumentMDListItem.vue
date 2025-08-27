@@ -17,7 +17,7 @@ const emit = defineEmits<{
 
 const slots = defineSlots<{
   leadingIcon: () => unknown;
-  trailingIcon: () => unknown;
+  trailingIcon: (p: { documentName?: string }) => unknown;
   leadingAvatarContainer: () => unknown;
 }>();
 
@@ -25,16 +25,17 @@ const docHandle = toRef(() => props.docHandle);
 
 const cfrDocument = useCFRDocument(docHandle);
 
-const headline = computed(
-  () => cfrDocument.content?.name ?? 'Untitled Document',
-);
+const documentName = computed(() => cfrDocument.content?.name);
+
+const headline = computed(() => documentName.value ?? 'Untitled Document');
 </script>
 
 <template>
   <MDListItem
-    :headline
-    :supporting-text
     :is="isButton ? 'button' : undefined"
+    :headline="headline"
+    :supporting-text="supportingText"
+    :aria-label="`document ${headline}`"
     @click="emit('click', $event)"
   >
     <template #leadingIcon>
@@ -44,7 +45,7 @@ const headline = computed(
     </template>
 
     <template v-if="!!slots.trailingIcon" #trailingIcon>
-      <slot name="trailingIcon" />
+      <slot name="trailingIcon" :document-name="documentName" />
     </template>
 
     <template v-if="!!slots.leadingAvatarContainer" #leadingAvatarContainer>

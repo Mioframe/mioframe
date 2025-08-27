@@ -56,6 +56,7 @@ const onClickOutsideMenu = () => {
     v-model:show="showMenu"
     :target="targetBtn"
     :btns="btns"
+    :aria-label="`${tooltip} menu`"
     @interaction-outside="onClickOutsideMenu"
     @click="onClick"
     @deactivate-focus="showMenu = false"
