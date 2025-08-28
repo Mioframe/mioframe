@@ -113,7 +113,7 @@ export const createStorageAdapter = (
         text: error instanceof Error ? error.message : 'file saving error',
       });
 
-      console.debug('save', data);
+      console.debug('save', key, data);
 
       throw error;
     }
