@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { MDDialog } from '@shared/ui/Dialog';
 import { MDTextField } from '@shared/ui/TextField';
-import { ref } from 'vue';
+import { ref, watchEffect } from 'vue';
 
 const emit = defineEmits<{
   create: [name: string];
@@ -10,26 +10,32 @@ const emit = defineEmits<{
 
 const show = defineModel<boolean>('show', { required: true });
 
-const loading = ref(false);
-
 const errorText = ref<string>();
 
 const onApply = () => {
-  if (!loading.value && directoryName.value) {
+  if (directoryName.value) {
     errorText.value = undefined;
-    loading.value = true;
+
     emit('create', directoryName.value);
   }
 };
 
 const directoryName = ref<string>();
 
-const onCancel = () => {
-  if (!loading.value) {
-    directoryName.value = undefined;
-    emit('cancel');
-  }
+const resetState = () => {
+  directoryName.value = undefined;
 };
+
+const onCancel = () => {
+  resetState();
+  emit('cancel');
+};
+
+watchEffect(() => {
+  if (!show.value) {
+    resetState();
+  }
+});
 </script>
 
 <template>
@@ -40,7 +46,6 @@ const onCancel = () => {
     cancel-label="Cancel"
     has-cancel-action
     supporting-text="Enter a name for your folder"
-    :loading="loading"
     @apply="onApply"
     @cancel="onCancel"
   >
