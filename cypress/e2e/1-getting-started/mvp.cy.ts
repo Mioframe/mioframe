@@ -102,4 +102,13 @@ describe('Directory management', () => {
 
     cy.contains(folderName).should('not.exist');
   });
+
+  it('Create two folders', () => {
+    openOPFS();
+    const folderName1 = createFolder();
+    const folderName2 = createFolder();
+
+    cy.contains(folderName1).should('exist');
+    cy.contains(folderName2).should('exist');
+  });
 });
