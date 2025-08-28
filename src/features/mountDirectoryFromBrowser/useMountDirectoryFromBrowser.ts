@@ -50,6 +50,11 @@ export const useMountDirectoryFromBrowser = () => {
   };
 
   const mountOPFS = async () => {
+    const persistent = await navigator.storage.persisted();
+    if (!persistent) {
+      await navigator.storage.persist();
+    }
+
     if (!mountedDirectories.value.has(OPFSName)) {
       const directory = await navigator.storage.getDirectory();
       mount(
