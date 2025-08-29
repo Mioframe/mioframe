@@ -9,10 +9,10 @@ import {
   useTemplateRef,
   watch,
 } from 'vue';
-import { useClosestParentFrame } from '@shared/lib/useClosestParentFrame';
 import { useOnEscapeKeyStacked } from '@shared/lib/useOnEscapeKeyStacked';
 import { useOverlayNavigation } from '@shared/lib/useOverlayNavigation';
 import { uniqueId } from '@shared/lib/uniqueId';
+import { useMonitorOpenDialog } from './Alert';
 
 const props = withDefaults(
   defineProps<{
@@ -84,8 +84,6 @@ onBeforeUnmount(() => {
   unlockFocus();
 });
 
-const targetTeleport = useClosestParentFrame();
-
 const { show: showOverlay } = useOverlayNavigation(
   toValue(id) ?? uniqueId('dialog'),
 );
@@ -124,10 +122,12 @@ const showWatchHandle = watch(
 );
 
 const dialogTitleId = uniqueId('dialogTitle');
+
+const { dialogContainer } = useMonitorOpenDialog(showOverlay);
 </script>
 
 <template>
-  <Teleport :to="targetTeleport">
+  <Teleport :to="dialogContainer">
     <dialog
       v-if="showOverlay"
       :open="showOverlay"
@@ -140,6 +140,7 @@ const dialogTitleId = uniqueId('dialogTitle');
         stylesClass,
       ]"
       :aria-labelledby="dialogTitleId"
+      aria-hidden="false"
     >
       <form
         ref="formEl"

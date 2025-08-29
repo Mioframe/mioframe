@@ -21,6 +21,7 @@ useLoadSymbol(name);
     class="md-symbol md material-symbols-rounded"
     :class="[{ 'md-symbol_not-ready': !ready }]"
     translate="no"
+    aria-hidden="true"
   >
     {{ name }}
   </i>
