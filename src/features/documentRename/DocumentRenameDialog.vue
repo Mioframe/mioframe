@@ -50,7 +50,7 @@ const onCancel = () => {
     v-model:show="show"
     headline="Rename Document"
     supporting-text="Change the document title or leave it as is."
-    apply-label="Apply"
+    apply-label="Rename"
     cancel-label="Cancel"
     has-cancel-action
     @apply="onApply"
