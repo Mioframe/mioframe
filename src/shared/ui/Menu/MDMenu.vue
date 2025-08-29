@@ -201,6 +201,7 @@ const showSubmenu = ref<boolean>();
       :style="containerStyle"
       :transition="transition"
       :aria-label="ariaLabel"
+      role="menu"
     >
       <MDMenuItem
         v-for="item in btns"

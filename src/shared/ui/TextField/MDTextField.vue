@@ -80,7 +80,6 @@ defineEmits<{
         :disabled="disabled"
         :maxlength="maxCharacters"
         :readonly="readonly"
-        :aria-label="labelText"
         @focus="$emit('focus', $event)"
         @keydown="$emit('keydown', $event)"
       />
@@ -95,7 +94,6 @@ defineEmits<{
         :maxlength="maxCharacters"
         :type="inputType"
         :readonly="readonly"
-        :aria-label="labelText"
         @focus="$emit('focus', $event)"
         @keydown="$emit('keydown', $event)"
       />

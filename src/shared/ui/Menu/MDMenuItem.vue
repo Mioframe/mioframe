@@ -39,6 +39,7 @@ const onClickItem = () => {
     :headline="item.label"
     type="button"
     class="md-menu-item"
+    role="menuitem"
     @click="onClickItem"
   >
     <template v-if="item.symbolName" #leadingIcon>
