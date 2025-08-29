@@ -1,7 +1,22 @@
 import { uniqueId } from '@shared/lib/uniqueId';
-import { createGlobalState, until } from '@vueuse/core';
-import { isBoolean } from 'es-toolkit';
-import { nextTick, reactive, ref } from 'vue';
+import type { MaybeElementRef } from '@vueuse/core';
+import {
+  createGlobalState,
+  tryOnScopeDispose,
+  unrefElement,
+  until,
+} from '@vueuse/core';
+import { isBoolean, isUndefined } from 'es-toolkit';
+import type { Ref } from 'vue';
+import {
+  computed,
+  nextTick,
+  reactive,
+  ref,
+  shallowRef,
+  watch,
+  watchEffect,
+} from 'vue';
 
 type AlertDescription = {
   type: 'alert' | 'confirm';
@@ -66,10 +81,18 @@ export const useDialogState = createGlobalState(() => {
     symbolName?: string,
   ) => addDialog('alert', headline, supportingText, confirmLabel, symbolName);
 
+  const numberOfOpenDialogs = ref(0);
+
+  const globalDialogContainer = shallowRef<
+    HTMLElement | SVGElement | null | undefined
+  >();
+
   return {
     alert,
     confirm,
     alertSet,
+    numberOfOpenDialogs,
+    globalDialogContainer,
   };
 });
 
@@ -79,4 +102,42 @@ export const useDialog = () => {
     alert,
     confirm,
   };
+};
+
+export const useMonitorOpenDialog = (open: Ref<boolean>) => {
+  const { numberOfOpenDialogs, globalDialogContainer } = useDialogState();
+
+  watch(
+    open,
+    (open, old) => {
+      if (!isUndefined(old)) {
+        if (open) {
+          numberOfOpenDialogs.value += 1;
+        } else {
+          numberOfOpenDialogs.value -= 1;
+        }
+      }
+    },
+    { immediate: true },
+  );
+
+  tryOnScopeDispose(() => {
+    if (open.value) {
+      numberOfOpenDialogs.value -= 1;
+    }
+  });
+
+  return {
+    dialogContainer: globalDialogContainer,
+  };
+};
+
+export const useDialogContainer = (dialogContainer: MaybeElementRef) => {
+  const { numberOfOpenDialogs, globalDialogContainer } = useDialogState();
+
+  watchEffect(() => {
+    globalDialogContainer.value = unrefElement(dialogContainer);
+  });
+
+  return { hasOpenedDialog: computed(() => numberOfOpenDialogs.value > 0) };
 };
