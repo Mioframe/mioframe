@@ -52,6 +52,7 @@
   "devDependencies": {
     "@faker-js/faker": "^10.0.0",
     "@sentry/vite-plugin": "^4.1.1",
+    "@testing-library/cypress": "^10.0.3",
     "@types/gapi": "^0.0.47",
     "@types/gapi.client.drive-v3": "^0.0.5",
     "@types/gapi.client.oauth2-v2": "^0.0.4",

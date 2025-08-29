@@ -11,5 +11,5 @@
     "strictNullChecks": true
   },
   "include": ["**/*.mjs", "**/*.ts"],
-  "exclude": ["src/*"]
+  "exclude": ["src/*", "cypress/*"]
 }
