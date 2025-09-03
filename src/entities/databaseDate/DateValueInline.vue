@@ -26,7 +26,7 @@ const datetime = computed(() => dayjsValue.value?.format('YYYY-MM-DD'));
 </script>
 
 <template>
-  <time v-if="formatValue" :datetime>{{ formatValue }}</time>
+  <time v-if="formatValue" :datetime="datetime">{{ formatValue }}</time>
 
   <span v-else>undefined</span>
 </template>

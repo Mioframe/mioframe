@@ -1,28 +1,26 @@
-/// <reference types="cypress" />
-
-import { preparationApp } from '../preparation';
-import { openOPFS } from '../openOPFS';
+import { clearAll } from '../repetitiveActions/clearAll';
+import { unregisterServiceWorkers } from '../repetitiveActions/unregisterServiceWorkers';
+import { openOPFS } from '../repetitiveActions/openOPFS';
+import { createFolder } from '../repetitiveActions/createFolder';
 
 describe('Directory management', () => {
-  preparationApp();
+  beforeEach(() => {
+    cy.visit('/');
+  });
+
+  before(() => {
+    clearAll();
+  });
+
+  after(() => {
+    unregisterServiceWorkers();
+  });
 
   it('open OPFS', () => {
     openOPFS();
 
     cy.url().should('include', 'Origin%20private%20file%20system');
   });
-
-  const createFolder = () => {
-    cy.get('[aria-label="Create directory"]').click();
-
-    const folderName = `test folder ${Date.now()}`;
-
-    cy.get('input[aria-label="Folder\'s name"]').type(folderName);
-
-    cy.get('button[aria-label="Create"]').click();
-
-    return folderName;
-  };
 
   it('Create first folder', () => {
     openOPFS();

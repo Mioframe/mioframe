@@ -58,8 +58,8 @@ const { itemList } = useOrderedDatabaseData(docHandle, view, idQuery);
       </tr>
     </thead>
 
-    <tbody>
-      <tr v-for="[itemId, item] in itemList" :key="itemId">
+    <tbody role="list">
+      <tr v-for="[itemId, item] in itemList" :key="itemId" role="listitem">
         <td
           v-for="[propertyId, property] in properties.entries"
           :key="propertyId"

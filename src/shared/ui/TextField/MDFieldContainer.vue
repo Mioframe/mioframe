@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { ref, toRefs, useTemplateRef } from 'vue';
-import { uniqueId } from '@shared/lib/uniqueId';
+import { computed, ref, toRefs, useTemplateRef } from 'vue';
+import { sessionUniqueId } from '@shared/lib/uniqueId';
 import type { EmptyObject } from 'type-fest';
 import { useFirstFocus } from '@shared/lib/useFirstFocus';
 import { unrefElement } from '@vueuse/core';
@@ -16,6 +16,7 @@ const props = withDefaults(
     filled?: boolean;
     numberCharacters?: number;
     focused?: boolean | undefined;
+    id?: string;
   }>(),
   {
     focused: undefined,
@@ -24,7 +25,7 @@ const props = withDefaults(
   },
 );
 
-const { focused } = toRefs(props);
+const { focused, id } = toRefs(props);
 
 const slots = defineSlots<{
   default(p: { id: string }): unknown;
@@ -32,7 +33,9 @@ const slots = defineSlots<{
   trailingIcon(p: EmptyObject): unknown;
 }>();
 
-const id = uniqueId('MDFieldContainer');
+const staticId = sessionUniqueId('MDFieldContainer');
+
+const localId = computed(() => id.value ?? staticId);
 
 const containerRef = useTemplateRef<HTMLElement>('containerRef');
 
@@ -81,12 +84,12 @@ const onFocusOut = () => {
       </span>
 
       <div class="md-field-container__body">
-        <label class="md-field-container__label-text md" :for="id">
+        <label class="md-field-container__label-text md" :for="localId">
           {{ labelText }}
         </label>
 
         <div ref="containerRef" class="md-field-container__input-container md">
-          <slot :id="id" />
+          <slot :id="localId" />
         </div>
       </div>
 

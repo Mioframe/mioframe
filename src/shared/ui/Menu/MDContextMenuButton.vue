@@ -4,6 +4,7 @@ import type { MaybeElement } from '@vueuse/core';
 import { nextTick, ref, useTemplateRef } from 'vue';
 import type { MenuButtonDescription, MenuButtonList } from './types';
 import MDMenu from './MDMenu.vue';
+import { sessionUniqueId } from '@shared/lib/uniqueId';
 
 const { btns, tooltip = 'options' } = defineProps<{
   btns: MenuButtonList<T>;
@@ -39,6 +40,8 @@ const onClick = async (item: T) => {
 const onClickOutsideMenu = () => {
   showMenu.value = false;
 };
+
+const idMenu = sessionUniqueId('menu');
 </script>
 
 <template>
@@ -48,11 +51,15 @@ const onClickOutsideMenu = () => {
     :tooltip="tooltip"
     :width="width"
     md-symbol-name="more_vert"
+    aria-haspopup="menu"
+    :aria-expanded="showMenu ? 'true' : 'false'"
+    :aria-controls="idMenu"
     @click="onClickTarget"
   />
 
   <MDMenu
     v-if="btns.length"
+    :id="idMenu"
     v-model:show="showMenu"
     :target="targetBtn"
     :btns="btns"

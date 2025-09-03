@@ -7,7 +7,7 @@ import type { MaybeElement } from '@vueuse/core';
 import { faker } from '@faker-js/faker';
 import { defineMenuButtonList } from './defineMenuButtonList';
 import type { MenuButtonDescription } from './types';
-import { uniqueId } from '@shared/lib/uniqueId';
+import { sessionUniqueId } from '@shared/lib/uniqueId';
 
 const targetEl = useTemplateRef<MaybeElement>('targetEl');
 
@@ -18,7 +18,7 @@ const generateBtn = () => {
   return {
     label,
     symbolName: faker.helpers.maybe(() => 'star'),
-    key: uniqueId(''),
+    key: sessionUniqueId(''),
   };
 };
 

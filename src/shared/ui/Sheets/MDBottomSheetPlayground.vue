@@ -22,6 +22,7 @@ const state = useQueryValue<State>('state', {
   show: true,
   collapsed: undefined,
   fullscreen: undefined,
+  label: 'Bottom Sheet',
 });
 </script>
 
@@ -52,7 +53,8 @@ const state = useQueryValue<State>('state', {
         <MDBottomSheet
           v-model:collapsed="state.collapsed"
           v-model:fullscreen="state.fullscreen"
-          :show="state.show"
+          v-model:show="state.show"
+          :label="state.label"
         >
           <MDBottomSheetSection>
             <MDListContainer v-if="state.bodyElementsNumber > 0">

@@ -26,7 +26,7 @@ const props = defineProps<{
 
 const { docHandle } = toRefs(props);
 
-const show = defineModel<boolean>('show', { required: true });
+const showModel = defineModel<boolean>('show', { required: true });
 
 enum PROPERTY_ACTION {
   remove,
@@ -71,7 +71,7 @@ const onClickPropertyContextAction = (
 
 const onUpdateCollapsed = (collapsed: boolean) => {
   if (collapsed) {
-    show.value = false;
+    showModel.value = false;
   }
 };
 
@@ -80,12 +80,13 @@ const isShowAddProperty = ref(false);
 
 <template>
   <MDBottomSheet
-    :show="show"
+    v-model:show="showModel"
     :collapsed="false"
     type="modal"
     class="db-properties-sheet"
+    label="Database Properties Sheet"
     @update:collapsed="onUpdateCollapsed"
-    @click-container="show = false"
+    @click-container="showModel = false"
   >
     <MDBottomSheetSection
       class="db-properties-sheet__section"
@@ -97,9 +98,10 @@ const isShowAddProperty = ref(false);
         class="db-properties-sheet__property-list"
         :doc-handle="docHandle"
       >
-        <template #trailingIcon="{ propertyId }">
+        <template #trailingIcon="{ propertyId, property }">
           <MDContextMenuButton
             :btns="propertyContextBtns"
+            :tooltip="`options ${property.name}`"
             @click="onClickPropertyContextAction($event, propertyId)"
           />
         </template>
@@ -150,7 +152,7 @@ const isShowAddProperty = ref(false);
         />
 
         <ValueField
-          :property="property"
+          :property="{ ...property, name: 'default value' }"
           :value="property.default"
           :directory="directory"
           @update:value="onUpdateDefaultValue"
@@ -160,7 +162,6 @@ const isShowAddProperty = ref(false);
     </DatabasePropertyEditDialog>
 
     <PropertyCreateDialogWidget
-      v-if="isShowAddProperty"
       v-model:show="isShowAddProperty"
       :doc-handle="docHandle"
       :directory="directory"

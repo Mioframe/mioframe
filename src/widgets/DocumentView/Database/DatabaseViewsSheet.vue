@@ -21,7 +21,7 @@ const props = defineProps<{
 
 const { docHandle } = toRefs(props);
 
-const show = defineModel<boolean>('show', { required: true });
+const showModel = defineModel<boolean>('show', { required: true });
 
 const selectedViewId = defineModel<DatabaseViewId>('selectedViewId');
 
@@ -93,7 +93,7 @@ const isShowAddView = shallowRef(false);
 
 const onUpdateCollapsed = (collapsed: boolean) => {
   if (collapsed) {
-    show.value = false;
+    showModel.value = false;
   }
 };
 
@@ -104,11 +104,12 @@ const closeRenameDialog = () => {
 
 <template>
   <MDBottomSheet
-    :show="show"
+    :show="showModel"
     :collapsed="false"
     type="modal"
+    label="Database Views Sheet"
     @update:collapsed="onUpdateCollapsed"
-    @click-container="show = false"
+    @click-container="showModel = false"
   >
     <MDBottomSheetSection
       scroll-snap-align="end"

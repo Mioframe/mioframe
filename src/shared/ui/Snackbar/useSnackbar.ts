@@ -1,6 +1,6 @@
 import { reactive, computed, watch } from 'vue';
 import { createGlobalState } from '@vueuse/core';
-import { uniqueId } from '@shared/lib/uniqueId';
+import { sessionUniqueId } from '@shared/lib/uniqueId';
 
 interface SnackbarState {
   snackbarQueue: Snackbar[];
@@ -35,7 +35,7 @@ export const useSnackbar = createGlobalState(() => {
   };
 
   const addSnackbar = (description: SnackbarDescription) => {
-    const snackbar = { ...description, id: uniqueId('snackbar') };
+    const snackbar = { ...description, id: sessionUniqueId('snackbar') };
 
     if (!snackbar.callback || !snackbar.actionLabel) {
       snackbar.timeout = Math.min(Math.max(snackbar.timeout ?? 7e3, 4e3), 10e3);

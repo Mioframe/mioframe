@@ -1,6 +1,6 @@
 export interface BaseMenuButton {
   label: string;
-  key: PropertyKey;
+  key: string | number;
   symbolName?: string;
 }
 
