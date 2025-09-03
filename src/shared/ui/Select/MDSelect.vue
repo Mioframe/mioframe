@@ -11,6 +11,7 @@ import { shallowClone } from '@shared/lib/shallowClone';
 import { isObjectLike } from '@shared/lib/typeGuards';
 import type { SelectOption } from './types';
 import { useOnEscapeKeyStacked } from '@shared/lib/useOnEscapeKeyStacked';
+import { sessionUniqueId } from '@shared/lib/uniqueId';
 
 const props = defineProps<{
   labelText: string;
@@ -114,6 +115,8 @@ const onClickValue = (option: T, index: number) => {
 const onClickOutside = () => {
   showMenu.value = false;
 };
+
+const selectId = sessionUniqueId('select');
 </script>
 
 <template>
@@ -125,6 +128,7 @@ const onClickOutside = () => {
     }"
   >
     <MDFieldContainer
+      :id="selectId"
       ref="fieldContainerRef"
       :focused="showMenu ? true : undefined"
       :label-text="labelText"
@@ -134,6 +138,11 @@ const onClickOutside = () => {
       :error="error"
       class="md-select__field"
       :filled="modelValue.length > 0"
+      role="combobox"
+      aria-haspopup="listbox"
+      :aria-expanded="showMenu ? 'true' : 'false'"
+      :aria-controls="selectId"
+      :aria-label="labelText"
       @click="onClickFieldContainer"
     >
       <template #default>
@@ -166,9 +175,11 @@ const onClickOutside = () => {
 
     <MDMenu
       v-if="options.length && showMenu"
+      :id="selectId"
       v-model:show="showMenu"
       :target="fieldContainerRef"
       :btns="options"
+      role="listbox"
       @click="onClickOption"
       @interaction-outside="onClickOutside"
     />

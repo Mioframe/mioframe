@@ -18,10 +18,10 @@ import { onInteractionOutside } from '@shared/lib/onInteractionOutside';
 import { useFocusTrap } from '@vueuse/integrations/useFocusTrap';
 import { useKeyboardSearch } from '@shared/lib/useKeyboardSearch';
 import { isUndefined } from 'es-toolkit';
-import { useOverlayNavigation } from '@shared/lib/useOverlayNavigation';
-import { uniqueId } from '@shared/lib/uniqueId';
+import { sessionUniqueId } from '@shared/lib/uniqueId';
 import { autoUpdate, flip, shift, size, useFloating } from '@floating-ui/vue';
 import MDMenuItem from './MDMenuItem.vue';
+import { useOverlay } from '../Overlay';
 
 const props = withDefaults(
   defineProps<{
@@ -30,13 +30,15 @@ const props = withDefaults(
     transition?: boolean;
     outsideIgnore?: MaybeElement[];
     disabledTeleport?: boolean;
-    id?: PropertyKey;
+    id?: string | number;
     placement?: 'bottom-start' | 'right-start';
     ariaLabel?: string;
+    role?: string;
   }>(),
   {
-    id: () => uniqueId('menu'),
+    id: () => sessionUniqueId('menu'),
     placement: 'bottom-start',
+    role: 'menu',
   },
 );
 
@@ -101,11 +103,13 @@ const ignoreElements = computed(() => {
   return [target.value];
 });
 
+const { showOverlay } = useOverlay(listContainerEl, id, showModel, 'overlay');
+
 onInteractionOutside(
   listContainerEl,
   () => {
     emit('interactionOutside');
-    showQuery.value = false;
+    showOverlay.value = false;
   },
   {
     ignore: ignoreElements,
@@ -123,13 +127,8 @@ const { activate: activateMenuFocusTrap, deactivate: deactivateMenuFocusTrap } =
     },
   });
 
-const { show: showQuery } = useOverlayNavigation(
-  // eslint-disable-next-line vue/no-ref-object-reactivity-loss -- static props
-  id.value,
-);
-
 watch(
-  [showQuery, listContainerEl],
+  [showOverlay, listContainerEl],
   ([showQuery, listContainerEl]) => {
     if (listContainerEl) {
       if (showQuery) {
@@ -163,7 +162,7 @@ const foundRef = computed(() =>
 );
 
 watchEffect(() => {
-  if (showQuery.value) {
+  if (showOverlay.value) {
     const foundEl = toValue(foundRef);
 
     if (foundEl instanceof HTMLElement) {
@@ -172,22 +171,6 @@ watchEffect(() => {
   }
 });
 
-const showOverlayWatchHandler = watch(showQuery, async (showOverlay) => {
-  showWatchHandler.pause();
-  showModel.value = showOverlay;
-  await nextTick(showWatchHandler.resume);
-});
-
-const showWatchHandler = watch(
-  showModel,
-  async (show) => {
-    showOverlayWatchHandler.pause();
-    showQuery.value = show;
-    await nextTick(showOverlayWatchHandler.resume);
-  },
-  { immediate: true },
-);
-
 const showSubmenu = ref<boolean>();
 </script>
 
@@ -195,18 +178,19 @@ const showSubmenu = ref<boolean>();
   <Teleport :to="targetTeleport" :disabled="disabledTeleport">
     <MDListContainer
       is="div"
-      v-if="showQuery"
+      v-if="showOverlay"
       ref="listContainerEl"
       class="md md-menu"
       :style="containerStyle"
       :transition="transition"
       :aria-label="ariaLabel"
-      role="menu"
+      :role="role"
     >
       <MDMenuItem
         v-for="item in btns"
         :key="item.key"
         :item="item"
+        :role="role === 'listbox' ? 'option' : undefined"
         @click="onClickItem"
         @update:show-submenu="showSubmenu = $event"
       />

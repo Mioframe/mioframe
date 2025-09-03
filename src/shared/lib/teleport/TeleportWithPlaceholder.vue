@@ -1,12 +1,18 @@
 <script setup lang="ts">
 import { useClosestParentFrame } from '@shared/lib/useClosestParentFrame';
 import { useCssVar, useElementBounding, useElementSize } from '@vueuse/core';
+import type { RendererElement } from 'vue';
 import { computed, useTemplateRef, watchEffect } from 'vue';
 
-const { priorityWidth = 'content', priorityHeight = 'content' } = defineProps<{
+const {
+  priorityWidth = 'content',
+  priorityHeight = 'content',
+  teleportTarget,
+} = defineProps<{
   priorityWidth?: 'placeholder' | 'content';
   priorityHeight?: 'placeholder' | 'content';
   withPlaceholder?: boolean;
+  teleportTarget?: string | RendererElement | null | undefined;
 }>();
 
 defineSlots<{
@@ -84,12 +90,15 @@ watchEffect(() => {
     priorityHeight === 'content' ? `${contentHeight.value}px` : undefined;
 });
 
-const targetTeleport = useClosestParentFrame();
+const closestParentFrame = useClosestParentFrame();
+
+const teleportTo = computed(() => teleportTarget ?? closestParentFrame.value);
 
 const { height: targetHeight, width: targetWidth } = useElementSize(
   computed(() =>
-    enableCalculatePosition.value && targetTeleport.value instanceof HTMLElement
-      ? targetTeleport.value
+    enableCalculatePosition.value &&
+    closestParentFrame.value instanceof HTMLElement
+      ? closestParentFrame.value
       : undefined,
   ),
   undefined,
@@ -99,7 +108,7 @@ const { height: targetHeight, width: targetWidth } = useElementSize(
 
 <template>
   <div v-if="withPlaceholder" ref="placeholderEl" class="teleport-placeholder">
-    <Teleport :to="targetTeleport">
+    <Teleport :to="teleportTo">
       <div ref="contentEl" class="teleport-placeholder__content">
         <slot :target-height="targetHeight" :target-width="targetWidth">
           <i ref="emptySlotDetector" class="empty-slot-detector" />
@@ -108,7 +117,7 @@ const { height: targetHeight, width: targetWidth } = useElementSize(
     </Teleport>
   </div>
 
-  <Teleport v-else :to="targetTeleport">
+  <Teleport v-else :to="teleportTo">
     <slot
       :target-height="targetHeight"
       :class="$attrs.class"

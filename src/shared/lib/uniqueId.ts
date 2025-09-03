@@ -1,15 +1,25 @@
 import { useSessionStorage } from '@vueuse/core';
 
-const idCounter = useSessionStorage('idCounter', 0);
+const idCounterStorage = useSessionStorage<Record<string, string>>(
+  'idCounter',
+  {},
+  {
+    mergeDefaults: true,
+  },
+);
 
-export type UniqueId<S extends string> = `${S}${number}`;
+export type UniqueId<S extends string> = `${S}${string}`;
 
-export const uniqueId = <S extends string>(prefix: S): UniqueId<S> => {
-  if (idCounter.value >= 1e6) {
-    idCounter.value = 0;
+const radix = 36;
+
+export const sessionUniqueId = <S extends string>(prefix: S): UniqueId<S> => {
+  let currentCount = parseInt(idCounterStorage.value[prefix] ?? '0', radix);
+
+  if (currentCount >= Number.MAX_SAFE_INTEGER) {
+    currentCount = 0;
   }
 
-  const id = idCounter.value + 1;
-  idCounter.value = id;
-  return `${prefix}${id}`;
+  idCounterStorage.value[prefix] = (currentCount + 1).toString(radix);
+
+  return `${prefix}${idCounterStorage.value[prefix]}`;
 };

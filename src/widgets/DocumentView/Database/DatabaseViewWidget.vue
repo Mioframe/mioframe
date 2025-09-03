@@ -173,7 +173,7 @@ const databaseViewLayoutRef = useTemplateRef('databaseViewLayoutRef');
       v-model:show="isShowEditItemDialog"
       :doc-handle="docHandle"
       :item-id="editedItemId"
-      apply-label="Save"
+      apply-label="Edit"
       @cancel="isShowEditItemDialog = false"
       @updated="isShowEditItemDialog = false"
     >

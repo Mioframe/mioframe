@@ -1,4 +1,4 @@
-import { uniqueId } from '@shared/lib/uniqueId';
+import { sessionUniqueId } from '@shared/lib/uniqueId';
 import type { MaybeElementRef } from '@vueuse/core';
 import {
   createGlobalState,
@@ -38,7 +38,7 @@ export const useDialogState = createGlobalState(() => {
     confirmLabel?: string,
     symbolName?: string,
   ) => {
-    const id = uniqueId('dialog');
+    const id = sessionUniqueId('dialog');
 
     const resultState = ref<boolean>();
 

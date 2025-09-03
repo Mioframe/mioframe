@@ -1,5 +1,4 @@
 {
-  "npm.packageManager": "pnpm",
   "typescript.tsdk": "node_modules/typescript/lib",
   "eslint.format.enable": true,
   "cSpell.words": [
@@ -43,7 +42,6 @@
   "editor.formatOnSave": true,
   "eslint.useFlatConfig": true,
   "cSpell.language": "en, ru",
-  "vue.server.hybridMode": true,
   "vue.inlayHints.destructuredProps": true,
   "vue.inlayHints.inlineHandlerLeading": true,
   "vue.inlayHints.missingProps": true,

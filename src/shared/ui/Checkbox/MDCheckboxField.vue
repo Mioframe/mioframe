@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { uniqueId } from '@shared/lib/uniqueId';
+import { sessionUniqueId } from '@shared/lib/uniqueId';
 import MDCheckbox from './MDCheckbox.vue';
 
 defineProps<{
@@ -12,7 +12,7 @@ defineProps<{
 
 const modelValue = defineModel<boolean | undefined>();
 
-const id = uniqueId('BooleanPropertyField');
+const id = sessionUniqueId('BooleanPropertyField');
 </script>
 
 <template>

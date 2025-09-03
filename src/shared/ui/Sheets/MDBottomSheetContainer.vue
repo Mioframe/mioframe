@@ -8,6 +8,7 @@ import {
 import { isBoolean, round, throttle } from 'es-toolkit';
 import { toNumber } from 'es-toolkit/compat';
 import { computed, toRefs, useTemplateRef, watch, watchEffect } from 'vue';
+import { MDState } from '../State';
 
 const props = withDefaults(
   defineProps<{
@@ -120,6 +121,8 @@ const onClickContainer = () => {
   emit('clickContainer');
 };
 
+const role = computed(() => (props.type === 'modal' ? 'dialog' : 'region'));
+
 tryOnBeforeUnmount(() => {
   if (containerEl.value instanceof Element) {
     containerEl.value.scrollTo({
@@ -140,12 +143,14 @@ tryOnBeforeUnmount(() => {
         'mb-bottom-sheet-container_fullscreen': fullscreen,
       },
     ]"
+    :role="role"
     @click.self="onClickContainer"
   >
     <div ref="headerEl" class="md-bottom-sheet-container__header md">
-      <button
-        type="button"
-        class="md md-bottom-sheet-container__drag-handle"
+      <MDState
+        is="button"
+        class="md-bottom-sheet-container__drag-handle"
+        :aria-label="collapsedState ? undefined : 'close sheet'"
         @click="onClickDragHandle"
       />
     </div>
@@ -169,9 +174,6 @@ tryOnBeforeUnmount(() => {
 
   height: 100dvh;
   width: calc((var(--md-bottom-sheet-width) + var(--offset-for-shadow) * 2));
-  position: fixed;
-  z-index: 1;
-  top: 0;
   overflow-y: auto;
   scroll-snap-type: y proximity;
   scroll-behavior: smooth;
@@ -213,7 +215,8 @@ tryOnBeforeUnmount(() => {
 
   &__drag-handle {
     height: var(--md-bottom-sheet-drag-height);
-    margin: auto;
+    width: 100%;
+    border-radius: inherit;
     display: block;
     border: 0;
     &::after {

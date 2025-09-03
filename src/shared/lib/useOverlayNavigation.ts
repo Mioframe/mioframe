@@ -1,7 +1,7 @@
-import { computed, onBeforeUnmount } from 'vue';
+import type { Ref } from 'vue';
+import { computed, onBeforeUnmount, watch } from 'vue';
 import type { LocationQuery } from 'vue-router';
 import { useRoute, useRouter } from 'vue-router';
-import { uniqueId } from './uniqueId';
 import { createGlobalState, tryOnScopeDispose, until } from '@vueuse/core';
 import pLimit from 'p-limit';
 import { isArray, toString } from 'es-toolkit/compat';
@@ -62,31 +62,44 @@ export const useOverlayNavigationState = createGlobalState(() => {
 
   const usedIds: string[] = [];
 
-  const useOverlay = (id: PropertyKey) => {
-    const stringId = toString(id);
+  const useOverlay = (id: Ref<PropertyKey>) => {
+    const stringId = computed(() => toString(id.value));
 
-    usedIds.push(stringId);
+    watch(
+      stringId,
+      (stringId, old) => {
+        if (old) {
+          const index = usedIds.indexOf(old);
+          if (index >= 0) {
+            usedIds.splice(index, 1);
+          }
+        }
+
+        usedIds.push(stringId);
+      },
+      { immediate: true },
+    );
 
     const show = computed<boolean>({
       get() {
-        const included = stackQuery.value.includes(stringId);
+        const included = stackQuery.value.includes(stringId.value);
         return included;
       },
       set(v) {
         if (v && !show.value) {
           void layerActionQueue(async () => {
-            await open(id);
+            await open(id.value);
           });
         } else if (!v && show.value) {
           void layerActionQueue(async () => {
-            await close(id);
+            await close(id.value);
           });
         }
       },
     });
 
     tryOnScopeDispose(() => {
-      const index = usedIds.indexOf(stringId);
+      const index = usedIds.indexOf(stringId.value);
 
       if (index >= 0) {
         usedIds.splice(index, 1);
@@ -99,7 +112,7 @@ export const useOverlayNavigationState = createGlobalState(() => {
   return { useOverlay, stack: stackQuery };
 });
 
-export const useOverlayNavigation = (id: PropertyKey = uniqueId('overlay')) => {
+export const useOverlayNavigation = (id: Ref<PropertyKey>) => {
   const { useOverlay } = useOverlayNavigationState();
 
   const { show } = useOverlay(id);
