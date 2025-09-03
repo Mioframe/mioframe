@@ -6,9 +6,15 @@ import MDMenu from './MDMenu.vue';
 import type { MenuButtonDescription } from './types';
 import type { MaybeElement } from '@vueuse/core';
 
-const props = defineProps<{
-  item: T;
-}>();
+const props = withDefaults(
+  defineProps<{
+    item: T;
+    role?: string;
+  }>(),
+  {
+    role: 'menuitem',
+  },
+);
 
 const emit = defineEmits<{
   click: [T];
@@ -39,7 +45,7 @@ const onClickItem = () => {
     :headline="item.label"
     type="button"
     class="md-menu-item"
-    role="menuitem"
+    :role="role"
     @click="onClickItem"
   >
     <template v-if="item.symbolName" #leadingIcon>

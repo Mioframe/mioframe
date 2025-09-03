@@ -1,21 +1,15 @@
 <script setup lang="ts">
 import { MDButton } from '../Button';
-import { useFocusTrap } from '@vueuse/integrations/useFocusTrap';
-import {
-  nextTick,
-  onBeforeUnmount,
-  toRefs,
-  toValue,
-  useTemplateRef,
-  watch,
-} from 'vue';
+import { toRefs, useTemplateRef, watch } from 'vue';
 import { useOnEscapeKeyStacked } from '@shared/lib/useOnEscapeKeyStacked';
-import { useOverlayNavigation } from '@shared/lib/useOverlayNavigation';
-import { uniqueId } from '@shared/lib/uniqueId';
-import { useMonitorOpenDialog } from './Alert';
+import { sessionUniqueId } from '@shared/lib/uniqueId';
+import { useOverlay } from '../Overlay';
 
 const props = withDefaults(
   defineProps<{
+    /**
+     * unique dialog title
+     */
     headline: string;
     supportingText: string;
     type?: 'basic' | 'full-screen';
@@ -24,10 +18,6 @@ const props = withDefaults(
     hasCancelAction?: boolean;
     loading?: boolean | number;
     class?: unknown;
-    /**
-     * @constant
-     */
-    id?: string;
   }>(),
   { cancelLabel: 'Cancel', type: 'basic' },
 );
@@ -41,7 +31,6 @@ const {
   supportingText,
   type: dialogType,
   class: stylesClass,
-  id,
 } = toRefs(props);
 
 const slots = defineSlots<{
@@ -54,7 +43,16 @@ const emit = defineEmits<{
   apply: [];
 }>();
 
-const show = defineModel<boolean>('show', { required: true });
+const showModel = defineModel<boolean>('show', { required: true });
+
+const formEl = useTemplateRef('formEl');
+
+const { showOverlay, dialogContainer } = useOverlay(
+  formEl,
+  headline,
+  showModel,
+  'dialog',
+);
 
 const onSubmit = () => {
   if (!loading.value) {
@@ -69,61 +67,17 @@ const onCancel = () => {
   }
 };
 
-const formEl = useTemplateRef('formEl');
-
-const { activate: lockFocus, deactivate: unlockFocus } = useFocusTrap(formEl, {
-  immediate: true,
-  allowOutsideClick: true,
+watch([showOverlay, showModel], ([showOverlay, showModel]) => {
+  if (!showOverlay && showModel) {
+    onCancel();
+  }
 });
 
 useOnEscapeKeyStacked(() => {
   onCancel();
 });
 
-onBeforeUnmount(() => {
-  unlockFocus();
-});
-
-const { show: showOverlay } = useOverlayNavigation(
-  toValue(id) ?? uniqueId('dialog'),
-);
-
-watch(
-  [showOverlay, formEl],
-  ([showOverlay, formEl]) => {
-    if (showOverlay && formEl) {
-      void nextTick(() => {
-        lockFocus();
-      });
-    } else {
-      unlockFocus();
-    }
-  },
-  { flush: 'post' },
-);
-
-const showOverlayWatchHandle = watch(showOverlay, (showOverlay) => {
-  showWatchHandle.pause();
-  if (!showOverlay && show.value) {
-    onCancel();
-  }
-  show.value = showOverlay;
-  void nextTick(showWatchHandle.resume);
-});
-
-const showWatchHandle = watch(
-  show,
-  (show) => {
-    showOverlayWatchHandle.pause();
-    showOverlay.value = show;
-    void nextTick(showOverlayWatchHandle.resume);
-  },
-  { immediate: true },
-);
-
-const dialogTitleId = uniqueId('dialogTitle');
-
-const { dialogContainer } = useMonitorOpenDialog(showOverlay);
+const dialogTitleId = sessionUniqueId('dialogTitle');
 </script>
 
 <template>

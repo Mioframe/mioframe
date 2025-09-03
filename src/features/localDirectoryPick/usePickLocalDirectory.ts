@@ -3,7 +3,7 @@ import {
   createLocalDirectory,
   type DirectoryLocalEntry,
 } from '../../shared/lib/localFileSystem';
-import { uniqueId } from '@shared/lib/uniqueId';
+import { sessionUniqueId } from '@shared/lib/uniqueId';
 
 export const usePickLocalDirectory = (
   mode: FileSystemPermissionMode = 'read',
@@ -18,7 +18,7 @@ export const usePickLocalDirectory = (
     pickedLocalDirectory.value = createLocalDirectory(
       fileSystemDirectoryHandle,
       undefined,
-      uniqueId(fileSystemDirectoryHandle.name),
+      sessionUniqueId(fileSystemDirectoryHandle.name),
     );
 
     return pickedLocalDirectory.value;

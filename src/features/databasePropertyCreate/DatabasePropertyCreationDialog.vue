@@ -33,7 +33,7 @@ const emit = defineEmits<{
   cancel: [];
 }>();
 
-const show = defineModel<boolean>('show', { required: true });
+const showModel = defineModel<boolean>('show', { required: true });
 
 defineSlots<{
   after: (p: {
@@ -114,7 +114,7 @@ const onUpdateProperty = (v: DatabaseUnknownProperty) => {
 
 <template>
   <MDDialog
-    v-model:show="show"
+    v-model:show="showModel"
     headline="Create Property"
     supporting-text="Enter a name and select the type of the new property."
     apply-label="Create"

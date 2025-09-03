@@ -20,11 +20,11 @@ const props = defineProps<{
 
 const { docHandle, viewId } = toRefs(props);
 
-const show = defineModel<boolean>('show', { required: true });
+const showModel = defineModel<boolean>('show', { required: true });
 
 const onUpdateCollapsed = (collapsed: boolean) => {
   if (collapsed) {
-    show.value = false;
+    showModel.value = false;
   }
 };
 
@@ -41,12 +41,13 @@ watchEffect(() => {
 
 <template>
   <MDBottomSheet
-    :show="show"
+    v-model:show="showModel"
     :collapsed="false"
     type="modal"
     class="db-filters-sheet"
+    label="Database Filters Sheet"
     @update:collapsed="onUpdateCollapsed"
-    @click-container="show = false"
+    @click-container="showModel = false"
   >
     <MDBottomSheetSection
       class="db-filters-sheet__section"

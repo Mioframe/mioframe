@@ -1,5 +1,6 @@
-import { preparationApp } from '../preparation';
-import { openOPFS } from '../openOPFS';
+import { clearAll } from '../repetitiveActions/clearAll';
+import { unregisterServiceWorkers } from '../repetitiveActions/unregisterServiceWorkers';
+import { openOPFS } from '../repetitiveActions/openOPFS';
 
 const createDocument = () => {
   cy.findByRole('button', { name: /create document/i }).click();
@@ -14,7 +15,17 @@ const createDocument = () => {
 };
 
 describe('Document management', () => {
-  preparationApp();
+  beforeEach(() => {
+    cy.visit('/');
+  });
+
+  before(() => {
+    clearAll();
+  });
+
+  after(() => {
+    unregisterServiceWorkers();
+  });
 
   it('Create document', () => {
     openOPFS();
