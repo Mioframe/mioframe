@@ -27,6 +27,10 @@ const emit = defineEmits<{
   keydown: [e: KeyboardEvent];
 }>();
 
+defineSlots<{
+  unknownProperty: () => unknown;
+}>();
+
 const onUpdateValue = (v: unknown) => {
   emit('update:value', v);
 };
@@ -99,9 +103,9 @@ const onUpdateProperty = (v: DatabaseUnknownProperty) => {
     </template>
   </RelationValueField>
 
-  <div v-else>
-    don't have a field for property "{{ property.name }}" with type "{{
-      property.type
-    }}"
-  </div>
+  <slot v-else name="unknownProperty">
+    <div>
+      There is no suitable input field for property "{{ property.name }}"
+    </div>
+  </slot>
 </template>

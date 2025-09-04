@@ -108,7 +108,11 @@ const onCancel = () => {
 };
 
 const onUpdateProperty = (v: DatabaseUnknownProperty) => {
-  partialPropertyState.value = v;
+  partialPropertyState.value = {
+    ...v,
+    name: partialPropertyState.value.name,
+    type: partialPropertyState.value.type,
+  };
 };
 </script>
 
