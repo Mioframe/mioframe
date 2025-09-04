@@ -38,6 +38,7 @@ const printValue = computed(() => value.value ?? property.value.default);
     v-if="property?.type === PROPERTY_TYPE_BOOLEAN"
     :value="printValue"
     :editable="editable"
+    :name="property.name"
     @click="emit('click')"
   />
 
