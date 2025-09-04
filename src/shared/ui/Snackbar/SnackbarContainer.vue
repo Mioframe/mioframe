@@ -3,6 +3,7 @@ import { FadeTransition } from '@noction/vue-bezier';
 import MDSnackbar from './MDSnackbar.vue';
 import { useSnackbar } from './useSnackbar';
 import { useClosestParentFrame } from '@shared/lib/useClosestParentFrame';
+import { TeleportContainer } from '@shared/lib/teleportContainer';
 
 const { currentSnackbar, closeSnackbar } = useSnackbar();
 
@@ -14,7 +15,7 @@ const targetTeleport = useClosestParentFrame();
 </script>
 
 <template>
-  <Teleport :to="targetTeleport">
+  <TeleportContainer :to="targetTeleport">
     <div class="snackbar-container">
       <FadeTransition group>
         <MDSnackbar
@@ -28,7 +29,7 @@ const targetTeleport = useClosestParentFrame();
         />
       </FadeTransition>
     </div>
-  </Teleport>
+  </TeleportContainer>
 </template>
 
 <style scoped>

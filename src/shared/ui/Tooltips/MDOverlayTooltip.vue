@@ -10,6 +10,7 @@ import {
 import { computed, ref, toRefs, useTemplateRef } from 'vue';
 import { onInteractionOutside } from '@shared/lib/onInteractionOutside';
 import { autoUpdate, offset, shift, useFloating } from '@floating-ui/vue';
+import { TeleportContainer } from '@shared/lib/teleportContainer';
 
 const props = defineProps<{
   disabledTeleport?: boolean;
@@ -66,7 +67,7 @@ onInteractionOutside(tooltipEl, () => {
 </script>
 
 <template>
-  <Teleport :to="targetTeleport" :disabled="disabledTeleport">
+  <TeleportContainer :to="targetTeleport" :disabled="disabledTeleport">
     <Transition>
       <div
         v-if="showState"
@@ -77,7 +78,7 @@ onInteractionOutside(tooltipEl, () => {
         <slot name="default" />
       </div>
     </Transition>
-  </Teleport>
+  </TeleportContainer>
 </template>
 
 <style lang="css" scoped>

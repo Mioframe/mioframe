@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { TeleportContainer } from '@shared/lib/teleportContainer';
 import { useClosestParentFrame } from '@shared/lib/useClosestParentFrame';
 import type { MaybeElement } from '@vueuse/core';
 import { useElementSize, useWindowSize } from '@vueuse/core';
@@ -50,7 +51,7 @@ const targetTeleport = useClosestParentFrame();
 </script>
 
 <template>
-  <Teleport :to="targetTeleport">
+  <TeleportContainer :to="targetTeleport">
     <div
       ref="popoverEl"
       class="md popover"
@@ -59,7 +60,7 @@ const targetTeleport = useClosestParentFrame();
     >
       <slot />
     </div>
-  </Teleport>
+  </TeleportContainer>
 </template>
 
 <style scoped>

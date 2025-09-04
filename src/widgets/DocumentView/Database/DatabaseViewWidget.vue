@@ -142,11 +142,11 @@ const databaseViewLayoutRef = useTemplateRef('databaseViewLayoutRef');
       :directory="directory"
       class="database-view__layout"
     >
-      <template #value="{ item, itemId, property, propertyId }">
+      <template #value="{ item, itemId, propertyId }">
         <EditableInlineValue
           :item="item"
           :property-id="propertyId"
-          :property="property"
+          :doc-handle="docHandle"
           :directory="directory"
           @update:value="onChangeValue(itemId, propertyId, $event)"
           @update:property="onUpdateProperty(propertyId, $event)"

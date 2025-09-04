@@ -3,6 +3,7 @@ import { useClosestParentFrame } from '@shared/lib/useClosestParentFrame';
 import MDDialog from '../MDDialog.vue';
 import { useDialogState } from './useDialog';
 import { MDSymbol } from '@shared/ui/Icon';
+import { TeleportContainer } from '@shared/lib/teleportContainer';
 
 const targetTeleport = useClosestParentFrame();
 
@@ -10,7 +11,7 @@ const { alertSet } = useDialogState();
 </script>
 
 <template>
-  <Teleport  :to="targetTeleport">
+  <TeleportContainer :to="targetTeleport">
     <div class="dialog-container">
       <MDDialog
         v-for="item in alertSet"
@@ -29,7 +30,7 @@ const { alertSet } = useDialogState();
         </template>
       </MDDialog>
     </div>
-  </Teleport>
+  </TeleportContainer>
 </template>
 
 <style lang="css" scoped>

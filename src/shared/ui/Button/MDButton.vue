@@ -12,7 +12,7 @@ const {
 } = defineProps<{
   formAction?: 'submit' | 'reset' | 'button';
   color?: 'elevated' | 'filled' | 'tonal' | 'outlined' | 'text';
-  label?: string;
+  label: string;
   disabled?: boolean;
   loading?: number | boolean;
   type?: 'default' | 'toggle';

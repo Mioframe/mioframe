@@ -4,6 +4,7 @@ import { toRefs, useTemplateRef, watch } from 'vue';
 import { useOnEscapeKeyStacked } from '@shared/lib/useOnEscapeKeyStacked';
 import { sessionUniqueId } from '@shared/lib/uniqueId';
 import { useOverlay } from '../Overlay';
+import { TeleportContainer } from '@shared/lib/teleportContainer';
 
 const props = withDefaults(
   defineProps<{
@@ -81,7 +82,7 @@ const dialogTitleId = sessionUniqueId('dialogTitle');
 </script>
 
 <template>
-  <Teleport :to="dialogContainer">
+  <TeleportContainer :to="dialogContainer">
     <dialog
       v-if="showOverlay"
       :open="showOverlay"
@@ -134,7 +135,7 @@ const dialogTitleId = sessionUniqueId('dialogTitle');
         </div>
       </form>
     </dialog>
-  </Teleport>
+  </TeleportContainer>
 </template>
 
 <style scoped>
@@ -151,6 +152,7 @@ const dialogTitleId = sessionUniqueId('dialogTitle');
     align-items: center;
     background-color: transparent;
     border: 0;
+    background-color: rgb(from var(--md-sys-color-scrim) r g b / 10%);
   }
 
   &__container {

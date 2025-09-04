@@ -9,28 +9,32 @@ import {
   useParentElement,
   type MaybeElement,
 } from '@vueuse/core';
-import { computed, ref, toRefs, useTemplateRef } from 'vue';
+import { computed, nextTick, ref, toRefs, useTemplateRef, watch } from 'vue';
 import { onInteractionOutside } from '@shared/lib/onInteractionOutside';
 import { autoUpdate, flip, offset, shift, useFloating } from '@floating-ui/vue';
+import { TeleportContainer } from '@shared/lib/teleportContainer';
 
 const props = withDefaults(
   defineProps<{
     subhead: string;
     disabledTeleport?: boolean;
     targetElement?: MaybeElement;
-    show?: boolean | undefined;
     useClick?: boolean;
     useHover?: boolean;
     placement?: 'top-start' | 'top-end' | 'bottom-end' | 'bottom-start';
   }>(),
   {
-    show: undefined,
     placement: 'top-end',
   },
 );
 
-const { subhead, targetElement, show, useClick, useHover, placement } =
-  toRefs(props);
+const { subhead, targetElement, useClick, useHover, placement } = toRefs(props);
+
+const showModel = defineModel<boolean>('show');
+
+const emit = defineEmits<{
+  interactionOutside: [e: Event];
+}>();
 
 const slots = defineSlots<{
   text(): unknown;
@@ -57,15 +61,51 @@ const hoveredTooltip = useElementHover(tooltipEl);
 
 const debounceHovered = refDebounced(generalHovered, 1.5e3);
 
-const computedShow = computed(
-  () => show.value ?? (showOnClick.value || debounceHovered.value),
+const showOnClick = ref(false);
+
+useEventListener(targetElementRef, 'click', () => {
+  if (useClick.value) {
+    showOnClick.value = true;
+  }
+});
+
+onInteractionOutside(tooltipEl, (e) => {
+  emit('interactionOutside', e);
+  showOnClick.value = false;
+});
+
+const showState = ref(false);
+
+const showStateWatchHandle = watch(showState, (v) => {
+  showModelWatchHandle.pause();
+  showModel.value = v;
+  void nextTick(showModelWatchHandle.resume);
+});
+
+const showModelWatchHandle = watch(
+  showModel,
+  (v) => {
+    showStateWatchHandle.pause();
+    showState.value = v ?? false;
+    void nextTick(showStateWatchHandle.resume);
+  },
+  { immediate: true },
 );
+
+watch(showOnClick, (v) => {
+  showState.value = v;
+});
+
+watch(debounceHovered, (v) => {
+  showState.value = v;
+});
 
 const { floatingStyles: richTooltipStyle, update } = useFloating(
   targetElementRef,
   tooltipEl,
   {
     strategy: 'fixed',
+    transform: false,
     placement,
     middleware: [
       offset(({ rects }) => ({
@@ -84,25 +124,13 @@ const { floatingStyles: richTooltipStyle, update } = useFloating(
 );
 
 useEventListener(window.visualViewport, 'resize', update);
-
-const showOnClick = ref(false);
-
-useEventListener(targetElementRef, 'click', () => {
-  if (useClick.value) {
-    showOnClick.value = true;
-  }
-});
-
-onInteractionOutside(tooltipEl, () => {
-  showOnClick.value = false;
-});
 </script>
 
 <template>
-  <Teleport :to="targetTeleport" :disabled="disabledTeleport">
+  <TeleportContainer :to="targetTeleport" :disabled="disabledTeleport">
     <Transition>
       <div
-        v-if="computedShow"
+        v-if="showState"
         ref="tooltipEl"
         class="md md-rich-tooltip"
         :style="richTooltipStyle"
@@ -126,7 +154,7 @@ onInteractionOutside(tooltipEl, () => {
         </div>
       </div>
     </Transition>
-  </Teleport>
+  </TeleportContainer>
 </template>
 
 <style lang="css" scoped>
