@@ -22,6 +22,7 @@ import { sessionUniqueId } from '@shared/lib/uniqueId';
 import { autoUpdate, flip, shift, size, useFloating } from '@floating-ui/vue';
 import MDMenuItem from './MDMenuItem.vue';
 import { useOverlay } from '../Overlay';
+import { TeleportContainer } from '@shared/lib/teleportContainer';
 
 const props = withDefaults(
   defineProps<{
@@ -175,7 +176,7 @@ const showSubmenu = ref<boolean>();
 </script>
 
 <template>
-  <Teleport :to="targetTeleport" :disabled="disabledTeleport">
+  <TeleportContainer :to="targetTeleport" :disabled="disabledTeleport">
     <MDListContainer
       is="div"
       v-if="showOverlay"
@@ -195,7 +196,7 @@ const showSubmenu = ref<boolean>();
         @update:show-submenu="showSubmenu = $event"
       />
     </MDListContainer>
-  </Teleport>
+  </TeleportContainer>
 </template>
 
 <style lang="css" scoped>

@@ -1,39 +1,46 @@
 <script setup lang="ts">
-import { computed, ref, useTemplateRef, watch, watchEffect } from 'vue';
+import { computed, ref, toRefs, useTemplateRef, watch, watchEffect } from 'vue';
 import { zodBooleanProperty } from '@entity/databaseBoolean/boolean';
 import { zodIs } from '@shared/lib/validateZodScheme';
 import ValueInline from './ValueInline.vue';
 import { isEqual, isUndefined } from 'es-toolkit';
 import ValueField from './ValueField.vue';
 import { useFirstFocus } from '@shared/lib/useFirstFocus';
-import type {
-  DatabaseItem,
-  DatabasePropertyId,
-  DatabaseUnknownProperty,
-  GeneralProperty,
+import {
+  useDatabasePropertiesMap,
+  type DatabaseItem,
+  type DatabasePropertyId,
+  type DatabaseUnknownProperty,
 } from '@shared/lib/databaseDocument';
 import type { DirectoryFSEntry } from '@shared/lib/fileSystem';
 import { MDOverlayTooltip } from '@shared/ui/Tooltips';
 import { toggleBoolean } from '@shared/ui/Checkbox';
+import type { AMDocHandle } from '@shared/lib/automerge';
 
-const {
-  item = {},
-  property,
-  propertyId,
-} = defineProps<{
-  // eslint-disable-next-line vue/no-required-prop-with-default -- non-optional prop
-  item: DatabaseItem | undefined;
-  property: GeneralProperty;
-  propertyId: DatabasePropertyId;
-  directory: DirectoryFSEntry;
-}>();
+const props = withDefaults(
+  defineProps<{
+    item: DatabaseItem | undefined;
+    propertyId: DatabasePropertyId;
+    directory: DirectoryFSEntry;
+    docHandle: AMDocHandle;
+  }>(),
+  {},
+);
+
+const { propertyId, docHandle } = toRefs(props);
+
+const item = computed(() => props.item ?? {});
 
 const emit = defineEmits<{
   'update:value': [value: unknown];
   'update:property': [property: DatabaseUnknownProperty];
 }>();
 
-const initialValue = computed(() => item[propertyId]);
+const propertiesMap = useDatabasePropertiesMap(docHandle);
+
+const property = computed(() => propertiesMap.get(propertyId.value));
+
+const initialValue = computed(() => item.value[propertyId.value]);
 
 const showEditForm = ref(false);
 
@@ -44,16 +51,16 @@ watchEffect(() => {
 });
 
 const tryEmitValue = () => {
-  if (!isEqual(item[propertyId], stateValue.value)) {
+  if (!isEqual(item.value[propertyId.value], stateValue.value)) {
     emit('update:value', stateValue.value);
   }
 };
 
 const onClick = () => {
-  if (zodIs(property, zodBooleanProperty)) {
+  if (zodIs(property.value, zodBooleanProperty)) {
     stateValue.value = toggleBoolean(
       isUndefined(stateValue.value) ? stateValue.value : !!stateValue.value,
-      property.indeterminate,
+      property.value.indeterminate,
     );
     tryEmitValue();
     return;
@@ -91,7 +98,8 @@ const onUpdateProperty = (v: DatabaseUnknownProperty) => {
     @click="onClick"
   >
     <ValueInline
-      :property="property"
+      :doc-handle="docHandle"
+      :property-id="propertyId"
       :value="initialValue"
       editable
       :directory="directory"
@@ -100,6 +108,7 @@ const onUpdateProperty = (v: DatabaseUnknownProperty) => {
   </a>
 
   <MDOverlayTooltip
+    v-if="property"
     v-model:show="showEditForm"
     :target-element="inlineEl"
     @interaction-outside="closeEditor"

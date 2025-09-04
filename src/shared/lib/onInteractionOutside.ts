@@ -7,6 +7,7 @@ import {
   type MaybeElementRef,
 } from '@vueuse/core';
 import { throttle } from 'es-toolkit';
+import { useChildTeleportContainerStack } from './teleportContainer';
 
 type EventTypes = keyof DocumentEventMap;
 
@@ -71,7 +72,7 @@ function defineType<T>(value: T): T {
 
 export const onInteractionOutside = (
   target: MaybeElementRef,
-  callback: () => unknown,
+  callback: (event: Event) => unknown,
   options: InteractionOutsideOptions = {},
 ) => {
   const defaultEvents = defineType<EventTypes[]>([
@@ -88,6 +89,8 @@ export const onInteractionOutside = (
     ignore = [],
   } = options;
 
+  const { stack: childTeleportContainers } = useChildTeleportContainerStack();
+
   const handleInteraction = throttle((event: Event) => {
     const eventTarget = event.target instanceof Node ? event.target : undefined;
     if (!eventTarget) {
@@ -98,15 +101,20 @@ export const onInteractionOutside = (
 
     const targetEl = unrefElement(target);
 
-    const containers = [targetEl, ...ignoreList];
+    const containers: (HTMLElement | SVGElement | null | undefined)[] = [
+      targetEl,
+      ...ignoreList,
+      ...childTeleportContainers,
+    ];
 
     const isInside = containers.some(
       (container) =>
-        container == eventTarget || container?.contains(eventTarget),
+        container &&
+        (container == eventTarget || container.contains(eventTarget)),
     );
 
     if (!isInside) {
-      callback();
+      callback(event);
     }
   }, throttleWait);
 

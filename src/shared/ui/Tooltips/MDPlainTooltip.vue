@@ -10,6 +10,7 @@ import {
 } from '@vueuse/core';
 import { autoUpdate, flip, offset, shift, useFloating } from '@floating-ui/vue';
 import { useHover } from '@shared/lib/useHover';
+import { TeleportContainer } from '@shared/lib/teleportContainer';
 
 const props = withDefaults(
   defineProps<{
@@ -64,7 +65,7 @@ const show = refDebounced(hovered, 1.5e3);
 </script>
 
 <template>
-  <Teleport :to="targetTeleport" :disabled="disabledTeleport">
+  <TeleportContainer :to="targetTeleport" :disabled="disabledTeleport">
     <Transition>
       <div
         v-if="show"
@@ -75,7 +76,7 @@ const show = refDebounced(hovered, 1.5e3);
         {{ text }}
       </div>
     </Transition>
-  </Teleport>
+  </TeleportContainer>
 </template>
 
 <style scoped>

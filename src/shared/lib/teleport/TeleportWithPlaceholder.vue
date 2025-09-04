@@ -3,6 +3,7 @@ import { useClosestParentFrame } from '@shared/lib/useClosestParentFrame';
 import { useCssVar, useElementBounding, useElementSize } from '@vueuse/core';
 import type { RendererElement } from 'vue';
 import { computed, useTemplateRef, watchEffect } from 'vue';
+import { TeleportContainer } from '../teleportContainer';
 
 const {
   priorityWidth = 'content',
@@ -108,16 +109,16 @@ const { height: targetHeight, width: targetWidth } = useElementSize(
 
 <template>
   <div v-if="withPlaceholder" ref="placeholderEl" class="teleport-placeholder">
-    <Teleport :to="teleportTo">
+    <TeleportContainer :to="teleportTo">
       <div ref="contentEl" class="teleport-placeholder__content">
         <slot :target-height="targetHeight" :target-width="targetWidth">
           <i ref="emptySlotDetector" class="empty-slot-detector" />
         </slot>
       </div>
-    </Teleport>
+    </TeleportContainer>
   </div>
 
-  <Teleport v-else :to="teleportTo">
+  <TeleportContainer v-else :to="teleportTo">
     <slot
       :target-height="targetHeight"
       :class="$attrs.class"
@@ -125,7 +126,7 @@ const { height: targetHeight, width: targetWidth } = useElementSize(
     >
       <i ref="emptySlotDetector" class="empty-slot-detector" />
     </slot>
-  </Teleport>
+  </TeleportContainer>
 </template>
 
 <style lang="css" scoped>

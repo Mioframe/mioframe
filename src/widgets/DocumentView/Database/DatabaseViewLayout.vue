@@ -78,7 +78,8 @@ const arrivedRight = computed(() => arrivedState.right);
         :property-id="propertyId"
       >
         <ValueInline
-          :property="property"
+          :doc-handle="docHandle"
+          :property-id="propertyId"
           :value="item[propertyId]"
           :directory="directory"
         />
