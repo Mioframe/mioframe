@@ -1,7 +1,7 @@
 import type { AMDocHandle } from '@shared/lib/automerge';
 import type { DatabasePropertyId } from '@shared/lib/databaseDocument';
 import { useDatabasePropertiesMap } from '@shared/lib/databaseDocument/useDatabasePropertiesMap';
-import { computed, reactive, toValue, type MaybeRefOrGetter } from 'vue';
+import { computed, toValue, type MaybeRefOrGetter } from 'vue';
 import {
   zodRelationProperty,
   type Relation,
@@ -42,8 +42,8 @@ export const useRelationProperty = (
     }
   };
 
-  return reactive({
+  return {
     property,
     update,
-  });
+  };
 };
