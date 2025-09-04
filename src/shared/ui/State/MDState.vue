@@ -1,7 +1,7 @@
 <script
   setup
   lang="ts"
-  generic="Is extends 'button' | 'a' | 'div' | 'li' = 'div'"
+  generic="Is extends 'button' | 'a' | 'label' | 'div' | 'li' = 'div'"
 >
 import {
   syncRef,
@@ -20,6 +20,7 @@ const {
   is = 'div',
   disableRipple = false,
   draggable,
+  for: labelFor,
 } = defineProps<{
   is?: Is;
   type?: Is extends 'button' ? 'button' | 'submit' | 'reset' : false;
@@ -27,6 +28,7 @@ const {
   disableRipple?: boolean;
   draggable?: boolean;
   id?: string;
+  for?: Is extends 'label' ? string : false;
 }>();
 
 const emit = defineEmits<{
@@ -34,6 +36,7 @@ const emit = defineEmits<{
   mouseup: [MouseEvent];
   mousedown: [MouseEvent];
   contextmenu: [MouseEvent];
+  keydown: [KeyboardEvent];
 }>();
 
 defineSlots<{
@@ -90,6 +93,10 @@ useEventListener(refEl, 'click', (e) => {
   emit('click', e);
 });
 
+useEventListener(refEl, 'keydown', (e) => {
+  emit('keydown', e);
+});
+
 useEventListener(refEl, 'contextmenu', (e) => {
   e.preventDefault();
   emit('contextmenu', e);
@@ -131,6 +138,7 @@ useRipple(computed(() => (enableRipple.value ? refEl.value : undefined)));
       'md-state_drag': isDrag,
     }"
     :draggable="draggable ? 'true' : undefined"
+    :for="labelFor"
   >
     <div class="md-state__layer" />
 

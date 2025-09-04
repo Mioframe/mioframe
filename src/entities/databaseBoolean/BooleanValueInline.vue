@@ -6,6 +6,7 @@ import { computed } from 'vue';
 const { value } = defineProps<{
   value: unknown;
   editable?: boolean;
+  name: string;
 }>();
 
 const emit = defineEmits<{ click: [] }>();
@@ -18,6 +19,7 @@ const convertedValue = computed(() => (isBoolean(value) ? value : undefined));
     :model-value="convertedValue"
     indeterminate
     :readonly="!editable"
+    :tooltip="name"
     @click="emit('click')"
   />
 </template>
