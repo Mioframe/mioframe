@@ -50,7 +50,9 @@ const zodPartialRelation = extend(zodRelationProperty, {
         :directory="directory"
         @update:value="onUpdateDefaultValue"
         @update:property="onUpdateProperty"
-      />
+      >
+        <template #unknownProperty> <div /> </template>
+      </ValueField>
     </template>
   </DatabasePropertyCreationDialog>
 </template>
