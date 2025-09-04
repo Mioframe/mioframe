@@ -1,9 +1,11 @@
 <script setup lang="ts">
-import { computed, toRefs, toValue } from 'vue';
+import { computed, toRefs, toValue, useTemplateRef, watchEffect } from 'vue';
 import { MDSymbol } from '../Icon';
-import { isNil } from 'es-toolkit';
+import { isNil, isUndefined } from 'es-toolkit';
 import { MDState } from '../State';
 import { toggleBoolean } from './toggleBoolean';
+import { sessionUniqueId } from '@shared/lib/uniqueId';
+import { MDPlainTooltip } from '../Tooltips';
 
 const props = withDefaults(
   defineProps<{
@@ -13,9 +15,11 @@ const props = withDefaults(
     modelValue?: boolean | undefined;
     id?: string;
     readonly?: boolean;
+    tooltip?: string;
   }>(),
   {
     modelValue: undefined,
+    id: () => sessionUniqueId('checkbox'),
   },
 );
 
@@ -46,18 +50,35 @@ const symbolName = computed(() =>
       : undefined,
 );
 
-const onClickContainer = () => {
+const onClickContainer = (e: MouseEvent) => {
+  e.preventDefault();
   emit('click');
 
   stateValue.value = toggleBoolean(stateValue.value, toValue(indeterminate));
+};
+
+const inputEl = useTemplateRef('inputEl');
+
+watchEffect(() => {
+  if (inputEl.value) {
+    inputEl.value.indeterminate =
+      indeterminate.value && isUndefined(stateValue.value);
+  }
+});
+
+const onKeypressContainer = ({ key }: KeyboardEvent) => {
+  if (['Enter', ' '].includes(key)) {
+    emit('click');
+
+    stateValue.value = toggleBoolean(stateValue.value, toValue(indeterminate));
+  }
 };
 </script>
 
 <template>
   <MDState
-    is="button"
-    :id="id"
-    type="button"
+    is="label"
+    :for="id"
     class="md md-checkbox"
     :class="{
       'md-checkbox_selected': stateValue === true,
@@ -67,9 +88,14 @@ const onClickContainer = () => {
       'md-checkbox_readonly': readonly,
     }"
     :disabled="disabled"
+    tabindex="0"
+    :aria-label="tooltip"
     @click="onClickContainer"
+    @keypress="onKeypressContainer"
   >
     <input
+      :id="id"
+      ref="inputEl"
       v-model="stateValue"
       type="checkbox"
       :disabled="disabled"
@@ -84,6 +110,8 @@ const onClickContainer = () => {
         :name="symbolName"
       />
     </div>
+
+    <MDPlainTooltip v-if="tooltip" :text="tooltip" />
   </MDState>
 </template>
 
@@ -118,7 +146,7 @@ const onClickContainer = () => {
 
   &__input {
     opacity: 0;
-    pointer-events: none;
+    /* pointer-events: none; */
     background-color: transparent;
     position: absolute;
   }
