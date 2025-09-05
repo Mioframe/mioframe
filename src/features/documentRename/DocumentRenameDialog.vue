@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, toRef, watchEffect } from 'vue';
+import { computed, ref, toRef, watchEffect } from 'vue';
 import { MDDialog } from '@shared/ui/Dialog';
 import { MDTextField } from '@shared/ui/TextField';
 import { useCFRDocument } from '@shared/lib/cfrDocument/useCFRDocument';
@@ -43,12 +43,16 @@ const onCancel = () => {
   stateName.value = undefined;
   emit('cancel');
 };
+
+const headline = computed(
+  () => `Rename "${content.value?.name ?? 'unknown'}" document`,
+);
 </script>
 
 <template>
   <MDDialog
     v-model:show="show"
-    headline="Rename Document"
+    :headline="headline"
     supporting-text="Change the document title or leave it as is."
     apply-label="Rename"
     cancel-label="Cancel"
