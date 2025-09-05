@@ -26,7 +26,7 @@ import {
 } from '@shared/lib/databaseDocument';
 import { zodIs } from '@shared/lib/validateZodScheme';
 import { MDDialog } from '@shared/ui/Dialog';
-import { useHover } from '@shared/lib/useHover';
+import { useLastHover } from '@shared/lib/useLastHover';
 
 const props = withDefaults(
   defineProps<{
@@ -141,7 +141,7 @@ const onApplySimpleFilter = () => {
   conditionValue.value = undefined;
 };
 
-const hovered = useHover(useCurrentElement());
+const hovered = useLastHover(useCurrentElement());
 
 const onClickRemove = () => {
   emit('clickRemove');

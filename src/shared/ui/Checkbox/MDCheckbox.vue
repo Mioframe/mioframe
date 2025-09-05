@@ -79,7 +79,7 @@ const onKeypressContainer = ({ key }: KeyboardEvent) => {
   <MDState
     is="label"
     :for="id"
-    class="md md-checkbox"
+    class="md-checkbox"
     :class="{
       'md-checkbox_selected': stateValue === true,
       'md-checkbox_indeterminate': isNil(stateValue),
@@ -117,13 +117,13 @@ const onKeypressContainer = ({ key }: KeyboardEvent) => {
 
 <style lang="css" scoped>
 .md-checkbox {
-  display: inline-flex;
-  justify-content: center;
-  align-items: center;
-  width: 40px;
-  height: 40px;
-  border-radius: 20px;
-  border: 0;
+  --md-state-display: inline-flex;
+  --md-state-justify-content: center;
+  --md-state-align-items: center;
+  --md-state-width: 40px;
+  --md-state-height: 40px;
+  --md-state-border-radius: 20px;
+  --md-state-border: 0;
 
   &__container {
     width: 18px;

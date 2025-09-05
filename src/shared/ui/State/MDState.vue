@@ -16,7 +16,7 @@ import { useFirstFocus } from '@shared/lib/useFirstFocus';
 import { useFocusIndicator } from './useFocusIndicator';
 import { useRipple } from './useRipple';
 import { usePressed } from './usePressed';
-import { useHover } from '@shared/lib/useHover';
+import { useLastHover } from '@shared/lib/useLastHover';
 
 const {
   is = 'div',
@@ -57,7 +57,7 @@ const { pressed: userPressed, durationPressedState } = usePressed(refEl);
 
 syncRefs(userPressed, pressedModel);
 
-const userHover = useHover(refEl);
+const userHover = useLastHover(refEl);
 
 const hoverModel = defineModel<boolean>('hover');
 
@@ -162,12 +162,35 @@ watchEffect(() => {
 
     <div class="md-state__target" />
 
-    <slot />
+    <div class="md-state__content">
+      <slot />
+    </div>
   </component>
 </template>
 
 <style lang="css" scoped>
 .md-state {
+  --md-state-display: initial;
+  --md-state-box-shadow: initial;
+  --md-state-outline-color: initial;
+
+  --md-state-align-items: initial;
+  --md-state-justify-content: initial;
+  --md-state-height: initial;
+  --md-state-min-height: initial;
+  --md-state-width: initial;
+  --md-state-min-width: initial;
+  --md-state-box-sizing: border-box;
+  --md-state-border-radius: initial;
+  --md-state-border: initial;
+  --md-state-border-width: initial;
+  --md-state-border-color: initial;
+  --md-state-border-style: initial;
+  --md-state-padding-top: initial;
+  --md-state-padding-right: initial;
+  --md-state-padding-bottom: initial;
+  --md-state-padding-left: initial;
+
   --md-state-bounding-height: 100%;
   --md-state-bounding-width: 100%;
   --md-content-color: inherit;
@@ -181,6 +204,15 @@ watchEffect(() => {
     calc(var(--md-state-bounding-height) + var(--md-state-target-offset) * 2),
     48px
   );
+
+  display: var(--md-state-display, initial);
+  width: var(--md-state-width);
+  min-width: var(--md-state-min-width);
+  box-shadow: var(--md-state-box-shadow);
+  border-radius: var(--md-state-border-radius);
+  outline-color: var(--md-state-outline-color);
+  padding: 0;
+  border: 0;
 
   user-select: none;
 
@@ -205,17 +237,38 @@ watchEffect(() => {
     transition-duration: var(--md-sys-motion-duration-short4, 0.2s);
   }
 
-  :deep() {
-    > *:not(.md-state__layer):not(.md-state__target):not(.md-ripple) {
-      position: relative;
-      z-index: 1;
-      --md-container-color: transparent;
-    }
+  &__content {
+    position: relative;
+    z-index: 1;
+    --md-container-color: transparent;
+    flex-grow: 1;
+    flex-shrink: 0;
+
+    display: var(--md-state-display);
+    align-items: var(--md-state-align-items);
+    justify-content: var(--md-state-justify-content);
+
+    height: var(--md-state-height);
+    min-height: var(--md-state-min-height);
+    width: var(--md-state-width);
+    min-width: var(--md-state-min-width);
+    box-sizing: var(--md-state-box-sizing);
+
+    border-radius: var(--md-state-border-radius);
+    border: var(--md-state-border);
+    border-width: var(--md-state-border-width);
+    border-color: var(--md-state-border-color);
+    border-style: var(--md-state-border-style);
+
+    padding-top: var(--md-state-padding-top);
+    padding-right: var(--md-state-padding-right);
+    padding-bottom: var(--md-state-padding-bottom);
+    padding-left: var(--md-state-padding-left);
   }
 
   &__target {
     position: absolute;
-    z-index: 0;
+    z-index: 1;
     width: var(--md-target-width);
     height: var(--md-target-height);
     border-radius: inherit;
@@ -251,7 +304,7 @@ watchEffect(() => {
   &:focus-visible,
   &.md-state_focused {
     outline: none;
-    z-index: 1;
+    z-index: 2;
 
     > .md-state__layer {
       background-color: rgb(from var(--md-content-color) r g b / 10%);
@@ -265,7 +318,7 @@ watchEffect(() => {
     opacity: 1 !important;
     /* transition-duration: 0s; */
     box-shadow: var(--md-sys-elevation-level2);
-    z-index: 1;
+    z-index: 2;
     border-radius: 6step !important;
 
     > .md-state__layer {

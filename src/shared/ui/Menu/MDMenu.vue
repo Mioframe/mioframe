@@ -199,7 +199,7 @@ const showSubmenu = ref<boolean>();
 <style lang="css" scoped>
 .md-menu {
   position: fixed;
-  z-index: 1;
+  z-index: 2;
   overflow-y: auto;
 
   border-radius: var(--md-sys-shape-corner-extra-small);
