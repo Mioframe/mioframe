@@ -17,6 +17,7 @@ import { MDOverlayTooltip } from '@shared/ui/Tooltips';
 import { toggleBoolean } from '@shared/ui/Checkbox';
 import type { AMDocHandle } from '@shared/lib/automerge';
 import { MDState } from '@shared/ui/State';
+import type { MaybeElement } from '@vueuse/core';
 
 const props = withDefaults(
   defineProps<{
@@ -84,7 +85,7 @@ watch(showEditForm, (showEditForm) => {
 
 useFirstFocus(refPopover, { initialValue: true });
 
-const inlineEl = useTemplateRef('inlineEl');
+const inlineEl = useTemplateRef<MaybeElement>('inlineEl');
 
 const onUpdateProperty = (v: DatabaseUnknownProperty) => {
   emit('update:property', v);

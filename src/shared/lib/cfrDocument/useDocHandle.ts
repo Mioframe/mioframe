@@ -18,7 +18,7 @@ import type { ReadonlyObjectDeep } from 'type-fest/source/readonly-deep';
 
 export type DocHandleRef = {
   docRef: UnknownRecord;
-  doc: () => Promise<ReadonlyObjectDeep<AMDoc> | undefined>;
+  doc: () => ReadonlyObjectDeep<AMDoc> | undefined;
   change: (callback: AMChangeFn) => void;
 };
 
@@ -53,8 +53,8 @@ const createDocHandleRefState = (docHandle: AMDocHandle): DocHandleRef => {
   /**
    * Чтение документа и актуализация состояния
    */
-  const doc = async () => {
-    const doc: AMDoc | undefined = await docHandle.doc();
+  const doc = () => {
+    const doc: AMDoc | undefined = docHandle.doc();
 
     programReplaceDocRef(doc);
 
