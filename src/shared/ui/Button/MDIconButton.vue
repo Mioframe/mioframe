@@ -132,6 +132,7 @@ const onClick = (e: MouseEvent) => {
     var(--md-icon-button-padding) - var(--md-icon-button-border-width)
   );
   border-radius: var(--md-icon-button-container-shape);
+  user-select: none;
 
   &__icon {
     display: inline-flex;

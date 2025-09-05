@@ -4,3 +4,4 @@ export { useDatabaseView } from './useDatabaseView';
 export { useDatabaseViewsMap } from './useDatabaseViewsMap';
 export { useDatabaseData } from './useDatabaseData';
 export { useDatabasePropertiesMap } from './useDatabasePropertiesMap';
+export { useDatabaseProperty } from './useDatabaseProperty';

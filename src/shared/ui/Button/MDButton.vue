@@ -90,6 +90,7 @@ defineEmits<{
   font-size: var(--md-sys-typescale-label-large-size);
   font-weight: var(--md-sys-typescale-label-large-weight);
   letter-spacing: var(--md-sys-typescale-label-large-tracking);
+  user-select: none;
 
   &__content {
     display: flex;

@@ -1,23 +1,44 @@
 <script setup lang="ts">
+import type { AMDocHandle } from '@shared/lib/automerge';
+import {
+  useDatabaseProperty,
+  type DatabasePropertyId,
+} from '@shared/lib/databaseDocument';
 import { MDCheckbox } from '@shared/ui/Checkbox';
 import { isBoolean } from 'es-toolkit';
-import { computed } from 'vue';
+import { computed, toRefs } from 'vue';
+import { zodBooleanProperty } from './boolean';
 
-const { value } = defineProps<{
+const props = defineProps<{
   value: unknown;
   editable?: boolean;
-  name: string;
+  docHandle: AMDocHandle;
+  propertyId: DatabasePropertyId;
 }>();
+
+const { value, docHandle, propertyId } = toRefs(props);
 
 const emit = defineEmits<{ click: [] }>();
 
-const convertedValue = computed(() => (isBoolean(value) ? value : undefined));
+const { property } = useDatabaseProperty(
+  docHandle,
+  propertyId,
+  zodBooleanProperty,
+);
+
+const name = computed(() => property.value?.name);
+
+const indeterminate = computed(() => property.value?.indeterminate);
+
+const convertedValue = computed(() =>
+  isBoolean(value.value) ? value.value : property.value?.default,
+);
 </script>
 
 <template>
   <MDCheckbox
     :model-value="convertedValue"
-    indeterminate
+    :indeterminate="indeterminate"
     :readonly="!editable"
     :tooltip="name"
     @click="emit('click')"
