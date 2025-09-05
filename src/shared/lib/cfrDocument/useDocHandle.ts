@@ -30,7 +30,7 @@ const createDocHandleRefState = (docHandle: AMDocHandle): DocHandleRef => {
    */
   const programReplaceDocRef = (doc: AMDoc | undefined) => {
     if (doc) {
-      deepReplaceJsonObject(docRef.value, doc);
+      deepReplaceJsonObject(docRef.value, doc, { trimString: true });
     } else {
       docRef.value = {};
     }
