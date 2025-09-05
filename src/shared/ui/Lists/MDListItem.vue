@@ -35,7 +35,7 @@ const onClick = (e: MouseEvent) => {
 <template>
   <MDState
     :is="is"
-    class="md md-list-item"
+    class="md-list-item"
     :draggable="draggable"
     :type="type"
     :disable-ripple="is === 'li'"
@@ -88,15 +88,18 @@ const onClick = (e: MouseEvent) => {
   --md-target-offset: 0px;
   --md-focus-indicator-offset: -2px;
 
-  display: flex;
-  padding: 8px var(--horizontal-gap);
-  align-items: center;
+  --md-state-display: flex;
+  --md-state-padding-top: 8px;
+  --md-state-padding-right: var(--horizontal-gap);
+  --md-state-padding-bottom: 8px;
+  --md-state-padding-left: var(--horizontal-gap);
+  --md-state-align-items: center;
+  --md-state-min-height: var(--min-height);
+  --md-state-box-sizing: border-box;
+  --md-state-border-radius: var(--border-radius);
+  --md-state-border-width: 0;
   font-family: var(--md-sys-typescale-body-large-font);
-  min-height: var(--min-height);
-  box-sizing: border-box;
   text-align: start;
-  border-radius: var(--border-radius);
-  border-width: 0;
 
   &:first-child {
     border-top-right-radius: max(
@@ -108,6 +111,7 @@ const onClick = (e: MouseEvent) => {
       var(--md-list-container-border-radius, 0px)
     );
   }
+
   &:last-child {
     border-bottom-right-radius: max(
       var(--border-radius),

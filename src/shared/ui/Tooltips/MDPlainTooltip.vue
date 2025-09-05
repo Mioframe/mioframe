@@ -5,11 +5,11 @@ import type { MaybeElement } from '@vueuse/core';
 import {
   refDebounced,
   unrefElement,
+  useElementHover,
   useEventListener,
   useParentElement,
 } from '@vueuse/core';
 import { autoUpdate, flip, offset, shift, useFloating } from '@floating-ui/vue';
-import { useHover } from '@shared/lib/useHover';
 import { TeleportContainer } from '@shared/lib/teleportContainer';
 
 const props = withDefaults(
@@ -59,7 +59,7 @@ const { floatingStyles: tooltipStyle, update } = useFloating(
 
 useEventListener(window.visualViewport, 'resize', update);
 
-const hovered = useHover(targetElementRef);
+const hovered = useElementHover(targetElementRef);
 
 const show = refDebounced(hovered, 1.5e3);
 </script>

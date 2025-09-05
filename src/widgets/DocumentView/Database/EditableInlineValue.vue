@@ -137,7 +137,7 @@ const onUpdateProperty = (v: DatabaseUnknownProperty) => {
   text-decoration-color: transparent;
   transition-property: text-decoration-color;
   transition-duration: 0.1s;
-  border-radius: 1step;
+  --md-state-border-radius: 1step;
 
   &:hover {
     text-decoration-color: rgb(from var(--md-content-color) r g b / 0.5);

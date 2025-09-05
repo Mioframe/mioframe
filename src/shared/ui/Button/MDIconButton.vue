@@ -61,7 +61,7 @@ const onClick = (e: MouseEvent) => {
     is="button"
     :disabled="disabled"
     :type="formAction ?? 'button'"
-    class="md md-icon-button"
+    class="md-icon-button"
     :class="[
       `md-icon-button_color-${color}`,
       `md-icon-button_type-${type}`,
@@ -113,25 +113,26 @@ const onClick = (e: MouseEvent) => {
   --md-icon-button-border-width: 0px;
   --md-icon-button-padding: 0px;
 
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  vertical-align: middle;
-  border: 0;
-  padding: 0;
-  border-width: var(--md-icon-button-border-width);
-  box-sizing: content-box;
-  height: calc(
+  --md-state-display: inline-flex;
+  --md-state-align-items: center;
+  --md-state-justify-content: center;
+  --md-state-border: 0;
+  --md-state-border-width: var(--md-icon-button-border-width);
+  --md-state-box-sizing: content-box;
+  --md-state-height: calc(
     var(--md-icon-button-container-height) -
       (var(--md-icon-button-border-width) * 2)
   );
-  padding-left: calc(
+  --md-state-padding-top: 0;
+  --md-state-padding-bottom: 0;
+  --md-state-padding-left: calc(
     var(--md-icon-button-padding) - var(--md-icon-button-border-width)
   );
-  padding-right: calc(
+  --md-state-padding-right: calc(
     var(--md-icon-button-padding) - var(--md-icon-button-border-width)
   );
-  border-radius: var(--md-icon-button-container-shape);
+  --md-state-border-radius: var(--md-icon-button-container-shape);
+  vertical-align: middle;
   user-select: none;
 
   &__icon {
@@ -194,21 +195,21 @@ const onClick = (e: MouseEvent) => {
   }
 
   &_color-outlined {
-    border-style: solid;
-    border-color: var(--md-sys-color-outline);
+    --md-state-border-style: solid;
+    --md-state-border-color: var(--md-sys-color-outline);
     --md-icon-button-border-width: 1px;
     --md-container-color: transparent;
     --md-content-color: var(--md-sys-color-on-surface-variant);
     --md-symbol-fill: 1;
 
     &.md-icon-button_type-toggle {
-      border-color: var(--md-sys-color-outline);
+      --md-state-border-color: var(--md-sys-color-outline);
       --md-container-color: transparent;
       --md-content-color: var(--md-sys-color-on-surface-variant);
       --md-symbol-fill: 0;
 
       &.md-icon-button_selected {
-        border-color: var(--md-container-color);
+        --md-state-border-color: var(--md-container-color);
         --md-container-color: var(--md-sys-color-inverse-surface);
         --md-content-color: var(--md-sys-color-inverse-on-surface);
         --md-symbol-fill: 1;

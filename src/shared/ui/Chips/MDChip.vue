@@ -76,18 +76,21 @@ const onClickClose = (e: MouseEvent) => {
 <style lang="css" scoped>
 .md-chip {
   position: relative;
-  display: inline-flex;
-  align-items: center;
   vertical-align: middle;
-  border-radius: var(--md-sys-shape-corner-small);
-  height: 32dp;
-  border-color: var(--md-sys-color-outline-variant);
-  border-width: 1dp;
-  border-style: solid;
-  padding: 0 16px;
   cursor: pointer;
   flex-shrink: 0;
-  min-width: 88dp;
+  --md-state-display: inline-flex;
+  --md-state-align-items: center;
+  --md-state-border-radius: var(--md-sys-shape-corner-small);
+  --md-state-height: 32dp;
+  --md-state-border-color: var(--md-sys-color-outline-variant);
+  --md-state-border-width: 1dp;
+  --md-state-border-style: solid;
+  --md-state-padding-top: 0;
+  --md-state-padding-right: 16px;
+  --md-state-padding-bottom: 0;
+  --md-state-padding-left: 16px;
+  --md-state-min-width: 88dp;
   --md-content-color: var(--md-sys-color-on-surface);
 
   &__label-text {
@@ -149,20 +152,20 @@ const onClickClose = (e: MouseEvent) => {
   }
 
   &_elevated {
-    box-shadow: var(--md-sys-elevation-level1);
     z-index: 1;
+    --md-state-box-shadow: var(--md-sys-elevation-level1);
     --md-container-color: var(--md-sys-color-surface-container-low);
 
     &.md-chip_disabled,
     &:disabled {
-      box-shadow: var(--md-sys-elevation-level0);
+      --md-state-box-shadow: var(--md-sys-elevation-level0);
       --md-container-color: rgb(
         from var(--md-sys-color-on-surface) / r g b 0.12
       );
     }
 
     &:hover {
-      box-shadow: var(--md-sys-elevation-level2);
+      --md-state-box-shadow: var(--md-sys-elevation-level2);
     }
   }
 
@@ -172,8 +175,8 @@ const onClickClose = (e: MouseEvent) => {
     &.md-chip_selected {
       --md-content-color: var(--md-sys-color-on-secondary-container);
       --md-container-color: var(--md-sys-color-secondary-container);
-      border-color: var(--md-sys-color-secondary-container);
-      border-width: 0;
+      --md-state-border-color: var(--md-sys-color-secondary-container);
+      --md-state-border-width: 0;
     }
 
     &.md-chip_elevated {
@@ -200,8 +203,10 @@ const onClickClose = (e: MouseEvent) => {
   :disabled {
     --md-content-color: rgb(var(--md-sys-color-on-surface) / r g b 0.38);
     pointer-events: none;
-    border-color: rgb(from var(--md-sys-color-on-surface) / r g b 0.12);
-    box-shadow: var(--md-sys-elevation-level0);
+    --md-state-border-color: rgb(
+      from var(--md-sys-color-on-surface) / r g b 0.12
+    );
+    --md-state-box-shadow: var(--md-sys-elevation-level0);
   }
 }
 </style>
