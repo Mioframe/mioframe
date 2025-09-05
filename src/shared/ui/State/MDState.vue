@@ -7,6 +7,8 @@ import {
   syncRef,
   syncRefs,
   tryOnScopeDispose,
+  useCssVar,
+  useElementBounding,
   useEventListener,
 } from '@vueuse/core';
 import { useTemplateRef, computed, ref, watchEffect } from 'vue';
@@ -120,6 +122,22 @@ tryOnScopeDispose(() => {
 });
 
 useRipple(computed(() => (enableRipple.value ? refEl.value : undefined)));
+
+const { height: boundingHeight, width: boundingWidth } = useElementBounding(
+  refEl,
+  { windowScroll: false },
+);
+
+const boundHeightCss = useCssVar('--md-state-bounding-height', refEl);
+const boundWidthCss = useCssVar('--md-state-bounding-width', refEl);
+
+watchEffect(() => {
+  boundHeightCss.value = `${boundingHeight.value}px`;
+});
+
+watchEffect(() => {
+  boundWidthCss.value = `${boundingWidth.value}px`;
+});
 </script>
 
 <template>
@@ -150,11 +168,19 @@ useRipple(computed(() => (enableRipple.value ? refEl.value : undefined)));
 
 <style lang="css" scoped>
 .md-state {
+  --md-state-bounding-height: 100%;
+  --md-state-bounding-width: 100%;
   --md-content-color: inherit;
   --md-container-color: inherit;
   --md-state-target-offset: var(--md-target-offset, 4px);
-  --md-target-width: max(calc(100% + var(--md-state-target-offset) * 2), 48px);
-  --md-target-height: max(calc(100% + var(--md-state-target-offset) * 2), 48px);
+  --md-target-width: max(
+    calc(var(--md-state-bounding-width) + var(--md-state-target-offset) * 2),
+    48px
+  );
+  --md-target-height: max(
+    calc(var(--md-state-bounding-height) + var(--md-state-target-offset) * 2),
+    48px
+  );
 
   user-select: none;
 
@@ -168,11 +194,10 @@ useRipple(computed(() => (enableRipple.value ? refEl.value : undefined)));
   &__layer {
     display: block;
     position: absolute;
-    z-index: 0;
-    top: 0;
-    right: 0;
-    bottom: 0;
-    left: 0;
+    z-index: 1;
+    inset: 0;
+    width: var(--md-state-bounding-width);
+    height: var(--md-state-bounding-height);
     border-radius: inherit;
     background: none;
     background-color: rgb(from var(--md-content-color) r g b / 0);
@@ -180,9 +205,12 @@ useRipple(computed(() => (enableRipple.value ? refEl.value : undefined)));
     transition-duration: var(--md-sys-motion-duration-short4, 0.2s);
   }
 
-  :deep(> *) {
-    z-index: 0;
-    --md-container-color: transparent;
+  :deep() {
+    > *:not(.md-state__layer):not(.md-state__target):not(.md-ripple) {
+      position: relative;
+      z-index: 1;
+      --md-container-color: transparent;
+    }
   }
 
   &__target {
@@ -192,8 +220,8 @@ useRipple(computed(() => (enableRipple.value ? refEl.value : undefined)));
     height: var(--md-target-height);
     border-radius: inherit;
     background: transparent;
-    top: 50%;
-    left: 50%;
+    top: calc(var(--md-state-bounding-height) / 2);
+    left: calc(var(--md-state-bounding-width) / 2);
     transform: translate(-50%, -50%);
   }
 
