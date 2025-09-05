@@ -48,12 +48,7 @@ const showModel = defineModel<boolean>('show', { required: true });
 
 const formEl = useTemplateRef('formEl');
 
-const { showOverlay, dialogContainer } = useOverlay(
-  formEl,
-  headline,
-  showModel,
-  'dialog',
-);
+const { dialogContainer } = useOverlay(formEl, showModel, 'dialog');
 
 const onSubmit = () => {
   if (!loading.value) {
@@ -64,11 +59,11 @@ const onSubmit = () => {
 const onCancel = () => {
   if (!loading.value && hasCancelAction.value) {
     emit('cancel');
-    showOverlay.value = false;
+    showModel.value = false;
   }
 };
 
-watch([showOverlay, showModel], ([showOverlay, showModel]) => {
+watch([showModel, showModel], ([showOverlay, showModel]) => {
   if (!showOverlay && showModel) {
     onCancel();
   }
@@ -84,8 +79,8 @@ const dialogTitleId = sessionUniqueId('dialogTitle');
 <template>
   <TeleportContainer :to="dialogContainer">
     <dialog
-      v-if="showOverlay"
-      :open="showOverlay"
+      v-if="showModel"
+      :open="showModel"
       class="md-dialog md-dialog__scrim"
       :class="[
         {

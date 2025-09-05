@@ -6,6 +6,7 @@ import { createHead } from '@unhead/vue/client';
 import { router } from './router';
 import { setupPlayground } from '@shared/lib/playground';
 import { playgroundPages } from './playgroundPages';
+import { backNavigationHandler as backNavigationHandler } from '@shared/lib/onBackNavigation';
 
 /**
  * Инициализация и настройка Vue приложения
@@ -37,6 +38,8 @@ export const setupApp = async (app: App = createApp(MainApp)) => {
       ],
     }),
   );
+
+  app.use(backNavigationHandler);
 
   return app;
 };

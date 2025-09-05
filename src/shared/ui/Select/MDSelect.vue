@@ -175,7 +175,6 @@ const selectId = sessionUniqueId('select');
 
     <MDMenu
       v-if="options.length && showMenu"
-      :id="selectId"
       v-model:show="showMenu"
       :target="fieldContainerRef"
       :btns="options"
