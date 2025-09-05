@@ -16,6 +16,7 @@ import type { DirectoryFSEntry } from '@shared/lib/fileSystem';
 import { MDOverlayTooltip } from '@shared/ui/Tooltips';
 import { toggleBoolean } from '@shared/ui/Checkbox';
 import type { AMDocHandle } from '@shared/lib/automerge';
+import { MDState } from '@shared/ui/State';
 
 const props = withDefaults(
   defineProps<{
@@ -91,9 +92,10 @@ const onUpdateProperty = (v: DatabaseUnknownProperty) => {
 </script>
 
 <template>
-  <a
+  <MDState
+    is="a"
     ref="inlineEl"
-    class="editable-inline-value md"
+    class="editable-inline-value"
     tabindex="0"
     @click="onClick"
   >
@@ -105,7 +107,7 @@ const onUpdateProperty = (v: DatabaseUnknownProperty) => {
       :directory="directory"
       @click="onClick"
     />
-  </a>
+  </MDState>
 
   <MDOverlayTooltip
     v-if="property"
@@ -134,6 +136,7 @@ const onUpdateProperty = (v: DatabaseUnknownProperty) => {
   text-decoration-color: transparent;
   transition-property: text-decoration-color;
   transition-duration: 0.1s;
+  border-radius: 1step;
 
   &:hover {
     text-decoration-color: rgb(from var(--md-content-color) r g b / 0.5);
