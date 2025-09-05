@@ -43,7 +43,7 @@ const typeClass = computed(() => {
   <MDState
     is="button"
     :aria-label="tooltip"
-    class="md md-fab"
+    class="md-fab"
     :class="[sizeClass, typeClass]"
     @click="$emit('click', $event)"
   >
@@ -69,14 +69,14 @@ const typeClass = computed(() => {
   --md-container-color: var(--md-fab-container-color);
   --md-content-color: var(--md-fab-icon-color);
 
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  width: var(--md-fab-container-size);
-  height: var(--md-fab-container-size);
-  border: 0;
-  border-radius: var(--md-fab-container-shape);
-  box-shadow: var(--md-sys-elevation-level3);
+  --md-state-display: flex;
+  --md-state-justify-content: center;
+  --md-state-align-items: center;
+  --md-state-width: var(--md-fab-container-size);
+  --md-state-height: var(--md-fab-container-size);
+  --md-state-border: 0;
+  --md-state-border-radius: var(--md-fab-container-shape);
+  --md-state-box-shadow: var(--md-sys-elevation-level3);
 
   &_primary {
     --md-fab-container-color: var(--md-sys-color-primary);
@@ -109,7 +109,7 @@ const typeClass = computed(() => {
   }
 
   &:hover {
-    box-shadow: var(--md-sys-elevation-level4);
+    --md-state-box-shadow: var(--md-sys-elevation-level4);
   }
 
   &__icon {

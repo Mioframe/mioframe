@@ -152,7 +152,9 @@ tryOnBeforeUnmount(() => {
         class="md-bottom-sheet-container__drag-handle"
         :aria-label="collapsedState ? undefined : 'close sheet'"
         @click="onClickDragHandle"
-      />
+      >
+        <span class="md-bottom-sheet-container__drag-pill" />
+      </MDState>
     </div>
 
     <slot />
@@ -214,29 +216,29 @@ tryOnBeforeUnmount(() => {
   }
 
   &__drag-handle {
-    height: var(--md-bottom-sheet-drag-height);
-    width: 100%;
-    border-radius: inherit;
+    --md-state-height: var(--md-bottom-sheet-drag-height);
+    --md-state-width: 100%;
+    --md-state-border-radius: var(--md-bottom-sheet-border-radius);
+    --md-state-display: flex;
+    --md-state-border: 0;
+  }
+
+  &__drag-pill {
     display: block;
-    border: 0;
-    &::after {
-      content: '';
-      display: block;
-      background-color: rgb(
-        from var(--md-sys-color-on-surface-variant) r g b / 0.4
-      );
-      width: 32px;
-      height: 4px;
-      border-radius: 2px;
-      margin: auto;
-    }
+    background-color: rgb(
+      from var(--md-sys-color-on-surface-variant) r g b / 0.4
+    );
+    width: 32px;
+    height: 4px;
+    border-radius: 2px;
+    margin: auto;
   }
 
   &__header {
     border-radius: var(--md-bottom-sheet-border-radius);
     position: sticky;
     top: 0;
-    z-index: 1;
+    z-index: 2;
     --md-container-color: var(--md-bottom-sheet-container-color);
     --md-content-color: var(--md-bottom-sheet-content-color);
     max-width: 640px;

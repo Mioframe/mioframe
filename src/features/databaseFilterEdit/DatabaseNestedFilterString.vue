@@ -27,7 +27,7 @@ import { MDSymbol } from '@shared/ui/Icon';
 import { MDDialog } from '@shared/ui/Dialog';
 import { useConditionMenu } from './conditionMenuList';
 import { omit } from 'es-toolkit';
-import { useHover } from '@shared/lib/useHover';
+import { useLastHover } from '@shared/lib/useLastHover';
 
 const props = withDefaults(
   defineProps<{
@@ -173,7 +173,7 @@ const addButtonLabel = computed(() =>
   property.value ? `add "${propertyName.value}"` : 'add',
 );
 
-const hovered = useHover(useCurrentElement());
+const hovered = useLastHover(useCurrentElement());
 
 const onClickRemove = () => {
   emit('clickRemove');

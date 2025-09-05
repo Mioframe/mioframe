@@ -36,7 +36,7 @@ defineEmits<{
     :aria-label="label"
     :disabled="disabled"
     :type="formAction"
-    class="md md-button"
+    class="md-button"
     :class="[
       `md-button_color-${color}`,
       `md-button_type-${type}`,
@@ -76,15 +76,16 @@ defineEmits<{
   --md-target-width: max(48px, 100%);
   --md-target-height: max(48px, 100%);
 
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
+  --md-state-display: inline-flex;
+  --md-state-align-items: center;
+  --md-state-justify-content: center;
+  --md-state-border: 0;
+  --md-state-border-radius: var(--md-button-border-radius);
+  --md-state-height: var(--md-button-height);
+  --md-state-padding-left: var(--md-button-padding);
+  --md-state-padding-right: var(--md-button-padding);
+
   vertical-align: middle;
-  border: 0;
-  border-radius: var(--md-button-border-radius);
-  height: var(--md-button-height);
-  padding-left: var(--md-button-padding);
-  padding-right: var(--md-button-padding);
   font-family: var(--md-sys-typescale-label-large-font);
   line-height: var(--md-sys-typescale-label-large-line-height);
   font-size: var(--md-sys-typescale-label-large-size);
@@ -138,7 +139,7 @@ defineEmits<{
   &.md-button_color-elevated {
     --md-container-color: var(--md-sys-color-surface-container-low);
     --md-content-color: var(--md-sys-color-primary);
-    box-shadow: var(--md-sys-elevation-level1);
+    --md-state-box-shadow: var(--md-sys-elevation-level1);
 
     &.md-button_type-toggle {
       --md-container-color: var(--md-sys-color-surface-container-low);
@@ -152,13 +153,13 @@ defineEmits<{
 
     &.md-state_disabled,
     &:disabled {
-      box-shadow: var(--md-sys-elevation-level0);
+      --md-state-box-shadow: var(--md-sys-elevation-level0);
     }
 
     &.md-state_hover,
     &:hover {
       --md-content-color: var(--md-sys-color-primary);
-      box-shadow: var(--md-sys-elevation-level2);
+      --md-state-box-shadow: var(--md-sys-elevation-level2);
 
       &.md-button_selected {
         --md-content-color: var(--md-sys-color-on-primary);
@@ -168,7 +169,7 @@ defineEmits<{
     &.md-state_focused,
     &:focus-visible {
       --md-content-color: var(--md-sys-color-primary);
-      box-shadow: var(--md-sys-elevation-level1);
+      --md-state-box-shadow: var(--md-sys-elevation-level1);
       z-index: 1;
 
       &.md-button_selected {
@@ -181,7 +182,7 @@ defineEmits<{
     --md-container-color: var(--md-sys-color-primary);
     --md-content-color: var(--md-sys-color-on-primary);
     --md-button-icon-color: var(--md-sys-color-on-primary);
-    box-shadow: var(--md-sys-elevation-level0);
+    --md-state-box-shadow: var(--md-sys-elevation-level0);
 
     &.md-button_type-toggle {
       --md-container-color: var(--md-sys-color-surface-container);
@@ -195,7 +196,7 @@ defineEmits<{
 
     &.md-state_hover,
     &:hover {
-      box-shadow: var(--md-sys-elevation-level1);
+      --md-state-box-shadow: var(--md-sys-elevation-level1);
       z-index: 1;
     }
   }
@@ -204,7 +205,7 @@ defineEmits<{
     --md-container-color: var(--md-sys-color-secondary-container);
     --md-content-color: var(--md-sys-color-on-secondary-container);
     --md-button-icon-color: var(--md-sys-color-on-secondary-container);
-    box-shadow: var(--md-sys-elevation-level0);
+    --md-state-box-shadow: var(--md-sys-elevation-level0);
 
     &.md-button_type-toggle {
       &.md-button_selected {
@@ -217,25 +218,25 @@ defineEmits<{
     &:hover {
       --md-content-color: var(--md-sys-color-on-secondary-container);
       --md-button-icon-color: var(--md-sys-color-on-secondary-container);
-      box-shadow: var(--md-sys-elevation-level1);
+      --md-state-box-shadow: var(--md-sys-elevation-level1);
       z-index: 1;
     }
 
     &:focus-visible,
     &.md-state_focused {
-      box-shadow: var(--md-sys-elevation-level0);
+      --md-state-box-shadow: var(--md-sys-elevation-level0);
       --md-content-color: var(--md-sys-color-on-secondary-container);
       --md-button-icon-color: var(--md-sys-color-on-secondary-container);
     }
   }
 
   &.md-button_color-outlined {
-    border-style: solid;
-    border-color: var(--md-sys-color-outline-variant);
-    border-width: 1px;
-    box-sizing: border-box;
+    --md-state-border-style: solid;
+    --md-state-border-color: var(--md-sys-color-outline-variant);
+    --md-state-border-width: 1px;
+    --md-state-box-sizing: border-box;
     --md-content-color: var(--md-sys-color-on-surface-variant);
-    box-shadow: var(--md-sys-elevation-level0);
+    --md-state-box-shadow: var(--md-sys-elevation-level0);
 
     &.md-button_type-toggle {
       &.md-button_selected {
@@ -246,14 +247,16 @@ defineEmits<{
 
     &.md-state_disabled,
     &:disabled {
-      outline-color: rgb(from var(--md-sys-color-on-surface) r g b / 0.12);
+      --md-state-outline-color: rgb(
+        from var(--md-sys-color-on-surface) r g b / 0.12
+      );
     }
 
     &.md-state_hover,
     &:hover {
       --md-content-color: var(--md-sys-color-primary);
       --button-icon-color: var(--md-sys-color-primary);
-      outline-color: var(--md-sys-color-outline);
+      --md-state-outline-color: var(--md-sys-color-outline);
     }
 
     &:focus-visible,
@@ -265,12 +268,12 @@ defineEmits<{
 
   &.md-button_color-text {
     --md-content-color: var(--md-sys-color-primary);
-    padding-left: 12px;
-    padding-right: 12px;
-    box-shadow: var(--md-sys-elevation-level0);
+    --md-state-padding-left: 12px;
+    --md-state-padding-right: 12px;
+    --md-state-box-shadow: var(--md-sys-elevation-level0);
 
     &.md-button_icon {
-      padding-right: 16px;
+      --md-state-padding-right: 16px;
     }
 
     &.md-state_hover,
