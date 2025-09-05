@@ -8,7 +8,7 @@ const emit = defineEmits<{
   cancel: [];
 }>();
 
-const show = defineModel<boolean>('show', { required: true });
+const showModel = defineModel<boolean>('show', { required: true });
 
 const errorText = ref<string>();
 
@@ -32,7 +32,7 @@ const onCancel = () => {
 };
 
 watchEffect(() => {
-  if (!show.value) {
+  if (!showModel.value) {
     resetState();
   }
 });
@@ -40,7 +40,7 @@ watchEffect(() => {
 
 <template>
   <MDDialog
-    v-model:show="show"
+    v-model:show="showModel"
     headline="Create a New Folder"
     apply-label="Create"
     cancel-label="Cancel"

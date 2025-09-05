@@ -18,7 +18,6 @@ import { onInteractionOutside } from '@shared/lib/onInteractionOutside';
 import { useFocusTrap } from '@vueuse/integrations/useFocusTrap';
 import { useKeyboardSearch } from '@shared/lib/useKeyboardSearch';
 import { isUndefined } from 'es-toolkit';
-import { sessionUniqueId } from '@shared/lib/uniqueId';
 import { autoUpdate, flip, shift, size, useFloating } from '@floating-ui/vue';
 import MDMenuItem from './MDMenuItem.vue';
 import { useOverlay } from '../Overlay';
@@ -31,19 +30,17 @@ const props = withDefaults(
     transition?: boolean;
     outsideIgnore?: MaybeElement[];
     disabledTeleport?: boolean;
-    id?: string | number;
     placement?: 'bottom-start' | 'right-start';
     ariaLabel?: string;
     role?: string;
   }>(),
   {
-    id: () => sessionUniqueId('menu'),
     placement: 'bottom-start',
     role: 'menu',
   },
 );
 
-const { target, btns, outsideIgnore, id, placement } = toRefs(props);
+const { target, btns, outsideIgnore, placement } = toRefs(props);
 
 const emit = defineEmits<{
   click: [menuItem: T];
@@ -104,13 +101,13 @@ const ignoreElements = computed(() => {
   return [target.value];
 });
 
-const { showOverlay } = useOverlay(listContainerEl, id, showModel, 'overlay');
+const {} = useOverlay(listContainerEl, showModel, 'overlay');
 
 onInteractionOutside(
   listContainerEl,
   () => {
     emit('interactionOutside');
-    showOverlay.value = false;
+    showModel.value = false;
   },
   {
     ignore: ignoreElements,
@@ -129,7 +126,7 @@ const { activate: activateMenuFocusTrap, deactivate: deactivateMenuFocusTrap } =
   });
 
 watch(
-  [showOverlay, listContainerEl],
+  [showModel, listContainerEl],
   ([showQuery, listContainerEl]) => {
     if (listContainerEl) {
       if (showQuery) {
@@ -163,7 +160,7 @@ const foundRef = computed(() =>
 );
 
 watchEffect(() => {
-  if (showOverlay.value) {
+  if (showModel.value) {
     const foundEl = toValue(foundRef);
 
     if (foundEl instanceof HTMLElement) {
@@ -179,7 +176,7 @@ const showSubmenu = ref<boolean>();
   <TeleportContainer :to="targetTeleport" :disabled="disabledTeleport">
     <MDListContainer
       is="div"
-      v-if="showOverlay"
+      v-if="showModel"
       ref="listContainerEl"
       class="md md-menu"
       :style="containerStyle"
