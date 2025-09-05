@@ -112,6 +112,9 @@ export const useOverlayNavigationState = createGlobalState(() => {
   return { useOverlay, stack: stackQuery };
 });
 
+/**
+ * @deprecated
+ */
 export const useOverlayNavigation = (id: Ref<PropertyKey>) => {
   const { useOverlay } = useOverlayNavigationState();
 

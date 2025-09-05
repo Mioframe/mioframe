@@ -59,7 +59,6 @@ const onClickItem = () => {
 
   <MDMenu
     v-if="item.submenu?.length"
-    :id="item.key"
     v-model:show="showSubmenu"
     :btns="item.submenu"
     :target="listItemEl"

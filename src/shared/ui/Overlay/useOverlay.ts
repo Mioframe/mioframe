@@ -1,17 +1,10 @@
 import { useOnEscapeKeyStacked } from '@shared/lib/useOnEscapeKeyStacked';
-import { useOverlayNavigation } from '@shared/lib/useOverlayNavigation';
-import {
-  tryOnBeforeUnmount,
-  tryOnScopeDispose,
-  type MaybeElement,
-} from '@vueuse/core';
+import { tryOnBeforeUnmount, type MaybeElement } from '@vueuse/core';
 import { useFocusTrap } from '@vueuse/integrations/useFocusTrap.mjs';
 import type { MaybeRef } from 'vue';
 import { computed, nextTick, toValue, watch, type Ref } from 'vue';
 import { useMonitorOpenDialog } from '../Dialog/Alert';
-import { toString } from 'es-toolkit/compat';
-
-const uniqueLabelSet = new Set<string>();
+import { onBackNavigation } from '@shared/lib/onBackNavigation';
 
 /**
  * Добавляет оверлею навигацию, закрытие по Escape и фокус-трап.
@@ -23,30 +16,9 @@ const uniqueLabelSet = new Set<string>();
  */
 export const useOverlay = (
   container: Ref<MaybeElement>,
-  uniqueLabel: Ref<string | number>,
   showModel: Ref<boolean>,
   mode: MaybeRef<'overlay' | 'dialog'> = 'overlay',
 ) => {
-  const lowercasedLabel = computed(() =>
-    toString(uniqueLabel.value).trim().toLowerCase(),
-  );
-
-  watch(
-    lowercasedLabel,
-    (lowercasedLabel, old) => {
-      if (old) {
-        uniqueLabelSet.delete(old);
-      }
-      if (uniqueLabelSet.has(lowercasedLabel)) {
-        console.warn(
-          `useOverlay: uniqueLabel "${lowercasedLabel}" is not unique! It must be unique for each overlay/dialog on the page.`,
-        );
-      }
-      uniqueLabelSet.add(lowercasedLabel);
-    },
-    { immediate: true },
-  );
-
   const { activate: lockFocus, deactivate: unlockFocus } = useFocusTrap(
     container,
     {
@@ -54,12 +26,21 @@ export const useOverlay = (
     },
   );
 
-  const { show: showOverlay } = useOverlayNavigation(lowercasedLabel);
+  onBackNavigation(() => {
+    if (showModel.value) {
+      showModel.value = false;
+
+      if (toValue(mode) === 'dialog') {
+        return false;
+      }
+    }
+    return true;
+  });
 
   watch(
-    [showOverlay, container],
-    ([showOverlay, container]) => {
-      if (toValue(mode) === 'dialog' && showOverlay && container) {
+    [showModel, container],
+    ([showModel, container]) => {
+      if (toValue(mode) === 'dialog' && showModel && container) {
         void nextTick(() => {
           lockFocus();
         });
@@ -70,40 +51,19 @@ export const useOverlay = (
     { flush: 'post' },
   );
 
-  const showOverlayWatchHandle = watch(showOverlay, (showOverlay) => {
-    showWatchHandle.pause();
-    showModel.value = showOverlay;
-    void nextTick(showWatchHandle.resume);
-  });
-
-  const showWatchHandle = watch(
-    showModel,
-    (show) => {
-      showOverlayWatchHandle.pause();
-      showOverlay.value = show;
-      void nextTick(showOverlayWatchHandle.resume);
-    },
-    { immediate: true },
-  );
-
   const { dialogContainer } = useMonitorOpenDialog(
-    computed(() => (toValue(mode) === 'dialog' ? showOverlay.value : false)),
+    computed(() => (toValue(mode) === 'dialog' ? showModel.value : false)),
   );
 
   useOnEscapeKeyStacked(() => {
-    showOverlay.value = false;
+    showModel.value = false;
   });
 
   tryOnBeforeUnmount(() => {
     unlockFocus();
   });
 
-  tryOnScopeDispose(() => {
-    uniqueLabelSet.delete(lowercasedLabel.value);
-  });
-
   return {
-    showOverlay,
     dialogContainer,
   };
 };

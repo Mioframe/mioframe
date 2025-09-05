@@ -59,7 +59,6 @@ const idMenu = sessionUniqueId('menu');
 
   <MDMenu
     v-if="btns.length"
-    :id="idMenu"
     v-model:show="showMenu"
     :target="targetBtn"
     :btns="btns"

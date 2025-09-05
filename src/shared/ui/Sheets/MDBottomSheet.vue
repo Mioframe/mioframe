@@ -41,9 +41,8 @@ const bottomSheetContainerEl = useTemplateRef<MaybeElement>(
   'bottomSheetContainerEl',
 );
 
-const { showOverlay, dialogContainer } = useOverlay(
+const { dialogContainer } = useOverlay(
   bottomSheetContainerEl,
-  label,
   showModel,
   computed(() => (props.type === 'modal' ? 'dialog' : 'overlay')),
 );
@@ -54,7 +53,7 @@ const teleportTarget = computed(() =>
   props.type === 'modal' ? dialogContainer.value : undefined,
 );
 
-const showOverlayWatchHandle = watch(showOverlay, (showOverlay) => {
+const showOverlayWatchHandle = watch(showModel, (showOverlay) => {
   showWatchHandle.pause();
   showModel.value = showOverlay;
   void nextTick(showWatchHandle.resume);
@@ -64,7 +63,7 @@ const showWatchHandle = watch(
   showModel,
   (show) => {
     showOverlayWatchHandle.pause();
-    showOverlay.value = show;
+    showModel.value = show;
     void nextTick(showOverlayWatchHandle.resume);
   },
   { immediate: true },
