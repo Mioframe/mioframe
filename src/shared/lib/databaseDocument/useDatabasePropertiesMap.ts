@@ -30,7 +30,7 @@ export const useDatabasePropertiesMap = (
   ) => {
     await updateDatabaseDocument.value((d) => {
       if (d.properties[id]) {
-        deepReplaceJsonObject(d.properties[id], property);
+        deepReplaceJsonObject(d.properties[id], property, { trimString: true });
       } else {
         d.properties[id] = property;
       }

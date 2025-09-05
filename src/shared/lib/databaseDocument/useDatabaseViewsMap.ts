@@ -29,7 +29,7 @@ export const useDatabaseViewsMap = (
   const set = async (id: DatabaseViewId, view: DatabaseView) => {
     await updateDatabaseDocument.value((d) => {
       if (d.views[id]) {
-        deepReplaceJsonObject(d.views[id], view);
+        deepReplaceJsonObject(d.views[id], view, { trimString: true });
       } else {
         d.views[id] = view;
       }
