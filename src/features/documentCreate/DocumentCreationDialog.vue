@@ -24,7 +24,7 @@ const onCreate = () => {
 
   if (dType) {
     emit('create', {
-      name: stateName.value,
+      name: stateName.value.trim(),
       type: dType,
       version: 1,
       body: {},
