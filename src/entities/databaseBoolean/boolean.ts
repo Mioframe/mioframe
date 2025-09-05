@@ -6,7 +6,7 @@ export const PROPERTY_TYPE_BOOLEAN = 'boolean';
 
 export const zodBooleanProperty = extend(
   zodGeneralProperty(literal(PROPERTY_TYPE_BOOLEAN)),
-  { indeterminate: optional(boolean()) },
+  { indeterminate: optional(boolean()), default: optional(boolean()) },
 );
 
 export type BooleanProperty = output<typeof zodBooleanProperty>;

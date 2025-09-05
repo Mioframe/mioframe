@@ -32,8 +32,10 @@ export const deepReplaceJsonObject = <S extends object>(
           if (isUndefined(sourceValue)) {
             // eslint-disable-next-line @typescript-eslint/no-dynamic-delete -- `undefined` is not a valid JSON data type
             delete target[sourceKey];
-          }
-          if (isUnknownRecord(targetValue) && isUnknownRecord(sourceValue)) {
+          } else if (
+            isUnknownRecord(targetValue) &&
+            isUnknownRecord(sourceValue)
+          ) {
             deepReplaceJsonObject(targetValue, sourceValue, options);
           } else if (trimString && isString(sourceValue)) {
             target[sourceKey] = sourceValue.trim();
