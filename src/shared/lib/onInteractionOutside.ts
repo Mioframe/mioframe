@@ -33,7 +33,7 @@ const useDocumentEventListeners = createGlobalState(() => {
           listener(ev);
         });
       },
-      { capture: true },
+      { capture: true, passive: true },
     );
   };
 

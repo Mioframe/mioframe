@@ -5,10 +5,11 @@ import {
   useScroll,
   useWindowSize,
 } from '@vueuse/core';
-import { isBoolean, round, throttle } from 'es-toolkit';
+import { isBoolean, round } from 'es-toolkit';
 import { toNumber } from 'es-toolkit/compat';
 import { computed, toRefs, useTemplateRef, watch, watchEffect } from 'vue';
 import { MDState } from '../State';
+import { debounce } from 'perfect-debounce';
 
 const props = withDefaults(
   defineProps<{
@@ -45,9 +46,13 @@ const scrollYCssVar = useCssVar('--md-bottom-sheet-scroll-y', containerEl);
 
 watch(
   containerScrollY,
-  throttle((containerScrollY: number) => {
-    scrollYCssVar.value = `${round(containerScrollY)}px`;
-  }, 1e3 / 10),
+  debounce(
+    (containerScrollY: number) => {
+      scrollYCssVar.value = `${round(containerScrollY)}px`;
+    },
+    1e3 / 10,
+    { leading: true, trailing: true },
+  ),
 );
 
 const sheetWidthCssVar = useCssVar('--md-bottom-sheet-width', containerEl);
