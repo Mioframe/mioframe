@@ -7,8 +7,6 @@ import {
   syncRef,
   syncRefs,
   tryOnScopeDispose,
-  useCssVar,
-  useElementBounding,
   useEventListener,
 } from '@vueuse/core';
 import { useTemplateRef, computed, ref, watchEffect } from 'vue';
@@ -122,22 +120,6 @@ tryOnScopeDispose(() => {
 });
 
 useRipple(computed(() => (enableRipple.value ? refEl.value : undefined)));
-
-const { height: boundingHeight, width: boundingWidth } = useElementBounding(
-  refEl,
-  { windowScroll: false },
-);
-
-const boundHeightCss = useCssVar('--md-state-bounding-height', refEl);
-const boundWidthCss = useCssVar('--md-state-bounding-width', refEl);
-
-watchEffect(() => {
-  boundHeightCss.value = `${boundingHeight.value}px`;
-});
-
-watchEffect(() => {
-  boundWidthCss.value = `${boundingWidth.value}px`;
-});
 </script>
 
 <template>
@@ -290,8 +272,16 @@ watchEffect(() => {
   }
 
   &.md-state_hover {
+    will-change: border-radius;
+
     > .md-state__layer {
+      will-change: background-color;
+
       background-color: rgb(from var(--md-content-color) r g b / 8%);
+    }
+
+    > .md-state__content {
+      will-change: border-radius;
     }
   }
 
