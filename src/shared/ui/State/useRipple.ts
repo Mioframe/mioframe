@@ -7,7 +7,9 @@ import { computed } from 'vue';
 import { toNumber } from 'es-toolkit/compat';
 import { debounce } from 'perfect-debounce';
 
-const startRipple = ({
+const asyncRequestAnimationFrame = () => new Promise(requestAnimationFrame);
+
+const startRipple = async ({
   target,
   clientX,
   clientY,
@@ -48,6 +50,8 @@ const startRipple = ({
 
   const duration = parseDuration(durationString) ?? 200;
 
+  await asyncRequestAnimationFrame();
+
   const animate = rippleEl.animate(
     [
       {
@@ -82,7 +86,7 @@ export const useRipple = (rawEl: MaybeElementRef) => {
 
   const { vibrate } = useVibrate();
 
-  const onPressDown = ({
+  const onPressDown = async ({
     target,
     clientX,
     clientY,
@@ -100,7 +104,7 @@ export const useRipple = (rawEl: MaybeElementRef) => {
 
       vibrate([10]);
 
-      lastAnimation = startRipple({
+      lastAnimation = await startRipple({
         clientX,
         clientY,
         target,
@@ -130,7 +134,7 @@ export const useRipple = (rawEl: MaybeElementRef) => {
     el,
     'mousedown',
     ({ currentTarget: target, clientX, clientY }: MouseEvent) => {
-      onPressDown({ clientX, clientY, target });
+      void onPressDown({ clientX, clientY, target });
     },
   );
 
@@ -141,7 +145,7 @@ export const useRipple = (rawEl: MaybeElementRef) => {
       touches: [{ clientX, clientY }],
       currentTarget: target,
     }: TouchEvent) => {
-      onPressDown({ clientX, clientY, target });
+      void onPressDown({ clientX, clientY, target });
     },
     { passive: true },
   );
@@ -158,7 +162,7 @@ export const useRipple = (rawEl: MaybeElementRef) => {
     ({ currentTarget, key }: KeyboardEvent) => {
       if (key === ' ' || key === 'Enter') {
         if (currentTarget instanceof Element) {
-          onPressDown({ clientX: 0, clientY: 0, target: currentTarget });
+          void onPressDown({ clientX: 0, clientY: 0, target: currentTarget });
         }
       }
     },
