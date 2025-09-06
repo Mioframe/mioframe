@@ -2,14 +2,13 @@
 import {
   tryOnBeforeUnmount,
   useCssVar,
-  useScroll,
+  useEventListener,
   useWindowSize,
 } from '@vueuse/core';
-import { isBoolean, round } from 'es-toolkit';
+import { isBoolean, throttle } from 'es-toolkit';
 import { toNumber } from 'es-toolkit/compat';
-import { computed, toRefs, useTemplateRef, watch, watchEffect } from 'vue';
+import { computed, ref, toRefs, useTemplateRef, watch, watchEffect } from 'vue';
 import { MDState } from '../State';
-import { debounce } from 'perfect-debounce';
 
 const props = withDefaults(
   defineProps<{
@@ -37,22 +36,16 @@ defineSlots<{
 
 const containerEl = useTemplateRef('containerEl');
 
-const { arrivedState: containerArrivedState, y: containerScrollY } = useScroll(
+const containerScrollY = ref<number>(0);
+
+const collapsedState = computed(() => containerScrollY.value === 0);
+
+useEventListener(
   containerEl,
-  { throttle: 1e3 / 20, idle: 1e3 / 15 },
-);
-
-const scrollYCssVar = useCssVar('--md-bottom-sheet-scroll-y', containerEl);
-
-watch(
-  containerScrollY,
-  debounce(
-    (containerScrollY: number) => {
-      scrollYCssVar.value = `${round(containerScrollY)}px`;
-    },
-    1e3 / 10,
-    { leading: true, trailing: true },
-  ),
+  'scroll',
+  throttle(() => {
+    containerScrollY.value = containerEl.value?.scrollTop ?? 0;
+  }, 1e3 / 10),
 );
 
 const sheetWidthCssVar = useCssVar('--md-bottom-sheet-width', containerEl);
@@ -85,8 +78,6 @@ const onClickDragHandle = () => {
     }
   }
 };
-
-const collapsedState = computed(() => containerArrivedState.top);
 
 const { height: windowHeight } = useWindowSize();
 
@@ -174,7 +165,7 @@ tryOnBeforeUnmount(() => {
   --md-bottom-sheet-shadow: var(--md-sys-elevation-level1);
   --md-bottom-sheet-container-color: var(--md-sys-color-surface-container-low);
   --md-bottom-sheet-content-color: var(--md-sys-color-surface-on-container-low);
-  --md-bottom-sheet-scroll-y: unset;
+  --md-bottom-sheet-scroll-y: initial;
   --md-bottom-sheet-drag-height: 28px;
 
   --offset-for-shadow: 50vw;
