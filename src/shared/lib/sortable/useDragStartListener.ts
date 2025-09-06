@@ -46,16 +46,21 @@ export const useDragListener = (
     onDragStart?.({ target });
   };
 
-  useEventListener(targetEl, 'touchstart', (e) => {
-    if (!dragStarted) {
-      clearTimeout(pseudoDragStartTimeoutId);
-      pseudoDragStartTimeoutId = setTimeout(() => {
-        if (!dragStarted) {
-          onPseudoDragStart(e);
-        }
-      }, nativeDragStartResponseTimeout);
-    }
-  });
+  useEventListener(
+    targetEl,
+    'touchstart',
+    (e) => {
+      if (!dragStarted) {
+        clearTimeout(pseudoDragStartTimeoutId);
+        pseudoDragStartTimeoutId = setTimeout(() => {
+          if (!dragStarted) {
+            onPseudoDragStart(e);
+          }
+        }, nativeDragStartResponseTimeout);
+      }
+    },
+    { passive: true },
+  );
 
   useEventListener(targetEl, 'dragstart', (e: DragEvent) => {
     clearTimeout(pseudoDragStartTimeoutId);

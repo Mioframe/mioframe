@@ -101,9 +101,13 @@ const onCreate = async () => {
   }
 };
 
-const onCancel = () => {
+const resetState = () => {
   partialPropertyState.value = {};
   typeSelectModel.value = [];
+};
+
+const onCancel = () => {
+  resetState();
   emit('cancel');
 };
 
@@ -114,6 +118,12 @@ const onUpdateProperty = (v: DatabaseUnknownProperty) => {
     type: partialPropertyState.value.type,
   };
 };
+
+watchEffect(() => {
+  if (!showModel.value) {
+    resetState();
+  }
+});
 </script>
 
 <template>

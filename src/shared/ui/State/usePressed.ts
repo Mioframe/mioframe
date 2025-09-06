@@ -26,6 +26,7 @@ export const usePressed = (rawEl: MaybeElementRef) => {
         pressed.value = true;
       }
     },
+    { passive: true },
   );
 
   useEventListener(
