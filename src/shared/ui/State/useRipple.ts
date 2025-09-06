@@ -143,6 +143,7 @@ export const useRipple = (rawEl: MaybeElementRef) => {
     }: TouchEvent) => {
       onPressDown({ clientX, clientY, target });
     },
+    { passive: true },
   );
 
   useEventListener(

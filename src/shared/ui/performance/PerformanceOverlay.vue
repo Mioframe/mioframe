@@ -28,8 +28,8 @@ const memoryMb = computed(() =>
       v-if="fps !== undefined"
       class="performance-overlay__item"
       :class="{
-        'performance-overlay_alarm': 30 > fps,
-        'performance-overlay_warn': 45 > fps,
+        'performance-overlay_alarm': 50 > fps,
+        'performance-overlay_warn': 55 > fps,
       }"
     >
       fps: {{ fps }}
