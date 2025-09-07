@@ -6,6 +6,8 @@ import { computed, nextTick, toValue, watch, type Ref } from 'vue';
 import { useMonitorOpenDialog } from '../Dialog/Alert';
 import { onBackNavigation } from '@shared/lib/onBackNavigation';
 
+// FIXME: рефакторить в набор параметров для композиции оверлея
+
 /**
  * Добавляет оверлею навигацию, закрытие по Escape и фокус-трап.
  * @param container - контейнер, в котором нужно зафиксировать фокус
