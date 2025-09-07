@@ -9,7 +9,7 @@ import { isNil } from 'es-toolkit';
 
 const layerActionQueue = pLimit(1);
 
-export const useOverlayNavigationState = createGlobalState(() => {
+const useOverlayNavigationState = createGlobalState(() => {
   const router = useRouter();
   const route = useRoute();
 
