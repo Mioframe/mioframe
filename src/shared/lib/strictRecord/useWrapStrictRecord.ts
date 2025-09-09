@@ -11,7 +11,7 @@ import { useReduceIterable } from '../useReduce';
 type WrappedStrictRecordRef<K, V> = {
   get: (key: K) => V | undefined;
   has: (key: K) => boolean;
-  remove: (key: K) => boolean;
+  remove: (key: K) => void;
   set: (key: K, value: V) => void;
   forEach: (callbackfn: (value: V, key: K) => void) => void;
   size: number;

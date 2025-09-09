@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { MDListContainer, MDListItem } from '@shared/ui/Lists';
 import { useMountedDirectories } from './useMountedDirectories';
-import type { DirectoryFSEntry } from '@shared/lib/fileSystem';
+import { useWrapStrictRecord } from '@shared/lib/strictRecord';
 
 withDefaults(
   defineProps<{
@@ -13,17 +13,19 @@ withDefaults(
 );
 
 defineSlots<{
-  leadingIcon: (p: { name: string; directory: DirectoryFSEntry }) => unknown;
+  leadingIcon: (p: { name: string }) => unknown;
 }>();
 
 const emit = defineEmits<{
-  click: [directory: DirectoryFSEntry];
+  click: [name: string];
 }>();
 
-const { map: mountedDirectories } = useMountedDirectories();
+const { store } = useMountedDirectories();
 
-const onClickDirectory = (directory: DirectoryFSEntry) => {
-  emit('click', directory);
+const strictRecord = useWrapStrictRecord(store);
+
+const onClickDirectory = (name: string) => {
+  emit('click', name);
 };
 </script>
 
@@ -31,14 +33,13 @@ const onClickDirectory = (directory: DirectoryFSEntry) => {
   <MDListContainer>
     <MDListItem
       :is="is"
-      v-for="[name, { entry, description }] in mountedDirectories"
+      v-for="[name] in strictRecord?.entries"
       :key="name"
       :headline="name"
-      :supporting-text="description"
-      @click="onClickDirectory(entry)"
+      @click="onClickDirectory(name)"
     >
       <template #leadingIcon>
-        <slot name="leadingIcon" v-bind="{ name, directory: entry }" />
+        <slot name="leadingIcon" v-bind="{ name }" />
       </template>
     </MDListItem>
   </MDListContainer>

@@ -14,6 +14,7 @@ import {
   defineGlobalWeakCacheRef,
 } from '../globalWeakCache';
 import { useDirectoryFSEntryRef } from '../fileSystem/useDirectoryFSEntryRef';
+import type { AMDocHandle } from '../automerge';
 import { zodStrictDocumentId, type AMDocumentId } from '../automerge';
 import { isEqual } from 'es-toolkit';
 
@@ -91,7 +92,10 @@ const useDirectoryRepoCache = createGlobalWeakCache(
 
     const repoRefs = useRepoRef(repoState, directoryDocumentIds);
 
-    const map = computed(() => repoRefs.map ?? new Map());
+    const map = computed(
+      (): ReadonlyMap<AMDocumentId, AMDocHandle> =>
+        repoRefs.map ?? new Map<AMDocumentId, AMDocHandle>(),
+    );
 
     const directoryRepo: DirectoryRepo = reactive({
       map,
