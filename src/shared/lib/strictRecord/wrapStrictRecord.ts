@@ -2,6 +2,39 @@ import { isNil, isNotNil } from 'es-toolkit';
 import { hasOwnKey } from '../typeGuards/hasOwnKey';
 import type { StrictRecord } from './types';
 
+export const strictRecordSet = <K extends string, V>(
+  r: StrictRecord<K, V>,
+  key: K,
+  value: V,
+) => {
+  Object.assign(r, { [key]: value });
+};
+
+export const strictRecordRemove = <K extends string, V>(
+  r: StrictRecord<K, V>,
+  key: K,
+) => {
+  if (hasOwnKey(r, key)) {
+    // eslint-disable-next-line @typescript-eslint/no-dynamic-delete -- desired behavior
+    delete r[key];
+  }
+};
+
+export const strictRecordGet = <K extends string, V>(
+  r: StrictRecord<K, V>,
+  key: K,
+): V | undefined => {
+  if (hasOwnKey(r, key)) {
+    return r[key];
+  }
+  return undefined;
+};
+
+export interface WrapStrictRecordMutation<K extends string, V> {
+  set: (key: K, value: V) => void;
+  remove: (key: K) => void;
+}
+
 export interface ReadonlyWrapStrictRecord<K extends string, V> {
   entries: () => IterableIterator<[K, V]>;
   keys: () => IterableIterator<K>;
@@ -11,14 +44,24 @@ export interface ReadonlyWrapStrictRecord<K extends string, V> {
   forEach: (callbackfn: (value: V, key: K) => void) => void;
   [Symbol.iterator](): IterableIterator<[K, V]>;
   readonly size: number;
+
+  on: <N extends keyof WrapStrictRecordMutation<K, V>>(
+    name: N,
+    listener: (
+      ...args: Parameters<WrapStrictRecordMutation<K, V>[N]>
+    ) => unknown,
+  ) => () => void;
+  off: <N extends keyof WrapStrictRecordMutation<K, V>>(
+    name: N,
+    listener: (
+      ...args: Parameters<WrapStrictRecordMutation<K, V>[N]>
+    ) => unknown,
+  ) => void;
 }
 
 export interface WrapStrictRecord<K extends string, V>
-  extends ReadonlyWrapStrictRecord<K, V> {
-  set: (key: K, value: V) => void;
-  delete: (key: K) => boolean;
-  remove: (key: K) => boolean;
-}
+  extends ReadonlyWrapStrictRecord<K, V>,
+    WrapStrictRecordMutation<K, V> {}
 
 export const wrapStrictRecord = <K extends string, V>(
   collectionObj: StrictRecord<K, V>,
@@ -58,12 +101,7 @@ export const wrapStrictRecord = <K extends string, V>(
   const has = (key: K): boolean =>
     hasOwnKey(collectionObj, key) && !isNil(collectionObj[key]);
 
-  const get = (key: K): V | undefined => {
-    if (hasOwnKey(collectionObj, key) && collectionObj[key]) {
-      return collectionObj[key];
-    }
-    return undefined;
-  };
+  const get = (key: K): V | undefined => strictRecordGet(collectionObj, key);
 
   const forEach = (callbackfn: (value: V, key: K) => void) => {
     for (const [key, value] of entries()) {
@@ -72,17 +110,43 @@ export const wrapStrictRecord = <K extends string, V>(
   };
 
   const set = (key: K, value: V): void => {
-    Object.assign(collectionObj, { [key]: value });
+    strictRecordSet(collectionObj, key, value);
+    listeners.set.forEach((cb) => cb(key, value));
   };
 
   const remove = (key: K) => {
-    if (hasOwnKey(collectionObj, key)) {
-      // eslint-disable-next-line @typescript-eslint/no-dynamic-delete -- desired behavior
-      delete collectionObj[key];
-      return true;
-    }
+    strictRecordRemove(collectionObj, key);
+    listeners.remove.forEach((cb) => cb(key));
+  };
 
-    return false;
+  const listeners: {
+    [N in keyof WrapStrictRecordMutation<K, V>]: Set<
+      (...args: Parameters<WrapStrictRecordMutation<K, V>[N]>) => unknown
+    >;
+  } = {
+    remove: new Set(),
+    set: new Set(),
+  };
+
+  const off = <N extends keyof WrapStrictRecordMutation<K, V>>(
+    name: N,
+    listener: (
+      ...args: Parameters<WrapStrictRecordMutation<K, V>[N]>
+    ) => unknown,
+  ) => {
+    listeners[name].delete(listener);
+  };
+
+  const on = <N extends keyof WrapStrictRecordMutation<K, V>>(
+    name: N,
+    listener: (
+      ...args: Parameters<WrapStrictRecordMutation<K, V>[N]>
+    ) => unknown,
+  ) => {
+    listeners[name].add(listener);
+    return () => {
+      off(name, listener);
+    };
   };
 
   const wrap: WrapStrictRecord<K, V> = {
@@ -101,7 +165,9 @@ export const wrapStrictRecord = <K extends string, V>(
 
     set,
     remove,
-    delete: remove,
+
+    on,
+    off,
   };
 
   return wrap;

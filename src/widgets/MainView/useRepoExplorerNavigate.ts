@@ -1,7 +1,10 @@
 import type { AMDocHandle } from '@shared/lib/automerge';
 import { zodStrictDocumentId } from '@shared/lib/automerge';
 import { useDirectoryRepo } from '@shared/lib/cfrDocument';
-import type { DirectoryLocalEntry } from '@shared/lib/localFileSystem';
+import {
+  createLocalDirectory,
+  type DirectoryLocalEntry,
+} from '@shared/lib/localFileSystem';
 import { asyncComputed, createGlobalState } from '@vueuse/core';
 import type { PartialDeep, ReadonlyDeep } from 'type-fest';
 import type { ComputedRef } from 'vue';
@@ -97,10 +100,18 @@ export const useRepoExplorerNavigate = createGlobalState(
 
     const rootName = computed(() => path.value?.at(0));
 
-    const { get: getMountedDirectory } = useMountedDirectories();
+    const { get: getDirectoryHandle } = useMountedDirectories();
 
-    const rootEntry = computed(() =>
-      rootName.value ? getMountedDirectory(rootName.value)?.entry : undefined,
+    const getMountedDirectory = (name: string) => {
+      const handler = getDirectoryHandle(name);
+      if (handler) {
+        return createLocalDirectory(handler, undefined, name);
+      }
+      return undefined;
+    };
+
+    const rootEntry = computed((): DirectoryLocalEntry | undefined =>
+      rootName.value ? getMountedDirectory(rootName.value) : undefined,
     );
 
     const currentDirectory = asyncComputed(

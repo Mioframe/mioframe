@@ -2,6 +2,13 @@ import { cloneDeep, isNil, isString } from 'es-toolkit';
 import type { MergeDeep, PartialDeep } from 'type-fest';
 import { isObjectLike } from '../typeGuards';
 
+export const DELETE_MARKER = '__@DELETE_MARKER@__';
+
+export interface DeepPutJsonObjectOptions {
+  trimString?: boolean;
+  deleteMarker?: string;
+}
+
 /**
  * overwrites modified values from source to target
  * @param target - mutable object
@@ -10,21 +17,16 @@ import { isObjectLike } from '../typeGuards';
 export function deepPutJsonObject<
   T extends object,
   S extends PartialDeep<T> | object,
->(
-  target: T,
-  source: S,
-  options?: {
-    trimString?: boolean;
-  },
-): MergeDeep<T, S>;
+>(target: T, source: S, options?: DeepPutJsonObjectOptions): MergeDeep<T, S>;
 export function deepPutJsonObject<T extends object, S extends object>(
   target: T,
   source: S,
   options: {
     trimString?: boolean;
+    deleteMarker?: string;
   } = {},
 ): MergeDeep<T, S> {
-  const { trimString = false } = options;
+  const { trimString = false, deleteMarker = DELETE_MARKER } = options;
 
   (<(keyof typeof source)[]>Object.keys(source)).forEach((sourceKey) => {
     const sourceValue = source[sourceKey];
@@ -33,13 +35,13 @@ export function deepPutJsonObject<T extends object, S extends object>(
       // @ts-expect-error
       const targetValue: unknown = target[sourceKey];
       if (sourceValue !== targetValue) {
-        if (isObjectLike(targetValue) && isObjectLike(sourceValue)) {
-          deepPutJsonObject(targetValue, sourceValue);
-        } else if (isNil(sourceValue)) {
+        if (isNil(sourceValue) || sourceValue === deleteMarker) {
           // eslint-disable-next-line @typescript-eslint/ban-ts-comment -- everything is ok, it's just a deletion
           // @ts-expect-error
           // eslint-disable-next-line @typescript-eslint/no-dynamic-delete -- `undefined` is not a valid JSON data type
           delete target[sourceKey];
+        } else if (isObjectLike(targetValue) && isObjectLike(sourceValue)) {
+          deepPutJsonObject(targetValue, sourceValue, options);
         } else if (trimString && isString(sourceValue)) {
           // eslint-disable-next-line @typescript-eslint/ban-ts-comment -- replace property
           // @ts-expect-error

@@ -53,9 +53,11 @@ export const useOverlay = (
     { flush: 'post' },
   );
 
-  const { dialogContainer } = useMonitorOpenDialog(
-    computed(() => (toValue(mode) === 'dialog' ? showModel.value : false)),
+  const openLikeDialog = computed((): boolean =>
+    toValue(mode) === 'dialog' ? showModel.value : false,
   );
+
+  const { dialogContainer } = useMonitorOpenDialog(openLikeDialog);
 
   useOnEscapeKeyStacked(() => {
     showModel.value = false;
