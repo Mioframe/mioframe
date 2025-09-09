@@ -8,7 +8,7 @@ export const OPFSName = 'Origin private file system';
 export const OPFS = OPFSName;
 
 export const useMountDirectoryFromBrowser = () => {
-  const { mount: mount, map: mountedDirectories } = useMountedDirectories();
+  const { set: mount, store: mountedDirectories } = useMountedDirectories();
 
   const isSupportUserDirectory = toRef(
     () =>
@@ -30,10 +30,7 @@ export const useMountDirectoryFromBrowser = () => {
         mode: 'readwrite',
       });
 
-      mount({
-        fileSystemDirectoryHandle: directoryHandle,
-        description: 'user directory',
-      });
+      await mount(directoryHandle.name, directoryHandle);
     } else {
       addSnackbar({
         text: 'Your browser does not support the use of user directories',
@@ -55,15 +52,9 @@ export const useMountDirectoryFromBrowser = () => {
       await navigator.storage.persist();
     }
 
-    if (!mountedDirectories.value.has(OPFSName)) {
+    if (!(OPFSName in mountedDirectories.value)) {
       const directory = await navigator.storage.getDirectory();
-      mount(
-        {
-          fileSystemDirectoryHandle: directory,
-          description: 'local app directory',
-        },
-        OPFSName,
-      );
+      await mount(OPFSName, directory);
     }
   };
 

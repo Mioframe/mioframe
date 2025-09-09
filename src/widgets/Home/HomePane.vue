@@ -1,10 +1,9 @@
 <script setup lang="ts">
-import MountedDirectoriesList from '@entity/mountedDirectories/MountedDirectoriesList.vue';
+import { MountedDirectoriesList } from '@entity/mountedDirectories';
 import { MDFab, MDFabContainer } from '@shared/ui/Button';
 import { MDPaneContainer } from '@shared/ui/Layers';
 import { useMountDirectoryFromBrowser } from '@feature/mountDirectoryFromBrowser';
 import { useRepoExplorerNavigate } from '@widget/MainView/useRepoExplorerNavigate';
-import type { DirectoryFSEntry } from '@shared/lib/fileSystem';
 import { MDSymbol } from '@shared/ui/Icon';
 import { OPFSName } from '@feature/mountDirectoryFromBrowser/useMountDirectoryFromBrowser';
 
@@ -15,7 +14,7 @@ const onClickMountUserDirectory = async () => {
   await mountUserDirectory();
 };
 
-const onClickMountedDirectory = async ({ name }: DirectoryFSEntry) => {
+const onClickMountedDirectory = async (name: string) => {
   await openDirectory({ path: [name], document: undefined });
 };
 </script>

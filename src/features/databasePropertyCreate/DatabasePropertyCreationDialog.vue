@@ -103,7 +103,7 @@ const onCreate = async () => {
 
 const resetState = () => {
   partialPropertyState.value = {};
-  typeSelectModel.value = [];
+  typeSelectModel.value = [propertyTypeOptions[0]];
 };
 
 const onCancel = () => {

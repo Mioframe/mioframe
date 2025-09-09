@@ -25,7 +25,7 @@ export type RepoRef = {
   ) => void;
   remove: (documentId: AMDocumentId) => void;
   find: (documentList: AMDocumentId[] | Set<AMDocumentId>) => void;
-  map: ShallowReactive<Map<AMDocumentId, AMDocHandle>>;
+  map: ShallowReactive<ReadonlyMap<AMDocumentId, AMDocHandle>>;
 };
 
 const useRepoRefCacheApi = createGlobalWeakCache((repo: Repo): RepoRef => {

@@ -6,8 +6,6 @@ import type {
 import { zodDatabaseTypeDocument } from '../types';
 import { computed, reactive } from 'vue';
 import { type MaybeRef } from '@vueuse/core';
-import { useCFRDocument } from '../../cfrDocument/useCFRDocument';
-import { zodIs, zodSafeCheck } from '../../validateZodScheme';
 import {
   applyMigrateDatabaseBody,
   applyMigrateDatabaseDocument,
@@ -15,6 +13,8 @@ import {
 import type { AMDocHandle } from '@shared/lib/automerge/automergeTypes';
 import { databaseBodyMigrations } from '../migrations/bodyMigrations';
 import { isObject } from 'es-toolkit/compat';
+import { useCFRDocument } from '@shared/lib/cfrDocument/useCFRDocument';
+import { zodIs, zodSafeCheck } from '@shared/lib/validateZodScheme';
 
 export const useDatabaseDocument = (
   docHandleRef: MaybeRef<AMDocHandle | undefined>,

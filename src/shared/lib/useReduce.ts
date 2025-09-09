@@ -9,8 +9,10 @@
  * the efficiency of updating only one accumulator object.
  */
 
-import type { MaybeRefOrGetter, Ref } from 'vue';
-import { ref, toValue, watchEffect } from 'vue';
+import { tryOnScopeDispose } from '@vueuse/core';
+import { isUndefined } from 'es-toolkit';
+import type { MaybeRefOrGetter, Ref, WatchHandle } from 'vue';
+import { computed, ref, toValue, watchEffect } from 'vue';
 
 /**
  * Default clearer function to reset the accumulator.
@@ -70,23 +72,37 @@ export function useReduceIterable<A, T>(
   // Wrap the accumulator in a shallowRef to limit reactivity cost.
   const result = <Ref<A>>ref(initialValue);
 
-  watchEffect(() => {
-    // Clear the accumulator using the provided clearer, or the defaultClearer if none is provided.
-    (clearer ?? defaultClearer)(result.value);
+  let watchHandle: undefined | WatchHandle;
 
-    const sourceValue = toValue(source);
+  const initialWatchEffect = () => {
+    if (isUndefined(watchHandle)) {
+      watchHandle = watchEffect(() => {
+        // Clear the accumulator using the provided clearer, or the defaultClearer if none is provided.
+        (clearer ?? defaultClearer)(result.value);
 
-    let index = 0;
-    if (sourceValue) {
-      // Iterate over the source and update the accumulator in place.
-      for (const item of sourceValue) {
-        reducer(result.value, item, index);
-        index++;
-      }
+        const sourceValue = toValue(source);
+
+        let index = 0;
+        if (sourceValue) {
+          // Iterate over the source and update the accumulator in place.
+          for (const item of sourceValue) {
+            reducer(result.value, item, index);
+            index++;
+          }
+        }
+      });
     }
+  };
+
+  tryOnScopeDispose(() => {
+    watchHandle?.stop();
   });
 
-  return result;
+  return computed(() => {
+    initialWatchEffect();
+
+    return result.value;
+  });
 }
 
 export function useReduceRecord<A, K extends PropertyKey, V>(

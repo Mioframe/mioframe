@@ -110,12 +110,10 @@ export const useMonitorOpenDialog = (open: Ref<boolean>) => {
   watch(
     open,
     (open, old) => {
-      if (!isUndefined(old)) {
-        if (open) {
-          numberOfOpenDialogs.value += 1;
-        } else {
-          numberOfOpenDialogs.value -= 1;
-        }
+      if (open) {
+        numberOfOpenDialogs.value += 1;
+      } else if (!isUndefined(old)) {
+        numberOfOpenDialogs.value -= 1;
       }
     },
     { immediate: true },
