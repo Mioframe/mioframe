@@ -9,10 +9,7 @@ import type {
   AMDocHandleChangePayload,
   AMDocHandleDeletePayload,
 } from '../automerge/automergeTypes';
-import {
-  createGlobalWeakCache,
-  defineGlobalWeakCacheRef,
-} from '../globalWeakCache';
+import { createScopesWeakMap, defineScopesWeakMapRef } from '../scopesWeakMap';
 import { tryOnScopeDispose } from '@vueuse/core';
 import type { ReadonlyObjectDeep } from 'type-fest/source/readonly-deep';
 
@@ -102,8 +99,6 @@ const createDocHandleRefState = (docHandle: AMDocHandle): DocHandleRef => {
   return docHandleRef;
 };
 
-export const useDocHandleRefApi = createGlobalWeakCache(
-  createDocHandleRefState,
-);
+export const useDocHandleRefApi = createScopesWeakMap(createDocHandleRefState);
 
-export const useDocHandleRef = defineGlobalWeakCacheRef(useDocHandleRefApi);
+export const useDocHandleRef = defineScopesWeakMapRef(useDocHandleRefApi);

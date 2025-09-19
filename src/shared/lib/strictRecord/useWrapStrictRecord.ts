@@ -2,10 +2,7 @@ import type { MaybeRefOrGetter } from 'vue';
 import { computed, reactive } from 'vue';
 import { wrapStrictRecord } from './wrapStrictRecord';
 import type { StrictRecord } from './types';
-import {
-  createGlobalWeakCache,
-  useGlobalWeakCacheByKey,
-} from '../globalWeakCache';
+import { createScopesWeakMap, useScopesWeakMapByKey } from '../scopesWeakMap';
 import { useReduceIterable } from '../useReduce';
 
 type WrappedStrictRecordRef<K, V> = {
@@ -20,7 +17,7 @@ type WrappedStrictRecordRef<K, V> = {
   values: V[];
 };
 
-const wrapStrictRecordCache = createGlobalWeakCache(
+const wrapStrictRecordCache = createScopesWeakMap(
   <K extends string, V>(
     strictRecord: StrictRecord<K, V>,
   ): WrappedStrictRecordRef<K, V> => {
@@ -74,7 +71,7 @@ const wrapStrictRecordCache = createGlobalWeakCache(
 export const useWrapStrictRecord = <K extends string, V>(
   strictRecord: MaybeRefOrGetter<StrictRecord<K, V> | undefined>,
 ) =>
-  useGlobalWeakCacheByKey<StrictRecord<K, V>, WrappedStrictRecordRef<K, V>>(
+  useScopesWeakMapByKey<StrictRecord<K, V>, WrappedStrictRecordRef<K, V>>(
     wrapStrictRecordCache,
     strictRecord,
   );

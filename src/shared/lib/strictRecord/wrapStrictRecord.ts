@@ -23,11 +23,44 @@ export const strictRecordRemove = <K extends string, V>(
 export const strictRecordGet = <K extends string, V>(
   r: StrictRecord<K, V>,
   key: K,
+  checkOwn = false,
 ): V | undefined => {
-  if (hasOwnKey(r, key)) {
+  if (checkOwn && hasOwnKey(r, key)) {
     return r[key];
   }
-  return undefined;
+  return r[key];
+};
+
+export const strictRecordIterableKeys = <K extends string>(
+  obj: StrictRecord<K, unknown>,
+) =>
+  function* (): IterableIterator<K> {
+    for (const key in obj) {
+      if (hasOwnKey(obj, key) && !isNil(obj[key])) {
+        yield key;
+      }
+    }
+  };
+
+export const strictRecordIterableEntries = <K extends string, V>(
+  obj: StrictRecord<K, V>,
+) =>
+  function* (): IterableIterator<[K, V]> {
+    for (const key in obj) {
+      if (hasOwnKey(obj, key)) {
+        const item = obj[key];
+
+        if (item) {
+          yield [key, item];
+        }
+      }
+    }
+  };
+
+export const strictRecordClear = (obj: StrictRecord<string, unknown>) => {
+  for (const key in strictRecordIterableKeys(obj)) {
+    strictRecordRemove(obj, key);
+  }
 };
 
 export interface WrapStrictRecordMutation<K extends string, V> {
@@ -66,17 +99,7 @@ export interface WrapStrictRecord<K extends string, V>
 export const wrapStrictRecord = <K extends string, V>(
   collectionObj: StrictRecord<K, V>,
 ): WrapStrictRecord<K, V> => {
-  const entries = function* (): IterableIterator<[K, V]> {
-    for (const key in collectionObj) {
-      if (hasOwnKey(collectionObj, key)) {
-        const item = collectionObj[key];
-
-        if (item) {
-          yield [key, item];
-        }
-      }
-    }
-  };
+  const entries = strictRecordIterableEntries(collectionObj);
 
   const values = function* (): IterableIterator<V> {
     for (const key in collectionObj) {
@@ -90,13 +113,7 @@ export const wrapStrictRecord = <K extends string, V>(
     }
   };
 
-  const keys = function* (): IterableIterator<K> {
-    for (const key in collectionObj) {
-      if (hasOwnKey(collectionObj, key) && !isNil(collectionObj[key])) {
-        yield key;
-      }
-    }
-  };
+  const keys = strictRecordIterableKeys(collectionObj);
 
   const has = (key: K): boolean =>
     hasOwnKey(collectionObj, key) && !isNil(collectionObj[key]);

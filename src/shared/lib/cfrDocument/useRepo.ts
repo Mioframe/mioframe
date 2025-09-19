@@ -12,10 +12,7 @@ import {
 } from 'vue';
 import type { UnknownRecord } from 'type-fest';
 import type { AMDocHandle, AMDocumentId } from '../automerge/automergeTypes';
-import {
-  createGlobalWeakCache,
-  defineGlobalWeakCacheRef,
-} from '../globalWeakCache';
+import { createScopesWeakMap, defineScopesWeakMapRef } from '../scopesWeakMap';
 import { tryOnScopeDispose } from '@vueuse/core';
 import { isEqual, once, throttle } from 'es-toolkit';
 
@@ -28,7 +25,7 @@ export type RepoRef = {
   map: ShallowReactive<ReadonlyMap<AMDocumentId, AMDocHandle>>;
 };
 
-const useRepoRefCacheApi = createGlobalWeakCache((repo: Repo): RepoRef => {
+const useRepoRefCacheApi = createScopesWeakMap((repo: Repo): RepoRef => {
   const mapRef = shallowReactive<Map<AMDocumentId, AMDocHandle>>(new Map());
 
   const addDocToState = (docHandle: AMDocHandle) => {
@@ -113,7 +110,7 @@ const useRepoRefCacheApi = createGlobalWeakCache((repo: Repo): RepoRef => {
   return repoRef;
 });
 
-const useRepoCache = defineGlobalWeakCacheRef(useRepoRefCacheApi);
+const useRepoCache = defineScopesWeakMapRef(useRepoRefCacheApi);
 
 export const useRepoRef = (
   repo: MaybeRefOrGetter<Repo | undefined>,

@@ -27,7 +27,9 @@
       "@entity/*": ["./src/entities/*"],
       "@widget/*": ["./src/widgets/*"],
       "@/*": ["./src/*"]
-    }
+    },
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true
   },
   "include": ["env.d.ts", "src/**/*.ts", "src/**/*.tsx", "src/**/*.vue"],
   "vueCompilerOptions": {

@@ -1,26 +1,21 @@
-import type { AMDocHandle } from '@shared/lib/automerge';
+import { PATH_SEPARATOR } from '@shared/api/directories/useDirectoryContentService';
+import type { AMDocumentId } from '@shared/lib/automerge';
 import { zodStrictDocumentId } from '@shared/lib/automerge';
-import { useDirectoryRepo } from '@shared/lib/cfrDocument';
-import {
-  createLocalDirectory,
-  type DirectoryLocalEntry,
-} from '@shared/lib/localFileSystem';
-import { asyncComputed, createGlobalState } from '@vueuse/core';
+import type { EntryPath, EntryPathString } from '@shared/lib/fileSystem';
+import { zodEntryPath } from '@shared/lib/fileSystem/GeneralFSEntry';
+import { createGlobalState } from '@vueuse/core';
 import type { PartialDeep, ReadonlyDeep } from 'type-fest';
 import type { ComputedRef } from 'vue';
 import { computed, reactive, readonly } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import type { output } from 'zod/v4-mini';
-import { array, object, string } from 'zod/v4-mini';
-import { useMountedDirectories } from '@entity/mountedDirectories/useMountedDirectories';
-
-const zodPath = array(string());
+import { object } from 'zod/v4-mini';
 
 export interface RepoExplorerState {
   /**
    * Путь к директории
    */
-  path: output<typeof zodPath> | undefined;
+  path: EntryPath | undefined;
   /**
    * Выбранный документ в директории
    */
@@ -29,8 +24,9 @@ export interface RepoExplorerState {
 
 interface UseRepoExplorerState {
   state: ReadonlyDeep<RepoExplorerState>;
-  directoryEntry: ComputedRef<DirectoryLocalEntry | undefined>;
-  documentHandle: ComputedRef<AMDocHandle | undefined>;
+  directoryPath: ComputedRef<EntryPath | undefined>;
+  directoryPathString: ComputedRef<EntryPathString | undefined>;
+  documentId: ComputedRef<AMDocumentId | undefined>;
   up: () => Promise<void>;
   open: (state: RepoExplorerState) => Promise<void>;
   closeDocument: () => Promise<void>;
@@ -44,9 +40,10 @@ export const useRepoExplorerNavigate = createGlobalState(
     const path = computed(
       () =>
         object({
-          path: zodPath,
+          path: zodEntryPath,
         }).safeParse(route.query).data?.path,
     );
+
     const documentId = computed(
       () =>
         object({
@@ -98,57 +95,6 @@ export const useRepoExplorerNavigate = createGlobalState(
       await set(state, 'push');
     };
 
-    const rootName = computed(() => path.value?.at(0));
-
-    const { get: getDirectoryHandle } = useMountedDirectories();
-
-    const getMountedDirectory = (name: string) => {
-      const handler = getDirectoryHandle(name);
-      if (handler) {
-        return createLocalDirectory(handler, undefined, name);
-      }
-      return undefined;
-    };
-
-    const rootEntry = computed((): DirectoryLocalEntry | undefined =>
-      rootName.value ? getMountedDirectory(rootName.value) : undefined,
-    );
-
-    const currentDirectory = asyncComputed(
-      async () => {
-        const childPath = path.value?.slice(1);
-        const root = rootEntry.value;
-        if (root && childPath) {
-          let lastDirectory = root;
-          for (const name of childPath) {
-            const entry = await lastDirectory.get(name);
-            if (entry && 'get' in entry) {
-              lastDirectory = entry;
-            } else {
-              throw new Error(
-                `directory "${name}" not found in directory "${lastDirectory.name}"`,
-              );
-            }
-          }
-          return lastDirectory;
-        }
-        return undefined;
-      },
-      undefined,
-      {
-        lazy: true,
-        shallow: true,
-      },
-    );
-
-    const directoryRepo = useDirectoryRepo(currentDirectory);
-
-    const documentHandle = computed(() =>
-      documentId.value
-        ? directoryRepo.value?.map.get(documentId.value)
-        : undefined,
-    );
-
     const state: RepoExplorerState = reactive({
       path,
       document: documentId,
@@ -165,8 +111,13 @@ export const useRepoExplorerNavigate = createGlobalState(
 
     return {
       state: readonly(state),
-      directoryEntry: computed(() => currentDirectory.value),
-      documentHandle,
+      directoryPath: computed((): EntryPath | undefined =>
+        path.value?.length ? path.value : undefined,
+      ),
+      directoryPathString: computed((): EntryPathString | undefined =>
+        path.value?.join(PATH_SEPARATOR),
+      ),
+      documentId,
       up,
       open,
       closeDocument,

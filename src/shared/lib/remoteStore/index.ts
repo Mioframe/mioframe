@@ -1,8 +1,7 @@
 export {
-  useReactiveMapStore,
   type ReactiveMapStore,
   type WatchHandle,
-  useReactiveSetStore,
-  type ReactiveSetStore,
-} from './useReactiveStore';
-export { useRemoteMapStore, useRemoteSetStore } from './useRemoteStore';
+  defineSubscribeService as defineSubscribe,
+  defineSubscribeGetterValueService as defineSubscribeGetterValue,
+  defineSubscribeValueService as defineSubscribeValue,
+} from './subscribeService';

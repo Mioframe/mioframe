@@ -9,24 +9,22 @@ import { type DirectoryFSEntry } from '../fileSystem';
 import { zodIs } from '../validateZodScheme';
 import type { RepoRef } from './useRepo';
 import { useRepoRef } from './useRepo';
-import {
-  createGlobalWeakCache,
-  defineGlobalWeakCacheRef,
-} from '../globalWeakCache';
-import { useDirectoryFSEntryRef } from '../fileSystem/useDirectoryFSEntryRef';
+import { createScopesWeakMap, defineScopesWeakMapRef } from '../scopesWeakMap';
+import { useDirectoryFSEntryCacheRef } from '../fileSystem/useDirectoryFSEntryRef';
 import type { AMDocHandle } from '../automerge';
 import { zodStrictDocumentId, type AMDocumentId } from '../automerge';
 import { isEqual } from 'es-toolkit';
+import { strictRecordIterableEntries } from '../strictRecord/wrapStrictRecord';
 
 // FIXME: при удалении файла, не пропадает документ
 
 export interface DirectoryRepo extends RepoRef {}
 
-const useDirectoryRepoCache = createGlobalWeakCache(
+const useDirectoryRepoCache = createScopesWeakMap(
   (directory: DirectoryFSEntry): DirectoryRepo => {
     const repoState = shallowRef<Repo>();
 
-    const directoryRef = useDirectoryFSEntryRef(directory);
+    const directoryRef = useDirectoryFSEntryCacheRef(directory);
 
     const directoryDocumentIds = computed<AMDocumentId[]>(
       (oldState): AMDocumentId[] => {
@@ -35,7 +33,7 @@ const useDirectoryRepoCache = createGlobalWeakCache(
         const list: AMDocumentId[] = [];
 
         if (entriesMap) {
-          for (const [name] of entriesMap) {
+          for (const [name] of strictRecordIterableEntries(entriesMap)()) {
             if (zodIs(name, zodAutomergeFileName)) {
               const maybePartialKey = fileNameToPartialKey(name);
 
@@ -61,7 +59,7 @@ const useDirectoryRepoCache = createGlobalWeakCache(
       const entriesMap = directoryRef.value?.entries;
 
       if (entriesMap) {
-        for (const [name] of entriesMap) {
+        for (const [name] of strictRecordIterableEntries(entriesMap)()) {
           if (zodIs(name, zodAutomergeFileName)) {
             return true;
           }
@@ -122,4 +120,4 @@ const useDirectoryRepoCache = createGlobalWeakCache(
  * @param directory - директория для хранения документов
  * @returns
  */
-export const useDirectoryRepo = defineGlobalWeakCacheRef(useDirectoryRepoCache);
+export const useDirectoryRepo = defineScopesWeakMapRef(useDirectoryRepoCache);
