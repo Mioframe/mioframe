@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { MDListContainer, MDListItem } from '@shared/ui/Lists';
-import { useMountedDirectories } from './useMountedDirectories';
-import { useWrapStrictRecord } from '@shared/lib/strictRecord';
+import { useDirectoryStoreClient } from './useDirectoryStoreClient';
 
 withDefaults(
   defineProps<{
@@ -20,9 +19,7 @@ const emit = defineEmits<{
   click: [name: string];
 }>();
 
-const { store } = useMountedDirectories();
-
-const strictRecord = useWrapStrictRecord(store);
+const { rootList: nameList } = useDirectoryStoreClient();
 
 const onClickDirectory = (name: string) => {
   emit('click', name);
@@ -33,7 +30,7 @@ const onClickDirectory = (name: string) => {
   <MDListContainer>
     <MDListItem
       :is="is"
-      v-for="[name] in strictRecord?.entries"
+      v-for="name in nameList"
       :key="name"
       :headline="name"
       @click="onClickDirectory(name)"

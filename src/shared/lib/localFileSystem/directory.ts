@@ -187,6 +187,7 @@ export function createLocalDirectory(
 
   const currentDirectoryEntry: DirectoryLocalEntry = {
     ...currentEntry,
+    type: 'directory',
     createDirectory,
     writeFile,
     removeByName,

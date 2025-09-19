@@ -3,8 +3,13 @@ export { zodStrictRecord } from './zodStrictRecord';
 export {
   wrapStrictRecord,
   type WrapStrictRecord,
+  type ReadonlyWrapStrictRecord,
+  type WrapStrictRecordMutation,
   strictRecordGet,
   strictRecordRemove,
   strictRecordSet,
+  strictRecordClear,
+  strictRecordIterableEntries,
+  strictRecordIterableKeys,
 } from './wrapStrictRecord';
 export { useWrapStrictRecord } from './useWrapStrictRecord';

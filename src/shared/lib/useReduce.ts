@@ -13,6 +13,11 @@ import { tryOnScopeDispose } from '@vueuse/core';
 import { isUndefined } from 'es-toolkit';
 import type { MaybeRefOrGetter, Ref, WatchHandle } from 'vue';
 import { computed, ref, toValue, watchEffect } from 'vue';
+import type { StrictRecord } from './strictRecord';
+import {
+  strictRecordGet,
+  strictRecordIterableKeys,
+} from './strictRecord/wrapStrictRecord';
 
 /**
  * Default clearer function to reset the accumulator.
@@ -69,7 +74,6 @@ export function useReduceIterable<A, T>(
   initialValue: A,
   clearer?: (acc: A) => void,
 ): Ref<A> {
-  // Wrap the accumulator in a shallowRef to limit reactivity cost.
   const result = <Ref<A>>ref(initialValue);
 
   let watchHandle: undefined | WatchHandle;
@@ -131,6 +135,48 @@ export function useReduceRecord<A, K extends PropertyKey, V>(
   });
 
   return result;
+}
+
+export function useReduceStrictRecord<A, K extends string, V>(
+  source: MaybeRefOrGetter<StrictRecord<K, V> | undefined>,
+  reducer: (acc: A, value: V, key: K, index: number) => void,
+  initialValue: A,
+  clearer?: (acc: A) => void,
+): Readonly<Ref<A>> {
+  const result = <Ref<A>>ref(initialValue);
+
+  let watchHandle: undefined | WatchHandle;
+
+  const initialWatchEffect = () => {
+    if (isUndefined(watchHandle)) {
+      watchHandle = watchEffect(() => {
+        (clearer || defaultClearer)(result.value);
+
+        const s = toValue(source);
+
+        let index = 0;
+        if (s) {
+          for (const key of strictRecordIterableKeys(s)()) {
+            const value = strictRecordGet(s, key);
+            if (value) {
+              reducer(result.value, value, key, index);
+              index++;
+            }
+          }
+        }
+      });
+    }
+  };
+
+  tryOnScopeDispose(() => {
+    watchHandle?.stop();
+  });
+
+  return computed(() => {
+    initialWatchEffect();
+
+    return result.value;
+  });
 }
 
 export function useReduceMap<A, K, V>(

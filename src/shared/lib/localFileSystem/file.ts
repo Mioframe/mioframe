@@ -39,8 +39,9 @@ export const createLocalFile = (
     return await moveFileTo(dest, currentLocalFileEntry);
   };
 
-  const currentLocalFileEntry = {
+  const currentLocalFileEntry: FileLocalEntry = {
     ...currentEntry,
+    type: 'file',
     rename,
     read,
     copyTo,
