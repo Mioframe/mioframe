@@ -9,15 +9,7 @@ import DocumentViewPane from '@widget/DocumentView/DocumentViewPane.vue';
 import { MDIconButton } from '@shared/ui/Button';
 import { useRouter } from 'vue-router';
 
-const {
-  directoryEntry: currentDirectory,
-  state,
-  closeDocument,
-} = useRepoExplorerNavigate();
-
-const directory = computed(() => currentDirectory.value);
-
-const documentId = computed(() => state.document);
+const { directoryPath, closeDocument, documentId } = useRepoExplorerNavigate();
 
 const onClickCloseDocument = async () => {
   await closeDocument();
@@ -32,32 +24,34 @@ const onClickBack = () => {
 <template>
   <MDMainLayer class="main-view">
     <template #firstPane>
-      <HomeWidget v-if="!directory" />
+      <HomeWidget v-if="!directoryPath" />
 
       <RepoExplorerPane v-else />
     </template>
 
     <template
-      v-if="currentDirectory && documentId"
+      v-if="directoryPath && documentId"
       #secondPane="{ showFirstPane }"
     >
-      <DocumentViewPane :directory="currentDirectory" :document-id="documentId">
+      <!--
+        <DocumentViewPane :directory="directoryPath" :document-id="documentId">
         <template #leadingNavigation>
-          <MDIconButton
-            v-if="showFirstPane"
-            tooltip="close"
-            md-symbol-name="close"
-            @click="onClickCloseDocument"
-          />
+        <MDIconButton
+        v-if="showFirstPane"
+        tooltip="close"
+        md-symbol-name="close"
+        @click="onClickCloseDocument"
+        />
 
-          <MDIconButton
-            v-else
-            tooltip="back"
-            md-symbol-name="arrow_back"
-            @click="onClickBack"
-          />
+        <MDIconButton
+        v-else
+        tooltip="back"
+        md-symbol-name="arrow_back"
+        @click="onClickBack"
+        />
         </template>
-      </DocumentViewPane>
+        </DocumentViewPane> 
+      -->
     </template>
   </MDMainLayer>
 </template>

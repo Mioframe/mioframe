@@ -1,10 +1,18 @@
 <script setup lang="ts">
+import { useDirectoryStoreClient } from '@entity/mountedDirectories/useDirectoryStoreClient';
+import type { EntryPath } from '@shared/lib/fileSystem';
 import { MDDialog } from '@shared/ui/Dialog';
 import { MDTextField } from '@shared/ui/TextField';
-import { ref, watchEffect } from 'vue';
+import { ref, toRefs, watchEffect } from 'vue';
+
+const props = defineProps<{
+  path: EntryPath;
+}>();
+
+const { path } = toRefs(props);
 
 const emit = defineEmits<{
-  create: [name: string];
+  created: [name: string];
   cancel: [];
 }>();
 
@@ -12,11 +20,24 @@ const showModel = defineModel<boolean>('show', { required: true });
 
 const errorText = ref<string>();
 
-const onApply = () => {
-  if (directoryName.value) {
+const { createDirectory } = useDirectoryStoreClient();
+
+const loading = ref(false);
+
+const onApply = async () => {
+  if (directoryName.value && !loading.value) {
     errorText.value = undefined;
 
-    emit('create', directoryName.value);
+    try {
+      loading.value = true;
+      await createDirectory([...path.value, directoryName.value]);
+      emit('created', directoryName.value);
+    } catch (error) {
+      errorText.value =
+        error instanceof Error ? error.message : 'unknown error';
+    } finally {
+      loading.value = false;
+    }
   }
 };
 
@@ -27,8 +48,10 @@ const resetState = () => {
 };
 
 const onCancel = () => {
-  resetState();
-  emit('cancel');
+  if (!loading.value) {
+    resetState();
+    emit('cancel');
+  }
 };
 
 watchEffect(() => {
@@ -45,6 +68,7 @@ watchEffect(() => {
     apply-label="Create"
     cancel-label="Cancel"
     has-cancel-action
+    :loading="loading"
     supporting-text="Enter a name for your folder"
     @apply="onApply"
     @cancel="onCancel"

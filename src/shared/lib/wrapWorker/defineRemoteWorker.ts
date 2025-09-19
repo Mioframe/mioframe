@@ -22,7 +22,7 @@ export type RemoteWorker<T> = RemoteValue<T>;
 
 export const defineRemoteWorker = <T>(ep: Worker) => {
   return createGlobalState((): RemoteWorker<T> => {
-    vueTransferHandlerSet();
+    // vueTransferHandlerSet();
 
     // in comlink incorrect typing
     return <RemoteWorker<T>>wrap(ep);

@@ -4,24 +4,45 @@ import { effectScope, watch, computed, shallowRef, toValue } from 'vue';
 import type { MaybeRefOrGetter } from '@vueuse/core';
 import { isUndefined, toString } from 'es-toolkit/compat';
 
-type GlobalCache<K extends WeakKey, V> = {
-  getCache: (key: K) => V;
-  tryDisposeCache: (key: K) => void;
+/**
+ * Слабая карта реактивных областей по ключу
+ */
+type ScopesWeakMap<K extends WeakKey, V> = {
+  /**
+   * Получить или создать область
+   * @param key
+   * @returns
+   */
+  getScope: (key: K) => V;
+  /**
+   * Выразить намерение отключить область.
+   * @param key
+   * @returns
+   * @description Использовать при отключении клиентов, для каждого get должна быть tryDispose
+   */
+  tryDisposeScope: (key: K) => void;
 };
 
-type UseGlobalCacheApi<K extends WeakKey, V> = () => GlobalCache<K, V>;
+type UseScopesWeakMap<K extends WeakKey, V> = () => ScopesWeakMap<K, V>;
 
-export const createGlobalWeakCache = <K extends WeakKey, V extends object>(
+// TODO: сделать createScopesMap (без Weak) для кеширования скоупов в воркере
+
+/**
+ * Создать слабую карту реактивных областей по ключу
+ * @param setupCache
+ * @returns
+ */
+export const createScopesWeakMap = <K extends WeakKey, V extends object>(
   setupCache: (key: K) => V,
-): UseGlobalCacheApi<K, V> =>
-  createGlobalState((): GlobalCache<K, V> => {
+): UseScopesWeakMap<K, V> =>
+  createGlobalState((): ScopesWeakMap<K, V> => {
     const cacheMap = new WeakMap<
       K,
       { scope: ReturnType<typeof effectScope>; state: V }
     >();
     const usageCount = new WeakMap<K, number>();
 
-    const getCache = (key: K): V => {
+    const getScope = (key: K): V => {
       const existing = cacheMap.get(key);
       if (existing) {
         usageCount.set(key, (usageCount.get(key) ?? 0) + 1);
@@ -40,7 +61,7 @@ export const createGlobalWeakCache = <K extends WeakKey, V extends object>(
       return state;
     };
 
-    function tryDisposeCache(key: K): void {
+    function tryDisposeScope(key: K): void {
       const prev = usageCount.get(key) ?? 0;
       const next = Math.max(prev - 1, 0);
       usageCount.set(key, next);
@@ -51,35 +72,43 @@ export const createGlobalWeakCache = <K extends WeakKey, V extends object>(
       }
     }
 
-    return { getCache, tryDisposeCache };
+    return { getScope, tryDisposeScope };
   });
 
-type UseGlobalWeakCacheByKey = <K extends WeakKey, V>(
-  useGlobalCache: () => GlobalCache<K, V>,
+type UseScopesWeakMapByKey = <K extends WeakKey, V>(
+  useScopesWeakMap: () => ScopesWeakMap<K, V>,
   rawKey: MaybeRefOrGetter<K | undefined>,
 ) => ComputedRef<V | undefined>;
 
-export const useGlobalWeakCacheByKey: UseGlobalWeakCacheByKey = <
+// TODO: сделать useScopesWeakMapByKey для подписок
+
+/**
+ * Использовать ScopesWeakMap с реактивным ключом
+ * @param useScopesWeakMap
+ * @param rawKey
+ * @returns
+ */
+export const useScopesWeakMapByKey: UseScopesWeakMapByKey = <
   K extends WeakKey,
   V,
 >(
-  useGlobalCache: () => GlobalCache<K, V>,
+  useScopesWeakMap: () => ScopesWeakMap<K, V>,
   rawKey: MaybeRefOrGetter<K | undefined>,
 ): ComputedRef<V | undefined> => {
   const keyRef = computed(() => toValue(rawKey));
 
   const stateRef = shallowRef<V>();
 
-  const { getCache, tryDisposeCache } = useGlobalCache();
+  const { getScope, tryDisposeScope } = useScopesWeakMap();
 
   watch(
     keyRef,
     (key, prevKey) => {
       if (!isUndefined(prevKey)) {
-        tryDisposeCache(prevKey);
+        tryDisposeScope(prevKey);
       }
       if (!isUndefined(key)) {
-        const state = getCache(key);
+        const state = getScope(key);
         stateRef.value = state;
       } else {
         stateRef.value = undefined;
@@ -91,25 +120,14 @@ export const useGlobalWeakCacheByKey: UseGlobalWeakCacheByKey = <
   tryOnScopeDispose(() => {
     const key = toValue(keyRef);
     if (!isUndefined(key)) {
-      tryDisposeCache(key);
+      tryDisposeScope(key);
     }
   });
 
   return computed(() => stateRef.value);
 };
 
-/**
- * @deprecated
- */
-export const createUseGlobalWeakCache = <K extends WeakKey, V extends object>(
-  setupCache: (key: K) => V,
-) => {
-  const globalCache = createGlobalWeakCache(setupCache);
-
-  return defineGlobalWeakCacheRef(globalCache);
-};
-
-export const defineGlobalWeakCacheRef =
-  <K extends WeakKey, V>(useGlobalCacheApi: UseGlobalCacheApi<K, V>) =>
+export const defineScopesWeakMapRef =
+  <K extends WeakKey, V>(useGlobalCacheApi: UseScopesWeakMap<K, V>) =>
   (rawKey: MaybeRefOrGetter<K | undefined>) =>
-    useGlobalWeakCacheByKey(useGlobalCacheApi, rawKey);
+    useScopesWeakMapByKey(useGlobalCacheApi, rawKey);

@@ -1,11 +1,6 @@
 <script setup lang="ts">
-import { computed, ref, shallowRef } from 'vue';
+import { computed, ref, shallowRef, watchEffect } from 'vue';
 import { DirectoryCreateDialog } from '@feature/directoryCreate';
-import {
-  isDirectoryRef,
-  type DirectoryFSEntry,
-  type FileFSEntry,
-} from '@shared/lib/fileSystem';
 import { MDFab, MDFabContainer, MDIconButton } from '@shared/ui/Button';
 import { MDSymbol } from '@shared/ui/Icon';
 import { FSEntryRemoveDialog } from '@feature/entryRemove';
@@ -26,46 +21,49 @@ import type {
   AMDocHandle,
   AMDocumentId,
 } from '@shared/lib/automerge/automergeTypes';
-import { useDirectoryFSEntryRef } from '@shared/lib/fileSystem/useDirectoryFSEntryRef';
 import { useDirectoryRepo } from '@shared/lib/cfrDocument/useDirectoryRepo';
-import { useSnackbar } from '@shared/ui/Snackbar';
 import { useRepoExplorerNavigate } from '../useRepoExplorerNavigate';
 import { useRouter } from 'vue-router';
-import { zodIs } from '@shared/lib/validateZodScheme';
-import { zodAutomergeFileName } from '@shared/lib/fsStorageAdapter';
-import { useReduceMap } from '@shared/lib/useReduce';
-
-const isShowCreateDirectoryForm = ref(false);
-
-const onClickCreateDirectory = () => {
-  isShowCreateDirectoryForm.value = true;
-};
-
-type FSEntry = DirectoryFSEntry | FileFSEntry;
-
-const entryKeyToRemove = ref<string>();
+import { useDirectoryStoreClient } from '@entity/mountedDirectories/useDirectoryStoreClient';
+import type { EntryDescription } from '@shared/api/directories/directoriesStoreService';
+import type { EntryPath } from '@shared/lib/fileSystem';
+import { ENTRY_NOT_FOUND } from '@shared/api/directories/types';
 
 const {
-  directoryEntry: currentDirectory,
+  directoryPathString,
+  directoryPath,
   open,
   state: repoExplorerState,
 } = useRepoExplorerNavigate();
 
-const directoryPath = computed(() =>
-  repoExplorerState.path?.map((name) => ({ name })),
-);
+const parentPathForNewDirectory = ref<EntryPath>();
 
-const directoryRef = useDirectoryFSEntryRef(currentDirectory);
+const onClickCreateDirectory = () => {
+  parentPathForNewDirectory.value = directoryPath.value;
+};
 
-const directoryEntries = useReduceMap(
-  computed(() => directoryRef.value?.entries),
-  (map, entry, key) => {
-    // TODO: добавить фильтрацию файлов в настройки
-    if (!zodIs(key, zodAutomergeFileName)) {
-      map.set(key, entry);
+const entryPathToRemove = ref<EntryPath>();
+
+const {
+  entryStore: { get: getEntry },
+  removeEntry,
+} = useDirectoryStoreClient();
+
+const directory = computed(() => {
+  if (directoryPathString.value) {
+    const entry = getEntry(directoryPathString.value);
+    if (entry === ENTRY_NOT_FOUND) {
+      return entry;
     }
-  },
-  new Map<string, DirectoryFSEntry | FileFSEntry>(),
+    if (entry && 'entries' in entry) {
+      return entry;
+    }
+  }
+  return undefined;
+});
+
+const directoryEntries = computed(() =>
+  directory.value !== ENTRY_NOT_FOUND ? directory.value?.entries : undefined,
 );
 
 const onClickPath = async (indexPath: number) => {
@@ -77,8 +75,8 @@ const onClickPath = async (indexPath: number) => {
   }
 };
 
-const onClickEntry = async (_entryKey: PropertyKey, entry: FSEntry) => {
-  if (isDirectoryRef(entry)) {
+const onClickEntry = async (entry: EntryDescription) => {
+  if (entry.type === 'directory') {
     await open({
       ...repoExplorerState,
       path: entry.path,
@@ -89,40 +87,29 @@ const onClickEntry = async (_entryKey: PropertyKey, entry: FSEntry) => {
 const showFormNewDocument = ref(false);
 
 const onClickCreateDocument = () => {
-  if (currentDirectory.value) {
+  if (directoryPath.value) {
     showFormNewDocument.value = true;
   }
 };
 
-const directoryRepoRef = useDirectoryRepo(currentDirectory);
+/**
+ * - список документов в репозитории
+ * - метод создания документа
+ * - метод удаления документа
+ *
+ */
+// const directoryRepoRef = useDirectoryRepo(directoryPath);
 
-const currentRepoDocuments = computed(() => directoryRepoRef.value?.map);
+// const currentRepoDocuments = computed(() => directoryRepoRef.value?.map);
 
-const onCreateNewDocument = (document: CFRDocumentContent) => {
-  directoryRepoRef.value?.create(document);
-  showFormNewDocument.value = false;
-};
+// const onCreateNewDocument = (document: CFRDocumentContent) => {
+//   directoryRepoRef.value?.create(document);
+//   showFormNewDocument.value = false;
+// };
 
-const { addSnackbar } = useSnackbar();
-
-const onCreateDirectory = async (name: string) => {
-  try {
-    if (!currentDirectory.value) {
-      throw new Error('Failed to create a directory');
-    }
-    await currentDirectory.value.createDirectory(name);
-    isShowCreateDirectoryForm.value = false;
-  } catch (error) {
-    addSnackbar({
-      text:
-        error instanceof Error ? error.message : 'Failed to create a directory',
-    });
-  }
-};
-
-const onRemoveEntry = async (name: string) => {
-  await directoryRef.value?.removeByName(name);
-  entryKeyToRemove.value = undefined;
+const onRemoveEntry = async (path: EntryPath) => {
+  await removeEntry(path);
+  entryPathToRemove.value = undefined;
 };
 
 enum FSEntryContextEvent {
@@ -135,19 +122,19 @@ const fsEntryContextBtns = defineMenuButtonList([
   { label: 'Remove', symbolName: 'delete', key: FSEntryContextEvent.remove },
 ]);
 
-const entryKeyToRename = ref<string>();
+const entryKeyToRename = ref<EntryPath>();
 
 const onClickFSEntryContextAction = (
   { key }: { key: FSEntryContextEvent },
-  entryKey: string,
+  entry: EntryDescription,
 ) => {
   switch (key) {
     case FSEntryContextEvent.remove: {
-      entryKeyToRemove.value = entryKey;
+      entryPathToRemove.value = entry.path;
       break;
     }
     case FSEntryContextEvent.rename: {
-      entryKeyToRename.value = entryKey;
+      entryKeyToRename.value = entry.path;
       break;
     }
 
@@ -193,21 +180,21 @@ const onClickDocumentContextAction = (
 
 const documentIdToRemove = shallowRef<AMDocumentId>();
 
-const documentToRemove = computed(() =>
-  documentIdToRemove.value
-    ? currentRepoDocuments.value?.get(documentIdToRemove.value)
-    : undefined,
-);
+// const documentToRemove = computed(() =>
+//   documentIdToRemove.value
+//     ? currentRepoDocuments.value?.get(documentIdToRemove.value)
+//     : undefined,
+// );
 
-const onDocumentRemoveApply = (documentId: AMDocumentId) => {
-  directoryRepoRef.value?.remove(documentId);
-  documentIdToRemove.value = undefined;
-};
+// const onDocumentRemoveApply = (documentId: AMDocumentId) => {
+//   directoryRepoRef.value?.remove(documentId);
+//   documentIdToRemove.value = undefined;
+// };
 
 const onClickDocument = async (documentId: AMDocumentId) => {
-  if (currentDirectory.value) {
+  if (directoryPath.value) {
     await open({
-      path: currentDirectory.value.path,
+      path: directoryPath.value,
       document: documentId,
     });
   }
@@ -225,23 +212,8 @@ const onClickBack = () => {
   router.back();
 };
 
-const loadingRename = ref(0);
-
-const onRenameEntry = async (newName: string) => {
-  loadingRename.value += 1;
-  try {
-    if (entryKeyToRename.value) {
-      const entry = directoryRef.value?.entries.get(entryKeyToRename.value);
-      if (entry) {
-        await entry.rename(newName);
-        entryKeyToRename.value = undefined;
-        return;
-      }
-    }
-    throw new Error('unknown entry to rename');
-  } finally {
-    loadingRename.value -= 1;
-  }
+const onRenamedEntry = () => {
+  entryKeyToRename.value = undefined;
 };
 
 const showFSEntryRenameDialog = computed({
@@ -275,37 +247,38 @@ const showFSEntryRenameDialog = computed({
 
     <div class="document-explorer-widget__scrollable-content">
       <MDListContainer is="div" class="document-explorer-widget__content-list">
-        <CFRDocumentMDListItem
+        <!--
+          <CFRDocumentMDListItem
           v-for="[docId, docHandle] in currentRepoDocuments"
           :key="docId"
           :doc-handle="docHandle"
           class="document-explorer-widget__list-item"
           is-button
           @click="onClickDocument(docId)"
-        >
+          >
           <template #trailingIcon="{ documentName }">
-            <MDContextMenuButton
-              :btns="documentContextBtns"
-              :tooltip="`options ${documentName}`"
-              @click="onClickDocumentContextAction($event, docId, docHandle)"
-            />
+          <MDContextMenuButton
+          :btns="documentContextBtns"
+          :tooltip="`options ${documentName}`"
+          @click="onClickDocumentContextAction($event, docId, docHandle)"
+          />
           </template>
-        </CFRDocumentMDListItem>
+          </CFRDocumentMDListItem> 
+        -->
 
         <FSEntryMDListItem
-          v-for="[entryKey, entry] in directoryEntries"
-          :key="entryKey"
+          v-for="entry in directoryEntries"
+          :key="entry.name"
           is-button
           :entry="entry"
-          :entry-key="entryKey"
           class="document-explorer-widget__list-item"
-          @click="onClickEntry(entryKey, entry)"
+          @click="onClickEntry(entry)"
         >
-          <template #trailingIcon="{ entryName }">
+          <template #trailingIcon="{ entry: entryName }">
             <MDContextMenuButton
               :btns="fsEntryContextBtns"
               :tooltip="`options ${entryName}`"
-              @click="onClickFSEntryContextAction($event, entryKey)"
+              @click="onClickFSEntryContextAction($event, entry)"
             />
           </template>
         </FSEntryMDListItem>
@@ -337,33 +310,44 @@ const showFSEntryRenameDialog = computed({
       </MDFabContainer>
     </div>
 
-    <DocumentCreationDialog
+    <!--
+      <DocumentCreationDialog
       v-model:show="showFormNewDocument"
       @cancel="showFormNewDocument = false"
       @create="onCreateNewDocument"
-    />
+      /> 
+    -->
 
     <DirectoryCreateDialog
-      v-model:show="isShowCreateDirectoryForm"
-      @cancel="isShowCreateDirectoryForm = false"
-      @create="onCreateDirectory"
+      v-if="parentPathForNewDirectory"
+      :show="!!parentPathForNewDirectory"
+      :path="parentPathForNewDirectory"
+      @update:show="
+        parentPathForNewDirectory = $event
+          ? parentPathForNewDirectory
+          : undefined
+      "
+      @cancel="parentPathForNewDirectory = undefined"
+      @created="parentPathForNewDirectory = undefined"
     />
 
     <FSEntryRemoveDialog
-      v-if="entryKeyToRemove"
-      :show="!!entryKeyToRemove"
-      :name="entryKeyToRemove"
-      @cancel="entryKeyToRemove = undefined"
+      v-if="entryPathToRemove"
+      :show="!!entryPathToRemove"
+      :path="entryPathToRemove"
+      @cancel="entryPathToRemove = undefined"
       @apply="onRemoveEntry"
     />
 
-    <DocumentRemoveDialog
+    <!--
+      <DocumentRemoveDialog
       v-if="documentToRemove"
       :show="!!documentToRemove"
       :doc-handle="documentToRemove"
       @cancel="documentIdToRemove = undefined"
       @apply="onDocumentRemoveApply"
-    />
+      /> 
+    -->
 
     <DocumentRenameDialog
       v-if="documentToRename"
@@ -376,10 +360,9 @@ const showFSEntryRenameDialog = computed({
     <FSEntryRenameDialog
       v-if="entryKeyToRename"
       v-model:show="showFSEntryRenameDialog"
-      :name="entryKeyToRename"
-      :loading="!!loadingRename"
+      :path="entryKeyToRename"
       @cancel="entryKeyToRename = undefined"
-      @rename="onRenameEntry"
+      @renamed="onRenamedEntry"
     />
   </MDPaneContainer>
 </template>

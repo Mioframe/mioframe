@@ -1,4 +1,4 @@
-import { object as zodInterface } from 'zod/v4-mini';
+import { literal, object as zodInterface } from 'zod/v4-mini';
 import { zodIs } from '../validateZodScheme';
 import { isGeneralFSEntry, type GeneralFSEntry } from './GeneralFSEntry';
 import type { FileFSEntry } from './FileFSEntry';
@@ -10,6 +10,7 @@ export type DirectoryEntryEventMap = {
 };
 
 export interface DirectoryFSEntry extends GeneralFSEntry {
+  type: 'directory';
   /**
    * Gets all entries in this directory
    */
@@ -57,11 +58,17 @@ export interface DirectoryFSEntry extends GeneralFSEntry {
   ) => void;
 }
 
+/**
+ * @deprecated
+ * @param value
+ * @returns
+ */
 export const isDirectoryRef = (value: unknown): value is DirectoryFSEntry =>
   isGeneralFSEntry(value) &&
   zodIs(
     value,
     zodInterface({
+      type: literal('directory'),
       entries: zodFunction(),
       createDirectory: zodFunction(),
       writeFile: zodFunction(),

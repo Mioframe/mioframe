@@ -1,15 +1,16 @@
 <script setup lang="ts">
+import { useDirectoryStoreClient } from '@entity/mountedDirectories/useDirectoryStoreClient';
+import type { EntryPath } from '@shared/lib/fileSystem';
 import { MDDialog } from '@shared/ui/Dialog';
 import { MDTextField } from '@shared/ui/TextField';
-import { ref, watchEffect } from 'vue';
+import { computed, ref, watchEffect } from 'vue';
 
-const { name: originalName } = defineProps<{
-  name: string;
-  loading?: boolean | undefined;
+const { path } = defineProps<{
+  path: EntryPath;
 }>();
 
 const emit = defineEmits<{
-  rename: [name: string];
+  renamed: [name: string];
   cancel: [];
 }>();
 
@@ -17,13 +18,25 @@ const show = defineModel<boolean>('show', { required: true });
 
 const stateName = ref<string>();
 
+const originalName = computed(() => path.at(-1));
+
 watchEffect(() => {
-  stateName.value = originalName;
+  stateName.value = originalName.value;
 });
 
-const onApply = () => {
-  if (stateName.value) {
-    emit('rename', stateName.value);
+const { renameEntry } = useDirectoryStoreClient();
+
+const loading = ref(false);
+
+const onApply = async () => {
+  if (stateName.value && !loading.value) {
+    try {
+      loading.value = true;
+      await renameEntry(path, stateName.value);
+    } finally {
+      loading.value = false;
+    }
+    emit('renamed', stateName.value);
   }
 };
 

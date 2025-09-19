@@ -1,10 +1,11 @@
-import { object } from 'zod/v4-mini';
+import { literal, object } from 'zod/v4-mini';
 import { zodIs } from '../validateZodScheme';
 import { isGeneralFSEntry, type GeneralFSEntry } from './GeneralFSEntry';
 import type { DirectoryFSEntry } from './DirectoryFSEntry';
 import { zodFunction } from '../zodFunction';
 
 export interface FileFSEntry extends GeneralFSEntry {
+  type: 'file';
   /**
    * Reads this file
    */
@@ -28,6 +29,7 @@ export const isFileFSEntry = (value: unknown): value is FileFSEntry =>
   zodIs(
     value,
     object({
+      type: literal('file'),
       read: zodFunction(),
       rename: zodFunction(),
       copyTo: zodFunction(),

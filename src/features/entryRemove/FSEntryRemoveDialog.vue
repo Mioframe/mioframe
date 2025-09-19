@@ -1,14 +1,16 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
 import { MDDialog } from '@shared/ui/Dialog';
+import type { EntryPath } from '@shared/lib/fileSystem';
+import { stringPath } from '@shared/api/directories/directoriesStoreService';
 
-const { name } = defineProps<{
-  name: string;
+const { path } = defineProps<{
+  path: EntryPath;
 }>();
 
 const emit = defineEmits<{
   cancel: [];
-  apply: [name: string];
+  apply: [name: EntryPath];
 }>();
 
 const show = defineModel<boolean>('show', { required: true });
@@ -17,17 +19,21 @@ const loading = ref(0);
 
 const onSubmit = () => {
   loading.value += 1;
-  emit('apply', name);
+  emit('apply', path);
 };
 
 const onClickCancel = () => {
   emit('cancel');
 };
 
-const headline = computed(() => `Remove "${name}"?`);
+const name = computed(() => path.at(path.length - 1));
+
+const headline = computed(
+  () => `Remove ${name.value ? `"${name.value}"` : 'entry'} ?`,
+);
 
 const supportingText = computed(
-  () => `Are you sure you want to remove "${name}"?`,
+  () => `Are you sure you want to remove "${stringPath(path)}"?`,
 );
 </script>
 
