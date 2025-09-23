@@ -1,5 +1,5 @@
 import type { Repo } from '@automerge/automerge-repo';
-import type { zodDocumentContent } from './types';
+import type { zodCFRDocumentContent } from './types';
 import type { output } from 'zod/v4-mini';
 import type { MaybeRefOrGetter, ShallowReactive } from 'vue';
 import {
@@ -17,7 +17,7 @@ import { tryOnScopeDispose } from '@vueuse/core';
 import { isEqual, once, throttle } from 'es-toolkit';
 
 export type RepoRef = {
-  create: <Z extends typeof zodDocumentContent>(
+  create: <Z extends typeof zodCFRDocumentContent>(
     initialValue: output<Z>,
   ) => void;
   remove: (documentId: AMDocumentId) => void;
@@ -25,7 +25,7 @@ export type RepoRef = {
   map: ShallowReactive<ReadonlyMap<AMDocumentId, AMDocHandle>>;
 };
 
-const useRepoRefCacheApi = createScopesWeakMap((repo: Repo): RepoRef => {
+export const createRepoRef = (repo: Repo): RepoRef => {
   const mapRef = shallowReactive<Map<AMDocumentId, AMDocHandle>>(new Map());
 
   const addDocToState = (docHandle: AMDocHandle) => {
@@ -53,7 +53,7 @@ const useRepoRefCacheApi = createScopesWeakMap((repo: Repo): RepoRef => {
     repo.on('delete-document', onDeleteDocument);
   };
 
-  const create = <Z extends typeof zodDocumentContent>(
+  const create = <Z extends typeof zodCFRDocumentContent>(
     initialValue: output<Z>,
   ) => {
     repo.create(initialValue);
@@ -108,38 +108,40 @@ const useRepoRefCacheApi = createScopesWeakMap((repo: Repo): RepoRef => {
   });
 
   return repoRef;
-});
+};
 
-const useRepoCache = defineScopesWeakMapRef(useRepoRefCacheApi);
+const useRepoScopesWeakMap = createScopesWeakMap(createRepoRef);
 
-export const useRepoRef = (
+const useRepoScopesWeakMapRef = defineScopesWeakMapRef(useRepoScopesWeakMap);
+
+export const useRepo = (
   repo: MaybeRefOrGetter<Repo | undefined>,
   searchDocuments?: MaybeRefOrGetter<AMDocumentId[] | Set<AMDocumentId>>,
 ) => {
-  const cache = useRepoCache(repo);
+  const repoScopes = useRepoScopesWeakMapRef(repo);
 
   const documentsForSearch = toRef(() => toValue(searchDocuments));
 
-  const create = <Z extends typeof zodDocumentContent>(
+  const create = <Z extends typeof zodCFRDocumentContent>(
     initialValue: output<Z>,
   ) => {
-    if (!cache.value) {
+    if (!repoScopes.value) {
       throw new Error('repository missing');
     }
-    cache.value.create(initialValue);
+    repoScopes.value.create(initialValue);
   };
 
   const remove = (documentId: AMDocumentId) => {
-    if (!cache.value) {
+    if (!repoScopes.value) {
       throw new Error('repository missing');
     }
-    cache.value.remove(documentId);
+    repoScopes.value.remove(documentId);
   };
 
-  const map = computed(() => cache.value?.map);
+  const map = computed(() => repoScopes.value?.map);
 
   const find = (documentList: AMDocumentId[] | Set<AMDocumentId>) =>
-    cache.value?.find(documentList);
+    repoScopes.value?.find(documentList);
 
   watch(
     documentsForSearch,

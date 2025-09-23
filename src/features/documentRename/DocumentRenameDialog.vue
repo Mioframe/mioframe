@@ -1,14 +1,17 @@
 <script setup lang="ts">
-import { computed, ref, toRef, watchEffect } from 'vue';
+import { computed, ref, toRefs, watchEffect } from 'vue';
 import { MDDialog } from '@shared/ui/Dialog';
 import { MDTextField } from '@shared/ui/TextField';
-import { useCFRDocument } from '@shared/lib/cfrDocument/useCFRDocument';
-import type { AMDocHandle } from '@shared/lib/automerge/automergeTypes';
-import { toRefs } from '@vueuse/core';
+import type { AMDocumentId } from '@shared/lib/automerge/automergeTypes';
+import type { EntryPath } from '@shared/lib/fileSystem';
+import { useCFRDocumentClient } from '@entity/cfrDocument';
 
-const { docHandle } = defineProps<{
-  docHandle: AMDocHandle;
+const props = defineProps<{
+  path: EntryPath;
+  documentId: AMDocumentId;
 }>();
+
+const { documentId, path } = toRefs(props);
 
 const emit = defineEmits<{
   renamed: [];
@@ -17,24 +20,36 @@ const emit = defineEmits<{
 
 const show = defineModel<boolean>('show', { required: true });
 
-const cfrDocument = useCFRDocument(toRef(() => docHandle));
+const {
+  documentDescription: { get: getDocumentDescription },
+  patch: documentPatch,
+} = useCFRDocumentClient();
 
-const { content, change } = toRefs(cfrDocument);
+const documentName = computed(
+  () => getDocumentDescription(path.value, documentId.value)?.name,
+);
 
 const stateName = ref<string>();
 
 watchEffect(() => {
-  stateName.value = content.value?.name;
+  stateName.value = documentName.value;
 });
 
-const onApply = () => {
+const loading = ref(0);
+
+const onApply = async () => {
   if (!stateName.value?.length) {
     throw new Error('name is undefined');
   }
 
   const newName = stateName.value;
 
-  change.value((doc) => (doc.name = newName));
+  try {
+    loading.value += 1;
+    await documentPatch(path.value, documentId.value, { name: newName });
+  } finally {
+    loading.value -= 1;
+  }
 
   emit('renamed');
 };
@@ -45,7 +60,7 @@ const onCancel = () => {
 };
 
 const headline = computed(
-  () => `Rename "${content.value?.name ?? 'unknown'}" document`,
+  () => `Rename "${documentName.value ?? 'unknown'}" document`,
 );
 </script>
 
@@ -57,6 +72,7 @@ const headline = computed(
     apply-label="Rename"
     cancel-label="Cancel"
     has-cancel-action
+    :loading="loading > 0"
     @apply="onApply"
     @cancel="onCancel"
   >

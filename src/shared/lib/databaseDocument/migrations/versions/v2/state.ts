@@ -3,7 +3,7 @@ import { extend, literal, optional } from 'zod/v4-mini';
 import type { DatabaseStateV1 as DataBaseStateV1 } from '../v1';
 import { zodDatabaseStateV1 as zodDatabaseStateV1 } from '../v1';
 import { defineVersion } from '../../../../migrations/defineVersion';
-import { deepPutJsonObject } from '@shared/lib/changeObject';
+import { deepPatchJsonObject } from '@shared/lib/changeObject';
 import { zodDatabaseView, zodDatabaseViewId } from './view';
 import { zodStrictRecord } from '@shared/lib/strictRecord/zodStrictRecord';
 import { cloneDeep } from 'es-toolkit';
@@ -23,7 +23,7 @@ export const databaseStateV2 = defineVersion(
   (oldState: DataBaseStateV1) => {
     const clonedState = cloneDeep(oldState);
 
-    return deepPutJsonObject(clonedState, {
+    return deepPatchJsonObject(clonedState, {
       version: 2,
       properties: {},
       data: {},

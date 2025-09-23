@@ -18,7 +18,6 @@ import type {
   AMChunk,
   AMStorageAdapterInterface,
 } from '../automerge/automergeTypes';
-import { useSnackbar } from '@shared/ui/Snackbar';
 import { toString } from 'es-toolkit/compat';
 
 export const partialKeyToFileName = (
@@ -61,8 +60,6 @@ export const fileNameToPartialKey = (
 export const createStorageAdapter = (
   directory: DirectoryForStorageAdapter,
 ): AMStorageAdapterInterface => {
-  const { addSnackbar } = useSnackbar();
-
   const findEntry = async (key: PartialStorageKey) => {
     const fileName = partialKeyToFileName(key, { withExtension: false });
     if (fileName) {
@@ -91,9 +88,7 @@ export const createStorageAdapter = (
 
       return undefined;
     } catch (error) {
-      addSnackbar({
-        text: error instanceof Error ? error.message : 'file loading error',
-      });
+      console.error(error);
 
       console.debug('load', key);
 
@@ -109,9 +104,7 @@ export const createStorageAdapter = (
       }
       await directory.writeFile(fileName, data);
     } catch (error) {
-      addSnackbar({
-        text: error instanceof Error ? error.message : 'file saving error',
-      });
+      console.error(error);
 
       console.debug('save', key, data);
 
@@ -127,9 +120,7 @@ export const createStorageAdapter = (
         await entry.remove();
       }
     } catch (error) {
-      addSnackbar({
-        text: error instanceof Error ? error.message : 'file deletion error',
-      });
+      console.error(error);
 
       console.debug('remove', key);
 
@@ -179,10 +170,7 @@ export const createStorageAdapter = (
 
       return chunkList;
     } catch (error) {
-      addSnackbar({
-        text:
-          error instanceof Error ? error.message : 'error loading file range',
-      });
+      console.error(error);
 
       console.debug('loadRange', keyPrefix);
 
@@ -212,10 +200,7 @@ export const createStorageAdapter = (
         }
       });
     } catch (error) {
-      addSnackbar({
-        text:
-          error instanceof Error ? error.message : 'error deleting file range',
-      });
+      console.error(error);
 
       console.debug('removeRange', keyPrefix);
 

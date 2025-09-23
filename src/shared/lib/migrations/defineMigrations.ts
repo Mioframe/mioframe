@@ -1,5 +1,5 @@
 import type { EmptyObject } from 'type-fest';
-import { deepReplaceJsonObject } from '../changeObject';
+import { deepPutJsonObject } from '../changeObject';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- no restrictions
 type MigrateFunction<T = any, R = any> = (input: T) => R;
@@ -61,7 +61,7 @@ export function defineMigrations<
   ): UpdateResult<T, Ops> => {
     const newStateData = getLatestData(targetData, version);
 
-    const updatedTarget: UpdateResult<T, Ops> = deepReplaceJsonObject(
+    const updatedTarget: UpdateResult<T, Ops> = deepPutJsonObject(
       targetData,
       newStateData,
     );

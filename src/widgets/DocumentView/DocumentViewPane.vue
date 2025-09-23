@@ -70,7 +70,7 @@ const onClickRenameDocument = () => {
     <DocumentRenameDialog
       v-if="docHandle"
       v-model:show="showRenameDocument"
-      :doc-handle="docHandle"
+      :document-id="docHandle"
       @renamed="showRenameDocument = false"
       @cancel="showRenameDocument = false"
     />

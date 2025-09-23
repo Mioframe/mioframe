@@ -8,7 +8,7 @@ import type {
 } from './migrations/versions';
 import { generateItemId, type DatabaseItem } from './migrations/versions';
 import { isString, isUndefined } from 'es-toolkit';
-import { deepReplaceJsonObject } from '../changeObject';
+import { deepPutJsonObject } from '../changeObject';
 
 export const useDatabaseData = (
   rawDocHandle: MaybeRefOrGetter<AMDocHandle | undefined>,
@@ -67,7 +67,7 @@ export const useDatabaseData = (
         doc.data[itemId] = {};
       }
 
-      deepReplaceJsonObject(doc.data[itemId], item, { trimString: true });
+      deepPutJsonObject(doc.data[itemId], item, { trimString: true });
     });
   };
 

@@ -4,6 +4,8 @@ import { computed, nextTick, reactive, shallowRef } from 'vue';
 import { proxy } from 'comlink';
 import { isUndefined } from 'es-toolkit';
 import { tryOnScopeDispose } from '@vueuse/core';
+import type { JsonString } from '../brandJson';
+import { jsonParse, jsonStringify } from '../brandJson';
 
 const WAIT_STATUS = Symbol('waiting');
 const STOP_STATUS = Symbol('stop');
@@ -38,15 +40,28 @@ export function useSubscribeClient<V>(
   const main = shallowRef<V>();
 
   const initialMainSubscribe = async () => {
+    console.debug('initialMainSubscribe', subscribeService);
+
     if (isUndefined(mainWatchHandle)) {
       mainWatchHandle = WAIT_STATUS;
 
-      mainWatchHandle = await subscribeService(
-        proxy((v: V) => {
-          main.value = v;
-        }),
-        { immediate: true, deep: 1 },
-      );
+      try {
+        console.debug('await subscribeService', subscribeService); // FIXME: не работает инициализация подписки.
+        mainWatchHandle = await subscribeService(
+          proxy((v: V) => {
+            console.debug('cb subscribeService', v);
+            main.value = v;
+          }),
+          { immediate: true, deep: 1 },
+        );
+      } catch (error) {
+        console.debug('error await subscribeService', error);
+        throw error;
+      } finally {
+        console.debug('🟢 🏁 finally await subscribeService');
+      }
+
+      console.debug('mainWatchHandle', mainWatchHandle);
     }
   };
 
@@ -68,7 +83,7 @@ export function useSubscribeClient<V>(
  * @param subscribeValueService
  * @returns
  */
-export const useSubscribeValueClient = <K extends string, V>(
+export const useSubscribeByKeyClient = <K extends string, V>(
   subscribeValueService: (
     key: K,
     cb: (v?: V) => unknown,
@@ -132,5 +147,31 @@ export const useSubscribeValueClient = <K extends string, V>(
   return {
     get,
     stop,
+  };
+};
+
+export const useSubscribeByQueryClient = <Q extends unknown[], V>(
+  subscribeQueryService: (
+    query: Q,
+    cb: (v?: V) => unknown,
+    options: WatchOptions,
+  ) => Promise<WatchHandle>,
+) => {
+  const wrapService = (
+    key: JsonString<Q>,
+    cb: (v?: V) => unknown,
+    options: WatchOptions,
+  ) => {
+    const query = jsonParse(key);
+    return subscribeQueryService(query, cb, options);
+  };
+
+  const { get, stop } = useSubscribeByKeyClient(wrapService);
+
+  return {
+    get: (...query: Q) => get(jsonStringify(query)),
+    stop: (...query: Q) => {
+      stop(jsonStringify(query));
+    },
   };
 };

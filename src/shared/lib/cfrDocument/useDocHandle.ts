@@ -1,7 +1,7 @@
 import { reactive, readonly, ref } from 'vue';
-import { deepReplaceJsonObject } from '../changeObject';
+import { deepPutJsonObject } from '../changeObject';
 import { defineReadonlyDeep } from '../readonlyDeep';
-import type { UnknownRecord } from 'type-fest';
+import type { ReadonlyDeep, UnknownRecord } from 'type-fest';
 import type {
   AMChangeFn,
   AMDoc,
@@ -11,15 +11,14 @@ import type {
 } from '../automerge/automergeTypes';
 import { createScopesWeakMap, defineScopesWeakMapRef } from '../scopesWeakMap';
 import { tryOnScopeDispose } from '@vueuse/core';
-import type { ReadonlyObjectDeep } from 'type-fest/source/readonly-deep';
 
 export type DocHandleRef = {
   docRef: UnknownRecord;
-  doc: () => ReadonlyObjectDeep<AMDoc> | undefined;
+  doc: () => ReadonlyDeep<AMDoc> | undefined;
   change: (callback: AMChangeFn) => void;
 };
 
-const createDocHandleRefState = (docHandle: AMDocHandle): DocHandleRef => {
+export const createDocHandleRef = (docHandle: AMDocHandle): DocHandleRef => {
   const docRef = ref<UnknownRecord>({});
 
   /**
@@ -27,7 +26,7 @@ const createDocHandleRefState = (docHandle: AMDocHandle): DocHandleRef => {
    */
   const programReplaceDocRef = (doc: AMDoc | undefined) => {
     if (doc) {
-      deepReplaceJsonObject(docRef.value, doc, { trimString: true });
+      deepPutJsonObject(docRef.value, doc, { trimString: true });
     } else {
       docRef.value = {};
     }
@@ -99,6 +98,9 @@ const createDocHandleRefState = (docHandle: AMDocHandle): DocHandleRef => {
   return docHandleRef;
 };
 
-export const useDocHandleRefApi = createScopesWeakMap(createDocHandleRefState);
+export const useDocHandleScopesWeakMap =
+  createScopesWeakMap(createDocHandleRef);
 
-export const useDocHandleRef = defineScopesWeakMapRef(useDocHandleRefApi);
+export const useDocHandleScopesWeakMapRef = defineScopesWeakMapRef(
+  useDocHandleScopesWeakMap,
+);

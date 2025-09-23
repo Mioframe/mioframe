@@ -1,5 +1,5 @@
 import type { AMDocHandle } from '@shared/lib/automerge';
-import { deepPutJsonObject } from '@shared/lib/changeObject';
+import { deepPatchJsonObject } from '@shared/lib/changeObject';
 import type {
   DatabasePropertyId,
   DatabaseSortDescription,
@@ -88,7 +88,7 @@ export const useDatabaseViewSorting = (
     partialSortDescription: PartialDeep<DatabaseSortDescription>,
   ) => {
     await update(propertyId, (sortDescription) => {
-      deepPutJsonObject(sortDescription, partialSortDescription);
+      deepPatchJsonObject(sortDescription, partialSortDescription);
     });
   };
 

@@ -9,7 +9,7 @@ import type {
   GeneralProperty,
 } from '@shared/lib/databaseDocument';
 import { useDatabaseView } from '@shared/lib/databaseDocument';
-import { deepReplaceJsonObject } from '@shared/lib/changeObject';
+import { deepPutJsonObject } from '@shared/lib/changeObject';
 
 const props = defineProps<{
   docHandle: AMDocHandle;
@@ -36,7 +36,7 @@ const filter = computed({
       if (!view.filter) {
         view.filter = {};
       }
-      deepReplaceJsonObject(view.filter, v, { trimString: true });
+      deepPutJsonObject(view.filter, v, { trimString: true });
     });
   },
 });

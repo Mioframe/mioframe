@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { AMDocHandle } from '@shared/lib/automerge';
-import { deepReplaceJsonObject } from '@shared/lib/changeObject';
+import { deepPutJsonObject } from '@shared/lib/changeObject';
 import type { DatabaseViewId } from '@shared/lib/databaseDocument';
 import {
   DB_VIEW_LAYOUT,
@@ -62,7 +62,7 @@ const onApply = async () => {
 };
 
 const onCancel = () => {
-  deepReplaceJsonObject(formState, initialState());
+  deepPutJsonObject(formState, initialState());
   emit('cancel');
 };
 

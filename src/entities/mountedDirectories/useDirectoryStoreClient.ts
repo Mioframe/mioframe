@@ -2,9 +2,9 @@ import { createGlobalState } from '@vueuse/core';
 import { useApiClient } from '@shared/api';
 import {
   useSubscribeClient,
-  useSubscribeValueClient,
+  useSubscribeByKeyClient,
 } from '@shared/lib/remoteStore/subscribeClient';
-import { toRef } from 'vue';
+import { toRef, watchEffect } from 'vue';
 import { isFunction } from 'es-toolkit';
 import { useSnackbar } from '@shared/ui/Snackbar';
 import { useDialog } from '@shared/ui/Dialog';
@@ -21,7 +21,11 @@ export const useDirectoryStoreClient = createGlobalState(() => {
 
   const rootList = useSubscribeClient(directoryStore.subscribeRootList, []);
 
-  const entryStore = useSubscribeValueClient(directoryStore.subscribeEntry);
+  watchEffect(() => {
+    console.debug('rootList', rootList.value);
+  });
+
+  const entryStore = useSubscribeByKeyClient(directoryStore.subscribeEntry);
 
   const isSupportUserDirectory = toRef(
     () =>
@@ -63,6 +67,7 @@ export const useDirectoryStoreClient = createGlobalState(() => {
   };
 
   const mountOPFS = async () => {
+    console.debug('🔴 mountOPFS');
     const persistent = await navigator.storage.persisted();
     if (!persistent) {
       await navigator.storage.persist();
@@ -74,7 +79,9 @@ export const useDirectoryStoreClient = createGlobalState(() => {
     }
   };
 
-  void mountOPFS();
+  setTimeout(() => {
+    void mountOPFS();
+  }, 1e3);
 
   const removeEntry = async (rawPath: EntryPath | EntryPathString) => {
     await directoryStore.removeEntry(cloneDeepSerialize(rawPath));

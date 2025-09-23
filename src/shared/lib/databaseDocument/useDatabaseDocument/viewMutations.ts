@@ -1,4 +1,4 @@
-import { deepPutJsonObject } from '@shared/lib/changeObject';
+import { deepPatchJsonObject } from '@shared/lib/changeObject';
 import type { DataBaseStateLatest } from '../types';
 import type { DatabaseState } from '../migrations/versions';
 import {
@@ -16,7 +16,7 @@ export const addViewMutation = (
 ): DatabaseViewId => {
   const viewId = generateViewId();
 
-  deepPutJsonObject(body, { views: { [viewId]: view } });
+  deepPatchJsonObject(body, { views: { [viewId]: view } });
 
   return viewId;
 };
@@ -37,7 +37,7 @@ export const renameViewMutation = (
   viewId: DatabaseViewId,
   newName: string,
 ) => {
-  deepPutJsonObject(body, {
+  deepPatchJsonObject(body, {
     views: {
       [viewId]: {
         name: newName,
