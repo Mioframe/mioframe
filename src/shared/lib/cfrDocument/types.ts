@@ -6,7 +6,7 @@ import type { ItemWithChildren } from '@shared/lib/useIterable';
 import type { Reactive } from 'vue';
 import type { AMDocumentId } from '../automerge/automergeTypes';
 
-export const zodDocumentContent = object({
+export const zodCFRDocumentContent = object({
   name: string(),
   type: string(),
   body: unknown(),
@@ -16,7 +16,7 @@ export const zodDocumentContent = object({
 /**
  * Conflict-free Replicated Document
  */
-export type CFRDocumentContent = output<typeof zodDocumentContent>;
+export type CFRDocumentContent = output<typeof zodCFRDocumentContent>;
 
 export interface CFRDocument {
   content: CFRDocumentContent | undefined;
@@ -36,7 +36,7 @@ export interface RepoRef
    * @param initialValue Начальное состояние документа
    * @returns
    */
-  create: <Z extends typeof zodDocumentContent>(
+  create: <Z extends typeof zodCFRDocumentContent>(
     initialValue: output<Z>,
   ) => CFRDocument;
 

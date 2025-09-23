@@ -10,7 +10,7 @@ import type { DatabaseState } from './migrations/versions';
 export * from './migrations/versions';
 import { zodDatabaseState } from './migrations/versions';
 import type { CFRDocumentContent } from '../cfrDocument';
-import { zodDocumentContent } from '../cfrDocument';
+import { zodCFRDocumentContent } from '../cfrDocument';
 
 export type DataBaseStateLatest = DatabaseState;
 
@@ -25,7 +25,7 @@ export const zodDatabaseExtensionBodyDocument = object({
 });
 
 export const zodDatabaseTypeDocument = extend(
-  zodDocumentContent,
+  zodCFRDocumentContent,
   zodDatabaseType.shape,
 );
 

@@ -1,5 +1,5 @@
 import { isNil, isNotNil } from 'es-toolkit';
-import { hasOwnKey } from '../typeGuards/hasOwnKey';
+import { hasKey, hasOwnKey } from '../typeGuards/hasOwnKey';
 import type { StrictRecord } from './types';
 
 export const strictRecordSet = <K extends string, V>(
@@ -43,11 +43,11 @@ export const strictRecordIterableKeys = <K extends string>(
   };
 
 export const strictRecordIterableEntries = <K extends string, V>(
-  obj: StrictRecord<K, V>,
+  obj?: StrictRecord<K, V>,
 ) =>
   function* (): IterableIterator<[K, V]> {
     for (const key in obj) {
-      if (hasOwnKey(obj, key)) {
+      if (hasKey(obj, key)) {
         const item = obj[key];
 
         if (item) {

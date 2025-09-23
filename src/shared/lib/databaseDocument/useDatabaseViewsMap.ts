@@ -9,7 +9,7 @@ import {
   type DatabaseView,
   type DatabaseViewId,
 } from './migrations/versions';
-import { deepPutJsonObject, deepReplaceJsonObject } from '../changeObject';
+import { deepPatchJsonObject, deepPutJsonObject } from '../changeObject';
 import { shallowClone } from '../shallowClone';
 import { moveArrayValue } from '../moveArrayValue';
 
@@ -29,7 +29,7 @@ export const useDatabaseViewsMap = (
   const set = async (id: DatabaseViewId, view: DatabaseView) => {
     await updateDatabaseDocument.value((d) => {
       if (d.views[id]) {
-        deepReplaceJsonObject(d.views[id], view, { trimString: true });
+        deepPutJsonObject(d.views[id], view, { trimString: true });
       } else {
         d.views[id] = view;
       }
@@ -55,7 +55,7 @@ export const useDatabaseViewsMap = (
     }
 
     await updateDatabaseDocument.value((d) => {
-      return deepPutJsonObject(d, {
+      return deepPatchJsonObject(d, {
         views: {
           [id]: partialView,
         },

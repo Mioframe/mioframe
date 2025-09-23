@@ -3,7 +3,7 @@ import { cloneDeepWith, isFunction } from 'es-toolkit';
 import type { Reactive, Ref } from 'vue';
 import { isReactive, isRef, toRaw, toValue } from 'vue';
 
-const cloneValueSerialize = (v: unknown, k?: PropertyKey): unknown => {
+const cloneValueSerialize = (v: unknown): unknown => {
   if (isFunction(v)) {
     return 'fucking function';
   }

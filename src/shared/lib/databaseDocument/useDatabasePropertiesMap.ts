@@ -8,7 +8,7 @@ import {
   type DatabaseUnknownProperty,
 } from './migrations/versions';
 import { toRefs } from '@vueuse/core';
-import { deepPutJsonObject, deepReplaceJsonObject } from '../changeObject';
+import { deepPatchJsonObject, deepPutJsonObject } from '../changeObject';
 import type { PartialDeep } from 'type-fest';
 
 export const useDatabasePropertiesMap = (
@@ -30,7 +30,7 @@ export const useDatabasePropertiesMap = (
   ) => {
     await updateDatabaseDocument.value((d) => {
       if (d.properties[id]) {
-        deepReplaceJsonObject(d.properties[id], property, { trimString: true });
+        deepPutJsonObject(d.properties[id], property, { trimString: true });
       } else {
         d.properties[id] = property;
       }
@@ -54,7 +54,7 @@ export const useDatabasePropertiesMap = (
     partialProperty: PartialDeep<T>,
   ) => {
     await updateDatabaseDocument.value((d) => {
-      return deepPutJsonObject(d, {
+      return deepPatchJsonObject(d, {
         properties: {
           [id]: partialProperty,
         },

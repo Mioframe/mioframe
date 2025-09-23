@@ -1,67 +1,76 @@
-import { cloneDeep, isNil, isString } from 'es-toolkit';
-import type { MergeDeep, PartialDeep } from 'type-fest';
-import { isObjectLike } from '../typeGuards';
-
-export const DELETE_MARKER = '__@DELETE_MARKER@__';
-
-export interface DeepPutJsonObjectOptions {
-  trimString?: boolean;
-  deleteMarker?: string;
-}
+import { cloneDeep, isString, isUndefined } from 'es-toolkit';
+import { isUnknownRecord } from './isUnknownRecord';
+import { isArray, isNil } from 'es-toolkit/compat';
+import { keys } from '../objectKeys';
 
 /**
- * overwrites modified values from source to target
+ * overwrites all values from source to target
  * @param target - mutable object
  * @param source - object with new values
  */
-export function deepPutJsonObject<
-  T extends object,
-  S extends PartialDeep<T> | object,
->(target: T, source: S, options?: DeepPutJsonObjectOptions): MergeDeep<T, S>;
-export function deepPutJsonObject<T extends object, S extends object>(
-  target: T,
+export const deepPutJsonObject = <S extends object>(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- it doesn't matter what the target object is
+  target: Record<any, any>,
   source: S,
   options: {
     trimString?: boolean;
-    deleteMarker?: string;
   } = {},
-): MergeDeep<T, S> {
-  const { trimString = false, deleteMarker = DELETE_MARKER } = options;
+): S => {
+  const { trimString = false } = options;
 
-  (<(keyof typeof source)[]>Object.keys(source)).forEach((sourceKey) => {
-    const sourceValue = source[sourceKey];
-    if (sourceKey in target) {
-      // eslint-disable-next-line @typescript-eslint/ban-ts-comment -- checked sourceKey in target
-      // @ts-expect-error
-      const targetValue: unknown = target[sourceKey];
-      if (sourceValue !== targetValue) {
-        if (isNil(sourceValue) || sourceValue === deleteMarker) {
-          // eslint-disable-next-line @typescript-eslint/ban-ts-comment -- everything is ok, it's just a deletion
-          // @ts-expect-error
-          // eslint-disable-next-line @typescript-eslint/no-dynamic-delete -- `undefined` is not a valid JSON data type
+  if (!Object.is(target, source)) {
+    const targetKeys = new Set<string | number | symbol>(
+      keys(target).reverse(),
+    );
+
+    keys(source).forEach((sourceKey) => {
+      targetKeys.delete(sourceKey);
+      const sourceValue = source[sourceKey];
+      if (sourceKey in target) {
+        const targetValue: unknown = target[sourceKey];
+        if (sourceValue !== targetValue) {
+          if (isUndefined(sourceValue)) {
+            // eslint-disable-next-line @typescript-eslint/no-dynamic-delete -- `undefined` is not a valid JSON data type
+            delete target[sourceKey];
+          } else if (
+            isUnknownRecord(targetValue) &&
+            isUnknownRecord(sourceValue)
+          ) {
+            deepPutJsonObject(targetValue, sourceValue, options);
+          } else if (trimString && isString(sourceValue)) {
+            target[sourceKey] = sourceValue.trim();
+          } else {
+            target[sourceKey] = cloneDeep(sourceValue);
+          }
+        }
+      } else {
+        if (isUndefined(sourceValue)) {
+          // eslint-disable-next-line @typescript-eslint/no-dynamic-delete -- delete keys with undefined value
           delete target[sourceKey];
-        } else if (isObjectLike(targetValue) && isObjectLike(sourceValue)) {
-          deepPutJsonObject(targetValue, sourceValue, options);
         } else if (trimString && isString(sourceValue)) {
-          // eslint-disable-next-line @typescript-eslint/ban-ts-comment -- replace property
-          // @ts-expect-error
           target[sourceKey] = sourceValue.trim();
         } else {
-          // eslint-disable-next-line @typescript-eslint/ban-ts-comment -- replace property
-          // @ts-expect-error
           target[sourceKey] = cloneDeep(sourceValue);
         }
       }
-    } else if (trimString && isString(sourceValue)) {
-      // eslint-disable-next-line @typescript-eslint/ban-ts-comment -- replace property
-      // @ts-expect-error
-      target[sourceKey] = sourceValue.trim();
-    } else {
-      // eslint-disable-next-line @typescript-eslint/ban-ts-comment -- create new property
-      // @ts-expect-error
-      target[sourceKey] = sourceValue;
-    }
-  });
+    });
 
-  return target as MergeDeep<T, S>;
-}
+    targetKeys.forEach((key) => {
+      // @ts-expect-error -- target is any object
+      // eslint-disable-next-line @typescript-eslint/no-dynamic-delete -- delete remaining keys
+      delete target[key];
+    });
+
+    if (isArray(target)) {
+      let newIndex = 0;
+      for (let i = 0; i < target.length; i++) {
+        const value = target[i];
+        if (i in target && !isNil(value)) {
+          target[newIndex++] = value;
+        }
+      }
+      target.splice(newIndex);
+    }
+  }
+  return <S>target;
+};

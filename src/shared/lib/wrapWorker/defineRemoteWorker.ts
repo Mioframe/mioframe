@@ -1,5 +1,4 @@
 import { wrap } from 'comlink';
-import { vueTransferHandlerSet } from './vueTransferHandlerSet';
 import { createGlobalState } from '@vueuse/core';
 import type { Asyncify, UnknownRecord } from 'type-fest';
 
@@ -21,10 +20,9 @@ export type RemoteValue<T> = T extends AnyRecord
 export type RemoteWorker<T> = RemoteValue<T>;
 
 export const defineRemoteWorker = <T>(ep: Worker) => {
-  return createGlobalState((): RemoteWorker<T> => {
-    // vueTransferHandlerSet();
-
-    // in comlink incorrect typing
-    return <RemoteWorker<T>>wrap(ep);
+  const useWrap = createGlobalState(() => {
+    return wrap(ep) as RemoteWorker<T>;
   });
+
+  return useWrap;
 };

@@ -1,9 +1,9 @@
-import { OPFS } from '@feature/mountDirectoryFromBrowser/useMountDirectoryFromBrowser';
 import type { DirectoryLocalEntry } from '@shared/lib/localFileSystem';
 import { createLocalDirectory } from '@shared/lib/localFileSystem';
 import { useDialog } from '@shared/ui/Dialog';
 import { createGlobalState } from '@vueuse/core';
 import { computed, shallowReactive } from 'vue';
+import { OPFSName } from './useDirectoryStoreClient';
 
 export const useBrowserSourceMounted = createGlobalState(() => {
   const mounted = shallowReactive<Map<string, DirectoryLocalEntry>>(new Map());
@@ -71,7 +71,7 @@ export const useBrowserSourceMounted = createGlobalState(() => {
     if (entry) {
       return entry;
     }
-    if (rootName === OPFS) {
+    if (rootName === OPFSName) {
       return mountOPFS();
     }
     return requestMountDirectory(rootName);
@@ -88,7 +88,7 @@ export const useBrowserSourceMounted = createGlobalState(() => {
       );
       handle = await navigator.storage.getDirectory();
     }
-    return mount(handle, OPFS);
+    return mount(handle, OPFSName);
   };
 
   void mountOPFS();

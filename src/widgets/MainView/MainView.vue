@@ -3,22 +3,22 @@ import { MDMainLayer } from '@shared/ui/Layers';
 
 import { HomeWidget } from '@widget/Home';
 import { RepoExplorerPane } from '@widget/MainView/RepoExplorer';
-import { computed } from 'vue';
 import { useRepoExplorerNavigate } from '@widget/MainView/useRepoExplorerNavigate';
-import DocumentViewPane from '@widget/DocumentView/DocumentViewPane.vue';
-import { MDIconButton } from '@shared/ui/Button';
-import { useRouter } from 'vue-router';
+// import { useRouter } from 'vue-router';
 
-const { directoryPath, closeDocument, documentId } = useRepoExplorerNavigate();
+const {
+  directoryPath,
+  // closeDocument
+} = useRepoExplorerNavigate();
 
-const onClickCloseDocument = async () => {
-  await closeDocument();
-};
+// const onClickCloseDocument = async () => {
+//   await closeDocument();
+// };
 
-const router = useRouter();
-const onClickBack = () => {
-  router.back();
-};
+// const router = useRouter();
+// const onClickBack = () => {
+//   router.back();
+// };
 </script>
 
 <template>
@@ -29,29 +29,29 @@ const onClickBack = () => {
       <RepoExplorerPane v-else />
     </template>
 
-    <template
+    <!--
+      <template
       v-if="directoryPath && documentId"
       #secondPane="{ showFirstPane }"
-    >
-      <!--
-        <DocumentViewPane :directory="directoryPath" :document-id="documentId">
-        <template #leadingNavigation>
-        <MDIconButton
-        v-if="showFirstPane"
-        tooltip="close"
-        md-symbol-name="close"
-        @click="onClickCloseDocument"
-        />
+      >
+      <DocumentViewPane :directory="directoryPath" :document-id="documentId">
+      <template #leadingNavigation>
+      <MDIconButton
+      v-if="showFirstPane"
+      tooltip="close"
+      md-symbol-name="close"
+      @click="onClickCloseDocument"
+      />
 
-        <MDIconButton
-        v-else
-        tooltip="back"
-        md-symbol-name="arrow_back"
-        @click="onClickBack"
-        />
-        </template>
-        </DocumentViewPane> 
-      -->
-    </template>
+      <MDIconButton
+      v-else
+      tooltip="back"
+      md-symbol-name="arrow_back"
+      @click="onClickBack"
+      />
+      </template>
+      </DocumentViewPane>
+      </template> 
+    -->
   </MDMainLayer>
 </template>
