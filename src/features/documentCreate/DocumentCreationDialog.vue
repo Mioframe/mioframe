@@ -1,21 +1,30 @@
 <script setup lang="ts">
-import { ref, watchEffect } from 'vue';
+import { ref, toRefs, watchEffect } from 'vue';
 import { DATABASE_DOCUMENT_TYPE } from '../../shared/lib/databaseDocument';
 import { MDDialog } from '@shared/ui/Dialog';
 import { MDTextField } from '@shared/ui/TextField';
 import { MDSelect } from '@shared/ui/Select';
-import type { CFRDocumentContent } from '@shared/lib/cfrDocument';
+import type { EntryPath } from '@shared/lib/fileSystem';
+import { useDocumentRepoClient } from '@entity/documentRepo';
+
+const props = defineProps<{
+  path: EntryPath;
+}>();
+
+const { path } = toRefs(props);
 
 const emit = defineEmits<{
-  create: [document: CFRDocumentContent];
+  created: [];
   cancel: [];
 }>();
 
-const show = defineModel<boolean>('show', { required: true });
+const showModel = defineModel<boolean>('show', { required: true });
 
 const stateName = ref<string>();
 
-const onCreate = () => {
+const { createDocument } = useDocumentRepoClient();
+
+const onCreate = async () => {
   if (!stateName.value?.length) {
     throw new Error('name is undefined');
   }
@@ -23,12 +32,14 @@ const onCreate = () => {
   const dType = documentType.value.at(0)?.key;
 
   if (dType) {
-    emit('create', {
+    await createDocument(path.value, {
       name: stateName.value.trim(),
       type: dType,
       version: 1,
       body: {},
     });
+
+    emit('created');
   }
 };
 
@@ -55,7 +66,7 @@ const documentType = ref<(typeof documentTypeOptions)[number][]>([
 
 <template>
   <MDDialog
-    v-model:show="show"
+    v-model:show="showModel"
     headline="Create Document"
     supporting-text="Think of a name and select the type of the new document."
     apply-label="Create"

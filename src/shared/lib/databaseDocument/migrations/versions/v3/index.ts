@@ -7,7 +7,7 @@ import {
 } from '../v2';
 import type { DatabaseStateV2, DatabaseViewsMap } from '../v2/state';
 import { extend, literal } from 'zod/v4-mini';
-import { deepPutJsonObject } from '@shared/lib/changeObject';
+import { deepPatchJsonObject } from '@shared/lib/changeObject';
 import { isEmpty } from 'es-toolkit/compat';
 import type { DatabaseTableView } from '..';
 import { cloneDeep } from 'es-toolkit';
@@ -20,7 +20,7 @@ export const databaseStateV3 = defineVersion(
   (old: DatabaseStateV2) => {
     const oldSnapshot = cloneDeep(old);
 
-    const newState = deepPutJsonObject(oldSnapshot, {
+    const newState = deepPatchJsonObject(oldSnapshot, {
       version: 3,
       views: <DatabaseViewsMap>{},
     } as const);

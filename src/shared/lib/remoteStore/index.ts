@@ -1,7 +1,11 @@
 export {
-  type ReactiveMapStore,
   type WatchHandle,
-  defineSubscribeService as defineSubscribe,
-  defineSubscribeGetterValueService as defineSubscribeGetterValue,
-  defineSubscribeValueService as defineSubscribeValue,
+  defineSubscribeService,
+  defineSubscribeByKeyService,
+  defineSubscribeByQueryService,
 } from './subscribeService';
+export {
+  useSubscribeByKeyClient,
+  useSubscribeByQueryClient,
+  useSubscribeClient,
+} from './subscribeClient';

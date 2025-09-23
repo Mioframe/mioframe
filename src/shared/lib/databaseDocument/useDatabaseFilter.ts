@@ -9,7 +9,7 @@ import type {
   DatabaseViewId,
 } from './types';
 import { useDatabaseView } from './useDatabaseView';
-import { deepReplaceJsonObject } from '../changeObject';
+import { deepPutJsonObject } from '../changeObject';
 import { isObjectLike } from '../typeGuards';
 
 export type UseDatabaseFilter = {
@@ -61,7 +61,7 @@ export const useDatabaseFilterMutation = <
       if (!isObjectLike(filter[key]) || !isObjectLike(value)) {
         filter[key] = value;
       } else {
-        deepReplaceJsonObject(filter[key], value, { trimString: true });
+        deepPutJsonObject(filter[key], value, { trimString: true });
       }
     });
   };

@@ -1,2 +1,13 @@
-export { useMountDirectoriesService } from './useMountDirectoriesService';
-export { useDirectoryContentService } from './useDirectoryContentService';
+export {
+  PATH_SEPARATOR,
+  entryPath,
+  pathToString,
+  stringPath,
+  stringToPath,
+  useDirectoryStoreService,
+} from './directoriesStoreService';
+export {
+  type DirectoryDescription,
+  ENTRY_NOT_FOUND,
+  type EntryDescription,
+} from './types';

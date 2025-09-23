@@ -1,7 +1,7 @@
-import { deepPutJsonObject } from '../changeObject';
+import { deepPatchJsonObject } from '../changeObject';
 import { defineMigrations } from '../migrations/defineMigrations';
 import type { MergeDeep } from 'type-fest';
-import { type CFRDocumentContent } from './types';
+import type { CFRDocumentContent } from './types';
 import type { AMDoc } from '../automerge/automergeTypes';
 import { isObjectLike } from '../typeGuards/isObjectLike';
 import { isInteger } from '../typeGuards/isInteger';
@@ -23,7 +23,7 @@ export const applyCFRDocumentMigration = (
 ): AMDoc<CFRDocumentContent> => {
   return defineMigrations(
     (doc: object): MergeDeep<object, CFRDocumentContent> => {
-      return deepPutJsonObject(doc, {
+      return deepPatchJsonObject(doc, {
         name: 'new document',
         type: 'unknown',
         ...doc,

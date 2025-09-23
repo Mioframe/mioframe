@@ -1,15 +1,19 @@
 <script setup lang="ts">
-import type { AMDocHandle } from '@shared/lib/automerge/automergeTypes';
-import { useCFRDocument } from '@shared/lib/cfrDocument/useCFRDocument';
+import type { AMDocumentId } from '@shared/lib/automerge/automergeTypes';
+import type { EntryPath, EntryPathString } from '@shared/lib/fileSystem';
 import { MDSymbol } from '@shared/ui/Icon';
 import { MDListItem } from '@shared/ui/Lists';
-import { computed, toRef } from 'vue';
+import { computed, toRefs } from 'vue';
+import { useCFRDocumentClient } from './client';
 
 const props = defineProps<{
-  docHandle: AMDocHandle;
+  path: EntryPath | EntryPathString;
+  documentId: AMDocumentId;
   supportingText?: string;
   isButton?: boolean;
 }>();
+
+const { documentId, path } = toRefs(props);
 
 const emit = defineEmits<{
   click: [e: MouseEvent];
@@ -21,11 +25,15 @@ const slots = defineSlots<{
   leadingAvatarContainer: () => unknown;
 }>();
 
-const docHandle = toRef(() => props.docHandle);
+const {
+  documentDescription: { get: getDocumentDescription },
+} = useCFRDocumentClient();
 
-const cfrDocument = useCFRDocument(docHandle);
+const documentDescription = computed(() =>
+  getDocumentDescription(path.value, documentId.value),
+);
 
-const documentName = computed(() => cfrDocument.content?.name);
+const documentName = computed(() => documentDescription.value?.name);
 
 const headline = computed(() => documentName.value ?? 'Untitled Document');
 </script>
