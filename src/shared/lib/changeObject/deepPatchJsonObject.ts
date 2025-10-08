@@ -9,6 +9,8 @@ export interface DeepPatchJsonObjectOptions {
   deleteMarker?: string;
 }
 
+export type PatchSource<T> = PartialDeep<T>;
+
 /**
  * overwrites modified values from source to target
  * @param target - mutable object
@@ -16,7 +18,7 @@ export interface DeepPatchJsonObjectOptions {
  */
 export function deepPatchJsonObject<
   T extends object,
-  S extends PartialDeep<T> | object,
+  S extends PatchSource<T> | object,
 >(target: T, source: S, options?: DeepPatchJsonObjectOptions): MergeDeep<T, S>;
 export function deepPatchJsonObject<T extends object, S extends object>(
   target: T,
@@ -30,11 +32,12 @@ export function deepPatchJsonObject<T extends object, S extends object>(
 
   (<(keyof typeof source)[]>Object.keys(source)).forEach((sourceKey) => {
     const sourceValue = source[sourceKey];
-    if (sourceKey in target) {
-      // eslint-disable-next-line @typescript-eslint/ban-ts-comment -- checked sourceKey in target
-      // @ts-expect-error
-      const targetValue: unknown = target[sourceKey];
-      if (sourceValue !== targetValue) {
+    // eslint-disable-next-line @typescript-eslint/ban-ts-comment -- checked sourceKey in target
+    // @ts-expect-error
+    const targetValue: unknown = target[sourceKey];
+
+    if (sourceValue !== targetValue) {
+      if (sourceKey in target) {
         if (isNil(sourceValue) || sourceValue === deleteMarker) {
           // eslint-disable-next-line @typescript-eslint/ban-ts-comment -- everything is ok, it's just a deletion
           // @ts-expect-error
@@ -51,15 +54,15 @@ export function deepPatchJsonObject<T extends object, S extends object>(
           // @ts-expect-error
           target[sourceKey] = cloneDeep(sourceValue);
         }
+      } else if (trimString && isString(sourceValue)) {
+        // eslint-disable-next-line @typescript-eslint/ban-ts-comment -- replace property
+        // @ts-expect-error
+        target[sourceKey] = sourceValue.trim();
+      } else {
+        // eslint-disable-next-line @typescript-eslint/ban-ts-comment -- create new property
+        // @ts-expect-error
+        target[sourceKey] = sourceValue;
       }
-    } else if (trimString && isString(sourceValue)) {
-      // eslint-disable-next-line @typescript-eslint/ban-ts-comment -- replace property
-      // @ts-expect-error
-      target[sourceKey] = sourceValue.trim();
-    } else {
-      // eslint-disable-next-line @typescript-eslint/ban-ts-comment -- create new property
-      // @ts-expect-error
-      target[sourceKey] = sourceValue;
     }
   });
 

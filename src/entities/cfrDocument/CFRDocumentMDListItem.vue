@@ -26,7 +26,7 @@ const slots = defineSlots<{
 }>();
 
 const {
-  documentDescription: { get: getDocumentDescription },
+  getDocumentDescription,
 } = useCFRDocumentClient();
 
 const documentDescription = computed(() =>

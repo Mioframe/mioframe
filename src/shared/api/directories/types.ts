@@ -1,8 +1,18 @@
-import type { EntryPath } from '@shared/lib/fileSystem';
+import type { EntryPath, EntryPathString } from '@shared/lib/fileSystem';
+import { stringPath } from './directoriesStoreService';
+import { DomainError } from '@shared/lib/error';
 
-export const ENTRY_NOT_FOUND = 'ENTRY_NOT_FOUND';
+export class EntryNotFoundError extends DomainError {
+  constructor(path: EntryPath | EntryPathString) {
+    super(`Entry for path ${stringPath(path)} not found`);
+  }
+}
 
-export type ENTRY_NOT_FOUND = typeof ENTRY_NOT_FOUND;
+export class EntryNotDirectoryError extends DomainError {
+  constructor(path: EntryPath | EntryPathString) {
+    super(`Entry ${stringPath(path)} is not a directory`);
+  }
+}
 
 export type EntryDescription = {
   name: string;

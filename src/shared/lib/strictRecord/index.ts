@@ -11,5 +11,6 @@ export {
   strictRecordClear,
   strictRecordIterableEntries,
   strictRecordIterableKeys,
+  strictRecordSize,
 } from './wrapStrictRecord';
 export { useWrapStrictRecord } from './useWrapStrictRecord';

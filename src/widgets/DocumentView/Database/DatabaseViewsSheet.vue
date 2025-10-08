@@ -1,10 +1,11 @@
 <script setup lang="ts">
+import { useDatabaseViewsClient } from '@entity/databaseView/viewsClient';
 import { DatabaseViewCreateDialog } from '@feature/databaseViewCreate';
 import { DatabaseViewListEdit } from '@feature/databaseViewMapEdit';
 import { DatabaseViewRenameDialog } from '@feature/databaseViewRename';
-import type { AMDocHandle } from '@shared/lib/automerge';
+import type { AMDocumentId } from '@shared/lib/automerge';
 import type { DatabaseViewId } from '@shared/lib/databaseDocument';
-import { useDatabaseViewsMap } from '@shared/lib/databaseDocument';
+import type { EntryPath } from '@shared/lib/fileSystem';
 import { MD_SYS_TYPESCALE } from '@shared/lib/md';
 import { MDIconButton } from '@shared/ui/Button';
 import MDButton from '@shared/ui/Button/MDButton.vue';
@@ -16,10 +17,11 @@ import { MDBottomSheet, MDBottomSheetSection } from '@shared/ui/Sheets';
 import { ref, shallowRef, toRefs } from 'vue';
 
 const props = defineProps<{
-  docHandle: AMDocHandle;
+  directoryPath: EntryPath;
+  documentId: AMDocumentId;
 }>();
 
-const { docHandle } = toRefs(props);
+const { documentId, directoryPath } = toRefs(props);
 
 const showModel = defineModel<boolean>('show', { required: true });
 
@@ -27,7 +29,7 @@ const selectedViewId = defineModel<DatabaseViewId>('selectedViewId');
 
 const { confirm } = useDialog();
 
-const databaseViewsMap = useDatabaseViewsMap(docHandle);
+const { remove: removeView } = useDatabaseViewsClient();
 
 const onChangeSelectedViewId = (viewId: DatabaseViewId, checked?: boolean) => {
   if (checked) {
@@ -73,7 +75,7 @@ const onClickViewContextMenu = async (
           'delete',
         )
       ) {
-        await databaseViewsMap.remove(viewId);
+        await removeView(directoryPath.value, documentId.value, viewId);
       }
 
       break;
@@ -133,7 +135,8 @@ const closeRenameDialog = () => {
       <div class="db-views-sheet__body">
         <DatabaseViewListEdit
           class="db-views-sheet__list"
-          :doc-handle="docHandle"
+          :directory-path="directoryPath"
+          :document-id="documentId"
           @click-view="onChangeSelectedViewId($event, true)"
         >
           <template #leadingIcon="{ viewId }">
@@ -165,7 +168,8 @@ const closeRenameDialog = () => {
     <DatabaseViewCreateDialog
       v-if="isShowAddView"
       v-model:show="isShowAddView"
-      :doc-handle="docHandle"
+      :directory-path="directoryPath"
+      :document-id="documentId"
       @created="isShowAddView = false"
       @cancel="isShowAddView = false"
     />
@@ -173,7 +177,8 @@ const closeRenameDialog = () => {
     <DatabaseViewRenameDialog
       v-if="renameViewId"
       :show="!!renameViewId"
-      :doc-handle="docHandle"
+      :directory-path="directoryPath"
+      :document-id="documentId"
       :view-id="renameViewId"
       @update:show="(show) => show || closeRenameDialog()"
       @cancel="renameViewId = undefined"

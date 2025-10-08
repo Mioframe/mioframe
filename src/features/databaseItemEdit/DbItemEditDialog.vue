@@ -2,18 +2,23 @@
 import { computed, ref, toRefs, watchEffect } from 'vue';
 import { MDDialog } from '@shared/ui/Dialog';
 import {
-  useDatabaseData,
   type DatabaseItem,
   type DatabaseItemId,
   type DatabasePropertyId,
   type GeneralProperty,
 } from '@shared/lib/databaseDocument';
-import type { AMDocHandle } from '@shared/lib/automerge';
-import { useDatabasePropertiesMap } from '@shared/lib/databaseDocument/useDatabasePropertiesMap';
+import type { AMDocumentId } from '@shared/lib/automerge';
+
+import type { EntryPath } from '@shared/lib/fileSystem';
+import { useDatabaseDataClient } from '@entity/databaseData/client';
+import { DomainError } from '@shared/lib/error';
+import { useDatabasePropertiesClient } from '@entity/databaseProperty';
+import { strictRecordIterableEntries } from '@shared/lib/strictRecord';
 
 const props = withDefaults(
   defineProps<{
-    docHandle: AMDocHandle;
+    directoryPath: EntryPath;
+    documentId: AMDocumentId;
     itemId?: DatabaseItemId;
     headline?: string;
     supportingText?: string;
@@ -26,8 +31,14 @@ const props = withDefaults(
   },
 );
 
-const { applyLabel, headline, supportingText, itemId, docHandle } =
-  toRefs(props);
+const {
+  directoryPath,
+  documentId,
+  applyLabel,
+  headline,
+  supportingText,
+  itemId,
+} = toRefs(props);
 
 const emit = defineEmits<{
   updated: [item: DatabaseItem];
@@ -48,22 +59,35 @@ defineSlots<{
 
 const itemState = ref<DatabaseItem>({});
 
-const databaseData = useDatabaseData(docHandle);
+const { getItem, postItem } = useDatabaseDataClient();
 
 const currentItemState = computed(() =>
-  itemId.value ? databaseData.getItem(itemId.value) : undefined,
+  itemId.value
+    ? getItem(directoryPath.value, documentId.value, itemId.value)
+    : undefined,
 );
 
 watchEffect(() => {
-  itemState.value = currentItemState.value ?? {};
+  if (!(currentItemState.value instanceof DomainError)) {
+    itemState.value = currentItemState.value ?? {};
+  }
 });
 
 const onApply = async () => {
   if (itemId.value) {
-    await databaseData.setItem(itemId.value, itemState.value);
+    await postItem(
+      directoryPath.value,
+      documentId.value,
+      itemState.value,
+      itemId.value,
+    );
     emit('updated', itemState.value);
   } else {
-    const id = await databaseData.createItem(itemState.value);
+    const id = await postItem(
+      directoryPath.value,
+      documentId.value,
+      itemState.value,
+    );
     emit('created', id);
   }
 };
@@ -73,7 +97,20 @@ const onCancel = () => {
   emit('cancel');
 };
 
-const propertyMap = useDatabasePropertiesMap(docHandle);
+const { getDatabaseProperties } = useDatabasePropertiesClient();
+
+const properties = computed(() => {
+  const properties = getDatabaseProperties(
+    directoryPath.value,
+    documentId.value,
+  );
+
+  if (properties instanceof DomainError) {
+    return undefined;
+  }
+
+  return properties;
+});
 
 const onUpdateValue = (propertyId: DatabasePropertyId, value: unknown) => {
   itemState.value[propertyId] = value;
@@ -91,7 +128,9 @@ const onUpdateValue = (propertyId: DatabasePropertyId, value: unknown) => {
     @cancel="onCancel"
   >
     <template
-      v-for="[propertyId, property] in propertyMap.entries"
+      v-for="[propertyId, property] in strictRecordIterableEntries(
+        properties,
+      )()"
       :key="propertyId"
     >
       <slot

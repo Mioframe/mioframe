@@ -7,7 +7,7 @@ import {
   type UNARY_FILTER_OPERATOR,
 } from '@shared/lib/databaseDocument/migrations/versions/v2/view/filter';
 import { computed, ref, toRefs, useTemplateRef } from 'vue';
-import type { AMDocHandle } from '@shared/lib/automerge';
+import type { AMDocumentId } from '@shared/lib/automerge';
 import DatabaseNestedFilterString from './DatabaseNestedFilterString.vue';
 import { OPERATOR_LABEL } from './types';
 import { MDIconButton } from '@shared/ui/Button';
@@ -20,24 +20,25 @@ import type {
   DatabaseValue,
   GeneralProperty,
 } from '@shared/lib/databaseDocument';
-import {
-  useDatabasePropertiesMap,
-  type DatabasePropertyId,
-} from '@shared/lib/databaseDocument';
+import { type DatabasePropertyId } from '@shared/lib/databaseDocument';
 import { zodIs } from '@shared/lib/validateZodScheme';
 import { MDDialog } from '@shared/ui/Dialog';
 import { useLastHover } from '@shared/lib/useLastHover';
+import { useDatabasePropertiesClient } from '@entity/databaseProperty';
+import type { EntryPath } from '@shared/lib/fileSystem';
+import type { DomainError } from '@shared/lib/error';
 
 const props = withDefaults(
   defineProps<{
+    directoryPath: EntryPath;
+    documentId: AMDocumentId;
     operator: LOGICAL_FILTER_OPERATOR;
-    docHandle: AMDocHandle;
     level?: number;
   }>(),
   { level: 0 },
 );
 
-const { operator, docHandle } = toRefs(props);
+const { directoryPath, operator, documentId } = toRefs(props);
 
 const groupFilterModel = defineModel<DatabaseLogicalFilterList>('groupFilter', {
   required: true,
@@ -49,14 +50,14 @@ const emit = defineEmits<{
 
 defineSlots<{
   valueField(p: {
-    property: GeneralProperty;
+    property: GeneralProperty | DomainError;
     propertyId: DatabasePropertyId;
     value: unknown;
     update: (value: unknown) => void;
   }): unknown;
 }>();
 
-const properties = useDatabasePropertiesMap(docHandle);
+const { getProperty } = useDatabasePropertiesClient();
 
 const addBtnLabel = computed(() => OPERATOR_LABEL[operator.value]);
 
@@ -69,7 +70,8 @@ const onClickAddCondition = () => {
 const showAddItemFilter = ref(false);
 
 const conditionMenuButtonList = useConditionMenu({
-  docHandle,
+  directoryPath,
+  documentId,
 });
 
 const selectedPropertyId = ref<DatabasePropertyId>();
@@ -120,7 +122,11 @@ const onUpdateValue = (v: unknown) => {
 
 const valueProperty = computed(() =>
   selectedPropertyId.value
-    ? properties.get(selectedPropertyId.value)
+    ? getProperty(
+        directoryPath.value,
+        documentId.value,
+        selectedPropertyId.value,
+      )
     : undefined,
 );
 
@@ -169,8 +175,9 @@ const onClickRemoveFilter = (index: number) => {
     <span class="filter-block__body">
       <template v-for="(item, index) in groupFilterModel" :key="index">
         <DatabaseNestedFilterString
+          :directory-path="directoryPath"
+          :document-id="documentId"
           :filter="item"
-          :doc-handle="docHandle"
           :level="level + 1"
           @update:filter="onUpdateFilter($event, index)"
           @click-remove="onClickRemoveFilter(index)"

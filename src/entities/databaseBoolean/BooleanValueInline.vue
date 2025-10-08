@@ -1,37 +1,50 @@
 <script setup lang="ts">
-import type { AMDocHandle } from '@shared/lib/automerge';
-import {
-  useDatabaseProperty,
-  type DatabasePropertyId,
-} from '@shared/lib/databaseDocument';
+import type { AMDocumentId } from '@shared/lib/automerge';
+import { type DatabasePropertyId } from '@shared/lib/databaseDocument';
 import { MDCheckbox } from '@shared/ui/Checkbox';
 import { isBoolean } from 'es-toolkit';
 import { computed, toRefs } from 'vue';
 import { zodBooleanProperty } from './boolean';
+import { useDatabasePropertiesClient } from '@entity/databaseProperty';
+import type { EntryPath } from '@shared/lib/fileSystem';
+import { zodCheck } from '@shared/lib/validateZodScheme';
 
 const props = defineProps<{
   value: unknown;
   editable?: boolean;
-  docHandle: AMDocHandle;
+  directoryPath: EntryPath;
+  documentId: AMDocumentId;
   propertyId: DatabasePropertyId;
 }>();
 
-const { value, docHandle, propertyId } = toRefs(props);
+const { value, documentId, propertyId, directoryPath } = toRefs(props);
 
 const emit = defineEmits<{ click: [] }>();
 
-const { property } = useDatabaseProperty(
-  docHandle,
-  propertyId,
-  zodBooleanProperty,
-);
+const {
+  getProperty,
+} = useDatabasePropertiesClient();
 
-const name = computed(() => property.value?.name);
+const booleanProperty = computed(() => {
+  const property = getProperty(
+    directoryPath.value,
+    documentId.value,
+    propertyId.value,
+  );
 
-const indeterminate = computed(() => property.value?.indeterminate);
+  if (zodCheck(zodBooleanProperty, property)) {
+    return property;
+  }
+
+  return undefined;
+});
+
+const name = computed(() => booleanProperty.value?.name);
+
+const indeterminate = computed(() => booleanProperty.value?.indeterminate);
 
 const convertedValue = computed(() =>
-  isBoolean(value.value) ? value.value : property.value?.default,
+  isBoolean(value.value) ? value.value : booleanProperty.value?.default,
 );
 </script>
 

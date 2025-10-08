@@ -8,12 +8,14 @@ import { zodCFRDocumentContent } from '@shared/lib/cfrDocument';
 import { zodIs } from '@shared/lib/validateZodScheme';
 import { omit } from 'es-toolkit';
 import { applyCFRDocumentMigration } from '@shared/lib/cfrDocument/migrations';
+import type { PatchSource } from '@shared/lib/changeObject';
 import {
   deepPatchJsonObject,
   deepPutJsonObject,
 } from '@shared/lib/changeObject';
-import type { PartialDeep } from 'type-fest';
-import { defineSubscribeByQueryService } from '@shared/lib/remoteStore/subscribeService';
+import { defineSubscribeByQueryService } from '@shared/lib/subscriptions/subscribeService';
+import { stringPath } from '../directories';
+import { DomainError } from '@shared/lib/error';
 
 export const useCFRDocumentService = createGlobalState(() => {
   const { getScope: getDocumentScope } = useDocHandleScopesWeakMap();
@@ -25,39 +27,49 @@ export const useCFRDocumentService = createGlobalState(() => {
   ) => {
     const repo = getDirectoryRepo(directoryPath);
 
-    if (repo) {
-      return repo.map.get(documentId);
+    if (repo instanceof DomainError) {
+      return repo;
     }
 
-    return undefined;
+    return repo.map.get(documentId);
   };
 
-  const getDocumentContent = (
+  const getCFRDocumentState = (
     path: EntryPath | EntryPathString,
     documentId: AMDocumentId,
-  ) => {
+  ): CFRDocumentContent | DomainError | undefined => {
     const docHandle = getDocHandle(path, documentId);
+    if (docHandle instanceof DomainError) {
+      return docHandle;
+    }
     if (docHandle) {
       const { state } = getDocumentScope(docHandle);
-      return state.docRef;
+      if (zodIs(state.docRef, zodCFRDocumentContent)) {
+        return state.docRef;
+      }
     }
 
     return undefined;
   };
 
-  const getDocumentDescription = (
+  const getCFRDocumentDescription = (
     path: EntryPath | EntryPathString,
     id: AMDocumentId,
-  ): Omit<CFRDocumentContent, 'body'> | undefined => {
-    const doc = getDocumentContent(path, id);
-    if (zodIs(doc, zodCFRDocumentContent)) {
+  ): Omit<CFRDocumentContent, 'body'> | DomainError | undefined => {
+    const doc = getCFRDocumentState(path, id);
+
+    if (doc instanceof DomainError) {
+      return doc;
+    }
+
+    if (doc) {
       return omit(doc, ['body']);
     }
     return undefined;
   };
 
   const subscribeDocumentDescription = defineSubscribeByQueryService(
-    getDocumentDescription,
+    getCFRDocumentDescription,
   );
 
   const put = (
@@ -66,8 +78,17 @@ export const useCFRDocumentService = createGlobalState(() => {
     content: CFRDocumentContent,
   ) => {
     const docHandle = getDocHandle(directoryPath, documentId);
+    if (docHandle instanceof DomainError) {
+      throw docHandle;
+    }
 
-    docHandle?.change((doc) => {
+    if (!docHandle) {
+      throw new DomainError(
+        `document ${stringPath(directoryPath)} ${documentId} not found`,
+      );
+    }
+
+    docHandle.change((doc) => {
       const migratedDoc = applyCFRDocumentMigration(doc);
 
       deepPutJsonObject(migratedDoc, content);
@@ -77,14 +98,56 @@ export const useCFRDocumentService = createGlobalState(() => {
   const patch = (
     directoryPath: EntryPath,
     documentId: AMDocumentId,
-    partialContent: PartialDeep<CFRDocumentContent>,
+    partialContent: PatchSource<CFRDocumentContent>,
   ) => {
     const docHandle = getDocHandle(directoryPath, documentId);
 
-    docHandle?.change((doc) => {
+    if (docHandle instanceof DomainError) {
+      return docHandle;
+    }
+
+    if (!docHandle) {
+      throw new DomainError(
+        `document ${stringPath(directoryPath)} ${documentId} not found`,
+      );
+    }
+
+    docHandle.change((doc) => {
       const migratedDoc = applyCFRDocumentMigration(doc);
 
       deepPatchJsonObject(migratedDoc, partialContent, { trimString: true });
+    });
+  };
+
+  const change = (
+    directoryPath: EntryPath,
+    documentId: AMDocumentId,
+    callback: (doc: CFRDocumentContent) => unknown,
+  ) => {
+    const docHandle = getDocHandle(directoryPath, documentId);
+
+    if (docHandle instanceof DomainError) {
+      throw docHandle;
+    }
+
+    if (!docHandle) {
+      throw new DomainError(
+        `document ${stringPath(directoryPath)} ${documentId} not found`,
+      );
+    }
+
+    return new Promise<void>((resolve, reject) => {
+      docHandle.change((doc) => {
+        try {
+          const cfrDocumentContent = applyCFRDocumentMigration(doc);
+          callback(cfrDocumentContent);
+          resolve();
+        } catch (error: unknown) {
+          // eslint-disable-next-line @typescript-eslint/prefer-promise-reject-errors
+          reject(error);
+          throw error;
+        }
+      });
     });
   };
 
@@ -93,5 +156,9 @@ export const useCFRDocumentService = createGlobalState(() => {
 
     put,
     patch,
+
+    change,
+
+    getCFRDocumentState,
   };
 });

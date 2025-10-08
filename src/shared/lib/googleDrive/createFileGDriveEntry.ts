@@ -69,6 +69,7 @@ export const createFileGDriveEntry = (
   };
 
   const currentFileGDriveEntry: FileGDriveEntry = {
+    type: 'file',
     ...currentEntry,
     get name() {
       return currentName;

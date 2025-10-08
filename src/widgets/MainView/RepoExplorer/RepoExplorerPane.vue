@@ -22,8 +22,8 @@ import { useRouter } from 'vue-router';
 import { useDirectoryStoreClient } from '@entity/mountedDirectories/useDirectoryStoreClient';
 import type { EntryPath } from '@shared/lib/fileSystem';
 import type { EntryDescription } from '@shared/api/directories/types';
-import { ENTRY_NOT_FOUND } from '@shared/api/directories/types';
 import { useDocumentRepoClient } from '@entity/documentRepo';
+import { stringPath } from '@shared/api/directories';
 
 const {
   directoryPathString,
@@ -40,16 +40,16 @@ const onClickCreateDirectory = () => {
 
 const entryPathToRemove = ref<EntryPath>();
 
-const {
-  entryStore: { get: getEntry },
-  removeEntry,
-} = useDirectoryStoreClient();
+const { getEntry, removeEntry } = useDirectoryStoreClient();
 
 const directory = computed(() => {
   if (directoryPathString.value) {
     const entry = getEntry(directoryPathString.value);
-    if (entry === ENTRY_NOT_FOUND) {
+    if (entry instanceof Error) {
       return entry;
+    }
+    if (entry?.type === 'file') {
+      return new Error(`Entry ${stringPath(entry.path)} is not a directory`);
     }
     if (entry && 'entries' in entry) {
       return entry;
@@ -59,7 +59,7 @@ const directory = computed(() => {
 });
 
 const directoryEntries = computed(() =>
-  directory.value !== ENTRY_NOT_FOUND ? directory.value?.entries : undefined,
+  directory.value instanceof Error ? undefined : directory.value?.entries,
 );
 
 const onClickPath = async (indexPath: number) => {
@@ -88,9 +88,7 @@ const onClickCreateDocument = () => {
   }
 };
 
-const {
-  documentIdList: { get: getDocumentIdList },
-} = useDocumentRepoClient();
+const { getDocumentIdList } = useDocumentRepoClient();
 
 const documentIdList = computed(() =>
   directoryPath.value ? getDocumentIdList(directoryPath.value) : undefined,
@@ -254,7 +252,7 @@ const showFSEntryRenameDialog = computed({
           class="document-explorer-widget__list-item"
           @click="onClickEntry(entry)"
         >
-          <template #trailingIcon="{ entry: entryName }">
+          <template #trailingIcon="{ entry: { name: entryName } }">
             <MDContextMenuButton
               :btns="fsEntryContextBtns"
               :tooltip="`options ${entryName}`"
@@ -291,9 +289,9 @@ const showFSEntryRenameDialog = computed({
     </div>
 
     <DocumentCreationDialog
-      v-if="parentPathForNewDirectory"
+      v-if="directoryPath"
       v-model:show="showFormNewDocument"
-      :path="parentPathForNewDirectory"
+      :path="directoryPath"
       @cancel="showFormNewDocument = false"
       @created="showFormNewDocument = false"
     />

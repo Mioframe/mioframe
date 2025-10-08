@@ -1,31 +1,24 @@
 import { createGlobalState } from '@vueuse/core';
-import { useApiClient } from '@shared/api';
+import { useMainService } from '@shared/api';
 import {
-  useSubscribeClient,
+  createSubscribeClient,
   useSubscribeByKeyClient,
-} from '@shared/lib/remoteStore/subscribeClient';
-import { toRef, watchEffect } from 'vue';
+} from '@shared/lib/subscriptions/subscribeClient';
+import { toRef } from 'vue';
 import { isFunction } from 'es-toolkit';
 import { useSnackbar } from '@shared/ui/Snackbar';
 import { useDialog } from '@shared/ui/Dialog';
 import type { EntryPath, EntryPathString } from '@shared/lib/fileSystem';
-import { cloneDeepSerialize } from '@shared/lib/wrapWorker/vueTransferHandlerSet';
 
 export const OPFSName = 'Origin private file system';
 export const OPFS = OPFSName;
 
 export const useDirectoryStoreClient = createGlobalState(() => {
-  const api = useApiClient();
+  const api = useMainService();
 
   const directoryStore = api.directoryStore;
 
-  const rootList = useSubscribeClient(directoryStore.subscribeRootList, []);
-
-  watchEffect(() => {
-    console.debug('rootList', rootList.value);
-  });
-
-  const entryStore = useSubscribeByKeyClient(directoryStore.subscribeEntry);
+  const rootList = createSubscribeClient(directoryStore.subscribeRootList, []);
 
   const isSupportUserDirectory = toRef(
     () =>
@@ -67,7 +60,6 @@ export const useDirectoryStoreClient = createGlobalState(() => {
   };
 
   const mountOPFS = async () => {
-    console.debug('🔴 mountOPFS');
     const persistent = await navigator.storage.persisted();
     if (!persistent) {
       await navigator.storage.persist();
@@ -84,12 +76,12 @@ export const useDirectoryStoreClient = createGlobalState(() => {
   }, 1e3);
 
   const removeEntry = async (rawPath: EntryPath | EntryPathString) => {
-    await directoryStore.removeEntry(cloneDeepSerialize(rawPath));
+    await directoryStore.removeEntry(rawPath);
   };
 
   return {
     rootList,
-    entryStore,
+    getEntry: useSubscribeByKeyClient(directoryStore.subscribeEntry),
 
     addRootFSHandle,
     createDirectory: directoryStore.createDirectory,

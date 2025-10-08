@@ -1,4 +1,3 @@
-import type { EmptyObject } from 'type-fest';
 import { deepPutJsonObject } from '../changeObject';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- no restrictions
@@ -26,7 +25,7 @@ type UpdateResult<T, Ops extends MigrateFunction[]> = Ops extends [
 /**
  * applying migration to data
  */
-type CreateUpdatedData<Ops extends MigrateFunction[], T extends EmptyObject> = (
+type CreateUpdatedData<Ops extends MigrateFunction[], T extends object> = (
   data: object,
   version?: number,
 ) => UpdateResult<T, Ops>;

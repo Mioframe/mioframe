@@ -1,24 +1,25 @@
 <script setup lang="ts">
 import { DatabaseFilterEditString } from '@feature/databaseFilterEdit';
-import type { AMDocHandle } from '@shared/lib/automerge';
+import type { AMDocumentId } from '@shared/lib/automerge';
 import type {
   DatabaseFilter,
   DatabaseViewId,
 } from '@shared/lib/databaseDocument';
-import { useDatabaseFilter } from '@shared/lib/databaseDocument/useDatabaseFilter';
-import type { DirectoryFSEntry } from '@shared/lib/fileSystem';
+import type { EntryPath } from '@shared/lib/fileSystem';
 import { MD_SYS_TYPESCALE } from '@shared/lib/md';
 import { MDBottomSheet, MDBottomSheetSection } from '@shared/ui/Sheets';
 import { computed, ref, toRefs, watchEffect } from 'vue';
 import ValueField from './ValueField.vue';
+import { useDatabaseViewFilterClient } from '@entity/databaseFilter/client';
+import { DomainError } from '@shared/lib/error';
 
 const props = defineProps<{
-  docHandle: AMDocHandle;
-  directory: DirectoryFSEntry;
+  directoryPath: EntryPath;
+  documentId: AMDocumentId;
   viewId: DatabaseViewId;
 }>();
 
-const { docHandle, viewId } = toRefs(props);
+const { directoryPath, documentId, viewId } = toRefs(props);
 
 const showModel = defineModel<boolean>('show', { required: true });
 
@@ -28,14 +29,18 @@ const onUpdateCollapsed = (collapsed: boolean) => {
   }
 };
 
-const databaseFilter = useDatabaseFilter(docHandle, viewId);
+const { get } = useDatabaseViewFilterClient();
 
-const filter = computed(() => databaseFilter.filter ?? {});
+const filter = computed(() =>
+  get(directoryPath.value, documentId.value, viewId.value),
+);
 
 const filterState = ref<DatabaseFilter>({});
 
 watchEffect(() => {
-  filterState.value = filter.value;
+  if (!(filter.value instanceof DomainError)) {
+    filterState.value = filter.value ?? {};
+  }
 });
 </script>
 
@@ -57,15 +62,17 @@ watchEffect(() => {
 
       <div class="db-filters-sheet__filters">
         <DatabaseFilterEditString
-          :doc-handle="docHandle"
+          :directory-path="directoryPath"
+          :document-id="documentId"
           :view-id="viewId"
           class="db-filters-sheet__root-filter"
         >
           <template #valueField="{ property, update, value }">
             <ValueField
+              v-if="!(property instanceof DomainError)"
               :property="property"
               :value="value"
-              :directory="directory"
+              :directory-path="directoryPath"
               @update:value="update"
             />
           </template>
