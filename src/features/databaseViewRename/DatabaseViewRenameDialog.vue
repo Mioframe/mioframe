@@ -1,26 +1,42 @@
 <script setup lang="ts">
-import type { AMDocHandle } from '@shared/lib/automerge';
+import { useDatabaseViewsClient } from '@entity/databaseView/viewsClient';
+import type { AMDocumentId } from '@shared/lib/automerge';
 import type { DatabaseViewId } from '@shared/lib/databaseDocument';
-import { useDatabaseView } from '@shared/lib/databaseDocument';
+import { DomainError } from '@shared/lib/error';
+import type { EntryPath } from '@shared/lib/fileSystem';
 import { MDDialog } from '@shared/ui/Dialog';
 import { MDTextField } from '@shared/ui/TextField';
-import { ref, toRefs, watchEffect } from 'vue';
+import { computed, ref, toRefs, watchEffect } from 'vue';
 
 const props = defineProps<{
-  docHandle: AMDocHandle;
+  directoryPath: EntryPath;
+  documentId: AMDocumentId;
   viewId: DatabaseViewId;
 }>();
 
-const { docHandle, viewId } = toRefs(props);
+const { directoryPath, documentId, viewId } = toRefs(props);
 
 const show = defineModel<boolean>('show', { required: true });
 
-const view = useDatabaseView(docHandle, viewId);
+const {
+  view: { get: getView },
+  patch,
+} = useDatabaseViewsClient();
+
+const stateView = computed(() =>
+  getView(directoryPath.value, documentId.value, viewId.value),
+);
 
 const nameState = ref<string>();
 
+const resetNameState = () => {
+  if (!(stateView.value instanceof DomainError)) {
+    nameState.value = stateView.value?.name;
+  }
+};
+
 watchEffect(() => {
-  nameState.value = view.view?.name;
+  resetNameState();
 });
 
 const emit = defineEmits<{
@@ -34,7 +50,9 @@ const onApply = async () => {
   if (nameState.value) {
     try {
       loading.value += 1;
-      await view.put({ name: nameState.value });
+      await patch(directoryPath.value, documentId.value, viewId.value, {
+        name: nameState.value,
+      });
       emit('completed', nameState.value);
     } finally {
       loading.value -= 1;
@@ -43,7 +61,7 @@ const onApply = async () => {
 };
 
 const onCancel = () => {
-  nameState.value = view.view?.name;
+  resetNameState();
   emit('cancel');
 };
 </script>

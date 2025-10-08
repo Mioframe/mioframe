@@ -4,18 +4,21 @@ import { MDDialog } from '@shared/ui/Dialog';
 import { MDTextField } from '@shared/ui/TextField';
 import { cloneDeep } from 'es-toolkit';
 import { useSnackbar } from '@shared/ui/Snackbar';
-import type { AMDocHandle } from '@shared/lib/automerge';
-import { useDatabasePropertiesMap } from '@shared/lib/databaseDocument';
+import type { AMDocumentId } from '@shared/lib/automerge';
 import type {
   DatabasePropertyId,
   DatabaseUnknownProperty,
 } from '@shared/lib/databaseDocument';
+import type { EntryPath } from '@shared/lib/fileSystem';
+import { useDatabasePropertiesClient } from '@entity/databaseProperty';
+import { DomainError } from '@shared/lib/error';
 const props = defineProps<{
-  docHandle: AMDocHandle;
+  directoryPath: EntryPath;
+  documentId: AMDocumentId;
   propertyId: DatabasePropertyId;
 }>();
 
-const { docHandle, propertyId } = toRefs(props);
+const { directoryPath, documentId, propertyId } = toRefs(props);
 
 const emit = defineEmits<{
   edited: [];
@@ -32,14 +35,24 @@ defineSlots<{
   }) => unknown;
 }>();
 
-const propertiesMap = useDatabasePropertiesMap(docHandle);
+const { getProperty, patch } = useDatabasePropertiesClient();
 
-const property = computed(() => propertiesMap.get(propertyId.value));
+const property = computed(() =>
+  getProperty(directoryPath.value, documentId.value, propertyId.value),
+);
 
 const propertyState = ref<DatabaseUnknownProperty>();
 
+const resetPropertyState = () => {
+  if (property.value && !(property.value instanceof DomainError)) {
+    propertyState.value = cloneDeep(property.value);
+  } else {
+    propertyState.value = undefined;
+  }
+};
+
 watchEffect(() => {
-  propertyState.value = cloneDeep(property.value);
+  resetPropertyState();
 });
 
 const onUpdateDefaultValue = (value: unknown) => {
@@ -52,7 +65,12 @@ const { addSnackbar } = useSnackbar();
 
 const onApply = async () => {
   if (propertyState.value) {
-    await propertiesMap.set(propertyId.value, propertyState.value);
+    await patch(
+      directoryPath.value,
+      documentId.value,
+      propertyId.value,
+      propertyState.value,
+    );
     emit('edited');
   } else {
     addSnackbar({ text: 'Property is not filled' });
@@ -60,7 +78,7 @@ const onApply = async () => {
 };
 
 const onCancel = () => {
-  propertyState.value = cloneDeep(property.value);
+  resetPropertyState();
   emit('cancel');
 };
 

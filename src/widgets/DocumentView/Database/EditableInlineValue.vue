@@ -6,43 +6,63 @@ import ValueInline from './ValueInline.vue';
 import { isEqual, isUndefined } from 'es-toolkit';
 import ValueField from './ValueField.vue';
 import { useFirstFocus } from '@shared/lib/useFirstFocus';
+import type { DatabaseItemId } from '@shared/lib/databaseDocument';
 import {
-  useDatabasePropertiesMap,
-  type DatabaseItem,
   type DatabasePropertyId,
   type DatabaseUnknownProperty,
 } from '@shared/lib/databaseDocument';
-import type { DirectoryFSEntry } from '@shared/lib/fileSystem';
+import type { EntryPath } from '@shared/lib/fileSystem';
 import { MDOverlayTooltip } from '@shared/ui/Tooltips';
 import { toggleBoolean } from '@shared/ui/Checkbox';
-import type { AMDocHandle } from '@shared/lib/automerge';
+import type { AMDocumentId } from '@shared/lib/automerge';
 import { MDState } from '@shared/ui/State';
 import type { MaybeElement } from '@vueuse/core';
+import { useDatabasePropertiesClient } from '@entity/databaseProperty';
+import { useDatabaseDataClient } from '@entity/databaseData/client';
+import { DomainError } from '@shared/lib/error';
 
 const props = withDefaults(
   defineProps<{
-    item: DatabaseItem | undefined;
+    itemId: DatabaseItemId;
     propertyId: DatabasePropertyId;
-    directory: DirectoryFSEntry;
-    docHandle: AMDocHandle;
+    directoryPath: EntryPath;
+    documentId: AMDocumentId;
   }>(),
   {},
 );
 
-const { propertyId, docHandle } = toRefs(props);
-
-const item = computed(() => props.item ?? {});
+const { propertyId, documentId, directoryPath, itemId } = toRefs(props);
 
 const emit = defineEmits<{
   'update:value': [value: unknown];
   'update:property': [property: DatabaseUnknownProperty];
 }>();
 
-const propertiesMap = useDatabasePropertiesMap(docHandle);
+const { getProperty } = useDatabasePropertiesClient();
 
-const property = computed(() => propertiesMap.get(propertyId.value));
+const property = computed(() => {
+  const property = getProperty(
+    directoryPath.value,
+    documentId.value,
+    propertyId.value,
+  );
+  if (property instanceof DomainError) {
+    return undefined;
+  }
 
-const initialValue = computed(() => item.value[propertyId.value]);
+  return property;
+});
+
+const { getValue } = useDatabaseDataClient();
+
+const initialValue = computed(() =>
+  getValue(
+    directoryPath.value,
+    documentId.value,
+    itemId.value,
+    propertyId.value,
+  ),
+);
 
 const showEditForm = ref(false);
 
@@ -53,7 +73,7 @@ watchEffect(() => {
 });
 
 const tryEmitValue = () => {
-  if (!isEqual(item.value[propertyId.value], stateValue.value)) {
+  if (!isEqual(initialValue.value, stateValue.value)) {
     emit('update:value', stateValue.value);
   }
 };
@@ -101,11 +121,11 @@ const onUpdateProperty = (v: DatabaseUnknownProperty) => {
     @click="onClick"
   >
     <ValueInline
-      :doc-handle="docHandle"
+      :directory-path="directoryPath"
+      :document-id="documentId"
+      :item-id="itemId"
       :property-id="propertyId"
-      :value="initialValue"
       editable
-      :directory="directory"
       @click="onClick"
     />
   </MDState>
@@ -120,8 +140,8 @@ const onUpdateProperty = (v: DatabaseUnknownProperty) => {
       <ValueField
         v-model:value="stateValue"
         class="editable-inline-value__value-field"
+        :directory-path="directoryPath"
         :property="property"
-        :directory="directory"
         @keydown.enter="closeEditor"
         @update:property="onUpdateProperty"
       />

@@ -3,7 +3,7 @@ import type { ComputedRef, WatchOptions } from 'vue';
 import { effectScope, watch, computed, shallowRef, toValue } from 'vue';
 import type { MaybeRefOrGetter } from '@vueuse/core';
 import { isUndefined, toString } from 'es-toolkit/compat';
-import { defineSubscribeService } from './remoteStore/subscribeService';
+import { defineSubscribeService } from './subscriptions/subscribeService';
 
 /**
  * Карта реактивных областей по ключу

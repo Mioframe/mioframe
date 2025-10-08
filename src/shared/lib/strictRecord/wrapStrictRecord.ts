@@ -1,4 +1,4 @@
-import { isNil, isNotNil } from 'es-toolkit';
+import { isNil, isNotNil, isUndefined } from 'es-toolkit';
 import { hasKey, hasOwnKey } from '../typeGuards/hasOwnKey';
 import type { StrictRecord } from './types';
 
@@ -7,7 +7,11 @@ export const strictRecordSet = <K extends string, V>(
   key: K,
   value: V,
 ) => {
-  Object.assign(r, { [key]: value });
+  if (isUndefined(value)) {
+    strictRecordRemove(r, key);
+  } else {
+    Object.assign(r, { [key]: value });
+  }
 };
 
 export const strictRecordRemove = <K extends string, V>(
@@ -57,11 +61,29 @@ export const strictRecordIterableEntries = <K extends string, V>(
     }
   };
 
+export const strictRecordIterableValues = <K extends string, V>(
+  obj?: StrictRecord<K, V>,
+) =>
+  function* (): IterableIterator<V> {
+    for (const key in obj) {
+      if (hasKey(obj, key)) {
+        const item = obj[key];
+
+        if (item) {
+          yield item;
+        }
+      }
+    }
+  };
+
 export const strictRecordClear = (obj: StrictRecord<string, unknown>) => {
   for (const key in strictRecordIterableKeys(obj)) {
     strictRecordRemove(obj, key);
   }
 };
+
+export const strictRecordSize = (obj: StrictRecord<string, unknown>) =>
+  Object.values(obj).filter(isNotNil).length;
 
 export interface WrapStrictRecordMutation<K extends string, V> {
   set: (key: K, value: V) => void;
@@ -173,7 +195,7 @@ export const wrapStrictRecord = <K extends string, V>(
     has,
     get,
     get size() {
-      return Object.values(collectionObj).filter(isNotNil).length;
+      return strictRecordSize(collectionObj);
     },
     [Symbol.iterator](): IterableIterator<[K, V]> {
       return entries();

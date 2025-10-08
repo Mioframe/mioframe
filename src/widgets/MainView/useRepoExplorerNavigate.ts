@@ -1,4 +1,4 @@
-import { PATH_SEPARATOR } from '@shared/api/directories/useDirectoryContentService';
+import { stringPath } from '@shared/api/directories';
 import type { AMDocumentId } from '@shared/lib/automerge';
 import { zodStrictDocumentId } from '@shared/lib/automerge';
 import type { EntryPath, EntryPathString } from '@shared/lib/fileSystem';
@@ -115,7 +115,7 @@ export const useRepoExplorerNavigate = createGlobalState(
         path.value?.length ? path.value : undefined,
       ),
       directoryPathString: computed((): EntryPathString | undefined =>
-        path.value?.join(PATH_SEPARATOR),
+        path.value?.length ? stringPath(path.value) : undefined,
       ),
       documentId,
       up,

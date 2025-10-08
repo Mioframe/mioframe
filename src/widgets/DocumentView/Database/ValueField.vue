@@ -10,16 +10,19 @@ import { NumberValueField } from '@feature/numberValueEdit';
 import { RelationValueField } from '@feature/relationValueEdit';
 import { StringValueField } from '@feature/stringValueEdit';
 import type { DatabaseUnknownProperty } from '@shared/lib/databaseDocument';
-import type { DirectoryFSEntry } from '@shared/lib/fileSystem';
+import type { EntryPath } from '@shared/lib/fileSystem';
 import { zodIs } from '@shared/lib/validateZodScheme';
 import DatabaseViewLayout from './DatabaseViewLayout.vue';
 import { MDCheckbox } from '@shared/ui/Checkbox';
+import { toRefs } from 'vue';
 
-defineProps<{
+const props = defineProps<{
+  directoryPath: EntryPath;
   property: DatabaseUnknownProperty;
   value: unknown;
-  directory: DirectoryFSEntry;
 }>();
+
+const { directoryPath, property } = toRefs(props);
 
 const emit = defineEmits<{
   'update:value': [v: unknown];
@@ -75,23 +78,23 @@ const onUpdateProperty = (v: DatabaseUnknownProperty) => {
   <RelationValueField
     v-else-if="zodIs(property, zodRelationProperty)"
     :value="value"
-    :directory="directory"
+    :directory-path="directoryPath"
     :property="property"
     @update:value="onUpdateValue"
     @update:property="onUpdateProperty"
   >
     <template
       #data="{
-        docHandle: relationDocHandle,
+        documentId: relationDocHandle,
         onSelect,
         value: selectedValue,
         viewId,
       }"
     >
       <DatabaseViewLayout
-        :doc-handle="relationDocHandle"
+        :document-id="relationDocHandle"
         :view-id="viewId"
-        :directory="directory"
+        :directory-path="directoryPath"
       >
         <template #action="{ itemId }">
           <MDCheckbox
@@ -105,7 +108,7 @@ const onUpdateProperty = (v: DatabaseUnknownProperty) => {
 
   <slot v-else name="unknownProperty">
     <div>
-      There is no suitable input field for property "{{ property.name }}"
+      There is no suitable input field for property "{{ property?.name }}"
     </div>
   </slot>
 </template>

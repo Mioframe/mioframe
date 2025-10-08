@@ -1,2 +1,2 @@
-export { defineRemoteWorker } from './defineRemoteWorker';
-export { defineWorker } from './defineWorker';
+export { defineWorkerClient } from './defineWorkerClient';
+export { defineWorkerService } from './defineWorkerService';

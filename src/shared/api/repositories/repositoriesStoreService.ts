@@ -4,11 +4,11 @@ import {
 } from '@shared/lib/cfrDocument/useDirectoryRepo';
 import type { EntryPath, EntryPathString } from '@shared/lib/fileSystem';
 import { createGlobalState } from '@vueuse/core';
-import { useDirectoryStoreService } from '../directories';
-import { ENTRY_NOT_FOUND } from '../directories';
+import { stringPath, useDirectoryStoreService } from '../directories';
 import type { AMDocumentId } from '@shared/lib/automerge';
-import { defineSubscribeByQueryService } from '@shared/lib/remoteStore';
+import { defineSubscribeByQueryService } from '@shared/lib/subscriptions';
 import type { CFRDocumentContent } from '@shared/lib/cfrDocument';
+import { DomainError } from '@shared/lib/error';
 
 export const useRepositoriesStoreService = createGlobalState(() => {
   const { getScope: getDirectoryRepoScope } = useDirectoryRepoScopesWeakMap();
@@ -17,27 +17,34 @@ export const useRepositoriesStoreService = createGlobalState(() => {
 
   const getDirectoryRepo = (
     path: EntryPath | EntryPathString,
-  ): DirectoryRepo | undefined => {
+  ): DirectoryRepo | DomainError => {
     const entry = getEntry(path);
 
-    if (entry && entry !== ENTRY_NOT_FOUND && 'raw' in entry) {
-      const { state: directoryRepo } = getDirectoryRepoScope(entry.raw);
-
-      return directoryRepo;
+    if (entry instanceof DomainError) {
+      return entry;
     }
 
-    return undefined;
+    if (!entry || entry.type === 'file') {
+      return new DomainError(
+        `Entry ${stringPath(path)} is not directory with document repo`,
+      );
+    }
+
+    const { state: directoryRepo } = getDirectoryRepoScope(entry.raw);
+
+    return directoryRepo;
   };
 
   const getDocumentIdList = (
     path: EntryPath | EntryPathString,
-  ): AMDocumentId[] | undefined => {
+  ): AMDocumentId[] | DomainError => {
     const repo = getDirectoryRepo(path);
-    if (repo) {
-      return Array.from(repo.map.keys());
+
+    if (repo instanceof DomainError) {
+      return repo;
     }
 
-    return undefined;
+    return Array.from(repo.map.keys());
   };
 
   const subscribeDocumentIdList = defineSubscribeByQueryService(
@@ -50,7 +57,11 @@ export const useRepositoriesStoreService = createGlobalState(() => {
   ) => {
     const repo = getDirectoryRepo(path);
 
-    repo?.remove(id);
+    if (repo instanceof Error) {
+      throw repo;
+    }
+
+    repo.remove(id);
   };
 
   const createDocument = (
@@ -59,7 +70,11 @@ export const useRepositoriesStoreService = createGlobalState(() => {
   ) => {
     const repo = getDirectoryRepo(path);
 
-    repo?.create(document);
+    if (repo instanceof Error) {
+      throw repo;
+    }
+
+    repo.create(document);
   };
 
   return {

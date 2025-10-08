@@ -1,27 +1,30 @@
 <script setup lang="ts">
-import type { AMDocHandle } from '@shared/lib/automerge';
+import type { AMDocumentId } from '@shared/lib/automerge';
 import { MDListContainer, MDListItem } from '@shared/ui/Lists';
-import { computed, nextTick, ref, toRefs, useTemplateRef, watch } from 'vue';
-import { useDatabaseViewSorting } from './useDatabaseItemSorting';
+import { computed, ref, toRefs, useTemplateRef } from 'vue';
 import {
   SORT_DIRECTION,
   type DatabasePropertyId,
   type DatabaseViewId,
 } from '@shared/lib/databaseDocument';
-import { useDatabasePropertiesMap } from '@shared/lib/databaseDocument';
 import { MDSymbol } from '@shared/ui/Icon';
-import { useSortable } from '@shared/lib/sortable';
 import type { MaybeElement } from '@vueuse/core';
 import { MDButton, MDIconButton } from '@shared/ui/Button';
 import { MDMenu } from '@shared/ui/Menu';
 import { difference } from 'es-toolkit';
+import type { EntryPath } from '@shared/lib/fileSystem';
+import { useSortableListener } from '@shared/lib/sortable/useSortable';
+import { useDatabaseViewSortingClient } from '@entity/databaseView/sortingClient';
+import { useDatabasePropertiesClient } from '@entity/databaseProperty';
+import { DomainError } from '@shared/lib/error';
 
 const props = defineProps<{
-  docHandle: AMDocHandle;
+  directoryPath: EntryPath;
+  documentId: AMDocumentId;
   viewId: DatabaseViewId;
 }>();
 
-const { docHandle, viewId } = toRefs(props);
+const { directoryPath, documentId, viewId } = toRefs(props);
 
 defineSlots<{
   trailingIcon: (p: {
@@ -29,8 +32,6 @@ defineSlots<{
     direction: SORT_DIRECTION;
   }) => unknown;
 }>();
-
-const databaseProperties = useDatabasePropertiesMap(docHandle);
 
 const container = useTemplateRef<MaybeElement>('container');
 
@@ -43,57 +44,34 @@ const sortListValue = ref<
   }[]
 >([]);
 
-const databaseViewSorting = useDatabaseViewSorting(docHandle, viewId);
+const {
+  sortingPropertiesIdList: { get: getSortingPropertiesIdList },
+  changePriority: changeSortingPriority,
+  post: postSorting,
+  patch: patchSorting,
+  remove: removeSorting,
+} = useDatabaseViewSortingClient();
 
-const changeSortListValueWatchHandle = watch(
-  sortListValue,
-  (sortListValue) => {
-    fillingSortListValueWatchHandle.pause();
-    const deleteSortingId = new Set(databaseViewSorting.keys);
-
-    sortListValue.forEach((sortValue, priority) => {
-      const { propertyId: propertyId, direction } = sortValue;
-
-      deleteSortingId.delete(propertyId);
-
-      const sortDescription = { direction, priority };
-
-      if (!databaseViewSorting.has(propertyId)) {
-        void databaseViewSorting.addSorting(propertyId, sortDescription);
-      } else {
-        void databaseViewSorting.put(propertyId, sortDescription);
-      }
-    });
-
-    deleteSortingId.forEach((propertyId) => {
-      void databaseViewSorting.remove(propertyId);
-    });
-    void nextTick(fillingSortListValueWatchHandle.resume);
-  },
-  { deep: true },
+const sortingPropertiesIdList = computed(
+  () =>
+    getSortingPropertiesIdList(
+      directoryPath.value,
+      documentId.value,
+      viewId.value,
+    ) ?? [],
 );
 
-const fillingSortListValueWatchHandle = watch(
-  () => databaseViewSorting.sortingList,
-  (sortingList) => {
-    changeSortListValueWatchHandle.pause();
-    sortListValue.value.length = 0;
-    sortingList?.forEach(([propertyId, { direction }]) => {
-      sortListValue.value.push({
-        headline:
-          databaseProperties.get(propertyId)?.name ?? 'unknown property',
-        propertyId,
-        direction,
-        supportingText:
-          direction === SORT_DIRECTION.descending ? 'descending' : 'ascending',
-      });
-    });
-    void nextTick(changeSortListValueWatchHandle.resume);
-  },
-  { deep: true, immediate: true },
-);
+const onMovedItem = async (fromIndex: number, toIndex: number) => {
+  await changeSortingPriority(
+    directoryPath.value,
+    documentId.value,
+    viewId.value,
+    fromIndex,
+    toIndex,
+  );
+};
 
-const { draggableItem } = useSortable(container, sortListValue);
+const { draggableIndex } = useSortableListener(container, onMovedItem);
 
 const isShowAddSortingMenu = ref(false);
 
@@ -103,20 +81,55 @@ const onClickAddSorting = () => {
 
 const addSortingBtn = useTemplateRef<MaybeElement>('addSortingBtn');
 
+const {
+  databasePropertiesIdList: { get: getDatabasePropertiesIdList },
+  getProperty: { get: getProperty },
+} = useDatabasePropertiesClient();
+
+const databasePropertiesIdList = computed(() => {
+  const list = getDatabasePropertiesIdList(
+    directoryPath.value,
+    documentId.value,
+  );
+
+  if (list && !(list instanceof DomainError)) {
+    return list;
+  }
+
+  return [];
+});
+
 const propertyWithoutSorting = computed(() =>
-  difference(databaseProperties.keys ?? [], databaseViewSorting.keys ?? []),
+  difference(databasePropertiesIdList.value, sortingPropertiesIdList.value),
 );
 
 const sortingOptions = computed(() =>
-  propertyWithoutSorting.value.map((propertyId) => ({
-    label: databaseProperties.get(propertyId)?.name ?? 'unknown property',
-    key: propertyId,
-    direction: SORT_DIRECTION.ascending,
-  })),
+  propertyWithoutSorting.value.map((propertyId) => {
+    const property = getProperty(
+      directoryPath.value,
+      documentId.value,
+      propertyId,
+    );
+
+    return {
+      label: property?.name ?? 'unknown property',
+      key: propertyId,
+      direction: SORT_DIRECTION.ascending,
+    };
+  }),
 );
 
-const onClickAddSortingMenu = async ({ key }: { key: DatabasePropertyId }) => {
-  await databaseViewSorting.addSorting(key);
+const onClickAddSortingMenu = async ({
+  key: propertyId,
+}: {
+  key: DatabasePropertyId;
+}) => {
+  await postSorting(
+    directoryPath.value,
+    documentId.value,
+    viewId.value,
+    propertyId,
+  );
   isShowAddSortingMenu.value = false;
 };
 
@@ -124,16 +137,27 @@ const onClickSortingItem = async (
   propertyId: DatabasePropertyId,
   direction: SORT_DIRECTION,
 ) => {
-  await databaseViewSorting.put(propertyId, {
-    direction:
-      direction === SORT_DIRECTION.ascending
-        ? SORT_DIRECTION.descending
-        : SORT_DIRECTION.ascending,
-  });
+  await patchSorting(
+    directoryPath.value,
+    documentId.value,
+    viewId.value,
+    propertyId,
+    {
+      direction:
+        direction === SORT_DIRECTION.ascending
+          ? SORT_DIRECTION.descending
+          : SORT_DIRECTION.ascending,
+    },
+  );
 };
 
 const onClickRemoveItem = async (propertyId: DatabasePropertyId) => {
-  await databaseViewSorting.remove(propertyId);
+  await removeSorting(
+    directoryPath.value,
+    documentId.value,
+    viewId.value,
+    propertyId,
+  );
 };
 </script>
 
@@ -142,13 +166,13 @@ const onClickRemoveItem = async (propertyId: DatabasePropertyId) => {
     <MDListContainer v-if="sortListValue.length" ref="container">
       <MDListItem
         is="button"
-        v-for="item in sortListValue"
+        v-for="(item, index) in sortListValue"
         :key="item.propertyId"
         :headline="item.headline"
         draggable
         :supporting-text="item.supportingText"
         :class="{
-          'md-state_drag': draggableItem === item,
+          'md-state_drag': draggableIndex === index,
         }"
         @click="onClickSortingItem(item.propertyId, item.direction)"
       >
