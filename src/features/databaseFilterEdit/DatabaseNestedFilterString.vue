@@ -8,14 +8,13 @@ import type {
   UNARY_FILTER_OPERATOR,
 } from '@shared/lib/databaseDocument';
 import {
-  useDatabasePropertiesMap,
   zodDatabaseLogicalFilterList,
   zodDatabasePropertyId,
   zodLOGICAL_FILTER_OPERATOR,
   zodUNARY_FILTER_OPERATOR,
   type DatabasePropertyId,
 } from '@shared/lib/databaseDocument';
-import type { AMDocHandle } from '@shared/lib/automerge';
+import type { AMDocumentId } from '@shared/lib/automerge';
 import DatabaseSimpleFilterValueChip from './DatabaseSimpleFilterValueChip.vue';
 import { zodIs } from '@shared/lib/validateZodScheme';
 import DatabaseGroupFilterString from './DatabaseGroupFilterString.vue';
@@ -28,11 +27,15 @@ import { MDDialog } from '@shared/ui/Dialog';
 import { useConditionMenu } from './conditionMenuList';
 import { omit } from 'es-toolkit';
 import { useLastHover } from '@shared/lib/useLastHover';
+import type { EntryPath } from '@shared/lib/fileSystem';
+import { useDatabasePropertiesClient } from '@entity/databaseProperty';
+import type { DomainError } from '@shared/lib/error';
 
 const props = withDefaults(
   defineProps<{
+    directoryPath: EntryPath;
+    documentId: AMDocumentId;
     propertyId?: DatabasePropertyId;
-    docHandle: AMDocHandle;
     disableProperties?: boolean;
     level?: number;
   }>(),
@@ -41,7 +44,8 @@ const props = withDefaults(
   },
 );
 
-const { docHandle, propertyId, disableProperties } = toRefs(props);
+const { directoryPath, documentId, propertyId, disableProperties } =
+  toRefs(props);
 
 const emit = defineEmits<{
   clickRemove: [];
@@ -49,7 +53,7 @@ const emit = defineEmits<{
 
 defineSlots<{
   valueField(p: {
-    property: GeneralProperty;
+    property: GeneralProperty | DomainError;
     propertyId: DatabasePropertyId;
     value: unknown;
     update: (value: unknown) => void;
@@ -60,10 +64,12 @@ const filterModel = defineModel<DatabaseNestedFilter>('filter', {
   required: true,
 });
 
-const properties = useDatabasePropertiesMap(docHandle);
+const { getProperty } = useDatabasePropertiesClient();
 
 const property = computed(() =>
-  propertyId.value ? properties.get(propertyId.value) : undefined,
+  propertyId.value
+    ? getProperty(directoryPath.value, documentId.value, propertyId.value)
+    : undefined,
 );
 
 const propertyName = computed(
@@ -79,7 +85,8 @@ const onClickAddCondition = () => {
 const addConditionBtn = useTemplateRef<MaybeElement>('addConditionBtn');
 
 const conditionMenuButtonList = useConditionMenu({
-  docHandle,
+  directoryPath,
+  documentId,
   filter: filterModel,
   propertyId,
   disableProperties,
@@ -131,7 +138,11 @@ const onUpdateNewSimpleFilterValue = (v: unknown) => {
 
 const filterFormProperty = computed(() =>
   selectedNewPropertyId.value
-    ? properties.get(selectedNewPropertyId.value)
+    ? getProperty(
+        directoryPath.value,
+        documentId.value,
+        selectedNewPropertyId.value,
+      )
     : undefined,
 );
 
@@ -207,7 +218,8 @@ const onClickRemove = () => {
         <DatabaseNestedFilterString
           v-else-if="zodIs(key, zodDatabasePropertyId)"
           :filter="value"
-          :doc-handle="docHandle"
+          :directory-path="directoryPath"
+          :document-id="documentId"
           :property-id="key"
           disable-properties
           :level="level + 1"
@@ -237,9 +249,10 @@ const onClickRemove = () => {
             zodIs(key, zodLOGICAL_FILTER_OPERATOR) &&
             zodIs(value, zodDatabaseLogicalFilterList)
           "
+          :directory-path="directoryPath"
+          :document-id="documentId"
           :operator="key"
           :group-filter="value"
-          :doc-handle="docHandle"
           :level="level + 1"
           @update:group-filter="onUpdateFilter(key, $event)"
           @click-remove="onClickRemoveFilter(key)"

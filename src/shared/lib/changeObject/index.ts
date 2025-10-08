@@ -1,3 +1,3 @@
 export { isUnknownRecord } from './isUnknownRecord';
-export { deepPatchJsonObject } from './deepPatchJsonObject';
+export { deepPatchJsonObject, type PatchSource } from './deepPatchJsonObject';
 export { deepPutJsonObject } from './deepPutJsonObject';

@@ -39,7 +39,7 @@ const onClickCancel = () => {
 const { removeDocument } = useDocumentRepoClient();
 
 const {
-  documentDescription: { get: getDocumentDescription },
+  getDocumentDescription: { get: getDocumentDescription },
 } = useCFRDocumentClient();
 
 const documentDescription = computed(() =>

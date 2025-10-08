@@ -1,40 +1,51 @@
 <script setup lang="ts">
-import { useCFRDocument } from '@shared/lib/cfrDocument/useCFRDocument';
 import { computed, ref, toRefs } from 'vue';
 import { DATABASE_DOCUMENT_TYPE } from '@shared/lib/databaseDocument';
 import DatabaseViewWidget from './Database/DatabaseViewWidget.vue';
 import { MDPaneContainer } from '@shared/ui/Layers';
-import type { DirectoryFSEntry } from '@shared/lib/fileSystem';
+import type { EntryPath } from '@shared/lib/fileSystem';
 import type { AMDocumentId } from '@shared/lib/automerge';
-import { useDirectoryRepo } from '@shared/lib/cfrDocument';
 import { MDTopAppBar } from '@shared/ui/TopAppBar';
 import { MDIconButton } from '@shared/ui/Button';
 import { DocumentRenameDialog } from '@feature/documentRename';
+import { useCFRDocumentClient } from '@entity/cfrDocument';
+import { DomainError } from '@shared/lib/error';
 
 const props = defineProps<{
-  directory: DirectoryFSEntry;
+  directoryPath: EntryPath;
   documentId: AMDocumentId;
 }>();
 
-const { directory, documentId } = toRefs(props);
+const { directoryPath, documentId } = toRefs(props);
 
 const slots = defineSlots<{
   leadingNavigation: () => unknown;
 }>();
 
-const directoryRepo = useDirectoryRepo(directory);
+const { getDocumentDescription } = useCFRDocumentClient();
 
-const docHandle = computed(() =>
-  documentId.value ? directoryRepo.value?.map.get(documentId.value) : undefined,
+const documentDescription = computed(
+  ():
+    | DomainError
+    | {
+        name: string;
+        type: string;
+        version?: number | undefined;
+      }
+    | undefined =>
+    getDocumentDescription(directoryPath.value, documentId.value),
 );
 
-const cfrDocument = useCFRDocument(docHandle);
+const documentType = computed(() => {
+  if (documentDescription.value instanceof DomainError) {
+    return undefined;
+  }
+  return documentDescription.value?.type;
+});
 
-const content = computed(() => cfrDocument.content);
-
-const documentType = computed(() => content.value?.type);
-
-const documentName = computed(() => content.value?.name ?? 'unname');
+const documentName = computed(
+  () => documentDescription.value?.name ?? 'unname',
+);
 
 const showRenameDocument = ref(false);
 
@@ -60,17 +71,17 @@ const onClickRenameDocument = () => {
     </MDTopAppBar>
 
     <DatabaseViewWidget
-      v-if="directory && docHandle && documentType === DATABASE_DOCUMENT_TYPE"
-      :directory="directory"
-      :doc-handle="docHandle"
+      v-if="documentType === DATABASE_DOCUMENT_TYPE"
+      :directory-path="directoryPath"
+      :document-id="documentId"
     />
 
-    <pre v-else>{{ content }}</pre>
+    <pre v-else>{{ documentDescription }}</pre>
 
     <DocumentRenameDialog
-      v-if="docHandle"
       v-model:show="showRenameDocument"
-      :document-id="docHandle"
+      :path="directoryPath"
+      :document-id="documentId"
       @renamed="showRenameDocument = false"
       @cancel="showRenameDocument = false"
     />

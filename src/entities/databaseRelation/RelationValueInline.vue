@@ -5,9 +5,8 @@ import { isNil, uniq } from 'es-toolkit';
 import { computed, ref, toRefs, useTemplateRef } from 'vue';
 import type { ParentRelation, RelationValue } from './model';
 import { zodRelationValue } from './model';
-import type { AMDocHandle } from '@shared/lib/automerge';
-import type { DirectoryFSEntry } from '@shared/lib/fileSystem';
-import { useDirectoryRepo } from '@shared/lib/cfrDocument';
+import type { AMDocumentId } from '@shared/lib/automerge';
+import type { EntryPath } from '@shared/lib/fileSystem';
 import type {
   DatabasePropertyId,
   DatabaseViewId,
@@ -21,26 +20,26 @@ import { MDRichTooltip } from '@shared/ui/Tooltips';
 
 const props = defineProps<{
   value: unknown;
-  docHandle: AMDocHandle;
+  documentId: AMDocumentId;
   propertyId: DatabasePropertyId;
-  directory: DirectoryFSEntry;
+  directoryPath: EntryPath;
   parentRelation?: ParentRelation;
 }>();
 
-const { directory, value, docHandle, propertyId, parentRelation } =
+const { directoryPath, value, documentId, propertyId, parentRelation } =
   toRefs(props);
 
 defineSlots<{
   default: (p: {
     value: RelationValue;
-    relationDocHandle: AMDocHandle;
-    relationDirectory: DirectoryFSEntry;
+    relationDocumentId: AMDocumentId;
+    relationDirectoryPath: EntryPath;
     viewId?: DatabaseViewId;
     parentRelation: ParentRelation;
   }) => unknown;
 }>();
 
-const { property } = useRelationProperty(docHandle, propertyId);
+const { property } = useRelationProperty(directoryPath, documentId, propertyId);
 
 const verifiedValue = computed(() =>
   zodIs(value.value, zodRelationValue) && value.value.length > 0
@@ -48,17 +47,9 @@ const verifiedValue = computed(() =>
     : undefined,
 );
 
-const directoryRepo = useDirectoryRepo(directory);
-
 const relationDocumentId = computed(() => property.value?.relation.documentId);
 
 const relationViewId = computed(() => property.value?.relation.viewId);
-
-const relationDocHandle = computed(() =>
-  relationDocumentId.value
-    ? directoryRepo.value?.map.get(relationDocumentId.value)
-    : undefined,
-);
 
 const hasRenderRecursion = computed(() => {
   if (
@@ -103,7 +94,7 @@ const interactionOutside = (e: Event) => {
 <template>
   <div class="relation-value">
     <MDSymbol
-      v-if="isNil(verifiedValue) || !relationDocHandle"
+      v-if="isNil(verifiedValue) || !relationDocumentId"
       name="unknown_med"
       class="relation-value__empty"
     />
@@ -133,8 +124,8 @@ const interactionOutside = (e: Event) => {
         <template v-if="showValue" #text>
           <slot
             :value="verifiedValue"
-            :relation-doc-handle="relationDocHandle"
-            :relation-directory="directory"
+            :relation-document-id="relationDocumentId"
+            :relation-directory-path="directoryPath"
             :view-id="relationViewId"
             :parent-relation="mergedParentRelation"
           >
@@ -147,8 +138,8 @@ const interactionOutside = (e: Event) => {
     <template v-else>
       <slot
         :value="verifiedValue"
-        :relation-doc-handle="relationDocHandle"
-        :relation-directory="directory"
+        :relation-document-id="relationDocumentId"
+        :relation-directory-path="directoryPath"
         :view-id="relationViewId"
         :parent-relation="mergedParentRelation"
       >

@@ -1,88 +1,123 @@
 <script setup lang="ts">
-import { useOrderedDatabaseData } from '@entity/databaseData';
-import type { AMDocHandle } from '@shared/lib/automerge';
+import type { AMDocumentId } from '@shared/lib/automerge';
 import type {
-  DatabaseItem,
   DatabaseItemId,
   DatabasePropertyId,
-  DatabaseTableView,
   DatabaseUnknownProperty,
+  DatabaseViewId,
 } from '@shared/lib/databaseDocument';
 import { MDTable } from '@shared/ui/Table';
 import type { EmptyObject } from 'type-fest';
-import { toRefs } from 'vue';
-import type { ItemIdQuery } from './queryTypes';
-import { useDatabasePropertiesMap } from '@shared/lib/databaseDocument/useDatabasePropertiesMap';
+import { computed, toRefs } from 'vue';
+import type { ItemIdQuery } from '../../shared/api/databaseDocument/data/queryTypes';
+import { useDatabasePropertiesClient } from '@entity/databaseProperty';
+import type { EntryPath } from '@shared/lib/fileSystem';
+import { useDatabaseDataClient } from './client';
+import { DomainError } from '@shared/lib/error';
+import { strictRecordIterableEntries } from '@shared/lib/strictRecord';
 
 const props = defineProps<{
-  docHandle: AMDocHandle;
-  view: DatabaseTableView;
+  directoryPath: EntryPath;
+  documentId: AMDocumentId;
+  viewId?: DatabaseViewId;
   idQuery?: ItemIdQuery;
 }>();
 
+const { directoryPath, documentId, viewId, idQuery } = toRefs(props);
+
 const slots = defineSlots<{
   value: (p: {
-    item: DatabaseItem;
     itemId: DatabaseItemId;
     property: DatabaseUnknownProperty;
     propertyId: DatabasePropertyId;
   }) => unknown;
-  action: (p: { item: DatabaseItem; itemId: DatabaseItemId }) => unknown;
+  action: (p: { itemId: DatabaseItemId }) => unknown;
   actionHead: (p: EmptyObject) => unknown;
 }>();
 
-const { docHandle, view, idQuery } = toRefs(props);
+const {
+  getDatabaseProperties: { get: getDatabaseProperties },
+} = useDatabasePropertiesClient();
 
-const properties = useDatabasePropertiesMap(docHandle);
+const properties = computed(() =>
+  getDatabaseProperties(directoryPath.value, documentId.value),
+);
 
-const { itemList } = useOrderedDatabaseData(docHandle, view, idQuery);
+const {
+  itemIdList: { get: getItemIdList },
+} = useDatabaseDataClient();
+
+const itemList = computed(() => {
+  const idList = getItemIdList(
+    directoryPath.value,
+    documentId.value,
+    viewId.value,
+    {
+      idQuery: idQuery.value,
+    },
+  );
+
+  if (idList instanceof DomainError) {
+    return idList;
+  }
+
+  return idList;
+});
 </script>
 
 <template>
   <MDTable class="db-data-table">
-    <thead>
-      <tr>
-        <th
-          v-for="[propertyId, { name }] in properties.entries"
-          :key="propertyId"
-        >
-          {{ name }}
-        </th>
+    <!-- eslint-disable-next-line prettier/prettier -- for correct code highlighting -->
+    <div v-if="(properties instanceof DomainError)">
+      {{ properties.message }}
+    </div>
 
-        <th
-          v-if="!!slots.action || !!slots.actionHead"
-          class="db-data-table__actions"
-        >
-          <slot name="actionHead" />
-        </th>
-      </tr>
-    </thead>
-
-    <tbody role="list">
-      <tr v-for="[itemId, item] in itemList" :key="itemId" role="listitem">
-        <td
-          v-for="[propertyId, property] in properties.entries"
-          :key="propertyId"
-        >
-          <slot
-            name="value"
-            :item="item"
-            :item-id="itemId"
-            :property-id="propertyId"
-            :property="property"
+    <template v-else>
+      <thead>
+        <tr>
+          <th
+            v-for="[propertyId, { name }] in strictRecordIterableEntries(
+              properties,
+            )()"
+            :key="propertyId"
           >
-            {{ item[propertyId] }}
-          </slot>
-        </td>
+            {{ name }}
+          </th>
 
-        <td
-          v-if="!!slots.action || !!slots.actionHead"
-          class="db-data-table__actions"
-        >
-          <slot name="action" :item="item" :item-id="itemId" />
-        </td>
-      </tr>
-    </tbody>
+          <th
+            v-if="!!slots.action || !!slots.actionHead"
+            class="db-data-table__actions"
+          >
+            <slot name="actionHead" />
+          </th>
+        </tr>
+      </thead>
+
+      <tbody role="list">
+        <tr v-for="itemId in itemList" :key="itemId" role="listitem">
+          <td
+            v-for="[propertyId, property] in strictRecordIterableEntries(
+              properties,
+            )()"
+            :key="propertyId"
+          >
+            <slot
+              name="value"
+              :item-id="itemId"
+              :property-id="propertyId"
+              :property="property"
+            />
+          </td>
+
+          <td
+            v-if="!!slots.action || !!slots.actionHead"
+            class="db-data-table__actions"
+          >
+            <slot name="action" :item-id="itemId" />
+          </td>
+        </tr>
+      </tbody>
+    </template>
   </MDTable>
 </template>
 

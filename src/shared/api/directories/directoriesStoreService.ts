@@ -6,7 +6,7 @@ import {
 } from '@shared/lib/fileSystem';
 import type { DirectoryFSEntry, EntryPath } from '@shared/lib/fileSystem';
 import { createLocalDirectory } from '@shared/lib/localFileSystem';
-import { defineSubscribeService } from '@shared/lib/remoteStore';
+import { defineSubscribeService } from '@shared/lib/subscriptions';
 import {
   strictRecordGet,
   strictRecordIterableEntries,
@@ -18,10 +18,11 @@ import {
 import { createGlobalState, until } from '@vueuse/core';
 import { isBoolean, isString } from 'es-toolkit';
 import { isArray, toString } from 'es-toolkit/compat';
-import { computed, reactive, watch } from 'vue';
+import { computed, reactive } from 'vue';
 import type { DirectoryDescription, EntryDescription } from './types';
-import { ENTRY_NOT_FOUND } from './types';
-import { defineSubscribeByKeyService } from '@shared/lib/remoteStore/subscribeService';
+import { EntryNotDirectoryError, EntryNotFoundError } from './types';
+import { defineSubscribeByKeyService } from '@shared/lib/subscriptions/subscribeService';
+import { DomainError } from '@shared/lib/error';
 
 export const PATH_SEPARATOR = '/';
 
@@ -34,11 +35,9 @@ export const stringPath = (rawPath: EntryPath | EntryPathString) =>
   isArray(rawPath) ? pathToString(rawPath) : rawPath;
 
 export const useDirectoryStoreService = createGlobalState(() => {
-  console.debug('setup DirectoryStoreService');
-
   const stateEntries: StrictRecord<
     EntryPathString,
-    DirectoryFSEntryRef | FileFSEntry | ENTRY_NOT_FOUND
+    DirectoryFSEntryRef | FileFSEntry | DomainError
   > = reactive({});
 
   const loadingStatus: Set<EntryPathString> = reactive(new Set());
@@ -47,7 +46,7 @@ export const useDirectoryStoreService = createGlobalState(() => {
     entry: DirectoryFSEntry | FileFSEntry | DirectoryFSEntryRef,
   ): DirectoryFSEntryRef | FileFSEntry;
   function addCacheEntry(
-    entry: typeof ENTRY_NOT_FOUND,
+    entry: EntryNotFoundError,
     rawNotFoundPath: EntryPath | EntryPathString,
   ): void;
   function addCacheEntry(
@@ -55,13 +54,12 @@ export const useDirectoryStoreService = createGlobalState(() => {
       | DirectoryFSEntry
       | FileFSEntry
       | DirectoryFSEntryRef
-      | typeof ENTRY_NOT_FOUND,
+      | EntryNotFoundError,
     rawNotFoundPath?: EntryPath | EntryPathString,
   ) {
-    if (entry === ENTRY_NOT_FOUND && rawNotFoundPath) {
+    if (entry instanceof DomainError && rawNotFoundPath) {
       strictRecordSet(stateEntries, stringPath(rawNotFoundPath), entry);
-    } else if (entry !== ENTRY_NOT_FOUND) {
-      console.debug('addCacheEntry', entry.path);
+    } else if (!(entry instanceof DomainError)) {
       const pathString = pathToString(entry.path);
 
       const entryRefOrFile: DirectoryFSEntryRef | FileFSEntry =
@@ -74,9 +72,7 @@ export const useDirectoryStoreService = createGlobalState(() => {
       strictRecordSet(stateEntries, pathString, entryRefOrFile);
 
       if ('on' in entry) {
-        console.debug('add on', entry.path);
         entry.on('remove', (name) => {
-          console.debug('on remove', entry.path, name);
           strictRecordRemove(stateEntries, stringPath([...entry.path, name]));
         });
       }
@@ -85,22 +81,16 @@ export const useDirectoryStoreService = createGlobalState(() => {
     }
   }
 
-  const getCachedEntry = (rawPath: EntryPathString | EntryPath) => {
+  const getCachedEntry = (
+    rawPath: EntryPathString | EntryPath,
+  ): DirectoryFSEntryRef | FileFSEntry | DomainError | undefined => {
     return strictRecordGet(stateEntries, stringPath(rawPath));
   };
 
-  const rootDirectories = computed(() =>
+  const rootDirectories = computed((): string[] =>
     Array.from(strictRecordIterableKeys(stateEntries)()).filter(
       (name) => !name.includes(PATH_SEPARATOR),
     ),
-  );
-
-  watch(
-    () => rootDirectories.value,
-    (v) => {
-      console.debug('🔴', v);
-    },
-    { immediate: true, deep: true },
   );
 
   const subscribeRootList = defineSubscribeService(() => rootDirectories.value);
@@ -108,13 +98,12 @@ export const useDirectoryStoreService = createGlobalState(() => {
   const addRootFileSystemDirectoryHandle = (
     handle: FileSystemDirectoryHandle,
     name: string,
-  ) => {
-    console.debug('🔴 addRootFileSystemDirectoryHandle', name);
+  ): void => {
     const directoryFSEntry = createLocalDirectory(handle, undefined, name);
     addCacheEntry(directoryFSEntry);
   };
 
-  const addWaitCacheEntry = (rawPath: EntryPath | EntryPathString) => {
+  const addWaitCacheEntry = (rawPath: EntryPath | EntryPathString): void => {
     const cached = getCachedEntry(rawPath);
     if (!cached) {
       const pathString = stringPath(rawPath);
@@ -122,76 +111,86 @@ export const useDirectoryStoreService = createGlobalState(() => {
     }
   };
 
-  const removeWaitCacheEntry = (rawPath: EntryPath | EntryPathString) => {
+  const removeWaitCacheEntry = (rawPath: EntryPath | EntryPathString): void => {
     loadingStatus.delete(stringPath(rawPath));
   };
 
-  const getSubEntry = async (
+  const getChildEntry = async (
     parent: DirectoryFSEntry | DirectoryFSEntryRef,
     name: string,
     options?: { createDirectory?: boolean },
-  ): Promise<DirectoryFSEntryRef | FileFSEntry | typeof ENTRY_NOT_FOUND> => {
+  ): Promise<DirectoryFSEntryRef | FileFSEntry | DomainError> => {
     const { createDirectory = false } = options ?? {};
 
-    console.debug('getSubEntry', parent.path, name);
+    const fullPath = [...parent.path, name];
 
-    const path = [...parent.path, name];
-
-    const cached = getCachedEntry(path);
-    if (loadingStatus.has(stringPath(path))) {
-      return await waitCachedEntry(path);
+    const cached = getCachedEntry(fullPath);
+    if (loadingStatus.has(stringPath(fullPath))) {
+      return await waitCachedEntry(fullPath);
     }
     if (cached) {
       return cached;
     }
     try {
-      addWaitCacheEntry(path);
+      addWaitCacheEntry(fullPath);
       const subEntry = await parent.get(name);
       if (!subEntry && createDirectory) {
         const newDirectory = await parent.createDirectory(name);
         return addCacheEntry(newDirectory);
       } else if (!subEntry && !createDirectory) {
-        addCacheEntry(ENTRY_NOT_FOUND, path);
-        return ENTRY_NOT_FOUND;
+        const entryNotFound = new EntryNotFoundError(fullPath);
+        addCacheEntry(entryNotFound, fullPath);
+        return entryNotFound;
       } else if (subEntry) {
         return addCacheEntry(subEntry);
       }
     } finally {
-      removeWaitCacheEntry(path);
+      removeWaitCacheEntry(fullPath);
     }
 
-    return ENTRY_NOT_FOUND;
+    return new EntryNotFoundError(fullPath);
   };
 
   const waitCachedEntry = async (
     rawPath: EntryPath | EntryPathString,
-  ): Promise<typeof ENTRY_NOT_FOUND | DirectoryFSEntryRef | FileFSEntry> => {
+  ): Promise<DomainError | DirectoryFSEntryRef | FileFSEntry> => {
     const pathString = stringPath(rawPath);
-    return await until(
-      ():
-        | DirectoryFSEntryRef
-        | FileFSEntry
-        | typeof ENTRY_NOT_FOUND
-        | boolean => {
-        return (
-          !loadingStatus.has(pathString) || (getCachedEntry(rawPath) ?? false)
+
+    return new Promise((resolve, reject) => {
+      const timeoutId = setTimeout(() => {
+        reject(
+          new DomainError(`The entry ${stringPath(rawPath)} timeout expired`),
         );
-      },
-    ).toMatch((v): v is Exclude<typeof v, boolean> => !isBoolean(v));
+      }, 30e3);
+
+      void until(
+        (): DirectoryFSEntryRef | FileFSEntry | DomainError | boolean => {
+          return (
+            !loadingStatus.has(pathString) || (getCachedEntry(rawPath) ?? false)
+          );
+        },
+      )
+        .toMatch((v): v is Exclude<typeof v, boolean> => !isBoolean(v))
+        .then(resolve)
+        .catch(reject)
+        .finally(() => {
+          clearTimeout(timeoutId);
+        });
+    });
   };
 
   const locateEntry = async (
     parent: DirectoryFSEntry | DirectoryFSEntryRef,
     subPath: EntryPath,
     options?: { createDirectory?: boolean },
-  ): Promise<DirectoryFSEntryRef | FileFSEntry | typeof ENTRY_NOT_FOUND> => {
-    const fullPathString = pathToString([...parent.path, ...subPath]);
-    console.debug('fullPathString', fullPathString);
+  ): Promise<DirectoryFSEntryRef | FileFSEntry | DomainError> => {
+    const fullPath = [...parent.path, ...subPath];
+
+    const fullPathString = pathToString(fullPath);
 
     const storeEntry = getCachedEntry(fullPathString);
 
     if (loadingStatus.has(fullPathString)) {
-      console.debug('WAIT', fullPathString);
       return await waitCachedEntry(fullPathString);
     }
 
@@ -201,32 +200,38 @@ export const useDirectoryStoreService = createGlobalState(() => {
 
     const firstName = subPath.at(0);
 
-    if (firstName) {
-      const firstEntry = await getSubEntry(parent, firstName, options);
-
-      if (
-        subPath.length > 1 &&
-        firstEntry !== ENTRY_NOT_FOUND &&
-        firstEntry.type === 'directory'
-      ) {
-        return await locateEntry(firstEntry, subPath.toSpliced(0, 1), options);
+    if (!firstName) {
+      if ('raw' in parent) {
+        return parent;
+      } else {
+        return directoryFSEntryRef(parent);
       }
+    }
 
+    const firstEntry = await getChildEntry(parent, firstName, options);
+
+    if (subPath.length === 1 || firstEntry instanceof DomainError) {
       return firstEntry;
     }
 
-    return ENTRY_NOT_FOUND;
+    if (firstEntry.type !== 'directory') {
+      return new EntryNotDirectoryError(firstEntry.path);
+    }
+
+    return await locateEntry(firstEntry, subPath.toSpliced(0, 1), options);
   };
 
   const locateEntryFromRoot = async (
     rawPath: EntryPathString | EntryPath,
     options?: { createDirectory?: boolean },
-  ): Promise<DirectoryFSEntryRef | FileFSEntry | typeof ENTRY_NOT_FOUND> => {
-    console.debug('locateEntryFromRoot', rawPath);
-
+  ): Promise<DirectoryFSEntryRef | FileFSEntry | DomainError> => {
     const pathString = stringPath(rawPath);
 
     const oldEntry = getCachedEntry(pathString);
+
+    if (loadingStatus.has(pathString)) {
+      return await waitCachedEntry(pathString);
+    }
 
     if (oldEntry && !loadingStatus.has(pathString)) {
       return oldEntry;
@@ -237,24 +242,36 @@ export const useDirectoryStoreService = createGlobalState(() => {
     const rootName = path.at(0);
 
     if (rootName) {
-      const pathString = stringPath([rootName]);
+      const rootPathString = stringPath([rootName]);
 
-      const rootEntry = getCachedEntry(pathString);
-
-      if (!loadingStatus.has(pathString)) {
-        if (rootEntry !== ENTRY_NOT_FOUND && rootEntry?.type === 'directory') {
-          const entry = await locateEntry(
-            rootEntry.raw,
-            path.toSpliced(0, 1),
-            options,
-          );
-
-          return entry;
-        }
+      if (loadingStatus.has(rootPathString)) {
+        await waitCachedEntry(pathString);
       }
+
+      const rootEntry = getCachedEntry(rootPathString);
+
+      if (!rootEntry) {
+        return new EntryNotFoundError(rootPathString);
+      }
+
+      if (rootEntry instanceof DomainError) {
+        return rootEntry;
+      }
+
+      if (rootEntry.type !== 'directory') {
+        return new EntryNotDirectoryError(rootEntry.path);
+      }
+
+      const entry = await locateEntry(
+        rootEntry.raw,
+        path.toSpliced(0, 1),
+        options,
+      );
+
+      return entry;
     }
 
-    return ENTRY_NOT_FOUND;
+    return new EntryNotFoundError(rawPath);
   };
 
   const entryToDescription = (
@@ -280,7 +297,7 @@ export const useDirectoryStoreService = createGlobalState(() => {
 
   const getEntry = (
     path: EntryPathString | EntryPath,
-  ): DirectoryFSEntryRef | FileFSEntry | 'ENTRY_NOT_FOUND' | undefined => {
+  ): DirectoryFSEntryRef | FileFSEntry | DomainError | undefined => {
     const pathString = stringPath(path);
 
     const entry = strictRecordGet(stateEntries, pathString);
@@ -295,15 +312,11 @@ export const useDirectoryStoreService = createGlobalState(() => {
   const subscribeEntry = defineSubscribeByKeyService(
     (
       pathString: EntryPathString,
-    ):
-      | EntryDescription
-      | DirectoryDescription
-      | undefined
-      | ENTRY_NOT_FOUND => {
+    ): EntryDescription | DirectoryDescription | undefined | DomainError => {
       const entry = getEntry(pathString);
 
-      if (entry === ENTRY_NOT_FOUND) {
-        return ENTRY_NOT_FOUND;
+      if (entry instanceof DomainError) {
+        return entry;
       }
 
       if (entry) {
@@ -316,7 +329,9 @@ export const useDirectoryStoreService = createGlobalState(() => {
     },
   );
 
-  const createDirectory = async (rawPath: EntryPathString | EntryPath) => {
+  const createDirectory = async (
+    rawPath: EntryPathString | EntryPath,
+  ): Promise<void> => {
     const pathString = isArray(rawPath)
       ? rawPath.join(PATH_SEPARATOR)
       : rawPath;
@@ -324,29 +339,36 @@ export const useDirectoryStoreService = createGlobalState(() => {
     await locateEntryFromRoot(pathString, { createDirectory: true });
   };
 
-  const removeEntry = async (rawPath: EntryPathString | EntryPath) => {
+  const removeEntry = async (
+    rawPath: EntryPathString | EntryPath,
+  ): Promise<void> => {
     const pathString = stringPath(rawPath);
 
     const entry = await locateEntryFromRoot(pathString);
 
-    if (entry !== ENTRY_NOT_FOUND) {
-      await entry.remove();
-      strictRecordSet(stateEntries, pathString, ENTRY_NOT_FOUND);
+    if (entry instanceof Error) {
+      throw entry;
     }
+
+    await entry.remove();
+    strictRecordSet(stateEntries, pathString, new EntryNotFoundError(rawPath));
   };
 
   const renameEntry = async (
     rawPath: EntryPathString | EntryPath,
     newName: string,
-  ) => {
+  ): Promise<void> => {
     const pathString = stringPath(rawPath);
 
     const entry = await locateEntryFromRoot(pathString);
-    if (entry !== ENTRY_NOT_FOUND) {
-      const { path } = await entry.rename(newName);
-      strictRecordRemove(stateEntries, pathString);
-      await locateEntryFromRoot(path);
+
+    if (entry instanceof Error) {
+      throw entry;
     }
+
+    const { path } = await entry.rename(newName);
+    strictRecordRemove(stateEntries, pathString);
+    await locateEntryFromRoot(path);
   };
 
   return {

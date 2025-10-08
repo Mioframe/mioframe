@@ -1,3 +1,4 @@
+import type { PluginOption } from 'vite';
 import { defineConfig } from 'vite';
 import vue from '@vitejs/plugin-vue';
 import wasm from 'vite-plugin-wasm';
@@ -40,6 +41,10 @@ export default defineConfig(({ mode, isPreview }) => {
         ]
       : [];
 
+  const dateNow = new Date().toISOString();
+
+  console.log('\n__BUILD_DATE__:', dateNow);
+
   return {
     base: '',
     plugins: [
@@ -51,6 +56,16 @@ export default defineConfig(({ mode, isPreview }) => {
       ...sslPlugins,
       ...sentryPlugins,
     ],
+    worker: {
+      format: 'es',
+      plugins: (): PluginOption[] => [
+        wasm() as PluginOption,
+        topLevelAwait(),
+        vue(),
+        TurboConsole(),
+        ...sentryPlugins,
+      ],
+    },
     server: {
       host: true,
       headers: {
@@ -69,6 +84,7 @@ export default defineConfig(({ mode, isPreview }) => {
     },
     build: {
       sourcemap: !!sentryPlugins.length,
+      assetsDir: 'assets',
       minify: mode === 'production' || isPreview ? 'terser' : false,
       terserOptions: {
         compress: {
@@ -81,7 +97,6 @@ export default defineConfig(({ mode, isPreview }) => {
       rollupOptions: {
         output: {
           manualChunks(id) {
-            // Перебираем зависимости
             for (const name of Object.keys({
               ...dependencies,
               ...devDependencies,
@@ -95,7 +110,7 @@ export default defineConfig(({ mode, isPreview }) => {
       },
     },
     define: {
-      __BUILD_DATE__: JSON.stringify(new Date().toISOString()),
+      __BUILD_DATE__: JSON.stringify(dateNow),
     },
   };
 });

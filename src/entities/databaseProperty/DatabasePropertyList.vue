@@ -1,18 +1,22 @@
 <script setup lang="ts">
-import type { AMDocHandle } from '@shared/lib/automerge';
+import type { AMDocumentId } from '@shared/lib/automerge';
 import type {
   DatabasePropertyId,
   DatabaseUnknownProperty,
 } from '@shared/lib/databaseDocument';
-import { useDatabasePropertiesMap } from '@shared/lib/databaseDocument/useDatabasePropertiesMap';
+import type { EntryPath } from '@shared/lib/fileSystem';
 import { MDListContainer, MDListItem } from '@shared/ui/Lists';
-import { toRefs } from 'vue';
+import { computed, toRefs } from 'vue';
+import { useDatabasePropertiesClient } from './client';
+import { strictRecordIterableEntries } from '@shared/lib/strictRecord';
+import { DomainError } from '@shared/lib/error';
 
 const props = defineProps<{
-  docHandle: AMDocHandle;
+  directoryPath: EntryPath;
+  documentId: AMDocumentId;
 }>();
 
-const { docHandle } = toRefs(props);
+const { documentId, directoryPath } = toRefs(props);
 
 const slots = defineSlots<{
   trailingIcon: (p: {
@@ -21,13 +25,28 @@ const slots = defineSlots<{
   }) => unknown;
 }>();
 
-const propertiesMap = useDatabasePropertiesMap(docHandle);
+const { getDatabaseProperties } = useDatabasePropertiesClient();
+
+const properties = computed(() => {
+  const properties = getDatabaseProperties(
+    directoryPath.value,
+    documentId.value,
+  );
+
+  if (properties instanceof DomainError) {
+    return undefined;
+  }
+
+  return properties;
+});
 </script>
 
 <template>
   <MDListContainer>
     <MDListItem
-      v-for="[propertyId, property] in propertiesMap.entries"
+      v-for="[propertyId, property] in strictRecordIterableEntries(
+        properties,
+      )()"
       :key="propertyId"
       :headline="property.name"
       :supporting-text="String(property.type)"

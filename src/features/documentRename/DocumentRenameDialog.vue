@@ -21,7 +21,7 @@ const emit = defineEmits<{
 const show = defineModel<boolean>('show', { required: true });
 
 const {
-  documentDescription: { get: getDocumentDescription },
+  getDocumentDescription: { get: getDocumentDescription },
   patch: documentPatch,
 } = useCFRDocumentClient();
 
