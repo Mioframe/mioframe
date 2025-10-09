@@ -49,8 +49,12 @@ const onUpdateProperty = async (
   await patchProperty(directoryPath.value, documentId.value, propertyId, v);
 };
 
+const propertySize = computed(() =>
+  getPropertySize(directoryPath.value, documentId.value),
+);
+
 const hasProperties = computed(() => {
-  const size = getPropertySize(directoryPath.value, documentId.value);
+  const size = propertySize.value;
 
   return !(size instanceof DomainError) && size && size > 0;
 });
