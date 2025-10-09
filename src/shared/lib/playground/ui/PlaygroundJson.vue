@@ -8,7 +8,7 @@ import {
 } from 'vue';
 import type { Content, JsonEditor } from 'vanilla-jsoneditor';
 import { createJSONEditor } from 'vanilla-jsoneditor';
-import { deepReplaceJsonObject } from '@shared/lib/changeObject';
+import { deepPutJsonObject } from '@shared/lib/changeObject';
 import { isObjectLike } from '@shared/lib/typeGuards';
 
 defineProps<{ label: string }>();
@@ -26,7 +26,7 @@ const onChange = (content: Content) => {
     const { json } = content;
 
     if (isObjectLike(json) && isObjectLike(value.value)) {
-      deepReplaceJsonObject(value.value, json);
+      deepPutJsonObject(value.value, json);
     } else {
       value.value = json;
     }

@@ -55,11 +55,6 @@ export const playgroundPages: PlaygroundPage[] = [
     component: () => import('@shared/ui/Sheets/MDBottomSheetPlayground.vue'),
   },
   {
-    name: 'DatabaseNestedFilterString',
-    component: () =>
-      import('@entity/databaseFilter/DatabaseNestedFilterStringPlayground.vue'),
-  },
-  {
     name: 'BackNavigation',
     component: () =>
       import('@shared/lib/onBackNavigation/BackNavigationPlayground.vue'),

@@ -1,19 +1,21 @@
 <script setup lang="ts">
-import type { AMDocHandle } from '@shared/lib/automerge';
+import { useDatabasePropertiesClient } from '@entity/databaseProperty';
+import type { AMDocumentId } from '@shared/lib/automerge';
 import type { DatabasePropertyId } from '@shared/lib/databaseDocument';
-import { useDatabasePropertiesMap } from '@shared/lib/databaseDocument/useDatabasePropertiesMap';
+import type { EntryPath } from '@shared/lib/fileSystem';
 import { MDDialog } from '@shared/ui/Dialog';
 import { MDSymbol } from '@shared/ui/Icon';
 import { toRefs } from 'vue';
 
 const props = defineProps<{
-  docHandle: AMDocHandle;
+  directoryPath: EntryPath;
+  documentId: AMDocumentId;
   propertyId: DatabasePropertyId;
 }>();
 
-const { docHandle, propertyId } = toRefs(props);
+const { directoryPath, documentId, propertyId } = toRefs(props);
 
-const propertyMap = useDatabasePropertiesMap(docHandle);
+const { remove } = useDatabasePropertiesClient();
 
 const emit = defineEmits<{
   removed: [];
@@ -23,7 +25,7 @@ const emit = defineEmits<{
 const show = defineModel<boolean>('show', { required: true });
 
 const onApplyRemoveProperty = async () => {
-  await propertyMap.remove(propertyId.value);
+  await remove(directoryPath.value, documentId.value, propertyId.value);
   emit('removed');
 };
 </script>

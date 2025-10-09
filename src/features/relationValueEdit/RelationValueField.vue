@@ -2,23 +2,22 @@
 import type { RelationProperty } from '@entity/databaseRelation';
 import { zodRelationValue, type RelationValue } from '@entity/databaseRelation';
 import { DatabaseViewChipsList } from '@entity/databaseView';
-import type { AMDocHandle } from '@shared/lib/cfrDocument';
-import { useDirectoryRepo } from '@shared/lib/cfrDocument';
+import type { AMDocumentId } from '@shared/lib/cfrDocument';
 import {
   type DatabaseItemId,
   type DatabaseViewId,
 } from '@shared/lib/databaseDocument';
-import type { DirectoryFSEntry } from '@shared/lib/fileSystem';
+import type { EntryPath } from '@shared/lib/fileSystem';
 import { zodIs } from '@shared/lib/validateZodScheme';
 import { computed, toRefs } from 'vue';
 
 const props = defineProps<{
   value: unknown;
-  directory: DirectoryFSEntry;
+  directoryPath: EntryPath;
   property: RelationProperty;
 }>();
 
-const { directory, value, property } = toRefs(props);
+const { directoryPath, value, property } = toRefs(props);
 
 const emit = defineEmits<{
   'update:value': [value: DatabaseItemId[]];
@@ -28,7 +27,8 @@ const emit = defineEmits<{
 defineSlots<{
   data: (p: {
     onSelect: (itemId: DatabaseItemId) => void;
-    docHandle: AMDocHandle;
+    directoryPath: EntryPath;
+    documentId: AMDocumentId;
     value: DatabaseItemId[];
     viewId: DatabaseViewId;
   }) => unknown;
@@ -49,15 +49,7 @@ const onSelect = (itemId: DatabaseItemId) => {
   }
 };
 
-const directoryRepo = useDirectoryRepo(directory);
-
 const relationDocumentId = computed(() => property.value.relation.documentId);
-
-const relationDocHandle = computed(() =>
-  relationDocumentId.value
-    ? directoryRepo.value?.map.get(relationDocumentId.value)
-    : undefined,
-);
 
 const onClickViewChip = (viewId: DatabaseViewId) => {
   emit('update:property', {
@@ -72,19 +64,20 @@ const viewId = computed(() => property.value.relation.viewId);
 <template>
   <div class="relation-value-field">
     <DatabaseViewChipsList
-      v-if="relationDocHandle"
+      :directory-path="directoryPath"
       class="relation-value-field__views"
-      :doc-handle="relationDocHandle"
+      :document-id="relationDocumentId"
       type="filter"
       :selected-id="viewId"
       @click="onClickViewChip"
     />
 
-    <div v-if="relationDocHandle && viewId" class="relation-value-field__data">
+    <div v-if="viewId" class="relation-value-field__data">
       <slot
         name="data"
         :on-select="onSelect"
-        :doc-handle="relationDocHandle"
+        :directory-path="directoryPath"
+        :document-id="relationDocumentId"
         :value="relationValue"
         :view-id="viewId"
       />

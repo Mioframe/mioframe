@@ -1,28 +1,20 @@
-<script
-  setup
-  lang="ts"
-  generic="
-    Entry extends FileFSEntry | DirectoryFSEntry,
-    Key extends PropertyKey
-  "
->
-import type { DirectoryFSEntry, FileFSEntry } from '@shared/lib/fileSystem';
+<script setup lang="ts">
+import type { EntryDescription } from '@shared/api/directories';
 import { MDSymbol } from '@shared/ui/Icon';
 import { MDListItem } from '@shared/ui/Lists';
 
 const {} = defineProps<{
-  entry: Entry;
-  entryKey: Key;
+  entry: EntryDescription;
   supportingText?: string;
   isButton?: boolean;
 }>();
 
 defineEmits<{
-  click: [entryKey: Key, entry: Entry];
+  click: [entry: EntryDescription];
 }>();
 
 const slots = defineSlots<{
-  trailingIcon(p: { entryName: string }): unknown;
+  trailingIcon(p: { entry: EntryDescription }): unknown;
 }>();
 </script>
 
@@ -31,16 +23,16 @@ const slots = defineSlots<{
     :is="isButton ? 'button' : undefined"
     :headline="entry.name"
     :supporting-text="supportingText"
-    @click="$emit('click', entryKey, entry)"
+    @click="$emit('click', entry)"
   >
     <template #leadingIcon>
-      <MDSymbol v-if="'entries' in entry" name="folder" />
+      <MDSymbol v-if="entry.type === 'directory'" name="folder" />
 
       <MDSymbol v-else name="draft" />
     </template>
 
     <template v-if="!!slots.trailingIcon" #trailingIcon>
-      <slot name="trailingIcon" :entry-name="entry.name" />
+      <slot name="trailingIcon" :entry="entry" />
     </template>
   </MDListItem>
 </template>

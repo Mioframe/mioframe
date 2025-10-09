@@ -287,6 +287,7 @@ export const createDirectoryGDriveEntry = (
   };
 
   const currentDirectoryGDriveEntry: DirectoryGDriveEntry = {
+    type: 'directory',
     ...currentEntry,
     get name() {
       return currentName;

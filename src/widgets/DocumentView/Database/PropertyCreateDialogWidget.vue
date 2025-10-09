@@ -2,8 +2,8 @@
 import { zodRelationProperty } from '@entity/databaseRelation';
 import { DatabasePropertyCreationDialog } from '@feature/databasePropertyCreate';
 import { DatabaseRelationPropertyEditSection } from '@feature/databaseRelationPropertyEdit';
-import type { AMDocHandle } from '@shared/lib/automerge';
-import type { DirectoryFSEntry } from '@shared/lib/fileSystem';
+import type { AMDocumentId } from '@shared/lib/automerge';
+import type { EntryPath } from '@shared/lib/fileSystem';
 import ValueField from './ValueField.vue';
 import { zodBooleanProperty } from '@entity/databaseBoolean';
 import { DatabaseBooleanPropertyEditSection } from '@feature/databaseBooleanPropertyEdit';
@@ -12,11 +12,11 @@ import { extend, optional } from 'zod/v4-mini';
 import { zodRelation } from '@entity/databaseRelation/model';
 
 defineProps<{
-  docHandle: AMDocHandle;
-  directory: DirectoryFSEntry;
+  documentId: AMDocumentId;
+  directoryPath: EntryPath;
 }>();
 
-const show = defineModel<boolean>('show', { required: true });
+const showModel = defineModel<boolean>('show', { required: true });
 
 const zodPartialRelation = extend(zodRelationProperty, {
   relation: optional(zodRelation),
@@ -25,16 +25,17 @@ const zodPartialRelation = extend(zodRelationProperty, {
 
 <template>
   <DatabasePropertyCreationDialog
-    v-model:show="show"
-    :doc-handle="docHandle"
-    @created="show = false"
-    @cancel="show = false"
+    v-model:show="showModel"
+    :directory-path="directoryPath"
+    :document-id="documentId"
+    @created="showModel = false"
+    @cancel="showModel = false"
   >
     <template #after="{ property, onUpdateProperty, onUpdateDefaultValue }">
       <DatabaseRelationPropertyEditSection
         v-if="zodIs(property, zodPartialRelation)"
         :property="property"
-        :directory="directory"
+        :directory-path="directoryPath"
         @update:property="onUpdateProperty"
       />
 
@@ -47,7 +48,7 @@ const zodPartialRelation = extend(zodRelationProperty, {
       <ValueField
         :property="{ ...property, name: 'default value' }"
         :value="property.default"
-        :directory="directory"
+        :directory-path="directoryPath"
         @update:value="onUpdateDefaultValue"
         @update:property="onUpdateProperty"
       >

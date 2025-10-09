@@ -1,4 +1,4 @@
-import type { AMDocHandle } from '@shared/lib/automerge';
+import type { AMDocumentId } from '@shared/lib/automerge';
 import type {
   DatabaseNestedFilter,
   DatabasePropertyId,
@@ -6,25 +6,30 @@ import type {
 import {
   LOGICAL_FILTER_OPERATOR,
   UNARY_FILTER_OPERATOR,
-  useDatabasePropertiesMap,
 } from '@shared/lib/databaseDocument';
 import { defineMenuButtonList } from '@shared/ui/Menu';
 import type { Ref } from 'vue';
 import { computed } from 'vue';
 import { OPERATOR_LABEL } from './types';
+import { useDatabasePropertiesClient } from '@entity/databaseProperty';
+import type { EntryPath } from '@shared/lib/fileSystem';
+import { DomainError } from '@shared/lib/error';
+import { strictRecordIterableEntries } from '@shared/lib/strictRecord';
 
 export const useConditionMenu = ({
-  docHandle,
+  directoryPath,
+  documentId,
   filter,
   propertyId,
   disableProperties,
 }: {
-  docHandle: Ref<AMDocHandle>;
+  directoryPath: Ref<EntryPath>;
+  documentId: Ref<AMDocumentId>;
   filter?: Ref<DatabaseNestedFilter | undefined>;
   propertyId?: Ref<DatabasePropertyId | undefined>;
   disableProperties?: Ref<boolean>;
 }) => {
-  const properties = useDatabasePropertiesMap(docHandle);
+  const { getDatabaseProperties } = useDatabasePropertiesClient();
 
   const createUnaryConditionMenu = (propertyId: DatabasePropertyId) =>
     defineMenuButtonList(
@@ -48,14 +53,19 @@ export const useConditionMenu = ({
 
   const propertiesMenu = computed(() => {
     if (!disableProperties?.value) {
-      const entries = properties.entries;
-      if (entries) {
+      const properties = getDatabaseProperties(
+        directoryPath.value,
+        documentId.value,
+      );
+      if (properties && !(properties instanceof DomainError)) {
         return defineMenuButtonList(
-          entries.map(([id, { name }]) => ({
-            key: id,
-            label: name,
-            submenu: createUnaryConditionMenu(id),
-          })),
+          Array.from(strictRecordIterableEntries(properties)()).map(
+            ([id, { name }]) => ({
+              key: id,
+              label: name,
+              submenu: createUnaryConditionMenu(id),
+            }),
+          ),
         );
       }
     }

@@ -1,20 +1,20 @@
-import type { AMDocHandle } from '@shared/lib/cfrDocument';
+import { useDatabaseDataClient } from '@entity/databaseData/client';
+import type { AMDocumentId } from '@shared/lib/cfrDocument';
 import type { DatabaseItemId } from '@shared/lib/databaseDocument';
-import { useDatabaseData } from '@shared/lib/databaseDocument';
+import type { EntryPath } from '@shared/lib/fileSystem';
 import { useSnackbar } from '@shared/ui/Snackbar';
-import { computed, toValue, type MaybeRefOrGetter } from 'vue';
 
-export const useDatabaseItemRemove = (
-  rawDocHandler: MaybeRefOrGetter<AMDocHandle>,
-) => {
-  const docHandler = computed(() => toValue(rawDocHandler));
-
-  const databaseData = useDatabaseData(docHandler);
+export const useDatabaseItemRemove = () => {
+  const { removeItem } = useDatabaseDataClient();
 
   const { addSnackbar } = useSnackbar();
 
-  const remove = async (itemId: DatabaseItemId) => {
-    await databaseData.removeItem(itemId);
+  const remove = async (
+    path: EntryPath,
+    documentId: AMDocumentId,
+    itemId: DatabaseItemId,
+  ) => {
+    await removeItem(path, documentId, itemId);
 
     addSnackbar({ text: `Item removed` });
   };

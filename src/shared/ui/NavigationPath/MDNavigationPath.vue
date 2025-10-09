@@ -1,13 +1,14 @@
-<script setup lang="ts" generic="T extends { name: string }">
+<script setup lang="ts">
+import type { EntryPath } from '@shared/lib/fileSystem';
 import { MDButton, MDIconButton } from '../Button';
 import { MDSymbol } from '../Icon';
 
 const {} = defineProps<{
-  path: T[];
+  path: EntryPath;
 }>();
 
 defineEmits<{
-  click: [indexPath: number, item?: T];
+  click: [indexPath: number, name?: string];
 }>();
 </script>
 
@@ -22,7 +23,7 @@ defineEmits<{
 
     <MDSymbol class="md-navigation-path__separator" name="chevron_right" />
 
-    <template v-for="(item, indexPath) in path" :key="indexPath">
+    <template v-for="(name, indexPath) in path" :key="indexPath">
       <MDSymbol
         v-if="indexPath > 0"
         class="md-navigation-path__separator"
@@ -30,10 +31,10 @@ defineEmits<{
       />
 
       <MDButton
-        :label="item.name"
+        :label="name"
         color="text"
         class="md-navigation-path__item"
-        @click="$emit('click', indexPath, item)"
+        @click="$emit('click', indexPath, name)"
       />
     </template>
   </div>

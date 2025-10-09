@@ -1,11 +1,10 @@
 <script setup lang="ts">
-import type { AMDocHandle } from '@shared/lib/automerge';
-import { deepReplaceJsonObject } from '@shared/lib/changeObject';
+import { useDatabaseViewsClient } from '@entity/databaseView/viewsClient';
+import type { AMDocumentId } from '@shared/lib/automerge';
+import { deepPutJsonObject } from '@shared/lib/changeObject';
 import type { DatabaseViewId } from '@shared/lib/databaseDocument';
-import {
-  DB_VIEW_LAYOUT,
-  useDatabaseViewsMap,
-} from '@shared/lib/databaseDocument';
+import { DB_VIEW_LAYOUT } from '@shared/lib/databaseDocument';
+import type { EntryPath } from '@shared/lib/fileSystem';
 import { objectEntries } from '@shared/lib/objectEntries';
 import { MDDialog } from '@shared/ui/Dialog';
 import { MDSelect } from '@shared/ui/Select';
@@ -18,12 +17,13 @@ import { pascalCase } from 'es-toolkit';
 import { computed, reactive, ref, toRefs } from 'vue';
 
 const props = defineProps<{
-  docHandle: AMDocHandle;
+  directoryPath: EntryPath;
+  documentId: AMDocumentId;
 }>();
 
-const show = defineModel<boolean>('show', { required: true });
+const modelShow = defineModel<boolean>('show', { required: true });
 
-const { docHandle } = toRefs(props);
+const { documentId, directoryPath } = toRefs(props);
 
 const emit = defineEmits<{
   created: [id: DatabaseViewId];
@@ -40,19 +40,18 @@ const initialState = (): {
 
 const formState = reactive(initialState());
 
-const databaseViewsMap = useDatabaseViewsMap(docHandle);
-
 const loading = ref(0);
+
+const { create } = useDatabaseViewsClient();
 
 const onApply = async () => {
   if (formState.name) {
     try {
       loading.value += 1;
 
-      const id = await databaseViewsMap.create({
+      const id = await create(directoryPath.value, documentId.value, {
         name: formState.name,
         layout: formState.layout,
-        order: databaseViewsMap.size,
       });
       emit('created', id);
     } finally {
@@ -62,7 +61,7 @@ const onApply = async () => {
 };
 
 const onCancel = () => {
-  deepReplaceJsonObject(formState, initialState());
+  deepPutJsonObject(formState, initialState());
   emit('cancel');
 };
 
@@ -88,7 +87,7 @@ const onChangeLayout = (selectedOptions: LayoutOption[]) => {
 
 <template>
   <MDDialog
-    v-model:show="show"
+    v-model:show="modelShow"
     :loading="!!loading"
     headline="Add view"
     supporting-text="Enter the name of the new data view."

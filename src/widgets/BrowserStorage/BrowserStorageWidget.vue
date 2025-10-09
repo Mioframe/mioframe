@@ -6,7 +6,7 @@ import { useRepoExplorerNavigate } from '@widget/MainView/useRepoExplorerNavigat
 import { useBrowserSourceMounted } from '../../entities/mountedDirectories/useBrowserStorage';
 import type { DirectoryLocalEntry } from '@shared/lib/localFileSystem';
 import { computed } from 'vue';
-import { OPFS } from '@feature/mountDirectoryFromBrowser/useMountDirectoryFromBrowser';
+import { OPFSName } from '@entity/mountedDirectories/useDirectoryStoreClient';
 
 const { open } = useRepoExplorerNavigate();
 
@@ -14,7 +14,7 @@ const { mounted } = useBrowserSourceMounted();
 
 const onClickBrowserStorage = async () => {
   await open({
-    path: [OPFS],
+    path: [OPFSName],
     document: undefined,
   });
 };
@@ -35,7 +35,7 @@ const onClickMountedItem = async (item: DirectoryLocalEntry) => {
   });
 };
 
-const isMountedOPFS = computed(() => mounted.value.has(OPFS));
+const isMountedOPFS = computed(() => mounted.value.has(OPFSName));
 </script>
 
 <template>
@@ -43,7 +43,7 @@ const isMountedOPFS = computed(() => mounted.value.has(OPFS));
     <MDListItem
       is="button"
       v-if="!isMountedOPFS"
-      :headline="OPFS"
+      :headline="OPFSName"
       class="local-storage-widget__item"
       supporting-text="Storage inside your browser"
       @click="onClickBrowserStorage"

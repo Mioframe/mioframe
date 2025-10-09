@@ -1,18 +1,21 @@
-import type { output, ZodMiniType } from 'zod/v4-mini';
+import type { output, ZodMiniType } from 'zod/mini';
 
 export const zodIs = <Z extends ZodMiniType>(
   value: unknown,
   zod: Z,
 ): value is output<Z> => zod.safeParse(value).success;
 
-/**
- * checks value without creating a new one
- * @deprecated - use zodIs(value, zod)
- */
 export const zodCheck = <Z extends ZodMiniType>(
-  value: unknown,
   zod: Z,
-): output<Z> | undefined => (zodIs(value, zod) ? value : undefined);
+  value: unknown,
+  { throwAnError = false } = {},
+): value is output<Z> => {
+  const { success, error } = zod.safeParse(value);
+  if (throwAnError && !success) {
+    throw error;
+  }
+  return success;
+};
 
 /**
  * Checking zod scheme without cloning values
@@ -20,7 +23,7 @@ export const zodCheck = <Z extends ZodMiniType>(
  * @param zod
  * @returns
  */
-export const zodSafeCheck = <Z extends ZodMiniType>(value: unknown, zod: Z) => {
+export const zodSafeCheck = <Z extends ZodMiniType>(zod: Z, value: unknown) => {
   const { success, error } = zod.safeParse(value);
 
   return success
