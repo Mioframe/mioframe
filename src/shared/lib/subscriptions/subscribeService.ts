@@ -1,6 +1,6 @@
 import { isEqual, throttle } from 'es-toolkit';
-import type { WatchOptions, WatchSource } from 'vue';
-import { watch } from 'vue';
+import type { ComputedGetter, WatchOptions } from 'vue';
+import { computed, watch } from 'vue';
 import type { SubscribeByQueryService, WatchHandle } from './types';
 import {
   SUBSCRIBE_BY_QUERY_SERVICE_SYMBOL,
@@ -15,18 +15,18 @@ import {
  * @returns
  */
 export const defineSubscribeService = <T>(
-  source: WatchSource<T>,
+  source: ComputedGetter<T>,
 ): SubscribeService<T> => {
   const initialSubscribeService = (
     cb: (v: T) => unknown,
     options?: WatchOptions,
   ): SubscribeServiceHandle => {
     const throttleCb = throttle(cb, 100, {
-      edges: ['leading', 'trailing'],
+      edges: ['trailing'],
     });
 
     const handle = watch(
-      source,
+      computed(source),
       (v, old) => {
         if (!isEqual(v, old)) {
           throttleCb(v);

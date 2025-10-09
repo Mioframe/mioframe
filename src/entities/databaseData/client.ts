@@ -1,7 +1,8 @@
 import { useMainService } from '@shared/api';
 import { useSubscribeByQueryClient } from '@shared/lib/subscriptions';
+import { createGlobalState } from '@vueuse/core';
 
-export const useDatabaseDataClient = () => {
+export const useDatabaseDataClient = createGlobalState(() => {
   const {
     databaseDocument: {
       data: {
@@ -23,4 +24,4 @@ export const useDatabaseDataClient = () => {
     getItem: useSubscribeByQueryClient(subscribeItem),
     getValue: useSubscribeByQueryClient(subscribeValue),
   };
-};
+});

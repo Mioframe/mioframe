@@ -96,17 +96,11 @@ export const useDirectoryStoreService = createGlobalState(() => {
 
   const subscribeRootList = defineSubscribeService(() => rootDirectories.value);
 
-  // TODO: добавить хранение рут директорий
-
   const { data: rootFileSystemDirectoriesStore } = useIDBKeyval<
     StrictRecord<string, FileSystemDirectoryHandle>
   >('RootFileSystemDirectories', {});
 
   watchEffect(() => {
-    console.debug(
-      'rootFileSystemDirectoriesStore.value',
-      JSON.stringify(rootFileSystemDirectoriesStore.value),
-    );
     for (const [name, handle] of strictRecordIterableEntries(
       rootFileSystemDirectoriesStore.value,
     )()) {
