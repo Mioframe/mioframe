@@ -5,6 +5,7 @@ import DialogContainer from '@shared/ui/Dialog/Alert/DialogContainer.vue';
 import { RouterView } from 'vue-router';
 import { PerformanceOverlay } from '@shared/ui/performance';
 import { useDialogContainer } from '@shared/ui/Dialog';
+import { usePermanentStorageRequest } from '@feature/permanentStorageRequest';
 
 const { addSnackbar } = useSnackbar();
 
@@ -17,6 +18,10 @@ onErrorCaptured((error) => {
 const dialogContainer = useTemplateRef('dialogContainer');
 
 const { hasOpenedDialog } = useDialogContainer(dialogContainer);
+
+const { permanentStorageRequest } = usePermanentStorageRequest();
+
+void permanentStorageRequest();
 </script>
 
 <template>
