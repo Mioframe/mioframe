@@ -1,14 +1,18 @@
 <script setup lang="ts">
+import { useCFRDocumentClient } from '@entity/cfrDocument';
 import type { Relation } from '@entity/databaseRelation';
+import { useDocumentRepoClient } from '@entity/documentRepo';
 import { type AMDocumentId } from '@shared/lib/cfrDocument';
-import { useDocumentFolder } from '@shared/lib/cfrDocument/useDocumentFolder';
-import type { DirectoryFSEntry } from '@shared/lib/fileSystem';
+import { DomainError } from '@shared/lib/error';
+import type { EntryPath } from '@shared/lib/fileSystem';
 import { MDSelect } from '@shared/ui/Select';
-import { computed, nextTick, reactive, shallowRef, watch } from 'vue';
+import { computed, nextTick, shallowRef, toRefs, watch } from 'vue';
 
-const { directory } = defineProps<{
-  directory: DirectoryFSEntry;
+const props = defineProps<{
+  directoryPath: EntryPath;
 }>();
+
+const { directoryPath } = toRefs(props);
 
 const relationModel = defineModel<Relation>();
 
@@ -25,44 +29,23 @@ type DatabaseDocumentOption = { label: string; key: AMDocumentId };
 
 const selectedDocumentOptions = shallowRef<DatabaseDocumentOption[]>([]);
 
-const directoryRef = computed(() => directory);
+const { getDocumentIdList } = useDocumentRepoClient();
 
-const documentFolder = useDocumentFolder(directoryRef);
+const documentIdList = computed(() => getDocumentIdList(directoryPath.value));
 
-const documentMap = computed(() => documentFolder.value?.documentMap);
+const { getDocumentDescription } = useCFRDocumentClient();
 
-const documentNamesMap = reactive(new Map<AMDocumentId, string>());
-
-// заполнение documentNamesMap
-watch(
-  documentMap,
-  (documentMap) => {
-    const oldNames = new Set(documentNamesMap.keys());
-    documentMap?.forEach((doc, documentId) => {
-      oldNames.delete(documentId);
-      if (!documentNamesMap.has(documentId)) {
-        const name = doc.content?.name;
-        if (name) {
-          documentNamesMap.set(documentId, name);
-        }
-      }
+const documentOptionList = computed((): DatabaseDocumentOption[] => {
+  if (documentIdList.value && !(documentIdList.value instanceof DomainError)) {
+    return documentIdList.value.map((documentId): DatabaseDocumentOption => {
+      const label =
+        getDocumentDescription(directoryPath.value, documentId)?.name ??
+        'unknown document name';
+      return { key: documentId, label };
     });
-
-    oldNames.forEach((documentId) => {
-      documentNamesMap.delete(documentId);
-    });
-  },
-  { immediate: true },
-);
-
-const documentOptionList = computed((): DatabaseDocumentOption[] =>
-  Array.from(documentNamesMap.entries()).map(
-    ([documentId, name]): DatabaseDocumentOption => ({
-      label: name,
-      key: documentId,
-    }),
-  ),
-);
+  }
+  return [];
+});
 
 const selectedDocumentOptionsWatchHandle = watch(
   selectedDocumentOptions,
@@ -81,7 +64,9 @@ const relationDocumentIdWatchHandle = watch(
       selectedDocumentOptions.value = [
         {
           key: documentId,
-          label: documentNamesMap.get(documentId) ?? 'unknown document name',
+          label:
+            getDocumentDescription(directoryPath.value, documentId)?.name ??
+            'unknown document name',
         },
       ];
     }

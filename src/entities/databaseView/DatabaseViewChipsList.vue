@@ -1,16 +1,17 @@
 <script setup lang="ts">
-import type { AMDocHandle } from '@shared/lib/automerge';
-import {
-  useDatabaseViewsMap,
-  type DatabaseViewId,
-} from '@shared/lib/databaseDocument';
+import type { AMDocumentId } from '@shared/lib/automerge';
+import { type DatabaseViewId } from '@shared/lib/databaseDocument';
+import type { EntryPath } from '@shared/lib/fileSystem';
 import { useReduceIterable } from '@shared/lib/useReduce';
 import { MDChip } from '@shared/ui/Chips';
 import { isArray, isUndefined } from 'es-toolkit/compat';
 import { computed, toRefs } from 'vue';
+import { useDatabaseViewsClient } from './viewsClient';
+import { DomainError } from '@shared/lib/error';
 
 const props = defineProps<{
-  docHandle: AMDocHandle;
+  directoryPath: EntryPath;
+  documentId: AMDocumentId;
   selectedId?: DatabaseViewId[] | DatabaseViewId;
   type: 'assist' | 'filter' | 'input';
 }>();
@@ -19,11 +20,29 @@ const emit = defineEmits<{
   click: [id: DatabaseViewId];
 }>();
 
-const { docHandle } = toRefs(props);
+const { directoryPath, documentId } = toRefs(props);
 
-const databaseViewsMap = useDatabaseViewsMap(docHandle);
+const {
+  getViewList: { get: getViewList },
+} = useDatabaseViewsClient();
 
-const viewsList = computed(() => databaseViewsMap.list);
+const viewListClient = computed(() =>
+  getViewList(directoryPath.value, documentId.value),
+);
+
+const clientError = computed(() => {
+  if (viewListClient.value instanceof DomainError) {
+    return viewListClient.value;
+  }
+  return undefined;
+});
+
+const viewsList = computed(() => {
+  if (!(viewListClient.value instanceof DomainError)) {
+    return viewListClient.value;
+  }
+  return undefined;
+});
 
 const viewButtons = useReduceIterable(
   viewsList,
@@ -59,14 +78,18 @@ const isSelected = (viewId: DatabaseViewId): boolean => {
 
 <template>
   <div class="database-view-chips-list">
-    <MDChip
-      v-for="{ viewId, label } in viewButtons"
-      :key="viewId"
-      :label="label"
-      :selected="isSelected(viewId)"
-      :type="type"
-      @click="onClickViewChip(viewId)"
-    />
+    <span v-if="clientError">{{ clientError.message }}</span>
+
+    <template v-else>
+      <MDChip
+        v-for="{ viewId, label } in viewButtons"
+        :key="viewId"
+        :label="label"
+        :selected="isSelected(viewId)"
+        :type="type"
+        @click="onClickViewChip(viewId)"
+      />
+    </template>
   </div>
 </template>
 

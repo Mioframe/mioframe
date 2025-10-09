@@ -21,7 +21,7 @@ const memoryMb = computed(() =>
 </script>
 
 <template>
-  <div class="performance-overlay">
+  <div class="performance-overlay" aria-label="performance overlay">
     <div class="performance-overlay__item">v: {{ buildDate }}</div>
 
     <div

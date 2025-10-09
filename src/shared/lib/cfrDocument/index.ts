@@ -1,4 +1,4 @@
 export type * from './types';
-export { zodDocumentContent } from './types';
+export { zodCFRDocumentContent } from './types';
 export { useDirectoryRepo } from './useDirectoryRepo';
 export type * from '../automerge/automergeTypes';

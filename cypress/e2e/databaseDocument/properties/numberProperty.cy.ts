@@ -141,10 +141,14 @@ describe('use number property in database document', () => {
 
     cy.findByRole('menuitem', { name: /edit/i }).click();
 
-    cy.findByLabelText(new RegExp(propertyName, 'i')).type('123');
+    const editedNumberValue = `${Date.now()}11`;
+
+    cy.findByLabelText(new RegExp(propertyName, 'i'))
+      .focus()
+      .type(`{selectall}${editedNumberValue}`);
 
     cy.findByRole('button', { name: /edit/i }).click();
 
-    cy.findByText(`${numberValue}123`).should('exist');
+    cy.findByText(editedNumberValue).should('exist');
   });
 });

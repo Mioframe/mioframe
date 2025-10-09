@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { AMDocHandle } from '@shared/lib/automerge';
+import type { AMDocumentId } from '@shared/lib/automerge';
 import DatabaseNestedFilterString from './DatabaseNestedFilterString.vue';
 import { computed, toRefs } from 'vue';
 import type {
@@ -8,42 +8,49 @@ import type {
   DatabaseViewId,
   GeneralProperty,
 } from '@shared/lib/databaseDocument';
-import { useDatabaseView } from '@shared/lib/databaseDocument';
-import { deepReplaceJsonObject } from '@shared/lib/changeObject';
+import { useDatabaseViewFilterClient } from '@entity/databaseFilter/client';
+import type { EntryPath } from '@shared/lib/fileSystem';
+import { DomainError } from '@shared/lib/error';
 
 const props = defineProps<{
-  docHandle: AMDocHandle;
+  directoryPath: EntryPath;
+  documentId: AMDocumentId;
   viewId: DatabaseViewId;
 }>();
 
-const { docHandle, viewId } = toRefs(props);
+const { directoryPath, documentId, viewId } = toRefs(props);
 
 defineSlots<{
   valueField(p: {
-    property: GeneralProperty;
+    property: GeneralProperty | DomainError;
     propertyId: DatabasePropertyId;
     value: unknown;
     update: (value: unknown) => void;
   }): unknown;
 }>();
 
-const view = useDatabaseView(docHandle, viewId);
+const { get, patch } = useDatabaseViewFilterClient();
 
 const filter = computed({
-  get: () => view.view?.filter ?? {},
+  get: () => {
+    const mbFilter = get(directoryPath.value, documentId.value, viewId.value);
+    if (mbFilter instanceof DomainError) {
+      return {};
+    }
+    return mbFilter ?? {};
+  },
   set: (v: DatabaseFilter) => {
-    void view.update((view) => {
-      if (!view.filter) {
-        view.filter = {};
-      }
-      deepReplaceJsonObject(view.filter, v, { trimString: true });
-    });
+    void patch(directoryPath.value, documentId.value, viewId.value, v);
   },
 });
 </script>
 
 <template>
-  <DatabaseNestedFilterString v-model:filter="filter" :doc-handle="docHandle">
+  <DatabaseNestedFilterString
+    v-model:filter="filter"
+    :directory-path="directoryPath"
+    :document-id="documentId"
+  >
     <template #valueField="{ property, propertyId, update, value }">
       <slot
         :value="value"

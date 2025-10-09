@@ -1,15 +1,15 @@
 <script setup lang="ts">
 import { DatabasePropertyList } from '@entity/databaseProperty';
 import { DatabasePropertyRemoveDialog } from '@feature/databasePropertyRemove';
-import type { AMDocHandle } from '@shared/lib/automerge';
+import type { AMDocumentId } from '@shared/lib/automerge';
 import type { DatabasePropertyId } from '@shared/lib/databaseDocument';
-import type { DirectoryFSEntry } from '@shared/lib/fileSystem';
+import type { EntryPath } from '@shared/lib/fileSystem';
 import { MD_SYS_TYPESCALE } from '@shared/lib/md';
 import { MDButton } from '@shared/ui/Button';
 import { MDSymbol } from '@shared/ui/Icon';
 import { defineMenuButtonList, MDContextMenuButton } from '@shared/ui/Menu';
 import { MDBottomSheet, MDBottomSheetSection } from '@shared/ui/Sheets';
-import { ref, toRefs } from 'vue';
+import { ref } from 'vue';
 import PropertyCreateDialogWidget from './PropertyCreateDialogWidget.vue';
 import { DatabasePropertyEditDialog } from '@feature/databasePropertyEdit';
 import { DatabaseRelationPropertyEditSection } from '@feature/databaseRelationPropertyEdit';
@@ -19,12 +19,10 @@ import { DatabaseBooleanPropertyEditSection } from '@feature/databaseBooleanProp
 import { zodBooleanProperty } from '@entity/databaseBoolean';
 import ValueField from './ValueField.vue';
 
-const props = defineProps<{
-  docHandle: AMDocHandle;
-  directory: DirectoryFSEntry;
+defineProps<{
+  directoryPath: EntryPath;
+  documentId: AMDocumentId;
 }>();
-
-const { docHandle } = toRefs(props);
 
 const showModel = defineModel<boolean>('show', { required: true });
 
@@ -96,7 +94,8 @@ const isShowAddProperty = ref(false);
 
       <DatabasePropertyList
         class="db-properties-sheet__property-list"
-        :doc-handle="docHandle"
+        :directory-path="directoryPath"
+        :document-id="documentId"
       >
         <template #trailingIcon="{ propertyId, property }">
           <MDContextMenuButton
@@ -122,7 +121,8 @@ const isShowAddProperty = ref(false);
     <DatabasePropertyRemoveDialog
       v-if="removePropertyId"
       :show="!!removePropertyId"
-      :doc-handle="docHandle"
+      :directory-path="directoryPath"
+      :document-id="documentId"
       :property-id="removePropertyId"
       @apply="removePropertyId = undefined"
       @cancel="removePropertyId = undefined"
@@ -130,7 +130,8 @@ const isShowAddProperty = ref(false);
 
     <DatabasePropertyEditDialog
       v-if="editPropertyId"
-      :doc-handle="docHandle"
+      :directory-path="directoryPath"
+      :document-id="documentId"
       :property-id="editPropertyId"
       :show="!!editPropertyId"
       @edited="editPropertyId = undefined"
@@ -141,7 +142,7 @@ const isShowAddProperty = ref(false);
         <DatabaseRelationPropertyEditSection
           v-if="zodIs(property, zodRelationProperty)"
           :property="property"
-          :directory="directory"
+          :directory-path="directoryPath"
           @update:property="onUpdateProperty"
         />
 
@@ -154,7 +155,7 @@ const isShowAddProperty = ref(false);
         <ValueField
           :property="{ ...property, name: 'default value' }"
           :value="property.default"
-          :directory="directory"
+          :directory-path="directoryPath"
           @update:value="onUpdateDefaultValue"
           @update:property="onUpdateProperty"
         />
@@ -163,8 +164,8 @@ const isShowAddProperty = ref(false);
 
     <PropertyCreateDialogWidget
       v-model:show="isShowAddProperty"
-      :doc-handle="docHandle"
-      :directory="directory"
+      :document-id="documentId"
+      :directory-path="directoryPath"
     />
   </MDBottomSheet>
 </template>

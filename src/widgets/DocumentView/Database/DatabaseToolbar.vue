@@ -1,13 +1,10 @@
 <script setup lang="ts">
-import type { AMDocHandle } from '@shared/lib/automerge';
+import type { AMDocumentId } from '@shared/lib/automerge';
 import type {
   DatabasePropertyId,
   DatabaseUnknownProperty,
 } from '@shared/lib/databaseDocument';
-import {
-  useDatabasePropertiesMap,
-  type DatabaseViewId,
-} from '@shared/lib/databaseDocument';
+import { type DatabaseViewId } from '@shared/lib/databaseDocument';
 import { MDIconButton } from '@shared/ui/Button';
 import MDToolbarContainer from '@shared/ui/Toolbar/MDToolbarContainer.vue';
 import { computed, ref, toRefs } from 'vue';
@@ -16,17 +13,20 @@ import DatabaseSortSheet from './DatabaseSortSheet.vue';
 import DatabasePropertiesSheet from './DatabasePropertiesSheet.vue';
 import { DbItemAddDialog } from '@feature/databaseItemEdit';
 import ValueField from './ValueField.vue';
-import type { DirectoryFSEntry } from '@shared/lib/fileSystem';
+import type { EntryPath } from '@shared/lib/fileSystem';
 import type { MaybeElement } from '@vueuse/core';
 import DatabaseFiltersSheet from './DatabaseFiltersSheet.vue';
+import { useDatabasePropertiesClient } from '@entity/databaseProperty';
+import { DomainError } from '@shared/lib/error';
+import type { PartialDeep } from 'type-fest';
 
 const props = defineProps<{
-  docHandle: AMDocHandle;
-  directory: DirectoryFSEntry;
+  documentId: AMDocumentId;
+  directoryPath: EntryPath;
   autoHideTarget?: MaybeElement;
 }>();
 
-const { docHandle, directory, autoHideTarget } = toRefs(props);
+const { documentId, directoryPath, autoHideTarget } = toRefs(props);
 
 const selectedViewId = defineModel<DatabaseViewId>('selectedViewId');
 
@@ -40,16 +40,20 @@ const showFilterSettings = ref(false);
 
 const isShowAddItem = ref(false);
 
-const propertiesMap = useDatabasePropertiesMap(docHandle);
+const { getPropertySize, patch: patchProperty } = useDatabasePropertiesClient();
 
 const onUpdateProperty = async (
   propertyId: DatabasePropertyId,
-  v: DatabaseUnknownProperty,
+  v: PartialDeep<DatabaseUnknownProperty>,
 ) => {
-  await propertiesMap.put(propertyId, v);
+  await patchProperty(directoryPath.value, documentId.value, propertyId, v);
 };
 
-const hasProperties = computed(() => !!propertiesMap.size);
+const hasProperties = computed(() => {
+  const size = getPropertySize(directoryPath.value, documentId.value);
+
+  return !(size instanceof DomainError) && size && size > 0;
+});
 </script>
 
 <template>
@@ -97,33 +101,36 @@ const hasProperties = computed(() => !!propertiesMap.size);
     <DatabaseViewsSheet
       v-model:selected-view-id="selectedViewId"
       v-model:show="showViewSettings"
-      :doc-handle="docHandle"
+      :directory-path="directoryPath"
+      :document-id="documentId"
     />
 
     <DatabaseSortSheet
       v-model:show="showSortSettings"
+      :directory-path="directoryPath"
+      :document-id="documentId"
       :view-id="selectedViewId"
-      :doc-handle="docHandle"
     />
 
     <DatabasePropertiesSheet
       v-model:show="showPropertySettings"
-      :doc-handle="docHandle"
-      :directory="directory"
+      :document-id="documentId"
+      :directory-path="directoryPath"
     />
 
     <DatabaseFiltersSheet
       v-if="selectedViewId"
       v-model:show="showFilterSettings"
-      :doc-handle="docHandle"
+      :document-id="documentId"
       :view-id="selectedViewId"
-      :directory="directory"
+      :directory-path="directoryPath"
     />
 
     <DbItemAddDialog
       v-if="isShowAddItem"
       v-model:show="isShowAddItem"
-      :doc-handle="docHandle"
+      :directory-path="directoryPath"
+      :document-id="documentId"
       @added="isShowAddItem = false"
       @cancel="isShowAddItem = false"
     >
@@ -131,7 +138,7 @@ const hasProperties = computed(() => !!propertiesMap.size);
         <ValueField
           :property="property"
           :value="value"
-          :directory="directory"
+          :directory-path="directoryPath"
           @update:value="update"
           @update:property="onUpdateProperty(propertyId, $event)"
         />
