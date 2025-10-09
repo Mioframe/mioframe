@@ -9,8 +9,8 @@ import { isFunction } from 'es-toolkit';
 import { useSnackbar } from '@shared/ui/Snackbar';
 import { useDialog } from '@shared/ui/Dialog';
 import type { EntryPath, EntryPathString } from '@shared/lib/fileSystem';
+import { OPFSName } from '@shared/api/directories';
 
-export const OPFSName = 'Origin private file system';
 export const OPFS = OPFSName;
 
 export const useDirectoryStoreClient = createGlobalState(() => {
@@ -58,22 +58,6 @@ export const useDirectoryStoreClient = createGlobalState(() => {
       });
     }
   };
-
-  const mountOPFS = async () => {
-    const persistent = await navigator.storage.persisted();
-    if (!persistent) {
-      await navigator.storage.persist();
-    }
-
-    if (!rootList.value.includes(OPFSName)) {
-      const directory = await navigator.storage.getDirectory();
-      await addRootFSHandle(directory, OPFSName);
-    }
-  };
-
-  setTimeout(() => {
-    void mountOPFS();
-  }, 1e3);
 
   const removeEntry = async (rawPath: EntryPath | EntryPathString) => {
     await directoryStore.removeEntry(rawPath);

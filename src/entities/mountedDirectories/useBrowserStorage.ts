@@ -1,9 +1,9 @@
+import { OPFSName } from '@shared/api/directories';
 import type { DirectoryLocalEntry } from '@shared/lib/localFileSystem';
 import { createLocalDirectory } from '@shared/lib/localFileSystem';
 import { useDialog } from '@shared/ui/Dialog';
 import { createGlobalState } from '@vueuse/core';
 import { computed, shallowReactive } from 'vue';
-import { OPFSName } from './useDirectoryStoreClient';
 
 export const useBrowserSourceMounted = createGlobalState(() => {
   const mounted = shallowReactive<Map<string, DirectoryLocalEntry>>(new Map());

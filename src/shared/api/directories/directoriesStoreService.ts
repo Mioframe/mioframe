@@ -18,11 +18,12 @@ import {
 import { createGlobalState, until } from '@vueuse/core';
 import { isBoolean, isString } from 'es-toolkit';
 import { isArray, toString } from 'es-toolkit/compat';
-import { computed, reactive } from 'vue';
+import { computed, reactive, watchEffect } from 'vue';
 import type { DirectoryDescription, EntryDescription } from './types';
-import { EntryNotDirectoryError, EntryNotFoundError } from './types';
+import { EntryNotDirectoryError, EntryNotFoundError, OPFSName } from './types';
 import { defineSubscribeByKeyService } from '@shared/lib/subscriptions/subscribeService';
 import { DomainError } from '@shared/lib/error';
+import { useIDBKeyval } from '@vueuse/integrations/useIDBKeyval';
 
 export const PATH_SEPARATOR = '/';
 
@@ -95,12 +96,32 @@ export const useDirectoryStoreService = createGlobalState(() => {
 
   const subscribeRootList = defineSubscribeService(() => rootDirectories.value);
 
+  // TODO: добавить хранение рут директорий
+
+  const { data: rootFileSystemDirectoriesStore } = useIDBKeyval<
+    StrictRecord<string, FileSystemDirectoryHandle>
+  >('RootFileSystemDirectories', {});
+
+  watchEffect(() => {
+    console.debug(
+      'rootFileSystemDirectoriesStore.value',
+      JSON.stringify(rootFileSystemDirectoriesStore.value),
+    );
+    for (const [name, handle] of strictRecordIterableEntries(
+      rootFileSystemDirectoriesStore.value,
+    )()) {
+      if (!rootDirectories.value.includes(name)) {
+        const directoryFSEntry = createLocalDirectory(handle, undefined, name);
+        addCacheEntry(directoryFSEntry);
+      }
+    }
+  });
+
   const addRootFileSystemDirectoryHandle = (
     handle: FileSystemDirectoryHandle,
     name: string,
   ): void => {
-    const directoryFSEntry = createLocalDirectory(handle, undefined, name);
-    addCacheEntry(directoryFSEntry);
+    strictRecordSet(rootFileSystemDirectoriesStore.value, name, handle);
   };
 
   const addWaitCacheEntry = (rawPath: EntryPath | EntryPathString): void => {
@@ -370,6 +391,22 @@ export const useDirectoryStoreService = createGlobalState(() => {
     strictRecordRemove(stateEntries, pathString);
     await locateEntryFromRoot(path);
   };
+
+  const mountOPFS = async () => {
+    const persistent = await navigator.storage.persisted();
+    if (!persistent) {
+      await navigator.storage.persist();
+    }
+
+    if (!rootDirectories.value.includes(OPFSName)) {
+      const directory = await navigator.storage.getDirectory();
+      addRootFileSystemDirectoryHandle(directory, OPFSName);
+    }
+  };
+
+  setTimeout(() => {
+    void mountOPFS();
+  }, 100);
 
   return {
     addRootFileSystemDirectoryHandle,
