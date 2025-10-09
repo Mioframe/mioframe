@@ -234,6 +234,7 @@ useRipple(computed(() => (enableRipple.value ? refEl.value : undefined)));
     min-height: var(--md-state-min-height);
     width: var(--md-state-width);
     min-width: var(--md-state-min-width);
+    max-width: 100%;
     box-sizing: var(--md-state-box-sizing);
 
     border-radius: var(--md-state-border-radius);
