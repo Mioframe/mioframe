@@ -1,9 +1,8 @@
 import { createGlobalState, tryOnScopeDispose } from '@vueuse/core';
-import type { ComputedRef, WatchOptions } from 'vue';
+import type { ComputedRef } from 'vue';
 import { effectScope, watch, computed, shallowRef, toValue } from 'vue';
 import type { MaybeRefOrGetter } from '@vueuse/core';
 import { isUndefined, toString } from 'es-toolkit/compat';
-import { defineSubscribeService } from './subscriptions/subscribeService';
 
 /**
  * Карта реактивных областей по ключу
@@ -120,28 +119,3 @@ export const useScopesMapByKey: UseScopesMapByKey = <K, V>(
 
   return computed(() => stateRef.value);
 };
-
-export const defineSubscribeScopesMapByKey = <K, V>(
-  useScopesMap: () => ScopesMap<K, V>,
-) => {
-  const { getScope, tryDisposeScope } = useScopesMap();
-
-  return (key: K, cb: (v: V) => unknown, options?: WatchOptions) => {
-    const scope = shallowRef<V>(getScope(key));
-
-    const handle = defineSubscribeService(scope)(cb, options);
-
-    return {
-      ...handle,
-      stop: () => {
-        tryDisposeScope(key);
-        handle.stop();
-      },
-    };
-  };
-};
-
-export const defineScopesMapRef =
-  <K, V>(useGlobalCacheApi: UseScopesMap<K, V>) =>
-  (rawKey: MaybeRefOrGetter<K | undefined>) =>
-    useScopesMapByKey(useGlobalCacheApi, rawKey);
