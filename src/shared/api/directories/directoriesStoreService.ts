@@ -393,11 +393,6 @@ export const useDirectoryStoreService = createGlobalState(() => {
   };
 
   const mountOPFS = async () => {
-    const persistent = await navigator.storage.persisted();
-    if (!persistent) {
-      await navigator.storage.persist();
-    }
-
     if (!rootDirectories.value.includes(OPFSName)) {
       const directory = await navigator.storage.getDirectory();
       addRootFileSystemDirectoryHandle(directory, OPFSName);
