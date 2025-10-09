@@ -1,7 +1,8 @@
 import { useMainService } from '@shared/api';
 import { useSubscribeByQueryClient } from '@shared/lib/subscriptions';
+import { createGlobalState } from '@vueuse/core';
 
-export const useDatabaseViewsClient = () => {
+export const useDatabaseViewsClient = createGlobalState(() => {
   const {
     databaseDocument: { views: view },
   } = useMainService();
@@ -16,4 +17,4 @@ export const useDatabaseViewsClient = () => {
     create: view.create,
     patch: view.patch,
   };
-};
+});

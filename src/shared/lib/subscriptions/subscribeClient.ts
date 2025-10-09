@@ -5,6 +5,8 @@ import { tryOnScopeDispose } from '@vueuse/core';
 import type { JsonString } from '../brandJson';
 import { jsonParse, jsonStringify } from '../brandJson';
 import type { SubscribeClient, WatchHandle } from './types';
+import { isObjectLike } from '../typeGuards';
+import { deepPutJsonObject } from '../changeObject';
 
 const WAIT_STATUS = Symbol('waiting');
 const STOP_STATUS = Symbol('stop');
@@ -92,7 +94,13 @@ export const useSubscribeByKeyClient = <K extends string, V>(
         key,
         (v: V | undefined) => {
           if (!isUndefined(v)) {
-            reactiveValues.set(key, v);
+            const oldValue = reactiveValues.get(key);
+
+            if (isObjectLike(oldValue) && isObjectLike(v)) {
+              deepPutJsonObject(oldValue, v);
+            } else {
+              reactiveValues.set(key, v);
+            }
           } else {
             reactiveValues.delete(key);
           }

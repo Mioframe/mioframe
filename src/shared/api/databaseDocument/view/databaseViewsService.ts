@@ -145,7 +145,7 @@ export const useDatabaseViewsService = (
     documentId: AMDocumentId,
     viewId: DatabaseViewId,
     cb: (view: DatabaseView) => unknown,
-  ) => {
+  ) =>
     changeDatabase(path, documentId, (state) => {
       if (!state.views[viewId]) {
         state.views[viewId] = {
@@ -156,7 +156,6 @@ export const useDatabaseViewsService = (
 
       cb(state.views[viewId]);
     });
-  };
 
   const patch = (
     path: EntryPath,

@@ -29,7 +29,7 @@ defineSlots<{
   }): unknown;
 }>();
 
-const { get, patch } = useDatabaseViewFilterClient();
+const { get, post } = useDatabaseViewFilterClient();
 
 const filter = computed({
   get: () => {
@@ -40,7 +40,7 @@ const filter = computed({
     return mbFilter ?? {};
   },
   set: (v: DatabaseFilter) => {
-    void patch(directoryPath.value, documentId.value, viewId.value, v);
+    void post(directoryPath.value, documentId.value, viewId.value, v);
   },
 });
 </script>

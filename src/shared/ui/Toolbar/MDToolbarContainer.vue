@@ -61,7 +61,7 @@ const show = computed(
   >
     <Transition>
       <div
-        v-if="show"
+        v-show="show"
         class="md-toolbar"
         :class="[
           `md-toolbar_type-${type}`,
@@ -213,9 +213,7 @@ const show = computed(
     border-radius: var(--md-toolbar-container-shape);
     box-shadow: var(--md-toolbar-container-elevation);
 
-    &:deep(> *) {
-      pointer-events: all;
-    }
+    pointer-events: all;
   }
 
   &__placeholder {

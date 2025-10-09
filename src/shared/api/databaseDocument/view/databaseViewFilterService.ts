@@ -1,6 +1,7 @@
 import type { AMDocumentId } from '@shared/lib/automerge';
 import {
   deepPatchJsonObject,
+  deepPutJsonObject,
   type PatchSource,
 } from '@shared/lib/changeObject';
 import type {
@@ -22,7 +23,7 @@ export const useDatabaseViewFilterService = (
     documentId: AMDocumentId,
     viewId: DatabaseViewId,
     cb: (view: DatabaseView) => unknown,
-  ) => void,
+  ) => unknown,
 ) => {
   const get = (
     path: string[],
@@ -43,7 +44,7 @@ export const useDatabaseViewFilterService = (
     documentId: AMDocumentId,
     viewId: DatabaseViewId,
     cb: (view: DatabaseFilter) => unknown,
-  ) => {
+  ) =>
     changeView(path, documentId, viewId, (view) => {
       if (!view.filter) {
         view.filter = {};
@@ -51,21 +52,30 @@ export const useDatabaseViewFilterService = (
 
       cb(view.filter);
     });
-  };
 
   const patch = (
     path: string[],
     documentId: AMDocumentId,
     viewId: DatabaseViewId,
     source: PatchSource<DatabaseFilter>,
-  ) => {
+  ) =>
     change(path, documentId, viewId, (filter) => {
       deepPatchJsonObject(filter, source, { trimString: true });
     });
-  };
+
+  const post = (
+    path: string[],
+    documentId: AMDocumentId,
+    viewId: DatabaseViewId,
+    source: DatabaseFilter,
+  ) =>
+    change(path, documentId, viewId, (filter) => {
+      deepPutJsonObject(filter, source, { trimString: true });
+    });
 
   return {
     subscribeGet: defineSubscribeByQueryService(get),
     patch,
+    post,
   };
 };

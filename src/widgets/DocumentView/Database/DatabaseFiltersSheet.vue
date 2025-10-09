@@ -1,16 +1,12 @@
 <script setup lang="ts">
 import { DatabaseFilterEditString } from '@feature/databaseFilterEdit';
 import type { AMDocumentId } from '@shared/lib/automerge';
-import type {
-  DatabaseFilter,
-  DatabaseViewId,
-} from '@shared/lib/databaseDocument';
+import type { DatabaseViewId } from '@shared/lib/databaseDocument';
 import type { EntryPath } from '@shared/lib/fileSystem';
 import { MD_SYS_TYPESCALE } from '@shared/lib/md';
 import { MDBottomSheet, MDBottomSheetSection } from '@shared/ui/Sheets';
-import { computed, ref, toRefs, watchEffect } from 'vue';
+import { toRefs } from 'vue';
 import ValueField from './ValueField.vue';
-import { useDatabaseViewFilterClient } from '@entity/databaseFilter/client';
 import { DomainError } from '@shared/lib/error';
 
 const props = defineProps<{
@@ -28,20 +24,6 @@ const onUpdateCollapsed = (collapsed: boolean) => {
     showModel.value = false;
   }
 };
-
-const { get } = useDatabaseViewFilterClient();
-
-const filter = computed(() =>
-  get(directoryPath.value, documentId.value, viewId.value),
-);
-
-const filterState = ref<DatabaseFilter>({});
-
-watchEffect(() => {
-  if (!(filter.value instanceof DomainError)) {
-    filterState.value = filter.value ?? {};
-  }
-});
 </script>
 
 <template>
