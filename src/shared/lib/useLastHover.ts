@@ -58,5 +58,5 @@ export const useLastHover = (rawEl: MaybeElementRef) => {
     { immediate: true },
   );
 
-  return computed(() => el.value && el.value === lastTarget.value);
+  return computed(() => !!el.value && el.value === lastTarget.value);
 };
