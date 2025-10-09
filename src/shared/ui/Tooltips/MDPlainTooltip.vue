@@ -1,11 +1,10 @@
 <script setup lang="ts">
 import { useClosestParentFrame } from '@shared/lib/useClosestParentFrame';
-import { computed, toRefs, useTemplateRef } from 'vue';
+import { computed, ref, toRefs, useTemplateRef } from 'vue';
 import type { MaybeElement } from '@vueuse/core';
 import {
   refDebounced,
   unrefElement,
-  useElementHover,
   useEventListener,
   useParentElement,
 } from '@vueuse/core';
@@ -59,7 +58,15 @@ const { floatingStyles: tooltipStyle, update } = useFloating(
 
 useEventListener(window.visualViewport, 'resize', update);
 
-const hovered = useElementHover(targetElementRef);
+const hovered = ref(false);
+
+useEventListener(targetElementRef, 'pointerenter', () => {
+  hovered.value = true;
+});
+
+useEventListener(targetElementRef, 'pointerleave', () => {
+  hovered.value = false;
+});
 
 const show = refDebounced(hovered, 1.5e3);
 </script>

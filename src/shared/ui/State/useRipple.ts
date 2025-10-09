@@ -1,8 +1,7 @@
 import type { MaybeElementRef } from '@vueuse/core';
-import { unrefElement, useEventListener, useVibrate } from '@vueuse/core';
+import { unrefElement, useEventListener } from '@vueuse/core';
 import './ripple.css';
 
-// import parseDuration from 'parse-duration';
 import { computed } from 'vue';
 import { toNumber } from 'es-toolkit/compat';
 import { debounce } from 'perfect-debounce';
@@ -44,11 +43,6 @@ const startRipple = async ({
     target.prepend(rippleEl);
   }
 
-  // const durationString = getComputedStyle(rippleEl).getPropertyValue(
-  //   '--md-ripple-duration-long',
-  // );
-
-  // const duration = parseDuration(durationString) ?? 1e3;
   const duration = 1e3;
 
   await asyncRequestAnimationFrame();
@@ -85,8 +79,6 @@ export const useRipple = (rawEl: MaybeElementRef) => {
 
   let lastAnimation: Animation | undefined = undefined;
 
-  const { vibrate } = useVibrate();
-
   const onPressDown = async ({
     target,
     clientX,
@@ -103,8 +95,6 @@ export const useRipple = (rawEl: MaybeElementRef) => {
     ) {
       lastTarget = target;
 
-      vibrate([10]);
-
       lastAnimation = await startRipple({
         clientX,
         clientY,
@@ -118,12 +108,6 @@ export const useRipple = (rawEl: MaybeElementRef) => {
     if (lastAnimation?.effect instanceof KeyframeEffect) {
       const { target } = lastAnimation.effect;
       if (target instanceof Element) {
-        // TODO: getPropertyValue надо избегать
-        // const durationString = getComputedStyle(target).getPropertyValue(
-        //   '--md-ripple-duration-short',
-        // );
-
-        // const newDuration = parseDuration(durationString) ?? 200;
         const newDuration = 200;
 
         const oldDuration = toNumber(lastAnimation.effect.getTiming().duration);
@@ -135,19 +119,8 @@ export const useRipple = (rawEl: MaybeElementRef) => {
 
   useEventListener(
     el,
-    'mousedown',
-    ({ currentTarget: target, clientX, clientY }: MouseEvent) => {
-      void onPressDown({ clientX, clientY, target });
-    },
-  );
-
-  useEventListener(
-    el,
-    'touchstart',
-    ({
-      touches: [{ clientX, clientY }],
-      currentTarget: target,
-    }: TouchEvent) => {
+    'pointerdown',
+    ({ currentTarget: target, clientX, clientY }: PointerEvent) => {
       void onPressDown({ clientX, clientY, target });
     },
     { passive: true },
@@ -156,13 +129,14 @@ export const useRipple = (rawEl: MaybeElementRef) => {
   useEventListener(
     el,
     [
-      'mouseup',
-      'mouseout',
-      'mouseleave',
+      'pointerup',
+      'pointerout',
+      'pointerleave',
       'touchend',
       'touchcancel',
       'keyup',
       'touchmove',
+      'pointermove',
     ],
     () => {
       onPressUp();

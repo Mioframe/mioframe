@@ -8,6 +8,7 @@ import {
   syncRefs,
   tryOnScopeDispose,
   useEventListener,
+  useVibrate,
 } from '@vueuse/core';
 import { useTemplateRef, computed, ref, watchEffect } from 'vue';
 import { useFirstFocus } from '@shared/lib/useFirstFocus';
@@ -43,11 +44,15 @@ defineSlots<{
   default: () => unknown;
 }>();
 
+const pressedModel = defineModel<boolean>('pressed');
+
+const hoverModel = defineModel<boolean>('hover');
+
+const focusedModel = defineModel<boolean>('focused', { default: false });
+
 const enableRipple = computed(
   () => !disableRipple || ['button', 'a'].includes(is),
 );
-
-const pressedModel = defineModel<boolean>('pressed');
 
 const refEl = useTemplateRef<HTMLElement>('refEl');
 
@@ -56,8 +61,6 @@ const { pressed: userPressed, durationPressedState } = usePressed(refEl);
 syncRefs(userPressed, pressedModel);
 
 const userHover = useLastHover(refEl);
-
-const hoverModel = defineModel<boolean>('hover');
 
 syncRefs(userHover, hoverModel);
 
@@ -76,8 +79,6 @@ watchEffect(() => {
   }
 });
 
-const focusedModel = defineModel<boolean>('focused', { default: false });
-
 syncRef(userFocused, focusedModel);
 
 useEventListener(refEl, 'mousedown', (e: MouseEvent) => {
@@ -88,8 +89,11 @@ useEventListener(refEl, 'mouseup', (e: MouseEvent) => {
   emit('mouseup', e);
 });
 
+const { vibrate } = useVibrate();
+
 useEventListener(refEl, 'click', (e) => {
   e.stopPropagation();
+  vibrate([10]);
   emit('click', e);
 });
 
