@@ -1,23 +1,14 @@
 <script setup lang="ts">
+import { MDIconButton } from '@shared/ui/Button';
 import { MDMainLayer } from '@shared/ui/Layers';
+import DocumentViewPane from '@widget/DocumentView/DocumentViewPane.vue';
 
 import { HomeWidget } from '@widget/Home';
 import { RepoExplorerPane } from '@widget/MainView/RepoExplorer';
-import { computed } from 'vue';
 import { useRepoExplorerNavigate } from '@widget/MainView/useRepoExplorerNavigate';
-import DocumentViewPane from '@widget/DocumentView/DocumentViewPane.vue';
-import { MDIconButton } from '@shared/ui/Button';
 import { useRouter } from 'vue-router';
 
-const {
-  directoryEntry: currentDirectory,
-  state,
-  closeDocument,
-} = useRepoExplorerNavigate();
-
-const directory = computed(() => currentDirectory.value);
-
-const documentId = computed(() => state.document);
+const { directoryPath, documentId, closeDocument } = useRepoExplorerNavigate();
 
 const onClickCloseDocument = async () => {
   await closeDocument();
@@ -32,16 +23,16 @@ const onClickBack = () => {
 <template>
   <MDMainLayer class="main-view">
     <template #firstPane>
-      <HomeWidget v-if="!directory" />
+      <HomeWidget v-if="!directoryPath" />
 
       <RepoExplorerPane v-else />
     </template>
 
     <template
-      v-if="currentDirectory && documentId"
+      v-if="directoryPath && documentId"
       #secondPane="{ showFirstPane }"
     >
-      <DocumentViewPane :directory="currentDirectory" :document-id="documentId">
+      <DocumentViewPane :directoryPath="directoryPath" :document-id="documentId">
         <template #leadingNavigation>
           <MDIconButton
             v-if="showFirstPane"

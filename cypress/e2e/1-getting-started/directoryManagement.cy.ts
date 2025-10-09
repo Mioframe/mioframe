@@ -67,7 +67,9 @@ describe('Directory management', () => {
 
     const newName = `new name ${Date.now()}`;
 
-    cy.get(`[aria-label="Name"]`).type(newName);
+    cy.findByRole('textbox', {
+      name: /name/i,
+    }).type(newName);
 
     cy.get('button').contains('rename', { matchCase: false }).click();
 

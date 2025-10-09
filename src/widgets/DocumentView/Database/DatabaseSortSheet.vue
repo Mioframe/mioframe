@@ -1,12 +1,14 @@
 <script setup lang="ts">
 import DatabaseItemSortingListSection from '@feature/databaseItemSorting/DatabaseItemSortingListSection.vue';
-import type { AMDocHandle } from '@shared/lib/automerge';
+import type { AMDocumentId } from '@shared/lib/automerge';
 import type { DatabaseViewId } from '@shared/lib/databaseDocument';
+import type { EntryPath } from '@shared/lib/fileSystem';
 import { MDBottomSheet, MDBottomSheetSection } from '@shared/ui/Sheets';
 
 defineProps<{
   viewId?: DatabaseViewId;
-  docHandle: AMDocHandle;
+  directoryPath: EntryPath;
+  documentId: AMDocumentId;
 }>();
 
 const showModel = defineModel<boolean>('show', { required: true });
@@ -30,7 +32,8 @@ const onUpdateCollapsed = (collapsed: boolean) => {
     <MDBottomSheetSection scroll-snap-align="end" class="md-padding-4">
       <DatabaseItemSortingListSection
         v-if="viewId"
-        :doc-handle="docHandle"
+        :directory-path="directoryPath"
+        :document-id="documentId"
         :view-id="viewId"
       />
     </MDBottomSheetSection>

@@ -1,6 +1,5 @@
-import type { AMDocHandle } from '@shared/lib/automerge';
+import type { AMDocumentId } from '@shared/lib/automerge';
 import type { DatabasePropertyId } from '@shared/lib/databaseDocument';
-import { useDatabasePropertiesMap } from '@shared/lib/databaseDocument/useDatabasePropertiesMap';
 import { computed, toValue, type MaybeRefOrGetter } from 'vue';
 import {
   zodRelationProperty,
@@ -8,21 +7,31 @@ import {
   type RelationProperty,
 } from './model';
 import { zodIs } from '@shared/lib/validateZodScheme';
+import type { EntryPath } from '@shared/lib/fileSystem';
+import { useDatabasePropertiesClient } from '@entity/databaseProperty';
+import type { PartialDeep } from 'type-fest';
 
 export const useRelationProperty = (
-  rawDocHandle: MaybeRefOrGetter<AMDocHandle | undefined>,
+  rawDirectoryPath: MaybeRefOrGetter<EntryPath | undefined>,
+  rawDocumentId: MaybeRefOrGetter<AMDocumentId | undefined>,
   rawPropertyId: MaybeRefOrGetter<DatabasePropertyId | undefined>,
 ) => {
-  const docHandle = computed(() => toValue(rawDocHandle));
+  const directoryPath = computed(() => toValue(rawDirectoryPath));
+  const documentId = computed(() => toValue(rawDocumentId));
   const propertyId = computed(() => toValue(rawPropertyId));
 
-  const properties = useDatabasePropertiesMap(docHandle);
+  const {
+    getProperty: { get: getProperty },
+    patch: patchProperty,
+  } = useDatabasePropertiesClient();
 
-  const property = computed((): RelationProperty | undefined => {
-    const id = toValue(propertyId);
-
-    if (id) {
-      const property = properties.get(id);
+  const relationProperty = computed((): RelationProperty | undefined => {
+    if (directoryPath.value && documentId.value && propertyId.value) {
+      const property = getProperty(
+        directoryPath.value,
+        documentId.value,
+        propertyId.value,
+      );
 
       if (zodIs(property, zodRelationProperty)) {
         return property;
@@ -32,18 +41,21 @@ export const useRelationProperty = (
     return undefined;
   });
 
-  const update = async (relation: Partial<Relation>) => {
-    const id = toValue(propertyId);
-
-    if (id) {
-      await properties.put<RelationProperty>(id, {
-        relation,
-      });
+  const patch = async (relation: PartialDeep<Relation>) => {
+    if (directoryPath.value && documentId.value && propertyId.value) {
+      await patchProperty<RelationProperty>(
+        directoryPath.value,
+        documentId.value,
+        propertyId.value,
+        {
+          relation,
+        },
+      );
     }
   };
 
   return {
-    property,
-    update,
+    property: relationProperty,
+    patch,
   };
 };

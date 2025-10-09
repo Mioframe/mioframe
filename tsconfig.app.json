@@ -5,7 +5,7 @@
     "target": "es2024",
     "useDefineForClassFields": true,
     "module": "ESNext",
-    "lib": ["es2024", "DOM", "DOM.Iterable"],
+    "lib": ["es2024", "DOM", "DOM.Iterable", "WebWorker"],
     "skipLibCheck": true,
     /* Bundler mode */
     "moduleResolution": "bundler",
@@ -27,7 +27,9 @@
       "@entity/*": ["./src/entities/*"],
       "@widget/*": ["./src/widgets/*"],
       "@/*": ["./src/*"]
-    }
+    },
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true
   },
   "include": ["env.d.ts", "src/**/*.ts", "src/**/*.tsx", "src/**/*.vue"],
   "vueCompilerOptions": {

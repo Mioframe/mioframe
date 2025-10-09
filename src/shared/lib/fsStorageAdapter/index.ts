@@ -1,6 +1,7 @@
 export {
   createStorageAdapter as createFSStorageAdapter,
-  fileNameToPartialKey as fileNameToKey,
+  fileNameToPartialKey,
+  partialKeyToFileName,
 } from './createFSStorageAdapter';
 export { zodAutomergeFileName } from './types';
 export type * from './types';

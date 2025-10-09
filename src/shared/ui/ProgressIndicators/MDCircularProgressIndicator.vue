@@ -70,7 +70,7 @@ const animateValue = computed(
   <svg
     :width="size"
     :height="size"
-    :viewBox
+    :viewBox="viewBox"
     class="md md-circular-progress-indicator"
   >
     <circle
@@ -80,7 +80,7 @@ const animateValue = computed(
       :r="radius"
       fill="none"
       :stroke-width="width"
-      :stroke-linecap
+      :stroke-linecap="strokeLinecap"
       :stroke-dasharray="emptyDasharray"
       :stroke-dashoffset="emptyLineOffset"
       class="md-circular-progress-indicator__empty"
@@ -94,7 +94,7 @@ const animateValue = computed(
       fill="none"
       stroke="blue"
       :stroke-width="width"
-      :stroke-linecap
+      :stroke-linecap="strokeLinecap"
       :stroke-dasharray="progressDasharray"
       :stroke-dashoffset="progressLineOffset"
       class="md-circular-progress-indicator__progress"

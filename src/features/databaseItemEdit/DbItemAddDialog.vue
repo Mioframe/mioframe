@@ -5,14 +5,16 @@ import type {
   DatabaseItemId,
   DatabasePropertyId,
 } from '@shared/lib/databaseDocument/migrations/versions';
-import type { AMDocHandle } from '@shared/lib/automerge';
+import type { AMDocumentId } from '@shared/lib/automerge';
 import { toRefs } from 'vue';
+import type { EntryPath } from '@shared/lib/fileSystem';
 
 const props = defineProps<{
-  docHandle: AMDocHandle;
+  directoryPath: EntryPath;
+  documentId: AMDocumentId;
 }>();
 
-const { docHandle } = toRefs(props);
+const { documentId } = toRefs(props);
 
 const emit = defineEmits<{
   added: [id: DatabaseItemId];
@@ -42,7 +44,8 @@ const onCancel = () => {
 <template>
   <DbItemEditDialog
     v-model:show="show"
-    :doc-handle="docHandle"
+    :directory-path="directoryPath"
+    :document-id="documentId"
     headline="Add item"
     supporting-text="Fill in the properties of the new item."
     apply-label="Add"

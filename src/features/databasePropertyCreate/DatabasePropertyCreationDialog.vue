@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, toRefs, watchEffect } from 'vue';
+import { computed, ref, watchEffect } from 'vue';
 import { MDDialog } from '@shared/ui/Dialog';
 import { MDTextField } from '@shared/ui/TextField';
 import { MDSelect } from '@shared/ui/Select';
@@ -13,20 +13,20 @@ import { PROPERTY_TYPE_RELATION } from '@entity/databaseRelation/model';
 import { objectEntries } from '@shared/lib/objectEntries';
 import { pascalCase } from 'es-toolkit';
 import { useSnackbar } from '@shared/ui/Snackbar';
-import type { AMDocHandle } from '@shared/lib/automerge';
-import { useDatabasePropertiesMap } from '@shared/lib/databaseDocument/useDatabasePropertiesMap';
-import type {
-  DatabasePropertyId,
-  DatabaseUnknownProperty,
+import type { AMDocumentId } from '@shared/lib/automerge';
+import {
+  zodDatabaseUnknownProperty,
+  type DatabasePropertyId,
+  type DatabaseUnknownProperty,
 } from '@shared/lib/databaseDocument';
 import { zodIs } from '@shared/lib/validateZodScheme';
-import { zodUnknownProperty } from '@shared/lib/databaseDocument/migrations/versions/v1/property';
+import { useDatabasePropertiesClient } from '@entity/databaseProperty';
+import type { EntryPath } from '@shared/lib/fileSystem';
 
 const props = defineProps<{
-  docHandle: AMDocHandle;
+  directoryPath: EntryPath;
+  documentId: AMDocumentId;
 }>();
-
-const { docHandle } = toRefs(props);
 
 const emit = defineEmits<{
   created: [id: DatabasePropertyId, property: DatabaseUnknownProperty];
@@ -83,18 +83,22 @@ const onUpdateDefaultValue = (value: unknown) => {
 };
 
 const assembledProperty = computed((): undefined | DatabaseUnknownProperty => {
-  return zodIs(partialPropertyState.value, zodUnknownProperty)
+  return zodIs(partialPropertyState.value, zodDatabaseUnknownProperty)
     ? partialPropertyState.value
     : undefined;
 });
 
 const { addSnackbar } = useSnackbar();
 
-const propertiesMap = useDatabasePropertiesMap(docHandle);
+const { post } = useDatabasePropertiesClient();
 
 const onCreate = async () => {
   if (assembledProperty.value) {
-    const id = await propertiesMap.create(assembledProperty.value);
+    const id = await post(
+      props.directoryPath,
+      props.documentId,
+      assembledProperty.value,
+    );
     emit('created', id, assembledProperty.value);
   } else {
     addSnackbar({ text: 'Property is not fully filled' });
@@ -103,7 +107,7 @@ const onCreate = async () => {
 
 const resetState = () => {
   partialPropertyState.value = {};
-  typeSelectModel.value = [];
+  typeSelectModel.value = [propertyTypeOptions[0]];
 };
 
 const onCancel = () => {
