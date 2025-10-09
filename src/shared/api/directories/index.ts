@@ -6,4 +6,8 @@ export {
   stringToPath,
   useDirectoryStoreService,
 } from './directoriesStoreService';
-export { type DirectoryDescription, type EntryDescription } from './types';
+export {
+  type DirectoryDescription,
+  type EntryDescription,
+  OPFSName,
+} from './types';

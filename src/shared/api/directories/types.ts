@@ -24,3 +24,5 @@ export interface DirectoryDescription extends EntryDescription {
   type: 'directory';
   entries: EntryDescription[];
 }
+
+export const OPFSName = 'Origin private file system';

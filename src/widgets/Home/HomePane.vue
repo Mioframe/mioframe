@@ -4,10 +4,8 @@ import { MDFab, MDFabContainer } from '@shared/ui/Button';
 import { MDPaneContainer } from '@shared/ui/Layers';
 import { useRepoExplorerNavigate } from '@widget/MainView/useRepoExplorerNavigate';
 import { MDSymbol } from '@shared/ui/Icon';
-import {
-  OPFSName,
-  useDirectoryStoreClient,
-} from '@entity/mountedDirectories/useDirectoryStoreClient';
+import { useDirectoryStoreClient } from '@entity/mountedDirectories/useDirectoryStoreClient';
+import { OPFSName } from '@shared/api/directories';
 
 const { open: openDirectory } = useRepoExplorerNavigate();
 

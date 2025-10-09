@@ -6,7 +6,7 @@ import { useRepoExplorerNavigate } from '@widget/MainView/useRepoExplorerNavigat
 import { useBrowserSourceMounted } from '../../entities/mountedDirectories/useBrowserStorage';
 import type { DirectoryLocalEntry } from '@shared/lib/localFileSystem';
 import { computed } from 'vue';
-import { OPFSName } from '@entity/mountedDirectories/useDirectoryStoreClient';
+import { OPFSName } from '@shared/api/directories';
 
 const { open } = useRepoExplorerNavigate();
 
