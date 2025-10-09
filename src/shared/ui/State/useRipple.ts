@@ -2,7 +2,7 @@ import type { MaybeElementRef } from '@vueuse/core';
 import { unrefElement, useEventListener, useVibrate } from '@vueuse/core';
 import './ripple.css';
 
-import parseDuration from 'parse-duration';
+// import parseDuration from 'parse-duration';
 import { computed } from 'vue';
 import { toNumber } from 'es-toolkit/compat';
 import { debounce } from 'perfect-debounce';
@@ -44,11 +44,12 @@ const startRipple = async ({
     target.prepend(rippleEl);
   }
 
-  const durationString = getComputedStyle(rippleEl).getPropertyValue(
-    '--md-ripple-duration-long',
-  );
+  // const durationString = getComputedStyle(rippleEl).getPropertyValue(
+  //   '--md-ripple-duration-long',
+  // );
 
-  const duration = parseDuration(durationString) ?? 200;
+  // const duration = parseDuration(durationString) ?? 1e3;
+  const duration = 1e3;
 
   await asyncRequestAnimationFrame();
 
@@ -117,11 +118,13 @@ export const useRipple = (rawEl: MaybeElementRef) => {
     if (lastAnimation?.effect instanceof KeyframeEffect) {
       const { target } = lastAnimation.effect;
       if (target instanceof Element) {
-        const durationString = getComputedStyle(target).getPropertyValue(
-          '--md-ripple-duration-short',
-        );
+        // TODO: getPropertyValue надо избегать
+        // const durationString = getComputedStyle(target).getPropertyValue(
+        //   '--md-ripple-duration-short',
+        // );
 
-        const newDuration = parseDuration(durationString) ?? 200;
+        // const newDuration = parseDuration(durationString) ?? 200;
+        const newDuration = 200;
 
         const oldDuration = toNumber(lastAnimation.effect.getTiming().duration);
 
@@ -152,7 +155,15 @@ export const useRipple = (rawEl: MaybeElementRef) => {
 
   useEventListener(
     el,
-    ['mouseup', 'mouseout', 'mouseleave', 'touchend', 'touchcancel', 'keyup'],
+    [
+      'mouseup',
+      'mouseout',
+      'mouseleave',
+      'touchend',
+      'touchcancel',
+      'keyup',
+      'touchmove',
+    ],
     () => {
       onPressUp();
     },
