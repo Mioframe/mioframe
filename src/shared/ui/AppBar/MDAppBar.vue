@@ -12,7 +12,9 @@ const slots = defineSlots<{
 
 <template>
   <div class="md md-app-bar md-app-bar_on-scroll">
-    <slot name="leadingButton" />
+    <div class="md-app-bar__leading-button">
+      <slot name="leadingButton" />
+    </div>
 
     <div class="md-app-bar__body">
       <slot>
@@ -36,6 +38,10 @@ const slots = defineSlots<{
   gap: 24px;
   align-items: center;
 
+  &__body {
+    flex-grow: 1;
+  }
+
   &__headline {
     flex: 1;
 
@@ -46,10 +52,14 @@ const slots = defineSlots<{
     letter-spacing: var(--md-sys-typescale-title-large-tracking);
   }
 
+  &__leading-button {
+    margin-left: -8px;
+  }
+
   &__trailing-elements {
     display: flex;
     gap: 8px;
-
+    margin-right: -8px;
     --md-content-color: var(--md-sys-color-on-surface-variant);
   }
 }

@@ -184,11 +184,11 @@ useRipple(computed(() => (enableRipple.value ? refEl.value : undefined)));
   --md-state-target-offset: var(--md-target-offset, 4px);
   --md-target-width: max(
     calc(var(--md-state-bounding-width) + var(--md-state-target-offset) * 2),
-    48px
+    var(--md-target-max-width, 48px)
   );
   --md-target-height: max(
     calc(var(--md-state-bounding-height) + var(--md-state-target-offset) * 2),
-    48px
+    var(--md-target-max-width, 48px)
   );
 
   display: var(--md-state-display, initial);

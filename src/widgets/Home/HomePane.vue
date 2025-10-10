@@ -1,13 +1,14 @@
 <script setup lang="ts">
 import { MountedDirectoriesList } from '@entity/mountedDirectories';
-import { MDFab, MDFabContainer } from '@shared/ui/Button';
+import { MDFab, MDFabContainer, MDIconButton } from '@shared/ui/Button';
 import { MDPaneContainer } from '@shared/ui/Layers';
-import { useRepoExplorerNavigate } from '@widget/MainView/useRepoExplorerNavigate';
+import { useMainNavigate } from '@widget/MainView/useMainNavigate';
 import { MDSymbol } from '@shared/ui/Icon';
 import { useDirectoryStoreClient } from '@entity/mountedDirectories/useDirectoryStoreClient';
 import { OPFSName } from '@shared/api/directories';
+import { MDAppBar } from '@shared/ui/AppBar';
 
-const { open: openDirectory } = useRepoExplorerNavigate();
+const { open: openDirectory } = useMainNavigate();
 
 const { mountUserDirectory } = useDirectoryStoreClient();
 
@@ -22,6 +23,16 @@ const onClickMountedDirectory = async (name: string) => {
 
 <template>
   <MDPaneContainer class="home">
+    <MDAppBar>
+      <template #leadingButton>
+        <MDIconButton tooltip="menu" md-symbol-name="menu" />
+      </template>
+
+      <template #trailingElements>
+        <MDIconButton tooltip="settings" md-symbol-name="settings" />
+      </template>
+    </MDAppBar>
+
     <MountedDirectoriesList is="button" @click="onClickMountedDirectory">
       <template #leadingIcon="{ name }">
         <MDSymbol v-if="name === OPFSName" name="folder_special" />
@@ -40,8 +51,8 @@ const onClickMountedDirectory = async (name: string) => {
 
 <style lang="css" scoped>
 .home {
-  padding: 8px;
-  flex-grow: 1;
+  --md-container-color: inherit;
+  --md-content-color: inherit;
 
   &__fab-container {
     margin-top: auto;
