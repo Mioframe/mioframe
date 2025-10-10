@@ -17,7 +17,7 @@ import { MDAppBar } from '@shared/ui/AppBar';
 import { FSEntryRenameDialog } from '@feature/entryRename';
 import { isUndefined } from 'es-toolkit';
 import type { AMDocumentId } from '@shared/lib/automerge/automergeTypes';
-import { useRepoExplorerNavigate } from '../useRepoExplorerNavigate';
+import { useMainNavigate } from '../useMainNavigate';
 import { useRouter } from 'vue-router';
 import { useDirectoryStoreClient } from '@entity/mountedDirectories/useDirectoryStoreClient';
 import type { EntryPath } from '@shared/lib/fileSystem';
@@ -30,7 +30,7 @@ const {
   directoryPath,
   open,
   state: repoExplorerState,
-} = useRepoExplorerNavigate();
+} = useMainNavigate();
 
 const parentPathForNewDirectory = ref<EntryPath>();
 
@@ -357,7 +357,7 @@ const showFSEntryRenameDialog = computed({
     position: sticky;
     top: 0;
     flex-shrink: 0;
-    padding-left: 4step;
+    padding-left: 2step;
   }
 
   &__content-list {
@@ -373,7 +373,6 @@ const showFSEntryRenameDialog = computed({
     flex: 1 1;
     display: flex;
     flex-direction: column;
-    padding: 0 8px;
   }
 }
 </style>
