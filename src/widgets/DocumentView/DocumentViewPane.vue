@@ -5,7 +5,7 @@ import DatabaseViewWidget from './Database/DatabaseViewWidget.vue';
 import { MDPaneContainer } from '@shared/ui/Layers';
 import type { EntryPath } from '@shared/lib/fileSystem';
 import type { AMDocumentId } from '@shared/lib/automerge';
-import { MDTopAppBar } from '@shared/ui/TopAppBar';
+import { MDAppBar } from '@shared/ui/AppBar';
 import { MDIconButton } from '@shared/ui/Button';
 import { DocumentRenameDialog } from '@feature/documentRename';
 import { useCFRDocumentClient } from '@entity/cfrDocument';
@@ -19,7 +19,7 @@ const props = defineProps<{
 const { directoryPath, documentId } = toRefs(props);
 
 const slots = defineSlots<{
-  leadingNavigation: () => unknown;
+  leadingButton: () => unknown;
 }>();
 
 const { getDocumentDescription } = useCFRDocumentClient();
@@ -56,9 +56,9 @@ const onClickRenameDocument = () => {
 
 <template>
   <MDPaneContainer>
-    <MDTopAppBar :headline="documentName">
-      <template v-if="!!slots.leadingNavigation" #leadingNavigation>
-        <slot name="leadingNavigation" />
+    <MDAppBar :headline="documentName">
+      <template v-if="!!slots.leadingButton" #leadingButton>
+        <slot name="leadingButton" />
       </template>
 
       <template #trailingInteractive>
@@ -68,7 +68,7 @@ const onClickRenameDocument = () => {
           @click="onClickRenameDocument"
         />
       </template>
-    </MDTopAppBar>
+    </MDAppBar>
 
     <DatabaseViewWidget
       v-if="documentType === DATABASE_DOCUMENT_TYPE"

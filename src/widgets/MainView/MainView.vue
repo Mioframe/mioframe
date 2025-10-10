@@ -33,7 +33,7 @@ const onClickBack = () => {
       #secondPane="{ showFirstPane }"
     >
       <DocumentViewPane :directoryPath="directoryPath" :document-id="documentId">
-        <template #leadingNavigation>
+        <template #leadingButton>
           <MDIconButton
             v-if="showFirstPane"
             tooltip="close"
