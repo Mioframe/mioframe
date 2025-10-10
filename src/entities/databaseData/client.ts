@@ -20,7 +20,7 @@ export const useDatabaseDataClient = createGlobalState(() => {
     postValue,
     postItem,
     removeItem,
-    itemIdList: useSubscribeByQueryClient(subscribeItemIdList),
+    getItemIdList: useSubscribeByQueryClient(subscribeItemIdList),
     getItem: useSubscribeByQueryClient(subscribeItem),
     getValue: useSubscribeByQueryClient(subscribeValue),
   };
