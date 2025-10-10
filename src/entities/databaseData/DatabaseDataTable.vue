@@ -35,17 +35,13 @@ const slots = defineSlots<{
   actionHead: (p: EmptyObject) => unknown;
 }>();
 
-const {
-  getDatabaseProperties: { get: getDatabaseProperties },
-} = useDatabasePropertiesClient();
+const { getDatabaseProperties } = useDatabasePropertiesClient();
 
 const properties = computed(() =>
   getDatabaseProperties(directoryPath.value, documentId.value),
 );
 
-const {
-  itemIdList: { get: getItemIdList },
-} = useDatabaseDataClient();
+const { getItemIdList } = useDatabaseDataClient();
 
 const itemList = computed(() => {
   const idList = getItemIdList(
@@ -100,6 +96,7 @@ const itemList = computed(() => {
               properties,
             )()"
             :key="propertyId"
+            class="db-data-table__value"
           >
             <slot
               name="value"
@@ -123,6 +120,14 @@ const itemList = computed(() => {
 
 <style lang="css" scoped>
 .db-data-table {
+  &__value {
+    :deep() {
+      > * {
+        display: inline-block;
+      }
+    }
+  }
+
   th&__actions,
   td&__actions {
     position: sticky;

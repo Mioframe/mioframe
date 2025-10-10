@@ -1,35 +1,35 @@
 <script lang="ts" setup>
 defineProps<{
-  headline: string;
+  headline?: string;
 }>();
 
-defineSlots<{
-  leadingNavigation(): unknown;
-  trailingInteractive(): unknown;
+const slots = defineSlots<{
+  default(): unknown;
+  leadingButton(): unknown;
+  trailingElements(): unknown;
 }>();
-
-// todo: нужна логика для скролла шапки
 </script>
 
 <template>
-  <div class="md md-top-app-bar md-top-app-bar_on-scroll">
-    <slot name="leadingNavigation" />
+  <div class="md md-app-bar md-app-bar_on-scroll">
+    <slot name="leadingButton" />
 
-    <span class="md-top-app-bar__headline">
-      {{ headline }}
-    </span>
+    <div class="md-app-bar__body">
+      <slot>
+        <span v-if="headline" class="md-app-bar__headline">
+          {{ headline }}
+        </span>
+      </slot>
+    </div>
 
-    <div
-      v-if="!!$slots.trailingInteractive"
-      class="md-top-app-bar__trailing-interactive"
-    >
-      <slot name="trailingInteractive" />
+    <div v-if="!!slots.trailingElements" class="md-app-bar__trailing-elements">
+      <slot name="trailingElements" />
     </div>
   </div>
 </template>
 
 <style lang="css" scoped>
-.md-top-app-bar {
+.md-app-bar {
   display: flex;
   min-height: 64px;
   padding: 0 16px;
@@ -46,15 +46,11 @@ defineSlots<{
     letter-spacing: var(--md-sys-typescale-title-large-tracking);
   }
 
-  &__trailing-interactive {
+  &__trailing-elements {
     display: flex;
     gap: 8px;
 
     --md-content-color: var(--md-sys-color-on-surface-variant);
-  }
-
-  &_on-scroll {
-    /* box-shadow: var(--md-sys-elevation-level2); */
   }
 }
 </style>

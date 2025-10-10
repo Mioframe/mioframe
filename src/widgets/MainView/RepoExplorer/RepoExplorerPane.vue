@@ -13,7 +13,7 @@ import { defineMenuButtonList, MDContextMenuButton } from '@shared/ui/Menu';
 import { DocumentRemoveDialog } from '@feature/documentRemove';
 import { DocumentRenameDialog } from '@feature/documentRename';
 import { MDPaneContainer } from '@shared/ui/Layers';
-import { MDTopAppBar } from '@shared/ui/TopAppBar';
+import { MDAppBar } from '@shared/ui/AppBar';
 import { FSEntryRenameDialog } from '@feature/entryRename';
 import { isUndefined } from 'es-toolkit';
 import type { AMDocumentId } from '@shared/lib/automerge/automergeTypes';
@@ -203,15 +203,15 @@ const showFSEntryRenameDialog = computed({
 
 <template>
   <MDPaneContainer class="document-explorer-widget">
-    <MDTopAppBar v-if="title" :headline="title">
-      <template #leadingNavigation>
+    <MDAppBar v-if="title" :headline="title">
+      <template #leadingButton>
         <MDIconButton tooltip="Back" @click="onClickBack">
           <template #icon>
             <MDSymbol name="arrow_back" />
           </template>
         </MDIconButton>
       </template>
-    </MDTopAppBar>
+    </MDAppBar>
 
     <MDNavigationPath
       v-if="directoryPath"
