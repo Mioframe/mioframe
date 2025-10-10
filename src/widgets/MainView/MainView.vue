@@ -5,10 +5,10 @@ import DocumentViewPane from '@widget/DocumentView/DocumentViewPane.vue';
 
 import { HomeWidget } from '@widget/Home';
 import { RepoExplorerPane } from '@widget/MainView/RepoExplorer';
-import { useRepoExplorerNavigate } from '@widget/MainView/useRepoExplorerNavigate';
+import { useMainNavigate } from '@widget/MainView/useMainNavigate';
 import { useRouter } from 'vue-router';
 
-const { directoryPath, documentId, closeDocument } = useRepoExplorerNavigate();
+const { directoryPath, documentId, closeDocument } = useMainNavigate();
 
 const onClickCloseDocument = async () => {
   await closeDocument();
@@ -32,7 +32,10 @@ const onClickBack = () => {
       v-if="directoryPath && documentId"
       #secondPane="{ showFirstPane }"
     >
-      <DocumentViewPane :directoryPath="directoryPath" :document-id="documentId">
+      <DocumentViewPane
+        :directory-path="directoryPath"
+        :document-id="documentId"
+      >
         <template #leadingButton>
           <MDIconButton
             v-if="showFirstPane"
