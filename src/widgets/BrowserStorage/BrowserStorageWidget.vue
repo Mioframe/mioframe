@@ -2,7 +2,7 @@
 import { MDListItem } from '@shared/ui/Lists';
 import MDListContainer from '@shared/ui/Lists/MDListContainer.vue';
 import { MDSymbol } from '@shared/ui/Icon';
-import { useMainNavigate } from '@widget/MainView/useMainNavigate';
+import { useMainNavigate } from '@page/SplitView/useMainNavigate';
 import { useBrowserSourceMounted } from '../../entities/mountedDirectories/useBrowserStorage';
 import type { DirectoryLocalEntry } from '@shared/lib/localFileSystem';
 import { computed } from 'vue';

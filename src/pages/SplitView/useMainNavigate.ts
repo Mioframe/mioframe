@@ -1,6 +1,6 @@
 import { stringPath } from '@shared/api/directories';
 import type { AMDocumentId } from '@shared/lib/automerge';
-import { zodStrictDocumentId } from '@shared/lib/automerge';
+import { zodDocumentId } from '@shared/lib/automerge';
 import type { EntryPath, EntryPathString } from '@shared/lib/fileSystem';
 import { zodEntryPath } from '@shared/lib/fileSystem/GeneralFSEntry';
 import { createGlobalState } from '@vueuse/core';
@@ -19,19 +19,43 @@ export interface RepoExplorerState {
   /**
    * Выбранный документ в директории
    */
-  document: output<typeof zodStrictDocumentId> | undefined;
+  document: output<typeof zodDocumentId> | undefined;
 }
 
 interface UseRepoExplorerState {
+  /**
+   * @deprecated
+   */
   state: ReadonlyDeep<RepoExplorerState>;
+  /**
+   * @deprecated
+   */
   directoryPath: ComputedRef<EntryPath | undefined>;
+  /**
+   * @deprecated
+   */
   directoryPathString: ComputedRef<EntryPathString | undefined>;
+  /**
+   * @deprecated
+   */
   documentId: ComputedRef<AMDocumentId | undefined>;
+  /**
+   * @deprecated
+   */
   up: () => Promise<void>;
+  /**
+   * @deprecated
+   */
   open: (state: RepoExplorerState) => Promise<void>;
+  /**
+   * @deprecated
+   */
   closeDocument: () => Promise<void>;
 }
 
+/**
+ * @deprecated -- // todo: заменить на props из query
+ */
 export const useMainNavigate = createGlobalState((): UseRepoExplorerState => {
   const route = useRoute();
   const router = useRouter();
@@ -46,7 +70,7 @@ export const useMainNavigate = createGlobalState((): UseRepoExplorerState => {
   const documentId = computed(
     () =>
       object({
-        document: zodStrictDocumentId,
+        document: zodDocumentId,
       }).safeParse(route.query).data?.document,
   );
 

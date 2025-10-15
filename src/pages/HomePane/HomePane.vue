@@ -2,13 +2,17 @@
 import { MountedDirectoriesList } from '@entity/mountedDirectories';
 import { MDFab, MDFabContainer, MDIconButton } from '@shared/ui/Button';
 import { MDPaneContainer } from '@shared/ui/Layers';
-import { useMainNavigate } from '@widget/MainView/useMainNavigate';
 import { MDSymbol } from '@shared/ui/Icon';
 import { useDirectoryStoreClient } from '@entity/mountedDirectories/useDirectoryStoreClient';
 import { OPFSName } from '@shared/api/directories';
 import { MDAppBar } from '@shared/ui/AppBar';
+import { useMainRouter } from '@page/routes';
 
-const { open: openDirectory } = useMainNavigate();
+defineSlots<{
+  navigationButton: () => unknown;
+}>();
+
+const { open } = useMainRouter();
 
 const { mountUserDirectory } = useDirectoryStoreClient();
 
@@ -17,7 +21,7 @@ const onClickMountUserDirectory = async () => {
 };
 
 const onClickMountedDirectory = async (name: string) => {
-  await openDirectory({ path: [name], document: undefined });
+  await open('repo', { repoPath: [name] });
 };
 </script>
 
@@ -25,7 +29,7 @@ const onClickMountedDirectory = async (name: string) => {
   <MDPaneContainer class="home">
     <MDAppBar>
       <template #leadingButton>
-        <MDIconButton tooltip="menu" md-symbol-name="menu" />
+        <slot name="navigationButton" />
       </template>
 
       <template #trailingElements>
