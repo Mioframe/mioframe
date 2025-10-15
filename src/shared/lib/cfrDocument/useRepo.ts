@@ -1,4 +1,4 @@
-import type { Repo } from '@automerge/automerge-repo';
+import { type Repo } from '@automerge/automerge-repo';
 import type { zodCFRDocumentContent } from './types';
 import type { output } from 'zod/v4-mini';
 import type { MaybeRefOrGetter, ShallowReactive } from 'vue';

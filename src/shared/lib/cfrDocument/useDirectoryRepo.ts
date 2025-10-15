@@ -12,7 +12,7 @@ import { useRepo } from './useRepo';
 import { createScopesWeakMap, defineScopesWeakMapRef } from '../scopesWeakMap';
 import { useDirectoryFSEntryCacheRef } from '../fileSystem/useDirectoryFSEntryRef';
 import type { AMDocHandle } from '../automerge';
-import { zodStrictDocumentId, type AMDocumentId } from '../automerge';
+import { zodDocumentId, type AMDocumentId } from '../automerge';
 import { isEqual } from 'es-toolkit';
 import { strictRecordIterableEntries } from '../strictRecord/wrapStrictRecord';
 
@@ -40,7 +40,7 @@ export const defineDirectoryRepo = (
 
             if (maybePartialKey) {
               const [id] = maybePartialKey;
-              if (zodIs(id, zodStrictDocumentId) && !list.includes(id)) {
+              if (zodIs(id, zodDocumentId) && !list.includes(id)) {
                 list.push(id);
               }
             }

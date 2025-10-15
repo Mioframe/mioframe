@@ -4,7 +4,6 @@ import { useFocusTrap } from '@vueuse/integrations/useFocusTrap.mjs';
 import type { MaybeRef } from 'vue';
 import { computed, nextTick, toValue, watch, type Ref } from 'vue';
 import { useMonitorOpenDialog } from '../Dialog/Alert';
-import { onBackNavigation } from '@shared/lib/onBackNavigation';
 
 // FIXME: рефакторить в набор параметров для композиции оверлея
 
@@ -27,17 +26,6 @@ export const useOverlay = (
       allowOutsideClick: true,
     },
   );
-
-  onBackNavigation(() => {
-    if (showModel.value) {
-      showModel.value = false;
-
-      if (toValue(mode) === 'dialog') {
-        return false;
-      }
-    }
-    return true;
-  });
 
   watch(
     [showModel, container],

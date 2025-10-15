@@ -5,6 +5,7 @@ import { useOnEscapeKeyStacked } from '@shared/lib/useOnEscapeKeyStacked';
 import { sessionUniqueId } from '@shared/lib/uniqueId';
 import { useOverlay } from '../Overlay';
 import { TeleportContainer } from '@shared/lib/teleportContainer';
+import { onBackNavigation } from '@shared/lib/onBackNavigation';
 
 const props = withDefaults(
   defineProps<{
@@ -62,6 +63,12 @@ const onCancel = () => {
     showModel.value = false;
   }
 };
+
+onBackNavigation(() => {
+  const restrictNavigation = !showModel.value;
+  onCancel();
+  return restrictNavigation;
+});
 
 watch([showModel, showModel], ([showOverlay, showModel]) => {
   if (!showOverlay && showModel) {

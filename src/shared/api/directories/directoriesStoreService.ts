@@ -21,7 +21,7 @@ import { isArray, toString } from 'es-toolkit/compat';
 import { computed, reactive, watchEffect } from 'vue';
 import type { DirectoryDescription, EntryDescription } from './types';
 import { EntryNotDirectoryError, EntryNotFoundError, OPFSName } from './types';
-import { defineSubscribeByKeyService } from '@shared/lib/subscriptions/subscribeService';
+import { defineSubscribeByQueryService } from '@shared/lib/subscriptions/subscribeService';
 import { DomainError } from '@shared/lib/error';
 import { useIDBKeyval } from '@vueuse/integrations/useIDBKeyval';
 
@@ -324,11 +324,11 @@ export const useDirectoryStoreService = createGlobalState(() => {
     return entry;
   };
 
-  const subscribeEntry = defineSubscribeByKeyService(
+  const subscribeEntry = defineSubscribeByQueryService(
     (
-      pathString: EntryPathString,
+      path: EntryPath,
     ): EntryDescription | DirectoryDescription | undefined | DomainError => {
-      const entry = getEntry(pathString);
+      const entry = getEntry(path);
 
       if (entry instanceof DomainError) {
         return entry;
