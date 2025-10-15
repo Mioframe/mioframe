@@ -1,25 +1,22 @@
 <script setup lang="ts">
 import { computed, ref, toRefs } from 'vue';
 import { DATABASE_DOCUMENT_TYPE } from '@shared/lib/databaseDocument';
-import DatabaseViewWidget from './Database/DatabaseViewWidget.vue';
 import { MDPaneContainer } from '@shared/ui/Layers';
-import type { EntryPath } from '@shared/lib/fileSystem';
-import type { AMDocumentId } from '@shared/lib/automerge';
 import { MDAppBar } from '@shared/ui/AppBar';
 import { MDIconButton } from '@shared/ui/Button';
 import { DocumentRenameDialog } from '@feature/documentRename';
 import { useCFRDocumentClient } from '@entity/cfrDocument';
 import { DomainError } from '@shared/lib/error';
+import DatabaseViewWidget from '@widget/DocumentView/Database/DatabaseViewWidget.vue';
+import { zodQuery } from './model';
+import { zodToVueProps } from '@shared/lib/zodToVueProps';
 
-const props = defineProps<{
-  directoryPath: EntryPath;
-  documentId: AMDocumentId;
-}>();
+const props = defineProps(zodToVueProps(zodQuery));
 
-const { directoryPath, documentId } = toRefs(props);
+const { documentDirectory, documentId } = toRefs(props);
 
 const slots = defineSlots<{
-  leadingButton: () => unknown;
+  navigationButton: () => unknown;
 }>();
 
 const { getDocumentDescription } = useCFRDocumentClient();
@@ -33,7 +30,7 @@ const documentDescription = computed(
         version?: number | undefined;
       }
     | undefined =>
-    getDocumentDescription(directoryPath.value, documentId.value),
+    getDocumentDescription(documentDirectory.value, documentId.value),
 );
 
 const documentType = computed(() => {
@@ -57,8 +54,8 @@ const onClickRenameDocument = () => {
 <template>
   <MDPaneContainer>
     <MDAppBar :headline="documentName">
-      <template v-if="!!slots.leadingButton" #leadingButton>
-        <slot name="leadingButton" />
+      <template v-if="!!slots.navigationButton" #leadingButton>
+        <slot name="navigationButton" />
       </template>
 
       <template #trailingInteractive>
@@ -72,7 +69,7 @@ const onClickRenameDocument = () => {
 
     <DatabaseViewWidget
       v-if="documentType === DATABASE_DOCUMENT_TYPE"
-      :directory-path="directoryPath"
+      :directory-path="documentDirectory"
       :document-id="documentId"
     />
 
@@ -80,7 +77,7 @@ const onClickRenameDocument = () => {
 
     <DocumentRenameDialog
       v-model:show="showRenameDocument"
-      :path="directoryPath"
+      :path="documentDirectory"
       :document-id="documentId"
       @renamed="showRenameDocument = false"
       @cancel="showRenameDocument = false"

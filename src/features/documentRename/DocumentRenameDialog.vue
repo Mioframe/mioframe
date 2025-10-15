@@ -18,12 +18,9 @@ const emit = defineEmits<{
   cancel: [];
 }>();
 
-const show = defineModel<boolean>('show', { required: true });
+const showModel = defineModel<boolean>('show', { required: true });
 
-const {
-  getDocumentDescription: { get: getDocumentDescription },
-  patch: documentPatch,
-} = useCFRDocumentClient();
+const { getDocumentDescription, patch: documentPatch } = useCFRDocumentClient();
 
 const documentName = computed(
   () => getDocumentDescription(path.value, documentId.value)?.name,
@@ -54,19 +51,29 @@ const onApply = async () => {
   emit('renamed');
 };
 
-const onCancel = () => {
+const resetState = () => {
   stateName.value = undefined;
+};
+
+const onCancel = () => {
+  resetState();
   emit('cancel');
 };
 
 const headline = computed(
   () => `Rename "${documentName.value ?? 'unknown'}" document`,
 );
+
+watchEffect(() => {
+  if (!showModel.value) {
+    resetState();
+  }
+});
 </script>
 
 <template>
   <MDDialog
-    v-model:show="show"
+    v-model:show="showModel"
     :headline="headline"
     supporting-text="Change the document title or leave it as is."
     apply-label="Rename"

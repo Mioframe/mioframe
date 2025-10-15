@@ -1,4 +1,4 @@
-import { zodStrictDocumentId } from '@shared/lib/automerge';
+import { zodDocumentId } from '@shared/lib/automerge';
 import type { DatabasePropertyId } from '@shared/lib/databaseDocument';
 import {
   zodDatabaseItemId,
@@ -11,7 +11,7 @@ import { array, extend, literal, object, optional } from 'zod/v4-mini';
 export const PROPERTY_TYPE_RELATION = 'relation';
 
 export const zodRelation = object({
-  documentId: zodStrictDocumentId,
+  documentId: zodDocumentId,
   viewId: optional(zodDatabaseViewId),
 });
 

@@ -80,6 +80,7 @@ export default defineConfig(({ mode, isPreview }) => {
         '@feature': fileURLToPath(new URL('./src/features', import.meta.url)),
         '@entity': fileURLToPath(new URL('./src/entities', import.meta.url)),
         '@widget': fileURLToPath(new URL('./src/widgets', import.meta.url)),
+        '@page': fileURLToPath(new URL('./src/pages', import.meta.url)),
       },
     },
     build: {

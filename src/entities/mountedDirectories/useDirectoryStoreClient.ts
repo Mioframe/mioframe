@@ -2,7 +2,7 @@ import { createGlobalState } from '@vueuse/core';
 import { useMainService } from '@shared/api';
 import {
   createSubscribeClient,
-  useSubscribeByKeyClient,
+  useSubscribeByQueryClient,
 } from '@shared/lib/subscriptions/subscribeClient';
 import { toRef } from 'vue';
 import { isFunction } from 'es-toolkit';
@@ -65,7 +65,7 @@ export const useDirectoryStoreClient = createGlobalState(() => {
 
   return {
     rootList,
-    getEntry: useSubscribeByKeyClient(directoryStore.subscribeEntry),
+    getEntry: useSubscribeByQueryClient(directoryStore.subscribeEntry),
 
     addRootFSHandle,
     createDirectory: directoryStore.createDirectory,

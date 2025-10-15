@@ -2,21 +2,18 @@
 import { computed, watchEffect, useTemplateRef } from 'vue';
 import { useWindowSizeClass, WindowClass } from './useWindowSizeClass';
 import { useCssVar } from '@vueuse/core';
+import { SPLIT_VIEW } from './config';
 
 const slots = defineSlots<{
-  navigation(): unknown;
-  firstPane(): unknown;
-  secondPane(p: { showFirstPane: boolean }): unknown;
+  navigation: () => unknown;
+  [SPLIT_VIEW.second]: () => unknown;
+  [SPLIT_VIEW.main]: (p: { splitView: boolean }) => unknown;
 }>();
 
 const { windowClass } = useWindowSizeClass();
 
-const secondPaneEmptyInner = useTemplateRef('secondPaneEmptyInner');
-
-const isShowSecondPane = computed(() => !secondPaneEmptyInner.value);
-
 const isShowFirstPane = computed(
-  () => !isShowSecondPane.value || windowClass.value !== WindowClass.Compact,
+  () => windowClass.value !== WindowClass.Compact,
 );
 
 const firstPaneSize = computed((): number => {
@@ -24,10 +21,7 @@ const firstPaneSize = computed((): number => {
     if (windowClass.value === WindowClass.Medium) {
       return 50;
     }
-    if (isShowSecondPane.value) {
-      return 30;
-    }
-    return 100;
+    return 30;
   }
   return 0;
 });
@@ -35,7 +29,7 @@ const firstPaneSize = computed((): number => {
 const bodyRef = useTemplateRef('bodyRef');
 
 const firstPaneSizeCssVar = useCssVar('--md-first-pane-width', bodyRef);
-const secondPaneSizeCssVar = useCssVar('--md-second-pane-width', bodyRef);
+const secondPaneSizeCssVar = useCssVar('--md-main-pane-width', bodyRef);
 
 watchEffect(() => {
   firstPaneSizeCssVar.value = `${firstPaneSize.value}%`;
@@ -70,13 +64,11 @@ const windowClassModifier = computed(() => {
 
     <section ref="bodyRef" class="md-layer__body body">
       <div v-if="isShowFirstPane" class="body__first-pane">
-        <slot name="firstPane" />
+        <slot :name="SPLIT_VIEW.second" />
       </div>
 
-      <div v-show="isShowSecondPane" class="body__second-pane">
-        <slot name="secondPane" :show-first-pane="isShowFirstPane">
-          <i ref="secondPaneEmptyInner" />
-        </slot>
+      <div class="body__main-pane">
+        <slot :name="SPLIT_VIEW.main" :split-view="isShowFirstPane" />
       </div>
     </section>
   </main>
@@ -106,7 +98,7 @@ const windowClassModifier = computed(() => {
 .body {
   display: flex;
 
-  &__second-pane,
+  &__main-pane,
   &__first-pane {
     --md-pane-padding: 16px;
 
@@ -126,10 +118,15 @@ const windowClassModifier = computed(() => {
 
   &__first-pane {
     flex-basis: var(--md-first-pane-width, auto);
+
+    &:empty {
+      --md-first-pane-width: 0px;
+      display: none;
+    }
   }
 
-  &__second-pane {
-    flex-basis: var(--md-second-pane-width, auto);
+  &__main-pane {
+    flex-basis: var(--md-main-pane-width, auto);
   }
 
   &__container {

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import MDMainLayer from './MDMainLayer.vue';
+import MDMainLayer from './MDSplitLayer.vue';
 </script>
 
 <template>

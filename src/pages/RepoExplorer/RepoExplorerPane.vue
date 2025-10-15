@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { computed, ref, shallowRef } from 'vue';
+import { computed, ref, shallowRef, toRefs } from 'vue';
 import { DirectoryCreateDialog } from '@feature/directoryCreate';
-import { MDFab, MDFabContainer, MDIconButton } from '@shared/ui/Button';
+import { MDFab, MDFabContainer } from '@shared/ui/Button';
 import { MDSymbol } from '@shared/ui/Icon';
 import { FSEntryRemoveDialog } from '@feature/entryRemove';
 import { MDNavigationPath } from '@shared/ui/NavigationPath';
@@ -17,20 +17,23 @@ import { MDAppBar } from '@shared/ui/AppBar';
 import { FSEntryRenameDialog } from '@feature/entryRename';
 import { isUndefined } from 'es-toolkit';
 import type { AMDocumentId } from '@shared/lib/automerge/automergeTypes';
-import { useMainNavigate } from '../useMainNavigate';
-import { useRouter } from 'vue-router';
 import { useDirectoryStoreClient } from '@entity/mountedDirectories/useDirectoryStoreClient';
 import type { EntryPath } from '@shared/lib/fileSystem';
 import type { EntryDescription } from '@shared/api/directories/types';
 import { useDocumentRepoClient } from '@entity/documentRepo';
 import { stringPath } from '@shared/api/directories';
+import { DomainError } from '@shared/lib/error';
+import { zodQuery } from './model';
+import { useMainRouter } from '@page/routes';
+import { zodToVueProps } from '@shared/lib/zodToVueProps';
 
-const {
-  directoryPathString,
-  directoryPath,
-  open,
-  state: repoExplorerState,
-} = useMainNavigate();
+const props = defineProps(zodToVueProps(zodQuery));
+
+const { repoPath: directoryPath } = toRefs(props);
+
+defineSlots<{
+  navigationButton: () => unknown;
+}>();
 
 const parentPathForNewDirectory = ref<EntryPath>();
 
@@ -43,17 +46,17 @@ const entryPathToRemove = ref<EntryPath>();
 const { getEntry, removeEntry } = useDirectoryStoreClient();
 
 const directory = computed(() => {
-  if (directoryPathString.value) {
-    const entry = getEntry(directoryPathString.value);
-    if (entry instanceof Error) {
-      return entry;
-    }
-    if (entry?.type === 'file') {
-      return new Error(`Entry ${stringPath(entry.path)} is not a directory`);
-    }
-    if (entry && 'entries' in entry) {
-      return entry;
-    }
+  const entry = getEntry(directoryPath.value);
+  if (entry instanceof DomainError) {
+    return entry;
+  }
+  if (entry?.type === 'file') {
+    return new DomainError(
+      `Entry ${stringPath(entry.path)} is not a directory`,
+    );
+  }
+  if (entry && 'entries' in entry) {
+    return entry;
   }
   return undefined;
 });
@@ -62,20 +65,24 @@ const directoryEntries = computed(() =>
   directory.value instanceof Error ? undefined : directory.value?.entries,
 );
 
+const { open } = useMainRouter();
+
 const onClickPath = async (indexPath: number) => {
-  if (repoExplorerState.path) {
-    await open({
-      path: repoExplorerState.path.slice(0, indexPath + 1),
-      document: undefined,
+  const repoPath = directoryPath.value.slice(0, indexPath + 1);
+
+  if (repoPath.length) {
+    await open('repo', {
+      repoPath,
     });
+  } else {
+    await open('home', {});
   }
 };
 
 const onClickEntry = async (entry: EntryDescription) => {
   if (entry.type === 'directory') {
-    await open({
-      ...repoExplorerState,
-      path: entry.path,
+    await open('repo', {
+      repoPath: entry.path,
     });
   }
 };
@@ -83,16 +90,14 @@ const onClickEntry = async (entry: EntryDescription) => {
 const showFormNewDocument = ref(false);
 
 const onClickCreateDocument = () => {
-  if (directoryPath.value) {
+  if (directory.value) {
     showFormNewDocument.value = true;
   }
 };
 
 const { getDocumentIdList } = useDocumentRepoClient();
 
-const documentIdList = computed(() =>
-  directoryPath.value ? getDocumentIdList(directoryPath.value) : undefined,
-);
+const documentIdList = computed(() => getDocumentIdList(directoryPath.value));
 
 const onRemoveEntry = async (path: EntryPath) => {
   await removeEntry(path);
@@ -167,25 +172,18 @@ const onClickDocumentContextAction = (
 const documentIdToRemove = shallowRef<AMDocumentId>();
 
 const onClickDocument = async (documentId: AMDocumentId) => {
-  if (directoryPath.value) {
-    await open({
-      path: directoryPath.value,
-      document: documentId,
-    });
-  }
+  await open('document', {
+    repoPath: directoryPath.value,
+    documentDirectory: directoryPath.value,
+    documentId,
+  });
 };
 
 const documentIdToRename = shallowRef<AMDocumentId>();
 
 const title = computed((): string | undefined => {
-  return repoExplorerState.path?.at(-1);
+  return directoryPath.value.at(-1);
 });
-
-const router = useRouter();
-
-const onClickBack = () => {
-  router.back();
-};
 
 const onRenamedEntry = () => {
   entryKeyToRename.value = undefined;
@@ -205,11 +203,7 @@ const showFSEntryRenameDialog = computed({
   <MDPaneContainer class="document-explorer-widget">
     <MDAppBar v-if="title" :headline="title">
       <template #leadingButton>
-        <MDIconButton tooltip="Back" @click="onClickBack">
-          <template #icon>
-            <MDSymbol name="arrow_back" />
-          </template>
-        </MDIconButton>
+        <slot name="navigationButton" />
       </template>
     </MDAppBar>
 

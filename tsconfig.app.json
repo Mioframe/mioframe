@@ -26,6 +26,7 @@
       "@feature/*": ["./src/features/*"],
       "@entity/*": ["./src/entities/*"],
       "@widget/*": ["./src/widgets/*"],
+      "@page/*": ["./src/pages/*"],
       "@/*": ["./src/*"]
     },
     "experimentalDecorators": true,
