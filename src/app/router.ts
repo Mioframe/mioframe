@@ -1,11 +1,10 @@
 import type { LocationQueryRaw } from 'vue-router';
-import { createRouter, createWebHistory } from 'vue-router';
+import { createRouter, createWebHashHistory } from 'vue-router';
 import qs from 'query-string';
 import { queryStringOptions } from '@shared/config/queryStringOptions';
-import { setupMainRouter } from '@page/routes';
 
 export const router = createRouter({
-  history: createWebHistory(
+  history: createWebHashHistory(
     import.meta.env.PROD ? window.location.pathname : undefined,
   ),
   routes: [],
@@ -13,5 +12,3 @@ export const router = createRouter({
   stringifyQuery: (query: LocationQueryRaw) =>
     qs.stringify(query, queryStringOptions),
 });
-
-setupMainRouter(router);

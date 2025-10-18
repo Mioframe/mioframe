@@ -55,8 +55,17 @@ export const playgroundPages: PlaygroundPage[] = [
     component: () => import('@shared/ui/Sheets/MDBottomSheetPlayground.vue'),
   },
   {
+    name: 'BottomSheet2',
+    component: () => import('@shared/ui/Sheets/MDBottomSheetPlayground2.vue'),
+  },
+  {
     name: 'BackNavigation',
     component: () =>
       import('@shared/lib/onBackNavigation/BackNavigationPlayground.vue'),
+  },
+  {
+    name: 'TeleportContainer',
+    component: () =>
+      import('@shared/lib/teleportContainer/TeleportContainerPlayground.vue'),
   },
 ];

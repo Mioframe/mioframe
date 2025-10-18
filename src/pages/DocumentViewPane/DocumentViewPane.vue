@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, toRefs } from 'vue';
 import { DATABASE_DOCUMENT_TYPE } from '@shared/lib/databaseDocument';
-import { MDPaneContainer } from '@shared/ui/Layers';
+import { MDPaneContainer } from '@shared/ui/Layout';
 import { MDAppBar } from '@shared/ui/AppBar';
 import { MDIconButton } from '@shared/ui/Button';
 import { DocumentRenameDialog } from '@feature/documentRename';

@@ -1,15 +1,28 @@
+<script setup lang="ts">
+import { useTemplateRef } from 'vue';
+import { useProvidePaneContainer } from './useMDContainer';
+
+defineSlots<{
+  default: () => unknown;
+}>();
+
+const el = useTemplateRef('el');
+
+useProvidePaneContainer(el);
+</script>
+
 <template>
-  <div class="md md-pane-container">
+  <div ref="el" class="md md-pane-container">
     <slot />
   </div>
 </template>
 
 <style lang="css" scoped>
 .md-pane-container {
-  position: relative;
   flex-grow: 1;
   flex-shrink: 1;
   height: 100%;
+  overflow-y: auto;
   display: flex;
   flex-direction: column;
   justify-content: flex-start;

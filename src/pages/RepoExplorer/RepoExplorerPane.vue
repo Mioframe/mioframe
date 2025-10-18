@@ -12,7 +12,7 @@ import { FSEntryMDListItem } from '@entity/fsEntry';
 import { defineMenuButtonList, MDContextMenuButton } from '@shared/ui/Menu';
 import { DocumentRemoveDialog } from '@feature/documentRemove';
 import { DocumentRenameDialog } from '@feature/documentRename';
-import { MDPaneContainer } from '@shared/ui/Layers';
+import { MDPaneContainer } from '@shared/ui/Layout';
 import { MDAppBar } from '@shared/ui/AppBar';
 import { FSEntryRenameDialog } from '@feature/entryRename';
 import { isUndefined } from 'es-toolkit';

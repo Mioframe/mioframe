@@ -4,7 +4,7 @@ import {
 } from 'vue-router';
 import type { Component } from 'vue';
 import type { UnknownRecord } from 'type-fest';
-import type { SPLIT_VIEW } from '@shared/ui/Layers';
+import type { SPLIT_VIEW } from '@shared/ui/Layout';
 import type { Pane } from '@page/SplitView/definePane';
 
 export type Panes = {

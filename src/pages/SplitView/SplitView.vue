@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { MDIconButton } from '@shared/ui/Button';
-import { MDSplitLayer, SPLIT_VIEW } from '@shared/ui/Layers';
+import { MDSplitLayout, SPLIT_VIEW } from '@shared/ui/Layout';
 import { computed } from 'vue';
 import { RouterView, useRoute, useRouter } from 'vue-router';
 
@@ -24,7 +24,7 @@ const hasSecondView = computed(() => {
 </script>
 
 <template>
-  <MDSplitLayer class="main-view">
+  <MDSplitLayout class="main-view">
     <template #[SPLIT_VIEW.second]>
       <RouterView v-slot="{ Component }" :name="SPLIT_VIEW.second">
         <component :is="Component">
@@ -51,5 +51,5 @@ const hasSecondView = computed(() => {
         </component>
       </RouterView>
     </template>
-  </MDSplitLayer>
+  </MDSplitLayout>
 </template>
