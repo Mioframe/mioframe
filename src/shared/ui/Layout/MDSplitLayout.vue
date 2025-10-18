@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, watchEffect, useTemplateRef } from 'vue';
-import { useWindowSizeClass, WindowClass } from './useWindowSizeClass';
+import { useLayoutSizeClass, LayoutClass } from './useLayoutSizeClass';
 import { useCssVar } from '@vueuse/core';
 import { SPLIT_VIEW } from './config';
 
@@ -10,15 +10,17 @@ const slots = defineSlots<{
   [SPLIT_VIEW.main]: (p: { splitView: boolean }) => unknown;
 }>();
 
-const { windowClass } = useWindowSizeClass();
+const el = useTemplateRef('el');
+
+const { layoutClass } = useLayoutSizeClass(el);
 
 const isShowFirstPane = computed(
-  () => windowClass.value !== WindowClass.Compact,
+  () => layoutClass.value !== LayoutClass.Compact,
 );
 
 const firstPaneSize = computed((): number => {
   if (isShowFirstPane.value) {
-    if (windowClass.value === WindowClass.Medium) {
+    if (layoutClass.value === LayoutClass.Medium) {
       return 50;
     }
     return 30;
@@ -29,26 +31,22 @@ const firstPaneSize = computed((): number => {
 const bodyRef = useTemplateRef('bodyRef');
 
 const firstPaneSizeCssVar = useCssVar('--md-first-pane-width', bodyRef);
-const secondPaneSizeCssVar = useCssVar('--md-main-pane-width', bodyRef);
 
 watchEffect(() => {
-  firstPaneSizeCssVar.value = `${firstPaneSize.value}%`;
-});
-watchEffect(() => {
-  secondPaneSizeCssVar.value = `${100 - firstPaneSize.value}%`;
+  firstPaneSizeCssVar.value = `${firstPaneSize.value}cqw`;
 });
 
 const windowClassModifier = computed(() => {
-  switch (windowClass.value) {
-    case WindowClass.Compact:
+  switch (layoutClass.value) {
+    case LayoutClass.Compact:
       return 'md-layer_compact';
-    case WindowClass.Medium:
+    case LayoutClass.Medium:
       return 'md-layer_medium';
-    case WindowClass.Expanded:
+    case LayoutClass.Expanded:
       return 'md-layer_expanded';
-    case WindowClass.Large:
+    case LayoutClass.Large:
       return 'md-layer_large';
-    case WindowClass.ExtraLarge:
+    case LayoutClass.ExtraLarge:
       return 'md-layer_extra-large';
     default:
       return undefined;
@@ -57,7 +55,7 @@ const windowClassModifier = computed(() => {
 </script>
 
 <template>
-  <main class="md md-layer" :class="[windowClassModifier]">
+  <main ref="el" class="md md-layer" :class="[windowClassModifier]">
     <nav v-if="!!slots.navigation" class="md-layer__navigation">
       <slot name="navigation" />
     </nav>
@@ -77,11 +75,13 @@ const windowClassModifier = computed(() => {
 <style scoped>
 .md-layer {
   flex-grow: 1;
+  height: 100%;
   display: flex;
   flex-direction: column-reverse;
   overflow: auto;
   --md-container-color: var(--md-sys-color-surface-container);
   --md-content-color: var(--md-sys-color-on-surface);
+  container: layer / size;
 
   &__navigation {
     flex-grow: 1;
@@ -100,33 +100,39 @@ const windowClassModifier = computed(() => {
 
   &__main-pane,
   &__first-pane {
-    --md-pane-padding: 16px;
+    --md-pane-padding-x: 16px;
+    --md-pane-padding-y: 4px;
 
     display: flex;
     flex-direction: column;
-    flex-grow: 1;
-    padding: 4px var(--md-pane-padding);
+    position: relative;
+
+    width: var(--md-pane-width);
+
+    padding: var(--md-pane-padding-y) var(--md-pane-padding-x);
+    box-sizing: border-box;
     overflow-y: auto;
     transition: none;
 
     .md-layer_compact & {
-      --md-pane-padding: 0px;
+      --md-pane-padding-x: 0px;
+      --md-pane-padding-y: 0px;
       --md-pane-container-shape: 0px;
-      padding: 0 var(--md-pane-padding);
     }
   }
 
   &__first-pane {
-    flex-basis: var(--md-first-pane-width, auto);
+    --md-pane-width: var(--md-first-pane-width);
+    min-width: var(--md-pane-width);
 
     &:empty {
-      --md-first-pane-width: 0px;
+      --md-pane-width: 0px;
       display: none;
     }
   }
 
   &__main-pane {
-    flex-basis: var(--md-main-pane-width, auto);
+    --md-pane-width: 100cqw;
   }
 
   &__container {

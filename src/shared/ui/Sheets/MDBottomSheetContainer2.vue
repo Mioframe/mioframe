@@ -1,0 +1,176 @@
+<script setup lang="ts">
+import { useTemplateRef, watch } from 'vue';
+import { MDState } from '../State';
+import { useScroll } from '@shared/lib/scrollTo';
+
+defineSlots<{
+  default(): unknown;
+}>();
+
+const openModel = defineModel<boolean>('open', { required: true });
+
+const scrollPositionModel = defineModel<number>('scrollPosition');
+
+const containerEl = useTemplateRef<HTMLElement>('containerEl');
+
+const onClickDragHandle = () => {
+  openModel.value = !openModel.value;
+};
+
+const bodyEl = useTemplateRef<HTMLElement>('bodyEl');
+
+const { position, scrollTo } = useScroll(containerEl);
+
+watch(position, ({ scrollTop }) => {
+  scrollPositionModel.value = scrollTop;
+});
+
+watch(
+  [openModel, bodyEl],
+  ([open, bodyEl]) => {
+    if (bodyEl) {
+      if (open) {
+        void scrollTo({
+          top: Math.min(bodyEl.offsetTop, bodyEl.clientHeight),
+        });
+      } else {
+        void scrollTo({
+          top: 0,
+        });
+      }
+    }
+  },
+  { immediate: true },
+);
+
+const onClickScrim = () => {
+  void scrollTo({
+    top: 0,
+  });
+};
+</script>
+
+<template>
+  <div
+    ref="containerEl"
+    class="md-bottom-sheet md-bottom-sheet__scrim"
+    role="dialog"
+    @click.self="onClickScrim"
+  >
+    <div ref="bodyEl" class="md md-bottom-sheet__body">
+      <div class="md-bottom-sheet__header">
+        <MDState
+          is="button"
+          class="md-bottom-sheet__drag-handle"
+          @click="onClickDragHandle"
+        >
+          <span class="md-bottom-sheet__drag-pill" />
+        </MDState>
+      </div>
+
+      <slot />
+    </div>
+  </div>
+</template>
+
+<style lang="css" scoped>
+.md-bottom-sheet {
+  --border-radius: var(--md-sys-shape-corner-extra-large-top);
+  --md-bottom-sheet-width: min(var(--md-pane-width), 100%, 640px);
+
+  &_fullscreen {
+    --border-radius: 0px;
+  }
+
+  &__scrim {
+    display: block;
+    position: absolute;
+    z-index: 2;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    padding-top: 100cqh;
+    overflow-y: auto;
+    scrollbar-width: none;
+    overscroll-behavior-y: none;
+    box-sizing: border-box;
+    transition: none;
+    pointer-events: none;
+
+    &::before {
+      content: '';
+      display: block;
+      position: fixed;
+      background-color: rgb(from var(--md-sys-color-scrim) r g b / 10%);
+      top: 0;
+      right: 0;
+      bottom: 0;
+      left: 0;
+      pointer-events: auto;
+      z-index: -1;
+    }
+  }
+
+  &__body {
+    pointer-events: auto;
+    box-shadow: var(--md-sys-elevation-level1);
+    border-radius: var(--border-radius);
+    width: var(--md-bottom-sheet-width);
+    box-sizing: border-box;
+    margin-left: auto;
+    margin-right: auto;
+
+    display: flex;
+    flex-direction: column;
+  }
+
+  &__header {
+    padding: 0 7step;
+  }
+
+  &__drag-handle {
+    --md-state-width: 100%;
+    --md-state-display: block;
+    padding: 2step;
+    border-radius: 2step;
+  }
+
+  &__drag-pill {
+    display: block;
+    background-color: rgb(
+      from var(--md-sys-color-on-surface-variant) r g b / 0.4
+    );
+    width: 32px;
+    height: 4px;
+    border-radius: 2px;
+    margin: auto;
+  }
+
+  &.v {
+    &-enter-active,
+    &-leave-active {
+      transition-property: transform, background-color;
+    }
+
+    &-leave-active {
+      transition-timing-function: var(
+        var(--md-sys-motion-easing-emphasized-accelerate)
+      );
+      transition-duration: var(--md-sys-motion-duration-short4);
+    }
+
+    &-enter-active {
+      transition-timing-function: var(
+        var(--md-sys-motion-easing-emphasized-decelerate)
+      );
+      transition-duration: var(--md-sys-motion-duration-long2);
+    }
+
+    &-leave-to,
+    &-enter-from {
+      background-color: transparent;
+    }
+  }
+}
+</style>

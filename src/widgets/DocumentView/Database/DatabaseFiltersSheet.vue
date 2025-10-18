@@ -29,17 +29,12 @@ const onUpdateCollapsed = (collapsed: boolean) => {
 <template>
   <MDBottomSheet
     v-model:show="showModel"
-    :collapsed="false"
-    type="modal"
     class="db-filters-sheet"
     label="Database Filters Sheet"
     @update:collapsed="onUpdateCollapsed"
     @click-container="showModel = false"
   >
-    <MDBottomSheetSection
-      class="db-filters-sheet__section"
-      scroll-snap-align="end"
-    >
+    <MDBottomSheetSection class="db-filters-sheet__section">
       <span :class="MD_SYS_TYPESCALE.title.small">Filters</span>
 
       <div class="db-filters-sheet__filters">

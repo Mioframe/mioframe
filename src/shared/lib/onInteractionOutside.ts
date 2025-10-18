@@ -89,7 +89,8 @@ export const onInteractionOutside = (
     ignore = [],
   } = options;
 
-  const { stack: childTeleportContainers } = useChildTeleportContainerStack();
+  const { childStack: childTeleportContainers } =
+    useChildTeleportContainerStack();
 
   const handleInteraction = throttle((event: Event) => {
     const eventTarget = event.target instanceof Node ? event.target : undefined;
