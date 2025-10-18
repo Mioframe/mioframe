@@ -17,7 +17,11 @@ const {
 }>();
 
 defineSlots<{
-  default(p: { targetWidth: number; targetHeight: number }): unknown;
+  default(p: {
+    targetWidth: number;
+    targetHeight: number;
+    placeholderWidth: number;
+  }): unknown;
 }>();
 
 const emptySlotDetector = useTemplateRef('emptySlotDetector');
@@ -51,6 +55,7 @@ const placeholderWidthCssVar = useCssVar(
   '--teleport-placeholder-width',
   contentEl,
 );
+
 watchEffect(() => {
   placeholderWidthCssVar.value =
     priorityWidth === 'placeholder' ? `${placeholderWidth.value}px` : undefined;
@@ -111,7 +116,11 @@ const { height: targetHeight, width: targetWidth } = useElementSize(
   <div v-if="withPlaceholder" ref="placeholderEl" class="teleport-placeholder">
     <TeleportContainer :to="teleportTo">
       <div ref="contentEl" class="teleport-placeholder__content">
-        <slot :target-height="targetHeight" :target-width="targetWidth">
+        <slot
+          :target-height="targetHeight"
+          :target-width="targetWidth"
+          :placeholder-width="placeholderWidth"
+        >
           <i ref="emptySlotDetector" class="empty-slot-detector" />
         </slot>
       </div>
@@ -120,9 +129,10 @@ const { height: targetHeight, width: targetWidth } = useElementSize(
 
   <TeleportContainer v-else :to="teleportTo">
     <slot
-      :target-height="targetHeight"
       :class="$attrs.class"
+      :target-height="targetHeight"
       :target-width="targetWidth"
+      :placeholder-width="placeholderWidth"
     >
       <i ref="emptySlotDetector" class="empty-slot-detector" />
     </slot>

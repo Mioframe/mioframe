@@ -23,13 +23,11 @@ const onUpdateCollapsed = (collapsed: boolean) => {
 <template>
   <MDBottomSheet
     v-model:show="showModel"
-    :collapsed="false"
-    type="modal"
     label="Database Sort Sheet"
     @update:collapsed="onUpdateCollapsed"
     @click-container="showModel = false"
   >
-    <MDBottomSheetSection scroll-snap-align="end" class="md-padding-4">
+    <MDBottomSheetSection class="md-padding-4">
       <DatabaseItemSortingListSection
         v-if="viewId"
         :directory-path="directoryPath"

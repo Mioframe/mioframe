@@ -107,16 +107,11 @@ const closeRenameDialog = () => {
 <template>
   <MDBottomSheet
     :show="showModel"
-    :collapsed="false"
-    type="modal"
     label="Database Views Sheet"
     @update:collapsed="onUpdateCollapsed"
     @click-container="showModel = false"
   >
-    <MDBottomSheetSection
-      scroll-snap-align="end"
-      class="db-views-sheet__section"
-    >
+    <MDBottomSheetSection class="db-views-sheet__section">
       <div class="db-views-sheet__header">
         <span :class="MD_SYS_TYPESCALE.title.small">View presets</span>
 

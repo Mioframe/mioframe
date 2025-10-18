@@ -1,87 +1,137 @@
 import type { MaybeElementRef } from '@vueuse/core';
 import { tryOnScopeDispose, unrefElement } from '@vueuse/core';
+import type { Ref } from 'vue';
 import {
   computed,
   inject,
   provide,
+  reactive,
   shallowReactive,
   watch,
   type InjectionKey,
 } from 'vue';
+import { useClosestElement } from '../useClosestElement';
 
-type Value = HTMLElement | SVGElement;
+type WebElement = HTMLElement | SVGElement;
 
-type StackInjectionKey = InjectionKey<{
-  add: (v: Value) => void;
-  remove: (v: Value) => void;
-}>;
+type Stack = {
+  add: (v: WebElement) => void;
+  remove: (v: WebElement) => void;
+};
+
+type StackInjectionKey = InjectionKey<Stack>;
 
 type MainInjectionKey = InjectionKey<StackInjectionKey>;
 
-const mainKey: MainInjectionKey = Symbol('mainKey');
+const keyForChildrenStack: MainInjectionKey = Symbol('childrenStackKey');
 
 /**
- * For parents
+ * Стек контейнеров дочерних телепортов
  * @returns
  */
 export const useChildTeleportContainerStack = () => {
-  const stack = shallowReactive(new Set<Value>());
+  const childStack = shallowReactive(new Set<WebElement>());
 
-  const parentStackKey = inject(mainKey, undefined);
+  const parentStackKey = inject(keyForChildrenStack, undefined);
 
   const parentStack = parentStackKey ? inject(parentStackKey) : undefined;
 
-  const stackKey: StackInjectionKey = Symbol('stackKey');
+  const currentStackKey: StackInjectionKey = Symbol('childrenStackKey');
 
-  provide(mainKey, stackKey);
+  provide(keyForChildrenStack, currentStackKey);
 
-  const add = (v: Value) => {
-    stack.add(v);
+  const add = (v: WebElement) => {
+    childStack.add(v);
     parentStack?.add(v);
   };
 
-  const remove = (v: Value) => {
-    stack.delete(v);
+  const remove = (v: WebElement) => {
+    childStack.delete(v);
     parentStack?.remove(v);
   };
 
-  provide(stackKey, { add, remove });
+  const stackApiForChild: Stack = { add, remove };
+
+  provide(currentStackKey, stackApiForChild);
 
   return {
-    stack,
+    childStack,
+  };
+};
+
+const parentStackKey: InjectionKey<Ref<ReadonlySet<WebElement>>> =
+  Symbol('parentStackKey');
+
+/**
+ * Стек родителей телепортированных контенеров
+ * @returns
+ */
+export const useParentTeleportContainerStack = () => {
+  const stack = inject(parentStackKey);
+
+  return {
+    stack: computed(() => stack?.value ?? new Set<WebElement>()),
   };
 };
 
 /**
- * for child
+ * @property key - телепортированный контейнер
+ * @property value - источник телепортации
  */
-export const useTeleportContainerRegistry = (containerEl: MaybeElementRef) => {
-  const currentElement = computed(() => unrefElement(containerEl));
+export const teleportContainerAndParent = reactive<Map<WebElement, WebElement>>(
+  new Map(),
+);
 
-  const stackSymbol = inject(mainKey, undefined);
+/**
+ * Регистрация контейнера телепорта
+ * @param teleportedContainer
+ */
+export const useTeleportContainerRegistry = (
+  teleportedContainer: MaybeElementRef,
+) => {
+  const teleportedContainerElement = computed(() =>
+    unrefElement(teleportedContainer),
+  );
 
-  if (stackSymbol) {
-    const stack = inject(stackSymbol);
+  const stackSymbol = inject(keyForChildrenStack, undefined);
 
-    if (stack) {
-      watch(
-        currentElement,
-        (el, old) => {
-          if (old) {
-            stack.remove(old);
-          }
-          if (el) {
-            stack.add(el);
-          }
-        },
-        { immediate: true },
-      );
+  const childrenStack = stackSymbol
+    ? inject(stackSymbol, undefined)
+    : undefined;
 
-      tryOnScopeDispose(() => {
-        if (currentElement.value) {
-          stack.remove(currentElement.value);
-        }
-      });
+  watch(
+    teleportedContainerElement,
+    (container, old) => {
+      if (old) {
+        childrenStack?.remove(old);
+        teleportContainerAndParent.delete(old);
+      }
+      if (container) {
+        childrenStack?.add(container);
+      }
+    },
+    { immediate: true },
+  );
+
+  const parentEl = useClosestElement();
+
+  watch(
+    [teleportedContainerElement, parentEl],
+    ([container, parent], [oldContainer]) => {
+      if (oldContainer) {
+        teleportContainerAndParent.delete(oldContainer);
+      }
+      if (container && parent) {
+        teleportContainerAndParent.set(container, parent);
+      }
+    },
+    { immediate: true },
+  );
+
+  tryOnScopeDispose(() => {
+    if (teleportedContainerElement.value) {
+      childrenStack?.remove(teleportedContainerElement.value);
+      teleportContainerAndParent.delete(teleportedContainerElement.value);
     }
-  }
+  });
 };

@@ -1,39 +1,73 @@
-import { unrefElement, useCurrentElement } from '@vueuse/core';
+import type { VueInstance } from '@vueuse/core';
 import { computed } from 'vue';
+import { teleportContainerAndParent } from './teleportContainer/useChildTeleportContainer';
+import { findClosestElement, useClosestElement } from './useClosestElement';
 
-interface WithParent {
-  parentElement: WithParent | Element | null | undefined;
-}
-
+/**
+ * Ссылка на ближайший фрейм элемент
+ * @returns
+ */
 export const useClosestParentFrame = () => {
-  const currentElement = useCurrentElement();
-
-  const findParentElement = (maybeEl: WithParent | Element) => {
-    if (maybeEl instanceof Element) {
-      return maybeEl;
-    }
-    if (maybeEl.parentElement) {
-      return findParentElement(maybeEl.parentElement);
-    }
-    return undefined;
-  };
+  const closestElement = useClosestElement();
 
   const closestParentFrame = computed(() => {
-    const maybeEl = unrefElement(currentElement.value);
+    const closestEl = closestElement.value;
 
-    if (maybeEl) {
-      const el = findParentElement(maybeEl);
-      if (el) {
-        return (
-          el.closest(
-            '.md-pane-container, dialog, [role="dialog"], [data-v-app], body',
-          ) || document.body
-        );
-      }
+    if (closestEl instanceof HTMLElement) {
+      const el = findParentVueElement(
+        closestEl,
+        '.md-pane-container, dialog, [role="dialog"], [data-v-app], body',
+      );
+      return el;
     }
 
     return document.body;
   });
 
   return closestParentFrame;
+};
+
+/**
+ * Поиск родителей по селектору с учётом телепортов
+ * @param current
+ * @param selectors
+ * @returns
+ */
+const findParentVueElement = (
+  current: HTMLElement | VueInstance,
+  selectors: string,
+) => {
+  if (current instanceof HTMLElement) {
+    const teleportParent = teleportContainerAndParent.get(current);
+
+    if (teleportParent && teleportParent.matches(selectors)) {
+      return teleportParent;
+    }
+
+    const parentElement = current.parentElement;
+
+    if (parentElement) {
+      if (parentElement.matches(selectors)) {
+        return parentElement;
+      }
+
+      return findParentVueElement(parentElement, selectors);
+    }
+
+    return document.body;
+  }
+
+  const $parent = current.$parent;
+
+  if ($parent) {
+    const closestElement = findClosestElement($parent);
+
+    if (closestElement.matches(selectors)) {
+      return closestElement;
+    }
+
+    return findParentVueElement($parent, selectors);
+  }
+
+  return document.body;
 };

@@ -79,17 +79,12 @@ const isShowAddProperty = ref(false);
 <template>
   <MDBottomSheet
     v-model:show="showModel"
-    :collapsed="false"
-    type="modal"
     class="db-properties-sheet"
     label="Database Properties Sheet"
     @update:collapsed="onUpdateCollapsed"
     @click-container="showModel = false"
   >
-    <MDBottomSheetSection
-      class="db-properties-sheet__section"
-      scroll-snap-align="end"
-    >
+    <MDBottomSheetSection class="db-properties-sheet__section">
       <span :class="MD_SYS_TYPESCALE.title.small">Properties</span>
 
       <DatabasePropertyList

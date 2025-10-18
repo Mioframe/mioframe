@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { MountedDirectoriesList } from '@entity/mountedDirectories';
 import { MDFab, MDFabContainer, MDIconButton } from '@shared/ui/Button';
-import { MDPaneContainer } from '@shared/ui/Layers';
+import { MDPaneContainer } from '@shared/ui/Layout';
 import { MDSymbol } from '@shared/ui/Icon';
 import { useDirectoryStoreClient } from '@entity/mountedDirectories/useDirectoryStoreClient';
 import { OPFSName } from '@shared/api/directories';

@@ -6,7 +6,7 @@ import {
   PlaygroundStory,
 } from '@shared/lib/playground';
 import { MDListContainer, MDListItem } from '../Lists';
-import { MDPaneContainer } from '../Layers';
+import { MDPaneContainer } from '../Layout';
 import { useQueryValue } from '@shared/lib/useQueryState';
 import type { ComponentProps } from 'vue-component-type-helpers';
 import MDBottomSheetSection from './MDBottomSheetSection.vue';

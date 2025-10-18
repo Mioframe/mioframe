@@ -9,7 +9,7 @@ import MDToolbarContainer from './MDToolbarContainer.vue';
 import { MDIconButton } from '../Button';
 import { useQueryValue } from '@shared/lib/useQueryState';
 import type { ComponentProps } from 'vue-component-type-helpers';
-import { MDPaneContainer } from '../Layers';
+import { MDPaneContainer } from '../Layout';
 import { MDListContainer, MDListItem } from '../Lists';
 
 interface State extends ComponentProps<typeof MDToolbarContainer> {
