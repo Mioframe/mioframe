@@ -67,7 +67,11 @@ onInteractionOutside(tooltipEl, () => {
 </script>
 
 <template>
-  <TeleportContainer :to="targetTeleport" :disabled="disabledTeleport">
+  <TeleportContainer
+    :to="targetTeleport"
+    :disabled="disabledTeleport"
+    :container="tooltipEl"
+  >
     <Transition>
       <div
         v-if="showState"

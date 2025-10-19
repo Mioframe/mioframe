@@ -93,24 +93,13 @@ const onClickViewContextMenu = async (
 
 const isShowAddView = shallowRef(false);
 
-const onUpdateCollapsed = (collapsed: boolean) => {
-  if (collapsed) {
-    showModel.value = false;
-  }
-};
-
 const closeRenameDialog = () => {
   renameViewId.value = undefined;
 };
 </script>
 
 <template>
-  <MDBottomSheet
-    :show="showModel"
-    label="Database Views Sheet"
-    @update:collapsed="onUpdateCollapsed"
-    @click-container="showModel = false"
-  >
+  <MDBottomSheet v-model:show="showModel" label="Database Views Sheet">
     <MDBottomSheetSection class="db-views-sheet__section">
       <div class="db-views-sheet__header">
         <span :class="MD_SYS_TYPESCALE.title.small">View presets</span>

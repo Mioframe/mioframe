@@ -1,9 +1,11 @@
 <script setup lang="ts">
-import { useTemplateRef, type RendererElement } from 'vue';
+import { computed, type RendererElement } from 'vue';
 import { useTeleportContainerRegistry } from './useChildTeleportContainer';
+import type { MaybeElement } from '@vueuse/core';
 
-defineProps<{
+const props = defineProps<{
   to: string | RendererElement | null | undefined;
+  container: MaybeElement;
   defer?: boolean | undefined;
   disabled?: boolean | undefined;
 }>();
@@ -12,15 +14,11 @@ defineSlots<{
   default: () => unknown;
 }>();
 
-const teleportedContainer = useTemplateRef('teleportedContainer');
-
-useTeleportContainerRegistry(teleportedContainer);
+useTeleportContainerRegistry(computed(() => props.container));
 </script>
 
 <template>
   <Teleport :to="to" :defer="defer" :disabled="disabled">
-    <div ref="teleportedContainer">
-      <slot />
-    </div>
+    <slot />
   </Teleport>
 </template>

@@ -3,7 +3,8 @@ import { TeleportWithPlaceholder } from '@shared/lib/teleport';
 import type { MaybeElement } from '@vueuse/core';
 import { unrefElement, useParentElement, useScroll } from '@vueuse/core';
 import { isUndefined } from 'es-toolkit';
-import { computed, ref, toRefs, watchEffect } from 'vue';
+import { computed, ref, toRefs, useTemplateRef, watchEffect } from 'vue';
+import { usePaneContainer } from '../Layout/useMDContainer';
 
 const props = withDefaults(
   defineProps<{
@@ -47,10 +48,18 @@ const show = computed(
     isUndefined(lastScrollDirection.value) ||
     lastScrollDirection.value === 'top',
 );
+
+const toolbarEl = useTemplateRef('toolbarEl');
+
+const paneContainer = usePaneContainer();
+
+const to = computed(() => paneContainer.value ?? document.body);
 </script>
 
 <template>
   <TeleportWithPlaceholder
+    :to="to"
+    :container="toolbarEl"
     class="md-toolbar__placeholder"
     priority-height="content"
     priority-width="placeholder"
@@ -62,6 +71,7 @@ const show = computed(
     <Transition>
       <div
         v-show="show"
+        ref="toolbarEl"
         class="md-toolbar"
         :class="[
           `md-toolbar_type-${type}`,

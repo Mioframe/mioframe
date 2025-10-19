@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, toRefs, watchEffect } from 'vue';
+import { computed, ref, toRefs, useTemplateRef, watchEffect } from 'vue';
 import { useParentElement, useScroll } from '@vueuse/core';
 import { isUndefined } from 'es-toolkit';
 import { TeleportWithPlaceholder } from '@shared/lib/teleport';
@@ -34,12 +34,15 @@ const show = computed(
     isUndefined(lastScrollDirection.value) ||
     lastScrollDirection.value === 'top',
 );
+
+const fabContainer = useTemplateRef('fabContainer');
 </script>
 
 <template>
   <TeleportWithPlaceholder
     class="md-fab-container__placeholder"
     priority-width="placeholder"
+    :container="fabContainer"
     with-placeholder
     :class="{
       'md-fab-container_auto-hide': autoHide,
@@ -48,6 +51,7 @@ const show = computed(
     <Transition>
       <div
         v-if="show"
+        ref="fabContainer"
         class="md-fab-container"
         :class="{
           'md-fab-container_auto-hide': autoHide,
