@@ -4,6 +4,7 @@ import MDSnackbar from './MDSnackbar.vue';
 import { useSnackbar } from './useSnackbar';
 import { useClosestParentFrame } from '@shared/lib/useClosestParentFrame';
 import { TeleportContainer } from '@shared/lib/teleportContainer';
+import { useTemplateRef } from 'vue';
 
 const { currentSnackbar, closeSnackbar } = useSnackbar();
 
@@ -12,11 +13,13 @@ const onClickClose = () => {
 };
 
 const targetTeleport = useClosestParentFrame();
+
+const snackbarContainer = useTemplateRef('snackbarContainer');
 </script>
 
 <template>
-  <TeleportContainer :to="targetTeleport">
-    <div class="snackbar-container">
+  <TeleportContainer :to="targetTeleport" :container="snackbarContainer">
+    <div ref="snackbarContainer" class="snackbar-container">
       <FadeTransition group>
         <MDSnackbar
           v-if="currentSnackbar"

@@ -85,7 +85,7 @@ const onClickScrim = () => {
   &__scrim {
     display: block;
     position: absolute;
-    z-index: 2;
+    z-index: 1;
     top: 0;
     left: 0;
     right: 0;
@@ -150,26 +150,34 @@ const onClickScrim = () => {
   &.v {
     &-enter-active,
     &-leave-active {
-      transition-property: transform, background-color;
+      &::before {
+        transition-property: background-color;
+      }
     }
 
     &-leave-active {
-      transition-timing-function: var(
-        var(--md-sys-motion-easing-emphasized-accelerate)
-      );
-      transition-duration: var(--md-sys-motion-duration-short4);
+      &::before {
+        transition-timing-function: var(
+          var(--md-sys-motion-easing-emphasized-accelerate)
+        );
+        transition-duration: var(--md-sys-motion-duration-short4);
+      }
     }
 
     &-enter-active {
-      transition-timing-function: var(
-        var(--md-sys-motion-easing-emphasized-decelerate)
-      );
-      transition-duration: var(--md-sys-motion-duration-long2);
+      &::before {
+        transition-timing-function: var(
+          var(--md-sys-motion-easing-emphasized-decelerate)
+        );
+        transition-duration: var(--md-sys-motion-duration-long2);
+      }
     }
 
     &-leave-to,
     &-enter-from {
-      background-color: transparent;
+      &::before {
+        background-color: transparent;
+      }
     }
   }
 }

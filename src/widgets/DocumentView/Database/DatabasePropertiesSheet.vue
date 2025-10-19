@@ -82,7 +82,6 @@ const isShowAddProperty = ref(false);
     class="db-properties-sheet"
     label="Database Properties Sheet"
     @update:collapsed="onUpdateCollapsed"
-    @click-container="showModel = false"
   >
     <MDBottomSheetSection class="db-properties-sheet__section">
       <span :class="MD_SYS_TYPESCALE.title.small">Properties</span>

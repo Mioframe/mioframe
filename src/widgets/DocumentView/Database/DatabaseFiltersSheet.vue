@@ -32,7 +32,6 @@ const onUpdateCollapsed = (collapsed: boolean) => {
     class="db-filters-sheet"
     label="Database Filters Sheet"
     @update:collapsed="onUpdateCollapsed"
-    @click-container="showModel = false"
   >
     <MDBottomSheetSection class="db-filters-sheet__section">
       <span :class="MD_SYS_TYPESCALE.title.small">Filters</span>

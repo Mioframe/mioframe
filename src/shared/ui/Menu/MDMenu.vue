@@ -173,7 +173,11 @@ const showSubmenu = ref<boolean>();
 </script>
 
 <template>
-  <TeleportContainer :to="targetTeleport" :disabled="disabledTeleport">
+  <TeleportContainer
+    :to="targetTeleport"
+    :disabled="disabledTeleport"
+    :container="listContainerEl"
+  >
     <MDListContainer
       is="div"
       v-if="showModel"
@@ -201,6 +205,7 @@ const showSubmenu = ref<boolean>();
   position: fixed;
   z-index: 2;
   overflow-y: auto;
+  pointer-events: all;
 
   border-radius: var(--md-sys-shape-corner-extra-small);
   box-shadow: var(--md-sys-elevation-level2);
