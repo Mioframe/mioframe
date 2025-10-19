@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import MDBottomSheetContainer from './MDBottomSheetContainer2.vue';
-import { computed, ref, toRefs, watch, watchEffect } from 'vue';
+import { computed, ref, toRefs, useTemplateRef, watch, watchEffect } from 'vue';
 import { TeleportContainer } from '@shared/lib/teleportContainer';
 import { usePaneContainer } from '../Layout/useMDContainer';
+import type { MaybeElement } from '@vueuse/core';
 
 const props = withDefaults(
   defineProps<{
@@ -39,26 +40,22 @@ watch(scrollPosition, (scrollPosition) => {
 const render = computed(() => open.value || scrollPosition.value > 0);
 
 /**
- * // FIXME: эта версия менее производительная
- *
- * [x] телепортируем в usePaneContainer без контейнеров(?) и плейсхолдеров
- * [x] позиционируем относительно Pane c помощью чистого css (используем main как контейнер, высчитываем размеры из переменных pane относительно контейнера)
- * избегаем чтение размеров
- * анимацию появления делаем на css
- * пользовательское управление скроллом
- * програмное скрытие анимацией css
+ * FIXME: програмное скрытие анимацией css
  */
 
 const paneContainer = usePaneContainer();
 
 const to = computed(() => paneContainer.value ?? document.body);
+
+const sheetContainer = useTemplateRef<MaybeElement>('sheetContainer');
 </script>
 
 <template>
-  <TeleportContainer :to="to">
+  <TeleportContainer :to="to" :container="sheetContainer" :disabled="!render">
     <Transition>
       <MDBottomSheetContainer
         v-if="render"
+        ref="sheetContainer"
         v-model:scroll-position="scrollPosition"
         v-model:open="open"
         class="md-bottom-sheet__container"

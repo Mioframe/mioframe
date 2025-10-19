@@ -72,7 +72,8 @@ const showWatchHandle = watch(
 
 <template>
   <TeleportWithPlaceholder
-    :teleport-target="teleportTarget"
+    :container="bottomSheetContainerEl"
+    :to="teleportTarget"
     with-placeholder
     class="md-bottom-sheet__placeholder"
   >

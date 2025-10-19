@@ -4,15 +4,18 @@ import MDDialog from '../MDDialog.vue';
 import { useDialogState } from './useDialog';
 import { MDSymbol } from '@shared/ui/Icon';
 import { TeleportContainer } from '@shared/lib/teleportContainer';
+import { useTemplateRef } from 'vue';
 
 const targetTeleport = useClosestParentFrame();
 
 const { alertSet } = useDialogState();
+
+const dialogContainerEl = useTemplateRef('dialogContainerEl');
 </script>
 
 <template>
-  <TeleportContainer :to="targetTeleport">
-    <div class="dialog-container">
+  <TeleportContainer :to="targetTeleport" :container="dialogContainerEl">
+    <div ref="dialogContainerEl" class="dialog-container">
       <MDDialog
         v-for="item in alertSet"
         :key="item.id"

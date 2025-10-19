@@ -72,7 +72,11 @@ const show = refDebounced(hovered, 1.5e3);
 </script>
 
 <template>
-  <TeleportContainer :to="targetTeleport" :disabled="disabledTeleport">
+  <TeleportContainer
+    :to="targetTeleport"
+    :disabled="disabledTeleport"
+    :container="tooltipEl"
+  >
     <Transition>
       <div
         v-if="show"

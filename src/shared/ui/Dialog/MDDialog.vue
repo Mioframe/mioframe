@@ -81,12 +81,15 @@ useOnEscapeKeyStacked(() => {
 });
 
 const dialogTitleId = sessionUniqueId('dialogTitle');
+
+const dialogEl = useTemplateRef('dialogEl');
 </script>
 
 <template>
-  <TeleportContainer :to="dialogContainer">
+  <TeleportContainer :to="dialogContainer" :container="dialogEl">
     <dialog
       v-if="showModel"
+      ref="dialogEl"
       :open="showModel"
       class="md-dialog md-dialog__scrim"
       :class="[

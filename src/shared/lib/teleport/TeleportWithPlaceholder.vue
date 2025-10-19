@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { useClosestParentFrame } from '@shared/lib/useClosestParentFrame';
+import type { MaybeElement } from '@vueuse/core';
 import { useCssVar, useElementBounding, useElementSize } from '@vueuse/core';
 import type { RendererElement } from 'vue';
 import { computed, useTemplateRef, watchEffect } from 'vue';
@@ -8,12 +9,14 @@ import { TeleportContainer } from '../teleportContainer';
 const {
   priorityWidth = 'content',
   priorityHeight = 'content',
-  teleportTarget,
+  to,
+  container,
 } = defineProps<{
   priorityWidth?: 'placeholder' | 'content';
   priorityHeight?: 'placeholder' | 'content';
   withPlaceholder?: boolean;
-  teleportTarget?: string | RendererElement | null | undefined;
+  to?: string | RendererElement | null | undefined;
+  container: MaybeElement;
 }>();
 
 defineSlots<{
@@ -98,7 +101,7 @@ watchEffect(() => {
 
 const closestParentFrame = useClosestParentFrame();
 
-const teleportTo = computed(() => teleportTarget ?? closestParentFrame.value);
+const teleportTo = computed(() => to ?? closestParentFrame.value);
 
 const { height: targetHeight, width: targetWidth } = useElementSize(
   computed(() =>
@@ -114,7 +117,7 @@ const { height: targetHeight, width: targetWidth } = useElementSize(
 
 <template>
   <div v-if="withPlaceholder" ref="placeholderEl" class="teleport-placeholder">
-    <TeleportContainer :to="teleportTo">
+    <TeleportContainer :to="teleportTo" :container="container">
       <div ref="contentEl" class="teleport-placeholder__content">
         <slot
           :target-height="targetHeight"
@@ -127,7 +130,7 @@ const { height: targetHeight, width: targetWidth } = useElementSize(
     </TeleportContainer>
   </div>
 
-  <TeleportContainer v-else :to="teleportTo">
+  <TeleportContainer v-else :to="teleportTo" :container="container">
     <slot
       :class="$attrs.class"
       :target-height="targetHeight"

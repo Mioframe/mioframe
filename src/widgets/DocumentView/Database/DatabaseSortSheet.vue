@@ -25,7 +25,6 @@ const onUpdateCollapsed = (collapsed: boolean) => {
     v-model:show="showModel"
     label="Database Sort Sheet"
     @update:collapsed="onUpdateCollapsed"
-    @click-container="showModel = false"
   >
     <MDBottomSheetSection class="md-padding-4">
       <DatabaseItemSortingListSection
