@@ -30,5 +30,6 @@ useProvidePaneContainer(el);
   overflow-y: auto;
   --md-container-color: var(--md-sys-color-surface);
   --md-content-color: var(--md-sys-color-on-surface);
+  padding: var(--md-pane-padding-y, 0) var(--md-pane-padding-x, 0);
 }
 </style>

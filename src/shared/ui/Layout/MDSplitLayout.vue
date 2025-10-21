@@ -100,8 +100,8 @@ const windowClassModifier = computed(() => {
 
   &__main-pane,
   &__first-pane {
-    --md-pane-padding-x: 16px;
-    --md-pane-padding-y: 4px;
+    --md-pane-margin-x: 16px;
+    --md-pane-margin-y: 4px;
 
     display: flex;
     flex-direction: column;
@@ -109,15 +109,16 @@ const windowClassModifier = computed(() => {
 
     width: var(--md-pane-width);
 
-    padding: var(--md-pane-padding-y) var(--md-pane-padding-x);
+    padding: var(--md-pane-margin-y) var(--md-pane-margin-x);
     box-sizing: border-box;
     overflow-y: auto;
     transition: none;
 
     .md-layer_compact & {
-      --md-pane-padding-x: 0px;
-      --md-pane-padding-y: 0px;
+      --md-pane-margin-x: 0px;
+      --md-pane-margin-y: 0px;
       --md-pane-container-shape: 0px;
+      --md-pane-padding-x: 4px;
     }
   }
 
