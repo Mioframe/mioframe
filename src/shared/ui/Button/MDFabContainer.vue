@@ -3,6 +3,7 @@ import { computed, ref, toRefs, useTemplateRef, watchEffect } from 'vue';
 import { useParentElement, useScroll } from '@vueuse/core';
 import { isUndefined } from 'es-toolkit';
 import { TeleportWithPlaceholder } from '@shared/lib/teleport';
+import { usePaneContainer } from '../Layout/useMDContainer';
 
 const props = defineProps<{
   autoHide?: boolean;
@@ -36,6 +37,10 @@ const show = computed(
 );
 
 const fabContainer = useTemplateRef('fabContainer');
+
+const paneContainer = usePaneContainer();
+
+const to = computed(() => paneContainer.value ?? document.body);
 </script>
 
 <template>
@@ -47,19 +52,18 @@ const fabContainer = useTemplateRef('fabContainer');
     :class="{
       'md-fab-container_auto-hide': autoHide,
     }"
+    :to="to"
   >
-    <Transition>
-      <div
-        v-if="show"
-        ref="fabContainer"
-        class="md-fab-container"
-        :class="{
-          'md-fab-container_auto-hide': autoHide,
-        }"
-      >
-        <slot name="default" />
-      </div>
-    </Transition>
+    <div
+      ref="fabContainer"
+      class="md-fab-container"
+      :class="{
+        'md-fab-container_auto-hide': autoHide,
+        'md-fab-container_hide': !show,
+      }"
+    >
+      <slot name="default" />
+    </div>
   </TeleportWithPlaceholder>
 </template>
 
@@ -76,6 +80,13 @@ const fabContainer = useTemplateRef('fabContainer');
   margin-left: auto;
   padding-bottom: 16px;
   width: min-content;
+  padding-right: calc(
+    16px - var(--md-pane-margin-x) - var(--md-pane-padding-x)
+  );
+  transition-timing-function: var(
+    var(--md-sys-motion-easing-emphasized-decelerate)
+  );
+  transition-duration: var(--md-sys-motion-duration-long2);
 
   &__placeholder {
     display: flex;
@@ -87,18 +98,17 @@ const fabContainer = useTemplateRef('fabContainer');
     width: 100%;
   }
 
-  &_auto-hide {
-    &.md-fab-container__placeholder {
-      height: 0;
-    }
-    &.md-fab-container {
-      position: absolute;
-      bottom: 0;
-      right: 0;
-    }
+  &_hide {
+    pointer-events: none;
+    transition-timing-function: var(
+      var(--md-sys-motion-easing-emphasized-accelerate)
+    );
+    transition-duration: var(--md-sys-motion-duration-short4);
+    opacity: 0;
+    transform: translateY(100%) scale(0);
   }
 
-  &.v {
+  /* &.v {
     &-enter,
     &-leave {
       &-active {
@@ -131,7 +141,7 @@ const fabContainer = useTemplateRef('fabContainer');
       opacity: 1;
       transform: translateY(0) scale(1);
     }
-  }
+  } */
 
   :deep() {
     > * {
