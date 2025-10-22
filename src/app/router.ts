@@ -9,6 +9,6 @@ export const router = createRouter({
   ),
   routes: [],
   parseQuery: (search: string) => qs.parse(search, queryStringOptions),
-  stringifyQuery: (query: LocationQueryRaw) =>
+  stringifyQuery: (query: LocationQueryRaw = {}) =>
     qs.stringify(query, queryStringOptions),
 });
