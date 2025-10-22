@@ -6,6 +6,7 @@ import { RouterView } from 'vue-router';
 import { PerformanceOverlay } from '@shared/ui/performance';
 import { useDialogContainer } from '@shared/ui/Dialog';
 import { usePermanentStorageRequest } from '@feature/permanentStorageRequest';
+import { useLocalSettings } from '@entity/localSettings';
 
 const { addSnackbar } = useSnackbar();
 
@@ -22,6 +23,8 @@ const { hasOpenedDialog } = useDialogContainer(dialogContainer);
 const { permanentStorageRequest } = usePermanentStorageRequest();
 
 void permanentStorageRequest();
+
+const { settings } = useLocalSettings();
 </script>
 
 <template>
@@ -35,7 +38,7 @@ void permanentStorageRequest();
 
   <SnackbarContainer />
 
-  <PerformanceOverlay />
+  <PerformanceOverlay v-if="settings.showPerformance" />
 </template>
 
 <style lang="css" scoped>
