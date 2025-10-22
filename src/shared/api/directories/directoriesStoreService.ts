@@ -24,6 +24,8 @@ import { EntryNotDirectoryError, EntryNotFoundError, OPFSName } from './types';
 import { defineSubscribeByQueryService } from '@shared/lib/subscriptions/subscribeService';
 import { DomainError } from '@shared/lib/error';
 import { useIDBKeyval } from '@vueuse/integrations/useIDBKeyval';
+import { zodCheck } from '@shared/lib/validateZodScheme';
+import { zodAutomergeFileName } from '@shared/lib/fsStorageAdapter';
 
 export const PATH_SEPARATOR = '/';
 
@@ -299,13 +301,28 @@ export const useDirectoryStoreService = createGlobalState(() => {
 
   const directoryToDescription = (
     entry: DirectoryFSEntryRef,
+    { showAutomergeFiles }: { showAutomergeFiles?: boolean } = {},
   ): DirectoryDescription => {
     return {
       name: entry.name,
       type: entry.type,
       path: entry.path,
-      entries: Array.from(strictRecordIterableEntries(entry.entries)()).map(
-        ([, v]) => entryToDescription(v),
+      entries: Array.from(strictRecordIterableEntries(entry.entries)()).reduce(
+        (acc: EntryDescription[], [, v]) => {
+          const description = entryToDescription(v);
+
+          if (
+            !showAutomergeFiles &&
+            zodCheck(zodAutomergeFileName, description.name)
+          ) {
+            return acc;
+          }
+
+          acc.push(description);
+
+          return acc;
+        },
+        [],
       ),
     };
   };
@@ -327,6 +344,7 @@ export const useDirectoryStoreService = createGlobalState(() => {
   const subscribeEntry = defineSubscribeByQueryService(
     (
       path: EntryPath,
+      { showAutomergeFiles }: { showAutomergeFiles?: boolean } = {},
     ): EntryDescription | DirectoryDescription | undefined | DomainError => {
       const entry = getEntry(path);
 
@@ -338,7 +356,7 @@ export const useDirectoryStoreService = createGlobalState(() => {
         if (entry.type === 'file') {
           return entryToDescription(entry);
         }
-        return directoryToDescription(entry);
+        return directoryToDescription(entry, { showAutomergeFiles });
       }
       return undefined;
     },
