@@ -23,6 +23,10 @@ const onClickMountUserDirectory = async () => {
 const onClickMountedDirectory = async (name: string) => {
   await open('repo', { repoPath: [name] });
 };
+
+const onClickSettings = async () => {
+  await open('settings', {});
+};
 </script>
 
 <template>
@@ -33,7 +37,11 @@ const onClickMountedDirectory = async (name: string) => {
       </template>
 
       <template #trailingElements>
-        <MDIconButton tooltip="settings" md-symbol-name="settings" />
+        <MDIconButton
+          tooltip="settings"
+          md-symbol-name="settings"
+          @click="onClickSettings"
+        />
       </template>
     </MDAppBar>
 

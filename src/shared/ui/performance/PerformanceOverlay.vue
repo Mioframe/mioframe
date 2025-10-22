@@ -92,7 +92,7 @@ const memoryMb = computed(() =>
 <style lang="css" scoped>
 .performance-overlay {
   position: fixed;
-  z-index: 1;
+  z-index: 1000;
   top: 0;
   right: 0;
   pointer-events: none;
