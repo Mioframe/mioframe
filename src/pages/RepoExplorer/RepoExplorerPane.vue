@@ -26,6 +26,7 @@ import { DomainError } from '@shared/lib/error';
 import { zodQuery } from './model';
 import { useMainRouter } from '@page/routes';
 import { zodToVueProps } from '@shared/lib/zodToVueProps';
+import { useLocalSettings } from '@entity/localSettings';
 
 const props = defineProps(zodToVueProps(zodQuery));
 
@@ -43,10 +44,14 @@ const onClickCreateDirectory = () => {
 
 const entryPathToRemove = ref<EntryPath>();
 
+const { settings } = useLocalSettings();
+
 const { getEntry, removeEntry } = useDirectoryStoreClient();
 
 const directory = computed(() => {
-  const entry = getEntry(directoryPath.value);
+  const entry = getEntry(directoryPath.value, {
+    showAutomergeFiles: settings.value.showAutomergeFiles,
+  });
   if (entry instanceof DomainError) {
     return entry;
   }
