@@ -2,7 +2,7 @@
 import { computed, ref } from 'vue';
 import { MDDialog } from '@shared/ui/Dialog';
 import type { EntryPath } from '@shared/lib/fileSystem';
-import { stringPath } from '@shared/api/directories/directoriesStoreService';
+import { stringPath } from '@shared/api/directories';
 
 const { path } = defineProps<{
   path: EntryPath;

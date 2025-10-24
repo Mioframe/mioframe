@@ -31,6 +31,7 @@
     "focus-trap": "^7.6.5",
     "idb-keyval": "^6.2.2",
     "ix": "^7.0.0",
+    "ky": "^1.13.0",
     "match-sorter": "^8.1.0",
     "material-symbols": "latest",
     "modern-normalize": "^3.0.1",

@@ -1,6 +1,6 @@
 import type { EntryPath, EntryPathString } from '@shared/lib/fileSystem';
-import { stringPath } from './directoriesStoreService';
 import { DomainError } from '@shared/lib/error';
+import { stringPath } from './path';
 
 export class EntryNotFoundError extends DomainError {
   constructor(path: EntryPath | EntryPathString) {

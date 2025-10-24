@@ -4,7 +4,6 @@ import {
   toRefs,
   useStorage,
 } from '@vueuse/core';
-import { createLogger } from '../logger';
 import { computed, ref, watchEffect } from 'vue';
 import type { GOOGLE_DRIVE_SCOPE, GOOGLE_SCOPES } from './utils';
 import {
@@ -25,11 +24,7 @@ const gapi = undefined;
 // eslint-disable-next-line @typescript-eslint/no-unused-vars -- to protect typing
 const google = undefined;
 
-const { debug, watchDebug } = createLogger('useGoogleApi');
-
 export const useGoogleApi = createGlobalState(() => {
-  debug('useGoogleApi');
-
   const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
 
   const { gAuthTokenState: tokenResponse, tokenReceiptTime } = toRefs(
@@ -55,7 +50,6 @@ export const useGoogleApi = createGlobalState(() => {
   const gapi = asyncComputed(() => loadGAPI(), undefined, { lazy: true });
 
   watchEffect(() => {
-    debug('watchEffect', 'setToken', tokenResponse.value);
     gapi.value?.client.setToken(tokenResponse.value);
   });
 
@@ -109,13 +103,9 @@ export const useGoogleApi = createGlobalState(() => {
   const requestAccess = async (
     ...scopes: [GOOGLE_SCOPES, ...GOOGLE_SCOPES[]]
   ) => {
-    debug('requestAccess');
-
     const google = await loadGoogle();
 
     const firstCheck = checkGranted(google, ...scopes);
-
-    debug('requestAccess', { firstCheck });
 
     if (!firstCheck) {
       if (!clientId) {
@@ -125,8 +115,6 @@ export const useGoogleApi = createGlobalState(() => {
       await requestToken(...scopes);
 
       const secondCheck = checkGranted(google, ...scopes);
-
-      debug('requestAccess', { secondCheck });
 
       return secondCheck;
     }
@@ -194,19 +182,14 @@ export const useGoogleApi = createGlobalState(() => {
 
   const googleEvaluating = ref(false);
   const google = asyncComputed(() => loadGoogle(), undefined, {
-    // todo: переделать asyncComputed?
     lazy: true,
     evaluating: googleEvaluating,
   });
 
   const userInfoEvaluating = ref(false);
 
-  watchDebug('userInfoEvaluating', userInfoEvaluating);
-
   const userInfo = asyncComputed(
     async () => {
-      debug('computed userInfo');
-
       const userinfo = oauth2.value?.userinfo;
 
       if (
@@ -217,11 +200,8 @@ export const useGoogleApi = createGlobalState(() => {
           USERINFO_SCOPE.userinfoProfile,
         )
       ) {
-        debug('computed userInfo', { oauth2: oauth2.value });
-
         if (userinfo) {
           const { result } = await userinfo.get();
-          debug('computed userInfo', { result });
           return result;
         }
       }
