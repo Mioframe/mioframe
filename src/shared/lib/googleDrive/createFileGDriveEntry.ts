@@ -1,6 +1,6 @@
 import type { DirectoryFSEntry, FileFSEntry } from '../fileSystem';
 import { copyFileTo, moveFileTo } from '../fileSystem/utils';
-import type { AdvancedGDrive } from '../googleApi/types';
+import { api, type AuthParams } from './api';
 import { createGDriveEntry } from './gDriveEntry';
 import type {
   DirectoryGDriveEntry,
@@ -9,7 +9,7 @@ import type {
 } from './types';
 
 export const createFileGDriveEntry = (
-  gDrive: AdvancedGDrive,
+  auth: AuthParams,
   fileId: string,
   name: string,
   parentEntry: DirectoryGDriveEntry,
@@ -18,7 +18,7 @@ export const createFileGDriveEntry = (
   const currentFileId = fileId;
   const currentName = name;
 
-  const currentEntry = createGDriveEntry(gDrive, name, fileId, parentEntry);
+  const currentEntry = createGDriveEntry(auth, name, fileId, parentEntry);
 
   const rename = async (newName: string): Promise<FileGDriveEntry> => {
     await currentEntry.rename(newName);
@@ -27,16 +27,15 @@ export const createFileGDriveEntry = (
   };
 
   const read = async (): Promise<File> =>
-    await gDrive.downloadFile(currentFileId, currentName);
+    await api.files.download(auth, currentFileId, currentName);
 
   const copyTo = async (
     dest: DirectoryFSEntry | DirectoryGDriveEntry,
   ): Promise<FileFSEntry> => {
-    if ('gDrive' in dest) {
+    if ('gDriveFileId' in dest) {
       const {
         result: { id: newFileId, name: newName },
-      } = await dest.gDrive.files.copy({
-        fileId: currentFileId,
+      } = await api.files.copy(auth, currentFileId, {
         resource: {
           name: currentName,
           parents: [dest.gDriveFileId],
@@ -44,7 +43,7 @@ export const createFileGDriveEntry = (
       });
 
       if (newFileId && newName) {
-        return createFileGDriveEntry(gDrive, newFileId, newName, dest, space);
+        return createFileGDriveEntry(auth, newFileId, newName, dest, space);
       }
     }
     return await copyFileTo(dest, currentFileGDriveEntry);
@@ -53,14 +52,10 @@ export const createFileGDriveEntry = (
   const moveTo = async (
     dest: DirectoryFSEntry | DirectoryGDriveEntry,
   ): Promise<FileFSEntry> => {
-    if ('gDrive' in dest) {
-      await dest.gDrive.files.update(
-        {
-          fileId: currentFileId,
-          addParents: dest.gDriveFileId,
-        },
-        {},
-      );
+    if ('gDriveFileId' in dest) {
+      await api.files.update(auth, currentFileId, {
+        addParents: [dest.gDriveFileId],
+      });
 
       return currentFileGDriveEntry;
     }
@@ -81,7 +76,6 @@ export const createFileGDriveEntry = (
     read,
     copyTo,
     moveTo,
-    gDrive,
     get gDriveFileId() {
       return currentFileId;
     },

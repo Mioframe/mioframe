@@ -4,7 +4,6 @@ import type {
   FileFSEntry,
   GeneralFSEntry,
 } from '../fileSystem';
-import type { AdvancedGDrive } from '../googleApi/types';
 
 export type GDriveDirectory = {
   getName: () => string;
@@ -50,13 +49,13 @@ export interface GDriveSpaces
 export interface GDriveEntry extends GeneralFSEntry {}
 
 export interface DirectoryGDriveEntry extends DirectoryFSEntry {
-  gDrive: AdvancedGDrive;
+  // gDrive: AdvancedGDrive;
   gDriveFileId: string;
   gDriveSpace: GDriveSpace;
 }
 
 export interface FileGDriveEntry extends FileFSEntry {
-  gDrive: AdvancedGDrive;
+  // gDrive: AdvancedGDrive;
   gDriveFileId: string;
   gDriveSpace: GDriveSpace;
 }

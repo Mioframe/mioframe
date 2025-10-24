@@ -36,6 +36,7 @@ jobs:
         run: pnpm install
       - name: Build
         env:
+          BASE_URL: ${{ github.event.repository.name }}
           VITE_GOOGLE_CLIENT_ID: ${{ secrets.VITE_GOOGLE_CLIENT_ID }}
           VITE_GOOGLE_API_KEY: ${{ secrets.VITE_GOOGLE_API_KEY }}
           VITE_GOOGLE_PROJECT_NUMBER: ${{ secrets.VITE_GOOGLE_PROJECT_NUMBER }}
