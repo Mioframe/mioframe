@@ -1,5 +1,5 @@
 import type { PluginOption } from 'vite';
-import { defineConfig } from 'vite';
+import { defineConfig, loadEnv } from 'vite';
 import vue from '@vitejs/plugin-vue';
 import wasm from 'vite-plugin-wasm';
 import topLevelAwait from 'vite-plugin-top-level-await';
@@ -12,6 +12,8 @@ import TurboConsole from 'unplugin-turbo-console/vite';
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode, isPreview }) => {
+  const env = loadEnv(mode, process.cwd(), '');
+
   const sslPlugins = mode === 'development' || isPreview ? [basicSsl()] : [];
   const pwaPlugins =
     mode === 'production' || isPreview
@@ -35,7 +37,7 @@ export default defineConfig(({ mode, isPreview }) => {
           sentryVitePlugin({
             org: 'vb-ak',
             project: 'beaver',
-            authToken: process.env.SENTRY_AUTH_TOKEN,
+            authToken: env.SENTRY_AUTH_TOKEN,
             telemetry: false,
           }),
         ]
@@ -46,7 +48,7 @@ export default defineConfig(({ mode, isPreview }) => {
   console.log('\n__BUILD_DATE__:', dateNow);
 
   return {
-    base: '',
+    base: env.BASE_URL,
     plugins: [
       wasm(),
       topLevelAwait(),

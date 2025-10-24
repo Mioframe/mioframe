@@ -4,8 +4,6 @@ import type {
   DirectoryFSEntry,
 } from '../fileSystem/DirectoryFSEntry';
 import { copyDirectoryTo, moveDirectoryTo } from '../fileSystem/utils';
-import type { AdvancedGDrive } from '../googleApi/types';
-import { createLogger } from '../logger';
 import { WeakValueMap } from '../WeakValueMap';
 import { createFileGDriveEntry } from './createFileGDriveEntry';
 import { createGDriveEntry } from './gDriveEntry';
@@ -15,13 +13,13 @@ import {
   type DirectoryGDriveEntry,
   type FileGDriveEntry,
 } from './types';
-
-const { debug } = createLogger('createDirectoryGDriveEntry');
+import type { AuthParams } from './api';
+import { api, SPACE } from './api';
 
 const cacheDirectories = new WeakValueMap<string, DirectoryGDriveEntry>();
 
 export const createDirectoryGDriveEntry = (
-  gDrive: AdvancedGDrive,
+  auth: AuthParams,
   space = GDriveSpace.appDataFolder,
   gDriveFolderId?: string,
   name?: string,
@@ -38,7 +36,7 @@ export const createDirectoryGDriveEntry = (
   const currentName = name ?? space;
 
   const currentEntry = createGDriveEntry(
-    gDrive,
+    auth,
     currentName,
     currentGDriveFolderId,
     parentEntry,
@@ -55,13 +53,6 @@ export const createDirectoryGDriveEntry = (
   async function* entries(): AsyncIterableIterator<
     [string, DirectoryGDriveEntry | FileGDriveEntry]
   > {
-    const spaces =
-      space === GDriveSpace.appDataFolder
-        ? 'appDataFolder'
-        : space === GDriveSpace.MyDrive
-          ? 'drive'
-          : undefined;
-
     let q = `'${currentGDriveFolderId}' in parents`;
     if (
       space === GDriveSpace.SharedWithMe &&
@@ -70,14 +61,14 @@ export const createDirectoryGDriveEntry = (
       q = 'sharedWithMe';
     }
 
-    // todo: вынести формирование запроса в отдельную функцию
-
     const {
       result: { files = [] },
-    } = await gDrive.files.list({
+    } = await api.files.list(auth, {
       q,
-      fields: 'files(id, name, mimeType)',
-      spaces,
+      spaces:
+        space !== GDriveSpace.SharedWithMe
+          ? [space === GDriveSpace.MyDrive ? SPACE.drive : SPACE.appDataFolder]
+          : undefined,
     });
 
     for (const { name, id: fileId, mimeType } of files) {
@@ -86,7 +77,7 @@ export const createDirectoryGDriveEntry = (
           yield [
             name,
             createDirectoryGDriveEntry(
-              gDrive,
+              auth,
               space,
               fileId,
               name,
@@ -97,7 +88,7 @@ export const createDirectoryGDriveEntry = (
           yield [
             name,
             createFileGDriveEntry(
-              gDrive,
+              auth,
               fileId,
               name,
               currentDirectoryGDriveEntry,
@@ -111,7 +102,7 @@ export const createDirectoryGDriveEntry = (
   const createDirectory = async (name: string) => {
     const {
       result: { id: folderId },
-    } = await gDrive.files.create({
+    } = await api.files.create(auth, {
       resource: {
         name,
         mimeType: GOOGLE_FOLDER_MIME_TYPE,
@@ -121,7 +112,7 @@ export const createDirectoryGDriveEntry = (
 
     if (folderId) {
       const directoryEntry = createDirectoryGDriveEntry(
-        gDrive,
+        auth,
         space,
         folderId,
         name,
@@ -143,7 +134,7 @@ export const createDirectoryGDriveEntry = (
   ): Promise<FileGDriveEntry> => {
     const {
       result: { id: fileId },
-    } = await gDrive.files.create({
+    } = await api.files.create(auth, {
       resource: {
         name,
         parents: [currentGDriveFolderId],
@@ -153,11 +144,11 @@ export const createDirectoryGDriveEntry = (
       throw new Error('failed to create file');
     }
     if (file) {
-      await gDrive.uploadFile(fileId, file);
+      await api.files.upload(auth, fileId, file);
     }
 
     const fileEntry: FileGDriveEntry = createFileGDriveEntry(
-      gDrive,
+      auth,
       fileId,
       name,
       currentDirectoryGDriveEntry,
@@ -172,12 +163,9 @@ export const createDirectoryGDriveEntry = (
   };
 
   const removeByName = async (name: string) => {
-    debug('removeByName', { name });
     for await (const [fileName, entry] of entries()) {
       if (fileName === name) {
-        debug('removeByName', { name, entry });
-
-        await gDrive.files.delete({ fileId: entry.gDriveFileId }); // FIXME: происходит двойной запрос на удаление
+        await api.files.delete(auth, entry.gDriveFileId);
 
         setForListenersOfRemovingEntry.forEach((listener) => listener(name));
 
@@ -235,14 +223,10 @@ export const createDirectoryGDriveEntry = (
   const moveTo = async (
     dest: DirectoryFSEntry | DirectoryGDriveEntry,
   ): Promise<DirectoryFSEntry> => {
-    if ('gDrive' in dest) {
-      await dest.gDrive.files.update(
-        {
-          fileId: currentGDriveFolderId,
-          addParents: dest.gDriveFileId,
-        },
-        {},
-      );
+    if ('gDriveFileId' in dest) {
+      await api.files.update(auth, currentGDriveFolderId, {
+        addParents: [dest.gDriveFileId],
+      });
 
       return currentDirectoryGDriveEntry;
     }
@@ -253,11 +237,10 @@ export const createDirectoryGDriveEntry = (
   const copyTo = async (
     dest: DirectoryFSEntry | DirectoryGDriveEntry,
   ): Promise<DirectoryFSEntry> => {
-    if ('gDrive' in dest) {
+    if ('gDriveFileId' in dest) {
       const {
         result: { id: fileId, name },
-      } = await dest.gDrive.files.copy({
-        fileId: currentGDriveFolderId,
+      } = await api.files.copy(auth, currentGDriveFolderId, {
         resource: {
           name: currentName,
           parents: [dest.gDriveFileId],
@@ -265,7 +248,7 @@ export const createDirectoryGDriveEntry = (
       });
 
       return createDirectoryGDriveEntry(
-        gDrive,
+        auth,
         dest.gDriveSpace,
         fileId,
         name,
@@ -305,7 +288,6 @@ export const createDirectoryGDriveEntry = (
     on,
     copyTo,
     moveTo,
-    gDrive,
     gDriveFileId: currentGDriveFolderId,
     gDriveSpace: space,
   };

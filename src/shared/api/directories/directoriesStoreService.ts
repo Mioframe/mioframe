@@ -1,3 +1,4 @@
+import { computed, reactive, watchEffect } from 'vue';
 import {
   directoryFSEntryRef,
   type DirectoryFSEntryRef,
@@ -16,9 +17,8 @@ import {
   type StrictRecord,
 } from '@shared/lib/strictRecord';
 import { createGlobalState, until } from '@vueuse/core';
-import { isBoolean, isString } from 'es-toolkit';
-import { isArray, toString } from 'es-toolkit/compat';
-import { computed, reactive, watchEffect } from 'vue';
+import { isBoolean } from 'es-toolkit';
+import { isArray } from 'es-toolkit/compat';
 import type { DirectoryDescription, EntryDescription } from './types';
 import { EntryNotDirectoryError, EntryNotFoundError, OPFSName } from './types';
 import { defineSubscribeByQueryService } from '@shared/lib/subscriptions/subscribeService';
@@ -26,16 +26,7 @@ import { DomainError } from '@shared/lib/error';
 import { useIDBKeyval } from '@vueuse/integrations/useIDBKeyval';
 import { zodCheck } from '@shared/lib/validateZodScheme';
 import { zodAutomergeFileName } from '@shared/lib/fsStorageAdapter';
-
-export const PATH_SEPARATOR = '/';
-
-export const pathToString = (path: EntryPath) => path.join(PATH_SEPARATOR);
-export const stringToPath = (path: EntryPathString) =>
-  path.split(PATH_SEPARATOR).map(toString);
-export const entryPath = (rawPath: EntryPath | EntryPathString) =>
-  isString(rawPath) ? stringToPath(rawPath) : rawPath;
-export const stringPath = (rawPath: EntryPath | EntryPathString) =>
-  isArray(rawPath) ? pathToString(rawPath) : rawPath;
+import { entryPath, PATH_SEPARATOR, pathToString, stringPath } from './path';
 
 export const useDirectoryStoreService = createGlobalState(() => {
   const stateEntries: StrictRecord<
@@ -259,11 +250,15 @@ export const useDirectoryStoreService = createGlobalState(() => {
     const rootName = path.at(0);
 
     if (rootName) {
+      // todo: если root=google, rootEntry берём из декорации google
+
       const rootPathString = stringPath([rootName]);
 
       if (loadingStatus.has(rootPathString)) {
         await waitCachedEntry(pathString);
       }
+
+      // fixme: вынести получение root в отдельный метод, т.к. это будет точка входа провайдеров. текущий метод оставить вариантом по умолчанию(т.е. если путь не от провайдера)
 
       const rootEntry = getCachedEntry(rootPathString);
 

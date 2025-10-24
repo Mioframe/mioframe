@@ -1,8 +1,8 @@
-import type { AdvancedGDrive } from '../googleApi/types';
+import { api, type AuthParams } from './api';
 import type { DirectoryGDriveEntry } from './types';
 
 export const createGDriveEntry = (
-  gDrive: AdvancedGDrive,
+  auth: AuthParams,
   name: string,
   fileId: string,
   parentEntry?: DirectoryGDriveEntry,
@@ -17,12 +17,9 @@ export const createGDriveEntry = (
   };
 
   const rename = async (newName: string): Promise<void> => {
-    await gDrive.files.update(
-      { fileId },
-      {
-        name: newName,
-      },
-    );
+    await api.files.update(auth, fileId, {
+      name: newName,
+    });
 
     currentName = newName;
   };

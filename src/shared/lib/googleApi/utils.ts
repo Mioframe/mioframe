@@ -1,8 +1,5 @@
-import { fileTypeFromBuffer } from 'file-type';
 import type { AdvancedGDrive } from './types';
-import { createLogger } from '../logger';
-
-const { debug } = createLogger('google api utils');
+import { api } from '../googleDrive/api';
 
 let gapi: typeof window.gapi | undefined = undefined;
 
@@ -12,7 +9,6 @@ let gapi: typeof window.gapi | undefined = undefined;
  */
 export const loadGAPI = async (): Promise<typeof window.gapi> =>
   new Promise<typeof window.gapi>((resolve) => {
-    debug('loadGAPI');
     if (gapi) {
       resolve(gapi);
       return;
@@ -38,8 +34,6 @@ let oauth2: typeof window.gapi.client.oauth2 | undefined = undefined;
 export const loadOauth2 = async (
   clientId: string,
 ): Promise<typeof window.gapi.client.oauth2 | undefined> => {
-  debug('loadOauth2', 'start');
-
   if (!oauth2) {
     const gapi = await loadGAPI();
 
@@ -60,8 +54,6 @@ export const loadOauth2 = async (
     });
     oauth2 = gapi.client.oauth2;
   }
-
-  debug('loadOauth2', 'finish');
 
   return oauth2;
 };
@@ -84,62 +76,32 @@ export const loadGDrive = async (
 
     gDrive = {
       ...g.client.drive,
+      /**
+       * @deprecated
+       */
       uploadFile: async (fileId: string, file: FileSystemWriteChunkType) => {
-        let body: Blob;
-
-        if (typeof file === 'string') {
-          body = new Blob([file], { type: 'text/plain' });
-        } else if (file instanceof Blob) {
-          body = file;
-        } else if (file instanceof ArrayBuffer || ArrayBuffer.isView(file)) {
-          const buffer =
-            file instanceof ArrayBuffer
-              ? new Uint8Array(file)
-              : new Uint8Array(file.buffer);
-          const mimeTypeInfo = await fileTypeFromBuffer(buffer);
-          const contentType = mimeTypeInfo
-            ? mimeTypeInfo.mime
-            : 'application/octet-stream';
-          body = new Blob([buffer], { type: contentType });
-        } else {
-          throw new Error('Unsupported file type');
-        }
-
-        const response = await fetch(
-          `https://www.googleapis.com/upload/drive/v3/files/${fileId}?uploadType=media&fields=id,version,name`,
+        return api.files.upload(
           {
-            method: 'PATCH',
-            headers: {
-              'Content-Type': body.type,
-              'Content-Length': body.size.toString(),
-              Authorization: `Bearer ${g.auth.getToken().access_token}`,
-            },
-            body,
+            YOUR_ACCESS_TOKEN: g.auth.getToken().access_token,
           },
+          fileId,
+          file,
         );
-
-        return response;
       },
+      /**
+       * @deprecated
+       */
       downloadFile: async (
         fileId: string,
         name: string = 'file',
       ): Promise<File> => {
-        const response = await fetch(
-          `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`,
+        return api.files.download(
           {
-            headers: new Headers({
-              Authorization: `Bearer ${g.auth.getToken().access_token}`,
-            }),
+            YOUR_ACCESS_TOKEN: g.auth.getToken().access_token,
           },
+          fileId,
+          name,
         );
-
-        const blob = await response.blob();
-
-        const file = new File([blob], name, {
-          type: blob.type,
-        });
-
-        return file;
       },
       // todo: добавить популярные методы с запросом прав доступа
     };
@@ -191,8 +153,6 @@ export const requestAccessToken = async (
 ) => {
   return new Promise<google.accounts.oauth2.TokenResponse>(
     (resolve, reject) => {
-      debug('requestAccessToken', { scopes });
-
       resolveRequestAccess.push({ resolve, reject });
 
       let token: google.accounts.oauth2.TokenResponse | undefined = undefined;
