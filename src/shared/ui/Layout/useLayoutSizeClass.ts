@@ -2,31 +2,38 @@ import type { MaybeComputedElementRef } from '@vueuse/core';
 import { useElementSize } from '@vueuse/core';
 import { computed } from 'vue';
 
-export enum LayoutClass {
-  Compact = 'compact',
-  Medium = 'medium',
-  Expanded = 'expanded',
-  Large = 'large',
-  ExtraLarge = 'extraLarge',
+export enum LAYOUT_CLASS {
+  compact = 'compact',
+  medium = 'medium',
+  expanded = 'expanded',
+  large = 'large',
+  extraLarge = 'extraLarge',
 }
+
+export const LAYOUT_MIN_WIDTH = {
+  medium: 600,
+  expanded: 840,
+  large: 1200,
+  extraLarge: 1600,
+};
 
 export const useLayoutSizeClass = (target: MaybeComputedElementRef) => {
   const { width: layoutWidth } = useElementSize(target);
 
-  const layoutClass = computed((): LayoutClass => {
-    if (layoutWidth.value < 600) {
-      return LayoutClass.Compact;
+  const layoutClass = computed((): LAYOUT_CLASS => {
+    if (layoutWidth.value < LAYOUT_MIN_WIDTH.medium) {
+      return LAYOUT_CLASS.compact;
     }
-    if (layoutWidth.value < 840) {
-      return LayoutClass.Medium;
+    if (layoutWidth.value < LAYOUT_MIN_WIDTH.expanded) {
+      return LAYOUT_CLASS.medium;
     }
-    if (layoutWidth.value < 1200) {
-      return LayoutClass.Expanded;
+    if (layoutWidth.value < LAYOUT_MIN_WIDTH.large) {
+      return LAYOUT_CLASS.expanded;
     }
-    if (layoutWidth.value < 1600) {
-      return LayoutClass.Large;
+    if (layoutWidth.value < LAYOUT_MIN_WIDTH.extraLarge) {
+      return LAYOUT_CLASS.large;
     }
-    return LayoutClass.ExtraLarge;
+    return LAYOUT_CLASS.extraLarge;
   });
 
   return {

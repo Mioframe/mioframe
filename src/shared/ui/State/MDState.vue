@@ -16,6 +16,7 @@ import { useFocusIndicator } from './useFocusIndicator';
 import { useRipple } from './useRipple';
 import { usePressed } from './usePressed';
 import { useLastHover } from '@shared/lib/useLastHover';
+import MDLayer from './MDLayer.vue';
 
 const {
   is = 'div',
@@ -144,7 +145,13 @@ useRipple(computed(() => (enableRipple.value ? refEl.value : undefined)));
     :draggable="draggable ? 'true' : undefined"
     :for="labelFor"
   >
-    <div class="md-state__layer" />
+    <MDLayer
+      class="md-state__layer"
+      :hover="userHover"
+      :focused="userFocused"
+      :pressed="durationPressedState"
+      :drag="isDrag"
+    />
 
     <div class="md-state__target" />
 
@@ -157,6 +164,7 @@ useRipple(computed(() => (enableRipple.value ? refEl.value : undefined)));
 <style lang="css" scoped>
 .md-state {
   --md-state-display: initial;
+  --md-state-flex-direction: initial;
   --md-state-box-shadow: initial;
   --md-state-outline-color: initial;
 
@@ -216,11 +224,6 @@ useRipple(computed(() => (enableRipple.value ? refEl.value : undefined)));
     inset: 0;
     width: var(--md-state-bounding-width);
     height: var(--md-state-bounding-height);
-    border-radius: inherit;
-    background: none;
-    background-color: rgb(from var(--md-content-color) r g b / 0);
-    transition-property: background, background-color;
-    transition-duration: var(--md-sys-motion-duration-short4, 0.2s);
   }
 
   &__content {
@@ -233,6 +236,7 @@ useRipple(computed(() => (enableRipple.value ? refEl.value : undefined)));
     display: var(--md-state-display);
     align-items: var(--md-state-align-items);
     justify-content: var(--md-state-justify-content);
+    flex-direction: var(--md-state-flex-direction);
 
     height: var(--md-state-height);
     min-height: var(--md-state-min-height);
@@ -279,20 +283,8 @@ useRipple(computed(() => (enableRipple.value ? refEl.value : undefined)));
   &.md-state_hover {
     will-change: border-radius;
 
-    > .md-state__layer {
-      will-change: background-color;
-
-      background-color: rgb(from var(--md-content-color) r g b / 8%);
-    }
-
     > .md-state__content {
       will-change: border-radius;
-    }
-  }
-
-  &.md-state_pressed {
-    > .md-state__layer {
-      background-color: rgb(from var(--md-content-color) r g b / 10%);
     }
   }
 
@@ -300,10 +292,6 @@ useRipple(computed(() => (enableRipple.value ? refEl.value : undefined)));
   &.md-state_focused {
     outline: none;
     z-index: 2;
-
-    > .md-state__layer {
-      background-color: rgb(from var(--md-content-color) r g b / 10%);
-    }
   }
 
   &.md-state_drag,
@@ -315,11 +303,6 @@ useRipple(computed(() => (enableRipple.value ? refEl.value : undefined)));
     box-shadow: var(--md-sys-elevation-level2);
     z-index: 2;
     border-radius: 6step !important;
-
-    > .md-state__layer {
-      /* transition-duration: 0s; */
-      background-color: rgb(from var(--md-content-color) r g b / 16%);
-    }
   }
 
   &.md-state_dragged-ghost {

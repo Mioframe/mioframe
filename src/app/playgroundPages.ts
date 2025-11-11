@@ -68,4 +68,14 @@ export const playgroundPages: PlaygroundPage[] = [
     component: () =>
       import('@shared/lib/teleportContainer/TeleportContainerPlayground.vue'),
   },
+  {
+    name: 'MDNavigationRail',
+    component: () =>
+      import('@shared/ui/Navigation/rail/MDNavigationRailPlayground.vue'),
+  },
+  {
+    name: 'MDNavigationBar',
+    component: () =>
+      import('@shared/ui/Navigation/bar/MDNavigationBarPlayground.vue'),
+  },
 ];
