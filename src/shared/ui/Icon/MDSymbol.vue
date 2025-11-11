@@ -3,7 +3,9 @@ import { computed, toRefs } from 'vue';
 import { useIconStates } from './useMaterialDesignSymbols';
 
 const props = defineProps<{
-  // from https://fonts.google.com/icons
+  /**
+   * name from https://fonts.google.com/icons
+   */
   name: string;
 }>();
 
@@ -18,7 +20,7 @@ useLoadSymbol(name);
 
 <template>
   <i
-    class="md-symbol md material-symbols-rounded"
+    class="md-symbol material-symbols-rounded"
     :class="[{ 'md-symbol_not-ready': !ready }]"
     translate="no"
     aria-hidden="true"
@@ -29,11 +31,31 @@ useLoadSymbol(name);
 
 <style scoped>
 .md-symbol {
-  --md-symbol-size: inherit;
-  --md-symbol-fill: inherit;
-  --md-symbol-wght: inherit;
-  --md-symbol-opsz: inherit;
-  --md-symbol-grad: inherit;
+  @property --md-symbol-size {
+    syntax: '<absolute-size> | <relative-size> | <length-percentage [0,∞]> | math';
+    inherits: false;
+    initial-value: 24px;
+  }
+  @property --md-symbol-fill {
+    syntax: '<number>';
+    inherits: false;
+    initial-value: 0;
+  }
+  @property --md-symbol-wght {
+    syntax: '<number>';
+    inherits: false;
+    initial-value: 400;
+  }
+  @property --md-symbol-opsz {
+    syntax: '<number>';
+    inherits: false;
+    initial-value: 24;
+  }
+  @property --md-symbol-grad {
+    syntax: '<number>';
+    inherits: false;
+    initial-value: 0;
+  }
 
   font-variation-settings:
     'FILL' var(--md-symbol-fill, 0),
@@ -43,12 +65,16 @@ useLoadSymbol(name);
 
   font-size: var(--md-symbol-size, 24px);
   opacity: 1;
+  overflow: hidden;
+  transition-property: font-variation-settings, font-size;
+  transition-duration: 0.1s;
+  color: var(--md-content-color);
+  display: inline-block;
+  width: var(--md-symbol-size, 24px);
+  height: var(--md-symbol-size, 24px);
 
   &_not-ready {
-    display: inline-block;
     opacity: 0;
-    width: 0;
-    overflow: hidden;
   }
 }
 </style>
