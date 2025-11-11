@@ -1,10 +1,26 @@
-<script setup lang="ts">
+<script setup lang="ts" generic="NB extends NavigationButton">
 import { computed, watchEffect, useTemplateRef } from 'vue';
-import { useLayoutSizeClass, LayoutClass } from './useLayoutSizeClass';
+import {
+  useLayoutSizeClass,
+  LAYOUT_CLASS,
+  LAYOUT_MIN_WIDTH,
+} from './useLayoutSizeClass';
 import { useCssVar } from '@vueuse/core';
 import { SPLIT_VIEW } from './config';
+import { MDNavigationBar, MDNavigationRail } from '../Navigation';
+import type { NavigationButton } from '../Navigation';
 
-const slots = defineSlots<{
+const props = defineProps<{
+  navigationButtons?: NB[];
+  activeNavigationButton?: NB;
+  hasMenuButton?: boolean;
+}>();
+
+const emit = defineEmits<{
+  clickNavigation: [button: NB];
+}>();
+
+defineSlots<{
   navigation: () => unknown;
   [SPLIT_VIEW.second]: () => unknown;
   [SPLIT_VIEW.main]: (p: { splitView: boolean }) => unknown;
@@ -12,15 +28,15 @@ const slots = defineSlots<{
 
 const el = useTemplateRef('el');
 
-const { layoutClass } = useLayoutSizeClass(el);
+const { layoutClass, layoutWidth } = useLayoutSizeClass(el);
 
 const isShowFirstPane = computed(
-  () => layoutClass.value !== LayoutClass.Compact,
+  () => layoutClass.value !== LAYOUT_CLASS.compact,
 );
 
 const firstPaneSize = computed((): number => {
   if (isShowFirstPane.value) {
-    if (layoutClass.value === LayoutClass.Medium) {
+    if (layoutClass.value === LAYOUT_CLASS.medium) {
       return 50;
     }
     return 30;
@@ -38,27 +54,56 @@ watchEffect(() => {
 
 const windowClassModifier = computed(() => {
   switch (layoutClass.value) {
-    case LayoutClass.Compact:
+    case LAYOUT_CLASS.compact:
       return 'md-layer_compact';
-    case LayoutClass.Medium:
+    case LAYOUT_CLASS.medium:
       return 'md-layer_medium';
-    case LayoutClass.Expanded:
+    case LAYOUT_CLASS.expanded:
       return 'md-layer_expanded';
-    case LayoutClass.Large:
+    case LAYOUT_CLASS.large:
       return 'md-layer_large';
-    case LayoutClass.ExtraLarge:
+    case LAYOUT_CLASS.extraLarge:
       return 'md-layer_extra-large';
     default:
       return undefined;
   }
 });
+
+const showRailNavigation = computed(
+  () =>
+    props.navigationButtons?.length &&
+    layoutWidth.value >= LAYOUT_MIN_WIDTH.medium,
+);
+
+const showBarNavigation = computed(
+  () =>
+    props.navigationButtons?.length &&
+    layoutWidth.value < LAYOUT_MIN_WIDTH.medium,
+);
+
+const onClickNavigation = (button: NB) => {
+  emit('clickNavigation', button);
+};
 </script>
 
 <template>
   <main ref="el" class="md md-layer" :class="[windowClassModifier]">
-    <nav v-if="!!slots.navigation" class="md-layer__navigation">
-      <slot name="navigation" />
-    </nav>
+    <MDNavigationRail
+      v-if="navigationButtons && showRailNavigation"
+      :buttons="navigationButtons"
+      class="md-layer__navigation-rail"
+      :has-menu="hasMenuButton"
+      :active="activeNavigationButton"
+      @click="onClickNavigation"
+    />
+
+    <MDNavigationBar
+      v-else-if="navigationButtons && showBarNavigation"
+      :buttons="navigationButtons"
+      :active="activeNavigationButton"
+      class="md-layer__navigation-bar"
+      @click="onClickNavigation"
+    />
 
     <section ref="bodyRef" class="md-layer__body body">
       <div v-if="isShowFirstPane" class="body__first-pane">
@@ -76,22 +121,31 @@ const windowClassModifier = computed(() => {
 .md-layer {
   flex-grow: 1;
   height: 100%;
-  display: flex;
-  flex-direction: column-reverse;
   overflow: auto;
   --md-container-color: var(--md-sys-color-surface-container);
   --md-content-color: var(--md-sys-color-on-surface);
-  container: layer / size;
+
+  display: grid;
+  grid-template:
+    'rail body' auto
+    'bar bar' min-content / min-content 1fr;
 
   &__navigation {
-    flex-grow: 1;
-    flex-shrink: 0;
+    &-rail {
+      grid-area: rail;
+    }
+    &-bar {
+      grid-area: bar;
+      z-index: 1;
+    }
   }
 
   &__body {
     flex-grow: 1;
     flex-shrink: 0;
     max-height: 100%;
+    container: layer / size;
+    grid-area: body;
   }
 }
 
