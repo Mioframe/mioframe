@@ -144,8 +144,11 @@ const onClickNavigation = (button: NB) => {
     flex-grow: 1;
     flex-shrink: 0;
     max-height: 100%;
-    container: layer / size;
     grid-area: body;
+
+    container: layer / size;
+    /* fix floating-ui https://github.com/floating-ui/floating-ui/issues/3067 */
+    contain: layout;
   }
 }
 
