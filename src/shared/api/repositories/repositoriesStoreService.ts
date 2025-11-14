@@ -2,7 +2,7 @@ import {
   useDirectoryRepoScopesWeakMap,
   type DirectoryRepo,
 } from '@shared/lib/cfrDocument/useDirectoryRepo';
-import type { EntryPath, EntryPathString } from '@shared/lib/fileSystem';
+import type { EntryPath } from '@shared/lib/fileSystem';
 import { createGlobalState } from '@vueuse/core';
 import { stringPath, useDirectoryStoreService } from '../directories';
 import type { AMDocumentId } from '@shared/lib/automerge';
@@ -15,9 +15,7 @@ export const useRepositoriesStoreService = createGlobalState(() => {
 
   const { getEntry } = useDirectoryStoreService();
 
-  const getDirectoryRepo = (
-    path: EntryPath | EntryPathString,
-  ): DirectoryRepo | DomainError => {
+  const getDirectoryRepo = (path: EntryPath): DirectoryRepo | DomainError => {
     const entry = getEntry(path);
 
     if (entry instanceof DomainError) {
@@ -35,9 +33,7 @@ export const useRepositoriesStoreService = createGlobalState(() => {
     return directoryRepo;
   };
 
-  const getDocumentIdList = (
-    path: EntryPath | EntryPathString,
-  ): AMDocumentId[] | DomainError => {
+  const getDocumentIdList = (path: EntryPath): AMDocumentId[] | DomainError => {
     const repo = getDirectoryRepo(path);
 
     if (repo instanceof DomainError) {
@@ -48,13 +44,10 @@ export const useRepositoriesStoreService = createGlobalState(() => {
   };
 
   const subscribeDocumentIdList = defineSubscribeByQueryService(
-    (pathString: EntryPath | EntryPathString) => getDocumentIdList(pathString),
+    (path: EntryPath) => getDocumentIdList(path),
   );
 
-  const removeDocument = (
-    path: EntryPath | EntryPathString,
-    id: AMDocumentId,
-  ) => {
+  const removeDocument = (path: EntryPath, id: AMDocumentId) => {
     const repo = getDirectoryRepo(path);
 
     if (repo instanceof Error) {
@@ -64,10 +57,7 @@ export const useRepositoriesStoreService = createGlobalState(() => {
     repo.remove(id);
   };
 
-  const createDocument = (
-    path: EntryPath | EntryPathString,
-    document: CFRDocumentContent,
-  ) => {
+  const createDocument = (path: EntryPath, document: CFRDocumentContent) => {
     const repo = getDirectoryRepo(path);
 
     if (repo instanceof Error) {

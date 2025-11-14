@@ -3,11 +3,11 @@ import { computed, ref, toRefs } from 'vue';
 import { MDDialog } from '@shared/ui/Dialog';
 import type { AMDocumentId } from '@shared/lib/automerge/automergeTypes';
 import { useDocumentRepoClient } from '@entity/documentRepo';
-import type { EntryPath, EntryPathString } from '@shared/lib/fileSystem';
+import type { EntryPath } from '@shared/lib/fileSystem';
 import { useCFRDocumentClient } from '@entity/cfrDocument';
 
 const props = defineProps<{
-  path: EntryPath | EntryPathString;
+  path: EntryPath;
   documentId: AMDocumentId;
 }>();
 
@@ -38,9 +38,7 @@ const onClickCancel = () => {
 
 const { removeDocument } = useDocumentRepoClient();
 
-const {
-  getDocumentDescription: { get: getDocumentDescription },
-} = useCFRDocumentClient();
+const { getDocumentDescription } = useCFRDocumentClient();
 
 const documentDescription = computed(() =>
   getDocumentDescription(path.value, documentId.value),

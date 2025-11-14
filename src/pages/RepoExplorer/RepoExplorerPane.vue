@@ -27,6 +27,7 @@ import { zodQuery } from './model';
 import { useMainRouter } from '@page/routes';
 import { zodToVueProps } from '@shared/lib/zodToVueProps';
 import { useLocalSettings } from '@entity/localSettings';
+import { isArray } from 'es-toolkit/compat';
 
 const props = defineProps(zodToVueProps(zodQuery));
 
@@ -102,7 +103,20 @@ const onClickCreateDocument = () => {
 
 const { getDocumentIdList } = useDocumentRepoClient();
 
-const documentIdList = computed(() => getDocumentIdList(directoryPath.value));
+const documentIdListSate = computed(() =>
+  getDocumentIdList(directoryPath.value),
+);
+
+const documentIdList = computed(() =>
+  isArray(documentIdListSate.value) ? documentIdListSate.value : undefined,
+);
+
+// todo: добавить отображение ошибки
+// const documentRepoError = computed(() =>
+//   documentIdListSate.value instanceof Error
+//     ? documentIdListSate.value
+//     : undefined,
+// );
 
 const onRemoveEntry = async (path: EntryPath) => {
   await removeEntry(path);
