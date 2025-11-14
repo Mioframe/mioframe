@@ -1,8 +1,8 @@
-import { api, type AuthParams } from './api';
+import { api, type GoogleAuthParams } from './api';
 import type { DirectoryGDriveEntry } from './types';
 
 export const createGDriveEntry = (
-  auth: AuthParams,
+  auth: GoogleAuthParams,
   name: string,
   fileId: string,
   parentEntry?: DirectoryGDriveEntry,

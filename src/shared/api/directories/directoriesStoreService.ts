@@ -23,10 +23,10 @@ import type { DirectoryDescription, EntryDescription } from './types';
 import { EntryNotDirectoryError, EntryNotFoundError, OPFSName } from './types';
 import { defineSubscribeByQueryService } from '@shared/lib/subscriptions/subscribeService';
 import { DomainError } from '@shared/lib/error';
-import { useIDBKeyval } from '@vueuse/integrations/useIDBKeyval';
 import { zodCheck } from '@shared/lib/validateZodScheme';
 import { zodAutomergeFileName } from '@shared/lib/fsStorageAdapter';
 import { entryPath, PATH_SEPARATOR, pathToString, stringPath } from './path';
+import { useLocalFileSystemDirectoryHandleStore } from './localFileSystemDirectoryHandleStore';
 
 export const useDirectoryStoreService = createGlobalState(() => {
   const stateEntries: StrictRecord<
@@ -88,28 +88,6 @@ export const useDirectoryStoreService = createGlobalState(() => {
   );
 
   const subscribeRootList = defineSubscribeService(() => rootDirectories.value);
-
-  const { data: rootFileSystemDirectoriesStore } = useIDBKeyval<
-    StrictRecord<string, FileSystemDirectoryHandle>
-  >('RootFileSystemDirectories', {});
-
-  watchEffect(() => {
-    for (const [name, handle] of strictRecordIterableEntries(
-      rootFileSystemDirectoriesStore.value,
-    )()) {
-      if (!rootDirectories.value.includes(name)) {
-        const directoryFSEntry = createLocalDirectory(handle, undefined, name);
-        addCacheEntry(directoryFSEntry);
-      }
-    }
-  });
-
-  const addRootFileSystemDirectoryHandle = (
-    handle: FileSystemDirectoryHandle,
-    name: string,
-  ): void => {
-    strictRecordSet(rootFileSystemDirectoriesStore.value, name, handle);
-  };
 
   const addWaitCacheEntry = (rawPath: EntryPath | EntryPathString): void => {
     const cached = getCachedEntry(rawPath);
@@ -250,16 +228,13 @@ export const useDirectoryStoreService = createGlobalState(() => {
     const rootName = path.at(0);
 
     if (rootName) {
-      // todo: если root=google, rootEntry берём из декорации google
-
       const rootPathString = stringPath([rootName]);
 
       if (loadingStatus.has(rootPathString)) {
         await waitCachedEntry(pathString);
       }
 
-      // fixme: вынести получение root в отдельный метод, т.к. это будет точка входа провайдеров. текущий метод оставить вариантом по умолчанию(т.е. если путь не от провайдера)
-
+      // сервисы монтируются в кэш автоматически
       const rootEntry = getCachedEntry(rootPathString);
 
       if (!rootEntry) {
@@ -399,19 +374,23 @@ export const useDirectoryStoreService = createGlobalState(() => {
     await locateEntryFromRoot(path);
   };
 
-  const mountOPFS = async () => {
-    if (!rootDirectories.value.includes(OPFSName)) {
-      const directory = await navigator.storage.getDirectory();
-      addRootFileSystemDirectoryHandle(directory, OPFSName);
+  const { store: localFileSystemDirectoryHandleStore } =
+    useLocalFileSystemDirectoryHandleStore();
+
+  const mountFileSystemDirectoryHandleStore = () => {
+    for (const [name, handle] of strictRecordIterableEntries(
+      localFileSystemDirectoryHandleStore.value,
+    )()) {
+      if (!rootDirectories.value.includes(name)) {
+        const directoryFSEntry = createLocalDirectory(handle, undefined, name);
+        addCacheEntry(directoryFSEntry);
+      }
     }
   };
 
-  setTimeout(() => {
-    void mountOPFS();
-  }, 100);
+  watchEffect(mountFileSystemDirectoryHandleStore);
 
   return {
-    addRootFileSystemDirectoryHandle,
     createDirectory,
     removeEntry,
     renameEntry,

@@ -43,15 +43,15 @@ interface ListParams {
   trashed?: boolean;
 }
 
-export interface AuthParams {
-  YOUR_API_KEY?: string;
-  YOUR_ACCESS_TOKEN: string;
+export interface GoogleAuthParams {
+  API_KEY?: string;
+  ACCESS_TOKEN: string;
 }
 
 const authorizedRequest = async <R>(
   method: Required<Options['method']>,
   url: `https://${string}`,
-  { YOUR_ACCESS_TOKEN, YOUR_API_KEY }: AuthParams,
+  { ACCESS_TOKEN, API_KEY }: GoogleAuthParams,
   options: Options = {},
   responseSchema: ZodMiniType<R>,
 ) => {
@@ -61,10 +61,10 @@ const authorizedRequest = async <R>(
       {
         method,
         headers: {
-          Authorization: `Bearer ${YOUR_ACCESS_TOKEN}`,
+          Authorization: `Bearer ${ACCESS_TOKEN}`,
         },
         searchParams: {
-          key: YOUR_API_KEY,
+          key: API_KEY,
         },
       },
       options,
@@ -78,7 +78,7 @@ const authorizedRequest = async <R>(
  * https://developers.google.com/workspace/drive/api/reference/rest/v3/files/list
  */
 const list = async (
-  auth: AuthParams,
+  auth: GoogleAuthParams,
   {
     corpora,
     driveId,
@@ -139,7 +139,7 @@ const list = async (
   );
 
 const update = (
-  auth: AuthParams,
+  auth: GoogleAuthParams,
   fileId: string,
   { name, addParents }: { name?: string; addParents?: string[] },
 ) =>
@@ -157,7 +157,7 @@ const update = (
   );
 
 const download = (
-  auth: AuthParams,
+  auth: GoogleAuthParams,
   fileId: string,
   name: string = 'file',
   onDownloadProgress?: (progress: Progress, chunk: Uint8Array) => unknown,
@@ -165,7 +165,7 @@ const download = (
   ky(`https://www.googleapis.com/drive/v3/files/${fileId}`, {
     method: 'get',
     headers: {
-      Authorization: `Bearer ${auth.YOUR_ACCESS_TOKEN}`,
+      Authorization: `Bearer ${auth.ACCESS_TOKEN}`,
     },
     searchParams: {
       alt: 'media',
@@ -181,7 +181,7 @@ const download = (
     );
 
 const create = (
-  auth: AuthParams,
+  auth: GoogleAuthParams,
   {
     resource,
   }: {
@@ -205,7 +205,7 @@ const create = (
   );
 
 const upload = async (
-  auth: AuthParams,
+  auth: GoogleAuthParams,
   fileId: string,
   file: FileSystemWriteChunkType,
   onUploadProgress?: (progress: Progress, chunk: Uint8Array) => unknown,
@@ -237,7 +237,7 @@ const upload = async (
       headers: {
         'Content-Type': body.type,
         'Content-Length': body.size.toString(),
-        Authorization: `Bearer ${auth.YOUR_ACCESS_TOKEN}`,
+        Authorization: `Bearer ${auth.ACCESS_TOKEN}`,
       },
       searchParams: {
         uploadType: 'media',
@@ -251,7 +251,7 @@ const upload = async (
   return response;
 };
 
-const remove = (auth: AuthParams, fileId: string) =>
+const remove = (auth: GoogleAuthParams, fileId: string) =>
   authorizedRequest(
     'delete',
     `https://www.googleapis.com/drive/v3/files/${fileId}`,
@@ -261,7 +261,7 @@ const remove = (auth: AuthParams, fileId: string) =>
   );
 
 const copy = (
-  auth: AuthParams,
+  auth: GoogleAuthParams,
   fileId: string,
   file: {
     resource: {

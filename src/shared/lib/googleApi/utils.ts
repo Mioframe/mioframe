@@ -82,7 +82,7 @@ export const loadGDrive = async (
       uploadFile: async (fileId: string, file: FileSystemWriteChunkType) => {
         return api.files.upload(
           {
-            YOUR_ACCESS_TOKEN: g.auth.getToken().access_token,
+            ACCESS_TOKEN: g.auth.getToken().access_token,
           },
           fileId,
           file,
@@ -97,7 +97,7 @@ export const loadGDrive = async (
       ): Promise<File> => {
         return api.files.download(
           {
-            YOUR_ACCESS_TOKEN: g.auth.getToken().access_token,
+            ACCESS_TOKEN: g.auth.getToken().access_token,
           },
           fileId,
           name,

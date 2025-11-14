@@ -1,9 +1,10 @@
-import type { ItemWithChildren } from '@shared/lib/useIterable';
 import type {
   DirectoryFSEntry,
   FileFSEntry,
   GeneralFSEntry,
+  ReadOnlyDirectoryFSEntry,
 } from '../fileSystem';
+import type { ReadOnlyStaticDirectoryFSEntry } from '../fileSystem/DirectoryFSEntry';
 
 export type GDriveDirectory = {
   getName: () => string;
@@ -43,16 +44,16 @@ export type GDriveDirectoryContent = Iterable<
   [string, GDriveDirectory | GDriveFile]
 >;
 
-export interface GDriveSpaces
-  extends ItemWithChildren<[string, GDriveDirectory | GDriveFile]> {}
-
 export interface GDriveEntry extends GeneralFSEntry {}
 
-export interface DirectoryGDriveEntry extends DirectoryFSEntry {
-  // gDrive: AdvancedGDrive;
+export interface ReadOnlyDirectoryGDriveEntry extends ReadOnlyDirectoryFSEntry {
   gDriveFileId: string;
   gDriveSpace: GDriveSpace;
 }
+
+export interface DirectoryGDriveEntry
+  extends ReadOnlyDirectoryGDriveEntry,
+    DirectoryFSEntry {}
 
 export interface FileGDriveEntry extends FileFSEntry {
   // gDrive: AdvancedGDrive;
@@ -67,3 +68,5 @@ export enum GDriveSpace {
   SharedWithMe = 'Shared With Me',
   appDataFolder = 'App Data Folder',
 }
+
+export interface RootGDriveEntry extends ReadOnlyStaticDirectoryFSEntry {}
