@@ -45,6 +45,7 @@ defineEmits<{
   display: flex;
   flex-wrap: wrap;
   pointer-events: none;
+  align-items: center;
 
   &__separator {
     display: flex;

@@ -213,11 +213,11 @@ export const useDirectoryStoreService = createGlobalState(() => {
   ): Promise<DirectoryFSEntryRef | FileFSEntry | DomainError> => {
     const pathString = stringPath(rawPath);
 
-    const oldEntry = getCachedEntry(pathString);
-
     if (loadingStatus.has(pathString)) {
       return await waitCachedEntry(pathString);
     }
+
+    const oldEntry = getCachedEntry(pathString);
 
     if (oldEntry && !loadingStatus.has(pathString)) {
       return oldEntry;

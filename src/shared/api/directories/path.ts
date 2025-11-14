@@ -1,6 +1,6 @@
 import type { EntryPath, EntryPathString } from '@shared/lib/fileSystem';
 import { isString } from 'es-toolkit';
-import { isArray } from 'es-toolkit/compat';
+import { isArray, toString } from 'es-toolkit/compat';
 
 export const PATH_SEPARATOR = '/';
 
