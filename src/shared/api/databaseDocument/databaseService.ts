@@ -1,6 +1,6 @@
 import { createGlobalState } from '@vueuse/core';
 import { useCFRDocumentService } from '../document';
-import type { EntryPath, EntryPathString } from '@shared/lib/fileSystem';
+import type { EntryPath } from '@shared/lib/fileSystem';
 import type { AMDocumentId } from '@shared/lib/automerge';
 import { zodCheck } from '@shared/lib/validateZodScheme';
 import type { DatabaseState } from '@shared/lib/databaseDocument';
@@ -26,7 +26,7 @@ export const useDatabaseDocumentService = createGlobalState(() => {
     useCFRDocumentService();
 
   const getDatabaseBody = (
-    path: EntryPath | EntryPathString,
+    path: EntryPath,
     documentId: AMDocumentId,
   ): DatabaseState | DomainError | undefined => {
     const cfrDocument = getCFRDocumentState(path, documentId);
