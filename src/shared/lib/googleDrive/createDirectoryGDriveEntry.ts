@@ -7,19 +7,22 @@ import { copyDirectoryTo, moveDirectoryTo } from '../fileSystem/utils';
 import { WeakValueMap } from '../WeakValueMap';
 import { createFileGDriveEntry } from './createFileGDriveEntry';
 import { createGDriveEntry } from './gDriveEntry';
+import type { RootGDriveEntry } from './types';
 import {
   GDriveSpace,
   GOOGLE_FOLDER_MIME_TYPE,
   type DirectoryGDriveEntry,
   type FileGDriveEntry,
 } from './types';
-import type { AuthParams } from './api';
+import type { GoogleAuthParams } from './api';
 import { api, SPACE } from './api';
+import { z } from 'zod/v4-mini';
+import { objectEntries } from '../objectEntries';
 
 const cacheDirectories = new WeakValueMap<string, DirectoryGDriveEntry>();
 
 export const createDirectoryGDriveEntry = (
-  auth: AuthParams,
+  auth: GoogleAuthParams,
   space = GDriveSpace.appDataFolder,
   gDriveFolderId?: string,
   name?: string,
@@ -295,4 +298,33 @@ export const createDirectoryGDriveEntry = (
   cacheDirectories.set(stringPath, currentDirectoryGDriveEntry);
 
   return currentDirectoryGDriveEntry;
+};
+
+export const createRootGDriveEntry = (
+  userToken: string,
+  name: string,
+): RootGDriveEntry => {
+  const authParams: GoogleAuthParams = {
+    API_KEY: import.meta.env.VITE_GOOGLE_API_KEY,
+    ACCESS_TOKEN: userToken,
+  };
+
+  function* entries(): IterableIterator<[string, DirectoryFSEntry]> {
+    for (const [, space] of objectEntries(GDriveSpace)) {
+      yield [space, createDirectoryGDriveEntry(authParams, space)] as const;
+    }
+  }
+
+  const get = (name: string) =>
+    createDirectoryGDriveEntry(authParams, z.enum(GDriveSpace).parse(name));
+
+  const gDriveRoot: RootGDriveEntry = {
+    type: 'directory',
+    entries,
+    get,
+    name,
+    path: [name],
+  };
+
+  return gDriveRoot;
 };

@@ -1,6 +1,6 @@
 import type { DirectoryFSEntry, FileFSEntry } from '../fileSystem';
 import { copyFileTo, moveFileTo } from '../fileSystem/utils';
-import { api, type AuthParams } from './api';
+import { api, type GoogleAuthParams } from './api';
 import { createGDriveEntry } from './gDriveEntry';
 import type {
   DirectoryGDriveEntry,
@@ -9,7 +9,7 @@ import type {
 } from './types';
 
 export const createFileGDriveEntry = (
-  auth: AuthParams,
+  auth: GoogleAuthParams,
   fileId: string,
   name: string,
   parentEntry: DirectoryGDriveEntry,
