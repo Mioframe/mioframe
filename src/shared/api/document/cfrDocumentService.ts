@@ -1,6 +1,6 @@
 import type { AMDocumentId } from '@shared/lib/automerge';
 import { useDocHandleScopesWeakMap } from '@shared/lib/cfrDocument/useDocHandle';
-import type { EntryPath, EntryPathString } from '@shared/lib/fileSystem';
+import type { EntryPath } from '@shared/lib/fileSystem';
 import { createGlobalState } from '@vueuse/core';
 import { useRepositoriesStoreService } from '../repositories';
 import type { CFRDocumentContent } from '@shared/lib/cfrDocument';
@@ -21,10 +21,7 @@ export const useCFRDocumentService = createGlobalState(() => {
   const { getScope: getDocumentScope } = useDocHandleScopesWeakMap();
   const { getDirectoryRepo } = useRepositoriesStoreService();
 
-  const getDocHandle = (
-    directoryPath: EntryPath | EntryPathString,
-    documentId: AMDocumentId,
-  ) => {
+  const getDocHandle = (directoryPath: EntryPath, documentId: AMDocumentId) => {
     const repo = getDirectoryRepo(directoryPath);
 
     if (repo instanceof DomainError) {
@@ -35,7 +32,7 @@ export const useCFRDocumentService = createGlobalState(() => {
   };
 
   const getCFRDocumentState = (
-    path: EntryPath | EntryPathString,
+    path: EntryPath,
     documentId: AMDocumentId,
   ): CFRDocumentContent | DomainError | undefined => {
     const docHandle = getDocHandle(path, documentId);
@@ -53,7 +50,7 @@ export const useCFRDocumentService = createGlobalState(() => {
   };
 
   const getCFRDocumentDescription = (
-    path: EntryPath | EntryPathString,
+    path: EntryPath,
     id: AMDocumentId,
   ): Omit<CFRDocumentContent, 'body'> | DomainError | undefined => {
     const doc = getCFRDocumentState(path, id);
