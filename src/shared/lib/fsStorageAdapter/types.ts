@@ -105,7 +105,7 @@ export type PartialAutomergeFileName = output<
  */
 export interface FileForStorageAdapter {
   read: () => Promisable<File>;
-  remove: () => Promisable<void>;
+  remove?: () => Promisable<void>;
 }
 
 /**
@@ -113,12 +113,16 @@ export interface FileForStorageAdapter {
  * минимальный набор методов для работы с файловой системой
  */
 export interface DirectoryForStorageAdapter {
-  entries(): AsyncIterableIterator<
-    [PropertyKey, FileForStorageAdapter | DirectoryForStorageAdapter]
-  >;
-  writeFile: (
+  entries():
+    | AsyncIterableIterator<
+        [PropertyKey, FileForStorageAdapter | DirectoryForStorageAdapter]
+      >
+    | IterableIterator<
+        [PropertyKey, FileForStorageAdapter | DirectoryForStorageAdapter]
+      >;
+  writeFile?: (
     name: string,
     file?: FileSystemWriteChunkType,
   ) => Promisable<FileForStorageAdapter>;
-  removeByName: (name: string) => Promisable<void>;
+  removeByName?: (name: string) => Promisable<void>;
 }

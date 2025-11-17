@@ -2,6 +2,7 @@ import { find } from 'ix/Ix.asynciterable';
 import type {
   DirectoryEntryEventMap,
   DirectoryFSEntry,
+  WritableDirectoryFSEntry,
 } from '../fileSystem/DirectoryFSEntry';
 import { copyDirectoryTo, moveDirectoryTo } from '../fileSystem/utils';
 import { WeakValueMap } from '../WeakValueMap';
@@ -18,6 +19,8 @@ import type { GoogleAuthParams } from './api';
 import { api, SPACE } from './api';
 import { z } from 'zod/v4-mini';
 import { objectEntries } from '../objectEntries';
+import { DomainError } from '../error';
+import { pathToString } from '@shared/api/directories';
 
 const cacheDirectories = new WeakValueMap<string, DirectoryGDriveEntry>();
 
@@ -224,21 +227,28 @@ export const createDirectoryGDriveEntry = (
   };
 
   const moveTo = async (
-    dest: DirectoryFSEntry | DirectoryGDriveEntry,
+    dest: WritableDirectoryFSEntry | DirectoryGDriveEntry,
   ): Promise<DirectoryFSEntry> => {
     if ('gDriveFileId' in dest) {
-      await api.files.update(auth, currentGDriveFolderId, {
-        addParents: [dest.gDriveFileId],
-      });
+      try {
+        await api.files.update(auth, currentGDriveFolderId, {
+          addParents: [dest.gDriveFileId],
+        });
 
-      return currentDirectoryGDriveEntry;
+        return currentDirectoryGDriveEntry;
+      } catch (cause) {
+        throw new DomainError(
+          `couldn't move "${pathToString(currentDirectoryGDriveEntry.path)}" to "${pathToString(dest.path)}"`,
+          { cause },
+        );
+      }
     }
 
     return await moveDirectoryTo(dest, currentDirectoryGDriveEntry);
   };
 
   const copyTo = async (
-    dest: DirectoryFSEntry | DirectoryGDriveEntry,
+    dest: WritableDirectoryFSEntry | DirectoryGDriveEntry,
   ): Promise<DirectoryFSEntry> => {
     if ('gDriveFileId' in dest) {
       const {
@@ -309,7 +319,7 @@ export const createRootGDriveEntry = (
     ACCESS_TOKEN: userToken,
   };
 
-  function* entries(): IterableIterator<[string, DirectoryFSEntry]> {
+  function* entries(): IterableIterator<[string, WritableDirectoryFSEntry]> {
     for (const [, space] of objectEntries(GDriveSpace)) {
       yield [space, createDirectoryGDriveEntry(authParams, space)] as const;
     }

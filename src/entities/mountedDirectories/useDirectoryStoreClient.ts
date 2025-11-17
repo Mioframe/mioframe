@@ -18,6 +18,9 @@ export const useDirectoryStoreClient = createGlobalState(() => {
 
   const directoryStore = api.directoryStore;
 
+  const localFileSystemDirectoryHandleStore =
+    api.localFileSystemDirectoryHandleStore;
+
   const rootList = createSubscribeClient(directoryStore.subscribeRootList, []);
 
   const isSupportUserDirectory = toRef(
@@ -30,7 +33,7 @@ export const useDirectoryStoreClient = createGlobalState(() => {
   const { alert } = useDialog();
 
   const addRootFSHandle = (handle: FileSystemDirectoryHandle, name: string) =>
-    directoryStore.addRootFileSystemDirectoryHandle(handle, name);
+    localFileSystemDirectoryHandleStore.add(handle, name);
 
   const mountUserDirectory = async () => {
     if (isSupportUserDirectory.value) {

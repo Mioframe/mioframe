@@ -1,6 +1,7 @@
 export type {
+  WritableDirectoryFSEntry,
+  ReadonlyDirectoryFSEntry,
   DirectoryFSEntry,
-  ReadOnlyDirectoryFSEntry,
 } from './DirectoryFSEntry';
 export { isFileFSEntry } from './FileFSEntry';
 export type { FileFSEntry } from './FileFSEntry';
@@ -12,6 +13,8 @@ export type {
   ReadonlyGeneralFSEntry,
 } from './GeneralFSEntry';
 export {
-  type DirectoryFSEntryRef,
+  type WritableDirectoryFSEntryRef,
   directoryFSEntryRef,
+  type DirectoryFSEntryRef,
+  type ReadonlyDirectoryFSEntryRef,
 } from './directoryFSEntryRef';

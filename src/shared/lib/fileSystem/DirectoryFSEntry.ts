@@ -8,7 +8,7 @@ export type DirectoryEntryEventMap = {
   remove: (name: string) => unknown;
 };
 
-export interface ReadOnlyStaticDirectoryFSEntry extends ReadonlyGeneralFSEntry {
+export interface StaticDirectoryFSEntry extends ReadonlyGeneralFSEntry {
   type: 'directory';
   /**
    * Gets all entries in this directory
@@ -22,8 +22,7 @@ export interface ReadOnlyStaticDirectoryFSEntry extends ReadonlyGeneralFSEntry {
   get: (name: string) => Promisable<DirectoryFSEntry | FileFSEntry | undefined>;
 }
 
-export interface ReadOnlyDirectoryFSEntry
-  extends ReadOnlyStaticDirectoryFSEntry {
+export interface ReadonlyDirectoryFSEntry extends StaticDirectoryFSEntry {
   on: <N extends keyof DirectoryEntryEventMap>(
     name: N,
     listener: DirectoryEntryEventMap[N],
@@ -34,8 +33,8 @@ export interface ReadOnlyDirectoryFSEntry
   ) => void;
 }
 
-export interface DirectoryFSEntry
-  extends ReadOnlyDirectoryFSEntry,
+export interface WritableDirectoryFSEntry
+  extends ReadonlyDirectoryFSEntry,
     GeneralFSEntry {
   /**
    * Creates a subdirectory
@@ -55,13 +54,18 @@ export interface DirectoryFSEntry
   /**
    * Copies this directory to the destination directory
    */
-  copyTo: (dest: DirectoryFSEntry) => Promise<DirectoryFSEntry>;
+  copyTo: (dest: WritableDirectoryFSEntry) => Promise<DirectoryFSEntry>;
   /**
    * Moves this directory to the destination directory by means of copying and deleting this
    */
-  moveTo: (dest: DirectoryFSEntry) => Promise<DirectoryFSEntry>;
+  moveTo: (dest: WritableDirectoryFSEntry) => Promise<DirectoryFSEntry>;
   /**
    * Rename this directory by copying the contents to a new directory
    */
   rename: (newName: string) => Promise<DirectoryFSEntry>;
 }
+
+export type DirectoryFSEntry =
+  | ReadonlyDirectoryFSEntry
+  | StaticDirectoryFSEntry
+  | WritableDirectoryFSEntry;
