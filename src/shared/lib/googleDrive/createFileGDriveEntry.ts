@@ -1,4 +1,4 @@
-import type { DirectoryFSEntry, FileFSEntry } from '../fileSystem';
+import type { WritableDirectoryFSEntry, FileFSEntry } from '../fileSystem';
 import { copyFileTo, moveFileTo } from '../fileSystem/utils';
 import { api, type GoogleAuthParams } from './api';
 import { createGDriveEntry } from './gDriveEntry';
@@ -30,7 +30,7 @@ export const createFileGDriveEntry = (
     await api.files.download(auth, currentFileId, currentName);
 
   const copyTo = async (
-    dest: DirectoryFSEntry | DirectoryGDriveEntry,
+    dest: WritableDirectoryFSEntry | DirectoryGDriveEntry,
   ): Promise<FileFSEntry> => {
     if ('gDriveFileId' in dest) {
       const {
@@ -50,7 +50,7 @@ export const createFileGDriveEntry = (
   };
 
   const moveTo = async (
-    dest: DirectoryFSEntry | DirectoryGDriveEntry,
+    dest: WritableDirectoryFSEntry | DirectoryGDriveEntry,
   ): Promise<FileFSEntry> => {
     if ('gDriveFileId' in dest) {
       await api.files.update(auth, currentFileId, {

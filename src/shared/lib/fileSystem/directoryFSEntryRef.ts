@@ -1,5 +1,10 @@
+import type { ShallowRef } from 'vue';
 import { reactive, shallowReactive, shallowRef } from 'vue';
-import type { DirectoryFSEntry } from './DirectoryFSEntry';
+import type {
+  WritableDirectoryFSEntry,
+  DirectoryFSEntry,
+  StaticDirectoryFSEntry,
+} from './DirectoryFSEntry';
 import type { StrictRecord } from '../strictRecord';
 import type { FileFSEntry } from './FileFSEntry';
 import {
@@ -10,29 +15,38 @@ import {
 import { once } from 'es-toolkit';
 import { tryOnScopeDispose } from '@vueuse/core';
 
-export interface DirectoryFSEntryRef extends Omit<DirectoryFSEntry, 'entries'> {
+export interface ReadonlyDirectoryFSEntryRef
+  extends Omit<StaticDirectoryFSEntry, 'entries'> {
   entries: StrictRecord<string, FileFSEntry | DirectoryFSEntry>;
   loading: boolean;
   error: Error | undefined;
   ready: boolean;
   reload: () => Promise<void>;
+  raw: DirectoryFSEntry;
+}
+
+export interface WritableDirectoryFSEntryRef
+  extends ReadonlyDirectoryFSEntryRef {
   writeFile: (
     name: string,
     file?: FileSystemWriteChunkType,
   ) => Promise<FileFSEntry>;
   removeByName: (name: string) => Promise<void>;
-  createDirectory: (name: string) => Promise<DirectoryFSEntry>;
-  raw: DirectoryFSEntry;
+  createDirectory: (name: string) => Promise<WritableDirectoryFSEntry>;
 }
+
+export type DirectoryFSEntryRef =
+  | ReadonlyDirectoryFSEntryRef
+  | WritableDirectoryFSEntryRef;
 
 /**
  * Create Ref for DirectoryFSEntry
  * @param directoryFSEntry
  * @returns
  */
-export const directoryFSEntryRef = (
+export function directoryFSEntryRef(
   directoryFSEntry: DirectoryFSEntry,
-): DirectoryFSEntryRef => {
+): DirectoryFSEntryRef {
   const readyRef = shallowRef(false);
   const loadingRef = shallowRef(false);
   const errorRef = shallowRef<Error>();
@@ -68,8 +82,10 @@ export const directoryFSEntryRef = (
   };
 
   const addListeners = () => {
-    directoryFSEntry.on('add', onAdd);
-    directoryFSEntry.on('remove', onRemove);
+    if ('on' in directoryFSEntry) {
+      directoryFSEntry.on('add', onAdd);
+      directoryFSEntry.on('remove', onRemove);
+    }
   };
 
   const onceInit = once(() => {
@@ -77,7 +93,14 @@ export const directoryFSEntryRef = (
     void loadDirectory();
   });
 
-  const directoryCacheApiRef: DirectoryFSEntryRef = reactive({
+  const api: Omit<DirectoryFSEntry, 'entries'> & {
+    readonly entries: StrictRecord<string, FileFSEntry | DirectoryFSEntry>;
+    loading: ShallowRef<boolean>;
+    error: ShallowRef<Error | undefined>;
+    ready: ShallowRef<boolean>;
+    reload: () => Promise<void>;
+    raw: DirectoryFSEntry;
+  } = {
     ...directoryFSEntry,
     get entries() {
       onceInit();
@@ -88,14 +111,18 @@ export const directoryFSEntryRef = (
     ready: readyRef,
     reload: loadDirectory,
     raw: directoryFSEntry,
-  });
+  };
+
+  const directoryCacheApiRef = reactive(api);
 
   const onScopeDispose = () => {
-    directoryFSEntry.off('add', onAdd);
-    directoryFSEntry.off('remove', onRemove);
+    if ('off' in directoryFSEntry) {
+      directoryFSEntry.off('add', onAdd);
+      directoryFSEntry.off('remove', onRemove);
+    }
   };
 
   tryOnScopeDispose(onScopeDispose);
 
   return directoryCacheApiRef;
-};
+}

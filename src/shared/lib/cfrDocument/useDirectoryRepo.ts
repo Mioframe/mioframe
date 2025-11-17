@@ -5,7 +5,7 @@ import {
   createFSStorageAdapter,
   fileNameToPartialKey,
 } from '../fsStorageAdapter';
-import { type DirectoryFSEntry } from '../fileSystem';
+import type { DirectoryFSEntry } from '../fileSystem';
 import { zodIs } from '../validateZodScheme';
 import type { RepoRef } from './useRepo';
 import { useRepo } from './useRepo';
