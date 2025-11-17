@@ -1,7 +1,7 @@
 import { literal, object } from 'zod/v4-mini';
 import { zodIs } from '../validateZodScheme';
 import { isGeneralFSEntry, type GeneralFSEntry } from './GeneralFSEntry';
-import type { DirectoryFSEntry } from './DirectoryFSEntry';
+import type { WritableDirectoryFSEntry } from './DirectoryFSEntry';
 import { zodFunction } from '../zodFunction';
 
 export interface FileFSEntry extends GeneralFSEntry {
@@ -17,11 +17,11 @@ export interface FileFSEntry extends GeneralFSEntry {
   /**
    * Copies the file to the destination directory
    */
-  copyTo: (dest: DirectoryFSEntry) => Promise<FileFSEntry>;
+  copyTo: (dest: WritableDirectoryFSEntry) => Promise<FileFSEntry>;
   /**
    * Moves this file to the destination directory by copying and deleting this file
    */
-  moveTo: (dest: DirectoryFSEntry) => Promise<FileFSEntry>;
+  moveTo: (dest: WritableDirectoryFSEntry) => Promise<FileFSEntry>;
 }
 
 export const isFileFSEntry = (value: unknown): value is FileFSEntry =>

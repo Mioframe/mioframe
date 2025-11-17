@@ -1,10 +1,10 @@
 import type {
-  DirectoryFSEntry,
+  WritableDirectoryFSEntry,
   FileFSEntry,
   GeneralFSEntry,
-  ReadOnlyDirectoryFSEntry,
+  ReadonlyDirectoryFSEntry,
 } from '../fileSystem';
-import type { ReadOnlyStaticDirectoryFSEntry } from '../fileSystem/DirectoryFSEntry';
+import type { StaticDirectoryFSEntry } from '../fileSystem/DirectoryFSEntry';
 
 export type GDriveDirectory = {
   getName: () => string;
@@ -46,14 +46,14 @@ export type GDriveDirectoryContent = Iterable<
 
 export interface GDriveEntry extends GeneralFSEntry {}
 
-export interface ReadOnlyDirectoryGDriveEntry extends ReadOnlyDirectoryFSEntry {
+export interface ReadOnlyDirectoryGDriveEntry extends ReadonlyDirectoryFSEntry {
   gDriveFileId: string;
   gDriveSpace: GDriveSpace;
 }
 
 export interface DirectoryGDriveEntry
   extends ReadOnlyDirectoryGDriveEntry,
-    DirectoryFSEntry {}
+    WritableDirectoryFSEntry {}
 
 export interface FileGDriveEntry extends FileFSEntry {
   // gDrive: AdvancedGDrive;
@@ -69,4 +69,4 @@ export enum GDriveSpace {
   appDataFolder = 'App Data Folder',
 }
 
-export interface RootGDriveEntry extends ReadOnlyStaticDirectoryFSEntry {}
+export interface RootGDriveEntry extends StaticDirectoryFSEntry {}

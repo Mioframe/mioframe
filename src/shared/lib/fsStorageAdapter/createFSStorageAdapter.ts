@@ -102,7 +102,14 @@ export const createStorageAdapter = (
       if (!fileName) {
         throw new Error('fileName is undefined');
       }
-      await directory.writeFile(fileName, data);
+
+      if (!('writeFile' in directory)) {
+        console.warn(
+          "FSStorageAdapter couldn't write new file, because a directory don't have writeFile method",
+        );
+      }
+
+      await directory.writeFile?.(fileName, data);
     } catch (error) {
       console.error(error);
 
@@ -117,7 +124,13 @@ export const createStorageAdapter = (
       const entry = await findEntry(key);
 
       if (entry && 'remove' in entry) {
-        await entry.remove();
+        if (!('remove' in entry)) {
+          console.warn(
+            "FSStorageAdapter couldn't remove the entry, because this entry don't have remove method",
+          );
+        }
+
+        await entry.remove?.();
       }
     } catch (error) {
       console.error(error);
@@ -196,7 +209,13 @@ export const createStorageAdapter = (
           isString(name) &&
           name.startsWith(keyPrefixString)
         ) {
-          await entry.remove();
+          if (!('remove' in entry)) {
+            console.warn(
+              "FSStorageAdapter couldn't remove the entry, because this entry don't have remove method",
+            );
+          }
+
+          await entry.remove?.();
         }
       });
     } catch (error) {

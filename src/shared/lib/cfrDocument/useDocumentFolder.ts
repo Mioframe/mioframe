@@ -1,6 +1,6 @@
 import { effectScope } from 'vue';
 import { computed, reactive, shallowReactive, watch } from 'vue';
-import type { DirectoryFSEntry } from '../fileSystem';
+import type { WritableDirectoryFSEntry } from '../fileSystem';
 import { createScopesWeakMap, defineScopesWeakMapRef } from '../scopesWeakMap';
 import { useDirectoryRepo } from './useDirectoryRepo';
 import type { AMDocumentId } from '../automerge';
@@ -9,7 +9,7 @@ import { useCFRDocument } from './useCFRDocument';
 import { tryOnScopeDispose } from '@vueuse/core';
 
 export const useDocumentFolderCache = createScopesWeakMap(
-  (directory: DirectoryFSEntry) => {
+  (directory: WritableDirectoryFSEntry) => {
     const directoryRepo = useDirectoryRepo(directory);
 
     const documentMap = shallowReactive(new Map<AMDocumentId, CFRDocument>());
