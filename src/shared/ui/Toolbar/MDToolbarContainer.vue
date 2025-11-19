@@ -54,6 +54,8 @@ const toolbarEl = useTemplateRef('toolbarEl');
 const paneContainer = usePaneContainer();
 
 const to = computed(() => paneContainer.value ?? document.body);
+
+// fixme: убрать TeleportWithPlaceholder
 </script>
 
 <template>

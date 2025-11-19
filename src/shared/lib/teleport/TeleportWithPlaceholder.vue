@@ -1,10 +1,10 @@
 <script setup lang="ts">
-import { useClosestParentFrame } from '@shared/lib/useClosestParentFrame';
 import type { MaybeElement } from '@vueuse/core';
 import { useCssVar, useElementBounding, useElementSize } from '@vueuse/core';
 import type { RendererElement } from 'vue';
 import { computed, useTemplateRef, watchEffect } from 'vue';
 import { TeleportContainer } from '../teleportContainer';
+import { useOverlayContainer } from '@shared/ui/Overlay';
 
 const {
   priorityWidth = 'content',
@@ -99,7 +99,7 @@ watchEffect(() => {
     priorityHeight === 'content' ? `${contentHeight.value}px` : undefined;
 });
 
-const closestParentFrame = useClosestParentFrame();
+const closestParentFrame = useOverlayContainer();
 
 const teleportTo = computed(() => to ?? closestParentFrame.value);
 

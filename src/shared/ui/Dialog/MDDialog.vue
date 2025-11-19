@@ -1,11 +1,12 @@
 <script setup lang="ts">
 import { MDButton } from '../Button';
-import { toRefs, useTemplateRef, watch } from 'vue';
+import { nextTick, toRefs, useTemplateRef, watch } from 'vue';
 import { useOnEscapeKeyStacked } from '@shared/lib/useOnEscapeKeyStacked';
 import { sessionUniqueId } from '@shared/lib/uniqueId';
-import { useOverlay } from '../Overlay';
+import { useOverlayContainer } from '../Overlay';
 import { TeleportContainer } from '@shared/lib/teleportContainer';
 import { onBackNavigation } from '@shared/lib/onBackNavigation';
+import { useFocusTrap } from '@vueuse/integrations/useFocusTrap.mjs';
 
 const props = withDefaults(
   defineProps<{
@@ -49,7 +50,25 @@ const showModel = defineModel<boolean>('show', { required: true });
 
 const formEl = useTemplateRef('formEl');
 
-const { dialogContainer } = useOverlay(formEl, showModel, 'dialog');
+const { activate: lockFocus, deactivate: unlockFocus } = useFocusTrap(formEl, {
+  allowOutsideClick: true,
+});
+
+watch(
+  [showModel, formEl],
+  ([showModel, container]) => {
+    if (showModel && container) {
+      void nextTick(() => {
+        lockFocus();
+      });
+    } else {
+      unlockFocus();
+    }
+  },
+  { flush: 'post', immediate: true },
+);
+
+const dialogContainer = useOverlayContainer();
 
 const onSubmit = () => {
   if (!loading.value) {

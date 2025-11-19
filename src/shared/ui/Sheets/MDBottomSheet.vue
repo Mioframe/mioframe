@@ -4,7 +4,7 @@ import MDBottomSheetContainer from './MDBottomSheetContainer.vue';
 import { computed, nextTick, toRefs, useTemplateRef } from 'vue';
 import { type MaybeElement } from '@vueuse/core';
 import { watch } from 'vue';
-import { useOverlay } from '../Overlay';
+import { useOverlayContainer } from '../Overlay';
 
 const props = withDefaults(
   defineProps<{
@@ -41,11 +41,7 @@ const bottomSheetContainerEl = useTemplateRef<MaybeElement>(
   'bottomSheetContainerEl',
 );
 
-const { dialogContainer } = useOverlay(
-  bottomSheetContainerEl,
-  showModel,
-  computed(() => (props.type === 'modal' ? 'dialog' : 'overlay')),
-);
+const dialogContainer = useOverlayContainer();
 
 const openLikeModal = computed(() => props.type === 'modal' && showModel.value);
 
@@ -68,6 +64,8 @@ const showWatchHandle = watch(
   },
   { immediate: true },
 );
+
+// fixme: убрать TeleportWithPlaceholder
 </script>
 
 <template>
