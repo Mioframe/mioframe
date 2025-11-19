@@ -1,61 +1,35 @@
-import { useOnEscapeKeyStacked } from '@shared/lib/useOnEscapeKeyStacked';
-import { tryOnBeforeUnmount, type MaybeElement } from '@vueuse/core';
-import { useFocusTrap } from '@vueuse/integrations/useFocusTrap.mjs';
-import type { MaybeRef } from 'vue';
-import { computed, nextTick, toValue, watch, type Ref } from 'vue';
-import { useMonitorOpenDialog } from '../Dialog/Alert';
+import { useCurrentElement } from '@vueuse/core';
 
-// FIXME: рефакторить в набор параметров для композиции оверлея
+import type { ComputedRef, InjectionKey } from 'vue';
+import { computed, inject, provide, type Ref } from 'vue';
+import { findParentVueElement } from '@shared/lib/useClosestParentFrame';
 
-/**
- * Добавляет оверлею навигацию, закрытие по Escape и фокус-трап.
- * @param container - контейнер, в котором нужно зафиксировать фокус
- * @param uniqueLabel - уникальная строка, которая используется для идентификации оверлея в стеке навигации
- * @param showModel - реактивная переменная, управляющая видимостью оверлея
- * @throws Ошибка, если uniqueLabel не уникален
- * @returns Объект с реактивной переменной showOverlay, управляющей видимостью оверлея
- */
-export const useOverlay = (
-  container: Ref<MaybeElement>,
-  showModel: Ref<boolean>,
-  mode: MaybeRef<'overlay' | 'dialog'> = 'overlay',
+const OVERLAY_CONTAINER_KEY = Symbol('overlay-container') as InjectionKey<
+  ComputedRef<HTMLElement | SVGElement | null | undefined>
+>;
+
+export const provideOverlayContainer = (
+  el: Ref<HTMLElement | SVGElement | null | undefined>,
 ) => {
-  const { activate: lockFocus, deactivate: unlockFocus } = useFocusTrap(
-    container,
-    {
-      allowOutsideClick: true,
-    },
+  provide(
+    OVERLAY_CONTAINER_KEY,
+    computed(() => el.value),
   );
+};
 
-  watch(
-    [showModel, container],
-    ([showModel, container]) => {
-      if (toValue(mode) === 'dialog' && showModel && container) {
-        void nextTick(() => {
-          lockFocus();
-        });
-      } else {
-        unlockFocus();
-      }
-    },
-    { flush: 'post' },
-  );
+export const useOverlayContainer = () => {
+  const current = useCurrentElement();
 
-  const openLikeDialog = computed((): boolean =>
-    toValue(mode) === 'dialog' ? showModel.value : false,
-  );
+  const defaultContainer = computed(() => {
+    const c = current.value;
 
-  const { dialogContainer } = useMonitorOpenDialog(openLikeDialog);
-
-  useOnEscapeKeyStacked(() => {
-    showModel.value = false;
+    if (c) {
+      return findParentVueElement(c, '[data-v-app]');
+    }
+    return document.body;
   });
 
-  tryOnBeforeUnmount(() => {
-    unlockFocus();
-  });
+  const container = inject(OVERLAY_CONTAINER_KEY, defaultContainer);
 
-  return {
-    dialogContainer,
-  };
+  return computed(() => container.value ?? defaultContainer.value);
 };
