@@ -20,7 +20,6 @@ import { useKeyboardSearch } from '@shared/lib/useKeyboardSearch';
 import { isUndefined } from 'es-toolkit';
 import { autoUpdate, flip, shift, size, useFloating } from '@floating-ui/vue';
 import MDMenuItem from './MDMenuItem.vue';
-import { useOverlay } from '../Overlay';
 import { TeleportContainer } from '@shared/lib/teleportContainer';
 
 const props = withDefaults(
@@ -100,8 +99,6 @@ const ignoreElements = computed(() => {
   }
   return [target.value];
 });
-
-const {} = useOverlay(listContainerEl, showModel, 'overlay');
 
 onInteractionOutside(
   listContainerEl,

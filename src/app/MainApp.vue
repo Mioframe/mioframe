@@ -7,6 +7,7 @@ import { PerformanceOverlay } from '@shared/ui/performance';
 import { useDialogContainer } from '@shared/ui/Dialog';
 import { usePermanentStorageRequest } from '@feature/permanentStorageRequest';
 import { useLocalSettings } from '@entity/localSettings';
+import { provideOverlayContainer } from '@shared/ui/Overlay';
 
 const { addSnackbar } = useSnackbar();
 
@@ -16,9 +17,11 @@ onErrorCaptured((error) => {
   });
 });
 
-const dialogContainer = useTemplateRef('dialogContainer');
+const overlayContainerEl = useTemplateRef('overlayContainerEl');
 
-const { hasOpenedDialog } = useDialogContainer(dialogContainer);
+provideOverlayContainer(overlayContainerEl);
+
+const { hasOpenedDialog } = useDialogContainer(overlayContainerEl);
 
 const { permanentStorageRequest } = usePermanentStorageRequest();
 
@@ -32,7 +35,7 @@ const { settings } = useLocalSettings();
     <RouterView />
   </div>
 
-  <div ref="dialogContainer" />
+  <div ref="overlayContainerEl" />
 
   <DialogContainer />
 
