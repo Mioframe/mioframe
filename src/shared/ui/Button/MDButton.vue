@@ -21,7 +21,7 @@ const {
   selected?: boolean;
 }>();
 
-defineSlots<{
+const slots = defineSlots<{
   icon(): unknown;
 }>();
 
@@ -51,7 +51,7 @@ defineEmits<{
     @click.stop="$emit('click', $event)"
   >
     <div class="md-button__content">
-      <span v-if="!!$slots.icon" class="md-button__icon">
+      <span v-if="!!slots.icon" class="md-button__icon">
         <slot name="icon" />
       </span>
 
@@ -109,6 +109,7 @@ defineEmits<{
     color: var(--md-button-icon-color, inherit);
     transition-property: opacity;
     transition-duration: var(--md-sys-motion-duration-short4, 0.2s);
+    --md-symbol-size: var(--md-button-icon-size, 1lh);
 
     .md-button_loading & {
       opacity: 0;
