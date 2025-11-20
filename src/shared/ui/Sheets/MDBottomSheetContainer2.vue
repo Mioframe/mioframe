@@ -1,7 +1,11 @@
 <script setup lang="ts">
-import { useTemplateRef, watch } from 'vue';
+import type { StyleValue } from 'vue';
+import { computed, useTemplateRef, watch } from 'vue';
 import { MDState } from '../State';
 import { useScroll } from '@shared/lib/scrollTo';
+import { useAriaHidden } from '../AriaHidden';
+import { usePaneContainer } from '../Layout/useMDContainer';
+import { useElementBounding } from '@vueuse/core';
 
 defineSlots<{
   default(): unknown;
@@ -48,6 +52,29 @@ const onClickScrim = () => {
     top: 0,
   });
 };
+
+const ariaHidden = useAriaHidden();
+
+const paneContainer = usePaneContainer();
+
+const { left: paneLeft, width: paneWidth } = useElementBounding(paneContainer, {
+  updateTiming: 'next-frame',
+  windowScroll: false,
+  immediate: false,
+});
+
+const scrimStyle = computed(
+  (): StyleValue => ({
+    paddingLeft: `${paneLeft.value}px`,
+    paddingRight: `calc(100% - ${paneLeft.value + paneWidth.value}px)`,
+  }),
+);
+
+const bodyStyle = computed(
+  (): StyleValue => ({
+    width: `${paneWidth.value}px`,
+  }),
+);
 </script>
 
 <template>
@@ -55,9 +82,11 @@ const onClickScrim = () => {
     ref="containerEl"
     class="md-bottom-sheet md-bottom-sheet__scrim"
     role="dialog"
+    :aria-hidden="ariaHidden"
+    :style="scrimStyle"
     @click.self="onClickScrim"
   >
-    <div ref="bodyEl" class="md md-bottom-sheet__body">
+    <div ref="bodyEl" class="md md-bottom-sheet__body" :style="bodyStyle">
       <div class="md-bottom-sheet__header">
         <MDState
           is="button"
@@ -76,7 +105,7 @@ const onClickScrim = () => {
 <style lang="css" scoped>
 .md-bottom-sheet {
   --border-radius: var(--md-sys-shape-corner-extra-large-top);
-  --md-bottom-sheet-width: min(var(--md-pane-width), 100%, 640px);
+  --md-bottom-sheet-width: min(var(--md-pane-width, 100%), 100%, 640px);
 
   &_fullscreen {
     --border-radius: 0px;
@@ -84,7 +113,7 @@ const onClickScrim = () => {
 
   &__scrim {
     display: block;
-    position: absolute;
+    position: fixed;
     z-index: 1;
     top: 0;
     left: 0;
@@ -116,7 +145,7 @@ const onClickScrim = () => {
     pointer-events: auto;
     box-shadow: var(--md-sys-elevation-level1);
     border-radius: var(--border-radius);
-    width: var(--md-bottom-sheet-width);
+    max-width: 640px;
     box-sizing: border-box;
     margin-left: auto;
     margin-right: auto;
