@@ -1,9 +1,11 @@
 <script setup lang="ts">
+import type { StyleValue } from 'vue';
 import { computed, ref, toRefs, useTemplateRef, watchEffect } from 'vue';
-import { useParentElement, useScroll } from '@vueuse/core';
+import { useElementSize, useParentElement, useScroll } from '@vueuse/core';
 import { isUndefined } from 'es-toolkit';
-import { TeleportWithPlaceholder } from '@shared/lib/teleport';
-import { usePaneContainer } from '../Layout/useMDContainer';
+import { useOverlayContainer } from '../Overlay';
+import { TeleportContainer } from '@shared/lib/teleportContainer';
+import { autoUpdate, offset, shift, useFloating } from '@floating-ui/vue';
 
 const props = defineProps<{
   autoHide?: boolean;
@@ -36,35 +38,64 @@ const show = computed(
     lastScrollDirection.value === 'top',
 );
 
-const fabContainer = useTemplateRef('fabContainer');
+const fabContainerEl = useTemplateRef('fabContainer');
 
-const paneContainer = usePaneContainer();
+const overlayContainerEl = useOverlayContainer();
 
-const to = computed(() => paneContainer.value ?? document.body);
+const placeholderEl = useTemplateRef('placeholderEl');
+
+const { floatingStyles } = useFloating(placeholderEl, fabContainerEl, {
+  placement: 'top-end',
+  strategy: 'fixed',
+  transform: false,
+  middleware: [
+    offset(
+      ({
+        rects: {
+          reference: { height },
+        },
+      }) => ({
+        mainAxis: -height,
+      }),
+    ),
+    shift({ padding: 16 }),
+  ],
+  whileElementsMounted: autoUpdate,
+});
+
+const { height: fabContainerHeight } = useElementSize(
+  fabContainerEl,
+  { height: 0, width: 0 },
+  { box: 'border-box' },
+);
+
+const placeholderStyles = computed(
+  (): StyleValue => ({
+    height: `${fabContainerHeight.value}px`,
+  }),
+);
 </script>
 
 <template>
-  <TeleportWithPlaceholder
+  <div
+    ref="placeholderEl"
     class="md-fab-container__placeholder"
-    priority-width="placeholder"
-    :container="fabContainer"
-    with-placeholder
-    :class="{
-      'md-fab-container_auto-hide': autoHide,
-    }"
-    :to="to"
+    :style="placeholderStyles"
   >
-    <div
-      ref="fabContainer"
-      class="md-fab-container"
-      :class="{
-        'md-fab-container_auto-hide': autoHide,
-        'md-fab-container_hide': !show,
-      }"
-    >
-      <slot name="default" />
-    </div>
-  </TeleportWithPlaceholder>
+    <TeleportContainer :container="fabContainerEl" :to="overlayContainerEl">
+      <div
+        ref="fabContainer"
+        class="md-fab-container"
+        :class="{
+          'md-fab-container_auto-hide': autoHide,
+          'md-fab-container_hide': !show,
+        }"
+        :style="floatingStyles"
+      >
+        <slot name="default" />
+      </div>
+    </TeleportContainer>
+  </div>
 </template>
 
 <style scoped>
@@ -87,6 +118,7 @@ const to = computed(() => paneContainer.value ?? document.body);
     var(--md-sys-motion-easing-emphasized-decelerate)
   );
   transition-duration: var(--md-sys-motion-duration-long2);
+  transition-property: transform, opacity;
 
   &__placeholder {
     display: flex;
@@ -107,41 +139,6 @@ const to = computed(() => paneContainer.value ?? document.body);
     opacity: 0;
     transform: translateY(100%) scale(0);
   }
-
-  /* &.v {
-    &-enter,
-    &-leave {
-      &-active {
-        transition-property: transform, opacity;
-      }
-    }
-
-    &-leave-active {
-      transition-timing-function: var(
-        var(--md-sys-motion-easing-emphasized-accelerate)
-      );
-      transition-duration: var(--md-sys-motion-duration-short4);
-    }
-
-    &-enter-active {
-      transition-timing-function: var(
-        var(--md-sys-motion-easing-emphasized-decelerate)
-      );
-      transition-duration: var(--md-sys-motion-duration-long2);
-    }
-
-    &-leave-to,
-    &-enter-from {
-      opacity: 0;
-      transform: translateY(100%) scale(0);
-    }
-
-    &-leave-from,
-    &-enter-to {
-      opacity: 1;
-      transform: translateY(0) scale(1);
-    }
-  } */
 
   :deep() {
     > * {

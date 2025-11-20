@@ -33,11 +33,11 @@ export const useClosestParentFrame = () => {
  * @param selectors
  * @returns
  */
-const findParentVueElement = (
-  current: HTMLElement | VueInstance,
+export const findParentVueElement = (
+  current: HTMLElement | VueInstance | SVGElement,
   selectors: string,
-) => {
-  if (current instanceof HTMLElement) {
+): HTMLElement | SVGElement => {
+  if (current instanceof Element) {
     const teleportParent = teleportContainerAndParent.get(current);
 
     if (teleportParent && teleportParent.matches(selectors)) {
