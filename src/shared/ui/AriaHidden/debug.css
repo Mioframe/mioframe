@@ -1,0 +1,8 @@
+[aria-hidden="true"] {
+  outline: 1px solid green;
+  outline-offset: -1px;
+  opacity: 0.5;
+}
+
+[aria-hidden="false"] {
+}
