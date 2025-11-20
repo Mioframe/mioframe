@@ -13,15 +13,14 @@ import {
 import { unrefElement, useEventListener } from '@vueuse/core';
 import { MDListContainer } from '../Lists';
 import type { MenuButtonDescription, MenuButtonList } from './types';
-import { useClosestParentFrame } from '@shared/lib/useClosestParentFrame';
 import { onInteractionOutside } from '@shared/lib/onInteractionOutside';
 import { useFocusTrap } from '@vueuse/integrations/useFocusTrap';
 import { useKeyboardSearch } from '@shared/lib/useKeyboardSearch';
 import { isUndefined } from 'es-toolkit';
 import { autoUpdate, flip, shift, size, useFloating } from '@floating-ui/vue';
 import MDMenuItem from './MDMenuItem.vue';
-import { useOverlay } from '../Overlay';
 import { TeleportContainer } from '@shared/lib/teleportContainer';
+import { useOverlayContainer } from '../Overlay';
 
 const props = withDefaults(
   defineProps<{
@@ -92,7 +91,7 @@ const { floatingStyles: containerStyle, update } = useFloating(
 
 useEventListener(window.visualViewport, 'resize', update);
 
-const targetTeleport = useClosestParentFrame();
+const targetTeleport = useOverlayContainer();
 
 const ignoreElements = computed(() => {
   if (outsideIgnore.value) {
@@ -100,8 +99,6 @@ const ignoreElements = computed(() => {
   }
   return [target.value];
 });
-
-const {} = useOverlay(listContainerEl, showModel, 'overlay');
 
 onInteractionOutside(
   listContainerEl,
