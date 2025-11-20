@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { useClosestParentFrame } from '@shared/lib/useClosestParentFrame';
 import { computed, ref, toRefs, useTemplateRef } from 'vue';
 import type { MaybeElement } from '@vueuse/core';
 import {
@@ -10,6 +9,7 @@ import {
 } from '@vueuse/core';
 import { autoUpdate, flip, offset, shift, useFloating } from '@floating-ui/vue';
 import { TeleportContainer } from '@shared/lib/teleportContainer';
+import { useOverlayContainer } from '../Overlay';
 
 const props = withDefaults(
   defineProps<{
@@ -31,7 +31,7 @@ const targetElementRef = computed(
   () => unrefElement(target.value) ?? parentEl.value,
 );
 
-const targetTeleport = useClosestParentFrame();
+const targetTeleport = useOverlayContainer();
 
 const tooltipEl = useTemplateRef('tooltipEl');
 
