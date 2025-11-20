@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { useClosestParentFrame } from '@shared/lib/useClosestParentFrame';
 import {
   syncRef,
   unrefElement,
@@ -11,6 +10,7 @@ import { computed, ref, toRefs, useTemplateRef } from 'vue';
 import { onInteractionOutside } from '@shared/lib/onInteractionOutside';
 import { autoUpdate, offset, shift, useFloating } from '@floating-ui/vue';
 import { TeleportContainer } from '@shared/lib/teleportContainer';
+import { useOverlayContainer } from '../Overlay';
 
 const props = defineProps<{
   disabledTeleport?: boolean;
@@ -39,7 +39,7 @@ const targetElementRef = computed(() =>
   unrefElement(targetElement.value ?? parentEl.value),
 );
 
-const targetTeleport = useClosestParentFrame();
+const targetTeleport = useOverlayContainer();
 
 const tooltipEl = useTemplateRef('tooltipEl');
 
