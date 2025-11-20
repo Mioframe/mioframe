@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { MD_SYS_TYPESCALE } from '@shared/lib/md';
-import { useClosestParentFrame } from '@shared/lib/useClosestParentFrame';
 import {
   refDebounced,
   unrefElement,
@@ -13,6 +12,7 @@ import { computed, nextTick, ref, toRefs, useTemplateRef, watch } from 'vue';
 import { onInteractionOutside } from '@shared/lib/onInteractionOutside';
 import { autoUpdate, flip, offset, shift, useFloating } from '@floating-ui/vue';
 import { TeleportContainer } from '@shared/lib/teleportContainer';
+import { useOverlayContainer } from '../Overlay';
 
 const props = withDefaults(
   defineProps<{
@@ -47,7 +47,7 @@ const targetElementRef = computed(() =>
   unrefElement(targetElement.value ?? parentEl.value),
 );
 
-const targetTeleport = useClosestParentFrame();
+const targetTeleport = useOverlayContainer();
 
 const hoveredTarget = useElementHover(targetElementRef);
 

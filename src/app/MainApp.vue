@@ -4,10 +4,10 @@ import { onErrorCaptured, useTemplateRef } from 'vue';
 import DialogContainer from '@shared/ui/Dialog/Alert/DialogContainer.vue';
 import { RouterView } from 'vue-router';
 import { PerformanceOverlay } from '@shared/ui/performance';
-import { useDialogContainer } from '@shared/ui/Dialog';
 import { usePermanentStorageRequest } from '@feature/permanentStorageRequest';
 import { useLocalSettings } from '@entity/localSettings';
 import { provideOverlayContainer } from '@shared/ui/Overlay';
+import { useAriaHidden } from '@shared/ui/AriaHidden';
 
 const { addSnackbar } = useSnackbar();
 
@@ -21,17 +21,17 @@ const overlayContainerEl = useTemplateRef('overlayContainerEl');
 
 provideOverlayContainer(overlayContainerEl);
 
-const { hasOpenedDialog } = useDialogContainer(overlayContainerEl);
-
 const { permanentStorageRequest } = usePermanentStorageRequest();
 
 void permanentStorageRequest();
 
 const { settings } = useLocalSettings();
+
+const ariaHidden = useAriaHidden();
 </script>
 
 <template>
-  <div class="main" :aria-hidden="hasOpenedDialog ? 'true' : 'false'">
+  <div class="main" :aria-hidden="ariaHidden">
     <RouterView />
   </div>
 
