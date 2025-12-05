@@ -13,8 +13,11 @@ export type {
   ReadonlyGeneralFSEntry,
 } from './GeneralFSEntry';
 export {
-  type WritableDirectoryFSEntryRef,
-  directoryFSEntryRef,
-  type DirectoryFSEntryRef,
-  type ReadonlyDirectoryFSEntryRef,
-} from './directoryFSEntryRef';
+  type WritableDirectoryFSEntryState,
+  type DirectoryFSEntryState,
+  type ReadonlyDirectoryFSEntryState,
+} from './directoryFSEntryState';
+export {
+  directoryFSEntryPool,
+  useDirectoryFSEntryPool,
+} from './directoryFSEntryPool';

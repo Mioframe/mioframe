@@ -32,7 +32,7 @@ const emit = defineEmits<{
       @click="emit('click', entryKey, entry)"
     >
       <template v-if="!!$slots.trailing" #trailing>
-        <slot name="trailing" :entry :entry-key />
+        <slot name="trailing" :entry="entry" :entry-key="entryKey" />
       </template>
     </DirectoryContentEntry>
   </MDListContainer>

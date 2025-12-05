@@ -9,3 +9,9 @@ export const useMainServiceClient = defineWorkerClient(
   serviceId,
   setupMainService,
 );
+
+if (import.meta.env.DEV) {
+  Object.assign(window, {
+    useMainServiceClient,
+  });
+}
