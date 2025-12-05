@@ -1,12 +1,11 @@
-import { computed, reactive, watchEffect } from 'vue';
+import { computed, reactive } from 'vue';
 import {
-  directoryFSEntryRef,
-  type WritableDirectoryFSEntryRef,
+  type WritableDirectoryFSEntryState,
   type EntryPathString,
   type FileFSEntry,
+  directoryFSEntryPool,
 } from '@shared/lib/fileSystem';
 import type { EntryPath, DirectoryFSEntry } from '@shared/lib/fileSystem';
-import { createLocalDirectory } from '@shared/lib/localFileSystem';
 import { defineSubscribeService } from '@shared/lib/subscriptions';
 import {
   strictRecordGet,
@@ -16,7 +15,7 @@ import {
   strictRecordSet,
   type StrictRecord,
 } from '@shared/lib/strictRecord';
-import { createGlobalState, until } from '@vueuse/core';
+import { createGlobalState, tryOnScopeDispose, until } from '@vueuse/core';
 import { isBoolean } from 'es-toolkit';
 import { isArray } from 'es-toolkit/compat';
 import type { DirectoryDescription, EntryDescription } from './types';
@@ -25,27 +24,30 @@ import { defineSubscribeByQueryService } from '@shared/lib/subscriptions/subscri
 import { DomainError } from '@shared/lib/error';
 import { zodCheck } from '@shared/lib/validateZodScheme';
 import { zodAutomergeFileName } from '@shared/lib/fsStorageAdapter';
-import { entryPath, PATH_SEPARATOR, pathToString, stringPath } from './path';
-import { useLocalFileSystemDirectoryHandleStoreService } from './localFileSystemDirectoryHandleStoreService';
-import { useGoogleService } from '../google/useGoogleService';
-import { createRootGDriveEntry } from '@shared/lib/googleDrive/createDirectoryGDriveEntry';
+import {
+  entryPath,
+  PATH_SEPARATOR,
+  pathToString,
+  stringPath,
+  stringToPath,
+} from './path';
 import type {
-  DirectoryFSEntryRef,
-  ReadonlyDirectoryFSEntryRef,
-} from '@shared/lib/fileSystem/directoryFSEntryRef';
+  DirectoryFSEntryState,
+  ReadonlyDirectoryFSEntryState,
+} from '@shared/lib/fileSystem/directoryFSEntryState';
 import type { StaticDirectoryFSEntry } from '@shared/lib/fileSystem/DirectoryFSEntry';
 
-export const useDirectoryStoreService = createGlobalState(() => {
+const setupDirectoryStoreService = () => {
   const stateEntries: StrictRecord<
     EntryPathString,
-    DirectoryFSEntryRef | FileFSEntry | DomainError
+    DirectoryFSEntryState | FileFSEntry | DomainError
   > = reactive({});
 
   const loadingStatus: Set<EntryPathString> = reactive(new Set());
 
   function addCacheEntry(
-    entry: DirectoryFSEntry | FileFSEntry | DirectoryFSEntryRef,
-  ): DirectoryFSEntryRef | FileFSEntry;
+    entry: DirectoryFSEntry | FileFSEntry | DirectoryFSEntryState,
+  ): DirectoryFSEntryState | FileFSEntry;
   function addCacheEntry(
     entry: EntryNotFoundError,
     rawNotFoundPath: EntryPath | EntryPathString,
@@ -54,7 +56,7 @@ export const useDirectoryStoreService = createGlobalState(() => {
     entry:
       | DirectoryFSEntry
       | FileFSEntry
-      | DirectoryFSEntryRef
+      | DirectoryFSEntryState
       | EntryNotFoundError,
     rawNotFoundPath?: EntryPath | EntryPathString,
   ) {
@@ -63,44 +65,50 @@ export const useDirectoryStoreService = createGlobalState(() => {
     } else if (!(entry instanceof DomainError)) {
       const pathString = pathToString(entry.path);
 
-      const entryRefOrFile:
-        | WritableDirectoryFSEntryRef
-        | ReadonlyDirectoryFSEntryRef
-        | FileFSEntry =
-        entry.type === 'file'
-          ? entry
-          : 'raw' in entry
-            ? entry
-            : directoryFSEntryRef(entry);
-
-      strictRecordSet(stateEntries, pathString, entryRefOrFile);
-
       if ('on' in entry) {
         entry.on('remove', (name) => {
-          strictRecordRemove(stateEntries, stringPath([...entry.path, name]));
+          removeCachedEntry([...entry.path, name]);
         });
       }
 
-      return entryRefOrFile;
+      if (entry.type === 'directory' && !('raw' in entry)) {
+        const entryState = retainDirectoryFSEntryState(entry);
+
+        destroyDirectoryFSEntryStateCollection.add(() => {
+          releaseDirectoryFSEntryState(entry);
+        });
+
+        strictRecordSet(stateEntries, pathString, entryState);
+
+        return entryState;
+      } else {
+        strictRecordSet(stateEntries, pathString, entry);
+        return entry;
+      }
     }
   }
 
   const getCachedEntry = (
     rawPath: EntryPathString | EntryPath,
   ):
-    | WritableDirectoryFSEntryRef
-    | ReadonlyDirectoryFSEntryRef
+    | WritableDirectoryFSEntryState
+    | ReadonlyDirectoryFSEntryState
     | FileFSEntry
     | DomainError
     | undefined => {
     return strictRecordGet(stateEntries, stringPath(rawPath));
   };
 
-  const rootDirectories = computed((): string[] =>
+  const removeCachedEntry = (path: EntryPath | string) => {
+    strictRecordRemove(stateEntries, stringPath(path));
+  };
+
+  const getRootDirectories = (): string[] =>
     Array.from(strictRecordIterableKeys(stateEntries)()).filter(
       (name) => !name.includes(PATH_SEPARATOR),
-    ),
-  );
+    );
+
+  const rootDirectories = computed(getRootDirectories);
 
   const subscribeRootList = defineSubscribeService(() => rootDirectories.value);
 
@@ -117,15 +125,16 @@ export const useDirectoryStoreService = createGlobalState(() => {
   };
 
   async function getChildEntry(
-    parent: DirectoryFSEntry | DirectoryFSEntryRef,
+    parent: DirectoryFSEntry | DirectoryFSEntryState,
     name: string,
     options?: { createDirectory?: boolean },
-  ): Promise<DirectoryFSEntryRef | FileFSEntry | DomainError> {
+  ): Promise<DirectoryFSEntryState | FileFSEntry | DomainError> {
     const { createDirectory = false } = options ?? {};
 
     const fullPath = [...parent.path, name];
 
     const cached = getCachedEntry(fullPath);
+    debugger;
     if (loadingStatus.has(stringPath(fullPath))) {
       return await waitCachedEntry(fullPath);
     }
@@ -135,6 +144,7 @@ export const useDirectoryStoreService = createGlobalState(() => {
     try {
       addWaitCacheEntry(fullPath);
       const subEntry = await parent.get(name);
+
       if (!subEntry && createDirectory && 'createDirectory' in parent) {
         const newDirectory = await parent.createDirectory(name);
         return addCacheEntry(newDirectory);
@@ -156,8 +166,8 @@ export const useDirectoryStoreService = createGlobalState(() => {
     rawPath: EntryPath | EntryPathString,
   ): Promise<
     | DomainError
-    | WritableDirectoryFSEntryRef
-    | ReadonlyDirectoryFSEntryRef
+    | WritableDirectoryFSEntryState
+    | ReadonlyDirectoryFSEntryState
     | FileFSEntry
   > => {
     const pathString = stringPath(rawPath);
@@ -171,8 +181,8 @@ export const useDirectoryStoreService = createGlobalState(() => {
 
       void until(
         ():
-          | WritableDirectoryFSEntryRef
-          | ReadonlyDirectoryFSEntryRef
+          | WritableDirectoryFSEntryState
+          | ReadonlyDirectoryFSEntryState
           | FileFSEntry
           | DomainError
           | boolean => {
@@ -190,11 +200,25 @@ export const useDirectoryStoreService = createGlobalState(() => {
     });
   };
 
+  const {
+    release: releaseDirectoryFSEntryState,
+    retain: retainDirectoryFSEntryState,
+  } = directoryFSEntryPool();
+
+  const destroyDirectoryFSEntryStateCollection = new Set<() => void>();
+
+  tryOnScopeDispose(() => {
+    destroyDirectoryFSEntryStateCollection.forEach((release) => {
+      release();
+    });
+    destroyDirectoryFSEntryStateCollection.clear();
+  });
+
   const locateEntry = async (
-    parent: StaticDirectoryFSEntry | ReadonlyDirectoryFSEntryRef,
+    parent: StaticDirectoryFSEntry | ReadonlyDirectoryFSEntryState,
     subPath: EntryPath,
     options?: { createDirectory?: boolean },
-  ): Promise<DirectoryFSEntryRef | FileFSEntry | DomainError> => {
+  ): Promise<DirectoryFSEntryState | FileFSEntry | DomainError> => {
     const fullPath = [...parent.path, ...subPath];
 
     const fullPathString = pathToString(fullPath);
@@ -215,7 +239,11 @@ export const useDirectoryStoreService = createGlobalState(() => {
       if ('raw' in parent) {
         return parent;
       } else {
-        return directoryFSEntryRef(parent);
+        destroyDirectoryFSEntryStateCollection.add(() => {
+          releaseDirectoryFSEntryState(parent);
+        });
+
+        return retainDirectoryFSEntryState(parent);
       }
     }
 
@@ -235,7 +263,7 @@ export const useDirectoryStoreService = createGlobalState(() => {
   const locateEntryFromRoot = async (
     rawPath: EntryPathString | EntryPath,
     options?: { createDirectory?: boolean },
-  ): Promise<DirectoryFSEntryRef | FileFSEntry | DomainError> => {
+  ): Promise<DirectoryFSEntryState | FileFSEntry | DomainError> => {
     const pathString = stringPath(rawPath);
 
     if (loadingStatus.has(pathString)) {
@@ -287,7 +315,7 @@ export const useDirectoryStoreService = createGlobalState(() => {
   };
 
   const entryToDescription = (
-    entry: DirectoryFSEntryRef | DirectoryFSEntry | FileFSEntry,
+    entry: DirectoryFSEntryState | DirectoryFSEntry | FileFSEntry,
   ): EntryDescription => ({
     name: entry.name,
     type: entry.type,
@@ -295,7 +323,7 @@ export const useDirectoryStoreService = createGlobalState(() => {
   });
 
   const directoryToDescription = (
-    entry: DirectoryFSEntryRef,
+    entry: DirectoryFSEntryState,
     { showAutomergeFiles }: { showAutomergeFiles?: boolean } = {},
   ): DirectoryDescription => {
     return {
@@ -324,7 +352,7 @@ export const useDirectoryStoreService = createGlobalState(() => {
 
   const getEntry = (
     path: EntryPathString | EntryPath,
-  ): DirectoryFSEntryRef | FileFSEntry | DomainError | undefined => {
+  ): DirectoryFSEntryState | FileFSEntry | DomainError | undefined => {
     const pathString = stringPath(path);
 
     const entry = strictRecordGet(stateEntries, pathString);
@@ -403,7 +431,7 @@ export const useDirectoryStoreService = createGlobalState(() => {
 
     if ('rename' in entry) {
       const { path } = await entry.rename(newName);
-      strictRecordRemove(stateEntries, pathString);
+      removeCachedEntry(pathString);
       await locateEntryFromRoot(path);
     } else {
       throw new DomainError(
@@ -412,40 +440,54 @@ export const useDirectoryStoreService = createGlobalState(() => {
     }
   };
 
-  const { store: localFileSystemDirectoryHandleStore } =
-    useLocalFileSystemDirectoryHandleStoreService();
+  const unmount = (name: string) => {
+    if (stringToPath(name).length > 1) {
+      throw new DomainError('Only the root directory can be unmounted');
+    }
 
-  const mountFileSystemDirectoryHandleStore = () => {
-    for (const [name, handle] of strictRecordIterableEntries(
-      localFileSystemDirectoryHandleStore.value,
-    )()) {
-      if (!rootDirectories.value.includes(name)) {
-        const directoryFSEntry = createLocalDirectory(handle, undefined, name);
-        addCacheEntry(directoryFSEntry);
+    for (const key in stateEntries) {
+      if (stringToPath(key).at(0) === name) {
+        removeCachedEntry(key);
       }
     }
   };
 
-  watchEffect(mountFileSystemDirectoryHandleStore);
-
-  const { token: googleToken } = useGoogleService();
-
-  const mountGoogleDrive = () => {
-    if (googleToken.value) {
-      addCacheEntry(createRootGDriveEntry(googleToken.value, 'Google Drive'));
+  const mount = (directoryEntry: DirectoryFSEntryState | DirectoryFSEntry) => {
+    if (directoryEntry.path.length !== 1) {
+      throw new DomainError('Mounting of root directories only is possible');
     }
-  };
 
-  watchEffect(mountGoogleDrive);
+    const name = directoryEntry.path.at(0);
+
+    if (!name) {
+      throw new DomainError('Directory must have a root path');
+    }
+
+    addCacheEntry(directoryEntry);
+
+    return () => {
+      unmount(name);
+    };
+  };
 
   return {
     createDirectory,
     removeEntry,
     renameEntry,
 
+    mount,
+    unmount,
+
     subscribeRootList,
     subscribeEntry,
 
     getEntry,
+    getRootDirectories,
   };
-});
+};
+
+export const useDirectoryStoreService = createGlobalState(
+  setupDirectoryStoreService,
+);
+
+// FIXME: нужен более эффективный и простой способ кешировать и получать информацию об FS

@@ -1,5 +1,5 @@
 import type { AMDocumentId } from '@shared/lib/automerge';
-import { useDocHandleScopesWeakMap } from '@shared/lib/cfrDocument/useDocHandle';
+import { docHandlePool } from '@shared/lib/cfrDocument/useDocHandle';
 import type { EntryPath } from '@shared/lib/fileSystem';
 import { createGlobalState } from '@vueuse/core';
 import { useRepositoriesStoreService } from '../repositories';
@@ -18,7 +18,7 @@ import { stringPath } from '../directories';
 import { DomainError } from '@shared/lib/error';
 
 export const useCFRDocumentService = createGlobalState(() => {
-  const { getScope: getDocumentScope } = useDocHandleScopesWeakMap();
+  const { retain: getDocumentScope } = docHandlePool();
   const { getDirectoryRepo } = useRepositoriesStoreService();
 
   const getDocHandle = (directoryPath: EntryPath, documentId: AMDocumentId) => {
@@ -40,7 +40,7 @@ export const useCFRDocumentService = createGlobalState(() => {
       return docHandle;
     }
     if (docHandle) {
-      const { state } = getDocumentScope(docHandle);
+      const state = getDocumentScope(docHandle);
       if (zodIs(state.docRef, zodCFRDocumentContent)) {
         return state.docRef;
       }

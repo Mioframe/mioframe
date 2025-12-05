@@ -1,5 +1,5 @@
 export type * from './types';
-export { GDriveSpace } from './types';
+export { GOOGLE_DRIVE_SPACE as GDriveSpace } from './types';
 export { createDirectoryGDriveEntry } from './createDirectoryGDriveEntry';
 export { createFileGDriveEntry } from './createFileGDriveEntry';
 

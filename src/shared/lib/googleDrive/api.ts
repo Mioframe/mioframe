@@ -1,9 +1,10 @@
 import { toMerged } from 'es-toolkit';
 import { fileTypeFromBuffer } from 'file-type';
-import type { Options, Progress } from 'ky';
-import ky from 'ky';
+import type { Input, Options, Progress } from 'ky';
+import ky, { HTTPError } from 'ky';
 import type { ZodMiniType } from 'zod/v4-mini';
 import { z } from 'zod/v4-mini';
+import { DomainError } from '../error';
 
 enum ORDER_DIRECTION {
   ASC = 'asc',
@@ -35,7 +36,7 @@ interface ListParams {
   orderBy?: Partial<Record<SortableKeys, ORDER_DIRECTION>>;
   pageSize?: number;
   pageToken?: string;
-  q: string;
+  q?: string;
   spaces?: SPACE[];
   supportsAllDrives?: boolean;
   includePermissionsForView?: string;
@@ -48,6 +49,38 @@ export interface GoogleAuthParams {
   ACCESS_TOKEN: string;
 }
 
+const zodGoogleErrorResponse = z.object({
+  error: z.object({
+    message: z.string(),
+  }),
+});
+
+const googleRequest = async (url: Input, options?: Options) => {
+  try {
+    const response = await ky(url, options);
+
+    if (!response.ok) {
+      const { data: googleError } = zodGoogleErrorResponse.safeParse(
+        await response.json(),
+      );
+
+      throw new DomainError(googleError?.error.message);
+    }
+
+    return response;
+  } catch (e) {
+    if (e instanceof HTTPError) {
+      const { data: googleError } = zodGoogleErrorResponse.safeParse(
+        await e.response.json(),
+      );
+
+      throw new DomainError(googleError?.error.message, { cause: e });
+    }
+
+    throw e;
+  }
+};
+
 const authorizedRequest = async <R>(
   method: Required<Options['method']>,
   url: `https://${string}`,
@@ -55,20 +88,22 @@ const authorizedRequest = async <R>(
   options: Options = {},
   responseSchema: ZodMiniType<R>,
 ) => {
-  const response = await ky(
-    url,
-    toMerged(
-      {
-        method,
-        headers: {
-          Authorization: `Bearer ${ACCESS_TOKEN}`,
+  const response = await (
+    await googleRequest(
+      url,
+      toMerged(
+        {
+          method,
+          headers: {
+            Authorization: `Bearer ${ACCESS_TOKEN}`,
+          },
+          searchParams: {
+            key: API_KEY,
+          },
         },
-        searchParams: {
-          key: API_KEY,
-        },
-      },
-      options,
-    ),
+        options,
+      ),
+    )
   ).json();
 
   return { result: responseSchema.parse(response) };
@@ -132,9 +167,9 @@ const list = async (
           mimeType: z.string(),
         }),
       ),
-      nextPageToken: z.string(),
-      kind: z.string(),
-      incompleteSearch: z.boolean(),
+      nextPageToken: z.optional(z.string()),
+      kind: z.optional(z.string()),
+      incompleteSearch: z.optional(z.boolean()),
     }),
   );
 
@@ -156,22 +191,24 @@ const update = (
     z.object({}),
   );
 
-const download = (
+const download = async (
   auth: GoogleAuthParams,
   fileId: string,
   name: string = 'file',
   onDownloadProgress?: (progress: Progress, chunk: Uint8Array) => unknown,
 ) =>
-  ky(`https://www.googleapis.com/drive/v3/files/${fileId}`, {
-    method: 'get',
-    headers: {
-      Authorization: `Bearer ${auth.ACCESS_TOKEN}`,
-    },
-    searchParams: {
-      alt: 'media',
-    },
-    onDownloadProgress,
-  })
+  (
+    await googleRequest(`https://www.googleapis.com/drive/v3/files/${fileId}`, {
+      method: 'get',
+      headers: {
+        Authorization: `Bearer ${auth.ACCESS_TOKEN}`,
+      },
+      searchParams: {
+        alt: 'media',
+      },
+      onDownloadProgress,
+    })
+  )
     .blob()
     .then(
       (blob) =>
@@ -182,14 +219,10 @@ const download = (
 
 const create = (
   auth: GoogleAuthParams,
-  {
-    resource,
-  }: {
-    resource: {
-      name: string;
-      mimeType?: `${string}/${string}`;
-      parents: string[];
-    };
+  resource: {
+    name: string;
+    mimeType?: `${string}/${string}`;
+    parents: string[];
   },
 ) =>
   authorizedRequest(
@@ -197,9 +230,7 @@ const create = (
     'https://www.googleapis.com/drive/v3/files',
     auth,
     {
-      json: {
-        resource,
-      },
+      json: resource,
     },
     z.object({ id: z.string() }),
   );
@@ -230,7 +261,7 @@ const upload = async (
     throw new Error('Unsupported file type');
   }
 
-  const response = await ky(
+  const response = await googleRequest(
     `https://www.googleapis.com/upload/drive/v3/files/${fileId}`,
     {
       method: 'PATCH',

@@ -71,6 +71,10 @@ const directoryEntries = computed(() =>
   directory.value instanceof Error ? undefined : directory.value?.entries,
 );
 
+const directoryError = computed(() =>
+  directory.value instanceof Error ? directory.value : undefined,
+);
+
 const { open } = useMainRouter();
 
 const onClickPath = async (indexPath: number) => {
@@ -111,12 +115,7 @@ const documentIdList = computed(() =>
   isArray(documentIdListSate.value) ? documentIdListSate.value : undefined,
 );
 
-// todo: добавить отображение ошибки
-// const documentRepoError = computed(() =>
-//   documentIdListSate.value instanceof Error
-//     ? documentIdListSate.value
-//     : undefined,
-// );
+const showError = computed(() => directoryError.value);
 
 const onRemoveEntry = async (path: EntryPath) => {
   await removeEntry(path);
@@ -234,71 +233,80 @@ const showFSEntryRenameDialog = computed({
     />
 
     <div class="document-explorer-widget__scrollable-content">
-      <MDListContainer
-        is="div"
-        v-if="directoryPath"
-        class="document-explorer-widget__content-list"
-      >
-        <CFRDocumentMDListItem
-          v-for="docId in documentIdList"
-          :key="docId"
-          :document-id="docId"
-          :path="directoryPath"
-          class="document-explorer-widget__list-item"
-          is-button
-          @click="onClickDocument(docId)"
+      <div v-if="showError" class="document-explorer-widget__error">
+        {{ showError }}
+      </div>
+
+      <template v-else>
+        <MDListContainer
+          is="div"
+          v-if="directoryPath"
+          class="document-explorer-widget__content-list"
         >
-          <template #trailingIcon="{ documentName }">
-            <MDContextMenuButton
-              :btns="documentContextBtns"
-              :tooltip="`options ${documentName}`"
-              @click="onClickDocumentContextAction($event, docId)"
-            />
-          </template>
-        </CFRDocumentMDListItem>
+          <CFRDocumentMDListItem
+            v-for="docId in documentIdList"
+            :key="docId"
+            :document-id="docId"
+            :path="directoryPath"
+            class="document-explorer-widget__list-item"
+            is-button
+            @click="onClickDocument(docId)"
+          >
+            <template #trailingIcon="{ documentName }">
+              <MDContextMenuButton
+                :btns="documentContextBtns"
+                :tooltip="`options ${documentName}`"
+                @click="onClickDocumentContextAction($event, docId)"
+              />
+            </template>
+          </CFRDocumentMDListItem>
 
-        <FSEntryMDListItem
-          v-for="entry in directoryEntries"
-          :key="entry.name"
-          is-button
-          :entry="entry"
-          class="document-explorer-widget__list-item"
-          @click="onClickEntry(entry)"
+          <FSEntryMDListItem
+            v-for="entry in directoryEntries"
+            :key="entry.name"
+            is-button
+            :entry="entry"
+            class="document-explorer-widget__list-item"
+            @click="onClickEntry(entry)"
+          >
+            <template #trailingIcon="{ entry: { name: entryName } }">
+              <MDContextMenuButton
+                :btns="fsEntryContextBtns"
+                :tooltip="`options ${entryName}`"
+                @click="onClickFSEntryContextAction($event, entry)"
+              />
+            </template>
+          </FSEntryMDListItem>
+        </MDListContainer>
+
+        <MDFabContainer
+          class="document-explorer-widget__fab-container"
+          auto-hide
         >
-          <template #trailingIcon="{ entry: { name: entryName } }">
-            <MDContextMenuButton
-              :btns="fsEntryContextBtns"
-              :tooltip="`options ${entryName}`"
-              @click="onClickFSEntryContextAction($event, entry)"
-            />
+          <template #default>
+            <MDFab
+              tooltip="Create directory"
+              color="tonal-primary"
+              @click="onClickCreateDirectory"
+            >
+              <template #icon>
+                <MDSymbol name="create_new_folder" />
+              </template>
+            </MDFab>
+
+            <MDFab
+              tooltip="Create document"
+              size="medium"
+              color="tonal-primary"
+              @click="onClickCreateDocument"
+            >
+              <template #icon>
+                <MDSymbol name="edit_document" />
+              </template>
+            </MDFab>
           </template>
-        </FSEntryMDListItem>
-      </MDListContainer>
-
-      <MDFabContainer class="document-explorer-widget__fab-container" auto-hide>
-        <template #default>
-          <MDFab
-            tooltip="Create directory"
-            color="tonal-primary"
-            @click="onClickCreateDirectory"
-          >
-            <template #icon>
-              <MDSymbol name="create_new_folder" />
-            </template>
-          </MDFab>
-
-          <MDFab
-            tooltip="Create document"
-            size="medium"
-            color="tonal-primary"
-            @click="onClickCreateDocument"
-          >
-            <template #icon>
-              <MDSymbol name="edit_document" />
-            </template>
-          </MDFab>
-        </template>
-      </MDFabContainer>
+        </MDFabContainer>
+      </template>
     </div>
 
     <DocumentCreationDialog
