@@ -14,8 +14,9 @@ import {
 } from '../strictRecord/wrapStrictRecord';
 import { once } from 'es-toolkit';
 import { tryOnScopeDispose } from '@vueuse/core';
+import { DomainError } from '../error';
 
-export interface ReadonlyDirectoryFSEntryRef
+export interface ReadonlyDirectoryFSEntryState
   extends Omit<StaticDirectoryFSEntry, 'entries'> {
   entries: StrictRecord<string, FileFSEntry | DirectoryFSEntry>;
   loading: boolean;
@@ -25,8 +26,8 @@ export interface ReadonlyDirectoryFSEntryRef
   raw: DirectoryFSEntry;
 }
 
-export interface WritableDirectoryFSEntryRef
-  extends ReadonlyDirectoryFSEntryRef {
+export interface WritableDirectoryFSEntryState
+  extends ReadonlyDirectoryFSEntryState {
   writeFile: (
     name: string,
     file?: FileSystemWriteChunkType,
@@ -35,18 +36,18 @@ export interface WritableDirectoryFSEntryRef
   createDirectory: (name: string) => Promise<WritableDirectoryFSEntry>;
 }
 
-export type DirectoryFSEntryRef =
-  | ReadonlyDirectoryFSEntryRef
-  | WritableDirectoryFSEntryRef;
+export type DirectoryFSEntryState =
+  | ReadonlyDirectoryFSEntryState
+  | WritableDirectoryFSEntryState;
 
 /**
- * Create Ref for DirectoryFSEntry
+ * Create reactive state for DirectoryFSEntry
  * @param directoryFSEntry
  * @returns
  */
-export function directoryFSEntryRef(
+export const setupDirectoryFSEntryState = (
   directoryFSEntry: DirectoryFSEntry,
-): DirectoryFSEntryRef {
+): DirectoryFSEntryState => {
   const readyRef = shallowRef(false);
   const loadingRef = shallowRef(false);
   const errorRef = shallowRef<Error>();
@@ -66,7 +67,11 @@ export function directoryFSEntryRef(
         strictRecordSet(entriesReactiveState, name, entry);
       }
     } catch (err) {
-      errorRef.value = err instanceof Error ? err : new Error(String(err));
+      const error = new DomainError('Failed to load directory contents', {
+        cause: err,
+      });
+      errorRef.value = error;
+      throw error;
     } finally {
       loadingRef.value = false;
       readyRef.value = true;
@@ -113,7 +118,7 @@ export function directoryFSEntryRef(
     raw: directoryFSEntry,
   };
 
-  const directoryCacheApiRef = reactive(api);
+  const directoryFSEntryState = reactive(api);
 
   const onScopeDispose = () => {
     if ('off' in directoryFSEntry) {
@@ -124,5 +129,5 @@ export function directoryFSEntryRef(
 
   tryOnScopeDispose(onScopeDispose);
 
-  return directoryCacheApiRef;
-}
+  return directoryFSEntryState;
+};
