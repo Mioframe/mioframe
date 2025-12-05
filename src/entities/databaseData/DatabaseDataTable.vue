@@ -9,7 +9,7 @@ import type {
 import { MDTable } from '@shared/ui/Table';
 import type { EmptyObject } from 'type-fest';
 import { computed, toRefs } from 'vue';
-import type { ItemIdQuery } from '../../shared/api/databaseDocument/data/queryTypes';
+import type { ItemIdQuery } from '../../shared/service/databaseDocument/data/queryTypes';
 import { useDatabasePropertiesClient } from '@entity/databaseProperty';
 import type { EntryPath } from '@shared/lib/fileSystem';
 import { useDatabaseDataClient } from './client';

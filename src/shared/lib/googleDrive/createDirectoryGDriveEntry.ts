@@ -17,7 +17,7 @@ import {
 } from './types';
 import { files as googleFiles, SPACE } from './api';
 import { DomainError } from '../error';
-import { pathToString } from '@shared/api/directories';
+import { pathToString } from '@shared/service/directories';
 
 const cacheDirectories = new WeakValueMap<string, DirectoryGDriveEntry>();
 

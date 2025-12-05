@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { EntryDescription } from '@shared/api/directories';
+import type { EntryDescription } from '@shared/service/directories';
 import { MDSymbol } from '@shared/ui/Icon';
 import { MDListItem } from '@shared/ui/Lists';
 

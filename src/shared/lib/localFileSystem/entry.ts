@@ -1,4 +1,4 @@
-import { pathToString } from '@shared/api/directories';
+import { pathToString } from '@shared/service/directories';
 import { DomainError } from '../error';
 import type { DirectoryLocalEntry, GeneralLocalEntry } from './types';
 

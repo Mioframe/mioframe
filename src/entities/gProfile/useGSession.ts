@@ -1,4 +1,4 @@
-import { useMainService } from '@shared/api';
+import { useMainService } from '@shared/service';
 import { DomainError } from '@shared/lib/error';
 import {
   requestAccessToken,

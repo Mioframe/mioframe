@@ -1,5 +1,5 @@
 import { createGlobalState } from '@vueuse/core';
-import { useMainService } from '@shared/api';
+import { useMainService } from '@shared/service';
 import {
   createSubscribeClient,
   useSubscribeByQueryClient,
@@ -9,7 +9,7 @@ import { isFunction } from 'es-toolkit';
 import { useSnackbar } from '@shared/ui/Snackbar';
 import { useDialog } from '@shared/ui/Dialog';
 import type { EntryPath, EntryPathString } from '@shared/lib/fileSystem';
-import { OPFSName } from '@shared/api/directories';
+import { OPFSName } from '@shared/service/directories';
 
 export const OPFS = OPFSName;
 

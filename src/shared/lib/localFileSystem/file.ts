@@ -7,7 +7,7 @@ import type {
 } from './types';
 import { moveFileTo } from '../fileSystem/utils';
 import { DomainError } from '../error';
-import { pathToString } from '@shared/api/directories';
+import { pathToString } from '@shared/service/directories';
 
 export const createLocalFile = (
   currentHandle: FileSystemFileHandle,

@@ -1,4 +1,4 @@
-import { pathToString } from '@shared/api/directories';
+import { pathToString } from '@shared/service/directories';
 import { api, type GoogleAuthParams } from './api';
 import type { DirectoryGDriveEntry, RootGDriveEntry } from './types';
 import { DomainError } from '../error';
