@@ -1,4 +1,4 @@
-import { useMainService } from '@shared/api';
+import { useMainService } from '@shared/service';
 import type { AMDocumentId } from '@shared/lib/automerge';
 import type { PatchSource } from '@shared/lib/changeObject';
 import type {

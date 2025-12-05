@@ -6,7 +6,7 @@ import type {
 import type { FileFSEntry } from './FileFSEntry';
 import { isEqual } from 'es-toolkit';
 import { DomainError } from '../error';
-import { pathToString } from '@shared/api/directories';
+import { pathToString } from '@shared/service/directories';
 
 const isNestedPath = (dest: string[], target: string[]) => {
   return (

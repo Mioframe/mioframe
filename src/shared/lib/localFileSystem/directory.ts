@@ -10,7 +10,7 @@ import { WeakValueMap } from '../WeakValueMap';
 import type { DirectoryEntryEventMap } from '../fileSystem/DirectoryFSEntry';
 import { copyDirectoryTo, moveDirectoryTo } from '../fileSystem/utils';
 import { DomainError } from '../error';
-import { pathToString } from '@shared/api/directories';
+import { pathToString } from '@shared/service/directories';
 
 const cacheDirectories = new WeakValueMap<string, DirectoryLocalEntry>();
 

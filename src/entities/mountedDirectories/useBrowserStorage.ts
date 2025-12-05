@@ -1,4 +1,4 @@
-import { OPFSName } from '@shared/api/directories';
+import { OPFSName } from '@shared/service/directories';
 import type { DirectoryLocalEntry } from '@shared/lib/localFileSystem';
 import { createLocalDirectory } from '@shared/lib/localFileSystem';
 import { useDialog } from '@shared/ui/Dialog';

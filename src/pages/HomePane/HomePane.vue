@@ -4,7 +4,7 @@ import { MDFab, MDFabContainer, MDIconButton } from '@shared/ui/Button';
 import { MDPaneContainer } from '@shared/ui/Layout';
 import { MDSymbol } from '@shared/ui/Icon';
 import { useDirectoryStoreClient } from '@entity/mountedDirectories/useDirectoryStoreClient';
-import { OPFSName } from '@shared/api/directories';
+import { OPFSName } from '@shared/service/directories';
 import { MDAppBar } from '@shared/ui/AppBar';
 import { useMainRouter } from '@page/routes';
 
