@@ -10,7 +10,7 @@ import { computed, toRefs, useTemplateRef } from 'vue';
 import ValueInline from './ValueInline.vue';
 import { DatabaseDataTable } from '@entity/databaseData';
 import type { EntryPath } from '@shared/lib/fileSystem';
-import type { ItemIdQuery } from '@shared/api/databaseDocument/data/queryTypes';
+import type { ItemIdQuery } from '@shared/service/databaseDocument/data/queryTypes';
 import { unrefElement, useScroll } from '@vueuse/core';
 
 const props = defineProps<{

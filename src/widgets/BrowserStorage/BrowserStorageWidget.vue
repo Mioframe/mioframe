@@ -6,7 +6,7 @@ import { useMainNavigate } from '@page/SplitView/useMainNavigate';
 import { useBrowserSourceMounted } from '../../entities/mountedDirectories/useBrowserStorage';
 import type { DirectoryLocalEntry } from '@shared/lib/localFileSystem';
 import { computed } from 'vue';
-import { OPFSName } from '@shared/api/directories';
+import { OPFSName } from '@shared/service/directories';
 
 const { open } = useMainNavigate();
 

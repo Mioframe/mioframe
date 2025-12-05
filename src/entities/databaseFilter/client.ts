@@ -1,4 +1,4 @@
-import { useMainServiceClient } from '@shared/api/useService';
+import { useMainServiceClient } from '@shared/service/useService';
 import { useSubscribeByQueryClient } from '@shared/lib/subscriptions';
 import { createGlobalState } from '@vueuse/core';
 
