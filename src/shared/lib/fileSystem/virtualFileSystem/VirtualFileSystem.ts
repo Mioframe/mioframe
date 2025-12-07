@@ -28,7 +28,6 @@ export class VirtualFileSystem {
     this.locks = locksManager || new LockManager();
   }
 
-  // fixme: упростить watch, что бы всегда указывать путь отслеживания
   public watch(callback: (event: VfsEvent) => void): () => void;
   public watch(
     path: string,
@@ -109,6 +108,7 @@ export class VirtualFileSystem {
 
     this.mounts.set(normalizedMountPath, { provider, unwatch });
 
+    // Сортируем точки монтирования: более длинные (специфичные) пути проверяются первыми
     const sortedEntries = Array.from(this.mounts.entries()).sort(
       (a, b) => b[0].length - a[0].length,
     );
@@ -192,8 +192,13 @@ export class VirtualFileSystem {
   }
 
   public async rename(oldPath: string, newPath: string): Promise<void> {
-    return this.locks.request(oldPath, async () => {
-      return this.locks.request(newPath, async () => {
+    // 1. Сортируем пути для блокировки, чтобы избежать Deadlock (AB vs BA)
+    // Всегда блокируем "меньший" путь первым, независимо от направления переименования
+    const pathA = oldPath < newPath ? oldPath : newPath;
+    const pathB = oldPath < newPath ? newPath : oldPath;
+
+    return this.locks.request(pathA, async () => {
+      return this.locks.request(pathB, async () => {
         const source = this.resolve(oldPath);
         const target = this.resolve(newPath);
 
@@ -210,10 +215,6 @@ export class VirtualFileSystem {
     });
   }
 
-  /**
-   * Helper for moving files/folders across different providers.
-   * Assumes locks for oldPath and newPath are already acquired by the caller (rename).
-   */
   private async moveCrossProvider(
     oldPath: string,
     newPath: string,
@@ -221,23 +222,16 @@ export class VirtualFileSystem {
     const source = this.resolve(oldPath);
     const target = this.resolve(newPath);
 
-    // Get stats directly from provider to decide strategy
     const stat = await source.provider.stat(source.relativePath);
 
     if (stat.type === FileTypeEnum.File) {
-      // 1. Read source
       const rawContent = await source.provider.readFile(source.relativePath);
-
-      // 2. Write target (create if needed)
       await target.provider.writeFile(target.relativePath, rawContent, {
         create: true,
         overwrite: true,
       });
-
-      // 3. Delete source
       await source.provider.delete(source.relativePath, false);
     } else if (stat.type === FileTypeEnum.Directory) {
-      // 1. Create target directory
       try {
         await target.provider.createDirectory(target.relativePath);
       } catch (e: unknown) {
@@ -246,19 +240,16 @@ export class VirtualFileSystem {
         if (err.code !== FileSystemError.FileExists) throw e;
       }
 
-      // 2. Read children
       const entries = await source.provider.readDirectory(source.relativePath);
 
-      // 3. Move children recursively
       for (const [name] of entries) {
         const childSource = PathUtils.join(oldPath, name);
         const childTarget = PathUtils.join(newPath, name);
 
-        // RECURSION: Call the public API rename()
+        // Рекурсивный вызов - он сам возьмет нужные блокировки
         await this.rename(childSource, childTarget);
       }
 
-      // 4. Delete empty source directory
       await source.provider.delete(source.relativePath, false);
     }
   }

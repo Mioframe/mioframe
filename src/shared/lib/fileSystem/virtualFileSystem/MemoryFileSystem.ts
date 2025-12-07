@@ -81,8 +81,8 @@ export class MemoryFileSystem implements IFileSystemProvider {
 
     for (const [key, childEntry] of this.store.entries()) {
       if (key.startsWith(searchPrefix) && key !== normalized) {
-        // Проверяем, что это прямой потомок, а не внук
         const relativePath = key.substring(searchPrefix.length);
+        // Возвращаем только прямых потомков
         if (!relativePath.includes('/')) {
           children.push([relativePath, childEntry.type]);
         }
@@ -158,7 +158,6 @@ export class MemoryFileSystem implements IFileSystemProvider {
     }
 
     const fileName = PathUtils.basename(path);
-    // Конвертация контента в File для единообразия
     const file =
       content instanceof File
         ? content
@@ -234,10 +233,7 @@ export class MemoryFileSystem implements IFileSystemProvider {
             toDelete.add(key);
           }
         }
-        toDelete.forEach((key) => {
-          this.store.delete(key);
-          // В идеале можно генерировать события удаления для каждого файла, но пока ограничимся корневым
-        });
+        toDelete.forEach((key) => this.store.delete(key));
       }
     }
 
@@ -252,6 +248,17 @@ export class MemoryFileSystem implements IFileSystemProvider {
 
     if (normalizedOld === normalizedNew) return Promise.resolve();
 
+    // ЗАЩИТА: Нельзя перемещать папку внутрь самой себя
+    // /A -> /A/B (нельзя)
+    if (PathUtils.isChildOrSame(normalizedOld, normalizedNew)) {
+      return Promise.reject(
+        new VfsError(
+          FileSystemError.NotSupported,
+          `Cannot move directory into itself: ${oldPath} -> ${newPath}`,
+        ),
+      );
+    }
+
     const entry = this.getEntry(normalizedOld);
 
     if (this.store.has(normalizedNew)) {
@@ -263,7 +270,6 @@ export class MemoryFileSystem implements IFileSystemProvider {
       );
     }
 
-    // Проверка целостности: родитель нового пути должен существовать
     const newParentPath = PathUtils.dirname(normalizedNew);
     const newParentEntry = this.store.get(newParentPath);
     if (!newParentEntry || newParentEntry.type !== FileType.Directory) {
@@ -283,14 +289,12 @@ export class MemoryFileSystem implements IFileSystemProvider {
 
       const entriesToMove = new Set<[string, AnyEntry]>();
 
-      // Находим всех детей
       for (const [key, childEntry] of this.store.entries()) {
         if (key.startsWith(searchPrefix) && key !== normalizedOld) {
           entriesToMove.add([key, childEntry]);
         }
       }
 
-      // Перемещаем детей
       for (const [oldKey, childEntry] of entriesToMove) {
         const relativePath = oldKey.substring(searchPrefix.length);
         const newKey = PathUtils.join(newPrefix, relativePath);
@@ -303,7 +307,6 @@ export class MemoryFileSystem implements IFileSystemProvider {
         });
       }
 
-      // ВАЖНО: Перемещаем саму директорию (в старой реализации это было пропущено)
       this.store.delete(normalizedOld);
       this.store.set(normalizedNew, {
         ...entry,
@@ -311,7 +314,6 @@ export class MemoryFileSystem implements IFileSystemProvider {
         modificationTime: Date.now(),
       });
     } else {
-      // Перемещение одного файла
       this.store.delete(normalizedOld);
       this.store.set(normalizedNew, {
         ...entry,
