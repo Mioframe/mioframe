@@ -81,8 +81,8 @@ export class MemoryFileSystem implements IFileSystemProvider {
 
     for (const [key, childEntry] of this.store.entries()) {
       if (key.startsWith(searchPrefix) && key !== normalized) {
+        // Проверяем, что это прямой потомок, а не внук
         const relativePath = key.substring(searchPrefix.length);
-
         if (!relativePath.includes('/')) {
           children.push([relativePath, childEntry.type]);
         }
@@ -145,7 +145,6 @@ export class MemoryFileSystem implements IFileSystemProvider {
     const parentPath = PathUtils.dirname(normalized);
 
     const now = Date.now();
-
     const entry = this.store.get(normalized);
     const parentEntry = this.store.get(parentPath);
 
@@ -159,10 +158,11 @@ export class MemoryFileSystem implements IFileSystemProvider {
     }
 
     const fileName = PathUtils.basename(path);
-
-    const file = new File([content], fileName, {
-      lastModified: Date.now(),
-    });
+    // Конвертация контента в File для единообразия
+    const file =
+      content instanceof File
+        ? content
+        : new File([content], fileName, { lastModified: now });
 
     if (entry) {
       if (entry.type !== FileType.File) {
@@ -183,7 +183,7 @@ export class MemoryFileSystem implements IFileSystemProvider {
       }
 
       entry.content = file;
-      entry.size = entry.content.size;
+      entry.size = file.size;
       entry.modificationTime = now;
       this.events.emit({ type: 'update', path: normalized });
     } else {
@@ -215,26 +215,29 @@ export class MemoryFileSystem implements IFileSystemProvider {
     if (entry.type === FileType.Directory) {
       const searchPrefix = normalized === '/' ? normalized : `${normalized}/`;
 
-      let isNotEmpty = false;
+      let hasChildren = false;
       for (const key of this.store.keys()) {
         if (key.startsWith(searchPrefix) && key !== normalized) {
-          isNotEmpty = true;
+          hasChildren = true;
           break;
         }
       }
 
-      if (isNotEmpty && !recursive) {
+      if (hasChildren && !recursive) {
         return Promise.reject(new Error(`Directory not empty: ${path}`));
       }
 
-      if (isNotEmpty && recursive) {
+      if (hasChildren && recursive) {
         const toDelete = new Set<string>();
         for (const key of this.store.keys()) {
           if (key.startsWith(searchPrefix)) {
             toDelete.add(key);
           }
         }
-        toDelete.forEach((key) => this.store.delete(key));
+        toDelete.forEach((key) => {
+          this.store.delete(key);
+          // В идеале можно генерировать события удаления для каждого файла, но пока ограничимся корневым
+        });
       }
     }
 
@@ -247,6 +250,8 @@ export class MemoryFileSystem implements IFileSystemProvider {
     const normalizedOld = PathUtils.normalize(oldPath);
     const normalizedNew = PathUtils.normalize(newPath);
 
+    if (normalizedOld === normalizedNew) return Promise.resolve();
+
     const entry = this.getEntry(normalizedOld);
 
     if (this.store.has(normalizedNew)) {
@@ -254,6 +259,18 @@ export class MemoryFileSystem implements IFileSystemProvider {
         new VfsError(
           FileSystemError.FileExists,
           `Target already exists: ${newPath}`,
+        ),
+      );
+    }
+
+    // Проверка целостности: родитель нового пути должен существовать
+    const newParentPath = PathUtils.dirname(normalizedNew);
+    const newParentEntry = this.store.get(newParentPath);
+    if (!newParentEntry || newParentEntry.type !== FileType.Directory) {
+      return Promise.reject(
+        new VfsError(
+          FileSystemError.FileNotFound,
+          `Target parent directory not found: ${newParentPath}`,
         ),
       );
     }
@@ -266,12 +283,14 @@ export class MemoryFileSystem implements IFileSystemProvider {
 
       const entriesToMove = new Set<[string, AnyEntry]>();
 
+      // Находим всех детей
       for (const [key, childEntry] of this.store.entries()) {
-        if (key.startsWith(searchPrefix)) {
+        if (key.startsWith(searchPrefix) && key !== normalizedOld) {
           entriesToMove.add([key, childEntry]);
         }
       }
 
+      // Перемещаем детей
       for (const [oldKey, childEntry] of entriesToMove) {
         const relativePath = oldKey.substring(searchPrefix.length);
         const newKey = PathUtils.join(newPrefix, relativePath);
@@ -283,7 +302,16 @@ export class MemoryFileSystem implements IFileSystemProvider {
           modificationTime: Date.now(),
         });
       }
+
+      // ВАЖНО: Перемещаем саму директорию (в старой реализации это было пропущено)
+      this.store.delete(normalizedOld);
+      this.store.set(normalizedNew, {
+        ...entry,
+        path: normalizedNew,
+        modificationTime: Date.now(),
+      });
     } else {
+      // Перемещение одного файла
       this.store.delete(normalizedOld);
       this.store.set(normalizedNew, {
         ...entry,
