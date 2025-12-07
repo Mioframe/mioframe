@@ -8,5 +8,13 @@ export default defineConfig({
       // implement node event listeners here
       on('file:preprocessor', vitePreprocessor(config));
     },
+    specPattern: 'src/**/*.cy.ts',
+  },
+
+  component: {
+    devServer: {
+      framework: 'vue',
+      bundler: 'vite',
+    },
   },
 });
