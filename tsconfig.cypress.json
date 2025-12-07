@@ -25,5 +25,10 @@
       "@testing-library/cypress"
     ]
   },
-  "include": ["cypress/**/*.ts", "cypress/**/*.tsx"]
+  "include": [
+    "cypress/**/*.ts",
+    "cypress/**/*.tsx",
+    "src/**/*.cy.ts",
+    "src/**/*.ts"
+  ]
 }
