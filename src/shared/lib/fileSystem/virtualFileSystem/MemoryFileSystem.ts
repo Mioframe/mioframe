@@ -28,11 +28,18 @@ interface DirectoryEntry extends Entry {
 
 type AnyEntry = FileEntry | DirectoryEntry;
 
+/**
+ * Реализация файловой системы в памяти (In-Memory).
+ * Все данные хранятся в RAM и теряются при перезагрузке страницы/приложения.
+ * Используется для временных файлов, тестов или кеширования.
+ */
 export class MemoryFileSystem implements IFileSystemProvider {
+  /** Хранилище: Путь -> Объект записи */
   private store: Map<string, AnyEntry> = new Map();
   private events = new EventEmitter();
 
   constructor() {
+    // Инициализация корневой директории
     this.store.set('/', {
       path: '/',
       type: FileType.Directory,
@@ -79,6 +86,7 @@ export class MemoryFileSystem implements IFileSystemProvider {
     const children: [string, FileType][] = [];
     const searchPrefix = normalized === '/' ? normalized : `${normalized}/`;
 
+    // Линейный перебор Store (для MemoryFS это допустимо, но для больших объемов нужна оптимизация)
     for (const [key, childEntry] of this.store.entries()) {
       if (key.startsWith(searchPrefix) && key !== normalized) {
         const relativePath = key.substring(searchPrefix.length);
@@ -148,6 +156,7 @@ export class MemoryFileSystem implements IFileSystemProvider {
     const entry = this.store.get(normalized);
     const parentEntry = this.store.get(parentPath);
 
+    // Проверка родительской директории
     if (!parentEntry || parentEntry.type !== FileType.Directory) {
       return Promise.reject(
         new VfsError(
@@ -164,6 +173,7 @@ export class MemoryFileSystem implements IFileSystemProvider {
         : new File([content], fileName, { lastModified: now });
 
     if (entry) {
+      // Обновление существующего файла
       if (entry.type !== FileType.File) {
         return Promise.reject(
           new VfsError(
@@ -186,6 +196,7 @@ export class MemoryFileSystem implements IFileSystemProvider {
       entry.modificationTime = now;
       this.events.emit({ type: 'update', path: normalized });
     } else {
+      // Создание нового файла
       if (!options.create) {
         return Promise.reject(
           new VfsError(
@@ -248,7 +259,7 @@ export class MemoryFileSystem implements IFileSystemProvider {
 
     if (normalizedOld === normalizedNew) return Promise.resolve();
 
-    // ЗАЩИТА: Нельзя перемещать папку внутрь самой себя
+    // ЗАЩИТА: Нельзя перемещать папку внутрь самой себя или ее подпапок
     // /A -> /A/B (нельзя)
     if (PathUtils.isChildOrSame(normalizedOld, normalizedNew)) {
       return Promise.reject(
@@ -289,12 +300,14 @@ export class MemoryFileSystem implements IFileSystemProvider {
 
       const entriesToMove = new Set<[string, AnyEntry]>();
 
+      // Сбор всех вложенных элементов
       for (const [key, childEntry] of this.store.entries()) {
         if (key.startsWith(searchPrefix) && key !== normalizedOld) {
           entriesToMove.add([key, childEntry]);
         }
       }
 
+      // Перемещение вложенных элементов
       for (const [oldKey, childEntry] of entriesToMove) {
         const relativePath = oldKey.substring(searchPrefix.length);
         const newKey = PathUtils.join(newPrefix, relativePath);
@@ -307,6 +320,7 @@ export class MemoryFileSystem implements IFileSystemProvider {
         });
       }
 
+      // Перемещение самой директории
       this.store.delete(normalizedOld);
       this.store.set(normalizedNew, {
         ...entry,
@@ -314,6 +328,7 @@ export class MemoryFileSystem implements IFileSystemProvider {
         modificationTime: Date.now(),
       });
     } else {
+      // Перемещение файла
       this.store.delete(normalizedOld);
       this.store.set(normalizedNew, {
         ...entry,
