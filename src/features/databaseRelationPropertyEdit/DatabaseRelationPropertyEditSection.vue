@@ -1,11 +1,10 @@
 <script setup lang="ts">
 import type { Relation, RelationProperty } from '@entity/databaseRelation';
 import DatabaseRelationPropertyField from './DatabaseRelationPropertyField.vue';
-import type { EntryPath } from '@shared/lib/fileSystem';
 import { computed } from 'vue';
 
 defineProps<{
-  directoryPath: EntryPath;
+  directoryPath: string;
 }>();
 
 interface PartialRelationProperty extends Omit<RelationProperty, 'relation'> {
@@ -28,7 +27,7 @@ const relationModel = computed({
   <section>
     <DatabaseRelationPropertyField
       v-model:model-value="relationModel"
-      :directory-path="directoryPath"
+      :path="directoryPath"
     />
   </section>
 </template>

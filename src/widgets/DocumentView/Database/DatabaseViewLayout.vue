@@ -3,18 +3,18 @@ import type { AMDocumentId } from '@shared/lib/automerge';
 import type {
   DatabaseItemId,
   DatabasePropertyId,
-  DatabaseUnknownProperty,
 } from '@shared/lib/databaseDocument';
 import { type DatabaseViewId } from '@shared/lib/databaseDocument';
 import { computed, toRefs, useTemplateRef } from 'vue';
 import ValueInline from './ValueInline.vue';
 import { DatabaseDataTable } from '@entity/databaseData';
-import type { EntryPath } from '@shared/lib/fileSystem';
 import type { ItemIdQuery } from '@shared/service/databaseDocument/data/queryTypes';
 import { unrefElement, useScroll } from '@vueuse/core';
+import { useDatabaseProperties } from '@entity/databaseProperty';
+import DatabasePropertyBlock from '@entity/databaseProperty/DatabasePropertyBlock.vue';
 
 const props = defineProps<{
-  directoryPath: EntryPath;
+  path: string;
   documentId: AMDocumentId;
   viewId?: DatabaseViewId;
   itemIdQuery?: ItemIdQuery;
@@ -23,14 +23,13 @@ const props = defineProps<{
 const slots = defineSlots<{
   value: (p: {
     itemId: DatabaseItemId;
-    property: DatabaseUnknownProperty;
     propertyId: DatabasePropertyId;
   }) => unknown;
   action: (p: { itemId: DatabaseItemId }) => unknown;
   actionHead: () => unknown;
 }>();
 
-const { directoryPath, documentId } = toRefs(props);
+const { path, documentId } = toRefs(props);
 
 const scrollTarget = useTemplateRef('scrollTarget');
 
@@ -42,26 +41,33 @@ const { arrivedState } = useScroll(scrollTargetEl, {
 });
 
 const arrivedRight = computed(() => arrivedState.right);
+
+const { propertiesIdList } = useDatabaseProperties(path, documentId);
 </script>
 
 <template>
   <DatabaseDataTable
+    v-if="propertiesIdList"
     ref="scrollTarget"
-    :directory-path="directoryPath"
+    :directory-path="path"
     :document-id="documentId"
     :view-id="viewId"
     class="database-view-layout"
     :id-query="itemIdQuery"
+    :properties="propertiesIdList"
   >
-    <template #value="{ itemId, property, propertyId }">
-      <slot
-        name="value"
-        :item-id="itemId"
-        :property="property"
+    <template #property="{ propertyId }">
+      <DatabasePropertyBlock
+        :path="path"
+        :document-id="documentId"
         :property-id="propertyId"
-      >
+      />
+    </template>
+
+    <template #value="{ itemId, propertyId }">
+      <slot name="value" :item-id="itemId" :property-id="propertyId">
         <ValueInline
-          :directory-path="directoryPath"
+          :directory-path="path"
           :document-id="documentId"
           :property-id="propertyId"
           :item-id="itemId"
@@ -84,6 +90,8 @@ const arrivedRight = computed(() => arrivedState.right);
       <slot name="actionHead" />
     </template>
   </DatabaseDataTable>
+
+  <div v-else>properties in undefined</div>
 </template>
 
 <style lang="css" scoped>

@@ -1,1 +1,1 @@
-export { useCFRDocumentService } from './cfrDocumentService';
+export { useDocumentService } from './useDocumentService';

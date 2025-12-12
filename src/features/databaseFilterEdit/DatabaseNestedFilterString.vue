@@ -27,13 +27,12 @@ import { MDDialog } from '@shared/ui/Dialog';
 import { useConditionMenu } from './conditionMenuList';
 import { omit } from 'es-toolkit';
 import { useLastHover } from '@shared/lib/useLastHover';
-import type { EntryPath } from '@shared/lib/fileSystem';
-import { useDatabasePropertiesClient } from '@entity/databaseProperty';
+import { useDatabaseProperty } from '@entity/databaseProperty';
 import type { DomainError } from '@shared/lib/error';
 
 const props = withDefaults(
   defineProps<{
-    directoryPath: EntryPath;
+    directoryPath: string;
     documentId: AMDocumentId;
     propertyId?: DatabasePropertyId;
     disableProperties?: boolean;
@@ -64,13 +63,7 @@ const filterModel = defineModel<DatabaseNestedFilter>('filter', {
   required: true,
 });
 
-const { getProperty } = useDatabasePropertiesClient();
-
-const property = computed(() =>
-  propertyId.value
-    ? getProperty(directoryPath.value, documentId.value, propertyId.value)
-    : undefined,
-);
+const { property } = useDatabaseProperty(directoryPath, documentId, propertyId);
 
 const propertyName = computed(
   (): string => property.value?.name ?? propertyId.value ?? 'unknown',
@@ -84,6 +77,9 @@ const onClickAddCondition = () => {
 
 const addConditionBtn = useTemplateRef<MaybeElement>('addConditionBtn');
 
+/**
+ * @deprecated разделить на компоненты
+ */
 const conditionMenuButtonList = useConditionMenu({
   directoryPath,
   documentId,
@@ -304,7 +300,9 @@ const onClickRemove = () => {
       :target="addConditionBtn"
       :btns="conditionMenuButtonList"
       @click="onClickMenuCondition"
-    />
+    >
+      <!-- todo: список кнопок -->
+    </MDMenu>
 
     <MDDialog
       v-model:show="showSimpleFilterDialog"

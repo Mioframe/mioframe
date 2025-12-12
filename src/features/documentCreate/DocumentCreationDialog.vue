@@ -4,11 +4,10 @@ import { DATABASE_DOCUMENT_TYPE } from '../../shared/lib/databaseDocument';
 import { MDDialog } from '@shared/ui/Dialog';
 import { MDTextField } from '@shared/ui/TextField';
 import { MDSelect } from '@shared/ui/Select';
-import type { EntryPath } from '@shared/lib/fileSystem';
-import { useDocumentRepoClient } from '@entity/documentRepo';
+import { useRepository } from '@entity/repository';
 
 const props = defineProps<{
-  path: EntryPath;
+  path: string;
 }>();
 
 const { path } = toRefs(props);
@@ -22,7 +21,7 @@ const showModel = defineModel<boolean>('show', { required: true });
 
 const stateName = ref<string>();
 
-const { createDocument } = useDocumentRepoClient();
+const { createDocument } = useRepository(path);
 
 const onCreate = async () => {
   if (!stateName.value?.length) {
@@ -32,7 +31,7 @@ const onCreate = async () => {
   const dType = documentType.value.at(0)?.key;
 
   if (dType) {
-    await createDocument(path.value, {
+    await createDocument({
       name: stateName.value.trim(),
       type: dType,
       version: 1,

@@ -1,12 +1,9 @@
-import type { EntryPath } from '@shared/lib/fileSystem';
 import type { AMDocumentId } from '@shared/lib/automerge';
-import { defineSubscribeByQueryService } from '@shared/lib/subscriptions';
 import {
   strictRecordGet,
   strictRecordIterableEntries,
   strictRecordRemove,
 } from '@shared/lib/strictRecord';
-import { DomainError } from '@shared/lib/error';
 import type {
   DatabaseState,
   DatabaseViewsMap,
@@ -29,87 +26,70 @@ import { useDatabaseViewFilterService } from './databaseViewFilterService';
 
 export const useDatabaseViewsService = (
   getDatabaseBody: (
-    path: EntryPath,
+    path: string,
     documentId: AMDocumentId,
-  ) => DatabaseState | DomainError | undefined,
+  ) => Promise<DatabaseState | undefined>,
   changeDatabase: (
-    path: EntryPath,
+    path: string,
     documentId: AMDocumentId,
     callback: (state: DatabaseState) => unknown,
-  ) => unknown,
+  ) => Promise<unknown>,
 ) => {
-  const getDatabaseViews = (
-    path: EntryPath,
+  const getDatabaseViews = async (
+    path: string,
     documentId: AMDocumentId,
-  ): undefined | DomainError | DatabaseViewsMap => {
-    const body = getDatabaseBody(path, documentId);
-
-    if (body instanceof DomainError) {
-      return body;
-    }
+  ): Promise<undefined | DatabaseViewsMap> => {
+    const body = await getDatabaseBody(path, documentId);
 
     return body?.views;
   };
 
-  const getDatabaseViewList = (
-    path: EntryPath,
+  const getViewList = async (
+    path: string,
     documentId: AMDocumentId,
-  ): undefined | DomainError | [DatabaseViewId, DatabaseView][] => {
-    const viewsRecord = getDatabaseViews(path, documentId);
-
-    if (viewsRecord instanceof DomainError) {
-      return viewsRecord;
-    }
+  ): Promise<undefined | [DatabaseViewId, DatabaseView][]> => {
+    const viewsRecord = await getDatabaseViews(path, documentId);
 
     return Array.from(strictRecordIterableEntries(viewsRecord)()).sort(
       ([, { order: a = 0 }], [, { order: b = 0 }]) => a - b,
     );
   };
 
-  const getView = (
-    path: EntryPath,
+  const getView = async (
+    path: string,
     documentId: AMDocumentId,
     viewId: DatabaseViewId,
-  ): undefined | DomainError | DatabaseView => {
-    const views = getDatabaseViews(path, documentId);
+  ): Promise<undefined | DatabaseView> => {
+    const views = await getDatabaseViews(path, documentId);
     if (views) {
-      if (views instanceof DomainError) {
-        return views;
-      }
-
       return strictRecordGet(views, viewId);
     }
   };
 
-  const getFirstView = (
-    path: EntryPath,
+  const getFirstView = async (
+    path: string,
     documentId: AMDocumentId,
-  ): undefined | DomainError | DatabaseView => {
-    const list = getDatabaseViewList(path, documentId);
-
-    if (list instanceof DomainError) {
-      return list;
-    }
+  ): Promise<undefined | DatabaseView> => {
+    const list = await getViewList(path, documentId);
 
     return list?.at(0)?.[1];
   };
 
   const remove = (
-    path: EntryPath,
+    path: string,
     documentId: AMDocumentId,
     viewId: DatabaseViewId,
-  ) => {
+  ) =>
     changeDatabase(path, documentId, (state) => {
       strictRecordRemove(state['views'], viewId);
     });
-  };
 
   const changeOrder = (
-    path: EntryPath,
+    path: string,
     documentId: AMDocumentId,
     from: number,
     to: number,
-  ) => {
+  ) =>
     changeDatabase(path, documentId, (state) => {
       const views = state.views;
 
@@ -126,22 +106,21 @@ export const useDatabaseViewsService = (
         view.order = index;
       });
     });
-  };
 
-  const create = (
-    path: EntryPath,
+  const create = async (
+    path: string,
     documentId: AMDocumentId,
     view: DatabaseView,
   ) => {
     const viewId = generateViewId();
-    changeDatabase(path, documentId, (state) => {
+    await changeDatabase(path, documentId, (state) => {
       strictRecordSet(state.views, viewId, view);
     });
     return viewId;
   };
 
   const change = (
-    path: EntryPath,
+    path: string,
     documentId: AMDocumentId,
     viewId: DatabaseViewId,
     cb: (view: DatabaseView) => unknown,
@@ -158,11 +137,11 @@ export const useDatabaseViewsService = (
     });
 
   const patch = (
-    path: EntryPath,
+    path: string,
     documentId: AMDocumentId,
     viewId: DatabaseViewId,
     view: PatchSource<DatabaseView>,
-  ) => {
+  ) =>
     changeDatabase(path, documentId, (state) => {
       const viewState = strictRecordGet(state.views, viewId);
 
@@ -170,18 +149,11 @@ export const useDatabaseViewsService = (
         deepPatchJsonObject(viewState, view);
       }
     });
-  };
 
   return {
-    subscribeDatabaseViews: defineSubscribeByQueryService(getDatabaseViews),
-
-    subscribeDatabaseViewList:
-      defineSubscribeByQueryService(getDatabaseViewList),
-
+    getViewList,
     getView,
-    subscribeDatabaseView: defineSubscribeByQueryService(getView),
-
-    subscribeDatabaseFirstView: defineSubscribeByQueryService(getFirstView),
+    getFirstView,
 
     remove,
     changeOrder,

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, watchEffect } from 'vue';
+import { computed, ref, toRefs, watchEffect } from 'vue';
 import { MDDialog } from '@shared/ui/Dialog';
 import { MDTextField } from '@shared/ui/TextField';
 import { MDSelect } from '@shared/ui/Select';
@@ -20,13 +20,14 @@ import {
   type DatabaseUnknownProperty,
 } from '@shared/lib/databaseDocument';
 import { zodIs } from '@shared/lib/validateZodScheme';
-import { useDatabasePropertiesClient } from '@entity/databaseProperty';
-import type { EntryPath } from '@shared/lib/fileSystem';
+import { useDatabaseProperties } from '@entity/databaseProperty';
 
 const props = defineProps<{
-  directoryPath: EntryPath;
+  path: string;
   documentId: AMDocumentId;
 }>();
+
+const { path, documentId } = toRefs(props);
 
 const emit = defineEmits<{
   created: [id: DatabasePropertyId, property: DatabaseUnknownProperty];
@@ -90,15 +91,11 @@ const assembledProperty = computed((): undefined | DatabaseUnknownProperty => {
 
 const { addSnackbar } = useSnackbar();
 
-const { post } = useDatabasePropertiesClient();
+const { post } = useDatabaseProperties(path, documentId);
 
 const onCreate = async () => {
   if (assembledProperty.value) {
-    const id = await post(
-      props.directoryPath,
-      props.documentId,
-      assembledProperty.value,
-    );
+    const id = await post(assembledProperty.value);
     emit('created', id, assembledProperty.value);
   } else {
     addSnackbar({ text: 'Property is not fully filled' });

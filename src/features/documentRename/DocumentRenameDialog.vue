@@ -3,11 +3,10 @@ import { computed, ref, toRefs, watchEffect } from 'vue';
 import { MDDialog } from '@shared/ui/Dialog';
 import { MDTextField } from '@shared/ui/TextField';
 import type { AMDocumentId } from '@shared/lib/automerge/automergeTypes';
-import type { EntryPath } from '@shared/lib/fileSystem';
-import { useCFRDocumentClient } from '@entity/cfrDocument';
+import { useDocument } from '@entity/cfrDocument';
 
 const props = defineProps<{
-  path: EntryPath;
+  path: string;
   documentId: AMDocumentId;
 }>();
 
@@ -20,11 +19,12 @@ const emit = defineEmits<{
 
 const showModel = defineModel<boolean>('show', { required: true });
 
-const { getDocumentDescription, patch: documentPatch } = useCFRDocumentClient();
-
-const documentName = computed(
-  () => getDocumentDescription(path.value, documentId.value)?.name,
+const { documentDescription, patch: documentPatch } = useDocument(
+  path,
+  documentId,
 );
+
+const documentName = computed(() => documentDescription.value?.name);
 
 const stateName = ref<string>();
 

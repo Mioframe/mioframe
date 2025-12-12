@@ -26,6 +26,7 @@ const eslintConfig = defineConfig([
         { allowInterfaces: 'with-single-extends' },
       ],
       'vue/camelcase': 'off',
+      '@typescript-eslint/prefer-promise-reject-errors': 'off',
     },
   },
 ]);

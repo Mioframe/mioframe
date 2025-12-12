@@ -9,38 +9,32 @@ import type {
   DatabaseView,
   DatabaseViewId,
 } from '@shared/lib/databaseDocument';
-import { DomainError } from '@shared/lib/error';
-import { defineSubscribeByQueryService } from '@shared/lib/subscriptions';
 
 export const useDatabaseViewFilterService = (
   getView: (
-    path: string[],
+    path: string,
     documentId: AMDocumentId,
     viewId: DatabaseViewId,
-  ) => undefined | DomainError | DatabaseView,
+  ) => Promise<undefined | DatabaseView>,
   changeView: (
-    path: string[],
+    path: string,
     documentId: AMDocumentId,
     viewId: DatabaseViewId,
     cb: (view: DatabaseView) => unknown,
   ) => unknown,
 ) => {
-  const get = (
-    path: string[],
+  const get = async (
+    path: string,
     documentId: AMDocumentId,
     viewId: DatabaseViewId,
   ) => {
-    const view = getView(path, documentId, viewId);
-
-    if (view instanceof DomainError) {
-      return view;
-    }
+    const view = await getView(path, documentId, viewId);
 
     return view?.filter;
   };
 
   const change = (
-    path: string[],
+    path: string,
     documentId: AMDocumentId,
     viewId: DatabaseViewId,
     cb: (view: DatabaseFilter) => unknown,
@@ -54,7 +48,7 @@ export const useDatabaseViewFilterService = (
     });
 
   const patch = (
-    path: string[],
+    path: string,
     documentId: AMDocumentId,
     viewId: DatabaseViewId,
     source: PatchSource<DatabaseFilter>,
@@ -64,7 +58,7 @@ export const useDatabaseViewFilterService = (
     });
 
   const post = (
-    path: string[],
+    path: string,
     documentId: AMDocumentId,
     viewId: DatabaseViewId,
     source: DatabaseFilter,
@@ -74,7 +68,8 @@ export const useDatabaseViewFilterService = (
     });
 
   return {
-    subscribeGet: defineSubscribeByQueryService(get),
+    get,
+
     patch,
     post,
   };

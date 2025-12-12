@@ -1,12 +1,12 @@
 <script setup lang="ts">
-import { useDirectoryStoreClient } from '@entity/mountedDirectories/useDirectoryStoreClient';
-import type { EntryPath } from '@shared/lib/fileSystem';
+import { useFileSystem } from '@entity/mountedDirectories/useFileSystem';
+import { PathUtils } from '@shared/lib/virtualFileSystem';
 import { MDDialog } from '@shared/ui/Dialog';
 import { MDTextField } from '@shared/ui/TextField';
 import { computed, ref, watchEffect } from 'vue';
 
 const { path } = defineProps<{
-  path: EntryPath;
+  path: string;
 }>();
 
 const emit = defineEmits<{
@@ -24,7 +24,7 @@ watchEffect(() => {
   stateName.value = originalName.value;
 });
 
-const { renameEntry } = useDirectoryStoreClient();
+const { move } = useFileSystem();
 
 const loading = ref(false);
 
@@ -32,7 +32,10 @@ const onApply = async () => {
   if (stateName.value && !loading.value) {
     try {
       loading.value = true;
-      await renameEntry(path, stateName.value);
+      await move(
+        path,
+        PathUtils.join(PathUtils.dirname(path), stateName.value),
+      );
     } finally {
       loading.value = false;
     }

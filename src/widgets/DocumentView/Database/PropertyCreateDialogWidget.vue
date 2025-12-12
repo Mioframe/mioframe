@@ -3,8 +3,6 @@ import { zodRelationProperty } from '@entity/databaseRelation';
 import { DatabasePropertyCreationDialog } from '@feature/databasePropertyCreate';
 import { DatabaseRelationPropertyEditSection } from '@feature/databaseRelationPropertyEdit';
 import type { AMDocumentId } from '@shared/lib/automerge';
-import type { EntryPath } from '@shared/lib/fileSystem';
-import ValueField from './ValueField.vue';
 import { zodBooleanProperty } from '@entity/databaseBoolean';
 import { DatabaseBooleanPropertyEditSection } from '@feature/databaseBooleanPropertyEdit';
 import { zodIs } from '@shared/lib/validateZodScheme';
@@ -13,7 +11,7 @@ import { zodRelation } from '@entity/databaseRelation/model';
 
 defineProps<{
   documentId: AMDocumentId;
-  directoryPath: EntryPath;
+  directoryPath: string;
 }>();
 
 const showModel = defineModel<boolean>('show', { required: true });
@@ -26,7 +24,7 @@ const zodPartialRelation = extend(zodRelationProperty, {
 <template>
   <DatabasePropertyCreationDialog
     v-model:show="showModel"
-    :directory-path="directoryPath"
+    :path="directoryPath"
     :document-id="documentId"
     @created="showModel = false"
     @cancel="showModel = false"
@@ -45,15 +43,19 @@ const zodPartialRelation = extend(zodRelationProperty, {
         @update:property="onUpdateProperty"
       />
 
-      <ValueField
+      <!-- fixme: подготовить для создания default field -->
+      <!--
+        <ValueField
+        :document-id="documentId"
         :property="{ ...property, name: 'default value' }"
         :value="property.default"
         :directory-path="directoryPath"
         @update:value="onUpdateDefaultValue"
         @update:property="onUpdateProperty"
-      >
+        >
         <template #unknownProperty> <div /> </template>
-      </ValueField>
+        </ValueField> 
+      -->
     </template>
   </DatabasePropertyCreationDialog>
 </template>

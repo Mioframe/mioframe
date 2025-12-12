@@ -1,19 +1,18 @@
 <script setup lang="ts">
 import type { AMDocumentId } from '@shared/lib/automerge';
 import DatabaseNestedFilterString from './DatabaseNestedFilterString.vue';
-import { computed, toRefs } from 'vue';
+import { toRefs } from 'vue';
 import type {
   DatabaseFilter,
   DatabasePropertyId,
   DatabaseViewId,
   GeneralProperty,
 } from '@shared/lib/databaseDocument';
-import { useDatabaseViewFilterClient } from '@entity/databaseFilter/client';
-import type { EntryPath } from '@shared/lib/fileSystem';
-import { DomainError } from '@shared/lib/error';
+import { useDatabaseViewFilter } from '@entity/databaseFilter/useDatabaseViewFilter';
+import type { DomainError } from '@shared/lib/error';
 
 const props = defineProps<{
-  directoryPath: EntryPath;
+  directoryPath: string;
   documentId: AMDocumentId;
   viewId: DatabaseViewId;
 }>();
@@ -29,27 +28,22 @@ defineSlots<{
   }): unknown;
 }>();
 
-const { get, post } = useDatabaseViewFilterClient();
+const { filter, post } = useDatabaseViewFilter(
+  directoryPath,
+  documentId,
+  viewId,
+);
 
-const filter = computed({
-  get: () => {
-    const mbFilter = get(directoryPath.value, documentId.value, viewId.value);
-    if (mbFilter instanceof DomainError) {
-      return {};
-    }
-    return mbFilter ?? {};
-  },
-  set: (v: DatabaseFilter) => {
-    void post(directoryPath.value, documentId.value, viewId.value, v);
-  },
-});
+const onSetFilter = (v: DatabaseFilter) => post(v);
 </script>
 
 <template>
   <DatabaseNestedFilterString
-    v-model:filter="filter"
+    v-if="filter"
+    :filter="filter"
     :directory-path="directoryPath"
     :document-id="documentId"
+    @update:filter="onSetFilter"
   >
     <template #valueField="{ property, propertyId, update, value }">
       <slot
@@ -61,4 +55,6 @@ const filter = computed({
       />
     </template>
   </DatabaseNestedFilterString>
+
+  <span v-else> filter is undefined </span>
 </template>

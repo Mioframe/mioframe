@@ -36,13 +36,19 @@ const slots = defineSlots<{
   <table class="table is-striped is-fullwidth">
     <PropertyTHead
       class="table__head"
-      :properties
+      :properties="properties"
       :show-actions-column="!!slots.itemActions"
     />
 
-    <ItemTBody :data="data" :properties>
+    <ItemTBody :data="data" :properties="properties">
       <template #value="{ property, propertyId, value, itemId }">
-        <slot name="value" :property :property-id :value :item-id />
+        <slot
+          name="value"
+          :property="property"
+          :property-id="propertyId"
+          :value="value"
+          :item-id="itemId"
+        />
       </template>
 
       <template v-if="!!slots.itemActions" #itemActions="scope">
