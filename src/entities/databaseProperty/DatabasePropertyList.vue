@@ -4,11 +4,9 @@ import type {
   DatabasePropertyId,
   DatabaseUnknownProperty,
 } from '@shared/lib/databaseDocument';
-import { MDListContainer, MDListItem } from '@shared/ui/Lists';
-import { computed, toRefs } from 'vue';
+import { MDListContainer } from '@shared/ui/Lists';
+import { toRefs } from 'vue';
 import { useDatabaseProperties } from './useDatabaseProperties';
-import { strictRecordIterableEntries } from '@shared/lib/strictRecord';
-import { DomainError } from '@shared/lib/error';
 import DatabasePropertyListItem from './DatabasePropertyListItem.vue';
 
 const props = defineProps<{
@@ -25,7 +23,10 @@ const slots = defineSlots<{
   }) => unknown;
 }>();
 
-const { propertiesIdList: properties } = useDatabaseProperties(path, documentId);
+const { propertiesIdList: properties } = useDatabaseProperties(
+  path,
+  documentId,
+);
 </script>
 
 <template>

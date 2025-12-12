@@ -18,16 +18,12 @@ import { FSEntryRenameDialog } from '@feature/entryRename';
 import { isUndefined } from 'es-toolkit';
 import type { AMDocumentId } from '@shared/lib/automerge/automergeTypes';
 import { useFileSystem } from '@entity/mountedDirectories/useFileSystem';
-import type { EntryPath } from '@shared/lib/fileSystem';
-import type { EntryDescription } from '@shared/service/directories/types';
-import { useDocumentRepoClient } from '@entity/repository';
-import { stringPath } from '@shared/service/directories';
-import { DomainError } from '@shared/lib/error';
 import { zodQuery } from './model';
 import { useMainRouter } from '@page/routes';
 import { zodToVueProps } from '@shared/lib/zodToVueProps';
-import { useLocalSettings } from '@entity/localSettings';
-import { isArray } from 'es-toolkit/compat';
+import { computedAsync } from '@vueuse/core';
+import { useRepository } from '@entity/repository';
+import { PathUtils } from '@shared/lib/virtualFileSystem';
 
 const props = defineProps(zodToVueProps(zodQuery));
 
@@ -37,87 +33,54 @@ defineSlots<{
   navigationButton: () => unknown;
 }>();
 
-const parentPathForNewDirectory = ref<EntryPath>();
+const parentPathForNewDirectory = ref<string>();
 
 const onClickCreateDirectory = () => {
   parentPathForNewDirectory.value = directoryPath.value;
 };
 
-const entryPathToRemove = ref<EntryPath>();
+const entryPathToRemove = ref<string>();
 
-const { settings } = useLocalSettings();
+const { readDirectory, remove: removeEntry } = useFileSystem();
 
-const { getEntry, removeEntry } = useFileSystem();
-
-const directory = computed(() => {
-  const entry = getEntry(directoryPath.value, {
+const directoryEntries = computedAsync(
+  () =>
+    readDirectory(
+      directoryPath.value,
+      /*   {
     showAutomergeFiles: settings.value.showAutomergeFiles,
-  });
-  if (entry instanceof DomainError) {
-    return entry;
-  }
-  if (entry?.type === 'file') {
-    return new DomainError(
-      `Entry ${stringPath(entry.path)} is not a directory`,
-    );
-  }
-  if (entry && 'entries' in entry) {
-    return entry;
-  }
-  return undefined;
-});
-
-const directoryEntries = computed(() =>
-  directory.value instanceof Error ? undefined : directory.value?.entries,
-);
-
-const directoryError = computed(() =>
-  directory.value instanceof Error ? directory.value : undefined,
+  } */
+    ),
+  undefined,
 );
 
 const { open } = useMainRouter();
 
-const onClickPath = async (indexPath: number) => {
-  const repoPath = directoryPath.value.slice(0, indexPath + 1);
-
-  if (repoPath.length) {
-    await open('repo', {
-      repoPath,
-    });
-  } else {
+const onClickPath = async (path: string) => {
+  if (path === '/') {
     await open('home', {});
+  } else {
+    await open('repo', {
+      repoPath: path,
+    });
   }
 };
 
-const onClickEntry = async (entry: EntryDescription) => {
-  if (entry.type === 'directory') {
-    await open('repo', {
-      repoPath: entry.path,
-    });
-  }
+const onClickEntry = async (name: string) => {
+  await open('repo', {
+    repoPath: PathUtils.join(directoryPath.value, name),
+  });
 };
 
 const showFormNewDocument = ref(false);
 
 const onClickCreateDocument = () => {
-  if (directory.value) {
-    showFormNewDocument.value = true;
-  }
+  showFormNewDocument.value = true;
 };
 
-const { getDocumentIdList } = useDocumentRepoClient();
+const { documentList: documentIdList } = useRepository(directoryPath);
 
-const documentIdListSate = computed(() =>
-  getDocumentIdList(directoryPath.value),
-);
-
-const documentIdList = computed(() =>
-  isArray(documentIdListSate.value) ? documentIdListSate.value : undefined,
-);
-
-const showError = computed(() => directoryError.value);
-
-const onRemoveEntry = async (path: EntryPath) => {
+const onRemoveEntry = async (path: string) => {
   await removeEntry(path);
   entryPathToRemove.value = undefined;
 };
@@ -132,19 +95,19 @@ const fsEntryContextBtns = defineMenuButtonList([
   { label: 'Remove', symbolName: 'delete', key: FSEntryContextEvent.remove },
 ]);
 
-const entryKeyToRename = ref<EntryPath>();
+const entryKeyToRename = ref<string>();
 
 const onClickFSEntryContextAction = (
   { key }: { key: FSEntryContextEvent },
-  entry: EntryDescription,
+  name: string,
 ) => {
   switch (key) {
     case FSEntryContextEvent.remove: {
-      entryPathToRemove.value = entry.path;
+      entryPathToRemove.value = PathUtils.join(directoryPath.value, name);
       break;
     }
     case FSEntryContextEvent.rename: {
-      entryKeyToRename.value = entry.path;
+      entryKeyToRename.value = PathUtils.join(directoryPath.value, name);
       break;
     }
 
@@ -199,9 +162,9 @@ const onClickDocument = async (documentId: AMDocumentId) => {
 
 const documentIdToRename = shallowRef<AMDocumentId>();
 
-const title = computed((): string | undefined => {
-  return directoryPath.value.at(-1);
-});
+const title = computed((): string | undefined =>
+  PathUtils.basename(directoryPath.value),
+);
 
 const onRenamedEntry = () => {
   entryKeyToRename.value = undefined;
@@ -233,80 +196,72 @@ const showFSEntryRenameDialog = computed({
     />
 
     <div class="document-explorer-widget__scrollable-content">
-      <div v-if="showError" class="document-explorer-widget__error">
-        {{ showError }}
-      </div>
-
-      <template v-else>
-        <MDListContainer
-          is="div"
-          v-if="directoryPath"
-          class="document-explorer-widget__content-list"
+      <MDListContainer
+        is="div"
+        v-if="directoryPath"
+        class="document-explorer-widget__content-list"
+      >
+        <CFRDocumentMDListItem
+          is="button"
+          v-for="docId in documentIdList"
+          :key="docId"
+          :document-id="docId"
+          :path="directoryPath"
+          class="document-explorer-widget__list-item"
+          @click="onClickDocument(docId)"
         >
-          <CFRDocumentMDListItem
-            v-for="docId in documentIdList"
-            :key="docId"
-            :document-id="docId"
-            :path="directoryPath"
-            class="document-explorer-widget__list-item"
-            is-button
-            @click="onClickDocument(docId)"
-          >
-            <template #trailingIcon="{ documentName }">
-              <MDContextMenuButton
-                :btns="documentContextBtns"
-                :tooltip="`options ${documentName}`"
-                @click="onClickDocumentContextAction($event, docId)"
-              />
-            </template>
-          </CFRDocumentMDListItem>
-
-          <FSEntryMDListItem
-            v-for="entry in directoryEntries"
-            :key="entry.name"
-            is-button
-            :name="entry"
-            class="document-explorer-widget__list-item"
-            @click="onClickEntry(entry)"
-          >
-            <template #trailingIcon="{ entry: { name: entryName } }">
-              <MDContextMenuButton
-                :btns="fsEntryContextBtns"
-                :tooltip="`options ${entryName}`"
-                @click="onClickFSEntryContextAction($event, entry)"
-              />
-            </template>
-          </FSEntryMDListItem>
-        </MDListContainer>
-
-        <MDFabContainer
-          class="document-explorer-widget__fab-container"
-          auto-hide
-        >
-          <template #default>
-            <MDFab
-              tooltip="Create directory"
-              color="tonal-primary"
-              @click="onClickCreateDirectory"
-            >
-              <template #icon>
-                <MDSymbol name="create_new_folder" />
-              </template>
-            </MDFab>
-
-            <MDFab
-              tooltip="Create document"
-              size="medium"
-              color="tonal-primary"
-              @click="onClickCreateDocument"
-            >
-              <template #icon>
-                <MDSymbol name="edit_document" />
-              </template>
-            </MDFab>
+          <template #trailingIcon="{ documentName }">
+            <MDContextMenuButton
+              :btns="documentContextBtns"
+              :tooltip="`options ${documentName}`"
+              @click="onClickDocumentContextAction($event, docId)"
+            />
           </template>
-        </MDFabContainer>
-      </template>
+        </CFRDocumentMDListItem>
+
+        <FSEntryMDListItem
+          v-for="[name, fileType] in directoryEntries"
+          :key="name"
+          is-button
+          :name="name"
+          :type="fileType"
+          class="document-explorer-widget__list-item"
+          @click="onClickEntry(name)"
+        >
+          <template #trailingIcon>
+            <MDContextMenuButton
+              :btns="fsEntryContextBtns"
+              :tooltip="`options ${name}`"
+              @click="onClickFSEntryContextAction($event, name)"
+            />
+          </template>
+        </FSEntryMDListItem>
+      </MDListContainer>
+
+      <MDFabContainer class="document-explorer-widget__fab-container" auto-hide>
+        <template #default>
+          <MDFab
+            tooltip="Create directory"
+            color="tonal-primary"
+            @click="onClickCreateDirectory"
+          >
+            <template #icon>
+              <MDSymbol name="create_new_folder" />
+            </template>
+          </MDFab>
+
+          <MDFab
+            tooltip="Create document"
+            size="medium"
+            color="tonal-primary"
+            @click="onClickCreateDocument"
+          >
+            <template #icon>
+              <MDSymbol name="edit_document" />
+            </template>
+          </MDFab>
+        </template>
+      </MDFabContainer>
     </div>
 
     <DocumentCreationDialog
