@@ -1,38 +1,38 @@
-<script
-  setup
-  lang="ts"
-  generic="
-    Entry extends {
-      name: string;
-    }
-  "
->
+<script setup lang="ts">
 import { MDListContainer } from '@shared/ui/Lists';
 import DirectoryContentEntry from './DirectoryContentEntry.vue';
+import { useDirectory } from './useDirectory';
+import { toRefs } from 'vue';
+import { PathUtils } from '@shared/lib/virtualFileSystem';
 
-const { entries } = defineProps<{
-  entries: Iterable<[PropertyKey, Entry]>;
+const props = defineProps<{
+  path: string;
 }>();
 
-defineSlots<{
-  trailing: (props: { entry: Entry; entryKey: PropertyKey }) => unknown;
+const { path } = toRefs(props);
+
+const slots = defineSlots<{
+  trailing: (props: { path: string }) => unknown;
 }>();
 
 const emit = defineEmits<{
-  click: [entryKey: PropertyKey, entry: Entry];
+  click: [path: string];
 }>();
+
+const { state } = useDirectory(path);
 </script>
 
 <template>
   <MDListContainer is="div">
     <DirectoryContentEntry
-      v-for="[entryKey, entry] in entries"
-      :key="entryKey"
-      :entry="entry"
-      @click="emit('click', entryKey, entry)"
+      v-for="[name, type] in state"
+      :key="name"
+      :type="type"
+      :name="name"
+      @click="emit('click', path)"
     >
-      <template v-if="!!$slots.trailing" #trailing>
-        <slot name="trailing" :entry="entry" :entry-key="entryKey" />
+      <template v-if="!!slots.trailing" #trailing>
+        <slot name="trailing" :path="PathUtils.join(path, name)" />
       </template>
     </DirectoryContentEntry>
   </MDListContainer>

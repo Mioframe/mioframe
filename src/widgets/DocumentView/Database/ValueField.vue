@@ -9,20 +9,25 @@ import { DateValueField } from '@feature/dateValueEdit';
 import { NumberValueField } from '@feature/numberValueEdit';
 import { RelationValueField } from '@feature/relationValueEdit';
 import { StringValueField } from '@feature/stringValueEdit';
-import type { DatabaseUnknownProperty } from '@shared/lib/databaseDocument';
-import type { EntryPath } from '@shared/lib/fileSystem';
+import type {
+  DatabasePropertyId,
+  DatabaseUnknownProperty,
+} from '@shared/lib/databaseDocument';
 import { zodIs } from '@shared/lib/validateZodScheme';
 import DatabaseViewLayout from './DatabaseViewLayout.vue';
 import { MDCheckbox } from '@shared/ui/Checkbox';
 import { toRefs } from 'vue';
+import type { AMDocumentId } from '@shared/lib/automerge';
+import { useDatabaseProperty } from '@entity/databaseProperty';
 
 const props = defineProps<{
-  directoryPath: EntryPath;
-  property: DatabaseUnknownProperty;
+  directoryPath: string;
+  documentId: AMDocumentId;
+  propertyId: DatabasePropertyId;
   value: unknown;
 }>();
 
-const { directoryPath, property } = toRefs(props);
+const { directoryPath: path, documentId, propertyId } = toRefs(props);
 
 const emit = defineEmits<{
   'update:value': [v: unknown];
@@ -33,6 +38,8 @@ const emit = defineEmits<{
 defineSlots<{
   unknownProperty: () => unknown;
 }>();
+
+const { property } = useDatabaseProperty(path, documentId, propertyId);
 
 const onUpdateValue = (v: unknown) => {
   emit('update:value', v);
@@ -78,7 +85,7 @@ const onUpdateProperty = (v: DatabaseUnknownProperty) => {
   <RelationValueField
     v-else-if="zodIs(property, zodRelationProperty)"
     :value="value"
-    :directory-path="directoryPath"
+    :directory-path="path"
     :property="property"
     @update:value="onUpdateValue"
     @update:property="onUpdateProperty"
@@ -94,7 +101,7 @@ const onUpdateProperty = (v: DatabaseUnknownProperty) => {
       <DatabaseViewLayout
         :document-id="relationDocHandle"
         :view-id="viewId"
-        :directory-path="directoryPath"
+        :path="path"
       >
         <template #action="{ itemId }">
           <MDCheckbox

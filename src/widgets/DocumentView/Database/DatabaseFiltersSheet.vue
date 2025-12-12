@@ -10,7 +10,7 @@ import ValueField from './ValueField.vue';
 import { DomainError } from '@shared/lib/error';
 
 const props = defineProps<{
-  directoryPath: EntryPath;
+  directoryPath: string;
   documentId: AMDocumentId;
   viewId: DatabaseViewId;
 }>();
@@ -37,22 +37,24 @@ const onUpdateCollapsed = (collapsed: boolean) => {
       <span :class="MD_SYS_TYPESCALE.title.small">Filters</span>
 
       <div class="db-filters-sheet__filters">
-        <DatabaseFilterEditString
+        <!--
+          <DatabaseFilterEditString
           :directory-path="directoryPath"
           :document-id="documentId"
           :view-id="viewId"
           class="db-filters-sheet__root-filter"
-        >
+          >
           <template #valueField="{ property, update, value }">
-            <ValueField
-              v-if="!(property instanceof DomainError)"
-              :property="property"
-              :value="value"
-              :directory-path="directoryPath"
-              @update:value="update"
-            />
+          <ValueField
+          v-if="!(property instanceof DomainError)"
+          :property="property"
+          :value="value"
+          :directory-path="directoryPath"
+          @update:value="update"
+          />
           </template>
-        </DatabaseFilterEditString>
+          </DatabaseFilterEditString> 
+        -->
       </div>
     </MDBottomSheetSection>
   </MDBottomSheet>

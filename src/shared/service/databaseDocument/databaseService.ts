@@ -1,6 +1,5 @@
 import { createGlobalState } from '@vueuse/core';
-import { useCFRDocumentService } from '../document';
-import type { EntryPath } from '@shared/lib/fileSystem';
+import { useDocumentService } from '../document';
 import type { AMDocumentId } from '@shared/lib/automerge';
 import { zodCheck } from '@shared/lib/validateZodScheme';
 import type { DatabaseState } from '@shared/lib/databaseDocument';
@@ -23,17 +22,13 @@ import { useDatabaseDataService } from './databaseDataService';
 
 export const useDatabaseDocumentService = createGlobalState(() => {
   const { getCFRDocumentState, change: changeCFRDocument } =
-    useCFRDocumentService();
+    useDocumentService();
 
-  const getDatabaseBody = (
-    path: EntryPath,
+  const getDatabaseBody = async (
+    path: string,
     documentId: AMDocumentId,
-  ): DatabaseState | DomainError | undefined => {
-    const cfrDocument = getCFRDocumentState(path, documentId);
-
-    if (cfrDocument instanceof DomainError) {
-      return cfrDocument;
-    }
+  ): Promise<DatabaseState | undefined> => {
+    const cfrDocument = await getCFRDocumentState(path, documentId);
 
     if (zodCheck(zodDatabaseDocumentWithContent, cfrDocument)) {
       const body = cfrDocument.body;
@@ -45,7 +40,7 @@ export const useDatabaseDocumentService = createGlobalState(() => {
   };
 
   const change = (
-    path: EntryPath,
+    path: string,
     documentId: AMDocumentId,
     callback: (state: DatabaseState) => unknown,
   ) =>
@@ -58,16 +53,12 @@ export const useDatabaseDocumentService = createGlobalState(() => {
       }
     });
 
-  const put = (
-    path: EntryPath,
+  const put = async (
+    path: string,
     documentId: AMDocumentId,
     body: DatabaseState,
   ) => {
-    const documentState = getCFRDocumentState(path, documentId);
-
-    if (documentState instanceof Error) {
-      throw documentState;
-    }
+    const documentState = await getCFRDocumentState(path, documentId);
 
     if (!documentState) {
       throw new DomainError(
@@ -81,7 +72,7 @@ export const useDatabaseDocumentService = createGlobalState(() => {
   };
 
   const patch = (
-    path: EntryPath,
+    path: string,
     documentId: AMDocumentId,
     partialBody: PatchSource<DatabaseState>,
   ) =>

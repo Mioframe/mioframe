@@ -3,22 +3,18 @@ import type { AMDocumentId } from '@shared/lib/automerge';
 import type {
   DatabaseItemId,
   DatabasePropertyId,
-  DatabaseUnknownProperty,
   DatabaseViewId,
 } from '@shared/lib/databaseDocument';
 import { MDTable } from '@shared/ui/Table';
 import type { EmptyObject } from 'type-fest';
-import { computed, toRefs } from 'vue';
-import type { ItemIdQuery } from '../../shared/service/databaseDocument/data/queryTypes';
-import { useDatabasePropertiesClient } from '@entity/databaseProperty';
-import type { EntryPath } from '@shared/lib/fileSystem';
-import { useDatabaseDataClient } from './client';
-import { DomainError } from '@shared/lib/error';
-import { strictRecordIterableEntries } from '@shared/lib/strictRecord';
+import { toRefs } from 'vue';
+import type { ItemIdQuery } from '@shared/service/databaseDocument/data/queryTypes';
+import { useDatabaseData } from './useDatabaseData';
 
 const props = defineProps<{
-  directoryPath: EntryPath;
+  directoryPath: string;
   documentId: AMDocumentId;
+  properties: DatabasePropertyId[];
   viewId?: DatabaseViewId;
   idQuery?: ItemIdQuery;
 }>();
@@ -26,95 +22,60 @@ const props = defineProps<{
 const { directoryPath, documentId, viewId, idQuery } = toRefs(props);
 
 const slots = defineSlots<{
+  property: (p: { propertyId: DatabasePropertyId }) => unknown;
   value: (p: {
     itemId: DatabaseItemId;
-    property: DatabaseUnknownProperty;
     propertyId: DatabasePropertyId;
   }) => unknown;
   action: (p: { itemId: DatabaseItemId }) => unknown;
   actionHead: (p: EmptyObject) => unknown;
 }>();
 
-const { getDatabaseProperties } = useDatabasePropertiesClient();
-
-const properties = computed(() =>
-  getDatabaseProperties(directoryPath.value, documentId.value),
+const { itemIdList } = useDatabaseData(
+  directoryPath,
+  documentId,
+  viewId,
+  idQuery,
 );
-
-const { getItemIdList } = useDatabaseDataClient();
-
-const itemList = computed(() => {
-  const idList = getItemIdList(
-    directoryPath.value,
-    documentId.value,
-    viewId.value,
-    {
-      idQuery: idQuery.value,
-    },
-  );
-
-  if (idList instanceof DomainError) {
-    return idList;
-  }
-
-  return idList;
-});
 </script>
 
 <template>
   <MDTable class="db-data-table">
-    <!-- eslint-disable-next-line prettier/prettier -- for correct code highlighting -->
-    <div v-if="(properties instanceof DomainError)">
-      {{ properties.message }}
-    </div>
+    <thead>
+      <tr>
+        <th v-for="propertyId in properties" :key="propertyId">
+          <slot name="property" :property-id="propertyId">
+            {{ propertyId }}
+          </slot>
+        </th>
 
-    <template v-else>
-      <thead>
-        <tr>
-          <th
-            v-for="[propertyId, { name }] in strictRecordIterableEntries(
-              properties,
-            )()"
-            :key="propertyId"
-          >
-            {{ name }}
-          </th>
+        <th
+          v-if="!!slots.action || !!slots.actionHead"
+          class="db-data-table__actions"
+        >
+          <slot name="actionHead" />
+        </th>
+      </tr>
+    </thead>
 
-          <th
-            v-if="!!slots.action || !!slots.actionHead"
-            class="db-data-table__actions"
-          >
-            <slot name="actionHead" />
-          </th>
-        </tr>
-      </thead>
+    <tbody role="list">
+      <tr v-for="itemId in itemIdList" :key="itemId" role="listitem">
+        <td
+          v-for="propertyId in properties"
+          :key="propertyId"
+          class="db-data-table__value"
+        >
+          <slot name="value" :item-id="itemId" :property-id="propertyId" />
+        </td>
 
-      <tbody role="list">
-        <tr v-for="itemId in itemList" :key="itemId" role="listitem">
-          <td
-            v-for="[propertyId, property] in strictRecordIterableEntries(
-              properties,
-            )()"
-            :key="propertyId"
-            class="db-data-table__value"
-          >
-            <slot
-              name="value"
-              :item-id="itemId"
-              :property-id="propertyId"
-              :property="property"
-            />
-          </td>
-
-          <td
-            v-if="!!slots.action || !!slots.actionHead"
-            class="db-data-table__actions"
-          >
-            <slot name="action" :item-id="itemId" />
-          </td>
-        </tr>
-      </tbody>
-    </template>
+        <td
+          v-if="!!slots.action || !!slots.actionHead"
+          class="db-data-table__actions"
+        >
+          <slot name="action" :item-id="itemId" />
+        </td>
+      </tr>
+    </tbody>
   </MDTable>
 </template>
 

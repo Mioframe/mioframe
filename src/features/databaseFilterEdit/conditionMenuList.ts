@@ -11,11 +11,13 @@ import { defineMenuButtonList } from '@shared/ui/Menu';
 import type { Ref } from 'vue';
 import { computed } from 'vue';
 import { OPERATOR_LABEL } from './types';
-import { useDatabasePropertiesClient } from '@entity/databaseProperty';
-import type { EntryPath } from '@shared/lib/fileSystem';
-import { DomainError } from '@shared/lib/error';
-import { strictRecordIterableEntries } from '@shared/lib/strictRecord';
+import { useDatabaseProperties } from '@entity/databaseProperty';
 
+/**
+ * @deprecated сделать меню асинхронным на компонентах, не строить список кнопок заранее
+ * @param param0
+ * @returns
+ */
 export const useConditionMenu = ({
   directoryPath,
   documentId,
@@ -23,13 +25,13 @@ export const useConditionMenu = ({
   propertyId,
   disableProperties,
 }: {
-  directoryPath: Ref<EntryPath>;
+  directoryPath: Ref<string>;
   documentId: Ref<AMDocumentId>;
   filter?: Ref<DatabaseNestedFilter | undefined>;
   propertyId?: Ref<DatabasePropertyId | undefined>;
   disableProperties?: Ref<boolean>;
 }) => {
-  const { getDatabaseProperties } = useDatabasePropertiesClient();
+  const { propertiesIdList: properties } = useDatabaseProperties(directoryPath, documentId);
 
   const createUnaryConditionMenu = (propertyId: DatabasePropertyId) =>
     defineMenuButtonList(
@@ -53,19 +55,13 @@ export const useConditionMenu = ({
 
   const propertiesMenu = computed(() => {
     if (!disableProperties?.value) {
-      const properties = getDatabaseProperties(
-        directoryPath.value,
-        documentId.value,
-      );
-      if (properties && !(properties instanceof DomainError)) {
+      if (properties.value) {
         return defineMenuButtonList(
-          Array.from(strictRecordIterableEntries(properties)()).map(
-            ([id, { name }]) => ({
-              key: id,
-              label: name,
-              submenu: createUnaryConditionMenu(id),
-            }),
-          ),
+          properties.value.map(([id, { name }]) => ({
+            key: id,
+            label: name,
+            submenu: createUnaryConditionMenu(id),
+          })),
         );
       }
     }

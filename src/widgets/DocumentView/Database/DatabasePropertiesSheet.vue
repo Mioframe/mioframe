@@ -3,7 +3,6 @@ import { DatabasePropertyList } from '@entity/databaseProperty';
 import { DatabasePropertyRemoveDialog } from '@feature/databasePropertyRemove';
 import type { AMDocumentId } from '@shared/lib/automerge';
 import type { DatabasePropertyId } from '@shared/lib/databaseDocument';
-import type { EntryPath } from '@shared/lib/fileSystem';
 import { MD_SYS_TYPESCALE } from '@shared/lib/md';
 import { MDButton } from '@shared/ui/Button';
 import { MDSymbol } from '@shared/ui/Icon';
@@ -20,7 +19,7 @@ import { zodBooleanProperty } from '@entity/databaseBoolean';
 import ValueField from './ValueField.vue';
 
 defineProps<{
-  directoryPath: EntryPath;
+  directoryPath: string;
   documentId: AMDocumentId;
 }>();
 
@@ -94,7 +93,7 @@ const isShowAddProperty = ref(false);
         <template #trailingIcon="{ propertyId, property }">
           <MDContextMenuButton
             :btns="propertyContextBtns"
-            :tooltip="`options ${property.name}`"
+            :tooltip="`options ${property?.name}`"
             @click="onClickPropertyContextAction($event, propertyId)"
           />
         </template>
@@ -115,7 +114,7 @@ const isShowAddProperty = ref(false);
     <DatabasePropertyRemoveDialog
       v-if="removePropertyId"
       :show="!!removePropertyId"
-      :directory-path="directoryPath"
+      :path="directoryPath"
       :document-id="documentId"
       :property-id="removePropertyId"
       @apply="removePropertyId = undefined"
@@ -124,7 +123,7 @@ const isShowAddProperty = ref(false);
 
     <DatabasePropertyEditDialog
       v-if="editPropertyId"
-      :directory-path="directoryPath"
+      :path="directoryPath"
       :document-id="documentId"
       :property-id="editPropertyId"
       :show="!!editPropertyId"
@@ -146,8 +145,10 @@ const isShowAddProperty = ref(false);
           @update:property="onUpdateProperty"
         />
 
+        <!-- fixme: подготовить ValueField для отображения default значения -->
         <ValueField
-          :property="{ ...property, name: 'default value' }"
+          :document-id="documentId"
+          :property-id="editPropertyId"
           :value="property.default"
           :directory-path="directoryPath"
           @update:value="onUpdateDefaultValue"

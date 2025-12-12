@@ -2,12 +2,11 @@
 import { computed, ref, toRefs } from 'vue';
 import { MDDialog } from '@shared/ui/Dialog';
 import type { AMDocumentId } from '@shared/lib/automerge/automergeTypes';
-import { useDocumentRepoClient } from '@entity/documentRepo';
-import type { EntryPath } from '@shared/lib/fileSystem';
-import { useCFRDocumentClient } from '@entity/cfrDocument';
+import { useRepository } from '@entity/repository';
+import { useDocument } from '@entity/cfrDocument';
 
 const props = defineProps<{
-  path: EntryPath;
+  path: string;
   documentId: AMDocumentId;
 }>();
 
@@ -25,7 +24,7 @@ const loading = ref(0);
 const onApply = async () => {
   try {
     loading.value += 1;
-    await removeDocument(path.value, documentId.value);
+    await deleteDocument(documentId.value);
     emit('deleted');
   } finally {
     loading.value -= 1;
@@ -36,13 +35,9 @@ const onClickCancel = () => {
   emit('cancel');
 };
 
-const { removeDocument } = useDocumentRepoClient();
+const { deleteDocument } = useRepository(path);
 
-const { getDocumentDescription } = useCFRDocumentClient();
-
-const documentDescription = computed(() =>
-  getDocumentDescription(path.value, documentId.value),
-);
+const { documentDescription } = useDocument(path, documentId);
 
 const documentName = computed(
   () => documentDescription.value?.name ?? 'unknown',

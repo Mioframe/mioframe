@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, toRefs, watchEffect } from 'vue';
+import { ref, toRefs, watchEffect } from 'vue';
 import { MDDialog } from '@shared/ui/Dialog';
 import { MDTextField } from '@shared/ui/TextField';
 import { cloneDeep } from 'es-toolkit';
@@ -9,16 +9,15 @@ import type {
   DatabasePropertyId,
   DatabaseUnknownProperty,
 } from '@shared/lib/databaseDocument';
-import type { EntryPath } from '@shared/lib/fileSystem';
-import { useDatabasePropertiesClient } from '@entity/databaseProperty';
+import { useDatabaseProperty } from '@entity/databaseProperty';
 import { DomainError } from '@shared/lib/error';
 const props = defineProps<{
-  directoryPath: EntryPath;
+  path: string;
   documentId: AMDocumentId;
   propertyId: DatabasePropertyId;
 }>();
 
-const { directoryPath, documentId, propertyId } = toRefs(props);
+const { path: path, documentId, propertyId } = toRefs(props);
 
 const emit = defineEmits<{
   edited: [];
@@ -35,11 +34,7 @@ defineSlots<{
   }) => unknown;
 }>();
 
-const { getProperty, patch } = useDatabasePropertiesClient();
-
-const property = computed(() =>
-  getProperty(directoryPath.value, documentId.value, propertyId.value),
-);
+const { property, patch } = useDatabaseProperty(path, documentId, propertyId);
 
 const propertyState = ref<DatabaseUnknownProperty>();
 
@@ -65,12 +60,7 @@ const { addSnackbar } = useSnackbar();
 
 const onApply = async () => {
   if (propertyState.value) {
-    await patch(
-      directoryPath.value,
-      documentId.value,
-      propertyId.value,
-      propertyState.value,
-    );
+    await patch(propertyState.value);
     emit('edited');
   } else {
     addSnackbar({ text: 'Property is not filled' });

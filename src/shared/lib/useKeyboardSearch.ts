@@ -1,24 +1,19 @@
 import type { MaybeRefOrGetter } from '@vueuse/core';
-import { onKeyStroke, refAutoReset } from '@vueuse/core';
 import { computed, toValue } from 'vue';
-import { matchSorter } from 'match-sorter';
+import { useFastKeyboardInput } from './useFastKeyboardInput';
+import { useMatchSorter } from './useMatchSorter';
 
 export const useKeyboardSearch = (searchList: MaybeRefOrGetter<string[]>) => {
-  const keyboardInput = refAutoReset<string | undefined>(undefined, 500);
+  const keyboardInput = useFastKeyboardInput();
 
-  onKeyStroke(
-    ({ key }) => /^.$/.test(key),
-    ({ key }) => {
-      keyboardInput.value = (keyboardInput.value ?? '') + key;
-    },
-  );
+  const matchSorterResult = useMatchSorter(searchList, keyboardInput);
 
   const foundIndex = computed(() => {
     const inputString = toValue(keyboardInput);
     if (inputString?.length) {
       const list = toValue(searchList);
 
-      const [foundString] = matchSorter(list, inputString);
+      const foundString = matchSorterResult.value?.at(0);
 
       if (foundString) {
         const index = list.indexOf(foundString);

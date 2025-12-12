@@ -8,7 +8,6 @@ import {
   type DatabaseState,
   type DatabaseViewId,
 } from '@shared/lib/databaseDocument';
-import type { EntryPath } from '@shared/lib/fileSystem';
 import {
   strictRecordGet,
   strictRecordRemove,
@@ -17,23 +16,22 @@ import {
 import { queryIdList } from './data/queryData';
 import { DomainError } from '@shared/lib/error';
 import type { Query } from 'sift';
-import { defineSubscribeByQueryService } from '@shared/lib/subscriptions';
 import { useDatabaseViewsService } from './view/databaseViewsService';
 import { deepPutJsonObject } from '@shared/lib/changeObject';
 
 export const useDatabaseDataService = (
   getDatabaseBody: (
-    path: EntryPath,
+    path: string,
     documentId: AMDocumentId,
-  ) => DatabaseState | DomainError | undefined,
+  ) => Promise<DatabaseState | undefined>,
   changeDatabaseState: (
-    path: EntryPath,
+    path: string,
     documentId: AMDocumentId,
     callback: (state: DatabaseState) => unknown,
-  ) => Promise<void> | DomainError,
+  ) => Promise<void>,
 ) => {
   const change = (
-    path: EntryPath,
+    path: string,
     documentId: AMDocumentId,
     callback: (state: DatabaseData) => unknown,
   ) =>
@@ -42,7 +40,7 @@ export const useDatabaseDataService = (
     });
 
   const postValue = (
-    path: EntryPath,
+    path: string,
     documentId: AMDocumentId,
     itemId: DatabaseItemId,
     propertyId: DatabasePropertyId,
@@ -58,7 +56,7 @@ export const useDatabaseDataService = (
     });
 
   const removeItem = (
-    path: EntryPath,
+    path: string,
     documentId: AMDocumentId,
     itemId: DatabaseItemId,
   ) =>
@@ -66,14 +64,11 @@ export const useDatabaseDataService = (
       strictRecordRemove(data, itemId);
     });
 
-  const getData = (
-    path: EntryPath,
+  const getData = async (
+    path: string,
     documentId: AMDocumentId,
-  ): undefined | DomainError | DatabaseData => {
-    const body = getDatabaseBody(path, documentId);
-    if (body instanceof DomainError) {
-      return body;
-    }
+  ): Promise<undefined | DatabaseData> => {
+    const body = await getDatabaseBody(path, documentId);
 
     return body?.data;
   };
@@ -83,8 +78,8 @@ export const useDatabaseDataService = (
     changeDatabaseState,
   );
 
-  const getItemIdList = (
-    path: EntryPath,
+  const getItemIdList = async (
+    path: string,
     documentId: AMDocumentId,
     viewId?: DatabaseViewId,
     options: {
@@ -95,19 +90,11 @@ export const useDatabaseDataService = (
         last?: number;
       };
     } = {},
-  ): undefined | DomainError | DatabaseItemId[] => {
-    const data = getData(path, documentId);
-
-    if (data instanceof DomainError) {
-      return data;
-    }
+  ): Promise<undefined | DatabaseItemId[]> => {
+    const data = await getData(path, documentId);
 
     if (data) {
-      const view = viewId ? getView(path, documentId, viewId) : undefined;
-
-      if (view instanceof DomainError) {
-        return view;
-      }
+      const view = viewId ? await getView(path, documentId, viewId) : undefined;
 
       const { idQuery, itemQuery, slice } = options;
 
@@ -121,29 +108,25 @@ export const useDatabaseDataService = (
     }
   };
 
-  const getItem = (
-    path: EntryPath,
+  const getItem = async (
+    path: string,
     documentId: AMDocumentId,
     itemId: DatabaseItemId,
-  ): undefined | DomainError | DatabaseItem => {
-    const data = getData(path, documentId);
-    if (data instanceof DomainError) {
-      return data;
-    }
+  ): Promise<undefined | DatabaseItem> => {
+    const data = await getData(path, documentId);
 
     if (data) {
       return strictRecordGet(data, itemId);
     }
   };
 
-  const getValue = (
-    path: EntryPath,
+  const getValue = async (
+    path: string,
     documentId: AMDocumentId,
     itemId: DatabaseItemId,
     propertyId: DatabasePropertyId,
-    // eslint-disable-next-line @typescript-eslint/no-redundant-type-constituents
-  ): undefined | DomainError | unknown => {
-    const item = getItem(path, documentId, itemId);
+  ): Promise<unknown> => {
+    const item = await getItem(path, documentId, itemId);
 
     if (item instanceof DomainError) {
       return item;
@@ -157,7 +140,7 @@ export const useDatabaseDataService = (
   };
 
   const postItem = async (
-    path: EntryPath,
+    path: string,
     documentId: AMDocumentId,
     item: DatabaseItem,
     itemId: DatabaseItemId = generateItemId(),
@@ -174,12 +157,13 @@ export const useDatabaseDataService = (
   };
 
   return {
+    getItemIdList,
+    getItem,
+    getValue,
+
     postValue,
     change,
     removeItem,
     postItem,
-    subscribeItemIdList: defineSubscribeByQueryService(getItemIdList),
-    subscribeItem: defineSubscribeByQueryService(getItem),
-    subscribeValue: defineSubscribeByQueryService(getValue),
   };
 };

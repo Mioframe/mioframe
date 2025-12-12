@@ -1,14 +1,18 @@
-import { computedWithControl, type VueInstance } from '@vueuse/core';
+import type { MaybeElement } from '@vueuse/core';
+import { computedWithControl } from '@vueuse/core';
 import { getCurrentInstance, onMounted } from 'vue';
 
 type WebElement = HTMLElement | SVGElement;
 
-export const findClosestElement = (target: VueInstance): WebElement => {
-  if (target.$el instanceof HTMLElement) {
+export const findClosestElement = (target: MaybeElement): WebElement => {
+  if (target instanceof Element) {
+    return target;
+  }
+  if (target?.$el instanceof HTMLElement) {
     return target.$el;
   }
 
-  if (target.$parent) {
+  if (target?.$parent) {
     return findClosestElement(target.$parent);
   }
 

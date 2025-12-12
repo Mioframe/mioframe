@@ -5,35 +5,26 @@ import { MDCheckbox } from '@shared/ui/Checkbox';
 import { isBoolean } from 'es-toolkit';
 import { computed, toRefs } from 'vue';
 import { zodBooleanProperty } from './boolean';
-import { useDatabasePropertiesClient } from '@entity/databaseProperty';
-import type { EntryPath } from '@shared/lib/fileSystem';
+import { useDatabaseProperty } from '@entity/databaseProperty';
 import { zodCheck } from '@shared/lib/validateZodScheme';
 
 const props = defineProps<{
   value: unknown;
   editable?: boolean;
-  directoryPath: EntryPath;
+  path: string;
   documentId: AMDocumentId;
   propertyId: DatabasePropertyId;
 }>();
 
-const { value, documentId, propertyId, directoryPath } = toRefs(props);
+const { value, documentId, propertyId, path } = toRefs(props);
 
 const emit = defineEmits<{ click: [] }>();
 
-const {
-  getProperty,
-} = useDatabasePropertiesClient();
+const { property } = useDatabaseProperty(path, documentId, propertyId);
 
 const booleanProperty = computed(() => {
-  const property = getProperty(
-    directoryPath.value,
-    documentId.value,
-    propertyId.value,
-  );
-
-  if (zodCheck(zodBooleanProperty, property)) {
-    return property;
+  if (zodCheck(zodBooleanProperty, property.value)) {
+    return property.value;
   }
 
   return undefined;

@@ -7,13 +7,12 @@ import {
   type DatabaseItemId,
   type DatabaseViewId,
 } from '@shared/lib/databaseDocument';
-import type { EntryPath } from '@shared/lib/fileSystem';
 import { zodIs } from '@shared/lib/validateZodScheme';
 import { computed, toRefs } from 'vue';
 
 const props = defineProps<{
   value: unknown;
-  directoryPath: EntryPath;
+  directoryPath: string;
   property: RelationProperty;
 }>();
 
@@ -27,7 +26,7 @@ const emit = defineEmits<{
 defineSlots<{
   data: (p: {
     onSelect: (itemId: DatabaseItemId) => void;
-    directoryPath: EntryPath;
+    directoryPath: string;
     documentId: AMDocumentId;
     value: DatabaseItemId[];
     viewId: DatabaseViewId;
