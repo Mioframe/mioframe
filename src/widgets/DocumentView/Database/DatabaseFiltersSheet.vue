@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { DatabaseFilterEditString } from '@feature/databaseFilterEdit';
+// import { DatabaseFilterEditString } from '@feature/databaseFilterEdit';
 import type { AMDocumentId } from '@shared/lib/automerge';
 import type { DatabaseViewId } from '@shared/lib/databaseDocument';
 import type { EntryPath } from '@shared/lib/fileSystem';

@@ -1,1 +1,1 @@
-export { useDocumentRepoClient, useRepository } from './useRepository';
+export { useRepository } from './useRepository';

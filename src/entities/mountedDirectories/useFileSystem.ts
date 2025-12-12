@@ -8,7 +8,7 @@ import { OPFSName } from '@shared/service/directories';
 
 export const OPFS = OPFSName;
 
-export const useFileSystem = createGlobalState(() => {
+const setupFileSystem = () => {
   const {
     fileSystem: {
       createDirectory,
@@ -17,6 +17,7 @@ export const useFileSystem = createGlobalState(() => {
       unmount,
       watch,
       move,
+      remove,
     },
   } = useMainService();
 
@@ -68,5 +69,9 @@ export const useFileSystem = createGlobalState(() => {
     unmount,
     watch,
     move,
+    remove,
+    delete: remove,
   };
-});
+};
+
+export const useFileSystem = createGlobalState(setupFileSystem);

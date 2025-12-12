@@ -31,10 +31,15 @@ const setupFileSystemService = () => {
 
   vfs.mount('/', new MemoryFileSystem());
 
+  void vfs.createDirectory('/temp');
+
   // todo: сразу монтировать OPFS
 
   const move = (oldPath: string, newPath: string) =>
     vfs.rename(oldPath, newPath);
+
+  const remove = (path: string, recursive?: boolean) =>
+    vfs.delete(path, recursive);
 
   return {
     vfs,
@@ -45,6 +50,8 @@ const setupFileSystemService = () => {
     readDirectory,
     mountFSDirectoryHandle,
     move,
+    delete: remove,
+    remove,
   };
 };
 

@@ -31,7 +31,10 @@ export const useConditionMenu = ({
   propertyId?: Ref<DatabasePropertyId | undefined>;
   disableProperties?: Ref<boolean>;
 }) => {
-  const { propertiesIdList: properties } = useDatabaseProperties(directoryPath, documentId);
+  const { propertiesIdList: properties } = useDatabaseProperties(
+    directoryPath,
+    documentId,
+  );
 
   const createUnaryConditionMenu = (propertyId: DatabasePropertyId) =>
     defineMenuButtonList(
@@ -57,7 +60,7 @@ export const useConditionMenu = ({
     if (!disableProperties?.value) {
       if (properties.value) {
         return defineMenuButtonList(
-          properties.value.map(([id, { name }]) => ({
+          properties.value.map((id) => ({
             key: id,
             label: name,
             submenu: createUnaryConditionMenu(id),
