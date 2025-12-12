@@ -19,19 +19,7 @@ const slots = defineSlots<{
   navigationButton: () => unknown;
 }>();
 
-const { getDocumentDescription } = useDocument();
-
-const documentDescription = computed(
-  ():
-    | DomainError
-    | {
-        name: string;
-        type: string;
-        version?: number | undefined;
-      }
-    | undefined =>
-    getDocumentDescription(documentDirectory.value, documentId.value),
-);
+const { documentDescription } = useDocument(documentDirectory, documentId);
 
 const documentType = computed(() => {
   if (documentDescription.value instanceof DomainError) {

@@ -1,10 +1,5 @@
 import { Repo } from '@automerge/automerge-repo';
 import { shallowRef, watch, computed, reactive } from 'vue';
-import { zodAutomergeFileName } from '../fsStorageAdapter';
-import {
-  createFSStorageAdapter,
-  fileNameToPartialKey,
-} from '../fsStorageAdapter';
 import type { DirectoryFSEntry } from '../fileSystem';
 import { zodIs } from '../validateZodScheme';
 import type { RepoState } from './useRepo';
@@ -15,6 +10,12 @@ import type { AMDocHandle } from '../automerge';
 import { zodDocumentId, type AMDocumentId } from '../automerge';
 import { isEqual } from 'es-toolkit';
 import { strictRecordIterableEntries } from '../strictRecord/wrapStrictRecord';
+import {
+  createFSStorageAdapter,
+  fileNameToPartialKey,
+  zodAutomergeFileName,
+  zodPartialAutomergeFileName,
+} from '../automergeAdapter';
 
 // FIXME: при удалении файла, не пропадает документ
 
@@ -35,7 +36,7 @@ export const setupDirectoryRepoState = (
 
       if (entriesMap) {
         for (const [name] of strictRecordIterableEntries(entriesMap)()) {
-          if (zodIs(name, zodAutomergeFileName)) {
+          if (zodIs(name, zodPartialAutomergeFileName)) {
             const maybePartialKey = fileNameToPartialKey(name);
 
             if (maybePartialKey) {

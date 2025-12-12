@@ -1,16 +1,15 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
 import { MDDialog } from '@shared/ui/Dialog';
-import type { EntryPath } from '@shared/lib/fileSystem';
 import { stringPath } from '@shared/service/directories';
 
 const { path } = defineProps<{
-  path: EntryPath;
+  path: string;
 }>();
 
 const emit = defineEmits<{
   cancel: [];
-  apply: [name: EntryPath];
+  apply: [path: string];
 }>();
 
 const show = defineModel<boolean>('show', { required: true });

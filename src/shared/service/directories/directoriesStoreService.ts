@@ -23,7 +23,6 @@ import { EntryNotDirectoryError, EntryNotFoundError } from './types';
 import { defineSubscribeByQueryService } from '@shared/lib/subscriptions/subscribeService';
 import { DomainError } from '@shared/lib/error';
 import { zodCheck } from '@shared/lib/validateZodScheme';
-import { zodAutomergeFileName } from '@shared/lib/fsStorageAdapter';
 import {
   entryPath,
   PATH_SEPARATOR,
@@ -36,6 +35,7 @@ import type {
   ReadonlyDirectoryFSEntryState,
 } from '@shared/lib/fileSystem/directoryFSEntryState';
 import type { StaticDirectoryFSEntry } from '@shared/lib/fileSystem/DirectoryFSEntry';
+import { zodAutomergeFileName } from '@shared/lib/automergeAdapter';
 
 const setupDirectoryStoreService = () => {
   const stateEntries: StrictRecord<

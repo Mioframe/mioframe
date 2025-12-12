@@ -7,6 +7,7 @@ import { useFileSystem } from '@entity/mountedDirectories/useFileSystem';
 import { OPFSName } from '@shared/service/directories';
 import { MDAppBar } from '@shared/ui/AppBar';
 import { useMainRouter } from '@page/routes';
+import { PathUtils } from '@shared/lib/virtualFileSystem';
 
 defineSlots<{
   navigationButton: () => unknown;
@@ -20,8 +21,8 @@ const onClickMountUserDirectory = async () => {
   await mountUserDirectory();
 };
 
-const onClickMountedDirectory = async (name: string) => {
-  await open('repo', { repoPath: [name] });
+const onClickRootDirectory = async (name: string) => {
+  await open('repo', { repoPath: PathUtils.join('/', name) });
 };
 
 const onClickAccount = async () => {
@@ -45,7 +46,7 @@ const onClickAccount = async () => {
       </template>
     </MDAppBar>
 
-    <MountedDirectoriesList @click="onClickMountedDirectory">
+    <MountedDirectoriesList @click="onClickRootDirectory">
       <template #leadingIcon="{ name }">
         <MDSymbol v-if="name === OPFSName" name="folder_special" />
       </template>
