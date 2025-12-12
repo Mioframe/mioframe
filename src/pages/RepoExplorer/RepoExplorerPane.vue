@@ -17,10 +17,10 @@ import { MDAppBar } from '@shared/ui/AppBar';
 import { FSEntryRenameDialog } from '@feature/entryRename';
 import { isUndefined } from 'es-toolkit';
 import type { AMDocumentId } from '@shared/lib/automerge/automergeTypes';
-import { useDirectoryStoreClient } from '@entity/mountedDirectories/useDirectoryStoreClient';
+import { useFileSystem } from '@entity/mountedDirectories/useFileSystem';
 import type { EntryPath } from '@shared/lib/fileSystem';
 import type { EntryDescription } from '@shared/service/directories/types';
-import { useDocumentRepoClient } from '@entity/documentRepo';
+import { useDocumentRepoClient } from '@entity/repository';
 import { stringPath } from '@shared/service/directories';
 import { DomainError } from '@shared/lib/error';
 import { zodQuery } from './model';
@@ -47,7 +47,7 @@ const entryPathToRemove = ref<EntryPath>();
 
 const { settings } = useLocalSettings();
 
-const { getEntry, removeEntry } = useDirectoryStoreClient();
+const { getEntry, removeEntry } = useFileSystem();
 
 const directory = computed(() => {
   const entry = getEntry(directoryPath.value, {
@@ -265,7 +265,7 @@ const showFSEntryRenameDialog = computed({
             v-for="entry in directoryEntries"
             :key="entry.name"
             is-button
-            :entry="entry"
+            :name="entry"
             class="document-explorer-widget__list-item"
             @click="onClickEntry(entry)"
           >

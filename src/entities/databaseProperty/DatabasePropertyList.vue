@@ -4,60 +4,46 @@ import type {
   DatabasePropertyId,
   DatabaseUnknownProperty,
 } from '@shared/lib/databaseDocument';
-import type { EntryPath } from '@shared/lib/fileSystem';
 import { MDListContainer, MDListItem } from '@shared/ui/Lists';
 import { computed, toRefs } from 'vue';
-import { useDatabasePropertiesClient } from './client';
+import { useDatabaseProperties } from './useDatabaseProperties';
 import { strictRecordIterableEntries } from '@shared/lib/strictRecord';
 import { DomainError } from '@shared/lib/error';
+import DatabasePropertyListItem from './DatabasePropertyListItem.vue';
 
 const props = defineProps<{
-  directoryPath: EntryPath;
+  directoryPath: string;
   documentId: AMDocumentId;
 }>();
 
-const { documentId, directoryPath } = toRefs(props);
+const { documentId, directoryPath: path } = toRefs(props);
 
 const slots = defineSlots<{
   trailingIcon: (p: {
-    property: DatabaseUnknownProperty;
+    property?: DatabaseUnknownProperty;
     propertyId: DatabasePropertyId;
   }) => unknown;
 }>();
 
-const { getDatabaseProperties } = useDatabasePropertiesClient();
-
-const properties = computed(() => {
-  const properties = getDatabaseProperties(
-    directoryPath.value,
-    documentId.value,
-  );
-
-  if (properties instanceof DomainError) {
-    return undefined;
-  }
-
-  return properties;
-});
+const { propertiesIdList: properties } = useDatabaseProperties(path, documentId);
 </script>
 
 <template>
   <MDListContainer>
-    <MDListItem
-      v-for="[propertyId, property] in strictRecordIterableEntries(
-        properties,
-      )()"
+    <DatabasePropertyListItem
+      v-for="propertyId in properties"
       :key="propertyId"
-      :headline="property.name"
-      :supporting-text="String(property.type)"
+      :path="path"
+      :document-id="documentId"
+      :property-id="propertyId"
     >
-      <template v-if="!!slots.trailingIcon" #trailingIcon>
+      <template v-if="!!slots.trailingIcon" #trailingIcon="{ property }">
         <slot
           name="trailingIcon"
           :property="property"
           :property-id="propertyId"
         />
       </template>
-    </MDListItem>
+    </DatabasePropertyListItem>
   </MDListContainer>
 </template>

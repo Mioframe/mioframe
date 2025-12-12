@@ -5,7 +5,7 @@ import { MDPaneContainer } from '@shared/ui/Layout';
 import { MDAppBar } from '@shared/ui/AppBar';
 import { MDIconButton } from '@shared/ui/Button';
 import { DocumentRenameDialog } from '@feature/documentRename';
-import { useCFRDocumentClient } from '@entity/cfrDocument';
+import { useDocument } from '@entity/cfrDocument';
 import { DomainError } from '@shared/lib/error';
 import DatabaseViewWidget from '@widget/DocumentView/Database/DatabaseViewWidget.vue';
 import { zodQuery } from './model';
@@ -19,7 +19,7 @@ const slots = defineSlots<{
   navigationButton: () => unknown;
 }>();
 
-const { getDocumentDescription } = useCFRDocumentClient();
+const { getDocumentDescription } = useDocument();
 
 const documentDescription = computed(
   ():

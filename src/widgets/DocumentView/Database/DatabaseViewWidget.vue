@@ -3,7 +3,6 @@ import type {
   DatabaseItemId,
   DatabasePropertyId,
   DatabaseUnknownProperty,
-  DatabaseValue,
   DatabaseViewId,
 } from '@shared/lib/databaseDocument';
 import { computed, shallowRef, toRefs, useTemplateRef } from 'vue';
@@ -11,78 +10,44 @@ import { defineMenuButtonList, MDContextMenuBtn } from '@shared/ui/Menu';
 import type { AMDocumentId } from '@shared/lib/automerge/automergeTypes';
 import EditableInlineValue from './EditableInlineValue.vue';
 import { useSnackbar } from '@shared/ui/Snackbar';
-import { useDatabaseItemRemove } from '@feature/databaseItemRemove';
-import type { EntryPath } from '@shared/lib/fileSystem';
 import DatabaseViewLayout from './DatabaseViewLayout.vue';
 import DatabaseToolbar from './DatabaseToolbar.vue';
 import { DbItemEditDialog } from '@feature/databaseItemEdit';
 import { isUndefined } from 'es-toolkit';
 import ValueField from './ValueField.vue';
 import { MD_SYS_TYPESCALE } from '@shared/lib/md';
-import { strictRecordSize } from '@shared/lib/strictRecord';
-import { useDatabasePropertiesClient } from '@entity/databaseProperty';
-import { useDatabaseDataClient } from '@entity/databaseData/client';
-import { useDatabaseViewsClient } from '@entity/databaseView/viewsClient';
+import { useDatabaseProperties } from '@entity/databaseProperty';
 import { DomainError } from '@shared/lib/error';
+import { useDatabaseViews } from '@entity/databaseView';
+import { useDatabaseData } from '@entity/databaseData/useDatabaseData';
 
 const props = defineProps<{
   documentId: AMDocumentId;
-  directoryPath: EntryPath;
+  directoryPath: string;
 }>();
 
-const { directoryPath, documentId } = toRefs(props);
+const { directoryPath: path, documentId } = toRefs(props);
+
+const firstViewId = computed(() => databaseViewList.value?.at(0)?.[0]);
 
 const documentError = computed(() => {
   if (databaseViewList.value instanceof DomainError) {
     return databaseViewList.value;
   }
 
-  if (firstViewId.value instanceof DomainError) {
-    return firstViewId.value;
-  }
   return undefined;
-});
-
-const { postValue } = useDatabaseDataClient();
-
-const onChangeValue = async (
-  itemId: DatabaseItemId,
-  propertyId: DatabasePropertyId,
-  value: DatabaseValue,
-) => {
-  await postValue(
-    directoryPath.value,
-    documentId.value,
-    itemId,
-    propertyId,
-    value,
-  );
-};
-
-const firstViewId = computed(() => {
-  if (databaseViewList.value instanceof DomainError) {
-    return databaseViewList.value;
-  }
-  return databaseViewList.value?.at(0)?.[0];
 });
 
 const stateSelectedViewId = shallowRef<DatabaseViewId>();
 
 const selectedViewId = computed({
   get: () => {
-    return (
-      stateSelectedViewId.value ??
-      (firstViewId.value instanceof DomainError ? undefined : firstViewId.value)
-    );
+    return stateSelectedViewId.value ?? firstViewId.value;
   },
   set: (id) => (stateSelectedViewId.value = id),
 });
 
-const { getViewList } = useDatabaseViewsClient();
-
-const databaseViewList = computed(() =>
-  getViewList(directoryPath.value, documentId.value),
-);
+const { views: databaseViewList } = useDatabaseViews(path, documentId);
 
 enum ITEM_CONTEXT_ACTION {
   edit,
@@ -96,7 +61,7 @@ const itemContextualButtons = defineMenuButtonList([
 
 const { addSnackbar } = useSnackbar();
 
-const { remove: removeItem } = useDatabaseItemRemove();
+const { removeItem } = useDatabaseData(path, documentId);
 
 const editedItemId = shallowRef<DatabaseItemId>();
 const isShowEditItemDialog = computed({
@@ -114,7 +79,7 @@ const onClickItemContextBtn = async (
 ) => {
   switch (action) {
     case ITEM_CONTEXT_ACTION.remove:
-      await removeItem(directoryPath.value, documentId.value, itemId);
+      await removeItem(itemId);
       break;
 
     case ITEM_CONTEXT_ACTION.edit: {
@@ -130,25 +95,20 @@ const onClickItemContextBtn = async (
   }
 };
 
-const { getDatabaseProperties } = useDatabasePropertiesClient();
-
-const databaseProperties = computed(() =>
-  getDatabaseProperties(directoryPath.value, documentId.value),
+const { propertiesIdList, patch: putProperty } = useDatabaseProperties(
+  path,
+  documentId,
 );
-
-const { patch: putProperty } = useDatabasePropertiesClient();
 
 const onUpdateProperty = async (
   propertyId: DatabasePropertyId,
   v: DatabaseUnknownProperty,
 ) => {
-  await putProperty(directoryPath.value, documentId.value, propertyId, v);
+  await putProperty(path.value, documentId.value, propertyId, v);
 };
 
 const hasProperties = computed(() =>
-  databaseProperties.value && !(databaseProperties.value instanceof DomainError)
-    ? strictRecordSize(databaseProperties.value) > 0
-    : undefined,
+  propertiesIdList.value ? propertiesIdList.value.length > 0 : undefined,
 );
 
 const databaseViewLayoutRef = useTemplateRef('databaseViewLayoutRef');
@@ -174,7 +134,7 @@ const databaseViewLayoutRef = useTemplateRef('databaseViewLayoutRef');
       ref="databaseViewLayoutRef"
       :document-id="documentId"
       :view-id="selectedViewId"
-      :directory-path="directoryPath"
+      :path="path"
       class="database-view__layout"
     >
       <template #value="{ itemId, propertyId }">
@@ -182,8 +142,7 @@ const databaseViewLayoutRef = useTemplateRef('databaseViewLayoutRef');
           :item-id="itemId"
           :property-id="propertyId"
           :document-id="documentId"
-          :directory-path="directoryPath"
-          @update:value="onChangeValue(itemId, propertyId, $event)"
+          :directory-path="path"
           @update:property="onUpdateProperty(propertyId, $event)"
         />
       </template>
@@ -199,25 +158,26 @@ const databaseViewLayoutRef = useTemplateRef('databaseViewLayoutRef');
     <DatabaseToolbar
       v-model:selected-view-id="selectedViewId"
       :document-id="documentId"
-      :directory-path="directoryPath"
+      :directory-path="path"
       :auto-hide-target="databaseViewLayoutRef"
     />
 
     <DbItemEditDialog
       v-if="isShowEditItemDialog"
       v-model:show="isShowEditItemDialog"
-      :directory-path="directoryPath"
+      :directory-path="path"
       :document-id="documentId"
       :item-id="editedItemId"
       apply-label="Edit"
       @cancel="isShowEditItemDialog = false"
       @updated="isShowEditItemDialog = false"
     >
-      <template #valueField="{ property, update, value }">
+      <template #valueField="{ update, value, propertyId }">
         <ValueField
-          :property="property"
+          :document-id="documentId"
+          :property-id="propertyId"
           :value="value"
-          :directory-path="directoryPath"
+          :directory-path="path"
           @update:value="update"
         />
       </template>

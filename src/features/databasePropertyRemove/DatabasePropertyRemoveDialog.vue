@@ -1,21 +1,20 @@
 <script setup lang="ts">
-import { useDatabasePropertiesClient } from '@entity/databaseProperty';
+import { useDatabaseProperties } from '@entity/databaseProperty';
 import type { AMDocumentId } from '@shared/lib/automerge';
 import type { DatabasePropertyId } from '@shared/lib/databaseDocument';
-import type { EntryPath } from '@shared/lib/fileSystem';
 import { MDDialog } from '@shared/ui/Dialog';
 import { MDSymbol } from '@shared/ui/Icon';
 import { toRefs } from 'vue';
 
 const props = defineProps<{
-  directoryPath: EntryPath;
+  path: string;
   documentId: AMDocumentId;
   propertyId: DatabasePropertyId;
 }>();
 
-const { directoryPath, documentId, propertyId } = toRefs(props);
+const { path, documentId, propertyId } = toRefs(props);
 
-const { remove } = useDatabasePropertiesClient();
+const { remove } = useDatabaseProperties(path, documentId);
 
 const emit = defineEmits<{
   removed: [];
@@ -25,7 +24,7 @@ const emit = defineEmits<{
 const show = defineModel<boolean>('show', { required: true });
 
 const onApplyRemoveProperty = async () => {
-  await remove(directoryPath.value, documentId.value, propertyId.value);
+  await remove(propertyId.value);
   emit('removed');
 };
 </script>

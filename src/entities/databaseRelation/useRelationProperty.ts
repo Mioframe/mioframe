@@ -1,57 +1,39 @@
 import type { AMDocumentId } from '@shared/lib/automerge';
 import type { DatabasePropertyId } from '@shared/lib/databaseDocument';
-import { computed, toValue, type MaybeRefOrGetter } from 'vue';
+import type { Ref } from 'vue';
+import { computed } from 'vue';
 import {
   zodRelationProperty,
   type Relation,
   type RelationProperty,
 } from './model';
 import { zodIs } from '@shared/lib/validateZodScheme';
-import type { EntryPath } from '@shared/lib/fileSystem';
-import { useDatabasePropertiesClient } from '@entity/databaseProperty';
-import type { PartialDeep } from 'type-fest';
+import { useDatabaseProperty } from '@entity/databaseProperty';
+import type { PatchSource } from '@shared/lib/changeObject';
 
 export const useRelationProperty = (
-  rawDirectoryPath: MaybeRefOrGetter<EntryPath | undefined>,
-  rawDocumentId: MaybeRefOrGetter<AMDocumentId | undefined>,
-  rawPropertyId: MaybeRefOrGetter<DatabasePropertyId | undefined>,
+  path: Ref<string>,
+  documentId: Ref<AMDocumentId>,
+  propertyId: Ref<DatabasePropertyId>,
 ) => {
-  const directoryPath = computed(() => toValue(rawDirectoryPath));
-  const documentId = computed(() => toValue(rawDocumentId));
-  const propertyId = computed(() => toValue(rawPropertyId));
-
-  const {
-    getProperty: { get: getProperty },
-    patch: patchProperty,
-  } = useDatabasePropertiesClient();
+  const { property, patch: patchProperty } = useDatabaseProperty(
+    path,
+    documentId,
+    propertyId,
+  );
 
   const relationProperty = computed((): RelationProperty | undefined => {
-    if (directoryPath.value && documentId.value && propertyId.value) {
-      const property = getProperty(
-        directoryPath.value,
-        documentId.value,
-        propertyId.value,
-      );
-
-      if (zodIs(property, zodRelationProperty)) {
-        return property;
-      }
+    if (zodIs(property.value, zodRelationProperty)) {
+      return property.value;
     }
 
     return undefined;
   });
 
-  const patch = async (relation: PartialDeep<Relation>) => {
-    if (directoryPath.value && documentId.value && propertyId.value) {
-      await patchProperty<RelationProperty>(
-        directoryPath.value,
-        documentId.value,
-        propertyId.value,
-        {
-          relation,
-        },
-      );
-    }
+  const patch = async (relation: PatchSource<Relation>) => {
+    await patchProperty<RelationProperty>({
+      relation,
+    });
   };
 
   return {

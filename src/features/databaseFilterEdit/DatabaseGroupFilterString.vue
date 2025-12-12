@@ -24,13 +24,12 @@ import { type DatabasePropertyId } from '@shared/lib/databaseDocument';
 import { zodIs } from '@shared/lib/validateZodScheme';
 import { MDDialog } from '@shared/ui/Dialog';
 import { useLastHover } from '@shared/lib/useLastHover';
-import { useDatabasePropertiesClient } from '@entity/databaseProperty';
-import type { EntryPath } from '@shared/lib/fileSystem';
+import { useDatabaseProperties } from '@entity/databaseProperty';
 import type { DomainError } from '@shared/lib/error';
 
 const props = withDefaults(
   defineProps<{
-    directoryPath: EntryPath;
+    directoryPath: string;
     documentId: AMDocumentId;
     operator: LOGICAL_FILTER_OPERATOR;
     level?: number;
@@ -57,7 +56,7 @@ defineSlots<{
   }): unknown;
 }>();
 
-const { getProperty } = useDatabasePropertiesClient();
+const { getProperty } = useDatabaseProperties();
 
 const addBtnLabel = computed(() => OPERATOR_LABEL[operator.value]);
 

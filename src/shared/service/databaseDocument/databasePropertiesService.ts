@@ -1,4 +1,3 @@
-import type { EntryPath } from '@shared/lib/fileSystem';
 import type { AMDocumentId } from '@shared/lib/automerge';
 import {
   generatePropertyId,
@@ -14,52 +13,44 @@ import {
   strictRecordSet,
   strictRecordSize,
 } from '@shared/lib/strictRecord';
-import { defineSubscribeByQueryService } from '@shared/lib/subscriptions';
 import type { PatchSource } from '@shared/lib/changeObject';
 import { deepPatchJsonObject } from '@shared/lib/changeObject';
 import { stringPath } from '../directories';
-import { DomainError } from '@shared/lib/error';
 
 export const useDatabasePropertiesService = (
   getDatabaseBody: (
-    path: EntryPath,
+    path: string,
     documentId: AMDocumentId,
-  ) => DatabaseState | DomainError | undefined,
+  ) => Promise<DatabaseState | undefined>,
   changeDatabase: (
-    path: EntryPath,
+    path: string,
     documentId: AMDocumentId,
     callback: (state: DatabaseState) => unknown,
   ) => Promise<void>,
 ) => {
-  const getDatabaseProperties = (
-    path: EntryPath,
+  const getDatabaseProperties = async (
+    path: string,
     documentId: AMDocumentId,
-  ): undefined | DomainError | DatabaseUnknownPropertiesMap => {
-    const database = getDatabaseBody(path, documentId);
-    if (database instanceof DomainError) {
-      return database;
-    }
+  ): Promise<undefined | DatabaseUnknownPropertiesMap> => {
+    const database = await getDatabaseBody(path, documentId);
     if (database) {
       return database.properties;
     }
   };
 
-  const get = (
-    path: EntryPath,
+  const get = async (
+    path: string,
     documentId: AMDocumentId,
     id: DatabasePropertyId,
-  ): DomainError | DatabaseUnknownProperty | undefined => {
-    const properties = getDatabaseProperties(path, documentId);
-    if (properties instanceof DomainError) {
-      return properties;
-    }
+  ): Promise<DatabaseUnknownProperty | undefined> => {
+    const properties = await getDatabaseProperties(path, documentId);
     if (properties) {
       return strictRecordGet(properties, id);
     }
   };
 
   const post = async (
-    path: EntryPath,
+    path: string,
     documentId: AMDocumentId,
     property: DatabaseUnknownProperty,
     id: DatabasePropertyId = generatePropertyId(),
@@ -72,7 +63,7 @@ export const useDatabasePropertiesService = (
   };
 
   const patch = <T extends DatabaseUnknownProperty>(
-    path: EntryPath,
+    path: string,
     documentId: AMDocumentId,
     id: DatabasePropertyId,
     property: PatchSource<T>,
@@ -84,35 +75,27 @@ export const useDatabasePropertiesService = (
           `there is no property ${id} in document ${stringPath(path)} ${documentId}`,
         );
       }
-      deepPatchJsonObject(oldProperty, property);
+      void deepPatchJsonObject(oldProperty, property);
     });
 
-  const getSize = (
-    path: EntryPath,
+  const getSize = async (
+    path: string,
     documentId: AMDocumentId,
-  ): number | DomainError | undefined => {
-    const properties = getDatabaseProperties(path, documentId);
-
-    if (properties instanceof DomainError) {
-      return properties;
-    }
+  ): Promise<number | undefined> => {
+    const properties = await getDatabaseProperties(path, documentId);
 
     if (properties) {
       return strictRecordSize(properties);
     }
   };
 
-  const getDatabasePropertiesIdList = (
-    path: EntryPath,
+  const getDatabasePropertiesIdList = async (
+    path: string,
     documentId: AMDocumentId,
-  ): DomainError | DatabasePropertyId[] | undefined => {
-    const properties = getDatabaseProperties(path, documentId);
+  ): Promise<DatabasePropertyId[] | undefined> => {
+    const properties = await getDatabaseProperties(path, documentId);
 
     if (properties) {
-      if (properties instanceof DomainError) {
-        return properties;
-      }
-
       return Array.from(strictRecordIterableKeys(properties)());
     }
 
@@ -120,7 +103,7 @@ export const useDatabasePropertiesService = (
   };
 
   const remove = (
-    path: EntryPath,
+    path: string,
     documentId: AMDocumentId,
     id: DatabasePropertyId,
   ) =>
@@ -130,17 +113,8 @@ export const useDatabasePropertiesService = (
 
   return {
     get,
-    subscribeGet: defineSubscribeByQueryService(get),
-
-    subscribeDatabaseProperties: defineSubscribeByQueryService(
-      getDatabaseProperties,
-    ),
-
-    subscribeDatabasePropertiesIdList: defineSubscribeByQueryService(
-      getDatabasePropertiesIdList,
-    ),
-
-    subscribeSize: defineSubscribeByQueryService(getSize),
+    getSize,
+    getDatabasePropertiesIdList,
 
     post,
     patch,
