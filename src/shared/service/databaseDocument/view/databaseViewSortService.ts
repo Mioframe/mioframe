@@ -49,22 +49,19 @@ export const useDatabaseViewSortService = (
     viewId: DatabaseViewId,
     propertyId: DatabasePropertyId,
     sortDescription: PartialDeep<DatabaseSortDescription> = {},
-  ) => {
-    patch(path, documentId, viewId, propertyId, sortDescription);
-  };
+  ) => patch(path, documentId, viewId, propertyId, sortDescription);
 
   const remove = (
     path: string,
     documentId: AMDocumentId,
     viewId: DatabaseViewId,
     propertyId: DatabasePropertyId,
-  ) => {
+  ) =>
     changeView(path, documentId, viewId, (view) => {
       if (view.sorting) {
         strictRecordRemove(view.sorting, propertyId);
       }
     });
-  };
 
   const patch = (
     path: string,
@@ -122,8 +119,10 @@ export const useDatabaseViewSortService = (
     viewId: DatabaseViewId,
   ) => {
     const sorting = await get(path, documentId, viewId);
-
-    return Array.from(strictRecordIterableKeys(sorting)());
+    if (sorting) {
+      return Array.from(strictRecordIterableKeys(sorting)());
+    }
+    return undefined;
   };
 
   const changePriority = (
@@ -132,7 +131,7 @@ export const useDatabaseViewSortService = (
     viewId: DatabaseViewId,
     from: number,
     to: number,
-  ) => {
+  ) =>
     changeView(path, documentId, viewId, (view) => {
       const sorting = view.sorting;
 
@@ -151,7 +150,6 @@ export const useDatabaseViewSortService = (
         view.priority = index;
       });
     });
-  };
 
   const toggleDirection = async (
     path: string,

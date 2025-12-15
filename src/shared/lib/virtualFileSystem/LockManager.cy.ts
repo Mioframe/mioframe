@@ -1,5 +1,3 @@
-/// <reference types="cypress" />
-
 import { LockManager } from './LockManager';
 
 describe('LockManager (Unit)', () => {

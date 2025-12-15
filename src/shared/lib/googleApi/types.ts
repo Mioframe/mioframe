@@ -1,3 +1,5 @@
+/// <reference types="gapi.client.drive-v3" />
+
 import { z } from 'zod/v4-mini';
 
 export type AdvancedGDrive = typeof gapi.client.drive & {

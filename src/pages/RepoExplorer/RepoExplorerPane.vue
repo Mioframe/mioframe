@@ -21,9 +21,9 @@ import { useFileSystem } from '@entity/mountedDirectories/useFileSystem';
 import { zodQuery } from './model';
 import { useMainRouter } from '@page/routes';
 import { zodToVueProps } from '@shared/lib/zodToVueProps';
-import { computedAsync } from '@vueuse/core';
 import { useRepository } from '@entity/repository';
 import { PathUtils } from '@shared/lib/virtualFileSystem';
+import { useDirectory } from '@entity/directory/useDirectory';
 
 const props = defineProps(zodToVueProps(zodQuery));
 
@@ -41,18 +41,9 @@ const onClickCreateDirectory = () => {
 
 const entryPathToRemove = ref<string>();
 
-const { readDirectory, remove: removeEntry } = useFileSystem();
+const { remove: removeEntry } = useFileSystem();
 
-const directoryEntries = computedAsync(
-  () =>
-    readDirectory(
-      directoryPath.value,
-      /*   {
-    showAutomergeFiles: settings.value.showAutomergeFiles,
-  } */
-    ),
-  undefined,
-);
+const { state: directoryEntries } = useDirectory(directoryPath);
 
 const { open } = useMainRouter();
 

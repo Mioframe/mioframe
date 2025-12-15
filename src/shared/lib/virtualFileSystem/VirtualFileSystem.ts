@@ -48,12 +48,6 @@ export class VirtualFileSystem {
   }
 
   /**
-   * Подписывается на ВСЕ события файловой системы.
-   * @param callback Функция обратного вызова.
-   * @returns Функция для отписки.
-   */
-  public watch(callback: (event: VfsEvent) => void): () => void;
-  /**
    * Подписывается на события по конкретному пути.
    * @param path Путь к файлу или директории.
    * @param callback Функция обратного вызова.

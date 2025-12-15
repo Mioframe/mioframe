@@ -1,3 +1,5 @@
+/// <reference types="google.accounts" />
+
 import type { GOOGLE_SCOPE } from './types';
 
 let gsi: typeof window.google | undefined = undefined;
