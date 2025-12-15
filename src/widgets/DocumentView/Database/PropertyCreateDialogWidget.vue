@@ -29,7 +29,7 @@ const zodPartialRelation = extend(zodRelationProperty, {
     @created="showModel = false"
     @cancel="showModel = false"
   >
-    <template #after="{ property, onUpdateProperty, onUpdateDefaultValue }">
+    <template #after="{ property, onUpdateProperty }">
       <DatabaseRelationPropertyEditSection
         v-if="zodIs(property, zodPartialRelation)"
         :property="property"

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { AMDocumentId } from '@shared/lib/automerge';
-import DatabaseNestedFilterString from './DatabaseNestedFilterString.vue';
+import DatabaseNestedFilterString from './DatabaseNestedFilterString2.vue';
 import { toRefs } from 'vue';
 import type {
   DatabaseFilter,

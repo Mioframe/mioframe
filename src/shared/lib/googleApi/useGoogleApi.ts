@@ -11,15 +11,6 @@ import type { DRIVE_GOOGLE_SCOPE } from './types';
 import { type GOOGLE_SCOPE } from './types';
 import { loadGoogle, requestAccessToken } from './loadGsi';
 
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment -- to protect typing
-// @ts-ignore
-// eslint-disable-next-line @typescript-eslint/no-unused-vars -- to protect typing
-const gapi = undefined;
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment -- to protect typing
-// @ts-ignore
-// eslint-disable-next-line @typescript-eslint/no-unused-vars -- to protect typing
-const google = undefined;
-
 /**
  * @deprecated
  * @returns
@@ -94,9 +85,7 @@ export const useGoogleApi = createGlobalState(() => {
    * @param scopes
    * @returns
    */
-  const checkGranted = async (
-    ...scopes: [GOOGLE_SCOPE, ...GOOGLE_SCOPE[]]
-  ) => {
+  const checkGranted = async (...scopes: [GOOGLE_SCOPE, ...GOOGLE_SCOPE[]]) => {
     return !!(
       tokenResponse.value &&
       tokenExpirationTime.value > Date.now() &&

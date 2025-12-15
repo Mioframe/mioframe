@@ -17,7 +17,7 @@ import {
 import type { AMDocumentId } from '@shared/lib/automerge';
 import DatabaseSimpleFilterValueChip from './DatabaseSimpleFilterValueChip.vue';
 import { zodIs } from '@shared/lib/validateZodScheme';
-import DatabaseGroupFilterString from './DatabaseGroupFilterString.vue';
+import DatabaseGroupFilterString from './DatabaseGroupFilterString.vue_';
 import { MDIconButton } from '@shared/ui/Button';
 import { MDMenu } from '@shared/ui/Menu';
 import { useCurrentElement, type MaybeElement } from '@vueuse/core';
@@ -36,7 +36,7 @@ const props = withDefaults(
     documentId: AMDocumentId;
     propertyId?: DatabasePropertyId;
     disableProperties?: boolean;
-    level?: number;
+    level?: number; // todo: перенести level в provide/inject
   }>(),
   {
     level: 0,

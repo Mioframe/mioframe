@@ -1,9 +1,6 @@
-import { useDirectoryStoreService } from './directories';
-import { useRepositoriesStoreService } from './repositories';
 import { useDocumentService } from './document';
 import { useDatabaseDocumentService } from './databaseDocument';
 import { useGoogleService } from './google';
-import { useLocalFileSystemDirectoryHandleStoreService } from './directories/localFileSystemDirectoryHandleStoreService';
 import { useFileSystemService } from './fileSystem';
 import { useRepositoriesService } from './repositories';
 
