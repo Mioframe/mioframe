@@ -1,8 +1,10 @@
 import type { VfsEvent } from '@shared/lib/virtualFileSystem';
-import { VirtualFileSystem } from '@shared/lib/virtualFileSystem';
+import { PathUtils, VirtualFileSystem } from '@shared/lib/virtualFileSystem';
 import { MemoryFileSystem } from '@shared/lib/virtualFileSystem/MemoryFileSystem';
 import type { VfsWatchOptions } from '@shared/lib/virtualFileSystem/VirtualFileSystem';
 import { createGlobalState } from '@vueuse/core';
+import { OPFSName } from '../directories';
+import { WebFileSystem } from '@shared/lib/virtualFileSystem/WebFileSystem';
 
 const setupFileSystemService = () => {
   const vfs = new VirtualFileSystem();
@@ -25,15 +27,24 @@ const setupFileSystemService = () => {
     path: string,
     handle: FileSystemDirectoryHandle,
   ) => {
-    // fixme: сделать драйвер для FileSystemDirectoryHandle
-    // vfs.mount(path, ...);
+    vfs.mount(path, new WebFileSystem(handle));
   };
 
   vfs.mount('/', new MemoryFileSystem());
 
   void vfs.createDirectory('/temp');
 
-  // todo: сразу монтировать OPFS
+  const mountOpfs = async () => {
+    const fileSystemDirectoryHandle = await navigator.storage.getDirectory();
+
+    const mountedPath = PathUtils.join('/', OPFSName);
+
+    await vfs.createDirectory(mountedPath);
+
+    mountFSDirectoryHandle(mountedPath, fileSystemDirectoryHandle);
+  };
+
+  void mountOpfs();
 
   const move = (oldPath: string, newPath: string) =>
     vfs.rename(oldPath, newPath);

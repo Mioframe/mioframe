@@ -1,3 +1,5 @@
+/// <reference types="gapi" />
+
 let gapi: typeof window.gapi | undefined = undefined;
 
 /**

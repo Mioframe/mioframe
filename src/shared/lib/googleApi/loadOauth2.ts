@@ -1,3 +1,5 @@
+/// <reference types="gapi.client.oauth2-v2" />
+
 import { loadGAPI } from './loadGAPI';
 
 let oauth2: typeof window.gapi.client.oauth2 | undefined = undefined;

@@ -1,31 +1,37 @@
+import { computedAsyncLazy } from '@shared/lib/extendedAsyncComputed';
 import { useMainServiceClient } from '@shared/service/useService';
-import { asyncComputed } from '@vueuse/core';
 import type { Ref } from 'vue';
-import { ref } from 'vue';
+import { watch } from 'vue';
 
 export const useDirectory = (path: Ref<string>) => {
-  const client = useMainServiceClient();
+  const {
+    fileSystem: { readDirectory, watch: watchPath },
+  } = useMainServiceClient();
 
-  const { readDirectory } = client.fileSystem;
-
-  const error = ref<unknown>();
-  const evaluating = ref(false);
-
-  const state = asyncComputed(
+  const { error, refresh, state, status } = computedAsyncLazy(
     async () => await readDirectory(path.value),
     undefined,
-    {
-      evaluating,
-      lazy: true,
-      onError: (e) => {
-        error.value = e;
-      },
+  );
+
+  const onWatch = () => {
+    refresh();
+  };
+
+  let stopWatch: undefined | (() => unknown);
+
+  watch(
+    path,
+    async (path) => {
+      stopWatch?.();
+
+      stopWatch = await watchPath(path, onWatch);
     },
+    { immediate: true },
   );
 
   return {
     state,
     error,
-    evaluating,
+    status,
   };
 };

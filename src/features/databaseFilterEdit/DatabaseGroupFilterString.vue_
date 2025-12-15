@@ -8,7 +8,7 @@ import {
 } from '@shared/lib/databaseDocument/migrations/versions/v2/view/filter';
 import { computed, ref, toRefs, useTemplateRef } from 'vue';
 import type { AMDocumentId } from '@shared/lib/automerge';
-import DatabaseNestedFilterString from './DatabaseNestedFilterString.vue';
+import DatabaseNestedFilterString from './DatabaseNestedFilterString.vue_';
 import { OPERATOR_LABEL } from './types';
 import { MDIconButton } from '@shared/ui/Button';
 import { MDSymbol } from '@shared/ui/Icon';

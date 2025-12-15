@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { MDListContainer, MDListItem } from '@shared/ui/Lists';
-import { useFileSystem } from './useFileSystem';
+import { useDirectory } from '@entity/directory/useDirectory';
+import { ref } from 'vue';
 
 defineSlots<{
   leadingIcon: (p: { name: string }) => unknown;
@@ -10,7 +11,7 @@ const emit = defineEmits<{
   click: [name: string];
 }>();
 
-const { rootDirectory } = useFileSystem();
+const { state: rootDirectory } = useDirectory(ref('/'));
 
 const onClickDirectory = (name: string) => {
   emit('click', name);
