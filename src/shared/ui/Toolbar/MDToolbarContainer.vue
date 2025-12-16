@@ -4,7 +4,7 @@ import type { MaybeElement } from '@vueuse/core';
 import { unrefElement, useParentElement, useScroll } from '@vueuse/core';
 import { isUndefined } from 'es-toolkit';
 import { computed, ref, toRefs, useTemplateRef, watchEffect } from 'vue';
-import { usePaneContainer } from '../Layout/useMDContainer';
+import { useOverlayContainer } from '../Overlay';
 
 const props = withDefaults(
   defineProps<{
@@ -51,9 +51,7 @@ const show = computed(
 
 const toolbarEl = useTemplateRef('toolbarEl');
 
-const paneContainer = usePaneContainer();
-
-const to = computed(() => paneContainer.value ?? document.body);
+const to = useOverlayContainer();
 
 // fixme: убрать TeleportWithPlaceholder
 </script>
