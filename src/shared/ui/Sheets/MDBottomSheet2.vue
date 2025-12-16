@@ -2,8 +2,8 @@
 import MDBottomSheetContainer from './MDBottomSheetContainer2.vue';
 import { computed, ref, toRefs, useTemplateRef, watch, watchEffect } from 'vue';
 import { TeleportContainer } from '@shared/lib/teleportContainer';
-import { usePaneContainer } from '../Layout/useMDContainer';
 import type { MaybeElement } from '@vueuse/core';
+import { useOverlayContainer } from '../Overlay';
 
 const props = withDefaults(
   defineProps<{
@@ -43,9 +43,7 @@ const render = computed(() => open.value || scrollPosition.value > 0);
  * FIXME: програмное скрытие анимацией css
  */
 
-const paneContainer = usePaneContainer();
-
-const to = computed(() => paneContainer.value ?? document.body);
+const to = useOverlayContainer();
 
 const sheetContainer = useTemplateRef<MaybeElement>('sheetContainer');
 </script>
