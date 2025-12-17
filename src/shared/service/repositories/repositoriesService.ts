@@ -12,7 +12,7 @@ import {
 import type { CFRDocumentContent } from '@shared/lib/cfrDocument';
 
 const setupRepositoriesService = () => {
-  const { readDirectory, vfs } = useFileSystemService();
+  const { readDirectory, vfs, watch: watchDirectory } = useFileSystemService();
 
   const repositoriesMap = new Map<string, Repo>();
 
@@ -25,7 +25,10 @@ const setupRepositoriesService = () => {
       if (type === FileType.File && zodIs(name, zodAutomergeFileName)) {
         const [documentId] = fileNameToPartialKey(name) ?? [];
 
-        if (zodIs(documentId, zodDocumentId)) {
+        if (
+          zodIs(documentId, zodDocumentId) &&
+          !documentIdList.includes(documentId)
+        ) {
           documentIdList.push(documentId);
         }
       }
@@ -34,35 +37,52 @@ const setupRepositoriesService = () => {
     return documentIdList;
   };
 
-  const getRepo = (path: string): Repo => {
+  async function getRepo(path: string, initial: true): Promise<Repo>;
+  async function getRepo(
+    path: string,
+    initial?: false,
+  ): Promise<undefined | Repo>;
+  async function getRepo(path: string, initial = false) {
     const repo = repositoriesMap.get(path);
     if (repo) {
       return repo;
     }
 
-    const newRepo = new Repo({
-      storage: createVFSAdapter(vfs, path),
-    });
+    const hasDocuments = (await readRepository(path)).length > 0;
 
-    repositoriesMap.set(path, newRepo);
+    if (hasDocuments || initial) {
+      const newRepo = new Repo({
+        storage: createVFSAdapter(vfs, path),
+      });
 
-    return newRepo;
+      repositoriesMap.set(path, newRepo);
+
+      return newRepo;
+    }
+
+    return undefined;
+  }
+
+  const deleteDocument = async (path: string, id: AMDocumentId) => {
+    const repo = await getRepo(path);
+    repo?.delete(id);
   };
 
-  const deleteDocument = (path: string, id: AMDocumentId) => {
-    const repo = getRepo(path);
-    repo.delete(id);
-  };
-
-  const createDocument = (
+  const createDocument = async (
     path: string,
     initialValue: CFRDocumentContent,
-  ): AMDocumentId => {
-    const repo = getRepo(path);
+  ) => {
+    const repo = await getRepo(path, true);
 
-    const documentId = repo.create(initialValue);
+    const documentId = repo.create(initialValue).documentId;
 
-    return zodDocumentId.parse(documentId);
+    return documentId;
+  };
+
+  const onChangeRepository = (path: string, cb: () => unknown) => {
+    const unwatch = watchDirectory(path, cb);
+
+    return unwatch;
   };
 
   return {
@@ -72,6 +92,7 @@ const setupRepositoriesService = () => {
      * @returns коллекция документов
      */
     readRepository,
+    onChangeRepository,
     /**
      * Создать документ в репозитории
      * @param path абсолютный путь к репозиторию

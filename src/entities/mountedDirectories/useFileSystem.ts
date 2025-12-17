@@ -1,10 +1,11 @@
-import { computedAsync, createGlobalState } from '@vueuse/core';
+import { createGlobalState } from '@vueuse/core';
 import { useMainService } from '@shared/service';
 import { toRef } from 'vue';
 import { isFunction } from 'es-toolkit';
 import { useSnackbar } from '@shared/ui/Snackbar';
 import { useDialog } from '@shared/ui/Dialog';
 import { OPFSName } from '@shared/service/directories';
+import { useLiveResource } from '@shared/lib/useLiveResource';
 
 export const OPFS = OPFSName;
 
@@ -21,8 +22,17 @@ const setupFileSystem = () => {
     },
   } = useMainService();
 
-  const rootDirectory = computedAsync(() => readDirectory('/'), [], {
-    lazy: true,
+  const rootPath = '/';
+
+  const {
+    errorMessage,
+    isLoading,
+    isReady,
+    state: rootDirectory,
+  } = useLiveResource(() => rootPath, {
+    fetch: (rootPath) => readDirectory(rootPath),
+    subscribe: watch,
+    defaultErrorMessage: 'Error reading directory',
   });
 
   const isSupportUserDirectory = toRef(
@@ -63,6 +73,10 @@ const setupFileSystem = () => {
 
   return {
     rootDirectory,
+    errorMessage,
+    isLoading,
+    isReady,
+
     mountUserDirectory,
     createDirectory,
     readDirectory,

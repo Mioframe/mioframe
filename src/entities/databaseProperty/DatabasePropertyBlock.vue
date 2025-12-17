@@ -7,14 +7,13 @@ import { useDatabaseProperty } from './useDatabaseProperty';
 import { computed, toRefs } from 'vue';
 import type { AMDocumentId } from '@shared/lib/automerge';
 
-const { path, documentId, propertyId } =
-  toRefs(
-    defineProps<{
-      path: string;
-      documentId: AMDocumentId;
-      propertyId: DatabasePropertyId;
-    }>(),
-  );
+const props = defineProps<{
+  path: string;
+  documentId: AMDocumentId;
+  propertyId: DatabasePropertyId;
+}>();
+
+const { path, documentId, propertyId } = toRefs(props);
 
 defineSlots<{
   default: (p: { property?: DatabaseUnknownProperty }) => unknown;
