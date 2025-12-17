@@ -37,7 +37,7 @@ const onClickCancel = () => {
 
 const { deleteDocument } = useRepository(path);
 
-const { documentDescription } = useDocument(path, documentId);
+const { state: documentDescription } = useDocument(path, documentId);
 
 const documentName = computed(
   () => documentDescription.value?.name ?? 'unknown',

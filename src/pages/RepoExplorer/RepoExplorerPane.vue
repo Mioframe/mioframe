@@ -69,7 +69,7 @@ const onClickCreateDocument = () => {
   showFormNewDocument.value = true;
 };
 
-const { documentList: documentIdList } = useRepository(directoryPath);
+const { state: documentIdList } = useRepository(directoryPath);
 
 const onRemoveEntry = async (path: string) => {
   await removeEntry(path);

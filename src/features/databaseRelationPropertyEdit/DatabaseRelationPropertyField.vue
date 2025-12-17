@@ -13,7 +13,7 @@ const { path } = toRefs(props);
 
 const relationModel = defineModel<Relation>();
 
-const { documentList: documentIdList } = useRepository(path);
+const { state: documentIdList } = useRepository(path);
 
 const modelSelectedDocumentId = computed({
   get: () =>

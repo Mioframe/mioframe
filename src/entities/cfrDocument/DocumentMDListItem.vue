@@ -4,6 +4,8 @@ import { MDSymbol } from '@shared/ui/Icon';
 import { MDListItem } from '@shared/ui/Lists';
 import { computed, toRefs } from 'vue';
 import { useDocument } from './useDocument';
+import { MDCircularProgressIndicator } from '@shared/ui/ProgressIndicators';
+import { MDPlainTooltip } from '@shared/ui/Tooltips';
 
 const props = defineProps<{
   path: string;
@@ -24,7 +26,11 @@ const slots = defineSlots<{
   leadingAvatarContainer: () => unknown;
 }>();
 
-const { documentDescription } = useDocument(path, documentId);
+const {
+  state: documentDescription,
+  isLoading,
+  errorMessage,
+} = useDocument(path, documentId);
 
 const documentName = computed(() => documentDescription.value?.name);
 
@@ -41,7 +47,15 @@ const headline = computed(() => documentName.value ?? 'Untitled Document');
   >
     <template #leadingIcon>
       <slot name="leadingIcon">
-        <MDSymbol name="description" />
+        <template v-if="errorMessage">
+          <MDPlainTooltip :text="errorMessage" />
+
+          <MDSymbol name="error_med" />
+        </template>
+
+        <MDCircularProgressIndicator v-else-if="isLoading" :size="24" />
+
+        <MDSymbol v-else name="description" />
       </slot>
     </template>
 
