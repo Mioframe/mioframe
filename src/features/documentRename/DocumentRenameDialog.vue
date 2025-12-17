@@ -19,7 +19,7 @@ const emit = defineEmits<{
 
 const showModel = defineModel<boolean>('show', { required: true });
 
-const { documentDescription, patch: documentPatch } = useDocument(
+const { state: documentDescription, patch: documentPatch } = useDocument(
   path,
   documentId,
 );

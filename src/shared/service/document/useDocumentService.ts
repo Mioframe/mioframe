@@ -11,6 +11,7 @@ import {
   deepPatchJsonObject,
   deepPutJsonObject,
 } from '@shared/lib/changeObject';
+import { DomainError } from '@shared/lib/error';
 
 export const useDocumentService = createGlobalState(() => {
   const { getRepo } = useRepositoriesService();
@@ -18,10 +19,10 @@ export const useDocumentService = createGlobalState(() => {
   const getDocHandle = async (
     directoryPath: string,
     documentId: AMDocumentId,
-  ): Promise<AMDocHandle> => {
-    const repo = getRepo(directoryPath);
+  ): Promise<AMDocHandle | undefined> => {
+    const repo = await getRepo(directoryPath);
 
-    return await repo.find(documentId);
+    return await repo?.find(documentId);
   };
 
   const getCFRDocumentState = async (
@@ -30,7 +31,7 @@ export const useDocumentService = createGlobalState(() => {
   ) => {
     const docHandle = await getDocHandle(path, documentId);
 
-    const state = docHandle.doc();
+    const state = docHandle?.doc();
 
     if (zodIs(state, zodCFRDocumentContent)) {
       return state;
@@ -65,6 +66,12 @@ export const useDocumentService = createGlobalState(() => {
   ) => {
     const docHandle = await getDocHandle(directoryPath, documentId);
 
+    if (!docHandle) {
+      throw new DomainError(
+        `Document "${documentId}" not found at "${directoryPath}"`,
+      );
+    }
+
     docHandle.change((doc) => {
       const migratedDoc = applyCFRDocumentMigration(doc);
 
@@ -78,6 +85,12 @@ export const useDocumentService = createGlobalState(() => {
     partialContent: PatchSource<CFRDocumentContent>,
   ) => {
     const docHandle = await getDocHandle(directoryPath, documentId);
+
+    if (!docHandle) {
+      throw new DomainError(
+        `Document "${documentId}" not found at "${directoryPath}"`,
+      );
+    }
 
     docHandle.change((doc) => {
       const migratedDoc = applyCFRDocumentMigration(doc);
@@ -93,6 +106,12 @@ export const useDocumentService = createGlobalState(() => {
   ) => {
     const docHandle = await getDocHandle(directoryPath, documentId);
 
+    if (!docHandle) {
+      throw new DomainError(
+        `Document "${documentId}" not found at "${directoryPath}"`,
+      );
+    }
+
     return new Promise<void>((resolve, reject) => {
       docHandle.change((doc) => {
         try {
@@ -107,6 +126,28 @@ export const useDocumentService = createGlobalState(() => {
     });
   };
 
+  const onChangeDocument = async (
+    path: string,
+    documentId: AMDocumentId,
+    callback: () => unknown,
+  ) => {
+    const docHandle = await getDocHandle(path, documentId);
+
+    if (!docHandle) {
+      throw new DomainError(`don't have document "${documentId}" in "${path}"`);
+    }
+
+    const onChangeDocument = () => {
+      callback();
+    };
+
+    docHandle.on('change', onChangeDocument);
+
+    return () => {
+      docHandle.off('change', onChangeDocument);
+    };
+  };
+
   return {
     getDocumentDescription,
 
@@ -116,5 +157,7 @@ export const useDocumentService = createGlobalState(() => {
     change,
 
     getCFRDocumentState,
+
+    onChangeDocument,
   };
 });
