@@ -5,8 +5,8 @@ import type {
   DatabaseUnknownProperty,
 } from '@shared/lib/databaseDocument';
 import { DomainError } from '@shared/lib/error';
+import { useLiveResource } from '@shared/lib/useLiveResource';
 import { useMainService } from '@shared/service';
-import { computedAsync } from '@vueuse/core';
 import type { Ref } from 'vue';
 
 export const useDatabaseProperty = (
@@ -16,21 +16,37 @@ export const useDatabaseProperty = (
 ) => {
   const {
     databaseDocument: {
+      onChangeDocument,
       properties: { get, patch },
     },
   } = useMainService();
 
-  const property = computedAsync(
-    async () =>
-      propertyId.value
-        ? await get(path.value, documentId.value, propertyId.value)
-        : undefined,
-    undefined,
-    { lazy: true },
+  const {
+    errorMessage,
+    isLoading,
+    isReady,
+    state: property,
+  } = useLiveResource(
+    () => ({
+      path: path.value,
+      documentId: documentId.value,
+      propertyId: propertyId.value,
+    }),
+    {
+      fetch: async ({ documentId, path, propertyId }) =>
+        propertyId ? await get(path, documentId, propertyId) : undefined,
+      subscribe: ({ documentId, path }, cb) =>
+        onChangeDocument(path, documentId, cb),
+      defaultErrorMessage: 'Error reading property',
+    },
   );
 
   return {
     property,
+    errorMessage,
+    isLoading,
+    isReady,
+
     patch: <T extends DatabaseUnknownProperty>(property: PatchSource<T>) => {
       if (!propertyId.value) {
         throw new DomainError('propertyId in undefined');

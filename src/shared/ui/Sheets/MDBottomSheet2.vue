@@ -11,11 +11,12 @@ const props = withDefaults(
      * unique label for screen readers and navigation
      */
     label: string;
+    class?: string;
   }>(),
   {},
 );
 
-const { label } = toRefs(props);
+const { label, class: classProp } = toRefs(props);
 
 const showModel = defineModel<boolean>('show', { required: true });
 
@@ -57,6 +58,7 @@ const sheetContainer = useTemplateRef<MaybeElement>('sheetContainer');
         v-model:scroll-position="scrollPosition"
         v-model:open="open"
         class="md-bottom-sheet__container"
+        :class="classProp"
         aria-modal="true"
         :aria-label="label"
       >
