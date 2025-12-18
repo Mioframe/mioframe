@@ -5,7 +5,7 @@ import { MDState } from '../State';
 import { useScroll } from '@shared/lib/scrollTo';
 import { useAriaHidden } from '../AriaHidden';
 import { usePaneContainer } from '../Layout/useMDContainer';
-import { useElementBounding } from '@vueuse/core';
+import { useElementBounding, useElementSize } from '@vueuse/core';
 
 defineSlots<{
   default(): unknown;
@@ -23,19 +23,30 @@ const onClickDragHandle = () => {
 
 const bodyEl = useTemplateRef<HTMLElement>('bodyEl');
 
-const { position, scrollTo } = useScroll(containerEl);
+const { height: bodyHeight } = useElementSize(
+  bodyEl,
+  { height: 0, width: 0 },
+  {
+    box: 'border-box',
+  },
+);
+
+const { position, scrollTo } = useScroll(containerEl, {
+  throttleMs: 1e3 / 60,
+});
 
 watch(position, ({ scrollTop }) => {
   scrollPositionModel.value = scrollTop;
 });
 
 watch(
-  [openModel, bodyEl],
-  ([open, bodyEl]) => {
-    if (bodyEl) {
+  [openModel, bodyHeight, bodyEl],
+  ([open, bodyHeight, bodyEl]) => {
+    if (bodyHeight && bodyEl) {
       if (open) {
+        const top = Math.min(bodyHeight, bodyEl.offsetTop);
         void scrollTo({
-          top: Math.min(bodyEl.offsetTop, bodyEl.clientHeight),
+          top,
         });
       } else {
         void scrollTo({
