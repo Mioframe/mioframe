@@ -17,6 +17,7 @@ import { useDatabaseProperties } from '@entity/databaseProperty';
 import { useDatabaseSorting } from '@entity/databaseSorting/useDatabaseSorting';
 import PropertySortDirectionMenuItem from './PropertySortDirectionMenuItem.vue';
 import DatabaseSortingListItem from './DatabaseSortingListItem.vue';
+import { MDCircularProgressIndicator } from '@shared/ui/ProgressIndicators';
 
 const props = defineProps<{
   path: string;
@@ -37,6 +38,7 @@ const container = useTemplateRef<MaybeElement>('container');
 
 const {
   sortingIdList,
+  isLoading,
   changePriority: changeSortingPriority,
   post: postSorting,
   remove: removeSorting,
@@ -77,6 +79,8 @@ const onClickRemoveItem = async (propertyId: DatabasePropertyId) => {
 
 <template>
   <section class="db-item-sorting-list-section">
+    <MDCircularProgressIndicator v-if="isLoading && !sortingIdList" />
+
     <MDListContainer v-if="sortingIdList?.length" ref="container">
       <DatabaseSortingListItem
         v-for="(propertyId, index) in sortingIdList"
