@@ -5,8 +5,8 @@ import type {
   DatabasePropertyId,
   DatabaseUnknownProperty,
 } from '@shared/lib/databaseDocument';
-import { computedAsync } from '@vueuse/core';
 import { computed, type Ref } from 'vue';
+import { useLiveResource } from '@shared/lib/useLiveResource';
 
 export const useDatabaseProperties = (
   path: Ref<string>,
@@ -15,13 +15,24 @@ export const useDatabaseProperties = (
   const {
     databaseDocument: {
       properties: { getDatabasePropertiesIdList, patch, post, remove },
+      onChangeDocument,
     },
   } = useMainService();
 
-  const propertiesIdList = computedAsync(
-    () => getDatabasePropertiesIdList(path.value, documentId.value),
-    undefined,
-    { lazy: true },
+  const {
+    errorMessage,
+    isLoading,
+    isReady,
+    state: propertiesIdList,
+  } = useLiveResource(
+    () => ({ path: path.value, documentId: documentId.value }),
+    {
+      fetch: ({ documentId, path }) =>
+        getDatabasePropertiesIdList(path, documentId),
+      subscribe: ({ documentId, path }, cb) =>
+        onChangeDocument(path, documentId, cb),
+      defaultErrorMessage: 'Error reading properties',
+    },
   );
 
   const size = computed(() => propertiesIdList.value?.length);
@@ -29,6 +40,9 @@ export const useDatabaseProperties = (
   return {
     propertiesIdList,
     size,
+    errorMessage,
+    isLoading,
+    isReady,
 
     patch: <T extends DatabaseUnknownProperty>(
       path: string,

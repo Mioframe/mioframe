@@ -1,13 +1,13 @@
 import { useMainService } from '@shared/service';
 import type { AMDocumentId } from '@shared/lib/automerge';
 import { type Ref } from 'vue';
-import { asyncComputed } from '@vueuse/core';
 import type {
   DatabaseItem,
   DatabaseItemId,
   DatabaseViewId,
 } from '@shared/lib/databaseDocument';
 import type { Query } from 'sift';
+import { useLiveResource } from '@shared/lib/useLiveResource';
 
 export const useDatabaseData = (
   path: Ref<string>,
@@ -17,22 +17,43 @@ export const useDatabaseData = (
 ) => {
   const {
     databaseDocument: {
+      onChangeDocument,
       data: { removeItem, postItem, getItemIdList },
     },
   } = useMainService();
 
-  const itemIdList = asyncComputed(() =>
-    getItemIdList(path.value, documentId.value, viewId?.value, {
+  const {
+    errorMessage,
+    isLoading,
+    isReady,
+    state: itemIdList,
+  } = useLiveResource(
+    () => ({
+      path: path.value,
+      documentId: documentId.value,
+      viewId: viewId?.value,
       idQuery: idQuery?.value,
     }),
+    {
+      fetch: async ({ documentId, path, viewId, idQuery }) =>
+        getItemIdList(path, documentId, viewId, {
+          idQuery,
+        }),
+      subscribe: ({ documentId, path }, cb) =>
+        onChangeDocument(path, documentId, cb),
+      defaultErrorMessage: 'Error reading items',
+    },
   );
 
   return {
+    itemIdList,
+    errorMessage,
+    isLoading,
+    isReady,
+
     postItem: (item: DatabaseItem, itemId?: DatabaseItemId) =>
       postItem(path.value, documentId.value, item, itemId),
     removeItem: (itemId: DatabaseItemId) =>
       removeItem(path.value, documentId.value, itemId),
-
-    itemIdList,
   };
 };

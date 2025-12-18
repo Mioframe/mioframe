@@ -21,8 +21,11 @@ import { useDatabaseViewsService } from './view/databaseViewsService';
 import { useDatabaseDataService } from './databaseDataService';
 
 export const useDatabaseDocumentService = createGlobalState(() => {
-  const { getCFRDocumentState, change: changeCFRDocument } =
-    useDocumentService();
+  const {
+    getCFRDocumentState,
+    change: changeCFRDocument,
+    onChangeDocument,
+  } = useDocumentService();
 
   const getDatabaseBody = async (
     path: string,
@@ -82,6 +85,7 @@ export const useDatabaseDocumentService = createGlobalState(() => {
 
   return {
     getDatabaseBody,
+    onChangeDocument,
 
     put,
     patch,
