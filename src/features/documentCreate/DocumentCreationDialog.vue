@@ -1,10 +1,11 @@
 <script setup lang="ts">
-import { ref, toRefs, watchEffect } from 'vue';
+import { computed, ref, toRefs, watchEffect } from 'vue';
 import { DATABASE_DOCUMENT_TYPE } from '../../shared/lib/databaseDocument';
 import { MDDialog } from '@shared/ui/Dialog';
 import { MDTextField } from '@shared/ui/TextField';
-import { MDSelect } from '@shared/ui/Select';
+import { MDSelectBase, MDSelectOption } from '@shared/ui/Select';
 import { useRepository } from '@entity/repository';
+import { strictRecordGet } from '@shared/lib/strictRecord';
 
 const props = defineProps<{
   path: string;
@@ -28,12 +29,10 @@ const onCreate = async () => {
     throw new Error('name is undefined');
   }
 
-  const dType = documentType.value.at(0)?.key;
-
-  if (dType) {
+  if (selectedDocumentType.value) {
     await createDocument({
       name: stateName.value.trim(),
-      type: dType,
+      type: selectedDocumentType.value,
       version: 1,
       body: {},
     });
@@ -53,14 +52,24 @@ watchEffect(() => {
   autofocusElement.value?.focus();
 });
 
-const documentTypeOptions = [
-  { label: 'Database', key: DATABASE_DOCUMENT_TYPE },
-  { label: 'JSON Object', key: 'JsonObject' },
-];
+const documentTypes = {
+  [DATABASE_DOCUMENT_TYPE]: 'Database',
+  JsonObject: 'JSON Object',
+};
 
-const documentType = ref<(typeof documentTypeOptions)[number][]>([
-  documentTypeOptions[0],
+const selectedDocumentTypes = ref<(keyof typeof documentTypes)[]>([
+  DATABASE_DOCUMENT_TYPE,
 ]);
+
+const selectedDocumentType = computed(() => selectedDocumentTypes.value.at(0));
+
+const selectedDocumentTypeLabel = computed((): string | undefined => {
+  if (selectedDocumentType.value) {
+    return strictRecordGet(documentTypes, selectedDocumentType.value);
+  }
+
+  return undefined;
+});
 </script>
 
 <template>
@@ -76,10 +85,22 @@ const documentType = ref<(typeof documentTypeOptions)[number][]>([
   >
     <MDTextField v-model:model-value="stateName" label-text="Name" />
 
-    <MDSelect
-      v-model:model-value="documentType"
+    <MDSelectBase
+      v-model:model-value="selectedDocumentTypes"
       label-text="Document type"
-      :options="documentTypeOptions"
-    />
+    >
+      <template #valueContainer>
+        <span>{{ selectedDocumentTypeLabel }}</span>
+      </template>
+
+      <template #options>
+        <MDSelectOption
+          v-for="(label, value) in documentTypes"
+          :key="label"
+          :value="value"
+          :label="label"
+        />
+      </template>
+    </MDSelectBase>
   </MDDialog>
 </template>
