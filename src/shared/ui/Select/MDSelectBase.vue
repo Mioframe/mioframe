@@ -90,12 +90,12 @@ const options = useSelectOptions(onClickOption);
 onKeyStroke(['ArrowDown', 'ArrowUp'], (e) => {
   if (focusedField.value) {
     e.preventDefault();
-    showMenu.value = options.size > 0;
+    showMenu.value = true;
   }
 });
 
 const onClickFieldContainer = () => {
-  showMenu.value = showMenu.value ? false : options.size > 0;
+  showMenu.value = !showMenu.value;
 };
 
 const onClickValue = (value: Value) => {
@@ -164,13 +164,14 @@ const selectId = sessionUniqueId('select');
     </MDFieldContainer>
 
     <MDMenu
-      v-if="options.size && showMenu"
       v-model:show="showMenu"
       :target="fieldContainerRef"
       role="listbox"
       @interaction-outside="onClickOutside"
     >
-      <slot name="options" />
+      <template #default>
+        <slot name="options" />
+      </template>
     </MDMenu>
   </div>
 </template>
