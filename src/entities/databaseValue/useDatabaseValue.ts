@@ -3,8 +3,8 @@ import type {
   DatabaseItemId,
   DatabasePropertyId,
 } from '@shared/lib/databaseDocument';
+import { useLiveResource } from '@shared/lib/useLiveResource';
 import { useMainService } from '@shared/service';
-import { computedAsync } from '@vueuse/core';
 import type { Ref } from 'vue';
 
 export const useDatabaseValue = (
@@ -15,16 +15,38 @@ export const useDatabaseValue = (
 ) => {
   const {
     databaseDocument: {
+      onChangeDocument,
       data: { getValue, postValue },
     },
   } = useMainService();
 
-  const value = computedAsync(() =>
-    getValue(path.value, documentId.value, itemId.value, propertyId.value),
+  const {
+    errorMessage,
+    isLoading,
+    isReady,
+    state: value,
+  } = useLiveResource(
+    () => ({
+      path: path.value,
+      documentId: documentId.value,
+      itemId: itemId.value,
+      propertyId: propertyId.value,
+    }),
+    {
+      fetch: async ({ documentId, itemId, path, propertyId }) =>
+        getValue(path, documentId, itemId, propertyId),
+      subscribe: ({ documentId, path }, cb) =>
+        onChangeDocument(path, documentId, cb),
+      defaultErrorMessage: 'Error reading value',
+    },
   );
 
   return {
     value,
+    errorMessage,
+    isLoading,
+    isReady,
+
     post: (value: unknown) =>
       postValue(
         path.value,

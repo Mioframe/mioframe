@@ -20,9 +20,7 @@ import DatabaseViewLayout from './DatabaseViewLayout.vue';
 import { computed, toRefs } from 'vue';
 import type { AMDocumentId } from '@shared/lib/automerge';
 import { useDatabaseProperty } from '@entity/databaseProperty';
-import { DomainError } from '@shared/lib/error';
-import { strictRecordGet } from '@shared/lib/strictRecord';
-import { useDatabaseItem } from '@entity/databaseItem';
+import { useDatabaseValue } from '@entity/databaseValue';
 
 const props = defineProps<{
   editable?: boolean;
@@ -39,25 +37,14 @@ const { property } = useDatabaseProperty(directoryPath, documentId, propertyId);
 
 const emit = defineEmits<{ click: [] }>();
 
-const { item } = useDatabaseItem(directoryPath, documentId, itemId);
-
-const stateValue = computed(() =>
-  item.value
-    ? item.value instanceof DomainError
-      ? undefined
-      : strictRecordGet(item.value, propertyId.value)
-    : undefined,
+const { value: stateValue } = useDatabaseValue(
+  directoryPath,
+  documentId,
+  itemId,
+  propertyId,
 );
 
 const printValue = computed(() => {
-  if (stateValue.value instanceof DomainError) {
-    return undefined;
-  }
-
-  if (property.value instanceof DomainError) {
-    return undefined;
-  }
-
   return stateValue.value ?? property.value?.default;
 });
 </script>
