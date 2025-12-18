@@ -1,5 +1,5 @@
 <script setup lang="ts" generic="T extends MenuButtonDescription<T>">
-import type { MaybeElement, VueInstance } from '@vueuse/core';
+import type { MaybeElement } from '@vueuse/core';
 import {
   computed,
   nextTick,
@@ -9,7 +9,7 @@ import {
   watch,
   watchEffect,
 } from 'vue';
-import { useEventListener } from '@vueuse/core';
+import { unrefElement, useEventListener } from '@vueuse/core';
 import { MDListContainer } from '../Lists';
 import type { MenuButtonDescription, MenuButtonList } from './types';
 import { onInteractionOutside } from '@shared/lib/onInteractionOutside';
@@ -57,9 +57,15 @@ const onClickItem = (menuItem: T) => {
   emit('click', menuItem);
 };
 
-const listContainerEl = useTemplateRef<
-  HTMLElement | VueInstance | null | undefined
->('listContainerEl');
+const listContainerRef = useTemplateRef<MaybeElement>('listContainerRef');
+
+const listContainerEl = computed(() => {
+  const el = unrefElement(listContainerRef);
+  if (el instanceof HTMLElement) {
+    return el;
+  }
+  return undefined;
+});
 
 const { floatingStyles: containerStyle, update } = useFloating(
   target,
@@ -105,7 +111,7 @@ const ignoreElements = computed(() => {
 });
 
 onInteractionOutside(
-  listContainerEl,
+  listContainerRef,
   () => {
     emit('interactionOutside');
     showModel.value = false;
@@ -128,16 +134,18 @@ const { activate: activateMenuFocusTrap, deactivate: deactivateMenuFocusTrap } =
 
 watch(
   [showModel, listContainerEl],
-  ([showQuery, listContainerEl]) => {
+  async ([showQuery, listContainerEl]) => {
     if (listContainerEl) {
       if (showQuery) {
-        void nextTick(activateMenuFocusTrap);
+        await nextTick();
+        activateMenuFocusTrap();
       } else {
-        void nextTick(deactivateMenuFocusTrap);
+        await nextTick();
+        deactivateMenuFocusTrap();
       }
     }
   },
-  { immediate: true },
+  { immediate: true, flush: 'post' },
 );
 
 const focusRegister = useProvideFocusRegister();
@@ -163,12 +171,12 @@ const showSubmenu = ref<boolean>();
   <TeleportContainer
     :to="targetTeleport"
     :disabled="disabledTeleport"
-    :container="listContainerEl"
+    :container="listContainerRef"
   >
     <MDListContainer
       is="div"
       v-if="showModel"
-      ref="listContainerEl"
+      ref="listContainerRef"
       class="md md-menu"
       :style="containerStyle"
       :transition="transition"

@@ -102,6 +102,7 @@ const onClickRemoveItem = async (propertyId: DatabasePropertyId) => {
 
     <div class="db-item-sorting-list-section__actions">
       <MDButton
+        v-if="propertyWithoutSorting.length"
         ref="addSortingBtn"
         label="add sorting"
         @click="onClickAddSorting"
@@ -113,6 +114,7 @@ const onClickRemoveItem = async (propertyId: DatabasePropertyId) => {
     </div>
 
     <MDMenu
+      v-if="propertyWithoutSorting.length"
       v-model:show="isShowAddSortingMenu"
       :target="addSortingBtn"
       @interaction-outside="isShowAddSortingMenu = false"

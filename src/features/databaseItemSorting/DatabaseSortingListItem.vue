@@ -41,12 +41,19 @@ const onClick = async () => {
 </script>
 
 <template>
-  <MDListItem is="button" :headline="headline" draggable @click="onClick">
+  <MDListItem
+    is="button"
+    :headline="headline"
+    draggable
+    class="db-sorting-item"
+    @click="onClick"
+  >
     <template #leadingIcon>
       <MDSymbol
+        class="db-sorting-item__symbol"
         name="sort"
         :class="{
-          flip: sortDescription?.direction === SORT_DIRECTION.ascending,
+          _flip: sortDescription?.direction === SORT_DIRECTION.ascending,
         }"
       />
     </template>
@@ -56,3 +63,15 @@ const onClick = async () => {
     </template>
   </MDListItem>
 </template>
+
+<style lang="css" scoped>
+.db-sorting-item {
+  &__symbol {
+    transition-property: transform;
+
+    &._flip {
+      transform: rotateX(180deg);
+    }
+  }
+}
+</style>
