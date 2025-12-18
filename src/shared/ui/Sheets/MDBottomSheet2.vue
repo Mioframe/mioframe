@@ -40,10 +40,6 @@ watch(scrollPosition, (scrollPosition) => {
 
 const render = computed(() => open.value || scrollPosition.value > 0);
 
-/**
- * FIXME: програмное скрытие анимацией css
- */
-
 const to = useOverlayContainer();
 
 const sheetContainer = useTemplateRef<MaybeElement>('sheetContainer');
