@@ -4,8 +4,8 @@ import type {
   DatabaseSortDescription,
   DatabaseViewId,
 } from '@shared/lib/databaseDocument';
+import { useLiveResource } from '@shared/lib/useLiveResource';
 import { useMainService } from '@shared/service';
-import { computedAsync } from '@vueuse/core';
 import type { PartialDeep } from 'type-fest';
 import type { Ref } from 'vue';
 
@@ -16,6 +16,7 @@ export const useDatabaseSorting = (
 ) => {
   const {
     databaseDocument: {
+      onChangeDocument,
       views: {
         sorting: {
           changePriority,
@@ -28,12 +29,31 @@ export const useDatabaseSorting = (
     },
   } = useMainService();
 
-  const sortingIdList = computedAsync(() =>
-    getSortingPropertiesIdList(path.value, documentId.value, viewId.value),
+  const {
+    errorMessage,
+    isLoading,
+    isReady,
+    state: sortingIdList,
+  } = useLiveResource(
+    () => ({
+      path: path.value,
+      documentId: documentId.value,
+      viewId: viewId.value,
+    }),
+    {
+      fetch: async ({ documentId, path, viewId }) =>
+        getSortingPropertiesIdList(path, documentId, viewId),
+      subscribe: ({ documentId, path }, cb) =>
+        onChangeDocument(path, documentId, cb),
+      defaultErrorMessage: 'Error reading sorting list',
+    },
   );
 
   return {
     sortingIdList,
+    errorMessage,
+    isLoading,
+    isReady,
 
     changePriority: (from: number, to: number) =>
       changePriority(path.value, documentId.value, viewId.value, from, to),
