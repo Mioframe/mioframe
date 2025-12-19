@@ -25,9 +25,15 @@ const props = defineProps<{
   documentId: AMDocumentId;
   propertyId: DatabasePropertyId;
   value: unknown;
+  class?: unknown;
 }>();
 
-const { directoryPath: path, documentId, propertyId } = toRefs(props);
+const {
+  directoryPath: path,
+  documentId,
+  propertyId,
+  class: propClass,
+} = toRefs(props);
 
 const emit = defineEmits<{
   'update:value': [v: unknown];
@@ -55,12 +61,14 @@ const onUpdateProperty = (v: DatabaseUnknownProperty) => {
     v-if="zodIs(property, zodStringProperty)"
     :model-value="value"
     :property="property"
+    :class="propClass"
     @update:model-value="onUpdateValue"
     @keydown="emit('keydown', $event)"
   />
 
   <NumberValueField
     v-else-if="zodIs(property, zodNumberProperty)"
+    :class="propClass"
     :model-value="value"
     :property="property"
     @update:model-value="onUpdateValue"
@@ -69,6 +77,7 @@ const onUpdateProperty = (v: DatabaseUnknownProperty) => {
 
   <BooleanValueField
     v-else-if="zodIs(property, zodBooleanProperty)"
+    :class="propClass"
     :model-value="value"
     :property="property"
     @update:model-value="onUpdateValue"
@@ -76,6 +85,7 @@ const onUpdateProperty = (v: DatabaseUnknownProperty) => {
 
   <DateValueField
     v-else-if="zodIs(property, zodDateProperty)"
+    :class="propClass"
     :model-value="value"
     :property="property"
     @update:model-value="onUpdateValue"
@@ -84,6 +94,7 @@ const onUpdateProperty = (v: DatabaseUnknownProperty) => {
 
   <RelationValueField
     v-else-if="zodIs(property, zodRelationProperty)"
+    :class="propClass"
     :value="value"
     :directory-path="path"
     :property="property"
@@ -114,7 +125,7 @@ const onUpdateProperty = (v: DatabaseUnknownProperty) => {
   </RelationValueField>
 
   <slot v-else name="unknownProperty">
-    <div>
+    <div :class="propClass">
       There is no suitable input field for property "{{ property?.name }}"
     </div>
   </slot>
