@@ -12,7 +12,7 @@ import {
 import type { CFRDocumentContent } from '@shared/lib/cfrDocument';
 
 const setupRepositoriesService = () => {
-  const { readDirectory, vfs, watch: watchDirectory } = useFileSystemService();
+  const { readDirectory, vfs, onChangePath: watchDirectory } = useFileSystemService();
 
   const repositoriesMap = new Map<string, Repo>();
 
