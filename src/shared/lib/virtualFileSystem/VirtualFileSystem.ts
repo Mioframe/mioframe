@@ -275,6 +275,9 @@ export class VirtualFileSystem {
    * @param newPath Новый путь.
    */
   public async rename(oldPath: string, newPath: string): Promise<void> {
+    if (oldPath === newPath) {
+      return;
+    }
     // 1. Сортируем пути для блокировки, чтобы избежать Deadlock (взаимной блокировки).
     // Если один процесс делает rename(A, B), а другой rename(B, A), без сортировки возможен клин.
     // Всегда блокируем "меньший" путь первым.
