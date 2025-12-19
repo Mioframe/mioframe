@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, toRefs, watchEffect } from 'vue';
+import { computed, ref, shallowRef, toRefs, watchEffect } from 'vue';
 import { MDDialog } from '@shared/ui/Dialog';
 import {
   type DatabaseItem,
@@ -41,7 +41,7 @@ const emit = defineEmits<{
   cancel: [];
 }>();
 
-const show = defineModel<boolean>('show', { required: true });
+const showModel = defineModel<boolean>('show', { required: true });
 
 defineSlots<{
   valueField(p: {
@@ -63,35 +63,50 @@ watchEffect(() => {
   itemState.value = currentItemState.value ?? {};
 });
 
+const applyLoading = shallowRef(false);
+
 const onApply = async () => {
-  if (itemId.value) {
-    await postItem(itemState.value);
-    emit('updated', itemState.value);
-  } else {
-    const id = await postItem(itemState.value);
-    emit('created', id);
+  if (!loading.value) {
+    try {
+      applyLoading.value = true;
+      if (itemId.value) {
+        await postItem(itemState.value);
+        emit('updated', itemState.value);
+      } else {
+        const id = await postItem(itemState.value);
+        emit('created', id);
+      }
+    } finally {
+      applyLoading.value = false;
+    }
   }
 };
 
 const onCancel = () => {
-  itemState.value = {};
-  emit('cancel');
+  if (!loading.value) {
+    itemState.value = {};
+    emit('cancel');
+  }
 };
 
-const { propertiesIdList: properties } = useDatabaseProperties(directoryPath, documentId);
+const { propertiesIdList: properties, isLoading: isLoadingProperties } =
+  useDatabaseProperties(directoryPath, documentId);
 
 const onUpdateValue = (propertyId: DatabasePropertyId, value: unknown) => {
   itemState.value[propertyId] = value;
 };
+
+const loading = computed(() => isLoadingProperties.value || applyLoading.value);
 </script>
 
 <template>
   <MDDialog
-    v-model:show="show"
+    v-model:show="showModel"
     :headline="headline"
     :supporting-text="supportingText"
     :apply-label="applyLabel"
     has-cancel-action
+    :loading="loading"
     @apply="onApply"
     @cancel="onCancel"
   >
