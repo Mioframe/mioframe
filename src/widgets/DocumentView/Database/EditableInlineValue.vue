@@ -28,11 +28,18 @@ const props = withDefaults(
     propertyId: DatabasePropertyId;
     directoryPath: string;
     documentId: AMDocumentId;
+    class?: unknown;
   }>(),
   {},
 );
 
-const { propertyId, documentId, directoryPath: path, itemId } = toRefs(props);
+const {
+  propertyId,
+  documentId,
+  directoryPath: path,
+  itemId,
+  class: propClass,
+} = toRefs(props);
 
 const emit = defineEmits<{
   'update:property': [property: DatabaseUnknownProperty];
@@ -107,6 +114,7 @@ const onUpdateProperty = (v: DatabaseUnknownProperty) => {
     ref="inlineEl"
     class="editable-inline-value"
     tabindex="0"
+    :class="propClass"
     @click="onClick"
   >
     <ValueInline
