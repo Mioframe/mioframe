@@ -16,7 +16,7 @@ const setupFileSystem = () => {
       mountFSDirectoryHandle,
       readDirectory,
       unmount,
-      watch,
+      onChangePath: watch,
       move,
       remove,
     },
