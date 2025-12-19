@@ -14,11 +14,11 @@ const emit = defineEmits<{
   cancel: [];
 }>();
 
-const show = defineModel<boolean>('show', { required: true });
+const showModel = defineModel<boolean>('show', { required: true });
 
 const stateName = ref<string>();
 
-const originalName = computed(() => path.at(-1));
+const originalName = computed(() => PathUtils.basename(path));
 
 watchEffect(() => {
   stateName.value = originalName.value;
@@ -50,7 +50,7 @@ const onCancel = () => {
 
 <template>
   <MDDialog
-    v-model:show="show"
+    v-model:show="showModel"
     headline="Rename"
     supporting-text="Enter a new name"
     apply-label="Rename"
