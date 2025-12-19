@@ -9,7 +9,11 @@ import {
   watch,
   watchEffect,
 } from 'vue';
-import { unrefElement, useEventListener } from '@vueuse/core';
+import {
+  tryOnBeforeUnmount,
+  unrefElement,
+  useEventListener,
+} from '@vueuse/core';
 import { MDListContainer } from '../Lists';
 import type { MenuButtonDescription, MenuButtonList } from './types';
 import { onInteractionOutside } from '@shared/lib/onInteractionOutside';
@@ -123,10 +127,9 @@ onInteractionOutside(
 
 const { activate: activateMenuFocusTrap, deactivate: deactivateMenuFocusTrap } =
   useFocusTrap(listContainerEl, {
+    allowOutsideClick: true,
     isKeyForward: ({ key }) => ['Tab', 'ArrowDown', 'ArrowRight'].includes(key),
     isKeyBackward: ({ key }) => ['ArrowUp', 'ArrowLeft'].includes(key),
-    allowOutsideClick: true,
-    initialFocus: false,
     onDeactivate: () => {
       emit('deactivateFocus');
     },
@@ -134,19 +137,20 @@ const { activate: activateMenuFocusTrap, deactivate: deactivateMenuFocusTrap } =
 
 watch(
   [showModel, listContainerEl],
-  async ([showQuery, listContainerEl]) => {
-    if (listContainerEl) {
-      if (showQuery) {
-        await nextTick();
+  async ([showQuery]) => {
+    if (showQuery) {
+      await nextTick();
+      if (listContainerEl.value) {
         activateMenuFocusTrap();
-      } else {
-        await nextTick();
-        deactivateMenuFocusTrap();
       }
+    } else {
+      deactivateMenuFocusTrap();
     }
   },
   { immediate: true, flush: 'post' },
 );
+
+tryOnBeforeUnmount(deactivateMenuFocusTrap);
 
 const focusRegister = useProvideFocusRegister();
 

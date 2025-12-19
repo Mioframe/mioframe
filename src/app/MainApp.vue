@@ -7,7 +7,7 @@ import { PerformanceOverlay } from '@shared/ui/performance';
 import { usePermanentStorageRequest } from '@feature/permanentStorageRequest';
 import { useLocalSettings } from '@entity/localSettings';
 import { provideOverlayContainer } from '@shared/ui/Overlay';
-import { useAriaHidden } from '@shared/ui/AriaHidden';
+import { useMainContentAriaHidden } from '@shared/ui/AriaHidden';
 
 const { addSnackbar } = useSnackbar();
 
@@ -27,11 +27,11 @@ void permanentStorageRequest();
 
 const { settings } = useLocalSettings();
 
-const ariaHidden = useAriaHidden();
+const mainAriaHidden = useMainContentAriaHidden();
 </script>
 
 <template>
-  <div class="main" :aria-hidden="ariaHidden">
+  <div class="main" :aria-hidden="mainAriaHidden">
     <RouterView />
   </div>
 
