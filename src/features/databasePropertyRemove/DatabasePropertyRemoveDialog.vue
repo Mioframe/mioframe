@@ -21,7 +21,7 @@ const emit = defineEmits<{
   cancel: [];
 }>();
 
-const show = defineModel<boolean>('show', { required: true });
+const showModel = defineModel<boolean>('show', { required: true });
 
 const onApplyRemoveProperty = async () => {
   await remove(propertyId.value);
@@ -31,7 +31,7 @@ const onApplyRemoveProperty = async () => {
 
 <template>
   <MDDialog
-    v-model:show="show"
+    v-model:show="showModel"
     headline="Remove property?"
     supporting-text="Are you sure you want to delete the property and its data?"
     apply-label="Remove"

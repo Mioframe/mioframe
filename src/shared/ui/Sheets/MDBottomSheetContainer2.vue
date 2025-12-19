@@ -1,11 +1,17 @@
 <script setup lang="ts">
 import type { StyleValue } from 'vue';
-import { computed, useTemplateRef, watch } from 'vue';
+import { computed, nextTick, useTemplateRef, watch } from 'vue';
 import { MDState } from '../State';
 import { useScroll } from '@shared/lib/scrollTo';
-import { useAriaHidden } from '../AriaHidden';
+import { useModalAriaHidden } from '../AriaHidden';
 import { usePaneContainer } from '../Layout/useMDContainer';
-import { useElementBounding, useElementSize } from '@vueuse/core';
+import {
+  tryOnBeforeUnmount,
+  useElementBounding,
+  useElementSize,
+} from '@vueuse/core';
+import { useFocusTrap } from '@vueuse/integrations/useFocusTrap.mjs';
+import { useOnEscapeKeyStacked } from '@shared/lib/useOnEscapeKeyStacked';
 
 defineSlots<{
   default(): unknown;
@@ -64,7 +70,31 @@ const onClickScrim = () => {
   });
 };
 
-const ariaHidden = useAriaHidden();
+const ariaHidden = useModalAriaHidden();
+
+const { activate: lockFocus, deactivate: unlockFocus } = useFocusTrap(
+  containerEl,
+  {
+    allowOutsideClick: true,
+  },
+);
+
+watch(
+  [openModel, containerEl],
+  async ([showModel]) => {
+    if (showModel) {
+      await nextTick();
+      if (containerEl.value) {
+        lockFocus();
+      }
+    } else {
+      unlockFocus();
+    }
+  },
+  { immediate: true, flush: 'post' },
+);
+
+tryOnBeforeUnmount(unlockFocus);
 
 const paneContainer = usePaneContainer();
 
@@ -86,6 +116,10 @@ const bodyStyle = computed(
     width: `${paneWidth.value}px`,
   }),
 );
+
+useOnEscapeKeyStacked(() => {
+  openModel.value = false;
+});
 </script>
 
 <template>
