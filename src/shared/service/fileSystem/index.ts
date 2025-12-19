@@ -5,6 +5,12 @@ import type { VfsWatchOptions } from '@shared/lib/virtualFileSystem/VirtualFileS
 import { createGlobalState } from '@vueuse/core';
 import { OPFSName } from '../directories';
 import { WebFileSystem } from '@shared/lib/virtualFileSystem/WebFileSystem';
+import { zodIs } from '@shared/lib/validateZodScheme';
+import { zodAutomergeFileName } from '@shared/lib/automergeAdapter';
+
+export interface ReadDirectoryOptions {
+  hideAutomergeFiles?: boolean;
+}
 
 const setupFileSystemService = () => {
   const vfs = new VirtualFileSystem();
@@ -15,13 +21,24 @@ const setupFileSystemService = () => {
 
   const createDirectory = (path: string) => vfs.createDirectory(path);
 
-  const watch = (
+  const onChangePath = (
     path: string,
     callback: (event: VfsEvent) => void,
     options?: VfsWatchOptions,
   ) => vfs.watch(path, callback, options);
 
-  const readDirectory = (path: string) => vfs.readDirectory(path);
+  const readDirectory = async (
+    path: string,
+    { hideAutomergeFiles }: ReadDirectoryOptions = {},
+  ) => {
+    const list = await vfs.readDirectory(path);
+
+    if (hideAutomergeFiles) {
+      return list.filter(([name]) => !zodIs(name, zodAutomergeFileName));
+    }
+
+    return list;
+  };
 
   const mountFSDirectoryHandle = (
     path: string,
@@ -57,7 +74,7 @@ const setupFileSystemService = () => {
 
     unmount,
     createDirectory,
-    watch,
+    onChangePath,
     readDirectory,
     mountFSDirectoryHandle,
     move,

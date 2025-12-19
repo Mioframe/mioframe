@@ -24,6 +24,8 @@ import { zodToVueProps } from '@shared/lib/zodToVueProps';
 import { useRepository } from '@entity/repository';
 import { PathUtils } from '@shared/lib/virtualFileSystem';
 import { useDirectory } from '@entity/directory/useDirectory';
+import type { ReadDirectoryOptions } from '@shared/service/fileSystem';
+import { useLocalSettings } from '@entity/localSettings';
 
 const props = defineProps(zodToVueProps(zodQuery));
 
@@ -43,7 +45,18 @@ const entryPathToRemove = ref<string>();
 
 const { remove: removeEntry } = useFileSystem();
 
-const { state: directoryEntries } = useDirectory(directoryPath);
+const { settings } = useLocalSettings();
+
+const readDirectoryOptions = computed(
+  (): ReadDirectoryOptions => ({
+    hideAutomergeFiles: !settings.value.showAutomergeFiles,
+  }),
+);
+
+const { state: directoryEntries } = useDirectory(
+  directoryPath,
+  readDirectoryOptions,
+);
 
 const { open } = useMainRouter();
 
