@@ -1,5 +1,8 @@
-export { isDirectoryRef } from './DirectoryFSEntry';
-export type { DirectoryFSEntry } from './DirectoryFSEntry';
+export type {
+  WritableDirectoryFSEntry,
+  ReadonlyDirectoryFSEntry,
+  DirectoryFSEntry,
+} from './DirectoryFSEntry';
 export { isFileFSEntry } from './FileFSEntry';
 export type { FileFSEntry } from './FileFSEntry';
 export { isEntryPath, isGeneralFSEntry } from './GeneralFSEntry';
@@ -7,8 +10,14 @@ export type {
   EntryPath,
   GeneralFSEntry,
   EntryPathString,
+  ReadonlyGeneralFSEntry,
 } from './GeneralFSEntry';
 export {
-  type DirectoryFSEntryRef,
-  directoryFSEntryRef,
-} from './directoryFSEntryRef';
+  type WritableDirectoryFSEntryState,
+  type DirectoryFSEntryState,
+  type ReadonlyDirectoryFSEntryState,
+} from './directoryFSEntryState';
+export {
+  directoryFSEntryPool,
+  useDirectoryFSEntryPool,
+} from './directoryFSEntryPool';

@@ -1,11 +1,10 @@
 import type { WatchOptions } from 'vue';
 import { computed, nextTick, reactive, shallowRef } from 'vue';
-import { isUndefined } from 'es-toolkit';
+import { isPlainObject, isUndefined } from 'es-toolkit';
 import { tryOnScopeDispose } from '@vueuse/core';
 import type { JsonString } from '../brandJson';
 import { jsonParse, jsonStringify } from '../brandJson';
 import type { SubscribeClient, WatchHandle } from './types';
-import { isObjectLike } from '../typeGuards';
 import { deepPutJsonObject } from '../changeObject';
 
 const WAIT_STATUS = Symbol('waiting');
@@ -96,7 +95,7 @@ export const useSubscribeByKeyClient = <K extends string, V>(
           if (!isUndefined(v)) {
             const oldValue = reactiveValues.get(key);
 
-            if (isObjectLike(oldValue) && isObjectLike(v)) {
+            if (isPlainObject(oldValue) && isPlainObject(v)) {
               deepPutJsonObject(oldValue, v);
             } else {
               reactiveValues.set(key, v);

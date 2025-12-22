@@ -1,10 +1,10 @@
 import type { output } from 'zod/v4-mini';
 import { int, object, optional, string, unknown } from 'zod/v4-mini';
-import type { FileForStorageAdapter } from '../fsStorageAdapter';
 import type { ItemWithChildren } from '@shared/lib/useIterable';
 
 import type { Reactive } from 'vue';
 import type { AMDocumentId } from '../automerge/automergeTypes';
+import type { FileForStorageAdapter } from '../automergeAdapter';
 
 export const zodCFRDocumentContent = object({
   name: string(),
@@ -27,10 +27,9 @@ export interface CFRDocument {
  * Реактивный репозиторий документов
  * @deprecated
  */
-export interface RepoRef
-  extends Reactive<{
-    documents: Iterable<[AMDocumentId, CFRDocument]>;
-  }> {
+export interface RepoRef extends Reactive<{
+  documents: Iterable<[AMDocumentId, CFRDocument]>;
+}> {
   /**
    * Создание документа
    * @param initialValue Начальное состояние документа
@@ -53,10 +52,9 @@ interface FileForDocumentFolder extends FileForStorageAdapter {}
 /**
  * Директория с любыми файлами и папками для создания DocumentFolder
  */
-export interface DirectoryForDocumentFolder
-  extends ItemWithChildren<
-    [string, FileForDocumentFolder | DirectoryForDocumentFolder]
-  > {
+export interface DirectoryForDocumentFolder extends ItemWithChildren<
+  [string, FileForDocumentFolder | DirectoryForDocumentFolder]
+> {
   /**
    * Получить имя директории
    * @returns

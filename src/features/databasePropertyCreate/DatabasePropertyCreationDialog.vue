@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { computed, ref, watchEffect } from 'vue';
+import { computed, ref, toRefs, watchEffect } from 'vue';
 import { MDDialog } from '@shared/ui/Dialog';
 import { MDTextField } from '@shared/ui/TextField';
-import { MDSelect } from '@shared/ui/Select';
+import { MDSelectBase, MDSelectOption } from '@shared/ui/Select';
 import { PROPERTY_TYPE_STRING } from '@entity/databaseString';
 import { PROPERTY_TYPE_NUMBER } from '@entity/databaseNumber';
 import { PROPERTY_TYPE_BOOLEAN } from '@entity/databaseBoolean';
@@ -10,8 +10,6 @@ import { PROPERTY_TYPE_DATE } from '@entity/databaseDate';
 import type { PartialDeep } from 'type-fest';
 import { type ValueOf } from 'type-fest';
 import { PROPERTY_TYPE_RELATION } from '@entity/databaseRelation/model';
-import { objectEntries } from '@shared/lib/objectEntries';
-import { pascalCase } from 'es-toolkit';
 import { useSnackbar } from '@shared/ui/Snackbar';
 import type { AMDocumentId } from '@shared/lib/automerge';
 import {
@@ -20,13 +18,14 @@ import {
   type DatabaseUnknownProperty,
 } from '@shared/lib/databaseDocument';
 import { zodIs } from '@shared/lib/validateZodScheme';
-import { useDatabasePropertiesClient } from '@entity/databaseProperty';
-import type { EntryPath } from '@shared/lib/fileSystem';
+import { useDatabaseProperties } from '@entity/databaseProperty';
 
 const props = defineProps<{
-  directoryPath: EntryPath;
+  path: string;
   documentId: AMDocumentId;
 }>();
+
+const { path, documentId } = toRefs(props);
 
 const emit = defineEmits<{
   created: [id: DatabasePropertyId, property: DatabaseUnknownProperty];
@@ -43,7 +42,7 @@ defineSlots<{
   }) => unknown;
 }>();
 
-const propertyTypeList = {
+const PROPERTY_TYPES = {
   PROPERTY_TYPE_STRING,
   PROPERTY_TYPE_NUMBER,
   PROPERTY_TYPE_BOOLEAN,
@@ -51,31 +50,14 @@ const propertyTypeList = {
   PROPERTY_TYPE_RELATION,
 } as const;
 
-type PropertyType = ValueOf<typeof propertyTypeList>;
-
-type PropertyTypeOption = {
-  label: string;
-  propertyType: PropertyType;
-  key: string;
-};
-
-const propertyTypeOptions = objectEntries(propertyTypeList).reduce<
-  PropertyTypeOption[]
->((acc, [key, value]) => {
-  acc.push({
-    label: pascalCase(value),
-    propertyType: value,
-    key,
-  });
-  return acc;
-}, []);
-
 const partialPropertyState = ref<PartialDeep<DatabaseUnknownProperty>>({});
 
-const typeSelectModel = ref<PropertyTypeOption[]>([propertyTypeOptions[0]]);
+const typeSelect = ref<ValueOf<typeof PROPERTY_TYPES>[]>([
+  PROPERTY_TYPES.PROPERTY_TYPE_STRING,
+]);
 
 watchEffect(() => {
-  partialPropertyState.value.type = typeSelectModel.value.at(0)?.propertyType;
+  partialPropertyState.value.type = typeSelect.value.at(0);
 });
 
 const onUpdateDefaultValue = (value: unknown) => {
@@ -90,15 +72,11 @@ const assembledProperty = computed((): undefined | DatabaseUnknownProperty => {
 
 const { addSnackbar } = useSnackbar();
 
-const { post } = useDatabasePropertiesClient();
+const { post } = useDatabaseProperties(path, documentId);
 
 const onCreate = async () => {
   if (assembledProperty.value) {
-    const id = await post(
-      props.directoryPath,
-      props.documentId,
-      assembledProperty.value,
-    );
+    const id = await post(assembledProperty.value);
     emit('created', id, assembledProperty.value);
   } else {
     addSnackbar({ text: 'Property is not fully filled' });
@@ -107,7 +85,7 @@ const onCreate = async () => {
 
 const resetState = () => {
   partialPropertyState.value = {};
-  typeSelectModel.value = [propertyTypeOptions[0]];
+  typeSelect.value = [PROPERTY_TYPES.PROPERTY_TYPE_STRING];
 };
 
 const onCancel = () => {
@@ -147,12 +125,26 @@ watchEffect(() => {
       class="database-property-creation__field"
     />
 
-    <MDSelect
-      v-model:model-value="typeSelectModel"
+    <MDSelectBase
+      v-model:model-value="typeSelect"
       class="database-property-creation__field"
       label-text="Property type"
-      :options="propertyTypeOptions"
-    />
+    >
+      <template #valueContainer>
+        <span class="database-property-creation__type-value">
+          {{ typeSelect.at(0) }}
+        </span>
+      </template>
+
+      <template #options>
+        <MDSelectOption
+          v-for="propertyType in PROPERTY_TYPES"
+          :key="propertyType"
+          :value="propertyType"
+          :label="propertyType"
+        />
+      </template>
+    </MDSelectBase>
 
     <slot
       v-if="assembledProperty"
@@ -163,3 +155,13 @@ watchEffect(() => {
     />
   </MDDialog>
 </template>
+
+<style lang="css" scoped>
+.database-property-creation {
+  &__type-value {
+    &::first-letter {
+      text-transform: uppercase;
+    }
+  }
+}
+</style>

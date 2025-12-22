@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import type { AMDocumentId } from '@shared/lib/automerge';
-import { MDListContainer, MDListItem } from '@shared/ui/Lists';
+import { MDListContainer } from '@shared/ui/Lists';
 import { computed, ref, toRefs, useTemplateRef } from 'vue';
+import type { SORT_DIRECTION } from '@shared/lib/databaseDocument';
 import {
-  SORT_DIRECTION,
   type DatabasePropertyId,
   type DatabaseViewId,
 } from '@shared/lib/databaseDocument';
@@ -12,19 +12,20 @@ import type { MaybeElement } from '@vueuse/core';
 import { MDButton, MDIconButton } from '@shared/ui/Button';
 import { MDMenu } from '@shared/ui/Menu';
 import { difference } from 'es-toolkit';
-import type { EntryPath } from '@shared/lib/fileSystem';
 import { useSortableListener } from '@shared/lib/sortable/useSortable';
-import { useDatabaseViewSortingClient } from '@entity/databaseView/sortingClient';
-import { useDatabasePropertiesClient } from '@entity/databaseProperty';
-import { DomainError } from '@shared/lib/error';
+import { useDatabaseProperties } from '@entity/databaseProperty';
+import { useDatabaseSorting } from '@entity/databaseSorting/useDatabaseSorting';
+import PropertySortDirectionMenuItem from './PropertySortDirectionMenuItem.vue';
+import DatabaseSortingListItem from './DatabaseSortingListItem.vue';
+import { MDCircularProgressIndicator } from '@shared/ui/ProgressIndicators';
 
 const props = defineProps<{
-  directoryPath: EntryPath;
+  path: string;
   documentId: AMDocumentId;
   viewId: DatabaseViewId;
 }>();
 
-const { directoryPath, documentId, viewId } = toRefs(props);
+const { path, documentId, viewId } = toRefs(props);
 
 defineSlots<{
   trailingIcon: (p: {
@@ -35,40 +36,16 @@ defineSlots<{
 
 const container = useTemplateRef<MaybeElement>('container');
 
-const sortListValue = ref<
-  {
-    headline: string;
-    propertyId: DatabasePropertyId;
-    direction: SORT_DIRECTION;
-    supportingText: string;
-  }[]
->([]);
-
 const {
-  sortingPropertiesIdList: { get: getSortingPropertiesIdList },
+  sortingIdList,
+  isLoading,
   changePriority: changeSortingPriority,
   post: postSorting,
-  patch: patchSorting,
   remove: removeSorting,
-} = useDatabaseViewSortingClient();
-
-const sortingPropertiesIdList = computed(
-  () =>
-    getSortingPropertiesIdList(
-      directoryPath.value,
-      documentId.value,
-      viewId.value,
-    ) ?? [],
-);
+} = useDatabaseSorting(path, documentId, viewId);
 
 const onMovedItem = async (fromIndex: number, toIndex: number) => {
-  await changeSortingPriority(
-    directoryPath.value,
-    documentId.value,
-    viewId.value,
-    fromIndex,
-    toIndex,
-  );
+  await changeSortingPriority(fromIndex, toIndex);
 };
 
 const { draggableIndex } = useSortableListener(container, onMovedItem);
@@ -81,123 +58,55 @@ const onClickAddSorting = () => {
 
 const addSortingBtn = useTemplateRef<MaybeElement>('addSortingBtn');
 
-const {
-  databasePropertiesIdList: { get: getDatabasePropertiesIdList },
-  getProperty: { get: getProperty },
-} = useDatabasePropertiesClient();
-
-const databasePropertiesIdList = computed(() => {
-  const list = getDatabasePropertiesIdList(
-    directoryPath.value,
-    documentId.value,
-  );
-
-  if (list && !(list instanceof DomainError)) {
-    return list;
-  }
-
-  return [];
-});
+const { propertiesIdList: databasePropertiesIdList } = useDatabaseProperties(
+  path,
+  documentId,
+);
 
 const propertyWithoutSorting = computed(() =>
-  difference(databasePropertiesIdList.value, sortingPropertiesIdList.value),
+  difference(databasePropertiesIdList.value ?? [], sortingIdList.value ?? []),
 );
 
-const sortingOptions = computed(() =>
-  propertyWithoutSorting.value.map((propertyId) => {
-    const property = getProperty(
-      directoryPath.value,
-      documentId.value,
-      propertyId,
-    );
-
-    return {
-      label: property?.name ?? 'unknown property',
-      key: propertyId,
-      direction: SORT_DIRECTION.ascending,
-    };
-  }),
-);
-
-const onClickAddSortingMenu = async ({
-  key: propertyId,
-}: {
-  key: DatabasePropertyId;
-}) => {
-  await postSorting(
-    directoryPath.value,
-    documentId.value,
-    viewId.value,
-    propertyId,
-  );
+const onClickAddSortingMenu = async (propertyId: DatabasePropertyId) => {
+  await postSorting(propertyId);
   isShowAddSortingMenu.value = false;
 };
 
-const onClickSortingItem = async (
-  propertyId: DatabasePropertyId,
-  direction: SORT_DIRECTION,
-) => {
-  await patchSorting(
-    directoryPath.value,
-    documentId.value,
-    viewId.value,
-    propertyId,
-    {
-      direction:
-        direction === SORT_DIRECTION.ascending
-          ? SORT_DIRECTION.descending
-          : SORT_DIRECTION.ascending,
-    },
-  );
-};
-
 const onClickRemoveItem = async (propertyId: DatabasePropertyId) => {
-  await removeSorting(
-    directoryPath.value,
-    documentId.value,
-    viewId.value,
-    propertyId,
-  );
+  await removeSorting(propertyId);
 };
 </script>
 
 <template>
   <section class="db-item-sorting-list-section">
-    <MDListContainer v-if="sortListValue.length" ref="container">
-      <MDListItem
-        is="button"
-        v-for="(item, index) in sortListValue"
-        :key="item.propertyId"
-        :headline="item.headline"
-        draggable
-        :supporting-text="item.supportingText"
+    <MDCircularProgressIndicator v-if="isLoading && !sortingIdList" />
+
+    <MDListContainer v-if="sortingIdList?.length" ref="container">
+      <DatabaseSortingListItem
+        v-for="(propertyId, index) in sortingIdList"
+        :key="propertyId"
+        :path="path"
+        :document-id="documentId"
+        :view-id="viewId"
+        :property-id="propertyId"
         :class="{
           'md-state_drag': draggableIndex === index,
         }"
-        @click="onClickSortingItem(item.propertyId, item.direction)"
       >
-        <template #leadingIcon>
-          <MDSymbol
-            name="sort"
-            :class="{
-              flip: item.direction === SORT_DIRECTION.ascending,
-            }"
-          />
-        </template>
-
         <template #trailingIcon>
           <MDIconButton
             color="standard"
             tooltip="remove"
             md-symbol-name="delete"
-            @click="onClickRemoveItem(item.propertyId)"
+            @click="onClickRemoveItem(propertyId)"
           />
         </template>
-      </MDListItem>
+      </DatabaseSortingListItem>
     </MDListContainer>
 
     <div class="db-item-sorting-list-section__actions">
       <MDButton
+        v-if="propertyWithoutSorting.length"
         ref="addSortingBtn"
         label="add sorting"
         @click="onClickAddSorting"
@@ -209,12 +118,20 @@ const onClickRemoveItem = async (propertyId: DatabasePropertyId) => {
     </div>
 
     <MDMenu
+      v-if="propertyWithoutSorting.length"
       v-model:show="isShowAddSortingMenu"
-      :btns="sortingOptions"
       :target="addSortingBtn"
       @interaction-outside="isShowAddSortingMenu = false"
-      @click="onClickAddSortingMenu"
-    />
+    >
+      <PropertySortDirectionMenuItem
+        v-for="propertyId in propertyWithoutSorting"
+        :key="propertyId"
+        :property-id="propertyId"
+        :path="path"
+        :document-id="documentId"
+        @click="onClickAddSortingMenu(propertyId)"
+      />
+    </MDMenu>
   </section>
 </template>
 

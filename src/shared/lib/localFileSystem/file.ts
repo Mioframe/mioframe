@@ -1,7 +1,13 @@
 import { from, some } from 'ix/Ix.asynciterable';
 import { createLocalEntry } from './entry';
-import type { DirectoryLocalEntry, FileLocalEntry } from './types';
+import type {
+  DirectoryLocalEntry,
+  FileLocalEntry,
+  WritableDirectoryLocalEntry,
+} from './types';
 import { moveFileTo } from '../fileSystem/utils';
+import { DomainError } from '../error';
+import { pathToString } from '@shared/service/directories';
 
 export const createLocalFile = (
   currentHandle: FileSystemFileHandle,
@@ -25,17 +31,24 @@ export const createLocalFile = (
     }
 
     const file = await read();
+
+    if (!('writeFile' in parentRefDirectory)) {
+      throw new DomainError(
+        `"${pathToString(parentRefDirectory.path)}" don't have writeFile method`,
+      );
+    }
+
     const newEntry = await parentRefDirectory.writeFile(newName, file);
     await currentEntry.remove();
     return newEntry;
   };
 
-  const copyTo = async (dest: DirectoryLocalEntry) => {
+  const copyTo = async (dest: WritableDirectoryLocalEntry) => {
     const file = await read();
     return await dest.writeFile(currentEntry.name, file);
   };
 
-  const moveTo = async (dest: DirectoryLocalEntry) => {
+  const moveTo = async (dest: WritableDirectoryLocalEntry) => {
     return await moveFileTo(dest, currentLocalFileEntry);
   };
 

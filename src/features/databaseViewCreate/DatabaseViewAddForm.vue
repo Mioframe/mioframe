@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { DB_VIEW_LAYOUT } from '@shared/lib/databaseDocument/migrations/versions/v2/view/general';
+import { DB_VIEW_LAYOUT } from '@shared/lib/databaseDocument';
 import { UIButton } from '@shared/ui/Button';
 import FormLayout from '@shared/ui/FormLayout.vue';
 import { reactive } from 'vue';
@@ -43,7 +43,11 @@ const onCancel = () => {
       <div class="control">
         <div class="select">
           <select v-model="formState.layout" required>
-            <option v-for="(value, key) in DB_VIEW_LAYOUT" :key :value>
+            <option
+              v-for="(value, key) in DB_VIEW_LAYOUT"
+              :key="key"
+              :value="value"
+            >
               {{ value }}
             </option>
           </select>

@@ -3,6 +3,8 @@ import { isUnknownRecord } from './isUnknownRecord';
 import { isArray, isNil } from 'es-toolkit/compat';
 import { keys } from '../objectKeys';
 
+// fixme: добавить ограничение только для PlainObject
+
 /**
  * overwrites all values from source to target
  * @param target - mutable object

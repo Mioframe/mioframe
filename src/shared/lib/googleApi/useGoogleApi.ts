@@ -4,26 +4,51 @@ import {
   toRefs,
   useStorage,
 } from '@vueuse/core';
-import { computed, ref, watchEffect } from 'vue';
-import type { GOOGLE_DRIVE_SCOPE, GOOGLE_SCOPES } from './utils';
-import {
-  USERINFO_SCOPE,
-  loadGAPI,
-  loadGDrive,
-  loadGoogle,
-  loadOauth2,
-  requestAccessToken,
-} from './utils';
+import { computed, watchEffect } from 'vue';
+import { loadGDrive } from './loadGDrive';
+import { loadGAPI } from './loadGAPI';
+import type { DRIVE_GOOGLE_SCOPE } from './types';
+import { type GOOGLE_SCOPE } from './types';
+import { loadGoogle, requestAccessToken } from './loadGsi';
 
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment -- to protect typing
-// @ts-ignore
-// eslint-disable-next-line @typescript-eslint/no-unused-vars -- to protect typing
-const gapi = undefined;
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment -- to protect typing
-// @ts-ignore
-// eslint-disable-next-line @typescript-eslint/no-unused-vars -- to protect typing
-const google = undefined;
+/**
+ * @deprecated
+ * @returns
+ */
+export const useGoogleOAuth = () => {
+  const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
 
+  /**
+   * Запрос токена
+   */
+  const requestToken = async (
+    ...scopes: [GOOGLE_SCOPE, ...GOOGLE_SCOPE[]]
+  ): Promise<google.accounts.oauth2.TokenResponse> => {
+    if (!clientId) {
+      throw new Error('clientId missing');
+    }
+
+    return await requestAccessToken(clientId, scopes);
+  };
+
+  const hasGrantedAllScopes = async (
+    tokenResponse: google.accounts.oauth2.TokenResponse,
+    ...scopes: [GOOGLE_SCOPE, ...GOOGLE_SCOPE[]]
+  ) => {
+    const g = await loadGoogle();
+
+    return g.accounts.oauth2.hasGrantedAllScopes(tokenResponse, ...scopes);
+  };
+
+  return {
+    requestToken,
+    hasGrantedAllScopes,
+  };
+};
+
+/**
+ * @deprecated
+ */
 export const useGoogleApi = createGlobalState(() => {
   const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
 
@@ -53,45 +78,19 @@ export const useGoogleApi = createGlobalState(() => {
     gapi.value?.client.setToken(tokenResponse.value);
   });
 
-  const oauth2 = asyncComputed(
-    async () => (clientId ? await loadOauth2(clientId) : undefined),
-    undefined,
-    {
-      lazy: true,
-    },
-  );
+  const { requestToken, hasGrantedAllScopes } = useGoogleOAuth();
 
   /**
    * Проверка наличия доступов
    * @param scopes
    * @returns
    */
-  const checkGranted = (
-    google: typeof window.google,
-    ...scopes: [GOOGLE_SCOPES, ...GOOGLE_SCOPES[]]
-  ) => {
+  const checkGranted = async (...scopes: [GOOGLE_SCOPE, ...GOOGLE_SCOPE[]]) => {
     return !!(
       tokenResponse.value &&
       tokenExpirationTime.value > Date.now() &&
-      google.accounts.oauth2.hasGrantedAllScopes(tokenResponse.value, ...scopes)
+      (await hasGrantedAllScopes(tokenResponse.value, ...scopes))
     );
-  };
-
-  /**
-   * Запрос нового токена
-   */
-  const requestToken = async (
-    ...scopes: [GOOGLE_SCOPES, ...GOOGLE_SCOPES[]]
-  ) => {
-    if (!clientId) {
-      throw new Error('clientId missing');
-    }
-    const g = await loadGoogle();
-
-    tokenResponse.value = await requestAccessToken(clientId, g, scopes);
-    tokenReceiptTime.value = Date.now();
-
-    return tokenResponse.value;
   };
 
   /**
@@ -101,11 +100,9 @@ export const useGoogleApi = createGlobalState(() => {
    * @returns
    */
   const requestAccess = async (
-    ...scopes: [GOOGLE_SCOPES, ...GOOGLE_SCOPES[]]
+    ...scopes: [GOOGLE_SCOPE, ...GOOGLE_SCOPE[]]
   ) => {
-    const google = await loadGoogle();
-
-    const firstCheck = checkGranted(google, ...scopes);
+    const firstCheck = await checkGranted(...scopes);
 
     if (!firstCheck) {
       if (!clientId) {
@@ -114,7 +111,7 @@ export const useGoogleApi = createGlobalState(() => {
 
       await requestToken(...scopes);
 
-      const secondCheck = checkGranted(google, ...scopes);
+      const secondCheck = checkGranted(...scopes);
 
       return secondCheck;
     }
@@ -180,41 +177,8 @@ export const useGoogleApi = createGlobalState(() => {
     }
   };
 
-  const googleEvaluating = ref(false);
-  const google = asyncComputed(() => loadGoogle(), undefined, {
-    lazy: true,
-    evaluating: googleEvaluating,
-  });
-
-  const userInfoEvaluating = ref(false);
-
-  const userInfo = asyncComputed(
-    async () => {
-      const userinfo = oauth2.value?.userinfo;
-
-      if (
-        google.value &&
-        checkGranted(
-          google.value,
-          USERINFO_SCOPE.userinfoEmail,
-          USERINFO_SCOPE.userinfoProfile,
-        )
-      ) {
-        if (userinfo) {
-          const { result } = await userinfo.get();
-          return result;
-        }
-      }
-    },
-    undefined,
-    {
-      lazy: true,
-      evaluating: userInfoEvaluating,
-    },
-  );
-
   const getGDrive = async (
-    ...scopes: [GOOGLE_DRIVE_SCOPE, ...GOOGLE_DRIVE_SCOPE[]]
+    ...scopes: [DRIVE_GOOGLE_SCOPE, ...DRIVE_GOOGLE_SCOPE[]]
   ) => {
     await requestAccess(...scopes);
 
@@ -231,8 +195,6 @@ export const useGoogleApi = createGlobalState(() => {
 
   return {
     removeToken,
-    userInfo,
-    userInfoEvaluating,
     gDrive,
     requestAccess,
     getGDrive,

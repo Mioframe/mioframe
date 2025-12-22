@@ -2,43 +2,46 @@ import { find } from 'ix/Ix.asynciterable';
 import type {
   DirectoryEntryEventMap,
   DirectoryFSEntry,
+  WritableDirectoryFSEntry,
 } from '../fileSystem/DirectoryFSEntry';
 import { copyDirectoryTo, moveDirectoryTo } from '../fileSystem/utils';
 import { WeakValueMap } from '../WeakValueMap';
 import { createFileGDriveEntry } from './createFileGDriveEntry';
 import { createGDriveEntry } from './gDriveEntry';
+import type { RootGDriveEntry } from './types';
 import {
-  GDriveSpace,
+  GOOGLE_DRIVE_SPACE,
   GOOGLE_FOLDER_MIME_TYPE,
   type DirectoryGDriveEntry,
   type FileGDriveEntry,
 } from './types';
-import type { AuthParams } from './api';
-import { api, SPACE } from './api';
+import { files as googleFiles, SPACE } from './api';
+import { DomainError } from '../error';
+import { pathToString } from '@shared/service/directories';
 
 const cacheDirectories = new WeakValueMap<string, DirectoryGDriveEntry>();
 
 export const createDirectoryGDriveEntry = (
-  auth: AuthParams,
-  space = GDriveSpace.appDataFolder,
-  gDriveFolderId?: string,
-  name?: string,
-  parentEntry?: DirectoryGDriveEntry,
+  name: string,
+  parentEntry: DirectoryGDriveEntry | RootGDriveEntry,
+  {
+    apiKey,
+    folderId,
+    space,
+    token,
+    onGetError,
+  }: {
+    apiKey?: string;
+    token: string;
+    space: GOOGLE_DRIVE_SPACE;
+    folderId?: string;
+    onGetError: (e: Error) => unknown;
+  },
 ): DirectoryGDriveEntry => {
-  const currentGDriveFolderId =
-    gDriveFolderId ??
-    (space === GDriveSpace.appDataFolder
-      ? 'appDataFolder'
-      : space === GDriveSpace.MyDrive
-        ? 'root'
-        : 'root');
-
-  const currentName = name ?? space;
-
   const currentEntry = createGDriveEntry(
-    auth,
-    currentName,
-    currentGDriveFolderId,
+    { ACCESS_TOKEN: token, API_KEY: apiKey },
+    name,
+    folderId,
     parentEntry,
   );
 
@@ -53,70 +56,88 @@ export const createDirectoryGDriveEntry = (
   async function* entries(): AsyncIterableIterator<
     [string, DirectoryGDriveEntry | FileGDriveEntry]
   > {
-    let q = `'${currentGDriveFolderId}' in parents`;
-    if (
-      space === GDriveSpace.SharedWithMe &&
-      currentGDriveFolderId === 'root'
-    ) {
-      q = 'sharedWithMe';
+    let q = folderId ? `'${folderId}' in parents` : undefined;
+    if (space === GOOGLE_DRIVE_SPACE.SharedWithMe) {
+      q = 'sharedWithMe=true';
     }
 
-    const {
-      result: { files = [] },
-    } = await api.files.list(auth, {
-      q,
-      spaces:
-        space !== GDriveSpace.SharedWithMe
-          ? [space === GDriveSpace.MyDrive ? SPACE.drive : SPACE.appDataFolder]
-          : undefined,
-    });
+    try {
+      const {
+        result: { files = [] },
+      } = await googleFiles.list(
+        {
+          API_KEY: apiKey,
+          ACCESS_TOKEN: token,
+        },
+        {
+          q,
+          spaces:
+            space !== GOOGLE_DRIVE_SPACE.SharedWithMe
+              ? [
+                  space === GOOGLE_DRIVE_SPACE.MyDrive
+                    ? SPACE.drive
+                    : SPACE.appDataFolder,
+                ]
+              : undefined,
+        },
+      );
 
-    for (const { name, id: fileId, mimeType } of files) {
-      if (name && fileId && mimeType)
-        if (mimeType === GOOGLE_FOLDER_MIME_TYPE) {
-          yield [
-            name,
-            createDirectoryGDriveEntry(
-              auth,
-              space,
-              fileId,
+      for (const { name, id, mimeType } of files) {
+        if (name && id && mimeType)
+          if (mimeType === GOOGLE_FOLDER_MIME_TYPE) {
+            yield [
               name,
-              currentDirectoryGDriveEntry,
-            ),
-          ];
-        } else {
-          yield [
-            name,
-            createFileGDriveEntry(
-              auth,
-              fileId,
+              createDirectoryGDriveEntry(name, currentDirectoryGDriveEntry, {
+                apiKey,
+                folderId: id,
+                space,
+                token,
+                onGetError,
+              }),
+            ];
+          } else {
+            yield [
               name,
-              currentDirectoryGDriveEntry,
-              space,
-            ),
-          ];
-        }
+              createFileGDriveEntry(
+                { ACCESS_TOKEN: token, API_KEY: apiKey },
+                id,
+                name,
+                currentDirectoryGDriveEntry,
+                space,
+              ),
+            ];
+          }
+      }
+    } catch (e: unknown) {
+      console.debug('onGetError', e);
+      // onGetError(e);
+      throw e;
     }
   }
 
   const createDirectory = async (name: string) => {
+    if (!folderId) {
+      throw new DomainError(
+        'You cannot create directories in a folder without an id.',
+      );
+    }
+
     const {
-      result: { id: folderId },
-    } = await api.files.create(auth, {
-      resource: {
+      result: { id },
+    } = await googleFiles.create(
+      { API_KEY: apiKey, ACCESS_TOKEN: token },
+      {
         name,
         mimeType: GOOGLE_FOLDER_MIME_TYPE,
-        parents: [currentGDriveFolderId],
+        parents: [folderId],
       },
-    });
+    );
 
-    if (folderId) {
+    if (id) {
       const directoryEntry = createDirectoryGDriveEntry(
-        auth,
-        space,
-        folderId,
         name,
         currentDirectoryGDriveEntry,
+        { apiKey, token, space, folderId: id, onGetError },
       );
 
       setForListenersOfAddingEntry.forEach((listener) =>
@@ -132,24 +153,33 @@ export const createDirectoryGDriveEntry = (
     name: string,
     file?: FileSystemWriteChunkType,
   ): Promise<FileGDriveEntry> => {
+    if (!folderId) {
+      throw new DomainError('You cannot write file in a folder without an id.');
+    }
+
     const {
-      result: { id: fileId },
-    } = await api.files.create(auth, {
-      resource: {
+      result: { id },
+    } = await googleFiles.create(
+      { API_KEY: apiKey, ACCESS_TOKEN: token },
+      {
         name,
-        parents: [currentGDriveFolderId],
+        parents: [folderId],
       },
-    });
-    if (!fileId) {
+    );
+    if (!id) {
       throw new Error('failed to create file');
     }
     if (file) {
-      await api.files.upload(auth, fileId, file);
+      await googleFiles.upload(
+        { ACCESS_TOKEN: token, API_KEY: apiKey },
+        id,
+        file,
+      );
     }
 
     const fileEntry: FileGDriveEntry = createFileGDriveEntry(
-      auth,
-      fileId,
+      { ACCESS_TOKEN: token, API_KEY: apiKey },
+      id,
       name,
       currentDirectoryGDriveEntry,
       space,
@@ -165,7 +195,16 @@ export const createDirectoryGDriveEntry = (
   const removeByName = async (name: string) => {
     for await (const [fileName, entry] of entries()) {
       if (fileName === name) {
-        await api.files.delete(auth, entry.gDriveFileId);
+        if (!entry.gDriveId) {
+          throw new DomainError(
+            'You cannot delete an entry that does not have an id.',
+          );
+        }
+
+        await googleFiles.delete(
+          { ACCESS_TOKEN: token, API_KEY: apiKey },
+          entry.gDriveId,
+        );
 
         setForListenersOfRemovingEntry.forEach((listener) => listener(name));
 
@@ -221,39 +260,78 @@ export const createDirectoryGDriveEntry = (
   };
 
   const moveTo = async (
-    dest: DirectoryFSEntry | DirectoryGDriveEntry,
+    dest: WritableDirectoryFSEntry | DirectoryGDriveEntry,
   ): Promise<DirectoryFSEntry> => {
-    if ('gDriveFileId' in dest) {
-      await api.files.update(auth, currentGDriveFolderId, {
-        addParents: [dest.gDriveFileId],
-      });
+    if ('gDriveId' in dest) {
+      try {
+        if (!folderId) {
+          throw new DomainError(
+            'You cannot move directories that do not have an id.',
+          );
+        }
 
-      return currentDirectoryGDriveEntry;
+        if (!('gDriveId' in dest) || !dest.gDriveId) {
+          throw new DomainError(
+            'You cannot move files to a directory without an id.',
+          );
+        }
+
+        await googleFiles.update(
+          { ACCESS_TOKEN: token, API_KEY: apiKey },
+          folderId,
+          {
+            addParents: [dest.gDriveId],
+          },
+        );
+
+        return currentDirectoryGDriveEntry;
+      } catch (cause) {
+        throw new DomainError(
+          `couldn't move "${pathToString(currentDirectoryGDriveEntry.path)}" to "${pathToString(dest.path)}"`,
+          { cause },
+        );
+      }
     }
 
     return await moveDirectoryTo(dest, currentDirectoryGDriveEntry);
   };
 
   const copyTo = async (
-    dest: DirectoryFSEntry | DirectoryGDriveEntry,
+    dest: WritableDirectoryFSEntry | DirectoryGDriveEntry,
   ): Promise<DirectoryFSEntry> => {
-    if ('gDriveFileId' in dest) {
-      const {
-        result: { id: fileId, name },
-      } = await api.files.copy(auth, currentGDriveFolderId, {
-        resource: {
-          name: currentName,
-          parents: [dest.gDriveFileId],
-        },
-      });
+    if ('gDriveId' in dest) {
+      if (!folderId) {
+        throw new DomainError(
+          'You cannot copy directories that do not have an id.',
+        );
+      }
 
-      return createDirectoryGDriveEntry(
-        auth,
-        dest.gDriveSpace,
-        fileId,
-        name,
-        dest,
+      if (!dest.gDriveId) {
+        throw new DomainError(
+          'You cannot copy files to a directory without an id.',
+        );
+      }
+
+      const {
+        result: { id, name: newName },
+      } = await googleFiles.copy(
+        { ACCESS_TOKEN: token, API_KEY: apiKey },
+        folderId,
+        {
+          resource: {
+            name,
+            parents: [dest.gDriveId],
+          },
+        },
       );
+
+      return createDirectoryGDriveEntry(newName, dest, {
+        apiKey,
+        folderId: id,
+        space,
+        token,
+        onGetError,
+      });
     } else {
       return await copyDirectoryTo(dest, currentDirectoryGDriveEntry);
     }
@@ -273,7 +351,7 @@ export const createDirectoryGDriveEntry = (
     type: 'directory',
     ...currentEntry,
     get name() {
-      return currentName;
+      return name;
     },
     get path() {
       return currentEntry.path;
@@ -288,7 +366,7 @@ export const createDirectoryGDriveEntry = (
     on,
     copyTo,
     moveTo,
-    gDriveFileId: currentGDriveFolderId,
+    gDriveId: folderId,
     gDriveSpace: space,
   };
 

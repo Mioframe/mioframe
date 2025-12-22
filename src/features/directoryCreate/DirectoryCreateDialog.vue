@@ -1,12 +1,12 @@
 <script setup lang="ts">
-import { useDirectoryStoreClient } from '@entity/mountedDirectories/useDirectoryStoreClient';
-import type { EntryPath } from '@shared/lib/fileSystem';
+import { useFileSystem } from '@entity/mountedDirectories/useFileSystem';
+import { PathUtils } from '@shared/lib/virtualFileSystem';
 import { MDDialog } from '@shared/ui/Dialog';
 import { MDTextField } from '@shared/ui/TextField';
 import { ref, toRefs, watchEffect } from 'vue';
 
 const props = defineProps<{
-  path: EntryPath;
+  path: string;
 }>();
 
 const { path } = toRefs(props);
@@ -20,7 +20,7 @@ const showModel = defineModel<boolean>('show', { required: true });
 
 const errorText = ref<string>();
 
-const { createDirectory } = useDirectoryStoreClient();
+const { createDirectory } = useFileSystem();
 
 const loading = ref(false);
 
@@ -30,7 +30,7 @@ const onApply = async () => {
 
     try {
       loading.value = true;
-      await createDirectory([...path.value, directoryName.value]);
+      await createDirectory(PathUtils.join(path.value, directoryName.value));
       emit('created', directoryName.value);
     } catch (error) {
       errorText.value =

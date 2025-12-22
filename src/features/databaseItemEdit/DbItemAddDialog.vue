@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import type { GeneralProperty } from '@shared/lib/databaseDocument/migrations/versions/v1/property';
 import DbItemEditDialog from './DbItemEditDialog.vue';
 import type {
   DatabaseItemId,
@@ -7,10 +6,9 @@ import type {
 } from '@shared/lib/databaseDocument/migrations/versions';
 import type { AMDocumentId } from '@shared/lib/automerge';
 import { toRefs } from 'vue';
-import type { EntryPath } from '@shared/lib/fileSystem';
 
 const props = defineProps<{
-  directoryPath: EntryPath;
+  directoryPath: string;
   documentId: AMDocumentId;
 }>();
 
@@ -25,7 +23,6 @@ const show = defineModel<boolean>('show', { required: true });
 
 defineSlots<{
   valueField(p: {
-    property: GeneralProperty;
     propertyId: DatabasePropertyId;
     value: unknown;
     update: (value: unknown) => void;
@@ -52,10 +49,9 @@ const onCancel = () => {
     @created="onCreated"
     @cancel="onCancel"
   >
-    <template #valueField="{ property, update, value, propertyId }">
+    <template #valueField="{ update, value, propertyId }">
       <slot
         name="valueField"
-        :property="property"
         :update="update"
         :value="value"
         :property-id="propertyId"

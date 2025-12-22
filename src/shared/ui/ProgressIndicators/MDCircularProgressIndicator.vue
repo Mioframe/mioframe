@@ -1,11 +1,19 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, ref, toRefs } from 'vue';
 
-const { progress = 0 } = defineProps<{
-  progress?: number;
-}>();
+const props = withDefaults(
+  defineProps<{
+    progress?: number;
+    size?: number;
+  }>(),
+  {
+    progress: 0,
+    size: 40,
+  },
+);
 
-const size = ref(40);
+const { progress, size } = toRefs(props);
+
 const width = ref(4);
 const radius = computed(() => (size.value - width.value) / 2);
 const center = computed(() => radius.value + width.value / 2);
@@ -17,16 +25,16 @@ const perimeter = computed(() => {
 
 const strokeLinecap = computed<
   'butt' | 'round' | 'square' | 'inherit' | undefined
->(() => (progress === 1 ? undefined : 'round'));
+>(() => (progress.value === 1 ? undefined : 'round'));
 
 const gap = computed(() => (Number.isInteger(progress) ? 0 : width.value * 2));
 
 const progressLineLength = computed(() => {
-  return perimeter.value * progress - gap.value;
+  return perimeter.value * progress.value - gap.value;
 });
 
 const progressGapLength = computed(
-  () => perimeter.value * (1 - progress) + gap.value,
+  () => perimeter.value * (1 - progress.value) + gap.value,
 );
 
 const progressDasharray = computed(() => {
@@ -38,17 +46,21 @@ const progressLineOffset = computed(() => {
 });
 
 const emptyLineLength = computed(
-  () => perimeter.value * (1 - progress) - gap.value,
+  () => perimeter.value * (1 - progress.value) - gap.value,
 );
 
-const emptyGapLength = computed(() => perimeter.value * progress + gap.value);
+const emptyGapLength = computed(
+  () => perimeter.value * progress.value + gap.value,
+);
 
 const emptyDasharray = computed(() => {
   return `${emptyLineLength.value} ${emptyGapLength.value}`;
 });
 
 const emptyLineOffset = computed(() => {
-  return -perimeter.value * progress - gap.value / 2 + perimeter.value / 4;
+  return (
+    -perimeter.value * progress.value - gap.value / 2 + perimeter.value / 4
+  );
 });
 
 const minIndeterminateDasharray = computed(

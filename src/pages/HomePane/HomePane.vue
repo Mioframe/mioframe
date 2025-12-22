@@ -3,10 +3,11 @@ import { MountedDirectoriesList } from '@entity/mountedDirectories';
 import { MDFab, MDFabContainer, MDIconButton } from '@shared/ui/Button';
 import { MDPaneContainer } from '@shared/ui/Layout';
 import { MDSymbol } from '@shared/ui/Icon';
-import { useDirectoryStoreClient } from '@entity/mountedDirectories/useDirectoryStoreClient';
-import { OPFSName } from '@shared/api/directories';
+import { useFileSystem } from '@entity/mountedDirectories/useFileSystem';
+import { OPFSName } from '@shared/service/directories';
 import { MDAppBar } from '@shared/ui/AppBar';
 import { useMainRouter } from '@page/routes';
+import { PathUtils } from '@shared/lib/virtualFileSystem';
 
 defineSlots<{
   navigationButton: () => unknown;
@@ -14,18 +15,18 @@ defineSlots<{
 
 const { open } = useMainRouter();
 
-const { mountUserDirectory } = useDirectoryStoreClient();
+const { mountUserDirectory } = useFileSystem();
 
 const onClickMountUserDirectory = async () => {
   await mountUserDirectory();
 };
 
-const onClickMountedDirectory = async (name: string) => {
-  await open('repo', { repoPath: [name] });
+const onClickRootDirectory = async (name: string) => {
+  await open('repo', { repoPath: PathUtils.join('/', name) });
 };
 
-const onClickSettings = async () => {
-  await open('settings', {});
+const onClickAccount = async () => {
+  await open('accounts', {});
 };
 </script>
 
@@ -38,14 +39,14 @@ const onClickSettings = async () => {
 
       <template #trailingElements>
         <MDIconButton
-          tooltip="settings"
-          md-symbol-name="settings"
-          @click="onClickSettings"
+          tooltip="account"
+          md-symbol-name="person"
+          @click="onClickAccount"
         />
       </template>
     </MDAppBar>
 
-    <MountedDirectoriesList is="button" @click="onClickMountedDirectory">
+    <MountedDirectoriesList @click="onClickRootDirectory">
       <template #leadingIcon="{ name }">
         <MDSymbol v-if="name === OPFSName" name="folder_special" />
       </template>

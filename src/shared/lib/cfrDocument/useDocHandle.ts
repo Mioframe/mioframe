@@ -9,16 +9,16 @@ import type {
   AMDocHandleChangePayload,
   AMDocHandleDeletePayload,
 } from '../automerge/automergeTypes';
-import { createScopesWeakMap, defineScopesWeakMapRef } from '../scopesWeakMap';
+import { defineScopePool, createPoolConsumer } from '../scopePool';
 import { tryOnScopeDispose } from '@vueuse/core';
 
-export type DocHandleRef = {
+export type DocHandleState = {
   docRef: UnknownRecord;
   doc: () => ReadonlyDeep<AMDoc> | undefined;
   change: (callback: AMChangeFn) => void;
 };
 
-export const createDocHandleRef = (docHandle: AMDocHandle): DocHandleRef => {
+export const setupDocHandleState = (docHandle: AMDocHandle): DocHandleState => {
   const docRef = ref<UnknownRecord>({});
 
   /**
@@ -86,7 +86,7 @@ export const createDocHandleRef = (docHandle: AMDocHandle): DocHandleRef => {
     }
   };
 
-  const docHandleRef: DocHandleRef = reactive({
+  const docHandleRef: DocHandleState = reactive({
     get docRef() {
       init();
       return readonly(docRef);
@@ -98,9 +98,6 @@ export const createDocHandleRef = (docHandle: AMDocHandle): DocHandleRef => {
   return docHandleRef;
 };
 
-export const useDocHandleScopesWeakMap =
-  createScopesWeakMap(createDocHandleRef);
+export const docHandlePool = defineScopePool(setupDocHandleState);
 
-export const useDocHandleScopesWeakMapRef = defineScopesWeakMapRef(
-  useDocHandleScopesWeakMap,
-);
+export const useDocHandle = createPoolConsumer(docHandlePool);

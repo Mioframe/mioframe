@@ -1,5 +1,11 @@
 {
+  "extends": "./tsconfig.app.json",
   "compilerOptions": {
+    "types": [
+      "cypress",
+      "@types/wicg-file-system-access",
+      "@testing-library/cypress"
+    ],
     "composite": true,
     "target": "es2024",
     "useDefineForClassFields": true,
@@ -18,12 +24,8 @@
     "strict": true,
     "strictNullChecks": true,
     "noUnusedLocals": true,
-    "noUnusedParameters": true,
-    "types": [
-      "@types/wicg-file-system-access",
-      "cypress",
-      "@testing-library/cypress"
-    ]
+    "noUnusedParameters": true
   },
-  "include": ["cypress/**/*.ts", "cypress/**/*.tsx"]
+  "include": ["src/**/*.cy.ts", "cypress/**/*", "src/**/*.ts", "src/**/*.vue"],
+  "exclude": []
 }

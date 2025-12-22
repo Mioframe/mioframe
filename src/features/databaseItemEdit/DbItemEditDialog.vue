@@ -1,23 +1,18 @@
 <script setup lang="ts">
-import { computed, ref, toRefs, watchEffect } from 'vue';
+import { computed, ref, shallowRef, toRefs, watchEffect } from 'vue';
 import { MDDialog } from '@shared/ui/Dialog';
 import {
   type DatabaseItem,
   type DatabaseItemId,
   type DatabasePropertyId,
-  type GeneralProperty,
 } from '@shared/lib/databaseDocument';
 import type { AMDocumentId } from '@shared/lib/automerge';
-
-import type { EntryPath } from '@shared/lib/fileSystem';
-import { useDatabaseDataClient } from '@entity/databaseData/client';
-import { DomainError } from '@shared/lib/error';
-import { useDatabasePropertiesClient } from '@entity/databaseProperty';
-import { strictRecordIterableEntries } from '@shared/lib/strictRecord';
+import { useDatabaseProperties } from '@entity/databaseProperty';
+import { useDatabaseItem } from '@entity/databaseItem';
 
 const props = withDefaults(
   defineProps<{
-    directoryPath: EntryPath;
+    directoryPath: string;
     documentId: AMDocumentId;
     itemId?: DatabaseItemId;
     headline?: string;
@@ -46,11 +41,10 @@ const emit = defineEmits<{
   cancel: [];
 }>();
 
-const show = defineModel<boolean>('show', { required: true });
+const showModel = defineModel<boolean>('show', { required: true });
 
 defineSlots<{
   valueField(p: {
-    property: GeneralProperty;
     propertyId: DatabasePropertyId;
     value: unknown;
     update: (value: unknown) => void;
@@ -59,83 +53,66 @@ defineSlots<{
 
 const itemState = ref<DatabaseItem>({});
 
-const { getItem, postItem } = useDatabaseDataClient();
-
-const currentItemState = computed(() =>
-  itemId.value
-    ? getItem(directoryPath.value, documentId.value, itemId.value)
-    : undefined,
+const { item: currentItemState, postItem } = useDatabaseItem(
+  directoryPath,
+  documentId,
+  itemId,
 );
 
 watchEffect(() => {
-  if (!(currentItemState.value instanceof DomainError)) {
-    itemState.value = currentItemState.value ?? {};
-  }
+  itemState.value = currentItemState.value ?? {};
 });
 
+const applyLoading = shallowRef(false);
+
 const onApply = async () => {
-  if (itemId.value) {
-    await postItem(
-      directoryPath.value,
-      documentId.value,
-      itemState.value,
-      itemId.value,
-    );
-    emit('updated', itemState.value);
-  } else {
-    const id = await postItem(
-      directoryPath.value,
-      documentId.value,
-      itemState.value,
-    );
-    emit('created', id);
+  if (!loading.value) {
+    try {
+      applyLoading.value = true;
+      if (itemId.value) {
+        await postItem(itemState.value);
+        emit('updated', itemState.value);
+      } else {
+        const id = await postItem(itemState.value);
+        emit('created', id);
+      }
+    } finally {
+      applyLoading.value = false;
+    }
   }
 };
 
 const onCancel = () => {
-  itemState.value = {};
-  emit('cancel');
+  if (!loading.value) {
+    itemState.value = {};
+    emit('cancel');
+  }
 };
 
-const { getDatabaseProperties } = useDatabasePropertiesClient();
-
-const properties = computed(() => {
-  const properties = getDatabaseProperties(
-    directoryPath.value,
-    documentId.value,
-  );
-
-  if (properties instanceof DomainError) {
-    return undefined;
-  }
-
-  return properties;
-});
+const { propertiesIdList: properties, isLoading: isLoadingProperties } =
+  useDatabaseProperties(directoryPath, documentId);
 
 const onUpdateValue = (propertyId: DatabasePropertyId, value: unknown) => {
   itemState.value[propertyId] = value;
 };
+
+const loading = computed(() => isLoadingProperties.value || applyLoading.value);
 </script>
 
 <template>
   <MDDialog
-    v-model:show="show"
+    v-model:show="showModel"
     :headline="headline"
     :supporting-text="supportingText"
     :apply-label="applyLabel"
     has-cancel-action
+    :loading="loading"
     @apply="onApply"
     @cancel="onCancel"
   >
-    <template
-      v-for="[propertyId, property] in strictRecordIterableEntries(
-        properties,
-      )()"
-      :key="propertyId"
-    >
+    <template v-for="propertyId in properties" :key="propertyId">
       <slot
         name="valueField"
-        :property="property"
         :value="itemState[propertyId]"
         :property-id="propertyId"
         :update="(value: unknown) => onUpdateValue(propertyId, value)"

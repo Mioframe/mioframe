@@ -12,11 +12,11 @@ import {
 } from 'vue';
 import type { UnknownRecord } from 'type-fest';
 import type { AMDocHandle, AMDocumentId } from '../automerge/automergeTypes';
-import { createScopesWeakMap, defineScopesWeakMapRef } from '../scopesWeakMap';
+import { defineScopePool, createPoolConsumer } from '../scopePool';
 import { tryOnScopeDispose } from '@vueuse/core';
 import { isEqual, once, throttle } from 'es-toolkit';
 
-export type RepoRef = {
+export type RepoState = {
   create: <Z extends typeof zodCFRDocumentContent>(
     initialValue: output<Z>,
   ) => void;
@@ -25,7 +25,7 @@ export type RepoRef = {
   map: ShallowReactive<ReadonlyMap<AMDocumentId, AMDocHandle>>;
 };
 
-export const createRepoRef = (repo: Repo): RepoRef => {
+export const setupRepoState = (repo: Repo): RepoState => {
   const mapRef = shallowReactive<Map<AMDocumentId, AMDocHandle>>(new Map());
 
   const addDocToState = (docHandle: AMDocHandle) => {
@@ -97,7 +97,7 @@ export const createRepoRef = (repo: Repo): RepoRef => {
     documentSearchSetWatchHandle.resume();
   });
 
-  const repoRef: RepoRef = shallowReactive({
+  const repoState: RepoState = shallowReactive({
     create,
     remove,
     find,
@@ -107,41 +107,43 @@ export const createRepoRef = (repo: Repo): RepoRef => {
     },
   });
 
-  return repoRef;
+  return repoState;
 };
 
-const useRepoScopesWeakMap = createScopesWeakMap(createRepoRef);
+const repoPool = defineScopePool(setupRepoState);
 
-const useRepoScopesWeakMapRef = defineScopesWeakMapRef(useRepoScopesWeakMap);
+const useRepoPool = createPoolConsumer(repoPool);
+
+// TODO: непонятно в чём разница useRepoPool и useRepo
 
 export const useRepo = (
   repo: MaybeRefOrGetter<Repo | undefined>,
   searchDocuments?: MaybeRefOrGetter<AMDocumentId[] | Set<AMDocumentId>>,
 ) => {
-  const repoScopes = useRepoScopesWeakMapRef(repo);
+  const repoScope = useRepoPool(repo);
 
   const documentsForSearch = toRef(() => toValue(searchDocuments));
 
   const create = <Z extends typeof zodCFRDocumentContent>(
     initialValue: output<Z>,
   ) => {
-    if (!repoScopes.value) {
+    if (!repoScope.value) {
       throw new Error('repository missing');
     }
-    repoScopes.value.create(initialValue);
+    repoScope.value.create(initialValue);
   };
 
   const remove = (documentId: AMDocumentId) => {
-    if (!repoScopes.value) {
+    if (!repoScope.value) {
       throw new Error('repository missing');
     }
-    repoScopes.value.remove(documentId);
+    repoScope.value.remove(documentId);
   };
 
-  const map = computed(() => repoScopes.value?.map);
+  const map = computed(() => repoScope.value?.map);
 
   const find = (documentList: AMDocumentId[] | Set<AMDocumentId>) =>
-    repoScopes.value?.find(documentList);
+    repoScope.value?.find(documentList);
 
   watch(
     documentsForSearch,
@@ -153,12 +155,12 @@ export const useRepo = (
     { immediate: true, deep: true },
   );
 
-  const repoRef = reactive({
+  const repoState = reactive({
     create,
     remove,
     map,
     find,
   });
 
-  return repoRef;
+  return repoState;
 };

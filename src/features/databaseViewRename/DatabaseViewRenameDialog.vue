@@ -1,31 +1,23 @@
 <script setup lang="ts">
-import { useDatabaseViewsClient } from '@entity/databaseView/viewsClient';
+import { useDatabaseView } from '@entity/databaseView';
 import type { AMDocumentId } from '@shared/lib/automerge';
 import type { DatabaseViewId } from '@shared/lib/databaseDocument';
 import { DomainError } from '@shared/lib/error';
-import type { EntryPath } from '@shared/lib/fileSystem';
 import { MDDialog } from '@shared/ui/Dialog';
 import { MDTextField } from '@shared/ui/TextField';
-import { computed, ref, toRefs, watchEffect } from 'vue';
+import { ref, toRefs, watchEffect } from 'vue';
 
 const props = defineProps<{
-  directoryPath: EntryPath;
+  directoryPath: string;
   documentId: AMDocumentId;
   viewId: DatabaseViewId;
 }>();
 
-const { directoryPath, documentId, viewId } = toRefs(props);
+const { directoryPath: path, documentId, viewId } = toRefs(props);
 
 const show = defineModel<boolean>('show', { required: true });
 
-const {
-  view: { get: getView },
-  patch,
-} = useDatabaseViewsClient();
-
-const stateView = computed(() =>
-  getView(directoryPath.value, documentId.value, viewId.value),
-);
+const { view: stateView, patch } = useDatabaseView(path, documentId, viewId);
 
 const nameState = ref<string>();
 
@@ -50,7 +42,7 @@ const onApply = async () => {
   if (nameState.value) {
     try {
       loading.value += 1;
-      await patch(directoryPath.value, documentId.value, viewId.value, {
+      await patch({
         name: nameState.value,
       });
       emit('completed', nameState.value);

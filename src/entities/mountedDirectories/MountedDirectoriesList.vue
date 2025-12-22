@@ -1,15 +1,7 @@
 <script setup lang="ts">
 import { MDListContainer, MDListItem } from '@shared/ui/Lists';
-import { useDirectoryStoreClient } from './useDirectoryStoreClient';
-
-withDefaults(
-  defineProps<{
-    is?: 'button' | 'li';
-  }>(),
-  {
-    is: 'li',
-  },
-);
+import { useDirectory } from '@entity/directory/useDirectory';
+import { ref } from 'vue';
 
 defineSlots<{
   leadingIcon: (p: { name: string }) => unknown;
@@ -19,7 +11,7 @@ const emit = defineEmits<{
   click: [name: string];
 }>();
 
-const { rootList: nameList } = useDirectoryStoreClient();
+const { state: rootDirectory } = useDirectory(ref('/'));
 
 const onClickDirectory = (name: string) => {
   emit('click', name);
@@ -27,10 +19,10 @@ const onClickDirectory = (name: string) => {
 </script>
 
 <template>
-  <MDListContainer>
+  <MDListContainer is="div">
     <MDListItem
-      :is="is"
-      v-for="name in nameList"
+      is="button"
+      v-for="[name] in rootDirectory"
       :key="name"
       :headline="name"
       @click="onClickDirectory(name)"

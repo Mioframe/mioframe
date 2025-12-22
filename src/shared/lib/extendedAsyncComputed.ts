@@ -1,75 +1,106 @@
-import { tryOnScopeDispose } from '@vueuse/core';
-import { until } from '@vueuse/core';
-import type { WatchHandle } from 'vue';
-import { computed, reactive, ref, watchEffect } from 'vue';
-import { sessionUniqueId } from './uniqueId';
+import type { ComputedRef, ShallowRef, WatchStopHandle } from 'vue';
+import { shallowRef, computed, watchEffect, onScopeDispose } from 'vue';
 
-export const lazyAsyncComputed = <T>(callback: () => T | Promise<T>) => {
-  const data = ref<T>();
-  const error = ref<unknown>();
+export enum AsyncStatus {
+  idle = 'idle',
+  loading = 'loading',
+  success = 'success',
+  error = 'error',
+}
 
-  let fetchingId: string;
+type LazyAsyncComputed<T> = {
+  state: ComputedRef<T>;
+  status: ComputedRef<AsyncStatus>;
+  error: ComputedRef<unknown>;
+  refresh: () => void;
+};
 
-  const status = ref<'idle' | 'loading' | 'ready' | 'error'>('idle');
+type OnCleanup = (cleanupFn: () => void) => void;
 
-  const fetchData = async () => {
-    status.value = 'loading';
+export function computedAsyncLazy<T>(
+  evaluator: (onCleanup: OnCleanup) => Promise<T> | T,
+  initialValue: T,
+): LazyAsyncComputed<T>;
+export function computedAsyncLazy<T>(
+  evaluator: (onCleanup: OnCleanup) => Promise<T> | T,
+  initialValue?: T,
+): LazyAsyncComputed<T | undefined>;
+export function computedAsyncLazy<T>(
+  evaluator: (onCleanup: OnCleanup) => Promise<T> | T,
+  initialValue?: T,
+): LazyAsyncComputed<T | undefined> {
+  const data: ShallowRef<T | undefined> = shallowRef(initialValue);
+  const error = shallowRef<unknown>();
+  const status = shallowRef<AsyncStatus>(AsyncStatus.idle);
+
+  let isInitialized = false;
+  let stopWatch: WatchStopHandle | undefined;
+
+  const updateTrigger = shallowRef(0);
+
+  const _load = async (cleanupRegistration: OnCleanup) => {
+    status.value = AsyncStatus.loading;
     error.value = undefined;
-    fetchingId = sessionUniqueId('fetch');
-    const id = fetchingId;
+
+    let isCancelled = false;
+    let userCleanupFn: (() => void) | undefined;
+
+    const wrappedCleanup: OnCleanup = (fn) => {
+      userCleanupFn = fn;
+    };
+
+    cleanupRegistration(() => {
+      isCancelled = true;
+      userCleanupFn?.();
+    });
+
     try {
-      const result = await callback();
-      if (fetchingId === id) {
+      const result = await evaluator(wrappedCleanup);
+
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- The value may change due to Cleanup
+      if (!isCancelled) {
         data.value = result;
-        status.value = 'ready';
+        status.value = AsyncStatus.success;
       }
     } catch (e) {
-      if (fetchingId === id) {
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- The value may change due to Cleanup
+      if (!isCancelled) {
         error.value = e;
-        status.value = 'error';
+        status.value = AsyncStatus.error;
       }
-      throw e;
     }
   };
 
-  const wait = async () => {
-    await until(() => status.value === 'ready').toBeTruthy(); // FIXME: добавить статус ошибки
-    return data.value;
-  };
+  const init = () => {
+    if (isInitialized) return;
+    isInitialized = true;
 
-  let watchHandle: WatchHandle | undefined;
-
-  let initiatedWatchEffect = false;
-
-  const initWatchEffect = () => {
-    initiatedWatchEffect = true;
-    void Promise.resolve().then(() => {
-      watchHandle = watchEffect(() => {
-        void fetchData();
-      });
+    stopWatch = watchEffect((onCleanup) => {
+      // eslint-disable-next-line @typescript-eslint/no-unused-expressions -- force update
+      updateTrigger.value;
+      void _load(onCleanup);
     });
   };
 
-  const update = async () => {
-    await fetchData();
+  const refresh = () => {
+    if (!isInitialized) {
+      init();
+    } else {
+      updateTrigger.value++;
+    }
   };
 
-  tryOnScopeDispose(() => {
-    watchHandle?.stop();
-    watchHandle = undefined;
-    initiatedWatchEffect = false;
+  onScopeDispose(() => {
+    stopWatch?.();
   });
 
-  return reactive({
-    value: computed(() => {
-      if (!initiatedWatchEffect) {
-        initWatchEffect();
-      }
+  return {
+    state: computed((): T | undefined => {
+      if (!isInitialized) init();
       return data.value;
     }),
-    wait,
-    status,
-    update,
-    error,
-  });
-};
+    status: computed(() => status.value),
+    error: computed(() => error.value),
+    refresh,
+  } satisfies LazyAsyncComputed<T | undefined>;
+}

@@ -13,20 +13,18 @@ import DatabaseSortSheet from './DatabaseSortSheet.vue';
 import DatabasePropertiesSheet from './DatabasePropertiesSheet.vue';
 import { DbItemAddDialog } from '@feature/databaseItemEdit';
 import ValueField from './ValueField.vue';
-import type { EntryPath } from '@shared/lib/fileSystem';
 import type { MaybeElement } from '@vueuse/core';
 import DatabaseFiltersSheet from './DatabaseFiltersSheet.vue';
-import { useDatabasePropertiesClient } from '@entity/databaseProperty';
-import { DomainError } from '@shared/lib/error';
+import { useDatabaseProperties } from '@entity/databaseProperty';
 import type { PartialDeep } from 'type-fest';
 
 const props = defineProps<{
   documentId: AMDocumentId;
-  directoryPath: EntryPath;
+  directoryPath: string;
   autoHideTarget?: MaybeElement;
 }>();
 
-const { documentId, directoryPath, autoHideTarget } = toRefs(props);
+const { documentId, directoryPath: path, autoHideTarget } = toRefs(props);
 
 const selectedViewId = defineModel<DatabaseViewId>('selectedViewId');
 
@@ -40,23 +38,22 @@ const showFilterSettings = ref(false);
 
 const isShowAddItem = ref(false);
 
-const { getPropertySize, patch: patchProperty } = useDatabasePropertiesClient();
+const { size: propertySize, patch: patchProperty } = useDatabaseProperties(
+  path,
+  documentId,
+);
 
 const onUpdateProperty = async (
   propertyId: DatabasePropertyId,
   v: PartialDeep<DatabaseUnknownProperty>,
 ) => {
-  await patchProperty(directoryPath.value, documentId.value, propertyId, v);
+  await patchProperty(path.value, documentId.value, propertyId, v);
 };
-
-const propertySize = computed(() =>
-  getPropertySize(directoryPath.value, documentId.value),
-);
 
 const hasProperties = computed(() => {
   const size = propertySize.value;
 
-  return !(size instanceof DomainError) && size && size > 0;
+  return size && size > 0;
 });
 </script>
 
@@ -105,13 +102,13 @@ const hasProperties = computed(() => {
     <DatabaseViewsSheet
       v-model:selected-view-id="selectedViewId"
       v-model:show="showViewSettings"
-      :directory-path="directoryPath"
+      :path="path"
       :document-id="documentId"
     />
 
     <DatabaseSortSheet
       v-model:show="showSortSettings"
-      :directory-path="directoryPath"
+      :directory-path="path"
       :document-id="documentId"
       :view-id="selectedViewId"
     />
@@ -119,7 +116,7 @@ const hasProperties = computed(() => {
     <DatabasePropertiesSheet
       v-model:show="showPropertySettings"
       :document-id="documentId"
-      :directory-path="directoryPath"
+      :directory-path="path"
     />
 
     <DatabaseFiltersSheet
@@ -127,22 +124,23 @@ const hasProperties = computed(() => {
       v-model:show="showFilterSettings"
       :document-id="documentId"
       :view-id="selectedViewId"
-      :directory-path="directoryPath"
+      :directory-path="path"
     />
 
     <DbItemAddDialog
       v-if="isShowAddItem"
       v-model:show="isShowAddItem"
-      :directory-path="directoryPath"
+      :directory-path="path"
       :document-id="documentId"
       @added="isShowAddItem = false"
       @cancel="isShowAddItem = false"
     >
-      <template #valueField="{ property, update, value, propertyId }">
+      <template #valueField="{ update, value, propertyId }">
         <ValueField
-          :property="property"
           :value="value"
-          :directory-path="directoryPath"
+          :document-id="documentId"
+          :property-id="propertyId"
+          :directory-path="path"
           @update:value="update"
           @update:property="onUpdateProperty(propertyId, $event)"
         />

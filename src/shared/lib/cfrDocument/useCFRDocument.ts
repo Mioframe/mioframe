@@ -5,13 +5,13 @@ import { applyCFRDocumentMigration } from './migrations';
 import type { MaybeRefOrGetter } from 'vue';
 import { computed, reactive } from 'vue';
 import { isObjectLike } from 'es-toolkit/compat';
-import { useDocHandleScopesWeakMapRef } from './useDocHandle';
+import { useDocHandle } from './useDocHandle';
 import type { AMChangeFn, AMDocHandle } from '../automerge/automergeTypes';
 
 export const useCFRDocument = (
   docHandle: MaybeRefOrGetter<AMDocHandle | undefined>,
 ): CFRDocument => {
-  const docHandleRef = useDocHandleScopesWeakMapRef(docHandle);
+  const docHandleRef = useDocHandle(docHandle);
 
   /**
    * Обновление документа с миграцией

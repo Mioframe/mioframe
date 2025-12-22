@@ -1,1 +1,0 @@
-export { useRepositoriesStoreService } from './repositoriesStoreService';

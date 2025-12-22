@@ -17,17 +17,14 @@ import {
 import type { DatabaseItemId } from '@shared/lib/databaseDocument';
 import { type DatabasePropertyId } from '@shared/lib/databaseDocument';
 import DatabaseViewLayout from './DatabaseViewLayout.vue';
-import type { EntryPath } from '@shared/lib/fileSystem';
 import { computed, toRefs } from 'vue';
 import type { AMDocumentId } from '@shared/lib/automerge';
-import { useDatabasePropertiesClient } from '@entity/databaseProperty';
-import { DomainError } from '@shared/lib/error';
-import { useDatabaseDataClient } from '@entity/databaseData/client';
-import { strictRecordGet } from '@shared/lib/strictRecord';
+import { useDatabaseProperty } from '@entity/databaseProperty';
+import { useDatabaseValue } from '@entity/databaseValue';
 
 const props = defineProps<{
   editable?: boolean;
-  directoryPath: EntryPath;
+  directoryPath: string;
   documentId: AMDocumentId;
   propertyId: DatabasePropertyId;
   parentRelation?: ParentRelation;
@@ -36,53 +33,27 @@ const props = defineProps<{
 
 const { documentId, propertyId, directoryPath, itemId } = toRefs(props);
 
-const {
-  getProperty: { get: getProperty },
-} = useDatabasePropertiesClient();
-
-const property = computed(() =>
-  getProperty(directoryPath.value, documentId.value, propertyId.value),
-);
+const { property } = useDatabaseProperty(directoryPath, documentId, propertyId);
 
 const emit = defineEmits<{ click: [] }>();
 
-const {
-  getItem: { get: getItem },
-} = useDatabaseDataClient();
-
-const item = computed(() =>
-  getItem(directoryPath.value, documentId.value, itemId.value),
-);
-
-const stateValue = computed(() =>
-  item.value
-    ? item.value instanceof DomainError
-      ? undefined
-      : strictRecordGet(item.value, propertyId.value)
-    : undefined,
+const { value: stateValue } = useDatabaseValue(
+  directoryPath,
+  documentId,
+  itemId,
+  propertyId,
 );
 
 const printValue = computed(() => {
-  if (stateValue.value instanceof DomainError) {
-    return undefined;
-  }
-
-  if (property.value instanceof DomainError) {
-    return undefined;
-  }
-
   return stateValue.value ?? property.value?.default;
 });
 </script>
 
 <template>
-  <!-- eslint-disable-next-line prettier/prettier -- for correct code highlighting -->
-  <span v-if="(property instanceof DomainError)">{{ property.message }}</span>
-
   <BooleanInline
-    v-else-if="property?.type === PROPERTY_TYPE_BOOLEAN"
+    v-if="property?.type === PROPERTY_TYPE_BOOLEAN"
     :value="printValue"
-    :directory-path="directoryPath"
+    :path="directoryPath"
     :editable="editable"
     :document-id="documentId"
     :property-id="propertyId"
@@ -127,7 +98,7 @@ const printValue = computed(() => {
     >
       <DatabaseViewLayout
         :document-id="relationDocHandle"
-        :directory-path="relationDirectory"
+        :path="relationDirectory"
         :view-id="viewId"
         :item-id-query="{ $in: relationValue }"
       >

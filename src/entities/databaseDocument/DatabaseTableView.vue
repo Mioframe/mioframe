@@ -25,9 +25,15 @@ const slots = defineSlots<{
 
 <template>
   <section class="is-flex is-overflow-auto">
-    <DatabaseTable :database-state class="is-flex-grow-1">
+    <DatabaseTable :database-state="databaseState" class="is-flex-grow-1">
       <template #value="{ property, propertyId, value, itemId }">
-        <slot name="value" :property :property-id :value :item-id />
+        <slot
+          name="value"
+          :property="property"
+          :property-id="propertyId"
+          :value="value"
+          :item-id="itemId"
+        />
       </template>
 
       <template v-if="!!slots.itemActions" #itemActions="scope">

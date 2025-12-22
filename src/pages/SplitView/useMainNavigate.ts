@@ -1,4 +1,4 @@
-import { stringPath } from '@shared/api/directories';
+import { stringPath } from '@shared/service/directories';
 import type { AMDocumentId } from '@shared/lib/automerge';
 import { zodDocumentId } from '@shared/lib/automerge';
 import type { EntryPath, EntryPathString } from '@shared/lib/fileSystem';
