@@ -1,11 +1,17 @@
 <script setup lang="ts">
 import type { StyleValue } from 'vue';
 import { computed, ref, toRefs, useTemplateRef, watchEffect } from 'vue';
-import { useElementSize, useParentElement, useScroll } from '@vueuse/core';
+import {
+  useElementSize,
+  useFocusWithin,
+  useParentElement,
+  useScroll,
+} from '@vueuse/core';
 import { isUndefined } from 'es-toolkit';
 import { useOverlayContainer } from '../Overlay';
 import { TeleportContainer } from '@shared/lib/teleportContainer';
 import { autoUpdate, offset, shift, useFloating } from '@floating-ui/vue';
+import { useMainContentAriaHidden } from '../AriaHidden';
 
 const props = defineProps<{
   autoHide?: boolean;
@@ -16,6 +22,10 @@ const { autoHide } = toRefs(props);
 defineSlots<{
   default(): unknown;
 }>();
+
+const fabContainerEl = useTemplateRef('fabContainer');
+
+const placeholderEl = useTemplateRef('placeholderEl');
 
 const parentEl = useParentElement();
 
@@ -31,18 +41,17 @@ watchEffect(() => {
   }
 });
 
+const { focused: focusedWithin } = useFocusWithin(fabContainerEl);
+
 const show = computed(
   () =>
     !autoHide.value ||
     isUndefined(lastScrollDirection.value) ||
-    lastScrollDirection.value === 'top',
+    lastScrollDirection.value === 'top' ||
+    focusedWithin.value,
 );
 
-const fabContainerEl = useTemplateRef('fabContainer');
-
 const overlayContainerEl = useOverlayContainer();
-
-const placeholderEl = useTemplateRef('placeholderEl');
 
 const { floatingStyles } = useFloating(placeholderEl, fabContainerEl, {
   placement: 'top-end',
@@ -74,6 +83,8 @@ const placeholderStyles = computed(
     height: `${fabContainerHeight.value}px`,
   }),
 );
+
+const ariaHidden = useMainContentAriaHidden();
 </script>
 
 <template>
@@ -91,6 +102,7 @@ const placeholderStyles = computed(
           'md-fab-container_hide': !show,
         }"
         :style="floatingStyles"
+        :aria-hidden="ariaHidden"
       >
         <slot name="default" />
       </div>

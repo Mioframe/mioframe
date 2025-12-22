@@ -1,2 +1,2 @@
-export { useLocalSettings } from './model';
+export { useLocalSettings } from './useLocalSettings';
 export { default as LocalSettingsList } from './LocalSettingsList.vue';

@@ -1,9 +1,11 @@
-import type { ItemWithChildren } from '@shared/lib/useIterable';
+import { z } from 'zod/v4-mini';
 import type {
-  DirectoryFSEntry,
+  WritableDirectoryFSEntry,
   FileFSEntry,
   GeneralFSEntry,
+  ReadonlyDirectoryFSEntry,
 } from '../fileSystem';
+import type { StaticDirectoryFSEntry } from '../fileSystem/DirectoryFSEntry';
 
 export type GDriveDirectory = {
   getName: () => string;
@@ -43,27 +45,31 @@ export type GDriveDirectoryContent = Iterable<
   [string, GDriveDirectory | GDriveFile]
 >;
 
-export interface GDriveSpaces
-  extends ItemWithChildren<[string, GDriveDirectory | GDriveFile]> {}
-
 export interface GDriveEntry extends GeneralFSEntry {}
 
-export interface DirectoryGDriveEntry extends DirectoryFSEntry {
-  // gDrive: AdvancedGDrive;
-  gDriveFileId: string;
-  gDriveSpace: GDriveSpace;
+export interface ReadOnlyDirectoryGDriveEntry extends ReadonlyDirectoryFSEntry {
+  gDriveId?: string;
+  gDriveSpace: GOOGLE_DRIVE_SPACE;
 }
+
+export interface DirectoryGDriveEntry
+  extends ReadOnlyDirectoryGDriveEntry,
+    WritableDirectoryFSEntry {}
 
 export interface FileGDriveEntry extends FileFSEntry {
   // gDrive: AdvancedGDrive;
-  gDriveFileId: string;
-  gDriveSpace: GDriveSpace;
+  gDriveId: string;
+  gDriveSpace: GOOGLE_DRIVE_SPACE;
 }
 
-export enum GDriveSpace {
+export enum GOOGLE_DRIVE_SPACE {
   // user drive
   MyDrive = 'My Drive',
   // drive with shared data
   SharedWithMe = 'Shared With Me',
   appDataFolder = 'App Data Folder',
 }
+
+export const zodGOOGLE_DRIVE_SPACE = z.enum(GOOGLE_DRIVE_SPACE);
+
+export interface RootGDriveEntry extends StaticDirectoryFSEntry {}

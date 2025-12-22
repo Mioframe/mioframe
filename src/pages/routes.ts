@@ -2,7 +2,8 @@ import { documentViewPane } from './DocumentViewPane';
 import { homePane } from './HomePane';
 import { createSplitViewRouter, defineSplitPage } from './SplitView';
 import { repoExplorerPane } from './RepoExplorer';
-import { SettingsPane } from './Settings';
+import { SettingsPane as settingsPane } from './Settings';
+import { accountPane } from './Account';
 
 export const { setupMainRouter, useMainRouter } = createSplitViewRouter(
   {
@@ -18,7 +19,11 @@ export const { setupMainRouter, useMainRouter } = createSplitViewRouter(
       second: repoExplorerPane,
     }),
     settings: defineSplitPage({
-      main: SettingsPane,
+      main: settingsPane,
+      second: homePane,
+    }),
+    accounts: defineSplitPage({
+      main: accountPane,
       second: homePane,
     }),
   },

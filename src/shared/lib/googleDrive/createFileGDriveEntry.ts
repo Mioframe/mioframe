@@ -1,19 +1,20 @@
-import type { DirectoryFSEntry, FileFSEntry } from '../fileSystem';
+import { DomainError } from '../error';
+import type { WritableDirectoryFSEntry, FileFSEntry } from '../fileSystem';
 import { copyFileTo, moveFileTo } from '../fileSystem/utils';
-import { api, type AuthParams } from './api';
+import { api, type GoogleAuthParams } from './api';
 import { createGDriveEntry } from './gDriveEntry';
 import type {
   DirectoryGDriveEntry,
   FileGDriveEntry,
-  GDriveSpace,
+  GOOGLE_DRIVE_SPACE,
 } from './types';
 
 export const createFileGDriveEntry = (
-  auth: AuthParams,
+  auth: GoogleAuthParams,
   fileId: string,
   name: string,
   parentEntry: DirectoryGDriveEntry,
-  space: GDriveSpace,
+  space: GOOGLE_DRIVE_SPACE,
 ): FileGDriveEntry => {
   const currentFileId = fileId;
   const currentName = name;
@@ -30,15 +31,21 @@ export const createFileGDriveEntry = (
     await api.files.download(auth, currentFileId, currentName);
 
   const copyTo = async (
-    dest: DirectoryFSEntry | DirectoryGDriveEntry,
+    dest: WritableDirectoryFSEntry | DirectoryGDriveEntry,
   ): Promise<FileFSEntry> => {
-    if ('gDriveFileId' in dest) {
+    if ('gDriveId' in dest) {
+      if (!dest.gDriveId) {
+        throw new DomainError(
+          'You cannot copy files to a directory without an id.',
+        );
+      }
+
       const {
         result: { id: newFileId, name: newName },
       } = await api.files.copy(auth, currentFileId, {
         resource: {
           name: currentName,
-          parents: [dest.gDriveFileId],
+          parents: [dest.gDriveId],
         },
       });
 
@@ -50,11 +57,17 @@ export const createFileGDriveEntry = (
   };
 
   const moveTo = async (
-    dest: DirectoryFSEntry | DirectoryGDriveEntry,
+    dest: WritableDirectoryFSEntry | DirectoryGDriveEntry,
   ): Promise<FileFSEntry> => {
-    if ('gDriveFileId' in dest) {
+    if ('gDriveId' in dest) {
+      if (!dest.gDriveId) {
+        throw new DomainError(
+          'You cannot move files to a directory without an id.',
+        );
+      }
+
       await api.files.update(auth, currentFileId, {
-        addParents: [dest.gDriveFileId],
+        addParents: [dest.gDriveId],
       });
 
       return currentFileGDriveEntry;
@@ -76,7 +89,7 @@ export const createFileGDriveEntry = (
     read,
     copyTo,
     moveTo,
-    get gDriveFileId() {
+    get gDriveId() {
       return currentFileId;
     },
     gDriveSpace: space,

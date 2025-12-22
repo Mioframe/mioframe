@@ -50,7 +50,10 @@ export const useIconStates = createGlobalState(() => {
   const loadedAllSymbols = ref(false);
 
   const loadFont = async () => {
-    const names = uniq([...loadedSymbols.values(), ...symbolsUsed.value]);
+    const names = uniq([
+      ...loadedSymbols.values(),
+      ...symbolsUsed.value,
+    ]).filter((v) => !!v);
     if (names.length) {
       names.sort();
       names.forEach((name) => {

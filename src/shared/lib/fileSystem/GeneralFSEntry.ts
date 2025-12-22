@@ -24,9 +24,12 @@ export type EntryPath = output<typeof zodEntryPath>;
  */
 export type EntryPathString = string;
 
-export interface GeneralFSEntry {
+export interface ReadonlyGeneralFSEntry {
   name: string;
   path: EntryPath;
+}
+
+export interface GeneralFSEntry extends ReadonlyGeneralFSEntry {
   /**
    * Removes this Entry
    */

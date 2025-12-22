@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { MDListContainer, MDListItem } from '@shared/ui/Lists';
-import { useLocalSettings } from './model';
+import { useLocalSettings } from './useLocalSettings';
 import { MDCheckbox } from '@shared/ui/Checkbox';
 
 const { settings, SETTINGS_DESCRIPTION, SETTINGS_LABEL } = useLocalSettings();

@@ -1,10 +1,16 @@
 import { find, from, some } from 'ix/Ix.asynciterable';
 import { createLocalEntry } from './entry';
 import { createLocalFile } from './file';
-import type { DirectoryLocalEntry, FileLocalEntry } from './types';
+import type {
+  DirectoryLocalEntry,
+  FileLocalEntry,
+  WritableDirectoryLocalEntry,
+} from './types';
 import { WeakValueMap } from '../WeakValueMap';
 import type { DirectoryEntryEventMap } from '../fileSystem/DirectoryFSEntry';
 import { copyDirectoryTo, moveDirectoryTo } from '../fileSystem/utils';
+import { DomainError } from '../error';
+import { pathToString } from '@shared/service/directories';
 
 const cacheDirectories = new WeakValueMap<string, DirectoryLocalEntry>();
 
@@ -97,11 +103,11 @@ export function createLocalDirectory(
     setForListenersOfRemovingEntry.forEach((listener) => listener(name));
   };
 
-  const copyTo = async (dest: DirectoryLocalEntry) => {
+  const copyTo = async (dest: WritableDirectoryLocalEntry) => {
     return await copyDirectoryTo(dest, currentDirectoryEntry);
   };
 
-  const moveTo = async (dest: DirectoryLocalEntry) => {
+  const moveTo = async (dest: WritableDirectoryLocalEntry) => {
     return await moveDirectoryTo(dest, currentDirectoryEntry);
   };
 
@@ -123,10 +129,28 @@ export function createLocalDirectory(
       );
     }
 
+    if (!('createDirectory' in parentLocalDirectoryEntry)) {
+      throw new DomainError(
+        `"${pathToString(parentLocalDirectoryEntry.path)}" don't have createDirectory method`,
+      );
+    }
+
     const newDirectoryEntry =
       await parentLocalDirectoryEntry.createDirectory(newName);
 
     await from(currentDirectoryEntry.entries()).forEach(async ([, entry]) => {
+      if (!('moveTo' in entry)) {
+        throw new DomainError(
+          `"${pathToString(entry.path)}" don't have moveTo method`,
+        );
+      }
+
+      if (!('createDirectory' in newDirectoryEntry)) {
+        throw new DomainError(
+          `"${pathToString(newDirectoryEntry.path)}" isn't a writable directory`,
+        );
+      }
+
       await entry.moveTo(newDirectoryEntry);
     });
 

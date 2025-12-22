@@ -6,7 +6,6 @@ import { computed, ref, toRefs, useTemplateRef } from 'vue';
 import type { ParentRelation, RelationValue } from './model';
 import { zodRelationValue } from './model';
 import type { AMDocumentId } from '@shared/lib/automerge';
-import type { EntryPath } from '@shared/lib/fileSystem';
 import type {
   DatabasePropertyId,
   DatabaseViewId,
@@ -22,7 +21,7 @@ const props = defineProps<{
   value: unknown;
   documentId: AMDocumentId;
   propertyId: DatabasePropertyId;
-  directoryPath: EntryPath;
+  directoryPath: string;
   parentRelation?: ParentRelation;
 }>();
 
@@ -33,7 +32,7 @@ defineSlots<{
   default: (p: {
     value: RelationValue;
     relationDocumentId: AMDocumentId;
-    relationDirectoryPath: EntryPath;
+    relationDirectoryPath: string;
     viewId?: DatabaseViewId;
     parentRelation: ParentRelation;
   }) => unknown;

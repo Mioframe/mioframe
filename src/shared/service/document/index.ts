@@ -1,0 +1,1 @@
+export { useDocumentService } from './useDocumentService';

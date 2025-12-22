@@ -11,57 +11,46 @@ import {
   type DatabasePropertyId,
   type DatabaseUnknownProperty,
 } from '@shared/lib/databaseDocument';
-import type { EntryPath } from '@shared/lib/fileSystem';
 import { MDOverlayTooltip } from '@shared/ui/Tooltips';
 import { toggleBoolean } from '@shared/ui/Checkbox';
 import type { AMDocumentId } from '@shared/lib/automerge';
 import { MDState } from '@shared/ui/State';
 import type { MaybeElement } from '@vueuse/core';
-import { useDatabasePropertiesClient } from '@entity/databaseProperty';
-import { useDatabaseDataClient } from '@entity/databaseData/client';
-import { DomainError } from '@shared/lib/error';
+import { useDatabaseProperty } from '@entity/databaseProperty';
+import { useDatabaseItem } from '@entity/databaseItem';
+import { strictRecordGet } from '@shared/lib/strictRecord';
+import { unknown } from 'zod/v4-mini';
+import { useDatabaseValue } from '@entity/databaseValue';
 
 const props = withDefaults(
   defineProps<{
     itemId: DatabaseItemId;
     propertyId: DatabasePropertyId;
-    directoryPath: EntryPath;
+    directoryPath: string;
     documentId: AMDocumentId;
+    class?: unknown;
   }>(),
   {},
 );
 
-const { propertyId, documentId, directoryPath, itemId } = toRefs(props);
+const {
+  propertyId,
+  documentId,
+  directoryPath: path,
+  itemId,
+  class: propClass,
+} = toRefs(props);
 
 const emit = defineEmits<{
-  'update:value': [value: unknown];
   'update:property': [property: DatabaseUnknownProperty];
 }>();
 
-const { getProperty } = useDatabasePropertiesClient();
+const { property } = useDatabaseProperty(path, documentId, propertyId);
 
-const property = computed(() => {
-  const property = getProperty(
-    directoryPath.value,
-    documentId.value,
-    propertyId.value,
-  );
-  if (property instanceof DomainError) {
-    return undefined;
-  }
-
-  return property;
-});
-
-const { getValue } = useDatabaseDataClient();
+const { item } = useDatabaseItem(path, documentId, itemId);
 
 const initialValue = computed(() =>
-  getValue(
-    directoryPath.value,
-    documentId.value,
-    itemId.value,
-    propertyId.value,
-  ),
+  item.value ? strictRecordGet(item.value, propertyId.value) : unknown,
 );
 
 const showEditForm = ref(false);
@@ -72,19 +61,26 @@ watchEffect(() => {
   stateValue.value = initialValue.value;
 });
 
-const tryEmitValue = () => {
+const { post: postValue } = useDatabaseValue(
+  path,
+  documentId,
+  itemId,
+  propertyId,
+);
+
+const tryEmitValue = async () => {
   if (!isEqual(initialValue.value, stateValue.value)) {
-    emit('update:value', stateValue.value);
+    await postValue(stateValue.value);
   }
 };
 
-const onClick = () => {
+const onClick = async () => {
   if (zodIs(property.value, zodBooleanProperty)) {
     stateValue.value = toggleBoolean(
       isUndefined(stateValue.value) ? stateValue.value : !!stateValue.value,
       property.value.indeterminate,
     );
-    tryEmitValue();
+    await tryEmitValue();
     return;
   }
 
@@ -97,9 +93,9 @@ const closeEditor = () => {
   showEditForm.value = false;
 };
 
-watch(showEditForm, (showEditForm) => {
+watch(showEditForm, async (showEditForm) => {
   if (!showEditForm) {
-    tryEmitValue();
+    await tryEmitValue();
   }
 });
 
@@ -118,10 +114,11 @@ const onUpdateProperty = (v: DatabaseUnknownProperty) => {
     ref="inlineEl"
     class="editable-inline-value"
     tabindex="0"
+    :class="propClass"
     @click="onClick"
   >
     <ValueInline
-      :directory-path="directoryPath"
+      :directory-path="path"
       :document-id="documentId"
       :item-id="itemId"
       :property-id="propertyId"
@@ -140,8 +137,9 @@ const onUpdateProperty = (v: DatabaseUnknownProperty) => {
       <ValueField
         v-model:value="stateValue"
         class="editable-inline-value__value-field"
-        :directory-path="directoryPath"
-        :property="property"
+        :directory-path="path"
+        :document-id="documentId"
+        :property-id="propertyId"
         @keydown.enter="closeEditor"
         @update:property="onUpdateProperty"
       />

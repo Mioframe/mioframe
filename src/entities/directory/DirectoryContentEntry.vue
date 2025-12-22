@@ -1,33 +1,31 @@
-<script
-  setup
-  lang="ts"
-  generic="Entry extends { name: string; entries?: unknown }"
->
+<script setup lang="ts">
+import { FileType } from '@shared/lib/virtualFileSystem';
 import { MDSymbol } from '@shared/ui/Icon';
 import { MDListItem } from '@shared/ui/Lists';
 
-const { entry: item } = defineProps<{
-  entry: Entry;
+const props = defineProps<{
+  name: string;
+  type: FileType;
 }>();
 
-defineSlots<{
+const slots = defineSlots<{
   trailing: unknown;
 }>();
 </script>
 
 <template>
   <MDListItem
-    :headline="item.name"
     is="button"
+    :headline="props.name"
     class="directory-content-entry"
   >
     <template #leadingIcon>
-      <MDSymbol v-if="'entries' in item" name="folder" />
+      <MDSymbol v-if="type === FileType.Directory" name="folder" />
 
       <MDSymbol v-else name="draft" />
     </template>
 
-    <template v-if="$slots.trailing" #trailingIcon>
+    <template v-if="slots.trailing" #trailingIcon>
       <slot name="trailing" />
     </template>
   </MDListItem>

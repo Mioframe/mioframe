@@ -1,31 +1,32 @@
 import { Repo } from '@automerge/automerge-repo';
 import { shallowRef, watch, computed, reactive } from 'vue';
-import { zodAutomergeFileName } from '../fsStorageAdapter';
-import {
-  createFSStorageAdapter,
-  fileNameToPartialKey,
-} from '../fsStorageAdapter';
-import { type DirectoryFSEntry } from '../fileSystem';
+import type { DirectoryFSEntry } from '../fileSystem';
 import { zodIs } from '../validateZodScheme';
-import type { RepoRef } from './useRepo';
+import type { RepoState } from './useRepo';
 import { useRepo } from './useRepo';
-import { createScopesWeakMap, defineScopesWeakMapRef } from '../scopesWeakMap';
-import { useDirectoryFSEntryCacheRef } from '../fileSystem/useDirectoryFSEntryRef';
+import { defineScopePool, createPoolConsumer } from '../scopePool';
+import { useDirectoryFSEntryPool } from '../fileSystem/directoryFSEntryPool';
 import type { AMDocHandle } from '../automerge';
 import { zodDocumentId, type AMDocumentId } from '../automerge';
 import { isEqual } from 'es-toolkit';
 import { strictRecordIterableEntries } from '../strictRecord/wrapStrictRecord';
+import {
+  createFSStorageAdapter,
+  fileNameToPartialKey,
+  zodAutomergeFileName,
+  zodPartialAutomergeFileName,
+} from '../automergeAdapter';
 
 // FIXME: при удалении файла, не пропадает документ
 
-export interface DirectoryRepo extends RepoRef {}
+export interface DirectoryRepoState extends RepoState {}
 
-export const defineDirectoryRepo = (
+export const setupDirectoryRepoState = (
   directory: DirectoryFSEntry,
-): DirectoryRepo => {
-  const repoState = shallowRef<Repo>();
+): DirectoryRepoState => {
+  const repo = shallowRef<Repo>();
 
-  const directoryRef = useDirectoryFSEntryCacheRef(directory);
+  const directoryRef = useDirectoryFSEntryPool(directory);
 
   const directoryDocumentIds = computed<AMDocumentId[]>(
     (oldState): AMDocumentId[] => {
@@ -35,7 +36,7 @@ export const defineDirectoryRepo = (
 
       if (entriesMap) {
         for (const [name] of strictRecordIterableEntries(entriesMap)()) {
-          if (zodIs(name, zodAutomergeFileName)) {
+          if (zodIs(name, zodPartialAutomergeFileName)) {
             const maybePartialKey = fileNameToPartialKey(name);
 
             if (maybePartialKey) {
@@ -71,12 +72,12 @@ export const defineDirectoryRepo = (
   });
 
   const initialRepo = (): Repo => {
-    if (!repoState.value) {
-      repoState.value = new Repo({
+    if (!repo.value) {
+      repo.value = new Repo({
         storage: createFSStorageAdapter(directory),
       });
     }
-    return repoState.value;
+    return repo.value;
   };
 
   watch(
@@ -89,14 +90,14 @@ export const defineDirectoryRepo = (
     { immediate: true, flush: 'sync' },
   );
 
-  const repoRef = useRepo(repoState, directoryDocumentIds);
+  const repoRef = useRepo(repo, directoryDocumentIds);
 
   const documentMap = computed(
     (): ReadonlyMap<AMDocumentId, AMDocHandle> =>
       repoRef.map ?? new Map<AMDocumentId, AMDocHandle>(),
   );
 
-  const directoryRepo: DirectoryRepo = reactive({
+  const directoryRepoState: DirectoryRepoState = reactive({
     map: documentMap,
     find: (...args: Parameters<typeof repoRef.find>) => {
       initialRepo();
@@ -112,17 +113,14 @@ export const defineDirectoryRepo = (
     },
   });
 
-  return directoryRepo;
+  return directoryRepoState;
 };
 
-export const useDirectoryRepoScopesWeakMap =
-  createScopesWeakMap(defineDirectoryRepo);
+export const directoryRepoPool = defineScopePool(setupDirectoryRepoState);
 
 /**
  * Использование директории как репозитория документов
  * @param directory - директория для хранения документов
  * @returns
  */
-export const useDirectoryRepo = defineScopesWeakMapRef(
-  useDirectoryRepoScopesWeakMap,
-);
+export const useDirectoryRepo = createPoolConsumer(directoryRepoPool);

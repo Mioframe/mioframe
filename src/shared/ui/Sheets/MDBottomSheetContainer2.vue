@@ -1,11 +1,17 @@
 <script setup lang="ts">
 import type { StyleValue } from 'vue';
-import { computed, useTemplateRef, watch } from 'vue';
+import { computed, nextTick, useTemplateRef, watch } from 'vue';
 import { MDState } from '../State';
 import { useScroll } from '@shared/lib/scrollTo';
-import { useAriaHidden } from '../AriaHidden';
+import { useModalAriaHidden } from '../AriaHidden';
 import { usePaneContainer } from '../Layout/useMDContainer';
-import { useElementBounding } from '@vueuse/core';
+import {
+  tryOnBeforeUnmount,
+  useElementBounding,
+  useElementSize,
+} from '@vueuse/core';
+import { useFocusTrap } from '@vueuse/integrations/useFocusTrap.mjs';
+import { useOnEscapeKeyStacked } from '@shared/lib/useOnEscapeKeyStacked';
 
 defineSlots<{
   default(): unknown;
@@ -23,19 +29,30 @@ const onClickDragHandle = () => {
 
 const bodyEl = useTemplateRef<HTMLElement>('bodyEl');
 
-const { position, scrollTo } = useScroll(containerEl);
+const { height: bodyHeight } = useElementSize(
+  bodyEl,
+  { height: 0, width: 0 },
+  {
+    box: 'border-box',
+  },
+);
+
+const { position, scrollTo } = useScroll(containerEl, {
+  throttleMs: 1e3 / 60,
+});
 
 watch(position, ({ scrollTop }) => {
   scrollPositionModel.value = scrollTop;
 });
 
 watch(
-  [openModel, bodyEl],
-  ([open, bodyEl]) => {
-    if (bodyEl) {
+  [openModel, bodyHeight, bodyEl],
+  ([open, bodyHeight, bodyEl]) => {
+    if (bodyHeight && bodyEl) {
       if (open) {
+        const top = Math.min(bodyHeight, bodyEl.offsetTop);
         void scrollTo({
-          top: Math.min(bodyEl.offsetTop, bodyEl.clientHeight),
+          top,
         });
       } else {
         void scrollTo({
@@ -53,7 +70,31 @@ const onClickScrim = () => {
   });
 };
 
-const ariaHidden = useAriaHidden();
+const ariaHidden = useModalAriaHidden();
+
+const { activate: lockFocus, deactivate: unlockFocus } = useFocusTrap(
+  containerEl,
+  {
+    allowOutsideClick: true,
+  },
+);
+
+watch(
+  [openModel, containerEl],
+  async ([showModel]) => {
+    if (showModel) {
+      await nextTick();
+      if (containerEl.value) {
+        lockFocus();
+      }
+    } else {
+      unlockFocus();
+    }
+  },
+  { immediate: true, flush: 'post' },
+);
+
+tryOnBeforeUnmount(unlockFocus);
 
 const paneContainer = usePaneContainer();
 
@@ -75,6 +116,10 @@ const bodyStyle = computed(
     width: `${paneWidth.value}px`,
   }),
 );
+
+useOnEscapeKeyStacked(() => {
+  openModel.value = false;
+});
 </script>
 
 <template>
