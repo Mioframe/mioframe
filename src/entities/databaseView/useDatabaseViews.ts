@@ -1,12 +1,12 @@
 import { useMainService } from '@shared/service';
 import type { Ref } from 'vue';
 import type { AMDocumentId } from '@shared/lib/automerge';
-import { asyncComputed } from '@vueuse/core';
 import type {
   DatabaseView,
   DatabaseViewId,
 } from '@shared/lib/databaseDocument';
 import type { PatchSource } from '@shared/lib/changeObject';
+import { useLiveResource } from '@shared/lib/useLiveResource';
 
 export const useDatabaseViews = (
   path: Ref<string>,
@@ -14,18 +14,34 @@ export const useDatabaseViews = (
 ) => {
   const {
     databaseDocument: {
+      onChangeDocument,
       views: { getViewList, changeOrder, create, patch, remove },
     },
   } = useMainService();
 
-  const views = asyncComputed(
-    () => getViewList(path.value, documentId.value),
-    undefined,
-    { lazy: true },
+  const {
+    errorMessage,
+    isLoading,
+    isReady,
+    state: views,
+  } = useLiveResource(
+    () => ({
+      path: path.value,
+      documentId: documentId.value,
+    }),
+    {
+      fetch: ({ documentId, path }) => getViewList(path, documentId),
+      subscribe: ({ documentId, path }, cb) =>
+        onChangeDocument(path, documentId, cb),
+      defaultErrorMessage: 'Error reading views',
+    },
   );
 
   return {
     views,
+    errorMessage,
+    isLoading,
+    isReady,
 
     create: (view: DatabaseView) => create(path.value, documentId.value, view),
     remove: (viewId: DatabaseViewId) =>
