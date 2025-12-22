@@ -1,16 +1,14 @@
 <script setup lang="ts">
-import { DatabaseFilterEditString } from '@feature/databaseFilterEdit';
 import type { AMDocumentId } from '@shared/lib/automerge';
 import type { DatabaseViewId } from '@shared/lib/databaseDocument';
-import type { EntryPath } from '@shared/lib/fileSystem';
 import { MD_SYS_TYPESCALE } from '@shared/lib/md';
 import { MDBottomSheet, MDBottomSheetSection } from '@shared/ui/Sheets';
 import { toRefs } from 'vue';
 import ValueField from './ValueField.vue';
-import { DomainError } from '@shared/lib/error';
+import { DatabaseFilterEditString } from '@feature/databaseFilterEdit';
 
 const props = defineProps<{
-  directoryPath: EntryPath;
+  directoryPath: string;
   documentId: AMDocumentId;
   viewId: DatabaseViewId;
 }>();
@@ -43,10 +41,10 @@ const onUpdateCollapsed = (collapsed: boolean) => {
           :view-id="viewId"
           class="db-filters-sheet__root-filter"
         >
-          <template #valueField="{ property, update, value }">
+          <template #valueField="{ update, value, propertyId }">
             <ValueField
-              v-if="!(property instanceof DomainError)"
-              :property="property"
+              :document-id="documentId"
+              :property-id="propertyId"
               :value="value"
               :directory-path="directoryPath"
               @update:value="update"

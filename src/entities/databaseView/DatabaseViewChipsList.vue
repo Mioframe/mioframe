@@ -1,16 +1,14 @@
 <script setup lang="ts">
 import type { AMDocumentId } from '@shared/lib/automerge';
 import { type DatabaseViewId } from '@shared/lib/databaseDocument';
-import type { EntryPath } from '@shared/lib/fileSystem';
 import { useReduceIterable } from '@shared/lib/useReduce';
 import { MDChip } from '@shared/ui/Chips';
 import { isArray, isUndefined } from 'es-toolkit/compat';
-import { computed, toRefs } from 'vue';
-import { useDatabaseViewsClient } from './viewsClient';
-import { DomainError } from '@shared/lib/error';
+import { toRefs } from 'vue';
+import { useDatabaseViews } from './useDatabaseViews';
 
 const props = defineProps<{
-  directoryPath: EntryPath;
+  directoryPath: string;
   documentId: AMDocumentId;
   selectedId?: DatabaseViewId[] | DatabaseViewId;
   type: 'assist' | 'filter' | 'input';
@@ -22,30 +20,10 @@ const emit = defineEmits<{
 
 const { directoryPath, documentId } = toRefs(props);
 
-const {
-  getViewList: { get: getViewList },
-} = useDatabaseViewsClient();
-
-const viewListClient = computed(() =>
-  getViewList(directoryPath.value, documentId.value),
-);
-
-const clientError = computed(() => {
-  if (viewListClient.value instanceof DomainError) {
-    return viewListClient.value;
-  }
-  return undefined;
-});
-
-const viewsList = computed(() => {
-  if (!(viewListClient.value instanceof DomainError)) {
-    return viewListClient.value;
-  }
-  return undefined;
-});
+const { views: viewList } = useDatabaseViews(directoryPath, documentId);
 
 const viewButtons = useReduceIterable(
-  viewsList,
+  viewList,
   (acc, [viewId, { name }]) => {
     acc.push({
       label: name,
@@ -78,18 +56,14 @@ const isSelected = (viewId: DatabaseViewId): boolean => {
 
 <template>
   <div class="database-view-chips-list">
-    <span v-if="clientError">{{ clientError.message }}</span>
-
-    <template v-else>
-      <MDChip
-        v-for="{ viewId, label } in viewButtons"
-        :key="viewId"
-        :label="label"
-        :selected="isSelected(viewId)"
-        :type="type"
-        @click="onClickViewChip(viewId)"
-      />
-    </template>
+    <MDChip
+      v-for="{ viewId, label } in viewButtons"
+      :key="viewId"
+      :label="label"
+      :selected="isSelected(viewId)"
+      :type="type"
+      @click="onClickViewChip(viewId)"
+    />
   </div>
 </template>
 

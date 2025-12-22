@@ -1,20 +1,19 @@
-import { useDatabaseDataClient } from '@entity/databaseData/client';
+import { useDatabaseData } from '@entity/databaseData/useDatabaseData';
 import type { AMDocumentId } from '@shared/lib/cfrDocument';
 import type { DatabaseItemId } from '@shared/lib/databaseDocument';
-import type { EntryPath } from '@shared/lib/fileSystem';
 import { useSnackbar } from '@shared/ui/Snackbar';
+import type { Ref } from 'vue';
 
-export const useDatabaseItemRemove = () => {
-  const { removeItem } = useDatabaseDataClient();
+export const useDatabaseItemRemove = (
+  path: Ref<string>,
+  documentId: Ref<AMDocumentId>,
+) => {
+  const { removeItem } = useDatabaseData(path, documentId);
 
   const { addSnackbar } = useSnackbar();
 
-  const remove = async (
-    path: EntryPath,
-    documentId: AMDocumentId,
-    itemId: DatabaseItemId,
-  ) => {
-    await removeItem(path, documentId, itemId);
+  const remove = async (itemId: DatabaseItemId) => {
+    await removeItem(itemId);
 
     addSnackbar({ text: `Item removed` });
   };

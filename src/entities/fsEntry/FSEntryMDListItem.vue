@@ -1,38 +1,44 @@
 <script setup lang="ts">
-import type { EntryDescription } from '@shared/api/directories';
+import { FileType } from '@shared/lib/virtualFileSystem';
 import { MDSymbol } from '@shared/ui/Icon';
 import { MDListItem } from '@shared/ui/Lists';
+import { toRefs } from 'vue';
 
-const {} = defineProps<{
-  entry: EntryDescription;
+const props = defineProps<{
+  name: string;
+  type: FileType;
   supportingText?: string;
   isButton?: boolean;
 }>();
 
+const { name } = toRefs(props);
+
 defineEmits<{
-  click: [entry: EntryDescription];
+  click: [name: string];
 }>();
 
 const slots = defineSlots<{
-  trailingIcon(p: { entry: EntryDescription }): unknown;
+  trailingIcon(): unknown;
 }>();
 </script>
 
 <template>
   <MDListItem
     :is="isButton ? 'button' : undefined"
-    :headline="entry.name"
+    :headline="name"
     :supporting-text="supportingText"
-    @click="$emit('click', entry)"
+    @click="$emit('click', name)"
   >
     <template #leadingIcon>
-      <MDSymbol v-if="entry.type === 'directory'" name="folder" />
+      <MDSymbol v-if="type === FileType.Directory" name="folder" />
 
-      <MDSymbol v-else name="draft" />
+      <MDSymbol v-else-if="type === FileType.File" name="draft" />
+
+      <MDSymbol v-else name="insert_page_break" />
     </template>
 
     <template v-if="!!slots.trailingIcon" #trailingIcon>
-      <slot name="trailingIcon" :entry="entry" />
+      <slot name="trailingIcon" :entry="name" />
     </template>
   </MDListItem>
 </template>

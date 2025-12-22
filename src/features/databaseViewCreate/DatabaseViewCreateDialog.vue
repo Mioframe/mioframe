@@ -1,10 +1,9 @@
 <script setup lang="ts">
-import { useDatabaseViewsClient } from '@entity/databaseView/viewsClient';
+import { useDatabaseViews } from '@entity/databaseView';
 import type { AMDocumentId } from '@shared/lib/automerge';
 import { deepPutJsonObject } from '@shared/lib/changeObject';
 import type { DatabaseViewId } from '@shared/lib/databaseDocument';
 import { DB_VIEW_LAYOUT } from '@shared/lib/databaseDocument';
-import type { EntryPath } from '@shared/lib/fileSystem';
 import { objectEntries } from '@shared/lib/objectEntries';
 import { MDDialog } from '@shared/ui/Dialog';
 import { MDSelect } from '@shared/ui/Select';
@@ -17,13 +16,13 @@ import { pascalCase } from 'es-toolkit';
 import { computed, reactive, ref, toRefs } from 'vue';
 
 const props = defineProps<{
-  directoryPath: EntryPath;
+  directoryPath: string;
   documentId: AMDocumentId;
 }>();
 
 const modelShow = defineModel<boolean>('show', { required: true });
 
-const { documentId, directoryPath } = toRefs(props);
+const { documentId, directoryPath: path } = toRefs(props);
 
 const emit = defineEmits<{
   created: [id: DatabaseViewId];
@@ -42,14 +41,14 @@ const formState = reactive(initialState());
 
 const loading = ref(0);
 
-const { create } = useDatabaseViewsClient();
+const { create } = useDatabaseViews(path, documentId);
 
 const onApply = async () => {
   if (formState.name) {
     try {
       loading.value += 1;
 
-      const id = await create(directoryPath.value, documentId.value, {
+      const id = await create({
         name: formState.name,
         layout: formState.layout,
       });

@@ -1,19 +1,18 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
 import { MDDialog } from '@shared/ui/Dialog';
-import type { EntryPath } from '@shared/lib/fileSystem';
-import { stringPath } from '@shared/api/directories';
+import { stringPath } from '@shared/service/directories';
 
 const { path } = defineProps<{
-  path: EntryPath;
+  path: string;
 }>();
 
 const emit = defineEmits<{
   cancel: [];
-  apply: [name: EntryPath];
+  apply: [path: string];
 }>();
 
-const show = defineModel<boolean>('show', { required: true });
+const showModel = defineModel<boolean>('show', { required: true });
 
 const loading = ref(0);
 
@@ -39,7 +38,7 @@ const supportingText = computed(
 
 <template>
   <MDDialog
-    v-model:show="show"
+    v-model:show="showModel"
     :headline="headline"
     :supporting-text="supportingText"
     cancel-label="Cancel"

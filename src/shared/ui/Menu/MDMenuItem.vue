@@ -1,10 +1,12 @@
 <script setup lang="ts" generic="T extends MenuButtonDescription<T>">
-import { ref, useTemplateRef, watchEffect } from 'vue';
+import { computed, ref, useTemplateRef, watchEffect } from 'vue';
 import { MDSymbol } from '../Icon';
 import { MDListItem } from '../Lists';
 import MDMenu from './MDMenu.vue';
 import type { MenuButtonDescription } from './types';
 import type { MaybeElement } from '@vueuse/core';
+import { useInjectFocusRegister } from './focusProvider';
+import { findClosestElement } from '@shared/lib/useClosestElement';
 
 const props = withDefaults(
   defineProps<{
@@ -36,6 +38,22 @@ const onClickItem = () => {
   }
   emit('click', props.item);
 };
+
+const label = computed(() => props.item.label);
+
+const htmlEl = computed(() =>
+  listItemEl.value ? findClosestElement(listItemEl.value) : undefined,
+);
+
+const focus = computed(() =>
+  htmlEl.value
+    ? () => {
+        htmlEl.value?.focus();
+      }
+    : undefined,
+);
+
+useInjectFocusRegister(label, focus);
 </script>
 
 <template>

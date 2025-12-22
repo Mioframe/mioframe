@@ -1,11 +1,12 @@
 <script setup lang="ts">
 import { nextTick, toRefs, useTemplateRef, watch } from 'vue';
-import { useAriaHidden } from '../AriaHidden';
+import { useModalAriaHidden } from '../AriaHidden';
 import { sessionUniqueId } from '@shared/lib/uniqueId';
 import { useFocusTrap } from '@vueuse/integrations/useFocusTrap.mjs';
 import { onBackNavigation } from '@shared/lib/onBackNavigation';
 import { useOnEscapeKeyStacked } from '@shared/lib/useOnEscapeKeyStacked';
 import { MDButton } from '../Button';
+import { tryOnBeforeUnmount } from '@vueuse/core';
 
 const props = withDefaults(
   defineProps<{
@@ -47,7 +48,7 @@ const emit = defineEmits<{
   apply: [];
 }>();
 
-const ariaHidden = useAriaHidden();
+const ariaHidden = useModalAriaHidden();
 
 const dialogTitleId = sessionUniqueId('dialogTitle');
 
@@ -59,17 +60,20 @@ const { activate: lockFocus, deactivate: unlockFocus } = useFocusTrap(formEl, {
 
 watch(
   [showModel, formEl],
-  ([showModel, container]) => {
-    if (showModel && container) {
-      void nextTick(() => {
+  async ([showModel]) => {
+    if (showModel) {
+      await nextTick();
+      if (formEl.value) {
         lockFocus();
-      });
+      }
     } else {
       unlockFocus();
     }
   },
-  { flush: 'post', immediate: true },
+  { immediate: true, flush: 'post' },
 );
+
+tryOnBeforeUnmount(unlockFocus);
 
 const onSubmit = () => {
   if (!loading.value) {
@@ -88,12 +92,6 @@ onBackNavigation(() => {
   const restrictNavigation = !showModel.value;
   onCancel();
   return restrictNavigation;
-});
-
-watch([showModel, showModel], ([showOverlay, showModel]) => {
-  if (!showOverlay && showModel) {
-    onCancel();
-  }
 });
 
 useOnEscapeKeyStacked(() => {

@@ -1,1 +1,1 @@
-export { default as DatabaseFilterEditString } from './DatabaseFilterEditString.vue';
+export { default as DatabaseFilterEditString } from './DatabaseFilterEditString2.vue';

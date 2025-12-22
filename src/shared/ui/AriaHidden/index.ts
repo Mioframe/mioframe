@@ -12,7 +12,7 @@ const useAriaHiddenStack = createGlobalState(() => {
   };
 });
 
-export const useAriaHidden = () => {
+export const useModalAriaHidden = () => {
   const { add, quantity, remove } = useAriaHiddenStack();
 
   const order = add();
@@ -22,4 +22,10 @@ export const useAriaHidden = () => {
   });
 
   return computed(() => order < quantity.value);
+};
+
+export const useMainContentAriaHidden = () => {
+  const { quantity } = useAriaHiddenStack();
+
+  return computed(() => quantity.value > 0);
 };

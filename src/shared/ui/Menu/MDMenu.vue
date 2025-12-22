@@ -1,31 +1,35 @@
 <script setup lang="ts" generic="T extends MenuButtonDescription<T>">
-import type { MaybeElement, VueInstance } from '@vueuse/core';
+import type { MaybeElement } from '@vueuse/core';
 import {
   computed,
   nextTick,
   ref,
   toRefs,
-  toValue,
   useTemplateRef,
   watch,
   watchEffect,
 } from 'vue';
-import { unrefElement, useEventListener } from '@vueuse/core';
+import {
+  tryOnBeforeUnmount,
+  unrefElement,
+  useEventListener,
+} from '@vueuse/core';
 import { MDListContainer } from '../Lists';
 import type { MenuButtonDescription, MenuButtonList } from './types';
 import { onInteractionOutside } from '@shared/lib/onInteractionOutside';
 import { useFocusTrap } from '@vueuse/integrations/useFocusTrap';
-import { useKeyboardSearch } from '@shared/lib/useKeyboardSearch';
-import { isUndefined } from 'es-toolkit';
 import { autoUpdate, flip, shift, size, useFloating } from '@floating-ui/vue';
 import MDMenuItem from './MDMenuItem.vue';
 import { TeleportContainer } from '@shared/lib/teleportContainer';
 import { useOverlayContainer } from '../Overlay';
+import { useProvideFocusRegister } from './focusProvider';
+import { useFastKeyboardInput } from '@shared/lib/useFastKeyboardInput';
+import { useMatchSorter } from '@shared/lib/useMatchSorter';
 
 const props = withDefaults(
   defineProps<{
     target: MaybeElement;
-    btns: MenuButtonList<T>;
+    btns?: MenuButtonList<T>;
     transition?: boolean;
     outsideIgnore?: MaybeElement[];
     disabledTeleport?: boolean;
@@ -49,13 +53,23 @@ const emit = defineEmits<{
 
 const showModel = defineModel<boolean>('show', { required: true });
 
+defineSlots<{
+  default: () => unknown;
+}>();
+
 const onClickItem = (menuItem: T) => {
   emit('click', menuItem);
 };
 
-const listContainerEl = useTemplateRef<
-  HTMLElement | VueInstance | null | undefined
->('listContainerEl');
+const listContainerRef = useTemplateRef<MaybeElement>('listContainerRef');
+
+const listContainerEl = computed(() => {
+  const el = unrefElement(listContainerRef);
+  if (el instanceof HTMLElement) {
+    return el;
+  }
+  return undefined;
+});
 
 const { floatingStyles: containerStyle, update } = useFloating(
   target,
@@ -101,7 +115,7 @@ const ignoreElements = computed(() => {
 });
 
 onInteractionOutside(
-  listContainerEl,
+  listContainerRef,
   () => {
     emit('interactionOutside');
     showModel.value = false;
@@ -113,10 +127,9 @@ onInteractionOutside(
 
 const { activate: activateMenuFocusTrap, deactivate: deactivateMenuFocusTrap } =
   useFocusTrap(listContainerEl, {
+    allowOutsideClick: true,
     isKeyForward: ({ key }) => ['Tab', 'ArrowDown', 'ArrowRight'].includes(key),
     isKeyBackward: ({ key }) => ['ArrowUp', 'ArrowLeft'].includes(key),
-    allowOutsideClick: true,
-    initialFocus: false,
     onDeactivate: () => {
       emit('deactivateFocus');
     },
@@ -124,45 +137,34 @@ const { activate: activateMenuFocusTrap, deactivate: deactivateMenuFocusTrap } =
 
 watch(
   [showModel, listContainerEl],
-  ([showQuery, listContainerEl]) => {
-    if (listContainerEl) {
-      if (showQuery) {
-        void nextTick(activateMenuFocusTrap);
-      } else {
-        void nextTick(deactivateMenuFocusTrap);
+  async ([showQuery]) => {
+    if (showQuery) {
+      await nextTick();
+      if (listContainerEl.value) {
+        activateMenuFocusTrap();
       }
+    } else {
+      deactivateMenuFocusTrap();
     }
   },
-  { immediate: true },
+  { immediate: true, flush: 'post' },
 );
 
-const searchList = computed(() => btns.value.map(({ label }) => label));
+tryOnBeforeUnmount(deactivateMenuFocusTrap);
 
-const { foundIndex: keyboardFoundIndex } = useKeyboardSearch(searchList);
+const focusRegister = useProvideFocusRegister();
 
-const listItemElList = computed(() => {
-  const children = unrefElement(listContainerEl)?.children;
+const searchList = computed(() => Array.from(focusRegister.keys()));
 
-  if (children) {
-    return Array.from(children);
-  }
+const keyboardInput = useFastKeyboardInput();
 
-  return undefined;
-});
+const matchedText = useMatchSorter(searchList, keyboardInput);
 
-const foundRef = computed(() =>
-  !isUndefined(keyboardFoundIndex.value)
-    ? listItemElList.value?.at(keyboardFoundIndex.value)
-    : undefined,
-);
+const firstMatchText = computed(() => matchedText.value?.at(0));
 
 watchEffect(() => {
-  if (showModel.value) {
-    const foundEl = toValue(foundRef);
-
-    if (foundEl instanceof HTMLElement) {
-      foundEl.focus();
-    }
+  if (showModel.value && firstMatchText.value) {
+    focusRegister.get(firstMatchText.value)?.();
   }
 });
 
@@ -173,26 +175,28 @@ const showSubmenu = ref<boolean>();
   <TeleportContainer
     :to="targetTeleport"
     :disabled="disabledTeleport"
-    :container="listContainerEl"
+    :container="listContainerRef"
   >
     <MDListContainer
       is="div"
       v-if="showModel"
-      ref="listContainerEl"
+      ref="listContainerRef"
       class="md md-menu"
       :style="containerStyle"
       :transition="transition"
       :aria-label="ariaLabel"
       :role="role"
     >
-      <MDMenuItem
-        v-for="item in btns"
-        :key="item.key"
-        :item="item"
-        :role="role === 'listbox' ? 'option' : undefined"
-        @click="onClickItem"
-        @update:show-submenu="showSubmenu = $event"
-      />
+      <slot>
+        <MDMenuItem
+          v-for="item in btns"
+          :key="item.key"
+          :item="item"
+          :role="role === 'listbox' ? 'option' : undefined"
+          @click="onClickItem"
+          @update:show-submenu="showSubmenu = $event"
+        />
+      </slot>
     </MDListContainer>
   </TeleportContainer>
 </template>

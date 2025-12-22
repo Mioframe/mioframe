@@ -11,11 +11,12 @@ const props = withDefaults(
      * unique label for screen readers and navigation
      */
     label: string;
+    class?: string;
   }>(),
   {},
 );
 
-const { label } = toRefs(props);
+const { label, class: classProp } = toRefs(props);
 
 const showModel = defineModel<boolean>('show', { required: true });
 
@@ -39,10 +40,6 @@ watch(scrollPosition, (scrollPosition) => {
 
 const render = computed(() => open.value || scrollPosition.value > 0);
 
-/**
- * FIXME: програмное скрытие анимацией css
- */
-
 const to = useOverlayContainer();
 
 const sheetContainer = useTemplateRef<MaybeElement>('sheetContainer');
@@ -57,6 +54,7 @@ const sheetContainer = useTemplateRef<MaybeElement>('sheetContainer');
         v-model:scroll-position="scrollPosition"
         v-model:open="open"
         class="md-bottom-sheet__container"
+        :class="classProp"
         aria-modal="true"
         :aria-label="label"
       >
