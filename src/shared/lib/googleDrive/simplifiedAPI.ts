@@ -6,42 +6,24 @@ import type { ZodMiniType } from 'zod/v4-mini';
 import { z } from 'zod/v4-mini';
 import { DomainError } from '../error';
 
-enum ORDER_DIRECTION {
-  ASC = 'asc',
-  DESC = 'desc',
-}
-
-type SortableKeys =
-  | 'createdTime'
-  | 'folder'
-  | 'modifiedByMeTime'
-  | 'modifiedTime'
-  | 'name'
-  | 'name_natural'
-  | 'quotaBytesUsed'
-  | 'recency'
-  | 'sharedWithMeTime'
-  | 'starred'
-  | 'viewedByMeTime';
-
 export enum SPACE {
   drive = 'drive',
   appDataFolder = 'appDataFolder',
 }
 
 interface ListParams {
-  corpora?: 'user' | 'domain' | 'drive' | 'allDrives';
-  driveId?: string;
-  includeItemsFromAllDrives?: boolean;
-  orderBy?: Partial<Record<SortableKeys, ORDER_DIRECTION>>;
   pageSize?: number;
   pageToken?: string;
   q?: string;
   spaces?: SPACE[];
-  supportsAllDrives?: boolean;
-  includePermissionsForView?: string;
-  includeLabels?: string;
-  trashed?: boolean;
+  /**
+   * Если true, будет автоматически загружать все страницы результатов.
+   */
+  fetchAll?: boolean;
+  /**
+   * Список полей для выборки.
+   */
+  fields?: string;
 }
 
 export interface GoogleAuthParams {
@@ -55,26 +37,46 @@ const zodGoogleErrorResponse = z.object({
   }),
 });
 
+// Настройка клиента с повторными запросами для продакшена
+const apiClient = ky.create({
+  retry: {
+    limit: 3,
+    methods: [
+      'get',
+      'put',
+      'head',
+      'delete',
+      'options',
+      'trace',
+      'patch',
+      'post',
+    ],
+    statusCodes: [408, 413, 429, 500, 502, 503, 504],
+  },
+  timeout: 30000,
+});
+
 const googleRequest = async (url: Input, options?: Options) => {
   try {
-    const response = await ky(url, options);
+    const response = await apiClient(url, options);
 
     if (!response.ok) {
       const { data: googleError } = zodGoogleErrorResponse.safeParse(
         await response.json(),
       );
 
-      throw new DomainError(googleError?.error.message);
+      throw new DomainError(googleError?.error.message || response.statusText);
     }
 
     return response;
   } catch (e) {
     if (e instanceof HTTPError) {
-      const { data: googleError } = zodGoogleErrorResponse.safeParse(
-        await e.response.json(),
-      );
+      const errorBody = await e.response.json().catch(() => ({}));
+      const { data: googleError } = zodGoogleErrorResponse.safeParse(errorBody);
 
-      throw new DomainError(googleError?.error.message, { cause: e });
+      throw new DomainError(googleError?.error.message || e.message, {
+        cause: e,
+      });
     }
 
     throw e;
@@ -109,74 +111,92 @@ const authorizedRequest = async <R>(
   return { result: responseSchema.parse(response) };
 };
 
+// Схемы данных
+const fileSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  mimeType: z.string(),
+  size: z.optional(z.string()),
+  createdTime: z.optional(z.string()),
+  modifiedTime: z.optional(z.string()),
+  parents: z.optional(z.array(z.string())),
+});
+
+const listResponseSchema = z.object({
+  files: z.optional(z.array(fileSchema)),
+  nextPageToken: z.optional(z.string()),
+});
+
 /**
  * https://developers.google.com/workspace/drive/api/reference/rest/v3/files/list
  */
 const list = async (
   auth: GoogleAuthParams,
   {
-    corpora,
-    driveId,
-    includeItemsFromAllDrives,
-    orderBy,
-    pageSize,
+    pageSize = 1000,
     pageToken,
     q,
     spaces,
-    supportsAllDrives,
-    includePermissionsForView,
-    includeLabels,
+    fetchAll = false,
+    fields = 'nextPageToken, files(id, name, mimeType, size, createdTime, modifiedTime, parents)',
   }: ListParams,
-) =>
-  authorizedRequest(
-    'get',
-    'https://www.googleapis.com/drive/v3/files',
-    auth,
-    {
-      searchParams: {
-        corpora,
-        driveId,
-        includeItemsFromAllDrives,
-        orderBy: orderBy
-          ? Object.entries(orderBy).reduce(
-              (acc: string, [key, direction], index) => {
-                if (direction === ORDER_DIRECTION.DESC) {
-                  return `${(index > 0 ? ',' : '') + acc + key} desc`;
-                }
-
-                return (index > 0 ? ',' : '') + acc + key;
-              },
-              '',
-            )
-          : undefined,
-        pageSize,
-        pageToken,
-        q,
-        spaces: spaces?.join(','),
-        supportsAllDrives,
-        includePermissionsForView,
-        includeLabels,
-        fields: 'files(id, name, mimeType)',
+) => {
+  const fetchPage = async (token?: string) => {
+    return authorizedRequest(
+      'get',
+      'https://www.googleapis.com/drive/v3/files',
+      auth,
+      {
+        searchParams: {
+          pageSize,
+          pageToken: token,
+          q,
+          spaces: spaces?.join(','),
+          fields,
+        },
       },
+      listResponseSchema,
+    );
+  };
+
+  if (!fetchAll) {
+    return fetchPage(pageToken);
+  }
+
+  // Логика автоматической пагинации
+  let currentPageToken = pageToken;
+  let allFiles: z.infer<typeof fileSchema>[] = [];
+
+  do {
+    const { result } = await fetchPage(currentPageToken);
+    if (result.files) {
+      allFiles = allFiles.concat(result.files);
+    }
+    currentPageToken = result.nextPageToken;
+  } while (currentPageToken);
+
+  return {
+    result: {
+      files: allFiles,
+      nextPageToken: undefined,
     },
-    z.object({
-      files: z.array(
-        z.object({
-          id: z.string(),
-          name: z.string(),
-          mimeType: z.string(),
-        }),
-      ),
-      nextPageToken: z.optional(z.string()),
-      kind: z.optional(z.string()),
-      incompleteSearch: z.optional(z.boolean()),
-    }),
-  );
+  };
+};
 
 const update = (
   auth: GoogleAuthParams,
   fileId: string,
-  { name, addParents }: { name?: string; addParents?: string[] },
+  {
+    name,
+    addParents,
+    removeParents,
+    trashed,
+  }: {
+    name?: string;
+    addParents?: string[];
+    removeParents?: string[];
+    trashed?: boolean;
+  },
 ) =>
   authorizedRequest(
     'patch',
@@ -186,6 +206,8 @@ const update = (
       json: {
         name,
         addParents: addParents?.join(','),
+        removeParents: removeParents?.join(','),
+        trashed,
       },
     },
     z.object({}),
@@ -221,7 +243,7 @@ const create = (
   auth: GoogleAuthParams,
   resource: {
     name: string;
-    mimeType?: `${string}/${string}`;
+    mimeType?: string;
     parents: string[];
   },
 ) =>
@@ -282,44 +304,12 @@ const upload = async (
   return response;
 };
 
-const remove = (auth: GoogleAuthParams, fileId: string) =>
-  authorizedRequest(
-    'delete',
-    `https://www.googleapis.com/drive/v3/files/${fileId}`,
-    auth,
-    {},
-    z.object(),
-  );
-
-const copy = (
-  auth: GoogleAuthParams,
-  fileId: string,
-  file: {
-    resource: {
-      name: string;
-      parents: string[];
-    };
-  },
-) =>
-  authorizedRequest(
-    'post',
-    `https://www.googleapis.com/drive/v3/files/${fileId}/copy`,
-    auth,
-    {
-      json: file,
-    },
-    z.object({ id: z.string(), name: z.string() }),
-  );
-
-export const files = {
+export const simplifiedGoogleDriveAPI = {
   list,
   update,
   download,
   create,
   upload,
-  delete: remove,
-  remove,
-  copy,
 };
 
-export const api = { files };
+// todo: исключить дублирующие get запросы, т.е. если запрос с такими же параметрами ещё активен, не делать новый запрос, дождаться ответа.

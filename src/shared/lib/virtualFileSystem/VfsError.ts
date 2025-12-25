@@ -12,6 +12,7 @@ export class VfsError extends Error {
   constructor(
     public code: FileSystemError,
     message?: string,
+    public cause?: unknown,
   ) {
     super(message || code);
     this.name = 'VfsError';

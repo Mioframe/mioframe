@@ -1,4 +1,4 @@
-import { api } from '../googleDrive/api';
+import { simplifiedGoogleDriveAPI } from '../googleDrive/simplifiedAPI';
 import { loadGAPI } from './loadGAPI';
 import type { AdvancedGDrive } from './types';
 
@@ -24,7 +24,7 @@ export const loadGDrive = async (
        * @deprecated
        */
       uploadFile: async (fileId: string, file: FileSystemWriteChunkType) => {
-        return api.files.upload(
+        return simplifiedGoogleDriveAPI.upload(
           {
             ACCESS_TOKEN: g.auth.getToken().access_token,
           },
@@ -39,7 +39,7 @@ export const loadGDrive = async (
         fileId: string,
         name: string = 'file',
       ): Promise<File> => {
-        return api.files.download(
+        return simplifiedGoogleDriveAPI.download(
           {
             ACCESS_TOKEN: g.auth.getToken().access_token,
           },

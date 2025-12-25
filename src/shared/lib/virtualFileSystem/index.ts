@@ -4,6 +4,7 @@ export {
   type FileStat,
   type FileContent,
   FileType,
+  type WriteOptions,
 } from './IFileSystemProvider';
 export {
   EventEmitter,
