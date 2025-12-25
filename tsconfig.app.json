@@ -31,7 +31,8 @@
       "@/*": ["./src/*"]
     },
     "experimentalDecorators": true,
-    "emitDecoratorMetadata": true
+    "emitDecoratorMetadata": true,
+    "noUncheckedIndexedAccess": true
   },
   "include": ["env.d.ts", "src/**/*.ts", "src/**/*.vue"],
   "exclude": ["src/**/*.cy.ts"],

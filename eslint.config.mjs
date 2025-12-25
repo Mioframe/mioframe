@@ -27,6 +27,12 @@ const eslintConfig = defineConfig([
       ],
       'vue/camelcase': 'off',
       '@typescript-eslint/prefer-promise-reject-errors': 'off',
+      '@typescript-eslint/consistent-type-assertions': [
+        'error',
+        {
+          assertionStyle: 'never',
+        },
+      ],
     },
   },
 ]);

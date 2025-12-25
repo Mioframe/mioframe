@@ -5,9 +5,9 @@ import type {
   WriteOptions,
 } from './IFileSystemProvider';
 import { FileType } from './IFileSystemProvider';
-import { PathUtils } from './PathUtils';
-import { VfsError, FileSystemError } from './VfsError';
-import { EventEmitter, type VfsEvent } from './EventEmitter';
+import { PathUtils } from '../PathUtils';
+import { VfsError, FileSystemError } from '../VfsError';
+import { EventEmitter, type VfsEvent } from '../EventEmitter';
 
 declare global {
   interface FileSystemHandle {
@@ -44,9 +44,7 @@ export class WebFileSystem implements IFileSystemProvider {
 
     let currentDir = this.rootHandle;
 
-    // Проходим по всем папкам до родительской
-    for (let i = 0; i < parts.length - 1; i++) {
-      const part = parts[i];
+    for (const part of parts) {
       try {
         currentDir = await currentDir.getDirectoryHandle(part, {
           create: false,
@@ -81,6 +79,7 @@ export class WebFileSystem implements IFileSystemProvider {
           throw new VfsError(
             FileSystemError.FileNotFound,
             `Entry not found: ${name}`,
+            e,
           );
         }
         if (e.name === 'TypeMismatchError') {
@@ -89,6 +88,7 @@ export class WebFileSystem implements IFileSystemProvider {
               ? FileSystemError.FileIsADirectory
               : FileSystemError.FileNotADirectory,
             `Type mismatch for: ${name}`,
+            e,
           );
         }
       }
@@ -107,8 +107,7 @@ export class WebFileSystem implements IFileSystemProvider {
       };
     }
 
-    // Явно указываем объединение типов, чтобы работал Type Narrowing
-    let handle: FileSystemFileHandle | FileSystemDirectoryHandle;
+    let handle: undefined | FileSystemFileHandle | FileSystemDirectoryHandle;
     try {
       handle = await this.getHandle(path, false, 'file');
     } catch {
@@ -148,18 +147,18 @@ export class WebFileSystem implements IFileSystemProvider {
   public async writeFile(
     path: string,
     content: FileContent,
-    options: WriteOptions,
+    { create, overwrite }: WriteOptions,
   ): Promise<void> {
-    let handle: FileSystemFileHandle;
+    let handle: undefined | FileSystemFileHandle;
 
     try {
       handle = await this.getHandle(path, false, 'file');
-      if (!options.overwrite) {
+      if (!overwrite) {
         throw new VfsError(FileSystemError.FileExists, `File exists: ${path}`);
       }
     } catch (e) {
       if (e instanceof VfsError && e.code === FileSystemError.FileNotFound) {
-        if (!options.create) throw e;
+        if (!create) throw e;
         handle = await this.getHandle(path, true, 'file');
         this.events.emit({ type: 'create', path });
       } else {

@@ -16,7 +16,9 @@ export const useSortable = <T>(
 
     const [movedItem]: T[] = list.splice(from, 1);
 
-    list.splice(to, 0, movedItem);
+    if (!isUndefined(movedItem)) {
+      list.splice(to, 0, movedItem);
+    }
   };
 
   const { draggableIndex } = useSortableListener(container, onMovedItem);

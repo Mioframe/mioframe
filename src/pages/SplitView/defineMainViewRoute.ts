@@ -7,6 +7,7 @@ import {
   type RouteRecordRaw,
 } from 'vue-router';
 import type { InferPaneQuery, Pane } from '@page/SplitView/definePane';
+import { recordEntries } from '@shared/lib/objectEntries';
 
 type InferPageQuery<P extends Page> = P['panes'][keyof P['panes']] extends Pane
   ? InferPaneQuery<P['panes'][keyof P['panes']]>
@@ -44,13 +45,9 @@ export const createSplitViewRouter = <M extends PageMap>(
 
   const children: RouteRecordRaw[] = [];
 
-  for (const key in pages) {
-    if (!Object.hasOwn(pages, key)) continue;
-
-    const { panes }: Page = pages[key];
-
+  recordEntries(pages).forEach(([key, { panes }]) => {
     children.push(pageToRouteRecord(key, panes));
-  }
+  });
 
   children.push(
     {
