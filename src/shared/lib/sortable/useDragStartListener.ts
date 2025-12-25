@@ -76,12 +76,13 @@ export const useDragListener = (
     (e: TouchEvent) => {
       if (onDragOver) {
         const {
-          touches: [{ clientX, clientY }],
+          touches: [{ clientX, clientY } = {}],
         } = e;
 
-        const pseudoTarget = document.elementFromPoint(clientX, clientY);
-
-        onDragOver({ target: pseudoTarget });
+        if (!isUndefined(clientX) && !isUndefined(clientY)) {
+          const pseudoTarget = document.elementFromPoint(clientX, clientY);
+          onDragOver({ target: pseudoTarget });
+        }
       }
     },
     1e3 / 120,
@@ -91,15 +92,17 @@ export const useDragListener = (
   const onPseudoDragEnter = (e: TouchEvent) => {
     if (onDragEnter) {
       const {
-        touches: [{ clientX, clientY }],
+        touches: [{ clientX, clientY } = {}],
       } = e;
 
-      const pseudoTarget = document.elementFromPoint(clientX, clientY);
+      if (!isUndefined(clientX) && !isUndefined(clientY)) {
+        const pseudoTarget = document.elementFromPoint(clientX, clientY);
 
-      if (lastEnterEventTarget !== pseudoTarget) {
-        lastEnterEventTarget = pseudoTarget;
+        if (lastEnterEventTarget !== pseudoTarget) {
+          lastEnterEventTarget = pseudoTarget;
 
-        onDragEnter({ target: pseudoTarget });
+          onDragEnter({ target: pseudoTarget });
+        }
       }
     }
   };

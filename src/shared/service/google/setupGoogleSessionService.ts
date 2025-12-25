@@ -42,7 +42,7 @@ export const setupGoogleSessionService = (): GoogleSessionService => {
 
   const subscribeGetToken = defineSubscribeByQueryService(getToken);
 
-  const getScopes = (): Set<GOOGLE_SCOPE> => {
+  const getScopes = () => {
     const scope = data.value?.tokenResponse.scope
       .split(' ')
       .filter((v) => zodIs(v, zodGOOGLE_SCOPE));
