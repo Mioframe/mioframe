@@ -41,6 +41,5 @@ export interface IFileSystemProvider {
   delete(path: string, recursive: boolean): Promise<void>;
   rename(oldPath: string, newPath: string): Promise<void>;
 
-  // todo: добавить отслеживание по путям, или не нужно? например нужно будет отслеживать локальные папки периодическим опросом всех вложенных директорий
   watch(callback: (event: VfsEvent) => void): () => void;
 }

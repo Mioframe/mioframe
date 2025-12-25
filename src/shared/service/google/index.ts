@@ -1,1 +1,1 @@
-export { useGoogleService } from './main';
+export { useGoogleService } from './useGoogleService';

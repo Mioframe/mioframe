@@ -19,10 +19,12 @@ const modelSelectedDocumentId = computed({
   get: () =>
     relationModel.value?.documentId ? [relationModel.value.documentId] : [],
   set: ([documentId]) => {
-    relationModel.value = {
-      ...relationModel.value,
-      documentId,
-    };
+    if (documentId) {
+      relationModel.value = {
+        ...relationModel.value,
+        documentId,
+      };
+    }
   },
 });
 </script>

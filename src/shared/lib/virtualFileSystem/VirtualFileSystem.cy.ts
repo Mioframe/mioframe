@@ -2,9 +2,9 @@
 
 import { VirtualFileSystem } from './VirtualFileSystem';
 import { MemoryFileSystem } from './MemoryFileSystem';
-import { FileType } from './IFileSystemProvider';
 import { VfsError, FileSystemError } from './VfsError';
 import { LockManager } from './LockManager';
+import { FileType } from './IFileSystemProvider';
 
 describe('VirtualFileSystem (Интеграция)', () => {
   let vfs: VirtualFileSystem;
