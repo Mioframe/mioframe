@@ -32,7 +32,10 @@
     },
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true,
-    "noUncheckedIndexedAccess": true
+    "noUncheckedIndexedAccess": true,
+    "noImplicitReturns": true,
+    // "exactOptionalPropertyTypes": true // todo: turn on with refactoring
+    "noImplicitOverride": true
   },
   "include": ["env.d.ts", "src/**/*.ts", "src/**/*.vue"],
   "exclude": ["src/**/*.cy.ts"],

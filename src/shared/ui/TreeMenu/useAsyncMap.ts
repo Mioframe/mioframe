@@ -1,11 +1,13 @@
 import type { Ref } from 'vue';
-import { computed, reactive, watchEffect } from 'vue';
+import { computed, shallowReactive, watchEffect } from 'vue';
 import type { Dictionary } from '../../lib/useIterable';
 import type { ItemWithChildren } from '@shared/lib/useAsyncIterable';
 import { useCollection } from '@shared/lib/useAsyncIterable';
 
-export interface AsyncMap<K extends string | number, T>
-  extends ItemWithChildren<[K, T]> {}
+export interface AsyncMap<
+  K extends string | number,
+  T,
+> extends ItemWithChildren<[K, T]> {}
 
 const syncIterableWithMap = <K, T>(
   collection: Iterable<[K, T]>,
@@ -30,7 +32,7 @@ export const useDictionary = <K extends string | number, V>(
 ) => {
   const { collection, loading } = useCollection(iterableCollection);
 
-  const stateMap: Map<K, V> = reactive(new Map());
+  const stateMap: Map<K, V> = shallowReactive(new Map());
 
   watchEffect(() => {
     syncIterableWithMap(collection.value, stateMap);
@@ -40,6 +42,6 @@ export const useDictionary = <K extends string | number, V>(
 
   return {
     dictionary,
-    loading: computed(() => !!loading.value),
+    loading: computed(() => loading.value),
   };
 };

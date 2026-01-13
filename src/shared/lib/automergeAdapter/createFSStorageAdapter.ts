@@ -136,6 +136,8 @@ export const createFSStorageAdapter = (
                     : undefined,
               };
             }
+
+            return undefined;
           }),
           filter((v) => !isNil(v)),
         ),

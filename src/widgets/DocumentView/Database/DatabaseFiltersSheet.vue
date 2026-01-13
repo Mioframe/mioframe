@@ -5,7 +5,7 @@ import { MD_SYS_TYPESCALE } from '@shared/lib/md';
 import { MDBottomSheet, MDBottomSheetSection } from '@shared/ui/Sheets';
 import { toRefs } from 'vue';
 import ValueField from './ValueField.vue';
-import { DatabaseFilterEditString } from '@feature/databaseFilterEdit';
+import { DatabaseFilterQuery } from '@entity/databaseFilter';
 
 const props = defineProps<{
   directoryPath: string;
@@ -35,7 +35,7 @@ const onUpdateCollapsed = (collapsed: boolean) => {
       <span :class="MD_SYS_TYPESCALE.title.small">Filters</span>
 
       <div class="db-filters-sheet__filters">
-        <DatabaseFilterEditString
+        <DatabaseFilterQuery
           :directory-path="directoryPath"
           :document-id="documentId"
           :view-id="viewId"
@@ -50,7 +50,7 @@ const onUpdateCollapsed = (collapsed: boolean) => {
               @update:value="update"
             />
           </template>
-        </DatabaseFilterEditString>
+        </DatabaseFilterQuery>
       </div>
     </MDBottomSheetSection>
   </MDBottomSheet>

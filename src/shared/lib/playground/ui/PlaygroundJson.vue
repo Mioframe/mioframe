@@ -6,10 +6,11 @@ import {
   useTemplateRef,
   watch,
 } from 'vue';
-import type { Content, JsonEditor } from 'vanilla-jsoneditor';
+import type { JsonEditor } from 'vanilla-jsoneditor';
 import { createJSONEditor } from 'vanilla-jsoneditor';
 import { deepPutJsonObject } from '@shared/lib/changeObject';
 import { isObjectLike } from '@shared/lib/typeGuards';
+import { debounce, isEqual, isUndefined } from 'es-toolkit';
 
 defineProps<{ label: string }>();
 
@@ -19,12 +20,37 @@ const editorRef = useTemplateRef('editorRef');
 
 const jsonEditor = shallowRef<JsonEditor>();
 
-const onChange = (content: Content) => {
+const getJsonContent = (): unknown => {
+  const content = jsonEditor.value?.get();
+  if (content) {
+    if ('json' in content) {
+      return content.json;
+    }
+    if ('text' in content) {
+      try {
+        return JSON.parse(content.text);
+      } catch {}
+    }
+  }
+  return undefined;
+};
+
+const setJsonContent = (json: unknown) => {
+  const oldJson = getJsonContent();
+
+  if (!isEqual(oldJson, json)) {
+    jsonEditor.value?.update({
+      json,
+    });
+  }
+};
+
+const onChange = debounce(() => {
   valueWatchHandle.pause();
 
-  if ('json' in content) {
-    const { json } = content;
+  const json = getJsonContent();
 
+  if (!isUndefined(json)) {
     if (isObjectLike(json) && isObjectLike(value.value)) {
       deepPutJsonObject(value.value, json);
     } else {
@@ -33,7 +59,7 @@ const onChange = (content: Content) => {
   }
 
   void nextTick().then(valueWatchHandle.resume);
-};
+}, 1e3);
 
 watch(
   editorRef,
@@ -48,6 +74,9 @@ watch(
         target,
         props: {
           onChange,
+          content: {
+            json: value.value,
+          },
         },
       });
     }
@@ -63,7 +92,7 @@ onBeforeUnmount(async () => {
 const valueWatchHandle = watch(
   value,
   (value) => {
-    jsonEditor.value?.update({ json: value });
+    setJsonContent(value);
   },
   { immediate: true, deep: true },
 );

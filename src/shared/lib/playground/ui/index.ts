@@ -5,3 +5,4 @@ export { default as PlaygroundOptionalBoolean } from './PlaygroundOptionalBoolea
 export { default as PlaygroundOptionalNumber } from './PlaygroundOptionalNumber.vue';
 export { default as PlaygroundOptionalString } from './PlaygroundOptionalString.vue';
 export { default as PlaygroundUnion } from './PlaygroundUnion.vue';
+export { default as PlaygroundJson } from './PlaygroundJson.vue';

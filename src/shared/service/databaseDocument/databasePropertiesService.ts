@@ -36,6 +36,8 @@ export const useDatabasePropertiesService = (
     if (database) {
       return database.properties;
     }
+
+    return undefined;
   };
 
   const get = async (
@@ -47,6 +49,8 @@ export const useDatabasePropertiesService = (
     if (properties) {
       return strictRecordGet(properties, id);
     }
+
+    return undefined;
   };
 
   const post = async (
@@ -87,6 +91,8 @@ export const useDatabasePropertiesService = (
     if (properties) {
       return strictRecordSize(properties);
     }
+
+    return undefined;
   };
 
   const getDatabasePropertiesIdList = async (

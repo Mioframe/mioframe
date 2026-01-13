@@ -1,11 +1,8 @@
-import { useMainServiceClient } from '@shared/service/useService';
-import { computedAsync } from '@vueuse/core';
 import type { Ref } from 'vue';
 import type { AMDocumentId } from '@shared/lib/automerge';
-import type {
-  DatabaseFilter,
-  DatabaseViewId,
-} from '@shared/lib/databaseDocument';
+import type { DatabaseViewId } from '@shared/lib/databaseDocument';
+import { useMainService } from '@shared/service';
+import { useLiveResource } from '@shared/lib/useLiveResource';
 
 export const useDatabaseViewFilter = (
   path: Ref<string>,
@@ -15,21 +12,35 @@ export const useDatabaseViewFilter = (
   const {
     databaseDocument: {
       views: {
-        filter: { patch, post, get },
+        filter: { get },
       },
+      onChangeDocument,
     },
-  } = useMainServiceClient();
+  } = useMainService();
 
-  const filter = computedAsync(
-    () => get(path.value, documentId.value, viewId.value),
-    undefined,
-    { lazy: true },
+  const {
+    errorMessage,
+    isLoading,
+    isReady,
+    state: filterQuery,
+  } = useLiveResource(
+    () => ({
+      path: path.value,
+      documentId: documentId.value,
+      viewId: viewId.value,
+    }),
+    {
+      fetch: ({ documentId, path, viewId }) => get(path, documentId, viewId),
+      subscribe: ({ documentId, path }, cb) =>
+        onChangeDocument(path, documentId, cb),
+      defaultErrorMessage: 'Error reading filter',
+    },
   );
 
   return {
-    filter,
-    patch,
-    post: (v: DatabaseFilter) =>
-      post(path.value, documentId.value, viewId.value, v),
+    filterQuery,
+    errorMessage,
+    isLoading,
+    isReady,
   };
 };

@@ -1,5 +1,5 @@
 import type { WatchOptions } from 'vue';
-import { computed, nextTick, reactive, shallowRef } from 'vue';
+import { computed, nextTick, shallowReactive, shallowRef } from 'vue';
 import { isPlainObject, isUndefined } from 'es-toolkit';
 import { tryOnScopeDispose } from '@vueuse/core';
 import type { JsonString } from '../brandJson';
@@ -77,7 +77,7 @@ export const useSubscribeByKeyClient = <K extends string, V>(
     options: WatchOptions,
   ) => Promise<WatchHandle>,
 ) => {
-  const reactiveValues: Map<K, V> = reactive(new Map());
+  const reactiveValues: Map<K, V> = shallowReactive(new Map());
 
   const valueWatchHandles: Map<
     K,
