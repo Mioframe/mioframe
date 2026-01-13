@@ -40,6 +40,8 @@ export const useDatabaseDocumentService = createGlobalState(() => {
         return databaseBodyMigrations.getLatestData(body);
       }
     }
+
+    return undefined;
   };
 
   const change = (

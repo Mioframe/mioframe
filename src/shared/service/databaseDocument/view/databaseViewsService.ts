@@ -64,6 +64,8 @@ export const useDatabaseViewsService = (
     if (views) {
       return strictRecordGet(views, viewId);
     }
+
+    return undefined;
   };
 
   const getFirstView = async (

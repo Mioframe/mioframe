@@ -86,6 +86,8 @@ const setupDirectoryStoreService = () => {
         return entry;
       }
     }
+
+    return undefined;
   }
 
   const getCachedEntry = (

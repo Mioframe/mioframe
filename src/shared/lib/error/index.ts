@@ -8,7 +8,7 @@ export type SerializedDomainError = {
 };
 
 export class DomainError extends Error {
-  name = 'DomainError';
+  override name = 'DomainError';
   __isDomainError = true;
 
   constructor(serialized: SerializedDomainError);
