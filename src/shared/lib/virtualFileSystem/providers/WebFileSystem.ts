@@ -1,13 +1,12 @@
-import type {
-  IFileSystemProvider,
-  FileStat,
-  FileContent,
-  WriteOptions,
-} from './IFileSystemProvider';
-import { FileType } from './IFileSystemProvider';
 import { PathUtils } from '../PathUtils';
 import { VfsError, FileSystemError } from '../VfsError';
 import { EventEmitter, type VfsEvent } from '../EventEmitter';
+import type { FileContent, WriteOptions } from '../IFileSystemProvider';
+import {
+  FileType,
+  type FileStat,
+  type IFileSystemProvider,
+} from '../IFileSystemProvider';
 
 declare global {
   interface FileSystemHandle {

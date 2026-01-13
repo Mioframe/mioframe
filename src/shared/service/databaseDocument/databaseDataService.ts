@@ -106,6 +106,8 @@ export const useDatabaseDataService = (
         slice,
       });
     }
+
+    return undefined;
   };
 
   const getItem = async (
@@ -118,6 +120,8 @@ export const useDatabaseDataService = (
     if (data) {
       return strictRecordGet(data, itemId);
     }
+
+    return undefined;
   };
 
   const getValue = async (

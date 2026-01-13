@@ -53,6 +53,8 @@ export const useGProfile = () => {
         return URL.createObjectURL(await response.blob());
       }
     }
+
+    return undefined;
   };
 
   const profileImageBlobUrl = asyncComputed(() => loadImage(), undefined, {

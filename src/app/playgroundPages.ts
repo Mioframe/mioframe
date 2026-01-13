@@ -78,4 +78,8 @@ export const playgroundPages: PlaygroundPage[] = [
     component: () =>
       import('@shared/ui/Navigation/bar/MDNavigationBarPlayground.vue'),
   },
+  {
+    name: 'Query',
+    component: () => import('@shared/ui/Query/QueryRendererPlayground.vue'),
+  },
 ];
