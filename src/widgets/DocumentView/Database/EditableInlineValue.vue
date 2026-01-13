@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, toRefs, useTemplateRef, watch, watchEffect } from 'vue';
+import { ref, toRefs, useTemplateRef, watch, watchEffect } from 'vue';
 import { zodBooleanProperty } from '@entity/databaseBoolean/boolean';
 import { zodIs } from '@shared/lib/validateZodScheme';
 import ValueInline from './ValueInline.vue';
@@ -17,9 +17,6 @@ import type { AMDocumentId } from '@shared/lib/automerge';
 import { MDState } from '@shared/ui/State';
 import type { MaybeElement } from '@vueuse/core';
 import { useDatabaseProperty } from '@entity/databaseProperty';
-import { useDatabaseItem } from '@entity/databaseItem';
-import { strictRecordGet } from '@shared/lib/strictRecord';
-import { unknown } from 'zod/v4-mini';
 import { useDatabaseValue } from '@entity/databaseValue';
 
 const props = withDefaults(
@@ -47,10 +44,11 @@ const emit = defineEmits<{
 
 const { property } = useDatabaseProperty(path, documentId, propertyId);
 
-const { item } = useDatabaseItem(path, documentId, itemId);
-
-const initialValue = computed(() =>
-  item.value ? strictRecordGet(item.value, propertyId.value) : unknown,
+const { value: initialValue } = useDatabaseValue(
+  path,
+  documentId,
+  itemId,
+  propertyId,
 );
 
 const showEditForm = ref(false);
@@ -76,10 +74,12 @@ const tryEmitValue = async () => {
 
 const onClick = async () => {
   if (zodIs(property.value, zodBooleanProperty)) {
-    stateValue.value = toggleBoolean(
+    const newState = toggleBoolean(
       isUndefined(stateValue.value) ? stateValue.value : !!stateValue.value,
       property.value.indeterminate,
     );
+
+    stateValue.value = newState;
     await tryEmitValue();
     return;
   }
