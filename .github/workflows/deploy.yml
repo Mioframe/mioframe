@@ -16,9 +16,6 @@ concurrency:
 
 jobs:
   build-and-deploy:
-    # environment:
-    #   name: dev-github-pages
-    #   url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
@@ -38,9 +35,8 @@ jobs:
         env:
           BASE_URL: /${{ github.event.repository.name }}
           VITE_GOOGLE_CLIENT_ID: ${{ secrets.VITE_GOOGLE_CLIENT_ID }}
-          VITE_GOOGLE_API_KEY: ${{ secrets.VITE_GOOGLE_API_KEY }}
-          VITE_GOOGLE_PROJECT_NUMBER: ${{ secrets.VITE_GOOGLE_PROJECT_NUMBER }}
           VITE_SENTRY_DSN: ${{ secrets.VITE_SENTRY_DSN }}
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
         run: pnpm run build
 
       - name: Fix 404 for SPA
