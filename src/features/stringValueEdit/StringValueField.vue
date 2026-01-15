@@ -8,6 +8,7 @@ import { computed } from 'vue';
 const { property, modelValue: value } = defineProps<{
   property: StringProperty;
   modelValue: unknown;
+  autofocus?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -34,6 +35,7 @@ const vModel = computed({
   <MDTextField
     v-model:model-value="vModel"
     :label-text="labelText"
+    :autofocus="autofocus"
     @keydown="$emit('keydown', $event)"
   />
 </template>

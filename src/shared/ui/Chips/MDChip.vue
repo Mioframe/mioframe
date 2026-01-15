@@ -9,6 +9,7 @@ const { type: chipType, selected = false } = defineProps<{
   type: T;
   selected?: T extends 'filter' ? boolean : undefined;
   draggable?: boolean;
+  autofocus?: boolean;
 }>();
 
 const slots = defineSlots<{
@@ -40,6 +41,7 @@ const onClickClose = (e: MouseEvent) => {
     ]"
     type="button"
     :draggable="draggable"
+    :autofocus="autofocus"
     @click="emit('click', $event)"
   >
     <div

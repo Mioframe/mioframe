@@ -12,6 +12,7 @@ const props = defineProps<{
   documentId: AMDocumentId;
   selectedId?: DatabaseViewId[] | DatabaseViewId;
   type: 'assist' | 'filter' | 'input';
+  autofocus?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -30,6 +31,7 @@ const viewButtons = useReduceIterable(
       viewId,
     });
   },
+  // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
   <{ label: string; viewId: DatabaseViewId }[]>[],
 );
 
@@ -57,11 +59,12 @@ const isSelected = (viewId: DatabaseViewId): boolean => {
 <template>
   <div class="database-view-chips-list">
     <MDChip
-      v-for="{ viewId, label } in viewButtons"
+      v-for="({ viewId, label }, index) in viewButtons"
       :key="viewId"
       :label="label"
       :selected="isSelected(viewId)"
       :type="type"
+      :autofocus="!index ? autofocus : undefined"
       @click="onClickViewChip(viewId)"
     />
   </div>

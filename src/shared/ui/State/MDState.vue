@@ -10,7 +10,7 @@ import {
   useEventListener,
   useVibrate,
 } from '@vueuse/core';
-import { useTemplateRef, computed, ref, watchEffect } from 'vue';
+import { useTemplateRef, computed, ref, watchEffect, watch } from 'vue';
 import { useFirstFocus } from '@shared/lib/useFirstFocus';
 import { useFocusIndicator } from './useFocusIndicator';
 import { useRipple } from './useRipple';
@@ -20,9 +20,10 @@ import MDLayer from './MDLayer.vue';
 
 const {
   is = 'div',
-  disableRipple = false,
+  disableRipple,
   draggable,
   for: labelFor,
+  autofocus,
 } = defineProps<{
   is?: Is;
   type?: Is extends 'button' ? 'button' | 'submit' | 'reset' : false;
@@ -31,6 +32,7 @@ const {
   draggable?: boolean;
   id?: string;
   for?: Is extends 'label' ? string : false;
+  autofocus?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -125,6 +127,18 @@ tryOnScopeDispose(() => {
 });
 
 useRipple(computed(() => (enableRipple.value ? refEl.value : undefined)));
+
+watch(
+  [() => autofocus, refEl],
+  ([autofocus, el]) => {
+    if (autofocus && el) {
+      el.focus();
+    }
+  },
+  {
+    immediate: true,
+  },
+);
 </script>
 
 <template>

@@ -135,12 +135,13 @@ const hasProperties = computed(() => {
       @added="isShowAddItem = false"
       @cancel="isShowAddItem = false"
     >
-      <template #valueField="{ update, value, propertyId }">
+      <template #valueField="{ update, value, propertyId, index }">
         <ValueField
           :value="value"
           :document-id="documentId"
           :property-id="propertyId"
           :directory-path="path"
+          :autofocus="!index"
           @update:value="update"
           @update:property="onUpdateProperty(propertyId, $event)"
         />
