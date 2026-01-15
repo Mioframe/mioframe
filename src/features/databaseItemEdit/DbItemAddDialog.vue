@@ -26,6 +26,7 @@ defineSlots<{
     propertyId: DatabasePropertyId;
     value: unknown;
     update: (value: unknown) => void;
+    index: number;
   }): unknown;
 }>();
 
@@ -49,12 +50,13 @@ const onCancel = () => {
     @created="onCreated"
     @cancel="onCancel"
   >
-    <template #valueField="{ update, value, propertyId }">
+    <template #valueField="{ update, value, propertyId, index }">
       <slot
         name="valueField"
         :update="update"
         :value="value"
         :property-id="propertyId"
+        :index="index"
       />
     </template>
   </DbItemEditDialog>

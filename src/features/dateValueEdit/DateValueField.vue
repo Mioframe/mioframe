@@ -6,6 +6,7 @@ import { computed } from 'vue';
 const { property, modelValue: value } = defineProps<{
   property: DateProperty;
   modelValue: unknown;
+  autofocus?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -28,6 +29,7 @@ const vModel = computed({
     v-model:model-value="vModel"
     :label-text="labelText"
     input-type="date"
+    :autofocus="autofocus"
     @keydown="$emit('keydown', $event)"
   />
 </template>

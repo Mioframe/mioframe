@@ -48,6 +48,7 @@ defineSlots<{
     propertyId: DatabasePropertyId;
     value: unknown;
     update: (value: unknown) => void;
+    index: number;
   }): unknown;
 }>();
 
@@ -110,12 +111,13 @@ const loading = computed(() => isLoadingProperties.value || applyLoading.value);
     @apply="onApply"
     @cancel="onCancel"
   >
-    <template v-for="propertyId in properties" :key="propertyId">
+    <template v-for="(propertyId, index) in properties" :key="propertyId">
       <slot
         name="valueField"
         :value="itemState[propertyId]"
         :property-id="propertyId"
         :update="(value: unknown) => onUpdateValue(propertyId, value)"
+        :index="index"
       />
     </template>
   </MDDialog>

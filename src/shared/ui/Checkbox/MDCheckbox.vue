@@ -16,6 +16,7 @@ const props = withDefaults(
     id?: string;
     readonly?: boolean;
     tooltip?: string;
+    autofocus?: boolean;
   }>(),
   {
     modelValue: undefined,
@@ -90,6 +91,7 @@ const onKeypressContainer = ({ key }: KeyboardEvent) => {
     :disabled="disabled"
     tabindex="0"
     :aria-label="tooltip"
+    :autofocus="autofocus"
     @click="onClickContainer"
     @keypress="onKeypressContainer"
   >

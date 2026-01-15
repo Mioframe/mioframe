@@ -26,6 +26,7 @@ const props = defineProps<{
   propertyId: DatabasePropertyId;
   value: unknown;
   class?: unknown;
+  autofocus?: boolean;
 }>();
 
 const {
@@ -62,6 +63,7 @@ const onUpdateProperty = (v: DatabaseUnknownProperty) => {
     :model-value="value"
     :property="property"
     :class="propClass"
+    :autofocus="autofocus"
     @update:model-value="onUpdateValue"
     @keydown="emit('keydown', $event)"
   />
@@ -71,6 +73,7 @@ const onUpdateProperty = (v: DatabaseUnknownProperty) => {
     :class="propClass"
     :model-value="value"
     :property="property"
+    :autofocus="autofocus"
     @update:model-value="onUpdateValue"
     @keydown="emit('keydown', $event)"
   />
@@ -80,6 +83,7 @@ const onUpdateProperty = (v: DatabaseUnknownProperty) => {
     :class="propClass"
     :model-value="value"
     :property="property"
+    :autofocus="autofocus"
     @update:model-value="onUpdateValue"
   />
 
@@ -88,6 +92,7 @@ const onUpdateProperty = (v: DatabaseUnknownProperty) => {
     :class="propClass"
     :model-value="value"
     :property="property"
+    :autofocus="autofocus"
     @update:model-value="onUpdateValue"
     @keydown="emit('keydown', $event)"
   />
@@ -98,6 +103,7 @@ const onUpdateProperty = (v: DatabaseUnknownProperty) => {
     :value="value"
     :directory-path="path"
     :property="property"
+    :autofocus="autofocus"
     @update:value="onUpdateValue"
     @update:property="onUpdateProperty"
   >
