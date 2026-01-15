@@ -8,6 +8,7 @@ const { modelValue, property } = defineProps<{
   property: BooleanProperty;
   modelValue: unknown;
   disabled?: boolean;
+  autofocus?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -29,5 +30,6 @@ const value = computed({
     class="boolean-property-field"
     :indeterminate="property.indeterminate"
     :disabled="disabled"
+    :autofocus="autofocus"
   />
 </template>

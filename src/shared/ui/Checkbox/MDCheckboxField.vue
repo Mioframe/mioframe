@@ -8,6 +8,7 @@ defineProps<{
   indeterminate?: boolean;
   error?: boolean;
   readonly?: boolean;
+  autofocus?: boolean;
 }>();
 
 const modelValue = defineModel<boolean | undefined>();
@@ -24,6 +25,7 @@ const id = sessionUniqueId('BooleanPropertyField');
       :disabled="disabled"
       :error="error"
       :readonly="readonly"
+      :autofocus="autofocus"
     />
 
     <label class="md-boolean-field__label" :for="id">

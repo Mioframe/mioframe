@@ -172,12 +172,13 @@ const databaseViewLayoutRef = useTemplateRef('databaseViewLayoutRef');
       @cancel="isShowEditItemDialog = false"
       @updated="isShowEditItemDialog = false"
     >
-      <template #valueField="{ update, value, propertyId }">
+      <template #valueField="{ update, value, propertyId, index }">
         <ValueField
           :document-id="documentId"
           :property-id="propertyId"
           :value="value"
           :directory-path="path"
+          :autofocus="!index"
           @update:value="update"
         />
       </template>

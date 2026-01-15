@@ -14,6 +14,7 @@ const props = defineProps<{
   value: unknown;
   directoryPath: string;
   property: RelationProperty;
+  autofocus?: boolean;
 }>();
 
 const { directoryPath, value, property } = toRefs(props);
@@ -68,6 +69,7 @@ const viewId = computed(() => property.value.relation.viewId);
       :document-id="relationDocumentId"
       type="filter"
       :selected-id="viewId"
+      :autofocus="autofocus"
       @click="onClickViewChip"
     />
 

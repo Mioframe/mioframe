@@ -1,33 +1,39 @@
 <script setup lang="ts">
-import { computed, useTemplateRef } from 'vue';
+import { computed, toRefs, useTemplateRef, watch } from 'vue';
 import { useTextareaAutosize } from '@vueuse/core';
 import { toString } from 'es-toolkit/compat';
 import MDFieldContainer from './MDFieldContainer.vue';
 
-const { inputType = 'text', type = 'outlined' } = defineProps<{
-  labelText: string;
-  supportingText?: string;
-  type?: 'filled' | 'outlined';
-  disabled?: boolean;
-  error?: boolean;
-  maxCharacters?: number;
-  inputType?:
-    | 'color'
-    | 'date'
-    | 'datetime-local'
-    | 'email'
-    | 'month'
-    | 'number'
-    | 'password'
-    | 'search'
-    | 'tel'
-    | 'text'
-    | 'time'
-    | 'url'
-    | 'week'
-    | 'multiline';
-  readonly?: boolean;
-}>();
+const props = withDefaults(
+  defineProps<{
+    labelText: string;
+    supportingText?: string;
+    type?: 'filled' | 'outlined';
+    disabled?: boolean;
+    error?: boolean;
+    maxCharacters?: number;
+    inputType?:
+      | 'color'
+      | 'date'
+      | 'datetime-local'
+      | 'email'
+      | 'month'
+      | 'number'
+      | 'password'
+      | 'search'
+      | 'tel'
+      | 'text'
+      | 'time'
+      | 'url'
+      | 'week'
+      | 'multiline';
+    readonly?: boolean;
+    autofocus?: boolean;
+  }>(),
+  { inputType: 'text', type: 'outlined' },
+);
+
+const { inputType, type, autofocus } = toRefs(props);
 
 const slots = defineSlots<{
   leadingIcon(): unknown;
@@ -52,6 +58,16 @@ defineEmits<{
   focus: [e: FocusEvent];
   keydown: [payload: KeyboardEvent];
 }>();
+
+watch(
+  [inputRef, autofocus],
+  ([input, autofocus]) => {
+    if (autofocus && input instanceof HTMLElement) {
+      input.focus();
+    }
+  },
+  { immediate: true },
+);
 </script>
 
 <template>
