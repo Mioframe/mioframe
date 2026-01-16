@@ -8,6 +8,7 @@ import { usePermanentStorageRequest } from '@feature/permanentStorageRequest';
 import { useLocalSettings } from '@entity/localSettings';
 import { provideOverlayContainer } from '@shared/ui/Overlay';
 import { useMainContentAriaHidden } from '@shared/ui/AriaHidden';
+import { useFocusIndicator } from '@shared/ui/State/useFocusIndicator';
 
 const { addSnackbar } = useSnackbar();
 
@@ -28,6 +29,8 @@ void permanentStorageRequest();
 const { settings } = useLocalSettings();
 
 const mainAriaHidden = useMainContentAriaHidden();
+
+useFocusIndicator();
 </script>
 
 <template>
