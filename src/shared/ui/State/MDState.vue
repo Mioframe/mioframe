@@ -3,16 +3,9 @@
   lang="ts"
   generic="Is extends 'button' | 'a' | 'label' | 'div' | 'li' = 'div'"
 >
-import {
-  syncRef,
-  syncRefs,
-  tryOnScopeDispose,
-  useEventListener,
-  useVibrate,
-} from '@vueuse/core';
-import { useTemplateRef, computed, ref, watchEffect, watch } from 'vue';
+import { syncRef, syncRefs, useEventListener, useVibrate } from '@vueuse/core';
+import { useTemplateRef, computed, ref, watch } from 'vue';
 import { useFirstFocus } from '@shared/lib/useFirstFocus';
-import { useFocusIndicator } from './useFocusIndicator';
 import { useRipple } from './useRipple';
 import { usePressed } from './usePressed';
 import { useLastHover } from '@shared/lib/useLastHover';
@@ -72,16 +65,6 @@ const { focused: userFocused } = useFirstFocus(refEl, {
   focusVisible: true,
 });
 
-const { showFocus, removeFocus } = useFocusIndicator();
-
-watchEffect(() => {
-  if (userFocused.value) {
-    showFocus(refEl.value);
-  } else {
-    removeFocus(refEl.value);
-  }
-});
-
 syncRef(userFocused, focusedModel);
 
 useEventListener(refEl, 'mousedown', (e: MouseEvent) => {
@@ -120,10 +103,6 @@ useEventListener(refEl, ['dragend', 'touchend'], () => {
 });
 useEventListener(refEl, 'drop', () => {
   isDrag.value = false;
-});
-
-tryOnScopeDispose(() => {
-  removeFocus(refEl.value);
 });
 
 useRipple(computed(() => (enableRipple.value ? refEl.value : undefined)));

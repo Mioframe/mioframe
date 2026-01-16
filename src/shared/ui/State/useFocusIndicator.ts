@@ -1,71 +1,149 @@
-import { ref, watch } from 'vue';
 import './md-focus-indicator.css';
-import type { MaybeElement } from '@vueuse/core';
+import { shallowRef, watch } from 'vue';
 import {
   createGlobalState,
-  unrefElement,
+  onKeyStroke,
+  tryOnScopeDispose,
   useElementBounding,
+  useEventListener,
 } from '@vueuse/core';
-import { throttle } from 'es-toolkit';
 
-export const useFocusIndicator = createGlobalState(() => {
-  let indicatorEl: HTMLDivElement | undefined;
+const setupFocusIndicator = () => {
+  const isKeyboardNav = shallowRef<boolean>();
 
-  const mountedIndicator = () => {
-    if (!indicatorEl) {
-      indicatorEl = window.document.createElement('div');
-      indicatorEl.classList.add('md-focus-indicator');
-      window.document.body.append(indicatorEl);
-    }
+  onKeyStroke(
+    [
+      'Tab',
+      'ArrowUp',
+      'ArrowDown',
+      'ArrowLeft',
+      'ArrowRight',
+      'Home',
+      'End',
+      'PageUp',
+      'PageDown',
+      'Enter',
+      ' ',
+    ],
+    () => {
+      isKeyboardNav.value = true;
+    },
+    { passive: true },
+  );
 
-    return indicatorEl;
+  useEventListener(
+    ['mousedown', 'touchstart', 'pointerdown'],
+    () => {
+      isKeyboardNav.value = false;
+    },
+    { passive: true, capture: true },
+  );
+
+  const focusedEl = shallowRef<HTMLElement>();
+
+  useEventListener(
+    'focusin',
+    ({ target }) => {
+      if (isKeyboardNav.value && target instanceof HTMLElement) {
+        focusedEl.value = target;
+      }
+    },
+    { passive: true },
+  );
+
+  const indicatorElement = document.createElement('div');
+  indicatorElement.classList.add('md-focus-indicator');
+  document.body.appendChild(indicatorElement);
+
+  const hideIndicator = () => {
+    indicatorElement.style.opacity = '0';
   };
 
-  const targetRef = ref<MaybeElement>();
+  const showIndicator = () => {
+    indicatorElement.style.opacity = '1';
+  };
 
-  const { top, left, width, height } = useElementBounding(targetRef);
+  const moveIndicator = ({
+    top,
+    left,
+    width,
+    height,
+  }: {
+    top: number;
+    left: number;
+    width: number;
+    height: number;
+  }) => {
+    indicatorElement.style.top = `${top}px`;
+    indicatorElement.style.left = `${left}px`;
+    indicatorElement.style.width = `${width}px`;
+    indicatorElement.style.height = `${height}px`;
+  };
+
+  const { top, left, width, height } = useElementBounding(focusedEl, {
+    immediate: true,
+    updateTiming: 'next-frame',
+    reset: false,
+  });
+
+  useEventListener(window, 'blur', () => {
+    focusedEl.value = undefined;
+  });
+
+  const borderRadius = shallowRef<string>();
 
   watch(
-    [targetRef, top, left, width, height],
-    throttle(() => {
-      const targetEl = unrefElement(targetRef);
+    focusedEl,
+    (focusedEl) => {
       if (
-        targetEl &&
-        width.value &&
-        height.value &&
-        (top.value || left.value)
+        focusedEl &&
+        !focusedEl.classList.contains('md-focus-indicator_hidden')
       ) {
-        const el = mountedIndicator();
-        el.style.top = `${top.value}px`;
-        el.style.left = `${left.value}px`;
-        el.style.width = `${width.value}px`;
-        el.style.height = `${height.value}px`;
-        const borderRadius = getComputedStyle(targetEl).borderRadius;
-        el.style.borderRadius = borderRadius;
-        el.style.opacity = '1';
+        showIndicator();
+        const styles = getComputedStyle(focusedEl);
+        borderRadius.value = styles.borderRadius;
       } else {
-        const el = mountedIndicator();
-        el.style.opacity = '0';
+        hideIndicator();
       }
-    }, 1e3 / 30),
+    },
     { immediate: true },
   );
 
-  const showFocus = (targetEl: MaybeElement) => {
-    targetRef.value = targetEl;
-    return () => {
-      removeFocus(targetEl);
-    };
-  };
+  watch(
+    borderRadius,
+    (borderRadius) => {
+      indicatorElement.style.borderRadius = borderRadius ?? '';
+    },
+    { immediate: true },
+  );
 
-  const removeFocus = (targetEl: MaybeElement) => {
-    if (targetRef.value === targetEl) {
-      targetRef.value = undefined;
-    }
-  };
+  watch(
+    [top, left, width, height],
+    ([top, left, width, height]) => {
+      moveIndicator({ top, left, width, height });
+    },
+    {
+      immediate: true,
+    },
+  );
 
-  return {
-    showFocus,
-    removeFocus,
-  };
-});
+  watch(
+    isKeyboardNav,
+    (isKeyboardNav) => {
+      if (isKeyboardNav) {
+        showIndicator();
+      } else {
+        hideIndicator();
+      }
+    },
+    {
+      immediate: true,
+    },
+  );
+
+  tryOnScopeDispose(() => {
+    indicatorElement.remove();
+  });
+};
+
+export const useFocusIndicator = createGlobalState(setupFocusIndicator);
