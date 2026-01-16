@@ -5,7 +5,6 @@ import { zodIs } from '@shared/lib/validateZodScheme';
 import ValueInline from './ValueInline.vue';
 import { isEqual, isUndefined } from 'es-toolkit';
 import ValueField from './ValueField.vue';
-import { useFirstFocus } from '@shared/lib/useFirstFocus';
 import type { DatabaseItemId } from '@shared/lib/databaseDocument';
 import {
   type DatabasePropertyId,
@@ -87,8 +86,6 @@ const onClick = async () => {
   showEditForm.value = true;
 };
 
-const refPopover = useTemplateRef('refPopover');
-
 const closeEditor = () => {
   showEditForm.value = false;
 };
@@ -98,8 +95,6 @@ watch(showEditForm, async (showEditForm) => {
     await tryEmitValue();
   }
 });
-
-useFirstFocus(refPopover, { initialValue: true });
 
 const inlineEl = useTemplateRef<MaybeElement>('inlineEl');
 
@@ -133,13 +128,14 @@ const onUpdateProperty = (v: DatabaseUnknownProperty) => {
     :target-element="inlineEl"
     @interaction-outside="closeEditor"
   >
-    <div ref="refPopover" class="editable-inline-value__edit-popover">
+    <div class="editable-inline-value__edit-popover">
       <ValueField
         v-model:value="stateValue"
         class="editable-inline-value__value-field"
         :directory-path="path"
         :document-id="documentId"
         :property-id="propertyId"
+        autofocus
         @keydown.enter="closeEditor"
         @update:property="onUpdateProperty"
       />
