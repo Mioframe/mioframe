@@ -93,6 +93,7 @@ const onUpdateProperty = (v: DatabaseUnknownProperty) => {
         v-model:model-value="propertyState.name"
         label-text="Name"
         class="database-property-creation__field"
+        autofocus
       />
 
       <slot
