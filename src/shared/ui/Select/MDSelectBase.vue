@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, toRefs, useTemplateRef } from 'vue';
 import { onKeyStroke, useFocusWithin, type MaybeElement } from '@vueuse/core';
-import { MDMenu } from '../Menu';
+import { MDMenuBase } from '../Menu';
 import { MDSymbol } from '../Icon';
 import { MDFieldContainer } from '../TextField';
 import { MDChip } from '../Chips';
@@ -163,7 +163,7 @@ const selectId = sessionUniqueId('select');
       </template>
     </MDFieldContainer>
 
-    <MDMenu
+    <MDMenuBase
       v-model:show="showMenu"
       :target="fieldContainerRef"
       role="listbox"
@@ -172,7 +172,7 @@ const selectId = sessionUniqueId('select');
       <template #default>
         <slot name="options" />
       </template>
-    </MDMenu>
+    </MDMenuBase>
   </div>
 </template>
 

@@ -1,30 +1,9 @@
 <script setup lang="ts" generic="T extends MenuButtonDescription<T>">
 import type { MaybeElement } from '@vueuse/core';
-import {
-  computed,
-  nextTick,
-  ref,
-  toRefs,
-  useTemplateRef,
-  watch,
-  watchEffect,
-} from 'vue';
-import {
-  tryOnBeforeUnmount,
-  unrefElement,
-  useEventListener,
-} from '@vueuse/core';
-import { MDListContainer } from '../Lists';
+import { ref, toRefs } from 'vue';
 import type { MenuButtonDescription, MenuButtonList } from './types';
-import { onInteractionOutside } from '@shared/lib/onInteractionOutside';
-import { useFocusTrap } from '@vueuse/integrations/useFocusTrap';
-import { autoUpdate, flip, shift, size, useFloating } from '@floating-ui/vue';
 import MDMenuItem from './MDMenuItem.vue';
-import { TeleportContainer } from '@shared/lib/teleportContainer';
-import { useOverlayContainer } from '../Overlay';
-import { useProvideFocusRegister } from './focusProvider';
-import { useFastKeyboardInput } from '@shared/lib/useFastKeyboardInput';
-import { useMatchSorter } from '@shared/lib/useMatchSorter';
+import MDMenuBase from './MDMenuBase.vue';
 
 const props = withDefaults(
   defineProps<{
@@ -53,178 +32,33 @@ const emit = defineEmits<{
 
 const showModel = defineModel<boolean>('show', { required: true });
 
-defineSlots<{
-  default: () => unknown;
-}>();
-
 const onClickItem = (menuItem: T) => {
   emit('click', menuItem);
 };
-
-const listContainerRef = useTemplateRef<MaybeElement>('listContainerRef');
-
-const listContainerEl = computed(() => {
-  const el = unrefElement(listContainerRef);
-  if (el instanceof HTMLElement) {
-    return el;
-  }
-  return undefined;
-});
-
-const { floatingStyles: containerStyle, update } = useFloating(
-  target,
-  listContainerEl,
-  {
-    strategy: 'fixed',
-    transform: false,
-    placement,
-    middleware: [
-      flip({
-        padding: 16,
-      }),
-      shift({ padding: 16, crossAxis: true }),
-      size({
-        padding: 16,
-        apply({
-          elements,
-          rects: {
-            reference: { width },
-          },
-          availableHeight,
-        }) {
-          Object.assign(elements.floating.style, {
-            minWidth: `${width}px`,
-            maxHeight: `${availableHeight}px`,
-          });
-        },
-      }),
-    ],
-    whileElementsMounted: autoUpdate,
-  },
-);
-
-useEventListener(window.visualViewport, 'resize', update);
-
-const targetTeleport = useOverlayContainer();
-
-const ignoreElements = computed(() => {
-  if (outsideIgnore.value) {
-    return [target.value, ...outsideIgnore.value];
-  }
-  return [target.value];
-});
-
-onInteractionOutside(
-  listContainerRef,
-  () => {
-    emit('interactionOutside');
-    showModel.value = false;
-  },
-  {
-    ignore: ignoreElements,
-  },
-);
-
-const { activate: activateMenuFocusTrap, deactivate: deactivateMenuFocusTrap } =
-  useFocusTrap(listContainerEl, {
-    allowOutsideClick: true,
-    isKeyForward: ({ key }) => ['Tab', 'ArrowDown', 'ArrowRight'].includes(key),
-    isKeyBackward: ({ key }) => ['ArrowUp', 'ArrowLeft'].includes(key),
-    onDeactivate: () => {
-      emit('deactivateFocus');
-    },
-  });
-
-watch(
-  [showModel, listContainerEl],
-  async ([showQuery]) => {
-    if (showQuery) {
-      await nextTick();
-      if (listContainerEl.value) {
-        activateMenuFocusTrap();
-      }
-    } else {
-      deactivateMenuFocusTrap();
-    }
-  },
-  { immediate: true, flush: 'post' },
-);
-
-tryOnBeforeUnmount(deactivateMenuFocusTrap);
-
-const focusRegister = useProvideFocusRegister();
-
-const searchList = computed(() => Array.from(focusRegister.keys()));
-
-const keyboardInput = useFastKeyboardInput();
-
-const matchedText = useMatchSorter(searchList, keyboardInput);
-
-const firstMatchText = computed(() => matchedText.value?.at(0));
-
-watchEffect(() => {
-  if (showModel.value && firstMatchText.value) {
-    focusRegister.get(firstMatchText.value)?.();
-  }
-});
 
 const showSubmenu = ref<boolean>();
 </script>
 
 <template>
-  <TeleportContainer
-    :to="targetTeleport"
-    :disabled="disabledTeleport"
-    :container="listContainerRef"
+  <MDMenuBase
+    v-model:show="showModel"
+    :target="target"
+    :transition="transition"
+    :outside-ignore="outsideIgnore"
+    :disabled-teleport="disabledTeleport"
+    :placement="placement"
+    :aria-label="ariaLabel"
+    :role="role"
+    @deactivate-focus="emit('deactivateFocus')"
+    @interaction-outside="emit('interactionOutside')"
   >
-    <MDListContainer
-      is="div"
-      v-if="showModel"
-      ref="listContainerRef"
-      class="md md-menu"
-      :style="containerStyle"
-      :transition="transition"
-      :aria-label="ariaLabel"
-      :role="role"
-    >
-      <slot>
-        <MDMenuItem
-          v-for="item in btns"
-          :key="item.key"
-          :item="item"
-          :role="role === 'listbox' ? 'option' : undefined"
-          @click="onClickItem"
-          @update:show-submenu="showSubmenu = $event"
-        />
-      </slot>
-    </MDListContainer>
-  </TeleportContainer>
+    <MDMenuItem
+      v-for="item in btns"
+      :key="item.key"
+      :item="item"
+      :role="role === 'listbox' ? 'option' : undefined"
+      @click="onClickItem"
+      @update:show-submenu="showSubmenu = $event"
+    />
+  </MDMenuBase>
 </template>
-
-<style lang="css" scoped>
-.md-menu {
-  position: fixed;
-  z-index: 2;
-  overflow-y: auto;
-  pointer-events: all;
-
-  border-radius: var(--md-sys-shape-corner-extra-small);
-  box-shadow: var(--md-sys-elevation-level2);
-  --md-container-color: var(--md-sys-color-surface-container);
-  display: flex;
-  flex-direction: column;
-
-  --md-list-container-border-radius: 0px;
-
-  --md-list-item-horizontal-gap: 12px;
-  --md-list-item-min-height: 48px;
-
-  --md-list-item-container-color: var(--md-container-color);
-
-  :deep() {
-    .md-list-item__headline::first-letter {
-      text-transform: uppercase;
-    }
-  }
-}
-</style>

@@ -10,7 +10,7 @@ import {
 import { MDSymbol } from '@shared/ui/Icon';
 import type { MaybeElement } from '@vueuse/core';
 import { MDButton, MDIconButton } from '@shared/ui/Button';
-import { MDMenu } from '@shared/ui/Menu';
+import { MDMenuBase } from '@shared/ui/Menu';
 import { difference } from 'es-toolkit';
 import { useSortableListener } from '@shared/lib/sortable/useSortable';
 import { useDatabaseProperties } from '@entity/databaseProperty';
@@ -117,7 +117,7 @@ const onClickRemoveItem = async (propertyId: DatabasePropertyId) => {
       </MDButton>
     </div>
 
-    <MDMenu
+    <MDMenuBase
       v-if="propertyWithoutSorting.length"
       v-model:show="isShowAddSortingMenu"
       :target="addSortingBtn"
@@ -131,7 +131,7 @@ const onClickRemoveItem = async (propertyId: DatabasePropertyId) => {
         :document-id="documentId"
         @click="onClickAddSortingMenu(propertyId)"
       />
-    </MDMenu>
+    </MDMenuBase>
   </section>
 </template>
 
