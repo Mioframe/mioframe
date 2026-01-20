@@ -6,7 +6,7 @@ import type {
   DatabaseViewId,
 } from '@shared/lib/databaseDocument';
 import { computed, shallowRef, toRefs, useTemplateRef } from 'vue';
-import { defineMenuButtonList, MDContextMenuBtn } from '@shared/ui/Menu';
+import { defineMenuButtonList, MDContextMenuButton } from '@shared/ui/Menu';
 import type { AMDocumentId } from '@shared/lib/automerge/automergeTypes';
 import EditableInlineValue from './EditableInlineValue.vue';
 import { useSnackbar } from '@shared/ui/Snackbar';
@@ -148,7 +148,7 @@ const databaseViewLayoutRef = useTemplateRef('databaseViewLayoutRef');
       </template>
 
       <template #action="{ itemId }">
-        <MDContextMenuBtn
+        <MDContextMenuButton
           :btns="itemContextualButtons"
           @click="onClickItemContextBtn($event, itemId)"
         />
