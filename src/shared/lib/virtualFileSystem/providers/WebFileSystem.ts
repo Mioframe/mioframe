@@ -8,15 +8,6 @@ import {
   type IFileSystemProvider,
 } from '../IFileSystemProvider';
 
-declare global {
-  interface FileSystemHandle {
-    move?(
-      destination: FileSystemDirectoryHandle,
-      newName: string,
-    ): Promise<void>;
-  }
-}
-
 export class WebFileSystem implements IFileSystemProvider {
   private events = new EventEmitter();
 

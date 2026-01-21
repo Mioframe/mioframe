@@ -13,15 +13,6 @@ import {
 } from '../virtualFileSystem';
 import type { WriteOptions } from '../virtualFileSystem/IFileSystemProvider';
 
-declare global {
-  interface FileSystemHandle {
-    move?(
-      destination: FileSystemDirectoryHandle,
-      newName: string,
-    ): Promise<void>;
-  }
-}
-
 export class WebFileSystem implements IFileSystemProvider {
   private events = new EventEmitter();
 

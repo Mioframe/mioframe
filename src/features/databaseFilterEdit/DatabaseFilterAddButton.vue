@@ -1,5 +1,8 @@
 <script setup lang="ts">
-import { useDatabaseProperties } from '@entity/databaseProperty';
+import {
+  DatabasePropertyMenuItem,
+  useDatabaseProperties,
+} from '@entity/databaseProperty';
 import type { AMDocumentId } from '@shared/lib/automerge';
 import { MDButton } from '@shared/ui/Button';
 import { MDSymbol } from '@shared/ui/Icon';
@@ -34,8 +37,15 @@ const { propertiesIdList } = useDatabaseProperties(path, documentId);
 
   <MDMenuBase v-model:show="showMenu" :target="addButton">
     <template v-for="propertyId in propertiesIdList" :key="propertyId">
-      <!-- <MDMenuItemBase /> -->
-      <!-- todo: создать PropertyMenuItemBase -->
+      <DatabasePropertyMenuItem
+        :path="path"
+        :document-id="documentId"
+        :property-id="propertyId"
+      >
+        <template #submenu>
+          <!--  -->
+        </template>
+      </DatabasePropertyMenuItem>
     </template>
   </MDMenuBase>
 </template>

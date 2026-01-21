@@ -9,9 +9,11 @@ export const clearAll = () => {
     window.localStorage.clear();
     window.sessionStorage.clear();
 
-    const rootOpfs = await navigator.storage.getDirectory(); // корневая папка OPFS
-    for await (const [name] of rootOpfs.entries()) {
-      await rootOpfs.removeEntry(name, { recursive: true });
+    if (navigator.storage) {
+      const rootOpfs = await navigator.storage.getDirectory(); // корневая папка OPFS
+      for await (const [name] of rootOpfs.entries()) {
+        await rootOpfs.removeEntry(name, { recursive: true });
+      }
     }
   });
 };

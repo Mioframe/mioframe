@@ -37,7 +37,7 @@
     // "exactOptionalPropertyTypes": true // todo: turn on with refactoring
     "noImplicitOverride": true
   },
-  "include": ["env.d.ts", "src/**/*.ts", "src/**/*.vue"],
+  "include": ["env.d.ts", "src/**/*.ts", "src/**/*.d.ts", "src/**/*.vue"],
   "exclude": ["src/**/*.cy.ts"],
   "vueCompilerOptions": {
     // "strictTemplates": true,
