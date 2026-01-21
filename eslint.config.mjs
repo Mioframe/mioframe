@@ -2,6 +2,7 @@ import { defineConfig } from 'eslint/config';
 import { config, createGlobFileList } from '@vyachean/eslint-config';
 import { dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import compat from 'eslint-plugin-compat';
 
 const currentDirectory = dirname(fileURLToPath(import.meta.url));
 
@@ -35,6 +36,7 @@ const eslintConfig = defineConfig([
       ],
     },
   },
+  compat.configs['flat/recommended'],
 ]);
 
 export default eslintConfig;

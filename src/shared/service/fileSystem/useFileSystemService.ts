@@ -55,13 +55,14 @@ const setupFileSystemService = () => {
   void vfs.createDirectory('/temp');
 
   const mountOpfs = async () => {
-    const fileSystemDirectoryHandle = await navigator.storage.getDirectory();
+    const fileSystemDirectoryHandle = await navigator.storage?.getDirectory();
+    if (fileSystemDirectoryHandle) {
+      const mountedPath = PathUtils.join('/', OPFSName);
 
-    const mountedPath = PathUtils.join('/', OPFSName);
+      await vfs.createDirectory(mountedPath);
 
-    await vfs.createDirectory(mountedPath);
-
-    mountFSDirectoryHandle(mountedPath, fileSystemDirectoryHandle);
+      mountFSDirectoryHandle(mountedPath, fileSystemDirectoryHandle);
+    }
   };
 
   void mountOpfs();

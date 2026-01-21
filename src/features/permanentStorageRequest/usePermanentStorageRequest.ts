@@ -4,7 +4,7 @@ export const usePermanentStorageRequest = () => {
   const { alert } = useDialog();
 
   const permanentStorageRequest = async () => {
-    const persistent = await navigator.storage.persisted();
+    const persistent = await navigator.storage?.persisted();
     if (!persistent) {
       await alert(
         'Protect Your Stored Files from Deletion',
@@ -12,7 +12,7 @@ export const usePermanentStorageRequest = () => {
         'Ok',
         'warning',
       );
-      const result = await navigator.storage.persist();
+      const result = await navigator.storage?.persist();
       if (!result) {
         await alert(
           'Important: Your Storage is Temporary',
