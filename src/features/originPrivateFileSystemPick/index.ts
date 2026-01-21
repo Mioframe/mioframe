@@ -1,1 +1,0 @@
-export { useOriginPrivateFSDirectory } from './useOPFS';
