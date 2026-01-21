@@ -6,7 +6,7 @@ import type { ClientObject } from '../proxyService';
 export const transformers = [
   defineTransformer('FileSystemHandle', {
     isApplicable: (v): v is FileSystemHandle => {
-      if ('FileSystemHandle' in global) {
+      if ('FileSystemHandle' in globalThis) {
         return v instanceof FileSystemHandle;
       }
 
