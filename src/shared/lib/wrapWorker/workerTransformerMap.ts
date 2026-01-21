@@ -5,7 +5,13 @@ import type { ClientObject } from '../proxyService';
 
 export const transformers = [
   defineTransformer('FileSystemHandle', {
-    isApplicable: (v): v is FileSystemHandle => v instanceof FileSystemHandle,
+    isApplicable: (v): v is FileSystemHandle => {
+      if ('FileSystemHandle' in global) {
+        return v instanceof FileSystemHandle;
+      }
+
+      return false;
+    },
     serialize: (_p, v) => v,
     deserialize: (_p, v) => v,
   }),
