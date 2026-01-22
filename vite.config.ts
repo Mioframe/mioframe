@@ -20,12 +20,16 @@ export default defineConfig(({ mode, isPreview }) => {
       ? [
           VitePWA({
             manifest: {
-              theme_color: undefined,
-              background_color: undefined,
+              theme_color: '#000',
+              background_color: '#000',
             },
             workbox: {
               runtimeCaching: cachePreset,
               maximumFileSizeToCacheInBytes: 10e6,
+            },
+            pwaAssets: {
+              config: true,
+              overrideManifestIcons: true,
             },
           }),
         ]
@@ -61,6 +65,7 @@ export default defineConfig(({ mode, isPreview }) => {
     worker: {
       format: 'es',
       plugins: (): PluginOption[] => [
+        // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- vite-plugin-wasm don't have types
         wasm() as PluginOption,
         topLevelAwait(),
         vue(),
