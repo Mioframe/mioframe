@@ -22,9 +22,9 @@ import { moveArrayValue } from '@shared/lib/moveArrayValue';
 import type { PatchSource } from '@shared/lib/changeObject';
 import { deepPatchJsonObject } from '@shared/lib/changeObject';
 import { useDatabaseViewSortService } from './databaseViewSortService';
-import { useDatabaseViewFilterService } from './databaseViewFilterService';
+import { setupDatabaseViewFilterService } from './databaseViewFilterService';
 
-export const useDatabaseViewsService = (
+export const setupDatabaseViewsService = (
   getDatabaseBody: (
     path: string,
     documentId: AMDocumentId,
@@ -163,6 +163,6 @@ export const useDatabaseViewsService = (
     patch,
 
     sorting: useDatabaseViewSortService(getView, change),
-    filter: useDatabaseViewFilterService(getView, change),
+    filter: setupDatabaseViewFilterService(getView, change),
   };
 };

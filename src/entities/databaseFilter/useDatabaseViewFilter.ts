@@ -1,8 +1,12 @@
 import type { Ref } from 'vue';
 import type { AMDocumentId } from '@shared/lib/automerge';
-import type { DatabaseViewId } from '@shared/lib/databaseDocument';
+import type {
+  DatabaseFilter,
+  DatabaseViewId,
+} from '@shared/lib/databaseDocument';
 import { useMainService } from '@shared/service';
 import { useLiveResource } from '@shared/lib/useLiveResource';
+import type { PatchSource } from '@shared/lib/changeObject';
 
 export const useDatabaseViewFilter = (
   path: Ref<string>,
@@ -12,7 +16,7 @@ export const useDatabaseViewFilter = (
   const {
     databaseDocument: {
       views: {
-        filter: { get },
+        filter: { get, patch, remove },
       },
       onChangeDocument,
     },
@@ -42,5 +46,14 @@ export const useDatabaseViewFilter = (
     errorMessage,
     isLoading,
     isReady,
+    patch: async (source: PatchSource<DatabaseFilter>) => {
+      await patch(path.value, documentId.value, viewId.value, source);
+    },
+
+    remove: async (sourcePath: PropertyKey[]) => {
+      if (sourcePath.length) {
+        await remove(path.value, documentId.value, viewId.value, sourcePath);
+      }
+    },
   };
 };

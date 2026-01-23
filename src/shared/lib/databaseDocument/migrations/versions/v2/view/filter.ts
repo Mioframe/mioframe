@@ -65,10 +65,9 @@ export const zodDatabaseNestedFilter = z.union([
 
 export type DatabaseNestedFilter = z.output<typeof zodDatabaseNestedFilter>;
 
-export const zodDatabaseLogicalFilterList = z.array(
-  zodDatabaseNestedFilter,
-  'Invalid DatabaseLogicalFilterList',
-);
+export const zodDatabaseLogicalFilterList = z
+  .array(zodDatabaseNestedFilter, 'Invalid DatabaseLogicalFilterList')
+  .check(z.minLength(1, 'DatabaseLogicalFilterList must be a nonempty'));
 
 export type DatabaseLogicalFilterList = DatabaseNestedFilter[];
 

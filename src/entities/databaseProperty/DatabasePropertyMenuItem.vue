@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import type { DatabasePropertyId } from '@shared/lib/databaseDocument';
 import { computed, toRefs } from 'vue';
+import type { DatabasePropertyId } from '@shared/lib/databaseDocument';
 import { useDatabaseProperty } from './useDatabaseProperty';
 import type { AMDocumentId } from '@shared/lib/automerge';
 import { MDMenuItemBase } from '@shared/ui/Menu';
@@ -16,7 +16,7 @@ const { path, documentId, propertyId } = toRefs(props);
 
 const showSubmenu = defineModel<boolean>('showSubmenu');
 
-defineSlots<{
+const slots = defineSlots<{
   submenu: () => unknown;
 }>();
 
@@ -31,7 +31,7 @@ const label = computed(() => property.value?.name ?? 'unknown property');
     :label="label"
     :role="role"
   >
-    <template #submenu>
+    <template v-if="slots.submenu" #submenu>
       <slot name="submenu" />
     </template>
   </MDMenuItemBase>

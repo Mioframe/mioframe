@@ -12,6 +12,13 @@ const props = defineProps<{
   parentProperty?: string;
 }>();
 
+defineSlots<{
+  property: (p: { property: string }) => unknown;
+  value: (p: { value: unknown }) => unknown;
+  objectAppend: (p: { path: PropertyKey[] }) => unknown;
+  groupAppend: (p: { path: PropertyKey[] }) => unknown;
+}>();
+
 const keyList = computed(() => keys(props.query));
 
 const firstKey = computed(() => keyList.value.at(0));
@@ -26,7 +33,25 @@ const firstKey = computed(() => keyList.value.at(0));
         :query-key="queryKey"
         :parent-property="parentProperty"
         :value="value"
-      />
+      >
+        <template #property="{ property: sProperty }">
+          <slot name="property" :property="sProperty" />
+        </template>
+
+        <template #value="{ value: sValue }">
+          <slot name="value" :value="sValue" />
+        </template>
+
+        <template #objectAppend="{ path }">
+          <slot name="objectAppend" :path="[queryKey, ...path]" />
+        </template>
+
+        <template #groupAppend="{ path }">
+          <slot name="groupAppend" :path="[queryKey, ...path]" />
+        </template>
+      </QueryObjectEntry>
     </template>
+
+    <slot name="objectAppend" :path="[]" />
   </QueryContainer>
 </template>

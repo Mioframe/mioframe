@@ -1,9 +1,14 @@
 <script setup lang="ts">
 import { QueryRoot } from '@shared/ui/Query';
 import type { AMDocumentId } from '@shared/lib/automerge';
-import type { DatabaseViewId } from '@shared/lib/databaseDocument';
+import {
+  zodDatabasePropertyId,
+  type DatabasePropertyId,
+  type DatabaseViewId,
+} from '@shared/lib/databaseDocument';
 import { useDatabaseViewFilter } from './useDatabaseViewFilter';
-import { toRefs } from 'vue';
+import { computed, toRefs } from 'vue';
+import { zodIs } from '@shared/lib/validateZodScheme';
 
 const props = defineProps<{
   directoryPath: string;
@@ -14,8 +19,11 @@ const props = defineProps<{
 const { directoryPath, documentId, viewId } = toRefs(props);
 
 defineSlots<{
-  property: (p: { property: string }) => unknown;
+  property: (p: { propertyId: DatabasePropertyId }) => unknown;
   value: (p: { value: unknown }) => unknown;
+  objectAppend: (p: { path: PropertyKey[] }) => unknown;
+  groupAppend: (p: { path: PropertyKey[] }) => unknown;
+  append: () => unknown;
 }>();
 
 const { filterQuery } = useDatabaseViewFilter(
@@ -24,12 +32,33 @@ const { filterQuery } = useDatabaseViewFilter(
   viewId,
 );
 
-// TODO: добавить интеграцию свойств из документов
-// TODO: добавить слоты для действий
+const query = computed(() => filterQuery.value ?? {});
 </script>
 
 <template>
   <div class="filter-query">
-    <QueryRoot v-if="filterQuery" :query="filterQuery" />
+    <QueryRoot :query="query">
+      <template #property="{ property: sProperty }">
+        <slot
+          v-if="zodIs(sProperty, zodDatabasePropertyId)"
+          name="property"
+          :property-id="sProperty"
+        />
+      </template>
+
+      <template #value="{ value: sValue }">
+        <slot name="value" :value="sValue" />
+      </template>
+
+      <template #objectAppend="{ path }">
+        <slot name="objectAppend" :path="path" />
+      </template>
+
+      <template #groupAppend="{ path }">
+        <slot name="groupAppend" :path="path" />
+      </template>
+    </QueryRoot>
+
+    <slot name="append" />
   </div>
 </template>

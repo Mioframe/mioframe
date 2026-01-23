@@ -5,19 +5,25 @@ import { TeleportContainer } from '@shared/lib/teleportContainer';
 import DialogForm from './DialogForm.vue';
 import type { MaybeElement } from '@vueuse/core';
 
-defineProps<{
-  /**
-   * unique dialog title
-   */
-  headline: string;
-  supportingText: string;
-  type?: 'basic' | 'full-screen';
-  cancelLabel?: string;
-  applyLabel: string;
-  hasCancelAction?: boolean;
-  loading?: boolean | number;
-  class?: unknown;
-}>();
+withDefaults(
+  defineProps<{
+    /**
+     * unique dialog title
+     */
+    headline: string;
+    supportingText: string;
+    type?: 'basic' | 'full-screen';
+    cancelLabel?: string;
+    applyLabel?: string;
+    hasCancelAction?: boolean;
+    loading?: boolean | number;
+    // eslint-disable-next-line vue/no-unused-properties -- component don't support inheritance of classes
+    class?: never;
+  }>(),
+  {
+    applyLabel: 'Apply',
+  },
+);
 
 const slots = defineSlots<{
   default(): unknown;
