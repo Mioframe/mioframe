@@ -4,8 +4,7 @@ import type { DatabaseViewId } from '@shared/lib/databaseDocument';
 import { MD_SYS_TYPESCALE } from '@shared/lib/md';
 import { MDBottomSheet, MDBottomSheetSection } from '@shared/ui/Sheets';
 import { toRefs } from 'vue';
-import ValueField from './ValueField.vue';
-import { DatabaseFilterQuery } from '@entity/databaseFilter';
+import { DatabaseFilterForm } from '@feature/databaseFilterEdit';
 
 const props = defineProps<{
   directoryPath: string;
@@ -35,22 +34,11 @@ const onUpdateCollapsed = (collapsed: boolean) => {
       <span :class="MD_SYS_TYPESCALE.title.small">Filters</span>
 
       <div class="db-filters-sheet__filters">
-        <DatabaseFilterQuery
-          :directory-path="directoryPath"
+        <DatabaseFilterForm
+          :path="directoryPath"
           :document-id="documentId"
           :view-id="viewId"
-          class="db-filters-sheet__root-filter"
-        >
-          <template #valueField="{ update, value, propertyId }">
-            <ValueField
-              :document-id="documentId"
-              :property-id="propertyId"
-              :value="value"
-              :directory-path="directoryPath"
-              @update:value="update"
-            />
-          </template>
-        </DatabaseFilterQuery>
+        />
       </div>
     </MDBottomSheetSection>
   </MDBottomSheet>

@@ -16,10 +16,10 @@ import {
 import { queryIdList } from './data/queryData';
 import { DomainError } from '@shared/lib/error';
 import type { Query } from 'sift';
-import { useDatabaseViewsService } from './view/databaseViewsService';
+import { setupDatabaseViewsService } from './view/databaseViewsService';
 import { deepPutJsonObject } from '@shared/lib/changeObject';
 
-export const useDatabaseDataService = (
+export const setupDatabaseDataService = (
   getDatabaseBody: (
     path: string,
     documentId: AMDocumentId,
@@ -73,7 +73,7 @@ export const useDatabaseDataService = (
     return body?.data;
   };
 
-  const { getView } = useDatabaseViewsService(
+  const { getView } = setupDatabaseViewsService(
     getDatabaseBody,
     changeDatabaseState,
   );

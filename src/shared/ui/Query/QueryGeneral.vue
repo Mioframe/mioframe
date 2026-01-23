@@ -14,6 +14,13 @@ defineProps<{
   parentOperator: ValueOf<typeof OPERATOR>;
   property?: string;
 }>();
+
+defineSlots<{
+  property: (p: { property: string }) => unknown;
+  value: (p: { value: unknown }) => unknown;
+  objectAppend: (p: { path: PropertyKey[] }) => unknown;
+  groupAppend: (p: { path: PropertyKey[] }) => unknown;
+}>();
 </script>
 
 <template>
@@ -24,7 +31,23 @@ defineProps<{
       :array="value"
       :property="property"
       :parent-operator="parentOperator"
-    />
+    >
+      <template #property="{ property: sProperty }">
+        <slot name="property" :property="sProperty" />
+      </template>
+
+      <template #value="{ value: sValue }">
+        <slot name="value" :value="sValue" />
+      </template>
+
+      <template #objectAppend="{ path }">
+        <slot name="objectAppend" :path="path" />
+      </template>
+
+      <template #groupAppend="{ path }">
+        <slot name="groupAppend" :path="path" />
+      </template>
+    </QueryGroup>
 
     <QueryGroup
       v-else-if="operator === OPERATOR.$and && isArray(value)"
@@ -32,7 +55,23 @@ defineProps<{
       :array="value"
       :property="property"
       :parent-operator="parentOperator"
-    />
+    >
+      <template #property="{ property: sProperty }">
+        <slot name="property" :property="sProperty" />
+      </template>
+
+      <template #value="{ value: sValue }">
+        <slot name="value" :value="sValue" />
+      </template>
+
+      <template #objectAppend="{ path }">
+        <slot name="objectAppend" :path="path" />
+      </template>
+
+      <template #groupAppend="{ path }">
+        <slot name="groupAppend" :path="path" />
+      </template>
+    </QueryGroup>
 
     <QueryGroup
       v-else-if="operator === OPERATOR.$in && isArray(value)"
@@ -40,7 +79,23 @@ defineProps<{
       :array="value"
       :property="property"
       :parent-operator="parentOperator"
-    />
+    >
+      <template #property="{ property: sProperty }">
+        <slot name="property" :property="sProperty" />
+      </template>
+
+      <template #value="{ value: sValue }">
+        <slot name="value" :value="sValue" />
+      </template>
+
+      <template #objectAppend="{ path }">
+        <slot name="objectAppend" :path="path" />
+      </template>
+
+      <template #groupAppend="{ path }">
+        <slot name="groupAppend" :path="path" />
+      </template>
+    </QueryGroup>
 
     <QueryGroup
       v-else-if="operator === OPERATOR.$nin && isArray(value)"
@@ -48,7 +103,23 @@ defineProps<{
       :array="value"
       :property="property"
       :parent-operator="OPERATOR.$ne"
-    />
+    >
+      <template #property="{ property: sProperty }">
+        <slot name="property" :property="sProperty" />
+      </template>
+
+      <template #value="{ value: sValue }">
+        <slot name="value" :value="sValue" />
+      </template>
+
+      <template #objectAppend="{ path }">
+        <slot name="objectAppend" :path="path" />
+      </template>
+
+      <template #groupAppend="{ path }">
+        <slot name="groupAppend" :path="path" />
+      </template>
+    </QueryGroup>
 
     <template v-else-if="operator === OPERATOR.$nor && isArray(value)">
       <OperatorLabel :operator="OPERATOR.$not" />
@@ -58,7 +129,23 @@ defineProps<{
         :array="value"
         :property="property"
         :parent-operator="parentOperator"
-      />
+      >
+        <template #property="{ property: sProperty }">
+          <slot name="property" :property="sProperty" />
+        </template>
+
+        <template #value="{ value: sValue }">
+          <slot name="value" :value="sValue" />
+        </template>
+
+        <template #objectAppend="{ path }">
+          <slot name="objectAppend" :path="path" />
+        </template>
+
+        <template #groupAppend="{ path }">
+          <slot name="groupAppend" :path="path" />
+        </template>
+      </QueryGroup>
     </template>
 
     <template v-else-if="isPlainObject(value)">
@@ -67,15 +154,39 @@ defineProps<{
         :operator="OPERATOR.$not"
       />
 
-      <QueryObject :query="value" :parent-property="property" />
+      <QueryObject :query="value" :parent-property="property">
+        <template #property="{ property: sProperty }">
+          <slot name="property" :property="sProperty" />
+        </template>
+
+        <template #value="{ value: sValue }">
+          <slot name="value" :value="sValue" />
+        </template>
+
+        <template #objectAppend="{ path }">
+          <slot name="objectAppend" :path="path" />
+        </template>
+
+        <template #groupAppend="{ path }">
+          <slot name="groupAppend" :path="path" />
+        </template>
+      </QueryObject>
     </template>
 
     <QueryItem
-      v-else
-      :property="property ?? 'unknown property'"
+      v-else-if="property"
+      :property="property"
       :operator="operator"
       :value="value"
-    />
+    >
+      <template #property>
+        <slot name="property" :property="property" />
+      </template>
+
+      <template #value>
+        <slot name="value" :value="value" />
+      </template>
+    </QueryItem>
   </div>
 </template>
 

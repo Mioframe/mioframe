@@ -7,18 +7,27 @@ defineProps<{
   operator: string;
   value: unknown;
 }>();
+
+defineSlots<{
+  property: (p: { property: string }) => unknown;
+  value: (p: { value: unknown }) => unknown;
+}>();
 </script>
 
 <template>
   <QueryContainer class="query-item">
     <div class="__property">
-      {{ property }}
+      <slot name="property" :property="property">
+        {{ property }}
+      </slot>
     </div>
 
     <OperatorLabel :operator="operator" class="__operator" />
 
     <div class="__value">
-      {{ value }}
+      <slot name="value" :value="value">
+        {{ value }}
+      </slot>
     </div>
   </QueryContainer>
 </template>

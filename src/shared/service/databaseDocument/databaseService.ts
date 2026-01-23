@@ -17,8 +17,8 @@ import {
 } from '@shared/lib/changeObject';
 import { applyMigrateDatabaseDocument } from '@shared/lib/databaseDocument/migrations';
 import { useDatabasePropertiesService } from './databasePropertiesService';
-import { useDatabaseViewsService } from './view/databaseViewsService';
-import { useDatabaseDataService } from './databaseDataService';
+import { setupDatabaseViewsService } from './view/databaseViewsService';
+import { setupDatabaseDataService } from './databaseDataService';
 
 export const useDatabaseDocumentService = createGlobalState(() => {
   const {
@@ -34,7 +34,7 @@ export const useDatabaseDocumentService = createGlobalState(() => {
     const cfrDocument = await getCFRDocumentState(path, documentId);
 
     if (zodCheck(zodDatabaseDocumentWithContent, cfrDocument)) {
-      const body = cfrDocument.body;
+      const { body } = cfrDocument;
 
       if (body) {
         return databaseBodyMigrations.getLatestData(body);
@@ -95,7 +95,7 @@ export const useDatabaseDocumentService = createGlobalState(() => {
     change,
 
     properties: useDatabasePropertiesService(getDatabaseBody, change),
-    views: useDatabaseViewsService(getDatabaseBody, change),
-    data: useDatabaseDataService(getDatabaseBody, change),
+    views: setupDatabaseViewsService(getDatabaseBody, change),
+    data: setupDatabaseDataService(getDatabaseBody, change),
   };
 });

@@ -4,13 +4,15 @@ import {
   deepPutJsonObject,
   type PatchSource,
 } from '@shared/lib/changeObject';
+import { DELETE_MARKER } from '@shared/lib/changeObject/deepPatchJsonObject';
 import type {
   DatabaseFilter,
   DatabaseView,
   DatabaseViewId,
 } from '@shared/lib/databaseDocument';
+import { set } from 'es-toolkit/compat';
 
-export const useDatabaseViewFilterService = (
+export const setupDatabaseViewFilterService = (
   getView: (
     path: string,
     documentId: AMDocumentId,
@@ -67,10 +69,27 @@ export const useDatabaseViewFilterService = (
       deepPutJsonObject(filter, source, { trimString: true });
     });
 
+  const remove = (
+    path: string,
+    documentId: AMDocumentId,
+    viewId: DatabaseViewId,
+    sourcePath: PropertyKey[],
+  ) =>
+    change(path, documentId, viewId, (filter) => {
+      const deletePatch = {};
+
+      set(deletePatch, sourcePath, DELETE_MARKER);
+
+      // todo: добавить удаление пустых родительских структур
+
+      deepPatchJsonObject(filter, deletePatch);
+    });
+
   return {
     get,
 
     patch,
     post,
+    remove,
   };
 };
