@@ -11,6 +11,13 @@ defineProps<{
   array: unknown[];
   property?: string;
 }>();
+
+defineSlots<{
+  property: (p: { property: string }) => unknown;
+  value: (p: { value: unknown }) => unknown;
+  groupAppend: (p: { path: PropertyKey[] }) => unknown;
+  objectAppend: (p: { path: PropertyKey[] }) => unknown;
+}>();
 </script>
 
 <template>
@@ -23,7 +30,25 @@ defineProps<{
         :value="value"
         :operator="parentOperator"
         :parent-operator="parentOperator"
-      />
+      >
+        <template #property="{ property: sProperty }">
+          <slot name="property" :property="sProperty" />
+        </template>
+
+        <template #value="{ value: sValue }">
+          <slot name="value" :value="sValue" />
+        </template>
+
+        <template #objectAppend="{ path }">
+          <slot name="objectAppend" :path="[index, ...path]" />
+        </template>
+
+        <template #groupAppend="{ path }">
+          <slot name="groupAppend" :path="[index, ...path]" />
+        </template>
+      </QueryGeneral>
     </template>
+
+    <slot name="groupAppend" :path="[]" />
   </QueryContainer>
 </template>

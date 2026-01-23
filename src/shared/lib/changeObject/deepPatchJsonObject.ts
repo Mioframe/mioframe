@@ -1,6 +1,7 @@
 import { cloneDeep, isNil, isString } from 'es-toolkit';
 import type { MergeDeep, PartialDeep } from 'type-fest';
 import { isObjectLike } from '../typeGuards';
+import { keys } from '../objectKeys';
 
 export const DELETE_MARKER = '__@DELETE_MARKER@__';
 
@@ -30,7 +31,7 @@ export function deepPatchJsonObject<T extends object, S extends object>(
 ): MergeDeep<T, S> {
   const { trimString = false, deleteMarker = DELETE_MARKER } = options;
 
-  (<(keyof typeof source)[]>Object.keys(source)).forEach((sourceKey) => {
+  keys(source).forEach((sourceKey) => {
     const sourceValue = source[sourceKey];
     // eslint-disable-next-line @typescript-eslint/ban-ts-comment -- checked sourceKey in target
     // @ts-expect-error
@@ -66,5 +67,6 @@ export function deepPatchJsonObject<T extends object, S extends object>(
     }
   });
 
+  // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
   return target as MergeDeep<T, S>;
 }
