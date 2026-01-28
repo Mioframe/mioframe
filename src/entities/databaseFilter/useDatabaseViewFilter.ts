@@ -34,7 +34,11 @@ export const useDatabaseViewFilter = (
       viewId: viewId.value,
     }),
     {
-      fetch: ({ documentId, path, viewId }) => get(path, documentId, viewId),
+      fetch: ({
+        documentId,
+        path,
+        viewId,
+      }): Promise<DatabaseFilter | undefined> => get(path, documentId, viewId),
       subscribe: ({ documentId, path }, cb) =>
         onChangeDocument(path, documentId, cb),
       defaultErrorMessage: 'Error reading filter',

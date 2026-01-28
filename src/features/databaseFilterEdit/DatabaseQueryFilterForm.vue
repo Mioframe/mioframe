@@ -6,7 +6,6 @@ import {
 import { DatabasePropertySpan } from '@entity/databaseProperty';
 import type { AMDocumentId } from '@shared/lib/automerge';
 import type {
-  DatabasePropertyId,
   DatabaseViewId,
   UNARY_FILTER_OPERATOR,
 } from '@shared/lib/databaseDocument';
@@ -24,6 +23,8 @@ import { isArray, isEnumValue } from '@shared/lib/typeGuards';
 import ValueField from '@widget/DocumentView/Database/ValueField.vue';
 import { zodIs } from '@shared/lib/validateZodScheme';
 import { MDIconButton } from '@shared/ui/Button';
+import type { FilterPath } from './types';
+import { zodFilterPath } from './types';
 
 const props = defineProps<{
   path: string;
@@ -31,11 +32,11 @@ const props = defineProps<{
   viewId: DatabaseViewId;
 }>();
 
-const { path, documentId, viewId } = toRefs(props);
+const { path: directoryPath, documentId, viewId } = toRefs(props);
 
 const temporaryStateNewFilter = ref<{
   operator: UNARY_FILTER_OPERATOR;
-  parentOperators: (LOGICAL_FILTER_OPERATOR | DatabasePropertyId)[];
+  parentOperators: FilterPath;
   value: unknown;
 }>();
 
@@ -47,10 +48,10 @@ const temporaryPropertyId = computed(() =>
 
 const onClickAddFilter = ({
   operator,
-  parentOperators,
+  parentOperators = [],
 }: {
   operator: UNARY_FILTER_OPERATOR;
-  parentOperators: (LOGICAL_FILTER_OPERATOR | DatabasePropertyId)[];
+  parentOperators?: FilterPath;
 }) => {
   temporaryStateNewFilter.value = {
     operator,
@@ -63,7 +64,7 @@ const {
   patch: patchFilter,
   filterQuery,
   remove: removeFilter,
-} = useDatabaseViewFilter(path, documentId, viewId);
+} = useDatabaseViewFilter(directoryPath, documentId, viewId);
 
 const onApplyFilterForm = async () => {
   if (temporaryStateNewFilter.value) {
@@ -73,26 +74,21 @@ const onApplyFilterForm = async () => {
 
       set(
         source,
-        [LOGICAL_FILTER_OPERATOR.$and, ...parentOperators].reduce(
-          (path: PropertyKey[], key) => {
-            if (isEnumValue(key, LOGICAL_FILTER_OPERATOR)) {
-              const oldLogicalValue: unknown = get(
-                filterQuery.value,
-                path,
-                undefined,
-              );
+        parentOperators.reduce((path: PropertyKey[], key) => {
+          if (isEnumValue(key, LOGICAL_FILTER_OPERATOR)) {
+            const oldLogicalValue: unknown = get(
+              filterQuery.value,
+              path,
+              undefined,
+            );
 
-              const order = isArray(oldLogicalValue)
-                ? oldLogicalValue.length
-                : 0;
+            const order = isArray(oldLogicalValue) ? oldLogicalValue.length : 0;
 
-              return [...path, key, order];
-            }
+            return [...path, key, order];
+          }
 
-            return [...path, key];
-          },
-          [],
-        ),
+          return [...path, key];
+        }, []),
         { [operator]: value },
       );
 
@@ -113,61 +109,83 @@ const onClickRemove = async (pathFilter: PropertyKey[]) => {
 </script>
 
 <template>
-  <DatabaseFilterQuery
-    :directory-path="path"
-    :document-id="documentId"
-    :view-id="viewId"
-  >
-    <template #property="{ propertyId }">
-      <DatabasePropertySpan
-        :path="path"
-        :document-id="documentId"
-        :property-id="propertyId"
-      />
-    </template>
+  <div class="database-query-filter-form">
+    <pre>{{ filterQuery }}</pre>
 
-    <template #objectAppend="{ path: queryPath }">
-      <MDIconButton
-        :tooltip="`remove object ${queryPath.join('.')}`"
-        md-symbol-name="delete"
-        size="extra-small"
-        @click="onClickRemove(queryPath)"
-      />
-    </template>
+    <DatabaseFilterQuery
+      :directory-path="directoryPath"
+      :document-id="documentId"
+      :view-id="viewId"
+      class="__DatabaseFilterQuery"
+    >
+      <template #property="{ propertyId }">
+        <DatabasePropertySpan
+          :path="directoryPath"
+          :document-id="documentId"
+          :property-id="propertyId"
+        />
+      </template>
 
-    <template #groupAppend="{ path: groupPath }">
-      <MDIconButton
-        :tooltip="`remove group ${groupPath.join('.')}`"
-        md-symbol-name="delete"
-        size="extra-small"
-        @click="onClickRemove(groupPath)"
-      />
-    </template>
+      <template #value="{ value, path: filterPath }">
+        <span>{{ value }}</span>
 
-    <template #append>
-      <DatabaseFilterAddButton
-        :path="path"
-        :document-id="documentId"
-        @click-unary="onClickAddFilter"
-      />
+        <MDIconButton
+          :tooltip="`remove object ${filterPath.join('.')}`"
+          md-symbol-name="delete"
+          size="extra-small"
+          @click="onClickRemove(filterPath)"
+        />
+      </template>
 
-      <DatabaseUnaryFilterFormDialog
-        v-if="temporaryStateNewFilter"
-        :show="!!temporaryStateNewFilter"
-        :operator="temporaryStateNewFilter.operator"
-        @cancel="onCancelFilterForm"
-        @apply="onApplyFilterForm"
-      >
-        <template v-if="temporaryPropertyId" #valueField>
-          <ValueField
-            v-model:value="temporaryStateNewFilter.value"
-            :directory-path="path"
-            :document-id="documentId"
-            :property-id="temporaryPropertyId"
-            autofocus
-          />
-        </template>
-      </DatabaseUnaryFilterFormDialog>
-    </template>
-  </DatabaseFilterQuery>
+      <template #objectAppend="{ path: filterPath }">
+        <DatabaseFilterAddButton
+          v-if="zodIs(filterPath, zodFilterPath)"
+          :filter-path="filterPath"
+          :directory-path="directoryPath"
+          :document-id="documentId"
+          @click-unary="onClickAddFilter"
+        />
+      </template>
+
+      <template #groupAppend="{ path: filterPath }">
+        <DatabaseFilterAddButton
+          v-if="zodIs(filterPath, zodFilterPath)"
+          :filter-path="filterPath"
+          :directory-path="directoryPath"
+          :document-id="documentId"
+          @click-unary="onClickAddFilter"
+        />
+      </template>
+    </DatabaseFilterQuery>
+
+    <DatabaseUnaryFilterFormDialog
+      v-if="temporaryStateNewFilter"
+      :show="!!temporaryStateNewFilter"
+      :operator="temporaryStateNewFilter.operator"
+      @cancel="onCancelFilterForm"
+      @apply="onApplyFilterForm"
+    >
+      <template v-if="temporaryPropertyId" #valueField>
+        <ValueField
+          v-model:value="temporaryStateNewFilter.value"
+          :directory-path="directoryPath"
+          :document-id="documentId"
+          :property-id="temporaryPropertyId"
+          autofocus
+        />
+      </template>
+    </DatabaseUnaryFilterFormDialog>
+  </div>
 </template>
+
+<style lang="css" scoped>
+.database-query-filter-form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+
+  .__DatabaseFilterQuery {
+    --md-container-color: inherit;
+  }
+}
+</style>

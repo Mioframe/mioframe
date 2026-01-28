@@ -25,7 +25,7 @@ const spin = useRotationBackground();
   flex-wrap: wrap;
   padding: 1step 2step;
   border-radius: var(--md-sys-shape-corner-medium);
-  gap: 1step;
+  gap: 2step;
   align-items: center;
   --md-container-color: var(--md-sys-color-surface);
   --md-content-color: var(--md-sys-color-on-surface);
