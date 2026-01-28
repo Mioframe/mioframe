@@ -23,7 +23,8 @@ export interface ItemWithChildren<T extends [string | number, unknown]> {
 }
 
 const hasIterator = <T>(v: unknown): v is Iterable<T> =>
-  isObjectLike(v) &&
+  typeof v === 'object' &&
+  v !== null &&
   Symbol.iterator in v &&
   typeof v[Symbol.iterator] === 'function';
 

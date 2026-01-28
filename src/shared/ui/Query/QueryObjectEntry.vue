@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import QueryGeneral from './QueryGeneral.vue';
+import type { LogicalOperator } from './constants';
 import { OPERATOR } from './constants';
 import { hasValue } from '@shared/lib/typeGuards';
 
@@ -12,9 +13,12 @@ const props = defineProps<{
 
 defineSlots<{
   property: (p: { property: string }) => unknown;
-  value: (p: { value: unknown }) => unknown;
+  value: (p: { value: unknown; path: PropertyKey[] }) => unknown;
   objectAppend: (p: { path: PropertyKey[] }) => unknown;
-  groupAppend: (p: { path: PropertyKey[] }) => unknown;
+  groupAppend: (p: {
+    path: PropertyKey[];
+    operator: LogicalOperator;
+  }) => unknown;
 }>();
 
 const defaultOperator = OPERATOR.$eq;
@@ -39,16 +43,16 @@ const operator = computed(() =>
       <slot name="property" :property="sProperty" />
     </template>
 
-    <template #value="{ value: sValue }">
-      <slot name="value" :value="sValue" />
+    <template #value="{ value: sValue, path }">
+      <slot name="value" :value="sValue" :path="path" />
     </template>
 
     <template #objectAppend="{ path }">
       <slot name="objectAppend" :path="path" />
     </template>
 
-    <template #groupAppend="{ path }">
-      <slot name="groupAppend" :path="path" />
+    <template #groupAppend="{ path, operator: sOperator }">
+      <slot name="groupAppend" :path="path" :operator="sOperator" />
     </template>
   </QueryGeneral>
 </template>

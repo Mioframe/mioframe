@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { QueryRoot } from '@shared/ui/Query';
 import type { AMDocumentId } from '@shared/lib/automerge';
+import type { DatabaseFilter } from '@shared/lib/databaseDocument';
 import {
   zodDatabasePropertyId,
   type DatabasePropertyId,
@@ -9,6 +10,7 @@ import {
 import { useDatabaseViewFilter } from './useDatabaseViewFilter';
 import { computed, toRefs } from 'vue';
 import { zodIs } from '@shared/lib/validateZodScheme';
+import type { LogicalOperator } from '@shared/ui/Query/constants';
 
 const props = defineProps<{
   directoryPath: string;
@@ -20,10 +22,12 @@ const { directoryPath, documentId, viewId } = toRefs(props);
 
 defineSlots<{
   property: (p: { propertyId: DatabasePropertyId }) => unknown;
-  value: (p: { value: unknown }) => unknown;
+  value: (p: { value: unknown; path: PropertyKey[] }) => unknown;
   objectAppend: (p: { path: PropertyKey[] }) => unknown;
-  groupAppend: (p: { path: PropertyKey[] }) => unknown;
-  append: () => unknown;
+  groupAppend: (p: {
+    path: PropertyKey[];
+    operator: LogicalOperator;
+  }) => unknown;
 }>();
 
 const { filterQuery } = useDatabaseViewFilter(
@@ -32,33 +36,29 @@ const { filterQuery } = useDatabaseViewFilter(
   viewId,
 );
 
-const query = computed(() => filterQuery.value ?? {});
+const query = computed((): DatabaseFilter => filterQuery.value ?? {});
 </script>
 
 <template>
-  <div class="filter-query">
-    <QueryRoot :query="query">
-      <template #property="{ property: sProperty }">
-        <slot
-          v-if="zodIs(sProperty, zodDatabasePropertyId)"
-          name="property"
-          :property-id="sProperty"
-        />
-      </template>
+  <QueryRoot :query="query">
+    <template #property="{ property: sProperty }">
+      <slot
+        v-if="zodIs(sProperty, zodDatabasePropertyId)"
+        name="property"
+        :property-id="sProperty"
+      />
+    </template>
 
-      <template #value="{ value: sValue }">
-        <slot name="value" :value="sValue" />
-      </template>
+    <template #value="{ value: sValue, path }">
+      <slot name="value" :value="sValue" :path="path" />
+    </template>
 
-      <template #objectAppend="{ path }">
-        <slot name="objectAppend" :path="path" />
-      </template>
+    <template #objectAppend="{ path }">
+      <slot name="objectAppend" :path="path" />
+    </template>
 
-      <template #groupAppend="{ path }">
-        <slot name="groupAppend" :path="path" />
-      </template>
-    </QueryRoot>
-
-    <slot name="append" />
-  </div>
+    <template #groupAppend="{ path, operator }">
+      <slot name="groupAppend" :path="path" :operator="operator" />
+    </template>
+  </QueryRoot>
 </template>

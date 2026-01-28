@@ -15,11 +15,11 @@ import { useDatabaseProperties } from '@entity/databaseProperty';
 const props = defineProps<{
   operator: LOGICAL_FILTER_OPERATOR;
   propertyId?: DatabasePropertyId;
-  path: string;
+  directoryPath: string;
   documentId: AMDocumentId;
 }>();
 
-const { path, documentId } = toRefs(props);
+const { directoryPath: path, documentId } = toRefs(props);
 
 const emit = defineEmits<{
   clickUnary: [
@@ -78,7 +78,7 @@ const onClickUnaryInProperty = (
         v-for="subOperator in LOGICAL_FILTER_OPERATOR"
         :key="subOperator"
         :operator="subOperator"
-        :path="path"
+        :directory-path="path"
         :document-id="documentId"
         :property-id="propertyId"
         @click-unary="onClickUnaryInLogical($event, subOperator)"
