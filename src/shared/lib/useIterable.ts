@@ -1,6 +1,3 @@
-import { from } from 'ix/iterable';
-import type { MaybeRefOrGetter, Ref } from 'vue';
-import { computed, ref, toRef, toValue, watch } from 'vue';
 import { isFunction } from 'es-toolkit/compat';
 import { isObjectLike } from './typeGuards';
 
@@ -19,12 +16,14 @@ export interface ItemWithChildren<T extends [string | number, unknown]> {
 }
 
 const hasIterator = <T>(v: unknown): v is Iterable<T> =>
-  isObjectLike(v) &&
+  typeof v === 'object' &&
+  v !== null &&
   Symbol.iterator in v &&
   typeof v[Symbol.iterator] === 'function';
 
 const hasAsyncIterator = <T>(v: unknown): v is AsyncIterable<T> =>
-  isObjectLike(v) &&
+  typeof v === 'object' &&
+  v !== null &&
   Symbol.asyncIterator in v &&
   typeof v[Symbol.asyncIterator] === 'function';
 
@@ -39,42 +38,3 @@ export const isItemWithChildren = <
   (isFunction(v.children) ||
     (isObjectLike(v.children) &&
       (hasIterator(v.children) || hasAsyncIterator(v.children))));
-
-export const useIterable = <T>(
-  iterable: MaybeRefOrGetter<Iterable<T> | undefined>,
-) => {
-  const iterableRef = toRef(() => toValue(iterable));
-
-  const stateCollection = <Ref<T[]>>ref<T[]>([]);
-
-  const loading = ref(0);
-
-  const updateCollection = (source: Iterable<T>) => {
-    try {
-      loading.value += 1;
-      from(source).forEach((value, index) => {
-        stateCollection.value.splice(index, 1, value);
-      });
-    } finally {
-      loading.value -= 1;
-    }
-  };
-
-  watch(
-    iterableRef,
-    (iterableValue, old) => {
-      if (iterableValue !== old) {
-        stateCollection.value.length = 0;
-      }
-      if (iterableValue) {
-        updateCollection(iterableValue);
-      }
-    },
-    { immediate: true },
-  );
-
-  return {
-    collection: stateCollection,
-    loading: computed(() => loading.value > 0),
-  };
-};

@@ -2,15 +2,16 @@ import type { AMDocumentId } from '@shared/lib/automerge';
 import {
   deepPatchJsonObject,
   deepPutJsonObject,
+  DELETE_MARKER,
   type PatchSource,
 } from '@shared/lib/changeObject';
-import { DELETE_MARKER } from '@shared/lib/changeObject/deepPatchJsonObject';
 import type {
   DatabaseFilter,
   DatabaseView,
   DatabaseViewId,
 } from '@shared/lib/databaseDocument';
 import { set } from 'es-toolkit/compat';
+import { removeEmptyStructures } from '@shared/lib/removeEmptyStructures';
 
 export const setupDatabaseViewFilterService = (
   getView: (
@@ -80,9 +81,9 @@ export const setupDatabaseViewFilterService = (
 
       set(deletePatch, sourcePath, DELETE_MARKER);
 
-      // todo: добавить удаление пустых родительских структур
-
       deepPatchJsonObject(filter, deletePatch);
+
+      removeEmptyStructures(filter);
     });
 
   return {

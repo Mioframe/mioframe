@@ -31,3 +31,17 @@ defineSlots<{
     </div>
   </QueryContainer>
 </template>
+
+<style lang="css" scoped>
+.query-item {
+  display: flex;
+  align-items: center;
+  padding: 1step;
+
+  .__property,
+  .__value {
+    display: flex;
+    align-items: center;
+  }
+}
+</style>

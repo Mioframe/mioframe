@@ -1,13 +1,13 @@
 <script setup lang="ts">
 import { DatabasePropertyMenuItem } from '@entity/databaseProperty';
 import type { AMDocumentId } from '@shared/lib/automerge';
-import {
-  LOGICAL_FILTER_OPERATOR,
+import type {
   UNARY_FILTER_OPERATOR,
-  type DatabasePropertyId,
+  LOGICAL_FILTER_OPERATOR,
 } from '@shared/lib/databaseDocument';
-import UnaryOperatorFilterMenuItem from './UnaryOperatorFilterMenuItem.vue';
-import LogicalOperatorFilterMenuItem from './LogicalOperatorFilterMenuItem.vue';
+import { type DatabasePropertyId } from '@shared/lib/databaseDocument';
+import UnaryOperatorFilterMenuItemList from './UnaryOperatorFilterMenuItemList.vue';
+import LogicalOperatorFilterMenuItemList from './LogicalOperatorFilterMenuItemList.vue';
 
 defineProps<{
   path: string;
@@ -24,26 +24,11 @@ const emit = defineEmits<{
   ];
 }>();
 
-const onClickUnaryOperator = (operator: UNARY_FILTER_OPERATOR) => {
-  emit('clickUnary', {
-    operator,
-  });
-};
-
-const onClickUnaryInLogical = (
-  {
-    operator,
-    parentOperators = [],
-  }: {
-    operator: UNARY_FILTER_OPERATOR;
-    parentOperators?: (LOGICAL_FILTER_OPERATOR | DatabasePropertyId)[];
-  },
-  logicalOperator: LOGICAL_FILTER_OPERATOR,
-) => {
-  emit('clickUnary', {
-    operator,
-    parentOperators: [logicalOperator, ...parentOperators],
-  });
+const onClickUnary = (e: {
+  operator: UNARY_FILTER_OPERATOR;
+  parentOperators?: (LOGICAL_FILTER_OPERATOR | DatabasePropertyId)[];
+}) => {
+  emit('clickUnary', e);
 };
 </script>
 
@@ -54,21 +39,13 @@ const onClickUnaryInLogical = (
     :property-id="propertyId"
   >
     <template #submenu>
-      <UnaryOperatorFilterMenuItem
-        v-for="operator in UNARY_FILTER_OPERATOR"
-        :key="operator"
-        :operator="operator"
-        @click="onClickUnaryOperator(operator)"
-      />
+      <UnaryOperatorFilterMenuItemList @click-unary="onClickUnary" />
 
-      <LogicalOperatorFilterMenuItem
-        v-for="operator in LOGICAL_FILTER_OPERATOR"
-        :key="operator"
-        :operator="operator"
+      <LogicalOperatorFilterMenuItemList
         :path="path"
         :document-id="documentId"
         :property-id="propertyId"
-        @click-unary="onClickUnaryInLogical($event, operator)"
+        @click-unary="onClickUnary"
       />
     </template>
   </DatabasePropertyMenuItem>

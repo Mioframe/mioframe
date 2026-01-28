@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { UnknownRecord } from 'type-fest';
 import QueryObject from './QueryObject.vue';
+import type { LogicalOperator } from './constants';
 
 defineProps<{
   query: UnknownRecord;
@@ -8,9 +9,12 @@ defineProps<{
 
 defineSlots<{
   property: (p: { property: string }) => unknown;
-  value: (p: { value: unknown }) => unknown;
+  value: (p: { value: unknown; path: PropertyKey[] }) => unknown;
   objectAppend: (p: { path: PropertyKey[] }) => unknown;
-  groupAppend: (p: { path: PropertyKey[] }) => unknown;
+  groupAppend: (p: {
+    path: PropertyKey[];
+    operator: LogicalOperator;
+  }) => unknown;
 }>();
 </script>
 
@@ -20,16 +24,16 @@ defineSlots<{
       <slot name="property" :property="sProperty" />
     </template>
 
-    <template #value="{ value: sValue }">
-      <slot name="value" :value="sValue" />
+    <template #value="{ value: sValue, path }">
+      <slot name="value" :value="sValue" :path="path" />
     </template>
 
     <template #objectAppend="{ path }">
       <slot name="objectAppend" :path="path" />
     </template>
 
-    <template #groupAppend="{ path }">
-      <slot name="groupAppend" :path="path" />
+    <template #groupAppend="{ path, operator }">
+      <slot name="groupAppend" :path="path" :operator="operator" />
     </template>
   </QueryObject>
 </template>
