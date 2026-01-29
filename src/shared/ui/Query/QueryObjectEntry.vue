@@ -13,7 +13,11 @@ const props = defineProps<{
 
 defineSlots<{
   property: (p: { property: string }) => unknown;
-  value: (p: { value: unknown; path: PropertyKey[] }) => unknown;
+  value: (p: {
+    value: unknown;
+    path: PropertyKey[];
+    property: string;
+  }) => unknown;
   objectAppend: (p: { path: PropertyKey[] }) => unknown;
   groupAppend: (p: {
     path: PropertyKey[];
@@ -43,8 +47,8 @@ const operator = computed(() =>
       <slot name="property" :property="sProperty" />
     </template>
 
-    <template #value="{ value: sValue, path }">
-      <slot name="value" :value="sValue" :path="path" />
+    <template #value="{ value: sValue, path, property: sProperty }">
+      <slot name="value" :value="sValue" :path="path" :property="sProperty" />
     </template>
 
     <template #objectAppend="{ path }">
