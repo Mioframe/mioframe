@@ -136,7 +136,10 @@ const selectId = sessionUniqueId('select');
       @click="onClickFieldContainer"
     >
       <template #default>
-        <div class="md-select__value-container" tabindex="0">
+        <div
+          class="md-select__value-container md-focus-indicator_hidden"
+          tabindex="0"
+        >
           <slot name="valueContainer">
             <template v-if="multiple">
               <MDChip
