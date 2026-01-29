@@ -6,6 +6,7 @@ import {
 import { DatabasePropertySpan } from '@entity/databaseProperty';
 import type { AMDocumentId } from '@shared/lib/automerge';
 import type {
+  DatabasePropertyId,
   DatabaseViewId,
   UNARY_FILTER_OPERATOR,
 } from '@shared/lib/databaseDocument';
@@ -33,6 +34,10 @@ const props = defineProps<{
 }>();
 
 const { path: directoryPath, documentId, viewId } = toRefs(props);
+
+defineSlots<{
+  value: (p: { value: unknown; propertyId: DatabasePropertyId }) => unknown;
+}>();
 
 const temporaryStateNewFilter = ref<{
   operator: UNARY_FILTER_OPERATOR;
@@ -106,6 +111,10 @@ const onCancelFilterForm = () => {
 const onClickRemove = async (pathFilter: PropertyKey[]) => {
   await removeFilter(pathFilter);
 };
+
+// todo: корневая первая кнопка добавления фильтра должна быть более понятной
+// todo: назначение кнопок And и Or не понятны
+// todo: меню создания фильтра не понятное
 </script>
 
 <template>
@@ -124,8 +133,17 @@ const onClickRemove = async (pathFilter: PropertyKey[]) => {
         />
       </template>
 
-      <template #value="{ value, path: filterPath }">
-        <span>{{ value }}</span>
+      <template #value="{ value, path: filterPath, property }">
+        <slot
+          v-if="zodIs(property, zodDatabasePropertyId)"
+          name="value"
+          :value="value"
+          :property-id="property"
+        >
+          <span>{{ value }}</span>
+        </slot>
+
+        <span v-else>{{ value }}</span>
 
         <MDIconButton
           :tooltip="`remove object ${filterPath.join('.')}`"

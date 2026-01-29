@@ -38,7 +38,19 @@ const onUpdateCollapsed = (collapsed: boolean) => {
           :path="directoryPath"
           :document-id="documentId"
           :view-id="viewId"
-        />
+        >
+          <template #value="{ value }">
+            <span>{{ value }}</span>
+            <!--
+              todo: нужна версия без itemId
+              <ValueInline 
+              :directory-path="directoryPath"
+              :document-id="documentId"
+              :property-id="propertyId"
+              /> 
+            -->
+          </template>
+        </DatabaseFilterForm>
       </div>
     </MDBottomSheetSection>
   </MDBottomSheet>

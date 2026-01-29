@@ -15,7 +15,11 @@ const props = defineProps<{
 
 const slots = defineSlots<{
   property: (p: { property: string }) => unknown;
-  value: (p: { value: unknown; path: PropertyKey[] }) => unknown;
+  value: (p: {
+    value: unknown;
+    path: PropertyKey[];
+    property: string;
+  }) => unknown;
   objectAppend: (p: { path: PropertyKey[] }) => unknown;
   groupAppend: (p: {
     path: PropertyKey[];
@@ -40,8 +44,13 @@ const lastKey = computed(() => keyList.value.at(-1));
           <slot name="property" :property="sProperty" />
         </template>
 
-        <template #value="{ value: sValue, path }">
-          <slot name="value" :value="sValue" :path="[queryKey, ...path]" />
+        <template #value="{ value: sValue, path, property }">
+          <slot
+            name="value"
+            :value="sValue"
+            :path="[queryKey, ...path]"
+            :property="property"
+          />
         </template>
 
         <template #objectAppend="{ path }">

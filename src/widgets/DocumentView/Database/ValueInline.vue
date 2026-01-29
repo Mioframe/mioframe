@@ -47,6 +47,8 @@ const { value: stateValue } = useDatabaseValue(
 const printValue = computed(() => {
   return stateValue.value ?? property.value?.default;
 });
+
+// todo: нужна версия без itemId для рендера значений в фильтрах
 </script>
 
 <template>
