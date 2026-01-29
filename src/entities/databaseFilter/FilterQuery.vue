@@ -22,7 +22,11 @@ const { directoryPath, documentId, viewId } = toRefs(props);
 
 defineSlots<{
   property: (p: { propertyId: DatabasePropertyId }) => unknown;
-  value: (p: { value: unknown; path: PropertyKey[] }) => unknown;
+  value: (p: {
+    value: unknown;
+    path: PropertyKey[];
+    property: string;
+  }) => unknown;
   objectAppend: (p: { path: PropertyKey[] }) => unknown;
   groupAppend: (p: {
     path: PropertyKey[];
@@ -49,8 +53,8 @@ const query = computed((): DatabaseFilter => filterQuery.value ?? {});
       />
     </template>
 
-    <template #value="{ value: sValue, path }">
-      <slot name="value" :value="sValue" :path="path" />
+    <template #value="{ value: sValue, path, property }">
+      <slot name="value" :value="sValue" :path="path" :property="property" />
     </template>
 
     <template #objectAppend="{ path }">
