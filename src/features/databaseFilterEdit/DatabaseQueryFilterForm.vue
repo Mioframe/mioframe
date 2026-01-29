@@ -110,8 +110,6 @@ const onClickRemove = async (pathFilter: PropertyKey[]) => {
 
 <template>
   <div class="database-query-filter-form">
-    <pre>{{ filterQuery }}</pre>
-
     <DatabaseFilterQuery
       :directory-path="directoryPath"
       :document-id="documentId"
