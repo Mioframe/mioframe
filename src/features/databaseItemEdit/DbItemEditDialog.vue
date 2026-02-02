@@ -9,6 +9,7 @@ import {
 import type { AMDocumentId } from '@shared/lib/automerge';
 import { useDatabaseProperties } from '@entity/databaseProperty';
 import { useDatabaseItem } from '@entity/databaseItem';
+import { cloneDeep } from 'es-toolkit';
 
 const props = withDefaults(
   defineProps<{
@@ -61,7 +62,7 @@ const { item: currentItemState, postItem } = useDatabaseItem(
 );
 
 watchEffect(() => {
-  itemState.value = currentItemState.value ?? {};
+  itemState.value = cloneDeep(currentItemState.value) ?? {};
 });
 
 const applyLoading = shallowRef(false);

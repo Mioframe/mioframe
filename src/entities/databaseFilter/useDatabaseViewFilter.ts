@@ -1,12 +1,13 @@
-import type { Ref } from 'vue';
+import { computed, toValue, type Ref } from 'vue';
 import type { AMDocumentId } from '@shared/lib/automerge';
 import type {
   DatabaseFilter,
   DatabaseViewId,
 } from '@shared/lib/databaseDocument';
 import { useMainService } from '@shared/service';
-import { useLiveResource } from '@shared/lib/useLiveResource';
 import type { PatchSource } from '@shared/lib/changeObject';
+import { useQuery } from '@shared/lib/observableQuery';
+import { isUndefined } from 'es-toolkit';
 
 export const useDatabaseViewFilter = (
   path: Ref<string>,
@@ -16,40 +17,43 @@ export const useDatabaseViewFilter = (
   const {
     databaseDocument: {
       views: {
-        filter: { get, patch, remove },
+        filter: { patch, remove, filter },
       },
-      onChangeDocument,
     },
   } = useMainService();
 
   const {
-    errorMessage,
+    data: filterQuery,
+    error,
     isLoading,
-    isReady,
-    state: filterQuery,
-  } = useLiveResource(
-    () => ({
-      path: path.value,
+  } = useQuery(
+    filter,
+    computed(() => ({
       documentId: documentId.value,
+      path: path.value,
       viewId: viewId.value,
-    }),
-    {
-      fetch: ({
-        documentId,
-        path,
-        viewId,
-      }): Promise<DatabaseFilter | undefined> => get(path, documentId, viewId),
-      subscribe: ({ documentId, path }, cb) =>
-        onChangeDocument(path, documentId, cb),
-      defaultErrorMessage: 'Error reading filter',
-    },
+    })),
   );
+
+  const errorMessage = computed(() => {
+    const e = toValue(error);
+
+    if (isUndefined(e)) {
+      return undefined;
+    }
+
+    if (e instanceof Error) {
+      return e.message;
+    }
+
+    return 'Error reading filter';
+  });
 
   return {
     filterQuery,
     errorMessage,
     isLoading,
-    isReady,
+
     patch: async (source: PatchSource<DatabaseFilter>) => {
       await patch(path.value, documentId.value, viewId.value, source);
     },

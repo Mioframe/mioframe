@@ -68,6 +68,7 @@ const createProxy = <T extends Record<string, unknown>, Exceptions = unknown>(
   serviceId: string,
   path: string[] = [],
 ): ClientObject<T, Exceptions> => {
+  // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
   return new Proxy((() => ({})) as object, {
     get: (_target, prop) => {
       if (isString(prop)) {
@@ -149,6 +150,7 @@ const createFunctionDescription = <F extends AnyFunction>(
 ): FunctionDescription<F> => {
   const functionId = uid();
 
+  // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
   const functionDescription: FunctionDescription<F> = {
     functionId,
   } as FunctionDescription<F>;
@@ -254,6 +256,7 @@ const serviceRegister = new Set<string>();
 const superJson = new SuperJSON({ dedupe: true });
 
 export const serialize = <T>(data: T) =>
+  // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
   superJson.serialize(data) as SerializeJson<T>;
 
 export const deserialize = <T>(data: SerializeJson<T>) =>

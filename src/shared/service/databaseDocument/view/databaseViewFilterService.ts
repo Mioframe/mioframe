@@ -12,13 +12,15 @@ import type {
 } from '@shared/lib/databaseDocument';
 import { set } from 'es-toolkit/compat';
 import { removeEmptyStructures } from '@shared/lib/removeEmptyStructures';
+import { distinctUntilChanged, map, type Observable } from 'rxjs';
+import { defineQuery } from '@shared/lib/observableQuery';
 
 export const setupDatabaseViewFilterService = (
-  getView: (
-    path: string,
-    documentId: AMDocumentId,
-    viewId: DatabaseViewId,
-  ) => Promise<undefined | DatabaseView>,
+  databaseView$: (q: {
+    documentId: AMDocumentId;
+    path: string;
+    viewId?: DatabaseViewId;
+  }) => Observable<DatabaseView | undefined>,
   changeView: (
     path: string,
     documentId: AMDocumentId,
@@ -26,15 +28,19 @@ export const setupDatabaseViewFilterService = (
     cb: (view: DatabaseView) => unknown,
   ) => unknown,
 ) => {
-  const get = async (
-    path: string,
-    documentId: AMDocumentId,
-    viewId: DatabaseViewId,
-  ) => {
-    const view = await getView(path, documentId, viewId);
-
-    return view?.filter;
-  };
+  const filter$ = ({
+    documentId,
+    path,
+    viewId,
+  }: {
+    documentId: AMDocumentId;
+    path: string;
+    viewId?: DatabaseViewId;
+  }) =>
+    databaseView$({ documentId, path, viewId }).pipe(
+      map((view) => view?.filter),
+      distinctUntilChanged(),
+    );
 
   const change = (
     path: string,
@@ -87,7 +93,8 @@ export const setupDatabaseViewFilterService = (
     });
 
   return {
-    get,
+    filter$,
+    filter: defineQuery(filter$),
 
     patch,
     post,

@@ -10,6 +10,7 @@ import { EventEmitter } from './EventEmitter';
 import { PathUtils } from './PathUtils';
 import { FileSystemError, VfsError } from './VfsError';
 import { LockManager } from './LockManager';
+import type { Promisable } from 'type-fest';
 
 export interface VfsWatchOptions {
   /**
@@ -56,17 +57,17 @@ export class VirtualFileSystem {
    */
   public watch(
     path: string,
-    callback: (event: VfsEvent) => void,
+    callback: (event: VfsEvent) => Promisable<void>,
     options?: VfsWatchOptions,
   ): () => void;
 
   public watch(
     pathOrCallback: string | ((event: VfsEvent) => void),
-    callback?: (event: VfsEvent) => void,
+    callback?: (event: VfsEvent) => Promisable<void>,
     options?: VfsWatchOptions,
   ): () => void {
     let targetPath: string | null = null;
-    let listener: (event: VfsEvent) => void;
+    let listener: (event: VfsEvent) => Promisable<void>;
 
     const recursive = options?.recursive ?? false;
 

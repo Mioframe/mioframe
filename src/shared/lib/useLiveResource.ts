@@ -27,8 +27,10 @@ interface LiveResourceOptions<T, Q> {
 
 /**
  * Обобщенная логика для реактивного ресурса.
+ *
+ * @deprecated use useQuery with defineQuery
  */
-export function useLiveResource<T, Q>(
+export function useLiveResource<T, Q>( // переписать клиентов с useLiveResource на useQuery
   source: WatchSource<Q>,
   options: LiveResourceOptions<T, Q>,
 ): LiveResourceReturn<T> {

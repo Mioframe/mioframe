@@ -1,11 +1,11 @@
 import { createGlobalState } from '@vueuse/core';
 import { useMainService } from '@shared/service';
-import { toRef } from 'vue';
-import { isFunction } from 'es-toolkit';
+import { computed, toRef, toValue } from 'vue';
+import { isFunction, isUndefined } from 'es-toolkit';
 import { useSnackbar } from '@shared/ui/Snackbar';
 import { useDialog } from '@shared/ui/Dialog';
 import { OPFSName } from '@shared/service/directories';
-import { useLiveResource } from '@shared/lib/useLiveResource';
+import { useQuery } from '@shared/lib/observableQuery';
 
 export const OPFS = OPFSName;
 
@@ -14,25 +14,38 @@ const setupFileSystem = () => {
     fileSystem: {
       createDirectory,
       mountFSDirectoryHandle,
-      readDirectory,
       unmount,
-      onChangePath: watch,
       move,
       remove,
+      directoryContent,
     },
   } = useMainService();
 
   const rootPath = '/';
 
   const {
-    errorMessage,
+    data: rootDirectory,
+    error,
     isLoading,
-    isReady,
-    state: rootDirectory,
-  } = useLiveResource(() => rootPath, {
-    fetch: (rootPath) => readDirectory(rootPath),
-    subscribe: watch,
-    defaultErrorMessage: 'Error reading directory',
+  } = useQuery(
+    directoryContent,
+    computed(() => ({
+      path: rootPath,
+    })),
+  );
+
+  const errorMessage = computed(() => {
+    const e = toValue(error);
+
+    if (isUndefined(e)) {
+      return undefined;
+    }
+
+    if (e instanceof Error) {
+      return e.message;
+    }
+
+    return 'Error reading directory';
   });
 
   const isSupportUserDirectory = toRef(
@@ -75,13 +88,11 @@ const setupFileSystem = () => {
     rootDirectory,
     errorMessage,
     isLoading,
-    isReady,
 
     mountUserDirectory,
     createDirectory,
-    readDirectory,
     unmount,
-    watch,
+
     move,
     remove,
     delete: remove,

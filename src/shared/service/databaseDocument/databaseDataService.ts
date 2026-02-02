@@ -8,22 +8,26 @@ import {
   type DatabaseState,
   type DatabaseViewId,
 } from '@shared/lib/databaseDocument';
-import {
-  strictRecordGet,
-  strictRecordRemove,
-  strictRecordSet,
-} from '@shared/lib/strictRecord';
+import { strictRecordRemove, strictRecordSet } from '@shared/lib/strictRecord';
 import { queryIdList } from './data/queryData';
-import { DomainError } from '@shared/lib/error';
 import type { Query } from 'sift';
 import { setupDatabaseViewsService } from './view/databaseViewsService';
 import { deepPutJsonObject } from '@shared/lib/changeObject';
 
+import {
+  combineLatest,
+  distinctUntilChanged,
+  map,
+  type Observable,
+} from 'rxjs';
+import { defineQuery } from '@shared/lib/observableQuery';
+
 export const setupDatabaseDataService = (
-  getDatabaseBody: (
-    path: string,
-    documentId: AMDocumentId,
-  ) => Promise<DatabaseState | undefined>,
+  databaseState$: (q: {
+    documentId: AMDocumentId;
+    path: string;
+  }) => Observable<DatabaseState | undefined>,
+
   changeDatabaseState: (
     path: string,
     documentId: AMDocumentId,
@@ -64,24 +68,32 @@ export const setupDatabaseDataService = (
       strictRecordRemove(data, itemId);
     });
 
-  const getData = async (
-    path: string,
-    documentId: AMDocumentId,
-  ): Promise<undefined | DatabaseData> => {
-    const body = await getDatabaseBody(path, documentId);
+  const databaseData$ = ({
+    documentId,
+    path,
+  }: {
+    path: string;
+    documentId: AMDocumentId;
+  }) =>
+    databaseState$({ documentId, path }).pipe(
+      map((state) => state?.data),
+      distinctUntilChanged(),
+    );
 
-    return body?.data;
-  };
+  const {
+    filter: { filter$ },
+    sorting: { databaseSorting$ },
+  } = setupDatabaseViewsService(databaseState$, changeDatabaseState);
 
-  const { getView } = setupDatabaseViewsService(
-    getDatabaseBody,
-    changeDatabaseState,
-  );
+  const filteredIdList$Cache = new Map<
+    string,
+    Observable<undefined | DatabaseItemId[]>
+  >();
 
-  const getItemIdList = async (
-    path: string,
-    documentId: AMDocumentId,
-    viewId?: DatabaseViewId,
+  const filteredIdList$ = (q: {
+    path: string;
+    documentId: AMDocumentId;
+    viewId?: DatabaseViewId;
     options: {
       itemQuery?: Query<DatabaseItem>;
       idQuery?: Query<DatabaseItemId>;
@@ -89,59 +101,78 @@ export const setupDatabaseDataService = (
         first?: number;
         last?: number;
       };
-    } = {},
-  ): Promise<undefined | DatabaseItemId[]> => {
-    const data = await getData(path, documentId);
+    };
+  }) => {
+    const cacheKey = JSON.stringify(q);
 
-    if (data) {
-      const view = viewId ? await getView(path, documentId, viewId) : undefined;
+    let $ = filteredIdList$Cache.get(cacheKey);
 
-      const { idQuery, itemQuery, slice } = options;
+    if (!$) {
+      const {
+        documentId,
+        options: { idQuery, itemQuery, slice },
+        path,
+        viewId,
+      } = q;
 
-      return queryIdList(data, {
-        filter: view?.filter,
-        sorting: view?.sorting,
-        itemQuery,
-        idQuery,
-        slice,
-      });
+      $ = combineLatest([
+        databaseData$({ documentId, path }),
+        filter$({ documentId, path, viewId }),
+        databaseSorting$({ documentId, path, viewId }),
+      ]).pipe(
+        map(([data, filter, sorting]) => {
+          if (data) {
+            const idList = queryIdList(data, {
+              filter,
+              sorting,
+              itemQuery,
+              idQuery,
+              slice,
+            });
+
+            return idList;
+          }
+
+          return undefined;
+        }),
+        distinctUntilChanged(),
+      );
+
+      filteredIdList$Cache.set(cacheKey, $);
     }
 
-    return undefined;
+    return $;
   };
 
-  const getItem = async (
-    path: string,
-    documentId: AMDocumentId,
-    itemId: DatabaseItemId,
-  ): Promise<undefined | DatabaseItem> => {
-    const data = await getData(path, documentId);
+  const databaseItem$ = ({
+    documentId,
+    path,
+    itemId,
+  }: {
+    path: string;
+    documentId: AMDocumentId;
+    itemId?: DatabaseItemId;
+  }) =>
+    databaseData$({ documentId, path }).pipe(
+      map((data) => (itemId ? data?.[itemId] : undefined)),
+      distinctUntilChanged(),
+    );
 
-    if (data) {
-      return strictRecordGet(data, itemId);
-    }
-
-    return undefined;
-  };
-
-  const getValue = async (
-    path: string,
-    documentId: AMDocumentId,
-    itemId: DatabaseItemId,
-    propertyId: DatabasePropertyId,
-  ): Promise<unknown> => {
-    const item = await getItem(path, documentId, itemId);
-
-    if (item instanceof DomainError) {
-      return item;
-    }
-
-    if (item) {
-      return strictRecordGet(item, propertyId);
-    }
-
-    return undefined;
-  };
+  const databaseValue$ = ({
+    documentId,
+    path,
+    itemId,
+    propertyId,
+  }: {
+    path: string;
+    documentId: AMDocumentId;
+    itemId: DatabaseItemId;
+    propertyId: DatabasePropertyId;
+  }) =>
+    databaseItem$({ documentId, itemId, path }).pipe(
+      map((item) => item?.[propertyId]),
+      distinctUntilChanged(),
+    );
 
   const postItem = async (
     path: string,
@@ -161,9 +192,11 @@ export const setupDatabaseDataService = (
   };
 
   return {
-    getItemIdList,
-    getItem,
-    getValue,
+    filteredIdList: defineQuery(filteredIdList$),
+
+    databaseItem: defineQuery(databaseItem$),
+
+    databaseValue: defineQuery(databaseValue$),
 
     postValue,
     change,

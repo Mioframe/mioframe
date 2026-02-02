@@ -19,7 +19,7 @@ const emit = defineEmits<{
   click: [path: string];
 }>();
 
-const { state } = useDirectory(path);
+const { data: state } = useDirectory(path);
 </script>
 
 <template>

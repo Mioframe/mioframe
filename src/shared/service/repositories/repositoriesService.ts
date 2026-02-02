@@ -10,32 +10,70 @@ import {
   zodAutomergeFileName,
 } from '@shared/lib/automergeAdapter';
 import type { CFRDocumentContent } from '@shared/lib/cfrDocument';
+import type { Observable } from 'rxjs';
+import { filter, of, shareReplay } from 'rxjs';
+import { finalize, firstValueFrom, map, switchMap, take } from 'rxjs';
+import { defineQuery } from '@shared/lib/observableQuery';
 
 const setupRepositoriesService = () => {
-  const { readDirectory, vfs, onChangePath: watchDirectory } = useFileSystemService();
+  const { directoryContent$: watchDirectory$, vfs } = useFileSystemService();
 
-  const repositoriesMap = new Map<string, Repo>();
+  const getDocumentIdList$ = ({
+    path,
+  }: {
+    /**
+     * Путь репозитория
+     */
+    path: string;
+  }) => {
+    const directory$ = watchDirectory$({ path });
 
-  const readRepository = async (path: string): Promise<AMDocumentId[]> => {
-    const entries = await readDirectory(path);
+    return directory$.pipe(
+      map((entries) =>
+        entries.reduce((documentIdList: AMDocumentId[], [name, type]) => {
+          if (type === FileType.File && zodIs(name, zodAutomergeFileName)) {
+            const [documentId] = fileNameToPartialKey(name) ?? [];
 
-    const documentIdList: AMDocumentId[] = [];
+            if (
+              zodIs(documentId, zodDocumentId) &&
+              !documentIdList.includes(documentId)
+            ) {
+              documentIdList.push(documentId);
+            }
+          }
 
-    entries.forEach(([name, type]) => {
-      if (type === FileType.File && zodIs(name, zodAutomergeFileName)) {
-        const [documentId] = fileNameToPartialKey(name) ?? [];
-
-        if (
-          zodIs(documentId, zodDocumentId) &&
-          !documentIdList.includes(documentId)
-        ) {
-          documentIdList.push(documentId);
-        }
-      }
-    });
-
-    return documentIdList;
+          return documentIdList;
+        }, []),
+      ),
+    );
   };
+
+  const repo$Cache = new Map<string, Observable<Repo>>();
+
+  function getRepo$(path: string, initial = false) {
+    let repo$ = repo$Cache.get(path);
+    if (repo$) {
+      return repo$;
+    }
+
+    repo$ = getDocumentIdList$({ path }).pipe(
+      filter((docs) => initial || docs.length > 0),
+      take(1),
+      switchMap(() =>
+        of(
+          new Repo({
+            storage: createVFSAdapter(vfs, path),
+          }),
+        ),
+      ),
+      finalize(() => repo$Cache.delete(path)),
+      shareReplay({ bufferSize: 1, refCount: true }),
+    );
+
+    repo$Cache.set(path, repo$);
+
+    return repo$;
+  }
 
   async function getRepo(path: string, initial: true): Promise<Repo>;
   async function getRepo(
@@ -43,24 +81,7 @@ const setupRepositoriesService = () => {
     initial?: false,
   ): Promise<undefined | Repo>;
   async function getRepo(path: string, initial = false) {
-    const repo = repositoriesMap.get(path);
-    if (repo) {
-      return repo;
-    }
-
-    const hasDocuments = (await readRepository(path)).length > 0;
-
-    if (hasDocuments || initial) {
-      const newRepo = new Repo({
-        storage: createVFSAdapter(vfs, path),
-      });
-
-      repositoriesMap.set(path, newRepo);
-
-      return newRepo;
-    }
-
-    return undefined;
+    return firstValueFrom(getRepo$(path, initial));
   }
 
   const deleteDocument = async (path: string, id: AMDocumentId) => {
@@ -79,20 +100,12 @@ const setupRepositoriesService = () => {
     return documentId;
   };
 
-  const onChangeRepository = (path: string, cb: () => unknown) => {
-    const unwatch = watchDirectory(path, cb);
-
-    return unwatch;
-  };
+  const documentIdList = defineQuery(getDocumentIdList$);
 
   return {
-    /**
-     * Прочитать список документов в репозитории
-     * @param path абсолютный путь к репозиторию
-     * @returns коллекция документов
-     */
-    readRepository,
-    onChangeRepository,
+    documentIdList,
+    getDocumentIdList$,
+    getRepo$,
     /**
      * Создать документ в репозитории
      * @param path абсолютный путь к репозиторию
@@ -105,12 +118,6 @@ const setupRepositoriesService = () => {
      * @param id идентификатор документа
      */
     deleteDocument,
-    /**
-     * Получить/создать репозиторий по пути
-     * @param path абсолютный путь репозитория
-     * @returns Repo
-     */
-    getRepo,
   };
 };
 

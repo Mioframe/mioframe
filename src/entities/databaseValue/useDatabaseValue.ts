@@ -3,9 +3,10 @@ import type {
   DatabaseItemId,
   DatabasePropertyId,
 } from '@shared/lib/databaseDocument';
-import { useLiveResource } from '@shared/lib/useLiveResource';
+import { useQuery } from '@shared/lib/observableQuery';
 import { useMainService } from '@shared/service';
-import type { Ref } from 'vue';
+import { isUndefined } from 'es-toolkit';
+import { computed, toValue, type Ref } from 'vue';
 
 export const useDatabaseValue = (
   path: Ref<string>,
@@ -15,37 +16,38 @@ export const useDatabaseValue = (
 ) => {
   const {
     databaseDocument: {
-      onChangeDocument,
-      data: { getValue, postValue },
+      data: { postValue, databaseValue },
     },
   } = useMainService();
 
-  const {
-    errorMessage,
-    isLoading,
-    isReady,
-    state: value,
-  } = useLiveResource(
-    () => ({
-      path: path.value,
+  const { data, error, isLoading } = useQuery(
+    databaseValue,
+    computed(() => ({
       documentId: documentId.value,
       itemId: itemId.value,
+      path: path.value,
       propertyId: propertyId.value,
-    }),
-    {
-      fetch: async ({ documentId, itemId, path, propertyId }) =>
-        getValue(path, documentId, itemId, propertyId),
-      subscribe: ({ documentId, path }, cb) =>
-        onChangeDocument(path, documentId, cb),
-      defaultErrorMessage: 'Error reading value',
-    },
+    })),
   );
 
+  const errorMessage = computed(() => {
+    const e = toValue(error);
+
+    if (isUndefined(e)) {
+      return undefined;
+    }
+
+    if (e instanceof Error) {
+      return e.message;
+    }
+
+    return 'Error reading value';
+  });
+
   return {
-    value,
+    data,
     errorMessage,
     isLoading,
-    isReady,
 
     post: (value: unknown) =>
       postValue(
