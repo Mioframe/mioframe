@@ -8,8 +8,6 @@ import {
   zodDatabaseTypeDocument,
 } from '@shared/lib/databaseDocument';
 import { databaseBodyMigrations } from '@shared/lib/databaseDocument/migrations/bodyMigrations';
-import { stringPath } from '../directories';
-import { DomainError } from '@shared/lib/error';
 import type { PatchSource } from '@shared/lib/changeObject';
 import {
   deepPatchJsonObject,
@@ -19,30 +17,38 @@ import { applyMigrateDatabaseDocument } from '@shared/lib/databaseDocument/migra
 import { useDatabasePropertiesService } from './databasePropertiesService';
 import { setupDatabaseViewsService } from './view/databaseViewsService';
 import { setupDatabaseDataService } from './databaseDataService';
+import type { Observable } from 'rxjs';
+import { distinctUntilChanged, map } from 'rxjs';
+import { defineQuery } from '@shared/lib/observableQuery';
 
 export const useDatabaseDocumentService = createGlobalState(() => {
-  const {
-    getCFRDocumentState,
-    change: changeCFRDocument,
-    onChangeDocument,
-  } = useDocumentService();
+  const { change: changeCFRDocument, cfrDocumentState$ } = useDocumentService();
 
-  const getDatabaseBody = async (
-    path: string,
-    documentId: AMDocumentId,
-  ): Promise<DatabaseState | undefined> => {
-    const cfrDocument = await getCFRDocumentState(path, documentId);
+  const databaseState$ = ({
+    documentId,
+    path,
+  }: {
+    documentId: AMDocumentId;
+    path: string;
+  }): Observable<DatabaseState | undefined> =>
+    cfrDocumentState$({ documentId, path }).pipe(
+      map((cfrDocument) => {
+        if (zodCheck(zodDatabaseDocumentWithContent, cfrDocument)) {
+          return cfrDocument.body;
+        }
+        return undefined;
+      }),
+      distinctUntilChanged(),
+      map((body) => {
+        if (body) {
+          return databaseBodyMigrations.getLatestData(body);
+        }
+        return undefined;
+      }),
+      distinctUntilChanged(),
+    );
 
-    if (zodCheck(zodDatabaseDocumentWithContent, cfrDocument)) {
-      const { body } = cfrDocument;
-
-      if (body) {
-        return databaseBodyMigrations.getLatestData(body);
-      }
-    }
-
-    return undefined;
-  };
+  const databaseState = defineQuery(databaseState$);
 
   const change = (
     path: string,
@@ -62,19 +68,10 @@ export const useDatabaseDocumentService = createGlobalState(() => {
     path: string,
     documentId: AMDocumentId,
     body: DatabaseState,
-  ) => {
-    const documentState = await getCFRDocumentState(path, documentId);
-
-    if (!documentState) {
-      throw new DomainError(
-        `document ${stringPath(path)} ${documentId}` + ' not found',
-      );
-    }
-
-    return change(path, documentId, (value) => {
+  ) =>
+    change(path, documentId, (value) => {
       deepPutJsonObject(value, body);
     });
-  };
 
   const patch = (
     path: string,
@@ -86,16 +83,16 @@ export const useDatabaseDocumentService = createGlobalState(() => {
     });
 
   return {
-    getDatabaseBody,
-    onChangeDocument,
+    databaseState,
+    databaseState$,
 
     put,
     patch,
 
     change,
 
-    properties: useDatabasePropertiesService(getDatabaseBody, change),
-    views: setupDatabaseViewsService(getDatabaseBody, change),
-    data: setupDatabaseDataService(getDatabaseBody, change),
+    properties: useDatabasePropertiesService(databaseState$, change),
+    views: setupDatabaseViewsService(databaseState$, change),
+    data: setupDatabaseDataService(databaseState$, change),
   };
 });

@@ -12,7 +12,7 @@ import {
 } from 'vue';
 import type { UnknownRecord } from 'type-fest';
 import type { AMDocHandle, AMDocumentId } from '../automerge/automergeTypes';
-import { defineScopePool, createPoolConsumer } from '../scopePool';
+import { defineScopePool, createUsePoolHook } from '../scopePool';
 import { tryOnScopeDispose } from '@vueuse/core';
 import { isEqual, once, throttle } from 'es-toolkit';
 
@@ -112,9 +112,9 @@ export const setupRepoState = (repo: Repo): RepoState => {
 
 const repoPool = defineScopePool(setupRepoState);
 
-const useRepoPool = createPoolConsumer(repoPool);
+const useRepoPool = createUsePoolHook(repoPool);
 
-// TODO: непонятно в чём разница useRepoPool и useRepo
+// TODO: непонятно в чём разница useRepoPool и useRepo, упростить setupRepoState только для чтения данных
 
 export const useRepo = (
   repo: MaybeRefOrGetter<Repo | undefined>,

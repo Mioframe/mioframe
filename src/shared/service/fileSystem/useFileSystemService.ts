@@ -1,15 +1,20 @@
 import { zodAutomergeFileName } from '@shared/lib/automergeAdapter';
 import { zodIs } from '@shared/lib/validateZodScheme';
-import {
-  VirtualFileSystem,
-  type VfsEvent,
-  PathUtils,
-} from '@shared/lib/virtualFileSystem';
+import type { FileType } from '@shared/lib/virtualFileSystem';
+import { VirtualFileSystem, PathUtils } from '@shared/lib/virtualFileSystem';
 import { MemoryFileSystem } from '@shared/lib/virtualFileSystem/MemoryFileSystem';
-import type { VfsWatchOptions } from '@shared/lib/virtualFileSystem/VirtualFileSystem';
 import { OPFSName } from '../directories';
 import { createGlobalState } from '@vueuse/core';
 import { WebFileSystem } from '@shared/lib/vfsProviders/WebFileSystem';
+import {
+  distinctUntilChanged,
+  finalize,
+  map,
+  Observable,
+  shareReplay,
+} from 'rxjs';
+import { isEqual, sortBy } from 'es-toolkit';
+import { defineQuery } from '@shared/lib/observableQuery';
 
 export interface ReadDirectoryOptions {
   hideAutomergeFiles?: boolean;
@@ -18,30 +23,63 @@ export interface ReadDirectoryOptions {
 const setupFileSystemService = () => {
   const vfs = new VirtualFileSystem();
 
+  const directoryContent$Cache = new Map<
+    string,
+    Observable<[string, FileType][]>
+  >();
+
+  const directoryContent$ = ({
+    options: { hideAutomergeFiles = false } = {},
+    path,
+  }: {
+    path: string;
+    options?: ReadDirectoryOptions;
+  }) => {
+    const cacheKey = [path, hideAutomergeFiles].join(':');
+
+    let $ = directoryContent$Cache.get(cacheKey);
+    if (!$) {
+      $ = new Observable<[string, FileType][]>((subscriber) => {
+        const fetchEntries = async () => {
+          try {
+            const entries = await vfs.readDirectory(path);
+
+            subscriber.next(sortBy(entries, [0]));
+          } catch (err) {
+            subscriber.error(err);
+          }
+        };
+
+        void fetchEntries();
+
+        const unwatch = vfs.watch(path, () => fetchEntries());
+
+        return () => {
+          unwatch();
+        };
+      }).pipe(
+        distinctUntilChanged((a, b) => isEqual(a, b)),
+        shareReplay({ bufferSize: 1, refCount: true }),
+        finalize(() => directoryContent$Cache.delete(path)),
+        map((list) => {
+          if (hideAutomergeFiles) {
+            return list.filter(([name]) => !zodIs(name, zodAutomergeFileName));
+          }
+          return list;
+        }),
+      );
+
+      directoryContent$Cache.set(path, $);
+    }
+
+    return $;
+  };
+
   const unmount = (path: string) => {
     vfs.unmount(path);
   };
 
   const createDirectory = (path: string) => vfs.createDirectory(path);
-
-  const onChangePath = (
-    path: string,
-    callback: (event: VfsEvent) => void,
-    options?: VfsWatchOptions,
-  ) => vfs.watch(path, callback, options);
-
-  const readDirectory = async (
-    path: string,
-    { hideAutomergeFiles }: ReadDirectoryOptions = {},
-  ) => {
-    const list = await vfs.readDirectory(path);
-
-    if (hideAutomergeFiles) {
-      return list.filter(([name]) => !zodIs(name, zodAutomergeFileName));
-    }
-
-    return list;
-  };
 
   const mountFSDirectoryHandle = (
     path: string,
@@ -78,8 +116,8 @@ const setupFileSystemService = () => {
 
     unmount,
     createDirectory,
-    onChangePath,
-    readDirectory,
+    directoryContent$,
+    directoryContent: defineQuery(directoryContent$),
     mountFSDirectoryHandle,
     move,
     delete: remove,

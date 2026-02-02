@@ -4,9 +4,10 @@ import type {
   DatabaseView,
   DatabaseViewId,
 } from '@shared/lib/databaseDocument';
-import { useLiveResource } from '@shared/lib/useLiveResource';
+import { useQuery } from '@shared/lib/observableQuery';
 import { useMainService } from '@shared/service';
-import type { Ref } from 'vue';
+import { isUndefined } from 'es-toolkit';
+import { computed, toValue, type Ref } from 'vue';
 
 export const useDatabaseView = (
   path: Ref<string>,
@@ -15,36 +16,37 @@ export const useDatabaseView = (
 ) => {
   const {
     databaseDocument: {
-      onChangeDocument,
-      views: { getView, patch },
+      views: { patch, databaseView },
     },
   } = useMainService();
 
-  const {
-    errorMessage,
-    isLoading,
-    isReady,
-    state: view,
-  } = useLiveResource(
-    () => ({
-      path: path.value,
+  const { data, error, isLoading } = useQuery(
+    databaseView,
+    computed(() => ({
       documentId: documentId.value,
+      path: path.value,
       viewId: viewId.value,
-    }),
-    {
-      fetch: ({ documentId, path, viewId }) =>
-        getView(path, documentId, viewId),
-      subscribe: ({ documentId, path }, cb) =>
-        onChangeDocument(path, documentId, cb),
-      defaultErrorMessage: 'Error reading view',
-    },
+    })),
   );
 
+  const errorMessage = computed(() => {
+    const e = toValue(error);
+
+    if (isUndefined(e)) {
+      return undefined;
+    }
+
+    if (e instanceof Error) {
+      return e.message;
+    }
+
+    return 'Error reading view';
+  });
+
   return {
-    view,
+    view: data,
     errorMessage,
     isLoading,
-    isReady,
 
     patch: (view: PatchSource<DatabaseView>) =>
       patch(path.value, documentId.value, viewId.value, view),

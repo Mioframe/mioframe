@@ -1,12 +1,13 @@
 import { useMainService } from '@shared/service';
-import type { Ref } from 'vue';
+import { computed, toValue, type Ref } from 'vue';
 import type { AMDocumentId } from '@shared/lib/automerge';
 import type {
   DatabaseView,
   DatabaseViewId,
 } from '@shared/lib/databaseDocument';
 import type { PatchSource } from '@shared/lib/changeObject';
-import { useLiveResource } from '@shared/lib/useLiveResource';
+import { useQuery } from '@shared/lib/observableQuery';
+import { isUndefined } from 'es-toolkit';
 
 export const useDatabaseViews = (
   path: Ref<string>,
@@ -14,34 +15,36 @@ export const useDatabaseViews = (
 ) => {
   const {
     databaseDocument: {
-      onChangeDocument,
-      views: { getViewList, changeOrder, create, patch, remove },
+      views: { changeOrder, create, patch, remove, viewList },
     },
   } = useMainService();
 
-  const {
-    errorMessage,
-    isLoading,
-    isReady,
-    state: views,
-  } = useLiveResource(
-    () => ({
-      path: path.value,
+  const { data, error, isLoading } = useQuery(
+    viewList,
+    computed(() => ({
       documentId: documentId.value,
-    }),
-    {
-      fetch: ({ documentId, path }) => getViewList(path, documentId),
-      subscribe: ({ documentId, path }, cb) =>
-        onChangeDocument(path, documentId, cb),
-      defaultErrorMessage: 'Error reading views',
-    },
+      path: path.value,
+    })),
   );
 
+  const errorMessage = computed(() => {
+    const e = toValue(error);
+
+    if (isUndefined(e)) {
+      return undefined;
+    }
+
+    if (e instanceof Error) {
+      return e.message;
+    }
+
+    return 'Error reading views';
+  });
+
   return {
-    views,
+    views: data,
     errorMessage,
     isLoading,
-    isReady,
 
     create: (view: DatabaseView) => create(path.value, documentId.value, view),
     remove: (viewId: DatabaseViewId) =>

@@ -4,7 +4,7 @@ import type { DirectoryFSEntry } from '../fileSystem';
 import { zodIs } from '../validateZodScheme';
 import type { RepoState } from './useRepo';
 import { useRepo } from './useRepo';
-import { defineScopePool, createPoolConsumer } from '../scopePool';
+import { defineScopePool, createUsePoolHook } from '../scopePool';
 import { useDirectoryFSEntryPool } from '../fileSystem/directoryFSEntryPool';
 import type { AMDocHandle } from '../automerge';
 import { zodDocumentId, type AMDocumentId } from '../automerge';
@@ -123,4 +123,4 @@ export const directoryRepoPool = defineScopePool(setupDirectoryRepoState);
  * @param directory - директория для хранения документов
  * @returns
  */
-export const useDirectoryRepo = createPoolConsumer(directoryRepoPool);
+export const useDirectoryRepo = createUsePoolHook(directoryRepoPool);

@@ -5,9 +5,10 @@ import type {
   DatabaseUnknownProperty,
 } from '@shared/lib/databaseDocument';
 import { DomainError } from '@shared/lib/error';
-import { useLiveResource } from '@shared/lib/useLiveResource';
+import { useQuery } from '@shared/lib/observableQuery';
 import { useMainService } from '@shared/service';
-import type { Ref } from 'vue';
+import { isUndefined } from 'es-toolkit';
+import { computed, toValue, type Ref } from 'vue';
 
 export const useDatabaseProperty = (
   path: Ref<string>,
@@ -16,36 +17,37 @@ export const useDatabaseProperty = (
 ) => {
   const {
     databaseDocument: {
-      onChangeDocument,
-      properties: { get, patch },
+      properties: { patch, databaseProperty },
     },
   } = useMainService();
 
-  const {
-    errorMessage,
-    isLoading,
-    isReady,
-    state: property,
-  } = useLiveResource(
-    () => ({
-      path: path.value,
+  const { data, error, isLoading } = useQuery(
+    databaseProperty,
+    computed(() => ({
       documentId: documentId.value,
-      propertyId: propertyId.value,
-    }),
-    {
-      fetch: async ({ documentId, path, propertyId }) =>
-        propertyId ? await get(path, documentId, propertyId) : undefined,
-      subscribe: ({ documentId, path }, cb) =>
-        onChangeDocument(path, documentId, cb),
-      defaultErrorMessage: 'Error reading property',
-    },
+      id: propertyId.value,
+      path: path.value,
+    })),
   );
 
+  const errorMessage = computed(() => {
+    const e = toValue(error);
+
+    if (isUndefined(e)) {
+      return undefined;
+    }
+
+    if (e instanceof Error) {
+      return e.message;
+    }
+
+    return 'Error reading property';
+  });
+
   return {
-    property,
+    property: data,
     errorMessage,
     isLoading,
-    isReady,
 
     patch: <T extends DatabaseUnknownProperty>(property: PatchSource<T>) => {
       if (!propertyId.value) {

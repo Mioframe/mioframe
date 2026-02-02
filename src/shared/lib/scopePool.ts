@@ -38,6 +38,8 @@ interface ScopePoolOptions {
  * Автоматически удаляет scope, когда количество подписчиков становится 0.
  */
 export const defineScopePool = <K extends WeakKey, V extends object>(
+  // TODO: добавить поддержку примитивов и использовать для кеширования путей в сервисе.
+  // TODO: добавить предохранитель idle, очистку по таймеру бездействия.
   setupFn: (key: K) => V,
   options: ScopePoolOptions = {},
 ): UseScopePool<K, V> =>
@@ -167,7 +169,7 @@ export const usePoolState = <K extends WeakKey, V>(
 /**
  * Создает готовый хук для конкретного пула (синтаксический сахар)
  */
-export const createPoolConsumer =
+export const createUsePoolHook =
   <K extends WeakKey, V>(usePool: UseScopePool<K, V>) =>
   (key: MaybeRefOrGetter<K | undefined>) =>
     usePoolState(usePool, key);

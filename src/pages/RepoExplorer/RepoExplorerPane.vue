@@ -53,7 +53,7 @@ const readDirectoryOptions = computed(
   }),
 );
 
-const { state: directoryEntries } = useDirectory(
+const { data: directoryEntries } = useDirectory(
   directoryPath,
   readDirectoryOptions,
 );

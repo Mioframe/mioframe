@@ -37,7 +37,7 @@ const { property } = useDatabaseProperty(directoryPath, documentId, propertyId);
 
 const emit = defineEmits<{ click: [] }>();
 
-const { value: stateValue } = useDatabaseValue(
+const { data: stateValue } = useDatabaseValue(
   directoryPath,
   documentId,
   itemId,

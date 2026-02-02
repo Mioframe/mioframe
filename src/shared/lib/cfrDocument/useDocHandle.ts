@@ -9,7 +9,7 @@ import type {
   AMDocHandleChangePayload,
   AMDocHandleDeletePayload,
 } from '../automerge/automergeTypes';
-import { defineScopePool, createPoolConsumer } from '../scopePool';
+import { defineScopePool, createUsePoolHook } from '../scopePool';
 import { tryOnScopeDispose } from '@vueuse/core';
 
 export type DocHandleState = {
@@ -100,4 +100,4 @@ export const setupDocHandleState = (docHandle: AMDocHandle): DocHandleState => {
 
 export const docHandlePool = defineScopePool(setupDocHandleState);
 
-export const useDocHandle = createPoolConsumer(docHandlePool);
+export const useDocHandle = createUsePoolHook(docHandlePool);

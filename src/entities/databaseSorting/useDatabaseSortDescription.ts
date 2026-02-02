@@ -3,9 +3,10 @@ import type {
   DatabasePropertyId,
   DatabaseViewId,
 } from '@shared/lib/databaseDocument';
-import { useLiveResource } from '@shared/lib/useLiveResource';
+import { useQuery } from '@shared/lib/observableQuery';
 import { useMainService } from '@shared/service';
-import type { Ref } from 'vue';
+import { isUndefined } from 'es-toolkit';
+import { computed, toValue, type Ref } from 'vue';
 
 export const useDatabaseSortDescription = (
   path: Ref<string>,
@@ -15,39 +16,40 @@ export const useDatabaseSortDescription = (
 ) => {
   const {
     databaseDocument: {
-      onChangeDocument,
       views: {
-        sorting: { get, toggleDirection },
+        sorting: { toggleDirection, databaseSort },
       },
     },
   } = useMainService();
 
-  const {
-    errorMessage,
-    isLoading,
-    isReady,
-    state: sortDescription,
-  } = useLiveResource(
-    () => ({
-      path: path.value,
+  const { data, error, isLoading } = useQuery(
+    databaseSort,
+    computed(() => ({
       documentId: documentId.value,
-      viewId: viewId.value,
+      path: path.value,
       propertyId: propertyId.value,
-    }),
-    {
-      fetch: async ({ documentId, path, propertyId, viewId }) =>
-        get(path, documentId, viewId, propertyId),
-      subscribe: ({ documentId, path }, cb) =>
-        onChangeDocument(path, documentId, cb),
-      defaultErrorMessage: 'Error reading properties',
-    },
+      viewId: viewId.value,
+    })),
   );
 
+  const errorMessage = computed(() => {
+    const e = toValue(error);
+
+    if (isUndefined(e)) {
+      return undefined;
+    }
+
+    if (e instanceof Error) {
+      return e.message;
+    }
+
+    return 'Error reading properties';
+  });
+
   return {
-    sortDescription,
+    sortDescription: data,
     errorMessage,
     isLoading,
-    isReady,
 
     toggleDirection: () =>
       toggleDirection(

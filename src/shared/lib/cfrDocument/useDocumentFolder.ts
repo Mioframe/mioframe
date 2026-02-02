@@ -1,7 +1,7 @@
 import { effectScope } from 'vue';
 import { computed, reactive, shallowReactive, watch } from 'vue';
 import type { WritableDirectoryFSEntry } from '../fileSystem';
-import { defineScopePool, createPoolConsumer } from '../scopePool';
+import { defineScopePool, createUsePoolHook } from '../scopePool';
 import { useDirectoryRepo } from './useDirectoryRepo';
 import type { AMDocumentId } from '../automerge';
 import type { CFRDocument } from './types';
@@ -69,4 +69,4 @@ export const documentFolderPool = defineScopePool(
   },
 );
 
-export const useDocumentFolder = createPoolConsumer(documentFolderPool);
+export const useDocumentFolder = createUsePoolHook(documentFolderPool);

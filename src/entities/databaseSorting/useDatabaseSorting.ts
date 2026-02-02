@@ -4,10 +4,11 @@ import type {
   DatabaseSortDescription,
   DatabaseViewId,
 } from '@shared/lib/databaseDocument';
-import { useLiveResource } from '@shared/lib/useLiveResource';
+import { useQuery } from '@shared/lib/observableQuery';
 import { useMainService } from '@shared/service';
+import { isUndefined } from 'es-toolkit';
 import type { PartialDeep } from 'type-fest';
-import type { Ref } from 'vue';
+import { computed, toValue, type Ref } from 'vue';
 
 export const useDatabaseSorting = (
   path: Ref<string>,
@@ -16,11 +17,10 @@ export const useDatabaseSorting = (
 ) => {
   const {
     databaseDocument: {
-      onChangeDocument,
       views: {
         sorting: {
           changePriority,
-          getSortingPropertiesIdList,
+          sortingPropertiesIdList,
           patch,
           post,
           remove,
@@ -29,31 +29,33 @@ export const useDatabaseSorting = (
     },
   } = useMainService();
 
-  const {
-    errorMessage,
-    isLoading,
-    isReady,
-    state: sortingIdList,
-  } = useLiveResource(
-    () => ({
-      path: path.value,
+  const { data, error, isLoading } = useQuery(
+    sortingPropertiesIdList,
+    computed(() => ({
       documentId: documentId.value,
+      path: path.value,
       viewId: viewId.value,
-    }),
-    {
-      fetch: async ({ documentId, path, viewId }) =>
-        getSortingPropertiesIdList(path, documentId, viewId),
-      subscribe: ({ documentId, path }, cb) =>
-        onChangeDocument(path, documentId, cb),
-      defaultErrorMessage: 'Error reading sorting list',
-    },
+    })),
   );
 
+  const errorMessage = computed(() => {
+    const e = toValue(error);
+
+    if (isUndefined(e)) {
+      return undefined;
+    }
+
+    if (e instanceof Error) {
+      return e.message;
+    }
+
+    return 'Error reading sorting list';
+  });
+
   return {
-    sortingIdList,
+    sortingIdList: data,
     errorMessage,
     isLoading,
-    isReady,
 
     changePriority: (from: number, to: number) =>
       changePriority(path.value, documentId.value, viewId.value, from, to),

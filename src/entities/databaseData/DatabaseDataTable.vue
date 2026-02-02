@@ -14,7 +14,7 @@ import { useDatabaseData } from './useDatabaseData';
 const props = defineProps<{
   directoryPath: string;
   documentId: AMDocumentId;
-  properties: DatabasePropertyId[];
+  properties: Readonly<DatabasePropertyId[]>;
   viewId?: DatabaseViewId;
   idQuery?: ItemIdQuery;
 }>();

@@ -7,51 +7,81 @@ import {
   type DatabaseUnknownProperty,
 } from '@shared/lib/databaseDocument';
 import {
-  strictRecordGet,
   strictRecordIterableKeys,
   strictRecordRemove,
   strictRecordSet,
-  strictRecordSize,
 } from '@shared/lib/strictRecord';
 import type { PatchSource } from '@shared/lib/changeObject';
 import { deepPatchJsonObject } from '@shared/lib/changeObject';
 import { stringPath } from '../directories';
+import { distinctUntilChanged, map, type Observable } from 'rxjs';
+import { defineQuery } from '@shared/lib/observableQuery';
+import { isEqual } from 'es-toolkit';
 
 export const useDatabasePropertiesService = (
-  getDatabaseBody: (
-    path: string,
-    documentId: AMDocumentId,
-  ) => Promise<DatabaseState | undefined>,
+  databaseState$: (q: {
+    documentId: AMDocumentId;
+    path: string;
+  }) => Observable<DatabaseState | undefined>,
   changeDatabase: (
     path: string,
     documentId: AMDocumentId,
     callback: (state: DatabaseState) => unknown,
   ) => Promise<void>,
 ) => {
-  const getDatabaseProperties = async (
-    path: string,
-    documentId: AMDocumentId,
-  ): Promise<undefined | DatabaseUnknownPropertiesMap> => {
-    const database = await getDatabaseBody(path, documentId);
-    if (database) {
-      return database.properties;
+  const databaseProperties$ = ({
+    documentId,
+    path,
+  }: {
+    documentId: AMDocumentId;
+    path: string;
+  }) =>
+    databaseState$({ documentId, path }).pipe(
+      map(
+        (state): DatabaseUnknownPropertiesMap | undefined => state?.properties,
+      ),
+      distinctUntilChanged(),
+    );
+
+  const databaseProperties = defineQuery(databaseProperties$);
+
+  const databaseProperty$Cache = new Map<
+    string,
+    Observable<DatabaseUnknownProperty | undefined>
+  >();
+
+  const databaseProperty$ = ({
+    documentId,
+    id,
+    path,
+  }: {
+    path: string;
+    documentId: AMDocumentId;
+    id?: DatabasePropertyId;
+  }) => {
+    const cacheKey = `${path}:${documentId}:${id ?? 'undefined'}`;
+
+    let $ = databaseProperty$Cache.get(cacheKey);
+    if ($) {
+      return $;
     }
 
-    return undefined;
+    $ = databaseProperties$({ documentId, path }).pipe(
+      map((properties) => {
+        if (properties && id) {
+          return properties[id];
+        }
+
+        return undefined;
+      }),
+      distinctUntilChanged(),
+    );
+    databaseProperty$Cache.set(cacheKey, $);
+
+    return $;
   };
 
-  const get = async (
-    path: string,
-    documentId: AMDocumentId,
-    id: DatabasePropertyId,
-  ): Promise<DatabaseUnknownProperty | undefined> => {
-    const properties = await getDatabaseProperties(path, documentId);
-    if (properties) {
-      return strictRecordGet(properties, id);
-    }
-
-    return undefined;
-  };
+  const databaseProperty = defineQuery(databaseProperty$);
 
   const post = async (
     path: string,
@@ -82,31 +112,28 @@ export const useDatabasePropertiesService = (
       void deepPatchJsonObject(oldProperty, property);
     });
 
-  const getSize = async (
-    path: string,
-    documentId: AMDocumentId,
-  ): Promise<number | undefined> => {
-    const properties = await getDatabaseProperties(path, documentId);
+  const databasePropertiesIdList$ = ({
+    documentId,
+    path,
+  }: {
+    path: string;
+    documentId: AMDocumentId;
+  }) =>
+    databaseProperties$({
+      documentId,
+      path,
+    }).pipe(
+      map((properties) => {
+        if (properties) {
+          return Array.from(strictRecordIterableKeys(properties)());
+        }
 
-    if (properties) {
-      return strictRecordSize(properties);
-    }
+        return undefined;
+      }),
+      distinctUntilChanged((a, b) => isEqual(a, b)),
+    );
 
-    return undefined;
-  };
-
-  const getDatabasePropertiesIdList = async (
-    path: string,
-    documentId: AMDocumentId,
-  ): Promise<DatabasePropertyId[] | undefined> => {
-    const properties = await getDatabaseProperties(path, documentId);
-
-    if (properties) {
-      return Array.from(strictRecordIterableKeys(properties)());
-    }
-
-    return undefined;
-  };
+  const databasePropertiesIdList = defineQuery(databasePropertiesIdList$);
 
   const remove = (
     path: string,
@@ -118,9 +145,14 @@ export const useDatabasePropertiesService = (
     });
 
   return {
-    get,
-    getSize,
-    getDatabasePropertiesIdList,
+    databaseProperties$,
+    databaseProperties,
+
+    databasePropertiesIdList$,
+    databasePropertiesIdList,
+
+    databaseProperty$,
+    databaseProperty,
 
     post,
     patch,
