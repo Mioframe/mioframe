@@ -3,7 +3,6 @@ import { deepPatchJsonObject } from '@shared/lib/changeObject';
 import type {
   DatabasePropertyId,
   DatabaseSortDescription,
-  DatabaseSortMap,
   DatabaseView,
 } from '@shared/lib/databaseDocument';
 import {
@@ -11,7 +10,6 @@ import {
   type DatabaseViewId,
 } from '@shared/lib/databaseDocument';
 import { moveArrayValue } from '@shared/lib/moveArrayValue';
-import { strictRecordGet } from '@shared/lib/strictRecord';
 import {
   strictRecordIterableEntries,
   strictRecordIterableKeys,
@@ -20,13 +18,16 @@ import {
   strictRecordSize,
 } from '@shared/lib/strictRecord/wrapStrictRecord';
 import type { PartialDeep } from 'type-fest';
+import { distinctUntilChanged, map, type Observable } from 'rxjs';
+import { isEqual } from 'es-toolkit';
+import { defineQuery } from '@shared/lib/observableQuery';
 
 export const useDatabaseViewSortService = (
-  getView: (
-    path: string,
-    documentId: AMDocumentId,
-    viewId: DatabaseViewId,
-  ) => Promise<undefined | DatabaseView>,
+  databaseView$: (q: {
+    documentId: AMDocumentId;
+    path: string;
+    viewId?: DatabaseViewId;
+  }) => Observable<DatabaseView | undefined>,
   changeView: (
     path: string,
     documentId: AMDocumentId,
@@ -34,15 +35,6 @@ export const useDatabaseViewSortService = (
     cb: (view: DatabaseView) => unknown,
   ) => Promise<unknown>,
 ) => {
-  const getSortingEntries = async (
-    path: string,
-    documentId: AMDocumentId,
-    viewId: DatabaseViewId,
-  ) =>
-    Array.from(
-      strictRecordIterableEntries(await get(path, documentId, viewId))(),
-    ).sort(([, { priority: a }], [, { priority: b }]) => a - b);
-
   const post = (
     path: string,
     documentId: AMDocumentId,
@@ -85,45 +77,93 @@ export const useDatabaseViewSortService = (
       });
     });
 
-  async function get(
-    path: string,
-    documentId: AMDocumentId,
-    viewId: DatabaseViewId,
-  ): Promise<DatabaseSortMap | undefined>;
-  async function get(
-    path: string,
-    documentId: AMDocumentId,
-    viewId: DatabaseViewId,
-    propertyId: DatabasePropertyId,
-  ): Promise<DatabaseSortDescription | undefined>;
-  async function get(
-    path: string,
-    documentId: AMDocumentId,
-    viewId: DatabaseViewId,
-    propertyId?: DatabasePropertyId,
-  ) {
-    const view = await getView(path, documentId, viewId);
+  const databaseSorting$ = ({
+    documentId,
+    path,
+    viewId,
+  }: {
+    documentId: AMDocumentId;
+    path: string;
+    viewId?: DatabaseViewId;
+  }) =>
+    databaseView$({ documentId, path, viewId }).pipe(
+      map((view) => view?.sorting),
+      distinctUntilChanged(),
+    );
 
-    const sorting = view?.sorting;
+  const sortingList$ = ({
+    documentId,
+    path,
+    viewId,
+  }: {
+    path: string;
+    documentId: AMDocumentId;
+    viewId: DatabaseViewId;
+  }) =>
+    databaseSorting$({ documentId, path, viewId }).pipe(
+      map((sorting) => {
+        if (sorting) {
+          return Array.from(strictRecordIterableEntries(sorting)()).sort(
+            ([, { priority: a }], [, { priority: b }]) => a - b,
+          );
+        }
 
-    if (propertyId && sorting) {
-      return strictRecordGet(sorting, propertyId);
+        return undefined;
+      }),
+    );
+
+  const databaseSort$Cache = new Map<
+    string,
+    Observable<DatabaseSortDescription | undefined>
+  >();
+
+  const databaseSort$ = ({
+    documentId,
+    path,
+    viewId,
+    propertyId,
+  }: {
+    documentId: AMDocumentId;
+    path: string;
+    viewId: DatabaseViewId;
+    propertyId: DatabasePropertyId;
+  }) => {
+    const cacheKey = [documentId, path, viewId, propertyId].join(':');
+
+    let $ = databaseSort$Cache.get(cacheKey);
+
+    if (!$) {
+      $ = databaseSorting$({ documentId, path, viewId }).pipe(
+        map((sorting) => sorting?.[propertyId]),
+        distinctUntilChanged(),
+      );
+
+      databaseSort$Cache.set(cacheKey, $);
     }
 
-    return sorting;
-  }
-
-  const getSortingPropertiesIdList = async (
-    path: string,
-    documentId: AMDocumentId,
-    viewId: DatabaseViewId,
-  ) => {
-    const sorting = await get(path, documentId, viewId);
-    if (sorting) {
-      return Array.from(strictRecordIterableKeys(sorting)());
-    }
-    return undefined;
+    return $;
   };
+
+  const databaseSort = defineQuery(databaseSort$);
+
+  const sortingPropertiesIdList$ = ({
+    documentId,
+    path,
+    viewId,
+  }: {
+    path: string;
+    documentId: AMDocumentId;
+    viewId: DatabaseViewId;
+  }) =>
+    databaseSorting$({ documentId, path, viewId }).pipe(
+      map((sorting) => {
+        if (sorting) {
+          return Array.from(strictRecordIterableKeys(sorting)());
+        }
+        return undefined;
+      }),
+      distinctUntilChanged((a, b) => isEqual(a, b)),
+    );
 
   const changePriority = (
     path: string,
@@ -137,12 +177,7 @@ export const useDatabaseViewSortService = (
 
       const tempArray = Array.from(strictRecordIterableValues(sorting)());
 
-      tempArray.sort(
-        (
-          { priority: a = tempArray.length },
-          { priority: b = tempArray.length },
-        ) => a - b,
-      );
+      tempArray.sort(({ priority: a }, { priority: b }) => a - b);
 
       moveArrayValue(tempArray, from, to);
 
@@ -157,8 +192,9 @@ export const useDatabaseViewSortService = (
     viewId: DatabaseViewId,
     propertyId: DatabasePropertyId,
   ) => {
-    const oldDirection = (await get(path, documentId, viewId, propertyId))
-      ?.direction;
+    const oldDirection = (
+      await databaseSort.fetch({ documentId, path, propertyId, viewId })
+    )?.direction;
 
     await patch(path, documentId, viewId, propertyId, {
       direction:
@@ -169,9 +205,13 @@ export const useDatabaseViewSortService = (
   };
 
   return {
-    getSortingEntries,
-    getSortingPropertiesIdList,
-    get,
+    databaseSorting$,
+    sortingList$,
+    sortingList: defineQuery(sortingList$),
+    sortingPropertiesIdList$,
+    sortingPropertiesIdList: defineQuery(sortingPropertiesIdList$),
+    databaseSort$,
+    databaseSort,
     post,
     patch,
     remove,

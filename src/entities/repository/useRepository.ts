@@ -1,29 +1,43 @@
 import type { AMDocumentId, CFRDocumentContent } from '@shared/lib/cfrDocument';
-import { useLiveResource } from '@shared/lib/useLiveResource';
+import { useQuery } from '@shared/lib/observableQuery';
 import { useMainService } from '@shared/service';
-import { type Ref } from 'vue';
+import { isUndefined } from 'es-toolkit';
+import { computed, toValue, type Ref } from 'vue';
 
 export const useRepository = (path: Ref<string>) => {
   const {
-    repositories: {
-      readRepository,
-      createDocument,
-      deleteDocument,
-      onChangeRepository: onChange,
-    },
+    repositories: { createDocument, deleteDocument, documentIdList },
   } = useMainService();
 
-  const { errorMessage, isLoading, isReady, state } = useLiveResource(path, {
-    fetch: (path) => readRepository(path),
-    subscribe: (path, cb) => onChange(path, cb),
-    defaultErrorMessage: 'Error reading repository',
+  const {
+    data: state,
+    error,
+    isLoading,
+  } = useQuery(
+    documentIdList,
+    computed(() => ({
+      path: path.value,
+    })),
+  );
+
+  const errorMessage = computed(() => {
+    const e = toValue(error);
+
+    if (isUndefined(e)) {
+      return undefined;
+    }
+
+    if (e instanceof Error) {
+      return e.message;
+    }
+
+    return 'Error reading repository';
   });
 
   return {
     state,
     errorMessage,
     isLoading,
-    isReady,
 
     createDocument: (initialValue: CFRDocumentContent) =>
       createDocument(path.value, initialValue),

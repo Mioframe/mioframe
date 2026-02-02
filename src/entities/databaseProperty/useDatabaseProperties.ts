@@ -6,7 +6,9 @@ import type {
   DatabaseUnknownProperty,
 } from '@shared/lib/databaseDocument';
 import { computed, type Ref } from 'vue';
-import { useLiveResource } from '@shared/lib/useLiveResource';
+import { useQuery } from '@shared/lib/observableQuery';
+import { toValue } from 'vue';
+import { isUndefined } from 'es-toolkit';
 
 export const useDatabaseProperties = (
   path: Ref<string>,
@@ -14,26 +16,35 @@ export const useDatabaseProperties = (
 ) => {
   const {
     databaseDocument: {
-      properties: { getDatabasePropertiesIdList, patch, post, remove },
-      onChangeDocument,
+      properties: { patch, post, remove, databasePropertiesIdList },
     },
   } = useMainService();
 
   const {
-    errorMessage,
+    data: propertiesIdList,
+    error,
     isLoading,
-    isReady,
-    state: propertiesIdList,
-  } = useLiveResource(
-    () => ({ path: path.value, documentId: documentId.value }),
-    {
-      fetch: ({ documentId, path }) =>
-        getDatabasePropertiesIdList(path, documentId),
-      subscribe: ({ documentId, path }, cb) =>
-        onChangeDocument(path, documentId, cb),
-      defaultErrorMessage: 'Error reading properties',
-    },
+  } = useQuery(
+    databasePropertiesIdList,
+    computed(() => ({
+      documentId: documentId.value,
+      path: path.value,
+    })),
   );
+
+  const errorMessage = computed(() => {
+    const e = toValue(error);
+
+    if (isUndefined(e)) {
+      return undefined;
+    }
+
+    if (e instanceof Error) {
+      return e.message;
+    }
+
+    return 'Error reading properties';
+  });
 
   const size = computed(() => propertiesIdList.value?.length);
 
@@ -42,7 +53,6 @@ export const useDatabaseProperties = (
     size,
     errorMessage,
     isLoading,
-    isReady,
 
     patch: <T extends DatabaseUnknownProperty>(
       path: string,

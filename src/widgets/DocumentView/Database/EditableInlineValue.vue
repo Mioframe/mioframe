@@ -43,7 +43,7 @@ const emit = defineEmits<{
 
 const { property } = useDatabaseProperty(path, documentId, propertyId);
 
-const { value: initialValue } = useDatabaseValue(
+const { data: initialValue } = useDatabaseValue(
   path,
   documentId,
   itemId,

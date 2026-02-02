@@ -1,2 +1,7 @@
-export { useRepositoriesStoreService } from './repositoriesStoreService';
+export {
+  /**
+   * @deprecated
+   */
+  useRepositoriesStoreService,
+} from './repositoriesStoreService';
 export { useRepositoriesService } from './repositoriesService';

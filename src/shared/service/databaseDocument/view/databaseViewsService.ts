@@ -4,10 +4,7 @@ import {
   strictRecordIterableEntries,
   strictRecordRemove,
 } from '@shared/lib/strictRecord';
-import type {
-  DatabaseState,
-  DatabaseViewsMap,
-} from '@shared/lib/databaseDocument';
+import type { DatabaseState } from '@shared/lib/databaseDocument';
 import {
   DB_VIEW_LAYOUT,
   generateViewId,
@@ -23,58 +20,74 @@ import type { PatchSource } from '@shared/lib/changeObject';
 import { deepPatchJsonObject } from '@shared/lib/changeObject';
 import { useDatabaseViewSortService } from './databaseViewSortService';
 import { setupDatabaseViewFilterService } from './databaseViewFilterService';
+import { distinctUntilChanged, map, type Observable } from 'rxjs';
+import { defineQuery } from '@shared/lib/observableQuery';
 
 export const setupDatabaseViewsService = (
-  getDatabaseBody: (
-    path: string,
-    documentId: AMDocumentId,
-  ) => Promise<DatabaseState | undefined>,
+  databaseState$: (q: {
+    documentId: AMDocumentId;
+    path: string;
+  }) => Observable<DatabaseState | undefined>,
   changeDatabase: (
     path: string,
     documentId: AMDocumentId,
     callback: (state: DatabaseState) => unknown,
   ) => Promise<unknown>,
 ) => {
-  const getDatabaseViews = async (
-    path: string,
-    documentId: AMDocumentId,
-  ): Promise<undefined | DatabaseViewsMap> => {
-    const body = await getDatabaseBody(path, documentId);
-
-    return body?.views;
-  };
-
-  const getViewList = async (
-    path: string,
-    documentId: AMDocumentId,
-  ): Promise<undefined | [DatabaseViewId, DatabaseView][]> => {
-    const viewsRecord = await getDatabaseViews(path, documentId);
-
-    return Array.from(strictRecordIterableEntries(viewsRecord)()).sort(
-      ([, { order: a = 0 }], [, { order: b = 0 }]) => a - b,
+  const databaseViews$ = ({
+    documentId,
+    path,
+  }: {
+    documentId: AMDocumentId;
+    path: string;
+  }) =>
+    databaseState$({ documentId, path }).pipe(
+      map((state) => state?.views),
+      distinctUntilChanged(),
     );
-  };
 
-  const getView = async (
-    path: string,
-    documentId: AMDocumentId,
-    viewId: DatabaseViewId,
-  ): Promise<undefined | DatabaseView> => {
-    const views = await getDatabaseViews(path, documentId);
-    if (views) {
-      return strictRecordGet(views, viewId);
+  const viewList$ = ({
+    documentId,
+    path,
+  }: {
+    documentId: AMDocumentId;
+    path: string;
+  }) =>
+    databaseViews$({ documentId, path }).pipe(
+      map((viewsRecord) =>
+        Array.from(strictRecordIterableEntries(viewsRecord)()).sort(
+          ([, { order: a = 0 }], [, { order: b = 0 }]) => a - b,
+        ),
+      ),
+    );
+
+  const viewList = defineQuery(viewList$);
+
+  const view$Cache = new Map<string, Observable<undefined | DatabaseView>>();
+
+  const databaseView$ = ({
+    documentId,
+    path,
+    viewId,
+  }: {
+    documentId: AMDocumentId;
+    path: string;
+    viewId?: DatabaseViewId;
+  }) => {
+    const cacheKey = [documentId, path, viewId].join(':');
+
+    let $ = view$Cache.get(cacheKey);
+
+    if (!$) {
+      $ = databaseViews$({ documentId, path }).pipe(
+        map((views) => (viewId ? views?.[viewId] : undefined)),
+        distinctUntilChanged(),
+      );
+
+      view$Cache.set(cacheKey, $);
     }
 
-    return undefined;
-  };
-
-  const getFirstView = async (
-    path: string,
-    documentId: AMDocumentId,
-  ): Promise<undefined | DatabaseView> => {
-    const list = await getViewList(path, documentId);
-
-    return list?.at(0)?.[1];
+    return $;
   };
 
   const remove = (
@@ -153,16 +166,17 @@ export const setupDatabaseViewsService = (
     });
 
   return {
-    getViewList,
-    getView,
-    getFirstView,
+    viewList,
+
+    databaseView$,
+    databaseView: defineQuery(databaseView$),
 
     remove,
     changeOrder,
     create,
     patch,
 
-    sorting: useDatabaseViewSortService(getView, change),
-    filter: setupDatabaseViewFilterService(getView, change),
+    sorting: useDatabaseViewSortService(databaseView$, change),
+    filter: setupDatabaseViewFilterService(databaseView$, change),
   };
 };

@@ -11,7 +11,7 @@ const emit = defineEmits<{
   click: [name: string];
 }>();
 
-const { state: rootDirectory } = useDirectory(ref('/'));
+const { data: rootDirectory } = useDirectory(ref('/'));
 
 const onClickDirectory = (name: string) => {
   emit('click', name);
