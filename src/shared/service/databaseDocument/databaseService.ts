@@ -20,33 +20,36 @@ import { setupDatabaseDataService } from './databaseDataService';
 import type { Observable } from 'rxjs';
 import { distinctUntilChanged, map } from 'rxjs';
 import { defineQuery } from '@shared/lib/observableQuery';
+import { defineCacheObservable } from '@shared/lib/defineCacheObservable';
 
 export const useDatabaseDocumentService = createGlobalState(() => {
   const { change: changeCFRDocument, cfrDocumentState$ } = useDocumentService();
 
-  const databaseState$ = ({
-    documentId,
-    path,
-  }: {
-    documentId: AMDocumentId;
-    path: string;
-  }): Observable<DatabaseState | undefined> =>
-    cfrDocumentState$({ documentId, path }).pipe(
-      map((cfrDocument) => {
-        if (zodCheck(zodDatabaseDocumentWithContent, cfrDocument)) {
-          return cfrDocument.body;
-        }
-        return undefined;
-      }),
-      distinctUntilChanged(),
-      map((body) => {
-        if (body) {
-          return databaseBodyMigrations.getLatestData(body);
-        }
-        return undefined;
-      }),
-      distinctUntilChanged(),
-    );
+  const databaseState$ = defineCacheObservable(
+    ({
+      documentId,
+      path,
+    }: {
+      documentId: AMDocumentId;
+      path: string;
+    }): Observable<DatabaseState | undefined> =>
+      cfrDocumentState$({ documentId, path }).pipe(
+        map((cfrDocument) => {
+          if (zodCheck(zodDatabaseDocumentWithContent, cfrDocument)) {
+            return cfrDocument.body;
+          }
+          return undefined;
+        }),
+        distinctUntilChanged(),
+        map((body) => {
+          if (body) {
+            return databaseBodyMigrations.getLatestData(body);
+          }
+          return undefined;
+        }),
+        distinctUntilChanged(),
+      ),
+  );
 
   const databaseState = defineQuery(databaseState$);
 

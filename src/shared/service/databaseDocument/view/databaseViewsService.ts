@@ -22,6 +22,8 @@ import { useDatabaseViewSortService } from './databaseViewSortService';
 import { setupDatabaseViewFilterService } from './databaseViewFilterService';
 import { distinctUntilChanged, map, type Observable } from 'rxjs';
 import { defineQuery } from '@shared/lib/observableQuery';
+import { defineCacheObservable } from '@shared/lib/defineCacheObservable';
+import { isEqual } from 'es-toolkit';
 
 export const setupDatabaseViewsService = (
   databaseState$: (q: {
@@ -34,61 +36,42 @@ export const setupDatabaseViewsService = (
     callback: (state: DatabaseState) => unknown,
   ) => Promise<unknown>,
 ) => {
-  const databaseViews$ = ({
-    documentId,
-    path,
-  }: {
-    documentId: AMDocumentId;
-    path: string;
-  }) =>
-    databaseState$({ documentId, path }).pipe(
-      map((state) => state?.views),
-      distinctUntilChanged(),
-    );
+  const databaseViews$ = defineCacheObservable(
+    ({ documentId, path }: { documentId: AMDocumentId; path: string }) =>
+      databaseState$({ documentId, path }).pipe(
+        map((state) => state?.views),
+        distinctUntilChanged(),
+      ),
+  );
 
-  const viewList$ = ({
-    documentId,
-    path,
-  }: {
-    documentId: AMDocumentId;
-    path: string;
-  }) =>
-    databaseViews$({ documentId, path }).pipe(
-      map((viewsRecord) =>
-        Array.from(strictRecordIterableEntries(viewsRecord)()).sort(
-          ([, { order: a = 0 }], [, { order: b = 0 }]) => a - b,
+  const viewList$ = defineCacheObservable(
+    ({ documentId, path }: { documentId: AMDocumentId; path: string }) =>
+      databaseViews$({ documentId, path }).pipe(
+        map((viewsRecord) =>
+          Array.from(strictRecordIterableEntries(viewsRecord)()).sort(
+            ([, { order: a = 0 }], [, { order: b = 0 }]) => a - b,
+          ),
         ),
       ),
-    );
+  );
 
   const viewList = defineQuery(viewList$);
 
-  const view$Cache = new Map<string, Observable<undefined | DatabaseView>>();
-
-  const databaseView$ = ({
-    documentId,
-    path,
-    viewId,
-  }: {
-    documentId: AMDocumentId;
-    path: string;
-    viewId?: DatabaseViewId;
-  }) => {
-    const cacheKey = [documentId, path, viewId].join(':');
-
-    let $ = view$Cache.get(cacheKey);
-
-    if (!$) {
-      $ = databaseViews$({ documentId, path }).pipe(
+  const databaseView$ = defineCacheObservable(
+    ({
+      documentId,
+      path,
+      viewId,
+    }: {
+      documentId: AMDocumentId;
+      path: string;
+      viewId?: DatabaseViewId;
+    }) =>
+      databaseViews$({ documentId, path }).pipe(
         map((views) => (viewId ? views?.[viewId] : undefined)),
-        distinctUntilChanged(),
-      );
-
-      view$Cache.set(cacheKey, $);
-    }
-
-    return $;
-  };
+        distinctUntilChanged((a, b) => isEqual(a, b)),
+      ),
+  );
 
   const remove = (
     path: string,

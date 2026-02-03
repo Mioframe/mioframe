@@ -21,6 +21,7 @@ import { computed, toRefs } from 'vue';
 import type { AMDocumentId } from '@shared/lib/automerge';
 import { useDatabaseProperty } from '@entity/databaseProperty';
 import { useDatabaseValue } from '@entity/databaseValue';
+import { MDCircularProgressIndicator } from '@shared/ui/ProgressIndicators';
 
 const props = defineProps<{
   editable?: boolean;
@@ -37,7 +38,7 @@ const { property } = useDatabaseProperty(directoryPath, documentId, propertyId);
 
 const emit = defineEmits<{ click: [] }>();
 
-const { data: stateValue } = useDatabaseValue(
+const { data: stateValue, isLoading } = useDatabaseValue(
   directoryPath,
   documentId,
   itemId,
@@ -52,8 +53,10 @@ const printValue = computed(() => {
 </script>
 
 <template>
+  <MDCircularProgressIndicator v-if="isLoading" :size="16" />
+
   <BooleanInline
-    v-if="property?.type === PROPERTY_TYPE_BOOLEAN"
+    v-else-if="property?.type === PROPERTY_TYPE_BOOLEAN"
     :value="printValue"
     :path="directoryPath"
     :editable="editable"

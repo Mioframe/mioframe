@@ -16,7 +16,6 @@ import type { UnknownRecord } from 'type-fest';
 import {
   distinctUntilChanged,
   filter,
-  finalize,
   map,
   Observable,
   shareReplay,
@@ -25,28 +24,20 @@ import {
 } from 'rxjs';
 import { defineQuery } from '@shared/lib/observableQuery';
 import { DomainError } from '@shared/lib/error';
+import { defineCacheObservable } from '@shared/lib/defineCacheObservable';
 
 export const useDocumentService = createGlobalState(() => {
   const { getRepo$ } = useRepositoriesService();
 
-  const docHandle$Cache = new Map<
-    string,
-    Observable<AMDocHandle | undefined>
-  >();
-
-  const getDocHandle$ = ({
-    directoryPath,
-    documentId,
-  }: {
-    directoryPath: string;
-    documentId?: AMDocumentId;
-  }) => {
-    const cacheKey = `${directoryPath}:${documentId ?? 'undefined'}`;
-
-    let docHandle$ = docHandle$Cache.get(cacheKey);
-
-    if (!docHandle$) {
-      docHandle$ = getRepo$(directoryPath).pipe(
+  const getDocHandle$ = defineCacheObservable(
+    ({
+      directoryPath,
+      documentId,
+    }: {
+      directoryPath: string;
+      documentId?: AMDocumentId;
+    }) =>
+      getRepo$(directoryPath).pipe(
         filter(isNotNil),
         switchMap((repo) => {
           return new Observable<AMDocHandle | undefined>((subscribe) => {
@@ -60,36 +51,21 @@ export const useDocumentService = createGlobalState(() => {
           });
         }),
         distinctUntilChanged(),
-        finalize(() => docHandle$Cache.delete(cacheKey)),
-        shareReplay({ bufferSize: 1, refCount: true }),
-      );
-
-      docHandle$Cache.set(cacheKey, docHandle$);
-    }
-
-    return docHandle$;
-  };
+      ),
+  );
 
   const docHandle = defineQuery(getDocHandle$);
 
-  const cfrContent$Cache = new Map<
-    string,
-    Observable<UnknownRecord | undefined>
-  >();
-
-  const cfrContent$ = (directoryPath: string, documentId?: AMDocumentId) => {
-    const cacheKey = `${directoryPath}:${documentId ?? 'undefined'}`;
-
-    let $ = cfrContent$Cache.get(cacheKey);
-
-    if (!$) {
-      $ = getDocHandle$({ directoryPath, documentId }).pipe(
+  const cfrContent$ = defineCacheObservable(
+    (directoryPath: string, documentId?: AMDocumentId) =>
+      getDocHandle$({ directoryPath, documentId }).pipe(
         filter(isNotNil),
         switchMap((handle) =>
           new Observable<UnknownRecord | undefined>((subscribe) => {
             const onChange = ({
               doc,
             }: DocHandleChangePayload<UnknownRecord>) => {
+              console.debug('onChange');
               subscribe.next(doc);
             };
             const onDelete = () => {
@@ -105,52 +81,39 @@ export const useDocumentService = createGlobalState(() => {
           }).pipe(startWith(((): UnknownRecord => handle.doc())())),
         ),
         distinctUntilChanged(),
-        finalize(() => cfrContent$Cache.delete(cacheKey)),
+      ),
+  );
+
+  const cfrDocumentState$ = defineCacheObservable(
+    ({ documentId, path }: { path: string; documentId?: AMDocumentId }) =>
+      cfrContent$(path, documentId).pipe(
+        map((doc) => {
+          if (zodIs(doc, zodCFRDocumentContent)) {
+            return doc;
+          }
+
+          return undefined;
+        }),
+        distinctUntilChanged(),
         shareReplay({ bufferSize: 1, refCount: true }),
-      );
-
-      cfrContent$Cache.set(cacheKey, $);
-    }
-
-    return $;
-  };
-
-  const cfrDocumentState$ = ({
-    documentId,
-    path,
-  }: {
-    path: string;
-    documentId?: AMDocumentId;
-  }) =>
-    cfrContent$(path, documentId).pipe(
-      map((doc) => {
-        if (zodIs(doc, zodCFRDocumentContent)) {
-          return doc;
-        }
-
-        return undefined;
-      }),
-      distinctUntilChanged(),
-    );
+      ),
+  );
 
   const cfrDocumentState = defineQuery(cfrDocumentState$);
 
-  const documentDescription$ = ({
-    documentId,
-    path,
-  }: {
-    path: string;
-    documentId?: AMDocumentId;
-  }) =>
-    cfrDocumentState$({ documentId, path }).pipe(
-      map((state) => {
-        if (state) {
-          return omit(state, ['body']);
-        }
-        return undefined;
-      }),
-      distinctUntilChanged((previous, current) => isEqual(previous, current)),
-    );
+  const documentDescription$ = defineCacheObservable(
+    ({ documentId, path }: { path: string; documentId?: AMDocumentId }) =>
+      cfrDocumentState$({ documentId, path }).pipe(
+        map((state) => {
+          if (state) {
+            return omit(state, ['body']);
+          }
+          return undefined;
+        }),
+        distinctUntilChanged((previous, current) => isEqual(previous, current)),
+        shareReplay({ bufferSize: 1, refCount: true }),
+      ),
+  );
 
   const put = async (
     directoryPath: string,

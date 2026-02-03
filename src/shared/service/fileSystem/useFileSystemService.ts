@@ -15,6 +15,7 @@ import {
 } from 'rxjs';
 import { isEqual, sortBy } from 'es-toolkit';
 import { defineQuery } from '@shared/lib/observableQuery';
+import { defineCacheObservable } from '@shared/lib/defineCacheObservable';
 
 export interface ReadDirectoryOptions {
   hideAutomergeFiles?: boolean;
@@ -28,18 +29,15 @@ const setupFileSystemService = () => {
     Observable<[string, FileType][]>
   >();
 
-  const directoryContent$ = ({
-    options: { hideAutomergeFiles = false } = {},
-    path,
-  }: {
-    path: string;
-    options?: ReadDirectoryOptions;
-  }) => {
-    const cacheKey = [path, hideAutomergeFiles].join(':');
-
-    let $ = directoryContent$Cache.get(cacheKey);
-    if (!$) {
-      $ = new Observable<[string, FileType][]>((subscriber) => {
+  const directoryContent$ = defineCacheObservable(
+    ({
+      options: { hideAutomergeFiles = false } = {},
+      path,
+    }: {
+      path: string;
+      options?: ReadDirectoryOptions;
+    }) =>
+      new Observable<[string, FileType][]>((subscriber) => {
         const fetchEntries = async () => {
           try {
             const entries = await vfs.readDirectory(path);
@@ -67,13 +65,8 @@ const setupFileSystemService = () => {
           }
           return list;
         }),
-      );
-
-      directoryContent$Cache.set(path, $);
-    }
-
-    return $;
-  };
+      ),
+  );
 
   const unmount = (path: string) => {
     vfs.unmount(path);

@@ -21,6 +21,7 @@ import type { PartialDeep } from 'type-fest';
 import { distinctUntilChanged, map, type Observable } from 'rxjs';
 import { isEqual } from 'es-toolkit';
 import { defineQuery } from '@shared/lib/observableQuery';
+import { defineCacheObservable } from '@shared/lib/defineCacheObservable';
 
 export const useDatabaseViewSortService = (
   databaseView$: (q: {
@@ -77,93 +78,85 @@ export const useDatabaseViewSortService = (
       });
     });
 
-  const databaseSorting$ = ({
-    documentId,
-    path,
-    viewId,
-  }: {
-    documentId: AMDocumentId;
-    path: string;
-    viewId?: DatabaseViewId;
-  }) =>
-    databaseView$({ documentId, path, viewId }).pipe(
-      map((view) => view?.sorting),
-      distinctUntilChanged(),
-    );
-
-  const sortingList$ = ({
-    documentId,
-    path,
-    viewId,
-  }: {
-    path: string;
-    documentId: AMDocumentId;
-    viewId: DatabaseViewId;
-  }) =>
-    databaseSorting$({ documentId, path, viewId }).pipe(
-      map((sorting) => {
-        if (sorting) {
-          return Array.from(strictRecordIterableEntries(sorting)()).sort(
-            ([, { priority: a }], [, { priority: b }]) => a - b,
-          );
-        }
-
-        return undefined;
-      }),
-    );
-
-  const databaseSort$Cache = new Map<
-    string,
-    Observable<DatabaseSortDescription | undefined>
-  >();
-
-  const databaseSort$ = ({
-    documentId,
-    path,
-    viewId,
-    propertyId,
-  }: {
-    documentId: AMDocumentId;
-    path: string;
-    viewId: DatabaseViewId;
-    propertyId: DatabasePropertyId;
-  }) => {
-    const cacheKey = [documentId, path, viewId, propertyId].join(':');
-
-    let $ = databaseSort$Cache.get(cacheKey);
-
-    if (!$) {
-      $ = databaseSorting$({ documentId, path, viewId }).pipe(
-        map((sorting) => sorting?.[propertyId]),
+  const databaseSorting$ = defineCacheObservable(
+    ({
+      documentId,
+      path,
+      viewId,
+    }: {
+      documentId: AMDocumentId;
+      path: string;
+      viewId?: DatabaseViewId;
+    }) =>
+      databaseView$({ documentId, path, viewId }).pipe(
+        map((view) => view?.sorting),
         distinctUntilChanged(),
-      );
+      ),
+  );
 
-      databaseSort$Cache.set(cacheKey, $);
-    }
+  const sortingList$ = defineCacheObservable(
+    ({
+      documentId,
+      path,
+      viewId,
+    }: {
+      path: string;
+      documentId: AMDocumentId;
+      viewId: DatabaseViewId;
+    }) =>
+      databaseSorting$({ documentId, path, viewId }).pipe(
+        map((sorting) => {
+          if (sorting) {
+            return Array.from(strictRecordIterableEntries(sorting)()).sort(
+              ([, { priority: a }], [, { priority: b }]) => a - b,
+            );
+          }
 
-    return $;
-  };
+          return undefined;
+        }),
+      ),
+  );
+
+  const databaseSort$ = defineCacheObservable(
+    ({
+      documentId,
+      path,
+      viewId,
+      propertyId,
+    }: {
+      documentId: AMDocumentId;
+      path: string;
+      viewId: DatabaseViewId;
+      propertyId: DatabasePropertyId;
+    }) =>
+      databaseSorting$({ documentId, path, viewId }).pipe(
+        map((sorting) => sorting?.[propertyId]),
+        distinctUntilChanged((a, b) => isEqual(a, b)),
+      ),
+  );
 
   const databaseSort = defineQuery(databaseSort$);
 
-  const sortingPropertiesIdList$ = ({
-    documentId,
-    path,
-    viewId,
-  }: {
-    path: string;
-    documentId: AMDocumentId;
-    viewId: DatabaseViewId;
-  }) =>
-    databaseSorting$({ documentId, path, viewId }).pipe(
-      map((sorting) => {
-        if (sorting) {
-          return Array.from(strictRecordIterableKeys(sorting)());
-        }
-        return undefined;
-      }),
-      distinctUntilChanged((a, b) => isEqual(a, b)),
-    );
+  const sortingPropertiesIdList$ = defineCacheObservable(
+    ({
+      documentId,
+      path,
+      viewId,
+    }: {
+      path: string;
+      documentId: AMDocumentId;
+      viewId: DatabaseViewId;
+    }) =>
+      databaseSorting$({ documentId, path, viewId }).pipe(
+        map((sorting) => {
+          if (sorting) {
+            return Array.from(strictRecordIterableKeys(sorting)());
+          }
+          return undefined;
+        }),
+        distinctUntilChanged((a, b) => isEqual(a, b)),
+      ),
+  );
 
   const changePriority = (
     path: string,

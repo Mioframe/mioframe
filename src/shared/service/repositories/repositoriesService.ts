@@ -10,70 +10,58 @@ import {
   zodAutomergeFileName,
 } from '@shared/lib/automergeAdapter';
 import type { CFRDocumentContent } from '@shared/lib/cfrDocument';
-import type { Observable } from 'rxjs';
-import { filter, of, shareReplay } from 'rxjs';
-import { finalize, firstValueFrom, map, switchMap, take } from 'rxjs';
+import { filter, of } from 'rxjs';
+import { firstValueFrom, map, switchMap, take } from 'rxjs';
 import { defineQuery } from '@shared/lib/observableQuery';
+import { defineCacheObservable } from '@shared/lib/defineCacheObservable';
 
 const setupRepositoriesService = () => {
-  const { directoryContent$: watchDirectory$, vfs } = useFileSystemService();
+  const { directoryContent$, vfs } = useFileSystemService();
 
-  const getDocumentIdList$ = ({
-    path,
-  }: {
-    /**
-     * Путь репозитория
-     */
-    path: string;
-  }) => {
-    const directory$ = watchDirectory$({ path });
+  const getDocumentIdList$ = defineCacheObservable(
+    ({
+      path,
+    }: {
+      /**
+       * Путь репозитория
+       */
+      path: string;
+    }) =>
+      directoryContent$({ path }).pipe(
+        map((entries) =>
+          entries.reduce((documentIdList: AMDocumentId[], [name, type]) => {
+            if (type === FileType.File && zodIs(name, zodAutomergeFileName)) {
+              const [documentId] = fileNameToPartialKey(name) ?? [];
 
-    return directory$.pipe(
-      map((entries) =>
-        entries.reduce((documentIdList: AMDocumentId[], [name, type]) => {
-          if (type === FileType.File && zodIs(name, zodAutomergeFileName)) {
-            const [documentId] = fileNameToPartialKey(name) ?? [];
-
-            if (
-              zodIs(documentId, zodDocumentId) &&
-              !documentIdList.includes(documentId)
-            ) {
-              documentIdList.push(documentId);
+              if (
+                zodIs(documentId, zodDocumentId) &&
+                !documentIdList.includes(documentId)
+              ) {
+                documentIdList.push(documentId);
+              }
             }
-          }
 
-          return documentIdList;
-        }, []),
-      ),
-    );
-  };
-
-  const repo$Cache = new Map<string, Observable<Repo>>();
-
-  function getRepo$(path: string, initial = false) {
-    let repo$ = repo$Cache.get(path);
-    if (repo$) {
-      return repo$;
-    }
-
-    repo$ = getDocumentIdList$({ path }).pipe(
-      filter((docs) => initial || docs.length > 0),
-      take(1),
-      switchMap(() =>
-        of(
-          new Repo({
-            storage: createVFSAdapter(vfs, path),
-          }),
+            return documentIdList;
+          }, []),
         ),
       ),
-      finalize(() => repo$Cache.delete(path)),
-      shareReplay({ bufferSize: 1, refCount: true }),
-    );
+  );
 
-    repo$Cache.set(path, repo$);
-
-    return repo$;
-  }
+  const repo$ = defineCacheObservable(
+    (path: string, initial: boolean = false) => {
+      return getDocumentIdList$({ path }).pipe(
+        filter((docs) => initial || docs.length > 0),
+        take(1),
+        switchMap(() =>
+          of(
+            new Repo({
+              storage: createVFSAdapter(vfs, path),
+            }),
+          ),
+        ),
+      );
+    },
+  );
 
   async function getRepo(path: string, initial: true): Promise<Repo>;
   async function getRepo(
@@ -81,7 +69,7 @@ const setupRepositoriesService = () => {
     initial?: false,
   ): Promise<undefined | Repo>;
   async function getRepo(path: string, initial = false) {
-    return firstValueFrom(getRepo$(path, initial));
+    return firstValueFrom(repo$(path, initial));
   }
 
   const deleteDocument = async (path: string, id: AMDocumentId) => {
@@ -105,7 +93,7 @@ const setupRepositoriesService = () => {
   return {
     documentIdList,
     getDocumentIdList$,
-    getRepo$,
+    getRepo$: repo$,
     /**
      * Создать документ в репозитории
      * @param path абсолютный путь к репозиторию
