@@ -17,6 +17,7 @@ import { stringPath } from '../directories';
 import { distinctUntilChanged, map, type Observable } from 'rxjs';
 import { defineQuery } from '@shared/lib/observableQuery';
 import { isEqual } from 'es-toolkit';
+import { defineCacheObservable } from '@shared/lib/defineCacheObservable';
 
 export const useDatabasePropertiesService = (
   databaseState$: (q: {
@@ -29,57 +30,40 @@ export const useDatabasePropertiesService = (
     callback: (state: DatabaseState) => unknown,
   ) => Promise<void>,
 ) => {
-  const databaseProperties$ = ({
-    documentId,
-    path,
-  }: {
-    documentId: AMDocumentId;
-    path: string;
-  }) =>
-    databaseState$({ documentId, path }).pipe(
-      map(
-        (state): DatabaseUnknownPropertiesMap | undefined => state?.properties,
+  const databaseProperties$ = defineCacheObservable(
+    ({ documentId, path }: { documentId: AMDocumentId; path: string }) =>
+      databaseState$({ documentId, path }).pipe(
+        map(
+          (state): DatabaseUnknownPropertiesMap | undefined =>
+            state?.properties,
+        ),
+        distinctUntilChanged(),
       ),
-      distinctUntilChanged(),
-    );
+  );
 
   const databaseProperties = defineQuery(databaseProperties$);
 
-  const databaseProperty$Cache = new Map<
-    string,
-    Observable<DatabaseUnknownProperty | undefined>
-  >();
+  const databaseProperty$ = defineCacheObservable(
+    ({
+      documentId,
+      id,
+      path,
+    }: {
+      path: string;
+      documentId: AMDocumentId;
+      id?: DatabasePropertyId;
+    }) =>
+      databaseProperties$({ documentId, path }).pipe(
+        map((properties) => {
+          if (properties && id) {
+            return properties[id];
+          }
 
-  const databaseProperty$ = ({
-    documentId,
-    id,
-    path,
-  }: {
-    path: string;
-    documentId: AMDocumentId;
-    id?: DatabasePropertyId;
-  }) => {
-    const cacheKey = `${path}:${documentId}:${id ?? 'undefined'}`;
-
-    let $ = databaseProperty$Cache.get(cacheKey);
-    if ($) {
-      return $;
-    }
-
-    $ = databaseProperties$({ documentId, path }).pipe(
-      map((properties) => {
-        if (properties && id) {
-          return properties[id];
-        }
-
-        return undefined;
-      }),
-      distinctUntilChanged(),
-    );
-    databaseProperty$Cache.set(cacheKey, $);
-
-    return $;
-  };
+          return undefined;
+        }),
+        distinctUntilChanged((a, b) => isEqual(a, b)),
+      ),
+  );
 
   const databaseProperty = defineQuery(databaseProperty$);
 
@@ -112,26 +96,22 @@ export const useDatabasePropertiesService = (
       void deepPatchJsonObject(oldProperty, property);
     });
 
-  const databasePropertiesIdList$ = ({
-    documentId,
-    path,
-  }: {
-    path: string;
-    documentId: AMDocumentId;
-  }) =>
-    databaseProperties$({
-      documentId,
-      path,
-    }).pipe(
-      map((properties) => {
-        if (properties) {
-          return Array.from(strictRecordIterableKeys(properties)());
-        }
+  const databasePropertiesIdList$ = defineCacheObservable(
+    ({ documentId, path }: { path: string; documentId: AMDocumentId }) =>
+      databaseProperties$({
+        documentId,
+        path,
+      }).pipe(
+        map((properties) => {
+          if (properties) {
+            return Array.from(strictRecordIterableKeys(properties)());
+          }
 
-        return undefined;
-      }),
-      distinctUntilChanged((a, b) => isEqual(a, b)),
-    );
+          return undefined;
+        }),
+        distinctUntilChanged((a, b) => isEqual(a, b)),
+      ),
+  );
 
   const databasePropertiesIdList = defineQuery(databasePropertiesIdList$);
 
