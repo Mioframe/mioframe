@@ -10,10 +10,11 @@ import type {
   DatabaseView,
   DatabaseViewId,
 } from '@shared/lib/databaseDocument';
-import { set } from 'es-toolkit/compat';
+import { isEqual, set } from 'es-toolkit/compat';
 import { removeEmptyStructures } from '@shared/lib/removeEmptyStructures';
 import { distinctUntilChanged, map, type Observable } from 'rxjs';
 import { defineQuery } from '@shared/lib/observableQuery';
+import { defineCacheObservable } from '@shared/lib/defineCacheObservable';
 
 export const setupDatabaseViewFilterService = (
   databaseView$: (q: {
@@ -28,19 +29,21 @@ export const setupDatabaseViewFilterService = (
     cb: (view: DatabaseView) => unknown,
   ) => unknown,
 ) => {
-  const filter$ = ({
-    documentId,
-    path,
-    viewId,
-  }: {
-    documentId: AMDocumentId;
-    path: string;
-    viewId?: DatabaseViewId;
-  }) =>
-    databaseView$({ documentId, path, viewId }).pipe(
-      map((view) => view?.filter),
-      distinctUntilChanged(),
-    );
+  const filter$ = defineCacheObservable(
+    ({
+      documentId,
+      path,
+      viewId,
+    }: {
+      documentId: AMDocumentId;
+      path: string;
+      viewId?: DatabaseViewId;
+    }) =>
+      databaseView$({ documentId, path, viewId }).pipe(
+        map((view) => view?.filter),
+        distinctUntilChanged((a, b) => isEqual(a, b)),
+      ),
+  );
 
   const change = (
     path: string,

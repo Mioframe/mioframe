@@ -21,6 +21,8 @@ import {
   type Observable,
 } from 'rxjs';
 import { defineQuery } from '@shared/lib/observableQuery';
+import { defineCacheObservable } from '@shared/lib/defineCacheObservable';
+import { isEqual } from 'es-toolkit';
 
 export const setupDatabaseDataService = (
   databaseState$: (q: {
@@ -68,54 +70,39 @@ export const setupDatabaseDataService = (
       strictRecordRemove(data, itemId);
     });
 
-  const databaseData$ = ({
-    documentId,
-    path,
-  }: {
-    path: string;
-    documentId: AMDocumentId;
-  }) =>
-    databaseState$({ documentId, path }).pipe(
-      map((state) => state?.data),
-      distinctUntilChanged(),
-    );
+  const databaseData$ = defineCacheObservable(
+    ({ documentId, path }: { path: string; documentId: AMDocumentId }) =>
+      databaseState$({ documentId, path }).pipe(
+        map((state) => state?.data),
+        distinctUntilChanged(),
+      ),
+  );
 
   const {
     filter: { filter$ },
     sorting: { databaseSorting$ },
   } = setupDatabaseViewsService(databaseState$, changeDatabaseState);
 
-  const filteredIdList$Cache = new Map<
-    string,
-    Observable<undefined | DatabaseItemId[]>
-  >();
-
-  const filteredIdList$ = (q: {
-    path: string;
-    documentId: AMDocumentId;
-    viewId?: DatabaseViewId;
-    options: {
-      itemQuery?: Query<DatabaseItem>;
-      idQuery?: Query<DatabaseItemId>;
-      slice?: {
-        first?: number;
-        last?: number;
+  const filteredIdList$ = defineCacheObservable(
+    ({
+      documentId,
+      options: { idQuery, itemQuery, slice },
+      path,
+      viewId,
+    }: {
+      path: string;
+      documentId: AMDocumentId;
+      viewId?: DatabaseViewId;
+      options: {
+        itemQuery?: Query<DatabaseItem>;
+        idQuery?: Query<DatabaseItemId>;
+        slice?: {
+          first?: number;
+          last?: number;
+        };
       };
-    };
-  }) => {
-    const cacheKey = JSON.stringify(q);
-
-    let $ = filteredIdList$Cache.get(cacheKey);
-
-    if (!$) {
-      const {
-        documentId,
-        options: { idQuery, itemQuery, slice },
-        path,
-        viewId,
-      } = q;
-
-      $ = combineLatest([
+    }) =>
+      combineLatest([
         databaseData$({ documentId, path }),
         filter$({ documentId, path, viewId }),
         databaseSorting$({ documentId, path, viewId }),
@@ -136,43 +123,42 @@ export const setupDatabaseDataService = (
           return undefined;
         }),
         distinctUntilChanged(),
-      );
+      ),
+  );
 
-      filteredIdList$Cache.set(cacheKey, $);
-    }
+  const databaseItem$ = defineCacheObservable(
+    ({
+      documentId,
+      path,
+      itemId,
+    }: {
+      path: string;
+      documentId: AMDocumentId;
+      itemId?: DatabaseItemId;
+    }) =>
+      databaseData$({ documentId, path }).pipe(
+        map((data) => (itemId ? data?.[itemId] : undefined)),
+        distinctUntilChanged((a, b) => isEqual(a, b)),
+      ),
+  );
 
-    return $;
-  };
-
-  const databaseItem$ = ({
-    documentId,
-    path,
-    itemId,
-  }: {
-    path: string;
-    documentId: AMDocumentId;
-    itemId?: DatabaseItemId;
-  }) =>
-    databaseData$({ documentId, path }).pipe(
-      map((data) => (itemId ? data?.[itemId] : undefined)),
-      distinctUntilChanged(),
-    );
-
-  const databaseValue$ = ({
-    documentId,
-    path,
-    itemId,
-    propertyId,
-  }: {
-    path: string;
-    documentId: AMDocumentId;
-    itemId: DatabaseItemId;
-    propertyId: DatabasePropertyId;
-  }) =>
-    databaseItem$({ documentId, itemId, path }).pipe(
-      map((item) => item?.[propertyId]),
-      distinctUntilChanged(),
-    );
+  const databaseValue$ = defineCacheObservable(
+    ({
+      documentId,
+      path,
+      itemId,
+      propertyId,
+    }: {
+      path: string;
+      documentId: AMDocumentId;
+      itemId: DatabaseItemId;
+      propertyId: DatabasePropertyId;
+    }) =>
+      databaseItem$({ documentId, itemId, path }).pipe(
+        map((item) => item?.[propertyId]),
+        distinctUntilChanged(),
+      ),
+  );
 
   const postItem = async (
     path: string,
