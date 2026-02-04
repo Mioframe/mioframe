@@ -40,7 +40,11 @@ const state = useQueryValue<State>('state', {
         <template #main>
           <MDPaneContainer>
             <MDToolbarContainer type="floating">
-              <MDBottomSheet v-model:show="state.show" :label="state.label">
+              <MDBottomSheet
+                v-if="state.show"
+                :label="state.label"
+                @closed="state.show = false"
+              >
                 <MDListContainer v-if="state.bodyElementsNumber > 0">
                   <MDListItem
                     v-for="i in state.bodyElementsNumber"
