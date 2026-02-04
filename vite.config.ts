@@ -65,28 +65,6 @@ export default defineConfig(({ mode, isPreview }) => {
                   },
                 },
                 {
-                  urlPattern: /\.js$/i,
-                  handler: 'StaleWhileRevalidate',
-                  options: {
-                    cacheName: 'static-js-assets',
-                    expiration: {
-                      maxEntries: 64,
-                      maxAgeSeconds: daysToSeconds(2),
-                    },
-                  },
-                },
-                {
-                  urlPattern: /\.(?:css|less)$/i,
-                  handler: 'StaleWhileRevalidate',
-                  options: {
-                    cacheName: 'static-style-assets',
-                    expiration: {
-                      maxEntries: 64,
-                      maxAgeSeconds: daysToSeconds(2),
-                    },
-                  },
-                },
-                {
                   urlPattern: /\.(?:json|xml|csv)$/i,
                   handler: 'NetworkFirst',
                   options: {
