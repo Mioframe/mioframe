@@ -14,21 +14,20 @@ const props = defineProps<{
 
 const { directoryPath, documentId, viewId } = toRefs(props);
 
-const showModel = defineModel<boolean>('show', { required: true });
+const emit = defineEmits<{
+  closed: [];
+}>();
 
-const onUpdateCollapsed = (collapsed: boolean) => {
-  if (collapsed) {
-    showModel.value = false;
-  }
+const onClosed = () => {
+  emit('closed');
 };
 </script>
 
 <template>
   <MDBottomSheet
-    v-model:show="showModel"
     class="db-filters-sheet"
     label="Database Filters Sheet"
-    @update:collapsed="onUpdateCollapsed"
+    @closed="onClosed"
   >
     <MDBottomSheetSection class="db-filters-sheet__section">
       <span :class="MD_SYS_TYPESCALE.title.small">Filters</span>
