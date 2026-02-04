@@ -10,21 +10,17 @@ defineProps<{
   documentId: AMDocumentId;
 }>();
 
-const showModel = defineModel<boolean>('show', { required: true });
+const emit = defineEmits<{
+  closed: [];
+}>();
 
-const onUpdateCollapsed = (collapsed: boolean) => {
-  if (collapsed) {
-    showModel.value = false;
-  }
+const onClosed = () => {
+  emit('closed');
 };
 </script>
 
 <template>
-  <MDBottomSheet
-    v-model:show="showModel"
-    label="Database Sort Sheet"
-    @update:collapsed="onUpdateCollapsed"
-  >
+  <MDBottomSheet label="Database Sort Sheet" @closed="onClosed">
     <MDBottomSheetSection class="md-padding-4">
       <DatabaseItemSortingListSection
         v-if="viewId"

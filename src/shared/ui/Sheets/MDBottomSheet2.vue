@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import MDBottomSheetContainer from './MDBottomSheetContainer2.vue';
-import { computed, ref, toRefs, useTemplateRef, watch, watchEffect } from 'vue';
+import { shallowRef, toRefs, useTemplateRef, watch } from 'vue';
 import { TeleportContainer } from '@shared/lib/teleportContainer';
-import type { MaybeElement } from '@vueuse/core';
+import { type MaybeElement } from '@vueuse/core';
 import { useOverlayContainer } from '../Overlay';
 
 const props = withDefaults(
@@ -18,41 +18,37 @@ const props = withDefaults(
 
 const { label, class: classProp } = toRefs(props);
 
-const showModel = defineModel<boolean>('show', { required: true });
+const emit = defineEmits<{
+  /**
+   * signals the complete hiding of the sheet
+   */
+  closed: [];
+}>();
 
 defineSlots<{
   default: () => unknown;
 }>();
 
-const open = ref(false);
-
-watchEffect(() => {
-  open.value = showModel.value;
-});
-
-const scrollPosition = ref<number>(0);
-
-watch(scrollPosition, (scrollPosition) => {
-  if (!scrollPosition) {
-    showModel.value = false;
-  }
-});
-
-const render = computed(() => open.value || scrollPosition.value > 0);
-
 const to = useOverlayContainer();
 
 const sheetContainer = useTemplateRef<MaybeElement>('sheetContainer');
+
+const scrollPosition = shallowRef<number>();
+
+watch(scrollPosition, (scrollPosition) => {
+  if (scrollPosition === 0) {
+    emit('closed');
+  }
+});
 </script>
 
 <template>
-  <TeleportContainer :to="to" :container="sheetContainer" :disabled="!render">
+  <TeleportContainer :to="to" :container="sheetContainer">
     <Transition>
       <MDBottomSheetContainer
-        v-if="render"
         ref="sheetContainer"
         v-model:scroll-position="scrollPosition"
-        v-model:open="open"
+        open
         class="md-bottom-sheet__container"
         :class="classProp"
         aria-modal="true"

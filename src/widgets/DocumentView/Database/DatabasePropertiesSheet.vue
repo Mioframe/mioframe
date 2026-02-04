@@ -23,7 +23,9 @@ defineProps<{
   documentId: AMDocumentId;
 }>();
 
-const showModel = defineModel<boolean>('show', { required: true });
+const emit = defineEmits<{
+  closed: [];
+}>();
 
 enum PROPERTY_ACTION {
   remove,
@@ -66,10 +68,8 @@ const onClickPropertyContextAction = (
   }
 };
 
-const onUpdateCollapsed = (collapsed: boolean) => {
-  if (collapsed) {
-    showModel.value = false;
-  }
+const onClosed = () => {
+  emit('closed');
 };
 
 const isShowAddProperty = ref(false);
@@ -77,10 +77,9 @@ const isShowAddProperty = ref(false);
 
 <template>
   <MDBottomSheet
-    v-model:show="showModel"
     class="db-properties-sheet"
     label="Database Properties Sheet"
-    @update:collapsed="onUpdateCollapsed"
+    @closed="onClosed"
   >
     <MDBottomSheetSection class="db-properties-sheet__section">
       <span :class="MD_SYS_TYPESCALE.title.small">Properties</span>

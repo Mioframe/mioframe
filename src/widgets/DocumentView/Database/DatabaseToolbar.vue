@@ -100,31 +100,34 @@ const hasProperties = computed(() => {
     />
 
     <DatabaseViewsSheet
+      v-if="showViewSettings"
       v-model:selected-view-id="selectedViewId"
-      v-model:show="showViewSettings"
       :path="path"
       :document-id="documentId"
+      @closed="showViewSettings = false"
     />
 
     <DatabaseSortSheet
-      v-model:show="showSortSettings"
+      v-if="showSortSettings"
       :directory-path="path"
       :document-id="documentId"
       :view-id="selectedViewId"
+      @closed="showSortSettings = false"
     />
 
     <DatabasePropertiesSheet
-      v-model:show="showPropertySettings"
+      v-if="showPropertySettings"
       :document-id="documentId"
       :directory-path="path"
+      @closed="showPropertySettings = false"
     />
 
     <DatabaseFiltersSheet
-      v-if="selectedViewId"
-      v-model:show="showFilterSettings"
+      v-if="showFilterSettings && selectedViewId"
       :document-id="documentId"
       :view-id="selectedViewId"
       :directory-path="path"
+      @closed="showFilterSettings = false"
     />
 
     <DbItemAddDialog
