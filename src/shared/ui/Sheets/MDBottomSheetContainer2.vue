@@ -163,9 +163,10 @@ useOnEscapeKeyStacked(() => {
     top: 0;
     left: 0;
     right: 0;
-    bottom: 0;
+    height: 100svh;
     padding-top: 100cqh;
     overflow-y: auto;
+    overflow-anchor: none;
     scrollbar-width: none;
     overscroll-behavior-y: none;
     box-sizing: border-box;

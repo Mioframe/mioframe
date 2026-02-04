@@ -22,9 +22,15 @@ const props = defineProps<{
 
 const { documentId, path } = toRefs(props);
 
-const showModel = defineModel<boolean>('show', { required: true });
-
 const selectedViewId = defineModel<DatabaseViewId>('selectedViewId');
+
+const emit = defineEmits<{
+  closed: [];
+}>();
+
+const onClosed = () => {
+  emit('closed');
+};
 
 const { confirm } = useDialog();
 
@@ -98,7 +104,7 @@ const closeRenameDialog = () => {
 </script>
 
 <template>
-  <MDBottomSheet v-model:show="showModel" label="Database Views Sheet">
+  <MDBottomSheet label="Database Views Sheet" @closed="onClosed">
     <MDBottomSheetSection class="db-views-sheet__section">
       <div class="db-views-sheet__header">
         <span :class="MD_SYS_TYPESCALE.title.small">View presets</span>
