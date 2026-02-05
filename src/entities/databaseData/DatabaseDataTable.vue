@@ -29,6 +29,7 @@ const slots = defineSlots<{
   }) => unknown;
   action: (p: { itemId: DatabaseItemId }) => unknown;
   actionHead: (p: EmptyObject) => unknown;
+  after: () => unknown;
 }>();
 
 const { itemIdList } = useDatabaseData(
@@ -76,6 +77,14 @@ const { itemIdList } = useDatabaseData(
         </td>
       </tr>
     </tbody>
+
+    <tfoot v-if="!!slots.after">
+      <tr>
+        <td :colspan="properties.length + 1">
+          <slot name="after" />
+        </td>
+      </tr>
+    </tfoot>
   </MDTable>
 </template>
 
@@ -89,7 +98,6 @@ const { itemIdList } = useDatabaseData(
     }
   }
 
-  th&__actions,
   td&__actions {
     position: sticky;
     right: 0;

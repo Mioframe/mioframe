@@ -112,10 +112,12 @@ const hasProperties = computed(() =>
 );
 
 const databaseViewLayoutRef = useTemplateRef('databaseViewLayoutRef');
+
+const databaseViewRef = useTemplateRef('databaseViewRef');
 </script>
 
 <template>
-  <div class="database-view">
+  <div ref="databaseViewRef" class="database-view">
     <div v-if="documentError" class="database-view__error">
       <pre>{{ documentError }}</pre>
     </div>
@@ -127,6 +129,13 @@ const databaseViewLayoutRef = useTemplateRef('databaseViewLayoutRef');
         To start working with the database, create at least one property using
         the toolbar.
       </section>
+
+      <DatabaseToolbar
+        v-model:selected-view-id="selectedViewId"
+        :document-id="documentId"
+        :directory-path="path"
+        :auto-hide-target="databaseViewRef"
+      />
     </div>
 
     <DatabaseViewLayout
@@ -153,14 +162,16 @@ const databaseViewLayoutRef = useTemplateRef('databaseViewLayoutRef');
           @click="onClickItemContextBtn($event, itemId)"
         />
       </template>
-    </DatabaseViewLayout>
 
-    <DatabaseToolbar
-      v-model:selected-view-id="selectedViewId"
-      :document-id="documentId"
-      :directory-path="path"
-      :auto-hide-target="databaseViewLayoutRef"
-    />
+      <template #after>
+        <DatabaseToolbar
+          v-model:selected-view-id="selectedViewId"
+          :document-id="documentId"
+          :directory-path="path"
+          :auto-hide-target="databaseViewRef"
+        />
+      </template>
+    </DatabaseViewLayout>
 
     <DbItemEditDialog
       v-if="isShowEditItemDialog"
@@ -192,7 +203,7 @@ const databaseViewLayoutRef = useTemplateRef('databaseViewLayoutRef');
   flex-direction: column;
   flex: 1 0;
   overflow: auto;
-  padding: 0 4step 4step;
+  padding: 0 4step 0;
 
   &__controls {
     margin-top: auto;
