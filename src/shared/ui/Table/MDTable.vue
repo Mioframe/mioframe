@@ -1,9 +1,7 @@
 <template>
-  <div class="md-table">
-    <table>
-      <slot />
-    </table>
-  </div>
+  <table class="md-table">
+    <slot />
+  </table>
 </template>
 
 <style lang="css" scoped>
@@ -14,13 +12,9 @@
   overflow: auto;
   border-radius: var(--md-table-border-radius);
   border: var(--md-table-border);
-
-  table {
-    width: 100%;
-    border-collapse: separate;
-    border-spacing: 0px;
-    border-radius: inherit;
-  }
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0px;
 
   :deep() {
     caption,
@@ -34,8 +28,6 @@
       position: sticky;
       z-index: 1;
       top: 0;
-      --md-container-color: var(--md-sys-color-surface-variant);
-      background-color: var(--md-container-color);
 
       th {
         --md-container-color: var(--md-sys-color-surface-variant);
@@ -46,44 +38,43 @@
     thead,
     tbody,
     tfoot {
-      &:first-child {
-        border-top-left-radius: inherit;
-        border-top-right-radius: inherit;
+      --inner-border-radius: calc(var(--md-table-border-radius) - 1px);
 
+      &:first-child {
         tr:first-child {
-          border-top-left-radius: inherit;
-          border-top-right-radius: inherit;
+          border-top-left-radius: var(--inner-border-radius);
+          border-top-right-radius: var(--inner-border-radius);
 
           th,
           td {
             &:first-child {
-              border-top-left-radius: inherit;
+              border-top-left-radius: var(--inner-border-radius);
             }
 
             &:last-child {
-              border-top-right-radius: inherit;
+              border-top-right-radius: var(--inner-border-radius);
             }
           }
         }
       }
 
       &:last-child {
-        border-bottom-left-radius: inherit;
-        border-bottom-right-radius: inherit;
+        border-bottom-left-radius: var(--md-table-border-radius);
+        border-bottom-right-radius: var(--md-table-border-radius);
 
         tr:last-child {
-          border-bottom-left-radius: inherit;
-          border-bottom-right-radius: inherit;
+          border-bottom-left-radius: var(--md-table-border-radius);
+          border-bottom-right-radius: var(--md-table-border-radius);
 
           td {
             border-bottom: none;
 
             &:first-child {
-              border-bottom-left-radius: inherit;
+              border-bottom-left-radius: var(--md-table-border-radius);
             }
 
             &:last-child {
-              border-bottom-right-radius: inherit;
+              border-bottom-right-radius: var(--md-table-border-radius);
             }
           }
         }
@@ -92,7 +83,7 @@
 
     td,
     th {
-      padding: 12px;
+      padding: 2step;
       font-weight: inherit;
       border-bottom: var(--md-table-border);
       text-align: left;

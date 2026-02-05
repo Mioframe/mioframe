@@ -1,10 +1,13 @@
 <script setup lang="ts">
-import { TeleportWithPlaceholder } from '@shared/lib/teleport';
 import type { MaybeElement } from '@vueuse/core';
-import { unrefElement, useParentElement, useScroll } from '@vueuse/core';
+import { useElementSize, useScroll } from '@vueuse/core';
 import { isUndefined } from 'es-toolkit';
+import type { StyleValue } from 'vue';
 import { computed, ref, toRefs, useTemplateRef, watchEffect } from 'vue';
 import { useOverlayContainer } from '../Overlay';
+import { findClosestElement } from '@shared/lib/useClosestElement';
+import { TeleportContainer } from '@shared/lib/teleportContainer';
+import { autoUpdate, offset, shift, useFloating } from '@floating-ui/vue';
 
 const props = withDefaults(
   defineProps<{
@@ -24,10 +27,8 @@ defineSlots<{
   default: () => unknown;
 }>();
 
-const parentEl = useParentElement();
-
 const autoHideTargetEl = computed(() =>
-  autoHide.value ? (unrefElement(autoHideTarget) ?? parentEl.value) : undefined,
+  autoHide.value ? findClosestElement(autoHideTarget.value) : undefined,
 );
 
 const lastScrollDirection = ref<'top' | 'bottom'>();
@@ -53,24 +54,48 @@ const toolbarEl = useTemplateRef('toolbarEl');
 
 const to = useOverlayContainer();
 
-// fixme: убрать TeleportWithPlaceholder
+const { height: fabContainerHeight } = useElementSize(
+  toolbarEl,
+  { height: 0, width: 0 },
+  { box: 'border-box' },
+);
+
+const placeholderStyles = computed(
+  (): StyleValue => ({
+    height: `${fabContainerHeight.value}px`,
+  }),
+);
+
+const toolbarPlaceholder = useTemplateRef('toolbarPlaceholder');
+
+const { floatingStyles } = useFloating(toolbarPlaceholder, toolbarEl, {
+  placement: 'bottom',
+  strategy: 'fixed',
+  transform: false,
+  middleware: [
+    offset(
+      ({
+        rects: {
+          reference: { height },
+        },
+      }) => ({
+        mainAxis: -height,
+      }),
+    ),
+    shift({ padding: 16, crossAxis: true }),
+  ],
+  whileElementsMounted: autoUpdate,
+});
 </script>
 
 <template>
-  <TeleportWithPlaceholder
-    :to="to"
-    :container="toolbarEl"
+  <div
+    ref="toolbarPlaceholder"
     class="md-toolbar__placeholder"
-    priority-height="content"
-    priority-width="placeholder"
-    with-placeholder
-    :class="{
-      'md-toolbar_auto-hide': autoHide,
-    }"
+    :style="placeholderStyles"
   >
-    <Transition>
+    <TeleportContainer :to="to" :container="toolbarEl">
       <div
-        v-show="show"
         ref="toolbarEl"
         class="md-toolbar"
         :class="[
@@ -80,15 +105,17 @@ const to = useOverlayContainer();
           {
             'md-toolbar_center-aligned': centerAligned,
             'md-toolbar_auto-hide': autoHide,
+            'md-toolbar_hide': !show,
           },
         ]"
+        :style="floatingStyles"
       >
         <div class="md-toolbar__container md">
           <slot />
         </div>
       </div>
-    </Transition>
-  </TeleportWithPlaceholder>
+    </TeleportContainer>
+  </div>
 </template>
 
 <style lang="css" scoped>
@@ -119,12 +146,15 @@ const to = useOverlayContainer();
   --md-toolbar-container-display: unset;
   --mt-toolbar-container-grow: unset;
 
-  padding: 0 var(--md-toolbar-margin-from-screen)
-    var(--md-toolbar-margin-from-screen) var(--md-toolbar-margin-from-screen);
   display: flex;
   justify-content: center;
   pointer-events: none;
   transform: translateY(0);
+  transition-property: transform, opacity;
+  transition-timing-function: var(
+    var(--md-sys-motion-easing-emphasized-accelerate)
+  );
+  transition-duration: var(--md-sys-motion-duration-short4);
 
   &_color {
     &-standard {
@@ -238,14 +268,20 @@ const to = useOverlayContainer();
 
   &_auto-hide {
     &.md-toolbar__placeholder {
-      height: 0;
+      /* height: 0; */
     }
     &.md-toolbar {
-      position: absolute;
+      /* position: absolute;
       bottom: 0;
       right: 0;
-      left: 0;
+      left: 0; */
     }
+  }
+
+  &_hide {
+    opacity: 0;
+    transform: translateY(100%) scale(0);
+    pointer-events: none;
   }
 
   &.v {
