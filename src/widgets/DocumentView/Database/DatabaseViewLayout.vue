@@ -27,6 +27,7 @@ const slots = defineSlots<{
   }) => unknown;
   action: (p: { itemId: DatabaseItemId }) => unknown;
   actionHead: () => unknown;
+  after: () => unknown;
 }>();
 
 const { path, documentId } = toRefs(props);
@@ -88,6 +89,10 @@ const { propertiesIdList } = useDatabaseProperties(path, documentId);
 
     <template v-if="!!slots.actionHead" #actionHead>
       <slot name="actionHead" />
+    </template>
+
+    <template #after>
+      <slot name="after" />
     </template>
   </DatabaseDataTable>
 
