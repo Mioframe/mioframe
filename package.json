@@ -7,6 +7,7 @@
     "email": "vyachean@gmail.com",
     "name": "vyachean"
   },
+  "license": "SEE LICENSE IN LICENSE",
   "scripts": {
     "dev": "vite",
     "build": "vue-tsc -b && vite build",

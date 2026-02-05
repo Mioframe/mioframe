@@ -95,3 +95,7 @@ pnpm cy:open
       - [ ] Hiding columns
       - [ ] Sorting columns
     - [ ] Card gallery
+
+## License
+
+Functional Source License (FSL) - 3 years non-compete term.
