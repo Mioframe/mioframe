@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { useMainRouter } from '@page/routes';
+import { useMainRouter, useStackNavigation } from '@page/routes';
 import { MDIconButton } from '@shared/ui/Button';
 import { MDSplitLayout, SPLIT_VIEW } from '@shared/ui/Layout';
 import type { NavigationButton } from '@shared/ui/Navigation';
@@ -65,6 +65,10 @@ const activeNavigationButton = computed(() => {
       return undefined;
   }
 });
+
+const { panesComponents } = useStackNavigation();
+
+const panes = computed(() => panesComponents.value.toReversed());
 </script>
 
 <template>
@@ -76,22 +80,31 @@ const activeNavigationButton = computed(() => {
     @click-navigation="onClickNavigation"
   >
     <template #body>
-      <RouterView v-slot="{ Component }" :name="SPLIT_VIEW.second">
-        <component :is="Component" />
-      </RouterView>
+      <component
+        :is="component"
+        v-for="{ name, component, props } in panes"
+        :key="name"
+        :="props"
+      />
 
-      <RouterView v-slot="{ Component }" :name="SPLIT_VIEW.main">
-        <component :is="Component">
-          <template #navigationButton>
-            <MDIconButton
-              v-if="hasSecondView"
-              tooltip="back"
-              md-symbol-name="arrow_back"
-              @click="onClickBack"
-            />
-          </template>
-        </component>
-      </RouterView>
+      <template v-if="!panes.length">
+        <RouterView v-slot="{ Component }" :name="SPLIT_VIEW.second">
+          <component :is="Component" />
+        </RouterView>
+
+        <RouterView v-slot="{ Component }" :name="SPLIT_VIEW.main">
+          <component :is="Component">
+            <template #navigationButton>
+              <MDIconButton
+                v-if="hasSecondView"
+                tooltip="back"
+                md-symbol-name="arrow_back"
+                @click="onClickBack"
+              />
+            </template>
+          </component>
+        </RouterView>
+      </template>
     </template>
   </MDSplitLayout>
 </template>

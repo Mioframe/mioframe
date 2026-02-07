@@ -19,12 +19,11 @@ export const setupApp = async (app: App = createApp(MainApp)) => {
     const { setupSentry } = await import('./setupSentry');
     setupSentry(app, SENTRY_DSN);
   }
+  setupStackNavigation(router);
 
-  setupMainRouter(router);
+  // setupMainRouter(router);
 
   setupPlayground(router, playgroundPages);
-
-  setupStackNavigation(router);
 
   app.use(router);
 
