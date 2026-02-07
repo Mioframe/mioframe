@@ -22,6 +22,7 @@ const emit = defineEmits<{
 
 defineSlots<{
   navigation: () => unknown;
+  body: () => unknown;
   [SPLIT_VIEW.second]: () => unknown;
   [SPLIT_VIEW.main]: (p: { splitView: boolean }) => unknown;
 }>();
@@ -106,13 +107,15 @@ const onClickNavigation = (button: NB) => {
     />
 
     <section ref="bodyRef" class="md-layer__body body">
-      <div v-if="isShowFirstPane" class="body__first-pane">
-        <slot :name="SPLIT_VIEW.second" />
-      </div>
+      <slot name="body">
+        <div v-if="isShowFirstPane" class="body__first-pane">
+          <slot :name="SPLIT_VIEW.second" />
+        </div>
 
-      <div class="body__main-pane">
-        <slot :name="SPLIT_VIEW.main" :split-view="isShowFirstPane" />
-      </div>
+        <div class="body__main-pane">
+          <slot :name="SPLIT_VIEW.main" :split-view="isShowFirstPane" />
+        </div>
+      </slot>
     </section>
   </main>
 </template>

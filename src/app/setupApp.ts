@@ -7,7 +7,7 @@ import { router } from './router';
 import { setupPlayground } from '@shared/lib/playground';
 import { playgroundPages } from './playgroundPages';
 import { backNavigationHandler as backNavigationHandler } from '@shared/lib/onBackNavigation';
-import { setupMainRouter } from '@page/routes';
+import { setupMainRouter, setupStackNavigation } from '@page/routes';
 
 /**
  * Инициализация и настройка Vue приложения
@@ -23,6 +23,8 @@ export const setupApp = async (app: App = createApp(MainApp)) => {
   setupMainRouter(router);
 
   setupPlayground(router, playgroundPages);
+
+  setupStackNavigation(router);
 
   app.use(router);
 

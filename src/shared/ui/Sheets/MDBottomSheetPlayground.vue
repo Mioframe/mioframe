@@ -6,7 +6,7 @@ import {
   PlaygroundStory,
 } from '@shared/lib/playground';
 import { MDListContainer, MDListItem } from '../Lists';
-import { MDPaneContainer } from '../Layout';
+import { MDPane } from '../Layout';
 import { useQueryValue } from '@shared/lib/useQueryState';
 import type { ComponentProps } from 'vue-component-type-helpers';
 import MDBottomSheetSection from './MDBottomSheetSection.vue';
@@ -49,7 +49,7 @@ const state = useQueryValue<State>('state', {
     </template>
 
     <template #space>
-      <MDPaneContainer>
+      <MDPane>
         <MDBottomSheet
           v-model:collapsed="state.collapsed"
           v-model:fullscreen="state.fullscreen"
@@ -86,7 +86,7 @@ const state = useQueryValue<State>('state', {
             </MDListContainer>
           </MDBottomSheetSection>
         </MDBottomSheet>
-      </MDPaneContainer>
+      </MDPane>
     </template>
   </PlaygroundStory>
 </template>

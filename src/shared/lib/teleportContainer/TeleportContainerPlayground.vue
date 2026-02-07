@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { MDPaneContainer } from '@shared/ui/Layout';
+import { MDPane } from '@shared/ui/Layout';
 import { PlaygroundStory } from '../playground';
 import TestTeleportedComponent from './TestTeleportedComponent.vue';
 </script>
@@ -7,13 +7,13 @@ import TestTeleportedComponent from './TestTeleportedComponent.vue';
 <template>
   <PlaygroundStory>
     <template #space>
-      <MDPaneContainer>
+      <MDPane>
         <div class="a">
           <div class="b">
             <TestTeleportedComponent />
           </div>
         </div>
-      </MDPaneContainer>
+      </MDPane>
     </template>
   </PlaygroundStory>
 </template>
