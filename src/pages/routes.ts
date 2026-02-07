@@ -4,8 +4,18 @@ import { createSplitViewRouter, defineSplitPage } from './SplitView';
 import { repoExplorerPane } from './RepoExplorer';
 import { SettingsPane as settingsPane } from './Settings';
 import { accountPane } from './Account';
+import { createStackNavigation } from './SplitView/defineStackNavigation';
 
-export const { setupMainRouter, useMainRouter } = createSplitViewRouter(
+export const {
+  /**
+   * @deprecate
+   */
+  setupMainRouter,
+  /**
+   * @deprecate
+   */
+  useMainRouter: useMainRouter,
+} = createSplitViewRouter(
   {
     home: defineSplitPage({
       main: homePane,
@@ -29,3 +39,12 @@ export const { setupMainRouter, useMainRouter } = createSplitViewRouter(
   },
   'home',
 );
+
+export const { setupStackNavigation, useStackNavigation: useMainRouter2 } =
+  createStackNavigation('stack-view', {
+    home: homePane,
+    repo: repoExplorerPane,
+    document: documentViewPane,
+    settings: settingsPane,
+    accounts: accountPane,
+  });

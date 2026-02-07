@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { MountedDirectoriesList } from '@entity/mountedDirectories';
 import { MDFab, MDFabContainer, MDIconButton } from '@shared/ui/Button';
-import { MDPaneContainer } from '@shared/ui/Layout';
+import { MDPane } from '@shared/ui/Layout';
 import { MDSymbol } from '@shared/ui/Icon';
 import { useFileSystem } from '@entity/mountedDirectories/useFileSystem';
 import { OPFSName } from '@shared/service/directories';
@@ -31,7 +31,7 @@ const onClickAccount = async () => {
 </script>
 
 <template>
-  <MDPaneContainer class="home">
+  <MDPane class="home">
     <MDAppBar>
       <template #leadingButton>
         <slot name="navigationButton" />
@@ -59,7 +59,7 @@ const onClickAccount = async () => {
         @click="onClickMountUserDirectory"
       />
     </MDFabContainer>
-  </MDPaneContainer>
+  </MDPane>
 </template>
 
 <style lang="css" scoped>

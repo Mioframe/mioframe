@@ -5,7 +5,7 @@ import {
   PlaygroundStory,
 } from '@shared/lib/playground';
 import { MDListContainer, MDListItem } from '../Lists';
-import { MDPaneContainer, MDSplitLayout } from '../Layout';
+import { MDPane, MDSplitLayout } from '../Layout';
 import { useQueryValue } from '@shared/lib/useQueryState';
 import type { ComponentProps } from 'vue-component-type-helpers';
 import { MDToolbarContainer } from '../Toolbar';
@@ -38,7 +38,7 @@ const state = useQueryValue<State>('state', {
     <template #space>
       <MDSplitLayout>
         <template #main>
-          <MDPaneContainer>
+          <MDPane>
             <MDToolbarContainer type="floating">
               <MDBottomSheet
                 v-if="state.show"
@@ -70,11 +70,11 @@ const state = useQueryValue<State>('state', {
                 </MDListContainer>
               </MDBottomSheet>
             </MDToolbarContainer>
-          </MDPaneContainer>
+          </MDPane>
         </template>
 
         <template #second>
-          <MDPaneContainer />
+          <MDPane />
         </template>
       </MDSplitLayout>
     </template>

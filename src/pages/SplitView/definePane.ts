@@ -1,14 +1,13 @@
 import type { EmptyObject, UnknownRecord } from 'type-fest';
 import type { Component } from 'vue';
-import type { RouteLocationNormalizedGeneric } from 'vue-router';
 import type { ZodMiniType } from 'zod/v4-mini';
 
 export type Pane<T extends UnknownRecord = UnknownRecord> = {
   component: () => Promise<Component>;
-  props: (to: RouteLocationNormalizedGeneric) => T;
+  parseProps: (to: { query: UnknownRecord }) => T;
 };
 
-export type InferPaneQuery<P extends Pane> = ReturnType<P['props']>;
+export type InferPaneQuery<P extends Pane> = ReturnType<P['parseProps']>;
 
 export function definePane(
   component: () => Promise<Component>,
@@ -23,7 +22,7 @@ export function definePane<T extends UnknownRecord = EmptyObject>(
 ): Pane<T> {
   return {
     component,
-    props: (to) => {
+    parseProps: (to: { query: UnknownRecord }) => {
       const query = zodQuery?.parse(to.query);
 
       return query ?? ({} as T);
