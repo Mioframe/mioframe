@@ -2,7 +2,7 @@ import { documentViewPane } from './DocumentViewPane';
 import { homePane } from './HomePane';
 import { createSplitViewRouter, defineSplitPage } from './SplitView';
 import { repoExplorerPane } from './RepoExplorer';
-import { SettingsPane as settingsPane } from './Settings';
+import { settingsPane as settingsPane } from './Settings';
 import { accountPane } from './Account';
 import { createStackNavigation } from './SplitView/defineStackNavigation';
 
@@ -14,7 +14,7 @@ export const {
   /**
    * @deprecate
    */
-  useMainRouter: useMainRouter,
+  useMainRouter1,
 } = createSplitViewRouter(
   {
     home: defineSplitPage({
@@ -40,7 +40,7 @@ export const {
   'home',
 );
 
-export const { setupStackNavigation, useStackNavigation: useMainRouter2 } =
+export const { setupStackNavigation, useStackNavigation } =
   createStackNavigation('stack-view', {
     home: homePane,
     repo: repoExplorerPane,
@@ -48,3 +48,5 @@ export const { setupStackNavigation, useStackNavigation: useMainRouter2 } =
     settings: settingsPane,
     accounts: accountPane,
   });
+
+export const useMainRouter = useStackNavigation;
