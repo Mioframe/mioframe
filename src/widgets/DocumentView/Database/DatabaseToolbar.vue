@@ -7,7 +7,7 @@ import type {
 import { type DatabaseViewId } from '@shared/lib/databaseDocument';
 import { MDIconButton } from '@shared/ui/Button';
 import MDToolbarContainer from '@shared/ui/Toolbar/MDToolbarContainer.vue';
-import { computed, ref, toRefs, watchEffect } from 'vue';
+import { computed, ref, toRefs } from 'vue';
 import DatabaseViewsSheet from './DatabaseViewsSheet.vue';
 import DatabaseSortSheet from './DatabaseSortSheet.vue';
 import DatabasePropertiesSheet from './DatabasePropertiesSheet.vue';
