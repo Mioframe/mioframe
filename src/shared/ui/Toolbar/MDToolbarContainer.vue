@@ -1,13 +1,12 @@
 <script setup lang="ts">
 import type { MaybeElement } from '@vueuse/core';
-import { useElementSize, useScroll } from '@vueuse/core';
+import { useElementBounding, useElementSize, useScroll } from '@vueuse/core';
 import { isUndefined } from 'es-toolkit';
 import type { StyleValue } from 'vue';
 import { computed, ref, toRefs, useTemplateRef, watchEffect } from 'vue';
 import { useOverlayContainer } from '../Overlay';
 import { findClosestElement } from '@shared/lib/useClosestElement';
 import { TeleportContainer } from '@shared/lib/teleportContainer';
-import { autoUpdate, offset, shift, useFloating } from '@floating-ui/vue';
 
 const props = withDefaults(
   defineProps<{
@@ -54,7 +53,7 @@ const toolbarEl = useTemplateRef('toolbarEl');
 
 const to = useOverlayContainer();
 
-const { height: fabContainerHeight } = useElementSize(
+const { height: fabContainerHeight, width: toolbarWidth } = useElementSize(
   toolbarEl,
   { height: 0, width: 0 },
   { box: 'border-box' },
@@ -68,23 +67,21 @@ const placeholderStyles = computed(
 
 const toolbarPlaceholder = useTemplateRef('toolbarPlaceholder');
 
-const { floatingStyles } = useFloating(toolbarPlaceholder, toolbarEl, {
-  placement: 'bottom',
-  strategy: 'fixed',
-  transform: false,
-  middleware: [
-    offset(
-      ({
-        rects: {
-          reference: { height },
-        },
-      }) => ({
-        mainAxis: -height,
-      }),
-    ),
-    shift({ padding: 16, crossAxis: true }),
-  ],
-  whileElementsMounted: autoUpdate,
+const { left: placeholderLeft, width: placeholderWidth } =
+  useElementBounding(toolbarPlaceholder);
+
+const placeholderCenter = computed(
+  () => placeholderLeft.value + placeholderWidth.value / 2,
+);
+
+const toolbarLeft = computed(
+  () => placeholderCenter.value - toolbarWidth.value / 2,
+);
+
+const toolbarStyle = computed((): StyleValue => {
+  return {
+    left: `${toolbarLeft.value}px`,
+  };
 });
 </script>
 
@@ -108,7 +105,7 @@ const { floatingStyles } = useFloating(toolbarPlaceholder, toolbarEl, {
             'md-toolbar_hide': !show,
           },
         ]"
-        :style="floatingStyles"
+        :style="toolbarStyle"
       >
         <div class="md-toolbar__container md">
           <slot />
@@ -211,6 +208,9 @@ const { floatingStyles } = useFloating(toolbarPlaceholder, toolbarEl, {
     }
 
     &-floating {
+      position: fixed;
+      bottom: 4step;
+
       --md-toolbar-min-space-between: 4dp;
       --md-toolbar-max-space-between: 4dp;
       --md-toolbar-container-justify-content: center;
@@ -257,25 +257,8 @@ const { floatingStyles } = useFloating(toolbarPlaceholder, toolbarEl, {
   }
 
   &__placeholder {
-    position: sticky;
-    right: 0;
-    bottom: 0;
-    left: 0;
-    margin-top: auto;
     width: 100%;
     flex-shrink: 0;
-  }
-
-  &_auto-hide {
-    &.md-toolbar__placeholder {
-      /* height: 0; */
-    }
-    &.md-toolbar {
-      /* position: absolute;
-      bottom: 0;
-      right: 0;
-      left: 0; */
-    }
   }
 
   &_hide {
