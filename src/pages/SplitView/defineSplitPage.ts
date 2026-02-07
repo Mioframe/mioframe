@@ -37,7 +37,7 @@ export const pageToRouteRecord = (name: string, panes: Panes) =>
         >,
         [name, pane],
       ) => {
-        return { ...props, [name]: pane.props };
+        return { ...props, [name]: pane.parseProps };
       },
       {},
     ),

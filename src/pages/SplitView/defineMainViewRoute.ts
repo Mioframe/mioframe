@@ -75,6 +75,7 @@ export const createSplitViewRouter = <M extends PageMap>(
   ) => {
     await router.push({
       name,
+      // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- used query-strings
       query: query as LocationQueryRaw,
       replace,
     });

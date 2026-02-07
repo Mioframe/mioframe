@@ -75,11 +75,13 @@ const activeNavigationButton = computed(() => {
     :active-navigation-button="activeNavigationButton"
     @click-navigation="onClickNavigation"
   >
-    <template #body>
+    <template #[SPLIT_VIEW.second]>
       <RouterView v-slot="{ Component }" :name="SPLIT_VIEW.second">
         <component :is="Component" />
       </RouterView>
+    </template>
 
+    <template #[SPLIT_VIEW.main]>
       <RouterView v-slot="{ Component }" :name="SPLIT_VIEW.main">
         <component :is="Component">
           <template #navigationButton>

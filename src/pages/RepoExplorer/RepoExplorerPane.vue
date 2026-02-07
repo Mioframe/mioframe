@@ -12,7 +12,7 @@ import { FSEntryMDListItem } from '@entity/fsEntry';
 import { defineMenuButtonList, MDContextMenuButton } from '@shared/ui/Menu';
 import { DocumentRemoveDialog } from '@feature/documentRemove';
 import { DocumentRenameDialog } from '@feature/documentRename';
-import { MDPaneContainer } from '@shared/ui/Layout';
+import { MDPane } from '@shared/ui/Layout';
 import { MDAppBar } from '@shared/ui/AppBar';
 import { FSEntryRenameDialog } from '@feature/entryRename';
 import { isUndefined } from 'es-toolkit';
@@ -185,7 +185,7 @@ const showFSEntryRenameDialog = computed({
 </script>
 
 <template>
-  <MDPaneContainer class="document-explorer-widget">
+  <MDPane class="document-explorer-widget">
     <MDAppBar v-if="title" :headline="title">
       <template #leadingButton>
         <slot name="navigationButton" />
@@ -322,7 +322,7 @@ const showFSEntryRenameDialog = computed({
       @cancel="entryKeyToRename = undefined"
       @renamed="onRenamedEntry"
     />
-  </MDPaneContainer>
+  </MDPane>
 </template>
 
 <style scoped>
