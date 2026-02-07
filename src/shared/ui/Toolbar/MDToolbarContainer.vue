@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { MaybeElement } from '@vueuse/core';
 import { useElementBounding, useElementSize, useScroll } from '@vueuse/core';
-import { isUndefined } from 'es-toolkit';
+import { isUndefined, round } from 'es-toolkit';
 import type { StyleValue } from 'vue';
 import { computed, ref, toRefs, useTemplateRef, watchEffect } from 'vue';
 import { useOverlayContainer } from '../Overlay';
@@ -74,8 +74,8 @@ const placeholderCenter = computed(
   () => placeholderLeft.value + placeholderWidth.value / 2,
 );
 
-const toolbarLeft = computed(
-  () => placeholderCenter.value - toolbarWidth.value / 2,
+const toolbarLeft = computed(() =>
+  round(placeholderCenter.value - toolbarWidth.value / 2),
 );
 
 const toolbarStyle = computed((): StyleValue => {

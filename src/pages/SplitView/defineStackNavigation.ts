@@ -1,15 +1,15 @@
 import { generateId } from '@shared/lib/generateId';
 import type { LocationQueryRaw } from 'vue-router';
 import { useRoute, useRouter, type RouteRecordRaw } from 'vue-router';
-import StackView from './StackView.vue';
+import PageView from './SplitView.vue';
 import { z } from 'zod/v4-mini';
 import type { Pane } from './definePane';
-import type { ComputedRef } from 'vue';
+import type { Component, ComputedRef } from 'vue';
 import { computed } from 'vue';
 import type { UnknownRecord } from 'type-fest';
 import { isNotNil } from 'es-toolkit';
 
-const name = generateId('StackNavigation');
+const rootNavigationName = generateId('StackNavigation');
 
 const zodPropertyKey = z.union([z.string(), z.number(), z.symbol()]);
 
@@ -31,7 +31,7 @@ export interface UseStackNavigationReturn<P extends PaneMap> {
     props: ReturnType<NonNullable<P[K]>['parseProps']>,
   ) => Promise<void>;
   panesComponents: ComputedRef<
-    { component: Pane['component']; props: UnknownRecord }[]
+    { name: string; component: Component; props: UnknownRecord }[]
   >;
 }
 
@@ -51,10 +51,12 @@ export const createStackNavigation = <P extends PaneMap>(
   }: {
     addRoute: (route: RouteRecordRaw) => void;
   }) => {
+    const path = `/${rootPath}/:${PARAM_NAME}+`;
+
     addRoute({
-      name,
-      path: `/${rootPath}:${PARAM_NAME}(\\.+)+`,
-      component: StackView,
+      name: rootNavigationName,
+      path,
+      component: PageView,
     });
   };
 
@@ -70,37 +72,47 @@ export const createStackNavigation = <P extends PaneMap>(
     });
 
     const currentPanes = computed(() => {
-      const { data: { [PARAM_NAME]: panesList = [] } = {} } = z
+      const { data } = z
         .object({ [PARAM_NAME]: z.array(z.string()) })
         .safeParse(route.params);
 
-      return panesList;
+      return data?.[PARAM_NAME] ?? [];
     });
 
     const open = async <K extends Extract<keyof P, string>>(
       name: K,
       props: ReturnType<P[K]['parseProps']>,
     ): Promise<void> => {
-      const panesList = currentPanes.value.includes(name)
-        ? currentPanes.value
-        : [name, ...currentPanes.value];
+      const maxPane = 2;
 
-      panesList.length = 2;
+      const paneIndex = currentPanes.value.indexOf(name);
 
       const params = {
-        [PARAM_NAME]: panesList,
+        [PARAM_NAME]: currentPanes.value.toSpliced(
+          paneIndex < 0 ? 0 : paneIndex,
+          paneIndex < 0 ? 0 : 1,
+          name,
+        ),
       };
 
-      const paneIndex = panesList.indexOf(name);
-
-      const queryList = panesQuery.value.toSpliced(paneIndex, 0, props);
+      if (params[PARAM_NAME].length > maxPane) {
+        params[PARAM_NAME].length = maxPane;
+      }
 
       const query = {
-        [PARAM_NAME]: queryList,
+        [PARAM_NAME]: panesQuery.value.toSpliced(
+          paneIndex < 0 ? 0 : paneIndex,
+          paneIndex < 0 ? 0 : 1,
+          props,
+        ),
       } satisfies Query;
 
+      if (query[PARAM_NAME].length > maxPane) {
+        query[PARAM_NAME].length = maxPane;
+      }
+
       await router.push({
-        name,
+        name: rootNavigationName,
         // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- query-string converts JSON objects
         query: query as unknown as LocationQueryRaw,
         params,
@@ -116,6 +128,7 @@ export const createStackNavigation = <P extends PaneMap>(
 
           if (component) {
             return {
+              name,
               component,
               props: parseProps?.({ query: propsQuery }) ?? {},
             };

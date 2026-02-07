@@ -3,7 +3,7 @@ import { debounce, merge, uniq } from 'es-toolkit';
 import type { Ref } from 'vue';
 import { ref, shallowReactive, watch } from 'vue';
 import { array, object, string } from 'zod/v4-mini';
-import qs from 'query-string';
+import qs from 'qs';
 import { loadStylesheet } from './loadStylesheet';
 
 const searchStylesheetLinks = (href: string) =>

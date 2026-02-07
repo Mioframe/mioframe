@@ -158,7 +158,7 @@ const documentIdToRemove = shallowRef<AMDocumentId>();
 
 const onClickDocument = async (documentId: AMDocumentId) => {
   await open('document', {
-    repoPath: directoryPath.value,
+    // repoPath: directoryPath.value,
     documentDirectory: directoryPath.value,
     documentId,
   });
