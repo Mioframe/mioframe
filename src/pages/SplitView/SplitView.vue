@@ -73,6 +73,7 @@ const panes = computed(() => panesComponents.value.toReversed());
 
 <template>
   <MDSplitLayout
+    :number-of-panes="panes.length"
     class="main-view"
     :navigation-buttons="[homeNavigationButton, settingsNavigationButton]"
     has-menu-button
@@ -84,8 +85,17 @@ const panes = computed(() => panesComponents.value.toReversed());
         :is="component"
         v-for="{ name, component, props } in panes"
         :key="name"
-        :="props"
-      />
+        v-bind="props"
+      >
+        <template #navigationButton>
+          <MDIconButton
+            v-if="hasSecondView"
+            tooltip="back"
+            md-symbol-name="arrow_back"
+            @click="onClickBack"
+          />
+        </template>
+      </component>
 
       <template v-if="!panes.length">
         <RouterView v-slot="{ Component }" :name="SPLIT_VIEW.second">

@@ -25,10 +25,19 @@ type Query = z.output<typeof zodQuery>;
 
 type PaneMap = Record<string, Pane>;
 
+interface OpenOptions {
+  /**
+   * number of additional panes
+   * @default 0
+   */
+  additionalPanes?: number;
+}
+
 export interface UseStackNavigationReturn<P extends PaneMap> {
   open: <K extends Extract<keyof P, string>>(
     name: K,
     props: ReturnType<NonNullable<P[K]>['parseProps']>,
+    options?: OpenOptions,
   ) => Promise<void>;
   panesComponents: ComputedRef<
     { name: string; component: Component; props: UnknownRecord }[]
@@ -64,14 +73,14 @@ export const createStackNavigation = <P extends PaneMap>(
     const router = useRouter();
     const route = useRoute();
 
-    const panesQuery = computed(() => {
+    const currentPanesQuery = computed(() => {
       const { data: { [PARAM_NAME]: queryList = [] } = {} } =
         zodQuery.safeParse(route.query);
 
       return queryList;
     });
 
-    const currentPanes = computed(() => {
+    const currentPanesName = computed(() => {
       const { data } = z
         .object({ [PARAM_NAME]: z.array(z.string()) })
         .safeParse(route.params);
@@ -82,33 +91,42 @@ export const createStackNavigation = <P extends PaneMap>(
     const open = async <K extends Extract<keyof P, string>>(
       name: K,
       props: ReturnType<P[K]['parseProps']>,
+      { additionalPanes = 0 }: OpenOptions = {},
     ): Promise<void> => {
-      const maxPane = 2;
+      const maxPanes = additionalPanes + 1;
 
-      const paneIndex = currentPanes.value.indexOf(name);
+      const panesName = currentPanesName.value
+        .slice(0, maxPanes)
+        .filter(isNotNil);
+
+      const paneIndex = panesName.indexOf(name);
 
       const params = {
-        [PARAM_NAME]: currentPanes.value.toSpliced(
+        [PARAM_NAME]: panesName.toSpliced(
           paneIndex < 0 ? 0 : paneIndex,
           paneIndex < 0 ? 0 : 1,
           name,
         ),
       };
 
-      if (params[PARAM_NAME].length > maxPane) {
-        params[PARAM_NAME].length = maxPane;
+      if (params[PARAM_NAME].length > maxPanes) {
+        params[PARAM_NAME].length = maxPanes;
       }
 
+      const panesQuery = currentPanesQuery.value
+        .slice(0, maxPanes)
+        .filter(isNotNil);
+
       const query = {
-        [PARAM_NAME]: panesQuery.value.toSpliced(
+        [PARAM_NAME]: panesQuery.toSpliced(
           paneIndex < 0 ? 0 : paneIndex,
           paneIndex < 0 ? 0 : 1,
           props,
         ),
       } satisfies Query;
 
-      if (query[PARAM_NAME].length > maxPane) {
-        query[PARAM_NAME].length = maxPane;
+      if (query[PARAM_NAME].length > maxPanes) {
+        query[PARAM_NAME].length = maxPanes;
       }
 
       await router.push({
@@ -120,9 +138,9 @@ export const createStackNavigation = <P extends PaneMap>(
     };
 
     const panesComponents = computed(() => {
-      return currentPanes.value
+      return currentPanesName.value
         .map((name, index) => {
-          const propsQuery = panesQuery.value[index] ?? {};
+          const propsQuery = currentPanesQuery.value[index] ?? {};
 
           const { component, parseProps } = panes[name] ?? {};
 
@@ -130,7 +148,7 @@ export const createStackNavigation = <P extends PaneMap>(
             return {
               name,
               component,
-              props: parseProps?.({ query: propsQuery }) ?? {},
+              props: parseProps?.(propsQuery) ?? {},
             };
           }
 

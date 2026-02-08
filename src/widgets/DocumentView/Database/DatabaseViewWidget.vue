@@ -111,8 +111,6 @@ const hasProperties = computed(() =>
   propertiesIdList.value ? propertiesIdList.value.length > 0 : undefined,
 );
 
-const databaseViewLayoutRef = useTemplateRef('databaseViewLayoutRef');
-
 const databaseViewRef = useTemplateRef('databaseViewRef');
 </script>
 
@@ -140,7 +138,6 @@ const databaseViewRef = useTemplateRef('databaseViewRef');
 
     <DatabaseViewLayout
       v-else
-      ref="databaseViewLayoutRef"
       :document-id="documentId"
       :view-id="selectedViewId"
       :path="path"

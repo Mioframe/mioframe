@@ -4,7 +4,7 @@ import type { ZodMiniType } from 'zod/v4-mini';
 
 export type Pane<T extends UnknownRecord = UnknownRecord> = {
   component: Component;
-  parseProps: (to: { query: UnknownRecord }) => T;
+  parseProps: (query: UnknownRecord) => T;
 };
 
 export type InferPaneQuery<P extends Pane> = ReturnType<P['parseProps']>;
@@ -20,10 +20,10 @@ export function definePane<T extends UnknownRecord = EmptyObject>(
 ): Pane<T> {
   return {
     component,
-    parseProps: (to: { query: UnknownRecord }) => {
-      const query = zodQuery?.parse(to.query);
-
-      return query ?? ({} as T);
+    parseProps: (query: UnknownRecord): T => {
+      // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- it's EmptyObject
+      const r = zodQuery?.parse(query) ?? ({} as T);
+      return r;
     },
   };
 }
