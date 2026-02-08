@@ -61,19 +61,27 @@ const { data: directoryEntries } = useDirectory(
 const { open } = useMainRouter();
 
 const onClickPath = async (path: string) => {
-  if (path === '/') {
-    await open('home', {});
-  } else {
-    await open('repo', {
+  await open(
+    'repo',
+    {
       repoPath: path,
-    });
-  }
+    },
+    {
+      additionalPanes: 1,
+    },
+  );
 };
 
 const onClickEntry = async (name: string) => {
-  await open('repo', {
-    repoPath: PathUtils.join(directoryPath.value, name),
-  });
+  await open(
+    'repo',
+    {
+      repoPath: PathUtils.join(directoryPath.value, name),
+    },
+    {
+      additionalPanes: 1,
+    },
+  );
 };
 
 const showFormNewDocument = ref(false);
@@ -157,11 +165,16 @@ const onClickDocumentContextAction = (
 const documentIdToRemove = shallowRef<AMDocumentId>();
 
 const onClickDocument = async (documentId: AMDocumentId) => {
-  await open('document', {
-    // repoPath: directoryPath.value,
-    documentDirectory: directoryPath.value,
-    documentId,
-  });
+  await open(
+    'document',
+    {
+      documentDirectory: directoryPath.value,
+      documentId,
+    },
+    {
+      additionalPanes: 2,
+    },
+  );
 };
 
 const documentIdToRename = shallowRef<AMDocumentId>();

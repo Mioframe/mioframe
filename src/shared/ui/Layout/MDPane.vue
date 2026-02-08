@@ -1,47 +1,85 @@
 <script setup lang="ts">
-import { computed, useTemplateRef, watch } from 'vue';
+import { computed, toRef, useTemplateRef, watch } from 'vue';
 import { useProvidePaneContainer } from './useMDContainer';
-import { useCssVar, useDraggable } from '@vueuse/core';
+import { useDraggable, useElementBounding, useElementSize } from '@vueuse/core';
 import { round } from 'es-toolkit';
-import { toNumber } from 'es-toolkit/compat';
+import { useSplitLayout } from './useSplitLayout';
 
 defineSlots<{
   default: () => unknown;
 }>();
 
-const el = useTemplateRef<HTMLDivElement>('el');
+const paneEl = useTemplateRef<HTMLDivElement>('paneEl');
 const resizeButton = useTemplateRef<HTMLButtonElement>('resizeButton');
 
-useProvidePaneContainer(el);
-
-const parentContainer = computed(() => el.value?.parentElement);
+useProvidePaneContainer(paneEl);
 
 const { x: resizeButtonX } = useDraggable(resizeButton, {
   axis: 'x',
   preventDefault: true,
-  containerElement: parentContainer,
+  initialValue: {
+    x: -1,
+    y: -1,
+  },
 });
 
-const mdPaneWidthCssVar = useCssVar('--md-pane-width', el, {
-  initialValue: el.value ? `${el.value.clientWidth}px` : undefined,
-});
+const { width: paneSizeWidth } = useElementSize(paneEl);
 
 const paneWidth = computed({
-  get: (): number | undefined => toNumber(mdPaneWidthCssVar.value) || undefined,
+  get: (): number | undefined => paneSizeWidth.value,
   set: (v) => {
-    if (v) {
-      mdPaneWidthCssVar.value = `${round(v)}px`;
+    if (v && paneEl.value) {
+      paneEl.value.style.setProperty('--md-pane-width', `${round(v)}px`);
     }
   },
 });
 
-watch(resizeButtonX, (resizeButtonX) => {
-  paneWidth.value = resizeButtonX;
+const { left: paneLeft } = useElementBounding(paneEl);
+
+const {
+  numberOfPanes,
+  bodyLeft: parentLeft,
+  bodyWidth: parentWidth,
+} = useSplitLayout();
+
+const indexPane = toRef(() => {
+  if (paneEl.value?.parentElement?.children) {
+    return Array.from(paneEl.value.parentElement.children).indexOf(
+      paneEl.value,
+    );
+  }
+
+  return undefined;
 });
+
+const minWidth = 320;
+
+const maxWidth = computed(
+  () =>
+    parentWidth.value -
+    (paneLeft.value - parentLeft.value) -
+    minWidth * (numberOfPanes.value - ((indexPane.value ?? 0) + 1)),
+);
+
+const { width: resizeButtonWidth } = useElementSize(resizeButton, undefined, {
+  box: 'border-box',
+});
+
+watch(
+  [resizeButtonX, paneLeft, maxWidth, resizeButtonWidth],
+  ([resizeButtonX, paneLeft, maxWidth, resizeButtonWidth]) => {
+    if (resizeButtonX > 0) {
+      paneWidth.value = Math.max(
+        Math.min(resizeButtonX + resizeButtonWidth / 2 - paneLeft, maxWidth),
+        minWidth,
+      );
+    }
+  },
+);
 </script>
 
 <template>
-  <div ref="el" class="md-pane">
+  <div ref="paneEl" class="md-pane">
     <div class="md __content">
       <slot />
     </div>
@@ -67,10 +105,9 @@ watch(resizeButtonX, (resizeButtonX) => {
   --md-content-color: var(--md-sys-color-on-surface);
   padding: 2step;
   position: relative;
-  max-width: calc(
-    var(--md-pane-width) + var(--md-pane-resize-button-width) / 2
-  );
-  width: calc(var(--md-pane-width) + var(--md-pane-resize-button-width) / 2);
+  max-width: var(--md-pane-width);
+  width: var(--md-pane-width);
+  min-width: 320px;
   transition-property: none;
 
   &:last-of-type {
