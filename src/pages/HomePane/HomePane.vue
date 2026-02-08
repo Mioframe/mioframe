@@ -22,11 +22,15 @@ const onClickMountUserDirectory = async () => {
 };
 
 const onClickRootDirectory = async (name: string) => {
-  await open('repo', { repoPath: PathUtils.join('/', name) });
+  await open(
+    'repo',
+    { repoPath: PathUtils.join('/', name) },
+    { additionalPanes: 1 },
+  );
 };
 
 const onClickAccount = async () => {
-  await open('accounts', {});
+  await open('accounts', {}, { additionalPanes: 1 });
 };
 </script>
 

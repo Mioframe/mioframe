@@ -1,20 +1,23 @@
 <script setup lang="ts" generic="NB extends NavigationButton">
-import { computed, watchEffect, useTemplateRef } from 'vue';
+import { computed, watchEffect, useTemplateRef, toRefs } from 'vue';
 import {
   useLayoutSizeClass,
   LAYOUT_CLASS,
   LAYOUT_MIN_WIDTH,
 } from './useLayoutSizeClass';
-import { useCssVar } from '@vueuse/core';
-import { SPLIT_VIEW } from './config';
+import { useCssVar, useElementBounding } from '@vueuse/core';
 import { MDNavigationBar, MDNavigationRail } from '../Navigation';
 import type { NavigationButton } from '../Navigation';
+import { setupSplitLayout } from './useSplitLayout';
 
 const props = defineProps<{
   navigationButtons?: NB[];
   activeNavigationButton?: NB;
   hasMenuButton?: boolean;
+  numberOfPanes: number;
 }>();
+
+const { numberOfPanes } = toRefs(props);
 
 const emit = defineEmits<{
   clickNavigation: [button: NB];
@@ -23,8 +26,6 @@ const emit = defineEmits<{
 defineSlots<{
   navigation: () => unknown;
   body: () => unknown;
-  [SPLIT_VIEW.second]: () => unknown;
-  [SPLIT_VIEW.main]: (p: { splitView: boolean }) => unknown;
 }>();
 
 const el = useTemplateRef('el');
@@ -85,6 +86,14 @@ const showBarNavigation = computed(
 const onClickNavigation = (button: NB) => {
   emit('clickNavigation', button);
 };
+
+const { left: bodyLeft, width: bodyWidth } = useElementBounding(bodyRef);
+
+setupSplitLayout({
+  numberOfPanes,
+  bodyLeft,
+  bodyWidth,
+});
 </script>
 
 <template>
@@ -107,15 +116,7 @@ const onClickNavigation = (button: NB) => {
     />
 
     <section ref="bodyRef" class="md-layer__body body">
-      <slot name="body">
-        <div v-if="isShowFirstPane" class="body__first-pane">
-          <slot :name="SPLIT_VIEW.second" />
-        </div>
-
-        <div class="body__main-pane">
-          <slot :name="SPLIT_VIEW.main" :split-view="isShowFirstPane" />
-        </div>
-      </slot>
+      <slot name="body" />
     </section>
   </main>
 </template>
