@@ -1,19 +1,19 @@
 import type { InjectionKey, Ref } from 'vue';
 import { inject, provide } from 'vue';
 
-type State = {
+type ContextState = {
   numberOfPanes: Ref<number>;
   bodyLeft: Ref<number>;
   bodyWidth: Ref<number>;
 };
 
-const KEY: InjectionKey<State> = Symbol('splitLayoutKey');
+const KEY: InjectionKey<ContextState> = Symbol('splitLayoutKey');
 
-export const setupSplitLayout = (state: State) => {
+export const setupSplitLayoutContext = (state: ContextState) => {
   provide(KEY, state);
 };
 
-export const useSplitLayout = () => {
+export const useSplitLayoutContext = () => {
   const state = inject(KEY);
 
   if (!state) {

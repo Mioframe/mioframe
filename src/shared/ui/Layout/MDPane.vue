@@ -1,9 +1,16 @@
 <script setup lang="ts">
-import { computed, toRef, useTemplateRef, watch } from 'vue';
+import { computed, toRef, toRefs, useTemplateRef, watch } from 'vue';
 import { useProvidePaneContainer } from './useMDContainer';
 import { useDraggable, useElementBounding, useElementSize } from '@vueuse/core';
 import { round } from 'es-toolkit';
-import { useSplitLayout } from './useSplitLayout';
+import { useSplitLayoutContext } from './useSplitLayoutContext';
+import { defineAllowedBottomNavigation } from './allowedBottomNavigation';
+
+const props = defineProps<{
+  allowBottomNavigation?: boolean;
+}>();
+
+const { allowBottomNavigation } = toRefs(props);
 
 defineSlots<{
   default: () => unknown;
@@ -40,7 +47,7 @@ const {
   numberOfPanes,
   bodyLeft: parentLeft,
   bodyWidth: parentWidth,
-} = useSplitLayout();
+} = useSplitLayoutContext();
 
 const indexPane = toRef(() => {
   if (paneEl.value?.parentElement?.children) {
@@ -76,6 +83,8 @@ watch(
     }
   },
 );
+
+defineAllowedBottomNavigation(allowBottomNavigation);
 </script>
 
 <template>

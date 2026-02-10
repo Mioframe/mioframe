@@ -9,12 +9,8 @@ defineSlots<{
 </script>
 
 <template>
-  <MDPane>
-    <MDAppBar>
-      <template #leadingButton>
-        <slot name="navigationButton" />
-      </template>
-    </MDAppBar>
+  <MDPane allow-bottom-navigation>
+    <MDAppBar headline="Settings" />
 
     <LocalSettingsList />
   </MDPane>

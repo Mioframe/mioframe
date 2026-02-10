@@ -1,16 +1,11 @@
 <script setup lang="ts">
 import { useMainRouter, useStackNavigation } from '@page/routes';
 import { MDSplitLayout } from '@shared/ui/Layout';
-import type { NavigationButton } from '@shared/ui/Navigation';
-import { defineNavigationButton } from '@shared/ui/Navigation';
+import {
+  defineNavigationButton,
+  type NavigationButton,
+} from '@shared/ui/Navigation';
 import { computed } from 'vue';
-import { useRouter } from 'vue-router';
-
-const router = useRouter();
-
-const onClickBack = () => {
-  router.back();
-};
 
 const homeNavigationButton = defineNavigationButton({
   label: 'Home',
@@ -22,16 +17,16 @@ const settingsNavigationButton = defineNavigationButton({
   symbol: 'settings',
 });
 
-const { open } = useMainRouter();
+const { open, back } = useMainRouter();
 
 const onClickNavigation = async (button: NavigationButton) => {
   switch (button) {
     case homeNavigationButton: {
-      await open('home', {});
+      await open('home', {}, { replace: true });
       break;
     }
     case settingsNavigationButton: {
-      await open('settings', {});
+      await open('settings', {}, { replace: false });
       break;
     }
     default:
@@ -54,11 +49,14 @@ const activeNavigationButton = computed(() => {
 });
 
 const { panesComponents: panes } = useStackNavigation();
+
+const onClickBack = () => {
+  back();
+};
 </script>
 
 <template>
   <MDSplitLayout
-    :number-of-panes="panes.length"
     class="main-view"
     :navigation-buttons="[homeNavigationButton, settingsNavigationButton]"
     has-menu-button

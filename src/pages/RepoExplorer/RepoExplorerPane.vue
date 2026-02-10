@@ -179,9 +179,7 @@ const onClickDocument = async (documentId: AMDocumentId) => {
 
 const documentIdToRename = shallowRef<AMDocumentId>();
 
-const title = computed((): string | undefined =>
-  PathUtils.basename(directoryPath.value),
-);
+const title = computed(() => PathUtils.basename(directoryPath.value) || 'root');
 
 const onRenamedEntry = () => {
   entryKeyToRename.value = undefined;
