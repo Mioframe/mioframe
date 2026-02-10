@@ -4,14 +4,41 @@ import { repoExplorerPane } from './RepoExplorer';
 import { settingsPane as settingsPane } from './Settings';
 import { accountPane } from './Account';
 import { createStackNavigation } from './SplitView/defineStackNavigation';
+import type { RouteRecordRaw } from 'vue-router';
 
-export const { setupStackNavigation, useStackNavigation } =
-  createStackNavigation('stack-view', {
-    home: homePane,
-    repo: repoExplorerPane,
-    document: documentViewPane,
-    settings: settingsPane,
-    accounts: accountPane,
+const rootPath = '/';
+
+const { setupStackNavigation: setup, useStackNavigation: use } =
+  createStackNavigation(
+    {
+      home: homePane,
+      repo: repoExplorerPane,
+      document: documentViewPane,
+      settings: settingsPane,
+      accounts: accountPane,
+    },
+    {
+      defaultPane: 'home',
+      rootPath,
+    },
+  );
+
+export const setupStackNavigation = ({
+  addRoute,
+}: {
+  addRoute: (route: RouteRecordRaw) => void;
+}) => {
+  setup({ addRoute });
+
+  addRoute({
+    path: '/:pathMatch(.*)*',
+    name: 'NotFound',
+    redirect: {
+      path: rootPath,
+    },
   });
+};
 
-export const useMainRouter = useStackNavigation;
+export const useStackNavigation = use;
+
+export const useMainRouter = use;
