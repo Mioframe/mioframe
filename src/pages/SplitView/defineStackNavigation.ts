@@ -39,6 +39,10 @@ export interface UseStackNavigationReturn<P extends PaneMap> {
     props: ReturnType<NonNullable<P[K]>['parseProps']>,
     options?: OpenOptions,
   ) => Promise<void>;
+
+  /**
+   * panes for shows
+   */
   panesComponents: ComputedRef<
     { name: string; component: Component; props: UnknownRecord }[]
   >;
@@ -52,20 +56,33 @@ export interface StackNavigation<P extends PaneMap> {
 }
 
 export const createStackNavigation = <P extends PaneMap>(
-  rootPath: string,
   panes: P,
+  {
+    defaultPane,
+    rootPath,
+  }: {
+    defaultPane: Extract<keyof P, string>;
+    rootPath?: string;
+  },
 ): StackNavigation<P> => {
   const setupStackNavigation = ({
     addRoute,
   }: {
     addRoute: (route: RouteRecordRaw) => void;
   }) => {
-    const path = `/${rootPath}/:${PARAM_NAME}+`;
+    const cleanPath =
+      rootPath?.replace(/\/+/g, '/').replace(/^\/|\/$/g, '') || '';
+    const prefixPath = cleanPath ? `/${cleanPath}` : '';
 
     addRoute({
       name: rootNavigationName,
-      path,
+      path: `${prefixPath}/:${PARAM_NAME}+`,
       component: PageView,
+    });
+
+    addRoute({
+      path: `${prefixPath}/:pathMatch(.*)*`,
+      redirect: `${prefixPath}/${defaultPane}`,
     });
   };
 
