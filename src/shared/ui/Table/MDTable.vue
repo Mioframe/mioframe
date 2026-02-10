@@ -15,6 +15,7 @@
   width: 100%;
   border-collapse: separate;
   border-spacing: 0px;
+  border: 0;
 
   :deep() {
     caption,
@@ -28,6 +29,9 @@
       position: sticky;
       z-index: 1;
       top: 0;
+      tr {
+        background-color: var(--md-container-color);
+      }
 
       th {
         --md-container-color: var(--md-sys-color-surface-variant);
@@ -62,19 +66,22 @@
         border-bottom-left-radius: var(--md-table-border-radius);
         border-bottom-right-radius: var(--md-table-border-radius);
 
-        tr:last-child {
-          border-bottom-left-radius: var(--md-table-border-radius);
-          border-bottom-right-radius: var(--md-table-border-radius);
+        tr {
+          &::after,
+          &:last-child {
+            border-bottom-left-radius: var(--md-table-border-radius);
+            border-bottom-right-radius: var(--md-table-border-radius);
 
-          td {
-            border-bottom: none;
+            td {
+              border-bottom: none;
 
-            &:first-child {
-              border-bottom-left-radius: var(--md-table-border-radius);
-            }
+              &:first-child {
+                border-bottom-left-radius: var(--md-table-border-radius);
+              }
 
-            &:last-child {
-              border-bottom-right-radius: var(--md-table-border-radius);
+              &:last-child {
+                border-bottom-right-radius: var(--md-table-border-radius);
+              }
             }
           }
         }
@@ -95,6 +102,26 @@
 
       td {
         font-weight: 400;
+      }
+    }
+
+    tbody,
+    tfoot {
+      tr {
+        position: relative;
+
+        &::after {
+          content: '';
+          display: block;
+          position: absolute;
+          right: 0;
+          height: 100%;
+          width: 100%;
+          border-left: var(--md-table-border);
+          border-right: var(--md-table-border);
+          pointer-events: none;
+          z-index: 0;
+        }
       }
     }
   }
