@@ -7,6 +7,7 @@ import { computed, ref, toRefs, useTemplateRef, watchEffect } from 'vue';
 import { useOverlayContainer } from '../Overlay';
 import { findClosestElement } from '@shared/lib/useClosestElement';
 import { TeleportContainer } from '@shared/lib/teleportContainer';
+import { usePaneContainer } from '../Layout/useMDContainer';
 
 const props = withDefaults(
   defineProps<{
@@ -65,17 +66,17 @@ const placeholderStyles = computed(
   }),
 );
 
-const toolbarPlaceholder = useTemplateRef('toolbarPlaceholder');
+const paneContainerEl = usePaneContainer();
 
-const { left: placeholderLeft, width: placeholderWidth } =
-  useElementBounding(toolbarPlaceholder);
+const { left: paneContainerLeft, width: paneContainerWidth } =
+  useElementBounding(paneContainerEl);
 
-const placeholderCenter = computed(
-  () => placeholderLeft.value + placeholderWidth.value / 2,
+const paneContainerCenter = computed(
+  () => paneContainerLeft.value + paneContainerWidth.value / 2,
 );
 
 const toolbarLeft = computed(() =>
-  round(placeholderCenter.value - toolbarWidth.value / 2),
+  round(paneContainerCenter.value - toolbarWidth.value / 2),
 );
 
 const toolbarStyle = computed((): StyleValue => {
@@ -86,11 +87,7 @@ const toolbarStyle = computed((): StyleValue => {
 </script>
 
 <template>
-  <div
-    ref="toolbarPlaceholder"
-    class="md-toolbar__placeholder"
-    :style="placeholderStyles"
-  >
+  <div class="md-toolbar__placeholder" :style="placeholderStyles">
     <TeleportContainer :to="to" :container="toolbarEl">
       <div
         ref="toolbarEl"
