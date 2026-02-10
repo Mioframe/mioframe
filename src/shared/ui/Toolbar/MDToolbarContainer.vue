@@ -54,7 +54,7 @@ const toolbarEl = useTemplateRef('toolbarEl');
 
 const to = useOverlayContainer();
 
-const { height: fabContainerHeight, width: toolbarWidth } = useElementSize(
+const { height: toolbarHeight, width: toolbarWidth } = useElementSize(
   toolbarEl,
   { height: 0, width: 0 },
   { box: 'border-box' },
@@ -62,7 +62,7 @@ const { height: fabContainerHeight, width: toolbarWidth } = useElementSize(
 
 const placeholderStyles = computed(
   (): StyleValue => ({
-    height: `${fabContainerHeight.value}px`,
+    height: `${toolbarHeight.value + 16}px`,
   }),
 );
 

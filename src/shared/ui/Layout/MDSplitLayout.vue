@@ -132,6 +132,7 @@ setupSplitLayoutContext({
         v-for="{ name, component, props: paneProps } in showPanes"
         :key="name"
         v-bind="paneProps"
+        class="body__pane"
       >
         <template #navigationButton>
           <MDIconButton
@@ -182,45 +183,5 @@ setupSplitLayoutContext({
 
 .body {
   display: flex;
-
-  &__main-pane,
-  &__first-pane {
-    --md-pane-margin-x: 16px;
-    --md-pane-margin-y: 4px;
-
-    display: flex;
-    flex-direction: column;
-    position: relative;
-
-    width: var(--md-pane-width);
-
-    padding: var(--md-pane-margin-y) var(--md-pane-margin-x);
-    box-sizing: border-box;
-    overflow-y: auto;
-    transition: none;
-
-    .md-layer_compact & {
-      --md-pane-margin-x: 0px;
-      --md-pane-margin-y: 0px;
-      --md-pane-container-shape: 0px;
-      --md-pane-padding-x: 4px;
-    }
-  }
-
-  &__main-pane {
-    --md-pane-width: 100cqw;
-  }
-
-  &__container {
-    position: relative;
-    flex: 1 1;
-    display: flex;
-    flex-direction: column;
-    justify-content: flex-start;
-    border-radius: 16px;
-    --md-container-color: var(--md-sys-color-surface);
-    --md-content-color: var(--md-sys-color-on-surface);
-    overflow-y: auto;
-  }
 }
 </style>
