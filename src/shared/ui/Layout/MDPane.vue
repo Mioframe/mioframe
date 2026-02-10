@@ -117,6 +117,7 @@ defineAllowedBottomNavigation(allowBottomNavigation);
   position: relative;
   max-width: var(--md-pane-width);
   width: var(--md-pane-width);
+  flex-basis: var(--md-pane-width);
   min-width: 320px;
   transition-property: none;
 
@@ -131,7 +132,7 @@ defineAllowedBottomNavigation(allowBottomNavigation);
 
   .__content {
     display: flex;
-    overflow-y: auto;
+    overflow: auto;
     flex-direction: column;
     justify-content: flex-start;
     border-radius: var(--md-pane-container-shape, 16px);
