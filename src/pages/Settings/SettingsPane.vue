@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { LocalSettingsList } from '@entity/localSettings';
 import { MDAppBar } from '@shared/ui/AppBar';
-import { MDPaneContainer } from '@shared/ui/Layout';
+import { MDPane } from '@shared/ui/Layout';
 
 defineSlots<{
   navigationButton: () => unknown;
@@ -9,13 +9,9 @@ defineSlots<{
 </script>
 
 <template>
-  <MDPaneContainer>
-    <MDAppBar>
-      <template #leadingButton>
-        <slot name="navigationButton" />
-      </template>
-    </MDAppBar>
+  <MDPane allow-bottom-navigation>
+    <MDAppBar headline="Settings" />
 
     <LocalSettingsList />
-  </MDPaneContainer>
+  </MDPane>
 </template>

@@ -5,7 +5,7 @@ const PROVIDE_CONTAINER_KEY: InjectionKey<
   ComputedRef<HTMLElement | undefined | null>
 > = Symbol('PROVIDE_CONTAINER_KEY');
 
-export const useProvidePaneContainer = (
+export const definePaneContainer = (
   el: Ref<HTMLElement | undefined | null>,
 ) => {
   provide(
