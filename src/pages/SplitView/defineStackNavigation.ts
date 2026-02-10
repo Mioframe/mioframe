@@ -1,13 +1,13 @@
 import { generateId } from '@shared/lib/generateId';
 import type { LocationQueryRaw } from 'vue-router';
 import { useRoute, useRouter, type RouteRecordRaw } from 'vue-router';
-import PageView from './SplitView.vue';
 import { z } from 'zod/v4-mini';
 import type { Pane } from './definePane';
 import type { Component, ComputedRef } from 'vue';
 import { computed } from 'vue';
 import type { UnknownRecord } from 'type-fest';
 import { isNotNil } from 'es-toolkit';
+import SplitView from './SplitView.vue';
 
 const rootNavigationName = generateId('StackNavigation');
 
@@ -31,6 +31,7 @@ interface OpenOptions {
    * @default 0
    */
   additionalPanes?: number;
+  replace?: boolean;
 }
 
 export interface UseStackNavigationReturn<P extends PaneMap> {
@@ -44,8 +45,14 @@ export interface UseStackNavigationReturn<P extends PaneMap> {
    * panes for shows
    */
   panesComponents: ComputedRef<
-    { name: string; component: Component; props: UnknownRecord }[]
+    {
+      name: string;
+      component: Component;
+      props: UnknownRecord;
+    }[]
   >;
+
+  back: () => void;
 }
 
 export interface StackNavigation<P extends PaneMap> {
@@ -77,7 +84,7 @@ export const createStackNavigation = <P extends PaneMap>(
     addRoute({
       name: rootNavigationName,
       path: `${prefixPath}/:${PARAM_NAME}+`,
-      component: PageView,
+      component: SplitView,
     });
 
     addRoute({
@@ -108,7 +115,7 @@ export const createStackNavigation = <P extends PaneMap>(
     const open = async <K extends Extract<keyof P, string>>(
       name: K,
       props: ReturnType<P[K]['parseProps']>,
-      { additionalPanes = 0 }: OpenOptions = {},
+      { additionalPanes = 0, replace = false }: OpenOptions = {},
     ): Promise<void> => {
       const maxPanes = additionalPanes + 1;
 
@@ -151,6 +158,7 @@ export const createStackNavigation = <P extends PaneMap>(
         // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- query-string converts JSON objects
         query: query as unknown as LocationQueryRaw,
         params,
+        replace,
       });
     };
 
@@ -177,6 +185,9 @@ export const createStackNavigation = <P extends PaneMap>(
     return {
       open,
       panesComponents,
+      back: () => {
+        router.back();
+      },
     };
   };
 

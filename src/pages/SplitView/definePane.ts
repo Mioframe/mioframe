@@ -9,15 +9,21 @@ export type Pane<T extends UnknownRecord = UnknownRecord> = {
 
 export type InferPaneQuery<P extends Pane> = ReturnType<P['parseProps']>;
 
-export function definePane(component: Component): Pane<EmptyObject>;
-export function definePane<T extends UnknownRecord>(
-  component: Component,
-  zodQuery: ZodMiniType<T>,
-): Pane<T>;
-export function definePane<T extends UnknownRecord = EmptyObject>(
-  component: Component,
-  zodQuery?: ZodMiniType<T>,
-): Pane<T> {
+export function definePane(p: { component: Component }): Pane<EmptyObject>;
+export function definePane<T extends UnknownRecord>(p: {
+  component: Component;
+  zodQuery?: ZodMiniType<T>;
+}): Pane<T>;
+/**
+ * Определить параметры Pane для навигации
+ */
+export function definePane<T extends UnknownRecord = EmptyObject>({
+  component,
+  zodQuery,
+}: {
+  component: Component;
+  zodQuery?: ZodMiniType<T>;
+}): Pane<T> {
   return {
     component,
     parseProps: (query: UnknownRecord): T => {
