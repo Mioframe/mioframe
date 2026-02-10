@@ -35,12 +35,8 @@ const onClickAccount = async () => {
 </script>
 
 <template>
-  <MDPane class="home">
+  <MDPane class="home" allow-bottom-navigation>
     <MDAppBar>
-      <template #leadingButton>
-        <slot name="navigationButton" />
-      </template>
-
       <template #trailingElements>
         <MDIconButton
           tooltip="account"

@@ -1,34 +1,29 @@
-<script setup lang="ts" generic="NB extends NavigationButton">
-import type { Component } from 'vue';
-import { computed, watchEffect, useTemplateRef, toRefs } from 'vue';
+<script setup lang="ts">
+import { computed, useTemplateRef, toRefs } from 'vue';
 import {
   useLayoutSizeClass,
   LAYOUT_CLASS,
   LAYOUT_MIN_WIDTH,
 } from './useLayoutSizeClass';
-import { useCssVar, useElementBounding } from '@vueuse/core';
+import { useElementBounding } from '@vueuse/core';
 import { MDNavigationBar, MDNavigationRail } from '../Navigation';
 import type { NavigationButton } from '../Navigation';
-import { setupSplitLayout } from './useSplitLayout';
-import type { UnknownRecord } from 'type-fest';
+import { setupSplitLayoutContext } from './useSplitLayoutContext';
 import { MDIconButton } from '../Button';
+import { useAllowedBottomNavigation } from './allowedBottomNavigation';
+import type { Pane } from './types';
 
 const props = defineProps<{
-  navigationButtons?: NB[];
-  activeNavigationButton?: NB;
+  navigationButtons?: NavigationButton[];
+  activeNavigationButton?: NavigationButton;
   hasMenuButton?: boolean;
-  numberOfPanes: number;
-  panes: {
-    name: string;
-    component: Component;
-    props: UnknownRecord;
-  }[];
+  panes: Pane[];
 }>();
 
-const { numberOfPanes } = toRefs(props);
+const { navigationButtons } = toRefs(props);
 
 const emit = defineEmits<{
-  clickNavigation: [button: NB];
+  clickNavigation: [button: NavigationButton];
   clickBack: [];
 }>();
 
@@ -41,27 +36,7 @@ const mainEl = useTemplateRef('mainEl');
 
 const { layoutClass, layoutWidth } = useLayoutSizeClass(mainEl);
 
-const isShowFirstPane = computed(
-  () => layoutClass.value !== LAYOUT_CLASS.compact,
-);
-
-const firstPaneSize = computed((): number => {
-  if (isShowFirstPane.value) {
-    if (layoutClass.value === LAYOUT_CLASS.medium) {
-      return 50;
-    }
-    return 30;
-  }
-  return 0;
-});
-
 const bodyRef = useTemplateRef('bodyRef');
-
-const firstPaneSizeCssVar = useCssVar('--md-first-pane-width', bodyRef);
-
-watchEffect(() => {
-  firstPaneSizeCssVar.value = `${firstPaneSize.value}cqw`;
-});
 
 const windowClassModifier = computed(() => {
   switch (layoutClass.value) {
@@ -80,29 +55,26 @@ const windowClassModifier = computed(() => {
   }
 });
 
+const { allowed: allowedBottomNavigation } = useAllowedBottomNavigation();
+
 const showRailNavigation = computed(
   () =>
-    props.navigationButtons?.length &&
+    navigationButtons.value?.length &&
     layoutWidth.value >= LAYOUT_MIN_WIDTH.medium,
 );
 
 const showBarNavigation = computed(
   () =>
-    props.navigationButtons?.length &&
-    layoutWidth.value < LAYOUT_MIN_WIDTH.medium,
+    navigationButtons.value?.length &&
+    layoutWidth.value < LAYOUT_MIN_WIDTH.medium &&
+    allowedBottomNavigation.value,
 );
 
-const onClickNavigation = (button: NB) => {
+const onClickNavigation = (button: NavigationButton) => {
   emit('clickNavigation', button);
 };
 
 const { left: bodyLeft, width: bodyWidth } = useElementBounding(bodyRef);
-
-setupSplitLayout({
-  numberOfPanes,
-  bodyLeft,
-  bodyWidth,
-});
 
 const onClickBack = () => {
   emit('clickBack');
@@ -125,6 +97,14 @@ const maxPanes = computed(() => {
 const showPanes = computed(() =>
   props.panes.slice(0, maxPanes.value).toReversed(),
 );
+
+const numberOfPanes = computed(() => showPanes.value.length);
+
+setupSplitLayoutContext({
+  numberOfPanes,
+  bodyLeft,
+  bodyWidth,
+});
 </script>
 
 <template>
@@ -224,16 +204,6 @@ const showPanes = computed(() =>
       --md-pane-margin-y: 0px;
       --md-pane-container-shape: 0px;
       --md-pane-padding-x: 4px;
-    }
-  }
-
-  &__first-pane {
-    --md-pane-width: var(--md-first-pane-width);
-    min-width: var(--md-pane-width);
-
-    &:empty {
-      --md-pane-width: 0px;
-      display: none;
     }
   }
 
