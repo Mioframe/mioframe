@@ -1,4 +1,5 @@
 <script setup lang="ts" generic="NB extends NavigationButton">
+import type { Component } from 'vue';
 import { computed, watchEffect, useTemplateRef, toRefs } from 'vue';
 import {
   useLayoutSizeClass,
@@ -9,18 +10,26 @@ import { useCssVar, useElementBounding } from '@vueuse/core';
 import { MDNavigationBar, MDNavigationRail } from '../Navigation';
 import type { NavigationButton } from '../Navigation';
 import { setupSplitLayout } from './useSplitLayout';
+import type { UnknownRecord } from 'type-fest';
+import { MDIconButton } from '../Button';
 
 const props = defineProps<{
   navigationButtons?: NB[];
   activeNavigationButton?: NB;
   hasMenuButton?: boolean;
   numberOfPanes: number;
+  panes: {
+    name: string;
+    component: Component;
+    props: UnknownRecord;
+  }[];
 }>();
 
 const { numberOfPanes } = toRefs(props);
 
 const emit = defineEmits<{
   clickNavigation: [button: NB];
+  clickBack: [];
 }>();
 
 defineSlots<{
@@ -28,9 +37,9 @@ defineSlots<{
   body: () => unknown;
 }>();
 
-const el = useTemplateRef('el');
+const mainEl = useTemplateRef('mainEl');
 
-const { layoutClass, layoutWidth } = useLayoutSizeClass(el);
+const { layoutClass, layoutWidth } = useLayoutSizeClass(mainEl);
 
 const isShowFirstPane = computed(
   () => layoutClass.value !== LAYOUT_CLASS.compact,
@@ -94,10 +103,32 @@ setupSplitLayout({
   bodyLeft,
   bodyWidth,
 });
+
+const onClickBack = () => {
+  emit('clickBack');
+};
+
+const maxPanes = computed(() => {
+  switch (layoutClass.value) {
+    case LAYOUT_CLASS.expanded:
+    case LAYOUT_CLASS.large:
+    case LAYOUT_CLASS.extraLarge:
+      return 2;
+
+    case LAYOUT_CLASS.compact:
+    case LAYOUT_CLASS.medium:
+    default:
+      return 1;
+  }
+});
+
+const showPanes = computed(() =>
+  props.panes.slice(0, maxPanes.value).toReversed(),
+);
 </script>
 
 <template>
-  <main ref="el" class="md md-layer" :class="[windowClassModifier]">
+  <main ref="mainEl" class="md md-layer" :class="[windowClassModifier]">
     <MDNavigationRail
       v-if="navigationButtons && showRailNavigation"
       :buttons="navigationButtons"
@@ -116,7 +147,20 @@ setupSplitLayout({
     />
 
     <section ref="bodyRef" class="md-layer__body body">
-      <slot name="body" />
+      <component
+        :is="component"
+        v-for="{ name, component, props: paneProps } in showPanes"
+        :key="name"
+        v-bind="paneProps"
+      >
+        <template #navigationButton>
+          <MDIconButton
+            tooltip="back"
+            md-symbol-name="arrow_back"
+            @click="onClickBack"
+          />
+        </template>
+      </component>
     </section>
   </main>
 </template>
