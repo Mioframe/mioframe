@@ -7,7 +7,7 @@ import { router } from './router';
 import { setupPlayground } from '@shared/lib/playground';
 import { playgroundPages } from './playgroundPages';
 import { backNavigationHandler as backNavigationHandler } from '@shared/lib/onBackNavigation';
-import { setupMainRouter } from '@page/routes';
+import { setupStackNavigation } from '@page/routes';
 
 /**
  * Инициализация и настройка Vue приложения
@@ -19,8 +19,7 @@ export const setupApp = async (app: App = createApp(MainApp)) => {
     const { setupSentry } = await import('./setupSentry');
     setupSentry(app, SENTRY_DSN);
   }
-
-  setupMainRouter(router);
+  setupStackNavigation(router);
 
   setupPlayground(router, playgroundPages);
 

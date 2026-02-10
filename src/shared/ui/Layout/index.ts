@@ -1,3 +1,2 @@
 export { default as MDSplitLayout } from './MDSplitLayout.vue';
-export { default as MDPaneContainer } from './MDPaneContainer.vue';
-export { SPLIT_VIEW } from './config';
+export { default as MDPane } from './MDPane.vue';

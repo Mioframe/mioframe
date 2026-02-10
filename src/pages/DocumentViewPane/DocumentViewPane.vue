@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, toRefs } from 'vue';
 import { DATABASE_DOCUMENT_TYPE } from '@shared/lib/databaseDocument';
-import { MDPaneContainer } from '@shared/ui/Layout';
+import { MDPane } from '@shared/ui/Layout';
 import { MDAppBar } from '@shared/ui/AppBar';
 import { MDIconButton } from '@shared/ui/Button';
 import { DocumentRenameDialog } from '@feature/documentRename';
@@ -43,7 +43,7 @@ const onClickRenameDocument = () => {
 </script>
 
 <template>
-  <MDPaneContainer>
+  <MDPane>
     <MDAppBar :headline="documentName">
       <template v-if="!!slots.navigationButton" #leadingButton>
         <slot name="navigationButton" />
@@ -73,5 +73,5 @@ const onClickRenameDocument = () => {
       @renamed="showRenameDocument = false"
       @cancel="showRenameDocument = false"
     />
-  </MDPaneContainer>
+  </MDPane>
 </template>

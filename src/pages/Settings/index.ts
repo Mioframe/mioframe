@@ -1,3 +1,4 @@
 import { definePane } from '@page/SplitView';
+import SettingsPane from './SettingsPane.vue';
 
-export const SettingsPane = definePane(() => import('./SettingsPane.vue'));
+export const settingsPane = definePane({ component: SettingsPane });

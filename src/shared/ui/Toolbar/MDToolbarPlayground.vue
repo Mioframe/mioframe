@@ -9,7 +9,7 @@ import MDToolbarContainer from './MDToolbarContainer.vue';
 import { MDIconButton } from '../Button';
 import { useQueryValue } from '@shared/lib/useQueryState';
 import type { ComponentProps } from 'vue-component-type-helpers';
-import { MDPaneContainer } from '../Layout';
+import { MDPane } from '../Layout';
 import { MDListContainer, MDListItem } from '../Lists';
 
 interface State extends ComponentProps<typeof MDToolbarContainer> {
@@ -70,7 +70,7 @@ const layoutOptions: State['layout'][] = [undefined, 'horizontal', 'vertical'];
     </template>
 
     <template #space>
-      <MDPaneContainer class="container">
+      <MDPane class="container">
         <MDListContainer>
           <MDListItem
             v-for="i in state.numberItems"
@@ -104,7 +104,7 @@ const layoutOptions: State['layout'][] = [undefined, 'horizontal', 'vertical'];
 
           <!-- <MDIconButton tooltip="button 5" md-symbol-name="more_vert" /> -->
         </MDToolbarContainer>
-      </MDPaneContainer>
+      </MDPane>
     </template>
   </PlaygroundStory>
   <!-- todo: надо делать проще, сначала просто контейнер, потом его позиционирование с помощью обёртки телепорта -->

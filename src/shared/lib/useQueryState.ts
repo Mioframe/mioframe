@@ -2,8 +2,7 @@ import { useRouteQuery } from '@vueuse/router';
 import { cloneDeep, isString, merge, toMerged } from 'es-toolkit';
 import type { MaybeRef, Reactive } from 'vue';
 import { nextTick, reactive, toValue, watch } from 'vue';
-import queryString from 'query-string';
-import { queryStringOptions } from '@shared/config/queryStringOptions';
+import queryString from 'qs';
 
 export const useQueryValue = <P extends object>(
   queryRootName: string,
@@ -17,16 +16,13 @@ export const useQueryValue = <P extends object>(
     transform: {
       get: (v: unknown) => {
         if (isString(v)) {
-          return toMerged(
-            initialState,
-            queryString.parse(v, queryStringOptions),
-          );
+          return toMerged(initialState, queryString.parse(v));
         }
 
         return initialState;
       },
       set: (v: P) => {
-        return queryString.stringify(cloneDeep(v), queryStringOptions);
+        return queryString.stringify(cloneDeep(v));
       },
     },
   });
