@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, toRef, toRefs, useTemplateRef, watch } from 'vue';
-import { useProvidePaneContainer } from './useMDContainer';
+import { definePaneContainer } from './useMDContainer';
 import { useDraggable, useElementBounding, useElementSize } from '@vueuse/core';
 import { round } from 'es-toolkit';
 import { useSplitLayoutContext } from './useSplitLayoutContext';
@@ -18,8 +18,9 @@ defineSlots<{
 
 const paneEl = useTemplateRef<HTMLDivElement>('paneEl');
 const resizeButton = useTemplateRef<HTMLButtonElement>('resizeButton');
+const paneContentEl = useTemplateRef('paneContentEl');
 
-useProvidePaneContainer(paneEl);
+definePaneContainer(paneContentEl);
 
 const { x: resizeButtonX } = useDraggable(resizeButton, {
   axis: 'x',
@@ -89,7 +90,7 @@ defineAllowedBottomNavigation(allowBottomNavigation);
 
 <template>
   <div ref="paneEl" class="md-pane">
-    <div class="md __content">
+    <div ref="paneContentEl" class="md __content">
       <slot />
     </div>
 
