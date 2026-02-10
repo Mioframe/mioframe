@@ -1,56 +1,42 @@
-<script setup lang="ts" generic="NB extends NavigationButton">
-import { computed, watchEffect, useTemplateRef } from 'vue';
+<script setup lang="ts">
+import { computed, useTemplateRef, toRefs } from 'vue';
 import {
   useLayoutSizeClass,
   LAYOUT_CLASS,
   LAYOUT_MIN_WIDTH,
 } from './useLayoutSizeClass';
-import { useCssVar } from '@vueuse/core';
-import { SPLIT_VIEW } from './config';
+import { useElementBounding } from '@vueuse/core';
 import { MDNavigationBar, MDNavigationRail } from '../Navigation';
 import type { NavigationButton } from '../Navigation';
+import { setupSplitLayoutContext } from './useSplitLayoutContext';
+import { MDIconButton } from '../Button';
+import { useAllowedBottomNavigation } from './allowedBottomNavigation';
+import type { Pane } from './types';
 
 const props = defineProps<{
-  navigationButtons?: NB[];
-  activeNavigationButton?: NB;
+  navigationButtons?: NavigationButton[];
+  activeNavigationButton?: NavigationButton;
   hasMenuButton?: boolean;
+  panes: Pane[];
 }>();
 
+const { navigationButtons } = toRefs(props);
+
 const emit = defineEmits<{
-  clickNavigation: [button: NB];
+  clickNavigation: [button: NavigationButton];
+  clickBack: [];
 }>();
 
 defineSlots<{
   navigation: () => unknown;
-  [SPLIT_VIEW.second]: () => unknown;
-  [SPLIT_VIEW.main]: (p: { splitView: boolean }) => unknown;
+  body: () => unknown;
 }>();
 
-const el = useTemplateRef('el');
+const mainEl = useTemplateRef('mainEl');
 
-const { layoutClass, layoutWidth } = useLayoutSizeClass(el);
-
-const isShowFirstPane = computed(
-  () => layoutClass.value !== LAYOUT_CLASS.compact,
-);
-
-const firstPaneSize = computed((): number => {
-  if (isShowFirstPane.value) {
-    if (layoutClass.value === LAYOUT_CLASS.medium) {
-      return 50;
-    }
-    return 30;
-  }
-  return 0;
-});
+const { layoutClass, layoutWidth } = useLayoutSizeClass(mainEl);
 
 const bodyRef = useTemplateRef('bodyRef');
-
-const firstPaneSizeCssVar = useCssVar('--md-first-pane-width', bodyRef);
-
-watchEffect(() => {
-  firstPaneSizeCssVar.value = `${firstPaneSize.value}cqw`;
-});
 
 const windowClassModifier = computed(() => {
   switch (layoutClass.value) {
@@ -69,25 +55,60 @@ const windowClassModifier = computed(() => {
   }
 });
 
+const { allowed: allowedBottomNavigation } = useAllowedBottomNavigation();
+
 const showRailNavigation = computed(
   () =>
-    props.navigationButtons?.length &&
+    navigationButtons.value?.length &&
     layoutWidth.value >= LAYOUT_MIN_WIDTH.medium,
 );
 
 const showBarNavigation = computed(
   () =>
-    props.navigationButtons?.length &&
-    layoutWidth.value < LAYOUT_MIN_WIDTH.medium,
+    navigationButtons.value?.length &&
+    layoutWidth.value < LAYOUT_MIN_WIDTH.medium &&
+    allowedBottomNavigation.value,
 );
 
-const onClickNavigation = (button: NB) => {
+const onClickNavigation = (button: NavigationButton) => {
   emit('clickNavigation', button);
 };
+
+const { left: bodyLeft, width: bodyWidth } = useElementBounding(bodyRef);
+
+const onClickBack = () => {
+  emit('clickBack');
+};
+
+const maxPanes = computed(() => {
+  switch (layoutClass.value) {
+    case LAYOUT_CLASS.expanded:
+    case LAYOUT_CLASS.large:
+    case LAYOUT_CLASS.extraLarge:
+      return 2;
+
+    case LAYOUT_CLASS.compact:
+    case LAYOUT_CLASS.medium:
+    default:
+      return 1;
+  }
+});
+
+const showPanes = computed(() =>
+  props.panes.slice(0, maxPanes.value).toReversed(),
+);
+
+const numberOfPanes = computed(() => showPanes.value.length);
+
+setupSplitLayoutContext({
+  numberOfPanes,
+  bodyLeft,
+  bodyWidth,
+});
 </script>
 
 <template>
-  <main ref="el" class="md md-layer" :class="[windowClassModifier]">
+  <main ref="mainEl" class="md md-layer" :class="[windowClassModifier]">
     <MDNavigationRail
       v-if="navigationButtons && showRailNavigation"
       :buttons="navigationButtons"
@@ -106,13 +127,21 @@ const onClickNavigation = (button: NB) => {
     />
 
     <section ref="bodyRef" class="md-layer__body body">
-      <div v-if="isShowFirstPane" class="body__first-pane">
-        <slot :name="SPLIT_VIEW.second" />
-      </div>
-
-      <div class="body__main-pane">
-        <slot :name="SPLIT_VIEW.main" :split-view="isShowFirstPane" />
-      </div>
+      <component
+        :is="component"
+        v-for="{ name, component, props: paneProps } in showPanes"
+        :key="name"
+        v-bind="paneProps"
+        class="body__pane"
+      >
+        <template #navigationButton>
+          <MDIconButton
+            tooltip="back"
+            md-symbol-name="arrow_back"
+            @click="onClickBack"
+          />
+        </template>
+      </component>
     </section>
   </main>
 </template>
@@ -154,55 +183,5 @@ const onClickNavigation = (button: NB) => {
 
 .body {
   display: flex;
-
-  &__main-pane,
-  &__first-pane {
-    --md-pane-margin-x: 16px;
-    --md-pane-margin-y: 4px;
-
-    display: flex;
-    flex-direction: column;
-    position: relative;
-
-    width: var(--md-pane-width);
-
-    padding: var(--md-pane-margin-y) var(--md-pane-margin-x);
-    box-sizing: border-box;
-    overflow-y: auto;
-    transition: none;
-
-    .md-layer_compact & {
-      --md-pane-margin-x: 0px;
-      --md-pane-margin-y: 0px;
-      --md-pane-container-shape: 0px;
-      --md-pane-padding-x: 4px;
-    }
-  }
-
-  &__first-pane {
-    --md-pane-width: var(--md-first-pane-width);
-    min-width: var(--md-pane-width);
-
-    &:empty {
-      --md-pane-width: 0px;
-      display: none;
-    }
-  }
-
-  &__main-pane {
-    --md-pane-width: 100cqw;
-  }
-
-  &__container {
-    position: relative;
-    flex: 1 1;
-    display: flex;
-    flex-direction: column;
-    justify-content: flex-start;
-    border-radius: 16px;
-    --md-container-color: var(--md-sys-color-surface);
-    --md-content-color: var(--md-sys-color-on-surface);
-    overflow-y: auto;
-  }
 }
 </style>

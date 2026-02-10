@@ -12,7 +12,7 @@ import { FSEntryMDListItem } from '@entity/fsEntry';
 import { defineMenuButtonList, MDContextMenuButton } from '@shared/ui/Menu';
 import { DocumentRemoveDialog } from '@feature/documentRemove';
 import { DocumentRenameDialog } from '@feature/documentRename';
-import { MDPaneContainer } from '@shared/ui/Layout';
+import { MDPane } from '@shared/ui/Layout';
 import { MDAppBar } from '@shared/ui/AppBar';
 import { FSEntryRenameDialog } from '@feature/entryRename';
 import { isUndefined } from 'es-toolkit';
@@ -61,19 +61,27 @@ const { data: directoryEntries } = useDirectory(
 const { open } = useMainRouter();
 
 const onClickPath = async (path: string) => {
-  if (path === '/') {
-    await open('home', {});
-  } else {
-    await open('repo', {
+  await open(
+    'repo',
+    {
       repoPath: path,
-    });
-  }
+    },
+    {
+      additionalPanes: 1,
+    },
+  );
 };
 
 const onClickEntry = async (name: string) => {
-  await open('repo', {
-    repoPath: PathUtils.join(directoryPath.value, name),
-  });
+  await open(
+    'repo',
+    {
+      repoPath: PathUtils.join(directoryPath.value, name),
+    },
+    {
+      additionalPanes: 1,
+    },
+  );
 };
 
 const showFormNewDocument = ref(false);
@@ -157,18 +165,21 @@ const onClickDocumentContextAction = (
 const documentIdToRemove = shallowRef<AMDocumentId>();
 
 const onClickDocument = async (documentId: AMDocumentId) => {
-  await open('document', {
-    repoPath: directoryPath.value,
-    documentDirectory: directoryPath.value,
-    documentId,
-  });
+  await open(
+    'document',
+    {
+      documentDirectory: directoryPath.value,
+      documentId,
+    },
+    {
+      additionalPanes: 2,
+    },
+  );
 };
 
 const documentIdToRename = shallowRef<AMDocumentId>();
 
-const title = computed((): string | undefined =>
-  PathUtils.basename(directoryPath.value),
-);
+const title = computed(() => PathUtils.basename(directoryPath.value) || 'root');
 
 const onRenamedEntry = () => {
   entryKeyToRename.value = undefined;
@@ -185,7 +196,7 @@ const showFSEntryRenameDialog = computed({
 </script>
 
 <template>
-  <MDPaneContainer class="document-explorer-widget">
+  <MDPane class="document-explorer-widget">
     <MDAppBar v-if="title" :headline="title">
       <template #leadingButton>
         <slot name="navigationButton" />
@@ -322,7 +333,7 @@ const showFSEntryRenameDialog = computed({
       @cancel="entryKeyToRename = undefined"
       @renamed="onRenamedEntry"
     />
-  </MDPaneContainer>
+  </MDPane>
 </template>
 
 <style scoped>

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { MountedDirectoriesList } from '@entity/mountedDirectories';
 import { MDFab, MDFabContainer, MDIconButton } from '@shared/ui/Button';
-import { MDPaneContainer } from '@shared/ui/Layout';
+import { MDPane } from '@shared/ui/Layout';
 import { MDSymbol } from '@shared/ui/Icon';
 import { useFileSystem } from '@entity/mountedDirectories/useFileSystem';
 import { OPFSName } from '@shared/service/directories';
@@ -22,21 +22,21 @@ const onClickMountUserDirectory = async () => {
 };
 
 const onClickRootDirectory = async (name: string) => {
-  await open('repo', { repoPath: PathUtils.join('/', name) });
+  await open(
+    'repo',
+    { repoPath: PathUtils.join('/', name) },
+    { additionalPanes: 1 },
+  );
 };
 
 const onClickAccount = async () => {
-  await open('accounts', {});
+  await open('accounts', {}, { additionalPanes: 1 });
 };
 </script>
 
 <template>
-  <MDPaneContainer class="home">
+  <MDPane class="home" allow-bottom-navigation>
     <MDAppBar>
-      <template #leadingButton>
-        <slot name="navigationButton" />
-      </template>
-
       <template #trailingElements>
         <MDIconButton
           tooltip="account"
@@ -59,7 +59,7 @@ const onClickAccount = async () => {
         @click="onClickMountUserDirectory"
       />
     </MDFabContainer>
-  </MDPaneContainer>
+  </MDPane>
 </template>
 
 <style lang="css" scoped>

@@ -1,11 +1,10 @@
-import type { LocationQueryRaw } from 'vue-router';
+import type { LocationQuery, LocationQueryRaw } from 'vue-router';
 import {
   createRouter,
   createWebHashHistory,
   createWebHistory,
 } from 'vue-router';
-import qs from 'query-string';
-import { queryStringOptions } from '@shared/config/queryStringOptions';
+import qs from 'qs';
 
 const history =
   import.meta.env.BASE_URL && import.meta.env.BASE_URL !== './'
@@ -17,7 +16,14 @@ const history =
 export const router = createRouter({
   history,
   routes: [],
-  parseQuery: (search: string) => qs.parse(search, queryStringOptions),
-  stringifyQuery: (query: LocationQueryRaw = {}) =>
-    qs.stringify(query, queryStringOptions),
+  parseQuery: (search: string): LocationQuery => {
+    const query = qs.parse(search);
+
+    return query as LocationQuery;
+  },
+  stringifyQuery: (query: LocationQueryRaw = {}) => {
+    const stringified = qs.stringify(query);
+
+    return stringified;
+  },
 });

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { GProfileCard } from '@entity/gProfile';
-import { MDPaneContainer } from '@shared/ui/Layout';
+import { MDPane } from '@shared/ui/Layout';
 
 defineSlots<{
   navigationButton: () => unknown;
@@ -8,7 +8,7 @@ defineSlots<{
 </script>
 
 <template>
-  <MDPaneContainer class="account">
+  <MDPane class="account">
     <GProfileCard />
-  </MDPaneContainer>
+  </MDPane>
 </template>
