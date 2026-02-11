@@ -109,7 +109,7 @@ export const createStackNavigation = <P extends PaneMap>(
         .object({ [PARAM_NAME]: z.array(z.string()) })
         .safeParse(route.params);
 
-      return data?.[PARAM_NAME] ?? [];
+      return data?.[PARAM_NAME] ?? [defaultPane];
     });
 
     const open = async <K extends Extract<keyof P, string>>(
