@@ -6,7 +6,7 @@
   --one-pt: 1px;
   --one-dp: 1px;
   --one-step: 4px;
-  --md-container-color: var(--md-sys-color-surface);
+  --md-container-color: var(--md-sys-color-surface-container);
   --md-content-color: var(--md-sys-color-on-surface);
 }
 
@@ -21,8 +21,8 @@ body {
   background-color: var(--md-container-color);
   color: var(--md-content-color, currentColor);
 
-  transition-property: box-shadow, color, background-color, padding,
-    border-radius, opacity;
+  transition-property:
+    box-shadow, color, background-color, padding, border-radius, opacity;
   transition-duration: var(--md-sys-motion-duration-short4, 0.2s);
 
   * {
