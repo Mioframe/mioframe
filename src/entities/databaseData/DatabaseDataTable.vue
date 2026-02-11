@@ -80,7 +80,7 @@ const { itemIdList } = useDatabaseData(
 
     <tfoot v-if="!!slots.after">
       <tr>
-        <td :colspan="properties.length + 1">
+        <td class="db-data-table__after" :colspan="properties.length + 1">
           <slot name="after" />
         </td>
       </tr>
@@ -111,6 +111,11 @@ const { itemIdList } = useDatabaseData(
     :deep(> *) {
       pointer-events: all;
     }
+  }
+
+  &__after {
+    border-bottom-left-radius: var(--md-table-border-radius);
+    border-bottom-right-radius: var(--md-table-border-radius);
   }
 }
 </style>

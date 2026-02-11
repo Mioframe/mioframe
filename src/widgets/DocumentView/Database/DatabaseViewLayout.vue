@@ -91,7 +91,7 @@ const { propertiesIdList } = useDatabaseProperties(path, documentId);
       <slot name="actionHead" />
     </template>
 
-    <template #after>
+    <template v-if="!!slots.after" #after>
       <slot name="after" />
     </template>
   </DatabaseDataTable>
