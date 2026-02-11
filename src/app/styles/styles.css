@@ -4,11 +4,11 @@
 html,
 body,
 #app {
-  height: 100dvh;
-  width: 100dvw;
+  height: 100svh;
+  width: 100svw;
   display: flex;
   flex-direction: column;
   overflow: auto;
-  transition: background 1s;
+  transition: background 0.3s;
   overscroll-behavior-y: contain;
 }

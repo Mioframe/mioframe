@@ -149,7 +149,8 @@ setupSplitLayoutContext({
 <style scoped>
 .md-layer {
   flex-grow: 1;
-  height: 100%;
+  height: 100svh;
+  max-height: 100svh;
   overflow: auto;
   --md-container-color: var(--md-sys-color-surface-container);
   --md-content-color: var(--md-sys-color-on-surface);
