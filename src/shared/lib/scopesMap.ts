@@ -1,7 +1,6 @@
 import { createGlobalState, tryOnScopeDispose } from '@vueuse/core';
-import type { ComputedRef } from 'vue';
+import type { ComputedRef, MaybeRefOrGetter } from 'vue';
 import { effectScope, watch, computed, shallowRef, toValue } from 'vue';
-import type { MaybeRefOrGetter } from '@vueuse/core';
 import { isUndefined, toString } from 'es-toolkit/compat';
 
 /**

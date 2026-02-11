@@ -1,5 +1,5 @@
 import { createGlobalState, tryOnScopeDispose } from '@vueuse/core';
-import type { ComputedRef, EffectScope } from 'vue';
+import type { ComputedRef, EffectScope, MaybeRefOrGetter } from 'vue';
 import {
   effectScope,
   watch,
@@ -8,8 +8,6 @@ import {
   toValue,
   getCurrentScope,
 } from 'vue';
-import type { MaybeRefOrGetter } from '@vueuse/core';
-
 type ScopePool<K extends WeakKey, V> = {
   /** Увеличить счетчик использования и получить состояние */
   retain: (key: K) => V;
