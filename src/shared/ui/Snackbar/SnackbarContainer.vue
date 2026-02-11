@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { FadeTransition } from '@noction/vue-bezier';
 import MDSnackbar from './MDSnackbar.vue';
 import { useSnackbar } from './useSnackbar';
 import { useClosestParentFrame } from '@shared/lib/useClosestParentFrame';
@@ -20,17 +19,15 @@ const snackbarContainer = useTemplateRef('snackbarContainer');
 <template>
   <TeleportContainer :to="targetTeleport" :container="snackbarContainer">
     <div ref="snackbarContainer" class="snackbar-container">
-      <FadeTransition group>
-        <MDSnackbar
-          v-if="currentSnackbar"
-          :key="currentSnackbar.id"
-          class="snackbar-container__snackbar"
-          :text="currentSnackbar.text"
-          :action-label="currentSnackbar.actionLabel"
-          @click-action="currentSnackbar.callback"
-          @click-close="onClickClose"
-        />
-      </FadeTransition>
+      <MDSnackbar
+        v-if="currentSnackbar"
+        :key="currentSnackbar.id"
+        class="snackbar-container__snackbar"
+        :text="currentSnackbar.text"
+        :action-label="currentSnackbar.actionLabel"
+        @click-action="currentSnackbar.callback"
+        @click-close="onClickClose"
+      />
     </div>
   </TeleportContainer>
 </template>

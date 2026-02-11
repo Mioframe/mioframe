@@ -2,7 +2,7 @@
 import { nextTick, toRefs, useTemplateRef, watch } from 'vue';
 import { useModalAriaHidden } from '../AriaHidden';
 import { sessionUniqueId } from '@shared/lib/uniqueId';
-import { useFocusTrap } from '@vueuse/integrations/useFocusTrap.mjs';
+import { useFocusTrap } from '@vueuse/integrations/useFocusTrap';
 import { onBackNavigation } from '@shared/lib/onBackNavigation';
 import { useOnEscapeKeyStacked } from '@shared/lib/useOnEscapeKeyStacked';
 import { MDButton } from '../Button';

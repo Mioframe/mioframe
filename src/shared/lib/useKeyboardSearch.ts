@@ -1,4 +1,4 @@
-import type { MaybeRefOrGetter } from '@vueuse/core';
+import type { MaybeRefOrGetter } from 'vue';
 import { computed, toValue } from 'vue';
 import { useFastKeyboardInput } from './useFastKeyboardInput';
 import { useMatchSorter } from './useMatchSorter';

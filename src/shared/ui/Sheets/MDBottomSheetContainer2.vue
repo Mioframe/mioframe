@@ -10,7 +10,7 @@ import {
   useElementBounding,
   useElementSize,
 } from '@vueuse/core';
-import { useFocusTrap } from '@vueuse/integrations/useFocusTrap.mjs';
+import { useFocusTrap } from '@vueuse/integrations/useFocusTrap';
 import { useOnEscapeKeyStacked } from '@shared/lib/useOnEscapeKeyStacked';
 
 defineSlots<{
