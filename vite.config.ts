@@ -22,8 +22,8 @@ export default defineConfig(({ mode, isPreview }) => {
       ? [
           VitePWA({
             manifest: {
-              theme_color: '#000',
-              background_color: '#000',
+              theme_color: 'rgb(33, 31, 38)',
+              background_color: 'rgb(33, 31, 38)',
             },
             workbox: {
               runtimeCaching: [
