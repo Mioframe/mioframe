@@ -1,5 +1,5 @@
 import {
-  asyncComputed,
+  computedAsync,
   createGlobalState,
   toRefs,
   useStorage,
@@ -52,18 +52,20 @@ export const useGoogleOAuth = () => {
 export const useGoogleApi = createGlobalState(() => {
   const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
 
-  const { gAuthTokenState: tokenResponse, tokenReceiptTime } = toRefs(
-    useStorage<{
+  const storage = useStorage(
+    'gAuth',
+    (): {
       gAuthTokenState: google.accounts.oauth2.TokenResponse | null;
       tokenReceiptTime: number | null;
-    }>(
-      'gAuth',
-      { gAuthTokenState: null, tokenReceiptTime: null },
-      localStorage,
-      {
-        mergeDefaults: true,
-      },
-    ),
+    } => ({ gAuthTokenState: null, tokenReceiptTime: null }),
+    localStorage,
+    {
+      mergeDefaults: true,
+    },
+  );
+
+  const { gAuthTokenState: tokenResponse, tokenReceiptTime } = toRefs(
+    computed(() => storage.value),
   );
 
   const tokenExpirationTime = computed(() =>
@@ -72,7 +74,7 @@ export const useGoogleApi = createGlobalState(() => {
       : 0,
   );
 
-  const gapi = asyncComputed(() => loadGAPI(), undefined, { lazy: true });
+  const gapi = computedAsync(() => loadGAPI(), undefined, { lazy: true });
 
   watchEffect(() => {
     gapi.value?.client.setToken(tokenResponse.value);
@@ -154,7 +156,7 @@ export const useGoogleApi = createGlobalState(() => {
 
   // let gDrive: AdvancedGDrive | undefined;
 
-  const gDrive = asyncComputed(
+  const gDrive = computedAsync(
     async () => {
       if (gapi.value && clientId) {
         return await loadGDrive(clientId, gapi.value);
