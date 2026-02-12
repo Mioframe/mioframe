@@ -269,10 +269,38 @@ export class WebFileSystem implements IFileSystemProvider {
 
       await this.delete(normalizedOld, false);
     } else {
-      throw new VfsError(
-        FileSystemError.NotSupported,
-        'Directory rename is not supported in this browser version (requires FileSystemHandle.move)',
+      const newDirHandle = await destinationDirHandle.getDirectoryHandle(
+        newName,
+        {
+          create: true,
+        },
       );
+
+      const copyDirectoryContents = async (
+        sourceDir: FileSystemDirectoryHandle,
+        destDir: FileSystemDirectoryHandle,
+      ) => {
+        for await (const entry of sourceDir.values()) {
+          if (entry.kind === 'file') {
+            const file = await entry.getFile();
+            const newFileHandle = await destDir.getFileHandle(entry.name, {
+              create: true,
+            });
+            const writable = await newFileHandle.createWritable();
+            await writable.write(file);
+            await writable.close();
+          } else {
+            const newSubDir = await destDir.getDirectoryHandle(entry.name, {
+              create: true,
+            });
+            await copyDirectoryContents(entry, newSubDir);
+          }
+        }
+      };
+
+      await copyDirectoryContents(sourceHandle, newDirHandle);
+
+      await this.delete(normalizedOld, true);
     }
 
     this.events.emit({
