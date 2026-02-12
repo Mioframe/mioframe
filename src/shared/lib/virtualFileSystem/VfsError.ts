@@ -6,6 +6,7 @@ export enum FileSystemError {
   NoPermissions = 'EACCES',
   Unknown = 'EUNKNOWN',
   NotSupported = 'ENOTSUP',
+  DirectoryNotEmpty = 'EDIRECTORYNOTEMPTY',
 }
 
 export class VfsError extends Error {
