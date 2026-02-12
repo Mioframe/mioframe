@@ -1,1 +1,1 @@
-export { useMainServiceClient as useMainService } from './useService';
+export { useMainServiceClient } from './useService';

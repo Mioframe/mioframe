@@ -1,5 +1,5 @@
 import type { AMDocumentId } from '@shared/lib/automerge';
-import { useMainService } from '@shared/service';
+import { useMainServiceClient } from '@shared/service';
 import { computed, toValue, type Ref } from 'vue';
 import { useQuery } from '@shared/lib/observableQuery';
 import { isUndefined } from 'es-toolkit';
@@ -10,7 +10,7 @@ export const useDocument = (
 ) => {
   const {
     documents: { put, patch, documentDescription },
-  } = useMainService();
+  } = useMainServiceClient();
 
   const {
     data: state,

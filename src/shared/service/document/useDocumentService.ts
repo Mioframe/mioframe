@@ -26,7 +26,7 @@ import { defineQuery } from '@shared/lib/observableQuery';
 import { DomainError } from '@shared/lib/error';
 import { defineCacheObservable } from '@shared/lib/defineCacheObservable';
 
-export const useDocumentService = createGlobalState(() => {
+const setupDocumentService = () => {
   const { getRepo$ } = useRepositoriesService();
 
   const getDocHandle$ = defineCacheObservable(
@@ -65,7 +65,6 @@ export const useDocumentService = createGlobalState(() => {
             const onChange = ({
               doc,
             }: DocHandleChangePayload<UnknownRecord>) => {
-              console.debug('onChange');
               subscribe.next(doc);
             };
             const onDelete = () => {
@@ -192,4 +191,6 @@ export const useDocumentService = createGlobalState(() => {
     cfrDocumentState$,
     cfrDocumentState,
   };
-});
+};
+
+export const useDocumentService = createGlobalState(setupDocumentService);

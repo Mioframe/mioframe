@@ -1,13 +1,13 @@
 import type { AMDocumentId, CFRDocumentContent } from '@shared/lib/cfrDocument';
 import { useQuery } from '@shared/lib/observableQuery';
-import { useMainService } from '@shared/service';
+import { useMainServiceClient } from '@shared/service';
 import { isUndefined } from 'es-toolkit';
 import { computed, toValue, type Ref } from 'vue';
 
 export const useRepository = (path: Ref<string>) => {
   const {
     repositories: { createDocument, deleteDocument, documentIdList },
-  } = useMainService();
+  } = useMainServiceClient();
 
   const {
     data: state,

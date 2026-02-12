@@ -256,20 +256,8 @@ export class WebFileSystem implements IFileSystemProvider {
     );
 
     if (sourceHandle.move) {
-      try {
-        await sourceHandle.move(destinationDirHandle, newName);
-        this.events.emit({
-          type: 'rename',
-          path: normalizedOld,
-          newPath: normalizedNew,
-        });
-        return;
-      } catch (e) {
-        console.warn('Native move failed, falling back to copy-delete', e);
-      }
-    }
-
-    if (sourceHandle.kind === 'file') {
+      await sourceHandle.move(destinationDirHandle, newName);
+    } else if (sourceHandle.kind === 'file') {
       const file = await sourceHandle.getFile();
 
       const newFileHandle = await destinationDirHandle.getFileHandle(newName, {

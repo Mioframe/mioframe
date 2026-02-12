@@ -4,7 +4,7 @@ import type {
   DatabaseFilter,
   DatabaseViewId,
 } from '@shared/lib/databaseDocument';
-import { useMainService } from '@shared/service';
+import { useMainServiceClient } from '@shared/service';
 import type { PatchSource } from '@shared/lib/changeObject';
 import { useQuery } from '@shared/lib/observableQuery';
 import { isUndefined } from 'es-toolkit';
@@ -20,7 +20,7 @@ export const useDatabaseViewFilter = (
         filter: { patch, remove, filter },
       },
     },
-  } = useMainService();
+  } = useMainServiceClient();
 
   const {
     data: filterQuery,
