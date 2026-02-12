@@ -5,7 +5,7 @@ import type {
   DatabaseViewId,
 } from '@shared/lib/databaseDocument';
 import { useQuery } from '@shared/lib/observableQuery';
-import { useMainService } from '@shared/service';
+import { useMainServiceClient } from '@shared/service';
 import { isUndefined } from 'es-toolkit';
 import type { PartialDeep } from 'type-fest';
 import { computed, toValue, type Ref } from 'vue';
@@ -27,7 +27,7 @@ export const useDatabaseSorting = (
         },
       },
     },
-  } = useMainService();
+  } = useMainServiceClient();
 
   const { data, error, isLoading } = useQuery(
     sortingPropertiesIdList,

@@ -35,6 +35,9 @@ importers:
       '@vueuse/router':
         specifier: ^14.2.1
         version: 14.2.1(vue-router@5.0.2(@vue/compiler-sfc@3.5.28)(vue@3.5.28(typescript@5.9.3)))(vue@3.5.28(typescript@5.9.3))
+      browser-fs-access:
+        specifier: ^0.38.0
+        version: 0.38.0
       dayjs:
         specifier: ^1.11.19
         version: 1.11.19
@@ -1542,8 +1545,8 @@ packages:
   '@maxim_mazurok/gapi.client.discovery-v1@0.4.20200806':
     resolution: {integrity: sha512-Jeo/KZqK39DI6ExXHcJ4lqnn1O/wEqboQ6eQ8WnNpu5eJ7wUnX/C5KazOgs1aRhnIB/dVzDe8wm62nmtkMIoaw==}
 
-  '@maxim_mazurok/gapi.client.drive-v3@0.1.20260203':
-    resolution: {integrity: sha512-/oIWTXJfUeKEwCW8WOf13eG3mTR+Mz2OlOurjQKdy8aP7f2dbMi1kuh3fG2JjpAmR26n6OOn5/GJf9mgMW7gGg==}
+  '@maxim_mazurok/gapi.client.drive-v3@0.1.20260208':
+    resolution: {integrity: sha512-umZ07I9gytNJpxeWNscrIOkk7zHew65agtGQY2dCKLO8cWKpbPg7tbREB8ci5Ltq/9m+E2ueQJkIAnWR5PV3Wg==}
 
   '@maxim_mazurok/gapi.client.oauth2-v2@0.2.20200213':
     resolution: {integrity: sha512-5ZyM/x5rGZoq2mtV96GUAbm7qI0OGCIY7ikqBYRfaCkPyYdb96GWtmM7OQPn/EJ/quBc8loD42Fa9Yu4YYxbTg==}
@@ -2662,6 +2665,9 @@ packages:
   braces@3.0.3:
     resolution: {integrity: sha512-yQbXgO/OSZVD2IsiLlro+7Hf6Q18EJrKSEsdoMzKePKXct3gvD8oLcOQdIzGupr5Fj+EDe8gO/lxc1BzfMpxvA==}
     engines: {node: '>=8'}
+
+  browser-fs-access@0.38.0:
+    resolution: {integrity: sha512-JveqW2w6pEZqFEEfMgCszXzYpE89dG+nPsmOdcs741mFFAROeL+iqjGEpR07RI+s0YY0EFr+4KnOoACprJTpOw==}
 
   browserslist@4.28.1:
     resolution: {integrity: sha512-ZC5Bd0LgJXgwGqUknZY/vkUQ04r8NXnJZ3yYi4vDmSiZmC/pdSN0NbNRPxZpbtO4uAfDUAFffO8IZoM3Gj8IkA==}
@@ -6687,7 +6693,7 @@ snapshots:
       '@types/gapi.client': 1.0.8
       '@types/gapi.client.discovery-v1': 0.0.4
 
-  '@maxim_mazurok/gapi.client.drive-v3@0.1.20260203':
+  '@maxim_mazurok/gapi.client.drive-v3@0.1.20260208':
     dependencies:
       '@types/gapi.client': 1.0.8
       '@types/gapi.client.discovery-v1': 0.0.4
@@ -7206,7 +7212,7 @@ snapshots:
 
   '@types/gapi.client.drive-v3@0.0.5':
     dependencies:
-      '@maxim_mazurok/gapi.client.drive-v3': 0.1.20260203
+      '@maxim_mazurok/gapi.client.drive-v3': 0.1.20260208
 
   '@types/gapi.client.oauth2-v2@0.0.4':
     dependencies:
@@ -7725,6 +7731,8 @@ snapshots:
   braces@3.0.3:
     dependencies:
       fill-range: 7.1.1
+
+  browser-fs-access@0.38.0: {}
 
   browserslist@4.28.1:
     dependencies:

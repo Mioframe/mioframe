@@ -1,4 +1,4 @@
-import { useMainService } from '@shared/service';
+import { useMainServiceClient } from '@shared/service';
 import type { AMDocumentId } from '@shared/lib/automerge';
 import { computed, toValue, type Ref } from 'vue';
 import type {
@@ -20,7 +20,7 @@ export const useDatabaseData = (
     databaseDocument: {
       data: { removeItem, postItem, filteredIdList },
     },
-  } = useMainService();
+  } = useMainServiceClient();
 
   const {
     data: itemIdList,

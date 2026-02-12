@@ -1,5 +1,5 @@
 import { createGlobalState } from '@vueuse/core';
-import { useMainService } from '@shared/service';
+import { useMainServiceClient } from '@shared/service';
 import { computed, toRef, toValue } from 'vue';
 import { isFunction, isUndefined } from 'es-toolkit';
 import { useSnackbar } from '@shared/ui/Snackbar';
@@ -19,7 +19,7 @@ const setupFileSystem = () => {
       remove,
       directoryContent,
     },
-  } = useMainService();
+  } = useMainServiceClient();
 
   const rootPath = '/';
 

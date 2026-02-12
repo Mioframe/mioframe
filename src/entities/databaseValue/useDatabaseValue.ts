@@ -4,7 +4,7 @@ import type {
   DatabasePropertyId,
 } from '@shared/lib/databaseDocument';
 import { useQuery } from '@shared/lib/observableQuery';
-import { useMainService } from '@shared/service';
+import { useMainServiceClient } from '@shared/service';
 import { isUndefined } from 'es-toolkit';
 import { computed, toValue, type Ref } from 'vue';
 
@@ -18,7 +18,7 @@ export const useDatabaseValue = (
     databaseDocument: {
       data: { postValue, databaseValue },
     },
-  } = useMainService();
+  } = useMainServiceClient();
 
   const { data, error, isLoading } = useQuery(
     databaseValue,

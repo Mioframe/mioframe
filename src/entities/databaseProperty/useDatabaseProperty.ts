@@ -6,7 +6,7 @@ import type {
 } from '@shared/lib/databaseDocument';
 import { DomainError } from '@shared/lib/error';
 import { useQuery } from '@shared/lib/observableQuery';
-import { useMainService } from '@shared/service';
+import { useMainServiceClient } from '@shared/service';
 import { isUndefined } from 'es-toolkit';
 import { computed, toValue, type Ref } from 'vue';
 
@@ -19,7 +19,7 @@ export const useDatabaseProperty = (
     databaseDocument: {
       properties: { patch, databaseProperty },
     },
-  } = useMainService();
+  } = useMainServiceClient();
 
   const { data, error, isLoading } = useQuery(
     databaseProperty,
