@@ -1,4 +1,4 @@
-import { useMainService } from '@shared/service';
+import { useMainServiceClient } from '@shared/service';
 import { computed, toValue, type Ref } from 'vue';
 import type { AMDocumentId } from '@shared/lib/automerge';
 import type {
@@ -17,7 +17,7 @@ export const useDatabaseViews = (
     databaseDocument: {
       views: { changeOrder, create, patch, remove, viewList },
     },
-  } = useMainService();
+  } = useMainServiceClient();
 
   const { data, error, isLoading } = useQuery(
     viewList,

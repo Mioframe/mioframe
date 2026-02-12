@@ -1,4 +1,4 @@
-import { useMainService } from '@shared/service';
+import { useMainServiceClient } from '@shared/service';
 import { DomainError } from '@shared/lib/error';
 import {
   requestAccessToken,
@@ -16,7 +16,7 @@ export const useGSession = () => {
 
   const {
     google: { addSession, removeSession, subscribeGetToken, subscribeGetScope },
-  } = useMainService();
+  } = useMainServiceClient();
 
   const getToken = useSubscribeByQueryClient(subscribeGetToken);
 

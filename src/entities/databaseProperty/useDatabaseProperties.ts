@@ -1,4 +1,4 @@
-import { useMainService } from '@shared/service';
+import { useMainServiceClient } from '@shared/service';
 import type { AMDocumentId } from '@shared/lib/automerge';
 import type { PatchSource } from '@shared/lib/changeObject';
 import type {
@@ -18,7 +18,7 @@ export const useDatabaseProperties = (
     databaseDocument: {
       properties: { patch, post, remove, databasePropertiesIdList },
     },
-  } = useMainService();
+  } = useMainServiceClient();
 
   const {
     data: propertiesIdList,

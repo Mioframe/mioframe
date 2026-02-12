@@ -22,10 +22,11 @@ import { zodQuery } from './model';
 import { useMainRouter } from '@page/routes';
 import { zodToVueProps } from '@shared/lib/zodToVueProps';
 import { useRepository } from '@entity/repository';
-import { PathUtils } from '@shared/lib/virtualFileSystem';
+import { FileType, PathUtils } from '@shared/lib/virtualFileSystem';
 import { useDirectory } from '@entity/directory/useDirectory';
 import type { ReadDirectoryOptions } from '@shared/service/fileSystem';
 import { useLocalSettings } from '@entity/localSettings';
+import { useExportDocument } from '@feature/exportDocument/useExportDocument';
 
 const props = defineProps(zodToVueProps(zodQuery));
 
@@ -72,16 +73,18 @@ const onClickPath = async (path: string) => {
   );
 };
 
-const onClickEntry = async (name: string) => {
-  await open(
-    'repo',
-    {
-      repoPath: PathUtils.join(directoryPath.value, name),
-    },
-    {
-      additionalPanes: 1,
-    },
-  );
+const onClickEntry = async (name: string, fileType: FileType) => {
+  if (fileType === FileType.Directory) {
+    await open(
+      'repo',
+      {
+        repoPath: PathUtils.join(directoryPath.value, name),
+      },
+      {
+        additionalPanes: 1,
+      },
+    );
+  }
 };
 
 const showFormNewDocument = ref(false);
@@ -131,10 +134,18 @@ const onClickFSEntryContextAction = (
 enum DocumentContextEvent {
   remove,
   rename,
+  exportJson,
 }
 
+// todo: контекстное меню документа вынести в виджет
 const documentContextBtns = defineMenuButtonList([
   { label: 'Rename', symbolName: 'edit', key: DocumentContextEvent.rename },
+
+  {
+    label: 'Export JSON',
+    symbolName: 'file_json',
+    key: DocumentContextEvent.exportJson,
+  },
 
   {
     label: 'Remove',
@@ -143,7 +154,9 @@ const documentContextBtns = defineMenuButtonList([
   },
 ]);
 
-const onClickDocumentContextAction = (
+const { saveJsonFile } = useExportDocument();
+
+const onClickDocumentContextAction = async (
   { key }: { key: DocumentContextEvent },
   docId: AMDocumentId,
 ) => {
@@ -154,6 +167,10 @@ const onClickDocumentContextAction = (
     }
     case DocumentContextEvent.rename: {
       documentIdToRename.value = docId;
+      break;
+    }
+    case DocumentContextEvent.exportJson: {
+      await saveJsonFile(directoryPath.value, docId);
       break;
     }
 
@@ -241,7 +258,7 @@ const showFSEntryRenameDialog = computed({
           :name="name"
           :type="fileType"
           class="document-explorer-widget__list-item"
-          @click="onClickEntry(name)"
+          @click="onClickEntry(name, fileType)"
         >
           <template #trailingIcon>
             <MDContextMenuButton

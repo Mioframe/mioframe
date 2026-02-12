@@ -4,7 +4,7 @@ import type {
   DatabaseItemId,
 } from '@shared/lib/databaseDocument';
 import { useQuery } from '@shared/lib/observableQuery';
-import { useMainService } from '@shared/service';
+import { useMainServiceClient } from '@shared/service';
 import { isUndefined } from 'es-toolkit';
 import { computed, toValue, type Ref } from 'vue';
 
@@ -17,7 +17,7 @@ export const useDatabaseItem = (
     databaseDocument: {
       data: { postItem, databaseItem },
     },
-  } = useMainService();
+  } = useMainServiceClient();
 
   const {
     data: item,
