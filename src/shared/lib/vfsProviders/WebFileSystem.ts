@@ -219,7 +219,10 @@ export class WebFileSystem implements IFileSystemProvider {
           );
         }
         if (e.name === 'InvalidModificationError') {
-          throw new Error('Directory not empty (use recursive=true)');
+          throw new VfsError(
+            FileSystemError.DirectoryNotEmpty,
+            'Directory not empty (use recursive=true)',
+          );
         }
       }
       throw e;
