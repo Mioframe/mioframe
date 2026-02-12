@@ -8,6 +8,12 @@ interface SnackbarState {
 
 type SnackbarDescription = {
   text: string;
+  /**
+   * duration of the show
+   * @default 7s
+   * @min 4s
+   * @max 10s
+   */
   timeout?: number;
   actionLabel?: string;
   callback?: () => unknown;

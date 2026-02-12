@@ -3,7 +3,7 @@ import { computed, ref, shallowRef, toRefs } from 'vue';
 import { DirectoryCreateDialog } from '@feature/directoryCreate';
 import { MDFab, MDFabContainer } from '@shared/ui/Button';
 import { MDSymbol } from '@shared/ui/Icon';
-import { FSEntryRemoveDialog } from '@feature/entryRemove';
+import { useRemoveFSEntry } from '@feature/entryRemove';
 import { MDNavigationPath } from '@shared/ui/NavigationPath';
 import { DocumentCreationDialog } from '@feature/documentCreate';
 import { MDListContainer } from '@shared/ui/Lists';
@@ -17,7 +17,6 @@ import { MDAppBar } from '@shared/ui/AppBar';
 import { FSEntryRenameDialog } from '@feature/entryRename';
 import { isUndefined } from 'es-toolkit';
 import type { AMDocumentId } from '@shared/lib/automerge/automergeTypes';
-import { useFileSystem } from '@entity/mountedDirectories/useFileSystem';
 import { zodQuery } from './model';
 import { useMainRouter } from '@page/routes';
 import { zodToVueProps } from '@shared/lib/zodToVueProps';
@@ -42,9 +41,7 @@ const onClickCreateDirectory = () => {
   parentPathForNewDirectory.value = directoryPath.value;
 };
 
-const entryPathToRemove = ref<string>();
-
-const { remove: removeEntry } = useFileSystem();
+const { remove: removeEntry } = useRemoveFSEntry();
 
 const { settings } = useLocalSettings();
 
@@ -95,11 +92,6 @@ const onClickCreateDocument = () => {
 
 const { state: documentIdList } = useRepository(directoryPath);
 
-const onRemoveEntry = async (path: string) => {
-  await removeEntry(path);
-  entryPathToRemove.value = undefined;
-};
-
 enum FSEntryContextEvent {
   remove,
   rename,
@@ -112,13 +104,13 @@ const fsEntryContextBtns = defineMenuButtonList([
 
 const entryKeyToRename = ref<string>();
 
-const onClickFSEntryContextAction = (
+const onClickFSEntryContextAction = async (
   { key }: { key: FSEntryContextEvent },
   name: string,
 ) => {
   switch (key) {
     case FSEntryContextEvent.remove: {
-      entryPathToRemove.value = PathUtils.join(directoryPath.value, name);
+      await removeEntry(PathUtils.join(directoryPath.value, name));
       break;
     }
     case FSEntryContextEvent.rename: {
@@ -315,14 +307,6 @@ const showFSEntryRenameDialog = computed({
       "
       @cancel="parentPathForNewDirectory = undefined"
       @created="parentPathForNewDirectory = undefined"
-    />
-
-    <FSEntryRemoveDialog
-      v-if="entryPathToRemove"
-      :show="!!entryPathToRemove"
-      :path="entryPathToRemove"
-      @cancel="entryPathToRemove = undefined"
-      @apply="onRemoveEntry"
     />
 
     <DocumentRemoveDialog
