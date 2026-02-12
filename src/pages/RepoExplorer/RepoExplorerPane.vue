@@ -26,6 +26,7 @@ import { useDirectory } from '@entity/directory/useDirectory';
 import type { ReadDirectoryOptions } from '@shared/service/fileSystem';
 import { useLocalSettings } from '@entity/localSettings';
 import { useExportDocument } from '@feature/exportDocument/useExportDocument';
+import { useImportDocument } from '@feature/importDocument/useImportDocument';
 
 const props = defineProps(zodToVueProps(zodQuery));
 
@@ -95,14 +96,22 @@ const { state: documentIdList } = useRepository(directoryPath);
 enum FSEntryContextEvent {
   remove,
   rename,
+  importJson,
 }
 
 const fsEntryContextBtns = defineMenuButtonList([
   { label: 'Rename', symbolName: 'edit', key: FSEntryContextEvent.rename },
   { label: 'Remove', symbolName: 'delete', key: FSEntryContextEvent.remove },
+  {
+    label: 'Import JSON',
+    symbolName: 'file_copy',
+    key: FSEntryContextEvent.importJson,
+  },
 ]);
 
 const entryKeyToRename = ref<string>();
+
+const { importJsonFile } = useImportDocument();
 
 const onClickFSEntryContextAction = async (
   { key }: { key: FSEntryContextEvent },
@@ -115,6 +124,10 @@ const onClickFSEntryContextAction = async (
     }
     case FSEntryContextEvent.rename: {
       entryKeyToRename.value = PathUtils.join(directoryPath.value, name);
+      break;
+    }
+    case FSEntryContextEvent.importJson: {
+      await importJsonFile(directoryPath.value);
       break;
     }
 
