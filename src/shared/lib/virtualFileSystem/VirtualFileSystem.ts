@@ -279,6 +279,17 @@ export class VirtualFileSystem {
     if (oldPath === newPath) {
       return;
     }
+
+    // Проверка на рекурсивное переименование
+    // Нельзя переименовывать директорию так, чтобы новое имя было внутри старого пути
+    // Например: /A -> /A/B (нельзя, так как B внутри A)
+    if (PathUtils.isChildOrSame(oldPath, newPath)) {
+      throw new VfsError(
+        FileSystemError.NotSupported,
+        `Cannot rename directory to a path inside itself: ${oldPath} -> ${newPath}`,
+      );
+    }
+
     // 1. Сортируем пути для блокировки, чтобы избежать Deadlock (взаимной блокировки).
     // Если один процесс делает rename(A, B), а другой rename(B, A), без сортировки возможен клин.
     // Всегда блокируем "меньший" путь первым.
