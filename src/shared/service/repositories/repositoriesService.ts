@@ -1,6 +1,6 @@
 import { zodDocumentId, type AMDocumentId } from '@shared/lib/automerge';
 import { useFileSystemService } from '../fileSystem';
-import { FileType } from '@shared/lib/virtualFileSystem';
+import { FSNodeType } from '@shared/lib/virtualFileSystem';
 import { zodIs } from '@shared/lib/validateZodScheme';
 import { Repo } from '@automerge/automerge-repo';
 import { createVFSAdapter } from '@shared/lib/automergeAdapter/createVFSAdapter';
@@ -29,8 +29,8 @@ const setupRepositoriesService = () => {
     }) =>
       directoryContent$({ path }).pipe(
         map((entries) =>
-          entries.reduce((documentIdList: AMDocumentId[], [name, type]) => {
-            if (type === FileType.File && zodIs(name, zodAutomergeFileName)) {
+          entries.reduce((documentIdList: AMDocumentId[], [name, { type }]) => {
+            if (type === FSNodeType.File && zodIs(name, zodAutomergeFileName)) {
               const [documentId] = fileNameToPartialKey(name) ?? [];
 
               if (

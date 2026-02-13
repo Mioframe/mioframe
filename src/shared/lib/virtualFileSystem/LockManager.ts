@@ -1,38 +1,42 @@
 /**
- * Управляет блокировками ресурсов по пути.
- * Гарантирует, что операции над одним файлом выполняются последовательно.
+ * Manages resource locks by path.
+ * Ensures that operations on a single file are executed sequentially.
  */
 export class LockManager {
-  // Храним "хвост" очереди промисов для каждого пути.
-  // Promise<void> гарантирует, что мы ждем завершения предыдущей задачи,
-  // независимо от того, завершилась она успешно или с ошибкой.
+  // Store the "tail" of promise queues for each path.
+  // Promise<void> ensures we wait for the previous task to complete,
+  // regardless of whether it succeeded or failed.
   private locks: Map<string, Promise<void>> = new Map();
 
   /**
-   * Выполняет функцию exclusiveTask в режиме эксклюзивного доступа к path.
-   * Если path уже занят, ставит задачу в очередь.
+   * Executes the exclusiveTask function in exclusive access mode to the path.
+   * If the path is already occupied, queues the task.
+   *
+   * @param path - The path to lock
+   * @param exclusiveTask - The task to execute exclusively
+   * @returns A promise that resolves with the result of the exclusive task
    */
   public async request<T>(
     path: string,
     exclusiveTask: () => Promise<T>,
   ): Promise<T> {
-    // Получаем текущий хвост очереди (или resolved промис, если очереди нет)
+    // Get the current tail of the queue (or a resolved promise if there's no queue)
     const currentLock = this.locks.get(path) ?? Promise.resolve();
 
-    // 1. Создаем промис с результатом для вызывающего кода.
-    // Он ждет currentLock, затем выполняет задачу.
+    // 1. Create a promise with the result for the calling code.
+    // It waits for currentLock, then executes the task.
     const taskPromise = currentLock.then(() => exclusiveTask());
 
-    // 2. Создаем новый хвост для очереди.
-    // Нам важно лишь завершение задачи (успех или ошибка), чтобы запустить следующую.
-    // .catch() подавляет ошибку в цепочке очереди, но не в taskPromise.
+    // 2. Create a new tail for the queue.
+    // We only care about the completion of the task (success or failure) to start the next one.
+    // .catch() suppresses errors in the queue chain, but not in taskPromise.
     const nextTail = taskPromise.then(() => {}).catch(() => {});
 
-    // 3. Обновляем Map новым хвостом
+    // 3. Update the Map with the new tail
     this.locks.set(path, nextTail);
 
-    // 4. Garbage Collection (очистка памяти)
-    // Когда этот хвост отработает, проверяем: если он все еще последний в Map, удаляем запись.
+    // 4. Garbage Collection (memory cleanup)
+    // When this tail completes, check: if it's still the last one in the Map, delete the entry.
     void nextTail.then(() => {
       if (this.locks.get(path) === nextTail) {
         this.locks.delete(path);
@@ -43,7 +47,10 @@ export class LockManager {
   }
 
   /**
-   * Проверяет, заблокирован ли путь в данный момент.
+   * Checks if a path is currently locked.
+   *
+   * @param path - The path to check
+   * @returns True if the path is locked, false otherwise
    */
   public isLocked(path: string): boolean {
     return this.locks.has(path);

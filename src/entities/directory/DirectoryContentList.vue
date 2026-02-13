@@ -25,7 +25,7 @@ const { data: state } = useDirectory(path);
 <template>
   <MDListContainer is="div">
     <DirectoryContentEntry
-      v-for="[name, type] in state"
+      v-for="[name, { type }] in state"
       :key="name"
       :type="type"
       :name="name"

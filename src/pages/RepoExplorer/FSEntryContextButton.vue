@@ -3,7 +3,7 @@ import { useDirectory } from '@entity/directory/useDirectory';
 import { useRemoveFSEntry } from '@feature/entryRemove';
 import { FSEntryRenameDialog } from '@feature/entryRename';
 import { useImportDocument } from '@feature/importDocument';
-import { FileType } from '@shared/lib/virtualFileSystem';
+import { FSNodeType } from '@shared/lib/virtualFileSystem';
 import { PathUtils } from '@shared/lib/virtualFileSystem';
 import { defineMenuButtonList, MDContextMenuButton } from '@shared/ui/Menu';
 import { defineMenuButton } from '@shared/ui/Menu/defineMenuButtonList';
@@ -54,11 +54,12 @@ const fsEntryName = computed(() => PathUtils.basename(path.value));
 const { data: parentData } = useDirectory(parentPath);
 
 const fileType = computed(
-  () => parentData.value?.find(([name]) => name === fsEntryName.value)?.[1],
+  () =>
+    parentData.value?.find(([name]) => name === fsEntryName.value)?.[1].type,
 );
 
 const contextBtns = computed(() =>
-  fileType.value === FileType.Directory
+  fileType.value === FSNodeType.Directory
     ? directoryContextBtns
     : fileContextBtns,
 );
@@ -84,7 +85,7 @@ const onClickFSEntryContextAction = async ({
       break;
     }
     case FSEntryContextEvent.importJson: {
-      if (fileType.value === FileType.Directory) {
+      if (fileType.value === FSNodeType.Directory) {
         await importJsonFile(path.value);
       }
       break;

@@ -2,7 +2,7 @@ import type { GoogleAuthParams } from '@shared/lib/googleDrive';
 import { simplifiedGoogleDriveAPI, SPACE } from '@shared/lib/googleDrive';
 import type {
   FileContent,
-  FileStat,
+  FSNodeStat,
   IFileSystemProvider,
   VfsEvent,
   WriteOptions,
@@ -10,10 +10,11 @@ import type {
 import {
   EventEmitter,
   FileSystemError,
-  FileType,
+  FSNodeType,
   PathUtils,
   VfsError,
 } from '../../virtualFileSystem';
+import { dayjs } from '@shared/lib/dayjs';
 
 const GOOGLE_MIME_FOLDER = 'application/vnd.google-apps.folder';
 /** Внутренний идентификатор для виртуальной папки Shared With Me */
@@ -170,11 +171,11 @@ export class GoogleDriveFileSystem implements IFileSystemProvider {
     return currentEntry;
   }
 
-  public async stat(path: string): Promise<FileStat> {
+  public async stat(path: string): Promise<FSNodeStat> {
     try {
       if (path === '/' || path === '') {
         return {
-          type: FileType.Directory,
+          type: FSNodeType.Directory,
           size: 0,
           creationTime: Date.now(),
           modificationTime: Date.now(),
@@ -196,7 +197,7 @@ export class GoogleDriveFileSystem implements IFileSystemProvider {
         : Date.now();
 
       return {
-        type: isDir ? FileType.Directory : FileType.File,
+        type: isDir ? FSNodeType.Directory : FSNodeType.File,
         size: isNaN(size) ? 0 : size, // Дополнительная защита от NaN
         creationTime,
         modificationTime,
@@ -310,7 +311,7 @@ export class GoogleDriveFileSystem implements IFileSystemProvider {
     }
   }
 
-  public async readDirectory(path: string): Promise<[string, FileType][]> {
+  public async readDirectory(path: string): Promise<[string, FSNodeStat][]> {
     const entry = await this.resolvePath(path);
 
     if (entry.mimeType !== GOOGLE_MIME_FOLDER) {
@@ -335,16 +336,32 @@ export class GoogleDriveFileSystem implements IFileSystemProvider {
       fetchAll: true, // Гарантируем получение всех файлов через пагинацию
     });
 
-    const entries: [string, FileType][] = [];
+    const entries: [string, FSNodeStat][] = [];
 
     if (result.files) {
       for (const file of result.files) {
-        entries.push([
-          file.name,
-          file.mimeType === GOOGLE_MIME_FOLDER
-            ? FileType.Directory
-            : FileType.File,
-        ]);
+        // Безопасное преобразование размера из строки в число
+        const size = file.size ? parseInt(file.size, 10) : undefined;
+
+        // Безопасное преобразование дат
+        const creationTime = file.createdTime
+          ? dayjs(file.createdTime).valueOf()
+          : undefined;
+        const modificationTime = file.modifiedTime
+          ? dayjs(file.modifiedTime).valueOf()
+          : undefined;
+
+        const fsNodeStat = {
+          type:
+            file.mimeType === GOOGLE_MIME_FOLDER
+              ? FSNodeType.Directory
+              : FSNodeType.File,
+          creationTime,
+          modificationTime,
+          size,
+        } satisfies FSNodeStat;
+
+        entries.push([file.name, fsNodeStat]);
       }
     }
 

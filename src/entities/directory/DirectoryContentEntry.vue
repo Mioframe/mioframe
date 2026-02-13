@@ -1,11 +1,11 @@
 <script setup lang="ts">
-import { FileType } from '@shared/lib/virtualFileSystem';
+import { FSNodeType } from '@shared/lib/virtualFileSystem';
 import { MDSymbol } from '@shared/ui/Icon';
 import { MDListItem } from '@shared/ui/Lists';
 
 const props = defineProps<{
   name: string;
-  type: FileType;
+  type: FSNodeType;
 }>();
 
 const slots = defineSlots<{
@@ -20,7 +20,7 @@ const slots = defineSlots<{
     class="directory-content-entry"
   >
     <template #leadingIcon>
-      <MDSymbol v-if="type === FileType.Directory" name="folder" />
+      <MDSymbol v-if="type === FSNodeType.Directory" name="folder" />
 
       <MDSymbol v-else name="draft" />
     </template>
