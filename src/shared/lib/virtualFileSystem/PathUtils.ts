@@ -1,13 +1,13 @@
 export const PathUtils = {
   /**
-   * Разделитель пути
+   * Path separator
    */
   SEPARATOR: '/',
 
   /**
-   * Нормализует путь, удаляя избыточные слеши и обрабатывая специальные символы (., ..)
-   * @param path - Путь для нормализации
-   * @returns Нормализованный путь
+   * Normalizes a path by removing redundant slashes and processing special characters (., ..)
+   * @param path - Path to normalize
+   * @returns Normalized path
    */
   normalize(path: string): string {
     const parts = path.split(/\/+/);
@@ -24,18 +24,18 @@ export const PathUtils = {
   },
 
   /**
-   * Объединяет несколько путей в один нормализованный путь
-   * @param paths - Массив путей для объединения
-   * @returns Объединённый нормализованный путь
+   * Joins multiple paths into a single normalized path
+   * @param paths - Array of paths to join
+   * @returns Joined normalized path
    */
   join(...paths: string[]): string {
     return this.normalize(paths.join('/'));
   },
 
   /**
-   * Возвращает каталог пути (все, кроме последнего компонента)
-   * @param path - Путь для обработки
-   * @returns Каталог пути
+   * Returns the directory path (all except the last component)
+   * @param path - Path to process
+   * @returns Directory path
    */
   dirname(path: string): string {
     const normalized = this.normalize(path);
@@ -46,9 +46,9 @@ export const PathUtils = {
   },
 
   /**
-   * Возвращает имя файла или каталога из пути
-   * @param path - Путь для обработки
-   * @returns Имя файла или каталога
+   * Returns the filename or directory name from a path
+   * @param path - Path to process
+   * @returns Filename or directory name
    */
   basename(path: string): string {
     const normalized = this.normalize(path);
@@ -57,11 +57,11 @@ export const PathUtils = {
   },
 
   /**
-   * Проверяет, является ли child потомком parent (или тем же путем).
-   * Используется для recursive: true
-   * @param parent - Родительский путь
-   * @param child - Дочерний путь
-   * @returns true, если child является потомком parent или совпадает с ним
+   * Checks if child is a descendant of parent (or the same path).
+   * Used for recursive: true
+   * @param parent - Parent path
+   * @param child - Child path
+   * @returns true if child is a descendant of parent or identical to it
    */
   isChildOrSame(parent: string, child: string): boolean {
     if (parent === '/') return true;
@@ -70,14 +70,14 @@ export const PathUtils = {
   },
 
   /**
-   * Проверяет, является ли child ПРЯМЫМ потомком parent.
-   * Используется для recursive: false
-   * @param parent - Родительский путь
-   * @param child - Дочерний путь
-   * @returns true, если child является прямым потомком parent
+   * Checks if child is a direct child of parent.
+   * Used for recursive: false
+   * @param parent - Parent path
+   * @param child - Child path
+   * @returns true if child is a direct child of parent
    */
   isDirectChild(parent: string, child: string): boolean {
-    if (parent === child) return true; // Событие на самой папке
+    if (parent === child) return true; // Event on the folder itself
     return this.dirname(child) === parent;
   },
 };
