@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useDirectory } from '@entity/directory/useDirectory';
 import { useRemoveFSEntry } from '@feature/entryRemove';
 import { FSEntryRenameDialog } from '@feature/entryRename';
 import { useImportDocument } from '@feature/importDocument';
@@ -9,12 +10,10 @@ import { defineMenuButton } from '@shared/ui/Menu/defineMenuButtonList';
 import { computed, shallowRef, toRefs } from 'vue';
 
 const props = defineProps<{
-  directoryPath: string;
-  name: string;
-  fileType: FileType;
+  path: string;
 }>();
 
-const { directoryPath, name, fileType } = toRefs(props);
+const { path } = toRefs(props);
 
 enum FSEntryContextEvent {
   remove,
@@ -48,6 +47,16 @@ const directoryContextBtns = defineMenuButtonList([
 
 const fileContextBtns = defineMenuButtonList([renameBtn, removeBtn]);
 
+const parentPath = computed(() => PathUtils.dirname(path.value));
+
+const fsEntryName = computed(() => PathUtils.basename(path.value));
+
+const { data: parentData } = useDirectory(parentPath);
+
+const fileType = computed(
+  () => parentData.value?.find(([name]) => name === fsEntryName.value)?.[1],
+);
+
 const contextBtns = computed(() =>
   fileType.value === FileType.Directory
     ? directoryContextBtns
@@ -60,10 +69,6 @@ const showRenameDialog = shallowRef(false);
 
 const { importJsonFile } = useImportDocument();
 
-const fsEntryPath = computed(() =>
-  PathUtils.join(directoryPath.value, name.value),
-);
-
 const onClickFSEntryContextAction = async ({
   key,
 }: {
@@ -71,7 +76,7 @@ const onClickFSEntryContextAction = async ({
 }) => {
   switch (key) {
     case FSEntryContextEvent.remove: {
-      await removeEntry(fsEntryPath.value);
+      await removeEntry(path.value);
       break;
     }
     case FSEntryContextEvent.rename: {
@@ -79,7 +84,9 @@ const onClickFSEntryContextAction = async ({
       break;
     }
     case FSEntryContextEvent.importJson: {
-      await importJsonFile(directoryPath.value);
+      if (fileType.value === FileType.Directory) {
+        await importJsonFile(path.value);
+      }
       break;
     }
 
@@ -92,7 +99,7 @@ const onRenamedEntry = () => {
   showRenameDialog.value = false;
 };
 
-const tooltip = computed(() => `options ${name.value}`);
+const tooltip = computed(() => `options ${fsEntryName.value}`);
 </script>
 
 <template>
@@ -105,7 +112,7 @@ const tooltip = computed(() => `options ${name.value}`);
   <FSEntryRenameDialog
     v-if="showRenameDialog"
     v-model:show="showRenameDialog"
-    :path="fsEntryPath"
+    :path="path"
     @cancel="showRenameDialog = false"
     @renamed="onRenamedEntry"
   />
