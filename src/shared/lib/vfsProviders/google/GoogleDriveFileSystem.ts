@@ -17,7 +17,7 @@ import {
 import { dayjs } from '@shared/lib/dayjs';
 
 const GOOGLE_MIME_FOLDER = 'application/vnd.google-apps.folder';
-/** Внутренний идентификатор для виртуальной папки Shared With Me */
+/** Internal identifier for the virtual folder "Shared With Me" */
 const SHARED_WITH_ME_ID = 'sharedWithMe';
 
 interface DriveEntry {
@@ -30,28 +30,28 @@ interface DriveEntry {
   parents?: string[];
 }
 
-/** Режим монтирования файловой системы Google Drive */
+/** Google Drive file system mount modes */
 export enum GoogleDriveMount {
-  /** Корневая папка "Мой диск" (стандартный режим) */
+  /** Root folder "My Drive" (default mode) */
   MyDrive = 'myDrive',
-  /** Раздел "Доступные мне" (виртуальная папка с расшаренными файлами) */
+  /** "Shared with me" section (virtual folder with shared files) */
   SharedWithMe = 'sharedWithMe',
-  /** Папка данных приложения (скрытая папка appDataFolder) */
+  /** Application data folder (hidden appDataFolder) */
   AppData = 'appData',
-  /** Монтирование конкретной папки по её ID */
+  /** Mounting a specific folder by its ID */
   SpecificFolder = 'specificFolder',
 }
 
 export interface GoogleDriveFsOptions {
   /**
-   * Режим монтирования.
-   * По умолчанию: GoogleDriveMount.MyDrive
+   * Mount mode.
+   * Default: GoogleDriveMount.MyDrive
    */
   mount?: GoogleDriveMount;
 
   /**
-   * ID папки для монтирования.
-   * Игнорируется, если mount не равен GoogleDriveMount.SpecificFolder.
+   * Folder ID to mount.
+   * Ignored if mount is not set to GoogleDriveMount.SpecificFolder.
    */
   rootId?: string;
 }
@@ -97,7 +97,7 @@ export class GoogleDriveFileSystem implements IFileSystemProvider {
   }
 
   /**
-   * Разрешает путь VFS в ID файла/папки Google Drive.
+   * Resolves a VFS path to a Google Drive file/folder ID.
    */
   private async resolvePath(path: string): Promise<DriveEntry> {
     const normalized = PathUtils.normalize(path);
@@ -171,6 +171,9 @@ export class GoogleDriveFileSystem implements IFileSystemProvider {
     return currentEntry;
   }
 
+  /**
+   * Gets file or directory statistics.
+   */
   public async stat(path: string): Promise<FSNodeStat> {
     try {
       if (path === '/' || path === '') {
@@ -185,20 +188,20 @@ export class GoogleDriveFileSystem implements IFileSystemProvider {
       const entry = await this.resolvePath(path);
       const isDir = entry.mimeType === GOOGLE_MIME_FOLDER;
 
-      // Безопасное преобразование типов для size (может прийти undefined)
-      const size = entry.size ? parseInt(entry.size, 10) : 0;
+      // Safe conversion of size (may be undefined)
+      const size = entry.size ? parseInt(entry.size, 10) : undefined;
 
-      // Безопасное преобразование дат
+      // Safe date conversion
       const creationTime = entry.createdTime
-        ? new Date(entry.createdTime).getTime()
-        : Date.now();
+        ? dayjs(entry.createdTime).valueOf()
+        : undefined;
       const modificationTime = entry.modifiedTime
-        ? new Date(entry.modifiedTime).getTime()
-        : Date.now();
+        ? dayjs(entry.modifiedTime).valueOf()
+        : undefined;
 
       return {
         type: isDir ? FSNodeType.Directory : FSNodeType.File,
-        size: isNaN(size) ? 0 : size, // Дополнительная защита от NaN
+        size,
         creationTime,
         modificationTime,
       };
@@ -211,6 +214,9 @@ export class GoogleDriveFileSystem implements IFileSystemProvider {
     }
   }
 
+  /**
+   * Reads a file from Google Drive.
+   */
   public async readFile(path: string): Promise<File> {
     const entry = await this.resolvePath(path);
 
@@ -235,6 +241,9 @@ export class GoogleDriveFileSystem implements IFileSystemProvider {
     }
   }
 
+  /**
+   * Writes data to a file in Google Drive.
+   */
   public async writeFile(
     path: string,
     content: FileContent,
@@ -243,7 +252,7 @@ export class GoogleDriveFileSystem implements IFileSystemProvider {
     const parentPath = PathUtils.dirname(path);
     const fileName = PathUtils.basename(path);
 
-    // 1. Проверяем существование файла
+    // 1. Check if file exists
     let existingEntry: DriveEntry | null = null;
     try {
       existingEntry = await this.resolvePath(path);
@@ -254,7 +263,7 @@ export class GoogleDriveFileSystem implements IFileSystemProvider {
     }
 
     if (existingEntry) {
-      // Обновление существующего файла
+      // Update existing file
       if (!options.overwrite) {
         throw new VfsError(FileSystemError.FileExists, `File exists: ${path}`);
       }
@@ -272,7 +281,7 @@ export class GoogleDriveFileSystem implements IFileSystemProvider {
       );
       this.events.emit({ type: 'update', path });
     } else {
-      // Создание нового файла
+      // Create new file
       if (!options.create) {
         throw new VfsError(
           FileSystemError.FileNotFound,
@@ -282,8 +291,8 @@ export class GoogleDriveFileSystem implements IFileSystemProvider {
 
       const parentEntry = await this.resolvePath(parentPath);
 
-      // Запрещаем создание файлов прямо в корне "Shared with me",
-      // так как технически у них должен быть владелец и родительская папка.
+      // Prevent creating files directly in the "Shared with me" root,
+      // as they technically need an owner and parent folder.
       if (parentEntry.id === SHARED_WITH_ME_ID) {
         throw new VfsError(
           FileSystemError.NoPermissions,
@@ -311,6 +320,9 @@ export class GoogleDriveFileSystem implements IFileSystemProvider {
     }
   }
 
+  /**
+   * Reads the contents of a directory.
+   */
   public async readDirectory(path: string): Promise<[string, FSNodeStat][]> {
     const entry = await this.resolvePath(path);
 
@@ -321,7 +333,7 @@ export class GoogleDriveFileSystem implements IFileSystemProvider {
       );
     }
 
-    // Формируем запрос для list
+    // Construct query for list
     let query: string;
     if (entry.id === SHARED_WITH_ME_ID) {
       query = 'sharedWithMe = true and trashed = false';
@@ -333,17 +345,17 @@ export class GoogleDriveFileSystem implements IFileSystemProvider {
       q: query,
       pageSize: 1000,
       spaces: [this.space],
-      fetchAll: true, // Гарантируем получение всех файлов через пагинацию
+      fetchAll: true, // Ensure getting all files through pagination
     });
 
     const entries: [string, FSNodeStat][] = [];
 
     if (result.files) {
       for (const file of result.files) {
-        // Безопасное преобразование размера из строки в число
+        // Safe conversion of size from string to number
         const size = file.size ? parseInt(file.size, 10) : undefined;
 
-        // Безопасное преобразование дат
+        // Safe date conversion
         const creationTime = file.createdTime
           ? dayjs(file.createdTime).valueOf()
           : undefined;
@@ -368,6 +380,9 @@ export class GoogleDriveFileSystem implements IFileSystemProvider {
     return entries;
   }
 
+  /**
+   * Creates a directory in Google Drive.
+   */
   public async createDirectory(path: string): Promise<void> {
     try {
       await this.resolvePath(path);
@@ -387,7 +402,7 @@ export class GoogleDriveFileSystem implements IFileSystemProvider {
 
     const parentEntry = await this.resolvePath(parentPath);
 
-    // Запрещаем создание папок в корне Shared with me
+    // Prevent creating directories in the root of "Shared with me"
     if (parentEntry.id === SHARED_WITH_ME_ID) {
       throw new VfsError(
         FileSystemError.NoPermissions,
@@ -411,16 +426,19 @@ export class GoogleDriveFileSystem implements IFileSystemProvider {
     this.events.emit({ type: 'create', path });
   }
 
+  /**
+   * Deletes a file or directory from Google Drive.
+   */
   public async delete(path: string, recursive: boolean): Promise<void> {
     if (path === '/') throw new Error('Cannot delete root');
 
     const entry = await this.resolvePath(path);
 
     if (!recursive && entry.mimeType === GOOGLE_MIME_FOLDER) {
-      // Для проверки пустоты используем ту же логику запроса
+      // For empty check we use the same query logic
       let query: string;
       if (entry.id === SHARED_WITH_ME_ID) {
-        // Удаление самого корня sharedWithMe невозможно, попадаем сюда только при ошибке логики
+        // Deleting the sharedWithMe root itself is impossible, we only get here due to logic error
         query = 'sharedWithMe = true and trashed = false';
       } else {
         query = `'${entry.id}' in parents and trashed = false`;
@@ -431,7 +449,7 @@ export class GoogleDriveFileSystem implements IFileSystemProvider {
         pageSize: 1,
         spaces: [this.space],
       });
-      // Безопасная проверка длины массива
+      // Safe array length check
       if (result.files && result.files.length > 0) {
         throw new Error('Directory not empty (use recursive=true)');
       }
@@ -443,6 +461,9 @@ export class GoogleDriveFileSystem implements IFileSystemProvider {
     this.events.emit({ type: 'delete', path });
   }
 
+  /**
+   * Renames a file or directory in Google Drive.
+   */
   public async rename(oldPath: string, newPath: string): Promise<void> {
     const normalizedOld = PathUtils.normalize(oldPath);
     const normalizedNew = PathUtils.normalize(newPath);
