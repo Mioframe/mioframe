@@ -1,21 +1,15 @@
 <script setup lang="ts">
-import { computed, ref, shallowRef, toRefs } from 'vue';
+import { computed, ref, toRefs } from 'vue';
 import { DirectoryCreateDialog } from '@feature/directoryCreate';
 import { MDFab, MDFabContainer } from '@shared/ui/Button';
 import { MDSymbol } from '@shared/ui/Icon';
-import { useRemoveFSEntry } from '@feature/entryRemove';
 import { MDNavigationPath } from '@shared/ui/NavigationPath';
 import { DocumentCreationDialog } from '@feature/documentCreate';
 import { MDListContainer } from '@shared/ui/Lists';
 import { CFRDocumentMDListItem } from '@entity/cfrDocument';
 import { FSEntryMDListItem } from '@entity/fsEntry';
-import { defineMenuButtonList, MDContextMenuButton } from '@shared/ui/Menu';
-import { DocumentRemoveDialog } from '@feature/documentRemove';
-import { DocumentRenameDialog } from '@feature/documentRename';
 import { MDPane } from '@shared/ui/Layout';
 import { MDAppBar } from '@shared/ui/AppBar';
-import { FSEntryRenameDialog } from '@feature/entryRename';
-import { isUndefined } from 'es-toolkit';
 import type { AMDocumentId } from '@shared/lib/automerge/automergeTypes';
 import { zodQuery } from './model';
 import { useMainRouter } from '@page/routes';
@@ -25,8 +19,8 @@ import { FileType, PathUtils } from '@shared/lib/virtualFileSystem';
 import { useDirectory } from '@entity/directory/useDirectory';
 import type { ReadDirectoryOptions } from '@shared/service/fileSystem';
 import { useLocalSettings } from '@entity/localSettings';
-import { useExportDocument } from '@feature/exportDocument/useExportDocument';
-import { useImportDocument } from '@feature/importDocument/useImportDocument';
+import DocumentContextButton from './DocumentContextButton.vue';
+import FSEntryContextButton from './FSEntryContextButton.vue';
 
 const props = defineProps(zodToVueProps(zodQuery));
 
@@ -41,8 +35,6 @@ const parentPathForNewDirectory = ref<string>();
 const onClickCreateDirectory = () => {
   parentPathForNewDirectory.value = directoryPath.value;
 };
-
-const { remove: removeEntry } = useRemoveFSEntry();
 
 const { settings } = useLocalSettings();
 
@@ -93,99 +85,6 @@ const onClickCreateDocument = () => {
 
 const { state: documentIdList } = useRepository(directoryPath);
 
-enum FSEntryContextEvent {
-  remove,
-  rename,
-  importJson,
-}
-
-const fsEntryContextBtns = defineMenuButtonList([
-  { label: 'Rename', symbolName: 'edit', key: FSEntryContextEvent.rename },
-  { label: 'Remove', symbolName: 'delete', key: FSEntryContextEvent.remove },
-  {
-    label: 'Import JSON',
-    symbolName: 'file_copy',
-    key: FSEntryContextEvent.importJson,
-  },
-]);
-
-const entryKeyToRename = ref<string>();
-
-const { importJsonFile } = useImportDocument();
-
-const onClickFSEntryContextAction = async (
-  { key }: { key: FSEntryContextEvent },
-  name: string,
-) => {
-  switch (key) {
-    case FSEntryContextEvent.remove: {
-      await removeEntry(PathUtils.join(directoryPath.value, name));
-      break;
-    }
-    case FSEntryContextEvent.rename: {
-      entryKeyToRename.value = PathUtils.join(directoryPath.value, name);
-      break;
-    }
-    case FSEntryContextEvent.importJson: {
-      await importJsonFile(directoryPath.value);
-      break;
-    }
-
-    default:
-      throw new Error('action key is unknown');
-  }
-};
-
-enum DocumentContextEvent {
-  remove,
-  rename,
-  exportJson,
-}
-
-// todo: контекстное меню документа вынести в виджет
-const documentContextBtns = defineMenuButtonList([
-  { label: 'Rename', symbolName: 'edit', key: DocumentContextEvent.rename },
-
-  {
-    label: 'Export JSON',
-    symbolName: 'file_json',
-    key: DocumentContextEvent.exportJson,
-  },
-
-  {
-    label: 'Remove',
-    symbolName: 'delete_forever',
-    key: DocumentContextEvent.remove,
-  },
-]);
-
-const { saveJsonFile } = useExportDocument();
-
-const onClickDocumentContextAction = async (
-  { key }: { key: DocumentContextEvent },
-  docId: AMDocumentId,
-) => {
-  switch (key) {
-    case DocumentContextEvent.remove: {
-      documentIdToRemove.value = docId;
-      break;
-    }
-    case DocumentContextEvent.rename: {
-      documentIdToRename.value = docId;
-      break;
-    }
-    case DocumentContextEvent.exportJson: {
-      await saveJsonFile(directoryPath.value, docId);
-      break;
-    }
-
-    default:
-      throw new Error('action key is unknown');
-  }
-};
-
-const documentIdToRemove = shallowRef<AMDocumentId>();
-
 const onClickDocument = async (documentId: AMDocumentId) => {
   await open(
     'document',
@@ -199,22 +98,7 @@ const onClickDocument = async (documentId: AMDocumentId) => {
   );
 };
 
-const documentIdToRename = shallowRef<AMDocumentId>();
-
 const title = computed(() => PathUtils.basename(directoryPath.value) || 'root');
-
-const onRenamedEntry = () => {
-  entryKeyToRename.value = undefined;
-};
-
-const showFSEntryRenameDialog = computed({
-  get: () => !isUndefined(entryKeyToRename),
-  set: (v) => {
-    if (!v) {
-      entryKeyToRename.value = undefined;
-    }
-  },
-});
 </script>
 
 <template>
@@ -247,11 +131,10 @@ const showFSEntryRenameDialog = computed({
           class="document-explorer-widget__list-item"
           @click="onClickDocument(docId)"
         >
-          <template #trailingIcon="{ documentName }">
-            <MDContextMenuButton
-              :btns="documentContextBtns"
-              :tooltip="`options ${documentName}`"
-              @click="onClickDocumentContextAction($event, docId)"
+          <template #trailingIcon>
+            <DocumentContextButton
+              :directory-path="directoryPath"
+              :document-id="docId"
             />
           </template>
         </CFRDocumentMDListItem>
@@ -266,10 +149,10 @@ const showFSEntryRenameDialog = computed({
           @click="onClickEntry(name, fileType)"
         >
           <template #trailingIcon>
-            <MDContextMenuButton
-              :btns="fsEntryContextBtns"
-              :tooltip="`options ${name}`"
-              @click="onClickFSEntryContextAction($event, name)"
+            <FSEntryContextButton
+              :directory-path="directoryPath"
+              :name="name"
+              :file-type="fileType"
             />
           </template>
         </FSEntryMDListItem>
@@ -320,32 +203,6 @@ const showFSEntryRenameDialog = computed({
       "
       @cancel="parentPathForNewDirectory = undefined"
       @created="parentPathForNewDirectory = undefined"
-    />
-
-    <DocumentRemoveDialog
-      v-if="documentIdToRemove && directoryPath"
-      :show="!!documentIdToRemove"
-      :path="directoryPath"
-      :document-id="documentIdToRemove"
-      @cancel="documentIdToRemove = undefined"
-      @apply="documentIdToRemove = undefined"
-    />
-
-    <DocumentRenameDialog
-      v-if="documentIdToRename && directoryPath"
-      :path="directoryPath"
-      :show="!!documentIdToRename"
-      :document-id="documentIdToRename"
-      @renamed="documentIdToRename = undefined"
-      @cancel="documentIdToRename = undefined"
-    />
-
-    <FSEntryRenameDialog
-      v-if="entryKeyToRename"
-      v-model:show="showFSEntryRenameDialog"
-      :path="entryKeyToRename"
-      @cancel="entryKeyToRename = undefined"
-      @renamed="onRenamedEntry"
     />
   </MDPane>
 </template>
