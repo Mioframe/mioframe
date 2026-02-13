@@ -1,54 +1,52 @@
 import type {
   IFileSystemProvider,
   FileContent,
-  FileStat,
+  FSNodeStat,
   WriteOptions,
 } from './IFileSystemProvider';
-import { FileType } from './IFileSystemProvider';
+import { FSNodeType } from './IFileSystemProvider';
 import { FileSystemError, VfsError } from './VfsError';
 import type { VfsEvent } from './EventEmitter';
 import { EventEmitter } from './EventEmitter';
 import { PathUtils } from './PathUtils';
 
-interface Entry {
-  path: string;
-  size: number;
-  creationTime: number;
-  modificationTime: number;
-}
-
-interface FileEntry extends Entry {
-  type: FileType.File;
+interface FileEntry extends FSNodeStat {
+  type: FSNodeType.File;
   content: File;
 }
 
-interface DirectoryEntry extends Entry {
-  type: FileType.Directory;
+interface DirectoryEntry extends FSNodeStat {
+  type: FSNodeType.Directory;
 }
 
 type AnyEntry = FileEntry | DirectoryEntry;
 
 /**
- * Реализация файловой системы в памяти (In-Memory).
- * Все данные хранятся в RAM и теряются при перезагрузке страницы/приложения.
- * Используется для временных файлов, тестов или кеширования.
+ * In-memory file system implementation.
+ * All data is stored in RAM and will be lost on page/application reload.
+ * Used for temporary files, tests, or caching.
  */
 export class MemoryFileSystem implements IFileSystemProvider {
-  /** Хранилище: Путь -> Объект записи */
+  /** Storage: Path -> Entry object */
   private store: Map<string, AnyEntry> = new Map();
   private events = new EventEmitter();
 
   constructor() {
-    // Инициализация корневой директории
+    // Initialize the root directory
     this.store.set('/', {
-      path: '/',
-      type: FileType.Directory,
+      type: FSNodeType.Directory,
       size: 0,
       creationTime: Date.now(),
       modificationTime: Date.now(),
     });
   }
 
+  /**
+   * Retrieves an entry from the file system store.
+   * @param path - The path to the entry to retrieve
+   * @returns The entry at the specified path
+   * @throws VfsError if the entry is not found
+   */
   private getEntry(path: string): AnyEntry {
     const entry = this.store.get(path);
     if (!entry) {
@@ -60,7 +58,12 @@ export class MemoryFileSystem implements IFileSystemProvider {
     return entry;
   }
 
-  public async stat(path: string): Promise<FileStat> {
+  /**
+   * Retrieves file system statistics for a given path.
+   * @param path - The path to get statistics for
+   * @returns A promise that resolves to the file system statistics
+   */
+  public async stat(path: string): Promise<FSNodeStat> {
     const normalized = PathUtils.normalize(path);
     const entry = this.getEntry(normalized);
 
@@ -72,33 +75,45 @@ export class MemoryFileSystem implements IFileSystemProvider {
     });
   }
 
-  public async readDirectory(path: string): Promise<[string, FileType][]> {
+  /**
+   * Reads the contents of a directory.
+   * @param path - The path of the directory to read
+   * @returns A promise that resolves to an array of [filename, FSNodeStat] tuples
+   * @throws VfsError if the path is not a directory
+   */
+  public async readDirectory(path: string): Promise<[string, FSNodeStat][]> {
     const normalized = PathUtils.normalize(path);
     const entry = this.getEntry(normalized);
 
-    if (entry.type !== FileType.Directory) {
+    if (entry.type !== FSNodeType.Directory) {
       throw new VfsError(
         FileSystemError.FileNotADirectory,
         `${path} is not a directory`,
       );
     }
 
-    const children: [string, FileType][] = [];
+    const children: [string, FSNodeStat][] = [];
     const searchPrefix = normalized === '/' ? normalized : `${normalized}/`;
 
-    // Линейный перебор Store (для MemoryFS это допустимо, но для больших объемов нужна оптимизация)
+    // Linear store iteration (acceptable for MemoryFS, but optimization needed for large volumes)
     for (const [key, childEntry] of this.store.entries()) {
       if (key.startsWith(searchPrefix) && key !== normalized) {
         const relativePath = key.substring(searchPrefix.length);
-        // Возвращаем только прямых потомков
+        // Return only direct children
         if (!relativePath.includes('/')) {
-          children.push([relativePath, childEntry.type]);
+          children.push([relativePath, childEntry]);
         }
       }
     }
     return Promise.resolve(children);
   }
 
+  /**
+   * Creates a new directory at the specified path.
+   * @param path - The path where the directory should be created
+   * @returns A promise that resolves when the directory is created
+   * @throws VfsError if the directory already exists or parent is not a directory
+   */
   public async createDirectory(path: string): Promise<void> {
     const normalized = PathUtils.normalize(path);
     if (this.store.has(normalized)) {
@@ -111,7 +126,7 @@ export class MemoryFileSystem implements IFileSystemProvider {
     const parentPath = PathUtils.dirname(normalized);
     const parentEntry = this.getEntry(parentPath);
 
-    if (parentEntry.type !== FileType.Directory) {
+    if (parentEntry.type !== FSNodeType.Directory) {
       throw new VfsError(
         FileSystemError.FileNotADirectory,
         `Parent path ${parentPath} is not a directory`,
@@ -119,8 +134,7 @@ export class MemoryFileSystem implements IFileSystemProvider {
     }
 
     this.store.set(normalized, {
-      path: normalized,
-      type: FileType.Directory,
+      type: FSNodeType.Directory,
       size: 0,
       creationTime: Date.now(),
       modificationTime: Date.now(),
@@ -130,11 +144,17 @@ export class MemoryFileSystem implements IFileSystemProvider {
     return Promise.resolve();
   }
 
+  /**
+   * Reads the contents of a file.
+   * @param path - The path of the file to read
+   * @returns A promise that resolves to the File object
+   * @throws VfsError if the path is a directory or file not found
+   */
   public async readFile(path: string): Promise<File> {
     const normalized = PathUtils.normalize(path);
     const entry = this.getEntry(normalized);
 
-    if (entry.type !== FileType.File) {
+    if (entry.type !== FSNodeType.File) {
       throw new VfsError(
         FileSystemError.FileIsADirectory,
         `${path} is a directory`,
@@ -144,6 +164,14 @@ export class MemoryFileSystem implements IFileSystemProvider {
     return Promise.resolve(entry.content);
   }
 
+  /**
+   * Writes content to a file at the specified path.
+   * @param path - The path where the file should be written
+   * @param content - The content to write to the file
+   * @param options - Write options including overwrite and create flags
+   * @returns A promise that resolves when the file is written
+   * @throws VfsError if file operations fail (e.g., file exists, parent not found)
+   */
   public async writeFile(
     path: string,
     content: FileContent,
@@ -157,7 +185,7 @@ export class MemoryFileSystem implements IFileSystemProvider {
     const parentEntry = this.store.get(parentPath);
 
     // Проверка родительской директории
-    if (!parentEntry || parentEntry.type !== FileType.Directory) {
+    if (!parentEntry || parentEntry.type !== FSNodeType.Directory) {
       return Promise.reject(
         new VfsError(
           FileSystemError.FileNotFound,
@@ -173,8 +201,8 @@ export class MemoryFileSystem implements IFileSystemProvider {
         : new File([content], fileName, { lastModified: now });
 
     if (entry) {
-      // Обновление существующего файла
-      if (entry.type !== FileType.File) {
+      // Updating existing file
+      if (entry.type !== FSNodeType.File) {
         return Promise.reject(
           new VfsError(
             FileSystemError.FileIsADirectory,
@@ -196,7 +224,7 @@ export class MemoryFileSystem implements IFileSystemProvider {
       entry.modificationTime = now;
       this.events.emit({ type: 'update', path: normalized });
     } else {
-      // Создание нового файла
+      // Creating new file
       if (!options.create) {
         return Promise.reject(
           new VfsError(
@@ -206,8 +234,7 @@ export class MemoryFileSystem implements IFileSystemProvider {
         );
       }
       this.store.set(normalized, {
-        path: normalized,
-        type: FileType.File,
+        type: FSNodeType.File,
         content: file,
         size: file.size,
         creationTime: now,
@@ -218,11 +245,18 @@ export class MemoryFileSystem implements IFileSystemProvider {
     return Promise.resolve();
   }
 
+  /**
+   * Deletes a file or directory at the specified path.
+   * @param path - The path to delete
+   * @param recursive - Whether to delete directories recursively
+   * @returns A promise that resolves when the deletion is complete
+   * @throws Error if directory is not empty and recursive is false
+   */
   public async delete(path: string, recursive: boolean): Promise<void> {
     const normalized = PathUtils.normalize(path);
     const entry = this.getEntry(normalized);
 
-    if (entry.type === FileType.Directory) {
+    if (entry.type === FSNodeType.Directory) {
       const searchPrefix = normalized === '/' ? normalized : `${normalized}/`;
 
       let hasChildren = false;
@@ -253,14 +287,21 @@ export class MemoryFileSystem implements IFileSystemProvider {
     return Promise.resolve();
   }
 
+  /**
+   * Renames (moves) a file or directory from oldPath to newPath.
+   * @param oldPath - The current path of the file or directory
+   * @param newPath - The new path for the file or directory
+   * @returns A promise that resolves when the rename operation is complete
+   * @throws VfsError if the operation is not supported (e.g., moving directory into itself)
+   */
   public async rename(oldPath: string, newPath: string): Promise<void> {
     const normalizedOld = PathUtils.normalize(oldPath);
     const normalizedNew = PathUtils.normalize(newPath);
 
     if (normalizedOld === normalizedNew) return Promise.resolve();
 
-    // ЗАЩИТА: Нельзя перемещать папку внутрь самой себя или ее подпапок
-    // /A -> /A/B (нельзя)
+    // PROTECTION: Cannot move folder inside itself or its subfolders
+    // /A -> /A/B (not allowed)
     if (PathUtils.isChildOrSame(normalizedOld, normalizedNew)) {
       return Promise.reject(
         new VfsError(
@@ -283,7 +324,7 @@ export class MemoryFileSystem implements IFileSystemProvider {
 
     const newParentPath = PathUtils.dirname(normalizedNew);
     const newParentEntry = this.store.get(newParentPath);
-    if (!newParentEntry || newParentEntry.type !== FileType.Directory) {
+    if (!newParentEntry || newParentEntry.type !== FSNodeType.Directory) {
       return Promise.reject(
         new VfsError(
           FileSystemError.FileNotFound,
@@ -292,7 +333,7 @@ export class MemoryFileSystem implements IFileSystemProvider {
       );
     }
 
-    if (entry.type === FileType.Directory) {
+    if (entry.type === FSNodeType.Directory) {
       const searchPrefix =
         normalizedOld === '/' ? normalizedOld : `${normalizedOld}/`;
       const newPrefix =
@@ -300,14 +341,14 @@ export class MemoryFileSystem implements IFileSystemProvider {
 
       const entriesToMove = new Set<[string, AnyEntry]>();
 
-      // Сбор всех вложенных элементов
+      // Collecting all nested elements
       for (const [key, childEntry] of this.store.entries()) {
         if (key.startsWith(searchPrefix) && key !== normalizedOld) {
           entriesToMove.add([key, childEntry]);
         }
       }
 
-      // Перемещение вложенных элементов
+      // Moving nested elements
       for (const [oldKey, childEntry] of entriesToMove) {
         const relativePath = oldKey.substring(searchPrefix.length);
         const newKey = PathUtils.join(newPrefix, relativePath);
@@ -315,24 +356,21 @@ export class MemoryFileSystem implements IFileSystemProvider {
         this.store.delete(oldKey);
         this.store.set(newKey, {
           ...childEntry,
-          path: newKey,
           modificationTime: Date.now(),
         });
       }
 
-      // Перемещение самой директории
+      // Moving the directory itself
       this.store.delete(normalizedOld);
       this.store.set(normalizedNew, {
         ...entry,
-        path: normalizedNew,
         modificationTime: Date.now(),
       });
     } else {
-      // Перемещение файла
+      // Moving the file
       this.store.delete(normalizedOld);
       this.store.set(normalizedNew, {
         ...entry,
-        path: normalizedNew,
         modificationTime: Date.now(),
       });
     }
@@ -345,6 +383,11 @@ export class MemoryFileSystem implements IFileSystemProvider {
     return Promise.resolve();
   }
 
+  /**
+   * Sets up a callback to be notified of file system events.
+   * @param callback - The callback function to be called on events
+   * @returns A function to unsubscribe from events
+   */
   public watch(callback: (event: VfsEvent) => void): () => void {
     return this.events.subscribe(callback);
   }

@@ -1,6 +1,6 @@
 import { zodAutomergeFileName } from '@shared/lib/automergeAdapter';
 import { zodIs } from '@shared/lib/validateZodScheme';
-import type { FileType } from '@shared/lib/virtualFileSystem';
+import type { FSNodeStat, FSNodeType } from '@shared/lib/virtualFileSystem';
 import { VirtualFileSystem, PathUtils } from '@shared/lib/virtualFileSystem';
 import { MemoryFileSystem } from '@shared/lib/virtualFileSystem/MemoryFileSystem';
 import { OPFSName } from '../directories';
@@ -26,7 +26,7 @@ const setupFileSystemService = () => {
 
   const directoryContent$Cache = new Map<
     string,
-    Observable<[string, FileType][]>
+    Observable<[string, FSNodeType][]>
   >();
 
   const directoryContent$ = defineCacheObservable(
@@ -37,7 +37,7 @@ const setupFileSystemService = () => {
       path: string;
       options?: ReadDirectoryOptions;
     }) =>
-      new Observable<[string, FileType][]>((subscriber) => {
+      new Observable<[string, FSNodeStat][]>((subscriber) => {
         const fetchEntries = async () => {
           try {
             const entries = await vfs.readDirectory(path);

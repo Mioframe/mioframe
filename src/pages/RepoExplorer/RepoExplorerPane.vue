@@ -15,7 +15,7 @@ import { zodQuery } from './model';
 import { useMainRouter } from '@page/routes';
 import { zodToVueProps } from '@shared/lib/zodToVueProps';
 import { useRepository } from '@entity/repository';
-import { FileType, PathUtils } from '@shared/lib/virtualFileSystem';
+import { FSNodeType, PathUtils } from '@shared/lib/virtualFileSystem';
 import { useDirectory } from '@entity/directory/useDirectory';
 import type { ReadDirectoryOptions } from '@shared/service/fileSystem';
 import { useLocalSettings } from '@entity/localSettings';
@@ -63,8 +63,8 @@ const onClickPath = async (path: string) => {
   );
 };
 
-const onClickEntry = async (name: string, fileType: FileType) => {
-  if (fileType === FileType.Directory) {
+const onClickEntry = async (name: string, fileType: FSNodeType) => {
+  if (fileType === FSNodeType.Directory) {
     await open(
       'repo',
       {
@@ -144,13 +144,13 @@ const title = computed(() => PathUtils.basename(directoryPath.value) || 'root');
         </CFRDocumentMDListItem>
 
         <FSEntryMDListItem
-          v-for="[name, fileType] in directoryEntries"
+          v-for="[name, { type: nodeType }] in directoryEntries"
           :key="name"
           is-button
           :name="name"
-          :type="fileType"
+          :type="nodeType"
           class="document-explorer-widget__list-item"
-          @click="onClickEntry(name, fileType)"
+          @click="onClickEntry(name, nodeType)"
         >
           <template #trailingIcon>
             <FSEntryContextButton :path="PathUtils.join(directoryPath, name)" />

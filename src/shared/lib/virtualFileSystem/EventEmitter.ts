@@ -2,23 +2,23 @@ export type VfsChangeType = 'create' | 'update' | 'delete' | 'rename';
 
 export interface VfsEvent {
   type: VfsChangeType;
-  /** Путь относительно корня (для VFS) или корня провайдера (для драйверов) */
+  /** Path relative to root (for VFS) or provider root (for drivers) */
   path: string;
-  /** Для события rename — новый путь */
+  /** For rename event — new path */
   newPath?: string;
 }
 
 /**
- * Вспомогательный класс для управления подписками.
- * Используется и в VFS, и в драйверах.
+ * Helper class for managing subscriptions.
+ * Used in both VFS and drivers.
  */
 export class EventEmitter {
   private listeners: Set<(event: VfsEvent) => void> = new Set();
   private errorHandler: (error: unknown) => void;
 
   /**
-   * @param errorHandler Функция для обработки ошибок в подписчиках.
-   * По умолчанию выводит ошибку в console.error.
+   * @param errorHandler Function for handling errors in subscribers.
+   * Defaults to logging error to console.error.
    */
   constructor(errorHandler?: (error: unknown) => void) {
     this.errorHandler =
@@ -29,11 +29,20 @@ export class EventEmitter {
       });
   }
 
+  /**
+   * Subscribe to events.
+   * @param callback Function to be called when an event occurs
+   * @returns Function to unsubscribe
+   */
   public subscribe(callback: (event: VfsEvent) => void): () => void {
     this.listeners.add(callback);
     return () => this.listeners.delete(callback);
   }
 
+  /**
+   * Emit an event to all subscribers.
+   * @param event Event to emit
+   */
   public emit(event: VfsEvent) {
     for (const listener of this.listeners) {
       try {

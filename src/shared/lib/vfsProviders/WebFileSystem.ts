@@ -1,13 +1,13 @@
 import type {
   FileContent,
-  FileStat,
+  FSNodeStat,
   IFileSystemProvider,
   VfsEvent,
 } from '../virtualFileSystem';
 import {
   EventEmitter,
   FileSystemError,
-  FileType,
+  FSNodeType,
   PathUtils,
   VfsError,
 } from '../virtualFileSystem';
@@ -90,11 +90,11 @@ export class WebFileSystem implements IFileSystemProvider {
     }
   }
 
-  public async stat(path: string): Promise<FileStat> {
+  public async stat(path: string): Promise<FSNodeStat> {
     const normalized = PathUtils.normalize(path);
     if (normalized === '/') {
       return {
-        type: FileType.Directory,
+        type: FSNodeType.Directory,
         size: 0,
         creationTime: Date.now(),
         modificationTime: Date.now(),
@@ -118,14 +118,14 @@ export class WebFileSystem implements IFileSystemProvider {
     if (handle.kind === 'file') {
       const file = await handle.getFile();
       return {
-        type: FileType.File,
+        type: FSNodeType.File,
         size: file.size,
         creationTime: file.lastModified,
         modificationTime: file.lastModified,
       };
     } else {
       return {
-        type: FileType.Directory,
+        type: FSNodeType.Directory,
         size: 0,
         creationTime: 0,
         modificationTime: 0,
@@ -167,15 +167,25 @@ export class WebFileSystem implements IFileSystemProvider {
     this.events.emit({ type: 'update', path });
   }
 
-  public async readDirectory(path: string): Promise<[string, FileType][]> {
+  public async readDirectory(path: string): Promise<[string, FSNodeStat][]> {
     const handle = await this.getHandle(path, false, 'directory');
-    const entries: [string, FileType][] = [];
+    const entries: [string, FSNodeStat][] = [];
 
     for await (const [name, entry] of handle.entries()) {
-      entries.push([
-        name,
-        entry.kind === 'file' ? FileType.File : FileType.Directory,
-      ]);
+      const file = entry.kind === 'file' ? await entry.getFile() : undefined;
+
+      const size = file?.size;
+
+      const modificationTime = file?.lastModified;
+
+      const stat = {
+        type: entry.kind === 'file' ? FSNodeType.File : FSNodeType.Directory,
+        modificationTime,
+        size,
+        creationTime: undefined,
+      } satisfies FSNodeStat;
+
+      entries.push([name, stat]);
     }
     return entries;
   }
@@ -238,7 +248,7 @@ export class WebFileSystem implements IFileSystemProvider {
     let sourceHandle: FileSystemFileHandle | FileSystemDirectoryHandle;
     try {
       const stat = await this.stat(normalizedOld);
-      if (stat.type === FileType.File) {
+      if (stat.type === FSNodeType.File) {
         sourceHandle = await this.getHandle(normalizedOld, false, 'file');
       } else {
         sourceHandle = await this.getHandle(normalizedOld, false, 'directory');
