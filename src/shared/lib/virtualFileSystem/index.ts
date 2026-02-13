@@ -1,9 +1,9 @@
 export { VirtualFileSystem } from './VirtualFileSystem';
 export {
   type IFileSystemProvider,
-  type FileStat,
+  type FSNodeStat,
   type FileContent,
-  FileType,
+  FSNodeType,
   type WriteOptions,
 } from './IFileSystemProvider';
 export {

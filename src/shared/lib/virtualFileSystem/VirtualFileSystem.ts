@@ -1,10 +1,9 @@
 import type {
   FileContent,
-  FileStat,
-  FileType,
+  FSNodeStat,
   IFileSystemProvider,
 } from './IFileSystemProvider';
-import { FileType as FileTypeEnum } from './IFileSystemProvider';
+import { FSNodeType as FileTypeEnum } from './IFileSystemProvider';
 import type { VfsEvent } from './EventEmitter';
 import { EventEmitter } from './EventEmitter';
 import { PathUtils } from './PathUtils';
@@ -204,7 +203,7 @@ export class VirtualFileSystem {
    * @param path Абсолютный путь.
    * @returns Объект FileStat.
    */
-  public async stat(path: string): Promise<FileStat> {
+  public async stat(path: string): Promise<FSNodeStat> {
     const { provider, relativePath } = this.resolve(path);
     return provider.stat(relativePath);
   }
@@ -241,7 +240,7 @@ export class VirtualFileSystem {
    * @param path Абсолютный путь к директории.
    * @returns Массив кортежей [имя, тип].
    */
-  public async readDirectory(path: string): Promise<[string, FileType][]> {
+  public async readDirectory(path: string): Promise<[string, FSNodeStat][]> {
     const { provider, relativePath } = this.resolve(path);
     return provider.readDirectory(relativePath);
   }

@@ -1,12 +1,12 @@
 <script setup lang="ts">
-import { FileType } from '@shared/lib/virtualFileSystem';
+import { FSNodeType } from '@shared/lib/virtualFileSystem';
 import { MDSymbol } from '@shared/ui/Icon';
 import { MDListItem } from '@shared/ui/Lists';
 import { toRefs } from 'vue';
 
 const props = defineProps<{
   name: string;
-  type: FileType;
+  type: FSNodeType;
   supportingText?: string;
   isButton?: boolean;
 }>();
@@ -30,9 +30,9 @@ const slots = defineSlots<{
     @click="$emit('click', name)"
   >
     <template #leadingIcon>
-      <MDSymbol v-if="type === FileType.Directory" name="folder" />
+      <MDSymbol v-if="type === FSNodeType.Directory" name="folder" />
 
-      <MDSymbol v-else-if="type === FileType.File" name="draft" />
+      <MDSymbol v-else-if="type === FSNodeType.File" name="draft" />
 
       <MDSymbol v-else name="insert_page_break" />
     </template>

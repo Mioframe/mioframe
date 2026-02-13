@@ -4,7 +4,7 @@ import { VirtualFileSystem } from './VirtualFileSystem';
 import { MemoryFileSystem } from './MemoryFileSystem';
 import { VfsError, FileSystemError } from './VfsError';
 import { LockManager } from './LockManager';
-import { FileType } from './IFileSystemProvider';
+import { FSNodeType } from './IFileSystemProvider';
 
 describe('VirtualFileSystem (Интеграция)', () => {
   let vfs: VirtualFileSystem;
@@ -33,7 +33,9 @@ describe('VirtualFileSystem (Интеграция)', () => {
     await vfs.createDirectory('/mnt/folder/subfolder');
     const entries = await vfs.readDirectory('/mnt/folder');
     expect(entries).to.have.length(2);
-    expect(entries.find((e) => e[0] === 'file1.txt')?.[1]).to.eq(FileType.File);
+    expect(entries.find((e) => e[0] === 'file1.txt')?.[1].type).to.eq(
+      FSNodeType.File,
+    );
   });
 
   it('должен переименовывать файл', async () => {
@@ -61,7 +63,7 @@ describe('VirtualFileSystem (Интеграция)', () => {
     expect(await vfs.exists('/mnt/A')).to.eq(false);
 
     const stats = await vfs.stat('/mnt/B');
-    expect(stats.type).to.eq(FileType.Directory);
+    expect(stats.type).to.eq(FSNodeType.Directory);
   });
 
   it('должен запрещать переименование в несуществующий путь (orphaned node)', async () => {

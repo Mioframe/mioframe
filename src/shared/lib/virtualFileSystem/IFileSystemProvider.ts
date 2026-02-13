@@ -1,45 +1,113 @@
 import type { VfsEvent } from './EventEmitter';
 
+/**
+ * File content type for I/O operations
+ * Can be a string, Blob, or BufferSource (ArrayBuffer or ArrayBufferView)
+ */
 export type FileContent = string | Blob | BufferSource;
 
-export enum FileType {
+/**
+ * File system node type enumeration
+ */
+export enum FSNodeType {
+  /** Unknown type */
   Unknown,
+  /** File */
   File,
+  /** Directory */
   Directory,
 }
 
-export interface FileStat {
-  /** Тип ресурса */
-  type: FileType;
-  /** Размер в байтах */
-  size: number;
-  /** Время создания */
-  creationTime: number;
-  /** Время последнего изменения */
-  modificationTime: number;
+/**
+ * File system node statistics interface
+ */
+export interface FSNodeStat {
+  /** Resource type */
+  type: FSNodeType;
+  /** Size in bytes */
+  size?: number;
+  /** Creation time */
+  creationTime?: number;
+  /** Last modification time */
+  modificationTime?: number;
 }
 
+/**
+ * Write options for file operations
+ */
 export interface WriteOptions {
-  /** Создать файл, если он не существует */
+  /** Create file if it doesn't exist */
   create: boolean;
-  /** Перезаписать файл, если он существует */
+  /** Overwrite file if it exists */
   overwrite: boolean;
 }
 
+/**
+ * Virtual file system provider interface
+ * Defines the contract for file system operations
+ */
 export interface IFileSystemProvider {
-  stat(path: string): Promise<FileStat>;
+  /**
+   * Get file system node statistics by path
+   * @param path Path to the file system node
+   * @returns Promise that resolves to the node statistics
+   */
+  stat(path: string): Promise<FSNodeStat>;
+
+  /**
+   * Read file content
+   * @param path Path to the file
+   * @returns Promise that resolves to a File object with the file content
+   */
   readFile(path: string): Promise<File>;
+
+  /**
+   * Write content to a file
+   * @param path Path to the file
+   * @param content Content to write
+   * @param options Write options
+   * @returns Promise that resolves after the write operation completes
+   */
   writeFile(
     path: string,
     content: FileContent,
     options: WriteOptions,
   ): Promise<void>;
 
-  readDirectory(path: string): Promise<[string, FileType][]>;
+  /**
+   * Read directory contents
+   * @param path Path to the directory
+   * @returns Promise that resolves to an array of pairs [file_name, statistics]
+   */
+  readDirectory(path: string): Promise<[string, FSNodeStat][]>;
+
+  /**
+   * Create a directory
+   * @param path Path to the new directory
+   * @returns Promise that resolves after the directory is created
+   */
   createDirectory(path: string): Promise<void>;
 
+  /**
+   * Delete a file or directory
+   * @param path Path to the item to delete
+   * @param recursive If true, delete recursively (for directories)
+   * @returns Promise that resolves after the deletion completes
+   */
   delete(path: string, recursive: boolean): Promise<void>;
+
+  /**
+   * Rename a file or directory
+   * @param oldPath Old path
+   * @param newPath New path
+   * @returns Promise that resolves after the rename operation completes
+   */
   rename(oldPath: string, newPath: string): Promise<void>;
 
+  /**
+   * Watch for changes in the file system
+   * @param callback Callback function to handle events
+   * @returns Function to cancel watching
+   */
   watch(callback: (event: VfsEvent) => void): () => void;
 }
