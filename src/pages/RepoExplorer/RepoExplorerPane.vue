@@ -107,6 +107,10 @@ const title = computed(() => PathUtils.basename(directoryPath.value) || 'root');
       <template #leadingButton>
         <slot name="navigationButton" />
       </template>
+
+      <template #trailingElements>
+        <FSEntryContextButton :path="directoryPath" />
+      </template>
     </MDAppBar>
 
     <MDNavigationPath
@@ -149,11 +153,7 @@ const title = computed(() => PathUtils.basename(directoryPath.value) || 'root');
           @click="onClickEntry(name, fileType)"
         >
           <template #trailingIcon>
-            <FSEntryContextButton
-              :directory-path="directoryPath"
-              :name="name"
-              :file-type="fileType"
-            />
+            <FSEntryContextButton :path="PathUtils.join(directoryPath, name)" />
           </template>
         </FSEntryMDListItem>
       </MDListContainer>
