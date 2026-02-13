@@ -13,23 +13,23 @@ import type { Promisable } from 'type-fest';
 
 export interface VfsWatchOptions {
   /**
-   * Если true, отслеживает изменения во всех вложенных директориях.
-   * Если false (по умолчанию), отслеживает только прямых потомков.
+   * If true, watches for changes in all nested directories.
+   * If false (default), watches only direct children.
    */
   recursive?: boolean;
 }
 
 /**
- * Основной класс Виртуальной Файловой Системы (VFS).
+ * Main Virtual File System (VFS) class.
  *
- * Предоставляет единый интерфейс для работы с файлами и директориями,
- * абстрагируясь от конкретных реализаций хранения (InMemory, IndexedDB, Network и т.д.).
+ * Provides a unified interface for working with files and directories,
+ * abstracting away specific storage implementations (InMemory, IndexedDB, Network, etc.).
  *
- * Особенности:
- * - Поддержка точек монтирования (mount points).
- * - Атомарность операций (через LockManager).
- * - Система событий (watch).
- * - Автоматическое перемещение файлов между разными провайдерами.
+ * Features:
+ * - Mount point support.
+ * - Operation atomicity (via LockManager).
+ * - Event system (watch).
+ * - Automatic file movement between different providers.
  */
 export class VirtualFileSystem {
   private mounts: Map<
@@ -41,18 +41,18 @@ export class VirtualFileSystem {
   private readonly locks: LockManager;
 
   /**
-   * @param locksManager Опциональный менеджер блокировок. Если не передан, создается новый.
+   * @param locksManager Optional lock manager. If not provided, a new one is created.
    */
   constructor(locksManager?: LockManager) {
     this.locks = locksManager || new LockManager();
   }
 
   /**
-   * Подписывается на события по конкретному пути.
-   * @param path Путь к файлу или директории.
-   * @param callback Функция обратного вызова.
-   * @param options Опции наблюдения (например, рекурсивно).
-   * @returns Функция для отписки.
+   * Subscribes to events for a specific path.
+   * @param path Path to the file or directory.
+   * @param callback Callback function.
+   * @param options Watch options (e.g., recursive).
+   * @returns Function to unsubscribe.
    */
   public watch(
     path: string,
@@ -104,10 +104,10 @@ export class VirtualFileSystem {
   }
 
   /**
-   * Монтирует провайдер файловой системы по указанному пути.
+   * Mounts a file system provider at the specified path.
    *
-   * @param path Путь монтирования (например, '/mnt/disk1').
-   * @param provider Экземпляр провайдера (например, MemoryFileSystem).
+   * @param path Mount path (e.g., '/mnt/disk1').
+   * @param provider Provider instance (e.g., MemoryFileSystem).
    *
    * @example
    * vfs.mount('/data', new MemoryFileSystem());
@@ -158,8 +158,8 @@ export class VirtualFileSystem {
   }
 
   /**
-   * Размонтирует провайдер по указанному пути.
-   * @param path Путь, по которому был смонтирован провайдер.
+   * Unmounts a provider at the specified path.
+   * @param path Path where the provider was mounted.
    */
   public unmount(path: string): void {
     const normalized = PathUtils.normalize(path);
@@ -171,8 +171,8 @@ export class VirtualFileSystem {
   }
 
   /**
-   * Определяет ответственный провайдер для указанного пути
-   * и возвращает путь относительно корня этого провайдера.
+   * Determines the responsible provider for the specified path
+   * and returns the path relative to that provider's root.
    */
   private resolve(path: string): {
     provider: IFileSystemProvider;
@@ -199,9 +199,9 @@ export class VirtualFileSystem {
   // --- API Methods ---
 
   /**
-   * Получает информацию о файле или директории.
-   * @param path Абсолютный путь.
-   * @returns Объект FileStat.
+   * Gets information about a file or directory.
+   * @param path Absolute path.
+   * @returns FileStat object.
    */
   public async stat(path: string): Promise<FSNodeStat> {
     const { provider, relativePath } = this.resolve(path);
@@ -209,9 +209,9 @@ export class VirtualFileSystem {
   }
 
   /**
-   * Читает содержимое файла.
-   * @param path Абсолютный путь к файлу.
-   * @returns Объект File (Blob).
+   * Reads the content of a file.
+   * @param path Absolute path to the file.
+   * @returns File object (Blob).
    */
   public async readFile(path: string): Promise<File> {
     return this.locks.request(path, async () => {
@@ -221,9 +221,9 @@ export class VirtualFileSystem {
   }
 
   /**
-   * Записывает содержимое в файл. Если файла нет — создает, если есть — перезаписывает.
-   * @param path Абсолютный путь к файлу.
-   * @param content Содержимое (string, Blob, BufferSource).
+   * Writes content to a file. If the file doesn't exist, it creates it; if it does, it overwrites it.
+   * @param path Absolute path to the file.
+   * @param content Content (string, Blob, BufferSource).
    */
   public async writeFile(path: string, content: FileContent): Promise<void> {
     return this.locks.request(path, async () => {
@@ -236,9 +236,9 @@ export class VirtualFileSystem {
   }
 
   /**
-   * Читает содержимое директории.
-   * @param path Абсолютный путь к директории.
-   * @returns Массив кортежей [имя, тип].
+   * Reads the contents of a directory.
+   * @param path Absolute path to the directory.
+   * @returns Array of tuples [name, type].
    */
   public async readDirectory(path: string): Promise<[string, FSNodeStat][]> {
     const { provider, relativePath } = this.resolve(path);
@@ -246,9 +246,9 @@ export class VirtualFileSystem {
   }
 
   /**
-   * Создает новую директорию.
-   * @param path Абсолютный путь.
-   * @throws VfsError если директория уже существует или родитель не найден.
+   * Creates a new directory.
+   * @param path Absolute path.
+   * @throws VfsError if the directory already exists or parent not found.
    */
   public async createDirectory(path: string): Promise<void> {
     const { provider, relativePath } = this.resolve(path);
@@ -256,9 +256,9 @@ export class VirtualFileSystem {
   }
 
   /**
-   * Удаляет файл или директорию.
-   * @param path Абсолютный путь.
-   * @param recursive Если true, удаляет непустые директории рекурсивно.
+   * Deletes a file or directory.
+   * @param path Absolute path.
+   * @param recursive If true, deletes non-empty directories recursively.
    */
   public async delete(path: string, recursive: boolean = false): Promise<void> {
     return this.locks.request(path, async () => {
@@ -268,11 +268,11 @@ export class VirtualFileSystem {
   }
 
   /**
-   * Переименовывает или перемещает файл/директорию.
-   * Поддерживает перемещение между разными провайдерами (cross-provider move).
+   * Renames or moves a file/directory.
+   * Supports moving between different providers (cross-provider move).
    *
-   * @param oldPath Текущий путь.
-   * @param newPath Новый путь.
+   * @param oldPath Current path.
+   * @param newPath New path.
    */
   public async rename(oldPath: string, newPath: string): Promise<void> {
     if (oldPath === newPath) {
@@ -315,8 +315,8 @@ export class VirtualFileSystem {
   }
 
   /**
-   * Вспомогательный метод для перемещения между провайдерами.
-   * Блокировки уже должны быть захвачены вызывающим методом (rename).
+   * Helper method for moving between providers.
+   * Locks should already be acquired by the calling method (rename).
    */
   private async moveCrossProvider(
     oldPath: string,
@@ -363,8 +363,8 @@ export class VirtualFileSystem {
   }
 
   /**
-   * Проверяет существование файла или директории.
-   * @param path Абсолютный путь.
+   * Checks if a file or directory exists.
+   * @param path Absolute path.
    */
   public async exists(path: string): Promise<boolean> {
     try {
@@ -378,8 +378,8 @@ export class VirtualFileSystem {
   }
 
   /**
-   * Удобный метод для чтения текстового содержимого файла.
-   * @param path Абсолютный путь.
+   * Convenient method for reading text content from a file.
+   * @param path Absolute path.
    */
   public async readText(path: string): Promise<string> {
     const file = await this.readFile(path);
