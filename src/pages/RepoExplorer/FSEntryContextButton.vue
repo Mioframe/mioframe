@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { useDirectory } from '@entity/directory/useDirectory';
+import { useFSNodeStat } from '@entity/fsEntry';
 import { useRemoveFSEntry } from '@feature/entryRemove';
 import { FSEntryRenameDialog } from '@feature/entryRename';
 import { useImportDocument } from '@feature/importDocument';
@@ -39,6 +40,8 @@ const importJsonBtn = defineMenuButton({
   key: FSEntryContextEvent.importJson,
 });
 
+const { data: fsEntryStat } = useFSNodeStat(path);
+
 const directoryContextBtns = defineMenuButtonList([
   renameBtn,
   removeBtn,
@@ -58,11 +61,20 @@ const fileType = computed(
     parentData.value?.find(([name]) => name === fsEntryName.value)?.[1].type,
 );
 
-const contextBtns = computed(() =>
-  fileType.value === FSNodeType.Directory
-    ? directoryContextBtns
-    : fileContextBtns,
-);
+const contextBtns = computed(() => {
+  const buttonList =
+    fileType.value === FSNodeType.Directory
+      ? directoryContextBtns
+      : fileContextBtns;
+
+  return buttonList.filter(({ key }) => {
+    if (key === FSEntryContextEvent.remove) {
+      return fsEntryStat.value?.canDelete;
+    }
+
+    return true;
+  });
+});
 
 const { remove: removeEntry } = useRemoveFSEntry();
 
