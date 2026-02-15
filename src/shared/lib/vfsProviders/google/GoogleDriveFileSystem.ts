@@ -464,7 +464,7 @@ export class GoogleDriveFileSystem implements IFileSystemProvider {
   /**
    * Renames a file or directory in Google Drive.
    */
-  public async rename(oldPath: string, newPath: string): Promise<void> {
+  public async move(oldPath: string, newPath: string): Promise<void> {
     const normalizedOld = PathUtils.normalize(oldPath);
     const normalizedNew = PathUtils.normalize(newPath);
 

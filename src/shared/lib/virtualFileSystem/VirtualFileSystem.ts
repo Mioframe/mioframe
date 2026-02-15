@@ -284,7 +284,7 @@ export class VirtualFileSystem {
    * @param oldPath Current path.
    * @param newPath New path.
    */
-  public async rename(oldPath: string, newPath: string): Promise<void> {
+  public async move(oldPath: string, newPath: string): Promise<void> {
     if (oldPath === newPath) {
       return;
     }
@@ -312,10 +312,7 @@ export class VirtualFileSystem {
 
         // Оптимизация: если провайдер один и тот же, используем его нативный rename
         if (source.provider === target.provider) {
-          return source.provider.rename(
-            source.relativePath,
-            target.relativePath,
-          );
+          return source.provider.move(source.relativePath, target.relativePath);
         }
 
         // Если провайдеры разные, выполняем перенос через Copy + Delete
@@ -365,7 +362,7 @@ export class VirtualFileSystem {
         const childTarget = PathUtils.join(targetPath, name);
 
         // Рекурсивный вызов публичного API для корректной обработки вложенности
-        await this.rename(childSource, childTarget);
+        await this.move(childSource, childTarget);
       }
 
       // 4. Удаляем пустую исходную папку

@@ -239,7 +239,7 @@ export class WebFileSystem implements IFileSystemProvider {
     }
   }
 
-  public async rename(oldPath: string, newPath: string): Promise<void> {
+  public async move(oldPath: string, newPath: string): Promise<void> {
     const normalizedOld = PathUtils.normalize(oldPath);
     const normalizedNew = PathUtils.normalize(newPath);
 
