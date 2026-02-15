@@ -263,6 +263,16 @@ export class VirtualFileSystem {
   public async delete(path: string, recursive: boolean = false): Promise<void> {
     return this.locks.request(path, async () => {
       const { provider, relativePath } = this.resolve(path);
+
+      // Проверяем флаг canDelete перед удалением
+      const stat = await provider.stat(relativePath);
+      if (stat.canDelete !== true) {
+        throw new VfsError(
+          FileSystemError.NoPermissions,
+          `Deletion is not allowed for path: ${path}`,
+        );
+      }
+
       return provider.delete(relativePath, recursive);
     });
   }
@@ -319,22 +329,23 @@ export class VirtualFileSystem {
    * Locks should already be acquired by the calling method (rename).
    */
   private async moveCrossProvider(
-    oldPath: string,
-    newPath: string,
+    sourcePath: string,
+    targetPath: string,
   ): Promise<void> {
-    const source = this.resolve(oldPath);
-    const target = this.resolve(newPath);
+    const source = this.resolve(sourcePath);
+    const target = this.resolve(targetPath);
 
-    const stat = await source.provider.stat(source.relativePath);
+    const sourceStat = await source.provider.stat(source.relativePath);
 
-    if (stat.type === FileTypeEnum.File) {
+    if (sourceStat.type === FileTypeEnum.File) {
       const rawContent = await source.provider.readFile(source.relativePath);
       await target.provider.writeFile(target.relativePath, rawContent, {
         create: true,
         overwrite: true,
       });
-      await source.provider.delete(source.relativePath, false);
-    } else if (stat.type === FileTypeEnum.Directory) {
+
+      await this.delete(sourcePath);
+    } else if (sourceStat.type === FileTypeEnum.Directory) {
       // 1. Создаем папку в целевом месте
       try {
         await target.provider.createDirectory(target.relativePath);
@@ -350,15 +361,15 @@ export class VirtualFileSystem {
 
       // 3. Рекурсивно перемещаем содержимое
       for (const [name] of entries) {
-        const childSource = PathUtils.join(oldPath, name);
-        const childTarget = PathUtils.join(newPath, name);
+        const childSource = PathUtils.join(sourcePath, name);
+        const childTarget = PathUtils.join(targetPath, name);
 
         // Рекурсивный вызов публичного API для корректной обработки вложенности
         await this.rename(childSource, childTarget);
       }
 
       // 4. Удаляем пустую исходную папку
-      await source.provider.delete(source.relativePath, false);
+      await this.delete(sourcePath);
     }
   }
 

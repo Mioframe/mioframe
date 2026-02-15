@@ -30,6 +30,8 @@ export interface FSNodeStat {
   creationTime?: number;
   /** Last modification time */
   modificationTime?: number;
+  /** Flag that explicitly allows deletion from the file system */
+  canDelete?: boolean;
 }
 
 /**
