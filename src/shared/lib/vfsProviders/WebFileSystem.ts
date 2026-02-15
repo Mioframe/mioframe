@@ -90,14 +90,36 @@ export class WebFileSystem implements IFileSystemProvider {
     }
   }
 
+  private async fileHandleStat(
+    handle: FileSystemFileHandle | FileSystemDirectoryHandle,
+  ) {
+    const permissionState = await handle.queryPermission?.();
+
+    const canDelete = permissionState !== 'denied';
+
+    if (handle.kind === 'file') {
+      const file = await handle.getFile();
+      return {
+        type: FSNodeType.File,
+        size: file.size,
+        creationTime: file.lastModified,
+        modificationTime: file.lastModified,
+        canDelete,
+      };
+    } else {
+      return {
+        type: FSNodeType.Directory,
+        canDelete,
+      };
+    }
+  }
+
   public async stat(path: string): Promise<FSNodeStat> {
     const normalized = PathUtils.normalize(path);
     if (normalized === '/') {
       return {
         type: FSNodeType.Directory,
-        size: 0,
-        creationTime: Date.now(),
-        modificationTime: Date.now(),
+        canDelete: false,
       };
     }
 
@@ -115,22 +137,7 @@ export class WebFileSystem implements IFileSystemProvider {
       }
     }
 
-    if (handle.kind === 'file') {
-      const file = await handle.getFile();
-      return {
-        type: FSNodeType.File,
-        size: file.size,
-        creationTime: file.lastModified,
-        modificationTime: file.lastModified,
-      };
-    } else {
-      return {
-        type: FSNodeType.Directory,
-        size: 0,
-        creationTime: 0,
-        modificationTime: 0,
-      };
-    }
+    return await this.fileHandleStat(handle);
   }
 
   public async readFile(path: string): Promise<File> {
@@ -168,25 +175,14 @@ export class WebFileSystem implements IFileSystemProvider {
   }
 
   public async readDirectory(path: string): Promise<[string, FSNodeStat][]> {
-    const handle = await this.getHandle(path, false, 'directory');
+    const directoryHandle = await this.getHandle(path, false, 'directory');
+
     const entries: [string, FSNodeStat][] = [];
 
-    for await (const [name, entry] of handle.entries()) {
-      const file = entry.kind === 'file' ? await entry.getFile() : undefined;
-
-      const size = file?.size;
-
-      const modificationTime = file?.lastModified;
-
-      const stat = {
-        type: entry.kind === 'file' ? FSNodeType.File : FSNodeType.Directory,
-        modificationTime,
-        size,
-        creationTime: undefined,
-      } satisfies FSNodeStat;
-
-      entries.push([name, stat]);
+    for await (const [name, childHandle] of directoryHandle.entries()) {
+      entries.push([name, await this.fileHandleStat(childHandle)]);
     }
+
     return entries;
   }
 
@@ -208,6 +204,16 @@ export class WebFileSystem implements IFileSystemProvider {
   }
 
   public async delete(path: string, recursive: boolean): Promise<void> {
+    const normalized = PathUtils.normalize(path);
+
+    const stat = await this.stat(normalized);
+    if (stat.canDelete !== true) {
+      throw new VfsError(
+        FileSystemError.NoPermissions,
+        `Deletion is not allowed for path: ${path}`,
+      );
+    }
+
     const parts = PathUtils.normalize(path)
       .split('/')
       .filter((p) => p.length > 0);
