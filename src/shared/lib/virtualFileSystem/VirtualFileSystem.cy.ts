@@ -40,7 +40,7 @@ describe('VirtualFileSystem (Интеграция)', () => {
 
   it('должен переименовывать файл', async () => {
     await vfs.writeFile('/mnt/a.txt', 'A');
-    await vfs.rename('/mnt/a.txt', '/mnt/b.txt');
+    await vfs.move('/mnt/a.txt', '/mnt/b.txt');
     const content = await vfs.readText('/mnt/b.txt');
     expect(content).to.eq('A');
     expect(await vfs.exists('/mnt/a.txt')).to.eq(false);
@@ -53,7 +53,7 @@ describe('VirtualFileSystem (Интеграция)', () => {
     await vfs.writeFile('/mnt/A/file.txt', 'content');
 
     // Переименовываем /mnt/A -> /mnt/B
-    await vfs.rename('/mnt/A', '/mnt/B');
+    await vfs.move('/mnt/A', '/mnt/B');
 
     // Проверяем содержимое
     expect(await vfs.exists('/mnt/B/file.txt')).to.eq(true);
@@ -70,7 +70,7 @@ describe('VirtualFileSystem (Интеграция)', () => {
     await vfs.createDirectory('/mnt/src');
     try {
       // /mnt/ghost не существует, поэтому /mnt/ghost/dest невозможно
-      await vfs.rename('/mnt/src', '/mnt/ghost/dest');
+      await vfs.move('/mnt/src', '/mnt/ghost/dest');
       throw new Error('Should fail');
     } catch (e: unknown) {
       if (e instanceof VfsError) {
@@ -95,7 +95,7 @@ describe('VirtualFileSystem (Интеграция)', () => {
 
     it('должен перемещать файл между провайдерами', async () => {
       await vfs.writeFile('/disk1/source.txt', 'Hello World');
-      await vfs.rename('/disk1/source.txt', '/disk2/dest.txt');
+      await vfs.move('/disk1/source.txt', '/disk2/dest.txt');
 
       expect(await vfs.readText('/disk2/dest.txt')).to.eq('Hello World');
       expect(await vfs.exists('/disk1/source.txt')).to.eq(false);
@@ -106,7 +106,7 @@ describe('VirtualFileSystem (Интеграция)', () => {
       await vfs.createDirectory('/disk1/folder/sub');
       await vfs.writeFile('/disk1/folder/sub/file.txt', 'Deep Data');
 
-      await vfs.rename('/disk1/folder', '/disk2/moved_folder');
+      await vfs.move('/disk1/folder', '/disk2/moved_folder');
 
       expect(await vfs.exists('/disk2/moved_folder/sub/file.txt')).to.eq(true);
       expect(await vfs.readText('/disk2/moved_folder/sub/file.txt')).to.eq(
