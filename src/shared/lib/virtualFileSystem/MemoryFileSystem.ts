@@ -294,7 +294,7 @@ export class MemoryFileSystem implements IFileSystemProvider {
    * @returns A promise that resolves when the rename operation is complete
    * @throws VfsError if the operation is not supported (e.g., moving directory into itself)
    */
-  public async rename(oldPath: string, newPath: string): Promise<void> {
+  public async move(oldPath: string, newPath: string): Promise<void> {
     const normalizedOld = PathUtils.normalize(oldPath);
     const normalizedNew = PathUtils.normalize(newPath);
 

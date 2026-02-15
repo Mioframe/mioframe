@@ -104,7 +104,7 @@ export interface IFileSystemProvider {
    * @param newPath New path
    * @returns Promise that resolves after the rename operation completes
    */
-  rename(oldPath: string, newPath: string): Promise<void>;
+  move(oldPath: string, newPath: string): Promise<void>;
 
   /**
    * Watch for changes in the file system
