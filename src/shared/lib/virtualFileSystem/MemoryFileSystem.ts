@@ -38,6 +38,7 @@ export class MemoryFileSystem implements IFileSystemProvider {
       size: 0,
       creationTime: Date.now(),
       modificationTime: Date.now(),
+      canDelete: false,
     });
   }
 
@@ -138,6 +139,7 @@ export class MemoryFileSystem implements IFileSystemProvider {
       size: 0,
       creationTime: Date.now(),
       modificationTime: Date.now(),
+      canDelete: true,
     });
 
     this.events.emit({ type: 'create', path: normalized });
@@ -239,10 +241,10 @@ export class MemoryFileSystem implements IFileSystemProvider {
         size: file.size,
         creationTime: now,
         modificationTime: now,
+        canDelete: true,
       });
       this.events.emit({ type: 'create', path: normalized });
     }
-    return Promise.resolve();
   }
 
   /**
@@ -255,6 +257,13 @@ export class MemoryFileSystem implements IFileSystemProvider {
   public async delete(path: string, recursive: boolean): Promise<void> {
     const normalized = PathUtils.normalize(path);
     const entry = this.getEntry(normalized);
+
+    if (entry.canDelete !== true) {
+      throw new VfsError(
+        FileSystemError.NoPermissions,
+        `Deletion is not allowed for path: ${path}`,
+      );
+    }
 
     if (entry.type === FSNodeType.Directory) {
       const searchPrefix = normalized === '/' ? normalized : `${normalized}/`;
@@ -273,9 +282,16 @@ export class MemoryFileSystem implements IFileSystemProvider {
 
       if (hasChildren && recursive) {
         const toDelete = new Set<string>();
-        for (const key of this.store.keys()) {
-          if (key.startsWith(searchPrefix)) {
-            toDelete.add(key);
+        for (const [path, entry] of this.store.entries()) {
+          if (path.startsWith(searchPrefix)) {
+            if (entry.canDelete !== true) {
+              throw new VfsError(
+                FileSystemError.NoPermissions,
+                `Deletion is not allowed for path: ${path}`,
+              );
+            }
+
+            toDelete.add(path);
           }
         }
         toDelete.forEach((key) => this.store.delete(key));
@@ -284,7 +300,6 @@ export class MemoryFileSystem implements IFileSystemProvider {
 
     this.store.delete(normalized);
     this.events.emit({ type: 'delete', path: normalized });
-    return Promise.resolve();
   }
 
   /**
@@ -298,7 +313,7 @@ export class MemoryFileSystem implements IFileSystemProvider {
     const normalizedOld = PathUtils.normalize(oldPath);
     const normalizedNew = PathUtils.normalize(newPath);
 
-    if (normalizedOld === normalizedNew) return Promise.resolve();
+    if (normalizedOld === normalizedNew) return;
 
     // PROTECTION: Cannot move folder inside itself or its subfolders
     // /A -> /A/B (not allowed)
@@ -353,6 +368,13 @@ export class MemoryFileSystem implements IFileSystemProvider {
         const relativePath = oldKey.substring(searchPrefix.length);
         const newKey = PathUtils.join(newPrefix, relativePath);
 
+        if (childEntry.canDelete !== true) {
+          throw new VfsError(
+            FileSystemError.NoPermissions,
+            `Deletion is not allowed for path: ${oldKey}`,
+          );
+        }
+
         this.store.delete(oldKey);
         this.store.set(newKey, {
           ...childEntry,
@@ -361,6 +383,12 @@ export class MemoryFileSystem implements IFileSystemProvider {
       }
 
       // Moving the directory itself
+      if (entry.canDelete !== true) {
+        throw new VfsError(
+          FileSystemError.NoPermissions,
+          `Deletion is not allowed for path: ${normalizedOld}`,
+        );
+      }
       this.store.delete(normalizedOld);
       this.store.set(normalizedNew, {
         ...entry,
@@ -368,6 +396,12 @@ export class MemoryFileSystem implements IFileSystemProvider {
       });
     } else {
       // Moving the file
+      if (entry.canDelete !== true) {
+        throw new VfsError(
+          FileSystemError.NoPermissions,
+          `Deletion is not allowed for path: ${normalizedOld}`,
+        );
+      }
       this.store.delete(normalizedOld);
       this.store.set(normalizedNew, {
         ...entry,
@@ -380,7 +414,6 @@ export class MemoryFileSystem implements IFileSystemProvider {
       path: normalizedOld,
       newPath: normalizedNew,
     });
-    return Promise.resolve();
   }
 
   /**
