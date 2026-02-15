@@ -1,18 +1,12 @@
 import { zodAutomergeFileName } from '@shared/lib/automergeAdapter';
 import { zodIs } from '@shared/lib/validateZodScheme';
-import type { FSNodeStat, FSNodeType } from '@shared/lib/virtualFileSystem';
+import type { FSNodeStat } from '@shared/lib/virtualFileSystem';
 import { VirtualFileSystem, PathUtils } from '@shared/lib/virtualFileSystem';
 import { MemoryFileSystem } from '@shared/lib/virtualFileSystem/MemoryFileSystem';
 import { OPFSName } from '../directories';
 import { createGlobalState } from '@vueuse/core';
 import { WebFileSystem } from '@shared/lib/vfsProviders/WebFileSystem';
-import {
-  distinctUntilChanged,
-  finalize,
-  map,
-  Observable,
-  shareReplay,
-} from 'rxjs';
+import { distinctUntilChanged, map, Observable, shareReplay } from 'rxjs';
 import { isEqual, sortBy } from 'es-toolkit';
 import { defineQuery } from '@shared/lib/observableQuery';
 import { defineCacheObservable } from '@shared/lib/defineCacheObservable';
@@ -23,11 +17,6 @@ export interface ReadDirectoryOptions {
 
 const setupFileSystemService = () => {
   const vfs = new VirtualFileSystem();
-
-  const directoryContent$Cache = new Map<
-    string,
-    Observable<[string, FSNodeType][]>
-  >();
 
   const directoryContent$ = defineCacheObservable(
     ({
@@ -58,7 +47,6 @@ const setupFileSystemService = () => {
       }).pipe(
         distinctUntilChanged((a, b) => isEqual(a, b)),
         shareReplay({ bufferSize: 1, refCount: true }),
-        finalize(() => directoryContent$Cache.delete(path)),
         map((list) => {
           if (hideAutomergeFiles) {
             return list.filter(([name]) => !zodIs(name, zodAutomergeFileName));
@@ -66,6 +54,31 @@ const setupFileSystemService = () => {
           return list;
         }),
       ),
+  );
+
+  const fsNodeStat$ = defineCacheObservable(({ path }: { path: string }) =>
+    new Observable<FSNodeStat>((subscriber) => {
+      const fetchStat = async () => {
+        try {
+          const stat = await vfs.stat(path);
+
+          subscriber.next(stat);
+        } catch (err) {
+          subscriber.error(err);
+        }
+      };
+
+      void fetchStat();
+
+      const unwatch = vfs.watch(path, () => fetchStat());
+
+      return () => {
+        unwatch();
+      };
+    }).pipe(
+      distinctUntilChanged((a, b) => isEqual(a, b)),
+      shareReplay({ bufferSize: 1, refCount: true }),
+    ),
   );
 
   const unmount = (path: string) => {
@@ -110,6 +123,8 @@ const setupFileSystemService = () => {
     createDirectory,
     directoryContent$,
     directoryContent: defineQuery(directoryContent$),
+    fsNodeStat$,
+    fsNodeStat: defineQuery(fsNodeStat$),
     mountFSDirectoryHandle,
     move,
     delete: remove,
