@@ -112,7 +112,7 @@ const authorizedRequest = async <R>(
 };
 
 // Схемы данных
-const fileSchema = z.object({
+const zodGDriveFile = z.object({
   id: z.string(),
   name: z.string(),
   mimeType: z.string(),
@@ -120,10 +120,17 @@ const fileSchema = z.object({
   createdTime: z.optional(z.string()),
   modifiedTime: z.optional(z.string()),
   parents: z.optional(z.array(z.string())),
+  capabilities: z.optional(
+    z.object({
+      canTrash: z.optional(z.boolean()),
+    }),
+  ),
 });
 
+export type GDriveFile = z.output<typeof zodGDriveFile>;
+
 const listResponseSchema = z.object({
-  files: z.optional(z.array(fileSchema)),
+  files: z.optional(z.array(zodGDriveFile)),
   nextPageToken: z.optional(z.string()),
 });
 
@@ -138,7 +145,7 @@ const list = async (
     q,
     spaces,
     fetchAll = false,
-    fields = 'nextPageToken, files(id, name, mimeType, size, createdTime, modifiedTime, parents)',
+    fields = 'nextPageToken,files(id,name,mimeType,size,createdTime,modifiedTime,parents,capabilities(canTrash))',
   }: ListParams,
 ) => {
   const fetchPage = async (token?: string) => {
@@ -165,7 +172,7 @@ const list = async (
 
   // Логика автоматической пагинации
   let currentPageToken = pageToken;
-  let allFiles: z.infer<typeof fileSchema>[] = [];
+  let allFiles: z.infer<typeof zodGDriveFile>[] = [];
 
   do {
     const { result } = await fetchPage(currentPageToken);

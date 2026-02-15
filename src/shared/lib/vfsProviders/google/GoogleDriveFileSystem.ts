@@ -15,20 +15,11 @@ import {
   VfsError,
 } from '../../virtualFileSystem';
 import { dayjs } from '@shared/lib/dayjs';
+import type { GDriveFile } from '@shared/lib/googleDrive/simplifiedAPI';
 
 const GOOGLE_MIME_FOLDER = 'application/vnd.google-apps.folder';
 /** Internal identifier for the virtual folder "Shared With Me" */
 const SHARED_WITH_ME_ID = 'sharedWithMe';
-
-interface DriveEntry {
-  id: string;
-  name: string;
-  mimeType: string;
-  size?: string;
-  createdTime?: string;
-  modifiedTime?: string;
-  parents?: string[];
-}
 
 /** Google Drive file system mount modes */
 export enum GoogleDriveMount {
@@ -99,7 +90,7 @@ export class GoogleDriveFileSystem implements IFileSystemProvider {
   /**
    * Resolves a VFS path to a Google Drive file/folder ID.
    */
-  private async resolvePath(path: string): Promise<DriveEntry> {
+  private async resolvePath(path: string): Promise<GDriveFile> {
     const normalized = PathUtils.normalize(path);
 
     // Корневая директория
@@ -118,7 +109,7 @@ export class GoogleDriveFileSystem implements IFileSystemProvider {
 
     const parts = normalized.split('/').filter((p) => p.length > 0);
     let currentId = this.rootId;
-    let currentEntry: DriveEntry | undefined;
+    let currentEntry: GDriveFile | undefined;
 
     // Используем .entries() для безопасного доступа к индексу и значению
     for (const [index, partName] of parts.entries()) {
@@ -140,8 +131,7 @@ export class GoogleDriveFileSystem implements IFileSystemProvider {
         spaces: [this.space],
       });
 
-      // Безопасный доступ к первому элементу массива с проверкой
-      const file = result.files?.[0];
+      const file = result.files?.at(0);
 
       if (!file) {
         throw new VfsError(
@@ -179,14 +169,11 @@ export class GoogleDriveFileSystem implements IFileSystemProvider {
       if (path === '/' || path === '') {
         return {
           type: FSNodeType.Directory,
-          size: 0,
-          creationTime: Date.now(),
-          modificationTime: Date.now(),
+          canDelete: false,
         };
       }
 
       const entry = await this.resolvePath(path);
-      const isDir = entry.mimeType === GOOGLE_MIME_FOLDER;
 
       // Safe conversion of size (may be undefined)
       const size = entry.size ? parseInt(entry.size, 10) : undefined;
@@ -200,16 +187,21 @@ export class GoogleDriveFileSystem implements IFileSystemProvider {
         : undefined;
 
       return {
-        type: isDir ? FSNodeType.Directory : FSNodeType.File,
+        type:
+          entry.mimeType === GOOGLE_MIME_FOLDER
+            ? FSNodeType.Directory
+            : FSNodeType.File,
         size,
         creationTime,
         modificationTime,
+        canDelete: entry.capabilities?.canTrash,
       };
     } catch (e) {
       if (e instanceof VfsError) throw e;
       throw new VfsError(
         FileSystemError.FileNotFound,
         `Stat failed for ${path}`,
+        e,
       );
     }
   }
@@ -253,7 +245,7 @@ export class GoogleDriveFileSystem implements IFileSystemProvider {
     const fileName = PathUtils.basename(path);
 
     // 1. Check if file exists
-    let existingEntry: DriveEntry | null = null;
+    let existingEntry: GDriveFile | null = null;
     try {
       existingEntry = await this.resolvePath(path);
     } catch (e) {
@@ -431,6 +423,15 @@ export class GoogleDriveFileSystem implements IFileSystemProvider {
    */
   public async delete(path: string, recursive: boolean): Promise<void> {
     if (path === '/') throw new Error('Cannot delete root');
+
+    const { canDelete } = await this.stat(path);
+
+    if (canDelete !== true) {
+      throw new VfsError(
+        FileSystemError.NoPermissions,
+        `Deletion is not allowed for path: ${path}`,
+      );
+    }
 
     const entry = await this.resolvePath(path);
 
