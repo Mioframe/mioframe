@@ -255,26 +255,30 @@ export class VirtualFileSystem {
     return provider.createDirectory(relativePath);
   }
 
+  async #unlockedDelete(path: string, recursive: boolean = false) {
+    const { provider, relativePath } = this.resolve(path);
+
+    // Проверяем флаг canDelete перед удалением
+    const stat = await provider.stat(relativePath);
+    if (stat.canDelete !== true) {
+      throw new VfsError(
+        FileSystemError.NoPermissions,
+        `Deletion is not allowed for path: ${path}`,
+      );
+    }
+
+    return provider.delete(relativePath, recursive);
+  }
+
   /**
    * Deletes a file or directory.
    * @param path Absolute path.
    * @param recursive If true, deletes non-empty directories recursively.
    */
   public async delete(path: string, recursive: boolean = false): Promise<void> {
-    return this.locks.request(path, async () => {
-      const { provider, relativePath } = this.resolve(path);
-
-      // Проверяем флаг canDelete перед удалением
-      const stat = await provider.stat(relativePath);
-      if (stat.canDelete !== true) {
-        throw new VfsError(
-          FileSystemError.NoPermissions,
-          `Deletion is not allowed for path: ${path}`,
-        );
-      }
-
-      return provider.delete(relativePath, recursive);
-    });
+    return this.locks.request(path, async () =>
+      this.#unlockedDelete(path, recursive),
+    );
   }
 
   /**
@@ -341,7 +345,7 @@ export class VirtualFileSystem {
         overwrite: true,
       });
 
-      await this.delete(sourcePath);
+      await this.#unlockedDelete(sourcePath);
     } else if (sourceStat.type === FileTypeEnum.Directory) {
       // 1. Создаем папку в целевом месте
       try {
@@ -366,7 +370,7 @@ export class VirtualFileSystem {
       }
 
       // 4. Удаляем пустую исходную папку
-      await this.delete(sourcePath);
+      await this.#unlockedDelete(sourcePath);
     }
   }
 
