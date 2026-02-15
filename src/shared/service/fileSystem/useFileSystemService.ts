@@ -98,8 +98,7 @@ const setupFileSystemService = () => {
 
   void mountOpfs();
 
-  const move = (oldPath: string, newPath: string) =>
-    vfs.rename(oldPath, newPath);
+  const move = (oldPath: string, newPath: string) => vfs.move(oldPath, newPath);
 
   const remove = (path: string, recursive?: boolean) =>
     vfs.delete(path, recursive);
