@@ -73,6 +73,7 @@ export class MemoryFileSystem implements IFileSystemProvider {
       size: entry.size,
       creationTime: entry.creationTime,
       modificationTime: entry.modificationTime,
+      canDelete: normalized !== '/',
     });
   }
 
