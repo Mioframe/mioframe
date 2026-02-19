@@ -14,12 +14,9 @@
 import { computed, ref, watchEffect } from 'vue';
 import { ContextMenu } from '../Menu';
 import TreeList from './TreeList.vue';
-import { createLogger } from '../../lib/logger';
 import { onInteractionOutside } from '../../lib/onInteractionOutside';
 import type { MaybeElement } from '@vueuse/core';
 import { ButtonGroup } from '../ButtonGroup';
-
-const { debug } = createLogger('TreeItem');
 
 const props = defineProps<{
   item: T;
@@ -66,7 +63,6 @@ onInteractionOutside(
 );
 
 const onContextMenu = ({ clientX, clientY }: MouseEvent) => {
-  debug('onContextMenu', contextMenuPosition.value);
   contextMenuPosition.value = contextMenuPosition.value
     ? undefined
     : {
