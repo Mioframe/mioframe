@@ -35,13 +35,27 @@ pnpm dev
 ```
 
 ### Running Tests
-The project uses Cypress for end-to-end testing:
+The project uses Cypress for end-to-end testing and Vitest for unit testing:
+
+#### End-to-End Tests (Cypress)
 ```bash
 # Open Cypress test runner GUI
 pnpm cy:open
 
 # Run tests with interactive mode
 pnpm cy:open:dev
+```
+
+#### Unit Tests (Vitest)
+```bash
+# Run all unit tests
+npm run test:run
+
+# Interactive test runner
+npm run test
+
+# Generate coverage report
+npm run test:coverage
 ```
 
 ## Architecture Highlights
@@ -64,7 +78,20 @@ pnpm cy:open:dev
 
 ## Testing Strategy
 
-The application uses Cypress for end-to-end testing. Tests are organized by feature areas:
+The application uses both Cypress for end-to-end testing and Vitest for unit testing. Tests are organized by feature areas:
+
+### End-to-End Tests
+- Cypress tests for full user flows and integration scenarios
 - Database functionality tests in `cypress/e2e/databaseDocument/`
 - Property-related tests
 - View management tests
+
+### Unit Tests
+- Vitest framework for unit testing of individual components, functions and services
+- Located alongside the code in `__tests__/` folders following the same directory structure as source files
+- Run with `npm run test:run` command
+
+To add new unit tests:
+1. Create a `__tests__/` folder next to your component/service that needs testing
+2. Add `.test.ts` files inside this folder containing your unit tests
+3. Use the existing test patterns from other test files as reference
