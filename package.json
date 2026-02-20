@@ -13,7 +13,10 @@
     "build": "vue-tsc -b && vite build",
     "preview": "vite preview",
     "cy:open": "cypress open",
-    "cy:open:dev": "cypress open --config baseUrl=https://localhost:5173/"
+    "cy:open:dev": "cypress open --config baseUrl=https://localhost:5173/",
+    "test": "vitest",
+    "test:run": "vitest run",
+    "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
     "@automerge/automerge": "^3.2.3",
@@ -57,6 +60,7 @@
     "@faker-js/faker": "^10.3.0",
     "@sentry/vite-plugin": "^4.9.1",
     "@testing-library/cypress": "^10.1.0",
+    "@testing-library/jest-dom": "^6.9.1",
     "@total-typescript/ts-reset": "^0.6.1",
     "@types/gapi": "^0.0.47",
     "@types/gapi.client.drive-v3": "^0.0.5",
@@ -69,12 +73,14 @@
     "@vite-pwa/assets-generator": "^1.0.2",
     "@vitejs/plugin-basic-ssl": "^2.1.4",
     "@vitejs/plugin-vue": "^6.0.4",
+    "@vitest/coverage-v8": "^4.0.18",
     "@vue/devtools-api": "^8.0.6",
     "@vyachean/eslint-config": "^2.1.0",
     "cypress": "^15.10.0",
     "cypress-vite": "^1.8.0",
     "eslint": "^9.39.2",
     "eslint-plugin-compat": "^6.1.0",
+    "happy-dom": "^20.6.3",
     "postcss": "^8.5.6",
     "postcss-custom-css-units": "^0.1.0",
     "postcss-import": "^16.1.1",
@@ -90,6 +96,7 @@
     "vite-plugin-pwa": "^1.2.0",
     "vite-plugin-top-level-await": "^1.6.0",
     "vite-plugin-wasm": "^3.5.0",
+    "vitest": "^4.0.18",
     "vue-component-type-helpers": "^3.2.4",
     "vue-tsc": "^3.2.4"
   },
