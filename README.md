@@ -55,6 +55,20 @@ pnpm build
 pnpm cy:open
 ```
 
+## Linting
+
+This project uses ESLint for code linting and formatting. The following commands are available:
+
+```bash
+# Run linter on all source files
+pnpm run lint
+
+# Run linter and automatically fix issues where possible
+pnpm run lint:fix
+```
+
+The linting configuration is based on a custom setup that includes rules for JavaScript, TypeScript, and Vue files.
+
 ## Implemented Features and Plans
 
 - [x] Using Conflict-Free Replicated Data Types (CRDT)
