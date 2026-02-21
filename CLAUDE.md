@@ -49,13 +49,13 @@ pnpm cy:open:dev
 #### Unit Tests (Vitest)
 ```bash
 # Run all unit tests
-npm run test:run
+pnpm test:run
 
 # Interactive test runner
-npm run test
+pnpm test
 
 # Generate coverage report
-npm run test:coverage
+pnpm test:coverage
 ```
 
 ## Architecture Highlights
@@ -89,7 +89,7 @@ The application uses both Cypress for end-to-end testing and Vitest for unit tes
 ### Unit Tests
 - Vitest framework for unit testing of individual components, functions and services
 - Located alongside the code in `__tests__/` folders following the same directory structure as source files
-- Run with `npm run test:run` command
+- Run with `pnpm test:run` command
 
 To add new unit tests:
 1. Create a `__tests__/` folder next to your component/service that needs testing
