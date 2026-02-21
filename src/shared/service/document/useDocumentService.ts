@@ -14,6 +14,7 @@ import {
 import type { DocHandleChangePayload } from '@automerge/automerge-repo';
 import type { UnknownRecord } from 'type-fest';
 import {
+  auditTime,
   distinctUntilChanged,
   filter,
   map,
@@ -39,12 +40,18 @@ const setupDocumentService = () => {
     }) =>
       getRepo$(directoryPath).pipe(
         filter(isNotNil),
+        auditTime(100),
         switchMap((repo) => {
           return new Observable<AMDocHandle | undefined>((subscribe) => {
             if (documentId) {
-              void repo.find<UnknownRecord>(documentId).then((handle) => {
-                subscribe.next(handle);
-              });
+              void repo
+                .find<UnknownRecord>(documentId)
+                .then((handle) => {
+                  subscribe.next(handle);
+                })
+                .catch(() => {
+                  subscribe.next(undefined);
+                });
             } else {
               subscribe.next(undefined);
             }
