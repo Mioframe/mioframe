@@ -53,8 +53,7 @@ export interface ReadOnlyDirectoryGDriveEntry extends ReadonlyDirectoryFSEntry {
 }
 
 export interface DirectoryGDriveEntry
-  extends ReadOnlyDirectoryGDriveEntry,
-    WritableDirectoryFSEntry {}
+  extends ReadOnlyDirectoryGDriveEntry, WritableDirectoryFSEntry {}
 
 export interface FileGDriveEntry extends FileFSEntry {
   // gDrive: AdvancedGDrive;
