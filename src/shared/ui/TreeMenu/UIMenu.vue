@@ -59,10 +59,10 @@ const onLoading = (loading: boolean) => {
 <template>
   <section class="menu">
     <TreeIterable
-      :collection
-      :active-item
-      :active-key
-      :filter
+      :collection="collection"
+      :active-item="activeItem"
+      :active-key="activeKey"
+      :filter="filter"
       @click="onClick"
       @update:loading="onLoading"
     >

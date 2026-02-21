@@ -10,7 +10,7 @@ import {
 
 export const partialKeyToFileName = (
   key: PartialStorageKey,
-  { withExtension = true }: { withExtension: boolean } = {
+  { withExtension = true }: { withExtension?: boolean } = {
     withExtension: true,
   },
 ): PartialAutomergeFileName | undefined => {

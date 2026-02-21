@@ -19,7 +19,7 @@ const progress = ref(0.33);
       />
     </div>
 
-    <MDCircularProgressIndicator :progress />
+    <MDCircularProgressIndicator :progress="progress" />
   </div>
 </template>
 
