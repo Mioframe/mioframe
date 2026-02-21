@@ -76,8 +76,8 @@ const activeKey2 = toRef(() => props.activeKey);
       :item-key="key"
       :item="item"
       :active-key="activeKey2"
-      :active-item
-      :filter
+      :active-item="activeItem"
+      :filter="filter"
       @click="onClick"
     >
       <template #item="scopeItem">
