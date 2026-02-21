@@ -10,6 +10,13 @@ const generateKey = (v: unknown): string =>
 
 export const defineCacheObservable = <Q extends unknown[], T>(
   constructor: (...q: Q) => Observable<T>,
+  {
+    onCacheDelete,
+    onCacheSet,
+  }: {
+    onCacheDelete?: (...q: Q) => unknown;
+    onCacheSet?: (...q: Q) => unknown;
+  } = {},
 ) => {
   const $Cache = new Map<string, Observable<T>>();
 
@@ -21,10 +28,14 @@ export const defineCacheObservable = <Q extends unknown[], T>(
     if (!$) {
       $ = constructor(...q).pipe(
         distinctUntilChanged(),
-        finalize(() => $Cache.delete(cacheKey)),
+        finalize(() => {
+          onCacheDelete?.(...q);
+          return $Cache.delete(cacheKey);
+        }),
         shareReplay({ bufferSize: 1, refCount: true }),
       );
 
+      onCacheSet?.(...q);
       $Cache.set(cacheKey, $);
     }
 
