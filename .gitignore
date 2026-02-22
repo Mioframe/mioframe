@@ -25,3 +25,4 @@ dist-ssr
 temp/
 *.local.*
 tsconfig.*.tsbuildinfo
+coverage/
