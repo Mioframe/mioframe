@@ -4,19 +4,14 @@ description: Generates high-quality Vitest unit tests for TypeScript code, adher
 argument-hint: [file_path]
 ---
 
-Please generate comprehensive Vitest unit tests for the TypeScript file located at `$0`.
+Please generate comprehensive Vitest unit tests for the TypeScript file located exactly at `$0`.
 
-### Technical Guidelines:
-1. **Framework**: Use Vitest syntax (`import { describe, it, expect, vi } from 'vitest'`).
-2. **Type Safety**: 
-   - Ensure all test data, mocks, and spies are strictly typed using TypeScript.
-   - Use `vi.mocked()` for type-safe interaction with mocked dependencies.
-   - If applicable, include type-level tests using `expectTypeOf` or `assertType` to verify complex TypeScript utility types.
-3. **AAA Pattern (Arrange, Act, Assert)**:
-   - **Arrange**: Setup the environment, initialize the System Under Test (SUT), and prepare typed mocks.
-   - **Act**: Execute the function or method being tested.
-   - **Assert**: Verify the results match expectations using Vitest's matchers like `toBe`, `toEqual`, or `toMatchSnapshot`.
-4. **Mocking**: Use `vi.mock()` for external modules and `vi.fn()` for function spies to ensure isolation.
-5. **Principles**: Follow **FIRST** (Fast, Independent, Repeatable, Self-Validating, Timely) and prioritize testing the **Public API** over private implementation details.
-
-Choose the appropriate mocking strategy (Mocks, Stubs, or Fakes) based on whether you need to verify behavior, provide fixed outputs, or use simplified logic.
+### CRITICAL RULES (MUST FOLLOW):
+- **READ-ONLY SOURCE**: You are STRICTLY FORBIDDEN from editing, rewriting, or modifying `$0` or any other existing source code files in the project.
+- **SINGLE FILE OUTPUT**: Create exactly ONE test file. Name it by appending `.test.ts` to the original filename (e.g., `name.test.ts`). Do not create duplicate files with different names.
+- **STRICT TYPESCRIPT**: Never ignore TypeScript typing. Do not use `any`, `as any`, or `@ts-ignore`. Use safe type transformations and ensure all mocks (`vi.mocked()`) and test data are strictly typed.
+- **RESTRICTED COMMANDS**: To run the test, use ONLY the project's standard test command (e.g., `pnpm eslint`). Do not invent or use incorrect bash scripts.
+- **FRAMEWORK & PATTERN**: Use Vitest (`import { describe, it, expect, vi } from 'vitest'`) and strictly follow the AAA (Arrange, Act, Assert) pattern.
+- **ERROR HANDLING AND CLARIFICATION**:
+If tests fail after code generation, you MUST run the `AskUserQuestion` tool to ask the developer about the correct behavior.
+DO NOT attempt to fix tests or code blindly and endlessly if the cause of the failure is unclear. Describe which test failed and the result obtained before asking.
