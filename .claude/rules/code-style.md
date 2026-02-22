@@ -3,9 +3,8 @@ paths:
   - "src/**/*.{js,ts,vue}"
 ---
 
-# Code Style Guidelines
-
-- Always use eslint for linting and code formatting.
-- Always use strong typing.
-- Always use camelCase for variable and function names.
+- Use eslint for linting and code formatting.
+  - use skill "eslint-fix" or command to run: `pnpm eslint --fix <path>`
+- Use strong typing.
+- Use camelCase for variable and function names.
 - Don't leave unused code.
