@@ -22,6 +22,8 @@ const eslintConfig = defineConfig([
     files: createGlobFileList({ ts: true, vue: true }),
     rules: {
       '@typescript-eslint/no-unnecessary-condition': 'warn',
+      'init-declarations': 'off',
+      '@typescript-eslint/init-declarations': 'error',
     },
   },
   {
