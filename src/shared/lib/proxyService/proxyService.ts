@@ -1,3 +1,10 @@
+/**
+ * Implementation of proxy service functionality that enables remote function calls and object property access.
+ *
+ * This module provides utilities for creating clients and services that can communicate across different execution contexts,
+ * allowing functions to be called remotely on a server-side object as if they were local.
+ */
+
 import { isFunction, isString, isUndefined } from 'es-toolkit';
 import { get } from 'es-toolkit/compat';
 import type { UnknownRecord } from 'type-fest';
@@ -28,6 +35,15 @@ import {
 import { zodIs } from '../validateZodScheme';
 import SuperJSON from 'superjson';
 
+/**
+ * Calls a remote function by path on the specified service.
+ *
+ * @param provider - Communication provider for sending messages
+ * @param serviceId - Identifier of the target service
+ * @param path - Path to follow to find the function (e.g., ['obj', 'method'])
+ * @param args - Arguments to pass to the remote function
+ * @returns Promise that resolves with the result of the function call or rejects with an error
+ */
 const callRemotePath = async (
   provider: Provider,
   serviceId: string,
@@ -50,6 +66,14 @@ const callRemotePath = async (
   });
 };
 
+/**
+ * Calls a function at the specified path in an object.
+ *
+ * @param target - Target record to find and execute the function on
+ * @param path - Path of properties leading to the function (e.g., ['obj', 'method'])
+ * @param args - Arguments to pass to the found function
+ * @returns Promise that resolves with the result or rejects if no function is found
+ */
 const callPath = async (
   target: UnknownRecord,
   path: string[],
@@ -63,6 +87,14 @@ const callPath = async (
   return await mbFn(...args);
 };
 
+/**
+ * Creates a proxy object that can be used to make remote calls.
+ *
+ * @param provider - Communication provider for sending messages
+ * @param serviceId - Identifier of the target service
+ * @param path - Current path in the proxy chain (used internally)
+ * @returns A proxied object that will route operations to the remote service
+ */
 const createProxy = <T extends Record<string, unknown>, Exceptions = unknown>(
   provider: Provider,
   serviceId: string,
@@ -83,8 +115,19 @@ const createProxy = <T extends Record<string, unknown>, Exceptions = unknown>(
   }) as ClientObject<T, Exceptions>;
 };
 
+/**
+ * Set of service identifiers that have confirmed they are ready.
+ */
 const serviceReadyRegister = new Set<string>();
 
+/**
+ * Waits for a service to be ready before proceeding with operations.
+ *
+ * @param provider - Communication provider for sending messages
+ * @param serviceId - Identifier of the target service
+ * @param timeout - Maximum time (in ms) to wait for readiness
+ * @returns Promise that resolves when the service is confirmed ready or rejects on timeout
+ */
 const waitServiceReady = (
   provider: Provider,
   serviceId: string,
@@ -120,11 +163,26 @@ const waitServiceReady = (
   });
 };
 
+/**
+ * Creates a transformer tuple for custom serialization/deserialization.
+ *
+ * @param name - Name of the transformer
+ * @param v - Custom transformer implementation
+ * @returns Tuple of [name, transformer] as expected by the system
+ */
 export const defineTransformer = <T, J>(
   name: string,
   v: CustomTransformer<T, J>,
 ): [string, CustomTransformer<T, J>] => [name, v];
 
+/**
+ * Creates a client that can make remote calls to a service.
+ *
+ * @param provider - Communication provider for sending messages
+ * @param serviceId - Identifier of the target service
+ * @param transformers - Optional custom transformers for data serialization/deserialization
+ * @returns A proxy object that allows remote method calls on the server-side service
+ */
 export const createClient = <T extends UnknownRecord, Exceptions = unknown>(
   provider: Provider,
   serviceId: string,
@@ -135,15 +193,21 @@ export const createClient = <T extends UnknownRecord, Exceptions = unknown>(
   return createProxy<T, Exceptions>(provider, serviceId);
 };
 
+/**
+ * Map of local functions that can be called from remote contexts.
+ */
 const localFunctions = new Map<string, AnyFunction>();
 
+/**
+ * WeakMap storing function descriptions for remote functions.
+ */
 const remoteFunctions = new WeakMap<AnyFunction, FunctionDescription>();
 
 /**
- * Создание описание функции для передачи
- * @param provider
- * @param localFunction
- * @returns
+ * Creates a description of a function for transmission over the wire.
+ *
+ * @param localFunction - The original local function
+ * @returns A description that can be serialized and sent to remote contexts
  */
 const createFunctionDescription = <F extends AnyFunction>(
   localFunction: F,
@@ -160,6 +224,9 @@ const createFunctionDescription = <F extends AnyFunction>(
   return functionDescription;
 };
 
+/**
+ * Finalization registry for cleaning up remote functions when they're garbage collected.
+ */
 const remoteFunctionsRegistry = new FinalizationRegistry(
   ({
     serviceId,
@@ -179,6 +246,14 @@ const remoteFunctionsRegistry = new FinalizationRegistry(
   },
 );
 
+/**
+ * Creates a proxy function that forwards calls to the remote service.
+ *
+ * @param provider - Communication provider for sending messages
+ * @param serviceId - Identifier of the target service
+ * @param remoteFunctionDescription - Description of the remote function to create a proxy for
+ * @returns A function that when called, will forward arguments to the remote service
+ */
 const createProxyFunction = (
   provider: Provider,
   serviceId: string,
@@ -212,6 +287,14 @@ const createProxyFunction = (
   return proxyFunction;
 };
 
+/**
+ * Sends a result message back to the requester.
+ *
+ * @param provider - Communication provider for sending messages
+ * @param serviceId - Identifier of the target service
+ * @param resultId - ID of the request that this is a response to
+ * @param result - The actual result data to send
+ */
 const sendResult = async (
   provider: Provider,
   serviceId: string,
@@ -229,6 +312,14 @@ const sendResult = async (
   provider.postMessage(resultMessage);
 };
 
+/**
+ * Sends an error message back to the requester.
+ *
+ * @param provider - Communication provider for sending messages
+ * @param serviceId - Identifier of the target service
+ * @param resultId - ID of the request that this is a response to
+ * @param error - The error object to send
+ */
 const sendError = async (
   provider: Provider,
   serviceId: string,
@@ -246,22 +337,51 @@ const sendError = async (
   provider.postMessage(resultMessage);
 };
 
+/**
+ * Map of pending requests that need to be resolved with results or errors.
+ */
 const pendingRequests = new Map<
   string,
   { resolve: (value?: unknown) => void; reject: (reason?: unknown) => void }
 >();
 
+/**
+ * Set of registered services in the current execution context.
+ */
 const serviceRegister = new Set<string>();
 
+/**
+ * SuperJSON instance configured for serialization with deduplication enabled.
+ */
 const superJson = new SuperJSON({ dedupe: true });
 
+/**
+ * Serializes data using SuperJSON, marking it appropriately for deserialization.
+ *
+ * @param data - Data to serialize
+ * @returns Serialized representation that can be transmitted over the wire
+ */
 export const serialize = <T>(data: T) =>
   // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
   superJson.serialize(data) as SerializeJson<T>;
 
+/**
+ * Deserializes data back to its original types using SuperJSON.
+ *
+ * @param data - Data that was serialized with the corresponding serialize function
+ * @returns The deserialized value in its proper type
+ */
 export const deserialize = <T>(data: SerializeJson<T>) =>
   superJson.deserialize<T>(data);
 
+/**
+ * Creates and registers a service for handling remote calls from clients.
+ *
+ * @param provider - Communication provider for sending messages
+ * @param serviceId - Identifier for this service instance
+ * @param transformers - Optional custom transformers for data serialization/deserialization
+ * @param setup - Optional function that returns the state object to expose
+ */
 export const createService = (
   provider: Provider,
   serviceId: string,
