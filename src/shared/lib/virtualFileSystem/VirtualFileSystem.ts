@@ -3,7 +3,7 @@ import type {
   FSNodeStat,
   IFileSystemProvider,
 } from './IFileSystemProvider';
-import { FSNodeType as FileTypeEnum } from './IFileSystemProvider';
+import { FSNodeType } from './IFileSystemProvider';
 import type { VfsEvent } from './EventEmitter';
 import { EventEmitter } from './EventEmitter';
 import { PathUtils } from './PathUtils';
@@ -60,7 +60,7 @@ export class VirtualFileSystem {
    * @param locksManager Optional lock manager. If not provided, a new one is created.
    */
   constructor(locksManager?: LockManager) {
-    this.locks = locksManager || new LockManager();
+    this.locks = locksManager ?? new LockManager();
   }
 
   /**
@@ -174,8 +174,8 @@ export class VirtualFileSystem {
 
     this.mounts.set(normalizedMountPath, { provider, unwatch });
 
-    // Sort mount points: longer (more specific) paths are checked first.
-    // This is needed for correct resolution of nested mounts.
+    // Sort mounts to prioritize more specific (longer) mount points first,
+    // which is necessary for proper nested mount resolution.
     const sortedEntries = Array.from(this.mounts.entries()).sort(
       (a, b) => b[0].length - a[0].length,
     );
@@ -382,6 +382,7 @@ export class VirtualFileSystem {
    * @param sourcePath Source path of the item to move
    * @param targetPath Target path where to move the item
    */
+
   private async moveCrossProvider(
     sourcePath: string,
     targetPath: string,
@@ -391,7 +392,7 @@ export class VirtualFileSystem {
 
     const sourceStat = await source.provider.stat(source.relativePath);
 
-    if (sourceStat.type === FileTypeEnum.File) {
+    if (sourceStat.type === FSNodeType.File) {
       const rawContent = await source.provider.readFile(source.relativePath);
       await target.provider.writeFile(target.relativePath, rawContent, {
         create: true,
@@ -399,15 +400,14 @@ export class VirtualFileSystem {
       });
 
       await this.#unlockedDelete(sourcePath);
-    } else if (sourceStat.type === FileTypeEnum.Directory) {
+    } else if (sourceStat.type === FSNodeType.Directory) {
       // 1. Create directory in target location
       try {
         await target.provider.createDirectory(target.relativePath);
-      } catch (e: unknown) {
-        const err = e;
+      } catch (e) {
         // Ignore error if directory already exists (merge strategy)
-        if (!(err instanceof VfsError)) throw e;
-        if (err.code !== FileSystemError.FileExists) throw e;
+        if (!(e instanceof VfsError) || e.code !== FileSystemError.FileExists)
+          throw e;
       }
 
       // 2. Read source directory contents
@@ -437,7 +437,7 @@ export class VirtualFileSystem {
     try {
       await this.stat(path);
       return true;
-    } catch (e) {
+    } catch (e: unknown) {
       if (e instanceof VfsError && e.code === FileSystemError.FileNotFound)
         return false;
       throw e;
