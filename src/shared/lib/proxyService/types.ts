@@ -3,6 +3,8 @@
  *
  * This module defines all TypeScript types used in the proxyService implementation
  * which enables remote function calls and object property access across different execution contexts.
+ *
+ * @module ProxyServiceTypes
  */
 
 import type { Asyncify, UnknownRecord } from 'type-fest';
@@ -11,6 +13,9 @@ import type { SuperJSONResult } from 'superjson';
 
 /**
  * Type representing any function with arbitrary parameters and return value
+ *
+ * Note: This type assertion is used to represent functions that may have various parameter and return types.
+ * The 'any' types are necessary for flexible compatibility within the proxy system but should be handled carefully in user code.
  */
 export type AnyFunction = (...param: any[]) => any;
 
@@ -28,6 +33,9 @@ export type IgnoreTransform = { [IGNORE_TRANSFORM_SYMBOL]: true };
  * ClientObject represents a proxy object that can make remote calls.
  * It provides typed access to functions and properties on the server-side objects.
  *
+ * This type is used for creating proxies that route operations to a remote service.
+ * The generic parameters allow for proper typing of both regular values and special exception types.
+ *
  * @typeParam T - The type of the target record
  * @typeParam Exceptions - Types that should not be transformed (remain as-is)
  */
@@ -43,6 +51,9 @@ export type ClientObject<
 /**
  * Type for handling values within a ClientObject structure.
  *
+ * This helper type recursively processes the types of properties in a ClientObject,
+ * ensuring proper transformation of nested structures while preserving exception types.
+ *
  * @typeParam T - The type of the value being processed
  * @typeParam Exceptions - Types that should not be transformed (remain as-is)
  */
@@ -57,6 +68,8 @@ type ClientValue<T, Exceptions = unknown> = T extends Exceptions
 /**
  * Zod schema for function descriptions.
  * Used to validate that a value matches the expected structure of a remote function description.
+ *
+ * Note: This assertion is needed for Zod validation but can be considered safe as it's strictly typed.
  */
 export const zodFunctionDescription = z.object({
   functionId: z.string(),
@@ -64,6 +77,9 @@ export const zodFunctionDescription = z.object({
 
 /**
  * Type representing information about a remote function.
+ *
+ * This type describes the metadata needed to identify and route calls to functions
+ * that have been exposed across execution contexts.
  *
  * @typeParam F - The type of the original function
  */
@@ -82,6 +98,9 @@ const zodMessage = z.object({
 
 /**
  * Creates a Zod schema for serialized data that can be sent over the wire.
+ *
+ * This helper function creates schemas for validating serialized data structures
+ * that are transmitted between different execution contexts.
  *
  * @param zodJson - Optional Zod schema to validate the JSON data
  * @returns Zod schema for serialized data with JSON and metadata
@@ -145,6 +164,9 @@ export type CallFunctionMessage = z.output<typeof zodCallFunctionMessage>;
 
 /**
  * Interface for communication providers that handle messaging between contexts.
+ *
+ * This interface abstracts the underlying messaging mechanism, allowing different
+ * execution environments (browser, Node.js, worker) to communicate through a common contract.
  */
 export interface Provider {
   /**
@@ -241,6 +263,9 @@ export type DeserializeJson<T extends SerializeJson> = T[SERIALIZE_BRAND];
 /**
  * Interface describing custom transformers that handle serialization/deserialization of special objects.
  *
+ * This interface defines how custom data types should be serialized and deserialized when transmitted
+ * across execution contexts, enabling support for complex objects beyond basic JavaScript primitives.
+ *
  * @typeParam T - The original type being transformed
  * @typeParam J - The JSON representation for serialization
  */
@@ -271,6 +296,9 @@ export type CustomTransformer<T = unknown, J = unknown> = {
 
 /**
  * Type representing a transformer in array form [name, transformer]
+ *
+ * This tuple format enables registration of custom transformers with names that can be used
+ * to identify and manage serialization/deserialization behavior.
  *
  * @typeParam T - The original type being transformed
  * @typeParam J - The JSON representation for serialization
