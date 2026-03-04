@@ -5,5 +5,5 @@
  * enabling communication between different execution contexts via remote function calls.
  */
 
-export { createClient, createService } from './proxyService';
+export { createClient, createService, defineTransformer } from './proxyService';
 export type { ClientObject } from './types';

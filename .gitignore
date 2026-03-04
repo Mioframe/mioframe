@@ -26,3 +26,4 @@ temp/
 *.local.*
 tsconfig.*.tsbuildinfo
 coverage/
+.sisyphus/
