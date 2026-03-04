@@ -1,6 +1,6 @@
 import type { UnknownRecord } from 'type-fest';
 import { DomainError } from '../error';
-import { defineTransformer } from '../proxyService/proxyService';
+import { defineTransformer } from '../proxyService';
 import type { ClientObject } from '../proxyService';
 import { VfsError } from '../virtualFileSystem';
 

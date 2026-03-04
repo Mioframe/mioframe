@@ -24,7 +24,7 @@ import type {
   RemoveFunctionMessage,
   ResultMessage,
   SerializeJson,
-  Transformer,
+  TransformerRegistration,
 } from './types';
 import {
   zodCallFunctionMessage,
@@ -106,16 +106,19 @@ const callPath = async (
  * @param path - Current path in the proxy chain (used internally)
  * @returns A proxied object that will route operations to the remote service
  */
-const createProxy = <T extends Record<string, unknown>, Exceptions = unknown>(
+const createProxy = <T extends Record<string, unknown>, Exceptions = never>(
   provider: Provider,
   serviceId: string,
   path: string[] = [],
 ): ClientObject<T, Exceptions> => {
-  // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
-  return new Proxy((() => ({})) as object, {
+  const target: object = () => ({});
+
+  // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- Proxy construction for ClientObject requires assertion
+  return new Proxy(target, {
     get: (_target, prop) => {
       if (isString(prop)) {
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-return
+        // createProxy recursively builds nested proxies based on path
+
         return createProxy(provider, serviceId, [...path, prop]);
       }
       return undefined;
@@ -156,21 +159,22 @@ const waitServiceReady = (
     if (serviceReadyRegister.has(serviceId)) {
       resolve();
     } else {
-      const timeoutId = setTimeout(() => {
-        reject(new Error(`The service was not ready in ${timeout} ms`));
-      }, timeout);
-
       const handler = ({ data }: { data: unknown }) => {
-        if (zodIs(data, zodReadyMessage)) {
+        if (zodIs(data, zodReadyMessage) && data.serviceId === serviceId) {
           clearTimeout(timeoutId);
+          provider.removeEventListener('message', handler);
 
           serviceReadyRegister.add(serviceId);
 
           resolve();
-
-          provider.removeEventListener('message', handler);
         }
       };
+
+      const timeoutId = setTimeout(() => {
+        provider.removeEventListener('message', handler);
+        reject(new Error(`The service was not ready in ${timeout} ms`));
+      }, timeout);
+
       provider.addEventListener('message', handler);
       provider.postMessage(readyQuestion);
     }
@@ -178,19 +182,32 @@ const waitServiceReady = (
 };
 
 /**
- * Creates a transformer tuple for custom serialization/deserialization.
+ * Creates a transformer registration closure for custom serialization/deserialization.
  *
- * This utility function helps create properly typed tuples that can be registered with SuperJSON
+ * This utility function helps register custom types with SuperJSON
  * to handle special data types during cross-context communication.
  *
  * @param name - Name of the transformer
  * @param v - Custom transformer implementation
- * @returns Tuple of [name, transformer] as expected by the system
+ * @returns A closure that can be called with SuperJSON and Provider to register the transformer
  */
 export const defineTransformer = <T, J>(
   name: string,
   v: CustomTransformer<T, J>,
-): [string, CustomTransformer<T, J>] => [name, v];
+): TransformerRegistration => {
+  return (superJson: SuperJSON, provider: Provider) => {
+    superJson.registerCustom(
+      {
+        isApplicable: v.isApplicable,
+        // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- Custom type validation happens internally
+        deserialize: (val) => v.deserialize(provider, val as J),
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-return, @typescript-eslint/consistent-type-assertions -- SuperJSON expects strict JSONValue, but custom transformers can return arbitrary objects
+        serialize: (val) => v.serialize(provider, val) as any,
+      },
+      name,
+    );
+  };
+};
 
 /**
  * Creates a client that can make remote calls to a service.
@@ -203,11 +220,10 @@ export const defineTransformer = <T, J>(
  * @param transformers - Optional custom transformers for data serialization/deserialization
  * @returns A proxy object that allows remote method calls on the server-side service
  */
-export const createClient = <T extends UnknownRecord, Exceptions = unknown>(
+export const createClient = <T extends UnknownRecord, Exceptions = never>(
   provider: Provider,
   serviceId: string,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- support any transformer
-  transformers?: Transformer<any, any>[],
+  transformers?: TransformerRegistration[],
 ) => {
   createService(provider, serviceId, transformers);
   return createProxy<T, Exceptions>(provider, serviceId);
@@ -237,7 +253,8 @@ const createFunctionDescription = <F extends AnyFunction>(
 ): FunctionDescription<F> => {
   const functionId = uid();
 
-  // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
+  // FunctionDescription is a branded type requiring assertion to match inferred type
+  // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- Branded type requires assertion to preserve function type
   const functionDescription: FunctionDescription<F> = {
     functionId,
   } as FunctionDescription<F>;
@@ -291,13 +308,15 @@ const createProxyFunction = (
     await waitServiceReady(provider, serviceId);
 
     return new Promise((resolve, reject) => {
+      const callId = uid();
       const callDescription: CallFunctionMessage = {
         serviceId,
-        callId: functionId,
+        callId,
+        functionId,
         args: serialize(args),
       };
 
-      pendingRequests.set(functionId, { resolve, reject });
+      pendingRequests.set(callId, { resolve, reject });
 
       provider.postMessage(callDescription);
     });
@@ -316,22 +335,20 @@ const createProxyFunction = (
 /**
  * Sends a result message back to the requester.
  *
- * This helper function formats and transmits successful results from remote operations
- * back to the calling context through the communication provider.
+ * Called from the service-side message handler after processing a call.
+ * No readiness check needed — the caller already completed the handshake before sending the call.
  *
  * @param provider - Communication provider for sending messages
  * @param serviceId - Identifier of the target service
  * @param resultId - ID of the request that this is a response to
  * @param result - The actual result data to send
  */
-const sendResult = async (
+const sendResult = (
   provider: Provider,
   serviceId: string,
   resultId: string,
   result: unknown,
 ) => {
-  await waitServiceReady(provider, serviceId);
-
   const resultMessage: ResultMessage = {
     serviceId,
     resultId,
@@ -344,15 +361,15 @@ const sendResult = async (
 /**
  * Sends an error message back to the requester.
  *
- * This helper function formats and transmits error information from remote operations
- * back to the calling context through the communication provider.
+ * Called from the service-side message handler after processing a call.
+ * No readiness check needed — the caller already completed the handshake before sending the call.
  *
  * @param provider - Communication provider for sending messages
  * @param serviceId - Identifier of the target service
  * @param resultId - ID of the request that this is a response to
  * @param error - The error object to send
  */
-const sendError = async (
+const sendError = (
   provider: Provider,
   serviceId: string,
   resultId: string,
@@ -363,8 +380,6 @@ const sendError = async (
     resultId,
     error: serialize(error),
   };
-
-  await waitServiceReady(provider, serviceId);
 
   provider.postMessage(resultMessage);
 };
@@ -397,7 +412,8 @@ const superJson = new SuperJSON({ dedupe: true });
  * @returns Serialized representation that can be transmitted over the wire
  */
 export const serialize = <T>(data: T) =>
-  // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
+  // SuperJSON returns generic SuperJSONResult, we need branded SerializeJson type
+  // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- Required to cast to branded SerializeJson type
   superJson.serialize(data) as SerializeJson<T>;
 
 /**
@@ -426,8 +442,7 @@ export const deserialize = <T>(data: SerializeJson<T>) =>
 export const createService = (
   provider: Provider,
   serviceId: string,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- support any transformer
-  transformers?: Transformer<any, any>[],
+  transformers?: TransformerRegistration[],
   setup?: () => UnknownRecord,
 ) => {
   if (serviceRegister.has(serviceId)) {
@@ -448,17 +463,8 @@ export const createService = (
     'proxyFunction',
   );
 
-  transformers?.forEach(([name, transformer]) => {
-    superJson.registerCustom(
-      {
-        isApplicable: transformer.isApplicable,
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-return -- support any
-        deserialize: (v) => transformer.deserialize(provider, v),
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-return -- support any
-        serialize: (v) => transformer.serialize(provider, v),
-      },
-      name,
-    );
+  transformers?.forEach((registerTransformer) => {
+    registerTransformer(superJson, provider);
   });
 
   const state = setup?.();
@@ -478,32 +484,33 @@ export const createService = (
       const { args, callId, path } = data;
       try {
         const result = await callPath(state, path, deserialize(args));
-        await sendResult(provider, serviceId, callId, result);
+        sendResult(provider, serviceId, callId, result);
       } catch (error) {
-        await sendError(provider, serviceId, callId, error);
+        sendError(provider, serviceId, callId, error);
       }
     } else if (
       zodIs(data, zodCallFunctionMessage) &&
       data.serviceId === serviceId
     ) {
-      const { args, callId } = data;
+      const { args, callId, functionId } = data;
 
       try {
-        const fn = localFunctions.get(callId);
+        const fn = localFunctions.get(functionId);
         if (fn) {
           const result = await fn(...deserialize(args));
-          await sendResult(provider, serviceId, callId, result);
+          sendResult(provider, serviceId, callId, result);
         } else {
-          throw new Error(`function "${callId}" not found`);
+          throw new Error(`function "${functionId}" not found`);
         }
       } catch (error) {
-        await sendError(provider, serviceId, callId, error);
+        sendError(provider, serviceId, callId, error);
       }
     } else if (zodIs(data, zodResultMessage) && data.serviceId === serviceId) {
       const { resultId, error, result } = data;
 
       const request = pendingRequests.get(resultId);
       if (request) {
+        pendingRequests.delete(resultId);
         const { reject, resolve } = request;
         if (error) {
           reject(deserialize(error));
