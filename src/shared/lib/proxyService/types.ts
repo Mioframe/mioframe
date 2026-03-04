@@ -9,7 +9,7 @@
 
 import type { Asyncify, UnknownRecord } from 'type-fest';
 import * as z from 'zod/mini';
-import type { SuperJSONResult } from 'superjson';
+import type { SuperJSONResult, SuperJSON } from 'superjson';
 
 /**
  * Type representing any function with arbitrary parameters and return value
@@ -17,17 +17,8 @@ import type { SuperJSONResult } from 'superjson';
  * Note: This type assertion is used to represent functions that may have various parameter and return types.
  * The 'any' types are necessary for flexible compatibility within the proxy system but should be handled carefully in user code.
  */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- Generic function type requires any for flexible parameter/return types
 export type AnyFunction = (...param: any[]) => any;
-
-/**
- * Symbol used to mark values that should not be transformed during serialization
- */
-const IGNORE_TRANSFORM_SYMBOL = Symbol();
-
-/**
- * Type for marking values that should be ignored during transformation processes
- */
-export type IgnoreTransform = { [IGNORE_TRANSFORM_SYMBOL]: true };
 
 /**
  * ClientObject represents a proxy object that can make remote calls.
@@ -41,8 +32,8 @@ export type IgnoreTransform = { [IGNORE_TRANSFORM_SYMBOL]: true };
  */
 export type ClientObject<
   T extends Record<string, unknown>,
-  Exceptions = unknown,
-> = T extends Exceptions
+  Exceptions = never,
+> = [T] extends [Exceptions]
   ? T
   : {
       [K in keyof T]: ClientValue<T[K], Exceptions>;
@@ -57,7 +48,7 @@ export type ClientObject<
  * @typeParam T - The type of the value being processed
  * @typeParam Exceptions - Types that should not be transformed (remain as-is)
  */
-type ClientValue<T, Exceptions = unknown> = T extends Exceptions
+type ClientValue<T, Exceptions = never> = [T] extends [Exceptions]
   ? T
   : T extends UnknownRecord
     ? ClientObject<T, Exceptions>
@@ -106,13 +97,18 @@ const zodMessage = z.object({
  * @returns Zod schema for serialized data with JSON and metadata
  */
 export const zodSerializedData = <T = unknown>(
+  // Required for Zod generic type default value
+  // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- Required for Zod generic type
   zodJson: z.ZodMiniType<T, T> = z.unknown() as z.ZodMiniType<T, T>,
 ) => {
+  // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- Required for Zod generic type
   return z.object({
+    // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- Required for Zod generic type
     json: zodJson as z.ZodMiniType<
       SuperJSONResult['json'],
       SuperJSONResult['json']
     >,
+    // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- Required for Zod generic type
     meta: z.optional(z.unknown()) as z.ZodMiniOptional<
       z.ZodMiniType<SuperJSONResult['meta'], SuperJSONResult['meta']>
     >,
@@ -155,6 +151,7 @@ export type ResultMessage = z.output<typeof zodResultMessage>;
  */
 export const zodCallFunctionMessage = z.extend(zodMessage, {
   callId: z.string(),
+  functionId: z.string(),
   args: zodSerializedData(z.array(z.unknown())),
 });
 /**
@@ -256,11 +253,6 @@ export type SerializeJson<T = unknown> = SuperJSONResult & {
 };
 
 /**
- * Type for deserializing data back to its original types
- */
-export type DeserializeJson<T extends SerializeJson> = T[SERIALIZE_BRAND];
-
-/**
  * Interface describing custom transformers that handle serialization/deserialization of special objects.
  *
  * This interface defines how custom data types should be serialized and deserialized when transmitted
@@ -295,20 +287,11 @@ export type CustomTransformer<T = unknown, J = unknown> = {
 };
 
 /**
- * Type representing a transformer in array form [name, transformer]
- *
- * This tuple format enables registration of custom transformers with names that can be used
- * to identify and manage serialization/deserialization behavior.
- *
- * @typeParam T - The original type being transformed
- * @typeParam J - The JSON representation for serialization
+ * Function that registers a custom transformer with the communication system.
+ * By using this closure pattern, we encapsulate the specific types (T, J) inside the transformer
+ * and avoid needing 'any' types in arrays of transformers.
  */
-export type Transformer<T = unknown, J = unknown> = [
-  string,
-  CustomTransformer<T, J>,
-];
-
-/**
- * Type representing an array of transformers
- */
-export type Transformers<T = unknown, J = unknown> = Transformer<T, J>[];
+export type TransformerRegistration = (
+  superJson: SuperJSON,
+  provider: Provider,
+) => void;
