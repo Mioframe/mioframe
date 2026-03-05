@@ -48,6 +48,7 @@ Beaver is a local-first Personal Data Manager built with Vue 3, TypeScript, and 
 ```bash
 pnpm dev           # Start dev server
 pnpm build         # Build for production
+pnpm lint          # Run ESLint (~2m 50s - large project)
 pnpm lint:fix      # Auto-fix linting issues
 pnpm type-check    # Run TS compiler checks
 pnpm test          # Run tests
