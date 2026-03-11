@@ -1,5 +1,4 @@
 import { describe, it, expect } from 'vitest';
-import { createApp } from 'vue';
 
 describe('Unit Tests for Beaver Project', () => {
   it('should run basic Vitest configuration correctly', () => {
