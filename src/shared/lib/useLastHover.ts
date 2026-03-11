@@ -31,6 +31,21 @@ const useGlobalHover = createGlobalState(() => {
   };
 });
 
+/**
+ * Tracks which element was hovered last in a group.
+ *
+ * Global state that tracks the most recently hovered element among multiple targets.
+ * Useful for tooltips, context menus, or hover-based UI patterns.
+ *
+ * @param rawEl - Element or ref to track
+ * @returns Computed ref that is true if this element is the last hovered
+ *
+ * @example
+ * ```ts
+ * const isLast = useLastHover(itemRef);
+ * // Multiple items - only the most recent hover returns true
+ * ```
+ */
 export const useLastHover = (rawEl: MaybeElementRef) => {
   const el = computed(() => unrefElement(rawEl));
 
