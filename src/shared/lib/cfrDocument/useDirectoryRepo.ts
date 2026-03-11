@@ -17,7 +17,6 @@ import {
   zodPartialAutomergeFileName,
 } from '../automergeAdapter';
 
-// FIXME: при удалении файла, не пропадает документ
 
 export interface DirectoryRepoState extends RepoState {}
 

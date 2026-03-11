@@ -1,9 +1,14 @@
 import { zodIs } from '../validateZodScheme';
-import { type PartialStorageKey, zodPartialAutomergeFileName, fileExtension, KEY_SEPARATE, zodPartialStorageKey } from './types';
-
+import {
+  type PartialStorageKey,
+  zodPartialAutomergeFileName,
+  fileExtension,
+  KEY_SEPARATE,
+  zodPartialStorageKey,
+} from './types';
 
 export const fileNameToPartialKey = (
-  fileName: unknown
+  fileName: unknown,
 ): PartialStorageKey | undefined => {
   const partialAutomergeFileName = zodIs(fileName, zodPartialAutomergeFileName)
     ? fileName

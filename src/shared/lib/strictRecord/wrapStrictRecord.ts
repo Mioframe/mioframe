@@ -115,8 +115,7 @@ export interface ReadonlyWrapStrictRecord<K extends string, V> {
 }
 
 export interface WrapStrictRecord<K extends string, V>
-  extends ReadonlyWrapStrictRecord<K, V>,
-    WrapStrictRecordMutation<K, V> {}
+  extends ReadonlyWrapStrictRecord<K, V>, WrapStrictRecordMutation<K, V> {}
 
 export const wrapStrictRecord = <K extends string, V>(
   collectionObj: StrictRecord<K, V>,

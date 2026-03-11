@@ -39,7 +39,7 @@ const enableList = computed(() => (isArray(enable) ? enable : [enable]));
       @click="emit('click', item)"
     >
       <div class="item__icon">
-        <slot name="icon" :item>
+        <slot name="icon" :item="item">
           <MDSymbol :name="item.iconName ?? 'fiber_manual_record'" />
         </slot>
       </div>
