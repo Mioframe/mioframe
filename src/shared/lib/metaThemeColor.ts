@@ -3,6 +3,18 @@ import { usePreferredColorScheme } from '@vueuse/core';
 import { delay } from 'es-toolkit';
 import { computed, shallowRef, watch } from 'vue';
 
+/**
+ * Sets up dynamic theme-color meta tag based on body background color.
+ *
+ * Automatically syncs the theme-color meta tag with the current body background color,
+ * reacting to color scheme changes (light/dark mode).
+ *
+ * @example
+ * ```ts
+ * // Call once in app initialization
+ * setupMetaThemeColor();
+ * ```
+ */
 export const setupMetaThemeColor = () => {
   const preferredColor = usePreferredColorScheme();
 

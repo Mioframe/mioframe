@@ -26,9 +26,25 @@ interface LiveResourceOptions<T, Q> {
 }
 
 /**
- * Обобщенная логика для реактивного ресурса.
+ * Reactive resource with auto-fetch and subscription support.
  *
- * @deprecated use useQuery with defineQuery
+ * @deprecated Use `useQuery` with `defineQuery` instead.
+ *
+ * A generalized pattern for reactive resources that need both initial fetch
+ * and ongoing subscription-based updates. Combines useAsyncState with
+ * subscription logic for real-time data.
+ *
+ * @param source - Reactive source (query/params) that triggers refetch
+ * @param options - Configuration with fetch and subscribe functions
+ * @returns Object with state, errorMessage, isLoading, isReady, and refresh
+ *
+ * @example
+ * ```ts
+ * const resource = useLiveResource(userId, {
+ *   fetch: (id) => api.getUser(id),
+ *   subscribe: (id, invalidate) => api.subscribeUser(id, invalidate)
+ * });
+ * ```
  */
 export function useLiveResource<T, Q>( // переписать клиентов с useLiveResource на useQuery
   source: WatchSource<Q>,
