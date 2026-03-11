@@ -22,7 +22,7 @@ export const databaseStateV3 = defineVersion(
 
     const newState = deepPatchJsonObject(oldSnapshot, {
       version: 3,
-      views: <DatabaseViewsMap>{},
+      views: {} satisfies DatabaseViewsMap,
     } as const);
 
     if (isEmpty(newState.views)) {

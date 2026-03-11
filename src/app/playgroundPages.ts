@@ -51,10 +51,6 @@ export const playgroundPages: PlaygroundPage[] = [
     component: () => import('@shared/ui/Toolbar/MDToolbarPlayground.vue'),
   },
   {
-    name: 'BottomSheet',
-    component: () => import('@shared/ui/Sheets/MDBottomSheetPlayground.vue'),
-  },
-  {
     name: 'BackNavigation',
     component: () =>
       import('@shared/lib/onBackNavigation/BackNavigationPlayground.vue'),
