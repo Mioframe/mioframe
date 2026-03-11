@@ -1,11 +1,11 @@
 # PROJECT KNOWLEDGE BASE
 
-**Generated:** 2026-03-04
-**Commit:** 69939be
-**Branch:** with-claude
+**Generated:** 2026-03-11
+**Commit:** ea1c6e5
+**Branch:** develop
 
 ## OVERVIEW
-Beaver is a local-first Personal Data Manager built with Vue 3, TypeScript, and Vite, utilizing Origin Private File System (OPFS) and CRDTs (Automerge). Strict Feature-Sliced Design (FSD).
+Beaver is a local-first Personal Data Manager. Built with Vue 3, TypeScript, and Vite. Uses Origin Private File System (OPFS) and Automerge (CRDT) for data consistency. Strict Feature-Sliced Design (FSD).
 
 ## STRUCTURE
 ```
@@ -24,8 +24,9 @@ Beaver is a local-first Personal Data Manager built with Vue 3, TypeScript, and 
 | Task | Location | Notes |
 |------|----------|-------|
 | UI Components | `src/shared/ui/` | Core, reusable elements (Buttons, Layout, Trees) |
-| Core utilities | `src/shared/lib/` | CRDT adapters, OPFS file system logic |
-| Custom services | `src/shared/service/` | Deviates from standard FSD `api/lib`. Contains db/docs sync |
+| CRDT / Automerge | `src/shared/lib/automerge/` | Data consistency logic |
+| File System (OPFS) | `src/shared/lib/fileSystem/` | Local storage adapters |
+| Database Services | `src/shared/service/databaseDocument/` | DB sync and management |
 | Domain logic | `src/entities/` | Database properties, items, views logic |
 | Page structure | `src/pages/` | DocumentViewPane, RepoExplorer, SplitView |
 
@@ -37,7 +38,7 @@ Beaver is a local-first Personal Data Manager built with Vue 3, TypeScript, and 
 - **Framework**: Vue 3 Composition API with `<script setup>`. `defineProps` for props.
 - **Linting**: Pre-commit ESLint is strictly enforced. Fix issues locally before pushing.
 
-## ANTI-PATTERNS (THIS PROJECT)
+## ANTI-PATTERNS
 - **NEVER** use `any` type or `as` type assertion.
 - **NEVER** ignore ESLint or TS errors (`@ts-ignore`, `eslint-disable`).
 - **NEVER** leave empty catch blocks.
