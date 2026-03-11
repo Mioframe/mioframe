@@ -1,6 +1,27 @@
 import { isPlainObject } from 'es-toolkit';
 import { keys } from './objectKeys';
 
+/**
+ * Recursively removes empty structures from an object or array.
+ *
+ * Removes:
+ * - Empty arrays
+ * - Empty plain objects
+ * - All properties that lead to empty structures
+ *
+ * @warning Mutates the original object/array in place
+ *
+ * @param data - Object, array, or primitive to process
+ * @returns The same data with empty structures removed, or undefined if the structure itself is empty
+ *
+ * @example
+ * ```ts
+ * removeEmptyStructures({ a: [], b: {} });      // returns undefined
+ * removeEmptyStructures({ a: [1], b: [] });     // returns { a: [1] }
+ * removeEmptyStructures({ a: { b: {} } });     // returns undefined
+ * removeEmptyStructures({ a: { b: { c: 1 } } }); // returns { a: { b: { c: 1 } } }
+ * ```
+ */
 export const removeEmptyStructures = <T>(data: T): T | undefined => {
   if (
     data === null ||

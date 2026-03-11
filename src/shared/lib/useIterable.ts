@@ -1,6 +1,12 @@
 import { isFunction } from 'es-toolkit/compat';
 import { isObjectLike } from './typeGuards';
 
+/**
+ * Type utilities for working with iterable structures.
+ *
+ * Provides TypeScript types and guards for working with iterable/asyncIterable
+ * objects and items with children properties.
+ */
 export type Dictionary<K, V> = Iterable<[K, V]>;
 
 export interface ItemWithChildren1<K extends string | number, T> {

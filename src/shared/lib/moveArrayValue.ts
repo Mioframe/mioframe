@@ -1,3 +1,20 @@
+/**
+ * Moves an element in an array from one index to another.
+ *
+ * Mutates the original array in place. Supports negative indices
+ * which are normalized relative to array length.
+ *
+ * @param arr - The array to modify (mutated in place)
+ * @param fromIndex - Source index (supports negative indices)
+ * @param toIndex - Destination index (supports negative indices)
+ *
+ * @example
+ * ```ts
+ * const arr = [1, 2, 3, 4, 5];
+ * moveArrayValue(arr, 0, 4); // arr becomes [2, 3, 4, 5, 1]
+ * moveArrayValue(arr, -1, 0); // arr becomes [5, 2, 3, 4, 1]
+ * ```
+ */
 export const moveArrayValue = (
   arr: unknown[],
   fromIndex: number,
