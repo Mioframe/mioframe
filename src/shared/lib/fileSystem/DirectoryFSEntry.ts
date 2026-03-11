@@ -34,8 +34,7 @@ export interface ReadonlyDirectoryFSEntry extends StaticDirectoryFSEntry {
 }
 
 export interface WritableDirectoryFSEntry
-  extends ReadonlyDirectoryFSEntry,
-    GeneralFSEntry {
+  extends ReadonlyDirectoryFSEntry, GeneralFSEntry {
   /**
    * Creates a subdirectory
    */

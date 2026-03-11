@@ -12,7 +12,7 @@ const {
   loading,
   mdSymbolName,
   type = 'default',
-  selected = false,
+  selected,
   pressed,
   shape = 'round',
   size = 'small',

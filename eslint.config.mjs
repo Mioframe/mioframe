@@ -3,10 +3,14 @@ import { config, createGlobFileList } from '@vyachean/eslint-config';
 import { dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import compat from 'eslint-plugin-compat';
+import { includeIgnoreFile } from '@eslint/compat';
 
 const currentDirectory = dirname(fileURLToPath(import.meta.url));
 
+const gitignorePath = fileURLToPath(new URL('.gitignore', import.meta.url));
+
 const eslintConfig = defineConfig([
+  includeIgnoreFile(gitignorePath, 'Imported .gitignore patterns'),
   ...config({
     tsParserOptions: {
       projectService: true,
@@ -18,6 +22,8 @@ const eslintConfig = defineConfig([
     files: createGlobFileList({ ts: true, vue: true }),
     rules: {
       '@typescript-eslint/no-unnecessary-condition': 'warn',
+      'init-declarations': 'off',
+      '@typescript-eslint/init-declarations': 'error',
     },
   },
   {
