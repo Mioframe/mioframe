@@ -16,7 +16,7 @@ import type {
 import { zodIs } from '@shared/lib/validateZodScheme';
 import DatabaseViewLayout from './DatabaseViewLayout.vue';
 import { MDCheckbox } from '@shared/ui/Checkbox';
-import { toRefs } from 'vue';
+import { ClassValue, toRefs } from 'vue';
 import type { AMDocumentId } from '@shared/lib/automerge';
 import { useDatabaseProperty } from '@entity/databaseProperty';
 
@@ -25,7 +25,7 @@ const props = defineProps<{
   documentId: AMDocumentId;
   propertyId: DatabasePropertyId;
   value: unknown;
-  class?: unknown;
+  class?: ClassValue;
   autofocus?: boolean;
 }>();
 
