@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { StyleValue } from 'vue';
-import { computed, useTemplateRef, toRefs, ref, shallowRef } from 'vue';
+import { computed, useTemplateRef, toRefs, shallowRef, toRef } from 'vue';
 import {
   useLayoutSizeClass,
   LAYOUT_CLASS,
@@ -14,6 +14,7 @@ import { MDIconButton } from '../Button';
 import { useAllowedBottomNavigation } from './allowedBottomNavigation';
 import type { Pane } from './types';
 import { isNumber, round } from 'es-toolkit';
+import { useLocalSettings } from '@entity/localSettings';
 
 const props = defineProps<{
   navigationButtons?: NavigationButton[];
@@ -108,7 +109,9 @@ setupSplitLayoutContext({
   bodyWidth,
 });
 
-const panesWidth = ref<number[]>([]);
+const { settings } = useLocalSettings();
+
+const panesWidth = toRef(() => settings.value.panesWidth);
 
 const activeResizePaneIndex = shallowRef<number>();
 
@@ -190,6 +193,9 @@ const onBodyPointerMove = (event: PointerEvent) => {
         <button
           v-if="paneIndex < showPanes.length - 1"
           class="__resize-button"
+          :class="{
+            _active: activeResizePaneIndex === paneIndex,
+          }"
           type="button"
           aria-label="resize pane"
           @pointerdown="onResizePointerDown(paneIndex, $event)"
@@ -235,8 +241,9 @@ const onBodyPointerMove = (event: PointerEvent) => {
   }
 
   .__resize-button {
-    --height: 12step;
-    --width: 2step;
+    --button-height: 8step;
+    --button-width: 1step;
+    --trigger-offset: 6step;
     position: relative;
     z-index: 1;
     display: flex;
@@ -249,12 +256,12 @@ const onBodyPointerMove = (event: PointerEvent) => {
     &::before {
       content: '';
       display: block;
-      height: calc(var(--height) + 2step);
-      width: calc(var(--width) + 2step);
+      height: calc(var(--button-height) + var(--trigger-offset));
+      width: calc(var(--button-width) + var(--trigger-offset));
       cursor: col-resize;
       position: absolute;
-      top: calc(50% - (var(--height) + 2step) / 2);
-      left: calc((var(--width) + 2step) / -2);
+      top: calc(50% - (var(--button-height) + var(--trigger-offset)) / 2);
+      left: calc((var(--button-width) + var(--trigger-offset)) / -2);
     }
 
     &::after {
@@ -263,17 +270,25 @@ const onBodyPointerMove = (event: PointerEvent) => {
       flex-grow: 1;
       border-radius: var(--md-sys-shape-corner-full);
       background-color: var(--md-sys-color-on-surface-variant);
-      height: var(--height);
-      width: var(--width);
+      height: var(--button-height);
+      width: var(--button-width);
       pointer-events: none;
       position: absolute;
-      top: calc(50% - var(--height) / 2);
-      left: calc(var(--width) / -2);
+      top: calc(50% - var(--button-height) / 2);
+      left: calc(var(--button-width) / -2);
+      transition-property: background-color, height, width, top, left;
+      transition-duration: var(--md-sys-motion-duration-short2);
     }
 
+    &._active,
     &:hover {
       &::after {
         background-color: var(--md-content-color);
+
+        height: calc(var(--button-height) + 5step);
+        width: calc(var(--button-width) + 1step);
+        top: calc(50% - (var(--button-height) + 5step) / 2);
+        left: calc((var(--button-width) + 1step) / -2);
       }
     }
   }
