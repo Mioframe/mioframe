@@ -17,7 +17,6 @@ import {
   zodPartialAutomergeFileName,
 } from '../automergeAdapter';
 
-
 export interface DirectoryRepoState extends RepoState {}
 
 export const setupDirectoryRepoState = (
