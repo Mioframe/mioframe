@@ -1,12 +1,17 @@
 import { createGlobalState } from '@vueuse/core';
 import { useIDBKeyval } from '@vueuse/integrations/useIDBKeyval';
-import { toMerged } from 'es-toolkit';
+import { z } from 'zod/v4-mini';
 
-interface SettingsStorage {
-  showPerformance: boolean;
-  showAutomergeFiles: boolean;
-  panesWidth: number[];
-}
+const zodSettingsStorage = z._default(
+  z.object({
+    showPerformance: z.optional(z.boolean()),
+    showAutomergeFiles: z.optional(z.boolean()),
+    panesWidth: z._default(z.array(z.number()), []),
+  }),
+  { panesWidth: [] },
+);
+
+type SettingsStorage = z.infer<typeof zodSettingsStorage>;
 
 export const useLocalSettings = createGlobalState(() => {
   const SETTINGS_DESCRIPTION: Record<keyof SettingsStorage, string> = {
@@ -21,18 +26,9 @@ export const useLocalSettings = createGlobalState(() => {
     panesWidth: 'Pane widths',
   };
 
-  const initialSettings: () => SettingsStorage = () => ({
-    showAutomergeFiles: false,
-    showPerformance: false,
-    panesWidth: [],
-  });
-
-  const { data: storage, set } = useIDBKeyval<SettingsStorage>(
-    'settings',
-    initialSettings(),
+  const { data: storage } = useIDBKeyval('settings', () =>
+    zodSettingsStorage.parse(undefined),
   );
-
-  void set(toMerged(initialSettings(), storage.value));
 
   return { settings: storage, SETTINGS_DESCRIPTION, SETTINGS_LABEL };
 });
