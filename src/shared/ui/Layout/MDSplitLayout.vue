@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { computed, useTemplateRef, toRefs } from 'vue';
+import type { StyleValue } from 'vue';
+import { computed, useTemplateRef, toRefs, ref, shallowRef } from 'vue';
 import {
   useLayoutSizeClass,
   LAYOUT_CLASS,
@@ -12,6 +13,7 @@ import { setupSplitLayoutContext } from './useSplitLayoutContext';
 import { MDIconButton } from '../Button';
 import { useAllowedBottomNavigation } from './allowedBottomNavigation';
 import type { Pane } from './types';
+import { isNumber, round } from 'es-toolkit';
 
 const props = defineProps<{
   navigationButtons?: NavigationButton[];
@@ -105,6 +107,43 @@ setupSplitLayoutContext({
   bodyLeft,
   bodyWidth,
 });
+
+const panesWidth = ref<number[]>([]);
+
+const activeResizePaneIndex = shallowRef<number>();
+
+const onResizePointerDown = (index: number, { target }: PointerEvent) => {
+  if (target instanceof HTMLElement) {
+    const { previousElementSibling: paneElement } = target;
+    if (paneElement instanceof HTMLElement) {
+      panesWidth.value[index] = paneElement.offsetWidth;
+      activeResizePaneIndex.value = index;
+    }
+  }
+};
+
+const stopResize = () => {
+  activeResizePaneIndex.value = undefined;
+};
+
+const bodyStyle = computed(
+  (): StyleValue =>
+    numberOfPanes.value > 0 &&
+    panesWidth.value.reduce<Record<string, string>>((style, width, index) => {
+      if (isNumber(width)) {
+        style[`--pane-${index + 1}-width`] = `${width}px`;
+      }
+      return style;
+    }, {}),
+);
+
+const onBodyPointerMove = (event: PointerEvent) => {
+  if (activeResizePaneIndex.value !== undefined) {
+    const { clientX } = event;
+    const index = activeResizePaneIndex.value;
+    panesWidth.value[index] = round(clientX - bodyLeft.value);
+  }
+};
 </script>
 
 <template>
@@ -126,22 +165,36 @@ setupSplitLayoutContext({
       @click="onClickNavigation"
     />
 
-    <section ref="bodyRef" class="md-layer__body body">
-      <component
-        :is="component"
-        v-for="{ name, component, props: paneProps } in showPanes"
+    <section
+      ref="bodyRef"
+      class="md-layer__body body"
+      :style="bodyStyle"
+      @pointerup="stopResize"
+      @pointerleave="stopResize"
+      @pointermove="onBodyPointerMove"
+    >
+      <template
+        v-for="({ name, component, props: paneProps }, paneIndex) in showPanes"
         :key="name"
-        v-bind="paneProps"
-        class="body__pane"
       >
-        <template #navigationButton>
-          <MDIconButton
-            tooltip="back"
-            md-symbol-name="arrow_back"
-            @click="onClickBack"
-          />
-        </template>
-      </component>
+        <component :is="component" v-bind="paneProps" class="body__pane">
+          <template #navigationButton>
+            <MDIconButton
+              tooltip="back"
+              md-symbol-name="arrow_back"
+              @click="onClickBack"
+            />
+          </template>
+        </component>
+
+        <button
+          v-if="paneIndex < showPanes.length - 1"
+          class="__resize-button"
+          type="button"
+          aria-label="resize pane"
+          @pointerdown="onResizePointerDown(paneIndex, $event)"
+        />
+      </template>
     </section>
   </main>
 </template>
@@ -180,9 +233,82 @@ setupSplitLayoutContext({
     /* fix floating-ui https://github.com/floating-ui/floating-ui/issues/3067 */
     contain: layout;
   }
+
+  .__resize-button {
+    --height: 12step;
+    --width: 2step;
+    position: relative;
+    z-index: 1;
+    display: flex;
+    height: 100%;
+    width: 0;
+    padding: 0;
+    background: transparent;
+    border: 0;
+
+    &::before {
+      content: '';
+      display: block;
+      height: calc(var(--height) + 2step);
+      width: calc(var(--width) + 2step);
+      cursor: col-resize;
+      position: absolute;
+      top: calc(50% - (var(--height) + 2step) / 2);
+      left: calc((var(--width) + 2step) / -2);
+    }
+
+    &::after {
+      content: '';
+      display: block;
+      flex-grow: 1;
+      border-radius: var(--md-sys-shape-corner-full);
+      background-color: var(--md-sys-color-on-surface-variant);
+      height: var(--height);
+      width: var(--width);
+      pointer-events: none;
+      position: absolute;
+      top: calc(50% - var(--height) / 2);
+      left: calc(var(--width) / -2);
+    }
+
+    &:hover {
+      &::after {
+        background-color: var(--md-content-color);
+      }
+    }
+  }
 }
 
 .body {
   display: flex;
+
+  &__pane {
+    &:nth-of-type(1) {
+      width: var(--pane-1-width);
+      max-width: var(--pane-1-width);
+    }
+    &:nth-of-type(2) {
+      width: var(--pane-2-width);
+      max-width: var(--pane-2-width);
+    }
+    &:nth-of-type(3) {
+      width: var(--pane-3-width);
+      max-width: var(--pane-3-width);
+    }
+    &:nth-of-type(4) {
+      width: var(--pane-4-width);
+      max-width: var(--pane-4-width);
+    }
+    &:nth-of-type(5) {
+      width: var(--pane-5-width);
+      max-width: var(--pane-5-width);
+    }
+
+    &:last-of-type {
+      flex-grow: 1;
+      width: unset;
+      flex-basis: 0;
+    }
+  }
 }
 </style>
