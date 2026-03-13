@@ -26,9 +26,9 @@ export const useLocalSettings = createGlobalState(() => {
     panesWidth: 'Pane widths',
   };
 
-  const { data: storage } = useIDBKeyval('settings', () =>
-    zodSettingsStorage.parse(undefined),
-  );
+  const defaultValue = zodSettingsStorage.parse(undefined);
 
-  return { settings: storage, SETTINGS_DESCRIPTION, SETTINGS_LABEL };
+  const { data: settings } = useIDBKeyval('settings', defaultValue);
+
+  return { settings, SETTINGS_DESCRIPTION, SETTINGS_LABEL };
 });
