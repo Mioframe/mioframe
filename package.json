@@ -39,6 +39,7 @@
     "idb-keyval": "^6.2.2",
     "ix": "^7.0.0",
     "ky": "^1.14.3",
+    "lru-cache": "^11.2.6",
     "match-sorter": "^8.2.0",
     "material-symbols": "latest",
     "modern-normalize": "^3.0.1",
