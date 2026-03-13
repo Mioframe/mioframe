@@ -5,6 +5,9 @@ import ky, { HTTPError } from 'ky';
 import type { ZodMiniType } from 'zod/v4-mini';
 import { z } from 'zod/v4-mini';
 import { DomainError } from '../error';
+import { requestDeduplicator } from './cache/requestDeduplicator';
+import { metadataCache } from './cache/metadataCache';
+import { fileContentCache } from './cache/fileContentCache';
 
 export enum SPACE {
   drive = 'drive',
@@ -134,9 +137,6 @@ const listResponseSchema = z.object({
   nextPageToken: z.optional(z.string()),
 });
 
-/**
- * https://developers.google.com/workspace/drive/api/reference/rest/v3/files/list
- */
 const list = async (
   auth: GoogleAuthParams,
   {
@@ -148,6 +148,21 @@ const list = async (
     fields = 'nextPageToken,files(id,name,mimeType,size,createdTime,modifiedTime,parents,capabilities(canTrash))',
   }: ListParams,
 ) => {
+  const cacheKey = JSON.stringify({
+    pageSize,
+    pageToken,
+    q,
+    spaces,
+    fetchAll,
+    fields,
+    token: auth.ACCESS_TOKEN,
+  });
+
+  const cached = metadataCache.getList(cacheKey);
+  if (cached) {
+    return { result: cached };
+  }
+
   const fetchPage = async (token?: string) => {
     return authorizedRequest(
       'get',
@@ -166,28 +181,37 @@ const list = async (
     );
   };
 
+  let result;
   if (!fetchAll) {
-    return fetchPage(pageToken);
+    result = await fetchPage(pageToken);
+  } else {
+    let currentPageToken = pageToken;
+    let allFiles: GDriveFile[] = [];
+
+    do {
+      const pageResult = await fetchPage(currentPageToken);
+      if (pageResult.result.files) {
+        allFiles = allFiles.concat(pageResult.result.files);
+      }
+      currentPageToken = pageResult.result.nextPageToken;
+    } while (currentPageToken);
+
+    result = {
+      result: {
+        files: allFiles,
+        nextPageToken: undefined,
+      },
+    };
   }
 
-  // Логика автоматической пагинации
-  let currentPageToken = pageToken;
-  let allFiles: z.infer<typeof zodGDriveFile>[] = [];
+  if (result.result.files) {
+    metadataCache.setList(cacheKey, {
+      files: result.result.files,
+      nextPageToken: result.result.nextPageToken,
+    });
+  }
 
-  do {
-    const { result } = await fetchPage(currentPageToken);
-    if (result.files) {
-      allFiles = allFiles.concat(result.files);
-    }
-    currentPageToken = result.nextPageToken;
-  } while (currentPageToken);
-
-  return {
-    result: {
-      files: allFiles,
-      nextPageToken: undefined,
-    },
-  };
+  return result;
 };
 
 const update = (
@@ -224,27 +248,51 @@ const download = async (
   auth: GoogleAuthParams,
   fileId: string,
   name: string = 'file',
+  modifiedTime?: string,
   onDownloadProgress?: (progress: Progress, chunk: Uint8Array) => unknown,
-) =>
-  (
-    await googleRequest(`https://www.googleapis.com/drive/v3/files/${fileId}`, {
-      method: 'get',
-      headers: {
-        Authorization: `Bearer ${auth.ACCESS_TOKEN}`,
-      },
-      searchParams: {
-        alt: 'media',
-      },
-      onDownloadProgress,
-    })
-  )
-    .blob()
-    .then(
-      (blob) =>
-        new File([blob], name, {
-          type: blob.type,
-        }),
-    );
+) => {
+  if (modifiedTime) {
+    const cached = fileContentCache.get(fileId, modifiedTime);
+    if (cached) {
+      return cached;
+    }
+  }
+
+  const file = await requestDeduplicator.exec(
+    'get',
+    `https://www.googleapis.com/drive/v3/files/${fileId}`,
+    auth.ACCESS_TOKEN,
+    async () =>
+      (
+        await googleRequest(
+          `https://www.googleapis.com/drive/v3/files/${fileId}`,
+          {
+            method: 'get',
+            headers: {
+              Authorization: `Bearer ${auth.ACCESS_TOKEN}`,
+            },
+            searchParams: {
+              alt: 'media',
+            },
+            onDownloadProgress,
+          },
+        )
+      )
+        .blob()
+        .then(
+          (blob) =>
+            new File([blob], name, {
+              type: blob.type,
+            }),
+        ),
+  );
+
+  if (modifiedTime) {
+    fileContentCache.set(fileId, modifiedTime, file);
+  }
+
+  return file;
+};
 
 const create = (
   auth: GoogleAuthParams,
@@ -311,12 +359,25 @@ const upload = async (
   return response;
 };
 
+const invalidateFileContent = (fileId: string) => {
+  fileContentCache.invalidate(fileId);
+};
+
+const invalidateFolderContents = (folderId: string) => {
+  metadataCache.invalidateByFolderId(folderId);
+};
+
 export const simplifiedGoogleDriveAPI = {
   list,
   update,
   download,
   create,
   upload,
+  invalidateFileContent,
+  invalidateFolderContents,
+  clearCaches: () => {
+    requestDeduplicator.clear();
+    metadataCache.clear();
+    fileContentCache.clear();
+  },
 };
-
-// todo: исключить дублирующие get запросы, т.е. если запрос с такими же параметрами ещё активен, не делать новый запрос, дождаться ответа.
