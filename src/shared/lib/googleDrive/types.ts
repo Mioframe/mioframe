@@ -1,11 +1,11 @@
-import { z } from "zod/v4-mini";
+import { z } from 'zod/v4-mini';
 import type {
   WritableDirectoryFSEntry,
   FileFSEntry,
   GeneralFSEntry,
   ReadonlyDirectoryFSEntry,
-} from "../fileSystem";
-import type { StaticDirectoryFSEntry } from "../fileSystem/DirectoryFSEntry";
+} from '../fileSystem';
+import type { StaticDirectoryFSEntry } from '../fileSystem/DirectoryFSEntry';
 
 export type GDriveDirectory = {
   getName: () => string;
@@ -39,7 +39,7 @@ export type GDriveFile = {
   rename: (newName: string) => Promise<GDriveFile>;
 };
 
-export const GOOGLE_FOLDER_MIME_TYPE = "application/vnd.google-apps.folder";
+export const GOOGLE_FOLDER_MIME_TYPE = 'application/vnd.google-apps.folder';
 
 export type GDriveDirectoryContent = Iterable<
   [string, GDriveDirectory | GDriveFile]
@@ -63,10 +63,10 @@ export interface FileGDriveEntry extends FileFSEntry {
 
 export enum GOOGLE_DRIVE_SPACE {
   // user drive
-  MyDrive = "My Drive",
+  MyDrive = 'My Drive',
   // drive with shared data
-  SharedWithMe = "Shared With Me",
-  appDataFolder = "App Data Folder",
+  SharedWithMe = 'Shared With Me',
+  appDataFolder = 'App Data Folder',
 }
 
 export const zodGOOGLE_DRIVE_SPACE = z.enum(GOOGLE_DRIVE_SPACE);
