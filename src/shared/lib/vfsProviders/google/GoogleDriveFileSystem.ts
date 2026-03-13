@@ -226,10 +226,11 @@ export class GoogleDriveFileSystem implements IFileSystemProvider {
         entry.name,
         entry.modifiedTime,
       );
-    } catch {
+    } catch (e) {
       throw new VfsError(
         FileSystemError.Unknown,
         `Failed to download file: ${path}`,
+        e,
       );
     }
   }
