@@ -541,5 +541,3 @@ export class GoogleDriveFileSystem implements IFileSystemProvider {
     return this.events.subscribe(callback);
   }
 }
-
-// fixme: при записи файла не создавать новые, обновлять существующий с тем же именем.
