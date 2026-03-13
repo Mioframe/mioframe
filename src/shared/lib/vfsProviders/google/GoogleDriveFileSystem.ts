@@ -1,5 +1,5 @@
-import type { GoogleAuthParams } from '@shared/lib/googleDrive';
-import { simplifiedGoogleDriveAPI, SPACE } from '@shared/lib/googleDrive';
+import type { GoogleAuthParams } from '../../googleDrive';
+import { simplifiedGoogleDriveAPI, SPACE } from '../../googleDrive';
 import type {
   FileContent,
   FSNodeStat,
@@ -14,8 +14,8 @@ import {
   PathUtils,
   VfsError,
 } from '../../virtualFileSystem';
-import { dayjs } from '@shared/lib/dayjs';
-import type { GDriveFile } from '@shared/lib/googleDrive/simplifiedAPI';
+import { dayjs } from '../../dayjs';
+import type { GDriveFile } from '../../googleDrive/simplifiedAPI';
 
 const GOOGLE_MIME_FOLDER = 'application/vnd.google-apps.folder';
 /** Internal identifier for the virtual folder "Shared With Me" */
@@ -194,7 +194,7 @@ export class GoogleDriveFileSystem implements IFileSystemProvider {
         size,
         creationTime,
         modificationTime,
-        canDelete: entry.capabilities?.canTrash,
+        canDelete: entry.capabilities?.canTrash ?? false,
       };
     } catch (e) {
       if (e instanceof VfsError) throw e;
@@ -452,7 +452,10 @@ export class GoogleDriveFileSystem implements IFileSystemProvider {
       });
       // Safe array length check
       if (result.files && result.files.length > 0) {
-        throw new Error('Directory not empty (use recursive=true)');
+        throw new VfsError(
+          FileSystemError.DirectoryNotEmpty,
+          'Directory not empty (use recursive=true)',
+        );
       }
     }
 
