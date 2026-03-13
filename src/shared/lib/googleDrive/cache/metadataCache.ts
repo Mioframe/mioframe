@@ -30,11 +30,20 @@ export class MetadataCache {
   }
 
   invalidateByFolderId(folderId: string): void {
-    const searchPattern = `'${folderId}' in parents`;
+    const searchPatterns = folderId === 'sharedWithMe'
+      ? ['sharedWithMe = true']
+      : [`'${folderId}' in parents`];
+
+    const keysToDelete: string[] = [];
+
     for (const key of listCache.keys()) {
-      if (key.includes(searchPattern)) {
-        listCache.delete(key);
+      if (searchPatterns.some((pattern) => key.includes(pattern))) {
+        keysToDelete.push(key);
       }
+    }
+
+    for (const key of keysToDelete) {
+      listCache.delete(key);
     }
   }
 
