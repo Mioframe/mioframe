@@ -224,6 +224,7 @@ export class GoogleDriveFileSystem implements IFileSystemProvider {
         this.auth,
         entry.id,
         entry.name,
+        entry.modifiedTime,
       );
     } catch {
       throw new VfsError(
@@ -299,6 +300,8 @@ export class GoogleDriveFileSystem implements IFileSystemProvider {
         existingEntry.id,
         content,
       );
+      simplifiedGoogleDriveAPI.invalidateFileContent(existingEntry.id);
+      simplifiedGoogleDriveAPI.invalidateFolderContents(parentEntry.id);
       this.events.emit({ type: 'update', path });
     } else {
       if (!options.create) {
@@ -308,16 +311,25 @@ export class GoogleDriveFileSystem implements IFileSystemProvider {
         );
       }
 
-      await simplifiedGoogleDriveAPI.create(this.auth, {
+      const created = await simplifiedGoogleDriveAPI.create(this.auth, {
         name: fileName,
         parents: [parentEntry.id],
       });
 
-      await simplifiedGoogleDriveAPI.upload(
-        this.auth,
-        (await this.resolvePath(path)).id,
-        content,
-      );
+      try {
+        await simplifiedGoogleDriveAPI.upload(
+          this.auth,
+          created.result.id,
+          content,
+        );
+      } catch (uploadError) {
+        await simplifiedGoogleDriveAPI.update(this.auth, created.result.id, {
+          trashed: true,
+        });
+        throw uploadError;
+      }
+
+      simplifiedGoogleDriveAPI.invalidateFolderContents(parentEntry.id);
       this.events.emit({ type: 'create', path });
     }
   }
@@ -426,6 +438,7 @@ export class GoogleDriveFileSystem implements IFileSystemProvider {
       mimeType: GOOGLE_MIME_FOLDER,
     });
 
+    simplifiedGoogleDriveAPI.invalidateFolderContents(parentEntry.id);
     this.events.emit({ type: 'create', path });
   }
 
@@ -471,6 +484,10 @@ export class GoogleDriveFileSystem implements IFileSystemProvider {
     await simplifiedGoogleDriveAPI.update(this.auth, entry.id, {
       trashed: true,
     });
+    simplifiedGoogleDriveAPI.invalidateFileContent(entry.id);
+    for (const parentId of entry.parents ?? []) {
+      simplifiedGoogleDriveAPI.invalidateFolderContents(parentId);
+    }
     this.events.emit({ type: 'delete', path });
   }
 
@@ -522,13 +539,22 @@ export class GoogleDriveFileSystem implements IFileSystemProvider {
       );
     }
 
-    const removeParents = sourceEntry.parents ? sourceEntry.parents : [];
+    const currentParents = sourceEntry.parents ?? [];
+    const removeParents = currentParents.filter((p) => p !== destinationParentEntry.id);
 
     await simplifiedGoogleDriveAPI.update(this.auth, sourceEntry.id, {
       name: newFileName,
-      addParents: [destinationParentEntry.id],
-      removeParents,
+      addParents: removeParents.length === currentParents.length ? [destinationParentEntry.id] : undefined,
+      removeParents: removeParents.length > 0 ? removeParents : undefined,
     });
+
+    simplifiedGoogleDriveAPI.invalidateFileContent(sourceEntry.id);
+    for (const parentId of removeParents) {
+      simplifiedGoogleDriveAPI.invalidateFolderContents(parentId);
+    }
+    simplifiedGoogleDriveAPI.invalidateFolderContents(
+      destinationParentEntry.id,
+    );
 
     this.events.emit({
       type: 'rename',
