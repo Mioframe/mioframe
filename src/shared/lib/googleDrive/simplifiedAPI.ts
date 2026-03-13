@@ -236,13 +236,15 @@ const update = (
 ) =>
   authorizedRequest(
     'patch',
-    `https://www.googleapis.com/upload/drive/v3/files/${fileId}`,
+    `https://www.googleapis.com/drive/v3/files/${fileId}`,
     auth,
     {
+      searchParams: {
+        ...(addParents?.length ? { addParents: addParents.join(',') } : {}),
+        ...(removeParents?.length ? { removeParents: removeParents.join(',') } : {}),
+      },
       json: {
         name,
-        addParents: addParents?.join(','),
-        removeParents: removeParents?.join(','),
         trashed,
       },
     },
