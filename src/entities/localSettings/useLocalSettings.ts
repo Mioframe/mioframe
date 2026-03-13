@@ -28,7 +28,12 @@ export const useLocalSettings = createGlobalState(() => {
 
   const defaultValue = zodSettingsStorage.parse(undefined);
 
-  const { data: settings } = useIDBKeyval('settings', defaultValue);
+  const { data: settings } = useIDBKeyval('settings', defaultValue, {
+    serializer: {
+      read: (v) => zodSettingsStorage.safeParse(v).data ?? defaultValue,
+      write: (v) => zodSettingsStorage.safeParse(v).data,
+    },
+  });
 
   return { settings, SETTINGS_DESCRIPTION, SETTINGS_LABEL };
 });
