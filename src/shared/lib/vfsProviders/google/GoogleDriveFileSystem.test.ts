@@ -12,6 +12,8 @@ vi.mock('../../googleDrive', () => ({
     upload: vi.fn(),
     create: vi.fn(),
     update: vi.fn(),
+    invalidateFileContent: vi.fn(),
+    invalidateFolderContents: vi.fn(),
   },
   SPACE: {
     drive: 'drive',
@@ -189,6 +191,8 @@ describe('GoogleDriveFileSystem', () => {
         mockAuth,
         'file-id',
         'test.txt',
+        undefined,
+        undefined,
       );
     });
 

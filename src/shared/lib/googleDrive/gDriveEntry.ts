@@ -1,10 +1,10 @@
-import { pathToString } from '@shared/service/directories';
+import { pathToString } from "@shared/service/directories";
 import {
   simplifiedGoogleDriveAPI,
   type GoogleAuthParams,
-} from './simplifiedAPI';
-import type { DirectoryGDriveEntry, RootGDriveEntry } from './types';
-import { DomainError } from '../error';
+} from "./simplifiedAPI";
+import type { DirectoryGDriveEntry, RootGDriveEntry } from "./types";
+import { DomainError } from "../error";
 
 export const createGDriveEntry = (
   auth: GoogleAuthParams,
@@ -16,10 +16,10 @@ export const createGDriveEntry = (
 
   const remove = async () => {
     if (!parentEntry) {
-      throw new Error('Cannot remove root directory');
+      throw new Error("Cannot remove root directory");
     }
 
-    if (!('removeByName' in parentEntry)) {
+    if (!("removeByName" in parentEntry)) {
       throw new Error(
         `don\'t have "removeByName" method in ${pathToString(parentEntry.path)}`,
       );
@@ -29,7 +29,7 @@ export const createGDriveEntry = (
 
   const rename = async (newName: string): Promise<void> => {
     if (!fileId) {
-      throw new DomainError('You cannot rename an entry without a fileId.');
+      throw new DomainError("You cannot rename an entry without a fileId.");
     }
     await simplifiedGoogleDriveAPI.update(auth, fileId, {
       name: newName,

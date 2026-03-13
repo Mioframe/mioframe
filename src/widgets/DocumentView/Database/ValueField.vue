@@ -16,7 +16,8 @@ import type {
 import { zodIs } from '@shared/lib/validateZodScheme';
 import DatabaseViewLayout from './DatabaseViewLayout.vue';
 import { MDCheckbox } from '@shared/ui/Checkbox';
-import { ClassValue, toRefs } from 'vue';
+import type { ClassValue } from 'vue';
+import { toRefs } from 'vue';
 import type { AMDocumentId } from '@shared/lib/automerge';
 import { useDatabaseProperty } from '@entity/databaseProperty';
 

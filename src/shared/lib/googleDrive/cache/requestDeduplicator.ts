@@ -7,7 +7,7 @@ const generateKey = (
 };
 
 class RequestDeduplicator {
-  private pending = new Map<string, Promise<unknown>>();
+  private pending = new Map<string, WeakRef<Promise<any>>>();
 
   async exec<R>(
     method: string,
@@ -17,16 +17,17 @@ class RequestDeduplicator {
   ): Promise<R> {
     const key = generateKey(method, url, accessToken);
 
-    const existing = this.pending.get(key);
-    if (existing) {
-      return existing.then((value) => {
-        // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- Generic type constraint requires assertion for Map
-        return value as R;
-      });
+    const existingRef = this.pending.get(key);
+    if (existingRef) {
+      const existing = existingRef.deref();
+      if (existing) {
+        return Promise.resolve(existing.then((value) => value)) as R;
+      }
+      this.pending.delete(key);
     }
 
     const promise = requestFn();
-    this.pending.set(key, promise);
+    this.pending.set(key, new WeakRef(promise));
 
     try {
       return await promise;

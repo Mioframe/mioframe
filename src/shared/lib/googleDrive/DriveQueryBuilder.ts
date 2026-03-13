@@ -46,12 +46,12 @@ export class DriveQueryBuilder {
   // --- Логические операторы ---
 
   and(): this {
-    this.parts.push('and');
+    this.parts.push("and");
     return this;
   }
 
   or(): this {
-    this.parts.push('or');
+    this.parts.push("or");
     return this;
   }
 
@@ -80,6 +80,6 @@ export class DriveQueryBuilder {
   // --- Генерация ---
 
   build(): string {
-    return this.parts.join(' ');
+    return this.parts.join(" ");
   }
 }
