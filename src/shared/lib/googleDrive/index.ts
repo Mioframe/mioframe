@@ -1,11 +1,11 @@
-export type * from './types';
-export { GOOGLE_DRIVE_SPACE, GOOGLE_FOLDER_MIME_TYPE } from './types';
+export type * from "./types";
+export { GOOGLE_DRIVE_SPACE, GOOGLE_FOLDER_MIME_TYPE } from "./types";
 export {
   simplifiedGoogleDriveAPI,
   SPACE,
   type GoogleAuthParams,
-} from './simplifiedAPI';
-export { DriveQueryBuilder } from './DriveQueryBuilder';
+} from "./simplifiedAPI";
+export { DriveQueryBuilder } from "./DriveQueryBuilder";
 
 // fixme: нужен адаптер гугл диска как сетевой комуникации, т.к. в оффлайн режиме работа с диском невозможна
 /**

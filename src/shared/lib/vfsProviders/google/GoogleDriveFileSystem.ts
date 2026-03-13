@@ -225,6 +225,7 @@ export class GoogleDriveFileSystem implements IFileSystemProvider {
         entry.id,
         entry.name,
         entry.modifiedTime,
+        undefined,
       );
     } catch (e) {
       throw new VfsError(
@@ -541,11 +542,16 @@ export class GoogleDriveFileSystem implements IFileSystemProvider {
     }
 
     const currentParents = sourceEntry.parents ?? [];
-    const removeParents = currentParents.filter((p) => p !== destinationParentEntry.id);
+    const removeParents = currentParents.filter(
+      (p) => p !== destinationParentEntry.id,
+    );
 
     await simplifiedGoogleDriveAPI.update(this.auth, sourceEntry.id, {
       name: newFileName,
-      addParents: removeParents.length === currentParents.length ? [destinationParentEntry.id] : undefined,
+      addParents:
+        removeParents.length === currentParents.length
+          ? [destinationParentEntry.id]
+          : undefined,
       removeParents: removeParents.length > 0 ? removeParents : undefined,
     });
 
