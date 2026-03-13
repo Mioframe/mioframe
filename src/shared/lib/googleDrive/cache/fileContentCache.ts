@@ -1,4 +1,4 @@
-import { LRUCache } from "lru-cache";
+import { LRUCache } from 'lru-cache';
 
 const MAX_FILE_SIZE = 100 * 1024;
 const MAX_TOTAL_SIZE = 10 * 1024 * 1024;

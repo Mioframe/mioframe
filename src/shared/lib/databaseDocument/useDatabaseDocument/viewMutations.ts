@@ -26,7 +26,7 @@ export const removeViewMutation = (
   viewId: DatabaseViewId,
 ) => {
   const views = body.views;
-  if (views && viewId in views) {
+  if (viewId in views) {
     // eslint-disable-next-line @typescript-eslint/no-dynamic-delete -- automerge recommended
     delete views[viewId];
   }
