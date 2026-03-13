@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { StyleValue } from 'vue';
-import { computed, useTemplateRef, toRefs, shallowRef, toRef } from 'vue';
+import { computed, useTemplateRef, toRefs, shallowRef } from 'vue';
 import {
   useLayoutSizeClass,
   LAYOUT_CLASS,
@@ -111,7 +111,7 @@ setupSplitLayoutContext({
 
 const { settings } = useLocalSettings();
 
-const panesWidth = toRef(() => settings.value.panesWidth);
+const panesWidth = computed(() => settings.value.panesWidth);
 
 const activeResizePaneIndex = shallowRef<number>();
 
