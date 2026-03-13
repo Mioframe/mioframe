@@ -1,4 +1,5 @@
 import { deepPutJsonObject } from '../changeObject';
+import { writableDeepClone } from '../writableDeepClone';
 
 function isObject(value: unknown): value is object {
   return value !== null && typeof value === 'object' && !Array.isArray(value);
@@ -50,44 +51,41 @@ export function defineMigrations<
     targetData: object,
     version: number = 0,
   ) => {
-    // Normalize version: handle negative and non-integer
     const v = (version < 0 ? 0 : version) | 0;
 
-    // Validate input
     if (!isObject(targetData)) {
       throw new Error('[migrations] Invalid data: expected object');
     }
 
-    // Early return if no migrations
     if (v >= migrations.length) {
       // eslint-disable-next-line @typescript-eslint/consistent-type-assertions,@typescript-eslint/no-unsafe-return -- Generic type constraint requires assertion
       return targetData as UpdateResult<T, Ops>;
     }
 
-    // Apply migrations
-    const result = migrations.slice(v).reduce((data, migrate) => {
-      const newData = migrate(data);
+    const data = writableDeepClone(targetData);
+    const result = migrations.slice(v).reduce((currentData, migrate) => {
+      const newData = migrate(currentData);
       if (!isObject(newData)) {
         throw new Error('[migrations] Migration returned invalid value');
       }
       return newData;
-    }, targetData);
-
-    // Mutate original object
-    if (result !== targetData) {
-      deepPutJsonObject(targetData, result);
-    }
+    }, data);
 
     // eslint-disable-next-line @typescript-eslint/consistent-type-assertions,@typescript-eslint/no-unsafe-return -- Generic type constraint requires assertion
-    return targetData as UpdateResult<T, Ops>;
+    return result as UpdateResult<T, Ops>;
   };
 
   const applyUpdate = (
     targetData: object,
     version: number = 0,
-  ): UpdateResult<T, Ops> =>
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-return -- getLatestData already returns UpdateResult
-    getLatestData(targetData, version);
+  ): UpdateResult<T, Ops> => {
+    const migrated = getLatestData(targetData, version);
+    if (migrated !== targetData) {
+      deepPutJsonObject(targetData, migrated);
+    }
+    // eslint-disable-next-line @typescript-eslint/consistent-type-assertions,@typescript-eslint/no-unsafe-return -- Generic type constraint requires assertion
+    return targetData as UpdateResult<T, Ops>;
+  };
 
   return { getLatestData, applyUpdate };
 }

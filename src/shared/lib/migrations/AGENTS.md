@@ -20,23 +20,31 @@ Creates migration application functions.
 import { defineMigrations } from '@shared/lib/migrations';
 
 const migrations = defineMigrations(
-  (v0) => { v0.version = 1; return v0; },  // мутирует на месте
-  (v1) => ({ ...v1, version: 2 }),         // возвращает новый объект
+  (v0) => ({ ...v0, version: 1 }),
+  (v1) => ({ ...v1, version: 2 }),
   (v2) => ({ ...v2, version: 3 }),
 );
 
-// Мутирует original на месте до версии 3
-const result = migrations.getLatestData({ name: 'test', version: 0 });
-// original теперь: { name: 'test', version: 3 }
-// result === original (тот же объект)
+// getLatestData - returns transformed data WITHOUT mutating original (pure)
+const original = { name: 'test', version: 0 };
+const result = migrations.getLatestData(original);
+// original unchanged: { name: 'test', version: 0 }
+// result: { name: 'test', version: 3 }
+// result !== original (different objects)
+
+// applyUpdate - mutates original target object in place
+const target = { name: 'test', version: 0 };
+const updated = migrations.applyUpdate(target, 0);
+// target === updated (same reference, mutated)
+// target: { name: 'test', version: 3 }
 ```
 
 **Parameters:**
 - Variadic list of migration functions
 
 **Returns:**
-- `getLatestData(data, version?)` - Мутирует data на месте, возвращает мутированный объект
-- `applyUpdate(targetData, version?)` - Алиас для getLatestData (мутирует на месте)
+- `getLatestData(data, version?)` - Returns transformed data WITHOUT mutating original (pure function)
+- `applyUpdate(targetData, version?)` - Mutates targetData in place, returns mutated object
 
 ---
 
@@ -44,9 +52,10 @@ const result = migrations.getLatestData({ name: 'test', version: 0 });
 
 ### Mutation Semantics
 
-**Key principle:** `getLatestData` and `applyUpdate` always mutate the input object in place.
+**Key principle:** `getLatestData` is a pure function (immutable), `applyUpdate` mutates the input.
 
 ```typescript
+// getLatestData - pure, immutable
 const migrations = defineMigrations(
   (v0) => ({ ...v0, version: 1 }),
 );
@@ -54,11 +63,17 @@ const migrations = defineMigrations(
 const original = { version: 0 };
 const result = migrations.getLatestData(original);
 
-// original === { version: 1 } (mutated!)
-// result === original (same reference)
-```
+// original === { version: 0 } (unchanged!)
+// result === { version: 1 } (new object)
+// result !== original (different references)
 
-Regardless of whether migration returns a new object or mutates in place, the input object is always mutated to the final migrated state.
+// applyUpdate - mutates target in place
+const target = { version: 0 };
+const mutated = migrations.applyUpdate(target);
+
+// target === { version: 1 } (mutated!)
+// mutated === target (same reference)
+```
 
 ### Version Parameter
 
@@ -140,10 +155,10 @@ export const applyCFRDocumentMigration = (data: object) => {
 
 ### How It Works
 
-1. `getLatestData` applies migrations via reduce - result may be new object or mutated
-2. `deepPutJsonObject(targetData, migratedData)` copies all properties from migrated result back to original targetData
-3. Original object is always mutated to final state
-4. Returns the same reference as input
+1. `getLatestData` applies migrations via reduce - returns new object (pure)
+2. `applyUpdate` calls `getLatestData`, then uses `deepPutJsonObject(targetData, migratedData)` to copy all properties back to original target
+3. `applyUpdate` mutates original object to final state and returns same reference
+4. `getLatestData` returns new object without modifying input
 
 ### Type System
 
@@ -158,4 +173,3 @@ export const applyCFRDocumentMigration = (data: object) => {
 - Type constraint system ensures migration chain type safety
 - `MigrateConstraint<T, Ops>` - validates migration function chain
 - `UpdateResult<T, Ops>` - computes final type after all migrations
-- Migration functions MUST return new objects (not mutate input)

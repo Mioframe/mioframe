@@ -86,8 +86,9 @@ describe('defineMigrations', () => {
       const data = { original: true };
       const result = migrations.getLatestData(data, 100);
 
-      // No migration applied, but object is still mutated to itself
+      expect(data).toEqual({ original: true });
       expect(result).toEqual({ original: true });
+      expect(result).toBe(data);
     });
 
     it('should handle negative version (normalizes to 0)', () => {
@@ -117,7 +118,7 @@ describe('defineMigrations', () => {
     });
 
     describe('mutation side-effects', () => {
-      it('should mutate input on place (regardless of migration return style)', () => {
+      it('should NOT mutate input (pure function)', () => {
         const migrations = defineMigrations((v0: object) => ({
           ...v0,
           version: 1,
@@ -126,13 +127,12 @@ describe('defineMigrations', () => {
         const input = { version: 0, value: 'original' };
         const result = migrations.getLatestData(input);
 
-        // Input IS mutated - this is the expected behavior
-        expect(input).toEqual({ version: 1, value: 'original' });
+        expect(input).toEqual({ version: 0, value: 'original' });
         expect(result).toEqual({ version: 1, value: 'original' });
-        expect(result).toBe(input); // Same reference
+        expect(result).not.toBe(input);
       });
 
-      it('should mutate input when migration mutates in place', () => {
+      it('should NOT mutate input when migration mutates in place', () => {
         const migrations = defineMigrations((v0: { version: number }) => {
           v0.version = 1;
           return v0;
@@ -141,9 +141,9 @@ describe('defineMigrations', () => {
         const input = { version: 0 };
         const result = migrations.getLatestData(input);
 
-        expect(input).toEqual({ version: 1 });
+        expect(input).toEqual({ version: 0 });
         expect(result).toEqual({ version: 1 });
-        expect(result).toBe(input);
+        expect(result).not.toBe(input);
       });
     });
   });
@@ -171,7 +171,33 @@ describe('defineMigrations', () => {
       const target = { version: 0 };
       const result = migrations.applyUpdate(target, 0);
 
-      // Result should be same reference as target (mutated in place)
+      expect(target).toEqual({ version: 1 });
+      expect(result).toBe(target);
+    });
+
+    it('should mutate target when migration returns new object', () => {
+      const migrations = defineMigrations((v0: object) => ({
+        ...v0,
+        version: 1,
+      }));
+
+      const target = { version: 0 };
+      const result = migrations.applyUpdate(target, 0);
+
+      expect(target).toEqual({ version: 1 });
+      expect(result).toBe(target);
+    });
+
+    it('should mutate target when migration mutates in place', () => {
+      const migrations = defineMigrations((v0: { version: number }) => {
+        v0.version = 1;
+        return v0;
+      });
+
+      const target = { version: 0 };
+      const result = migrations.applyUpdate(target, 0);
+
+      expect(target).toEqual({ version: 1 });
       expect(result).toBe(target);
     });
 
@@ -216,8 +242,8 @@ describe('defineMigrations', () => {
         const target = { version: 0 };
         const result = migrations.applyUpdate(target, 0);
 
-        // Works: pure migration returns new object, deepPutJsonObject copies to target
-        expect(result).toEqual({ version: 1 });
+        expect(target).toEqual({ version: 1 });
+        expect(result).toBe(target);
       });
 
       it('works with mutating migrations (same object reference)', () => {
@@ -229,9 +255,8 @@ describe('defineMigrations', () => {
         const target = { version: 0 };
         const result = migrations.applyUpdate(target, 0);
 
-        // deepPutJsonObject sees same reference, returns early
-        // But target is already mutated by migration
-        expect(result).toEqual({ version: 1 });
+        expect(target).toEqual({ version: 1 });
+        expect(result).toBe(target);
       });
     });
   });
