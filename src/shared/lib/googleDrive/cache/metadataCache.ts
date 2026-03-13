@@ -1,5 +1,5 @@
-import { LRUCache } from "lru-cache";
-import type { GDriveFile } from "../simplifiedAPI";
+import { LRUCache } from 'lru-cache';
+import type { GDriveFile } from '../simplifiedAPI';
 
 interface ListCacheEntry {
   value: { files: GDriveFile[]; nextPageToken?: string };
@@ -31,8 +31,8 @@ export class MetadataCache {
 
   invalidateByFolderId(folderId: string): void {
     const searchPatterns =
-      folderId === "sharedWithMe"
-        ? ["sharedWithMe = true"]
+      folderId === 'sharedWithMe'
+        ? ['sharedWithMe = true']
         : [`'${folderId}' in parents`];
 
     const keysToDelete: string[] = [];
