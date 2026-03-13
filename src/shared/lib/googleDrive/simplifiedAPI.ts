@@ -163,23 +163,28 @@ const list = async (
     return { result: cached };
   }
 
-  const fetchPage = async (token?: string) => {
-    return authorizedRequest(
+  const fetchPage = async (token?: string) =>
+    requestDeduplicator.exec(
       'get',
-      'https://www.googleapis.com/drive/v3/files',
-      auth,
-      {
-        searchParams: {
-          pageSize,
-          pageToken: token,
-          q,
-          spaces: spaces?.join(','),
-          fields,
-        },
-      },
-      listResponseSchema,
+      `https://www.googleapis.com/drive/v3/files?pageSize=${pageSize}&pageToken=${token ?? ''}&q=${encodeURIComponent(q ?? '')}&spaces=${spaces?.join(',') ?? ''}&fields=${encodeURIComponent(fields)}`,
+      auth.ACCESS_TOKEN,
+      () =>
+        authorizedRequest(
+          'get',
+          'https://www.googleapis.com/drive/v3/files',
+          auth,
+          {
+            searchParams: {
+              pageSize,
+              pageToken: token,
+              q,
+              spaces: spaces?.join(','),
+              fields,
+            },
+          },
+          listResponseSchema,
+        ),
     );
-  };
 
   let result;
   if (!fetchAll) {
@@ -258,34 +263,38 @@ const download = async (
     }
   }
 
-  const file = await requestDeduplicator.exec(
-    'get',
-    `https://www.googleapis.com/drive/v3/files/${fileId}`,
-    auth.ACCESS_TOKEN,
-    async () =>
-      (
-        await googleRequest(
-          `https://www.googleapis.com/drive/v3/files/${fileId}`,
-          {
-            method: 'get',
-            headers: {
-              Authorization: `Bearer ${auth.ACCESS_TOKEN}`,
-            },
-            searchParams: {
-              alt: 'media',
-            },
-            onDownloadProgress,
+  const makeRequest = async () =>
+    (
+      await googleRequest(
+        `https://www.googleapis.com/drive/v3/files/${fileId}`,
+        {
+          method: 'get',
+          headers: {
+            Authorization: `Bearer ${auth.ACCESS_TOKEN}`,
           },
-        )
+          searchParams: {
+            alt: 'media',
+          },
+          onDownloadProgress,
+        },
       )
-        .blob()
-        .then(
-          (blob) =>
-            new File([blob], name, {
-              type: blob.type,
-            }),
-        ),
-  );
+    )
+      .blob()
+      .then(
+        (blob) =>
+          new File([blob], name, {
+            type: blob.type,
+          }),
+      );
+
+  const file = onDownloadProgress
+    ? await makeRequest()
+    : await requestDeduplicator.exec(
+        'get',
+        `https://www.googleapis.com/drive/v3/files/${fileId}`,
+        auth.ACCESS_TOKEN,
+        makeRequest,
+      );
 
   if (modifiedTime) {
     fileContentCache.set(fileId, modifiedTime, file);
