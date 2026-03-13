@@ -244,7 +244,35 @@ export class GoogleDriveFileSystem implements IFileSystemProvider {
     const parentPath = PathUtils.dirname(path);
     const fileName = PathUtils.basename(path);
 
-    // 1. Check if file exists
+    // 1. Check parent first (like MemoryFileSystem)
+    let parentEntry: GDriveFile;
+    try {
+      parentEntry = await this.resolvePath(parentPath);
+    } catch (e) {
+      if (e instanceof VfsError && e.code === FileSystemError.FileNotFound) {
+        throw new VfsError(
+          FileSystemError.FileNotFound,
+          `Parent directory not found: ${parentPath}`,
+        );
+      }
+      throw e;
+    }
+
+    if (parentEntry.mimeType !== GOOGLE_MIME_FOLDER) {
+      throw new VfsError(
+        FileSystemError.FileNotADirectory,
+        `Parent is not a directory: ${parentPath}`,
+      );
+    }
+
+    if (parentEntry.id === SHARED_WITH_ME_ID) {
+      throw new VfsError(
+        FileSystemError.NoPermissions,
+        `Cannot create files directly in 'Shared with me' root.`,
+      );
+    }
+
+    // 2. Check if file exists
     let existingEntry: GDriveFile | null = null;
     try {
       existingEntry = await this.resolvePath(path);
@@ -273,7 +301,6 @@ export class GoogleDriveFileSystem implements IFileSystemProvider {
       );
       this.events.emit({ type: 'update', path });
     } else {
-      // Create new file
       if (!options.create) {
         throw new VfsError(
           FileSystemError.FileNotFound,
@@ -281,33 +308,16 @@ export class GoogleDriveFileSystem implements IFileSystemProvider {
         );
       }
 
-      const parentEntry = await this.resolvePath(parentPath);
+      await simplifiedGoogleDriveAPI.create(this.auth, {
+        name: fileName,
+        parents: [parentEntry.id],
+      });
 
-      // Prevent creating files directly in the "Shared with me" root,
-      // as they technically need an owner and parent folder.
-      if (parentEntry.id === SHARED_WITH_ME_ID) {
-        throw new VfsError(
-          FileSystemError.NoPermissions,
-          `Cannot create files directly in 'Shared with me' root. Create them in a specific folder.`,
-        );
-      }
-
-      if (parentEntry.mimeType !== GOOGLE_MIME_FOLDER) {
-        throw new VfsError(
-          FileSystemError.FileNotADirectory,
-          `Parent is not a directory: ${parentPath}`,
-        );
-      }
-
-      const { result: newFile } = await simplifiedGoogleDriveAPI.create(
+      await simplifiedGoogleDriveAPI.upload(
         this.auth,
-        {
-          name: fileName,
-          parents: [parentEntry.id],
-        },
+        (await this.resolvePath(path)).id,
+        content,
       );
-
-      await simplifiedGoogleDriveAPI.upload(this.auth, newFile.id, content);
       this.events.emit({ type: 'create', path });
     }
   }
@@ -363,6 +373,7 @@ export class GoogleDriveFileSystem implements IFileSystemProvider {
           creationTime,
           modificationTime,
           size,
+          canDelete: file.capabilities?.canTrash ?? false,
         } satisfies FSNodeStat;
 
         entries.push([file.name, fsNodeStat]);
@@ -424,16 +435,14 @@ export class GoogleDriveFileSystem implements IFileSystemProvider {
   public async delete(path: string, recursive: boolean): Promise<void> {
     if (path === '/') throw new Error('Cannot delete root');
 
-    const { canDelete } = await this.stat(path);
+    const entry = await this.resolvePath(path);
 
-    if (canDelete !== true) {
+    if (entry.capabilities?.canTrash !== true) {
       throw new VfsError(
         FileSystemError.NoPermissions,
         `Deletion is not allowed for path: ${path}`,
       );
     }
-
-    const entry = await this.resolvePath(path);
 
     if (!recursive && entry.mimeType === GOOGLE_MIME_FOLDER) {
       // For empty check we use the same query logic
@@ -475,6 +484,13 @@ export class GoogleDriveFileSystem implements IFileSystemProvider {
     if (normalizedOld === normalizedNew) return;
 
     const sourceEntry = await this.resolvePath(normalizedOld);
+
+    if (sourceEntry.capabilities?.canTrash !== true) {
+      throw new VfsError(
+        FileSystemError.NoPermissions,
+        `Move is not allowed for path: ${oldPath}`,
+      );
+    }
 
     try {
       await this.resolvePath(normalizedNew);

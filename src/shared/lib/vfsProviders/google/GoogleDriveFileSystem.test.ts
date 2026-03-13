@@ -57,7 +57,7 @@ describe('GoogleDriveFileSystem', () => {
 
   beforeEach(() => {
     gdfs = new GoogleDriveFileSystem(mockAuth);
-    vi.clearAllMocks();
+    vi.resetAllMocks();
   });
 
   describe('constructor', () => {
@@ -521,6 +521,7 @@ describe('GoogleDriveFileSystem', () => {
               files: [
                 GDriveFile('file-id', 'old.txt', 'text/plain', {
                   parents: ['old-parent'],
+                  canTrash: true,
                 }),
               ],
             },
@@ -558,25 +559,13 @@ describe('GoogleDriveFileSystem', () => {
     });
 
     it('should throw FileExists when destination exists', async () => {
-      vi.mocked(simplifiedGoogleDriveAPI.list)
-        .mockReturnValueOnce(
-          Promise.resolve({
-            result: {
-              files: [
-                GDriveFile('file-id', 'old.txt', 'text/plain', {
-                  parents: ['parent'],
-                }),
-              ],
-            },
-          }),
-        )
-        .mockReturnValueOnce(
-          Promise.resolve({
-            result: {
-              files: [GDriveFile('existing-id', 'existing.txt', 'text/plain')],
-            },
-          }),
-        );
+      vi.mocked(simplifiedGoogleDriveAPI.list).mockReturnValue(
+        Promise.resolve({
+          result: {
+            files: [GDriveFile('existing-id', 'existing.txt', 'text/plain')],
+          },
+        }),
+      );
 
       await expect(gdfs.move('/old.txt', '/existing.txt')).rejects.toThrow(
         VfsError,
