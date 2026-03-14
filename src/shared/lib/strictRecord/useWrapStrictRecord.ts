@@ -33,6 +33,7 @@ const wrapStrictRecordCache = defineScopePool(
       (acc, item) => {
         acc.push(item);
       },
+      // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- typed empty array initializer
       <[K, V][]>[],
     );
 
@@ -41,6 +42,7 @@ const wrapStrictRecordCache = defineScopePool(
       (acc, item) => {
         acc.push(item);
       },
+      // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- typed empty array initializer
       <K[]>[],
     );
 
@@ -49,6 +51,7 @@ const wrapStrictRecordCache = defineScopePool(
       (acc, item) => {
         acc.push(item);
       },
+      // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- typed empty array initializer
       <V[]>[],
     );
 

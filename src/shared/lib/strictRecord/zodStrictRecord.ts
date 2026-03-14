@@ -9,6 +9,7 @@ export const zodStrictRecord = <K extends string, V>(
   zodValue: core.$ZodType<V>,
 ): ZodMiniType<StrictRecord<K, V>> =>
   transform((data, ctx): StrictRecord<K, V> => {
+    // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- creating empty typed record
     const newObj = <StrictRecord<K, V>>{};
 
     if (isObjectLike(data)) {

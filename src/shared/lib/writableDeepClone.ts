@@ -18,4 +18,5 @@ import type { WritableDeep } from 'type-fest';
  * ```
  */
 export const writableDeepClone = <T>(v: T): WritableDeep<T> =>
+  // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- writable type cast after deep clone
   <WritableDeep<T>>cloneDeep(v);

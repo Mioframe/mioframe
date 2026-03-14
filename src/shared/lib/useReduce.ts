@@ -28,6 +28,7 @@ import {
  *
  * @param acc - The accumulator to be cleared.
  */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- universal clearer must accept any accumulator type
 function defaultClearer(acc: any): void {
   if (Array.isArray(acc)) {
     // Clear an array by resetting its length.
@@ -74,6 +75,7 @@ export function useReduceIterable<A, T>(
   initialValue: A,
   clearer?: (acc: A) => void,
 ): Ref<A> {
+  // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- Vue ref generic type narrowing
   const result = <Ref<A>>ref(initialValue);
 
   let watchHandle: undefined | WatchHandle;
@@ -115,6 +117,7 @@ export function useReduceRecord<A, K extends PropertyKey, V>(
   initialValue: A,
   clearer?: (acc: A) => void,
 ): Readonly<Ref<A>> {
+  // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- Vue ref generic type narrowing
   const result = <Ref<A>>ref(initialValue);
 
   watchEffect(() => {
@@ -143,6 +146,7 @@ export function useReduceStrictRecord<A, K extends string, V>(
   initialValue: A,
   clearer?: (acc: A) => void,
 ): Readonly<Ref<A>> {
+  // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- Vue ref generic type narrowing
   const result = <Ref<A>>ref(initialValue);
 
   let watchHandle: undefined | WatchHandle;
@@ -185,6 +189,7 @@ export function useReduceMap<A, K, V>(
   initialValue: A,
   clearer?: (acc: A) => void,
 ): Ref<A> {
+  // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- Vue ref generic type narrowing
   const result = <Ref<A>>ref(initialValue);
 
   watchEffect(() => {
