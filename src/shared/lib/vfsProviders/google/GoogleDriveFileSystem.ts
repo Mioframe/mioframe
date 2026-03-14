@@ -220,13 +220,9 @@ export class GoogleDriveFileSystem implements IFileSystemProvider {
     }
 
     try {
-      return await simplifiedGoogleDriveAPI.download(
-        this.auth,
-        entry.id,
-        entry.name,
-        entry.modifiedTime,
-        undefined,
-      );
+      return await simplifiedGoogleDriveAPI.download(this.auth, entry.id, {
+        name: entry.name,
+      });
     } catch (e) {
       throw new VfsError(
         FileSystemError.Unknown,
