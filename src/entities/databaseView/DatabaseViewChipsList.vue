@@ -31,7 +31,7 @@ const viewButtons = useReduceIterable(
       viewId,
     });
   },
-  // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- typed empty array initializer
+  // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- generic type parameter requires assertion for empty array
   <{ label: string; viewId: DatabaseViewId }[]>[],
 );
 

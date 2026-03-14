@@ -15,7 +15,5 @@ if (rootMountElement) {
 }
 
 if (import.meta.env.DEV) {
-  // eslint-disable-next-line @typescript-eslint/ban-ts-comment -- for develop
-  // @ts-ignore
-  void import('./temp');
+  void import('./temp' /* @vite-ignore */);
 }

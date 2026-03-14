@@ -33,7 +33,7 @@ const wrapStrictRecordCache = defineScopePool(
       (acc, item) => {
         acc.push(item);
       },
-      // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- typed empty array initializer
+      // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- generic type parameter requires assertion for empty array
       <[K, V][]>[],
     );
 
@@ -42,7 +42,7 @@ const wrapStrictRecordCache = defineScopePool(
       (acc, item) => {
         acc.push(item);
       },
-      // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- typed empty array initializer
+      // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- generic type parameter requires assertion for empty array
       <K[]>[],
     );
 
@@ -51,7 +51,7 @@ const wrapStrictRecordCache = defineScopePool(
       (acc, item) => {
         acc.push(item);
       },
-      // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- typed empty array initializer
+      // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- generic type parameter requires assertion for empty array
       <V[]>[],
     );
 
