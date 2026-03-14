@@ -48,8 +48,10 @@ export const createFSStorageAdapter = (
 
       return undefined;
     } catch (error) {
+      // eslint-disable-next-line no-console -- error logging in storage adapter
       console.error(error);
 
+      // eslint-disable-next-line no-console -- debug logging in storage adapter
       console.debug('load', key);
 
       throw error;
@@ -64,6 +66,7 @@ export const createFSStorageAdapter = (
       }
 
       if (!('writeFile' in directory)) {
+        // eslint-disable-next-line no-console -- warning about missing writeFile capability
         console.warn(
           "FSStorageAdapter couldn't write new file, because a directory don't have writeFile method",
         );
@@ -71,8 +74,10 @@ export const createFSStorageAdapter = (
 
       await directory.writeFile?.(fileName, data);
     } catch (error) {
+      // eslint-disable-next-line no-console -- error logging in storage adapter
       console.error(error);
 
+      // eslint-disable-next-line no-console -- debug logging in storage adapter
       console.debug('save', key, data);
 
       throw error;
@@ -85,6 +90,7 @@ export const createFSStorageAdapter = (
 
       if (entry && 'remove' in entry) {
         if (!('remove' in entry)) {
+          // eslint-disable-next-line no-console -- warning about missing remove capability
           console.warn(
             "FSStorageAdapter couldn't remove the entry, because this entry don't have remove method",
           );
@@ -93,8 +99,10 @@ export const createFSStorageAdapter = (
         await entry.remove?.();
       }
     } catch (error) {
+      // eslint-disable-next-line no-console -- error logging in storage adapter
       console.error(error);
 
+      // eslint-disable-next-line no-console -- debug logging in storage adapter
       console.debug('remove', key);
 
       throw error;
@@ -145,8 +153,10 @@ export const createFSStorageAdapter = (
 
       return chunkList;
     } catch (error) {
+      // eslint-disable-next-line no-console -- error logging in storage adapter
       console.error(error);
 
+      // eslint-disable-next-line no-console -- debug logging in storage adapter
       console.debug('loadRange', keyPrefix);
 
       throw error;
@@ -172,6 +182,7 @@ export const createFSStorageAdapter = (
           name.startsWith(keyPrefixString)
         ) {
           if (!('remove' in entry)) {
+            // eslint-disable-next-line no-console -- warning about missing remove capability
             console.warn(
               "FSStorageAdapter couldn't remove the entry, because this entry don't have remove method",
             );
@@ -181,8 +192,10 @@ export const createFSStorageAdapter = (
         }
       });
     } catch (error) {
+      // eslint-disable-next-line no-console -- error logging in storage adapter
       console.error(error);
 
+      // eslint-disable-next-line no-console -- debug logging in storage adapter
       console.debug('removeRange', keyPrefix);
 
       throw error;

@@ -28,7 +28,7 @@ export const zodSafeCheck = <Z extends ZodMiniType>(zod: Z, value: unknown) => {
 
   return success
     ? {
-        // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
+        // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- zod validated value narrowing
         data: <output<Z>>value,
       }
     : {

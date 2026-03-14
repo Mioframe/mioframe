@@ -1,5 +1,5 @@
 import { loadOauth2 } from '@shared/lib/googleApi';
-import { asyncComputed, computedAsync } from '@vueuse/core';
+import { computedAsync } from '@vueuse/core';
 import { shallowRef } from 'vue';
 import { useGSession } from './useGSession';
 import ky from 'ky';
@@ -57,7 +57,7 @@ export const useGProfile = () => {
     return undefined;
   };
 
-  const profileImageBlobUrl = asyncComputed(() => loadImage(), undefined, {
+  const profileImageBlobUrl = computedAsync(() => loadImage(), undefined, {
     lazy: true,
   });
 

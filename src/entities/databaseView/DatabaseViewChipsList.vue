@@ -31,7 +31,7 @@ const viewButtons = useReduceIterable(
       viewId,
     });
   },
-  // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
+  // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- typed empty array initializer
   <{ label: string; viewId: DatabaseViewId }[]>[],
 );
 

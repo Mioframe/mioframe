@@ -46,6 +46,7 @@ const { data: stateValue, isLoading } = useDatabaseValue(
 );
 
 const printValue = computed(() => {
+  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- stateValue.value can be undefined at runtime
   return stateValue.value ?? property.value?.default;
 });
 
