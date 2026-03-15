@@ -10,6 +10,7 @@ import { PathUtils } from './PathUtils';
 import { FileSystemError, VfsError } from './VfsError';
 import { LockManager } from './LockManager';
 import type { Promisable } from 'type-fest';
+import { Log } from '../logger';
 
 /**
  * Options for watching file system events.
@@ -209,6 +210,7 @@ export class VirtualFileSystem {
    * @returns Object containing the provider instance and the relative path
    * @throws VfsError if no provider is mounted at the given path
    */
+  @Log({ showArgs: true })
   private resolve(path: string): {
     provider: IFileSystemProvider;
     relativePath: string;
