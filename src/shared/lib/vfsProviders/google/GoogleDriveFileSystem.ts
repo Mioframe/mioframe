@@ -16,6 +16,7 @@ import {
 } from '../../virtualFileSystem';
 import { dayjs } from '../../dayjs';
 import type { GDriveFile } from '../../googleDrive/simplifiedAPI';
+import { Log } from '@shared/lib/logger';
 
 const GOOGLE_MIME_FOLDER = 'application/vnd.google-apps.folder';
 /** Internal identifier for the virtual folder "Shared With Me" */
@@ -164,6 +165,7 @@ export class GoogleDriveFileSystem implements IFileSystemProvider {
   /**
    * Gets file or directory statistics.
    */
+  @Log({ level: 'debug', showArgs: true, showResult: true })
   public async stat(path: string): Promise<FSNodeStat> {
     try {
       if (path === '/' || path === '') {
