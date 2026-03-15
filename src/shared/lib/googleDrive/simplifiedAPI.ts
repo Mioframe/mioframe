@@ -8,7 +8,7 @@ import stringify from 'safe-stable-stringify';
 import { DomainError } from '../error';
 import { metadataCache } from './cache/metadataCache';
 import { fileContentCache } from './cache/fileContentCache';
-import { dedupe } from './cache/dedupe';
+import { dedupe } from '../dedupe';
 
 /**
  * Google Drive space types.
@@ -122,7 +122,7 @@ const googleRequest = async (url: Input, options?: ApiOptions) => {
 
     if (!response.ok) {
       const { data: googleError } = zodGoogleErrorResponse.safeParse(
-        await response.json(),
+        await response.clone().json(),
       );
 
       throw new DomainError(googleError?.error.message || response.statusText);
@@ -131,7 +131,10 @@ const googleRequest = async (url: Input, options?: ApiOptions) => {
     return response;
   } catch (e) {
     if (e instanceof HTTPError) {
-      const errorBody = await e.response.json().catch(() => ({}));
+      const errorBody = await e.response
+        .clone()
+        .json()
+        .catch(() => ({}));
       const { data: googleError } = zodGoogleErrorResponse.safeParse(errorBody);
 
       throw new DomainError(googleError?.error.message || e.message, {
@@ -179,7 +182,9 @@ const authorizedRequest = async <R>(
         options,
       ),
     )
-  ).json();
+  )
+    .clone()
+    .json();
 
   // Use safeParse to catch parsing errors and wrap them in DomainError
   const parsed = responseSchema.safeParse(response);
