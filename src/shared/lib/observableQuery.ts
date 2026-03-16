@@ -35,9 +35,6 @@ export const defineQuery = <T, Q>(get$: (query: Q) => Observable<T>) => {
   } satisfies QueryDefinition<T, Q>;
 };
 
-/**
- * Тип возвращаемого значения из defineQuery
- */
 type QueryDefinition<T, Q> = {
   subscribe: (args: {
     query: Q;
@@ -48,28 +45,45 @@ type QueryDefinition<T, Q> = {
   fetch: (query: Q, waitTime?: number) => Promise<T | undefined>;
 };
 
+export interface UseQueryOptions {
+  /**
+   * Whether to preserve old state (data, error) when the query changes.
+   * - true: old data remains until new data arrives (caching mode)
+   * - false: data and error are cleared immediately (default)
+   * @default false
+   */
+  preserveOnQueryChange?: boolean;
+}
+
 /**
- * Vue Composable для работы с defineQuery.
+ * Vue composable for working with defineQuery.
  *
- * @param queryDef Объект, возвращаемый функцией defineQuery
- * @param queryArgs Реактивный источник аргументов (Ref, геттер или значение). Может быть undefined, тогда подписка не создается.
+ * @param queryDef Object returned by defineQuery
+ * @param queryArgs Reactive source of arguments (Ref, getter, or value). Can be undefined, then no subscription is created.
+ * @param options Settings for query change behavior
  */
 export function useQuery<T, Q>(
   queryDef: QueryDefinition<T, Q>,
   queryArgs: MaybeRefOrGetter<Q | undefined>,
+  options?: UseQueryOptions,
 ) {
-  // Используем shallowRef для data, чтобы избежать лишних проксирований для больших структур данных
   const data = shallowRef<T | undefined>();
   const error = shallowRef<unknown>();
   const isLoading = shallowRef(false);
 
   watch(
     () => toValue(queryArgs),
-    async (newQuery, _, onCleanup) => {
-      error.value = undefined;
+    async (newQuery, _oldQuery, onCleanup) => {
+      const shouldPreserve = options?.preserveOnQueryChange ?? false;
+      if (!shouldPreserve) {
+        data.value = undefined;
+        error.value = undefined;
+      }
 
       if (newQuery === undefined) {
-        data.value = undefined;
+        if (shouldPreserve) {
+          error.value = undefined;
+        }
         isLoading.value = false;
         return;
       }

@@ -21,6 +21,7 @@ import type { ReadDirectoryOptions } from '@shared/service/fileSystem';
 import { useLocalSettings } from '@entity/localSettings';
 import DocumentContextButton from './DocumentContextButton.vue';
 import FSEntryContextButton from './FSEntryContextButton.vue';
+import { MDCircularProgressIndicator } from '@shared/ui/ProgressIndicators';
 
 const props = defineProps(zodToVueProps(zodQuery));
 
@@ -44,10 +45,11 @@ const readDirectoryOptions = computed(
   }),
 );
 
-const { data: directoryEntries } = useDirectory(
-  directoryPath,
-  readDirectoryOptions,
-);
+const {
+  data: directoryEntries,
+  errorMessage: directoryErrorMessage,
+  isLoading: directoryLoading,
+} = useDirectory(directoryPath, readDirectoryOptions);
 
 const { open } = useMainRouter();
 
@@ -142,6 +144,10 @@ const title = computed(() => PathUtils.basename(directoryPath.value) || 'root');
             />
           </template>
         </CFRDocumentMDListItem>
+
+        <div>directoryErrorMessage:{{ directoryErrorMessage }}</div>
+
+        <MDCircularProgressIndicator v-if="directoryLoading" />
 
         <FSEntryMDListItem
           v-for="[name, { type: nodeType }] in directoryEntries"
