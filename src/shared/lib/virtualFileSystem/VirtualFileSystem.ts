@@ -210,7 +210,6 @@ export class VirtualFileSystem {
    * @returns Object containing the provider instance and the relative path
    * @throws VfsError if no provider is mounted at the given path
    */
-  @Log({ showArgs: true })
   private resolve(path: string): {
     provider: IFileSystemProvider;
     relativePath: string;
@@ -281,6 +280,13 @@ export class VirtualFileSystem {
    * @param path Absolute path to the directory
    * @returns Promise that resolves to array of tuples [name, type]
    */
+  @Log({
+    showArgs: true,
+    showResult: true,
+    snapshot: true,
+    showTrace: true,
+    showExecId: true,
+  })
   public async readDirectory(path: string): Promise<[string, FSNodeStat][]> {
     const { provider, relativePath } = this.resolve(path);
     return provider.readDirectory(relativePath);

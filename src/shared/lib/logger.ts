@@ -1,8 +1,11 @@
 import { toRaw } from 'vue';
+import { stringify } from 'safe-stable-stringify';
+import { sessionUniqueId } from './uniqueId';
+import { generateHsl } from './generateColor';
+import { isPromise } from 'es-toolkit';
 
 /* eslint-disable no-console -- This is a logger utility, console is the intended output */
 interface LogOptions {
-  level?: 'debug' | 'info' | 'warn' | 'error';
   /** Whether to log function arguments. @default false */
   showArgs?: boolean;
   /** Whether to log the function result. @default false */
@@ -15,41 +18,51 @@ interface LogOptions {
    * @default false
    */
   snapshot?: boolean;
+  snapshotDepth?: number;
+  snapshotBreadth?: number;
   /** Whether to show execution ID in log output. @default false */
   showExecId?: boolean;
+  showTrace?: boolean;
 }
 
 /** @readonly */
 const COLORS = {
-  debug: '#7f8c8d',
-  info: '#2ecc71',
+  success: '#2ecc71',
   warn: '#f1c40f',
   error: '#e74c3c',
 } as const;
 
-const generateExecId = (): string => Math.random().toString(36).slice(2, 6);
+const TAG = {
+  start: '  [start]   ',
+  success: '  [success] ',
+  error: '[error]   ',
+  trace: ' [trace]   ',
+} as const;
 
-const isThenable = (value: unknown): value is Promise<unknown> => {
-  if (value == null) return false;
-  if (typeof value !== 'object' && typeof value !== 'function') return false;
-  try {
-    // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- Safe type assertion for thenable check
-    const then = (value as { then?: unknown }).then;
-    return typeof then === 'function';
-  } catch {
-    return false;
-  }
-};
+const generateExecId = (): string => sessionUniqueId('l-');
 
-const snapshotValue = <T>(value: T, enabled: boolean): T => {
+const isThenable = (value: unknown): value is Promise<unknown> =>
+  isPromise(value);
+
+const snapshotValue = (
+  value: unknown,
+  enabled: boolean,
+  maximumDepth: number = 3,
+  maximumBreadth = 20,
+) => {
   if (!enabled) return value;
   const raw = toRaw(value);
   try {
-    return structuredClone(raw);
+    const str = stringify.configure({
+      strict: true,
+      maximumBreadth,
+      maximumDepth,
+    })(raw);
+
+    return str ? JSON.parse(str) : undefined;
   } catch {
     try {
-      // eslint-disable-next-line @typescript-eslint/consistent-type-assertions,@typescript-eslint/no-explicit-any -- JSON fallback is lossy, requires double cast
-      return JSON.parse(JSON.stringify(raw)) as any as T;
+      return JSON.parse(JSON.stringify(raw));
     } catch {
       return raw;
     }
@@ -61,96 +74,96 @@ function logExecution<Args extends unknown[], Return>(
   fn: (...args: Args) => Return,
   args: Args,
   name: string,
-  options: LogOptions,
-): Return {
-  const {
-    level = 'info',
+  {
     showArgs = false,
     showResult = false,
     showTime = false,
     snapshot = false,
+    snapshotDepth = 3,
+    snapshotBreadth = 20,
     showExecId = false,
-  } = options;
+    showTrace = false,
+  }: LogOptions,
+): Return {
   const start = performance.now();
-  const color = COLORS[level];
-  const execId = showExecId ? ` #${generateExecId()}` : '';
+  const execId = showExecId ? ` #${generateExecId()}` : ' ';
+
+  const callName = `${name}${execId}`;
+
+  const mainColor = generateHsl(callName);
+
+  const snapshottedArgs = showArgs
+    ? snapshot
+      ? args.map((arg) => snapshotValue(arg, true))
+      : args
+    : '...';
+
+  const successStyles = `color: ${mainColor}; font-weight: bold;`;
 
   const logSuccess = (res: unknown, startTime: number) => {
     if (showResult)
-      console.log(
-        '%cResult:',
-        `color: ${COLORS.info}; font-weight: bold;`,
-        snapshotValue(res, snapshot),
+      console.debug(
+        `${TAG.success}%c${callName} %c(%o)%c =>`,
+        successStyles,
+        'color:inherit;',
+        snapshottedArgs,
+        `color: ${COLORS.success}; font-weight: bold;`,
+        snapshotValue(res, snapshot, snapshotDepth, snapshotBreadth),
       );
     if (showTime)
-      console.log(
+      console.debug(
         '%cExecution time:',
         `color: ${COLORS.warn}; font-weight: bold;`,
         `${(performance.now() - startTime).toFixed(2)}ms`,
       );
   };
 
+  const errorStyles = `color: ${mainColor}; font-weight: bold;`;
+
   const logError = (err: unknown) => {
     console.error(
-      '%cError:',
+      `${TAG.error}%c${callName} %c(%o)%c throw`,
+      errorStyles,
+      'color: inherit;',
+      snapshottedArgs,
       `color: ${COLORS.error}; font-weight: bold;`,
       err,
     );
   };
 
-  console.groupCollapsed(
-    `%c[${level.toUpperCase()}]%c ${name}${execId}`,
-    `color: white; background: ${color}; padding: 2px 4px; border-radius: 3px; font-weight: bold;`,
-    'color: inherit; font-weight: bold;',
+  console.debug(
+    `${TAG.start}%c${callName} %c(%o)`,
+    successStyles,
+    'color:inherit;',
+    snapshottedArgs,
   );
 
-  if (showArgs) {
-    const snapshottedArgs = snapshot
-      ? args.map((arg) => snapshotValue(arg, true))
-      : args;
-    console.log(
-      '%cArguments:',
-      `color: ${COLORS.info}; font-weight: bold;`,
-      snapshottedArgs,
-    );
+  if (showTrace) {
+    console.groupCollapsed(`${TAG.trace}%c${callName}%c ↘️`, successStyles);
+    console.trace();
+    console.groupEnd();
   }
 
   try {
     const result = fn.apply(this, args);
 
     if (isThenable(result)) {
-      console.groupEnd();
-
       // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- Promise.resolve accepts any value
       return result
         .then((val) => {
-          console.groupCollapsed(
-            `%c[${level.toUpperCase()}]%c ⚡ ${name}${execId} (Resolved)`,
-            `color: white; background: ${color}; padding: 2px 4px; border-radius: 3px; font-weight: bold;`,
-            `color: ${COLORS.info}; font-weight: bold;`,
-          );
           logSuccess(val, start);
-          console.groupEnd();
           return val;
         })
         .catch((err) => {
-          console.groupCollapsed(
-            `%c[${level.toUpperCase()}]%c ❌ ${name}${execId} (Rejected)`,
-            `color: white; background: ${color}; padding: 2px 4px; border-radius: 3px; font-weight: bold;`,
-            `color: ${COLORS.error}; font-weight: bold;`,
-          );
           logError(err);
-          console.groupEnd();
           throw err;
         }) as Return;
     }
 
     logSuccess(result, start);
-    console.groupEnd();
     return result;
   } catch (error) {
     logError(error);
-    console.groupEnd();
     throw error;
   }
 }
