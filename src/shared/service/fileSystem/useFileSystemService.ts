@@ -26,14 +26,18 @@ const setupFileSystemService = () => {
       path: string;
       options?: ReadDirectoryOptions;
     }) =>
-      new Observable<[string, FSNodeStat][]>((subscriber) => {
+      new Observable<[string, FSNodeStat][] | Error>((subscriber) => {
         const fetchEntries = async () => {
           try {
             const entries = await vfs.readDirectory(path);
 
             subscriber.next(sortBy(entries, [0]));
           } catch (err) {
-            subscriber.error(err);
+            if (err instanceof Error) {
+              subscriber.next(err);
+            } else {
+              subscriber.error(err);
+            }
           }
         };
 
@@ -47,24 +51,33 @@ const setupFileSystemService = () => {
       }).pipe(
         distinctUntilChanged((a, b) => isEqual(a, b)),
         shareReplay({ bufferSize: 1, refCount: true }),
-        map((list) => {
-          if (hideAutomergeFiles) {
-            return list.filter(([name]) => !zodIs(name, zodAutomergeFileName));
+        map((payload) => {
+          if (payload instanceof Error) {
+            return payload;
           }
-          return list;
+          if (hideAutomergeFiles) {
+            return payload.filter(
+              ([name]) => !zodIs(name, zodAutomergeFileName),
+            );
+          }
+          return payload;
         }),
       ),
   );
 
   const fsNodeStat$ = defineCacheObservable(({ path }: { path: string }) =>
-    new Observable<FSNodeStat>((subscriber) => {
+    new Observable<FSNodeStat | Error>((subscriber) => {
       const fetchStat = async () => {
         try {
           const stat = await vfs.stat(path);
 
           subscriber.next(stat);
         } catch (err) {
-          subscriber.error(err);
+          if (err instanceof Error) {
+            subscriber.next(err);
+          } else {
+            subscriber.error(err);
+          }
         }
       };
 
