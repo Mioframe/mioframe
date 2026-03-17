@@ -165,7 +165,6 @@ export class GoogleDriveFileSystem implements IFileSystemProvider {
   /**
    * Gets file or directory statistics.
    */
-  @Log({ level: 'debug', showArgs: true, showResult: true })
   public async stat(path: string): Promise<FSNodeStat> {
     try {
       if (path === '/' || path === '') {
