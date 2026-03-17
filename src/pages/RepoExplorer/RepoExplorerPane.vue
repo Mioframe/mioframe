@@ -22,6 +22,7 @@ import { useLocalSettings } from '@entity/localSettings';
 import DocumentContextButton from './DocumentContextButton.vue';
 import FSEntryContextButton from './FSEntryContextButton.vue';
 import { MDCircularProgressIndicator } from '@shared/ui/ProgressIndicators';
+import { MDEmptyState } from '@shared/ui/EmptyState';
 
 const props = defineProps(zodToVueProps(zodQuery));
 
@@ -145,9 +146,23 @@ const title = computed(() => PathUtils.basename(directoryPath.value) || 'root');
           </template>
         </CFRDocumentMDListItem>
 
-        <div>directoryErrorMessage:{{ directoryErrorMessage }}</div>
+        <MDEmptyState
+          v-if="directoryErrorMessage"
+          class="document-explorer-widget__error"
+          headline="Directory read error"
+          :supporting-text="directoryErrorMessage"
+        >
+          <template #icon>
+            <MDSymbol
+              name="error"
+              class="document-explorer-widget__error-icon"
+            />
+          </template>
+        </MDEmptyState>
 
-        <MDCircularProgressIndicator v-if="directoryLoading" />
+        <div v-if="directoryLoading" class="document-explorer-widget__loading">
+          <MDCircularProgressIndicator :size="24" />
+        </div>
 
         <FSEntryMDListItem
           v-for="[name, { type: nodeType }] in directoryEntries"
@@ -241,6 +256,18 @@ const title = computed(() => PathUtils.basename(directoryPath.value) || 'root');
     flex: 1 1;
     display: flex;
     flex-direction: column;
+  }
+
+  &__loading {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    --md-content-color: var(--md-sys-color-primary);
+    padding: 2step;
+  }
+
+  &__error-icon {
+    --md-content-color: var(--md-sys-color-error);
   }
 }
 </style>
