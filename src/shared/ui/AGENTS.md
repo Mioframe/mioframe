@@ -1,31 +1,70 @@
-# src/shared/ui KNOWLEDGE BASE
+# src/shared/ui - Component Library
 
-## OVERVIEW
-Reusable UI components, layouts, and generic design system elements (Buttons, Layouts, Menus).
+**Scope:** Reusable UI components, layouts, and generic design system elements. 37 component directories, 163 files.
 
-## STRUCTURE
-```
-src/shared/ui/
-├── Button/        # Standard, FAB, and icon buttons
-├── Layout/        # Base layout containers
-├── Menu/          # Context and dropdown menus
-├── Query/         # Renderless or data-fetching wrappers
-└── Tooltips/      # Accessibility and rich tooltips
-```
+## COMPONENTS (30+)
 
-## WHERE TO LOOK
-| Task | Location | Notes |
-|------|----------|-------|
-| App shell layouts | `Layout/` & `AppBar/` | Top-level containers |
-| Data display | `Lists/` & `Table/` | Specialized renderers |
-| User inputs | `TextField/`, `Select/`, `Checkbox/` | Form controls |
+- **Button/**: MDButton, MDFab, MDIconButton, MDSegmentedButtons, UIButton
+- **Dialog/**: MDDialog, Alert, DialogForm, useDialog
+- **TextField/**: MDTextField, MDFieldContainer
+- **Select/**: Select with options, defineSelectOptions
+- **Table/**: MDTable
+- **Menu/**: MenuButton, MenuDivider, MenuItem
+- **Layout/**: SplitLayout, Pane, ViewWithPanelLayout
+- **Lists/**: List, ListItem
+- **Chips/**: MDChip, MDChipGroup
+- **Navigation/**: NavigationRail, NavigationDrawer, NavigationPath
+- **Toolbar/**: AppBar, Toolbar, ToolbarGroup
+- **State/**: State, StateTransition
+- **Overlay/**: Overlay, SlidingPanel
+- **Progress/**: ProgressIndicator, CircularProgress
+- **Message/**: Message, MessageProvider
+- **Snackbars/**: Snackbar, useSnackbar
+- **Tooltips/**: Tooltip, TooltipTrigger
+- **Icons/**: Icon
+- **Divider/**: MDDivider
+- **EmptySymbol/**: EmptySymbol
+- **AriaHidden/**: AriaHidden
+- **Performance/**: PerformanceMonitor
+- **Views/**: FormLayout
+- **Query/**: Renderless query wrappers
 
 ## CONVENTIONS
-- UI components MUST be generic and domain-agnostic.
-- Props and Emit definitions are strictly typed.
-- SCSS/CSS Modules for scoped styling.
-- ARIA attributes are required for custom interactive elements (`AriaHidden/`).
+
+- **Naming**: Material Design `MD*` prefix for components
+- **Composables**: `use*` prefix (useDialog, useSnackbar, useSelect)
+- **Styling**: Scoped CSS with custom units (rpx, step, pt, dp)
+- **Types**: Strict TypeScript, props/emits explicitly typed
+- **Accessibility**: ARIA attributes on all interactive elements
+- **Props**: Pass data via props, never bind to business models
+- **Emit**: Define emit types for all user-triggered events
 
 ## ANTI-PATTERNS
-- **NEVER** bind components directly to business models/entities (pass data via props).
-- **NEVER** import from `features` or `entities` - this is the lowest UI layer.
+
+- **NEVER** bind components directly to business models/entities
+- **NEVER** import from `features` or `entities` - lowest UI layer only
+- **NEVER** use `any` type or `@ts-ignore`
+- **NEVER** leave empty catch blocks
+- **NEVER** bypass scoped styling (no global styles in components)
+- **AVOID** cross-layer circular dependencies
+
+## STYLING
+
+- Custom CSS units via PostCSS: `rpx`, `step`, `pt`, `dp`
+- Scoped CSS with `<style scoped>`
+- CSS variables for theme tokens
+- No external CSS dependencies
+
+## TESTING
+
+- Unit tests with Vitest + happy-dom
+- E2E tests with Cypress for critical paths
+- Accessibility testing with axe-core
+
+## PATH ALIASES
+
+- `@shared/*` -> `./src/shared/*`
+- `@feature/*` -> `./src/features/*`
+- `@entity/*` -> `./src/entities/*`
+- `@widget/*` -> `./src/widgets/*`
+- `@page/*` -> `./src/pages/*`
