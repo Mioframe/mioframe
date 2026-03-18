@@ -28,29 +28,40 @@ const setupRepositoriesService = () => {
       path: string;
     }) =>
       directoryContent$({ path }).pipe(
-        map((entries) =>
-          entries.reduce((documentIdList: AMDocumentId[], [name, { type }]) => {
-            if (type === FSNodeType.File && zodIs(name, zodAutomergeFileName)) {
-              const [documentId] = fileNameToPartialKey(name) ?? [];
-
+        map((value) => {
+          if (value instanceof Error) {
+            return value;
+          }
+          return value.reduce(
+            (documentIdList: AMDocumentId[], [name, { type }]) => {
               if (
-                zodIs(documentId, zodDocumentId) &&
-                !documentIdList.includes(documentId)
+                type === FSNodeType.File &&
+                zodIs(name, zodAutomergeFileName)
               ) {
-                documentIdList.push(documentId);
-              }
-            }
+                const [documentId] = fileNameToPartialKey(name) ?? [];
 
-            return documentIdList;
-          }, []),
-        ),
+                if (
+                  zodIs(documentId, zodDocumentId) &&
+                  !documentIdList.includes(documentId)
+                ) {
+                  documentIdList.push(documentId);
+                }
+              }
+
+              return documentIdList;
+            },
+            [],
+          );
+        }),
       ),
   );
 
   const repo$ = defineCacheObservable(
     (path: string, initial: boolean = false) => {
       return getDocumentIdList$({ path }).pipe(
-        filter((docs) => initial || docs.length > 0),
+        filter((docs) => {
+          return !(docs instanceof Error) && (initial || docs.length > 0);
+        }),
         take(1),
         switchMap(() =>
           of(

@@ -67,9 +67,25 @@ export function useQuery<T, Q>(
   queryArgs: MaybeRefOrGetter<Q | undefined>,
   options?: UseQueryOptions,
 ) {
-  const data = shallowRef<T | undefined>();
+  const data = shallowRef<Exclude<T, Error> | undefined>();
   const error = shallowRef<unknown>();
   const isLoading = shallowRef(false);
+
+  const onNext = (v: T) => {
+    if (v instanceof Error) {
+      onError(v);
+    } else {
+      // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- checked the error instance
+      data.value = v as Exclude<T, Error>;
+      isLoading.value = false;
+      error.value = undefined;
+    }
+  };
+
+  const onError = (e: unknown) => {
+    error.value = e;
+    isLoading.value = false;
+  };
 
   watch(
     () => toValue(queryArgs),
@@ -92,14 +108,8 @@ export function useQuery<T, Q>(
 
       const unsubscribe = await queryDef.subscribe({
         query: newQuery,
-        next: (val) => {
-          data.value = val;
-          isLoading.value = false;
-        },
-        error: (err) => {
-          error.value = err;
-          isLoading.value = false;
-        },
+        next: onNext,
+        error: onError,
       });
 
       onCleanup(() => {
@@ -120,10 +130,10 @@ export function useQuery<T, Q>(
         try {
           const res = await queryDef.fetch(q);
           if (res !== undefined) {
-            data.value = res;
+            onNext(res);
           }
         } catch (e) {
-          error.value = e;
+          onError(e);
         } finally {
           isLoading.value = false;
         }
