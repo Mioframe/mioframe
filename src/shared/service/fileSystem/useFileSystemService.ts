@@ -119,10 +119,13 @@ const setupFileSystemService = () => {
       await vfs.createDirectory(mountedPath);
 
       mountFSDirectoryHandle(mountedPath, fileSystemDirectoryHandle);
+      console.debug('MOUNTED', mountedPath);
     }
   };
 
-  void mountOpfs();
+  setTimeout(() => {
+    void mountOpfs();
+  }, 1e3); // FIXME: задержка монтирования для воспроизведения проблемы.
 
   const move = (oldPath: string, newPath: string) => vfs.move(oldPath, newPath);
 

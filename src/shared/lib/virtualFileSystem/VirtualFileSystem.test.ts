@@ -441,4 +441,456 @@ describe('VirtualFileSystem', () => {
       expect(vfs.mountsList).toContain(testPath);
     });
   });
+
+  describe('watch events', () => {
+    it('should emit create event when mounting a provider', () => {
+      const events: Array<{ type: string; path: string }> = [];
+      vfs.watch('/mnt', (event) => {
+        events.push({ type: event.type, path: event.path });
+      });
+
+      vfs.mount('/mnt/test', memoryFS);
+
+      expect(events).toContainEqual({
+        type: 'create',
+        path: '/mnt/test',
+      });
+    });
+
+    it('should emit delete event when unmounting a provider', () => {
+      vfs.mount('/mnt/test', memoryFS);
+
+      const events: Array<{ type: string; path: string }> = [];
+      vfs.watch('/mnt', (event) => {
+        events.push({ type: event.type, path: event.path });
+      });
+
+      vfs.unmount('/mnt/test');
+
+      expect(events).toContainEqual({
+        type: 'delete',
+        path: '/mnt/test',
+      });
+    });
+
+    it('should emit create event when creating directory', async () => {
+      vfs.mount('/mnt/test', memoryFS);
+
+      const events: Array<{ type: string; path: string }> = [];
+      vfs.watch('/mnt/test', (event) => {
+        events.push({ type: event.type, path: event.path });
+      });
+
+      await vfs.createDirectory('/mnt/test/newdir');
+
+      expect(events).toContainEqual({
+        type: 'create',
+        path: '/mnt/test/newdir',
+      });
+    });
+
+    it('should emit create event when writing new file', async () => {
+      vfs.mount('/mnt/test', memoryFS);
+
+      const events: Array<{ type: string; path: string }> = [];
+      vfs.watch('/mnt/test', (event) => {
+        events.push({ type: event.type, path: event.path });
+      });
+
+      await vfs.writeFile('/mnt/test/newfile.txt', 'content');
+
+      expect(events).toContainEqual({
+        type: 'create',
+        path: '/mnt/test/newfile.txt',
+      });
+    });
+
+    it('should emit update event when writing existing file', async () => {
+      // Create file first
+      await memoryFS.writeFile('/existing.txt', 'original', {
+        create: true,
+        overwrite: true,
+      });
+
+      vfs.mount('/mnt/test', memoryFS);
+
+      const events: Array<{ type: string; path: string }> = [];
+      vfs.watch('/mnt/test', (event) => {
+        events.push({ type: event.type, path: event.path });
+      });
+
+      await vfs.writeFile('/mnt/test/existing.txt', 'updated');
+
+      expect(events).toContainEqual({
+        type: 'update',
+        path: '/mnt/test/existing.txt',
+      });
+    });
+
+    it('should emit delete event when deleting file', async () => {
+      // Create file first
+      await memoryFS.writeFile('/to-delete.txt', 'content', {
+        create: true,
+        overwrite: true,
+      });
+
+      vfs.mount('/mnt/test', memoryFS);
+
+      const events: Array<{ type: string; path: string }> = [];
+      vfs.watch('/mnt/test', (event) => {
+        events.push({ type: event.type, path: event.path });
+      });
+
+      await vfs.delete('/mnt/test/to-delete.txt');
+
+      expect(events).toContainEqual({
+        type: 'delete',
+        path: '/mnt/test/to-delete.txt',
+      });
+    });
+
+    it('should emit delete event when deleting directory recursively', async () => {
+      // Create directory with contents
+      await memoryFS.createDirectory('/dir-to-delete');
+      await memoryFS.writeFile('/dir-to-delete/file.txt', 'content', {
+        create: true,
+        overwrite: true,
+      });
+
+      vfs.mount('/mnt/test', memoryFS);
+
+      const events: Array<{ type: string; path: string }> = [];
+      vfs.watch('/mnt/test', (event) => {
+        events.push({ type: event.type, path: event.path });
+      });
+
+      await vfs.delete('/mnt/test/dir-to-delete', true);
+
+      // Delete event for directory should be emitted
+      const deleteEvents = events.filter((e) => e.type === 'delete');
+      expect(deleteEvents).toContainEqual({
+        type: 'delete',
+        path: '/mnt/test/dir-to-delete',
+      });
+    });
+
+    it('should emit rename event when moving file within same provider', async () => {
+      // Create source file
+      await memoryFS.writeFile('/source.txt', 'content', {
+        create: true,
+        overwrite: true,
+      });
+
+      vfs.mount('/mnt/test', memoryFS);
+
+      const events: Array<{ type: string; path: string; newPath?: string }> =
+        [];
+      vfs.watch('/mnt/test', (event) => {
+        events.push({
+          type: event.type,
+          path: event.path,
+          newPath: event.newPath,
+        });
+      });
+
+      await vfs.move('/mnt/test/source.txt', '/mnt/test/dest.txt');
+
+      expect(events).toContainEqual({
+        type: 'rename',
+        path: '/mnt/test/source.txt',
+        newPath: '/mnt/test/dest.txt',
+      });
+    });
+
+    it('should emit rename event when moving directory within same provider', async () => {
+      // Create source directory with file
+      await memoryFS.createDirectory('/sourcedir');
+      await memoryFS.writeFile('/sourcedir/file.txt', 'content', {
+        create: true,
+        overwrite: true,
+      });
+
+      vfs.mount('/mnt/test', memoryFS);
+
+      const events: Array<{ type: string; path: string; newPath?: string }> =
+        [];
+      vfs.watch('/mnt/test', (event) => {
+        events.push({
+          type: event.type,
+          path: event.path,
+          newPath: event.newPath,
+        });
+      });
+
+      await vfs.move('/mnt/test/sourcedir', '/mnt/test/destdir');
+
+      // Should emit rename for both directory and its contents
+      const renameEvents = events.filter((e) => e.type === 'rename');
+      expect(renameEvents.length).toBeGreaterThanOrEqual(1);
+      expect(renameEvents).toContainEqual({
+        type: 'rename',
+        path: '/mnt/test/sourcedir',
+        newPath: '/mnt/test/destdir',
+      });
+    });
+
+    it('should emit rename event for cross-provider move', async () => {
+      const memoryFS1 = new MemoryFileSystem();
+      const memoryFS2 = new MemoryFileSystem();
+
+      vfs.mount('/mnt/provider1', memoryFS1);
+      vfs.mount('/mnt/provider2', memoryFS2);
+
+      await vfs.writeFile('/mnt/provider1/source.txt', 'content');
+
+      const events: Array<{ type: string; path: string; newPath?: string }> =
+        [];
+      vfs.watch(
+        '/mnt',
+        (event) => {
+          events.push({
+            type: event.type,
+            path: event.path,
+            newPath: event.newPath,
+          });
+        },
+        { recursive: true },
+      );
+
+      await vfs.move('/mnt/provider1/source.txt', '/mnt/provider2/dest.txt');
+
+      const renameEvents = events.filter((e) => e.type === 'rename');
+      expect(renameEvents).toContainEqual({
+        type: 'rename',
+        path: '/mnt/provider1/source.txt',
+        newPath: '/mnt/provider2/dest.txt',
+      });
+    });
+
+    it('should emit rename event for cross-provider directory move', async () => {
+      const memoryFS1 = new MemoryFileSystem();
+      const memoryFS2 = new MemoryFileSystem();
+
+      vfs.mount('/mnt/provider1', memoryFS1);
+      vfs.mount('/mnt/provider2', memoryFS2);
+
+      await vfs.createDirectory('/mnt/provider1/sourcedir');
+      await vfs.writeFile('/mnt/provider1/sourcedir/file.txt', 'content');
+
+      const events: Array<{ type: string; path: string; newPath?: string }> =
+        [];
+      vfs.watch(
+        '/mnt',
+        (event) => {
+          events.push({
+            type: event.type,
+            path: event.path,
+            newPath: event.newPath,
+          });
+        },
+        { recursive: true },
+      );
+
+      await vfs.move('/mnt/provider1/sourcedir', '/mnt/provider2/destdir');
+
+      const renameEvents = events.filter((e) => e.type === 'rename');
+      expect(
+        renameEvents.some((e) => e.newPath === '/mnt/provider2/destdir'),
+      ).toBe(true);
+    });
+
+    it('should not duplicate events when using multiple watchers', async () => {
+      vfs.mount('/mnt/test', memoryFS);
+
+      const events1: Array<{ type: string }> = [];
+      const events2: Array<{ type: string }> = [];
+
+      vfs.watch('/mnt/test', (event) => {
+        events1.push({ type: event.type });
+      });
+
+      vfs.watch('/mnt/test', (event) => {
+        events2.push({ type: event.type });
+      });
+
+      await vfs.createDirectory('/mnt/test/newdir');
+
+      expect(events1.length).toBe(1);
+      expect(events2.length).toBe(1);
+    });
+
+    it('should emit update event when overwriting file with same content', async () => {
+      await memoryFS.writeFile('/file.txt', 'content', {
+        create: true,
+        overwrite: true,
+      });
+
+      vfs.mount('/mnt/test', memoryFS);
+
+      const events: Array<{ type: string }> = [];
+      vfs.watch('/mnt/test', (event) => {
+        events.push({ type: event.type });
+      });
+
+      await vfs.writeFile('/mnt/test/file.txt', 'content');
+
+      expect(events.some((e) => e.type === 'update')).toBe(true);
+    });
+
+    it('should emit create event when remounting provider', async () => {
+      vfs.mount('/mnt/test', memoryFS);
+      vfs.unmount('/mnt/test');
+
+      const events: Array<{ type: string }> = [];
+      vfs.watch('/mnt', (event) => {
+        events.push({ type: event.type });
+      });
+
+      const newMemoryFS = new MemoryFileSystem();
+      vfs.mount('/mnt/test', newMemoryFS);
+
+      expect(events).toContainEqual({ type: 'create' });
+    });
+
+    it('should emit events with correct paths for nested operations', async () => {
+      vfs.mount('/mnt', memoryFS);
+
+      const events: Array<{ type: string; path: string }> = [];
+      vfs.watch(
+        '/mnt',
+        (event) => {
+          events.push({ type: event.type, path: event.path });
+        },
+        { recursive: true },
+      );
+
+      await vfs.createDirectory('/mnt/a');
+      await vfs.writeFile('/mnt/a/b.txt', 'content');
+      await vfs.createDirectory('/mnt/a/c');
+      await vfs.writeFile('/mnt/a/c/d.txt', 'content');
+
+      expect(events).toContainEqual({ type: 'create', path: '/mnt/a' });
+      expect(events).toContainEqual({ type: 'create', path: '/mnt/a/b.txt' });
+      expect(events).toContainEqual({ type: 'create', path: '/mnt/a/c' });
+      expect(events).toContainEqual({ type: 'create', path: '/mnt/a/c/d.txt' });
+    });
+
+    it('should handle rapid sequential operations', async () => {
+      vfs.mount('/mnt/test', memoryFS);
+
+      const events: Array<{ type: string; path: string }> = [];
+      vfs.watch('/mnt/test', (event) => {
+        events.push({ type: event.type, path: event.path });
+      });
+
+      await vfs.writeFile('/mnt/test/file1.txt', 'content');
+      await vfs.createDirectory('/mnt/test/dir1');
+      await vfs.writeFile('/mnt/test/file2.txt', 'content');
+      await vfs.delete('/mnt/test/file1.txt');
+
+      expect(
+        events.some(
+          (e) => e.path === '/mnt/test/file1.txt' && e.type === 'create',
+        ),
+      ).toBe(true);
+      expect(
+        events.some((e) => e.path === '/mnt/test/dir1' && e.type === 'create'),
+      ).toBe(true);
+      expect(
+        events.some(
+          (e) => e.path === '/mnt/test/file2.txt' && e.type === 'create',
+        ),
+      ).toBe(true);
+      expect(
+        events.some(
+          (e) => e.path === '/mnt/test/file1.txt' && e.type === 'delete',
+        ),
+      ).toBe(true);
+    });
+
+    it('should emit events with correct paths when watching with recursive option', async () => {
+      // Create nested structure
+      await memoryFS.createDirectory('/parent');
+      await memoryFS.writeFile('/parent/child.txt', 'content', {
+        create: true,
+        overwrite: true,
+      });
+
+      vfs.mount('/mnt/test', memoryFS);
+
+      const events: Array<{ type: string; path: string }> = [];
+      vfs.watch(
+        '/mnt/test',
+        (event) => {
+          events.push({ type: event.type, path: event.path });
+        },
+        { recursive: true },
+      );
+
+      await vfs.writeFile('/mnt/test/parent/child2.txt', 'content2');
+
+      // Should capture events in nested directories
+      expect(events.some((e) => e.path.includes('child2.txt'))).toBe(true);
+    });
+
+    it('should emit events for direct children when not using recursive option', async () => {
+      vfs.mount('/mnt/test', memoryFS);
+
+      const events: Array<{ type: string; path: string }> = [];
+      vfs.watch(
+        '/mnt/test',
+        (event) => {
+          events.push({ type: event.type, path: event.path });
+        },
+        { recursive: false },
+      );
+
+      // Create direct child
+      await vfs.createDirectory('/mnt/test/direct');
+
+      expect(events).toContainEqual({
+        type: 'create',
+        path: '/mnt/test/direct',
+      });
+    });
+
+    it('should allow unsubscribing from watch events', async () => {
+      vfs.mount('/mnt/test', memoryFS);
+
+      let callCount = 0;
+      const unsubscribe = vfs.watch('/mnt/test', () => {
+        callCount++;
+      });
+
+      await vfs.writeFile('/mnt/test/file1.txt', 'content1');
+      expect(callCount).toBe(1);
+
+      unsubscribe();
+
+      await vfs.writeFile('/mnt/test/file2.txt', 'content2');
+      expect(callCount).toBe(1); // Should still be 1, not 2
+    });
+
+    it('should emit update event for file content changes', async () => {
+      // Create file first
+      await memoryFS.writeFile('/update-test.txt', 'original', {
+        create: true,
+        overwrite: true,
+      });
+
+      vfs.mount('/mnt/test', memoryFS);
+
+      const events: Array<{ type: string; path: string }> = [];
+      vfs.watch('/mnt/test', (event) => {
+        events.push({ type: event.type, path: event.path });
+      });
+
+      await vfs.writeFile('/mnt/test/update-test.txt', 'new-content');
+
+      expect(events).toContainEqual({
+        type: 'update',
+        path: '/mnt/test/update-test.txt',
+      });
+    });
+  });
 });
