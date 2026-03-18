@@ -175,6 +175,8 @@ export class VirtualFileSystem {
 
     this.mounts.set(normalizedMountPath, { provider, unwatch });
 
+    this.events.emit({ type: 'create', path: normalizedMountPath });
+
     // Sort mounts to prioritize more specific (longer) mount points first,
     // which is necessary for proper nested mount resolution.
     const sortedEntries = Array.from(this.mounts.entries()).sort(
@@ -199,6 +201,7 @@ export class VirtualFileSystem {
     if (mount) {
       mount.unwatch();
       this.mounts.delete(normalized);
+      this.events.emit({ type: 'delete', path: normalized });
     }
   }
 
@@ -267,9 +270,20 @@ export class VirtualFileSystem {
   public async writeFile(path: string, content: FileContent): Promise<void> {
     return this.locks.request(path, async () => {
       const { provider, relativePath } = this.resolve(path);
-      return provider.writeFile(relativePath, content, {
+
+      const exists = await provider
+        .stat(relativePath)
+        .then(() => true)
+        .catch(() => false);
+
+      await provider.writeFile(relativePath, content, {
         create: true,
         overwrite: true,
+      });
+
+      this.events.emit({
+        type: exists ? 'update' : 'create',
+        path,
       });
     });
   }
@@ -300,7 +314,8 @@ export class VirtualFileSystem {
    */
   public async createDirectory(path: string): Promise<void> {
     const { provider, relativePath } = this.resolve(path);
-    return provider.createDirectory(relativePath);
+    await provider.createDirectory(relativePath);
+    this.events.emit({ type: 'create', path });
   }
 
   /**
@@ -334,9 +349,10 @@ export class VirtualFileSystem {
    * @param recursive If true, deletes non-empty directories recursively
    */
   public async delete(path: string, recursive: boolean = false): Promise<void> {
-    return this.locks.request(path, async () =>
+    await this.locks.request(path, async () =>
       this.#unlockedDelete(path, recursive),
     );
+    this.events.emit({ type: 'delete', path });
   }
 
   /**
@@ -372,13 +388,13 @@ export class VirtualFileSystem {
         const source = this.resolve(oldPath);
         const target = this.resolve(newPath);
 
-        // Optimization: if same provider, use native rename
         if (source.provider === target.provider) {
-          return source.provider.move(source.relativePath, target.relativePath);
+          await source.provider.move(source.relativePath, target.relativePath);
+          this.events.emit({ type: 'rename', path: oldPath, newPath });
+        } else {
+          await this.moveCrossProvider(oldPath, newPath);
+          this.events.emit({ type: 'rename', path: oldPath, newPath });
         }
-
-        // If different providers, move via Copy + Delete
-        await this.moveCrossProvider(oldPath, newPath);
       });
     });
   }
@@ -409,28 +425,22 @@ export class VirtualFileSystem {
 
       await this.#unlockedDelete(sourcePath);
     } else if (sourceStat.type === FSNodeType.Directory) {
-      // 1. Create directory in target location
       try {
         await target.provider.createDirectory(target.relativePath);
       } catch (e) {
-        // Ignore error if directory already exists (merge strategy)
         if (!(e instanceof VfsError) || e.code !== FileSystemError.FileExists)
           throw e;
       }
 
-      // 2. Read source directory contents
       const entries = await source.provider.readDirectory(source.relativePath);
 
-      // 3. Recursively move contents
       for (const [name] of entries) {
         const childSource = PathUtils.join(sourcePath, name);
         const childTarget = PathUtils.join(targetPath, name);
 
-        // Recursive call to public API for proper nesting handling
         await this.move(childSource, childTarget);
       }
 
-      // 4. Delete empty source directory
       await this.#unlockedDelete(sourcePath);
     }
   }
