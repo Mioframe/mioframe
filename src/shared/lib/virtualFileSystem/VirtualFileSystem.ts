@@ -10,7 +10,6 @@ import { PathUtils } from './PathUtils';
 import { FileSystemError, VfsError } from './VfsError';
 import { LockManager } from './LockManager';
 import type { Promisable } from 'type-fest';
-import { Log } from '../logger';
 
 /**
  * Options for watching file system events.
@@ -301,13 +300,6 @@ export class VirtualFileSystem {
    * @param path Absolute path to the directory
    * @returns Promise that resolves to array of tuples [name, type]
    */
-  @Log({
-    showArgs: true,
-    showResult: true,
-    snapshot: true,
-    showTrace: true,
-    showExecId: true,
-  })
   public async readDirectory(path: string): Promise<[string, FSNodeStat][]> {
     const { provider, relativePath } = this.resolve(path);
     return provider.readDirectory(relativePath);
