@@ -143,7 +143,6 @@ export class MemoryFileSystem implements IFileSystemProvider {
       canDelete: true,
     });
 
-    this.events.emit({ type: 'create', path: normalized });
     return Promise.resolve();
   }
 
@@ -204,7 +203,6 @@ export class MemoryFileSystem implements IFileSystemProvider {
         : new File([content], fileName, { lastModified: now });
 
     if (entry) {
-      // Updating existing file
       if (entry.type !== FSNodeType.File) {
         return Promise.reject(
           new VfsError(
@@ -225,9 +223,7 @@ export class MemoryFileSystem implements IFileSystemProvider {
       entry.content = file;
       entry.size = file.size;
       entry.modificationTime = now;
-      this.events.emit({ type: 'update', path: normalized });
     } else {
-      // Creating new file
       if (!options.create) {
         return Promise.reject(
           new VfsError(
@@ -244,7 +240,6 @@ export class MemoryFileSystem implements IFileSystemProvider {
         modificationTime: now,
         canDelete: true,
       });
-      this.events.emit({ type: 'create', path: normalized });
     }
   }
 
@@ -300,7 +295,6 @@ export class MemoryFileSystem implements IFileSystemProvider {
     }
 
     this.store.delete(normalized);
-    this.events.emit({ type: 'delete', path: normalized });
   }
 
   /**
@@ -409,12 +403,6 @@ export class MemoryFileSystem implements IFileSystemProvider {
         modificationTime: Date.now(),
       });
     }
-
-    this.events.emit({
-      type: 'rename',
-      path: normalizedOld,
-      newPath: normalizedNew,
-    });
   }
 
   /**
