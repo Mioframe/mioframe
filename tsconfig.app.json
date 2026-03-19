@@ -30,8 +30,8 @@
       "@page/*": ["./src/pages/*"],
       "@/*": ["./src/*"]
     },
-    "experimentalDecorators": true,
-    "emitDecoratorMetadata": true,
+    "experimentalDecorators": false,
+    "emitDecoratorMetadata": false,
     "noUncheckedIndexedAccess": true,
     "noImplicitReturns": true,
     // "exactOptionalPropertyTypes": true // todo: turn on with refactoring

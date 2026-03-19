@@ -161,7 +161,6 @@ export class WebFileSystem implements IFileSystemProvider {
       if (e instanceof VfsError && e.code === FileSystemError.FileNotFound) {
         if (!create) throw e;
         handle = await this.getHandle(path, true, 'file');
-        this.events.emit({ type: 'create', path });
       } else {
         throw e;
       }
@@ -170,8 +169,6 @@ export class WebFileSystem implements IFileSystemProvider {
     const writable = await handle.createWritable();
     await writable.write(content);
     await writable.close();
-
-    this.events.emit({ type: 'update', path });
   }
 
   public async readDirectory(path: string): Promise<[string, FSNodeStat][]> {
@@ -196,7 +193,6 @@ export class WebFileSystem implements IFileSystemProvider {
     } catch (e) {
       if (e instanceof VfsError && e.code === FileSystemError.FileNotFound) {
         await this.getHandle(path, true, 'directory');
-        this.events.emit({ type: 'create', path });
         return;
       }
       throw e;
@@ -225,7 +221,6 @@ export class WebFileSystem implements IFileSystemProvider {
 
     try {
       await parentHandle.removeEntry(name, { recursive });
-      this.events.emit({ type: 'delete', path });
     } catch (e) {
       if (e instanceof DOMException) {
         if (e.name === 'NotFoundError') {
@@ -321,12 +316,6 @@ export class WebFileSystem implements IFileSystemProvider {
 
       await this.delete(normalizedOld, true);
     }
-
-    this.events.emit({
-      type: 'rename',
-      path: normalizedOld,
-      newPath: normalizedNew,
-    });
   }
 
   public watch(callback: (event: VfsEvent) => void): () => void {

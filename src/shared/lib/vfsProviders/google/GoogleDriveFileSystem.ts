@@ -1,5 +1,5 @@
-import type { GoogleAuthParams } from '@shared/lib/googleDrive';
-import { simplifiedGoogleDriveAPI, SPACE } from '@shared/lib/googleDrive';
+import type { GoogleAuthParams } from '../../googleDrive';
+import { simplifiedGoogleDriveAPI, SPACE } from '../../googleDrive';
 import type {
   FileContent,
   FSNodeStat,
@@ -14,8 +14,8 @@ import {
   PathUtils,
   VfsError,
 } from '../../virtualFileSystem';
-import { dayjs } from '@shared/lib/dayjs';
-import type { GDriveFile } from '@shared/lib/googleDrive/simplifiedAPI';
+import { dayjs } from '../../dayjs';
+import type { GDriveFile } from '../../googleDrive/simplifiedAPI';
 
 const GOOGLE_MIME_FOLDER = 'application/vnd.google-apps.folder';
 /** Internal identifier for the virtual folder "Shared With Me" */
@@ -194,7 +194,7 @@ export class GoogleDriveFileSystem implements IFileSystemProvider {
         size,
         creationTime,
         modificationTime,
-        canDelete: entry.capabilities?.canTrash,
+        canDelete: entry.capabilities?.canTrash ?? false,
       };
     } catch (e) {
       if (e instanceof VfsError) throw e;
@@ -220,15 +220,14 @@ export class GoogleDriveFileSystem implements IFileSystemProvider {
     }
 
     try {
-      return await simplifiedGoogleDriveAPI.download(
-        this.auth,
-        entry.id,
-        entry.name,
-      );
-    } catch {
+      return await simplifiedGoogleDriveAPI.download(this.auth, entry.id, {
+        name: entry.name,
+      });
+    } catch (e) {
       throw new VfsError(
         FileSystemError.Unknown,
         `Failed to download file: ${path}`,
+        e,
       );
     }
   }
@@ -244,7 +243,35 @@ export class GoogleDriveFileSystem implements IFileSystemProvider {
     const parentPath = PathUtils.dirname(path);
     const fileName = PathUtils.basename(path);
 
-    // 1. Check if file exists
+    // 1. Check parent first (like MemoryFileSystem)
+    let parentEntry: GDriveFile;
+    try {
+      parentEntry = await this.resolvePath(parentPath);
+    } catch (e) {
+      if (e instanceof VfsError && e.code === FileSystemError.FileNotFound) {
+        throw new VfsError(
+          FileSystemError.FileNotFound,
+          `Parent directory not found: ${parentPath}`,
+        );
+      }
+      throw e;
+    }
+
+    if (parentEntry.mimeType !== GOOGLE_MIME_FOLDER) {
+      throw new VfsError(
+        FileSystemError.FileNotADirectory,
+        `Parent is not a directory: ${parentPath}`,
+      );
+    }
+
+    if (parentEntry.id === SHARED_WITH_ME_ID) {
+      throw new VfsError(
+        FileSystemError.NoPermissions,
+        `Cannot create files directly in 'Shared with me' root.`,
+      );
+    }
+
+    // 2. Check if file exists
     let existingEntry: GDriveFile | null = null;
     try {
       existingEntry = await this.resolvePath(path);
@@ -271,9 +298,9 @@ export class GoogleDriveFileSystem implements IFileSystemProvider {
         existingEntry.id,
         content,
       );
-      this.events.emit({ type: 'update', path });
+      simplifiedGoogleDriveAPI.invalidateFileContent(existingEntry.id);
+      simplifiedGoogleDriveAPI.invalidateFolderContents(parentEntry.id);
     } else {
-      // Create new file
       if (!options.create) {
         throw new VfsError(
           FileSystemError.FileNotFound,
@@ -281,34 +308,25 @@ export class GoogleDriveFileSystem implements IFileSystemProvider {
         );
       }
 
-      const parentEntry = await this.resolvePath(parentPath);
+      const created = await simplifiedGoogleDriveAPI.create(this.auth, {
+        name: fileName,
+        parents: [parentEntry.id],
+      });
 
-      // Prevent creating files directly in the "Shared with me" root,
-      // as they technically need an owner and parent folder.
-      if (parentEntry.id === SHARED_WITH_ME_ID) {
-        throw new VfsError(
-          FileSystemError.NoPermissions,
-          `Cannot create files directly in 'Shared with me' root. Create them in a specific folder.`,
+      try {
+        await simplifiedGoogleDriveAPI.upload(
+          this.auth,
+          created.result.id,
+          content,
         );
+      } catch (uploadError) {
+        await simplifiedGoogleDriveAPI.update(this.auth, created.result.id, {
+          trashed: true,
+        });
+        throw uploadError;
       }
 
-      if (parentEntry.mimeType !== GOOGLE_MIME_FOLDER) {
-        throw new VfsError(
-          FileSystemError.FileNotADirectory,
-          `Parent is not a directory: ${parentPath}`,
-        );
-      }
-
-      const { result: newFile } = await simplifiedGoogleDriveAPI.create(
-        this.auth,
-        {
-          name: fileName,
-          parents: [parentEntry.id],
-        },
-      );
-
-      await simplifiedGoogleDriveAPI.upload(this.auth, newFile.id, content);
-      this.events.emit({ type: 'create', path });
+      simplifiedGoogleDriveAPI.invalidateFolderContents(parentEntry.id);
     }
   }
 
@@ -363,6 +381,7 @@ export class GoogleDriveFileSystem implements IFileSystemProvider {
           creationTime,
           modificationTime,
           size,
+          canDelete: file.capabilities?.canTrash ?? false,
         } satisfies FSNodeStat;
 
         entries.push([file.name, fsNodeStat]);
@@ -415,7 +434,7 @@ export class GoogleDriveFileSystem implements IFileSystemProvider {
       mimeType: GOOGLE_MIME_FOLDER,
     });
 
-    this.events.emit({ type: 'create', path });
+    simplifiedGoogleDriveAPI.invalidateFolderContents(parentEntry.id);
   }
 
   /**
@@ -424,16 +443,14 @@ export class GoogleDriveFileSystem implements IFileSystemProvider {
   public async delete(path: string, recursive: boolean): Promise<void> {
     if (path === '/') throw new Error('Cannot delete root');
 
-    const { canDelete } = await this.stat(path);
+    const entry = await this.resolvePath(path);
 
-    if (canDelete !== true) {
+    if (entry.capabilities?.canTrash !== true) {
       throw new VfsError(
         FileSystemError.NoPermissions,
         `Deletion is not allowed for path: ${path}`,
       );
     }
-
-    const entry = await this.resolvePath(path);
 
     if (!recursive && entry.mimeType === GOOGLE_MIME_FOLDER) {
       // For empty check we use the same query logic
@@ -452,14 +469,20 @@ export class GoogleDriveFileSystem implements IFileSystemProvider {
       });
       // Safe array length check
       if (result.files && result.files.length > 0) {
-        throw new Error('Directory not empty (use recursive=true)');
+        throw new VfsError(
+          FileSystemError.DirectoryNotEmpty,
+          'Directory not empty (use recursive=true)',
+        );
       }
     }
 
     await simplifiedGoogleDriveAPI.update(this.auth, entry.id, {
       trashed: true,
     });
-    this.events.emit({ type: 'delete', path });
+    simplifiedGoogleDriveAPI.invalidateFileContent(entry.id);
+    for (const parentId of entry.parents ?? []) {
+      simplifiedGoogleDriveAPI.invalidateFolderContents(parentId);
+    }
   }
 
   /**
@@ -472,6 +495,13 @@ export class GoogleDriveFileSystem implements IFileSystemProvider {
     if (normalizedOld === normalizedNew) return;
 
     const sourceEntry = await this.resolvePath(normalizedOld);
+
+    if (sourceEntry.capabilities?.canTrash !== true) {
+      throw new VfsError(
+        FileSystemError.NoPermissions,
+        `Move is not allowed for path: ${oldPath}`,
+      );
+    }
 
     try {
       await this.resolvePath(normalizedNew);
@@ -503,24 +533,30 @@ export class GoogleDriveFileSystem implements IFileSystemProvider {
       );
     }
 
-    const removeParents = sourceEntry.parents ? sourceEntry.parents : [];
+    const currentParents = sourceEntry.parents ?? [];
+    const removeParents = currentParents.filter(
+      (p) => p !== destinationParentEntry.id,
+    );
 
     await simplifiedGoogleDriveAPI.update(this.auth, sourceEntry.id, {
       name: newFileName,
-      addParents: [destinationParentEntry.id],
-      removeParents,
+      addParents:
+        removeParents.length === currentParents.length
+          ? [destinationParentEntry.id]
+          : undefined,
+      removeParents: removeParents.length > 0 ? removeParents : undefined,
     });
 
-    this.events.emit({
-      type: 'rename',
-      path: normalizedOld,
-      newPath: normalizedNew,
-    });
+    simplifiedGoogleDriveAPI.invalidateFileContent(sourceEntry.id);
+    for (const parentId of removeParents) {
+      simplifiedGoogleDriveAPI.invalidateFolderContents(parentId);
+    }
+    simplifiedGoogleDriveAPI.invalidateFolderContents(
+      destinationParentEntry.id,
+    );
   }
 
   public watch(callback: (event: VfsEvent) => void): () => void {
     return this.events.subscribe(callback);
   }
 }
-
-// fixme: при записи файла не создавать новые, обновлять существующий с тем же именем.
