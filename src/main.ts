@@ -13,7 +13,3 @@ if (rootMountElement) {
   const app = await setupApp();
   app.mount(rootMountElement);
 }
-
-if (import.meta.env.DEV) {
-  void import('./temp' /* @vite-ignore */);
-}
