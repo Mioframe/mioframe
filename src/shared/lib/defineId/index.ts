@@ -4,6 +4,7 @@ import { generateId } from '../generateId';
 const ANY_ID = 'anyId' as const;
 
 export const defineId = <P extends string = typeof ANY_ID>(
+  // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- default generic parameter requires assertion
   prefix: P = ANY_ID as P,
   uidLength = 21,
 ) => {

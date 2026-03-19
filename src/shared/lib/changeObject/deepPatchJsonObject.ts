@@ -74,6 +74,6 @@ export function deepPatchJsonObject<T extends object, S extends object>(
     }
   });
 
-  // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
+  // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- deep merge return type narrowing
   return target as MergeDeep<T, S>;
 }
