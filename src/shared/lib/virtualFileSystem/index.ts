@@ -8,7 +8,7 @@ export {
 } from './IFileSystemProvider';
 export {
   EventEmitter,
-  type VfsChangeType,
+  VfsEventType,
   type VfsEvent,
 } from './EventEmitter';
 export { PathUtils } from './PathUtils';

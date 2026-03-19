@@ -93,4 +93,22 @@ describe('PathUtils', () => {
       expect(PathUtils.isDirectChild('/a/b', '/a/b')).toBe(true);
     });
   });
+
+  describe('isSameOrDescendantOf', () => {
+    it('should return true when path is same as ancestor', () => {
+      expect(PathUtils.isSameOrDescendantOf('/a/b', '/a/b')).toBe(true);
+    });
+
+    it('should return true when path is descendant of ancestor', () => {
+      expect(PathUtils.isSameOrDescendantOf('/a/b/c', '/a')).toBe(true);
+    });
+
+    it('should return false when path is not related to ancestor', () => {
+      expect(PathUtils.isSameOrDescendantOf('/b', '/a')).toBe(false);
+    });
+
+    it('should work correctly with root path', () => {
+      expect(PathUtils.isSameOrDescendantOf('/a/b/c', '/')).toBe(true);
+    });
+  });
 });

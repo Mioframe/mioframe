@@ -220,13 +220,9 @@ export class GoogleDriveFileSystem implements IFileSystemProvider {
     }
 
     try {
-      return await simplifiedGoogleDriveAPI.download(
-        this.auth,
-        entry.id,
-        entry.name,
-        entry.modifiedTime,
-        undefined,
-      );
+      return await simplifiedGoogleDriveAPI.download(this.auth, entry.id, {
+        name: entry.name,
+      });
     } catch (e) {
       throw new VfsError(
         FileSystemError.Unknown,
@@ -304,7 +300,6 @@ export class GoogleDriveFileSystem implements IFileSystemProvider {
       );
       simplifiedGoogleDriveAPI.invalidateFileContent(existingEntry.id);
       simplifiedGoogleDriveAPI.invalidateFolderContents(parentEntry.id);
-      this.events.emit({ type: 'update', path });
     } else {
       if (!options.create) {
         throw new VfsError(
@@ -332,7 +327,6 @@ export class GoogleDriveFileSystem implements IFileSystemProvider {
       }
 
       simplifiedGoogleDriveAPI.invalidateFolderContents(parentEntry.id);
-      this.events.emit({ type: 'create', path });
     }
   }
 
@@ -441,7 +435,6 @@ export class GoogleDriveFileSystem implements IFileSystemProvider {
     });
 
     simplifiedGoogleDriveAPI.invalidateFolderContents(parentEntry.id);
-    this.events.emit({ type: 'create', path });
   }
 
   /**
@@ -490,7 +483,6 @@ export class GoogleDriveFileSystem implements IFileSystemProvider {
     for (const parentId of entry.parents ?? []) {
       simplifiedGoogleDriveAPI.invalidateFolderContents(parentId);
     }
-    this.events.emit({ type: 'delete', path });
   }
 
   /**
@@ -562,12 +554,6 @@ export class GoogleDriveFileSystem implements IFileSystemProvider {
     simplifiedGoogleDriveAPI.invalidateFolderContents(
       destinationParentEntry.id,
     );
-
-    this.events.emit({
-      type: 'rename',
-      path: normalizedOld,
-      newPath: normalizedNew,
-    });
   }
 
   public watch(callback: (event: VfsEvent) => void): () => void {
