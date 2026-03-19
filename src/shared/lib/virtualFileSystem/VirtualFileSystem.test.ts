@@ -440,6 +440,62 @@ describe('VirtualFileSystem', () => {
 
       expect(vfs.mountsList).toContain(testPath);
     });
+
+    it('should resolve to more specific mount point when nested mounts exist', async () => {
+      // Setup: root MemoryFileSystem with some content
+      const rootFS = new MemoryFileSystem();
+      await rootFS.writeFile('/root-file.txt', 'root content', {
+        create: true,
+        overwrite: true,
+      });
+
+      // Setup: separate "OPFS" provider with different content
+      const opfsFS = new MemoryFileSystem();
+      await opfsFS.writeFile('/opfs-file.txt', 'opfs file', {
+        create: true,
+        overwrite: true,
+      });
+
+      // Mount root first, then OPFS (simulating actual app behavior)
+      vfs.mount('/', rootFS);
+      vfs.mount('/opfs', opfsFS);
+
+      // Root file should be accessible from root provider
+      const rootContent = await vfs.readText('/root-file.txt');
+      expect(rootContent).toBe('root content');
+
+      // Files in /opfs/ should resolve to OPFS provider, not root
+      const opfsFileContent = await vfs.readText('/opfs/opfs-file.txt');
+      expect(opfsFileContent).toBe('opfs file');
+    });
+
+    it('should read directory from correct provider when nested mounts exist', async () => {
+      // Setup root provider with files
+      const rootFS = new MemoryFileSystem();
+      await rootFS.createDirectory('/data');
+      await rootFS.writeFile('/data/root-file.txt', 'from root', {
+        create: true,
+        overwrite: true,
+      });
+
+      // Setup nested provider (simulating OPFS mount)
+      const nestedFS = new MemoryFileSystem();
+      await nestedFS.writeFile('/nested-file.txt', 'from nested', {
+        create: true,
+        overwrite: true,
+      });
+
+      // Mount in order: root first, then nested (as app does)
+      vfs.mount('/', rootFS);
+      vfs.mount('/data', nestedFS);
+
+      // Read directory at /data should return nestedFS contents, not rootFS
+      const entries = await vfs.readDirectory('/data');
+      const fileNames = entries.map(([name]) => name);
+
+      expect(fileNames).toContain('nested-file.txt');
+      expect(fileNames).not.toContain('root-file.txt');
+    });
   });
 
   describe('watch events', () => {

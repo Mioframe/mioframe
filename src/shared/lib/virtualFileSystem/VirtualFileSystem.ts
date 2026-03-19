@@ -178,6 +178,18 @@ export class VirtualFileSystem {
 
     this.mounts.set(normalizedMountPath, { provider, unwatch });
 
+    // Sort mounts to prioritize more specific (longer) mount points first,
+    // which is necessary for proper nested mount resolution.
+    const sortedEntries = Array.from(this.mounts.entries()).sort(
+      (a, b) => b[0].length - a[0].length,
+    );
+    const newMap = new Map<
+      string,
+      { provider: IFileSystemProvider; unwatch: () => void }
+    >();
+    sortedEntries.forEach(([k, v]) => newMap.set(k, v));
+    this.mounts = newMap;
+
     this.events.emit({ type: VfsEventType.MOUNT, path: normalizedMountPath });
   }
 
