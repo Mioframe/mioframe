@@ -187,6 +187,14 @@ function logExecution<Args extends unknown[], Return>(
  * @throws Re-throws any error thrown by the decorated method
  */
 export function Log(options: LogOptions = {}) {
+  if (!import.meta.env.DEV) {
+    return function <This, Args extends unknown[], R>(
+      fn: (this: This, ...args: Args) => R,
+    ) {
+      return fn;
+    };
+  }
+
   return function <This, Args extends unknown[], R>(
     value: (this: This, ...args: Args) => R,
     context: ClassMethodDecoratorContext<
@@ -224,6 +232,9 @@ export function withLog<Args extends unknown[], Return>(
   fn: (...args: Args) => Return,
   options: LogOptions & { name: string },
 ): (...args: Args) => Return {
+  if (!import.meta.env.DEV) {
+    return fn;
+  }
   const { name, ...rest } = options;
   return (...args: Args): Return => logExecution(fn, args, name, rest);
 }
