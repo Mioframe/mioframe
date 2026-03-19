@@ -1,90 +1,171 @@
-# src/shared/lib KNOWLEDGE BASE
+# src/shared/lib - Foundation Layer
 
-## OVERVIEW
-Core utilities, CRDT (Automerge) adapters, OPFS filesystem abstractions, and Google Drive integrations. Contains both general TypeScript utilities and Vue composables.
+**Scope:** Low-level utilities, CRDT (Automerge), OPFS filesystem abstractions, Google Drive API integration. Core foundation with 80+ files across 15+ submodules.
 
-## STRUCTURE
-```
-src/shared/lib/
-├── automerge/              # CRDT logic and types
-├── automergeAdapter/       # Integration of Automerge with Vue
-├── changeObject/           # Deep patch/put utilities for JSON objects
-├── databaseDocument/       # DB sync and migrations
-├── debounce.ts             # Re-exports from perfect-debounce
-├── throttle.ts             # Re-exports from es-toolkit
-├── fileSystem/             # FS types and guards
-├── googleApi/              # Google API loading utilities
-├── googleDrive/            # Google Drive API integration
-├── migrations/             # Version migration utilities
-├── objectKeys.ts           # Type-safe key extraction
-├── onInteractionOutside.ts # Click-outside detection
-├── playground/             # Developer utilities and test beds
-├── proxyService/          # Remote procedure call via message passing
-├── removeEmptyStructures.ts # Recursive empty structure removal
-├── scopePool.ts            # Reactive scope pooling with ref counting
-├── scopesMap.ts            # WeakMap-based reactive scope cache
-├── sortable/               # Drag-and-drop sorting utilities
-├── subscriptions/          # Subscription service/client
-├── teleportContainer/      # Vue teleport helpers
-├── typeGuards/             # TypeScript type guards
-├── useClosestParentFrame.ts # Find parent frame element
-├── useFastKeyboardInput.ts # Single-char keyboard capture
-├── useFirstFocus.ts        # Auto-focus first element
-├── useIterable.ts          # Iterable type utilities
-├── useLastHover.ts         # Track last-hovered element
-├── useLazyState.ts         # Lazy-loading reactive state
-├── useLiveResource.ts      # Reactive resource (deprecated)
-├── useMatchSorter.ts       # Fuzzy search filtering
-├── useQueryState.ts        # URL query param sync
-├── virtualFileSystem/      # File system abstractions (OPFS)
-├── WeakValueMap.ts         # WeakRef-based map
-├── writableDeepClone.ts    # Deep clone with writable types
-└── wrapWorker/             # Web Worker proxy utilities
+## CRITICAL WARNINGS
+
+- **8 TypeScript `any` types** in 6 files - violates strict TypeScript requirement
+- **72 ESLint `eslint-disable-next-line`** in 37 files - reduce systematically
+- **Memory leaks**: `scopePool.ts` (lines 123, 79) - investigate lifecycle management
+- **Deprecated**: `useLiveResource.ts` - migrate to `useQuery` + `defineQuery`
+
+## SUBMODULES
+
+### automerge/
+CRDT core types and validation schemas.
+
+**Exports**: `AMDocHandle<T>`, `AMDocumentId`, `AMDoc<T>`, `AMValue`, `AMChangeFn<T>`
+
+```typescript
+export type * from './automergeTypes';
+export const zodSimpleDocumentId = string().check(...);
+export const zodDocumentId = zodStrictDocumentId;
 ```
 
-## UTILITY FUNCTIONS
+### automergeAdapter/
+CRDT-Vue integration layer.
 
-| Function | Purpose |
-|----------|---------|
-| `objectKeys` | Type-safe key extraction for objects/arrays |
-| `moveArrayValue` | Move array element by index (in-place) |
-| `removeEmptyStructures` | Recursively remove empty arrays/objects |
-| `arrayStartsWith` | Check if array starts with prefix |
-| `defineReadonlyDeep` | Type cast to readonly (no copy) |
-| `writableDeepClone` | Deep clone with writable types |
-| `jsonStringify` / `jsonParse` | Type-safe JSON with brand typing |
-| `isStandardBufferView` | Type guard for ArrayBuffer views |
+**Adapters**: VFS adapter for OPFS, FS adapter for local storage.
+
+```typescript
+export { createVFSAdapter } from './createVFSAdapter';
+export { createFSStorageAdapter } from './createFSStorageAdapter';
+export { fileNameToPartialKey, partialKeyToFileName };
+```
+
+### databaseDocument/
+DB schema, migrations, validation types.
+
+**Exports**: `DATABASE_DOCUMENT_TYPE`, `zodDatabaseDocument`, migration system v1-v3.
+
+### googleDrive/
+Google Drive API client and queries.
+
+**Components**: API client, query builder, space constants.
+
+### googleApi/
+Google API loading utilities.
+
+**Loaders**: gapi, gapi.drive, gsi, oauth2 initialization.
+
+### virtualFileSystem/
+OPFS abstraction layer with event system.
+
+**Classes**: `VirtualFileSystem`, `PathUtils`, `EventEmitter`, `LockManager`.
+
+### cfrDocument/
+CRDT document handling.
+
+## SINGLE-FILE UTILS
+
+| File | Purpose | Pattern |
+|------|---------|---------|
+| `debounce.ts` | Perfect debounce | `export { debounce }` |
+| `throttle.ts` | Es-toolkit throttle | `export { throttle }` |
+| `dayjs.ts` | DayJS wrapper | `export { dayjs, Dayjs }` |
+| `generateColor.ts` | MD5-based colors | `export const generateColor = ...` |
+| `generateId.ts` | UUID generation | `export const generateId = ...` |
+| `objectEntries.ts` | Type-safe entries | `export const objectEntries = ...` |
+| `objectKeys.ts` | Type-safe keys | `export const objectKeys = ...` |
+| `readonlyDeep.ts` | Readonly cast | `export const defineReadonlyDeep = ...` |
+| `shallowClone.ts` | Shallow clone | `export const shallowClone = ...` |
+| `writableDeepClone.ts` | Deep clone writable | `export const writableDeepClone = ...` |
+| `WeakValueMap.ts` | WeakRef map | `export class WeakValueMap<T> { ... }` |
 
 ## VUE COMPOSABLES
 
-| Composable | Purpose |
-|------------|---------|
-| `useQueryState` | Two-way sync with URL query params |
-| `useLazyState` | Lazy-loading with loading/error states |
-| `useLiveResource` | Fetch + subscription pattern (deprecated) |
-| `useFirstFocus` | Auto-focus first focusable element |
-| `useLastHover` | Track last-hovered in a group |
-| `useMatchSorter` | Fuzzy search with ranking |
-| `useFastKeyboardInput` | Capture single-char keypresses |
-| `onInteractionOutside` | Detect clicks outside element |
-| `setupMetaThemeColor` | Sync theme-color meta with body |
-| `useClosestParentFrame` | Find parent frame/dialog |
+| Composable | Purpose | Pattern |
+|------------|---------|---------|
+| `useQueryState` | URL query sync | `export const useQueryState = ...` |
+| `useLazyState` | Lazy loading | `export const useLazyState = ...` |
+| `useDeepModel` | Deep reactive model | `export const useDeepModel = ...` |
+| `useFirstFocus` | Auto-focus | `export const useFirstFocus = ...` |
+| `useLastHover` | Track hover | `export const useLastHover = ...` |
+| `useMatchSorter` | Fuzzy search | `export const useMatchSorter = ...` |
+| `useFastKeyboardInput` | Key capture | `export const useFastKeyboardInput = ...` |
+| `useKeyboardSearch` | Search input | `export const useKeyboardSearch = ...` |
+| `useOverlayNavigation` | Overlay nav | `export const useOverlayNavigation = ...` |
+| `useClosestElement` | DOM traversal | `export const useClosestElement = ...` |
+| `useClosestParentFrame` | Frame detection | `export const useClosestParentFrame = ...` |
+| `useIterable` | Async iterable | `export const useIterable = ...` |
+| `useAsyncIterable` | Async iterable | `export const useAsyncIterable = ...` |
+| `useReduce` | Reduce with state | `export const useReduce = ...` |
+| `extendedAsyncComputed` | Async computed | `export const extendedAsyncComputed = ...` |
+
+## SCOPE MANAGEMENT
+
+| Utility | Purpose | Pattern |
+|---------|---------|---------|
+| `scopePool.ts` | Ref-counted scopes | `export const defineScopePool = ...` |
+| `usePoolState` | Reactive pool access | `export const usePoolState = ...` |
+| `scopesMap.ts` | WeakMap scope cache | `export const createScopesMap = ...` |
+| `useScopesMapByKey` | Reactive map access | `export const useScopesMapByKey = ...` |
+
+**WARNING**: `usePoolState` requires active `EffectScope` - call within reactive context.
+
+## TYPE GUARDS
+
+| File | Purpose | Pattern |
+|------|---------|---------|
+| `typeGuards/isArray.ts` | Array check | `export const isArray = ...` |
+| `typeGuards/hasOwnKey.ts` | Own key check | `export const hasOwnKey = ...` |
+
+## ERROR HANDLING
+
+```typescript
+export { FileSystemError, VfsError } from './VfsError';
+export { DomainError } from './error';
+```
+
+## Migrations
+
+```typescript
+export * from './migrations';
+export { defineVersion, defineMigrations };
+```
+
+**Versions**: v1 (properties), v2 (views), v3 (extensions).
+
+## EXPORT PATTERNS
+
+- **Types only**: `export type * from './types'`
+- **Named exports**: `export { ClassName, functionName } from './module'`
+- **Composables**: `export const useComposable = ...`
+- **Errors**: `export { ErrorClass } from './Error'`
+
+## CODE STYLE
+
+- **Naming**: `use*` for composables, `*Adapter` for adapters, `*Store*` for state
+- **JSDoc**: Required for all public API functions
+- **Type safety**: No `any`, no `@ts-ignore`, no `eslint-disable`
+- **Pure utilities**: No side effects, no Vue reactivity (unless composable)
+- **Single responsibility**: One file, one export pattern
 
 ## WHERE TO LOOK
+
 | Task | Location | Notes |
 |------|----------|-------|
-| Document Migrations | `databaseDocument/migrations/` | Versioning for CRDT structures |
-| File System Logic | `virtualFileSystem/` & `localFileSystem/` | OPFS API usage and fallback |
-| CRDT Sync | `automergeAdapter/` | Data synchronization with UI |
-| Remote Calls | `proxyService/` | Cross-context RPC via postMessage |
-| State Pooling | `scopePool.ts`, `scopesMap.ts` | Cached reactive scopes |
-
-## CONVENTIONS
-- Pure TypeScript, minimal Vue reactivity where possible (isolated to adapters).
-- Heavy use of TypeScript utility types and type guards (`src/shared/lib/typeGuards`).
-- Errors are explicitly typed and thrown.
-- JSDoc documentation for all public API functions.
+| CRDT Types | `automerge/automergeTypes.ts` | AMDoc, DocumentId |
+| CRDT Adapters | `automergeAdapter/` | VFS, FS adapters |
+| DB Schema | `databaseDocument/types.ts` | Zod schemas |
+| Migrations | `databaseDocument/migrations/` | v1-v3 versions |
+| OPFS API | `virtualFileSystem/VirtualFileSystem.ts` | File operations |
+| Google Drive | `googleDrive/simplifiedAPI.ts` | API client |
+| URL State | `useQueryState.ts` | Query param sync |
+| Scope Pool | `scopePool.ts` | Ref-counted scopes |
+| Weak Cache | `scopesMap.ts` | WeakMap cache |
+| Utilities | root level | debounce, throttle, clones |
 
 ## ANTI-PATTERNS
-- **NEVER** import from `features`, `widgets`, or `pages` (strict FSD layer violation).
-- **NEVER** mutate CRDT documents without using the proper Automerge adapter mechanisms.
+
+- **NEVER** import from `features`, `widgets`, or `pages` (strict FSD layer violation)
+- **NEVER** mutate CRDT documents without proper adapter methods
+- **NEVER** bypass type guards (use `typeGuards/` for runtime checks)
+- **NEVER** create memory leaks (proper cleanup in composables)
+- **NEVER** use `any` type or `@ts-ignore`
+- **NEVER** leave empty catch blocks
+
+## DEPRECATED
+
+- `useLiveResource.ts` - use `useQuery` with `defineQuery` instead
+- `cfrDocument/` - migrate to databaseDocument

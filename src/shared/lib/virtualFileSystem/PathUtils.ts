@@ -80,4 +80,17 @@ export const PathUtils = {
     if (parent === child) return true; // Event on the folder itself
     return this.dirname(child) === parent;
   },
+
+  /**
+   * Checks if path is the same or a descendant of ancestor.
+   * Used for tracking ancestor changes in watch
+   * @param path - Path to check
+   * @param ancestor - Ancestor path
+   * @returns true if path equals ancestor or is inside ancestor
+   */
+  isSameOrDescendantOf(path: string, ancestor: string): boolean {
+    if (ancestor === '/') return true;
+    if (path === ancestor) return true;
+    return path.startsWith(`${ancestor}/`);
+  },
 };
