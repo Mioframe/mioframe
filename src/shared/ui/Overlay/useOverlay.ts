@@ -4,6 +4,7 @@ import type { ComputedRef, InjectionKey } from 'vue';
 import { computed, inject, provide, type Ref } from 'vue';
 import { findParentVueElement } from '@shared/lib/useClosestParentFrame';
 
+// eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- standard Vue InjectionKey pattern
 const OVERLAY_CONTAINER_KEY = Symbol('overlay-container') as InjectionKey<
   ComputedRef<HTMLElement | SVGElement | null | undefined>
 >;

@@ -18,7 +18,7 @@ describe('defineMigrations', () => {
       const migrations = defineMigrations(
         (v0: { [key: string]: unknown }) => ({ ...v0, version: 1 }),
         (v1: { [key: string]: unknown }) => {
-          // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- Value is known to be number
+          // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- value is guaranteed to be number by test setup
           const doubled = (v1.value as number) * 2;
           return { ...v1, version: 2, doubled };
         },

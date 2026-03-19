@@ -9,4 +9,5 @@ import type { ReadonlyDeep } from 'type-fest';
  * @param v - Value to cast as deeply readonly
  * @returns The same value with ReadonlyDeep<T> type
  */
+// eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- readonly type cast utility
 export const defineReadonlyDeep = <T>(v: T) => <ReadonlyDeep<T>>v;
