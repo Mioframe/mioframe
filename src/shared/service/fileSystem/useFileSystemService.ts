@@ -28,17 +28,11 @@ const setupFileSystemService = () => {
     }) =>
       new Observable<[string, FSNodeStat][] | Error>((subscriber) => {
         const fetchEntries = async () => {
-          console.debug('[123] fetchEntries', path);
-
           try {
             const entries = await vfs.readDirectory(path);
 
-            console.debug('[123] fetchEntries', path, { entries });
-
             subscriber.next(sortBy(entries, [0]));
           } catch (err) {
-            console.debug('[123] fetchEntries', path, { err });
-
             if (err instanceof Error) {
               subscriber.next(err);
             } else {
@@ -49,9 +43,7 @@ const setupFileSystemService = () => {
 
         void fetchEntries();
 
-        const unwatch = vfs.watch(path, (e) => {
-          console.debug('[123] onWatch', path, e);
-
+        const unwatch = vfs.watch(path, () => {
           void fetchEntries();
         });
 
@@ -128,9 +120,7 @@ const setupFileSystemService = () => {
 
       await vfs.createDirectory(mountedPath);
 
-      console.debug('[123] MOUNT', mountedPath);
       mountFSDirectoryHandle(mountedPath, fileSystemDirectoryHandle);
-      console.debug('[123] MOUNTED', mountedPath);
     }
   };
 
