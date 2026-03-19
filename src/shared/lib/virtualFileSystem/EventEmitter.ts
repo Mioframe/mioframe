@@ -1,11 +1,73 @@
-export type VfsChangeType = 'create' | 'update' | 'delete' | 'rename';
+import type { FSNodeType } from './IFileSystemProvider';
+
+/**
+ * Virtual file system event types.
+ *
+ * @remarks
+ * Events are divided into two categories:
+ *
+ * **Content events** (files and directories):
+ * - `create` — A new file or directory has been created
+ * - `update` — An existing file has been modified (content changed)
+ * - `delete` — A file or directory has been deleted
+ * - `rename` — A file or directory has been renamed/moved
+ *
+ * **System events** (mount points):
+ * - `mount` — A provider has been mounted at a path
+ * - `unmount` — A provider has been unmounted from a path
+ *
+ * For content events, check the `nodeType` field to determine if the event
+ * is for a file or directory.
+ */
+export enum VfsEventType {
+  /**
+   * A new file or directory has been created.
+   * Emitted by: writeFile (new file), createDirectory
+   */
+  CREATE = 'create',
+
+  /**
+   * An existing file has been modified.
+   * Emitted by: writeFile (existing file)
+   * Note: Only for files, not directories
+   */
+  UPDATE = 'update',
+
+  /**
+   * A file or directory has been deleted.
+   * Emitted by: delete
+   */
+  DELETE = 'delete',
+
+  /**
+   * A file or directory has been renamed or moved.
+   * Emitted by: move
+   */
+  RENAME = 'rename',
+
+  /**
+   * A provider has been mounted at a path.
+   * Emitted by: mount
+   */
+  MOUNT = 'mount',
+
+  /**
+   * A provider has been unmounted from a path.
+   * Emitted by: unmount
+   */
+  UNMOUNT = 'unmount',
+}
 
 export interface VfsEvent {
-  type: VfsChangeType;
+  type: VfsEventType;
   /** Path relative to root (for VFS) or provider root (for drivers) */
   path: string;
   /** For rename event — new path */
   newPath?: string;
+  /** Node type for content events (create, update, delete, rename) */
+  nodeType?: FSNodeType;
+  /** File size in bytes (for update events) */
+  size?: number;
 }
 
 /**
