@@ -20,6 +20,7 @@ export type JsonString<T> = string & { readonly __brandJsonStringType: T };
  * @returns Branded JSON string with type information
  */
 export const jsonStringify = <T>(obj: T): JsonString<T> => {
+  // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- branded type utility requires assertion
   return JSON.stringify(obj) as JsonString<T>;
 };
 
@@ -30,5 +31,6 @@ export const jsonStringify = <T>(obj: T): JsonString<T> => {
  * @returns Parsed object with full type inference
  */
 export const jsonParse = <T>(jsonStr: JsonString<T>): T => {
+  // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- branded type utility requires assertion
   return JSON.parse(jsonStr) as T;
 };
