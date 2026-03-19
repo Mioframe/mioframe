@@ -5,7 +5,7 @@ import type {
 } from './IFileSystemProvider';
 import { FSNodeType } from './IFileSystemProvider';
 import type { VfsEvent } from './EventEmitter';
-import { EventEmitter } from './EventEmitter';
+import { EventEmitter, VfsEventType } from './EventEmitter';
 import { PathUtils } from './PathUtils';
 import { FileSystemError, VfsError } from './VfsError';
 import { LockManager } from './LockManager';
@@ -107,7 +107,8 @@ export class VirtualFileSystem {
 
     const wrappedListener = (event: VfsEvent) => {
       if (targetPath) {
-        const checkPath = (p: string) => {
+        // Check if event path is inside watched tree (descendants)
+        const checkDescendant = (p: string) => {
           if (recursive) {
             return PathUtils.isChildOrSame(targetPath, p);
           } else {
@@ -115,10 +116,26 @@ export class VirtualFileSystem {
           }
         };
 
-        const matchPath = checkPath(event.path);
-        const matchNewPath = event.newPath ? checkPath(event.newPath) : false;
+        // Check if event path is an ancestor of watched path (parents)
+        const checkAncestor = (p: string) => {
+          return PathUtils.isSameOrDescendantOf(targetPath, p);
+        };
 
-        if (matchPath || matchNewPath) {
+        const matchDescendant = checkDescendant(event.path);
+        const matchNewDescendant = event.newPath
+          ? checkDescendant(event.newPath)
+          : false;
+        const matchAncestor = checkAncestor(event.path);
+        const matchNewAncestor = event.newPath
+          ? checkAncestor(event.newPath)
+          : false;
+
+        if (
+          matchDescendant ||
+          matchNewDescendant ||
+          matchAncestor ||
+          matchNewAncestor
+        ) {
           listener(event);
         }
       } else {
@@ -150,44 +167,18 @@ export class VirtualFileSystem {
       this.unmount(normalizedMountPath);
     }
 
-    // Subscribe to provider events for relay to VFS global bus
-    // with path correction (adding mount point prefix).
-    const unwatch = provider.watch((event) => {
-      const absolutePath =
-        normalizedMountPath === '/'
-          ? event.path
-          : PathUtils.join(normalizedMountPath, event.path);
-
-      const mappedEvent: VfsEvent = {
-        ...event,
-        path: absolutePath,
-      };
-
-      if (event.newPath) {
-        mappedEvent.newPath =
-          normalizedMountPath === '/'
-            ? event.newPath
-            : PathUtils.join(normalizedMountPath, event.newPath);
-      }
-
-      this.events.emit(mappedEvent);
+    // Subscribe to provider events for relay to VFS global bus.
+    // Note: We only relay system events (mount/unmount) from providers.
+    // Content events (create/update/delete/rename) are emitted by VFS itself
+    // after successful operations to ensure consistency across all providers.
+    const unwatch = provider.watch(() => {
+      // For now, we don't relay provider events to avoid duplication.
+      // VFS emits its own events after operations complete.
     });
 
     this.mounts.set(normalizedMountPath, { provider, unwatch });
 
-    this.events.emit({ type: 'create', path: normalizedMountPath });
-
-    // Sort mounts to prioritize more specific (longer) mount points first,
-    // which is necessary for proper nested mount resolution.
-    const sortedEntries = Array.from(this.mounts.entries()).sort(
-      (a, b) => b[0].length - a[0].length,
-    );
-    const newMap = new Map<
-      string,
-      { provider: IFileSystemProvider; unwatch: () => void }
-    >();
-    sortedEntries.forEach(([k, v]) => newMap.set(k, v));
-    this.mounts = newMap;
+    this.events.emit({ type: VfsEventType.MOUNT, path: normalizedMountPath });
   }
 
   /**
@@ -201,7 +192,7 @@ export class VirtualFileSystem {
     if (mount) {
       mount.unwatch();
       this.mounts.delete(normalized);
-      this.events.emit({ type: 'delete', path: normalized });
+      this.events.emit({ type: VfsEventType.UNMOUNT, path: normalized });
     }
   }
 
@@ -281,9 +272,13 @@ export class VirtualFileSystem {
         overwrite: true,
       });
 
+      const stat = await provider.stat(relativePath);
+
       this.events.emit({
-        type: exists ? 'update' : 'create',
+        type: exists ? VfsEventType.UPDATE : VfsEventType.CREATE,
         path,
+        nodeType: FSNodeType.File,
+        size: stat.size,
       });
     });
   }
@@ -315,7 +310,11 @@ export class VirtualFileSystem {
   public async createDirectory(path: string): Promise<void> {
     const { provider, relativePath } = this.resolve(path);
     await provider.createDirectory(relativePath);
-    this.events.emit({ type: 'create', path });
+    this.events.emit({
+      type: VfsEventType.CREATE,
+      path,
+      nodeType: FSNodeType.Directory,
+    });
   }
 
   /**
@@ -349,10 +348,16 @@ export class VirtualFileSystem {
    * @param recursive If true, deletes non-empty directories recursively
    */
   public async delete(path: string, recursive: boolean = false): Promise<void> {
+    const stat = await this.stat(path);
+
     await this.locks.request(path, async () =>
       this.#unlockedDelete(path, recursive),
     );
-    this.events.emit({ type: 'delete', path });
+    this.events.emit({
+      type: VfsEventType.DELETE,
+      path,
+      nodeType: stat.type,
+    });
   }
 
   /**
@@ -377,6 +382,9 @@ export class VirtualFileSystem {
       );
     }
 
+    // Get node type before move
+    const stat = await this.stat(oldPath);
+
     // 1. Sort paths for locking to avoid deadlock.
     // If one process does rename(A, B) and another does rename(B, A), without sorting deadlocks can occur.
     // Always lock the "smaller" path first.
@@ -390,11 +398,16 @@ export class VirtualFileSystem {
 
         if (source.provider === target.provider) {
           await source.provider.move(source.relativePath, target.relativePath);
-          this.events.emit({ type: 'rename', path: oldPath, newPath });
         } else {
           await this.moveCrossProvider(oldPath, newPath);
-          this.events.emit({ type: 'rename', path: oldPath, newPath });
         }
+
+        this.events.emit({
+          type: VfsEventType.RENAME,
+          path: oldPath,
+          newPath,
+          nodeType: stat.type,
+        });
       });
     });
   }
@@ -443,6 +456,7 @@ export class VirtualFileSystem {
 
       await this.#unlockedDelete(sourcePath);
     }
+    // Note: RENAME event is emitted by the caller (move method)
   }
 
   /**

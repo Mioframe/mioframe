@@ -443,7 +443,7 @@ describe('VirtualFileSystem', () => {
   });
 
   describe('watch events', () => {
-    it('should emit create event when mounting a provider', () => {
+    it('should emit mount event when mounting a provider', () => {
       const events: Array<{ type: string; path: string }> = [];
       vfs.watch('/mnt', (event) => {
         events.push({ type: event.type, path: event.path });
@@ -452,12 +452,12 @@ describe('VirtualFileSystem', () => {
       vfs.mount('/mnt/test', memoryFS);
 
       expect(events).toContainEqual({
-        type: 'create',
+        type: 'mount',
         path: '/mnt/test',
       });
     });
 
-    it('should emit delete event when unmounting a provider', () => {
+    it('should emit unmount event when unmounting a provider', () => {
       vfs.mount('/mnt/test', memoryFS);
 
       const events: Array<{ type: string; path: string }> = [];
@@ -468,7 +468,7 @@ describe('VirtualFileSystem', () => {
       vfs.unmount('/mnt/test');
 
       expect(events).toContainEqual({
-        type: 'delete',
+        type: 'unmount',
         path: '/mnt/test',
       });
     });
@@ -737,7 +737,7 @@ describe('VirtualFileSystem', () => {
       expect(events.some((e) => e.type === 'update')).toBe(true);
     });
 
-    it('should emit create event when remounting provider', async () => {
+    it('should emit mount event when remounting provider', async () => {
       vfs.mount('/mnt/test', memoryFS);
       vfs.unmount('/mnt/test');
 
@@ -749,7 +749,7 @@ describe('VirtualFileSystem', () => {
       const newMemoryFS = new MemoryFileSystem();
       vfs.mount('/mnt/test', newMemoryFS);
 
-      expect(events).toContainEqual({ type: 'create' });
+      expect(events).toContainEqual({ type: 'mount' });
     });
 
     it('should emit events with correct paths for nested operations', async () => {
