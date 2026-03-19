@@ -44,7 +44,7 @@ export const loadGDrive = async (
             ACCESS_TOKEN: g.auth.getToken().access_token,
           },
           fileId,
-          name,
+          { name },
         );
       },
       // todo: добавить популярные методы с запросом прав доступа

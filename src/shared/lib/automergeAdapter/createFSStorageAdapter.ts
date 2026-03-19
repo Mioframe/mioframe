@@ -37,33 +37,22 @@ export const createFSStorageAdapter = (
   const load = async (
     key: PartialStorageKey,
   ): Promise<Uint8Array | undefined> => {
-    try {
-      const entry = await findEntry(key);
+    const entry = await findEntry(key);
 
-      if (entry && 'read' in entry) {
-        const file = await entry.read();
+    if (entry && 'read' in entry) {
+      const file = await entry.read();
 
-        return new Uint8Array(await file.arrayBuffer());
-      }
-
-      return undefined;
-    } catch (error) {
-      // eslint-disable-next-line no-console -- error logging in storage adapter
-      console.error(error);
-
-      // eslint-disable-next-line no-console -- debug logging in storage adapter
-      console.debug('load', key);
-
-      throw error;
+      return new Uint8Array(await file.arrayBuffer());
     }
+
+    return undefined;
   };
 
   const save = async (key: StorageKey, data: Uint8Array<ArrayBuffer>) => {
-    try {
-      const fileName = partialKeyToFileName(key);
-      if (!fileName) {
-        throw new Error('fileName is undefined');
-      }
+    const fileName = partialKeyToFileName(key);
+    if (!fileName) {
+      throw new Error('fileName is undefined');
+    }
 
       if (!('writeFile' in directory)) {
         // eslint-disable-next-line no-console -- warning about missing writeFile capability
@@ -72,21 +61,11 @@ export const createFSStorageAdapter = (
         );
       }
 
-      await directory.writeFile?.(fileName, data);
-    } catch (error) {
-      // eslint-disable-next-line no-console -- error logging in storage adapter
-      console.error(error);
-
-      // eslint-disable-next-line no-console -- debug logging in storage adapter
-      console.debug('save', key, data);
-
-      throw error;
-    }
+    await directory.writeFile?.(fileName, data);
   };
 
   const remove = async (key: StorageKey) => {
-    try {
-      const entry = await findEntry(key);
+    const entry = await findEntry(key);
 
       if (entry && 'remove' in entry) {
         if (!('remove' in entry)) {
@@ -96,110 +75,81 @@ export const createFSStorageAdapter = (
           );
         }
 
-        await entry.remove?.();
-      }
-    } catch (error) {
-      // eslint-disable-next-line no-console -- error logging in storage adapter
-      console.error(error);
-
-      // eslint-disable-next-line no-console -- debug logging in storage adapter
-      console.debug('remove', key);
-
-      throw error;
+      await entry.remove?.();
     }
   };
 
   const loadRange = async (
     keyPrefix: PartialStorageKey,
   ): Promise<AMChunk[]> => {
-    try {
-      const maybePartialAutomergeFileName = keyPrefix.join(KEY_SEPARATE);
+    const maybePartialAutomergeFileName = keyPrefix.join(KEY_SEPARATE);
 
-      const keyPrefixString: PartialAutomergeFileName | undefined = zodIs(
-        maybePartialAutomergeFileName,
-        zodPartialAutomergeFileName,
-      )
-        ? maybePartialAutomergeFileName
-        : undefined;
+    const keyPrefixString: PartialAutomergeFileName | undefined = zodIs(
+      maybePartialAutomergeFileName,
+      zodPartialAutomergeFileName,
+    )
+      ? maybePartialAutomergeFileName
+      : undefined;
 
-      const chunkList: AMChunk[] = await toArray(
-        from(directory.entries()).pipe(
-          filter(([name, entry]) => {
-            return (
-              'read' in entry &&
-              !!keyPrefixString &&
-              isString(name) &&
-              name.startsWith(keyPrefixString)
-            );
-          }),
-          map(async ([name, entry]): Promise<AMChunk | undefined> => {
-            const key = fileNameToPartialKey(name);
+    const chunkList: AMChunk[] = await toArray(
+      from(directory.entries()).pipe(
+        filter(([name, entry]) => {
+          return (
+            'read' in entry &&
+            !!keyPrefixString &&
+            isString(name) &&
+            name.startsWith(keyPrefixString)
+          );
+        }),
+        map(async ([name, entry]): Promise<AMChunk | undefined> => {
+          const key = fileNameToPartialKey(name);
 
-            if (key) {
-              return {
-                key,
-                data:
-                  'read' in entry
-                    ? new Uint8Array(await (await entry.read()).arrayBuffer())
-                    : undefined,
-              };
-            }
+          if (key) {
+            return {
+              key,
+              data:
+                'read' in entry
+                  ? new Uint8Array(await (await entry.read()).arrayBuffer())
+                  : undefined,
+            };
+          }
 
-            return undefined;
-          }),
-          filter((v) => !isNil(v)),
-        ),
-      );
+          return undefined;
+        }),
+        filter((v) => !isNil(v)),
+      ),
+    );
 
-      return chunkList;
-    } catch (error) {
-      // eslint-disable-next-line no-console -- error logging in storage adapter
-      console.error(error);
-
-      // eslint-disable-next-line no-console -- debug logging in storage adapter
-      console.debug('loadRange', keyPrefix);
-
-      throw error;
-    }
+    return chunkList;
   };
 
   const removeRange = async (keyPrefix: PartialStorageKey) => {
-    try {
-      const maybePartialAutomergeFileName = keyPrefix.join(KEY_SEPARATE);
+    const maybePartialAutomergeFileName = keyPrefix.join(KEY_SEPARATE);
 
-      const keyPrefixString: PartialAutomergeFileName | undefined = zodIs(
-        maybePartialAutomergeFileName,
-        zodPartialAutomergeFileName,
-      )
-        ? maybePartialAutomergeFileName
-        : undefined;
+    const keyPrefixString: PartialAutomergeFileName | undefined = zodIs(
+      maybePartialAutomergeFileName,
+      zodPartialAutomergeFileName,
+    )
+      ? maybePartialAutomergeFileName
+      : undefined;
 
-      await from(directory.entries()).forEach(async ([name, entry]) => {
-        if (
-          'read' in entry &&
-          keyPrefixString &&
-          isString(name) &&
-          name.startsWith(keyPrefixString)
-        ) {
-          if (!('remove' in entry)) {
+    await from(directory.entries()).forEach(async ([name, entry]) => {
+      if (
+        'read' in entry &&
+        keyPrefixString &&
+        isString(name) &&
+        name.startsWith(keyPrefixString)
+      ) {
+        if (!('remove' in entry)) {
             // eslint-disable-next-line no-console -- warning about missing remove capability
-            console.warn(
-              "FSStorageAdapter couldn't remove the entry, because this entry don't have remove method",
-            );
-          }
-
-          await entry.remove?.();
+          console.warn(
+            "FSStorageAdapter couldn't remove the entry, because this entry don't have remove method",
+          );
         }
-      });
-    } catch (error) {
-      // eslint-disable-next-line no-console -- error logging in storage adapter
-      console.error(error);
 
-      // eslint-disable-next-line no-console -- debug logging in storage adapter
-      console.debug('removeRange', keyPrefix);
-
-      throw error;
-    }
+        await entry.remove?.();
+      }
+    });
   };
 
   const adapter: AMStorageAdapterInterface = {
