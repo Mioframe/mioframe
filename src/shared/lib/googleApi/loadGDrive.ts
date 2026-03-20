@@ -1,4 +1,4 @@
-import { simplifiedGoogleDriveAPI } from '../googleDrive/simplifiedAPI';
+import { download, upload } from '../googleDrive/api';
 import { loadGAPI } from './loadGAPI';
 import type { AdvancedGDrive } from './types';
 
@@ -24,7 +24,7 @@ export const loadGDrive = async (
        * @deprecated
        */
       uploadFile: async (fileId: string, file: FileSystemWriteChunkType) => {
-        return simplifiedGoogleDriveAPI.upload(
+        return upload(
           {
             ACCESS_TOKEN: g.auth.getToken().access_token,
           },
@@ -35,16 +35,12 @@ export const loadGDrive = async (
       /**
        * @deprecated
        */
-      downloadFile: async (
-        fileId: string,
-        name: string = 'file',
-      ): Promise<File> => {
-        return simplifiedGoogleDriveAPI.download(
+      downloadFile: async (fileId: string): Promise<File> => {
+        return download(
           {
             ACCESS_TOKEN: g.auth.getToken().access_token,
           },
           fileId,
-          { name },
         );
       },
       // todo: добавить популярные методы с запросом прав доступа

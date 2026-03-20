@@ -1,10 +1,8 @@
 import { pathToString } from '@shared/service/directories';
-import {
-  simplifiedGoogleDriveAPI,
-  type GoogleAuthParams,
-} from './simplifiedAPI';
 import type { DirectoryGDriveEntry, RootGDriveEntry } from './types';
 import { DomainError } from '../error';
+import type { GoogleAuthParams } from './api';
+import { update } from './api/simplifiedAPI';
 
 export const createGDriveEntry = (
   auth: GoogleAuthParams,
@@ -31,7 +29,7 @@ export const createGDriveEntry = (
     if (!fileId) {
       throw new DomainError('You cannot rename an entry without a fileId.');
     }
-    await simplifiedGoogleDriveAPI.update(auth, fileId, {
+    await update(auth, fileId, {
       name: newName,
     });
 
