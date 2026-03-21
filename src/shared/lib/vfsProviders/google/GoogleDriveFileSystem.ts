@@ -1,5 +1,4 @@
 import type { GoogleAuthParams } from '../../googleDrive';
-import { simplifiedGoogleDriveAPI, SPACE } from '../../googleDrive';
 import type {
   FileContent,
   FSNodeStat,
@@ -15,7 +14,15 @@ import {
   VfsError,
 } from '../../virtualFileSystem';
 import { dayjs } from '../../dayjs';
-import type { GDriveFile } from '../../googleDrive/simplifiedAPI';
+import type { GDriveFileMeta } from '@shared/lib/googleDrive/api';
+import {
+  create,
+  download,
+  getGFileMetaList,
+  SPACE,
+  update,
+  upload,
+} from '@shared/lib/googleDrive/api';
 
 const GOOGLE_MIME_FOLDER = 'application/vnd.google-apps.folder';
 /** Internal identifier for the virtual folder "Shared With Me" */
@@ -90,7 +97,7 @@ export class GoogleDriveFileSystem implements IFileSystemProvider {
   /**
    * Resolves a VFS path to a Google Drive file/folder ID.
    */
-  private async resolvePath(path: string): Promise<GDriveFile> {
+  private async resolvePath(path: string): Promise<GDriveFileMeta> {
     const normalized = PathUtils.normalize(path);
 
     // Корневая директория
@@ -103,13 +110,13 @@ export class GoogleDriveFileSystem implements IFileSystemProvider {
         id: this.rootId,
         name: rootName,
         mimeType: GOOGLE_MIME_FOLDER,
-        parents: [],
+        modifiedTime: dayjs().toISOString(),
       };
     }
 
     const parts = normalized.split('/').filter((p) => p.length > 0);
     let currentId = this.rootId;
-    let currentEntry: GDriveFile | undefined;
+    let currentEntry: GDriveFileMeta | undefined;
 
     // Используем .entries() для безопасного доступа к индексу и значению
     for (const [index, partName] of parts.entries()) {
@@ -125,7 +132,7 @@ export class GoogleDriveFileSystem implements IFileSystemProvider {
         query = `name = '${partName.replace(/'/g, "\\'")}' and '${currentId}' in parents and trashed = false`;
       }
 
-      const { result } = await simplifiedGoogleDriveAPI.list(this.auth, {
+      const result = await getGFileMetaList(this.auth, {
         q: query,
         pageSize: 1,
         spaces: [this.space],
@@ -220,9 +227,7 @@ export class GoogleDriveFileSystem implements IFileSystemProvider {
     }
 
     try {
-      return await simplifiedGoogleDriveAPI.download(this.auth, entry.id, {
-        name: entry.name,
-      });
+      return await download(this.auth, entry.id);
     } catch (e) {
       throw new VfsError(
         FileSystemError.Unknown,
@@ -244,7 +249,7 @@ export class GoogleDriveFileSystem implements IFileSystemProvider {
     const fileName = PathUtils.basename(path);
 
     // 1. Check parent first (like MemoryFileSystem)
-    let parentEntry: GDriveFile;
+    let parentEntry: GDriveFileMeta;
     try {
       parentEntry = await this.resolvePath(parentPath);
     } catch (e) {
@@ -272,7 +277,7 @@ export class GoogleDriveFileSystem implements IFileSystemProvider {
     }
 
     // 2. Check if file exists
-    let existingEntry: GDriveFile | null = null;
+    let existingEntry: GDriveFileMeta | null = null;
     try {
       existingEntry = await this.resolvePath(path);
     } catch (e) {
@@ -293,13 +298,7 @@ export class GoogleDriveFileSystem implements IFileSystemProvider {
         );
       }
 
-      await simplifiedGoogleDriveAPI.upload(
-        this.auth,
-        existingEntry.id,
-        content,
-      );
-      simplifiedGoogleDriveAPI.invalidateFileContent(existingEntry.id);
-      simplifiedGoogleDriveAPI.invalidateFolderContents(parentEntry.id);
+      await upload(this.auth, existingEntry.id, content);
     } else {
       if (!options.create) {
         throw new VfsError(
@@ -308,25 +307,19 @@ export class GoogleDriveFileSystem implements IFileSystemProvider {
         );
       }
 
-      const created = await simplifiedGoogleDriveAPI.create(this.auth, {
+      const created = await create(this.auth, {
         name: fileName,
         parents: [parentEntry.id],
       });
 
       try {
-        await simplifiedGoogleDriveAPI.upload(
-          this.auth,
-          created.result.id,
-          content,
-        );
+        await upload(this.auth, created.result.id, content);
       } catch (uploadError) {
-        await simplifiedGoogleDriveAPI.update(this.auth, created.result.id, {
+        await update(this.auth, created.result.id, {
           trashed: true,
         });
         throw uploadError;
       }
-
-      simplifiedGoogleDriveAPI.invalidateFolderContents(parentEntry.id);
     }
   }
 
@@ -351,7 +344,7 @@ export class GoogleDriveFileSystem implements IFileSystemProvider {
       query = `'${entry.id}' in parents and trashed = false`;
     }
 
-    const { result } = await simplifiedGoogleDriveAPI.list(this.auth, {
+    const result = await getGFileMetaList(this.auth, {
       q: query,
       pageSize: 1000,
       spaces: [this.space],
@@ -428,13 +421,11 @@ export class GoogleDriveFileSystem implements IFileSystemProvider {
       );
     }
 
-    await simplifiedGoogleDriveAPI.create(this.auth, {
+    await create(this.auth, {
       name: dirName,
       parents: [parentEntry.id],
       mimeType: GOOGLE_MIME_FOLDER,
     });
-
-    simplifiedGoogleDriveAPI.invalidateFolderContents(parentEntry.id);
   }
 
   /**
@@ -462,7 +453,7 @@ export class GoogleDriveFileSystem implements IFileSystemProvider {
         query = `'${entry.id}' in parents and trashed = false`;
       }
 
-      const { result } = await simplifiedGoogleDriveAPI.list(this.auth, {
+      const result = await getGFileMetaList(this.auth, {
         q: query,
         pageSize: 1,
         spaces: [this.space],
@@ -476,13 +467,9 @@ export class GoogleDriveFileSystem implements IFileSystemProvider {
       }
     }
 
-    await simplifiedGoogleDriveAPI.update(this.auth, entry.id, {
+    await update(this.auth, entry.id, {
       trashed: true,
     });
-    simplifiedGoogleDriveAPI.invalidateFileContent(entry.id);
-    for (const parentId of entry.parents ?? []) {
-      simplifiedGoogleDriveAPI.invalidateFolderContents(parentId);
-    }
   }
 
   /**
@@ -538,7 +525,7 @@ export class GoogleDriveFileSystem implements IFileSystemProvider {
       (p) => p !== destinationParentEntry.id,
     );
 
-    await simplifiedGoogleDriveAPI.update(this.auth, sourceEntry.id, {
+    await update(this.auth, sourceEntry.id, {
       name: newFileName,
       addParents:
         removeParents.length === currentParents.length
@@ -546,14 +533,6 @@ export class GoogleDriveFileSystem implements IFileSystemProvider {
           : undefined,
       removeParents: removeParents.length > 0 ? removeParents : undefined,
     });
-
-    simplifiedGoogleDriveAPI.invalidateFileContent(sourceEntry.id);
-    for (const parentId of removeParents) {
-      simplifiedGoogleDriveAPI.invalidateFolderContents(parentId);
-    }
-    simplifiedGoogleDriveAPI.invalidateFolderContents(
-      destinationParentEntry.id,
-    );
   }
 
   public watch(callback: (event: VfsEvent) => void): () => void {

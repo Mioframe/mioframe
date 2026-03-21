@@ -164,40 +164,25 @@ export function createLocalDirectory(
     DirectoryEntryEventMap['remove']
   >();
 
+  const listenerSets: {
+    [K in keyof DirectoryEntryEventMap]: Set<DirectoryEntryEventMap[K]>;
+  } = {
+    add: setForListenersOfAddingEntry,
+    remove: setForListenersOfRemovingEntry,
+  };
+
   const on = <N extends keyof DirectoryEntryEventMap>(
     name: N,
     listener: DirectoryEntryEventMap[N],
   ) => {
-    switch (name) {
-      case 'add':
-        setForListenersOfAddingEntry.add(listener);
-        break;
-      case 'remove':
-        setForListenersOfRemovingEntry.add(
-          <DirectoryEntryEventMap['remove']>listener,
-        );
-        break;
-      default:
-        throw new Error('unknown event name');
-    }
+    listenerSets[name].add(listener);
   };
 
   const off = <N extends keyof DirectoryEntryEventMap>(
     name: N,
     listener: DirectoryEntryEventMap[N],
   ) => {
-    switch (name) {
-      case 'add':
-        setForListenersOfAddingEntry.delete(listener);
-        break;
-      case 'remove':
-        setForListenersOfRemovingEntry.delete(
-          <DirectoryEntryEventMap['remove']>listener,
-        );
-        break;
-      default:
-        throw new Error('unknown event name');
-    }
+    listenerSets[name].delete(listener);
   };
 
   const get = async (name: string) => {
