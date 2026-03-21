@@ -26,9 +26,9 @@ describe('LockManager (Unit)', () => {
     });
 
     // Задача 2: Быстрая, но должна ждать первую
-    const task2 = manager.request(path, async () => {
+    const task2 = manager.request(path, () => {
       executionOrder.push(2);
-      return 2;
+      return Promise.resolve(2);
     });
 
     await Promise.all([task1, task2]);
@@ -46,8 +46,9 @@ describe('LockManager (Unit)', () => {
     });
 
     // Задача B: Быстрая на пути /b
-    const taskB = manager.request('/b', async () => {
+    const taskB = manager.request('/b', () => {
       executionOrder.push('B');
+      return Promise.resolve();
     });
 
     await Promise.all([taskA, taskB]);
@@ -61,14 +62,14 @@ describe('LockManager (Unit)', () => {
     let task2Ran = false;
 
     // Задача 1: Падает с ошибкой
-    const task1 = manager.request(path, async () => {
-      throw new Error('Fail');
+    const task1 = manager.request(path, () => {
+      return Promise.reject(new Error('Fail'));
     });
 
     // Задача 2: Должна выполниться успешно после падения первой
-    const task2 = manager.request(path, async () => {
+    const task2 = manager.request(path, () => {
       task2Ran = true;
-      return 'Success';
+      return Promise.resolve('Success');
     });
 
     // Ожидаем ошибку от первой задачи
@@ -76,6 +77,7 @@ describe('LockManager (Unit)', () => {
       await task1;
       throw new Error('Task 1 should fail');
     } catch (e) {
+      // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- error type narrowing in test
       expect((e as Error).message).to.eq('Fail');
     }
 

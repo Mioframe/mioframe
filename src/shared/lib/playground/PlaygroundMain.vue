@@ -11,6 +11,7 @@ import type {
 const route = useRoute();
 
 const playgroundRoutes = computed(
+  // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- route meta typing requires assertion
   () => <PlaygroundRouteRecordRaw[] | undefined>route.meta.playgroundRoutes,
 );
 

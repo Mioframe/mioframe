@@ -74,6 +74,6 @@ export const deepPutJsonObject = <S extends object>(
       target.splice(newIndex);
     }
   }
-  // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
+  // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- deep put return type narrowing
   return <S>target;
 };
