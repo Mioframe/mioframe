@@ -28,7 +28,6 @@ const goPlusOne = async () => {
 };
 
 onBackNavigation(() => {
-  console.log('⬅️ BAAAAACK');
   return false;
 });
 </script>

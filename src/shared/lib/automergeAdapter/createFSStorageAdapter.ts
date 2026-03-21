@@ -54,11 +54,12 @@ export const createFSStorageAdapter = (
       throw new Error('fileName is undefined');
     }
 
-    if (!('writeFile' in directory)) {
-      console.warn(
-        "FSStorageAdapter couldn't write new file, because a directory don't have writeFile method",
-      );
-    }
+      if (!('writeFile' in directory)) {
+        // eslint-disable-next-line no-console -- warning about missing writeFile capability
+        console.warn(
+          "FSStorageAdapter couldn't write new file, because a directory don't have writeFile method",
+        );
+      }
 
     await directory.writeFile?.(fileName, data);
   };
@@ -66,12 +67,13 @@ export const createFSStorageAdapter = (
   const remove = async (key: StorageKey) => {
     const entry = await findEntry(key);
 
-    if (entry && 'remove' in entry) {
-      if (!('remove' in entry)) {
-        console.warn(
-          "FSStorageAdapter couldn't remove the entry, because this entry don't have remove method",
-        );
-      }
+      if (entry && 'remove' in entry) {
+        if (!('remove' in entry)) {
+          // eslint-disable-next-line no-console -- warning about missing remove capability
+          console.warn(
+            "FSStorageAdapter couldn't remove the entry, because this entry don't have remove method",
+          );
+        }
 
       await entry.remove?.();
     }
@@ -139,6 +141,7 @@ export const createFSStorageAdapter = (
         name.startsWith(keyPrefixString)
       ) {
         if (!('remove' in entry)) {
+            // eslint-disable-next-line no-console -- warning about missing remove capability
           console.warn(
             "FSStorageAdapter couldn't remove the entry, because this entry don't have remove method",
           );
