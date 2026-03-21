@@ -658,9 +658,10 @@ const invalidateFolderContents = (folderId: string) => {
  * @example
  * simplifiedGoogleDriveAPI.clearCaches();
  */
-const clearCaches = () => {
-  metadataCache.clear();
-  fileContentCache.clear();
+export const clearCaches = (): void => {
+  gDriveFileContentCache.clear();
+  gFileMetaCache.clear();
+  gFileMetaListCache.clear();
 };
 
 /**
