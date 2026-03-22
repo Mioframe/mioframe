@@ -17,7 +17,9 @@ export const router = createRouter({
   history,
   routes: [],
   parseQuery: (search: string): LocationQuery => {
-    const query = qs.parse(search);
+    const query = qs.parse(search, {
+      allowSparse: true,
+    });
 
     // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- We want to allow any query parameters, so we assert the type here.
     return query as LocationQuery;
