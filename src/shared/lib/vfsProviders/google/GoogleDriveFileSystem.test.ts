@@ -1326,52 +1326,6 @@ describe('GoogleDriveFileSystem', () => {
     });
   });
 
-  describe('watch method', () => {
-    it('should return unsubscribe function', () => {
-      const unsubscribe = gdfs.watch(() => undefined);
-      expect(unsubscribe).toBeDefined();
-      expect(typeof unsubscribe).toBe('function');
-    });
-
-    // NOTE: The watch functionality is not fully implemented - events are never emitted
-    // These tests document the current behavior where callbacks are registered but never triggered
-    // TODO: Implement event emission in GoogleDriveFileSystem methods (writeFile, delete, createDirectory, move)
-
-    it('should register callback but not emit events (incomplete implementation)', async () => {
-      const callback = vi.fn();
-      const unsubscribe = gdfs.watch(callback);
-
-      // Callback should not be called on registration
-      expect(callback).not.toHaveBeenCalled();
-
-      // WriteFile does not emit events
-      vi.mocked(getGFileMetaList).mockResolvedValueOnce({ files: [] });
-      vi.mocked(create).mockResolvedValue({ result: { id: 'new-file-id' } });
-      vi.mocked(upload).mockResolvedValue(new Response(null, { status: 200 }));
-
-      await gdfs.writeFile('/test.txt', 'content', {
-        create: true,
-        overwrite: false,
-      });
-      expect(callback).not.toHaveBeenCalled();
-
-      unsubscribe();
-    });
-
-    it('should allow unsubscription', () => {
-      const callback = vi.fn();
-      const unsubscribe = gdfs.watch(callback);
-
-      expect(typeof unsubscribe).toBe('function');
-      unsubscribe();
-
-      // After unsubscribe, calling unsubscribe again should not throw
-      expect(() => {
-        unsubscribe();
-      }).not.toThrow();
-    });
-  });
-
   describe('mount-specific behaviors', () => {
     describe('SharedWithMe mount', () => {
       let sharedFs: GoogleDriveFileSystem;

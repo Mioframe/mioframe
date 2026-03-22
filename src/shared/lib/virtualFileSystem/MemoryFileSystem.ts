@@ -6,8 +6,6 @@ import type {
 } from './IFileSystemProvider';
 import { FSNodeType } from './IFileSystemProvider';
 import { FileSystemError, VfsError } from './VfsError';
-import type { VfsEvent } from './EventEmitter';
-import { EventEmitter } from './EventEmitter';
 import { PathUtils } from './PathUtils';
 
 interface FileEntry extends FSNodeStat {
@@ -29,7 +27,6 @@ type AnyEntry = FileEntry | DirectoryEntry;
 export class MemoryFileSystem implements IFileSystemProvider {
   /** Storage: Path -> Entry object */
   private store: Map<string, AnyEntry> = new Map();
-  private events = new EventEmitter();
 
   constructor() {
     // Initialize the root directory
@@ -403,14 +400,5 @@ export class MemoryFileSystem implements IFileSystemProvider {
         modificationTime: Date.now(),
       });
     }
-  }
-
-  /**
-   * Sets up a callback to be notified of file system events.
-   * @param callback - The callback function to be called on events
-   * @returns A function to unsubscribe from events
-   */
-  public watch(callback: (event: VfsEvent) => void): () => void {
-    return this.events.subscribe(callback);
   }
 }

@@ -310,25 +310,6 @@ describe('MemoryFileSystem', () => {
     });
   });
 
-  describe('watch method - Comprehensive Coverage', () => {
-    it('should be able to watch for file system events with proper subscription', async () => {
-      const filePath = '/watch-file.txt';
-
-      // Create a file first
-      await memoryFS.writeFile(filePath, 'content', {
-        overwrite: true,
-        create: true,
-      });
-
-      // Test that the watch method exists and can be called - remove unused event variable
-      const unsubscribe = memoryFS.watch(() => {
-        // This callback will be triggered on events - no event parameter used
-      });
-
-      expect(unsubscribe).toBeDefined();
-    });
-  });
-
   describe('error handling - Edge Cases', () => {
     it('should handle empty content properly', async () => {
       const filePath = '/empty-content.txt';
