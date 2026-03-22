@@ -793,7 +793,7 @@ describe('VirtualFileSystem', () => {
       expect(events.some((e) => e.type === 'update')).toBe(true);
     });
 
-    it('should emit mount event when remounting provider', async () => {
+    it('should emit mount event when remounting provider', () => {
       vfs.mount('/mnt/test', memoryFS);
       vfs.unmount('/mnt/test');
 

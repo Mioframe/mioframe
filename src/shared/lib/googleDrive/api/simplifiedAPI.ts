@@ -589,7 +589,7 @@ export const upload = async (
  * // Clear all caches before starting fresh
  * clearCaches();
  */
-const clearCaches = (): void => {
+export const clearCaches = (): void => {
   gDriveFileContentCache.clear();
   gFileMetaCache.clear();
   gFileMetaListCache.clear();

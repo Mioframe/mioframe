@@ -41,7 +41,7 @@ export class VirtualFileSystem {
    */
   private mounts: Map<
     string,
-    { provider: IFileSystemProvider; unwatch: () => void }
+    { provider: IFileSystemProvider; unwatch?: () => void }
   > = new Map();
 
   /**
@@ -166,16 +166,7 @@ export class VirtualFileSystem {
       this.unmount(normalizedMountPath);
     }
 
-    // Subscribe to provider events for relay to VFS global bus.
-    // Note: We only relay system events (mount/unmount) from providers.
-    // Content events (create/update/delete/rename) are emitted by VFS itself
-    // after successful operations to ensure consistency across all providers.
-    const unwatch = provider.watch(() => {
-      // For now, we don't relay provider events to avoid duplication.
-      // VFS emits its own events after operations complete.
-    });
-
-    this.mounts.set(normalizedMountPath, { provider, unwatch });
+    this.mounts.set(normalizedMountPath, { provider });
 
     // Sort mounts to prioritize more specific (longer) mount points first,
     // which is necessary for proper nested mount resolution.
@@ -184,7 +175,7 @@ export class VirtualFileSystem {
     );
     const newMap = new Map<
       string,
-      { provider: IFileSystemProvider; unwatch: () => void }
+      { provider: IFileSystemProvider; unwatch?: () => void }
     >();
     sortedEntries.forEach(([k, v]) => newMap.set(k, v));
     this.mounts = newMap;
@@ -201,7 +192,7 @@ export class VirtualFileSystem {
     const normalized = PathUtils.normalize(path);
     const mount = this.mounts.get(normalized);
     if (mount) {
-      mount.unwatch();
+      mount.unwatch?.();
       this.mounts.delete(normalized);
       this.events.emit({ type: VfsEventType.UNMOUNT, path: normalized });
     }
