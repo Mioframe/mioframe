@@ -18,7 +18,7 @@ const zodPaneQuery = z.record(zodPropertyKey, z.unknown());
 const PARAM_NAME = 'p' as const;
 
 const zodQuery = z.object({
-  [PARAM_NAME]: z.array(zodPaneQuery),
+  [PARAM_NAME]: z.array(z.union([zodPaneQuery, z.undefined()])),
 });
 
 type Query = z.output<typeof zodQuery>;
