@@ -3,11 +3,9 @@ import type {
   FileContent,
   FSNodeStat,
   IFileSystemProvider,
-  VfsEvent,
   WriteOptions,
 } from '../../virtualFileSystem';
 import {
-  EventEmitter,
   FileSystemError,
   FSNodeType,
   PathUtils,
@@ -55,7 +53,6 @@ export interface GoogleDriveFsOptions {
 }
 
 export class GoogleDriveFileSystem implements IFileSystemProvider {
-  private events = new EventEmitter();
   private readonly space: SPACE;
   private readonly rootId: string;
 
@@ -533,9 +530,5 @@ export class GoogleDriveFileSystem implements IFileSystemProvider {
           : undefined,
       removeParents: removeParents.length > 0 ? removeParents : undefined,
     });
-  }
-
-  public watch(callback: (event: VfsEvent) => void): () => void {
-    return this.events.subscribe(callback);
   }
 }
