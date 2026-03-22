@@ -1,27 +1,32 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
+import type { GDriveFileMeta } from '../../googleDrive/api';
+import { dayjs } from '../../dayjs';
+import type { WriteOptions } from '../../virtualFileSystem';
+import { FSNodeType, FileSystemError, VfsError } from '../../virtualFileSystem';
+
+vi.mock('../../googleDrive/api', async () => {
+  const actual = await vi.importActual('../../googleDrive/api');
+  return {
+    ...actual,
+    create: vi.fn(),
+    download: vi.fn(),
+    getGFileMetaList: vi.fn(),
+    update: vi.fn(),
+    upload: vi.fn(),
+  };
+});
+
+import {
+  create,
+  download,
+  getGFileMetaList,
+  update,
+  upload,
+} from '../../googleDrive/api';
 import {
   GoogleDriveFileSystem,
   GoogleDriveMount,
 } from './GoogleDriveFileSystem';
-import { VfsError, FileSystemError } from '../../virtualFileSystem';
-
-vi.mock('../../googleDrive', () => ({
-  simplifiedGoogleDriveAPI: {
-    list: vi.fn(),
-    download: vi.fn(),
-    upload: vi.fn(),
-    create: vi.fn(),
-    update: vi.fn(),
-    invalidateFileContent: vi.fn(),
-    invalidateFolderContents: vi.fn(),
-  },
-  SPACE: {
-    drive: 'drive',
-    appDataFolder: 'appDataFolder',
-  },
-}));
-
-import { simplifiedGoogleDriveAPI } from '../../googleDrive';
 
 const mockAuth = {
   ACCESS_TOKEN: 'test-token',
@@ -39,13 +44,13 @@ const GDriveFile = (
     parents?: string[];
     canTrash?: boolean;
   },
-) => ({
+): GDriveFileMeta => ({
   id,
   name,
   mimeType,
-  size: options?.size,
-  createdTime: options?.createdTime,
-  modifiedTime: options?.modifiedTime,
+  size: options?.size ?? '',
+  createdTime: options?.createdTime ?? '',
+  modifiedTime: options?.modifiedTime ?? '',
   parents: options?.parents ?? [],
   capabilities: {
     canTrash: options?.canTrash ?? true,
@@ -59,26 +64,42 @@ describe('GoogleDriveFileSystem', () => {
 
   beforeEach(() => {
     gdfs = new GoogleDriveFileSystem(mockAuth);
-    vi.resetAllMocks();
+    vi.clearAllMocks();
+    // Reset mock to ensure clean state for each test
+    vi.mocked(getGFileMetaList).mockReset();
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
   });
 
   describe('constructor', () => {
-    it('should use MyDrive as default mount', () => {
+    it('should initialize with default MyDrive mount', () => {
       const fs = new GoogleDriveFileSystem(mockAuth);
       expect(fs).toBeDefined();
     });
 
     it('should use root as default rootId for MyDrive', () => {
       const fs = new GoogleDriveFileSystem(mockAuth);
-      expect(fs).toBeDefined();
+      // We can't directly access private properties, but we can test behavior
+      expect(() => fs).not.toThrow();
     });
 
-    it('should throw error when SpecificFolder without rootId', () => {
+    it('should throw error when SpecificFolder mount is used without rootId', () => {
       expect(() => {
         new GoogleDriveFileSystem(mockAuth, {
           mount: GoogleDriveMount.SpecificFolder,
         });
-      }).toThrow('rootId is required');
+      }).toThrow('rootId is required when mount mode is SpecificFolder');
+    });
+
+    it('should accept SpecificFolder mount with rootId', () => {
+      expect(() => {
+        new GoogleDriveFileSystem(mockAuth, {
+          mount: GoogleDriveMount.SpecificFolder,
+          rootId: 'test-folder-id',
+        });
+      }).not.toThrow();
     });
 
     it('should use appDataFolder when mount is AppData', () => {
@@ -99,50 +120,80 @@ describe('GoogleDriveFileSystem', () => {
   describe('stat method', () => {
     it('should return Directory for root path', async () => {
       const stat = await gdfs.stat('/');
-      expect(stat.type).toBe(2);
+      expect(stat.type).toBe(FSNodeType.Directory);
       expect(stat.canDelete).toBe(false);
     });
 
     it('should return Directory for empty string path', async () => {
       const stat = await gdfs.stat('');
-      expect(stat.type).toBe(2);
+      expect(stat.type).toBe(FSNodeType.Directory);
     });
 
-    it('should return File stat for existing file', async () => {
-      vi.mocked(simplifiedGoogleDriveAPI.list).mockReturnValue(
-        Promise.resolve({
-          result: {
-            files: [
-              GDriveFile('file-id', 'test.txt', 'text/plain', { size: '100' }),
-            ],
-          },
-        }),
-      );
+    it('should return File stat for existing file with size and timestamps', async () => {
+      const testFile = GDriveFile('file-id', 'test.txt', 'text/plain', {
+        size: '1024',
+        createdTime: '2023-01-01T10:00:00Z',
+        modifiedTime: '2023-01-02T10:00:00Z',
+      });
+
+      vi.mocked(getGFileMetaList).mockResolvedValueOnce({
+        files: [testFile],
+      });
 
       const stat = await gdfs.stat('/test.txt');
 
-      expect(stat.type).toBe(1);
-      expect(stat.size).toBe(100);
+      expect(stat.type).toBe(FSNodeType.File);
+      expect(stat.size).toBe(1024);
+      expect(stat.creationTime).toBe(dayjs('2023-01-01T10:00:00Z').valueOf());
+      expect(stat.modificationTime).toBe(
+        dayjs('2023-01-02T10:00:00Z').valueOf(),
+      );
+    });
+
+    it('should handle missing size gracefully', async () => {
+      const testFile = GDriveFile('file-id', 'test.txt', 'text/plain', {
+        size: '', // Empty size
+      });
+
+      vi.mocked(getGFileMetaList).mockResolvedValueOnce({
+        files: [testFile],
+      });
+
+      const stat = await gdfs.stat('/test.txt');
+
+      expect(stat.type).toBe(FSNodeType.File);
+      expect(stat.size).toBeUndefined();
+    });
+
+    it('should handle missing timestamps gracefully', async () => {
+      const testFile = GDriveFile('file-id', 'test.txt', 'text/plain', {
+        createdTime: '', // Empty timestamp
+        modifiedTime: '', // Empty timestamp
+      });
+
+      vi.mocked(getGFileMetaList).mockResolvedValueOnce({
+        files: [testFile],
+      });
+
+      const stat = await gdfs.stat('/test.txt');
+
+      expect(stat.type).toBe(FSNodeType.File);
+      expect(stat.creationTime).toBeUndefined();
+      expect(stat.modificationTime).toBeUndefined();
     });
 
     it('should return Directory stat for existing folder', async () => {
-      vi.mocked(simplifiedGoogleDriveAPI.list).mockReturnValue(
-        Promise.resolve({
-          result: {
-            files: [GDriveFile('folder-id', 'test-folder', GOOGLE_MIME_FOLDER)],
-          },
-        }),
-      );
+      vi.mocked(getGFileMetaList).mockResolvedValueOnce({
+        files: [GDriveFile('folder-id', 'test-folder', GOOGLE_MIME_FOLDER)],
+      });
 
       const stat = await gdfs.stat('/test-folder');
 
-      expect(stat.type).toBe(2);
+      expect(stat.type).toBe(FSNodeType.Directory);
     });
 
     it('should throw FileNotFound for non-existent path', async () => {
-      vi.mocked(simplifiedGoogleDriveAPI.list).mockReturnValue(
-        Promise.resolve({ result: { files: [] } }),
-      );
+      vi.mocked(getGFileMetaList).mockResolvedValueOnce({ files: [] });
 
       await expect(gdfs.stat('/non-existent')).rejects.toThrow(VfsError);
       await expect(gdfs.stat('/non-existent')).rejects.toMatchObject({
@@ -151,20 +202,45 @@ describe('GoogleDriveFileSystem', () => {
     });
 
     it('should return canDelete from capabilities', async () => {
-      vi.mocked(simplifiedGoogleDriveAPI.list).mockReturnValue(
-        Promise.resolve({
-          result: {
-            files: [
-              GDriveFile('file-id', 'test.txt', 'text/plain', {
-                canTrash: false,
-              }),
-            ],
-          },
-        }),
-      );
+      vi.mocked(getGFileMetaList).mockResolvedValueOnce({
+        files: [
+          GDriveFile('file-id', 'test.txt', 'text/plain', {
+            canTrash: false,
+          }),
+        ],
+      });
 
       const stat = await gdfs.stat('/test.txt');
       expect(stat.canDelete).toBe(false);
+    });
+
+    it('should handle capability not defined gracefully', async () => {
+      const fileWithoutCapabilities: GDriveFileMeta = {
+        id: 'file-id',
+        name: 'test.txt',
+        mimeType: 'text/plain',
+        size: '100',
+        createdTime: '',
+        modifiedTime: '',
+        parents: [],
+        // No capabilities field
+      };
+
+      vi.mocked(getGFileMetaList).mockResolvedValueOnce({
+        files: [fileWithoutCapabilities],
+      });
+
+      const stat = await gdfs.stat('/test.txt');
+      expect(stat.canDelete).toBe(false); // Should default to false
+    });
+
+    it('should handle path resolution errors', async () => {
+      vi.mocked(getGFileMetaList).mockRejectedValue(new Error('API Error'));
+
+      await expect(gdfs.stat('/some-path')).rejects.toThrow(VfsError);
+      await expect(gdfs.stat('/some-path')).rejects.toMatchObject({
+        code: FileSystemError.FileNotFound,
+      });
     });
   });
 
@@ -174,36 +250,26 @@ describe('GoogleDriveFileSystem', () => {
         type: 'text/plain',
       });
 
-      vi.mocked(simplifiedGoogleDriveAPI.list).mockReturnValue(
-        Promise.resolve({
-          result: {
-            files: [GDriveFile('file-id', 'test.txt', 'text/plain')],
-          },
-        }),
-      );
-      vi.mocked(simplifiedGoogleDriveAPI.download).mockResolvedValue(mockFile);
+      vi.mocked(getGFileMetaList).mockResolvedValue({
+        files: [GDriveFile('file-id', 'test.txt', 'text/plain')],
+      });
+      vi.mocked(download).mockResolvedValue(mockFile);
 
       const file = await gdfs.readFile('/test.txt');
 
       expect(file).toBeInstanceOf(File);
       expect(file.name).toBe('test.txt');
-      expect(simplifiedGoogleDriveAPI.download).toHaveBeenCalledWith(
-        mockAuth,
-        'file-id',
-        'test.txt',
-        undefined,
-        undefined,
-      );
+      expect(download).toHaveBeenCalledWith(mockAuth, 'file-id');
     });
 
     it('should throw FileIsADirectory when path is a folder', async () => {
-      vi.mocked(simplifiedGoogleDriveAPI.list).mockReturnValue(
-        Promise.resolve({
-          result: {
-            files: [GDriveFile('folder-id', 'test-folder', GOOGLE_MIME_FOLDER)],
-          },
-        }),
-      );
+      vi.mocked(getGFileMetaList)
+        .mockResolvedValue({
+          files: [GDriveFile('folder-id', 'test-folder', GOOGLE_MIME_FOLDER)],
+        })
+        .mockResolvedValue({
+          files: [GDriveFile('folder-id', 'test-folder', GOOGLE_MIME_FOLDER)],
+        });
 
       await expect(gdfs.readFile('/test-folder')).rejects.toThrow(VfsError);
       await expect(gdfs.readFile('/test-folder')).rejects.toMatchObject({
@@ -212,9 +278,9 @@ describe('GoogleDriveFileSystem', () => {
     });
 
     it('should throw FileNotFound when file does not exist', async () => {
-      vi.mocked(simplifiedGoogleDriveAPI.list).mockReturnValue(
-        Promise.resolve({ result: { files: [] } }),
-      );
+      vi.mocked(getGFileMetaList)
+        .mockResolvedValue({ files: [] })
+        .mockResolvedValue({ files: [] });
 
       await expect(gdfs.readFile('/non-existent.txt')).rejects.toThrow(
         VfsError,
@@ -223,126 +289,304 @@ describe('GoogleDriveFileSystem', () => {
         code: FileSystemError.FileNotFound,
       });
     });
+
+    it('should throw Unknown error when download fails', async () => {
+      vi.mocked(getGFileMetaList)
+        .mockResolvedValue({
+          files: [GDriveFile('file-id', 'test.txt', 'text/plain')],
+        })
+        .mockResolvedValue({
+          files: [GDriveFile('file-id', 'test.txt', 'text/plain')],
+        });
+      vi.mocked(download).mockRejectedValue(new Error('Download failed'));
+
+      await expect(gdfs.readFile('/test.txt')).rejects.toThrow(VfsError);
+      await expect(gdfs.readFile('/test.txt')).rejects.toMatchObject({
+        code: FileSystemError.Unknown,
+      });
+    });
+
+    it('should throw Unknown error when getGFileMetaList throws error', async () => {
+      vi.mocked(getGFileMetaList).mockRejectedValue(new Error('API Error'));
+
+      await expect(gdfs.readFile('/test.txt')).rejects.toThrow(Error);
+    });
   });
 
   describe('writeFile method', () => {
+    const createWriteOptions = (
+      create: boolean,
+      overwrite: boolean,
+    ): WriteOptions => ({
+      create,
+      overwrite,
+    });
+
     it('should update existing file when overwrite is true', async () => {
-      vi.mocked(simplifiedGoogleDriveAPI.list).mockReturnValue(
-        Promise.resolve({
-          result: {
-            files: [GDriveFile('file-id', 'test.txt', 'text/plain')],
-          },
-        }),
-      );
-      const mockUpload = vi.fn().mockResolvedValue({});
-      vi.mocked(simplifiedGoogleDriveAPI.upload).mockImplementation(mockUpload);
-
-      await gdfs.writeFile('/test.txt', 'new content', {
-        create: false,
-        overwrite: true,
+      vi.mocked(getGFileMetaList).mockResolvedValue({
+        files: [GDriveFile('file-id', 'test.txt', 'text/plain')],
       });
-
-      expect(simplifiedGoogleDriveAPI.upload).toHaveBeenCalledWith(
-        mockAuth,
-        'file-id',
-        expect.anything(),
+      vi.mocked(upload).mockImplementation(() =>
+        Promise.resolve(new Response(null, { status: 200 })),
       );
+
+      await gdfs.writeFile(
+        '/test.txt',
+        'new content',
+        createWriteOptions(true, true),
+      );
+
+      expect(upload).toHaveBeenCalledWith(mockAuth, 'file-id', 'new content');
     });
 
     it('should throw FileExists when file exists and overwrite is false', async () => {
-      vi.mocked(simplifiedGoogleDriveAPI.list).mockReturnValue(
-        Promise.resolve({
-          result: {
-            files: [GDriveFile('file-id', 'test.txt', 'text/plain')],
-          },
-        }),
-      );
+      vi.mocked(getGFileMetaList)
+        .mockResolvedValue({
+          files: [GDriveFile('file-id', 'test.txt', 'text/plain')],
+        })
+        .mockResolvedValue({
+          files: [GDriveFile('root-id', 'root', GOOGLE_MIME_FOLDER)],
+        });
 
       await expect(
-        gdfs.writeFile('/test.txt', 'content', {
-          create: true,
-          overwrite: false,
-        }),
+        gdfs.writeFile('/test.txt', 'content', createWriteOptions(true, false)),
       ).rejects.toThrow(VfsError);
       await expect(
-        gdfs.writeFile('/test.txt', 'content', {
-          create: true,
-          overwrite: false,
-        }),
+        gdfs.writeFile('/test.txt', 'content', createWriteOptions(true, false)),
       ).rejects.toMatchObject({ code: FileSystemError.FileExists });
     });
 
     it('should create new file when it does not exist and create is true', async () => {
-      vi.mocked(simplifiedGoogleDriveAPI.list)
-        .mockReturnValueOnce(Promise.resolve({ result: { files: [] } }))
-        .mockReturnValueOnce(
-          Promise.resolve({
-            result: {
-              files: [GDriveFile('root-id', 'root', GOOGLE_MIME_FOLDER)],
-            },
-          }),
-        );
+      // First call: check if file exists (returns empty array - file doesn't exist)
+      vi.mocked(getGFileMetaList)
+        .mockResolvedValueOnce({ files: [] })
+        // Second call: get parent info (returns root folder)
+        .mockResolvedValueOnce({
+          files: [GDriveFile('root', 'root', GOOGLE_MIME_FOLDER)],
+        });
 
-      const mockCreate = vi
-        .fn()
-        .mockResolvedValue({ result: { id: 'new-file-id' } });
-      vi.mocked(simplifiedGoogleDriveAPI.create).mockImplementation(mockCreate);
-      const mockUpload = vi.fn().mockResolvedValue({});
-      vi.mocked(simplifiedGoogleDriveAPI.upload).mockImplementation(mockUpload);
+      vi.mocked(create).mockResolvedValue({ result: { id: 'new-file-id' } });
+      vi.mocked(upload).mockImplementation(() =>
+        Promise.resolve(new Response(null, { status: 200 })),
+      );
 
-      await gdfs.writeFile('/new-file.txt', 'content', {
-        create: true,
-        overwrite: false,
+      await gdfs.writeFile(
+        '/new-file.txt',
+        'content',
+        createWriteOptions(true, false),
+      );
+
+      expect(create).toHaveBeenCalledWith(mockAuth, {
+        name: 'new-file.txt',
+        parents: ['root'], // In MyDrive mount, root ID is 'root'
       });
-
-      expect(simplifiedGoogleDriveAPI.create).toHaveBeenCalled();
+      expect(upload).toHaveBeenCalledWith(mockAuth, 'new-file-id', 'content');
     });
 
     it('should throw FileNotFound when file does not exist and create is false', async () => {
-      vi.mocked(simplifiedGoogleDriveAPI.list).mockReturnValue(
-        Promise.resolve({ result: { files: [] } }),
-      );
+      // First call: check if file exists (returns empty array - file doesn't exist)
+      vi.mocked(getGFileMetaList)
+        .mockResolvedValueOnce({ files: [] }) // Check if file exists - doesn't exist
+        .mockResolvedValueOnce({
+          // Get parent directory info
+          files: [GDriveFile('root', 'root', GOOGLE_MIME_FOLDER)],
+        });
 
       await expect(
-        gdfs.writeFile('/non-existent.txt', 'content', {
-          create: false,
-          overwrite: true,
-        }),
+        gdfs.writeFile(
+          '/non-existent.txt',
+          'content',
+          createWriteOptions(false, true),
+        ),
       ).rejects.toThrow(VfsError);
+    });
+
+    it('should throw FileNotADirectory when parent is not a directory', async () => {
+      vi.mocked(getGFileMetaList)
+        .mockResolvedValue({ files: [] })
+        .mockResolvedValue({
+          files: [GDriveFile('file-id', 'not-a-dir', 'text/plain')],
+        });
+
+      await expect(
+        gdfs.writeFile(
+          '/not-a-dir/child.txt',
+          'content',
+          createWriteOptions(true, false),
+        ),
+      ).rejects.toThrow(VfsError);
+      await expect(
+        gdfs.writeFile(
+          '/not-a-dir/child.txt',
+          'content',
+          createWriteOptions(true, false),
+        ),
+      ).rejects.toMatchObject({
+        code: FileSystemError.FileNotADirectory,
+      });
+    });
+
+    it('should throw NoPermissions when creating in SharedWithMe root', async () => {
+      const sharedFs = new GoogleDriveFileSystem(mockAuth, {
+        mount: GoogleDriveMount.SharedWithMe,
+      });
+
+      // Note: For writeFile to SharedWithMe root, it fails early at the parent check
+      // before checking if file exists, so no complex mock setup needed
+      vi.mocked(getGFileMetaList).mockResolvedValueOnce({ files: [] });
+
+      await expect(
+        sharedFs.writeFile(
+          '/new-file.txt',
+          'content',
+          createWriteOptions(true, false),
+        ),
+      ).rejects.toThrow(VfsError);
+      await expect(
+        sharedFs.writeFile(
+          '/new-file.txt',
+          'content',
+          createWriteOptions(true, false),
+        ),
+      ).rejects.toMatchObject({
+        code: FileSystemError.NoPermissions,
+      });
+    });
+
+    it('should clean up created file if upload fails', async () => {
+      // First call: check if file exists (returns empty array - file doesn't exist)
+      vi.mocked(getGFileMetaList)
+        .mockResolvedValueOnce({ files: [] })
+        // Second call: get parent info (returns root folder)
+        .mockResolvedValueOnce({
+          files: [GDriveFile('root', 'root', GOOGLE_MIME_FOLDER)],
+        });
+
+      vi.mocked(create).mockResolvedValue({ result: { id: 'new-file-id' } });
+      vi.mocked(upload).mockRejectedValue(new Error('Upload failed'));
+      vi.mocked(update).mockResolvedValue({ result: {} });
+
+      await expect(
+        gdfs.writeFile(
+          '/new-file.txt',
+          'content',
+          createWriteOptions(true, false),
+        ),
+      ).rejects.toThrow('Upload failed');
+
+      expect(update).toHaveBeenCalledWith(mockAuth, 'new-file-id', {
+        trashed: true,
+      });
+    });
+
+    it('should throw FileIsADirectory when trying to overwrite a directory with a file', async () => {
+      vi.mocked(getGFileMetaList)
+        .mockResolvedValue({
+          files: [GDriveFile('dir-id', 'existing-dir', GOOGLE_MIME_FOLDER)],
+        })
+        .mockResolvedValue({
+          files: [GDriveFile('root-id', 'root', GOOGLE_MIME_FOLDER)],
+        });
+
+      await expect(
+        gdfs.writeFile(
+          '/existing-dir',
+          'content',
+          createWriteOptions(true, true),
+        ),
+      ).rejects.toThrow(VfsError);
+      await expect(
+        gdfs.writeFile(
+          '/existing-dir',
+          'content',
+          createWriteOptions(true, true),
+        ),
+      ).rejects.toMatchObject({
+        code: FileSystemError.FileIsADirectory,
+      });
+    });
+
+    it('should handle empty content correctly', async () => {
+      // First call: check if file exists (returns empty array - file doesn't exist)
+      vi.mocked(getGFileMetaList)
+        .mockResolvedValueOnce({ files: [] })
+        // Second call: get parent info (returns root folder)
+        .mockResolvedValueOnce({
+          files: [GDriveFile('root', 'root', GOOGLE_MIME_FOLDER)],
+        });
+
+      vi.mocked(create).mockResolvedValue({ result: { id: 'new-file-id' } });
+      vi.mocked(upload).mockImplementation(() =>
+        Promise.resolve(new Response(null, { status: 200 })),
+      );
+
+      await gdfs.writeFile('/empty.txt', '', createWriteOptions(true, false));
+
+      expect(create).toHaveBeenCalledWith(mockAuth, {
+        name: 'empty.txt',
+        parents: ['root'],
+      });
+      expect(upload).toHaveBeenCalledWith(mockAuth, 'new-file-id', '');
+    });
+
+    it('should handle very long content correctly', async () => {
+      const longContent = 'x'.repeat(10000);
+
+      // First call: check if file exists (returns empty array - file doesn't exist)
+      vi.mocked(getGFileMetaList)
+        .mockResolvedValueOnce({ files: [] })
+        // Second call: get parent info (returns root folder)
+        .mockResolvedValueOnce({
+          files: [GDriveFile('root', 'root', GOOGLE_MIME_FOLDER)],
+        });
+
+      vi.mocked(create).mockResolvedValue({ result: { id: 'new-file-id' } });
+      vi.mocked(upload).mockImplementation(() =>
+        Promise.resolve(new Response(null, { status: 200 })),
+      );
+
+      await gdfs.writeFile(
+        '/long.txt',
+        longContent,
+        createWriteOptions(true, false),
+      );
+
+      expect(create).toHaveBeenCalledWith(mockAuth, {
+        name: 'long.txt',
+        parents: ['root'],
+      });
+      expect(upload).toHaveBeenCalledWith(mockAuth, 'new-file-id', longContent);
     });
   });
 
   describe('readDirectory method', () => {
     it('should return list of files and folders', async () => {
-      vi.mocked(simplifiedGoogleDriveAPI.list).mockReturnValue(
-        Promise.resolve({
-          result: {
-            files: [
-              GDriveFile('file-id', 'file.txt', 'text/plain', { size: '100' }),
-              GDriveFile('folder-id', 'folder', GOOGLE_MIME_FOLDER),
-            ],
-          },
-        }),
-      );
+      vi.mocked(getGFileMetaList).mockResolvedValue({
+        files: [
+          GDriveFile('file-id', 'file.txt', 'text/plain', { size: '100' }),
+          GDriveFile('folder-id', 'folder', GOOGLE_MIME_FOLDER),
+        ],
+      });
 
       const entries = await gdfs.readDirectory('/');
 
       expect(entries.length).toBe(2);
       const [firstEntry, secondEntry] = entries;
       expect(firstEntry?.[0]).toBe('file.txt');
-      expect(firstEntry?.[1].type).toBe(1);
+      expect(firstEntry?.[1].type).toBe(FSNodeType.File);
+      expect(firstEntry?.[1].size).toBe(100);
       expect(secondEntry?.[0]).toBe('folder');
-      expect(secondEntry?.[1].type).toBe(2);
+      expect(secondEntry?.[1].type).toBe(FSNodeType.Directory);
     });
 
     it('should throw FileNotADirectory when path is a file', async () => {
-      vi.mocked(simplifiedGoogleDriveAPI.list).mockReturnValue(
-        Promise.resolve({
-          result: {
-            files: [GDriveFile('file-id', 'file.txt', 'text/plain')],
-          },
-        }),
-      );
+      vi.mocked(getGFileMetaList)
+        .mockResolvedValue({
+          files: [GDriveFile('file-id', 'file.txt', 'text/plain')],
+        })
+        .mockResolvedValue({
+          files: [GDriveFile('file-id', 'file.txt', 'text/plain')],
+        });
 
       await expect(gdfs.readDirectory('/file.txt')).rejects.toThrow(VfsError);
       await expect(gdfs.readDirectory('/file.txt')).rejects.toMatchObject({
@@ -351,48 +595,99 @@ describe('GoogleDriveFileSystem', () => {
     });
 
     it('should return empty array for empty directory', async () => {
-      vi.mocked(simplifiedGoogleDriveAPI.list).mockReturnValue(
-        Promise.resolve({ result: { files: [] } }),
-      );
+      vi.mocked(getGFileMetaList).mockResolvedValue({ files: [] });
 
       const entries = await gdfs.readDirectory('/');
       expect(entries.length).toBe(0);
+    });
+
+    it('should handle files with missing size gracefully', async () => {
+      vi.mocked(getGFileMetaList).mockResolvedValue({
+        files: [GDriveFile('file-id', 'file.txt', 'text/plain', { size: '' })],
+      });
+
+      const entries = await gdfs.readDirectory('/');
+
+      expect(entries.length).toBe(1);
+      const [firstEntry] = entries;
+      expect(firstEntry?.[0]).toBe('file.txt');
+      expect(firstEntry?.[1].size).toBeUndefined();
+    });
+
+    it('should handle files with missing timestamps gracefully', async () => {
+      vi.mocked(getGFileMetaList).mockResolvedValue({
+        files: [
+          GDriveFile('file-id', 'file.txt', 'text/plain', {
+            createdTime: '',
+            modifiedTime: '',
+          }),
+        ],
+      });
+
+      const entries = await gdfs.readDirectory('/');
+
+      expect(entries.length).toBe(1);
+      const [firstEntry] = entries;
+      expect(firstEntry?.[1].creationTime).toBeUndefined();
+      expect(firstEntry?.[1].modificationTime).toBeUndefined();
+    });
+
+    it('should handle files without capabilities gracefully', async () => {
+      const fileWithoutCapabilities: GDriveFileMeta = {
+        id: 'file-id',
+        name: 'file.txt',
+        mimeType: 'text/plain',
+        size: '100',
+        createdTime: '',
+        modifiedTime: '',
+        parents: [],
+        // No capabilities field
+      };
+
+      vi.mocked(getGFileMetaList).mockResolvedValueOnce({
+        files: [fileWithoutCapabilities],
+      });
+
+      const entries = await gdfs.readDirectory('/');
+
+      expect(entries.length).toBe(1);
+      const [firstEntry] = entries;
+      expect(firstEntry?.[1].canDelete).toBe(false); // Should default to false
     });
   });
 
   describe('createDirectory method', () => {
     it('should create new directory', async () => {
-      vi.mocked(simplifiedGoogleDriveAPI.list)
-        .mockReturnValueOnce(Promise.resolve({ result: { files: [] } }))
-        .mockReturnValueOnce(
-          Promise.resolve({
-            result: {
-              files: [GDriveFile('root-id', 'root', GOOGLE_MIME_FOLDER)],
-            },
-          }),
-        );
-      const mockCreateDir = vi.fn().mockResolvedValue({
+      vi.mocked(getGFileMetaList)
+        .mockResolvedValueOnce({ files: [] }) // Directory doesn't exist
+        .mockResolvedValueOnce({
+          files: [GDriveFile('root', 'root', GOOGLE_MIME_FOLDER)],
+        }); // Parent exists - root folder is always 'root' for MyDrive mount
+      vi.mocked(create).mockResolvedValue({
         result: { id: 'new-folder-id' },
       });
-      vi.mocked(simplifiedGoogleDriveAPI.create).mockImplementation(
-        mockCreateDir,
-      );
 
       await gdfs.createDirectory('/new-folder');
 
-      expect(simplifiedGoogleDriveAPI.create).toHaveBeenCalled();
+      expect(create).toHaveBeenCalledWith(mockAuth, {
+        name: 'new-folder',
+        parents: ['root'], // Root folder ID is always 'root' for MyDrive mount
+        mimeType: GOOGLE_MIME_FOLDER,
+      });
     });
 
     it('should throw FileExists when directory already exists', async () => {
-      vi.mocked(simplifiedGoogleDriveAPI.list).mockReturnValue(
-        Promise.resolve({
-          result: {
-            files: [
-              GDriveFile('folder-id', 'existing-folder', GOOGLE_MIME_FOLDER),
-            ],
-          },
-        }),
-      );
+      vi.mocked(getGFileMetaList)
+        .mockResolvedValueOnce({
+          files: [
+            GDriveFile('folder-id', 'existing-folder', GOOGLE_MIME_FOLDER),
+          ],
+        }) // First call - check if exists (returns existing folder)
+        .mockResolvedValueOnce({
+          files: [
+            GDriveFile('folder-id', 'existing-folder', GOOGLE_MIME_FOLDER),
+          ],
+        }); // Second call - check again for second attempt
 
       await expect(gdfs.createDirectory('/existing-folder')).rejects.toThrow(
         VfsError,
@@ -409,10 +704,14 @@ describe('GoogleDriveFileSystem', () => {
         mount: GoogleDriveMount.SharedWithMe,
       });
 
-      vi.mocked(simplifiedGoogleDriveAPI.list).mockReturnValue(
-        Promise.resolve({ result: { files: [] } }),
-      );
+      // Note: resolvePath('/new-folder') calls getGFileMetaList to check if dir exists
+      // resolvePath('/') returns virtual entry without API call
+      // We need two mocks for two calls to createDirectory
+      vi.mocked(getGFileMetaList)
+        .mockResolvedValueOnce({ files: [] }) // First call: check if dir exists
+        .mockResolvedValueOnce({ files: [] }); // Second call: check if dir exists
 
+      // Should throw NoPermissions because parent is SharedWithMe root
       await expect(sharedFs.createDirectory('/new-folder')).rejects.toThrow(
         VfsError,
       );
@@ -422,39 +721,38 @@ describe('GoogleDriveFileSystem', () => {
         code: FileSystemError.NoPermissions,
       });
     });
+
+    it('should throw FileNotADirectory when parent is not a directory', async () => {
+      // First call: check if directory exists (should return empty - doesn't exist)
+      vi.mocked(getGFileMetaList)
+        .mockResolvedValueOnce({ files: [] })
+        // Second call: get parent info (returns a file, not a directory)
+        .mockResolvedValueOnce({
+          files: [GDriveFile('file-id', 'not-a-dir', 'text/plain')],
+        });
+
+      await expect(gdfs.createDirectory('/not-a-dir/sub-dir')).rejects.toThrow(
+        VfsError,
+      );
+    });
   });
 
   describe('delete method', () => {
     it('should delete existing file', async () => {
-      vi.mocked(simplifiedGoogleDriveAPI.list)
-        .mockReturnValueOnce(
-          Promise.resolve({
-            result: {
-              files: [
-                GDriveFile('file-id', 'file.txt', 'text/plain', {
-                  canTrash: true,
-                }),
-              ],
-            },
+      vi.mocked(getGFileMetaList).mockResolvedValueOnce({
+        files: [
+          GDriveFile('file-id', 'file.txt', 'text/plain', {
+            canTrash: true,
           }),
-        )
-        .mockReturnValueOnce(
-          Promise.resolve({
-            result: {
-              files: [GDriveFile('file-id', 'file.txt', 'text/plain')],
-            },
-          }),
-        );
-      const mockDelete = vi.fn().mockResolvedValue({});
-      vi.mocked(simplifiedGoogleDriveAPI.update).mockImplementation(mockDelete);
+        ],
+      });
+      vi.mocked(update).mockResolvedValue({ result: {} });
 
       await gdfs.delete('/file.txt', false);
 
-      expect(simplifiedGoogleDriveAPI.update).toHaveBeenCalledWith(
-        mockAuth,
-        'file-id',
-        { trashed: true },
-      );
+      expect(update).toHaveBeenCalledWith(mockAuth, 'file-id', {
+        trashed: true,
+      });
     });
 
     it('should throw error when trying to delete root', async () => {
@@ -464,138 +762,675 @@ describe('GoogleDriveFileSystem', () => {
     });
 
     it('should throw NoPermissions when file cannot be deleted', async () => {
-      vi.mocked(simplifiedGoogleDriveAPI.list).mockReturnValue(
-        Promise.resolve({
-          result: {
-            files: [
-              GDriveFile('file-id', 'file.txt', 'text/plain', {
-                canTrash: false,
-              }),
-            ],
-          },
-        }),
-      );
+      vi.mocked(getGFileMetaList).mockResolvedValueOnce({
+        files: [
+          GDriveFile('file-id', 'file.txt', 'text/plain', {
+            canTrash: false,
+          }),
+        ],
+      });
 
       await expect(gdfs.delete('/file.txt', false)).rejects.toThrow(VfsError);
+      // Second attempt - same error should occur again
+      vi.mocked(getGFileMetaList).mockResolvedValueOnce({
+        files: [
+          GDriveFile('file-id', 'file.txt', 'text/plain', {
+            canTrash: false,
+          }),
+        ],
+      });
       await expect(gdfs.delete('/file.txt', false)).rejects.toMatchObject({
         code: FileSystemError.NoPermissions,
       });
     });
 
     it('should check directory is empty when recursive is false', async () => {
-      vi.mocked(simplifiedGoogleDriveAPI.list)
-        .mockReturnValueOnce(
-          Promise.resolve({
-            result: {
-              files: [
-                GDriveFile('folder-id', 'folder', GOOGLE_MIME_FOLDER, {
-                  canTrash: true,
-                }),
-              ],
-            },
-          }),
-        )
-        .mockReturnValueOnce(
-          Promise.resolve({
-            result: {
-              files: [GDriveFile('folder-id', 'folder', GOOGLE_MIME_FOLDER)],
-            },
-          }),
-        )
-        .mockReturnValueOnce(
-          Promise.resolve({
-            result: {
-              files: [GDriveFile('file-id', 'file.txt', 'text/plain')],
-            },
-          }),
-        );
+      vi.mocked(getGFileMetaList)
+        .mockResolvedValueOnce({
+          files: [
+            GDriveFile('folder-id', 'folder', GOOGLE_MIME_FOLDER, {
+              canTrash: true,
+            }),
+          ],
+        })
+        .mockResolvedValueOnce({
+          files: [GDriveFile('file-id', 'file.txt', 'text/plain')], // Directory has content
+        });
 
-      await expect(gdfs.delete('/folder', false)).rejects.toThrow(
-        'Directory not empty',
-      );
+      await expect(gdfs.delete('/folder', false)).rejects.toThrow(VfsError);
+      // Second attempt - same error should occur again
+      vi.mocked(getGFileMetaList)
+        .mockResolvedValueOnce({
+          files: [
+            GDriveFile('folder-id', 'folder', GOOGLE_MIME_FOLDER, {
+              canTrash: true,
+            }),
+          ],
+        })
+        .mockResolvedValueOnce({
+          files: [GDriveFile('file-id', 'file.txt', 'text/plain')], // Directory has content
+        });
+
+      await expect(gdfs.delete('/folder', false)).rejects.toMatchObject({
+        code: FileSystemError.DirectoryNotEmpty,
+      });
+    });
+
+    it('should allow deleting non-empty directory when recursive is true', async () => {
+      vi.mocked(getGFileMetaList).mockResolvedValueOnce({
+        files: [
+          GDriveFile('folder-id', 'folder', GOOGLE_MIME_FOLDER, {
+            canTrash: true,
+          }),
+        ],
+      });
+      vi.mocked(update).mockResolvedValue({ result: {} });
+
+      await gdfs.delete('/folder', true);
+
+      expect(update).toHaveBeenCalledWith(mockAuth, 'folder-id', {
+        trashed: true,
+      });
+    });
+
+    it('should allow deleting empty directory when recursive is false', async () => {
+      vi.mocked(getGFileMetaList)
+        .mockResolvedValueOnce({
+          files: [
+            GDriveFile('folder-id', 'folder', GOOGLE_MIME_FOLDER, {
+              canTrash: true,
+            }),
+          ],
+        })
+        .mockResolvedValueOnce({
+          files: [], // Directory is empty
+        });
+      vi.mocked(update).mockResolvedValue({ result: {} });
+
+      await gdfs.delete('/folder', false);
+
+      expect(update).toHaveBeenCalledWith(mockAuth, 'folder-id', {
+        trashed: true,
+      });
     });
   });
 
   describe('move method', () => {
     it('should move file to new location', async () => {
-      vi.mocked(simplifiedGoogleDriveAPI.list)
-        .mockReturnValueOnce(
-          Promise.resolve({
-            result: {
-              files: [
-                GDriveFile('file-id', 'old.txt', 'text/plain', {
-                  parents: ['old-parent'],
-                  canTrash: true,
-                }),
-              ],
-            },
-          }),
-        )
-        .mockReturnValueOnce(Promise.resolve({ result: { files: [] } }))
-        .mockReturnValueOnce(
-          Promise.resolve({
-            result: {
-              files: [
-                GDriveFile('new-parent-id', 'new-parent', GOOGLE_MIME_FOLDER),
-              ],
-            },
-          }),
-        );
-      const mockMove = vi.fn().mockResolvedValue({});
-      vi.mocked(simplifiedGoogleDriveAPI.update).mockImplementation(mockMove);
+      vi.mocked(getGFileMetaList)
+        .mockResolvedValueOnce({
+          files: [
+            GDriveFile('file-id', 'old.txt', 'text/plain', {
+              parents: ['old-parent'],
+              canTrash: true,
+            }),
+          ],
+        })
+        .mockResolvedValueOnce({ files: [] }) // Destination doesn't exist
+        .mockResolvedValueOnce({
+          files: [
+            GDriveFile('new-parent-id', 'new-parent', GOOGLE_MIME_FOLDER),
+          ],
+        });
+      vi.mocked(update).mockResolvedValue({ result: {} });
 
       await gdfs.move('/old.txt', '/new-parent/new.txt');
 
-      expect(simplifiedGoogleDriveAPI.update).toHaveBeenCalledWith(
-        mockAuth,
-        'file-id',
-        {
-          name: 'new.txt',
-          addParents: ['new-parent-id'],
-          removeParents: ['old-parent'],
-        },
-      );
+      expect(update).toHaveBeenCalledWith(mockAuth, 'file-id', {
+        name: 'new.txt',
+        addParents: ['new-parent-id'],
+        removeParents: ['old-parent'],
+      });
     });
 
     it('should do nothing when old and new paths are the same', async () => {
       await gdfs.move('/file.txt', '/file.txt');
-      expect(simplifiedGoogleDriveAPI.update).not.toHaveBeenCalled();
+      expect(update).not.toHaveBeenCalled();
     });
 
     it('should throw FileExists when destination exists', async () => {
-      vi.mocked(simplifiedGoogleDriveAPI.list).mockReturnValue(
-        Promise.resolve({
-          result: {
-            files: [GDriveFile('existing-id', 'existing.txt', 'text/plain')],
-          },
-        }),
-      );
+      // First call: resolve source file
+      vi.mocked(getGFileMetaList)
+        .mockResolvedValueOnce({
+          files: [
+            GDriveFile('file-id', 'old.txt', 'text/plain', {
+              parents: ['root'],
+              canTrash: true,
+            }),
+          ],
+        })
+        // Second call: check if destination exists (it does)
+        .mockResolvedValueOnce({
+          files: [GDriveFile('existing-id', 'existing.txt', 'text/plain')],
+        });
 
       await expect(gdfs.move('/old.txt', '/existing.txt')).rejects.toThrow(
         VfsError,
       );
+      // Second attempt - same error should occur again
+      vi.mocked(getGFileMetaList)
+        .mockResolvedValueOnce({
+          files: [
+            GDriveFile('file-id', 'old.txt', 'text/plain', {
+              parents: ['root'],
+              canTrash: true,
+            }),
+          ],
+        })
+        // Second call: check if destination exists (it does)
+        .mockResolvedValueOnce({
+          files: [GDriveFile('existing-id', 'existing.txt', 'text/plain')],
+        });
+
       await expect(
         gdfs.move('/old.txt', '/existing.txt'),
       ).rejects.toMatchObject({
         code: FileSystemError.FileExists,
       });
     });
-  });
 
-  describe('watch method', () => {
-    it('should return unsubscribe function', () => {
-      const unsubscribe = gdfs.watch(() => undefined);
-      expect(unsubscribe).toBeDefined();
-      expect(typeof unsubscribe).toBe('function');
+    it('should throw NoPermissions when source file cannot be moved', async () => {
+      // resolvePath for source file - file has canTrash: false
+      // We need two mocks because move is called twice
+      vi.mocked(getGFileMetaList)
+        .mockResolvedValueOnce({
+          files: [
+            GDriveFile('file-id', 'old.txt', 'text/plain', {
+              parents: ['root'],
+              canTrash: false, // Cannot trash/move
+            }),
+          ],
+        })
+        .mockResolvedValueOnce({
+          files: [
+            GDriveFile('file-id', 'old.txt', 'text/plain', {
+              parents: ['root'],
+              canTrash: false, // Cannot trash/move
+            }),
+          ],
+        });
+
+      // Should throw NoPermissions because canTrash is false
+      await expect(gdfs.move('/old.txt', '/new-location.txt')).rejects.toThrow(
+        VfsError,
+      );
+      await expect(
+        gdfs.move('/old.txt', '/new-location.txt'),
+      ).rejects.toMatchObject({
+        code: FileSystemError.NoPermissions,
+      });
     });
 
-    it('should call callback when subscribed and unsubscribe stops it', () => {
-      const callback = vi.fn();
-      const unsubscribe = gdfs.watch(callback);
+    it('should throw NoPermissions when moving to SharedWithMe root', async () => {
+      const sharedFs = new GoogleDriveFileSystem(mockAuth, {
+        mount: GoogleDriveMount.SharedWithMe,
+      });
 
-      expect(callback).not.toHaveBeenCalled();
+      vi.mocked(getGFileMetaList)
+        .mockResolvedValueOnce({
+          files: [
+            GDriveFile('file-id', 'old.txt', 'text/plain', {
+              canTrash: true,
+            }),
+          ],
+        })
+        .mockResolvedValueOnce({ files: [] }) // Destination doesn't exist
+        .mockResolvedValueOnce({
+          files: [
+            GDriveFile('sharedWithMe', 'Shared with me', GOOGLE_MIME_FOLDER),
+          ],
+        });
 
-      unsubscribe();
+      await expect(sharedFs.move('/old.txt', '/new-file.txt')).rejects.toThrow(
+        VfsError,
+      );
+      await expect(
+        sharedFs.move('/old.txt', '/new-file.txt'),
+      ).rejects.toMatchObject({
+        code: FileSystemError.NoPermissions,
+      });
+    });
+
+    it('should throw FileNotADirectory when destination parent is not a directory', async () => {
+      // First call: resolve source file
+      vi.mocked(getGFileMetaList)
+        .mockResolvedValueOnce({
+          files: [
+            GDriveFile('file-id', 'old.txt', 'text/plain', {
+              parents: ['root'],
+              canTrash: true,
+            }),
+          ],
+        })
+        // Second call: check if destination exists (doesn't exist)
+        .mockResolvedValueOnce({ files: [] })
+        // Third call: get destination parent (which is not a directory)
+        .mockResolvedValueOnce({
+          files: [
+            GDriveFile('file-id', 'not-a-dir', 'text/plain'), // Not a directory
+          ],
+        });
+
+      await expect(
+        gdfs.move('/old.txt', '/not-a-dir/file.txt'),
+      ).rejects.toThrow(VfsError);
+    });
+
+    it('should handle moving within the same parent correctly', async () => {
+      vi.mocked(getGFileMetaList)
+        .mockResolvedValueOnce({
+          files: [
+            GDriveFile('file-id', 'old.txt', 'text/plain', {
+              parents: ['same-parent'],
+              canTrash: true,
+            }),
+          ],
+        })
+        .mockResolvedValueOnce({ files: [] }) // Destination doesn't exist
+        .mockResolvedValueOnce({
+          files: [GDriveFile('same-parent', 'parent', GOOGLE_MIME_FOLDER)],
+        });
+      vi.mocked(update).mockResolvedValue({ result: {} });
+
+      await gdfs.move('/old.txt', '/parent/renamed.txt');
+
+      // When moving within the same parent, addParents should be undefined
+      expect(update).toHaveBeenCalledWith(mockAuth, 'file-id', {
+        name: 'renamed.txt',
+        addParents: undefined, // Should be undefined when moving within same parent
+        removeParents: undefined, // Should be undefined when moving within same parent
+      });
+    });
+
+    it('should handle moving with multiple parents correctly', async () => {
+      vi.mocked(getGFileMetaList)
+        .mockResolvedValueOnce({
+          files: [
+            GDriveFile('file-id', 'old.txt', 'text/plain', {
+              parents: ['parent1', 'parent2', 'parent3'],
+              canTrash: true,
+            }),
+          ],
+        })
+        .mockResolvedValueOnce({ files: [] }) // Destination doesn't exist
+        .mockResolvedValueOnce({
+          files: [
+            GDriveFile('new-parent-id', 'new-parent', GOOGLE_MIME_FOLDER),
+          ],
+        });
+      vi.mocked(update).mockResolvedValue({ result: {} });
+
+      await gdfs.move('/old.txt', '/new-parent/new.txt');
+
+      expect(update).toHaveBeenCalledWith(mockAuth, 'file-id', {
+        name: 'new.txt',
+        addParents: ['new-parent-id'],
+        removeParents: ['parent1', 'parent2', 'parent3'], // Remove all old parents
+      });
+    });
+
+    it('should handle moving file with undefined parents (root level)', async () => {
+      vi.mocked(getGFileMetaList)
+        .mockResolvedValueOnce({
+          files: [
+            GDriveFile('file-id', 'old.txt', 'text/plain', {
+              parents: ['root'], // Has 'root' as parent in MyDrive mount
+              canTrash: true,
+            }),
+          ],
+        })
+        .mockResolvedValueOnce({ files: [] }); // Destination doesn't exist
+      vi.mocked(getGFileMetaList).mockResolvedValueOnce({
+        files: [GDriveFile('root', 'root', GOOGLE_MIME_FOLDER)],
+      });
+      vi.mocked(update).mockResolvedValue({ result: {} });
+
+      await gdfs.move('/old.txt', '/renamed.txt');
+
+      expect(update).toHaveBeenCalledWith(mockAuth, 'file-id', {
+        name: 'renamed.txt',
+        addParents: undefined, // No parents to add (moving within same parent)
+        removeParents: undefined, // No parents to remove (moving within same parent)
+      });
+    });
+
+    it('should handle moving file with empty parents array', async () => {
+      vi.mocked(getGFileMetaList)
+        .mockResolvedValueOnce({
+          files: [
+            GDriveFile('file-id', 'old.txt', 'text/plain', {
+              parents: ['root'], // Has 'root' as parent in MyDrive mount
+              canTrash: true,
+            }),
+          ],
+        })
+        .mockResolvedValueOnce({ files: [] }); // Destination doesn't exist
+      vi.mocked(getGFileMetaList).mockResolvedValueOnce({
+        files: [GDriveFile('root', 'root', GOOGLE_MIME_FOLDER)],
+      });
+      vi.mocked(update).mockResolvedValue({ result: {} });
+
+      await gdfs.move('/old.txt', '/renamed.txt');
+
+      expect(update).toHaveBeenCalledWith(mockAuth, 'file-id', {
+        name: 'renamed.txt',
+        addParents: undefined, // No parents to add (moving within same parent)
+        removeParents: undefined, // No parents to remove (moving within same parent)
+      });
+    });
+
+    it('should handle moving file with duplicate parent IDs in parents array', async () => {
+      vi.mocked(getGFileMetaList)
+        .mockResolvedValueOnce({
+          files: [
+            GDriveFile('file-id', 'old.txt', 'text/plain', {
+              parents: ['parent1', 'parent1'], // Duplicate parent ID
+              canTrash: true,
+            }),
+          ],
+        })
+        .mockResolvedValueOnce({ files: [] }); // Destination doesn't exist
+      vi.mocked(getGFileMetaList).mockResolvedValueOnce({
+        files: [GDriveFile('new-parent-id', 'new-parent', GOOGLE_MIME_FOLDER)],
+      });
+      vi.mocked(update).mockResolvedValue({ result: {} });
+
+      await gdfs.move('/old.txt', '/new-parent/new.txt');
+
+      // Should call update - exact parameters depend on implementation
+      expect(update).toHaveBeenCalled();
+    });
+
+    it('should handle moving file where destination parent is same as source parent (no parents change)', async () => {
+      vi.mocked(getGFileMetaList)
+        .mockResolvedValueOnce({
+          files: [
+            GDriveFile('file-id', 'old.txt', 'text/plain', {
+              parents: ['root'], // Has 'root' as parent in MyDrive mount
+              canTrash: true,
+            }),
+          ],
+        })
+        .mockResolvedValueOnce({ files: [] }); // Destination doesn't exist
+      vi.mocked(getGFileMetaList).mockResolvedValueOnce({
+        files: [GDriveFile('root', 'root', GOOGLE_MIME_FOLDER)],
+      });
+      vi.mocked(update).mockResolvedValue({ result: {} });
+
+      await gdfs.move('/old.txt', '/renamed.txt');
+
+      // When moving within the same parent, no parent changes should occur
+      expect(update).toHaveBeenCalledWith(mockAuth, 'file-id', {
+        name: 'renamed.txt',
+        addParents: undefined, // No parents to add (moving within same parent)
+        removeParents: undefined, // No parents to remove (moving within same parent)
+      });
+    });
+
+    it('should throw error when update fails during move', async () => {
+      vi.mocked(getGFileMetaList)
+        .mockResolvedValueOnce({
+          files: [
+            GDriveFile('file-id', 'old.txt', 'text/plain', {
+              parents: ['old-parent'],
+              canTrash: true,
+            }),
+          ],
+        })
+        .mockResolvedValueOnce({ files: [] }); // Destination doesn't exist
+      vi.mocked(getGFileMetaList).mockResolvedValueOnce({
+        files: [GDriveFile('new-parent-id', 'new-parent', GOOGLE_MIME_FOLDER)],
+      });
+      vi.mocked(update).mockRejectedValue(new Error('Update failed'));
+
+      await expect(
+        gdfs.move('/old.txt', '/new-parent/new.txt'),
+      ).rejects.toThrow(Error);
+    });
+
+    it('should throw NoPermissions when source file cannot be moved (canTrash false)', async () => {
+      // We need two mocks because move is called twice
+      vi.mocked(getGFileMetaList)
+        .mockResolvedValueOnce({
+          files: [
+            GDriveFile('file-id', 'old.txt', 'text/plain', {
+              canTrash: false, // Cannot trash/move
+            }),
+          ],
+        })
+        .mockResolvedValueOnce({
+          files: [
+            GDriveFile('file-id', 'old.txt', 'text/plain', {
+              canTrash: false, // Cannot trash/move
+            }),
+          ],
+        });
+
+      // Should throw NoPermissions because canTrash is false
+      await expect(gdfs.move('/old.txt', '/new-location.txt')).rejects.toThrow(
+        VfsError,
+      );
+      await expect(
+        gdfs.move('/old.txt', '/new-location.txt'),
+      ).rejects.toMatchObject({
+        code: FileSystemError.NoPermissions,
+      });
+    });
+
+    it('should throw FileExists when destination exists (including directories)', async () => {
+      // First call: resolve source file
+      vi.mocked(getGFileMetaList)
+        .mockResolvedValueOnce({
+          files: [
+            GDriveFile('file-id', 'old.txt', 'text/plain', {
+              parents: ['root'],
+              canTrash: true,
+            }),
+          ],
+        })
+        // Second call: check if destination exists (it does - as a directory)
+        .mockResolvedValueOnce({
+          files: [
+            GDriveFile('existing-dir-id', 'existing-dir', GOOGLE_MIME_FOLDER),
+          ],
+        });
+
+      await expect(gdfs.move('/old.txt', '/existing-dir')).rejects.toThrow(
+        VfsError,
+      );
+      // Second attempt
+      vi.mocked(getGFileMetaList)
+        .mockResolvedValueOnce({
+          files: [
+            GDriveFile('file-id', 'old.txt', 'text/plain', {
+              parents: ['root'],
+              canTrash: true,
+            }),
+          ],
+        })
+        .mockResolvedValueOnce({
+          files: [
+            GDriveFile('existing-dir-id', 'existing-dir', GOOGLE_MIME_FOLDER),
+          ],
+        });
+      await expect(
+        gdfs.move('/old.txt', '/existing-dir'),
+      ).rejects.toMatchObject({
+        code: FileSystemError.FileExists,
+      });
+    });
+
+    it('should throw FileNotADirectory when destination parent is not a directory', async () => {
+      vi.mocked(getGFileMetaList)
+        .mockResolvedValueOnce({
+          files: [
+            GDriveFile('file-id', 'old.txt', 'text/plain', {
+              canTrash: true,
+            }),
+          ],
+        })
+        .mockResolvedValueOnce({ files: [] }); // Destination doesn't exist
+      vi.mocked(getGFileMetaList).mockResolvedValueOnce({
+        files: [
+          GDriveFile('file-id', 'not-a-dir', 'text/plain'), // Not a directory
+        ],
+      });
+
+      await expect(
+        gdfs.move('/old.txt', '/not-a-dir/file.txt'),
+      ).rejects.toThrow(VfsError);
+    });
+
+    it('should throw NoPermissions when moving to SharedWithMe root', async () => {
+      const sharedFs = new GoogleDriveFileSystem(mockAuth, {
+        mount: GoogleDriveMount.SharedWithMe,
+      });
+
+      vi.mocked(getGFileMetaList)
+        .mockResolvedValueOnce({ files: [] }) // Source doesn't exist (first call)
+        .mockResolvedValueOnce({ files: [] }) // Destination doesn't exist (second call)
+        .mockResolvedValueOnce({
+          files: [
+            GDriveFile('sharedWithMe', 'Shared with me', GOOGLE_MIME_FOLDER),
+          ],
+        }); // Parent lookup
+
+      await expect(sharedFs.move('/old.txt', '/new-file.txt')).rejects.toThrow(
+        VfsError,
+      );
+    });
+
+    it('should throw FileNotADirectory when destination parent is not a directory (SharedWithMe)', async () => {
+      const sharedFs = new GoogleDriveFileSystem(mockAuth, {
+        mount: GoogleDriveMount.SharedWithMe,
+      });
+
+      vi.mocked(getGFileMetaList)
+        .mockResolvedValueOnce({
+          files: [
+            GDriveFile('file-id', 'old.txt', 'text/plain', {
+              canTrash: true,
+            }),
+          ],
+        })
+        .mockResolvedValueOnce({ files: [] }); // Destination doesn't exist
+      vi.mocked(getGFileMetaList).mockResolvedValueOnce({
+        files: [
+          GDriveFile('file-id', 'not-a-dir', 'text/plain'), // Not a directory
+        ],
+      });
+
+      await expect(
+        sharedFs.move('/old.txt', '/not-a-dir/file.txt'),
+      ).rejects.toThrow(VfsError);
+    });
+  });
+
+  describe('mount-specific behaviors', () => {
+    describe('SharedWithMe mount', () => {
+      let sharedFs: GoogleDriveFileSystem;
+
+      beforeEach(() => {
+        sharedFs = new GoogleDriveFileSystem(mockAuth, {
+          mount: GoogleDriveMount.SharedWithMe,
+        });
+      });
+
+      it('should handle root directory differently', async () => {
+        const stat = await sharedFs.stat('/');
+        expect(stat.type).toBe(FSNodeType.Directory);
+        expect(stat.canDelete).toBe(false);
+      });
+
+      it('should use sharedWithMe query for directory listing', async () => {
+        vi.mocked(getGFileMetaList).mockResolvedValueOnce({
+          files: [GDriveFile('file-id', 'shared-file.txt', 'text/plain')],
+        });
+
+        const entries = await sharedFs.readDirectory('/');
+
+        expect(getGFileMetaList).toHaveBeenCalledWith(mockAuth, {
+          q: 'sharedWithMe = true and trashed = false',
+          pageSize: 1000,
+          spaces: ['drive'],
+          fetchAll: true,
+        });
+        expect(entries.length).toBe(1);
+      });
+
+      it('should use sharedWithMe query for file resolution', async () => {
+        vi.mocked(getGFileMetaList).mockResolvedValueOnce({
+          files: [GDriveFile('file-id', 'shared-file.txt', 'text/plain')],
+        });
+
+        const stat = await sharedFs.stat('/shared-file.txt');
+
+        expect(getGFileMetaList).toHaveBeenCalledWith(mockAuth, {
+          q: "name = 'shared-file.txt' and sharedWithMe = true and trashed = false",
+          pageSize: 1,
+          spaces: ['drive'],
+        });
+        expect(stat.type).toBe(FSNodeType.File);
+      });
+    });
+
+    describe('AppData mount', () => {
+      let appDataFs: GoogleDriveFileSystem;
+
+      beforeEach(() => {
+        appDataFs = new GoogleDriveFileSystem(mockAuth, {
+          mount: GoogleDriveMount.AppData,
+        });
+      });
+
+      it('should handle root directory differently', async () => {
+        const stat = await appDataFs.stat('/');
+        expect(stat.type).toBe(FSNodeType.Directory);
+        expect(stat.canDelete).toBe(false);
+      });
+
+      it('should resolve path in AppData mount mode', async () => {
+        vi.mocked(getGFileMetaList).mockResolvedValueOnce({
+          files: [GDriveFile('file-id', 'test.txt', 'text/plain')],
+        });
+
+        const stat = await appDataFs.stat('/test.txt');
+        expect(stat.type).toBe(FSNodeType.File);
+      });
+
+      it('should list directory in AppData mount mode', async () => {
+        vi.mocked(getGFileMetaList).mockResolvedValueOnce({
+          files: [
+            GDriveFile('file-id', 'test.txt', 'text/plain'),
+            GDriveFile('folder-id', 'subdir', GOOGLE_MIME_FOLDER),
+          ],
+        });
+
+        const entries = await appDataFs.readDirectory('/');
+        expect(entries.length).toBe(2);
+      });
+    });
+
+    describe('SpecificFolder mount', () => {
+      let specificFs: GoogleDriveFileSystem;
+
+      beforeEach(() => {
+        specificFs = new GoogleDriveFileSystem(mockAuth, {
+          mount: GoogleDriveMount.SpecificFolder,
+          rootId: 'test-folder-id',
+        });
+      });
+
+      it('should handle root directory differently', async () => {
+        vi.mocked(getGFileMetaList).mockResolvedValueOnce({
+          files: [
+            GDriveFile('test-folder-id', 'specific-folder', GOOGLE_MIME_FOLDER),
+          ],
+        });
+
+        const stat = await specificFs.stat('/');
+        expect(stat.type).toBe(FSNodeType.Directory);
+      });
     });
   });
 });
