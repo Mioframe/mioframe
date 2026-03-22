@@ -2,10 +2,8 @@ import type {
   FileContent,
   FSNodeStat,
   IFileSystemProvider,
-  VfsEvent,
 } from '../virtualFileSystem';
 import {
-  EventEmitter,
   FileSystemError,
   FSNodeType,
   PathUtils,
@@ -14,8 +12,6 @@ import {
 import type { WriteOptions } from '../virtualFileSystem/IFileSystemProvider';
 
 export class WebFileSystem implements IFileSystemProvider {
-  private events = new EventEmitter();
-
   constructor(private rootHandle: FileSystemDirectoryHandle) {}
 
   private async getHandle(
@@ -316,9 +312,5 @@ export class WebFileSystem implements IFileSystemProvider {
 
       await this.delete(normalizedOld, true);
     }
-  }
-
-  public watch(callback: (event: VfsEvent) => void): () => void {
-    return this.events.subscribe(callback);
   }
 }

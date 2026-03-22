@@ -107,9 +107,9 @@ export interface IFileSystemProvider {
   move(oldPath: string, newPath: string): Promise<void>;
 
   /**
-   * Watch for changes in the file system
+   * Watch for changes in the file system (optional)
    * @param callback Callback function to handle events
    * @returns Function to cancel watching
    */
-  watch(callback: (event: VfsEvent) => void): () => void;
+  watch?(callback: (event: VfsEvent) => void): () => void;
 }
