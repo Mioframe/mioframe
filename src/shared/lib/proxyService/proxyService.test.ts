@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
-import { createClient, createService, defineTransformer } from './proxyService';
+import { createClient, createService } from './proxyService';
+import { defineTransformer } from './defineTransformer';
 import type { Provider } from './types';
 import { uid } from 'uid/secure';
 
