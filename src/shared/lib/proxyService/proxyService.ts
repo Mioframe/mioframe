@@ -15,7 +15,6 @@ import type {
   AnyFunction,
   CallFunctionMessage,
   CallPathMessage,
-  CustomTransformer,
   FunctionDescription,
   Provider,
   ClientObject,
@@ -179,34 +178,6 @@ const waitServiceReady = (
       provider.postMessage(readyQuestion);
     }
   });
-};
-
-/**
- * Creates a transformer registration closure for custom serialization/deserialization.
- *
- * This utility function helps register custom types with SuperJSON
- * to handle special data types during cross-context communication.
- *
- * @param name - Name of the transformer
- * @param v - Custom transformer implementation
- * @returns A closure that can be called with SuperJSON and Provider to register the transformer
- */
-export const defineTransformer = <T, J>(
-  name: string,
-  v: CustomTransformer<T, J>,
-): TransformerRegistration => {
-  return (superJson: SuperJSON, provider: Provider) => {
-    superJson.registerCustom(
-      {
-        isApplicable: v.isApplicable,
-        // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- Custom type validation happens internally
-        deserialize: (val) => v.deserialize(provider, val as J),
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-return, @typescript-eslint/consistent-type-assertions -- SuperJSON expects strict JSONValue, but custom transformers can return arbitrary objects
-        serialize: (val) => v.serialize(provider, val) as any,
-      },
-      name,
-    );
-  };
 };
 
 /**

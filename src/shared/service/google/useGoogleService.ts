@@ -60,8 +60,6 @@ const setupGoogleService = () => {
     { immediate: true },
   );
 
-  // const hasAll = computed(() => scopes.value.has(DRIVE_GOOGLE_SCOPE.all));
-
   return {
     addSession,
     removeSession,
