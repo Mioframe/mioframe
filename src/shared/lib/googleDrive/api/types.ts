@@ -1,6 +1,7 @@
 import { dayjs } from '@shared/lib/dayjs';
 import type { Options as KyOptions, Progress } from 'ky';
 import { z } from 'zod/v4-mini';
+import { HttpStatusCode } from '../../error/httpStatus';
 
 /**
  * Google Drive space types.
@@ -61,11 +62,20 @@ export interface CreateResource {
   readonly parents: readonly string[];
 }
 
+/**
+ * Zod schema for Google Drive API error response parsing.
+ * Parses the `error` object from Google Drive API responses and maps codes to HttpStatusCode enum.
+ */
 export const zodGoogleErrorResponse = z.object({
   error: z.object({
     message: z.string(),
+    code: z.enum(HttpStatusCode),
+    location: z.optional(z.string()),
+    reason: z.optional(z.string()),
   }),
 });
+
+export type GoogleErrorResponse = z.output<typeof zodGoogleErrorResponse>;
 
 /**
  * API request settings with deduplication support.
