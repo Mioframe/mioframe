@@ -57,11 +57,13 @@ export interface GoogleDriveFsOptions {
 export class GoogleDriveFileSystem implements IFileSystemProvider {
   private readonly space: SPACE;
   private readonly rootId: string;
+  private readonly onError?: (error: unknown) => unknown;
 
   constructor(
     private auth: GoogleAuthParams,
     options: GoogleDriveFsOptions = {},
   ) {
+    this.onError = options.onError;
     const mount = options.mount || GoogleDriveMount.MyDrive;
 
     switch (mount) {
@@ -135,6 +137,9 @@ export class GoogleDriveFileSystem implements IFileSystemProvider {
         q: query,
         pageSize: 1,
         spaces: [this.space],
+      }).catch((e) => {
+        this.onError?.(e);
+        throw e;
       });
 
       const file = result.files?.at(0);
@@ -314,6 +319,7 @@ export class GoogleDriveFileSystem implements IFileSystemProvider {
       try {
         await upload(this.auth, created.result.id, content);
       } catch (uploadError) {
+        this.onError?.(uploadError);
         await update(this.auth, created.result.id, {
           trashed: true,
         });
@@ -348,6 +354,9 @@ export class GoogleDriveFileSystem implements IFileSystemProvider {
       pageSize: 1000,
       spaces: [this.space],
       fetchAll: true, // Ensure getting all files through pagination
+    }).catch((e) => {
+      this.onError?.(e);
+      throw e;
     });
 
     const entries: [string, FSNodeStat][] = [];
@@ -424,6 +433,9 @@ export class GoogleDriveFileSystem implements IFileSystemProvider {
       name: dirName,
       parents: [parentEntry.id],
       mimeType: GOOGLE_MIME_FOLDER,
+    }).catch((e) => {
+      this.onError?.(e);
+      throw e;
     });
   }
 
@@ -456,7 +468,11 @@ export class GoogleDriveFileSystem implements IFileSystemProvider {
         q: query,
         pageSize: 1,
         spaces: [this.space],
+      }).catch((e) => {
+        this.onError?.(e);
+        throw e;
       });
+
       // Safe array length check
       if (result.files && result.files.length > 0) {
         throw new VfsError(
@@ -468,6 +484,9 @@ export class GoogleDriveFileSystem implements IFileSystemProvider {
 
     await update(this.auth, entry.id, {
       trashed: true,
+    }).catch((e) => {
+      this.onError?.(e);
+      throw e;
     });
   }
 
@@ -531,6 +550,9 @@ export class GoogleDriveFileSystem implements IFileSystemProvider {
           ? [destinationParentEntry.id]
           : undefined,
       removeParents: removeParents.length > 0 ? removeParents : undefined,
+    }).catch((e) => {
+      this.onError?.(e);
+      throw e;
     });
   }
 }
