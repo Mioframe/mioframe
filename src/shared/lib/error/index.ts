@@ -38,3 +38,6 @@ export class DomainError extends Error {
     };
   }
 }
+
+export { HttpStatusCode } from './httpStatus';
+export type { GoogleDriveError } from '../googleDrive/error';

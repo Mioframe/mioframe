@@ -4,7 +4,8 @@ import type { Input, Options as KyOptions, Progress } from 'ky';
 import ky, { HTTPError } from 'ky';
 import type { ZodMiniType } from 'zod/v4-mini';
 import { z } from 'zod/v4-mini';
-import { DomainError } from '../../error';
+import { HttpStatusCode } from '../../error/httpStatus';
+import { GoogleDriveError } from '../error';
 import { dedupe } from '../../dedupe';
 import type {
   CreateResource,
@@ -25,7 +26,6 @@ import { Cache } from '@shared/lib/cache';
 
 /**
  * Configured ky client with retry logic for production resilience.
- * Retries on transient errors (408, 413, 429, 500-504) up to 3 attempts.
  */
 const apiClient = ky.create({
   retry: {
@@ -41,13 +41,6 @@ const dedupeApiFetch = dedupe(apiFetch);
 
 /**
  * Internal request handler with error normalization.
- * Handles HTTP errors and Google API errors, wrapping them in DomainError for consistent error handling.
- * Normalizes transient network errors and Google-specific API errors into a unified DomainError type.
- *
- * @param url - request URL
- * @param options - optional request options (method, headers, dedupe, etc.)
- * @returns {Promise<Response>} HTTP response
- * @throws {DomainError} If request fails or Google API returns an error with normalized message
  */
 const googleRequest = async (
   url: Input,
@@ -59,11 +52,23 @@ const googleRequest = async (
       : await apiFetch(url, options);
 
     if (!response.ok) {
-      const { data: googleError } = zodGoogleErrorResponse.safeParse(
-        await response.clone().json(),
-      );
+      const errorBody = await response
+        .clone()
+        .json()
+        .catch(() => ({}));
 
-      throw new DomainError(googleError?.error.message || response.statusText);
+      const { error: googleError } = zodGoogleErrorResponse.parse(errorBody);
+
+      const { code, message } = googleError;
+
+      throw new GoogleDriveError(
+        {
+          code,
+          message,
+          details: googleError,
+        },
+        { cause: googleError },
+      );
     }
 
     return response;
@@ -73,11 +78,19 @@ const googleRequest = async (
         .clone()
         .json()
         .catch(() => ({}));
-      const { data: googleError } = zodGoogleErrorResponse.safeParse(errorBody);
 
-      throw new DomainError(googleError?.error.message || e.message, {
-        cause: e,
-      });
+      const { error: googleError } = zodGoogleErrorResponse.parse(errorBody);
+
+      const { code, message } = googleError;
+
+      throw new GoogleDriveError(
+        {
+          code,
+          message,
+          details: googleError,
+        },
+        { cause: googleError },
+      );
     }
 
     throw e;
@@ -86,17 +99,6 @@ const googleRequest = async (
 
 /**
  * Internal request handler with authentication and response validation.
- * Wraps authenticated requests with Bearer token and validates response against schema.
- * Handles both successful responses (validated via Zod schema) and error cases (HTTP errors, invalid JSON).
- *
- * @template R - response data type
- * @param method - HTTP method (GET, POST, PUT, PATCH, DELETE)
- * @param url - request URL (must start with https://)
- * @param auth - authentication parameters with ACCESS_TOKEN and optional API_KEY
- * @param options - optional request options
- * @param responseSchema - Zod schema for response validation
- * @returns {Promise<{ result: R }>} validated response data
- * @throws {DomainError} If request fails, response is invalid, or parsing fails
  */
 const authorizedRequest = async <R>(
   method: Required<KyOptions['method']>,
@@ -125,21 +127,13 @@ const authorizedRequest = async <R>(
     .clone()
     .json();
 
-  // Use safeParse to catch parsing errors and wrap them in DomainError
-  const parsed = responseSchema.safeParse(response);
-  if (!parsed.success) {
-    throw new DomainError('Failed to parse API response', {
-      cause: new Error(`Invalid response format: ${JSON.stringify(response)}`),
-    });
-  }
+  const result = responseSchema.parse(response);
 
-  return { result: parsed.data };
+  return { result };
 };
 
 /**
  * LRU cache for paginated file metadata lists.
- * Stores complete list responses keyed by ListParams to avoid redundant API calls.
- * TTL: 30 seconds, max entries: 500.
  */
 const gFileMetaListCache = new Cache<ListParams, GDriveListResponse>({
   max: 500,
@@ -148,34 +142,6 @@ const gFileMetaListCache = new Cache<ListParams, GDriveListResponse>({
 
 /**
  * Retrieves a list of Google Drive files with caching and request deduplication support.
- * Implements pagination for large result sets; when `fetchAll: true` automatically iterates through all pages.
- * Caches both individual file metadata and complete list responses to minimize API calls.
- *
- * @param auth - authentication object with required `ACCESS_TOKEN`
- * @param params - list request parameters (ListParams)
- * @returns `Promise<{ result: GDriveListResponse }>` where `GDriveListResponse = { files?: GDriveFileMeta[], nextPageToken?: string }`
- * @example
- * // Get 100 files from root
- * const { result: { files, nextPageToken } } = await getGFileMetaList(
- *   { ACCESS_TOKEN: 'your-token' },
- *   { pageSize: 100 }
- * );
- 
- * @example
- * // Get all files with search query
- * const { result: { files } } = await getGFileMetaList(
- *   { ACCESS_TOKEN: 'your-token' },
- *   { q: "name contains 'report'", fetchAll: true }
- * );
- 
- * @example
- * // Get files from a specific folder by parent ID
- * const { result: { files } } = await getGFileMetaList(
- *   { ACCESS_TOKEN: 'your-token' },
- *   { q: "'folder-id' in parents" }
- * );
- 
- * @throws {DomainError} If API request fails or response is invalid
  */
 export const getGFileMetaList = async (
   auth: GoogleAuthParams,
@@ -256,8 +222,6 @@ export const getGFileMetaList = async (
 
 /**
  * LRU cache for individual file metadata.
- * Stores GDriveFileMeta keyed by fileId for O(1) lookups.
- * TTL: 30 seconds, max entries: 100.
  */
 const gFileMetaCache = new Cache<string, GDriveFileMeta>({
   max: 100,
@@ -266,20 +230,6 @@ const gFileMetaCache = new Cache<string, GDriveFileMeta>({
 
 /**
  * Invalidates cache entries for specified file IDs and dependent entries.
- * Removes records from all three caches (metadata, content, list), including dependent ones where fileId appears in `parents`.
- * Ensures cache consistency after mutations (create, update, delete) by removing stale entries.
- *
- * @param fileIdList - one or more file identifiers to remove from cache
- * @returns {void}
- * @example
- * // After updating or deleting a single file
- * await update({ ACCESS_TOKEN: token }, 'file-id', { name: 'new-name' });
- * invalidateCache('file-id');
- *
- * @example
- * // After creating a new folder (removing from cache all files that now have this folder in parents)
- * const newFolderId = await create(auth, { name: 'New Folder', mimeType: 'application/vnd.google-apps.folder', parents: ['root-id'] });
- * invalidateCache(newFolderId.result.id);
  */
 const invalidateCache = (...fileIdList: string[]): void => {
   fileIdList.forEach((fileId) => {
@@ -302,13 +252,6 @@ const invalidateCache = (...fileIdList: string[]): void => {
 
 /**
  * Retrieves metadata for a single Google Drive file.
- * Checks metadata cache first; returns cached data if available.
- * Otherwise fetches fresh metadata from Google Drive API and caches it.
- *
- * @param auth - authentication object with required `ACCESS_TOKEN`
- * @param fileId - file identifier to retrieve metadata for
- * @returns `Promise<GDriveFileMeta>` - file metadata including id, name, mimeType, size, timestamps, parents, capabilities
- * @throws {DomainError} If API request fails or response is invalid
  */
 export const getGDriveFileMeta = async (
   auth: GoogleAuthParams,
@@ -337,49 +280,6 @@ export const getGDriveFileMeta = async (
 
 /**
  * Updates file metadata (name, parents, trash status).
- * Performs a PATCH request to modify only specified fields; other fields remain unchanged.
- * Invalidates cache for the updated file and any files that reference it as a parent.
- *
- * @param auth - authentication object with required `ACCESS_TOKEN`
- * @param fileId - file identifier to update
- * @param options - update parameters (UpdateParams)
- * @returns `{ result: {} }` with empty update result
- * @example
- * // Rename file
- * await update(
- *   { ACCESS_TOKEN: 'your-token' },
- *   'file-id',
- *   { name: 'new-name.pdf' }
- * );
- *
- * @example
- * // Move file to trash
- * await update(
- *   { ACCESS_TOKEN: 'your-token' },
- *   'file-id',
- *   { trashed: true }
- * );
- *
- * @example
- * // Restore file from trash
- * await update(
- *   { ACCESS_TOKEN: 'your-token' },
- *   'file-id',
- *   { trashed: false }
- * );
- *
- * @example
- * // Add parents and move to trash
- * await update(
- *   { ACCESS_TOKEN: 'your-token' },
- *   'file-id',
- *   {
- *     addParents: ['parent-id-1', 'parent-id-2'],
- *     trashed: true
- *   }
- * );
- *
- * @throws {DomainError} If API request fails or response is invalid
  */
 export const update = (
   auth: GoogleAuthParams,
@@ -409,11 +309,9 @@ export const update = (
 
   return result;
 };
+
 /**
  * LRU cache for downloaded file content.
- * Stores File objects keyed by fileId to avoid redundant downloads.
- * Includes modification time for cache validation (cache hit only if modifiedTime matches).
- * TTL: 30 seconds, max entries: 100, max size: 10 MB.
  */
 const gDriveFileContentCache = new Cache<
   string,
@@ -423,18 +321,9 @@ const gDriveFileContentCache = new Cache<
   maxSize: 10 * 1024 * 1024,
   sizeCalculation: ({ file }) => file.size,
 });
+
 /**
  * Downloads file content as a File object.
- * Checks content cache first; returns cached File if available with matching modification time.
- * Otherwise fetches fresh content from Google Drive API and caches it.
- * Uses `alt=media` parameter for binary content retrieval without metadata.
- *
- * @param auth - authentication object with required `ACCESS_TOKEN`
- * @param fileId - file identifier to download
- * @param params - optional download parameters (DownloadParams)
- * @returns `File` object with file content
- * @throws {DomainError} If API request fails (authorization error, rate limits, invalid response)
- * @throws {Error} If a network error occurs or timeout expires (wrapped in DomainError)
  */
 export const download = async (
   auth: GoogleAuthParams,
@@ -475,30 +364,16 @@ export const download = async (
 
   return file;
 };
+
 /**
  * Creates a new file in Google Drive.
- * Performs POST request to create a new file; validates that `parents` array is non-empty.
- * Invalidates cache for parent folders after creation.
- *
- * @param auth - authentication object with required `ACCESS_TOKEN`
- * @param resource - file creation parameters (CreateResource)
- * @returns `{ result: { id: string } }` - new file ID
- * @example
- * // Create file in root
- * const { result: { id: fileId } } = await create(
- *   { ACCESS_TOKEN: 'your-token' },
- *   {
- *     name: 'new-file.txt',
- *     mimeType: 'text/plain',
- *     parents: ['root-id'],
- *   }
- * );
- *
- * @throws {DomainError} If API request fails, response is invalid, or parents array is empty (synchronously)
  */
 export const create = (auth: GoogleAuthParams, resource: CreateResource) => {
   if (resource.parents.length === 0) {
-    throw new DomainError('Parents array cannot be empty');
+    throw new GoogleDriveError({
+      code: HttpStatusCode.FORBIDDEN,
+      message: 'Parents array cannot be empty',
+    });
   }
 
   const result = authorizedRequest(
@@ -518,17 +393,6 @@ export const create = (auth: GoogleAuthParams, resource: CreateResource) => {
 
 /**
  * Uploads content to an existing Google Drive file.
- * Supports multiple input types: string, Blob, ArrayBuffer, and ArrayBufferView (typed arrays like Uint8Array).
- * Automatically detects MIME type for binary data using file-type library; defaults to `application/octet-stream` if detection fails.
- * Uses PATCH with `uploadType=media` for media upload without metadata.
- *
- * @param auth - authentication object with required `ACCESS_TOKEN`
- * @param fileId - file identifier to upload content to
- * @param file - data to upload (string, Blob, ArrayBuffer, or ArrayBufferView)
- * @param onUploadProgress - optional callback for tracking upload progress
- * @returns `Response` object from ky with upload result
- * @throws {DomainError} If API request fails or response is invalid
- * @throws {Error} If the provided file has an unsupported type
  */
 export const upload = async (
   auth: GoogleAuthParams,
@@ -581,13 +445,6 @@ export const upload = async (
 
 /**
  * Clears all caches (metadata and content).
- * Use after bulk operations or when starting a new session to free memory.
- * Resets LRU caches for file metadata, list responses, and downloaded content.
- *
- * @returns {void}
- * @example
- * // Clear all caches before starting fresh
- * clearCaches();
  */
 export const clearCaches = (): void => {
   gDriveFileContentCache.clear();
@@ -597,8 +454,6 @@ export const clearCaches = (): void => {
 
 /**
  * Public Google Drive API with caching and request deduplication support.
- * Provides a simplified interface to Google Drive v3 API with automatic caching, pagination handling, and error normalization.
- * Exports: `getGFileMetaList`, `update`, `download`, `create`, `upload`, `clearCaches`.
  */
 
 export default {

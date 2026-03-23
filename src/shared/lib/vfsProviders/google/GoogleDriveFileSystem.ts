@@ -50,6 +50,8 @@ export interface GoogleDriveFsOptions {
    * Ignored if mount is not set to GoogleDriveMount.SpecificFolder.
    */
   rootId?: string;
+
+  onError?: (error: unknown) => unknown;
 }
 
 export class GoogleDriveFileSystem implements IFileSystemProvider {
