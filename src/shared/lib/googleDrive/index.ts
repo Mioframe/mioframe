@@ -19,6 +19,7 @@ export {
   type GoogleAuthParams,
 } from './api';
 export { DriveQueryBuilder } from './DriveQueryBuilder';
+export { GoogleDriveError } from './error';
 
 // fixme: нужен адаптер гугл диска как сетевой комуникации, т.к. в оффлайн режиме работа с диском невозможна
 /**

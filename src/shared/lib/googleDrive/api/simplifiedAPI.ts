@@ -23,6 +23,7 @@ import {
   type ListParams,
 } from './types';
 import { Cache } from '@shared/lib/cache';
+import { withLog } from '@shared/lib/logger';
 
 /**
  * Configured ky client with retry logic for production resilience.
@@ -100,37 +101,40 @@ const googleRequest = async (
 /**
  * Internal request handler with authentication and response validation.
  */
-const authorizedRequest = async <R>(
-  method: Required<KyOptions['method']>,
-  url: `https://${string}`,
-  { ACCESS_TOKEN, API_KEY }: GoogleAuthParams,
-  options: ApiOptions = {},
-  responseSchema: ZodMiniType<R>,
-): Promise<{ result: R }> => {
-  const response = await (
-    await googleRequest(
-      url,
-      toMerged(
-        {
-          method,
-          headers: {
-            Authorization: `Bearer ${ACCESS_TOKEN}`,
+const authorizedRequest = withLog(
+  async <R>(
+    method: Required<KyOptions['method']>,
+    url: `https://${string}`,
+    { ACCESS_TOKEN, API_KEY }: GoogleAuthParams,
+    options: ApiOptions = {},
+    responseSchema: ZodMiniType<R>,
+  ): Promise<{ result: R }> => {
+    const response = await (
+      await googleRequest(
+        url,
+        toMerged(
+          {
+            method,
+            headers: {
+              Authorization: `Bearer ${ACCESS_TOKEN}`,
+            },
+            searchParams: {
+              key: API_KEY,
+            },
           },
-          searchParams: {
-            key: API_KEY,
-          },
-        },
-        options,
-      ),
+          options,
+        ),
+      )
     )
-  )
-    .clone()
-    .json();
+      .clone()
+      .json();
 
-  const result = responseSchema.parse(response);
+    const result = responseSchema.parse(response);
 
-  return { result };
-};
+    return { result };
+  },
+  { name: 'authorizedRequest', showResult: true },
+);
 
 /**
  * LRU cache for paginated file metadata lists.
