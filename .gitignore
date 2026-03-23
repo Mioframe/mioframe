@@ -27,3 +27,5 @@ temp/
 tsconfig.*.tsbuildinfo
 coverage/
 .sisyphus/
+.opencode/
+.claude/
