@@ -6,6 +6,8 @@ import { DRIVE_GOOGLE_SCOPE } from '@shared/lib/googleApi';
 import { PathUtils } from '@shared/lib/virtualFileSystem';
 import { GoogleDriveFileSystem } from '@shared/lib/vfsProviders/google';
 import { GoogleDriveMount } from '@shared/lib/vfsProviders/google/GoogleDriveFileSystem';
+import { GoogleDriveError } from '@shared/lib/googleDrive';
+import { HttpStatusCode } from '@shared/lib/error';
 
 /**
  * Зона ответственности
@@ -37,6 +39,15 @@ const setupGoogleService = () => {
 
   const appDataName = 'GDrive App Data';
 
+  const onError = (error: unknown) => {
+    if (error instanceof GoogleDriveError) {
+      const code = error.code;
+      if (code === HttpStatusCode.UNAUTHORIZED) {
+        console.debug('требуется авторизация'); // TODO: добавить коллбэк для запроса авторизации
+      }
+    }
+  };
+
   watch(
     [hasAppData, token],
     async ([has, ACCESS_TOKEN]) => {
@@ -47,7 +58,7 @@ const setupGoogleService = () => {
           path,
           new GoogleDriveFileSystem(
             { ACCESS_TOKEN },
-            { mount: GoogleDriveMount.AppData },
+            { mount: GoogleDriveMount.AppData, onError },
           ),
         );
       } else {
