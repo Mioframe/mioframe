@@ -6,6 +6,7 @@ import {
 } from '../proxyService';
 import type { ClientObject } from '../proxyService';
 import { VfsError } from '../virtualFileSystem';
+import { GoogleDriveError } from '../googleDrive';
 
 export const transformers = [
   defineTransformer('FileSystemHandle', {
@@ -26,6 +27,7 @@ export const transformers = [
 
   defineCustomErrorTransformer('DomainError', DomainError),
   defineCustomErrorTransformer('VfsError', VfsError),
+  defineCustomErrorTransformer('GoogleDriveError', GoogleDriveError),
 ];
 
 export type Client<T extends UnknownRecord> = ClientObject<
