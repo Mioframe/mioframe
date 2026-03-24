@@ -4,14 +4,14 @@ import { createGlobalState } from '@vueuse/core';
 import { useFileSystemService } from '../fileSystem';
 import { DRIVE_GOOGLE_SCOPE } from '@shared/lib/googleApi';
 import { PathUtils } from '@shared/lib/virtualFileSystem';
-import { GoogleDriveFileSystem } from '@shared/lib/vfsProviders/google';
+import { googleDriveFileSystemProvider } from '@shared/lib/vfsProviders/google';
 import { GoogleDriveMount } from '@shared/lib/vfsProviders/google/GoogleDriveFileSystem';
 import { GoogleDriveError } from '@shared/lib/googleDrive';
 import { HttpStatusCode } from '@shared/lib/error';
 
 /**
  * Зона ответственности
- * // [x] хранить сессию
+ * // [ ] хранить сессию
  * // [ ] обновлять устаревшую сессию
  * // [x] монтировать гугл диск приложения
  * // [ ] монтировать пользовательский диск
@@ -56,7 +56,8 @@ const setupGoogleService = () => {
         await vfs.createDirectory(path);
         vfs.mount(
           path,
-          new GoogleDriveFileSystem(
+          googleDriveFileSystemProvider(
+            // TODO: провайдер должен быть самостоятельным
             { ACCESS_TOKEN },
             { mount: GoogleDriveMount.AppData, onError },
           ),

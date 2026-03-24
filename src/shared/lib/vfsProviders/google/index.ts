@@ -1,4 +1,4 @@
 export {
-  GoogleDriveFileSystem,
+  googleDriveFileSystemProvider,
   type GoogleDriveFsOptions,
 } from './GoogleDriveFileSystem';
