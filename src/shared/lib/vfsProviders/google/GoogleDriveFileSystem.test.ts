@@ -24,7 +24,7 @@ import {
   upload,
 } from '../../googleDrive/api';
 import {
-  GoogleDriveFileSystem,
+  googleDriveFileSystemProvider,
   GoogleDriveMount,
 } from './GoogleDriveFileSystem';
 
@@ -63,7 +63,7 @@ describe('GoogleDriveFileSystem', () => {
   let gdfs: GoogleDriveFileSystem;
 
   beforeEach(() => {
-    gdfs = new GoogleDriveFileSystem(mockAuth);
+    gdfs = new googleDriveFileSystemProvider(mockAuth);
     vi.clearAllMocks();
     // Reset mock to ensure clean state for each test
     vi.mocked(getGFileMetaList).mockReset();
@@ -75,19 +75,19 @@ describe('GoogleDriveFileSystem', () => {
 
   describe('constructor', () => {
     it('should initialize with default MyDrive mount', () => {
-      const fs = new GoogleDriveFileSystem(mockAuth);
+      const fs = new googleDriveFileSystemProvider(mockAuth);
       expect(fs).toBeDefined();
     });
 
     it('should use root as default rootId for MyDrive', () => {
-      const fs = new GoogleDriveFileSystem(mockAuth);
+      const fs = new googleDriveFileSystemProvider(mockAuth);
       // We can't directly access private properties, but we can test behavior
       expect(() => fs).not.toThrow();
     });
 
     it('should throw error when SpecificFolder mount is used without rootId', () => {
       expect(() => {
-        new GoogleDriveFileSystem(mockAuth, {
+        new googleDriveFileSystemProvider(mockAuth, {
           mount: GoogleDriveMount.SpecificFolder,
         });
       }).toThrow('rootId is required when mount mode is SpecificFolder');
@@ -95,7 +95,7 @@ describe('GoogleDriveFileSystem', () => {
 
     it('should accept SpecificFolder mount with rootId', () => {
       expect(() => {
-        new GoogleDriveFileSystem(mockAuth, {
+        new googleDriveFileSystemProvider(mockAuth, {
           mount: GoogleDriveMount.SpecificFolder,
           rootId: 'test-folder-id',
         });
@@ -103,14 +103,14 @@ describe('GoogleDriveFileSystem', () => {
     });
 
     it('should use appDataFolder when mount is AppData', () => {
-      const fs = new GoogleDriveFileSystem(mockAuth, {
+      const fs = new googleDriveFileSystemProvider(mockAuth, {
         mount: GoogleDriveMount.AppData,
       });
       expect(fs).toBeDefined();
     });
 
     it('should use sharedWithMe when mount is SharedWithMe', () => {
-      const fs = new GoogleDriveFileSystem(mockAuth, {
+      const fs = new googleDriveFileSystemProvider(mockAuth, {
         mount: GoogleDriveMount.SharedWithMe,
       });
       expect(fs).toBeDefined();
@@ -427,7 +427,7 @@ describe('GoogleDriveFileSystem', () => {
     });
 
     it('should throw NoPermissions when creating in SharedWithMe root', async () => {
-      const sharedFs = new GoogleDriveFileSystem(mockAuth, {
+      const sharedFs = new googleDriveFileSystemProvider(mockAuth, {
         mount: GoogleDriveMount.SharedWithMe,
       });
 
@@ -700,7 +700,7 @@ describe('GoogleDriveFileSystem', () => {
     });
 
     it('should throw NoPermissions when creating in SharedWithMe root', async () => {
-      const sharedFs = new GoogleDriveFileSystem(mockAuth, {
+      const sharedFs = new googleDriveFileSystemProvider(mockAuth, {
         mount: GoogleDriveMount.SharedWithMe,
       });
 
@@ -962,7 +962,7 @@ describe('GoogleDriveFileSystem', () => {
     });
 
     it('should throw NoPermissions when moving to SharedWithMe root', async () => {
-      const sharedFs = new GoogleDriveFileSystem(mockAuth, {
+      const sharedFs = new googleDriveFileSystemProvider(mockAuth, {
         mount: GoogleDriveMount.SharedWithMe,
       });
 
@@ -1282,7 +1282,7 @@ describe('GoogleDriveFileSystem', () => {
     });
 
     it('should throw NoPermissions when moving to SharedWithMe root', async () => {
-      const sharedFs = new GoogleDriveFileSystem(mockAuth, {
+      const sharedFs = new googleDriveFileSystemProvider(mockAuth, {
         mount: GoogleDriveMount.SharedWithMe,
       });
 
@@ -1301,7 +1301,7 @@ describe('GoogleDriveFileSystem', () => {
     });
 
     it('should throw FileNotADirectory when destination parent is not a directory (SharedWithMe)', async () => {
-      const sharedFs = new GoogleDriveFileSystem(mockAuth, {
+      const sharedFs = new googleDriveFileSystemProvider(mockAuth, {
         mount: GoogleDriveMount.SharedWithMe,
       });
 
@@ -1331,7 +1331,7 @@ describe('GoogleDriveFileSystem', () => {
       let sharedFs: GoogleDriveFileSystem;
 
       beforeEach(() => {
-        sharedFs = new GoogleDriveFileSystem(mockAuth, {
+        sharedFs = new googleDriveFileSystemProvider(mockAuth, {
           mount: GoogleDriveMount.SharedWithMe,
         });
       });
@@ -1378,7 +1378,7 @@ describe('GoogleDriveFileSystem', () => {
       let appDataFs: GoogleDriveFileSystem;
 
       beforeEach(() => {
-        appDataFs = new GoogleDriveFileSystem(mockAuth, {
+        appDataFs = new googleDriveFileSystemProvider(mockAuth, {
           mount: GoogleDriveMount.AppData,
         });
       });
@@ -1415,7 +1415,7 @@ describe('GoogleDriveFileSystem', () => {
       let specificFs: GoogleDriveFileSystem;
 
       beforeEach(() => {
-        specificFs = new GoogleDriveFileSystem(mockAuth, {
+        specificFs = new googleDriveFileSystemProvider(mockAuth, {
           mount: GoogleDriveMount.SpecificFolder,
           rootId: 'test-folder-id',
         });
