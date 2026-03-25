@@ -1,85 +1,104 @@
-import { setupGoogleSessionService } from './setupGoogleSessionService';
-import { computed, watch } from 'vue';
 import { createGlobalState } from '@vueuse/core';
 import { useFileSystemService } from '../fileSystem';
-import { DRIVE_GOOGLE_SCOPE } from '@shared/lib/googleApi';
 import { PathUtils } from '@shared/lib/virtualFileSystem';
 import { googleDriveFileSystemProvider } from '@shared/lib/vfsProviders/google';
-import { GoogleDriveMount } from '@shared/lib/vfsProviders/google/GoogleDriveFileSystem';
-import { GoogleDriveError } from '@shared/lib/googleDrive';
-import { HttpStatusCode } from '@shared/lib/error';
+import { useGoogleSessionStore } from './googleSessionStore';
 
 /**
  * Зона ответственности
- * // [ ] хранить сессию
  * // [ ] обновлять устаревшую сессию
  * // [x] монтировать гугл диск приложения
  * // [ ] монтировать пользовательский диск
  */
 
+type TokenResponse = google.accounts.oauth2.TokenResponse;
+
+type RequestAccessToken = (email?: string) => Promise<TokenResponse>;
+type UserinfoGet = gapi.client.oauth2.UserinfoResource['get'];
+
+interface GoogleApi {
+  requestAccessToken: RequestAccessToken;
+  userinfoGet: UserinfoGet;
+}
+
 const setupGoogleService = () => {
-  const {
-    addSession,
-    getScopes,
-    removeSession,
-    subscribeGetScope,
-    subscribeGetToken,
-    getToken,
-  } = setupGoogleSessionService();
+  let googleApi: undefined | GoogleApi;
 
-  const token = computed(getToken);
+  const { getStore, update, getSessionList, get } = useGoogleSessionStore();
 
-  const scopes = computed(getScopes);
+  const getToken = async (oldEmail?: string) => {
+    const oldSession = oldEmail ? await get(oldEmail) : undefined;
+
+    if (oldSession) {
+      const { accessToken, expiresAt } = oldSession;
+      if (expiresAt - 3e5 > Date.now()) {
+        return accessToken;
+      }
+    }
+
+    if (!googleApi) {
+      throw new Error('Google API is not tied to the service');
+    }
+
+    const { requestAccessToken, userinfoGet } = googleApi;
+
+    const { access_token: accessToken, expires_in } =
+      await requestAccessToken(oldEmail);
+
+    const expiresAt = Date.now() + parseInt(expires_in) * 1e3;
+
+    const {
+      result: { email },
+    } = await userinfoGet({ oauth_token: accessToken });
+
+    if (!email) {
+      throw new Error("don't have email");
+    }
+
+    const oldStore = await getStore();
+
+    const store = {
+      ...oldStore,
+      [email]: {
+        accessToken,
+        expiresAt,
+      },
+    };
+
+    await update(store);
+
+    const token = store[oldEmail ?? email]?.accessToken;
+
+    return token;
+  };
 
   const { vfs } = useFileSystemService();
 
-  const hasAppData = computed(() =>
-    scopes.value.has(DRIVE_GOOGLE_SCOPE.appdata),
-  );
+  const appDataName = 'Google Drive';
 
-  const appDataName = 'GDrive App Data';
+  const mountGoogleProvider = async () => {
+    const path = PathUtils.join('/', appDataName);
 
-  const onError = (error: unknown) => {
-    if (error instanceof GoogleDriveError) {
-      const code = error.code;
-      if (code === HttpStatusCode.UNAUTHORIZED) {
-        console.debug('требуется авторизация'); // TODO: добавить коллбэк для запроса авторизации
-      }
-    }
+    await vfs.createDirectory(path);
+
+    vfs.mount(
+      path,
+      googleDriveFileSystemProvider({
+        // todo: добавить интерфейс в googleDriveFileSystemProvider
+        getToken,
+        getSessionList,
+      }),
+    );
   };
 
-  watch(
-    [hasAppData, token],
-    async ([has, ACCESS_TOKEN]) => {
-      const path = PathUtils.join('/', appDataName);
-      if (has && ACCESS_TOKEN) {
-        await vfs.createDirectory(path);
-        vfs.mount(
-          path,
-          googleDriveFileSystemProvider(
-            // TODO: провайдер должен быть самостоятельным
-            { ACCESS_TOKEN },
-            { mount: GoogleDriveMount.AppData, onError },
-          ),
-        );
-      } else {
-        if (await vfs.exists(path)) {
-          vfs.unmount(path);
-          await vfs.delete(path);
-        }
-      }
-    },
-    { immediate: true },
-  );
+  const bindGoogleApi = async (api: GoogleApi) => {
+    googleApi = api;
+
+    await mountGoogleProvider();
+  };
 
   return {
-    addSession,
-    removeSession,
-
-    getScopes,
-
-    subscribeGetScope,
-    subscribeGetToken,
+    bindGoogleApi,
   };
 };
 

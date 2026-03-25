@@ -54,14 +54,16 @@ export interface GoogleDriveFsOptions {
   onError?: (error: unknown) => unknown;
 }
 
-export const googleDriveFileSystemProvider = (
-  // TODO: вместо параметров auth получаем методы для запроса токена и userInfo
-  auth: GoogleAuthParams,
-  options: GoogleDriveFsOptions = {},
-) => {
-  const { mount = GoogleDriveMount.MyDrive, onError } = options;
+export const googleDriveFileSystemProvider = ({
+  getSessionList,
+  getToken,
+}: {
+  getToken: (oldEmail: string) => Promise<string>;
+  getSessionList: () => Promise<string[]>;
+}) => {
+  const mount = GoogleDriveMount.MyDrive;
 
-  let { rootId = 'root' } = options;
+  let rootId = 'root';
 
   let space = SPACE.drive;
 
