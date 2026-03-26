@@ -3,35 +3,46 @@ import { useFileSystemService } from '../fileSystem';
 import { PathUtils } from '@shared/lib/virtualFileSystem';
 import { googleDriveFileSystemProvider } from '@shared/lib/vfsProviders/google';
 import { useGoogleSessionStore } from './googleSessionStore';
-
-/**
- * Зона ответственности
- * // [ ] обновлять устаревшую сессию
- * // [x] монтировать гугл диск приложения
- * // [ ] монтировать пользовательский диск
- */
+import { zodGOOGLE_SCOPE, type GOOGLE_SCOPE } from '@shared/lib/googleApi';
+import { z } from 'zod/v4-mini';
+import { isSubset } from 'es-toolkit';
 
 type TokenResponse = google.accounts.oauth2.TokenResponse;
 
-type RequestAccessToken = (email?: string) => Promise<TokenResponse>;
-type UserinfoGet = gapi.client.oauth2.UserinfoResource['get'];
+type RequestAccessToken = (
+  scopes: GOOGLE_SCOPE[],
+  email?: string,
+) => Promise<TokenResponse>;
 
 interface GoogleApi {
   requestAccessToken: RequestAccessToken;
-  userinfoGet: UserinfoGet;
+  userinfoGet: (p: {
+    oauth_token?: string | undefined;
+  }) => Promise<{ result: { email?: string } }>;
 }
 
-const setupGoogleService = () => {
+export type GoogleService = {
+  bindGoogleApi: (api: GoogleApi) => Promise<void>;
+  requestToken: (scopes: GOOGLE_SCOPE[], oldEmail?: string) => Promise<string>;
+};
+
+const setupGoogleService = (): GoogleService => {
   let googleApi: undefined | GoogleApi;
 
   const { getStore, update, getSessionList, get } = useGoogleSessionStore();
 
-  const getToken = async (oldEmail?: string) => {
+  const requestToken = async (
+    scopes: GOOGLE_SCOPE[],
+    oldEmail?: string,
+  ): Promise<string> => {
     const oldSession = oldEmail ? await get(oldEmail) : undefined;
 
     if (oldSession) {
-      const { accessToken, expiresAt } = oldSession;
-      if (expiresAt - 3e5 > Date.now()) {
+      const { accessToken, expiresAt, scopes: oldScopes } = oldSession;
+      if (
+        expiresAt - 3e5 /** 5 min */ > Date.now() &&
+        isSubset(oldScopes, scopes)
+      ) {
         return accessToken;
       }
     }
@@ -42,8 +53,13 @@ const setupGoogleService = () => {
 
     const { requestAccessToken, userinfoGet } = googleApi;
 
-    const { access_token: accessToken, expires_in } =
-      await requestAccessToken(oldEmail);
+    const {
+      access_token: accessToken,
+      expires_in,
+      scope: newScope,
+    } = await requestAccessToken(scopes, oldEmail);
+
+    const availableScopes = z.array(zodGOOGLE_SCOPE).parse(newScope.split(' '));
 
     const expiresAt = Date.now() + parseInt(expires_in) * 1e3;
 
@@ -62,12 +78,17 @@ const setupGoogleService = () => {
       [email]: {
         accessToken,
         expiresAt,
+        scopes: availableScopes,
       },
     };
 
     await update(store);
 
     const token = store[oldEmail ?? email]?.accessToken;
+
+    if (!token) {
+      throw new Error('Failed to get token');
+    }
 
     return token;
   };
@@ -84,8 +105,7 @@ const setupGoogleService = () => {
     vfs.mount(
       path,
       googleDriveFileSystemProvider({
-        // todo: добавить интерфейс в googleDriveFileSystemProvider
-        getToken,
+        requestToken,
         getSessionList,
       }),
     );
@@ -99,6 +119,7 @@ const setupGoogleService = () => {
 
   return {
     bindGoogleApi,
+    requestToken,
   };
 };
 

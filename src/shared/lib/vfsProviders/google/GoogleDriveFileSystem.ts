@@ -1,4 +1,3 @@
-import type { GoogleAuthParams } from '../../googleDrive';
 import type {
   FileContent,
   FSNodeStat,
@@ -21,6 +20,10 @@ import {
   update,
   upload,
 } from '@shared/lib/googleDrive/api';
+import { z } from 'zod/v4-mini';
+import { values } from 'es-toolkit/compat';
+import type { GOOGLE_SCOPE } from '@shared/lib/googleApi';
+import { DRIVE_GOOGLE_SCOPE } from '@shared/lib/googleApi';
 
 const GOOGLE_MIME_FOLDER = 'application/vnd.google-apps.folder';
 /** Internal identifier for the virtual folder "Shared With Me" */
@@ -54,72 +57,94 @@ export interface GoogleDriveFsOptions {
   onError?: (error: unknown) => unknown;
 }
 
+const SpaceName = {
+  SharedWithMe: 'Shared with me',
+  AppData: 'App Data',
+  MyDrive: 'My Drive',
+} as const;
+
+const zodSpaceName = z.enum(values(SpaceName));
+
 export const googleDriveFileSystemProvider = ({
   getSessionList,
-  getToken,
+  requestToken,
 }: {
-  getToken: (oldEmail: string) => Promise<string>;
+  requestToken: (scope: GOOGLE_SCOPE[], email: string) => Promise<string>;
   getSessionList: () => Promise<string[]>;
 }) => {
-  const mount = GoogleDriveMount.MyDrive;
+  const extractEmailFromPath = (path: string): string => {
+    const pathArray = PathUtils.split(path);
 
-  let rootId = 'root';
+    return z.email().parse(pathArray.at(0));
+  };
 
-  let space = SPACE.drive;
+  const resolvePathSpace = (rawPath: string) => {
+    const path = PathUtils.normalize(rawPath);
+    const pathArray = PathUtils.split(path);
+    const spaceName = zodSpaceName.parse(pathArray.at(1));
 
-  switch (mount) {
-    case GoogleDriveMount.AppData:
-      space = SPACE.appDataFolder;
-      rootId = 'appDataFolder';
-      break;
+    switch (spaceName) {
+      case SpaceName.AppData:
+        return {
+          rootId: 'root',
+          scope: DRIVE_GOOGLE_SCOPE.appdata,
+          space: SPACE.appDataFolder,
+        };
+      case SpaceName.SharedWithMe:
+        return {
+          rootId: SHARED_WITH_ME_ID,
+          scope: DRIVE_GOOGLE_SCOPE.all,
+          space: SPACE.drive,
+        };
+      case SpaceName.MyDrive:
+      default:
+        return {
+          rootId: 'root',
+          scope: DRIVE_GOOGLE_SCOPE.all,
+          space: SPACE.drive,
+        };
+    }
+  };
 
-    case GoogleDriveMount.SharedWithMe:
-      space = SPACE.drive;
-      rootId = SHARED_WITH_ME_ID;
-      break;
+  const getTokenForPath = async (rawPath: string): Promise<string> => {
+    const email = extractEmailFromPath(rawPath);
 
-    case GoogleDriveMount.SpecificFolder:
-      space = SPACE.drive;
-      if (!rootId) {
-        throw new Error('rootId is required when mount mode is SpecificFolder');
-      }
-      rootId = rootId;
-      break;
+    const { scope } = resolvePathSpace(rawPath);
 
-    case GoogleDriveMount.MyDrive:
-    default:
-      space = SPACE.drive;
-      rootId = 'root';
-      break;
-  }
+    const token = await requestToken(email, scope);
+
+    return token;
+  };
 
   /**
    * Resolves a VFS path to a Google Drive file/folder ID.
    */
-  const resolvePath = async (path: string): Promise<GDriveFileMeta> => {
-    const normalized = PathUtils.normalize(path);
+  const resolvePath = async (rawPath: string): Promise<GDriveFileMeta> => {
+    const path = PathUtils.normalize(rawPath);
 
-    // Корневая директория
-    if (normalized === '/') {
-      let rootName = 'root';
-      if (rootId === SHARED_WITH_ME_ID) rootName = 'Shared with me';
-      else if (rootId === 'appDataFolder') rootName = 'App Data';
+    const pathArray = PathUtils.split(path);
 
+    const spaceName = zodSpaceName.parse(pathArray.at(1));
+
+    const { space, rootId } = resolvePathSpace(path);
+
+    if (pathArray.length === 2) {
       return {
         id: rootId,
-        name: rootName,
+        name: spaceName,
         mimeType: GOOGLE_MIME_FOLDER,
         modifiedTime: dayjs().toISOString(),
       };
     }
 
-    const parts = normalized.split('/').filter((p) => p.length > 0);
+    const relativePathArray = pathArray.slice(2);
+
     let currentId = rootId;
     let currentEntry: GDriveFileMeta | undefined;
 
     // Используем .entries() для безопасного доступа к индексу и значению
-    for (const [index, partName] of parts.entries()) {
-      const isLast = index === parts.length - 1;
+    for (const [index, partName] of relativePathArray.entries()) {
+      const isLast = index === relativePathArray.length - 1;
 
       // Формируем запрос
       let query = '';
@@ -131,21 +156,23 @@ export const googleDriveFileSystemProvider = ({
         query = `name = '${partName.replace(/'/g, "\\'")}' and '${currentId}' in parents and trashed = false`;
       }
 
-      const result = await getGFileMetaList(auth, {
-        q: query,
-        pageSize: 1,
-        spaces: [space],
-      }).catch((e) => {
-        onError?.(e);
-        throw e;
-      });
+      const token = await getTokenForPath(path);
+
+      const result = await getGFileMetaList(
+        { ACCESS_TOKEN: token },
+        {
+          q: query,
+          pageSize: 1,
+          spaces: [space],
+        },
+      );
 
       const file = result.files?.at(0);
 
       if (!file) {
         throw new VfsError(
           FileSystemError.FileNotFound,
-          `Entry not found: ${partName} in path ${path}`,
+          `Entry not found: ${partName} in path ${rawPath}`,
         );
       }
 
@@ -163,23 +190,35 @@ export const googleDriveFileSystemProvider = ({
     if (!currentEntry) {
       throw new VfsError(
         FileSystemError.FileNotFound,
-        `Path not found: ${path}`,
+        `Path not found: ${rawPath}`,
       );
     }
 
     return currentEntry;
   };
 
+  const virtualDirectoryStat = {
+    type: FSNodeType.Directory,
+    canDelete: false,
+  } satisfies FSNodeStat;
+
   /**
    * Gets file or directory statistics.
    */
-  const stat = async (path: string): Promise<FSNodeStat> => {
+  const stat = async (rawPath: string): Promise<FSNodeStat> => {
+    const path = PathUtils.normalize(rawPath);
+
     try {
-      if (path === '/' || path === '') {
-        return {
-          type: FSNodeType.Directory,
-          canDelete: false,
-        };
+      if (path === '/') {
+        return virtualDirectoryStat;
+      }
+
+      const pathArray = PathUtils.split(path);
+
+      const email = extractEmailFromPath(path);
+
+      if (email && pathArray.length === 1) {
+        return virtualDirectoryStat;
       }
 
       const entry = await resolvePath(path);
@@ -228,8 +267,10 @@ export const googleDriveFileSystemProvider = ({
       );
     }
 
+    const token = await getTokenForPath(path);
+
     try {
-      return await download(auth, entry.id);
+      return await download({ ACCESS_TOKEN: token }, entry.id);
     } catch (e) {
       throw new VfsError(
         FileSystemError.Unknown,
@@ -300,7 +341,9 @@ export const googleDriveFileSystemProvider = ({
         );
       }
 
-      await upload(auth, existingEntry.id, content);
+      const token = await getTokenForPath(path);
+
+      await upload({ ACCESS_TOKEN: token }, existingEntry.id, content);
     } else {
       if (!options.create) {
         throw new VfsError(
@@ -309,35 +352,74 @@ export const googleDriveFileSystemProvider = ({
         );
       }
 
-      const created = await create(auth, {
-        name: fileName,
-        parents: [parentEntry.id],
-      });
+      const created = await create(
+        { ACCESS_TOKEN: await getTokenForPath(path) },
+        {
+          name: fileName,
+          parents: [parentEntry.id],
+        },
+      );
 
       try {
-        await upload(auth, created.result.id, content);
+        await upload(
+          { ACCESS_TOKEN: await getTokenForPath(path) },
+          created.result.id,
+          content,
+        );
       } catch (uploadError) {
-        onError?.(uploadError);
-        await update(auth, created.result.id, {
-          trashed: true,
-        });
+        await update(
+          {
+            ACCESS_TOKEN: await getTokenForPath(path),
+          },
+          created.result.id,
+          {
+            trashed: true,
+          },
+        );
         throw uploadError;
       }
     }
   };
 
+  const readRootDirectory = async (): Promise<[string, FSNodeStat][]> => {
+    const accountList = await getSessionList();
+
+    return accountList.map((email): [string, FSNodeStat] => [
+      email,
+      {
+        type: FSNodeType.Directory,
+      },
+    ]);
+  };
+
+  const readAccountDirectory = () =>
+    Object.values(SpaceName).map((name): [string, FSNodeStat] => [
+      name,
+      { type: FSNodeType.Directory },
+    ]);
+
   /**
    * Reads the contents of a directory.
    */
   const readDirectory = async (
-    path: string,
+    rawPath: string,
   ): Promise<[string, FSNodeStat][]> => {
-    const entry = await resolvePath(path);
+    const pathArray = PathUtils.split(rawPath);
+
+    if (pathArray.length === 0) {
+      return await readRootDirectory();
+    }
+
+    if (pathArray.length === 1) {
+      return readAccountDirectory();
+    }
+
+    const entry = await resolvePath(rawPath);
 
     if (entry.mimeType !== GOOGLE_MIME_FOLDER) {
       throw new VfsError(
         FileSystemError.FileNotADirectory,
-        `Not a directory: ${path}`,
+        `Not a directory: ${rawPath}`,
       );
     }
 
@@ -349,15 +431,19 @@ export const googleDriveFileSystemProvider = ({
       query = `'${entry.id}' in parents and trashed = false`;
     }
 
-    const result = await getGFileMetaList(auth, {
-      q: query,
-      pageSize: 1000,
-      spaces: [space],
-      fetchAll: true, // Ensure getting all files through pagination
-    }).catch((e) => {
-      onError?.(e);
-      throw e;
-    });
+    const { space } = resolvePathSpace(rawPath);
+
+    const result = await getGFileMetaList(
+      {
+        ACCESS_TOKEN: await getTokenForPath(rawPath),
+      },
+      {
+        q: query,
+        pageSize: 1000,
+        spaces: [space],
+        fetchAll: true, // Ensure getting all files through pagination
+      },
+    );
 
     const entries: [string, FSNodeStat][] = [];
 
@@ -429,14 +515,16 @@ export const googleDriveFileSystemProvider = ({
       );
     }
 
-    await create(auth, {
-      name: dirName,
-      parents: [parentEntry.id],
-      mimeType: GOOGLE_MIME_FOLDER,
-    }).catch((e) => {
-      onError?.(e);
-      throw e;
-    });
+    await create(
+      {
+        ACCESS_TOKEN: await getTokenForPath(path),
+      },
+      {
+        name: dirName,
+        parents: [parentEntry.id],
+        mimeType: GOOGLE_MIME_FOLDER,
+      },
+    );
   };
 
   /**
@@ -466,14 +554,18 @@ export const googleDriveFileSystemProvider = ({
         query = `'${entry.id}' in parents and trashed = false`;
       }
 
-      const result = await getGFileMetaList(auth, {
-        q: query,
-        pageSize: 1,
-        spaces: [space],
-      }).catch((e) => {
-        onError?.(e);
-        throw e;
-      });
+      const { space } = resolvePathSpace(path);
+
+      const result = await getGFileMetaList(
+        {
+          ACCESS_TOKEN: await getTokenForPath(path),
+        },
+        {
+          q: query,
+          pageSize: 1,
+          spaces: [space],
+        },
+      );
 
       // Safe array length check
       if (result.files && result.files.length > 0) {
@@ -484,12 +576,15 @@ export const googleDriveFileSystemProvider = ({
       }
     }
 
-    await update(auth, entry.id, {
-      trashed: true,
-    }).catch((e) => {
-      onError?.(e);
-      throw e;
-    });
+    await update(
+      {
+        ACCESS_TOKEN: await getTokenForPath(path),
+      },
+      entry.id,
+      {
+        trashed: true,
+      },
+    );
   };
 
   /**
@@ -545,17 +640,20 @@ export const googleDriveFileSystemProvider = ({
       (p) => p !== destinationParentEntry.id,
     );
 
-    await update(auth, sourceEntry.id, {
-      name: newFileName,
-      addParents:
-        removeParents.length === currentParents.length
-          ? [destinationParentEntry.id]
-          : undefined,
-      removeParents: removeParents.length > 0 ? removeParents : undefined,
-    }).catch((e) => {
-      onError?.(e);
-      throw e;
-    });
+    await update(
+      {
+        ACCESS_TOKEN: await getTokenForPath(oldPath),
+      },
+      sourceEntry.id,
+      {
+        name: newFileName,
+        addParents:
+          removeParents.length === currentParents.length
+            ? [destinationParentEntry.id]
+            : undefined,
+        removeParents: removeParents.length > 0 ? removeParents : undefined,
+      },
+    );
   };
 
   return {

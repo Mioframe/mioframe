@@ -89,7 +89,11 @@ export interface ApiOptions extends KyOptions {
   dedupe?: boolean;
 }
 
-// Схемы данных
+/**
+ * Zod schema для парсинга ответа Google Drive API v3 при получении метаданных файла.
+ * Источник данных: https://developers.google.com/drive/api/v3/reference/files/get
+ * Схема валидирует и преобразует объект `files[0]` из списка файлов или отдельного запроса к файлу.
+ */
 export const zodGDriveFileMeta = z.object({
   id: z.string(),
   name: z.string(),
