@@ -1,3 +1,4 @@
+import { zodGOOGLE_SCOPE } from '@shared/lib/googleApi';
 import { keys } from '@shared/lib/objectKeys';
 import { ObservableIDB } from '@shared/lib/observableIDB';
 import { createGlobalState } from '@vueuse/core';
@@ -10,6 +11,7 @@ const KEY = 'google-session';
 const zodSession = z.object({
   accessToken: z.string(),
   expiresAt: z.number(),
+  scopes: z.array(zodGOOGLE_SCOPE),
 });
 
 const zodStore = z.catch(

@@ -2,6 +2,7 @@
 
 import { limitFunction } from 'p-limit';
 import type { GOOGLE_SCOPE } from './types';
+import { uniq } from 'es-toolkit';
 
 let gsi: typeof window.google | undefined = undefined;
 
@@ -43,7 +44,7 @@ export const requestAccessToken = limitFunction(
   async (
     clientId: string,
     scopes: GOOGLE_SCOPE[],
-    { quietly = false, email }: { quietly?: boolean; email?: string } = {},
+    { email }: { email?: string } = {},
   ) => {
     const gsi = await loadGoogle();
 
@@ -56,7 +57,7 @@ export const requestAccessToken = limitFunction(
         if (!stateTokenClient) {
           stateTokenClient = gsi.accounts.oauth2.initTokenClient({
             client_id: clientId,
-            scope: scopes.join(' '),
+            scope: uniq(scopes).join(' '),
             callback: (tokenResponse) => {
               if ('error' in tokenResponse) {
                 resolveRequestAccess
@@ -76,7 +77,7 @@ export const requestAccessToken = limitFunction(
 
         stateTokenClient.requestAccessToken({
           scope: scopes.join(' '),
-          prompt: quietly ? '' : undefined,
+          prompt: email ? '' : undefined,
           hint: email,
         });
       },
