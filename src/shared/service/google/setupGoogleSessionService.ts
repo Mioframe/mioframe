@@ -1,4 +1,6 @@
+import { zodGOOGLE_SCOPE } from '@shared/lib/googleApi';
 import { useGoogleSessionStore } from './googleSessionStore';
+import { z } from 'zod/v4-mini';
 
 type TokenResponse = google.accounts.oauth2.TokenResponse;
 type UserInfo = gapi.client.oauth2.Userinfo;
@@ -16,8 +18,13 @@ export const setupGoogleSessionService = ({
   const { getStore: get, update, getSessionList } = useGoogleSessionStore();
 
   const getToken = async (oldEmail?: string) => {
-    const { access_token: accessToken, expires_in } =
-      await requireToken(oldEmail);
+    const {
+      access_token: accessToken,
+      expires_in,
+      scope,
+    } = await requireToken(oldEmail);
+
+    const scopes = z.array(zodGOOGLE_SCOPE).parse(scope.split(' '));
 
     const expiresAt = Date.now() + parseInt(expires_in) * 1e3;
 
@@ -34,6 +41,7 @@ export const setupGoogleSessionService = ({
       [email]: {
         accessToken,
         expiresAt,
+        scopes,
       },
     };
 

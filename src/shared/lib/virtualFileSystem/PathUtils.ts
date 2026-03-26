@@ -34,11 +34,11 @@ export const PathUtils = {
 
   /**
    * Returns the directory path (all except the last component)
-   * @param path - Path to process
+   * @param rawPath - Path to process
    * @returns Directory path
    */
-  dirname(path: string): string {
-    const normalized = this.normalize(path);
+  dirname(rawPath: string): string {
+    const normalized = this.normalize(rawPath);
     const lastSlash = normalized.lastIndexOf('/');
     if (lastSlash === 0) return '/';
     if (lastSlash === -1) return '.';
@@ -47,11 +47,11 @@ export const PathUtils = {
 
   /**
    * Returns the filename or directory name from a path
-   * @param path - Path to process
+   * @param rawPath - Path to process
    * @returns Filename or directory name
    */
-  basename(path: string): string {
-    const normalized = this.normalize(path);
+  basename(rawPath: string): string {
+    const normalized = this.normalize(rawPath);
     const lastSlash = normalized.lastIndexOf('/');
     return normalized.substring(lastSlash + 1);
   },
@@ -92,5 +92,16 @@ export const PathUtils = {
     if (ancestor === '/') return true;
     if (path === ancestor) return true;
     return path.startsWith(`${ancestor}/`);
+  },
+
+  /**
+   * Splits a path into an array of components.
+   * @param rawPath - Path to split
+   * @returns Array of path components
+   */
+  split(rawPath: string): string[] {
+    const normalized = this.normalize(rawPath);
+    if (normalized === '/') return [];
+    return normalized.split('/').filter(Boolean);
   },
 };

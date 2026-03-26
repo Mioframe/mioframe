@@ -8,40 +8,63 @@ import {
 import type { GOOGLE_SCOPE } from '@shared/lib/googleApi/types';
 import { USER_INFO_GOOGLE_SCOPE } from '@shared/lib/googleApi/types';
 import { useSubscribeByQueryClient } from '@shared/lib/subscriptions';
-import { uniq } from 'es-toolkit';
 import { readonly, computed } from 'vue';
+import { GOOGLE_CLIENT_ID } from '@shared/config';
 
-export const useGSession = () => {
-  const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+type UserinfoGetReturn = Awaited<
+  ReturnType<gapi.client.oauth2.UserinfoResource['get']>
+>;
 
+type UserinfoGet = (
+  ...args: Parameters<gapi.client.oauth2.UserinfoResource['get']>
+) => Promise<UserinfoGetReturn>;
+
+export const setupGoogleSessions = (clientId: string) => {
   const {
-    google: { addSession, removeSession, subscribeGetToken, subscribeGetScope },
+    google: { bindGoogleApi },
   } = useMainServiceClient();
 
-  const getToken = useSubscribeByQueryClient(subscribeGetToken);
+  const userinfoGet: UserinfoGet = (
+    ...args: Parameters<UserinfoGet>
+  ): ReturnType<UserinfoGet> =>
+    loadOauth2().then((oauth2) => oauth2.userinfo.get(...args));
+
+  void bindGoogleApi({
+    requestAccessToken: (scopes: GOOGLE_SCOPE[], email?: string) =>
+      requestAccessToken(clientId, scopes, { email }),
+    userinfoGet,
+  });
+};
+
+// todo: переделать на простой клиент получения токена, список авторизованных сессий и очистку сессий
+export const useGSession = () => {
+  const clientId = GOOGLE_CLIENT_ID;
+
+  const {
+    google: {
+      requestToken,
+      // TODO: добавить методы управления сессиями
+    },
+  } = useMainServiceClient();
 
   const getScope = useSubscribeByQueryClient(subscribeGetScope);
 
-  const accessToken = computed(() => getToken());
-
   const scope = computed(() => getScope());
 
-  const login = async (...scopes: GOOGLE_SCOPE[]) => {
+  const login = async () => {
     if (!clientId) {
       throw new DomainError("don't have client id for google api");
     }
-    const tokenResponse = await requestAccessToken(
-      clientId,
-      uniq([USER_INFO_GOOGLE_SCOPE.userInfoProfile, ...scopes]),
-    );
+
+    const token = await requestToken([USER_INFO_GOOGLE_SCOPE.userInfoProfile]);
 
     const oauth2 = await loadOauth2();
 
     const {
       result: { email },
-    } = await oauth2.userinfo.get({ oauth_token: tokenResponse.access_token });
+    } = await oauth2.userinfo.get({ oauth_token: token });
 
-    await addSession({ tokenResponse, email });
+    await addSession({ tokenResponse: token, email });
   };
 
   const revoke = async () => {
@@ -59,8 +82,6 @@ export const useGSession = () => {
   const logout = async () => {
     await removeSession();
   };
-
-  // fixme: добавить проверку актуальности токена
 
   return {
     login,
