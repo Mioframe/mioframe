@@ -4,23 +4,23 @@ import type { MaybeRefOrGetter } from 'vue';
 import { readonly, shallowRef, toValue, watch } from 'vue';
 
 /**
- * Фабрика для создания конфигурации observable-запроса.
- * Принимает функцию, которая возвращает Observable для заданного типа запроса Q.
- * Возвращает объект с методами subscribe (подписка на поток) и fetch (однократное получение).
+ * Factory function for creating observable query configuration.
+ * Accepts a get$ function that returns Observable<T> given query parameters Q.
+ * Returns a QueryDefinition object with subscribe and fetch methods.
  *
- * @param get$ Функция, принимающая query-параметры и возвращающая Observable<T>
- * @returns Объект конфигурации запроса с методами subscribe и fetch
+ * @param get$ Function accepting query parameters and returning Observable<T>
+ * @returns Query configuration object with subscribe and fetch methods
  */
 export const defineObservableQuery = <T, Q>(
   get$: (query: Q) => Observable<T>,
 ): QueryDefinition<T, Q> => {
   return {
     /**
-     * Подписывает на изменения observable-источника данных.
-     * Передаёт query-параметры и коллбэки для обработки событий потока.
+     * Subscribes to the Observable returned by get$.
+     * Passes query parameters and optional event handlers (next/error/complete).
      *
-     * @param args Объект с query-параметрами и опциональными обработчиками событий
-     * @returns Функция отписки, вызываемая для прекращения подписки
+     * @param args Object with query parameters and optional event handlers
+     * @returns Unsubscribe function, called to stop the subscription
      */
     subscribe: ({
       query,
@@ -46,12 +46,12 @@ export const defineObservableQuery = <T, Q>(
       };
     },
     /**
-     * Выполняет однократный fetch запрос с таймаутом по умолчанию 30 секунд.
-     * Использует firstValueFrom для конвертации Observable в Promise.
+     * Performs a single fetch request with a default timeout of 30 seconds.
+     * Converts Observable to Promise via firstValueFrom and applies the timeout operator.
      *
-     * @param query Запросные параметры
-     * @param waitTime Таймаут в миллисекундах (по умолчанию 30000)
-     * @returns Promise с первым значением из потока или undefined при завершении/ошибке
+     * @param query Request parameters
+     * @param waitTime Timeout in milliseconds (default: 30000)
+     * @returns Promise with the first value from the stream or undefined on completion/error
      */
     fetch: (query: Q, waitTime = 30e3): Promise<T | undefined> =>
       firstValueFrom(get$(query).pipe(timeout(waitTime))),
@@ -59,23 +59,23 @@ export const defineObservableQuery = <T, Q>(
 };
 
 /**
- * Интерфейс конфигурации запроса с методами подписки на поток данных и однократного получения.
- * Используется как тип для объекта, возвращаемого defineObservableQuery.
+ * Query configuration interface with methods for subscribing to a data stream and single retrieval.
+ * Used as the type for the object returned by defineObservableQuery.
  *
- * @template T Тип данных, передаваемых по потоку (Observable<T>)
- * @template Q Тип query-параметров запроса
+ * @template T Type of data passed through the stream (Observable<T>)
+ * @template Q Type of query parameters
  */
 export type QueryDefinition<T, Q> = {
   /**
-   * Подписывает на изменения observable-источника данных.
-   * Передаёт query-параметры и коллбэки для обработки событий потока (next/error/complete).
+   * Subscribes to the Observable returned by get$.
+   * Passes query parameters and optional event handlers (next/error/complete).
    *
-   * @param args Объект с обязательными query-параметрами и опциональными обработчиками событий:
-   * - `query`: Параметры запроса, передаваемые в функцию get$
-   * - `next`: Обработчик успешных значений из потока (вызывается при получении данных)
-   * - `error`: Обработчик ошибок (вызывается при сбое подключения или ошибках сервера)
-   * - `complete`: Обработчик завершения потока (вызывается при завершении источника)
-   * @returns Функция отписки, вызываемая для прекращения подписки. Может быть Promisable (Promise-обёртка).
+   * @param args Object with required query parameters and optional event handlers:
+   * - `query`: Request parameters passed to the get$ function
+   * - `next`: Handler for successful values from the stream (called when data is received)
+   * - `error`: Error handler (called on connection failure or server errors)
+   * - `complete`: Stream completion handler (called when source completes)
+   * @returns Unsubscribe function, called to stop subscription. Can be returned synchronously or asynchronously (Promisable).
    */
   subscribe: (args: {
     query: Q;
@@ -85,62 +85,55 @@ export type QueryDefinition<T, Q> = {
   }) => Promisable<() => void>;
 
   /**
-   * Выполняет однократный fetch запрос с таймаутом по умолчанию 30 секунд.
-   * Использует firstValueFrom для конвертации Observable в Promise и возвращает первое значение.
-   * При превышении таймаута выбрасывается TimeoutError.
+   * Performs a single fetch request with a default timeout of 30 seconds.
+   * Converts Observable to Promise via firstValueFrom and applies the timeout operator.
    *
-   * @param query Запросные параметры, передаваемые в функцию get$
-   * @param waitTime Таймаут в миллисекундах (по умолчанию 30000)
-   * @returns Promise с первым значением из потока или undefined при завершении/ошибке
+   * @param query Request parameters passed to the get$ function
+   * @param waitTime Timeout in milliseconds (default: 30000)
+   * @returns Promise with the first value from the stream or undefined if Observable completes without emissions. Throws TimeoutError or source error on failure.
    */
   fetch: (query: Q, waitTime?: number) => Promise<T | undefined>;
 };
 
 /**
- * Опции для настройки поведения composable useQuery при изменении параметров запроса.
- * Контролирует стратегию обновления состояния данных при реактивных изменениях queryArgs.
+ * Options for configuring useObservableQuery composable behavior when query parameters change.
+ * Controls state preservation/clearing strategy (data, error) during reactive queryArgs changes.
  */
 export interface UseQueryOptions {
   /**
-   * Флаг сохранения предыдущего состояния (data, error) при смене query-параметров.
-   * Включает режим кэширования: старые данные сохраняются до получения новых.
+   * Flag to preserve previous data on reactive queryArgs change.
+   * When enabled, data is retained from the prior request and error is cleared.
    *
-   * @example
-   * // Режим кэширования — данные не сбрасываются мгновенно
-   * const { data } = useQuery(queryDef, reactive({ page }), { preserveOnQueryChange: true });
-   *
-   * // Мгновенная очистка — стандартное поведение
-   * const { data } = useQuery(queryDef, reactive({ page }));
    * @default false
    */
   preserveOnQueryChange?: boolean;
 }
 
 /**
- * Vue composable для работы с объектом конфигурации запроса.
- * Автоматически подписывается на изменения реактивных аргументов queryArgs через watch,
- * выполняя новую подписку при их изменении и отменяя предыдущую.
- * При установке undefined в queryArgs подписка отменяется:
- * - если preserveOnQueryChange включён — data очищается, error сбрасывается
- * - иначе — все состояния (data, error, isLoading) мгновенно сбрасываются.
- * Возвращает readonly реактивные ref для data, error, isLoading и метод refetch для ручного перезапуска запроса.
+ * Vue composable for working with a query configuration object.
+ * Automatically subscribes to reactive queryArgs changes via watch,
+ * creating a new subscription on change and cancelling the previous one.
+ * When undefined is set in queryArgs, the current subscription is cancelled:
+ * - if preserveOnQueryChange is enabled — error is cleared, data is retained
+ * - otherwise — all states (data, error, isLoading) are reset.
+ * Returns readonly reactive refs for data, error, isLoading and a refetch method for manual request restart.
  *
- * @template T Тип данных, передаваемых по потоку (Observable<T>)
- * @template Q Тип query-параметров запроса
- * @param queryDef Объект конфигурации с методами subscribe и fetch (результат вызова defineObservableQuery)
- * @param queryArgs Реактивный источник аргументов запроса (Ref, getter или значение). Может быть undefined — в этом случае подписка не создаётся.
- * @param options Настройки поведения при изменении параметров запроса
- * @returns Объект с readonly реактивными ref для data, error, isLoading и async методом refetch
+ * @template T Type of data passed through the stream (Observable<T>)
+ * @template Q Type of query parameters
+ * @param queryDef Configuration object with subscribe and fetch methods (result of defineObservableQuery call)
+ * @param queryArgs Reactive source of query arguments (Ref, getter, or value). When undefined, current subscription is cancelled without creating a new one.
+ * @param options Behavior settings when query parameters change
+ * @returns Object with readonly reactive refs for data, error, isLoading and async refetch method
  *
  * @example
- * // Базовое использование с реактивным объектом
+ * // Basic usage with reactive object
  * const query = reactive({ page: 1 });
- * const { data, isLoading } = useQuery(apiQuery, query);
+ * const { data, error, isLoading, refetch } = useObservableQuery(apiQuery, query);
  *
- * // С режимом сохранения данных при изменении параметров
- * const { data } = useQuery(apiQuery, reactive({ page }), { preserveOnQueryChange: true });
+ * // With data preservation mode on parameter change
+ * const { data, error, isLoading, refetch } = useObservableQuery(apiQuery, reactive({ page }), { preserveOnQueryChange: true });
  *
- * // Ручная перезагрузка запроса
+ * // Manual request reload
  * await refetch();
  */
 export function useObservableQuery<T, Q>(
@@ -149,29 +142,29 @@ export function useObservableQuery<T, Q>(
   options?: UseQueryOptions,
 ) {
   /**
-   * Реактивное хранилище для данных запроса.
-   * Используется shallowRef, так как данные могут быть сложными объектами.
-   * Тип T | undefined позволяет хранить любые значения из потока, включая Error (который обрабатывается отдельно).
+   * Reactive storage for query data.
+   * Uses shallowRef to track object data changes.
+   * Type Exclude<T, Error> | undefined prevents Error-type values from entering data — such values are handled via onError handler and stored in error.ref.
    */
   const data = shallowRef<Exclude<T, Error> | undefined>();
 
   /**
-   * Хранилище для ошибок запроса.
-   * Может содержать любое значение unknown (ошибки RxJS, HTTP-статусы и т.д.).
+   * Storage for query errors.
+   * Can hold any unknown type value (RxJS errors, TimeoutError, etc.).
    */
   const error = shallowRef<unknown>();
 
   /**
-   * Флаг загрузки данных. Устанавливается в true при начале запроса, false — после завершения.
+   * Data loading flag. Set to true at request start, false after completion.
    */
   const isLoading = shallowRef(false);
 
   /**
-   * Обработчик успешного получения значения из потока.
-   * Проверяет, не является ли значение ошибкой (RxJS может передавать Error как next-значение),
-   и обновляет соответствующие состояния.
+   * Handler for successful value reception from the stream.
+   * Checks if the value is an error (RxJS may pass Error as next-value),
+   and updates corresponding states accordingly.
    *
-   * @param v Значение из потока Observable
+   * @param v Value from Observable stream
    */
   const onNext = (v: T) => {
     if (v instanceof Error) {
@@ -185,10 +178,10 @@ export function useObservableQuery<T, Q>(
   };
 
   /**
-   * Обработчик ошибок из потока.
-   * Сохраняет ошибку в state и сбрасывает флаг загрузки.
+   * Stream error handler.
+   * Stores the error in state and resets the loading flag.
    *
-   * @param e Ошибка, возникшая в потоке (может быть любым типом unknown)
+   * @param e Error occurred in the stream (can be any unknown type)
    */
   const onError = (e: unknown) => {
     error.value = e;
@@ -196,26 +189,26 @@ export function useObservableQuery<T, Q>(
   };
 
   /**
-   * Наблюдатель за реактивными аргументами запроса.
-   * Автоматически создаёт/отменяет подписку при изменении queryArgs.
-   * При undefined — отменяет текущую подписку и сбрасывает состояние (если не включён режим сохранения).
+   * Observer for reactive query arguments.
+   * Automatically creates/cancels subscription on queryArgs change via await subscribe call.
+   * On undefined — cancels current subscription and resets state (unless preservation mode is enabled).
    *
-   * @param newQuery Новые параметры запроса
-   * @param _oldQuery Предыдущие параметры запроса (не используется)
-   * @param onCleanup Функция очистки, вызываемая при отписке от watch
+   * @param newQuery New request parameters
+   * @param _oldQuery Previous request parameters (unused)
+   * @param onCleanup Cleanup function called when unsubscribing from watch
    */
   watch(
     () => toValue(queryArgs),
     async (newQuery, _oldQuery, onCleanup) => {
       const shouldPreserve = options?.preserveOnQueryChange ?? false;
 
-      // Если режим сохранения не включён — очищаем данные и ошибки
+      // If preservation mode is disabled — clear data and errors
       if (!shouldPreserve) {
         data.value = undefined;
         error.value = undefined;
       }
 
-      // Если queryArgs равен undefined — отменяем подписку
+      // If queryArgs equals undefined — cancel subscription
       if (newQuery === undefined) {
         if (shouldPreserve) {
           error.value = undefined;
@@ -226,14 +219,14 @@ export function useObservableQuery<T, Q>(
 
       isLoading.value = true;
 
-      // Создаём новую подписку на observable-источник
+      // Create new subscription to observable source
       const unsubscribe = await queryDef.subscribe({
         query: newQuery,
         next: onNext,
         error: onError,
       });
 
-      // Регистрируем очистку при отписке от watch
+      // Register cleanup on watch unsubscription
       onCleanup(() => {
         unsubscribe();
       });
@@ -243,38 +236,38 @@ export function useObservableQuery<T, Q>(
 
   return {
     /**
-     * Readonly реактивный ref с данными запроса.
+     * Readonly reactive ref with query data. Data type is Exclude<T, Error> | undefined. Errors are handled via error.ref.
      */
     data: readonly(data),
 
     /**
-     * Readonly реактивный ref с ошибкой запроса (если возникла).
+     * Readonly reactive ref with query error (if occurred).
      */
     error: readonly(error),
 
     /**
-     * Readonly реактивный флаг загрузки данных.
+     * Readonly reactive flag for data loading status.
      */
     isLoading: readonly(isLoading),
 
     /**
-     * Асинхронный метод для ручного перезапуска запроса.
-     * Выполняет однократный fetch через queryDef.fetch и обновляет состояние данными.
-     * Если queryArgs равен undefined — ничего не делает.
+     * Async method for manual request restart.
+     * Performs single fetch via queryDef.fetch and updates state with data.
+     * If queryArgs equals undefined — does nothing.
      *
      * @returns Promise<void>
      */
     refetch: async () => {
       const q = toValue(queryArgs);
 
-      // Не выполняем запрос, если queryArgs равен undefined
+      // Do not perform request if queryArgs equals undefined
       if (q !== undefined) {
         isLoading.value = true;
 
         try {
           const res = await queryDef.fetch(q);
 
-          // Если fetch вернул значение — обновляем данные через onNext
+          // If fetch returned a value — update data via onNext
           if (res !== undefined) {
             onNext(res);
           }
