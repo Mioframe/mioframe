@@ -170,7 +170,7 @@ export function useObservableQuery<T, Q>(
     if (v instanceof Error) {
       onError(v);
     } else {
-      // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
+      // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- RxJS may pass Error as a next-value, but we already handle this case above; the assertion here is safe because v is guaranteed not to be an Error
       data.value = v as Exclude<T, Error>;
       isLoading.value = false;
       error.value = undefined;
@@ -186,6 +186,9 @@ export function useObservableQuery<T, Q>(
   const onError = (e: unknown) => {
     error.value = e;
     isLoading.value = false;
+
+    // eslint-disable-next-line no-console -- onError is a dedicated error handler that logs errors to the console for debugging purposes
+    console.error(e);
   };
 
   /**
