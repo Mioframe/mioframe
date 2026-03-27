@@ -37,9 +37,9 @@ const setupGoogleSessionStore = () => {
 
   const getStore = () => firstValueFrom($store);
 
-  const $sessionsList = $store.pipe(map((v) => keys(v)));
+  const $sessions = $store.pipe(map((v) => keys(v)));
 
-  const getSessionList = () => firstValueFrom($sessionsList);
+  const getSessionList = () => firstValueFrom($sessions);
 
   const get = async (email: string) => {
     const store = await getStore();
@@ -49,7 +49,7 @@ const setupGoogleSessionStore = () => {
   return {
     update,
     clear,
-    $store,
+    $sessions,
     getStore,
     getSessionList,
     get,

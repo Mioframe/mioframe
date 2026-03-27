@@ -111,7 +111,7 @@ export const googleDriveFileSystemProvider = ({
 
     const { scope } = resolvePathSpace(rawPath);
 
-    const token = await requestToken(email, scope);
+    const token = await requestToken([scope], email);
 
     return token;
   };

@@ -5,7 +5,7 @@ import type {
   DatabaseUnknownProperty,
 } from '@shared/lib/databaseDocument';
 import { DomainError } from '@shared/lib/error';
-import { useQuery } from '@shared/lib/observableQuery';
+import { useObservableQuery } from '@shared/lib/observableQuery';
 import { useMainServiceClient } from '@shared/service';
 import { isUndefined } from 'es-toolkit';
 import { computed, toValue, type Ref } from 'vue';
@@ -21,7 +21,7 @@ export const useDatabaseProperty = (
     },
   } = useMainServiceClient();
 
-  const { data, error, isLoading } = useQuery(
+  const { data, error, isLoading } = useObservableQuery(
     databaseProperty,
     computed(() => ({
       documentId: documentId.value,

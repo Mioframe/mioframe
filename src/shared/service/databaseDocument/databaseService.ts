@@ -19,7 +19,7 @@ import { setupDatabaseViewsService } from './view/databaseViewsService';
 import { setupDatabaseDataService } from './databaseDataService';
 import type { Observable } from 'rxjs';
 import { distinctUntilChanged, map } from 'rxjs';
-import { defineQuery } from '@shared/lib/observableQuery';
+import { defineObservableQuery } from '@shared/lib/observableQuery';
 import { defineCacheObservable } from '@shared/lib/defineCacheObservable';
 
 export const useDatabaseDocumentService = createGlobalState(() => {
@@ -51,7 +51,7 @@ export const useDatabaseDocumentService = createGlobalState(() => {
       ),
   );
 
-  const databaseState = defineQuery(databaseState$);
+  const databaseState = defineObservableQuery(databaseState$);
 
   const change = (
     path: string,
