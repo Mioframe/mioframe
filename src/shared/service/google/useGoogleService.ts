@@ -3,11 +3,15 @@ import { useFileSystemService } from '../fileSystem';
 import { PathUtils } from '@shared/lib/virtualFileSystem';
 import { googleDriveFileSystemProvider } from '@shared/lib/vfsProviders/google';
 import { useGoogleSessionStore } from './googleSessionStore';
-import { zodGOOGLE_SCOPE, type GOOGLE_SCOPE } from '@shared/lib/googleApi';
-import { z } from 'zod/v4-mini';
+import {
+  USER_INFO_GOOGLE_SCOPE,
+  zodGOOGLE_SCOPE,
+  type GOOGLE_SCOPE,
+} from '@shared/lib/googleApi';
 import { isSubset, omit } from 'es-toolkit';
 import type { QueryDefinition } from '@shared/lib/observableQuery';
 import { defineObservableQuery } from '@shared/lib/observableQuery';
+import { zodIs } from '@shared/lib/validateZodScheme';
 
 type TokenResponse = google.accounts.oauth2.TokenResponse;
 
@@ -63,9 +67,14 @@ const setupGoogleService = (): GoogleService => {
       access_token: accessToken,
       expires_in,
       scope: newScope,
-    } = await requestAccessToken(scopes, oldEmail);
+    } = await requestAccessToken(
+      [...scopes, USER_INFO_GOOGLE_SCOPE.userinfoEmail],
+      oldEmail,
+    );
 
-    const availableScopes = z.array(zodGOOGLE_SCOPE).parse(newScope.split(' '));
+    const availableScopes = newScope
+      .split(' ')
+      .filter((v) => zodIs(v, zodGOOGLE_SCOPE));
 
     const expiresAt = Date.now() + parseInt(expires_in) * 1e3;
 
