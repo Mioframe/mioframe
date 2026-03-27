@@ -7,7 +7,7 @@ import type {
   DatabaseViewId,
 } from '@shared/lib/databaseDocument';
 import type { Query } from 'sift';
-import { useQuery } from '@shared/lib/observableQuery';
+import { useObservableQuery } from '@shared/lib/observableQuery';
 import { isUndefined } from 'es-toolkit';
 
 export const useDatabaseData = (
@@ -26,7 +26,7 @@ export const useDatabaseData = (
     data: itemIdList,
     error,
     isLoading,
-  } = useQuery(
+  } = useObservableQuery(
     filteredIdList,
     computed(() => ({
       documentId: documentId.value,

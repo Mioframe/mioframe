@@ -5,7 +5,9 @@ import { googleDriveFileSystemProvider } from '@shared/lib/vfsProviders/google';
 import { useGoogleSessionStore } from './googleSessionStore';
 import { zodGOOGLE_SCOPE, type GOOGLE_SCOPE } from '@shared/lib/googleApi';
 import { z } from 'zod/v4-mini';
-import { isSubset } from 'es-toolkit';
+import { isSubset, omit } from 'es-toolkit';
+import type { QueryDefinition } from '@shared/lib/observableQuery';
+import { defineObservableQuery } from '@shared/lib/observableQuery';
 
 type TokenResponse = google.accounts.oauth2.TokenResponse;
 
@@ -24,12 +26,16 @@ interface GoogleApi {
 export type GoogleService = {
   bindGoogleApi: (api: GoogleApi) => Promise<void>;
   requestToken: (scopes: GOOGLE_SCOPE[], oldEmail?: string) => Promise<string>;
+  clear: () => Promise<void>;
+  sessions: QueryDefinition<string[], undefined>;
+  remove: (email: string) => Promise<void>;
 };
 
 const setupGoogleService = (): GoogleService => {
   let googleApi: undefined | GoogleApi;
 
-  const { getStore, update, getSessionList, get } = useGoogleSessionStore();
+  const { getStore, update, getSessionList, get, clear, $sessions } =
+    useGoogleSessionStore();
 
   const requestToken = async (
     scopes: GOOGLE_SCOPE[],
@@ -117,10 +123,19 @@ const setupGoogleService = (): GoogleService => {
     await mountGoogleProvider();
   };
 
+  const remove = async (email: string) => {
+    const store = await getStore();
+
+    await update(omit(store, [email]));
+  };
+
   return {
     bindGoogleApi,
     requestToken,
-  };
+    clear,
+    sessions: defineObservableQuery(() => $sessions),
+    remove,
+  } satisfies GoogleService;
 };
 
 export const useGoogleService = createGlobalState(setupGoogleService);

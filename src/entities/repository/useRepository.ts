@@ -1,5 +1,5 @@
 import type { AMDocumentId, CFRDocumentContent } from '@shared/lib/cfrDocument';
-import { useQuery } from '@shared/lib/observableQuery';
+import { useObservableQuery } from '@shared/lib/observableQuery';
 import { useMainServiceClient } from '@shared/service';
 import { isUndefined } from 'es-toolkit';
 import { computed, toValue, type Ref } from 'vue';
@@ -13,7 +13,7 @@ export const useRepository = (path: Ref<string>) => {
     data: state,
     error,
     isLoading,
-  } = useQuery(
+  } = useObservableQuery(
     documentIdList,
     computed(() => ({
       path: path.value,

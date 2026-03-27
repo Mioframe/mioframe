@@ -1,24 +1,24 @@
-import { loadOauth2 } from '@shared/lib/googleApi';
+import { loadOauth2, USER_INFO_GOOGLE_SCOPE } from '@shared/lib/googleApi';
 import { computedAsync } from '@vueuse/core';
-import { shallowRef } from 'vue';
-import { useGSession } from './useGSession';
+import type { MaybeRef } from 'vue';
+import { shallowRef, toValue } from 'vue';
+import { useGoogleSessions } from './useGoogleSessions';
 import ky from 'ky';
 import { DomainError } from '@shared/lib/error';
 
-export const useGProfile = () => {
-  const { accessToken } = useGSession();
+export const useGoogleUserInfo = (email: MaybeRef<string>) => {
+  const { requestToken } = useGoogleSessions();
 
-  const userInfoEvaluating = shallowRef(false);
+  const evaluating = shallowRef(false);
 
-  const userInfo = computedAsync(
+  const data = computedAsync(
     async () => {
-      const token = accessToken.value;
-
-      if (!token) {
-        return undefined;
-      }
-
       try {
+        const token = await requestToken(
+          [USER_INFO_GOOGLE_SCOPE.userInfoProfile],
+          toValue(email),
+        );
+
         const oauth2 = await loadOauth2();
 
         const { result } = await oauth2.userinfo.get({ oauth_token: token });
@@ -33,16 +33,16 @@ export const useGProfile = () => {
     undefined,
     {
       lazy: true,
-      evaluating: userInfoEvaluating,
+      evaluating,
     },
   );
 
   const loadImage = async () => {
-    if (userInfo.value instanceof Error) {
-      return userInfo.value;
+    if (data.value instanceof Error) {
+      return data.value;
     }
 
-    const pictureUrl = userInfo.value?.picture;
+    const pictureUrl = data.value?.picture;
 
     if (pictureUrl) {
       const response = await ky(pictureUrl, {
@@ -62,8 +62,8 @@ export const useGProfile = () => {
   });
 
   return {
-    userInfo,
-    evaluating: userInfoEvaluating,
+    data,
+    evaluating,
     profileImageBlobUrl,
   };
 };
