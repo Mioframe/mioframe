@@ -8,6 +8,8 @@ import { setupPlayground } from '@shared/lib/playground';
 import { playgroundPages } from './playgroundPages';
 import { backNavigationHandler as backNavigationHandler } from '@shared/lib/onBackNavigation';
 import { setupStackNavigation } from '@page/routes';
+import { setupGoogleSessions } from '@entity/googleUserInfo';
+import { GOOGLE_CLIENT_ID } from '@shared/config';
 
 /**
  * Инициализация и настройка Vue приложения
@@ -42,6 +44,10 @@ export const setupApp = async (app: App = createApp(MainApp)) => {
   );
 
   app.use(backNavigationHandler);
+
+  if (GOOGLE_CLIENT_ID) {
+    setupGoogleSessions(GOOGLE_CLIENT_ID);
+  }
 
   return app;
 };

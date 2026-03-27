@@ -1,4 +1,4 @@
-import { useQuery } from '@shared/lib/observableQuery';
+import { useObservableQuery } from '@shared/lib/observableQuery';
 import { useMainServiceClient } from '@shared/service/useService';
 import { isUndefined } from 'es-toolkit';
 import { computed, toValue, type Ref } from 'vue';
@@ -8,7 +8,7 @@ export const useFSNodeStat = (path: Ref<string>) => {
     fileSystem: { fsNodeStat },
   } = useMainServiceClient();
 
-  const { data, error, isLoading } = useQuery(
+  const { data, error, isLoading } = useObservableQuery(
     fsNodeStat,
     computed(() => ({ path: path.value })),
   );

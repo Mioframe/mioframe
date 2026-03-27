@@ -23,7 +23,7 @@ import {
   startWith,
   switchMap,
 } from 'rxjs';
-import { defineQuery } from '@shared/lib/observableQuery';
+import { defineObservableQuery } from '@shared/lib/observableQuery';
 import { DomainError } from '@shared/lib/error';
 import { defineCacheObservable } from '@shared/lib/defineCacheObservable';
 
@@ -61,7 +61,7 @@ const setupDocumentService = () => {
       ),
   );
 
-  const docHandle = defineQuery(getDocHandle$);
+  const docHandle = defineObservableQuery(getDocHandle$);
 
   const cfrContent$ = defineCacheObservable(
     (directoryPath: string, documentId?: AMDocumentId) =>
@@ -105,7 +105,7 @@ const setupDocumentService = () => {
       ),
   );
 
-  const cfrDocumentState = defineQuery(cfrDocumentState$);
+  const cfrDocumentState = defineObservableQuery(cfrDocumentState$);
 
   const documentDescription$ = defineCacheObservable(
     ({ documentId, path }: { path: string; documentId?: AMDocumentId }) =>
@@ -189,7 +189,7 @@ const setupDocumentService = () => {
   };
 
   return {
-    documentDescription: defineQuery(documentDescription$),
+    documentDescription: defineObservableQuery(documentDescription$),
     put,
     patch,
 
