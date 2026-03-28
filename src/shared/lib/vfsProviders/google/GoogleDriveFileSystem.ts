@@ -191,7 +191,7 @@ export const googleDriveFileSystemProvider = ({
         { ACCESS_TOKEN: token },
         {
           q: {
-            name: partName.replace(/'/g, "\\'"),
+            name: partName,
             sharedWithMe: currentId === SHARED_WITH_ME_ID,
             trashed: false,
             parentId: currentId !== SHARED_WITH_ME_ID ? currentId : undefined,

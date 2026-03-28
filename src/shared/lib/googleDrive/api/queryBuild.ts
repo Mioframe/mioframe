@@ -30,7 +30,7 @@ export const buildQuery = ({
   const queryArray: string[] = [];
 
   if (name) {
-    queryArray.push(`name = '${name}'`);
+    queryArray.push(`name = '${name.replace(/'/g, "\\'")}'`);
   }
 
   if (sharedWithMe) {
