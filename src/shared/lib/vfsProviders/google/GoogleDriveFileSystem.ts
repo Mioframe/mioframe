@@ -65,6 +65,42 @@ const SpaceName = {
 
 const zodSpaceName = z.enum(values(SpaceName));
 
+/**
+ * Creates and returns a Google Drive file system provider.
+ *
+ * Implements the IFileSystemProvider interface with full support for Google Drive operations:
+ * - Reading and writing files
+ * - Creating and deleting directories
+ * - Moving and renaming entries
+ * - Getting file statistics
+ * - Listing directory contents
+ *
+ * Supports multi-account authentication through email-prefixed paths:
+ * - `/` - Root showing all mounted accounts
+ * - `/user@example.com/` - Account root with three spaces:
+ *   - `My Drive/` - Main user storage
+ *   - `Shared with me/` - Files shared with the user
+ *   - `App Data/` - Hidden application data folder
+ *
+ * @param requestToken - Function to request OAuth2 token for given scope and email
+ * @param getSessionList - Function to retrieve list of authenticated session emails
+ *
+ * @returns IFileSystemProvider implementation for Google Drive
+ *
+ * @example
+ * ```
+ * const provider = googleDriveFileSystemProvider({
+ *   requestToken: (scope, email) => google.accounts.oauth2.revokeToken(token),
+ *   getSessionList: () => ['user1@example.com', 'user2@example.com']
+ * });
+ *
+ * // Read a file from My Drive
+ * const content = await provider.readFile('/user1@example.com/My Drive/report.pdf');
+ *
+ * // Create a directory
+ * await provider.createDirectory('/user1@example.com/My Drive/Reports/2024');
+ * ```
+ */
 export const googleDriveFileSystemProvider = ({
   getSessionList,
   requestToken,
@@ -86,7 +122,7 @@ export const googleDriveFileSystemProvider = ({
     switch (spaceName) {
       case SpaceName.AppData:
         return {
-          rootId: 'root',
+          rootId: 'appDataFolder',
           scope: DRIVE_GOOGLE_SCOPE.appdata,
           space: SPACE.appDataFolder,
         };
@@ -118,6 +154,10 @@ export const googleDriveFileSystemProvider = ({
 
   /**
    * Resolves a VFS path to a Google Drive file/folder ID.
+   *
+   * Traverses the path segment by segment, querying Google Drive API for each
+   * directory entry. For "Shared with me" space, uses the `sharedWithMe` flag
+   * in the query; otherwise uses `parentId` to restrict search to the parent folder.
    */
   const resolvePath = async (rawPath: string): Promise<GDriveFileMeta> => {
     const path = PathUtils.normalize(rawPath);
@@ -142,26 +182,20 @@ export const googleDriveFileSystemProvider = ({
     let currentId = rootId;
     let currentEntry: GDriveFileMeta | undefined;
 
-    // Используем .entries() для безопасного доступа к индексу и значению
     for (const [index, partName] of relativePathArray.entries()) {
       const isLast = index === relativePathArray.length - 1;
-
-      // Формируем запрос
-      let query = '';
-      if (currentId === SHARED_WITH_ME_ID) {
-        // Если мы в виртуальном корне "Shared with me", ищем файлы с флагом sharedWithMe
-        query = `name = '${partName.replace(/'/g, "\\'")}' and sharedWithMe = true and trashed = false`;
-      } else {
-        // Обычный поиск в папке
-        query = `name = '${partName.replace(/'/g, "\\'")}' and '${currentId}' in parents and trashed = false`;
-      }
 
       const token = await getTokenForPath(path);
 
       const result = await getGFileMetaList(
         { ACCESS_TOKEN: token },
         {
-          q: query,
+          q: {
+            name: partName.replace(/'/g, "\\'"),
+            sharedWithMe: currentId === SHARED_WITH_ME_ID,
+            trashed: false,
+            parentId: currentId !== SHARED_WITH_ME_ID ? currentId : undefined,
+          },
           pageSize: 1,
           spaces: [space],
         },
@@ -423,14 +457,6 @@ export const googleDriveFileSystemProvider = ({
       );
     }
 
-    // Construct query for list
-    let query: string;
-    if (entry.id === SHARED_WITH_ME_ID) {
-      query = 'sharedWithMe = true and trashed = false';
-    } else {
-      query = `'${entry.id}' in parents and trashed = false`;
-    }
-
     const { space } = resolvePathSpace(rawPath);
 
     const result = await getGFileMetaList(
@@ -438,7 +464,11 @@ export const googleDriveFileSystemProvider = ({
         ACCESS_TOKEN: await getTokenForPath(rawPath),
       },
       {
-        q: query,
+        q: {
+          trashed: false,
+          sharedWithMe: entry.id === SHARED_WITH_ME_ID,
+          parentId: entry.id !== SHARED_WITH_ME_ID ? entry.id : undefined,
+        },
         pageSize: 1000,
         spaces: [space],
         fetchAll: true, // Ensure getting all files through pagination
@@ -545,15 +575,6 @@ export const googleDriveFileSystemProvider = ({
     }
 
     if (!recursive && entry.mimeType === GOOGLE_MIME_FOLDER) {
-      // For empty check we use the same query logic
-      let query: string;
-      if (entry.id === SHARED_WITH_ME_ID) {
-        // Deleting the sharedWithMe root itself is impossible, we only get here due to logic error
-        query = 'sharedWithMe = true and trashed = false';
-      } else {
-        query = `'${entry.id}' in parents and trashed = false`;
-      }
-
       const { space } = resolvePathSpace(path);
 
       const result = await getGFileMetaList(
@@ -561,7 +582,11 @@ export const googleDriveFileSystemProvider = ({
           ACCESS_TOKEN: await getTokenForPath(path),
         },
         {
-          q: query,
+          q: {
+            trashed: false,
+            sharedWithMe: entry.id === SHARED_WITH_ME_ID,
+            parentId: entry.id !== SHARED_WITH_ME_ID ? entry.id : undefined,
+          },
           pageSize: 1,
           spaces: [space],
         },

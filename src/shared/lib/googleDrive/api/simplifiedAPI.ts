@@ -24,6 +24,7 @@ import {
 } from './types';
 import { Cache } from '@shared/lib/cache';
 import { withLog } from '@shared/lib/logger';
+import { buildQuery } from '@shared/lib/googleDrive/api/queryBuild';
 
 /**
  * Configured ky client with retry logic for production resilience.
@@ -146,16 +147,19 @@ const gFileMetaListCache = new Cache<ListParams, GDriveListResponse>({
 
 /**
  * Retrieves a list of Google Drive files with caching and request deduplication support.
+ *
+ * The query parameter `q` is automatically transformed using `buildQuery()` to ensure
+ * consistent formatting and proper handling of special characters.
  */
 export const getGFileMetaList = async (
   auth: GoogleAuthParams,
   {
     pageSize = 1000,
     pageToken = '',
-    q = '',
+    q,
     spaces = [],
     fetchAll = true,
-    fields = 'nextPageToken,files(id,name,mimeType,size,createdTime,modifiedTime,parents,capabilities(canTrash))',
+    fields = 'nextPageToken,files(id,name,mimeType,size,createdTime,modifiedTime,parents,capabilities(canTrash))', // FIXME: сделать структуру fields настраиваемой через схему zod
   }: ListParams,
 ) => {
   let result: GDriveListResponse | undefined = undefined;
@@ -182,7 +186,7 @@ export const getGFileMetaList = async (
         searchParams: {
           pageSize,
           pageToken,
-          q,
+          q: q ? buildQuery(q) : '',
           spaces: spaces.join(','),
           fields,
         },
@@ -458,6 +462,17 @@ export const clearCaches = (): void => {
 
 /**
  * Public Google Drive API with caching and request deduplication support.
+ *
+ * Provides a complete set of operations for interacting with Google Drive:
+ * - List files with structured query parameters
+ * - Get single file metadata
+ * - Create new files
+ * - Update file metadata (name, parents, trash status)
+ * - Download file content
+ * - Upload content to existing files
+ *
+ * All operations use LRU caching for performance and request deduplication
+ * to prevent duplicate simultaneous requests.
  */
 
 export default {
