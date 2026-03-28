@@ -136,6 +136,9 @@ export const zodGDriveFileMeta = z.object({
   ),
 });
 
+export const fieldsGDriveFileMeta =
+  'id,name,mimeType,size,createdTime,modifiedTime,parents,capabilities(canTrash)';
+
 /**
  * Google Drive file type extracted from validation schema.
  * Contains main file fields: id, name, mimeType, size, timestamps, parents, and capabilities.
@@ -150,6 +153,8 @@ export const zodGDriveListResponse = z.object({
   files: z.optional(z.array(zodGDriveFileMeta)),
   nextPageToken: z.optional(z.string()),
 });
+
+export const fieldsGDriveList = `nextPageToken,files(${fieldsGDriveFileMeta})`;
 
 /**
  * Google Drive list response type.
