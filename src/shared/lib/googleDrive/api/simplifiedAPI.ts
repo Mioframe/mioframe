@@ -15,6 +15,7 @@ import type {
   UpdateParams,
 } from './types';
 import {
+  fieldsGDriveList,
   zodGDriveFileMeta,
   zodGDriveListResponse,
   zodGoogleErrorResponse,
@@ -159,10 +160,11 @@ export const getGFileMetaList = async (
     q,
     spaces = [],
     fetchAll = true,
-    fields = 'nextPageToken,files(id,name,mimeType,size,createdTime,modifiedTime,parents,capabilities(canTrash))', // FIXME: сделать структуру fields настраиваемой через схему zod
   }: ListParams,
 ) => {
   let result: GDriveListResponse | undefined = undefined;
+
+  const fields = fieldsGDriveList;
 
   result = gFileMetaListCache.get({
     pageSize,
