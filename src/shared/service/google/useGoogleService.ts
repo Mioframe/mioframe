@@ -9,8 +9,8 @@ import {
   type GOOGLE_SCOPE,
 } from '@shared/lib/googleApi';
 import { isSubset, omit } from 'es-toolkit';
-import type { QueryDefinition } from '@shared/lib/observableQuery';
-import { defineObservableQuery } from '@shared/lib/observableQuery';
+import type { QueryDefinition } from '@shared/lib/useObservableQuery';
+import { defineObservableQuery } from '@shared/lib/useObservableQuery';
 import { zodIs } from '@shared/lib/validateZodScheme';
 
 type TokenResponse = google.accounts.oauth2.TokenResponse;

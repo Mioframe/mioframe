@@ -8,7 +8,7 @@ import { createGlobalState } from '@vueuse/core';
 import { WebFileSystem } from '@shared/lib/vfsProviders/WebFileSystem';
 import { distinctUntilChanged, map, Observable, shareReplay } from 'rxjs';
 import { isEqual, sortBy } from 'es-toolkit';
-import { defineObservableQuery } from '@shared/lib/observableQuery';
+import { defineObservableQuery } from '@shared/lib/useObservableQuery';
 import { defineCacheObservable } from '@shared/lib/defineCacheObservable';
 
 export interface ReadDirectoryOptions {

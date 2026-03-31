@@ -20,7 +20,7 @@ import {
 import type { PartialDeep } from 'type-fest';
 import { distinctUntilChanged, map, type Observable } from 'rxjs';
 import { isEqual } from 'es-toolkit';
-import { defineObservableQuery } from '@shared/lib/observableQuery';
+import { defineObservableQuery } from '@shared/lib/useObservableQuery';
 import { defineCacheObservable } from '@shared/lib/defineCacheObservable';
 
 export const useDatabaseViewSortService = (
