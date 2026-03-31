@@ -3,7 +3,7 @@ import type {
   DatabaseItem,
   DatabaseItemId,
 } from '@shared/lib/databaseDocument';
-import { useQuery } from '@shared/lib/observableQuery';
+import { useObservableQuery } from '@shared/lib/useObservableQuery';
 import { useMainServiceClient } from '@shared/service';
 import { isUndefined } from 'es-toolkit';
 import { computed, toValue, type Ref } from 'vue';
@@ -23,7 +23,7 @@ export const useDatabaseItem = (
     data: item,
     error,
     isLoading,
-  } = useQuery(
+  } = useObservableQuery(
     databaseItem,
     computed(() => ({
       documentId: documentId.value,

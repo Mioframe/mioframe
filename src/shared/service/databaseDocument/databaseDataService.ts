@@ -20,7 +20,7 @@ import {
   map,
   type Observable,
 } from 'rxjs';
-import { defineQuery } from '@shared/lib/observableQuery';
+import { defineObservableQuery } from '@shared/lib/useObservableQuery';
 import { defineCacheObservable } from '@shared/lib/defineCacheObservable';
 import { isEqual } from 'es-toolkit';
 
@@ -178,11 +178,11 @@ export const setupDatabaseDataService = (
   };
 
   return {
-    filteredIdList: defineQuery(filteredIdList$),
+    filteredIdList: defineObservableQuery(filteredIdList$),
 
-    databaseItem: defineQuery(databaseItem$),
+    databaseItem: defineObservableQuery(databaseItem$),
 
-    databaseValue: defineQuery(databaseValue$),
+    databaseValue: defineObservableQuery(databaseValue$),
 
     postValue,
     change,

@@ -5,9 +5,15 @@ import { HttpStatusCode } from '../../error/httpStatus';
 
 /**
  * Google Drive space types.
+ *
+ * Represents the different storage spaces available in Google Drive API.
+ * - `drive`: Main user storage ("My Drive")
+ * - `appDataFolder`: Hidden space for application-specific data
  */
 export enum SPACE {
+  /** Main user storage space ("My Drive") */
   drive = 'drive',
+  /** Hidden space for application-specific data */
   appDataFolder = 'appDataFolder',
 }
 
@@ -21,13 +27,25 @@ export interface GoogleAuthParams {
   ACCESS_TOKEN: string;
 }
 
+/**
+ * Parameters for listing Google Drive files.
+ */
 export interface ListParams {
   /** Number of files per page. Default: 1000 */
   pageSize?: number;
   /** Pagination token for retrieving the next page. Default: '' */
   pageToken?: string;
-  /** Search query (e.g., "name contains 'report'"). Default: '' */
-  q?: string;
+  /** Structured search query parameters. Default: `{}` */
+  q?: {
+    /** File name to search for (exact match). */
+    name?: string;
+    /** Whether to search in "Shared with me" space. */
+    sharedWithMe?: boolean;
+    /** Whether to include trashed items. */
+    trashed?: boolean;
+    /** Parent folder ID to search within. */
+    parentId?: string;
+  };
   /** Spaces to search: `['drive']` or `['appDataFolder']`. Default: `[]` */
   spaces?: SPACE[];
   /** Automatically fetch all result pages. Default: `false` */
@@ -37,6 +55,9 @@ export interface ListParams {
   fields?: string;
 }
 
+/**
+ * Parameters for updating file metadata.
+ */
 export interface UpdateParams {
   /** New file name. Optional */
   name?: string;
@@ -48,11 +69,17 @@ export interface UpdateParams {
   trashed?: boolean;
 }
 
+/**
+ * Parameters for downloading file content.
+ */
 export interface DownloadParams {
   /** Download progress callback function. Optional */
   onDownloadProgress?: (progress: Progress, chunk: Uint8Array) => void;
 }
 
+/**
+ * Resource object for creating a new file in Google Drive.
+ */
 export interface CreateResource {
   /** File name */
   name: string;
@@ -79,7 +106,7 @@ export type GoogleErrorResponse = z.output<typeof zodGoogleErrorResponse>;
 
 /**
  * API request settings with deduplication support.
- * @extends KyOptions
+ * Extends KyOptions with additional configuration for request deduplication.
  */
 export interface ApiOptions extends KyOptions {
   /**
@@ -89,7 +116,11 @@ export interface ApiOptions extends KyOptions {
   dedupe?: boolean;
 }
 
-// Схемы данных
+/**
+ * Zod schema для парсинга ответа Google Drive API v3 при получении метаданных файла.
+ * Источник данных: https://developers.google.com/drive/api/v3/reference/files/get
+ * Схема валидирует и преобразует объект `files[0]` из списка файлов или отдельного запроса к файлу.
+ */
 export const zodGDriveFileMeta = z.object({
   id: z.string(),
   name: z.string(),
@@ -105,15 +136,28 @@ export const zodGDriveFileMeta = z.object({
   ),
 });
 
+export const fieldsGDriveFileMeta =
+  'id,name,mimeType,size,createdTime,modifiedTime,parents,capabilities(canTrash)';
+
 /**
  * Google Drive file type extracted from validation schema.
  * Contains main file fields: id, name, mimeType, size, timestamps, parents, and capabilities.
  */
 export type GDriveFileMeta = z.output<typeof zodGDriveFileMeta>;
 
+/**
+ * Zod schema for parsing Google Drive API list response.
+ * Represents the response structure from `files` endpoint with optional pagination token.
+ */
 export const zodGDriveListResponse = z.object({
   files: z.optional(z.array(zodGDriveFileMeta)),
   nextPageToken: z.optional(z.string()),
 });
 
+export const fieldsGDriveList = `nextPageToken,files(${fieldsGDriveFileMeta})`;
+
+/**
+ * Google Drive list response type.
+ * Contains array of file metadata and optional pagination token for fetching next page.
+ */
 export type GDriveListResponse = z.output<typeof zodGDriveListResponse>;

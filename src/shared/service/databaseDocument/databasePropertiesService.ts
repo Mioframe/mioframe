@@ -15,7 +15,7 @@ import type { PatchSource } from '@shared/lib/changeObject';
 import { deepPatchJsonObject } from '@shared/lib/changeObject';
 import { stringPath } from '../directories';
 import { distinctUntilChanged, map, type Observable } from 'rxjs';
-import { defineQuery } from '@shared/lib/observableQuery';
+import { defineObservableQuery } from '@shared/lib/useObservableQuery';
 import { isEqual } from 'es-toolkit';
 import { defineCacheObservable } from '@shared/lib/defineCacheObservable';
 
@@ -41,7 +41,7 @@ export const useDatabasePropertiesService = (
       ),
   );
 
-  const databaseProperties = defineQuery(databaseProperties$);
+  const databaseProperties = defineObservableQuery(databaseProperties$);
 
   const databaseProperty$ = defineCacheObservable(
     ({
@@ -65,7 +65,7 @@ export const useDatabasePropertiesService = (
       ),
   );
 
-  const databaseProperty = defineQuery(databaseProperty$);
+  const databaseProperty = defineObservableQuery(databaseProperty$);
 
   const post = async (
     path: string,
@@ -113,7 +113,7 @@ export const useDatabasePropertiesService = (
       ),
   );
 
-  const databasePropertiesIdList = defineQuery(databasePropertiesIdList$);
+  const databasePropertiesIdList = defineObservableQuery(databasePropertiesIdList$);
 
   const remove = (
     path: string,

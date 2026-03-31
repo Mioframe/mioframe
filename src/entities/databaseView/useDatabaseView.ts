@@ -4,7 +4,7 @@ import type {
   DatabaseView,
   DatabaseViewId,
 } from '@shared/lib/databaseDocument';
-import { useQuery } from '@shared/lib/observableQuery';
+import { useObservableQuery } from '@shared/lib/useObservableQuery';
 import { useMainServiceClient } from '@shared/service';
 import { isUndefined } from 'es-toolkit';
 import { computed, toValue, type Ref } from 'vue';
@@ -20,7 +20,7 @@ export const useDatabaseView = (
     },
   } = useMainServiceClient();
 
-  const { data, error, isLoading } = useQuery(
+  const { data, error, isLoading } = useObservableQuery(
     databaseView,
     computed(() => ({
       documentId: documentId.value,

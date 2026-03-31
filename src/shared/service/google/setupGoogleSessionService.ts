@@ -1,64 +1,59 @@
-import {
-  zodGOOGLE_SCOPE,
-  type GOOGLE_SCOPE,
-} from '@shared/lib/googleApi/types';
-import type { SubscribeByQueryService } from '@shared/lib/subscriptions';
-import { defineSubscribeByQueryService } from '@shared/lib/subscriptions';
-import { zodIs } from '@shared/lib/validateZodScheme';
-import { useIDBKeyval } from '@vueuse/integrations/useIDBKeyval';
+import { zodGOOGLE_SCOPE } from '@shared/lib/googleApi';
+import { useGoogleSessionStore } from './googleSessionStore';
+import { z } from 'zod/v4-mini';
 
 type TokenResponse = google.accounts.oauth2.TokenResponse;
+type UserInfo = gapi.client.oauth2.Userinfo;
 
-type GoogleSessionService = {
-  addSession: (state: GoogleSessionState) => void;
-  removeSession: () => void;
-  getToken: () => string | undefined;
-  subscribeGetToken: SubscribeByQueryService<[], string | undefined>;
-  getScopes: () => Set<GOOGLE_SCOPE>;
-  subscribeGetScope: SubscribeByQueryService<[], Set<GOOGLE_SCOPE>>;
-};
+type RequireToken = (email?: string) => Promise<TokenResponse>;
+type GetUserInfo = (accessToken: string) => Promise<UserInfo>;
 
-type GoogleSessionState = {
-  tokenResponse: TokenResponse;
-  email?: string;
-};
+export const setupGoogleSessionService = ({
+  requireToken,
+  getUserInfo,
+}: {
+  requireToken: RequireToken;
+  getUserInfo: GetUserInfo;
+}) => {
+  const { getStore: get, update, getSessionList } = useGoogleSessionStore();
 
-export const setupGoogleSessionService = (): GoogleSessionService => {
-  const { data } = useIDBKeyval<GoogleSessionState | undefined>(
-    'google-session',
-    undefined,
-  );
+  const getToken = async (oldEmail?: string) => {
+    const {
+      access_token: accessToken,
+      expires_in,
+      scope,
+    } = await requireToken(oldEmail);
 
-  const addSession = (state: GoogleSessionState) => {
-    data.value = state;
+    const scopes = z.array(zodGOOGLE_SCOPE).parse(scope.split(' '));
+
+    const expiresAt = Date.now() + parseInt(expires_in) * 1e3;
+
+    const { email } = await getUserInfo(accessToken);
+
+    if (!email) {
+      throw new Error("don't have email");
+    }
+
+    const oldStore = await get();
+
+    const store = {
+      ...oldStore,
+      [email]: {
+        accessToken,
+        expiresAt,
+        scopes,
+      },
+    };
+
+    await update(store);
+
+    const token = store[oldEmail ?? email]?.accessToken;
+
+    return token;
   };
-
-  const removeSession = () => {
-    data.value = undefined;
-  };
-
-  // todo: повторять тихую авторизацию при протухании
-  const getToken = () => data.value?.tokenResponse.access_token;
-
-  const subscribeGetToken = defineSubscribeByQueryService(getToken);
-
-  const getScopes = () => {
-    const scope = data.value?.tokenResponse.scope
-      .split(' ')
-      .filter((v) => zodIs(v, zodGOOGLE_SCOPE));
-    return new Set(scope);
-  };
-
-  const subscribeGetScope = defineSubscribeByQueryService(getScopes);
 
   return {
-    addSession,
-    removeSession,
-
     getToken,
-    subscribeGetToken,
-
-    getScopes,
-    subscribeGetScope,
+    getSessionList,
   };
 };

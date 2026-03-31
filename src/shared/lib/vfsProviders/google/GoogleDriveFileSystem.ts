@@ -1,4 +1,3 @@
-import type { GoogleAuthParams } from '../../googleDrive';
 import type {
   FileContent,
   FSNodeStat,
@@ -21,6 +20,10 @@ import {
   update,
   upload,
 } from '@shared/lib/googleDrive/api';
+import { z } from 'zod/v4-mini';
+import { values } from 'es-toolkit/compat';
+import type { GOOGLE_SCOPE } from '@shared/lib/googleApi';
+import { DRIVE_GOOGLE_SCOPE } from '@shared/lib/googleApi';
 
 const GOOGLE_MIME_FOLDER = 'application/vnd.google-apps.folder';
 /** Internal identifier for the virtual folder "Shared With Me" */
@@ -54,100 +57,156 @@ export interface GoogleDriveFsOptions {
   onError?: (error: unknown) => unknown;
 }
 
-export class GoogleDriveFileSystem implements IFileSystemProvider {
-  private readonly space: SPACE;
-  private readonly rootId: string;
-  private readonly onError?: (error: unknown) => unknown;
+const SpaceName = {
+  SharedWithMe: 'Shared with me',
+  AppData: 'App Data',
+  MyDrive: 'My Drive',
+} as const;
 
-  constructor(
-    private auth: GoogleAuthParams,
-    options: GoogleDriveFsOptions = {},
-  ) {
-    this.onError = options.onError;
-    const mount = options.mount || GoogleDriveMount.MyDrive;
+const zodSpaceName = z.enum(values(SpaceName));
 
-    switch (mount) {
-      case GoogleDriveMount.AppData:
-        this.space = SPACE.appDataFolder;
-        this.rootId = 'appDataFolder';
-        break;
+/**
+ * Creates and returns a Google Drive file system provider.
+ *
+ * Implements the IFileSystemProvider interface with full support for Google Drive operations:
+ * - Reading and writing files
+ * - Creating and deleting directories
+ * - Moving and renaming entries
+ * - Getting file statistics
+ * - Listing directory contents
+ *
+ * Supports multi-account authentication through email-prefixed paths:
+ * - `/` - Root showing all mounted accounts
+ * - `/user@example.com/` - Account root with three spaces:
+ *   - `My Drive/` - Main user storage
+ *   - `Shared with me/` - Files shared with the user
+ *   - `App Data/` - Hidden application data folder
+ *
+ * @param requestToken - Function to request OAuth2 token for given scope and email
+ * @param getSessionList - Function to retrieve list of authenticated session emails
+ *
+ * @returns IFileSystemProvider implementation for Google Drive
+ *
+ * @example
+ * ```
+ * const provider = googleDriveFileSystemProvider({
+ *   requestToken: (scope, email) => google.accounts.oauth2.revokeToken(token),
+ *   getSessionList: () => ['user1@example.com', 'user2@example.com']
+ * });
+ *
+ * // Read a file from My Drive
+ * const content = await provider.readFile('/user1@example.com/My Drive/report.pdf');
+ *
+ * // Create a directory
+ * await provider.createDirectory('/user1@example.com/My Drive/Reports/2024');
+ * ```
+ */
+export const googleDriveFileSystemProvider = ({
+  getSessionList,
+  requestToken,
+}: {
+  requestToken: (scope: GOOGLE_SCOPE[], email: string) => Promise<string>;
+  getSessionList: () => Promise<string[]>;
+}) => {
+  const extractEmailFromPath = (path: string): string => {
+    const pathArray = PathUtils.split(path);
 
-      case GoogleDriveMount.SharedWithMe:
-        this.space = SPACE.drive;
-        this.rootId = SHARED_WITH_ME_ID;
-        break;
+    return z.email().parse(pathArray.at(0));
+  };
 
-      case GoogleDriveMount.SpecificFolder:
-        this.space = SPACE.drive;
-        if (!options.rootId) {
-          throw new Error(
-            'rootId is required when mount mode is SpecificFolder',
-          );
-        }
-        this.rootId = options.rootId;
-        break;
+  const resolvePathSpace = (rawPath: string) => {
+    const path = PathUtils.normalize(rawPath);
+    const pathArray = PathUtils.split(path);
+    const spaceName = zodSpaceName.parse(pathArray.at(1));
 
-      case GoogleDriveMount.MyDrive:
+    switch (spaceName) {
+      case SpaceName.AppData:
+        return {
+          rootId: 'appDataFolder',
+          scope: DRIVE_GOOGLE_SCOPE.appdata,
+          space: SPACE.appDataFolder,
+        };
+      case SpaceName.SharedWithMe:
+        return {
+          rootId: SHARED_WITH_ME_ID,
+          scope: DRIVE_GOOGLE_SCOPE.all,
+          space: SPACE.drive,
+        };
+      case SpaceName.MyDrive:
       default:
-        this.space = SPACE.drive;
-        this.rootId = 'root';
-        break;
+        return {
+          rootId: 'root',
+          scope: DRIVE_GOOGLE_SCOPE.all,
+          space: SPACE.drive,
+        };
     }
-  }
+  };
+
+  const getTokenForPath = async (rawPath: string): Promise<string> => {
+    const email = extractEmailFromPath(rawPath);
+
+    const { scope } = resolvePathSpace(rawPath);
+
+    const token = await requestToken([scope], email);
+
+    return token;
+  };
 
   /**
    * Resolves a VFS path to a Google Drive file/folder ID.
+   *
+   * Traverses the path segment by segment, querying Google Drive API for each
+   * directory entry. For "Shared with me" space, uses the `sharedWithMe` flag
+   * in the query; otherwise uses `parentId` to restrict search to the parent folder.
    */
-  private async resolvePath(path: string): Promise<GDriveFileMeta> {
-    const normalized = PathUtils.normalize(path);
+  const resolvePath = async (rawPath: string): Promise<GDriveFileMeta> => {
+    const path = PathUtils.normalize(rawPath);
 
-    // Корневая директория
-    if (normalized === '/') {
-      let rootName = 'root';
-      if (this.rootId === SHARED_WITH_ME_ID) rootName = 'Shared with me';
-      else if (this.rootId === 'appDataFolder') rootName = 'App Data';
+    const pathArray = PathUtils.split(path);
 
+    const spaceName = zodSpaceName.parse(pathArray.at(1));
+
+    const { space, rootId } = resolvePathSpace(path);
+
+    if (pathArray.length === 2) {
       return {
-        id: this.rootId,
-        name: rootName,
+        id: rootId,
+        name: spaceName,
         mimeType: GOOGLE_MIME_FOLDER,
         modifiedTime: dayjs().toISOString(),
       };
     }
 
-    const parts = normalized.split('/').filter((p) => p.length > 0);
-    let currentId = this.rootId;
+    const relativePathArray = pathArray.slice(2);
+
+    let currentId = rootId;
     let currentEntry: GDriveFileMeta | undefined;
 
-    // Используем .entries() для безопасного доступа к индексу и значению
-    for (const [index, partName] of parts.entries()) {
-      const isLast = index === parts.length - 1;
+    for (const [index, partName] of relativePathArray.entries()) {
+      const isLast = index === relativePathArray.length - 1;
 
-      // Формируем запрос
-      let query = '';
-      if (currentId === SHARED_WITH_ME_ID) {
-        // Если мы в виртуальном корне "Shared with me", ищем файлы с флагом sharedWithMe
-        query = `name = '${partName.replace(/'/g, "\\'")}' and sharedWithMe = true and trashed = false`;
-      } else {
-        // Обычный поиск в папке
-        query = `name = '${partName.replace(/'/g, "\\'")}' and '${currentId}' in parents and trashed = false`;
-      }
+      const token = await getTokenForPath(path);
 
-      const result = await getGFileMetaList(this.auth, {
-        q: query,
-        pageSize: 1,
-        spaces: [this.space],
-      }).catch((e) => {
-        this.onError?.(e);
-        throw e;
-      });
+      const result = await getGFileMetaList(
+        { ACCESS_TOKEN: token },
+        {
+          q: {
+            name: partName,
+            sharedWithMe: currentId === SHARED_WITH_ME_ID,
+            trashed: false,
+            parentId: currentId !== SHARED_WITH_ME_ID ? currentId : undefined,
+          },
+          pageSize: 1,
+          spaces: [space],
+        },
+      );
 
       const file = result.files?.at(0);
 
       if (!file) {
         throw new VfsError(
           FileSystemError.FileNotFound,
-          `Entry not found: ${partName} in path ${path}`,
+          `Entry not found: ${partName} in path ${rawPath}`,
         );
       }
 
@@ -165,26 +224,38 @@ export class GoogleDriveFileSystem implements IFileSystemProvider {
     if (!currentEntry) {
       throw new VfsError(
         FileSystemError.FileNotFound,
-        `Path not found: ${path}`,
+        `Path not found: ${rawPath}`,
       );
     }
 
     return currentEntry;
-  }
+  };
+
+  const virtualDirectoryStat = {
+    type: FSNodeType.Directory,
+    canDelete: false,
+  } satisfies FSNodeStat;
 
   /**
    * Gets file or directory statistics.
    */
-  public async stat(path: string): Promise<FSNodeStat> {
+  const stat = async (rawPath: string): Promise<FSNodeStat> => {
+    const path = PathUtils.normalize(rawPath);
+
     try {
-      if (path === '/' || path === '') {
-        return {
-          type: FSNodeType.Directory,
-          canDelete: false,
-        };
+      if (path === '/') {
+        return virtualDirectoryStat;
       }
 
-      const entry = await this.resolvePath(path);
+      const pathArray = PathUtils.split(path);
+
+      const email = extractEmailFromPath(path);
+
+      if (email && pathArray.length === 1) {
+        return virtualDirectoryStat;
+      }
+
+      const entry = await resolvePath(path);
 
       // Safe conversion of size (may be undefined)
       const size = entry.size ? parseInt(entry.size, 10) : undefined;
@@ -215,13 +286,13 @@ export class GoogleDriveFileSystem implements IFileSystemProvider {
         e,
       );
     }
-  }
+  };
 
   /**
    * Reads a file from Google Drive.
    */
-  public async readFile(path: string): Promise<File> {
-    const entry = await this.resolvePath(path);
+  const readFile = async (path: string): Promise<File> => {
+    const entry = await resolvePath(path);
 
     if (entry.mimeType === GOOGLE_MIME_FOLDER) {
       throw new VfsError(
@@ -230,8 +301,10 @@ export class GoogleDriveFileSystem implements IFileSystemProvider {
       );
     }
 
+    const token = await getTokenForPath(path);
+
     try {
-      return await download(this.auth, entry.id);
+      return await download({ ACCESS_TOKEN: token }, entry.id);
     } catch (e) {
       throw new VfsError(
         FileSystemError.Unknown,
@@ -239,23 +312,23 @@ export class GoogleDriveFileSystem implements IFileSystemProvider {
         e,
       );
     }
-  }
+  };
 
   /**
    * Writes data to a file in Google Drive.
    */
-  public async writeFile(
+  const writeFile = async (
     path: string,
     content: FileContent,
     options: WriteOptions,
-  ): Promise<void> {
+  ): Promise<void> => {
     const parentPath = PathUtils.dirname(path);
     const fileName = PathUtils.basename(path);
 
     // 1. Check parent first (like MemoryFileSystem)
     let parentEntry: GDriveFileMeta;
     try {
-      parentEntry = await this.resolvePath(parentPath);
+      parentEntry = await resolvePath(parentPath);
     } catch (e) {
       if (e instanceof VfsError && e.code === FileSystemError.FileNotFound) {
         throw new VfsError(
@@ -283,7 +356,7 @@ export class GoogleDriveFileSystem implements IFileSystemProvider {
     // 2. Check if file exists
     let existingEntry: GDriveFileMeta | null = null;
     try {
-      existingEntry = await this.resolvePath(path);
+      existingEntry = await resolvePath(path);
     } catch (e) {
       if (!(e instanceof VfsError && e.code === FileSystemError.FileNotFound)) {
         throw e;
@@ -302,7 +375,9 @@ export class GoogleDriveFileSystem implements IFileSystemProvider {
         );
       }
 
-      await upload(this.auth, existingEntry.id, content);
+      const token = await getTokenForPath(path);
+
+      await upload({ ACCESS_TOKEN: token }, existingEntry.id, content);
     } else {
       if (!options.create) {
         throw new VfsError(
@@ -311,53 +386,94 @@ export class GoogleDriveFileSystem implements IFileSystemProvider {
         );
       }
 
-      const created = await create(this.auth, {
-        name: fileName,
-        parents: [parentEntry.id],
-      });
+      const created = await create(
+        { ACCESS_TOKEN: await getTokenForPath(path) },
+        {
+          name: fileName,
+          parents: [parentEntry.id],
+        },
+      );
 
       try {
-        await upload(this.auth, created.result.id, content);
+        await upload(
+          { ACCESS_TOKEN: await getTokenForPath(path) },
+          created.result.id,
+          content,
+        );
       } catch (uploadError) {
-        this.onError?.(uploadError);
-        await update(this.auth, created.result.id, {
-          trashed: true,
-        });
+        await update(
+          {
+            ACCESS_TOKEN: await getTokenForPath(path),
+          },
+          created.result.id,
+          {
+            trashed: true,
+          },
+        );
         throw uploadError;
       }
     }
-  }
+  };
+
+  const readRootDirectory = async (): Promise<[string, FSNodeStat][]> => {
+    const accountList = await getSessionList();
+
+    return accountList.map((email): [string, FSNodeStat] => [
+      email,
+      {
+        type: FSNodeType.Directory,
+      },
+    ]);
+  };
+
+  const readAccountDirectory = () =>
+    Object.values(SpaceName).map((name): [string, FSNodeStat] => [
+      name,
+      { type: FSNodeType.Directory },
+    ]);
 
   /**
    * Reads the contents of a directory.
    */
-  public async readDirectory(path: string): Promise<[string, FSNodeStat][]> {
-    const entry = await this.resolvePath(path);
+  const readDirectory = async (
+    rawPath: string,
+  ): Promise<[string, FSNodeStat][]> => {
+    const pathArray = PathUtils.split(rawPath);
+
+    if (pathArray.length === 0) {
+      return await readRootDirectory();
+    }
+
+    if (pathArray.length === 1) {
+      return readAccountDirectory();
+    }
+
+    const entry = await resolvePath(rawPath);
 
     if (entry.mimeType !== GOOGLE_MIME_FOLDER) {
       throw new VfsError(
         FileSystemError.FileNotADirectory,
-        `Not a directory: ${path}`,
+        `Not a directory: ${rawPath}`,
       );
     }
 
-    // Construct query for list
-    let query: string;
-    if (entry.id === SHARED_WITH_ME_ID) {
-      query = 'sharedWithMe = true and trashed = false';
-    } else {
-      query = `'${entry.id}' in parents and trashed = false`;
-    }
+    const { space } = resolvePathSpace(rawPath);
 
-    const result = await getGFileMetaList(this.auth, {
-      q: query,
-      pageSize: 1000,
-      spaces: [this.space],
-      fetchAll: true, // Ensure getting all files through pagination
-    }).catch((e) => {
-      this.onError?.(e);
-      throw e;
-    });
+    const result = await getGFileMetaList(
+      {
+        ACCESS_TOKEN: await getTokenForPath(rawPath),
+      },
+      {
+        q: {
+          trashed: false,
+          sharedWithMe: entry.id === SHARED_WITH_ME_ID,
+          parentId: entry.id !== SHARED_WITH_ME_ID ? entry.id : undefined,
+        },
+        pageSize: 1000,
+        spaces: [space],
+        fetchAll: true, // Ensure getting all files through pagination
+      },
+    );
 
     const entries: [string, FSNodeStat][] = [];
 
@@ -390,14 +506,14 @@ export class GoogleDriveFileSystem implements IFileSystemProvider {
     }
 
     return entries;
-  }
+  };
 
   /**
    * Creates a directory in Google Drive.
    */
-  public async createDirectory(path: string): Promise<void> {
+  const createDirectory = async (path: string): Promise<void> => {
     try {
-      await this.resolvePath(path);
+      await resolvePath(path);
       throw new VfsError(
         FileSystemError.FileExists,
         `Directory already exists: ${path}`,
@@ -412,7 +528,7 @@ export class GoogleDriveFileSystem implements IFileSystemProvider {
     const parentPath = PathUtils.dirname(path);
     const dirName = PathUtils.basename(path);
 
-    const parentEntry = await this.resolvePath(parentPath);
+    const parentEntry = await resolvePath(parentPath);
 
     // Prevent creating directories in the root of "Shared with me"
     if (parentEntry.id === SHARED_WITH_ME_ID) {
@@ -429,23 +545,27 @@ export class GoogleDriveFileSystem implements IFileSystemProvider {
       );
     }
 
-    await create(this.auth, {
-      name: dirName,
-      parents: [parentEntry.id],
-      mimeType: GOOGLE_MIME_FOLDER,
-    }).catch((e) => {
-      this.onError?.(e);
-      throw e;
-    });
-  }
+    await create(
+      {
+        ACCESS_TOKEN: await getTokenForPath(path),
+      },
+      {
+        name: dirName,
+        parents: [parentEntry.id],
+        mimeType: GOOGLE_MIME_FOLDER,
+      },
+    );
+  };
 
   /**
    * Deletes a file or directory from Google Drive.
    */
-  public async delete(path: string, recursive: boolean): Promise<void> {
-    if (path === '/') throw new Error('Cannot delete root');
+  const _delete = async (path: string, recursive: boolean): Promise<void> => {
+    if (path === '/') {
+      throw new Error('Cannot delete root');
+    }
 
-    const entry = await this.resolvePath(path);
+    const entry = await resolvePath(path);
 
     if (entry.capabilities?.canTrash !== true) {
       throw new VfsError(
@@ -455,23 +575,22 @@ export class GoogleDriveFileSystem implements IFileSystemProvider {
     }
 
     if (!recursive && entry.mimeType === GOOGLE_MIME_FOLDER) {
-      // For empty check we use the same query logic
-      let query: string;
-      if (entry.id === SHARED_WITH_ME_ID) {
-        // Deleting the sharedWithMe root itself is impossible, we only get here due to logic error
-        query = 'sharedWithMe = true and trashed = false';
-      } else {
-        query = `'${entry.id}' in parents and trashed = false`;
-      }
+      const { space } = resolvePathSpace(path);
 
-      const result = await getGFileMetaList(this.auth, {
-        q: query,
-        pageSize: 1,
-        spaces: [this.space],
-      }).catch((e) => {
-        this.onError?.(e);
-        throw e;
-      });
+      const result = await getGFileMetaList(
+        {
+          ACCESS_TOKEN: await getTokenForPath(path),
+        },
+        {
+          q: {
+            trashed: false,
+            sharedWithMe: entry.id === SHARED_WITH_ME_ID,
+            parentId: entry.id !== SHARED_WITH_ME_ID ? entry.id : undefined,
+          },
+          pageSize: 1,
+          spaces: [space],
+        },
+      );
 
       // Safe array length check
       if (result.files && result.files.length > 0) {
@@ -482,24 +601,27 @@ export class GoogleDriveFileSystem implements IFileSystemProvider {
       }
     }
 
-    await update(this.auth, entry.id, {
-      trashed: true,
-    }).catch((e) => {
-      this.onError?.(e);
-      throw e;
-    });
-  }
+    await update(
+      {
+        ACCESS_TOKEN: await getTokenForPath(path),
+      },
+      entry.id,
+      {
+        trashed: true,
+      },
+    );
+  };
 
   /**
    * Renames a file or directory in Google Drive.
    */
-  public async move(oldPath: string, newPath: string): Promise<void> {
+  const move = async (oldPath: string, newPath: string): Promise<void> => {
     const normalizedOld = PathUtils.normalize(oldPath);
     const normalizedNew = PathUtils.normalize(newPath);
 
     if (normalizedOld === normalizedNew) return;
 
-    const sourceEntry = await this.resolvePath(normalizedOld);
+    const sourceEntry = await resolvePath(normalizedOld);
 
     if (sourceEntry.capabilities?.canTrash !== true) {
       throw new VfsError(
@@ -509,7 +631,7 @@ export class GoogleDriveFileSystem implements IFileSystemProvider {
     }
 
     try {
-      await this.resolvePath(normalizedNew);
+      await resolvePath(normalizedNew);
       throw new VfsError(
         FileSystemError.FileExists,
         `Destination exists: ${newPath}`,
@@ -522,7 +644,7 @@ export class GoogleDriveFileSystem implements IFileSystemProvider {
     const newDirName = PathUtils.dirname(normalizedNew);
     const newFileName = PathUtils.basename(normalizedNew);
 
-    const destinationParentEntry = await this.resolvePath(newDirName);
+    const destinationParentEntry = await resolvePath(newDirName);
 
     if (destinationParentEntry.id === SHARED_WITH_ME_ID) {
       throw new VfsError(
@@ -543,16 +665,29 @@ export class GoogleDriveFileSystem implements IFileSystemProvider {
       (p) => p !== destinationParentEntry.id,
     );
 
-    await update(this.auth, sourceEntry.id, {
-      name: newFileName,
-      addParents:
-        removeParents.length === currentParents.length
-          ? [destinationParentEntry.id]
-          : undefined,
-      removeParents: removeParents.length > 0 ? removeParents : undefined,
-    }).catch((e) => {
-      this.onError?.(e);
-      throw e;
-    });
-  }
-}
+    await update(
+      {
+        ACCESS_TOKEN: await getTokenForPath(oldPath),
+      },
+      sourceEntry.id,
+      {
+        name: newFileName,
+        addParents:
+          removeParents.length === currentParents.length
+            ? [destinationParentEntry.id]
+            : undefined,
+        removeParents: removeParents.length > 0 ? removeParents : undefined,
+      },
+    );
+  };
+
+  return {
+    createDirectory,
+    delete: _delete,
+    move,
+    readDirectory,
+    readFile,
+    stat,
+    writeFile,
+  } satisfies IFileSystemProvider;
+};

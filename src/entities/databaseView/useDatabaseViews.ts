@@ -6,7 +6,7 @@ import type {
   DatabaseViewId,
 } from '@shared/lib/databaseDocument';
 import type { PatchSource } from '@shared/lib/changeObject';
-import { useQuery } from '@shared/lib/observableQuery';
+import { useObservableQuery } from '@shared/lib/useObservableQuery';
 import { isUndefined } from 'es-toolkit';
 
 export const useDatabaseViews = (
@@ -19,7 +19,7 @@ export const useDatabaseViews = (
     },
   } = useMainServiceClient();
 
-  const { data, error, isLoading } = useQuery(
+  const { data, error, isLoading } = useObservableQuery(
     viewList,
     computed(() => ({
       documentId: documentId.value,
