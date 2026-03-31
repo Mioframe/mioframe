@@ -1,7 +1,7 @@
 import { useMainServiceClient } from '@shared/service';
 import { USER_INFO_GOOGLE_SCOPE } from '@shared/lib/googleApi/types';
-import { useObservableQuery } from '@shared/lib/useObservableQuery';
 import { createGlobalState } from '@vueuse/core';
+import { useObservable } from '@shared/lib/useObservable';
 
 type UserinfoGetReturn = Awaited<
   ReturnType<gapi.client.oauth2.UserinfoResource['get']>
@@ -16,7 +16,7 @@ const setupGoogleSessions = () => {
     google: { requestToken, sessions, clear, remove },
   } = useMainServiceClient();
 
-  const { data, isLoading } = useObservableQuery(sessions, () => undefined);
+  const { data, isLoading } = useObservable(sessions);
 
   const login = () => requestToken([USER_INFO_GOOGLE_SCOPE.userInfoProfile]);
 

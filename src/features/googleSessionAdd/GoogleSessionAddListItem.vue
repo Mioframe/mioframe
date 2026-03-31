@@ -4,8 +4,8 @@ import { MDListItem } from '@shared/ui/Lists';
 </script>
 
 <template>
-  <MDListItem is="button" headline="Add Account">
-    <template #leadingIcon>
+  <MDListItem is="button" headline="Add Google Account">
+    <template #leadingAvatarContainer>
       <MDSymbol name="add" />
     </template>
   </MDListItem>

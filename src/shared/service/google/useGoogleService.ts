@@ -9,9 +9,9 @@ import {
   type GOOGLE_SCOPE,
 } from '@shared/lib/googleApi';
 import { isSubset, omit } from 'es-toolkit';
-import type { QueryDefinition } from '@shared/lib/useObservableQuery';
-import { defineObservableQuery } from '@shared/lib/useObservableQuery';
 import { zodIs } from '@shared/lib/validateZodScheme';
+import type { ObservableDefinition } from '@shared/lib/useObservable';
+import { defineObservable } from '@shared/lib/useObservable';
 
 type TokenResponse = google.accounts.oauth2.TokenResponse;
 
@@ -31,7 +31,7 @@ export type GoogleService = {
   bindGoogleApi: (api: GoogleApi) => Promise<void>;
   requestToken: (scopes: GOOGLE_SCOPE[], oldEmail?: string) => Promise<string>;
   clear: () => Promise<void>;
-  sessions: QueryDefinition<string[], undefined>;
+  sessions: ObservableDefinition<string[]>;
   remove: (email: string) => Promise<void>;
 };
 
@@ -142,7 +142,7 @@ const setupGoogleService = (): GoogleService => {
     bindGoogleApi,
     requestToken,
     clear,
-    sessions: defineObservableQuery(() => $sessions),
+    sessions: defineObservable($sessions),
     remove,
   } satisfies GoogleService;
 };
