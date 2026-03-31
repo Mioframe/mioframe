@@ -15,7 +15,7 @@ import type { PatchSource } from '@shared/lib/changeObject';
 import { deepPatchJsonObject } from '@shared/lib/changeObject';
 import { stringPath } from '../directories';
 import { distinctUntilChanged, map, type Observable } from 'rxjs';
-import { defineObservableQuery } from '@shared/lib/observableQuery';
+import { defineObservableQuery } from '@shared/lib/useObservableQuery';
 import { isEqual } from 'es-toolkit';
 import { defineCacheObservable } from '@shared/lib/defineCacheObservable';
 

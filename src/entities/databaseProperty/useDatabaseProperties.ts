@@ -6,7 +6,7 @@ import type {
   DatabaseUnknownProperty,
 } from '@shared/lib/databaseDocument';
 import { computed, type Ref } from 'vue';
-import { useObservableQuery } from '@shared/lib/observableQuery';
+import { useObservableQuery } from '@shared/lib/useObservableQuery';
 import { toValue } from 'vue';
 import { isUndefined } from 'es-toolkit';
 

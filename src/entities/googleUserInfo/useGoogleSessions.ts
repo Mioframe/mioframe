@@ -1,6 +1,6 @@
 import { useMainServiceClient } from '@shared/service';
 import { USER_INFO_GOOGLE_SCOPE } from '@shared/lib/googleApi/types';
-import { useObservableQuery } from '@shared/lib/observableQuery';
+import { useObservableQuery } from '@shared/lib/useObservableQuery';
 import { createGlobalState } from '@vueuse/core';
 
 type UserinfoGetReturn = Awaited<

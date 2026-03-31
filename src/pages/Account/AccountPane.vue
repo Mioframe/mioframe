@@ -1,17 +1,19 @@
 <script setup lang="ts">
-import { GoogleUserInfoCard, useGoogleSessions } from '@entity/googleUserInfo';
+import { GoogleUserInfoList } from '@entity/googleUserInfo';
+import { GoogleSessionAddListItem } from '@feature/googleSessionAdd';
 import { MDPane } from '@shared/ui/Layout';
 
 defineSlots<{
   navigationButton: () => unknown;
 }>();
-
-const { sessions } = useGoogleSessions();
 </script>
 
 <template>
   <MDPane class="account">
-    <GoogleUserInfoCard v-for="email in sessions" :key="email" :email="email" />
-    <!-- // TODO: сделать управляемый список аккаунтов google -->
+    <GoogleUserInfoList>
+      <template #after>
+        <GoogleSessionAddListItem />
+      </template>
+    </GoogleUserInfoList>
   </MDPane>
 </template>
