@@ -20,7 +20,7 @@ type RequestAccessToken = (
   email?: string,
 ) => Promise<TokenResponse>;
 
-interface GoogleApi {
+export interface GoogleApi {
   requestAccessToken: RequestAccessToken;
   userinfoGet: (p: {
     oauth_token?: string | undefined;
