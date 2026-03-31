@@ -11,7 +11,7 @@ defineSlots<{
 </script>
 
 <template>
-  <MDListContainer>
+  <MDListContainer is="div">
     <GoogleUserInfoListItem
       v-for="email in sessions"
       :key="email"
