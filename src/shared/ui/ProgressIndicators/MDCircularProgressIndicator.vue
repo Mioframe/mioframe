@@ -136,13 +136,18 @@ const animateValue = computed(
 .md-circular-progress-indicator {
   --md-container-color: transparent;
   display: inline-block;
+  --md-circular-progress-color: var(
+    --md-comp-progress-indicator-active-indicator-color,
+    var(--md-sys-color-primary)
+  );
+  --md-circular-progress-background: var(--md-container-color);
 
   &__empty {
-    stroke: var(--md-container-color);
+    stroke: var(--md-circular-progress-background);
   }
 
   &__progress {
-    stroke: var(--md-content-color);
+    stroke: var(--md-circular-progress-color);
   }
 }
 </style>

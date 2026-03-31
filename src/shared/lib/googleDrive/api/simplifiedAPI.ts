@@ -234,7 +234,7 @@ export const getGFileMetaList = async (
  * LRU cache for individual file metadata.
  */
 const gFileMetaCache = new Cache<string, GDriveFileMeta>({
-  max: 100,
+  max: 500,
   ttl: 30e3,
 });
 
@@ -322,13 +322,19 @@ export const update = (
 
 /**
  * LRU cache for downloaded file content.
+ *
+ * Stores file blobs with metadata to avoid redundant downloads.
+ * Uses file ID as key, stores File object and modification time.
+ *
+ * Limits: 100 entries or 100 MB total (whichever reached first).
+ * Evicted by LRU policy when limits exceeded.
  */
 const gDriveFileContentCache = new Cache<
   string,
   { file: File; modifiedTime: string }
 >({
   max: 100,
-  maxSize: 10 * 1024 * 1024,
+  maxSize: 100 * 1024 * 1024,
   sizeCalculation: ({ file }) => file.size,
 });
 
