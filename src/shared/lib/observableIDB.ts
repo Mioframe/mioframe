@@ -1,29 +1,29 @@
 /**
- * Observable-обёртка над idb-keyval для реактивного хранения данных в IndexedDB.
+ * Observable wrapper around idb-keyval for reactive data storage in IndexedDB.
  *
  * @description
- * Класс предоставляет реактивный доступ к данным, хранящимся в IndexedDB через библиотеку `idb-keyval`.
- * Использует `BehaviorSubject` из RxJS для обеспечения реактивности и мгновенного обновления UI.
+ * The class provides reactive access to data stored in IndexedDB via the `idb-keyval` library.
+ * Uses `BehaviorSubject` from RxJS to ensure reactivity and instant UI updates.
  *
- * **Архитектурное место:**
- * - Находится в слое `src/shared/lib/` (фундаментальный слой)
- * - Предназначен для абстракции операций CRUD над IndexedDB с реактивным обновлением
- * - Не отвечает за синхронизацию между несколькими источниками данных (это задача Automerge)
+ * **Architectural position**:
+ * - Located in the `src/shared/lib/` layer (foundation layer)
+ * - Designed to abstract CRUD operations over IndexedDB with reactive updates
+ * - Does not handle synchronization between multiple data sources (this is Automerge's responsibility)
  *
- * **Связи:**
- * - Зависит от: `idb-keyval` (IndexedDB API), `rxjs/BehaviorSubject`, `zod/v4-mini` (валидация)
- * - Используется в: сервисы синхронизации, composables для реактивного доступа к данным
+ * **Dependencies**:
+ * - Depends on: `idb-keyval` (IndexedDB API), `rxjs/BehaviorSubject`, `zod/v4-mini` (validation)
+ * - Used in: sync services, composables for reactive data access
  *
- * **Edge cases:**
- * - При инициализации значение может быть `null`, если ключ не существует в IndexedDB
- * - Валидация через Zod возвращает объект `{ success: boolean; data?: T; error?: unknown }`
- * - Если валидация проваливается, Observable всё равно эмитит результат с `success: false`
+ * **Edge cases**:
+ * - On initialization, the value may be `null` if the key does not exist in IndexedDB
+ * - Zod validation returns an object `{ success: boolean; data?: T; error?: unknown }`
+ * - If validation fails, the Observable still emits the result with `success: false`
  *
  * @example
  * ```typescript
  * import { observableIDB } from './observableIDB';
  *
- * // Создание экземпляра для хранения настроек пользователя
+ * // Create an instance for storing user settings
  * const userSettings = new ObservableIDB<UserSettings>(
  *   'user_settings',
  *   z.object({
@@ -32,16 +32,16 @@
  *   }),
  * );
  *
- * // Подписка на изменения
+ * // Subscribe to changes
  * userSettings.observable().subscribe(result => {
  *   if (result.success) {
- *     console.log('Текущие настройки:', result.data);
+ *     console.log('Current settings:', result.data);
  *   } else {
- *     console.error('Ошибка валидации:', result.error);
+ *     console.error('Validation error:', result.error);
  *   }
  * });
  *
- * // Обновление данных
+ * // Update data
  * await userSettings.set({ theme: 'dark', notifications: true });
  * ```
  */
@@ -52,31 +52,31 @@ import { BehaviorSubject } from 'rxjs';
 import type z from 'zod/v4-mini';
 
 /**
- * Класс для реактивного хранения и доступа к данным в IndexedDB с валидацией через Zod.
+ * Class for reactive storage and access to data in IndexedDB with Zod validation.
  *
- * @typeParam T - Тип хранимых данных, должен соответствовать схеме Zod
+ * @typeParam T - Type of stored data, must match the Zod schema
  *
- * @param key - Уникальный ключ для хранения в IndexedDB (IDBValidKey)
- * @param zod - Схема Zod для валидации и сериализации данных
+ * @param key - Unique key for storage in IndexedDB (IDBValidKey)
+ * @param zod - Zod schema for data validation and serialization
  */
 export class ObservableIDB<T> {
   /**
-   * Поведенческий субъект RxJS, хранящий текущее состояние данных.
-   * Инициализируется с `null`, пока данные не будут загружены или установлены.
+   * RxJS behavioral subject holding the current state of data.
+   * Initialized with `null` until data is loaded or set.
    *
    * @remarks
-   * Эмитит результаты валидации Zod: `{ success: boolean; data?: T; error?: unknown }`
-   * или `null`, если данных нет в IndexedDB.
+   * Emits Zod validation results: `{ success: boolean; data?: T; error?: unknown }`
+   * or `null` if no data exists in IndexedDB.
    */
   private value$ = new BehaviorSubject<z.core.util.SafeParseResult<T> | null>(
     null,
   );
 
   /**
-   * Конструктор класса ObservableIDB.
+   * ObservableIDB constructor.
    *
-   * @param key - Уникальный ключ для хранения данных в IndexedDB
-   * @param zod - Схема Zod для валидации и сериализации данных
+   * @param key - Unique key for storing data in IndexedDB
+   * @param zod - Zod schema for data validation and serialization
    *
    * @example
    * ```typescript
@@ -94,32 +94,32 @@ export class ObservableIDB<T> {
   }
 
   /**
-   * Внутренний метод для обновления BehaviorSubject с результатом валидации.
+   * Internal method to update BehaviorSubject with validation result.
    *
-   * @param v - Данные для валидации и хранения
+   * @param v - Data to validate and store
    *
    * @remarks
-   * Использует `zod.safeParse()` для безопасной валидации данных.
-   * Результат всегда эмитируется, независимо от успеха или неудачи валидации.
+   * Uses `zod.safeParse()` for safe data validation.
+   * The result is always emitted, regardless of validation success or failure.
    */
   #set(v: T) {
     this.value$.next(this.zod.safeParse(v));
   }
 
   /**
-   * Инициализация экземпляра загрузкой данных из IndexedDB.
+   * Initializes the instance by loading data from IndexedDB.
    *
-   * @returns `void` (асинхронная операция, результат игнорируется через void)
+   * @returns `void` (async operation, result ignored via void)
    *
    * @description
-   * Асинхронно загружает данные по ключу из IndexedDB и обновляет BehaviorSubject.
-   * Если данных нет в хранилище, эмитит `null`.
-   * Вызывается автоматически при создании экземпляра класса.
+   * Asynchronously loads data by key from IndexedDB and updates the BehaviorSubject.
+   * If no data exists in storage, emits `null`.
+   * Called automatically when the class instance is created.
    *
    * @example
    * ```typescript
    * const settings = new ObservableIDB<Settings>('user_settings', schema);
-   * // init() вызывается автоматически в конструкторе
+   * // init() is called automatically in the constructor
    * ```
    */
   async init() {
@@ -128,29 +128,29 @@ export class ObservableIDB<T> {
   }
 
   /**
-   * Возвращает Observable для реактивного наблюдения за изменениями данных.
+   * Returns an Observable for reactive observation of data changes.
    *
-   * @returns Observable, эмитирующий результаты валидации Zod или `null`
+   * @returns Observable emitting Zod validation results or `null`
    *
    * @description
-   * Подписка на этот Observable позволяет реагировать на любые изменения данных:
-   * - При инициализации (первое значение может быть `null`)
-   * - После вызова метода `set()`
+   * Subscribing to this Observable allows reacting to any data changes:
+   * - On initialization (first value may be `null`)
+   * - After calling the `set()` method
    *
    * @example
    * ```typescript
    * const observable = userSettings.observable();
    *
-   * // Подписка с обработкой успеха/ошибки
+   * // Subscription with success/error handling
    * observable.subscribe({
    *   next: result => {
    *     if (result.success) {
-   *       console.log('Данные:', result.data);
+   *       console.log('Data:', result.data);
    *     } else {
-   *       console.error('Ошибка валидации:', result.error);
+   *       console.error('Validation error:', result.error);
    *     }
    *   },
-   *   complete: () => console.log('Подписка завершена'),
+   *   complete: () => console.log('Subscription completed'),
    * });
    * ```
    */
@@ -159,30 +159,30 @@ export class ObservableIDB<T> {
   }
 
   /**
-   * Асинхронно сохраняет данные в IndexedDB и обновляет реактивное состояние.
+   * Asynchronously saves data to IndexedDB and updates reactive state.
    *
-   * @param newValue - Новые данные для сохранения
+   * @param newValue - New data to save
    *
-   * @returns `Promise<void>` - завершается после записи в IndexedDB и обновления BehaviorSubject
+   * @returns `Promise<void>` - resolves after writing to IndexedDB and updating BehaviorSubject
    *
    * @description
-   * Двухэтапная операция:
-   * 1. Запись данных в IndexedDB через `idb-keyval.set()`
-   * 2. Обновление BehaviorSubject с результатом валидации Zod
+   * Two-step operation:
+   * 1. Write data to IndexedDB via `idb-keyval.set()`
+   * 2. Update BehaviorSubject with Zod validation result
    *
-   * **Важно:** Валидация происходит после записи, поэтому если валидация провалится,
-   * данные всё равно будут сохранены в IndexedDB (возможно, стоит добавить валидацию до записи).
+   * **Important:** Validation occurs after writing, so if validation fails,
+   * data will still be saved in IndexedDB (consider adding pre-write validation).
    *
    * @example
    * ```typescript
-   * // Успешное обновление
+   * // Successful update
    * await userSettings.set({ theme: 'dark', notifications: true });
    *
-   * // Обработка ошибки валидации
+   * // Handling validation error
    * try {
-   *   await userSettings.set({ theme: 'invalid' }); // Zod вернёт ошибку
+   *   await userSettings.set({ theme: 'invalid' }); // Zod will return error
    * } catch (error) {
-   *   console.error('Ошибка:', error);
+   *   console.error('Error:', error);
    * }
    * ```
    */
