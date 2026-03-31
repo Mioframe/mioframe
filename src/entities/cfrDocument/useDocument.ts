@@ -1,7 +1,7 @@
 import type { AMDocumentId } from '@shared/lib/automerge';
 import { useMainServiceClient } from '@shared/service';
 import { computed, toValue, type Ref } from 'vue';
-import { useQuery } from '@shared/lib/observableQuery';
+import { useObservableQuery } from '@shared/lib/useObservableQuery';
 import { isUndefined } from 'es-toolkit';
 
 export const useDocument = (
@@ -16,7 +16,7 @@ export const useDocument = (
     data: state,
     error,
     isLoading,
-  } = useQuery(
+  } = useObservableQuery(
     documentDescription,
     computed(() => ({
       documentId: documentId.value,

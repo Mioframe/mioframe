@@ -12,7 +12,7 @@ import {
 import type { CFRDocumentContent } from '@shared/lib/cfrDocument';
 import { filter, of } from 'rxjs';
 import { firstValueFrom, map, switchMap, take } from 'rxjs';
-import { defineQuery } from '@shared/lib/observableQuery';
+import { defineObservableQuery } from '@shared/lib/useObservableQuery';
 import { defineCacheObservable } from '@shared/lib/defineCacheObservable';
 
 const setupRepositoriesService = () => {
@@ -99,7 +99,7 @@ const setupRepositoriesService = () => {
     return documentId;
   };
 
-  const documentIdList = defineQuery(getDocumentIdList$);
+  const documentIdList = defineObservableQuery(getDocumentIdList$);
 
   return {
     documentIdList,

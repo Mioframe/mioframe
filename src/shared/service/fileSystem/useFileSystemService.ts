@@ -8,7 +8,7 @@ import { createGlobalState } from '@vueuse/core';
 import { WebFileSystem } from '@shared/lib/vfsProviders/WebFileSystem';
 import { distinctUntilChanged, map, Observable, shareReplay } from 'rxjs';
 import { isEqual, sortBy } from 'es-toolkit';
-import { defineQuery } from '@shared/lib/observableQuery';
+import { defineObservableQuery } from '@shared/lib/useObservableQuery';
 import { defineCacheObservable } from '@shared/lib/defineCacheObservable';
 
 export interface ReadDirectoryOptions {
@@ -139,9 +139,9 @@ const setupFileSystemService = () => {
     unmount,
     createDirectory,
     directoryContent$,
-    directoryContent: defineQuery(directoryContent$),
+    directoryContent: defineObservableQuery(directoryContent$),
     fsNodeStat$,
-    fsNodeStat: defineQuery(fsNodeStat$),
+    fsNodeStat: defineObservableQuery(fsNodeStat$),
     mountFSDirectoryHandle,
     move,
     delete: remove,

@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { GProfileCard } from '@entity/gProfile';
+import { GoogleUserInfoList } from '@entity/googleUserInfo';
+import { GoogleSessionAddListItem } from '@feature/googleSessionAdd';
 import { MDPane } from '@shared/ui/Layout';
 
 defineSlots<{
@@ -9,6 +10,10 @@ defineSlots<{
 
 <template>
   <MDPane class="account">
-    <GProfileCard />
+    <GoogleUserInfoList>
+      <template #after>
+        <GoogleSessionAddListItem />
+      </template>
+    </GoogleUserInfoList>
   </MDPane>
 </template>

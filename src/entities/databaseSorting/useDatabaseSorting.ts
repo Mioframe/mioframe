@@ -4,7 +4,7 @@ import type {
   DatabaseSortDescription,
   DatabaseViewId,
 } from '@shared/lib/databaseDocument';
-import { useQuery } from '@shared/lib/observableQuery';
+import { useObservableQuery } from '@shared/lib/useObservableQuery';
 import { useMainServiceClient } from '@shared/service';
 import { isUndefined } from 'es-toolkit';
 import type { PartialDeep } from 'type-fest';
@@ -29,7 +29,7 @@ export const useDatabaseSorting = (
     },
   } = useMainServiceClient();
 
-  const { data, error, isLoading } = useQuery(
+  const { data, error, isLoading } = useObservableQuery(
     sortingPropertiesIdList,
     computed(() => ({
       documentId: documentId.value,

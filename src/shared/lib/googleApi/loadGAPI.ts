@@ -1,14 +1,14 @@
 /// <reference types="gapi" />
 
-let gapi: typeof window.gapi | undefined = undefined;
+let gapi: typeof globalThis.gapi | undefined = undefined;
 
 /**
  * Загрузить gapi
  * @returns
  */
 
-export const loadGAPI = async (): Promise<typeof window.gapi> =>
-  new Promise<typeof window.gapi>((resolve) => {
+export const loadGAPI = async (): Promise<typeof globalThis.gapi> =>
+  new Promise<typeof globalThis.gapi>((resolve) => {
     if (gapi) {
       resolve(gapi);
       return;
@@ -22,8 +22,8 @@ export const loadGAPI = async (): Promise<typeof window.gapi> =>
         return;
       }
 
-      window.gapi.load('client', () => {
-        gapi = window.gapi;
+      globalThis.gapi.load('client', () => {
+        gapi = globalThis.gapi;
         resolve(gapi);
       });
     });

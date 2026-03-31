@@ -13,7 +13,7 @@ import type {
 import { isEqual, set } from 'es-toolkit/compat';
 import { removeEmptyStructures } from '@shared/lib/removeEmptyStructures';
 import { distinctUntilChanged, map, type Observable } from 'rxjs';
-import { defineQuery } from '@shared/lib/observableQuery';
+import { defineObservableQuery } from '@shared/lib/useObservableQuery';
 import { defineCacheObservable } from '@shared/lib/defineCacheObservable';
 
 export const setupDatabaseViewFilterService = (
@@ -97,7 +97,7 @@ export const setupDatabaseViewFilterService = (
 
   return {
     filter$,
-    filter: defineQuery(filter$),
+    filter: defineObservableQuery(filter$),
 
     patch,
     post,

@@ -6,7 +6,7 @@ import type {
   DatabaseUnknownProperty,
 } from '@shared/lib/databaseDocument';
 import { computed, type Ref } from 'vue';
-import { useQuery } from '@shared/lib/observableQuery';
+import { useObservableQuery } from '@shared/lib/useObservableQuery';
 import { toValue } from 'vue';
 import { isUndefined } from 'es-toolkit';
 
@@ -24,7 +24,7 @@ export const useDatabaseProperties = (
     data: propertiesIdList,
     error,
     isLoading,
-  } = useQuery(
+  } = useObservableQuery(
     databasePropertiesIdList,
     computed(() => ({
       documentId: documentId.value,

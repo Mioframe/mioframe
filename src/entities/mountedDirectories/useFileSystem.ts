@@ -5,7 +5,7 @@ import { isFunction, isUndefined } from 'es-toolkit';
 import { useSnackbar } from '@shared/ui/Snackbar';
 import { useDialog } from '@shared/ui/Dialog';
 import { OPFSName } from '@shared/service/directories';
-import { useQuery } from '@shared/lib/observableQuery';
+import { useObservableQuery } from '@shared/lib/useObservableQuery';
 
 export const OPFS = OPFSName;
 
@@ -27,7 +27,7 @@ const setupFileSystem = () => {
     data: rootDirectory,
     error,
     isLoading,
-  } = useQuery(
+  } = useObservableQuery(
     directoryContent,
     computed(() => ({
       path: rootPath,

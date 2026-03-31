@@ -11,7 +11,7 @@ export {
   SPACE,
   create,
   download,
-  getGFileMetaList as list,
+  getGFileMetaList,
   update,
   upload,
   zodGDriveListResponse,
