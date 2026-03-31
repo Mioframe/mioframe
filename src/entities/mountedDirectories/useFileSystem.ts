@@ -5,7 +5,7 @@ import { isFunction, isUndefined } from 'es-toolkit';
 import { useSnackbar } from '@shared/ui/Snackbar';
 import { useDialog } from '@shared/ui/Dialog';
 import { OPFSName } from '@shared/service/directories';
-import { useObservableQuery } from '@shared/lib/observableQuery';
+import { useObservableQuery } from '@shared/lib/useObservableQuery';
 
 export const OPFS = OPFSName;
 

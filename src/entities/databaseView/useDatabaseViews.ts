@@ -6,7 +6,7 @@ import type {
   DatabaseViewId,
 } from '@shared/lib/databaseDocument';
 import type { PatchSource } from '@shared/lib/changeObject';
-import { useObservableQuery } from '@shared/lib/observableQuery';
+import { useObservableQuery } from '@shared/lib/useObservableQuery';
 import { isUndefined } from 'es-toolkit';
 
 export const useDatabaseViews = (

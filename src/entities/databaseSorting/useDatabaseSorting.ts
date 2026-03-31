@@ -4,7 +4,7 @@ import type {
   DatabaseSortDescription,
   DatabaseViewId,
 } from '@shared/lib/databaseDocument';
-import { useObservableQuery } from '@shared/lib/observableQuery';
+import { useObservableQuery } from '@shared/lib/useObservableQuery';
 import { useMainServiceClient } from '@shared/service';
 import { isUndefined } from 'es-toolkit';
 import type { PartialDeep } from 'type-fest';

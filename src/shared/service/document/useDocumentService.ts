@@ -23,7 +23,7 @@ import {
   startWith,
   switchMap,
 } from 'rxjs';
-import { defineObservableQuery } from '@shared/lib/observableQuery';
+import { defineObservableQuery } from '@shared/lib/useObservableQuery';
 import { DomainError } from '@shared/lib/error';
 import { defineCacheObservable } from '@shared/lib/defineCacheObservable';
 

@@ -7,7 +7,7 @@ import type {
   DatabaseViewId,
 } from '@shared/lib/databaseDocument';
 import type { Query } from 'sift';
-import { useObservableQuery } from '@shared/lib/observableQuery';
+import { useObservableQuery } from '@shared/lib/useObservableQuery';
 import { isUndefined } from 'es-toolkit';
 
 export const useDatabaseData = (

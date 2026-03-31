@@ -21,7 +21,7 @@ import { deepPatchJsonObject } from '@shared/lib/changeObject';
 import { useDatabaseViewSortService } from './databaseViewSortService';
 import { setupDatabaseViewFilterService } from './databaseViewFilterService';
 import { distinctUntilChanged, map, type Observable } from 'rxjs';
-import { defineObservableQuery } from '@shared/lib/observableQuery';
+import { defineObservableQuery } from '@shared/lib/useObservableQuery';
 import { defineCacheObservable } from '@shared/lib/defineCacheObservable';
 import { isEqual } from 'es-toolkit';
 
