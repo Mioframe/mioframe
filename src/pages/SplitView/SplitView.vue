@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { useMainRouter, useStackNavigation } from '@page/routes';
+import { useStackNavigation } from '@page/routes';
 import { MDSplitLayout } from '@shared/ui/Layout';
 import {
   defineNavigationButton,
@@ -17,16 +17,16 @@ const settingsNavigationButton = defineNavigationButton({
   symbol: 'settings',
 });
 
-const { open, back } = useMainRouter();
+const { open, back } = useStackNavigation();
 
 const onClickNavigation = async (button: NavigationButton) => {
   switch (button) {
     case homeNavigationButton: {
-      await open('home', {}, { replace: true });
+      await open('home', {}, { replace: true, additionalPanes: 0 });
       break;
     }
     case settingsNavigationButton: {
-      await open('settings', {}, { replace: false });
+      await open('settings', {}, { replace: false, additionalPanes: 0 });
       break;
     }
     default:
