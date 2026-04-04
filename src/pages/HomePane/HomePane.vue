@@ -8,6 +8,7 @@ import { OPFSName } from '@shared/service/directories';
 import { MDAppBar } from '@shared/ui/AppBar';
 import { useStackNavigation } from '@page/routes';
 import { PathUtils } from '@shared/lib/virtualFileSystem';
+import { GoogleDriveWidget } from '@widget/GoogleDriveWidget';
 
 defineSlots<{
   navigationButton: () => unknown;
@@ -49,7 +50,7 @@ const onClickAccount = async () => {
       </template>
     </MountedDirectoriesList>
 
-    <!-- todo: добавить виджет google drive -->
+    <GoogleDriveWidget />
     <!-- todo: добавить виджет смонтированных папок -->
     <!-- todo: создать и добавить виджет избранных директорий и документов -->
 

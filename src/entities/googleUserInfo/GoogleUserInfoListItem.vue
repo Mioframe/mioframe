@@ -65,10 +65,19 @@ const supportingText = computed(() => {
 
   return supportingTextUser.value;
 });
+
+const emit = defineEmits<{
+  click: [];
+}>();
 </script>
 
 <template>
-  <MDListItem is="div" :headline="headline" :supporting-text="supportingText">
+  <MDListItem
+    is="button"
+    :headline="headline"
+    :supporting-text="supportingText"
+    @click="emit('click')"
+  >
     <template #leadingAvatarContainer>
       <MDCircularProgressIndicator v-if="evaluating" />
 

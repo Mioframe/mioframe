@@ -27,6 +27,8 @@ export interface GoogleApi {
   }) => Promise<{ result: { email?: string } }>;
 }
 
+export const GOOGLE_DRIVE_ROOT_NAME = 'Google Drive';
+
 export type GoogleService = {
   bindGoogleApi: (api: GoogleApi) => Promise<void>;
   requestToken: (scopes: GOOGLE_SCOPE[], oldEmail?: string) => Promise<string>;
@@ -110,10 +112,8 @@ const setupGoogleService = (): GoogleService => {
 
   const { vfs } = useFileSystemService();
 
-  const appDataName = 'Google Drive';
-
   const mountGoogleProvider = async () => {
-    const path = PathUtils.join('/', appDataName);
+    const path = PathUtils.join('/', GOOGLE_DRIVE_ROOT_NAME);
 
     await vfs.createDirectory(path);
 
