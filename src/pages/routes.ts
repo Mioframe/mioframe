@@ -40,5 +40,3 @@ export const setupStackNavigation = ({
 };
 
 export const useStackNavigation = use;
-
-export const useMainRouter = use;

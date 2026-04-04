@@ -6,14 +6,14 @@ import { MDSymbol } from '@shared/ui/Icon';
 import { useFileSystem } from '@entity/mountedDirectories/useFileSystem';
 import { OPFSName } from '@shared/service/directories';
 import { MDAppBar } from '@shared/ui/AppBar';
-import { useMainRouter } from '@page/routes';
+import { useStackNavigation } from '@page/routes';
 import { PathUtils } from '@shared/lib/virtualFileSystem';
 
 defineSlots<{
   navigationButton: () => unknown;
 }>();
 
-const { open } = useMainRouter();
+const { open } = useStackNavigation();
 
 const { mountUserDirectory } = useFileSystem();
 
@@ -22,15 +22,11 @@ const onClickMountUserDirectory = async () => {
 };
 
 const onClickRootDirectory = async (name: string) => {
-  await open(
-    'repo',
-    { repoPath: PathUtils.join('/', name) },
-    { additionalPanes: 1 },
-  );
+  await open('repo', { repoPath: PathUtils.join('/', name) });
 };
 
 const onClickAccount = async () => {
-  await open('accounts', {}, { additionalPanes: 1 });
+  await open('accounts', {}, { target: 'accounts' });
 };
 </script>
 
@@ -46,13 +42,19 @@ const onClickAccount = async () => {
       </template>
     </MDAppBar>
 
+    <!-- todo: заменить на виджеты -->
     <MountedDirectoriesList @click="onClickRootDirectory">
       <template #leadingIcon="{ name }">
         <MDSymbol v-if="name === OPFSName" name="folder_special" />
       </template>
     </MountedDirectoriesList>
 
+    <!-- todo: добавить виджет google drive -->
+    <!-- todo: добавить виджет смонтированных папок -->
+    <!-- todo: создать и добавить виджет избранных директорий и документов -->
+
     <MDFabContainer class="home__fab-container">
+      <!-- todo: заменить на кнопку монтирования в виджете -->
       <MDFab
         tooltip="select local directory"
         md-symbol="folder_open"

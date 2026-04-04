@@ -12,7 +12,7 @@ import { MDPane } from '@shared/ui/Layout';
 import { MDAppBar } from '@shared/ui/AppBar';
 import type { AMDocumentId } from '@shared/lib/automerge/automergeTypes';
 import { zodQuery } from './model';
-import { useMainRouter } from '@page/routes';
+import { useStackNavigation } from '@page/routes';
 import { zodToVueProps } from '@shared/lib/zodToVueProps';
 import { useRepository } from '@entity/repository';
 import { FSNodeType, PathUtils } from '@shared/lib/virtualFileSystem';
@@ -52,31 +52,19 @@ const {
   isLoading: directoryLoading,
 } = useDirectory(directoryPath, readDirectoryOptions);
 
-const { open } = useMainRouter();
+const { open } = useStackNavigation();
 
 const onClickPath = async (path: string) => {
-  await open(
-    'repo',
-    {
-      repoPath: path,
-    },
-    {
-      additionalPanes: 1,
-    },
-  );
+  await open('repo', {
+    repoPath: path,
+  });
 };
 
 const onClickEntry = async (name: string, fileType: FSNodeType) => {
   if (fileType === FSNodeType.Directory) {
-    await open(
-      'repo',
-      {
-        repoPath: PathUtils.join(directoryPath.value, name),
-      },
-      {
-        additionalPanes: 1,
-      },
-    );
+    await open('repo', {
+      repoPath: PathUtils.join(directoryPath.value, name),
+    });
   }
 };
 
@@ -96,7 +84,7 @@ const onClickDocument = async (documentId: AMDocumentId) => {
       documentId,
     },
     {
-      additionalPanes: 2,
+      target: 'document',
     },
   );
 };

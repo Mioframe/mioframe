@@ -8,6 +8,7 @@ import { computed } from 'vue';
 import type { UnknownRecord } from 'type-fest';
 import { isNotNil } from 'es-toolkit';
 import SplitView from './SplitView.vue';
+import { usePaneContext } from '@shared/ui/Layout';
 
 const rootNavigationName = generateId('StackNavigation');
 
@@ -25,16 +26,98 @@ type Query = z.output<typeof zodQuery>;
 
 type PaneMap = Record<string, Pane>;
 
+/**
+ * Options for controlling navigation stack behavior.
+ *
+ * Defines how panes are added, replaced, or positioned within the navigation stack.
+ */
 interface OpenOptions {
   /**
-   * number of additional panes
-   * @default 0
+   * Maximum number of additional panes to allow in the stack.
+   *
+   * When set, the navigation stack will be truncated to this number plus one (the current pane).
+   * Useful for limiting concurrent open panes in a tab-like interface.
+   *
+   * @default 1 (allows one additional pane)
+   * @example
+   * // Allow up to 2 panes total
+   * await navigation.open('settings', {}, { additionalPanes: 1 });
+   *
+   * @example
+   * // Allow up to 5 panes total
+   * await navigation.open('documents', {}, { additionalPanes: 4 });
    */
   additionalPanes?: number;
+
+  /**
+   * Whether to replace the current route instead of navigating to a new one.
+   *
+   * When true, the browser history won't be updated and the back button
+   * won't navigate away from this state. Useful for modal-like behavior.
+   *
+   * @default false
+   * @example
+   * // Open settings without adding to history
+   * await navigation.open('settings', {}, { replace: true });
+   */
   replace?: boolean;
+
+  /**
+   * Position where the new pane should be inserted in the stack.
+   *
+   * - 'add': Prepend to the beginning of the stack (new top-level pane)
+   * - 'current': Replace the currently active pane
+   * - number: Insert at the specified index (0-based)
+   *
+   * @default 'current'
+   * @example
+   * // Open as a new top-level pane
+   * await navigation.open('documents', {}, { target: 'add' });
+   *
+   * @example
+   * // Replace the current pane
+   * await navigation.open('settings', {}, { target: 'current' });
+   *
+   * @example
+   * // Insert at index 0 (front of stack)
+   * await navigation.open('notifications', {}, { target: 0 });
+   */
+  // eslint-disable-next-line @typescript-eslint/no-redundant-type-constituents -- 'add' and 'current' are more descriptive than string literals
+  target?: 'add' | 'current' | string;
 }
 
 export interface UseStackNavigationReturn<P extends PaneMap> {
+  /**
+   * Open a pane in the navigation stack.
+   *
+   * Navigates to the specified pane, optionally replacing or adding to the current stack.
+   * Props are serialized into the URL query string for state persistence.
+   *
+   * @template K - The pane name key (must be a string key of P)
+   * @param name - The pane name to open
+   * @param props - Props to pass to the pane, parsed by the pane's model schema
+   * @param options - Optional configuration for navigation behavior
+   * @returns Promise that resolves when navigation completes
+   * @example
+   * // Open default pane
+   * await navigation.open('documents');
+   *
+   * @example
+   * // Open with props - props are serialized to query string
+   * await navigation.open('documents', { filter: 'active', sort: 'name' });
+   *
+   * @example
+   * // Open as new top-level pane
+   * await navigation.open('documents', {}, { target: 'add' });
+   *
+   * @example
+   * // Open with limit on total panes
+   * await navigation.open('settings', {}, { additionalPanes: 1 });
+   *
+   * @example
+   * // Replace current pane instead of adding to stack
+   * await navigation.open('settings', {}, { target: 'current' });
+   */
   open: <K extends Extract<keyof P, string>>(
     name: K,
     props: ReturnType<NonNullable<P[K]>['parseProps']>,
@@ -42,7 +125,20 @@ export interface UseStackNavigationReturn<P extends PaneMap> {
   ) => Promise<void>;
 
   /**
-   * panes for shows
+   * Computed reference to the currently active panes and their props.
+   *
+   * Returns an array of pane metadata objects, each containing:
+   * - `name`: The pane identifier
+   * - `component`: The Vue component to render
+   * - `props`: Parsed props from the URL query string
+   *
+   * This is reactive and updates when the navigation stack changes.
+   *
+   * @example
+   * // Iterate over active panes
+   * for (const pane of navigation.panesComponents.value) {
+   *   console.log(`${pane.name}: ${pane.component.name}`);
+   * }
    */
   panesComponents: ComputedRef<
     {
@@ -112,46 +208,45 @@ export const createStackNavigation = <P extends PaneMap>(
       return data?.[PARAM_NAME] ?? [defaultPane];
     });
 
+    const paneCtx = usePaneContext();
+
     const open = async <K extends Extract<keyof P, string>>(
       name: K,
       props: ReturnType<P[K]['parseProps']>,
-      { additionalPanes = 0, replace = false }: OpenOptions = {},
+      {
+        additionalPanes = 1,
+        replace = false,
+        target = 'current',
+      }: OpenOptions = {},
     ): Promise<void> => {
       const maxPanes = additionalPanes + 1;
 
-      const panesName = currentPanesName.value
-        .slice(0, maxPanes)
-        .filter(isNotNil);
+      const { index: currentPaneIndex = -1 } = paneCtx ?? {};
 
-      const paneIndex = panesName.indexOf(name);
+      const targetPaneIndex =
+        target === 'current'
+          ? currentPaneIndex
+          : currentPanesName.value.indexOf(target);
+
+      const startIndex = Math.max(targetPaneIndex, 0);
+
+      const deleteCount = targetPaneIndex >= 0 ? 1 : 0;
+
+      const panesName = currentPanesName.value
+        .toSpliced(startIndex, deleteCount, name)
+        .slice(0, maxPanes);
 
       const params = {
-        [PARAM_NAME]: panesName.toSpliced(
-          paneIndex < 0 ? 0 : paneIndex,
-          paneIndex < 0 ? 0 : 1,
-          name,
-        ),
+        [PARAM_NAME]: panesName,
       };
 
-      if (params[PARAM_NAME].length > maxPanes) {
-        params[PARAM_NAME].length = maxPanes;
-      }
-
       const panesQuery = currentPanesQuery.value
-        .slice(0, maxPanes)
-        .filter(isNotNil);
+        .toSpliced(startIndex, deleteCount, props)
+        .slice(0, maxPanes);
 
       const query = {
-        [PARAM_NAME]: panesQuery.toSpliced(
-          paneIndex < 0 ? 0 : paneIndex,
-          paneIndex < 0 ? 0 : 1,
-          props,
-        ),
+        [PARAM_NAME]: panesQuery,
       } satisfies Query;
-
-      if (query[PARAM_NAME].length > maxPanes) {
-        query[PARAM_NAME].length = maxPanes;
-      }
 
       await router.push({
         name: rootNavigationName,

@@ -15,6 +15,7 @@ import { useAllowedBottomNavigation } from './allowedBottomNavigation';
 import type { Pane } from './types';
 import { isNumber, round } from 'es-toolkit';
 import { useLocalSettings } from '@entity/localSettings';
+import PaneContextWrap from './PaneContextWrap.vue';
 
 const props = defineProps<{
   navigationButtons?: NavigationButton[];
@@ -176,9 +177,12 @@ const onBodyPointerMove = (event: PointerEvent) => {
       @pointerleave="stopResize"
       @pointermove="onBodyPointerMove"
     >
-      <template
+      <!-- reverse the index, since showPanes is reversed -->
+      <PaneContextWrap
         v-for="({ name, component, props: paneProps }, paneIndex) in showPanes"
         :key="name"
+        :name="name"
+        :index="showPanes.length - 1 - paneIndex"
       >
         <component :is="component" v-bind="paneProps" class="body__pane">
           <template #navigationButton>
@@ -200,7 +204,7 @@ const onBodyPointerMove = (event: PointerEvent) => {
           aria-label="resize pane"
           @pointerdown="onResizePointerDown(paneIndex, $event)"
         />
-      </template>
+      </PaneContextWrap>
     </section>
   </main>
 </template>
