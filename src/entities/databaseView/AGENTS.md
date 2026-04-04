@@ -1,40 +1,28 @@
-# src/entities/databaseView KNOWLEDGE BASE
+# src/entities/databaseView
 
-## OVERVIEW
-Database view management. Views define how data is displayed (table layout, sorting, filtering). Multiple views per database document allow different presentations of the same data.
+Inherits the rules from `src/entities/AGENTS.md`. Applies to `src/entities/databaseView` and its descendants until a deeper `AGENTS.md` overrides it.
 
-## STRUCTURE
-```
-src/entities/databaseView/
-├── index.ts             # Exports: DatabaseViewChipsList, useDatabaseViews, useDatabaseView
-├── useDatabaseViews.ts  # List of all views for a document
-├── useDatabaseView.ts   # Single view by ID
-└── DatabaseViewChipsList.vue  # View selector chips
-```
+## Contains
 
-## WHERE TO LOOK
-| Task | Location | Notes |
-|------|----------|-------|
-| View list | `useDatabaseViews.ts` | Fetches all views for doc |
-| Single view | `useDatabaseView.ts` | Fetches view by ID with patch |
-| View service | `@shared/service/databaseDocument/view` | CRUD operations |
-| View types | `@shared/lib/databaseDocument` | DatabaseView, DB_VIEW_LAYOUT |
+- `useDatabaseViews.ts`: all views for a document.
+- `useDatabaseView.ts`: one selected view and its mutations.
+- `DatabaseViewChipsList.vue`: entity-level view selection UI.
+- `index.ts`: public entry point.
 
-## CONVENTIONS
-- Views composable:
-  ```typescript
-  const { views: databaseViewList } = useDatabaseViews(path, documentId);
-  ```
-- Single view with mutation:
-  ```typescript
-  const { view, errorMessage, isLoading, patch } = useDatabaseView(
-    path, documentId, viewId
-  );
-  ```
-- View layouts: `DB_VIEW_LAYOUT.TABLE`, etc.
-- `patch(view)` updates view configuration (sorting, name, etc.)
+## Patterns
 
-## ANTI-PATTERNS
-- **NEVER** access views without using composables
-- **NEVER** mutate view objects directly (use patch)
-- **NEVER** skip error handling for view operations
+- Keep view config serializable and schema-driven.
+- Return stable loading, error, and mutation hooks from entity APIs.
+- Keep view-related UI small and reusable rather than feature-specific.
+
+## Anti-patterns
+
+- Do not mix sorting, filtering, or property editing flows into this entity layer.
+- Do not mutate view objects directly.
+- Do not encode one page's layout assumptions as general view behavior.
+
+## Constraints
+
+- View structure changes affect selection, layout, sorting, and filtering flows.
+- External imports should go through `index.ts`.
+- Minimum verification: `pnpm type-check` and a smoke check of the affected view selection/layout behavior.

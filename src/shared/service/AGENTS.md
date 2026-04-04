@@ -1,105 +1,34 @@
-# src/shared/service - Service Layer
+# src/shared/service
 
-**Scope:** Database orchestration, sync workers, service coordination. Bridges `lib` → `entities`. 80+ files across 8 subdirectories.
+Inherits the rules from `src/shared/AGENTS.md`. Applies to `src/shared/service` and its descendants until a deeper `AGENTS.md` overrides it.
 
-## SUBDIRECTORIES
+## Contains
 
-### databaseDocument/data
-Document operations, CRUD, validation.
+- `databaseDocument/`: database document service contracts.
+- `directories/`: path and directory services.
+- `document/`: document-level service wiring.
+- `fileSystem/`: filesystem service wiring.
+- `google/`: Google session and integration services.
+- `repositories/`: repository-level service contracts.
+- `serviceWorker.ts`, `setupMainService.ts`, `useService.ts`: main service setup and access.
 
-### databaseDocument/view
-Query builders, projections, aggregations.
+## Patterns
 
-### google
-Google Drive client wrappers, auth, permissions.
+- Services should expose infrastructural capabilities and contracts, not screen-level UI logic.
+- Normalize errors and side effects so upper layers can rely on stable service behavior.
+- Query and mutation contracts should be deterministic and explicit about invalidation.
+- Worker and service setup should document lifecycle and cleanup semantics.
 
-### directories
-Path resolution, tree traversal, filtering.
+## Anti-patterns
 
-### document
-Document lifecycle, versioning, conflict resolution.
+- Do not import Vue UI components here.
+- Do not duplicate domain derivations that belong in `entities`.
+- Do not add wrapper services that add no contract, invariant, or normalization.
+- Do not leave data-changing flows without cache or event invalidation.
 
-### repositories
-Generic data access layer, query execution.
+## Constraints
 
-### fileSystem
-OPFS wrappers, stream handling, chunking.
-
-### orchestration
-Service coordination, event buses, workers.
-
-## ARCHITECTURE RULES
-
-### Layer Boundaries
-- **lib/**: Pure utilities, no Vue, no domain types
-- **service/**: Bridges lib → entities, no UI logic
-- **ui/**: Vue components only, no business logic, no entities imports
-- **NEVER** import entities/features/widgets/pages from shared
-
-### TypeScript
-- **Strict mode**: No `any`, no `as`, no `@ts-ignore`
-- **Type guards**: Use `typeGuards` lib for runtime checks
-- **Zod schemas**: Validate at boundaries, not in UI
-
-### Service Pattern
-- **Bridge pattern**: lib → entities → UI
-- **No direct FS**: Use `localFileSystem` or `virtualFileSystem`
-- **No direct API**: Use `googleDrive` or `googleApi`
-- **Event-driven**: Workers via `wrapWorker`, comms via subscriptions
-
-## ANTI-PATTERNS
-
-- **NEVER** import from `@entity`, `@feature`, `@widget`, `@page`
-- **NEVER** include domain models in `ui/` or `service/`
-- **NEVER** put Vue logic in `service/` or `lib/`
-- **NEVER** bypass `lib` abstractions for direct FS/API access
-- **NEVER** use `any` or `@ts-ignore`
-- **NEVER** leave empty catch blocks
-- **NEVER** mutate reactive state directly
-
-## CONVENTIONS
-
-### Imports
-```typescript
-import { AutomergeAdapter } from "@shared/lib/automergeAdapter"
-import { useDatabaseDocument } from "@shared/lib/databaseDocument/useDatabaseDocument"
-import { MDButton } from "@shared/ui/Button"
-// NEVER: import from @entity, @feature, @widget, @page
-```
-
-### Service Pattern
-```typescript
-// service/ → entities/ → UI
-export async function saveDocument(doc: DatabaseDocument) {
-  const adapter = new AutomergeAdapter()
-  const fs = getLocalFileSystem()
-  await adapter.applyToFS(fs, doc)
-}
-```
-
-## TESTING
-
-- **lib/:** Unit tests (Vitest, happy-dom)
-- **service/:** Mock lib deps, test orchestration
-- **ui/:** Component tests, integration with features
-
-## KEY FILES
-
-| Layer | Location | Purpose |
-|-------|----------|---------|
-| CRDT | `lib/automergeAdapter` | Sync with UI |
-| FS | `lib/virtualFileSystem/` | Local storage API |
-| Google | `lib/googleDrive/` | API client, caching |
-| DB | `service/databaseDocument/` | CRUD, migrations |
-| UI | `ui/Table`, `ui/Dialog` | Generic components |
-
-## COMMANDS
-
-```bash
-pnpm dev              # Start dev server
-pnpm build            # Build for production
-pnpm type-check       # Run TS compiler checks
-pnpm lint             # Run ESLint
-pnpm test             # Run Vitest
-pnpm cy:open          # E2E Cypress tests
-```
+- Service changes often affect every caller above this layer.
+- Contract changes must preserve or intentionally revise loading, error, and mutation semantics.
+- Use `index.ts` as the external entry point when present.
+- Minimum verification: `pnpm type-check` and focused unit/integration smoke checks for the touched service contract.

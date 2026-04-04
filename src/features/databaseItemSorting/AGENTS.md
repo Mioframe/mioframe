@@ -1,34 +1,28 @@
-# src/features/databaseItemSorting KNOWLEDGE BASE
+# src/features/databaseItemSorting
 
-## OVERVIEW
-Feature for managing database view sorting. UI for selecting properties and sort direction (ascending/descending).
+Inherits the rules from `src/features/AGENTS.md`. Applies to `src/features/databaseItemSorting` and its descendants until a deeper `AGENTS.md` overrides it.
 
-## STRUCTURE
-```
-src/features/databaseItemSorting/
-├── index.ts                        # Exports
-├── DatabaseItemSortingListSection.vue  # Main sort UI
-├── DatabaseSortingListItem.vue    # Individual sort option
-└── PropertySortDirectionMenuItem.vue  # Direction selector
-```
+## Contains
 
-## WHERE TO LOOK
-| Task | Location | Notes |
-|------|----------|-------|
-| Sort logic | `@entity/databaseSorting` | useDatabaseSorting |
-| Property list | `@entity/databaseProperty` | useDatabaseProperties |
-| Sort service | `@shared/service/databaseDocument/view` | Sort operations |
+- `DatabaseItemSortingListSection.vue`: the main sorting UI flow.
+- `DatabaseSortingListItem.vue`: sorting-row UI.
+- `PropertySortDirectionMenuItem.vue`: sort-direction selection.
+- `index.ts`: public feature entry point.
 
-## CONVENTIONS
-- Uses entity composables:
-  ```typescript
-  const { patch: patchSort } = useDatabaseSorting(path, documentId, viewId);
-  const { propertiesIdList } = useDatabaseProperties(path, documentId);
-  ```
-- Direction options: ASCENDING, DESCENDING
-- Patch format: `{ propertyId: { direction: 'ASCENDING' } }`
+## Patterns
 
-## ANTI-PATTERNS
-- **NEVER** sort without direction
-- **NEVER** skip property validation
-- **NEVER** mutate sort directly
+- Keep this feature focused on interaction flow and sorting controls.
+- Source available properties and directions from entity/schema layers.
+- If drag-and-drop order matters, keep it aligned with persisted sorting state.
+
+## Anti-patterns
+
+- Do not compute table sorting logic here as domain behavior.
+- Do not allow hidden `propertyId` or `direction` values.
+- Do not spread writable sorting state across multiple local sources of truth.
+
+## Constraints
+
+- Changes here should be checked with entity sorting descriptions and database view persistence.
+- External imports should go through `index.ts`.
+- Minimum verification: `pnpm type-check` and a manual smoke check of the sorting flow.

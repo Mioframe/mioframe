@@ -1,51 +1,32 @@
-# src/shared/service/databaseDocument KNOWLEDGE BASE
+# src/shared/service/databaseDocument
 
-## OVERVIEW
-Service layer for database document operations. Provides queries and mutations for properties, items, views, sorting, and filtering.
+Inherits the rules from `src/shared/service/AGENTS.md`. Applies to `src/shared/service/databaseDocument` and its descendants until a deeper `AGENTS.md` overrides it.
 
-## STRUCTURE
-```
-src/shared/service/databaseDocument/
-├── index.ts                 # Main exports
-├── databaseService.ts       # Core database service
-├── databasePropertiesService.ts  # Property CRUD
-├── databaseDataService.ts  # Item CRUD  
-├── view/                   # View operations
-│   ├── databaseViewsService.ts
-│   ├── databaseViewSortService.ts
-│   ├── databaseViewFilterService.ts
-│   └── types.ts
-└── data/                   # Data query operations
-    ├── queryData.ts
-    ├── filters.ts
-    ├── sortData.ts
-    └── partialSort.ts
-```
+## Contains
 
-## WHERE TO LOOK
-| Task | Location | Notes |
-|------|----------|-------|
-| Property ops | `databasePropertiesService.ts` | post, patch, remove |
-| Item ops | `databaseDataService.ts` | postItem, removeItem, filteredIdList |
-| View ops | `view/databaseViewsService.ts` | create, patch views |
-| Filter ops | `view/databaseViewFilterService.ts` | filter mutations |
-| Sort ops | `view/databaseViewSortService.ts` | sort mutations |
+- `databaseService.ts`: shared database document service.
+- `databasePropertiesService.ts`: property operations.
+- `databaseDataService.ts`: item operations.
+- `types.ts` and `index.ts`: shared types and public API.
+- `data/` and `view/`: query, sorting, filtering, and view-specific service logic.
 
-## CONVENTIONS
-- Accessed via useMainServiceClient:
-  ```typescript
-  const {
-    databaseDocument: {
-      properties: { post, patch, remove, databasePropertiesIdList },
-      data: { postItem, removeItem, filteredIdList },
-      views: { create, patch, databaseViews },
-    }
-  } = useMainServiceClient();
-  ```
-- Each service provides query definitions (for useQuery) and mutation functions
-- Queries accept documentId, path, and operation-specific params
+## Patterns
 
-## ANTI-PATTERNS
-- **NEVER** call service methods directly from UI (use entities)
-- **NEVER** skip error handling for mutations
-- **NEVER** bypass entities for CRUD operations
+- Keep query and mutation primitives for database documents here.
+- Ensure query keys and input contracts account for all result-shaping parameters.
+- Keep mutations as atomic and predictable as the data model allows.
+- Normalize service-layer errors here instead of pushing low-level details upward.
+
+## Anti-patterns
+
+- Do not add UI presentation or screen orchestration here.
+- Do not change document structure without coordinated schema, migration, and type updates.
+- Do not add hidden read-time side effects.
+- Do not break consistency between data, property, and view operations.
+
+## Constraints
+
+- This directory defines low-level contracts used by many entities and features.
+- Sorting and filtering changes must be checked for persistence and cache/subscription correctness.
+- External imports should go through `index.ts`.
+- Minimum verification: `pnpm type-check` and focused tests or smoke checks for touched database document operations.

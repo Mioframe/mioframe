@@ -1,41 +1,27 @@
-# src/shared/lib/subscriptions KNOWLEDGE BASE
+# src/shared/lib/subscriptions
 
-## OVERVIEW
-Subscription-based reactive data system. Provides client wrappers for service worker subscriptions, enabling real-time data updates via Web Workers.
+Inherits the rules from `src/shared/lib/AGENTS.md`. Applies to `src/shared/lib/subscriptions` and its descendants until a deeper `AGENTS.md` overrides it.
 
-## STRUCTURE
-```
-src/shared/lib/subscriptions/
-├── index.ts               # Main exports
-├── subscribeClient.ts     # Client implementations
-├── subscribeService.ts   # Service side
-├── types.ts             # WatchHandle, SubscribeClient types
-└── types.ts             # Additional type definitions
-```
+## Contains
 
-## WHERE TO LOOK
-| Task | Location | Notes |
-|------|----------|-------|
-| Query subscriptions | `subscribeClient.ts` | useSubscribeByQueryClient, useSubscribeByKeyClient |
-| Service definitions | `subscribeService.ts` | Service worker subscription setup |
-| Usage in entities | `@entity/*` | Used for Google session, reactive state |
+- `subscribeClient.ts`: client-side subscription helpers.
+- `subscribeService.ts`: service-side subscription contracts.
+- `types.ts` and `index.ts`: public types and entry points.
 
-## CONVENTIONS
-- Subscribe by query (most common):
-  ```typescript
-  const getToken = useSubscribeByQueryClient(subscribeGetToken);
-  const token = getToken(); // Returns value reactively
-  ```
-- Subscribe by key:
-  ```typescript
-  const reactiveGet = useSubscribeByKeyClient(subscribeValueService);
-  const value = reactiveGet(key);
-  ```
-- Uses JSON serialization for query keys
-- Wraps RxJS with Vue reactivity
-- Provides default values support
+## Patterns
 
-## ANTI-PATTERNS
-- **NEVER** skip query serialization (use jsonStringify/jsonParse)
-- **NEVER** call subscription getters outside reactive context
-- **NEVER** forget to unsubscribe (handled automatically)
+- Make subscriptions resilient to re-creation, disposal, and deduplication.
+- Treat query-key serialization as a stable public contract.
+- Hide transport and service-worker details behind the public API.
+
+## Anti-patterns
+
+- Do not rely on implicit subscription lifecycle behavior.
+- Do not change key semantics without reviewing affected callers.
+- Do not lose initial values or post-mutation updates because of lifecycle drift.
+
+## Constraints
+
+- Changes here must be checked for subscribe/unsubscribe, dedupe, and reconnect behavior.
+- External imports should go through `index.ts`.
+- Minimum verification: `pnpm type-check` and focused tests or smoke checks for subscription lifecycle behavior.

@@ -1,65 +1,32 @@
 # src/widgets/DocumentView/Database
 
-Widget composition layer for database document views — table rendering, property sheets, and toolbar actions.
+Inherits the rules from `src/widgets/DocumentView/AGENTS.md`. Applies to `src/widgets/DocumentView/Database` and its descendants until a deeper `AGENTS.md` overrides it.
 
-## WHERE TO LOOK
+## Contains
 
-| Task | Location | Notes |
-|------|----------|-------|
-| Table rendering | `DatabaseViewWidget.vue` | Main table component |
-| Properties sheet | `DatabasePropertiesSheet.vue` | Column configuration |
-| Toolbar | `DatabaseToolbar.vue` | Actions bar |
-| View layout | `DatabaseViewLayout.vue` | Table slots, scrolling |
-| View presets | `DatabaseViewsSheet.vue` | View list, selection |
-| Sorting | `DatabaseSortSheet.vue` | Sort configuration |
-| Filtering | `DatabaseFiltersSheet.vue` | Filter form |
+- `DatabaseViewWidget.vue`: the main database document view container.
+- `DatabaseToolbar.vue`: view-level toolbar actions.
+- `DatabaseViewLayout.vue`: table layout and slot composition.
+- `DatabasePropertiesSheet.vue`, `DatabaseViewsSheet.vue`, `DatabaseSortSheet.vue`, `DatabaseFiltersSheet.vue`: supporting sheets and panels.
+- `ValueField.vue`, `ValueInline.vue`, `EditableInlineValue.vue`: value rendering and inline editing composition.
+- `PropertyCreateDialogWidget.vue`: create-property flow wiring.
 
-## CONVENTIONS
+## Patterns
 
-- Binds domain from `entities/database*` to UI from `shared/ui`
-- Uses `useQuery` for reactive data subscriptions
-- Passes entity IDs, not full objects, to child components
-- Slot-based composition for value/action rendering
-- Delegates mutations to `features/` via dialogs
+- Treat this directory as composition for database document UI, not as a domain layer.
+- Pass IDs, refs, and narrow props downward instead of large mutable domain objects.
+- Inline editing should call feature/entity APIs instead of mutating document state directly.
+- Slot-based rendering is appropriate when it reduces coupling between value types and layout.
 
-## ANTI-PATTERNS
+## Anti-patterns
 
-- **NEVER** perform mutations here (delegate to `features/`)
-- **NEVER** import business logic directly from `shared/lib`
-- **NEVER** bypass FSD (widgets → features → entities)
-- **NEVER** mutate state directly (use Vue reactivity)
+- Do not move sorting, filtering, schema validation, or CRUD rules into this widget layer.
+- Do not depend on `shared/service` directly when entity or feature APIs already cover the flow.
+- Do not place generic reusable UI here; that belongs in `shared/ui`.
+- Do not keep standalone dialogs here if they are really self-contained features.
 
-## COMPONENTS
+## Constraints
 
-### DatabaseViewWidget.vue
-- Main document view container
-- Manages view selection, property list, item actions
-- Emits `update:property` for value changes
-
-### DatabaseToolbar.vue
-- Floating toolbar with view/sort/filter/add buttons
-- Manages sheet visibility state
-- Passes `selectedViewId` via defineModel
-
-### DatabasePropertiesSheet.vue
-- Property list with context actions
-- Opens edit/remove dialogs via features
-- Uses `DatabasePropertyList` from entities
-
-### DatabaseViewLayout.vue
-- Slots: value, action, actionHead, after
-- Renders `DatabaseDataTable` with property blocks
-- Scroll detection for action elevation
-
-### DatabaseViewsSheet.vue
-- View presets list with checkboxes
-- Context actions: rename, remove
-- Opens create/rename dialogs
-
-### DatabaseSortSheet.vue
-- Minimal wrapper for `DatabaseItemSortingListSection`
-- Passes view context
-
-### DatabaseFiltersSheet.vue
-- Wrapper for `DatabaseFilterForm`
-- Displays filtered values via slots
+- Changes in `ValueField.vue` and inline edit paths affect multiple property/value types.
+- Composition changes here must be checked against create, edit, filter, and sort flows in database document view.
+- Minimum verification: `pnpm type-check` and a manual smoke check of the affected database document flow.

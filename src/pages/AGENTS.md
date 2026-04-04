@@ -1,70 +1,29 @@
-# src/pages - Page Layer
+# src/pages
 
-**Scope:** Page components and routing setup. Custom stack navigation with multi-pane layout. Each page acts as pane in stack. 19 files defining the app's navigation structure.
+Inherits the rules from the root `AGENTS.md`. Applies to `src/pages` and its descendants until a deeper `AGENTS.md` overrides it.
 
-## STRUCTURE
+## Contains
 
-```
-src/pages/
-├── routes.ts                    # Main route configuration
-├── SplitView/                   # Stack navigation implementation
-│   ├── SplitView.vue            # Multi-pane layout component
-│   ├── definePane.ts            # Pane definition helper
-│   └── defineStackNavigation.ts # Navigation stack manager
-├── HomePane/                    # Home screen
-├── RepoExplorer/                # Repository/file browser
-├── DocumentViewPane/            # Document view (database, json)
-├── Settings/                    # App settings
-└── Account/                     # User account management
-```
+- `routes.ts`: route registration.
+- `SplitView/`: pane model and navigation primitives.
+- `HomePane/`, `DocumentViewPane/`, `RepoExplorer/`, `Settings/`, `Account/`: screen modules.
 
-## WHERE TO LOOK
-| Task | Location | Notes |
-|------|----------|-------|
-| Route setup | `routes.ts` | Stack navigation configuration |
-| Pane definition | `SplitView/definePane.ts` | How pages become panes |
-| Custom navigation | `SplitView/defineStackNavigation.ts` | Stack-based routing logic |
-| Document view | `DocumentViewPane/` | Database document rendering |
-| File browser | `RepoExplorer/` | Repository file tree |
-| Settings | `Settings/` | App configuration UI |
-| Account | `Account/` | User account management |
+## Patterns
 
-## CONVENTIONS
-- Define pages as panes via `definePane()`.
-- Export pane config from `index.ts` in each page folder.
-- Use `model.ts` for Zod query validation.
-- Pass props through URL query as serialized JSON.
-- Use hash-based navigation.
-- **Zod Models**: Each page defines query schema in `model.ts`.
+- A page composes screens from `widgets`, `features`, `entities`, and `shared/ui`.
+- Keep route and pane parameters serializable and stable.
+- Screen-level orchestration belongs here; domain rules do not.
+- If screen composition is reused across pages, move it into `widgets`.
 
-## ANTI-PATTERNS
-- **NEVER** use standard Vue Router routes directly.
-- **NEVER** bypass pane system for navigation.
-- **NEVER** pass complex objects in route params. Use query serialization instead.
-- **NEVER** use `any` type - use proper generics or `unknown`.
+## Anti-patterns
 
-## NAVIGATION PATTERN
-Pages are registered as panes:
+- Do not bypass entity or service abstractions with low-level storage or API access from pages.
+- Do not duplicate widget-scale compositions across multiple pages.
+- Do not keep long-lived global state here.
+- Do not replace the pane/navigation model casually.
 
-```typescript
-// SplitView/definePane.ts
-export function definePane(config: PaneConfig) {
-  // Registers page as stack pane
-}
+## Constraints
 
-// Usage in page folder
-export default definePane({
-  title: 'Document View',
-  component: () => import('./DocumentViewPane/DocumentViewPane.vue'),
-  model: () => import('./model.ts'),
-})
-```
-
-## ROUTING FLOW
-1. `routes.ts` defines stack configuration
-2. `SplitView.vue` renders multi-pane layout
-3. `defineStackNavigation.ts` manages navigation state
-4. Pages registered as panes via `definePane()`
-
-## DEPRECATED
-- Legacy routing patterns - use pane system exclusively
+- Changes in `SplitView` affect every pane.
+- Route and query contract changes must be checked for navigation, refresh, and state restoration.
+- Minimum verification: `pnpm type-check` and a manual navigation/state-restoration smoke check for the affected page.

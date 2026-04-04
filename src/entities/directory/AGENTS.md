@@ -1,33 +1,27 @@
-# src/entities/directory KNOWLEDGE BASE
+# src/entities/directory
 
-## OVERVIEW
-File system directory handling. Manages directory content listing and navigation within the repository.
+Inherits the rules from `src/entities/AGENTS.md`. Applies to `src/entities/directory` and its descendants until a deeper `AGENTS.md` overrides it.
 
-## STRUCTURE
-```
-src/entities/directory/
-├── index.ts                  # Exports
-├── useDirectory.ts          # Directory operations
-├── DirectoryContentList.vue # Content list renderer
-└── DirectoryContentEntry.vue # Individual entry renderer
-```
+## Contains
 
-## WHERE TO LOOK
-| Task | Location | Notes |
-|------|----------|-------|
-| Content listing | `useDirectory.ts` | Directory contents |
-| FS entries | `@entity/fsEntry` | File/folder representation |
-| Directory service | `@shared/service/directories` | Service layer |
+- `useDirectory.ts`: entity API for directory contents.
+- `DirectoryContentList.vue` and `DirectoryContentEntry.vue`: directory listing UI fragments.
+- `index.ts`: public entry point.
 
-## CONVENTIONS
-- Directory composable:
-  ```typescript
-  const { content, errorMessage, isLoading } = useDirectory(path);
-  ```
-- Content includes files and subdirectories
-- Uses FSEntry types for content items
+## Patterns
 
-## ANTI-PATTERNS
-- **NEVER** assume directory contents are static (reactive)
-- **NEVER** skip error handling
-- **NEVER** mutate content directly
+- Treat directory contents as reactive filesystem state rather than a static snapshot.
+- Keep file and directory entry differences explicit in typed contracts.
+- Keep UI fragments neutral with respect to destructive feature actions.
+
+## Anti-patterns
+
+- Do not mix listing logic with rename, remove, or create flows.
+- Do not assume filesystem state is synchronous or stable.
+- Do not blur entity data concerns with presentation-only grouping rules.
+
+## Constraints
+
+- Changes here should be checked in Repo Explorer and other directory navigation flows.
+- External imports should go through `index.ts`.
+- Minimum verification: `pnpm type-check` and a manual smoke check of directory listing/navigation behavior.

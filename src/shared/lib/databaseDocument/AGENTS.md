@@ -1,51 +1,28 @@
-# src/shared/lib/databaseDocument KNOWLEDGE BASE
+# src/shared/lib/databaseDocument
 
-## OVERVIEW
-Database document schema definitions, migrations, and type definitions. Core library for database document structure.
+Inherits the rules from `src/shared/lib/AGENTS.md`. Applies to `src/shared/lib/databaseDocument` and its descendants until a deeper `AGENTS.md` overrides it.
 
-## STRUCTURE
-```
-src/shared/lib/databaseDocument/
-├── index.ts              # Main exports
-├── types.ts             # DatabaseDocument, MutationFn types
-├── databaseDocument.ts  # DATABASE_DOCUMENT_TYPE constant
-├── migrations/          # Version migrations
-│   ├── index.ts
-│   ├── defineMigrations.ts
-│   ├── defineVersion.ts
-│   └── versions/       # Version-specific schemas
-│       └── v1/         # Current version
-│           ├── property/  # Property schemas
-│           ├── item/      # Item schemas
-│           └── view/     # View schemas
-└── migrations/          # Migration system
-```
+## Contains
 
-## WHERE TO LOOK
-| Task | Location | Notes |
-|------|----------|-------|
-| Document types | `types.ts` | DatabaseDocument, DatabaseDocumentWithContent |
-| Migrations | `migrations/` | Version upgrade logic |
-| Property types | `migrations/versions/v1/property/` | Property Zod schemas |
-| View layouts | `@shared/lib/databaseDocument` | DB_VIEW_LAYOUT enum |
-| Filter operators | `@shared/lib/databaseDocument` | FILTER_OPERATOR enums |
+- `types.ts`: canonical database document types.
+- `databaseDocument.ts` and related constants: base document contract.
+- nested schema and migration modules for properties, items, views, and related parts of the document.
+- `index.ts`: public entry point.
 
-## CONVENTIONS
-- Document type constant:
-  ```typescript
-  export const DATABASE_DOCUMENT_TYPE = 'database';
-  ```
-- Zod schema composition:
-  ```typescript
-  export const zodDatabaseDocumentWithContent = extend(
-    zodDatabaseTypeDocument,
-    partial(zodDatabaseExtensionBodyDocument).shape
-  );
-  ```
-- Migration system with version definitions
-- Property types: string, number, boolean, date, relation
+## Patterns
 
-## ANTI-PATTERNS
-- **NEVER** access document without migrations
-- **NEVER** skip migration for schema changes
-- **NEVER** use raw objects (use Zod schemas)
+- Treat this directory as the canonical source of schema, types, and constants for database documents.
+- Update types, validation, and migrations together whenever document shape changes.
+- Store durable data in the document schema, not temporary UI state.
+
+## Anti-patterns
+
+- Do not add fields that only exist for one screen or one rendering shortcut.
+- Do not duplicate database document constants in entities or features.
+- Do not change enum-like values without checking serialization and backward compatibility.
+
+## Constraints
+
+- Changes here affect services, entities, features, import/export behavior, and old-document loading.
+- External imports should go through `index.ts`.
+- Minimum verification: `pnpm type-check` and checks for types, validation, and migrations in the touched schema path.
