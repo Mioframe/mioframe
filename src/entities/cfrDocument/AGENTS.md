@@ -1,38 +1,28 @@
-# src/entities/cfrDocument KNOWLEDGE BASE
+# src/entities/cfrDocument
 
-## OVERVIEW
-CRDT (Conflict-free Replicated Data Type) document handling. CFR documents are the base document type supporting all data in the application. Uses Automerge for CRDT implementation.
+Inherits the rules from `src/entities/AGENTS.md`. Applies to `src/entities/cfrDocument` and its descendants until a deeper `AGENTS.md` overrides it.
 
-## STRUCTURE
-```
-src/entities/cfrDocument/
-├── index.ts                 # Public exports
-├── useDocument.ts           # Document fetch/use composable
-├── DocumentMDListItem.vue   # List item renderer
-└── DatabaseDocumentSelectOption.vue  # Select option for DB docs
-```
+## Contains
 
-## WHERE TO LOOK
-| Task | Location | Notes |
-|------|----------|-------|
-| Document fetching | `useDocument.ts` | Returns state, error, put/patch methods |
-| Document types | `@shared/lib/databaseDocument` | Database document schema |
-| CRDT operations | `@shared/lib/automerge` | Automerge integration |
+- `useDocument.ts`: entity-level access to document state.
+- `DocumentMDListItem.vue`: document list item UI.
+- `DatabaseDocumentSelectOption.vue`: document selection UI.
+- `index.ts`: public entry point.
 
-## CONVENTIONS
-- Document composable pattern:
-  ```typescript
-  const { state: documentDescription } = useDocument(
-    documentDirectory,  // Ref<string>
-    documentId,         // Ref<AMDocumentId | undefined>
-  );
-  // Returns: { state, errorMessage, isLoading, put, patch }
-  ```
-- Documents have types: `DATABASE_DOCUMENT_TYPE = 'database'`, `JsonObject`
-- Use `DomainError` from `@shared/lib/error` for document errors
-- State is CRDT-aware; mutations go through `put`/`patch` methods
+## Patterns
 
-## ANTI-PATTERNS
-- **NEVER** mutate document state directly (breaks CRDT)
-- **NEVER** import document handles without using the composable
-- **NEVER** skip error handling when fetching documents
+- Read and write document state through the composable contract.
+- Keep document-related UI light and free of feature-flow orchestration.
+- Treat document handles and subscriptions as lifecycle-managed resources.
+
+## Anti-patterns
+
+- Do not mutate document structure directly.
+- Do not mix page/widget orchestration into this entity access layer.
+- Do not move schema ownership here when it belongs in `shared/lib/databaseDocument`.
+
+## Constraints
+
+- Changes to the composable API affect document selection, listing, and edit flows above this layer.
+- External imports should go through `index.ts`.
+- Minimum verification: `pnpm type-check` and a manual smoke check of the affected document selection/listing flow.

@@ -1,49 +1,29 @@
-# src/features/databaseFilterEdit KNOWLEDGE BASE
+# src/features/databaseFilterEdit
 
-## OVERVIEW
-Feature for creating and editing database filters. Provides UI for building filter query trees with logical operators (AND/OR) and unary operators (EQUALS, CONTAINS, etc.).
+Inherits the rules from `src/features/AGENTS.md`. Applies to `src/features/databaseFilterEdit` and its descendants until a deeper `AGENTS.md` overrides it.
 
-## STRUCTURE
-```
-src/features/databaseFilterEdit/
-├── index.ts                          # Exports
-├── DatabaseQueryFilterForm.vue       # Main filter form
-├── DatabaseFilterAddButton.vue       # Add filter button
-├── DatabaseUnaryFilterFormDialog.vue # Single value filter dialog
-├── UnaryOperatorFilterMenuItemList.vue
-├── UnaryOperatorFilterMenuItem.vue
-├── PropertyFilterMenuItem.vue
-├── LogicalOperatorFilterMenuItem.vue
-├── LogicalOperatorFilterMenuItemList.vue
-└── types.ts                         # FilterPath, zodFilterPath
-```
+## Contains
 
-## WHERE TO LOOK
-| Task | Location | Notes |
-|------|----------|-------|
-| Filter UI | `DatabaseQueryFilterForm.vue` | Main component |
-| Filter mutations | `@entity/databaseFilter` | useDatabaseViewFilter |
-| Property access | `@entity/databaseProperty` | Property selection |
-| Value editing | `@widget/DocumentView/Database/ValueField.vue` | Value input |
+- `DatabaseQueryFilterForm.vue`: the main filter-tree editing form.
+- `DatabaseFilterAddButton.vue`: add-filter entry point.
+- `DatabaseUnaryFilterFormDialog.vue`: unary filter value editing flow.
+- property/operator menu components.
+- `types.ts`: path and helper contracts for filter editing.
 
-## CONVENTIONS
-- Uses typed slots for nested rendering:
-  ```typescript
-  defineSlots<{
-    value: (p: { value: unknown; propertyId: DatabasePropertyId }) => unknown;
-  }>();
-  ```
-- Filter path tracks nested groups:
-  ```typescript
-  type FilterPath = (DatabasePropertyId | LOGICAL_FILTER_OPERATOR)[];
-  ```
-- Uses zodIs for type narrowing:
-  ```typescript
-  if (zodIs(property, zodDatabasePropertyId)) {...}
-  ```
-- Uses es-toolkit get/set for nested path manipulation
+## Patterns
 
-## ANTI-PATTERNS
-- **NEVER** build filter paths without using FilterPath type
-- **NEVER** skip Zod validation for filter values
-- **NEVER** mutate filterQuery directly
+- Model the filter tree as typed data rather than UI-only state.
+- Connect property/operator/value editing through explicit contracts between entities and the feature.
+- Handle empty groups, node deletion, and type changes explicitly.
+
+## Anti-patterns
+
+- Do not couple this feature to a widget-specific implementation detail.
+- Do not mutate the filter tree directly outside patch/update APIs.
+- Do not let operator type and value editor drift apart.
+
+## Constraints
+
+- Operator and filter-path changes must stay compatible with persisted document schema and database view flows.
+- External imports should go through `index.ts`.
+- Minimum verification: `pnpm type-check` and a manual smoke check of the filter editing flow.

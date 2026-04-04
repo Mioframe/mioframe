@@ -1,41 +1,27 @@
-# src/features/databaseItemEdit KNOWLEDGE BASE
+# src/features/databaseItemEdit
 
-## OVERVIEW
-Feature for editing and adding database items (rows). Provides dialog-based editing with property-specific value fields.
+Inherits the rules from `src/features/AGENTS.md`. Applies to `src/features/databaseItemEdit` and its descendants until a deeper `AGENTS.md` overrides it.
 
-## STRUCTURE
-```
-src/features/databaseItemEdit/
-├── index.ts              # Exports: DbItemEditDialog, DbItemAddDialog
-├── DbItemEditDialog.vue  # Edit existing item dialog
-├── DbItemAddDialog.vue   # Add new item dialog
-└── types.ts             # Additional types
-```
+## Contains
 
-## WHERE TO LOOK
-| Task | Location | Notes |
-|------|----------|-------|
-| Item operations | `@entity/databaseData/useDatabaseData` | postItem, removeItem |
-| Value fields | `@widget/DocumentView/Database/ValueField.vue` | Property-specific editors |
-| Item schema | `@shared/lib/databaseDocument` | DatabaseItem, DatabaseItemId |
+- `DbItemEditDialog.vue`: edit flow for an existing item.
+- `DbItemAddDialog.vue`: add flow built on the same editing contract.
+- `index.ts`: public feature entry point.
 
-## CONVENTIONS
-- Slot forwarding pattern for value fields:
-  ```typescript
-  defineSlots<{
-    valueField(p: {
-      propertyId: DatabasePropertyId;
-      value: unknown;
-      update: (value: unknown) => void;
-      index: number;
-    }): unknown;
-  }>();
-  ```
-- Uses defineModel: `defineModel<boolean>('show', { required: true })`
-- DbItemAddDialog wraps DbItemEditDialog with different headline/events
-- Emits created/updated/cancel events
+## Patterns
 
-## ANTI-PATTERNS
-- **NEVER** access item data without using entity composables
-- **NEVER** skip property validation in value fields
-- **NEVER** bypass slot pattern for value editing
+- Keep add and edit on top of the same editing contract wherever possible.
+- Keep value editing property-aware and type-aware.
+- Persist through entity/service APIs rather than direct item mutation.
+
+## Anti-patterns
+
+- Do not duplicate the form between add and edit without a strong reason.
+- Do not lose the mapping between property type and concrete value editor.
+- Do not leave dialog state dirty after close or reopen.
+
+## Constraints
+
+- Changes here affect add/edit flows across multiple supported property types.
+- External imports should go through `index.ts`.
+- Minimum verification: `pnpm type-check` and a manual smoke check of add/edit item flows.

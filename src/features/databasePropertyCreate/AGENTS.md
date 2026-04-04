@@ -1,41 +1,26 @@
-# src/features/databasePropertyCreate KNOWLEDGE BASE
+# src/features/databasePropertyCreate
 
-## OVERVIEW
-Feature for creating new database properties. Handles property type selection, name input, and default value configuration.
+Inherits the rules from `src/features/AGENTS.md`. Applies to `src/features/databasePropertyCreate` and its descendants until a deeper `AGENTS.md` overrides it.
 
-## STRUCTURE
-```
-src/features/databasePropertyCreate/
-├── index.ts                                    # Exports: DatabasePropertyCreationDialog
-├── DatabasePropertyCreationDialog.vue          # Main creation dialog
-└── DatabasePropertyCreationDialogPlayground.vue  # Development playground
-```
+## Contains
 
-## WHERE TO LOOK
-| Task | Location | Notes |
-|------|----------|-------|
-| Property types | `@entity/databaseString`, `databaseNumber`, etc. | Type constants |
-| Property creation | `@entity/databaseProperty/useDatabaseProperties` | post function |
-| Property schema | `@shared/lib/databaseDocument` | Zod validation |
+- `DatabasePropertyCreationDialog.vue`: the main property creation flow.
+- `index.ts`: public feature entry point.
 
-## CONVENTIONS
-- Dialog component with defineModel:
-  ```typescript
-  const showModel = defineModel<boolean>('show', { required: true });
-  const props = defineProps<{ path: string; documentId: AMDocumentId }>();
-  const emit = defineEmits<{ created: [id: DatabasePropertyId]; cancel: [] }>();
-  ```
-- Uses Zod validation with zodIs:
-  ```typescript
-  const assembledProperty = computed(() => 
-    zodIs(partialPropertyState.value, zodDatabaseUnknownProperty)
-      ? partialPropertyState.value : undefined
-  );
-  ```
-- Property types: PROPERTY_TYPE_STRING, NUMBER, BOOLEAN, DATE, RELATION
-- Uses useSnackbar for user feedback
+## Patterns
 
-## ANTI-PATTERNS
-- **NEVER** skip Zod validation before creating property
-- **NEVER** use arbitrary property types (use constants)
-- **NEVER** skip error handling (use addSnackbar)
+- Build property drafts through a valid intermediate form state.
+- Use canonical property types and schema contracts instead of local duplicates.
+- Close and reset the dialog predictably after successful creation.
+
+## Anti-patterns
+
+- Do not create properties from partially valid state.
+- Do not hardcode property kinds outside shared constants and schema helpers.
+- Do not scatter post-create side effects across multiple components.
+
+## Constraints
+
+- Changes here should be checked against property edit, value rendering, filter, and sorting flows.
+- External imports should go through `index.ts`.
+- Minimum verification: `pnpm type-check` and a manual smoke check of the property creation flow.

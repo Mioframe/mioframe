@@ -1,53 +1,29 @@
-# src/shared/lib/virtualFileSystem - OPFS Abstraction
+# src/shared/lib/virtualFileSystem
 
-**Scope:** OPFS (Origin Private File System) abstraction layer with event system. Core filesystem API for local-first storage. 14 files.
+Inherits the rules from `src/shared/lib/AGENTS.md`. Applies to `src/shared/lib/virtualFileSystem` and its descendants until a deeper `AGENTS.md` overrides it.
 
-## CLASSES
+## Contains
 
-### VirtualFileSystem
-Main class for OPFS operations.
+- `VirtualFileSystem.ts`: the main filesystem abstraction contract.
+- `PathUtils.ts`: path manipulation helpers.
+- `EventEmitter.ts`: filesystem event delivery.
+- `LockManager.ts`: concurrency coordination.
+- `MemoryFileSystem.ts` and tests: in-memory and verification utilities.
 
-**Methods**:
-- `openDirectory()`, `createDirectory()`
-- `readFile()`, `writeFile()`, `deleteFile()`
-- `directoryContent()`, `tree()`
-- Event system for file changes
+## Patterns
 
-### PathUtils
-Path manipulation utilities.
+- Keep one consistent filesystem contract across providers and implementations.
+- Keep path semantics, error semantics, and event semantics aligned across implementations.
+- Make concurrency and locking behavior explicit instead of relying on incidental ordering.
 
-### EventEmitter
-Event system for filesystem changes.
+## Anti-patterns
 
-### LockManager
-File locking to prevent concurrent modifications.
+- Do not bypass this layer with direct browser filesystem calls when a shared contract is required.
+- Do not change event order or lock semantics without tests.
+- Do not leave listener or handle cleanup as an undocumented caller responsibility.
 
-## ERROR TYPES
+## Constraints
 
-- `FileSystemError` - Generic FS errors
-- `VfsError` - Virtual FS specific errors
-
-## EXPORTS
-
-```typescript
-export { VirtualFileSystem } from './VirtualFileSystem';
-export { PathUtils } from './PathUtils';
-export { EventEmitter, VfsError, FileSystemError };
-```
-
-## WHERE TO LOOK
-
-| Task | Location | Notes |
-|------|----------|-------|
-| File Operations | `VirtualFileSystem.ts` | Read/write/delete |
-| Path Handling | `PathUtils.ts` | Path normalization |
-| Events | `EventEmitter.ts` | Change notifications |
-| Locking | `LockManager.ts` | Concurrent access |
-
-## ANTI-PATTERNS
-- **NEVER** bypass VirtualFileSystem for direct OPFS access
-- **NEVER** omit error handling in FS operations
-- **NEVER** skip event listeners cleanup
-
-## DEPRECATED
-- Direct OPFS calls - use VirtualFileSystem
+- Event, lock, and read/write semantics changes require updated tests and parallel-flow checks.
+- External imports should go through `index.ts`.
+- Minimum verification: `pnpm type-check` and focused tests for events, locking, and concurrent access.

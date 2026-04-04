@@ -1,48 +1,27 @@
-# src/features/databaseViewCreate KNOWLEDGE BASE
+# src/features/databaseViewCreate
 
-## OVERVIEW
-Feature for creating new database views. Handles view name input and layout type selection.
+Inherits the rules from `src/features/AGENTS.md`. Applies to `src/features/databaseViewCreate` and its descendants until a deeper `AGENTS.md` overrides it.
 
-## STRUCTURE
-```
-src/features/databaseViewCreate/
-├── index.ts                       # Exports: DatabaseViewCreateDialog, DatabaseViewAddForm
-├── DatabaseViewCreateDialog.vue   # Main creation dialog
-└── DatabaseViewAddForm.vue        # Form component (re-exported)
-```
+## Contains
 
-## WHERE TO LOOK
-| Task | Location | Notes |
-|------|----------|-------|
-| View creation | `@entity/databaseView/useDatabaseViews` | create function |
-| View layouts | `@shared/lib/databaseDocument` | DB_VIEW_LAYOUT enum |
-| Select options | `@shared/ui/Select/defineSelectOptions` | Option definition helpers |
+- `DatabaseViewCreateDialog.vue`: view creation dialog flow.
+- `DatabaseViewAddForm.vue`: form for name and layout selection.
+- `index.ts`: public feature entry point.
 
-## CONVENTIONS
-- Reactive form state with initialState:
-  ```typescript
-  const initialState = (): { layout: DB_VIEW_LAYOUT; name: string | undefined } => ({
-    layout: DB_VIEW_LAYOUT.TABLE,
-    name: undefined,
-  });
-  const formState = reactive(initialState());
-  ```
-- Loading state pattern (increment/decrement):
-  ```typescript
-  const loading = ref(0);
-  loading.value += 1;
-  try { await create({...}); }
-  finally { loading.value -= 1; }
-  ```
-- Uses defineSelectOptions for MDSelect:
-  ```typescript
-  const layoutOptions = defineSelectOptions(
-    objectEntries(DB_VIEW_LAYOUT).map(...)
-  );
-  ```
-- defineModel for dialog visibility: `defineModel<boolean>('show', { required: true })`
+## Patterns
 
-## ANTI-PATTERNS
-- **NEVER** create view without validating name exists
-- **NEVER** use layout types without DB_VIEW_LAYOUT constants
-- **NEVER** skip loading state for async operations
+- Use only supported layout constants from the document schema.
+- Keep defaults safe for a new view and stable across dialog reopen.
+- Ensure form state behaves consistently on submit, cancel, and reopen.
+
+## Anti-patterns
+
+- Do not create a view with a layout unsupported by downstream UI.
+- Do not hide defaults and validation rules in multiple places.
+- Do not mix create and edit behavior without a clear shared abstraction.
+
+## Constraints
+
+- Any view config expansion must be checked in selection, sorting, filtering, and persistence flows.
+- External imports should go through `index.ts`.
+- Minimum verification: `pnpm type-check` and a manual smoke check of the view creation flow.

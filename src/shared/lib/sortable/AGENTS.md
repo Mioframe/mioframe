@@ -1,38 +1,28 @@
-# src/shared/lib/sortable KNOWLEDGE BASE
+# src/shared/lib/sortable
 
-## OVERVIEW
-Drag-and-drop sorting utilities for lists. Provides composables for implementing sortable list interfaces.
+Inherits the rules from `src/shared/lib/AGENTS.md`. Applies to `src/shared/lib/sortable` and its descendants until a deeper `AGENTS.md` overrides it.
 
-## STRUCTURE
-```
-src/shared/lib/sortable/
-├── index.ts              # Main exports
-├── useSortable.ts        # Main sortable composable
-├── useDragStartListener.ts # Drag event handling
-├── dnd-transition.css   # Drag-and-drop CSS transitions
-└── UseSortablePlayground.vue  # Development playground
-```
+## Contains
 
-## WHERE TO LOOK
-| Task | Location | Notes |
-|------|----------|-------|
-| Sortable list | `useSortable.ts` | Main composable |
-| Drag events | `useDragStartListener.ts` | Event handlers |
-| Usage | `@features/databaseItemSorting` | View sorting UI |
+- `useSortable.ts`: main sortable composable.
+- `useDragStartListener.ts`: pointer and drag lifecycle helpers.
+- `dnd-transition.css`: transition styles.
+- `UseSortablePlayground.vue`: behavior playground.
 
-## CONVENTIONS
-- Basic sortable usage:
-  ```typescript
-  const { draggableItem, draggableIndex } = useSortable(
-    containerRef,  // MaybeElementRef
-    listReactive   // MaybeRefOrGetter<T[]>
-  );
-  ```
-- Uses throttle/debounce from es-toolkit for performance
-- Handles drag start, over, enter, end events
-- Updates reactive list in place
+## Patterns
 
-## ANTI-PATTERNS
-- **NEVER** use without throttling (performance)
-- **NEVER** mutate source array without using splice
-- **NEVER** skip container element validation
+- Keep the drag-and-drop algorithm independent from any business-specific persistence flow.
+- Treat pointer lifecycle as a full contract: start, over, drop, cancel, and cleanup.
+- Keep reorder behavior predictable on large lists and under frequent updates.
+
+## Anti-patterns
+
+- Do not depend on incidental DOM assumptions when refs and explicit container contracts are enough.
+- Do not mix persistence logic from one feature into the generic sortable algorithm.
+- Do not change reorder behavior without checking high-frequency hover/update scenarios.
+
+## Constraints
+
+- Changes here should be checked on long lists and under frequent pointer events.
+- External imports should go through `index.ts`.
+- Minimum verification: `pnpm type-check` and a manual or test smoke check of the touched drag-and-drop flow.

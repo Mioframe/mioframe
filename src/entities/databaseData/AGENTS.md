@@ -1,37 +1,27 @@
-# src/entities/databaseData KNOWLEDGE BASE
+# src/entities/databaseData
 
-## OVERVIEW
-Database data items (rows) management. Handles CRUD operations for individual database records. Data is filtered by view and can be queried with sift queries.
+Inherits the rules from `src/entities/AGENTS.md`. Applies to `src/entities/databaseData` and its descendants until a deeper `AGENTS.md` overrides it.
 
-## STRUCTURE
-```
-src/entities/databaseData/
-├── index.ts             # Exports: DatabaseDataTable, useDatabaseData
-├── useDatabaseData.ts   # Main composable for data operations
-├── DatabaseDataTable.vue # Table rendering component
-└── types.ts            # Item ID query types
-```
+## Contains
 
-## WHERE TO LOOK
-| Task | Location | Notes |
-|------|----------|-------|
-| Data fetching | `useDatabaseData.ts` | Returns itemIdList, errorMessage, isLoading |
-| Table rendering | `DatabaseDataTable.vue` | Virtual scrolling table |
-| Item CRUD | `@shared/service/databaseDocument/data` | Service layer operations |
-| Item types | `@shared/lib/databaseDocument` | DatabaseItem, DatabaseItemId |
+- `useDatabaseData.ts`: entity API for item queries and mutations.
+- `DatabaseDataTable.vue`: entity-level table renderer.
+- `types.ts` and `index.ts`: typed contracts and public API.
 
-## CONVENTIONS
-- Data composable accepts optional view and query filters:
-  ```typescript
-  const { itemIdList, errorMessage, isLoading, postItem, removeItem }
-    = useDatabaseData(path, documentId, viewId, idQuery);
-  ```
-- `postItem(item, itemId?)` - Create or update item
-- `removeItem(itemId)` - Delete item
-- Uses `filteredIdList` query for view-aware data
-- Sift library for query filtering
+## Patterns
 
-## ANTI-PATTERNS
-- **NEVER** fetch raw items without using the composable
-- **NEVER** bypass view filtering when displaying data
-- **NEVER** skip error handling for data operations
+- Respect view, filter, and sort context when it changes the visible item set.
+- Route CRUD through service/document contracts instead of local shortcuts.
+- Keep table rendering entity-oriented and free of feature-level mutation flows.
+
+## Anti-patterns
+
+- Do not fetch data outside the entity composable when the entity contract already exists.
+- Do not mix table rendering with dialog or mutation orchestration.
+- Do not let item-list state drift from active view state.
+
+## Constraints
+
+- Query contract changes must be checked against create, update, and remove behavior inside the active database view.
+- External imports should go through `index.ts`.
+- Minimum verification: `pnpm type-check` and a smoke check of create/update/remove item behavior in the touched view.

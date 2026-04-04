@@ -1,42 +1,27 @@
-# src/entities/databaseProperty KNOWLEDGE BASE
+# src/entities/databaseProperty
 
-## OVERVIEW
-Database property definitions and management. Properties define columns in database tables (name, type, default values). Properties have types: string, number, boolean, date, relation.
+Inherits the rules from `src/entities/AGENTS.md`. Applies to `src/entities/databaseProperty` and its descendants until a deeper `AGENTS.md` overrides it.
 
-## STRUCTURE
-```
-src/entities/databaseProperty/
-├── index.ts                      # Exports: DatabasePropertyList, useDatabaseProperties, useDatabaseProperty
-├── useDatabaseProperties.ts      # List of properties for a document
-├── useDatabaseProperty.ts        # Single property by ID
-├── DatabasePropertyList.vue       # Property list renderer
-├── DatabasePropertyListItem.vue  # Individual property item
-├── DatabasePropertyBlock.vue     # Header block for table columns
-├── DatabasePropertySpan.vue      # Inline property display
-├── DatabasePropertyMenuItem.vue   # Menu item for property actions
-└── DatabasePropertyEditDialog.vue # Property editing dialog
-```
+## Contains
 
-## WHERE TO LOOK
-| Task | Location | Notes |
-|------|----------|-------|
-| Property list | `useDatabaseProperties.ts` | Fetches all properties for doc |
-| Single property | `useDatabaseProperty.ts` | Fetches property by ID |
-| Property types | `@entity/databaseString`, `databaseNumber`, etc. | Type-specific definitions |
-| Property schema | `@shared/lib/databaseDocument` | Zod schemas for properties |
+- `useDatabaseProperties.ts` and `useDatabaseProperty.ts`: entity APIs for property data.
+- `DatabasePropertyList.vue`, `DatabasePropertyListItem.vue`, `DatabasePropertyBlock.vue`, `DatabasePropertySpan.vue`, `DatabasePropertyMenuItem.vue`: property-oriented UI fragments.
+- `index.ts`: public entry point.
 
-## CONVENTIONS
-- Standard entity composable pattern:
-  ```typescript
-  const { propertiesIdList, errorMessage, isLoading, patch, post, remove }
-    = useDatabaseProperties(path, documentId);
-  ```
-- Properties identified by `DatabasePropertyId` (string)
-- Property types defined as constants: `PROPERTY_TYPE_STRING`, etc.
-- Zod schemas for validation: `zodStringProperty`, `zodNumberProperty`, etc.
-- Create functions: `createStringProperty(name)`, `createNumberProperty(name)`, etc.
+## Patterns
 
-## ANTI-PATTERNS
-- **NEVER** access properties without using the composable (bypasses CRDT)
-- **NEVER** hardcode property types (use constants)
-- **NEVER** mutate property arrays directly
+- Use canonical property kinds and schema definitions.
+- Keep entity UI small and reusable across features and widgets.
+- Route property reads and writes through the composables in this directory.
+
+## Anti-patterns
+
+- Do not hardcode property kinds or property behavior in UI fragments.
+- Do not mix create/edit dialog orchestration into the entity layer.
+- Do not duplicate property metadata across multiple sources of truth.
+
+## Constraints
+
+- Property model changes must be checked through schema, entity API, create/edit, value rendering, filter, and sort flows.
+- External imports should go through `index.ts`.
+- Minimum verification: `pnpm type-check` and a smoke check of the affected property render/edit flow.

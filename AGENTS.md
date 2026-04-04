@@ -1,117 +1,94 @@
-# PROJECT KNOWLEDGE BASE
+# AGENTS.md
 
-**Generated:** 2026-03-17
-**Commit:** 8ce11f5
-**Branch:** feature/google-drive-caching
+The rules in this file apply to the whole repository. A deeper `AGENTS.md` overrides them only inside its own directory subtree.
 
-## OVERVIEW
+## Project Shape
 
-Local-first Personal Data Manager. Vue 3 + TypeScript + Vite. OPFS + Automerge (CRDT) for offline sync. FSD architecture. 681 TypeScript files across 170+ directories.
+This is a local-first personal data manager built around:
+- Vue 3 and TypeScript for UI;
+- OPFS and filesystem abstractions for local storage;
+- CRDT-style documents, schema validation, and migrations;
+- FSD-style layering: `app -> pages -> widgets -> features -> entities -> shared`.
 
-## STRUCTURE
+## Contains
 
-```
-.
-├── src/
-│   ├── app/           # Global styles, providers, router
-│   ├── pages/         # Custom stack navigation (SplitView)
-│   ├── widgets/       # Cross-layer compositions (DocumentView)
-│   ├── features/      # User actions (edit, CRUD, export)
-│   ├── entities/      # Domain models (database, property, view)
-│   └── shared/        # Foundation layer
-│       ├── lib/       # CRDT, OPFS, Google Drive adapters
-│       ├── service/   # DB orchestration, sync workers
-│       └── ui/        # Generic UI (Buttons, Dialogs, Tables)
-├── cypress/           # E2E tests
-├── .github/workflows/ # CI/CD
-├── vite.config.ts     # Build, PWA, Sentry, WASM
-├── package.json       # Scripts, deps, pnpm config
-└── main.ts            # App entry
-```
+- `src/app`: bootstrap, routing, global styles, app-level wiring.
+- `src/pages`: screen-level composition and navigation.
+- `src/widgets`: large UI compositions built from lower layers.
+- `src/features`: user actions, dialogs, forms, and mutation flows.
+- `src/entities`: domain-facing composables, small entity UI blocks, and typed access patterns.
+- `src/shared`: infrastructure, reusable UI, services, utilities, adapters, schemas.
 
-## WHERE TO LOOK
+## Patterns
 
-| Task | Location | Notes |
-|------|----------|-------|
-| UI Components | `src/shared/ui/` | MDButton, Dialog, Table, Layout |
-| CRDT / Automerge | `src/shared/lib/automerge/` | Sync logic, types |
-| OPFS / FS | `src/shared/lib/virtualFileSystem/` | Local storage API |
-| DB Services | `src/shared/service/databaseDocument/` | CRUD, migrations |
-| Domain models | `src/entities/` | database*, repository, property |
-| Routing | `src/pages/SplitView/` | Custom stack navigation |
-| Google Drive | `src/shared/lib/googleDrive/` | API client, caching |
-| Composables | `src/shared/lib/use*.ts` | Vue reactivity |
+- Keep changes as close as possible to the directory and layer that owns them.
+- Prefer an existing public module API through `index.ts` when one exists.
+- Update schema, migrations, service contracts, and callers together for persistent-data changes.
+- Treat subscriptions, listeners, workers, timers, caches, and file handles as lifecycle-managed resources.
+- Write stable directory guidance in `AGENTS.md`, not temporary project snapshots.
 
-## COMMANDS
+## Anti-patterns
 
-```bash
-pnpm dev              # Start dev server
-pnpm build            # Build for production
-pnpm type-check       # Run TS compiler checks
-pnpm lint             # Run ESLint
-pnpm lint:fix         # Auto-fix linting issues
-pnpm test             # Run Vitest
-pnpm cy:open          # E2E Cypress tests
-```
+- Do not pull dependencies upward against the intended layer direction.
+- Do not bypass service/entity/composable APIs with direct mutations.
+- Do not duplicate schema contracts, type aliases, or constants across layers.
+- Do not turn `pages` or `widgets` into hidden domain or service layers.
+- Do not use `AGENTS.md` as a bug audit, backlog, or changelog.
 
-## DEVELOPMENT PATTERNS
+## Constraints
 
-### 1. Audit Required
-- **ALWAYS** run Oracle audit before finalizing non-trivial implementation
-- **ALWAYS** fix critical issues before completing
-- Audit checks: logic bugs, edge cases, performance, memory leaks, race conditions
+- `shared` must not import upper layers.
+- `entities` may import only `shared`.
+- `features` build on `entities` and `shared`.
+- `widgets` may compose `features`, `entities`, and `shared`, but should not own domain rules.
+- At minimum run `pnpm type-check` for logic changes; add focused tests or smoke checks for infrastructure and schema changes.
 
-### 2. Less Code = Less Breakage
-- **USE** proven libraries (e.g., `lru-cache`, `ky` deduplication)
-- **PREFER** built-in solutions over custom
-- **IMPLEMENT** only what is necessary
+## AGENTS.md Best Practices
 
-### 3. Type Safety First
-- **NEVER** use `any` type
-- **USE** existing exported types (`GDriveFile` instead of `z.infer`)
-- **PREFER** separate typed stores over generic stores
+- Each `AGENTS.md` should describe only its own directory and nearby invariants.
+- A child `AGENTS.md` should refine its parent, not repeat it wholesale.
+- Add a new `AGENTS.md` only when a directory has its own stable rules, patterns, or constraints.
+- If a directory has no unique guidance, rely on the parent file instead of adding a thin duplicate.
 
-### 4. TDD Workflow
-1. **Plan** — document requirements
-2. **Write failing tests** — tests are contract
-3. **Implement** — document code
-4. **Audit** — verify with Oracle
-5. **Verify** — `pnpm type-check && pnpm eslint && pnpm vitest run`
-6. **Review** — trim documentation
+## AGENTS.md Structure
 
-### 5. Third-Party API Caching
-- **INVALIDATION**: Always invalidate on mutations
-- **KEY DESIGN**: Include all relevant parameters
-- **LRU**: Use `lru-cache` with `max` (items) and `maxSize` (bytes)
-- **TTL**: Appropriate expiration based on data freshness
+- Use a short title that matches the directory path.
+- State inheritance from the parent `AGENTS.md` near the top.
+- State the scope explicitly: the current directory and its descendants until a deeper `AGENTS.md` takes over.
+- Use this default section layout:
+- `## Contains`
+- `## Patterns`
+- `## Anti-patterns`
+- `## Constraints`
+- Add extra sections only when they materially improve decision-making.
 
-## NOTES
+## AGENTS.md Content Rules
 
-### Build Pipeline
-- Vite with 9 plugins (Vue, WASM, PWA, Sentry, SSL, TurboConsole)
-- Aggressive vendor chunking: Each dependency gets its own chunk
-- Terser 2-pass compression for production
-- Conditional Sentry: Only builds sourcemaps when SENTRY_AUTH_TOKEN present
+- `Contains` should describe stable file groups, entry points, and responsibilities, not a raw file dump.
+- `Patterns` should capture expected design and implementation approaches for that directory.
+- `Anti-patterns` should capture mistakes that are especially costly in that directory.
+- `Constraints` should capture dependency limits, blast radius, verification expectations, and compatibility requirements.
+- If a directory is imported from elsewhere, document its public API rule, such as importing through `index.ts` when present.
+- Prefer durable guidance over details that go stale after one commit.
 
-### Test Coverage
-- Vitest: 13 unit tests (happy-dom environment)
-- Cypress: 12 E2E tests (production preview URL)
-- No snapshot tests
-- No explicit coverage thresholds
-- Empty `src/setupVitest.ts` (opportunity for global mocks)
+## AGENTS.md Lifecycle
 
-### Third-Party API Caching
-- Google Drive cache: LRU with max entries and size limits
-- Invalidates on mutations
-- Keys include all relevant parameters
-- `src/shared/lib/cfrDocument/useLiveResource.ts` - deprecated composable
+- Update `AGENTS.md` in the same change that updates ownership boundaries, public APIs, dependency rules, or required verification.
+- Add new guidance when a directory gains a new stable submodule or a new recurring class of changes.
+- Remove or rewrite guidance that no longer helps someone make a change safely.
 
-### Missing
-- `.prettierrc` - no Prettier configuration
-- `.editorconfig` - no EditorConfig
-- Complete Cypress E2E tests (multiple TODOs in cypress/e2e/)
+## AGENTS.md Anti-patterns
 
-### Performance
-- Build vendor chunks per dependency (`vite.config.ts` line 184)
-- Service worker caching with PWA (3 cache strategies: CacheFirst, StaleWhileRevalidate, NetworkFirst)
-- Sentry integration in production for error tracking
+- Do not use absolute paths.
+- Do not include generated dates, commit hashes, branch names, file counts, or line numbers.
+- Do not repeat repository-wide rules in every child file.
+- Do not describe an ideal architecture if the codebase currently works differently; document the rules that make the current code safe to change.
+- Do not list every file unless the list itself is necessary for decisions.
+
+## AGENTS.md Writing Style
+
+- Use English consistently across the AGENTS tree.
+- Keep the tone short, directive, and decision-oriented.
+- Prefer invariants and boundaries over narration.
+- Keep lists easy to scan: one bullet, one idea.
+- If guidance applies only to one file or one edge case, consider keeping it next to the code instead.

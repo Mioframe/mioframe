@@ -1,70 +1,32 @@
-# src/shared/ui - Component Library
+# src/shared/ui
 
-**Scope:** Reusable UI components, layouts, and generic design system elements. 37 component directories, 163 files.
+Inherits the rules from `src/shared/AGENTS.md`. Applies to `src/shared/ui` and its descendants until a deeper `AGENTS.md` overrides it.
 
-## COMPONENTS (30+)
+## Contains
 
-- **Button/**: MDButton, MDFab, MDIconButton, MDSegmentedButtons, UIButton
-- **Dialog/**: MDDialog, Alert, DialogForm, useDialog
-- **TextField/**: MDTextField, MDFieldContainer
-- **Select/**: Select with options, defineSelectOptions
-- **Table/**: MDTable
-- **Menu/**: MenuButton, MenuDivider, MenuItem
-- **Layout/**: SplitLayout, Pane, ViewWithPanelLayout
-- **Lists/**: List, ListItem
-- **Chips/**: MDChip, MDChipGroup
-- **Navigation/**: NavigationRail, NavigationDrawer, NavigationPath
-- **Toolbar/**: AppBar, Toolbar, ToolbarGroup
-- **State/**: State, StateTransition
-- **Overlay/**: Overlay, SlidingPanel
-- **Progress/**: ProgressIndicator, CircularProgress
-- **Message/**: Message, MessageProvider
-- **Snackbars/**: Snackbar, useSnackbar
-- **Tooltips/**: Tooltip, TooltipTrigger
-- **Icons/**: Icon
-- **Divider/**: MDDivider
-- **EmptySymbol/**: EmptySymbol
-- **AriaHidden/**: AriaHidden
-- **Performance/**: PerformanceMonitor
-- **Views/**: FormLayout
-- **Query/**: Renderless query wrappers
+- base controls: `Button`, `Checkbox`, `TextField`, `Select`, `Menu`, `Dialog`.
+- layout and navigation primitives: `Layout`, `AppBar`, `Toolbar`, `Navigation`, `ViewWithPanelLayout`.
+- display components: `Lists`, `Chips`, `Table`, `Tooltips`, `EmptyState`, `ProgressIndicators`, `Snackbar`.
+- interaction and overlay helpers: `Overlay`, `Sheets`, `SlidingPanel`, `PopOver`, `State`.
+- other generic building blocks such as `Query`, `TreeMenu`, `NavigationPath`, and `performance`.
 
-## CONVENTIONS
+## Patterns
 
-- **Naming**: Material Design `MD*` prefix for components
-- **Composables**: `use*` prefix (useDialog, useSnackbar, useSelect)
-- **Styling**: Scoped CSS with custom units (rpx, step, pt, dp)
-- **Types**: Strict TypeScript, props/emits explicitly typed
-- **Accessibility**: ARIA attributes on all interactive elements
-- **Props**: Pass data via props, never bind to business models
-- **Emit**: Define emit types for all user-triggered events
+- Components should be driven by props, emits, slots, and composables.
+- Accessibility, keyboard behavior, and focus management are part of the component contract.
+- Shared UI should remain neutral enough for use from multiple domain scenarios.
+- Extend existing primitives through props or slots before adding another near-duplicate component.
 
-## ANTI-PATTERNS
+## Anti-patterns
 
-- **NEVER** bind components directly to business models/entities
-- **NEVER** import from `features` or `entities` - lowest UI layer only
-- **NEVER** use `any` type or `@ts-ignore`
-- **NEVER** leave empty catch blocks
-- **NEVER** bypass scoped styling (no global styles in components)
-- **AVOID** cross-layer circular dependencies
+- Do not import `entities`, `features`, `widgets`, or `pages` here.
+- Do not couple generic UI to document, property, or view models.
+- Do not place global styles here; use `src/app` for that.
+- Do not break widely used base component APIs without a clear reason and migration plan.
 
-## STYLING
+## Constraints
 
-- Custom CSS units via PostCSS: `rpx`, `step`, `pt`, `dp`
-- Scoped CSS with `<style scoped>`
-- CSS variables for theme tokens
-- No external CSS dependencies
-
-## TESTING
-
-- Unit tests with Vitest + happy-dom
-- E2E tests with Cypress for critical paths
-- Accessibility testing with axe-core
-
-## PATH ALIASES
-
-- `@shared/*` -> `./src/shared/*`
-- `@feature/*` -> `./src/features/*`
-- `@entity/*` -> `./src/entities/*`
-- `@widget/*` -> `./src/widgets/*`
-- `@page/*` -> `./src/pages/*`
+- Base control and layout changes have a wide UI blast radius.
+- Interactive component changes should be checked for mouse, keyboard, and focus behavior, not just appearance.
+- Use `index.ts` as the public entry point when present.
+- Minimum verification: `pnpm type-check` and a manual smoke check of the affected interaction behavior.

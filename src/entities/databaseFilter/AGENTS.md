@@ -1,36 +1,28 @@
-# src/entities/databaseFilter KNOWLEDGE BASE
+# src/entities/databaseFilter
 
-## OVERVIEW
-Database filtering logic and filter query tree management. Filters define which items are shown in a view based on property values.
+Inherits the rules from `src/entities/AGENTS.md`. Applies to `src/entities/databaseFilter` and its descendants until a deeper `AGENTS.md` overrides it.
 
-## STRUCTURE
-```
-src/entities/databaseFilter/
-├── index.ts                      # Exports
-├── useDatabaseViewFilter.ts      # Filter mutation composable
-├── DatabaseSimpleFilterValueChip.vue  # Chip showing filter value
-├── FilterQuery.vue               # Filter tree renderer
-└── types.ts                      # FilterPath, filter types
-```
+## Contains
 
-## WHERE TO LOOK
-| Task | Location | Notes |
-|------|----------|-------|
-| Filter mutations | `useDatabaseViewFilter.ts` | patch, remove filter operations |
-| Filter UI | `@features/databaseFilterEdit` | Filter creation/editing UI |
-| Filter types | `@shared/lib/databaseDocument` | UNARY_FILTER_OPERATOR, LOGICAL_FILTER_OPERATOR |
+- `useDatabaseViewFilter.ts`: entity API for filter mutations.
+- `FilterQuery.vue`: entity-level filter tree rendering.
+- `DatabaseSimpleFilterValueChip.vue`: compact filter value UI.
+- `types.ts` and `index.ts`: typed contracts and public API.
 
-## CONVENTIONS
-- Filter operations:
-  ```typescript
-  const { patch: patchFilter, filterQuery, remove: removeFilter }
-    = useDatabaseViewFilter(path, documentId, viewId);
-  ```
-- Filter tree uses logical operators: `AND`, `OR`
-- Unary operators: `EQUALS`, `NOT_EQUALS`, `CONTAINS`, `GREATER_THAN`, etc.
-- Filter path tracks nested group structure
+## Patterns
 
-## ANTI-PATTERNS
-- **NEVER** build filter queries without using the service layer
-- **NEVER** bypass Zod validation for filter values
-- **NEVER** mutate filterQuery directly (use patchFilter)
+- Treat filters as schema-compatible data structures.
+- Apply all filter-tree writes through patch/remove contracts.
+- Keep entity UI aligned with filter structure rather than feature-specific editing flow.
+
+## Anti-patterns
+
+- Do not couple filter model ownership to a specific editor dialog.
+- Do not mutate nested filter nodes directly.
+- Do not duplicate operator semantics across layers.
+
+## Constraints
+
+- Filter shape and operator changes must stay compatible with persisted documents and feature editing flows.
+- External imports should go through `index.ts`.
+- Minimum verification: `pnpm type-check` and a smoke check of filter rendering/editing for the touched case.
