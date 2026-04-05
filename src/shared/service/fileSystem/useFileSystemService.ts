@@ -5,7 +5,7 @@ import { VirtualFileSystem, PathUtils } from '@shared/lib/virtualFileSystem';
 import { MemoryFileSystem } from '@shared/lib/virtualFileSystem/MemoryFileSystem';
 import { OPFSName } from '../directories';
 import { createGlobalState } from '@vueuse/core';
-import { WebFileSystem } from '@shared/lib/vfsProviders/WebFileSystem';
+import { WebFileSystemProvider } from '@shared/lib/webFileSystemProvider';
 import { distinctUntilChanged, map, Observable, shareReplay } from 'rxjs';
 import { isEqual, sortBy } from 'es-toolkit';
 import { defineObservableQuery } from '@shared/lib/useObservableQuery';
@@ -106,7 +106,7 @@ const setupFileSystemService = () => {
     path: string,
     handle: FileSystemDirectoryHandle,
   ) => {
-    vfs.mount(path, new WebFileSystem(handle));
+    vfs.mount(path, new WebFileSystemProvider(handle));
   };
 
   vfs.mount('/', new MemoryFileSystem());
@@ -124,9 +124,7 @@ const setupFileSystemService = () => {
     }
   };
 
-  setTimeout(() => {
-    void mountOpfs();
-  }, 1e3); // FIXME: задержка монтирования для воспроизведения проблемы.
+  void mountOpfs();
 
   const move = (oldPath: string, newPath: string) => vfs.move(oldPath, newPath);
 

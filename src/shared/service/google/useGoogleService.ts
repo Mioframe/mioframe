@@ -1,7 +1,7 @@
 import { createGlobalState } from '@vueuse/core';
 import { useFileSystemService } from '../fileSystem';
 import { PathUtils } from '@shared/lib/virtualFileSystem';
-import { googleDriveFileSystemProvider } from '@shared/lib/vfsProviders/google';
+import { googleDriveFileSystemProvider } from '@shared/lib/googleDriveFileSystemProvider';
 import { useGoogleSessionStore } from './googleSessionStore';
 import {
   USER_INFO_GOOGLE_SCOPE,
