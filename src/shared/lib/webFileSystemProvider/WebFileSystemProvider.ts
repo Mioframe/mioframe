@@ -1,5 +1,6 @@
 import type {
   FileContent,
+  FSNodeCapabilities,
   FSNodeStat,
   IFileSystemProvider,
 } from '../virtualFileSystem';
@@ -14,6 +15,15 @@ import type { WriteOptions } from '../virtualFileSystem/IFileSystemProvider';
 export const WebFileSystemProvider = (
   rootHandle: FileSystemDirectoryHandle,
 ): IFileSystemProvider => {
+  const queryWritePermission = async (
+    handle: FileSystemFileHandle | FileSystemDirectoryHandle,
+  ) => {
+    return (
+      (await handle.queryPermission?.({ mode: 'readwrite' })) ??
+      (await handle.queryPermission?.())
+    );
+  };
+
   async function getHandle(
     path: string,
     create: boolean,
@@ -89,8 +99,8 @@ export const WebFileSystemProvider = (
   const fileHandleStat = async (
     handle: FileSystemFileHandle | FileSystemDirectoryHandle,
   ): Promise<FSNodeStat> => {
-    const permissionState = await handle.queryPermission?.();
-    const canDelete = permissionState !== 'denied';
+    const permissionState = await queryWritePermission(handle);
+    const canWrite = permissionState !== 'denied';
 
     if (handle.kind === 'file') {
       const file = await handle.getFile();
@@ -100,22 +110,36 @@ export const WebFileSystemProvider = (
         size: file.size,
         creationTime: file.lastModified,
         modificationTime: file.lastModified,
-        canDelete,
+        capabilities: {
+          canDelete: canWrite,
+          canChangePath: canWrite,
+        } satisfies FSNodeCapabilities,
       };
     }
 
     return {
       type: FSNodeType.Directory,
-      canDelete,
+      capabilities: {
+        canDelete: canWrite,
+        canChangePath: canWrite,
+        canEditChildren: canWrite,
+      } satisfies FSNodeCapabilities,
     };
   };
 
   const stat = async (path: string): Promise<FSNodeStat> => {
     const normalized = PathUtils.normalize(path);
     if (normalized === '/') {
+      const permissionState = await queryWritePermission(rootHandle);
+      const canWrite = permissionState !== 'denied';
+
       return {
         type: FSNodeType.Directory,
-        canDelete: false,
+        capabilities: {
+          canDelete: false,
+          canChangePath: false,
+          canEditChildren: canWrite,
+        },
       };
     }
 
@@ -154,7 +178,10 @@ export const WebFileSystemProvider = (
         throw new VfsError(FileSystemError.FileExists, `File exists: ${path}`);
       }
     } catch (error) {
-      if (error instanceof VfsError && error.code === FileSystemError.FileNotFound) {
+      if (
+        error instanceof VfsError &&
+        error.code === FileSystemError.FileNotFound
+      ) {
         if (!create) {
           throw error;
         }
@@ -169,7 +196,9 @@ export const WebFileSystemProvider = (
     await writable.close();
   };
 
-  const readDirectory = async (path: string): Promise<[string, FSNodeStat][]> => {
+  const readDirectory = async (
+    path: string,
+  ): Promise<[string, FSNodeStat][]> => {
     const directoryHandle = await getHandle(path, false, 'directory');
     const entries: [string, FSNodeStat][] = [];
 
@@ -188,7 +217,10 @@ export const WebFileSystemProvider = (
         `Directory already exists: ${path}`,
       );
     } catch (error) {
-      if (error instanceof VfsError && error.code === FileSystemError.FileNotFound) {
+      if (
+        error instanceof VfsError &&
+        error.code === FileSystemError.FileNotFound
+      ) {
         await getHandle(path, true, 'directory');
         return;
       }
@@ -200,7 +232,7 @@ export const WebFileSystemProvider = (
     const normalized = PathUtils.normalize(path);
     const nodeStat = await stat(normalized);
 
-    if (nodeStat.canDelete !== true) {
+    if (nodeStat.capabilities?.canDelete !== true) {
       throw new VfsError(
         FileSystemError.NoPermissions,
         `Deletion is not allowed for path: ${path}`,
@@ -249,6 +281,12 @@ export const WebFileSystemProvider = (
     let sourceHandle: FileSystemFileHandle | FileSystemDirectoryHandle;
     try {
       const sourceStat = await stat(normalizedOld);
+      if (sourceStat.capabilities?.canChangePath !== true) {
+        throw new VfsError(
+          FileSystemError.NoPermissions,
+          `Path change is not allowed for path: ${oldPath}`,
+        );
+      }
       sourceHandle =
         sourceStat.type === FSNodeType.File
           ? await getHandle(normalizedOld, false, 'file')
@@ -267,6 +305,14 @@ export const WebFileSystemProvider = (
       false,
       'directory',
     );
+    const destinationStat = await stat(newDirName);
+
+    if (destinationStat.capabilities?.canEditChildren !== true) {
+      throw new VfsError(
+        FileSystemError.NoPermissions,
+        `Path change is not allowed inside directory: ${newDirName}`,
+      );
+    }
 
     if (sourceHandle.move) {
       await sourceHandle.move(destinationDirHandle, newName);

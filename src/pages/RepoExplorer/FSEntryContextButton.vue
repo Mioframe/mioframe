@@ -68,11 +68,16 @@ const contextBtns = computed(() => {
       : fileContextBtns;
 
   return buttonList.filter(({ key }) => {
-    if (key === FSEntryContextEvent.remove) {
-      return fsEntryStat.value?.canDelete;
+    switch (key) {
+      case FSEntryContextEvent.remove:
+        return fsEntryStat.value?.capabilities?.canDelete;
+      case FSEntryContextEvent.rename:
+        return fsEntryStat.value?.capabilities?.canChangePath;
+      case FSEntryContextEvent.importJson:
+        return fsEntryStat.value?.capabilities?.canEditChildren;
+      default:
+        return true;
     }
-
-    return true;
   });
 });
 

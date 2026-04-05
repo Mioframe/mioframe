@@ -8,6 +8,7 @@ import { DocumentCreationDialog } from '@feature/documentCreate';
 import { MDListContainer } from '@shared/ui/Lists';
 import { CFRDocumentMDListItem } from '@entity/cfrDocument';
 import { FSEntryMDListItem } from '@entity/fsEntry';
+import { useFSNodeStat } from '@entity/fsEntry';
 import { MDPane } from '@shared/ui/Layout';
 import { MDAppBar } from '@shared/ui/AppBar';
 import type { AMDocumentId } from '@shared/lib/automerge/automergeTypes';
@@ -51,6 +52,7 @@ const {
   errorMessage: directoryErrorMessage,
   isLoading: directoryLoading,
 } = useDirectory(directoryPath, readDirectoryOptions);
+const { data: directoryStat } = useFSNodeStat(directoryPath);
 
 const { open } = useStackNavigation();
 
@@ -90,6 +92,10 @@ const onClickDocument = async (documentId: AMDocumentId) => {
 };
 
 const title = computed(() => PathUtils.basename(directoryPath.value) || 'root');
+
+const canEditDirectoryContents = computed(
+  () => directoryStat.value?.capabilities?.canEditChildren === true,
+);
 </script>
 
 <template>
@@ -170,6 +176,7 @@ const title = computed(() => PathUtils.basename(directoryPath.value) || 'root');
       <MDFabContainer class="document-explorer-widget__fab-container" auto-hide>
         <template #default>
           <MDFab
+            v-if="canEditDirectoryContents"
             tooltip="Create directory"
             color="tonal-primary"
             @click="onClickCreateDirectory"
@@ -180,6 +187,7 @@ const title = computed(() => PathUtils.basename(directoryPath.value) || 'root');
           </MDFab>
 
           <MDFab
+            v-if="canEditDirectoryContents"
             tooltip="Create document"
             size="medium"
             color="tonal-primary"

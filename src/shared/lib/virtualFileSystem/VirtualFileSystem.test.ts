@@ -9,11 +9,12 @@ import {
 } from './EventEmitter';
 import type {
   FileContent,
+  FSNodeStat,
   IFileSystemProvider,
   WriteOptions,
 } from './IFileSystemProvider';
 import { FSNodeType } from './IFileSystemProvider';
-import { VfsError } from './VfsError';
+import { FileSystemError, VfsError } from './VfsError';
 
 describe('VirtualFileSystem', () => {
   let vfs: VirtualFileSystem;
@@ -22,6 +23,19 @@ describe('VirtualFileSystem', () => {
   beforeEach(() => {
     vfs = new VirtualFileSystem();
     memoryFS = new MemoryFileSystem();
+  });
+
+  const createCapabilityProvider = (
+    statResolver: (path: string, stat: FSNodeStat) => FSNodeStat,
+  ): IFileSystemProvider => ({
+    stat: async (path) => statResolver(path, await memoryFS.stat(path)),
+    readFile: (path) => memoryFS.readFile(path),
+    writeFile: (path, content, options) =>
+      memoryFS.writeFile(path, content, options),
+    readDirectory: (path) => memoryFS.readDirectory(path),
+    createDirectory: (path) => memoryFS.createDirectory(path),
+    delete: (path, recursive) => memoryFS.delete(path, recursive),
+    move: (oldPath, newPath) => memoryFS.move(oldPath, newPath),
   });
 
   describe('mount method', () => {
@@ -263,6 +277,32 @@ describe('VirtualFileSystem', () => {
 
       await expect(vfs.delete('/mnt/test/nonexistent.txt')).rejects.toThrow();
     });
+
+    it('should block deletion when capabilities.canDelete is false', async () => {
+      await memoryFS.writeFile('/locked.txt', 'content', {
+        overwrite: true,
+        create: true,
+      });
+
+      vfs.mount(
+        '/mnt/test',
+        createCapabilityProvider((path, stat) =>
+          path === '/locked.txt'
+            ? {
+                ...stat,
+                capabilities: {
+                  ...stat.capabilities,
+                  canDelete: false,
+                },
+              }
+            : stat,
+        ),
+      );
+
+      await expect(vfs.delete('/mnt/test/locked.txt')).rejects.toMatchObject({
+        code: FileSystemError.NoPermissions,
+      });
+    });
   });
 
   describe('move method', () => {
@@ -324,6 +364,63 @@ describe('VirtualFileSystem', () => {
       await expect(
         vfs.move('/mnt/test/source.txt', '/mnt/test/source.txt'),
       ).resolves.toBeUndefined();
+    });
+
+    it('should block move when source capabilities.canChangePath is false', async () => {
+      await memoryFS.writeFile('/source.txt', 'content', {
+        overwrite: true,
+        create: true,
+      });
+
+      vfs.mount(
+        '/mnt/test',
+        createCapabilityProvider((path, stat) =>
+          path === '/source.txt'
+            ? {
+                ...stat,
+                capabilities: {
+                  ...stat.capabilities,
+                  canChangePath: false,
+                },
+              }
+            : stat,
+        ),
+      );
+
+      await expect(
+        vfs.move('/mnt/test/source.txt', '/mnt/test/dest.txt'),
+      ).rejects.toMatchObject({
+        code: FileSystemError.NoPermissions,
+      });
+    });
+
+    it('should block move when destination capabilities.canEditChildren is false', async () => {
+      await memoryFS.writeFile('/source.txt', 'content', {
+        overwrite: true,
+        create: true,
+      });
+      await memoryFS.createDirectory('/locked');
+
+      vfs.mount(
+        '/mnt/test',
+        createCapabilityProvider((path, stat) =>
+          path === '/locked'
+            ? {
+                ...stat,
+                capabilities: {
+                  ...stat.capabilities,
+                  canEditChildren: false,
+                },
+              }
+            : stat,
+        ),
+      );
+
+      await expect(
+        vfs.move('/mnt/test/source.txt', '/mnt/test/locked/dest.txt'),
+      ).rejects.toMatchObject({
+        code: FileSystemError.NoPermissions,
+      });
     });
   });
 
