@@ -8,6 +8,7 @@ import { OPFSName } from '@shared/service/directories';
 import { MDAppBar } from '@shared/ui/AppBar';
 import { useStackNavigation } from '@page/routes';
 import { PathUtils } from '@shared/lib/virtualFileSystem';
+import { GOOGLE_DRIVE_ROOT_NAME } from '@shared/service/google/useGoogleService';
 import { GoogleDriveWidget } from '@widget/GoogleDriveWidget';
 
 defineSlots<{
@@ -24,6 +25,16 @@ const onClickMountUserDirectory = async () => {
 
 const onClickRootDirectory = async (name: string) => {
   await open('repo', { repoPath: PathUtils.join('/', name) });
+};
+
+const onClickGoogleDriveUser = async (email: string) => {
+  await open(
+    'repo',
+    {
+      repoPath: PathUtils.join(GOOGLE_DRIVE_ROOT_NAME, email),
+    },
+    { target: 'repo' },
+  );
 };
 
 const onClickAccount = async () => {
@@ -50,7 +61,7 @@ const onClickAccount = async () => {
       </template>
     </MountedDirectoriesList>
 
-    <GoogleDriveWidget />
+    <GoogleDriveWidget @click-user="onClickGoogleDriveUser" />
     <!-- todo: добавить виджет смонтированных папок -->
     <!-- todo: создать и добавить виджет избранных директорий и документов -->
 
