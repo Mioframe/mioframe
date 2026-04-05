@@ -1,11 +1,15 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   DRIVE_GOOGLE_SCOPE,
+  GoogleClientConfigError,
   USER_INFO_GOOGLE_SCOPE,
 } from '@shared/lib/googleApi';
+import type { GoogleAuthError } from './errors';
+import { GoogleAuthErrorCode } from './errors';
 
 const requestTokenMock = vi.fn();
 const userinfoGetMock = vi.fn();
+const revokeMock = vi.fn();
 const updateMock = vi.fn();
 const getMock = vi.fn();
 const getStoreMock = vi.fn();
@@ -43,13 +47,21 @@ vi.mock('./googleSessionStore', () => ({
 describe('useGoogleService', () => {
   beforeEach(() => {
     vi.resetModules();
-    vi.clearAllMocks();
+    requestTokenMock.mockReset();
+    userinfoGetMock.mockReset();
+    revokeMock.mockReset();
+    updateMock.mockReset();
+    getMock.mockReset();
+    getStoreMock.mockReset();
+    getSessionListMock.mockReset();
+    clearMock.mockReset();
 
     getStoreMock.mockResolvedValue({});
     getMock.mockResolvedValue(undefined);
     updateMock.mockResolvedValue(undefined);
     getSessionListMock.mockResolvedValue([]);
     clearMock.mockResolvedValue(undefined);
+    revokeMock.mockResolvedValue(undefined);
     userinfoGetMock.mockResolvedValue({
       result: { email: 'user@example.com' },
     });
@@ -63,6 +75,7 @@ describe('useGoogleService', () => {
     await service.bindGoogleApi({
       requestAccessToken: requestTokenMock,
       userinfoGet: userinfoGetMock,
+      revoke: revokeMock,
     });
 
     return service;
@@ -168,11 +181,19 @@ describe('useGoogleService', () => {
     expect(firstResults).toEqual([
       expect.objectContaining({
         status: 'rejected',
-        reason: expect.objectContaining({ message: 'auth failed' }),
+        reason: expect.objectContaining({
+          code: GoogleAuthErrorCode.reauthRequired,
+          expectedEmail: 'user@example.com',
+          name: 'GoogleAuthError',
+        }),
       }),
       expect.objectContaining({
         status: 'rejected',
-        reason: expect.objectContaining({ message: 'auth failed' }),
+        reason: expect.objectContaining({
+          code: GoogleAuthErrorCode.reauthRequired,
+          expectedEmail: 'user@example.com',
+          name: 'GoogleAuthError',
+        }),
       }),
     ]);
     expect(requestTokenMock).toHaveBeenCalledTimes(1);
@@ -181,5 +202,115 @@ describe('useGoogleService', () => {
 
     expect(retryToken).toBe('retry-token');
     expect(requestTokenMock).toHaveBeenCalledTimes(2);
+  });
+
+  it('deletes a session without revoking access', async () => {
+    getStoreMock.mockResolvedValue({
+      'user@example.com': {
+        accessToken: 'access-token',
+        expiresAt: Date.now() + 1000,
+        scopes: [DRIVE_GOOGLE_SCOPE.all],
+      },
+    });
+
+    const service = await createService();
+
+    await service.deleteSession('user@example.com');
+
+    expect(revokeMock).not.toHaveBeenCalled();
+    expect(updateMock).toHaveBeenCalledWith({});
+  });
+
+  it('revokes access and deletes the stored session', async () => {
+    getMock.mockResolvedValue({
+      accessToken: 'access-token',
+      expiresAt: Date.now() + 1000,
+      scopes: [DRIVE_GOOGLE_SCOPE.all],
+    });
+    getStoreMock.mockResolvedValue({
+      'user@example.com': {
+        accessToken: 'access-token',
+        expiresAt: Date.now() + 1000,
+        scopes: [DRIVE_GOOGLE_SCOPE.all],
+      },
+    });
+
+    const service = await createService();
+
+    await service.revokeAccess('user@example.com');
+
+    expect(revokeMock).toHaveBeenCalledWith('access-token');
+    expect(updateMock).toHaveBeenCalledWith({});
+  });
+
+  it('keeps the local session when revoke fails', async () => {
+    getMock.mockResolvedValue({
+      accessToken: 'access-token',
+      expiresAt: Date.now() + 1000,
+      scopes: [DRIVE_GOOGLE_SCOPE.all],
+    });
+    revokeMock.mockRejectedValueOnce(new Error('revoke failed'));
+
+    const service = await createService();
+
+    await expect(
+      service.revokeAccess('user@example.com'),
+    ).rejects.toMatchObject({
+      code: GoogleAuthErrorCode.revokeFailed,
+      email: 'user@example.com',
+      name: 'GoogleAuthError',
+    } satisfies Partial<GoogleAuthError>);
+    expect(updateMock).not.toHaveBeenCalled();
+  });
+
+  it('normalizes blocked popup errors', async () => {
+    const popupBlockedError: google.accounts.oauth2.ClientConfigError = {
+      message: 'popup_failed_to_open',
+      name: 'ClientConfigError',
+      type: 'popup_failed_to_open',
+    };
+
+    requestTokenMock.mockRejectedValueOnce(
+      new GoogleClientConfigError(popupBlockedError),
+    );
+
+    const service = await createService();
+
+    await expect(
+      service.requestToken([DRIVE_GOOGLE_SCOPE.all], 'user@example.com'),
+    ).rejects.toMatchObject({
+      code: GoogleAuthErrorCode.popupBlocked,
+      expectedEmail: 'user@example.com',
+      name: 'GoogleAuthError',
+    } satisfies Partial<GoogleAuthError>);
+  });
+
+  it('stores a different account but rejects access for the expected one', async () => {
+    requestTokenMock.mockResolvedValueOnce({
+      access_token: 'other-token',
+      expires_in: '3600',
+      scope: `${DRIVE_GOOGLE_SCOPE.all} ${USER_INFO_GOOGLE_SCOPE.userinfoEmail}`,
+    });
+    userinfoGetMock.mockResolvedValueOnce({
+      result: { email: 'other@example.com' },
+    });
+
+    const service = await createService();
+
+    await expect(
+      service.requestToken([DRIVE_GOOGLE_SCOPE.all], 'user@example.com'),
+    ).rejects.toMatchObject({
+      actualEmail: 'other@example.com',
+      code: GoogleAuthErrorCode.accountMismatch,
+      expectedEmail: 'user@example.com',
+      name: 'GoogleAuthError',
+    });
+    expect(updateMock).toHaveBeenCalledWith({
+      'other@example.com': {
+        accessToken: 'other-token',
+        expiresAt: expect.any(Number),
+        scopes: [DRIVE_GOOGLE_SCOPE.all, USER_INFO_GOOGLE_SCOPE.userinfoEmail],
+      },
+    });
   });
 });

@@ -3,6 +3,11 @@
 import { limitFunction } from 'p-limit';
 import type { GOOGLE_SCOPE } from './types';
 import { uniq } from 'es-toolkit';
+import { zodIs } from '@shared/lib/validateZodScheme';
+import {
+  GoogleClientConfigError,
+  zodGoogleClientConfigError,
+} from './googleClientConfigError';
 
 let gsi: typeof window.google | undefined = undefined;
 
@@ -30,9 +35,23 @@ export const loadGsi = async () =>
 
 export const loadGoogle = loadGsi;
 
+export const revokeGoogleAccess = async (accessToken: string) => {
+  const google = await loadGoogle();
+
+  return new Promise<void>((resolve, reject) => {
+    try {
+      google.accounts.oauth2.revoke(accessToken, () => {
+        resolve();
+      });
+    } catch (error) {
+      reject(error);
+    }
+  });
+};
+
 const resolveRequestAccess: {
   resolve: (tokenResponse: google.accounts.oauth2.TokenResponse) => unknown;
-  reject: (error: google.accounts.oauth2.ClientConfigError | Error) => unknown;
+  reject: (error: GoogleClientConfigError | Error) => unknown;
 }[] = [];
 
 let stateTokenClient: google.accounts.oauth2.TokenClient | undefined;
@@ -55,24 +74,39 @@ export const requestAccessToken = limitFunction(
         let token: google.accounts.oauth2.TokenResponse | undefined = undefined;
 
         if (!stateTokenClient) {
-          stateTokenClient = gsi.accounts.oauth2.initTokenClient({
-            client_id: clientId,
-            scope: uniq(scopes).join(' '),
-            callback: (tokenResponse) => {
-              if ('error' in tokenResponse) {
+          try {
+            stateTokenClient = gsi.accounts.oauth2.initTokenClient({
+              client_id: clientId,
+              scope: uniq(scopes).join(' '),
+              callback: (tokenResponse) => {
+                if ('error' in tokenResponse) {
+                  resolveRequestAccess
+                    .shift()
+                    ?.reject(new Error(tokenResponse.error));
+                  return;
+                }
+                token = tokenResponse;
+
+                resolveRequestAccess.shift()?.resolve(token);
+              },
+              error_callback: (error) => {
                 resolveRequestAccess
                   .shift()
-                  ?.reject(new Error(tokenResponse.error));
-                return;
-              }
-              token = tokenResponse;
-
-              resolveRequestAccess.shift()?.resolve(token);
-            },
-            error_callback: (error) => {
-              resolveRequestAccess.shift()?.reject(error);
-            },
-          });
+                  ?.reject(new GoogleClientConfigError(error));
+              },
+            });
+          } catch (error) {
+            resolveRequestAccess
+              .shift()
+              ?.reject(
+                zodIs(error, zodGoogleClientConfigError)
+                  ? new GoogleClientConfigError(error)
+                  : error instanceof Error
+                    ? error
+                    : new Error('Failed to initialize Google token client'),
+              );
+            return;
+          }
         }
 
         stateTokenClient.requestAccessToken({

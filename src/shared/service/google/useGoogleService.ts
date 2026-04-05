@@ -14,6 +14,8 @@ import type { ObservableDefinition } from '@shared/lib/useObservable';
 import { defineObservable } from '@shared/lib/useObservable';
 import { dedupe } from '@shared/lib/dedupe';
 import stringify from 'safe-stable-stringify';
+import { GoogleAuthError, GoogleAuthErrorCode } from './errors';
+import { isGoogleAuthPopupBlocked } from './googlePopupError';
 
 type TokenResponse = google.accounts.oauth2.TokenResponse;
 
@@ -27,16 +29,21 @@ export interface GoogleApi {
   userinfoGet: (p: {
     oauth_token?: string | undefined;
   }) => Promise<{ result: { email?: string } }>;
+  revoke: (accessToken: string) => Promise<void>;
 }
 
 export const GOOGLE_DRIVE_ROOT_NAME = 'Google Drive';
 
 export type GoogleService = {
   bindGoogleApi: (api: GoogleApi) => Promise<void>;
-  requestToken: (scopes: GOOGLE_SCOPE[], oldEmail?: string) => Promise<string>;
+  requestToken: (
+    scopes: GOOGLE_SCOPE[],
+    expectedEmail?: string,
+  ) => Promise<string>;
   clear: () => Promise<void>;
   sessions: ObservableDefinition<string[]>;
-  remove: (email: string) => Promise<void>;
+  deleteSession: (email: string) => Promise<void>;
+  revokeAccess: (email: string) => Promise<void>;
 };
 
 const setupGoogleService = (): GoogleService => {
@@ -69,7 +76,7 @@ const setupGoogleService = (): GoogleService => {
   };
 
   const requestFreshToken = dedupe(
-    async (scopes: GOOGLE_SCOPE[], oldEmail?: string): Promise<string> => {
+    async (scopes: GOOGLE_SCOPE[], expectedEmail?: string): Promise<string> => {
       if (!googleApi) {
         throw new Error('Google API is not tied to the service');
       }
@@ -81,11 +88,43 @@ const setupGoogleService = (): GoogleService => {
 
       const { requestAccessToken, userinfoGet } = googleApi;
 
+      let tokenResponse: TokenResponse;
+
+      try {
+        tokenResponse = await requestAccessToken(requestScopes, expectedEmail);
+      } catch (error) {
+        if (isGoogleAuthPopupBlocked(error)) {
+          throw new GoogleAuthError(
+            {
+              code: GoogleAuthErrorCode.popupBlocked,
+              expectedEmail,
+            },
+            {
+              cause: error,
+            },
+          );
+        }
+
+        if (expectedEmail) {
+          throw new GoogleAuthError(
+            {
+              code: GoogleAuthErrorCode.reauthRequired,
+              expectedEmail,
+            },
+            {
+              cause: error,
+            },
+          );
+        }
+
+        throw error;
+      }
+
       const {
         access_token: accessToken,
         expires_in,
         scope: newScope,
-      } = await requestAccessToken(requestScopes, oldEmail);
+      } = tokenResponse;
 
       const availableScopes = newScope
         .split(' ')
@@ -114,22 +153,24 @@ const setupGoogleService = (): GoogleService => {
 
       await update(store);
 
-      const token = store[oldEmail ?? email]?.accessToken;
-
-      if (!token) {
-        throw new Error('Failed to get token');
+      if (expectedEmail && expectedEmail !== email) {
+        throw new GoogleAuthError({
+          actualEmail: email,
+          code: GoogleAuthErrorCode.accountMismatch,
+          expectedEmail,
+        });
       }
 
-      return token;
+      return accessToken;
     },
     buildRequestKey,
   );
 
   const requestToken = async (
     scopes: GOOGLE_SCOPE[],
-    oldEmail?: string,
+    expectedEmail?: string,
   ): Promise<string> => {
-    const oldSession = oldEmail ? await get(oldEmail) : undefined;
+    const oldSession = expectedEmail ? await get(expectedEmail) : undefined;
 
     if (oldSession) {
       const { accessToken, expiresAt, scopes: oldScopes } = oldSession;
@@ -141,7 +182,7 @@ const setupGoogleService = (): GoogleService => {
       }
     }
 
-    return requestFreshToken(scopes, oldEmail);
+    return requestFreshToken(scopes, expectedEmail);
   };
 
   const { vfs } = useFileSystemService();
@@ -166,10 +207,38 @@ const setupGoogleService = (): GoogleService => {
     await mountGoogleProvider();
   };
 
-  const remove = async (email: string) => {
+  const deleteSession = async (email: string) => {
     const store = await getStore();
 
     await update(omit(store, [email]));
+  };
+
+  const revokeAccess = async (email: string) => {
+    if (!googleApi) {
+      throw new Error('Google API is not tied to the service');
+    }
+
+    const session = await get(email);
+
+    if (!session) {
+      return;
+    }
+
+    try {
+      await googleApi.revoke(session.accessToken);
+    } catch (error) {
+      throw new GoogleAuthError(
+        {
+          code: GoogleAuthErrorCode.revokeFailed,
+          email,
+        },
+        {
+          cause: error,
+        },
+      );
+    }
+
+    await deleteSession(email);
   };
 
   return {
@@ -177,7 +246,8 @@ const setupGoogleService = (): GoogleService => {
     requestToken,
     clear,
     sessions: defineObservable($sessions),
-    remove,
+    deleteSession,
+    revokeAccess,
   } satisfies GoogleService;
 };
 

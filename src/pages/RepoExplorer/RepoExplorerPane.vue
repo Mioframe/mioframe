@@ -1,10 +1,15 @@
 <script setup lang="ts">
 import { computed, ref, toRefs } from 'vue';
 import { DirectoryCreateDialog } from '@feature/directoryCreate';
-import { MDFab, MDFabContainer } from '@shared/ui/Button';
+import { useGoogleDriveRecovery } from '@feature/googleDriveRecovery';
+import { MDButton, MDFab, MDFabContainer } from '@shared/ui/Button';
 import { MDSymbol } from '@shared/ui/Icon';
 import { MDNavigationPath } from '@shared/ui/NavigationPath';
 import { DocumentCreationDialog } from '@feature/documentCreate';
+import {
+  getGoogleDriveAccessRecoveryError,
+  GoogleDriveAccessRecoveryState,
+} from '@entity/googleDriveAccess';
 import { MDListContainer } from '@shared/ui/Lists';
 import { CFRDocumentMDListItem } from '@entity/cfrDocument';
 import { FSEntryMDListItem } from '@entity/fsEntry';
@@ -49,8 +54,10 @@ const readDirectoryOptions = computed(
 
 const {
   data: directoryEntries,
+  error: directoryError,
   errorMessage: directoryErrorMessage,
   isLoading: directoryLoading,
+  refetch: refetchDirectory,
 } = useDirectory(directoryPath, readDirectoryOptions);
 const { data: directoryStat } = useFSNodeStat(directoryPath);
 
@@ -76,7 +83,12 @@ const onClickCreateDocument = () => {
   showFormNewDocument.value = true;
 };
 
-const { state: documentIdList } = useRepository(directoryPath);
+const {
+  state: documentIdList,
+  error: repositoryError,
+  errorMessage: repositoryErrorMessage,
+  refetch: refetchRepository,
+} = useRepository(directoryPath);
 
 const onClickDocument = async (documentId: AMDocumentId) => {
   await open(
@@ -96,6 +108,39 @@ const title = computed(() => PathUtils.basename(directoryPath.value) || 'root');
 const canEditDirectoryContents = computed(
   () => directoryStat.value?.capabilities?.canEditChildren === true,
 );
+
+const hasGoogleDriveRecovery = computed(
+  () =>
+    !!getGoogleDriveAccessRecoveryError(directoryPath.value, [
+      directoryError.value,
+      repositoryError.value,
+    ]),
+);
+
+const fallbackErrorHeadline = computed(() =>
+  directoryErrorMessage.value
+    ? 'Directory read error'
+    : 'Repository read error',
+);
+
+const fallbackErrorMessage = computed(
+  () => directoryErrorMessage.value ?? repositoryErrorMessage.value,
+);
+
+// TODO: Remove this manual refresh after Google Drive reads update from Google session changes via service-level RxJS reactivity.
+const onRefreshGoogleDriveAccess = async () => {
+  await Promise.all([refetchDirectory(), refetchRepository()]);
+};
+
+const { isRetryAuthorizationLoading, onRetryAuthorization } =
+  useGoogleDriveRecovery({
+    path: directoryPath,
+    onRefresh: onRefreshGoogleDriveAccess,
+  });
+
+const onClickReturnHome = async () => {
+  await open('home', {}, { additionalPanes: 0, replace: true });
+};
 </script>
 
 <template>
@@ -140,11 +185,31 @@ const canEditDirectoryContents = computed(
           </template>
         </CFRDocumentMDListItem>
 
+        <GoogleDriveAccessRecoveryState
+          v-if="hasGoogleDriveRecovery"
+          :path="directoryPath"
+          :errors="[directoryError, repositoryError]"
+        >
+          <template #actions>
+            <MDButton
+              label="Retry Authorization"
+              :loading="isRetryAuthorizationLoading"
+              @click="onRetryAuthorization"
+            />
+
+            <MDButton
+              label="Return Home"
+              color="text"
+              @click="onClickReturnHome"
+            />
+          </template>
+        </GoogleDriveAccessRecoveryState>
+
         <MDEmptyState
-          v-if="directoryErrorMessage"
+          v-if="!hasGoogleDriveRecovery && fallbackErrorMessage"
           class="document-explorer-widget__error"
-          headline="Directory read error"
-          :supporting-text="directoryErrorMessage"
+          :headline="fallbackErrorHeadline"
+          :supporting-text="fallbackErrorMessage"
         >
           <template #icon>
             <MDSymbol

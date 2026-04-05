@@ -16,6 +16,7 @@ Inherits the rules from `src/shared/AGENTS.md`. Applies to `src/shared/lib` and 
 - Prefer closure-based factories and composables for adapters, providers, and helpers; use classes only when they are required by an external contract or make lifecycle/state invariants materially clearer.
 - Wrap browser APIs, storage APIs, and third-party SDKs behind typed contracts.
 - Keep runtime validation near the boundary code that needs it.
+- Keep contract parsing and extraction helpers near the provider, adapter, or boundary module that defines the path, payload, or transport contract.
 - For composables, design lifecycle behavior explicitly: cleanup, cancellation, re-subscribe, and memory profile.
 
 ## Anti-patterns

@@ -12,7 +12,7 @@ export const useDirectory = (
     fileSystem: { directoryContent },
   } = useMainServiceClient();
 
-  const { data, error, isLoading } = useObservableQuery(
+  const { data, error, isLoading, refetch } = useObservableQuery(
     directoryContent,
     computed(() => ({ options: options?.value, path: path.value })),
   );
@@ -33,7 +33,9 @@ export const useDirectory = (
 
   return {
     data,
+    error,
     errorMessage,
     isLoading,
+    refetch,
   };
 };
