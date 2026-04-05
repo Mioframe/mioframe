@@ -131,6 +131,7 @@ defineEmits<{
     position: absolute;
     width: 24px;
     height: 24px;
+    --md-circular-progress-color: var(--md-content-color);
   }
 
   &.md-button_shape-round {
