@@ -5,7 +5,7 @@ Inherits the rules from `src/shared/AGENTS.md`. Applies to `src/shared/lib` and 
 ## Contains
 
 - document and CRDT modules such as `automerge`, `automergeAdapter`, `databaseDocument`, `cfrDocument`.
-- filesystem modules such as `virtualFileSystem`, `fileSystem`, `localFileSystem`, `vfsProviders`.
+- filesystem modules such as `virtualFileSystem`, `fileSystem`, and provider adapters.
 - API and cache helpers such as `googleApi`, `googleDrive`, `cache`, `dedupe`.
 - infrastructure utilities such as `migrations`, `changeObject`, `typeGuards`, `proxyService`, `wrapWorker`, `subscriptions`.
 - generic composables and helpers such as `use*`, `debounce`, `throttle`, `dayjs`, and similar modules.
@@ -13,6 +13,7 @@ Inherits the rules from `src/shared/AGENTS.md`. Applies to `src/shared/lib` and 
 ## Patterns
 
 - Prefer small modules with a single clear responsibility.
+- Prefer closure-based factories and composables for adapters, providers, and helpers; use classes only when they are required by an external contract or make lifecycle/state invariants materially clearer.
 - Wrap browser APIs, storage APIs, and third-party SDKs behind typed contracts.
 - Keep runtime validation near the boundary code that needs it.
 - For composables, design lifecycle behavior explicitly: cleanup, cancellation, re-subscribe, and memory profile.

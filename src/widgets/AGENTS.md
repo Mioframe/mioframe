@@ -6,6 +6,7 @@ Inherits the rules from the root `AGENTS.md`. Applies to `src/widgets` and its d
 
 - `DocumentView/`: document-centric screen compositions.
 - `GoogleDriveWidget/`: Google Drive-related widget composition.
+- `LocalFSWidget/`: local directory widget composition built on mounted-directory entities.
 
 ## Patterns
 

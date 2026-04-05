@@ -23,6 +23,7 @@ This is a local-first personal data manager built around:
 
 - Keep changes as close as possible to the directory and layer that owns them.
 - Prefer an existing public module API through `index.ts` when one exists.
+- Prefer functions, factory helpers, and composables over classes unless an external API requires a class or class-based state materially clarifies the invariant.
 - Update schema, migrations, service contracts, and callers together for persistent-data changes.
 - Treat subscriptions, listeners, workers, timers, caches, and file handles as lifecycle-managed resources.
 - Write stable directory guidance in `AGENTS.md`, not temporary project snapshots.

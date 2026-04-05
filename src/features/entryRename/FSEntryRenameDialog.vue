@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { useFileSystem } from '@entity/mountedDirectories/useFileSystem';
+import { useFileSystem } from '@entity/mountedDirectories';
 import { PathUtils } from '@shared/lib/virtualFileSystem';
 import { MDDialog } from '@shared/ui/Dialog';
 import { MDTextField } from '@shared/ui/TextField';

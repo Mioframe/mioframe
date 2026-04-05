@@ -1,23 +1,26 @@
 import { createGlobalState } from '@vueuse/core';
 import { useMainServiceClient } from '@shared/service';
-import { computed, toRef, toValue } from 'vue';
-import { isFunction, isUndefined } from 'es-toolkit';
-import { useSnackbar } from '@shared/ui/Snackbar';
-import { useDialog } from '@shared/ui/Dialog';
-import { OPFSName } from '@shared/service/directories';
+import { computed, toValue } from 'vue';
+import { isUndefined } from 'es-toolkit';
 import { useObservableQuery } from '@shared/lib/useObservableQuery';
+import {
+  DEVICE_FILES_ROOT_NAME,
+  type DeviceFileRecord,
+} from '@shared/service/fileSystem';
+import { useObservable } from '@shared/lib/useObservable';
 
-export const OPFS = OPFSName;
+export const DEVICE_FILES = DEVICE_FILES_ROOT_NAME;
 
 const setupFileSystem = () => {
   const {
     fileSystem: {
       createDirectory,
-      mountFSDirectoryHandle,
-      unmount,
       move,
       remove,
       directoryContent,
+      addDeviceDirectory,
+      removeDeviceDirectory,
+      deviceFiles,
     },
   } = useMainServiceClient();
 
@@ -48,50 +51,25 @@ const setupFileSystem = () => {
     return 'Error reading directory';
   });
 
-  const isSupportUserDirectory = toRef(
-    () =>
-      'showDirectoryPicker' in window && isFunction(window.showDirectoryPicker),
-  );
+  const { data: activeDeviceFiles } = useObservable(deviceFiles);
 
-  const { addSnackbar } = useSnackbar();
-
-  const { alert } = useDialog();
-
-  const mountUserDirectory = async () => {
-    if (isSupportUserDirectory.value) {
-      await alert(
-        'Mounting user directory',
-        'Allow and select a directory to use in the application',
-      );
-
-      const directoryHandle = await window.showDirectoryPicker({
-        mode: 'readwrite',
-      });
-
-      await mountFSDirectoryHandle(directoryHandle.name, directoryHandle);
-    } else {
-      addSnackbar({
-        text: 'Your browser does not support the use of user directories',
-        actionLabel: 'More details',
-        timeout: 5e3,
-        callback: () => {
-          window.open(
-            'https://developer.mozilla.org/en-US/docs/Web/API/Window/showDirectoryPicker',
-            '_black',
-          );
-        },
-      });
-    }
+  const disconnectDeviceFile = async (
+    deviceFile: Pick<DeviceFileRecord, 'name'> | string,
+  ) => {
+    await removeDeviceDirectory(
+      typeof deviceFile === 'string' ? deviceFile : deviceFile.name,
+    );
   };
 
   return {
     rootDirectory,
+    deviceFiles: activeDeviceFiles,
     errorMessage,
     isLoading,
 
-    mountUserDirectory,
+    addDeviceDirectory,
     createDirectory,
-    unmount,
+    disconnectDeviceFile,
 
     move,
     remove,

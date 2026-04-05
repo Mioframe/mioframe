@@ -1,4 +1,4 @@
-import { useFileSystem } from '@entity/mountedDirectories/useFileSystem';
+import { useFileSystem } from '@entity/mountedDirectories';
 import {
   PathUtils,
   VfsError,
