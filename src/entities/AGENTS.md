@@ -6,7 +6,7 @@ Inherits the rules from the root `AGENTS.md`. Applies to `src/entities` and its 
 
 - document-oriented entities such as `cfrDocument`.
 - database entities such as `databaseData`, `databaseProperty`, `databaseView`, `databaseFilter`, `databaseValue`, and typed value modules.
-- filesystem/settings/integration entities such as `directory`, `fsEntry`, `mountedDirectories`, `localSettings`, and `googleUserInfo`.
+- filesystem/settings/integration entities such as `directory`, `fsEntry`, `mountedDirectories`, `localSettings`, `googleUserInfo`, and `googleDriveAccess`.
 
 ## Patterns
 
@@ -14,6 +14,8 @@ Inherits the rules from the root `AGENTS.md`. Applies to `src/entities` and its 
 - `entities` may import only `shared`.
 - Keep canonical domain access patterns here rather than redistributing them into features or widgets.
 - Entity components should stay small and reusable across higher-level flows.
+- Keep state derivation and display contracts for a domain concept in `entities`; do not move user action orchestration down from `features`.
+- Prefer entity UI components to expose slots for higher-layer actions instead of owning feature-specific buttons or handlers.
 
 ## Anti-patterns
 

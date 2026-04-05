@@ -7,6 +7,8 @@ import {
 import type { ClientObject } from '../proxyService';
 import { VfsError } from '../virtualFileSystem';
 import { GoogleDriveError } from '../googleDrive';
+import { GoogleClientConfigError } from '../googleApi';
+import { GoogleAuthError } from '@shared/service/google';
 
 export const transformers = [
   defineTransformer('FileSystemHandle', {
@@ -25,6 +27,11 @@ export const transformers = [
     deserialize: (_p, v) => v,
   }),
 
+  defineCustomErrorTransformer('GoogleAuthError', GoogleAuthError),
+  defineCustomErrorTransformer(
+    'GoogleClientConfigError',
+    GoogleClientConfigError,
+  ),
   defineCustomErrorTransformer('DomainError', DomainError),
   defineCustomErrorTransformer('VfsError', VfsError),
   defineCustomErrorTransformer('GoogleDriveError', GoogleDriveError),

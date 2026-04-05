@@ -13,20 +13,19 @@ export type UserinfoGet = (
 
 const setupGoogleSessions = () => {
   const {
-    google: { requestToken, sessions, clear, remove },
+    google: { requestToken, sessions, clear, deleteSession, revokeAccess },
   } = useMainServiceClient();
 
   const { data, isLoading } = useObservable(sessions);
 
   const login = () => requestToken([USER_INFO_GOOGLE_SCOPE.userInfoProfile]);
 
-  const logout = (email: string) => remove(email);
-
   return {
     isLoading,
     sessions: data,
     login,
-    logout,
+    deleteSession,
+    revokeAccess,
     clear,
     requestToken,
   };

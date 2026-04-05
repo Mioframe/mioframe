@@ -2,6 +2,7 @@ import {
   loadOauth2,
   type GOOGLE_SCOPE,
   requestAccessToken,
+  revokeGoogleAccess,
 } from '@shared/lib/googleApi';
 import { useMainServiceClient } from '@shared/service';
 import type { UserinfoGet } from './useGoogleSessions';
@@ -20,5 +21,6 @@ export const setupGoogleSessions = (clientId: string) => {
     requestAccessToken: (scopes: GOOGLE_SCOPE[], email?: string) =>
       requestAccessToken(clientId, scopes, { email }),
     userinfoGet,
+    revoke: revokeGoogleAccess,
   });
 };

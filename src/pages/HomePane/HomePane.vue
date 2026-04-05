@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { usePickLocalDirectory } from '@feature/localDirectoryPick';
-import { MDFab, MDFabContainer, MDIconButton } from '@shared/ui/Button';
+import { MDFab, MDFabContainer } from '@shared/ui/Button';
 import { MDPane } from '@shared/ui/Layout';
 import { MDAppBar } from '@shared/ui/AppBar';
 import { useStackNavigation } from '@page/routes';
@@ -33,23 +33,11 @@ const onClickGoogleDriveUser = async (email: string) => {
 const onClickLocalPath = async (path: string) => {
   await open('repo', { repoPath: path }, { target: 'repo' });
 };
-
-const onClickAccount = async () => {
-  await open('accounts', {}, { target: 'accounts' });
-};
 </script>
 
 <template>
   <MDPane class="home" allow-bottom-navigation>
-    <MDAppBar>
-      <template #trailingElements>
-        <MDIconButton
-          tooltip="account"
-          md-symbol-name="person"
-          @click="onClickAccount"
-        />
-      </template>
-    </MDAppBar>
+    <MDAppBar />
 
     <LocalFSWidget @click-path="onClickLocalPath" />
 

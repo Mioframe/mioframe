@@ -20,10 +20,14 @@ import {
   update,
   upload,
 } from '@shared/lib/googleDrive/api';
-import { z } from 'zod/v4-mini';
-import { values } from 'es-toolkit/compat';
 import type { GOOGLE_SCOPE } from '@shared/lib/googleApi';
 import { DRIVE_GOOGLE_SCOPE } from '@shared/lib/googleApi';
+import {
+  getGoogleDrivePathEmail,
+  getGoogleDrivePathSpace,
+  GoogleDriveSpaceName as SpaceName,
+  zodGoogleDriveSpaceName as zodSpaceName,
+} from './googleDrivePath';
 
 const GOOGLE_MIME_FOLDER = 'application/vnd.google-apps.folder';
 /** Internal identifier for the virtual folder "Shared With Me" */
@@ -56,14 +60,6 @@ export interface GoogleDriveFsOptions {
 
   onError?: (error: unknown) => unknown;
 }
-
-const SpaceName = {
-  SharedWithMe: 'Shared with me',
-  AppData: 'App Data',
-  MyDrive: 'My Drive',
-} as const;
-
-const zodSpaceName = z.enum(values(SpaceName));
 
 /**
  * Creates and returns a Google Drive file system provider.
@@ -109,30 +105,32 @@ export const googleDriveFileSystemProvider = ({
   getSessionList: () => Promise<string[]>;
 }) => {
   const extractEmailFromPath = (path: string): string => {
-    const pathArray = PathUtils.split(path);
+    const email = getGoogleDrivePathEmail(path);
 
-    return z.email().parse(pathArray.at(0));
+    if (!email) {
+      throw new Error(`Google Drive path must start with an email: ${path}`);
+    }
+
+    return email;
   };
 
   const resolvePathSpace = (rawPath: string) => {
-    const path = PathUtils.normalize(rawPath);
-    const pathArray = PathUtils.split(path);
-    const spaceName = zodSpaceName.parse(pathArray.at(1));
+    const spaceName = getGoogleDrivePathSpace(rawPath);
 
     switch (spaceName) {
-      case SpaceName.AppData:
+      case SpaceName.appData:
         return {
           rootId: 'appDataFolder',
           scope: DRIVE_GOOGLE_SCOPE.appdata,
           space: SPACE.appDataFolder,
         };
-      case SpaceName.SharedWithMe:
+      case SpaceName.sharedWithMe:
         return {
           rootId: SHARED_WITH_ME_ID,
           scope: DRIVE_GOOGLE_SCOPE.all,
           space: SPACE.drive,
         };
-      case SpaceName.MyDrive:
+      case SpaceName.myDrive:
       default:
         return {
           rootId: 'root',
@@ -164,7 +162,7 @@ export const googleDriveFileSystemProvider = ({
 
     const pathArray = PathUtils.split(path);
 
-    const spaceName = zodSpaceName.parse(pathArray.at(1));
+    const spaceName = zodSpaceName.parse(getGoogleDrivePathSpace(path));
 
     const { space, rootId } = resolvePathSpace(path);
 
@@ -265,7 +263,7 @@ export const googleDriveFileSystemProvider = ({
         canDelete: false,
         canChangePath: false,
         canEditChildren:
-          spaceName === SpaceName.MyDrive || spaceName === SpaceName.AppData,
+          spaceName === SpaceName.myDrive || spaceName === SpaceName.appData,
       },
     }) satisfies FSNodeStat;
 
@@ -288,7 +286,9 @@ export const googleDriveFileSystemProvider = ({
         return virtualDirectoryStat;
       }
       if (pathArray.length === 2) {
-        return getSpaceDirectoryStat(zodSpaceName.parse(pathArray.at(1)));
+        return getSpaceDirectoryStat(
+          zodSpaceName.parse(getGoogleDrivePathSpace(path)),
+        );
       }
 
       const entry = await resolvePath(path);

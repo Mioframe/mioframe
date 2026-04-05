@@ -2,9 +2,10 @@
 import { MDListItem } from '@shared/ui/Lists';
 import { useGoogleUserInfo } from './useGoogleUserInfo';
 import { useGoogleSessions } from './useGoogleSessions';
-import { computed, toRefs } from 'vue';
-import { MDIconButton } from '@shared/ui/Button';
+import { computed, ref, toRefs } from 'vue';
 import { MDCircularProgressIndicator } from '@shared/ui/ProgressIndicators';
+import { useSnackbar } from '@shared/ui/Snackbar';
+import { defineMenuButtonList, MDContextMenuButton } from '@shared/ui/Menu';
 
 const props = defineProps<{
   email: string;
@@ -22,7 +23,27 @@ const {
   evaluating,
 } = useGoogleUserInfo(email);
 
-const { logout } = useGoogleSessions();
+const { deleteSession, revokeAccess } = useGoogleSessions();
+const activeAction = ref<'delete' | 'revoke'>();
+const { addSnackbar } = useSnackbar();
+
+enum GoogleSessionAction {
+  deleteSession,
+  revokeAccess,
+}
+
+const actionBtns = defineMenuButtonList([
+  {
+    key: GoogleSessionAction.deleteSession,
+    label: 'Delete session',
+    symbolName: 'logout',
+  },
+  {
+    key: GoogleSessionAction.revokeAccess,
+    label: 'Revoke access',
+    symbolName: 'link_off',
+  },
+]);
 
 const headlineUser = computed(() =>
   userInfo.value instanceof Error ? undefined : userInfo.value?.name,
@@ -42,9 +63,52 @@ const error = computed(() =>
   userInfo.value instanceof Error ? userInfo.value : undefined,
 );
 
-const onClickLogout = async () => {
-  await logout(email.value);
+const onClickDeleteSession = async () => {
+  activeAction.value = 'delete';
+  try {
+    await deleteSession(email.value);
+  } catch (error) {
+    addSnackbar({
+      text: error instanceof Error ? error.message : 'Failed to delete session',
+    });
+  } finally {
+    activeAction.value = undefined;
+  }
 };
+
+const onClickRevokeAccess = async () => {
+  activeAction.value = 'revoke';
+  try {
+    await revokeAccess(email.value);
+  } catch (error) {
+    addSnackbar({
+      text: error instanceof Error ? error.message : 'Failed to revoke access',
+    });
+  } finally {
+    activeAction.value = undefined;
+  }
+};
+
+const onClickSessionAction = async ({ key }: { key: GoogleSessionAction }) => {
+  if (activeAction.value) {
+    return;
+  }
+
+  switch (key) {
+    case GoogleSessionAction.deleteSession: {
+      await onClickDeleteSession();
+      break;
+    }
+    case GoogleSessionAction.revokeAccess: {
+      await onClickRevokeAccess();
+      break;
+    }
+    default:
+      throw new Error('Unknown Google session action');
+  }
+};
+
+const actionTooltip = computed(() => `options ${email.value}`);
 
 const headline = computed(() => {
   if (evaluating.value) {
@@ -90,10 +154,13 @@ const emit = defineEmits<{
     </template>
 
     <template v-if="!evaluating" #trailingIcon>
-      <MDIconButton
-        tooltip="logout"
-        md-symbol-name="logout"
-        @click="onClickLogout"
+      <MDCircularProgressIndicator v-if="activeAction" :size="24" />
+
+      <MDContextMenuButton
+        v-else
+        :btns="actionBtns"
+        :tooltip="actionTooltip"
+        @click="onClickSessionAction"
       />
     </template>
   </MDListItem>

@@ -11,6 +11,7 @@ export const useRepository = (path: Ref<string>) => {
 
   const {
     data: state,
+    refetch,
     error,
     isLoading,
   } = useObservableQuery(
@@ -36,6 +37,8 @@ export const useRepository = (path: Ref<string>) => {
 
   return {
     state,
+    refetch,
+    error,
     errorMessage,
     isLoading,
 

@@ -6,13 +6,14 @@ Inherits the rules from the root `AGENTS.md`. Applies to `src/pages` and its des
 
 - `routes.ts`: route registration.
 - `SplitView/`: pane model and navigation primitives.
-- `HomePane/`, `DocumentViewPane/`, `RepoExplorer/`, `Settings/`, `Account/`: screen modules.
+- `HomePane/`, `DocumentViewPane/`, `RepoExplorer/`, `Settings/`: screen modules.
 
 ## Patterns
 
 - A page composes screens from `widgets`, `features`, `entities`, and `shared/ui`.
 - Keep route and pane parameters serializable and stable.
-- Screen-level orchestration belongs here; domain rules do not.
+- Keep logic in `pages` limited to screen composition, navigation, route and pane parameters, and page-level orchestration.
+- Move domain rules, derived state, reusable error or state mapping, and user action flows to lower FSD layers where they belong.
 - If screen composition is reused across pages, move it into `widgets`.
 
 ## Anti-patterns

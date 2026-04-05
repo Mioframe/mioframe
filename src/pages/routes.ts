@@ -2,7 +2,6 @@ import { documentViewPane } from './DocumentViewPane';
 import { homePane } from './HomePane';
 import { repoExplorerPane } from './RepoExplorer';
 import { settingsPane as settingsPane } from './Settings';
-import { accountPane } from './Account';
 import { createStackNavigation } from './SplitView/defineStackNavigation';
 import type { RouteRecordRaw } from 'vue-router';
 
@@ -15,7 +14,6 @@ const { setupStackNavigation: setup, useStackNavigation: use } =
       repo: repoExplorerPane,
       document: documentViewPane,
       settings: settingsPane,
-      accounts: accountPane,
     },
     {
       defaultPane: 'home',
