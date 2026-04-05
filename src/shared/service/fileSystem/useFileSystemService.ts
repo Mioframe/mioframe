@@ -106,7 +106,7 @@ const setupFileSystemService = () => {
     path: string,
     handle: FileSystemDirectoryHandle,
   ) => {
-    vfs.mount(path, new WebFileSystemProvider(handle));
+    vfs.mount(path, WebFileSystemProvider(handle));
   };
 
   vfs.mount('/', new MemoryFileSystem());
