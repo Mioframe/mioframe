@@ -1,1 +1,1 @@
-export { default as MountedDirectoriesList } from './MountedDirectoriesList.vue';
+export { DEVICE_FILES, useFileSystem } from './useFileSystem';

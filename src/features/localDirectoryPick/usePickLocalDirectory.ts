@@ -1,34 +1,66 @@
-import { shallowRef, readonly } from 'vue';
-import {
-  createLocalDirectory,
-  type DirectoryLocalEntry,
-} from '../../shared/lib/localFileSystem';
-import { sessionUniqueId } from '@shared/lib/uniqueId';
+import { useFileSystem } from '@entity/mountedDirectories';
+import { isFunction } from 'es-toolkit';
+import { ref, toRef } from 'vue';
+import { useDialog } from '@shared/ui/Dialog';
+import { useSnackbar } from '@shared/ui/Snackbar';
 
-export const usePickLocalDirectory = (
-  mode: FileSystemPermissionMode = 'read',
-) => {
-  const pickedLocalDirectory = shallowRef<DirectoryLocalEntry>();
+export const usePickLocalDirectory = () => {
+  const loading = ref(false);
+  const { alert } = useDialog();
+  const { addSnackbar } = useSnackbar();
+  const { addDeviceDirectory } = useFileSystem();
 
-  const openLocalDirectoryPicker = async (): Promise<DirectoryLocalEntry> => {
-    const fileSystemDirectoryHandle = await showDirectoryPicker({
-      mode,
-    });
+  const isSupported = toRef(
+    () =>
+      'showDirectoryPicker' in window && isFunction(window.showDirectoryPicker),
+  );
 
-    pickedLocalDirectory.value = createLocalDirectory(
-      fileSystemDirectoryHandle,
-      undefined,
-      sessionUniqueId(fileSystemDirectoryHandle.name),
-    );
+  const pickLocalDirectory = async () => {
+    if (loading.value) {
+      return;
+    }
 
-    return pickedLocalDirectory.value;
+    if (!isSupported.value) {
+      addSnackbar({
+        text: 'Your browser does not support the use of user directories',
+        actionLabel: 'More details',
+        timeout: 5e3,
+        callback: () => {
+          window.open(
+            'https://developer.mozilla.org/en-US/docs/Web/API/Window/showDirectoryPicker',
+            '_blank',
+          );
+        },
+      });
+
+      return;
+    }
+
+    loading.value = true;
+
+    try {
+      await alert(
+        'Mounting user directory',
+        'Allow and select a directory to use in the application',
+      );
+
+      const directoryHandle = await window.showDirectoryPicker({
+        mode: 'readwrite',
+      });
+
+      await addDeviceDirectory(directoryHandle);
+    } catch (error) {
+      if (!(error instanceof DOMException && error.name === 'AbortError')) {
+        throw error;
+      }
+    } finally {
+      loading.value = false;
+    }
   };
 
-  const isSupport = typeof showDirectoryPicker === 'function';
-
   return {
-    openLocalDirectoryPicker,
-    pickedLocalDirectory: readonly(pickedLocalDirectory),
-    isSupport,
+    isSupported,
+    loading,
+    pickLocalDirectory,
   };
 };

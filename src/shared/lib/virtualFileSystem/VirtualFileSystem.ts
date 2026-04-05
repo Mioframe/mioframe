@@ -5,7 +5,7 @@ import type {
 } from './IFileSystemProvider';
 import { FSNodeType } from './IFileSystemProvider';
 import type { VfsEvent } from './EventEmitter';
-import { EventEmitter, VfsEventType } from './EventEmitter';
+import { EventEmitter, VfsEventSource, VfsEventType } from './EventEmitter';
 import { PathUtils } from './PathUtils';
 import { FileSystemError, VfsError } from './VfsError';
 import { LockManager } from './LockManager';
@@ -61,6 +61,33 @@ export class VirtualFileSystem {
    */
   constructor(locksManager?: LockManager) {
     this.locks = locksManager ?? new LockManager();
+  }
+
+  private emitVfsEvent(event: Omit<VfsEvent, 'source'>) {
+    this.events.emit({
+      source: VfsEventSource.VFS,
+      ...event,
+    });
+  }
+
+  private emitProviderEvent(mountPath: string, event: VfsEvent) {
+    const prefixedPath =
+      mountPath === '/' ? event.path : PathUtils.join(mountPath, event.path);
+    const prefixedNewPath = event.newPath
+      ? mountPath === '/'
+        ? event.newPath
+        : PathUtils.join(mountPath, event.newPath)
+      : undefined;
+
+    this.events.emit({
+      ...event,
+      source: VfsEventSource.PROVIDER,
+      path: prefixedPath,
+      newPath: prefixedNewPath,
+      mountPath,
+      providerPath: event.path,
+      providerNewPath: event.newPath,
+    });
   }
 
   /**
@@ -166,7 +193,11 @@ export class VirtualFileSystem {
       this.unmount(normalizedMountPath);
     }
 
-    this.mounts.set(normalizedMountPath, { provider });
+    const unwatch = provider.watch?.((event) => {
+      this.emitProviderEvent(normalizedMountPath, event);
+    });
+
+    this.mounts.set(normalizedMountPath, { provider, unwatch });
 
     // Sort mounts to prioritize more specific (longer) mount points first,
     // which is necessary for proper nested mount resolution.
@@ -180,7 +211,10 @@ export class VirtualFileSystem {
     sortedEntries.forEach(([k, v]) => newMap.set(k, v));
     this.mounts = newMap;
 
-    this.events.emit({ type: VfsEventType.MOUNT, path: normalizedMountPath });
+    this.emitVfsEvent({
+      type: VfsEventType.MOUNT,
+      path: normalizedMountPath,
+    });
   }
 
   /**
@@ -194,7 +228,7 @@ export class VirtualFileSystem {
     if (mount) {
       mount.unwatch?.();
       this.mounts.delete(normalized);
-      this.events.emit({ type: VfsEventType.UNMOUNT, path: normalized });
+      this.emitVfsEvent({ type: VfsEventType.UNMOUNT, path: normalized });
     }
   }
 
@@ -276,7 +310,7 @@ export class VirtualFileSystem {
 
       const stat = await provider.stat(relativePath);
 
-      this.events.emit({
+      this.emitVfsEvent({
         type: exists ? VfsEventType.UPDATE : VfsEventType.CREATE,
         path,
         nodeType: FSNodeType.File,
@@ -305,7 +339,7 @@ export class VirtualFileSystem {
   public async createDirectory(path: string): Promise<void> {
     const { provider, relativePath } = this.resolve(path);
     await provider.createDirectory(relativePath);
-    this.events.emit({
+    this.emitVfsEvent({
       type: VfsEventType.CREATE,
       path,
       nodeType: FSNodeType.Directory,
@@ -348,7 +382,7 @@ export class VirtualFileSystem {
     await this.locks.request(path, async () =>
       this.#unlockedDelete(path, recursive),
     );
-    this.events.emit({
+    this.emitVfsEvent({
       type: VfsEventType.DELETE,
       path,
       nodeType: stat.type,
@@ -397,7 +431,7 @@ export class VirtualFileSystem {
           await this.moveCrossProvider(oldPath, newPath);
         }
 
-        this.events.emit({
+        this.emitVfsEvent({
           type: VfsEventType.RENAME,
           path: oldPath,
           newPath,

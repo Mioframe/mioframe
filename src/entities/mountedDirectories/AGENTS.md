@@ -5,23 +5,21 @@ Inherits the rules from `src/entities/AGENTS.md`. Applies to `src/entities/mount
 ## Contains
 
 - `useFileSystem.ts`: entity-facing mounted-directory and filesystem state.
-- `MountedDirectoriesList.vue`: mounted-directory UI fragment.
 - `index.ts`: public entry point.
 
 ## Patterns
 
 - Keep mounted-directory state on top of shared filesystem services rather than direct browser API usage.
-- Treat mount/unmount and directory visibility as entity state with explicit side effects.
-- Keep UI fragments focused on representation and entry-point actions, not low-level filesystem logic.
+- Treat mount/disconnect and directory visibility as entity state with explicit side effects.
+- Keep directory-picker dialogs, browser permission prompts, and user-action orchestration in `features`, not in entity composables.
 
 ## Anti-patterns
 
-- Do not bypass the entity contract for mount, unmount, or directory mutation flows.
-- Do not hide filesystem permission assumptions inside UI fragments.
+- Do not bypass the entity contract for mount, disconnect, or directory mutation flows.
 - Do not mix mounted-directory state with unrelated repository or document logic.
 
 ## Constraints
 
 - Changes here affect local directory selection, mount state, and filesystem-backed flows.
 - External imports should go through `index.ts`.
-- Minimum verification: `pnpm type-check` and a manual smoke check of mount/unmount or directory selection behavior.
+- Minimum verification: `pnpm type-check` and a manual smoke check of mount/disconnect or directory selection behavior.

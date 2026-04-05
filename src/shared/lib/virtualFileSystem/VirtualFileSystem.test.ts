@@ -1,6 +1,17 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { MemoryFileSystem } from './MemoryFileSystem';
 import { VirtualFileSystem } from './VirtualFileSystem';
+import {
+  EventEmitter,
+  VfsEventSource,
+  type VfsEvent,
+  VfsEventType,
+} from './EventEmitter';
+import type {
+  FileContent,
+  IFileSystemProvider,
+  WriteOptions,
+} from './IFileSystemProvider';
 import { FSNodeType } from './IFileSystemProvider';
 import { VfsError } from './VfsError';
 
@@ -27,6 +38,64 @@ describe('VirtualFileSystem', () => {
 
       const mountsList = vfs.mountsList;
       expect(mountsList).toContain(testPath);
+    });
+
+    it('should forward provider watch events with the mount path prefix', () => {
+      const memoryFileSystem = new MemoryFileSystem();
+      const providerEvents = new EventEmitter();
+      const provider: IFileSystemProvider & {
+        emitCreate(path: string): void;
+      } = {
+        emitCreate(path: string) {
+          providerEvents.emit({
+            source: VfsEventSource.PROVIDER,
+            type: VfsEventType.CREATE,
+            path,
+            nodeType: FSNodeType.File,
+          });
+        },
+        watch: (callback: (event: VfsEvent) => void) =>
+          providerEvents.subscribe(callback),
+        stat: (path) => memoryFileSystem.stat(path),
+        readFile: (path) => memoryFileSystem.readFile(path),
+        writeFile: (
+          path: string,
+          content: FileContent,
+          options: WriteOptions,
+        ) => memoryFileSystem.writeFile(path, content, options),
+        readDirectory: (path) => memoryFileSystem.readDirectory(path),
+        createDirectory: (path) => memoryFileSystem.createDirectory(path),
+        delete: (path, recursive) => memoryFileSystem.delete(path, recursive),
+        move: (oldPath, newPath) => memoryFileSystem.move(oldPath, newPath),
+      };
+      const observedEvents: Array<{
+        path: string;
+        type: string;
+        source: string;
+        mountPath?: string;
+        providerPath?: string;
+      }> = [];
+
+      vfs.mount('/mnt/test', provider);
+      vfs.watch('/mnt/test', (event) => {
+        observedEvents.push({
+          path: event.path,
+          type: event.type,
+          source: event.source,
+          mountPath: event.mountPath,
+          providerPath: event.providerPath,
+        });
+      });
+
+      provider.emitCreate('/watched.txt');
+
+      expect(observedEvents).toContainEqual({
+        path: '/mnt/test/watched.txt',
+        type: 'create',
+        source: 'provider',
+        mountPath: '/mnt/test',
+        providerPath: '/watched.txt',
+      });
     });
   });
 
@@ -532,9 +601,13 @@ describe('VirtualFileSystem', () => {
     it('should emit create event when creating directory', async () => {
       vfs.mount('/mnt/test', memoryFS);
 
-      const events: Array<{ type: string; path: string }> = [];
+      const events: Array<{ type: string; path: string; source: string }> = [];
       vfs.watch('/mnt/test', (event) => {
-        events.push({ type: event.type, path: event.path });
+        events.push({
+          type: event.type,
+          path: event.path,
+          source: event.source,
+        });
       });
 
       await vfs.createDirectory('/mnt/test/newdir');
@@ -542,6 +615,7 @@ describe('VirtualFileSystem', () => {
       expect(events).toContainEqual({
         type: 'create',
         path: '/mnt/test/newdir',
+        source: 'vfs',
       });
     });
 

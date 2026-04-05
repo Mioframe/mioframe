@@ -6,6 +6,11 @@ export {
   FSNodeType,
   type WriteOptions,
 } from './IFileSystemProvider';
-export { EventEmitter, VfsEventType, type VfsEvent } from './EventEmitter';
+export {
+  EventEmitter,
+  VfsEventSource,
+  VfsEventType,
+  type VfsEvent,
+} from './EventEmitter';
 export { PathUtils } from './PathUtils';
 export { FileSystemError, VfsError } from './VfsError';

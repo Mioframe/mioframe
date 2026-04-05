@@ -58,12 +58,25 @@ export enum VfsEventType {
   UNMOUNT = 'unmount',
 }
 
+export enum VfsEventSource {
+  VFS = 'vfs',
+  PROVIDER = 'provider',
+}
+
 export interface VfsEvent {
+  /** Event origin */
+  source: VfsEventSource;
   type: VfsEventType;
-  /** Path relative to root (for VFS) or provider root (for drivers) */
+  /** Path relative to VFS root */
   path: string;
   /** For rename event — new path */
   newPath?: string;
+  /** Mount path for forwarded provider events */
+  mountPath?: string;
+  /** Original provider-relative path before mount prefixing */
+  providerPath?: string;
+  /** Original provider-relative new path before mount prefixing */
+  providerNewPath?: string;
   /** Node type for content events (create, update, delete, rename) */
   nodeType?: FSNodeType;
   /** File size in bytes (for update events) */
