@@ -50,7 +50,7 @@ export interface ListParams {
   spaces?: SPACE[];
   /** Automatically fetch all result pages. Default: `false` */
   fetchAll?: boolean;
-  /** Fields to sample via JSON Path. Default: `nextPageToken,files(id,name,mimeType,size,createdTime,modifiedTime,parents,capabilities(canTrash))`
+  /** Fields to sample via JSON Path. Default: `nextPageToken,files(id,name,mimeType,size,createdTime,modifiedTime,parents,capabilities(canTrash,canRename,canAddChildren))`
    * Important: All added fields must be included in the Zod schema (GDriveFile), otherwise they will be filtered out */
   fields?: string;
 }
@@ -132,12 +132,14 @@ export const zodGDriveFileMeta = z.object({
   capabilities: z.optional(
     z.object({
       canTrash: z.optional(z.boolean()),
+      canRename: z.optional(z.boolean()),
+      canAddChildren: z.optional(z.boolean()),
     }),
   ),
 });
 
 export const fieldsGDriveFileMeta =
-  'id,name,mimeType,size,createdTime,modifiedTime,parents,capabilities(canTrash)';
+  'id,name,mimeType,size,createdTime,modifiedTime,parents,capabilities(canTrash,canRename,canAddChildren)';
 
 /**
  * Google Drive file type extracted from validation schema.

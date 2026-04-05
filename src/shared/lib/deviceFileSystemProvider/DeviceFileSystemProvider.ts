@@ -41,7 +41,11 @@ export interface DeviceFileSystemProvider extends IFileSystemProvider {
 
 const rootDirectoryStat = {
   type: FSNodeType.Directory,
-  canDelete: false,
+  capabilities: {
+    canDelete: false,
+    canChangePath: false,
+    canEditChildren: false,
+  },
 } satisfies FSNodeStat;
 
 const isMountedRootPath = (path: string) => PathUtils.split(path).length <= 1;
@@ -175,10 +179,14 @@ export const DeviceFileSystemProvider = ({
     const normalizedPath = PathUtils.normalize(path);
 
     if (normalizedPath === '/') {
-      return listRecords().map(({ name }): [string, FSNodeStat] => [
-        name,
-        rootDirectoryStat,
-      ]);
+      return Promise.all(
+        Array.from(records.values()).map(
+          async ({ name, provider }): Promise<[string, FSNodeStat]> => [
+            name,
+            await provider.stat('/'),
+          ],
+        ),
+      );
     }
 
     return vfs.readDirectory(normalizedPath);

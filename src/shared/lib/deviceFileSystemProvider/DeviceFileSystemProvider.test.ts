@@ -120,7 +120,18 @@ describe('DeviceFileSystemProvider', () => {
       'Origin private file system',
       'Projects',
     ]);
-    expect(entries.every(([, stat]) => stat.canDelete === false)).toBe(true);
+    expect(
+      entries.every(([, stat]) => {
+        const { capabilities } = stat;
+
+        return (
+          capabilities !== undefined &&
+          capabilities.canDelete === false &&
+          capabilities.canChangePath === false &&
+          capabilities.canEditChildren === true
+        );
+      }),
+    ).toBe(true);
   });
 
   it('should route nested file operations to the correct mounted root', async () => {
@@ -166,7 +177,7 @@ describe('DeviceFileSystemProvider', () => {
     );
   });
 
-  it('should expose mounted roots as non-deletable directories', async () => {
+  it('should expose mounted roots as non-deletable directories with editable contents', async () => {
     mountRecord('Projects');
 
     const stat = await provider.stat('/Projects');
@@ -174,7 +185,11 @@ describe('DeviceFileSystemProvider', () => {
     expect(stat).toEqual(
       expect.objectContaining({
         type: FSNodeType.Directory,
-        canDelete: false,
+        capabilities: expect.objectContaining({
+          canDelete: false,
+          canChangePath: false,
+          canEditChildren: true,
+        }),
       }),
     );
   });

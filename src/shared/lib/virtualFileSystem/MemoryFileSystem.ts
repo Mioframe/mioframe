@@ -1,6 +1,7 @@
 import type {
   IFileSystemProvider,
   FileContent,
+  FSNodeCapabilities,
   FSNodeStat,
   WriteOptions,
 } from './IFileSystemProvider';
@@ -28,6 +29,23 @@ export class MemoryFileSystem implements IFileSystemProvider {
   /** Storage: Path -> Entry object */
   private store: Map<string, AnyEntry> = new Map();
 
+  private static readonly ROOT_CAPABILITIES = {
+    canDelete: false,
+    canChangePath: false,
+    canEditChildren: true,
+  } satisfies FSNodeCapabilities;
+
+  private static readonly FILE_CAPABILITIES = {
+    canDelete: true,
+    canChangePath: true,
+  } satisfies FSNodeCapabilities;
+
+  private static readonly DIRECTORY_CAPABILITIES = {
+    canDelete: true,
+    canChangePath: true,
+    canEditChildren: true,
+  } satisfies FSNodeCapabilities;
+
   constructor() {
     // Initialize the root directory
     this.store.set('/', {
@@ -35,7 +53,7 @@ export class MemoryFileSystem implements IFileSystemProvider {
       size: 0,
       creationTime: Date.now(),
       modificationTime: Date.now(),
-      canDelete: false,
+      capabilities: MemoryFileSystem.ROOT_CAPABILITIES,
     });
   }
 
@@ -56,6 +74,18 @@ export class MemoryFileSystem implements IFileSystemProvider {
     return entry;
   }
 
+  private getCapabilities(path: string, entry: AnyEntry): FSNodeCapabilities {
+    if (path === '/') {
+      return MemoryFileSystem.ROOT_CAPABILITIES;
+    }
+
+    if (entry.type === FSNodeType.Directory) {
+      return entry.capabilities ?? MemoryFileSystem.DIRECTORY_CAPABILITIES;
+    }
+
+    return entry.capabilities ?? MemoryFileSystem.FILE_CAPABILITIES;
+  }
+
   /**
    * Retrieves file system statistics for a given path.
    * @param path - The path to get statistics for
@@ -70,7 +100,7 @@ export class MemoryFileSystem implements IFileSystemProvider {
       size: entry.size,
       creationTime: entry.creationTime,
       modificationTime: entry.modificationTime,
-      canDelete: normalized !== '/',
+      capabilities: this.getCapabilities(normalized, entry),
     });
   }
 
@@ -137,7 +167,7 @@ export class MemoryFileSystem implements IFileSystemProvider {
       size: 0,
       creationTime: Date.now(),
       modificationTime: Date.now(),
-      canDelete: true,
+      capabilities: MemoryFileSystem.DIRECTORY_CAPABILITIES,
     });
 
     return Promise.resolve();
@@ -235,7 +265,7 @@ export class MemoryFileSystem implements IFileSystemProvider {
         size: file.size,
         creationTime: now,
         modificationTime: now,
-        canDelete: true,
+        capabilities: MemoryFileSystem.FILE_CAPABILITIES,
       });
     }
   }
@@ -251,7 +281,7 @@ export class MemoryFileSystem implements IFileSystemProvider {
     const normalized = PathUtils.normalize(path);
     const entry = this.getEntry(normalized);
 
-    if (entry.canDelete !== true) {
+    if (entry.capabilities?.canDelete !== true) {
       throw new VfsError(
         FileSystemError.NoPermissions,
         `Deletion is not allowed for path: ${path}`,
@@ -277,7 +307,7 @@ export class MemoryFileSystem implements IFileSystemProvider {
         const toDelete = new Set<string>();
         for (const [path, entry] of this.store.entries()) {
           if (path.startsWith(searchPrefix)) {
-            if (entry.canDelete !== true) {
+            if (entry.capabilities?.canDelete !== true) {
               throw new VfsError(
                 FileSystemError.NoPermissions,
                 `Deletion is not allowed for path: ${path}`,
@@ -339,6 +369,12 @@ export class MemoryFileSystem implements IFileSystemProvider {
         ),
       );
     }
+    if (newParentEntry.capabilities?.canEditChildren !== true) {
+      throw new VfsError(
+        FileSystemError.NoPermissions,
+        `Path change is not allowed inside directory: ${newParentPath}`,
+      );
+    }
 
     if (entry.type === FSNodeType.Directory) {
       const searchPrefix =
@@ -360,10 +396,10 @@ export class MemoryFileSystem implements IFileSystemProvider {
         const relativePath = oldKey.substring(searchPrefix.length);
         const newKey = PathUtils.join(newPrefix, relativePath);
 
-        if (childEntry.canDelete !== true) {
+        if (childEntry.capabilities?.canChangePath !== true) {
           throw new VfsError(
             FileSystemError.NoPermissions,
-            `Deletion is not allowed for path: ${oldKey}`,
+            `Path change is not allowed for path: ${oldKey}`,
           );
         }
 
@@ -375,10 +411,10 @@ export class MemoryFileSystem implements IFileSystemProvider {
       }
 
       // Moving the directory itself
-      if (entry.canDelete !== true) {
+      if (entry.capabilities?.canChangePath !== true) {
         throw new VfsError(
           FileSystemError.NoPermissions,
-          `Deletion is not allowed for path: ${normalizedOld}`,
+          `Path change is not allowed for path: ${normalizedOld}`,
         );
       }
       this.store.delete(normalizedOld);
@@ -388,10 +424,10 @@ export class MemoryFileSystem implements IFileSystemProvider {
       });
     } else {
       // Moving the file
-      if (entry.canDelete !== true) {
+      if (entry.capabilities?.canChangePath !== true) {
         throw new VfsError(
           FileSystemError.NoPermissions,
-          `Deletion is not allowed for path: ${normalizedOld}`,
+          `Path change is not allowed for path: ${normalizedOld}`,
         );
       }
       this.store.delete(normalizedOld);

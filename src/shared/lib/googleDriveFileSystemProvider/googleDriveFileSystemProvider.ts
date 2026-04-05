@@ -233,8 +233,41 @@ export const googleDriveFileSystemProvider = ({
 
   const virtualDirectoryStat = {
     type: FSNodeType.Directory,
-    canDelete: false,
+    capabilities: {
+      canDelete: false,
+      canChangePath: false,
+      canEditChildren: false,
+    },
   } satisfies FSNodeStat;
+
+  const getEntryCapabilities = (
+    entry: GDriveFileMeta,
+  ): FSNodeStat['capabilities'] => {
+    const isDirectory = entry.mimeType === GOOGLE_MIME_FOLDER;
+    const canEditChildren =
+      isDirectory &&
+      entry.id !== SHARED_WITH_ME_ID &&
+      (entry.capabilities?.canAddChildren ?? false);
+
+    return {
+      canDelete: entry.capabilities?.canTrash ?? false,
+      canChangePath: entry.capabilities?.canRename ?? false,
+      canEditChildren,
+    };
+  };
+
+  const getSpaceDirectoryStat = (
+    spaceName: (typeof SpaceName)[keyof typeof SpaceName],
+  ) =>
+    ({
+      type: FSNodeType.Directory,
+      capabilities: {
+        canDelete: false,
+        canChangePath: false,
+        canEditChildren:
+          spaceName === SpaceName.MyDrive || spaceName === SpaceName.AppData,
+      },
+    }) satisfies FSNodeStat;
 
   /**
    * Gets file or directory statistics.
@@ -253,6 +286,9 @@ export const googleDriveFileSystemProvider = ({
 
       if (email && pathArray.length === 1) {
         return virtualDirectoryStat;
+      }
+      if (pathArray.length === 2) {
+        return getSpaceDirectoryStat(zodSpaceName.parse(pathArray.at(1)));
       }
 
       const entry = await resolvePath(path);
@@ -276,7 +312,7 @@ export const googleDriveFileSystemProvider = ({
         size,
         creationTime,
         modificationTime,
-        canDelete: entry.capabilities?.canTrash ?? false,
+        capabilities: getEntryCapabilities(entry),
       };
     } catch (e) {
       if (e instanceof VfsError) throw e;
@@ -422,6 +458,11 @@ export const googleDriveFileSystemProvider = ({
       email,
       {
         type: FSNodeType.Directory,
+        capabilities: {
+          canDelete: false,
+          canChangePath: false,
+          canEditChildren: false,
+        },
       },
     ]);
   };
@@ -429,7 +470,7 @@ export const googleDriveFileSystemProvider = ({
   const readAccountDirectory = () =>
     Object.values(SpaceName).map((name): [string, FSNodeStat] => [
       name,
-      { type: FSNodeType.Directory },
+      getSpaceDirectoryStat(name),
     ]);
 
   /**
@@ -498,7 +539,7 @@ export const googleDriveFileSystemProvider = ({
           creationTime,
           modificationTime,
           size,
-          canDelete: file.capabilities?.canTrash ?? false,
+          capabilities: getEntryCapabilities(file),
         } satisfies FSNodeStat;
 
         entries.push([file.name, fsNodeStat]);
@@ -567,7 +608,7 @@ export const googleDriveFileSystemProvider = ({
 
     const entry = await resolvePath(path);
 
-    if (entry.capabilities?.canTrash !== true) {
+    if (getEntryCapabilities(entry)?.canDelete !== true) {
       throw new VfsError(
         FileSystemError.NoPermissions,
         `Deletion is not allowed for path: ${path}`,
@@ -623,10 +664,10 @@ export const googleDriveFileSystemProvider = ({
 
     const sourceEntry = await resolvePath(normalizedOld);
 
-    if (sourceEntry.capabilities?.canTrash !== true) {
+    if (getEntryCapabilities(sourceEntry)?.canChangePath !== true) {
       throw new VfsError(
         FileSystemError.NoPermissions,
-        `Move is not allowed for path: ${oldPath}`,
+        `Path change is not allowed for path: ${oldPath}`,
       );
     }
 
@@ -657,6 +698,14 @@ export const googleDriveFileSystemProvider = ({
       throw new VfsError(
         FileSystemError.FileNotADirectory,
         `Destination parent is not a directory: ${newDirName}`,
+      );
+    }
+    if (
+      getEntryCapabilities(destinationParentEntry)?.canEditChildren !== true
+    ) {
+      throw new VfsError(
+        FileSystemError.NoPermissions,
+        `Path change is not allowed inside directory: ${newDirName}`,
       );
     }
 

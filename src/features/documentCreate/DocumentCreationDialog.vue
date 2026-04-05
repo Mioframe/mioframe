@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useFSNodeStat } from '@entity/fsEntry';
 import { computed, ref, toRefs, watchEffect } from 'vue';
 import { DATABASE_DOCUMENT_TYPE } from '../../shared/lib/databaseDocument';
 import { MDDialog } from '@shared/ui/Dialog';
@@ -21,21 +22,44 @@ const emit = defineEmits<{
 const showModel = defineModel<boolean>('show', { required: true });
 
 const stateName = ref<string>();
+const errorText = ref<string>();
+const loading = ref(false);
 
 const { createDocument } = useRepository(path);
+const { data: directoryStat } = useFSNodeStat(path);
+
+const canEditDirectoryContents = computed(
+  () => directoryStat.value?.capabilities?.canEditChildren === true,
+);
 
 const onCreate = async () => {
   if (!stateName.value?.length) {
     throw new Error('name is undefined');
   }
 
+  errorText.value = undefined;
+
+  if (!canEditDirectoryContents.value) {
+    errorText.value = 'Creating entries is not allowed in this directory';
+    return;
+  }
+
   if (selectedDocumentType.value) {
-    await createDocument({
-      name: stateName.value.trim(),
-      type: selectedDocumentType.value,
-      version: 1,
-      body: {},
-    });
+    try {
+      loading.value = true;
+      await createDocument({
+        name: stateName.value.trim(),
+        type: selectedDocumentType.value,
+        version: 1,
+        body: {},
+      });
+    } catch (error) {
+      errorText.value =
+        error instanceof Error ? error.message : 'unknown error';
+      return;
+    } finally {
+      loading.value = false;
+    }
 
     emit('created');
   }
@@ -43,6 +67,7 @@ const onCreate = async () => {
 
 const onCancel = () => {
   stateName.value = undefined;
+  errorText.value = undefined;
   emit('cancel');
 };
 
@@ -50,6 +75,10 @@ const autofocusElement = ref<HTMLElement>();
 
 watchEffect(() => {
   autofocusElement.value?.focus();
+
+  if (!showModel.value) {
+    errorText.value = undefined;
+  }
 });
 
 const documentTypes = {
@@ -80,10 +109,16 @@ const selectedDocumentTypeLabel = computed((): string | undefined => {
     apply-label="Create"
     cancel-label="Cancel"
     has-cancel-action
+    :loading="loading"
     @apply="onCreate"
     @cancel="onCancel"
   >
-    <MDTextField v-model:model-value="stateName" label-text="Name" />
+    <MDTextField
+      v-model:model-value="stateName"
+      label-text="Name"
+      :error="!!errorText"
+      :supporting-text="errorText"
+    />
 
     <MDSelectBase
       v-model:model-value="selectedDocumentTypes"

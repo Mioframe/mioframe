@@ -358,9 +358,9 @@ export class VirtualFileSystem {
   ): Promise<void> {
     const { provider, relativePath } = this.resolve(path);
 
-    // Check canDelete flag before deletion
+    // Check delete capability before deletion
     const stat = await provider.stat(relativePath);
-    if (stat.canDelete !== true) {
+    if (stat.capabilities?.canDelete !== true) {
       throw new VfsError(
         FileSystemError.NoPermissions,
         `Deletion is not allowed for path: ${path}`,
@@ -413,6 +413,20 @@ export class VirtualFileSystem {
 
     // Get node type before move
     const stat = await this.stat(oldPath);
+    const targetParentStat = await this.stat(PathUtils.dirname(newPath));
+
+    if (stat.capabilities?.canChangePath !== true) {
+      throw new VfsError(
+        FileSystemError.NoPermissions,
+        `Path change is not allowed for path: ${oldPath}`,
+      );
+    }
+    if (targetParentStat.capabilities?.canEditChildren !== true) {
+      throw new VfsError(
+        FileSystemError.NoPermissions,
+        `Path change is not allowed inside directory: ${PathUtils.dirname(newPath)}`,
+      );
+    }
 
     // 1. Sort paths for locking to avoid deadlock.
     // If one process does rename(A, B) and another does rename(B, A), without sorting deadlocks can occur.
@@ -465,7 +479,7 @@ export class VirtualFileSystem {
         overwrite: true,
       });
 
-      await this.#unlockedDelete(sourcePath);
+      await source.provider.delete(source.relativePath, false);
     } else if (sourceStat.type === FSNodeType.Directory) {
       try {
         await target.provider.createDirectory(target.relativePath);
@@ -483,7 +497,7 @@ export class VirtualFileSystem {
         await this.move(childSource, childTarget);
       }
 
-      await this.#unlockedDelete(sourcePath);
+      await source.provider.delete(source.relativePath, false);
     }
     // Note: RENAME event is emitted by the caller (move method)
   }

@@ -18,6 +18,15 @@ export enum FSNodeType {
   Directory,
 }
 
+export interface FSNodeCapabilities {
+  /** Flag that explicitly allows deletion from the file system */
+  canDelete?: boolean;
+  /** Flag that explicitly allows renaming or moving the entry */
+  canChangePath?: boolean;
+  /** Flag that explicitly allows mutating directory contents */
+  canEditChildren?: boolean;
+}
+
 /**
  * File system node statistics interface
  */
@@ -30,8 +39,8 @@ export interface FSNodeStat {
   creationTime?: number;
   /** Last modification time */
   modificationTime?: number;
-  /** Flag that explicitly allows deletion from the file system */
-  canDelete?: boolean;
+  /** Provider-reported capabilities for the node */
+  capabilities?: FSNodeCapabilities;
 }
 
 /**
