@@ -4,6 +4,7 @@ import {
   GoogleClientConfigError,
   USER_INFO_GOOGLE_SCOPE,
 } from '@shared/lib/googleApi';
+import { googleDriveFileSystemProvider } from '@shared/lib/googleDriveFileSystemProvider';
 import type { GoogleAuthError } from './errors';
 import { GoogleAuthErrorCode } from './errors';
 
@@ -13,7 +14,6 @@ const revokeMock = vi.fn();
 const updateMock = vi.fn();
 const getMock = vi.fn();
 const getStoreMock = vi.fn();
-const getSessionListMock = vi.fn();
 const clearMock = vi.fn();
 
 vi.mock('../fileSystem', () => ({
@@ -33,13 +33,13 @@ vi.mock('./googleSessionStore', () => ({
   useGoogleSessionStore: () => ({
     getStore: getStoreMock,
     update: updateMock,
-    getSessionList: getSessionListMock,
     get: getMock,
     clear: clearMock,
     $sessions: {
-      subscribe: () => ({
+      subscribe: vi.fn(() => ({
         unsubscribe: () => undefined,
-      }),
+      })),
+      pipe: vi.fn(),
     },
   }),
 }));
@@ -53,13 +53,11 @@ describe('useGoogleService', () => {
     updateMock.mockReset();
     getMock.mockReset();
     getStoreMock.mockReset();
-    getSessionListMock.mockReset();
     clearMock.mockReset();
 
     getStoreMock.mockResolvedValue({});
     getMock.mockResolvedValue(undefined);
     updateMock.mockResolvedValue(undefined);
-    getSessionListMock.mockResolvedValue([]);
     clearMock.mockResolvedValue(undefined);
     revokeMock.mockResolvedValue(undefined);
     userinfoGetMock.mockResolvedValue({
@@ -219,6 +217,18 @@ describe('useGoogleService', () => {
 
     expect(revokeMock).not.toHaveBeenCalled();
     expect(updateMock).toHaveBeenCalledWith({});
+  });
+
+  it('passes reactive sessions to the Google Drive provider', async () => {
+    const service = await createService();
+
+    expect(googleDriveFileSystemProvider).toHaveBeenCalledWith({
+      $sessions: expect.objectContaining({
+        subscribe: expect.any(Function),
+      }),
+      requestToken: expect.any(Function),
+    });
+    expect(service.sessions).toBeDefined();
   });
 
   it('revokes access and deletes the stored session', async () => {

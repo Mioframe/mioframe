@@ -10,8 +10,8 @@ import {
 } from '@shared/lib/googleApi';
 import { isSubset, omit } from 'es-toolkit';
 import { zodIs } from '@shared/lib/validateZodScheme';
-import type { ObservableDefinition } from '@shared/lib/useObservable';
-import { defineObservable } from '@shared/lib/useObservable';
+import type { ObservableSource } from '@shared/lib/useObservable';
+import { fromObservable } from '@shared/lib/useObservable';
 import { dedupe } from '@shared/lib/dedupe';
 import stringify from 'safe-stable-stringify';
 import { GoogleAuthError, GoogleAuthErrorCode } from './errors';
@@ -41,7 +41,7 @@ export type GoogleService = {
     expectedEmail?: string,
   ) => Promise<string>;
   clear: () => Promise<void>;
-  sessions: ObservableDefinition<string[]>;
+  sessions: ObservableSource<string[]>;
   deleteSession: (email: string) => Promise<void>;
   revokeAccess: (email: string) => Promise<void>;
 };
@@ -49,8 +49,8 @@ export type GoogleService = {
 const setupGoogleService = (): GoogleService => {
   let googleApi: undefined | GoogleApi;
 
-  const { getStore, update, getSessionList, get, clear, $sessions } =
-    useGoogleSessionStore();
+  const { getStore, update, get, clear, $sessions } = useGoogleSessionStore();
+  const sessions = fromObservable($sessions);
 
   const normalizeScopes = (scopes: GOOGLE_SCOPE[]): GOOGLE_SCOPE[] =>
     [...new Set(scopes)].sort();
@@ -195,8 +195,8 @@ const setupGoogleService = (): GoogleService => {
     vfs.mount(
       path,
       googleDriveFileSystemProvider({
+        $sessions,
         requestToken,
-        getSessionList,
       }),
     );
   };
@@ -245,7 +245,7 @@ const setupGoogleService = (): GoogleService => {
     bindGoogleApi,
     requestToken,
     clear,
-    sessions: defineObservable($sessions),
+    sessions,
     deleteSession,
     revokeAccess,
   } satisfies GoogleService;

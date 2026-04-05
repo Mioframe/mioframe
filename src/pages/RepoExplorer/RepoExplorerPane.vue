@@ -57,7 +57,6 @@ const {
   error: directoryError,
   errorMessage: directoryErrorMessage,
   isLoading: directoryLoading,
-  refetch: refetchDirectory,
 } = useDirectory(directoryPath, readDirectoryOptions);
 const { data: directoryStat } = useFSNodeStat(directoryPath);
 
@@ -87,7 +86,6 @@ const {
   state: documentIdList,
   error: repositoryError,
   errorMessage: repositoryErrorMessage,
-  refetch: refetchRepository,
 } = useRepository(directoryPath);
 
 const onClickDocument = async (documentId: AMDocumentId) => {
@@ -127,15 +125,9 @@ const fallbackErrorMessage = computed(
   () => directoryErrorMessage.value ?? repositoryErrorMessage.value,
 );
 
-// TODO: Remove this manual refresh after Google Drive reads update from Google session changes via service-level RxJS reactivity.
-const onRefreshGoogleDriveAccess = async () => {
-  await Promise.all([refetchDirectory(), refetchRepository()]);
-};
-
 const { isRetryAuthorizationLoading, onRetryAuthorization } =
   useGoogleDriveRecovery({
     path: directoryPath,
-    onRefresh: onRefreshGoogleDriveAccess,
   });
 
 const onClickReturnHome = async () => {

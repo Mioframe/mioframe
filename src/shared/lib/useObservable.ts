@@ -4,15 +4,15 @@ import type { Promisable } from 'type-fest';
 import { readonly, shallowRef } from 'vue';
 
 /**
- * Factory function for wrapping an RxJS Observable into a query configuration object.
- * Returns an object with subscribe and fetch methods for interacting with the Observable.
+ * Adapts an RxJS Observable to the project's reactive source contract.
+ * Returns an object with subscribe and fetch methods for interacting with the source.
  *
- * @param observable RxJS Observable<T> to wrap
- * @returns Query configuration object with subscribe and fetch methods
+ * @param observable RxJS Observable<T> to adapt
+ * @returns Reactive source object with subscribe and fetch methods
  */
-export const defineObservable = <T>(
-  $: Observable<T>,
-): ObservableDefinition<T> => {
+export const fromObservable = <T>(
+  $observable: Observable<T>,
+): ObservableSource<T> => {
   return {
     /**
      * Subscribes to the Observable with optional event handlers.
@@ -33,7 +33,7 @@ export const defineObservable = <T>(
       error?: (err: unknown) => void;
       complete?: () => void;
     }): Promisable<() => void> => {
-      const subscription = $.subscribe({
+      const subscription = $observable.subscribe({
         next,
         error,
         complete,
@@ -52,17 +52,17 @@ export const defineObservable = <T>(
      * @returns Promise resolving to the first emitted value, or undefined if no values were emitted or if the Observable completes immediately.
      */
     fetch: (waitTime = 30e3): Promise<T | undefined> =>
-      firstValueFrom($.pipe(timeout(waitTime))),
+      firstValueFrom($observable.pipe(timeout(waitTime))),
   };
 };
 
 /**
- * Type definition for Observable query configuration.
- * Defines the interface for objects returned by defineObservable.
+ * Reactive source contract used by composables that need both subscription and one-shot fetch behavior.
+ * This is typically an adapter around an RxJS Observable.
  *
  * @template T Type of data emitted by the Observable
  */
-export type ObservableDefinition<T> = {
+export type ObservableSource<T> = {
   /**
    * Subscribes to the Observable with optional event handlers.
    * Returns an unsubscribe function to stop the subscription.
@@ -110,16 +110,16 @@ export interface UseQueryOptions {
  * Automatically handles cleanup on scope disposal.
  *
  * @template T Type of data emitted by the Observable
- * @param queryDef Query configuration object returned by defineObservable
+ * @param queryDef Reactive source object returned by fromObservable
  * @returns Object with readonly reactive refs for data, error, isLoading and async refetch method
  *
  * @example
  * // Basic usage
  * const observable = from([1, 2, 3]);
- * const wrapped = defineObservable(observable);
+ * const wrapped = fromObservable(observable);
  * const { data, error, isLoading, refetch } = useObservable(wrapped);
  */
-export function useObservable<T>(queryDef: ObservableDefinition<T>) {
+export function useObservable<T>(queryDef: ObservableSource<T>) {
   /**
    * Reactive storage for query data.
    * Uses shallowRef to track object data changes.
