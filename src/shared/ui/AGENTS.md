@@ -13,6 +13,8 @@ Inherits the rules from `src/shared/AGENTS.md`. Applies to `src/shared/ui` and i
 ## Patterns
 
 - Components should be driven by props, emits, slots, and composables.
+- Use the `MD*` prefix only for shared UI components that intentionally follow Material Design visual and interaction conventions.
+- Prefer a concrete surface suffix in component names, such as `Dialog`, `Sheet`, `ListItem`, `Field`, `Button`, `Table`, or `Layout`, over vague role-based names.
 - Accessibility, keyboard behavior, and focus management are part of the component contract.
 - Shared UI should remain neutral enough for use from multiple domain scenarios.
 - Extend existing primitives through props or slots before adding another near-duplicate component.

@@ -33,6 +33,49 @@ This is a local-first personal data manager built around:
 - Keep contract parsing, validation, and extraction close to the module that defines that contract instead of scattering that logic across unrelated layers.
 - In component code, name event handlers and callback-style bindings with the `on*` prefix for consistent, recognizable intent.
 
+## Naming
+
+- Prefer clear domain words over ad hoc abbreviations. Keep an acronym only when it is already established project vocabulary or an external contract term, such as `FS`, `MD`, `CFR`, `OPFS`, `OAuth`, or `GAPI`.
+- Treat existing `UI*` component names as legacy compatibility names. Do not introduce new `UI*` symbols in component or module names.
+- Name page and widget directories in PascalCase because they are screen or composition modules.
+- Name `features`, `entities`, and `shared` submodules in lower camel case by domain concept or action.
+- Name non-component TypeScript files in lower camel case or lowercase. Reserve PascalCase filenames for Vue components and class-centric modules.
+- Name feature directories and public feature APIs by the user action they own, usually as `<domain><Action>` such as `documentRename` or `databasePropertyCreate`.
+- Name entity directories and public entity APIs by the stable domain concept they expose, such as `databaseProperty`, `repository`, or `googleUserInfo`.
+- Name components by the external visual and interaction contract they present in markup. The name should tell a reader what the user sees and how the component behaves, not what internal role it plays.
+- Use component suffixes to describe visible form and interaction model. Prefer concrete surface words such as `Dialog`, `Sheet`, `Pane`, `Widget`, `Layout`, `Form`, `Field`, `List`, `ListItem`, `Table`, `Button`, `MenuItem`, `Chip`, `Bar`, `Rail`, `Container`, `State`, or `Section`.
+- Choose the smallest suffix that still explains the rendered surface. Good: `DocumentRemoveDialog`, `DatabasePropertyListItem`. Bad: `DocumentRemoveManager`, `DatabasePropertyRow` when the component is actually a list item.
+- Use `Dialog` for modal surfaces with apply or cancel semantics. Use `Sheet` for bottom-sheet or panel-sheet surfaces. Use `Pane` for route or split-view panes. Use `Widget` only for large reusable composition blocks in the widget layer.
+- Use `Layout` for structure-only components that primarily arrange children. Use `Container` only for an explicit slot, portal, scrolling, or positioning shell. Do not use `Container` for hidden data or orchestration logic.
+- Use `State` for a visible empty, loading, error, recovery, or status surface. Use `Section` only for a stable subsection of a larger surface, not as a generic wrapper name.
+- Do not name a visual component with vague implementation nouns such as `Manager`, `Helper`, `Renderer`, `Handler`, or `Provider` unless the module is not actually a visual component.
+- Use the `MD*` prefix only for shared UI components that intentionally follow Material Design visual and interaction patterns. Use a plain domain name without `MD` for entity, feature, widget, and page components, and for shared UI that is not presented as a Material Design primitive.
+- Name composables and access hooks with `use*`. A `use*` function should expose a reactive capability, reactive state, derived state, lifecycle-managed subscriptions, or actions consumed as a capability by callers.
+- Use `use*` when the caller should consume a capability rather than think about construction. It is acceptable for `use*` to be backed by `createGlobalState`, a scope pool, dependency injection, or direct local composition.
+- Good `use*`: `useDatabaseProperty`, `useSnackbar`, `useOverlayNavigation`. Bad `use*`: a pure one-shot parser or a fresh-instance factory with no reactive or lifecycle contract.
+- Name assembly and wiring functions with `setup*`. Use `setup*` when the function connects dependencies, listeners, services, worker contracts, context, or lifecycle-managed state and ownership is primarily about initialization and cleanup.
+- A `setup*` function may allocate resources, subscribe, register cleanup, or bind infrastructure contracts. Pair `setup*` with a public `use*` accessor when the wiring result is later consumed as shared state or capability.
+- Good `setup*`: `setupMainService`, `setupGoogleSessionService`, `setupPaneContext`. Bad `setup*`: a pure typed config helper or a function whose main job is returning a new independent value object.
+- Name declarative definition helpers with `define*`. Use `define*` for functions that preserve type inference, register a contract, constrain literals, or describe a protocol shape without owning a long-lived runtime instance.
+- A `define*` function must stay side-effect-light. It must not hide I/O, background work, subscriptions, or ownership of live resources.
+- Good `define*`: `defineMenuButtonList`, `defineObservableQuery`, `defineScopePool`. Bad `define*`: a function that starts watchers, opens connections, or allocates a runtime client with external lifecycle.
+- Name factories with `create*`. Use `create*` when each call intentionally returns a new independent instance, adapter, client, service object, or domain value and the caller becomes the owner of that result.
+- Prefer `create*` over `setup*` when repeated calls are expected to produce separate usable instances. Prefer `setup*` over `create*` when the point is wiring and lifecycle, not per-call instance ownership.
+- Good `create*`: `createFSStorageAdapter`, `createVFSAdapter`, `createNumberProperty`. Bad `create*`: a singleton wiring entry point or a function whose meaning is mostly registration and cleanup.
+- Reserve the `*Service` suffix for infrastructural background services that belong to the worker-side or background-side execution model of the app.
+- A `*Service` module or exported symbol should represent a service contract, service implementation, or service accessor that is valid without DOM access and without main-thread-only assumptions.
+- Do not use the `*Service` suffix for view-model helpers, component-local orchestration, or browser-main-thread UI adapters. If a module needs DOM, focus, layout, or direct component interaction, it is not a `*Service`.
+- Name pure lookup, extraction, and derivation helpers with `get*`. A `get*` function should read from its arguments or an already available structure and return a value without establishing long-lived ownership.
+- Keep `get*` side-effect-light and predictable. Do not use `get*` for initialization, subscriptions, global mutation, or instance creation.
+- Good `get*`: `getGoogleDrivePathEmail`, `getGoogleDriveAccessRecoveryError`. Bad `get*`: a function that creates shared state, opens a worker bridge, or attaches listeners.
+- Name predicates and type guards with `is*`, and keep them boolean-returning.
+- Good `is*`: `isGoogleAuthPopupBlocked`, `isFileFSEntry`. Bad `is*`: a coercion helper that returns a transformed value.
+- Name schema values with `zod*`. Export the schema itself with the `zod` prefix and derive the TypeScript type from it nearby when useful.
+- Keep `zod*` exports close to the boundary or contract they validate. Good: `zodQuery`, `zodDatabaseView`, `zodGoogleErrorResponse`.
+- Name local component event handlers and callback bindings with `on*`, such as `onClickCreateDocument`, `onSubmit`, `onCancel`, `onApply`, or `onRetryAuthorization`.
+- Reserve the `$` suffix for raw RxJS observables only. Do not use `$` for Vue refs, computed values, wrapped query results, or service accessors.
+- When a directory exposes an `index.ts`, keep exported symbol names aligned with the directory name and import through that entry point unless a deeper path is intentionally part of the local module contract.
+
 ## Anti-patterns
 
 - Do not pull dependencies upward against the intended layer direction.
