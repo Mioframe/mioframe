@@ -15,6 +15,9 @@ Inherits the rules from `src/shared/AGENTS.md`. Applies to `src/shared/service` 
 ## Patterns
 
 - Services should expose infrastructural capabilities and contracts, not screen-level UI logic.
+- Use the `*Service` suffix for worker-side or background-side infrastructure only.
+- Keep `*Service` modules free of DOM APIs, focus/layout concerns, and other main-thread-only browser behavior.
+- Prefer `setup*` for service wiring and `use*` for service access. Use `create*` only when each call intentionally creates a new service instance owned by the caller.
 - Normalize errors and side effects so upper layers can rely on stable service behavior.
 - Query and mutation contracts should be deterministic and explicit about invalidation.
 - Worker and service setup should document lifecycle and cleanup semantics.
@@ -25,6 +28,7 @@ Inherits the rules from `src/shared/AGENTS.md`. Applies to `src/shared/service` 
 - Do not duplicate domain derivations that belong in `entities`.
 - Do not add wrapper services that add no contract, invariant, or normalization.
 - Do not leave data-changing flows without cache or event invalidation.
+- Do not name a main-thread UI helper or DOM-bound adapter with the `*Service` suffix.
 
 ## Constraints
 
