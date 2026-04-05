@@ -12,6 +12,8 @@ import { isSubset, omit } from 'es-toolkit';
 import { zodIs } from '@shared/lib/validateZodScheme';
 import type { ObservableDefinition } from '@shared/lib/useObservable';
 import { defineObservable } from '@shared/lib/useObservable';
+import { dedupe } from '@shared/lib/dedupe';
+import stringify from 'safe-stable-stringify';
 
 type TokenResponse = google.accounts.oauth2.TokenResponse;
 
@@ -43,6 +45,86 @@ const setupGoogleService = (): GoogleService => {
   const { getStore, update, getSessionList, get, clear, $sessions } =
     useGoogleSessionStore();
 
+  const normalizeScopes = (scopes: GOOGLE_SCOPE[]): GOOGLE_SCOPE[] =>
+    [...new Set(scopes)].sort();
+
+  const buildRequestKey = (...args: unknown[]) => {
+    const [rawScopes, rawOldEmail] = args;
+    const scopes = Array.isArray(rawScopes)
+      ? rawScopes.filter((scope): scope is GOOGLE_SCOPE =>
+          zodIs(scope, zodGOOGLE_SCOPE),
+        )
+      : [];
+    const oldEmail = typeof rawOldEmail === 'string' ? rawOldEmail : undefined;
+
+    return (
+      stringify({
+        oldEmail,
+        scopes: normalizeScopes([
+          ...scopes,
+          USER_INFO_GOOGLE_SCOPE.userinfoEmail,
+        ]),
+      }) ?? 'undefined'
+    );
+  };
+
+  const requestFreshToken = dedupe(
+    async (scopes: GOOGLE_SCOPE[], oldEmail?: string): Promise<string> => {
+      if (!googleApi) {
+        throw new Error('Google API is not tied to the service');
+      }
+
+      const requestScopes = normalizeScopes([
+        ...scopes,
+        USER_INFO_GOOGLE_SCOPE.userinfoEmail,
+      ]);
+
+      const { requestAccessToken, userinfoGet } = googleApi;
+
+      const {
+        access_token: accessToken,
+        expires_in,
+        scope: newScope,
+      } = await requestAccessToken(requestScopes, oldEmail);
+
+      const availableScopes = newScope
+        .split(' ')
+        .filter((v) => zodIs(v, zodGOOGLE_SCOPE));
+
+      const expiresAt = Date.now() + parseInt(expires_in) * 1e3;
+
+      const {
+        result: { email },
+      } = await userinfoGet({ oauth_token: accessToken });
+
+      if (!email) {
+        throw new Error("don't have email");
+      }
+
+      const oldStore = await getStore();
+
+      const store = {
+        ...oldStore,
+        [email]: {
+          accessToken,
+          expiresAt,
+          scopes: availableScopes,
+        },
+      };
+
+      await update(store);
+
+      const token = store[oldEmail ?? email]?.accessToken;
+
+      if (!token) {
+        throw new Error('Failed to get token');
+      }
+
+      return token;
+    },
+    buildRequestKey,
+  );
+
   const requestToken = async (
     scopes: GOOGLE_SCOPE[],
     oldEmail?: string,
@@ -59,55 +141,7 @@ const setupGoogleService = (): GoogleService => {
       }
     }
 
-    if (!googleApi) {
-      throw new Error('Google API is not tied to the service');
-    }
-
-    const { requestAccessToken, userinfoGet } = googleApi;
-
-    const {
-      access_token: accessToken,
-      expires_in,
-      scope: newScope,
-    } = await requestAccessToken(
-      [...scopes, USER_INFO_GOOGLE_SCOPE.userinfoEmail],
-      oldEmail,
-    );
-
-    const availableScopes = newScope
-      .split(' ')
-      .filter((v) => zodIs(v, zodGOOGLE_SCOPE));
-
-    const expiresAt = Date.now() + parseInt(expires_in) * 1e3;
-
-    const {
-      result: { email },
-    } = await userinfoGet({ oauth_token: accessToken });
-
-    if (!email) {
-      throw new Error("don't have email");
-    }
-
-    const oldStore = await getStore();
-
-    const store = {
-      ...oldStore,
-      [email]: {
-        accessToken,
-        expiresAt,
-        scopes: availableScopes,
-      },
-    };
-
-    await update(store);
-
-    const token = store[oldEmail ?? email]?.accessToken;
-
-    if (!token) {
-      throw new Error('Failed to get token');
-    }
-
-    return token;
+    return requestFreshToken(scopes, oldEmail);
   };
 
   const { vfs } = useFileSystemService();
