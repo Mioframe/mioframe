@@ -11,90 +11,90 @@ import {
 } from '../virtualFileSystem';
 import type { WriteOptions } from '../virtualFileSystem/IFileSystemProvider';
 
-export class WebFileSystemProvider implements IFileSystemProvider {
-  constructor(private rootHandle: FileSystemDirectoryHandle) {}
-
-  private async getHandle(
+export const WebFileSystemProvider = (
+  rootHandle: FileSystemDirectoryHandle,
+): IFileSystemProvider => {
+  async function getHandle(
     path: string,
     create: boolean,
     type: 'directory',
   ): Promise<FileSystemDirectoryHandle>;
-  private async getHandle(
+  async function getHandle(
     path: string,
     create?: boolean,
     type?: 'file',
   ): Promise<FileSystemFileHandle>;
-  private async getHandle(
+  async function getHandle(
     path: string,
     create: boolean = false,
     type: 'file' | 'directory' = 'file',
   ): Promise<FileSystemFileHandle | FileSystemDirectoryHandle> {
     const parts = PathUtils.normalize(path)
       .split('/')
-      .filter((p) => p.length > 0);
+      .filter((part) => part.length > 0);
 
     const name = parts.pop();
 
     if (!name) {
-      return this.rootHandle;
+      return rootHandle;
     }
 
-    let currentDir = this.rootHandle;
+    let currentDir = rootHandle;
 
     for (const part of parts) {
       try {
         currentDir = await currentDir.getDirectoryHandle(part, {
           create: false,
         });
-      } catch (e) {
-        if (e instanceof DOMException && e.name === 'NotFoundError') {
+      } catch (error) {
+        if (error instanceof DOMException && error.name === 'NotFoundError') {
           throw new VfsError(
             FileSystemError.FileNotFound,
             `Directory not found: ${part} in ${path}`,
           );
         }
-        throw e;
+        throw error;
       }
     }
 
     try {
       if (type === 'file') {
         return await currentDir.getFileHandle(name, { create });
-      } else {
-        return await currentDir.getDirectoryHandle(name, { create });
       }
-    } catch (e) {
-      if (e instanceof DOMException) {
-        if (e.name === 'NotFoundError') {
+
+      return await currentDir.getDirectoryHandle(name, { create });
+    } catch (error) {
+      if (error instanceof DOMException) {
+        if (error.name === 'NotFoundError') {
           throw new VfsError(
             FileSystemError.FileNotFound,
             `Entry not found: ${name}`,
-            e,
+            error,
           );
         }
-        if (e.name === 'TypeMismatchError') {
+        if (error.name === 'TypeMismatchError') {
           throw new VfsError(
             type === 'file'
               ? FileSystemError.FileIsADirectory
               : FileSystemError.FileNotADirectory,
             `Type mismatch for: ${name}`,
-            e,
+            error,
           );
         }
       }
-      throw e;
+      throw error;
     }
   }
 
-  private async fileHandleStat(
+  const fileHandleStat = async (
     handle: FileSystemFileHandle | FileSystemDirectoryHandle,
-  ) {
+  ): Promise<FSNodeStat> => {
     const permissionState = await handle.queryPermission?.();
-
     const canDelete = permissionState !== 'denied';
 
     if (handle.kind === 'file') {
       const file = await handle.getFile();
+
       return {
         type: FSNodeType.File,
         size: file.size,
@@ -102,15 +102,15 @@ export class WebFileSystemProvider implements IFileSystemProvider {
         modificationTime: file.lastModified,
         canDelete,
       };
-    } else {
-      return {
-        type: FSNodeType.Directory,
-        canDelete,
-      };
     }
-  }
 
-  public async stat(path: string): Promise<FSNodeStat> {
+    return {
+      type: FSNodeType.Directory,
+      canDelete,
+    };
+  };
+
+  const stat = async (path: string): Promise<FSNodeStat> => {
     const normalized = PathUtils.normalize(path);
     if (normalized === '/') {
       return {
@@ -119,12 +119,12 @@ export class WebFileSystemProvider implements IFileSystemProvider {
       };
     }
 
-    let handle: undefined | FileSystemFileHandle | FileSystemDirectoryHandle;
+    let handle: FileSystemFileHandle | FileSystemDirectoryHandle | undefined;
     try {
-      handle = await this.getHandle(path, false, 'file');
+      handle = await getHandle(path, false, 'file');
     } catch {
       try {
-        handle = await this.getHandle(path, false, 'directory');
+        handle = await getHandle(path, false, 'directory');
       } catch {
         throw new VfsError(
           FileSystemError.FileNotFound,
@@ -133,123 +133,126 @@ export class WebFileSystemProvider implements IFileSystemProvider {
       }
     }
 
-    return await this.fileHandleStat(handle);
-  }
+    return fileHandleStat(handle);
+  };
 
-  public async readFile(path: string): Promise<File> {
-    const handle = await this.getHandle(path, false, 'file');
+  const readFile = async (path: string): Promise<File> => {
+    const handle = await getHandle(path, false, 'file');
     return handle.getFile();
-  }
+  };
 
-  public async writeFile(
+  const writeFile = async (
     path: string,
     content: FileContent,
     { create, overwrite }: WriteOptions,
-  ): Promise<void> {
-    let handle: undefined | FileSystemFileHandle;
+  ): Promise<void> => {
+    let handle: FileSystemFileHandle | undefined;
 
     try {
-      handle = await this.getHandle(path, false, 'file');
+      handle = await getHandle(path, false, 'file');
       if (!overwrite) {
         throw new VfsError(FileSystemError.FileExists, `File exists: ${path}`);
       }
-    } catch (e) {
-      if (e instanceof VfsError && e.code === FileSystemError.FileNotFound) {
-        if (!create) throw e;
-        handle = await this.getHandle(path, true, 'file');
+    } catch (error) {
+      if (error instanceof VfsError && error.code === FileSystemError.FileNotFound) {
+        if (!create) {
+          throw error;
+        }
+        handle = await getHandle(path, true, 'file');
       } else {
-        throw e;
+        throw error;
       }
     }
 
     const writable = await handle.createWritable();
     await writable.write(content);
     await writable.close();
-  }
+  };
 
-  public async readDirectory(path: string): Promise<[string, FSNodeStat][]> {
-    const directoryHandle = await this.getHandle(path, false, 'directory');
-
+  const readDirectory = async (path: string): Promise<[string, FSNodeStat][]> => {
+    const directoryHandle = await getHandle(path, false, 'directory');
     const entries: [string, FSNodeStat][] = [];
 
     for await (const [name, childHandle] of directoryHandle.entries()) {
-      entries.push([name, await this.fileHandleStat(childHandle)]);
+      entries.push([name, await fileHandleStat(childHandle)]);
     }
 
     return entries;
-  }
+  };
 
-  public async createDirectory(path: string): Promise<void> {
+  const createDirectory = async (path: string): Promise<void> => {
     try {
-      await this.getHandle(path, false, 'directory');
+      await getHandle(path, false, 'directory');
       throw new VfsError(
         FileSystemError.FileExists,
         `Directory already exists: ${path}`,
       );
-    } catch (e) {
-      if (e instanceof VfsError && e.code === FileSystemError.FileNotFound) {
-        await this.getHandle(path, true, 'directory');
+    } catch (error) {
+      if (error instanceof VfsError && error.code === FileSystemError.FileNotFound) {
+        await getHandle(path, true, 'directory');
         return;
       }
-      throw e;
+      throw error;
     }
-  }
+  };
 
-  public async delete(path: string, recursive: boolean): Promise<void> {
+  const remove = async (path: string, recursive: boolean): Promise<void> => {
     const normalized = PathUtils.normalize(path);
+    const nodeStat = await stat(normalized);
 
-    const stat = await this.stat(normalized);
-    if (stat.canDelete !== true) {
+    if (nodeStat.canDelete !== true) {
       throw new VfsError(
         FileSystemError.NoPermissions,
         `Deletion is not allowed for path: ${path}`,
       );
     }
 
-    const parts = PathUtils.normalize(path)
-      .split('/')
-      .filter((p) => p.length > 0);
+    const parts = normalized.split('/').filter((part) => part.length > 0);
     const name = parts.pop();
-    if (!name) throw new Error('Cannot delete root');
+
+    if (!name) {
+      throw new Error('Cannot delete root');
+    }
 
     const parentPath = `/${parts.join('/')}`;
-    const parentHandle = await this.getHandle(parentPath, false, 'directory');
+    const parentHandle = await getHandle(parentPath, false, 'directory');
 
     try {
       await parentHandle.removeEntry(name, { recursive });
-    } catch (e) {
-      if (e instanceof DOMException) {
-        if (e.name === 'NotFoundError') {
+    } catch (error) {
+      if (error instanceof DOMException) {
+        if (error.name === 'NotFoundError') {
           throw new VfsError(
             FileSystemError.FileNotFound,
             `Entry not found: ${path}`,
           );
         }
-        if (e.name === 'InvalidModificationError') {
+        if (error.name === 'InvalidModificationError') {
           throw new VfsError(
             FileSystemError.DirectoryNotEmpty,
             'Directory not empty (use recursive=true)',
           );
         }
       }
-      throw e;
+      throw error;
     }
-  }
+  };
 
-  public async move(oldPath: string, newPath: string): Promise<void> {
+  const move = async (oldPath: string, newPath: string): Promise<void> => {
     const normalizedOld = PathUtils.normalize(oldPath);
     const normalizedNew = PathUtils.normalize(newPath);
 
-    if (normalizedOld === normalizedNew) return;
+    if (normalizedOld === normalizedNew) {
+      return;
+    }
 
     let sourceHandle: FileSystemFileHandle | FileSystemDirectoryHandle;
     try {
-      const stat = await this.stat(normalizedOld);
-      if (stat.type === FSNodeType.File) {
-        sourceHandle = await this.getHandle(normalizedOld, false, 'file');
-      } else {
-        sourceHandle = await this.getHandle(normalizedOld, false, 'directory');
-      }
+      const sourceStat = await stat(normalizedOld);
+      sourceHandle =
+        sourceStat.type === FSNodeType.File
+          ? await getHandle(normalizedOld, false, 'file')
+          : await getHandle(normalizedOld, false, 'directory');
     } catch {
       throw new VfsError(
         FileSystemError.FileNotFound,
@@ -259,7 +262,7 @@ export class WebFileSystemProvider implements IFileSystemProvider {
 
     const newName = PathUtils.basename(normalizedNew);
     const newDirName = PathUtils.dirname(normalizedNew);
-    const destinationDirHandle = await this.getHandle(
+    const destinationDirHandle = await getHandle(
       newDirName,
       false,
       'directory',
@@ -267,9 +270,11 @@ export class WebFileSystemProvider implements IFileSystemProvider {
 
     if (sourceHandle.move) {
       await sourceHandle.move(destinationDirHandle, newName);
-    } else if (sourceHandle.kind === 'file') {
-      const file = await sourceHandle.getFile();
+      return;
+    }
 
+    if (sourceHandle.kind === 'file') {
+      const file = await sourceHandle.getFile();
       const newFileHandle = await destinationDirHandle.getFileHandle(newName, {
         create: true,
       });
@@ -277,40 +282,51 @@ export class WebFileSystemProvider implements IFileSystemProvider {
       await writable.write(file);
       await writable.close();
 
-      await this.delete(normalizedOld, false);
-    } else {
-      const newDirHandle = await destinationDirHandle.getDirectoryHandle(
-        newName,
-        {
-          create: true,
-        },
-      );
-
-      const copyDirectoryContents = async (
-        sourceDir: FileSystemDirectoryHandle,
-        destDir: FileSystemDirectoryHandle,
-      ) => {
-        for await (const entry of sourceDir.values()) {
-          if (entry.kind === 'file') {
-            const file = await entry.getFile();
-            const newFileHandle = await destDir.getFileHandle(entry.name, {
-              create: true,
-            });
-            const writable = await newFileHandle.createWritable();
-            await writable.write(file);
-            await writable.close();
-          } else {
-            const newSubDir = await destDir.getDirectoryHandle(entry.name, {
-              create: true,
-            });
-            await copyDirectoryContents(entry, newSubDir);
-          }
-        }
-      };
-
-      await copyDirectoryContents(sourceHandle, newDirHandle);
-
-      await this.delete(normalizedOld, true);
+      await remove(normalizedOld, false);
+      return;
     }
-  }
-}
+
+    const newDirHandle = await destinationDirHandle.getDirectoryHandle(
+      newName,
+      {
+        create: true,
+      },
+    );
+
+    const copyDirectoryContents = async (
+      sourceDir: FileSystemDirectoryHandle,
+      destDir: FileSystemDirectoryHandle,
+    ): Promise<void> => {
+      for await (const entry of sourceDir.values()) {
+        if (entry.kind === 'file') {
+          const file = await entry.getFile();
+          const newFileHandle = await destDir.getFileHandle(entry.name, {
+            create: true,
+          });
+          const writable = await newFileHandle.createWritable();
+          await writable.write(file);
+          await writable.close();
+          continue;
+        }
+
+        const newSubDir = await destDir.getDirectoryHandle(entry.name, {
+          create: true,
+        });
+        await copyDirectoryContents(entry, newSubDir);
+      }
+    };
+
+    await copyDirectoryContents(sourceHandle, newDirHandle);
+    await remove(normalizedOld, true);
+  };
+
+  return {
+    stat,
+    readFile,
+    writeFile,
+    readDirectory,
+    createDirectory,
+    delete: remove,
+    move,
+  };
+};
