@@ -79,6 +79,7 @@ const slots = defineSlots<{
 
   &__supporting-text {
     margin-top: 16px;
+    text-align: center;
 
     font-family: var(--md-sys-typescale-body-medium-font);
     line-height: var(--md-sys-typescale-body-medium-line-height);
