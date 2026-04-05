@@ -11,7 +11,7 @@ import {
 } from '../virtualFileSystem';
 import type { WriteOptions } from '../virtualFileSystem/IFileSystemProvider';
 
-export class WebFileSystem implements IFileSystemProvider {
+export class WebFileSystemProvider implements IFileSystemProvider {
   constructor(private rootHandle: FileSystemDirectoryHandle) {}
 
   private async getHandle(

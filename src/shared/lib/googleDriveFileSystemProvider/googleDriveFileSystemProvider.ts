@@ -3,14 +3,14 @@ import type {
   FSNodeStat,
   IFileSystemProvider,
   WriteOptions,
-} from '../../virtualFileSystem';
+} from '../virtualFileSystem';
 import {
   FileSystemError,
   FSNodeType,
   PathUtils,
   VfsError,
-} from '../../virtualFileSystem';
-import { dayjs } from '../../dayjs';
+} from '../virtualFileSystem';
+import { dayjs } from '../dayjs';
 import type { GDriveFileMeta } from '@shared/lib/googleDrive/api';
 import {
   create,
