@@ -2,12 +2,15 @@ import type {
   FileContent,
   FSNodeStat,
   IFileSystemProvider,
+  VfsEvent,
   WriteOptions,
 } from '../virtualFileSystem';
 import {
   FileSystemError,
   FSNodeType,
   PathUtils,
+  VfsEventSource,
+  VfsEventType,
   VfsError,
 } from '../virtualFileSystem';
 import { dayjs } from '../dayjs';
@@ -22,6 +25,7 @@ import {
 } from '@shared/lib/googleDrive/api';
 import type { GOOGLE_SCOPE } from '@shared/lib/googleApi';
 import { DRIVE_GOOGLE_SCOPE } from '@shared/lib/googleApi';
+import { firstValueFrom, skip, type Observable } from 'rxjs';
 import {
   getGoogleDrivePathEmail,
   getGoogleDrivePathSpace,
@@ -79,7 +83,7 @@ export interface GoogleDriveFsOptions {
  *   - `App Data/` - Hidden application data folder
  *
  * @param requestToken - Function to request OAuth2 token for given scope and email
- * @param getSessionList - Function to retrieve list of authenticated session emails
+ * @param $sessions - Reactive list of authenticated session emails
  *
  * @returns IFileSystemProvider implementation for Google Drive
  *
@@ -87,7 +91,7 @@ export interface GoogleDriveFsOptions {
  * ```
  * const provider = googleDriveFileSystemProvider({
  *   requestToken: (scope, email) => google.accounts.oauth2.revokeToken(token),
- *   getSessionList: () => ['user1@example.com', 'user2@example.com']
+ *   $sessions
  * });
  *
  * // Read a file from My Drive
@@ -98,11 +102,11 @@ export interface GoogleDriveFsOptions {
  * ```
  */
 export const googleDriveFileSystemProvider = ({
-  getSessionList,
   requestToken,
+  $sessions,
 }: {
   requestToken: (scope: GOOGLE_SCOPE[], email: string) => Promise<string>;
-  getSessionList: () => Promise<string[]>;
+  $sessions: Observable<string[]>;
 }) => {
   const extractEmailFromPath = (path: string): string => {
     const email = getGoogleDrivePathEmail(path);
@@ -452,7 +456,7 @@ export const googleDriveFileSystemProvider = ({
   };
 
   const readRootDirectory = async (): Promise<[string, FSNodeStat][]> => {
-    const accountList = await getSessionList();
+    const accountList = await firstValueFrom($sessions);
 
     return accountList.map((email): [string, FSNodeStat] => [
       email,
@@ -472,6 +476,22 @@ export const googleDriveFileSystemProvider = ({
       name,
       getSpaceDirectoryStat(name),
     ]);
+
+  const watch = (callback: (event: VfsEvent) => void) => {
+    // ObservableIDB-backed session streams replay the current store snapshot on subscribe; provider watchers should react only to later session-store changes.
+    const subscription = $sessions.pipe(skip(1)).subscribe(() => {
+      callback({
+        source: VfsEventSource.PROVIDER,
+        type: VfsEventType.UPDATE,
+        path: '/',
+        nodeType: FSNodeType.Directory,
+      });
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  };
 
   /**
    * Reads the contents of a directory.
@@ -737,6 +757,7 @@ export const googleDriveFileSystemProvider = ({
     readDirectory,
     readFile,
     stat,
+    watch,
     writeFile,
   } satisfies IFileSystemProvider;
 };

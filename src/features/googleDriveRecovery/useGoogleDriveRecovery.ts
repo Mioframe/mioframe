@@ -7,11 +7,8 @@ import { useMainServiceClient } from '@shared/service';
 
 export const useGoogleDriveRecovery = ({
   path,
-  // TODO: Remove manual refresh after Google Drive queries react to Google session changes through the existing RxJS service reactivity.
-  onRefresh,
 }: {
   path: MaybeRefOrGetter<string>;
-  onRefresh?: (() => Promise<void>) | undefined;
 }) => {
   const {
     google: { requestToken },
@@ -32,7 +29,6 @@ export const useGoogleDriveRecovery = ({
 
     try {
       await requestToken([scope], email);
-      await onRefresh?.();
     } finally {
       isRetryAuthorizationLoading.value = false;
     }

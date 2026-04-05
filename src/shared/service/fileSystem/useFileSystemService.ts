@@ -23,7 +23,7 @@ import {
 import { isEqual, sortBy } from 'es-toolkit';
 import { defineObservableQuery } from '@shared/lib/useObservableQuery';
 import { defineCacheObservable } from '@shared/lib/defineCacheObservable';
-import { defineObservable } from '@shared/lib/useObservable';
+import { fromObservable } from '@shared/lib/useObservable';
 import {
   type PersistedDeviceDirectoryRecord,
   useFileSystemDirectoryHandleService,
@@ -275,7 +275,7 @@ const setupFileSystemService = () => {
     remove,
     addDeviceDirectory,
     removeDeviceDirectory,
-    deviceFiles: defineObservable(activeDeviceFiles$),
+    deviceFiles: fromObservable(activeDeviceFiles$),
   };
 };
 

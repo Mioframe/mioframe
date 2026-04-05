@@ -26,6 +26,7 @@ This is a local-first personal data manager built around:
 - Prefer functions, factory helpers, and composables over classes unless an external API requires a class or class-based state materially clarifies the invariant.
 - Update schema, migrations, service contracts, and callers together for persistent-data changes.
 - Treat subscriptions, listeners, workers, timers, caches, and file handles as lifecycle-managed resources.
+- Use the `$` suffix only for raw RxJS observables; adapted project-level reactive sources and other wrappers should use names without `$`.
 - Write stable directory guidance in `AGENTS.md`, not temporary project snapshots.
 - Follow FSD boundaries strictly: derived domain state belongs in `entities`, user actions and orchestration belong in `features`, and `pages` should compose them rather than absorb either responsibility.
 - Name non-component, non-class TypeScript files in lower camel case or lowercase; reserve PascalCase filenames for Vue components and class-centric modules.
