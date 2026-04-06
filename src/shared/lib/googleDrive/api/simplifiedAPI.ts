@@ -152,83 +152,89 @@ const gFileMetaListCache = new Cache<ListParams, GDriveListResponse>({
  * The query parameter `q` is automatically transformed using `buildQuery()` to ensure
  * consistent formatting and proper handling of special characters.
  */
-export const getGFileMetaList = async (
-  auth: GoogleAuthParams,
-  {
-    pageSize = 1000,
-    pageToken = '',
-    q,
-    spaces = [],
-    fetchAll = true,
-  }: ListParams,
-) => {
-  let result: GDriveListResponse | undefined = undefined;
+export const getGFileMetaList = withLog(
+  async (
+    auth: GoogleAuthParams,
+    {
+      pageSize = 1000,
+      pageToken = '',
+      q,
+      spaces = [],
+      fetchAll = true,
+    }: ListParams,
+  ) => {
+    let result: GDriveListResponse | undefined = undefined;
 
-  const fields = fieldsGDriveList;
-
-  result = gFileMetaListCache.get({
-    pageSize,
-    pageToken,
-    q,
-    spaces,
-    fetchAll,
-    fields,
-  });
-
-  if (result) {
-    return result;
-  }
-
-  const fetchPage = async (pageToken: string) =>
-    authorizedRequest(
-      'get',
-      'https://www.googleapis.com/drive/v3/files',
-      auth,
-      {
-        searchParams: {
-          pageSize,
-          pageToken,
-          q: q ? buildQuery(q) : '',
-          spaces: spaces.join(','),
-          fields,
-        },
-        dedupe: true,
-      },
-      zodGDriveListResponse,
-    );
-
-  if (!fetchAll) {
-    result = (await fetchPage(pageToken)).result;
-  } else {
-    let currentPageToken: string | undefined = pageToken;
-    const allFiles: GDriveFileMeta[] = [];
-
-    do {
-      const pageResult = await fetchPage(currentPageToken);
-      if (pageResult.result.files) {
-        allFiles.push(...pageResult.result.files);
-      }
-      currentPageToken = pageResult.result.nextPageToken;
-    } while (currentPageToken);
-
-    result = {
-      files: allFiles,
-      nextPageToken: undefined,
+    const fields = fieldsGDriveList;
+    const cacheKey = {
+      pageSize,
+      pageToken,
+      q,
+      spaces,
+      fetchAll,
+      fields,
     };
-  }
 
-  if (result.files?.length) {
-    result.files.forEach((v) => {
-      gFileMetaCache.set(v.id, v);
-    });
-    gFileMetaListCache.set(
-      { pageSize, pageToken, q, spaces, fetchAll, fields },
-      result,
-    );
-  }
+    result = gFileMetaListCache.get(cacheKey);
 
-  return result;
-};
+    if (result) {
+      return result;
+    }
+
+    const fetchPage = async (pageToken: string) =>
+      authorizedRequest(
+        'get',
+        'https://www.googleapis.com/drive/v3/files',
+        auth,
+        {
+          searchParams: {
+            pageSize,
+            pageToken,
+            q: q ? buildQuery(q) : '',
+            spaces: spaces.join(','),
+            fields,
+          },
+          dedupe: true,
+        },
+        zodGDriveListResponse,
+      );
+
+    if (!fetchAll) {
+      result = (await fetchPage(pageToken)).result;
+    } else {
+      let currentPageToken: string | undefined = pageToken;
+      const allFiles: GDriveFileMeta[] = [];
+
+      do {
+        const pageResult = await fetchPage(currentPageToken);
+        if (pageResult.result.files) {
+          allFiles.push(...pageResult.result.files);
+        }
+        currentPageToken = pageResult.result.nextPageToken;
+      } while (currentPageToken);
+
+      result = {
+        files: allFiles,
+        nextPageToken: undefined,
+      };
+    }
+
+    if (result.files?.length) {
+      result.files.forEach((v) => {
+        gFileMetaCache.set(v.id, v);
+      });
+      gFileMetaListCache.set(cacheKey, result);
+    }
+
+    return result;
+  },
+  {
+    name: 'getGFileMetaList',
+    showResult: true,
+    showArgs: true,
+    snapshot: true,
+  },
+);
 
 /**
  * LRU cache for individual file metadata.
@@ -241,24 +247,41 @@ const gFileMetaCache = new Cache<string, GDriveFileMeta>({
 /**
  * Invalidates cache entries for specified file IDs and dependent entries.
  */
-const invalidateCache = (...fileIdList: string[]): void => {
-  fileIdList.forEach((fileId) => {
-    gFileMetaCache.delete(fileId);
-    gDriveFileContentCache.delete(fileId);
-    gFileMetaCache.forEach(({ parents }, key) => {
-      if (parents?.includes(fileId)) {
+const invalidateCache = withLog(
+  (...fileIdList: string[]): void => {
+    fileIdList.forEach((fileId) => {
+      gFileMetaCache.delete(fileId);
+      gDriveFileContentCache.delete(fileId);
+      const metadataKeysToDelete: string[] = [];
+      gFileMetaCache.forEach(({ parents }, key) => {
+        if (parents?.includes(fileId)) {
+          metadataKeysToDelete.push(key);
+        }
+      });
+      metadataKeysToDelete.forEach((key) => {
         gFileMetaCache.delete(key);
-      }
-    });
-    gFileMetaListCache.forEach(({ files }, key) => {
-      if (
-        files?.some(({ id, parents = [] }) => [id, ...parents].includes(fileId))
-      ) {
+      });
+
+      const listKeysToDelete: string[] = [];
+      gFileMetaListCache.forEachEntry(({ files }, key, listParams) => {
+        const matchesParentId =
+          typeof listParams !== 'string' && listParams.q?.parentId === fileId;
+        const matchesFileRelation =
+          files?.some(({ id, parents = [] }) =>
+            [id, ...parents].includes(fileId),
+          ) ?? false;
+
+        if (matchesParentId || matchesFileRelation) {
+          listKeysToDelete.push(key);
+        }
+      });
+      listKeysToDelete.forEach((key) => {
         gFileMetaListCache.delete(key);
-      }
+      });
     });
-  });
-};
+  },
+  { name: 'invalidateCache', showArgs: true },
+);
 
 /**
  * Retrieves metadata for a single Google Drive file.
@@ -291,12 +314,12 @@ export const getGDriveFileMeta = async (
 /**
  * Updates file metadata (name, parents, trash status).
  */
-export const update = (
+export const update = async (
   auth: GoogleAuthParams,
   fileId: string,
   { name, addParents, removeParents, trashed }: UpdateParams,
 ) => {
-  const result = authorizedRequest(
+  const result = await authorizedRequest(
     'patch',
     `https://www.googleapis.com/drive/v3/files/${fileId}`,
     auth,
@@ -384,7 +407,10 @@ export const download = async (
 /**
  * Creates a new file in Google Drive.
  */
-export const create = (auth: GoogleAuthParams, resource: CreateResource) => {
+export const create = async (
+  auth: GoogleAuthParams,
+  resource: CreateResource,
+) => {
   if (resource.parents.length === 0) {
     throw new GoogleDriveError({
       code: HttpStatusCode.FORBIDDEN,
@@ -392,7 +418,7 @@ export const create = (auth: GoogleAuthParams, resource: CreateResource) => {
     });
   }
 
-  const result = authorizedRequest(
+  const result = await authorizedRequest(
     'post',
     'https://www.googleapis.com/drive/v3/files',
     auth,
