@@ -90,6 +90,7 @@ This is a local-first personal data manager built around:
 - `entities` may import only `shared`.
 - `features` build on `entities` and `shared`.
 - `widgets` may compose `features`, `entities`, and `shared`, but should not own domain rules.
+- Use Conventional Commits for all commit messages.
 - After file changes, run the linter only for the touched files or the narrowest affected scope.
 - Prefer targeted lint commands such as `pnpm exec eslint --fix <file ...>` for touched files.
 - Use `--fix` by default for targeted lint runs, unless the task specifically requires reviewing raw lint output before applying fixes.
