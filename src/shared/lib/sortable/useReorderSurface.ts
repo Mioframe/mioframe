@@ -500,6 +500,9 @@ export const useReorderSurface = (
       onChange: ({ orderedIds }) => {
         previewReorderSurfaceDrag(state, orderedIds);
       },
+      onCancel: () => {
+        requestReorderSurfaceCancel(state);
+      },
       onEnd: async ({ orderedIds, fromIndex, toIndex }) => {
         const endProfile = state.activeProfile ?? profile.value;
         const dragResult = completeReorderSurfaceDrag(state, {

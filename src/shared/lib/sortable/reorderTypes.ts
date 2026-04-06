@@ -112,6 +112,8 @@ export interface ReorderEngineCallbacks {
   onStart?: (payload: ReorderEngineEventPayload) => unknown;
   /** Called when SortableJS previews a new intermediate order. */
   onChange?: (payload: ReorderEngineEventPayload) => unknown;
+  /** Called when the adapter receives an Escape-cancel request. */
+  onCancel?: () => unknown;
   /** Called when SortableJS finalizes or cancels the session. */
   onEnd?: (payload: ReorderEngineEventPayload) => unknown;
 }
