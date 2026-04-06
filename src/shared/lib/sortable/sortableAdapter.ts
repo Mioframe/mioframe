@@ -1,4 +1,8 @@
-import { unrefElement, type MaybeElementRef } from '@vueuse/core';
+import {
+  unrefElement,
+  useEventListener,
+  type MaybeElementRef,
+} from '@vueuse/core';
 import Sortable from 'sortablejs';
 import {
   computed,
@@ -208,6 +212,15 @@ export const createSortableAdapter = (
       deep: true,
     },
   );
+
+  useEventListener(containerElRef, 'keydown', (event) => {
+    if (!(event instanceof KeyboardEvent) || event.key !== 'Escape') {
+      return;
+    }
+
+    callbacks?.onCancel?.();
+    runDrop(sortableRef.value, event);
+  });
 
   return {
     sortable: computed(() => sortableRef.value),
