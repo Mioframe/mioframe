@@ -3,6 +3,12 @@ import { createClient, createService } from './proxyService';
 import { defineTransformer } from './defineTransformer';
 import type { Provider } from './types';
 import { uid } from 'uid/secure';
+import {
+  defineObservableQuery,
+  useObservableQuery,
+} from '@shared/lib/useObservableQuery';
+import { effectScope, ref, watch } from 'vue';
+import { Observable } from 'rxjs';
 
 class MockProvider implements Provider {
   private listeners: Set<(p: { data: unknown }) => unknown> = new Set();
@@ -243,5 +249,63 @@ describe('proxyService', () => {
     }).toThrow(
       `Service "${serviceId}" is already registered in the current execution context.`,
     );
+  });
+
+  it('should deliver repeated observable query updates across the proxy boundary', async () => {
+    const serviceId = uid();
+    const clientId = uid();
+    const { clientProvider, serviceProvider } = createChannel(
+      clientId,
+      serviceId,
+    );
+
+    createService(serviceProvider, serviceId, [], () => ({
+      query: defineObservableQuery(
+        ({ path }: { path: string }) =>
+          new Observable<string[]>((subscriber) => {
+            subscriber.next([`${path}:initial`]);
+            queueMicrotask(() => {
+              subscriber.next([`${path}:updated`]);
+            });
+
+            return () => undefined;
+          }),
+      ),
+    }));
+
+    const client = createClient<{
+      query: ReturnType<
+        typeof defineObservableQuery<string[], { path: string }>
+      >;
+    }>(clientProvider, clientId);
+    const scope = effectScope();
+    const query = ref({
+      path: '/drive',
+    });
+    const states: (readonly string[])[] = [];
+
+    scope.run(() => {
+      const { data } = useObservableQuery(client.query, query);
+
+      watch(
+        data,
+        (value) => {
+          if (value) {
+            states.push(value);
+          }
+        },
+        {
+          immediate: true,
+        },
+      );
+    });
+
+    await vi.waitFor(() => {
+      expect(states).toContainEqual(['/drive:updated']);
+    });
+
+    expect(states).toContainEqual(['/drive:initial']);
+
+    scope.stop();
   });
 });

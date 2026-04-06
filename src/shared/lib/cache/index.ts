@@ -8,11 +8,20 @@ const stringify = configure({ strict: true });
 
 export class Cache<K, T extends UnknownRecord> {
   lruCache: LRUCache<string, T>;
+  originalKeys = new Map<string, K | string>();
 
-  constructor(
-    options: LRUCache<string, T> | LRUCache.Options<string, T, unknown>,
-  ) {
-    this.lruCache = new LRUCache<string, T>(options);
+  constructor(options: LRUCache.Options<string, T, unknown>) {
+    const userDisposeAfter = options.disposeAfter;
+
+    this.lruCache = new LRUCache<string, T>({
+      ...options,
+      disposeAfter: (value, key, reason) => {
+        if (!this.lruCache.has(key)) {
+          this.originalKeys.delete(key);
+        }
+        userDisposeAfter?.(value, key, reason);
+      },
+    });
   }
 
   #keyToString(k: K | string) {
@@ -20,7 +29,10 @@ export class Cache<K, T extends UnknownRecord> {
   }
 
   set(k: K | string, v: T | BackgroundFetch<T> | undefined) {
-    this.lruCache.set(this.#keyToString(k), v);
+    const cacheKey = this.#keyToString(k);
+
+    this.originalKeys.set(cacheKey, k);
+    this.lruCache.set(cacheKey, v);
   }
 
   get(k: K | string) {
@@ -28,14 +40,27 @@ export class Cache<K, T extends UnknownRecord> {
   }
 
   delete(k: K | string) {
-    return this.lruCache.delete(this.#keyToString(k));
+    const cacheKey = this.#keyToString(k);
+
+    this.originalKeys.delete(cacheKey);
+
+    return this.lruCache.delete(cacheKey);
   }
 
   clear() {
+    this.originalKeys.clear();
     this.lruCache.clear();
   }
 
   forEach(fn: (value: T, cacheKey: string) => unknown) {
     this.lruCache.forEach(fn);
+  }
+
+  forEachEntry(
+    fn: (value: T, cacheKey: string, originalKey: K | string) => unknown,
+  ) {
+    this.lruCache.forEach((value, cacheKey) => {
+      fn(value, cacheKey, this.originalKeys.get(cacheKey) ?? cacheKey);
+    });
   }
 }
