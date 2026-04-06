@@ -4,25 +4,26 @@ Inherits the rules from `src/shared/lib/AGENTS.md`. Applies to `src/shared/lib/s
 
 ## Contains
 
-- `useSortable.ts`: main sortable composable.
-- `useDragStartListener.ts`: pointer and drag lifecycle helpers.
-- `dnd-transition.css`: transition styles.
-- `UseSortablePlayground.vue`: behavior playground.
+- `reorderDirectives.ts`: local directives for marking reorder items and ignored controls.
+- `useReorderSurface.ts`: public reorder-surface composable.
+- `sortableAdapter.ts`: `SortableJS` adapter and lifecycle wiring.
+- `reorderGestureProfile.ts`: platform/input gesture profile selection.
+- `ReorderSurfacePlayground.vue`: behavior playground.
 
 ## Patterns
 
-- Keep the drag-and-drop algorithm independent from any business-specific persistence flow.
-- Treat pointer lifecycle as a full contract: start, over, drop, cancel, and cleanup.
-- Keep reorder behavior predictable on large lists and under frequent updates.
+- Keep the reorder contract independent from business persistence and item shape.
+- Treat platform and active input as runtime data, not as hardcoded one-platform assumptions.
+- Keep reorder behavior predictable under optimistic UI, external list updates, and cancel flows.
 
 ## Anti-patterns
 
-- Do not depend on incidental DOM assumptions when refs and explicit container contracts are enough.
-- Do not mix persistence logic from one feature into the generic sortable algorithm.
-- Do not change reorder behavior without checking high-frequency hover/update scenarios.
+- Do not couple reorder internals to one surface type such as lists or tables.
+- Do not mix persistence logic from one feature into the generic reorder algorithm.
+- Do not change session or profile behavior without checking hybrid devices and touch/mouse conflicts.
 
 ## Constraints
 
-- Changes here should be checked on long lists and under frequent pointer events.
+- Changes here should be checked on long lists, hybrid inputs, and under frequent pointer events.
 - External imports should go through `index.ts`.
-- Minimum verification: `pnpm type-check` and a manual or test smoke check of the touched drag-and-drop flow.
+- Minimum verification: `pnpm type-check` and a manual or test smoke check of the touched reorder flow.

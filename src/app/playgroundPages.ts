@@ -36,7 +36,8 @@ export const playgroundPages: PlaygroundPage[] = [
   },
   {
     name: 'UseSortable',
-    component: () => import('@shared/lib/sortable/UseSortablePlayground.vue'),
+    component: () =>
+      import('@shared/lib/sortable/ReorderSurfacePlayground.vue'),
   },
   {
     name: 'Checkbox',

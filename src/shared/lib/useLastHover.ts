@@ -6,9 +6,16 @@ import {
 } from '@vueuse/core';
 import { computed, ref, watch } from 'vue';
 
+export const shouldTrackLastHoverPointerType = (
+  pointerType: string | undefined,
+): boolean => pointerType !== 'touch';
+
 const useGlobalHover = createGlobalState(() => {
   const targetList = ref<Element[]>([]);
   const lastTarget = computed(() => targetList.value.at(-1));
+  const clear = () => {
+    targetList.value = [];
+  };
 
   const push = (el: Element) => {
     if (targetList.value.includes(el)) {
@@ -24,7 +31,24 @@ const useGlobalHover = createGlobalState(() => {
     }
   };
 
+  useEventListener(
+    'pointerdown',
+    (event: PointerEvent) => {
+      if (!shouldTrackLastHoverPointerType(event.pointerType)) {
+        clear();
+      }
+    },
+    { passive: true, capture: true },
+  );
+
+  useEventListener(
+    ['touchstart', 'pointercancel', 'touchcancel', 'dragstart', 'drop'],
+    clear,
+    { passive: true, capture: true },
+  );
+
   return {
+    clear,
     push,
     remove,
     lastTarget,
@@ -51,13 +75,25 @@ export const useLastHover = (rawEl: MaybeElementRef) => {
 
   const { lastTarget, push, remove } = useGlobalHover();
 
-  useEventListener(el, 'pointerenter', ({ currentTarget }: PointerEvent) => {
+  useEventListener(el, 'pointerenter', (event: PointerEvent) => {
+    if (!shouldTrackLastHoverPointerType(event.pointerType)) {
+      return;
+    }
+
+    const { currentTarget } = event;
+
     if (currentTarget instanceof Element && currentTarget === el.value) {
       push(currentTarget);
     }
   });
 
-  useEventListener(el, 'pointerleave', ({ currentTarget }: PointerEvent) => {
+  useEventListener(el, 'pointerleave', (event: PointerEvent) => {
+    if (!shouldTrackLastHoverPointerType(event.pointerType)) {
+      return;
+    }
+
+    const { currentTarget } = event;
+
     if (currentTarget instanceof Element) {
       remove(currentTarget);
     }

@@ -1,11 +1,11 @@
 <script
   setup
   lang="ts"
-  generic="Is extends 'button' | 'a' | 'div' | 'li' = 'li'"
+  generic="Is extends 'button' | 'a' | 'div' | 'li' = 'div'"
 >
 import { MDState } from '../State';
 
-const { is = 'li' } = defineProps<{
+const { is = 'div' } = defineProps<{
   headline: string;
   supportingText?: string;
   is?: Is;

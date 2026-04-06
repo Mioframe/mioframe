@@ -6,15 +6,21 @@ import type { SORT_DIRECTION } from '@shared/lib/databaseDocument';
 import {
   type DatabasePropertyId,
   type DatabaseViewId,
+  zodDatabasePropertyId,
 } from '@shared/lib/databaseDocument';
+import { zodIs } from '@shared/lib/validateZodScheme';
 import { MDSymbol } from '@shared/ui/Icon';
 import type { MaybeElement } from '@vueuse/core';
 import { MDButton, MDIconButton } from '@shared/ui/Button';
 import { MDMenuBase } from '@shared/ui/Menu';
 import { difference } from 'es-toolkit';
-import { useSortableListener } from '@shared/lib/sortable/useSortable';
+import {
+  useReorderSurface,
+  vReorderIgnore,
+  vReorderItem,
+} from '@shared/lib/sortable';
 import { useDatabaseProperties } from '@entity/databaseProperty';
-import { useDatabaseSorting } from '@entity/databaseSorting/useDatabaseSorting';
+import { useDatabaseSorting } from '@entity/databaseSorting';
 import PropertySortDirectionMenuItem from './PropertySortDirectionMenuItem.vue';
 import DatabaseSortingListItem from './DatabaseSortingListItem.vue';
 import { MDCircularProgressIndicator } from '@shared/ui/ProgressIndicators';
@@ -39,16 +45,34 @@ const container = useTemplateRef<MaybeElement>('container');
 const {
   sortingIdList,
   isLoading,
-  changePriority: changeSortingPriority,
+  reorder: reorderSorting,
   post: postSorting,
   remove: removeSorting,
 } = useDatabaseSorting(path, documentId, viewId);
 
-const onMovedItem = async (fromIndex: number, toIndex: number) => {
-  await changeSortingPriority(fromIndex, toIndex);
-};
+const { displayItemIdList, draggedId } = useReorderSurface(container, {
+  itemIdList: sortingIdList,
+  onCommit: ({ orderedIds }) => {
+    const nextOrderedIds = orderedIds.filter((id) =>
+      zodIs(id, zodDatabasePropertyId),
+    );
 
-const { draggableIndex } = useSortableListener(container, onMovedItem);
+    if (nextOrderedIds.length !== orderedIds.length) {
+      return;
+    }
+
+    return reorderSorting(nextOrderedIds);
+  },
+});
+
+const displaySortingIdList = computed(() =>
+  displayItemIdList.value.filter((id) => zodIs(id, zodDatabasePropertyId)),
+);
+const draggedSortingId = computed(() => {
+  const itemId = draggedId.value;
+
+  return itemId && zodIs(itemId, zodDatabasePropertyId) ? itemId : undefined;
+});
 
 const isShowAddSortingMenu = ref(false);
 
@@ -81,20 +105,22 @@ const onClickRemoveItem = async (propertyId: DatabasePropertyId) => {
   <section class="db-item-sorting-list-section">
     <MDCircularProgressIndicator v-if="isLoading && !sortingIdList" />
 
-    <MDListContainer v-if="sortingIdList?.length" ref="container">
+    <MDListContainer v-if="displaySortingIdList.length" ref="container">
       <DatabaseSortingListItem
-        v-for="(propertyId, index) in sortingIdList"
+        v-for="propertyId in displaySortingIdList"
         :key="propertyId"
+        v-reorder-item="propertyId"
         :path="path"
         :document-id="documentId"
         :view-id="viewId"
         :property-id="propertyId"
         :class="{
-          'md-state_drag': draggableIndex === index,
+          'md-state_drag': draggedSortingId === propertyId,
         }"
       >
         <template #trailingIcon>
           <MDIconButton
+            v-reorder-ignore
             color="standard"
             tooltip="remove"
             md-symbol-name="delete"
