@@ -11,11 +11,7 @@ import {
   type DatabaseView,
   type DatabaseViewId,
 } from '@shared/lib/databaseDocument';
-import {
-  strictRecordIterableValues,
-  strictRecordSet,
-} from '@shared/lib/strictRecord/wrapStrictRecord';
-import { moveArrayValue } from '@shared/lib/moveArrayValue';
+import { strictRecordSet } from '@shared/lib/strictRecord/wrapStrictRecord';
 import type { PatchSource } from '@shared/lib/changeObject';
 import { deepPatchJsonObject } from '@shared/lib/changeObject';
 import { useDatabaseViewSortService } from './databaseViewSortService';
@@ -82,26 +78,34 @@ export const setupDatabaseViewsService = (
       strictRecordRemove(state['views'], viewId);
     });
 
-  const changeOrder = (
+  const reorder = (
     path: string,
     documentId: AMDocumentId,
-    from: number,
-    to: number,
+    orderedIds: DatabaseViewId[],
   ) =>
     changeDatabase(path, documentId, (state) => {
       const views = state.views;
+      const knownIds = Array.from(strictRecordIterableEntries(views)())
+        .sort(
+          (
+            [, { order: a = Number.MAX_SAFE_INTEGER }],
+            [, { order: b = Number.MAX_SAFE_INTEGER }],
+          ) => a - b,
+        )
+        .map(([viewId]) => viewId);
 
-      const tempArray = Array.from(strictRecordIterableValues(views)());
+      const seenIds = new Set(orderedIds);
+      const nextOrderedIds = [
+        ...orderedIds.filter((viewId) => Boolean(views[viewId])),
+        ...knownIds.filter((viewId) => !seenIds.has(viewId)),
+      ];
 
-      tempArray.sort(
-        ({ order: a = tempArray.length }, { order: b = tempArray.length }) =>
-          a - b,
-      );
+      nextOrderedIds.forEach((viewId, index) => {
+        const view = views[viewId];
 
-      moveArrayValue(tempArray, from, to);
-
-      tempArray.forEach((view, index) => {
-        view.order = index;
+        if (view) {
+          view.order = index;
+        }
       });
     });
 
@@ -155,7 +159,7 @@ export const setupDatabaseViewsService = (
     databaseView: defineObservableQuery(databaseView$),
 
     remove,
-    changeOrder,
+    reorder,
     create,
     patch,
 

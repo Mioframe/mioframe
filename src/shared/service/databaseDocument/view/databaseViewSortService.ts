@@ -9,11 +9,8 @@ import {
   SORT_DIRECTION,
   type DatabaseViewId,
 } from '@shared/lib/databaseDocument';
-import { moveArrayValue } from '@shared/lib/moveArrayValue';
 import {
   strictRecordIterableEntries,
-  strictRecordIterableKeys,
-  strictRecordIterableValues,
   strictRecordRemove,
   strictRecordSize,
 } from '@shared/lib/strictRecord/wrapStrictRecord';
@@ -150,7 +147,9 @@ export const useDatabaseViewSortService = (
       databaseSorting$({ documentId, path, viewId }).pipe(
         map((sorting) => {
           if (sorting) {
-            return Array.from(strictRecordIterableKeys(sorting)());
+            return Array.from(strictRecordIterableEntries(sorting)())
+              .sort(([, { priority: a }], [, { priority: b }]) => a - b)
+              .map(([propertyId]) => propertyId);
           }
           return undefined;
         }),
@@ -158,24 +157,38 @@ export const useDatabaseViewSortService = (
       ),
   );
 
-  const changePriority = (
+  const reorder = (
     path: string,
     documentId: AMDocumentId,
     viewId: DatabaseViewId,
-    from: number,
-    to: number,
+    orderedPropertyIds: DatabasePropertyId[],
   ) =>
     changeView(path, documentId, viewId, (view) => {
       const sorting = view.sorting;
 
-      const tempArray = Array.from(strictRecordIterableValues(sorting)());
+      if (!sorting) {
+        return;
+      }
 
-      tempArray.sort(({ priority: a }, { priority: b }) => a - b);
+      const knownEntries = Array.from(
+        strictRecordIterableEntries(sorting)(),
+      ).sort(([, { priority: a }], [, { priority: b }]) => a - b);
+      const seenIds = new Set(orderedPropertyIds);
+      const nextOrderedIds = [
+        ...orderedPropertyIds.filter((propertyId) =>
+          Boolean(sorting[propertyId]),
+        ),
+        ...knownEntries
+          .map(([propertyId]) => propertyId)
+          .filter((propertyId) => !seenIds.has(propertyId)),
+      ];
 
-      moveArrayValue(tempArray, from, to);
+      nextOrderedIds.forEach((propertyId, index) => {
+        const sortDescription = sorting[propertyId];
 
-      tempArray.forEach((view, index) => {
-        view.priority = index;
+        if (sortDescription) {
+          sortDescription.priority = index;
+        }
       });
     });
 
@@ -208,7 +221,7 @@ export const useDatabaseViewSortService = (
     post,
     patch,
     remove,
-    changePriority,
+    reorder,
     toggleDirection,
   };
 };
