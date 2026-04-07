@@ -78,7 +78,7 @@ export const sortData = (
       const bValue = properties
         ? getDatabaseEffectiveValue(bItem, propertyId, properties[propertyId])
         : bItem[propertyId];
-      const valueCompare = compareValues(aValue ?? -1, bValue ?? -1, direction);
+      const valueCompare = compareValues(aValue, bValue, direction);
 
       if (valueCompare !== 0) {
         return valueCompare;

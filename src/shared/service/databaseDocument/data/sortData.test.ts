@@ -8,6 +8,54 @@ import {
 import { sortData } from './sortData';
 
 describe('sortData', () => {
+  it('sorts missing string values consistently without falling back to item id', () => {
+    const titlePropertyId = generatePropertyId();
+    const firstItemId = generateItemId();
+    const secondItemId = generateItemId();
+    const lowerItemId = firstItemId < secondItemId ? firstItemId : secondItemId;
+    const higherItemId =
+      firstItemId < secondItemId ? secondItemId : firstItemId;
+
+    const sorted = sortData(
+      [
+        [lowerItemId, { [titlePropertyId]: 'z' }],
+        [higherItemId, {}],
+      ],
+      {
+        [titlePropertyId]: {
+          direction: SORT_DIRECTION.ascending,
+          priority: 0,
+        },
+      },
+    );
+
+    expect(sorted.map(([id]) => id)).toEqual([higherItemId, lowerItemId]);
+  });
+
+  it('sorts missing number values consistently without falling back to item id', () => {
+    const countPropertyId = generatePropertyId();
+    const firstItemId = generateItemId();
+    const secondItemId = generateItemId();
+    const lowerItemId = firstItemId < secondItemId ? firstItemId : secondItemId;
+    const higherItemId =
+      firstItemId < secondItemId ? secondItemId : firstItemId;
+
+    const sorted = sortData(
+      [
+        [lowerItemId, { [countPropertyId]: 3 }],
+        [higherItemId, {}],
+      ],
+      {
+        [countPropertyId]: {
+          direction: SORT_DIRECTION.ascending,
+          priority: 0,
+        },
+      },
+    );
+
+    expect(sorted.map(([id]) => id)).toEqual([higherItemId, lowerItemId]);
+  });
+
   it('sorts sparse items using property defaults', () => {
     const titlePropertyId = generatePropertyId();
     const firstItemId = generateItemId();
@@ -91,5 +139,29 @@ describe('sortData', () => {
     );
 
     expect(sorted.map(([id]) => id)).toEqual([lowerItemId, higherItemId]);
+  });
+
+  it('sorts missing complex values consistently before deterministic stringify values', () => {
+    const metaPropertyId = generatePropertyId();
+    const firstItemId = generateItemId();
+    const secondItemId = generateItemId();
+    const lowerItemId = firstItemId < secondItemId ? firstItemId : secondItemId;
+    const higherItemId =
+      firstItemId < secondItemId ? secondItemId : firstItemId;
+
+    const sorted = sortData(
+      [
+        [lowerItemId, { [metaPropertyId]: { z: 1 } }],
+        [higherItemId, {}],
+      ],
+      {
+        [metaPropertyId]: {
+          direction: SORT_DIRECTION.ascending,
+          priority: 0,
+        },
+      },
+    );
+
+    expect(sorted.map(([id]) => id)).toEqual([higherItemId, lowerItemId]);
   });
 });
