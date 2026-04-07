@@ -68,4 +68,28 @@ describe('sortData', () => {
 
     expect(sorted.map(([id]) => id)).toEqual([lowerItemId, higherItemId]);
   });
+
+  it('uses deterministic stringify for complex fallback values before item id tie-breaks', () => {
+    const metaPropertyId = generatePropertyId();
+    const firstItemId = generateItemId();
+    const secondItemId = generateItemId();
+    const lowerItemId = firstItemId < secondItemId ? firstItemId : secondItemId;
+    const higherItemId =
+      firstItemId < secondItemId ? secondItemId : firstItemId;
+
+    const sorted = sortData(
+      [
+        [higherItemId, { [metaPropertyId]: { b: 2, a: 1 } }],
+        [lowerItemId, { [metaPropertyId]: { a: 1, b: 2 } }],
+      ],
+      {
+        [metaPropertyId]: {
+          direction: SORT_DIRECTION.ascending,
+          priority: 0,
+        },
+      },
+    );
+
+    expect(sorted.map(([id]) => id)).toEqual([lowerItemId, higherItemId]);
+  });
 });

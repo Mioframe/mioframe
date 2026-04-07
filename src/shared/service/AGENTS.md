@@ -21,6 +21,8 @@ Inherits the rules from `src/shared/AGENTS.md`. Applies to `src/shared/service` 
 - Normalize errors and side effects so upper layers can rely on stable service behavior.
 - Query and mutation contracts should be deterministic and explicit about invalidation.
 - Worker and service setup should document lifecycle and cleanup semantics.
+- For document and CRDT services, route nested object writes through the service's `put`, `patch`, or change helpers before reaching for ad hoc whole-object replacement.
+- Inside Automerge-backed service change callbacks, mutate existing nested document objects in place and avoid reassigning live CRDT objects back into the document.
 
 ## Anti-patterns
 
@@ -29,6 +31,7 @@ Inherits the rules from `src/shared/AGENTS.md`. Applies to `src/shared/service` 
 - Do not add wrapper services that add no contract, invariant, or normalization.
 - Do not leave data-changing flows without cache or event invalidation.
 - Do not name a main-thread UI helper or DOM-bound adapter with the `*Service` suffix.
+- Do not assign an existing Automerge nested object proxy as the next value of a document field.
 
 ## Constraints
 

@@ -29,7 +29,6 @@ const createUnaryConditionMatcher = (
   const predicate = sift(condition);
 
   return (item) => {
-    const hasStoredValue = Object.hasOwn(item, propertyId);
     const effectiveValue = getDatabaseEffectiveValue(
       item,
       propertyId,
@@ -38,8 +37,8 @@ const createUnaryConditionMatcher = (
 
     if ('$exists' in condition) {
       return condition.$exists
-        ? hasStoredValue || effectiveValue !== undefined
-        : !hasStoredValue;
+        ? effectiveValue !== undefined
+        : effectiveValue === undefined;
     }
 
     return predicate(effectiveValue);

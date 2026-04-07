@@ -11,6 +11,7 @@ import { getDatabaseEffectiveValue } from '@shared/lib/databaseDocument';
 import type { RecordEntries } from '@shared/lib/objectEntries';
 import { recordEntries } from '@shared/lib/objectEntries';
 import { isArray } from 'es-toolkit/compat';
+import stringify from 'safe-stable-stringify';
 import { partialSort } from './partialSort';
 
 const resolveComparableValue = (value: unknown): boolean | number | string => {
@@ -26,7 +27,7 @@ const resolveComparableValue = (value: unknown): boolean | number | string => {
     return '';
   }
 
-  return JSON.stringify(value);
+  return stringify(value);
 };
 
 const compareValues = (
