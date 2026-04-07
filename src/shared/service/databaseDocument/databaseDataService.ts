@@ -13,11 +13,11 @@ import {
   type DatabaseState,
   type DatabaseViewId,
 } from '@shared/lib/databaseDocument';
+import { deepPutJsonObject } from '@shared/lib/changeObject';
 import { strictRecordRemove, strictRecordSet } from '@shared/lib/strictRecord';
 import { queryIdList } from './data/queryData';
 import type { Query } from 'sift';
 import { setupDatabaseViewsService } from './view/databaseViewsService';
-import { deepPutJsonObject } from '@shared/lib/changeObject';
 
 import {
   combineLatest,
@@ -240,17 +240,17 @@ export const setupDatabaseDataService = (
   ) => {
     await changeDatabaseState(path, documentId, (state) => {
       const data = state.data;
-
-      if (!data[itemId]) {
-        data[itemId] = {};
-      }
-
-      const oldItem = data[itemId];
       const storedItem = getDatabaseStoredItem(item, state.properties, {
         trimString: true,
       });
+      const currentItem = data[itemId];
 
-      deepPutJsonObject(oldItem, storedItem, { trimString: true });
+      if (!currentItem) {
+        data[itemId] = storedItem;
+        return;
+      }
+
+      deepPutJsonObject(currentItem, storedItem);
     });
 
     return itemId;

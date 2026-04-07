@@ -479,4 +479,199 @@ describe('setupDatabaseDataService', () => {
       }),
     ).resolves.toBe('untitled');
   });
+
+  it('removes stale stored keys when an edited value returns to the property default', async () => {
+    const titlePropertyId = generatePropertyId();
+    const donePropertyId = generatePropertyId();
+    const itemId = generateItemId();
+    const stateSubject = new BehaviorSubject<DatabaseState | undefined>({
+      version: 3,
+      data: {
+        [itemId]: {
+          [titlePropertyId]: 'custom',
+          [donePropertyId]: true,
+        },
+      },
+      properties: {
+        [titlePropertyId]: {
+          default: 'untitled',
+          name: 'Title',
+          type: 'string',
+        },
+        [donePropertyId]: {
+          default: false,
+          name: 'Done',
+          type: 'boolean',
+        },
+      },
+      views: {},
+    });
+
+    const changeDatabaseState = vi.fn(
+      (
+        _path: string,
+        _documentId: string,
+        callback: (state: DatabaseState) => unknown,
+      ) => {
+        const state = stateSubject.value;
+
+        if (!state) {
+          throw new Error('state is undefined');
+        }
+
+        callback(state);
+        stateSubject.next({
+          ...state,
+          data: {
+            ...state.data,
+          },
+        });
+
+        return Promise.resolve();
+      },
+    );
+
+    const { setupDatabaseDataService } = await import('./databaseDataService');
+
+    const service = setupDatabaseDataService(
+      () => stateSubject.asObservable(),
+      changeDatabaseState,
+    );
+    const documentId = new Repo({}).create({}).documentId;
+
+    await service.postItem(
+      '/db',
+      documentId,
+      {
+        [titlePropertyId]: 'untitled',
+      },
+      itemId,
+    );
+
+    expect(stateSubject.value?.data[itemId]).toEqual({});
+  });
+
+  it('keeps only normalized stored overrides after syncing an edited item', async () => {
+    const titlePropertyId = generatePropertyId();
+    const itemId = generateItemId();
+    const stateSubject = new BehaviorSubject<DatabaseState | undefined>({
+      version: 3,
+      data: {
+        [itemId]: {
+          [titlePropertyId]: 'custom',
+        },
+      },
+      properties: {
+        [titlePropertyId]: {
+          default: 'untitled',
+          name: 'Title',
+          type: 'string',
+        },
+      },
+      views: {},
+    });
+
+    const changeDatabaseState = vi.fn(
+      (
+        _path: string,
+        _documentId: string,
+        callback: (state: DatabaseState) => unknown,
+      ) => {
+        const state = stateSubject.value;
+
+        if (!state) {
+          throw new Error('state is undefined');
+        }
+
+        callback(state);
+        stateSubject.next({
+          ...state,
+          data: {
+            ...state.data,
+          },
+        });
+
+        return Promise.resolve();
+      },
+    );
+
+    const { setupDatabaseDataService } = await import('./databaseDataService');
+
+    const service = setupDatabaseDataService(
+      () => stateSubject.asObservable(),
+      changeDatabaseState,
+    );
+    const documentId = new Repo({}).create({}).documentId;
+
+    await service.postItem(
+      '/db',
+      documentId,
+      {
+        [titlePropertyId]: ' next title ',
+      },
+      itemId,
+    );
+
+    expect(stateSubject.value?.data[itemId]).toEqual({
+      [titlePropertyId]: 'next title',
+    });
+  });
+
+  it('keeps an empty persisted item after sync instead of removing it', async () => {
+    const titlePropertyId = generatePropertyId();
+    const itemId = generateItemId();
+    const stateSubject = new BehaviorSubject<DatabaseState | undefined>({
+      version: 3,
+      data: {
+        [itemId]: {
+          [titlePropertyId]: 'custom',
+        },
+      },
+      properties: {
+        [titlePropertyId]: {
+          default: 'untitled',
+          name: 'Title',
+          type: 'string',
+        },
+      },
+      views: {},
+    });
+
+    const changeDatabaseState = vi.fn(
+      (
+        _path: string,
+        _documentId: string,
+        callback: (state: DatabaseState) => unknown,
+      ) => {
+        const state = stateSubject.value;
+
+        if (!state) {
+          throw new Error('state is undefined');
+        }
+
+        callback(state);
+        stateSubject.next({
+          ...state,
+          data: {
+            ...state.data,
+          },
+        });
+
+        return Promise.resolve();
+      },
+    );
+
+    const { setupDatabaseDataService } = await import('./databaseDataService');
+
+    const service = setupDatabaseDataService(
+      () => stateSubject.asObservable(),
+      changeDatabaseState,
+    );
+    const documentId = new Repo({}).create({}).documentId;
+
+    await service.postItem('/db', documentId, {}, itemId);
+
+    expect(stateSubject.value?.data[itemId]).toEqual({});
+    expect(Object.hasOwn(stateSubject.value?.data ?? {}, itemId)).toBe(true);
+  });
 });
