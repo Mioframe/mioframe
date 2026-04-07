@@ -43,13 +43,11 @@ const createLogicalFilterMatcher = (
     : (item) => nestedMatcherList.some((matcher) => matcher(item));
 };
 
-const normalizeFieldConditionForCompatibility = (
+const getFieldConditionOperators = (
   condition: unknown,
 ): Record<string, unknown> => {
-  // Keep legacy compatibility: invalid/non-record field conditions act like
-  // an empty sift query instead of failing matcher compilation.
   if (isArray(condition) || !isUnknownRecord(condition)) {
-    return {};
+    throw new TypeError('Database field condition must be an operator record');
   }
 
   return condition;
@@ -60,8 +58,23 @@ const createFieldFilterMatcher = (
   conditionValue: unknown,
   properties: DatabaseUnknownPropertiesMap | undefined,
 ): ((item: DatabaseItem) => boolean) => {
-  const condition = normalizeFieldConditionForCompatibility(conditionValue);
-  const predicate = sift(condition);
+  const condition = getFieldConditionOperators(conditionValue);
+  let existsCondition: unknown;
+  let hasExistsCondition = false;
+  let unaryCondition: Record<string, unknown> | undefined;
+
+  for (const [key, value] of recordEntries(condition)) {
+    if (key === '$exists') {
+      hasExistsCondition = true;
+      existsCondition = value;
+      continue;
+    }
+
+    unaryCondition ??= {};
+    unaryCondition[key] = value;
+  }
+
+  const predicate = unaryCondition ? sift(unaryCondition) : undefined;
 
   return (item) => {
     const effectiveValue = getDatabaseEffectiveValue(
@@ -70,11 +83,14 @@ const createFieldFilterMatcher = (
       properties?.[propertyId],
     );
 
-    if ('$exists' in condition) {
-      return matchEffectiveExists(effectiveValue, condition.$exists);
+    if (
+      hasExistsCondition &&
+      !matchEffectiveExists(effectiveValue, existsCondition)
+    ) {
+      return false;
     }
 
-    return predicate(effectiveValue);
+    return predicate ? predicate(effectiveValue) : true;
   };
 };
 
