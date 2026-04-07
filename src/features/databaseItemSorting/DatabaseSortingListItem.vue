@@ -44,7 +44,6 @@ const onClick = async () => {
   <MDListItem
     is="button"
     :headline="headline"
-    draggable
     class="db-sorting-item"
     @click="onClick"
   >

@@ -40,6 +40,7 @@ This is a local-first personal data manager built around:
 - Name page and widget directories in PascalCase because they are screen or composition modules.
 - Name `features`, `entities`, and `shared` submodules in lower camel case by domain concept or action.
 - Name non-component TypeScript files in lower camel case or lowercase. Reserve PascalCase filenames for Vue components and class-centric modules.
+- If a non-component module exports multiple functions, do not name the file after a single exported function. Use a filename that describes the module's overall responsibility.
 - Name feature directories and public feature APIs by the user action they own, usually as `<domain><Action>` such as `documentRename` or `databasePropertyCreate`.
 - Name entity directories and public entity APIs by the stable domain concept they expose, such as `databaseProperty`, `repository`, or `googleUserInfo`.
 - Name components by the external visual and interaction contract they present in markup. The name should tell a reader what the user sees and how the component behaves, not what internal role it plays.

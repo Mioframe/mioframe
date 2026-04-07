@@ -1,5 +1,5 @@
 <script setup lang="ts">
-const { is = 'ul', type = 'list' } = defineProps<{
+const { is = 'div', type = 'list' } = defineProps<{
   is?: 'ul' | 'div';
   type?: 'list' | 'grid';
   transition?: boolean;

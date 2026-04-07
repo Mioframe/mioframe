@@ -1,10 +1,15 @@
 <script setup lang="ts">
 import { useDatabaseViews } from '@entity/databaseView';
 import type { AMDocumentId } from '@shared/lib/automerge';
-import type { DatabaseViewId } from '@shared/lib/databaseDocument';
-import { useSortableListener } from '@shared/lib/sortable/useSortable';
+import {
+  zodDatabaseViewId,
+  type DatabaseView,
+  type DatabaseViewId,
+} from '@shared/lib/databaseDocument';
+import { zodIs } from '@shared/lib/validateZodScheme';
+import { useReorderSurface, vReorderItem } from '@shared/lib/sortable';
 import { MDListContainer, MDListItem } from '@shared/ui/Lists';
-import { toRefs, useTemplateRef } from 'vue';
+import { computed, toRefs, useTemplateRef } from 'vue';
 
 const props = defineProps<{
   directoryPath: string;
@@ -22,13 +27,51 @@ const slots = defineSlots<{
   leadingIcon: (p: { viewId: DatabaseViewId }) => unknown;
 }>();
 
-const { changeOrder, views: viewList } = useDatabaseViews(path, documentId);
+const { reorder, views: viewList } = useDatabaseViews(path, documentId);
 
 const viewListEl = useTemplateRef('viewListEl');
 
-const { draggableIndex } = useSortableListener(viewListEl, (from, to) => {
-  void changeOrder(from, to);
+const viewMap = computed(() => new Map(viewList.value ?? []));
+
+const { activeProfile, displayItemIdList, draggedId, isDragging } =
+  useReorderSurface(viewListEl, {
+    itemIdList: computed(() => (viewList.value ?? []).map(([id]) => id)),
+    onCommit: ({ orderedIds }) => {
+      const nextOrderedIds = orderedIds.filter((id) =>
+        zodIs(id, zodDatabaseViewId),
+      );
+
+      if (nextOrderedIds.length !== orderedIds.length) {
+        return;
+      }
+
+      return reorder(nextOrderedIds);
+    },
+  });
+
+const displayViewIdList = computed(() =>
+  displayItemIdList.value.filter((id) => zodIs(id, zodDatabaseViewId)),
+);
+const draggedViewId = computed(() => {
+  const itemId = draggedId.value;
+
+  return itemId && zodIs(itemId, zodDatabaseViewId) ? itemId : undefined;
 });
+
+const orderedViewList = computed(() =>
+  displayViewIdList.value.reduce<
+    Array<readonly [DatabaseViewId, DatabaseView]>
+  >((result, id) => {
+    const view = viewMap.value.get(id);
+
+    if (!view) {
+      return result;
+    }
+
+    result.push([id, view] as const);
+    return result;
+  }, []),
+);
 
 const onClickView = (id: DatabaseViewId) => {
   emit('clickView', id);
@@ -39,12 +82,16 @@ const onClickView = (id: DatabaseViewId) => {
   <MDListContainer ref="viewListEl" transition class="db-view-map-edit">
     <MDListItem
       is="button"
-      v-for="([id, view], index) in viewList"
+      v-for="[id, view] in orderedViewList"
       :key="id"
+      v-reorder-item="id"
       :headline="view.name"
-      draggable
       class="db-view-map-edit__view-item"
-      :class="{ 'md-state_drag': draggableIndex === index }"
+      :class="{
+        'md-state_drag': draggedViewId === id,
+        'db-view-map-edit__view-item_touch':
+          isDragging && activeProfile.input === 'touch',
+      }"
       @click="onClickView(id)"
     >
       <template v-if="!!slots.leadingIcon" #leadingIcon>
