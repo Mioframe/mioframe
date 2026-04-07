@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, shallowRef, toRefs, watch, watchEffect } from 'vue';
+import { computed, ref, shallowRef, toRefs, watch } from 'vue';
 import { MDDialog } from '@shared/ui/Dialog';
 import {
   type DatabaseItem,
@@ -81,22 +81,38 @@ watch([itemId, showModel], () => {
   touchedPropertyIdSet.value = new Set();
 });
 
-watchEffect(() => {
-  if (!touchedPropertyIdSet.value.size) {
-    itemState.value = createItemEditState(
-      effectiveItem.value,
-      propertiesIdList.value,
-    );
-    return;
-  }
+watch(
+  showModel,
+  (show, _, onCleanup) => {
+    if (!show) {
+      return;
+    }
 
-  itemState.value = syncItemEditState(
-    itemState.value,
-    effectiveItem.value,
-    propertiesIdList.value,
-    touchedPropertyIdSet.value,
-  );
-});
+    const stopSync = watch(
+      [effectiveItem, propertiesIdList, touchedPropertyIdSet],
+      () => {
+        if (!touchedPropertyIdSet.value.size) {
+          itemState.value = createItemEditState(
+            effectiveItem.value,
+            propertiesIdList.value,
+          );
+          return;
+        }
+
+        itemState.value = syncItemEditState(
+          itemState.value,
+          effectiveItem.value,
+          propertiesIdList.value,
+          touchedPropertyIdSet.value,
+        );
+      },
+      { immediate: true },
+    );
+
+    onCleanup(stopSync);
+  },
+  { immediate: true },
+);
 
 const applyLoading = shallowRef(false);
 
