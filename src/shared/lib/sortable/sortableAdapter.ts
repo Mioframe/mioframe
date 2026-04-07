@@ -210,6 +210,7 @@ export const createSortableAdapter = (
     },
     {
       deep: true,
+      flush: 'sync',
     },
   );
 
