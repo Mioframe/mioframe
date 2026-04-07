@@ -15,7 +15,7 @@ export const useDatabaseViews = (
 ) => {
   const {
     databaseDocument: {
-      views: { changeOrder, create, patch, remove, viewList },
+      views: { reorder, create, patch, remove, viewList },
     },
   } = useMainServiceClient();
 
@@ -49,8 +49,8 @@ export const useDatabaseViews = (
     create: (view: DatabaseView) => create(path.value, documentId.value, view),
     remove: (viewId: DatabaseViewId) =>
       remove(path.value, documentId.value, viewId),
-    changeOrder: (from: number, to: number) =>
-      changeOrder(path.value, documentId.value, from, to),
+    reorder: (orderedIds: DatabaseViewId[]) =>
+      reorder(path.value, documentId.value, orderedIds),
     patch: (viewId: DatabaseViewId, view: PatchSource<DatabaseView>) =>
       patch(path.value, documentId.value, viewId, view),
   };

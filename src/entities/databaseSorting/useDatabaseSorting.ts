@@ -18,13 +18,7 @@ export const useDatabaseSorting = (
   const {
     databaseDocument: {
       views: {
-        sorting: {
-          changePriority,
-          sortingPropertiesIdList,
-          patch,
-          post,
-          remove,
-        },
+        sorting: { reorder, sortingPropertiesIdList, patch, post, remove },
       },
     },
   } = useMainServiceClient();
@@ -57,8 +51,8 @@ export const useDatabaseSorting = (
     errorMessage,
     isLoading,
 
-    changePriority: (from: number, to: number) =>
-      changePriority(path.value, documentId.value, viewId.value, from, to),
+    reorder: (orderedIds: DatabasePropertyId[]) =>
+      reorder(path.value, documentId.value, viewId.value, orderedIds),
 
     post: (
       propertyId: DatabasePropertyId,

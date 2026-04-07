@@ -1,0 +1,7 @@
+.reorder-surface_dragging,
+.reorder-surface_dragging * {
+  user-select: none !important;
+  -webkit-user-select: none !important;
+  -moz-user-select: none !important;
+  -webkit-touch-callout: none;
+}

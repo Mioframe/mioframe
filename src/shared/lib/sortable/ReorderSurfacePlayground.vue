@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { reactive, ref, useTemplateRef } from 'vue';
-import { useSortable } from './useSortable';
+import { computed, reactive, ref, useTemplateRef } from 'vue';
 import { PlaygroundBoolean, PlaygroundStory } from '../playground';
 import { randomInt } from 'es-toolkit';
+import { vReorderItem } from './reorderDirectives';
+import { useReorderSurface } from './useReorderSurface';
 
 const randomColor = (): string =>
   `rgb(${randomInt(255)} ${randomInt(255)} ${randomInt(255)})`;
@@ -20,8 +21,19 @@ const state = reactive({
 });
 
 const containerEl = useTemplateRef('containerEl');
+const itemMap = computed(
+  () => new Map(list.value.map((item) => [String(item.id), item])),
+);
 
-const { draggableItem } = useSortable(containerEl, list);
+const { draggedId, displayItemIdList } = useReorderSurface(containerEl, {
+  itemIdList: computed(() => list.value.map((item) => String(item.id))),
+  layout: () => (state.isGrid ? 'grid' : 'vertical'),
+  onCommit: ({ orderedIds }) => {
+    list.value = orderedIds
+      .map((id) => itemMap.value.get(id))
+      .filter((item): item is NonNullable<typeof item> => Boolean(item));
+  },
+});
 </script>
 
 <template>
@@ -42,19 +54,19 @@ const { draggableItem } = useSortable(containerEl, list);
       >
         <TransitionGroup name="dnd">
           <div
-            v-for="item in list"
-            :key="item.id"
+            v-for="itemId in displayItemIdList"
+            :key="itemId"
+            v-reorder-item="itemId"
             class="item"
-            draggable="true"
             :class="{
-              _draggable: draggableItem === item,
+              _draggable: draggedId === itemId,
             }"
             :style="{
-              background: item.color,
+              background: itemMap.get(itemId)?.color,
             }"
             @contextmenu.prevent="() => undefined"
           >
-            {{ item.label }}
+            {{ itemMap.get(itemId)?.label }}
           </div>
         </TransitionGroup>
       </div>

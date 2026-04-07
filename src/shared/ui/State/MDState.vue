@@ -290,7 +290,10 @@ watch(
   &.md-state_drag,
   &.md-state_dragged-chosen,
   &.md-state_dragged,
-  &.md-state_dragged-fallback {
+  &.md-state_dragged-fallback,
+  &.reorder-item_chosen,
+  &.reorder-item_drag,
+  &.reorder-item_fallback {
     opacity: 1 !important;
     /* transition-duration: 0s; */
     box-shadow: var(--md-sys-elevation-level2);
@@ -298,7 +301,8 @@ watch(
     border-radius: 6step !important;
   }
 
-  &.md-state_dragged-ghost {
+  &.md-state_dragged-ghost,
+  &.reorder-item_ghost {
     opacity: 0 !important;
   }
 }
