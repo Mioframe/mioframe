@@ -18,7 +18,7 @@ export const defaultReorderInteractiveSelector = [
   `[${REORDER_IGNORE_ATTRIBUTE}]`,
 ].join(', ');
 
-/** Scopes an interactive selector to descendants of reorder items only. */
+/** Scopes an interactive selector to reorder items and their descendants. */
 export const getReorderDescendantInteractiveSelector = (
   interactiveSelector: string,
 ): string =>
@@ -26,7 +26,10 @@ export const getReorderDescendantInteractiveSelector = (
     .split(',')
     .map((selector) => selector.trim())
     .filter(Boolean)
-    .map((selector) => `[${REORDER_ITEM_ATTRIBUTE}] ${selector}`)
+    .map(
+      (selector) =>
+        `[${REORDER_ITEM_ATTRIBUTE}]${selector}, [${REORDER_ITEM_ATTRIBUTE}] ${selector}`,
+    )
     .join(', ');
 
 /** Class names forwarded to SortableJS for drag state styling. */
