@@ -4,6 +4,7 @@ import type {
   DatabaseItem,
   DatabaseItemId,
   DatabaseSortMap,
+  DatabaseUnknownPropertiesMap,
   SORT_DIRECTION,
 } from '@shared/lib/databaseDocument';
 import type { RecordEntries } from '@shared/lib/objectEntries';
@@ -18,6 +19,7 @@ export type QueryDataFn = <TSchemaItem extends DatabaseItem = DatabaseItem>(
     idQuery?: Query<DatabaseItemId>;
     sorting?: DatabaseSortMap;
     filter?: DatabaseFilter;
+    properties?: DatabaseUnknownPropertiesMap;
     slice?: {
       first?: number;
       last?: number;
@@ -29,6 +31,7 @@ export interface SortWorkerApi {
   sortData: (
     data: DatabaseData | RecordEntries<DatabaseData>,
     sorting?: DatabaseSortMap,
+    properties?: DatabaseUnknownPropertiesMap,
     firstIndex?: number,
     lastIndex?: number,
   ) => RecordEntries<DatabaseData>;

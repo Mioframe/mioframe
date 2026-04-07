@@ -50,17 +50,20 @@ export const partialSort = <T>(
   comparePathList?: ComparePath[],
   firstIndex: number = 0,
   lastIndex: number = arr.length - 1,
+  compareFn?: (a: T, b: T) => number,
 ): T[] => {
-  const compareFn = comparePathList
-    ? (a: T, b: T) => multiPathCompare(a, b, comparePathList)
-    : undefined;
+  const resolvedCompareFn =
+    compareFn ??
+    (comparePathList
+      ? (a: T, b: T) => multiPathCompare(a, b, comparePathList)
+      : undefined);
 
-  quickselect(arr, firstIndex, 0, arr.length - 1, compareFn);
+  quickselect(arr, firstIndex, 0, arr.length - 1, resolvedCompareFn);
 
   const slicedArr = arr.slice(firstIndex, lastIndex + 1);
 
-  if (compareFn) {
-    return slicedArr.sort(compareFn);
+  if (resolvedCompareFn) {
+    return slicedArr.sort(resolvedCompareFn);
   }
 
   return slicedArr;

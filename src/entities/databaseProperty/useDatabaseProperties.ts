@@ -3,6 +3,7 @@ import type { AMDocumentId } from '@shared/lib/automerge';
 import type { PatchSource } from '@shared/lib/changeObject';
 import type {
   DatabasePropertyId,
+  DatabaseUnknownPropertiesMap,
   DatabaseUnknownProperty,
 } from '@shared/lib/databaseDocument';
 import { computed, type Ref } from 'vue';
@@ -16,20 +17,38 @@ export const useDatabaseProperties = (
 ) => {
   const {
     databaseDocument: {
-      properties: { patch, post, remove, databasePropertiesIdList },
+      properties: {
+        patch,
+        post,
+        remove,
+        databaseProperties,
+        databasePropertiesIdList,
+      },
     },
   } = useMainServiceClient();
 
   const {
-    data: propertiesIdList,
+    data: properties,
     error,
     isLoading,
   } = useObservableQuery(
+    databaseProperties,
+    computed(() => ({
+      documentId: documentId.value,
+      path: path.value,
+    })),
+  );
+
+  const { data: propertiesIdList } = useObservableQuery(
     databasePropertiesIdList,
     computed(() => ({
       documentId: documentId.value,
       path: path.value,
     })),
+  );
+
+  const propertiesMap = computed(
+    (): DatabaseUnknownPropertiesMap | undefined => properties.value,
   );
 
   const errorMessage = computed(() => {
@@ -49,6 +68,7 @@ export const useDatabaseProperties = (
   const size = computed(() => propertiesIdList.value?.length);
 
   return {
+    properties: propertiesMap,
     propertiesIdList,
     size,
     errorMessage,

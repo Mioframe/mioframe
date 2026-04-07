@@ -17,10 +17,10 @@ import {
 import type { DatabaseItemId } from '@shared/lib/databaseDocument';
 import { type DatabasePropertyId } from '@shared/lib/databaseDocument';
 import DatabaseViewLayout from './DatabaseViewLayout.vue';
-import { computed, toRefs } from 'vue';
+import { toRefs } from 'vue';
 import type { AMDocumentId } from '@shared/lib/automerge';
 import { useDatabaseProperty } from '@entity/databaseProperty';
-import { useDatabaseValue } from '@entity/databaseValue';
+import { useDatabaseEffectiveValue } from '@entity/databaseValue';
 import { MDCircularProgressIndicator } from '@shared/ui/ProgressIndicators';
 
 const props = defineProps<{
@@ -38,19 +38,14 @@ const { property } = useDatabaseProperty(directoryPath, documentId, propertyId);
 
 const emit = defineEmits<{ click: [] }>();
 
-const { data: stateValue, isLoading } = useDatabaseValue(
+const { value, isLoading } = useDatabaseEffectiveValue(
   directoryPath,
   documentId,
   itemId,
   propertyId,
 );
 
-const printValue = computed(() => {
-  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- stateValue.value can be undefined at runtime
-  return stateValue.value ?? property.value?.default;
-});
-
-// todo: нужна версия без itemId для рендера значений в фильтрах
+// Note: filter rendering still needs a property-aware path without itemId.
 </script>
 
 <template>
@@ -58,7 +53,7 @@ const printValue = computed(() => {
 
   <BooleanInline
     v-else-if="property?.type === PROPERTY_TYPE_BOOLEAN"
-    :value="printValue"
+    :value="value"
     :path="directoryPath"
     :editable="editable"
     :document-id="documentId"
@@ -68,25 +63,25 @@ const printValue = computed(() => {
 
   <NumberValueInline
     v-else-if="property?.type === PROPERTY_TYPE_NUMBER"
-    :value="printValue"
+    :value="value"
     @click="emit('click')"
   />
 
   <StringValueInline
     v-else-if="property?.type === PROPERTY_TYPE_STRING"
-    :value="printValue"
+    :value="value"
     @click="emit('click')"
   />
 
   <DateValueInline
     v-else-if="property?.type === PROPERTY_TYPE_DATE"
-    :value="printValue"
+    :value="value"
     @click="emit('click')"
   />
 
   <RelationValueInline
     v-else-if="property?.type === PROPERTY_TYPE_RELATION"
-    :value="printValue"
+    :value="value"
     :document-id="documentId"
     :property-id="propertyId"
     :directory-path="directoryPath"

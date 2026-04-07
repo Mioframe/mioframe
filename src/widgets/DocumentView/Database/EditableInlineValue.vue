@@ -16,7 +16,10 @@ import type { AMDocumentId } from '@shared/lib/automerge';
 import { MDState } from '@shared/ui/State';
 import type { MaybeElement } from '@vueuse/core';
 import { useDatabaseProperty } from '@entity/databaseProperty';
-import { useDatabaseValue } from '@entity/databaseValue';
+import {
+  useDatabaseEffectiveValue,
+  useDatabaseStoredValue,
+} from '@entity/databaseValue';
 
 const props = withDefaults(
   defineProps<{
@@ -43,7 +46,13 @@ const emit = defineEmits<{
 
 const { property } = useDatabaseProperty(path, documentId, propertyId);
 
-const { data: initialValue } = useDatabaseValue(
+const { value } = useDatabaseEffectiveValue(
+  path,
+  documentId,
+  itemId,
+  propertyId,
+);
+const { storedValue, post: postValue } = useDatabaseStoredValue(
   path,
   documentId,
   itemId,
@@ -55,18 +64,12 @@ const showEditForm = ref(false);
 const stateValue = ref<unknown>();
 
 watchEffect(() => {
-  stateValue.value = initialValue.value;
+  void storedValue.value;
+  stateValue.value = value.value;
 });
 
-const { post: postValue } = useDatabaseValue(
-  path,
-  documentId,
-  itemId,
-  propertyId,
-);
-
 const tryEmitValue = async () => {
-  if (!isEqual(initialValue.value, stateValue.value)) {
+  if (!isEqual(value.value, stateValue.value)) {
     await postValue(stateValue.value);
   }
 };
