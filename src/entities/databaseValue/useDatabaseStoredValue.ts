@@ -8,7 +8,7 @@ import { useMainServiceClient } from '@shared/service';
 import { isUndefined } from 'es-toolkit';
 import { computed, toValue, type Ref } from 'vue';
 
-export const useDatabaseValue = (
+export const useDatabaseStoredValue = (
   path: Ref<string>,
   documentId: Ref<AMDocumentId>,
   itemId: Ref<DatabaseItemId>,
@@ -16,12 +16,12 @@ export const useDatabaseValue = (
 ) => {
   const {
     databaseDocument: {
-      data: { postValue, databaseValue },
+      data: { postValue, databaseStoredValue },
     },
   } = useMainServiceClient();
 
   const { data, error, isLoading } = useObservableQuery(
-    databaseValue,
+    databaseStoredValue,
     computed(() => ({
       documentId: documentId.value,
       itemId: itemId.value,
@@ -41,11 +41,11 @@ export const useDatabaseValue = (
       return e.message;
     }
 
-    return 'Error reading value';
+    return 'Error reading stored value';
   });
 
   return {
-    data,
+    storedValue: data,
     errorMessage,
     isLoading,
 
