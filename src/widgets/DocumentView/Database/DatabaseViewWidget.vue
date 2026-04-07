@@ -12,7 +12,7 @@ import EditableInlineValue from './EditableInlineValue.vue';
 import { useSnackbar } from '@shared/ui/Snackbar';
 import DatabaseViewLayout from './DatabaseViewLayout.vue';
 import DatabaseToolbar from './DatabaseToolbar.vue';
-import { DbItemEditDialog } from '@feature/databaseItemEdit';
+import { DatabaseItemEditDialog } from '@feature/databaseItemEdit';
 import { isUndefined } from 'es-toolkit';
 import ValueField from './ValueField.vue';
 import { MD_SYS_TYPESCALE } from '@shared/lib/md';
@@ -170,7 +170,7 @@ const databaseViewRef = useTemplateRef('databaseViewRef');
       </template>
     </DatabaseViewLayout>
 
-    <DbItemEditDialog
+    <DatabaseItemEditDialog
       v-if="isShowEditItemDialog"
       v-model:show="isShowEditItemDialog"
       :directory-path="path"
@@ -190,7 +190,7 @@ const databaseViewRef = useTemplateRef('databaseViewRef');
           @update:value="update"
         />
       </template>
-    </DbItemEditDialog>
+    </DatabaseItemEditDialog>
   </div>
 </template>
 

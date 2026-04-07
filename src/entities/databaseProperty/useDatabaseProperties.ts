@@ -6,6 +6,7 @@ import type {
   DatabaseUnknownPropertiesMap,
   DatabaseUnknownProperty,
 } from '@shared/lib/databaseDocument';
+import { strictRecordIterableKeys } from '@shared/lib/strictRecord';
 import { computed, type Ref } from 'vue';
 import { useObservableQuery } from '@shared/lib/useObservableQuery';
 import { toValue } from 'vue';
@@ -17,13 +18,7 @@ export const useDatabaseProperties = (
 ) => {
   const {
     databaseDocument: {
-      properties: {
-        patch,
-        post,
-        remove,
-        databaseProperties,
-        databasePropertiesIdList,
-      },
+      properties: { patch, post, remove, databaseProperties },
     },
   } = useMainServiceClient();
 
@@ -39,17 +34,16 @@ export const useDatabaseProperties = (
     })),
   );
 
-  const { data: propertiesIdList } = useObservableQuery(
-    databasePropertiesIdList,
-    computed(() => ({
-      documentId: documentId.value,
-      path: path.value,
-    })),
-  );
+  const propertiesIdList = computed(() => {
+    const currentProperties: DatabaseUnknownPropertiesMap | undefined =
+      properties.value;
 
-  const propertiesMap = computed(
-    (): DatabaseUnknownPropertiesMap | undefined => properties.value,
-  );
+    if (!currentProperties) {
+      return undefined;
+    }
+
+    return Array.from(strictRecordIterableKeys(currentProperties)());
+  });
 
   const errorMessage = computed(() => {
     const e = toValue(error);
@@ -68,7 +62,7 @@ export const useDatabaseProperties = (
   const size = computed(() => propertiesIdList.value?.length);
 
   return {
-    properties: propertiesMap,
+    properties,
     propertiesIdList,
     size,
     errorMessage,
