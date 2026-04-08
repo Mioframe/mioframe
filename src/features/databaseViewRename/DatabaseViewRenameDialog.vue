@@ -15,8 +15,6 @@ const props = defineProps<{
 
 const { directoryPath: path, documentId, viewId } = toRefs(props);
 
-const show = defineModel<boolean>('show', { required: true });
-
 const { view: stateView, patch } = useDatabaseView(path, documentId, viewId);
 
 const nameState = ref<string>();
@@ -60,7 +58,6 @@ const onCancel = () => {
 
 <template>
   <MDDialog
-    v-model:show="show"
     headline="Rename Data View"
     supporting-text="Give your data view a clear and meaningful name to improve organization and accessibility."
     apply-label="Rename"

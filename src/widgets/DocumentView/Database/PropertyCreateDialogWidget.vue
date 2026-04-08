@@ -14,8 +14,6 @@ defineProps<{
   directoryPath: string;
 }>();
 
-const showModel = defineModel<boolean>('show', { required: true });
-
 const zodPartialRelation = extend(zodRelationProperty, {
   relation: optional(zodRelation),
 });
@@ -23,11 +21,8 @@ const zodPartialRelation = extend(zodRelationProperty, {
 
 <template>
   <DatabasePropertyCreationDialog
-    v-model:show="showModel"
     :path="directoryPath"
     :document-id="documentId"
-    @created="showModel = false"
-    @cancel="showModel = false"
   >
     <template #after="{ property, onUpdateProperty }">
       <DatabaseRelationPropertyEditSection

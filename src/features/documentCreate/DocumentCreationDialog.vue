@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { useFSNodeStat } from '@entity/fsEntry';
-import { computed, ref, toRefs, watchEffect } from 'vue';
+import { computed, ref, toRefs } from 'vue';
 import { DATABASE_DOCUMENT_TYPE } from '../../shared/lib/databaseDocument';
 import { MDDialog } from '@shared/ui/Dialog';
 import { MDTextField } from '@shared/ui/TextField';
@@ -18,8 +18,6 @@ const emit = defineEmits<{
   created: [];
   cancel: [];
 }>();
-
-const showModel = defineModel<boolean>('show', { required: true });
 
 const stateName = ref<string>();
 const errorText = ref<string>();
@@ -71,16 +69,6 @@ const onCancel = () => {
   emit('cancel');
 };
 
-const autofocusElement = ref<HTMLElement>();
-
-watchEffect(() => {
-  autofocusElement.value?.focus();
-
-  if (!showModel.value) {
-    errorText.value = undefined;
-  }
-});
-
 const documentTypes = {
   [DATABASE_DOCUMENT_TYPE]: 'Database',
   JsonObject: 'JSON Object',
@@ -103,7 +91,6 @@ const selectedDocumentTypeLabel = computed((): string | undefined => {
 
 <template>
   <MDDialog
-    v-model:show="showModel"
     headline="Create Document"
     supporting-text="Think of a name and select the type of the new document."
     apply-label="Create"
@@ -118,6 +105,7 @@ const selectedDocumentTypeLabel = computed((): string | undefined => {
       label-text="Name"
       :error="!!errorText"
       :supporting-text="errorText"
+      autofocus
     />
 
     <MDSelectBase

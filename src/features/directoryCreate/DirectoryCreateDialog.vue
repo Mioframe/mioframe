@@ -4,7 +4,7 @@ import { useFileSystem } from '@entity/mountedDirectories';
 import { PathUtils } from '@shared/lib/virtualFileSystem';
 import { MDDialog } from '@shared/ui/Dialog';
 import { MDTextField } from '@shared/ui/TextField';
-import { computed, ref, toRefs, watchEffect } from 'vue';
+import { computed, ref, toRefs } from 'vue';
 
 const props = defineProps<{
   path: string;
@@ -16,8 +16,6 @@ const emit = defineEmits<{
   created: [name: string];
   cancel: [];
 }>();
-
-const showModel = defineModel<boolean>('show', { required: true });
 
 const errorText = ref<string>();
 const { data: directoryStat } = useFSNodeStat(path);
@@ -65,17 +63,10 @@ const onCancel = () => {
     emit('cancel');
   }
 };
-
-watchEffect(() => {
-  if (!showModel.value) {
-    resetState();
-  }
-});
 </script>
 
 <template>
   <MDDialog
-    v-model:show="showModel"
     headline="Create a New Folder"
     apply-label="Create"
     cancel-label="Cancel"

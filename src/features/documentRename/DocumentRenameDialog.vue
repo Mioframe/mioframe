@@ -17,8 +17,6 @@ const emit = defineEmits<{
   cancel: [];
 }>();
 
-const showModel = defineModel<boolean>('show', { required: true });
-
 const { state: documentDescription, patch: documentPatch } = useDocument(
   path,
   documentId,
@@ -63,17 +61,10 @@ const onCancel = () => {
 const headline = computed(
   () => `Rename "${documentName.value ?? 'unknown'}" document`,
 );
-
-watchEffect(() => {
-  if (!showModel.value) {
-    resetState();
-  }
-});
 </script>
 
 <template>
   <MDDialog
-    v-model:show="showModel"
     :headline="headline"
     supporting-text="Change the document title or leave it as is."
     apply-label="Rename"

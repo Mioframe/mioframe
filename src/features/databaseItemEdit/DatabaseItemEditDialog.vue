@@ -49,8 +49,6 @@ const emit = defineEmits<{
   cancel: [];
 }>();
 
-const showModel = defineModel<boolean>('show', { required: true });
-
 defineSlots<{
   valueField(p: {
     propertyId: DatabasePropertyId;
@@ -77,39 +75,27 @@ const { effectiveItem } = useDatabaseEffectiveItem(
 const { propertiesIdList: propertiesIdList, isLoading: isLoadingProperties } =
   useDatabaseProperties(directoryPath, documentId);
 
-watch([itemId, showModel], () => {
+watch(itemId, () => {
   touchedPropertyIdSet.value = new Set();
 });
 
 watch(
-  showModel,
-  (show, _, onCleanup) => {
-    if (!show) {
+  [effectiveItem, propertiesIdList, touchedPropertyIdSet],
+  () => {
+    if (!touchedPropertyIdSet.value.size) {
+      itemState.value = createItemEditState(
+        effectiveItem.value,
+        propertiesIdList.value,
+      );
       return;
     }
 
-    const stopSync = watch(
-      [effectiveItem, propertiesIdList, touchedPropertyIdSet],
-      () => {
-        if (!touchedPropertyIdSet.value.size) {
-          itemState.value = createItemEditState(
-            effectiveItem.value,
-            propertiesIdList.value,
-          );
-          return;
-        }
-
-        itemState.value = syncItemEditState(
-          itemState.value,
-          effectiveItem.value,
-          propertiesIdList.value,
-          touchedPropertyIdSet.value,
-        );
-      },
-      { immediate: true },
+    itemState.value = syncItemEditState(
+      itemState.value,
+      effectiveItem.value,
+      propertiesIdList.value,
+      touchedPropertyIdSet.value,
     );
-
-    onCleanup(stopSync);
   },
   { immediate: true },
 );
@@ -157,7 +143,6 @@ const loading = computed(() => isLoadingProperties.value || applyLoading.value);
 
 <template>
   <MDDialog
-    v-model:show="showModel"
     :headline="headline"
     :supporting-text="supportingText"
     :apply-label="applyLabel"

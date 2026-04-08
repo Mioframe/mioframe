@@ -97,10 +97,6 @@ const onClickViewContextMenu = async (
 };
 
 const isShowAddView = shallowRef(false);
-
-const closeRenameDialog = () => {
-  renameViewId.value = undefined;
-};
 </script>
 
 <template>
@@ -156,7 +152,6 @@ const closeRenameDialog = () => {
 
     <DatabaseViewCreateDialog
       v-if="isShowAddView"
-      v-model:show="isShowAddView"
       :directory-path="path"
       :document-id="documentId"
       @created="isShowAddView = false"
@@ -165,11 +160,9 @@ const closeRenameDialog = () => {
 
     <DatabaseViewRenameDialog
       v-if="renameViewId"
-      :show="!!renameViewId"
       :directory-path="path"
       :document-id="documentId"
       :view-id="renameViewId"
-      @update:show="(show) => show || closeRenameDialog()"
       @cancel="renameViewId = undefined"
       @completed="renameViewId = undefined"
     />

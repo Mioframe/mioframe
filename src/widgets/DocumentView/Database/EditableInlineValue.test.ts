@@ -1,3 +1,5 @@
+/* eslint-disable vue/one-component-per-file -- test file keeps several local component stubs near their mocks for readability. */
+
 import { createApp, defineComponent, h, nextTick, ref } from 'vue';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
@@ -63,7 +65,7 @@ vi.mock('./ValueField.vue', () => ({
     },
 
     emits: {
-      'update:value': (_value: unknown) => true,
+      'update:value': () => true,
     },
 
     setup(props, { emit }) {
@@ -284,3 +286,5 @@ describe('EditableInlineValue', () => {
     app.unmount();
   });
 });
+
+/* eslint-enable vue/one-component-per-file -- restore the default rule after local test stubs. */
