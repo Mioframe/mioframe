@@ -25,6 +25,7 @@ This is a local-first personal data manager built around:
 - Prefer an existing public module API through `index.ts` when one exists.
 - Prefer functions, factory helpers, and composables over classes unless an external API requires a class or class-based state materially clarifies the invariant.
 - Treat the app as a native-like Material application. UI and UX decisions, including layout, motion, color, typography, components, interaction, navigation, overlay, focus, dismiss, and back-button behavior, should follow the latest Material 3 Expressive guidance as closely as the platform allows.
+- Optimize for mobile browsers first, including low-end devices. Treat large local datasets as a default scenario, keep memory and main-thread work bounded, prefer incremental loading and rendering over eager full-data work, and preserve touch-first interactions that feel native under constrained hardware.
 - Update schema, migrations, service contracts, and callers together for persistent-data changes.
 - Treat subscriptions, listeners, workers, timers, caches, and file handles as lifecycle-managed resources.
 - Use the `$` suffix only for raw RxJS observables; adapted project-level reactive sources and other wrappers should use names without `$`.
@@ -33,6 +34,11 @@ This is a local-first personal data manager built around:
 - Name non-component, non-class TypeScript files in lower camel case or lowercase; reserve PascalCase filenames for Vue components and class-centric modules.
 - Keep contract parsing, validation, and extraction close to the module that defines that contract instead of scattering that logic across unrelated layers.
 - In component code, name event handlers and callback-style bindings with the `on*` prefix for consistent, recognizable intent.
+- Prefer prepared typed collection helpers such as `recordEntries`, `objectEntries`, strict-record iterators, and similar local wrappers over raw `Object.entries`, `Object.keys`, or `Object.values` when iterating typed records.
+- Do not redefine or assert types locally to compensate for weak iteration typing. Manual type overrides and type assertions are prohibited by default and are allowed only in rare boundary cases with explicit justification.
+- For Automerge-backed or other CRDT-backed state, mutate existing CRDT objects in place inside the owning change callback instead of reassigning live nested objects.
+- For Automerge-backed or other CRDT-backed state, do not assign a live document object back into the document, even to the same key. Reuse its fields, or create a fresh plain object or array when whole-value replacement is intentional.
+- Prefer project mutation helpers such as `put`, `patch`, `deepPutJsonObject`, and `deepPatchJsonObject` when they match the intended CRDT write shape, instead of hand-rolled object replacement.
 
 ## Naming
 
@@ -84,6 +90,9 @@ This is a local-first personal data manager built around:
 - Do not pull dependencies upward against the intended layer direction.
 - Do not bypass service/entity/composable APIs with direct mutations.
 - Do not duplicate schema contracts, type aliases, or constants across layers.
+- Do not perform immutable-style replacement of large live CRDT subtrees when a targeted in-place update or existing `put`/`patch` helper expresses the change more safely.
+- Do not assign an existing Automerge document object proxy as a new value anywhere in the same document.
+- Do not assume desktop-class CPU, memory, storage throughput, or pointer precision. Avoid eager full-dataset hydration, long synchronous main-thread work, oversized reactive graphs over large collections, and interaction patterns that depend on hover or precise cursor input.
 - Do not turn `pages` or `widgets` into hidden domain or service layers.
 - Do not use `AGENTS.md` as a bug audit, backlog, or changelog.
 
@@ -99,6 +108,7 @@ This is a local-first personal data manager built around:
 - Use `--fix` by default for targeted lint runs, unless the task specifically requires reviewing raw lint output before applying fixes.
 - Use `pnpm lint` only when no narrower lint target exists or when a full-repository check is explicitly needed.
 - At minimum run `pnpm type-check` for logic changes; add focused tests or smoke checks for infrastructure and schema changes.
+- During code review, do not raise findings for issues that are already reliably enforced by strict type-checking and the strict linter; focus review on logic, behavior, regressions, contracts, architecture, and missing tests.
 
 ## AGENTS.md Best Practices
 

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, shallowRef, toRefs, watchEffect } from 'vue';
+import { computed, ref, shallowRef, toRefs, watch } from 'vue';
 import { MDDialog } from '@shared/ui/Dialog';
 import {
   type DatabaseItem,
@@ -7,9 +7,16 @@ import {
   type DatabasePropertyId,
 } from '@shared/lib/databaseDocument';
 import type { AMDocumentId } from '@shared/lib/automerge';
+import {
+  useDatabaseEffectiveItem,
+  useDatabaseStoredItem,
+} from '@entity/databaseItem';
 import { useDatabaseProperties } from '@entity/databaseProperty';
-import { useDatabaseItem } from '@entity/databaseItem';
-import { cloneDeep } from 'es-toolkit';
+import {
+  createItemEditPayload,
+  createItemEditState,
+  syncItemEditState,
+} from './itemEditState';
 
 const props = withDefaults(
   defineProps<{
@@ -52,16 +59,46 @@ defineSlots<{
 }>();
 
 const itemState = ref<DatabaseItem>({});
+const touchedPropertyIdSet = shallowRef<Set<DatabasePropertyId>>(new Set());
 
-const { item: currentItemState, postItem } = useDatabaseItem(
+const { item: currentItemState, postItem } = useDatabaseStoredItem(
+  directoryPath,
+  documentId,
+  itemId,
+);
+const { effectiveItem } = useDatabaseEffectiveItem(
   directoryPath,
   documentId,
   itemId,
 );
 
-watchEffect(() => {
-  itemState.value = cloneDeep(currentItemState.value) ?? {};
+const { propertiesIdList: propertiesIdList, isLoading: isLoadingProperties } =
+  useDatabaseProperties(directoryPath, documentId);
+
+watch(itemId, () => {
+  touchedPropertyIdSet.value = new Set();
 });
+
+watch(
+  [effectiveItem, propertiesIdList, touchedPropertyIdSet],
+  () => {
+    if (!touchedPropertyIdSet.value.size) {
+      itemState.value = createItemEditState(
+        effectiveItem.value,
+        propertiesIdList.value,
+      );
+      return;
+    }
+
+    itemState.value = syncItemEditState(
+      itemState.value,
+      effectiveItem.value,
+      propertiesIdList.value,
+      touchedPropertyIdSet.value,
+    );
+  },
+  { immediate: true },
+);
 
 const applyLoading = shallowRef(false);
 
@@ -69,11 +106,17 @@ const onApply = async () => {
   if (!loading.value) {
     try {
       applyLoading.value = true;
+      const payload = createItemEditPayload(
+        currentItemState.value,
+        itemState.value,
+        touchedPropertyIdSet.value,
+      );
+
       if (itemId.value) {
-        await postItem(itemState.value);
-        emit('updated', itemState.value);
+        await postItem(payload);
+        emit('updated', payload);
       } else {
-        const id = await postItem(itemState.value);
+        const id = await postItem(payload);
         emit('created', id);
       }
     } finally {
@@ -85,15 +128,14 @@ const onApply = async () => {
 const onCancel = () => {
   if (!loading.value) {
     itemState.value = {};
+    touchedPropertyIdSet.value = new Set();
     emit('cancel');
   }
 };
 
-const { propertiesIdList: properties, isLoading: isLoadingProperties } =
-  useDatabaseProperties(directoryPath, documentId);
-
 const onUpdateValue = (propertyId: DatabasePropertyId, value: unknown) => {
   itemState.value[propertyId] = value;
+  touchedPropertyIdSet.value.add(propertyId);
 };
 
 const loading = computed(() => isLoadingProperties.value || applyLoading.value);
@@ -109,7 +151,7 @@ const loading = computed(() => isLoadingProperties.value || applyLoading.value);
     @apply="onApply"
     @cancel="onCancel"
   >
-    <template v-for="(propertyId, index) in properties" :key="propertyId">
+    <template v-for="(propertyId, index) in propertiesIdList" :key="propertyId">
       <slot
         name="valueField"
         :value="itemState[propertyId]"
