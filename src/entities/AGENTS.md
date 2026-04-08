@@ -16,6 +16,8 @@ Inherits the rules from the root `AGENTS.md`. Applies to `src/entities` and its 
 - Entity components should stay small and reusable across higher-level flows.
 - Keep state derivation and display contracts for a domain concept in `entities`; do not move user action orchestration down from `features`.
 - Prefer entity UI components to expose slots for higher-layer actions instead of owning feature-specific buttons or handlers.
+- When a domain exposes both persisted and derived read models, name them explicitly. Prefer pairs such as `storedValue`/`value` or `item`/`effectiveItem`, and keep entities as consumers of those contracts rather than recomputing derivations locally.
+- Keep one reactive data source per composable. Do not mix stored and effective reads in the same entity composable; expose them as separate `use*` contracts with names that make the source semantics obvious.
 
 ## Anti-patterns
 

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, toRefs, useTemplateRef, watch, watchEffect } from 'vue';
+import { ref, toRefs, useTemplateRef, watch } from 'vue';
 import { zodBooleanProperty } from '@entity/databaseBoolean/boolean';
 import { zodIs } from '@shared/lib/validateZodScheme';
 import ValueInline from './ValueInline.vue';
@@ -16,7 +16,10 @@ import type { AMDocumentId } from '@shared/lib/automerge';
 import { MDState } from '@shared/ui/State';
 import type { MaybeElement } from '@vueuse/core';
 import { useDatabaseProperty } from '@entity/databaseProperty';
-import { useDatabaseValue } from '@entity/databaseValue';
+import {
+  useDatabaseEffectiveValue,
+  useDatabaseStoredValue,
+} from '@entity/databaseValue';
 
 const props = withDefaults(
   defineProps<{
@@ -43,7 +46,13 @@ const emit = defineEmits<{
 
 const { property } = useDatabaseProperty(path, documentId, propertyId);
 
-const { data: initialValue } = useDatabaseValue(
+const { value } = useDatabaseEffectiveValue(
+  path,
+  documentId,
+  itemId,
+  propertyId,
+);
+const { post: postValue } = useDatabaseStoredValue(
   path,
   documentId,
   itemId,
@@ -53,22 +62,30 @@ const { data: initialValue } = useDatabaseValue(
 const showEditForm = ref(false);
 
 const stateValue = ref<unknown>();
-
-watchEffect(() => {
-  stateValue.value = initialValue.value;
-});
-
-const { post: postValue } = useDatabaseValue(
-  path,
-  documentId,
-  itemId,
-  propertyId,
-);
+const syncStateValue = () => {
+  stateValue.value = value.value;
+};
 
 const tryEmitValue = async () => {
-  if (!isEqual(initialValue.value, stateValue.value)) {
+  if (!isEqual(value.value, stateValue.value)) {
     await postValue(stateValue.value);
   }
+};
+
+const startEditing = () => {
+  stateValue.value = value.value;
+  showEditForm.value = true;
+};
+
+const commitEditor = async () => {
+  showEditForm.value = false;
+  await tryEmitValue();
+  syncStateValue();
+};
+
+const cancelEditor = () => {
+  showEditForm.value = false;
+  syncStateValue();
 };
 
 const onClick = async () => {
@@ -83,18 +100,32 @@ const onClick = async () => {
     return;
   }
 
-  showEditForm.value = true;
+  startEditing();
 };
 
-const closeEditor = () => {
-  showEditForm.value = false;
-};
+watch(
+  value,
+  () => {
+    if (!showEditForm.value) {
+      syncStateValue();
+    }
+  },
+  {
+    immediate: true,
+  },
+);
 
-watch(showEditForm, async (showEditForm) => {
-  if (!showEditForm) {
-    await tryEmitValue();
-  }
-});
+watch(
+  showEditForm,
+  (isVisible) => {
+    if (!isVisible) {
+      syncStateValue();
+    }
+  },
+  {
+    immediate: true,
+  },
+);
 
 const inlineEl = useTemplateRef<MaybeElement>('inlineEl');
 
@@ -126,7 +157,7 @@ const onUpdateProperty = (v: DatabaseUnknownProperty) => {
     v-if="property"
     v-model:show="showEditForm"
     :target-element="inlineEl"
-    @interaction-outside="closeEditor"
+    @interaction-outside="commitEditor"
   >
     <div class="editable-inline-value__edit-popover">
       <ValueField
@@ -136,7 +167,8 @@ const onUpdateProperty = (v: DatabaseUnknownProperty) => {
         :document-id="documentId"
         :property-id="propertyId"
         autofocus
-        @keydown.enter="closeEditor"
+        @keydown.enter="commitEditor"
+        @keydown.escape="cancelEditor"
         @update:property="onUpdateProperty"
       />
     </div>
