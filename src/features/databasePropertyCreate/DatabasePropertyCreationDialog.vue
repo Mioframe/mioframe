@@ -32,8 +32,6 @@ const emit = defineEmits<{
   cancel: [];
 }>();
 
-const showModel = defineModel<boolean>('show', { required: true });
-
 defineSlots<{
   after: (p: {
     property: DatabaseUnknownProperty;
@@ -100,17 +98,10 @@ const onUpdateProperty = (v: DatabaseUnknownProperty) => {
     type: partialPropertyState.value.type,
   };
 };
-
-watchEffect(() => {
-  if (!showModel.value) {
-    resetState();
-  }
-});
 </script>
 
 <template>
   <MDDialog
-    v-model:show="showModel"
     headline="Create Property"
     supporting-text="Enter a name and select the type of the new property."
     apply-label="Create"

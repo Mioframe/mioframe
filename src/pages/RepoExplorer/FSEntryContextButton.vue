@@ -129,7 +129,6 @@ const tooltip = computed(() => `options ${fsEntryName.value}`);
 
   <FSEntryRenameDialog
     v-if="showRenameDialog"
-    v-model:show="showRenameDialog"
     :path="path"
     @cancel="showRenameDialog = false"
     @renamed="onRenamedEntry"

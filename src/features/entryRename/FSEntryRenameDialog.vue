@@ -14,8 +14,6 @@ const emit = defineEmits<{
   cancel: [];
 }>();
 
-const showModel = defineModel<boolean>('show', { required: true });
-
 const stateName = ref<string>();
 
 const originalName = computed(() => PathUtils.basename(path));
@@ -50,7 +48,6 @@ const onCancel = () => {
 
 <template>
   <MDDialog
-    v-model:show="showModel"
     headline="Rename"
     supporting-text="Enter a new name"
     apply-label="Rename"

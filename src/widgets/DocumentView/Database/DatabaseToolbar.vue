@@ -132,7 +132,6 @@ const hasProperties = computed(() => {
 
     <DbItemAddDialog
       v-if="isShowAddItem"
-      v-model:show="isShowAddItem"
       :directory-path="path"
       :document-id="documentId"
       @added="isShowAddItem = false"

@@ -19,8 +19,6 @@ const emit = defineEmits<{
   cancel: [];
 }>();
 
-const show = defineModel<boolean>('show', { required: true });
-
 defineSlots<{
   valueField(p: {
     propertyId: DatabasePropertyId;
@@ -41,7 +39,6 @@ const onCancel = () => {
 
 <template>
   <DatabaseItemEditDialog
-    v-model:show="show"
     :directory-path="directoryPath"
     :document-id="documentId"
     headline="Add item"

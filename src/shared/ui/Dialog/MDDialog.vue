@@ -35,8 +35,6 @@ const emit = defineEmits<{
   apply: [];
 }>();
 
-const showModel = defineModel<boolean>('show', { required: true });
-
 const dialogContainer = useOverlayContainer();
 
 const dialogEl = useTemplateRef<MaybeElement>('dialogEl');
@@ -45,9 +43,7 @@ const dialogEl = useTemplateRef<MaybeElement>('dialogEl');
 <template>
   <TeleportContainer :to="dialogContainer" :container="dialogEl">
     <DialogForm
-      v-if="showModel"
       ref="dialogEl"
-      v-model:show="showModel"
       :headline="headline"
       :supporting-text="supportingText"
       :type="type"

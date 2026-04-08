@@ -1,1 +1,6 @@
-export { onBackNavigation, backNavigationHandler } from './main';
+export {
+  onBackNavigation,
+  backNavigationHandler,
+  useOnBackNavigationStacked,
+  useOnBackNavigationStackedWhen,
+} from './main';

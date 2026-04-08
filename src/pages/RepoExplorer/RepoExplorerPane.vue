@@ -259,8 +259,7 @@ const onClickReturnHome = async () => {
     </div>
 
     <DocumentCreationDialog
-      v-if="directoryPath"
-      v-model:show="showFormNewDocument"
+      v-if="directoryPath && showFormNewDocument"
       :path="directoryPath"
       @cancel="showFormNewDocument = false"
       @created="showFormNewDocument = false"
@@ -268,13 +267,7 @@ const onClickReturnHome = async () => {
 
     <DirectoryCreateDialog
       v-if="parentPathForNewDirectory"
-      :show="!!parentPathForNewDirectory"
       :path="parentPathForNewDirectory"
-      @update:show="
-        parentPathForNewDirectory = $event
-          ? parentPathForNewDirectory
-          : undefined
-      "
       @cancel="parentPathForNewDirectory = undefined"
       @created="parentPathForNewDirectory = undefined"
     />
