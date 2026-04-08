@@ -16,6 +16,8 @@ Inherits the rules from `src/shared/service/AGENTS.md`. Applies to `src/shared/s
 - Ensure query keys and input contracts account for all result-shaping parameters.
 - Keep mutations as atomic and predictable as the data model allows.
 - Normalize service-layer errors here instead of pushing low-level details upward.
+- Keep raw stored reads and effective default-aware reads as separate, explicitly named contracts. Use `stored` for persisted document values and `effective` for read-time values with property defaults applied.
+- Resolve default-aware item/value reads in this service layer, not in entities, features, widgets, or components.
 
 ## Anti-patterns
 

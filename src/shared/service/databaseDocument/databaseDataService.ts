@@ -1,18 +1,23 @@
 import type { AMDocumentId } from '@shared/lib/automerge';
 import {
+  getDatabaseEffectiveItem,
   generateItemId,
+  getDatabaseEffectiveValue,
+  getDatabaseStoredItem,
+  getDatabaseStoredValue,
   type DatabaseData,
   type DatabaseItem,
   type DatabaseItemId,
   type DatabasePropertyId,
+  type DatabaseUnknownPropertiesMap,
   type DatabaseState,
   type DatabaseViewId,
 } from '@shared/lib/databaseDocument';
+import { deepPutJsonObject } from '@shared/lib/changeObject';
 import { strictRecordRemove, strictRecordSet } from '@shared/lib/strictRecord';
 import { queryIdList } from './data/queryData';
 import type { Query } from 'sift';
 import { setupDatabaseViewsService } from './view/databaseViewsService';
-import { deepPutJsonObject } from '@shared/lib/changeObject';
 
 import {
   combineLatest,
@@ -52,13 +57,25 @@ export const setupDatabaseDataService = (
     propertyId: DatabasePropertyId,
     value: unknown,
   ) =>
-    change(path, documentId, (data) => {
+    changeDatabaseState(path, documentId, (state) => {
+      const data = state.data;
+
       if (!data[itemId]) {
         data[itemId] = {};
       }
-      const item = data[itemId];
 
-      strictRecordSet(item, propertyId, value);
+      const item = data[itemId];
+      const storedValue = getDatabaseStoredValue(
+        value,
+        state.properties[propertyId],
+        { trimString: true },
+      );
+
+      if (storedValue === undefined) {
+        strictRecordRemove(item, propertyId);
+      } else {
+        strictRecordSet(item, propertyId, storedValue);
+      }
     });
 
   const removeItem = (
@@ -74,6 +91,17 @@ export const setupDatabaseDataService = (
     ({ documentId, path }: { path: string; documentId: AMDocumentId }) =>
       databaseState$({ documentId, path }).pipe(
         map((state) => state?.data),
+        distinctUntilChanged(),
+      ),
+  );
+
+  const databaseProperties$ = defineCacheObservable(
+    ({ documentId, path }: { path: string; documentId: AMDocumentId }) =>
+      databaseState$({ documentId, path }).pipe(
+        map(
+          (state): DatabaseUnknownPropertiesMap | undefined =>
+            state?.properties,
+        ),
         distinctUntilChanged(),
       ),
   );
@@ -104,10 +132,11 @@ export const setupDatabaseDataService = (
     }) =>
       combineLatest([
         databaseData$({ documentId, path }),
+        databaseProperties$({ documentId, path }),
         filter$({ documentId, path, viewId }),
         databaseSorting$({ documentId, path, viewId }),
       ]).pipe(
-        map(([data, filter, sorting]) => {
+        map(([data, properties, filter, sorting]) => {
           if (data) {
             const idList = queryIdList(data, {
               filter,
@@ -115,6 +144,7 @@ export const setupDatabaseDataService = (
               itemQuery,
               idQuery,
               slice,
+              properties,
             });
 
             return idList;
@@ -142,7 +172,26 @@ export const setupDatabaseDataService = (
       ),
   );
 
-  const databaseValue$ = defineCacheObservable(
+  const databaseEffectiveItem$ = defineCacheObservable(
+    ({
+      documentId,
+      path,
+      itemId,
+    }: {
+      path: string;
+      documentId: AMDocumentId;
+      itemId?: DatabaseItemId;
+    }) =>
+      combineLatest([
+        databaseItem$({ documentId, itemId, path }),
+        databaseProperties$({ documentId, path }),
+      ]).pipe(
+        map(([item, properties]) => getDatabaseEffectiveItem(item, properties)),
+        distinctUntilChanged((a, b) => isEqual(a, b)),
+      ),
+  );
+
+  const databaseStoredValue$ = defineCacheObservable(
     ({
       documentId,
       path,
@@ -160,18 +209,48 @@ export const setupDatabaseDataService = (
       ),
   );
 
+  const databaseEffectiveValue$ = defineCacheObservable(
+    ({
+      documentId,
+      path,
+      itemId,
+      propertyId,
+    }: {
+      path: string;
+      documentId: AMDocumentId;
+      itemId: DatabaseItemId;
+      propertyId: DatabasePropertyId;
+    }) =>
+      combineLatest([
+        databaseItem$({ documentId, itemId, path }),
+        databaseProperties$({ documentId, path }),
+      ]).pipe(
+        map(([item, properties]) =>
+          getDatabaseEffectiveValue(item, propertyId, properties?.[propertyId]),
+        ),
+        distinctUntilChanged((a, b) => isEqual(a, b)),
+      ),
+  );
+
   const postItem = async (
     path: string,
     documentId: AMDocumentId,
     item: DatabaseItem,
     itemId: DatabaseItemId = generateItemId(),
   ) => {
-    await change(path, documentId, (data) => {
-      if (!data[itemId]) {
-        data[itemId] = {};
+    await changeDatabaseState(path, documentId, (state) => {
+      const data = state.data;
+      const storedItem = getDatabaseStoredItem(item, state.properties, {
+        trimString: true,
+      });
+      const currentItem = data[itemId];
+
+      if (!currentItem) {
+        data[itemId] = storedItem;
+        return;
       }
-      const oldItem = data[itemId];
-      deepPutJsonObject(oldItem, item, { trimString: true });
+
+      deepPutJsonObject(currentItem, storedItem);
     });
 
     return itemId;
@@ -181,8 +260,10 @@ export const setupDatabaseDataService = (
     filteredIdList: defineObservableQuery(filteredIdList$),
 
     databaseItem: defineObservableQuery(databaseItem$),
+    databaseEffectiveItem: defineObservableQuery(databaseEffectiveItem$),
 
-    databaseValue: defineObservableQuery(databaseValue$),
+    databaseStoredValue: defineObservableQuery(databaseStoredValue$),
+    databaseEffectiveValue: defineObservableQuery(databaseEffectiveValue$),
 
     postValue,
     change,

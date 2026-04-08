@@ -1,2 +1,3 @@
 export { default as DatabaseValueSpan } from './DatabaseValueSpan.vue';
-export { useDatabaseValue } from './useDatabaseValue';
+export { useDatabaseEffectiveValue } from './useDatabaseEffectiveValue';
+export { useDatabaseStoredValue } from './useDatabaseStoredValue';
