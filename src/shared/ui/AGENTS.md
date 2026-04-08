@@ -5,10 +5,10 @@ Inherits the rules from `src/shared/AGENTS.md`. Applies to `src/shared/ui` and i
 ## Contains
 
 - base controls: `Button`, `Checkbox`, `TextField`, `Select`, `Menu`, `Dialog`.
-- layout and navigation primitives: `Layout`, `AppBar`, `Toolbar`, `Navigation`, `ViewWithPanelLayout`.
+- layout and navigation primitives: `Layout`, `AppBar`, `Toolbar`, `Navigation`.
 - display components: `Lists`, `Chips`, `Table`, `Tooltips`, `EmptyState`, `ProgressIndicators`, `Snackbar`.
-- interaction and overlay helpers: `Overlay`, `Sheets`, `SlidingPanel`, `PopOver`, `State`.
-- other generic building blocks such as `Query`, `TreeMenu`, `NavigationPath`, and `performance`.
+- interaction and overlay helpers: `Overlay`, `Sheets`, `State`.
+- other generic building blocks such as `Query`, `NavigationPath`, and `performance`.
 
 ## Patterns
 

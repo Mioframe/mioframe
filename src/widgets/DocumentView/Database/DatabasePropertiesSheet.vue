@@ -112,11 +112,10 @@ const isShowAddProperty = ref(false);
 
     <DatabasePropertyRemoveDialog
       v-if="removePropertyId"
-      :show="!!removePropertyId"
       :path="directoryPath"
       :document-id="documentId"
       :property-id="removePropertyId"
-      @apply="removePropertyId = undefined"
+      @removed="removePropertyId = undefined"
       @cancel="removePropertyId = undefined"
     />
 
@@ -125,7 +124,6 @@ const isShowAddProperty = ref(false);
       :path="directoryPath"
       :document-id="documentId"
       :property-id="editPropertyId"
-      :show="!!editPropertyId"
       @edited="editPropertyId = undefined"
       @cancel="editPropertyId = undefined"
     >
@@ -157,9 +155,11 @@ const isShowAddProperty = ref(false);
     </DatabasePropertyEditDialog>
 
     <PropertyCreateDialogWidget
-      v-model:show="isShowAddProperty"
+      v-if="isShowAddProperty"
       :document-id="documentId"
       :directory-path="directoryPath"
+      @created="isShowAddProperty = false"
+      @cancel="isShowAddProperty = false"
     />
   </MDBottomSheet>
 </template>

@@ -11,6 +11,8 @@ import { onInteractionOutside } from '@shared/lib/onInteractionOutside';
 import { autoUpdate, offset, shift, useFloating } from '@floating-ui/vue';
 import { TeleportContainer } from '@shared/lib/teleportContainer';
 import { useOverlayContainer } from '../Overlay';
+import { useOnEscapeKeyStackedWhen } from '@shared/lib/useOnEscapeKeyStacked';
+import { useOnBackNavigationStackedWhen } from '@shared/lib/onBackNavigation';
 
 const props = defineProps<{
   disabledTeleport?: boolean;
@@ -63,6 +65,20 @@ useEventListener(window.visualViewport, 'resize', update);
 
 onInteractionOutside(tooltipEl, () => {
   emit('interactionOutside');
+});
+
+const closeTooltip = () => {
+  showState.value = false;
+};
+
+useOnEscapeKeyStackedWhen(showState, () => {
+  closeTooltip();
+  return false;
+});
+
+useOnBackNavigationStackedWhen(showState, () => {
+  closeTooltip();
+  return false;
 });
 </script>
 

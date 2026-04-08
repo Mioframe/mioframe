@@ -24,6 +24,7 @@ This is a local-first personal data manager built around:
 - Keep changes as close as possible to the directory and layer that owns them.
 - Prefer an existing public module API through `index.ts` when one exists.
 - Prefer functions, factory helpers, and composables over classes unless an external API requires a class or class-based state materially clarifies the invariant.
+- Treat the app as a native-like Material application. UI and UX decisions, including layout, motion, color, typography, components, interaction, navigation, overlay, focus, dismiss, and back-button behavior, should follow the latest Material 3 Expressive guidance as closely as the platform allows.
 - Update schema, migrations, service contracts, and callers together for persistent-data changes.
 - Treat subscriptions, listeners, workers, timers, caches, and file handles as lifecycle-managed resources.
 - Use the `$` suffix only for raw RxJS observables; adapted project-level reactive sources and other wrappers should use names without `$`.
@@ -40,6 +41,7 @@ This is a local-first personal data manager built around:
 - Name page and widget directories in PascalCase because they are screen or composition modules.
 - Name `features`, `entities`, and `shared` submodules in lower camel case by domain concept or action.
 - Name non-component TypeScript files in lower camel case or lowercase. Reserve PascalCase filenames for Vue components and class-centric modules.
+- Do not design optional parameters so that omitting them effectively means `true`. Default behavior should be the convenient path without extra options, and optional flags should disable, limit, or explicitly override that default instead.
 - If a non-component module exports multiple functions, do not name the file after a single exported function. Use a filename that describes the module's overall responsibility.
 - Name feature directories and public feature APIs by the user action they own, usually as `<domain><Action>` such as `documentRename` or `databasePropertyCreate`.
 - Name entity directories and public entity APIs by the stable domain concept they expose, such as `databaseProperty`, `repository`, or `googleUserInfo`.

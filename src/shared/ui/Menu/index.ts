@@ -1,4 +1,3 @@
-export { default as ContextMenu } from './ContextMenu.vue';
 export { default as MDMenu } from './MDMenu.vue';
 export { default as MDMenuBase } from './MDMenuBase.vue';
 export { default as MDContextMenuButton } from './MDContextMenuButton.vue';

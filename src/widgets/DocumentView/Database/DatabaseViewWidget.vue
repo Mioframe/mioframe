@@ -172,7 +172,6 @@ const databaseViewRef = useTemplateRef('databaseViewRef');
 
     <DbItemEditDialog
       v-if="isShowEditItemDialog"
-      v-model:show="isShowEditItemDialog"
       :directory-path="path"
       :document-id="documentId"
       :item-id="editedItemId"

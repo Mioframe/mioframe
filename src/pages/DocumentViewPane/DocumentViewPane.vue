@@ -67,7 +67,7 @@ const onClickRenameDocument = () => {
     <pre v-else>{{ documentDescription }}</pre>
 
     <DocumentRenameDialog
-      v-model:show="showRenameDocument"
+      v-if="showRenameDocument"
       :path="documentDirectory"
       :document-id="documentId"
       @renamed="showRenameDocument = false"

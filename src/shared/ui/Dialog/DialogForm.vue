@@ -1,12 +1,13 @@
 <script setup lang="ts">
-import { nextTick, toRefs, useTemplateRef, watch } from 'vue';
+import { nextTick, ref, toRefs, useTemplateRef } from 'vue';
 import { useModalAriaHidden } from '../AriaHidden';
 import { sessionUniqueId } from '@shared/lib/uniqueId';
 import { useFocusTrap } from '@vueuse/integrations/useFocusTrap';
-import { onBackNavigation } from '@shared/lib/onBackNavigation';
+import { useOnBackNavigationStacked } from '@shared/lib/onBackNavigation';
 import { useOnEscapeKeyStacked } from '@shared/lib/useOnEscapeKeyStacked';
 import { MDButton } from '../Button';
 import { tryOnBeforeUnmount } from '@vueuse/core';
+import { useMonitorOpenDialog } from './Alert';
 
 const props = withDefaults(
   defineProps<{
@@ -36,8 +37,6 @@ const {
   class: stylesClass,
 } = toRefs(props);
 
-const showModel = defineModel<boolean>('show', { required: true });
-
 const slots = defineSlots<{
   default(): unknown;
   icon(): unknown;
@@ -50,6 +49,10 @@ const emit = defineEmits<{
 
 const ariaHidden = useModalAriaHidden();
 
+const isOpen = ref(true);
+
+useMonitorOpenDialog(isOpen);
+
 const dialogTitleId = sessionUniqueId('dialogTitle');
 
 const formEl = useTemplateRef('formEl');
@@ -58,22 +61,16 @@ const { activate: lockFocus, deactivate: unlockFocus } = useFocusTrap(formEl, {
   allowOutsideClick: true,
 });
 
-watch(
-  [showModel, formEl],
-  async ([showModel]) => {
-    if (showModel) {
-      await nextTick();
-      if (formEl.value) {
-        lockFocus();
-      }
-    } else {
-      unlockFocus();
-    }
-  },
-  { immediate: true, flush: 'post' },
-);
+void nextTick(() => {
+  if (formEl.value) {
+    lockFocus();
+  }
+});
 
-tryOnBeforeUnmount(unlockFocus);
+tryOnBeforeUnmount(() => {
+  isOpen.value = false;
+  unlockFocus();
+});
 
 const onSubmit = () => {
   if (!loading.value) {
@@ -84,14 +81,12 @@ const onSubmit = () => {
 const onCancel = () => {
   if (!loading.value && hasCancelAction.value) {
     emit('cancel');
-    showModel.value = false;
   }
 };
 
-onBackNavigation(() => {
-  const restrictNavigation = !showModel.value;
+useOnBackNavigationStacked(() => {
   onCancel();
-  return restrictNavigation;
+  return false;
 });
 
 useOnEscapeKeyStacked(() => {
@@ -101,7 +96,7 @@ useOnEscapeKeyStacked(() => {
 
 <template>
   <dialog
-    :open="showModel"
+    open
     class="md-dialog md-dialog__scrim"
     :class="[
       {

@@ -10,8 +10,6 @@ const props = defineProps<{
 
 const { operator } = toRefs(props);
 
-const modelShow = defineModel<boolean>('show', { required: true });
-
 const emit = defineEmits<{
   apply: [];
   cancel: [];
@@ -39,7 +37,6 @@ const onCancel = () => {
 
 <template>
   <MDDialog
-    v-model:show="modelShow"
     :headline="headline"
     :supporting-text="supportingText"
     has-cancel-action

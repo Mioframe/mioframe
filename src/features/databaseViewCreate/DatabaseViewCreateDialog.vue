@@ -20,8 +20,6 @@ const props = defineProps<{
   documentId: AMDocumentId;
 }>();
 
-const modelShow = defineModel<boolean>('show', { required: true });
-
 const { documentId, directoryPath: path } = toRefs(props);
 
 const emit = defineEmits<{
@@ -86,7 +84,6 @@ const onChangeLayout = (selectedOptions: LayoutOption[]) => {
 
 <template>
   <MDDialog
-    v-model:show="modelShow"
     :loading="!!loading"
     headline="Add view"
     supporting-text="Enter the name of the new data view."
