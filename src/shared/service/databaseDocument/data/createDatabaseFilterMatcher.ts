@@ -23,6 +23,12 @@ const isLogicalOperator = (key: string): key is LOGICAL_FILTER_OPERATOR =>
 const matchEffectiveExists = (effectiveValue: unknown, exists: unknown) =>
   exists ? effectiveValue !== undefined : effectiveValue === undefined;
 
+type ParsedFieldOperatorCondition = {
+  existsCondition: unknown;
+  hasExistsCondition: boolean;
+  unaryCondition: Record<string, unknown> | undefined;
+};
+
 const createLogicalFilterMatcher = (
   operator: LOGICAL_FILTER_OPERATOR,
   value: unknown,
@@ -53,11 +59,9 @@ const getFieldConditionOperators = (
   return condition;
 };
 
-const createFieldFilterMatcher = (
-  propertyId: DatabasePropertyId,
+const parseFieldOperatorCondition = (
   conditionValue: unknown,
-  properties: DatabaseUnknownPropertiesMap | undefined,
-): ((item: DatabaseItem) => boolean) => {
+): ParsedFieldOperatorCondition => {
   const condition = getFieldConditionOperators(conditionValue);
   let existsCondition: unknown;
   let hasExistsCondition = false;
@@ -74,7 +78,25 @@ const createFieldFilterMatcher = (
     unaryCondition[key] = value;
   }
 
-  const predicate = unaryCondition ? sift(unaryCondition) : undefined;
+  return {
+    existsCondition,
+    hasExistsCondition,
+    unaryCondition,
+  };
+};
+
+const createUnaryConditionPredicate = (
+  unaryCondition: Record<string, unknown> | undefined,
+) => (unaryCondition ? sift(unaryCondition) : undefined);
+
+const createFieldFilterMatcher = (
+  propertyId: DatabasePropertyId,
+  conditionValue: unknown,
+  properties: DatabaseUnknownPropertiesMap | undefined,
+): ((item: DatabaseItem) => boolean) => {
+  const { existsCondition, hasExistsCondition, unaryCondition } =
+    parseFieldOperatorCondition(conditionValue);
+  const predicate = createUnaryConditionPredicate(unaryCondition);
 
   return (item) => {
     const effectiveValue = getDatabaseEffectiveValue(
