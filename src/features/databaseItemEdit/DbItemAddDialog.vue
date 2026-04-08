@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import DbItemEditDialog from './DbItemEditDialog.vue';
+import DatabaseItemEditDialog from './DatabaseItemEditDialog.vue';
 import type {
   DatabaseItemId,
   DatabasePropertyId,
@@ -38,7 +38,7 @@ const onCancel = () => {
 </script>
 
 <template>
-  <DbItemEditDialog
+  <DatabaseItemEditDialog
     :directory-path="directoryPath"
     :document-id="documentId"
     headline="Add item"
@@ -56,7 +56,7 @@ const onCancel = () => {
         :index="index"
       />
     </template>
-  </DbItemEditDialog>
+  </DatabaseItemEditDialog>
 </template>
 
 <style lang="css" scoped>

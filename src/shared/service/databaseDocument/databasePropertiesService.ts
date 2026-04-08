@@ -113,7 +113,9 @@ export const useDatabasePropertiesService = (
       ),
   );
 
-  const databasePropertiesIdList = defineObservableQuery(databasePropertiesIdList$);
+  const databasePropertiesIdList = defineObservableQuery(
+    databasePropertiesIdList$,
+  );
 
   const remove = (
     path: string,

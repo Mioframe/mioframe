@@ -4,7 +4,7 @@ Inherits the rules from `src/features/AGENTS.md`. Applies to `src/features/datab
 
 ## Contains
 
-- `DbItemEditDialog.vue`: edit flow for an existing item.
+- `DatabaseItemEditDialog.vue`: edit flow for an existing item.
 - `DbItemAddDialog.vue`: add flow built on the same editing contract.
 - `index.ts`: public feature entry point.
 

@@ -1,30 +1,23 @@
 import type { AMDocumentId } from '@shared/lib/automerge';
-import type {
-  DatabaseItem,
-  DatabaseItemId,
-} from '@shared/lib/databaseDocument';
+import type { DatabaseItemId } from '@shared/lib/databaseDocument';
 import { useObservableQuery } from '@shared/lib/useObservableQuery';
 import { useMainServiceClient } from '@shared/service';
 import { isUndefined } from 'es-toolkit';
 import { computed, toValue, type Ref } from 'vue';
 
-export const useDatabaseItem = (
+export const useDatabaseEffectiveItem = (
   path: Ref<string>,
   documentId: Ref<AMDocumentId>,
   itemId: Ref<DatabaseItemId | undefined>,
 ) => {
   const {
     databaseDocument: {
-      data: { postItem, databaseItem },
+      data: { databaseEffectiveItem },
     },
   } = useMainServiceClient();
 
-  const {
-    data: item,
-    error,
-    isLoading,
-  } = useObservableQuery(
-    databaseItem,
+  const { data, error, isLoading } = useObservableQuery(
+    databaseEffectiveItem,
     computed(() => ({
       documentId: documentId.value,
       itemId: itemId.value,
@@ -43,15 +36,12 @@ export const useDatabaseItem = (
       return e.message;
     }
 
-    return 'Error reading item';
+    return 'Error reading effective item';
   });
 
   return {
-    item,
+    effectiveItem: data,
     isLoading,
     errorMessage,
-
-    postItem: (item: DatabaseItem) =>
-      postItem(path.value, documentId.value, item, itemId.value),
   };
 };
