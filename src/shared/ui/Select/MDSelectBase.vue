@@ -6,7 +6,6 @@ import { MDSymbol } from '../Icon';
 import { MDFieldContainer } from '../TextField';
 import { MDChip } from '../Chips';
 import { toString } from 'es-toolkit/compat';
-import { useOnEscapeKeyStacked } from '@shared/lib/useOnEscapeKeyStacked';
 import { sessionUniqueId } from '@shared/lib/uniqueId';
 import { useSelectOptions } from './provideOptions';
 
@@ -63,14 +62,6 @@ onKeyStroke('Backspace', () => {
       removeOption(lastValue);
     }
   }
-});
-
-useOnEscapeKeyStacked(() => {
-  if (showMenu.value) {
-    showMenu.value = false;
-    return false;
-  }
-  return true;
 });
 
 const onClickOption = (value: string | number) => {

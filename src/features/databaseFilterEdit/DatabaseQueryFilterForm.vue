@@ -176,7 +176,6 @@ const onClickRemove = async (pathFilter: PropertyKey[]) => {
 
     <DatabaseUnaryFilterFormDialog
       v-if="temporaryStateNewFilter"
-      :show="!!temporaryStateNewFilter"
       :operator="temporaryStateNewFilter.operator"
       @cancel="onCancelFilterForm"
       @apply="onApplyFilterForm"

@@ -42,8 +42,6 @@ const emit = defineEmits<{
   cancel: [];
 }>();
 
-const showModel = defineModel<boolean>('show', { required: true });
-
 defineSlots<{
   valueField(p: {
     propertyId: DatabasePropertyId;
@@ -103,7 +101,6 @@ const loading = computed(() => isLoadingProperties.value || applyLoading.value);
 
 <template>
   <MDDialog
-    v-model:show="showModel"
     :headline="headline"
     :supporting-text="supportingText"
     :apply-label="applyLabel"

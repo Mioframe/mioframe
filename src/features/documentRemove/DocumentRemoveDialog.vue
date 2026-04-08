@@ -12,8 +12,6 @@ const props = defineProps<{
 
 const { documentId, path } = toRefs(props);
 
-const show = defineModel<boolean>('show', { required: true });
-
 const emit = defineEmits<{
   cancel: [];
   deleted: [];
@@ -52,7 +50,6 @@ const supportingText = computed(
 
 <template>
   <MDDialog
-    v-model:show="show"
     :headline="headline"
     :supporting-text="supportingText"
     cancel-label="Cancel"

@@ -11,7 +11,8 @@ import {
   useElementSize,
 } from '@vueuse/core';
 import { useFocusTrap } from '@vueuse/integrations/useFocusTrap';
-import { useOnEscapeKeyStacked } from '@shared/lib/useOnEscapeKeyStacked';
+import { useOnEscapeKeyStackedWhen } from '@shared/lib/useOnEscapeKeyStacked';
+import { useOnBackNavigationStackedWhen } from '@shared/lib/onBackNavigation';
 
 defineSlots<{
   default(): unknown;
@@ -117,8 +118,14 @@ const bodyStyle = computed(
   }),
 );
 
-useOnEscapeKeyStacked(() => {
+useOnEscapeKeyStackedWhen(openModel, () => {
   openModel.value = false;
+  return false;
+});
+
+useOnBackNavigationStackedWhen(openModel, () => {
+  openModel.value = false;
+  return false;
 });
 </script>
 

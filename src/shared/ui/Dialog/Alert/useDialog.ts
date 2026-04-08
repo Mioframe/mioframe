@@ -107,21 +107,26 @@ export const useDialog = () => {
 export const useMonitorOpenDialog = (open: Ref<boolean>) => {
   const { numberOfOpenDialogs, globalDialogContainer } = useDialogState();
 
+  let isCountedOpen = false;
+
   watch(
     open,
     (open, old) => {
-      if (open) {
+      if (open && !isCountedOpen) {
         numberOfOpenDialogs.value += 1;
-      } else if (!isUndefined(old)) {
+        isCountedOpen = true;
+      } else if (!open && !isUndefined(old) && isCountedOpen) {
         numberOfOpenDialogs.value -= 1;
+        isCountedOpen = false;
       }
     },
-    { immediate: true },
+    { immediate: true, flush: 'sync' },
   );
 
   tryOnScopeDispose(() => {
-    if (open.value) {
+    if (isCountedOpen) {
       numberOfOpenDialogs.value -= 1;
+      isCountedOpen = false;
     }
   });
 

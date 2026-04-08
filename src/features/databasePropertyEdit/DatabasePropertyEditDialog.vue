@@ -24,8 +24,6 @@ const emit = defineEmits<{
   cancel: [];
 }>();
 
-const showModel = defineModel<boolean>('show', { required: true });
-
 defineSlots<{
   after: (p: {
     property: DatabaseUnknownProperty;
@@ -79,7 +77,6 @@ const onUpdateProperty = (v: DatabaseUnknownProperty) => {
 
 <template>
   <MDDialog
-    v-model:show="showModel"
     headline="Edit Property"
     supporting-text="Change the property settings."
     apply-label="Edit"

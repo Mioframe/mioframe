@@ -77,17 +77,15 @@ const tooltip = computed(() => `options ${documentName.value}`);
 
   <DocumentRemoveDialog
     v-if="showRemoveDialog"
-    :show="showRemoveDialog"
     :path="directoryPath"
     :document-id="documentId"
     @cancel="showRemoveDialog = false"
-    @apply="showRemoveDialog = false"
+    @deleted="showRemoveDialog = false"
   />
 
   <DocumentRenameDialog
     v-if="showRenameDialog"
     :path="directoryPath"
-    :show="showRenameDialog"
     :document-id="documentId"
     @renamed="showRenameDialog = false"
     @cancel="showRenameDialog = false"

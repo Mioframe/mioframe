@@ -13,6 +13,8 @@ import { onInteractionOutside } from '@shared/lib/onInteractionOutside';
 import { autoUpdate, flip, offset, shift, useFloating } from '@floating-ui/vue';
 import { TeleportContainer } from '@shared/lib/teleportContainer';
 import { useOverlayContainer } from '../Overlay';
+import { useOnEscapeKeyStackedWhen } from '@shared/lib/useOnEscapeKeyStacked';
+import { useOnBackNavigationStackedWhen } from '@shared/lib/onBackNavigation';
 
 const props = withDefaults(
   defineProps<{
@@ -98,6 +100,21 @@ watch(showOnClick, (v) => {
 
 watch(debounceHovered, (v) => {
   showState.value = v;
+});
+
+const closeTooltip = () => {
+  showOnClick.value = false;
+  showState.value = false;
+};
+
+useOnEscapeKeyStackedWhen(showState, () => {
+  closeTooltip();
+  return false;
+});
+
+useOnBackNavigationStackedWhen(showState, () => {
+  closeTooltip();
+  return false;
 });
 
 const { floatingStyles: richTooltipStyle, update } = useFloating(

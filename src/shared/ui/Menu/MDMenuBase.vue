@@ -23,6 +23,8 @@ import { useOverlayContainer } from '../Overlay';
 import { useProvideFocusRegister } from './focusProvider';
 import { useFastKeyboardInput } from '@shared/lib/useFastKeyboardInput';
 import { useMatchSorter } from '@shared/lib/useMatchSorter';
+import { useOnEscapeKeyStackedWhen } from '@shared/lib/useOnEscapeKeyStacked';
+import { useOnBackNavigationStackedWhen } from '@shared/lib/onBackNavigation';
 
 const props = withDefaults(
   defineProps<{
@@ -158,6 +160,20 @@ watchEffect(() => {
   if (showModel.value && firstMatchText.value) {
     focusRegister.get(firstMatchText.value)?.();
   }
+});
+
+const closeMenu = () => {
+  showModel.value = false;
+};
+
+useOnEscapeKeyStackedWhen(showModel, () => {
+  closeMenu();
+  return false;
+});
+
+useOnBackNavigationStackedWhen(showModel, () => {
+  closeMenu();
+  return false;
 });
 </script>
 
