@@ -31,13 +31,7 @@ const state = useQueryValue<State>('state', {
 
 const targetEl = useTemplateRef('target');
 
-const placementOptions = [
-  'top-start',
-  'top-end',
-  'bottom-end',
-  'bottom-start',
-  undefined,
-] as const;
+const placementOptions = ['top-start', 'top-end', 'bottom-end', 'bottom-start', undefined] as const;
 </script>
 
 <template>

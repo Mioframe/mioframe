@@ -36,16 +36,18 @@ export interface ListParams {
   /** Pagination token for retrieving the next page. Default: '' */
   pageToken?: string;
   /** Structured search query parameters. Default: `{}` */
-  q?: {
-    /** File name to search for (exact match). */
-    name?: string | undefined;
-    /** Whether to search in "Shared with me" space. */
-    sharedWithMe?: boolean | undefined;
-    /** Whether to include trashed items. */
-    trashed?: boolean | undefined;
-    /** Parent folder ID to search within. */
-    parentId?: string | undefined;
-  } | undefined;
+  q?:
+    | {
+        /** File name to search for (exact match). */
+        name?: string | undefined;
+        /** Whether to search in "Shared with me" space. */
+        sharedWithMe?: boolean | undefined;
+        /** Whether to include trashed items. */
+        trashed?: boolean | undefined;
+        /** Parent folder ID to search within. */
+        parentId?: string | undefined;
+      }
+    | undefined;
   /** Spaces to search: `['drive']` or `['appDataFolder']`. Default: `[]` */
   spaces?: SPACE[];
   /** Automatically fetch all result pages. Default: `false` */

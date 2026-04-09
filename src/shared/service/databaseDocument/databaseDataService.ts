@@ -110,10 +110,12 @@ export const setupDatabaseDataService = (
       options: {
         itemQuery?: Query<DatabaseItem> | undefined;
         idQuery?: Query<DatabaseItemId> | undefined;
-        slice?: {
-          first?: number | undefined;
-          last?: number | undefined;
-        } | undefined;
+        slice?:
+          | {
+              first?: number | undefined;
+              last?: number | undefined;
+            }
+          | undefined;
       };
     }) =>
       combineLatest([

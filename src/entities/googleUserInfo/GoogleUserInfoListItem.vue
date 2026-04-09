@@ -53,7 +53,9 @@ const profileImageUrl = computed(() =>
   profileImageBlobUrl.value instanceof Error ? undefined : profileImageBlobUrl.value,
 );
 
-const userInfoError = computed(() => (userInfo.value instanceof Error ? userInfo.value : undefined));
+const userInfoError = computed(() =>
+  userInfo.value instanceof Error ? userInfo.value : undefined,
+);
 
 const onClickDeleteSession = async () => {
   activeAction.value = 'delete';
@@ -74,8 +76,7 @@ const onClickRevokeAccess = async () => {
     await revokeSessionAccess(email.value);
   } catch (caughtError) {
     addSnackbar({
-      text:
-        caughtError instanceof Error ? caughtError.message : 'Failed to revoke access',
+      text: caughtError instanceof Error ? caughtError.message : 'Failed to revoke access',
     });
   } finally {
     activeAction.value = undefined;
