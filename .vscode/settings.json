@@ -36,6 +36,8 @@
     "noction",
     "OPFS",
     "opsz",
+    "oxlint",
+    "oxlintrc",
     "pinia",
     "Promisable",
     "quickselect",
@@ -67,5 +69,11 @@
   "[jsonc]": {
     "editor.defaultFormatter": "oxc.oxc-vscode"
   },
-  "oxc.fixKind": "all"
+  "oxc.fixKind": "all",
+  "[javascript]": {
+    "editor.defaultFormatter": "oxc.oxc-vscode"
+  },
+  "eslint.format.enable": true,
+  "eslint.lintTask.enable": true,
+  "eslint.validate": ["javascript", "typescript", "vue"]
 }
