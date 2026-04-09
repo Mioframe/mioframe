@@ -30,3 +30,4 @@ coverage/
 .opencode/
 .claude/
 tsconfig.tsbuildinfo
+.eslintcache

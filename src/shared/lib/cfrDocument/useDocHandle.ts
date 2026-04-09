@@ -42,7 +42,7 @@ export const setupDocHandleState = (docHandle: AMDocHandle): DocHandleState => {
   /**
    * Обработка события удаления из automerge
    */
-  const onDeleteDoc = ({}: AMDocHandleDeletePayload) => {
+  const onDeleteDoc = (_payload: AMDocHandleDeletePayload) => {
     programReplaceDocRef(undefined);
   };
 

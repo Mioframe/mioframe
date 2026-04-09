@@ -1,5 +1,4 @@
 import { isString } from 'es-toolkit';
-import type { BackgroundFetch } from 'lru-cache';
 import { LRUCache } from 'lru-cache';
 import { configure } from 'safe-stable-stringify';
 import type { UnknownRecord } from 'type-fest';
@@ -28,7 +27,7 @@ export class Cache<K, T extends UnknownRecord> {
     return isString(k) ? k : (stringify(k) ?? 'default-key');
   }
 
-  set(k: K | string, v: T | BackgroundFetch<T> | undefined) {
+  set(k: K | string, v: T | undefined) {
     const cacheKey = this.#keyToString(k);
 
     this.originalKeys.set(cacheKey, k);
