@@ -1,8 +1,4 @@
-import {
-  unrefElement,
-  useEventListener,
-  type MaybeElementRef,
-} from '@vueuse/core';
+import { unrefElement, useEventListener, type MaybeElementRef } from '@vueuse/core';
 import { computed, reactive, ref, toValue, watch } from 'vue';
 import './reorderSurface.css';
 import {
@@ -94,23 +90,15 @@ type CompleteReorderSurfaceDragResult =
     };
 
 /** Clones the external item list into mutable local state. */
-const cloneReorderItemIdList = (
-  itemIdList: readonly string[] | undefined,
-): string[] => (itemIdList ? [...itemIdList] : []);
+const cloneReorderItemIdList = (itemIdList: readonly string[] | undefined): string[] =>
+  itemIdList ? [...itemIdList] : [];
 
 /** Compares two ordered id lists without allocating intermediate structures. */
-const isSameOrderedIds = (
-  left: readonly string[],
-  right: readonly string[],
-): boolean =>
-  left.length === right.length &&
-  left.every((id, index) => id === right[index]);
+const isSameOrderedIds = (left: readonly string[], right: readonly string[]): boolean =>
+  left.length === right.length && left.every((id, index) => id === right[index]);
 
 /** Checks whether two lists contain the same ids even if their order differs. */
-const hasSameItemSet = (
-  left: readonly string[],
-  right: readonly string[],
-): boolean => {
+const hasSameItemSet = (left: readonly string[], right: readonly string[]): boolean => {
   if (left.length !== right.length) {
     return false;
   }
@@ -219,29 +207,19 @@ const startReorderSurfaceDrag = (
 };
 
 /** Updates local display order while SortableJS is previewing a drag move. */
-const previewReorderSurfaceDrag = (
-  state: ReorderSurfaceState,
-  orderedIds: readonly string[],
-) => {
+const previewReorderSurfaceDrag = (state: ReorderSurfaceState, orderedIds: readonly string[]) => {
   state.displayItemIdList = cloneReorderItemIdList(orderedIds);
 };
 
 /** Resolves whether drag end is a no-op, rollback, or a new commit request. */
 const completeReorderSurfaceDrag = (
   state: ReorderSurfaceState,
-  {
-    orderedIds,
-    fromIndex,
-    toIndex,
-    currentItemIdList,
-  }: CompleteReorderSurfaceDragOptions,
+  { orderedIds, fromIndex, toIndex, currentItemIdList }: CompleteReorderSurfaceDragOptions,
 ): CompleteReorderSurfaceDragResult => {
   const currentDraggedId = state.draggedId;
   const currentProfile = state.activeProfile;
   const rollbackOrder = cloneReorderItemIdList(state.dragStartOrder);
-  const latestExternalOrder = cloneReorderItemIdList(
-    state.latestExternalItemIdList,
-  );
+  const latestExternalOrder = cloneReorderItemIdList(state.latestExternalItemIdList);
   const nextOrderedIds = cloneReorderItemIdList(orderedIds);
   const rollbackRequested = state.shouldRollbackOnEnd;
 
@@ -299,43 +277,31 @@ const completeReorderSurfaceDrag = (
 };
 
 /** Restores the latest external order when an optimistic commit is rejected. */
-const rollbackReorderSurfaceCommit = (
-  state: ReorderSurfaceState,
-  commitId: symbol,
-) => {
+const rollbackReorderSurfaceCommit = (state: ReorderSurfaceState, commitId: symbol) => {
   if (state.optimisticCommitMarker !== commitId) {
     return;
   }
 
   clearOptimisticState(state);
-  state.displayItemIdList = cloneReorderItemIdList(
-    state.latestExternalItemIdList,
-  );
+  state.displayItemIdList = cloneReorderItemIdList(state.latestExternalItemIdList);
 };
 
 /** Narrows an event to a pointer event carrying `pointerType`. */
-const isPointerEvent = (
-  event: Event,
-): event is PointerEvent & { pointerType: string } =>
+const isPointerEvent = (event: Event): event is PointerEvent & { pointerType: string } =>
   'pointerType' in event && typeof event.pointerType === 'string';
 
 /** Detects touchstart-like events used to switch the active input mode. */
 const isTouchLikeEvent = (event: Event): event is TouchEvent =>
-  event.type === 'touchstart' ||
-  ('touches' in event && typeof event.touches === 'object');
+  event.type === 'touchstart' || ('touches' in event && typeof event.touches === 'object');
 
 /** Detects mouse-down events used to restore pointer mode on desktop. */
-const isMouseLikeEvent = (event: Event): event is MouseEvent =>
-  event.type === 'mousedown';
+const isMouseLikeEvent = (event: Event): event is MouseEvent => event.type === 'mousedown';
 
 /** Enables haptic feedback by default for touch-like drag starts when supported. */
-const shouldUseBestEffortReorderHaptics = (input: ReorderInput): boolean =>
-  input === 'touch';
+const shouldUseBestEffortReorderHaptics = (input: ReorderInput): boolean => input === 'touch';
 
 /** Clears selection and focus artifacts left behind by touch-like drag sessions. */
-const cleanupPostDragInteraction = (
-  containerEl: HTMLElement | SVGElement | null | undefined,
-) => {
+const cleanupPostDragInteraction = (containerEl: HTMLElement | SVGElement | null | undefined) => {
   if (typeof document === 'undefined') {
     return;
   }
@@ -358,10 +324,7 @@ const cleanupPostDragInteraction = (
 };
 
 /** Skips drag activation on interactive descendants inside a reorder item. */
-const shouldIgnoreTarget = (
-  target: EventTarget | null,
-  interactiveSelector: string,
-): boolean => {
+const shouldIgnoreTarget = (target: EventTarget | null, interactiveSelector: string): boolean => {
   if (!(target instanceof Element)) {
     return false;
   }
@@ -386,8 +349,7 @@ export const useReorderSurface = (
   const activation = computed(() => toValue(options.activation) ?? 'immediate');
   const density = computed(() => toValue(options.density) ?? 'comfortable');
   const interactiveSelector = computed(
-    () =>
-      toValue(options.interactiveSelector) ?? defaultReorderInteractiveSelector,
+    () => toValue(options.interactiveSelector) ?? defaultReorderInteractiveSelector,
   );
   const profile = computed(() =>
     getReorderGestureProfile({
@@ -398,9 +360,7 @@ export const useReorderSurface = (
     }),
   );
 
-  const state = reactive(
-    createReorderSurfaceState(toValue(options.itemIdList)),
-  );
+  const state = reactive(createReorderSurfaceState(toValue(options.itemIdList)));
   const isReorderSession = computed(() => state.isDragging);
 
   /** Applies touch-specific cleanup after a drag session completes or is cancelled. */
@@ -458,10 +418,7 @@ export const useReorderSurface = (
       }
 
       if (nextContainerEl instanceof HTMLElement) {
-        nextContainerEl.classList.toggle(
-          REORDER_SURFACE_DRAGGING_CLASS,
-          nextIsDragging,
-        );
+        nextContainerEl.classList.toggle(REORDER_SURFACE_DRAGGING_CLASS, nextIsDragging);
       }
     },
     {
@@ -598,11 +555,7 @@ export const useReorderSurface = (
   );
 
   useEventListener(window, 'keydown', (event) => {
-    if (
-      event.key !== 'Escape' ||
-      !state.isDragging ||
-      profile.value.input !== 'pointer'
-    ) {
+    if (event.key !== 'Escape' || !state.isDragging || profile.value.input !== 'pointer') {
       return;
     }
 

@@ -1,8 +1,5 @@
 import type { AMDocumentId } from '@shared/lib/automerge';
-import type {
-  DatabaseItem,
-  DatabaseItemId,
-} from '@shared/lib/databaseDocument';
+import type { DatabaseItem, DatabaseItemId } from '@shared/lib/databaseDocument';
 import { useObservableQuery } from '@shared/lib/useObservableQuery';
 import { useMainServiceClient } from '@shared/service';
 import { isUndefined } from 'es-toolkit';
@@ -47,7 +44,6 @@ export const useDatabaseStoredItem = (
     isLoading,
     errorMessage,
 
-    postItem: (item: DatabaseItem) =>
-      postItem(path.value, documentId.value, item, itemId.value),
+    postItem: (item: DatabaseItem) => postItem(path.value, documentId.value, item, itemId.value),
   };
 };

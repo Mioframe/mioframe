@@ -45,9 +45,7 @@ const slots = defineSlots<{
 
 const parentEl = useParentElement();
 
-const targetElementRef = computed(() =>
-  unrefElement(targetElement.value ?? parentEl.value),
-);
+const targetElementRef = computed(() => unrefElement(targetElement.value ?? parentEl.value));
 
 const targetTeleport = useOverlayContainer();
 
@@ -117,56 +115,37 @@ useOnBackNavigationStackedWhen(showState, () => {
   return false;
 });
 
-const { floatingStyles: richTooltipStyle, update } = useFloating(
-  targetElementRef,
-  tooltipEl,
-  {
-    strategy: 'fixed',
-    transform: false,
-    placement,
-    middleware: [
-      offset(({ rects }) => ({
-        alignmentAxis: -rects.floating.width - 8,
-        mainAxis: 8,
-      })),
-      flip({
-        padding: 16,
-      }),
-      shift({
-        padding: 16,
-      }),
-    ],
-    whileElementsMounted: autoUpdate,
-  },
-);
+const { floatingStyles: richTooltipStyle, update } = useFloating(targetElementRef, tooltipEl, {
+  strategy: 'fixed',
+  transform: false,
+  placement,
+  middleware: [
+    offset(({ rects }) => ({
+      alignmentAxis: -rects.floating.width - 8,
+      mainAxis: 8,
+    })),
+    flip({
+      padding: 16,
+    }),
+    shift({
+      padding: 16,
+    }),
+  ],
+  whileElementsMounted: autoUpdate,
+});
 
 useEventListener(window.visualViewport, 'resize', update);
 </script>
 
 <template>
-  <TeleportContainer
-    :to="targetTeleport"
-    :disabled="disabledTeleport"
-    :container="tooltipEl"
-  >
+  <TeleportContainer :to="targetTeleport" :disabled="disabledTeleport" :container="tooltipEl">
     <Transition>
-      <div
-        v-if="showState"
-        ref="tooltipEl"
-        class="md md-rich-tooltip"
-        :style="richTooltipStyle"
-      >
-        <div
-          class="md-rich-tooltip__subhead"
-          :class="MD_SYS_TYPESCALE.title.small"
-        >
+      <div v-if="showState" ref="tooltipEl" class="md md-rich-tooltip" :style="richTooltipStyle">
+        <div class="md-rich-tooltip__subhead" :class="MD_SYS_TYPESCALE.title.small">
           {{ subhead }}
         </div>
 
-        <div
-          class="md-rich-tooltip__supporting-text"
-          :class="MD_SYS_TYPESCALE.body.medium"
-        >
+        <div class="md-rich-tooltip__supporting-text" :class="MD_SYS_TYPESCALE.body.medium">
           <slot name="text" />
         </div>
 

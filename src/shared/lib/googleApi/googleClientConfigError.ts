@@ -17,10 +17,7 @@ export class GoogleClientConfigError extends DomainError {
   readonly type: GoogleClientConfigErrorValue['type'];
   readonly googleErrorName: GoogleClientConfigErrorValue['name'];
 
-  constructor(
-    error: google.accounts.oauth2.ClientConfigError,
-    options?: { cause?: unknown },
-  ) {
+  constructor(error: google.accounts.oauth2.ClientConfigError, options?: { cause?: unknown }) {
     super(error.message, options);
     this.details = zodGoogleClientConfigError.parse({
       message: error.message,

@@ -42,11 +42,7 @@ const importJsonBtn = defineMenuButton({
 
 const { data: fsEntryStat } = useFSNodeStat(path);
 
-const directoryContextBtns = defineMenuButtonList([
-  renameBtn,
-  removeBtn,
-  importJsonBtn,
-]);
+const directoryContextBtns = defineMenuButtonList([renameBtn, removeBtn, importJsonBtn]);
 
 const fileContextBtns = defineMenuButtonList([renameBtn, removeBtn]);
 
@@ -57,15 +53,12 @@ const fsEntryName = computed(() => PathUtils.basename(path.value));
 const { data: parentData } = useDirectory(parentPath);
 
 const fileType = computed(
-  () =>
-    parentData.value?.find(([name]) => name === fsEntryName.value)?.[1].type,
+  () => parentData.value?.find(([name]) => name === fsEntryName.value)?.[1].type,
 );
 
 const contextBtns = computed(() => {
   const buttonList =
-    fileType.value === FSNodeType.Directory
-      ? directoryContextBtns
-      : fileContextBtns;
+    fileType.value === FSNodeType.Directory ? directoryContextBtns : fileContextBtns;
 
   return buttonList.filter(({ key }) => {
     switch (key) {
@@ -87,11 +80,7 @@ const showRenameDialog = shallowRef(false);
 
 const { importJsonFile } = useImportDocument();
 
-const onClickFSEntryContextAction = async ({
-  key,
-}: {
-  key: FSEntryContextEvent;
-}) => {
+const onClickFSEntryContextAction = async ({ key }: { key: FSEntryContextEvent }) => {
   switch (key) {
     case FSEntryContextEvent.remove: {
       await removeEntry(path.value);

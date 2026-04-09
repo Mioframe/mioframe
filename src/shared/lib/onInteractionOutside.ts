@@ -23,9 +23,7 @@ const useDocumentEventListeners = createGlobalState(() => {
   } = {};
 
   // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-parameters -- for window.addEventListener
-  const documentAddEventListener = <K extends keyof DocumentEventMap>(
-    type: K,
-  ) => {
+  const documentAddEventListener = <K extends keyof DocumentEventMap>(type: K) => {
     document.addEventListener(
       type,
       (ev: DocumentEventMap[K]) => {
@@ -83,14 +81,9 @@ export const onInteractionOutside = (
     'wheel',
   ]);
 
-  const {
-    events = defaultEvents,
-    throttleWait = 1e3 / 3,
-    ignore = [],
-  } = options;
+  const { events = defaultEvents, throttleWait = 1e3 / 3, ignore = [] } = options;
 
-  const { childStack: childTeleportContainers } =
-    useChildTeleportContainerStack();
+  const { childStack: childTeleportContainers } = useChildTeleportContainerStack();
 
   const handleInteraction = throttle((event: Event) => {
     const eventTarget = event.target instanceof Node ? event.target : undefined;
@@ -109,9 +102,7 @@ export const onInteractionOutside = (
     ];
 
     const isInside = containers.some(
-      (container) =>
-        container &&
-        (container == eventTarget || container.contains(eventTarget)),
+      (container) => container && (container == eventTarget || container.contains(eventTarget)),
     );
 
     if (!isInside) {

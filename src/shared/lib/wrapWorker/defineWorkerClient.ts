@@ -11,9 +11,5 @@ export const defineWorkerClient = <T extends Record<string, unknown>>(
   _setup: () => T,
 ) =>
   createGlobalState((): ClientObject<T, DomainError | FileSystemHandle> => {
-    return createClient<T, DomainError | FileSystemHandle>(
-      worker,
-      serviceId,
-      transformers,
-    );
+    return createClient<T, DomainError | FileSystemHandle>(worker, serviceId, transformers);
   });

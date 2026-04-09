@@ -20,10 +20,7 @@ const zodPartialRelation = extend(zodRelationProperty, {
 </script>
 
 <template>
-  <DatabasePropertyCreationDialog
-    :path="directoryPath"
-    :document-id="documentId"
-  >
+  <DatabasePropertyCreationDialog :path="directoryPath" :document-id="documentId">
     <template #after="{ property, onUpdateProperty }">
       <DatabaseRelationPropertyEditSection
         v-if="zodIs(property, zodPartialRelation)"

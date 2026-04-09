@@ -13,11 +13,7 @@ export const getDatabaseEffectiveValue = (
   propertyId: DatabasePropertyId,
   property: DatabaseUnknownProperty | undefined,
 ): unknown => {
-  if (
-    item &&
-    Object.hasOwn(item, propertyId) &&
-    item[propertyId] !== undefined
-  ) {
+  if (item && Object.hasOwn(item, propertyId) && item[propertyId] !== undefined) {
     return item[propertyId];
   }
 
@@ -37,16 +33,9 @@ export const getDatabaseEffectiveItem = (
   }
 
   for (const [propertyId, property] of recordEntries(properties)) {
-    const effectiveValue = getDatabaseEffectiveValue(
-      item,
-      propertyId,
-      property,
-    );
+    const effectiveValue = getDatabaseEffectiveValue(item, propertyId, property);
 
-    if (
-      effectiveValue !== undefined ||
-      Object.hasOwn(effectiveItem, propertyId)
-    ) {
+    if (effectiveValue !== undefined || Object.hasOwn(effectiveItem, propertyId)) {
       effectiveItem[propertyId] = effectiveValue;
     }
   }
@@ -85,15 +74,9 @@ export const shouldStoreDatabaseValue = (
   options?: { trimString?: boolean },
 ): boolean => {
   const normalizedValue = normalizeDatabaseValue(value, options);
-  const normalizedDefaultValue = normalizeDatabaseValue(
-    property?.default,
-    options,
-  );
+  const normalizedDefaultValue = normalizeDatabaseValue(property?.default, options);
 
-  return (
-    normalizedValue !== undefined &&
-    !isEqual(normalizedValue, normalizedDefaultValue)
-  );
+  return normalizedValue !== undefined && !isEqual(normalizedValue, normalizedDefaultValue);
 };
 
 export const getDatabaseStoredValue = (
@@ -103,9 +86,7 @@ export const getDatabaseStoredValue = (
 ): unknown => {
   const normalizedValue = normalizeDatabaseValue(value, options);
 
-  return shouldStoreDatabaseValue(normalizedValue, property, options)
-    ? normalizedValue
-    : undefined;
+  return shouldStoreDatabaseValue(normalizedValue, property, options) ? normalizedValue : undefined;
 };
 
 export const getDatabaseStoredItem = (
@@ -120,11 +101,7 @@ export const getDatabaseStoredItem = (
   }
 
   for (const [propertyId, value] of recordEntries(item)) {
-    const storedValue = getDatabaseStoredValue(
-      value,
-      properties?.[propertyId],
-      options,
-    );
+    const storedValue = getDatabaseStoredValue(value, properties?.[propertyId], options);
 
     if (storedValue !== undefined) {
       storedItem[propertyId] = storedValue;

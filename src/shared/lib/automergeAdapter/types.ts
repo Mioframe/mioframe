@@ -7,10 +7,7 @@ export const zodHash = string();
 
 export type Hash = output<typeof zodHash>;
 
-export const zodChangedType = union([
-  literal('snapshot'),
-  literal('incremental'),
-]);
+export const zodChangedType = union([literal('snapshot'), literal('incremental')]);
 
 export type ChangedType = output<typeof zodChangedType>;
 
@@ -37,19 +34,8 @@ export const zodAutomergeFileName = union([
   zodDocumentId,
   templateLiteral([zodSimpleDocumentId, zodFileExtension]),
   templateLiteral([zodSimpleDocumentId, KEY_SEPARATE, zodChangedType]),
-  templateLiteral([
-    zodSimpleDocumentId,
-    KEY_SEPARATE,
-    zodChangedType,
-    zodFileExtension,
-  ]),
-  templateLiteral([
-    zodSimpleDocumentId,
-    KEY_SEPARATE,
-    zodChangedType,
-    KEY_SEPARATE,
-    zodHash,
-  ]),
+  templateLiteral([zodSimpleDocumentId, KEY_SEPARATE, zodChangedType, zodFileExtension]),
+  templateLiteral([zodSimpleDocumentId, KEY_SEPARATE, zodChangedType, KEY_SEPARATE, zodHash]),
   templateLiteral([
     zodSimpleDocumentId,
     KEY_SEPARATE,
@@ -73,19 +59,8 @@ export const zodPartialAutomergeFileName = union([
   zodDocumentId,
   templateLiteral([zodSimpleDocumentId, zodFileExtension]),
   templateLiteral([zodSimpleDocumentId, KEY_SEPARATE, zodChangedType]),
-  templateLiteral([
-    zodSimpleDocumentId,
-    KEY_SEPARATE,
-    zodChangedType,
-    zodFileExtension,
-  ]),
-  templateLiteral([
-    zodSimpleDocumentId,
-    KEY_SEPARATE,
-    zodChangedType,
-    KEY_SEPARATE,
-    zodHash,
-  ]),
+  templateLiteral([zodSimpleDocumentId, KEY_SEPARATE, zodChangedType, zodFileExtension]),
+  templateLiteral([zodSimpleDocumentId, KEY_SEPARATE, zodChangedType, KEY_SEPARATE, zodHash]),
   templateLiteral([
     zodSimpleDocumentId,
     KEY_SEPARATE,
@@ -96,9 +71,7 @@ export const zodPartialAutomergeFileName = union([
   ]),
 ]);
 
-export type PartialAutomergeFileName = output<
-  typeof zodPartialAutomergeFileName
->;
+export type PartialAutomergeFileName = output<typeof zodPartialAutomergeFileName>;
 
 /**
  * Файл для адаптера automerge-repo
@@ -114,15 +87,8 @@ export interface FileForStorageAdapter {
  */
 export interface DirectoryForStorageAdapter {
   entries():
-    | AsyncIterableIterator<
-        [PropertyKey, FileForStorageAdapter | DirectoryForStorageAdapter]
-      >
-    | IterableIterator<
-        [PropertyKey, FileForStorageAdapter | DirectoryForStorageAdapter]
-      >;
-  writeFile?: (
-    name: string,
-    file?: FileSystemWriteChunkType,
-  ) => Promisable<FileForStorageAdapter>;
+    | AsyncIterableIterator<[PropertyKey, FileForStorageAdapter | DirectoryForStorageAdapter]>
+    | IterableIterator<[PropertyKey, FileForStorageAdapter | DirectoryForStorageAdapter]>;
+  writeFile?: (name: string, file?: FileSystemWriteChunkType) => Promisable<FileForStorageAdapter>;
   removeByName?: (name: string) => Promisable<void>;
 }

@@ -10,13 +10,7 @@ const progress = ref(0.33);
     <div>
       <div>{{ progress }}</div>
 
-      <input
-        v-model.number="progress"
-        type="range"
-        min="0"
-        max="1"
-        step="0.00001"
-      />
+      <input v-model.number="progress" type="range" min="0" max="1" step="0.00001" />
     </div>
 
     <MDCircularProgressIndicator :progress="progress" />

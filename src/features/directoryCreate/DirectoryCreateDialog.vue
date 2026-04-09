@@ -42,8 +42,7 @@ const onApply = async () => {
       await createDirectory(PathUtils.join(path.value, directoryName.value));
       emit('created', directoryName.value);
     } catch (error) {
-      errorText.value =
-        error instanceof Error ? error.message : 'unknown error';
+      errorText.value = error instanceof Error ? error.message : 'unknown error';
     } finally {
       loading.value = false;
     }

@@ -1,8 +1,5 @@
 <script setup lang="ts">
-import type {
-  DatabasePropertyId,
-  UNARY_FILTER_OPERATOR,
-} from '@shared/lib/databaseDocument';
+import type { DatabasePropertyId, UNARY_FILTER_OPERATOR } from '@shared/lib/databaseDocument';
 import { LOGICAL_FILTER_OPERATOR } from '@shared/lib/databaseDocument';
 import LogicalOperatorFilterMenuItem from './LogicalOperatorFilterMenuItem.vue';
 import type { AMDocumentId } from '@shared/lib/automerge';

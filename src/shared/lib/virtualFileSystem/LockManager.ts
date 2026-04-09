@@ -16,10 +16,7 @@ export class LockManager {
    * @param exclusiveTask - The task to execute exclusively
    * @returns A promise that resolves with the result of the exclusive task
    */
-  public async request<T>(
-    path: string,
-    exclusiveTask: () => Promise<T>,
-  ): Promise<T> {
+  public async request<T>(path: string, exclusiveTask: () => Promise<T>): Promise<T> {
     // Get the current tail of the queue (or a resolved promise if there's no queue)
     const currentLock = this.locks.get(path) ?? Promise.resolve();
 

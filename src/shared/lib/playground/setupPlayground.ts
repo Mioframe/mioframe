@@ -15,16 +15,11 @@ const playgroundPageToRoute = (
       title,
       name,
     },
-    children: subPages
-      ? subPages.map((v) => playgroundPageToRoute(v, title))
-      : undefined,
+    children: subPages ? subPages.map((v) => playgroundPageToRoute(v, title)) : undefined,
   };
 };
 
-export const setupPlayground = (
-  router: Router,
-  playgroundPages: PlaygroundPage[],
-) => {
+export const setupPlayground = (router: Router, playgroundPages: PlaygroundPage[]) => {
   const children = playgroundPages.map((v) => playgroundPageToRoute(v));
 
   router.addRoute({

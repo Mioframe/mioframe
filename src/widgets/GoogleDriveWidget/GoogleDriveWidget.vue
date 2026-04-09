@@ -1,8 +1,5 @@
 <script setup lang="ts">
-import {
-  GoogleUserInfoListItem,
-  useGoogleSessions,
-} from '@entity/googleUserInfo';
+import { GoogleUserInfoListItem, useGoogleSessions } from '@entity/googleUserInfo';
 import { GoogleSessionAddListItem } from '@feature/googleSessionAdd';
 import { MDListContainer } from '@shared/ui/Lists';
 

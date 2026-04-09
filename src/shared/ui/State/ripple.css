@@ -1,10 +1,10 @@
 @property --md-ripple-opacity {
-  syntax: "<number>";
+  syntax: '<number>';
   inherits: true;
   initial-value: 1;
 }
 @property --md-ripple-scale {
-  syntax: "<number>";
+  syntax: '<number>';
   inherits: true;
   initial-value: 1;
 }
@@ -39,7 +39,7 @@
   transition-duration: var(--md-ripple-duration);
 
   &::before {
-    content: "";
+    content: '';
     display: block;
     position: absolute;
     top: var(--md-ripple-y, 50%);
@@ -56,8 +56,8 @@
 
     background: radial-gradient(
       rgb(
-          from var(--md-ripple-color, var(--md-content-color, currentColor)) r g
-            b / var(--md-sys-state-pressed-state-layer-opacity, 10%)
+          from var(--md-ripple-color, var(--md-content-color, currentColor)) r g b /
+            var(--md-sys-state-pressed-state-layer-opacity, 10%)
         )
         65%,
       transparent 71%

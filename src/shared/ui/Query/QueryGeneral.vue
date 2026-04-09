@@ -19,16 +19,9 @@ defineProps<{
 
 defineSlots<{
   property: (p: { property: string }) => unknown;
-  value: (p: {
-    value: unknown;
-    path: PropertyKey[];
-    property: string;
-  }) => unknown;
+  value: (p: { value: unknown; path: PropertyKey[]; property: string }) => unknown;
   objectAppend: (p: { path: PropertyKey[] }) => unknown;
-  groupAppend: (p: {
-    path: PropertyKey[];
-    operator: LogicalOperator;
-  }) => unknown;
+  groupAppend: (p: { path: PropertyKey[]; operator: LogicalOperator }) => unknown;
 }>();
 </script>
 
@@ -129,10 +122,7 @@ defineSlots<{
     </template>
   </QueryGroup>
 
-  <QueryContainer
-    v-else-if="operator === OPERATOR.$nor && isArray(value)"
-    class="query-nor"
-  >
+  <QueryContainer v-else-if="operator === OPERATOR.$nor && isArray(value)" class="query-nor">
     <OperatorLabel :operator="OPERATOR.$not" />
 
     <QueryGroup
@@ -169,12 +159,7 @@ defineSlots<{
         </template>
 
         <template #value="{ value: sValue, path, property: sProperty }">
-          <slot
-            name="value"
-            :value="sValue"
-            :path="path"
-            :property="sProperty"
-          />
+          <slot name="value" :value="sValue" :path="path" :property="sProperty" />
         </template>
 
         <template #objectAppend="{ path }">
@@ -206,12 +191,7 @@ defineSlots<{
     </QueryObject>
   </template>
 
-  <QueryItem
-    v-else-if="property"
-    :property="property"
-    :operator="operator"
-    :value="value"
-  >
+  <QueryItem v-else-if="property" :property="property" :operator="operator" :value="value">
     <template #property>
       <slot name="property" :property="property" />
     </template>

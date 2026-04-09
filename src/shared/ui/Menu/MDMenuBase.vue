@@ -1,18 +1,7 @@
 <script setup lang="ts" generic="T extends MenuButtonDescription<T>">
 import type { MaybeElement } from '@vueuse/core';
-import {
-  computed,
-  nextTick,
-  toRefs,
-  useTemplateRef,
-  watch,
-  watchEffect,
-} from 'vue';
-import {
-  tryOnBeforeUnmount,
-  unrefElement,
-  useEventListener,
-} from '@vueuse/core';
+import { computed, nextTick, toRefs, useTemplateRef, watch, watchEffect } from 'vue';
+import { tryOnBeforeUnmount, unrefElement, useEventListener } from '@vueuse/core';
 import { MDListContainer } from '../Lists';
 import type { MenuButtonDescription } from './types';
 import { onInteractionOutside } from '@shared/lib/onInteractionOutside';
@@ -65,37 +54,33 @@ const listContainerEl = computed(() => {
   return undefined;
 });
 
-const { floatingStyles: containerStyle, update } = useFloating(
-  target,
-  listContainerEl,
-  {
-    strategy: 'fixed',
-    transform: false,
-    placement,
-    middleware: [
-      flip({
-        padding: 16,
-      }),
-      shift({ padding: 16, crossAxis: true }),
-      size({
-        padding: 16,
-        apply({
-          elements,
-          rects: {
-            reference: { width },
-          },
-          availableHeight,
-        }) {
-          Object.assign(elements.floating.style, {
-            minWidth: `${width}px`,
-            maxHeight: `${availableHeight}px`,
-          });
+const { floatingStyles: containerStyle, update } = useFloating(target, listContainerEl, {
+  strategy: 'fixed',
+  transform: false,
+  placement,
+  middleware: [
+    flip({
+      padding: 16,
+    }),
+    shift({ padding: 16, crossAxis: true }),
+    size({
+      padding: 16,
+      apply({
+        elements,
+        rects: {
+          reference: { width },
         },
-      }),
-    ],
-    whileElementsMounted: autoUpdate,
-  },
-);
+        availableHeight,
+      }) {
+        Object.assign(elements.floating.style, {
+          minWidth: `${width}px`,
+          maxHeight: `${availableHeight}px`,
+        });
+      },
+    }),
+  ],
+  whileElementsMounted: autoUpdate,
+});
 
 useEventListener(window.visualViewport, 'resize', update);
 
@@ -119,15 +104,17 @@ onInteractionOutside(
   },
 );
 
-const { activate: activateMenuFocusTrap, deactivate: deactivateMenuFocusTrap } =
-  useFocusTrap(listContainerEl, {
+const { activate: activateMenuFocusTrap, deactivate: deactivateMenuFocusTrap } = useFocusTrap(
+  listContainerEl,
+  {
     allowOutsideClick: true,
     isKeyForward: ({ key }) => ['Tab', 'ArrowDown', 'ArrowRight'].includes(key),
     isKeyBackward: ({ key }) => ['ArrowUp', 'ArrowLeft'].includes(key),
     onDeactivate: () => {
       emit('deactivateFocus');
     },
-  });
+  },
+);
 
 watch(
   [showModel, listContainerEl],

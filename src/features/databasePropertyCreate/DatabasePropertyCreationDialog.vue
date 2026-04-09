@@ -49,9 +49,7 @@ const PROPERTY_TYPES = {
 
 const partialPropertyState = ref<PartialDeep<DatabaseUnknownProperty>>({});
 
-const typeSelect = ref<ValueOf<typeof PROPERTY_TYPES>[]>([
-  PROPERTY_TYPES.PROPERTY_TYPE_STRING,
-]);
+const typeSelect = ref<ValueOf<typeof PROPERTY_TYPES>[]>([PROPERTY_TYPES.PROPERTY_TYPE_STRING]);
 
 watchEffect(() => {
   partialPropertyState.value.type = typeSelect.value.at(0);

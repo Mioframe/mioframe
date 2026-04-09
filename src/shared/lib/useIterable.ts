@@ -42,5 +42,4 @@ export const isItemWithChildren = <
   isObjectLike(v) &&
   'children' in v &&
   (isFunction(v.children) ||
-    (isObjectLike(v.children) &&
-      (hasIterator(v.children) || hasAsyncIterator(v.children))));
+    (isObjectLike(v.children) && (hasIterator(v.children) || hasAsyncIterator(v.children))));

@@ -14,10 +14,7 @@ import { isUndefined } from 'es-toolkit';
 import type { MaybeRefOrGetter, Ref, WatchHandle } from 'vue';
 import { computed, ref, toValue, watchEffect } from 'vue';
 import type { StrictRecord } from './strictRecord';
-import {
-  strictRecordGet,
-  strictRecordIterableKeys,
-} from './strictRecord/wrapStrictRecord';
+import { strictRecordGet, strictRecordIterableKeys } from './strictRecord/wrapStrictRecord';
 
 /**
  * Default clearer function to reset the accumulator.

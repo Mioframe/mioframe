@@ -6,9 +6,6 @@ import { transformers } from './workerTransformerMap';
 
 declare const self: DedicatedWorkerGlobalScope;
 
-export const defineWorkerService = (
-  serviceId: string,
-  setup: () => UnknownRecord,
-) => {
+export const defineWorkerService = (serviceId: string, setup: () => UnknownRecord) => {
   createService(self, serviceId, transformers, setup);
 };

@@ -10,9 +10,7 @@ import { readonly, shallowRef } from 'vue';
  * @param observable RxJS Observable<T> to adapt
  * @returns Reactive source object with subscribe and fetch methods
  */
-export const fromObservable = <T>(
-  $observable: Observable<T>,
-): ObservableSource<T> => {
+export const fromObservable = <T>($observable: Observable<T>): ObservableSource<T> => {
   return {
     /**
      * Subscribes to the Observable with optional event handlers.

@@ -84,13 +84,9 @@ export type DatabaseValue = output<typeof zodDatabaseValue>;
 
 // Property
 export type DatabasePropertyId = output<typeof zodDatabasePropertyId>;
-export type DatabaseUnknownPropertiesMap = output<
-  typeof zodDatabaseUnknownPropertiesMap
->;
+export type DatabaseUnknownPropertiesMap = output<typeof zodDatabaseUnknownPropertiesMap>;
 export type DatabaseUnknownProperty = output<typeof zodDatabaseUnknownProperty>;
-export type DatabaseUnknownPropertyType = output<
-  typeof zodDatabaseUnknownPropertyType
->;
+export type DatabaseUnknownPropertyType = output<typeof zodDatabaseUnknownPropertyType>;
 
 // View
 export type DatabaseTableView = output<typeof zodDatabaseTableView>;
@@ -105,12 +101,8 @@ export type DatabaseSortDirection = output<typeof zodDatabaseSortDirection>;
 
 // Filter
 export type DatabaseFilter = output<typeof zodDatabaseFilter>;
-export type DatabaseLogicalCondition = output<
-  typeof zodDatabaseLogicalCondition
->;
-export type DatabaseLogicalFilterList = output<
-  typeof zodDatabaseLogicalFilterList
->;
+export type DatabaseLogicalCondition = output<typeof zodDatabaseLogicalCondition>;
+export type DatabaseLogicalFilterList = output<typeof zodDatabaseLogicalFilterList>;
 export type DatabaseFieldFilter = output<typeof zodDatabaseFieldFilter>;
 export type DatabaseNestedFilter = output<typeof zodDatabaseNestedFilter>;
 export type DatabaseUnaryCondition = output<typeof zodDatabaseUnaryCondition>;

@@ -144,11 +144,7 @@ const serviceReadyRegister = new Set<string>();
  * @param timeout - Maximum time (in ms) to wait for readiness
  * @returns Promise that resolves when the service is confirmed ready or rejects on timeout
  */
-const waitServiceReady = (
-  provider: Provider,
-  serviceId: string,
-  timeout = 5e3,
-) => {
+const waitServiceReady = (provider: Provider, serviceId: string, timeout = 5e3) => {
   const readyQuestion: ReadyQuestionMessage = {
     areYouReady: true,
     serviceId,
@@ -314,12 +310,7 @@ const createProxyFunction = (
  * @param resultId - ID of the request that this is a response to
  * @param result - The actual result data to send
  */
-const sendResult = (
-  provider: Provider,
-  serviceId: string,
-  resultId: string,
-  result: unknown,
-) => {
+const sendResult = (provider: Provider, serviceId: string, resultId: string, result: unknown) => {
   const resultMessage: ResultMessage = {
     serviceId,
     resultId,
@@ -340,12 +331,7 @@ const sendResult = (
  * @param resultId - ID of the request that this is a response to
  * @param error - The error object to send
  */
-const sendError = (
-  provider: Provider,
-  serviceId: string,
-  resultId: string,
-  error: unknown,
-) => {
+const sendError = (provider: Provider, serviceId: string, resultId: string, error: unknown) => {
   const resultMessage: ResultMessage = {
     serviceId,
     resultId,
@@ -396,8 +382,7 @@ export const serialize = <T>(data: T) =>
  * @param data - Data that was serialized with the corresponding serialize function
  * @returns The deserialized value in its proper type
  */
-export const deserialize = <T>(data: SerializeJson<T>) =>
-  superJson.deserialize<T>(data);
+export const deserialize = <T>(data: SerializeJson<T>) => superJson.deserialize<T>(data);
 
 /**
  * Creates and registers a service for handling remote calls from clients.
@@ -428,8 +413,7 @@ export const createService = (
     {
       isApplicable: isFunction,
       serialize: (v) => createFunctionDescription(v),
-      deserialize: (v: FunctionDescription) =>
-        createProxyFunction(provider, serviceId, v),
+      deserialize: (v: FunctionDescription) => createProxyFunction(provider, serviceId, v),
     },
     'proxyFunction',
   );
@@ -447,11 +431,7 @@ export const createService = (
   };
 
   const messageHandler = async ({ data }: { data: unknown }) => {
-    if (
-      state &&
-      zodIs(data, zodCallPathMessage) &&
-      data.serviceId === serviceId
-    ) {
+    if (state && zodIs(data, zodCallPathMessage) && data.serviceId === serviceId) {
       const { args, callId, path } = data;
       try {
         const result = await callPath(state, path, deserialize(args));
@@ -459,10 +439,7 @@ export const createService = (
       } catch (error) {
         sendError(provider, serviceId, callId, error);
       }
-    } else if (
-      zodIs(data, zodCallFunctionMessage) &&
-      data.serviceId === serviceId
-    ) {
+    } else if (zodIs(data, zodCallFunctionMessage) && data.serviceId === serviceId) {
       const { args, callId, functionId } = data;
 
       try {
@@ -492,10 +469,7 @@ export const createService = (
         // eslint-disable-next-line no-console -- warning for developers
         console.warn(`don't have pending for result ${resultId}`);
       }
-    } else if (
-      zodIs(data, zodRemoveFunctionMessage) &&
-      data.serviceId === serviceId
-    ) {
+    } else if (zodIs(data, zodRemoveFunctionMessage) && data.serviceId === serviceId) {
       const { removeFunctionId } = data;
       localFunctions.delete(removeFunctionId);
     } else if (zodIs(data, zodReadyQuestionMessage)) {

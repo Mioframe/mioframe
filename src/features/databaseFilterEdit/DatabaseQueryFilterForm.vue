@@ -1,8 +1,5 @@
 <script setup lang="ts">
-import {
-  DatabaseFilterQuery,
-  useDatabaseViewFilter,
-} from '@entity/databaseFilter';
+import { DatabaseFilterQuery, useDatabaseViewFilter } from '@entity/databaseFilter';
 import { DatabasePropertySpan } from '@entity/databaseProperty';
 import type { AMDocumentId } from '@shared/lib/automerge';
 import type {
@@ -10,10 +7,7 @@ import type {
   DatabaseViewId,
   UNARY_FILTER_OPERATOR,
 } from '@shared/lib/databaseDocument';
-import {
-  LOGICAL_FILTER_OPERATOR,
-  zodDatabasePropertyId,
-} from '@shared/lib/databaseDocument';
+import { LOGICAL_FILTER_OPERATOR, zodDatabasePropertyId } from '@shared/lib/databaseDocument';
 import DatabaseFilterAddButton from './DatabaseFilterAddButton.vue';
 import { computed, ref, toRefs } from 'vue';
 import DatabaseUnaryFilterFormDialog from './DatabaseUnaryFilterFormDialog.vue';
@@ -46,9 +40,7 @@ const temporaryStateNewFilter = ref<{
 }>();
 
 const temporaryPropertyId = computed(() =>
-  temporaryStateNewFilter.value?.parentOperators.find((v) =>
-    zodIs(v, zodDatabasePropertyId),
-  ),
+  temporaryStateNewFilter.value?.parentOperators.find((v) => zodIs(v, zodDatabasePropertyId)),
 );
 
 const onClickAddFilter = ({
@@ -81,11 +73,7 @@ const onApplyFilterForm = async () => {
         source,
         parentOperators.reduce((path: PropertyKey[], key) => {
           if (isEnumValue(key, LOGICAL_FILTER_OPERATOR)) {
-            const oldLogicalValue: unknown = get(
-              filterQuery.value,
-              path,
-              undefined,
-            );
+            const oldLogicalValue: unknown = get(filterQuery.value, path, undefined);
 
             const order = isArray(oldLogicalValue) ? oldLogicalValue.length : 0;
 

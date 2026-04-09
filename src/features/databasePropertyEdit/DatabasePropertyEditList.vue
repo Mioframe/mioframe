@@ -25,11 +25,7 @@ const propertyCollection = useWrapStrictRecord(() => properties);
       :headline="property.name"
     >
       <template v-if="!!slots.trailingIcon" #trailingIcon>
-        <slot
-          name="trailingIcon"
-          :property="property"
-          :property-id="propertyId"
-        />
+        <slot name="trailingIcon" :property="property" :property-id="propertyId" />
       </template>
     </MDListItem>
   </MDListContainer>

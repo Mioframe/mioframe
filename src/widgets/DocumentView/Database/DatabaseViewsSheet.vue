@@ -111,9 +111,7 @@ const isShowAddView = shallowRef(false);
           class="md-margin-left-2"
           show-tooltip-on-click
         >
-          <template #richTooltipContent>
-            Pre-configured data display sets
-          </template>
+          <template #richTooltipContent> Pre-configured data display sets </template>
         </MDIconButton>
       </div>
 

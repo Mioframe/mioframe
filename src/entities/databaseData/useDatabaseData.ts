@@ -1,11 +1,7 @@
 import { useMainServiceClient } from '@shared/service';
 import type { AMDocumentId } from '@shared/lib/automerge';
 import { computed, toValue, type Ref } from 'vue';
-import type {
-  DatabaseItem,
-  DatabaseItemId,
-  DatabaseViewId,
-} from '@shared/lib/databaseDocument';
+import type { DatabaseItem, DatabaseItemId, DatabaseViewId } from '@shared/lib/databaseDocument';
 import type { Query } from 'sift';
 import { useObservableQuery } from '@shared/lib/useObservableQuery';
 import { isUndefined } from 'es-toolkit';
@@ -59,7 +55,6 @@ export const useDatabaseData = (
 
     postItem: (item: DatabaseItem, itemId?: DatabaseItemId) =>
       postItem(path.value, documentId.value, item, itemId),
-    removeItem: (itemId: DatabaseItemId) =>
-      removeItem(path.value, documentId.value, itemId),
+    removeItem: (itemId: DatabaseItemId) => removeItem(path.value, documentId.value, itemId),
   };
 };

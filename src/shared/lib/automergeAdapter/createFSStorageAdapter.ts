@@ -9,10 +9,7 @@ import { zodIs } from '../validateZodScheme';
 import { find, from, toArray } from 'ix/Ix.asynciterable';
 import { filter, map } from 'ix/Ix.asynciterable.operators';
 import { isNil, isString } from 'es-toolkit';
-import type {
-  AMChunk,
-  AMStorageAdapterInterface,
-} from '../automerge/automergeTypes';
+import type { AMChunk, AMStorageAdapterInterface } from '../automerge/automergeTypes';
 import { toString } from 'es-toolkit/compat';
 import { partialKeyToFileName } from './partialKeyToFileName';
 import { fileNameToPartialKey } from './fileNameToPartialKey';
@@ -34,9 +31,7 @@ export const createFSStorageAdapter = (
     return undefined;
   };
 
-  const load = async (
-    key: PartialStorageKey,
-  ): Promise<Uint8Array | undefined> => {
+  const load = async (key: PartialStorageKey): Promise<Uint8Array | undefined> => {
     const entry = await findEntry(key);
 
     if (entry && 'read' in entry) {
@@ -79,9 +74,7 @@ export const createFSStorageAdapter = (
     }
   };
 
-  const loadRange = async (
-    keyPrefix: PartialStorageKey,
-  ): Promise<AMChunk[]> => {
+  const loadRange = async (keyPrefix: PartialStorageKey): Promise<AMChunk[]> => {
     const maybePartialAutomergeFileName = keyPrefix.join(KEY_SEPARATE);
 
     const keyPrefixString: PartialAutomergeFileName | undefined = zodIs(

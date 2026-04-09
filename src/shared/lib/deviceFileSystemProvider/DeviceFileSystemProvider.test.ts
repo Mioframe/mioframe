@@ -1,11 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { MemoryFileSystem } from '../virtualFileSystem/MemoryFileSystem';
-import {
-  FileSystemError,
-  FSNodeType,
-  VirtualFileSystem,
-  VfsError,
-} from '../virtualFileSystem';
+import { FileSystemError, FSNodeType, VirtualFileSystem, VfsError } from '../virtualFileSystem';
 import {
   type DeviceFileRecord,
   type DeviceFileSystemProvider as DeviceFileSystemProviderType,
@@ -18,8 +13,7 @@ const createHandle = (name: string): FileSystemDirectoryHandle => {
     name,
     isFile: false,
     isDirectory: true,
-    isSameEntry: (otherHandle) =>
-      Promise.resolve(Object.is(otherHandle, handle)),
+    isSameEntry: (otherHandle) => Promise.resolve(Object.is(otherHandle, handle)),
     queryPermission: () => Promise.resolve('granted'),
     requestPermission: () => Promise.resolve('granted'),
     entries: () =>
@@ -116,10 +110,7 @@ describe('DeviceFileSystemProvider', () => {
 
     const entries = await provider.readDirectory('/');
 
-    expect(entries.map(([name]) => name)).toEqual([
-      'Origin private file system',
-      'Projects',
-    ]);
+    expect(entries.map(([name]) => name)).toEqual(['Origin private file system', 'Projects']);
     expect(
       entries.every(([, stat]) => {
         const { capabilities } = stat;
@@ -155,26 +146,17 @@ describe('DeviceFileSystemProvider', () => {
 
   it('should support cross-mounted moves for nested paths', async () => {
     const { fileSystem: sourceFileSystem } = mountRecord('Projects');
-    const { fileSystem: targetFileSystem } = mountRecord(
-      'Origin private file system',
-    );
+    const { fileSystem: targetFileSystem } = mountRecord('Origin private file system');
 
     await sourceFileSystem.writeFile('/source.txt', 'payload', {
       create: true,
       overwrite: true,
     });
 
-    await provider.move(
-      '/Projects/source.txt',
-      '/Origin private file system/dest.txt',
-    );
+    await provider.move('/Projects/source.txt', '/Origin private file system/dest.txt');
 
-    await expect(sourceFileSystem.stat('/source.txt')).rejects.toBeInstanceOf(
-      VfsError,
-    );
-    expect(await (await targetFileSystem.readFile('/dest.txt')).text()).toBe(
-      'payload',
-    );
+    await expect(sourceFileSystem.stat('/source.txt')).rejects.toBeInstanceOf(VfsError);
+    expect(await (await targetFileSystem.readFile('/dest.txt')).text()).toBe('payload');
   });
 
   it('should expose mounted roots as non-deletable directories with editable contents', async () => {

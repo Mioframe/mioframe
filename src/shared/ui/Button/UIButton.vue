@@ -25,11 +25,7 @@ const emit = defineEmits<{
 }>();
 
 const growClass = computed(() =>
-  isNumber(props.grow)
-    ? `is-flex-grow-${props.grow}`
-    : props.grow
-      ? 'is-flex-grow-1'
-      : undefined,
+  isNumber(props.grow) ? `is-flex-grow-${props.grow}` : props.grow ? 'is-flex-grow-1' : undefined,
 );
 </script>
 

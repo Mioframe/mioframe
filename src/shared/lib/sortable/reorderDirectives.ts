@@ -2,11 +2,7 @@ import type { Directive, VNode } from 'vue';
 import { REORDER_IGNORE_ATTRIBUTE, REORDER_ITEM_ATTRIBUTE } from './constants';
 
 /** Warns in development when a directive relies on a component root element contract. */
-const warnDirectiveRootCoupling = (
-  directiveName: string,
-  vnode: VNode,
-  element: unknown,
-) => {
+const warnDirectiveRootCoupling = (directiveName: string, vnode: VNode, element: unknown) => {
   if (import.meta.env.PROD || typeof vnode.type === 'string') {
     return;
   }
@@ -33,10 +29,7 @@ const warnDirectiveRootCoupling = (
 };
 
 /** Narrows an arbitrary directive host to `HTMLElement` with a dev warning on mismatch. */
-const asHtmlElement = (
-  directiveName: string,
-  element: unknown,
-): HTMLElement | undefined => {
+const asHtmlElement = (directiveName: string, element: unknown): HTMLElement | undefined => {
   if (element instanceof HTMLElement) {
     return element;
   }
@@ -76,11 +69,7 @@ export const vReorderItem: Directive<HTMLElement, string | undefined> = {
       return;
     }
 
-    setOrRemoveAttribute(
-      htmlElement,
-      REORDER_ITEM_ATTRIBUTE,
-      binding.value || undefined,
-    );
+    setOrRemoveAttribute(htmlElement, REORDER_ITEM_ATTRIBUTE, binding.value || undefined);
   },
   updated: (element, binding) => {
     const htmlElement = asHtmlElement('v-reorder-item', element);
@@ -89,11 +78,7 @@ export const vReorderItem: Directive<HTMLElement, string | undefined> = {
       return;
     }
 
-    setOrRemoveAttribute(
-      htmlElement,
-      REORDER_ITEM_ATTRIBUTE,
-      binding.value || undefined,
-    );
+    setOrRemoveAttribute(htmlElement, REORDER_ITEM_ATTRIBUTE, binding.value || undefined);
   },
   beforeUnmount: (element) => {
     const htmlElement = asHtmlElement('v-reorder-item', element);

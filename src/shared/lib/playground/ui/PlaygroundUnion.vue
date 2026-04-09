@@ -1,8 +1,4 @@
-<script
-  setup
-  lang="ts"
-  generic="O extends Array<unknown> | ReadonlyArray<unknown>"
->
+<script setup lang="ts" generic="O extends Array<unknown> | ReadonlyArray<unknown>">
 import type { ValueOf } from 'type-fest';
 
 defineProps<{ label: string; options: O }>();

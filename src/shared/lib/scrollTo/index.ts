@@ -1,19 +1,7 @@
-import {
-  refAutoReset,
-  tryOnScopeDispose,
-  until,
-  useEventListener,
-} from '@vueuse/core';
+import { refAutoReset, tryOnScopeDispose, until, useEventListener } from '@vueuse/core';
 import { delay, throttle } from 'es-toolkit';
 import pLimit from 'p-limit';
-import {
-  nextTick,
-  reactive,
-  readonly,
-  ref,
-  toValue,
-  type MaybeRefOrGetter,
-} from 'vue';
+import { nextTick, reactive, readonly, ref, toValue, type MaybeRefOrGetter } from 'vue';
 
 export const useScroll = (
   container: MaybeRefOrGetter<HTMLElement | undefined | null>,
@@ -38,11 +26,7 @@ export const useScroll = (
 
   useEventListener(container, 'scroll', throttle(scrollHandler, throttleMs));
 
-  const scrollTo = async ({
-    behavior = 'smooth',
-    left,
-    top,
-  }: ScrollToOptions) => {
+  const scrollTo = async ({ behavior = 'smooth', left, top }: ScrollToOptions) => {
     const el = toValue(container);
 
     if (el) {
@@ -56,11 +40,7 @@ export const useScroll = (
 
   const limit = pLimit(1);
 
-  const limitScrollTo = async ({
-    behavior = 'smooth',
-    left,
-    top,
-  }: ScrollToOptions) => {
+  const limitScrollTo = async ({ behavior = 'smooth', left, top }: ScrollToOptions) => {
     await limit(async () => {
       await nextTick();
 

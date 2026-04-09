@@ -12,10 +12,7 @@ defineSlots<{
 </script>
 
 <template>
-  <form
-    class="block-spacing is-flex is-flex-direction-column"
-    @submit.prevent="$emit('submit')"
-  >
+  <form class="block-spacing is-flex is-flex-direction-column" @submit.prevent="$emit('submit')">
     <slot />
 
     <ButtonGrid class="field">

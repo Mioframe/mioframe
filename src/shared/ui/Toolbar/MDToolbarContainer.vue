@@ -68,16 +68,11 @@ const placeholderStyles = computed(
 
 const paneContainerEl = usePaneContainer();
 
-const { left: paneContainerLeft, width: paneContainerWidth } =
-  useElementBounding(paneContainerEl);
+const { left: paneContainerLeft, width: paneContainerWidth } = useElementBounding(paneContainerEl);
 
-const paneContainerCenter = computed(
-  () => paneContainerLeft.value + paneContainerWidth.value / 2,
-);
+const paneContainerCenter = computed(() => paneContainerLeft.value + paneContainerWidth.value / 2);
 
-const toolbarLeft = computed(() =>
-  round(paneContainerCenter.value - toolbarWidth.value / 2),
-);
+const toolbarLeft = computed(() => round(paneContainerCenter.value - toolbarWidth.value / 2));
 
 const toolbarStyle = computed((): StyleValue => {
   return {
@@ -145,38 +140,24 @@ const toolbarStyle = computed((): StyleValue => {
   pointer-events: none;
   transform: translateY(0);
   transition-property: transform, opacity;
-  transition-timing-function: var(
-    var(--md-sys-motion-easing-emphasized-accelerate)
-  );
+  transition-timing-function: var(var(--md-sys-motion-easing-emphasized-accelerate));
   transition-duration: var(--md-sys-motion-duration-short4);
 
   &_color {
     &-standard {
       --md-toolbar-container-color: var(--md-sys-color-surface-container);
-      --md-toolbar-button-container-color: var(
-        --md-sys-color-surface-container
-      );
-      --md-toolbar-selected-button-container-color: var(
-        --md-sys-color-secondary-container
-      );
+      --md-toolbar-button-container-color: var(--md-sys-color-surface-container);
+      --md-toolbar-selected-button-container-color: var(--md-sys-color-secondary-container);
       --md-toolbar-icon-color: var(--md-sys-color-on-surface-variant);
-      --md-toolbar-selected-icon-color: var(
-        --md-sys-color-on-secondary-container
-      );
+      --md-toolbar-selected-icon-color: var(--md-sys-color-on-secondary-container);
       --md-toolbar-label-color: var(--md-sys-color-on-surface-variant);
-      --md-toolbar-selected-label-color: var(
-        --md-sys-color-on-secondary-container
-      );
+      --md-toolbar-selected-label-color: var(--md-sys-color-on-secondary-container);
       --md-toolbar-container-shape: var(--md-sys-shape-corner-full);
     }
     &-vibrant {
       --md-toolbar-container-color: var(--md-sys-color-primary-container);
-      --md-toolbar-button-container-color: var(
-        --md-sys-color-primary-container
-      );
-      --md-toolbar-selected-button-container-color: var(
-        --md-sys-color-surface-container
-      );
+      --md-toolbar-button-container-color: var(--md-sys-color-primary-container);
+      --md-toolbar-selected-button-container-color: var(--md-sys-color-surface-container);
       --md-toolbar-icon-color: var(--md-sys-color-on-primary-container);
       --md-toolbar-icon-opacity: unset;
       --md-toolbar-selected-icon-color: var(--md-sys-color-on-surface);
@@ -273,24 +254,18 @@ const toolbarStyle = computed((): StyleValue => {
     }
 
     &-leave-active {
-      transition-timing-function: var(
-        var(--md-sys-motion-easing-emphasized-accelerate)
-      );
+      transition-timing-function: var(var(--md-sys-motion-easing-emphasized-accelerate));
       transition-duration: var(--md-sys-motion-duration-short4);
     }
 
     &-enter-active {
-      transition-timing-function: var(
-        var(--md-sys-motion-easing-emphasized-decelerate)
-      );
+      transition-timing-function: var(var(--md-sys-motion-easing-emphasized-decelerate));
       transition-duration: var(--md-sys-motion-duration-long2);
     }
 
     &-enter-from,
     &-leave-to {
-      transform: translateY(
-        calc(100vh - var(--teleport-placeholder-top) + 100%)
-      );
+      transform: translateY(calc(100vh - var(--teleport-placeholder-top) + 100%));
       &.md-toolbar__placeholder {
         height: 0;
       }

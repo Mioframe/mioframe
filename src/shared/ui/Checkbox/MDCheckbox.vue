@@ -44,11 +44,7 @@ const stateValue = computed({
 });
 
 const symbolName = computed(() =>
-  stateValue.value === undefined
-    ? 'remove'
-    : stateValue.value
-      ? 'check'
-      : undefined,
+  stateValue.value === undefined ? 'remove' : stateValue.value ? 'check' : undefined,
 );
 
 const onClickContainer = (e: MouseEvent) => {
@@ -62,8 +58,7 @@ const inputEl = useTemplateRef('inputEl');
 
 watchEffect(() => {
   if (inputEl.value) {
-    inputEl.value.indeterminate =
-      indeterminate.value && isUndefined(stateValue.value);
+    inputEl.value.indeterminate = indeterminate.value && isUndefined(stateValue.value);
   }
 });
 
@@ -106,11 +101,7 @@ const onKeypressContainer = ({ key }: KeyboardEvent) => {
     />
 
     <div class="md md-checkbox__container">
-      <MDSymbol
-        v-if="symbolName"
-        class="md-checkbox__icon"
-        :name="symbolName"
-      />
+      <MDSymbol v-if="symbolName" class="md-checkbox__icon" :name="symbolName" />
     </div>
 
     <MDPlainTooltip v-if="tooltip" :text="tooltip" />
@@ -173,9 +164,7 @@ const onKeypressContainer = ({ key }: KeyboardEvent) => {
   &_disabled {
     .md-checkbox__container {
       border-color: var(--md-sys-color-on-surface);
-      --md-container-color: rgb(
-        from var(--md-sys-color-on-surface) r g b / 0.38
-      );
+      --md-container-color: rgb(from var(--md-sys-color-on-surface) r g b / 0.38);
       --md-content-color: var(--md-sys-color-surface);
     }
   }

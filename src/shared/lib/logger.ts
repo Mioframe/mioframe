@@ -41,8 +41,7 @@ const TAG = {
 
 const generateExecId = (): string => sessionUniqueId('l-');
 
-const isThenable = (value: unknown): value is Promise<unknown> =>
-  isPromise(value);
+const isThenable = (value: unknown): value is Promise<unknown> => isPromise(value);
 
 const snapshotValue = (
   value: unknown,
@@ -188,19 +187,14 @@ function logExecution<Args extends unknown[], Return>(
  */
 export function Log(options: LogOptions = {}) {
   if (!import.meta.env.DEV) {
-    return function <This, Args extends unknown[], R>(
-      fn: (this: This, ...args: Args) => R,
-    ) {
+    return function <This, Args extends unknown[], R>(fn: (this: This, ...args: Args) => R) {
       return fn;
     };
   }
 
   return function <This, Args extends unknown[], R>(
     value: (this: This, ...args: Args) => R,
-    context: ClassMethodDecoratorContext<
-      This,
-      (this: This, ...args: Args) => R
-    >,
+    context: ClassMethodDecoratorContext<This, (this: This, ...args: Args) => R>,
   ) {
     const methodName = String(context.name);
     function replacementMethod(this: This, ...args: Args): R {

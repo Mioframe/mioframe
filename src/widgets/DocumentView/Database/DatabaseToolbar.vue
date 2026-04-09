@@ -1,9 +1,6 @@
 <script setup lang="ts">
 import type { AMDocumentId } from '@shared/lib/automerge';
-import type {
-  DatabasePropertyId,
-  DatabaseUnknownProperty,
-} from '@shared/lib/databaseDocument';
+import type { DatabasePropertyId, DatabaseUnknownProperty } from '@shared/lib/databaseDocument';
 import { type DatabaseViewId } from '@shared/lib/databaseDocument';
 import { MDIconButton } from '@shared/ui/Button';
 import MDToolbarContainer from '@shared/ui/Toolbar/MDToolbarContainer.vue';
@@ -38,10 +35,7 @@ const showFilterSettings = ref(false);
 
 const isShowAddItem = ref(false);
 
-const { size: propertySize, patch: patchProperty } = useDatabaseProperties(
-  path,
-  documentId,
-);
+const { size: propertySize, patch: patchProperty } = useDatabaseProperties(path, documentId);
 
 const onUpdateProperty = async (
   propertyId: DatabasePropertyId,
@@ -58,11 +52,7 @@ const hasProperties = computed(() => {
 </script>
 
 <template>
-  <MDToolbarContainer
-    type="floating"
-    auto-hide
-    :auto-hide-target="autoHideTarget"
-  >
+  <MDToolbarContainer type="floating" auto-hide :auto-hide-target="autoHideTarget">
     <MDIconButton
       v-if="hasProperties"
       tooltip="view settings"

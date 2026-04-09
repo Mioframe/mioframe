@@ -34,9 +34,7 @@ const symbolMenuBtn = computed(() =>
 
 const onClickMenuBtn = () => {
   railType.value =
-    railType.value === RAIL_TYPE.collapsed
-      ? RAIL_TYPE.expanded
-      : RAIL_TYPE.collapsed;
+    railType.value === RAIL_TYPE.collapsed ? RAIL_TYPE.expanded : RAIL_TYPE.collapsed;
 };
 
 const buttonType = computed(() => {

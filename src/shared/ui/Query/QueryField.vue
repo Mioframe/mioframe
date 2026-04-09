@@ -28,12 +28,7 @@ const isOperatorObject = computed(() => {
     {{ field }}
 
     <template v-if="isOperatorObject">
-      <QueryOperator
-        v-for="(val, op) in value"
-        :key="op"
-        :operator="op"
-        :value="val"
-      />
+      <QueryOperator v-for="(val, op) in value" :key="op" :operator="op" :value="val" />
     </template>
 
     <template v-else>

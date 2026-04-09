@@ -19,12 +19,7 @@ import { queryIdList } from './data/queryData';
 import type { Query } from 'sift';
 import { setupDatabaseViewsService } from './view/databaseViewsService';
 
-import {
-  combineLatest,
-  distinctUntilChanged,
-  map,
-  type Observable,
-} from 'rxjs';
+import { combineLatest, distinctUntilChanged, map, type Observable } from 'rxjs';
 import { defineObservableQuery } from '@shared/lib/useObservableQuery';
 import { defineCacheObservable } from '@shared/lib/defineCacheObservable';
 import { isEqual } from 'es-toolkit';
@@ -65,11 +60,9 @@ export const setupDatabaseDataService = (
       }
 
       const item = data[itemId];
-      const storedValue = getDatabaseStoredValue(
-        value,
-        state.properties[propertyId],
-        { trimString: true },
-      );
+      const storedValue = getDatabaseStoredValue(value, state.properties[propertyId], {
+        trimString: true,
+      });
 
       if (storedValue === undefined) {
         strictRecordRemove(item, propertyId);
@@ -78,11 +71,7 @@ export const setupDatabaseDataService = (
       }
     });
 
-  const removeItem = (
-    path: string,
-    documentId: AMDocumentId,
-    itemId: DatabaseItemId,
-  ) =>
+  const removeItem = (path: string, documentId: AMDocumentId, itemId: DatabaseItemId) =>
     change(path, documentId, (data) => {
       strictRecordRemove(data, itemId);
     });
@@ -98,10 +87,7 @@ export const setupDatabaseDataService = (
   const databaseProperties$ = defineCacheObservable(
     ({ documentId, path }: { path: string; documentId: AMDocumentId }) =>
       databaseState$({ documentId, path }).pipe(
-        map(
-          (state): DatabaseUnknownPropertiesMap | undefined =>
-            state?.properties,
-        ),
+        map((state): DatabaseUnknownPropertiesMap | undefined => state?.properties),
         distinctUntilChanged(),
       ),
   );

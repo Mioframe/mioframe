@@ -38,36 +38,17 @@ const state = useQueryValue<ComponentProps<typeof MDSelect>>('state', {
 <template>
   <PlaygroundStore>
     <template #controllers>
-      <PlaygroundString
-        v-model:model-value="state.labelText"
-        label="labelText"
-      />
+      <PlaygroundString v-model:model-value="state.labelText" label="labelText" />
 
-      <PlaygroundOptionalBoolean
-        v-model:model-value="state.disabled"
-        label="disabled"
-      />
+      <PlaygroundOptionalBoolean v-model:model-value="state.disabled" label="disabled" />
 
-      <PlaygroundOptionalBoolean
-        v-model:model-value="state.error"
-        label="error"
-      />
+      <PlaygroundOptionalBoolean v-model:model-value="state.error" label="error" />
 
-      <PlaygroundOptionalBoolean
-        v-model:model-value="state.multiple"
-        label="multiple"
-      />
+      <PlaygroundOptionalBoolean v-model:model-value="state.multiple" label="multiple" />
 
-      <PlaygroundOptionalString
-        v-model:model-value="state.supportingText"
-        label="supportingText"
-      />
+      <PlaygroundOptionalString v-model:model-value="state.supportingText" label="supportingText" />
 
-      <PlaygroundUnion
-        v-model:model-value="state.type"
-        label="type"
-        :options="typeOptions"
-      />
+      <PlaygroundUnion v-model:model-value="state.type" label="type" :options="typeOptions" />
 
       <pre>{{ state.modelValue }}</pre>
     </template>

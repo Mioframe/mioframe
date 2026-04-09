@@ -26,11 +26,7 @@ const label = computed(() => property.value?.name ?? 'unknown property');
 </script>
 
 <template>
-  <MDMenuItemBase
-    v-model:show-submenu="showSubmenu"
-    :label="label"
-    :role="role"
-  >
+  <MDMenuItemBase v-model:show-submenu="showSubmenu" :label="label" :role="role">
     <template v-if="slots.submenu" #submenu>
       <slot name="submenu" />
     </template>

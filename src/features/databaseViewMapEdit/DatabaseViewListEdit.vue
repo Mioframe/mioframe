@@ -33,21 +33,18 @@ const viewListEl = useTemplateRef('viewListEl');
 
 const viewMap = computed(() => new Map(viewList.value ?? []));
 
-const { activeProfile, displayItemIdList, draggedId, isDragging } =
-  useReorderSurface(viewListEl, {
-    itemIdList: computed(() => (viewList.value ?? []).map(([id]) => id)),
-    onCommit: ({ orderedIds }) => {
-      const nextOrderedIds = orderedIds.filter((id) =>
-        zodIs(id, zodDatabaseViewId),
-      );
+const { activeProfile, displayItemIdList, draggedId, isDragging } = useReorderSurface(viewListEl, {
+  itemIdList: computed(() => (viewList.value ?? []).map(([id]) => id)),
+  onCommit: ({ orderedIds }) => {
+    const nextOrderedIds = orderedIds.filter((id) => zodIs(id, zodDatabaseViewId));
 
-      if (nextOrderedIds.length !== orderedIds.length) {
-        return;
-      }
+    if (nextOrderedIds.length !== orderedIds.length) {
+      return;
+    }
 
-      return reorder(nextOrderedIds);
-    },
-  });
+    return reorder(nextOrderedIds);
+  },
+});
 
 const displayViewIdList = computed(() =>
   displayItemIdList.value.filter((id) => zodIs(id, zodDatabaseViewId)),
@@ -59,9 +56,7 @@ const draggedViewId = computed(() => {
 });
 
 const orderedViewList = computed(() =>
-  displayViewIdList.value.reduce<
-    Array<readonly [DatabaseViewId, DatabaseView]>
-  >((result, id) => {
+  displayViewIdList.value.reduce<Array<readonly [DatabaseViewId, DatabaseView]>>((result, id) => {
     const view = viewMap.value.get(id);
 
     if (!view) {
@@ -89,8 +84,7 @@ const onClickView = (id: DatabaseViewId) => {
       class="db-view-map-edit__view-item"
       :class="{
         'md-state_drag': draggedViewId === id,
-        'db-view-map-edit__view-item_touch':
-          isDragging && activeProfile.input === 'touch',
+        'db-view-map-edit__view-item_touch': isDragging && activeProfile.input === 'touch',
       }"
       @click="onClickView(id)"
     >

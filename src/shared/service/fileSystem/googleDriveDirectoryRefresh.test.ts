@@ -6,19 +6,15 @@ import type { GDriveFileMeta } from '@shared/lib/googleDrive/api';
 
 const getRecordListMock = vi.fn();
 const updateRecordListMock = vi.fn();
-const {
-  createMock,
-  downloadMock,
-  getGFileMetaListMock,
-  updateMock,
-  uploadMock,
-} = vi.hoisted(() => ({
-  createMock: vi.fn(),
-  downloadMock: vi.fn(),
-  getGFileMetaListMock: vi.fn(),
-  updateMock: vi.fn(),
-  uploadMock: vi.fn(),
-}));
+const { createMock, downloadMock, getGFileMetaListMock, updateMock, uploadMock } = vi.hoisted(
+  () => ({
+    createMock: vi.fn(),
+    downloadMock: vi.fn(),
+    getGFileMetaListMock: vi.fn(),
+    updateMock: vi.fn(),
+    uploadMock: vi.fn(),
+  }),
+);
 
 vi.mock('./setupFileSystemDirectoryHandleService', () => ({
   useFileSystemDirectoryHandleService: () => ({
@@ -94,9 +90,7 @@ describe('Google Drive directory refresh integration', () => {
       })
       .subscribe((value) => {
         if (!(value instanceof Error)) {
-          emissions.push(
-            value.map(([name, stat]) => [name, { type: stat.type }]),
-          );
+          emissions.push(value.map(([name, stat]) => [name, { type: stat.type }]));
         }
       });
 
@@ -105,9 +99,7 @@ describe('Google Drive directory refresh integration', () => {
       expect(emissions).toEqual([[]]);
     });
 
-    await service.createDirectory(
-      '/Google Drive/user@example.com/App Data/new-folder',
-    );
+    await service.createDirectory('/Google Drive/user@example.com/App Data/new-folder');
 
     await vi.waitFor(() => {
       expect(getGFileMetaListMock).toHaveBeenCalledTimes(2);
@@ -115,9 +107,7 @@ describe('Google Drive directory refresh integration', () => {
 
     expect(emissions).toEqual([[]]);
 
-    const refreshed = await service.vfs.readDirectory(
-      '/Google Drive/user@example.com/App Data',
-    );
+    const refreshed = await service.vfs.readDirectory('/Google Drive/user@example.com/App Data');
 
     expect(getGFileMetaListMock.mock.calls.length).toBeGreaterThanOrEqual(3);
     expect(refreshed).toEqual([

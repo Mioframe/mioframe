@@ -8,9 +8,7 @@ describe('LockManager (Unit)', () => {
   });
 
   it('должен выполнять задачу и возвращать результат', async () => {
-    const result = await manager.request('/file', () =>
-      Promise.resolve('success'),
-    );
+    const result = await manager.request('/file', () => Promise.resolve('success'));
     expect(result).to.eq('success');
   });
 
@@ -108,9 +106,7 @@ describe('LockManager (Unit)', () => {
 
   it('должен позволять вложенные запросы на РАЗНЫЕ пути (No Deadlock on distinct paths)', async () => {
     await manager.request('/outer', async () => {
-      const innerResult = await manager.request('/inner', () =>
-        Promise.resolve('inner'),
-      );
+      const innerResult = await manager.request('/inner', () => Promise.resolve('inner'));
       expect(innerResult).to.eq('inner');
     });
   });

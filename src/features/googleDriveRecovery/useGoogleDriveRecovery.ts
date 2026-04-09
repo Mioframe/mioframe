@@ -5,11 +5,7 @@ import {
 import { ref, toValue, type MaybeRefOrGetter } from 'vue';
 import { useMainServiceClient } from '@shared/service';
 
-export const useGoogleDriveRecovery = ({
-  path,
-}: {
-  path: MaybeRefOrGetter<string>;
-}) => {
+export const useGoogleDriveRecovery = ({ path }: { path: MaybeRefOrGetter<string> }) => {
   const {
     google: { requestToken },
   } = useMainServiceClient();

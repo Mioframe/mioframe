@@ -14,8 +14,7 @@ import { recordEntries } from '@shared/lib/objectEntries';
 import { isArray } from '@shared/lib/typeGuards';
 import sift from 'sift';
 
-const isUnaryOperator = (key: string): key is UNARY_FILTER_OPERATOR =>
-  key in UNARY_FILTER_OPERATOR;
+const isUnaryOperator = (key: string): key is UNARY_FILTER_OPERATOR => key in UNARY_FILTER_OPERATOR;
 
 const isLogicalOperator = (key: string): key is LOGICAL_FILTER_OPERATOR =>
   key in LOGICAL_FILTER_OPERATOR;
@@ -49,9 +48,7 @@ const createLogicalFilterMatcher = (
     : (item) => nestedMatcherList.some((matcher) => matcher(item));
 };
 
-const getFieldConditionOperators = (
-  condition: unknown,
-): Record<string, unknown> => {
+const getFieldConditionOperators = (condition: unknown): Record<string, unknown> => {
   if (isArray(condition) || !isUnknownRecord(condition)) {
     throw new TypeError('Database field condition must be an operator record');
   }
@@ -59,9 +56,7 @@ const getFieldConditionOperators = (
   return condition;
 };
 
-const parseFieldOperatorCondition = (
-  conditionValue: unknown,
-): ParsedFieldOperatorCondition => {
+const parseFieldOperatorCondition = (conditionValue: unknown): ParsedFieldOperatorCondition => {
   const condition = getFieldConditionOperators(conditionValue);
   let existsCondition: unknown;
   let hasExistsCondition = false;
@@ -85,9 +80,8 @@ const parseFieldOperatorCondition = (
   };
 };
 
-const createUnaryConditionPredicate = (
-  unaryCondition: Record<string, unknown> | undefined,
-) => (unaryCondition ? sift(unaryCondition) : undefined);
+const createUnaryConditionPredicate = (unaryCondition: Record<string, unknown> | undefined) =>
+  unaryCondition ? sift(unaryCondition) : undefined;
 
 const createFieldFilterMatcher = (
   propertyId: DatabasePropertyId,
@@ -99,16 +93,9 @@ const createFieldFilterMatcher = (
   const predicate = createUnaryConditionPredicate(unaryCondition);
 
   return (item) => {
-    const effectiveValue = getDatabaseEffectiveValue(
-      item,
-      propertyId,
-      properties?.[propertyId],
-    );
+    const effectiveValue = getDatabaseEffectiveValue(item, propertyId, properties?.[propertyId]);
 
-    if (
-      hasExistsCondition &&
-      !matchEffectiveExists(effectiveValue, existsCondition)
-    ) {
+    if (hasExistsCondition && !matchEffectiveExists(effectiveValue, existsCondition)) {
       return false;
     }
 

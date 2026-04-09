@@ -1,13 +1,10 @@
 import type { ComputedRef, InjectionKey, Ref } from 'vue';
 import { computed, inject, provide } from 'vue';
 
-const PROVIDE_CONTAINER_KEY: InjectionKey<
-  ComputedRef<HTMLElement | undefined | null>
-> = Symbol('PROVIDE_CONTAINER_KEY');
+const PROVIDE_CONTAINER_KEY: InjectionKey<ComputedRef<HTMLElement | undefined | null>> =
+  Symbol('PROVIDE_CONTAINER_KEY');
 
-export const definePaneContainer = (
-  el: Ref<HTMLElement | undefined | null>,
-) => {
+export const definePaneContainer = (el: Ref<HTMLElement | undefined | null>) => {
   provide(
     PROVIDE_CONTAINER_KEY,
     computed(() => el.value),

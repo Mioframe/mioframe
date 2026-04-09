@@ -2,11 +2,7 @@ import { isNil, isNotNil, isUndefined } from 'es-toolkit';
 import { hasKey, hasOwnKey } from '../typeGuards/hasOwnKey';
 import type { StrictRecord } from './types';
 
-export const strictRecordSet = <K extends string, V>(
-  r: StrictRecord<K, V>,
-  key: K,
-  value: V,
-) => {
+export const strictRecordSet = <K extends string, V>(r: StrictRecord<K, V>, key: K, value: V) => {
   if (isUndefined(value)) {
     strictRecordRemove(r, key);
   } else {
@@ -14,10 +10,7 @@ export const strictRecordSet = <K extends string, V>(
   }
 };
 
-export const strictRecordRemove = <K extends string, V>(
-  r: StrictRecord<K, V>,
-  key: K,
-) => {
+export const strictRecordRemove = <K extends string, V>(r: StrictRecord<K, V>, key: K) => {
   if (hasOwnKey(r, key)) {
     // eslint-disable-next-line @typescript-eslint/no-dynamic-delete -- desired behavior
     delete r[key];
@@ -35,9 +28,7 @@ export const strictRecordGet = <K extends string, V>(
   return r[key];
 };
 
-export const strictRecordIterableKeys = <K extends string>(
-  obj: StrictRecord<K, unknown>,
-) =>
+export const strictRecordIterableKeys = <K extends string>(obj: StrictRecord<K, unknown>) =>
   function* (): IterableIterator<K> {
     for (const key in obj) {
       if (hasOwnKey(obj, key) && !isNil(obj[key])) {
@@ -46,9 +37,7 @@ export const strictRecordIterableKeys = <K extends string>(
     }
   };
 
-export const strictRecordIterableEntries = <K extends string, V>(
-  obj?: StrictRecord<K, V>,
-) =>
+export const strictRecordIterableEntries = <K extends string, V>(obj?: StrictRecord<K, V>) =>
   function* (): IterableIterator<[K, V]> {
     for (const key in obj) {
       if (hasKey(obj, key)) {
@@ -61,9 +50,7 @@ export const strictRecordIterableEntries = <K extends string, V>(
     }
   };
 
-export const strictRecordIterableValues = <K extends string, V>(
-  obj?: StrictRecord<K, V>,
-) =>
+export const strictRecordIterableValues = <K extends string, V>(obj?: StrictRecord<K, V>) =>
   function* (): IterableIterator<V> {
     for (const key in obj) {
       if (hasKey(obj, key)) {
@@ -102,15 +89,11 @@ export interface ReadonlyWrapStrictRecord<K extends string, V> {
 
   on: <N extends keyof WrapStrictRecordMutation<K, V>>(
     name: N,
-    listener: (
-      ...args: Parameters<WrapStrictRecordMutation<K, V>[N]>
-    ) => unknown,
+    listener: (...args: Parameters<WrapStrictRecordMutation<K, V>[N]>) => unknown,
   ) => () => void;
   off: <N extends keyof WrapStrictRecordMutation<K, V>>(
     name: N,
-    listener: (
-      ...args: Parameters<WrapStrictRecordMutation<K, V>[N]>
-    ) => unknown,
+    listener: (...args: Parameters<WrapStrictRecordMutation<K, V>[N]>) => unknown,
   ) => void;
 }
 
@@ -136,8 +119,7 @@ export const wrapStrictRecord = <K extends string, V>(
 
   const keys = strictRecordIterableKeys(collectionObj);
 
-  const has = (key: K): boolean =>
-    hasOwnKey(collectionObj, key) && !isNil(collectionObj[key]);
+  const has = (key: K): boolean => hasOwnKey(collectionObj, key) && !isNil(collectionObj[key]);
 
   const get = (key: K): V | undefined => strictRecordGet(collectionObj, key);
 
@@ -168,18 +150,14 @@ export const wrapStrictRecord = <K extends string, V>(
 
   const off = <N extends keyof WrapStrictRecordMutation<K, V>>(
     name: N,
-    listener: (
-      ...args: Parameters<WrapStrictRecordMutation<K, V>[N]>
-    ) => unknown,
+    listener: (...args: Parameters<WrapStrictRecordMutation<K, V>[N]>) => unknown,
   ) => {
     listeners[name].delete(listener);
   };
 
   const on = <N extends keyof WrapStrictRecordMutation<K, V>>(
     name: N,
-    listener: (
-      ...args: Parameters<WrapStrictRecordMutation<K, V>[N]>
-    ) => unknown,
+    listener: (...args: Parameters<WrapStrictRecordMutation<K, V>[N]>) => unknown,
   ) => {
     listeners[name].add(listener);
     return () => {

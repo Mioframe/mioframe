@@ -2,9 +2,8 @@ import { tryOnScopeDispose } from '@vueuse/core';
 import type { InjectionKey, Ref } from 'vue';
 import { computed, inject, provide, shallowRef, watch } from 'vue';
 
-const KEY: InjectionKey<{ numberOfBottomNavigationBans: Ref<number> }> = Symbol(
-  'allowedBottomNavigation',
-);
+const KEY: InjectionKey<{ numberOfBottomNavigationBans: Ref<number> }> =
+  Symbol('allowedBottomNavigation');
 
 /**
  * Разрешение на отображение нижней панели навигации вместе с отображаемыми Pane.
@@ -40,10 +39,7 @@ export const defineAllowedBottomNavigation = (allowed: Ref<boolean>) => {
     allowed,
     (allowed) => {
       if (allowed) {
-        numberOfBottomNavigationBans.value = Math.max(
-          numberOfBottomNavigationBans.value - 1,
-          0,
-        );
+        numberOfBottomNavigationBans.value = Math.max(numberOfBottomNavigationBans.value - 1, 0);
       } else {
         numberOfBottomNavigationBans.value += 1;
       }

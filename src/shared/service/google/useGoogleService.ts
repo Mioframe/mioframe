@@ -3,11 +3,7 @@ import { useFileSystemService } from '../fileSystem';
 import { PathUtils } from '@shared/lib/virtualFileSystem';
 import { googleDriveFileSystemProvider } from '@shared/lib/googleDriveFileSystemProvider';
 import { useGoogleSessionStore } from './googleSessionStore';
-import {
-  USER_INFO_GOOGLE_SCOPE,
-  zodGOOGLE_SCOPE,
-  type GOOGLE_SCOPE,
-} from '@shared/lib/googleApi';
+import { USER_INFO_GOOGLE_SCOPE, zodGOOGLE_SCOPE, type GOOGLE_SCOPE } from '@shared/lib/googleApi';
 import { isSubset, omit } from 'es-toolkit';
 import { zodIs } from '@shared/lib/validateZodScheme';
 import type { ObservableSource } from '@shared/lib/useObservable';
@@ -19,16 +15,11 @@ import { isGoogleAuthPopupBlocked } from './googlePopupError';
 
 type TokenResponse = google.accounts.oauth2.TokenResponse;
 
-type RequestAccessToken = (
-  scopes: GOOGLE_SCOPE[],
-  email?: string,
-) => Promise<TokenResponse>;
+type RequestAccessToken = (scopes: GOOGLE_SCOPE[], email?: string) => Promise<TokenResponse>;
 
 export interface GoogleApi {
   requestAccessToken: RequestAccessToken;
-  userinfoGet: (p: {
-    oauth_token?: string | undefined;
-  }) => Promise<{ result: { email?: string } }>;
+  userinfoGet: (p: { oauth_token?: string | undefined }) => Promise<{ result: { email?: string } }>;
   revoke: (accessToken: string) => Promise<void>;
 }
 
@@ -36,10 +27,7 @@ export const GOOGLE_DRIVE_ROOT_NAME = 'Google Drive';
 
 export type GoogleService = {
   bindGoogleApi: (api: GoogleApi) => Promise<void>;
-  requestToken: (
-    scopes: GOOGLE_SCOPE[],
-    expectedEmail?: string,
-  ) => Promise<string>;
+  requestToken: (scopes: GOOGLE_SCOPE[], expectedEmail?: string) => Promise<string>;
   clear: () => Promise<void>;
   sessions: ObservableSource<string[]>;
   deleteSession: (email: string) => Promise<void>;
@@ -52,25 +40,19 @@ const setupGoogleService = (): GoogleService => {
   const { getStore, update, get, clear, $sessions } = useGoogleSessionStore();
   const sessions = fromObservable($sessions);
 
-  const normalizeScopes = (scopes: GOOGLE_SCOPE[]): GOOGLE_SCOPE[] =>
-    [...new Set(scopes)].sort();
+  const normalizeScopes = (scopes: GOOGLE_SCOPE[]): GOOGLE_SCOPE[] => [...new Set(scopes)].sort();
 
   const buildRequestKey = (...args: unknown[]) => {
     const [rawScopes, rawOldEmail] = args;
     const scopes = Array.isArray(rawScopes)
-      ? rawScopes.filter((scope): scope is GOOGLE_SCOPE =>
-          zodIs(scope, zodGOOGLE_SCOPE),
-        )
+      ? rawScopes.filter((scope): scope is GOOGLE_SCOPE => zodIs(scope, zodGOOGLE_SCOPE))
       : [];
     const oldEmail = typeof rawOldEmail === 'string' ? rawOldEmail : undefined;
 
     return (
       stringify({
         oldEmail,
-        scopes: normalizeScopes([
-          ...scopes,
-          USER_INFO_GOOGLE_SCOPE.userinfoEmail,
-        ]),
+        scopes: normalizeScopes([...scopes, USER_INFO_GOOGLE_SCOPE.userinfoEmail]),
       }) ?? 'undefined'
     );
   };
@@ -81,10 +63,7 @@ const setupGoogleService = (): GoogleService => {
         throw new Error('Google API is not tied to the service');
       }
 
-      const requestScopes = normalizeScopes([
-        ...scopes,
-        USER_INFO_GOOGLE_SCOPE.userinfoEmail,
-      ]);
+      const requestScopes = normalizeScopes([...scopes, USER_INFO_GOOGLE_SCOPE.userinfoEmail]);
 
       const { requestAccessToken, userinfoGet } = googleApi;
 
@@ -120,15 +99,9 @@ const setupGoogleService = (): GoogleService => {
         throw error;
       }
 
-      const {
-        access_token: accessToken,
-        expires_in,
-        scope: newScope,
-      } = tokenResponse;
+      const { access_token: accessToken, expires_in, scope: newScope } = tokenResponse;
 
-      const availableScopes = newScope
-        .split(' ')
-        .filter((v) => zodIs(v, zodGOOGLE_SCOPE));
+      const availableScopes = newScope.split(' ').filter((v) => zodIs(v, zodGOOGLE_SCOPE));
 
       const expiresAt = Date.now() + parseInt(expires_in) * 1e3;
 
@@ -166,18 +139,12 @@ const setupGoogleService = (): GoogleService => {
     buildRequestKey,
   );
 
-  const requestToken = async (
-    scopes: GOOGLE_SCOPE[],
-    expectedEmail?: string,
-  ): Promise<string> => {
+  const requestToken = async (scopes: GOOGLE_SCOPE[], expectedEmail?: string): Promise<string> => {
     const oldSession = expectedEmail ? await get(expectedEmail) : undefined;
 
     if (oldSession) {
       const { accessToken, expiresAt, scopes: oldScopes } = oldSession;
-      if (
-        expiresAt - 3e5 /** 5 min */ > Date.now() &&
-        isSubset(oldScopes, scopes)
-      ) {
+      if (expiresAt - 3e5 /** 5 min */ > Date.now() && isSubset(oldScopes, scopes)) {
         return accessToken;
       }
     }

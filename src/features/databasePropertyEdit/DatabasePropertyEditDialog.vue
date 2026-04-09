@@ -5,10 +5,7 @@ import { MDTextField } from '@shared/ui/TextField';
 import { cloneDeep } from 'es-toolkit';
 import { useSnackbar } from '@shared/ui/Snackbar';
 import type { AMDocumentId } from '@shared/lib/automerge';
-import type {
-  DatabasePropertyId,
-  DatabaseUnknownProperty,
-} from '@shared/lib/databaseDocument';
+import type { DatabasePropertyId, DatabaseUnknownProperty } from '@shared/lib/databaseDocument';
 import { useDatabaseProperty } from '@entity/databaseProperty';
 import { DomainError } from '@shared/lib/error';
 const props = defineProps<{

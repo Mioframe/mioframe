@@ -25,9 +25,6 @@ const relationModel = computed({
 
 <template>
   <section>
-    <DatabaseRelationPropertyField
-      v-model:model-value="relationModel"
-      :path="directoryPath"
-    />
+    <DatabaseRelationPropertyField v-model:model-value="relationModel" :path="directoryPath" />
   </section>
 </template>

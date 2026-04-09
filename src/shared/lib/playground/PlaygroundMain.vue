@@ -3,10 +3,7 @@ import { RouterView } from 'vue-router';
 import { useRoute } from 'vue-router';
 import PlaygroundNavigation from './PlaygroundNavigation.vue';
 import { computed } from 'vue';
-import type {
-  PlaygroundNavigationDescription,
-  PlaygroundRouteRecordRaw,
-} from './types';
+import type { PlaygroundNavigationDescription, PlaygroundRouteRecordRaw } from './types';
 
 const route = useRoute();
 
@@ -25,9 +22,7 @@ const routeToNavigation = ({
   children: children?.map(routeToNavigation),
 });
 
-const navigation = computed(() =>
-  playgroundRoutes.value?.map(routeToNavigation),
-);
+const navigation = computed(() => playgroundRoutes.value?.map(routeToNavigation));
 </script>
 
 <template>

@@ -66,10 +66,7 @@ const onPress = (e: MouseEvent | UIEvent) => {
       currentTarget.style.setProperty('--md-ripple-y', `${offsetY}px`);
       currentTarget.style.setProperty('--md-ripple-x', `${offsetX}px`);
     } else {
-      currentTarget.style.setProperty(
-        '--md-ripple-size',
-        `${Math.max(rect.width, rect.height)}px`,
-      );
+      currentTarget.style.setProperty('--md-ripple-size', `${Math.max(rect.width, rect.height)}px`);
       currentTarget.style.setProperty('--md-ripple-y', null);
       currentTarget.style.setProperty('--md-ripple-x', null);
     }
@@ -85,10 +82,7 @@ const onPress = (e: MouseEvent | UIEvent) => {
 const onUnpressed = (e: UIEvent) => {
   e.stopPropagation();
   const { currentTarget } = e;
-  if (
-    currentTarget instanceof HTMLElement &&
-    currentTarget.classList.contains(STATE.press)
-  ) {
+  if (currentTarget instanceof HTMLElement && currentTarget.classList.contains(STATE.press)) {
     currentTarget.classList.remove(STATE.press);
     if (!currentTarget.classList.contains(STATE.pressed)) {
       startAnimationUnpressed(currentTarget);

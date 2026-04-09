@@ -1,9 +1,6 @@
 <script setup lang="ts">
 import type { AMDocumentId } from '@shared/lib/automerge';
-import type {
-  DatabasePropertyId,
-  DatabaseUnknownProperty,
-} from '@shared/lib/databaseDocument';
+import type { DatabasePropertyId, DatabaseUnknownProperty } from '@shared/lib/databaseDocument';
 import { MDListContainer } from '@shared/ui/Lists';
 import { toRefs } from 'vue';
 import { useDatabaseProperties } from './useDatabaseProperties';
@@ -23,10 +20,7 @@ const slots = defineSlots<{
   }) => unknown;
 }>();
 
-const { propertiesIdList: properties } = useDatabaseProperties(
-  path,
-  documentId,
-);
+const { propertiesIdList: properties } = useDatabaseProperties(path, documentId);
 </script>
 
 <template>
@@ -39,11 +33,7 @@ const { propertiesIdList: properties } = useDatabaseProperties(
       :property-id="propertyId"
     >
       <template v-if="!!slots.trailingIcon" #trailingIcon="{ property }">
-        <slot
-          name="trailingIcon"
-          :property="property"
-          :property-id="propertyId"
-        />
+        <slot name="trailingIcon" :property="property" :property-id="propertyId" />
       </template>
     </DatabasePropertyListItem>
   </MDListContainer>

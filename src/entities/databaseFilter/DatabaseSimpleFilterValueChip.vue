@@ -17,8 +17,7 @@ const { propertyName, operator, value } = toRefs(props);
 const valueString = computed(() => toString(value.value));
 
 const label = computed(
-  () =>
-    `${propertyName.value} ${OPERATOR_LABEL[operator.value]} ${valueString.value}`,
+  () => `${propertyName.value} ${OPERATOR_LABEL[operator.value]} ${valueString.value}`,
 );
 </script>
 

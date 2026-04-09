@@ -43,10 +43,7 @@ export interface SortWorkerApi {
     lastIndex?: number,
   ) => T[];
 
-  filter: <TItem, TSchema extends TItem = TItem>(
-    data: TItem[],
-    query: Query<TSchema>,
-  ) => TItem[];
+  filter: <TItem, TSchema extends TItem = TItem>(data: TItem[], query: Query<TSchema>) => TItem[];
 
   queryData: QueryDataFn;
 }

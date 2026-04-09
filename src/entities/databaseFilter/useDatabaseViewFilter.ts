@@ -1,9 +1,6 @@
 import { computed, toValue, type Ref } from 'vue';
 import type { AMDocumentId } from '@shared/lib/automerge';
-import type {
-  DatabaseFilter,
-  DatabaseViewId,
-} from '@shared/lib/databaseDocument';
+import type { DatabaseFilter, DatabaseViewId } from '@shared/lib/databaseDocument';
 import { useMainServiceClient } from '@shared/service';
 import type { PatchSource } from '@shared/lib/changeObject';
 import { useObservableQuery } from '@shared/lib/useObservableQuery';

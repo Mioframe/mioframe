@@ -16,13 +16,7 @@ const state = useQueryValue<State>('state', {
 
 const target = useTemplateRef('target');
 
-const placementOptions: State['placement'][] = [
-  undefined,
-  'top',
-  'right',
-  'bottom',
-  'left',
-];
+const placementOptions: State['placement'][] = [undefined, 'top', 'right', 'bottom', 'left'];
 </script>
 
 <template>

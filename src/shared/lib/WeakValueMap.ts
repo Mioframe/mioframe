@@ -158,10 +158,7 @@ export class WeakValueMap<K, V extends object> implements Iterable<[K, V]> {
    * @param callback — функция, принимающая (value, key, map).
    * @param thisArg — значение, используемое в качестве this при вызове callback.
    */
-  forEach(
-    callback: (value: V, key: K, map: this) => void,
-    thisArg?: unknown,
-  ): void {
+  forEach(callback: (value: V, key: K, map: this) => void, thisArg?: unknown): void {
     for (const [key, ref] of this.#map) {
       const value = ref.deref();
       if (value !== undefined) {

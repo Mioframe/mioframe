@@ -14,10 +14,7 @@ const zodSession = z.object({
   scopes: z.array(zodGOOGLE_SCOPE),
 });
 
-const zodStore = z.catch(
-  z.record(z.email(), z.catch(z.optional(zodSession), undefined)),
-  {},
-);
+const zodStore = z.catch(z.record(z.email(), z.catch(z.optional(zodSession), undefined)), {});
 
 type Store = z.output<typeof zodStore>;
 

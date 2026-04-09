@@ -18,15 +18,12 @@ type WrappedStrictRecordRef<K, V> = {
 };
 
 const wrapStrictRecordCache = defineScopePool(
-  <K extends string, V>(
-    strictRecord: StrictRecord<K, V>,
-  ): WrappedStrictRecordRef<K, V> => {
+  <K extends string, V>(strictRecord: StrictRecord<K, V>): WrappedStrictRecordRef<K, V> => {
     const wrappedStrictRecord = wrapStrictRecord(strictRecord);
 
     const size = computed(() => wrappedStrictRecord.size);
 
-    const { entries, forEach, get, has, keys, remove, set, values } =
-      wrappedStrictRecord;
+    const { entries, forEach, get, has, keys, remove, set, values } = wrappedStrictRecord;
 
     const entriesArray = useReduceIterable(
       entries,

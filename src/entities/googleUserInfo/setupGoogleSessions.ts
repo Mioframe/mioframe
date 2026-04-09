@@ -12,9 +12,7 @@ export const setupGoogleSessions = (clientId: string) => {
     google: { bindGoogleApi },
   } = useMainServiceClient();
 
-  const userinfoGet: UserinfoGet = (
-    ...args: Parameters<UserinfoGet>
-  ): ReturnType<UserinfoGet> =>
+  const userinfoGet: UserinfoGet = (...args: Parameters<UserinfoGet>): ReturnType<UserinfoGet> =>
     loadOauth2().then((oauth2) => oauth2.userinfo.get(...args));
 
   void bindGoogleApi({

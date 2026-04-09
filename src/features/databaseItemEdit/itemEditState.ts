@@ -1,7 +1,4 @@
-import type {
-  DatabaseItem,
-  DatabasePropertyId,
-} from '@shared/lib/databaseDocument';
+import type { DatabaseItem, DatabasePropertyId } from '@shared/lib/databaseDocument';
 import { recordEntries } from '@shared/lib/objectEntries';
 import { cloneDeep } from 'es-toolkit';
 

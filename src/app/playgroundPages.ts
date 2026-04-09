@@ -7,8 +7,7 @@ export const playgroundPages: PlaygroundPage[] = [
   },
   {
     name: 'FieldContainer',
-    component: () =>
-      import('@shared/ui/TextField/MDFieldContainerPlayground.vue'),
+    component: () => import('@shared/ui/TextField/MDFieldContainerPlayground.vue'),
   },
   {
     name: 'TextField',
@@ -36,8 +35,7 @@ export const playgroundPages: PlaygroundPage[] = [
   },
   {
     name: 'UseSortable',
-    component: () =>
-      import('@shared/lib/sortable/ReorderSurfacePlayground.vue'),
+    component: () => import('@shared/lib/sortable/ReorderSurfacePlayground.vue'),
   },
   {
     name: 'Checkbox',
@@ -53,23 +51,19 @@ export const playgroundPages: PlaygroundPage[] = [
   },
   {
     name: 'BackNavigation',
-    component: () =>
-      import('@shared/lib/onBackNavigation/BackNavigationPlayground.vue'),
+    component: () => import('@shared/lib/onBackNavigation/BackNavigationPlayground.vue'),
   },
   {
     name: 'TeleportContainer',
-    component: () =>
-      import('@shared/lib/teleportContainer/TeleportContainerPlayground.vue'),
+    component: () => import('@shared/lib/teleportContainer/TeleportContainerPlayground.vue'),
   },
   {
     name: 'MDNavigationRail',
-    component: () =>
-      import('@shared/ui/Navigation/rail/MDNavigationRailPlayground.vue'),
+    component: () => import('@shared/ui/Navigation/rail/MDNavigationRailPlayground.vue'),
   },
   {
     name: 'MDNavigationBar',
-    component: () =>
-      import('@shared/ui/Navigation/bar/MDNavigationBarPlayground.vue'),
+    component: () => import('@shared/ui/Navigation/bar/MDNavigationBarPlayground.vue'),
   },
   {
     name: 'Query',
