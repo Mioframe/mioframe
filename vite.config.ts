@@ -28,8 +28,7 @@ export default defineConfig(({ mode, isPreview }) => {
             workbox: {
               runtimeCaching: [
                 {
-                  urlPattern:
-                    /^https:\/\/fonts\.(?:googleapis|gstatic)\.com\/.*/i,
+                  urlPattern: /^https:\/\/fonts\.(?:googleapis|gstatic)\.com\/.*/i,
                   handler: 'CacheFirst',
                   options: {
                     cacheName: 'google-fonts',

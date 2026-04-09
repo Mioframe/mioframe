@@ -5,6 +5,7 @@ The rules in this file apply to the whole repository. A deeper `AGENTS.md` overr
 ## Project Shape
 
 This is a local-first personal data manager built around:
+
 - Vue 3 and TypeScript for UI;
 - OPFS and filesystem abstractions for local storage;
 - CRDT-style documents, schema validation, and migrations;

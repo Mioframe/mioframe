@@ -1,16 +1,24 @@
 {
   "$schema": "./node_modules/oxlint/configuration_schema.json",
   "plugins": ["eslint", "typescript", "oxc", "vue"],
+  "options": {
+    "typeAware": true
+  },
   "env": {
     "browser": true,
     "node": true
   },
   "categories": {
-    "correctness": "error"
+    "correctness": "error",
+    "suspicious": "warn",
+    "pedantic": "warn",
+    "perf": "warn",
+    "style": "warn",
+    "restriction": "warn"
   },
   "rules": {
-    "eslint/no-empty-pattern": "off",
-    "eslint/no-useless-rename": "off",
-    "vue/valid-define-props": "off"
+    // "eslint/no-empty-pattern": "off",
+    // "eslint/no-useless-rename": "off",
+    // "vue/valid-define-props": "off"
   }
 }

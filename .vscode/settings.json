@@ -63,5 +63,9 @@
   "js/ts.tsdk.path": "node_modules/typescript/lib",
   "[vue]": {
     "editor.defaultFormatter": "oxc.oxc-vscode"
-  }
+  },
+  "[jsonc]": {
+    "editor.defaultFormatter": "oxc.oxc-vscode"
+  },
+  "oxc.fixKind": "all"
 }
