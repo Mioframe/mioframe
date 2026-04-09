@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, toRefs, watchEffect } from 'vue';
+import { computed, ref, toRefs, watchEffect } from 'vue';
 import { MDDialog } from '@shared/ui/Dialog';
 import { MDTextField } from '@shared/ui/TextField';
 import { cloneDeep } from 'es-toolkit';
@@ -32,6 +32,15 @@ defineSlots<{
 const { property, patch } = useDatabaseProperty(path, documentId, propertyId);
 
 const propertyState = ref<DatabaseUnknownProperty>();
+
+const propertyNameModel = computed<string | undefined>({
+  get: () => propertyState.value?.name,
+  set: (name) => {
+    if (propertyState.value) {
+      propertyState.value.name = name ?? '';
+    }
+  },
+});
 
 const resetPropertyState = () => {
   if (property.value && !(property.value instanceof DomainError)) {
@@ -84,7 +93,7 @@ const onUpdateProperty = (v: DatabaseUnknownProperty) => {
   >
     <template v-if="propertyState">
       <MDTextField
-        v-model:model-value="propertyState.name"
+        v-model:model-value="propertyNameModel"
         label-text="Name"
         class="database-property-creation__field"
         autofocus

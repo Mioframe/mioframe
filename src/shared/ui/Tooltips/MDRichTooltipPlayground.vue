@@ -8,11 +8,17 @@ import {
 import MDRichTooltip from './MDRichTooltip.vue';
 import { MDButton } from '../Button';
 import { useQueryValue } from '@shared/lib/useQueryState';
-import type { ComponentProps } from 'vue-component-type-helpers';
 import { useTemplateRef } from 'vue';
 import { UseDraggable } from '@vueuse/components';
 
-interface State extends ComponentProps<typeof MDRichTooltip> {}
+type State = {
+  subhead: string;
+  useHover?: boolean | undefined;
+  useClick?: boolean | undefined;
+  show?: boolean | undefined;
+  disabledTeleport?: boolean | undefined;
+  placement?: 'top-start' | 'top-end' | 'bottom-end' | 'bottom-start' | undefined;
+};
 
 const state = useQueryValue<State>('state', {
   subhead: '',
@@ -25,13 +31,13 @@ const state = useQueryValue<State>('state', {
 
 const targetEl = useTemplateRef('target');
 
-const placementOptions: State['placement'][] = [
+const placementOptions = [
   'top-start',
   'top-end',
   'bottom-end',
   'bottom-start',
   undefined,
-];
+] as const;
 </script>
 
 <template>

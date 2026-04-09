@@ -19,11 +19,11 @@ import { useOnBackNavigationStackedWhen } from '@shared/lib/onBackNavigation';
 const props = withDefaults(
   defineProps<{
     subhead: string;
-    disabledTeleport?: boolean;
-    targetElement?: MaybeElement;
-    useClick?: boolean;
-    useHover?: boolean;
-    placement?: 'top-start' | 'top-end' | 'bottom-end' | 'bottom-start';
+    disabledTeleport?: boolean | undefined;
+    targetElement?: MaybeElement | undefined;
+    useClick?: boolean | undefined;
+    useHover?: boolean | undefined;
+    placement?: 'top-start' | 'top-end' | 'bottom-end' | 'bottom-start' | undefined;
   }>(),
   {
     placement: 'top-end',
@@ -32,7 +32,7 @@ const props = withDefaults(
 
 const { subhead, targetElement, useClick, useHover, placement } = toRefs(props);
 
-const showModel = defineModel<boolean>('show');
+const showModel = defineModel<boolean | undefined>('show');
 
 const emit = defineEmits<{
   interactionOutside: [e: Event];

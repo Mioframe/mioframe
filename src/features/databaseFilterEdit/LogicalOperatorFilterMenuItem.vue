@@ -14,7 +14,7 @@ import { useDatabaseProperties } from '@entity/databaseProperty';
 
 const props = defineProps<{
   operator: LOGICAL_FILTER_OPERATOR;
-  propertyId?: DatabasePropertyId;
+  propertyId?: DatabasePropertyId | undefined;
   directoryPath: string;
   documentId: AMDocumentId;
 }>();
@@ -72,7 +72,7 @@ const onClickUnaryInProperty = (
 </script>
 
 <template>
-  <MDMenuItemBase :label="label">
+  <MDMenuItemBase :label="label" item-role="menuitem">
     <template #submenu>
       <LogicalOperatorFilterMenuItem
         v-for="subOperator in LOGICAL_FILTER_OPERATOR"

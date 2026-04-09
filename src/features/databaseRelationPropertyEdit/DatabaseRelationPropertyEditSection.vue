@@ -8,7 +8,7 @@ defineProps<{
 }>();
 
 interface PartialRelationProperty extends Omit<RelationProperty, 'relation'> {
-  relation?: Relation;
+  relation?: Relation | undefined;
 }
 
 const propertyModel = defineModel<PartialRelationProperty>('property', {

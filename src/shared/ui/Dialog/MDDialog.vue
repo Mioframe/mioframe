@@ -12,11 +12,11 @@ withDefaults(
      */
     headline: string;
     supportingText: string;
-    type?: 'basic' | 'full-screen';
-    cancelLabel?: string;
-    applyLabel?: string;
-    hasCancelAction?: boolean;
-    loading?: boolean | number;
+    type?: 'basic' | 'full-screen' | undefined;
+    cancelLabel?: string | undefined;
+    applyLabel?: string | undefined;
+    hasCancelAction?: boolean | undefined;
+    loading?: boolean | number | undefined;
     class?: never;
   }>(),
   {

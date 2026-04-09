@@ -35,7 +35,10 @@ export class VirtualFileSystem {
    * Map of mount points to their associated providers and unwatch functions.
    * Keys are normalized paths where the provider is mounted.
    */
-  private mounts: Map<string, { provider: IFileSystemProvider; unwatch?: () => void }> = new Map();
+  private mounts: Map<
+    string,
+    { provider: IFileSystemProvider; unwatch?: (() => void) | undefined }
+  > = new Map();
 
   /**
    * Event emitter for managing VFS events.
@@ -186,7 +189,10 @@ export class VirtualFileSystem {
     const sortedEntries = Array.from(this.mounts.entries()).sort(
       (a, b) => b[0].length - a[0].length,
     );
-    const newMap = new Map<string, { provider: IFileSystemProvider; unwatch?: () => void }>();
+    const newMap = new Map<
+      string,
+      { provider: IFileSystemProvider; unwatch?: (() => void) | undefined }
+    >();
     sortedEntries.forEach(([k, v]) => newMap.set(k, v));
     this.mounts = newMap;
 

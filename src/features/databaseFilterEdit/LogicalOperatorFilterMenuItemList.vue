@@ -7,7 +7,7 @@ import type { AMDocumentId } from '@shared/lib/automerge';
 defineProps<{
   path: string;
   documentId: AMDocumentId;
-  propertyId?: DatabasePropertyId;
+  propertyId?: DatabasePropertyId | undefined;
 }>();
 
 const emit = defineEmits<{

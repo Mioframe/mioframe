@@ -49,7 +49,7 @@ const setupFileSystemService = () => {
       path,
     }: {
       path: string;
-      options?: ReadDirectoryOptions;
+      options?: ReadDirectoryOptions | undefined;
     }) =>
       new Observable<[string, FSNodeStat][] | Error>((subscriber) => {
         const fetchEntries = async () => {

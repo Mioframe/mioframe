@@ -3,8 +3,8 @@ import { computed, ref, toRefs } from 'vue';
 
 const props = withDefaults(
   defineProps<{
-    progress?: number;
-    size?: number;
+    progress?: number | undefined;
+    size?: number | undefined;
   }>(),
   {
     progress: 0,

@@ -10,12 +10,16 @@ const provideSelectOptionKey: InjectionKey<Map<Value, Label>> = Symbol();
 
 const provideClickOption: InjectionKey<(value: Value) => unknown> = Symbol();
 
-export const useSelectOptions = (onClickOption: (value: Value) => unknown) => {
-  const options = shallowReactive(new Map<Value, Label>());
+export const useSelectOptions = <TValue extends Value>(
+  onClickOption: (value: TValue) => unknown,
+) => {
+  const options = shallowReactive(new Map<TValue, Label>());
 
-  provide(provideSelectOptionKey, options);
+  // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- Vue injection key is shared across all select value variants, so the provided map is widened at the injection boundary
+  provide(provideSelectOptionKey, options as Map<Value, Label>);
 
-  provide(provideClickOption, onClickOption);
+  // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- The injected click handler is stored under a non-generic key and widened only at the provide/inject boundary
+  provide(provideClickOption, onClickOption as (value: Value) => unknown);
 
   return options;
 };

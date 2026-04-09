@@ -12,12 +12,14 @@ export const setupGoogleSessions = (clientId: string) => {
     google: { bindGoogleApi },
   } = useMainServiceClient();
 
-  const userinfoGet: UserinfoGet = (...args: Parameters<UserinfoGet>): ReturnType<UserinfoGet> =>
-    loadOauth2().then((oauth2) => oauth2.userinfo.get(...args));
+  const userinfoGet: UserinfoGet = (request): ReturnType<UserinfoGet> =>
+    loadOauth2().then((oauth2) =>
+      oauth2.userinfo.get(request.oauth_token ? { oauth_token: request.oauth_token } : {}),
+    );
 
   void bindGoogleApi({
     requestAccessToken: (scopes: GOOGLE_SCOPE[], email?: string) =>
-      requestAccessToken(clientId, scopes, { email }),
+      requestAccessToken(clientId, scopes, email ? { email } : {}),
     userinfoGet,
     revoke: revokeGoogleAccess,
   });

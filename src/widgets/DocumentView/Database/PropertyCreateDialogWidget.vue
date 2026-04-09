@@ -14,13 +14,23 @@ defineProps<{
   directoryPath: string;
 }>();
 
+const emit = defineEmits<{
+  created: [];
+  cancel: [];
+}>();
+
 const zodPartialRelation = extend(zodRelationProperty, {
   relation: optional(zodRelation),
 });
 </script>
 
 <template>
-  <DatabasePropertyCreationDialog :path="directoryPath" :document-id="documentId">
+  <DatabasePropertyCreationDialog
+    :path="directoryPath"
+    :document-id="documentId"
+    @created="emit('created')"
+    @cancel="emit('cancel')"
+  >
     <template #after="{ property, onUpdateProperty }">
       <DatabaseRelationPropertyEditSection
         v-if="zodIs(property, zodPartialRelation)"

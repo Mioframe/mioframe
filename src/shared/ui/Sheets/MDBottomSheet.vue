@@ -8,7 +8,7 @@ import { useOverlayContainer } from '../Overlay';
 
 const props = withDefaults(
   defineProps<{
-    type?: 'standard' | 'modal';
+    type?: 'standard' | 'modal' | undefined;
     /**
      * unique label for screen readers and navigation
      */

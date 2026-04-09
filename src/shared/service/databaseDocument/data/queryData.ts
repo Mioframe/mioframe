@@ -24,15 +24,15 @@ export const queryIdList = <TSchemaItem extends DatabaseItem = DatabaseItem>(
     filter,
     properties,
   }: {
-    itemQuery?: Query<TSchemaItem>;
-    idQuery?: Query<DatabaseItemId>;
-    sorting?: DatabaseSortMap;
-    filter?: DatabaseFilter;
-    properties?: DatabaseUnknownPropertiesMap;
+    itemQuery?: Query<TSchemaItem> | undefined;
+    idQuery?: Query<DatabaseItemId> | undefined;
+    sorting?: DatabaseSortMap | undefined;
+    filter?: DatabaseFilter | undefined;
+    properties?: DatabaseUnknownPropertiesMap | undefined;
     slice?: {
-      first?: number;
-      last?: number;
-    };
+      first?: number | undefined;
+      last?: number | undefined;
+    } | undefined;
   },
 ): DatabaseItemId[] => {
   const entries = isArray(data) ? data : recordEntries(data);

@@ -18,15 +18,15 @@ const emit = defineEmits<{
 
 const labelText = computed(() => property.name);
 
-const vModel = computed({
+const vModel = computed<string | undefined>({
   get: () => {
     if (isNil(value)) {
-      return '';
+      return undefined;
     }
     return toString(value);
   },
-  set: (v: string) => {
-    emit('update:modelValue', v);
+  set: (v) => {
+    emit('update:modelValue', v ?? '');
   },
 });
 </script>

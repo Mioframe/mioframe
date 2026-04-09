@@ -10,8 +10,8 @@ type AlertDescription = {
   headline: string;
   supportingText: string;
   id: string;
-  confirmLabel?: string;
-  symbolName?: string;
+  confirmLabel?: string | undefined;
+  symbolName?: string | undefined;
   callback: (result: boolean) => void;
 };
 

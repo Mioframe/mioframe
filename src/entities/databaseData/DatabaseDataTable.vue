@@ -15,8 +15,8 @@ const props = defineProps<{
   directoryPath: string;
   documentId: AMDocumentId;
   properties: Readonly<DatabasePropertyId[]>;
-  viewId?: DatabaseViewId;
-  idQuery?: ItemIdQuery;
+  viewId?: DatabaseViewId | undefined;
+  idQuery?: ItemIdQuery | undefined;
 }>();
 
 const { directoryPath, documentId, viewId, idQuery } = toRefs(props);

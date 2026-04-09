@@ -15,6 +15,10 @@ const { path, documentId, propertyId } = toRefs(props);
 
 const { property } = useDatabaseProperty(path, documentId, propertyId);
 
+const emit = defineEmits<{
+  click: [];
+}>();
+
 const item = computed(() => ({
   label: property.value?.name ?? 'unknown property',
   key: propertyId.value,
@@ -22,5 +26,5 @@ const item = computed(() => ({
 </script>
 
 <template>
-  <MDMenuItem :item="item" />
+  <MDMenuItem :item="item" @click="emit('click')" />
 </template>

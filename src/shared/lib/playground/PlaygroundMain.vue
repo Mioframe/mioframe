@@ -3,26 +3,15 @@ import { RouterView } from 'vue-router';
 import { useRoute } from 'vue-router';
 import PlaygroundNavigation from './PlaygroundNavigation.vue';
 import { computed } from 'vue';
-import type { PlaygroundNavigationDescription, PlaygroundRouteRecordRaw } from './types';
+import type { PlaygroundNavigationDescription } from './types';
 
 const route = useRoute();
 
 const playgroundRoutes = computed(
   // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- route meta typing requires assertion
-  () => <PlaygroundRouteRecordRaw[] | undefined>route.meta.playgroundRoutes,
+  () => <PlaygroundNavigationDescription[] | undefined>route.meta.playgroundNavigation,
 );
-
-const routeToNavigation = ({
-  name: routeName,
-  meta: { name },
-  children,
-}: PlaygroundRouteRecordRaw): PlaygroundNavigationDescription => ({
-  name,
-  routeName,
-  children: children?.map(routeToNavigation),
-});
-
-const navigation = computed(() => playgroundRoutes.value?.map(routeToNavigation));
+const navigation = computed(() => playgroundRoutes.value);
 </script>
 
 <template>

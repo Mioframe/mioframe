@@ -22,7 +22,7 @@ const props = defineProps<{
 
 const { documentId, path } = toRefs(props);
 
-const selectedViewId = defineModel<DatabaseViewId>('selectedViewId');
+const selectedViewId = defineModel<DatabaseViewId | undefined>('selectedViewId');
 
 const emit = defineEmits<{
   closed: [];

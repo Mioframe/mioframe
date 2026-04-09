@@ -19,7 +19,7 @@ const props = defineProps<{
   documentId: AMDocumentId;
   propertyId: DatabasePropertyId;
   directoryPath: string;
-  parentRelation?: ParentRelation;
+  parentRelation?: ParentRelation | undefined;
 }>();
 
 const { directoryPath, value, documentId, propertyId, parentRelation } = toRefs(props);
@@ -29,9 +29,13 @@ defineSlots<{
     value: RelationValue;
     relationDocumentId: AMDocumentId;
     relationDirectoryPath: string;
-    viewId?: DatabaseViewId;
+    viewId?: DatabaseViewId | undefined;
     parentRelation: ParentRelation;
   }) => unknown;
+}>();
+
+const emit = defineEmits<{
+  click: [];
 }>();
 
 const { property } = useRelationProperty(directoryPath, documentId, propertyId);
@@ -67,7 +71,7 @@ const mergedParentRelation = computed((): ParentRelation => {
   };
 });
 
-const showValue = ref(false);
+const showValue = ref<boolean | undefined>(false);
 
 const showSubRelationButton = useTemplateRef<MaybeElement>('showSubRelationButton');
 
@@ -83,7 +87,7 @@ const interactionOutside = (e: Event) => {
 </script>
 
 <template>
-  <div class="relation-value">
+  <div class="relation-value" @click="emit('click')">
     <MDSymbol
       v-if="isNil(verifiedValue) || !relationDocumentId"
       name="unknown_med"

@@ -14,14 +14,14 @@ const {
   for: labelFor,
   autofocus,
 } = defineProps<{
-  is?: Is;
-  type?: Is extends 'button' ? 'button' | 'submit' | 'reset' : false;
-  disabled?: boolean;
-  disableRipple?: boolean;
-  draggable?: boolean;
-  id?: string;
-  for?: Is extends 'label' ? string : false;
-  autofocus?: boolean;
+  is?: Is | undefined;
+  type?: (Is extends 'button' ? 'button' | 'submit' | 'reset' : false) | undefined;
+  disabled?: boolean | undefined;
+  disableRipple?: boolean | undefined;
+  draggable?: boolean | undefined;
+  id?: string | undefined;
+  for?: (Is extends 'label' ? string : false) | undefined;
+  autofocus?: boolean | undefined;
 }>();
 
 const emit = defineEmits<{

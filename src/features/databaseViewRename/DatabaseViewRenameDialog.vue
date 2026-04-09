@@ -5,7 +5,7 @@ import type { DatabaseViewId } from '@shared/lib/databaseDocument';
 import { DomainError } from '@shared/lib/error';
 import { MDDialog } from '@shared/ui/Dialog';
 import { MDTextField } from '@shared/ui/TextField';
-import { ref, toRefs, watchEffect } from 'vue';
+import { computed, ref, toRefs, watchEffect } from 'vue';
 
 const props = defineProps<{
   directoryPath: string;
@@ -18,6 +18,13 @@ const { directoryPath: path, documentId, viewId } = toRefs(props);
 const { view: stateView, patch } = useDatabaseView(path, documentId, viewId);
 
 const nameState = ref<string>();
+
+const nameModel = computed<string | undefined>({
+  get: () => nameState.value,
+  set: (name) => {
+    nameState.value = name;
+  },
+});
 
 const resetNameState = () => {
   if (!(stateView.value instanceof DomainError)) {
@@ -66,6 +73,6 @@ const onCancel = () => {
     @apply="onApply"
     @cancel="onCancel"
   >
-    <MDTextField v-model:model-value="nameState" label-text="Name" />
+    <MDTextField v-model:model-value="nameModel" label-text="Name" />
   </MDDialog>
 </template>

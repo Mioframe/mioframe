@@ -7,9 +7,9 @@ import { MDState } from '../State';
 
 const props = withDefaults(
   defineProps<{
-    width?: number;
+    width?: number | undefined;
     collapsed?: boolean | undefined;
-    type?: 'standard' | 'modal';
+    type?: 'standard' | 'modal' | undefined;
   }>(),
   { collapsed: undefined, type: 'standard' },
 );

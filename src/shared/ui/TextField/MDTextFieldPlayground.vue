@@ -9,7 +9,34 @@ import {
 } from '@shared/lib/playground';
 import MDTextField from './MDTextField.vue';
 import { useQueryValue } from '@shared/lib/useQueryState';
-import type { ComponentProps } from 'vue-component-type-helpers';
+
+type InputType =
+  | 'number'
+  | 'time'
+  | 'text'
+  | 'color'
+  | 'date'
+  | 'datetime-local'
+  | 'email'
+  | 'month'
+  | 'password'
+  | 'search'
+  | 'tel'
+  | 'url'
+  | 'week'
+  | 'multiline';
+
+type State = {
+  labelText: string;
+  modelValue?: string | undefined;
+  disabled?: boolean | undefined;
+  error?: boolean | undefined;
+  inputType?: InputType | undefined;
+  maxCharacters?: number | undefined;
+  readonly?: boolean | undefined;
+  supportingText?: string | undefined;
+  type?: 'filled' | 'outlined' | undefined;
+};
 
 const inputTypeOptions = [
   'number',
@@ -31,7 +58,7 @@ const inputTypeOptions = [
 
 const typeOptions = ['filled', 'outlined', undefined] as const;
 
-const state = useQueryValue<ComponentProps<typeof MDTextField>>('state', {
+const state = useQueryValue<State>('state', {
   labelText: 'labelText',
   modelValue: undefined,
   disabled: undefined,

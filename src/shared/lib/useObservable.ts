@@ -1,5 +1,5 @@
 import { tryOnScopeDispose } from '@vueuse/core';
-import { firstValueFrom, timeout, type Observable } from 'rxjs';
+import { firstValueFrom, timeout, type Observable, type Observer } from 'rxjs';
 import type { Promisable } from 'type-fest';
 import { readonly, shallowRef } from 'vue';
 
@@ -31,11 +31,18 @@ export const fromObservable = <T>($observable: Observable<T>): ObservableSource<
       error?: (err: unknown) => void;
       complete?: () => void;
     }): Promisable<() => void> => {
-      const subscription = $observable.subscribe({
-        next,
-        error,
-        complete,
-      });
+      const observer: Partial<Observer<T>> = {};
+      if (next) {
+        observer.next = next;
+      }
+      if (error) {
+        observer.error = error;
+      }
+      if (complete) {
+        observer.complete = complete;
+      }
+
+      const subscription = $observable.subscribe(observer);
 
       return () => {
         subscription.unsubscribe();

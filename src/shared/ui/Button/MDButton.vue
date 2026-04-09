@@ -10,15 +10,15 @@ const {
   size = 'small',
   shape = 'round',
 } = defineProps<{
-  formAction?: 'submit' | 'reset' | 'button';
-  color?: 'elevated' | 'filled' | 'tonal' | 'outlined' | 'text';
+  formAction?: 'submit' | 'reset' | 'button' | undefined;
+  color?: 'elevated' | 'filled' | 'tonal' | 'outlined' | 'text' | undefined;
   label: string;
-  disabled?: boolean;
-  loading?: number | boolean;
-  type?: 'default' | 'toggle';
-  size?: 'extra-small' | 'small' | 'medium' | 'large' | 'extra-large';
-  shape?: 'round' | 'square';
-  selected?: boolean;
+  disabled?: boolean | undefined;
+  loading?: number | boolean | undefined;
+  type?: 'default' | 'toggle' | undefined;
+  size?: 'extra-small' | 'small' | 'medium' | 'large' | 'extra-large' | undefined;
+  shape?: 'round' | 'square' | undefined;
+  selected?: boolean | undefined;
 }>();
 
 const slots = defineSlots<{

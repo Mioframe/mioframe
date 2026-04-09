@@ -16,7 +16,7 @@ defineSlots<{
 
 const openModel = defineModel<boolean>('open', { required: true });
 
-const scrollPositionModel = defineModel<number>('scrollPosition');
+const scrollPositionModel = defineModel<number | undefined>('scrollPosition');
 
 const containerEl = useTemplateRef<HTMLElement>('containerEl');
 

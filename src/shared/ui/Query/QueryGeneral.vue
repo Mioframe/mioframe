@@ -14,7 +14,7 @@ defineProps<{
   value: unknown;
   operator: string;
   parentOperator: ValueOf<typeof OPERATOR>;
-  property?: string;
+  property?: string | undefined;
 }>();
 
 defineSlots<{

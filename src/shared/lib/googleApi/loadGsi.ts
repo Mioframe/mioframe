@@ -101,11 +101,17 @@ export const requestAccessToken = limitFunction(
         }
       }
 
-      stateTokenClient.requestAccessToken({
-        scope: scopes.join(' '),
-        prompt: email ? '' : undefined,
-        hint: email,
-      });
+      if (email) {
+        stateTokenClient.requestAccessToken({
+          scope: scopes.join(' '),
+          prompt: '',
+          hint: email,
+        });
+      } else {
+        stateTokenClient.requestAccessToken({
+          scope: scopes.join(' '),
+        });
+      }
     });
   },
   {

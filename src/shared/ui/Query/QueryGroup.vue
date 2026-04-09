@@ -9,7 +9,7 @@ defineProps<{
   operator: typeof OPERATOR.$and | typeof OPERATOR.$or;
   parentOperator: ValueOf<typeof OPERATOR>;
   array: unknown[];
-  property?: string;
+  property?: string | undefined;
 }>();
 
 const slots = defineSlots<{

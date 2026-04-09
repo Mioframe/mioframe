@@ -15,10 +15,10 @@ const props = withDefaults(
   defineProps<{
     directoryPath: string;
     documentId: AMDocumentId;
-    itemId?: DatabaseItemId;
-    headline?: string;
-    supportingText?: string;
-    applyLabel?: string;
+    itemId?: DatabaseItemId | undefined;
+    headline?: string | undefined;
+    supportingText?: string | undefined;
+    applyLabel?: string | undefined;
   }>(),
   {
     applyLabel: 'Apply',

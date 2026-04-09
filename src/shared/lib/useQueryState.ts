@@ -29,21 +29,23 @@ export const useQueryValue = <P extends object>(
 ): Reactive<P> => {
   const localState = reactive<P>(initialState);
 
-  const queryState = useRouteQuery(queryRootName, undefined, {
-    mode,
-    transform: {
-      get: (v: unknown) => {
-        if (isString(v)) {
-          return toMerged(initialState, queryString.parse(v));
-        }
+  const transform = {
+    get: (v: unknown) => {
+      if (isString(v)) {
+        return toMerged(initialState, queryString.parse(v));
+      }
 
-        return initialState;
-      },
-      set: (v: P) => {
-        return queryString.stringify(cloneDeep(v));
-      },
+      return initialState;
     },
-  });
+    set: (v: P) => {
+      return queryString.stringify(cloneDeep(v));
+    },
+  };
+
+  const queryState =
+    mode === undefined
+      ? useRouteQuery(queryRootName, undefined, { transform })
+      : useRouteQuery(queryRootName, undefined, { mode, transform });
 
   const localStateWatchHandle = watch(
     localState,

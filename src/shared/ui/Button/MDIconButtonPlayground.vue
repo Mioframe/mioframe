@@ -7,10 +7,24 @@ import {
   PlaygroundUnion,
 } from '@shared/lib/playground';
 import { useQueryValue } from '@shared/lib/useQueryState';
-import type { ComponentProps } from 'vue-component-type-helpers';
 import MDIconButton from './MDIconButton.vue';
 
-interface State extends ComponentProps<typeof MDIconButton> {}
+type State = {
+  tooltip: string;
+  formAction?: 'submit' | 'reset' | undefined;
+  color?: 'filled' | 'outlined' | 'tonal' | 'standard' | undefined;
+  disabled?: boolean | undefined;
+  pressed?: boolean | undefined;
+  focused?: boolean | undefined;
+  loading?: number | boolean | undefined;
+  mdSymbolName?: string | undefined;
+  type?: 'default' | 'toggle' | undefined;
+  selected?: boolean | undefined;
+  shape?: 'round' | 'square' | undefined;
+  showTooltipOnClick?: boolean | undefined;
+  size?: 'extra-small' | 'small' | 'medium' | 'large' | 'extra-large' | undefined;
+  width?: 'narrow' | 'default' | 'wide' | undefined;
+};
 
 const colorOptions = ['filled', 'outlined', 'tonal', 'standard', undefined] as const;
 

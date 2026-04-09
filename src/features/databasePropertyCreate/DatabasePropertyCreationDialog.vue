@@ -47,12 +47,23 @@ const PROPERTY_TYPES = {
   PROPERTY_TYPE_RELATION,
 } as const;
 
-const partialPropertyState = ref<PartialDeep<DatabaseUnknownProperty>>({});
+type PropertyDraft = PartialDeep<Omit<DatabaseUnknownProperty, 'name' | 'type'>> & {
+  name?: string | undefined;
+  type?: ValueOf<typeof PROPERTY_TYPES> | undefined;
+};
 
-const typeSelect = ref<ValueOf<typeof PROPERTY_TYPES>[]>([PROPERTY_TYPES.PROPERTY_TYPE_STRING]);
+const partialPropertyState = ref<PropertyDraft>({});
+
+const typeSelect = ref<(string | number)[]>([PROPERTY_TYPES.PROPERTY_TYPE_STRING]);
+
+const selectedPropertyType = computed<ValueOf<typeof PROPERTY_TYPES> | undefined>(() => {
+  const type = typeSelect.value.at(0);
+
+  return Object.values(PROPERTY_TYPES).find((propertyType) => propertyType === type);
+});
 
 watchEffect(() => {
-  partialPropertyState.value.type = typeSelect.value.at(0);
+  partialPropertyState.value.type = selectedPropertyType.value;
 });
 
 const onUpdateDefaultValue = (value: unknown) => {
@@ -95,6 +106,13 @@ const onUpdateProperty = (v: DatabaseUnknownProperty) => {
     type: partialPropertyState.value.type,
   };
 };
+
+const propertyNameModel = computed<string | undefined>({
+  get: () => partialPropertyState.value.name,
+  set: (name) => {
+    partialPropertyState.value.name = name;
+  },
+});
 </script>
 
 <template>
@@ -108,7 +126,7 @@ const onUpdateProperty = (v: DatabaseUnknownProperty) => {
     @cancel="onCancel"
   >
     <MDTextField
-      v-model:model-value="partialPropertyState.name"
+      v-model:model-value="propertyNameModel"
       label-text="Name"
       class="database-property-creation__field"
     />

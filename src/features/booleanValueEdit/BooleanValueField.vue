@@ -4,7 +4,7 @@ import { MDCheckboxField } from '@shared/ui/Checkbox';
 import { isUndefined } from 'es-toolkit';
 import { computed } from 'vue';
 
-const { modelValue, property } = defineProps<{
+const { modelValue, property, disabled, autofocus } = defineProps<{
   property: BooleanProperty;
   modelValue: unknown;
   disabled?: boolean;

@@ -14,9 +14,9 @@ import { useLocalSettings } from '@entity/localSettings';
 import PaneContextWrap from './PaneContextWrap.vue';
 
 const props = defineProps<{
-  navigationButtons?: NavigationButton[];
-  activeNavigationButton?: NavigationButton;
-  hasMenuButton?: boolean;
+  navigationButtons?: NavigationButton[] | undefined;
+  activeNavigationButton?: NavigationButton | undefined;
+  hasMenuButton?: boolean | undefined;
   panes: Pane[];
 }>();
 

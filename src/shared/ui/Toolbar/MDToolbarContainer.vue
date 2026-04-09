@@ -12,11 +12,11 @@ import { usePaneContainer } from '../Layout/useMDContainer';
 const props = withDefaults(
   defineProps<{
     type: 'docked' | 'floating';
-    layout?: 'horizontal' | 'vertical';
-    color?: 'standard' | 'vibrant';
-    centerAligned?: boolean;
-    autoHide?: boolean;
-    autoHideTarget?: MaybeElement;
+    layout?: 'horizontal' | 'vertical' | undefined;
+    color?: 'standard' | 'vibrant' | undefined;
+    centerAligned?: boolean | undefined;
+    autoHide?: boolean | undefined;
+    autoHideTarget?: MaybeElement | undefined;
   }>(),
   { layout: 'horizontal', color: 'standard' },
 );

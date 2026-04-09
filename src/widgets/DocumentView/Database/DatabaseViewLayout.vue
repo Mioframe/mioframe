@@ -13,8 +13,8 @@ import DatabasePropertyBlock from '@entity/databaseProperty/DatabasePropertyBloc
 const props = defineProps<{
   path: string;
   documentId: AMDocumentId;
-  viewId?: DatabaseViewId;
-  itemIdQuery?: ItemIdQuery;
+  viewId?: DatabaseViewId | undefined;
+  itemIdQuery?: ItemIdQuery | undefined;
 }>();
 
 const slots = defineSlots<{
