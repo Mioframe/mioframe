@@ -85,8 +85,8 @@ onBeforeUnmount(async () => {
 
 const valueWatchHandle = watch(
   value,
-  (value) => {
-    setJsonContent(value);
+  (nextValue) => {
+    setJsonContent(nextValue);
   },
   { immediate: true, deep: true },
 );

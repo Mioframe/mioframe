@@ -163,7 +163,7 @@ const setupDocumentService = () => {
           callback(cfrDocumentContent);
           resolve();
         } catch (error) {
-          reject(error);
+          reject(error instanceof Error ? error : new Error('Failed to change document', { cause: error }));
           throw error;
         }
       });

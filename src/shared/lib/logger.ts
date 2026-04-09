@@ -4,7 +4,6 @@ import { sessionUniqueId } from './uniqueId';
 import { generateHsl } from './generateColor';
 import { isPromise } from 'es-toolkit';
 
-/* eslint-disable no-console -- This is a logger utility, console is the intended output */
 interface LogOptions {
   /** Whether to log function arguments. @default false */
   showArgs?: boolean;
@@ -232,4 +231,3 @@ export function withLog<Args extends unknown[], Return>(
   const { name, ...rest } = options;
   return (...args: Args): Return => logExecution(fn, args, name, rest);
 }
-/* eslint-enable no-console -- End of logger utility, re-enable console linting */

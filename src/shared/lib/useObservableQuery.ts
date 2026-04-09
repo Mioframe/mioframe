@@ -187,7 +187,6 @@ export function useObservableQuery<T, Q>(
     error.value = e;
     isLoading.value = false;
 
-    // eslint-disable-next-line no-console -- onError is a dedicated error handler that logs errors to the console for debugging purposes
     console.error(e);
   };
 

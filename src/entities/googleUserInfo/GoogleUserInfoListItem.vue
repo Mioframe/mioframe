@@ -19,7 +19,7 @@ defineSlots<{
 
 const { data: userInfo, profileImageBlobUrl, evaluating } = useGoogleUserInfo(email);
 
-const { deleteSession, revokeAccess } = useGoogleSessions();
+const { deleteSession: removeSession, revokeAccess: revokeSessionAccess } = useGoogleSessions();
 const activeAction = ref<'delete' | 'revoke'>();
 const { addSnackbar } = useSnackbar();
 
@@ -53,15 +53,15 @@ const profileImageUrl = computed(() =>
   profileImageBlobUrl.value instanceof Error ? undefined : profileImageBlobUrl.value,
 );
 
-const error = computed(() => (userInfo.value instanceof Error ? userInfo.value : undefined));
+const userInfoError = computed(() => (userInfo.value instanceof Error ? userInfo.value : undefined));
 
 const onClickDeleteSession = async () => {
   activeAction.value = 'delete';
   try {
-    await deleteSession(email.value);
-  } catch (error) {
+    await removeSession(email.value);
+  } catch (caughtError) {
     addSnackbar({
-      text: error instanceof Error ? error.message : 'Failed to delete session',
+      text: caughtError instanceof Error ? caughtError.message : 'Failed to delete session',
     });
   } finally {
     activeAction.value = undefined;
@@ -71,10 +71,11 @@ const onClickDeleteSession = async () => {
 const onClickRevokeAccess = async () => {
   activeAction.value = 'revoke';
   try {
-    await revokeAccess(email.value);
-  } catch (error) {
+    await revokeSessionAccess(email.value);
+  } catch (caughtError) {
     addSnackbar({
-      text: error instanceof Error ? error.message : 'Failed to revoke access',
+      text:
+        caughtError instanceof Error ? caughtError.message : 'Failed to revoke access',
     });
   } finally {
     activeAction.value = undefined;
@@ -107,7 +108,7 @@ const headline = computed(() => {
     return 'Loading';
   }
 
-  if (error.value) {
+  if (userInfoError.value) {
     return 'Google profile error';
   }
 
@@ -115,8 +116,8 @@ const headline = computed(() => {
 });
 
 const supportingText = computed(() => {
-  if (error.value) {
-    return error.value.message;
+  if (userInfoError.value) {
+    return userInfoError.value.message;
   }
 
   return supportingTextUser.value;

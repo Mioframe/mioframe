@@ -56,14 +56,15 @@ export const setupRepoState = (repo: Repo): RepoState => {
 
   const documentSearchSetWatchHandle = watch(
     documentSearchSet,
-    throttle(async (documentSearchSet: Set<AMDocumentId>) => {
-      for (const documentId of documentSearchSet) {
-        if (!mapRef.has(documentId)) {
-          // TODO: repo.find длительная операция?
-          const handle = await repo.find<UnknownRecord>(documentId);
-          addDocToState(handle);
-        }
-      }
+    throttle(async (pendingDocumentSearchSet: Set<AMDocumentId>) => {
+      const handles = await Promise.all(
+        Array.from(pendingDocumentSearchSet)
+          .filter((documentId) => !mapRef.has(documentId))
+          .map((documentId) => repo.find<UnknownRecord>(documentId)),
+      );
+      handles.forEach((handle) => {
+        addDocToState(handle);
+      });
     }, 500),
   );
 
@@ -134,9 +135,9 @@ export const useRepo = (
 
   watch(
     documentsForSearch,
-    (documentsForSearch, old) => {
-      if (documentsForSearch && !isEqual(documentsForSearch, old)) {
-        find(documentsForSearch);
+    (nextDocumentsForSearch, oldDocumentsForSearch) => {
+      if (nextDocumentsForSearch && !isEqual(nextDocumentsForSearch, oldDocumentsForSearch)) {
+        find(nextDocumentsForSearch);
       }
     },
     { immediate: true, deep: true },

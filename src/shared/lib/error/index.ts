@@ -15,17 +15,17 @@ export class DomainError extends Error {
   constructor(message?: string, options?: { cause?: unknown });
   constructor(
     options: string | SerializedDomainError = 'Unexpected error',
-    { cause }: { cause?: unknown } = {},
+    { cause: initialCause }: { cause?: unknown } = {},
   ) {
     if (isString(options)) {
       super(options);
-      this.cause = cause;
+      this.cause = initialCause;
     } else {
-      const { message, name, stack, cause } = options;
+      const { message, name, stack, cause: serializedCause } = options;
       super(message);
       this.name = name;
       this.stack = stack;
-      this.cause = cause;
+      this.cause = serializedCause;
     }
   }
 

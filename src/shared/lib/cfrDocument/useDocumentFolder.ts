@@ -31,10 +31,10 @@ export const documentFolderPool = defineScopePool((directory: WritableDirectoryF
 
   watch(
     directoryRepoMap,
-    (directoryRepoMap) => {
-      if (directoryRepoMap) {
+    (nextDirectoryRepoMap) => {
+      if (nextDirectoryRepoMap) {
         const oldDocumentIdSet = new Set(documentMap.keys());
-        directoryRepoMap.forEach((docHandle, documentId) => {
+        nextDirectoryRepoMap.forEach((docHandle, documentId) => {
           oldDocumentIdSet.delete(documentId);
           if (!documentMap.has(documentId)) {
             const scope = effectScope();

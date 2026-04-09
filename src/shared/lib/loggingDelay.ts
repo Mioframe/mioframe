@@ -23,13 +23,11 @@ export function loggingDelay<A extends unknown[], R>(
         return result
           .then((value: R) => {
             const end = performance.now();
-            // eslint-disable-next-line no-console -- This is a logging utility, so using console.log is appropriate here.
             console.log(`Async function "${functionName}" completed in ${end - start} ms`);
             return value;
           })
           .catch((error: unknown) => {
             const end = performance.now();
-            // eslint-disable-next-line no-console -- This is a logging utility, so using console.log is appropriate here.
             console.log(
               `Async function "${functionName}" completed with error in ${end - start} ms`,
             );
@@ -37,13 +35,11 @@ export function loggingDelay<A extends unknown[], R>(
           });
       } else {
         const end = performance.now();
-        // eslint-disable-next-line no-console -- This is a logging utility, so using console.log is appropriate here.
         console.log(`Sync function "${functionName}" completed in ${end - start} ms`);
         return result;
       }
     } catch (error) {
       const end = performance.now();
-      // eslint-disable-next-line no-console -- This is a logging utility, so using console.log is appropriate here.
       console.log(`Sync function "${functionName}" completed with error in ${end - start} ms`);
       throw error;
     }

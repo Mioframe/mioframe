@@ -31,6 +31,7 @@ const useBackNavigationStack = createGlobalState(() => {
         let allowNavigation = true;
 
         for (let index = handlerStack.length - 1; index >= 0 && allowNavigation; index--) {
+          // eslint-disable-next-line no-await-in-loop -- handlers are ordered by stack priority and later handlers should not run after a rejection
           allowNavigation = (await handlerStack.at(index)?.(to, from)) === true;
         }
 

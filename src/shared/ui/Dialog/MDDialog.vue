@@ -17,7 +17,6 @@ withDefaults(
     applyLabel?: string;
     hasCancelAction?: boolean;
     loading?: boolean | number;
-    // eslint-disable-next-line vue/no-unused-properties -- component don't support inheritance of classes
     class?: never;
   }>(),
   {

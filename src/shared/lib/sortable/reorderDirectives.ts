@@ -13,7 +13,6 @@ const warnDirectiveRootCoupling = (directiveName: string, vnode: VNode, element:
       : 'AnonymousComponent';
 
   if (!(element instanceof HTMLElement)) {
-    // eslint-disable-next-line no-console -- dev-only warning for invalid directive host
     console.warn(
       `[sortable] ${directiveName} requires an HTMLElement root; ` +
         `${componentName} does not expose one.`,
@@ -21,7 +20,6 @@ const warnDirectiveRootCoupling = (directiveName: string, vnode: VNode, element:
     return;
   }
 
-  // eslint-disable-next-line no-console -- dev-only warning about component root coupling
   console.warn(
     `[sortable] ${directiveName} is used on ${componentName}. ` +
       'This relies on the component keeping a single HTMLElement root.',
@@ -35,7 +33,6 @@ const asHtmlElement = (directiveName: string, element: unknown): HTMLElement | u
   }
 
   if (!import.meta.env.PROD) {
-    // eslint-disable-next-line no-console -- dev-only warning for invalid directive host
     console.warn(
       `[sortable] ${directiveName} can only be used on elements with an HTMLElement root.`,
     );

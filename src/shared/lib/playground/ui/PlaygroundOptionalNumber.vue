@@ -9,8 +9,8 @@ const isNotUndefined = ref(false);
 
 watch(
   isNotUndefined,
-  (isNotUndefined) => {
-    value.value = isNotUndefined ? 0 : undefined;
+  (hasValue) => {
+    value.value = hasValue ? 0 : undefined;
   },
   { immediate: true },
 );

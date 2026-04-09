@@ -99,7 +99,6 @@ export class EventEmitter {
     this.errorHandler =
       errorHandler ||
       ((e) => {
-        // eslint-disable-next-line no-console -- for isolate
         console.error('VFS Event Listener Error:', e);
       });
   }

@@ -14,7 +14,7 @@ const props = defineProps<{
   propertyId: DatabasePropertyId;
 }>();
 
-const { path: path, documentId, propertyId } = toRefs(props);
+const { path, documentId, propertyId } = toRefs(props);
 
 const emit = defineEmits<{
   edited: [];

@@ -103,8 +103,8 @@ useRipple(computed(() => (enableRipple.value ? refEl.value : undefined)));
 
 watch(
   [() => autofocus, refEl],
-  ([autofocus, el]) => {
-    if (autofocus && el) {
+  ([shouldAutofocus, el]) => {
+    if (shouldAutofocus && el) {
       el.focus();
     }
   },

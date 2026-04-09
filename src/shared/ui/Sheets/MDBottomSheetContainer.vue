@@ -77,8 +77,8 @@ const fullscreen = computed(
   () => containerScrollY.value >= windowHeight.value - dragHandleHeight.value,
 );
 
-watch(fullscreen, (fullscreen) => {
-  modelFullscreen.value = fullscreen;
+watch(fullscreen, (isFullscreen) => {
+  modelFullscreen.value = isFullscreen;
 });
 
 watchEffect(() => {

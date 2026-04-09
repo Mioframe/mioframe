@@ -66,7 +66,6 @@ export const defineScopePool = <K extends WeakKey, V extends object>(
 
       // ⚠️ WARNING 2: Подозрительно много подписчиков
       if (entry.refs > maxRefsWarnThreshold) {
-        // eslint-disable-next-line no-console -- Memory Leak Detected
         console.warn(
           `[ScopePool] High ref count warning! Key has ${entry.refs} active references.`,
           `Check for memory leaks or missing release() calls. Key:`,
@@ -91,7 +90,6 @@ export const defineScopePool = <K extends WeakKey, V extends object>(
         finalizationRegistry.unregister(key);
 
         if (debug) {
-          // eslint-disable-next-line no-console -- for debug
           console.debug('[ScopePool] Disposed scope for key', key);
         }
       }
@@ -110,7 +108,6 @@ export const usePoolState = <K extends WeakKey, V>(
 ): ComputedRef<V | undefined> => {
   // ⚠️ WARNING 1: Вызов вне реактивного контекста
   if (!getCurrentScope()) {
-    // eslint-disable-next-line no-console -- Memory Leak Detected
     console.warn(
       '[ScopePool] Memory Leak Detected: "usePoolState" called outside of an active EffectScope.',
       'Cleanup handlers will never run. Use "pool.retain/release" manually or wrap this in an "effectScope".',

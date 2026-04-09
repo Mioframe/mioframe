@@ -37,8 +37,8 @@ export const defineAllowedBottomNavigation = (allowed: Ref<boolean>) => {
 
   watch(
     allowed,
-    (allowed) => {
-      if (allowed) {
+    (isAllowed) => {
+      if (isAllowed) {
         numberOfBottomNavigationBans.value = Math.max(numberOfBottomNavigationBans.value - 1, 0);
       } else {
         numberOfBottomNavigationBans.value += 1;

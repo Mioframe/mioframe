@@ -24,7 +24,7 @@ const gitignorePath = fileURLToPath(new URL('./.gitignore', import.meta.url));
 export default defineConfigWithVueTs(
   {
     linterOptions: {
-      reportUnusedDisableDirectives: 'off',
+      reportUnusedDisableDirectives: 'warn',
     },
   },
 
@@ -76,9 +76,10 @@ export default defineConfigWithVueTs(
         'error',
         { allowInterfaces: 'with-single-extends' },
       ],
+      'no-await-in-loop': 'warn',
       'vue/camelcase': 'off',
       'vue/require-default-prop': 'off',
-      '@typescript-eslint/prefer-promise-reject-errors': 'off',
+      '@typescript-eslint/prefer-promise-reject-errors': 'error',
     },
   },
 

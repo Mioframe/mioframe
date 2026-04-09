@@ -50,7 +50,6 @@ export const useDialogState = createGlobalState(() => {
 
     await until(() => isBoolean(resultState.value)).toBe(true);
 
-    // eslint-disable-next-line vue/no-ref-object-reactivity-loss -- it's ok
     return resultState.value;
   };
 
@@ -96,11 +95,11 @@ export const useMonitorOpenDialog = (open: Ref<boolean>) => {
 
   watch(
     open,
-    (open, old) => {
-      if (open && !isCountedOpen) {
+    (isOpen, previousOpen) => {
+      if (isOpen && !isCountedOpen) {
         numberOfOpenDialogs.value += 1;
         isCountedOpen = true;
-      } else if (!open && !isUndefined(old) && isCountedOpen) {
+      } else if (!isOpen && !isUndefined(previousOpen) && isCountedOpen) {
         numberOfOpenDialogs.value -= 1;
         isCountedOpen = false;
       }

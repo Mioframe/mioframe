@@ -30,13 +30,13 @@ export const setupOption = (value: Ref<Value>, label: Ref<Label>) => {
 
   watch(
     [value, label],
-    ([value, label], [oldValue]) => {
+    ([nextValue, nextLabel], [oldValue]) => {
       if (options) {
         if (oldValue !== undefined) {
           options.delete(oldValue);
         }
 
-        options.set(value, label);
+        options.set(nextValue, nextLabel);
       }
     },
     { immediate: true },

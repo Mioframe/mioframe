@@ -61,8 +61,8 @@ defineEmits<{
 
 watch(
   [inputRef, autofocus],
-  ([input, autofocus]) => {
-    if (autofocus && input instanceof HTMLElement) {
+  ([input, shouldAutofocus]) => {
+    if (shouldAutofocus && input instanceof HTMLElement) {
       input.focus();
     }
   },

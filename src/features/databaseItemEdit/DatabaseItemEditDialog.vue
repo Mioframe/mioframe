@@ -54,8 +54,10 @@ const { item: currentItemState, postItem } = useDatabaseStoredItem(
 );
 const { effectiveItem } = useDatabaseEffectiveItem(directoryPath, documentId, itemId);
 
-const { propertiesIdList: propertiesIdList, isLoading: isLoadingProperties } =
-  useDatabaseProperties(directoryPath, documentId);
+const { propertiesIdList, isLoading: isLoadingProperties } = useDatabaseProperties(
+  directoryPath,
+  documentId,
+);
 
 watch(itemId, () => {
   touchedPropertyIdSet.value = new Set();

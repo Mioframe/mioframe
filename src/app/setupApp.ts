@@ -6,7 +6,7 @@ import { createHead } from '@unhead/vue/client';
 import { router } from './router';
 import { setupPlayground } from '@shared/lib/playground';
 import { playgroundPages } from './playgroundPages';
-import { backNavigationHandler as backNavigationHandler } from '@shared/lib/onBackNavigation';
+import { backNavigationHandler } from '@shared/lib/onBackNavigation';
 import { setupStackNavigation } from '@page/routes';
 import { setupGoogleSessions } from '@entity/googleUserInfo';
 import { GOOGLE_CLIENT_ID } from '@shared/config';

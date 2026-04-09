@@ -15,10 +15,12 @@ export const createVFSAdapter = (vfs: VirtualFileSystem, path: string): StorageA
     const directoryContent = await vfs.readDirectory(path);
 
     if (fileName) {
-      const [name] = directoryContent.find(([name]) => name.startsWith(fileName)) ?? [];
+      const [matchedName] =
+        directoryContent.find(([directoryEntryName]) => directoryEntryName.startsWith(fileName)) ??
+        [];
 
-      if (name) {
-        const filePath = PathUtils.join(path, name);
+      if (matchedName) {
+        const filePath = PathUtils.join(path, matchedName);
 
         const file = await vfs.readFile(filePath);
 
