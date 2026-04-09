@@ -38,9 +38,7 @@ const onClick = (v: NavigationButton) => {
   active.value = v;
 };
 
-const state = useQueryValue<
-  Omit<ComponentProps<typeof MDNavigationRail>, 'buttons'>
->('state', {
+const state = useQueryValue<Omit<ComponentProps<typeof MDNavigationRail>, 'buttons'>>('state', {
   type: RAIL_TYPE.collapsed,
   hasMenu: undefined,
 });
@@ -51,11 +49,7 @@ const railTypeOptions = [...values(RAIL_TYPE), undefined];
 <template>
   <PlaygroundStory>
     <template #controllers>
-      <PlaygroundUnion
-        v-model="state.type"
-        label="type"
-        :options="railTypeOptions"
-      />
+      <PlaygroundUnion v-model="state.type" label="type" :options="railTypeOptions" />
 
       <PlaygroundOptionalBoolean v-model="state.hasMenu" label="hasMenu" />
     </template>

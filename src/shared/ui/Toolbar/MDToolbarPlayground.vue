@@ -40,43 +40,21 @@ const layoutOptions: State['layout'][] = [undefined, 'horizontal', 'vertical'];
         :step="1"
       />
 
-      <PlaygroundUnion
-        v-model:model-value="state.type"
-        label="type"
-        :options="typeOptions"
-      />
+      <PlaygroundUnion v-model:model-value="state.type" label="type" :options="typeOptions" />
 
-      <PlaygroundOptionalBoolean
-        v-model:model-value="state.autoHide"
-        label="autoHide"
-      />
+      <PlaygroundOptionalBoolean v-model:model-value="state.autoHide" label="autoHide" />
 
-      <PlaygroundOptionalBoolean
-        v-model:model-value="state.centerAligned"
-        label="centerAligned"
-      />
+      <PlaygroundOptionalBoolean v-model:model-value="state.centerAligned" label="centerAligned" />
 
-      <PlaygroundUnion
-        v-model:model-value="state.color"
-        label="color"
-        :options="colorOptions"
-      />
+      <PlaygroundUnion v-model:model-value="state.color" label="color" :options="colorOptions" />
 
-      <PlaygroundUnion
-        v-model:model-value="state.layout"
-        label="layout"
-        :options="layoutOptions"
-      />
+      <PlaygroundUnion v-model:model-value="state.layout" label="layout" :options="layoutOptions" />
     </template>
 
     <template #space>
       <MDPane class="container">
         <MDListContainer>
-          <MDListItem
-            v-for="i in state.numberItems"
-            :key="i"
-            :headline="`item ${i}`"
-          />
+          <MDListItem v-for="i in state.numberItems" :key="i" :headline="`item ${i}`" />
         </MDListContainer>
 
         <MDToolbarContainer

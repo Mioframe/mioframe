@@ -35,11 +35,7 @@ const onClickClose = () => {
       @click="onClickAction"
     />
 
-    <MDIconButton
-      tooltip="close"
-      class="md md-snackbar__close-button"
-      @click="onClickClose"
-    >
+    <MDIconButton tooltip="close" class="md md-snackbar__close-button" @click="onClickClose">
       <template #icon>
         <MDSymbol name="close" />
       </template>

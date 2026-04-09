@@ -3,9 +3,7 @@ import { USER_INFO_GOOGLE_SCOPE } from '@shared/lib/googleApi/types';
 import { createGlobalState } from '@vueuse/core';
 import { useObservable } from '@shared/lib/useObservable';
 
-type UserinfoGetReturn = Awaited<
-  ReturnType<gapi.client.oauth2.UserinfoResource['get']>
->;
+type UserinfoGetReturn = Awaited<ReturnType<gapi.client.oauth2.UserinfoResource['get']>>;
 
 export type UserinfoGet = (
   ...args: Parameters<gapi.client.oauth2.UserinfoResource['get']>

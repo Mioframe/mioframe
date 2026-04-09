@@ -56,18 +56,9 @@ const onClick = (item: MenuButtonDescription) => {
     <template #controllers />
 
     <template #space>
-      <MDButton
-        ref="targetEl"
-        label="target"
-        @click="state.show = !state.show"
-      />
+      <MDButton ref="targetEl" label="target" @click="state.show = !state.show" />
 
-      <MDMenu
-        v-model:show="state.show"
-        :target="targetEl"
-        :btns="btns"
-        @click="onClick"
-      />
+      <MDMenu v-model:show="state.show" :target="targetEl" :btns="btns" @click="onClick" />
     </template>
   </PlaygroundStory>
 </template>

@@ -1,10 +1,7 @@
 <script setup lang="ts">
 import { DatabasePropertyMenuItem } from '@entity/databaseProperty';
 import type { AMDocumentId } from '@shared/lib/automerge';
-import type {
-  UNARY_FILTER_OPERATOR,
-  LOGICAL_FILTER_OPERATOR,
-} from '@shared/lib/databaseDocument';
+import type { UNARY_FILTER_OPERATOR, LOGICAL_FILTER_OPERATOR } from '@shared/lib/databaseDocument';
 import { type DatabasePropertyId } from '@shared/lib/databaseDocument';
 import UnaryOperatorFilterMenuItemList from './UnaryOperatorFilterMenuItemList.vue';
 import LogicalOperatorFilterMenuItemList from './LogicalOperatorFilterMenuItemList.vue';
@@ -33,11 +30,7 @@ const onClickUnary = (e: {
 </script>
 
 <template>
-  <DatabasePropertyMenuItem
-    :path="path"
-    :document-id="documentId"
-    :property-id="propertyId"
-  >
+  <DatabasePropertyMenuItem :path="path" :document-id="documentId" :property-id="propertyId">
     <template #submenu>
       <UnaryOperatorFilterMenuItemList @click-unary="onClickUnary" />
 

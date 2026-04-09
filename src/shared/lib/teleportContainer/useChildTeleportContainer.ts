@@ -59,8 +59,7 @@ export const useChildTeleportContainerStack = () => {
   };
 };
 
-const parentStackKey: InjectionKey<Ref<ReadonlySet<WebElement>>> =
-  Symbol('parentStackKey');
+const parentStackKey: InjectionKey<Ref<ReadonlySet<WebElement>>> = Symbol('parentStackKey');
 
 /**
  * Стек родителей телепортированных контенеров
@@ -78,26 +77,18 @@ export const useParentTeleportContainerStack = () => {
  * @property key - телепортированный контейнер
  * @property value - источник телепортации
  */
-export const teleportContainerAndParent = reactive<Map<WebElement, WebElement>>(
-  new Map(),
-);
+export const teleportContainerAndParent = reactive<Map<WebElement, WebElement>>(new Map());
 
 /**
  * Регистрация контейнера телепорта
  * @param teleportedContainer
  */
-export const useTeleportContainerRegistry = (
-  teleportedContainer: MaybeElementRef,
-) => {
-  const teleportedContainerElement = computed(() =>
-    unrefElement(teleportedContainer),
-  );
+export const useTeleportContainerRegistry = (teleportedContainer: MaybeElementRef) => {
+  const teleportedContainerElement = computed(() => unrefElement(teleportedContainer));
 
   const stackSymbol = inject(keyForChildrenStack, undefined);
 
-  const childrenStack = stackSymbol
-    ? inject(stackSymbol, undefined)
-    : undefined;
+  const childrenStack = stackSymbol ? inject(stackSymbol, undefined) : undefined;
 
   watch(
     teleportedContainerElement,

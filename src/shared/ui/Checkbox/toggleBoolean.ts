@@ -1,9 +1,6 @@
 import { toValue, type MaybeRef, type Ref } from 'vue';
 
-export const toggleBoolean = (
-  value: boolean | undefined,
-  indeterminate?: boolean,
-) => {
+export const toggleBoolean = (value: boolean | undefined, indeterminate?: boolean) => {
   if (indeterminate) {
     return value ? undefined : value === undefined ? false : true;
   } else {

@@ -11,10 +11,7 @@ const props = defineProps<{
 
 const dayjsValue = computed(() => {
   const v = props.value;
-  if (
-    !isNil(v) &&
-    (isString(v) || isNumber(v) || v instanceof Date || v instanceof Dayjs)
-  ) {
+  if (!isNil(v) && (isString(v) || isNumber(v) || v instanceof Date || v instanceof Dayjs)) {
     return dayjs(v);
   }
   return undefined;

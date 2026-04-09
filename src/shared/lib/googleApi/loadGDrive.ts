@@ -4,18 +4,13 @@ import type { AdvancedGDrive } from './types';
 
 let gDrive: AdvancedGDrive | undefined = undefined;
 
-export const loadGDrive = async (
-  clientId: string,
-  gapi?: typeof window.gapi,
-) => {
+export const loadGDrive = async (clientId: string, gapi?: typeof window.gapi) => {
   const g = gapi ?? (await loadGAPI());
 
   if (!gDrive) {
     await g.client.init({
       clientId,
-      discoveryDocs: [
-        'https://www.googleapis.com/discovery/v1/apis/drive/v3/rest',
-      ],
+      discoveryDocs: ['https://www.googleapis.com/discovery/v1/apis/drive/v3/rest'],
     });
 
     gDrive = {

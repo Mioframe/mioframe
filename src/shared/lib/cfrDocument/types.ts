@@ -35,9 +35,7 @@ export interface RepoRef extends Reactive<{
    * @param initialValue Начальное состояние документа
    * @returns
    */
-  create: <Z extends typeof zodCFRDocumentContent>(
-    initialValue: output<Z>,
-  ) => CFRDocument;
+  create: <Z extends typeof zodCFRDocumentContent>(initialValue: output<Z>) => CFRDocument;
 
   /**
    * Удаление документа
@@ -66,10 +64,7 @@ export interface DirectoryForDocumentFolder extends ItemWithChildren<
    * @param file - Файл
    * @returns
    */
-  writeFile: (
-    name: string,
-    file?: FileSystemWriteChunkType,
-  ) => Promise<FileForDocumentFolder>;
+  writeFile: (name: string, file?: FileSystemWriteChunkType) => Promise<FileForDocumentFolder>;
 
   /**
    * Удалить файл по названию

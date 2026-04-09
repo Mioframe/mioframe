@@ -5,11 +5,7 @@ import {
   DELETE_MARKER,
   type PatchSource,
 } from '@shared/lib/changeObject';
-import type {
-  DatabaseFilter,
-  DatabaseView,
-  DatabaseViewId,
-} from '@shared/lib/databaseDocument';
+import type { DatabaseFilter, DatabaseView, DatabaseViewId } from '@shared/lib/databaseDocument';
 import { isEqual, set } from 'es-toolkit/compat';
 import { removeEmptyStructures } from '@shared/lib/removeEmptyStructures';
 import { distinctUntilChanged, map, type Observable } from 'rxjs';

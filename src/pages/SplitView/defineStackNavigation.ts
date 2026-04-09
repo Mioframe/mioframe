@@ -153,9 +153,7 @@ export interface UseStackNavigationReturn<P extends PaneMap> {
 
 export interface StackNavigation<P extends PaneMap> {
   useStackNavigation: () => UseStackNavigationReturn<P>;
-  setupStackNavigation: (router: {
-    addRoute: (route: RouteRecordRaw) => void;
-  }) => void;
+  setupStackNavigation: (router: { addRoute: (route: RouteRecordRaw) => void }) => void;
 }
 
 export const createStackNavigation = <P extends PaneMap>(
@@ -168,13 +166,8 @@ export const createStackNavigation = <P extends PaneMap>(
     rootPath?: string;
   },
 ): StackNavigation<P> => {
-  const setupStackNavigation = ({
-    addRoute,
-  }: {
-    addRoute: (route: RouteRecordRaw) => void;
-  }) => {
-    const cleanPath =
-      rootPath?.replace(/\/+/g, '/').replace(/^\/|\/$/g, '') || '';
+  const setupStackNavigation = ({ addRoute }: { addRoute: (route: RouteRecordRaw) => void }) => {
+    const cleanPath = rootPath?.replace(/\/+/g, '/').replace(/^\/|\/$/g, '') || '';
     const prefixPath = cleanPath ? `/${cleanPath}` : '';
 
     addRoute({
@@ -194,16 +187,13 @@ export const createStackNavigation = <P extends PaneMap>(
     const route = useRoute();
 
     const currentPanesQuery = computed(() => {
-      const { data: { [PARAM_NAME]: queryList = [] } = {} } =
-        zodQuery.safeParse(route.query);
+      const { data: { [PARAM_NAME]: queryList = [] } = {} } = zodQuery.safeParse(route.query);
 
       return queryList;
     });
 
     const currentPanesName = computed(() => {
-      const { data } = z
-        .object({ [PARAM_NAME]: z.array(z.string()) })
-        .safeParse(route.params);
+      const { data } = z.object({ [PARAM_NAME]: z.array(z.string()) }).safeParse(route.params);
 
       return data?.[PARAM_NAME] ?? [defaultPane];
     });
@@ -213,20 +203,14 @@ export const createStackNavigation = <P extends PaneMap>(
     const open = async <K extends Extract<keyof P, string>>(
       name: K,
       props: ReturnType<P[K]['parseProps']>,
-      {
-        additionalPanes = 1,
-        replace = false,
-        target = 'current',
-      }: OpenOptions = {},
+      { additionalPanes = 1, replace = false, target = 'current' }: OpenOptions = {},
     ): Promise<void> => {
       const maxPanes = additionalPanes + 1;
 
       const { index: currentPaneIndex = -1 } = paneCtx ?? {};
 
       const targetPaneIndex =
-        target === 'current'
-          ? currentPaneIndex
-          : currentPanesName.value.indexOf(target);
+        target === 'current' ? currentPaneIndex : currentPanesName.value.indexOf(target);
 
       const startIndex = Math.max(targetPaneIndex, 0);
 

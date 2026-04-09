@@ -9,8 +9,7 @@ const propertyModel = defineModel<BooleanProperty>('property', {
 
 const indeterminateModel = computed({
   get: () => propertyModel.value.indeterminate,
-  set: (indeterminate) =>
-    (propertyModel.value = { ...propertyModel.value, indeterminate }),
+  set: (indeterminate) => (propertyModel.value = { ...propertyModel.value, indeterminate }),
 });
 </script>
 

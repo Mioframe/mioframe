@@ -7,10 +7,7 @@ import { DB_VIEW_LAYOUT } from '@shared/lib/databaseDocument';
 import { objectEntries } from '@shared/lib/objectEntries';
 import { MDDialog } from '@shared/ui/Dialog';
 import { MDSelect } from '@shared/ui/Select';
-import {
-  defineSelectOption,
-  defineSelectOptions,
-} from '@shared/ui/Select/defineSelectOptions';
+import { defineSelectOption, defineSelectOptions } from '@shared/ui/Select/defineSelectOptions';
 import { MDTextField } from '@shared/ui/TextField';
 import { pascalCase } from 'es-toolkit';
 import { computed, reactive, ref, toRefs } from 'vue';

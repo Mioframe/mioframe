@@ -3,10 +3,7 @@ import type { RelationProperty } from '@entity/databaseRelation';
 import { zodRelationValue, type RelationValue } from '@entity/databaseRelation';
 import { DatabaseViewChipsList } from '@entity/databaseView';
 import type { AMDocumentId } from '@shared/lib/cfrDocument';
-import {
-  type DatabaseItemId,
-  type DatabaseViewId,
-} from '@shared/lib/databaseDocument';
+import { type DatabaseItemId, type DatabaseViewId } from '@shared/lib/databaseDocument';
 import { zodIs } from '@shared/lib/validateZodScheme';
 import { computed, toRefs } from 'vue';
 

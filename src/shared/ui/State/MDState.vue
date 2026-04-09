@@ -1,8 +1,4 @@
-<script
-  setup
-  lang="ts"
-  generic="Is extends 'button' | 'a' | 'label' | 'div' | 'li' = 'div'"
->
+<script setup lang="ts" generic="Is extends 'button' | 'a' | 'label' | 'div' | 'li' = 'div'">
 import { syncRef, syncRefs, useEventListener, useVibrate } from '@vueuse/core';
 import { useTemplateRef, computed, ref, watch } from 'vue';
 import { useFirstFocus } from '@shared/lib/useFirstFocus';
@@ -46,9 +42,7 @@ const hoverModel = defineModel<boolean>('hover');
 
 const focusedModel = defineModel<boolean>('focused', { default: false });
 
-const enableRipple = computed(
-  () => !disableRipple || ['button', 'a'].includes(is),
-);
+const enableRipple = computed(() => !disableRipple || ['button', 'a'].includes(is));
 
 const refEl = useTemplateRef<HTMLElement>('refEl');
 
@@ -203,8 +197,7 @@ watch(
 
   user-select: none;
 
-  transition-property:
-    box-shadow, color, background-color, padding, border-radius;
+  transition-property: box-shadow, color, background-color, padding, border-radius;
   transition-duration: var(--md-sys-motion-duration-short4, 0.2s);
 
   position: relative;
@@ -265,12 +258,8 @@ watch(
   &:disabled,
   &.md-state_disabled {
     pointer-events: none;
-    --md-container-color: rgb(
-      from var(--md-sys-color-on-surface) r g b / 0.1
-    ) !important;
-    --md-content-color: rgb(
-      from var(--md-sys-color-on-surface) r g b / 0.38
-    ) !important;
+    --md-container-color: rgb(from var(--md-sys-color-on-surface) r g b / 0.1) !important;
+    --md-content-color: rgb(from var(--md-sys-color-on-surface) r g b / 0.38) !important;
   }
 
   &.md-state_hover {

@@ -41,12 +41,7 @@ const onClick = async () => {
 </script>
 
 <template>
-  <MDListItem
-    is="button"
-    :headline="headline"
-    class="db-sorting-item"
-    @click="onClick"
-  >
+  <MDListItem is="button" :headline="headline" class="db-sorting-item" @click="onClick">
     <template #leadingIcon>
       <MDSymbol
         class="db-sorting-item__symbol"

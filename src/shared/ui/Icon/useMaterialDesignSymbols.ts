@@ -6,8 +6,7 @@ import { array, object, string } from 'zod/v4-mini';
 import qs from 'qs';
 import { loadStylesheet } from './loadStylesheet';
 
-const searchStylesheetLinks = (href: string) =>
-  document.querySelectorAll(`link[href*="${href}"]`);
+const searchStylesheetLinks = (href: string) => document.querySelectorAll(`link[href*="${href}"]`);
 
 const awaitFont = async (fontName: string) => {
   await document.fonts.load(`1em "${fontName}"`);
@@ -16,12 +15,9 @@ const awaitFont = async (fontName: string) => {
 export const useIconStates = createGlobalState(() => {
   const url = `https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=swap`;
 
-  const symbolsUsed = useStorage<string[]>(
-    'MaterialSymbolsRounded',
-    [],
-    localStorage,
-    { mergeDefaults: merge },
-  );
+  const symbolsUsed = useStorage<string[]>('MaterialSymbolsRounded', [], localStorage, {
+    mergeDefaults: merge,
+  });
   const loadedSymbols = shallowReactive(new Set<string>());
   const loadingSymbols = shallowReactive(new Set<string>());
 
@@ -50,10 +46,7 @@ export const useIconStates = createGlobalState(() => {
   const loadedAllSymbols = ref(false);
 
   const loadFont = async () => {
-    const names = uniq([
-      ...loadedSymbols.values(),
-      ...symbolsUsed.value,
-    ]).filter((v) => !!v);
+    const names = uniq([...loadedSymbols.values(), ...symbolsUsed.value]).filter((v) => !!v);
     if (names.length) {
       names.sort();
       names.forEach((name) => {

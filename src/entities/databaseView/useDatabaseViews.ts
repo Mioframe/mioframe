@@ -1,18 +1,12 @@
 import { useMainServiceClient } from '@shared/service';
 import { computed, toValue, type Ref } from 'vue';
 import type { AMDocumentId } from '@shared/lib/automerge';
-import type {
-  DatabaseView,
-  DatabaseViewId,
-} from '@shared/lib/databaseDocument';
+import type { DatabaseView, DatabaseViewId } from '@shared/lib/databaseDocument';
 import type { PatchSource } from '@shared/lib/changeObject';
 import { useObservableQuery } from '@shared/lib/useObservableQuery';
 import { isUndefined } from 'es-toolkit';
 
-export const useDatabaseViews = (
-  path: Ref<string>,
-  documentId: Ref<AMDocumentId>,
-) => {
+export const useDatabaseViews = (path: Ref<string>, documentId: Ref<AMDocumentId>) => {
   const {
     databaseDocument: {
       views: { reorder, create, patch, remove, viewList },
@@ -47,10 +41,8 @@ export const useDatabaseViews = (
     isLoading,
 
     create: (view: DatabaseView) => create(path.value, documentId.value, view),
-    remove: (viewId: DatabaseViewId) =>
-      remove(path.value, documentId.value, viewId),
-    reorder: (orderedIds: DatabaseViewId[]) =>
-      reorder(path.value, documentId.value, orderedIds),
+    remove: (viewId: DatabaseViewId) => remove(path.value, documentId.value, viewId),
+    reorder: (orderedIds: DatabaseViewId[]) => reorder(path.value, documentId.value, orderedIds),
     patch: (viewId: DatabaseViewId, view: PatchSource<DatabaseView>) =>
       patch(path.value, documentId.value, viewId, view),
   };

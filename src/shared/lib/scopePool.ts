@@ -1,13 +1,6 @@
 import { createGlobalState, tryOnScopeDispose } from '@vueuse/core';
 import type { ComputedRef, EffectScope, MaybeRefOrGetter } from 'vue';
-import {
-  effectScope,
-  watch,
-  computed,
-  shallowRef,
-  toValue,
-  getCurrentScope,
-} from 'vue';
+import { effectScope, watch, computed, shallowRef, toValue, getCurrentScope } from 'vue';
 type ScopePool<K extends WeakKey, V> = {
   /** Увеличить счетчик использования и получить состояние */
   retain: (key: K) => V;
@@ -44,15 +37,10 @@ export const defineScopePool = <K extends WeakKey, V extends object>(
   createGlobalState((): ScopePool<K, V> => {
     const { maxRefsWarnThreshold = 100, debug = false } = options;
 
-    const cacheMap = new WeakMap<
-      K,
-      { scope: EffectScope; state: V; refs: number }
-    >();
-    const finalizationRegistry = new FinalizationRegistry(
-      (scope: EffectScope) => {
-        scope.stop();
-      },
-    );
+    const cacheMap = new WeakMap<K, { scope: EffectScope; state: V; refs: number }>();
+    const finalizationRegistry = new FinalizationRegistry((scope: EffectScope) => {
+      scope.stop();
+    });
 
     const retain = (key: K): V => {
       let entry = cacheMap.get(key);

@@ -1,12 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, toRefs, useTemplateRef } from 'vue';
 import type { MaybeElement } from '@vueuse/core';
-import {
-  refDebounced,
-  unrefElement,
-  useEventListener,
-  useParentElement,
-} from '@vueuse/core';
+import { refDebounced, unrefElement, useEventListener, useParentElement } from '@vueuse/core';
 import { autoUpdate, flip, offset, shift, useFloating } from '@floating-ui/vue';
 import { TeleportContainer } from '@shared/lib/teleportContainer';
 import { useOverlayContainer } from '../Overlay';
@@ -27,9 +22,7 @@ const { target, placement } = toRefs(props);
 
 const parentEl = useParentElement();
 
-const targetElementRef = computed(
-  () => unrefElement(target.value) ?? parentEl.value,
-);
+const targetElementRef = computed(() => unrefElement(target.value) ?? parentEl.value);
 
 const targetTeleport = useOverlayContainer();
 
@@ -72,18 +65,9 @@ const show = refDebounced(hovered, 1.5e3);
 </script>
 
 <template>
-  <TeleportContainer
-    :to="targetTeleport"
-    :disabled="disabledTeleport"
-    :container="tooltipEl"
-  >
+  <TeleportContainer :to="targetTeleport" :disabled="disabledTeleport" :container="tooltipEl">
     <Transition>
-      <div
-        v-if="show"
-        ref="tooltipEl"
-        class="md-plain-tooltip"
-        :style="tooltipStyle"
-      >
+      <div v-if="show" ref="tooltipEl" class="md-plain-tooltip" :style="tooltipStyle">
         {{ text }}
       </div>
     </Transition>

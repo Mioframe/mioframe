@@ -1,10 +1,5 @@
 import { defineVersion } from '@shared/lib/migrations';
-import {
-  databaseStateV2,
-  DB_VIEW_LAYOUT,
-  generateViewId,
-  zodDatabaseViewsMap,
-} from '../v2';
+import { databaseStateV2, DB_VIEW_LAYOUT, generateViewId, zodDatabaseViewsMap } from '../v2';
 import type { DatabaseStateV2, DatabaseViewsMap } from '../v2/state';
 import { extend, literal } from 'zod/v4-mini';
 import { deepPatchJsonObject } from '@shared/lib/changeObject';

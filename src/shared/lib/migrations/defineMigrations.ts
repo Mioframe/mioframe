@@ -38,19 +38,13 @@ type CreateUpdatedData<Ops extends MigrateFunction[], T extends object> = (
  * Migration chain is validated: each migration must accept output of previous.
  * First migration accepts any type T.
  */
-export function defineMigrations<
-  T extends object,
-  Ops extends MigrateFunction[],
->(
+export function defineMigrations<T extends object, Ops extends MigrateFunction[]>(
   ...migrations: Ops & MigrateConstraint<T, Ops>
 ): {
   getLatestData: CreateUpdatedData<Ops, T>;
   applyUpdate: (targetData: object, version?: number) => UpdateResult<T, Ops>;
 } {
-  const getLatestData: CreateUpdatedData<Ops, T> = (
-    targetData: object,
-    version: number = 0,
-  ) => {
+  const getLatestData: CreateUpdatedData<Ops, T> = (targetData: object, version: number = 0) => {
     const v = (version < 0 ? 0 : version) | 0;
 
     if (!isObject(targetData)) {
@@ -75,10 +69,7 @@ export function defineMigrations<
     return result as UpdateResult<T, Ops>;
   };
 
-  const applyUpdate = (
-    targetData: object,
-    version: number = 0,
-  ): UpdateResult<T, Ops> => {
+  const applyUpdate = (targetData: object, version: number = 0): UpdateResult<T, Ops> => {
     const migrated = getLatestData(targetData, version);
     if (migrated !== targetData) {
       deepPutJsonObject(targetData, migrated);

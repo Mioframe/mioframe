@@ -15,9 +15,7 @@ export const useRepositoriesStoreService = createGlobalState(() => {
 
   const { getEntry } = useDirectoryStoreService();
 
-  const getDirectoryRepo = (
-    path: EntryPath,
-  ): DirectoryRepoState | DomainError => {
+  const getDirectoryRepo = (path: EntryPath): DirectoryRepoState | DomainError => {
     const entry = getEntry(path);
 
     if (entry instanceof DomainError) {
@@ -25,9 +23,7 @@ export const useRepositoriesStoreService = createGlobalState(() => {
     }
 
     if (!entry || entry.type === 'file') {
-      return new DomainError(
-        `Entry ${stringPath(path)} is not directory with document repo`,
-      );
+      return new DomainError(`Entry ${stringPath(path)} is not directory with document repo`);
     }
 
     const directoryRepo = getDirectoryRepoScope(entry.raw); // fixme: нужен механизм для release
@@ -45,8 +41,8 @@ export const useRepositoriesStoreService = createGlobalState(() => {
     return Array.from(repo.map.keys());
   };
 
-  const subscribeDocumentIdList = defineSubscribeByQueryService(
-    (path: EntryPath) => getDocumentIdList(path),
+  const subscribeDocumentIdList = defineSubscribeByQueryService((path: EntryPath) =>
+    getDocumentIdList(path),
   );
 
   const removeDocument = (path: EntryPath, id: AMDocumentId) => {

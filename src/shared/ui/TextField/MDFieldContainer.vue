@@ -56,8 +56,7 @@ const onFocusIn = () => {
 };
 
 const onFocusOut = () => {
-  fieldFocused.value =
-    unrefElement(filedContainer)?.matches(':focus-within') ?? false;
+  fieldFocused.value = unrefElement(filedContainer)?.matches(':focus-within') ?? false;
 };
 </script>
 
@@ -93,25 +92,17 @@ const onFocusOut = () => {
         </div>
       </div>
 
-      <span
-        v-if="!!slots.trailingIcon"
-        class="md-field-container__trailing-icon"
-      >
+      <span v-if="!!slots.trailingIcon" class="md-field-container__trailing-icon">
         <slot name="trailingIcon" />
       </span>
     </div>
 
-    <div
-      v-if="!!supportingText || !!maxCharacters"
-      class="md-field-container__supporting-text"
-    >
+    <div v-if="!!supportingText || !!maxCharacters" class="md-field-container__supporting-text">
       <span>
         {{ supportingText }}
       </span>
 
-      <span v-if="maxCharacters">
-        {{ numberCharacters }}/{{ maxCharacters }}
-      </span>
+      <span v-if="maxCharacters"> {{ numberCharacters }}/{{ maxCharacters }} </span>
     </div>
   </section>
 </template>
@@ -361,9 +352,7 @@ const onFocusOut = () => {
     opacity: 1;
     transform: scaleY(1);
 
-    .md-field-container.md-field-container_empty:not(:focus-within):not(
-        .md-field-container_focused
-      )
+    .md-field-container.md-field-container_empty:not(:focus-within):not(.md-field-container_focused)
       & {
       opacity: 0;
       height: 0 !important;

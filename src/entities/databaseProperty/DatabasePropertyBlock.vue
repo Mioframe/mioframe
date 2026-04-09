@@ -1,8 +1,5 @@
 <script setup lang="ts">
-import type {
-  DatabasePropertyId,
-  DatabaseUnknownProperty,
-} from '@shared/lib/databaseDocument';
+import type { DatabasePropertyId, DatabaseUnknownProperty } from '@shared/lib/databaseDocument';
 import { useDatabaseProperty } from './useDatabaseProperty';
 import { computed, toRefs } from 'vue';
 import type { AMDocumentId } from '@shared/lib/automerge';

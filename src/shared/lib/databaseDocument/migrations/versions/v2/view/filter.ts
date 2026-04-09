@@ -49,13 +49,9 @@ export const zodDatabaseFieldFilter = z.partialRecord(
   'Invalid DatabaseFieldFilter',
 );
 
-export type DatabaseFieldSelectorFilter = z.output<
-  typeof zodDatabaseFieldFilter
->;
+export type DatabaseFieldSelectorFilter = z.output<typeof zodDatabaseFieldFilter>;
 
-export type DatabaseGroupCondition = z.output<
-  typeof zodDatabaseLogicalCondition
->;
+export type DatabaseGroupCondition = z.output<typeof zodDatabaseLogicalCondition>;
 
 export const zodDatabaseNestedFilter = z.union([
   zodDatabaseFieldFilter,
@@ -71,9 +67,6 @@ export const zodDatabaseLogicalFilterList = z
 
 export type DatabaseLogicalFilterList = DatabaseNestedFilter[];
 
-export const zodDatabaseFilter = z.union([
-  zodDatabaseFieldFilter,
-  zodDatabaseLogicalCondition,
-]);
+export const zodDatabaseFilter = z.union([zodDatabaseFieldFilter, zodDatabaseLogicalCondition]);
 
 export type DatabaseFilter = z.output<typeof zodDatabaseFilter>;

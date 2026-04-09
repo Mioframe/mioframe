@@ -7,19 +7,18 @@ import type { RouteRecordRaw } from 'vue-router';
 
 const rootPath = '/';
 
-const { setupStackNavigation: setup, useStackNavigation: use } =
-  createStackNavigation(
-    {
-      home: homePane,
-      repo: repoExplorerPane,
-      document: documentViewPane,
-      settings: settingsPane,
-    },
-    {
-      defaultPane: 'home',
-      rootPath,
-    },
-  );
+const { setupStackNavigation: setup, useStackNavigation: use } = createStackNavigation(
+  {
+    home: homePane,
+    repo: repoExplorerPane,
+    document: documentViewPane,
+    settings: settingsPane,
+  },
+  {
+    defaultPane: 'home',
+    rootPath,
+  },
+);
 
 export const setupStackNavigation = ({
   addRoute,

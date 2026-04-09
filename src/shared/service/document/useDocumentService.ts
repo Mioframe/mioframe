@@ -7,10 +7,7 @@ import { zodIs } from '@shared/lib/validateZodScheme';
 import { isEqual, isNotNil, omit } from 'es-toolkit';
 import { applyCFRDocumentMigration } from '@shared/lib/cfrDocument/migrations';
 import type { PatchSource } from '@shared/lib/changeObject';
-import {
-  deepPatchJsonObject,
-  deepPutJsonObject,
-} from '@shared/lib/changeObject';
+import { deepPatchJsonObject, deepPutJsonObject } from '@shared/lib/changeObject';
 import type { DocHandleChangePayload } from '@automerge/automerge-repo';
 import type { UnknownRecord } from 'type-fest';
 import {
@@ -31,13 +28,7 @@ const setupDocumentService = () => {
   const { getRepo$ } = useRepositoriesService();
 
   const getDocHandle$ = defineCacheObservable(
-    ({
-      directoryPath,
-      documentId,
-    }: {
-      directoryPath: string;
-      documentId?: AMDocumentId;
-    }) =>
+    ({ directoryPath, documentId }: { directoryPath: string; documentId?: AMDocumentId }) =>
       getRepo$(directoryPath).pipe(
         filter(isNotNil),
         auditTime(100),
@@ -63,31 +54,28 @@ const setupDocumentService = () => {
 
   const docHandle = defineObservableQuery(getDocHandle$);
 
-  const cfrContent$ = defineCacheObservable(
-    (directoryPath: string, documentId?: AMDocumentId) =>
-      getDocHandle$({ directoryPath, documentId }).pipe(
-        filter(isNotNil),
-        switchMap((handle) =>
-          new Observable<UnknownRecord | undefined>((subscribe) => {
-            const onChange = ({
-              doc,
-            }: DocHandleChangePayload<UnknownRecord>) => {
-              subscribe.next(doc);
-            };
-            const onDelete = () => {
-              subscribe.next(undefined);
-            };
-            handle.addListener('change', onChange);
-            handle.addListener('delete', onDelete);
+  const cfrContent$ = defineCacheObservable((directoryPath: string, documentId?: AMDocumentId) =>
+    getDocHandle$({ directoryPath, documentId }).pipe(
+      filter(isNotNil),
+      switchMap((handle) =>
+        new Observable<UnknownRecord | undefined>((subscribe) => {
+          const onChange = ({ doc }: DocHandleChangePayload<UnknownRecord>) => {
+            subscribe.next(doc);
+          };
+          const onDelete = () => {
+            subscribe.next(undefined);
+          };
+          handle.addListener('change', onChange);
+          handle.addListener('delete', onDelete);
 
-            return () => {
-              handle.removeListener('change', onChange);
-              handle.removeListener('delete', onDelete);
-            };
-          }).pipe(startWith(((): UnknownRecord => handle.doc())())),
-        ),
-        distinctUntilChanged(),
+          return () => {
+            handle.removeListener('change', onChange);
+            handle.removeListener('delete', onDelete);
+          };
+        }).pipe(startWith(((): UnknownRecord => handle.doc())())),
       ),
+      distinctUntilChanged(),
+    ),
   );
 
   const cfrDocumentState$ = defineCacheObservable(
@@ -129,9 +117,7 @@ const setupDocumentService = () => {
     const handle = await docHandle.fetch({ directoryPath, documentId });
 
     if (!handle) {
-      throw new DomainError(
-        `Document "${documentId}" not found at "${directoryPath}"`,
-      );
+      throw new DomainError(`Document "${documentId}" not found at "${directoryPath}"`);
     }
 
     handle.change((doc) => {
@@ -149,9 +135,7 @@ const setupDocumentService = () => {
     const handle = await docHandle.fetch({ directoryPath, documentId });
 
     if (!handle) {
-      throw new DomainError(
-        `Document "${documentId}" not found at "${directoryPath}"`,
-      );
+      throw new DomainError(`Document "${documentId}" not found at "${directoryPath}"`);
     }
 
     handle.change((doc) => {
@@ -169,9 +153,7 @@ const setupDocumentService = () => {
     const handle = await docHandle.fetch({ directoryPath, documentId });
 
     if (!handle) {
-      throw new DomainError(
-        `Document "${documentId}" not found at "${directoryPath}"`,
-      );
+      throw new DomainError(`Document "${documentId}" not found at "${directoryPath}"`);
     }
 
     return new Promise<void>((resolve, reject) => {

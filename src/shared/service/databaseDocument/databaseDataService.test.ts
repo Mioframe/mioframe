@@ -1,23 +1,11 @@
 import { Repo } from '@automerge/automerge-repo';
 import { BehaviorSubject } from 'rxjs';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type {
-  DatabaseFilter,
-  DatabaseSortMap,
-  DatabaseState,
-} from '@shared/lib/databaseDocument';
-import {
-  SORT_DIRECTION,
-  generateItemId,
-  generatePropertyId,
-} from '@shared/lib/databaseDocument';
+import type { DatabaseFilter, DatabaseSortMap, DatabaseState } from '@shared/lib/databaseDocument';
+import { SORT_DIRECTION, generateItemId, generatePropertyId } from '@shared/lib/databaseDocument';
 
-const filterSubject = new BehaviorSubject<DatabaseFilter | undefined>(
-  undefined,
-);
-const sortingSubject = new BehaviorSubject<DatabaseSortMap | undefined>(
-  undefined,
-);
+const filterSubject = new BehaviorSubject<DatabaseFilter | undefined>(undefined);
+const sortingSubject = new BehaviorSubject<DatabaseSortMap | undefined>(undefined);
 
 vi.mock('./view/databaseViewsService', () => ({
   setupDatabaseViewsService: () => ({
@@ -56,10 +44,7 @@ describe('setupDatabaseDataService', () => {
 
     const { setupDatabaseDataService } = await import('./databaseDataService');
 
-    const service = setupDatabaseDataService(
-      () => stateSubject.asObservable(),
-      vi.fn(),
-    );
+    const service = setupDatabaseDataService(() => stateSubject.asObservable(), vi.fn());
     const documentId = new Repo({}).create({}).documentId;
 
     await expect(
@@ -102,10 +87,7 @@ describe('setupDatabaseDataService', () => {
 
     const { setupDatabaseDataService } = await import('./databaseDataService');
 
-    const service = setupDatabaseDataService(
-      () => stateSubject.asObservable(),
-      vi.fn(),
-    );
+    const service = setupDatabaseDataService(() => stateSubject.asObservable(), vi.fn());
     const documentId = new Repo({}).create({}).documentId;
 
     const emissionPromise = new Promise<string[]>((resolve) => {
@@ -151,10 +133,7 @@ describe('setupDatabaseDataService', () => {
       });
     });
 
-    await expect(emissionPromise).resolves.toEqual([
-      sparseItemId,
-      explicitItemId,
-    ]);
+    await expect(emissionPromise).resolves.toEqual([sparseItemId, explicitItemId]);
   });
 
   it('sorts filtered ids by effective default-aware values', async () => {
@@ -187,10 +166,7 @@ describe('setupDatabaseDataService', () => {
 
     const { setupDatabaseDataService } = await import('./databaseDataService');
 
-    const service = setupDatabaseDataService(
-      () => stateSubject.asObservable(),
-      vi.fn(),
-    );
+    const service = setupDatabaseDataService(() => stateSubject.asObservable(), vi.fn());
     const documentId = new Repo({}).create({}).documentId;
 
     await expect(
@@ -221,11 +197,7 @@ describe('setupDatabaseDataService', () => {
     });
 
     const changeDatabaseState = vi.fn(
-      (
-        _path: string,
-        _documentId: string,
-        callback: (state: DatabaseState) => unknown,
-      ) => {
+      (_path: string, _documentId: string, callback: (state: DatabaseState) => unknown) => {
         const state = stateSubject.value;
 
         if (!state) {
@@ -252,13 +224,7 @@ describe('setupDatabaseDataService', () => {
     );
     const documentId = new Repo({}).create({}).documentId;
 
-    await service.postValue(
-      '/db',
-      documentId,
-      itemId,
-      titlePropertyId,
-      'untitled',
-    );
+    await service.postValue('/db', documentId, itemId, titlePropertyId, 'untitled');
 
     expect(stateSubject.value?.data[itemId]).toEqual({});
     await expect(
@@ -290,11 +256,7 @@ describe('setupDatabaseDataService', () => {
     });
 
     const changeDatabaseState = vi.fn(
-      (
-        _path: string,
-        _documentId: string,
-        callback: (state: DatabaseState) => unknown,
-      ) => {
+      (_path: string, _documentId: string, callback: (state: DatabaseState) => unknown) => {
         const state = stateSubject.value;
 
         if (!state) {
@@ -321,13 +283,7 @@ describe('setupDatabaseDataService', () => {
     );
     const documentId = new Repo({}).create({}).documentId;
 
-    await service.postValue(
-      '/db',
-      documentId,
-      itemId,
-      titlePropertyId,
-      ' untitled ',
-    );
+    await service.postValue('/db', documentId, itemId, titlePropertyId, ' untitled ');
 
     expect(stateSubject.value?.data[itemId]).toEqual({});
     await expect(
@@ -359,11 +315,7 @@ describe('setupDatabaseDataService', () => {
     });
 
     const changeDatabaseState = vi.fn(
-      (
-        _path: string,
-        _documentId: string,
-        callback: (state: DatabaseState) => unknown,
-      ) => {
+      (_path: string, _documentId: string, callback: (state: DatabaseState) => unknown) => {
         const state = stateSubject.value;
 
         if (!state) {
@@ -429,11 +381,7 @@ describe('setupDatabaseDataService', () => {
     });
 
     const changeDatabaseState = vi.fn(
-      (
-        _path: string,
-        _documentId: string,
-        callback: (state: DatabaseState) => unknown,
-      ) => {
+      (_path: string, _documentId: string, callback: (state: DatabaseState) => unknown) => {
         const state = stateSubject.value;
 
         if (!state) {
@@ -508,11 +456,7 @@ describe('setupDatabaseDataService', () => {
     });
 
     const changeDatabaseState = vi.fn(
-      (
-        _path: string,
-        _documentId: string,
-        callback: (state: DatabaseState) => unknown,
-      ) => {
+      (_path: string, _documentId: string, callback: (state: DatabaseState) => unknown) => {
         const state = stateSubject.value;
 
         if (!state) {
@@ -572,11 +516,7 @@ describe('setupDatabaseDataService', () => {
     });
 
     const changeDatabaseState = vi.fn(
-      (
-        _path: string,
-        _documentId: string,
-        callback: (state: DatabaseState) => unknown,
-      ) => {
+      (_path: string, _documentId: string, callback: (state: DatabaseState) => unknown) => {
         const state = stateSubject.value;
 
         if (!state) {
@@ -638,11 +578,7 @@ describe('setupDatabaseDataService', () => {
     });
 
     const changeDatabaseState = vi.fn(
-      (
-        _path: string,
-        _documentId: string,
-        callback: (state: DatabaseState) => unknown,
-      ) => {
+      (_path: string, _documentId: string, callback: (state: DatabaseState) => unknown) => {
         const state = stateSubject.value;
 
         if (!state) {

@@ -69,20 +69,12 @@ export const setupDatabaseViewsService = (
       ),
   );
 
-  const remove = (
-    path: string,
-    documentId: AMDocumentId,
-    viewId: DatabaseViewId,
-  ) =>
+  const remove = (path: string, documentId: AMDocumentId, viewId: DatabaseViewId) =>
     changeDatabase(path, documentId, (state) => {
       strictRecordRemove(state['views'], viewId);
     });
 
-  const reorder = (
-    path: string,
-    documentId: AMDocumentId,
-    orderedIds: DatabaseViewId[],
-  ) =>
+  const reorder = (path: string, documentId: AMDocumentId, orderedIds: DatabaseViewId[]) =>
     changeDatabase(path, documentId, (state) => {
       const views = state.views;
       const knownIds = Array.from(strictRecordIterableEntries(views)())
@@ -109,11 +101,7 @@ export const setupDatabaseViewsService = (
       });
     });
 
-  const create = async (
-    path: string,
-    documentId: AMDocumentId,
-    view: DatabaseView,
-  ) => {
+  const create = async (path: string, documentId: AMDocumentId, view: DatabaseView) => {
     const viewId = generateViewId();
     await changeDatabase(path, documentId, (state) => {
       strictRecordSet(state.views, viewId, view);

@@ -50,18 +50,12 @@ const rootDirectoryStat = {
 
 const isMountedRootPath = (path: string) => PathUtils.split(path).length <= 1;
 
-const resolveRecordForWrite = (
-  path: string,
-  records: Map<string, ActiveDeviceFileRecord>,
-) => {
+const resolveRecordForWrite = (path: string, records: Map<string, ActiveDeviceFileRecord>) => {
   const [rootName, ...relativePath] = PathUtils.split(path);
   const record = rootName ? records.get(rootName) : undefined;
 
   if (!record) {
-    throw new VfsError(
-      FileSystemError.FileNotFound,
-      `Directory not found: ${path}`,
-    );
+    throw new VfsError(FileSystemError.FileNotFound, `Directory not found: ${path}`);
   }
 
   return {
@@ -125,8 +119,7 @@ export const DeviceFileSystemProvider = ({
     });
   };
 
-  const watch = (callback: (event: VfsEvent) => void) =>
-    events.subscribe(callback);
+  const watch = (callback: (event: VfsEvent) => void) => events.subscribe(callback);
 
   const stat = async (path: string): Promise<FSNodeStat> => {
     const normalizedPath = PathUtils.normalize(path);
@@ -165,17 +158,12 @@ export const DeviceFileSystemProvider = ({
       );
     }
 
-    const { record, relativePath } = resolveRecordForWrite(
-      normalizedPath,
-      records,
-    );
+    const { record, relativePath } = resolveRecordForWrite(normalizedPath, records);
 
     return record.provider.writeFile(relativePath, content, options);
   };
 
-  const readDirectory = async (
-    path: string,
-  ): Promise<[string, FSNodeStat][]> => {
+  const readDirectory = async (path: string): Promise<[string, FSNodeStat][]> => {
     const normalizedPath = PathUtils.normalize(path);
 
     if (normalizedPath === '/') {
@@ -209,10 +197,7 @@ export const DeviceFileSystemProvider = ({
     const normalizedPath = PathUtils.normalize(path);
 
     if (normalizedPath === '/') {
-      throw new VfsError(
-        FileSystemError.NoPermissions,
-        'Cannot delete Device Files root',
-      );
+      throw new VfsError(FileSystemError.NoPermissions, 'Cannot delete Device Files root');
     }
 
     return vfs.delete(normalizedPath, recursive);
@@ -222,10 +207,7 @@ export const DeviceFileSystemProvider = ({
     const normalizedOldPath = PathUtils.normalize(oldPath);
     const normalizedNewPath = PathUtils.normalize(newPath);
 
-    if (
-      isMountedRootPath(normalizedOldPath) ||
-      isMountedRootPath(normalizedNewPath)
-    ) {
+    if (isMountedRootPath(normalizedOldPath) || isMountedRootPath(normalizedNewPath)) {
       throw new VfsError(
         FileSystemError.NotSupported,
         `Cannot move mounted roots: ${oldPath} -> ${newPath}`,

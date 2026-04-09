@@ -71,9 +71,7 @@ describe('use boolean property in database document', () => {
 
     cy.findByRole('menuitem', { name: /edit/i }).click();
 
-    cy.findByLabelText(/name/i, { selector: 'input' }).type(
-      `${propertyName} edited`,
-    );
+    cy.findByLabelText(/name/i, { selector: 'input' }).type(`${propertyName} edited`);
 
     cy.findByRole('button', { name: /edit/i }).click();
 
@@ -109,9 +107,7 @@ describe('use boolean property in database document', () => {
 
     cy.findByRole('button', { name: /add/i }).click();
 
-    cy.findByRole('checkbox', { name: new RegExp(propertyName, 'i') }).should(
-      'be.checked',
-    );
+    cy.findByRole('checkbox', { name: new RegExp(propertyName, 'i') }).should('be.checked');
   });
 
   it('add item with boolean property', () => {
@@ -125,9 +121,7 @@ describe('use boolean property in database document', () => {
 
     cy.findByRole('button', { name: /add/i }).click();
 
-    cy.findByRole('checkbox', { name: new RegExp(propertyName, 'i') }).should(
-      'be.checked',
-    );
+    cy.findByRole('checkbox', { name: new RegExp(propertyName, 'i') }).should('be.checked');
   });
 
   it('edit boolean property of item', () => {
@@ -139,9 +133,7 @@ describe('use boolean property in database document', () => {
 
     cy.findByRole('button', { name: /add/i }).click();
 
-    const listitem = cy
-      .findByLabelText(new RegExp(propertyName, 'i'))
-      .closest('[role="listitem"]');
+    const listitem = cy.findByLabelText(new RegExp(propertyName, 'i')).closest('[role="listitem"]');
 
     listitem.findByRole('button', { name: /options/i }).click();
 
@@ -153,8 +145,6 @@ describe('use boolean property in database document', () => {
 
     cy.findByRole('button', { name: /edit/i }).click();
 
-    cy.findByRole('checkbox', { name: new RegExp(propertyName, 'i') }).should(
-      'be.checked',
-    );
+    cy.findByRole('checkbox', { name: new RegExp(propertyName, 'i') }).should('be.checked');
   });
 });

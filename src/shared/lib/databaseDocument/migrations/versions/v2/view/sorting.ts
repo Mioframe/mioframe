@@ -17,9 +17,6 @@ export const zodDatabaseSortDescription = object({
 
 export type DatabaseSortDescription = output<typeof zodDatabaseSortDescription>;
 
-export const zodDatabaseSortMap = zodStrictRecord(
-  zodPropertyId,
-  zodDatabaseSortDescription,
-);
+export const zodDatabaseSortMap = zodStrictRecord(zodPropertyId, zodDatabaseSortDescription);
 
 export type DatabaseSortMap = output<typeof zodDatabaseSortMap>;

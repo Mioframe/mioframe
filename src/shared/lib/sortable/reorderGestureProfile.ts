@@ -44,9 +44,7 @@ export const getDefaultReorderInput = (): ReorderInput => {
 };
 
 /** Normalizes browser pointer types into the library input vocabulary. */
-export const getReorderInputFromPointerType = (
-  pointerType: string | undefined,
-): ReorderInput => {
+export const getReorderInputFromPointerType = (pointerType: string | undefined): ReorderInput => {
   switch (pointerType) {
     case 'touch':
       return 'touch';
@@ -147,7 +145,6 @@ export const getReorderGestureProfile = ({
     fallbackOnBody: true,
     animation: 150,
     scrollSpeed: resolvedInput === 'pointer' ? 14 : 10,
-    scrollSensitivity:
-      resolvedLayout === 'grid' ? 48 : resolvedInput === 'pointer' ? 36 : 52,
+    scrollSensitivity: resolvedLayout === 'grid' ? 48 : resolvedInput === 'pointer' ? 36 : 52,
   };
 };

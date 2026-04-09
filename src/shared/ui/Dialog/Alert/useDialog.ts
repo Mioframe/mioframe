@@ -1,22 +1,9 @@
 import { sessionUniqueId } from '@shared/lib/uniqueId';
 import type { MaybeElementRef } from '@vueuse/core';
-import {
-  createGlobalState,
-  tryOnScopeDispose,
-  unrefElement,
-  until,
-} from '@vueuse/core';
+import { createGlobalState, tryOnScopeDispose, unrefElement, until } from '@vueuse/core';
 import { isBoolean, isUndefined } from 'es-toolkit';
 import type { Ref } from 'vue';
-import {
-  computed,
-  nextTick,
-  reactive,
-  ref,
-  shallowRef,
-  watch,
-  watchEffect,
-} from 'vue';
+import { computed, nextTick, reactive, ref, shallowRef, watch, watchEffect } from 'vue';
 
 type AlertDescription = {
   type: 'alert' | 'confirm';
@@ -83,9 +70,7 @@ export const useDialogState = createGlobalState(() => {
 
   const numberOfOpenDialogs = ref(0);
 
-  const globalDialogContainer = shallowRef<
-    HTMLElement | SVGElement | null | undefined
-  >();
+  const globalDialogContainer = shallowRef<HTMLElement | SVGElement | null | undefined>();
 
   return {
     alert,

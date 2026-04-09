@@ -4,11 +4,7 @@ export {
   DB_VIEW_LAYOUT,
   zodDatabaseTableView,
 } from './general';
-export {
-  type DatabaseViewId,
-  generateViewId,
-  zodDatabaseViewId,
-} from './viewId';
+export { type DatabaseViewId, generateViewId, zodDatabaseViewId } from './viewId';
 export {
   type DatabaseSortDescription,
   type DatabaseSortMap,

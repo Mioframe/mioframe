@@ -1,9 +1,7 @@
 import type { output, ZodMiniType } from 'zod/mini';
 
-export const zodIs = <Z extends ZodMiniType>(
-  value: unknown,
-  zod: Z,
-): value is output<Z> => zod.safeParse(value).success;
+export const zodIs = <Z extends ZodMiniType>(value: unknown, zod: Z): value is output<Z> =>
+  zod.safeParse(value).success;
 
 export const zodCheck = <Z extends ZodMiniType>(
   zod: Z,

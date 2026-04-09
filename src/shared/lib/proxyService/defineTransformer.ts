@@ -25,11 +25,7 @@
  */
 
 import type SuperJSON from 'superjson';
-import type {
-  CustomTransformer,
-  TransformerRegistration,
-  Provider,
-} from './types';
+import type { CustomTransformer, TransformerRegistration, Provider } from './types';
 import type { Constructor } from 'type-fest';
 import type { SuperJSONValue } from 'superjson';
 import { keys } from '../objectKeys';
@@ -64,10 +60,7 @@ import { keys } from '../objectKeys';
  */
 
 export const defineTransformer =
-  <T, J>(
-    name: string,
-    transformer: CustomTransformer<T, J>,
-  ): TransformerRegistration =>
+  <T, J>(name: string, transformer: CustomTransformer<T, J>): TransformerRegistration =>
   (superJson: SuperJSON, provider: Provider) => {
     superJson.registerCustom(
       {
@@ -120,10 +113,7 @@ export const defineTransformer =
  */
 
 export const defineCustomErrorTransformer =
-  (
-    identifier: string,
-    ErrorClass: Constructor<Error>,
-  ): TransformerRegistration =>
+  (identifier: string, ErrorClass: Constructor<Error>): TransformerRegistration =>
   (superJson: SuperJSON) => {
     superJson.registerCustom<Error, SuperJSONValue>(
       {

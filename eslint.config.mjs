@@ -6,13 +6,13 @@ import pluginOxlint from 'eslint-plugin-oxlint';
 import skipFormatting from 'eslint-config-prettier/flat';
 
 const cypressGlobals = {
+  Cypress: 'readonly',
   after: 'readonly',
   afterEach: 'readonly',
   assert: 'readonly',
   before: 'readonly',
   beforeEach: 'readonly',
   cy: 'readonly',
-  Cypress: 'readonly',
   describe: 'readonly',
   expect: 'readonly',
   it: 'readonly',
@@ -26,8 +26,8 @@ export default defineConfigWithVueTs(
   },
 
   {
-    name: 'app/files-to-lint',
     files: ['**/*.{vue,ts,mts,tsx}'],
+    name: 'app/files-to-lint',
   },
 
   globalIgnores([

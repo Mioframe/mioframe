@@ -11,9 +11,7 @@ const props = defineProps<{
 
 const { label, value } = toRefs(props);
 
-const item = computed(
-  (): MenuButtonDescription => ({ key: props.value, label: props.label }),
-);
+const item = computed((): MenuButtonDescription => ({ key: props.value, label: props.label }));
 
 const { onClickOption } = setupOption(value, label);
 </script>

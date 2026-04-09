@@ -120,14 +120,11 @@ const onClick = (e: MouseEvent) => {
   --md-state-border-width: var(--md-icon-button-border-width);
   --md-state-box-sizing: content-box;
   --md-state-height: calc(
-    var(--md-icon-button-container-height) -
-      (var(--md-icon-button-border-width) * 2)
+    var(--md-icon-button-container-height) - (var(--md-icon-button-border-width) * 2)
   );
   --md-state-padding-top: 0;
   --md-state-padding-bottom: 0;
-  --md-state-padding-left: calc(
-    var(--md-icon-button-padding) - var(--md-icon-button-border-width)
-  );
+  --md-state-padding-left: calc(var(--md-icon-button-padding) - var(--md-icon-button-border-width));
   --md-state-padding-right: calc(
     var(--md-icon-button-padding) - var(--md-icon-button-border-width)
   );
@@ -251,9 +248,7 @@ const onClick = (e: MouseEvent) => {
       }
 
       &.md-icon-button_shape-round {
-        --md-icon-button-container-shape: calc(
-          var(--md-icon-button-container-height) / 2
-        );
+        --md-icon-button-container-shape: calc(var(--md-icon-button-container-height) / 2);
 
         &.md-icon-button_selected {
           --md-icon-button-container-shape: var(--md-sys-shape-corner-medium);
@@ -263,9 +258,7 @@ const onClick = (e: MouseEvent) => {
         --md-icon-button-container-shape: var(--md-sys-shape-corner-medium);
 
         &.md-icon-button_selected {
-          --md-icon-button-container-shape: calc(
-            var(--md-icon-button-container-height) / 2
-          );
+          --md-icon-button-container-shape: calc(var(--md-icon-button-container-height) / 2);
         }
       }
       &.md-state_pressed {
@@ -287,9 +280,7 @@ const onClick = (e: MouseEvent) => {
       }
 
       &.md-icon-button_shape-round {
-        --md-icon-button-container-shape: calc(
-          var(--md-icon-button-container-height) / 2
-        );
+        --md-icon-button-container-shape: calc(var(--md-icon-button-container-height) / 2);
 
         &.md-icon-button_selected {
           --md-icon-button-container-shape: var(--md-sys-shape-corner-medium);
@@ -299,9 +290,7 @@ const onClick = (e: MouseEvent) => {
         --md-icon-button-container-shape: var(--md-sys-shape-corner-medium);
 
         &.md-icon-button_selected {
-          --md-icon-button-container-shape: calc(
-            var(--md-icon-button-container-height) / 2
-          );
+          --md-icon-button-container-shape: calc(var(--md-icon-button-container-height) / 2);
         }
       }
       &.md-state_pressed {
@@ -323,9 +312,7 @@ const onClick = (e: MouseEvent) => {
       }
 
       &.md-icon-button_shape-round {
-        --md-icon-button-container-shape: calc(
-          var(--md-icon-button-container-height) / 2
-        );
+        --md-icon-button-container-shape: calc(var(--md-icon-button-container-height) / 2);
 
         &.md-icon-button_selected {
           --md-icon-button-container-shape: var(--md-sys-shape-corner-large);
@@ -335,9 +322,7 @@ const onClick = (e: MouseEvent) => {
         --md-icon-button-container-shape: var(--md-sys-shape-corner-large);
 
         &.md-icon-button_selected {
-          --md-icon-button-container-shape: calc(
-            var(--md-icon-button-container-height) / 2
-          );
+          --md-icon-button-container-shape: calc(var(--md-icon-button-container-height) / 2);
         }
       }
       &.md-state_pressed {
@@ -359,25 +344,17 @@ const onClick = (e: MouseEvent) => {
       }
 
       &.md-icon-button_shape-round {
-        --md-icon-button-container-shape: calc(
-          var(--md-icon-button-container-height) / 2
-        );
+        --md-icon-button-container-shape: calc(var(--md-icon-button-container-height) / 2);
 
         &.md-icon-button_selected {
-          --md-icon-button-container-shape: var(
-            --md-sys-shape-corner-extra-large
-          );
+          --md-icon-button-container-shape: var(--md-sys-shape-corner-extra-large);
         }
       }
       &.md-icon-button_shape-square {
-        --md-icon-button-container-shape: var(
-          --md-sys-shape-corner-extra-large
-        );
+        --md-icon-button-container-shape: var(--md-sys-shape-corner-extra-large);
 
         &.md-icon-button_selected {
-          --md-icon-button-container-shape: calc(
-            var(--md-icon-button-container-height) / 2
-          );
+          --md-icon-button-container-shape: calc(var(--md-icon-button-container-height) / 2);
         }
       }
       &.md-state_pressed {
@@ -399,25 +376,17 @@ const onClick = (e: MouseEvent) => {
       }
 
       &.md-icon-button_shape-round {
-        --md-icon-button-container-shape: calc(
-          var(--md-icon-button-container-height) / 2
-        );
+        --md-icon-button-container-shape: calc(var(--md-icon-button-container-height) / 2);
 
         &.md-icon-button_selected {
-          --md-icon-button-container-shape: var(
-            --md-sys-shape-corner-extra-large
-          );
+          --md-icon-button-container-shape: var(--md-sys-shape-corner-extra-large);
         }
       }
       &.md-icon-button_shape-square {
-        --md-icon-button-container-shape: var(
-          --md-sys-shape-corner-extra-large
-        );
+        --md-icon-button-container-shape: var(--md-sys-shape-corner-extra-large);
 
         &.md-icon-button_selected {
-          --md-icon-button-container-shape: calc(
-            var(--md-icon-button-container-height) / 2
-          );
+          --md-icon-button-container-shape: calc(var(--md-icon-button-container-height) / 2);
         }
       }
       &.md-state_pressed {

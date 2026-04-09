@@ -67,9 +67,7 @@ describe('use number property in database document', () => {
 
     cy.findByRole('menuitem', { name: /edit/i }).click();
 
-    cy.findByLabelText(/name/i, { selector: 'input' }).type(
-      `${propertyName} edited`,
-    );
+    cy.findByLabelText(/name/i, { selector: 'input' }).type(`${propertyName} edited`);
 
     cy.findByRole('button', { name: /edit/i }).click();
 

@@ -14,11 +14,7 @@ import type { MaybeElement } from '@vueuse/core';
 import { MDButton, MDIconButton } from '@shared/ui/Button';
 import { MDMenuBase } from '@shared/ui/Menu';
 import { difference } from 'es-toolkit';
-import {
-  useReorderSurface,
-  vReorderIgnore,
-  vReorderItem,
-} from '@shared/lib/sortable';
+import { useReorderSurface, vReorderIgnore, vReorderItem } from '@shared/lib/sortable';
 import { useDatabaseProperties } from '@entity/databaseProperty';
 import { useDatabaseSorting } from '@entity/databaseSorting';
 import PropertySortDirectionMenuItem from './PropertySortDirectionMenuItem.vue';
@@ -34,10 +30,7 @@ const props = defineProps<{
 const { path, documentId, viewId } = toRefs(props);
 
 defineSlots<{
-  trailingIcon: (p: {
-    propertyId: DatabasePropertyId;
-    direction: SORT_DIRECTION;
-  }) => unknown;
+  trailingIcon: (p: { propertyId: DatabasePropertyId; direction: SORT_DIRECTION }) => unknown;
 }>();
 
 const container = useTemplateRef<MaybeElement>('container');
@@ -53,9 +46,7 @@ const {
 const { displayItemIdList, draggedId } = useReorderSurface(container, {
   itemIdList: sortingIdList,
   onCommit: ({ orderedIds }) => {
-    const nextOrderedIds = orderedIds.filter((id) =>
-      zodIs(id, zodDatabasePropertyId),
-    );
+    const nextOrderedIds = orderedIds.filter((id) => zodIs(id, zodDatabasePropertyId));
 
     if (nextOrderedIds.length !== orderedIds.length) {
       return;
@@ -82,10 +73,7 @@ const onClickAddSorting = () => {
 
 const addSortingBtn = useTemplateRef<MaybeElement>('addSortingBtn');
 
-const { propertiesIdList: databasePropertiesIdList } = useDatabaseProperties(
-  path,
-  documentId,
-);
+const { propertiesIdList: databasePropertiesIdList } = useDatabaseProperties(path, documentId);
 
 const propertyWithoutSorting = computed(() =>
   difference(databasePropertiesIdList.value ?? [], sortingIdList.value ?? []),

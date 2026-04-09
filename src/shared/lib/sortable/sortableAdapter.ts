@@ -1,27 +1,13 @@
-import {
-  unrefElement,
-  useEventListener,
-  type MaybeElementRef,
-} from '@vueuse/core';
+import { unrefElement, useEventListener, type MaybeElementRef } from '@vueuse/core';
 import Sortable from 'sortablejs';
-import {
-  computed,
-  shallowRef,
-  toValue,
-  watch,
-  type MaybeRefOrGetter,
-} from 'vue';
+import { computed, shallowRef, toValue, watch, type MaybeRefOrGetter } from 'vue';
 import {
   defaultReorderInteractiveSelector,
   getReorderDescendantInteractiveSelector,
   reorderClassNames,
   REORDER_ITEM_ATTRIBUTE,
 } from './constants';
-import type {
-  ReorderEngineCallbacks,
-  ReorderInputProfile,
-  ReorderLayout,
-} from './reorderTypes';
+import type { ReorderEngineCallbacks, ReorderInputProfile, ReorderLayout } from './reorderTypes';
 
 /** Accesses the internal SortableJS drop hook used for cancel flows. */
 interface SortableInternal extends Sortable {
@@ -59,9 +45,7 @@ const resolveScrollTarget = (
 };
 
 /** Maps the library layout vocabulary to SortableJS direction options. */
-const resolveDirection = (
-  layout: ReorderLayout,
-): Sortable.Options['direction'] | undefined => {
+const resolveDirection = (layout: ReorderLayout): Sortable.Options['direction'] | undefined => {
   if (layout === 'grid') {
     return undefined;
   }

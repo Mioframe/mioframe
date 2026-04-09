@@ -38,9 +38,7 @@ export const queryIdList = <TSchemaItem extends DatabaseItem = DatabaseItem>(
   const entries = isArray(data) ? data : recordEntries(data);
   const matchId = idQuery ? sift(idQuery) : undefined;
   const matchItem = itemQuery ? sift(itemQuery) : undefined;
-  const matchFilter = filter
-    ? createDatabaseFilterMatcher(filter, properties)
-    : undefined;
+  const matchFilter = filter ? createDatabaseFilterMatcher(filter, properties) : undefined;
 
   const filteredEntries =
     itemQuery || idQuery || filter
@@ -53,13 +51,7 @@ export const queryIdList = <TSchemaItem extends DatabaseItem = DatabaseItem>(
         })
       : entries;
 
-  const sortedEntries = sortData(
-    filteredEntries,
-    sorting,
-    properties,
-    first,
-    last,
-  );
+  const sortedEntries = sortData(filteredEntries, sorting, properties, first, last);
 
   const itemIdList = sortedEntries.map(([id]) => id);
 

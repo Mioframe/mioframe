@@ -49,11 +49,7 @@ const isOpfsEntry = (name: string) => name === OPFSName;
       </template>
     </MDListItem>
 
-    <MDListItem
-      is="button"
-      headline="Add Local Directory"
-      @click="onClickAddLocalDirectory"
-    >
+    <MDListItem is="button" headline="Add Local Directory" @click="onClickAddLocalDirectory">
       <template #leadingIcon>
         <MDSymbol name="folder_open" />
       </template>

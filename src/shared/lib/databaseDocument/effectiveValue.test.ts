@@ -57,11 +57,11 @@ describe('database effective values', () => {
     ).toBe(7);
 
     expect(
-      getDatabaseEffectiveValue(
-        { [titlePropertyId]: undefined },
-        titlePropertyId,
-        { default: 7, name: 'Title', type: 'number' },
-      ),
+      getDatabaseEffectiveValue({ [titlePropertyId]: undefined }, titlePropertyId, {
+        default: 7,
+        name: 'Title',
+        type: 'number',
+      }),
     ).toBe(7);
 
     expect(
@@ -86,10 +86,7 @@ describe('database effective values', () => {
     };
 
     expect(
-      getDatabaseEffectiveItem(
-        { [donePropertyId]: undefined, [extraPropertyId]: 1 },
-        properties,
-      ),
+      getDatabaseEffectiveItem({ [donePropertyId]: undefined, [extraPropertyId]: 1 }, properties),
     ).toEqual({
       [donePropertyId]: false,
       [titlePropertyId]: 'untitled',
@@ -123,13 +120,9 @@ describe('database effective values', () => {
       },
     };
 
-    expect(
-      getDatabaseStoredValue('untitled', properties[titlePropertyId]),
-    ).toBeUndefined();
+    expect(getDatabaseStoredValue('untitled', properties[titlePropertyId])).toBeUndefined();
 
-    expect(
-      getDatabaseStoredItem({ [titlePropertyId]: 'untitled' }, properties),
-    ).toEqual({});
+    expect(getDatabaseStoredItem({ [titlePropertyId]: 'untitled' }, properties)).toEqual({});
   });
 
   it('drops trimmed string overrides that normalize to the property default', () => {

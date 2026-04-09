@@ -26,11 +26,7 @@ const slots = defineSlots<{
   leadingAvatarContainer: () => unknown;
 }>();
 
-const {
-  state: documentDescription,
-  isLoading,
-  errorMessage,
-} = useDocument(path, documentId);
+const { state: documentDescription, isLoading, errorMessage } = useDocument(path, documentId);
 
 const documentName = computed(() => documentDescription.value?.name);
 

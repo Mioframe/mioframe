@@ -79,11 +79,7 @@ export interface IFileSystemProvider {
    * @param options Write options
    * @returns Promise that resolves after the write operation completes
    */
-  writeFile(
-    path: string,
-    content: FileContent,
-    options: WriteOptions,
-  ): Promise<void>;
+  writeFile(path: string, content: FileContent, options: WriteOptions): Promise<void>;
 
   /**
    * Read directory contents

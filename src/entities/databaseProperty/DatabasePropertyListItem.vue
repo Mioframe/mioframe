@@ -1,8 +1,5 @@
 <script setup lang="ts">
-import type {
-  DatabasePropertyId,
-  DatabaseUnknownProperty,
-} from '@shared/lib/databaseDocument';
+import type { DatabasePropertyId, DatabaseUnknownProperty } from '@shared/lib/databaseDocument';
 import { MDListItem } from '@shared/ui/Lists';
 import { computed, toRefs } from 'vue';
 import { useDatabaseProperty } from './useDatabaseProperty';

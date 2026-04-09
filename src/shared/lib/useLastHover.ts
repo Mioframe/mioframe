@@ -1,14 +1,9 @@
 import type { MaybeElementRef } from '@vueuse/core';
-import {
-  createGlobalState,
-  unrefElement,
-  useEventListener,
-} from '@vueuse/core';
+import { createGlobalState, unrefElement, useEventListener } from '@vueuse/core';
 import { computed, ref, watch } from 'vue';
 
-export const shouldTrackLastHoverPointerType = (
-  pointerType: string | undefined,
-): boolean => pointerType !== 'touch';
+export const shouldTrackLastHoverPointerType = (pointerType: string | undefined): boolean =>
+  pointerType !== 'touch';
 
 const useGlobalHover = createGlobalState(() => {
   const targetList = ref<Element[]>([]);
@@ -41,11 +36,10 @@ const useGlobalHover = createGlobalState(() => {
     { passive: true, capture: true },
   );
 
-  useEventListener(
-    ['touchstart', 'pointercancel', 'touchcancel', 'dragstart', 'drop'],
-    clear,
-    { passive: true, capture: true },
-  );
+  useEventListener(['touchstart', 'pointercancel', 'touchcancel', 'dragstart', 'drop'], clear, {
+    passive: true,
+    capture: true,
+  });
 
   return {
     clear,

@@ -13,8 +13,7 @@ describe('sortData', () => {
     const firstItemId = generateItemId();
     const secondItemId = generateItemId();
     const lowerItemId = firstItemId < secondItemId ? firstItemId : secondItemId;
-    const higherItemId =
-      firstItemId < secondItemId ? secondItemId : firstItemId;
+    const higherItemId = firstItemId < secondItemId ? secondItemId : firstItemId;
 
     const sorted = sortData(
       [
@@ -37,8 +36,7 @@ describe('sortData', () => {
     const firstItemId = generateItemId();
     const secondItemId = generateItemId();
     const lowerItemId = firstItemId < secondItemId ? firstItemId : secondItemId;
-    const higherItemId =
-      firstItemId < secondItemId ? secondItemId : firstItemId;
+    const higherItemId = firstItemId < secondItemId ? secondItemId : firstItemId;
 
     const sorted = sortData(
       [
@@ -90,8 +88,7 @@ describe('sortData', () => {
     const firstItemId = generateItemId();
     const secondItemId = generateItemId();
     const lowerItemId = firstItemId < secondItemId ? firstItemId : secondItemId;
-    const higherItemId =
-      firstItemId < secondItemId ? secondItemId : firstItemId;
+    const higherItemId = firstItemId < secondItemId ? secondItemId : firstItemId;
     const properties: DatabaseUnknownPropertiesMap = {
       [titlePropertyId]: {
         default: 'x',
@@ -122,8 +119,7 @@ describe('sortData', () => {
     const firstItemId = generateItemId();
     const secondItemId = generateItemId();
     const lowerItemId = firstItemId < secondItemId ? firstItemId : secondItemId;
-    const higherItemId =
-      firstItemId < secondItemId ? secondItemId : firstItemId;
+    const higherItemId = firstItemId < secondItemId ? secondItemId : firstItemId;
 
     const sorted = sortData(
       [
@@ -146,8 +142,7 @@ describe('sortData', () => {
     const firstItemId = generateItemId();
     const secondItemId = generateItemId();
     const lowerItemId = firstItemId < secondItemId ? firstItemId : secondItemId;
-    const higherItemId =
-      firstItemId < secondItemId ? secondItemId : firstItemId;
+    const higherItemId = firstItemId < secondItemId ? secondItemId : firstItemId;
 
     const sorted = sortData(
       [

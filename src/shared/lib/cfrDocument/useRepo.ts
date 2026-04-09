@@ -2,14 +2,7 @@ import { type Repo } from '@automerge/automerge-repo';
 import type { zodCFRDocumentContent } from './types';
 import type { output } from 'zod/v4-mini';
 import type { MaybeRefOrGetter, ShallowReactive } from 'vue';
-import {
-  computed,
-  reactive,
-  shallowReactive,
-  toRef,
-  toValue,
-  watch,
-} from 'vue';
+import { computed, reactive, shallowReactive, toRef, toValue, watch } from 'vue';
 import type { UnknownRecord } from 'type-fest';
 import type { AMDocHandle, AMDocumentId } from '../automerge/automergeTypes';
 import { defineScopePool, createUsePoolHook } from '../scopePool';
@@ -17,9 +10,7 @@ import { tryOnScopeDispose } from '@vueuse/core';
 import { isEqual, once, throttle } from 'es-toolkit';
 
 export type RepoState = {
-  create: <Z extends typeof zodCFRDocumentContent>(
-    initialValue: output<Z>,
-  ) => void;
+  create: <Z extends typeof zodCFRDocumentContent>(initialValue: output<Z>) => void;
   remove: (documentId: AMDocumentId) => void;
   find: (documentList: AMDocumentId[] | Set<AMDocumentId>) => void;
   map: ShallowReactive<ReadonlyMap<AMDocumentId, AMDocHandle>>;
@@ -53,9 +44,7 @@ export const setupRepoState = (repo: Repo): RepoState => {
     repo.on('delete-document', onDeleteDocument);
   };
 
-  const create = <Z extends typeof zodCFRDocumentContent>(
-    initialValue: output<Z>,
-  ) => {
+  const create = <Z extends typeof zodCFRDocumentContent>(initialValue: output<Z>) => {
     repo.create(initialValue);
   };
 
@@ -124,9 +113,7 @@ export const useRepo = (
 
   const documentsForSearch = toRef(() => toValue(searchDocuments));
 
-  const create = <Z extends typeof zodCFRDocumentContent>(
-    initialValue: output<Z>,
-  ) => {
+  const create = <Z extends typeof zodCFRDocumentContent>(initialValue: output<Z>) => {
     if (!repoScope.value) {
       throw new Error('repository missing');
     }

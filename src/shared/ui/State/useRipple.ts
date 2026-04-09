@@ -157,9 +157,5 @@ export const useRipple = (rawEl: MaybeElementRef) => {
     },
   );
 
-  useEventListener(
-    el,
-    'keydown',
-    (e: KeyboardEvent) => void onKeyDownDebounce(e),
-  );
+  useEventListener(el, 'keydown', (e: KeyboardEvent) => void onKeyDownDebounce(e));
 };

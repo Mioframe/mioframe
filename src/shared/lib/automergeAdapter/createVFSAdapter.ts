@@ -3,29 +3,19 @@ import type { AMChunk } from '@shared/lib/automerge';
 import { zodIs } from '@shared/lib/validateZodScheme';
 import { isStandardBufferView } from '@shared/lib/isStandardBufferView';
 import { PathUtils, type VirtualFileSystem } from '../virtualFileSystem';
-import type {
-  PartialAutomergeFileName,
-  PartialStorageKey,
-  StorageKey,
-} from './types';
+import type { PartialAutomergeFileName, PartialStorageKey, StorageKey } from './types';
 import { KEY_SEPARATE, zodPartialAutomergeFileName } from './types';
 import { fileNameToPartialKey } from './fileNameToPartialKey';
 import { partialKeyToFileName } from './partialKeyToFileName';
 
-export const createVFSAdapter = (
-  vfs: VirtualFileSystem,
-  path: string,
-): StorageAdapterInterface => {
-  const load = async (
-    key: PartialStorageKey,
-  ): Promise<Uint8Array | undefined> => {
+export const createVFSAdapter = (vfs: VirtualFileSystem, path: string): StorageAdapterInterface => {
+  const load = async (key: PartialStorageKey): Promise<Uint8Array | undefined> => {
     const fileName = partialKeyToFileName(key, { withExtension: false });
 
     const directoryContent = await vfs.readDirectory(path);
 
     if (fileName) {
-      const [name] =
-        directoryContent.find(([name]) => name.startsWith(fileName)) ?? [];
+      const [name] = directoryContent.find(([name]) => name.startsWith(fileName)) ?? [];
 
       if (name) {
         const filePath = PathUtils.join(path, name);
@@ -39,9 +29,7 @@ export const createVFSAdapter = (
     return undefined;
   };
 
-  const loadRange = async (
-    keyPrefix: PartialStorageKey,
-  ): Promise<AMChunk[]> => {
+  const loadRange = async (keyPrefix: PartialStorageKey): Promise<AMChunk[]> => {
     const maybePartialAutomergeFileName = keyPrefix.join(KEY_SEPARATE);
 
     const keyPrefixString: PartialAutomergeFileName | undefined = zodIs(
@@ -54,9 +42,7 @@ export const createVFSAdapter = (
     if (keyPrefixString) {
       const directoryContent = await vfs.readDirectory(path);
 
-      const rangeContent = directoryContent.filter(([name]) =>
-        name.startsWith(keyPrefixString),
-      );
+      const rangeContent = directoryContent.filter(([name]) => name.startsWith(keyPrefixString));
 
       const chunkList = await Promise.allSettled(
         rangeContent.map(async ([fileName]): Promise<AMChunk | undefined> => {
@@ -106,9 +92,7 @@ export const createVFSAdapter = (
     if (keyPrefixString) {
       const directoryContent = await vfs.readDirectory(path);
 
-      const rangeContent = directoryContent.filter(([name]) =>
-        name.startsWith(keyPrefixString),
-      );
+      const rangeContent = directoryContent.filter(([name]) => name.startsWith(keyPrefixString));
 
       await Promise.allSettled(
         rangeContent.map(async ([name]) => {

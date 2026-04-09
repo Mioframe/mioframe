@@ -23,9 +23,9 @@ const perimeter = computed(() => {
   return 2 * Math.PI * radius.value;
 });
 
-const strokeLinecap = computed<
-  'butt' | 'round' | 'square' | 'inherit' | undefined
->(() => (progress.value === 1 ? undefined : 'round'));
+const strokeLinecap = computed<'butt' | 'round' | 'square' | 'inherit' | undefined>(() =>
+  progress.value === 1 ? undefined : 'round',
+);
 
 const gap = computed(() => (Number.isInteger(progress) ? 0 : width.value * 2));
 
@@ -33,9 +33,7 @@ const progressLineLength = computed(() => {
   return perimeter.value * progress.value - gap.value;
 });
 
-const progressGapLength = computed(
-  () => perimeter.value * (1 - progress.value) + gap.value,
-);
+const progressGapLength = computed(() => perimeter.value * (1 - progress.value) + gap.value);
 
 const progressDasharray = computed(() => {
   return `${progressLineLength.value} ${progressGapLength.value}`;
@@ -45,31 +43,23 @@ const progressLineOffset = computed(() => {
   return -gap.value / 2 + perimeter.value / 4;
 });
 
-const emptyLineLength = computed(
-  () => perimeter.value * (1 - progress.value) - gap.value,
-);
+const emptyLineLength = computed(() => perimeter.value * (1 - progress.value) - gap.value);
 
-const emptyGapLength = computed(
-  () => perimeter.value * progress.value + gap.value,
-);
+const emptyGapLength = computed(() => perimeter.value * progress.value + gap.value);
 
 const emptyDasharray = computed(() => {
   return `${emptyLineLength.value} ${emptyGapLength.value}`;
 });
 
 const emptyLineOffset = computed(() => {
-  return (
-    -perimeter.value * progress.value - gap.value / 2 + perimeter.value / 4
-  );
+  return -perimeter.value * progress.value - gap.value / 2 + perimeter.value / 4;
 });
 
 const minIndeterminateDasharray = computed(
-  () =>
-    `${perimeter.value * 0.1 - gap.value} ${perimeter.value * 0.9 + gap.value}`,
+  () => `${perimeter.value * 0.1 - gap.value} ${perimeter.value * 0.9 + gap.value}`,
 );
 const maxIndeterminateDasharray = computed(
-  () =>
-    `${perimeter.value * 0.9 - gap.value} ${perimeter.value * 0.1 + gap.value}`,
+  () => `${perimeter.value * 0.9 - gap.value} ${perimeter.value * 0.1 + gap.value}`,
 );
 
 const animateValue = computed(
@@ -79,12 +69,7 @@ const animateValue = computed(
 </script>
 
 <template>
-  <svg
-    :width="size"
-    :height="size"
-    :viewBox="viewBox"
-    class="md md-circular-progress-indicator"
-  >
+  <svg :width="size" :height="size" :viewBox="viewBox" class="md md-circular-progress-indicator">
     <circle
       v-if="emptyLineLength > 0 && progress"
       :cx="center"

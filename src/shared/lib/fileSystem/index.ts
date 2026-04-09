@@ -17,7 +17,4 @@ export {
   type DirectoryFSEntryState,
   type ReadonlyDirectoryFSEntryState,
 } from './directoryFSEntryState';
-export {
-  directoryFSEntryPool,
-  useDirectoryFSEntryPool,
-} from './directoryFSEntryPool';
+export { directoryFSEntryPool, useDirectoryFSEntryPool } from './directoryFSEntryPool';

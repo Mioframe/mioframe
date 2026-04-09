@@ -249,9 +249,7 @@ defineEmits<{
 
     &.md-state_disabled,
     &:disabled {
-      --md-state-outline-color: rgb(
-        from var(--md-sys-color-on-surface) r g b / 0.12
-      );
+      --md-state-outline-color: rgb(from var(--md-sys-color-on-surface) r g b / 0.12);
     }
 
     &.md-state_hover,

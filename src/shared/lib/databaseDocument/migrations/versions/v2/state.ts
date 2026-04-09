@@ -8,10 +8,7 @@ import { zodDatabaseView, zodDatabaseViewId } from './view';
 import { zodStrictRecord } from '@shared/lib/strictRecord/zodStrictRecord';
 import { cloneDeep } from 'es-toolkit';
 
-export const zodDatabaseViewsMap = zodStrictRecord(
-  zodDatabaseViewId,
-  zodDatabaseView,
-);
+export const zodDatabaseViewsMap = zodStrictRecord(zodDatabaseViewId, zodDatabaseView);
 
 export type DatabaseViewsMap = output<typeof zodDatabaseViewsMap>;
 

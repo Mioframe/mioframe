@@ -27,9 +27,7 @@ const GOLDEN_RATIO = 0.618033988749895;
  * ```
  */
 const getHash = (s: string) => {
-  const h = s
-    .split('')
-    .reduce((acc, char) => (Math.imul(31, acc) + char.charCodeAt(0)) | 0, 0);
+  const h = s.split('').reduce((acc, char) => (Math.imul(31, acc) + char.charCodeAt(0)) | 0, 0);
   return (h ^ (h >>> 16)) >>> 0;
 };
 
@@ -54,10 +52,7 @@ const getHash = (s: string) => {
  * generateHsl('button', { s: 90, l: 50 }) // 'hsl(97, 90%, 50%)' — bright accent
  * ```
  */
-export const generateHsl = (
-  str: string,
-  { s = 70, l = 50 }: ColorOptions = {},
-) =>
+export const generateHsl = (str: string, { s = 70, l = 50 }: ColorOptions = {}) =>
   `hsl(${Math.floor(((getHash(str) * GOLDEN_RATIO) % 1) * 360)}, ${s}%, ${l}%)`;
 
 /**

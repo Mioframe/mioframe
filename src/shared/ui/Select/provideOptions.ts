@@ -1,13 +1,7 @@
 import { DomainError } from '@shared/lib/error';
 import { tryOnScopeDispose } from '@vueuse/core';
 import type { Ref } from 'vue';
-import {
-  inject,
-  provide,
-  shallowReactive,
-  watch,
-  type InjectionKey,
-} from 'vue';
+import { inject, provide, shallowReactive, watch, type InjectionKey } from 'vue';
 
 type Value = string | number;
 type Label = string;
@@ -30,9 +24,7 @@ export const setupOption = (value: Ref<Value>, label: Ref<Label>) => {
   const options = inject(provideSelectOptionKey, undefined);
   const onClickOption = inject(provideClickOption, () => {
     if (import.meta.env.DEV) {
-      throw new DomainError(
-        'The Option component must be inside the Select component.',
-      );
+      throw new DomainError('The Option component must be inside the Select component.');
     }
   });
 

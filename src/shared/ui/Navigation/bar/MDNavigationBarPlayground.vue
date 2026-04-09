@@ -35,9 +35,7 @@ const onClick = (v: NavigationButton) => {
   active.value = v;
 };
 
-const state = useQueryValue<
-  Omit<ComponentProps<typeof MDNavigationBar>, 'buttons'>
->('state', {
+const state = useQueryValue<Omit<ComponentProps<typeof MDNavigationBar>, 'buttons'>>('state', {
   type: undefined,
 });
 
@@ -47,20 +45,11 @@ const typeOptions = [...values(BAR_TYPE), undefined];
 <template>
   <PlaygroundStory>
     <template #controllers>
-      <PlaygroundUnion
-        v-model="state.type"
-        label="type"
-        :options="typeOptions"
-      />
+      <PlaygroundUnion v-model="state.type" label="type" :options="typeOptions" />
     </template>
 
     <template #space>
-      <MDNavigationBar
-        :buttons="buttons"
-        :active="active"
-        :type="state.type"
-        @click="onClick"
-      />
+      <MDNavigationBar :buttons="buttons" :active="active" :type="state.type" @click="onClick" />
     </template>
   </PlaygroundStory>
 </template>

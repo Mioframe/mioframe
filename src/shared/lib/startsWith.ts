@@ -12,8 +12,5 @@
  * arrayStartsWith([1, 2, 3], [1, 2, 3, 4]); // false
  * ```
  */
-export const arrayStartsWith = <T = unknown>(
-  target: T[],
-  prefix: T[],
-): boolean =>
+export const arrayStartsWith = <T = unknown>(target: T[], prefix: T[]): boolean =>
   prefix.length <= target.length && prefix.every((v, i) => v === target[i]);

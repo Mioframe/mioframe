@@ -1,11 +1,5 @@
 <script setup lang="ts">
-import {
-  nextTick,
-  onBeforeUnmount,
-  shallowRef,
-  useTemplateRef,
-  watch,
-} from 'vue';
+import { nextTick, onBeforeUnmount, shallowRef, useTemplateRef, watch } from 'vue';
 import type { JsonEditor } from 'vanilla-jsoneditor';
 import { createJSONEditor } from 'vanilla-jsoneditor';
 import { deepPutJsonObject } from '@shared/lib/changeObject';

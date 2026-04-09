@@ -30,10 +30,7 @@ const onApply = async () => {
   if (stateName.value && !loading.value) {
     try {
       loading.value = true;
-      await move(
-        path,
-        PathUtils.join(PathUtils.dirname(path), stateName.value),
-      );
+      await move(path, PathUtils.join(PathUtils.dirname(path), stateName.value));
     } finally {
       loading.value = false;
     }

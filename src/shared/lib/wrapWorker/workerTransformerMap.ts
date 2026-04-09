@@ -1,9 +1,6 @@
 import type { UnknownRecord } from 'type-fest';
 import { DomainError } from '../error';
-import {
-  defineCustomErrorTransformer,
-  defineTransformer,
-} from '../proxyService';
+import { defineCustomErrorTransformer, defineTransformer } from '../proxyService';
 import type { ClientObject } from '../proxyService';
 import { VfsError } from '../virtualFileSystem';
 import { GoogleDriveError } from '../googleDrive';
@@ -28,10 +25,7 @@ export const transformers = [
   }),
 
   defineCustomErrorTransformer('GoogleAuthError', GoogleAuthError),
-  defineCustomErrorTransformer(
-    'GoogleClientConfigError',
-    GoogleClientConfigError,
-  ),
+  defineCustomErrorTransformer('GoogleClientConfigError', GoogleClientConfigError),
   defineCustomErrorTransformer('DomainError', DomainError),
   defineCustomErrorTransformer('VfsError', VfsError),
   defineCustomErrorTransformer('GoogleDriveError', GoogleDriveError),

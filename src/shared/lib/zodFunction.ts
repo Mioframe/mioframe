@@ -14,6 +14,6 @@ export const zodFunction = <
     output?: O;
   },
 ) =>
-  custom<
-    (...input: I extends core.$ZodTuple ? output<I> : undefined[]) => output<O>
-  >((val): val is AnyFunction => typeof val === 'function');
+  custom<(...input: I extends core.$ZodTuple ? output<I> : undefined[]) => output<O>>(
+    (val): val is AnyFunction => typeof val === 'function',
+  );

@@ -35,10 +35,7 @@ const relationDocumentName = computed(() => relationDocument.value?.name);
 </script>
 
 <template>
-  <MDSelectBase
-    v-model:model-value="modelSelectedDocumentId"
-    label-text="Database Document"
-  >
+  <MDSelectBase v-model:model-value="modelSelectedDocumentId" label-text="Database Document">
     <template #valueContainer>
       <span>
         {{ relationDocumentName }}

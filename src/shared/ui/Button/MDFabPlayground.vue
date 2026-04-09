@@ -37,22 +37,11 @@ const colorOptions: State['color'][] = [
     <template #controllers>
       <PlaygroundString v-model:model-value="state.tooltip" label="tooltip" />
 
-      <PlaygroundUnion
-        v-model:model-value="state.size"
-        label="size"
-        :options="sizeOptions"
-      />
+      <PlaygroundUnion v-model:model-value="state.size" label="size" :options="sizeOptions" />
 
-      <PlaygroundUnion
-        v-model:model-value="state.color"
-        label="color"
-        :options="colorOptions"
-      />
+      <PlaygroundUnion v-model:model-value="state.color" label="color" :options="colorOptions" />
 
-      <PlaygroundOptionalString
-        v-model:model-value="state.mdSymbol"
-        label="mdSymbol"
-      />
+      <PlaygroundOptionalString v-model:model-value="state.mdSymbol" label="mdSymbol" />
     </template>
 
     <template #space>

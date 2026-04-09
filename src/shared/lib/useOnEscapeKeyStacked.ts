@@ -1,14 +1,8 @@
-import {
-  createGlobalState,
-  onKeyStroke,
-  tryOnScopeDispose,
-} from '@vueuse/core';
+import { createGlobalState, onKeyStroke, tryOnScopeDispose } from '@vueuse/core';
 import type { MaybeRefOrGetter } from 'vue';
 import { toValue, watch } from 'vue';
 
-type EscapeHandler =
-  | ((e: KeyboardEvent) => boolean)
-  | ((e: KeyboardEvent) => void);
+type EscapeHandler = ((e: KeyboardEvent) => boolean) | ((e: KeyboardEvent) => void);
 
 const useEscapeKeyStack = createGlobalState(() => {
   const handlerStack: EscapeHandler[] = [];

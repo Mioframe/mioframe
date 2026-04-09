@@ -13,9 +13,7 @@ const { path, documentId } = toRefs(props);
 
 const { state: documentDescription } = useDocument(path, documentId);
 
-const label = computed(
-  () => documentDescription.value?.name ?? 'unknown document',
-);
+const label = computed(() => documentDescription.value?.name ?? 'unknown document');
 </script>
 
 <template>

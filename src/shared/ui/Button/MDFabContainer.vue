@@ -1,12 +1,7 @@
 <script setup lang="ts">
 import type { StyleValue } from 'vue';
 import { computed, ref, toRefs, useTemplateRef, watchEffect } from 'vue';
-import {
-  useElementSize,
-  useFocusWithin,
-  useParentElement,
-  useScroll,
-} from '@vueuse/core';
+import { useElementSize, useFocusWithin, useParentElement, useScroll } from '@vueuse/core';
 import { isUndefined } from 'es-toolkit';
 import { useOverlayContainer } from '../Overlay';
 import { TeleportContainer } from '@shared/lib/teleportContainer';
@@ -88,11 +83,7 @@ const ariaHidden = useMainContentAriaHidden();
 </script>
 
 <template>
-  <div
-    ref="placeholderEl"
-    class="md-fab-container__placeholder"
-    :style="placeholderStyles"
-  >
+  <div ref="placeholderEl" class="md-fab-container__placeholder" :style="placeholderStyles">
     <TeleportContainer :container="fabContainerEl" :to="overlayContainerEl">
       <div
         ref="fabContainer"
@@ -123,12 +114,8 @@ const ariaHidden = useMainContentAriaHidden();
   margin-left: auto;
   padding-bottom: 16px;
   width: min-content;
-  padding-right: calc(
-    16px - var(--md-pane-margin-x) - var(--md-pane-padding-x)
-  );
-  transition-timing-function: var(
-    var(--md-sys-motion-easing-emphasized-decelerate)
-  );
+  padding-right: calc(16px - var(--md-pane-margin-x) - var(--md-pane-padding-x));
+  transition-timing-function: var(var(--md-sys-motion-easing-emphasized-decelerate));
   transition-duration: var(--md-sys-motion-duration-long2);
   transition-property: transform, opacity;
 
@@ -144,9 +131,7 @@ const ariaHidden = useMainContentAriaHidden();
 
   &_hide {
     pointer-events: none;
-    transition-timing-function: var(
-      var(--md-sys-motion-easing-emphasized-accelerate)
-    );
+    transition-timing-function: var(var(--md-sys-motion-easing-emphasized-accelerate));
     transition-duration: var(--md-sys-motion-duration-short4);
     opacity: 0;
     transform: translateY(100%) scale(0);

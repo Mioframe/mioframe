@@ -19,9 +19,7 @@ export const defaultReorderInteractiveSelector = [
 ].join(', ');
 
 /** Scopes an interactive selector to reorder items and their descendants. */
-export const getReorderDescendantInteractiveSelector = (
-  interactiveSelector: string,
-): string =>
+export const getReorderDescendantInteractiveSelector = (interactiveSelector: string): string =>
   interactiveSelector
     .split(',')
     .map((selector) => selector.trim())

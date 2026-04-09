@@ -4,23 +4,15 @@ import type {
   FSNodeStat,
   IFileSystemProvider,
 } from '../virtualFileSystem';
-import {
-  FileSystemError,
-  FSNodeType,
-  PathUtils,
-  VfsError,
-} from '../virtualFileSystem';
+import { FileSystemError, FSNodeType, PathUtils, VfsError } from '../virtualFileSystem';
 import type { WriteOptions } from '../virtualFileSystem/IFileSystemProvider';
 
 export const WebFileSystemProvider = (
   rootHandle: FileSystemDirectoryHandle,
 ): IFileSystemProvider => {
-  const queryWritePermission = async (
-    handle: FileSystemFileHandle | FileSystemDirectoryHandle,
-  ) => {
+  const queryWritePermission = async (handle: FileSystemFileHandle | FileSystemDirectoryHandle) => {
     return (
-      (await handle.queryPermission?.({ mode: 'readwrite' })) ??
-      (await handle.queryPermission?.())
+      (await handle.queryPermission?.({ mode: 'readwrite' })) ?? (await handle.queryPermission?.())
     );
   };
 
@@ -76,17 +68,11 @@ export const WebFileSystemProvider = (
     } catch (error) {
       if (error instanceof DOMException) {
         if (error.name === 'NotFoundError') {
-          throw new VfsError(
-            FileSystemError.FileNotFound,
-            `Entry not found: ${name}`,
-            error,
-          );
+          throw new VfsError(FileSystemError.FileNotFound, `Entry not found: ${name}`, error);
         }
         if (error.name === 'TypeMismatchError') {
           throw new VfsError(
-            type === 'file'
-              ? FileSystemError.FileIsADirectory
-              : FileSystemError.FileNotADirectory,
+            type === 'file' ? FileSystemError.FileIsADirectory : FileSystemError.FileNotADirectory,
             `Type mismatch for: ${name}`,
             error,
           );
@@ -150,10 +136,7 @@ export const WebFileSystemProvider = (
       try {
         handle = await getHandle(path, false, 'directory');
       } catch {
-        throw new VfsError(
-          FileSystemError.FileNotFound,
-          `Path not found: ${path}`,
-        );
+        throw new VfsError(FileSystemError.FileNotFound, `Path not found: ${path}`);
       }
     }
 
@@ -178,10 +161,7 @@ export const WebFileSystemProvider = (
         throw new VfsError(FileSystemError.FileExists, `File exists: ${path}`);
       }
     } catch (error) {
-      if (
-        error instanceof VfsError &&
-        error.code === FileSystemError.FileNotFound
-      ) {
+      if (error instanceof VfsError && error.code === FileSystemError.FileNotFound) {
         if (!create) {
           throw error;
         }
@@ -196,9 +176,7 @@ export const WebFileSystemProvider = (
     await writable.close();
   };
 
-  const readDirectory = async (
-    path: string,
-  ): Promise<[string, FSNodeStat][]> => {
+  const readDirectory = async (path: string): Promise<[string, FSNodeStat][]> => {
     const directoryHandle = await getHandle(path, false, 'directory');
     const entries: [string, FSNodeStat][] = [];
 
@@ -212,15 +190,9 @@ export const WebFileSystemProvider = (
   const createDirectory = async (path: string): Promise<void> => {
     try {
       await getHandle(path, false, 'directory');
-      throw new VfsError(
-        FileSystemError.FileExists,
-        `Directory already exists: ${path}`,
-      );
+      throw new VfsError(FileSystemError.FileExists, `Directory already exists: ${path}`);
     } catch (error) {
-      if (
-        error instanceof VfsError &&
-        error.code === FileSystemError.FileNotFound
-      ) {
+      if (error instanceof VfsError && error.code === FileSystemError.FileNotFound) {
         await getHandle(path, true, 'directory');
         return;
       }
@@ -254,10 +226,7 @@ export const WebFileSystemProvider = (
     } catch (error) {
       if (error instanceof DOMException) {
         if (error.name === 'NotFoundError') {
-          throw new VfsError(
-            FileSystemError.FileNotFound,
-            `Entry not found: ${path}`,
-          );
+          throw new VfsError(FileSystemError.FileNotFound, `Entry not found: ${path}`);
         }
         if (error.name === 'InvalidModificationError') {
           throw new VfsError(
@@ -292,19 +261,12 @@ export const WebFileSystemProvider = (
           ? await getHandle(normalizedOld, false, 'file')
           : await getHandle(normalizedOld, false, 'directory');
     } catch {
-      throw new VfsError(
-        FileSystemError.FileNotFound,
-        `Source not found: ${oldPath}`,
-      );
+      throw new VfsError(FileSystemError.FileNotFound, `Source not found: ${oldPath}`);
     }
 
     const newName = PathUtils.basename(normalizedNew);
     const newDirName = PathUtils.dirname(normalizedNew);
-    const destinationDirHandle = await getHandle(
-      newDirName,
-      false,
-      'directory',
-    );
+    const destinationDirHandle = await getHandle(newDirName, false, 'directory');
     const destinationStat = await stat(newDirName);
 
     if (destinationStat.capabilities?.canEditChildren !== true) {
@@ -332,12 +294,9 @@ export const WebFileSystemProvider = (
       return;
     }
 
-    const newDirHandle = await destinationDirHandle.getDirectoryHandle(
-      newName,
-      {
-        create: true,
-      },
-    );
+    const newDirHandle = await destinationDirHandle.getDirectoryHandle(newName, {
+      create: true,
+    });
 
     const copyDirectoryContents = async (
       sourceDir: FileSystemDirectoryHandle,

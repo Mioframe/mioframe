@@ -33,31 +33,15 @@ const state = useQueryValue<State>('state', {
     <template #controllers>
       <PlaygroundString v-model:model-value="state.label" label="label" />
 
-      <PlaygroundUnion
-        v-model:model-value="state.type"
-        label="type"
-        :options="typeOptions"
-      />
+      <PlaygroundUnion v-model:model-value="state.type" label="type" :options="typeOptions" />
 
-      <PlaygroundOptionalBoolean
-        v-model:model-value="state.elevated"
-        label="elevated"
-      />
+      <PlaygroundOptionalBoolean v-model:model-value="state.elevated" label="elevated" />
 
-      <PlaygroundOptionalBoolean
-        v-model:model-value="state.selected"
-        label="selected"
-      />
+      <PlaygroundOptionalBoolean v-model:model-value="state.selected" label="selected" />
 
-      <PlaygroundBoolean
-        v-model:model-value="state.leadingIcon"
-        label="leadingIcon"
-      />
+      <PlaygroundBoolean v-model:model-value="state.leadingIcon" label="leadingIcon" />
 
-      <PlaygroundBoolean
-        v-model:model-value="state.trailingIcon"
-        label="trailingIcon"
-      />
+      <PlaygroundBoolean v-model:model-value="state.trailingIcon" label="trailingIcon" />
     </template>
 
     <template #space>

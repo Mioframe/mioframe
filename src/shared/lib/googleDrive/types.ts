@@ -10,25 +10,18 @@ import type { StaticDirectoryFSEntry } from '../fileSystem/DirectoryFSEntry';
 export type GDriveDirectory = {
   getName: () => string;
   rename: (newName: string) => Promise<GDriveDirectory>;
-  writeFile: (
-    name: string,
-    file?: FileSystemWriteChunkType,
-  ) => Promise<GDriveFile>;
+  writeFile: (name: string, file?: FileSystemWriteChunkType) => Promise<GDriveFile>;
   removeByName: (name: string) => Promise<void>;
   remove: () => Promise<void>;
   createDirectory: (name: string) => Promise<GDriveDirectory>;
   /**
    * Adding directory state watcher
    */
-  addWatcher: (
-    handler: (iterableCollection: GDriveDirectoryContent) => unknown,
-  ) => void;
+  addWatcher: (handler: (iterableCollection: GDriveDirectoryContent) => unknown) => void;
   /**
    * Remove directory state watcher
    */
-  removeWatcher: (
-    handler: (iterableCollection: GDriveDirectoryContent) => unknown,
-  ) => void;
+  removeWatcher: (handler: (iterableCollection: GDriveDirectoryContent) => unknown) => void;
   children: () => AsyncIterator<[string, GDriveDirectory | GDriveFile]>;
 };
 
@@ -41,9 +34,7 @@ export type GDriveFile = {
 
 export const GOOGLE_FOLDER_MIME_TYPE = 'application/vnd.google-apps.folder';
 
-export type GDriveDirectoryContent = Iterable<
-  [string, GDriveDirectory | GDriveFile]
->;
+export type GDriveDirectoryContent = Iterable<[string, GDriveDirectory | GDriveFile]>;
 
 export interface GDriveEntry extends GeneralFSEntry {}
 

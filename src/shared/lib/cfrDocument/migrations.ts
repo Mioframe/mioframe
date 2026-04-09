@@ -18,17 +18,13 @@ const readVersion = (doc: unknown) => {
   return currentVersion;
 };
 
-export const applyCFRDocumentMigration = (
-  data: object,
-): AMDoc<CFRDocumentContent> => {
-  return defineMigrations(
-    (doc: object): MergeDeep<object, CFRDocumentContent> => {
-      return deepPatchJsonObject(doc, {
-        name: 'new document',
-        type: 'unknown',
-        ...doc,
-        version: 1,
-      });
-    },
-  ).applyUpdate(data, readVersion(data));
+export const applyCFRDocumentMigration = (data: object): AMDoc<CFRDocumentContent> => {
+  return defineMigrations((doc: object): MergeDeep<object, CFRDocumentContent> => {
+    return deepPatchJsonObject(doc, {
+      name: 'new document',
+      type: 'unknown',
+      ...doc,
+      version: 1,
+    });
+  }).applyUpdate(data, readVersion(data));
 };

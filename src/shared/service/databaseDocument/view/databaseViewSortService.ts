@@ -5,10 +5,7 @@ import type {
   DatabaseSortDescription,
   DatabaseView,
 } from '@shared/lib/databaseDocument';
-import {
-  SORT_DIRECTION,
-  type DatabaseViewId,
-} from '@shared/lib/databaseDocument';
+import { SORT_DIRECTION, type DatabaseViewId } from '@shared/lib/databaseDocument';
 import {
   strictRecordIterableEntries,
   strictRecordRemove,
@@ -170,14 +167,12 @@ export const useDatabaseViewSortService = (
         return;
       }
 
-      const knownEntries = Array.from(
-        strictRecordIterableEntries(sorting)(),
-      ).sort(([, { priority: a }], [, { priority: b }]) => a - b);
+      const knownEntries = Array.from(strictRecordIterableEntries(sorting)()).sort(
+        ([, { priority: a }], [, { priority: b }]) => a - b,
+      );
       const seenIds = new Set(orderedPropertyIds);
       const nextOrderedIds = [
-        ...orderedPropertyIds.filter((propertyId) =>
-          Boolean(sorting[propertyId]),
-        ),
+        ...orderedPropertyIds.filter((propertyId) => Boolean(sorting[propertyId])),
         ...knownEntries
           .map(([propertyId]) => propertyId)
           .filter((propertyId) => !seenIds.has(propertyId)),
@@ -198,9 +193,8 @@ export const useDatabaseViewSortService = (
     viewId: DatabaseViewId,
     propertyId: DatabasePropertyId,
   ) => {
-    const oldDirection = (
-      await databaseSort.fetch({ documentId, path, propertyId, viewId })
-    )?.direction;
+    const oldDirection = (await databaseSort.fetch({ documentId, path, propertyId, viewId }))
+      ?.direction;
 
     await patch(path, documentId, viewId, propertyId, {
       direction:

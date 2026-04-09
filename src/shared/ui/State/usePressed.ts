@@ -1,8 +1,4 @@
-import {
-  unrefElement,
-  useEventListener,
-  type MaybeElementRef,
-} from '@vueuse/core';
+import { unrefElement, useEventListener, type MaybeElementRef } from '@vueuse/core';
 import { computed, ref, watch } from 'vue';
 import parseDuration from 'parse-duration';
 
@@ -48,9 +44,8 @@ export const usePressed = (rawEl: MaybeElementRef) => {
 
     if (el instanceof Element) {
       return (
-        parseDuration(
-          getComputedStyle(el).getPropertyValue('transition-duration'),
-        ) ?? defaultDuration
+        parseDuration(getComputedStyle(el).getPropertyValue('transition-duration')) ??
+        defaultDuration
       );
     }
 

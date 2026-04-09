@@ -4,10 +4,10 @@ import { z } from 'zod/v4-mini';
 
 describe('defineVersion', () => {
   it('should create version object with schema and up function', () => {
-    const version = defineVersion(
-      z.object({ name: z.string(), version: z.number() }),
-      () => ({ name: 'test', version: 1 }),
-    );
+    const version = defineVersion(z.object({ name: z.string(), version: z.number() }), () => ({
+      name: 'test',
+      version: 1,
+    }));
 
     expect(version.schema).toBeDefined();
     expect(typeof version.up).toBe('function');

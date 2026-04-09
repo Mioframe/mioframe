@@ -6,10 +6,7 @@ import { computed, ref, toRefs, useTemplateRef } from 'vue';
 import type { ParentRelation, RelationValue } from './model';
 import { zodRelationValue } from './model';
 import type { AMDocumentId } from '@shared/lib/automerge';
-import type {
-  DatabasePropertyId,
-  DatabaseViewId,
-} from '@shared/lib/databaseDocument';
+import type { DatabasePropertyId, DatabaseViewId } from '@shared/lib/databaseDocument';
 import { useRelationProperty } from './useRelationProperty';
 import { hasOwnKey } from '@shared/lib/typeGuards/hasOwnKey';
 import { get } from 'es-toolkit/compat';
@@ -25,8 +22,7 @@ const props = defineProps<{
   parentRelation?: ParentRelation;
 }>();
 
-const { directoryPath, value, documentId, propertyId, parentRelation } =
-  toRefs(props);
+const { directoryPath, value, documentId, propertyId, parentRelation } = toRefs(props);
 
 defineSlots<{
   default: (p: {
@@ -41,9 +37,7 @@ defineSlots<{
 const { property } = useRelationProperty(directoryPath, documentId, propertyId);
 
 const verifiedValue = computed(() =>
-  zodIs(value.value, zodRelationValue) && value.value.length > 0
-    ? value.value
-    : undefined,
+  zodIs(value.value, zodRelationValue) && value.value.length > 0 ? value.value : undefined,
 );
 
 const relationDocumentId = computed(() => property.value?.relation.documentId);
@@ -75,9 +69,7 @@ const mergedParentRelation = computed((): ParentRelation => {
 
 const showValue = ref(false);
 
-const showSubRelationButton = useTemplateRef<MaybeElement>(
-  'showSubRelationButton',
-);
+const showSubRelationButton = useTemplateRef<MaybeElement>('showSubRelationButton');
 
 const interactionOutside = (e: Event) => {
   if (

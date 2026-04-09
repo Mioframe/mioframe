@@ -95,10 +95,7 @@ const setupFocusIndicator = () => {
   watch(
     focusedEl,
     (focusedEl) => {
-      if (
-        focusedEl &&
-        !focusedEl.classList.contains('md-focus-indicator_hidden')
-      ) {
+      if (focusedEl && !focusedEl.classList.contains('md-focus-indicator_hidden')) {
         showIndicator();
         const styles = getComputedStyle(focusedEl);
         borderRadius.value = styles.borderRadius;

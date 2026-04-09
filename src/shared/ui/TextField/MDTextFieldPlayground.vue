@@ -52,20 +52,11 @@ const state = useQueryValue<ComponentProps<typeof MDTextField>>('state', {
         <code>{{ [state.modelValue] }}</code>
       </div>
 
-      <PlaygroundString
-        v-model:model-value="state.labelText"
-        label="labelText"
-      />
+      <PlaygroundString v-model:model-value="state.labelText" label="labelText" />
 
-      <PlaygroundOptionalBoolean
-        v-model:model-value="state.disabled"
-        label="disabled"
-      />
+      <PlaygroundOptionalBoolean v-model:model-value="state.disabled" label="disabled" />
 
-      <PlaygroundOptionalBoolean
-        v-model:model-value="state.error"
-        label="error"
-      />
+      <PlaygroundOptionalBoolean v-model:model-value="state.error" label="error" />
 
       <PlaygroundUnion
         v-model:model-value="state.inputType"
@@ -73,26 +64,13 @@ const state = useQueryValue<ComponentProps<typeof MDTextField>>('state', {
         :options="inputTypeOptions"
       />
 
-      <PlaygroundOptionalNumber
-        v-model:model-value="state.maxCharacters"
-        label="maxCharacters"
-      />
+      <PlaygroundOptionalNumber v-model:model-value="state.maxCharacters" label="maxCharacters" />
 
-      <PlaygroundOptionalBoolean
-        v-model:model-value="state.readonly"
-        label="readonly"
-      />
+      <PlaygroundOptionalBoolean v-model:model-value="state.readonly" label="readonly" />
 
-      <PlaygroundOptionalString
-        v-model:model-value="state.supportingText"
-        label="supportingText"
-      />
+      <PlaygroundOptionalString v-model:model-value="state.supportingText" label="supportingText" />
 
-      <PlaygroundUnion
-        v-model:model-value="state.type"
-        label="type"
-        :options="typeOptions"
-      />
+      <PlaygroundUnion v-model:model-value="state.type" label="type" :options="typeOptions" />
     </template>
 
     <template #space>

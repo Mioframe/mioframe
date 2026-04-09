@@ -13,16 +13,9 @@ const props = defineProps<{
 
 defineSlots<{
   property: (p: { property: string }) => unknown;
-  value: (p: {
-    value: unknown;
-    path: PropertyKey[];
-    property: string;
-  }) => unknown;
+  value: (p: { value: unknown; path: PropertyKey[]; property: string }) => unknown;
   objectAppend: (p: { path: PropertyKey[] }) => unknown;
-  groupAppend: (p: {
-    path: PropertyKey[];
-    operator: LogicalOperator;
-  }) => unknown;
+  groupAppend: (p: { path: PropertyKey[]; operator: LogicalOperator }) => unknown;
 }>();
 
 const defaultOperator = OPERATOR.$eq;

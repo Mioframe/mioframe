@@ -10,6 +10,4 @@ export interface MenuButtonDescription<
   submenu?: MenuButtonList<T>;
 }
 
-export type MenuButtonList<
-  T extends MenuButtonDescription<T> = BaseMenuButton,
-> = T[];
+export type MenuButtonList<T extends MenuButtonDescription<T> = BaseMenuButton> = T[];

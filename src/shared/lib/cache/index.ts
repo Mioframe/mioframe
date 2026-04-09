@@ -55,9 +55,7 @@ export class Cache<K, T extends UnknownRecord> {
     this.lruCache.forEach(fn);
   }
 
-  forEachEntry(
-    fn: (value: T, cacheKey: string, originalKey: K | string) => unknown,
-  ) {
+  forEachEntry(fn: (value: T, cacheKey: string, originalKey: K | string) => unknown) {
     this.lruCache.forEach((value, cacheKey) => {
       fn(value, cacheKey, this.originalKeys.get(cacheKey) ?? cacheKey);
     });

@@ -10,10 +10,7 @@ import {
 
 export type MutationFn = (views: DatabaseViewsMap) => unknown;
 
-export const addViewMutation = (
-  body: DataBaseStateLatest,
-  view: DatabaseView,
-): DatabaseViewId => {
+export const addViewMutation = (body: DataBaseStateLatest, view: DatabaseView): DatabaseViewId => {
   const viewId = generateViewId();
 
   deepPatchJsonObject(body, { views: { [viewId]: view } });
@@ -21,10 +18,7 @@ export const addViewMutation = (
   return viewId;
 };
 
-export const removeViewMutation = (
-  body: DataBaseStateLatest,
-  viewId: DatabaseViewId,
-) => {
+export const removeViewMutation = (body: DataBaseStateLatest, viewId: DatabaseViewId) => {
   const views = body.views;
   if (viewId in views) {
     // eslint-disable-next-line @typescript-eslint/no-dynamic-delete -- automerge recommended

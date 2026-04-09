@@ -1,8 +1,4 @@
-import {
-  createGlobalState,
-  tryOnScopeDispose,
-  useEventListener,
-} from '@vueuse/core';
+import { createGlobalState, tryOnScopeDispose, useEventListener } from '@vueuse/core';
 import { get, isNumber } from 'es-toolkit/compat';
 import type { Promisable } from 'type-fest';
 import type { Plugin } from 'vue';
@@ -34,11 +30,7 @@ const useBackNavigationStack = createGlobalState(() => {
       queuedDispatchResult = (async () => {
         let allowNavigation = true;
 
-        for (
-          let index = handlerStack.length - 1;
-          index >= 0 && allowNavigation;
-          index--
-        ) {
+        for (let index = handlerStack.length - 1; index >= 0 && allowNavigation; index--) {
           allowNavigation = (await handlerStack.at(index)?.(to, from)) === true;
         }
 
@@ -74,11 +66,7 @@ const useBackNavigationStack = createGlobalState(() => {
     const lastPosition = globalPosition.value;
     const historyPosition = get(window.history.state, 'position');
 
-    if (
-      isNumber(lastPosition) &&
-      isNumber(historyPosition) &&
-      lastPosition > historyPosition
-    ) {
+    if (isNumber(lastPosition) && isNumber(historyPosition) && lastPosition > historyPosition) {
       return await dispatchBackNavigation(to, from);
     }
 

@@ -45,16 +45,9 @@ const placementOptions: State['placement'][] = [
 
       <PlaygroundOptionalBoolean v-model="state.show" label="show" />
 
-      <PlaygroundOptionalBoolean
-        v-model="state.disabledTeleport"
-        label="disabledTeleport"
-      />
+      <PlaygroundOptionalBoolean v-model="state.disabledTeleport" label="disabledTeleport" />
 
-      <PlaygroundUnion
-        v-model="state.placement"
-        label="placement"
-        :options="placementOptions"
-      />
+      <PlaygroundUnion v-model="state.placement" label="placement" :options="placementOptions" />
     </template>
 
     <template #space>

@@ -1,8 +1,4 @@
-import type {
-  FileContent,
-  FSNodeStat,
-  IFileSystemProvider,
-} from './IFileSystemProvider';
+import type { FileContent, FSNodeStat, IFileSystemProvider } from './IFileSystemProvider';
 import { FSNodeType } from './IFileSystemProvider';
 import type { VfsEvent } from './EventEmitter';
 import { EventEmitter, VfsEventSource, VfsEventType } from './EventEmitter';
@@ -39,10 +35,7 @@ export class VirtualFileSystem {
    * Map of mount points to their associated providers and unwatch functions.
    * Keys are normalized paths where the provider is mounted.
    */
-  private mounts: Map<
-    string,
-    { provider: IFileSystemProvider; unwatch?: () => void }
-  > = new Map();
+  private mounts: Map<string, { provider: IFileSystemProvider; unwatch?: () => void }> = new Map();
 
   /**
    * Event emitter for managing VFS events.
@@ -71,8 +64,7 @@ export class VirtualFileSystem {
   }
 
   private emitProviderEvent(mountPath: string, event: VfsEvent) {
-    const prefixedPath =
-      mountPath === '/' ? event.path : PathUtils.join(mountPath, event.path);
+    const prefixedPath = mountPath === '/' ? event.path : PathUtils.join(mountPath, event.path);
     const prefixedNewPath = event.newPath
       ? mountPath === '/'
         ? event.newPath
@@ -123,8 +115,7 @@ export class VirtualFileSystem {
     const recursive = options?.recursive ?? false;
 
     if (typeof pathOrCallback === 'string') {
-      if (!callback)
-        throw new Error('Callback is required when watching a path');
+      if (!callback) throw new Error('Callback is required when watching a path');
       targetPath = PathUtils.normalize(pathOrCallback);
       listener = callback;
     } else {
@@ -148,20 +139,11 @@ export class VirtualFileSystem {
         };
 
         const matchDescendant = checkDescendant(event.path);
-        const matchNewDescendant = event.newPath
-          ? checkDescendant(event.newPath)
-          : false;
+        const matchNewDescendant = event.newPath ? checkDescendant(event.newPath) : false;
         const matchAncestor = checkAncestor(event.path);
-        const matchNewAncestor = event.newPath
-          ? checkAncestor(event.newPath)
-          : false;
+        const matchNewAncestor = event.newPath ? checkAncestor(event.newPath) : false;
 
-        if (
-          matchDescendant ||
-          matchNewDescendant ||
-          matchAncestor ||
-          matchNewAncestor
-        ) {
+        if (matchDescendant || matchNewDescendant || matchAncestor || matchNewAncestor) {
           listener(event);
         }
       } else {
@@ -204,10 +186,7 @@ export class VirtualFileSystem {
     const sortedEntries = Array.from(this.mounts.entries()).sort(
       (a, b) => b[0].length - a[0].length,
     );
-    const newMap = new Map<
-      string,
-      { provider: IFileSystemProvider; unwatch?: () => void }
-    >();
+    const newMap = new Map<string, { provider: IFileSystemProvider; unwatch?: () => void }>();
     sortedEntries.forEach(([k, v]) => newMap.set(k, v));
     this.mounts = newMap;
 
@@ -256,10 +235,7 @@ export class VirtualFileSystem {
       }
     }
 
-    throw new VfsError(
-      FileSystemError.FileNotFound,
-      `No provider mounted for path: ${path}`,
-    );
+    throw new VfsError(FileSystemError.FileNotFound, `No provider mounted for path: ${path}`);
   }
 
   // --- API Methods ---
@@ -352,10 +328,7 @@ export class VirtualFileSystem {
    * @param path Absolute path to the item to delete
    * @param recursive If true, deletes non-empty directories recursively
    */
-  async #unlockedDelete(
-    path: string,
-    recursive: boolean = false,
-  ): Promise<void> {
+  async #unlockedDelete(path: string, recursive: boolean = false): Promise<void> {
     const { provider, relativePath } = this.resolve(path);
 
     // Check delete capability before deletion
@@ -379,9 +352,7 @@ export class VirtualFileSystem {
   public async delete(path: string, recursive: boolean = false): Promise<void> {
     const stat = await this.stat(path);
 
-    await this.locks.request(path, async () =>
-      this.#unlockedDelete(path, recursive),
-    );
+    await this.locks.request(path, async () => this.#unlockedDelete(path, recursive));
     this.emitVfsEvent({
       type: VfsEventType.DELETE,
       path,
@@ -463,10 +434,7 @@ export class VirtualFileSystem {
    * @param targetPath Target path where to move the item
    */
 
-  private async moveCrossProvider(
-    sourcePath: string,
-    targetPath: string,
-  ): Promise<void> {
+  private async moveCrossProvider(sourcePath: string, targetPath: string): Promise<void> {
     const source = this.resolve(sourcePath);
     const target = this.resolve(targetPath);
 
@@ -484,8 +452,7 @@ export class VirtualFileSystem {
       try {
         await target.provider.createDirectory(target.relativePath);
       } catch (e) {
-        if (!(e instanceof VfsError) || e.code !== FileSystemError.FileExists)
-          throw e;
+        if (!(e instanceof VfsError) || e.code !== FileSystemError.FileExists) throw e;
       }
 
       const entries = await source.provider.readDirectory(source.relativePath);
@@ -513,8 +480,7 @@ export class VirtualFileSystem {
       await this.stat(path);
       return true;
     } catch (e: unknown) {
-      if (e instanceof VfsError && e.code === FileSystemError.FileNotFound)
-        return false;
+      if (e instanceof VfsError && e.code === FileSystemError.FileNotFound) return false;
       throw e;
     }
   }

@@ -10,10 +10,7 @@ import { from } from 'ix/Ix.asynciterable';
  * @param targetMap - The map to be updated.
  * @template K, V
  */
-export const updateMap = async <K, V>(
-  sourceMap: Iterable<[K, V]>,
-  targetMap: Map<K, V>,
-) => {
+export const updateMap = async <K, V>(sourceMap: Iterable<[K, V]>, targetMap: Map<K, V>) => {
   const targetKeys = new Set(targetMap.keys());
 
   await from(sourceMap).forEach(([key, value]) => {

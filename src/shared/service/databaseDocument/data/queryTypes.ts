@@ -1,7 +1,4 @@
-import type {
-  DatabaseItem,
-  DatabaseItemId,
-} from '@shared/lib/databaseDocument';
+import type { DatabaseItem, DatabaseItemId } from '@shared/lib/databaseDocument';
 import type { Query } from 'sift';
 
 export type ItemIdQuery = Query<DatabaseItemId>;

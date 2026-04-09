@@ -42,8 +42,7 @@ export const useRepository = (path: Ref<string>) => {
     errorMessage,
     isLoading,
 
-    createDocument: (initialValue: CFRDocumentContent) =>
-      createDocument(path.value, initialValue),
+    createDocument: (initialValue: CFRDocumentContent) => createDocument(path.value, initialValue),
     deleteDocument: (id: AMDocumentId) => deleteDocument(path.value, id),
   };
 };

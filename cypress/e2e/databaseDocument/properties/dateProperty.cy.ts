@@ -72,9 +72,7 @@ describe('use date property in database document', () => {
 
     cy.findByRole('menuitem', { name: /edit/i }).click();
 
-    cy.findByLabelText(/name/i, { selector: 'input' }).type(
-      `${propertyName} edited`,
-    );
+    cy.findByLabelText(/name/i, { selector: 'input' }).type(`${propertyName} edited`);
 
     cy.findByRole('button', { name: /edit/i }).click();
 
@@ -122,9 +120,7 @@ describe('use date property in database document', () => {
 
     const dateValue = faker.date.anytime();
 
-    cy.findByLabelText(new RegExp(propertyName, 'i')).type(
-      dayjs(dateValue).format('YYYY-MM-DD'),
-    );
+    cy.findByLabelText(new RegExp(propertyName, 'i')).type(dayjs(dateValue).format('YYYY-MM-DD'));
 
     cy.findByRole('button', { name: /add/i }).click();
 
@@ -138,15 +134,11 @@ describe('use date property in database document', () => {
 
     const dateValue = faker.date.anytime();
 
-    cy.findByLabelText(new RegExp(propertyName, 'i')).type(
-      dayjs(dateValue).format('YYYY-MM-DD'),
-    );
+    cy.findByLabelText(new RegExp(propertyName, 'i')).type(dayjs(dateValue).format('YYYY-MM-DD'));
 
     cy.findByRole('button', { name: /add/i }).click();
 
-    const listitem = cy
-      .findByText(dayjs(dateValue).format('l'))
-      .closest('[role="listitem"]');
+    const listitem = cy.findByText(dayjs(dateValue).format('l')).closest('[role="listitem"]');
 
     listitem.findByRole('button', { name: /options/i }).click();
 

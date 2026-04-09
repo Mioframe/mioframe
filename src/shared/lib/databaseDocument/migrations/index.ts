@@ -4,8 +4,7 @@ import { databaseBodyMigrations } from './bodyMigrations';
 import type { UnknownRecord } from 'type-fest';
 
 export const applyMigrateDatabaseBody = (body: object) => {
-  const version: number =
-    'version' in body ? (isInteger(body.version) ? body.version : 0) : 0;
+  const version: number = 'version' in body ? (isInteger(body.version) ? body.version : 0) : 0;
 
   return databaseBodyMigrations.applyUpdate(body, version);
 };

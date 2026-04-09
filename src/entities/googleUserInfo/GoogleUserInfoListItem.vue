@@ -17,11 +17,7 @@ defineSlots<{
   mediaRight(): unknown;
 }>();
 
-const {
-  data: userInfo,
-  profileImageBlobUrl,
-  evaluating,
-} = useGoogleUserInfo(email);
+const { data: userInfo, profileImageBlobUrl, evaluating } = useGoogleUserInfo(email);
 
 const { deleteSession, revokeAccess } = useGoogleSessions();
 const activeAction = ref<'delete' | 'revoke'>();
@@ -54,14 +50,10 @@ const supportingTextUser = computed(() =>
 );
 
 const profileImageUrl = computed(() =>
-  profileImageBlobUrl.value instanceof Error
-    ? undefined
-    : profileImageBlobUrl.value,
+  profileImageBlobUrl.value instanceof Error ? undefined : profileImageBlobUrl.value,
 );
 
-const error = computed(() =>
-  userInfo.value instanceof Error ? userInfo.value : undefined,
-);
+const error = computed(() => (userInfo.value instanceof Error ? userInfo.value : undefined));
 
 const onClickDeleteSession = async () => {
   activeAction.value = 'delete';
@@ -145,12 +137,7 @@ const emit = defineEmits<{
     <template #leadingAvatarContainer>
       <MDCircularProgressIndicator v-if="evaluating" />
 
-      <img
-        v-else-if="profileImageUrl"
-        :src="profileImageUrl"
-        width="100%"
-        height="100%"
-      />
+      <img v-else-if="profileImageUrl" :src="profileImageUrl" width="100%" height="100%" />
     </template>
 
     <template v-if="!evaluating" #trailingIcon>
