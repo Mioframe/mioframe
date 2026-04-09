@@ -1,6 +1,7 @@
 {
   "extends": "./tsconfig.app.json",
   "include": ["env.d.ts", "src/**/*.cy.ts", "cypress/**/*", "src/**/*.ts", "src/**/*.vue"],
+  "exclude": [],
   "compilerOptions": {
     "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.cypress.tsbuildinfo",
     "types": ["cypress", "@testing-library/cypress", "@types/wicg-file-system-access"],

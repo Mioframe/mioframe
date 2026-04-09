@@ -1,4 +1,5 @@
-import { globalIgnores } from 'eslint/config';
+import { fileURLToPath } from 'node:url';
+import { includeIgnoreFile } from '@eslint/compat';
 import { defineConfigWithVueTs, vueTsConfigs } from '@vue/eslint-config-typescript';
 import pluginVue from 'eslint-plugin-vue';
 import pluginVitest from '@vitest/eslint-plugin';
@@ -18,6 +19,8 @@ const cypressGlobals = {
   it: 'readonly',
 };
 
+const gitignorePath = fileURLToPath(new URL('./.gitignore', import.meta.url));
+
 export default defineConfigWithVueTs(
   {
     linterOptions: {
@@ -30,18 +33,10 @@ export default defineConfigWithVueTs(
     name: 'app/files-to-lint',
   },
 
-  globalIgnores([
-    '**/dist/**',
-    '**/dist-ssr/**',
-    '**/coverage/**',
-    '**/.tmp/**',
-    '**/node_modules/**',
-    'src/temp/**',
-    '/tmp/beaver-vue-ref/**',
-  ]),
+  includeIgnoreFile(gitignorePath),
 
-  ...pluginVue.configs['flat/essential'],
-  vueTsConfigs.recommended,
+  ...pluginVue.configs['flat/recommended'],
+  vueTsConfigs.strictTypeChecked,
 
   {
     ...pluginVitest.configs.recommended,
@@ -57,6 +52,11 @@ export default defineConfigWithVueTs(
     files: ['src/**/*.cy.ts', 'cypress/**/*.{ts,tsx}'],
     languageOptions: {
       globals: cypressGlobals,
+      parserOptions: {
+        project: ['./tsconfig.cypress.json'],
+        projectService: false,
+        tsconfigRootDir: import.meta.dirname,
+      },
     },
     rules: {
       '@typescript-eslint/no-namespace': 'off',
@@ -77,6 +77,8 @@ export default defineConfigWithVueTs(
         { allowInterfaces: 'with-single-extends' },
       ],
       'vue/camelcase': 'off',
+      'vue/require-default-prop': 'off',
+      '@typescript-eslint/prefer-promise-reject-errors': 'off',
     },
   },
 

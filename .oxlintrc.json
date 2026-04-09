@@ -11,14 +11,20 @@
   "categories": {
     "correctness": "error",
     "suspicious": "warn",
-    "pedantic": "warn",
+    "pedantic": "off",
     "perf": "warn",
-    "style": "warn",
-    "restriction": "warn"
+    "style": "off",
+    "restriction": "off"
   },
   "rules": {
-    // "eslint/no-empty-pattern": "off",
-    // "eslint/no-useless-rename": "off",
-    // "vue/valid-define-props": "off"
+    "eslint/no-await-in-loop": "off",
+    "eslint/no-shadow": "off",
+    "eslint/no-unneeded-ternary": "off",
+    "eslint/no-useless-rename": "off",
+    "oxc/no-accumulating-spread": "off",
+    "typescript/consistent-return": "off",
+    "typescript/no-unnecessary-type-arguments": "off",
+    "typescript/no-unsafe-type-assertion": "off",
+    "vue/valid-define-props": "off"
   }
 }
