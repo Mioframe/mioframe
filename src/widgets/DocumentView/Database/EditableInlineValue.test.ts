@@ -65,7 +65,10 @@ vi.mock('./ValueField.vue', () => ({
     },
 
     emits: {
-      'update:value': () => true,
+      'update:value': (value: unknown) => {
+        void value;
+        return true;
+      },
     },
 
     setup(props, { emit }) {
