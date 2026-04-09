@@ -1,13 +1,13 @@
 {
   "name": "beaver",
-  "private": true,
   "version": "0.0.1",
-  "type": "module",
-  "author": {
-    "email": "vyachean@gmail.com",
-    "name": "vyachean"
-  },
+  "private": true,
   "license": "SEE LICENSE IN LICENSE",
+  "author": {
+    "name": "vyachean",
+    "email": "vyachean@gmail.com"
+  },
+  "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "run-p type-check \"build-only {@}\" --",
@@ -94,6 +94,7 @@
     "npm-run-all2": "^8.0.4",
     "oxfmt": "^0.44.0",
     "oxlint": "~1.59.0",
+    "oxlint-tsgolint": "^0.20.0",
     "postcss": "^8.5.9",
     "postcss-import": "^16.1.1",
     "postcss-nested": "^7.0.2",
