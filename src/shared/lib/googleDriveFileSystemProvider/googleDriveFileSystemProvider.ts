@@ -187,8 +187,10 @@ export const googleDriveFileSystemProvider = ({
     for (const [index, partName] of relativePathArray.entries()) {
       const isLast = index === relativePathArray.length - 1;
 
+      // eslint-disable-next-line no-await-in-loop -- each path segment lookup depends on the previously resolved Drive folder id
       const token = await getTokenForPath(path);
 
+      // eslint-disable-next-line no-await-in-loop -- the Drive query uses the current parent id resolved in the same sequential traversal
       const result = await getGFileMetaList(
         { ACCESS_TOKEN: token },
         {

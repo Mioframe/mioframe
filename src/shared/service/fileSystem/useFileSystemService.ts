@@ -127,16 +127,20 @@ const setupFileSystemService = () => {
 
   const hydrateDeviceDirectories = async () => {
     const records = await getRecordList();
+    const permissionStates = await Promise.all(
+      records.map(async (record) => ({
+        permissionState: await record.handle.queryPermission?.({
+          mode: 'readwrite',
+        }),
+        record,
+      })),
+    );
 
-    for (const record of records) {
-      const permissionState = await record.handle.queryPermission?.({
-        mode: 'readwrite',
-      });
-
+    permissionStates.forEach(({ permissionState, record }) => {
       if (permissionState === 'granted') {
         deviceFileSystemProvider.upsertRecord(record);
       }
-    }
+    });
 
     syncActiveDeviceFiles();
   };
@@ -189,13 +193,11 @@ const setupFileSystemService = () => {
     records: PersistedDeviceDirectoryRecord[],
     handle: FileSystemDirectoryHandle,
   ) => {
-    for (const record of records) {
-      if (await record.handle.isSameEntry(handle)) {
-        return record;
-      }
-    }
+    const matchedIndex = (
+      await Promise.all(records.map((record) => record.handle.isSameEntry(handle)))
+    ).findIndex(Boolean);
 
-    return undefined;
+    return matchedIndex >= 0 ? records[matchedIndex] : undefined;
   };
 
   const addDeviceDirectory = async (

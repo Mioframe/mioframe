@@ -71,16 +71,18 @@ const onApplyFilterForm = async () => {
 
       set(
         source,
-        parentOperators.reduce((path: PropertyKey[], key) => {
+        parentOperators.reduce((pathSegments: PropertyKey[], key) => {
           if (isEnumValue(key, LOGICAL_FILTER_OPERATOR)) {
-            const oldLogicalValue: unknown = get(filterQuery.value, path, undefined);
+            const oldLogicalValue: unknown = get(filterQuery.value, pathSegments, undefined);
 
             const order = isArray(oldLogicalValue) ? oldLogicalValue.length : 0;
 
-            return [...path, key, order];
+            pathSegments.push(key, order);
+            return pathSegments;
           }
 
-          return [...path, key];
+          pathSegments.push(key);
+          return pathSegments;
         }, []),
         { [operator]: value },
       );

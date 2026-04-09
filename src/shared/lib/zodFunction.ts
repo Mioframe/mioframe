@@ -8,7 +8,6 @@ export const zodFunction = <
   I extends core.$ZodTuple | undefined = undefined,
   O extends core.$ZodType = core.$ZodVoid,
 >(
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- no need for runtime type checking
   _?: {
     input?: I;
     output?: O;

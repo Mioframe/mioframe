@@ -19,12 +19,12 @@ export const useInjectFocusRegister = (
 
   watch(
     [text, focus],
-    ([text, focus], [oldText]) => {
-      if (focusRegister && focus) {
+    ([nextText, nextFocus], [oldText]) => {
+      if (focusRegister && nextFocus) {
         if (oldText !== undefined) {
           focusRegister.delete(oldText);
         }
-        focusRegister.set(text, focus);
+        focusRegister.set(nextText, nextFocus);
       }
     },
     {

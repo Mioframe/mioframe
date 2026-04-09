@@ -52,7 +52,7 @@ export function defineMigrations<T extends object, Ops extends MigrateFunction[]
     }
 
     if (v >= migrations.length) {
-      // eslint-disable-next-line @typescript-eslint/consistent-type-assertions,@typescript-eslint/no-unsafe-return -- Generic type constraint requires assertion
+      // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- generic update result narrowing cannot be expressed without an assertion here
       return targetData as UpdateResult<T, Ops>;
     }
 
@@ -65,7 +65,7 @@ export function defineMigrations<T extends object, Ops extends MigrateFunction[]
       return newData;
     }, data);
 
-    // eslint-disable-next-line @typescript-eslint/consistent-type-assertions,@typescript-eslint/no-unsafe-return -- Generic type constraint requires assertion
+    // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- migration tuple generics preserve the final schema shape only through an assertion here
     return result as UpdateResult<T, Ops>;
   };
 
@@ -74,7 +74,7 @@ export function defineMigrations<T extends object, Ops extends MigrateFunction[]
     if (migrated !== targetData) {
       deepPutJsonObject(targetData, migrated);
     }
-    // eslint-disable-next-line @typescript-eslint/consistent-type-assertions,@typescript-eslint/no-unsafe-return -- Generic type constraint requires assertion
+    // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- applyUpdate mutates the original object in place and returns it as the narrowed schema output
     return targetData as UpdateResult<T, Ops>;
   };
 

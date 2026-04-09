@@ -39,8 +39,8 @@ const setupGoogleSessionStore = () => {
   const getSessionList = () => firstValueFrom($sessions);
 
   const get = async (email: string) => {
-    const store = await getStore();
-    return store[email];
+    const sessionStore = await getStore();
+    return sessionStore[email];
   };
 
   return {

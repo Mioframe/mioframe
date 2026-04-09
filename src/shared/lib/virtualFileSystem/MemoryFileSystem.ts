@@ -281,12 +281,12 @@ export class MemoryFileSystem implements IFileSystemProvider {
 
       if (hasChildren && recursive) {
         const toDelete = new Set<string>();
-        for (const [path, entry] of this.store.entries()) {
-          if (path.startsWith(searchPrefix)) {
-            if (entry.capabilities?.canDelete !== true) {
+        for (const [storedPath, storedEntry] of this.store.entries()) {
+          if (storedPath.startsWith(searchPrefix)) {
+            if (storedEntry.capabilities?.canDelete !== true) {
               throw new VfsError(
                 FileSystemError.NoPermissions,
-                `Deletion is not allowed for path: ${path}`,
+                `Deletion is not allowed for path: ${storedPath}`,
               );
             }
 

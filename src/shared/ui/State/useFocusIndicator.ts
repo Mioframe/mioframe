@@ -94,10 +94,10 @@ const setupFocusIndicator = () => {
 
   watch(
     focusedEl,
-    (focusedEl) => {
-      if (focusedEl && !focusedEl.classList.contains('md-focus-indicator_hidden')) {
+    (nextFocusedEl) => {
+      if (nextFocusedEl && !nextFocusedEl.classList.contains('md-focus-indicator_hidden')) {
         showIndicator();
-        const styles = getComputedStyle(focusedEl);
+        const styles = getComputedStyle(nextFocusedEl);
         borderRadius.value = styles.borderRadius;
       } else {
         hideIndicator();
@@ -108,16 +108,16 @@ const setupFocusIndicator = () => {
 
   watch(
     borderRadius,
-    (borderRadius) => {
-      indicatorElement.style.borderRadius = borderRadius ?? '';
+    (nextBorderRadius) => {
+      indicatorElement.style.borderRadius = nextBorderRadius ?? '';
     },
     { immediate: true },
   );
 
   watch(
     [top, left, width, height],
-    ([top, left, width, height]) => {
-      moveIndicator({ top, left, width, height });
+    ([nextTop, nextLeft, nextWidth, nextHeight]) => {
+      moveIndicator({ top: nextTop, left: nextLeft, width: nextWidth, height: nextHeight });
     },
     {
       immediate: true,
@@ -126,8 +126,8 @@ const setupFocusIndicator = () => {
 
   watch(
     isKeyboardNav,
-    (isKeyboardNav) => {
-      if (isKeyboardNav) {
+    (isKeyboardNavigation) => {
+      if (isKeyboardNavigation) {
         showIndicator();
       } else {
         hideIndicator();

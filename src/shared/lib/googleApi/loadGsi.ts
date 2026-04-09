@@ -41,7 +41,11 @@ export const revokeGoogleAccess = async (accessToken: string) => {
         resolve();
       });
     } catch (error) {
-      reject(error);
+      reject(
+        error instanceof Error
+          ? error
+          : new Error('Failed to revoke Google access', { cause: error }),
+      );
     }
   });
 };
@@ -58,7 +62,7 @@ let stateTokenClient: google.accounts.oauth2.TokenClient | undefined;
  */
 export const requestAccessToken = limitFunction(
   async (clientId: string, scopes: GOOGLE_SCOPE[], { email }: { email?: string } = {}) => {
-    const gsi = await loadGoogle();
+    const google = await loadGoogle();
 
     return new Promise<google.accounts.oauth2.TokenResponse>((resolve, reject) => {
       resolveRequestAccess.push({ resolve, reject });
@@ -67,7 +71,7 @@ export const requestAccessToken = limitFunction(
 
       if (!stateTokenClient) {
         try {
-          stateTokenClient = gsi.accounts.oauth2.initTokenClient({
+          stateTokenClient = google.accounts.oauth2.initTokenClient({
             client_id: clientId,
             scope: uniq(scopes).join(' '),
             callback: (tokenResponse) => {

@@ -117,8 +117,8 @@ export const onInteractionOutside = (
 
   watch(
     hasTarget,
-    (hasTarget) => {
-      if (hasTarget) {
+    (hasResolvedTarget) => {
+      if (hasResolvedTarget) {
         events.forEach((event) => {
           documentAddEventListener(event, handleInteraction);
         });

@@ -46,7 +46,6 @@ const btns = defineMenuButtonList([
 ]);
 
 const onClick = (item: MenuButtonDescription) => {
-  // eslint-disable-next-line no-console -- playground debug logging
   console.log('onClick', item);
 };
 </script>

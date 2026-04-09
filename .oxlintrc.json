@@ -17,11 +17,11 @@
     "restriction": "off"
   },
   "rules": {
-    "eslint/no-await-in-loop": "off",
-    "eslint/no-shadow": "off",
-    "eslint/no-unneeded-ternary": "off",
-    "eslint/no-useless-rename": "off",
-    "oxc/no-accumulating-spread": "off",
+    "eslint/no-await-in-loop": "warn",
+    "eslint/no-shadow": "warn",
+    "eslint/no-unneeded-ternary": "warn",
+    "eslint/no-useless-rename": "error",
+    "oxc/no-accumulating-spread": "warn",
     "typescript/consistent-return": "off",
     "typescript/no-unnecessary-type-arguments": "off",
     "typescript/no-unsafe-type-assertion": "off",

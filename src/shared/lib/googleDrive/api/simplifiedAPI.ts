@@ -172,7 +172,7 @@ export const getGFileMetaList = withLog(
       return result;
     }
 
-    const fetchPage = async (pageToken: string) =>
+    const fetchPage = async (nextPageToken: string) =>
       authorizedRequest(
         'get',
         'https://www.googleapis.com/drive/v3/files',
@@ -180,7 +180,7 @@ export const getGFileMetaList = withLog(
         {
           searchParams: {
             pageSize,
-            pageToken,
+          pageToken: nextPageToken,
             q: q ? buildQuery(q) : '',
             spaces: spaces.join(','),
             fields,
@@ -197,6 +197,7 @@ export const getGFileMetaList = withLog(
       const allFiles: GDriveFileMeta[] = [];
 
       do {
+        // eslint-disable-next-line no-await-in-loop -- each next page token comes from the previous response, so pagination must stay sequential
         const pageResult = await fetchPage(currentPageToken);
         if (pageResult.result.files) {
           allFiles.push(...pageResult.result.files);

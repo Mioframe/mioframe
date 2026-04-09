@@ -50,11 +50,11 @@ export const setupDocHandleState = (docHandle: AMDocHandle): DocHandleState => {
    * Чтение документа и актуализация состояния
    */
   const doc = () => {
-    const doc: AMDoc | undefined = docHandle.doc();
+    const currentDoc: AMDoc | undefined = docHandle.doc();
 
-    programReplaceDocRef(doc);
+    programReplaceDocRef(currentDoc);
 
-    return defineReadonlyDeep(doc);
+    return defineReadonlyDeep(currentDoc);
   };
 
   const change = (callback: AMChangeFn) => {

@@ -45,6 +45,7 @@ export const WebFileSystemProvider = (
 
     for (const part of parts) {
       try {
+        // eslint-disable-next-line no-await-in-loop -- each directory handle lookup depends on the previously resolved parent directory
         currentDir = await currentDir.getDirectoryHandle(part, {
           create: false,
         });

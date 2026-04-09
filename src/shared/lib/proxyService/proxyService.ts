@@ -461,12 +461,16 @@ export const createService = (
         pendingRequests.delete(resultId);
         const { reject, resolve } = request;
         if (error) {
-          reject(deserialize(error));
+          const deserializedError = deserialize(error);
+          reject(
+            deserializedError instanceof Error
+              ? deserializedError
+              : new Error('Service call failed', { cause: deserializedError }),
+          );
         } else {
           resolve(!isUndefined(result) ? deserialize(result) : undefined);
         }
       } else {
-        // eslint-disable-next-line no-console -- warning for developers
         console.warn(`don't have pending for result ${resultId}`);
       }
     } else if (zodIs(data, zodRemoveFunctionMessage) && data.serviceId === serviceId) {

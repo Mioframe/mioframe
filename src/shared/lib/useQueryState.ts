@@ -47,9 +47,9 @@ export const useQueryValue = <P extends object>(
 
   const localStateWatchHandle = watch(
     localState,
-    (localState) => {
+    (nextLocalState) => {
       queryWatchHandle.pause();
-      merge(queryState.value, toValue(localState));
+      merge(queryState.value, toValue(nextLocalState));
       void nextTick(() => {
         queryWatchHandle.resume();
       });
@@ -59,10 +59,10 @@ export const useQueryValue = <P extends object>(
 
   const queryWatchHandle = watch(
     queryState,
-    (queryState) => {
+    (nextQueryState) => {
       localStateWatchHandle.pause();
 
-      merge(localState, queryState);
+      merge(localState, nextQueryState);
 
       void nextTick(() => {
         localStateWatchHandle.resume();

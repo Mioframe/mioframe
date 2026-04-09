@@ -102,12 +102,12 @@ export const useIconStates = createGlobalState(() => {
   const useLoadSymbol = (name: Ref<string>) => {
     watch(
       name,
-      (name, oldName) => {
+      (nextName, oldName) => {
         if (oldName) {
           usedSymbols.delete(oldName);
         }
 
-        addLoadSymbol(name);
+        addLoadSymbol(nextName);
       },
       { immediate: true },
     );

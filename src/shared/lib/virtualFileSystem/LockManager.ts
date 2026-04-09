@@ -27,7 +27,6 @@ export class LockManager {
     // 2. Create a new tail for the queue.
     // We only care about the completion of the task (success or failure) to start the next one.
     // .catch() suppresses errors in the queue chain, but not in taskPromise.
-    // eslint-disable-next-line @typescript-eslint/no-empty-function -- intentional no-op to convert resolved/rejected to void chain
     const nextTail = taskPromise.then(() => {}).catch(() => {});
 
     // 3. Update the Map with the new tail

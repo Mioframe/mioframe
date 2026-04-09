@@ -82,8 +82,7 @@ interface OpenOptions {
    * // Insert at index 0 (front of stack)
    * await navigation.open('notifications', {}, { target: 0 });
    */
-  // eslint-disable-next-line @typescript-eslint/no-redundant-type-constituents -- 'add' and 'current' are more descriptive than string literals
-  target?: 'add' | 'current' | string;
+  target?: string;
 }
 
 export interface UseStackNavigationReturn<P extends PaneMap> {

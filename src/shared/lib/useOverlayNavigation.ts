@@ -62,15 +62,15 @@ const useOverlayNavigationState = createGlobalState(() => {
 
     watch(
       stringId,
-      (stringId, old) => {
-        if (old) {
-          const index = usedIds.indexOf(old);
+      (nextStringId, oldStringId) => {
+        if (oldStringId) {
+          const index = usedIds.indexOf(oldStringId);
           if (index >= 0) {
             usedIds.splice(index, 1);
           }
         }
 
-        usedIds.push(stringId);
+        usedIds.push(nextStringId);
       },
       { immediate: true },
     );

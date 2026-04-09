@@ -461,6 +461,7 @@ export class VirtualFileSystem {
         const childSource = PathUtils.join(sourcePath, name);
         const childTarget = PathUtils.join(targetPath, name);
 
+        // eslint-disable-next-line no-await-in-loop -- recursive moves touch the same source tree and keep error ordering clearer when processed sequentially
         await this.move(childSource, childTarget);
       }
 

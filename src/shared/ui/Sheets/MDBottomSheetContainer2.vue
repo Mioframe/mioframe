@@ -44,10 +44,10 @@ watch(position, ({ scrollTop }) => {
 
 watch(
   [openModel, bodyHeight, bodyEl],
-  ([open, bodyHeight, bodyEl]) => {
-    if (bodyHeight && bodyEl) {
+  ([open, currentBodyHeight, currentBodyEl]) => {
+    if (currentBodyHeight && currentBodyEl) {
       if (open) {
-        const top = Math.min(bodyHeight, bodyEl.offsetTop);
+        const top = Math.min(currentBodyHeight, currentBodyEl.offsetTop);
         void scrollTo({
           top,
         });

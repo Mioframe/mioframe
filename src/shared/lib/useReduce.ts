@@ -37,7 +37,7 @@ function defaultClearer(acc: any): void {
     // For plain objects, remove all own properties.
     for (const key in acc) {
       if (Object.prototype.hasOwnProperty.call(acc, key)) {
-        // eslint-disable-next-line @typescript-eslint/no-dynamic-delete, @typescript-eslint/no-unsafe-member-access -- universal object cleaning
+        // eslint-disable-next-line @typescript-eslint/no-dynamic-delete -- universal object cleaning over generic accumulator keys
         delete acc[key];
       }
     }

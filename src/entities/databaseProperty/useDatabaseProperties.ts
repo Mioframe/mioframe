@@ -65,11 +65,11 @@ export const useDatabaseProperties = (path: Ref<string>, documentId: Ref<AMDocum
     isLoading,
 
     patch: <T extends DatabaseUnknownProperty>(
-      path: string,
-      documentId: AMDocumentId,
+      targetPath: string,
+      targetDocumentId: AMDocumentId,
       id: DatabasePropertyId,
       property: PatchSource<T>,
-    ) => patch(path, documentId, id, property),
+    ) => patch(targetPath, targetDocumentId, id, property),
     post: (property: DatabaseUnknownProperty) => post(path.value, documentId.value, property),
     remove: (id: DatabasePropertyId) => remove(path.value, documentId.value, id),
   };

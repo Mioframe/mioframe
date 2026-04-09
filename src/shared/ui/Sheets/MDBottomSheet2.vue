@@ -35,8 +35,8 @@ const sheetContainer = useTemplateRef<MaybeElement>('sheetContainer');
 
 const scrollPosition = shallowRef<number>();
 
-watch(scrollPosition, (scrollPosition) => {
-  if (scrollPosition === 0) {
+watch(scrollPosition, (nextScrollPosition) => {
+  if (nextScrollPosition === 0) {
     emit('closed');
   }
 });
