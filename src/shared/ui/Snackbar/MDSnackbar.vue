@@ -2,7 +2,7 @@
 import { MDButton, MDIconButton } from '../Button';
 import MDSymbol from '../Icon/MDSymbol.vue';
 
-const {} = defineProps<{
+defineProps<{
   text: string;
   actionLabel?: string;
 }>();

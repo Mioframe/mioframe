@@ -136,7 +136,6 @@ const setupDirectoryStoreService = () => {
     const fullPath = [...parent.path, name];
 
     const cached = getCachedEntry(fullPath);
-    debugger;
     if (loadingStatus.has(stringPath(fullPath))) {
       return await waitCachedEntry(fullPath);
     }
