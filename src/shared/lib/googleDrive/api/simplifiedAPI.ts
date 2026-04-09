@@ -180,7 +180,7 @@ export const getGFileMetaList = withLog(
         {
           searchParams: {
             pageSize,
-          pageToken: nextPageToken,
+            pageToken: nextPageToken,
             q: q ? buildQuery(q) : '',
             spaces: spaces.join(','),
             fields,

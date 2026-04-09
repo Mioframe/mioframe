@@ -60,10 +60,7 @@ const setupDocumentService = () => {
 
   const docHandle = defineObservableQuery(getDocHandle$);
 
-  const cfrContent$ = defineCacheObservable((
-    directoryPath: string,
-    documentId?: AMDocumentId,
-  ) =>
+  const cfrContent$ = defineCacheObservable((directoryPath: string, documentId?: AMDocumentId) =>
     getDocHandle$({ directoryPath, documentId }).pipe(
       filter(isNotNil),
       switchMap((handle) =>
@@ -172,7 +169,11 @@ const setupDocumentService = () => {
           callback(cfrDocumentContent);
           resolve();
         } catch (error) {
-          reject(error instanceof Error ? error : new Error('Failed to change document', { cause: error }));
+          reject(
+            error instanceof Error
+              ? error
+              : new Error('Failed to change document', { cause: error }),
+          );
           throw error;
         }
       });

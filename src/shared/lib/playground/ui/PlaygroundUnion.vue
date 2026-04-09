@@ -1,5 +1,4 @@
 <script setup lang="ts" generic="O extends readonly unknown[]">
-
 defineProps<{ label: string; options: O }>();
 
 const value = defineModel<O[number]>({ required: true });

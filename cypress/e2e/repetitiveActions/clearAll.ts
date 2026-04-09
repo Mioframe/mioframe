@@ -17,9 +17,7 @@ export const clearAll = () => {
         entryNames.push(name);
       }
 
-      await Promise.all(
-        entryNames.map((name) => rootOpfs.removeEntry(name, { recursive: true })),
-      );
+      await Promise.all(entryNames.map((name) => rootOpfs.removeEntry(name, { recursive: true })));
     }
   });
 };

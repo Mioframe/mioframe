@@ -7,12 +7,10 @@ export type AnyFunction = (...p: any[]) => any;
 export const zodFunction = <
   I extends core.$ZodTuple | undefined = undefined,
   O extends core.$ZodType = core.$ZodVoid,
->(
-  _?: {
-    input?: I;
-    output?: O;
-  },
-) =>
+>(_?: {
+  input?: I;
+  output?: O;
+}) =>
   custom<(...input: I extends core.$ZodTuple ? output<I> : undefined[]) => output<O>>(
     (val): val is AnyFunction => typeof val === 'function',
   );
