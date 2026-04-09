@@ -1,7 +1,7 @@
 export interface BaseMenuButton {
   label: string;
   key: string | number;
-  symbolName?: string;
+  symbolName?: string | undefined;
 }
 
 export interface MenuButtonDescription<

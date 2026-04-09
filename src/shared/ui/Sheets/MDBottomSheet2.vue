@@ -11,7 +11,7 @@ const props = withDefaults(
      * unique label for screen readers and navigation
      */
     label: string;
-    class?: string;
+    class?: string | undefined;
   }>(),
   {},
 );

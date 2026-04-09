@@ -9,9 +9,9 @@ import { useOverlayContainer } from '../Overlay';
 const props = withDefaults(
   defineProps<{
     text: string;
-    target?: MaybeElement;
-    disabledTeleport?: boolean;
-    placement?: 'bottom' | 'left' | 'right' | 'top';
+    target?: MaybeElement | undefined;
+    disabledTeleport?: boolean | undefined;
+    placement?: 'bottom' | 'left' | 'right' | 'top' | undefined;
   }>(),
   {
     placement: 'top',

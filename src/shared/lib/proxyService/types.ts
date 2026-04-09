@@ -236,7 +236,8 @@ type SERIALIZE_BRAND = typeof SERIALIZE_BRAND;
  *
  * @typeParam T - The type of original value before serialization
  */
-export type SerializeJson<T = unknown> = SuperJSONResult & {
+export type SerializeJson<T = unknown> = Omit<SuperJSONResult, 'meta'> & {
+  meta?: SuperJSONResult['meta'] | undefined;
   [SERIALIZE_BRAND]: T;
 };
 

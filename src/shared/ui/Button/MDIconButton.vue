@@ -19,26 +19,26 @@ const {
   tooltip,
   width = 'default',
 } = defineProps<{
-  formAction?: 'submit' | 'reset';
-  color?: 'filled' | 'tonal' | 'outlined' | 'standard';
-  disabled?: boolean;
-  pressed?: boolean;
-  focused?: boolean;
-  loading?: number | boolean;
+  formAction?: 'submit' | 'reset' | undefined;
+  color?: 'filled' | 'tonal' | 'outlined' | 'standard' | undefined;
+  disabled?: boolean | undefined;
+  pressed?: boolean | undefined;
+  focused?: boolean | undefined;
+  loading?: number | boolean | undefined;
   tooltip: string;
-  showTooltipOnClick?: boolean;
-  mdSymbolName?: string;
-  type?: 'default' | 'toggle';
-  selected?: boolean;
+  showTooltipOnClick?: boolean | undefined;
+  mdSymbolName?: string | undefined;
+  type?: 'default' | 'toggle' | undefined;
+  selected?: boolean | undefined;
   /**
    * @default 'small'
    */
-  size?: 'extra-small' | 'small' | 'medium' | 'large' | 'extra-large';
-  width?: 'narrow' | 'default' | 'wide';
+  size?: 'extra-small' | 'small' | 'medium' | 'large' | 'extra-large' | undefined;
+  width?: 'narrow' | 'default' | 'wide' | undefined;
   /**
    * @default 'round'
    */
-  shape?: 'round' | 'square';
+  shape?: 'round' | 'square' | undefined;
 }>();
 
 const slots = defineSlots<{

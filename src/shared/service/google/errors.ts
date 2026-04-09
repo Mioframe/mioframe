@@ -10,9 +10,9 @@ export enum GoogleAuthErrorCode {
 export class GoogleAuthError extends DomainError {
   override name = 'GoogleAuthError';
   readonly code: GoogleAuthErrorCode;
-  readonly expectedEmail?: string;
-  readonly actualEmail?: string;
-  readonly email?: string;
+  readonly expectedEmail?: string | undefined;
+  readonly actualEmail?: string | undefined;
+  readonly email?: string | undefined;
 
   constructor(
     {
@@ -22,9 +22,9 @@ export class GoogleAuthError extends DomainError {
       email,
     }: {
       code: GoogleAuthErrorCode;
-      expectedEmail?: string;
-      actualEmail?: string;
-      email?: string;
+      expectedEmail?: string | undefined;
+      actualEmail?: string | undefined;
+      email?: string | undefined;
     },
     options?: { cause?: unknown },
   ) {
@@ -50,9 +50,9 @@ export class GoogleAuthError extends DomainError {
     email,
   }: {
     code: GoogleAuthErrorCode;
-    expectedEmail?: string;
-    actualEmail?: string;
-    email?: string;
+    expectedEmail?: string | undefined;
+    actualEmail?: string | undefined;
+    email?: string | undefined;
   }) {
     switch (code) {
       case GoogleAuthErrorCode.popupBlocked:

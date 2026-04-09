@@ -35,6 +35,7 @@ import {
 } from './types';
 import { zodIs } from '../validateZodScheme';
 import SuperJSON from 'superjson';
+import type { SuperJSONResult } from 'superjson';
 
 /**
  * Calls a remote function by path on the specified service.
@@ -382,7 +383,11 @@ export const serialize = <T>(data: T) =>
  * @param data - Data that was serialized with the corresponding serialize function
  * @returns The deserialized value in its proper type
  */
-export const deserialize = <T>(data: SerializeJson<T>) => superJson.deserialize<T>(data);
+export const deserialize = <T>(data: SerializeJson<T>) =>
+  superJson.deserialize<T>(
+    // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- SuperJSON accepts the serialized shape, while our branded type widens optional meta for exactOptionalPropertyTypes
+    data as SuperJSONResult,
+  );
 
 /**
  * Creates and registers a service for handling remote calls from clients.

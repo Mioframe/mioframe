@@ -6,8 +6,8 @@ import { BAR_TYPE } from './types';
 withDefaults(
   defineProps<{
     buttons: T[];
-    active?: T;
-    type?: BAR_TYPE;
+    active?: T | undefined;
+    type?: BAR_TYPE | undefined;
   }>(),
   { type: BAR_TYPE.vertical },
 );

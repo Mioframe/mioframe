@@ -18,12 +18,12 @@ import type { PartialDeep } from 'type-fest';
 const props = defineProps<{
   documentId: AMDocumentId;
   directoryPath: string;
-  autoHideTarget?: MaybeElement;
+  autoHideTarget?: MaybeElement | undefined;
 }>();
 
 const { documentId, directoryPath: path, autoHideTarget } = toRefs(props);
 
-const selectedViewId = defineModel<DatabaseViewId>('selectedViewId');
+const selectedViewId = defineModel<DatabaseViewId | undefined>('selectedViewId');
 
 const showViewSettings = ref(false);
 

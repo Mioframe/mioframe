@@ -302,7 +302,7 @@ const setupDirectoryStoreService = () => {
 
   const directoryToDescription = (
     entry: DirectoryFSEntryState,
-    { showAutomergeFiles }: { showAutomergeFiles?: boolean } = {},
+    { showAutomergeFiles }: { showAutomergeFiles?: boolean | undefined } = {},
   ): DirectoryDescription => {
     return {
       name: entry.name,
@@ -342,7 +342,7 @@ const setupDirectoryStoreService = () => {
   const subscribeEntry = defineSubscribeByQueryService(
     (
       path: EntryPath,
-      { showAutomergeFiles }: { showAutomergeFiles?: boolean } = {},
+      { showAutomergeFiles }: { showAutomergeFiles?: boolean | undefined } = {},
     ): EntryDescription | DirectoryDescription | undefined | DomainError => {
       const entry = getEntry(path);
 

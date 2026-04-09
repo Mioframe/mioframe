@@ -9,8 +9,12 @@ import type { BAR_TYPE } from './types';
 defineProps<{
   label: string;
   symbol: string;
-  active?: boolean;
-  type?: BAR_TYPE;
+  active?: boolean | undefined;
+  type?: BAR_TYPE | undefined;
+}>();
+
+defineEmits<{
+  click: [event: MouseEvent];
 }>();
 
 const el = useTemplateRef('el');

@@ -8,13 +8,17 @@ import {
 import MDToolbarContainer from './MDToolbarContainer.vue';
 import { MDIconButton } from '../Button';
 import { useQueryValue } from '@shared/lib/useQueryState';
-import type { ComponentProps } from 'vue-component-type-helpers';
 import { MDPane } from '../Layout';
 import { MDListContainer, MDListItem } from '../Lists';
 
-interface State extends ComponentProps<typeof MDToolbarContainer> {
+type State = {
+  type: 'docked' | 'floating';
+  centerAligned?: boolean | undefined;
+  color?: 'standard' | 'vibrant' | undefined;
+  layout?: 'horizontal' | 'vertical' | undefined;
+  autoHide?: boolean | undefined;
   numberItems: number;
-}
+};
 
 const state = useQueryValue<State>('state', {
   type: 'docked',
@@ -25,9 +29,9 @@ const state = useQueryValue<State>('state', {
   numberItems: 10,
 });
 
-const typeOptions: State['type'][] = ['docked', 'floating'];
-const colorOptions: State['color'][] = [undefined, 'standard', 'vibrant'];
-const layoutOptions: State['layout'][] = [undefined, 'horizontal', 'vertical'];
+const typeOptions = ['docked', 'floating'] as const;
+const colorOptions = [undefined, 'standard', 'vibrant'] as const;
+const layoutOptions = [undefined, 'horizontal', 'vertical'] as const;
 </script>
 
 <template>

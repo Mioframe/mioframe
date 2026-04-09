@@ -3,7 +3,7 @@ import { isString } from 'es-toolkit';
 export type SerializedDomainError = {
   name: string;
   message: string;
-  stack?: string;
+  stack?: string | undefined;
   cause?: unknown;
 };
 
@@ -24,7 +24,9 @@ export class DomainError extends Error {
       const { message, name, stack, cause: serializedCause } = options;
       super(message);
       this.name = name;
-      this.stack = stack;
+      if (stack !== undefined) {
+        this.stack = stack;
+      }
       this.cause = serializedCause;
     }
   }

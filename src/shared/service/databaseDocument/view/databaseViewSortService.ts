@@ -21,7 +21,7 @@ export const useDatabaseViewSortService = (
   databaseView$: (q: {
     documentId: AMDocumentId;
     path: string;
-    viewId?: DatabaseViewId;
+    viewId?: DatabaseViewId | undefined;
   }) => Observable<DatabaseView | undefined>,
   changeView: (
     path: string,
@@ -80,7 +80,7 @@ export const useDatabaseViewSortService = (
     }: {
       documentId: AMDocumentId;
       path: string;
-      viewId?: DatabaseViewId;
+      viewId?: DatabaseViewId | undefined;
     }) =>
       databaseView$({ documentId, path, viewId }).pipe(
         map((view) => view?.sorting),

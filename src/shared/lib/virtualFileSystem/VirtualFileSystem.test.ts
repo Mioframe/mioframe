@@ -76,8 +76,8 @@ describe('VirtualFileSystem', () => {
         path: string;
         type: string;
         source: string;
-        mountPath?: string;
-        providerPath?: string;
+        mountPath?: string | undefined;
+        providerPath?: string | undefined;
       }> = [];
 
       vfs.mount('/mnt/test', provider);
@@ -794,7 +794,7 @@ describe('VirtualFileSystem', () => {
 
       vfs.mount('/mnt/test', memoryFS);
 
-      const events: Array<{ type: string; path: string; newPath?: string }> = [];
+      const events: Array<{ type: string; path: string; newPath?: string | undefined }> = [];
       vfs.watch('/mnt/test', (event) => {
         events.push({
           type: event.type,
@@ -822,7 +822,7 @@ describe('VirtualFileSystem', () => {
 
       vfs.mount('/mnt/test', memoryFS);
 
-      const events: Array<{ type: string; path: string; newPath?: string }> = [];
+      const events: Array<{ type: string; path: string; newPath?: string | undefined }> = [];
       vfs.watch('/mnt/test', (event) => {
         events.push({
           type: event.type,
@@ -852,7 +852,7 @@ describe('VirtualFileSystem', () => {
 
       await vfs.writeFile('/mnt/provider1/source.txt', 'content');
 
-      const events: Array<{ type: string; path: string; newPath?: string }> = [];
+      const events: Array<{ type: string; path: string; newPath?: string | undefined }> = [];
       vfs.watch(
         '/mnt',
         (event) => {
@@ -885,7 +885,7 @@ describe('VirtualFileSystem', () => {
       await vfs.createDirectory('/mnt/provider1/sourcedir');
       await vfs.writeFile('/mnt/provider1/sourcedir/file.txt', 'content');
 
-      const events: Array<{ type: string; path: string; newPath?: string }> = [];
+      const events: Array<{ type: string; path: string; newPath?: string | undefined }> = [];
       vfs.watch(
         '/mnt',
         (event) => {

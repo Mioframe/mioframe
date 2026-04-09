@@ -8,11 +8,11 @@ import MDSelectOption from './MDSelectOption.vue';
 const props = defineProps<{
   labelText: string;
   options: T[];
-  supportingText?: string;
-  type?: 'filled' | 'outlined';
-  disabled?: boolean;
-  error?: boolean;
-  multiple?: boolean;
+  supportingText?: string | undefined;
+  type?: 'filled' | 'outlined' | undefined;
+  disabled?: boolean | undefined;
+  error?: boolean | undefined;
+  multiple?: boolean | undefined;
 }>();
 
 const { options } = toRefs(props);

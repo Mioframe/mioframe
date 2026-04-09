@@ -16,11 +16,11 @@ const props = withDefaults(
      */
     headline: string;
     supportingText: string;
-    type?: 'basic' | 'full-screen';
-    cancelLabel?: string;
+    type?: 'basic' | 'full-screen' | undefined;
+    cancelLabel?: string | undefined;
     applyLabel: string;
-    hasCancelAction?: boolean;
-    loading?: boolean | number;
+    hasCancelAction?: boolean | undefined;
+    loading?: boolean | number | undefined;
     class?: unknown;
   }>(),
   { cancelLabel: 'Cancel', type: 'basic' },

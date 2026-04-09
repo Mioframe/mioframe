@@ -61,7 +61,7 @@ export const setupDatabaseViewsService = (
     }: {
       documentId: AMDocumentId;
       path: string;
-      viewId?: DatabaseViewId;
+      viewId?: DatabaseViewId | undefined;
     }) =>
       databaseViews$({ documentId, path }).pipe(
         map((views) => (viewId ? views?.[viewId] : undefined)),

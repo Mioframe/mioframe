@@ -18,12 +18,12 @@ import { useOnBackNavigationStackedWhen } from '@shared/lib/onBackNavigation';
 const props = withDefaults(
   defineProps<{
     target: MaybeElement;
-    transition?: boolean;
-    outsideIgnore?: MaybeElement[];
-    disabledTeleport?: boolean;
-    placement?: 'bottom-start' | 'right-start';
-    ariaLabel?: string;
-    role?: string;
+    transition?: boolean | undefined;
+    outsideIgnore?: MaybeElement[] | undefined;
+    disabledTeleport?: boolean | undefined;
+    placement?: 'bottom-start' | 'right-start' | undefined;
+    ariaLabel?: string | undefined;
+    role?: string | undefined;
   }>(),
   {
     placement: 'bottom-start',

@@ -2,9 +2,16 @@
 import { PlaygroundOptionalBoolean, PlaygroundStory } from '@shared/lib/playground';
 import MDCheckbox from './MDCheckbox.vue';
 import { useQueryValue } from '@shared/lib/useQueryState';
-import type { ComponentProps } from 'vue-component-type-helpers';
 
-const state = useQueryValue<ComponentProps<typeof MDCheckbox>>('state', {
+type State = {
+  disabled?: boolean | undefined;
+  error?: boolean | undefined;
+  indeterminate?: boolean | undefined;
+  readonly?: boolean | undefined;
+  modelValue?: boolean | undefined;
+};
+
+const state = useQueryValue<State>('state', {
   disabled: undefined,
   error: undefined,
   indeterminate: undefined,

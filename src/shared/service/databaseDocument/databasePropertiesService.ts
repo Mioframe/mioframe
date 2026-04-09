@@ -48,7 +48,7 @@ export const useDatabasePropertiesService = (
     }: {
       path: string;
       documentId: AMDocumentId;
-      id?: DatabasePropertyId;
+      id?: DatabasePropertyId | undefined;
     }) =>
       databaseProperties$({ documentId, path }).pipe(
         map((properties) => {

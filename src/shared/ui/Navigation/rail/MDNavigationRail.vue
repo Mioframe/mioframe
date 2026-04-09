@@ -8,11 +8,11 @@ import type { NavigationButton } from '../types';
 
 const props = defineProps<{
   buttons: T[];
-  active?: T;
-  hasMenu?: boolean;
+  active?: T | undefined;
+  hasMenu?: boolean | undefined;
 }>();
 
-const railType = defineModel<RAIL_TYPE>('type', {
+const railType = defineModel<RAIL_TYPE | undefined>('type', {
   default: RAIL_TYPE.collapsed,
 });
 

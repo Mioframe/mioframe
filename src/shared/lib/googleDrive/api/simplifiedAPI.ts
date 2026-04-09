@@ -369,7 +369,7 @@ export const download = async (
     searchParams: {
       alt: 'media',
     },
-    onDownloadProgress,
+    ...(onDownloadProgress ? { onDownloadProgress } : {}),
     dedupe: true,
   })
     .then((r) => r.blob())
@@ -449,7 +449,7 @@ export const upload = async (
         fields: ['id', 'version', 'name'].join(','),
       },
       body,
-      onUploadProgress,
+      ...(onUploadProgress ? { onUploadProgress } : {}),
     },
   );
 

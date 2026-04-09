@@ -22,7 +22,7 @@ const emit = defineEmits<{
 
 const slots = defineSlots<{
   leadingIcon: () => unknown;
-  trailingIcon: (p: { documentName?: string }) => unknown;
+  trailingIcon: (p: { documentName?: string | undefined }) => unknown;
   leadingAvatarContainer: () => unknown;
 }>();
 

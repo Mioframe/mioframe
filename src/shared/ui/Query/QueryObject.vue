@@ -10,7 +10,7 @@ import QueryContainer from './QueryContainer.vue';
 
 const props = defineProps<{
   query: UnknownRecord;
-  parentProperty?: string;
+  parentProperty?: string | undefined;
 }>();
 
 const slots = defineSlots<{

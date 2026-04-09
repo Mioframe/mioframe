@@ -9,8 +9,8 @@ import MDListItem from './MDListItem.vue';
 
 const { list, isItemButton } = defineProps<{
   list: T[];
-  type?: 'list' | 'grid';
-  isItemButton?: boolean;
+  type?: 'list' | 'grid' | undefined;
+  isItemButton?: boolean | undefined;
 }>();
 
 const emit = defineEmits<{

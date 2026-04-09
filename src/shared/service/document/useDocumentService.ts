@@ -28,7 +28,13 @@ const setupDocumentService = () => {
   const { getRepo$ } = useRepositoriesService();
 
   const getDocHandle$ = defineCacheObservable(
-    ({ directoryPath, documentId }: { directoryPath: string; documentId?: AMDocumentId }) =>
+    ({
+      directoryPath,
+      documentId,
+    }: {
+      directoryPath: string;
+      documentId?: AMDocumentId | undefined;
+    }) =>
       getRepo$(directoryPath).pipe(
         filter(isNotNil),
         auditTime(100),
@@ -54,7 +60,10 @@ const setupDocumentService = () => {
 
   const docHandle = defineObservableQuery(getDocHandle$);
 
-  const cfrContent$ = defineCacheObservable((directoryPath: string, documentId?: AMDocumentId) =>
+  const cfrContent$ = defineCacheObservable((
+    directoryPath: string,
+    documentId?: AMDocumentId,
+  ) =>
     getDocHandle$({ directoryPath, documentId }).pipe(
       filter(isNotNil),
       switchMap((handle) =>
@@ -79,7 +88,7 @@ const setupDocumentService = () => {
   );
 
   const cfrDocumentState$ = defineCacheObservable(
-    ({ documentId, path }: { path: string; documentId?: AMDocumentId }) =>
+    ({ documentId, path }: { path: string; documentId?: AMDocumentId | undefined }) =>
       cfrContent$(path, documentId).pipe(
         map((doc) => {
           if (zodIs(doc, zodCFRDocumentContent)) {
@@ -96,7 +105,7 @@ const setupDocumentService = () => {
   const cfrDocumentState = defineObservableQuery(cfrDocumentState$);
 
   const documentDescription$ = defineCacheObservable(
-    ({ documentId, path }: { path: string; documentId?: AMDocumentId }) =>
+    ({ documentId, path }: { path: string; documentId?: AMDocumentId | undefined }) =>
       cfrDocumentState$({ documentId, path }).pipe(
         map((state) => {
           if (state) {

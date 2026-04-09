@@ -51,6 +51,13 @@ const onApply = async () => {
 
 const directoryName = ref<string>();
 
+const directoryNameModel = computed<string | undefined>({
+  get: () => directoryName.value,
+  set: (name) => {
+    directoryName.value = name;
+  },
+});
+
 const resetState = () => {
   directoryName.value = undefined;
   errorText.value = undefined;
@@ -76,7 +83,7 @@ const onCancel = () => {
     @cancel="onCancel"
   >
     <MDTextField
-      v-model="directoryName"
+      v-model="directoryNameModel"
       label-text="Folder's name"
       :error="!!errorText"
       :supporting-text="errorText"

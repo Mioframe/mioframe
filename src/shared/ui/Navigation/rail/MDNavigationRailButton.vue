@@ -9,9 +9,13 @@ import { BUTTON_TYPE } from './types';
 const props = defineProps<{
   symbol: string;
   label: string;
-  active?: boolean;
+  active?: boolean | undefined;
   type: BUTTON_TYPE;
-  hasRipple?: boolean;
+  hasRipple?: boolean | undefined;
+}>();
+
+defineEmits<{
+  click: [event: MouseEvent];
 }>();
 
 const refEl = useTemplateRef('refEl');

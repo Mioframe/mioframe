@@ -4,6 +4,7 @@ import { useRepository } from '@entity/repository';
 import { MDSelectBase } from '@shared/ui/Select';
 import { computed, toRefs } from 'vue';
 import { DatabaseDocumentSelectOption, useDocument } from '@entity/cfrDocument';
+import type { AMDocumentId } from '@shared/lib/automerge';
 
 const props = defineProps<{
   path: string;
@@ -11,13 +12,13 @@ const props = defineProps<{
 
 const { path } = toRefs(props);
 
-const relationModel = defineModel<Relation>();
+const relationModel = defineModel<Relation | undefined>();
 
 const relationDocumentId = computed(() => relationModel.value?.documentId);
 
 const { state: documentIdList } = useRepository(path);
 
-const modelSelectedDocumentId = computed({
+const modelSelectedDocumentId = computed<AMDocumentId[]>({
   get: () => (relationDocumentId.value ? [relationDocumentId.value] : []),
   set: ([documentId]) => {
     if (documentId) {

@@ -34,6 +34,13 @@ const initialState = (): {
 
 const formState = reactive(initialState());
 
+const nameModel = computed<string | undefined>({
+  get: () => formState.name,
+  set: (name) => {
+    formState.name = name;
+  },
+});
+
 const loading = ref(0);
 
 const { create } = useDatabaseViews(path, documentId);
@@ -89,7 +96,7 @@ const onChangeLayout = (selectedOptions: LayoutOption[]) => {
     @cancel="onCancel"
     @apply="onApply"
   >
-    <MDTextField v-model:model-value="formState.name" label-text="Name" />
+    <MDTextField v-model:model-value="nameModel" label-text="Name" />
 
     <MDSelect
       :model-value="selectedLayoutOption"

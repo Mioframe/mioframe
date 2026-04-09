@@ -3,11 +3,12 @@ import { MDState } from '../State';
 
 const { is = 'div' } = defineProps<{
   headline: string;
-  supportingText?: string;
-  is?: Is;
-  type?: Is extends 'button' ? 'button' | 'submit' | 'reset' : false;
+  supportingText?: string | undefined;
+  is?: Is | undefined;
+  type?: (Is extends 'button' ? 'button' | 'submit' | 'reset' : false) | undefined;
+  itemRole?: string | undefined;
 
-  draggable?: boolean;
+  draggable?: boolean | undefined;
 }>();
 
 const slots = defineSlots<{
@@ -35,7 +36,7 @@ const onClick = (e: MouseEvent) => {
     :draggable="draggable"
     :type="type"
     :disable-ripple="is === 'li'"
-    role="listitem"
+    :role="itemRole ?? 'listitem'"
     @click="onClick"
   >
     <span v-if="!!slots.leadingIcon" class="md-list-item__leading-icon">

@@ -15,7 +15,7 @@ const { documentId, directoryPath: path } = toRefs(props);
 
 const slots = defineSlots<{
   trailingIcon: (p: {
-    property?: DatabaseUnknownProperty;
+    property?: DatabaseUnknownProperty | undefined;
     propertyId: DatabasePropertyId;
   }) => unknown;
 }>();
@@ -33,7 +33,7 @@ const { propertiesIdList: properties } = useDatabaseProperties(path, documentId)
       :property-id="propertyId"
     >
       <template v-if="!!slots.trailingIcon" #trailingIcon="{ property }">
-        <slot name="trailingIcon" :property="property" :property-id="propertyId" />
+        <slot name="trailingIcon" :property-id="propertyId" :property="property" />
       </template>
     </DatabasePropertyListItem>
   </MDListContainer>

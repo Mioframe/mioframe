@@ -9,14 +9,14 @@ import { MDPlainTooltip } from '../Tooltips';
 
 const props = withDefaults(
   defineProps<{
-    error?: boolean;
-    disabled?: boolean;
-    indeterminate?: boolean;
+    error?: boolean | undefined;
+    disabled?: boolean | undefined;
+    indeterminate?: boolean | undefined;
     modelValue?: boolean | undefined;
-    id?: string;
-    readonly?: boolean;
-    tooltip?: string;
-    autofocus?: boolean;
+    id?: string | undefined;
+    readonly?: boolean | undefined;
+    tooltip?: string | undefined;
+    autofocus?: boolean | undefined;
   }>(),
   {
     modelValue: undefined,
@@ -62,7 +62,7 @@ watchEffect(() => {
   }
 });
 
-const onKeypressContainer = ({ key }: KeyboardEvent) => {
+const onKeydownContainer = ({ key }: KeyboardEvent) => {
   if (['Enter', ' '].includes(key)) {
     emit('click');
 
@@ -88,7 +88,7 @@ const onKeypressContainer = ({ key }: KeyboardEvent) => {
     :aria-label="tooltip"
     :autofocus="autofocus"
     @click="onClickContainer"
-    @keypress="onKeypressContainer"
+    @keydown="onKeydownContainer"
   >
     <input
       :id="id"

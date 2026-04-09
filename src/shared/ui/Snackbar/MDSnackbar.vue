@@ -4,7 +4,7 @@ import MDSymbol from '../Icon/MDSymbol.vue';
 
 defineProps<{
   text: string;
-  actionLabel?: string;
+  actionLabel?: string | undefined;
 }>();
 
 const emit = defineEmits<{

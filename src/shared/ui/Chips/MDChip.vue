@@ -4,12 +4,12 @@ import MDSymbol from '../Icon/MDSymbol.vue';
 import { MDState } from '../State';
 
 const { type: chipType, selected = false } = defineProps<{
-  elevated?: boolean;
+  elevated?: boolean | undefined;
   label: string;
   type: T;
-  selected?: T extends 'filter' ? boolean : undefined;
-  draggable?: boolean;
-  autofocus?: boolean;
+  selected?: (T extends 'filter' ? boolean : undefined) | undefined;
+  draggable?: boolean | undefined;
+  autofocus?: boolean | undefined;
 }>();
 
 const slots = defineSlots<{

@@ -70,17 +70,17 @@ export interface VfsEvent {
   /** Path relative to VFS root */
   path: string;
   /** For rename event — new path */
-  newPath?: string;
+  newPath?: string | undefined;
   /** Mount path for forwarded provider events */
-  mountPath?: string;
+  mountPath?: string | undefined;
   /** Original provider-relative path before mount prefixing */
-  providerPath?: string;
+  providerPath?: string | undefined;
   /** Original provider-relative new path before mount prefixing */
-  providerNewPath?: string;
+  providerNewPath?: string | undefined;
   /** Node type for content events (create, update, delete, rename) */
-  nodeType?: FSNodeType;
+  nodeType?: FSNodeType | undefined;
   /** File size in bytes (for update events) */
-  size?: number;
+  size?: number | undefined;
 }
 
 /**

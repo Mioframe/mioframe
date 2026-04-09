@@ -8,7 +8,7 @@ import { hasValue } from '@shared/lib/typeGuards';
 const props = defineProps<{
   queryKey: string;
   value: unknown;
-  parentProperty?: string;
+  parentProperty?: string | undefined;
 }>();
 
 defineSlots<{

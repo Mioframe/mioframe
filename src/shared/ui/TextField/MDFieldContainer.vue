@@ -8,15 +8,15 @@ import { unrefElement } from '@vueuse/core';
 const props = withDefaults(
   defineProps<{
     labelText: string;
-    supportingText?: string;
-    type?: 'filled' | 'outlined';
-    disabled?: boolean;
-    error?: boolean;
-    maxCharacters?: number;
-    filled?: boolean;
-    numberCharacters?: number;
+    supportingText?: string | undefined;
+    type?: 'filled' | 'outlined' | undefined;
+    disabled?: boolean | undefined;
+    error?: boolean | undefined;
+    maxCharacters?: number | undefined;
+    filled?: boolean | undefined;
+    numberCharacters?: number | undefined;
     focused?: boolean | undefined;
-    id?: string;
+    id?: string | undefined;
   }>(),
   {
     focused: undefined,
@@ -33,6 +33,10 @@ const slots = defineSlots<{
   trailingIcon(p: EmptyObject): unknown;
 }>();
 
+const emit = defineEmits<{
+  click: [event: MouseEvent];
+}>();
+
 const staticId = sessionUniqueId('MDFieldContainer');
 
 const localId = computed(() => id.value ?? staticId);
@@ -43,8 +47,9 @@ const { focused: containerFirstFocused } = useFirstFocus(containerRef, {
   initialValue: false,
 });
 
-const onClickField = () => {
+const onClickField = (event: MouseEvent) => {
   containerFirstFocused.value = true;
+  emit('click', event);
 };
 
 const filedContainer = useTemplateRef('filedContainer');

@@ -106,14 +106,14 @@ export const setupDatabaseDataService = (
     }: {
       path: string;
       documentId: AMDocumentId;
-      viewId?: DatabaseViewId;
+      viewId?: DatabaseViewId | undefined;
       options: {
-        itemQuery?: Query<DatabaseItem>;
-        idQuery?: Query<DatabaseItemId>;
+        itemQuery?: Query<DatabaseItem> | undefined;
+        idQuery?: Query<DatabaseItemId> | undefined;
         slice?: {
-          first?: number;
-          last?: number;
-        };
+          first?: number | undefined;
+          last?: number | undefined;
+        } | undefined;
       };
     }) =>
       combineLatest([
@@ -150,7 +150,7 @@ export const setupDatabaseDataService = (
     }: {
       path: string;
       documentId: AMDocumentId;
-      itemId?: DatabaseItemId;
+      itemId?: DatabaseItemId | undefined;
     }) =>
       databaseData$({ documentId, path }).pipe(
         map((data) => (itemId ? data?.[itemId] : undefined)),
@@ -166,7 +166,7 @@ export const setupDatabaseDataService = (
     }: {
       path: string;
       documentId: AMDocumentId;
-      itemId?: DatabaseItemId;
+      itemId?: DatabaseItemId | undefined;
     }) =>
       combineLatest([
         databaseItem$({ documentId, itemId, path }),

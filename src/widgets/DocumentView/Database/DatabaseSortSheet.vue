@@ -5,7 +5,7 @@ import type { DatabaseViewId } from '@shared/lib/databaseDocument';
 import { MDBottomSheet, MDBottomSheetSection } from '@shared/ui/Sheets';
 
 defineProps<{
-  viewId?: DatabaseViewId;
+  viewId?: DatabaseViewId | undefined;
   directoryPath: string;
   documentId: AMDocumentId;
 }>();

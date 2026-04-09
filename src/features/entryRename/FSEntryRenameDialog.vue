@@ -16,6 +16,13 @@ const emit = defineEmits<{
 
 const stateName = ref<string>();
 
+const stateNameModel = computed<string | undefined>({
+  get: () => stateName.value,
+  set: (name) => {
+    stateName.value = name;
+  },
+});
+
 const originalName = computed(() => PathUtils.basename(path));
 
 watchEffect(() => {
@@ -53,6 +60,6 @@ const onCancel = () => {
     @apply="onApply"
     @cancel="onCancel"
   >
-    <MDTextField v-model="stateName" label-text="Name" />
+    <MDTextField v-model="stateNameModel" label-text="Name" />
   </MDDialog>
 </template>
