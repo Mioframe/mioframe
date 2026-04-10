@@ -13,7 +13,7 @@ defineProps<{
   type?: BAR_TYPE | undefined;
 }>();
 
-defineEmits<{
+const emit = defineEmits<{
   click: [event: MouseEvent];
 }>();
 
@@ -29,6 +29,9 @@ const { focused: userFocused } = useFirstFocus(el, {
 });
 
 const { durationPressedState } = usePressed(el);
+const onClick = (event: MouseEvent) => {
+  emit('click', event);
+};
 </script>
 
 <template>
@@ -37,6 +40,7 @@ const { durationPressedState } = usePressed(el);
     class="md-navigation-bar-button md"
     type="button"
     :class="[{ _active: active }, `_type-${type}`]"
+    @click="onClick"
   >
     <MDLayer
       class="md-navigation-bar-button__layer"
