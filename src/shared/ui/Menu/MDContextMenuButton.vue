@@ -6,7 +6,11 @@ import type { MenuButtonDescription, MenuButtonList } from './types';
 import MDMenu from './MDMenu.vue';
 import { sessionUniqueId } from '@shared/lib/uniqueId';
 
-const { btns, loading, tooltip = 'options' } = defineProps<{
+const {
+  btns,
+  loading,
+  tooltip = 'options',
+} = defineProps<{
   btns: MenuButtonList<T>;
   tooltip?: string;
   loading?: number | boolean | undefined;

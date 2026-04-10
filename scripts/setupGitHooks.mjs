@@ -19,7 +19,9 @@ const currentHooksPath = spawnSync('git', ['config', '--get', 'core.hooksPath'],
 const configuredHooksPath = currentHooksPath.stdout.trim();
 
 if (currentHooksPath.status === 0 && configuredHooksPath && configuredHooksPath !== '.githooks') {
-  console.warn(`Skipping git hook installation because core.hooksPath is already set to "${configuredHooksPath}".`);
+  console.warn(
+    `Skipping git hook installation because core.hooksPath is already set to "${configuredHooksPath}".`,
+  );
   process.exit(0);
 }
 
