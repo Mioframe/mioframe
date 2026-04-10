@@ -12,11 +12,7 @@ defineSlots<{
 
 <template>
   <MDListContainer is="div">
-    <GoogleSessionListItem
-      v-for="session in sessionList"
-      :key="session.email"
-      :session="session"
-    />
+    <GoogleSessionListItem v-for="session in sessionList" :key="session.email" :session="session" />
 
     <slot name="after" />
   </MDListContainer>

@@ -246,7 +246,10 @@ const setupGoogleService = (): GoogleService => {
 
     if (oldSession) {
       const { accessToken, expiresAt, scopes: oldScopes } = oldSession;
-      if (expiresAt - 3e5 /** 5 min */ > Date.now() && hasAllRequiredScopes(oldScopes, requiredScopes)) {
+      if (
+        expiresAt - 3e5 /** 5 min */ > Date.now() &&
+        hasAllRequiredScopes(oldScopes, requiredScopes)
+      ) {
         return accessToken;
       }
     }
