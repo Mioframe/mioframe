@@ -9,13 +9,7 @@ import { sessionUniqueId } from '@shared/lib/uniqueId';
 const { btns, tooltip = 'options' } = defineProps<{
   btns: MenuButtonList<T>;
   tooltip?: string;
-  size?:
-    | 'extra-small'
-    | 'small'
-    | 'medium'
-    | 'large'
-    | 'extra-large'
-    | undefined;
+  size?: 'extra-small' | 'small' | 'medium' | 'large' | 'extra-large' | undefined;
   width?: 'default' | 'narrow' | 'wide' | undefined;
 }>();
 

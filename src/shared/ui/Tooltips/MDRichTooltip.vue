@@ -19,11 +19,11 @@ import { useOnBackNavigationStackedWhen } from '@shared/lib/onBackNavigation';
 const props = withDefaults(
   defineProps<{
     subhead: string;
-    disabledTeleport?: boolean;
-    targetElement?: MaybeElement;
-    useClick?: boolean;
-    useHover?: boolean;
-    placement?: 'top-start' | 'top-end' | 'bottom-end' | 'bottom-start';
+    disabledTeleport?: boolean | undefined;
+    targetElement?: MaybeElement | undefined;
+    useClick?: boolean | undefined;
+    useHover?: boolean | undefined;
+    placement?: 'top-start' | 'top-end' | 'bottom-end' | 'bottom-start' | undefined;
   }>(),
   {
     placement: 'top-end',
@@ -32,7 +32,7 @@ const props = withDefaults(
 
 const { subhead, targetElement, useClick, useHover, placement } = toRefs(props);
 
-const showModel = defineModel<boolean>('show');
+const showModel = defineModel<boolean | undefined>('show');
 
 const emit = defineEmits<{
   interactionOutside: [e: Event];
@@ -45,9 +45,7 @@ const slots = defineSlots<{
 
 const parentEl = useParentElement();
 
-const targetElementRef = computed(() =>
-  unrefElement(targetElement.value ?? parentEl.value),
-);
+const targetElementRef = computed(() => unrefElement(targetElement.value ?? parentEl.value));
 
 const targetTeleport = useOverlayContainer();
 
@@ -117,56 +115,37 @@ useOnBackNavigationStackedWhen(showState, () => {
   return false;
 });
 
-const { floatingStyles: richTooltipStyle, update } = useFloating(
-  targetElementRef,
-  tooltipEl,
-  {
-    strategy: 'fixed',
-    transform: false,
-    placement,
-    middleware: [
-      offset(({ rects }) => ({
-        alignmentAxis: -rects.floating.width - 8,
-        mainAxis: 8,
-      })),
-      flip({
-        padding: 16,
-      }),
-      shift({
-        padding: 16,
-      }),
-    ],
-    whileElementsMounted: autoUpdate,
-  },
-);
+const { floatingStyles: richTooltipStyle, update } = useFloating(targetElementRef, tooltipEl, {
+  strategy: 'fixed',
+  transform: false,
+  placement,
+  middleware: [
+    offset(({ rects }) => ({
+      alignmentAxis: -rects.floating.width - 8,
+      mainAxis: 8,
+    })),
+    flip({
+      padding: 16,
+    }),
+    shift({
+      padding: 16,
+    }),
+  ],
+  whileElementsMounted: autoUpdate,
+});
 
 useEventListener(window.visualViewport, 'resize', update);
 </script>
 
 <template>
-  <TeleportContainer
-    :to="targetTeleport"
-    :disabled="disabledTeleport"
-    :container="tooltipEl"
-  >
+  <TeleportContainer :to="targetTeleport" :disabled="disabledTeleport" :container="tooltipEl">
     <Transition>
-      <div
-        v-if="showState"
-        ref="tooltipEl"
-        class="md md-rich-tooltip"
-        :style="richTooltipStyle"
-      >
-        <div
-          class="md-rich-tooltip__subhead"
-          :class="MD_SYS_TYPESCALE.title.small"
-        >
+      <div v-if="showState" ref="tooltipEl" class="md md-rich-tooltip" :style="richTooltipStyle">
+        <div class="md-rich-tooltip__subhead" :class="MD_SYS_TYPESCALE.title.small">
           {{ subhead }}
         </div>
 
-        <div
-          class="md-rich-tooltip__supporting-text"
-          :class="MD_SYS_TYPESCALE.body.medium"
-        >
+        <div class="md-rich-tooltip__supporting-text" :class="MD_SYS_TYPESCALE.body.medium">
           <slot name="text" />
         </div>
 

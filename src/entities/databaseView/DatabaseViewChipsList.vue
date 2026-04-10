@@ -10,9 +10,9 @@ import { useDatabaseViews } from './useDatabaseViews';
 const props = defineProps<{
   directoryPath: string;
   documentId: AMDocumentId;
-  selectedId?: DatabaseViewId[] | DatabaseViewId;
+  selectedId?: DatabaseViewId[] | DatabaseViewId | undefined;
   type: 'assist' | 'filter' | 'input';
-  autofocus?: boolean;
+  autofocus?: boolean | undefined;
 }>();
 
 const emit = defineEmits<{

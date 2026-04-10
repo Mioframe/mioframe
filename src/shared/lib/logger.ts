@@ -4,7 +4,6 @@ import { sessionUniqueId } from './uniqueId';
 import { generateHsl } from './generateColor';
 import { isPromise } from 'es-toolkit';
 
-/* eslint-disable no-console -- This is a logger utility, console is the intended output */
 interface LogOptions {
   /** Whether to log function arguments. @default false */
   showArgs?: boolean;
@@ -41,8 +40,7 @@ const TAG = {
 
 const generateExecId = (): string => sessionUniqueId('l-');
 
-const isThenable = (value: unknown): value is Promise<unknown> =>
-  isPromise(value);
+const isThenable = (value: unknown): value is Promise<unknown> => isPromise(value);
 
 const snapshotValue = (
   value: unknown,
@@ -188,19 +186,14 @@ function logExecution<Args extends unknown[], Return>(
  */
 export function Log(options: LogOptions = {}) {
   if (!import.meta.env.DEV) {
-    return function <This, Args extends unknown[], R>(
-      fn: (this: This, ...args: Args) => R,
-    ) {
+    return function <This, Args extends unknown[], R>(fn: (this: This, ...args: Args) => R) {
       return fn;
     };
   }
 
   return function <This, Args extends unknown[], R>(
     value: (this: This, ...args: Args) => R,
-    context: ClassMethodDecoratorContext<
-      This,
-      (this: This, ...args: Args) => R
-    >,
+    context: ClassMethodDecoratorContext<This, (this: This, ...args: Args) => R>,
   ) {
     const methodName = String(context.name);
     function replacementMethod(this: This, ...args: Args): R {
@@ -238,4 +231,3 @@ export function withLog<Args extends unknown[], Return>(
   const { name, ...rest } = options;
   return (...args: Args): Return => logExecution(fn, args, name, rest);
 }
-/* eslint-enable no-console -- End of logger utility, re-enable console linting */

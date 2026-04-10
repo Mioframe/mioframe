@@ -8,10 +8,7 @@ export enum GoogleDriveAccessRecoveryKind {
   reauthRequired = 'reauthRequired',
 }
 
-export const getGoogleDriveAccessRecoveryError = (
-  path: string,
-  errors: unknown[],
-) => {
+export const getGoogleDriveAccessRecoveryError = (path: string, errors: unknown[]) => {
   if (!getGoogleDrivePathEmail(path, { hasRootName: true })) {
     return undefined;
   }
@@ -42,10 +39,7 @@ export const useGoogleDriveAccessRecoveryState = ({
   const state = computed(() => {
     const currentPath = toValue(path);
     const email = getGoogleDrivePathEmail(currentPath, { hasRootName: true });
-    const error = getGoogleDriveAccessRecoveryError(
-      currentPath,
-      toValue(errors),
-    );
+    const error = getGoogleDriveAccessRecoveryError(currentPath, toValue(errors));
 
     if (!email || !error) {
       return undefined;

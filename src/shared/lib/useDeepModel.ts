@@ -1,10 +1,7 @@
 import { useVModel } from '@vueuse/core';
 import { cloneDeep } from 'es-toolkit';
 
-export const useDeepModel = <
-  P extends object,
-  K extends Extract<keyof P, string>,
->(
+export const useDeepModel = <P extends object, K extends Extract<keyof P, string>>(
   props: P,
   key: K,
   emit: (name: `update:${K}`, $event: P[K]) => void,

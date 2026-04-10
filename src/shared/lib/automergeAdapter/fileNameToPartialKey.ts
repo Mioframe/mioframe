@@ -7,9 +7,7 @@ import {
   zodPartialStorageKey,
 } from './types';
 
-export const fileNameToPartialKey = (
-  fileName: unknown,
-): PartialStorageKey | undefined => {
+export const fileNameToPartialKey = (fileName: unknown): PartialStorageKey | undefined => {
   const partialAutomergeFileName = zodIs(fileName, zodPartialAutomergeFileName)
     ? fileName
     : undefined;
@@ -18,7 +16,5 @@ export const fileNameToPartialKey = (
     ?.replace(`.${fileExtension}`, '')
     .split(KEY_SEPARATE);
 
-  return zodIs(maybePartialStorageKey, zodPartialStorageKey)
-    ? maybePartialStorageKey
-    : undefined;
+  return zodIs(maybePartialStorageKey, zodPartialStorageKey) ? maybePartialStorageKey : undefined;
 };

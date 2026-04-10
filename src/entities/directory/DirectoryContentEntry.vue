@@ -14,11 +14,7 @@ const slots = defineSlots<{
 </script>
 
 <template>
-  <MDListItem
-    is="button"
-    :headline="props.name"
-    class="directory-content-entry"
-  >
+  <MDListItem is="button" :headline="props.name" class="directory-content-entry">
     <template #leadingIcon>
       <MDSymbol v-if="type === FSNodeType.Directory" name="folder" />
 

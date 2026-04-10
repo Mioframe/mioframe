@@ -16,23 +16,14 @@ const STOP_STATUS = Symbol('stop');
  * @returns
  */
 export function createSubscribeClient<V>(
-  subscribeService: (
-    cb: (v: V) => unknown,
-    options: WatchOptions,
-  ) => Promise<WatchHandle>,
+  subscribeService: (cb: (v: V) => unknown, options: WatchOptions) => Promise<WatchHandle>,
   defaultValue: V,
 ): SubscribeClient<V>;
 export function createSubscribeClient<V>(
-  subscribeService: (
-    cb: (v: V) => unknown,
-    options: WatchOptions,
-  ) => Promise<WatchHandle>,
+  subscribeService: (cb: (v: V) => unknown, options: WatchOptions) => Promise<WatchHandle>,
 ): SubscribeClient<V | undefined>;
 export function createSubscribeClient<V>(
-  subscribeService: (
-    cb: (v: V) => unknown,
-    options: WatchOptions,
-  ) => Promise<WatchHandle>,
+  subscribeService: (cb: (v: V) => unknown, options: WatchOptions) => Promise<WatchHandle>,
   defaultValue?: V,
 ): SubscribeClient<V | undefined> {
   let mainWatchHandle: undefined | typeof WAIT_STATUS | WatchHandle;
@@ -79,10 +70,8 @@ export const useSubscribeByKeyClient = <K extends string, V>(
 ) => {
   const reactiveValues: Map<K, V> = shallowReactive(new Map());
 
-  const valueWatchHandles: Map<
-    K,
-    WatchHandle | typeof WAIT_STATUS | typeof STOP_STATUS
-  > = new Map();
+  const valueWatchHandles: Map<K, WatchHandle | typeof WAIT_STATUS | typeof STOP_STATUS> =
+    new Map();
 
   const initialValueSubscribe = async (key: K) => {
     const oldHandle = valueWatchHandles.get(key);
@@ -169,8 +158,7 @@ export const useSubscribeByQueryClient = <Q extends unknown[], V>(
 
   const reactiveGetByKey = useSubscribeByKeyClient(subscribeValueService);
 
-  const reactiveGetByQuery = (...query: Q): V | undefined =>
-    reactiveGetByKey(jsonStringify(query));
+  const reactiveGetByQuery = (...query: Q): V | undefined => reactiveGetByKey(jsonStringify(query));
 
   reactiveGetByQuery['get'] = reactiveGetByQuery;
 

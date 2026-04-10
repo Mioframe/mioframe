@@ -76,8 +76,7 @@ export function computedAsyncLazy<T>(
     isInitialized = true;
 
     stopWatch = watchEffect((onCleanup) => {
-      // eslint-disable-next-line @typescript-eslint/no-unused-expressions -- force update
-      updateTrigger.value;
+      void updateTrigger.value;
       void _load(onCleanup);
     });
   };

@@ -1,38 +1,41 @@
-import type { Router } from 'vue-router';
-import type { PlaygroundPage, PlaygroundRouteRecordRaw } from './types';
+import type { RouteRecordRaw, Router } from 'vue-router';
+import type { PlaygroundNavigationDescription, PlaygroundPage } from './types';
 
 const playgroundPageToRoute = (
   { component, name, subPages }: PlaygroundPage,
   parentTitle?: string,
-): PlaygroundRouteRecordRaw => {
+): { route: RouteRecordRaw; navigation: PlaygroundNavigationDescription } => {
   const title = parentTitle ? `${parentTitle}/${name}` : name;
+  const children = subPages?.map((page) => playgroundPageToRoute(page, title));
 
   return {
-    path: name,
-    name: title,
-    component,
-    meta: {
-      title,
-      name,
+    route: {
+      path: name,
+      name: title,
+      component,
+      meta: {
+        title,
+        name,
+      },
+      ...(children ? { children: children.map(({ route }) => route) } : {}),
     },
-    children: subPages
-      ? subPages.map((v) => playgroundPageToRoute(v, title))
-      : undefined,
+    navigation: {
+      name,
+      routeName: title,
+      children: children?.map(({ navigation }) => navigation),
+    },
   };
 };
 
-export const setupPlayground = (
-  router: Router,
-  playgroundPages: PlaygroundPage[],
-) => {
-  const children = playgroundPages.map((v) => playgroundPageToRoute(v));
+export const setupPlayground = (router: Router, playgroundPages: PlaygroundPage[]) => {
+  const playgroundEntries = playgroundPages.map((page) => playgroundPageToRoute(page));
 
   router.addRoute({
     path: '/playground',
     component: () => import('./PlaygroundMain.vue'),
     meta: {
-      playgroundRoutes: children,
+      playgroundNavigation: playgroundEntries.map(({ navigation }) => navigation),
     },
-    children,
+    children: playgroundEntries.map(({ route }) => route),
   });
 };

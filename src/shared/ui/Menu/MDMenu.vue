@@ -1,6 +1,6 @@
 <script setup lang="ts" generic="T extends MenuButtonDescription<T>">
 import type { MaybeElement } from '@vueuse/core';
-import { ref, toRefs } from 'vue';
+import { computed, ref, toRefs } from 'vue';
 import type { MenuButtonDescription, MenuButtonList } from './types';
 import MDMenuItem from './MDMenuItem.vue';
 import MDMenuBase from './MDMenuBase.vue';
@@ -8,13 +8,13 @@ import MDMenuBase from './MDMenuBase.vue';
 const props = withDefaults(
   defineProps<{
     target: MaybeElement;
-    btns?: MenuButtonList<T>;
-    transition?: boolean;
-    outsideIgnore?: MaybeElement[];
-    disabledTeleport?: boolean;
-    placement?: 'bottom-start' | 'right-start';
-    ariaLabel?: string;
-    role?: string;
+    btns?: MenuButtonList<T> | undefined;
+    transition?: boolean | undefined;
+    outsideIgnore?: MaybeElement[] | undefined;
+    disabledTeleport?: boolean | undefined;
+    placement?: 'bottom-start' | 'right-start' | undefined;
+    ariaLabel?: string | undefined;
+    role?: string | undefined;
   }>(),
   {
     placement: 'bottom-start',
@@ -36,7 +36,8 @@ const onClickItem = (menuItem: T) => {
   emit('click', menuItem);
 };
 
-const showSubmenu = ref<boolean>();
+const showSubmenu = ref<boolean | undefined>();
+const itemRole = computed(() => (props.role === 'listbox' ? 'option' : undefined));
 </script>
 
 <template>
@@ -56,7 +57,7 @@ const showSubmenu = ref<boolean>();
       v-for="item in btns"
       :key="item.key"
       :item="item"
-      :role="role === 'listbox' ? 'option' : undefined"
+      :item-role="itemRole"
       @click="onClickItem"
       @update:show-submenu="showSubmenu = $event"
     />

@@ -21,9 +21,7 @@ export type SubscribeService<T = unknown> = ((
   [SUBSCRIBE_SERVICE_SYMBOL]: true;
 };
 
-export const SUBSCRIBE_BY_QUERY_SERVICE_SYMBOL = Symbol(
-  'SUBSCRIBE_BY_QUERY_SERVICE_SYMBOL',
-);
+export const SUBSCRIBE_BY_QUERY_SERVICE_SYMBOL = Symbol('SUBSCRIBE_BY_QUERY_SERVICE_SYMBOL');
 
 export type SubscribeByQueryService<Q extends unknown[], R> = ((
   query: Q,

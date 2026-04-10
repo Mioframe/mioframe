@@ -9,12 +9,12 @@ const props = defineProps<{
   path: string;
   documentId: AMDocumentId;
   propertyId: DatabasePropertyId;
-  role?: string;
+  role?: string | undefined;
 }>();
 
 const { path, documentId, propertyId } = toRefs(props);
 
-const showSubmenu = defineModel<boolean>('showSubmenu');
+const showSubmenu = defineModel<boolean | undefined>('showSubmenu');
 
 const slots = defineSlots<{
   submenu: () => unknown;
@@ -26,11 +26,7 @@ const label = computed(() => property.value?.name ?? 'unknown property');
 </script>
 
 <template>
-  <MDMenuItemBase
-    v-model:show-submenu="showSubmenu"
-    :label="label"
-    :role="role"
-  >
+  <MDMenuItemBase v-model:show-submenu="showSubmenu" :label="label" :item-role="role">
     <template v-if="slots.submenu" #submenu>
       <slot name="submenu" />
     </template>

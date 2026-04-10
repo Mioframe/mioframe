@@ -22,9 +22,7 @@ defineSlots<{
 const filterLabel = computed(() => OPERATOR_LABEL[operator.value]);
 
 const headline = 'Filter settings';
-const supportingText = computed(
-  () => `Add filter value "${filterLabel.value}"`,
-);
+const supportingText = computed(() => `Add filter value "${filterLabel.value}"`);
 
 const onApply = () => {
   emit('apply');

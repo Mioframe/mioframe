@@ -1,10 +1,4 @@
-export {
-  create,
-  download,
-  getGFileMetaList,
-  update,
-  upload,
-} from './simplifiedAPI';
+export { create, download, getGFileMetaList, update, upload } from './simplifiedAPI';
 export {
   type GoogleAuthParams,
   SPACE,

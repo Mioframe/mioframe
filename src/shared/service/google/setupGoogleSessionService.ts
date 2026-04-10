@@ -18,11 +18,7 @@ export const setupGoogleSessionService = ({
   const { getStore: get, update, getSessionList } = useGoogleSessionStore();
 
   const getToken = async (oldEmail?: string) => {
-    const {
-      access_token: accessToken,
-      expires_in,
-      scope,
-    } = await requireToken(oldEmail);
+    const { access_token: accessToken, expires_in, scope } = await requireToken(oldEmail);
 
     const scopes = z.array(zodGOOGLE_SCOPE).parse(scope.split(' '));
 

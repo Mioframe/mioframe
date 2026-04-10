@@ -37,9 +37,7 @@ describe('MemoryFileSystem', () => {
     });
 
     it('should throw FileNotFound error for non-existent file', async () => {
-      await expect(memoryFS.stat('/non-existent.txt')).rejects.toThrow(
-        VfsError,
-      );
+      await expect(memoryFS.stat('/non-existent.txt')).rejects.toThrow(VfsError);
     });
   });
 
@@ -70,15 +68,11 @@ describe('MemoryFileSystem', () => {
         create: true,
       });
 
-      await expect(memoryFS.readDirectory('/file.txt')).rejects.toThrow(
-        VfsError,
-      );
+      await expect(memoryFS.readDirectory('/file.txt')).rejects.toThrow(VfsError);
     });
 
     it('should throw FileNotFound error for non-existent directory', async () => {
-      await expect(memoryFS.readDirectory('/non-existent-dir')).rejects.toThrow(
-        VfsError,
-      );
+      await expect(memoryFS.readDirectory('/non-existent-dir')).rejects.toThrow(VfsError);
     });
   });
 
@@ -98,9 +92,7 @@ describe('MemoryFileSystem', () => {
 
       await memoryFS.createDirectory(dirPath);
 
-      await expect(memoryFS.createDirectory('/test-dir')).rejects.toThrow(
-        VfsError,
-      );
+      await expect(memoryFS.createDirectory('/test-dir')).rejects.toThrow(VfsError);
     });
 
     it('should throw FileNotADirectory error when parent is not directory', async () => {
@@ -110,9 +102,7 @@ describe('MemoryFileSystem', () => {
         create: true,
       });
 
-      await expect(
-        memoryFS.createDirectory('/file.txt/subdir'),
-      ).rejects.toThrow(VfsError);
+      await expect(memoryFS.createDirectory('/file.txt/subdir')).rejects.toThrow(VfsError);
     });
   });
 
@@ -131,9 +121,7 @@ describe('MemoryFileSystem', () => {
     });
 
     it('should throw FileNotFound error when reading non-existent file', async () => {
-      await expect(memoryFS.readFile('/non-existent.txt')).rejects.toThrow(
-        VfsError,
-      );
+      await expect(memoryFS.readFile('/non-existent.txt')).rejects.toThrow(VfsError);
     });
 
     it('should throw FileIsADirectory error when trying to read directory as file', async () => {
@@ -234,9 +222,7 @@ describe('MemoryFileSystem', () => {
       });
 
       // This should fail since directory is not empty and recursive is false
-      await expect(memoryFS.delete('/dir-to-delete', false)).rejects.toThrow(
-        /Directory not empty/,
-      );
+      await expect(memoryFS.delete('/dir-to-delete', false)).rejects.toThrow(/Directory not empty/);
     });
   });
 
@@ -293,9 +279,7 @@ describe('MemoryFileSystem', () => {
         create: true,
       });
 
-      await expect(memoryFS.move(oldPath, newPath)).rejects.toThrow(
-        /Target already exists/,
-      );
+      await expect(memoryFS.move(oldPath, newPath)).rejects.toThrow(/Target already exists/);
     });
 
     it('should throw NotSupported error when trying to move directory into itself or subdirectory', async () => {
@@ -304,9 +288,7 @@ describe('MemoryFileSystem', () => {
       // Create a directory
       await memoryFS.createDirectory(dirPath);
 
-      await expect(
-        memoryFS.move('/test-dir', '/test-dir/subdir'),
-      ).rejects.toThrow(VfsError);
+      await expect(memoryFS.move('/test-dir', '/test-dir/subdir')).rejects.toThrow(VfsError);
     });
   });
 

@@ -35,6 +35,7 @@ import {
 } from './types';
 import { zodIs } from '../validateZodScheme';
 import SuperJSON from 'superjson';
+import type { SuperJSONResult } from 'superjson';
 
 /**
  * Calls a remote function by path on the specified service.
@@ -144,11 +145,7 @@ const serviceReadyRegister = new Set<string>();
  * @param timeout - Maximum time (in ms) to wait for readiness
  * @returns Promise that resolves when the service is confirmed ready or rejects on timeout
  */
-const waitServiceReady = (
-  provider: Provider,
-  serviceId: string,
-  timeout = 5e3,
-) => {
+const waitServiceReady = (provider: Provider, serviceId: string, timeout = 5e3) => {
   const readyQuestion: ReadyQuestionMessage = {
     areYouReady: true,
     serviceId,
@@ -314,12 +311,7 @@ const createProxyFunction = (
  * @param resultId - ID of the request that this is a response to
  * @param result - The actual result data to send
  */
-const sendResult = (
-  provider: Provider,
-  serviceId: string,
-  resultId: string,
-  result: unknown,
-) => {
+const sendResult = (provider: Provider, serviceId: string, resultId: string, result: unknown) => {
   const resultMessage: ResultMessage = {
     serviceId,
     resultId,
@@ -340,12 +332,7 @@ const sendResult = (
  * @param resultId - ID of the request that this is a response to
  * @param error - The error object to send
  */
-const sendError = (
-  provider: Provider,
-  serviceId: string,
-  resultId: string,
-  error: unknown,
-) => {
+const sendError = (provider: Provider, serviceId: string, resultId: string, error: unknown) => {
   const resultMessage: ResultMessage = {
     serviceId,
     resultId,
@@ -397,7 +384,10 @@ export const serialize = <T>(data: T) =>
  * @returns The deserialized value in its proper type
  */
 export const deserialize = <T>(data: SerializeJson<T>) =>
-  superJson.deserialize<T>(data);
+  superJson.deserialize<T>(
+    // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- SuperJSON accepts the serialized shape, while our branded type widens optional meta for exactOptionalPropertyTypes
+    data as SuperJSONResult,
+  );
 
 /**
  * Creates and registers a service for handling remote calls from clients.
@@ -428,8 +418,7 @@ export const createService = (
     {
       isApplicable: isFunction,
       serialize: (v) => createFunctionDescription(v),
-      deserialize: (v: FunctionDescription) =>
-        createProxyFunction(provider, serviceId, v),
+      deserialize: (v: FunctionDescription) => createProxyFunction(provider, serviceId, v),
     },
     'proxyFunction',
   );
@@ -447,11 +436,7 @@ export const createService = (
   };
 
   const messageHandler = async ({ data }: { data: unknown }) => {
-    if (
-      state &&
-      zodIs(data, zodCallPathMessage) &&
-      data.serviceId === serviceId
-    ) {
+    if (state && zodIs(data, zodCallPathMessage) && data.serviceId === serviceId) {
       const { args, callId, path } = data;
       try {
         const result = await callPath(state, path, deserialize(args));
@@ -459,10 +444,7 @@ export const createService = (
       } catch (error) {
         sendError(provider, serviceId, callId, error);
       }
-    } else if (
-      zodIs(data, zodCallFunctionMessage) &&
-      data.serviceId === serviceId
-    ) {
+    } else if (zodIs(data, zodCallFunctionMessage) && data.serviceId === serviceId) {
       const { args, callId, functionId } = data;
 
       try {
@@ -484,18 +466,19 @@ export const createService = (
         pendingRequests.delete(resultId);
         const { reject, resolve } = request;
         if (error) {
-          reject(deserialize(error));
+          const deserializedError = deserialize(error);
+          reject(
+            deserializedError instanceof Error
+              ? deserializedError
+              : new Error('Service call failed', { cause: deserializedError }),
+          );
         } else {
           resolve(!isUndefined(result) ? deserialize(result) : undefined);
         }
       } else {
-        // eslint-disable-next-line no-console -- warning for developers
         console.warn(`don't have pending for result ${resultId}`);
       }
-    } else if (
-      zodIs(data, zodRemoveFunctionMessage) &&
-      data.serviceId === serviceId
-    ) {
+    } else if (zodIs(data, zodRemoveFunctionMessage) && data.serviceId === serviceId) {
       const { removeFunctionId } = data;
       localFunctions.delete(removeFunctionId);
     } else if (zodIs(data, zodReadyQuestionMessage)) {

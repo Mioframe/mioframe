@@ -2,9 +2,9 @@
 import { MDButton, MDIconButton } from '../Button';
 import MDSymbol from '../Icon/MDSymbol.vue';
 
-const {} = defineProps<{
+defineProps<{
   text: string;
-  actionLabel?: string;
+  actionLabel?: string | undefined;
 }>();
 
 const emit = defineEmits<{
@@ -35,11 +35,7 @@ const onClickClose = () => {
       @click="onClickAction"
     />
 
-    <MDIconButton
-      tooltip="close"
-      class="md md-snackbar__close-button"
-      @click="onClickClose"
-    >
+    <MDIconButton tooltip="close" class="md md-snackbar__close-button" @click="onClickClose">
       <template #icon>
         <MDSymbol name="close" />
       </template>

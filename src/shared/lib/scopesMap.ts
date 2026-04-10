@@ -33,10 +33,7 @@ export const createScopesMap = <K, V extends object>(
   setupCache: (key: K) => V,
 ): UseScopesMap<K, V> =>
   createGlobalState((): ScopesMap<K, V> => {
-    const cacheMap = new Map<
-      K,
-      { scope: ReturnType<typeof effectScope>; state: V }
-    >();
+    const cacheMap = new Map<K, { scope: ReturnType<typeof effectScope>; state: V }>();
     const usageCount = new Map<K, number>();
 
     const getScope = (key: K): V => {

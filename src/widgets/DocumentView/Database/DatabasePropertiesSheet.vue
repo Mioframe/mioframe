@@ -76,11 +76,7 @@ const isShowAddProperty = ref(false);
 </script>
 
 <template>
-  <MDBottomSheet
-    class="db-properties-sheet"
-    label="Database Properties Sheet"
-    @closed="onClosed"
-  >
+  <MDBottomSheet class="db-properties-sheet" label="Database Properties Sheet" @closed="onClosed">
     <MDBottomSheetSection class="db-properties-sheet__section">
       <span :class="MD_SYS_TYPESCALE.title.small">Properties</span>
 
@@ -99,10 +95,7 @@ const isShowAddProperty = ref(false);
       </DatabasePropertyList>
 
       <div class="db-properties-sheet__actions">
-        <MDButton
-          label="add property"
-          @click="isShowAddProperty = !isShowAddProperty"
-        >
+        <MDButton label="add property" @click="isShowAddProperty = !isShowAddProperty">
           <template #icon>
             <MDSymbol name="contextual_token_add" />
           </template>

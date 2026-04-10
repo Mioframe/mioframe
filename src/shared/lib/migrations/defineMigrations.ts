@@ -38,19 +38,13 @@ type CreateUpdatedData<Ops extends MigrateFunction[], T extends object> = (
  * Migration chain is validated: each migration must accept output of previous.
  * First migration accepts any type T.
  */
-export function defineMigrations<
-  T extends object,
-  Ops extends MigrateFunction[],
->(
+export function defineMigrations<T extends object, Ops extends MigrateFunction[]>(
   ...migrations: Ops & MigrateConstraint<T, Ops>
 ): {
   getLatestData: CreateUpdatedData<Ops, T>;
   applyUpdate: (targetData: object, version?: number) => UpdateResult<T, Ops>;
 } {
-  const getLatestData: CreateUpdatedData<Ops, T> = (
-    targetData: object,
-    version: number = 0,
-  ) => {
+  const getLatestData: CreateUpdatedData<Ops, T> = (targetData: object, version: number = 0) => {
     const v = (version < 0 ? 0 : version) | 0;
 
     if (!isObject(targetData)) {
@@ -58,7 +52,7 @@ export function defineMigrations<
     }
 
     if (v >= migrations.length) {
-      // eslint-disable-next-line @typescript-eslint/consistent-type-assertions,@typescript-eslint/no-unsafe-return -- Generic type constraint requires assertion
+      // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- generic update result narrowing cannot be expressed without an assertion here
       return targetData as UpdateResult<T, Ops>;
     }
 
@@ -71,19 +65,16 @@ export function defineMigrations<
       return newData;
     }, data);
 
-    // eslint-disable-next-line @typescript-eslint/consistent-type-assertions,@typescript-eslint/no-unsafe-return -- Generic type constraint requires assertion
+    // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- migration tuple generics preserve the final schema shape only through an assertion here
     return result as UpdateResult<T, Ops>;
   };
 
-  const applyUpdate = (
-    targetData: object,
-    version: number = 0,
-  ): UpdateResult<T, Ops> => {
+  const applyUpdate = (targetData: object, version: number = 0): UpdateResult<T, Ops> => {
     const migrated = getLatestData(targetData, version);
     if (migrated !== targetData) {
       deepPutJsonObject(targetData, migrated);
     }
-    // eslint-disable-next-line @typescript-eslint/consistent-type-assertions,@typescript-eslint/no-unsafe-return -- Generic type constraint requires assertion
+    // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- applyUpdate mutates the original object in place and returns it as the narrowed schema output
     return targetData as UpdateResult<T, Ops>;
   };
 

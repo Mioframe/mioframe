@@ -30,10 +30,9 @@ export type AnyFunction = (...param: any[]) => any;
  * @typeParam T - The type of the target record
  * @typeParam Exceptions - Types that should not be transformed (remain as-is)
  */
-export type ClientObject<
-  T extends Record<string, unknown>,
-  Exceptions = never,
-> = [T] extends [Exceptions]
+export type ClientObject<T extends Record<string, unknown>, Exceptions = never> = [T] extends [
+  Exceptions,
+]
   ? T
   : {
       [K in keyof T]: ClientValue<T[K], Exceptions>;
@@ -104,19 +103,14 @@ export const zodSerializedData = <T = unknown>(
   // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- Required for Zod generic type
   return z.object({
     // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- Required for Zod generic type
-    json: zodJson as z.ZodMiniType<
-      SuperJSONResult['json'],
-      SuperJSONResult['json']
-    >,
+    json: zodJson as z.ZodMiniType<SuperJSONResult['json'], SuperJSONResult['json']>,
     // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- Required for Zod generic type
     meta: z.optional(z.unknown()) as z.ZodMiniOptional<
       z.ZodMiniType<SuperJSONResult['meta'], SuperJSONResult['meta']>
     >,
   }) as z.ZodMiniObject<{
     json: z.ZodMiniType<SuperJSONResult['json']>;
-    meta: z.ZodMiniOptional<
-      z.ZodMiniType<SuperJSONResult['meta'], SuperJSONResult['meta']>
-    >;
+    meta: z.ZodMiniOptional<z.ZodMiniType<SuperJSONResult['meta'], SuperJSONResult['meta']>>;
     [SERIALIZE_BRAND]: z.ZodMiniType<T, T>;
   }>;
 };
@@ -179,10 +173,7 @@ export interface Provider {
    * @param handler - Handler function that receives message data
    * @returns Result from adding the event listener
    */
-  addEventListener(
-    type: 'message',
-    handler: (p: { data: unknown }) => unknown,
-  ): unknown;
+  addEventListener(type: 'message', handler: (p: { data: unknown }) => unknown): unknown;
 
   /**
    * Removes an event listener for messages.
@@ -190,10 +181,7 @@ export interface Provider {
    * @param handler - Handler function to remove
    * @returns Result from removing the event listener
    */
-  removeEventListener(
-    type: 'message',
-    handler: (p: { data: unknown }) => unknown,
-  ): unknown;
+  removeEventListener(type: 'message', handler: (p: { data: unknown }) => unknown): unknown;
 }
 
 /**
@@ -248,7 +236,8 @@ type SERIALIZE_BRAND = typeof SERIALIZE_BRAND;
  *
  * @typeParam T - The type of original value before serialization
  */
-export type SerializeJson<T = unknown> = SuperJSONResult & {
+export type SerializeJson<T = unknown> = Omit<SuperJSONResult, 'meta'> & {
+  meta?: SuperJSONResult['meta'] | undefined;
   [SERIALIZE_BRAND]: T;
 };
 
@@ -291,7 +280,4 @@ export type CustomTransformer<T = unknown, J = unknown> = {
  * By using this closure pattern, we encapsulate the specific types (T, J) inside the transformer
  * and avoid needing 'any' types in arrays of transformers.
  */
-export type TransformerRegistration = (
-  superJson: SuperJSON,
-  provider: Provider,
-) => void;
+export type TransformerRegistration = (superJson: SuperJSON, provider: Provider) => void;

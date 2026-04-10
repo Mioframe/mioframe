@@ -22,23 +22,12 @@ const { directoryPath, documentId, viewId } = toRefs(props);
 
 defineSlots<{
   property: (p: { propertyId: DatabasePropertyId }) => unknown;
-  value: (p: {
-    value: unknown;
-    path: PropertyKey[];
-    property: string;
-  }) => unknown;
+  value: (p: { value: unknown; path: PropertyKey[]; property: string }) => unknown;
   objectAppend: (p: { path: PropertyKey[] }) => unknown;
-  groupAppend: (p: {
-    path: PropertyKey[];
-    operator: LogicalOperator;
-  }) => unknown;
+  groupAppend: (p: { path: PropertyKey[]; operator: LogicalOperator }) => unknown;
 }>();
 
-const { filterQuery } = useDatabaseViewFilter(
-  directoryPath,
-  documentId,
-  viewId,
-);
+const { filterQuery } = useDatabaseViewFilter(directoryPath, documentId, viewId);
 
 const query = computed((): DatabaseFilter => filterQuery.value ?? {});
 </script>

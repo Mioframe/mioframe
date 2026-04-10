@@ -113,9 +113,7 @@ vi.mock('@shared/ui/Tooltips', () => ({
 
     setup(props, { slots }) {
       return () =>
-        props.show
-          ? h('div', { class: 'overlay-tooltip-stub' }, slots.default?.())
-          : null;
+        props.show ? h('div', { class: 'overlay-tooltip-stub' }, slots.default?.()) : null;
     },
   }),
 }));

@@ -57,26 +57,12 @@ export const useDatabaseSorting = (
     post: (
       propertyId: DatabasePropertyId,
       sortDescription?: PartialDeep<DatabaseSortDescription>,
-    ) =>
-      post(
-        path.value,
-        documentId.value,
-        viewId.value,
-        propertyId,
-        sortDescription,
-      ),
+    ) => post(path.value, documentId.value, viewId.value, propertyId, sortDescription),
 
     patch: (
       propertyId: DatabasePropertyId,
       sortDescription: PartialDeep<DatabaseSortDescription>,
-    ) =>
-      patch(
-        path.value,
-        documentId.value,
-        viewId.value,
-        propertyId,
-        sortDescription,
-      ),
+    ) => patch(path.value, documentId.value, viewId.value, propertyId, sortDescription),
 
     remove: (propertyId: DatabasePropertyId) =>
       remove(path.value, documentId.value, viewId.value, propertyId),

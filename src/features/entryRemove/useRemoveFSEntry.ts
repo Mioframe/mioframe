@@ -1,9 +1,5 @@
 import { useFileSystem } from '@entity/mountedDirectories';
-import {
-  PathUtils,
-  VfsError,
-  FileSystemError,
-} from '@shared/lib/virtualFileSystem';
+import { PathUtils, VfsError, FileSystemError } from '@shared/lib/virtualFileSystem';
 import { useDialog } from '@shared/ui/Dialog';
 import { useSnackbar } from '@shared/ui/Snackbar';
 
@@ -27,10 +23,7 @@ export const useRemoveFSEntry = () => {
       try {
         await removeEntry(path);
       } catch (error) {
-        if (
-          error instanceof VfsError &&
-          error.code === FileSystemError.DirectoryNotEmpty
-        ) {
+        if (error instanceof VfsError && error.code === FileSystemError.DirectoryNotEmpty) {
           const confirmNested = await confirm(
             'Directory not empty',
             'This directory contains files or subdirectories. Do you want to remove them as well?',

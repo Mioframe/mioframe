@@ -37,29 +37,21 @@ syncRef(showModel, showState);
 
 const parentEl = useParentElement();
 
-const targetElementRef = computed(() =>
-  unrefElement(targetElement.value ?? parentEl.value),
-);
+const targetElementRef = computed(() => unrefElement(targetElement.value ?? parentEl.value));
 
 const targetTeleport = useOverlayContainer();
 
 const tooltipEl = useTemplateRef('tooltipEl');
 
-const { floatingStyles: alignCenterStyle, update } = useFloating(
-  targetElementRef,
-  tooltipEl,
-  {
-    strategy: 'fixed',
-    transform: false,
-    middleware: [
-      offset(
-        ({ rects }) => -rects.reference.height / 2 - rects.floating.height / 2,
-      ),
-      shift({ padding: 16, crossAxis: true }),
-    ],
-    whileElementsMounted: autoUpdate,
-  },
-);
+const { floatingStyles: alignCenterStyle, update } = useFloating(targetElementRef, tooltipEl, {
+  strategy: 'fixed',
+  transform: false,
+  middleware: [
+    offset(({ rects }) => -rects.reference.height / 2 - rects.floating.height / 2),
+    shift({ padding: 16, crossAxis: true }),
+  ],
+  whileElementsMounted: autoUpdate,
+});
 
 useEventListener(window.visualViewport, 'resize', update);
 
@@ -83,18 +75,9 @@ useOnBackNavigationStackedWhen(showState, () => {
 </script>
 
 <template>
-  <TeleportContainer
-    :to="targetTeleport"
-    :disabled="disabledTeleport"
-    :container="tooltipEl"
-  >
+  <TeleportContainer :to="targetTeleport" :disabled="disabledTeleport" :container="tooltipEl">
     <Transition>
-      <div
-        v-if="showState"
-        ref="tooltipEl"
-        class="md md-overlay-tooltip"
-        :style="alignCenterStyle"
-      >
+      <div v-if="showState" ref="tooltipEl" class="md md-overlay-tooltip" :style="alignCenterStyle">
         <slot name="default" />
       </div>
     </Transition>

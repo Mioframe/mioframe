@@ -11,8 +11,7 @@ export const usePickLocalDirectory = () => {
   const { addDeviceDirectory } = useFileSystem();
 
   const isSupported = toRef(
-    () =>
-      'showDirectoryPicker' in window && isFunction(window.showDirectoryPicker),
+    () => 'showDirectoryPicker' in window && isFunction(window.showDirectoryPicker),
   );
 
   const pickLocalDirectory = async () => {

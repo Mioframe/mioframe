@@ -12,10 +12,7 @@ import { useObservableQuery } from '@shared/lib/useObservableQuery';
 import { toValue } from 'vue';
 import { isUndefined } from 'es-toolkit';
 
-export const useDatabaseProperties = (
-  path: Ref<string>,
-  documentId: Ref<AMDocumentId>,
-) => {
+export const useDatabaseProperties = (path: Ref<string>, documentId: Ref<AMDocumentId>) => {
   const {
     databaseDocument: {
       properties: { patch, post, remove, databaseProperties },
@@ -35,8 +32,7 @@ export const useDatabaseProperties = (
   );
 
   const propertiesIdList = computed(() => {
-    const currentProperties: DatabaseUnknownPropertiesMap | undefined =
-      properties.value;
+    const currentProperties: DatabaseUnknownPropertiesMap | undefined = properties.value;
 
     if (!currentProperties) {
       return undefined;
@@ -69,14 +65,12 @@ export const useDatabaseProperties = (
     isLoading,
 
     patch: <T extends DatabaseUnknownProperty>(
-      path: string,
-      documentId: AMDocumentId,
+      targetPath: string,
+      targetDocumentId: AMDocumentId,
       id: DatabasePropertyId,
       property: PatchSource<T>,
-    ) => patch(path, documentId, id, property),
-    post: (property: DatabaseUnknownProperty) =>
-      post(path.value, documentId.value, property),
-    remove: (id: DatabasePropertyId) =>
-      remove(path.value, documentId.value, id),
+    ) => patch(targetPath, targetDocumentId, id, property),
+    post: (property: DatabaseUnknownProperty) => post(path.value, documentId.value, property),
+    remove: (id: DatabasePropertyId) => remove(path.value, documentId.value, id),
   };
 };

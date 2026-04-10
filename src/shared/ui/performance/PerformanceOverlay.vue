@@ -51,8 +51,7 @@ const memoryMb = computed(() =>
       class="performance-overlay__item"
       :class="{
         'performance-overlay_alarm': cls > CLSThresholds[1],
-        'performance-overlay_warn':
-          cls > CLSThresholds[0] && cls <= CLSThresholds[1],
+        'performance-overlay_warn': cls > CLSThresholds[0] && cls <= CLSThresholds[1],
       }"
     >
       cls: {{ cls }}
@@ -63,8 +62,7 @@ const memoryMb = computed(() =>
       class="performance-overlay__item"
       :class="{
         'performance-overlay_alarm': inp > INPThresholds[1],
-        'performance-overlay_warn':
-          inp > INPThresholds[0] && inp <= INPThresholds[1],
+        'performance-overlay_warn': inp > INPThresholds[0] && inp <= INPThresholds[1],
       }"
     >
       inp: {{ inp }}
@@ -75,8 +73,7 @@ const memoryMb = computed(() =>
       class="performance-overlay__item"
       :class="{
         'performance-overlay_alarm': lcp > LCPThresholds[1],
-        'performance-overlay_warn':
-          lcp > LCPThresholds[0] && lcp <= LCPThresholds[1],
+        'performance-overlay_warn': lcp > LCPThresholds[0] && lcp <= LCPThresholds[1],
       }"
     >
       lcp: {{ lcp }}

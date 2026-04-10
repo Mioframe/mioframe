@@ -6,10 +6,22 @@ import {
   PlaygroundUnion,
 } from '@shared/lib/playground';
 import { MDFab } from '.';
-import type { ComponentProps } from 'vue-component-type-helpers';
 import { useQueryValue } from '@shared/lib/useQueryState';
 
-interface State extends ComponentProps<typeof MDFab> {}
+type State = {
+  tooltip: string;
+  loading?: number | boolean | undefined;
+  size?: 'medium' | 'large' | undefined;
+  color?:
+    | 'primary'
+    | 'secondary'
+    | 'tertiary'
+    | 'tonal-primary'
+    | 'tonal-secondary'
+    | 'tonal-tertiary'
+    | undefined;
+  mdSymbol?: string | undefined;
+};
 
 const state = useQueryValue<State>('state', {
   tooltip: 'tooltip',
@@ -21,7 +33,7 @@ const state = useQueryValue<State>('state', {
 
 const sizeOptions = ['medium', 'large', undefined] as const;
 
-const colorOptions: State['color'][] = [
+const colorOptions = [
   'primary',
   'secondary',
   'tertiary',
@@ -37,22 +49,11 @@ const colorOptions: State['color'][] = [
     <template #controllers>
       <PlaygroundString v-model:model-value="state.tooltip" label="tooltip" />
 
-      <PlaygroundUnion
-        v-model:model-value="state.size"
-        label="size"
-        :options="sizeOptions"
-      />
+      <PlaygroundUnion v-model:model-value="state.size" label="size" :options="sizeOptions" />
 
-      <PlaygroundUnion
-        v-model:model-value="state.color"
-        label="color"
-        :options="colorOptions"
-      />
+      <PlaygroundUnion v-model:model-value="state.color" label="color" :options="colorOptions" />
 
-      <PlaygroundOptionalString
-        v-model:model-value="state.mdSymbol"
-        label="mdSymbol"
-      />
+      <PlaygroundOptionalString v-model:model-value="state.mdSymbol" label="mdSymbol" />
     </template>
 
     <template #space>

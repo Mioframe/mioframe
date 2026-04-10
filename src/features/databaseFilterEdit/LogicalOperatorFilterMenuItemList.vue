@@ -1,8 +1,5 @@
 <script setup lang="ts">
-import type {
-  DatabasePropertyId,
-  UNARY_FILTER_OPERATOR,
-} from '@shared/lib/databaseDocument';
+import type { DatabasePropertyId, UNARY_FILTER_OPERATOR } from '@shared/lib/databaseDocument';
 import { LOGICAL_FILTER_OPERATOR } from '@shared/lib/databaseDocument';
 import LogicalOperatorFilterMenuItem from './LogicalOperatorFilterMenuItem.vue';
 import type { AMDocumentId } from '@shared/lib/automerge';
@@ -10,7 +7,7 @@ import type { AMDocumentId } from '@shared/lib/automerge';
 defineProps<{
   path: string;
   documentId: AMDocumentId;
-  propertyId?: DatabasePropertyId;
+  propertyId?: DatabasePropertyId | undefined;
 }>();
 
 const emit = defineEmits<{

@@ -1,30 +1,17 @@
 import { sessionUniqueId } from '@shared/lib/uniqueId';
 import type { MaybeElementRef } from '@vueuse/core';
-import {
-  createGlobalState,
-  tryOnScopeDispose,
-  unrefElement,
-  until,
-} from '@vueuse/core';
+import { createGlobalState, tryOnScopeDispose, unrefElement, until } from '@vueuse/core';
 import { isBoolean, isUndefined } from 'es-toolkit';
 import type { Ref } from 'vue';
-import {
-  computed,
-  nextTick,
-  reactive,
-  ref,
-  shallowRef,
-  watch,
-  watchEffect,
-} from 'vue';
+import { computed, nextTick, reactive, ref, shallowRef, watch, watchEffect } from 'vue';
 
 type AlertDescription = {
   type: 'alert' | 'confirm';
   headline: string;
   supportingText: string;
   id: string;
-  confirmLabel?: string;
-  symbolName?: string;
+  confirmLabel?: string | undefined;
+  symbolName?: string | undefined;
   callback: (result: boolean) => void;
 };
 
@@ -63,7 +50,6 @@ export const useDialogState = createGlobalState(() => {
 
     await until(() => isBoolean(resultState.value)).toBe(true);
 
-    // eslint-disable-next-line vue/no-ref-object-reactivity-loss -- it's ok
     return resultState.value;
   };
 
@@ -83,9 +69,7 @@ export const useDialogState = createGlobalState(() => {
 
   const numberOfOpenDialogs = ref(0);
 
-  const globalDialogContainer = shallowRef<
-    HTMLElement | SVGElement | null | undefined
-  >();
+  const globalDialogContainer = shallowRef<HTMLElement | SVGElement | null | undefined>();
 
   return {
     alert,
@@ -111,11 +95,11 @@ export const useMonitorOpenDialog = (open: Ref<boolean>) => {
 
   watch(
     open,
-    (open, old) => {
-      if (open && !isCountedOpen) {
+    (isOpen, previousOpen) => {
+      if (isOpen && !isCountedOpen) {
         numberOfOpenDialogs.value += 1;
         isCountedOpen = true;
-      } else if (!open && !isUndefined(old) && isCountedOpen) {
+      } else if (!isOpen && !isUndefined(previousOpen) && isCountedOpen) {
         numberOfOpenDialogs.value -= 1;
         isCountedOpen = false;
       }

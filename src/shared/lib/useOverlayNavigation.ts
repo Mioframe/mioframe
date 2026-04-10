@@ -27,10 +27,7 @@ const useOverlayNavigationState = createGlobalState(() => {
       await router.push({
         query: {
           ...route.query,
-          [paramKey]: [
-            ...stackQuery.value.filter((x) => usedIds.includes(x)),
-            stringId,
-          ],
+          [paramKey]: [...stackQuery.value.filter((x) => usedIds.includes(x)), stringId],
         },
       });
     }
@@ -43,9 +40,7 @@ const useOverlayNavigationState = createGlobalState(() => {
       if (stackQuery.value.at(-1) === stringId) {
         router.back();
       } else {
-        const filteredStack = stackQuery.value.filter(
-          (x) => x !== stringId && usedIds.includes(x),
-        );
+        const filteredStack = stackQuery.value.filter((x) => x !== stringId && usedIds.includes(x));
         const query: LocationQuery = {
           ...route.query,
           [paramKey]: filteredStack,
@@ -67,15 +62,15 @@ const useOverlayNavigationState = createGlobalState(() => {
 
     watch(
       stringId,
-      (stringId, old) => {
-        if (old) {
-          const index = usedIds.indexOf(old);
+      (nextStringId, oldStringId) => {
+        if (oldStringId) {
+          const index = usedIds.indexOf(oldStringId);
           if (index >= 0) {
             usedIds.splice(index, 1);
           }
         }
 
-        usedIds.push(stringId);
+        usedIds.push(nextStringId);
       },
       { immediate: true },
     );

@@ -1,8 +1,4 @@
-<script
-  setup
-  lang="ts"
-  generic="Is extends 'button' | 'a' | 'label' | 'div' | 'li' = 'div'"
->
+<script setup lang="ts" generic="Is extends 'button' | 'a' | 'label' | 'div' | 'li' = 'div'">
 import { syncRef, syncRefs, useEventListener, useVibrate } from '@vueuse/core';
 import { useTemplateRef, computed, ref, watch } from 'vue';
 import { useFirstFocus } from '@shared/lib/useFirstFocus';
@@ -18,14 +14,14 @@ const {
   for: labelFor,
   autofocus,
 } = defineProps<{
-  is?: Is;
-  type?: Is extends 'button' ? 'button' | 'submit' | 'reset' : false;
-  disabled?: boolean;
-  disableRipple?: boolean;
-  draggable?: boolean;
-  id?: string;
-  for?: Is extends 'label' ? string : false;
-  autofocus?: boolean;
+  is?: Is | undefined;
+  type?: (Is extends 'button' ? 'button' | 'submit' | 'reset' : false) | undefined;
+  disabled?: boolean | undefined;
+  disableRipple?: boolean | undefined;
+  draggable?: boolean | undefined;
+  id?: string | undefined;
+  for?: (Is extends 'label' ? string : false) | undefined;
+  autofocus?: boolean | undefined;
 }>();
 
 const emit = defineEmits<{
@@ -46,9 +42,7 @@ const hoverModel = defineModel<boolean>('hover');
 
 const focusedModel = defineModel<boolean>('focused', { default: false });
 
-const enableRipple = computed(
-  () => !disableRipple || ['button', 'a'].includes(is),
-);
+const enableRipple = computed(() => !disableRipple || ['button', 'a'].includes(is));
 
 const refEl = useTemplateRef<HTMLElement>('refEl');
 
@@ -109,8 +103,8 @@ useRipple(computed(() => (enableRipple.value ? refEl.value : undefined)));
 
 watch(
   [() => autofocus, refEl],
-  ([autofocus, el]) => {
-    if (autofocus && el) {
+  ([shouldAutofocus, el]) => {
+    if (shouldAutofocus && el) {
       el.focus();
     }
   },
@@ -203,8 +197,7 @@ watch(
 
   user-select: none;
 
-  transition-property:
-    box-shadow, color, background-color, padding, border-radius;
+  transition-property: box-shadow, color, background-color, padding, border-radius;
   transition-duration: var(--md-sys-motion-duration-short4, 0.2s);
 
   position: relative;
@@ -265,12 +258,8 @@ watch(
   &:disabled,
   &.md-state_disabled {
     pointer-events: none;
-    --md-container-color: rgb(
-      from var(--md-sys-color-on-surface) r g b / 0.1
-    ) !important;
-    --md-content-color: rgb(
-      from var(--md-sys-color-on-surface) r g b / 0.38
-    ) !important;
+    --md-container-color: rgb(from var(--md-sys-color-on-surface) r g b / 0.1) !important;
+    --md-content-color: rgb(from var(--md-sys-color-on-surface) r g b / 0.38) !important;
   }
 
   &.md-state_hover {

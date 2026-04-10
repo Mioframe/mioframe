@@ -36,16 +36,18 @@ export interface ListParams {
   /** Pagination token for retrieving the next page. Default: '' */
   pageToken?: string;
   /** Structured search query parameters. Default: `{}` */
-  q?: {
-    /** File name to search for (exact match). */
-    name?: string;
-    /** Whether to search in "Shared with me" space. */
-    sharedWithMe?: boolean;
-    /** Whether to include trashed items. */
-    trashed?: boolean;
-    /** Parent folder ID to search within. */
-    parentId?: string;
-  };
+  q?:
+    | {
+        /** File name to search for (exact match). */
+        name?: string | undefined;
+        /** Whether to search in "Shared with me" space. */
+        sharedWithMe?: boolean | undefined;
+        /** Whether to include trashed items. */
+        trashed?: boolean | undefined;
+        /** Parent folder ID to search within. */
+        parentId?: string | undefined;
+      }
+    | undefined;
   /** Spaces to search: `['drive']` or `['appDataFolder']`. Default: `[]` */
   spaces?: SPACE[];
   /** Automatically fetch all result pages. Default: `false` */
@@ -60,13 +62,13 @@ export interface ListParams {
  */
 export interface UpdateParams {
   /** New file name. Optional */
-  name?: string;
+  name?: string | undefined;
   /** Files/folders to add to the parent list. Optional */
-  addParents?: string[];
+  addParents?: string[] | undefined;
   /** Files/folders to remove from the parent list. Optional */
-  removeParents?: string[];
+  removeParents?: string[] | undefined;
   /** Move file to trash (`true`) or restore (`false`). Optional */
-  trashed?: boolean;
+  trashed?: boolean | undefined;
 }
 
 /**
@@ -74,7 +76,7 @@ export interface UpdateParams {
  */
 export interface DownloadParams {
   /** Download progress callback function. Optional */
-  onDownloadProgress?: (progress: Progress, chunk: Uint8Array) => void;
+  onDownloadProgress?: ((progress: Progress, chunk: Uint8Array) => void) | undefined;
 }
 
 /**
@@ -84,7 +86,7 @@ export interface CreateResource {
   /** File name */
   name: string;
   /** File MIME type. Optional */
-  mimeType?: string;
+  mimeType?: string | undefined;
   /** Array of parent folder IDs (required) */
   readonly parents: readonly string[];
 }
@@ -113,7 +115,7 @@ export interface ApiOptions extends KyOptions {
    * When enabled, prevents sending identical requests simultaneously.
    * @default false
    */
-  dedupe?: boolean;
+  dedupe?: boolean | undefined;
 }
 
 /**

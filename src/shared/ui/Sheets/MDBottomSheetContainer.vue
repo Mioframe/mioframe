@@ -1,10 +1,5 @@
 <script setup lang="ts">
-import {
-  tryOnBeforeUnmount,
-  useCssVar,
-  useEventListener,
-  useWindowSize,
-} from '@vueuse/core';
+import { tryOnBeforeUnmount, useCssVar, useEventListener, useWindowSize } from '@vueuse/core';
 import { isBoolean, throttle } from 'es-toolkit';
 import { toNumber } from 'es-toolkit/compat';
 import { computed, ref, toRefs, useTemplateRef, watch, watchEffect } from 'vue';
@@ -12,9 +7,9 @@ import { MDState } from '../State';
 
 const props = withDefaults(
   defineProps<{
-    width?: number;
+    width?: number | undefined;
     collapsed?: boolean | undefined;
-    type?: 'standard' | 'modal';
+    type?: 'standard' | 'modal' | undefined;
   }>(),
   { collapsed: undefined, type: 'standard' },
 );
@@ -54,10 +49,7 @@ watchEffect(() => {
   sheetWidthCssVar.value = width.value ? `${width.value}px` : undefined;
 });
 
-const dragHandleHeightCssVar = useCssVar(
-  '--md-bottom-sheet-drag-height',
-  containerEl,
-);
+const dragHandleHeightCssVar = useCssVar('--md-bottom-sheet-drag-height', containerEl);
 
 const dragHandleHeight = computed(() => toNumber(dragHandleHeightCssVar.value));
 
@@ -85,8 +77,8 @@ const fullscreen = computed(
   () => containerScrollY.value >= windowHeight.value - dragHandleHeight.value,
 );
 
-watch(fullscreen, (fullscreen) => {
-  modelFullscreen.value = fullscreen;
+watch(fullscreen, (isFullscreen) => {
+  modelFullscreen.value = isFullscreen;
 });
 
 watchEffect(() => {
@@ -221,9 +213,7 @@ tryOnBeforeUnmount(() => {
 
   &__drag-pill {
     display: block;
-    background-color: rgb(
-      from var(--md-sys-color-on-surface-variant) r g b / 0.4
-    );
+    background-color: rgb(from var(--md-sys-color-on-surface-variant) r g b / 0.4);
     width: 32px;
     height: 4px;
     border-radius: 2px;
@@ -259,16 +249,12 @@ tryOnBeforeUnmount(() => {
     }
 
     &-leave-active {
-      transition-timing-function: var(
-        var(--md-sys-motion-easing-emphasized-accelerate)
-      );
+      transition-timing-function: var(var(--md-sys-motion-easing-emphasized-accelerate));
       transition-duration: var(--md-sys-motion-duration-short4);
     }
 
     &-enter-active {
-      transition-timing-function: var(
-        var(--md-sys-motion-easing-emphasized-decelerate)
-      );
+      transition-timing-function: var(var(--md-sys-motion-easing-emphasized-decelerate));
       transition-duration: var(--md-sys-motion-duration-long2);
 
       scroll-behavior: auto;

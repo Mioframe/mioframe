@@ -7,10 +7,7 @@ import { DB_VIEW_LAYOUT } from '@shared/lib/databaseDocument';
 import { objectEntries } from '@shared/lib/objectEntries';
 import { MDDialog } from '@shared/ui/Dialog';
 import { MDSelect } from '@shared/ui/Select';
-import {
-  defineSelectOption,
-  defineSelectOptions,
-} from '@shared/ui/Select/defineSelectOptions';
+import { defineSelectOption, defineSelectOptions } from '@shared/ui/Select/defineSelectOptions';
 import { MDTextField } from '@shared/ui/TextField';
 import { pascalCase } from 'es-toolkit';
 import { computed, reactive, ref, toRefs } from 'vue';
@@ -36,6 +33,13 @@ const initialState = (): {
 });
 
 const formState = reactive(initialState());
+
+const nameModel = computed<string | undefined>({
+  get: () => formState.name,
+  set: (name) => {
+    formState.name = name;
+  },
+});
 
 const loading = ref(0);
 
@@ -92,7 +96,7 @@ const onChangeLayout = (selectedOptions: LayoutOption[]) => {
     @cancel="onCancel"
     @apply="onApply"
   >
-    <MDTextField v-model:model-value="formState.name" label-text="Name" />
+    <MDTextField v-model:model-value="nameModel" label-text="Name" />
 
     <MDSelect
       :model-value="selectedLayoutOption"

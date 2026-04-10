@@ -9,8 +9,7 @@ import { isString } from 'es-toolkit';
 export type AMDocHandle<T extends object = UnknownRecord> = AMRR.DocHandle<T>;
 
 const zodStrictDocumentId = custom<AMRR.DocumentId>(
-  (val: unknown): val is AMRR.DocumentId =>
-    isString(val) && isValidDocumentId(val),
+  (val: unknown): val is AMRR.DocumentId => isString(val) && isValidDocumentId(val),
 );
 
 export const zodSimpleDocumentId = string().check(

@@ -7,10 +7,7 @@ import { zodIs } from '@shared/lib/validateZodScheme';
 import { isEqual, isNotNil, omit } from 'es-toolkit';
 import { applyCFRDocumentMigration } from '@shared/lib/cfrDocument/migrations';
 import type { PatchSource } from '@shared/lib/changeObject';
-import {
-  deepPatchJsonObject,
-  deepPutJsonObject,
-} from '@shared/lib/changeObject';
+import { deepPatchJsonObject, deepPutJsonObject } from '@shared/lib/changeObject';
 import type { DocHandleChangePayload } from '@automerge/automerge-repo';
 import type { UnknownRecord } from 'type-fest';
 import {
@@ -36,7 +33,7 @@ const setupDocumentService = () => {
       documentId,
     }: {
       directoryPath: string;
-      documentId?: AMDocumentId;
+      documentId?: AMDocumentId | undefined;
     }) =>
       getRepo$(directoryPath).pipe(
         filter(isNotNil),
@@ -63,35 +60,32 @@ const setupDocumentService = () => {
 
   const docHandle = defineObservableQuery(getDocHandle$);
 
-  const cfrContent$ = defineCacheObservable(
-    (directoryPath: string, documentId?: AMDocumentId) =>
-      getDocHandle$({ directoryPath, documentId }).pipe(
-        filter(isNotNil),
-        switchMap((handle) =>
-          new Observable<UnknownRecord | undefined>((subscribe) => {
-            const onChange = ({
-              doc,
-            }: DocHandleChangePayload<UnknownRecord>) => {
-              subscribe.next(doc);
-            };
-            const onDelete = () => {
-              subscribe.next(undefined);
-            };
-            handle.addListener('change', onChange);
-            handle.addListener('delete', onDelete);
+  const cfrContent$ = defineCacheObservable((directoryPath: string, documentId?: AMDocumentId) =>
+    getDocHandle$({ directoryPath, documentId }).pipe(
+      filter(isNotNil),
+      switchMap((handle) =>
+        new Observable<UnknownRecord | undefined>((subscribe) => {
+          const onChange = ({ doc }: DocHandleChangePayload<UnknownRecord>) => {
+            subscribe.next(doc);
+          };
+          const onDelete = () => {
+            subscribe.next(undefined);
+          };
+          handle.addListener('change', onChange);
+          handle.addListener('delete', onDelete);
 
-            return () => {
-              handle.removeListener('change', onChange);
-              handle.removeListener('delete', onDelete);
-            };
-          }).pipe(startWith(((): UnknownRecord => handle.doc())())),
-        ),
-        distinctUntilChanged(),
+          return () => {
+            handle.removeListener('change', onChange);
+            handle.removeListener('delete', onDelete);
+          };
+        }).pipe(startWith(((): UnknownRecord => handle.doc())())),
       ),
+      distinctUntilChanged(),
+    ),
   );
 
   const cfrDocumentState$ = defineCacheObservable(
-    ({ documentId, path }: { path: string; documentId?: AMDocumentId }) =>
+    ({ documentId, path }: { path: string; documentId?: AMDocumentId | undefined }) =>
       cfrContent$(path, documentId).pipe(
         map((doc) => {
           if (zodIs(doc, zodCFRDocumentContent)) {
@@ -108,7 +102,7 @@ const setupDocumentService = () => {
   const cfrDocumentState = defineObservableQuery(cfrDocumentState$);
 
   const documentDescription$ = defineCacheObservable(
-    ({ documentId, path }: { path: string; documentId?: AMDocumentId }) =>
+    ({ documentId, path }: { path: string; documentId?: AMDocumentId | undefined }) =>
       cfrDocumentState$({ documentId, path }).pipe(
         map((state) => {
           if (state) {
@@ -129,9 +123,7 @@ const setupDocumentService = () => {
     const handle = await docHandle.fetch({ directoryPath, documentId });
 
     if (!handle) {
-      throw new DomainError(
-        `Document "${documentId}" not found at "${directoryPath}"`,
-      );
+      throw new DomainError(`Document "${documentId}" not found at "${directoryPath}"`);
     }
 
     handle.change((doc) => {
@@ -149,9 +141,7 @@ const setupDocumentService = () => {
     const handle = await docHandle.fetch({ directoryPath, documentId });
 
     if (!handle) {
-      throw new DomainError(
-        `Document "${documentId}" not found at "${directoryPath}"`,
-      );
+      throw new DomainError(`Document "${documentId}" not found at "${directoryPath}"`);
     }
 
     handle.change((doc) => {
@@ -169,9 +159,7 @@ const setupDocumentService = () => {
     const handle = await docHandle.fetch({ directoryPath, documentId });
 
     if (!handle) {
-      throw new DomainError(
-        `Document "${documentId}" not found at "${directoryPath}"`,
-      );
+      throw new DomainError(`Document "${documentId}" not found at "${directoryPath}"`);
     }
 
     return new Promise<void>((resolve, reject) => {
@@ -181,7 +169,11 @@ const setupDocumentService = () => {
           callback(cfrDocumentContent);
           resolve();
         } catch (error) {
-          reject(error);
+          reject(
+            error instanceof Error
+              ? error
+              : new Error('Failed to change document', { cause: error }),
+          );
           throw error;
         }
       });

@@ -1,8 +1,5 @@
 import type { AMDocumentId } from '@shared/lib/automerge';
-import type {
-  DatabaseItemId,
-  DatabasePropertyId,
-} from '@shared/lib/databaseDocument';
+import type { DatabaseItemId, DatabasePropertyId } from '@shared/lib/databaseDocument';
 import { useObservableQuery } from '@shared/lib/useObservableQuery';
 import { useMainServiceClient } from '@shared/service';
 import { isUndefined } from 'es-toolkit';

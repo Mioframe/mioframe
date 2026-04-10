@@ -1,11 +1,7 @@
 <script setup lang="ts">
 import type { StyleValue } from 'vue';
 import { computed, useTemplateRef, toRefs, shallowRef } from 'vue';
-import {
-  useLayoutSizeClass,
-  LAYOUT_CLASS,
-  LAYOUT_MIN_WIDTH,
-} from './useLayoutSizeClass';
+import { useLayoutSizeClass, LAYOUT_CLASS, LAYOUT_MIN_WIDTH } from './useLayoutSizeClass';
 import { useElementBounding } from '@vueuse/core';
 import { MDNavigationBar, MDNavigationRail } from '../Navigation';
 import type { NavigationButton } from '../Navigation';
@@ -18,9 +14,9 @@ import { useLocalSettings } from '@entity/localSettings';
 import PaneContextWrap from './PaneContextWrap.vue';
 
 const props = defineProps<{
-  navigationButtons?: NavigationButton[];
-  activeNavigationButton?: NavigationButton;
-  hasMenuButton?: boolean;
+  navigationButtons?: NavigationButton[] | undefined;
+  activeNavigationButton?: NavigationButton | undefined;
+  hasMenuButton?: boolean | undefined;
   panes: Pane[];
 }>();
 
@@ -62,9 +58,7 @@ const windowClassModifier = computed(() => {
 const { allowed: allowedBottomNavigation } = useAllowedBottomNavigation();
 
 const showRailNavigation = computed(
-  () =>
-    navigationButtons.value?.length &&
-    layoutWidth.value >= LAYOUT_MIN_WIDTH.medium,
+  () => navigationButtons.value?.length && layoutWidth.value >= LAYOUT_MIN_WIDTH.medium,
 );
 
 const showBarNavigation = computed(
@@ -98,9 +92,7 @@ const maxPanes = computed(() => {
   }
 });
 
-const showPanes = computed(() =>
-  props.panes.slice(0, maxPanes.value).toReversed(),
-);
+const showPanes = computed(() => props.panes.slice(0, maxPanes.value).toReversed());
 
 const numberOfPanes = computed(() => showPanes.value.length);
 
@@ -186,11 +178,7 @@ const onBodyPointerMove = (event: PointerEvent) => {
       >
         <component :is="component" v-bind="paneProps" class="body__pane">
           <template #navigationButton>
-            <MDIconButton
-              tooltip="back"
-              md-symbol-name="arrow_back"
-              @click="onClickBack"
-            />
+            <MDIconButton tooltip="back" md-symbol-name="arrow_back" @click="onClickBack" />
           </template>
         </component>
 

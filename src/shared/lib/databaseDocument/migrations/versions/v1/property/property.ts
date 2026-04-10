@@ -9,10 +9,7 @@ export const zodUnknownPropertyType = string();
 
 export const zodUnknownProperty = zodGeneralProperty(zodUnknownPropertyType);
 
-export const zodUnknownPropertiesMap = zodStrictRecord(
-  zodDatabasePropertyId,
-  zodUnknownProperty,
-);
+export const zodUnknownPropertiesMap = zodStrictRecord(zodDatabasePropertyId, zodUnknownProperty);
 
 export type UnknownPropertiesMap = output<typeof zodUnknownPropertiesMap>;
 
@@ -20,5 +17,7 @@ export type PropertiesMap1<T extends GeneralProperty = GeneralProperty> = {
   [K in DatabasePropertyId]: T;
 };
 
-export type PropertiesMap<T extends GeneralProperty = GeneralProperty> =
-  StrictRecord<DatabasePropertyId, T>;
+export type PropertiesMap<T extends GeneralProperty = GeneralProperty> = StrictRecord<
+  DatabasePropertyId,
+  T
+>;

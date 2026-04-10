@@ -4,12 +4,12 @@ import MDSymbol from '../Icon/MDSymbol.vue';
 import { MDState } from '../State';
 
 const { type: chipType, selected = false } = defineProps<{
-  elevated?: boolean;
+  elevated?: boolean | undefined;
   label: string;
   type: T;
-  selected?: T extends 'filter' ? boolean : undefined;
-  draggable?: boolean;
-  autofocus?: boolean;
+  selected?: (T extends 'filter' ? boolean : undefined) | undefined;
+  draggable?: boolean | undefined;
+  autofocus?: boolean | undefined;
 }>();
 
 const slots = defineSlots<{
@@ -66,10 +66,7 @@ const onClickClose = (e: MouseEvent) => {
       @click="onClickClose"
     />
 
-    <div
-      v-else-if="chipType === 'filter' && !!slots.trailingIcon"
-      class="md-chip__trailing-icon"
-    >
+    <div v-else-if="chipType === 'filter' && !!slots.trailingIcon" class="md-chip__trailing-icon">
       <slot name="trailingIcon" />
     </div>
   </MDState>
@@ -161,9 +158,7 @@ const onClickClose = (e: MouseEvent) => {
     &.md-chip_disabled,
     &:disabled {
       --md-state-box-shadow: var(--md-sys-elevation-level0);
-      --md-container-color: rgb(
-        from var(--md-sys-color-on-surface) / r g b 0.12
-      );
+      --md-container-color: rgb(from var(--md-sys-color-on-surface) / r g b 0.12);
     }
 
     &:hover {
@@ -205,9 +200,7 @@ const onClickClose = (e: MouseEvent) => {
   :disabled {
     --md-content-color: rgb(var(--md-sys-color-on-surface) / r g b 0.38);
     pointer-events: none;
-    --md-state-border-color: rgb(
-      from var(--md-sys-color-on-surface) / r g b 0.12
-    );
+    --md-state-border-color: rgb(from var(--md-sys-color-on-surface) / r g b 0.12);
     --md-state-box-shadow: var(--md-sys-elevation-level0);
   }
 }

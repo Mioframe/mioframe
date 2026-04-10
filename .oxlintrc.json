@@ -1,0 +1,30 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "plugins": ["eslint", "typescript", "oxc", "vue"],
+  "options": {
+    "typeAware": true
+  },
+  "env": {
+    "browser": true,
+    "node": true
+  },
+  "categories": {
+    "correctness": "error",
+    "suspicious": "warn",
+    "pedantic": "off",
+    "perf": "warn",
+    "style": "off",
+    "restriction": "off"
+  },
+  "rules": {
+    "eslint/no-await-in-loop": "warn",
+    "eslint/no-shadow": "warn",
+    "eslint/no-unneeded-ternary": "warn",
+    "eslint/no-useless-rename": "error",
+    "oxc/no-accumulating-spread": "warn",
+    "typescript/consistent-return": "off",
+    "typescript/no-unnecessary-type-arguments": "off",
+    "typescript/no-unsafe-type-assertion": "off",
+    "vue/valid-define-props": "off"
+  }
+}

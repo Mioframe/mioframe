@@ -1,8 +1,5 @@
 import type { AMDocumentId } from '@shared/lib/automerge';
-import type {
-  DatabasePropertyId,
-  DatabaseViewId,
-} from '@shared/lib/databaseDocument';
+import type { DatabasePropertyId, DatabaseViewId } from '@shared/lib/databaseDocument';
 import { useObservableQuery } from '@shared/lib/useObservableQuery';
 import { useMainServiceClient } from '@shared/service';
 import { isUndefined } from 'es-toolkit';
@@ -52,11 +49,6 @@ export const useDatabaseSortDescription = (
     isLoading,
 
     toggleDirection: () =>
-      toggleDirection(
-        path.value,
-        documentId.value,
-        viewId.value,
-        propertyId.value,
-      ),
+      toggleDirection(path.value, documentId.value, viewId.value, propertyId.value),
   };
 };

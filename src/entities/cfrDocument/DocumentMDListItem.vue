@@ -22,15 +22,11 @@ const emit = defineEmits<{
 
 const slots = defineSlots<{
   leadingIcon: () => unknown;
-  trailingIcon: (p: { documentName?: string }) => unknown;
+  trailingIcon: (p: { documentName?: string | undefined }) => unknown;
   leadingAvatarContainer: () => unknown;
 }>();
 
-const {
-  state: documentDescription,
-  isLoading,
-  errorMessage,
-} = useDocument(path, documentId);
+const { state: documentDescription, isLoading, errorMessage } = useDocument(path, documentId);
 
 const documentName = computed(() => documentDescription.value?.name);
 

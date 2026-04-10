@@ -33,10 +33,7 @@ export const useDatabasePropertiesService = (
   const databaseProperties$ = defineCacheObservable(
     ({ documentId, path }: { documentId: AMDocumentId; path: string }) =>
       databaseState$({ documentId, path }).pipe(
-        map(
-          (state): DatabaseUnknownPropertiesMap | undefined =>
-            state?.properties,
-        ),
+        map((state): DatabaseUnknownPropertiesMap | undefined => state?.properties),
         distinctUntilChanged(),
       ),
   );
@@ -51,7 +48,7 @@ export const useDatabasePropertiesService = (
     }: {
       path: string;
       documentId: AMDocumentId;
-      id?: DatabasePropertyId;
+      id?: DatabasePropertyId | undefined;
     }) =>
       databaseProperties$({ documentId, path }).pipe(
         map((properties) => {
@@ -89,9 +86,7 @@ export const useDatabasePropertiesService = (
     changeDatabase(path, documentId, (state) => {
       const oldProperty = state.properties[id];
       if (!oldProperty) {
-        throw new Error(
-          `there is no property ${id} in document ${stringPath(path)} ${documentId}`,
-        );
+        throw new Error(`there is no property ${id} in document ${stringPath(path)} ${documentId}`);
       }
       void deepPatchJsonObject(oldProperty, property);
     });
@@ -113,15 +108,9 @@ export const useDatabasePropertiesService = (
       ),
   );
 
-  const databasePropertiesIdList = defineObservableQuery(
-    databasePropertiesIdList$,
-  );
+  const databasePropertiesIdList = defineObservableQuery(databasePropertiesIdList$);
 
-  const remove = (
-    path: string,
-    documentId: AMDocumentId,
-    id: DatabasePropertyId,
-  ) =>
+  const remove = (path: string, documentId: AMDocumentId, id: DatabasePropertyId) =>
     changeDatabase(path, documentId, (state) => {
       strictRecordRemove(state.properties, id);
     });

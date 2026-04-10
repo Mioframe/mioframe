@@ -20,11 +20,7 @@ const {
 }>();
 
 defineSlots<{
-  default(p: {
-    targetWidth: number;
-    targetHeight: number;
-    placeholderWidth: number;
-  }): unknown;
+  default(p: { targetWidth: number; targetHeight: number; placeholderWidth: number }): unknown;
 }>();
 
 const emptySlotDetector = useTemplateRef('emptySlotDetector');
@@ -38,9 +34,7 @@ const {
   width: placeholderWidth,
   height: placeholderHeight,
 } = useElementBounding(
-  computed(() =>
-    enableCalculatePosition.value ? placeholderEl.value : undefined,
-  ),
+  computed(() => (enableCalculatePosition.value ? placeholderEl.value : undefined)),
 );
 
 const contentEl = useTemplateRef('contentEl');
@@ -54,49 +48,33 @@ watchEffect(() => {
   placeholderTopCssVar.value = `${placeholderTop.value}px`;
 });
 
-const placeholderWidthCssVar = useCssVar(
-  '--teleport-placeholder-width',
-  contentEl,
-);
+const placeholderWidthCssVar = useCssVar('--teleport-placeholder-width', contentEl);
 
 watchEffect(() => {
   placeholderWidthCssVar.value =
     priorityWidth === 'placeholder' ? `${placeholderWidth.value}px` : undefined;
 });
 
-const placeholderHeightCssVar = useCssVar(
-  '--teleport-placeholder-height',
-  contentEl,
-);
+const placeholderHeightCssVar = useCssVar('--teleport-placeholder-height', contentEl);
 watchEffect(() => {
   placeholderHeightCssVar.value =
-    priorityHeight === 'placeholder'
-      ? `${placeholderHeight.value}px`
-      : undefined;
+    priorityHeight === 'placeholder' ? `${placeholderHeight.value}px` : undefined;
 });
 
-const placeholderLeftCssVar = useCssVar(
-  '--teleport-placeholder-left',
-  contentEl,
-);
+const placeholderLeftCssVar = useCssVar('--teleport-placeholder-left', contentEl);
 watchEffect(() => {
   placeholderLeftCssVar.value = `${placeholderLeft.value}px`;
 });
 
 const contentWidthCssVar = useCssVar('--teleport-content-width', placeholderEl);
 watchEffect(() => {
-  contentWidthCssVar.value =
-    priorityWidth === 'content' ? `${contentWidth.value}px` : undefined;
+  contentWidthCssVar.value = priorityWidth === 'content' ? `${contentWidth.value}px` : undefined;
 });
 
-const contentHeightCssVar = useCssVar(
-  '--teleport-content-height',
-  placeholderEl,
-);
+const contentHeightCssVar = useCssVar('--teleport-content-height', placeholderEl);
 
 watchEffect(() => {
-  contentHeightCssVar.value =
-    priorityHeight === 'content' ? `${contentHeight.value}px` : undefined;
+  contentHeightCssVar.value = priorityHeight === 'content' ? `${contentHeight.value}px` : undefined;
 });
 
 const closestParentFrame = useOverlayContainer();
@@ -105,8 +83,7 @@ const teleportTo = computed(() => to ?? closestParentFrame.value);
 
 const { height: targetHeight, width: targetWidth } = useElementSize(
   computed(() =>
-    enableCalculatePosition.value &&
-    closestParentFrame.value instanceof HTMLElement
+    enableCalculatePosition.value && closestParentFrame.value instanceof HTMLElement
       ? closestParentFrame.value
       : undefined,
   ),

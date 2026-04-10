@@ -1,19 +1,10 @@
 <script setup lang="ts">
 import { BooleanInline, PROPERTY_TYPE_BOOLEAN } from '@entity/databaseBoolean';
 import { DateValueInline, PROPERTY_TYPE_DATE } from '@entity/databaseDate';
-import {
-  NumberValueInline,
-  PROPERTY_TYPE_NUMBER,
-} from '@entity/databaseNumber';
+import { NumberValueInline, PROPERTY_TYPE_NUMBER } from '@entity/databaseNumber';
 import type { ParentRelation } from '@entity/databaseRelation';
-import {
-  PROPERTY_TYPE_RELATION,
-  RelationValueInline,
-} from '@entity/databaseRelation';
-import {
-  PROPERTY_TYPE_STRING,
-  StringValueInline,
-} from '@entity/databaseString';
+import { PROPERTY_TYPE_RELATION, RelationValueInline } from '@entity/databaseRelation';
+import { PROPERTY_TYPE_STRING, StringValueInline } from '@entity/databaseString';
 import type { DatabaseItemId } from '@shared/lib/databaseDocument';
 import { type DatabasePropertyId } from '@shared/lib/databaseDocument';
 import DatabaseViewLayout from './DatabaseViewLayout.vue';
@@ -103,9 +94,7 @@ const { value, isLoading } = useDatabaseEffectiveValue(
         :view-id="viewId"
         :item-id-query="{ $in: relationValue }"
       >
-        <template
-          #value="{ propertyId: relationPropertyId, itemId: relationItemId }"
-        >
+        <template #value="{ propertyId: relationPropertyId, itemId: relationItemId }">
           <ValueInline
             :item-id="relationItemId"
             :document-id="relationDocHandle"

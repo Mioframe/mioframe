@@ -15,11 +15,7 @@ import stringify from 'safe-stable-stringify';
 import { partialSort } from './partialSort';
 
 const resolveComparableValue = (value: unknown): boolean | number | string => {
-  if (
-    typeof value === 'boolean' ||
-    typeof value === 'number' ||
-    typeof value === 'string'
-  ) {
+  if (typeof value === 'boolean' || typeof value === 'number' || typeof value === 'string') {
     return value;
   }
 
@@ -30,20 +26,12 @@ const resolveComparableValue = (value: unknown): boolean | number | string => {
   return stringify(value);
 };
 
-const compareValues = (
-  a: unknown,
-  b: unknown,
-  direction: DatabaseSortDescription['direction'],
-) => {
+const compareValues = (a: unknown, b: unknown, direction: DatabaseSortDescription['direction']) => {
   const resolvedDirection = direction === SORT_DIRECTION.ascending ? 1 : -1;
   const resolvedA = resolveComparableValue(a);
   const resolvedB = resolveComparableValue(b);
 
-  return resolvedA < resolvedB
-    ? -resolvedDirection
-    : resolvedA > resolvedB
-      ? resolvedDirection
-      : 0;
+  return resolvedA < resolvedB ? -resolvedDirection : resolvedA > resolvedB ? resolvedDirection : 0;
 };
 
 export const sortData = (
@@ -56,12 +44,7 @@ export const sortData = (
   const entries = isArray(data) ? data : recordEntries(data);
 
   if (!sorting) {
-    return partialSort(
-      entries,
-      undefined,
-      firstIndex ?? 0,
-      lastIndex ?? entries.length - 1,
-    );
+    return partialSort(entries, undefined, firstIndex ?? 0, lastIndex ?? entries.length - 1);
   }
 
   const orderedSortingEntries = recordEntries(sorting).sort(

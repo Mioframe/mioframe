@@ -9,10 +9,7 @@ import { DateValueField } from '@feature/dateValueEdit';
 import { NumberValueField } from '@feature/numberValueEdit';
 import { RelationValueField } from '@feature/relationValueEdit';
 import { StringValueField } from '@feature/stringValueEdit';
-import type {
-  DatabasePropertyId,
-  DatabaseUnknownProperty,
-} from '@shared/lib/databaseDocument';
+import type { DatabasePropertyId, DatabaseUnknownProperty } from '@shared/lib/databaseDocument';
 import { zodIs } from '@shared/lib/validateZodScheme';
 import DatabaseViewLayout from './DatabaseViewLayout.vue';
 import { MDCheckbox } from '@shared/ui/Checkbox';
@@ -30,12 +27,7 @@ const props = defineProps<{
   autofocus?: boolean;
 }>();
 
-const {
-  directoryPath: path,
-  documentId,
-  propertyId,
-  class: propClass,
-} = toRefs(props);
+const { directoryPath: path, documentId, propertyId, class: propClass } = toRefs(props);
 
 const emit = defineEmits<{
   'update:value': [v: unknown];
@@ -108,19 +100,8 @@ const onUpdateProperty = (v: DatabaseUnknownProperty) => {
     @update:value="onUpdateValue"
     @update:property="onUpdateProperty"
   >
-    <template
-      #data="{
-        documentId: relationDocHandle,
-        onSelect,
-        value: selectedValue,
-        viewId,
-      }"
-    >
-      <DatabaseViewLayout
-        :document-id="relationDocHandle"
-        :view-id="viewId"
-        :path="path"
-      >
+    <template #data="{ documentId: relationDocHandle, onSelect, value: selectedValue, viewId }">
+      <DatabaseViewLayout :document-id="relationDocHandle" :view-id="viewId" :path="path">
         <template #action="{ itemId }">
           <MDCheckbox
             :model-value="selectedValue.includes(itemId)"

@@ -9,10 +9,7 @@ import {
 } from '@shared/lib/databaseDocument';
 import { databaseBodyMigrations } from '@shared/lib/databaseDocument/migrations/bodyMigrations';
 import type { PatchSource } from '@shared/lib/changeObject';
-import {
-  deepPatchJsonObject,
-  deepPutJsonObject,
-} from '@shared/lib/changeObject';
+import { deepPatchJsonObject, deepPutJsonObject } from '@shared/lib/changeObject';
 import { applyMigrateDatabaseDocument } from '@shared/lib/databaseDocument/migrations';
 import { useDatabasePropertiesService } from './databasePropertiesService';
 import { setupDatabaseViewsService } from './view/databaseViewsService';
@@ -59,28 +56,18 @@ export const useDatabaseDocumentService = createGlobalState(() => {
     callback: (state: DatabaseState) => unknown,
   ) =>
     changeCFRDocument(path, documentId, (cfrDocument) => {
-      if (
-        zodCheck(zodDatabaseTypeDocument, cfrDocument, { throwAnError: true })
-      ) {
+      if (zodCheck(zodDatabaseTypeDocument, cfrDocument, { throwAnError: true })) {
         const body = applyMigrateDatabaseDocument(cfrDocument);
         callback(body);
       }
     });
 
-  const put = async (
-    path: string,
-    documentId: AMDocumentId,
-    body: DatabaseState,
-  ) =>
+  const put = async (path: string, documentId: AMDocumentId, body: DatabaseState) =>
     change(path, documentId, (value) => {
       deepPutJsonObject(value, body);
     });
 
-  const patch = (
-    path: string,
-    documentId: AMDocumentId,
-    partialBody: PatchSource<DatabaseState>,
-  ) =>
+  const patch = (path: string, documentId: AMDocumentId, partialBody: PatchSource<DatabaseState>) =>
     change(path, documentId, (value) => {
       deepPatchJsonObject(value, partialBody);
     });

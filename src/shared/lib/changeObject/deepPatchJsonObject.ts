@@ -17,10 +17,11 @@ export type PatchSource<T> = PartialDeep<T>;
  * @param target - mutable object
  * @param source - object with new values
  */
-export function deepPatchJsonObject<
-  T extends object,
-  S extends PatchSource<T> | object,
->(target: T, source: S, options?: DeepPatchJsonObjectOptions): MergeDeep<T, S>;
+export function deepPatchJsonObject<T extends object, S extends PatchSource<T> | object>(
+  target: T,
+  source: S,
+  options?: DeepPatchJsonObjectOptions,
+): MergeDeep<T, S>;
 export function deepPatchJsonObject<T extends object, S extends object>(
   target: T,
   source: S,

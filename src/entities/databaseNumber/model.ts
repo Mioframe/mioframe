@@ -7,9 +7,7 @@ import {
 
 export const PROPERTY_TYPE_NUMBER = 'number';
 
-export const zodNumberProperty = zodGeneralProperty(
-  literal(PROPERTY_TYPE_NUMBER),
-);
+export const zodNumberProperty = zodGeneralProperty(literal(PROPERTY_TYPE_NUMBER));
 
 export type NumberProperty = output<typeof zodNumberProperty>;
 

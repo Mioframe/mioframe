@@ -7,31 +7,32 @@ import {
   PlaygroundUnion,
 } from '@shared/lib/playground';
 import { useQueryValue } from '@shared/lib/useQueryState';
-import type { ComponentProps } from 'vue-component-type-helpers';
 import MDIconButton from './MDIconButton.vue';
 
-interface State extends ComponentProps<typeof MDIconButton> {}
+type State = {
+  tooltip: string;
+  formAction?: 'submit' | 'reset' | undefined;
+  color?: 'filled' | 'outlined' | 'tonal' | 'standard' | undefined;
+  disabled?: boolean | undefined;
+  pressed?: boolean | undefined;
+  focused?: boolean | undefined;
+  loading?: number | boolean | undefined;
+  mdSymbolName?: string | undefined;
+  type?: 'default' | 'toggle' | undefined;
+  selected?: boolean | undefined;
+  shape?: 'round' | 'square' | undefined;
+  showTooltipOnClick?: boolean | undefined;
+  size?: 'extra-small' | 'small' | 'medium' | 'large' | 'extra-large' | undefined;
+  width?: 'narrow' | 'default' | 'wide' | undefined;
+};
 
-const colorOptions = [
-  'filled',
-  'outlined',
-  'tonal',
-  'standard',
-  undefined,
-] as const;
+const colorOptions = ['filled', 'outlined', 'tonal', 'standard', undefined] as const;
 
 const formActionOptions = ['submit', 'reset', undefined] as const;
 
 const shapeOptions = ['round', 'square', undefined] as const;
 
-const sizeOptions = [
-  'extra-small',
-  'small',
-  'medium',
-  'large',
-  'extra-large',
-  undefined,
-] as const;
+const sizeOptions = ['extra-small', 'small', 'medium', 'large', 'extra-large', undefined] as const;
 
 const typeOptions = ['default', 'toggle', undefined] as const;
 
@@ -60,21 +61,11 @@ const state = useQueryValue<State>('state', {
     <template #controllers>
       <PlaygroundString v-model:model-value="state.tooltip" label="tooltip" />
 
-      <PlaygroundUnion
-        v-model:model-value="state.color"
-        label="color"
-        :options="colorOptions"
-      />
+      <PlaygroundUnion v-model:model-value="state.color" label="color" :options="colorOptions" />
 
-      <PlaygroundOptionalBoolean
-        v-model:model-value="state.disabled"
-        label="disabled"
-      />
+      <PlaygroundOptionalBoolean v-model:model-value="state.disabled" label="disabled" />
 
-      <PlaygroundOptionalBoolean
-        v-model:model-value="state.focused"
-        label="focused"
-      />
+      <PlaygroundOptionalBoolean v-model:model-value="state.focused" label="focused" />
 
       <PlaygroundUnion
         v-model:model-value="state.formAction"
@@ -82,49 +73,24 @@ const state = useQueryValue<State>('state', {
         :options="formActionOptions"
       />
 
-      <PlaygroundOptionalString
-        v-model:model-value="state.mdSymbolName"
-        label="mdSymbolName"
-      />
+      <PlaygroundOptionalString v-model:model-value="state.mdSymbolName" label="mdSymbolName" />
 
-      <PlaygroundOptionalBoolean
-        v-model:model-value="state.pressed"
-        label="pressed"
-      />
+      <PlaygroundOptionalBoolean v-model:model-value="state.pressed" label="pressed" />
 
-      <PlaygroundOptionalBoolean
-        v-model:model-value="state.selected"
-        label="selected"
-      />
+      <PlaygroundOptionalBoolean v-model:model-value="state.selected" label="selected" />
 
-      <PlaygroundUnion
-        v-model:model-value="state.shape"
-        label="shape"
-        :options="shapeOptions"
-      />
+      <PlaygroundUnion v-model:model-value="state.shape" label="shape" :options="shapeOptions" />
 
       <PlaygroundOptionalBoolean
         v-model:model-value="state.showTooltipOnClick"
         label="showTooltipOnClick"
       />
 
-      <PlaygroundUnion
-        v-model:model-value="state.size"
-        label="size"
-        :options="sizeOptions"
-      />
+      <PlaygroundUnion v-model:model-value="state.size" label="size" :options="sizeOptions" />
 
-      <PlaygroundUnion
-        v-model:model-value="state.type"
-        label="type"
-        :options="typeOptions"
-      />
+      <PlaygroundUnion v-model:model-value="state.type" label="type" :options="typeOptions" />
 
-      <PlaygroundUnion
-        v-model:model-value="state.width"
-        label="width"
-        :options="widthOptions"
-      />
+      <PlaygroundUnion v-model:model-value="state.width" label="width" :options="widthOptions" />
     </template>
 
     <template #space>

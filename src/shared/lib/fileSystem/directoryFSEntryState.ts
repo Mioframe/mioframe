@@ -16,10 +16,7 @@ import { once } from 'es-toolkit';
 import { tryOnScopeDispose } from '@vueuse/core';
 import { DomainError } from '../error';
 
-export interface ReadonlyDirectoryFSEntryState extends Omit<
-  StaticDirectoryFSEntry,
-  'entries'
-> {
+export interface ReadonlyDirectoryFSEntryState extends Omit<StaticDirectoryFSEntry, 'entries'> {
   entries: StrictRecord<string, FileFSEntry | DirectoryFSEntry>;
   loading: boolean;
   error: Error | undefined;
@@ -29,17 +26,12 @@ export interface ReadonlyDirectoryFSEntryState extends Omit<
 }
 
 export interface WritableDirectoryFSEntryState extends ReadonlyDirectoryFSEntryState {
-  writeFile: (
-    name: string,
-    file?: FileSystemWriteChunkType,
-  ) => Promise<FileFSEntry>;
+  writeFile: (name: string, file?: FileSystemWriteChunkType) => Promise<FileFSEntry>;
   removeByName: (name: string) => Promise<void>;
   createDirectory: (name: string) => Promise<WritableDirectoryFSEntry>;
 }
 
-export type DirectoryFSEntryState =
-  | ReadonlyDirectoryFSEntryState
-  | WritableDirectoryFSEntryState;
+export type DirectoryFSEntryState = ReadonlyDirectoryFSEntryState | WritableDirectoryFSEntryState;
 
 /**
  * Create reactive state for DirectoryFSEntry

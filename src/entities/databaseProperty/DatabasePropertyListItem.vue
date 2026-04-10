@@ -1,8 +1,5 @@
 <script setup lang="ts">
-import type {
-  DatabasePropertyId,
-  DatabaseUnknownProperty,
-} from '@shared/lib/databaseDocument';
+import type { DatabasePropertyId, DatabaseUnknownProperty } from '@shared/lib/databaseDocument';
 import { MDListItem } from '@shared/ui/Lists';
 import { computed, toRefs } from 'vue';
 import { useDatabaseProperty } from './useDatabaseProperty';
@@ -17,7 +14,7 @@ const props = defineProps<{
 const { path, documentId, propertyId } = toRefs(props);
 
 const slots = defineSlots<{
-  trailingIcon: (p: { property?: DatabaseUnknownProperty }) => unknown;
+  trailingIcon: (p: { property?: Readonly<DatabaseUnknownProperty> | undefined }) => unknown;
 }>();
 
 const { property } = useDatabaseProperty(path, documentId, propertyId);

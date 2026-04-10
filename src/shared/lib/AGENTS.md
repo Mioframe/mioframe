@@ -17,6 +17,7 @@ Inherits the rules from `src/shared/AGENTS.md`. Applies to `src/shared/lib` and 
 - Wrap browser APIs, storage APIs, and third-party SDKs behind typed contracts.
 - Keep runtime validation near the boundary code that needs it.
 - Keep contract parsing and extraction helpers near the provider, adapter, or boundary module that defines the path, payload, or transport contract.
+- When Web API or library typings conflict with `exactOptionalPropertyTypes`, keep the workaround at the boundary and prefer a single mutable options object or a widened local contract over repeated object spreads or conditional object rebuilding.
 - For composables, design lifecycle behavior explicitly: cleanup, cancellation, re-subscribe, and memory profile.
 - For Automerge and other CRDT helpers, treat nested map/list objects as live document objects and update them in place rather than reassigning those same live objects back into the document.
 - Prefer shared deep write helpers such as `deepPutJsonObject` and `deepPatchJsonObject` for CRDT-safe nested writes when the helper semantics match the operation.

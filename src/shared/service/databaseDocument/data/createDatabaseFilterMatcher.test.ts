@@ -191,6 +191,6 @@ describe('createDatabaseFilterMatcher', () => {
         },
         undefined,
       ),
-    ).toThrowError('Database field condition must be an operator record');
+    ).toThrow('Database field condition must be an operator record');
   });
 });

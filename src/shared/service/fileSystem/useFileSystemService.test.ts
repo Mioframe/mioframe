@@ -1,14 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type {
-  FSNodeStat,
-  IFileSystemProvider,
-  VfsEvent,
-} from '@shared/lib/virtualFileSystem';
-import {
-  FSNodeType,
-  VfsEventSource,
-  VfsEventType,
-} from '@shared/lib/virtualFileSystem';
+import type { FSNodeStat, IFileSystemProvider, VfsEvent } from '@shared/lib/virtualFileSystem';
+import { FSNodeType, VfsEventSource, VfsEventType } from '@shared/lib/virtualFileSystem';
 
 const getRecordListMock = vi.fn();
 const updateRecordListMock = vi.fn();
@@ -34,9 +26,7 @@ const createDiagnosticProvider = ({
   readDirectory,
 }: {
   createDirectory?: ReturnType<typeof vi.fn<(path: string) => Promise<void>>>;
-  readDirectory: ReturnType<
-    typeof vi.fn<(path: string) => Promise<[string, FSNodeStat][]>>
-  >;
+  readDirectory: ReturnType<typeof vi.fn<(path: string) => Promise<[string, FSNodeStat][]>>>;
 }) => {
   const listeners = new Set<(event: VfsEvent) => void>();
 

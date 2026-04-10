@@ -32,9 +32,7 @@ const [randomSymbol] = sampleSize(symbols, 1);
       {{ randomSymbol }}
     </span>
 
-    <span class="empty-symbol__label md-sys-typescale-label-large">
-      It's empty here yet
-    </span>
+    <span class="empty-symbol__label md-sys-typescale-label-large"> It's empty here yet </span>
   </div>
 </template>
 

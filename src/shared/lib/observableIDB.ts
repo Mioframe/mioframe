@@ -68,9 +68,7 @@ export class ObservableIDB<T> {
    * Emits Zod validation results: `{ success: boolean; data?: T; error?: unknown }`
    * or `null` if no data exists in IndexedDB.
    */
-  private value$ = new BehaviorSubject<z.core.util.SafeParseResult<T> | null>(
-    null,
-  );
+  private value$ = new BehaviorSubject<z.core.util.SafeParseResult<T> | null>(null);
 
   /**
    * ObservableIDB constructor.

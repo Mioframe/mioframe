@@ -1,7 +1,4 @@
-import {
-  zodDatabasePropertyId,
-  zodLOGICAL_FILTER_OPERATOR,
-} from '@shared/lib/databaseDocument';
+import { zodDatabasePropertyId, zodLOGICAL_FILTER_OPERATOR } from '@shared/lib/databaseDocument';
 import type { output } from 'zod/v4-mini';
 import { z } from 'zod/v4-mini';
 

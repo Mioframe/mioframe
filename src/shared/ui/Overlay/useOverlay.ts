@@ -9,9 +9,7 @@ const OVERLAY_CONTAINER_KEY = Symbol('overlay-container') as InjectionKey<
   ComputedRef<HTMLElement | SVGElement | null | undefined>
 >;
 
-export const provideOverlayContainer = (
-  el: Ref<HTMLElement | SVGElement | null | undefined>,
-) => {
+export const provideOverlayContainer = (el: Ref<HTMLElement | SVGElement | null | undefined>) => {
   provide(
     OVERLAY_CONTAINER_KEY,
     computed(() => el.value),

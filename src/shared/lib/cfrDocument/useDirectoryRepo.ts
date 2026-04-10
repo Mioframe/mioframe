@@ -19,41 +19,37 @@ import {
 
 export interface DirectoryRepoState extends RepoState {}
 
-export const setupDirectoryRepoState = (
-  directory: DirectoryFSEntry,
-): DirectoryRepoState => {
+export const setupDirectoryRepoState = (directory: DirectoryFSEntry): DirectoryRepoState => {
   const repo = shallowRef<Repo>();
 
   const directoryRef = useDirectoryFSEntryPool(directory);
 
-  const directoryDocumentIds = computed<AMDocumentId[]>(
-    (oldState): AMDocumentId[] => {
-      const entriesMap = directoryRef.value?.entries;
+  const directoryDocumentIds = computed<AMDocumentId[]>((oldState): AMDocumentId[] => {
+    const entriesMap = directoryRef.value?.entries;
 
-      const list: AMDocumentId[] = [];
+    const list: AMDocumentId[] = [];
 
-      if (entriesMap) {
-        for (const [name] of strictRecordIterableEntries(entriesMap)()) {
-          if (zodIs(name, zodPartialAutomergeFileName)) {
-            const maybePartialKey = fileNameToPartialKey(name);
+    if (entriesMap) {
+      for (const [name] of strictRecordIterableEntries(entriesMap)()) {
+        if (zodIs(name, zodPartialAutomergeFileName)) {
+          const maybePartialKey = fileNameToPartialKey(name);
 
-            if (maybePartialKey) {
-              const [id] = maybePartialKey;
-              if (zodIs(id, zodDocumentId) && !list.includes(id)) {
-                list.push(id);
-              }
+          if (maybePartialKey) {
+            const [id] = maybePartialKey;
+            if (zodIs(id, zodDocumentId) && !list.includes(id)) {
+              list.push(id);
             }
           }
         }
       }
+    }
 
-      if (oldState && isEqual(oldState, list)) {
-        return oldState;
-      }
+    if (oldState && isEqual(oldState, list)) {
+      return oldState;
+    }
 
-      return list;
-    },
-  );
+    return list;
+  });
 
   const hasDocumentsFile = computed(() => {
     const entriesMap = directoryRef.value?.entries;

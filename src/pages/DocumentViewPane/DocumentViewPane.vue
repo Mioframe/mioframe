@@ -19,10 +19,7 @@ const slots = defineSlots<{
   navigationButton: () => unknown;
 }>();
 
-const { state: documentDescription } = useDocument(
-  documentDirectory,
-  documentId,
-);
+const { state: documentDescription } = useDocument(documentDirectory, documentId);
 
 const documentType = computed(() => {
   if (documentDescription.value instanceof DomainError) {
@@ -31,9 +28,7 @@ const documentType = computed(() => {
   return documentDescription.value?.type;
 });
 
-const documentName = computed(
-  () => documentDescription.value?.name ?? 'unname',
-);
+const documentName = computed(() => documentDescription.value?.name ?? 'unname');
 
 const showRenameDocument = ref(false);
 

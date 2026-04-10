@@ -1,16 +1,12 @@
 import { defineVersion } from '@shared/lib/migrations';
-import {
-  databaseStateV2,
-  DB_VIEW_LAYOUT,
-  generateViewId,
-  zodDatabaseViewsMap,
-} from '../v2';
+import { databaseStateV2, DB_VIEW_LAYOUT, generateViewId, zodDatabaseViewsMap } from '../v2';
 import type { DatabaseStateV2, DatabaseViewsMap } from '../v2/state';
 import { extend, literal } from 'zod/v4-mini';
 import { deepPatchJsonObject } from '@shared/lib/changeObject';
 import { isEmpty } from 'es-toolkit/compat';
 import type { DatabaseTableView } from '..';
 import { cloneDeep } from 'es-toolkit';
+import { strictRecordSet } from '@shared/lib/strictRecord';
 
 export const databaseStateV3 = defineVersion(
   extend(databaseStateV2.schema, {
@@ -32,7 +28,7 @@ export const databaseStateV3 = defineVersion(
         name: 'default view',
       };
 
-      newState.views[defaultViewId] = defaultView;
+      strictRecordSet(newState.views, defaultViewId, defaultView);
     }
 
     return newState;

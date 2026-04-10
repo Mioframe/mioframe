@@ -46,7 +46,8 @@ interface LiveResourceOptions<T, Q> {
  * });
  * ```
  */
-export function useLiveResource<T, Q>( // переписать клиентов с useLiveResource на useQuery
+export function useLiveResource<T, Q>(
+  // переписать клиентов с useLiveResource на useQuery
   source: WatchSource<Q>,
   options: LiveResourceOptions<T, Q>,
 ): LiveResourceReturn<T> {

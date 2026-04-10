@@ -22,11 +22,7 @@ const singlePathCompare = (
   return a < b ? -direction : a > b ? direction : 0;
 };
 
-const multiPathCompare = (
-  a: unknown,
-  b: unknown,
-  comparePathList: ComparePath[],
-) => {
+const multiPathCompare = (a: unknown, b: unknown, comparePathList: ComparePath[]) => {
   for (const comparePath of comparePathList) {
     const result = singlePathCompare(a, b, comparePath);
     if (result !== 0) {
@@ -54,9 +50,7 @@ export const partialSort = <T>(
 ): T[] => {
   const resolvedCompareFn =
     compareFn ??
-    (comparePathList
-      ? (a: T, b: T) => multiPathCompare(a, b, comparePathList)
-      : undefined);
+    (comparePathList ? (a: T, b: T) => multiPathCompare(a, b, comparePathList) : undefined);
 
   quickselect(arr, firstIndex, 0, arr.length - 1, resolvedCompareFn);
 

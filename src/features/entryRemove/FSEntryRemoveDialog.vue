@@ -25,13 +25,9 @@ const onClickCancel = () => {
 
 const name = computed(() => path.at(path.length - 1));
 
-const headline = computed(
-  () => `Remove ${name.value ? `"${name.value}"` : 'entry'} ?`,
-);
+const headline = computed(() => `Remove ${name.value ? `"${name.value}"` : 'entry'} ?`);
 
-const supportingText = computed(
-  () => `Are you sure you want to remove "${stringPath(path)}"?`,
-);
+const supportingText = computed(() => `Are you sure you want to remove "${stringPath(path)}"?`);
 </script>
 
 <template>

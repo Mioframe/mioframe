@@ -3,10 +3,7 @@ import { createClient, createService } from './proxyService';
 import { defineTransformer } from './defineTransformer';
 import type { Provider } from './types';
 import { uid } from 'uid/secure';
-import {
-  defineObservableQuery,
-  useObservableQuery,
-} from '@shared/lib/useObservableQuery';
+import { defineObservableQuery, useObservableQuery } from '@shared/lib/useObservableQuery';
 import { effectScope, ref, watch } from 'vue';
 import { Observable } from 'rxjs';
 
@@ -39,17 +36,11 @@ class MockProvider implements Provider {
     }, this.delay);
   }
 
-  addEventListener(
-    _type: 'message',
-    handler: (p: { data: unknown }) => unknown,
-  ) {
+  addEventListener(_type: 'message', handler: (p: { data: unknown }) => unknown) {
     this.listeners.add(handler);
   }
 
-  removeEventListener(
-    _type: 'message',
-    handler: (p: { data: unknown }) => unknown,
-  ) {
+  removeEventListener(_type: 'message', handler: (p: { data: unknown }) => unknown) {
     this.listeners.delete(handler);
   }
 }
@@ -66,19 +57,13 @@ describe('proxyService', () => {
   it('should call a remote function and return the result', async () => {
     const serviceId = uid();
     const clientId = uid();
-    const { clientProvider, serviceProvider } = createChannel(
-      clientId,
-      serviceId,
-    );
+    const { clientProvider, serviceProvider } = createChannel(clientId, serviceId);
 
     createService(serviceProvider, serviceId, [], () => ({
       greet: (name: string) => `Hello, ${name}`,
     }));
 
-    const client = createClient<{ greet: (name: string) => string }>(
-      clientProvider,
-      clientId,
-    );
+    const client = createClient<{ greet: (name: string) => string }>(clientProvider, clientId);
 
     const result = await client.greet('World');
     expect(result).toBe('Hello, World');
@@ -87,10 +72,7 @@ describe('proxyService', () => {
   it('should support deep path property access', async () => {
     const serviceId = uid();
     const clientId = uid();
-    const { clientProvider, serviceProvider } = createChannel(
-      clientId,
-      serviceId,
-    );
+    const { clientProvider, serviceProvider } = createChannel(clientId, serviceId);
 
     createService(serviceProvider, serviceId, [], () => ({
       math: {
@@ -119,10 +101,7 @@ describe('proxyService', () => {
   it('should propagate errors thrown by the service', async () => {
     const serviceId = uid();
     const clientId = uid();
-    const { clientProvider, serviceProvider } = createChannel(
-      clientId,
-      serviceId,
-    );
+    const { clientProvider, serviceProvider } = createChannel(clientId, serviceId);
 
     createService(serviceProvider, serviceId, [], () => ({
       throwError: () => {
@@ -130,10 +109,7 @@ describe('proxyService', () => {
       },
     }));
 
-    const client = createClient<{ throwError: () => void }>(
-      clientProvider,
-      clientId,
-    );
+    const client = createClient<{ throwError: () => void }>(clientProvider, clientId);
 
     await expect(client.throwError()).rejects.toThrow('Service Error');
   });
@@ -141,10 +117,7 @@ describe('proxyService', () => {
   it('should support passing and executing callback functions', async () => {
     const serviceId = uid();
     const clientId = uid();
-    const { clientProvider, serviceProvider } = createChannel(
-      clientId,
-      serviceId,
-    );
+    const { clientProvider, serviceProvider } = createChannel(clientId, serviceId);
 
     createService(serviceProvider, serviceId, [], () => ({
       executeCallback: async (cb: (msg: string) => Promise<string>) => {
@@ -167,30 +140,19 @@ describe('proxyService', () => {
   it('should throw when calling a non-existent function', async () => {
     const serviceId = uid();
     const clientId = uid();
-    const { clientProvider, serviceProvider } = createChannel(
-      clientId,
-      serviceId,
-    );
+    const { clientProvider, serviceProvider } = createChannel(clientId, serviceId);
 
     createService(serviceProvider, serviceId, [], () => ({}));
 
-    const client = createClient<{ notExists: () => void }>(
-      clientProvider,
-      clientId,
-    );
+    const client = createClient<{ notExists: () => void }>(clientProvider, clientId);
 
-    await expect(client.notExists()).rejects.toThrow(
-      'notExists is not a function',
-    );
+    await expect(client.notExists()).rejects.toThrow('notExists is not a function');
   });
 
   it('should handle custom transformers', async () => {
     const serviceId = uid();
     const clientId = uid();
-    const { clientProvider, serviceProvider } = createChannel(
-      clientId,
-      serviceId,
-    );
+    const { clientProvider, serviceProvider } = createChannel(clientId, serviceId);
 
     class CustomClass {
       constructor(public value: number) {}
@@ -230,9 +192,7 @@ describe('proxyService', () => {
 
     vi.advanceTimersByTime(5000);
 
-    await expect(promise).rejects.toThrow(
-      `The service was not ready in 5000 ms`,
-    );
+    await expect(promise).rejects.toThrow(`The service was not ready in 5000 ms`);
 
     vi.useRealTimers();
   });
@@ -246,18 +206,13 @@ describe('proxyService', () => {
 
     expect(() => {
       createService(clientProvider, serviceId);
-    }).toThrow(
-      `Service "${serviceId}" is already registered in the current execution context.`,
-    );
+    }).toThrow(`Service "${serviceId}" is already registered in the current execution context.`);
   });
 
   it('should deliver repeated observable query updates across the proxy boundary', async () => {
     const serviceId = uid();
     const clientId = uid();
-    const { clientProvider, serviceProvider } = createChannel(
-      clientId,
-      serviceId,
-    );
+    const { clientProvider, serviceProvider } = createChannel(clientId, serviceId);
 
     createService(serviceProvider, serviceId, [], () => ({
       query: defineObservableQuery(
@@ -274,9 +229,7 @@ describe('proxyService', () => {
     }));
 
     const client = createClient<{
-      query: ReturnType<
-        typeof defineObservableQuery<string[], { path: string }>
-      >;
+      query: ReturnType<typeof defineObservableQuery<string[], { path: string }>>;
     }>(clientProvider, clientId);
     const scope = effectScope();
     const query = ref({

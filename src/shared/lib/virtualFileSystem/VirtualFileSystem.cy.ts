@@ -33,9 +33,7 @@ describe('VirtualFileSystem (Интеграция)', () => {
     await vfs.createDirectory('/mnt/folder/subfolder');
     const entries = await vfs.readDirectory('/mnt/folder');
     expect(entries).to.have.length(2);
-    expect(entries.find((e) => e[0] === 'file1.txt')?.[1].type).to.eq(
-      FSNodeType.File,
-    );
+    expect(entries.find((e) => e[0] === 'file1.txt')?.[1].type).to.eq(FSNodeType.File);
   });
 
   it('должен переименовывать файл', async () => {
@@ -109,9 +107,7 @@ describe('VirtualFileSystem (Интеграция)', () => {
       await vfs.move('/disk1/folder', '/disk2/moved_folder');
 
       expect(await vfs.exists('/disk2/moved_folder/sub/file.txt')).to.eq(true);
-      expect(await vfs.readText('/disk2/moved_folder/sub/file.txt')).to.eq(
-        'Deep Data',
-      );
+      expect(await vfs.readText('/disk2/moved_folder/sub/file.txt')).to.eq('Deep Data');
       expect(await vfs.exists('/disk1/folder')).to.eq(false);
     });
   });

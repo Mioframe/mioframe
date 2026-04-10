@@ -2,8 +2,7 @@ import { tryOnScopeDispose } from '@vueuse/core';
 import type { InjectionKey, Ref } from 'vue';
 import { inject, provide, shallowReactive, watch } from 'vue';
 
-const focusSymbol: InjectionKey<Map<string, () => void>> =
-  Symbol('MenuFocusSymbol');
+const focusSymbol: InjectionKey<Map<string, () => void>> = Symbol('MenuFocusSymbol');
 
 export const useProvideFocusRegister = () => {
   const focusRegister = shallowReactive(new Map<string, () => void>());
@@ -20,12 +19,12 @@ export const useInjectFocusRegister = (
 
   watch(
     [text, focus],
-    ([text, focus], [oldText]) => {
-      if (focusRegister && focus) {
+    ([nextText, nextFocus], [oldText]) => {
+      if (focusRegister && nextFocus) {
         if (oldText !== undefined) {
           focusRegister.delete(oldText);
         }
-        focusRegister.set(text, focus);
+        focusRegister.set(nextText, nextFocus);
       }
     },
     {

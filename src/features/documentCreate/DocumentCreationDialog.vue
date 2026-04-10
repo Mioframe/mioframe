@@ -52,8 +52,7 @@ const onCreate = async () => {
         body: {},
       });
     } catch (error) {
-      errorText.value =
-        error instanceof Error ? error.message : 'unknown error';
+      errorText.value = error instanceof Error ? error.message : 'unknown error';
       return;
     } finally {
       loading.value = false;
@@ -74,9 +73,7 @@ const documentTypes = {
   JsonObject: 'JSON Object',
 };
 
-const selectedDocumentTypes = ref<(keyof typeof documentTypes)[]>([
-  DATABASE_DOCUMENT_TYPE,
-]);
+const selectedDocumentTypes = ref<(keyof typeof documentTypes)[]>([DATABASE_DOCUMENT_TYPE]);
 
 const selectedDocumentType = computed(() => selectedDocumentTypes.value.at(0));
 
@@ -108,10 +105,7 @@ const selectedDocumentTypeLabel = computed((): string | undefined => {
       autofocus
     />
 
-    <MDSelectBase
-      v-model:model-value="selectedDocumentTypes"
-      label-text="Document type"
-    >
+    <MDSelectBase v-model:model-value="selectedDocumentTypes" label-text="Document type">
       <template #valueContainer>
         <span>{{ selectedDocumentTypeLabel }}</span>
       </template>

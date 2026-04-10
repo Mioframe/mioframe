@@ -22,10 +22,10 @@ export const buildQuery = ({
   trashed,
   parentId,
 }: {
-  name?: string;
-  sharedWithMe?: boolean;
-  trashed?: boolean;
-  parentId?: string;
+  name?: string | undefined;
+  sharedWithMe?: boolean | undefined;
+  trashed?: boolean | undefined;
+  parentId?: string | undefined;
 }): string => {
   const queryArray: string[] = [];
 

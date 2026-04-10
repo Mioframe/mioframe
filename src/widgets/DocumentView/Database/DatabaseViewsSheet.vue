@@ -22,7 +22,7 @@ const props = defineProps<{
 
 const { documentId, path } = toRefs(props);
 
-const selectedViewId = defineModel<DatabaseViewId>('selectedViewId');
+const selectedViewId = defineModel<DatabaseViewId | undefined>('selectedViewId');
 
 const emit = defineEmits<{
   closed: [];
@@ -111,9 +111,7 @@ const isShowAddView = shallowRef(false);
           class="md-margin-left-2"
           show-tooltip-on-click
         >
-          <template #richTooltipContent>
-            Pre-configured data display sets
-          </template>
+          <template #richTooltipContent> Pre-configured data display sets </template>
         </MDIconButton>
       </div>
 

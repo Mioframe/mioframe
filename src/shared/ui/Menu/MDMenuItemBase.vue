@@ -10,20 +10,18 @@ import MDMenuBase from './MDMenuBase.vue';
 const props = withDefaults(
   defineProps<{
     label: string;
-    role?: string;
+    itemRole?: string | undefined;
     /**
      * name from https://fonts.google.com/icons
      */
-    symbolName?: string;
+    symbolName?: string | undefined;
   }>(),
-  {
-    role: 'menuitem',
-  },
+  {},
 );
 
 const { label } = toRefs(props);
 
-const showSubmenuModel = defineModel<boolean>('showSubmenu');
+const showSubmenuModel = defineModel<boolean | undefined>('showSubmenu');
 
 const emit = defineEmits<{
   click: [];
@@ -68,7 +66,7 @@ useInjectFocusRegister(label, focus);
     :headline="label"
     type="button"
     class="md-menu-item"
-    :role="role"
+    :item-role="itemRole"
     @click="onClickItem"
   >
     <template v-if="symbolName" #leadingIcon>

@@ -1,8 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import {
-  getReorderGestureProfile,
-  getReorderInputFromPointerType,
-} from './reorderGestureProfile';
+import { getReorderGestureProfile, getReorderInputFromPointerType } from './reorderGestureProfile';
 
 describe('getReorderGestureProfile', () => {
   it('uses touch defaults for touch-like input', () => {

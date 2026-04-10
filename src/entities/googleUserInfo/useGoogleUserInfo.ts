@@ -14,10 +14,7 @@ export const useGoogleUserInfo = (email: MaybeRef<string>) => {
   const data = computedAsync(
     async () => {
       try {
-        const token = await requestToken(
-          [USER_INFO_GOOGLE_SCOPE.userInfoProfile],
-          toValue(email),
-        );
+        const token = await requestToken([USER_INFO_GOOGLE_SCOPE.userInfoProfile], toValue(email));
 
         const oauth2 = await loadOauth2();
 

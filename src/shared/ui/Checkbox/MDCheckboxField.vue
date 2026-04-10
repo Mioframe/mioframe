@@ -3,12 +3,12 @@ import { sessionUniqueId } from '@shared/lib/uniqueId';
 import MDCheckbox from './MDCheckbox.vue';
 
 defineProps<{
-  disabled?: boolean;
+  disabled?: boolean | undefined;
   label: string;
-  indeterminate?: boolean;
-  error?: boolean;
-  readonly?: boolean;
-  autofocus?: boolean;
+  indeterminate?: boolean | undefined;
+  error?: boolean | undefined;
+  readonly?: boolean | undefined;
+  autofocus?: boolean | undefined;
 }>();
 
 const modelValue = defineModel<boolean | undefined>();

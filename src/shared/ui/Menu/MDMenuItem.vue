@@ -5,15 +5,16 @@ import MDMenuItemBase from './MDMenuItemBase.vue';
 const props = withDefaults(
   defineProps<{
     item: T;
-    role?: string;
+    itemRole?: string | undefined;
   }>(),
   {
-    role: 'menuitem',
+    itemRole: 'menuitem',
   },
 );
 
 const emit = defineEmits<{
   click: [T];
+  'update:showSubmenu': [value: boolean | undefined];
 }>();
 
 const onClickItem = (subItem?: T) => {
@@ -25,7 +26,7 @@ const onClickItem = (subItem?: T) => {
   <MDMenuItemBase
     :label="item.label"
     :symbol-name="item.symbolName"
-    :role="role"
+    :item-role="itemRole"
     @click="onClickItem"
   >
     <template v-if="item.submenu?.length" #submenu>
@@ -33,7 +34,7 @@ const onClickItem = (subItem?: T) => {
         v-for="v in item.submenu"
         :key="v.label"
         :item="v"
-        :role="role"
+        :item-role="itemRole"
         @click="onClickItem($event)"
       />
     </template>

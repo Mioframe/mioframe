@@ -25,11 +25,7 @@
  */
 
 import type SuperJSON from 'superjson';
-import type {
-  CustomTransformer,
-  TransformerRegistration,
-  Provider,
-} from './types';
+import type { CustomTransformer, TransformerRegistration, Provider } from './types';
 import type { Constructor } from 'type-fest';
 import type { SuperJSONValue } from 'superjson';
 import { keys } from '../objectKeys';
@@ -64,17 +60,14 @@ import { keys } from '../objectKeys';
  */
 
 export const defineTransformer =
-  <T, J>(
-    name: string,
-    transformer: CustomTransformer<T, J>,
-  ): TransformerRegistration =>
+  <T, J>(name: string, transformer: CustomTransformer<T, J>): TransformerRegistration =>
   (superJson: SuperJSON, provider: Provider) => {
     superJson.registerCustom(
       {
         isApplicable: transformer.isApplicable,
         // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- Type validation happens inside isApplicable, assertion is safe
         deserialize: (val) => transformer.deserialize(provider, val as J),
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-return, @typescript-eslint/consistent-type-assertions -- SuperJSON expects JSONValue but custom transformers can return arbitrary objects; assertion is necessary for API compatibility
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/consistent-type-assertions -- SuperJSON accepts a wider JSONValue shape than the generic transformer contract can express here
         serialize: (val) => transformer.serialize(provider, val) as any,
       },
       name,
@@ -120,10 +113,7 @@ export const defineTransformer =
  */
 
 export const defineCustomErrorTransformer =
-  (
-    identifier: string,
-    ErrorClass: Constructor<Error>,
-  ): TransformerRegistration =>
+  (identifier: string, ErrorClass: Constructor<Error>): TransformerRegistration =>
   (superJson: SuperJSON) => {
     superJson.registerCustom<Error, SuperJSONValue>(
       {
@@ -131,7 +121,6 @@ export const defineCustomErrorTransformer =
         deserialize: (v): Error => {
           const err = Object.create(ErrorClass.prototype);
           Object.assign(err, v);
-          // eslint-disable-next-line @typescript-eslint/no-unsafe-return -- Returns the constructed error object that correctly inherits methods and properties from ErrorClass.prototype
           return err;
         },
         serialize: (v: Error): SuperJSONValue => {
@@ -144,7 +133,6 @@ export const defineCustomErrorTransformer =
           };
           // 2. Automatically collect all user-defined enumerable properties
           for (const key of keys(v)) {
-            // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access -- Access to dynamic properties via bracket notation; exact type cannot be determined at compile time due to the dynamic nature of properties
             serialized[key] = v[key];
           }
           return serialized;

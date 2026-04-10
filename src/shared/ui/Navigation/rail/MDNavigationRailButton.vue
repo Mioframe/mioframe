@@ -9,9 +9,13 @@ import { BUTTON_TYPE } from './types';
 const props = defineProps<{
   symbol: string;
   label: string;
-  active?: boolean;
+  active?: boolean | undefined;
   type: BUTTON_TYPE;
-  hasRipple?: boolean;
+  hasRipple?: boolean | undefined;
+}>();
+
+const emit = defineEmits<{
+  click: [event: MouseEvent];
 }>();
 
 const refEl = useTemplateRef('refEl');
@@ -28,6 +32,10 @@ const { durationPressedState } = usePressed(refEl);
 useRipple(computed(() => (props.hasRipple ? refEl.value : undefined)));
 
 const horizontal = computed(() => props.type === BUTTON_TYPE.railHorizontal);
+
+const onClick = (event: MouseEvent) => {
+  emit('click', event);
+};
 </script>
 
 <template>
@@ -41,6 +49,7 @@ const horizontal = computed(() => props.type === BUTTON_TYPE.railHorizontal);
       },
       `_type-${type}`,
     ]"
+    @click="onClick"
   >
     <MDLayer
       v-if="horizontal"

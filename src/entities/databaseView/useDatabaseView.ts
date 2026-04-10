@@ -1,9 +1,6 @@
 import type { AMDocumentId } from '@shared/lib/automerge';
 import type { PatchSource } from '@shared/lib/changeObject';
-import type {
-  DatabaseView,
-  DatabaseViewId,
-} from '@shared/lib/databaseDocument';
+import type { DatabaseView, DatabaseViewId } from '@shared/lib/databaseDocument';
 import { useObservableQuery } from '@shared/lib/useObservableQuery';
 import { useMainServiceClient } from '@shared/service';
 import { isUndefined } from 'es-toolkit';
