@@ -21,7 +21,7 @@ Beaver - это локально ориентированное приложен
 ### Требования
 
 - Node.js
-- pnpm
+- pnpm 10
 
 ### Установка
 
@@ -43,17 +43,59 @@ pnpm install
 pnpm dev
 ```
 
+Запускает локальный HTTPS dev-сервер на Vite.
+
 ### Сборка для продакшена
 
 ```bash
 pnpm build
+pnpm preview
 ```
 
 ### Запуск тестов
 
 ```bash
-pnpm cy:open
+# Vitest в watch-режиме
+pnpm test
+
+# Vitest одним прогоном
+pnpm test:run
+
+# Vitest с покрытием
+pnpm test:coverage
 ```
+
+Для Cypress сначала поднимите подходящий сервер в отдельном терминале, затем откройте Cypress:
+
+```bash
+# Preview-сервер на https://localhost:4173
+pnpm preview
+pnpm cy:open
+
+# Dev-сервер на https://localhost:5173
+pnpm dev
+pnpm cy:open:dev
+```
+
+## Линтинг и форматирование
+
+В проекте используются `oxlint` и `eslint` для линтинга, а `oxfmt` для форматирования. Доступны такие команды:
+
+```bash
+# Полный lint-пайплайн
+pnpm lint
+
+# Только oxlint
+pnpm lint:oxlint
+
+# Только eslint
+pnpm lint:eslint
+
+# Форматирование через oxfmt
+pnpm format
+```
+
+Для точечных исправлений по изменённым файлам предпочитайте прямые команды вроде `pnpm exec eslint --fix <path ...>`, `pnpm exec oxlint <path ...>`, и `pnpm exec oxfmt <path ...>`.
 
 ## Реализованные функции и планы
 

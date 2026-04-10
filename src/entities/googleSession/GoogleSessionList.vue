@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { MDListContainer } from '@shared/ui/Lists';
-import GoogleUserInfoListItem from './GoogleUserInfoListItem.vue';
+import GoogleSessionListItem from './GoogleSessionListItem.vue';
 import { useGoogleSessions } from './useGoogleSessions';
 
-const { sessions } = useGoogleSessions();
+const { sessionList } = useGoogleSessions();
 
 defineSlots<{
   after: () => unknown;
@@ -12,7 +12,11 @@ defineSlots<{
 
 <template>
   <MDListContainer is="div">
-    <GoogleUserInfoListItem v-for="email in sessions" :key="email" :email="email" />
+    <GoogleSessionListItem
+      v-for="session in sessionList"
+      :key="session.email"
+      :session="session"
+    />
 
     <slot name="after" />
   </MDListContainer>

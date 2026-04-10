@@ -6,9 +6,10 @@ import type { MenuButtonDescription, MenuButtonList } from './types';
 import MDMenu from './MDMenu.vue';
 import { sessionUniqueId } from '@shared/lib/uniqueId';
 
-const { btns, tooltip = 'options' } = defineProps<{
+const { btns, loading, tooltip = 'options' } = defineProps<{
   btns: MenuButtonList<T>;
   tooltip?: string;
+  loading?: number | boolean | undefined;
   size?: 'extra-small' | 'small' | 'medium' | 'large' | 'extra-large' | undefined;
   width?: 'default' | 'narrow' | 'wide' | undefined;
 }>();
@@ -18,6 +19,10 @@ const showMenu = ref(false);
 const targetBtn = useTemplateRef<MaybeElement>('targetBtn');
 
 const onClickTarget = () => {
+  if (loading) {
+    return;
+  }
+
   showMenu.value = !showMenu.value;
 };
 
@@ -41,6 +46,7 @@ const idMenu = sessionUniqueId('menu');
 <template>
   <MDIconButton
     ref="targetBtn"
+    :loading="loading"
     :size="size"
     :tooltip="tooltip"
     :width="width"
