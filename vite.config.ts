@@ -9,6 +9,7 @@ import { fileURLToPath, URL } from 'node:url';
 import { dependencies, devDependencies } from './package.json';
 import basicSsl from '@vitejs/plugin-basic-ssl';
 import TurboConsole from 'unplugin-turbo-console/vite';
+import vueDevTools from 'vite-plugin-vue-devtools';
 
 const daysToSeconds = (days: number) => 24 * 60 * 60 * days;
 
@@ -132,6 +133,7 @@ export default defineConfig(({ mode, isPreview }) => {
       wasm(),
       topLevelAwait(),
       vue(),
+      vueDevTools(),
       TurboConsole(),
       ...pwaPlugins,
       ...sslPlugins,
