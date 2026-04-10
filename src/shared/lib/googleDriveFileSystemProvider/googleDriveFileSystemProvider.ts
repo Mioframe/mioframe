@@ -187,8 +187,10 @@ export const googleDriveFileSystemProvider = ({
     for (const [index, partName] of relativePathArray.entries()) {
       const isLast = index === relativePathArray.length - 1;
 
+      // eslint-disable-next-line no-await-in-loop -- each path segment lookup depends on the previously resolved Drive folder id
       const token = await getTokenForPath(path);
 
+      // eslint-disable-next-line no-await-in-loop -- the Drive query uses the current parent id resolved in the same sequential traversal
       const result = await getGFileMetaList(
         { ACCESS_TOKEN: token },
         {
@@ -224,10 +226,7 @@ export const googleDriveFileSystemProvider = ({
     }
 
     if (!currentEntry) {
-      throw new VfsError(
-        FileSystemError.FileNotFound,
-        `Path not found: ${rawPath}`,
-      );
+      throw new VfsError(FileSystemError.FileNotFound, `Path not found: ${rawPath}`);
     }
 
     return currentEntry;
@@ -242,9 +241,7 @@ export const googleDriveFileSystemProvider = ({
     },
   } satisfies FSNodeStat;
 
-  const getEntryCapabilities = (
-    entry: GDriveFileMeta,
-  ): FSNodeStat['capabilities'] => {
+  const getEntryCapabilities = (entry: GDriveFileMeta): FSNodeStat['capabilities'] => {
     const isDirectory = entry.mimeType === GOOGLE_MIME_FOLDER;
     const canEditChildren =
       isDirectory &&
@@ -258,16 +255,13 @@ export const googleDriveFileSystemProvider = ({
     };
   };
 
-  const getSpaceDirectoryStat = (
-    spaceName: (typeof SpaceName)[keyof typeof SpaceName],
-  ) =>
+  const getSpaceDirectoryStat = (spaceName: (typeof SpaceName)[keyof typeof SpaceName]) =>
     ({
       type: FSNodeType.Directory,
       capabilities: {
         canDelete: false,
         canChangePath: false,
-        canEditChildren:
-          spaceName === SpaceName.myDrive || spaceName === SpaceName.appData,
+        canEditChildren: spaceName === SpaceName.myDrive || spaceName === SpaceName.appData,
       },
     }) satisfies FSNodeStat;
 
@@ -290,9 +284,7 @@ export const googleDriveFileSystemProvider = ({
         return virtualDirectoryStat;
       }
       if (pathArray.length === 2) {
-        return getSpaceDirectoryStat(
-          zodSpaceName.parse(getGoogleDrivePathSpace(path)),
-        );
+        return getSpaceDirectoryStat(zodSpaceName.parse(getGoogleDrivePathSpace(path)));
       }
 
       const entry = await resolvePath(path);
@@ -301,18 +293,11 @@ export const googleDriveFileSystemProvider = ({
       const size = entry.size ? parseInt(entry.size, 10) : undefined;
 
       // Safe date conversion
-      const creationTime = entry.createdTime
-        ? dayjs(entry.createdTime).valueOf()
-        : undefined;
-      const modificationTime = entry.modifiedTime
-        ? dayjs(entry.modifiedTime).valueOf()
-        : undefined;
+      const creationTime = entry.createdTime ? dayjs(entry.createdTime).valueOf() : undefined;
+      const modificationTime = entry.modifiedTime ? dayjs(entry.modifiedTime).valueOf() : undefined;
 
       return {
-        type:
-          entry.mimeType === GOOGLE_MIME_FOLDER
-            ? FSNodeType.Directory
-            : FSNodeType.File,
+        type: entry.mimeType === GOOGLE_MIME_FOLDER ? FSNodeType.Directory : FSNodeType.File,
         size,
         creationTime,
         modificationTime,
@@ -320,11 +305,7 @@ export const googleDriveFileSystemProvider = ({
       };
     } catch (e) {
       if (e instanceof VfsError) throw e;
-      throw new VfsError(
-        FileSystemError.FileNotFound,
-        `Stat failed for ${path}`,
-        e,
-      );
+      throw new VfsError(FileSystemError.FileNotFound, `Stat failed for ${path}`, e);
     }
   };
 
@@ -335,10 +316,7 @@ export const googleDriveFileSystemProvider = ({
     const entry = await resolvePath(path);
 
     if (entry.mimeType === GOOGLE_MIME_FOLDER) {
-      throw new VfsError(
-        FileSystemError.FileIsADirectory,
-        `Cannot read directory: ${path}`,
-      );
+      throw new VfsError(FileSystemError.FileIsADirectory, `Cannot read directory: ${path}`);
     }
 
     const token = await getTokenForPath(path);
@@ -346,11 +324,7 @@ export const googleDriveFileSystemProvider = ({
     try {
       return await download({ ACCESS_TOKEN: token }, entry.id);
     } catch (e) {
-      throw new VfsError(
-        FileSystemError.Unknown,
-        `Failed to download file: ${path}`,
-        e,
-      );
+      throw new VfsError(FileSystemError.Unknown, `Failed to download file: ${path}`, e);
     }
   };
 
@@ -420,10 +394,7 @@ export const googleDriveFileSystemProvider = ({
       await upload({ ACCESS_TOKEN: token }, existingEntry.id, content);
     } else {
       if (!options.create) {
-        throw new VfsError(
-          FileSystemError.FileNotFound,
-          `File not found: ${path}`,
-        );
+        throw new VfsError(FileSystemError.FileNotFound, `File not found: ${path}`);
       }
 
       const created = await create(
@@ -435,11 +406,7 @@ export const googleDriveFileSystemProvider = ({
       );
 
       try {
-        await upload(
-          { ACCESS_TOKEN: await getTokenForPath(path) },
-          created.result.id,
-          content,
-        );
+        await upload({ ACCESS_TOKEN: await getTokenForPath(path) }, created.result.id, content);
       } catch (uploadError) {
         await update(
           {
@@ -496,9 +463,7 @@ export const googleDriveFileSystemProvider = ({
   /**
    * Reads the contents of a directory.
    */
-  const readDirectory = async (
-    rawPath: string,
-  ): Promise<[string, FSNodeStat][]> => {
+  const readDirectory = async (rawPath: string): Promise<[string, FSNodeStat][]> => {
     const pathArray = PathUtils.split(rawPath);
 
     if (pathArray.length === 0) {
@@ -512,10 +477,7 @@ export const googleDriveFileSystemProvider = ({
     const entry = await resolvePath(rawPath);
 
     if (entry.mimeType !== GOOGLE_MIME_FOLDER) {
-      throw new VfsError(
-        FileSystemError.FileNotADirectory,
-        `Not a directory: ${rawPath}`,
-      );
+      throw new VfsError(FileSystemError.FileNotADirectory, `Not a directory: ${rawPath}`);
     }
 
     const { space } = resolvePathSpace(rawPath);
@@ -544,18 +506,11 @@ export const googleDriveFileSystemProvider = ({
         const size = file.size ? parseInt(file.size, 10) : undefined;
 
         // Safe date conversion
-        const creationTime = file.createdTime
-          ? dayjs(file.createdTime).valueOf()
-          : undefined;
-        const modificationTime = file.modifiedTime
-          ? dayjs(file.modifiedTime).valueOf()
-          : undefined;
+        const creationTime = file.createdTime ? dayjs(file.createdTime).valueOf() : undefined;
+        const modificationTime = file.modifiedTime ? dayjs(file.modifiedTime).valueOf() : undefined;
 
         const fsNodeStat = {
-          type:
-            file.mimeType === GOOGLE_MIME_FOLDER
-              ? FSNodeType.Directory
-              : FSNodeType.File,
+          type: file.mimeType === GOOGLE_MIME_FOLDER ? FSNodeType.Directory : FSNodeType.File,
           creationTime,
           modificationTime,
           size,
@@ -575,15 +530,10 @@ export const googleDriveFileSystemProvider = ({
   const createDirectory = async (path: string): Promise<void> => {
     try {
       await resolvePath(path);
-      throw new VfsError(
-        FileSystemError.FileExists,
-        `Directory already exists: ${path}`,
-      );
+      throw new VfsError(FileSystemError.FileExists, `Directory already exists: ${path}`);
     } catch (e) {
-      if (e instanceof VfsError && e.code === FileSystemError.FileExists)
-        throw e;
-      if (!(e instanceof VfsError && e.code === FileSystemError.FileNotFound))
-        throw e;
+      if (e instanceof VfsError && e.code === FileSystemError.FileExists) throw e;
+      if (!(e instanceof VfsError && e.code === FileSystemError.FileNotFound)) throw e;
     }
 
     const parentPath = PathUtils.dirname(path);
@@ -693,13 +643,9 @@ export const googleDriveFileSystemProvider = ({
 
     try {
       await resolvePath(normalizedNew);
-      throw new VfsError(
-        FileSystemError.FileExists,
-        `Destination exists: ${newPath}`,
-      );
+      throw new VfsError(FileSystemError.FileExists, `Destination exists: ${newPath}`);
     } catch (e) {
-      if (e instanceof VfsError && e.code !== FileSystemError.FileNotFound)
-        throw e;
+      if (e instanceof VfsError && e.code !== FileSystemError.FileNotFound) throw e;
     }
 
     const newDirName = PathUtils.dirname(normalizedNew);
@@ -720,9 +666,7 @@ export const googleDriveFileSystemProvider = ({
         `Destination parent is not a directory: ${newDirName}`,
       );
     }
-    if (
-      getEntryCapabilities(destinationParentEntry)?.canEditChildren !== true
-    ) {
+    if (getEntryCapabilities(destinationParentEntry)?.canEditChildren !== true) {
       throw new VfsError(
         FileSystemError.NoPermissions,
         `Path change is not allowed inside directory: ${newDirName}`,
@@ -730,9 +674,7 @@ export const googleDriveFileSystemProvider = ({
     }
 
     const currentParents = sourceEntry.parents ?? [];
-    const removeParents = currentParents.filter(
-      (p) => p !== destinationParentEntry.id,
-    );
+    const removeParents = currentParents.filter((p) => p !== destinationParentEntry.id);
 
     await update(
       {
@@ -742,9 +684,7 @@ export const googleDriveFileSystemProvider = ({
       {
         name: newFileName,
         addParents:
-          removeParents.length === currentParents.length
-            ? [destinationParentEntry.id]
-            : undefined,
+          removeParents.length === currentParents.length ? [destinationParentEntry.id] : undefined,
         removeParents: removeParents.length > 0 ? removeParents : undefined,
       },
     );

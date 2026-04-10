@@ -15,29 +15,21 @@ const props = defineProps<{
   directoryPath: string;
   documentId: AMDocumentId;
   properties: Readonly<DatabasePropertyId[]>;
-  viewId?: DatabaseViewId;
-  idQuery?: ItemIdQuery;
+  viewId?: DatabaseViewId | undefined;
+  idQuery?: ItemIdQuery | undefined;
 }>();
 
 const { directoryPath, documentId, viewId, idQuery } = toRefs(props);
 
 const slots = defineSlots<{
   property: (p: { propertyId: DatabasePropertyId }) => unknown;
-  value: (p: {
-    itemId: DatabaseItemId;
-    propertyId: DatabasePropertyId;
-  }) => unknown;
+  value: (p: { itemId: DatabaseItemId; propertyId: DatabasePropertyId }) => unknown;
   action: (p: { itemId: DatabaseItemId }) => unknown;
   actionHead: (p: EmptyObject) => unknown;
   after: () => unknown;
 }>();
 
-const { itemIdList } = useDatabaseData(
-  directoryPath,
-  documentId,
-  viewId,
-  idQuery,
-);
+const { itemIdList } = useDatabaseData(directoryPath, documentId, viewId, idQuery);
 </script>
 
 <template>
@@ -50,10 +42,7 @@ const { itemIdList } = useDatabaseData(
           </slot>
         </th>
 
-        <th
-          v-if="!!slots.action || !!slots.actionHead"
-          class="db-data-table__actions"
-        >
+        <th v-if="!!slots.action || !!slots.actionHead" class="db-data-table__actions">
           <slot name="actionHead" />
         </th>
       </tr>
@@ -61,18 +50,11 @@ const { itemIdList } = useDatabaseData(
 
     <tbody role="list">
       <tr v-for="itemId in itemIdList" :key="itemId" role="listitem">
-        <td
-          v-for="propertyId in properties"
-          :key="propertyId"
-          class="db-data-table__value"
-        >
+        <td v-for="propertyId in properties" :key="propertyId" class="db-data-table__value">
           <slot name="value" :item-id="itemId" :property-id="propertyId" />
         </td>
 
-        <td
-          v-if="!!slots.action || !!slots.actionHead"
-          class="db-data-table__actions"
-        >
+        <td v-if="!!slots.action || !!slots.actionHead" class="db-data-table__actions">
           <slot name="action" :item-id="itemId" />
         </td>
       </tr>

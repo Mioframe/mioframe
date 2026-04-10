@@ -2,7 +2,7 @@
 import { RouterLink } from 'vue-router';
 import type { PlaygroundNavigationDescription } from './types';
 
-const {} = defineProps<{
+defineProps<{
   navigation: PlaygroundNavigationDescription[];
 }>();
 </script>

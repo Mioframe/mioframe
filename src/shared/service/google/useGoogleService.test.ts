@@ -129,10 +129,7 @@ describe('useGoogleService', () => {
 
     const [driveToken, profileToken] = await Promise.all([
       service.requestToken([DRIVE_GOOGLE_SCOPE.all], 'user@example.com'),
-      service.requestToken(
-        [USER_INFO_GOOGLE_SCOPE.userInfoProfile],
-        'user@example.com',
-      ),
+      service.requestToken([USER_INFO_GOOGLE_SCOPE.userInfoProfile], 'user@example.com'),
     ]);
 
     expect(driveToken).toBe('drive-token');
@@ -149,10 +146,7 @@ describe('useGoogleService', () => {
 
     const service = await createService();
 
-    const token = await service.requestToken(
-      [DRIVE_GOOGLE_SCOPE.all],
-      'user@example.com',
-    );
+    const token = await service.requestToken([DRIVE_GOOGLE_SCOPE.all], 'user@example.com');
 
     expect(token).toBe('cached-token');
     expect(requestTokenMock).not.toHaveBeenCalled();
@@ -160,13 +154,11 @@ describe('useGoogleService', () => {
   });
 
   it('retries after a failed in-flight request', async () => {
-    requestTokenMock
-      .mockRejectedValueOnce(new Error('auth failed'))
-      .mockResolvedValueOnce({
-        access_token: 'retry-token',
-        expires_in: '3600',
-        scope: `${DRIVE_GOOGLE_SCOPE.all} ${USER_INFO_GOOGLE_SCOPE.userinfoEmail}`,
-      });
+    requestTokenMock.mockRejectedValueOnce(new Error('auth failed')).mockResolvedValueOnce({
+      access_token: 'retry-token',
+      expires_in: '3600',
+      scope: `${DRIVE_GOOGLE_SCOPE.all} ${USER_INFO_GOOGLE_SCOPE.userinfoEmail}`,
+    });
 
     const service = await createService();
     const scope = DRIVE_GOOGLE_SCOPE.all;
@@ -263,9 +255,7 @@ describe('useGoogleService', () => {
 
     const service = await createService();
 
-    await expect(
-      service.revokeAccess('user@example.com'),
-    ).rejects.toMatchObject({
+    await expect(service.revokeAccess('user@example.com')).rejects.toMatchObject({
       code: GoogleAuthErrorCode.revokeFailed,
       email: 'user@example.com',
       name: 'GoogleAuthError',
@@ -280,9 +270,7 @@ describe('useGoogleService', () => {
       type: 'popup_failed_to_open',
     };
 
-    requestTokenMock.mockRejectedValueOnce(
-      new GoogleClientConfigError(popupBlockedError),
-    );
+    requestTokenMock.mockRejectedValueOnce(new GoogleClientConfigError(popupBlockedError));
 
     const service = await createService();
 

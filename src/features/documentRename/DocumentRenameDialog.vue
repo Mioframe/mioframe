@@ -17,14 +17,18 @@ const emit = defineEmits<{
   cancel: [];
 }>();
 
-const { state: documentDescription, patch: documentPatch } = useDocument(
-  path,
-  documentId,
-);
+const { state: documentDescription, patch: documentPatch } = useDocument(path, documentId);
 
 const documentName = computed(() => documentDescription.value?.name);
 
 const stateName = ref<string>();
+
+const stateNameModel = computed<string | undefined>({
+  get: () => stateName.value,
+  set: (name) => {
+    stateName.value = name;
+  },
+});
 
 watchEffect(() => {
   stateName.value = documentName.value;
@@ -58,9 +62,7 @@ const onCancel = () => {
   emit('cancel');
 };
 
-const headline = computed(
-  () => `Rename "${documentName.value ?? 'unknown'}" document`,
-);
+const headline = computed(() => `Rename "${documentName.value ?? 'unknown'}" document`);
 </script>
 
 <template>
@@ -74,6 +76,6 @@ const headline = computed(
     @apply="onApply"
     @cancel="onCancel"
   >
-    <MDTextField v-model:model-value="stateName" label-text="Name" />
+    <MDTextField v-model:model-value="stateNameModel" label-text="Name" />
   </MDDialog>
 </template>

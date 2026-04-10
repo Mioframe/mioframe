@@ -320,10 +320,9 @@ describe('defineMigrations', () => {
         (v1: { a: string; b: number }) => ({ ...v1, c: true }),
       );
 
-      const result: { a: string; b: number; c: boolean } =
-        migrations.getLatestData({
-          a: 'test',
-        });
+      const result: { a: string; b: number; c: boolean } = migrations.getLatestData({
+        a: 'test',
+      });
 
       expect(result.a).toBe('test');
       expect(result.b).toBe(1);

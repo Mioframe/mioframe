@@ -14,6 +14,11 @@ defineProps<{
   directoryPath: string;
 }>();
 
+const emit = defineEmits<{
+  created: [];
+  cancel: [];
+}>();
+
 const zodPartialRelation = extend(zodRelationProperty, {
   relation: optional(zodRelation),
 });
@@ -23,6 +28,8 @@ const zodPartialRelation = extend(zodRelationProperty, {
   <DatabasePropertyCreationDialog
     :path="directoryPath"
     :document-id="documentId"
+    @created="emit('created')"
+    @cancel="emit('cancel')"
   >
     <template #after="{ property, onUpdateProperty }">
       <DatabaseRelationPropertyEditSection

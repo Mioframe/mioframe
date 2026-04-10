@@ -7,11 +7,11 @@ import MDFieldContainer from './MDFieldContainer.vue';
 const props = withDefaults(
   defineProps<{
     labelText: string;
-    supportingText?: string;
-    type?: 'filled' | 'outlined';
-    disabled?: boolean;
-    error?: boolean;
-    maxCharacters?: number;
+    supportingText?: string | undefined;
+    type?: 'filled' | 'outlined' | undefined;
+    disabled?: boolean | undefined;
+    error?: boolean | undefined;
+    maxCharacters?: number | undefined;
     inputType?:
       | 'color'
       | 'date'
@@ -26,9 +26,10 @@ const props = withDefaults(
       | 'time'
       | 'url'
       | 'week'
-      | 'multiline';
-    readonly?: boolean;
-    autofocus?: boolean;
+      | 'multiline'
+      | undefined;
+    readonly?: boolean | undefined;
+    autofocus?: boolean | undefined;
   }>(),
   { inputType: 'text', type: 'outlined' },
 );
@@ -40,7 +41,7 @@ const slots = defineSlots<{
   trailingIcon(): unknown;
 }>();
 
-const modelValue = defineModel<string | number | undefined>();
+const modelValue = defineModel<string | undefined>();
 
 const inputRef = useTemplateRef('inputRef');
 
@@ -61,8 +62,8 @@ defineEmits<{
 
 watch(
   [inputRef, autofocus],
-  ([input, autofocus]) => {
-    if (autofocus && input instanceof HTMLElement) {
+  ([input, shouldAutofocus]) => {
+    if (shouldAutofocus && input instanceof HTMLElement) {
       input.focus();
     }
   },

@@ -45,10 +45,7 @@ const dedupeApiFetch = dedupe(apiFetch);
 /**
  * Internal request handler with error normalization.
  */
-const googleRequest = async (
-  url: Input,
-  options?: ApiOptions,
-): Promise<Response> => {
+const googleRequest = async (url: Input, options?: ApiOptions): Promise<Response> => {
   try {
     const response = options?.dedupe
       ? await dedupeApiFetch(url, options)
@@ -155,13 +152,7 @@ const gFileMetaListCache = new Cache<ListParams, GDriveListResponse>({
 export const getGFileMetaList = withLog(
   async (
     auth: GoogleAuthParams,
-    {
-      pageSize = 1000,
-      pageToken = '',
-      q,
-      spaces = [],
-      fetchAll = true,
-    }: ListParams,
+    { pageSize = 1000, pageToken = '', q, spaces = [], fetchAll = true }: ListParams,
   ) => {
     let result: GDriveListResponse | undefined = undefined;
 
@@ -181,7 +172,7 @@ export const getGFileMetaList = withLog(
       return result;
     }
 
-    const fetchPage = async (pageToken: string) =>
+    const fetchPage = async (nextPageToken: string) =>
       authorizedRequest(
         'get',
         'https://www.googleapis.com/drive/v3/files',
@@ -189,7 +180,7 @@ export const getGFileMetaList = withLog(
         {
           searchParams: {
             pageSize,
-            pageToken,
+            pageToken: nextPageToken,
             q: q ? buildQuery(q) : '',
             spaces: spaces.join(','),
             fields,
@@ -206,6 +197,7 @@ export const getGFileMetaList = withLog(
       const allFiles: GDriveFileMeta[] = [];
 
       do {
+        // eslint-disable-next-line no-await-in-loop -- each next page token comes from the previous response, so pagination must stay sequential
         const pageResult = await fetchPage(currentPageToken);
         if (pageResult.result.files) {
           allFiles.push(...pageResult.result.files);
@@ -264,12 +256,9 @@ const invalidateCache = withLog(
 
       const listKeysToDelete: string[] = [];
       gFileMetaListCache.forEachEntry(({ files }, key, listParams) => {
-        const matchesParentId =
-          typeof listParams !== 'string' && listParams.q?.parentId === fileId;
+        const matchesParentId = typeof listParams !== 'string' && listParams.q?.parentId === fileId;
         const matchesFileRelation =
-          files?.some(({ id, parents = [] }) =>
-            [id, ...parents].includes(fileId),
-          ) ?? false;
+          files?.some(({ id, parents = [] }) => [id, ...parents].includes(fileId)) ?? false;
 
         if (matchesParentId || matchesFileRelation) {
           listKeysToDelete.push(key);
@@ -326,9 +315,7 @@ export const update = async (
     {
       searchParams: {
         ...(addParents?.length ? { addParents: addParents.join(',') } : {}),
-        ...(removeParents?.length
-          ? { removeParents: removeParents.join(',') }
-          : {}),
+        ...(removeParents?.length ? { removeParents: removeParents.join(',') } : {}),
       },
       json: {
         name,
@@ -352,10 +339,7 @@ export const update = async (
  * Limits: 100 entries or 100 MB total (whichever reached first).
  * Evicted by LRU policy when limits exceeded.
  */
-const gDriveFileContentCache = new Cache<
-  string,
-  { file: File; modifiedTime: string }
->({
+const gDriveFileContentCache = new Cache<string, { file: File; modifiedTime: string }>({
   max: 100,
   maxSize: 100 * 1024 * 1024,
   sizeCalculation: ({ file }) => file.size,
@@ -377,20 +361,17 @@ export const download = async (
     return cachedFile.file;
   }
 
-  const file = await googleRequest(
-    `https://www.googleapis.com/drive/v3/files/${fileId}`,
-    {
-      method: 'get',
-      headers: {
-        Authorization: `Bearer ${auth.ACCESS_TOKEN}`,
-      },
-      searchParams: {
-        alt: 'media',
-      },
-      onDownloadProgress,
-      dedupe: true,
+  const file = await googleRequest(`https://www.googleapis.com/drive/v3/files/${fileId}`, {
+    method: 'get',
+    headers: {
+      Authorization: `Bearer ${auth.ACCESS_TOKEN}`,
     },
-  )
+    searchParams: {
+      alt: 'media',
+    },
+    ...(onDownloadProgress ? { onDownloadProgress } : {}),
+    dedupe: true,
+  })
     .then((r) => r.blob())
     .then(
       (blob) =>
@@ -407,10 +388,7 @@ export const download = async (
 /**
  * Creates a new file in Google Drive.
  */
-export const create = async (
-  auth: GoogleAuthParams,
-  resource: CreateResource,
-) => {
+export const create = async (auth: GoogleAuthParams, resource: CreateResource) => {
   if (resource.parents.length === 0) {
     throw new GoogleDriveError({
       code: HttpStatusCode.FORBIDDEN,
@@ -449,14 +427,9 @@ export const upload = async (
   } else if (file instanceof Blob) {
     body = file;
   } else if (file instanceof ArrayBuffer || ArrayBuffer.isView(file)) {
-    const buffer =
-      file instanceof ArrayBuffer
-        ? new Uint8Array(file)
-        : new Uint8Array(file.buffer);
+    const buffer = file instanceof ArrayBuffer ? new Uint8Array(file) : new Uint8Array(file.buffer);
     const mimeTypeInfo = await fileTypeFromBuffer(buffer);
-    const contentType = mimeTypeInfo
-      ? mimeTypeInfo.mime
-      : 'application/octet-stream';
+    const contentType = mimeTypeInfo ? mimeTypeInfo.mime : 'application/octet-stream';
     body = new Blob([buffer], { type: contentType });
   } else {
     throw new Error('Unsupported file type');
@@ -476,7 +449,7 @@ export const upload = async (
         fields: ['id', 'version', 'name'].join(','),
       },
       body,
-      onUploadProgress,
+      ...(onUploadProgress ? { onUploadProgress } : {}),
     },
   );
 

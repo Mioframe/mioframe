@@ -67,9 +67,7 @@ describe('use string property in database document', () => {
 
     cy.findByRole('menuitem', { name: /edit/i }).click();
 
-    cy.findByLabelText(/name/i, { selector: 'input' }).type(
-      `${propertyName} edited`,
-    );
+    cy.findByLabelText(/name/i, { selector: 'input' }).type(`${propertyName} edited`);
 
     cy.findByRole('button', { name: /edit/i }).click();
 
@@ -143,9 +141,7 @@ describe('use string property in database document', () => {
 
     const editedStringValue = `edited ${stringValue}`;
 
-    cy.findByLabelText(new RegExp(propertyName, 'i'))
-      .clear()
-      .type(editedStringValue);
+    cy.findByLabelText(new RegExp(propertyName, 'i')).clear().type(editedStringValue);
 
     cy.findByRole('button', { name: /edit/i }).click();
 

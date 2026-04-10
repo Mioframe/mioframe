@@ -1,10 +1,7 @@
 <script setup lang="ts">
 import { useStackNavigation } from '@page/routes';
 import { MDSplitLayout } from '@shared/ui/Layout';
-import {
-  defineNavigationButton,
-  type NavigationButton,
-} from '@shared/ui/Navigation';
+import { defineNavigationButton, type NavigationButton } from '@shared/ui/Navigation';
 import { computed } from 'vue';
 
 const homeNavigationButton = defineNavigationButton({

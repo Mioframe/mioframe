@@ -9,8 +9,12 @@ import type { BAR_TYPE } from './types';
 defineProps<{
   label: string;
   symbol: string;
-  active?: boolean;
-  type?: BAR_TYPE;
+  active?: boolean | undefined;
+  type?: BAR_TYPE | undefined;
+}>();
+
+const emit = defineEmits<{
+  click: [event: MouseEvent];
 }>();
 
 const el = useTemplateRef('el');
@@ -25,6 +29,9 @@ const { focused: userFocused } = useFirstFocus(el, {
 });
 
 const { durationPressedState } = usePressed(el);
+const onClick = (event: MouseEvent) => {
+  emit('click', event);
+};
 </script>
 
 <template>
@@ -33,6 +40,7 @@ const { durationPressedState } = usePressed(el);
     class="md-navigation-bar-button md"
     type="button"
     :class="[{ _active: active }, `_type-${type}`]"
+    @click="onClick"
   >
     <MDLayer
       class="md-navigation-bar-button__layer"

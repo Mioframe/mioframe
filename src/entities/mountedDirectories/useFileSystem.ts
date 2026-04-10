@@ -3,10 +3,7 @@ import { useMainServiceClient } from '@shared/service';
 import { computed, toValue } from 'vue';
 import { isUndefined } from 'es-toolkit';
 import { useObservableQuery } from '@shared/lib/useObservableQuery';
-import {
-  DEVICE_FILES_ROOT_NAME,
-  type DeviceFileRecord,
-} from '@shared/service/fileSystem';
+import { DEVICE_FILES_ROOT_NAME, type DeviceFileRecord } from '@shared/service/fileSystem';
 import { useObservable } from '@shared/lib/useObservable';
 
 export const DEVICE_FILES = DEVICE_FILES_ROOT_NAME;
@@ -53,12 +50,8 @@ const setupFileSystem = () => {
 
   const { data: activeDeviceFiles } = useObservable(deviceFiles);
 
-  const disconnectDeviceFile = async (
-    deviceFile: Pick<DeviceFileRecord, 'name'> | string,
-  ) => {
-    await removeDeviceDirectory(
-      typeof deviceFile === 'string' ? deviceFile : deviceFile.name,
-    );
+  const disconnectDeviceFile = async (deviceFile: Pick<DeviceFileRecord, 'name'> | string) => {
+    await removeDeviceDirectory(typeof deviceFile === 'string' ? deviceFile : deviceFile.name);
   };
 
   return {

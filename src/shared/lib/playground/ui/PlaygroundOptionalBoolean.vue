@@ -7,11 +7,7 @@ defineProps<{ label: string }>();
 const value = defineModel<boolean | undefined>({ default: undefined });
 
 const onClickBoolean = () => {
-  value.value = isUndefined(value.value)
-    ? true
-    : value.value
-      ? false
-      : undefined;
+  value.value = isUndefined(value.value) ? true : value.value ? false : undefined;
 };
 
 const inputEl = useTemplateRef('inputEl');

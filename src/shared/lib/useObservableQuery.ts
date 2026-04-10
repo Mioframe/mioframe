@@ -1,4 +1,4 @@
-import { firstValueFrom, timeout, type Observable } from 'rxjs';
+import { firstValueFrom, timeout, type Observable, type Observer } from 'rxjs';
 import type { Promisable } from 'type-fest';
 import type { MaybeRefOrGetter } from 'vue';
 import { readonly, shallowRef, toValue, watch } from 'vue';
@@ -35,11 +35,18 @@ export const defineObservableQuery = <T, Q>(
     }): Promisable<() => void> => {
       const $ = get$(query);
 
-      const subscription = $.subscribe({
-        next,
-        error,
-        complete,
-      });
+      const observer: Partial<Observer<T>> = {};
+      if (next) {
+        observer.next = next;
+      }
+      if (error) {
+        observer.error = error;
+      }
+      if (complete) {
+        observer.complete = complete;
+      }
+
+      const subscription = $.subscribe(observer);
 
       return () => {
         subscription.unsubscribe();
@@ -187,7 +194,6 @@ export function useObservableQuery<T, Q>(
     error.value = e;
     isLoading.value = false;
 
-    // eslint-disable-next-line no-console -- onError is a dedicated error handler that logs errors to the console for debugging purposes
     console.error(e);
   };
 

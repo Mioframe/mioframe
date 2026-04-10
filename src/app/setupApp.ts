@@ -6,7 +6,7 @@ import { createHead } from '@unhead/vue/client';
 import { router } from './router';
 import { setupPlayground } from '@shared/lib/playground';
 import { playgroundPages } from './playgroundPages';
-import { backNavigationHandler as backNavigationHandler } from '@shared/lib/onBackNavigation';
+import { backNavigationHandler } from '@shared/lib/onBackNavigation';
 import { setupStackNavigation } from '@page/routes';
 import { setupGoogleSessions } from '@entity/googleUserInfo';
 import { GOOGLE_CLIENT_ID } from '@shared/config';
@@ -34,8 +34,7 @@ export const setupApp = async (app: App = createApp(MainApp)) => {
           meta: [
             {
               name: 'viewport',
-              content:
-                'width=device-width, initial-scale=1.0, interactive-widget=resizes-content',
+              content: 'width=device-width, initial-scale=1.0, interactive-widget=resizes-content',
             },
           ],
         },

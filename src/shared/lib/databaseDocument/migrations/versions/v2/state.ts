@@ -1,17 +1,14 @@
 import type { output } from 'zod/v4-mini';
 import { extend, literal, optional } from 'zod/v4-mini';
 import type { DatabaseStateV1 as DataBaseStateV1 } from '../v1';
-import { zodDatabaseStateV1 as zodDatabaseStateV1 } from '../v1';
+import { zodDatabaseStateV1 } from '../v1';
 import { defineVersion } from '../../../../migrations/defineVersion';
 import { deepPatchJsonObject } from '@shared/lib/changeObject';
 import { zodDatabaseView, zodDatabaseViewId } from './view';
 import { zodStrictRecord } from '@shared/lib/strictRecord/zodStrictRecord';
 import { cloneDeep } from 'es-toolkit';
 
-export const zodDatabaseViewsMap = zodStrictRecord(
-  zodDatabaseViewId,
-  zodDatabaseView,
-);
+export const zodDatabaseViewsMap = zodStrictRecord(zodDatabaseViewId, zodDatabaseView);
 
 export type DatabaseViewsMap = output<typeof zodDatabaseViewsMap>;
 

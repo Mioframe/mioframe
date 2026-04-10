@@ -33,8 +33,7 @@ export interface ReadonlyDirectoryFSEntry extends StaticDirectoryFSEntry {
   ) => void;
 }
 
-export interface WritableDirectoryFSEntry
-  extends ReadonlyDirectoryFSEntry, GeneralFSEntry {
+export interface WritableDirectoryFSEntry extends ReadonlyDirectoryFSEntry, GeneralFSEntry {
   /**
    * Creates a subdirectory
    */
@@ -42,10 +41,7 @@ export interface WritableDirectoryFSEntry
   /**
    * Writes a file to this directory
    */
-  writeFile: (
-    name: string,
-    file?: FileSystemWriteChunkType,
-  ) => Promise<FileFSEntry>;
+  writeFile: (name: string, file?: FileSystemWriteChunkType) => Promise<FileFSEntry>;
   /**
    * Removes Entry from this directory
    */

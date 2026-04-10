@@ -1,12 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { MemoryFileSystem } from './MemoryFileSystem';
 import { VirtualFileSystem } from './VirtualFileSystem';
-import {
-  EventEmitter,
-  VfsEventSource,
-  type VfsEvent,
-  VfsEventType,
-} from './EventEmitter';
+import { EventEmitter, VfsEventSource, type VfsEvent, VfsEventType } from './EventEmitter';
 import type {
   FileContent,
   FSNodeStat,
@@ -30,8 +25,7 @@ describe('VirtualFileSystem', () => {
   ): IFileSystemProvider => ({
     stat: async (path) => statResolver(path, await memoryFS.stat(path)),
     readFile: (path) => memoryFS.readFile(path),
-    writeFile: (path, content, options) =>
-      memoryFS.writeFile(path, content, options),
+    writeFile: (path, content, options) => memoryFS.writeFile(path, content, options),
     readDirectory: (path) => memoryFS.readDirectory(path),
     createDirectory: (path) => memoryFS.createDirectory(path),
     delete: (path, recursive) => memoryFS.delete(path, recursive),
@@ -68,15 +62,11 @@ describe('VirtualFileSystem', () => {
             nodeType: FSNodeType.File,
           });
         },
-        watch: (callback: (event: VfsEvent) => void) =>
-          providerEvents.subscribe(callback),
+        watch: (callback: (event: VfsEvent) => void) => providerEvents.subscribe(callback),
         stat: (path) => memoryFileSystem.stat(path),
         readFile: (path) => memoryFileSystem.readFile(path),
-        writeFile: (
-          path: string,
-          content: FileContent,
-          options: WriteOptions,
-        ) => memoryFileSystem.writeFile(path, content, options),
+        writeFile: (path: string, content: FileContent, options: WriteOptions) =>
+          memoryFileSystem.writeFile(path, content, options),
         readDirectory: (path) => memoryFileSystem.readDirectory(path),
         createDirectory: (path) => memoryFileSystem.createDirectory(path),
         delete: (path, recursive) => memoryFileSystem.delete(path, recursive),
@@ -86,8 +76,8 @@ describe('VirtualFileSystem', () => {
         path: string;
         type: string;
         source: string;
-        mountPath?: string;
-        providerPath?: string;
+        mountPath?: string | undefined;
+        providerPath?: string | undefined;
       }> = [];
 
       vfs.mount('/mnt/test', provider);
@@ -262,9 +252,7 @@ describe('VirtualFileSystem', () => {
       vfs.mount('/mnt/test', memoryFS);
 
       // This should fail
-      await expect(vfs.delete('/mnt/test/testdir', false)).rejects.toThrow(
-        /Directory not empty/,
-      );
+      await expect(vfs.delete('/mnt/test/testdir', false)).rejects.toThrow(/Directory not empty/);
     });
 
     it('should handle delete with invalid paths gracefully', async () => {
@@ -387,9 +375,7 @@ describe('VirtualFileSystem', () => {
         ),
       );
 
-      await expect(
-        vfs.move('/mnt/test/source.txt', '/mnt/test/dest.txt'),
-      ).rejects.toMatchObject({
+      await expect(vfs.move('/mnt/test/source.txt', '/mnt/test/dest.txt')).rejects.toMatchObject({
         code: FileSystemError.NoPermissions,
       });
     });
@@ -548,9 +534,7 @@ describe('VirtualFileSystem', () => {
       vfs.mount('/mnt/test', memoryFS);
 
       // Moving to the same path should not throw - it just returns silently
-      await expect(
-        vfs.move('/mnt/test/file.txt', '/mnt/test/file.txt'),
-      ).resolves.toBeUndefined();
+      await expect(vfs.move('/mnt/test/file.txt', '/mnt/test/file.txt')).resolves.toBeUndefined();
     });
   });
 
@@ -810,8 +794,7 @@ describe('VirtualFileSystem', () => {
 
       vfs.mount('/mnt/test', memoryFS);
 
-      const events: Array<{ type: string; path: string; newPath?: string }> =
-        [];
+      const events: Array<{ type: string; path: string; newPath?: string | undefined }> = [];
       vfs.watch('/mnt/test', (event) => {
         events.push({
           type: event.type,
@@ -839,8 +822,7 @@ describe('VirtualFileSystem', () => {
 
       vfs.mount('/mnt/test', memoryFS);
 
-      const events: Array<{ type: string; path: string; newPath?: string }> =
-        [];
+      const events: Array<{ type: string; path: string; newPath?: string | undefined }> = [];
       vfs.watch('/mnt/test', (event) => {
         events.push({
           type: event.type,
@@ -870,8 +852,7 @@ describe('VirtualFileSystem', () => {
 
       await vfs.writeFile('/mnt/provider1/source.txt', 'content');
 
-      const events: Array<{ type: string; path: string; newPath?: string }> =
-        [];
+      const events: Array<{ type: string; path: string; newPath?: string | undefined }> = [];
       vfs.watch(
         '/mnt',
         (event) => {
@@ -904,8 +885,7 @@ describe('VirtualFileSystem', () => {
       await vfs.createDirectory('/mnt/provider1/sourcedir');
       await vfs.writeFile('/mnt/provider1/sourcedir/file.txt', 'content');
 
-      const events: Array<{ type: string; path: string; newPath?: string }> =
-        [];
+      const events: Array<{ type: string; path: string; newPath?: string | undefined }> = [];
       vfs.watch(
         '/mnt',
         (event) => {
@@ -921,9 +901,7 @@ describe('VirtualFileSystem', () => {
       await vfs.move('/mnt/provider1/sourcedir', '/mnt/provider2/destdir');
 
       const renameEvents = events.filter((e) => e.type === 'rename');
-      expect(
-        renameEvents.some((e) => e.newPath === '/mnt/provider2/destdir'),
-      ).toBe(true);
+      expect(renameEvents.some((e) => e.newPath === '/mnt/provider2/destdir')).toBe(true);
     });
 
     it('should not duplicate events when using multiple watchers', async () => {
@@ -1015,24 +993,16 @@ describe('VirtualFileSystem', () => {
       await vfs.writeFile('/mnt/test/file2.txt', 'content');
       await vfs.delete('/mnt/test/file1.txt');
 
-      expect(
-        events.some(
-          (e) => e.path === '/mnt/test/file1.txt' && e.type === 'create',
-        ),
-      ).toBe(true);
-      expect(
-        events.some((e) => e.path === '/mnt/test/dir1' && e.type === 'create'),
-      ).toBe(true);
-      expect(
-        events.some(
-          (e) => e.path === '/mnt/test/file2.txt' && e.type === 'create',
-        ),
-      ).toBe(true);
-      expect(
-        events.some(
-          (e) => e.path === '/mnt/test/file1.txt' && e.type === 'delete',
-        ),
-      ).toBe(true);
+      expect(events.some((e) => e.path === '/mnt/test/file1.txt' && e.type === 'create')).toBe(
+        true,
+      );
+      expect(events.some((e) => e.path === '/mnt/test/dir1' && e.type === 'create')).toBe(true);
+      expect(events.some((e) => e.path === '/mnt/test/file2.txt' && e.type === 'create')).toBe(
+        true,
+      );
+      expect(events.some((e) => e.path === '/mnt/test/file1.txt' && e.type === 'delete')).toBe(
+        true,
+      );
     });
 
     it('should emit events with correct paths when watching with recursive option', async () => {

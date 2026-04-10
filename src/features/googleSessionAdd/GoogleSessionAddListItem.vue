@@ -18,10 +18,7 @@ const onClickAddAccount = async () => {
       await login();
     } catch (error) {
       addSnackbar({
-        text:
-          error instanceof Error
-            ? error.message
-            : 'Failed to add Google account',
+        text: error instanceof Error ? error.message : 'Failed to add Google account',
       });
     } finally {
       loading.value = false;
@@ -31,11 +28,7 @@ const onClickAddAccount = async () => {
 </script>
 
 <template>
-  <MDListItem
-    is="button"
-    headline="Add Google Account"
-    @click="onClickAddAccount"
-  >
+  <MDListItem is="button" headline="Add Google Account" @click="onClickAddAccount">
     <template #leadingAvatarContainer>
       <MDCircularProgressIndicator v-if="loading" :size="24" />
 

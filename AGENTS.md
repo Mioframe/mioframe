@@ -5,6 +5,7 @@ The rules in this file apply to the whole repository. A deeper `AGENTS.md` overr
 ## Project Shape
 
 This is a local-first personal data manager built around:
+
 - Vue 3 and TypeScript for UI;
 - OPFS and filesystem abstractions for local storage;
 - CRDT-style documents, schema validation, and migrations;
@@ -36,6 +37,8 @@ This is a local-first personal data manager built around:
 - In component code, name event handlers and callback-style bindings with the `on*` prefix for consistent, recognizable intent.
 - Prefer prepared typed collection helpers such as `recordEntries`, `objectEntries`, strict-record iterators, and similar local wrappers over raw `Object.entries`, `Object.keys`, or `Object.values` when iterating typed records.
 - Do not redefine or assert types locally to compensate for weak iteration typing. Manual type overrides and type assertions are prohibited by default and are allowed only in rare boundary cases with explicit justification.
+- When `exactOptionalPropertyTypes` or third-party typings create friction, prefer adjusting the local contract or using a boundary adapter over adding extra runtime work in hot paths.
+- Do not introduce object spread, conditional object rebuilding, duplicated render branches, or other avoidable allocations purely to satisfy optional-property typing when a direct type or prop contract can express the same intent.
 - For Automerge-backed or other CRDT-backed state, mutate existing CRDT objects in place inside the owning change callback instead of reassigning live nested objects.
 - For Automerge-backed or other CRDT-backed state, do not assign a live document object back into the document, even to the same key. Reuse its fields, or create a fresh plain object or array when whole-value replacement is intentional.
 - Prefer project mutation helpers such as `put`, `patch`, `deepPutJsonObject`, and `deepPatchJsonObject` when they match the intended CRDT write shape, instead of hand-rolled object replacement.

@@ -1,4 +1,4 @@
-<script setup lang="ts">
+<script setup lang="ts" generic="Value extends string | number = string | number">
 import { computed, ref, toRefs, useTemplateRef } from 'vue';
 import { onKeyStroke, useFocusWithin, type MaybeElement } from '@vueuse/core';
 import { MDMenuBase } from '../Menu';
@@ -11,16 +11,14 @@ import { useSelectOptions } from './provideOptions';
 
 const props = defineProps<{
   labelText: string;
-  supportingText?: string;
-  type?: 'filled' | 'outlined';
-  disabled?: boolean;
-  error?: boolean;
-  multiple?: boolean;
+  supportingText?: string | undefined;
+  type?: 'filled' | 'outlined' | undefined;
+  disabled?: boolean | undefined;
+  error?: boolean | undefined;
+  multiple?: boolean | undefined;
 }>();
 
 const { multiple } = toRefs(props);
-
-type Value = string | number;
 
 const modelValue = defineModel<Value[]>({
   required: true,
@@ -64,7 +62,7 @@ onKeyStroke('Backspace', () => {
   }
 });
 
-const onClickOption = (value: string | number) => {
+const onClickOption = (value: Value) => {
   if (modelValue.value.some((v) => v === value)) {
     removeOption(value);
   } else {
@@ -76,7 +74,7 @@ const onClickOption = (value: string | number) => {
   }
 };
 
-const options = useSelectOptions(onClickOption);
+const options = useSelectOptions<Value>(onClickOption);
 
 onKeyStroke(['ArrowDown', 'ArrowUp'], (e) => {
   if (focusedField.value) {
@@ -127,10 +125,7 @@ const selectId = sessionUniqueId('select');
       @click="onClickFieldContainer"
     >
       <template #default>
-        <div
-          class="md-select__value-container md-focus-indicator_hidden"
-          tabindex="0"
-        >
+        <div class="md-select__value-container md-focus-indicator_hidden" tabindex="0">
           <slot name="valueContainer">
             <template v-if="multiple">
               <MDChip

@@ -7,16 +7,19 @@ import {
   PlaygroundUnion,
 } from '@shared/lib/playground';
 import { useQueryValue } from '@shared/lib/useQueryState';
-import type { ComponentProps } from 'vue-component-type-helpers';
 import MDChip from './MDChip.vue';
 import { MDSymbol } from '../Icon';
 
-interface State extends ComponentProps<typeof MDChip> {
+type State = {
+  label: string;
+  type: 'assist' | 'filter' | 'input';
+  elevated?: boolean | undefined;
+  selected?: boolean | undefined;
   leadingIcon: boolean;
   trailingIcon: boolean;
-}
+};
 
-const typeOptions: State['type'][] = ['assist', 'filter', 'input'];
+const typeOptions = ['assist', 'filter', 'input'] as const;
 
 const state = useQueryValue<State>('state', {
   label: 'label',
@@ -33,31 +36,15 @@ const state = useQueryValue<State>('state', {
     <template #controllers>
       <PlaygroundString v-model:model-value="state.label" label="label" />
 
-      <PlaygroundUnion
-        v-model:model-value="state.type"
-        label="type"
-        :options="typeOptions"
-      />
+      <PlaygroundUnion v-model:model-value="state.type" label="type" :options="typeOptions" />
 
-      <PlaygroundOptionalBoolean
-        v-model:model-value="state.elevated"
-        label="elevated"
-      />
+      <PlaygroundOptionalBoolean v-model:model-value="state.elevated" label="elevated" />
 
-      <PlaygroundOptionalBoolean
-        v-model:model-value="state.selected"
-        label="selected"
-      />
+      <PlaygroundOptionalBoolean v-model:model-value="state.selected" label="selected" />
 
-      <PlaygroundBoolean
-        v-model:model-value="state.leadingIcon"
-        label="leadingIcon"
-      />
+      <PlaygroundBoolean v-model:model-value="state.leadingIcon" label="leadingIcon" />
 
-      <PlaygroundBoolean
-        v-model:model-value="state.trailingIcon"
-        label="trailingIcon"
-      />
+      <PlaygroundBoolean v-model:model-value="state.trailingIcon" label="trailingIcon" />
     </template>
 
     <template #space>

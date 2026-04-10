@@ -23,13 +23,7 @@ import { EntryNotDirectoryError, EntryNotFoundError } from './types';
 import { defineSubscribeByQueryService } from '@shared/lib/subscriptions/subscribeService';
 import { DomainError } from '@shared/lib/error';
 import { zodCheck } from '@shared/lib/validateZodScheme';
-import {
-  entryPath,
-  PATH_SEPARATOR,
-  pathToString,
-  stringPath,
-  stringToPath,
-} from './path';
+import { entryPath, PATH_SEPARATOR, pathToString, stringPath, stringToPath } from './path';
 import type {
   DirectoryFSEntryState,
   ReadonlyDirectoryFSEntryState,
@@ -53,11 +47,7 @@ const setupDirectoryStoreService = () => {
     rawNotFoundPath: EntryPath | EntryPathString,
   ): void;
   function addCacheEntry(
-    entry:
-      | DirectoryFSEntry
-      | FileFSEntry
-      | DirectoryFSEntryState
-      | EntryNotFoundError,
+    entry: DirectoryFSEntry | FileFSEntry | DirectoryFSEntryState | EntryNotFoundError,
     rawNotFoundPath?: EntryPath | EntryPathString,
   ) {
     if (entry instanceof DomainError && rawNotFoundPath) {
@@ -136,7 +126,6 @@ const setupDirectoryStoreService = () => {
     const fullPath = [...parent.path, name];
 
     const cached = getCachedEntry(fullPath);
-    debugger;
     if (loadingStatus.has(stringPath(fullPath))) {
       return await waitCachedEntry(fullPath);
     }
@@ -167,18 +156,13 @@ const setupDirectoryStoreService = () => {
   const waitCachedEntry = async (
     rawPath: EntryPath | EntryPathString,
   ): Promise<
-    | DomainError
-    | WritableDirectoryFSEntryState
-    | ReadonlyDirectoryFSEntryState
-    | FileFSEntry
+    DomainError | WritableDirectoryFSEntryState | ReadonlyDirectoryFSEntryState | FileFSEntry
   > => {
     const pathString = stringPath(rawPath);
 
     return new Promise((resolve, reject) => {
       const timeoutId = setTimeout(() => {
-        reject(
-          new DomainError(`The entry ${stringPath(rawPath)} timeout expired`),
-        );
+        reject(new DomainError(`The entry ${stringPath(rawPath)} timeout expired`));
       }, 30e3);
 
       void until(
@@ -188,9 +172,7 @@ const setupDirectoryStoreService = () => {
           | FileFSEntry
           | DomainError
           | boolean => {
-          return (
-            !loadingStatus.has(pathString) || (getCachedEntry(rawPath) ?? false)
-          );
+          return !loadingStatus.has(pathString) || (getCachedEntry(rawPath) ?? false);
         },
       )
         .toMatch((v): v is Exclude<typeof v, boolean> => !isBoolean(v))
@@ -202,10 +184,8 @@ const setupDirectoryStoreService = () => {
     });
   };
 
-  const {
-    release: releaseDirectoryFSEntryState,
-    retain: retainDirectoryFSEntryState,
-  } = directoryFSEntryPool();
+  const { release: releaseDirectoryFSEntryState, retain: retainDirectoryFSEntryState } =
+    directoryFSEntryPool();
 
   const destroyDirectoryFSEntryStateCollection = new Set<() => void>();
 
@@ -304,11 +284,7 @@ const setupDirectoryStoreService = () => {
         return new EntryNotDirectoryError(rootEntry.path);
       }
 
-      const entry = await locateEntry(
-        rootEntry.raw,
-        path.toSpliced(0, 1),
-        options,
-      );
+      const entry = await locateEntry(rootEntry.raw, path.toSpliced(0, 1), options);
 
       return entry;
     }
@@ -326,7 +302,7 @@ const setupDirectoryStoreService = () => {
 
   const directoryToDescription = (
     entry: DirectoryFSEntryState,
-    { showAutomergeFiles }: { showAutomergeFiles?: boolean } = {},
+    { showAutomergeFiles }: { showAutomergeFiles?: boolean | undefined } = {},
   ): DirectoryDescription => {
     return {
       name: entry.name,
@@ -336,10 +312,7 @@ const setupDirectoryStoreService = () => {
         (acc: EntryDescription[], [, v]) => {
           const description = entryToDescription(v);
 
-          if (
-            !showAutomergeFiles &&
-            zodCheck(zodAutomergeFileName, description.name)
-          ) {
+          if (!showAutomergeFiles && zodCheck(zodAutomergeFileName, description.name)) {
             return acc;
           }
 
@@ -369,7 +342,7 @@ const setupDirectoryStoreService = () => {
   const subscribeEntry = defineSubscribeByQueryService(
     (
       path: EntryPath,
-      { showAutomergeFiles }: { showAutomergeFiles?: boolean } = {},
+      { showAutomergeFiles }: { showAutomergeFiles?: boolean | undefined } = {},
     ): EntryDescription | DirectoryDescription | undefined | DomainError => {
       const entry = getEntry(path);
 
@@ -387,19 +360,13 @@ const setupDirectoryStoreService = () => {
     },
   );
 
-  const createDirectory = async (
-    rawPath: EntryPathString | EntryPath,
-  ): Promise<void> => {
-    const pathString = isArray(rawPath)
-      ? rawPath.join(PATH_SEPARATOR)
-      : rawPath;
+  const createDirectory = async (rawPath: EntryPathString | EntryPath): Promise<void> => {
+    const pathString = isArray(rawPath) ? rawPath.join(PATH_SEPARATOR) : rawPath;
 
     await locateEntryFromRoot(pathString, { createDirectory: true });
   };
 
-  const removeEntry = async (
-    rawPath: EntryPathString | EntryPath,
-  ): Promise<void> => {
+  const removeEntry = async (rawPath: EntryPathString | EntryPath): Promise<void> => {
     const pathString = stringPath(rawPath);
 
     const entry = await locateEntryFromRoot(pathString);
@@ -411,9 +378,7 @@ const setupDirectoryStoreService = () => {
     if ('remove' in entry) {
       await entry.remove();
     } else {
-      throw new DomainError(
-        `"${pathToString(entry.path)}" don't have "remove" method`,
-      );
+      throw new DomainError(`"${pathToString(entry.path)}" don't have "remove" method`);
     }
 
     strictRecordSet(stateEntries, pathString, new EntryNotFoundError(rawPath));
@@ -436,9 +401,7 @@ const setupDirectoryStoreService = () => {
       removeCachedEntry(pathString);
       await locateEntryFromRoot(path);
     } else {
-      throw new DomainError(
-        `"${pathToString(entry.path)}" don't have "rename" method`,
-      );
+      throw new DomainError(`"${pathToString(entry.path)}" don't have "rename" method`);
     }
   };
 
@@ -488,8 +451,6 @@ const setupDirectoryStoreService = () => {
   };
 };
 
-export const useDirectoryStoreService = createGlobalState(
-  setupDirectoryStoreService,
-);
+export const useDirectoryStoreService = createGlobalState(setupDirectoryStoreService);
 
 // FIXME: нужен более эффективный и простой способ кешировать и получать информацию об FS

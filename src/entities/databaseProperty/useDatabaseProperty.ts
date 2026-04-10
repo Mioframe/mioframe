@@ -1,9 +1,6 @@
 import type { AMDocumentId } from '@shared/lib/automerge';
 import type { PatchSource } from '@shared/lib/changeObject';
-import type {
-  DatabasePropertyId,
-  DatabaseUnknownProperty,
-} from '@shared/lib/databaseDocument';
+import type { DatabasePropertyId, DatabaseUnknownProperty } from '@shared/lib/databaseDocument';
 import { DomainError } from '@shared/lib/error';
 import { useObservableQuery } from '@shared/lib/useObservableQuery';
 import { useMainServiceClient } from '@shared/service';

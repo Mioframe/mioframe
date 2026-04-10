@@ -10,9 +10,7 @@ defineSlots<{
   default: () => unknown;
 }>();
 
-const scrollSnapAlignCssVar = useCssVar(
-  '--md-bottom-sheet-section-scroll-snap-align',
-);
+const scrollSnapAlignCssVar = useCssVar('--md-bottom-sheet-section-scroll-snap-align');
 
 watchEffect(() => {
   scrollSnapAlignCssVar.value = scrollSnapAlign;

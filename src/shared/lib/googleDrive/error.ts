@@ -4,7 +4,7 @@ import { HttpStatusCode } from '../error/httpStatus';
 export class GoogleDriveError extends DomainError {
   override name = 'GoogleDriveError';
   code: HttpStatusCode;
-  details?: Record<string, unknown>;
+  details?: Record<string, unknown> | undefined;
 
   constructor(
     options:
@@ -12,7 +12,7 @@ export class GoogleDriveError extends DomainError {
           code: HttpStatusCode;
           message: string;
           cause?: unknown;
-          details?: Record<string, unknown>;
+          details?: Record<string, unknown> | undefined;
         }
       | string,
     { cause }: { cause?: unknown } = {},

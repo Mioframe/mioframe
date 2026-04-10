@@ -9,7 +9,34 @@ import {
 } from '@shared/lib/playground';
 import MDTextField from './MDTextField.vue';
 import { useQueryValue } from '@shared/lib/useQueryState';
-import type { ComponentProps } from 'vue-component-type-helpers';
+
+type InputType =
+  | 'number'
+  | 'time'
+  | 'text'
+  | 'color'
+  | 'date'
+  | 'datetime-local'
+  | 'email'
+  | 'month'
+  | 'password'
+  | 'search'
+  | 'tel'
+  | 'url'
+  | 'week'
+  | 'multiline';
+
+type State = {
+  labelText: string;
+  modelValue?: string | undefined;
+  disabled?: boolean | undefined;
+  error?: boolean | undefined;
+  inputType?: InputType | undefined;
+  maxCharacters?: number | undefined;
+  readonly?: boolean | undefined;
+  supportingText?: string | undefined;
+  type?: 'filled' | 'outlined' | undefined;
+};
 
 const inputTypeOptions = [
   'number',
@@ -31,7 +58,7 @@ const inputTypeOptions = [
 
 const typeOptions = ['filled', 'outlined', undefined] as const;
 
-const state = useQueryValue<ComponentProps<typeof MDTextField>>('state', {
+const state = useQueryValue<State>('state', {
   labelText: 'labelText',
   modelValue: undefined,
   disabled: undefined,
@@ -52,20 +79,11 @@ const state = useQueryValue<ComponentProps<typeof MDTextField>>('state', {
         <code>{{ [state.modelValue] }}</code>
       </div>
 
-      <PlaygroundString
-        v-model:model-value="state.labelText"
-        label="labelText"
-      />
+      <PlaygroundString v-model:model-value="state.labelText" label="labelText" />
 
-      <PlaygroundOptionalBoolean
-        v-model:model-value="state.disabled"
-        label="disabled"
-      />
+      <PlaygroundOptionalBoolean v-model:model-value="state.disabled" label="disabled" />
 
-      <PlaygroundOptionalBoolean
-        v-model:model-value="state.error"
-        label="error"
-      />
+      <PlaygroundOptionalBoolean v-model:model-value="state.error" label="error" />
 
       <PlaygroundUnion
         v-model:model-value="state.inputType"
@@ -73,26 +91,13 @@ const state = useQueryValue<ComponentProps<typeof MDTextField>>('state', {
         :options="inputTypeOptions"
       />
 
-      <PlaygroundOptionalNumber
-        v-model:model-value="state.maxCharacters"
-        label="maxCharacters"
-      />
+      <PlaygroundOptionalNumber v-model:model-value="state.maxCharacters" label="maxCharacters" />
 
-      <PlaygroundOptionalBoolean
-        v-model:model-value="state.readonly"
-        label="readonly"
-      />
+      <PlaygroundOptionalBoolean v-model:model-value="state.readonly" label="readonly" />
 
-      <PlaygroundOptionalString
-        v-model:model-value="state.supportingText"
-        label="supportingText"
-      />
+      <PlaygroundOptionalString v-model:model-value="state.supportingText" label="supportingText" />
 
-      <PlaygroundUnion
-        v-model:model-value="state.type"
-        label="type"
-        :options="typeOptions"
-      />
+      <PlaygroundUnion v-model:model-value="state.type" label="type" :options="typeOptions" />
     </template>
 
     <template #space>

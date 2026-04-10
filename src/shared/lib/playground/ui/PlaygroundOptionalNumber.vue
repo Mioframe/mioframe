@@ -1,16 +1,16 @@
 <script setup lang="ts">
 import { ref, watch, watchEffect } from 'vue';
 
-const { step = 0.01 } = defineProps<{ label: string; step?: number }>();
+const { step = 0.01 } = defineProps<{ label: string; step?: number | undefined }>();
 
-const value = defineModel<number>();
+const value = defineModel<number | undefined>();
 
 const isNotUndefined = ref(false);
 
 watch(
   isNotUndefined,
-  (isNotUndefined) => {
-    value.value = isNotUndefined ? 0 : undefined;
+  (hasValue) => {
+    value.value = hasValue ? 0 : undefined;
   },
   { immediate: true },
 );
@@ -25,11 +25,6 @@ watchEffect(() => {
     {{ label }}
     <input v-model="isNotUndefined" type="checkbox" />
 
-    <input
-      v-model.number="value"
-      type="number"
-      :disabled="!isNotUndefined"
-      :step="step"
-    />
+    <input v-model.number="value" type="number" :disabled="!isNotUndefined" :step="step" />
   </label>
 </template>

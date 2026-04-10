@@ -2,8 +2,7 @@ import type { UseFocusOptions } from '@vueuse/core';
 import { unrefElement, useFocus, type MaybeElementRef } from '@vueuse/core';
 import { computed, watchEffect } from 'vue';
 
-const focusableSelector =
-  'input, select, textarea, button, [tabindex]:not([tabindex="-1"])';
+const focusableSelector = 'input, select, textarea, button, [tabindex]:not([tabindex="-1"])';
 
 /**
  * Focus management for the first focusable element within a target.

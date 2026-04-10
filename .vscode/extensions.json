@@ -6,6 +6,7 @@
     "dbaeumer.vscode-eslint",
     "vue.volar",
     "csstools.postcss",
-    "esbenp.prettier-vscode"
+    "vitest.explorer",
+    "oxc.oxc-vscode"
   ]
 }

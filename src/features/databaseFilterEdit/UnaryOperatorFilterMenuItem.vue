@@ -20,5 +20,5 @@ const onClick = () => {
 </script>
 
 <template>
-  <MDMenuItemBase :label="label" @click="onClick" />
+  <MDMenuItemBase :label="label" item-role="menuitem" @click="onClick" />
 </template>

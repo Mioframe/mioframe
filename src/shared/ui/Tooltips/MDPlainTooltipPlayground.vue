@@ -2,11 +2,14 @@
 import { PlaygroundStory, PlaygroundUnion } from '@shared/lib/playground';
 import MDPlainTooltip from './MDPlainTooltip.vue';
 import { useQueryValue } from '@shared/lib/useQueryState';
-import type { ComponentProps } from 'vue-component-type-helpers';
 import { useTemplateRef } from 'vue';
 import { UseDraggable } from '@vueuse/components';
 
-interface State extends ComponentProps<typeof MDPlainTooltip> {}
+type State = {
+  text: string;
+  disabledTeleport?: boolean | undefined;
+  placement?: 'top' | 'right' | 'bottom' | 'left' | undefined;
+};
 
 const state = useQueryValue<State>('state', {
   text: 'text',
@@ -16,13 +19,7 @@ const state = useQueryValue<State>('state', {
 
 const target = useTemplateRef('target');
 
-const placementOptions: State['placement'][] = [
-  undefined,
-  'top',
-  'right',
-  'bottom',
-  'left',
-];
+const placementOptions = [undefined, 'top', 'right', 'bottom', 'left'] as const;
 </script>
 
 <template>

@@ -8,7 +8,7 @@ import { useOverlayContainer } from '../Overlay';
 
 const props = withDefaults(
   defineProps<{
-    type?: 'standard' | 'modal';
+    type?: 'standard' | 'modal' | undefined;
     /**
      * unique label for screen readers and navigation
      */
@@ -37,17 +37,13 @@ defineSlots<{
   default: () => unknown;
 }>();
 
-const bottomSheetContainerEl = useTemplateRef<MaybeElement>(
-  'bottomSheetContainerEl',
-);
+const bottomSheetContainerEl = useTemplateRef<MaybeElement>('bottomSheetContainerEl');
 
 const dialogContainer = useOverlayContainer();
 
 const openLikeModal = computed(() => props.type === 'modal' && showModel.value);
 
-const teleportTarget = computed(() =>
-  props.type === 'modal' ? dialogContainer.value : undefined,
-);
+const teleportTarget = computed(() => (props.type === 'modal' ? dialogContainer.value : undefined));
 
 const showOverlayWatchHandle = watch(showModel, (showOverlay) => {
   showWatchHandle.pause();

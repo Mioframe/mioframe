@@ -1,8 +1,8 @@
 <script setup lang="ts">
 const { is = 'div', type = 'list' } = defineProps<{
-  is?: 'ul' | 'div';
-  type?: 'list' | 'grid';
-  transition?: boolean;
+  is?: 'ul' | 'div' | undefined;
+  type?: 'list' | 'grid' | undefined;
+  transition?: boolean | undefined;
 }>();
 
 defineSlots<{

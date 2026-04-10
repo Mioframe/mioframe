@@ -37,15 +37,11 @@ const { deleteDocument } = useRepository(path);
 
 const { state: documentDescription } = useDocument(path, documentId);
 
-const documentName = computed(
-  () => documentDescription.value?.name ?? 'unknown',
-);
+const documentName = computed(() => documentDescription.value?.name ?? 'unknown');
 
 const headline = computed(() => `Remove "${documentName.value}"?`);
 
-const supportingText = computed(
-  () => `Are you sure you want to remove "${documentName.value}"?`,
-);
+const supportingText = computed(() => `Are you sure you want to remove "${documentName.value}"?`);
 </script>
 
 <template>

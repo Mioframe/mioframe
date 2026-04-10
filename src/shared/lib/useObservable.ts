@@ -1,5 +1,5 @@
 import { tryOnScopeDispose } from '@vueuse/core';
-import { firstValueFrom, timeout, type Observable } from 'rxjs';
+import { firstValueFrom, timeout, type Observable, type Observer } from 'rxjs';
 import type { Promisable } from 'type-fest';
 import { readonly, shallowRef } from 'vue';
 
@@ -10,9 +10,7 @@ import { readonly, shallowRef } from 'vue';
  * @param observable RxJS Observable<T> to adapt
  * @returns Reactive source object with subscribe and fetch methods
  */
-export const fromObservable = <T>(
-  $observable: Observable<T>,
-): ObservableSource<T> => {
+export const fromObservable = <T>($observable: Observable<T>): ObservableSource<T> => {
   return {
     /**
      * Subscribes to the Observable with optional event handlers.
@@ -33,11 +31,18 @@ export const fromObservable = <T>(
       error?: (err: unknown) => void;
       complete?: () => void;
     }): Promisable<() => void> => {
-      const subscription = $observable.subscribe({
-        next,
-        error,
-        complete,
-      });
+      const observer: Partial<Observer<T>> = {};
+      if (next) {
+        observer.next = next;
+      }
+      if (error) {
+        observer.error = error;
+      }
+      if (complete) {
+        observer.complete = complete;
+      }
+
+      const subscription = $observable.subscribe(observer);
 
       return () => {
         subscription.unsubscribe();
@@ -166,7 +171,6 @@ export function useObservable<T>(queryDef: ObservableSource<T>) {
     error.value = e;
     isLoading.value = false;
 
-    // eslint-disable-next-line no-console -- onError is a dedicated error handler that logs errors to the console for debugging purposes
     console.error(e);
   };
 

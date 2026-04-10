@@ -16,11 +16,11 @@ const props = withDefaults(
      */
     headline: string;
     supportingText: string;
-    type?: 'basic' | 'full-screen';
-    cancelLabel?: string;
+    type?: 'basic' | 'full-screen' | undefined;
+    cancelLabel?: string | undefined;
     applyLabel: string;
-    hasCancelAction?: boolean;
-    loading?: boolean | number;
+    hasCancelAction?: boolean | undefined;
+    loading?: boolean | number | undefined;
     class?: unknown;
   }>(),
   { cancelLabel: 'Cancel', type: 'basic' },
@@ -108,11 +108,7 @@ useOnEscapeKeyStacked(() => {
     :aria-labelledby="dialogTitleId"
     :aria-hidden="ariaHidden"
   >
-    <form
-      ref="formEl"
-      class="md md-dialog__container"
-      @submit.prevent="onSubmit"
-    >
+    <form ref="formEl" class="md md-dialog__container" @submit.prevent="onSubmit">
       <div v-if="!!slots.icon" class="md-dialog__icon">
         <slot name="icon" />
       </div>
@@ -130,19 +126,9 @@ useOnEscapeKeyStacked(() => {
       </div>
 
       <div class="md-dialog__actions">
-        <MDButton
-          v-if="hasCancelAction"
-          :label="cancelLabel"
-          color="text"
-          @click="onCancel"
-        />
+        <MDButton v-if="hasCancelAction" :label="cancelLabel" color="text" @click="onCancel" />
 
-        <MDButton
-          :label="applyLabel"
-          :loading="loading"
-          color="text"
-          form-action="submit"
-        />
+        <MDButton :label="applyLabel" :loading="loading" color="text" form-action="submit" />
       </div>
     </form>
   </dialog>

@@ -1,9 +1,7 @@
 <script
   setup
   lang="ts"
-  generic="
-    T extends { headline: string; key: PropertyKey; supportingText?: string }
-  "
+  generic="T extends { headline: string; key: PropertyKey; supportingText?: string }"
 >
 import { computed } from 'vue';
 import MDListContainer from './MDListContainer.vue';
@@ -11,8 +9,8 @@ import MDListItem from './MDListItem.vue';
 
 const { list, isItemButton } = defineProps<{
   list: T[];
-  type?: 'list' | 'grid';
-  isItemButton?: boolean;
+  type?: 'list' | 'grid' | undefined;
+  isItemButton?: boolean | undefined;
 }>();
 
 const emit = defineEmits<{
@@ -31,13 +29,9 @@ const onClickItem = (item: T, index: number) => {
   emit('clickItem', item, index);
 };
 
-const itemTag = computed((): 'button' | 'li' | 'a' | 'div' =>
-  isItemButton ? 'button' : 'li',
-);
+const itemTag = computed((): 'button' | 'li' | 'a' | 'div' => (isItemButton ? 'button' : 'li'));
 
-const containerTag = computed((): 'ul' | 'div' =>
-  itemTag.value === 'li' ? 'ul' : 'div',
-);
+const containerTag = computed((): 'ul' | 'div' => (itemTag.value === 'li' ? 'ul' : 'div'));
 </script>
 
 <template>

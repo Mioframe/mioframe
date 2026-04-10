@@ -15,11 +15,7 @@
  * moveArrayValue(arr, -1, 0); // arr becomes [5, 2, 3, 4, 1]
  * ```
  */
-export const moveArrayValue = (
-  arr: unknown[],
-  fromIndex: number,
-  toIndex: number,
-) => {
+export const moveArrayValue = (arr: unknown[], fromIndex: number, toIndex: number) => {
   const len = arr.length;
 
   const normalizeIndex = (index: number): number => {

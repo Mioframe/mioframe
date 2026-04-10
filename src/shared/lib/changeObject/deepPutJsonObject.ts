@@ -21,9 +21,7 @@ export const deepPutJsonObject = <S extends object>(
   const { trimString = false } = options;
 
   if (!Object.is(target, source)) {
-    const targetKeys = new Set<string | number | symbol>(
-      keys(target).reverse(),
-    );
+    const targetKeys = new Set<string | number | symbol>(keys(target).reverse());
 
     keys(source).forEach((sourceKey) => {
       targetKeys.delete(sourceKey);
@@ -34,10 +32,7 @@ export const deepPutJsonObject = <S extends object>(
           if (isUndefined(sourceValue)) {
             // eslint-disable-next-line @typescript-eslint/no-dynamic-delete -- `undefined` is not a valid JSON data type
             delete target[sourceKey];
-          } else if (
-            isUnknownRecord(targetValue) &&
-            isUnknownRecord(sourceValue)
-          ) {
+          } else if (isUnknownRecord(targetValue) && isUnknownRecord(sourceValue)) {
             deepPutJsonObject(targetValue, sourceValue, options);
           } else if (trimString && isString(sourceValue)) {
             target[sourceKey] = sourceValue.trim();

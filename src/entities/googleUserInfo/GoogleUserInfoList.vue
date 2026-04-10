@@ -12,11 +12,7 @@ defineSlots<{
 
 <template>
   <MDListContainer is="div">
-    <GoogleUserInfoListItem
-      v-for="email in sessions"
-      :key="email"
-      :email="email"
-    />
+    <GoogleUserInfoListItem v-for="email in sessions" :key="email" :email="email" />
 
     <slot name="after" />
   </MDListContainer>

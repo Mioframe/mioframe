@@ -1,15 +1,21 @@
+// TSConfig for tooling modules that run in Node.js.
 {
+  "extends": "@tsconfig/node24/tsconfig.json",
+  "include": [
+    "vite.config.*",
+    "vitest.config.*",
+    "cypress.config.*",
+    "pwa-assets.config.*",
+    "eslint.config.*"
+  ],
   "compilerOptions": {
     "composite": true,
     "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.node.tsbuildinfo",
-    "skipLibCheck": true,
-    "module": "ESNext",
+    "module": "preserve",
     "moduleResolution": "bundler",
-    "allowSyntheticDefaultImports": true,
-    "strict": true,
+    "types": ["node"],
     "noEmit": true,
-    "strictNullChecks": true
-  },
-  "include": ["**/*.mjs", "**/*.ts"],
-  "exclude": ["src/*", "cypress/*"]
+    "resolveJsonModule": true,
+    "allowSyntheticDefaultImports": true
+  }
 }

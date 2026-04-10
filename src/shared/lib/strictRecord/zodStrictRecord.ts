@@ -16,10 +16,7 @@ export const zodStrictRecord = <K extends string, V>(
       forEach(data, (value, key) => {
         const { success: successKey, data: parsedKey } = safeParse(zodKey, key);
         if (successKey) {
-          const { success: successValue, data: parsedValue } = safeParse(
-            zodValue,
-            value,
-          );
+          const { success: successValue, data: parsedValue } = safeParse(zodValue, value);
           if (successValue) {
             Object.assign(newObj, { [parsedKey]: parsedValue });
           }

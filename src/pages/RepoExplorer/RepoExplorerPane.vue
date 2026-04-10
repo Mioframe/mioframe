@@ -116,19 +116,16 @@ const hasGoogleDriveRecovery = computed(
 );
 
 const fallbackErrorHeadline = computed(() =>
-  directoryErrorMessage.value
-    ? 'Directory read error'
-    : 'Repository read error',
+  directoryErrorMessage.value ? 'Directory read error' : 'Repository read error',
 );
 
 const fallbackErrorMessage = computed(
   () => directoryErrorMessage.value ?? repositoryErrorMessage.value,
 );
 
-const { isRetryAuthorizationLoading, onRetryAuthorization } =
-  useGoogleDriveRecovery({
-    path: directoryPath,
-  });
+const { isRetryAuthorizationLoading, onRetryAuthorization } = useGoogleDriveRecovery({
+  path: directoryPath,
+});
 
 const onClickReturnHome = async () => {
   await open('home', {}, { additionalPanes: 0, replace: true });
@@ -155,11 +152,7 @@ const onClickReturnHome = async () => {
     />
 
     <div class="document-explorer-widget__scrollable-content">
-      <MDListContainer
-        is="div"
-        v-if="directoryPath"
-        class="document-explorer-widget__content-list"
-      >
+      <MDListContainer is="div" v-if="directoryPath" class="document-explorer-widget__content-list">
         <CFRDocumentMDListItem
           is="button"
           v-for="docId in documentIdList"
@@ -170,10 +163,7 @@ const onClickReturnHome = async () => {
           @click="onClickDocument(docId)"
         >
           <template #trailingIcon>
-            <DocumentContextButton
-              :directory-path="directoryPath"
-              :document-id="docId"
-            />
+            <DocumentContextButton :directory-path="directoryPath" :document-id="docId" />
           </template>
         </CFRDocumentMDListItem>
 
@@ -189,11 +179,7 @@ const onClickReturnHome = async () => {
               @click="onRetryAuthorization"
             />
 
-            <MDButton
-              label="Return Home"
-              color="text"
-              @click="onClickReturnHome"
-            />
+            <MDButton label="Return Home" color="text" @click="onClickReturnHome" />
           </template>
         </GoogleDriveAccessRecoveryState>
 
@@ -204,10 +190,7 @@ const onClickReturnHome = async () => {
           :supporting-text="fallbackErrorMessage"
         >
           <template #icon>
-            <MDSymbol
-              name="error"
-              class="document-explorer-widget__error-icon"
-            />
+            <MDSymbol name="error" class="document-explorer-widget__error-icon" />
           </template>
         </MDEmptyState>
 

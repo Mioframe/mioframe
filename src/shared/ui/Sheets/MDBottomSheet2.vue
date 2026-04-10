@@ -11,7 +11,7 @@ const props = withDefaults(
      * unique label for screen readers and navigation
      */
     label: string;
-    class?: string;
+    class?: string | undefined;
   }>(),
   {},
 );
@@ -35,8 +35,8 @@ const sheetContainer = useTemplateRef<MaybeElement>('sheetContainer');
 
 const scrollPosition = shallowRef<number>();
 
-watch(scrollPosition, (scrollPosition) => {
-  if (scrollPosition === 0) {
+watch(scrollPosition, (nextScrollPosition) => {
+  if (nextScrollPosition === 0) {
     emit('closed');
   }
 });

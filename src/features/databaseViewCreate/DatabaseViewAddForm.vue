@@ -43,11 +43,7 @@ const onCancel = () => {
       <div class="control">
         <div class="select">
           <select v-model="formState.layout" required>
-            <option
-              v-for="(value, key) in DB_VIEW_LAYOUT"
-              :key="key"
-              :value="value"
-            >
+            <option v-for="(value, key) in DB_VIEW_LAYOUT" :key="key" :value="value">
               {{ value }}
             </option>
           </select>

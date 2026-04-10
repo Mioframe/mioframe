@@ -1,13 +1,7 @@
-<script
-  setup
-  lang="ts"
-  generic="O extends Array<unknown> | ReadonlyArray<unknown>"
->
-import type { ValueOf } from 'type-fest';
-
+<script setup lang="ts" generic="O extends readonly unknown[]">
 defineProps<{ label: string; options: O }>();
 
-const value = defineModel<ValueOf<O>>({ required: true });
+const value = defineModel<O[number]>({ required: true });
 </script>
 
 <template>

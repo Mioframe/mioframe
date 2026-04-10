@@ -1,25 +1,17 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { BehaviorSubject } from 'rxjs';
-import {
-  FSNodeType,
-  VfsEventSource,
-  VfsEventType,
-} from '@shared/lib/virtualFileSystem';
+import { FSNodeType, VfsEventSource, VfsEventType } from '@shared/lib/virtualFileSystem';
 import type { GDriveFileMeta } from '@shared/lib/googleDrive/api';
 
-const {
-  createMock,
-  downloadMock,
-  getGFileMetaListMock,
-  updateMock,
-  uploadMock,
-} = vi.hoisted(() => ({
-  createMock: vi.fn(),
-  downloadMock: vi.fn(),
-  getGFileMetaListMock: vi.fn(),
-  updateMock: vi.fn(),
-  uploadMock: vi.fn(),
-}));
+const { createMock, downloadMock, getGFileMetaListMock, updateMock, uploadMock } = vi.hoisted(
+  () => ({
+    createMock: vi.fn(),
+    downloadMock: vi.fn(),
+    getGFileMetaListMock: vi.fn(),
+    updateMock: vi.fn(),
+    uploadMock: vi.fn(),
+  }),
+);
 
 vi.mock('@shared/lib/googleDrive/api', () => ({
   create: createMock,
@@ -126,12 +118,8 @@ describe('googleDriveFileSystemProvider', () => {
 
     await provider.createDirectory('/user@example.com/App Data/new-folder');
 
-    const staleRead = await provider.readDirectory(
-      '/user@example.com/App Data',
-    );
-    const freshRead = await provider.readDirectory(
-      '/user@example.com/App Data',
-    );
+    const staleRead = await provider.readDirectory('/user@example.com/App Data');
+    const freshRead = await provider.readDirectory('/user@example.com/App Data');
 
     expect(createMock).toHaveBeenCalledWith(
       {

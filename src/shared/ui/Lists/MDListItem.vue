@@ -1,17 +1,14 @@
-<script
-  setup
-  lang="ts"
-  generic="Is extends 'button' | 'a' | 'div' | 'li' = 'div'"
->
+<script setup lang="ts" generic="Is extends 'button' | 'a' | 'div' | 'li' = 'div'">
 import { MDState } from '../State';
 
 const { is = 'div' } = defineProps<{
   headline: string;
-  supportingText?: string;
-  is?: Is;
-  type?: Is extends 'button' ? 'button' | 'submit' | 'reset' : false;
+  supportingText?: string | undefined;
+  is?: Is | undefined;
+  type?: (Is extends 'button' ? 'button' | 'submit' | 'reset' : false) | undefined;
+  itemRole?: string | undefined;
 
-  draggable?: boolean;
+  draggable?: boolean | undefined;
 }>();
 
 const slots = defineSlots<{
@@ -39,27 +36,21 @@ const onClick = (e: MouseEvent) => {
     :draggable="draggable"
     :type="type"
     :disable-ripple="is === 'li'"
-    role="listitem"
+    :role="itemRole ?? 'listitem'"
     @click="onClick"
   >
     <span v-if="!!slots.leadingIcon" class="md-list-item__leading-icon">
       <slot name="leadingIcon" />
     </span>
 
-    <span
-      v-if="!!slots.leadingAvatarContainer"
-      class="md-list-item__leading-avatar-container"
-    >
+    <span v-if="!!slots.leadingAvatarContainer" class="md-list-item__leading-avatar-container">
       <slot name="leadingAvatarContainer" />
     </span>
 
     <div class="md-list-item__body">
       <span class="md-list-item__headline">{{ headline }}</span>
 
-      <div
-        v-if="supportingText || !!slots.supportingText"
-        class="md-list-item__supporting-text"
-      >
+      <div v-if="supportingText || !!slots.supportingText" class="md-list-item__supporting-text">
         <slot name="supportingText">{{ supportingText }}</slot>
       </div>
     </div>
@@ -76,14 +67,8 @@ const onClick = (e: MouseEvent) => {
   --min-height: var(--md-list-item-min-height, 56px);
   --border-radius: var(--md-list-item-border-radius, 0px);
 
-  --md-container-color: var(
-    --md-list-item-container-color,
-    var(--md-sys-color-surface)
-  );
-  --md-content-color: var(
-    --md-list-item-content-color,
-    var(--md-sys-color-on-surface)
-  );
+  --md-container-color: var(--md-list-item-container-color, var(--md-sys-color-surface));
+  --md-content-color: var(--md-list-item-content-color, var(--md-sys-color-on-surface));
 
   --md-target-offset: 0px;
   --md-focus-indicator-offset: -2px;
@@ -102,14 +87,8 @@ const onClick = (e: MouseEvent) => {
   text-align: start;
 
   &:first-child {
-    border-top-right-radius: max(
-      var(--border-radius),
-      var(--md-list-container-border-radius, 0px)
-    );
-    border-top-left-radius: max(
-      var(--border-radius),
-      var(--md-list-container-border-radius, 0px)
-    );
+    border-top-right-radius: max(var(--border-radius), var(--md-list-container-border-radius, 0px));
+    border-top-left-radius: max(var(--border-radius), var(--md-list-container-border-radius, 0px));
   }
 
   &:last-child {

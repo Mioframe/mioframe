@@ -16,10 +16,7 @@ import type { AMDocumentId } from '@shared/lib/automerge';
 import { MDState } from '@shared/ui/State';
 import type { MaybeElement } from '@vueuse/core';
 import { useDatabaseProperty } from '@entity/databaseProperty';
-import {
-  useDatabaseEffectiveValue,
-  useDatabaseStoredValue,
-} from '@entity/databaseValue';
+import { useDatabaseEffectiveValue, useDatabaseStoredValue } from '@entity/databaseValue';
 
 const props = withDefaults(
   defineProps<{
@@ -32,13 +29,7 @@ const props = withDefaults(
   {},
 );
 
-const {
-  propertyId,
-  documentId,
-  directoryPath: path,
-  itemId,
-  class: propClass,
-} = toRefs(props);
+const { propertyId, documentId, directoryPath: path, itemId, class: propClass } = toRefs(props);
 
 const emit = defineEmits<{
   'update:property': [property: DatabaseUnknownProperty];
@@ -46,18 +37,8 @@ const emit = defineEmits<{
 
 const { property } = useDatabaseProperty(path, documentId, propertyId);
 
-const { value } = useDatabaseEffectiveValue(
-  path,
-  documentId,
-  itemId,
-  propertyId,
-);
-const { post: postValue } = useDatabaseStoredValue(
-  path,
-  documentId,
-  itemId,
-  propertyId,
-);
+const { value } = useDatabaseEffectiveValue(path, documentId, itemId, propertyId);
+const { post: postValue } = useDatabaseStoredValue(path, documentId, itemId, propertyId);
 
 const showEditForm = ref(false);
 

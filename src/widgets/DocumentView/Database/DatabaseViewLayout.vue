@@ -1,9 +1,6 @@
 <script setup lang="ts">
 import type { AMDocumentId } from '@shared/lib/automerge';
-import type {
-  DatabaseItemId,
-  DatabasePropertyId,
-} from '@shared/lib/databaseDocument';
+import type { DatabaseItemId, DatabasePropertyId } from '@shared/lib/databaseDocument';
 import { type DatabaseViewId } from '@shared/lib/databaseDocument';
 import { computed, toRefs, useTemplateRef } from 'vue';
 import ValueInline from './ValueInline.vue';
@@ -16,15 +13,12 @@ import DatabasePropertyBlock from '@entity/databaseProperty/DatabasePropertyBloc
 const props = defineProps<{
   path: string;
   documentId: AMDocumentId;
-  viewId?: DatabaseViewId;
-  itemIdQuery?: ItemIdQuery;
+  viewId?: DatabaseViewId | undefined;
+  itemIdQuery?: ItemIdQuery | undefined;
 }>();
 
 const slots = defineSlots<{
-  value: (p: {
-    itemId: DatabaseItemId;
-    propertyId: DatabasePropertyId;
-  }) => unknown;
+  value: (p: { itemId: DatabaseItemId; propertyId: DatabasePropertyId }) => unknown;
   action: (p: { itemId: DatabaseItemId }) => unknown;
   actionHead: () => unknown;
   after: () => unknown;
@@ -58,11 +52,7 @@ const { propertiesIdList } = useDatabaseProperties(path, documentId);
     :properties="propertiesIdList"
   >
     <template #property="{ propertyId }">
-      <DatabasePropertyBlock
-        :path="path"
-        :document-id="documentId"
-        :property-id="propertyId"
-      />
+      <DatabasePropertyBlock :path="path" :document-id="documentId" :property-id="propertyId" />
     </template>
 
     <template #value="{ itemId, propertyId }">

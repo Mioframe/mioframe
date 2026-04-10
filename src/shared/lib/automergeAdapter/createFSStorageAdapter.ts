@@ -9,10 +9,7 @@ import { zodIs } from '../validateZodScheme';
 import { find, from, toArray } from 'ix/Ix.asynciterable';
 import { filter, map } from 'ix/Ix.asynciterable.operators';
 import { isNil, isString } from 'es-toolkit';
-import type {
-  AMChunk,
-  AMStorageAdapterInterface,
-} from '../automerge/automergeTypes';
+import type { AMChunk, AMStorageAdapterInterface } from '../automerge/automergeTypes';
 import { toString } from 'es-toolkit/compat';
 import { partialKeyToFileName } from './partialKeyToFileName';
 import { fileNameToPartialKey } from './fileNameToPartialKey';
@@ -34,9 +31,7 @@ export const createFSStorageAdapter = (
     return undefined;
   };
 
-  const load = async (
-    key: PartialStorageKey,
-  ): Promise<Uint8Array | undefined> => {
+  const load = async (key: PartialStorageKey): Promise<Uint8Array | undefined> => {
     const entry = await findEntry(key);
 
     if (entry && 'read' in entry) {
@@ -55,7 +50,6 @@ export const createFSStorageAdapter = (
     }
 
     if (!('writeFile' in directory)) {
-      // eslint-disable-next-line no-console -- warning about missing writeFile capability
       console.warn(
         "FSStorageAdapter couldn't write new file, because a directory don't have writeFile method",
       );
@@ -68,20 +62,11 @@ export const createFSStorageAdapter = (
     const entry = await findEntry(key);
 
     if (entry && 'remove' in entry) {
-      if (!('remove' in entry)) {
-        // eslint-disable-next-line no-console -- warning about missing remove capability
-        console.warn(
-          "FSStorageAdapter couldn't remove the entry, because this entry don't have remove method",
-        );
-      }
-
-      await entry.remove?.();
+      await entry.remove();
     }
   };
 
-  const loadRange = async (
-    keyPrefix: PartialStorageKey,
-  ): Promise<AMChunk[]> => {
+  const loadRange = async (keyPrefix: PartialStorageKey): Promise<AMChunk[]> => {
     const maybePartialAutomergeFileName = keyPrefix.join(KEY_SEPARATE);
 
     const keyPrefixString: PartialAutomergeFileName | undefined = zodIs(
@@ -140,14 +125,9 @@ export const createFSStorageAdapter = (
         isString(name) &&
         name.startsWith(keyPrefixString)
       ) {
-        if (!('remove' in entry)) {
-          // eslint-disable-next-line no-console -- warning about missing remove capability
-          console.warn(
-            "FSStorageAdapter couldn't remove the entry, because this entry don't have remove method",
-          );
+        if ('remove' in entry) {
+          await entry.remove();
         }
-
-        await entry.remove?.();
       }
     });
   };

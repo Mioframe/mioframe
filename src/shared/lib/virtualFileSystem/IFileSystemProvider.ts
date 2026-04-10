@@ -20,11 +20,11 @@ export enum FSNodeType {
 
 export interface FSNodeCapabilities {
   /** Flag that explicitly allows deletion from the file system */
-  canDelete?: boolean;
+  canDelete?: boolean | undefined;
   /** Flag that explicitly allows renaming or moving the entry */
-  canChangePath?: boolean;
+  canChangePath?: boolean | undefined;
   /** Flag that explicitly allows mutating directory contents */
-  canEditChildren?: boolean;
+  canEditChildren?: boolean | undefined;
 }
 
 /**
@@ -34,13 +34,13 @@ export interface FSNodeStat {
   /** Resource type */
   type: FSNodeType;
   /** Size in bytes */
-  size?: number;
+  size?: number | undefined;
   /** Creation time */
-  creationTime?: number;
+  creationTime?: number | undefined;
   /** Last modification time */
-  modificationTime?: number;
+  modificationTime?: number | undefined;
   /** Provider-reported capabilities for the node */
-  capabilities?: FSNodeCapabilities;
+  capabilities?: FSNodeCapabilities | undefined;
 }
 
 /**
@@ -79,11 +79,7 @@ export interface IFileSystemProvider {
    * @param options Write options
    * @returns Promise that resolves after the write operation completes
    */
-  writeFile(
-    path: string,
-    content: FileContent,
-    options: WriteOptions,
-  ): Promise<void>;
+  writeFile(path: string, content: FileContent, options: WriteOptions): Promise<void>;
 
   /**
    * Read directory contents
@@ -120,5 +116,5 @@ export interface IFileSystemProvider {
    * @param callback Callback function to handle events
    * @returns Function to cancel watching
    */
-  watch?(callback: (event: VfsEvent) => void): () => void;
+  watch?(callback: (event: VfsEvent) => void): (() => void) | undefined;
 }

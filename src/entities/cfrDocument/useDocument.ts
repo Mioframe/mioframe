@@ -4,10 +4,7 @@ import { computed, toValue, type Ref } from 'vue';
 import { useObservableQuery } from '@shared/lib/useObservableQuery';
 import { isUndefined } from 'es-toolkit';
 
-export const useDocument = (
-  path: Ref<string>,
-  documentId: Ref<AMDocumentId | undefined>,
-) => {
+export const useDocument = (path: Ref<string>, documentId: Ref<AMDocumentId | undefined>) => {
   const {
     documents: { put, patch, documentDescription },
   } = useMainServiceClient();

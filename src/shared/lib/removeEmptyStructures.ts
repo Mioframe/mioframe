@@ -23,12 +23,7 @@ import { keys } from './objectKeys';
  * ```
  */
 export const removeEmptyStructures = <T>(data: T): T | undefined => {
-  if (
-    data === null ||
-    typeof data !== 'object' ||
-    data instanceof Date ||
-    data instanceof RegExp
-  ) {
+  if (data === null || typeof data !== 'object' || data instanceof Date || data instanceof RegExp) {
     return data;
   }
 

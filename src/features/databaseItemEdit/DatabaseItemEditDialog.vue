@@ -7,25 +7,18 @@ import {
   type DatabasePropertyId,
 } from '@shared/lib/databaseDocument';
 import type { AMDocumentId } from '@shared/lib/automerge';
-import {
-  useDatabaseEffectiveItem,
-  useDatabaseStoredItem,
-} from '@entity/databaseItem';
+import { useDatabaseEffectiveItem, useDatabaseStoredItem } from '@entity/databaseItem';
 import { useDatabaseProperties } from '@entity/databaseProperty';
-import {
-  createItemEditPayload,
-  createItemEditState,
-  syncItemEditState,
-} from './itemEditState';
+import { createItemEditPayload, createItemEditState, syncItemEditState } from './itemEditState';
 
 const props = withDefaults(
   defineProps<{
     directoryPath: string;
     documentId: AMDocumentId;
-    itemId?: DatabaseItemId;
-    headline?: string;
-    supportingText?: string;
-    applyLabel?: string;
+    itemId?: DatabaseItemId | undefined;
+    headline?: string | undefined;
+    supportingText?: string | undefined;
+    applyLabel?: string | undefined;
   }>(),
   {
     applyLabel: 'Apply',
@@ -34,14 +27,7 @@ const props = withDefaults(
   },
 );
 
-const {
-  directoryPath,
-  documentId,
-  applyLabel,
-  headline,
-  supportingText,
-  itemId,
-} = toRefs(props);
+const { directoryPath, documentId, applyLabel, headline, supportingText, itemId } = toRefs(props);
 
 const emit = defineEmits<{
   updated: [item: DatabaseItem];
@@ -66,14 +52,12 @@ const { item: currentItemState, postItem } = useDatabaseStoredItem(
   documentId,
   itemId,
 );
-const { effectiveItem } = useDatabaseEffectiveItem(
+const { effectiveItem } = useDatabaseEffectiveItem(directoryPath, documentId, itemId);
+
+const { propertiesIdList, isLoading: isLoadingProperties } = useDatabaseProperties(
   directoryPath,
   documentId,
-  itemId,
 );
-
-const { propertiesIdList: propertiesIdList, isLoading: isLoadingProperties } =
-  useDatabaseProperties(directoryPath, documentId);
 
 watch(itemId, () => {
   touchedPropertyIdSet.value = new Set();
@@ -83,10 +67,7 @@ watch(
   [effectiveItem, propertiesIdList, touchedPropertyIdSet],
   () => {
     if (!touchedPropertyIdSet.value.size) {
-      itemState.value = createItemEditState(
-        effectiveItem.value,
-        propertiesIdList.value,
-      );
+      itemState.value = createItemEditState(effectiveItem.value, propertiesIdList.value);
       return;
     }
 

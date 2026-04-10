@@ -8,7 +8,7 @@ defineProps<{
 }>();
 
 interface PartialRelationProperty extends Omit<RelationProperty, 'relation'> {
-  relation?: Relation;
+  relation?: Relation | undefined;
 }
 
 const propertyModel = defineModel<PartialRelationProperty>('property', {
@@ -25,9 +25,6 @@ const relationModel = computed({
 
 <template>
   <section>
-    <DatabaseRelationPropertyField
-      v-model:model-value="relationModel"
-      :path="directoryPath"
-    />
+    <DatabaseRelationPropertyField v-model:model-value="relationModel" :path="directoryPath" />
   </section>
 </template>

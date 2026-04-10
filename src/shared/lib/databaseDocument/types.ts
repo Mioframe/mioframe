@@ -1,11 +1,4 @@
-import {
-  extend,
-  literal,
-  object,
-  partial,
-  type core,
-  type output,
-} from 'zod/v4-mini';
+import { extend, literal, object, partial, type core, type output } from 'zod/v4-mini';
 import type { DatabaseState } from './migrations/versions';
 export * from './migrations/versions';
 import { zodDatabaseState } from './migrations/versions';
@@ -24,10 +17,7 @@ export const zodDatabaseExtensionBodyDocument = object({
   body: zodDatabaseState, // todo: может сменить body на другое свойство? отдельное свойство для db
 });
 
-export const zodDatabaseTypeDocument = extend(
-  zodCFRDocumentContent,
-  zodDatabaseType.shape,
-);
+export const zodDatabaseTypeDocument = extend(zodCFRDocumentContent, zodDatabaseType.shape);
 
 export type DatabaseTypeDocument = output<typeof zodDatabaseTypeDocument>;
 
@@ -36,9 +26,7 @@ export const zodDatabaseDocumentWithContent = extend(
   partial(zodDatabaseExtensionBodyDocument).shape,
 );
 
-export type DatabaseDocumentWithContent = output<
-  typeof zodDatabaseDocumentWithContent
->;
+export type DatabaseDocumentWithContent = output<typeof zodDatabaseDocumentWithContent>;
 
 export type MutationFn = (doc: CFRDocumentContent) => unknown;
 

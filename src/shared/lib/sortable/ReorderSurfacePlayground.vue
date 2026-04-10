@@ -5,8 +5,7 @@ import { randomInt } from 'es-toolkit';
 import { vReorderItem } from './reorderDirectives';
 import { useReorderSurface } from './useReorderSurface';
 
-const randomColor = (): string =>
-  `rgb(${randomInt(255)} ${randomInt(255)} ${randomInt(255)})`;
+const randomColor = (): string => `rgb(${randomInt(255)} ${randomInt(255)} ${randomInt(255)})`;
 
 const list = ref(
   new Array(40).fill(0).map((_, index) => ({
@@ -21,9 +20,7 @@ const state = reactive({
 });
 
 const containerEl = useTemplateRef('containerEl');
-const itemMap = computed(
-  () => new Map(list.value.map((item) => [String(item.id), item])),
-);
+const itemMap = computed(() => new Map(list.value.map((item) => [String(item.id), item])));
 
 const { draggedId, displayItemIdList } = useReorderSurface(containerEl, {
   itemIdList: computed(() => list.value.map((item) => String(item.id))),

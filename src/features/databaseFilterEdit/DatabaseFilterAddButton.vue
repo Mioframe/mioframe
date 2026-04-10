@@ -1,22 +1,13 @@
 <script setup lang="ts">
-import {
-  useDatabaseProperties,
-  useDatabaseProperty,
-} from '@entity/databaseProperty';
+import { useDatabaseProperties, useDatabaseProperty } from '@entity/databaseProperty';
 import type { AMDocumentId } from '@shared/lib/automerge';
 import { MDButton, MDIconButton } from '@shared/ui/Button';
 import { MDMenuBase } from '@shared/ui/Menu';
 import type { MaybeElement } from '@vueuse/core';
 import { computed, shallowRef, toRefs, useTemplateRef } from 'vue';
 import PropertyFilterMenuItem from './PropertyFilterMenuItem.vue';
-import type {
-  DatabasePropertyId,
-  UNARY_FILTER_OPERATOR,
-} from '@shared/lib/databaseDocument';
-import {
-  LOGICAL_FILTER_OPERATOR,
-  zodDatabasePropertyId,
-} from '@shared/lib/databaseDocument';
+import type { DatabasePropertyId, UNARY_FILTER_OPERATOR } from '@shared/lib/databaseDocument';
+import { LOGICAL_FILTER_OPERATOR, zodDatabasePropertyId } from '@shared/lib/databaseDocument';
 import type { FilterPath } from './types';
 import { zodIs } from '@shared/lib/validateZodScheme';
 import { MDSymbol } from '@shared/ui/Icon';
@@ -135,11 +126,7 @@ const label = computed(() => {
     @click="onClickAdd"
   />
 
-  <MDMenuBase
-    v-if="propertiesIdList"
-    v-model:show="showMenu"
-    :target="addButtonEl"
-  >
+  <MDMenuBase v-if="propertiesIdList" v-model:show="showMenu" :target="addButtonEl">
     <LogicalOperatorFilterMenuItemList
       :path="directoryPath"
       :document-id="documentId"
@@ -147,10 +134,7 @@ const label = computed(() => {
       @click-unary="onClickUnary"
     />
 
-    <UnaryOperatorFilterMenuItemList
-      v-if="parentPropertyId"
-      @click-unary="onClickUnary"
-    />
+    <UnaryOperatorFilterMenuItemList v-if="parentPropertyId" @click-unary="onClickUnary" />
 
     <template v-if="!parentPropertyId">
       <template v-for="propertyId in propertiesIdList" :key="propertyId">

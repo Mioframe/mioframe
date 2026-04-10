@@ -18,9 +18,7 @@ export const createGDriveEntry = (
     }
 
     if (!('removeByName' in parentEntry)) {
-      throw new Error(
-        `don\'t have "removeByName" method in ${pathToString(parentEntry.path)}`,
-      );
+      throw new Error(`don't have "removeByName" method in ${pathToString(parentEntry.path)}`);
     }
     await parentEntry.removeByName(currentName);
   };

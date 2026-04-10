@@ -1,10 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { generatePropertyId } from '@shared/lib/databaseDocument';
-import {
-  createItemEditPayload,
-  createItemEditState,
-  syncItemEditState,
-} from './itemEditState';
+import { createItemEditPayload, createItemEditState, syncItemEditState } from './itemEditState';
 
 describe('itemEditState', () => {
   it('seeds missing fields from effective defaults', () => {

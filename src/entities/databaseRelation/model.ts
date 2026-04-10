@@ -17,12 +17,9 @@ export const zodRelation = object({
 
 export type Relation = output<typeof zodRelation>;
 
-export const zodRelationProperty = extend(
-  zodGeneralProperty(literal(PROPERTY_TYPE_RELATION)),
-  {
-    relation: zodRelation,
-  },
-);
+export const zodRelationProperty = extend(zodGeneralProperty(literal(PROPERTY_TYPE_RELATION)), {
+  relation: zodRelation,
+});
 
 export type RelationProperty = output<typeof zodRelationProperty>;
 

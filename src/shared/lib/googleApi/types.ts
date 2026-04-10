@@ -3,10 +3,7 @@
 import { z } from 'zod/v4-mini';
 
 export type AdvancedGDrive = typeof gapi.client.drive & {
-  uploadFile: (
-    fileId: string,
-    body: FileSystemWriteChunkType,
-  ) => Promise<unknown>;
+  uploadFile: (fileId: string, body: FileSystemWriteChunkType) => Promise<unknown>;
   downloadFile: (fileId: string, name?: string) => Promise<File>;
 };
 

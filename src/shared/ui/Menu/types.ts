@@ -1,7 +1,7 @@
 export interface BaseMenuButton {
   label: string;
   key: string | number;
-  symbolName?: string;
+  symbolName?: string | undefined;
 }
 
 export interface MenuButtonDescription<
@@ -10,6 +10,4 @@ export interface MenuButtonDescription<
   submenu?: MenuButtonList<T>;
 }
 
-export type MenuButtonList<
-  T extends MenuButtonDescription<T> = BaseMenuButton,
-> = T[];
+export type MenuButtonList<T extends MenuButtonDescription<T> = BaseMenuButton> = T[];

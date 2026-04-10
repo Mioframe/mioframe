@@ -8,10 +8,7 @@ export const defineId = <P extends string = typeof ANY_ID>(
   prefix: P = ANY_ID as P,
   uidLength = 21,
 ) => {
-  const zodId = templateLiteral([
-    literal(prefix),
-    string().check(minLength(1)),
-  ]);
+  const zodId = templateLiteral([literal(prefix), string().check(minLength(1))]);
 
   return {
     generateId: (): `${P}${string}` => generateId(prefix, uidLength),

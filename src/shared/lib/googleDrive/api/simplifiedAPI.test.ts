@@ -73,8 +73,7 @@ describe('simplifiedAPI cache invalidation', () => {
 
     vi.stubGlobal('fetch', fetchMock);
 
-    const { clearCaches, create, getGFileMetaList } =
-      await import('./simplifiedAPI');
+    const { clearCaches, create, getGFileMetaList } = await import('./simplifiedAPI');
 
     clearCaches();
 
@@ -137,8 +136,7 @@ describe('simplifiedAPI cache invalidation', () => {
 
     vi.stubGlobal('fetch', fetchMock);
 
-    const { clearCaches, create, getGFileMetaList } =
-      await import('./simplifiedAPI');
+    const { clearCaches, create, getGFileMetaList } = await import('./simplifiedAPI');
 
     clearCaches();
 
@@ -216,8 +214,7 @@ describe('simplifiedAPI cache invalidation', () => {
 
     vi.stubGlobal('fetch', fetchMock);
 
-    const { clearCaches, create, getGFileMetaList } =
-      await import('./simplifiedAPI');
+    const { clearCaches, create, getGFileMetaList } = await import('./simplifiedAPI');
 
     clearCaches();
 
@@ -288,8 +285,7 @@ describe('simplifiedAPI cache invalidation', () => {
 
     vi.stubGlobal('fetch', fetchMock);
 
-    const { clearCaches, create, getGFileMetaList } =
-      await import('./simplifiedAPI');
+    const { clearCaches, create, getGFileMetaList } = await import('./simplifiedAPI');
 
     clearCaches();
 
@@ -432,8 +428,7 @@ describe('simplifiedAPI cache invalidation', () => {
 
     vi.stubGlobal('fetch', fetchMock);
 
-    const { clearCaches, create, getGFileMetaList } =
-      await import('./simplifiedAPI');
+    const { clearCaches, create, getGFileMetaList } = await import('./simplifiedAPI');
 
     clearCaches();
 
@@ -586,8 +581,7 @@ describe('simplifiedAPI cache invalidation', () => {
 
     vi.stubGlobal('fetch', fetchMock);
 
-    const { clearCaches, create, getGFileMetaList } =
-      await import('./simplifiedAPI');
+    const { clearCaches, create, getGFileMetaList } = await import('./simplifiedAPI');
 
     clearCaches();
 

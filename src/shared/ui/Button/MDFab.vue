@@ -7,17 +7,18 @@ import { MDSymbol } from '../Icon';
 
 const props = withDefaults(
   defineProps<{
-    size?: 'medium' | 'large';
+    size?: 'medium' | 'large' | undefined;
     color?:
       | 'primary'
       | 'secondary'
       | 'tertiary'
       | 'tonal-primary'
       | 'tonal-secondary'
-      | 'tonal-tertiary';
+      | 'tonal-tertiary'
+      | undefined;
     tooltip: string;
-    loading?: number | boolean;
-    mdSymbol?: string;
+    loading?: number | boolean | undefined;
+    mdSymbol?: string | undefined;
   }>(),
   { color: 'primary' },
 );

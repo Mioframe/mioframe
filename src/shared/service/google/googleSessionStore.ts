@@ -14,10 +14,7 @@ const zodSession = z.object({
   scopes: z.array(zodGOOGLE_SCOPE),
 });
 
-const zodStore = z.catch(
-  z.record(z.email(), z.catch(z.optional(zodSession), undefined)),
-  {},
-);
+const zodStore = z.catch(z.record(z.email(), z.catch(z.optional(zodSession), undefined)), {});
 
 type Store = z.output<typeof zodStore>;
 
@@ -42,8 +39,8 @@ const setupGoogleSessionStore = () => {
   const getSessionList = () => firstValueFrom($sessions);
 
   const get = async (email: string) => {
-    const store = await getStore();
-    return store[email];
+    const sessionStore = await getStore();
+    return sessionStore[email];
   };
 
   return {

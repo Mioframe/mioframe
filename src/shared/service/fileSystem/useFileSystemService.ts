@@ -5,21 +5,12 @@ import {
   type DeviceFileRecord,
 } from '@shared/lib/deviceFileSystemProvider';
 import { zodIs } from '@shared/lib/validateZodScheme';
-import type {
-  FSNodeStat,
-  IFileSystemProvider,
-} from '@shared/lib/virtualFileSystem';
+import type { FSNodeStat, IFileSystemProvider } from '@shared/lib/virtualFileSystem';
 import { VirtualFileSystem, PathUtils } from '@shared/lib/virtualFileSystem';
 import { MemoryFileSystem } from '@shared/lib/virtualFileSystem/MemoryFileSystem';
 import { OPFSName } from '../directories';
 import { createGlobalState } from '@vueuse/core';
-import {
-  BehaviorSubject,
-  distinctUntilChanged,
-  map,
-  Observable,
-  shareReplay,
-} from 'rxjs';
+import { BehaviorSubject, distinctUntilChanged, map, Observable, shareReplay } from 'rxjs';
 import { isEqual, sortBy } from 'es-toolkit';
 import { defineObservableQuery } from '@shared/lib/useObservableQuery';
 import { defineCacheObservable } from '@shared/lib/defineCacheObservable';
@@ -39,8 +30,7 @@ export type { DeviceFileRecord };
 const setupFileSystemService = () => {
   const vfs = new VirtualFileSystem();
   const deviceFileSystemProvider = DeviceFileSystemProvider();
-  const { getRecordList, updateRecordList } =
-    useFileSystemDirectoryHandleService();
+  const { getRecordList, updateRecordList } = useFileSystemDirectoryHandleService();
   const activeDeviceFiles$ = new BehaviorSubject<DeviceFileRecord[]>([]);
   const deviceFilesPath = PathUtils.join('/', DEVICE_FILES_ROOT_NAME);
 
@@ -59,7 +49,7 @@ const setupFileSystemService = () => {
       path,
     }: {
       path: string;
-      options?: ReadDirectoryOptions;
+      options?: ReadDirectoryOptions | undefined;
     }) =>
       new Observable<[string, FSNodeStat][] | Error>((subscriber) => {
         const fetchEntries = async () => {
@@ -93,9 +83,7 @@ const setupFileSystemService = () => {
             return payload;
           }
           if (hideAutomergeFiles) {
-            return payload.filter(
-              ([name]) => !zodIs(name, zodAutomergeFileName),
-            );
+            return payload.filter(([name]) => !zodIs(name, zodAutomergeFileName));
           }
           return payload;
         }),
@@ -139,16 +127,20 @@ const setupFileSystemService = () => {
 
   const hydrateDeviceDirectories = async () => {
     const records = await getRecordList();
+    const permissionStates = await Promise.all(
+      records.map(async (record) => ({
+        permissionState: await record.handle.queryPermission?.({
+          mode: 'readwrite',
+        }),
+        record,
+      })),
+    );
 
-    for (const record of records) {
-      const permissionState = await record.handle.queryPermission?.({
-        mode: 'readwrite',
-      });
-
+    permissionStates.forEach(({ permissionState, record }) => {
       if (permissionState === 'granted') {
         deviceFileSystemProvider.upsertRecord(record);
       }
-    }
+    });
 
     syncActiveDeviceFiles();
   };
@@ -174,8 +166,7 @@ const setupFileSystemService = () => {
 
   const move = (oldPath: string, newPath: string) => vfs.move(oldPath, newPath);
 
-  const remove = (path: string, recursive?: boolean) =>
-    vfs.delete(path, recursive);
+  const remove = (path: string, recursive?: boolean) => vfs.delete(path, recursive);
 
   const getUniqueDeviceDirectoryName = (
     baseName: string,
@@ -183,9 +174,7 @@ const setupFileSystemService = () => {
     ignoredRecord?: PersistedDeviceDirectoryRecord,
   ) => {
     const isTaken = (name: string) =>
-      records.some(
-        (record) => record !== ignoredRecord && record.name === name,
-      );
+      records.some((record) => record !== ignoredRecord && record.name === name);
 
     if (!isTaken(baseName)) {
       return baseName;
@@ -204,13 +193,11 @@ const setupFileSystemService = () => {
     records: PersistedDeviceDirectoryRecord[],
     handle: FileSystemDirectoryHandle,
   ) => {
-    for (const record of records) {
-      if (await record.handle.isSameEntry(handle)) {
-        return record;
-      }
-    }
+    const matchedIndex = (
+      await Promise.all(records.map((record) => record.handle.isSameEntry(handle)))
+    ).findIndex(Boolean);
 
-    return undefined;
+    return matchedIndex >= 0 ? records[matchedIndex] : undefined;
   };
 
   const addDeviceDirectory = async (
@@ -228,9 +215,7 @@ const setupFileSystemService = () => {
     } satisfies PersistedDeviceDirectoryRecord;
 
     const nextRecords = existingRecord
-      ? records.map((record) =>
-          record === existingRecord ? nextPersistedRecord : record,
-        )
+      ? records.map((record) => (record === existingRecord ? nextPersistedRecord : record))
       : [...records, nextPersistedRecord];
 
     await updateRecordList(nextRecords);

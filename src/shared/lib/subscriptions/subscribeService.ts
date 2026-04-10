@@ -14,9 +14,7 @@ import {
  * @param source
  * @returns
  */
-export const defineSubscribeService = <T>(
-  source: ComputedGetter<T>,
-): SubscribeService<T> => {
+export const defineSubscribeService = <T>(source: ComputedGetter<T>): SubscribeService<T> => {
   const initialSubscribeService = (
     cb: (v: T) => unknown,
     options?: WatchOptions,
@@ -60,11 +58,7 @@ export const defineSubscribeByKeyService =
 export const defineSubscribeByQueryService = <Q extends unknown[], R>(
   getter: (...query: Q) => R,
 ): SubscribeByQueryService<Q, R> => {
-  const initialService = (
-    query: Q,
-    cb: (v: R) => unknown,
-    options: WatchOptions,
-  ): WatchHandle => {
+  const initialService = (query: Q, cb: (v: R) => unknown, options: WatchOptions): WatchHandle => {
     const subscribeService = defineSubscribeService(() => getter(...query));
 
     return subscribeService(cb, options);

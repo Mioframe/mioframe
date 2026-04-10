@@ -1,15 +1,7 @@
 export { loadGAPI } from './loadGAPI';
 export { loadGDrive } from './loadGDrive';
-export {
-  GoogleClientConfigError,
-  zodGoogleClientConfigError,
-} from './googleClientConfigError';
-export {
-  loadGoogle,
-  loadGsi,
-  requestAccessToken,
-  revokeGoogleAccess,
-} from './loadGsi';
+export { GoogleClientConfigError, zodGoogleClientConfigError } from './googleClientConfigError';
+export { loadGoogle, loadGsi, requestAccessToken, revokeGoogleAccess } from './loadGsi';
 export { loadOauth2 } from './loadOauth2';
 export {
   zodGOOGLE_SCOPE,

@@ -1,13 +1,6 @@
 import { createGlobalState, tryOnScopeDispose } from '@vueuse/core';
 import type { ComputedRef, EffectScope, MaybeRefOrGetter } from 'vue';
-import {
-  effectScope,
-  watch,
-  computed,
-  shallowRef,
-  toValue,
-  getCurrentScope,
-} from 'vue';
+import { effectScope, watch, computed, shallowRef, toValue, getCurrentScope } from 'vue';
 type ScopePool<K extends WeakKey, V> = {
   /** Увеличить счетчик использования и получить состояние */
   retain: (key: K) => V;
@@ -44,15 +37,10 @@ export const defineScopePool = <K extends WeakKey, V extends object>(
   createGlobalState((): ScopePool<K, V> => {
     const { maxRefsWarnThreshold = 100, debug = false } = options;
 
-    const cacheMap = new WeakMap<
-      K,
-      { scope: EffectScope; state: V; refs: number }
-    >();
-    const finalizationRegistry = new FinalizationRegistry(
-      (scope: EffectScope) => {
-        scope.stop();
-      },
-    );
+    const cacheMap = new WeakMap<K, { scope: EffectScope; state: V; refs: number }>();
+    const finalizationRegistry = new FinalizationRegistry((scope: EffectScope) => {
+      scope.stop();
+    });
 
     const retain = (key: K): V => {
       let entry = cacheMap.get(key);
@@ -78,7 +66,6 @@ export const defineScopePool = <K extends WeakKey, V extends object>(
 
       // ⚠️ WARNING 2: Подозрительно много подписчиков
       if (entry.refs > maxRefsWarnThreshold) {
-        // eslint-disable-next-line no-console -- Memory Leak Detected
         console.warn(
           `[ScopePool] High ref count warning! Key has ${entry.refs} active references.`,
           `Check for memory leaks or missing release() calls. Key:`,
@@ -103,7 +90,6 @@ export const defineScopePool = <K extends WeakKey, V extends object>(
         finalizationRegistry.unregister(key);
 
         if (debug) {
-          // eslint-disable-next-line no-console -- for debug
           console.debug('[ScopePool] Disposed scope for key', key);
         }
       }
@@ -122,7 +108,6 @@ export const usePoolState = <K extends WeakKey, V>(
 ): ComputedRef<V | undefined> => {
   // ⚠️ WARNING 1: Вызов вне реактивного контекста
   if (!getCurrentScope()) {
-    // eslint-disable-next-line no-console -- Memory Leak Detected
     console.warn(
       '[ScopePool] Memory Leak Detected: "usePoolState" called outside of an active EffectScope.',
       'Cleanup handlers will never run. Use "pool.retain/release" manually or wrap this in an "effectScope".',

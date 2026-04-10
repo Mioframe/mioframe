@@ -95,15 +95,9 @@ const onClickItemContextBtn = async (
   }
 };
 
-const { propertiesIdList, patch: putProperty } = useDatabaseProperties(
-  path,
-  documentId,
-);
+const { propertiesIdList, patch: putProperty } = useDatabaseProperties(path, documentId);
 
-const onUpdateProperty = async (
-  propertyId: DatabasePropertyId,
-  v: DatabaseUnknownProperty,
-) => {
+const onUpdateProperty = async (propertyId: DatabasePropertyId, v: DatabaseUnknownProperty) => {
   await putProperty(path.value, documentId.value, propertyId, v);
 };
 
@@ -124,8 +118,7 @@ const databaseViewRef = useTemplateRef('databaseViewRef');
       <h2 :class="MD_SYS_TYPESCALE.headline.large">Missing properties.</h2>
 
       <section :class="MD_SYS_TYPESCALE.body.medium">
-        To start working with the database, create at least one property using
-        the toolbar.
+        To start working with the database, create at least one property using the toolbar.
       </section>
 
       <DatabaseToolbar

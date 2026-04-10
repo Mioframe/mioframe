@@ -22,9 +22,7 @@ const ONE_SECOND = 1000;
 const LONG_TASK_THRESHOLD = 50; // ms
 const MAX_LONG_TASKS = 5;
 
-const onceInitialRef = <T>(
-  callback: (valueRef: Ref<T | undefined>) => unknown,
-) => {
+const onceInitialRef = <T>(callback: (valueRef: Ref<T | undefined>) => unknown) => {
   const value = ref<T>();
 
   const onceInit = once(() => {

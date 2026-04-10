@@ -24,20 +24,12 @@ const onClosed = () => {
 </script>
 
 <template>
-  <MDBottomSheet
-    class="db-filters-sheet"
-    label="Database Filters Sheet"
-    @closed="onClosed"
-  >
+  <MDBottomSheet class="db-filters-sheet" label="Database Filters Sheet" @closed="onClosed">
     <MDBottomSheetSection class="db-filters-sheet__section">
       <span :class="MD_SYS_TYPESCALE.title.small">Filters</span>
 
       <div class="db-filters-sheet__filters">
-        <DatabaseFilterForm
-          :path="directoryPath"
-          :document-id="documentId"
-          :view-id="viewId"
-        >
+        <DatabaseFilterForm :path="directoryPath" :document-id="documentId" :view-id="viewId">
           <template #value="{ value }">
             <span>{{ value }}</span>
             <!--

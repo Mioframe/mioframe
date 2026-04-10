@@ -1,9 +1,9 @@
 <script setup lang="ts">
 defineProps<{ label: string }>();
 
-const value = defineModel<string>({
+const value = defineModel<string | undefined>({
   set: (v) => {
-    if (v.length < 1) {
+    if (!v || v.length < 1) {
       return undefined;
     }
     return v;

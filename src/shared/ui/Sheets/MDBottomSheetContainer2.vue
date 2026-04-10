@@ -5,11 +5,7 @@ import { MDState } from '../State';
 import { useScroll } from '@shared/lib/scrollTo';
 import { useModalAriaHidden } from '../AriaHidden';
 import { usePaneContainer } from '../Layout/useMDContainer';
-import {
-  tryOnBeforeUnmount,
-  useElementBounding,
-  useElementSize,
-} from '@vueuse/core';
+import { tryOnBeforeUnmount, useElementBounding, useElementSize } from '@vueuse/core';
 import { useFocusTrap } from '@vueuse/integrations/useFocusTrap';
 import { useOnEscapeKeyStackedWhen } from '@shared/lib/useOnEscapeKeyStacked';
 import { useOnBackNavigationStackedWhen } from '@shared/lib/onBackNavigation';
@@ -20,7 +16,7 @@ defineSlots<{
 
 const openModel = defineModel<boolean>('open', { required: true });
 
-const scrollPositionModel = defineModel<number>('scrollPosition');
+const scrollPositionModel = defineModel<number | undefined>('scrollPosition');
 
 const containerEl = useTemplateRef<HTMLElement>('containerEl');
 
@@ -48,10 +44,10 @@ watch(position, ({ scrollTop }) => {
 
 watch(
   [openModel, bodyHeight, bodyEl],
-  ([open, bodyHeight, bodyEl]) => {
-    if (bodyHeight && bodyEl) {
+  ([open, currentBodyHeight, currentBodyEl]) => {
+    if (currentBodyHeight && currentBodyEl) {
       if (open) {
-        const top = Math.min(bodyHeight, bodyEl.offsetTop);
+        const top = Math.min(currentBodyHeight, currentBodyEl.offsetTop);
         void scrollTo({
           top,
         });
@@ -73,12 +69,9 @@ const onClickScrim = () => {
 
 const ariaHidden = useModalAriaHidden();
 
-const { activate: lockFocus, deactivate: unlockFocus } = useFocusTrap(
-  containerEl,
-  {
-    allowOutsideClick: true,
-  },
-);
+const { activate: lockFocus, deactivate: unlockFocus } = useFocusTrap(containerEl, {
+  allowOutsideClick: true,
+});
 
 watch(
   [openModel, containerEl],
@@ -140,11 +133,7 @@ useOnBackNavigationStackedWhen(openModel, () => {
   >
     <div ref="bodyEl" class="md md-bottom-sheet__body" :style="bodyStyle">
       <div class="md-bottom-sheet__header">
-        <MDState
-          is="button"
-          class="md-bottom-sheet__drag-handle"
-          @click="onClickDragHandle"
-        >
+        <MDState is="button" class="md-bottom-sheet__drag-handle" @click="onClickDragHandle">
           <span class="md-bottom-sheet__drag-pill" />
         </MDState>
       </div>
@@ -220,9 +209,7 @@ useOnBackNavigationStackedWhen(openModel, () => {
 
   &__drag-pill {
     display: block;
-    background-color: rgb(
-      from var(--md-sys-color-on-surface-variant) r g b / 0.4
-    );
+    background-color: rgb(from var(--md-sys-color-on-surface-variant) r g b / 0.4);
     width: 32px;
     height: 4px;
     border-radius: 2px;
@@ -239,18 +226,14 @@ useOnBackNavigationStackedWhen(openModel, () => {
 
     &-leave-active {
       &::before {
-        transition-timing-function: var(
-          var(--md-sys-motion-easing-emphasized-accelerate)
-        );
+        transition-timing-function: var(var(--md-sys-motion-easing-emphasized-accelerate));
         transition-duration: var(--md-sys-motion-duration-short4);
       }
     }
 
     &-enter-active {
       &::before {
-        transition-timing-function: var(
-          var(--md-sys-motion-easing-emphasized-decelerate)
-        );
+        transition-timing-function: var(var(--md-sys-motion-easing-emphasized-decelerate));
         transition-duration: var(--md-sys-motion-duration-long2);
       }
     }

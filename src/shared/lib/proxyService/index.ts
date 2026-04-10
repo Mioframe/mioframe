@@ -7,7 +7,4 @@
 
 export { createClient, createService } from './proxyService';
 export type { ClientObject } from './types';
-export {
-  defineCustomErrorTransformer,
-  defineTransformer,
-} from './defineTransformer';
+export { defineCustomErrorTransformer, defineTransformer } from './defineTransformer';

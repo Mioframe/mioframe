@@ -56,10 +56,7 @@ defineSlots<{
     :supporting-text="supportingText"
   >
     <template #icon>
-      <MDSymbol
-        name="account_circle"
-        class="google-drive-access-recovery-state__icon"
-      />
+      <MDSymbol name="account_circle" class="google-drive-access-recovery-state__icon" />
     </template>
 
     <template #actions>

@@ -42,8 +42,7 @@ const onApply = async () => {
       await createDirectory(PathUtils.join(path.value, directoryName.value));
       emit('created', directoryName.value);
     } catch (error) {
-      errorText.value =
-        error instanceof Error ? error.message : 'unknown error';
+      errorText.value = error instanceof Error ? error.message : 'unknown error';
     } finally {
       loading.value = false;
     }
@@ -51,6 +50,13 @@ const onApply = async () => {
 };
 
 const directoryName = ref<string>();
+
+const directoryNameModel = computed<string | undefined>({
+  get: () => directoryName.value,
+  set: (name) => {
+    directoryName.value = name;
+  },
+});
 
 const resetState = () => {
   directoryName.value = undefined;
@@ -77,7 +83,7 @@ const onCancel = () => {
     @cancel="onCancel"
   >
     <MDTextField
-      v-model="directoryName"
+      v-model="directoryNameModel"
       label-text="Folder's name"
       :error="!!errorText"
       :supporting-text="errorText"

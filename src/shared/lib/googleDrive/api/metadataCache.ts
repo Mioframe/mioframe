@@ -19,9 +19,7 @@ export class MetadataCache {
 
   invalidateByFolderId(folderId: string): void {
     const searchPatterns =
-      folderId === 'sharedWithMe'
-        ? ['sharedWithMe = true']
-        : [`'${folderId}' in parents`];
+      folderId === 'sharedWithMe' ? ['sharedWithMe = true'] : [`'${folderId}' in parents`];
 
     const keysToDelete: string[] = [];
 
