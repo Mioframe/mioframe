@@ -5,7 +5,10 @@ import {
   revokeGoogleAccess,
 } from '@shared/lib/googleApi';
 import { useMainServiceClient } from '@shared/service';
-import type { UserinfoGet } from './useGoogleSessions';
+
+type UserinfoGet = (request: {
+  oauth_token?: string | undefined;
+}) => Promise<Awaited<ReturnType<gapi.client.oauth2.UserinfoResource['get']>>>;
 
 export const setupGoogleSessions = (clientId: string) => {
   const {

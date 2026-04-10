@@ -8,7 +8,7 @@ import { setupPlayground } from '@shared/lib/playground';
 import { playgroundPages } from './playgroundPages';
 import { backNavigationHandler } from '@shared/lib/onBackNavigation';
 import { setupStackNavigation } from '@page/routes';
-import { setupGoogleSessions } from '@entity/googleUserInfo';
+import { setupGoogleSessions } from '@entity/googleSession';
 import { GOOGLE_CLIENT_ID } from '@shared/config';
 
 /**

@@ -7,14 +7,42 @@ import {
 import { googleDriveFileSystemProvider } from '@shared/lib/googleDriveFileSystemProvider';
 import type { GoogleAuthError } from './errors';
 import { GoogleAuthErrorCode } from './errors';
+import { BehaviorSubject } from 'rxjs';
+import type { GoogleSessionProfile } from './googleSessionProfile';
 
 const requestTokenMock = vi.fn();
 const userinfoGetMock = vi.fn();
 const revokeMock = vi.fn();
-const updateMock = vi.fn();
-const getMock = vi.fn();
-const getStoreMock = vi.fn();
-const clearMock = vi.fn();
+const updateSessionStoreMock = vi.fn();
+const getSessionMock = vi.fn();
+const getSessionStoreMock = vi.fn();
+const clearSessionStoreMock = vi.fn();
+
+type SessionRecord = {
+  accessToken: string;
+  expiresAt: number;
+  scopes: string[];
+  profile?: GoogleSessionProfile;
+};
+
+type SessionStore = Record<string, SessionRecord | undefined>;
+
+let sessionStoreValue: SessionStore;
+let sessionsSubject: BehaviorSubject<string[]>;
+let sessionStoreSubject: BehaviorSubject<SessionStore>;
+
+const syncSessionsSubject = () => {
+  sessionsSubject.next(Object.keys(sessionStoreValue));
+};
+
+const syncSessionStoreSubject = () => {
+  sessionStoreSubject.next(sessionStoreValue);
+};
+
+const flushMicrotasks = async () => {
+  await Promise.resolve();
+  await Promise.resolve();
+};
 
 vi.mock('../fileSystem', () => ({
   useFileSystemService: () => ({
@@ -30,17 +58,13 @@ vi.mock('@shared/lib/googleDriveFileSystemProvider', () => ({
 }));
 
 vi.mock('./googleSessionStore', () => ({
-  useGoogleSessionStore: () => ({
-    getStore: getStoreMock,
-    update: updateMock,
-    get: getMock,
-    clear: clearMock,
-    $sessions: {
-      subscribe: vi.fn(() => ({
-        unsubscribe: () => undefined,
-      })),
-      pipe: vi.fn(),
-    },
+  useGoogleSessionStoreService: () => ({
+    $store: sessionStoreSubject.asObservable(),
+    getStore: getSessionStoreMock,
+    update: updateSessionStoreMock,
+    get: getSessionMock,
+    clear: clearSessionStoreMock,
+    $sessions: sessionsSubject.asObservable(),
   }),
 }));
 
@@ -50,15 +74,28 @@ describe('useGoogleService', () => {
     requestTokenMock.mockReset();
     userinfoGetMock.mockReset();
     revokeMock.mockReset();
-    updateMock.mockReset();
-    getMock.mockReset();
-    getStoreMock.mockReset();
-    clearMock.mockReset();
+    updateSessionStoreMock.mockReset();
+    getSessionMock.mockReset();
+    getSessionStoreMock.mockReset();
+    clearSessionStoreMock.mockReset();
 
-    getStoreMock.mockResolvedValue({});
-    getMock.mockResolvedValue(undefined);
-    updateMock.mockResolvedValue(undefined);
-    clearMock.mockResolvedValue(undefined);
+    sessionStoreValue = {};
+    sessionsSubject = new BehaviorSubject<string[]>([]);
+    sessionStoreSubject = new BehaviorSubject<SessionStore>({});
+
+    getSessionStoreMock.mockImplementation(() => sessionStoreValue);
+    updateSessionStoreMock.mockImplementation((nextStore: SessionStore) => {
+      sessionStoreValue = nextStore;
+      syncSessionsSubject();
+      syncSessionStoreSubject();
+    });
+    getSessionMock.mockImplementation((email: string) => sessionStoreValue[email]);
+    clearSessionStoreMock.mockImplementation(() => {
+      sessionStoreValue = {};
+      syncSessionsSubject();
+      syncSessionStoreSubject();
+    });
+
     revokeMock.mockResolvedValue(undefined);
     userinfoGetMock.mockResolvedValue({
       result: { email: 'user@example.com' },
@@ -75,6 +112,8 @@ describe('useGoogleService', () => {
       userinfoGet: userinfoGetMock,
       revoke: revokeMock,
     });
+
+    await flushMicrotasks();
 
     return service;
   };
@@ -102,14 +141,104 @@ describe('useGoogleService', () => {
     expect(firstToken).toBe('access-token');
     expect(secondToken).toBe('access-token');
     expect(requestTokenMock).toHaveBeenCalledTimes(1);
-    expect(updateMock).toHaveBeenCalledTimes(1);
-    expect(updateMock).toHaveBeenCalledWith({
+    expect(updateSessionStoreMock).toHaveBeenCalledTimes(1);
+    expect(updateSessionStoreMock).toHaveBeenCalledWith({
       'user@example.com': {
         accessToken: 'access-token',
         expiresAt: expect.any(Number),
+        profile: {
+          email: 'user@example.com',
+        },
         scopes: [DRIVE_GOOGLE_SCOPE.all, USER_INFO_GOOGLE_SCOPE.userinfoEmail],
       },
     });
+  });
+
+  it('returns cached session list data without requesting a token', async () => {
+    sessionStoreValue = {
+      'user@example.com': {
+        accessToken: 'expired-token',
+        expiresAt: Date.now() - 1000,
+        profile: {
+          email: 'user@example.com',
+          name: 'User Example',
+          picture: 'https://example.com/avatar.png',
+        },
+        scopes: [DRIVE_GOOGLE_SCOPE.all],
+      },
+    };
+    syncSessionsSubject();
+    syncSessionStoreSubject();
+
+    const service = await createService();
+
+    await expect(service.sessionList.fetch()).resolves.toEqual([
+      {
+        email: 'user@example.com',
+        profile: {
+          email: 'user@example.com',
+          name: 'User Example',
+          picture: 'https://example.com/avatar.png',
+        },
+      },
+    ]);
+    expect(requestTokenMock).not.toHaveBeenCalled();
+    expect(userinfoGetMock).not.toHaveBeenCalled();
+  });
+
+  it('returns a fallback profile for sessions without cached profile data', async () => {
+    sessionStoreValue = {
+      'user@example.com': {
+        accessToken: 'expired-token',
+        expiresAt: Date.now() - 1000,
+        scopes: [DRIVE_GOOGLE_SCOPE.all],
+      },
+    };
+    syncSessionsSubject();
+    syncSessionStoreSubject();
+
+    const service = await createService();
+
+    await expect(service.sessionList.fetch()).resolves.toEqual([
+      {
+        email: 'user@example.com',
+        profile: {
+          email: 'user@example.com',
+        },
+      },
+    ]);
+    expect(requestTokenMock).not.toHaveBeenCalled();
+    expect(userinfoGetMock).not.toHaveBeenCalled();
+    expect(updateSessionStoreMock).not.toHaveBeenCalled();
+  });
+
+  it('ignores malformed session entries in the derived session list', async () => {
+    sessionStoreValue = {
+      'broken@example.com': undefined,
+      'user@example.com': {
+        accessToken: 'expired-token',
+        expiresAt: Date.now() - 1000,
+        profile: {
+          email: 'user@example.com',
+          name: 'User Example',
+        },
+        scopes: [DRIVE_GOOGLE_SCOPE.all],
+      },
+    };
+    syncSessionsSubject();
+    syncSessionStoreSubject();
+
+    const service = await createService();
+
+    await expect(service.sessionList.fetch()).resolves.toEqual([
+      {
+        email: 'user@example.com',
+        profile: {
+          email: 'user@example.com',
+          name: 'User Example',
+        },
+      },
+    ]);
   });
 
   it('does not deduplicate requests for different scope sets', async () => {
@@ -138,11 +267,19 @@ describe('useGoogleService', () => {
   });
 
   it('reuses a valid cached token without calling Google API', async () => {
-    getMock.mockResolvedValue({
-      accessToken: 'cached-token',
-      expiresAt: Date.now() + 10 * 60 * 1000,
-      scopes: [DRIVE_GOOGLE_SCOPE.all],
-    });
+    sessionStoreValue = {
+      'user@example.com': {
+        accessToken: 'cached-token',
+        expiresAt: Date.now() + 10 * 60 * 1000,
+        profile: {
+          email: 'user@example.com',
+          name: 'User Example',
+        },
+        scopes: [DRIVE_GOOGLE_SCOPE.all, USER_INFO_GOOGLE_SCOPE.userinfoEmail],
+      },
+    };
+    syncSessionsSubject();
+    syncSessionStoreSubject();
 
     const service = await createService();
 
@@ -150,7 +287,46 @@ describe('useGoogleService', () => {
 
     expect(token).toBe('cached-token');
     expect(requestTokenMock).not.toHaveBeenCalled();
-    expect(updateMock).not.toHaveBeenCalled();
+    expect(updateSessionStoreMock).not.toHaveBeenCalled();
+  });
+
+  it('requests a fresh token when cached scopes do not cover the required scopes', async () => {
+    sessionStoreValue = {
+      'user@example.com': {
+        accessToken: 'cached-token',
+        expiresAt: Date.now() + 10 * 60 * 1000,
+        profile: {
+          email: 'user@example.com',
+          name: 'User Example',
+        },
+        scopes: [USER_INFO_GOOGLE_SCOPE.userinfoEmail],
+      },
+    };
+    syncSessionsSubject();
+    syncSessionStoreSubject();
+    requestTokenMock.mockResolvedValueOnce({
+      access_token: 'fresh-token',
+      expires_in: '3600',
+      scope: `${DRIVE_GOOGLE_SCOPE.all} ${USER_INFO_GOOGLE_SCOPE.userinfoEmail}`,
+    });
+
+    const service = await createService();
+
+    const token = await service.requestToken([DRIVE_GOOGLE_SCOPE.all], 'user@example.com');
+
+    expect(token).toBe('fresh-token');
+    expect(requestTokenMock).toHaveBeenCalledTimes(1);
+    expect(updateSessionStoreMock).toHaveBeenCalledWith({
+      'user@example.com': {
+        accessToken: 'fresh-token',
+        expiresAt: expect.any(Number),
+        profile: {
+          email: 'user@example.com',
+          name: 'User Example',
+        },
+        scopes: [DRIVE_GOOGLE_SCOPE.all, USER_INFO_GOOGLE_SCOPE.userinfoEmail],
+      },
+    });
   });
 
   it('retries after a failed in-flight request', async () => {
@@ -194,21 +370,27 @@ describe('useGoogleService', () => {
     expect(requestTokenMock).toHaveBeenCalledTimes(2);
   });
 
-  it('deletes a session without revoking access', async () => {
-    getStoreMock.mockResolvedValue({
+  it('deletes a session without revoking access and removes it from session list', async () => {
+    sessionStoreValue = {
       'user@example.com': {
         accessToken: 'access-token',
         expiresAt: Date.now() + 1000,
+        profile: {
+          email: 'user@example.com',
+        },
         scopes: [DRIVE_GOOGLE_SCOPE.all],
       },
-    });
+    };
+    syncSessionsSubject();
+    syncSessionStoreSubject();
 
     const service = await createService();
 
     await service.deleteSession('user@example.com');
 
     expect(revokeMock).not.toHaveBeenCalled();
-    expect(updateMock).toHaveBeenCalledWith({});
+    expect(updateSessionStoreMock).toHaveBeenCalledWith({});
+    await expect(service.sessionList.fetch()).resolves.toEqual([]);
   });
 
   it('passes reactive sessions to the Google Drive provider', async () => {
@@ -220,37 +402,40 @@ describe('useGoogleService', () => {
       }),
       requestToken: expect.any(Function),
     });
-    expect(service.sessions).toBeDefined();
+    expect(service.sessionList).toBeDefined();
   });
 
-  it('revokes access and deletes the stored session', async () => {
-    getMock.mockResolvedValue({
-      accessToken: 'access-token',
-      expiresAt: Date.now() + 1000,
-      scopes: [DRIVE_GOOGLE_SCOPE.all],
-    });
-    getStoreMock.mockResolvedValue({
+  it('revokes access and removes the session from session list', async () => {
+    sessionStoreValue = {
       'user@example.com': {
         accessToken: 'access-token',
         expiresAt: Date.now() + 1000,
+        profile: {
+          email: 'user@example.com',
+        },
         scopes: [DRIVE_GOOGLE_SCOPE.all],
       },
-    });
+    };
+    syncSessionsSubject();
+    syncSessionStoreSubject();
 
     const service = await createService();
 
     await service.revokeAccess('user@example.com');
 
     expect(revokeMock).toHaveBeenCalledWith('access-token');
-    expect(updateMock).toHaveBeenCalledWith({});
+    expect(updateSessionStoreMock).toHaveBeenCalledWith({});
+    await expect(service.sessionList.fetch()).resolves.toEqual([]);
   });
 
   it('keeps the local session when revoke fails', async () => {
-    getMock.mockResolvedValue({
-      accessToken: 'access-token',
-      expiresAt: Date.now() + 1000,
-      scopes: [DRIVE_GOOGLE_SCOPE.all],
-    });
+    sessionStoreValue = {
+      'user@example.com': {
+        accessToken: 'access-token',
+        expiresAt: Date.now() + 1000,
+        scopes: [DRIVE_GOOGLE_SCOPE.all],
+      },
+    };
     revokeMock.mockRejectedValueOnce(new Error('revoke failed'));
 
     const service = await createService();
@@ -260,7 +445,7 @@ describe('useGoogleService', () => {
       email: 'user@example.com',
       name: 'GoogleAuthError',
     } satisfies Partial<GoogleAuthError>);
-    expect(updateMock).not.toHaveBeenCalled();
+    expect(updateSessionStoreMock).not.toHaveBeenCalled();
   });
 
   it('normalizes blocked popup errors', async () => {
@@ -303,12 +488,65 @@ describe('useGoogleService', () => {
       expectedEmail: 'user@example.com',
       name: 'GoogleAuthError',
     });
-    expect(updateMock).toHaveBeenCalledWith({
+    expect(updateSessionStoreMock).toHaveBeenCalledWith({
       'other@example.com': {
         accessToken: 'other-token',
         expiresAt: expect.any(Number),
+        profile: {
+          email: 'other@example.com',
+        },
         scopes: [DRIVE_GOOGLE_SCOPE.all, USER_INFO_GOOGLE_SCOPE.userinfoEmail],
       },
     });
+  });
+
+  it('merges new profile data into an existing session profile snapshot', async () => {
+    sessionStoreValue = {
+      'user@example.com': {
+        accessToken: 'expired-token',
+        expiresAt: Date.now() - 1000,
+        profile: {
+          email: 'user@example.com',
+          name: 'User Example',
+          picture: 'https://example.com/avatar.png',
+        },
+        scopes: [DRIVE_GOOGLE_SCOPE.all],
+      },
+    };
+    syncSessionsSubject();
+    syncSessionStoreSubject();
+    requestTokenMock.mockResolvedValueOnce({
+      access_token: 'access-token',
+      expires_in: '3600',
+      scope: `${DRIVE_GOOGLE_SCOPE.all} ${USER_INFO_GOOGLE_SCOPE.userinfoEmail}`,
+    });
+    userinfoGetMock.mockResolvedValueOnce({
+      result: { email: 'user@example.com' },
+    });
+
+    const service = await createService();
+
+    await service.requestToken([DRIVE_GOOGLE_SCOPE.all], 'user@example.com');
+
+    expect(updateSessionStoreMock).toHaveBeenLastCalledWith({
+      'user@example.com': {
+        accessToken: 'access-token',
+        expiresAt: expect.any(Number),
+        profile: {
+          email: 'user@example.com',
+          name: 'User Example',
+          picture: 'https://example.com/avatar.png',
+        },
+        scopes: [DRIVE_GOOGLE_SCOPE.all, USER_INFO_GOOGLE_SCOPE.userinfoEmail],
+      },
+    });
+  });
+
+  it('clears sessions', async () => {
+    const service = await createService();
+
+    await service.clear();
+
+    expect(clearSessionStoreMock).toHaveBeenCalledTimes(1);
   });
 });

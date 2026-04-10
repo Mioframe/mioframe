@@ -21,7 +21,7 @@ Beaver is a locally-oriented application for managing personal data, developed u
 ### Requirements
 
 - Node.js
-- pnpm
+- pnpm 10
 
 ### Installation
 
@@ -43,31 +43,59 @@ pnpm install
 pnpm dev
 ```
 
+Starts the local HTTPS Vite development server.
+
 ### Production Build
 
 ```bash
 pnpm build
+pnpm preview
 ```
 
 ### Running Tests
 
 ```bash
-pnpm cy:open
+# Vitest watch mode
+pnpm test
+
+# Vitest single run
+pnpm test:run
+
+# Vitest with coverage
+pnpm test:coverage
 ```
 
-## Linting
-
-This project uses ESLint for code linting and formatting. The following commands are available:
+For Cypress, start the matching server in a separate terminal and then open Cypress:
 
 ```bash
-# Run linter on all source files
-pnpm run lint
+# Preview server at https://localhost:4173
+pnpm preview
+pnpm cy:open
 
-# Run linter and automatically fix issues where possible
-pnpm run lint:fix
+# Dev server at https://localhost:5173
+pnpm dev
+pnpm cy:open:dev
 ```
 
-The linting configuration is based on a custom setup that includes rules for JavaScript, TypeScript, and Vue files.
+## Linting and Formatting
+
+This project uses `oxlint` and `eslint` for linting, and `oxfmt` for formatting. The following commands are available:
+
+```bash
+# Run the full lint pipeline
+pnpm lint
+
+# Run only oxlint
+pnpm lint:oxlint
+
+# Run only eslint
+pnpm lint:eslint
+
+# Format files with oxfmt
+pnpm format
+```
+
+For targeted fixes on touched files, prefer direct commands such as `pnpm exec eslint --fix <path ...>`, `pnpm exec oxlint <path ...>`, and `pnpm exec oxfmt <path ...>`.
 
 ## Implemented Features and Plans
 
