@@ -15,6 +15,7 @@ Applies to the whole repository unless a deeper `AGENTS.md` overrides it.
 
 - Keep changes in the layer that owns the behavior, and import through `index.ts` when a public entry point exists.
 - Preserve FSD boundaries: `pages` compose screens, `widgets` compose larger sections, `features` own user actions, `entities` own domain reads and derived state, and `shared` stays upper-layer-free.
+- Use `.project-memory/` for evidence-backed, project-local lessons or helper semantics that are too volatile, narrow, or implementation-shaped for `AGENTS.md`.
 - Verify third-party semantics from official docs or installed source before relying on ambiguous helpers, options, or return values. If the behavior is still unverified, say so.
 - Treat DOM parentage, scroll ownership, focus, teleport, and overlay wiring as concrete runtime contracts. Check the rendered hierarchy before moving wrappers or composition boundaries.
 - Keep the UI aligned with Material 3 expectations and optimize for mobile browsers first. Assume large datasets and low-end devices, and keep main-thread work bounded.
@@ -30,6 +31,7 @@ Applies to the whole repository unless a deeper `AGENTS.md` overrides it.
 - Do not pull dependencies upward against the intended layer direction.
 - Do not bypass entity or service APIs with direct storage access or ad hoc document mutation.
 - Do not duplicate schemas, type aliases, or constants across layers.
+- Do not put guesses, generic advice, or facts without project evidence into `.project-memory/`.
 - Do not push orchestration complexity into component props.
 - Do not treat desktop performance, hover, or precise pointer input as the default interaction model.
 - Do not use `AGENTS.md` as an architecture essay, a file dump, or a place for temporary notes.
@@ -55,4 +57,5 @@ Applies to the whole repository unless a deeper `AGENTS.md` overrides it.
 - Reserve the `$` suffix for raw RxJS observables.
 - Add a child `AGENTS.md` only when a directory has local invariants, blast-radius rules, or reproducible verification guidance that the parent cannot express cleanly.
 - Child `AGENTS.md` files should refine the parent rather than repeat it, and their `Contains` sections should describe stable responsibilities instead of the current file list.
+- Promote repeated `.project-memory/` findings into stronger artifacts such as `AGENTS.md`, tests, guards, adapters, migrations, or ADRs when the rule becomes stable enough to enforce there.
 - Update the `AGENTS.md` tree together with ownership, public API, dependency, or verification-boundary changes.
