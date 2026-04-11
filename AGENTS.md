@@ -36,6 +36,7 @@ This is a local-first personal data manager built around:
 - Verify third-party library semantics from official documentation or the library source before relying on a function, method, option, config field, or helper name in code changes, reviews, or comments.
 - If third-party behavior is not verified yet, state that it is unverified and do not present the behavior as established fact.
 - For ambiguous third-party APIs, record the exact signature, argument order, mutation or return behavior, and notable edge cases before changing project behavior or reviewing caller logic.
+- When reviewing or changing behavior that depends on DOM parentage, scrolling, focus, teleport, or overlay wiring, inspect the concrete rendered hierarchy in both the current code and the base implementation before concluding that a wrapper move is safe.
 - Treat the app as a native-like Material application. UI and UX decisions, including layout, motion, color, typography, components, interaction, navigation, overlay, focus, dismiss, and back-button behavior, should follow the latest Material 3 Expressive guidance as closely as the platform allows.
 - Optimize for mobile browsers first, including low-end devices. Treat large local datasets as a default scenario, keep memory and main-thread work bounded, prefer incremental loading and rendering over eager full-data work, and preserve touch-first interactions that feel native under constrained hardware.
 - Update schema, migrations, service contracts, and callers together for persistent-data changes.
@@ -115,6 +116,7 @@ This is a local-first personal data manager built around:
 - Do not bypass service/entity/composable APIs with direct mutations.
 - Do not duplicate schema contracts, type aliases, or constants across layers.
 - Do not infer third-party API semantics from naming alone. Names such as `isSubset`, `merge`, `includes`, `equals`, or `matches` are not evidence of signature or behavior.
+- Do not infer scroll ownership, parent-element wiring, or focus/overlay behavior from CSS class names or local intuition alone; verify which element actually scrolls and which DOM node a composable reads.
 - Do not push orchestration complexity into component props. If a component starts needing large coupled prop objects or many action callbacks, move the orchestration up a layer or split the component contract.
 - Do not perform immutable-style replacement of large live CRDT subtrees when a targeted in-place update or existing `put`/`patch` helper expresses the change more safely.
 - Do not assign an existing Automerge document object proxy as a new value anywhere in the same document.

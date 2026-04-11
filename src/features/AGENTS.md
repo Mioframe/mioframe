@@ -23,6 +23,7 @@ Inherits the rules from the root `AGENTS.md`. Applies to `src/features` and its 
 - Feature component contracts should still stay narrow. Compose entity data, service access, and mutation handlers inside the feature instead of exporting that complexity through deeply nested props.
 - Feature `use*` composable contracts should still stay narrow. Keep orchestration inside the feature and expose focused IDs, payloads, and explicit options instead of mixed service bundles or generic configuration records.
 - Name public methods returned from feature `use*` composables after the user action in the system, such as `addAccount`, `deleteSession`, or `submitForm`. Reserve the `on*` prefix for UI event handlers and callback bindings inside components.
+- Express menu availability and similar capability gating with small named predicates or computed values such as `canRenameEntry` or `canEditChildren`. Do not hide capability routing inside nested ternaries or key-dependent conditionals that are hard to audit in review.
 
 ## Anti-patterns
 

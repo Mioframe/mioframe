@@ -160,9 +160,9 @@ const { isRetryAuthorizationLoading, onRetryAuthorization } = useGoogleDriveReco
             <FSEntryManageMenuButton :path="PathUtils.join(directoryPath, name)" />
           </template>
         </FSEntryMDListItem>
-
-        <slot name="after" />
       </MDListContainer>
+
+      <slot name="after" />
     </div>
   </div>
 </template>
