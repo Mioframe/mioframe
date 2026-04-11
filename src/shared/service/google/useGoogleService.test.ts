@@ -322,7 +322,6 @@ describe('useGoogleService', () => {
         expiresAt: expect.any(Number),
         profile: {
           email: 'user@example.com',
-          name: 'User Example',
         },
         scopes: [DRIVE_GOOGLE_SCOPE.all, USER_INFO_GOOGLE_SCOPE.userinfoEmail],
       },
@@ -500,7 +499,7 @@ describe('useGoogleService', () => {
     });
   });
 
-  it('merges new profile data into an existing session profile snapshot', async () => {
+  it('replaces the stored profile snapshot with fresh userinfo data', async () => {
     sessionStoreValue = {
       'user@example.com': {
         accessToken: 'expired-token',
@@ -534,8 +533,50 @@ describe('useGoogleService', () => {
         expiresAt: expect.any(Number),
         profile: {
           email: 'user@example.com',
+        },
+        scopes: [DRIVE_GOOGLE_SCOPE.all, USER_INFO_GOOGLE_SCOPE.userinfoEmail],
+      },
+    });
+  });
+
+  it('clears stale optional profile fields when fresh userinfo omits them', async () => {
+    sessionStoreValue = {
+      'user@example.com': {
+        accessToken: 'expired-token',
+        expiresAt: Date.now() - 1000,
+        profile: {
+          email: 'user@example.com',
           name: 'User Example',
           picture: 'https://example.com/avatar.png',
+        },
+        scopes: [DRIVE_GOOGLE_SCOPE.all, USER_INFO_GOOGLE_SCOPE.userinfoEmail],
+      },
+    };
+    syncSessionsSubject();
+    syncSessionStoreSubject();
+    requestTokenMock.mockResolvedValueOnce({
+      access_token: 'access-token',
+      expires_in: '3600',
+      scope: `${DRIVE_GOOGLE_SCOPE.all} ${USER_INFO_GOOGLE_SCOPE.userinfoEmail}`,
+    });
+    userinfoGetMock.mockResolvedValueOnce({
+      result: {
+        email: 'user@example.com',
+        name: 'Updated User',
+      },
+    });
+
+    const service = await createService();
+
+    await service.requestToken([DRIVE_GOOGLE_SCOPE.all], 'user@example.com');
+
+    expect(updateSessionStoreMock).toHaveBeenLastCalledWith({
+      'user@example.com': {
+        accessToken: 'access-token',
+        expiresAt: expect.any(Number),
+        profile: {
+          email: 'user@example.com',
+          name: 'Updated User',
         },
         scopes: [DRIVE_GOOGLE_SCOPE.all, USER_INFO_GOOGLE_SCOPE.userinfoEmail],
       },
