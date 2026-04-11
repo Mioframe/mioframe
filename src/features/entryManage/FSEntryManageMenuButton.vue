@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { useDirectory } from '@entity/directory/useDirectory';
 import { useFSNodeStat } from '@entity/fsEntry';
+import { DirectoryCreateDialog } from '@feature/directoryCreate';
+import { DocumentCreationDialog } from '@feature/documentCreate';
 import { useRemoveFSEntry } from '@feature/entryRemove';
 import { FSEntryRenameDialog } from '@feature/entryRename';
 import { useImportDocument } from '@feature/importDocument';
@@ -16,10 +18,24 @@ const props = defineProps<{
 const { path } = toRefs(props);
 
 enum FSEntryContextEvent {
+  createDirectory,
+  createDocument,
   remove,
   rename,
   importJson,
 }
+
+const createDirectoryButton = defineMenuButton({
+  label: 'Create directory',
+  symbolName: 'create_new_folder',
+  key: FSEntryContextEvent.createDirectory,
+});
+
+const createDocumentButton = defineMenuButton({
+  label: 'Create document',
+  symbolName: 'edit_document',
+  key: FSEntryContextEvent.createDocument,
+});
 
 const renameButton = defineMenuButton({
   label: 'Rename',
@@ -41,7 +57,13 @@ const importJsonButton = defineMenuButton({
 
 const { data: fsEntryStat } = useFSNodeStat(path);
 
-const directoryActionButtons = defineMenuButtonList([renameButton, removeButton, importJsonButton]);
+const directoryActionButtons = defineMenuButtonList([
+  createDirectoryButton,
+  createDocumentButton,
+  renameButton,
+  importJsonButton,
+  removeButton,
+]);
 
 const fileActionButtons = defineMenuButtonList([renameButton, removeButton]);
 
@@ -55,18 +77,27 @@ const fileType = computed(
   () => parentData.value?.find(([name]) => name === fsEntryName.value)?.[1].type,
 );
 
+const isDirectory = computed(() => fileType.value === FSNodeType.Directory);
+
+const canCreateInDirectory = computed(() => fsEntryStat.value?.capabilities?.canEditChildren);
+
+const canRenameEntry = computed(() => fsEntryStat.value?.capabilities?.canChangePath);
+
+const canRemoveEntry = computed(() => fsEntryStat.value?.capabilities?.canDelete);
+
 const actionButtons = computed(() => {
-  const buttonList =
-    fileType.value === FSNodeType.Directory ? directoryActionButtons : fileActionButtons;
+  const buttonList = isDirectory.value ? directoryActionButtons : fileActionButtons;
 
   return buttonList.filter(({ key }) => {
     switch (key) {
-      case FSEntryContextEvent.remove:
-        return fsEntryStat.value?.capabilities?.canDelete;
-      case FSEntryContextEvent.rename:
-        return fsEntryStat.value?.capabilities?.canChangePath;
+      case FSEntryContextEvent.createDirectory:
+      case FSEntryContextEvent.createDocument:
       case FSEntryContextEvent.importJson:
-        return fsEntryStat.value?.capabilities?.canEditChildren;
+        return canCreateInDirectory.value;
+      case FSEntryContextEvent.rename:
+        return canRenameEntry.value;
+      case FSEntryContextEvent.remove:
+        return canRemoveEntry.value;
       default:
         return true;
     }
@@ -75,12 +106,26 @@ const actionButtons = computed(() => {
 
 const { remove: removeEntry } = useRemoveFSEntry();
 
+const showCreateDirectoryDialog = shallowRef(false);
+const showCreateDocumentDialog = shallowRef(false);
 const showRenameDialog = shallowRef(false);
 
 const { importJsonFile } = useImportDocument();
 
 const onClickMenuAction = async ({ key }: { key: FSEntryContextEvent }) => {
   switch (key) {
+    case FSEntryContextEvent.createDirectory: {
+      if (isDirectory.value) {
+        showCreateDirectoryDialog.value = true;
+      }
+      break;
+    }
+    case FSEntryContextEvent.createDocument: {
+      if (isDirectory.value) {
+        showCreateDocumentDialog.value = true;
+      }
+      break;
+    }
     case FSEntryContextEvent.remove: {
       await removeEntry(path.value);
       break;
@@ -90,7 +135,7 @@ const onClickMenuAction = async ({ key }: { key: FSEntryContextEvent }) => {
       break;
     }
     case FSEntryContextEvent.importJson: {
-      if (fileType.value === FSNodeType.Directory) {
+      if (isDirectory.value) {
         await importJsonFile(path.value);
       }
       break;
@@ -110,6 +155,20 @@ const menuTooltip = computed(() => `options ${fsEntryName.value}`);
 
 <template>
   <MDContextMenuButton :btns="actionButtons" :tooltip="menuTooltip" @click="onClickMenuAction" />
+
+  <DocumentCreationDialog
+    v-if="showCreateDocumentDialog"
+    :path="path"
+    @cancel="showCreateDocumentDialog = false"
+    @created="showCreateDocumentDialog = false"
+  />
+
+  <DirectoryCreateDialog
+    v-if="showCreateDirectoryDialog"
+    :path="path"
+    @cancel="showCreateDirectoryDialog = false"
+    @created="showCreateDirectoryDialog = false"
+  />
 
   <FSEntryRenameDialog
     v-if="showRenameDialog"
