@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { StyleValue } from 'vue';
-import { computed, useTemplateRef, toRefs, shallowRef } from 'vue';
+import { computed, useTemplateRef, toRefs } from 'vue';
 import { useLayoutSizeClass, LAYOUT_CLASS, LAYOUT_MIN_WIDTH } from './useLayoutSizeClass';
 import { useElementBounding } from '@vueuse/core';
 import { MDNavigationBar, MDNavigationRail } from '../Navigation';
@@ -9,9 +9,10 @@ import { setupSplitLayoutContext } from './useSplitLayoutContext';
 import { MDIconButton } from '../Button';
 import { useAllowedBottomNavigation } from './allowedBottomNavigation';
 import type { Pane } from './types';
-import { isNumber, round } from 'es-toolkit';
+import { isNumber } from 'es-toolkit';
 import { useLocalSettings } from '@entity/localSettings';
 import PaneContextWrap from './PaneContextWrap.vue';
+import { usePaneResize } from './usePaneResize';
 
 const props = defineProps<{
   navigationButtons?: NavigationButton[] | undefined;
@@ -106,21 +107,17 @@ const { settings } = useLocalSettings();
 
 const panesWidth = computed(() => settings.value.panesWidth);
 
-const activeResizePaneIndex = shallowRef<number>();
-
-const onResizePointerDown = (index: number, { target }: PointerEvent) => {
-  if (target instanceof HTMLElement) {
-    const { previousElementSibling: paneElement } = target;
-    if (paneElement instanceof HTMLElement) {
-      panesWidth.value[index] = paneElement.offsetWidth;
-      activeResizePaneIndex.value = index;
-    }
-  }
-};
-
-const stopResize = () => {
-  activeResizePaneIndex.value = undefined;
-};
+const {
+  activeResizePaneIndex,
+  onResizePointerDown,
+  onResizePointerEnd,
+  onResizeLostPointerCapture,
+  onBodyPointerMove,
+} = usePaneResize({
+  panesWidth,
+  bodyLeft,
+  bodyWidth,
+});
 
 const bodyStyle = computed(
   (): StyleValue =>
@@ -132,14 +129,6 @@ const bodyStyle = computed(
       return style;
     }, {}),
 );
-
-const onBodyPointerMove = (event: PointerEvent) => {
-  if (activeResizePaneIndex.value !== undefined) {
-    const { clientX } = event;
-    const index = activeResizePaneIndex.value;
-    panesWidth.value[index] = round(clientX - bodyLeft.value);
-  }
-};
 </script>
 
 <template>
@@ -165,8 +154,6 @@ const onBodyPointerMove = (event: PointerEvent) => {
       ref="bodyRef"
       class="md-layer__body body"
       :style="bodyStyle"
-      @pointerup="stopResize"
-      @pointerleave="stopResize"
       @pointermove="onBodyPointerMove"
     >
       <!-- reverse the index, since showPanes is reversed -->
@@ -191,6 +178,9 @@ const onBodyPointerMove = (event: PointerEvent) => {
           type="button"
           aria-label="resize pane"
           @pointerdown="onResizePointerDown(paneIndex, $event)"
+          @pointerup="onResizePointerEnd"
+          @pointercancel="onResizePointerEnd"
+          @lostpointercapture="onResizeLostPointerCapture"
         />
       </PaneContextWrap>
     </section>
@@ -244,6 +234,7 @@ const onBodyPointerMove = (event: PointerEvent) => {
     padding: 0;
     background: transparent;
     border: 0;
+    touch-action: none;
 
     &::before {
       content: '';

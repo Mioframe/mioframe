@@ -2,9 +2,9 @@ import { createGlobalState } from '@vueuse/core';
 import { useFileSystemService } from '../fileSystem';
 import { PathUtils } from '@shared/lib/virtualFileSystem';
 import { googleDriveFileSystemProvider } from '@shared/lib/googleDriveFileSystemProvider';
-import { useGoogleSessionStore } from './googleSessionStore';
+import { useGoogleSessionStoreService, type GoogleSessionStore } from './googleSessionStore';
 import { USER_INFO_GOOGLE_SCOPE, zodGOOGLE_SCOPE, type GOOGLE_SCOPE } from '@shared/lib/googleApi';
-import { isSubset, omit } from 'es-toolkit';
+import { isEqual, isSubset, omit } from 'es-toolkit';
 import { zodIs } from '@shared/lib/validateZodScheme';
 import type { ObservableSource } from '@shared/lib/useObservable';
 import { fromObservable } from '@shared/lib/useObservable';
@@ -12,24 +12,35 @@ import { dedupe } from '@shared/lib/dedupe';
 import stringify from 'safe-stable-stringify';
 import { GoogleAuthError, GoogleAuthErrorCode } from './errors';
 import { isGoogleAuthPopupBlocked } from './googlePopupError';
+import { distinctUntilChanged, map } from 'rxjs';
+import { keys } from '@shared/lib/objectKeys';
+import type { GoogleSessionProfile } from './googleSessionProfile';
 
 type TokenResponse = google.accounts.oauth2.TokenResponse;
+type UserinfoResult = Awaited<ReturnType<GoogleApi['userinfoGet']>>['result'];
 
 type RequestAccessToken = (scopes: GOOGLE_SCOPE[], email?: string) => Promise<TokenResponse>;
 
 export interface GoogleApi {
   requestAccessToken: RequestAccessToken;
-  userinfoGet: (p: { oauth_token?: string | undefined }) => Promise<{ result: { email?: string } }>;
+  userinfoGet: (p: {
+    oauth_token?: string | undefined;
+  }) => Promise<{ result: { email?: string; name?: string; picture?: string } }>;
   revoke: (accessToken: string) => Promise<void>;
 }
 
 export const GOOGLE_DRIVE_ROOT_NAME = 'Google Drive';
 
+export type GoogleSessionDisplay = {
+  email: string;
+  profile: GoogleSessionProfile;
+};
+
 export type GoogleService = {
   bindGoogleApi: (api: GoogleApi) => Promise<void>;
   requestToken: (scopes: GOOGLE_SCOPE[], expectedEmail?: string) => Promise<string>;
   clear: () => Promise<void>;
-  sessions: ObservableSource<string[]>;
+  sessionList: ObservableSource<GoogleSessionDisplay[]>;
   deleteSession: (email: string) => Promise<void>;
   revokeAccess: (email: string) => Promise<void>;
 };
@@ -37,11 +48,76 @@ export type GoogleService = {
 const setupGoogleService = (): GoogleService => {
   let googleApi: undefined | GoogleApi;
 
-  const { getStore, update, get, clear, $sessions } = useGoogleSessionStore();
-  const sessions = fromObservable($sessions);
+  const {
+    $store: $sessionStore,
+    getStore,
+    update,
+    get,
+    clear: clearSessions,
+    $sessions,
+  } = useGoogleSessionStoreService();
+  const mergeProfile = (
+    email: string,
+    {
+      nextProfile,
+      storedProfile,
+    }: {
+      nextProfile?: GoogleSessionProfile | undefined;
+      storedProfile?: GoogleSessionProfile | undefined;
+    } = {},
+  ): GoogleSessionProfile => nextProfile ?? storedProfile ?? { email };
+  const getSessionDisplayList = (sessionStore: GoogleSessionStore): GoogleSessionDisplay[] =>
+    keys(sessionStore).flatMap((email) => {
+      const session = sessionStore[email];
+
+      if (!session) {
+        return [];
+      }
+
+      return [
+        {
+          email,
+          profile: mergeProfile(email, {
+            storedProfile: session.profile,
+          }),
+        },
+      ];
+    });
+  const sessionList = fromObservable(
+    $sessionStore.pipe(
+      map(getSessionDisplayList),
+      distinctUntilChanged((previous, current) => isEqual(previous, current)),
+    ),
+  );
 
   const normalizeScopes = (scopes: GOOGLE_SCOPE[]): GOOGLE_SCOPE[] => [...new Set(scopes)].sort();
+  const hasAllRequiredScopes = (
+    availableScopes: readonly GOOGLE_SCOPE[],
+    requiredScopes: readonly GOOGLE_SCOPE[],
+  ) =>
+    // Verified against es-toolkit@1.45.1: isSubset(superset, subset).
+    isSubset(availableScopes, requiredScopes);
+  const toGoogleSessionProfile = ({
+    email,
+    name,
+    picture,
+  }: UserinfoResult): GoogleSessionProfile | undefined => {
+    if (!email) {
+      return undefined;
+    }
 
+    const profile: GoogleSessionProfile = { email };
+
+    if (name) {
+      profile.name = name;
+    }
+
+    if (picture) {
+      profile.picture = picture;
+    }
+
+    return profile;
+  };
   const buildRequestKey = (...args: unknown[]) => {
     const [rawScopes, rawOldEmail] = args;
     const scopes = Array.isArray(rawScopes)
@@ -105,21 +181,26 @@ const setupGoogleService = (): GoogleService => {
 
       const expiresAt = Date.now() + parseInt(expires_in) * 1e3;
 
-      const {
-        result: { email },
-      } = await userinfoGet({ oauth_token: accessToken });
+      const { result } = await userinfoGet({ oauth_token: accessToken });
+      const profile = toGoogleSessionProfile(result);
+      const email = profile?.email;
 
       if (!email) {
         throw new Error("don't have email");
       }
 
       const oldStore = await getStore();
+      const previousSession = oldStore[email];
 
       const store = {
         ...oldStore,
         [email]: {
           accessToken,
           expiresAt,
+          profile: mergeProfile(email, {
+            nextProfile: profile,
+            storedProfile: previousSession?.profile,
+          }),
           scopes: availableScopes,
         },
       };
@@ -141,10 +222,14 @@ const setupGoogleService = (): GoogleService => {
 
   const requestToken = async (scopes: GOOGLE_SCOPE[], expectedEmail?: string): Promise<string> => {
     const oldSession = expectedEmail ? await get(expectedEmail) : undefined;
+    const requiredScopes = normalizeScopes([...scopes, USER_INFO_GOOGLE_SCOPE.userinfoEmail]);
 
     if (oldSession) {
       const { accessToken, expiresAt, scopes: oldScopes } = oldSession;
-      if (expiresAt - 3e5 /** 5 min */ > Date.now() && isSubset(oldScopes, scopes)) {
+      if (
+        expiresAt - 3e5 /** 5 min */ > Date.now() &&
+        hasAllRequiredScopes(oldScopes, requiredScopes)
+      ) {
         return accessToken;
       }
     }
@@ -180,6 +265,10 @@ const setupGoogleService = (): GoogleService => {
     await update(omit(store, [email]));
   };
 
+  const clear = async () => {
+    await clearSessions();
+  };
+
   const revokeAccess = async (email: string) => {
     if (!googleApi) {
       throw new Error('Google API is not tied to the service');
@@ -212,7 +301,7 @@ const setupGoogleService = (): GoogleService => {
     bindGoogleApi,
     requestToken,
     clear,
-    sessions,
+    sessionList,
     deleteSession,
     revokeAccess,
   } satisfies GoogleService;

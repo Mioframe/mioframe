@@ -5,28 +5,34 @@ import { createGlobalState } from '@vueuse/core';
 import { isEqual } from 'es-toolkit';
 import { distinctUntilChanged, filter, firstValueFrom, map } from 'rxjs';
 import { z } from 'zod/v4-mini';
+import { zodGoogleSessionProfile } from './googleSessionProfile';
 
 const KEY = 'google-session';
 
-const zodSession = z.object({
+const zodGoogleStoredSession = z.object({
   accessToken: z.string(),
   expiresAt: z.number(),
   scopes: z.array(zodGOOGLE_SCOPE),
+  profile: z.optional(zodGoogleSessionProfile),
 });
 
-const zodStore = z.catch(z.record(z.email(), z.catch(z.optional(zodSession), undefined)), {});
+const zodGoogleSessionStore = z.catch(
+  z.record(z.email(), z.catch(z.optional(zodGoogleStoredSession), undefined)),
+  {},
+);
 
-type Store = z.output<typeof zodStore>;
+export type GoogleStoredSession = z.output<typeof zodGoogleStoredSession>;
+export type GoogleSessionStore = Record<string, GoogleStoredSession | undefined>;
 
-const setupGoogleSessionStore = () => {
-  const store = new ObservableIDB(KEY, zodStore);
+const setupGoogleSessionStoreService = () => {
+  const store = new ObservableIDB(KEY, zodGoogleSessionStore);
   const $store = store.observable().pipe(
     map((v) => v?.data),
     filter((v) => !!v),
     distinctUntilChanged((a, b) => isEqual(a, b)),
   );
 
-  const update = async (v: Store) => store.set(v);
+  const update = async (v: GoogleSessionStore) => store.set(v);
 
   const clear = async () => {
     await update({});
@@ -44,6 +50,7 @@ const setupGoogleSessionStore = () => {
   };
 
   return {
+    $store,
     update,
     clear,
     $sessions,
@@ -53,4 +60,4 @@ const setupGoogleSessionStore = () => {
   };
 };
 
-export const useGoogleSessionStore = createGlobalState(setupGoogleSessionStore);
+export const useGoogleSessionStoreService = createGlobalState(setupGoogleSessionStoreService);
