@@ -173,7 +173,6 @@ const onUpdateProperty = (v: DatabaseUnknownProperty) => {
   &__edit-popover {
     display: flex;
     flex-direction: column;
-    overflow: auto;
     padding-top: 1step;
   }
 }
