@@ -161,6 +161,7 @@ useOnEscapeKeyStacked(() => {
     flex-direction: column;
     overflow-y: auto;
     min-width: 280px;
+    width: 100%;
     max-width: min(560px, 100dvw);
     width: fit-content;
 
