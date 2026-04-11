@@ -13,17 +13,20 @@ Inherits the rules from `src/shared/AGENTS.md`. Applies to `src/shared/ui` and i
 ## Patterns
 
 - Components should be driven by props, emits, slots, and composables.
+- Shared UI component props should stay small, explicit, and domain-agnostic. Prefer primitives, simple option records, and slot APIs over opaque config objects or nested domain payloads.
 - Use the `MD*` prefix only for shared UI components that intentionally follow Material Design visual and interaction conventions.
 - Prefer a concrete surface suffix in component names, such as `Dialog`, `Sheet`, `ListItem`, `Field`, `Button`, `Table`, or `Layout`, over vague role-based names.
 - Accessibility, keyboard behavior, and focus management are part of the component contract.
 - Shared UI should remain neutral enough for use from multiple domain scenarios.
 - Extend existing primitives through props or slots before adding another near-duplicate component.
+- Prefer determinate progress presentation when callers can provide real progress. Indeterminate spinners are the fallback for work that has no trustworthy progress signal.
 
 ## Anti-patterns
 
 - Do not import `entities`, `features`, `widgets`, or `pages` here.
 - Do not couple generic UI to document, property, or view models.
 - Do not place global styles here; use `src/app` for that.
+- Do not hide multiple behaviors behind one broad `options` prop when a few explicit props or slots would keep the public API clearer.
 - Do not break widely used base component APIs without a clear reason and migration plan.
 
 ## Constraints

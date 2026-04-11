@@ -15,6 +15,7 @@ Inherits the rules from `src/shared/AGENTS.md`. Applies to `src/shared/lib` and 
 - Prefer small modules with a single clear responsibility.
 - Prefer closure-based factories and composables for adapters, providers, and helpers; use classes only when they are required by an external contract or make lifecycle/state invariants materially clearer.
 - Wrap browser APIs, storage APIs, and third-party SDKs behind typed contracts.
+- Verify third-party helper semantics against official docs or installed library source before wrapping, re-exporting, or depending on non-obvious behavior in `shared/lib`.
 - Keep runtime validation near the boundary code that needs it.
 - Keep contract parsing and extraction helpers near the provider, adapter, or boundary module that defines the path, payload, or transport contract.
 - When Web API or library typings conflict with `exactOptionalPropertyTypes`, keep the workaround at the boundary and prefer a single mutable options object or a widened local contract over repeated object spreads or conditional object rebuilding.
@@ -36,4 +37,5 @@ Inherits the rules from `src/shared/AGENTS.md`. Applies to `src/shared/lib` and 
 - Changes in `shared/lib` often have a broad blast radius.
 - Cache, migration, filesystem, and subscription changes need focused tests and compatibility checks.
 - Use `index.ts` as the public entry point when present.
+- If a `shared/lib` change depends on a third-party API detail such as deep merge, equality, subset, path, or mutation semantics, add a focused regression test or reproducible verification for that detail.
 - Minimum verification: `pnpm type-check` and focused unit tests for the touched invariant.

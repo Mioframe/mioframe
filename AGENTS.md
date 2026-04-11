@@ -11,6 +11,14 @@ This is a local-first personal data manager built around:
 - CRDT-style documents, schema validation, and migrations;
 - FSD-style layering: `app -> pages -> widgets -> features -> entities -> shared`.
 
+## Tooling
+
+- Use `pnpm` as the package manager and task runner.
+- `vite` powers local development, production builds, and preview builds.
+- `vue-tsc --build` is the project type-check entry point through `pnpm type-check`.
+- Linting is split between `oxlint` and `eslint`; formatting uses `oxfmt`.
+- Unit and integration tests use `vitest`; browser smoke and end-to-end flows use `cypress` with specs in `src/**/*.cy.ts`.
+
 ## Contains
 
 - `src/app`: bootstrap, routing, global styles, app-level wiring.
@@ -25,6 +33,9 @@ This is a local-first personal data manager built around:
 - Keep changes as close as possible to the directory and layer that owns them.
 - Prefer an existing public module API through `index.ts` when one exists.
 - Prefer functions, factory helpers, and composables over classes unless an external API requires a class or class-based state materially clarifies the invariant.
+- Verify third-party library semantics from official documentation or the library source before relying on a function, method, option, config field, or helper name in code changes, reviews, or comments.
+- If third-party behavior is not verified yet, state that it is unverified and do not present the behavior as established fact.
+- For ambiguous third-party APIs, record the exact signature, argument order, mutation or return behavior, and notable edge cases before changing project behavior or reviewing caller logic.
 - Treat the app as a native-like Material application. UI and UX decisions, including layout, motion, color, typography, components, interaction, navigation, overlay, focus, dismiss, and back-button behavior, should follow the latest Material 3 Expressive guidance as closely as the platform allows.
 - Optimize for mobile browsers first, including low-end devices. Treat large local datasets as a default scenario, keep memory and main-thread work bounded, prefer incremental loading and rendering over eager full-data work, and preserve touch-first interactions that feel native under constrained hardware.
 - Update schema, migrations, service contracts, and callers together for persistent-data changes.
@@ -32,9 +43,12 @@ This is a local-first personal data manager built around:
 - Use the `$` suffix only for raw RxJS observables; adapted project-level reactive sources and other wrappers should use names without `$`.
 - Write stable directory guidance in `AGENTS.md`, not temporary project snapshots.
 - Follow FSD boundaries strictly: derived domain state belongs in `entities`, user actions and orchestration belong in `features`, and `pages` should compose them rather than absorb either responsibility.
+- In FSD terms, entity modules describe domain models, typed read contracts, and reusable presentation. User-triggered mutations, destructive actions, submit flows, menus, dialogs, and snackbar/error orchestration belong in `features`, even when the trigger is rendered next to an entity view.
+- When a loading flow can report meaningful progress, prefer a progress-based indicator over an indeterminate spinner. Use indeterminate loading only when the system genuinely cannot expose useful progress.
 - Name non-component, non-class TypeScript files in lower camel case or lowercase; reserve PascalCase filenames for Vue components and class-centric modules.
 - Keep contract parsing, validation, and extraction close to the module that defines that contract instead of scattering that logic across unrelated layers.
 - In component code, name event handlers and callback-style bindings with the `on*` prefix for consistent, recognizable intent.
+- Keep component and composable input contracts as simple and narrow as possible. Prefer IDs, primitive values, small display records, booleans, query-like inputs, and explicit emits/slots over passing service objects, mutation handlers, large mutable models, or heavily nested prop/config shapes.
 - Prefer prepared typed collection helpers such as `recordEntries`, `objectEntries`, strict-record iterators, and similar local wrappers over raw `Object.entries`, `Object.keys`, or `Object.values` when iterating typed records.
 - Do not redefine or assert types locally to compensate for weak iteration typing. Manual type overrides and type assertions are prohibited by default and are allowed only in rare boundary cases with explicit justification.
 - When `exactOptionalPropertyTypes` or third-party typings create friction, prefer adjusting the local contract or using a boundary adapter over adding extra runtime work in hot paths.
@@ -53,7 +67,7 @@ This is a local-first personal data manager built around:
 - Do not design optional parameters so that omitting them effectively means `true`. Default behavior should be the convenient path without extra options, and optional flags should disable, limit, or explicitly override that default instead.
 - If a non-component module exports multiple functions, do not name the file after a single exported function. Use a filename that describes the module's overall responsibility.
 - Name feature directories and public feature APIs by the user action they own, usually as `<domain><Action>` such as `documentRename` or `databasePropertyCreate`.
-- Name entity directories and public entity APIs by the stable domain concept they expose, such as `databaseProperty`, `repository`, or `googleUserInfo`.
+- Name entity directories and public entity APIs by the stable domain concept they expose, such as `databaseProperty`, `repository`, or `googleSession`.
 - Name components by the external visual and interaction contract they present in markup. The name should tell a reader what the user sees and how the component behaves, not what internal role it plays.
 - Use component suffixes to describe visible form and interaction model. Prefer concrete surface words such as `Dialog`, `Sheet`, `Pane`, `Widget`, `Layout`, `Form`, `Field`, `List`, `ListItem`, `Table`, `Button`, `MenuItem`, `Chip`, `Bar`, `Rail`, `Container`, `State`, or `Section`.
 - Choose the smallest suffix that still explains the rendered surface. Good: `DocumentRemoveDialog`, `DatabasePropertyListItem`. Bad: `DocumentRemoveManager`, `DatabasePropertyRow` when the component is actually a list item.
@@ -64,18 +78,23 @@ This is a local-first personal data manager built around:
 - Use the `MD*` prefix only for shared UI components that intentionally follow Material Design visual and interaction patterns. Use a plain domain name without `MD` for entity, feature, widget, and page components, and for shared UI that is not presented as a Material Design primitive.
 - Name composables and access hooks with `use*`. A `use*` function should expose a reactive capability, reactive state, derived state, lifecycle-managed subscriptions, or actions consumed as a capability by callers.
 - Use `use*` when the caller should consume a capability rather than think about construction. It is acceptable for `use*` to be backed by `createGlobalState`, a scope pool, dependency injection, or direct local composition.
+- If a `use*` composable is RxJS-based or otherwise intended only for the background-side execution model, include the `Service` suffix in the exported name so worker-only usage is explicit at import sites.
 - Good `use*`: `useDatabaseProperty`, `useSnackbar`, `useOverlayNavigation`. Bad `use*`: a pure one-shot parser or a fresh-instance factory with no reactive or lifecycle contract.
 - Name assembly and wiring functions with `setup*`. Use `setup*` when the function connects dependencies, listeners, services, worker contracts, context, or lifecycle-managed state and ownership is primarily about initialization and cleanup.
 - A `setup*` function may allocate resources, subscribe, register cleanup, or bind infrastructure contracts. Pair `setup*` with a public `use*` accessor when the wiring result is later consumed as shared state or capability.
+- If a `setup*` function wires RxJS-driven or worker-only infrastructure, include the `Service` suffix in the exported name to mark it as background-only API rather than UI-layer composition.
 - Good `setup*`: `setupMainService`, `setupGoogleSessionService`, `setupPaneContext`. Bad `setup*`: a pure typed config helper or a function whose main job is returning a new independent value object.
 - Name declarative definition helpers with `define*`. Use `define*` for functions that preserve type inference, register a contract, constrain literals, or describe a protocol shape without owning a long-lived runtime instance.
 - A `define*` function must stay side-effect-light. It must not hide I/O, background work, subscriptions, or ownership of live resources.
+- If a `define*` helper defines an RxJS-backed or worker-only contract, include the `Service` suffix in the exported name so the background boundary stays visible in code review and imports.
 - Good `define*`: `defineMenuButtonList`, `defineObservableQuery`, `defineScopePool`. Bad `define*`: a function that starts watchers, opens connections, or allocates a runtime client with external lifecycle.
 - Name factories with `create*`. Use `create*` when each call intentionally returns a new independent instance, adapter, client, service object, or domain value and the caller becomes the owner of that result.
 - Prefer `create*` over `setup*` when repeated calls are expected to produce separate usable instances. Prefer `setup*` over `create*` when the point is wiring and lifecycle, not per-call instance ownership.
 - Good `create*`: `createFSStorageAdapter`, `createVFSAdapter`, `createNumberProperty`. Bad `create*`: a singleton wiring entry point or a function whose meaning is mostly registration and cleanup.
 - Reserve the `*Service` suffix for infrastructural background services that belong to the worker-side or background-side execution model of the app.
 - A `*Service` module or exported symbol should represent a service contract, service implementation, or service accessor that is valid without DOM access and without main-thread-only assumptions.
+- Treat `*Service` as a layer marker, not just a naming convention. If a module directly imports a `*Service` symbol or module and does not cross that boundary through an explicit proxy client such as `useMainServiceClient` or another approved worker-client wrapper, that importing module is itself part of the service layer and must follow service-layer rules.
+- This `*Service` requirement also applies to `use*`, `setup*`, and `define*` exports when they are RxJS-based, worker-facing, or otherwise intended only for background-side consumption.
 - Do not use the `*Service` suffix for view-model helpers, component-local orchestration, or browser-main-thread UI adapters. If a module needs DOM, focus, layout, or direct component interaction, it is not a `*Service`.
 - Name pure lookup, extraction, and derivation helpers with `get*`. A `get*` function should read from its arguments or an already available structure and return a value without establishing long-lived ownership.
 - Keep `get*` side-effect-light and predictable. Do not use `get*` for initialization, subscriptions, global mutation, or instance creation.
@@ -93,6 +112,8 @@ This is a local-first personal data manager built around:
 - Do not pull dependencies upward against the intended layer direction.
 - Do not bypass service/entity/composable APIs with direct mutations.
 - Do not duplicate schema contracts, type aliases, or constants across layers.
+- Do not infer third-party API semantics from naming alone. Names such as `isSubset`, `merge`, `includes`, `equals`, or `matches` are not evidence of signature or behavior.
+- Do not push orchestration complexity into component props. If a component starts needing large coupled prop objects or many action callbacks, move the orchestration up a layer or split the component contract.
 - Do not perform immutable-style replacement of large live CRDT subtrees when a targeted in-place update or existing `put`/`patch` helper expresses the change more safely.
 - Do not assign an existing Automerge document object proxy as a new value anywhere in the same document.
 - Do not assume desktop-class CPU, memory, storage throughput, or pointer precision. Avoid eager full-dataset hydration, long synchronous main-thread work, oversized reactive graphs over large collections, and interaction patterns that depend on hover or precise cursor input.
@@ -105,12 +126,14 @@ This is a local-first personal data manager built around:
 - `entities` may import only `shared`.
 - `features` build on `entities` and `shared`.
 - `widgets` may compose `features`, `entities`, and `shared`, but should not own domain rules.
+- UI-facing layers may access background services only through explicit proxy clients. Do not directly import `*Service` symbols or modules into `pages`, `widgets`, `features`, `entities`, or shared UI modules.
 - Use Conventional Commits for all commit messages.
-- After file changes, run the linter only for the touched files or the narrowest affected scope.
-- Prefer targeted lint commands such as `pnpm exec eslint --fix <file ...>` for touched files.
+- After file changes, run the narrowest relevant verification for the touched files or affected scope.
+- Prefer targeted lint and format commands such as `pnpm exec oxlint <path ...>`, `pnpm exec eslint --fix <path ...>`, and `pnpm exec oxfmt <path ...>`.
 - Use `--fix` by default for targeted lint runs, unless the task specifically requires reviewing raw lint output before applying fixes.
 - Use `pnpm lint` only when no narrower lint target exists or when a full-repository check is explicitly needed.
-- At minimum run `pnpm type-check` for logic changes; add focused tests or smoke checks for infrastructure and schema changes.
+- For behavior changes that depend on a third-party API, verify the API against official docs or source first and add a focused test or reproducible check for the verified semantic branch.
+- At minimum run `pnpm type-check` for logic changes; add focused `vitest`, Cypress, or manual smoke checks for behavioral, infrastructure, and schema changes.
 - During code review, do not raise findings for issues that are already reliably enforced by strict type-checking and the strict linter; focus review on logic, behavior, regressions, contracts, architecture, and missing tests.
 
 ## AGENTS.md Best Practices
