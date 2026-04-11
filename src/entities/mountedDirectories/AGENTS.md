@@ -4,22 +4,20 @@ Inherits the rules from `src/entities/AGENTS.md`. Applies to `src/entities/mount
 
 ## Contains
 
-- `useFileSystem.ts`: entity-facing mounted-directory and filesystem state.
-- `index.ts`: public entry point.
+- Entity-facing mounted-directory state and derived filesystem visibility built on shared filesystem services.
 
 ## Patterns
 
-- Keep mounted-directory state on top of shared filesystem services rather than direct browser API usage.
-- Treat mount/disconnect and directory visibility as entity state with explicit side effects.
-- Keep directory-picker dialogs, browser permission prompts, and user-action orchestration in `features`, not in entity composables.
+- Keep mount and disconnect state on top of shared filesystem services rather than direct browser APIs.
+- Expose mounted-directory state as read contracts plus explicit intents.
+- Leave directory pickers, permission prompts, and other user-action surfaces to features.
 
 ## Anti-patterns
 
-- Do not bypass the entity contract for mount, disconnect, or directory mutation flows.
+- Do not bypass this entity contract for mount or disconnect flows.
 - Do not mix mounted-directory state with unrelated repository or document logic.
 
 ## Constraints
 
-- Changes here affect local directory selection, mount state, and filesystem-backed flows.
-- External imports should go through `index.ts`.
-- Minimum verification: `pnpm type-check` and a manual smoke check of mount/disconnect or directory selection behavior.
+- Changes here affect local directory selection, mounted-directory visibility, and disconnect flows.
+- Minimum verification: `pnpm type-check`, then mount or disconnect the touched directory source through the existing feature and confirm the visible state updates in the consuming screen.

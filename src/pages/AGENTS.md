@@ -4,27 +4,21 @@ Inherits the rules from the root `AGENTS.md`. Applies to `src/pages` and its des
 
 ## Contains
 
-- `routes.ts`: route registration.
-- `SplitView/`: pane model and navigation primitives.
-- `HomePane/`, `DocumentViewPane/`, `RepoExplorer/`, `Settings/`: screen modules.
+- Route modules, pane composition, and page-level navigation state.
 
 ## Patterns
 
-- A page composes screens from `widgets`, `features`, `entities`, and `shared/ui`.
-- Keep route and pane parameters serializable and stable.
-- Keep logic in `pages` limited to screen composition, navigation, route and pane parameters, and page-level orchestration.
-- Move domain rules, derived state, reusable error or state mapping, and user action flows to lower FSD layers where they belong.
-- If screen composition is reused across pages, move it into `widgets`.
+- A page composes `widgets`, `features`, `entities`, and `shared/ui`; it should not become a hidden domain or service layer.
+- Keep route params, pane params, and query state serializable and stable across refresh and navigation history.
+- Keep page-only orchestration here. Move reusable state derivation or user-action flows down to `entities` or `features`.
 
 ## Anti-patterns
 
-- Do not bypass entity or service abstractions with low-level storage or API access from pages.
-- Do not duplicate widget-scale compositions across multiple pages.
-- Do not keep long-lived global state here.
-- Do not replace the pane/navigation model casually.
+- Do not bypass lower-layer APIs with direct storage, filesystem, or service logic from pages.
+- Do not duplicate a reusable screen composition that belongs in `widgets`.
+- Do not keep long-lived global state in page modules.
 
 ## Constraints
 
 - Changes in `SplitView` affect every pane.
-- Route and query contract changes must be checked for navigation, refresh, and state restoration.
-- Minimum verification: `pnpm type-check` and a manual navigation/state-restoration smoke check for the affected page.
+- Minimum verification: `pnpm type-check`, then open the affected page or pane, refresh it, and exercise back or forward navigation for the touched route state.

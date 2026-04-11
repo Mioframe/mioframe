@@ -4,23 +4,20 @@ Inherits the rules from `src/features/AGENTS.md`. Applies to `src/features/datab
 
 ## Contains
 
-- `DatabasePropertyCreationDialog.vue`: the main property creation flow.
-- `index.ts`: public feature entry point.
+- The flow for creating a database property from a user-editable draft.
 
 ## Patterns
 
-- Build property drafts through a valid intermediate form state.
-- Use canonical property types and schema contracts instead of local duplicates.
-- Close and reset the dialog predictably after successful creation.
+- Keep the draft state valid enough to map cleanly into the persisted property contract on submit.
+- Source property kinds, defaults, and validation from canonical schema helpers rather than local copies.
+- Keep close, reset, and post-create follow-up behavior owned in one place.
 
 ## Anti-patterns
 
-- Do not create properties from partially valid state.
-- Do not hardcode property kinds outside shared constants and schema helpers.
-- Do not scatter post-create side effects across multiple components.
+- Do not submit partially valid property payloads.
+- Do not hardcode property kinds or scatter post-create side effects across multiple components.
 
 ## Constraints
 
-- Changes here should be checked against property edit, value rendering, filter, and sorting flows.
-- External imports should go through `index.ts`.
-- Minimum verification: `pnpm type-check` and a manual smoke check of the property creation flow.
+- Changes here affect property rendering, editors, filters, and sorting flows.
+- Minimum verification: `pnpm type-check`, then create a property of the touched kind, confirm it appears in the current view and related editors, and reopen the dialog to confirm the draft reset.

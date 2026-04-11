@@ -4,30 +4,20 @@ Inherits the rules from `src/entities/AGENTS.md`. Applies to `src/entities/googl
 
 ## Contains
 
-- `useGoogleSessions.ts`: session display list and related entity state.
-- `useGoogleSessionAvatar.ts`: avatar loading state and blob-URL lifecycle for session profile images.
-- `setupGoogleSessions.ts`: entity-level setup wiring.
-- `GoogleSessionList.vue` and `GoogleSessionListItem.vue`: small UI fragments.
-- `index.ts`: public entry point.
+- Entity read models and small reusable UI for Google sessions, including avatar loading and cleanup.
 
 ## Patterns
 
-- Keep Google account/session presentation on top of shared Google services.
-- Treat Google session display items as entity data derived from shared service observables, not page-specific UI state.
-- Keep session profile UI fragments reusable across account-related screens.
-- Keep `GoogleSessionListItem` presentation-only: it may render identity, avatar, and emitted intents, but session mutation actions must stay in a feature wrapper.
-- Keep Google account entity props simple: pass one session display item or other display-ready data, not service handles or mutation callbacks.
-- Keep Google account entity composable inputs simple in the same way: accept small identity or display inputs such as `email` or a session display item, and keep feature-owned session actions and UI orchestration out of the composable boundary.
+- Derive Google session display state from shared Google services rather than from raw SDK objects.
+- Keep avatar blob-URL lifecycle local to this entity layer and clean it up explicitly.
+- Keep list items presentation-focused: render identity, status, and emitted intents, while mutation flows stay in features.
 
 ## Anti-patterns
 
-- Do not couple this directory directly to screen-level account flows.
-- Do not expose raw Google SDK state when the shared service already normalizes it.
-- Do not duplicate session ownership rules across entities and features.
-- Do not place session action menus, revoke/delete handlers, or snackbar orchestration in this entity directory.
+- Do not couple this directory to screen-specific login or recovery flows.
+- Do not place revoke, delete, or snackbar orchestration in the entity layer.
 
 ## Constraints
 
-- Changes here affect account displays and Google-backed session visibility.
-- External imports should go through `index.ts`.
-- Minimum verification: `pnpm type-check` and a manual smoke check of the touched Google account/session UI flow.
+- Changes here affect account lists and cached session presentation.
+- Minimum verification: `pnpm type-check`, run focused Google session avatar or entity tests when the contract changed, then verify the affected account list still renders cached identity and the touched avatar surface correctly.

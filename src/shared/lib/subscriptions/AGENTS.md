@@ -4,24 +4,21 @@ Inherits the rules from `src/shared/lib/AGENTS.md`. Applies to `src/shared/lib/s
 
 ## Contains
 
-- `subscribeClient.ts`: client-side subscription helpers.
-- `subscribeService.ts`: service-side subscription contracts.
-- `types.ts` and `index.ts`: public types and entry points.
+- Client and service subscription transport plus the stable query-key contract shared between them.
 
 ## Patterns
 
-- Make subscriptions resilient to re-creation, disposal, and deduplication.
-- Treat query-key serialization as a stable public contract.
-- Hide transport and service-worker details behind the public API.
+- Make subscriptions resilient to recreate, dispose, dedupe, and reconnect cycles.
+- Treat query-key serialization as a public contract.
+- Include initial delivery and post-mutation updates in the observable contract rather than leaving them to caller timing.
 
 ## Anti-patterns
 
-- Do not rely on implicit subscription lifecycle behavior.
-- Do not change key semantics without reviewing affected callers.
-- Do not lose initial values or post-mutation updates because of lifecycle drift.
+- Do not rely on implicit lifecycle behavior.
+- Do not change key semantics without reviewing every affected caller.
+- Do not lose initial values or update delivery because of lifecycle drift.
 
 ## Constraints
 
-- Changes here must be checked for subscribe/unsubscribe, dedupe, and reconnect behavior.
-- External imports should go through `index.ts`.
-- Minimum verification: `pnpm type-check` and focused tests or smoke checks for subscription lifecycle behavior.
+- Subscription changes affect client and service code at once.
+- Minimum verification: `pnpm type-check`, then verify subscribe, initial value, update, unsubscribe, resubscribe, and dedupe behavior for the touched key shape.
