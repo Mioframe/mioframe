@@ -89,11 +89,7 @@ const onClickReturnHome = async () => {
     >
       <template v-if="canEditDirectoryContents" #after>
         <MDFabContainer auto-hide>
-          <MDFab
-            tooltip="Create directory"
-            color="tonal-primary"
-            @click="onClickCreateDirectory"
-          >
+          <MDFab tooltip="Create directory" color="tonal-primary" @click="onClickCreateDirectory">
             <template #icon>
               <MDSymbol name="create_new_folder" />
             </template>

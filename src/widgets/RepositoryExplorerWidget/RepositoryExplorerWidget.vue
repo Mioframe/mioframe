@@ -85,9 +85,7 @@ const errorHeadline = computed(() =>
   directoryErrorMessage.value ? 'Directory read error' : 'Repository read error',
 );
 
-const errorMessage = computed(
-  () => directoryErrorMessage.value ?? repositoryErrorMessage.value,
-);
+const errorMessage = computed(() => directoryErrorMessage.value ?? repositoryErrorMessage.value);
 
 const { isRetryAuthorizationLoading, onRetryAuthorization } = useGoogleDriveRecovery({
   path: directoryPath,

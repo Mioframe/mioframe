@@ -41,11 +41,7 @@ const importJsonButton = defineMenuButton({
 
 const { data: fsEntryStat } = useFSNodeStat(path);
 
-const directoryActionButtons = defineMenuButtonList([
-  renameButton,
-  removeButton,
-  importJsonButton,
-]);
+const directoryActionButtons = defineMenuButtonList([renameButton, removeButton, importJsonButton]);
 
 const fileActionButtons = defineMenuButtonList([renameButton, removeButton]);
 
@@ -113,11 +109,7 @@ const menuTooltip = computed(() => `options ${fsEntryName.value}`);
 </script>
 
 <template>
-  <MDContextMenuButton
-    :btns="actionButtons"
-    :tooltip="menuTooltip"
-    @click="onClickMenuAction"
-  />
+  <MDContextMenuButton :btns="actionButtons" :tooltip="menuTooltip" @click="onClickMenuAction" />
 
   <FSEntryRenameDialog
     v-if="showRenameDialog"
