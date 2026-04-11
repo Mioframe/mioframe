@@ -207,6 +207,9 @@ importers:
       happy-dom:
         specifier: ^20.8.9
         version: 20.8.9
+      husky:
+        specifier: ^9.1.7
+        version: 9.1.7
       npm-run-all2:
         specifier: ^8.0.4
         version: 8.0.4
@@ -4026,6 +4029,11 @@ packages:
   human-signals@1.1.1:
     resolution: {integrity: sha512-SEQu7vl8KjNL2eoGBLF3+wAjpsNfA9XMlXAYj/3EdaNfAlxKthD1xjEQfGOUhllCGGJVNY34bRr6lPINhNjyZw==}
     engines: {node: '>=8.12.0'}
+
+  husky@9.1.7:
+    resolution: {integrity: sha512-5gs5ytaNjBrh5Ow3zrvdUUY+0VxIuWVL4i9irt6friV+BqdCfmV11CQTWMiBYWHbXhco+J1kHfTOUkePhCDvMA==}
+    engines: {node: '>=18'}
+    hasBin: true
 
   ico-endec@0.1.6:
     resolution: {integrity: sha512-ZdLU38ZoED3g1j3iEyzcQj+wAkY2xfWNkymszfJPoxucIUhK7NayQ+/C4Kv0nDFMIsbtbEHldv3V8PU494/ueQ==}
@@ -9864,6 +9872,8 @@ snapshots:
       - supports-color
 
   human-signals@1.1.1: {}
+
+  husky@9.1.7: {}
 
   ico-endec@0.1.6: {}
 
