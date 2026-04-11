@@ -67,6 +67,7 @@ This is a local-first personal data manager built around:
 - Do not design optional parameters so that omitting them effectively means `true`. Default behavior should be the convenient path without extra options, and optional flags should disable, limit, or explicitly override that default instead.
 - If a non-component module exports multiple functions, do not name the file after a single exported function. Use a filename that describes the module's overall responsibility.
 - Name feature directories and public feature APIs by the user action they own, usually as `<domain><Action>` such as `documentRename` or `databasePropertyCreate`.
+- Keep feature directory names action-oriented even when the visible trigger is a menu button, dialog, sheet, or other UI surface. Name the feature module by the action domain it owns, and name the component inside that feature by its visible surface when needed, such as `googleSessionManage/GoogleSessionManageMenuButton` or `documentManage/DocumentManageMenuButton`, not `documentMenu` for a document-management feature.
 - Name entity directories and public entity APIs by the stable domain concept they expose, such as `databaseProperty`, `repository`, or `googleSession`.
 - Name components by the external visual and interaction contract they present in markup. The name should tell a reader what the user sees and how the component behaves, not what internal role it plays.
 - Use component suffixes to describe visible form and interaction model. Prefer concrete surface words such as `Dialog`, `Sheet`, `Pane`, `Widget`, `Layout`, `Form`, `Field`, `List`, `ListItem`, `Table`, `Button`, `MenuItem`, `Chip`, `Bar`, `Rail`, `Container`, `State`, or `Section`.
@@ -104,6 +105,7 @@ This is a local-first personal data manager built around:
 - Name schema values with `zod*`. Export the schema itself with the `zod` prefix and derive the TypeScript type from it nearby when useful.
 - Keep `zod*` exports close to the boundary or contract they validate. Good: `zodQuery`, `zodDatabaseView`, `zodGoogleErrorResponse`.
 - Name local component event handlers and callback bindings with `on*`, such as `onClickCreateDocument`, `onSubmit`, `onCancel`, `onApply`, or `onRetryAuthorization`.
+- Name slots, props, emits, local variables, and other component-facing identifiers by their stable semantic role in the owning module. Do not encode a specific caller, temporary layout trick, or current implementation detail into the name when a more durable meaning such as `after`, `footer`, `actions`, or `errorMessage` describes the contract.
 - Reserve the `$` suffix for raw RxJS observables only. Do not use `$` for Vue refs, computed values, wrapped query results, or service accessors.
 - When a directory exposes an `index.ts`, keep exported symbol names aligned with the directory name and import through that entry point unless a deeper path is intentionally part of the local module contract.
 

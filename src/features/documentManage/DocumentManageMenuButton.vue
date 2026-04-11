@@ -20,7 +20,7 @@ enum DocumentContextEvent {
   exportJson,
 }
 
-const documentContextBtns = defineMenuButtonList([
+const documentActionButtons = defineMenuButtonList([
   { label: 'Rename', symbolName: 'edit', key: DocumentContextEvent.rename },
 
   {
@@ -41,7 +41,7 @@ const { saveJsonFile } = useExportDocument();
 const showRenameDialog = shallowRef(false);
 const showRemoveDialog = shallowRef(false);
 
-const onClickContextAction = async ({ key }: { key: DocumentContextEvent }) => {
+const onClickMenuAction = async ({ key }: { key: DocumentContextEvent }) => {
   switch (key) {
     case DocumentContextEvent.remove: {
       showRemoveDialog.value = true;
@@ -65,14 +65,14 @@ const { state } = useDocument(directoryPath, documentId);
 
 const documentName = computed(() => state.value?.name ?? 'unknown document');
 
-const tooltip = computed(() => `options ${documentName.value}`);
+const menuTooltip = computed(() => `options ${documentName.value}`);
 </script>
 
 <template>
   <MDContextMenuButton
-    :btns="documentContextBtns"
-    :tooltip="tooltip"
-    @click="onClickContextAction"
+    :btns="documentActionButtons"
+    :tooltip="menuTooltip"
+    @click="onClickMenuAction"
   />
 
   <DocumentRemoveDialog
