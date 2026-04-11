@@ -1,32 +1,25 @@
 # src/widgets/DocumentView/Database
 
-Inherits the rules from `src/widgets/DocumentView/AGENTS.md`. Applies to `src/widgets/DocumentView/Database` and its descendants until a deeper `AGENTS.md` overrides it.
+Inherits the rules from `src/widgets/AGENTS.md`. Applies to `src/widgets/DocumentView/Database` and its descendants until a deeper `AGENTS.md` overrides it.
 
 ## Contains
 
-- `DatabaseViewWidget.vue`: the main database document view container.
-- `DatabaseToolbar.vue`: view-level toolbar actions.
-- `DatabaseViewLayout.vue`: table layout and slot composition.
-- `DatabasePropertiesSheet.vue`, `DatabaseViewsSheet.vue`, `DatabaseSortSheet.vue`, `DatabaseFiltersSheet.vue`: supporting sheets and panels.
-- `ValueField.vue`, `ValueInline.vue`, `EditableInlineValue.vue`: value rendering and inline editing composition.
-- `PropertyCreateDialogWidget.vue`: create-property flow wiring.
+- Database document screen composition, inline value rendering, and view-level sheets or toolbars.
 
 ## Patterns
 
 - Treat this directory as composition for database document UI, not as a domain layer.
-- Pass IDs, refs, and narrow props downward instead of large mutable domain objects.
-- Inline editing should call feature/entity APIs instead of mutating document state directly.
-- Slot-based rendering is appropriate when it reduces coupling between value types and layout.
+- Pass document IDs, view IDs, and other narrow display inputs instead of large mutable document objects.
+- Route inline edits and toolbar actions through entity or feature APIs rather than mutating document state directly.
+- Use slots or small render helpers to connect value-type-specific UI to the shared layout without baking schema rules into the widget layer.
 
 ## Anti-patterns
 
-- Do not move sorting, filtering, schema validation, or CRUD rules into this widget layer.
+- Do not move sorting, filtering, validation, or CRUD rules into this widget layer.
 - Do not depend on `shared/service` directly when entity or feature APIs already cover the flow.
-- Do not place generic reusable UI here; that belongs in `shared/ui`.
-- Do not keep standalone dialogs here if they are really self-contained features.
+- Do not place generic reusable UI here when it belongs in `shared/ui`.
 
 ## Constraints
 
-- Changes in `ValueField.vue` and inline edit paths affect multiple property/value types.
-- Composition changes here must be checked against create, edit, filter, and sort flows in database document view.
-- Minimum verification: `pnpm type-check` and a manual smoke check of the affected database document flow.
+- Changes here affect multiple property and value types at once.
+- Minimum verification: `pnpm type-check`, then open a database document, exercise the touched inline or sheet flow, and refresh or reopen the same view to confirm the rendered state still persists correctly.
