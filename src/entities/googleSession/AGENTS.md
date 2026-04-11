@@ -5,6 +5,7 @@ Inherits the rules from `src/entities/AGENTS.md`. Applies to `src/entities/googl
 ## Contains
 
 - `useGoogleSessions.ts`: session display list and related entity state.
+- `useGoogleSessionAvatar.ts`: avatar loading state and blob-URL lifecycle for session profile images.
 - `setupGoogleSessions.ts`: entity-level setup wiring.
 - `GoogleSessionList.vue` and `GoogleSessionListItem.vue`: small UI fragments.
 - `index.ts`: public entry point.
