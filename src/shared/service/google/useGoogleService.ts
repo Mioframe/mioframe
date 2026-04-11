@@ -65,27 +65,7 @@ const setupGoogleService = (): GoogleService => {
       nextProfile?: GoogleSessionProfile | undefined;
       storedProfile?: GoogleSessionProfile | undefined;
     } = {},
-  ): GoogleSessionProfile => {
-    const profile: GoogleSessionProfile = { email };
-
-    if (storedProfile?.name) {
-      profile.name = storedProfile.name;
-    }
-
-    if (storedProfile?.picture) {
-      profile.picture = storedProfile.picture;
-    }
-
-    if (nextProfile?.name) {
-      profile.name = nextProfile.name;
-    }
-
-    if (nextProfile?.picture) {
-      profile.picture = nextProfile.picture;
-    }
-
-    return profile;
-  };
+  ): GoogleSessionProfile => nextProfile ?? storedProfile ?? { email };
   const getSessionDisplayList = (sessionStore: GoogleSessionStore): GoogleSessionDisplay[] =>
     keys(sessionStore).flatMap((email) => {
       const session = sessionStore[email];

@@ -10,7 +10,7 @@ const props = defineProps<{
 
 const { session } = toRefs(props);
 
-defineSlots<{
+const slots = defineSlots<{
   trailingIcon(): unknown;
 }>();
 
@@ -33,7 +33,7 @@ const emit = defineEmits<{
       <GoogleSessionAvatar :profile-image-url="session.profile.picture" />
     </template>
 
-    <template #trailingIcon>
+    <template v-if="slots.trailingIcon" #trailingIcon>
       <slot name="trailingIcon" />
     </template>
   </MDListItem>
