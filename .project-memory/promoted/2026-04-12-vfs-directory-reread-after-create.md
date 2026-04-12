@@ -18,11 +18,11 @@ evidence:
   - type: code
     ref: src/shared/service/fileSystem/useFileSystemService.ts:46
     note: directoryContent$ watches the path and always refetches through vfs.readDirectory.
-status: verified
+status: promoted
 confidence: high
 promotion-target:
-  artifact: AGENTS.md or provider-contract test
-  ref: src/shared/lib/virtualFileSystem/AGENTS.md
+  artifact: filesystem service AGENTS rule plus focused refresh tests
+  ref: src/shared/service/fileSystem/AGENTS.md
   trigger: Promote when another provider or bug fix depends on the same stale-listing contract.
 review-trigger:
   - When VFS watch semantics or provider directory event payloads change.
@@ -30,4 +30,4 @@ review-trigger:
 last-verified-at: 2026-04-12
 ---
 
-This is a runtime contract, not just a convenience refresh.
+Promoted to `src/shared/service/fileSystem/AGENTS.md` and the refresh tests. Keep this file as a breadcrumb for stale directory listing regressions across providers.

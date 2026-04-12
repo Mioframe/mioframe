@@ -21,10 +21,10 @@ evidence:
   - type: test
     ref: src/shared/service/databaseDocument/data/sortData.test.ts:57
     note: Sparse items sort through property defaults.
-status: verified
+status: promoted
 confidence: high
 promotion-target:
-  artifact: integration test or stronger service rule
+  artifact: service AGENTS rule plus focused query and sort tests
   ref: src/shared/service/databaseDocument/AGENTS.md
   trigger: Promote when another data-view regression repeats the stored-vs-effective mismatch.
 review-trigger:
@@ -33,4 +33,4 @@ review-trigger:
 last-verified-at: 2026-04-12
 ---
 
-This is one of the easiest ways to introduce “works in memory, breaks after reopen” bugs in database views.
+Promoted to `src/shared/service/databaseDocument/AGENTS.md` and the focused `queryData` and `sortData` tests. Keep this file only as a search breadcrumb for stored-vs-effective regressions.

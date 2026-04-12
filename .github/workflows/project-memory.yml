@@ -1,0 +1,45 @@
+name: Project Memory
+
+on:
+  pull_request:
+    paths:
+      - '**/AGENTS.md'
+      - '.project-memory/**'
+      - 'scripts/project-memory/**'
+      - '.husky/pre-commit'
+      - '.github/workflows/project-memory.yml'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+  push:
+    paths:
+      - '**/AGENTS.md'
+      - '.project-memory/**'
+      - 'scripts/project-memory/**'
+      - '.husky/pre-commit'
+      - '.github/workflows/project-memory.yml'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+
+permissions:
+  contents: read
+
+jobs:
+  validate-project-memory:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Use Node.js lts/*
+        uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Validate project memory
+        run: pnpm memory:validate

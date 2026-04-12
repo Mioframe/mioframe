@@ -20,3 +20,5 @@ last-verified-at: 2026-04-12
 ---
 
 Keep the body short. Add only the context that is still hard to infer from the evidence.
+
+Add `supersedes`, `superseded-by`, and `archive-reason` only when the record replaces, merges, or archives another one.

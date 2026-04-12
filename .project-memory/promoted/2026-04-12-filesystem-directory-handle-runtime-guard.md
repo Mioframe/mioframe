@@ -12,15 +12,15 @@ evidence:
   - type: code
     ref: src/shared/service/fileSystem/setupFileSystemDirectoryHandleService.ts:13
     note: Persisted handle records are validated through a zod custom boundary that depends on the runtime guard.
-status: verified
+status: promoted
 confidence: medium
 promotion-target:
-  artifact: focused guard test or stronger boundary note
-  ref: src/shared/lib/typeGuards/AGENTS.md
+  artifact: focused guard test plus stronger type guard and filesystem service notes
+  ref: src/shared/lib/typeGuards/isFileSystemDirectoryHandle.test.ts
   trigger: Promote when persisted handle hydration or browser support handling changes again.
 review-trigger:
   - When File System Access support, test environment globals, or persisted handle storage changes.
 last-verified-at: 2026-04-12
 ---
 
-This is a runtime-proof rule, not a type-level guarantee.
+Promoted to the guard test, `src/shared/lib/typeGuards/AGENTS.md`, and `src/shared/service/fileSystem/AGENTS.md`. Keep this file as a breadcrumb for runtime-only filesystem handle bugs.
