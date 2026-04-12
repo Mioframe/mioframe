@@ -4,6 +4,9 @@ import { fileURLToPath } from 'node:url';
 
 export const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
 export const projectMemoryRoot = path.join(repoRoot, '.project-memory');
+export const projectMemoryTaskStateRoot = path.join(projectMemoryRoot, '.task-state');
+export const currentTaskStatePath = path.join(projectMemoryTaskStateRoot, 'current-task.json');
+export const lastTaskFinishPath = path.join(projectMemoryTaskStateRoot, 'last-finish.json');
 
 export const directoryToStatus = Object.freeze({
   drafts: 'draft',
@@ -11,6 +14,8 @@ export const directoryToStatus = Object.freeze({
   promoted: 'promoted',
   archive: 'archived',
 });
+
+const projectMemoryEntryDirectories = new Set(Object.keys(directoryToStatus));
 
 export const allowedKinds = new Set([
   'lesson',
@@ -301,6 +306,22 @@ export const getEntryFiles = () =>
 
 export const loadEntries = () => getEntryFiles().map(parseEntryFile);
 
+export const isProjectMemoryEntryPath = (filePath) => {
+  const normalizedPath = normalizeRepoRelativePath(filePath);
+
+  if (!normalizedPath.startsWith('.project-memory/')) {
+    return false;
+  }
+
+  const segments = normalizedPath.split('/');
+
+  return (
+    segments.length === 3 &&
+    projectMemoryEntryDirectories.has(segments[1]) &&
+    segments[2].endsWith('.md')
+  );
+};
+
 export const asNonEmptyString = (value) =>
   typeof value === 'string' && normalizeWhitespace(value) !== ''
     ? normalizeWhitespace(value)
@@ -542,6 +563,100 @@ export const formatAgeInDays = (isoDate) => {
 };
 
 export const getTodayIsoDate = () => new Date().toISOString().slice(0, 10);
+
+const uniqueValues = (values) => [...new Set(values.filter(Boolean))];
+
+export const getBoundaryScopes = (entries, scopes) => {
+  const normalizedScopes = uniqueValues(scopes.map(normalizeRepoRelativePath));
+
+  if (normalizedScopes.length === 0) {
+    return [];
+  }
+
+  return uniqueValues(
+    entries
+      .filter((entry) => entry.data.status !== 'archived')
+      .flatMap((entry) => {
+        const entryScopes = Array.isArray(entry.data.scope)
+          ? entry.data.scope.map(normalizeRepoRelativePath)
+          : [];
+
+        if (
+          !entryScopes.some((entryScope) =>
+            normalizedScopes.some((scope) => scopeContainsPath(scope, entryScope)),
+          )
+        ) {
+          return [];
+        }
+
+        return entryScopes.filter(
+          (entryScope) =>
+            !normalizedScopes.some((scope) => scopeContainsPath(scope, entryScope)) &&
+            isRiskyPath(entryScope),
+        );
+      }),
+  );
+};
+
+export const buildProjectMemoryLookup = ({
+  entries = loadEntries(),
+  scopeQueries = [],
+  termQueries = [],
+  includeArchived = false,
+  includeBoundaryScopes = true,
+} = {}) => {
+  const normalizedScopes = uniqueValues(scopeQueries.map(normalizeRepoRelativePath));
+  const normalizedTerms = uniqueValues(termQueries.map((term) => asNonEmptyString(term)));
+  const parentScopeQueries = uniqueValues(normalizedScopes.map(getParentScope));
+  const boundaryScopeQueries = includeBoundaryScopes
+    ? getBoundaryScopes(entries, [...normalizedScopes, ...parentScopeQueries])
+    : [];
+  const lookupScopes = uniqueValues([
+    ...normalizedScopes,
+    ...parentScopeQueries,
+    ...boundaryScopeQueries,
+  ]);
+  const rankedEntries = rankEntries(entries, {
+    scopeQueries: lookupScopes,
+    termQueries: normalizedTerms,
+    includeArchived,
+  });
+
+  return {
+    scopeQueries: normalizedScopes,
+    parentScopeQueries,
+    boundaryScopeQueries,
+    lookupScopes,
+    termQueries: normalizedTerms,
+    includeArchived,
+    rankedEntries,
+  };
+};
+
+const isLegacyActiveTaskState = (state) =>
+  state &&
+  typeof state === 'object' &&
+  state.status === undefined &&
+  !state.finish?.completedAt &&
+  Array.isArray(state.exactScopes);
+
+export const isActiveTaskState = (state) =>
+  Boolean(
+    state &&
+    typeof state === 'object' &&
+    ((state.status === 'active' && Array.isArray(state.exactScopes)) ||
+      isLegacyActiveTaskState(state)),
+  );
+
+export const readActiveTaskState = (stateFilePath = currentTaskStatePath) => {
+  if (!fs.existsSync(stateFilePath)) {
+    return undefined;
+  }
+
+  const parsed = JSON.parse(fs.readFileSync(stateFilePath, 'utf8'));
+
+  return isActiveTaskState(parsed) ? parsed : undefined;
+};
 
 export const rankEntries = (
   entries,

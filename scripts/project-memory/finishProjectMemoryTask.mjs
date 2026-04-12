@@ -7,10 +7,10 @@ import {
   renderProjectMemoryDiffReview,
 } from './reviewProjectMemoryDiff.mjs';
 import { defaultTaskStatePath } from './startProjectMemoryTask.mjs';
-import { repoRoot } from './projectMemoryUtils.mjs';
+import { lastTaskFinishPath, readActiveTaskState, repoRoot } from './projectMemoryUtils.mjs';
 
 const usage = `Usage:
-  pnpm memory:task:finish [--staged | --base <ref>] [--memory-resolution keep:<memory-path>] [--learning-resolution record:<memory-path>] [--learning-resolution covered-by:<artifact-path>] [--state-file <path>]
+  pnpm memory:task:finish [--staged | --base <ref>] [--memory-resolution keep:<memory-path>] [--learning-resolution record:<memory-path>] [--learning-resolution covered-by:<artifact-path>] [--state-file <path>] [--finish-file <path>]
 
 Examples:
   pnpm memory:task:finish
@@ -23,6 +23,7 @@ const parseArgs = (rawArgs) => {
   let staged = false;
   let base;
   let stateFilePath = defaultTaskStatePath;
+  let finishFilePath = lastTaskFinishPath;
   const memoryResolutions = [];
   const learningResolutions = [];
 
@@ -82,6 +83,18 @@ const parseArgs = (rawArgs) => {
       continue;
     }
 
+    if (arg === '--finish-file') {
+      const value = args[index + 1];
+
+      if (!value) {
+        throw new Error('Expected a value after --finish-file');
+      }
+
+      finishFilePath = path.isAbsolute(value) ? value : path.join(repoRoot, value);
+      index += 1;
+      continue;
+    }
+
     if (arg === '--help' || arg === '-h') {
       console.log(usage);
       process.exit(0);
@@ -98,6 +111,7 @@ const parseArgs = (rawArgs) => {
     staged,
     base,
     stateFilePath,
+    finishFilePath,
     memoryResolutions,
     learningResolutions,
   };
@@ -118,6 +132,14 @@ const runMemoryValidate = () => {
 
 try {
   const options = parseArgs(process.argv);
+  const activeState = readActiveTaskState(options.stateFilePath);
+
+  if (!activeState) {
+    throw new Error(
+      'Active project-memory task state is missing. Run `pnpm memory:task:start --scope <path> --term <keyword>` before `pnpm memory:task:finish`.',
+    );
+  }
+
   const review = analyzeProjectMemoryDiff({
     ...options,
     requireTaskStart: true,
@@ -139,23 +161,28 @@ try {
     process.exit(1);
   }
 
-  const previousState = fs.existsSync(options.stateFilePath)
-    ? JSON.parse(fs.readFileSync(options.stateFilePath, 'utf8'))
-    : {};
-
-  const nextState = {
-    ...previousState,
-    version: 2,
-    finish: {
-      completedAt: new Date().toISOString(),
-      changedPaths: review.changedPaths,
-      memoryResolutions: options.memoryResolutions,
-      learningResolutions: options.learningResolutions,
-    },
+  const finishState = {
+    version: 3,
+    status: 'completed',
+    completedAt: new Date().toISOString(),
+    exactScopes: activeState.exactScopes,
+    parentScopes: activeState.parentScopes,
+    boundaryScopes: activeState.boundaryScopes,
+    lookupScopes: activeState.lookupScopes,
+    taskTerms: activeState.taskTerms,
+    matchedEntries: activeState.matchedEntries,
+    changedPaths: review.changedPaths,
+    changedMemoryEntryPaths: review.changedMemoryEntryPaths,
+    memoryResolutions: options.memoryResolutions,
+    learningResolutions: options.learningResolutions,
   };
 
-  fs.mkdirSync(path.dirname(options.stateFilePath), { recursive: true });
-  fs.writeFileSync(options.stateFilePath, `${JSON.stringify(nextState, null, 2)}\n`, 'utf8');
+  fs.mkdirSync(path.dirname(options.finishFilePath), { recursive: true });
+  fs.writeFileSync(options.finishFilePath, `${JSON.stringify(finishState, null, 2)}\n`, 'utf8');
+
+  if (fs.existsSync(options.stateFilePath)) {
+    fs.rmSync(options.stateFilePath);
+  }
 } catch (error) {
   console.error(error instanceof Error ? error.message : String(error));
   console.error('');

@@ -8,8 +8,10 @@ import {
   classifyStrongerArtifacts,
   correctionLikeKinds,
   getTodayIsoDate,
+  isProjectMemoryEntryPath,
   loadEntries,
   normalizeRepoRelativePath,
+  readActiveTaskState,
   repoRoot,
   scopeContainsPath,
 } from './projectMemoryUtils.mjs';
@@ -253,46 +255,6 @@ const parseLearningResolutions = (learningResolutions, entryByRelativePath) => {
   };
 };
 
-const readTaskState = (stateFilePath) => {
-  if (!fs.existsSync(stateFilePath)) {
-    return undefined;
-  }
-
-  return JSON.parse(fs.readFileSync(stateFilePath, 'utf8'));
-};
-
-const doesFinishStateCoverCurrentPaths = (state, changedPaths) => {
-  const finishedPaths = Array.isArray(state?.finish?.changedPaths)
-    ? state.finish.changedPaths.map(normalizeRepoRelativePath).filter(Boolean)
-    : [];
-
-  if (!state?.finish?.completedAt || finishedPaths.length === 0) {
-    return false;
-  }
-
-  return changedPaths.every((changedPath) => finishedPaths.includes(changedPath));
-};
-
-const getStoredLifecycleDecisions = (state, changedPaths) => {
-  if (!doesFinishStateCoverCurrentPaths(state, changedPaths)) {
-    return {
-      valid: false,
-      memoryResolutions: [],
-      learningResolutions: [],
-    };
-  }
-
-  return {
-    valid: true,
-    memoryResolutions: Array.isArray(state.finish.memoryResolutions)
-      ? state.finish.memoryResolutions
-      : [],
-    learningResolutions: Array.isArray(state.finish.learningResolutions)
-      ? state.finish.learningResolutions
-      : [],
-  };
-};
-
 const pushIssue = (collection, message) => {
   collection.push(message);
 };
@@ -304,27 +266,21 @@ export const analyzeProjectMemoryDiff = (options) => {
   const changedMemoryPaths = changedPaths.filter((filePath) =>
     filePath.startsWith('.project-memory/'),
   );
+  const changedMemoryEntryPaths = changedMemoryPaths.filter(isProjectMemoryEntryPath);
   const changedNonMemoryPaths = changedPaths.filter(
     (filePath) => !filePath.startsWith('.project-memory/'),
   );
-  const state = readTaskState(options.stateFilePath);
+  const state = readActiveTaskState(options.stateFilePath);
   const strictLifecycle = Boolean(options.strict || options.requireTaskStart);
   const entries = loadEntries();
   const entryByRelativePath = new Map(entries.map((entry) => [entry.relativePath, entry]));
   const entryByMemoryPath = new Map(entries.map((entry) => [entry.memoryRelativePath, entry]));
-  const storedLifecycleDecisions = getStoredLifecycleDecisions(state, changedPaths);
   const memoryResolutions = parseMemoryResolutions(
-    [
-      ...(storedLifecycleDecisions.valid ? storedLifecycleDecisions.memoryResolutions : []),
-      ...(options.memoryResolutions ?? []),
-    ],
+    options.memoryResolutions ?? [],
     entryByMemoryPath,
   );
   const learningResolutions = parseLearningResolutions(
-    [
-      ...(storedLifecycleDecisions.valid ? storedLifecycleDecisions.learningResolutions : []),
-      ...(options.learningResolutions ?? []),
-    ],
+    options.learningResolutions ?? [],
     entryByRelativePath,
   );
   const relatedEntries = entries
@@ -345,6 +301,7 @@ export const analyzeProjectMemoryDiff = (options) => {
     })
     .filter(Boolean);
   const changedMemoryEntries = changedMemoryPaths
+    .filter(isProjectMemoryEntryPath)
     .map((relativePath) => entryByRelativePath.get(relativePath))
     .filter(Boolean);
   const linkedHandledEntries = new Set();
@@ -407,17 +364,6 @@ export const analyzeProjectMemoryDiff = (options) => {
   ) {
     reportLifecycleIssue(
       'Project-memory task start state is missing. Run `pnpm memory:task:start --scope <path> --term <keyword>` before risky work.',
-    );
-  }
-
-  if (
-    state?.finish?.completedAt &&
-    !storedLifecycleDecisions.valid &&
-    changedPaths.length > 0 &&
-    strictLifecycle
-  ) {
-    reportLifecycleIssue(
-      'The diff changed after the last `pnpm memory:task:finish`. Rerun `pnpm memory:task:finish` so lifecycle and learning decisions match the current diff.',
     );
   }
 
@@ -510,7 +456,7 @@ export const analyzeProjectMemoryDiff = (options) => {
   }
 
   const learningCaptureSatisfied =
-    changedMemoryPaths.length > 0 ||
+    changedMemoryEntryPaths.length > 0 ||
     learningResolutions.record.size > 0 ||
     learningResolutions.coveredBy.size > 0;
 
@@ -540,6 +486,7 @@ export const analyzeProjectMemoryDiff = (options) => {
   return {
     changedPaths,
     changedMemoryPaths,
+    changedMemoryEntryPaths,
     changedNonMemoryPaths,
     failures,
     warnings,
@@ -555,7 +502,6 @@ export const analyzeProjectMemoryDiff = (options) => {
     state,
     stateFilePath: options.stateFilePath,
     strictLifecycle,
-    storedLifecycleDecisions,
   };
 };
 
@@ -583,13 +529,6 @@ export const renderProjectMemoryDiffReview = (result) => {
     lines.push(
       `State terms: ${Array.isArray(result.state.taskTerms) && result.state.taskTerms.length > 0 ? result.state.taskTerms.join(', ') : 'none'}`,
     );
-
-    if (result.state.finish?.completedAt) {
-      lines.push(`Last finish: ${result.state.finish.completedAt}`);
-      lines.push(
-        `Stored finish decisions reused: ${result.storedLifecycleDecisions.valid ? 'yes' : 'no'}`,
-      );
-    }
   }
 
   if (result.riskyFileMatches.length > 0) {
@@ -628,6 +567,9 @@ export const renderProjectMemoryDiffReview = (result) => {
     result.learningSignals.forEach((signal) => {
       lines.push(`- ${signal}`);
     });
+    lines.push(
+      `Entry changes counted for learning capture: ${result.changedMemoryEntryPaths.length > 0 ? result.changedMemoryEntryPaths.join(', ') : 'none'}`,
+    );
     lines.push(`Learning capture satisfied: ${result.learningCaptureSatisfied ? 'yes' : 'no'}`);
   }
 
