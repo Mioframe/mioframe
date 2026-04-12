@@ -29,7 +29,7 @@ The entrypoint:
 
 - requires the touched scope;
 - derives parent scopes automatically;
-- searches by exact scope, parent scope, task terms, and related boundaries;
+- searches by exact scope, parent scope, related risky boundaries, and task terms through the same lookup model used by hooks and `memory:lookup`;
 - writes `.project-memory/.task-state/current-task.json`.
 
 Repo-local Codex hooks may preload similar context before you run the command, but the task-state file created by `memory:task:start` is still the canonical discovery record.
@@ -64,15 +64,16 @@ pnpm memory:task:finish --memory-resolution keep:verified/2026-04-12-helper-rule
 pnpm memory:task:finish --learning-resolution covered-by:src/shared/lib/changeObject/deepPatchJsonObject.test.ts
 ```
 
-The exitpoint runs strict diff-aware review and then `pnpm memory:validate`. It persists the finish decision into task state so pre-commit and later local review can see that the task already completed lifecycle handling.
+The exitpoint runs strict diff-aware review and then `pnpm memory:validate`. On success it writes a completion snapshot to `.project-memory/.task-state/last-finish.json` and removes `.project-memory/.task-state/current-task.json`, so only an actually active task can satisfy later lifecycle checks.
 
 ## Learning Decision Rules
 
 When the diff indicates a confirmed, reusable lesson, finish must end with one of these outcomes:
 
-- `.project-memory` changed because you updated or created a record;
-- `.project-memory` changed because you promoted or archived a related record;
+- a real entry under `.project-memory/drafts/`, `verified/`, `promoted/`, or `archive/` changed because you updated, created, promoted, or archived a record;
 - `--learning-resolution covered-by:<artifact-path>` was supplied because a stronger artifact already carries the lesson and prose memory would duplicate it.
+
+Documentation or template edits alone do not count. Changing `.project-memory/README.md`, `.project-memory/WORKFLOW.md`, `.project-memory/templates/entry.md`, `.project-memory/AGENTS.md`, or task-state files must still be paired with a real entry change or an explicit learning resolution when the task produced a reusable lesson.
 
 Typical signals that trigger this requirement:
 

@@ -1,13 +1,7 @@
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 
-import {
-  asNonEmptyString,
-  getParentScope,
-  loadEntries,
-  normalizeRepoRelativePath,
-  rankEntries,
-} from './projectMemoryUtils.mjs';
+import { buildProjectMemoryLookup } from './projectMemoryUtils.mjs';
 
 const usage = `Usage:
   pnpm memory:lookup --scope <path> [--scope <path>] [--term <keyword>] [--include-archived] [--json]
@@ -21,28 +15,11 @@ export const lookupProjectMemory = ({
   termQueries = [],
   includeArchived = false,
 } = {}) => {
-  const normalizedScopes = [
-    ...new Set(scopeQueries.map(normalizeRepoRelativePath).filter(Boolean)),
-  ];
-  const normalizedTerms = [
-    ...new Set(termQueries.map((term) => asNonEmptyString(term)).filter(Boolean)),
-  ];
-  const parentScopeQueries = [...new Set(normalizedScopes.map(getParentScope).filter(Boolean))];
-  const lookupScopes = [...new Set([...normalizedScopes, ...parentScopeQueries])];
-  const rankedEntries = rankEntries(loadEntries(), {
-    scopeQueries: lookupScopes,
-    termQueries: normalizedTerms,
+  return buildProjectMemoryLookup({
+    scopeQueries,
+    termQueries,
     includeArchived,
   });
-
-  return {
-    scopeQueries: normalizedScopes,
-    parentScopeQueries,
-    lookupScopes,
-    termQueries: normalizedTerms,
-    includeArchived,
-    rankedEntries,
-  };
 };
 
 export const renderProjectMemoryLookup = (result) => {

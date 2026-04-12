@@ -75,9 +75,11 @@ The system is not meant to log everything. It only captures confirmed, reusable 
 
 At task finish, a risky task must make one explicit learning decision when the diff indicates reusable experience:
 
-- update or create a `.project-memory` entry;
-- promote the lesson by editing the stronger artifact and leaving a promoted breadcrumb;
+- update or create a real `.project-memory` entry in `drafts/`, `verified/`, `promoted/`, or `archive/`;
+- promote the lesson by editing the stronger artifact and leaving a promoted breadcrumb entry;
 - explicitly finish with `--learning-resolution covered-by:<artifact-path>` when the lesson is already better expressed in a stronger artifact and new prose memory would be duplication.
+
+Structural or documentation-only edits do not count as learning capture by themselves. In particular, changing `.project-memory/README.md`, `.project-memory/WORKFLOW.md`, `.project-memory/templates/entry.md`, `.project-memory/AGENTS.md`, or task-state files does not satisfy the learning decision requirement.
 
 Existing memory scopes still require lifecycle handling:
 
@@ -111,9 +113,10 @@ Repeated correction-style lessons should not stay indefinitely as prose-only mem
 Retrieval is optimized for not repeating mistakes across sessions:
 
 - exact scope and parent scope matches still rank highest;
+- `pnpm memory:task:start` and `pnpm memory:lookup` both expand the query with boundary-linked risky scopes from matching records;
 - term matches now search `mistake`, `correction`, `applies-when`, evidence text, and the body;
 - correction-style records get a ranking boost so past wrong inferences surface early;
-- prompt-time lookup expands to boundary-linked scopes from existing memory.
+- hooks reuse the same lookup model instead of maintaining a separate boundary-only retrieval path.
 
 This means a past bug fix or review finding in the same helper, boundary, or subsystem should show up before new behavior changes begin.
 
@@ -125,7 +128,7 @@ What they do:
 
 - preload task-relevant memory on session start and prompt submit;
 - block the first narrow class of risky Bash writes when discovery has not happened yet;
-- remind the agent at stop-time to run `pnpm memory:task:finish` if lifecycle or learning capture is still unresolved.
+- remind the agent at stop-time to run `pnpm memory:task:finish` if an active task still has unresolved lifecycle or learning capture work.
 
 What they do not do:
 
@@ -158,6 +161,12 @@ pnpm memory:task:finish
 pnpm memory:task:finish --memory-resolution keep:promoted/2026-04-12-vfs-directory-reread-after-create.md
 pnpm memory:task:finish --learning-resolution covered-by:src/shared/lib/typeGuards/isDirectoryHandle.ts
 ```
+
+Task state model:
+
+- `.project-memory/.task-state/current-task.json` exists only for an active discovery session created by `memory:task:start`;
+- `memory:task:finish` writes a separate completion snapshot to `.project-memory/.task-state/last-finish.json`;
+- after a successful finish, the active state file is deleted so the next risky task must run a fresh `memory:task:start` and cannot inherit stale scopes, terms, or matched entries.
 
 Validate:
 
