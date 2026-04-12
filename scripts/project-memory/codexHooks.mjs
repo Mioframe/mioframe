@@ -2,27 +2,32 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 import {
+  recordShownDigests,
+  renderMemoryDigest,
+  writeUsageStats,
+} from './projectMemoryBehavior.mjs';
+import {
   classifyRiskyCategories,
-  isRiskyPath,
   loadEntries,
+  loadUsageStats,
   normalizeRepoRelativePath,
+  readActiveTaskState,
   resolveRepoPath,
   scopeContainsPath,
   tokenizeRule,
+  usageStatsPath,
+  writeActiveTaskState,
 } from './projectMemoryUtils.mjs';
 import { lookupProjectMemory } from './lookupProjectMemory.mjs';
-import {
-  analyzeProjectMemoryDiff,
-  renderProjectMemoryDiffReview,
-} from './reviewProjectMemoryDiff.mjs';
+import { analyzeProjectMemoryDiff } from './reviewProjectMemoryDiff.mjs';
 import { defaultTaskStatePath } from './startProjectMemoryTask.mjs';
 
 const usage = `Usage:
   node ./scripts/project-memory/codexHooks.mjs <session-start|user-prompt-submit|pre-tool-use|stop>`;
 
 // Verified against the installed Codex runtime contract: additive hooks may safely
-// soft-fallback, while enforcement hooks must surface internal failures as non-zero
-// hook exits so Codex does not silently treat broken guardrails as success.
+// soft-fallback, while the narrow Bash guard hook must surface internal failures as
+// non-zero exits so Codex does not silently treat broken guardrails as success.
 const hookFailurePolicies = {
   'session-start': {
     eventName: 'SessionStart',
@@ -45,10 +50,10 @@ const hookFailurePolicies = {
   },
   stop: {
     eventName: 'Stop',
-    failureMode: 'hard failure',
-    exitCode: 1,
+    failureMode: 'soft fallback',
+    exitCode: 0,
     resolutionLine:
-      'Refusing to report success because this hook participates in stop-time lifecycle enforcement.',
+      'Continuing without hook output because stop-time guidance should not become a late-stage trap.',
   },
 };
 
@@ -119,16 +124,6 @@ const getTaskStatePath = () => {
   return path.isAbsolute(override) ? override : path.join(process.cwd(), override);
 };
 
-const readTaskState = () => {
-  const statePath = getTaskStatePath();
-
-  if (!fs.existsSync(statePath)) {
-    return undefined;
-  }
-
-  return JSON.parse(fs.readFileSync(statePath, 'utf8'));
-};
-
 const unique = (values) => [...new Set(values.filter(Boolean))];
 
 const compactScopes = (scopes) => {
@@ -182,42 +177,11 @@ const extractTerms = (prompt) =>
     .filter((token) => token.length >= 4 && !promptStopWords.has(token))
     .slice(0, 8);
 
-const summarizeEntries = (rankedEntries, limit = 4) =>
-  rankedEntries.slice(0, limit).map(({ entry, reasons }) => {
-    const summary = [entry.relativePath, entry.data.rule].filter(Boolean).join(': ');
-    const reasonText = [...new Set(reasons)].slice(0, 3).join(', ');
-
-    return reasonText ? `- ${summary} [${reasonText}]` : `- ${summary}`;
+const summarizeEntries = (rankedEntries, suppressEntryPaths = [], expanded = false) =>
+  renderMemoryDigest(rankedEntries, {
+    suppressEntryPaths,
+    expanded,
   });
-
-const getBoundaryScopes = (scopes) => {
-  if (scopes.length === 0) {
-    return [];
-  }
-
-  const boundaryScopes = loadEntries()
-    .filter((entry) => entry.data.status !== 'archived')
-    .flatMap((entry) => {
-      const entryScopes = Array.isArray(entry.data.scope)
-        ? entry.data.scope.map(normalizeRepoRelativePath)
-        : [];
-
-      if (
-        !entryScopes.some((entryScope) =>
-          scopes.some((scope) => scopeContainsPath(scope, entryScope)),
-        )
-      ) {
-        return [];
-      }
-
-      return entryScopes.filter(
-        (entryScope) =>
-          !scopes.some((scope) => scopeContainsPath(scope, entryScope)) && isRiskyPath(entryScope),
-      );
-    });
-
-  return unique(boundaryScopes);
-};
 
 const renderSuggestedTaskStart = (scopes, terms) => {
   if (scopes.length === 0) {
@@ -237,12 +201,13 @@ const renderSuggestedTaskStart = (scopes, terms) => {
 const buildPromptDiscoveryContext = ({ prompt, state }) => {
   const promptScopes = extractPaths(prompt);
   const promptTerms = extractTerms(prompt);
-  const riskyPromptScopes = promptScopes.filter(isRiskyPath);
+  const riskyPromptScopes = promptScopes.filter(
+    (scope) => classifyRiskyCategories(scope).length > 0,
+  );
   const baseScopes = riskyPromptScopes.length > 0 ? riskyPromptScopes : (state?.exactScopes ?? []);
   const fallbackTerms = promptTerms.length > 0 ? promptTerms : (state?.taskTerms ?? []);
-  const boundaryScopes = getBoundaryScopes(baseScopes);
   const lookup = lookupProjectMemory({
-    scopeQueries: [...baseScopes, ...boundaryScopes],
+    scopeQueries: baseScopes,
     termQueries: fallbackTerms,
   });
   const scopeAnchoredEntries =
@@ -253,20 +218,22 @@ const buildPromptDiscoveryContext = ({ prompt, state }) => {
             : [];
 
           return entryScopes.some((entryScope) =>
-            [...baseScopes, ...boundaryScopes].some((scope) =>
-              scopeContainsPath(scope, entryScope),
-            ),
+            lookup.lookupScopes.some((scope) => scopeContainsPath(scope, entryScope)),
           );
         })
       : [];
   const rankedEntries =
     scopeAnchoredEntries.length > 0 ? scopeAnchoredEntries : lookup.rankedEntries;
   const shouldNudgeTaskStart =
-    baseScopes.length > 0 && baseScopes.some((scope) => isRiskyPath(scope)) && state === undefined;
+    baseScopes.length > 0 &&
+    baseScopes.some((scope) => classifyRiskyCategories(scope).length > 0) &&
+    state === undefined;
 
   if (rankedEntries.length === 0 && !shouldNudgeTaskStart) {
     return undefined;
   }
+
+  const digest = summarizeEntries(rankedEntries, state?.shownDigestEntryPaths ?? []);
 
   const lines = ['Project-memory auto-context:'];
 
@@ -274,8 +241,8 @@ const buildPromptDiscoveryContext = ({ prompt, state }) => {
     lines.push(`- inferred risky scopes: ${baseScopes.join(', ')}`);
   }
 
-  if (boundaryScopes.length > 0) {
-    lines.push(`- boundary scopes: ${boundaryScopes.join(', ')}`);
+  if (lookup.boundaryScopeQueries.length > 0) {
+    lines.push(`- boundary scopes: ${lookup.boundaryScopeQueries.join(', ')}`);
   }
 
   if (fallbackTerms.length > 0) {
@@ -283,8 +250,11 @@ const buildPromptDiscoveryContext = ({ prompt, state }) => {
   }
 
   if (rankedEntries.length > 0) {
-    lines.push('- matching memory to read before behavior changes:');
-    lines.push(...summarizeEntries(rankedEntries));
+    lines.push('- compact digest:');
+    lines.push(...digest.lines);
+    if (digest.renderedEntryPaths.length === 0) {
+      lines.push('- no new digest lines; the current task already saw the top matching memory.');
+    }
   } else {
     lines.push('- no matching project-memory entries found yet for the inferred risky scope.');
   }
@@ -298,7 +268,7 @@ const buildPromptDiscoveryContext = ({ prompt, state }) => {
   }
 
   lines.push(
-    '- hooks can preload context and the Stop hook can request one extra pass for unresolved lifecycle work, but only pnpm memory:task:start records discovery for finish/CI.',
+    '- hooks preload context and point to the next lifecycle step early, but only pnpm memory:task:start and pnpm memory:task:finish record discovery and learning decisions.',
   );
 
   return lines.join('\n');
@@ -308,7 +278,7 @@ const buildSessionContext = (state) => {
   const lines = [
     'This repo wires Codex hooks into .project-memory.',
     'For risky scopes such as .project-memory, scripts/project-memory, src/shared, service boundaries, helper semantics, filesystem/VFS, CRDT, and schema or migration paths, start with pnpm memory:task:start before non-trivial edits.',
-    'The Stop hook can request one extra pass when risky diff lifecycle handling is missing; if the follow-up still fails, it stops without silently succeeding. PreToolUse only guards Bash and is not a complete enforcement boundary.',
+    'Hooks are intentionally front-loaded: they preload memory and nudge discovery before risky edits, while pnpm memory:task:finish is the explicit place to record lifecycle and learning decisions. PreToolUse only guards Bash and is not a complete enforcement boundary.',
   ];
 
   if (!state) {
@@ -322,7 +292,7 @@ const buildSessionContext = (state) => {
         state.matchedEntries.includes(entry.memoryRelativePath),
     )
     .slice(0, 4)
-    .map((entry) => `- ${entry.relativePath}: ${entry.data.rule}`);
+    .flatMap((entry) => createSessionEntryLines(entry));
 
   lines.push(
     `Active task state: scopes=${Array.isArray(state.lookupScopes) ? state.lookupScopes.join(', ') : 'none'}; terms=${Array.isArray(state.taskTerms) && state.taskTerms.length > 0 ? state.taskTerms.join(', ') : 'none'}.`,
@@ -336,6 +306,8 @@ const buildSessionContext = (state) => {
   return lines.join('\n');
 };
 
+const createSessionEntryLines = (entry) => renderMemoryDigest([{ entry }]).lines;
+
 const isWriteLikeCommand = (command) =>
   /\b(git\s+(apply|commit|push)|mv|cp|rm|install|touch|mkdir|tee|truncate)\b/u.test(command) ||
   /\bsed\s+-i\b/u.test(command) ||
@@ -344,23 +316,6 @@ const isWriteLikeCommand = (command) =>
 
 const buildPreToolBlockReason = (command, state) => {
   if (/\bpnpm\s+memory:task:start\b/u.test(command)) {
-    return undefined;
-  }
-
-  if (/\bgit\s+(commit|push)\b/u.test(command)) {
-    const review = analyzeProjectMemoryDiff({
-      requireTaskStart: true,
-      stateFilePath: getTaskStatePath(),
-    });
-
-    if (review.failures.length > 0) {
-      return [
-        'Project-memory lifecycle is still unresolved for the current diff.',
-        ...review.failures.slice(0, 3).map((failure) => `- ${failure}`),
-        'Run pnpm memory:task:finish or update/archive/keep the related entry before commit/push.',
-      ].join('\n');
-    }
-
     return undefined;
   }
 
@@ -388,31 +343,15 @@ const buildPreToolBlockReason = (command, state) => {
     suggestedCommand
       ? `Run ${suggestedCommand} first, then retry the command.`
       : 'Run pnpm memory:task:start first, then retry the command.',
-    'This Bash guard is intentionally narrow; non-shell tool calls are reviewed again by Stop, pre-commit, and CI.',
+    'This Bash guard is intentionally narrow; finish the task later with pnpm memory:task:finish so the learning decision is recorded in one explicit place.',
   ].join('\n');
 };
 
-const renderStopReason = (review) =>
-  [
-    'Project-memory lifecycle is still open for this diff.',
-    ...review.failures.slice(0, 4).map((failure) => `- ${failure}`),
-    'Handle the related memory entry (refresh, promote, archive, or explicit keep) and rerun pnpm memory:task:finish before stopping.',
-  ].join('\n');
-
-const renderStopContinuationPrompt = (review) =>
-  [
-    'Project-memory lifecycle is still unresolved for the current diff.',
-    ...review.failures.slice(0, 4).map((failure) => `- ${failure}`),
-    'Handle the related memory entry (refresh, promote, archive, or explicit keep), rerun `pnpm memory:task:finish`, and only stop once the lifecycle review is clean.',
-    '',
-    'Diff review details:',
-    renderProjectMemoryDiffReview(review),
-  ].join('\n');
-
 const renderStopWarning = (review) =>
   [
-    'Project-memory warnings for the current diff:',
-    ...review.warnings.slice(0, 4).map((warning) => `- ${warning}`),
+    'Project-memory follow-up before you leave this task:',
+    ...[...review.failures, ...review.warnings].slice(0, 5).map((warning) => `- ${warning}`),
+    'Preferred path: run `pnpm memory:task:finish` so the lifecycle review and any learning capture decision are recorded explicitly.',
   ].join('\n');
 
 const getHookFailurePolicy = (command) =>
@@ -447,7 +386,7 @@ const run = async () => {
   }
 
   const payload = await readJsonFromStdin();
-  const state = readTaskState();
+  const state = readActiveTaskState(getTaskStatePath());
 
   if (command === 'session-start') {
     const additionalContext = buildSessionContext(state);
@@ -469,6 +408,19 @@ const run = async () => {
 
   if (command === 'user-prompt-submit') {
     const prompt = typeof payload.prompt === 'string' ? payload.prompt : '';
+    const promptScopes = extractPaths(prompt);
+    const promptTerms = extractTerms(prompt);
+    const riskyPromptScopes = promptScopes.filter(
+      (scope) => classifyRiskyCategories(scope).length > 0,
+    );
+    const baseScopes =
+      riskyPromptScopes.length > 0 ? riskyPromptScopes : (state?.exactScopes ?? []);
+    const fallbackTerms = promptTerms.length > 0 ? promptTerms : (state?.taskTerms ?? []);
+    const lookup = lookupProjectMemory({
+      scopeQueries: baseScopes,
+      termQueries: fallbackTerms,
+    });
+    const digest = summarizeEntries(lookup.rankedEntries, state?.shownDigestEntryPaths ?? []);
     const additionalContext = buildPromptDiscoveryContext({
       prompt,
       state,
@@ -476,6 +428,33 @@ const run = async () => {
 
     if (!additionalContext) {
       return;
+    }
+
+    if (state && digest.renderedEntryPaths.length > 0) {
+      const entryByPath = new Map(loadEntries().map((entry) => [entry.memoryRelativePath, entry]));
+      const usageStats = loadUsageStats(usageStatsPath);
+      const nextState = {
+        ...state,
+        shownDigestEntryPaths: unique([
+          ...(state.shownDigestEntryPaths ?? []),
+          ...digest.renderedEntryPaths,
+        ]),
+        digestCache: {
+          mode: 'compact',
+          entryPaths: digest.renderedEntryPaths,
+          lineCount: digest.lines.length,
+        },
+      };
+
+      writeActiveTaskState(nextState, getTaskStatePath());
+      recordShownDigests({
+        usageStats,
+        entries: digest.renderedEntryPaths
+          .map((entryPath) => entryByPath.get(entryPath))
+          .filter(Boolean),
+        nowIso: new Date().toISOString(),
+      });
+      writeUsageStats(usageStatsPath, usageStats);
     }
 
     console.log(
@@ -521,43 +500,15 @@ const run = async () => {
   }
 
   if (command === 'stop') {
-    const review = analyzeProjectMemoryDiff({
-      requireTaskStart: true,
-      stateFilePath: getTaskStatePath(),
-    });
-
-    if (review.failures.length > 0) {
-      if (payload.stop_hook_active) {
-        console.log(
-          JSON.stringify(
-            {
-              continue: false,
-              stopReason:
-                'Project-memory lifecycle remained unresolved after the Stop continuation pass.',
-              systemMessage: `${renderStopReason(review)}\n\n${renderProjectMemoryDiffReview(review)}`,
-            },
-            null,
-            2,
-          ),
-        );
-        return;
-      }
-
-      console.log(
-        JSON.stringify(
-          {
-            decision: 'block',
-            reason: renderStopContinuationPrompt(review),
-            systemMessage: renderStopReason(review),
-          },
-          null,
-          2,
-        ),
-      );
+    if (!state) {
       return;
     }
 
-    if (review.warnings.length > 0) {
+    const review = analyzeProjectMemoryDiff({
+      stateFilePath: getTaskStatePath(),
+    });
+
+    if (review.failures.length > 0 || review.warnings.length > 0) {
       console.log(
         JSON.stringify(
           {

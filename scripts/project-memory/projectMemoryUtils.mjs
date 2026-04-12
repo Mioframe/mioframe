@@ -2,8 +2,18 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import {
+  createEmptyUsageStats,
+  getEntryUtilitySignal,
+  readUsageStats,
+} from './projectMemoryBehavior.mjs';
+
 export const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
 export const projectMemoryRoot = path.join(repoRoot, '.project-memory');
+export const projectMemoryTaskStateRoot = path.join(projectMemoryRoot, '.task-state');
+export const currentTaskStatePath = path.join(projectMemoryTaskStateRoot, 'current-task.json');
+export const lastTaskFinishPath = path.join(projectMemoryTaskStateRoot, 'last-finish.json');
+export const usageStatsPath = path.join(projectMemoryTaskStateRoot, 'usage-stats.json');
 
 export const directoryToStatus = Object.freeze({
   drafts: 'draft',
@@ -12,8 +22,11 @@ export const directoryToStatus = Object.freeze({
   archive: 'archived',
 });
 
+const projectMemoryEntryDirectories = new Set(Object.keys(directoryToStatus));
+
 export const allowedKinds = new Set([
   'lesson',
+  'correction',
   'library-semantics',
   'review-finding',
   'pattern',
@@ -300,6 +313,22 @@ export const getEntryFiles = () =>
 
 export const loadEntries = () => getEntryFiles().map(parseEntryFile);
 
+export const isProjectMemoryEntryPath = (filePath) => {
+  const normalizedPath = normalizeRepoRelativePath(filePath);
+
+  if (!normalizedPath.startsWith('.project-memory/')) {
+    return false;
+  }
+
+  const segments = normalizedPath.split('/');
+
+  return (
+    segments.length === 3 &&
+    projectMemoryEntryDirectories.has(segments[1]) &&
+    segments[2].endsWith('.md')
+  );
+};
+
 export const asNonEmptyString = (value) =>
   typeof value === 'string' && normalizeWhitespace(value) !== ''
     ? normalizeWhitespace(value)
@@ -492,6 +521,24 @@ export const isRiskyPath = (filePath) => classifyRiskyCategories(filePath).lengt
 export const classifyStrongerArtifacts = (filePath) =>
   strongerArtifactMatchers.flatMap((matcher) => (matcher.match(filePath) ? [matcher.kind] : []));
 
+export const correctionLikeKinds = new Set(['correction', 'review-finding', 'pitfall']);
+
+export const entrySearchTextFields = (entry) =>
+  [
+    entry.relativePath,
+    entry.data.rule,
+    entry.data.why,
+    entry.data.mistake,
+    entry.data.correction,
+    ...(entry.data['applies-when'] ?? []),
+    entry.body,
+    ...(entry.data.scope ?? []),
+    ...(entry.data['review-trigger'] ?? []),
+    ...(Array.isArray(entry.data.evidence)
+      ? entry.data.evidence.flatMap((evidence) => [evidence.type, evidence.ref, evidence.note])
+      : []),
+  ].filter(Boolean);
+
 export const tokenizeRule = (value) =>
   [...new Set(value.toLowerCase().match(/[a-z0-9@._-]+/gu) ?? [])].filter(
     (token) => token.length > 2,
@@ -524,15 +571,125 @@ export const formatAgeInDays = (isoDate) => {
 
 export const getTodayIsoDate = () => new Date().toISOString().slice(0, 10);
 
+const uniqueValues = (values) => [...new Set(values.filter(Boolean))];
+
+export const getBoundaryScopes = (entries, scopes) => {
+  const normalizedScopes = uniqueValues(scopes.map(normalizeRepoRelativePath));
+
+  if (normalizedScopes.length === 0) {
+    return [];
+  }
+
+  return uniqueValues(
+    entries
+      .filter((entry) => entry.data.status !== 'archived')
+      .flatMap((entry) => {
+        const entryScopes = Array.isArray(entry.data.scope)
+          ? entry.data.scope.map(normalizeRepoRelativePath)
+          : [];
+
+        if (
+          !entryScopes.some((entryScope) =>
+            normalizedScopes.some((scope) => scopeContainsPath(scope, entryScope)),
+          )
+        ) {
+          return [];
+        }
+
+        return entryScopes.filter(
+          (entryScope) =>
+            !normalizedScopes.some((scope) => scopeContainsPath(scope, entryScope)) &&
+            isRiskyPath(entryScope),
+        );
+      }),
+  );
+};
+
+export const buildProjectMemoryLookup = ({
+  entries = loadEntries(),
+  scopeQueries = [],
+  termQueries = [],
+  includeArchived = false,
+  includeBoundaryScopes = true,
+  usageStats = loadUsageStats(),
+} = {}) => {
+  const normalizedScopes = uniqueValues(scopeQueries.map(normalizeRepoRelativePath));
+  const normalizedTerms = uniqueValues(termQueries.map((term) => asNonEmptyString(term)));
+  const parentScopeQueries = uniqueValues(normalizedScopes.map(getParentScope));
+  const boundaryScopeQueries = includeBoundaryScopes
+    ? getBoundaryScopes(entries, [...normalizedScopes, ...parentScopeQueries])
+    : [];
+  const lookupScopes = uniqueValues([
+    ...normalizedScopes,
+    ...parentScopeQueries,
+    ...boundaryScopeQueries,
+  ]);
+  const rankedEntries = rankEntries(entries, {
+    scopeQueries: lookupScopes,
+    termQueries: normalizedTerms,
+    includeArchived,
+    usageStats,
+  });
+
+  return {
+    scopeQueries: normalizedScopes,
+    parentScopeQueries,
+    boundaryScopeQueries,
+    lookupScopes,
+    termQueries: normalizedTerms,
+    includeArchived,
+    rankedEntries,
+  };
+};
+
+const isLegacyActiveTaskState = (state) =>
+  state &&
+  typeof state === 'object' &&
+  state.status === undefined &&
+  !state.finish?.completedAt &&
+  Array.isArray(state.exactScopes);
+
+export const isActiveTaskState = (state) =>
+  Boolean(
+    state &&
+    typeof state === 'object' &&
+    ((state.status === 'active' && Array.isArray(state.exactScopes)) ||
+      isLegacyActiveTaskState(state)),
+  );
+
+export const readActiveTaskState = (stateFilePath = currentTaskStatePath) => {
+  if (!fs.existsSync(stateFilePath)) {
+    return undefined;
+  }
+
+  const parsed = JSON.parse(fs.readFileSync(stateFilePath, 'utf8'));
+
+  return isActiveTaskState(parsed) ? parsed : undefined;
+};
+
+export const writeActiveTaskState = (state, stateFilePath = currentTaskStatePath) => {
+  fs.mkdirSync(path.dirname(stateFilePath), { recursive: true });
+  fs.writeFileSync(stateFilePath, `${JSON.stringify(state, null, 2)}\n`, 'utf8');
+};
+
+export const loadUsageStats = (customUsageStatsPath = usageStatsPath) =>
+  readUsageStats(customUsageStatsPath);
+
 export const rankEntries = (
   entries,
-  { scopeQueries = [], termQueries = [], includeArchived = false },
+  {
+    scopeQueries = [],
+    termQueries = [],
+    includeArchived = false,
+    usageStats = createEmptyUsageStats(),
+  },
 ) => {
   const normalizedScopes = scopeQueries.map((scope) => normalizeScopeEntry(scope)).filter(Boolean);
   const normalizedTerms = termQueries
     .map((term) => asNonEmptyString(term))
     .filter(Boolean)
     .map((term) => term.toLowerCase());
+  const normalizedTermTokens = [...new Set(normalizedTerms.flatMap((term) => tokenizeRule(term)))];
   const candidates = entries.filter((entry) => includeArchived || entry.data.status !== 'archived');
 
   return candidates
@@ -542,21 +699,9 @@ export const rankEntries = (
       const entryScopes = Array.isArray(entry.data.scope)
         ? entry.data.scope.map((scope) => normalizeScopeEntry(scope))
         : [];
-      const searchableText = [
-        entry.relativePath,
-        entry.data.rule,
-        entry.data.why,
-        entry.body,
-        ...(entry.data.scope ?? []),
-        ...(entry.data['review-trigger'] ?? []),
-        ...(Array.isArray(entry.data.evidence)
-          ? entry.data.evidence.flatMap((evidence) => [evidence.type, evidence.ref, evidence.note])
-          : []),
-      ]
-        .filter(Boolean)
-        .join('\n')
-        .toLowerCase();
-      const ruleTokens = new Set(tokenizeRule(entry.data.rule ?? ''));
+      const searchableFields = entrySearchTextFields(entry);
+      const searchableText = searchableFields.join('\n').toLowerCase();
+      const searchTokens = new Set(searchableFields.flatMap((field) => tokenizeRule(`${field}`)));
 
       normalizedScopes.forEach((query) => {
         entryScopes.forEach((entryScope) => {
@@ -574,11 +719,34 @@ export const rankEntries = (
         if (searchableText.includes(term)) {
           score += 3;
           reasons.push(`term=${term}`);
-        } else if (ruleTokens.has(term)) {
+        } else if (searchTokens.has(term)) {
           score += 2;
-          reasons.push(`rule-token=${term}`);
+          reasons.push(`token=${term}`);
         }
       });
+
+      if (normalizedTermTokens.length > 0) {
+        const similarity = calculateTokenJaccard(normalizedTermTokens, [...searchTokens]);
+
+        if (similarity >= 0.2) {
+          score += Math.max(1, Math.round(similarity * 10));
+          reasons.push(`term-similarity=${similarity.toFixed(2)}`);
+        }
+      }
+
+      if (correctionLikeKinds.has(entry.data.kind) && score > 0) {
+        score += 2;
+        reasons.push(`kind=${entry.data.kind}`);
+      }
+
+      const utility = getEntryUtilitySignal(usageStats, entry);
+
+      if (utility.utilityScore !== 0) {
+        score += utility.utilityScore;
+        reasons.push(
+          `usage=u${utility.useCount}/p${utility.preventedRepeatCount}/r${utility.repeatCount}/f${utility.falsePositiveCount}/prio${utility.promotionPriority}`,
+        );
+      }
 
       return {
         entry,

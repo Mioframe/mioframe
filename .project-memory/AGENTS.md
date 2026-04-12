@@ -9,9 +9,9 @@ Inherits the rules from `/AGENTS.md`. Applies to `.project-memory` and its desce
 ## Patterns
 
 - Treat lifecycle as a validated contract: `drafts/ -> draft`, `verified/ -> verified`, `promoted/ -> promoted`, and `archive/ -> archived`.
-- Start risky or memory-relevant work with `pnpm memory:task:start --scope <path> --term <keyword>`, not with ad hoc lookup alone. The entrypoint performs exact-scope, parent-subsystem, and task-term discovery and stores task state for the exit review.
-- Repo-local Codex hooks in `.codex/` may preload relevant memory into developer context and can request one extra stop-time pass when lifecycle handling is missing, but `memory:task:start` and `memory:task:finish` remain the authoritative lifecycle boundary.
-- Use `.project-memory/WORKFLOW.md` as the canonical `memory:task:start -> evaluate -> write/promote/archive -> memory:task:finish` sequence.
+- ByteRover is the default memory path for agents right now. Start risky or memory-relevant work with `pnpm memory:task:start --scope <path> --term <keyword>` only when you intentionally use the local project-memory fallback instead of ByteRover.
+- Repo-local Codex hooks in `.codex/` are currently suspended, so local project-memory discovery is manual unless hook wiring is explicitly re-enabled later.
+- Use `.project-memory/WORKFLOW.md` as the canonical fallback sequence: `memory:task:start -> evaluate -> explicit learning decision -> write/promote/archive -> memory:task:finish`.
 - Keep `supersedes` and `superseded-by` explicit when a record replaces, merges, or narrows another one.
 - Promote rules into tests, guards, adapters, migrations, or `AGENTS.md` as soon as they are stable enough to enforce there.
 
@@ -23,7 +23,7 @@ Inherits the rules from `/AGENTS.md`. Applies to `.project-memory` and its desce
 
 ## Constraints
 
-- Run `pnpm memory:validate` after editing memory entries, templates, lifecycle docs, `.project-memory/WORKFLOW.md`, validator/lookup tooling, or the repo-local Codex hook config in `.codex/`.
-- Finish risky tasks with `pnpm memory:task:finish`; it runs diff-aware review plus `pnpm memory:validate` and should fail loudly when touched memory scopes were not lifecycle-reviewed.
+- Run `pnpm memory:validate` after editing memory entries, templates, lifecycle docs, `.project-memory/WORKFLOW.md`, validator/lookup tooling, or the repo-local Codex hook config in `.codex/`. In suspended mode it should validate entries without requiring active hook wiring.
+- Finish risky tasks with `pnpm memory:task:finish` whenever you chose the local fallback workflow; it runs strict diff-aware review plus `pnpm memory:validate`, clears active task state after writing a separate completion snapshot, and should fail loudly when touched memory scopes were not lifecycle-reviewed or when a confirmed lesson still lacks an explicit learning decision.
 - Promoted records stay as structured breadcrumbs: keep the body short and pointer-like even though the validated frontmatter remains for search and tooling.
 - Archived records with `archive-reason: superseded` or `archive-reason: merged` must keep reciprocal replacement links.

@@ -1,16 +1,11 @@
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 
-import {
-  asNonEmptyString,
-  getParentScope,
-  loadEntries,
-  normalizeRepoRelativePath,
-  rankEntries,
-} from './projectMemoryUtils.mjs';
+import { renderMemoryDigest } from './projectMemoryBehavior.mjs';
+import { buildProjectMemoryLookup } from './projectMemoryUtils.mjs';
 
 const usage = `Usage:
-  pnpm memory:lookup --scope <path> [--scope <path>] [--term <keyword>] [--include-archived] [--json]
+  pnpm memory:lookup --scope <path> [--scope <path>] [--term <keyword>] [--include-archived] [--expanded] [--json]
 
 Examples:
   pnpm memory:lookup --scope src/shared/service/fileSystem --term reread
@@ -21,50 +16,26 @@ export const lookupProjectMemory = ({
   termQueries = [],
   includeArchived = false,
 } = {}) => {
-  const normalizedScopes = [
-    ...new Set(scopeQueries.map(normalizeRepoRelativePath).filter(Boolean)),
-  ];
-  const normalizedTerms = [
-    ...new Set(termQueries.map((term) => asNonEmptyString(term)).filter(Boolean)),
-  ];
-  const parentScopeQueries = [...new Set(normalizedScopes.map(getParentScope).filter(Boolean))];
-  const lookupScopes = [...new Set([...normalizedScopes, ...parentScopeQueries])];
-  const rankedEntries = rankEntries(loadEntries(), {
-    scopeQueries: lookupScopes,
-    termQueries: normalizedTerms,
+  return buildProjectMemoryLookup({
+    scopeQueries,
+    termQueries,
     includeArchived,
   });
-
-  return {
-    scopeQueries: normalizedScopes,
-    parentScopeQueries,
-    lookupScopes,
-    termQueries: normalizedTerms,
-    includeArchived,
-    rankedEntries,
-  };
 };
 
-export const renderProjectMemoryLookup = (result) => {
+export const renderProjectMemoryLookup = (result, { expanded = false } = {}) => {
   if (result.rankedEntries.length === 0) {
     return 'No matching project-memory entries found.';
   }
 
+  const digest = renderMemoryDigest(result.rankedEntries, {
+    expanded,
+  });
+
   return [
     `Matched ${result.rankedEntries.length} project-memory entr${result.rankedEntries.length === 1 ? 'y' : 'ies'}:`,
-    ...result.rankedEntries.slice(0, 20).flatMap(({ entry, score, reasons }) => {
-      const scope = Array.isArray(entry.data.scope) ? entry.data.scope.join(', ') : 'unknown scope';
-
-      return [
-        '',
-        `- ${entry.relativePath} [status=${entry.data.status}, score=${score}, reasons=${[
-          ...new Set(reasons),
-        ].join(', ')}]`,
-        `  scope: ${scope}`,
-        `  rule: ${entry.data.rule}`,
-        ...(entry.body ? [`  note: ${entry.body}`] : []),
-      ];
-    }),
+    '',
+    ...digest.lines,
   ].join('\n');
 };
 
@@ -73,6 +44,7 @@ const parseArgs = (rawArgs) => {
   const scopeQueries = [];
   const termQueries = [];
   let includeArchived = false;
+  let expanded = false;
   let json = false;
 
   for (let index = 0; index < args.length; index += 1) {
@@ -107,6 +79,11 @@ const parseArgs = (rawArgs) => {
       continue;
     }
 
+    if (arg === '--expanded') {
+      expanded = true;
+      continue;
+    }
+
     if (arg === '--json') {
       json = true;
       continue;
@@ -128,6 +105,7 @@ const parseArgs = (rawArgs) => {
     scopeQueries,
     termQueries,
     includeArchived,
+    expanded,
     json,
   };
 };
@@ -143,7 +121,7 @@ if (isMainModule) {
     if (options.json) {
       console.log(JSON.stringify(result, null, 2));
     } else {
-      console.log(renderProjectMemoryLookup(result));
+      console.log(renderProjectMemoryLookup(result, options));
     }
   } catch (error) {
     console.error(error instanceof Error ? error.message : String(error));

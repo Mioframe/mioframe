@@ -1,253 +1,189 @@
 # Project Memory
 
-`.project-memory/` is a small, evidence-first memory layer for project knowledge that is useful across future tasks but does not yet belong in `AGENTS.md` or another stronger artifact.
+`.project-memory/` is a small, repo-local memory layer for evidence-backed lessons that are useful across sessions but are not yet best enforced as code, tests, guards, adapters, migrations, schemas, or stable `AGENTS.md` rules.
 
-The default operating mode is now task-driven rather than reminder-driven:
+ByteRover is currently the primary memory workflow for agents in this repo. The local project-memory system is temporarily suspended from automatic Codex runtime integration and remains available as a manual fallback when ByteRover is unavailable or when a task explicitly needs the local lifecycle.
+
+At the moment, `brv` is not detected in this shell environment, so keep that fallback available until ByteRover is confirmed end-to-end.
+
+This fallback system is intentionally local. It does not depend on GitHub Actions or any server-side workflow. When you intentionally use it, the operating loop is:
 
 - start risky work with `pnpm memory:task:start`;
-- let repo-local Codex hooks preload prompt-matched memory when the project is opened in trusted mode;
-- read the matched memory before changing behavior;
+- manually opt into the local workflow instead of relying on repo-local Codex hooks;
+- make the change;
 - finish with `pnpm memory:task:finish`;
-- let `memory:task:review`, pre-commit, and CI catch risky diffs that skipped lifecycle handling.
+- let pre-commit and `pnpm memory:validate` recheck repo-local consistency.
 
-It is intentionally narrower than general documentation:
-
-- `AGENTS.md` keeps stable rules, ownership, and boundaries.
-- Tests, guards, adapters, migrations, and code keep enforceable behavior.
-- `.project-memory/` keeps project-specific lessons, tricky semantics, and review-grade pitfalls that are confirmed enough to be useful, but still need active review, promotion, merging, or removal.
-- Repo-local Codex hooks preload context and help with stop-time review, but canonical discovery state still comes from `pnpm memory:task:start`.
+The important change is that `memory:task:finish` is still the explicit learning checkpoint for the fallback flow. It is where the task must either capture new confirmed experience or say why no new prose memory is needed.
 
 ## Layout
 
-- `templates/entry.md`: the only write template.
-- `drafts/`: fresh observations with evidence that are not stable enough yet.
-- `verified/`: confirmed, reusable knowledge that future agents should consult.
-- `promoted/`: structured breadcrumb records for knowledge already lifted into a stronger artifact.
-- `archive/`: archived records that are obsolete, contradicted, merged away, or superseded.
+- `templates/entry.md`: the write template.
+- `drafts/`: fresh, evidence-backed lessons that are still narrow.
+- `verified/`: confirmed lessons that future sessions should retrieve.
+- `promoted/`: short breadcrumbs for lessons that now live in a stronger artifact.
+- `archive/`: obsolete, merged, contradicted, redundant, or superseded records.
 
-Directory and status are both canonical, but they are not compared by raw spelling. The validator enforces this lifecycle mapping:
+Directory and `status` must match:
 
 - `drafts/` -> `status: draft`
 - `verified/` -> `status: verified`
 - `promoted/` -> `status: promoted`
 - `archive/` -> `status: archived`
 
-Archived records must also declare `archive-reason`, so `obsolete` becomes an archive reason instead of a lifecycle status.
-
 ## What Belongs Here
 
-- Project-local helper or library semantics whose runtime behavior is easy to misread from types alone.
-- Repeated pitfalls confirmed by tests, bug fixes, review feedback, or official library/source references.
-- Local invariants that are important but still too narrow or too unstable for `AGENTS.md`.
-- Runtime-only behavior gaps where a future agent must verify real behavior, not just rely on typing.
+- Project-local helper or library semantics whose real runtime behavior is easy to misread from types alone.
+- Confirmed bug-fix lessons, review findings, and agent corrections that are likely to help the next session.
+- Narrow invariants that matter, but are still too volatile or local for stable `AGENTS.md`.
+- Breadcrumbs that help retrieval after a rule has already been promoted into a stronger artifact.
 
 ## What Does Not
 
-- Guesses, hunches, or unverified “probably works this way” notes.
-- Anything without both `scope` and `evidence`.
-- Generic coding advice with no Beaver-specific consequence.
-- One-off debugging scraps that have not repeated and are unlikely to repeat.
-- Facts already expressed more clearly and durably in tests, types, linters, guards, code, or stable `AGENTS.md` rules.
-
-When a stronger artifact is the better answer, write that artifact first and either skip memory entirely or leave only a promoted record whose body is a short pointer.
+- Guesses, hunches, or notes without evidence.
+- Generic advice that is not Beaver-specific.
+- Debugging scraps that are not likely to matter again.
+- Duplicates of knowledge that is already clearer in code, tests, guards, adapters, migrations, schemas, or `AGENTS.md`.
 
 ## Entry Contract
 
-Every record is one Markdown file with YAML frontmatter and these required fields:
+Every record is one Markdown file with YAML frontmatter.
 
-- `scope`: directories, modules, subsystems, or libraries the rule applies to.
-- `kind`: one of `lesson`, `library-semantics`, `review-finding`, `pattern`, `pitfall`.
-- `rule`: the concise rule future agents should act on.
-- `why`: the consequence or failure mode.
-- `evidence`: concrete proof such as file paths, tests, commits, issues, PRs, or official docs/source.
-- `status`: `draft`, `verified`, `promoted`, or `archived`.
-- `confidence`: `low`, `medium`, or `high`.
-- `promotion-target`: the stronger artifact this should become when confirmed enough.
-- `review-trigger`: the condition that should force a re-check.
-- `last-verified-at`: ISO date of the latest confirmation.
+Required fields:
+
+- `scope`
+- `kind`
+- `rule`
+- `why`
+- `evidence`
+- `status`
+- `confidence`
+- `promotion-target`
+- `review-trigger`
+- `last-verified-at`
 
 Optional but formalized fields:
 
-- `supersedes`: `.project-memory/`-relative record paths this record replaces or narrows.
-- `superseded-by`: `.project-memory/`-relative record paths that replace this record.
-- `archive-reason`: one of `obsolete`, `superseded`, `merged`, `contradicted`, `redundant`. Required when `status: archived`.
+- `mistake`: the wrong conclusion or action that happened.
+- `correction`: the correct behavior or conclusion.
+- `applies-when`: contexts, helpers, boundaries, or failure shapes where the lesson matters.
+- `triggers`, `anti-pattern-signals`, `positive-pattern-signals`: compact trigger metadata for path/helper/diff-aware warnings.
+- `repeat-signature`: an optional stable signature when repeats should merge across renamed files or rewritten prose.
+- `supersedes`
+- `superseded-by`
+- `archive-reason`
 
-File names should be `YYYY-MM-DD-short-slug.md`.
+Use `kind: correction` when the record should preserve the original wrong inference as well as the fix. `correction` entries must include `mistake`, `correction`, and `applies-when`.
 
-## Status Rules
+## Learning Capture
 
-- `draft`: has at least one solid evidence item, but is still scoped to the observed case and not yet strong enough to generalize broadly.
-- `verified`: is confirmed by either a focused test, multiple independent evidence items, or a code path plus an authoritative source. It is reusable and project-relevant.
-- `promoted`: now lives in a stronger artifact. The record keeps structured metadata for search and validation, but the body should shrink to a breadcrumb instead of restating the full rule in prose.
-- `archived`: no longer guides new work without re-verification. Use `archive-reason` to say whether it became obsolete, was contradicted, merged into another record, or was superseded.
+The system is not meant to log everything. It only captures confirmed, reusable lessons.
 
-## Required Discovery Workflow
+At task finish, a risky task must make one explicit learning decision when the diff indicates reusable experience:
 
-Before editing a significant scope, start the task through the mandatory entrypoint:
+- update or create a real `.project-memory` entry in `drafts/`, `verified/`, `promoted/`, or `archive/`;
+- promote the lesson by editing the stronger artifact and leaving a promoted breadcrumb entry;
+- explicitly finish with `--learning-resolution covered-by:<artifact-path>` when the lesson is already better expressed in a stronger artifact and new prose memory would be duplication.
 
-```sh
-pnpm memory:task:start --scope src/shared/service/fileSystem --term reread --term handle
-pnpm memory:task:start --scope src/shared/lib/changeObject --scope src/shared/service/databaseDocument --term deepPatchJsonObject
-```
+There is intentionally no `--learning-resolution record:<memory-path>` escape hatch. If the lesson lives in project memory, the current diff must show the actual entry change.
 
-The entrypoint performs discovery in three passes:
+Structural or documentation-only edits do not count as learning capture by themselves. In particular, changing `.project-memory/README.md`, `.project-memory/WORKFLOW.md`, `.project-memory/templates/entry.md`, `.project-memory/AGENTS.md`, or task-state files does not satisfy the learning decision requirement.
 
-1. Search by the exact touched scope and its parent subsystem.
-2. Search by bug, review, helper, library, or regression keywords from the task.
-3. Search adjacent subsystems when the change crosses a boundary such as service <-> entity, helper <-> caller, or provider <-> runtime integration.
+Existing memory scopes still require lifecycle handling:
 
-Use raw `pnpm memory:lookup` only as a follow-up query after the task has already started.
+- refresh the touched entry;
+- promote or archive it;
+- or explicitly keep it with `--memory-resolution keep:<memory-path>` if the entry remains correct and no stronger action is justified.
 
-Discovery is mandatory before non-trivial changes in shared infrastructure, CRDT paths, VFS/filesystem flows, schemas or migrations, helper semantics, and any scope that already has matching memory.
+`keep:` is for lifecycle review of an already-related entry. It does not replace learning capture when the task produced a new confirmed lesson.
 
-## Codex Automation Layer
-
-This repo also ships a Codex-oriented automation layer in `.codex/`:
-
-- `.codex/config.toml` enables the documented `codex_hooks` feature.
-- `.codex/hooks.json` wires the documented `SessionStart`, `UserPromptSubmit`, `PreToolUse`, and `Stop` events.
-- `scripts/project-memory/codexHooks.mjs` reuses the same lookup and diff-review logic as the CLI scripts, so hooks do not invent a second memory lifecycle model.
-
-What the hook layer does:
-
-- preload relevant memory into developer context from the prompt, active task state, and existing boundary-linked entries;
-- remind the agent to run `pnpm memory:task:start` before risky edits when no task state exists;
-- block a narrow set of risky Bash writes or `git commit` / `git push` if lifecycle handling is still missing;
-- request one extra pass at stop-time via `Stop` `decision: "block"` when risky diff review still fails, then stop with a warning if the follow-up still fails.
-
-What it does not do:
-
-- it does not replace `pnpm memory:task:start` or `pnpm memory:task:finish`;
-- it does not fully intercept non-shell tools, because current Codex documents `PreToolUse` / `PostToolUse` as Bash-only and incomplete;
-- it does not force a brand-new memory record when the diff only justifies a warning.
-
-Failure policy is split intentionally:
-
-- `SessionStart` and `UserPromptSubmit` soft-fallback on internal errors because they only add context.
-- `PreToolUse` and `Stop` exit non-zero on internal errors because silent success would mask enforcement failure.
-  This follows the current Codex runtime contract: a broken enforcement hook must surface as hook failure, while intentional blocking still needs valid structured output such as `decision: "block"` with a reason or continuation prompt.
-
-## Write Rules
-
-- Never add a record without `scope`, `evidence`, and `review-trigger`.
-- Phrase `rule` no stronger than the evidence supports.
-- Prefer merging evidence into an existing record over opening a near-duplicate.
-- If the same lesson is already enforced in code or tests and easy to discover there, do not duplicate it here.
-- If a note cannot survive the next cleanup pass, do not save it.
-
-Write or update memory in these cases:
-
-- Refresh an existing entry when a bug fix, review, or repro gives new evidence for the same rule.
-- Open a new `draft` only when the diff carries concrete evidence that will help the next agent, even if the rule is still narrow. Good triggers are focused tests, bug fixes, review findings, reproducible runtime behavior, or authoritative source confirmation.
-- Promote repeated or now-enforceable knowledge in the same change that adds the stronger artifact.
-- Archive a record when the rule is contradicted, replaced, merged into another entry, or made unnecessary by a clearly discoverable stronger artifact.
-- Do not create a new prose record when the relevant knowledge is already discoverable in code, tests, guards, adapters, migrations, schemas, or stable `AGENTS.md` guidance.
+`memory:task:finish` now also emits an auto-generated learning candidate when the diff shows likely reusable experience but the task has not yet recorded it. The candidate is a draft to accept, edit, reject, or close as `covered-by`; it is not auto-written.
 
 ## Promotion Rules
 
-Promote a record out of memory when one of these becomes true:
+Keep one-off local lessons in `.project-memory/` only while prose is the best place for them.
 
-- The rule is stable enough to become a cross-cutting instruction in `AGENTS.md`.
-- The behavior can be enforced by a test, guard, adapter, migration, schema, or lintable contract.
-- The same problem has been confirmed again in a bug fix, review, or second subsystem.
-- A future agent would be safer discovering the rule from code than from memory prose.
+Promote when one of these becomes true:
+
+- the lesson is repeated;
+- the lesson can now be enforced in a test, guard, adapter, migration, schema, runtime check, or `AGENTS.md`;
+- future agents are safer discovering the rule from code than from prose memory.
 
 After promotion:
 
-1. Update or add the stronger artifact.
-2. Move the record to `promoted/`.
-3. Replace any long body text with a short pointer to the new artifact while keeping the structured frontmatter needed for search and validation.
-4. Delete the promoted record later if the stronger artifact is now obvious enough on its own.
+1. Land the stronger artifact in the same change.
+2. Move or update the memory record to `promoted/`.
+3. Keep the promoted body short and breadcrumb-like.
+4. Archive or delete the breadcrumb later when the stronger artifact is obviously discoverable on its own.
 
-Leave a promoted breadcrumb when future agents are still likely to search memory first for that scope or keyword. Delete the breadcrumb only after the stronger artifact is directly discoverable in the touched scope and two later scope touches no longer needed the memory pointer.
+Repeated correction-style lessons should not stay indefinitely as prose-only memory.
 
-## Cleanup Procedure
+## Retrieval
 
-Run a memory cleanup pass whenever one of these happens:
+Retrieval is optimized for not repeating mistakes across sessions:
 
-- You touched a scope that already has memory entries.
-- A bug fix or review confirms or disproves an existing record.
-- A promotion target was added.
-- A record reaches its `review-trigger`.
+- exact scope and parent scope matches still rank highest;
+- `pnpm memory:task:start` and `pnpm memory:lookup` both expand the query with boundary-linked risky scopes from matching records;
+- term matches now search `mistake`, `correction`, `applies-when`, evidence text, and the body;
+- correction-style records get a ranking boost so past wrong inferences surface early;
+- practical usefulness now affects ranking through a small service index: `use-count`, `repeat-count`, `prevented-repeat-count`, `false-positive-count`, `last-used-at`, `last-missed-at`, and `promotion-priority`;
+- hooks and task start default to a compact digest instead of full prose, suppress already-shown digests within the active task, and expand only when a riskier phase explicitly needs more detail;
+- trigger metadata can surface warnings from path/helper/diff signals instead of relying only on broad scope overlap.
 
-During cleanup:
+This means a past bug fix or review finding in the same helper, boundary, or subsystem should show up before new behavior changes begin.
 
-1. Merge duplicates that express the same rule for the same scope.
-2. Broaden scope only when the evidence really spans the wider area.
-3. Promote repeated verified knowledge into a stronger artifact when possible.
-4. Archive records whose evidence is contradicted, whose dependency semantics changed, or whose stronger artifact made the record unnecessary.
-5. Delete stale drafts that never earned a second confirmation and no longer improve future work.
+The usage index lives outside the prose entries in `.project-memory/.task-state/usage-stats.json`, so ranking and feedback can evolve without making the Markdown records noisy to maintain.
 
-A `draft` is stale by default when `last-verified-at` is older than 90 days and it still has only its original line of evidence.
+## Repo-Local Automation
 
-A `verified` or `promoted` record is stale when current work touches one of its scopes or hits its `review-trigger`, but the same change does not refresh `last-verified-at` or archive it.
+Repo-local Codex hooks live in `.codex/` and call the scripts in `scripts/project-memory/`, but they are currently suspended while ByteRover is the primary memory layer.
 
-An archived record can be deleted only when no live entry points to it through `supersedes` or `superseded-by`, and the replacement or stronger artifact is already obvious without the breadcrumb.
+What they do:
 
-## Conflict And Merge Rules
+- when re-enabled, preload task-relevant memory on session start and prompt submit;
+- when re-enabled, block the first narrow class of risky Bash writes when discovery has not happened yet;
+- when re-enabled, remind the agent at stop-time to run `pnpm memory:task:finish` if an active task still has unresolved lifecycle or learning capture work.
 
-- Use `supersedes` and `superseded-by` as reciprocal links between related records.
-- If two `verified` records partially conflict, do not leave both broad and ambiguous. Narrow the scope or rule until both are independently true, or archive the weaker record as `contradicted` or `superseded`.
-- If two records express the same rule for the same scope, keep the older or richer record, merge the evidence, and archive the duplicate with `archive-reason: merged` plus a `superseded-by` link to the kept file.
-- If a record is replaced by a stronger, more accurate one, archive the old record with `archive-reason: superseded` and point it at the replacement.
+What they do not do:
 
-## Beaver Priorities
+- they do not replace `memory:task:start` or `memory:task:finish`;
+- they do not rely on GitHub Actions;
+- they do not treat `git commit` or `git push` as the main enforcement point;
+- they do not auto-write memory.
 
-This memory is most useful here:
+The goal is guidance before risky edits and one clear exit step, not surprise punishment at the end. While suspended, that guidance must be opted into manually.
 
-- third-party and helper semantics where types hide real runtime behavior;
-- Automerge and CRDT mutation constraints;
-- virtual filesystem and persisted handle invariants;
-- service and UI boundary lessons that are too local for `AGENTS.md`;
-- schema, migration, and effective-value consistency;
-- repeated review findings that are still too specific for a stable rule;
-- places where runtime checks matter more than static types.
+## Commands
 
-## Search
-
-Use the task loop for the default workflow and `rg` for ad hoc follow-up. Examples:
+Start:
 
 ```sh
-pnpm memory:task:start --scope src/shared/service/fileSystem --term reread
+pnpm memory:task:start --scope src/shared/service/fileSystem --term reread --term handle
+```
+
+Review:
+
+```sh
 pnpm memory:task:review
-pnpm memory:task:finish
+pnpm memory:task:review --staged
 ```
 
-Raw `rg` remains useful when you already know what you are hunting:
+Finish:
 
 ```sh
-rg -n "scope:|kind:|status:" .project-memory
-rg -n "src/shared/service/fileSystem" .project-memory
-rg -n "kind: library-semantics" .project-memory
+pnpm memory:task:finish
+pnpm memory:task:finish --memory-resolution keep:promoted/2026-04-12-vfs-directory-reread-after-create.md
+pnpm memory:task:finish --learning-resolution covered-by:src/shared/lib/typeGuards/isDirectoryHandle.ts
 ```
 
-## Validation
+Task state model:
 
-Run `pnpm memory:validate` whenever you touch `.project-memory/`, lifecycle docs, `.project-memory/WORKFLOW.md`, `.codex/`, or memory lookup/validator tooling.
+- `.project-memory/.task-state/current-task.json` exists only for an active discovery session created by `memory:task:start`;
+- `memory:task:finish` writes a separate completion snapshot to `.project-memory/.task-state/last-finish.json`;
+- after a successful finish, the active state file is deleted so the next risky task must run a fresh `memory:task:start` and cannot inherit stale scopes, terms, or matched entries.
 
-The same validation is wired into pre-commit for memory-related changes and into CI through `.github/workflows/project-memory.yml`.
+Validate:
 
-Diff-aware review is also part of the automation contour:
-
-- `pnpm memory:task:review --staged` runs from pre-commit and blocks staged risky diffs that touched existing memory scopes without lifecycle handling.
-- CI runs `pnpm memory:task:review --base <base-sha>` so risky pull-request diffs do not pass quietly.
-- `pnpm memory:task:finish` runs the same diff-aware review plus `pnpm memory:validate` before the agent should consider the task complete.
-- The Codex `Stop` hook runs the same review logic and can request one remediation pass when risky lifecycle handling is still unresolved.
-
-Hard failures are reserved for reproducible lifecycle misses:
-
-- risky work skipped `memory:task:start`;
-- a touched existing memory scope was not refreshed, promoted, archived, or explicitly kept during local task finish;
-- a live updated record did not refresh `last-verified-at`;
-- memory validation failed.
-
-Warnings are used when automation cannot safely infer intent without creating noise:
-
-- a risky diff touched a new area with no existing memory record;
-- a stronger artifact changed and a related record might now be ready for promotion;
-- a promoted breadcrumb is getting too verbose or its promotion target is not clearly discoverable.
-
-Hook-internal failures are never treated as silent success for enforcement hooks:
-
-- `SessionStart` and `UserPromptSubmit` log a warning and continue without extra context.
-- `PreToolUse` and `Stop` fail loud with a non-zero exit so the runtime can see that enforcement logic broke.
+```sh
+pnpm memory:validate
+```

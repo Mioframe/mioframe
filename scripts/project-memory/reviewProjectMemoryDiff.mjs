@@ -4,23 +4,33 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import {
+  buildLearningCandidate,
+  detectEntryTriggerMatches,
+  getRepeatPressure,
+} from './projectMemoryBehavior.mjs';
+import {
   classifyRiskyCategories,
   classifyStrongerArtifacts,
+  correctionLikeKinds,
   getTodayIsoDate,
+  isProjectMemoryEntryPath,
+  loadUsageStats,
   loadEntries,
   normalizeRepoRelativePath,
+  readActiveTaskState,
   repoRoot,
   scopeContainsPath,
+  usageStatsPath,
 } from './projectMemoryUtils.mjs';
 import { defaultTaskStatePath } from './startProjectMemoryTask.mjs';
 
 const usage = `Usage:
-  pnpm memory:task:review [--staged | --base <ref>] [--require-task-start] [--memory-resolution keep:<memory-path>] [--state-file <path>] [--json]
+  pnpm memory:task:review [--staged | --base <ref>] [--require-task-start] [--strict] [--memory-resolution keep:<memory-path>] [--learning-resolution covered-by:<artifact-path>] [--state-file <path>] [--json]
 
 Examples:
   pnpm memory:task:review
   pnpm memory:task:review --staged
-  pnpm memory:task:review --base origin/main --require-task-start
+  pnpm memory:task:review --strict --require-task-start --learning-resolution covered-by:src/shared/lib/typeGuards/isDirectoryHandle.ts
   pnpm memory:task:review --memory-resolution keep:promoted/2026-04-12-vfs-directory-reread-after-create.md`;
 
 const runGitCommand = (args) => {
@@ -55,14 +65,34 @@ const getChangedPaths = ({ staged = false, base } = {}) => {
   ];
 };
 
+const getDiffText = ({ staged = false, base } = {}) => {
+  const args = base
+    ? ['diff', '--unified=0', `${base}...HEAD`]
+    : staged
+      ? ['diff', '--cached', '--unified=0']
+      : ['diff', '--unified=0', 'HEAD'];
+
+  try {
+    return execFileSync('git', args, {
+      cwd: repoRoot,
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'pipe'],
+    });
+  } catch {
+    return '';
+  }
+};
+
 const parseArgs = (rawArgs) => {
   const args = rawArgs.slice(2);
   let staged = false;
   let base;
   let requireTaskStart = false;
+  let strict = false;
   let json = false;
   let stateFilePath = defaultTaskStatePath;
   const memoryResolutions = [];
+  const learningResolutions = [];
 
   for (let index = 0; index < args.length; index += 1) {
     const arg = args[index];
@@ -89,6 +119,11 @@ const parseArgs = (rawArgs) => {
       continue;
     }
 
+    if (arg === '--strict') {
+      strict = true;
+      continue;
+    }
+
     if (arg === '--json') {
       json = true;
       continue;
@@ -102,6 +137,18 @@ const parseArgs = (rawArgs) => {
       }
 
       memoryResolutions.push(value);
+      index += 1;
+      continue;
+    }
+
+    if (arg === '--learning-resolution') {
+      const value = args[index + 1];
+
+      if (!value) {
+        throw new Error('Expected a value after --learning-resolution');
+      }
+
+      learningResolutions.push(value);
       index += 1;
       continue;
     }
@@ -134,13 +181,18 @@ const parseArgs = (rawArgs) => {
     staged,
     base,
     requireTaskStart,
+    strict,
     json,
     stateFilePath,
     memoryResolutions,
+    learningResolutions,
   };
 };
 
-const parseResolutions = (memoryResolutions) => {
+const normalizeMemoryPathTarget = (value) =>
+  normalizeRepoRelativePath(value).replace(/^\.project-memory\//u, '');
+
+const parseMemoryResolutions = (memoryResolutions, entryByMemoryPath) => {
   const keep = new Set();
 
   memoryResolutions.forEach((resolution) => {
@@ -148,10 +200,14 @@ const parseResolutions = (memoryResolutions) => {
       throw new Error(`Unsupported memory resolution: ${resolution}`);
     }
 
-    const target = resolution.slice('keep:'.length).trim();
+    const target = normalizeMemoryPathTarget(resolution.slice('keep:'.length).trim());
 
     if (target === '') {
       throw new Error(`Memory resolution is missing a target: ${resolution}`);
+    }
+
+    if (!entryByMemoryPath.has(target)) {
+      throw new Error(`Memory resolution points to a missing record: ${target}`);
     }
 
     keep.add(target);
@@ -162,12 +218,51 @@ const parseResolutions = (memoryResolutions) => {
   };
 };
 
-const readTaskState = (stateFilePath) => {
-  if (!fs.existsSync(stateFilePath)) {
-    return undefined;
-  }
+const parseLearningResolutions = (learningResolutions) => {
+  const coveredBy = new Set();
 
-  return JSON.parse(fs.readFileSync(stateFilePath, 'utf8'));
+  learningResolutions.forEach((resolution) => {
+    const separatorIndex = resolution.indexOf(':');
+
+    if (separatorIndex <= 0) {
+      throw new Error(`Unsupported learning resolution: ${resolution}`);
+    }
+
+    const type = resolution.slice(0, separatorIndex);
+    const rawTarget = resolution.slice(separatorIndex + 1).trim();
+
+    if (rawTarget === '') {
+      throw new Error(`Learning resolution is missing a target: ${resolution}`);
+    }
+
+    if (type === 'covered-by') {
+      const target = normalizeRepoRelativePath(rawTarget);
+      const artifactKinds = classifyStrongerArtifacts(target);
+
+      if (!fs.existsSync(path.join(repoRoot, target))) {
+        throw new Error(`covered-by learning resolution points to a missing file: ${target}`);
+      }
+
+      if (artifactKinds.length === 0) {
+        throw new Error(
+          `covered-by learning resolutions must point at a stronger artifact such as AGENTS.md, a test, a guard, an adapter, a migration, or a schema: ${target}`,
+        );
+      }
+
+      coveredBy.add(target);
+      return;
+    }
+
+    throw new Error(`Unsupported learning resolution: ${resolution}`);
+  });
+
+  return {
+    coveredBy,
+  };
+};
+
+const pushIssue = (collection, message) => {
+  collection.push(message);
 };
 
 export const analyzeProjectMemoryDiff = (options) => {
@@ -177,13 +272,22 @@ export const analyzeProjectMemoryDiff = (options) => {
   const changedMemoryPaths = changedPaths.filter((filePath) =>
     filePath.startsWith('.project-memory/'),
   );
+  const changedMemoryEntryPaths = changedMemoryPaths.filter(isProjectMemoryEntryPath);
   const changedNonMemoryPaths = changedPaths.filter(
     (filePath) => !filePath.startsWith('.project-memory/'),
   );
-  const state = readTaskState(options.stateFilePath);
-  const resolutions = parseResolutions(options.memoryResolutions ?? []);
+  const state = readActiveTaskState(options.stateFilePath);
+  const usageStats = loadUsageStats(options.usageStatsPath ?? usageStatsPath);
+  const diffText = typeof options.diffText === 'string' ? options.diffText : getDiffText(options);
+  const strictLifecycle = Boolean(options.strict || options.requireTaskStart);
   const entries = loadEntries();
   const entryByRelativePath = new Map(entries.map((entry) => [entry.relativePath, entry]));
+  const entryByMemoryPath = new Map(entries.map((entry) => [entry.memoryRelativePath, entry]));
+  const memoryResolutions = parseMemoryResolutions(
+    options.memoryResolutions ?? [],
+    entryByMemoryPath,
+  );
+  const learningResolutions = parseLearningResolutions(options.learningResolutions ?? []);
   const relatedEntries = entries
     .filter((entry) => entry.data.status !== 'archived')
     .map((entry) => {
@@ -202,6 +306,7 @@ export const analyzeProjectMemoryDiff = (options) => {
     })
     .filter(Boolean);
   const changedMemoryEntries = changedMemoryPaths
+    .filter(isProjectMemoryEntryPath)
     .map((relativePath) => entryByRelativePath.get(relativePath))
     .filter(Boolean);
   const linkedHandledEntries = new Set();
@@ -210,6 +315,26 @@ export const analyzeProjectMemoryDiff = (options) => {
   const todayIsoDate = getTodayIsoDate();
   const failures = [];
   const warnings = [];
+
+  const riskyFileMatches = changedNonMemoryPaths
+    .map((filePath) => ({
+      filePath,
+      categories: classifyRiskyCategories(filePath),
+    }))
+    .filter(({ categories }) => categories.length > 0);
+
+  const strongerArtifactMatches = changedNonMemoryPaths
+    .map((filePath) => ({
+      filePath,
+      kinds: classifyStrongerArtifacts(filePath),
+    }))
+    .filter(({ kinds }) => kinds.length > 0);
+  const triggerMatches = detectEntryTriggerMatches(entries, {
+    changedPaths,
+    diffText,
+    terms: state?.taskTerms ?? [],
+    scopes: state?.lookupScopes ?? [],
+  });
 
   changedMemoryEntries.forEach((memoryEntry) => {
     linkedHandledEntries.add(memoryEntry.memoryRelativePath);
@@ -234,35 +359,39 @@ export const analyzeProjectMemoryDiff = (options) => {
       return;
     }
 
-    if (resolutions.keep.has(entry.memoryRelativePath)) {
+    if (memoryResolutions.keep.has(entry.memoryRelativePath)) {
       handledByResolution.add(entry.memoryRelativePath);
     }
   });
 
-  const riskyFileMatches = changedNonMemoryPaths
-    .map((filePath) => ({
-      filePath,
-      categories: classifyRiskyCategories(filePath),
-      strongerArtifacts: classifyStrongerArtifacts(filePath),
-    }))
-    .filter(({ categories }) => categories.length > 0);
+  const reportLifecycleIssue = (message) => {
+    pushIssue(strictLifecycle ? failures : warnings, message);
+  };
 
   if (
     options.requireTaskStart &&
     (riskyFileMatches.length > 0 || relatedEntries.length > 0) &&
     !state
   ) {
-    failures.push(
+    reportLifecycleIssue(
       'Project-memory task start state is missing. Run `pnpm memory:task:start --scope <path> --term <keyword>` before risky work.',
     );
   }
 
   relatedEntries.forEach(({ entry, touchedFiles }) => {
+    const repeatPressure = getRepeatPressure(usageStats, entry);
+    const touchedStrongerArtifacts = touchedFiles
+      .map((filePath) => ({
+        filePath,
+        kinds: classifyStrongerArtifacts(filePath),
+      }))
+      .filter(({ kinds }) => kinds.length > 0);
+
     if (
       !handledByMemoryChange.has(entry.memoryRelativePath) &&
       !handledByResolution.has(entry.memoryRelativePath)
     ) {
-      failures.push(
+      reportLifecycleIssue(
         `Touched existing memory scope without lifecycle handling: ${entry.relativePath} via ${touchedFiles.join(
           ', ',
         )}. Refresh it, promote/archive it, or pass --memory-resolution keep:${entry.memoryRelativePath} during local task finish.`,
@@ -275,17 +404,35 @@ export const analyzeProjectMemoryDiff = (options) => {
       entry.data.status !== 'archived' &&
       entry.data['last-verified-at'] !== todayIsoDate
     ) {
-      failures.push(
+      reportLifecycleIssue(
         `${entry.relativePath} changed as part of memory lifecycle handling but last-verified-at is ${entry.data['last-verified-at']}. Refresh it to ${todayIsoDate} or archive the record.`,
       );
     }
 
-    const touchedStrongerArtifacts = touchedFiles
-      .map((filePath) => ({
-        filePath,
-        kinds: classifyStrongerArtifacts(filePath),
-      }))
-      .filter(({ kinds }) => kinds.length > 0);
+    if (
+      correctionLikeKinds.has(entry.data.kind) &&
+      entry.data.status !== 'promoted' &&
+      entry.data.status !== 'archived' &&
+      (entry.data.status === 'verified' ||
+        touchedStrongerArtifacts.length > 0 ||
+        repeatPressure.shouldEscalatePromotion) &&
+      !handledByMemoryChange.has(entry.memoryRelativePath)
+    ) {
+      reportLifecycleIssue(
+        `Repeated correction-style lesson is still only prose memory: ${entry.relativePath}. This scope was touched again${touchedStrongerArtifacts.length > 0 ? ` and stronger artifacts changed in ${touchedStrongerArtifacts.map(({ filePath }) => filePath).join(', ')}` : ''}${repeatPressure.repeatCount > 0 ? `; historical repeats=${repeatPressure.repeatCount}, promotion-priority=${repeatPressure.promotionPriority}` : ''}. Promote it to a stronger artifact or archive it with a replacement breadcrumb instead of keeping it as prose.`,
+      );
+    }
+
+    if (
+      repeatPressure.shouldEscalatePromotion &&
+      memoryResolutions.keep.has(entry.memoryRelativePath) &&
+      !handledByMemoryChange.has(entry.memoryRelativePath) &&
+      learningResolutions.coveredBy.size === 0
+    ) {
+      failures.push(
+        `keep:${entry.memoryRelativePath} is no longer a sufficient default for this repeated lesson. Promotion pressure is high (repeats=${repeatPressure.repeatCount}, priority=${repeatPressure.promotionPriority}); land a stronger artifact or archive it with an explicit replacement.`,
+      );
+    }
 
     if (
       touchedStrongerArtifacts.length > 0 &&
@@ -299,32 +446,112 @@ export const analyzeProjectMemoryDiff = (options) => {
     }
   });
 
+  const learningSignals = [];
+
+  if (strongerArtifactMatches.length > 0) {
+    learningSignals.push(
+      `stronger artifacts changed: ${strongerArtifactMatches
+        .map(({ filePath, kinds }) => `${filePath} [${kinds.join(', ')}]`)
+        .join(', ')}`,
+    );
+  }
+
+  const relatedCorrectionEntries = relatedEntries.filter(({ entry }) =>
+    correctionLikeKinds.has(entry.data.kind),
+  );
+
+  if (relatedCorrectionEntries.length > 0) {
+    learningSignals.push(
+      `correction-style lessons matched this scope: ${relatedCorrectionEntries
+        .map(({ entry }) => entry.relativePath)
+        .join(', ')}`,
+    );
+  }
+
+  if (triggerMatches.length > 0) {
+    learningSignals.push(
+      `trigger-based warnings fired: ${triggerMatches
+        .map(
+          ({ entry, signals }) =>
+            `${entry.relativePath} via ${signals.map((signal) => signal.value).join(', ')}`,
+        )
+        .join('; ')}`,
+    );
+  }
+
   if (
     riskyFileMatches.length > 0 &&
     relatedEntries.length === 0 &&
     changedMemoryPaths.length === 0
+  ) {
+    learningSignals.push(
+      `risky diff without existing memory breadcrumb: ${[
+        ...new Set(riskyFileMatches.flatMap(({ categories }) => categories)),
+      ].join(', ')}`,
+    );
+  }
+
+  const learningCaptureSatisfied =
+    changedMemoryEntryPaths.length > 0 || learningResolutions.coveredBy.size > 0;
+
+  if (strictLifecycle && learningSignals.length > 0 && !learningCaptureSatisfied) {
+    failures.push(
+      `Explicit learning capture is required for this task because ${learningSignals.join(
+        '; ',
+      )}. Either update/create a .project-memory entry in the diff, or finish with --learning-resolution covered-by:<artifact-path> when the lesson is already better expressed in a stronger artifact.`,
+    );
+  }
+
+  if (
+    riskyFileMatches.length > 0 &&
+    relatedEntries.length === 0 &&
+    changedMemoryPaths.length === 0 &&
+    !learningCaptureSatisfied
   ) {
     warnings.push(
       `Risky diff touched ${[
         ...new Set(riskyFileMatches.flatMap(({ categories }) => categories)),
       ].join(
         ', ',
-      )} without a matching memory record. Create a new draft only if the diff establishes a reusable rule not already discoverable in AGENTS, tests, guards, adapters, migrations, or code.`,
+      )} without a matching memory record. Capture a reusable lesson only when the diff proves it, otherwise finish with --learning-resolution covered-by:<artifact-path> when a stronger artifact already carries the rule.`,
     );
   }
+
+  const learningCandidate = buildLearningCandidate({
+    review: {
+      relatedEntries,
+      strongerArtifactMatches,
+      changedNonMemoryPaths,
+      changedMemoryEntryPaths,
+      learningSignals,
+      learningResolutions,
+      triggerMatches,
+    },
+  });
 
   return {
     changedPaths,
     changedMemoryPaths,
+    changedMemoryEntryPaths,
     changedNonMemoryPaths,
     failures,
     warnings,
     relatedEntries,
     riskyFileMatches,
+    strongerArtifactMatches,
+    triggerMatches,
+    learningSignals,
+    learningCandidate,
+    diffText,
+    usageStats,
+    learningCaptureSatisfied,
     handledByMemoryChange,
     handledByResolution,
+    memoryResolutions,
+    learningResolutions,
     state,
     stateFilePath: options.stateFilePath,
+    strictLifecycle,
   };
 };
 
@@ -362,6 +589,14 @@ export const renderProjectMemoryDiffReview = (result) => {
     });
   }
 
+  if (result.strongerArtifactMatches.length > 0) {
+    lines.push('');
+    lines.push('Stronger artifacts:');
+    result.strongerArtifactMatches.forEach(({ filePath, kinds }) => {
+      lines.push(`- ${filePath} [${kinds.join(', ')}]`);
+    });
+  }
+
   if (result.relatedEntries.length > 0) {
     lines.push('');
     lines.push('Related memory entries:');
@@ -373,6 +608,36 @@ export const renderProjectMemoryDiffReview = (result) => {
           : 'unhandled';
 
       lines.push(`- ${entry.relativePath} [${handling}] via ${touchedFiles.join(', ')}`);
+    });
+  }
+
+  if (result.triggerMatches.length > 0) {
+    lines.push('');
+    lines.push('Trigger matches:');
+    result.triggerMatches.forEach(({ entry, signals }) => {
+      lines.push(`- ${entry.relativePath} via ${signals.map((signal) => signal.value).join(', ')}`);
+    });
+  }
+
+  if (result.learningSignals.length > 0) {
+    lines.push('');
+    lines.push('Learning signals:');
+    result.learningSignals.forEach((signal) => {
+      lines.push(`- ${signal}`);
+    });
+    lines.push(
+      `Entry changes counted for learning capture: ${result.changedMemoryEntryPaths.length > 0 ? result.changedMemoryEntryPaths.join(', ') : 'none'}`,
+    );
+    lines.push(`Learning capture satisfied: ${result.learningCaptureSatisfied ? 'yes' : 'no'}`);
+  }
+
+  const explicitLearningDecisions = [...result.learningResolutions.coveredBy];
+
+  if (explicitLearningDecisions.length > 0) {
+    lines.push('');
+    lines.push('Explicit learning resolutions:');
+    explicitLearningDecisions.forEach((decision) => {
+      lines.push(`- ${decision}`);
     });
   }
 
@@ -392,6 +657,15 @@ export const renderProjectMemoryDiffReview = (result) => {
     });
   }
 
+  if (result.learningCandidate) {
+    lines.push('');
+    lines.push('Learning candidate:');
+    result.learningCandidate.reason.forEach((reason) => {
+      lines.push(`- ${reason}`);
+    });
+    lines.push(`- resolution: ${result.learningCandidate.resolution}`);
+  }
+
   if (result.failures.length === 0 && result.warnings.length === 0) {
     lines.push('');
     lines.push('No project-memory issues detected for the current diff.');
@@ -404,6 +678,14 @@ export const toJsonFriendlyProjectMemoryDiffReview = (result) => ({
   ...result,
   handledByMemoryChange: [...result.handledByMemoryChange],
   handledByResolution: [...result.handledByResolution],
+  diffText: undefined,
+  usageStats: undefined,
+  memoryResolutions: {
+    keep: [...result.memoryResolutions.keep],
+  },
+  learningResolutions: {
+    coveredBy: [...result.learningResolutions.coveredBy],
+  },
 });
 
 const isMainModule =
