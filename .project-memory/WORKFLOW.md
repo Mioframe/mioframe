@@ -45,6 +45,7 @@ Failure policy is intentionally split by hook role:
 
 - `SessionStart` and `UserPromptSubmit` are additive-context hooks. On internal errors they log a loud warning to `stderr` and soft-fallback with no hook output.
 - `PreToolUse` and `Stop` participate in enforcement. On internal errors they exit non-zero so Codex sees a hook failure instead of a silent success.
+  Current Codex runtime treats non-zero hook status as a hook failure, while `decision: "block"` still requires a valid reason or continuation prompt. We therefore reserve structured block output for real lifecycle findings and use hard failure for hook-internal exceptions.
 
 ## Commands
 
