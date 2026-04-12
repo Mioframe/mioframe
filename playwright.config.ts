@@ -23,10 +23,10 @@ export default defineConfig({
   webServer: externalBaseURL
     ? undefined
     : {
-        command: `pnpm exec vite --host ${host} --strictPort --port ${port}`,
+        command: `pnpm build && pnpm exec vite preview --host ${host} --strictPort --port ${port}`,
         url: defaultBaseURL,
         reuseExistingServer: true,
-        timeout: 120_000,
+        timeout: 240_000,
       },
   workers: process.env.CI ? 1 : undefined,
   projects: [
@@ -34,6 +34,7 @@ export default defineConfig({
       name: 'chromium',
       use: {
         ...devices['Desktop Chrome'],
+        channel: 'chromium',
       },
     },
   ],
