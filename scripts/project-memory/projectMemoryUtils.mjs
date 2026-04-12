@@ -330,6 +330,18 @@ export const isValidIsoDate = (value) => {
 export const stripLocalPathSuffix = (ref) =>
   ref.replace(/#L\d+(?:-L\d+)?$/u, '').replace(/:(\d+)(?::\d+)?$/u, '');
 
+export const toPosixPath = (value) => value.replaceAll(path.sep, '/');
+
+export const normalizeRepoRelativePath = (value) => {
+  const trimmed = normalizeWhitespace(value).replace(/^\.\/+/u, '');
+
+  if (trimmed === '') {
+    return '';
+  }
+
+  return toPosixPath(trimmed).replace(/\/+/gu, '/').replace(/\/$/u, '');
+};
+
 const looksLikeRepoPath = (ref) => {
   if (/^[a-z]+:\/\//iu.test(ref)) {
     return false;
@@ -355,7 +367,7 @@ const looksLikeRepoPath = (ref) => {
 };
 
 export const resolveRepoPath = (ref) => {
-  const candidate = stripLocalPathSuffix(ref.trim()).replace(/^\.\/+/u, '');
+  const candidate = normalizeRepoRelativePath(stripLocalPathSuffix(ref.trim()));
 
   if (candidate === '') {
     return undefined;
@@ -374,12 +386,111 @@ export const isLocalRepoRef = (ref) => {
   return looksLikeRepoPath(ref);
 };
 
-export const normalizeScopeEntry = (value) => normalizeWhitespace(value).toLowerCase();
+export const normalizeScopeEntry = (value) => normalizeRepoRelativePath(value).toLowerCase();
+
+export const getParentScope = (value) => {
+  const normalized = normalizeRepoRelativePath(value);
+
+  if (normalized === '' || !normalized.includes('/')) {
+    return undefined;
+  }
+
+  const parent = path.posix.dirname(normalized);
+
+  return parent === '.' ? undefined : parent;
+};
+
+export const scopeContainsPath = (scope, repoRelativePath) => {
+  const normalizedScope = normalizeScopeEntry(scope);
+  const normalizedPath = normalizeScopeEntry(repoRelativePath);
+
+  return (
+    normalizedScope === normalizedPath ||
+    normalizedPath.startsWith(`${normalizedScope}/`) ||
+    normalizedScope.startsWith(`${normalizedPath}/`)
+  );
+};
 
 export const normalizedScopeSignature = (scope) =>
   [...new Set(scope.map(normalizeScopeEntry))]
     .sort((left, right) => left.localeCompare(right))
     .join('|');
+
+export const riskyMatchers = [
+  {
+    category: 'memory system',
+    match: (filePath) =>
+      filePath.startsWith('.project-memory/') ||
+      filePath.startsWith('scripts/project-memory/') ||
+      filePath === 'AGENTS.md' ||
+      filePath.startsWith('.codex/'),
+  },
+  {
+    category: 'shared infrastructure',
+    match: (filePath) => filePath.startsWith('src/shared/'),
+  },
+  {
+    category: 'service boundaries',
+    match: (filePath) => filePath.startsWith('src/shared/service/'),
+  },
+  {
+    category: 'CRDT',
+    match: (filePath) =>
+      /(^|\/)(automerge|crdt)(\/|$)/iu.test(filePath) ||
+      filePath.startsWith('src/shared/lib/changeObject') ||
+      filePath.startsWith('src/shared/service/databaseDocument'),
+  },
+  {
+    category: 'VFS/filesystem',
+    match: (filePath) =>
+      /filesystem|virtualfilesystem/iu.test(filePath) ||
+      filePath.startsWith('src/shared/lib/googleDrive'),
+  },
+  {
+    category: 'schema/migration',
+    match: (filePath) =>
+      /schema|migration|zod/iu.test(filePath) || filePath.startsWith('src/shared/lib/migrations'),
+  },
+  {
+    category: 'helper semantics',
+    match: (filePath) => filePath.startsWith('src/shared/lib/'),
+  },
+];
+
+export const strongerArtifactMatchers = [
+  {
+    kind: 'AGENTS.md',
+    match: (filePath) => filePath === 'AGENTS.md' || filePath.endsWith('/AGENTS.md'),
+  },
+  {
+    kind: 'test',
+    match: (filePath) => /\.(test|spec)\.[a-z]+$/iu.test(filePath),
+  },
+  {
+    kind: 'guard',
+    match: (filePath) => /typeguards|guard/iu.test(filePath),
+  },
+  {
+    kind: 'migration',
+    match: (filePath) => /migration/iu.test(filePath),
+  },
+  {
+    kind: 'schema',
+    match: (filePath) => /schema|zod/iu.test(filePath),
+  },
+  {
+    kind: 'adapter',
+    match: (filePath) => /adapter/iu.test(filePath),
+  },
+];
+
+export const classifyRiskyCategories = (filePath) =>
+  riskyMatchers.flatMap((matcher) => (matcher.match(filePath) ? [matcher.category] : []));
+
+export const isRiskyPath = (filePath) => classifyRiskyCategories(filePath).length > 0;
+
+export const classifyStrongerArtifacts = (filePath) =>
+  strongerArtifactMatchers.flatMap((matcher) => (matcher.match(filePath) ? [matcher.kind] : []));
 
 export const tokenizeRule = (value) =>
   [...new Set(value.toLowerCase().match(/[a-z0-9@._-]+/gu) ?? [])].filter(
@@ -409,4 +520,78 @@ export const formatAgeInDays = (isoDate) => {
   }
 
   return Math.floor((Date.now() - verifiedAt.valueOf()) / (24 * 60 * 60 * 1000));
+};
+
+export const getTodayIsoDate = () => new Date().toISOString().slice(0, 10);
+
+export const rankEntries = (
+  entries,
+  { scopeQueries = [], termQueries = [], includeArchived = false },
+) => {
+  const normalizedScopes = scopeQueries.map((scope) => normalizeScopeEntry(scope)).filter(Boolean);
+  const normalizedTerms = termQueries
+    .map((term) => asNonEmptyString(term))
+    .filter(Boolean)
+    .map((term) => term.toLowerCase());
+  const candidates = entries.filter((entry) => includeArchived || entry.data.status !== 'archived');
+
+  return candidates
+    .map((entry) => {
+      let score = 0;
+      const reasons = [];
+      const entryScopes = Array.isArray(entry.data.scope)
+        ? entry.data.scope.map((scope) => normalizeScopeEntry(scope))
+        : [];
+      const searchableText = [
+        entry.relativePath,
+        entry.data.rule,
+        entry.data.why,
+        entry.body,
+        ...(entry.data.scope ?? []),
+        ...(entry.data['review-trigger'] ?? []),
+        ...(Array.isArray(entry.data.evidence)
+          ? entry.data.evidence.flatMap((evidence) => [evidence.type, evidence.ref, evidence.note])
+          : []),
+      ]
+        .filter(Boolean)
+        .join('\n')
+        .toLowerCase();
+      const ruleTokens = new Set(tokenizeRule(entry.data.rule ?? ''));
+
+      normalizedScopes.forEach((query) => {
+        entryScopes.forEach((entryScope) => {
+          if (entryScope === query) {
+            score += 12;
+            reasons.push(`scope=${entryScope}`);
+          } else if (entryScope.startsWith(`${query}/`) || query.startsWith(`${entryScope}/`)) {
+            score += 8;
+            reasons.push(`scope-overlap=${entryScope}`);
+          }
+        });
+      });
+
+      normalizedTerms.forEach((term) => {
+        if (searchableText.includes(term)) {
+          score += 3;
+          reasons.push(`term=${term}`);
+        } else if (ruleTokens.has(term)) {
+          score += 2;
+          reasons.push(`rule-token=${term}`);
+        }
+      });
+
+      return {
+        entry,
+        score,
+        reasons,
+      };
+    })
+    .filter((candidate) => candidate.score > 0)
+    .sort((left, right) => {
+      if (right.score !== left.score) {
+        return right.score - left.score;
+      }
+
+      return left.entry.relativePath.localeCompare(right.entry.relativePath);
+    });
 };

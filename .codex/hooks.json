@@ -1,0 +1,51 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "startup|resume",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$(git rev-parse --show-toplevel)/scripts/project-memory/codexHooks.mjs\" session-start",
+            "statusMessage": "Loading project-memory workflow"
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$(git rev-parse --show-toplevel)/scripts/project-memory/codexHooks.mjs\" user-prompt-submit",
+            "statusMessage": "Loading relevant project memory"
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$(git rev-parse --show-toplevel)/scripts/project-memory/codexHooks.mjs\" pre-tool-use",
+            "statusMessage": "Checking project-memory guardrails"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$(git rev-parse --show-toplevel)/scripts/project-memory/codexHooks.mjs\" stop",
+            "statusMessage": "Reviewing project-memory lifecycle",
+            "timeout": 30
+          }
+        ]
+      }
+    ]
+  }
+}

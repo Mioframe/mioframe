@@ -2,6 +2,14 @@
 
 `.project-memory/` is a small, evidence-first memory layer for project knowledge that is useful across future tasks but does not yet belong in `AGENTS.md` or another stronger artifact.
 
+The default operating mode is now task-driven rather than reminder-driven:
+
+- start risky work with `pnpm memory:task:start`;
+- let repo-local Codex hooks preload prompt-matched memory when the project is opened in trusted mode;
+- read the matched memory before changing behavior;
+- finish with `pnpm memory:task:finish`;
+- let `memory:task:review`, pre-commit, and CI catch risky diffs that skipped lifecycle handling.
+
 It is intentionally narrower than general documentation:
 
 - `AGENTS.md` keeps stable rules, ownership, and boundaries.
@@ -74,20 +82,43 @@ File names should be `YYYY-MM-DD-short-slug.md`.
 
 ## Required Discovery Workflow
 
-Before editing a significant scope, search memory in three passes:
+Before editing a significant scope, start the task through the mandatory entrypoint:
+
+```sh
+pnpm memory:task:start --scope src/shared/service/fileSystem --term reread --term handle
+pnpm memory:task:start --scope src/shared/lib/changeObject --scope src/shared/service/databaseDocument --term deepPatchJsonObject
+```
+
+The entrypoint performs discovery in three passes:
 
 1. Search by the exact touched scope and its parent subsystem.
 2. Search by bug, review, helper, library, or regression keywords from the task.
 3. Search adjacent subsystems when the change crosses a boundary such as service <-> entity, helper <-> caller, or provider <-> runtime integration.
 
-Use `pnpm memory:lookup` for the repeatable path:
-
-```sh
-pnpm memory:lookup --scope src/shared/service/fileSystem --term reread --term handle
-pnpm memory:lookup --scope src/shared/lib/changeObject --scope src/shared/service/databaseDocument --term deepPatchJsonObject
-```
+Use raw `pnpm memory:lookup` only as a follow-up query after the task has already started.
 
 Discovery is mandatory before non-trivial changes in shared infrastructure, CRDT paths, VFS/filesystem flows, schemas or migrations, helper semantics, and any scope that already has matching memory.
+
+## Codex Automation Layer
+
+This repo also ships a Codex-oriented automation layer in `.codex/`:
+
+- `.codex/config.toml` enables the documented `codex_hooks` feature.
+- `.codex/hooks.json` wires the documented `SessionStart`, `UserPromptSubmit`, `PreToolUse`, and `Stop` events.
+- `scripts/project-memory/codexHooks.mjs` reuses the same lookup and diff-review logic as the CLI scripts, so hooks do not invent a second memory lifecycle model.
+
+What the hook layer does:
+
+- preload relevant memory into developer context from the prompt, active task state, and existing boundary-linked entries;
+- remind the agent to run `pnpm memory:task:start` before risky edits when no task state exists;
+- block a narrow set of risky Bash writes or `git commit` / `git push` if lifecycle handling is still missing;
+- continue the task once at stop-time when risky diff review still fails.
+
+What it does not do:
+
+- it does not replace `pnpm memory:task:start` or `pnpm memory:task:finish`;
+- it does not fully intercept non-shell tools, because current Codex documents `PreToolUse` / `PostToolUse` as Bash-only and incomplete;
+- it does not force a brand-new memory record when the diff only justifies a warning.
 
 ## Write Rules
 
@@ -100,9 +131,10 @@ Discovery is mandatory before non-trivial changes in shared infrastructure, CRDT
 Write or update memory in these cases:
 
 - Refresh an existing entry when a bug fix, review, or repro gives new evidence for the same rule.
-- Open a new `draft` only when the evidence is concrete enough to help the next agent, even if the rule is still narrow.
+- Open a new `draft` only when the diff carries concrete evidence that will help the next agent, even if the rule is still narrow. Good triggers are focused tests, bug fixes, review findings, reproducible runtime behavior, or authoritative source confirmation.
 - Promote repeated or now-enforceable knowledge in the same change that adds the stronger artifact.
 - Archive a record when the rule is contradicted, replaced, merged into another entry, or made unnecessary by a clearly discoverable stronger artifact.
+- Do not create a new prose record when the relevant knowledge is already discoverable in code, tests, guards, adapters, migrations, schemas, or stable `AGENTS.md` guidance.
 
 ## Promotion Rules
 
@@ -166,11 +198,12 @@ This memory is most useful here:
 
 ## Search
 
-Use `pnpm memory:lookup` for the default workflow and `rg` for ad hoc follow-up. Examples:
+Use the task loop for the default workflow and `rg` for ad hoc follow-up. Examples:
 
 ```sh
-pnpm memory:lookup --scope src/shared/service/fileSystem --term reread
-pnpm memory:lookup --scope src/shared/lib/typeGuards --term FileSystemDirectoryHandle
+pnpm memory:task:start --scope src/shared/service/fileSystem --term reread
+pnpm memory:task:review
+pnpm memory:task:finish
 ```
 
 Raw `rg` remains useful when you already know what you are hunting:
@@ -183,6 +216,26 @@ rg -n "kind: library-semantics" .project-memory
 
 ## Validation
 
-Run `pnpm memory:validate` whenever you touch `.project-memory/`, lifecycle docs, `.project-memory/WORKFLOW.md`, or memory lookup/validator tooling.
+Run `pnpm memory:validate` whenever you touch `.project-memory/`, lifecycle docs, `.project-memory/WORKFLOW.md`, `.codex/`, or memory lookup/validator tooling.
 
-The same validation is wired into pre-commit for memory-related changes and into CI through `.github/workflows/project-memory.yml`, so lifecycle drift and malformed entries fail loudly instead of relying on careful manual review.
+The same validation is wired into pre-commit for memory-related changes and into CI through `.github/workflows/project-memory.yml`.
+
+Diff-aware review is also part of the automation contour:
+
+- `pnpm memory:task:review --staged` runs from pre-commit and blocks staged risky diffs that touched existing memory scopes without lifecycle handling.
+- CI runs `pnpm memory:task:review --base <base-sha>` so risky pull-request diffs do not pass quietly.
+- `pnpm memory:task:finish` runs the same diff-aware review plus `pnpm memory:validate` before the agent should consider the task complete.
+- The Codex `Stop` hook runs the same review logic and continues the turn once with a remediation prompt when risky lifecycle handling is still unresolved.
+
+Hard failures are reserved for reproducible lifecycle misses:
+
+- risky work skipped `memory:task:start`;
+- a touched existing memory scope was not refreshed, promoted, archived, or explicitly kept during local task finish;
+- a live updated record did not refresh `last-verified-at`;
+- memory validation failed.
+
+Warnings are used when automation cannot safely infer intent without creating noise:
+
+- a risky diff touched a new area with no existing memory record;
+- a stronger artifact changed and a related record might now be ready for promotion;
+- a promoted breadcrumb is getting too verbose or its promotion target is not clearly discoverable.

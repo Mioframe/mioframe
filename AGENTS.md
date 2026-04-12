@@ -16,9 +16,10 @@ Applies to the whole repository unless a deeper `AGENTS.md` overrides it.
 - Keep changes in the layer that owns the behavior, and import through `index.ts` when a public entry point exists.
 - Preserve FSD boundaries: `pages` compose screens, `widgets` compose larger sections, `features` own user actions, `entities` own domain reads and derived state, and `shared` stays upper-layer-free.
 - Use `.project-memory/` for evidence-backed, project-local lessons or helper semantics that are too volatile, narrow, or implementation-shaped for `AGENTS.md`.
-- Before non-trivial changes in `src/shared`, service boundaries, CRDT flows, VFS/filesystem code, schema or migration paths, helper semantics, or any scope that may already have memory, run project-memory discovery by touched scope, task keywords, and adjacent subsystems. Prefer `pnpm memory:lookup --scope <path> --term <keyword>` over ad hoc browsing.
-- Use `.project-memory/WORKFLOW.md` as the repeatable memory procedure when the task can add, promote, merge, archive, or validate project-memory records.
-- When a bug fix, review finding, stronger artifact, or contradiction touches an existing memory scope, update the matching `.project-memory/` entry in the same change: refresh evidence, merge duplicates, promote to a stronger artifact, or archive it with explicit replacement links.
+- Before non-trivial changes in `src/shared`, service boundaries, CRDT flows, VFS/filesystem code, schema or migration paths, helper semantics, `.project-memory/`, or any scope that may already have memory, start the task through `pnpm memory:task:start --scope <path> --term <keyword>`. This is the mandatory project-memory entrypoint and it runs discovery by exact scope, parent subsystem, and task terms.
+- Repo-local Codex hooks in `.codex/` automatically preload prompt-matched project memory and run stop-time lifecycle review, but they do not replace `pnpm memory:task:start` or `pnpm memory:task:finish`.
+- Use `.project-memory/WORKFLOW.md` as the canonical `memory:task:start -> read memory -> change -> memory:task:finish` procedure when the task can add, promote, merge, archive, or validate project-memory records.
+- When a bug fix, review finding, stronger artifact, or contradiction touches an existing memory scope, update the matching `.project-memory/` entry in the same change and finish through `pnpm memory:task:finish`: refresh evidence, merge duplicates, promote to a stronger artifact, archive with explicit replacement links, or make an explicit local keep decision during task finish.
 - Verify third-party semantics from official docs or installed source before relying on ambiguous helpers, options, or return values. If the behavior is still unverified, say so.
 - Treat DOM parentage, scroll ownership, focus, teleport, and overlay wiring as concrete runtime contracts. Check the rendered hierarchy before moving wrappers or composition boundaries.
 - Keep the UI aligned with Material 3 expectations and optimize for mobile browsers first. Assume large datasets and low-end devices, and keep main-thread work bounded.
@@ -48,7 +49,8 @@ Applies to the whole repository unless a deeper `AGENTS.md` overrides it.
 - UI-facing layers may cross into background logic only through explicit proxy clients. Do not directly import `*Service` modules into `pages`, `widgets`, `features`, `entities`, or shared UI.
 - Use `pnpm` for package management and project commands.
 - After edits, run the narrowest relevant verification. For logic changes, run at least `pnpm type-check`; add focused `vitest`, Cypress, or reproducible smoke checks for behavior, schema, service, or storage changes.
-- Run `pnpm memory:validate` after changing `.project-memory/`, project-memory workflow tooling, `.project-memory/WORKFLOW.md`, or any `AGENTS.md` change that affects memory discovery, lifecycle, or promotion rules.
+- Do not treat project-memory review as optional on risky work: the standard exitpoint is `pnpm memory:task:finish`, and staged risky diffs are also checked by pre-commit through `pnpm memory:task:review --staged`.
+- Run `pnpm memory:validate` after changing `.project-memory/`, project-memory workflow tooling, `.project-memory/WORKFLOW.md`, `.codex/`, or any `AGENTS.md` change that affects memory discovery, lifecycle, promotion rules, or Codex hook automation.
 - Prefer targeted `oxlint`, `eslint --fix`, and `oxfmt` runs over repo-wide commands.
 - Use Conventional Commits.
 - `pages` and `widgets` directories use PascalCase. Other submodules use lower camel case.
