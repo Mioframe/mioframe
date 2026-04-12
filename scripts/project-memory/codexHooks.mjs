@@ -20,6 +20,8 @@ import { defaultTaskStatePath } from './startProjectMemoryTask.mjs';
 const usage = `Usage:
   node ./scripts/project-memory/codexHooks.mjs <session-start|user-prompt-submit|pre-tool-use|stop>`;
 
+const softFailureCommands = new Set(['session-start', 'user-prompt-submit']);
+
 const promptStopWords = new Set([
   'about',
   'after',
@@ -266,7 +268,7 @@ const buildPromptDiscoveryContext = ({ prompt, state }) => {
   }
 
   lines.push(
-    '- hooks can preload context and stop the turn on unresolved lifecycle work, but only pnpm memory:task:start records discovery for finish/CI.',
+    '- hooks can preload context and the Stop hook can request one extra pass for unresolved lifecycle work, but only pnpm memory:task:start records discovery for finish/CI.',
   );
 
   return lines.join('\n');
@@ -276,7 +278,7 @@ const buildSessionContext = (state) => {
   const lines = [
     'This repo wires Codex hooks into .project-memory.',
     'For risky scopes such as .project-memory, scripts/project-memory, src/shared, service boundaries, helper semantics, filesystem/VFS, CRDT, and schema or migration paths, start with pnpm memory:task:start before non-trivial edits.',
-    'The Stop hook will continue the turn when risky diff lifecycle handling is missing. PreToolUse only guards Bash and is not a complete enforcement boundary.',
+    'The Stop hook can request one extra pass when risky diff lifecycle handling is missing; if the follow-up still fails, it stops without silently succeeding. PreToolUse only guards Bash and is not a complete enforcement boundary.',
   ];
 
   if (!state) {
@@ -356,7 +358,7 @@ const buildPreToolBlockReason = (command, state) => {
     suggestedCommand
       ? `Run ${suggestedCommand} first, then retry the command.`
       : 'Run pnpm memory:task:start first, then retry the command.',
-    'This Bash guard is intentionally narrow; non-shell tool calls are enforced later by Stop, pre-commit, and CI.',
+    'This Bash guard is intentionally narrow; non-shell tool calls are reviewed again by Stop, pre-commit, and CI.',
   ].join('\n');
 };
 
@@ -367,11 +369,38 @@ const renderStopReason = (review) =>
     'Handle the related memory entry (refresh, promote, archive, or explicit keep) and rerun pnpm memory:task:finish before stopping.',
   ].join('\n');
 
+const renderStopContinuationPrompt = (review) =>
+  [
+    'Project-memory lifecycle is still unresolved for the current diff.',
+    ...review.failures.slice(0, 4).map((failure) => `- ${failure}`),
+    'Handle the related memory entry (refresh, promote, archive, or explicit keep), rerun `pnpm memory:task:finish`, and only stop once the lifecycle review is clean.',
+    '',
+    'Diff review details:',
+    renderProjectMemoryDiffReview(review),
+  ].join('\n');
+
 const renderStopWarning = (review) =>
   [
     'Project-memory warnings for the current diff:',
     ...review.warnings.slice(0, 4).map((warning) => `- ${warning}`),
   ].join('\n');
+
+const exitForHookFailure = (command, error) => {
+  const errorMessage = error instanceof Error ? error.message : String(error);
+  const failureMode = softFailureCommands.has(command) ? 'soft fallback' : 'hard failure';
+  const resolutionLine = softFailureCommands.has(command)
+    ? 'Continuing without hook output because this hook only adds context.'
+    : 'Refusing to report success because this hook participates in enforcement.';
+
+  console.error(`[project-memory hook:${command}] ${failureMode}: ${errorMessage}`);
+  console.error(resolutionLine);
+
+  if (!softFailureCommands.has(command)) {
+    console.error(usage);
+  }
+
+  process.exit(softFailureCommands.has(command) ? 0 : 1);
+};
 
 const run = async () => {
   const command = process.argv[2];
@@ -466,6 +495,8 @@ const run = async () => {
           JSON.stringify(
             {
               continue: false,
+              stopReason:
+                'Project-memory lifecycle remained unresolved after the Stop continuation pass.',
               systemMessage: `${renderStopReason(review)}\n\n${renderProjectMemoryDiffReview(review)}`,
             },
             null,
@@ -479,7 +510,8 @@ const run = async () => {
         JSON.stringify(
           {
             decision: 'block',
-            reason: renderStopReason(review),
+            reason: renderStopContinuationPrompt(review),
+            systemMessage: renderStopReason(review),
           },
           null,
           2,
@@ -507,7 +539,5 @@ const run = async () => {
 };
 
 run().catch((error) => {
-  console.error(error instanceof Error ? error.message : String(error));
-  console.error(usage);
-  process.exit(0);
+  exitForHookFailure(process.argv[2] ?? 'unknown', error);
 });

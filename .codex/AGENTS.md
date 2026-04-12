@@ -10,7 +10,7 @@ Inherits the rules from `/AGENTS.md`. Applies to `.codex` and its descendants.
 
 - Keep hook behavior thin: repo-local hooks should call `scripts/project-memory` logic instead of re-implementing lookup or diff review rules.
 - Treat `.codex/hooks.json` as wiring only. Put behavior in versioned scripts where it can be smoke-tested and reviewed with the rest of the memory tooling.
-- Bias hooks toward additive context, precise Bash guardrails, and stop-loop continuation. Leave durable enforcement to `memory:task:finish`, pre-commit, and CI.
+- Bias hooks toward additive context, precise Bash guardrails, and at most one stop-loop continuation request. Leave durable enforcement to `memory:task:finish`, pre-commit, and CI.
 
 ## Constraints
 
