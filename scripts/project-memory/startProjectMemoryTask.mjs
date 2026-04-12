@@ -131,13 +131,14 @@ export const startProjectMemoryTask = (options) => {
     termQueries: options.terms,
   });
   const state = {
-    version: 1,
+    version: 2,
     startedAt: new Date().toISOString(),
     exactScopes: options.exactScopes,
     parentScopes: options.parentScopes,
     lookupScopes: options.lookupScopes,
     taskTerms: options.terms,
     matchedEntries: rankedEntries.slice(0, 20).map(({ entry }) => entry.memoryRelativePath),
+    finish: null,
   };
 
   if (!options.noSave) {

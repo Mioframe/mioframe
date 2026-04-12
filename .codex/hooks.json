@@ -41,7 +41,7 @@
           {
             "type": "command",
             "command": "node \"$(git rev-parse --show-toplevel)/scripts/project-memory/codexHooks.mjs\" stop",
-            "statusMessage": "Reviewing project-memory lifecycle",
+            "statusMessage": "Checking for project-memory follow-up",
             "timeout": 30
           }
         ]

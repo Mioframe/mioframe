@@ -71,6 +71,22 @@ const requireStringList = (entry, value, fieldName) => {
   });
 };
 
+const validateOptionalString = (entry, value, fieldName) => {
+  if (value === undefined) {
+    return undefined;
+  }
+
+  return requireMeaningfulString(entry, value, fieldName);
+};
+
+const validateOptionalStringList = (entry, value, fieldName) => {
+  if (value === undefined) {
+    return [];
+  }
+
+  return requireStringList(entry, value, fieldName);
+};
+
 const validatePromotionTarget = (entry, value) => {
   if (entry.data.status === 'archived') {
     if (value !== undefined) {
@@ -158,9 +174,12 @@ entries.forEach((entry) => {
   const kind = requireMeaningfulString(entry, entry.data.kind, 'kind');
   const rule = requireMeaningfulString(entry, entry.data.rule, 'rule');
   const why = requireMeaningfulString(entry, entry.data.why, 'why');
+  const mistake = validateOptionalString(entry, entry.data.mistake, 'mistake');
+  const correction = validateOptionalString(entry, entry.data.correction, 'correction');
   const evidence = validateEvidence(entry, entry.data.evidence);
   const status = requireMeaningfulString(entry, entry.data.status, 'status');
   const confidence = requireMeaningfulString(entry, entry.data.confidence, 'confidence');
+  const appliesWhen = validateOptionalStringList(entry, entry.data['applies-when'], 'applies-when');
   const reviewTriggers = requireStringList(entry, entry.data['review-trigger'], 'review-trigger');
   const lastVerifiedAt = requireMeaningfulString(
     entry,
@@ -249,6 +268,10 @@ entries.forEach((entry) => {
     pushError(entry, 'review-trigger must not contain duplicate items');
   }
 
+  if (appliesWhen.length > 0 && new Set(appliesWhen).size !== appliesWhen.length) {
+    pushError(entry, 'applies-when must not contain duplicate items');
+  }
+
   if (evidence.length > 0) {
     const evidenceKeys = evidence.map((item) => `${item.type}|${item.ref}|${item.note}`);
 
@@ -279,6 +302,13 @@ entries.forEach((entry) => {
 
   if (rule && why && rule === why) {
     pushError(entry, 'rule and why must not be identical');
+  }
+
+  if (entry.data.kind === 'correction' && (!mistake || !correction || appliesWhen.length === 0)) {
+    pushError(
+      entry,
+      'correction entries must declare mistake, correction, and applies-when so future retrieval can surface both the original wrong conclusion and the fix.',
+    );
   }
 
   if (entry.data.status === 'promoted') {

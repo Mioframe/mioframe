@@ -1,98 +1,55 @@
 # Project Memory Workflow
 
-Use this workflow whenever the task touches shared infrastructure, helper semantics, CRDT or VFS flows, schema or migration behavior, or `.project-memory/` itself.
+Use this workflow whenever the task touches shared infrastructure, helper semantics, CRDT or VFS flows, schema or migration behavior, service boundaries, `.project-memory/`, or another scope that already has relevant memory.
 
-## Task Entrypoint
+## Official Lifecycle
 
-Start every risky or memory-relevant task with the mandatory entrypoint:
+1. Run `pnpm memory:task:start --scope <path> --term <keyword>`.
+2. Read the matched memory before behavior changes.
+3. Make the code or documentation change.
+4. Decide what to do with any confirmed lesson:
+   - update an existing memory entry;
+   - create a new draft or verified entry;
+   - promote the lesson into a stronger artifact and leave a breadcrumb;
+   - or explicitly decide that a stronger artifact already expresses the lesson well enough.
+5. Run `pnpm memory:task:finish`.
+
+`memory:task:finish` is the official exit step. It is the place where lifecycle review and learning capture become explicit and durable.
+
+## Task Start
+
+Start every risky or memory-relevant task with:
 
 ```sh
 pnpm memory:task:start --scope src/shared/service/fileSystem --term reread --term handle
-pnpm memory:task:start --scope scripts/project-memory --term workflow --term diff
+pnpm memory:task:start --scope scripts/project-memory --term lifecycle --term learning
 ```
 
 The entrypoint:
 
-- requires the exact touched `--scope`;
-- derives the parent subsystem automatically;
-- searches memory by exact scope, parent subsystem, and task terms;
-- prints the best matches in a task-friendly summary;
-- stores `.project-memory/.task-state/current-task.json` so the exit review can verify that discovery happened.
-- is complemented by repo-local Codex hooks that preload prompt-matched memory and can request one extra stop-time pass when risky lifecycle work is still open. The canonical discovery record still comes from `memory:task:start`.
+- requires the touched scope;
+- derives parent scopes automatically;
+- searches by exact scope, parent scope, task terms, and related boundaries;
+- writes `.project-memory/.task-state/current-task.json`.
 
-Use raw `pnpm memory:lookup` only as a follow-up search once the task has already started.
+Repo-local Codex hooks may preload similar context before you run the command, but the task-state file created by `memory:task:start` is still the canonical discovery record.
 
-## Procedure
+## Hook Behavior
 
-1. Determine the touched scope before editing.
-2. Run `pnpm memory:task:start --scope <path> --term <keyword>`.
-3. Read the best matches before making behavior changes.
-4. Decide whether the existing entry should be refreshed, merged, promoted, archived, or intentionally kept unchanged.
-5. Finish through `pnpm memory:task:finish`.
+The hook layer is intentionally assistive and early:
 
-## Codex Hook Layer
+- `SessionStart`: loads the local project-memory workflow and active task-state context.
+- `UserPromptSubmit`: infers risky scopes and terms, then preloads matching entries.
+- `PreToolUse` for `Bash`: can block the first narrow class of risky Bash writes until discovery has happened.
+- `Stop`: reminds the agent to run `pnpm memory:task:finish` when lifecycle or learning capture still looks open.
 
-When the repo is opened in a trusted Codex project, `.codex/config.toml` enables `codex_hooks` and `.codex/hooks.json` wires four documented events:
+What changed:
 
-- `SessionStart`: loads the repo memory workflow and any active task-state matches into developer context.
-- `UserPromptSubmit`: infers risky scopes and task terms from the prompt, expands to boundary scopes from existing entries, and preloads matching memory into developer context.
-- `PreToolUse` for `Bash`: blocks a narrow set of risky write-like shell commands or `git commit` / `git push` when memory lifecycle handling is still missing.
-- `Stop`: runs diff-aware memory review and, when unresolved, requests one continuation via `decision: "block"` with a remediation prompt. If the follow-up turn still fails the review, it returns `continue: false` with a warning instead of silently succeeding.
+- `git commit` and `git push` are no longer treated as the main enforcement point;
+- `Stop` is no longer the main working mechanism for enforcement;
+- the preferred path is to finish the task explicitly, not to discover missing lifecycle work at the last second.
 
-These hooks are assistive, not absolute enforcement. Current Codex only documents `PreToolUse` / `PostToolUse` Bash interception, and the docs explicitly note that non-shell tools can bypass it. The authoritative lifecycle still lives in `memory:task:start`, `memory:task:finish`, pre-commit, and CI.
-
-Failure policy is intentionally split by hook role:
-
-- `SessionStart` and `UserPromptSubmit` are additive-context hooks. On internal errors they log a loud warning to `stderr` and soft-fallback with no hook output.
-- `PreToolUse` and `Stop` participate in enforcement. On internal errors they exit non-zero so Codex sees a hook failure instead of a silent success.
-  Current Codex runtime treats non-zero hook status as a hook failure, while `decision: "block"` still requires a valid reason or continuation prompt. We therefore reserve structured block output for real lifecycle findings and use hard failure for hook-internal exceptions.
-
-## Commands
-
-Start with the task entrypoint:
-
-```sh
-pnpm memory:task:start --scope src/shared/service/fileSystem --term reread --term handle
-pnpm memory:task:start --scope src/shared/lib/changeObject --term deepPatchJsonObject
-```
-
-Review the current diff at any point:
-
-```sh
-pnpm memory:task:review
-pnpm memory:task:review --staged
-```
-
-Finish the task through the exitpoint:
-
-```sh
-pnpm memory:task:finish
-pnpm memory:task:finish --memory-resolution keep:promoted/2026-04-12-vfs-directory-reread-after-create.md
-```
-
-## Decision Rules
-
-- A new `draft` is justified only when the diff proves a concrete rule through a test, bug fix, review finding, reproducible runtime behavior, or another evidence item that will still help the next agent.
-- If an existing record already covers the rule and scope, merge evidence into it instead of creating a duplicate.
-- If the diff confirms or sharpens an existing rule, refresh that record instead of creating a sibling note.
-- Move a record to `verified` only after focused tests, multiple independent evidence items, or code plus authoritative source support the rule.
-- Move a record to `promoted` only in the same change that lands the stronger artifact and keeps the promoted file as a short breadcrumb.
-- Move a record to `archived` when it is obsolete, contradicted, merged into another entry, or superseded by a better record. Add `archive-reason` and reciprocal `supersedes` or `superseded-by` links when replacement is involved.
-- If the knowledge is already clearly captured in code, tests, guards, migrations, schemas, or `AGENTS.md`, do not create a new prose record.
-
-## Promotion Bias
-
-Prefer stronger artifacts over prose when the rule can live in:
-
-- `AGENTS.md`
-- focused tests
-- guards or adapters
-- migrations or schemas
-- runtime boundary checks
-
-Keep promoted entries as structured breadcrumbs only. The validated frontmatter may stay for search and lifecycle tooling, but the prose body should stay short and pointer-like. Delete them later when the stronger artifact is directly discoverable without memory.
-
-## Task Exitpoint
+## Finish
 
 Finish every risky or memory-relevant task with:
 
@@ -100,12 +57,59 @@ Finish every risky or memory-relevant task with:
 pnpm memory:task:finish
 ```
 
-The exitpoint:
+Optional explicit resolutions:
 
-- inspects the diff for touched scopes and risky zones;
-- finds related memory entries by scope overlap;
-- checks whether those entries were refreshed, promoted, archived, or explicitly kept during the local task review;
-- warns when a risky diff may justify a new draft but the evidence still needs human judgment;
-- runs `pnpm memory:validate`;
-- fails loudly when risky work skipped discovery, when touched existing memory scopes were not lifecycle-reviewed, or when updated live records did not refresh `last-verified-at`.
-- is mirrored by the Codex `Stop` hook, which can request one concrete remediation pass and then stop with a warning if the lifecycle is still unresolved.
+```sh
+pnpm memory:task:finish --memory-resolution keep:verified/2026-04-12-helper-rule.md
+pnpm memory:task:finish --learning-resolution covered-by:src/shared/lib/changeObject/deepPatchJsonObject.test.ts
+```
+
+The exitpoint runs strict diff-aware review and then `pnpm memory:validate`. It persists the finish decision into task state so pre-commit and later local review can see that the task already completed lifecycle handling.
+
+## Learning Decision Rules
+
+When the diff indicates a confirmed, reusable lesson, finish must end with one of these outcomes:
+
+- `.project-memory` changed because you updated or created a record;
+- `.project-memory` changed because you promoted or archived a related record;
+- `--learning-resolution covered-by:<artifact-path>` was supplied because a stronger artifact already carries the lesson and prose memory would duplicate it.
+
+Typical signals that trigger this requirement:
+
+- a test, guard, adapter, migration, schema, or `AGENTS.md` changed to fix or enforce behavior;
+- a correction-style memory record matched the touched scope again;
+- risky code changed in a scope that has no existing breadcrumb and the diff now proves a reusable rule.
+
+`--memory-resolution keep:<memory-path>` is only for an already-related entry that was reviewed and intentionally left unchanged. It is not enough when the task produced a new confirmed lesson.
+
+## Correction Entries
+
+Use `kind: correction` when future sessions need both sides of the lesson:
+
+- what the wrong inference or action was;
+- what the correct behavior is;
+- where it applies;
+- what evidence confirmed it;
+- whether it should be promoted.
+
+This keeps retrieval useful for “do not repeat this mistake” cases instead of only storing abstract rules.
+
+## Promotion Rule
+
+Promotion is expected when a lesson stops being one-off prose:
+
+- repeated correction-style lessons should move into stronger artifacts;
+- verified rules that are now enforceable should move into tests, guards, adapters, migrations, runtime checks, or `AGENTS.md`;
+- promoted records should stay only as short breadcrumbs while they still help retrieval.
+
+If the same lesson reappears and still lives only in prose, `memory:task:finish` should push the task toward promotion rather than accepting endless `keep:` decisions.
+
+## Pre-commit And Validation
+
+Repo-local checks remain:
+
+- `.husky/pre-commit` runs `pnpm memory:task:review --staged`;
+- `.husky/pre-commit` also runs `pnpm memory:validate` for memory-system changes;
+- `pnpm memory:validate` remains the structural validator for entries, workflow docs, and hook wiring.
+
+These checks are backup review, not the primary place where the agent should first discover unfinished lifecycle work.
