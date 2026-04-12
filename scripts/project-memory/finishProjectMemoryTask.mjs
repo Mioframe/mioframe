@@ -2,12 +2,20 @@ import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 
+import { recordOutcomeFeedback, writeUsageStats } from './projectMemoryBehavior.mjs';
 import {
   analyzeProjectMemoryDiff,
   renderProjectMemoryDiffReview,
 } from './reviewProjectMemoryDiff.mjs';
 import { defaultTaskStatePath } from './startProjectMemoryTask.mjs';
-import { lastTaskFinishPath, readActiveTaskState, repoRoot } from './projectMemoryUtils.mjs';
+import {
+  lastTaskFinishPath,
+  loadEntries,
+  loadUsageStats,
+  readActiveTaskState,
+  repoRoot,
+  usageStatsPath,
+} from './projectMemoryUtils.mjs';
 
 const usage = `Usage:
   pnpm memory:task:finish [--staged | --base <ref>] [--memory-resolution keep:<memory-path>] [--learning-resolution covered-by:<artifact-path>] [--state-file <path>] [--finish-file <path>]
@@ -24,6 +32,7 @@ const parseArgs = (rawArgs) => {
   let base;
   let stateFilePath = defaultTaskStatePath;
   let finishFilePath = lastTaskFinishPath;
+  let statsFilePath = usageStatsPath;
   const memoryResolutions = [];
   const learningResolutions = [];
 
@@ -95,6 +104,18 @@ const parseArgs = (rawArgs) => {
       continue;
     }
 
+    if (arg === '--stats-file') {
+      const value = args[index + 1];
+
+      if (!value) {
+        throw new Error('Expected a value after --stats-file');
+      }
+
+      statsFilePath = path.isAbsolute(value) ? value : path.join(repoRoot, value);
+      index += 1;
+      continue;
+    }
+
     if (arg === '--help' || arg === '-h') {
       console.log(usage);
       process.exit(0);
@@ -112,6 +133,7 @@ const parseArgs = (rawArgs) => {
     base,
     stateFilePath,
     finishFilePath,
+    statsFilePath,
     memoryResolutions,
     learningResolutions,
   };
@@ -145,6 +167,8 @@ try {
     requireTaskStart: true,
     strict: true,
   });
+  const entries = loadEntries();
+  const usageStats = loadUsageStats(options.statsFilePath);
   const validation = runMemoryValidate();
 
   console.log(renderProjectMemoryDiffReview(review));
@@ -162,7 +186,7 @@ try {
   }
 
   const finishState = {
-    version: 3,
+    version: 4,
     status: 'completed',
     completedAt: new Date().toISOString(),
     exactScopes: activeState.exactScopes,
@@ -175,13 +199,60 @@ try {
     changedMemoryEntryPaths: review.changedMemoryEntryPaths,
     memoryResolutions: options.memoryResolutions,
     learningResolutions: options.learningResolutions,
+    shownDigestEntryPaths: activeState.shownDigestEntryPaths ?? [],
+    learningCandidate: review.learningCandidate,
   };
+
+  const relatedEntryPaths = review.relatedEntries.map(({ entry }) => entry.memoryRelativePath);
+  const shownEntryPaths = activeState.shownDigestEntryPaths ?? [];
+  const usedEntryPaths = shownEntryPaths.filter((entryPath) =>
+    relatedEntryPaths.includes(entryPath),
+  );
+  const falsePositiveEntryPaths = shownEntryPaths.filter(
+    (entryPath) =>
+      !relatedEntryPaths.includes(entryPath) &&
+      !review.triggerMatches.some(({ entry }) => entry.memoryRelativePath === entryPath),
+  );
+  const repeatedEntryPaths = review.relatedEntries
+    .filter(
+      ({ entry }) =>
+        review.failures.some((failure) => failure.includes(entry.relativePath)) ||
+        review.warnings.some((warning) => warning.includes(entry.relativePath)),
+    )
+    .map(({ entry }) => entry.memoryRelativePath);
+  const preventedEntryPaths = review.relatedEntries
+    .filter(
+      ({ entry }) =>
+        shownEntryPaths.includes(entry.memoryRelativePath) &&
+        (review.handledByMemoryChange.has(entry.memoryRelativePath) ||
+          review.learningResolutions.coveredBy.size > 0),
+    )
+    .map(({ entry }) => entry.memoryRelativePath);
+
+  recordOutcomeFeedback({
+    usageStats,
+    entries,
+    shownEntryPaths,
+    usedEntryPaths,
+    falsePositiveEntryPaths,
+    repeatedEntryPaths,
+    preventedEntryPaths,
+    nowIso: finishState.completedAt,
+  });
 
   fs.mkdirSync(path.dirname(options.finishFilePath), { recursive: true });
   fs.writeFileSync(options.finishFilePath, `${JSON.stringify(finishState, null, 2)}\n`, 'utf8');
+  writeUsageStats(options.statsFilePath, usageStats);
 
   if (fs.existsSync(options.stateFilePath)) {
     fs.rmSync(options.stateFilePath);
+  }
+
+  if (review.learningCandidate?.resolution === 'candidate') {
+    console.log('');
+    console.log('Suggested learning candidate draft');
+    console.log('');
+    console.log(review.learningCandidate.draftText);
   }
 } catch (error) {
   console.error(error instanceof Error ? error.message : String(error));

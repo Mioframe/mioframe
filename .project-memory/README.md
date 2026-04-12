@@ -63,6 +63,8 @@ Optional but formalized fields:
 - `mistake`: the wrong conclusion or action that happened.
 - `correction`: the correct behavior or conclusion.
 - `applies-when`: contexts, helpers, boundaries, or failure shapes where the lesson matters.
+- `triggers`, `anti-pattern-signals`, `positive-pattern-signals`: compact trigger metadata for path/helper/diff-aware warnings.
+- `repeat-signature`: an optional stable signature when repeats should merge across renamed files or rewritten prose.
 - `supersedes`
 - `superseded-by`
 - `archive-reason`
@@ -91,6 +93,8 @@ Existing memory scopes still require lifecycle handling:
 
 `keep:` is for lifecycle review of an already-related entry. It does not replace learning capture when the task produced a new confirmed lesson.
 
+`memory:task:finish` now also emits an auto-generated learning candidate when the diff shows likely reusable experience but the task has not yet recorded it. The candidate is a draft to accept, edit, reject, or close as `covered-by`; it is not auto-written.
+
 ## Promotion Rules
 
 Keep one-off local lessons in `.project-memory/` only while prose is the best place for them.
@@ -118,9 +122,13 @@ Retrieval is optimized for not repeating mistakes across sessions:
 - `pnpm memory:task:start` and `pnpm memory:lookup` both expand the query with boundary-linked risky scopes from matching records;
 - term matches now search `mistake`, `correction`, `applies-when`, evidence text, and the body;
 - correction-style records get a ranking boost so past wrong inferences surface early;
-- hooks reuse the same lookup model instead of maintaining a separate boundary-only retrieval path.
+- practical usefulness now affects ranking through a small service index: `use-count`, `repeat-count`, `prevented-repeat-count`, `false-positive-count`, `last-used-at`, `last-missed-at`, and `promotion-priority`;
+- hooks and task start default to a compact digest instead of full prose, suppress already-shown digests within the active task, and expand only when a riskier phase explicitly needs more detail;
+- trigger metadata can surface warnings from path/helper/diff signals instead of relying only on broad scope overlap.
 
 This means a past bug fix or review finding in the same helper, boundary, or subsystem should show up before new behavior changes begin.
+
+The usage index lives outside the prose entries in `.project-memory/.task-state/usage-stats.json`, so ranking and feedback can evolve without making the Markdown records noisy to maintain.
 
 ## Repo-Local Automation
 

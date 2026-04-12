@@ -11,6 +11,7 @@ correction: Keep learning capture diff-backed. Either edit a real memory entry i
 applies-when:
   - Tightening project-memory finish and review semantics.
   - Evaluating whether a risky task really persisted a reusable lesson.
+  - Reviewing auto-generated learning candidates from `memory:task:finish`; a suggested draft is guidance, not capture by itself.
 evidence:
   - type: code
     ref: scripts/project-memory/reviewProjectMemoryDiff.mjs:21
@@ -27,6 +28,9 @@ evidence:
   - type: doc
     ref: .project-memory/WORKFLOW.md:76
     note: Workflow says unchanged older records do not count as learning capture.
+  - type: code
+    ref: scripts/project-memory/finishProjectMemoryTask.mjs
+    note: Finish can print a suggested learning candidate draft, but capture is still satisfied only by a real entry diff or explicit `covered-by`.
 status: verified
 confidence: high
 promotion-target:
@@ -39,4 +43,4 @@ review-trigger:
 last-verified-at: 2026-04-12
 ---
 
-Keep learning capture evidence-first. If the lesson is stored in project memory, the entry change must be visible in the current diff.
+Keep learning capture evidence-first. Suggested candidates can reduce capture friction, but they do not replace the real entry diff or `covered-by` decision that makes the learning durable.

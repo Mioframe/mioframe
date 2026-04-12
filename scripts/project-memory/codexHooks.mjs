@@ -2,13 +2,21 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 import {
+  recordShownDigests,
+  renderMemoryDigest,
+  writeUsageStats,
+} from './projectMemoryBehavior.mjs';
+import {
   classifyRiskyCategories,
   loadEntries,
+  loadUsageStats,
   normalizeRepoRelativePath,
   readActiveTaskState,
   resolveRepoPath,
   scopeContainsPath,
   tokenizeRule,
+  usageStatsPath,
+  writeActiveTaskState,
 } from './projectMemoryUtils.mjs';
 import { lookupProjectMemory } from './lookupProjectMemory.mjs';
 import { analyzeProjectMemoryDiff } from './reviewProjectMemoryDiff.mjs';
@@ -169,12 +177,10 @@ const extractTerms = (prompt) =>
     .filter((token) => token.length >= 4 && !promptStopWords.has(token))
     .slice(0, 8);
 
-const summarizeEntries = (rankedEntries, limit = 4) =>
-  rankedEntries.slice(0, limit).map(({ entry, reasons }) => {
-    const summary = [entry.relativePath, entry.data.rule].filter(Boolean).join(': ');
-    const reasonText = [...new Set(reasons)].slice(0, 3).join(', ');
-
-    return reasonText ? `- ${summary} [${reasonText}]` : `- ${summary}`;
+const summarizeEntries = (rankedEntries, suppressEntryPaths = [], expanded = false) =>
+  renderMemoryDigest(rankedEntries, {
+    suppressEntryPaths,
+    expanded,
   });
 
 const renderSuggestedTaskStart = (scopes, terms) => {
@@ -227,6 +233,8 @@ const buildPromptDiscoveryContext = ({ prompt, state }) => {
     return undefined;
   }
 
+  const digest = summarizeEntries(rankedEntries, state?.shownDigestEntryPaths ?? []);
+
   const lines = ['Project-memory auto-context:'];
 
   if (baseScopes.length > 0) {
@@ -242,8 +250,11 @@ const buildPromptDiscoveryContext = ({ prompt, state }) => {
   }
 
   if (rankedEntries.length > 0) {
-    lines.push('- matching memory to read before behavior changes:');
-    lines.push(...summarizeEntries(rankedEntries));
+    lines.push('- compact digest:');
+    lines.push(...digest.lines);
+    if (digest.renderedEntryPaths.length === 0) {
+      lines.push('- no new digest lines; the current task already saw the top matching memory.');
+    }
   } else {
     lines.push('- no matching project-memory entries found yet for the inferred risky scope.');
   }
@@ -281,7 +292,7 @@ const buildSessionContext = (state) => {
         state.matchedEntries.includes(entry.memoryRelativePath),
     )
     .slice(0, 4)
-    .map((entry) => `- ${entry.relativePath}: ${entry.data.rule}`);
+    .flatMap((entry) => createSessionEntryLines(entry));
 
   lines.push(
     `Active task state: scopes=${Array.isArray(state.lookupScopes) ? state.lookupScopes.join(', ') : 'none'}; terms=${Array.isArray(state.taskTerms) && state.taskTerms.length > 0 ? state.taskTerms.join(', ') : 'none'}.`,
@@ -294,6 +305,8 @@ const buildSessionContext = (state) => {
 
   return lines.join('\n');
 };
+
+const createSessionEntryLines = (entry) => renderMemoryDigest([{ entry }]).lines;
 
 const isWriteLikeCommand = (command) =>
   /\b(git\s+(apply|commit|push)|mv|cp|rm|install|touch|mkdir|tee|truncate)\b/u.test(command) ||
@@ -395,6 +408,19 @@ const run = async () => {
 
   if (command === 'user-prompt-submit') {
     const prompt = typeof payload.prompt === 'string' ? payload.prompt : '';
+    const promptScopes = extractPaths(prompt);
+    const promptTerms = extractTerms(prompt);
+    const riskyPromptScopes = promptScopes.filter(
+      (scope) => classifyRiskyCategories(scope).length > 0,
+    );
+    const baseScopes =
+      riskyPromptScopes.length > 0 ? riskyPromptScopes : (state?.exactScopes ?? []);
+    const fallbackTerms = promptTerms.length > 0 ? promptTerms : (state?.taskTerms ?? []);
+    const lookup = lookupProjectMemory({
+      scopeQueries: baseScopes,
+      termQueries: fallbackTerms,
+    });
+    const digest = summarizeEntries(lookup.rankedEntries, state?.shownDigestEntryPaths ?? []);
     const additionalContext = buildPromptDiscoveryContext({
       prompt,
       state,
@@ -402,6 +428,33 @@ const run = async () => {
 
     if (!additionalContext) {
       return;
+    }
+
+    if (state && digest.renderedEntryPaths.length > 0) {
+      const entryByPath = new Map(loadEntries().map((entry) => [entry.memoryRelativePath, entry]));
+      const usageStats = loadUsageStats(usageStatsPath);
+      const nextState = {
+        ...state,
+        shownDigestEntryPaths: unique([
+          ...(state.shownDigestEntryPaths ?? []),
+          ...digest.renderedEntryPaths,
+        ]),
+        digestCache: {
+          mode: 'compact',
+          entryPaths: digest.renderedEntryPaths,
+          lineCount: digest.lines.length,
+        },
+      };
+
+      writeActiveTaskState(nextState, getTaskStatePath());
+      recordShownDigests({
+        usageStats,
+        entries: digest.renderedEntryPaths
+          .map((entryPath) => entryByPath.get(entryPath))
+          .filter(Boolean),
+        nowIso: new Date().toISOString(),
+      });
+      writeUsageStats(usageStatsPath, usageStats);
     }
 
     console.log(

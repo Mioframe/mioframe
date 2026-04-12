@@ -6,6 +6,7 @@ Use this workflow whenever the task touches shared infrastructure, helper semant
 
 1. Run `pnpm memory:task:start --scope <path> --term <keyword>`.
 2. Read the matched memory before behavior changes.
+   The default retrieval is a compact digest: rule, avoid/mistake, use-instead/correction, trigger, and entry or stronger-artifact ref. Expanded detail is for explicit lookup or truly riskier phases.
 3. Make the code or documentation change.
 4. Decide what to do with any confirmed lesson:
    - update an existing memory entry;
@@ -31,6 +32,7 @@ The entrypoint:
 - derives parent scopes automatically;
 - searches by exact scope, parent scope, related risky boundaries, and task terms through the same lookup model used by hooks and `memory:lookup`;
 - writes `.project-memory/.task-state/current-task.json`.
+- caches which compact digests were already shown so the same task does not keep paying for duplicate context.
 
 Repo-local Codex hooks may preload similar context before you run the command, but the task-state file created by `memory:task:start` is still the canonical discovery record.
 
@@ -66,6 +68,8 @@ pnpm memory:task:finish --learning-resolution covered-by:src/shared/lib/changeOb
 
 The exitpoint runs strict diff-aware review and then `pnpm memory:validate`. On success it writes a completion snapshot to `.project-memory/.task-state/last-finish.json` and removes `.project-memory/.task-state/current-task.json`, so only an actually active task can satisfy later lifecycle checks.
 
+Finish also maintains the service feedback index in `.project-memory/.task-state/usage-stats.json`. That index tracks which entries were shown, which ones correlated with useful handling, which ones were noisy, and when repeated misses should raise promotion pressure.
+
 ## Learning Decision Rules
 
 When the diff indicates a confirmed, reusable lesson, finish must end with one of these outcomes:
@@ -81,6 +85,7 @@ Typical signals that trigger this requirement:
 
 - a test, guard, adapter, migration, schema, or `AGENTS.md` changed to fix or enforce behavior;
 - a correction-style memory record matched the touched scope again;
+- a trigger-based warning fired from path/helper/diff signals;
 - risky code changed in a scope that has no existing breadcrumb and the diff now proves a reusable rule.
 
 `--memory-resolution keep:<memory-path>` is only for an already-related entry that was reviewed and intentionally left unchanged. It is not enough when the task produced a new confirmed lesson.
@@ -105,7 +110,7 @@ Promotion is expected when a lesson stops being one-off prose:
 - verified rules that are now enforceable should move into tests, guards, adapters, migrations, runtime checks, or `AGENTS.md`;
 - promoted records should stay only as short breadcrumbs while they still help retrieval.
 
-If the same lesson reappears and still lives only in prose, `memory:task:finish` should push the task toward promotion rather than accepting endless `keep:` decisions.
+If the same lesson reappears and still lives only in prose, `memory:task:finish` should push the task toward promotion rather than accepting endless `keep:` decisions. After the second or third confirmed repeat, `keep:` should no longer be the default outcome unless the diff also lands the stronger artifact or archives the prose record with an explicit replacement.
 
 ## Pre-commit And Validation
 
