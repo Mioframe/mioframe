@@ -14,6 +14,7 @@ Inherits the rules from `/AGENTS.md`. Applies to `scripts/project-memory` and it
 - Treat `.project-memory/.task-state/current-task.json` as ephemeral task state. It exists to carry lookup context through a task, not as a committed artifact.
 - Keep diff-aware review deterministic from committed or working-tree state. Hard failures should be reproducible from the diff itself; local-only explicit keep decisions are for task finish, not for CI.
 - When adding lifecycle heuristics, bias toward blocking touched existing memory scopes and risky known zones, but keep “create a brand-new record” as a warning unless the evidence is already concrete and reproducible from the diff.
+- Treat `SessionStart` and `UserPromptSubmit` as additive hooks that may soft-fallback on internal errors, but treat `PreToolUse` and `Stop` as enforcement hooks that must not exit `0` when their own logic breaks.
 
 ## Constraints
 

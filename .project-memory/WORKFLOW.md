@@ -18,7 +18,7 @@ The entrypoint:
 - searches memory by exact scope, parent subsystem, and task terms;
 - prints the best matches in a task-friendly summary;
 - stores `.project-memory/.task-state/current-task.json` so the exit review can verify that discovery happened.
-- is complemented by repo-local Codex hooks that preload prompt-matched memory and continue the turn when risky lifecycle work is still open.
+- is complemented by repo-local Codex hooks that preload prompt-matched memory and can request one extra stop-time pass when risky lifecycle work is still open. The canonical discovery record still comes from `memory:task:start`.
 
 Use raw `pnpm memory:lookup` only as a follow-up search once the task has already started.
 
@@ -37,9 +37,14 @@ When the repo is opened in a trusted Codex project, `.codex/config.toml` enables
 - `SessionStart`: loads the repo memory workflow and any active task-state matches into developer context.
 - `UserPromptSubmit`: infers risky scopes and task terms from the prompt, expands to boundary scopes from existing entries, and preloads matching memory into developer context.
 - `PreToolUse` for `Bash`: blocks a narrow set of risky write-like shell commands or `git commit` / `git push` when memory lifecycle handling is still missing.
-- `Stop`: runs diff-aware memory review and continues the turn once when risky lifecycle handling is still unresolved.
+- `Stop`: runs diff-aware memory review and, when unresolved, requests one continuation via `decision: "block"` with a remediation prompt. If the follow-up turn still fails the review, it returns `continue: false` with a warning instead of silently succeeding.
 
 These hooks are assistive, not absolute enforcement. Current Codex only documents `PreToolUse` / `PostToolUse` Bash interception, and the docs explicitly note that non-shell tools can bypass it. The authoritative lifecycle still lives in `memory:task:start`, `memory:task:finish`, pre-commit, and CI.
+
+Failure policy is intentionally split by hook role:
+
+- `SessionStart` and `UserPromptSubmit` are additive-context hooks. On internal errors they log a loud warning to `stderr` and soft-fallback with no hook output.
+- `PreToolUse` and `Stop` participate in enforcement. On internal errors they exit non-zero so Codex sees a hook failure instead of a silent success.
 
 ## Commands
 
@@ -84,7 +89,7 @@ Prefer stronger artifacts over prose when the rule can live in:
 - migrations or schemas
 - runtime boundary checks
 
-Keep promoted entries as breadcrumbs only. Delete them later when the stronger artifact is directly discoverable without memory.
+Keep promoted entries as structured breadcrumbs only. The validated frontmatter may stay for search and lifecycle tooling, but the prose body should stay short and pointer-like. Delete them later when the stronger artifact is directly discoverable without memory.
 
 ## Task Exitpoint
 
@@ -102,4 +107,4 @@ The exitpoint:
 - warns when a risky diff may justify a new draft but the evidence still needs human judgment;
 - runs `pnpm memory:validate`;
 - fails loudly when risky work skipped discovery, when touched existing memory scopes were not lifecycle-reviewed, or when updated live records did not refresh `last-verified-at`.
-- is mirrored by the Codex `Stop` hook, which can continue the task loop once with a concrete remediation prompt instead of ending silently.
+- is mirrored by the Codex `Stop` hook, which can request one concrete remediation pass and then stop with a warning if the lifecycle is still unresolved.

@@ -287,11 +287,11 @@ entries.forEach((entry) => {
     if (bodyWordCount > 80) {
       pushError(
         entry,
-        `promoted body is too long for a breadcrumb (${bodyWordCount} words); keep promoted notes short and point to the stronger artifact`,
+        `promoted body is too long for a structured breadcrumb (${bodyWordCount} words); keep promoted notes short and point to the stronger artifact`,
       );
     } else if (bodyWordCount > 45) {
       warnings.push(
-        `${entry.relativePath}: promoted body is getting long for a breadcrumb (${bodyWordCount} words)`,
+        `${entry.relativePath}: promoted body is getting long for a structured breadcrumb (${bodyWordCount} words)`,
       );
     }
 

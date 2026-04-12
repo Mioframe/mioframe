@@ -15,13 +15,14 @@ It is intentionally narrower than general documentation:
 - `AGENTS.md` keeps stable rules, ownership, and boundaries.
 - Tests, guards, adapters, migrations, and code keep enforceable behavior.
 - `.project-memory/` keeps project-specific lessons, tricky semantics, and review-grade pitfalls that are confirmed enough to be useful, but still need active review, promotion, merging, or removal.
+- Repo-local Codex hooks preload context and help with stop-time review, but canonical discovery state still comes from `pnpm memory:task:start`.
 
 ## Layout
 
 - `templates/entry.md`: the only write template.
 - `drafts/`: fresh observations with evidence that are not stable enough yet.
 - `verified/`: confirmed, reusable knowledge that future agents should consult.
-- `promoted/`: short pointer records for knowledge already lifted into a stronger artifact.
+- `promoted/`: structured breadcrumb records for knowledge already lifted into a stronger artifact.
 - `archive/`: archived records that are obsolete, contradicted, merged away, or superseded.
 
 Directory and status are both canonical, but they are not compared by raw spelling. The validator enforces this lifecycle mapping:
@@ -48,7 +49,7 @@ Archived records must also declare `archive-reason`, so `obsolete` becomes an ar
 - One-off debugging scraps that have not repeated and are unlikely to repeat.
 - Facts already expressed more clearly and durably in tests, types, linters, guards, code, or stable `AGENTS.md` rules.
 
-When a stronger artifact is the better answer, write that artifact first and either skip memory entirely or leave only a short promoted pointer.
+When a stronger artifact is the better answer, write that artifact first and either skip memory entirely or leave only a promoted record whose body is a short pointer.
 
 ## Entry Contract
 
@@ -77,7 +78,7 @@ File names should be `YYYY-MM-DD-short-slug.md`.
 
 - `draft`: has at least one solid evidence item, but is still scoped to the observed case and not yet strong enough to generalize broadly.
 - `verified`: is confirmed by either a focused test, multiple independent evidence items, or a code path plus an authoritative source. It is reusable and project-relevant.
-- `promoted`: now lives in a stronger artifact. The memory record should shrink to a breadcrumb, not restate the full rule.
+- `promoted`: now lives in a stronger artifact. The record keeps structured metadata for search and validation, but the body should shrink to a breadcrumb instead of restating the full rule in prose.
 - `archived`: no longer guides new work without re-verification. Use `archive-reason` to say whether it became obsolete, was contradicted, merged into another record, or was superseded.
 
 ## Required Discovery Workflow
@@ -112,13 +113,18 @@ What the hook layer does:
 - preload relevant memory into developer context from the prompt, active task state, and existing boundary-linked entries;
 - remind the agent to run `pnpm memory:task:start` before risky edits when no task state exists;
 - block a narrow set of risky Bash writes or `git commit` / `git push` if lifecycle handling is still missing;
-- continue the task once at stop-time when risky diff review still fails.
+- request one extra pass at stop-time via `Stop` `decision: "block"` when risky diff review still fails, then stop with a warning if the follow-up still fails.
 
 What it does not do:
 
 - it does not replace `pnpm memory:task:start` or `pnpm memory:task:finish`;
 - it does not fully intercept non-shell tools, because current Codex documents `PreToolUse` / `PostToolUse` as Bash-only and incomplete;
 - it does not force a brand-new memory record when the diff only justifies a warning.
+
+Failure policy is split intentionally:
+
+- `SessionStart` and `UserPromptSubmit` soft-fallback on internal errors because they only add context.
+- `PreToolUse` and `Stop` exit non-zero on internal errors because silent success would mask enforcement failure.
 
 ## Write Rules
 
@@ -149,7 +155,7 @@ After promotion:
 
 1. Update or add the stronger artifact.
 2. Move the record to `promoted/`.
-3. Replace any long explanation with a short pointer to the new artifact.
+3. Replace any long body text with a short pointer to the new artifact while keeping the structured frontmatter needed for search and validation.
 4. Delete the promoted record later if the stronger artifact is now obvious enough on its own.
 
 Leave a promoted breadcrumb when future agents are still likely to search memory first for that scope or keyword. Delete the breadcrumb only after the stronger artifact is directly discoverable in the touched scope and two later scope touches no longer needed the memory pointer.
@@ -225,7 +231,7 @@ Diff-aware review is also part of the automation contour:
 - `pnpm memory:task:review --staged` runs from pre-commit and blocks staged risky diffs that touched existing memory scopes without lifecycle handling.
 - CI runs `pnpm memory:task:review --base <base-sha>` so risky pull-request diffs do not pass quietly.
 - `pnpm memory:task:finish` runs the same diff-aware review plus `pnpm memory:validate` before the agent should consider the task complete.
-- The Codex `Stop` hook runs the same review logic and continues the turn once with a remediation prompt when risky lifecycle handling is still unresolved.
+- The Codex `Stop` hook runs the same review logic and can request one remediation pass when risky lifecycle handling is still unresolved.
 
 Hard failures are reserved for reproducible lifecycle misses:
 
@@ -239,3 +245,8 @@ Warnings are used when automation cannot safely infer intent without creating no
 - a risky diff touched a new area with no existing memory record;
 - a stronger artifact changed and a related record might now be ready for promotion;
 - a promoted breadcrumb is getting too verbose or its promotion target is not clearly discoverable.
+
+Hook-internal failures are never treated as silent success for enforcement hooks:
+
+- `SessionStart` and `UserPromptSubmit` log a warning and continue without extra context.
+- `PreToolUse` and `Stop` fail loud with a non-zero exit so the runtime can see that enforcement logic broke.
