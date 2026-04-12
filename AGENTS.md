@@ -48,7 +48,7 @@ Applies to the whole repository unless a deeper `AGENTS.md` overrides it.
 - `widgets` may compose `features`, `entities`, and `shared`, but should not own domain rules.
 - UI-facing layers may cross into background logic only through explicit proxy clients. Do not directly import `*Service` modules into `pages`, `widgets`, `features`, `entities`, or shared UI.
 - Use `pnpm` for package management and project commands.
-- After edits, run the narrowest relevant verification. For logic changes, run at least `pnpm type-check`; add focused `vitest`, Cypress, or reproducible smoke checks for behavior, schema, service, or storage changes.
+- After edits, run the narrowest relevant verification. For logic changes, run at least `pnpm type-check`; add focused `vitest`, Playwright, or reproducible smoke checks for behavior, schema, service, or storage changes.
 - Do not treat project-memory review as optional on risky work: the standard exitpoint is `pnpm memory:task:finish`, and staged risky diffs are also checked by pre-commit through `pnpm memory:task:review --staged`.
 - Run `pnpm memory:validate` after changing `.project-memory/`, project-memory workflow tooling, `.project-memory/WORKFLOW.md`, `.codex/`, or any `AGENTS.md` change that affects memory discovery, lifecycle, promotion rules, or Codex hook automation.
 - Prefer targeted `oxlint`, `eslint --fix`, and `oxfmt` runs over repo-wide commands.

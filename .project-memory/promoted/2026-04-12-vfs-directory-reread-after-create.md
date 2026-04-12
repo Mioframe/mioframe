@@ -30,4 +30,4 @@ review-trigger:
 last-verified-at: 2026-04-12
 ---
 
-Promoted to `src/shared/service/fileSystem/AGENTS.md` and the refresh tests. Keep this file as a breadcrumb for stale directory listing regressions across providers.
+Promoted to `src/shared/service/fileSystem/AGENTS.md` and the refresh tests. The surrounding VFS regression suite now lives in `Vitest` after the Cypress removal, but the stale-listing rule still belongs to the filesystem service reread contract. Keep this file as a breadcrumb for stale directory listing regressions across providers.
