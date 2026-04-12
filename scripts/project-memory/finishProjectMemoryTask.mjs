@@ -10,11 +10,12 @@ import { defaultTaskStatePath } from './startProjectMemoryTask.mjs';
 import { repoRoot } from './projectMemoryUtils.mjs';
 
 const usage = `Usage:
-  pnpm memory:task:finish [--staged | --base <ref>] [--memory-resolution keep:<memory-path>] [--state-file <path>]
+  pnpm memory:task:finish [--staged | --base <ref>] [--memory-resolution keep:<memory-path>] [--learning-resolution record:<memory-path>] [--learning-resolution covered-by:<artifact-path>] [--state-file <path>]
 
 Examples:
   pnpm memory:task:finish
   pnpm memory:task:finish --memory-resolution keep:promoted/2026-04-12-vfs-directory-reread-after-create.md
+  pnpm memory:task:finish --learning-resolution covered-by:src/shared/lib/typeGuards/isDirectoryHandle.ts
   pnpm memory:task:finish --base origin/main`;
 
 const parseArgs = (rawArgs) => {
@@ -23,6 +24,7 @@ const parseArgs = (rawArgs) => {
   let base;
   let stateFilePath = defaultTaskStatePath;
   const memoryResolutions = [];
+  const learningResolutions = [];
 
   for (let index = 0; index < args.length; index += 1) {
     const arg = args[index];
@@ -56,6 +58,18 @@ const parseArgs = (rawArgs) => {
       continue;
     }
 
+    if (arg === '--learning-resolution') {
+      const value = args[index + 1];
+
+      if (!value) {
+        throw new Error('Expected a value after --learning-resolution');
+      }
+
+      learningResolutions.push(value);
+      index += 1;
+      continue;
+    }
+
     if (arg === '--state-file') {
       const value = args[index + 1];
 
@@ -85,6 +99,7 @@ const parseArgs = (rawArgs) => {
     base,
     stateFilePath,
     memoryResolutions,
+    learningResolutions,
   };
 };
 
@@ -106,6 +121,7 @@ try {
   const review = analyzeProjectMemoryDiff({
     ...options,
     requireTaskStart: true,
+    strict: true,
   });
   const validation = runMemoryValidate();
 
@@ -123,9 +139,23 @@ try {
     process.exit(1);
   }
 
-  if (fs.existsSync(options.stateFilePath)) {
-    fs.unlinkSync(options.stateFilePath);
-  }
+  const previousState = fs.existsSync(options.stateFilePath)
+    ? JSON.parse(fs.readFileSync(options.stateFilePath, 'utf8'))
+    : {};
+
+  const nextState = {
+    ...previousState,
+    version: 2,
+    finish: {
+      completedAt: new Date().toISOString(),
+      changedPaths: review.changedPaths,
+      memoryResolutions: options.memoryResolutions,
+      learningResolutions: options.learningResolutions,
+    },
+  };
+
+  fs.mkdirSync(path.dirname(options.stateFilePath), { recursive: true });
+  fs.writeFileSync(options.stateFilePath, `${JSON.stringify(nextState, null, 2)}\n`, 'utf8');
 } catch (error) {
   console.error(error instanceof Error ? error.message : String(error));
   console.error('');

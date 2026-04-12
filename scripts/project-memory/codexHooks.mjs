@@ -11,18 +11,15 @@ import {
   tokenizeRule,
 } from './projectMemoryUtils.mjs';
 import { lookupProjectMemory } from './lookupProjectMemory.mjs';
-import {
-  analyzeProjectMemoryDiff,
-  renderProjectMemoryDiffReview,
-} from './reviewProjectMemoryDiff.mjs';
+import { analyzeProjectMemoryDiff } from './reviewProjectMemoryDiff.mjs';
 import { defaultTaskStatePath } from './startProjectMemoryTask.mjs';
 
 const usage = `Usage:
   node ./scripts/project-memory/codexHooks.mjs <session-start|user-prompt-submit|pre-tool-use|stop>`;
 
 // Verified against the installed Codex runtime contract: additive hooks may safely
-// soft-fallback, while enforcement hooks must surface internal failures as non-zero
-// hook exits so Codex does not silently treat broken guardrails as success.
+// soft-fallback, while the narrow Bash guard hook must surface internal failures as
+// non-zero exits so Codex does not silently treat broken guardrails as success.
 const hookFailurePolicies = {
   'session-start': {
     eventName: 'SessionStart',
@@ -45,10 +42,10 @@ const hookFailurePolicies = {
   },
   stop: {
     eventName: 'Stop',
-    failureMode: 'hard failure',
-    exitCode: 1,
+    failureMode: 'soft fallback',
+    exitCode: 0,
     resolutionLine:
-      'Refusing to report success because this hook participates in stop-time lifecycle enforcement.',
+      'Continuing without hook output because stop-time guidance should not become a late-stage trap.',
   },
 };
 
@@ -298,7 +295,7 @@ const buildPromptDiscoveryContext = ({ prompt, state }) => {
   }
 
   lines.push(
-    '- hooks can preload context and the Stop hook can request one extra pass for unresolved lifecycle work, but only pnpm memory:task:start records discovery for finish/CI.',
+    '- hooks preload context and point to the next lifecycle step early, but only pnpm memory:task:start and pnpm memory:task:finish record discovery and learning decisions.',
   );
 
   return lines.join('\n');
@@ -308,7 +305,7 @@ const buildSessionContext = (state) => {
   const lines = [
     'This repo wires Codex hooks into .project-memory.',
     'For risky scopes such as .project-memory, scripts/project-memory, src/shared, service boundaries, helper semantics, filesystem/VFS, CRDT, and schema or migration paths, start with pnpm memory:task:start before non-trivial edits.',
-    'The Stop hook can request one extra pass when risky diff lifecycle handling is missing; if the follow-up still fails, it stops without silently succeeding. PreToolUse only guards Bash and is not a complete enforcement boundary.',
+    'Hooks are intentionally front-loaded: they preload memory and nudge discovery before risky edits, while pnpm memory:task:finish is the explicit place to record lifecycle and learning decisions. PreToolUse only guards Bash and is not a complete enforcement boundary.',
   ];
 
   if (!state) {
@@ -347,23 +344,6 @@ const buildPreToolBlockReason = (command, state) => {
     return undefined;
   }
 
-  if (/\bgit\s+(commit|push)\b/u.test(command)) {
-    const review = analyzeProjectMemoryDiff({
-      requireTaskStart: true,
-      stateFilePath: getTaskStatePath(),
-    });
-
-    if (review.failures.length > 0) {
-      return [
-        'Project-memory lifecycle is still unresolved for the current diff.',
-        ...review.failures.slice(0, 3).map((failure) => `- ${failure}`),
-        'Run pnpm memory:task:finish or update/archive/keep the related entry before commit/push.',
-      ].join('\n');
-    }
-
-    return undefined;
-  }
-
   if (state) {
     return undefined;
   }
@@ -388,31 +368,15 @@ const buildPreToolBlockReason = (command, state) => {
     suggestedCommand
       ? `Run ${suggestedCommand} first, then retry the command.`
       : 'Run pnpm memory:task:start first, then retry the command.',
-    'This Bash guard is intentionally narrow; non-shell tool calls are reviewed again by Stop, pre-commit, and CI.',
+    'This Bash guard is intentionally narrow; finish the task later with pnpm memory:task:finish so the learning decision is recorded in one explicit place.',
   ].join('\n');
 };
 
-const renderStopReason = (review) =>
-  [
-    'Project-memory lifecycle is still open for this diff.',
-    ...review.failures.slice(0, 4).map((failure) => `- ${failure}`),
-    'Handle the related memory entry (refresh, promote, archive, or explicit keep) and rerun pnpm memory:task:finish before stopping.',
-  ].join('\n');
-
-const renderStopContinuationPrompt = (review) =>
-  [
-    'Project-memory lifecycle is still unresolved for the current diff.',
-    ...review.failures.slice(0, 4).map((failure) => `- ${failure}`),
-    'Handle the related memory entry (refresh, promote, archive, or explicit keep), rerun `pnpm memory:task:finish`, and only stop once the lifecycle review is clean.',
-    '',
-    'Diff review details:',
-    renderProjectMemoryDiffReview(review),
-  ].join('\n');
-
 const renderStopWarning = (review) =>
   [
-    'Project-memory warnings for the current diff:',
-    ...review.warnings.slice(0, 4).map((warning) => `- ${warning}`),
+    'Project-memory follow-up before you leave this task:',
+    ...[...review.failures, ...review.warnings].slice(0, 5).map((warning) => `- ${warning}`),
+    'Preferred path: run `pnpm memory:task:finish` so the lifecycle review and any learning capture decision are recorded explicitly.',
   ].join('\n');
 
 const getHookFailurePolicy = (command) =>
@@ -522,42 +486,10 @@ const run = async () => {
 
   if (command === 'stop') {
     const review = analyzeProjectMemoryDiff({
-      requireTaskStart: true,
       stateFilePath: getTaskStatePath(),
     });
 
-    if (review.failures.length > 0) {
-      if (payload.stop_hook_active) {
-        console.log(
-          JSON.stringify(
-            {
-              continue: false,
-              stopReason:
-                'Project-memory lifecycle remained unresolved after the Stop continuation pass.',
-              systemMessage: `${renderStopReason(review)}\n\n${renderProjectMemoryDiffReview(review)}`,
-            },
-            null,
-            2,
-          ),
-        );
-        return;
-      }
-
-      console.log(
-        JSON.stringify(
-          {
-            decision: 'block',
-            reason: renderStopContinuationPrompt(review),
-            systemMessage: renderStopReason(review),
-          },
-          null,
-          2,
-        ),
-      );
-      return;
-    }
-
-    if (review.warnings.length > 0) {
+    if (review.failures.length > 0 || review.warnings.length > 0) {
       console.log(
         JSON.stringify(
           {

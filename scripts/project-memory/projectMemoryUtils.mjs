@@ -14,6 +14,7 @@ export const directoryToStatus = Object.freeze({
 
 export const allowedKinds = new Set([
   'lesson',
+  'correction',
   'library-semantics',
   'review-finding',
   'pattern',
@@ -492,6 +493,24 @@ export const isRiskyPath = (filePath) => classifyRiskyCategories(filePath).lengt
 export const classifyStrongerArtifacts = (filePath) =>
   strongerArtifactMatchers.flatMap((matcher) => (matcher.match(filePath) ? [matcher.kind] : []));
 
+export const correctionLikeKinds = new Set(['correction', 'review-finding', 'pitfall']);
+
+export const entrySearchTextFields = (entry) =>
+  [
+    entry.relativePath,
+    entry.data.rule,
+    entry.data.why,
+    entry.data.mistake,
+    entry.data.correction,
+    ...(entry.data['applies-when'] ?? []),
+    entry.body,
+    ...(entry.data.scope ?? []),
+    ...(entry.data['review-trigger'] ?? []),
+    ...(Array.isArray(entry.data.evidence)
+      ? entry.data.evidence.flatMap((evidence) => [evidence.type, evidence.ref, evidence.note])
+      : []),
+  ].filter(Boolean);
+
 export const tokenizeRule = (value) =>
   [...new Set(value.toLowerCase().match(/[a-z0-9@._-]+/gu) ?? [])].filter(
     (token) => token.length > 2,
@@ -533,6 +552,7 @@ export const rankEntries = (
     .map((term) => asNonEmptyString(term))
     .filter(Boolean)
     .map((term) => term.toLowerCase());
+  const normalizedTermTokens = [...new Set(normalizedTerms.flatMap((term) => tokenizeRule(term)))];
   const candidates = entries.filter((entry) => includeArchived || entry.data.status !== 'archived');
 
   return candidates
@@ -542,21 +562,9 @@ export const rankEntries = (
       const entryScopes = Array.isArray(entry.data.scope)
         ? entry.data.scope.map((scope) => normalizeScopeEntry(scope))
         : [];
-      const searchableText = [
-        entry.relativePath,
-        entry.data.rule,
-        entry.data.why,
-        entry.body,
-        ...(entry.data.scope ?? []),
-        ...(entry.data['review-trigger'] ?? []),
-        ...(Array.isArray(entry.data.evidence)
-          ? entry.data.evidence.flatMap((evidence) => [evidence.type, evidence.ref, evidence.note])
-          : []),
-      ]
-        .filter(Boolean)
-        .join('\n')
-        .toLowerCase();
-      const ruleTokens = new Set(tokenizeRule(entry.data.rule ?? ''));
+      const searchableFields = entrySearchTextFields(entry);
+      const searchableText = searchableFields.join('\n').toLowerCase();
+      const searchTokens = new Set(searchableFields.flatMap((field) => tokenizeRule(`${field}`)));
 
       normalizedScopes.forEach((query) => {
         entryScopes.forEach((entryScope) => {
@@ -574,11 +582,25 @@ export const rankEntries = (
         if (searchableText.includes(term)) {
           score += 3;
           reasons.push(`term=${term}`);
-        } else if (ruleTokens.has(term)) {
+        } else if (searchTokens.has(term)) {
           score += 2;
-          reasons.push(`rule-token=${term}`);
+          reasons.push(`token=${term}`);
         }
       });
+
+      if (normalizedTermTokens.length > 0) {
+        const similarity = calculateTokenJaccard(normalizedTermTokens, [...searchTokens]);
+
+        if (similarity >= 0.2) {
+          score += Math.max(1, Math.round(similarity * 10));
+          reasons.push(`term-similarity=${similarity.toFixed(2)}`);
+        }
+      }
+
+      if (correctionLikeKinds.has(entry.data.kind) && score > 0) {
+        score += 2;
+        reasons.push(`kind=${entry.data.kind}`);
+      }
 
       return {
         entry,

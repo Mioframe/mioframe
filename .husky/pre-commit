@@ -44,6 +44,6 @@ fi
 pnpm memory:task:review --staged
 
 if git diff --cached --name-only --diff-filter=ACMR \
-  | rg -q '(^|/)(AGENTS\.md)$|^\.project-memory/|^scripts/project-memory/|^\.codex/|^\.husky/pre-commit$|^package\.json$|^pnpm-lock\.yaml$|^\.github/workflows/project-memory\.yml$'; then
+  | rg -q '(^|/)(AGENTS\.md)$|^\.project-memory/|^scripts/project-memory/|^\.codex/|^\.husky/pre-commit$|^package\.json$|^pnpm-lock\.yaml$'; then
   pnpm memory:validate
 fi
