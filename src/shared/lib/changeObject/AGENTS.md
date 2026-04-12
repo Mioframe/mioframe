@@ -9,6 +9,7 @@ Inherits the rules from `src/shared/lib/AGENTS.md`. Applies to `src/shared/lib/c
 ## Patterns
 
 - Keep deep put and deep patch semantics distinct.
+- Treat omission as part of the contract: `deepPutJsonObject` removes keys missing from the source, while `deepPatchJsonObject` preserves omitted keys and deletes only through `undefined` or `DELETE_MARKER`.
 - Make deletion behavior explicit instead of relying on incidental conventions.
 - Keep nested object and array behavior predictable and easy to test.
 

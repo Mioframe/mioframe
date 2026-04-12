@@ -10,6 +10,7 @@ Inherits the rules from `src/shared/lib/AGENTS.md`. Applies to `src/shared/lib/t
 
 - Keep each guard focused on one predicate and one narrowing contract.
 - Keep runtime behavior aligned with the TypeScript narrowing callers expect.
+- Treat browser constructors as runtime-optional. Guard their presence before `instanceof`, and keep storage-boundary validation aligned with that runtime check.
 - When a guard mirrors a schema-level contract, keep it aligned with the nearby validation helper.
 
 ## Anti-patterns

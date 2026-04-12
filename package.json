@@ -16,6 +16,8 @@
     "prepare": "node .husky/install.mjs",
     "setup:git-hooks": "node .husky/install.mjs",
     "type-check": "vue-tsc --build",
+    "memory:lookup": "node ./scripts/project-memory/lookupProjectMemory.mjs",
+    "memory:validate": "node ./scripts/project-memory/validateProjectMemory.mjs",
     "lint": "run-s lint:oxlint lint:eslint",
     "lint:eslint": "eslint . --cache",
     "lint:oxlint": "oxlint .",

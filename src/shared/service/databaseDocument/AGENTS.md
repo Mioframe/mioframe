@@ -11,6 +11,7 @@ Inherits the rules from `src/shared/service/AGENTS.md`. Applies to `src/shared/s
 - Keep query keys and inputs complete for every parameter that changes the result set.
 - Keep mutations atomic and explicit about invalidation side effects.
 - Resolve stored versus effective default-aware reads in this service layer rather than redistributing that logic upward.
+- Filters, sorts, and `$exists` checks must use effective values when properties define defaults, so sparse stored rows still participate through their defaulted values.
 - Coordinate document-structure changes with schema, migration, and type updates.
 
 ## Anti-patterns

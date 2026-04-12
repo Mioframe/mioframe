@@ -21,10 +21,10 @@ evidence:
   - type: code
     ref: src/shared/service/databaseDocument/view/databaseViewFilterService.ts:58
     note: Filter editing uses patch for incremental changes and put for full replacements.
-status: verified
+status: promoted
 confidence: high
 promotion-target:
-  artifact: helper docs or stronger AGENTS note
+  artifact: helper AGENTS rule plus focused deep put and deep patch tests
   ref: src/shared/lib/changeObject/AGENTS.md
   trigger: Promote when another bug or review repeats helper misuse across scopes.
 review-trigger:
@@ -33,4 +33,4 @@ review-trigger:
 last-verified-at: 2026-04-12
 ---
 
-The important distinction is omission versus deletion, not just “replace” versus “merge”.
+Promoted to `src/shared/lib/changeObject/AGENTS.md` and the focused helper tests. Keep this file as a breadcrumb for omission-vs-deletion regressions across Automerge mutation paths.
