@@ -34,3 +34,5 @@ test-results/
 .project-memory/.task-state/
 tsconfig.tsbuildinfo
 .eslintcache
+.brv
+.agents/skills/byterover

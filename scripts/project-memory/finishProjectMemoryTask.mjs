@@ -2,19 +2,28 @@ import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 
+import { recordOutcomeFeedback, writeUsageStats } from './projectMemoryBehavior.mjs';
 import {
   analyzeProjectMemoryDiff,
   renderProjectMemoryDiffReview,
 } from './reviewProjectMemoryDiff.mjs';
 import { defaultTaskStatePath } from './startProjectMemoryTask.mjs';
-import { repoRoot } from './projectMemoryUtils.mjs';
+import {
+  lastTaskFinishPath,
+  loadEntries,
+  loadUsageStats,
+  readActiveTaskState,
+  repoRoot,
+  usageStatsPath,
+} from './projectMemoryUtils.mjs';
 
 const usage = `Usage:
-  pnpm memory:task:finish [--staged | --base <ref>] [--memory-resolution keep:<memory-path>] [--state-file <path>]
+  pnpm memory:task:finish [--staged | --base <ref>] [--memory-resolution keep:<memory-path>] [--learning-resolution covered-by:<artifact-path>] [--state-file <path>] [--finish-file <path>]
 
 Examples:
   pnpm memory:task:finish
   pnpm memory:task:finish --memory-resolution keep:promoted/2026-04-12-vfs-directory-reread-after-create.md
+  pnpm memory:task:finish --learning-resolution covered-by:src/shared/lib/typeGuards/isDirectoryHandle.ts
   pnpm memory:task:finish --base origin/main`;
 
 const parseArgs = (rawArgs) => {
@@ -22,7 +31,10 @@ const parseArgs = (rawArgs) => {
   let staged = false;
   let base;
   let stateFilePath = defaultTaskStatePath;
+  let finishFilePath = lastTaskFinishPath;
+  let statsFilePath = usageStatsPath;
   const memoryResolutions = [];
+  const learningResolutions = [];
 
   for (let index = 0; index < args.length; index += 1) {
     const arg = args[index];
@@ -56,6 +68,18 @@ const parseArgs = (rawArgs) => {
       continue;
     }
 
+    if (arg === '--learning-resolution') {
+      const value = args[index + 1];
+
+      if (!value) {
+        throw new Error('Expected a value after --learning-resolution');
+      }
+
+      learningResolutions.push(value);
+      index += 1;
+      continue;
+    }
+
     if (arg === '--state-file') {
       const value = args[index + 1];
 
@@ -64,6 +88,30 @@ const parseArgs = (rawArgs) => {
       }
 
       stateFilePath = path.isAbsolute(value) ? value : path.join(repoRoot, value);
+      index += 1;
+      continue;
+    }
+
+    if (arg === '--finish-file') {
+      const value = args[index + 1];
+
+      if (!value) {
+        throw new Error('Expected a value after --finish-file');
+      }
+
+      finishFilePath = path.isAbsolute(value) ? value : path.join(repoRoot, value);
+      index += 1;
+      continue;
+    }
+
+    if (arg === '--stats-file') {
+      const value = args[index + 1];
+
+      if (!value) {
+        throw new Error('Expected a value after --stats-file');
+      }
+
+      statsFilePath = path.isAbsolute(value) ? value : path.join(repoRoot, value);
       index += 1;
       continue;
     }
@@ -84,7 +132,10 @@ const parseArgs = (rawArgs) => {
     staged,
     base,
     stateFilePath,
+    finishFilePath,
+    statsFilePath,
     memoryResolutions,
+    learningResolutions,
   };
 };
 
@@ -103,10 +154,21 @@ const runMemoryValidate = () => {
 
 try {
   const options = parseArgs(process.argv);
+  const activeState = readActiveTaskState(options.stateFilePath);
+
+  if (!activeState) {
+    throw new Error(
+      'Active project-memory task state is missing. Run `pnpm memory:task:start --scope <path> --term <keyword>` before `pnpm memory:task:finish`.',
+    );
+  }
+
   const review = analyzeProjectMemoryDiff({
     ...options,
     requireTaskStart: true,
+    strict: true,
   });
+  const entries = loadEntries();
+  const usageStats = loadUsageStats(options.statsFilePath);
   const validation = runMemoryValidate();
 
   console.log(renderProjectMemoryDiffReview(review));
@@ -123,8 +185,74 @@ try {
     process.exit(1);
   }
 
+  const finishState = {
+    version: 4,
+    status: 'completed',
+    completedAt: new Date().toISOString(),
+    exactScopes: activeState.exactScopes,
+    parentScopes: activeState.parentScopes,
+    boundaryScopes: activeState.boundaryScopes,
+    lookupScopes: activeState.lookupScopes,
+    taskTerms: activeState.taskTerms,
+    matchedEntries: activeState.matchedEntries,
+    changedPaths: review.changedPaths,
+    changedMemoryEntryPaths: review.changedMemoryEntryPaths,
+    memoryResolutions: options.memoryResolutions,
+    learningResolutions: options.learningResolutions,
+    shownDigestEntryPaths: activeState.shownDigestEntryPaths ?? [],
+    learningCandidate: review.learningCandidate,
+  };
+
+  const relatedEntryPaths = review.relatedEntries.map(({ entry }) => entry.memoryRelativePath);
+  const shownEntryPaths = activeState.shownDigestEntryPaths ?? [];
+  const usedEntryPaths = shownEntryPaths.filter((entryPath) =>
+    relatedEntryPaths.includes(entryPath),
+  );
+  const falsePositiveEntryPaths = shownEntryPaths.filter(
+    (entryPath) =>
+      !relatedEntryPaths.includes(entryPath) &&
+      !review.triggerMatches.some(({ entry }) => entry.memoryRelativePath === entryPath),
+  );
+  const repeatedEntryPaths = review.relatedEntries
+    .filter(
+      ({ entry }) =>
+        review.failures.some((failure) => failure.includes(entry.relativePath)) ||
+        review.warnings.some((warning) => warning.includes(entry.relativePath)),
+    )
+    .map(({ entry }) => entry.memoryRelativePath);
+  const preventedEntryPaths = review.relatedEntries
+    .filter(
+      ({ entry }) =>
+        shownEntryPaths.includes(entry.memoryRelativePath) &&
+        (review.handledByMemoryChange.has(entry.memoryRelativePath) ||
+          review.learningResolutions.coveredBy.size > 0),
+    )
+    .map(({ entry }) => entry.memoryRelativePath);
+
+  recordOutcomeFeedback({
+    usageStats,
+    entries,
+    shownEntryPaths,
+    usedEntryPaths,
+    falsePositiveEntryPaths,
+    repeatedEntryPaths,
+    preventedEntryPaths,
+    nowIso: finishState.completedAt,
+  });
+
+  fs.mkdirSync(path.dirname(options.finishFilePath), { recursive: true });
+  fs.writeFileSync(options.finishFilePath, `${JSON.stringify(finishState, null, 2)}\n`, 'utf8');
+  writeUsageStats(options.statsFilePath, usageStats);
+
   if (fs.existsSync(options.stateFilePath)) {
-    fs.unlinkSync(options.stateFilePath);
+    fs.rmSync(options.stateFilePath);
+  }
+
+  if (review.learningCandidate?.resolution === 'candidate') {
+    console.log('');
+    console.log('Suggested learning candidate draft');
+    console.log('');
+    console.log(review.learningCandidate.draftText);
   }
 } catch (error) {
   console.error(error instanceof Error ? error.message : String(error));

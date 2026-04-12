@@ -1,22 +1,22 @@
-import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import {
-  asNonEmptyString,
-  getParentScope,
+  recordShownDigests,
+  renderMemoryDigest,
+  writeUsageStats,
+} from './projectMemoryBehavior.mjs';
+import {
+  buildProjectMemoryLookup,
+  currentTaskStatePath,
   loadEntries,
-  normalizeRepoRelativePath,
-  rankEntries,
+  loadUsageStats,
   repoRoot,
+  usageStatsPath,
+  writeActiveTaskState,
 } from './projectMemoryUtils.mjs';
 
-export const defaultTaskStatePath = path.join(
-  repoRoot,
-  '.project-memory',
-  '.task-state',
-  'current-task.json',
-);
+export const defaultTaskStatePath = currentTaskStatePath;
 
 const usage = `Usage:
   pnpm memory:task:start --scope <path> [--scope <path>] [--term <keyword>] [--state-file <path>] [--no-save]
@@ -84,9 +84,15 @@ const parseArgs = (rawArgs) => {
     throw new Error(`Unknown argument: ${arg}`);
   }
 
-  const exactScopes = [...new Set(scopes.map(normalizeRepoRelativePath).filter(Boolean))];
-  const parentScopes = [...new Set(exactScopes.map(getParentScope).filter(Boolean))];
-  const normalizedTerms = [...new Set(terms.map((term) => asNonEmptyString(term)).filter(Boolean))];
+  const lookup = buildProjectMemoryLookup({
+    scopeQueries: scopes,
+    termQueries: terms,
+    includeBoundaryScopes: true,
+  });
+  const exactScopes = lookup.scopeQueries;
+  const parentScopes = lookup.parentScopeQueries;
+  const boundaryScopes = lookup.boundaryScopeQueries;
+  const normalizedTerms = lookup.termQueries;
 
   if (exactScopes.length === 0) {
     throw new Error('Provide at least one --scope query.');
@@ -95,10 +101,12 @@ const parseArgs = (rawArgs) => {
   return {
     exactScopes,
     parentScopes,
-    lookupScopes: [...new Set([...exactScopes, ...parentScopes])],
+    boundaryScopes,
+    lookupScopes: lookup.lookupScopes,
     terms: normalizedTerms,
     noSave,
     stateFilePath,
+    usageStatsPath,
   };
 };
 
@@ -107,50 +115,62 @@ const renderEntries = (rankedEntries) => {
     return ['No matching project-memory entries found.'];
   }
 
+  const digest = renderMemoryDigest(rankedEntries);
+
   return [
     `Matched ${rankedEntries.length} project-memory entr${rankedEntries.length === 1 ? 'y' : 'ies'}:`,
-    ...rankedEntries.slice(0, 12).flatMap(({ entry, score, reasons }) => {
-      const scope = Array.isArray(entry.data.scope) ? entry.data.scope.join(', ') : 'unknown scope';
-
-      return [
-        '',
-        `- ${entry.relativePath} [status=${entry.data.status}, score=${score}, reasons=${[
-          ...new Set(reasons),
-        ].join(', ')}]`,
-        `  scope: ${scope}`,
-        `  rule: ${entry.data.rule}`,
-        ...(entry.body ? [`  note: ${entry.body}`] : []),
-      ];
-    }),
+    '',
+    ...digest.lines,
   ];
 };
 
 export const startProjectMemoryTask = (options) => {
-  const rankedEntries = rankEntries(loadEntries(), {
-    scopeQueries: options.lookupScopes,
+  const usageStats = loadUsageStats(options.usageStatsPath);
+  const lookup = buildProjectMemoryLookup({
+    scopeQueries: options.exactScopes,
     termQueries: options.terms,
+    usageStats,
   });
+  const rankedEntries = lookup.rankedEntries;
+  const digest = renderMemoryDigest(rankedEntries);
+  const entryByPath = new Map(loadEntries().map((entry) => [entry.memoryRelativePath, entry]));
   const state = {
-    version: 1,
+    version: 4,
+    status: 'active',
     startedAt: new Date().toISOString(),
-    exactScopes: options.exactScopes,
-    parentScopes: options.parentScopes,
-    lookupScopes: options.lookupScopes,
-    taskTerms: options.terms,
+    exactScopes: lookup.scopeQueries,
+    parentScopes: lookup.parentScopeQueries,
+    boundaryScopes: lookup.boundaryScopeQueries,
+    lookupScopes: lookup.lookupScopes,
+    taskTerms: lookup.termQueries,
     matchedEntries: rankedEntries.slice(0, 20).map(({ entry }) => entry.memoryRelativePath),
+    shownDigestEntryPaths: digest.renderedEntryPaths,
+    digestCache: {
+      mode: 'compact',
+      entryPaths: digest.renderedEntryPaths,
+      lineCount: digest.lines.length,
+    },
   };
 
   if (!options.noSave) {
-    fs.mkdirSync(path.dirname(options.stateFilePath), { recursive: true });
-    fs.writeFileSync(options.stateFilePath, `${JSON.stringify(state, null, 2)}\n`, 'utf8');
+    writeActiveTaskState(state, options.stateFilePath);
+    recordShownDigests({
+      usageStats,
+      entries: digest.renderedEntryPaths
+        .map((entryPath) => entryByPath.get(entryPath))
+        .filter(Boolean),
+      nowIso: state.startedAt,
+    });
+    writeUsageStats(options.usageStatsPath, usageStats);
   }
 
   const lines = [
     'Project memory task start',
     '',
-    `Exact scopes: ${options.exactScopes.join(', ')}`,
-    `Parent scopes: ${options.parentScopes.length > 0 ? options.parentScopes.join(', ') : 'none'}`,
-    `Task terms: ${options.terms.length > 0 ? options.terms.join(', ') : 'none'}`,
+    `Exact scopes: ${lookup.scopeQueries.join(', ')}`,
+    `Parent scopes: ${lookup.parentScopeQueries.length > 0 ? lookup.parentScopeQueries.join(', ') : 'none'}`,
+    `Boundary scopes: ${lookup.boundaryScopeQueries.length > 0 ? lookup.boundaryScopeQueries.join(', ') : 'none'}`,
+    `Task terms: ${lookup.termQueries.length > 0 ? lookup.termQueries.join(', ') : 'none'}`,
     ...(!options.noSave ? [`State file: ${path.relative(repoRoot, options.stateFilePath)}`] : []),
     '',
     ...renderEntries(rankedEntries),
