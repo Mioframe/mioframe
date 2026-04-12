@@ -1,8 +1,20 @@
-import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { buildProjectMemoryLookup, currentTaskStatePath, repoRoot } from './projectMemoryUtils.mjs';
+import {
+  recordShownDigests,
+  renderMemoryDigest,
+  writeUsageStats,
+} from './projectMemoryBehavior.mjs';
+import {
+  buildProjectMemoryLookup,
+  currentTaskStatePath,
+  loadEntries,
+  loadUsageStats,
+  repoRoot,
+  usageStatsPath,
+  writeActiveTaskState,
+} from './projectMemoryUtils.mjs';
 
 export const defaultTaskStatePath = currentTaskStatePath;
 
@@ -94,6 +106,7 @@ const parseArgs = (rawArgs) => {
     terms: normalizedTerms,
     noSave,
     stateFilePath,
+    usageStatsPath,
   };
 };
 
@@ -102,32 +115,27 @@ const renderEntries = (rankedEntries) => {
     return ['No matching project-memory entries found.'];
   }
 
+  const digest = renderMemoryDigest(rankedEntries);
+
   return [
     `Matched ${rankedEntries.length} project-memory entr${rankedEntries.length === 1 ? 'y' : 'ies'}:`,
-    ...rankedEntries.slice(0, 12).flatMap(({ entry, score, reasons }) => {
-      const scope = Array.isArray(entry.data.scope) ? entry.data.scope.join(', ') : 'unknown scope';
-
-      return [
-        '',
-        `- ${entry.relativePath} [status=${entry.data.status}, score=${score}, reasons=${[
-          ...new Set(reasons),
-        ].join(', ')}]`,
-        `  scope: ${scope}`,
-        `  rule: ${entry.data.rule}`,
-        ...(entry.body ? [`  note: ${entry.body}`] : []),
-      ];
-    }),
+    '',
+    ...digest.lines,
   ];
 };
 
 export const startProjectMemoryTask = (options) => {
+  const usageStats = loadUsageStats(options.usageStatsPath);
   const lookup = buildProjectMemoryLookup({
     scopeQueries: options.exactScopes,
     termQueries: options.terms,
+    usageStats,
   });
   const rankedEntries = lookup.rankedEntries;
+  const digest = renderMemoryDigest(rankedEntries);
+  const entryByPath = new Map(loadEntries().map((entry) => [entry.memoryRelativePath, entry]));
   const state = {
-    version: 3,
+    version: 4,
     status: 'active',
     startedAt: new Date().toISOString(),
     exactScopes: lookup.scopeQueries,
@@ -136,11 +144,24 @@ export const startProjectMemoryTask = (options) => {
     lookupScopes: lookup.lookupScopes,
     taskTerms: lookup.termQueries,
     matchedEntries: rankedEntries.slice(0, 20).map(({ entry }) => entry.memoryRelativePath),
+    shownDigestEntryPaths: digest.renderedEntryPaths,
+    digestCache: {
+      mode: 'compact',
+      entryPaths: digest.renderedEntryPaths,
+      lineCount: digest.lines.length,
+    },
   };
 
   if (!options.noSave) {
-    fs.mkdirSync(path.dirname(options.stateFilePath), { recursive: true });
-    fs.writeFileSync(options.stateFilePath, `${JSON.stringify(state, null, 2)}\n`, 'utf8');
+    writeActiveTaskState(state, options.stateFilePath);
+    recordShownDigests({
+      usageStats,
+      entries: digest.renderedEntryPaths
+        .map((entryPath) => entryByPath.get(entryPath))
+        .filter(Boolean),
+      nowIso: state.startedAt,
+    });
+    writeUsageStats(options.usageStatsPath, usageStats);
   }
 
   const lines = [

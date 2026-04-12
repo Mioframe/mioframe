@@ -4,16 +4,23 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import {
+  buildLearningCandidate,
+  detectEntryTriggerMatches,
+  getRepeatPressure,
+} from './projectMemoryBehavior.mjs';
+import {
   classifyRiskyCategories,
   classifyStrongerArtifacts,
   correctionLikeKinds,
   getTodayIsoDate,
   isProjectMemoryEntryPath,
+  loadUsageStats,
   loadEntries,
   normalizeRepoRelativePath,
   readActiveTaskState,
   repoRoot,
   scopeContainsPath,
+  usageStatsPath,
 } from './projectMemoryUtils.mjs';
 import { defaultTaskStatePath } from './startProjectMemoryTask.mjs';
 
@@ -56,6 +63,24 @@ const getChangedPaths = ({ staged = false, base } = {}) => {
       ...runGitCommand(['ls-files', '--others', '--exclude-standard']),
     ]),
   ];
+};
+
+const getDiffText = ({ staged = false, base } = {}) => {
+  const args = base
+    ? ['diff', '--unified=0', `${base}...HEAD`]
+    : staged
+      ? ['diff', '--cached', '--unified=0']
+      : ['diff', '--unified=0', 'HEAD'];
+
+  try {
+    return execFileSync('git', args, {
+      cwd: repoRoot,
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'pipe'],
+    });
+  } catch {
+    return '';
+  }
 };
 
 const parseArgs = (rawArgs) => {
@@ -252,6 +277,8 @@ export const analyzeProjectMemoryDiff = (options) => {
     (filePath) => !filePath.startsWith('.project-memory/'),
   );
   const state = readActiveTaskState(options.stateFilePath);
+  const usageStats = loadUsageStats(options.usageStatsPath ?? usageStatsPath);
+  const diffText = typeof options.diffText === 'string' ? options.diffText : getDiffText(options);
   const strictLifecycle = Boolean(options.strict || options.requireTaskStart);
   const entries = loadEntries();
   const entryByRelativePath = new Map(entries.map((entry) => [entry.relativePath, entry]));
@@ -302,6 +329,12 @@ export const analyzeProjectMemoryDiff = (options) => {
       kinds: classifyStrongerArtifacts(filePath),
     }))
     .filter(({ kinds }) => kinds.length > 0);
+  const triggerMatches = detectEntryTriggerMatches(entries, {
+    changedPaths,
+    diffText,
+    terms: state?.taskTerms ?? [],
+    scopes: state?.lookupScopes ?? [],
+  });
 
   changedMemoryEntries.forEach((memoryEntry) => {
     linkedHandledEntries.add(memoryEntry.memoryRelativePath);
@@ -346,6 +379,7 @@ export const analyzeProjectMemoryDiff = (options) => {
   }
 
   relatedEntries.forEach(({ entry, touchedFiles }) => {
+    const repeatPressure = getRepeatPressure(usageStats, entry);
     const touchedStrongerArtifacts = touchedFiles
       .map((filePath) => ({
         filePath,
@@ -379,11 +413,24 @@ export const analyzeProjectMemoryDiff = (options) => {
       correctionLikeKinds.has(entry.data.kind) &&
       entry.data.status !== 'promoted' &&
       entry.data.status !== 'archived' &&
-      (entry.data.status === 'verified' || touchedStrongerArtifacts.length > 0) &&
+      (entry.data.status === 'verified' ||
+        touchedStrongerArtifacts.length > 0 ||
+        repeatPressure.shouldEscalatePromotion) &&
       !handledByMemoryChange.has(entry.memoryRelativePath)
     ) {
       reportLifecycleIssue(
-        `Repeated correction-style lesson is still only prose memory: ${entry.relativePath}. This scope was touched again${touchedStrongerArtifacts.length > 0 ? ` and stronger artifacts changed in ${touchedStrongerArtifacts.map(({ filePath }) => filePath).join(', ')}` : ''}. Promote it to a stronger artifact or archive it with a replacement breadcrumb instead of keeping it as prose.`,
+        `Repeated correction-style lesson is still only prose memory: ${entry.relativePath}. This scope was touched again${touchedStrongerArtifacts.length > 0 ? ` and stronger artifacts changed in ${touchedStrongerArtifacts.map(({ filePath }) => filePath).join(', ')}` : ''}${repeatPressure.repeatCount > 0 ? `; historical repeats=${repeatPressure.repeatCount}, promotion-priority=${repeatPressure.promotionPriority}` : ''}. Promote it to a stronger artifact or archive it with a replacement breadcrumb instead of keeping it as prose.`,
+      );
+    }
+
+    if (
+      repeatPressure.shouldEscalatePromotion &&
+      memoryResolutions.keep.has(entry.memoryRelativePath) &&
+      !handledByMemoryChange.has(entry.memoryRelativePath) &&
+      learningResolutions.coveredBy.size === 0
+    ) {
+      failures.push(
+        `keep:${entry.memoryRelativePath} is no longer a sufficient default for this repeated lesson. Promotion pressure is high (repeats=${repeatPressure.repeatCount}, priority=${repeatPressure.promotionPriority}); land a stronger artifact or archive it with an explicit replacement.`,
       );
     }
 
@@ -418,6 +465,17 @@ export const analyzeProjectMemoryDiff = (options) => {
       `correction-style lessons matched this scope: ${relatedCorrectionEntries
         .map(({ entry }) => entry.relativePath)
         .join(', ')}`,
+    );
+  }
+
+  if (triggerMatches.length > 0) {
+    learningSignals.push(
+      `trigger-based warnings fired: ${triggerMatches
+        .map(
+          ({ entry, signals }) =>
+            `${entry.relativePath} via ${signals.map((signal) => signal.value).join(', ')}`,
+        )
+        .join('; ')}`,
     );
   }
 
@@ -459,6 +517,18 @@ export const analyzeProjectMemoryDiff = (options) => {
     );
   }
 
+  const learningCandidate = buildLearningCandidate({
+    review: {
+      relatedEntries,
+      strongerArtifactMatches,
+      changedNonMemoryPaths,
+      changedMemoryEntryPaths,
+      learningSignals,
+      learningResolutions,
+      triggerMatches,
+    },
+  });
+
   return {
     changedPaths,
     changedMemoryPaths,
@@ -469,7 +539,11 @@ export const analyzeProjectMemoryDiff = (options) => {
     relatedEntries,
     riskyFileMatches,
     strongerArtifactMatches,
+    triggerMatches,
     learningSignals,
+    learningCandidate,
+    diffText,
+    usageStats,
     learningCaptureSatisfied,
     handledByMemoryChange,
     handledByResolution,
@@ -537,6 +611,14 @@ export const renderProjectMemoryDiffReview = (result) => {
     });
   }
 
+  if (result.triggerMatches.length > 0) {
+    lines.push('');
+    lines.push('Trigger matches:');
+    result.triggerMatches.forEach(({ entry, signals }) => {
+      lines.push(`- ${entry.relativePath} via ${signals.map((signal) => signal.value).join(', ')}`);
+    });
+  }
+
   if (result.learningSignals.length > 0) {
     lines.push('');
     lines.push('Learning signals:');
@@ -575,6 +657,15 @@ export const renderProjectMemoryDiffReview = (result) => {
     });
   }
 
+  if (result.learningCandidate) {
+    lines.push('');
+    lines.push('Learning candidate:');
+    result.learningCandidate.reason.forEach((reason) => {
+      lines.push(`- ${reason}`);
+    });
+    lines.push(`- resolution: ${result.learningCandidate.resolution}`);
+  }
+
   if (result.failures.length === 0 && result.warnings.length === 0) {
     lines.push('');
     lines.push('No project-memory issues detected for the current diff.');
@@ -587,6 +678,8 @@ export const toJsonFriendlyProjectMemoryDiffReview = (result) => ({
   ...result,
   handledByMemoryChange: [...result.handledByMemoryChange],
   handledByResolution: [...result.handledByResolution],
+  diffText: undefined,
+  usageStats: undefined,
   memoryResolutions: {
     keep: [...result.memoryResolutions.keep],
   },

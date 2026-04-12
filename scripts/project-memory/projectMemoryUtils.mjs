@@ -2,11 +2,18 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import {
+  createEmptyUsageStats,
+  getEntryUtilitySignal,
+  readUsageStats,
+} from './projectMemoryBehavior.mjs';
+
 export const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
 export const projectMemoryRoot = path.join(repoRoot, '.project-memory');
 export const projectMemoryTaskStateRoot = path.join(projectMemoryRoot, '.task-state');
 export const currentTaskStatePath = path.join(projectMemoryTaskStateRoot, 'current-task.json');
 export const lastTaskFinishPath = path.join(projectMemoryTaskStateRoot, 'last-finish.json');
+export const usageStatsPath = path.join(projectMemoryTaskStateRoot, 'usage-stats.json');
 
 export const directoryToStatus = Object.freeze({
   drafts: 'draft',
@@ -604,6 +611,7 @@ export const buildProjectMemoryLookup = ({
   termQueries = [],
   includeArchived = false,
   includeBoundaryScopes = true,
+  usageStats = loadUsageStats(),
 } = {}) => {
   const normalizedScopes = uniqueValues(scopeQueries.map(normalizeRepoRelativePath));
   const normalizedTerms = uniqueValues(termQueries.map((term) => asNonEmptyString(term)));
@@ -620,6 +628,7 @@ export const buildProjectMemoryLookup = ({
     scopeQueries: lookupScopes,
     termQueries: normalizedTerms,
     includeArchived,
+    usageStats,
   });
 
   return {
@@ -658,9 +667,22 @@ export const readActiveTaskState = (stateFilePath = currentTaskStatePath) => {
   return isActiveTaskState(parsed) ? parsed : undefined;
 };
 
+export const writeActiveTaskState = (state, stateFilePath = currentTaskStatePath) => {
+  fs.mkdirSync(path.dirname(stateFilePath), { recursive: true });
+  fs.writeFileSync(stateFilePath, `${JSON.stringify(state, null, 2)}\n`, 'utf8');
+};
+
+export const loadUsageStats = (customUsageStatsPath = usageStatsPath) =>
+  readUsageStats(customUsageStatsPath);
+
 export const rankEntries = (
   entries,
-  { scopeQueries = [], termQueries = [], includeArchived = false },
+  {
+    scopeQueries = [],
+    termQueries = [],
+    includeArchived = false,
+    usageStats = createEmptyUsageStats(),
+  },
 ) => {
   const normalizedScopes = scopeQueries.map((scope) => normalizeScopeEntry(scope)).filter(Boolean);
   const normalizedTerms = termQueries
@@ -715,6 +737,15 @@ export const rankEntries = (
       if (correctionLikeKinds.has(entry.data.kind) && score > 0) {
         score += 2;
         reasons.push(`kind=${entry.data.kind}`);
+      }
+
+      const utility = getEntryUtilitySignal(usageStats, entry);
+
+      if (utility.utilityScore !== 0) {
+        score += utility.utilityScore;
+        reasons.push(
+          `usage=u${utility.useCount}/p${utility.preventedRepeatCount}/r${utility.repeatCount}/f${utility.falsePositiveCount}/prio${utility.promotionPriority}`,
+        );
       }
 
       return {
