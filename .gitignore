@@ -29,5 +29,6 @@ coverage/
 .sisyphus/
 .opencode/
 .claude/
+.project-memory/.task-state/
 tsconfig.tsbuildinfo
 .eslintcache
