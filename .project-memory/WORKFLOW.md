@@ -73,6 +73,8 @@ When the diff indicates a confirmed, reusable lesson, finish must end with one o
 - a real entry under `.project-memory/drafts/`, `verified/`, `promoted/`, or `archive/` changed because you updated, created, promoted, or archived a record;
 - `--learning-resolution covered-by:<artifact-path>` was supplied because a stronger artifact already carries the lesson and prose memory would duplicate it.
 
+There is intentionally no `--learning-resolution record:<memory-path>` mode. Pointing at an unchanged older record does not count as capture; the lesson must appear as a real entry diff or be closed with `covered-by`.
+
 Documentation or template edits alone do not count. Changing `.project-memory/README.md`, `.project-memory/WORKFLOW.md`, `.project-memory/templates/entry.md`, `.project-memory/AGENTS.md`, or task-state files must still be paired with a real entry change or an explicit learning resolution when the task produced a reusable lesson.
 
 Typical signals that trigger this requirement:

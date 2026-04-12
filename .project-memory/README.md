@@ -79,6 +79,8 @@ At task finish, a risky task must make one explicit learning decision when the d
 - promote the lesson by editing the stronger artifact and leaving a promoted breadcrumb entry;
 - explicitly finish with `--learning-resolution covered-by:<artifact-path>` when the lesson is already better expressed in a stronger artifact and new prose memory would be duplication.
 
+There is intentionally no `--learning-resolution record:<memory-path>` escape hatch. If the lesson lives in project memory, the current diff must show the actual entry change.
+
 Structural or documentation-only edits do not count as learning capture by themselves. In particular, changing `.project-memory/README.md`, `.project-memory/WORKFLOW.md`, `.project-memory/templates/entry.md`, `.project-memory/AGENTS.md`, or task-state files does not satisfy the learning decision requirement.
 
 Existing memory scopes still require lifecycle handling:

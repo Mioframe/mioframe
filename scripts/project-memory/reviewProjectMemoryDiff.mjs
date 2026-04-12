@@ -18,7 +18,7 @@ import {
 import { defaultTaskStatePath } from './startProjectMemoryTask.mjs';
 
 const usage = `Usage:
-  pnpm memory:task:review [--staged | --base <ref>] [--require-task-start] [--strict] [--memory-resolution keep:<memory-path>] [--learning-resolution record:<memory-path>] [--learning-resolution covered-by:<artifact-path>] [--state-file <path>] [--json]
+  pnpm memory:task:review [--staged | --base <ref>] [--require-task-start] [--strict] [--memory-resolution keep:<memory-path>] [--learning-resolution covered-by:<artifact-path>] [--state-file <path>] [--json]
 
 Examples:
   pnpm memory:task:review
@@ -193,8 +193,7 @@ const parseMemoryResolutions = (memoryResolutions, entryByMemoryPath) => {
   };
 };
 
-const parseLearningResolutions = (learningResolutions, entryByRelativePath) => {
-  const record = new Set();
+const parseLearningResolutions = (learningResolutions) => {
   const coveredBy = new Set();
 
   learningResolutions.forEach((resolution) => {
@@ -209,23 +208,6 @@ const parseLearningResolutions = (learningResolutions, entryByRelativePath) => {
 
     if (rawTarget === '') {
       throw new Error(`Learning resolution is missing a target: ${resolution}`);
-    }
-
-    if (type === 'record') {
-      const target = normalizeRepoRelativePath(rawTarget);
-
-      if (!target.startsWith('.project-memory/')) {
-        throw new Error(
-          `record learning resolutions must point at a .project-memory entry: ${rawTarget}`,
-        );
-      }
-
-      if (!entryByRelativePath.has(target)) {
-        throw new Error(`record learning resolution points to a missing file: ${target}`);
-      }
-
-      record.add(target);
-      return;
     }
 
     if (type === 'covered-by') {
@@ -250,7 +232,6 @@ const parseLearningResolutions = (learningResolutions, entryByRelativePath) => {
   });
 
   return {
-    record,
     coveredBy,
   };
 };
@@ -279,10 +260,7 @@ export const analyzeProjectMemoryDiff = (options) => {
     options.memoryResolutions ?? [],
     entryByMemoryPath,
   );
-  const learningResolutions = parseLearningResolutions(
-    options.learningResolutions ?? [],
-    entryByRelativePath,
-  );
+  const learningResolutions = parseLearningResolutions(options.learningResolutions ?? []);
   const relatedEntries = entries
     .filter((entry) => entry.data.status !== 'archived')
     .map((entry) => {
@@ -456,9 +434,7 @@ export const analyzeProjectMemoryDiff = (options) => {
   }
 
   const learningCaptureSatisfied =
-    changedMemoryEntryPaths.length > 0 ||
-    learningResolutions.record.size > 0 ||
-    learningResolutions.coveredBy.size > 0;
+    changedMemoryEntryPaths.length > 0 || learningResolutions.coveredBy.size > 0;
 
   if (strictLifecycle && learningSignals.length > 0 && !learningCaptureSatisfied) {
     failures.push(
@@ -573,10 +549,7 @@ export const renderProjectMemoryDiffReview = (result) => {
     lines.push(`Learning capture satisfied: ${result.learningCaptureSatisfied ? 'yes' : 'no'}`);
   }
 
-  const explicitLearningDecisions = [
-    ...result.learningResolutions.record,
-    ...result.learningResolutions.coveredBy,
-  ];
+  const explicitLearningDecisions = [...result.learningResolutions.coveredBy];
 
   if (explicitLearningDecisions.length > 0) {
     lines.push('');
@@ -618,7 +591,6 @@ export const toJsonFriendlyProjectMemoryDiffReview = (result) => ({
     keep: [...result.memoryResolutions.keep],
   },
   learningResolutions: {
-    record: [...result.learningResolutions.record],
     coveredBy: [...result.learningResolutions.coveredBy],
   },
 });
