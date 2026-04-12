@@ -1,19 +1,20 @@
 # Project Memory Workflow
 
-Use this workflow whenever the task touches shared infrastructure, helper semantics, CRDT or VFS flows, schema or migration behavior, service boundaries, `.project-memory/`, or another scope that already has relevant memory.
+Use this workflow only when you intentionally fall back to the local project-memory system. ByteRover is the primary memory workflow for agents in this repo, and repo-local project-memory hooks are currently suspended.
 
 ## Official Lifecycle
 
-1. Run `pnpm memory:task:start --scope <path> --term <keyword>`.
-2. Read the matched memory before behavior changes.
+1. Confirm that ByteRover is unavailable or that the task explicitly needs the local fallback.
+2. Run `pnpm memory:task:start --scope <path> --term <keyword>`.
+3. Read the matched memory before behavior changes.
    The default retrieval is a compact digest: rule, avoid/mistake, use-instead/correction, trigger, and entry or stronger-artifact ref. Expanded detail is for explicit lookup or truly riskier phases.
-3. Make the code or documentation change.
-4. Decide what to do with any confirmed lesson:
+4. Make the code or documentation change.
+5. Decide what to do with any confirmed lesson:
    - update an existing memory entry;
    - create a new draft or verified entry;
    - promote the lesson into a stronger artifact and leave a breadcrumb;
    - or explicitly decide that a stronger artifact already expresses the lesson well enough.
-5. Run `pnpm memory:task:finish`.
+6. Run `pnpm memory:task:finish`.
 
 `memory:task:finish` is the official exit step. It is the place where lifecycle review and learning capture become explicit and durable.
 
@@ -34,11 +35,11 @@ The entrypoint:
 - writes `.project-memory/.task-state/current-task.json`.
 - caches which compact digests were already shown so the same task does not keep paying for duplicate context.
 
-Repo-local Codex hooks may preload similar context before you run the command, but the task-state file created by `memory:task:start` is still the canonical discovery record.
+Repo-local Codex hooks are currently suspended, so the task-state file created by `memory:task:start` is the canonical discovery record for the fallback flow.
 
 ## Hook Behavior
 
-The hook layer is intentionally assistive and early:
+When enabled, the hook layer is intentionally assistive and early:
 
 - `SessionStart`: loads the local project-memory workflow and active task-state context.
 - `UserPromptSubmit`: infers risky scopes and terms, then preloads matching entries.
@@ -50,6 +51,8 @@ What changed:
 - `git commit` and `git push` are no longer treated as the main enforcement point;
 - `Stop` is no longer the main working mechanism for enforcement;
 - the preferred path is to finish the task explicitly, not to discover missing lifecycle work at the last second.
+
+At the moment, suspend mode means these hooks do not run automatically because `.codex/config.toml` keeps `codex_hooks = false`.
 
 ## Finish
 
@@ -114,10 +117,10 @@ If the same lesson reappears and still lives only in prose, `memory:task:finish`
 
 ## Pre-commit And Validation
 
-Repo-local checks remain:
+Repo-local checks remain for the fallback system:
 
-- `.husky/pre-commit` runs `pnpm memory:task:review --staged`;
-- `.husky/pre-commit` also runs `pnpm memory:validate` for memory-system changes;
+- `.husky/pre-commit` no longer runs `pnpm memory:task:review --staged` automatically while the fallback is suspended;
+- `.husky/pre-commit` still runs `pnpm memory:validate` for memory-system changes;
 - `pnpm memory:validate` remains the structural validator for entries, workflow docs, and hook wiring.
 
 These checks are backup review, not the primary place where the agent should first discover unfinished lifecycle work.

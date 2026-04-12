@@ -41,8 +41,6 @@ if ! cmp -s "$before_diff_path" "$after_diff_path"; then
   exit 1
 fi
 
-pnpm memory:task:review --staged
-
 if git diff --cached --name-only --diff-filter=ACMR \
   | rg -q '(^|/)(AGENTS\.md)$|^\.project-memory/|^scripts/project-memory/|^\.codex/|^\.husky/pre-commit$|^package\.json$|^pnpm-lock\.yaml$'; then
   pnpm memory:validate

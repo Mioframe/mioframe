@@ -19,6 +19,7 @@ import {
   stripLocalPathSuffix,
   tokenizeRule,
 } from './projectMemoryUtils.mjs';
+import { validateProjectMemoryCodexHooks } from './codexHookValidation.mjs';
 
 const entries = loadEntries();
 const errors = [];
@@ -27,14 +28,6 @@ const entryByMemoryPath = new Map(entries.map((entry) => [entry.memoryRelativePa
 const codexConfigDirectory = path.join(process.cwd(), '.codex');
 const codexConfigPath = path.join(codexConfigDirectory, 'config.toml');
 const codexHooksPath = path.join(codexConfigDirectory, 'hooks.json');
-const supportedHookEvents = new Set([
-  'SessionStart',
-  'PreToolUse',
-  'PostToolUse',
-  'UserPromptSubmit',
-  'Stop',
-]);
-const requiredRepoHookEvents = ['SessionStart', 'UserPromptSubmit', 'PreToolUse', 'Stop'];
 
 const pushError = (entry, message) => {
   errors.push(`${entry.relativePath}: ${message}`);
@@ -436,136 +429,24 @@ for (let leftIndex = 0; leftIndex < liveEntries.length; leftIndex += 1) {
   }
 }
 
-if (!fs.existsSync(codexConfigDirectory)) {
-  errors.push('.codex/: missing repo-local Codex configuration directory');
-} else if (!fs.statSync(codexConfigDirectory).isDirectory()) {
-  errors.push('.codex/: expected a directory so project-scoped Codex config and hooks can load');
-}
+const codexDirectoryExists = fs.existsSync(codexConfigDirectory);
+const codexDirectoryIsDirectory = codexDirectoryExists
+  ? fs.statSync(codexConfigDirectory).isDirectory()
+  : false;
+const configExists = fs.existsSync(codexConfigPath);
+const hooksExists = fs.existsSync(codexHooksPath);
 
-if (!fs.existsSync(codexConfigPath)) {
-  errors.push('.codex/config.toml: missing project-scoped Codex config');
-} else {
-  const configContent = fs.readFileSync(codexConfigPath, 'utf8');
+const codexHookValidation = validateProjectMemoryCodexHooks({
+  codexDirectoryExists,
+  codexDirectoryIsDirectory,
+  configExists,
+  configContent: configExists ? fs.readFileSync(codexConfigPath, 'utf8') : undefined,
+  hooksExists,
+  hooksContent: hooksExists ? fs.readFileSync(codexHooksPath, 'utf8') : undefined,
+});
 
-  if (!/^\s*\[features\]\s*$/mu.test(configContent)) {
-    errors.push('.codex/config.toml: missing [features] table required for codex_hooks');
-  }
-
-  if (!/^\s*codex_hooks\s*=\s*true\s*$/mu.test(configContent)) {
-    errors.push('.codex/config.toml: codex_hooks must be enabled for repo-local hook automation');
-  }
-}
-
-if (!fs.existsSync(codexHooksPath)) {
-  errors.push('.codex/hooks.json: missing repo-local Codex hook config');
-} else {
-  try {
-    const rawHooksConfig = JSON.parse(fs.readFileSync(codexHooksPath, 'utf8'));
-    const hooks = rawHooksConfig?.hooks;
-
-    if (!hooks || typeof hooks !== 'object' || Array.isArray(hooks)) {
-      errors.push('.codex/hooks.json: top-level hooks object is required');
-    } else {
-      Object.entries(hooks).forEach(([eventName, matcherGroups]) => {
-        if (!supportedHookEvents.has(eventName)) {
-          errors.push(
-            `.codex/hooks.json: unsupported hook event "${eventName}" (supported: ${[
-              ...supportedHookEvents,
-            ].join(', ')})`,
-          );
-          return;
-        }
-
-        if (!Array.isArray(matcherGroups) || matcherGroups.length === 0) {
-          errors.push(
-            `.codex/hooks.json: ${eventName} must be a non-empty array of matcher groups`,
-          );
-          return;
-        }
-
-        matcherGroups.forEach((matcherGroup, matcherGroupIndex) => {
-          if (!matcherGroup || typeof matcherGroup !== 'object' || Array.isArray(matcherGroup)) {
-            errors.push(
-              `.codex/hooks.json: ${eventName}[${matcherGroupIndex}] must be an object with hooks[]`,
-            );
-            return;
-          }
-
-          if (!Array.isArray(matcherGroup.hooks) || matcherGroup.hooks.length === 0) {
-            errors.push(
-              `.codex/hooks.json: ${eventName}[${matcherGroupIndex}].hooks must be a non-empty array`,
-            );
-            return;
-          }
-
-          if (
-            ['UserPromptSubmit', 'Stop'].includes(eventName) &&
-            matcherGroup.matcher !== undefined
-          ) {
-            warnings.push(
-              `.codex/hooks.json: ${eventName}[${matcherGroupIndex}] declares matcher even though current Codex ignores matcher for that event`,
-            );
-          }
-
-          matcherGroup.hooks.forEach((hook, hookIndex) => {
-            if (!hook || typeof hook !== 'object' || Array.isArray(hook)) {
-              errors.push(
-                `.codex/hooks.json: ${eventName}[${matcherGroupIndex}].hooks[${hookIndex}] must be an object`,
-              );
-              return;
-            }
-
-            if (hook.type !== 'command') {
-              errors.push(
-                `.codex/hooks.json: ${eventName}[${matcherGroupIndex}].hooks[${hookIndex}] must use type="command"`,
-              );
-            }
-
-            if (typeof hook.command !== 'string' || hook.command.trim() === '') {
-              errors.push(
-                `.codex/hooks.json: ${eventName}[${matcherGroupIndex}].hooks[${hookIndex}].command must be a non-empty string`,
-              );
-            } else if (!hook.command.includes('scripts/project-memory/codexHooks.mjs')) {
-              warnings.push(
-                `.codex/hooks.json: ${eventName}[${matcherGroupIndex}].hooks[${hookIndex}] does not point at scripts/project-memory/codexHooks.mjs`,
-              );
-            }
-
-            if (
-              hook.statusMessage !== undefined &&
-              (typeof hook.statusMessage !== 'string' || hook.statusMessage.trim() === '')
-            ) {
-              errors.push(
-                `.codex/hooks.json: ${eventName}[${matcherGroupIndex}].hooks[${hookIndex}].statusMessage must be a non-empty string when present`,
-              );
-            }
-
-            if (
-              hook.timeout !== undefined &&
-              (typeof hook.timeout !== 'number' ||
-                !Number.isFinite(hook.timeout) ||
-                hook.timeout <= 0)
-            ) {
-              errors.push(
-                `.codex/hooks.json: ${eventName}[${matcherGroupIndex}].hooks[${hookIndex}].timeout must be a positive number when present`,
-              );
-            }
-          });
-        });
-      });
-
-      requiredRepoHookEvents.forEach((eventName) => {
-        if (!Array.isArray(hooks[eventName]) || hooks[eventName].length === 0) {
-          errors.push(`.codex/hooks.json: ${eventName} hook wiring is required in this repo`);
-        }
-      });
-    }
-  } catch (error) {
-    errors.push(
-      `.codex/hooks.json: failed to parse JSON (${error instanceof Error ? error.message : String(error)})`,
-    );
-  }
-}
+errors.push(...codexHookValidation.errors);
+warnings.push(...codexHookValidation.warnings);
 
 if (errors.length > 0) {
   console.error('Project memory validation failed:\n');
