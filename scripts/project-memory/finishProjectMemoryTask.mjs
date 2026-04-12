@@ -10,7 +10,7 @@ import { defaultTaskStatePath } from './startProjectMemoryTask.mjs';
 import { lastTaskFinishPath, readActiveTaskState, repoRoot } from './projectMemoryUtils.mjs';
 
 const usage = `Usage:
-  pnpm memory:task:finish [--staged | --base <ref>] [--memory-resolution keep:<memory-path>] [--learning-resolution record:<memory-path>] [--learning-resolution covered-by:<artifact-path>] [--state-file <path>] [--finish-file <path>]
+  pnpm memory:task:finish [--staged | --base <ref>] [--memory-resolution keep:<memory-path>] [--learning-resolution covered-by:<artifact-path>] [--state-file <path>] [--finish-file <path>]
 
 Examples:
   pnpm memory:task:finish
