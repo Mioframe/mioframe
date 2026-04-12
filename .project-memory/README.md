@@ -2,15 +2,19 @@
 
 `.project-memory/` is a small, repo-local memory layer for evidence-backed lessons that are useful across sessions but are not yet best enforced as code, tests, guards, adapters, migrations, schemas, or stable `AGENTS.md` rules.
 
-This system is intentionally local. It does not depend on GitHub Actions or any server-side workflow. The operating loop is:
+ByteRover is currently the primary memory workflow for agents in this repo. The local project-memory system is temporarily suspended from automatic Codex runtime integration and remains available as a manual fallback when ByteRover is unavailable or when a task explicitly needs the local lifecycle.
+
+At the moment, `brv` is not detected in this shell environment, so keep that fallback available until ByteRover is confirmed end-to-end.
+
+This fallback system is intentionally local. It does not depend on GitHub Actions or any server-side workflow. When you intentionally use it, the operating loop is:
 
 - start risky work with `pnpm memory:task:start`;
-- let repo-local Codex hooks preload relevant context and nudge discovery before risky edits;
+- manually opt into the local workflow instead of relying on repo-local Codex hooks;
 - make the change;
 - finish with `pnpm memory:task:finish`;
 - let pre-commit and `pnpm memory:validate` recheck repo-local consistency.
 
-The important change is that `memory:task:finish` is now the explicit learning checkpoint. It is where the task must either capture new confirmed experience or say why no new prose memory is needed.
+The important change is that `memory:task:finish` is still the explicit learning checkpoint for the fallback flow. It is where the task must either capture new confirmed experience or say why no new prose memory is needed.
 
 ## Layout
 
@@ -132,13 +136,13 @@ The usage index lives outside the prose entries in `.project-memory/.task-state/
 
 ## Repo-Local Automation
 
-Repo-local Codex hooks live in `.codex/` and call the scripts in `scripts/project-memory/`.
+Repo-local Codex hooks live in `.codex/` and call the scripts in `scripts/project-memory/`, but they are currently suspended while ByteRover is the primary memory layer.
 
 What they do:
 
-- preload task-relevant memory on session start and prompt submit;
-- block the first narrow class of risky Bash writes when discovery has not happened yet;
-- remind the agent at stop-time to run `pnpm memory:task:finish` if an active task still has unresolved lifecycle or learning capture work.
+- when re-enabled, preload task-relevant memory on session start and prompt submit;
+- when re-enabled, block the first narrow class of risky Bash writes when discovery has not happened yet;
+- when re-enabled, remind the agent at stop-time to run `pnpm memory:task:finish` if an active task still has unresolved lifecycle or learning capture work.
 
 What they do not do:
 
@@ -147,7 +151,7 @@ What they do not do:
 - they do not treat `git commit` or `git push` as the main enforcement point;
 - they do not auto-write memory.
 
-The goal is guidance before risky edits and one clear exit step, not surprise punishment at the end.
+The goal is guidance before risky edits and one clear exit step, not surprise punishment at the end. While suspended, that guidance must be opted into manually.
 
 ## Commands
 
