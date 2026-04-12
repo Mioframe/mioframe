@@ -26,6 +26,8 @@ temp/
 *.local.*
 tsconfig.*.tsbuildinfo
 coverage/
+playwright-report/
+test-results/
 .sisyphus/
 .opencode/
 .claude/

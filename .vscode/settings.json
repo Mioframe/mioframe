@@ -3,7 +3,7 @@
   "explorer.fileNesting.enabled": true,
   "explorer.fileNesting.patterns": {
     "tsconfig.json": "tsconfig.*.json, env.d.ts",
-    "vite.config.*": "vitest.config.*, cypress.config.*, pwa-assets.config.*",
+    "vite.config.*": "vitest.config.*, playwright.config.*, pwa-assets.config.*",
     "package.json": "package-lock.json, pnpm*, .eslint*, eslint*, .oxlint*, oxlint*, .oxfmt*, .prettier*, prettier*"
   },
   "editor.codeActionsOnSave": {

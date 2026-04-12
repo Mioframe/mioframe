@@ -361,7 +361,7 @@ const looksLikeRepoPath = (ref) => {
     return true;
   }
 
-  return /^(AGENTS\.md|package\.json|pnpm-lock\.yaml|pnpm-workspace\.yaml|env\.d\.ts|tsconfig.*\.json|vite\.config\..+|cypress\.config\..+|eslint\.config\..+|.*\.(md|ts|tsx|js|jsx|mjs|mts|cjs|json|yaml|yml|vue|css|scss|html))$/u.test(
+  return /^(AGENTS\.md|package\.json|pnpm-lock\.yaml|pnpm-workspace\.yaml|env\.d\.ts|tsconfig.*\.json|vite\.config\..+|playwright\.config\..+|eslint\.config\..+|.*\.(md|ts|tsx|js|jsx|mjs|mts|cjs|json|yaml|yml|vue|css|scss|html))$/u.test(
     candidate,
   );
 };

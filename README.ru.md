@@ -65,17 +65,23 @@ pnpm test:run
 pnpm test:coverage
 ```
 
-Для Cypress сначала поднимите подходящий сервер в отдельном терминале, затем откройте Cypress:
+Browser smoke и end-to-end сценарии запускаются через Playwright:
 
 ```bash
-# Preview-сервер на https://localhost:4173
-pnpm preview
-pnpm cy:open
+# Один раз на машину установить browser-бинарь Playwright
+pnpm e2e:install
 
-# Dev-сервер на https://localhost:5173
-pnpm dev
-pnpm cy:open:dev
+# Headless browser e2e
+pnpm e2e
+
+# UI runner Playwright
+pnpm e2e:ui
+
+# Headed-режим для локальной отладки
+pnpm e2e:headed
 ```
+
+`Vitest` используйте для unit и integration проверок внутренней логики, сервисов, VFS, адаптеров и composables. `Playwright` оставлен только для browser smoke и e2e-сценариев через пользовательский UI.
 
 ## Линтинг и форматирование
 
