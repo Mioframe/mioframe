@@ -125,6 +125,7 @@ Failure policy is split intentionally:
 
 - `SessionStart` and `UserPromptSubmit` soft-fallback on internal errors because they only add context.
 - `PreToolUse` and `Stop` exit non-zero on internal errors because silent success would mask enforcement failure.
+  This follows the current Codex runtime contract: a broken enforcement hook must surface as hook failure, while intentional blocking still needs valid structured output such as `decision: "block"` with a reason or continuation prompt.
 
 ## Write Rules
 

@@ -20,7 +20,37 @@ import { defaultTaskStatePath } from './startProjectMemoryTask.mjs';
 const usage = `Usage:
   node ./scripts/project-memory/codexHooks.mjs <session-start|user-prompt-submit|pre-tool-use|stop>`;
 
-const softFailureCommands = new Set(['session-start', 'user-prompt-submit']);
+// Verified against the installed Codex runtime contract: additive hooks may safely
+// soft-fallback, while enforcement hooks must surface internal failures as non-zero
+// hook exits so Codex does not silently treat broken guardrails as success.
+const hookFailurePolicies = {
+  'session-start': {
+    eventName: 'SessionStart',
+    failureMode: 'soft fallback',
+    exitCode: 0,
+    resolutionLine: 'Continuing without hook output because this hook only adds context.',
+  },
+  'user-prompt-submit': {
+    eventName: 'UserPromptSubmit',
+    failureMode: 'soft fallback',
+    exitCode: 0,
+    resolutionLine: 'Continuing without hook output because this hook only adds context.',
+  },
+  'pre-tool-use': {
+    eventName: 'PreToolUse',
+    failureMode: 'hard failure',
+    exitCode: 1,
+    resolutionLine:
+      'Refusing to report success because this hook participates in Bash guardrail enforcement.',
+  },
+  stop: {
+    eventName: 'Stop',
+    failureMode: 'hard failure',
+    exitCode: 1,
+    resolutionLine:
+      'Refusing to report success because this hook participates in stop-time lifecycle enforcement.',
+  },
+};
 
 const promptStopWords = new Set([
   'about',
@@ -385,21 +415,28 @@ const renderStopWarning = (review) =>
     ...review.warnings.slice(0, 4).map((warning) => `- ${warning}`),
   ].join('\n');
 
+const getHookFailurePolicy = (command) =>
+  hookFailurePolicies[command] ?? {
+    eventName: command,
+    failureMode: 'hard failure',
+    exitCode: 1,
+    resolutionLine: 'Refusing to report success for an unknown hook command failure.',
+  };
+
 const exitForHookFailure = (command, error) => {
+  const policy = getHookFailurePolicy(command);
   const errorMessage = error instanceof Error ? error.message : String(error);
-  const failureMode = softFailureCommands.has(command) ? 'soft fallback' : 'hard failure';
-  const resolutionLine = softFailureCommands.has(command)
-    ? 'Continuing without hook output because this hook only adds context.'
-    : 'Refusing to report success because this hook participates in enforcement.';
 
-  console.error(`[project-memory hook:${command}] ${failureMode}: ${errorMessage}`);
-  console.error(resolutionLine);
+  console.error(
+    `[project-memory hook:${command}] ${policy.eventName} ${policy.failureMode}: ${errorMessage}`,
+  );
+  console.error(policy.resolutionLine);
 
-  if (!softFailureCommands.has(command)) {
+  if (policy.exitCode !== 0) {
     console.error(usage);
   }
 
-  process.exit(softFailureCommands.has(command) ? 0 : 1);
+  process.exit(policy.exitCode);
 };
 
 const run = async () => {
