@@ -30,7 +30,12 @@ const onClickUnary = (e: {
 </script>
 
 <template>
-  <DatabasePropertyMenuItem :path="path" :document-id="documentId" :property-id="propertyId">
+  <DatabasePropertyMenuItem
+    :path="path"
+    :document-id="documentId"
+    :property-id="propertyId"
+    role="menuitem"
+  >
     <template #submenu>
       <UnaryOperatorFilterMenuItemList @click-unary="onClickUnary" />
 
