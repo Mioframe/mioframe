@@ -1,14 +1,11 @@
 import { expect, test } from '@playwright/test';
-import { completeStorageOnboarding, openOpfs } from './helpers';
+import { dismissStorageOnboarding, launchApp, openOpfs } from './helpers';
 
-test('loads the app and opens the OPFS root through the UI', async ({ page }) => {
-  await page.goto('/');
+test('loads the app, dismisses storage onboarding, and opens the OPFS root', async ({ page }) => {
+  await launchApp(page);
 
-  await expect(
-    page.getByRole('dialog', { name: /protect your stored files from deletion/i }),
-  ).toBeVisible();
-  await completeStorageOnboarding(page);
-  await expect(page.getByText(/origin private file system/i)).toBeVisible();
+  await dismissStorageOnboarding(page);
+  await expect(page.getByText(/^origin private file system$/i)).toBeVisible();
 
   await openOpfs(page);
 });
