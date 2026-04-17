@@ -15,12 +15,6 @@ Applies to the whole repository unless a deeper `AGENTS.md` overrides it.
 
 - Keep changes in the layer that owns the behavior, and import through `index.ts` when a public entry point exists.
 - Preserve FSD boundaries: `pages` compose screens, `widgets` compose larger sections, `features` own user actions, `entities` own domain reads and derived state, and `shared` stays upper-layer-free.
-- Use ByteRover as the primary agent memory workflow in this repo. The repo-local `.project-memory/` system is currently a manual fallback for evidence-backed, project-local lessons or helper semantics that are too volatile, narrow, or implementation-shaped for `AGENTS.md`.
-- Before non-trivial changes in `src/shared`, service boundaries, CRDT flows, VFS/filesystem code, schema or migration paths, helper semantics, `.project-memory/`, or any scope that may already have memory, query ByteRover first when it is available. Use `pnpm memory:task:start --scope <path> --term <keyword>` only when you intentionally fall back to the local project-memory workflow.
-- Treat project-memory retrieval as token-budgeted fallback guidance, not a prose dump: prefer the compact digest first, rely on trigger-based warnings for dangerous actions, and promote repeated lessons into stronger artifacts instead of growing prose memory indefinitely.
-- Repo-local Codex hooks in `.codex/` are intentionally suspended while ByteRover is the primary memory layer. If the local project-memory workflow is re-enabled later, hooks should again preload prompt-matched memory without replacing explicit task start or finish decisions.
-- Use `.project-memory/WORKFLOW.md` as the canonical manual fallback procedure when the task intentionally uses `memory:task:start -> read memory -> change -> explicit learning decision -> memory:task:finish`.
-- When a bug fix, review finding, stronger artifact, contradiction, or corrected wrong assumption touches an existing memory scope and you are using the local fallback workflow, update the matching `.project-memory/` entry in the same change and finish through `pnpm memory:task:finish`: refresh evidence, merge duplicates, promote to a stronger artifact, archive with explicit replacement links, or make an explicit keep or covered-by decision during task finish.
 - Verify third-party semantics from official docs or installed source before relying on ambiguous helpers, options, or return values. If the behavior is still unverified, say so.
 - Treat DOM parentage, scroll ownership, focus, teleport, and overlay wiring as concrete runtime contracts. Check the rendered hierarchy before moving wrappers or composition boundaries.
 - Keep the UI aligned with Material 3 expectations and optimize for mobile browsers first. Assume large datasets and low-end devices, and keep main-thread work bounded.
@@ -36,7 +30,6 @@ Applies to the whole repository unless a deeper `AGENTS.md` overrides it.
 - Do not pull dependencies upward against the intended layer direction.
 - Do not bypass entity or service APIs with direct storage access or ad hoc document mutation.
 - Do not duplicate schemas, type aliases, or constants across layers.
-- Do not put guesses, generic advice, or facts without project evidence into `.project-memory/`.
 - Do not push orchestration complexity into component props.
 - Do not treat desktop performance, hover, or precise pointer input as the default interaction model.
 - Do not use `AGENTS.md` as an architecture essay, a file dump, or a place for temporary notes.
@@ -50,8 +43,6 @@ Applies to the whole repository unless a deeper `AGENTS.md` overrides it.
 - UI-facing layers may cross into background logic only through explicit proxy clients. Do not directly import `*Service` modules into `pages`, `widgets`, `features`, `entities`, or shared UI.
 - Use `pnpm` for package management and project commands.
 - After edits, run the narrowest relevant verification. For logic changes, run at least `pnpm type-check`; add focused `vitest`, Playwright, or reproducible smoke checks for behavior, schema, service, or storage changes.
-- If you intentionally use the local project-memory fallback on risky work, finish it with `pnpm memory:task:finish`. Pre-commit no longer runs `pnpm memory:task:review --staged` automatically while the fallback is suspended from default workflow.
-- Run `pnpm memory:validate` after changing `.project-memory/`, project-memory workflow tooling, `.project-memory/WORKFLOW.md`, `.codex/`, or any `AGENTS.md` change that affects memory discovery, lifecycle, promotion rules, or Codex hook automation. In suspended mode it validates entries and any enabled hook wiring without requiring project-memory hooks to be active.
 - Prefer targeted `oxlint`, `eslint --fix`, and `oxfmt` runs over repo-wide commands.
 - Use Conventional Commits.
 - `pages` and `widgets` directories use PascalCase. Other submodules use lower camel case.
@@ -64,5 +55,4 @@ Applies to the whole repository unless a deeper `AGENTS.md` overrides it.
 - Reserve the `$` suffix for raw RxJS observables.
 - Add a child `AGENTS.md` only when a directory has local invariants, blast-radius rules, or reproducible verification guidance that the parent cannot express cleanly.
 - Child `AGENTS.md` files should refine the parent rather than repeat it, and their `Contains` sections should describe stable responsibilities instead of the current file list.
-- Promote repeated `.project-memory/` findings, especially correction and review-finding lessons, into stronger artifacts such as `AGENTS.md`, tests, guards, adapters, migrations, runtime checks, or ADRs when the rule becomes stable enough to enforce there.
 - Update the `AGENTS.md` tree together with ownership, public API, dependency, or verification-boundary changes.

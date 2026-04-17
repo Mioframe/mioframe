@@ -40,8 +40,3 @@ if ! cmp -s "$before_diff_path" "$after_diff_path"; then
   printf '%s\n' 'Review the changes, stage what you want, and run commit again.' >&2
   exit 1
 fi
-
-if git diff --cached --name-only --diff-filter=ACMR \
-  | rg -q '(^|/)(AGENTS\.md)$|^\.project-memory/|^scripts/project-memory/|^\.codex/|^\.husky/pre-commit$|^package\.json$|^pnpm-lock\.yaml$'; then
-  pnpm memory:validate
-fi
