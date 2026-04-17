@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { defineMigrations } from '../defineMigrations';
+import { defineMigrations } from './defineMigrations';
 
 describe('defineMigrations', () => {
   describe('getLatestData', () => {

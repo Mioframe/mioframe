@@ -63,6 +63,15 @@ pnpm test:run
 
 # Vitest с покрытием
 pnpm test:coverage
+
+# StrykerJS mutation testing
+pnpm test:mutate
+
+# Dry-run конфигурации StrykerJS
+pnpm exec stryker run --dryRunOnly
+
+# При необходимости сузить область мутаций прямо из терминала
+pnpm exec stryker run -m "src/shared/lib/**/*.ts"
 ```
 
 Browser smoke и end-to-end сценарии запускаются через Playwright:
@@ -81,7 +90,7 @@ pnpm e2e:ui
 pnpm e2e:headed
 ```
 
-`Vitest` используйте для unit и integration проверок внутренней логики, сервисов, VFS, адаптеров и composables. `Playwright` оставлен только для browser smoke и e2e-сценариев через пользовательский UI.
+`Vitest` используйте для unit и integration проверок внутренней логики, сервисов, VFS, адаптеров и composables. `Playwright` оставлен только для browser smoke и e2e-сценариев через пользовательский UI. `pnpm test:mutate` запускает StrykerJS с динамическим `stryker.config.mjs`, который выводит список файлов для мутаций по colocated `*.test.ts`, исключает `src/shared/ui` и при необходимости дополнительно сужается CLI-флагами вроде `-m`.
 
 ## Линтинг и форматирование
 
@@ -143,3 +152,7 @@ pnpm format
       - [ ] Скрытие столбцов
       - [ ] Сортировка столбцов
     - [ ] Галерея карточек
+
+## Лицензия
+
+Functional Source License (FSL) - 3 years non-compete term.

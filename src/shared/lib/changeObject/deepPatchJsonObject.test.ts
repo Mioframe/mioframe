@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { deepPatchJsonObject, DELETE_MARKER } from '../deepPatchJsonObject';
+import { deepPatchJsonObject, DELETE_MARKER } from './deepPatchJsonObject';
 
 describe('deepPatchJsonObject', () => {
   describe('basic patch operations', () => {

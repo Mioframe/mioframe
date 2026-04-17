@@ -27,7 +27,7 @@
     "test": "vitest",
     "test:run": "vitest run",
     "test:coverage": "vitest run --coverage",
-    "test:mutation": "stryker run"
+    "test:mutate": "stryker run"
   },
   "dependencies": {
     "@automerge/automerge": "^3.2.5",

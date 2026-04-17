@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { defineVersion } from '../defineVersion';
+import { defineVersion } from './defineVersion';
 import { z } from 'zod/v4-mini';
 
 describe('defineVersion', () => {
