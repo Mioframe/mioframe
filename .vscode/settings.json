@@ -6,6 +6,21 @@
     "vite.config.*": "vitest.config.*, playwright.config.*, pwa-assets.config.*",
     "package.json": "package-lock.json, pnpm*, .eslint*, eslint*, .oxlint*, oxlint*, .oxfmt*, .prettier*, prettier*"
   },
+  "files.exclude": {
+    "**/.stryker-tmp": true,
+    "**/tmp": true,
+    "**/temp": true
+  },
+  "files.watcherExclude": {
+    "**/.stryker-tmp/**": true,
+    "**/tmp/**": true,
+    "**/temp/**": true
+  },
+  "search.exclude": {
+    "**/.stryker-tmp": true,
+    "**/tmp": true,
+    "**/temp": true
+  },
   "editor.codeActionsOnSave": {
     "source.fixAll": "explicit"
   },

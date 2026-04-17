@@ -24,6 +24,7 @@ Applies to the whole repository unless a deeper `AGENTS.md` overrides it.
 - Prefer typed collection helpers over raw `Object.keys`, `Object.values`, and `Object.entries` when iterating typed records. Do not add local type assertions just to paper over iteration typing outside rare boundary adapters.
 - For CRDT-backed state, mutate live nested objects inside the owning change callback, never assign a live document object back into the same document, and prefer shared helpers such as `put`, `patch`, `deepPutJsonObject`, and `deepPatchJsonObject` when they match the write shape.
 - When progress is knowable, surface progress instead of falling back to an indeterminate spinner.
+- Keep unit tests colocated with the source file they verify, using sibling `*.test.ts` files. Do not introduce `__tests__` directories.
 
 ## Anti-patterns
 

@@ -65,7 +65,13 @@ pnpm test:run
 pnpm test:coverage
 
 # StrykerJS mutation testing
-pnpm test:mutation
+pnpm test:mutate
+
+# Dry-run the StrykerJS configuration
+pnpm exec stryker run --dryRunOnly
+
+# Narrow the mutation scope from the terminal when needed
+pnpm exec stryker run -m "src/shared/lib/**/*.ts"
 ```
 
 Browser smoke and end-to-end scenarios run with Playwright:
@@ -84,7 +90,7 @@ pnpm e2e:ui
 pnpm e2e:headed
 ```
 
-`Vitest` is the default place for unit and integration coverage of internal logic, services, VFS, adapters, and composables. `Playwright` is reserved for browser smoke and end-to-end flows that exercise the app through the UI like a user would. `pnpm test:mutation` runs StrykerJS against the current Vitest unit suite and generates HTML and JSON mutation reports. The first pass is report-only; it does not fail the run on mutation score thresholds.
+`Vitest` is the default place for unit and integration coverage of internal logic, services, VFS, adapters, and composables. `Playwright` is reserved for browser smoke and end-to-end flows that exercise the app through the UI like a user would. `pnpm test:mutate` runs StrykerJS with the dynamic `stryker.config.mjs`, which derives mutation targets from colocated `*.test.ts` files, excludes `src/shared/ui`, and lets you narrow the scope further with CLI flags such as `-m`.
 
 ## Linting and Formatting
 

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { deepPutJsonObject } from '../deepPutJsonObject';
+import { deepPutJsonObject } from './deepPutJsonObject';
 
 describe('deepPutJsonObject', () => {
   describe('basic object replacement', () => {
