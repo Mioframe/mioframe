@@ -43,6 +43,7 @@ Applies to the whole repository unless a deeper `AGENTS.md` overrides it.
 - `widgets` may compose `features`, `entities`, and `shared`, but should not own domain rules.
 - UI-facing layers may cross into background logic only through explicit proxy clients. Do not directly import `*Service` modules into `pages`, `widgets`, `features`, `entities`, or shared UI.
 - Use `pnpm` for package management and project commands.
+- Run `brv` commands with escalated permissions, not the default Codex sandbox. `brv` uses a daemon plus state under `~/.config/brv`, `~/.cache/brv`, and `~/.local/state/brv`, so sandboxed runs can fail with lost daemon connections even when the project `.brv` tree is present.
 - After edits, run the narrowest relevant verification. For logic changes, run at least `pnpm type-check`; add focused `vitest`, Playwright, or reproducible smoke checks for behavior, schema, service, or storage changes.
 - Prefer targeted `oxlint`, `eslint --fix`, and `oxfmt` runs over repo-wide commands.
 - Use Conventional Commits.

@@ -7,21 +7,19 @@
       "type": "summary"
     },
     {
-      "order": 2,
       "path": "facts/_index.md",
-      "tokens": 438,
+      "tokens": 460,
       "type": "summary"
     },
     {
-      "order": 1,
       "path": "facts/project/_index.md",
-      "tokens": 319,
+      "tokens": 341,
       "type": "summary"
     },
     {
       "abstractPath": "facts/project/testing_preferences.abstract.md",
       "abstractTokens": 32,
-      "importance": 55,
+      "importance": 58,
       "path": "facts/project/testing_preferences.md",
       "tokens": 32,
       "type": "context"
@@ -39,13 +37,13 @@
       "type": "context"
     }
   ],
-  "generated_at": "2026-04-17T13:05:51.706Z",
+  "generated_at": "2026-04-17T19:14:45.482Z",
   "lane_tokens": {
     "contexts": 248,
     "stubs": 0,
-    "summaries": 1128
+    "summaries": 1172
   },
-  "source_fingerprint": "c4c0dd6867799403067f731e15f4753229b6b5becacf475c75f6de52c72a6cb2",
-  "total_tokens": 1376,
+  "source_fingerprint": "55eb89202c22f2197b40690ed7bd17cf253e06a8c05904da24b06bf043a86b60",
+  "total_tokens": 1420,
   "version": 1
 }
