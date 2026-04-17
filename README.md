@@ -63,6 +63,9 @@ pnpm test:run
 
 # Vitest with coverage
 pnpm test:coverage
+
+# StrykerJS mutation testing
+pnpm test:mutation
 ```
 
 Browser smoke and end-to-end scenarios run with Playwright:
@@ -81,7 +84,7 @@ pnpm e2e:ui
 pnpm e2e:headed
 ```
 
-`Vitest` is the default place for unit and integration coverage of internal logic, services, VFS, adapters, and composables. `Playwright` is reserved for browser smoke and end-to-end flows that exercise the app through the UI like a user would.
+`Vitest` is the default place for unit and integration coverage of internal logic, services, VFS, adapters, and composables. `Playwright` is reserved for browser smoke and end-to-end flows that exercise the app through the UI like a user would. `pnpm test:mutation` runs StrykerJS against the current Vitest unit suite and generates HTML and JSON mutation reports. The first pass is report-only; it does not fail the run on mutation score thresholds.
 
 ## Linting and Formatting
 

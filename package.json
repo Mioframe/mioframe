@@ -26,7 +26,8 @@
     "e2e:ui": "playwright test --ui",
     "test": "vitest",
     "test:run": "vitest run",
-    "test:coverage": "vitest run --coverage"
+    "test:coverage": "vitest run --coverage",
+    "test:mutation": "stryker run"
   },
   "dependencies": {
     "@automerge/automerge": "^3.2.5",
@@ -72,6 +73,8 @@
     "@faker-js/faker": "^10.4.0",
     "@playwright/test": "^1.59.1",
     "@sentry/vite-plugin": "^5.2.0",
+    "@stryker-mutator/core": "^9.6.1",
+    "@stryker-mutator/vitest-runner": "^9.6.1",
     "@total-typescript/ts-reset": "^0.6.1",
     "@tsconfig/node24": "^24.0.4",
     "@types/gapi": "^0.0.47",
