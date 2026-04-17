@@ -33,5 +33,3 @@ test-results/
 .claude/
 tsconfig.tsbuildinfo
 .eslintcache
-.brv
-.agents/skills/byterover
