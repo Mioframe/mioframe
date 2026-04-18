@@ -22,7 +22,7 @@ Beaver is for those who want to own their lists and data outright. It is not a s
 
 - 🔒 **Your data stays with you:** Your records are not shipped off to someone else's servers. You decide where they live. Keep them in the browser's OPFS storage, or point Beaver at a folder on your own device.
 - ✈️ **Offline by default:** The app and your data are still there when the internet is not.
-- 🔄 **Sync without a middleman:** Beaver uses a CRDT-based data format, so you can move files between devices however you like, whether that is a USB drive, AirDrop, or a cloud service you trust. The data merges cleanly without overwriting your work.
+- 🔄 **Sync without a middleman:** Beaver uses a CRDT-based data format, so you can move files between devices however you like, whether that is a USB drive, direct file transfer, or a cloud service you trust. The data merges cleanly without overwriting your work.
 - 📱 **Consistent across devices:** The app design is mobile-first, however, the same features are available on desktop too. It scales up well not turning into a separate product.
 
 ## What You Can Already Do
@@ -49,7 +49,7 @@ I've still developed Beaver actively, and your feedback genuinely helps shape wh
 
 ## Development
 
-Developer setup, build, test, and linting instructions live in [DEVELOPMENT.md](/home/matdr/beaver/DEVELOPMENT.md).
+Developer setup, build, test, and linting instructions live in [DEVELOPMENT.md](./DEVELOPMENT.md).
 
 ## Implemented Features and Plans
 

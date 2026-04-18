@@ -1,34 +1,32 @@
 ---
-tags: []
-keywords: []
-importance: 53
-recency: 1
-maturity: draft
-accessCount: 1
+children_hash: c49cd7e0a9e1838fe035eb2b3eced7b4b53eab28e296e3f96027cdc89efb7f74
+compression_ratio: 0.6096997690531177
+condensation_order: 1
+covers: [context.md, testing_preferences.md]
+covers_token_total: 433
+summary_level: d1
+token_count: 264
+type: summary
 ---
 
-# Project Testing Preferences
+# Project — Testing Constraints & Preferences (d1)
 
-A compact project-level testing guidance set focused on keeping unit tests fast, isolated, and in-memory. The `context.md` topic establishes the broader scope, while `testing_preferences.md` captures the concrete rule and its implications for test design.
+## Scope (from `context.md`)
 
-## Core rule
+- Topic captures explicit **testing constraints/preferences** that shape how automated tests are written and maintained.
+- Focus areas:
+  - **Unit test speed**
+  - **In-memory testing**
+  - **Test environment constraints**
+- Related direction: testing guidance may expand into broader **test architecture/tooling** topics over time.
 
-- **Unit tests should stay fast and in-memory** (`testing_preferences.md`).
-- This is an explicit project preference, not just an example or suggestion.
+## Core Rule & Convention (from `testing_preferences.md`)
 
-## Structural implications
-
-- Test execution should favor **in-memory isolation** and **fast feedback** (`testing_preferences.md`).
-- Unit-test layers should avoid slow integration-style setup and minimize external dependencies (`testing_preferences.md`).
-- Preferred implementations include **in-memory repositories**, **fake services**, and **pure-function tests** rather than real databases or end-to-end setup (`testing_preferences.md`).
-
-## Key concepts
-
-- **Unit test speed**
-- **In-memory testing**
-- **Test environment constraints**
-
-## Drill-down references
-
-- `context.md` — high-level overview of the testing constraints and the intended expansion toward test architecture/tooling guidance.
-- `testing_preferences.md` — detailed preference, rationale, rules, and examples for the fast in-memory unit-test approach.
+- **Rule (verbatim):** _“Unit tests should stay fast and in-memory.”_
+- **Intent / impact:** unit-test layer should favor **isolated execution** with **minimal external dependencies**, avoiding slow integration-style setup (e.g., real DB/network/service dependencies) in unit tests.
+- **Process flow:** `test execution -> in-memory isolation -> fast feedback`
+- **Recorded fact:** `unit_test_execution` — Unit tests should stay fast and in-memory (category: convention).
+- Provenance metadata:
+  - Timestamp: **2026-04-17**
+  - Author: **user**
+  - Maturity: **core** (importance 85)
