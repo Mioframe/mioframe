@@ -1,6 +1,6 @@
 ---
 name: byterover
-description: "You MUST use this for gathering contexts before any work. This is a Knowledge management for AI agents. Use `brv` to store and retrieve project patterns, decisions, and architectural rules in .brv/context-tree. Uses a configured LLM provider (default: ByteRover, no API key needed) for query and curate operations."
+description: 'You MUST use this for gathering contexts before any work. This is a knowledge management workflow for AI agents. Use `brv` to store and retrieve project patterns, decisions, and architectural rules in `.brv/context-tree`. `brv search` works without an LLM provider; `brv query` and `brv curate` require a configured provider.'
 ---
 
 # ByteRover Knowledge Management
@@ -9,24 +9,30 @@ Use the `brv` CLI to manage your project's long-term memory.
 Install: `npm install -g byterover-cli`
 Knowledge is stored in `.brv/context-tree/` as human-readable Markdown files.
 
-**No authentication needed.** `brv query`, `brv curate`, and `brv vc` (local version control) work out of the box. Login is only required for remote sync (`brv vc push`/`brv vc pull`).
+`brv search` works locally without an LLM provider. `brv query` and `brv curate` require a configured provider, and some providers may require authentication before they can be used. Treat provider and auth requirements as CLI-version-dependent behavior and verify with `brv providers` when in doubt.
+
+In Codex, run `brv` outside the default sandbox. `brv` starts a local daemon and uses global state directories, so sandboxed runs can hang or fail even when the project `.brv` tree is present.
 
 ## Workflow
+
 1.  **Before Thinking:** Run `brv query` to understand existing patterns.
 2.  **After Implementing:** Run `brv curate` to save new patterns/decisions.
 
 ## Commands
 
 ### 1. Query Knowledge
+
 **Overview:** Retrieve relevant context from your project's knowledge base. Uses a configured LLM provider to synthesize answers from `.brv/context-tree/` content.
 
 **Use this skill when:**
+
 - The user wants you to recall something
 - Your context does not contain information you need
 - You need to recall your capabilities or past actions
 - Before performing any action, to check for relevant rules, criteria, or preferences
 
 **Do NOT use this skill when:**
+
 - The information is already present in your current context
 - The query is about general knowledge, not stored memory
 
@@ -35,14 +41,17 @@ brv query "How is authentication implemented?"
 ```
 
 ### 2. Search Context Tree
+
 **Overview:** Retrieve a ranked list of matching files from `.brv/context-tree/` via pure BM25 lookup. Unlike `brv query`, this does NOT call an LLM — no synthesis, no token cost, no provider setup needed. Returns structured results with paths, scores, and excerpts.
 
 **Use this skill when:**
+
 - You need file paths to read rather than a synthesized answer
 - You want fast, cheap retrieval with no LLM overhead
 - You're in an automated pipeline that consumes structured results
 
 **Do NOT use this skill when:**
+
 - You need a natural-language answer synthesized from multiple files — use `brv query` instead
 - The information is already present in your current context
 
@@ -55,15 +64,18 @@ brv search "auth" --format json
 **Flags:** `--limit N` (1-50, default 10), `--scope "domain/"` (path prefix filter), `--format json` (structured output for automation).
 
 ### 3. Curate Context
+
 **Overview:** Analyze and save knowledge to the local knowledge base. Uses a configured LLM provider to categorize and structure the context you provide.
 
 **Use this skill when:**
+
 - The user wants you to remember something
 - The user intentionally curates memory or knowledge
 - There are meaningful memories from user interactions that should be persisted
 - There are important facts about what you do, what you know, or what decisions and actions you have taken
 
 **Do NOT use this skill when:**
+
 - The information is already stored and unchanged
 - The information is transient or only relevant to the current task, or just general knowledge
 
@@ -78,45 +90,60 @@ brv curate "Authentication middleware details" -f src/middleware/auth.ts
 ```
 
 **View curate history:** to check past curations
+
 - Show recent entries (last 10)
+
 ```bash
 brv curate view
 ```
+
 - Full detail for a specific entry: all files and operations performed (logId is printed by `brv curate` on completion, e.g. `cur-1739700001000`)
+
 ```bash
 brv curate view cur-1739700001000
 ```
+
 - List entries with file operations visible (no logId needed)
+
 ```bash
 brv curate view detail
 ```
+
 - Filter by time and status
+
 ```bash
 brv curate view --since 1h --status completed
 ```
+
 - For all filter options
+
 ```bash
 brv curate view --help
 ```
 
 ### 4. Review Pending Changes
+
 **Overview:** After a curate operation, some changes may require human review before being applied. Use `brv review` to list, approve, or reject pending operations.
 
 **Use this when:**
+
 - A curate operation reports pending reviews (shown in curate output)
 - The user wants to check, approve, or reject pending changes
 
 **Do NOT use this skill when:**
+
 - There are no pending reviews (check with `brv review pending` first)
 
 **Commands:**
 
 List all pending reviews for the current project:
+
 ```bash
 brv review pending
 ```
 
 Sample output:
+
 ```
 2 operations pending review
 
@@ -137,25 +164,30 @@ Sample output:
 Each pending task shows: operation type (ADD/UPDATE/DELETE/MERGE/UPSERT), file path, reason, and before/after summaries. High-impact operations are flagged.
 
 Approve all operations for a task (applies the changes):
+
 ```bash
 brv review approve <taskId>
 ```
 
 Reject all operations for a task (discards pending changes; restores backup for UPDATE/DELETE operations):
+
 ```bash
 brv review reject <taskId>
 ```
 
 Approve or reject specific files within a task:
+
 ```bash
 brv review approve <taskId> --file <path> --file <path>
 brv review reject <taskId> --file <path>
 ```
+
 File paths are relative to context tree (as shown in `brv review pending` output).
 
 **Note**: Always ask the user before approving or rejecting critical changes.
 
 **JSON output** (useful for agent-driven workflows):
+
 ```bash
 brv review pending --format json
 brv review approve <taskId> --format json
@@ -163,9 +195,23 @@ brv review reject <taskId> --format json
 ```
 
 ### 5. LLM Provider Setup
-`brv query` and `brv curate` require a configured LLM provider. Connect the default ByteRover provider (no API key needed):
+
+`brv query` and `brv curate` require a configured LLM provider. Check the current provider first:
 
 ```bash
+brv providers
+```
+
+Connect the ByteRover provider if available in your environment:
+
+```bash
+brv providers connect byterover
+```
+
+If the CLI asks you to authenticate, complete that step first:
+
+```bash
+brv login
 brv providers connect byterover
 ```
 
@@ -177,14 +223,17 @@ brv providers connect openai --api-key sk-xxx --model gpt-4.1
 ```
 
 ### 6. Project Locations
+
 **Overview:** List registered projects and their context tree paths. Returns project metadata including initialization status and active state. Use `-f json` for machine-readable output.
 
 **Use this when:**
+
 - You need to find a project's context tree path
 - You need to check which projects are registered
 - You need to verify if a project is initialized
 
 **Do NOT use this when:**
+
 - You already know the project path from your current context
 - You need project content rather than metadata — use `brv query` instead
 
@@ -195,9 +244,11 @@ brv locations -f json
 JSON fields: `projectPath`, `contextTreePath`, `isCurrent`, `isActive`, `isInitialized`.
 
 ### 7. Version Control
+
 **Overview:** `brv vc` provides git-based version control for your context tree. It uses standard git semantics — branching, committing, merging, history, and conflict resolution — all working locally with no authentication required. Remote sync with a team is optional. The legacy `brv push`, `brv pull`, and `brv space` commands are deprecated — use `brv vc push`, `brv vc pull`, and `brv vc clone`/`brv vc remote add` instead.
 
 **Use this when:**
+
 - The user wants to track, commit, or inspect changes to the knowledge base
 - The user wants to branch, merge, or undo knowledge changes
 - The user wants to sync knowledge with a team (push/pull)
@@ -205,6 +256,7 @@ JSON fields: `projectPath`, `contextTreePath`, `isCurrent`, `isActive`, `isIniti
 - The user asks about knowledge history or diffs
 
 **Do NOT use this when:**
+
 - The user wants to query or curate knowledge — use `brv query`/`brv curate` instead
 - The user wants to review pending curate operations — use `brv review` instead
 - Version control is not initialized and the user didn't ask to set it up
@@ -216,6 +268,7 @@ Available commands: `init`, `status`, `add`, `commit`, `reset`, `log`, `branch`,
 #### First-Time Setup
 
 **Setup — local (no auth needed):**
+
 ```bash
 brv vc init
 brv vc config user.name "Your Name"
@@ -223,12 +276,14 @@ brv vc config user.email "you@example.com"
 ```
 
 **Setup — clone a team space (requires `brv login`):**
+
 ```bash
 brv login --api-key sample-key-string
 brv vc clone https://byterover.dev/<team>/<space>.git
 ```
 
 **Setup — connect existing project to a remote (requires `brv login`):**
+
 ```bash
 brv login --api-key sample-key-string
 brv vc remote add origin https://byterover.dev/<team>/<space>.git
@@ -237,11 +292,13 @@ brv vc remote add origin https://byterover.dev/<team>/<space>.git
 #### Local Workflow
 
 **Check status:**
+
 ```bash
 brv vc status
 ```
 
 **Stage and commit:**
+
 ```bash
 brv vc add .                     # stage all
 brv vc add notes.md docs/        # stage specific files
@@ -249,6 +306,7 @@ brv vc commit -m "add authentication patterns"
 ```
 
 **View history:**
+
 ```bash
 brv vc log
 brv vc log --limit 20
@@ -256,6 +314,7 @@ brv vc log --all
 ```
 
 **Unstage or undo:**
+
 ```bash
 brv vc reset                     # unstage all files
 brv vc reset <file>              # unstage a specific file
@@ -275,6 +334,7 @@ brv vc checkout -b feature/new   # create and switch
 ```
 
 **Merge:**
+
 ```bash
 brv vc merge feature/auth        # merge into current branch
 brv vc merge --continue          # continue after resolving conflicts
@@ -282,6 +342,7 @@ brv vc merge --abort             # abort a conflicted merge
 ```
 
 **Set upstream tracking:**
+
 ```bash
 brv vc branch --set-upstream-to origin/main
 ```
@@ -291,6 +352,7 @@ brv vc branch --set-upstream-to origin/main
 Requires ByteRover authentication (`brv login`) and a configured remote.
 
 **Manage remotes:**
+
 ```bash
 brv vc remote                    # show current remote
 brv vc remote add origin <url>   # add a remote
@@ -298,6 +360,7 @@ brv vc remote set-url origin <url>  # update remote URL
 ```
 
 **Fetch, pull, and push:**
+
 ```bash
 brv vc fetch                     # fetch remote refs
 brv vc pull                      # fetch + merge remote commits
@@ -306,19 +369,23 @@ brv vc push -u origin main       # push and set upstream tracking
 ```
 
 **Clone a space:**
+
 ```bash
 brv vc clone https://byterover.dev/<team>/<space>.git
 ```
 
 ### 8. Swarm Query
+
 **Overview:** Search across all active memory providers simultaneously — ByteRover context tree, Obsidian vault, Local Markdown folders, GBrain, and Memory Wiki. Results are fused via Reciprocal Rank Fusion (RRF) and ranked by provider weight and relevance. No LLM call — pure algorithmic search.
 
 **Use this skill when:**
+
 - You need to search across multiple knowledge sources at once
 - The user has configured multiple memory providers (check with `brv swarm status`)
 - You want results from Obsidian notes, GBrain entities, or wiki pages alongside ByteRover context
 
 **Do NOT use this skill when:**
+
 - The user only has ByteRover configured — use `brv query` instead (it synthesizes via LLM)
 - You need an LLM-synthesized answer — `brv swarm query` returns raw search results, not synthesized text
 
@@ -327,6 +394,7 @@ brv swarm query "How does JWT refresh work?"
 ```
 
 Output:
+
 ```
 Swarm Query: "How does JWT refresh work?"
 Type: factual | Providers: 4 queried | Latency: 398ms
@@ -340,11 +408,13 @@ Type: factual | Providers: 4 queried | Latency: 398ms
 ```
 
 **With explain mode** (shows classification, provider selection, enrichment):
+
 ```bash
 brv swarm query "authentication patterns" --explain
 ```
 
 Output:
+
 ```
 Classification: factual
 Provider selection: 4 of 4 available
@@ -359,11 +429,13 @@ Results: 8 raw → 7 after RRF fusion + precision filtering
 ```
 
 **JSON output:**
+
 ```bash
 brv swarm query "rate limiting" --format json
 ```
 
 Output:
+
 ```json
 {
   "meta": {
@@ -377,12 +449,18 @@ Output:
     }
   },
   "results": [
-    { "provider": "memory-wiki", "providerType": "memory-wiki", "score": 0.015, "content": "# Rate Limiting ..." }
+    {
+      "provider": "memory-wiki",
+      "providerType": "memory-wiki",
+      "score": 0.015,
+      "content": "# Rate Limiting ..."
+    }
   ]
 }
 ```
 
 **Limit results:**
+
 ```bash
 brv swarm query "testing strategy" -n 5
 ```
@@ -390,13 +468,16 @@ brv swarm query "testing strategy" -n 5
 **Flags:** `--explain` (show routing details), `--format json` (structured output), `-n <value>` (max results).
 
 ### 9. Swarm Curate
+
 **Overview:** Store knowledge in the best available external memory provider. ByteRover automatically classifies the content type and routes accordingly: entities (people, orgs) go to GBrain, notes (meeting notes, TODOs) go to Local Markdown, general content goes to the first writable provider. Falls back to ByteRover context tree if no external providers are available.
 
 **Use this skill when:**
+
 - You want to store knowledge in an external provider (GBrain, Local Markdown, Memory Wiki)
 - The user has configured writable swarm providers
 
 **Do NOT use this skill when:**
+
 - You want to store in ByteRover's context tree specifically — use `brv curate` instead
 - No swarm providers are configured — use `brv curate` instead
 
@@ -405,16 +486,19 @@ brv swarm curate "Jane Smith is the CTO of TechCorp"
 ```
 
 Output:
+
 ```
 Stored to gbrain as concept/jane-smith-cto
 ```
 
 **Target a specific provider:**
+
 ```bash
 brv swarm curate "meeting notes: decided on JWT" --provider local-markdown:notes
 ```
 
 Output:
+
 ```
 Stored to local-markdown:notes as note-1776052527043.md
 ```
@@ -424,16 +508,19 @@ brv swarm curate "Architecture uses event sourcing" --provider gbrain
 ```
 
 Output:
+
 ```
 Stored to gbrain as concept/event-sourcing-architecture
 ```
 
 **JSON output:**
+
 ```bash
 brv swarm curate "Test content" --format json
 ```
 
 Output:
+
 ```json
 {
   "id": "note-1776052594462.md",
@@ -446,9 +533,11 @@ Output:
 **Flags:** `--provider <id>` (target specific provider), `--format json` (structured output).
 
 ### 10. Swarm Status
+
 **Overview:** Check provider health and write targets before running swarm query or curate. Use this to verify which providers are available and operational.
 
 **Use this skill when:**
+
 - Before running `brv swarm query` or `brv swarm curate` to check available providers
 - Diagnosing why swarm results are missing from a specific provider
 
@@ -457,6 +546,7 @@ brv swarm status
 ```
 
 Output:
+
 ```
 Memory Swarm Health Check
 ════════════════════════════════════════
@@ -479,16 +569,17 @@ Swarm is operational (5/5 providers configured).
 
 **File access**: The `-f` flag on `brv curate` reads files from the current project directory only. Paths outside the project root are rejected. Maximum 5 files per command, text and document formats only.
 
-**LLM usage**: `brv query` and `brv curate` send context to a configured LLM provider for processing. The LLM sees the query or curate text and any included file contents. No data is sent to ByteRover servers unless you explicitly run `brv vc push`.
+**LLM usage**: `brv query` and `brv curate` send context to a configured LLM provider for processing. The LLM sees the query or curate text and any included file contents. No data is sent to ByteRover servers unless you explicitly use a ByteRover cloud feature such as `brv login` plus remote sync commands.
 
-**Cloud sync**: `brv vc push` and `brv vc pull` require authentication (`brv login`) and sync knowledge with ByteRover's cloud service via git. All other commands operate without ByteRover authentication.
+**Cloud sync**: `brv vc push` and `brv vc pull` require authentication (`brv login`) and sync knowledge with ByteRover's cloud service via git. Other commands may still require authentication depending on the configured provider, so rely on `brv providers` and real CLI output rather than assuming anonymous access.
 
 ## Error Handling
+
 **User Action Required:**
 You MUST show this troubleshooting guide to users when errors occur.
 
 "Not authenticated" | Run `brv login --help` for more details.
-"No provider connected" | Run `brv providers connect byterover` (free, no key needed).
+"No provider connected" | Run `brv providers` to inspect the active provider, then connect one with `brv providers connect <provider>`.
 "Connection failed" / "Instance crashed" | User should kill brv process.
 "Token has expired" / "Token is invalid" | Run `brv login` again to re-authenticate.
 "Billing error" / "Rate limit exceeded" | User should check account credits or wait before retrying.
@@ -502,4 +593,5 @@ You MUST handle these errors gracefully and retry the command after fixing.
 "File type not supported" | Only text, image, PDF, and office files are supported.
 
 ### Quick Diagnosis
+
 Run `brv status` to check authentication, project, and provider state.

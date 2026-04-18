@@ -70,9 +70,12 @@ export default {
     excludedMutations: ['StringLiteral', 'Regex'],
   },
   disableTypeChecks: 'src/**/*.{ts,vue}',
-  reporters: ['progress', 'clear-text', 'html'],
+  reporters: ['progress', 'clear-text', 'html', 'json'],
   htmlReporter: {
     fileName: 'reports/mutation/mutation.html',
+  },
+  jsonReporter: {
+    fileName: 'reports/mutation/mutation.json',
   },
   thresholds: {
     high: 80,

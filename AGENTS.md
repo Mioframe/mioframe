@@ -15,6 +15,7 @@ Applies to the whole repository unless a deeper `AGENTS.md` overrides it.
 
 - Keep changes in the layer that owns the behavior, and import through `index.ts` when a public entry point exists.
 - Preserve FSD boundaries: `pages` compose screens, `widgets` compose larger sections, `features` own user actions, `entities` own domain reads and derived state, and `shared` stays upper-layer-free.
+- Keep ByteRover usage details in the `byterover` skill. Use `AGENTS.md` for stable repo policy, not step-by-step `brv` runbooks.
 - Verify third-party semantics from official docs or installed source before relying on ambiguous helpers, options, or return values. If the behavior is still unverified, say so.
 - Treat DOM parentage, scroll ownership, focus, teleport, and overlay wiring as concrete runtime contracts. Check the rendered hierarchy before moving wrappers or composition boundaries.
 - Keep the UI aligned with Material 3 expectations and optimize for mobile browsers first. Assume large datasets and low-end devices, and keep main-thread work bounded.
@@ -43,7 +44,6 @@ Applies to the whole repository unless a deeper `AGENTS.md` overrides it.
 - `widgets` may compose `features`, `entities`, and `shared`, but should not own domain rules.
 - UI-facing layers may cross into background logic only through explicit proxy clients. Do not directly import `*Service` modules into `pages`, `widgets`, `features`, `entities`, or shared UI.
 - Use `pnpm` for package management and project commands.
-- Run `brv` commands with escalated permissions, not the default Codex sandbox. `brv` uses a daemon plus state under `~/.config/brv`, `~/.cache/brv`, and `~/.local/state/brv`, so sandboxed runs can fail with lost daemon connections even when the project `.brv` tree is present.
 - After edits, run the narrowest relevant verification. For logic changes, run at least `pnpm type-check`; add focused `vitest`, Playwright, or reproducible smoke checks for behavior, schema, service, or storage changes.
 - Prefer targeted `oxlint`, `eslint --fix`, and `oxfmt` runs over repo-wide commands.
 - Use Conventional Commits.
