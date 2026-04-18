@@ -134,5 +134,39 @@ describe('LockManager', () => {
       const result = await promise;
       expect(result).toBe('result');
     });
+
+    it('should release the lock after the queued work settles', async () => {
+      await lockManager.request('/gc-test', async () => {
+        await Promise.resolve();
+      });
+
+      await Promise.resolve();
+
+      expect(lockManager.isLocked('/gc-test')).toBe(false);
+    });
+  });
+
+  describe('additional migration coverage', () => {
+    it('should allow nested requests for distinct paths without deadlocking', async () => {
+      await lockManager.request('/outer', async () => {
+        const innerResult = await lockManager.request('/inner', () => Promise.resolve('inner'));
+        expect(innerResult).toBe('inner');
+      });
+    });
+
+    it('should keep the execution order stable under bursty load', async () => {
+      const executionOrder: number[] = [];
+
+      await Promise.all(
+        Array.from({ length: 25 }, (_, index) =>
+          lockManager.request('/stress', async () => {
+            await Promise.resolve();
+            executionOrder.push(index);
+          }),
+        ),
+      );
+
+      expect(executionOrder).toEqual(Array.from({ length: 25 }, (_, index) => index));
+    });
   });
 });

@@ -24,7 +24,6 @@ const overlayContainerEl = useTemplateRef('overlayContainerEl');
 provideOverlayContainer(overlayContainerEl);
 
 const { permanentStorageRequest } = usePermanentStorageRequest();
-
 void permanentStorageRequest();
 
 const { settings } = useLocalSettings();

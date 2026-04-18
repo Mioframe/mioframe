@@ -4,24 +4,20 @@ Inherits the rules from `src/entities/AGENTS.md`. Applies to `src/entities/datab
 
 ## Contains
 
-- `useDatabaseData.ts`: entity API for item queries and mutations.
-- `DatabaseDataTable.vue`: entity-level table renderer.
-- `types.ts` and `index.ts`: typed contracts and public API.
+- Active-view item queries, item write entry points, and entity-scale table rendering.
 
 ## Patterns
 
-- Respect view, filter, and sort context when it changes the visible item set.
-- Route CRUD through service/document contracts instead of local shortcuts.
-- Keep table rendering entity-oriented and free of feature-level mutation flows.
+- Keep the visible row set aligned with active view, filter, sort, and default-value context.
+- Separate read contracts and entity rendering from feature-level mutation orchestration.
+- Route item writes through shared service and entity contracts rather than table-local shortcuts.
 
 ## Anti-patterns
 
-- Do not fetch data outside the entity composable when the entity contract already exists.
-- Do not mix table rendering with dialog or mutation orchestration.
-- Do not let item-list state drift from active view state.
+- Do not query around the entity contract when the existing read model already fits.
+- Do not mix dialog orchestration or feature-only mutation flows into table code.
 
 ## Constraints
 
-- Query contract changes must be checked against create, update, and remove behavior inside the active database view.
-- External imports should go through `index.ts`.
-- Minimum verification: `pnpm type-check` and a smoke check of create/update/remove item behavior in the touched view.
+- Changes here affect what rows appear in an active database view.
+- Minimum verification: `pnpm type-check`, then edit data in an active view and confirm refresh or reopen keeps the same row set for the touched filter, sort, and default-value semantics.

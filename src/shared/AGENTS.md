@@ -4,27 +4,22 @@ Inherits the rules from the root `AGENTS.md`. Applies to `src/shared` and its de
 
 ## Contains
 
-- `lib/`: utilities, composables, adapters, schema helpers, migrations, filesystem/API abstractions.
-- `service/`: infrastructural services, worker wiring, storage wiring, Google and document services.
-- `ui/`: reusable UI primitives and interaction helpers.
-- root shared modules such as configuration files.
+- Cross-layer infrastructure, background services, shared UI, reusable utilities, adapters, schemas, and configuration.
 
 ## Patterns
 
-- Code in `shared` should be domain-agnostic or define a formal cross-layer contract.
+- Code in `shared` should either stay domain-agnostic or define a formal contract reused by multiple upper layers.
 - Keep public submodule APIs small and predictable.
-- Place validation, adapters, and wrappers close to the infrastructure they protect.
-- Shared UI and infrastructure should solve recurring problems, not single business cases.
+- Place validation, adapters, and boundary wrappers close to the infrastructure they protect.
+- Shared UI and infrastructure should solve recurring problems, not one-off business cases.
 
 ## Anti-patterns
 
 - Do not import `entities`, `features`, `widgets`, `pages`, or `app` from `shared`.
 - Do not move code into `shared` just because it is convenient to import.
-- Do not mix business terminology into generic UI or infrastructure without a real cross-layer contract.
-- Do not hide global side effects or singleton behavior without making ownership explicit.
+- Do not hide singleton behavior or global side effects without explicit ownership.
 
 ## Constraints
 
-- Any module in `shared` should remain usable from multiple upper layers.
-- If a directory exposes an `index.ts`, treat it as the external entry point unless documented otherwise.
-- Minimum verification: `pnpm type-check`; add focused tests or smoke checks for infrastructure changes.
+- Any module in `shared` should remain reusable from multiple upper layers.
+- Minimum verification: `pnpm type-check`, plus focused tests or smoke checks for the specific shared contract that changed.

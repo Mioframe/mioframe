@@ -4,25 +4,20 @@ Inherits the rules from `src/entities/AGENTS.md`. Applies to `src/entities/cfrDo
 
 ## Contains
 
-- `useDocument.ts`: entity-level access to document state.
-- `DocumentMDListItem.vue`: document list item UI.
-- `DatabaseDocumentSelectOption.vue`: document selection UI.
-- `index.ts`: public entry point.
+- Entity-level CFR document access and small reusable document-selection or document-list UI.
 
 ## Patterns
 
-- Read and write document state through the composable contract.
-- Keep document-related UI light and free of feature-flow orchestration.
+- Expose document state through the entity composables in this directory instead of ad hoc caller reads.
 - Treat document handles and subscriptions as lifecycle-managed resources.
+- Keep feature actions and higher-level document orchestration outside this entity layer.
 
 ## Anti-patterns
 
-- Do not mutate document structure directly.
-- Do not mix page/widget orchestration into this entity access layer.
-- Do not move schema ownership here when it belongs in `shared/lib/databaseDocument`.
+- Do not mutate document structure directly from entity UI.
+- Do not move schema ownership here when it belongs in shared document contracts.
 
 ## Constraints
 
-- Changes to the composable API affect document selection, listing, and edit flows above this layer.
-- External imports should go through `index.ts`.
-- Minimum verification: `pnpm type-check` and a manual smoke check of the affected document selection/listing flow.
+- Changes here affect document list, selection, and other consumers of the document read contract.
+- Minimum verification: `pnpm type-check`, then exercise at least one document list and one document-selection surface that uses the touched contract.

@@ -63,19 +63,34 @@ pnpm test:run
 
 # Vitest with coverage
 pnpm test:coverage
+
+# StrykerJS mutation testing
+pnpm test:mutate
+
+# Dry-run the StrykerJS configuration
+pnpm exec stryker run --dryRunOnly
+
+# Narrow the mutation scope from the terminal when needed
+pnpm exec stryker run -m "src/shared/lib/**/*.ts"
 ```
 
-For Cypress, start the matching server in a separate terminal and then open Cypress:
+Browser smoke and end-to-end scenarios run with Playwright:
 
 ```bash
-# Preview server at https://localhost:4173
-pnpm preview
-pnpm cy:open
+# Install the Playwright browser once per machine
+pnpm e2e:install
 
-# Dev server at https://localhost:5173
-pnpm dev
-pnpm cy:open:dev
+# Run browser e2e in headless mode
+pnpm e2e
+
+# Open the Playwright UI runner
+pnpm e2e:ui
+
+# Run the same suite headed for local debugging
+pnpm e2e:headed
 ```
+
+`Vitest` is the default place for unit and integration coverage of internal logic, services, VFS, adapters, and composables. `Playwright` is reserved for browser smoke and end-to-end flows that exercise the app through the UI like a user would. `pnpm test:mutate` runs StrykerJS with the dynamic `stryker.config.mjs`, which derives mutation targets from colocated `*.test.ts` files, excludes `src/shared/ui`, and lets you narrow the scope further with CLI flags such as `-m`.
 
 ## Linting and Formatting
 

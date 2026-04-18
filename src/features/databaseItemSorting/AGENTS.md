@@ -4,25 +4,20 @@ Inherits the rules from `src/features/AGENTS.md`. Applies to `src/features/datab
 
 ## Contains
 
-- `DatabaseItemSortingListSection.vue`: the main sorting UI flow.
-- `DatabaseSortingListItem.vue`: sorting-row UI.
-- `PropertySortDirectionMenuItem.vue`: sort-direction selection.
-- `index.ts`: public feature entry point.
+- The UI flow for choosing sort keys, directions, and persisted sort order for a database view.
 
 ## Patterns
 
-- Keep this feature focused on interaction flow and sorting controls.
-- Source available properties and directions from entity/schema layers.
-- If drag-and-drop order matters, keep it aligned with persisted sorting state.
+- Source available properties and directions from entity or schema contracts.
+- Keep UI order aligned with the persisted sorting order.
+- Keep reorder behavior separate from the actual query-time sort implementation.
 
 ## Anti-patterns
 
-- Do not compute table sorting logic here as domain behavior.
-- Do not allow hidden `propertyId` or `direction` values.
-- Do not spread writable sorting state across multiple local sources of truth.
+- Do not compute domain sorting rules in this feature layer.
+- Do not allow hidden invalid `propertyId` or `direction` values to survive in writable state.
 
 ## Constraints
 
-- Changes here should be checked with entity sorting descriptions and database view persistence.
-- External imports should go through `index.ts`.
-- Minimum verification: `pnpm type-check` and a manual smoke check of the sorting flow.
+- Changes here affect both the sort controls and the row order users see in a view.
+- Minimum verification: `pnpm type-check`, then change sort direction or sort order in a view, confirm the row order updates, and refresh or reopen the same view to confirm the sorting persisted.

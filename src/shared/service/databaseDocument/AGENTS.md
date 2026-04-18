@@ -4,31 +4,23 @@ Inherits the rules from `src/shared/service/AGENTS.md`. Applies to `src/shared/s
 
 ## Contains
 
-- `databaseService.ts`: shared database document service.
-- `databasePropertiesService.ts`: property operations.
-- `databaseDataService.ts`: item operations.
-- `types.ts` and `index.ts`: shared types and public API.
-- `data/` and `view/`: query, sorting, filtering, and view-specific service logic.
+- Low-level database document queries and mutations, including data, property, view, sorting, and filtering service logic.
 
 ## Patterns
 
-- Keep query and mutation primitives for database documents here.
-- Ensure query keys and input contracts account for all result-shaping parameters.
-- Keep mutations as atomic and predictable as the data model allows.
-- Normalize service-layer errors here instead of pushing low-level details upward.
-- Keep raw stored reads and effective default-aware reads as separate, explicitly named contracts. Use `stored` for persisted document values and `effective` for read-time values with property defaults applied.
-- Resolve default-aware item/value reads in this service layer, not in entities, features, widgets, or components.
+- Keep query keys and inputs complete for every parameter that changes the result set.
+- Keep mutations atomic and explicit about invalidation side effects.
+- Resolve stored versus effective default-aware reads in this service layer rather than redistributing that logic upward.
+- Filters, sorts, and `$exists` checks must use effective values when properties define defaults, so sparse stored rows still participate through their defaulted values.
+- Coordinate document-structure changes with schema, migration, and type updates.
 
 ## Anti-patterns
 
 - Do not add UI presentation or screen orchestration here.
-- Do not change document structure without coordinated schema, migration, and type updates.
-- Do not add hidden read-time side effects.
-- Do not break consistency between data, property, and view operations.
+- Do not introduce hidden read-time side effects.
+- Do not let data, property, and view operations drift into incompatible contracts.
 
 ## Constraints
 
-- This directory defines low-level contracts used by many entities and features.
-- Sorting and filtering changes must be checked for persistence and cache/subscription correctness.
-- External imports should go through `index.ts`.
-- Minimum verification: `pnpm type-check` and focused tests or smoke checks for touched database document operations.
+- This directory defines contracts used by many entities and features.
+- Minimum verification: `pnpm type-check`, run focused database-document tests for the touched branch, then verify create, edit, remove, sort, or filter flows still produce correct invalidation and persisted results.

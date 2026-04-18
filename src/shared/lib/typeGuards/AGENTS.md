@@ -4,24 +4,22 @@ Inherits the rules from `src/shared/lib/AGENTS.md`. Applies to `src/shared/lib/t
 
 ## Contains
 
-- guards for primitives and collections such as `isArray`, `isInteger`, `isObjectLike`, `hasValue`, `hasOwnKey`.
-- guards for platform-specific objects such as filesystem handles.
-- `index.ts`: public entry point.
+- Small reusable runtime predicates whose behavior also drives TypeScript narrowing.
 
 ## Patterns
 
-- Each guard should narrow types predictably and without side effects.
-- Prefer small composable guards over broad "do everything" predicates.
-- When a guard mirrors a schema-level contract, keep it aligned with validation helpers.
+- Keep each guard focused on one predicate and one narrowing contract.
+- Keep runtime behavior aligned with the TypeScript narrowing callers expect.
+- Treat browser constructors as runtime-optional. Guard their presence before `instanceof`, and keep storage-boundary validation aligned with that runtime check.
+- When a guard mirrors a schema-level contract, keep it aligned with the nearby validation helper.
 
 ## Anti-patterns
 
-- Do not add magic universal guards that try to validate everything.
-- Do not change runtime behavior without checking TypeScript narrowing expectations.
-- Do not duplicate equivalent guards under multiple names without a clear reason.
+- Do not add universal "validate everything" guards.
+- Do not change runtime semantics without checking the resulting narrowing behavior.
+- Do not duplicate equivalent guards under different names without a clear reason.
 
 ## Constraints
 
-- Guard changes must be checked for both runtime behavior and TypeScript inference.
-- External imports should go through `index.ts`.
-- Minimum verification: `pnpm type-check` and focused checks for the touched narrowing behavior.
+- Guard changes affect both runtime behavior and compile-time inference.
+- Minimum verification: `pnpm type-check`, then run focused runtime and narrowing checks for the touched guard.

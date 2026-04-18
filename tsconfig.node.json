@@ -4,9 +4,10 @@
   "include": [
     "vite.config.*",
     "vitest.config.*",
-    "cypress.config.*",
+    "playwright.config.*",
     "pwa-assets.config.*",
-    "eslint.config.*"
+    "eslint.config.*",
+    "tests/**/*.ts"
   ],
   "compilerOptions": {
     "composite": true,
