@@ -8,12 +8,12 @@
     },
     {
       "path": "facts/_index.md",
-      "tokens": 460,
+      "tokens": 461,
       "type": "summary"
     },
     {
       "path": "facts/project/_index.md",
-      "tokens": 341,
+      "tokens": 343,
       "type": "summary"
     },
     {
@@ -37,13 +37,13 @@
       "type": "context"
     }
   ],
-  "generated_at": "2026-04-17T19:14:45.482Z",
+  "generated_at": "2026-04-18T05:41:11.305Z",
   "lane_tokens": {
     "contexts": 248,
     "stubs": 0,
-    "summaries": 1172
+    "summaries": 1175
   },
-  "source_fingerprint": "55eb89202c22f2197b40690ed7bd17cf253e06a8c05904da24b06bf043a86b60",
-  "total_tokens": 1420,
+  "source_fingerprint": "5f5d291b3d3b3f13a1d118b692601fc1734d0638a6c3d4605e8c275b89191931",
+  "total_tokens": 1423,
   "version": 1
 }
