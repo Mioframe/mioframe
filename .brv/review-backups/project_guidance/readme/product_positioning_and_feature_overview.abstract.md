@@ -1,0 +1,1 @@
+The README positions Beaver as an offline-by-default, local-first personal data app (no registration or backend) storing data in OPFS or a local folder, syncing via CRDT file transfers with a roadmap checklist and FSL licensing.
