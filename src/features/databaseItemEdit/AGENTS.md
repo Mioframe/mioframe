@@ -4,24 +4,20 @@ Inherits the rules from `src/features/AGENTS.md`. Applies to `src/features/datab
 
 ## Contains
 
-- `DatabaseItemEditDialog.vue`: edit flow for an existing item.
-- `DbItemAddDialog.vue`: add flow built on the same editing contract.
-- `index.ts`: public feature entry point.
+- Add and edit flows for database items plus the shared editing state that maps property kinds to value editors.
 
 ## Patterns
 
-- Keep add and edit on top of the same editing contract wherever possible.
-- Keep value editing property-aware and type-aware.
-- Persist through entity/service APIs rather than direct item mutation.
+- Keep add and edit on top of one editing-state contract when the behavior is the same.
+- Choose value editors from canonical property-kind information rather than ad hoc UI branching.
+- Persist changes through entity or service contracts instead of direct item mutation.
 
 ## Anti-patterns
 
-- Do not duplicate the form between add and edit without a strong reason.
-- Do not lose the mapping between property type and concrete value editor.
-- Do not leave dialog state dirty after close or reopen.
+- Do not duplicate form state between add and edit paths without a strong reason.
+- Do not let dialog state or value-editor mappings drift after close or reopen.
 
 ## Constraints
 
-- Changes here affect add/edit flows across multiple supported property types.
-- External imports should go through `index.ts`.
-- Minimum verification: `pnpm type-check` and a manual smoke check of add/edit item flows.
+- Changes here affect multiple property kinds at once.
+- Minimum verification: `pnpm type-check`, then add or edit an item using the touched property kinds, save and reopen to confirm persistence, and verify the cancel path leaves stored data unchanged.

@@ -4,24 +4,20 @@ Inherits the rules from `src/features/AGENTS.md`. Applies to `src/features/datab
 
 ## Contains
 
-- `DatabaseViewCreateDialog.vue`: view creation dialog flow.
-- `DatabaseViewAddForm.vue`: form for name and layout selection.
-- `index.ts`: public feature entry point.
+- The flow for creating a database view and choosing its initial layout or defaults.
 
 ## Patterns
 
-- Use only supported layout constants from the document schema.
-- Keep defaults safe for a new view and stable across dialog reopen.
-- Ensure form state behaves consistently on submit, cancel, and reopen.
+- Source available layouts from canonical schema or constants rather than local duplicates.
+- Keep initial defaults owned in one place so create, reopen, and reset behavior stay aligned.
+- Reset the draft predictably after cancel or successful submit.
 
 ## Anti-patterns
 
-- Do not create a view with a layout unsupported by downstream UI.
-- Do not hide defaults and validation rules in multiple places.
-- Do not mix create and edit behavior without a clear shared abstraction.
+- Do not create views with layouts unsupported by the rest of the database UI.
+- Do not scatter layout defaults or validation rules across multiple components.
 
 ## Constraints
 
-- Any view config expansion must be checked in selection, sorting, filtering, and persistence flows.
-- External imports should go through `index.ts`.
-- Minimum verification: `pnpm type-check` and a manual smoke check of the view creation flow.
+- Changes here must stay compatible with view selection, sorting, filtering, and persistence flows.
+- Minimum verification: `pnpm type-check`, then create a view using the touched defaults, switch to it, and refresh or reopen the document to confirm the selected layout persisted.

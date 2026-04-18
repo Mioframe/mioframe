@@ -44,7 +44,7 @@ const onClickRenameDocument = () => {
         <slot name="navigationButton" />
       </template>
 
-      <template #trailingInteractive>
+      <template #trailingElements>
         <MDIconButton
           tooltip="Rename document"
           md-symbol-name="edit"

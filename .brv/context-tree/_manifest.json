@@ -1,0 +1,49 @@
+{
+  "active_context": [
+    {
+      "order": 3,
+      "path": "_index.md",
+      "tokens": 371,
+      "type": "summary"
+    },
+    {
+      "path": "facts/_index.md",
+      "tokens": 461,
+      "type": "summary"
+    },
+    {
+      "path": "facts/project/_index.md",
+      "tokens": 343,
+      "type": "summary"
+    },
+    {
+      "abstractPath": "facts/project/testing_preferences.abstract.md",
+      "abstractTokens": 32,
+      "importance": 58,
+      "path": "facts/project/testing_preferences.md",
+      "tokens": 32,
+      "type": "context"
+    },
+    {
+      "importance": 50,
+      "path": "facts/context.md",
+      "tokens": 129,
+      "type": "context"
+    },
+    {
+      "importance": 50,
+      "path": "facts/project/context.md",
+      "tokens": 87,
+      "type": "context"
+    }
+  ],
+  "generated_at": "2026-04-18T05:41:11.305Z",
+  "lane_tokens": {
+    "contexts": 248,
+    "stubs": 0,
+    "summaries": 1175
+  },
+  "source_fingerprint": "5f5d291b3d3b3f13a1d118b692601fc1734d0638a6c3d4605e8c275b89191931",
+  "total_tokens": 1423,
+  "version": 1
+}

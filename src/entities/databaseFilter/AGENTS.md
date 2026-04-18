@@ -4,25 +4,20 @@ Inherits the rules from `src/entities/AGENTS.md`. Applies to `src/entities/datab
 
 ## Contains
 
-- `useDatabaseViewFilter.ts`: entity API for filter mutations.
-- `FilterQuery.vue`: entity-level filter tree rendering.
-- `DatabaseSimpleFilterValueChip.vue`: compact filter value UI.
-- `types.ts` and `index.ts`: typed contracts and public API.
+- Persisted database-view filter state and reusable filter tree or chip rendering.
 
 ## Patterns
 
-- Treat filters as schema-compatible data structures.
-- Apply all filter-tree writes through patch/remove contracts.
-- Keep entity UI aligned with filter structure rather than feature-specific editing flow.
+- Treat filters as schema-compatible persisted structures.
+- Apply tree writes through patch or remove contracts instead of ad hoc nested mutation.
+- Keep rendered filter UI aligned with the stored filter structure rather than one editor implementation.
 
 ## Anti-patterns
 
-- Do not couple filter model ownership to a specific editor dialog.
-- Do not mutate nested filter nodes directly.
+- Do not couple filter ownership to a specific dialog.
 - Do not duplicate operator semantics across layers.
 
 ## Constraints
 
-- Filter shape and operator changes must stay compatible with persisted documents and feature editing flows.
-- External imports should go through `index.ts`.
-- Minimum verification: `pnpm type-check` and a smoke check of filter rendering/editing for the touched case.
+- Filter contract changes affect both persistence and row matching.
+- Minimum verification: `pnpm type-check`, then save a touched filter, reopen the same view, and confirm the rendered filter structure still matches the resulting row set.

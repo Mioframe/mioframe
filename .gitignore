@@ -26,8 +26,12 @@ temp/
 *.local.*
 tsconfig.*.tsbuildinfo
 coverage/
+reports/mutation/
+playwright-report/
+test-results/
 .sisyphus/
 .opencode/
 .claude/
 tsconfig.tsbuildinfo
 .eslintcache
+.stryker-tmp/

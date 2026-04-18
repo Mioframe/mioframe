@@ -10,6 +10,7 @@ import type {
 } from './IFileSystemProvider';
 import { FSNodeType } from './IFileSystemProvider';
 import { FileSystemError, VfsError } from './VfsError';
+import { LockManager } from './LockManager';
 
 describe('VirtualFileSystem', () => {
   let vfs: VirtualFileSystem;
@@ -188,6 +189,20 @@ describe('VirtualFileSystem', () => {
 
       await expect(vfs.readDirectory('/mnt/test/test.txt')).rejects.toThrow();
     });
+
+    it('should return file and directory entries with the expected node kinds', async () => {
+      vfs.mount('/mnt/test', memoryFS);
+
+      await vfs.createDirectory('/mnt/test/folder');
+      await vfs.writeFile('/mnt/test/folder/file.txt', 'content');
+      await vfs.createDirectory('/mnt/test/folder/subfolder');
+
+      const entries = await vfs.readDirectory('/mnt/test/folder');
+
+      expect(entries).toHaveLength(2);
+      expect(entries.find(([name]) => name === 'file.txt')?.[1].type).toBe(FSNodeType.File);
+      expect(entries.find(([name]) => name === 'subfolder')?.[1].type).toBe(FSNodeType.Directory);
+    });
   });
 
   describe('createDirectory method', () => {
@@ -331,6 +346,29 @@ describe('VirtualFileSystem', () => {
       expect(content).toBe('content1');
     });
 
+    it('should rename the directory node itself, not only its children', async () => {
+      vfs.mount('/mnt/test', memoryFS);
+
+      await vfs.createDirectory('/mnt/test/A');
+      await vfs.writeFile('/mnt/test/A/file.txt', 'content');
+
+      await vfs.move('/mnt/test/A', '/mnt/test/B');
+
+      expect(await vfs.exists('/mnt/test/B/file.txt')).toBe(true);
+      expect(await vfs.readText('/mnt/test/B/file.txt')).toBe('content');
+      expect(await vfs.exists('/mnt/test/A')).toBe(false);
+      await expect(vfs.stat('/mnt/test/B')).resolves.toMatchObject({ type: FSNodeType.Directory });
+    });
+
+    it('should reject moves into a destination with a missing parent directory', async () => {
+      vfs.mount('/mnt/test', memoryFS);
+      await vfs.createDirectory('/mnt/test/src');
+
+      await expect(vfs.move('/mnt/test/src', '/mnt/test/ghost/dest')).rejects.toMatchObject({
+        code: FileSystemError.FileNotFound,
+      });
+    });
+
     it('should handle move with invalid paths gracefully', async () => {
       // Test moving to an empty string path
       await expect(vfs.move('/test', '')).rejects.toThrow();
@@ -463,6 +501,37 @@ describe('VirtualFileSystem', () => {
 
       // Write to a file (this should not throw due to lock management)
       await vfs.writeFile('/mnt/test/file.txt', 'content');
+    });
+
+    it('should serialize reads with writes for the same file path', async () => {
+      const lockManager = new LockManager();
+      vfs = new VirtualFileSystem(lockManager);
+      memoryFS = new MemoryFileSystem();
+      vfs.mount('/mnt/test', memoryFS);
+
+      const filePath = '/mnt/test/counter.txt';
+      await vfs.writeFile(filePath, '0');
+
+      let writeInProgress = false;
+
+      const slowWrite = lockManager.request(filePath, async () => {
+        writeInProgress = true;
+        await new Promise((resolve) => setTimeout(resolve, 20));
+        writeInProgress = false;
+        await memoryFS.writeFile('/counter.txt', 'done', {
+          create: true,
+          overwrite: true,
+        });
+      });
+
+      const readWhileWriting = (async () => {
+        const content = await vfs.readText(filePath);
+        expect(writeInProgress).toBe(false);
+        return content;
+      })();
+
+      await expect(readWhileWriting).resolves.toBe('done');
+      await slowWrite;
     });
   });
 

@@ -63,19 +63,34 @@ pnpm test:run
 
 # Vitest с покрытием
 pnpm test:coverage
+
+# StrykerJS mutation testing
+pnpm test:mutate
+
+# Dry-run конфигурации StrykerJS
+pnpm exec stryker run --dryRunOnly
+
+# При необходимости сузить область мутаций прямо из терминала
+pnpm exec stryker run -m "src/shared/lib/**/*.ts"
 ```
 
-Для Cypress сначала поднимите подходящий сервер в отдельном терминале, затем откройте Cypress:
+Browser smoke и end-to-end сценарии запускаются через Playwright:
 
 ```bash
-# Preview-сервер на https://localhost:4173
-pnpm preview
-pnpm cy:open
+# Один раз на машину установить browser-бинарь Playwright
+pnpm e2e:install
 
-# Dev-сервер на https://localhost:5173
-pnpm dev
-pnpm cy:open:dev
+# Headless browser e2e
+pnpm e2e
+
+# UI runner Playwright
+pnpm e2e:ui
+
+# Headed-режим для локальной отладки
+pnpm e2e:headed
 ```
+
+`Vitest` используйте для unit и integration проверок внутренней логики, сервисов, VFS, адаптеров и composables. `Playwright` оставлен только для browser smoke и e2e-сценариев через пользовательский UI. `pnpm test:mutate` запускает StrykerJS с динамическим `stryker.config.mjs`, который выводит список файлов для мутаций по colocated `*.test.ts`, исключает `src/shared/ui` и при необходимости дополнительно сужается CLI-флагами вроде `-m`.
 
 ## Линтинг и форматирование
 
@@ -137,3 +152,7 @@ pnpm format
       - [ ] Скрытие столбцов
       - [ ] Сортировка столбцов
     - [ ] Галерея карточек
+
+## Лицензия
+
+Functional Source License (FSL) - 3 years non-compete term.

@@ -4,25 +4,21 @@ Inherits the rules from `src/shared/lib/AGENTS.md`. Applies to `src/shared/lib/d
 
 ## Contains
 
-- `types.ts`: canonical database document types.
-- `databaseDocument.ts` and related constants: base document contract.
-- nested schema and migration modules for properties, items, views, and related parts of the document.
-- `index.ts`: public entry point.
+- Canonical database document schema, types, constants, migrations, and default-aware read helpers.
 
 ## Patterns
 
-- Treat this directory as the canonical source of schema, types, and constants for database documents.
-- Update types, validation, and migrations together whenever document shape changes.
-- Store durable data in the document schema, not temporary UI state.
+- Treat this directory as the single source of truth for durable database document shape.
+- Update types, validation, and migrations together whenever the schema changes.
+- Store durable document data here, not temporary UI state.
 
 ## Anti-patterns
 
-- Do not add fields that only exist for one screen or one rendering shortcut.
-- Do not duplicate database document constants in entities or features.
-- Do not change enum-like values without checking serialization and backward compatibility.
+- Do not add fields that exist only for one screen or rendering shortcut.
+- Do not duplicate schema constants in entities, features, or services.
+- Do not change serialized enum-like values without compatibility review.
 
 ## Constraints
 
-- Changes here affect services, entities, features, import/export behavior, and old-document loading.
-- External imports should go through `index.ts`.
-- Minimum verification: `pnpm type-check` and checks for types, validation, and migrations in the touched schema path.
+- Changes here affect old-document loading, services, entities, and import or export behavior.
+- Minimum verification: `pnpm type-check`, then verify the touched schema path against validation, migration from an older payload, and effective-value behavior when defaults are involved.

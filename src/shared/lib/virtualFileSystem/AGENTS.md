@@ -4,26 +4,20 @@ Inherits the rules from `src/shared/lib/AGENTS.md`. Applies to `src/shared/lib/v
 
 ## Contains
 
-- `VirtualFileSystem.ts`: the main filesystem abstraction contract.
-- `PathUtils.ts`: path manipulation helpers.
-- `EventEmitter.ts`: filesystem event delivery.
-- `LockManager.ts`: concurrency coordination.
-- `MemoryFileSystem.ts` and tests: in-memory and verification utilities.
+- The provider-neutral virtual filesystem contract, path utilities, event delivery, locking, and in-memory test implementations.
 
 ## Patterns
 
-- Keep one consistent filesystem contract across providers and implementations.
-- Keep path semantics, error semantics, and event semantics aligned across implementations.
-- Make concurrency and locking behavior explicit instead of relying on incidental ordering.
+- Keep path, error, and event semantics aligned across implementations.
+- Make concurrency and locking rules explicit instead of relying on incidental ordering.
+- Treat listener, lock, and handle cleanup as part of the contract, not as caller folklore.
 
 ## Anti-patterns
 
 - Do not bypass this layer with direct browser filesystem calls when a shared contract is required.
-- Do not change event order or lock semantics without tests.
-- Do not leave listener or handle cleanup as an undocumented caller responsibility.
+- Do not change event order or lock semantics without updating tests.
 
 ## Constraints
 
-- Event, lock, and read/write semantics changes require updated tests and parallel-flow checks.
-- External imports should go through `index.ts`.
-- Minimum verification: `pnpm type-check` and focused tests for events, locking, and concurrent access.
+- Event and lock changes affect every filesystem-backed flow.
+- Minimum verification: `pnpm type-check`, then run focused VFS tests for the touched path, lock, and event behavior, plus browser-level checks when concurrency or event delivery changed.
