@@ -90,5 +90,10 @@
   },
   "eslint.format.enable": true,
   "eslint.lintTask.enable": true,
-  "eslint.validate": ["javascript", "typescript", "vue"]
+  "eslint.validate": ["javascript", "typescript", "vue"],
+  "github.copilot.chat.commitMessageGeneration.instructions": [
+    {
+      "file": ".agents/skills/commit-message/SKILL.md"
+    }
+  ]
 }
