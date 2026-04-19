@@ -3,23 +3,25 @@
     {
       "order": 3,
       "path": "_index.md",
-      "tokens": 371,
+      "tokens": 848,
       "type": "summary"
     },
     {
+      "order": 2,
       "path": "facts/_index.md",
-      "tokens": 461,
+      "tokens": 627,
       "type": "summary"
     },
     {
+      "order": 1,
       "path": "facts/project/_index.md",
-      "tokens": 343,
+      "tokens": 264,
       "type": "summary"
     },
     {
       "abstractPath": "facts/project/testing_preferences.abstract.md",
       "abstractTokens": 32,
-      "importance": 58,
+      "importance": 85,
       "path": "facts/project/testing_preferences.md",
       "tokens": 32,
       "type": "context"
@@ -32,18 +34,36 @@
     },
     {
       "importance": 50,
+      "path": "facts/local-first-file-based-workflows-imply-in-memory-first-testing-avoid-external-de.md",
+      "tokens": 251,
+      "type": "context"
+    },
+    {
+      "importance": 50,
       "path": "facts/project/context.md",
       "tokens": 87,
       "type": "context"
+    },
+    {
+      "importance": 50,
+      "path": "project_guidance/documentation-policy-keep-guidance-platform-neutral-and-align-test-guidance-with.md",
+      "tokens": 259,
+      "type": "context"
+    },
+    {
+      "importance": 50,
+      "path": "project_guidance/readme/product_positioning_and_feature_overview.md",
+      "tokens": 1542,
+      "type": "context"
     }
   ],
-  "generated_at": "2026-04-18T05:41:11.305Z",
+  "generated_at": "2026-04-18T14:01:08.972Z",
   "lane_tokens": {
-    "contexts": 248,
+    "contexts": 2300,
     "stubs": 0,
-    "summaries": 1175
+    "summaries": 1739
   },
-  "source_fingerprint": "5f5d291b3d3b3f13a1d118b692601fc1734d0638a6c3d4605e8c275b89191931",
-  "total_tokens": 1423,
+  "source_fingerprint": "4232cdc8cfd4577c8ae860a42a0094a5fdb244202a3b4912a0aea7b7a86ddbff",
+  "total_tokens": 4039,
   "version": 1
 }

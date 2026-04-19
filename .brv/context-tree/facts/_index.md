@@ -1,43 +1,56 @@
 ---
-tags: []
-keywords: []
-importance: 53
-recency: 1
-maturity: draft
-accessCount: 1
+children_hash: d9b5d75f5e010a4d828c01f9e8060ba29accdece01517e1e5cfeaca403a62520
+compression_ratio: 0.8818565400843882
+condensation_order: 2
+covers:
+  [
+    context.md,
+    local-first-file-based-workflows-imply-in-memory-first-testing-avoid-external-de.md,
+    project/_index.md,
+  ]
+covers_token_total: 711
+summary_level: d2
+token_count: 627
+type: summary
 ---
 
-# Level d2 Structural Summary: facts
+## facts (domain) — Structural Summary (d2)
 
-## Domain purpose and scope
+### Domain intent (`context.md`)
 
-The `facts` domain holds stable, recall-friendly project knowledge: technology choices, architectural facts, testing expectations, environment constraints, and operational preferences. It is intended for concise durable conventions rather than feature-specific implementation detail or personal profile data.
+- **Purpose:** Stable, easy-to-recall **project-level facts**: technical choices, operating preferences, and durable conventions.
+- **Scope included:** tech/architecture facts, testing expectations + environment constraints, project-wide configuration and operational preferences.
+- **Scope excluded:** personal profile facts; detailed feature implementation notes.
+- **Usage pattern:** keep entries concise and durable; use for “defaults” that guide decisions across the repo.
 
-## Structural overview
+---
 
-- **`context.md`** defines the domain boundary and intended usage.
-  - Includes project-wide facts, technical choices, and operational preferences.
-  - Excludes personal user facts and detailed feature implementation notes.
-- **`project/_index.md`** summarizes the testing-related branch of this domain.
-  - It points to `context.md` and `testing_preferences.md`.
-  - It frames testing as a compact, project-level guidance set centered on fast, isolated, in-memory unit tests.
+### Key cross-domain synthesis (`local-first-file-based-workflows-imply-in-memory-first-testing-avoid-external-de.md`)
 
-## Key facts and decisions
+- **Architectural premise (from `project_guidance`):**
+  - Beaver is **local-first** and **offline by default**
+  - **No registration** and **no hosted backend**
+  - Cross-device workflow is **file-based export/import** with **CRDT-based merges**
+- **Testing convention derived from architecture (ties to `facts/project/testing_preferences.md`):**
+  - Prefer **fast, isolated, in-memory unit tests** to match offline/no-backend constraints.
+  - Avoid **external dependencies** (real DB/network/services) in the unit-test layer; instead use **fakes, in-memory repositories, and pure-function tests**.
+- **Relationship:** This synthesis explicitly links product constraints (local-first + CRDT + file transfer) to test strategy (in-memory-first), and cites both **`project_guidance`** and **`facts`** as evidence sources.
 
-- The core testing rule is explicit: **unit tests should stay fast and in-memory** (`testing_preferences.md`).
-- The preferred test style emphasizes:
-  - in-memory isolation,
-  - fast feedback,
-  - avoiding slow integration-style setup,
-  - minimizing external dependencies.
-- Common implementation patterns include:
-  - in-memory repositories,
-  - fake services,
-  - pure-function tests.
-- The summary treats these as durable project conventions, not optional examples.
+---
 
-## Relationships and drill-down
+### Project testing constraints & preferences index (`project/_index.md`)
 
-- `context.md` provides the domain-level framing for all facts.
-- `testing_preferences.md` contains the detailed unit-testing rule set and its rationale.
-- `project/_index.md` acts as the structural bridge, linking the general facts domain to the testing preference subtree and preserving the distinction between overview and detailed guidance.
+- **What it summarizes:** testing constraints/preferences shaping how automated tests are written and maintained.
+- **Core rule (verbatim, from `testing_preferences.md`):** “**Unit tests should stay fast and in-memory.**”
+- **Intent/impact:** unit tests should be **isolated** with **minimal external deps**, avoiding slow integration-style setups.
+- **Process flow:** `test execution -> in-memory isolation -> fast feedback`
+- **Recorded fact:** `unit_test_execution` (category: **convention**) capturing the same rule.
+- **Provenance metadata:** timestamp **2026-04-17**, author **user**, maturity **core** (importance 85).
+
+---
+
+### Drill-down map (child entries)
+
+- **Domain definition:** `context.md`
+- **Architecture→testing synthesis:** `local-first-file-based-workflows-imply-in-memory-first-testing-avoid-external-de.md`
+- **Testing topic summary:** `project/_index.md` (covers `context.md`, `testing_preferences.md`)
