@@ -1,11 +1,10 @@
 ---
-confidence: 0.74
+tags: []
+keywords: []
+importance: 53
+recency: 1
 maturity: draft
-sources:
-  - project_guidance/_index.md
-  - facts/_index.md
-synthesized_at: '2026-04-18T14:00:16.312Z'
-type: synthesis
+accessCount: 1
 ---
 
 # Local-first, file-based workflows imply in-memory-first testing (avoid external deps)

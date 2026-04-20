@@ -3,10 +3,10 @@ title: Testing Preferences
 summary: Unit tests should stay fast and in-memory.
 tags: []
 keywords: []
-importance: 85
+importance: 88
 recency: 1
 maturity: core
-accessCount: 10
+accessCount: 11
 updateCount: 1
 createdAt: '2026-04-17T13:04:42.117Z'
 updatedAt: '2026-04-17T13:05:42.087Z'

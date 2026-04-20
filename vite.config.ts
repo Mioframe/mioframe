@@ -116,7 +116,7 @@ export default defineConfig(({ mode, isPreview }) => {
       ? [
           sentryVitePlugin({
             org: 'vb-ak',
-            project: 'beaver',
+            project: 'mioframe',
             authToken: env.SENTRY_AUTH_TOKEN,
             telemetry: false,
           }),
