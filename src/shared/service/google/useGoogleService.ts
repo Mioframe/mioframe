@@ -30,6 +30,7 @@ export interface GoogleApi {
 }
 
 export const GOOGLE_DRIVE_ROOT_NAME = 'Google Drive';
+export const GOOGLE_DRIVE_ROOT_DESCRIPTION = 'Cloud storage from Google Drive';
 
 export type GoogleSessionDisplay = {
   email: string;

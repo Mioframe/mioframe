@@ -27,6 +27,9 @@ export interface ReadDirectoryOptions {
 export { DEVICE_FILES_ROOT_NAME };
 export type { DeviceFileRecord };
 
+const LOCAL_DEVICE_DIRECTORY_DESCRIPTION = 'Directory on this device';
+const OPFS_DIRECTORY_DESCRIPTION = 'Saved directly in your browser on this device';
+
 const setupFileSystemService = () => {
   const vfs = new VirtualFileSystem();
   const deviceFileSystemProvider = DeviceFileSystemProvider();
@@ -149,6 +152,7 @@ const setupFileSystemService = () => {
     const fileSystemDirectoryHandle = await navigator.storage?.getDirectory();
     if (fileSystemDirectoryHandle) {
       deviceFileSystemProvider.upsertRecord({
+        description: OPFS_DIRECTORY_DESCRIPTION,
         name: OPFSName,
         handle: fileSystemDirectoryHandle,
       });
@@ -206,10 +210,12 @@ const setupFileSystemService = () => {
     const records = await getRecordList();
     const existingRecord = await findRecordByHandle(records, handle);
     const nextRecord = {
+      description: LOCAL_DEVICE_DIRECTORY_DESCRIPTION,
       name: getUniqueDeviceDirectoryName(handle.name, records, existingRecord),
       handle,
     } satisfies DeviceFileRecord;
     const nextPersistedRecord = {
+      description: nextRecord.description,
       name: nextRecord.name,
       handle: nextRecord.handle,
     } satisfies PersistedDeviceDirectoryRecord;

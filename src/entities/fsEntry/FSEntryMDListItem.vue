@@ -7,7 +7,7 @@ import { toRefs } from 'vue';
 const props = defineProps<{
   name: string;
   type: FSNodeType;
-  supportingText?: string;
+  supportingText?: string | undefined;
   isButton?: boolean;
 }>();
 

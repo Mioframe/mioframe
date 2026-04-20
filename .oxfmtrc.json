@@ -1,5 +1,6 @@
 {
   "$schema": "./node_modules/oxfmt/configuration_schema.json",
   "semi": true,
-  "singleQuote": true
+  "singleQuote": true,
+  "ignorePatterns": [".brv/*", "dist/*", "node_modules/*"]
 }

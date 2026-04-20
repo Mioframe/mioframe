@@ -3,28 +3,13 @@
     {
       "order": 3,
       "path": "_index.md",
-      "tokens": 848,
+      "tokens": 1640,
       "type": "summary"
     },
     {
-      "order": 2,
-      "path": "facts/_index.md",
-      "tokens": 627,
-      "type": "summary"
-    },
-    {
-      "order": 1,
       "path": "facts/project/_index.md",
-      "tokens": 264,
+      "tokens": 287,
       "type": "summary"
-    },
-    {
-      "abstractPath": "facts/project/testing_preferences.abstract.md",
-      "abstractTokens": 32,
-      "importance": 85,
-      "path": "facts/project/testing_preferences.md",
-      "tokens": 32,
-      "type": "context"
     },
     {
       "importance": 50,
@@ -35,13 +20,29 @@
     {
       "importance": 50,
       "path": "facts/local-first-file-based-workflows-imply-in-memory-first-testing-avoid-external-de.md",
-      "tokens": 251,
+      "tokens": 233,
       "type": "context"
     },
     {
       "importance": 50,
       "path": "facts/project/context.md",
       "tokens": 87,
+      "type": "context"
+    },
+    {
+      "abstractPath": "facts/project/testing_preferences.abstract.md",
+      "abstractTokens": 32,
+      "importance": 50,
+      "path": "facts/project/testing_preferences.md",
+      "tokens": 32,
+      "type": "context"
+    },
+    {
+      "abstractPath": "governance/repo_guidelines/agents_repository_policy.abstract.md",
+      "abstractTokens": 58,
+      "importance": 50,
+      "path": "governance/repo_guidelines/agents_repository_policy.md",
+      "tokens": 58,
       "type": "context"
     },
     {
@@ -53,17 +54,25 @@
     {
       "importance": 50,
       "path": "project_guidance/readme/product_positioning_and_feature_overview.md",
-      "tokens": 1542,
+      "tokens": 1252,
+      "type": "context"
+    },
+    {
+      "abstractPath": "repo_guidelines/agents_guidance/repository_agents_policy.abstract.md",
+      "abstractTokens": 58,
+      "importance": 50,
+      "path": "repo_guidelines/agents_guidance/repository_agents_policy.md",
+      "tokens": 58,
       "type": "context"
     }
   ],
-  "generated_at": "2026-04-18T14:01:08.972Z",
+  "generated_at": "2026-04-20T11:04:56.642Z",
   "lane_tokens": {
-    "contexts": 2300,
+    "contexts": 2108,
     "stubs": 0,
-    "summaries": 1739
+    "summaries": 1927
   },
-  "source_fingerprint": "4232cdc8cfd4577c8ae860a42a0094a5fdb244202a3b4912a0aea7b7a86ddbff",
-  "total_tokens": 4039,
+  "source_fingerprint": "ba5254d6dae2c85490997905c119535b71feac63a88a214073d0172b9445ca12",
+  "total_tokens": 4035,
   "version": 1
 }

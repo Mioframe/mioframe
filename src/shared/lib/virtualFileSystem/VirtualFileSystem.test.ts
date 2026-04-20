@@ -49,6 +49,12 @@ describe('VirtualFileSystem', () => {
       expect(mountsList).toContain(testPath);
     });
 
+    it('should throw when mounting an empty path', () => {
+      expect(() => {
+        vfs.mount('', memoryFS);
+      }).toThrow('Mount path cannot be empty');
+    });
+
     it('should forward provider watch events with the mount path prefix', () => {
       const memoryFileSystem = new MemoryFileSystem();
       const providerEvents = new EventEmitter();
@@ -100,6 +106,90 @@ describe('VirtualFileSystem', () => {
         source: 'provider',
         mountPath: '/mnt/test',
         providerPath: '/watched.txt',
+      });
+    });
+
+    it('should remount by unsubscribing the previous provider watcher first', () => {
+      const firstEvents = new EventEmitter();
+      const secondEvents = new EventEmitter();
+      const observedEvents: Array<{ path: string; source: string }> = [];
+      const firstProvider: IFileSystemProvider = {
+        watch: (callback) => firstEvents.subscribe(callback),
+        stat: (path) => memoryFS.stat(path),
+        readFile: (path) => memoryFS.readFile(path),
+        writeFile: (path, content, options) => memoryFS.writeFile(path, content, options),
+        readDirectory: (path) => memoryFS.readDirectory(path),
+        createDirectory: (path) => memoryFS.createDirectory(path),
+        delete: (path, recursive) => memoryFS.delete(path, recursive),
+        move: (oldPath, newPath) => memoryFS.move(oldPath, newPath),
+      };
+      const secondProvider: IFileSystemProvider = {
+        watch: (callback) => secondEvents.subscribe(callback),
+        stat: (path) => memoryFS.stat(path),
+        readFile: (path) => memoryFS.readFile(path),
+        writeFile: (path, content, options) => memoryFS.writeFile(path, content, options),
+        readDirectory: (path) => memoryFS.readDirectory(path),
+        createDirectory: (path) => memoryFS.createDirectory(path),
+        delete: (path, recursive) => memoryFS.delete(path, recursive),
+        move: (oldPath, newPath) => memoryFS.move(oldPath, newPath),
+      };
+
+      vfs.watch('/mnt/test', (event) => {
+        observedEvents.push({ path: event.path, source: event.source });
+      });
+
+      vfs.mount('/mnt/test', firstProvider);
+      vfs.mount('/mnt/test', secondProvider);
+
+      firstEvents.emit({
+        source: VfsEventSource.PROVIDER,
+        type: VfsEventType.CREATE,
+        path: '/stale.txt',
+        nodeType: FSNodeType.File,
+      });
+      secondEvents.emit({
+        source: VfsEventSource.PROVIDER,
+        type: VfsEventType.CREATE,
+        path: '/fresh.txt',
+        nodeType: FSNodeType.File,
+      });
+
+      expect(observedEvents).toContainEqual({
+        path: '/mnt/test/fresh.txt',
+        source: 'provider',
+      });
+      expect(observedEvents).not.toContainEqual({
+        path: '/mnt/test/stale.txt',
+        source: 'provider',
+      });
+    });
+  });
+
+  describe('watch method', () => {
+    it('should require a callback when watching a specific path', () => {
+      expect(() => {
+        // @ts-expect-error testing runtime validation for missing callback
+        vfs.watch('/mnt/test', undefined);
+      }).toThrow('Callback is required when watching a path');
+    });
+
+    it('should allow subscribing without a target path', async () => {
+      const events: Array<{ type: string; path: string }> = [];
+
+      vfs.watch((event) => {
+        events.push({ type: event.type, path: event.path });
+      });
+
+      vfs.mount('/mnt/test', memoryFS);
+      await vfs.createDirectory('/mnt/test/folder');
+
+      expect(events).toContainEqual({
+        type: 'mount',
+        path: '/mnt/test',
+      });
+      expect(events).toContainEqual({
+        type: 'create',
+        path: '/mnt/test/folder',
       });
     });
   });
@@ -202,6 +292,91 @@ describe('VirtualFileSystem', () => {
       expect(entries).toHaveLength(2);
       expect(entries.find(([name]) => name === 'file.txt')?.[1].type).toBe(FSNodeType.File);
       expect(entries.find(([name]) => name === 'subfolder')?.[1].type).toBe(FSNodeType.Directory);
+    });
+
+    it('should overlay direct mounted child metadata when reading a parent directory', async () => {
+      const rootFS = new MemoryFileSystem();
+      const mountedFS = new MemoryFileSystem();
+
+      await rootFS.createDirectory('/drive');
+      vfs.mount('/', rootFS);
+      vfs.mount('/drive', {
+        stat: async (path) => {
+          if (path === '/') {
+            return {
+              type: FSNodeType.Directory,
+              description: 'Cloud storage from Google Drive',
+              capabilities: {
+                canDelete: false,
+                canChangePath: false,
+                canEditChildren: false,
+              },
+            } satisfies FSNodeStat;
+          }
+
+          return mountedFS.stat(path);
+        },
+        readFile: (path) => mountedFS.readFile(path),
+        writeFile: (path, content, options) => mountedFS.writeFile(path, content, options),
+        readDirectory: (path) => mountedFS.readDirectory(path),
+        createDirectory: (path) => mountedFS.createDirectory(path),
+        delete: (path, recursive) => mountedFS.delete(path, recursive),
+        move: (oldPath, newPath) => mountedFS.move(oldPath, newPath),
+      });
+
+      const entries = await vfs.readDirectory('/');
+
+      expect(entries).toContainEqual([
+        'drive',
+        expect.objectContaining({
+          type: FSNodeType.Directory,
+          description: 'Cloud storage from Google Drive',
+        }),
+      ]);
+    });
+
+    it('should replace the parent provider entry when a direct child mount exists', async () => {
+      const rootFS = new MemoryFileSystem();
+      const mountedFS = new MemoryFileSystem();
+
+      await rootFS.createDirectory('/drive');
+      vfs.mount('/', rootFS);
+      vfs.mount('/drive', {
+        stat: async (path) => {
+          if (path === '/') {
+            return {
+              type: FSNodeType.Directory,
+              description: 'Mounted provider description',
+              capabilities: {
+                canDelete: false,
+                canChangePath: false,
+                canEditChildren: true,
+              },
+            } satisfies FSNodeStat;
+          }
+
+          return mountedFS.stat(path);
+        },
+        readFile: (path) => mountedFS.readFile(path),
+        writeFile: (path, content, options) => mountedFS.writeFile(path, content, options),
+        readDirectory: (path) => mountedFS.readDirectory(path),
+        createDirectory: (path) => mountedFS.createDirectory(path),
+        delete: (path, recursive) => mountedFS.delete(path, recursive),
+        move: (oldPath, newPath) => mountedFS.move(oldPath, newPath),
+      });
+
+      const driveEntries = (await vfs.readDirectory('/')).filter(([name]) => name === 'drive');
+
+      expect(driveEntries).toHaveLength(1);
+      expect(driveEntries[0]).toEqual([
+        'drive',
+        expect.objectContaining({
+          description: 'Mounted provider description',
+          capabilities: expect.objectContaining({
+            canEditChildren: true,
+          }),
+        }),
+      ]);
     });
   });
 
@@ -466,6 +641,17 @@ describe('VirtualFileSystem', () => {
 
       const exists = await vfs.exists('/mnt/test/nonexistent.txt');
       expect(exists).toBe(false);
+    });
+
+    it('should rethrow non-FileNotFound errors from exists', async () => {
+      const provider = createCapabilityProvider((_path, stat) => stat);
+      provider.stat = () => Promise.reject(new VfsError(FileSystemError.NoPermissions, 'blocked'));
+
+      vfs.mount('/mnt/test', provider);
+
+      await expect(vfs.exists('/mnt/test/blocked.txt')).rejects.toMatchObject({
+        code: FileSystemError.NoPermissions,
+      });
     });
   });
 

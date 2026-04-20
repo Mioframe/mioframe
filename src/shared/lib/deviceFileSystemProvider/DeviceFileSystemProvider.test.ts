@@ -86,12 +86,13 @@ describe('DeviceFileSystemProvider', () => {
     });
   });
 
-  const mountRecord = (name: string) => {
+  const mountRecord = (name: string, description?: string) => {
     const handle = createHandle(name);
     const fileSystem = new MemoryFileSystem();
     const record = {
       name,
       handle,
+      ...(description === undefined ? {} : { description }),
     } satisfies DeviceFileRecord;
 
     fileSystems.set(handle, fileSystem);
@@ -105,12 +106,12 @@ describe('DeviceFileSystemProvider', () => {
   };
 
   it('should list mounted device file roots at root', async () => {
-    mountRecord('Origin private file system');
+    mountRecord('Browser Storage');
     mountRecord('Projects');
 
     const entries = await provider.readDirectory('/');
 
-    expect(entries.map(([name]) => name)).toEqual(['Origin private file system', 'Projects']);
+    expect(entries.map(([name]) => name)).toEqual(['Browser Storage', 'Projects']);
     expect(
       entries.every(([, stat]) => {
         const { capabilities } = stat;
@@ -123,6 +124,20 @@ describe('DeviceFileSystemProvider', () => {
         );
       }),
     ).toBe(true);
+  });
+
+  it('should expose root directory capabilities and description exactly', async () => {
+    mountRecord('Projects', 'Directory on this device');
+
+    await expect(provider.stat('/')).resolves.toEqual({
+      type: FSNodeType.Directory,
+      description: 'Directories from this device and browser storage',
+      capabilities: {
+        canDelete: false,
+        canChangePath: false,
+        canEditChildren: false,
+      },
+    });
   });
 
   it('should route nested file operations to the correct mounted root', async () => {
@@ -146,26 +161,27 @@ describe('DeviceFileSystemProvider', () => {
 
   it('should support cross-mounted moves for nested paths', async () => {
     const { fileSystem: sourceFileSystem } = mountRecord('Projects');
-    const { fileSystem: targetFileSystem } = mountRecord('Origin private file system');
+    const { fileSystem: targetFileSystem } = mountRecord('Browser Storage');
 
     await sourceFileSystem.writeFile('/source.txt', 'payload', {
       create: true,
       overwrite: true,
     });
 
-    await provider.move('/Projects/source.txt', '/Origin private file system/dest.txt');
+    await provider.move('/Projects/source.txt', '/Browser Storage/dest.txt');
 
     await expect(sourceFileSystem.stat('/source.txt')).rejects.toBeInstanceOf(VfsError);
     expect(await (await targetFileSystem.readFile('/dest.txt')).text()).toBe('payload');
   });
 
   it('should expose mounted roots as non-deletable directories with editable contents', async () => {
-    mountRecord('Projects');
+    mountRecord('Projects', 'Directory on this device');
 
     const stat = await provider.stat('/Projects');
 
     expect(stat).toEqual(
       expect.objectContaining({
+        description: 'Directory on this device',
         type: FSNodeType.Directory,
         capabilities: expect.objectContaining({
           canDelete: false,
@@ -176,11 +192,32 @@ describe('DeviceFileSystemProvider', () => {
     );
   });
 
+  it('should include mounted root descriptions when reading the provider root', async () => {
+    mountRecord('Projects', 'Directory on this device');
+
+    await expect(provider.readDirectory('/')).resolves.toContainEqual([
+      'Projects',
+      expect.objectContaining({
+        description: 'Directory on this device',
+        type: FSNodeType.Directory,
+      }),
+    ]);
+  });
+
   it('should prevent direct-root mutations', async () => {
     mountRecord('Projects');
 
+    await expect(provider.readFile('/')).rejects.toMatchObject({
+      code: FileSystemError.FileIsADirectory,
+    });
+    await expect(provider.readFile('/Projects')).rejects.toMatchObject({
+      code: FileSystemError.FileIsADirectory,
+    });
     await expect(provider.createDirectory('/Another')).rejects.toMatchObject({
       code: FileSystemError.NotSupported,
+    });
+    await expect(provider.delete('/', false)).rejects.toMatchObject({
+      code: FileSystemError.NoPermissions,
     });
     await expect(
       provider.writeFile('/Projects', 'payload', {
@@ -192,6 +229,26 @@ describe('DeviceFileSystemProvider', () => {
     });
     await expect(provider.move('/Projects', '/Another')).rejects.toMatchObject({
       code: FileSystemError.NotSupported,
+    });
+    await expect(provider.move('/Projects/file.txt', '/Another')).rejects.toMatchObject({
+      code: FileSystemError.NotSupported,
+    });
+    await expect(provider.move('/Projects', '/Another/file.txt')).rejects.toMatchObject({
+      code: FileSystemError.NotSupported,
+    });
+  });
+
+  it('should reject missing mounted roots for root-level stat and nested writes', async () => {
+    await expect(provider.stat('/Missing')).rejects.toMatchObject({
+      code: FileSystemError.FileNotFound,
+    });
+    await expect(
+      provider.writeFile('/Missing/file.txt', 'payload', {
+        create: true,
+        overwrite: true,
+      }),
+    ).rejects.toMatchObject({
+      code: FileSystemError.FileNotFound,
     });
   });
 
@@ -230,5 +287,58 @@ describe('DeviceFileSystemProvider', () => {
       type: 'delete',
       source: 'provider',
     });
+  });
+
+  it('should reuse the existing provider for the same mounted name and handle without emitting create twice', async () => {
+    const createProvider = (handle: FileSystemDirectoryHandle) => {
+      const fileSystem = fileSystems.get(handle);
+
+      if (!fileSystem) {
+        throw new Error(`Missing file system for ${handle.name}`);
+      }
+
+      return fileSystem;
+    };
+    const localProvider = DeviceFileSystemProvider({
+      createProvider,
+    });
+    const handle = createHandle('Projects');
+    const fileSystem = new MemoryFileSystem();
+    const events: Array<{ path: string; type: string }> = [];
+
+    fileSystems.set(handle, fileSystem);
+    localProvider.watch((event) => {
+      events.push({ path: event.path, type: event.type });
+    });
+
+    localProvider.upsertRecord({
+      name: 'Projects',
+      description: 'Directory on this device',
+      handle,
+    });
+    await localProvider.writeFile('/Projects/first.txt', 'first', {
+      create: true,
+      overwrite: true,
+    });
+
+    localProvider.upsertRecord({
+      name: 'Projects',
+      description: 'Directory on this device',
+      handle,
+    });
+    await localProvider.writeFile('/Projects/second.txt', 'second', {
+      create: true,
+      overwrite: true,
+    });
+
+    expect(
+      events.filter((event) => event.type === 'create' && event.path === '/Projects'),
+    ).toHaveLength(1);
+    await expect(localProvider.readDirectory('/Projects')).resolves.toEqual(
+      expect.arrayContaining([
+        ['first.txt', expect.objectContaining({ type: FSNodeType.File })],
+        ['second.txt', expect.objectContaining({ type: FSNodeType.File })],
+      ]),
+    );
   });
 });
