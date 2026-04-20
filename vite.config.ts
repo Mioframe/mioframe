@@ -1,7 +1,7 @@
 import type { PluginOption } from 'vite';
 import { defineConfig, loadEnv } from 'vite';
-import { fileURLToPath, URL } from 'node:url';
 import { dependencies, devDependencies } from './package.json';
+import { getResolveAlias } from './config/alias';
 import {
   getBaseVitePlugins,
   getBaseWorkerPlugins,
@@ -42,14 +42,7 @@ export default defineConfig(({ mode, isPreview }) => {
       },
     },
     resolve: {
-      alias: {
-        '@': fileURLToPath(new URL('./src', import.meta.url)),
-        '@shared': fileURLToPath(new URL('./src/shared', import.meta.url)),
-        '@feature': fileURLToPath(new URL('./src/features', import.meta.url)),
-        '@entity': fileURLToPath(new URL('./src/entities', import.meta.url)),
-        '@widget': fileURLToPath(new URL('./src/widgets', import.meta.url)),
-        '@page': fileURLToPath(new URL('./src/pages', import.meta.url)),
-      },
+      alias: getResolveAlias(),
     },
     build: {
       sourcemap: !!sentryPlugins.length,
