@@ -148,10 +148,11 @@ const { isRetryAuthorizationLoading, onRetryAuthorization } = useGoogleDriveReco
         </div>
 
         <FSEntryMDListItem
-          v-for="[name, { type: nodeType }] in directoryEntries"
+          v-for="[name, { description, type: nodeType }] in directoryEntries"
           :key="name"
           is-button
           :name="name"
+          :supporting-text="description"
           :type="nodeType"
           class="repository-explorer-widget__list-item"
           @click="onClickDirectoryEntry(name, nodeType)"

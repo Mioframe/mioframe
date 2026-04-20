@@ -23,6 +23,8 @@ export const dismissStorageOnboarding = async (page: Page) => {
       .getByRole('dialog')
       .filter({ hasText: /temporary|stored files|deletion|protect/i })
       .first();
+    // The onboarding can only advance one dialog at a time after the previous click settles.
+    // eslint-disable-next-line no-await-in-loop
     const isVisible = await onboardingDialog
       .waitFor({ state: 'visible', timeout: step === 0 ? 1500 : 300 })
       .then(() => true)
@@ -32,6 +34,8 @@ export const dismissStorageOnboarding = async (page: Page) => {
     }
 
     const okButton = onboardingDialog.getByRole('button', { name: /^ok$/i });
+    // Each confirmation reveals the next onboarding step, so this click must remain sequential.
+    // eslint-disable-next-line no-await-in-loop
     await okButton.click();
   }
 };
@@ -380,13 +384,11 @@ export const removeFirstFilter = async (page: Page) => {
 export const getDatabaseRowTexts = async (page: Page) => {
   const rows = page.locator('tbody[role="list"] > tr');
   const rowCount = await rows.count();
-  const values: string[] = [];
+  const values = await Promise.all(
+    Array.from({ length: rowCount }, async (_, index) => rows.nth(index).innerText()),
+  );
 
-  for (let index = 0; index < rowCount; index += 1) {
-    values.push((await rows.nth(index).innerText()).trim());
-  }
-
-  return values;
+  return values.map((value) => value.trim());
 };
 
 export const expectDatabaseValuesInOrder = async (page: Page, values: string[]) => {

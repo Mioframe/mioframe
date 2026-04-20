@@ -11,6 +11,7 @@ Inherits the rules from `src/shared/service/AGENTS.md`. Applies to `src/shared/s
 - Re-read mounted directory contents by path after create or provider update events. Do not synthesize final directory listings from watch payloads or provider create success alone.
 - Treat persisted `FileSystemDirectoryHandle` values as runtime-validated boundary data, not as type-only guarantees.
 - Keep provider, VFS, and mounted-directory flows aligned on refresh and hydration behavior.
+- Preserve provider-supplied directory metadata such as optional descriptions through persisted mounts, VFS reads, and UI-facing queries.
 
 ## Anti-patterns
 

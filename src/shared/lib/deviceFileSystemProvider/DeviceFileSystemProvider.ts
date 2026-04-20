@@ -21,6 +21,7 @@ export const DEVICE_FILES_ROOT_NAME = 'Device Files';
 
 export interface DeviceFileRecord {
   name: string;
+  description?: string;
   handle: FileSystemDirectoryHandle;
 }
 
@@ -41,6 +42,7 @@ export interface DeviceFileSystemProvider extends IFileSystemProvider {
 
 const rootDirectoryStat = {
   type: FSNodeType.Directory,
+  description: 'Directories from this device and browser storage',
   capabilities: {
     canDelete: false,
     canChangePath: false,
@@ -49,6 +51,16 @@ const rootDirectoryStat = {
 } satisfies FSNodeStat;
 
 const isMountedRootPath = (path: string) => PathUtils.split(path).length <= 1;
+
+const getMountedRootStat = ({ description }: { description?: string }): FSNodeStat => ({
+  type: FSNodeType.Directory,
+  ...(description === undefined ? {} : { description }),
+  capabilities: {
+    canDelete: false,
+    canChangePath: false,
+    canEditChildren: true,
+  },
+});
 
 const resolveRecordForWrite = (path: string, records: Map<string, ActiveDeviceFileRecord>) => {
   const [rootName, ...relativePath] = PathUtils.split(path);
@@ -72,9 +84,10 @@ export const DeviceFileSystemProvider = ({
   const records = new Map<string, ActiveDeviceFileRecord>();
 
   const listRecords = (): DeviceFileRecord[] =>
-    Array.from(records.values(), ({ handle, name }) => ({
+    Array.from(records.values(), ({ description, handle, name }) => ({
       name,
       handle,
+      ...(description === undefined ? {} : { description }),
     }));
 
   const upsertRecord = (record: DeviceFileRecord): void => {
@@ -128,6 +141,17 @@ export const DeviceFileSystemProvider = ({
       return rootDirectoryStat;
     }
 
+    if (isMountedRootPath(normalizedPath)) {
+      const rootName = PathUtils.basename(normalizedPath);
+      const record = records.get(rootName);
+
+      if (!record) {
+        throw new VfsError(FileSystemError.FileNotFound, `Directory not found: ${path}`);
+      }
+
+      return getMountedRootStat(record);
+    }
+
     return vfs.stat(normalizedPath);
   };
 
@@ -167,14 +191,10 @@ export const DeviceFileSystemProvider = ({
     const normalizedPath = PathUtils.normalize(path);
 
     if (normalizedPath === '/') {
-      return Promise.all(
-        Array.from(records.values()).map(
-          async ({ name, provider }): Promise<[string, FSNodeStat]> => [
-            name,
-            await provider.stat('/'),
-          ],
-        ),
-      );
+      return Array.from(records.values(), ({ description, name }): [string, FSNodeStat] => [
+        name,
+        getMountedRootStat(description === undefined ? {} : { description }),
+      ]);
     }
 
     return vfs.readDirectory(normalizedPath);

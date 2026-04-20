@@ -36,6 +36,13 @@ import {
 const GOOGLE_MIME_FOLDER = 'application/vnd.google-apps.folder';
 /** Internal identifier for the virtual folder "Shared With Me" */
 const SHARED_WITH_ME_ID = 'sharedWithMe';
+const GOOGLE_DRIVE_ROOT_DESCRIPTION = 'Cloud storage from Google Drive';
+const GOOGLE_ACCOUNT_ROOT_DESCRIPTION = 'Connected Google Drive account';
+const SPACE_DESCRIPTIONS = {
+  [SpaceName.appData]: 'Hidden app data used by this app',
+  [SpaceName.myDrive]: 'Files and folders in your Google Drive',
+  [SpaceName.sharedWithMe]: 'Files others shared with you',
+} as const satisfies Record<(typeof SpaceName)[keyof typeof SpaceName], string>;
 
 /** Google Drive file system mount modes */
 export enum GoogleDriveMount {
@@ -234,6 +241,7 @@ export const googleDriveFileSystemProvider = ({
 
   const virtualDirectoryStat = {
     type: FSNodeType.Directory,
+    description: GOOGLE_DRIVE_ROOT_DESCRIPTION,
     capabilities: {
       canDelete: false,
       canChangePath: false,
@@ -258,6 +266,7 @@ export const googleDriveFileSystemProvider = ({
   const getSpaceDirectoryStat = (spaceName: (typeof SpaceName)[keyof typeof SpaceName]) =>
     ({
       type: FSNodeType.Directory,
+      description: SPACE_DESCRIPTIONS[spaceName],
       capabilities: {
         canDelete: false,
         canChangePath: false,
@@ -281,7 +290,10 @@ export const googleDriveFileSystemProvider = ({
       const email = extractEmailFromPath(path);
 
       if (email && pathArray.length === 1) {
-        return virtualDirectoryStat;
+        return {
+          ...virtualDirectoryStat,
+          description: GOOGLE_ACCOUNT_ROOT_DESCRIPTION,
+        };
       }
       if (pathArray.length === 2) {
         return getSpaceDirectoryStat(zodSpaceName.parse(getGoogleDrivePathSpace(path)));
@@ -429,6 +441,7 @@ export const googleDriveFileSystemProvider = ({
       email,
       {
         type: FSNodeType.Directory,
+        description: GOOGLE_ACCOUNT_ROOT_DESCRIPTION,
         capabilities: {
           canDelete: false,
           canChangePath: false,

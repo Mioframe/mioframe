@@ -308,8 +308,26 @@ export class VirtualFileSystem {
    * @returns Promise that resolves to array of tuples [name, type]
    */
   public async readDirectory(path: string): Promise<[string, FSNodeStat][]> {
-    const { provider, relativePath } = this.resolve(path);
-    return provider.readDirectory(relativePath);
+    const normalizedPath = PathUtils.normalize(path);
+    const { provider, relativePath } = this.resolve(normalizedPath);
+    const entries = await provider.readDirectory(relativePath);
+    const entryMap = new Map(entries);
+
+    const mountedChildren = Array.from(this.mounts.entries()).filter(([mountPoint]) => {
+      if (mountPoint === normalizedPath) {
+        return false;
+      }
+
+      return PathUtils.dirname(mountPoint) === normalizedPath;
+    });
+
+    await Promise.all(
+      mountedChildren.map(async ([mountPoint, { provider: mountedProvider }]) => {
+        entryMap.set(PathUtils.basename(mountPoint), await mountedProvider.stat('/'));
+      }),
+    );
+
+    return Array.from(entryMap.entries());
   }
 
   /**
