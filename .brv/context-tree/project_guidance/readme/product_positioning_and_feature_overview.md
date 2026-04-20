@@ -1,26 +1,14 @@
 ---
-consolidated_at: '2026-04-18T14:00:08.094Z'
-consolidated_from:
-  - {
-      date: '2026-04-18T14:00:08.094Z',
-      path: project_guidance/readme/product_positioning_and_feature_overview.abstract.md,
-      reason: All three files describe the same single topic (README-derived product positioning + storage/sync model + roadmap + licensing). The abstract and overview are derivative summaries of the main document and overlap >50% with it; they add small unique structure (key points + entities/patterns/decisions framing) but no truly separate topic. Consolidate into the richer .md as the canonical file to avoid redundancy and drift.,
-    }
-  - {
-      date: '2026-04-18T14:00:08.094Z',
-      path: project_guidance/readme/product_positioning_and_feature_overview.overview.md,
-      reason: All three files describe the same single topic (README-derived product positioning + storage/sync model + roadmap + licensing). The abstract and overview are derivative summaries of the main document and overlap >50% with it; they add small unique structure (key points + entities/patterns/decisions framing) but no truly separate topic. Consolidate into the richer .md as the canonical file to avoid redundancy and drift.,
-    }
-createdAt: '2026-04-18T13:44:05.067Z'
-importance: 50
-keywords: []
-maturity: draft
-recency: 1
-related:
-  - repo_guidelines/package_scripts/context.md
+title: Product Positioning and Feature Overview
 summary: README-derived overview of Beaver positioning (local-first, no cloud), storage/sync model (OPFS/local folder + CRDT), roadmap checklist, and licensing (FSL).
 tags: []
-title: Product Positioning and Feature Overview
+related: [repo_guidelines/package_scripts/context.md]
+keywords: []
+importance: 53
+recency: 1
+maturity: draft
+accessCount: 1
+createdAt: '2026-04-18T13:44:05.067Z'
 updatedAt: '2026-04-18T13:44:05.067Z'
 ---
 
