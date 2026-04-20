@@ -4,8 +4,6 @@ import './styles/styles.css';
 import MainApp from './MainApp.vue';
 import { createHead } from '@unhead/vue/client';
 import { router } from './router';
-import { setupPlayground } from '@shared/lib/playground';
-import { playgroundPages } from './playgroundPages';
 import { backNavigationHandler } from '@shared/lib/onBackNavigation';
 import { setupStackNavigation } from '@page/routes';
 import { setupGoogleSessions } from '@entity/googleSession';
@@ -23,7 +21,14 @@ export const setupApp = async (app: App = createApp(MainApp)) => {
   }
   setupStackNavigation(router);
 
-  setupPlayground(router, playgroundPages);
+  if (import.meta.env.DEV) {
+    const [{ setupPlayground }, { playgroundPages }] = await Promise.all([
+      import('@shared/lib/playground'),
+      import('./playgroundPages'),
+    ]);
+
+    setupPlayground(router, playgroundPages);
+  }
 
   app.use(router);
 
