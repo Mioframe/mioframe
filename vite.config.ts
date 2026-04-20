@@ -1,127 +1,27 @@
 import type { PluginOption } from 'vite';
 import { defineConfig, loadEnv } from 'vite';
-import vue from '@vitejs/plugin-vue';
-import wasm from 'vite-plugin-wasm';
-import topLevelAwait from 'vite-plugin-top-level-await';
-import { sentryVitePlugin } from '@sentry/vite-plugin';
-import { VitePWA } from 'vite-plugin-pwa';
 import { fileURLToPath, URL } from 'node:url';
 import { dependencies, devDependencies } from './package.json';
-import basicSsl from '@vitejs/plugin-basic-ssl';
-import TurboConsole from 'unplugin-turbo-console/vite';
-import vueDevTools from 'vite-plugin-vue-devtools';
-
-const daysToSeconds = (days: number) => 24 * 60 * 60 * days;
+import {
+  getBaseVitePlugins,
+  getBaseWorkerPlugins,
+  getPwaPlugins,
+  getSentryPlugins,
+  getSslPlugins,
+} from './config/plugins';
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode, isPreview }) => {
   const env = loadEnv(mode, process.cwd(), '');
+  const isPreviewBuild = !!isPreview;
 
-  const sslPlugins = mode === 'development' || isPreview ? [basicSsl()] : [];
-  const pwaPlugins =
-    mode === 'production' || isPreview
-      ? [
-          VitePWA({
-            manifest: {
-              theme_color: 'rgb(33, 31, 38)',
-              background_color: 'rgb(33, 31, 38)',
-            },
-            workbox: {
-              runtimeCaching: [
-                {
-                  urlPattern: /^https:\/\/fonts\.(?:googleapis|gstatic)\.com\/.*/i,
-                  handler: 'CacheFirst',
-                  options: {
-                    cacheName: 'google-fonts',
-                    expiration: {
-                      maxEntries: 20,
-                      maxAgeSeconds: daysToSeconds(365),
-                    },
-                    cacheableResponse: {
-                      statuses: [0, 200],
-                    },
-                  },
-                },
-                {
-                  urlPattern: /\.(?:eot|otf|ttc|ttf|woff|woff2|font.css)$/i,
-                  handler: 'StaleWhileRevalidate',
-                  options: {
-                    cacheName: 'static-font-assets',
-                    expiration: {
-                      maxEntries: 10,
-                      maxAgeSeconds: daysToSeconds(30),
-                    },
-                  },
-                },
-                {
-                  urlPattern: /\.(?:jpg|jpeg|gif|png|svg|ico|webp)$/i,
-                  handler: 'StaleWhileRevalidate',
-                  options: {
-                    cacheName: 'static-image-assets',
-                    expiration: {
-                      maxEntries: 64,
-                      maxAgeSeconds: daysToSeconds(14),
-                    },
-                  },
-                },
-                {
-                  urlPattern: /\.(?:json|xml|csv)$/i,
-                  handler: 'NetworkFirst',
-                  options: {
-                    cacheName: 'static-data-assets',
-                    expiration: {
-                      maxEntries: 32,
-                      maxAgeSeconds: daysToSeconds(7),
-                    },
-                  },
-                },
-                {
-                  urlPattern: /\/api\/.*$/i,
-                  handler: 'NetworkFirst',
-                  method: 'GET',
-                  options: {
-                    cacheName: 'apis',
-                    expiration: {
-                      maxEntries: 16,
-                      maxAgeSeconds: daysToSeconds(1),
-                    },
-                    networkTimeoutSeconds: 10,
-                  },
-                },
-                {
-                  urlPattern: /.*/i,
-                  handler: 'NetworkFirst',
-                  options: {
-                    cacheName: 'others',
-                    expiration: {
-                      maxEntries: 32,
-                      maxAgeSeconds: daysToSeconds(1),
-                    },
-                    networkTimeoutSeconds: 10,
-                  },
-                },
-              ],
-              maximumFileSizeToCacheInBytes: 10e6,
-            },
-            pwaAssets: {
-              config: true,
-              overrideManifestIcons: true,
-            },
-          }),
-        ]
-      : [];
-
-  const sentryPlugins =
-    mode === 'production' || isPreview
-      ? [
-          sentryVitePlugin({
-            org: 'vb-ak',
-            project: 'mioframe',
-            authToken: env.SENTRY_AUTH_TOKEN,
-            telemetry: false,
-          }),
-        ]
-      : [];
+  const sslPlugins = getSslPlugins({ mode, isPreview: isPreviewBuild });
+  const pwaPlugins = getPwaPlugins({ mode, isPreview: isPreviewBuild });
+  const sentryPlugins = getSentryPlugins({
+    mode,
+    isPreview: isPreviewBuild,
+    authToken: env.SENTRY_AUTH_TOKEN,
+  });
 
   const dateNow = new Date().toISOString();
 
@@ -129,26 +29,10 @@ export default defineConfig(({ mode, isPreview }) => {
 
   return {
     base: env.BASE_URL,
-    plugins: [
-      wasm(),
-      topLevelAwait(),
-      vue(),
-      vueDevTools(),
-      TurboConsole(),
-      ...pwaPlugins,
-      ...sslPlugins,
-      ...sentryPlugins,
-    ],
+    plugins: [...getBaseVitePlugins(), ...pwaPlugins, ...sslPlugins, ...sentryPlugins],
     worker: {
       format: 'es',
-      plugins: (): PluginOption[] => [
-        // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- vite-plugin-wasm don't have types
-        wasm() as PluginOption,
-        topLevelAwait(),
-        vue(),
-        TurboConsole(),
-        ...sentryPlugins,
-      ],
+      plugins: (): PluginOption[] => [...getBaseWorkerPlugins(), ...sentryPlugins],
     },
     server: {
       host: true,
@@ -170,7 +54,7 @@ export default defineConfig(({ mode, isPreview }) => {
     build: {
       sourcemap: !!sentryPlugins.length,
       assetsDir: 'assets',
-      minify: mode === 'production' || isPreview ? 'terser' : false,
+      minify: mode === 'production' || isPreviewBuild ? 'terser' : false,
       terserOptions: {
         compress: {
           booleans_as_integers: false,
