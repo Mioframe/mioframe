@@ -33,6 +33,8 @@ export interface FSNodeCapabilities {
 export interface FSNodeStat {
   /** Resource type */
   type: FSNodeType;
+  /** Optional provider-supplied description for directory UI */
+  description?: string | undefined;
   /** Size in bytes */
   size?: number | undefined;
   /** Creation time */

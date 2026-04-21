@@ -813,7 +813,12 @@ describe('simplifiedAPI cache invalidation', () => {
     await upload({ ACCESS_TOKEN: 'token' }, 'file-id', 'next content');
     const refreshed = await download({ ACCESS_TOKEN: 'token' }, 'file-id');
 
-    const uploadRequest = fetchMock.mock.calls[2]?.[0] as Request;
+    const uploadRequest = fetchMock.mock.calls[2]?.[0];
+
+    expect(uploadRequest).toBeInstanceOf(Request);
+    if (!(uploadRequest instanceof Request)) {
+      throw new Error('Expected upload request to be a Request instance');
+    }
 
     expect(uploadRequest.method).toBe('PATCH');
     expect(uploadRequest.headers.get('Authorization')).toBe('Bearer token');
@@ -823,11 +828,13 @@ describe('simplifiedAPI cache invalidation', () => {
 
   it('rejects unsupported upload payloads', async () => {
     const { upload } = await import('./simplifiedAPI');
+    const unsupportedChunk: WriteParams = {
+      type: 'write',
+      data: null,
+    };
 
-    await expect(
-      upload({ ACCESS_TOKEN: 'token' }, 'file-id', {
-        invalid: true,
-      } as unknown as FileSystemWriteChunkType),
-    ).rejects.toThrow('Unsupported file type');
+    await expect(upload({ ACCESS_TOKEN: 'token' }, 'file-id', unsupportedChunk)).rejects.toThrow(
+      'Unsupported file type',
+    );
   });
 });

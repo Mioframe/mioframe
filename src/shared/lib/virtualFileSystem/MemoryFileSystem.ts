@@ -94,6 +94,7 @@ export class MemoryFileSystem implements IFileSystemProvider {
 
     return Promise.resolve({
       type: entry.type,
+      description: entry.description,
       size: entry.size,
       creationTime: entry.creationTime,
       modificationTime: entry.modificationTime,

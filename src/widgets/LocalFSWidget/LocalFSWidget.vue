@@ -34,6 +34,7 @@ const isOpfsEntry = (name: string) => name === OPFSName;
       v-for="deviceFile in deviceFiles ?? []"
       :key="deviceFile.name"
       :headline="deviceFile.name"
+      :supporting-text="deviceFile.description"
       @click="onClickDeviceFile(deviceFile.name)"
     >
       <template #leadingIcon>
@@ -49,7 +50,12 @@ const isOpfsEntry = (name: string) => name === OPFSName;
       </template>
     </MDListItem>
 
-    <MDListItem is="button" headline="Add Local Directory" @click="onClickAddLocalDirectory">
+    <MDListItem
+      is="button"
+      headline="Add Local Directory"
+      supporting-text="Pick a folder from this device to keep it available here"
+      @click="onClickAddLocalDirectory"
+    >
       <template #leadingIcon>
         <MDSymbol name="folder_open" />
       </template>

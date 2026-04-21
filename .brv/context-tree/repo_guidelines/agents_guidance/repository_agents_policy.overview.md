@@ -1,0 +1,71 @@
+## Key points
+- Root `AGENTS.md` defines repo-wide policy unless overridden by deeper `AGENTS.md` files; it encodes Feature-Sliced Design (FSD) responsibilities, dependency direction, verification expectations, and naming conventions.
+- Changes should stay within the owning FSD layer and respect import direction; use `index.ts` public entry points when available and avoid pulling dependencies “upward.”
+- Verification is via `pnpm` and targeted checks (type-check, lint/format, tests); prefer narrow scope runs over repo-wide commands and verify ambiguous third-party behavior via official docs or installed source.
+- UI/runtime wiring (DOM parentage, scroll, focus, teleport, overlays) is treated as a concrete contract—validate rendered hierarchy before refactors; optimize for Material 3 and mobile-first performance constraints.
+- Keep contracts narrow and boundary-local: prefer primitives/IDs/small display records and explicit emits/slots; keep parsing/validation close to the defining boundary; avoid orchestration complexity in component props.
+- Lifecycle-manage resources (subscriptions, listeners, workers, timers, caches, file handles, blob URLs) and follow specific CRDT mutation rules (mutate within owning callback; don’t reassign live doc objects).
+- Use Conventional Commits; follow directory/file/module naming conventions (including reserved prefixes/suffixes like `MD*`, `$`, and `*Service`).
+
+## Structure / sections summary
+- **Reason**: States intent to capture durable, top-level `AGENTS.md` repository policy and conventions.
+- **Raw Concept**
+  - **Task / Changes / Files**: Documents scope (curating `AGENTS.md` into context tree) and affected file (`AGENTS.md`).
+  - **Flow**: Standard workflow: change code → keep within owning FSD layer → run narrow targeted verification → commit with Conventional Commits.
+  - **Timestamp**: 2026-04-20.
+- **Narrative**
+  - **Structure**: Root `AGENTS.md` applies globally; child `AGENTS.md` may override/refine.
+  - **Dependencies**: Tooling and verification stack (pnpm scripts, oxlint/eslint/oxfmt, TypeScript, vitest, Playwright); requirement to validate third-party semantics.
+  - **Highlights**: Emphasis on FSD boundaries, narrow contracts, UI runtime contracts, and lifecycle-managed resources.
+  - **Rules**: Detailed constraints across layering, UI, performance, contracts, CRDT updates, testing, dependency direction, verification, naming, and when/how to add child `AGENTS.md`.
+  - **Examples**: Concrete examples for layer responsibilities and verification command intent.
+- **Facts**: Enumerated conventions (FSD layers, pnpm, Conventional Commits, layer constraints, naming rules, test colocation, targeted lint/format verification).
+
+## Notable entities, patterns, or decisions mentioned
+- **Entities / tools**
+  - Package manager and scripts: `pnpm`
+  - Linters/formatters: `oxlint`, `eslint --fix`, `oxfmt`
+  - Type checking: TypeScript (`pnpm type-check`)
+  - Testing: `vitest`, Playwright; “mutation check” for touched test scope
+- **Architecture pattern: Feature-Sliced Design (FSD)**
+  - Layers: `src/app`, `src/pages`, `src/widgets`, `src/features`, `src/entities`, `src/shared`
+  - Responsibilities:
+    - `pages`: compose screens
+    - `widgets`: compose larger sections; avoid owning domain rules
+    - `features`: user-triggered flows (dialogs/forms/menus)
+    - `entities`: domain reads and derived state
+    - `shared`: cross-layer infrastructure/shared UI; must not import upper layers
+  - Dependency constraints:
+    - `shared` imports no upper layers
+    - `entities` may import only `shared`
+    - `features` build on `entities` + `shared`
+    - Avoid upward dependency pulls; don’t bypass entity/service APIs with direct storage/ad hoc mutation
+- **Verification/quality decisions**
+  - Run the **narrowest relevant** checks after edits; targeted lint/format and minimum `pnpm type-check` for logic changes; add focused tests/smoke checks for behavior/schema/service/storage changes.
+  - For ambiguous third-party behavior: confirm via official docs or installed source; explicitly note when unverified.
+- **UI/runtime contract decisions**
+  - Treat DOM hierarchy and behaviors (scroll, focus, teleport, overlays) as contractual; verify rendered output before refactoring wrappers/composition boundaries.
+  - Align UI with **Material 3**, mobile-first; assume large datasets and low-end devices; bound main-thread work.
+  - Prefer determinable progress reporting over indeterminate spinners.
+- **API/contract design patterns**
+  - Narrow contracts: IDs/primitives/small display records; explicit emits/slots over “service bags” or deeply nested configs.
+  - Keep parsing/validation/extraction close to the boundary that defines the contract.
+  - Typed iteration helpers preferred over raw `Object.keys/values/entries`; avoid local type assertions except rare boundary adapters.
+- **CRDT-specific decision**
+  - For CRDT-backed state: mutate live nested objects only inside the owning change callback; never assign a live document object back into the same document; prefer helpers `put`, `patch`, `deepPutJsonObject`, `deepPatchJsonObject` when appropriate.
+- **Test organization**
+  - Unit tests colocated as sibling `*.test.ts`; no `__tests__` directories.
+- **Naming conventions**
+  - Directories: `pages/` and `widgets/` use PascalCase; other submodules use lower camel case.
+  - Files: Vue components and class-centric files in PascalCase; other TS files in lower camel case or lowercase.
+  - Module naming: features named as `<domain><Action>`; entities named for stable domain concepts.
+  - Component naming: concrete surface suffixes (`Dialog`, `Sheet`, `Pane`, `ListItem`, `Button`, `State`); avoid vague names (`Manager`, `Helper`).
+  - Reserved patterns:
+    - `MD*` prefix only for shared Material-style primitives
+    - `use*`, `setup*`, `define*`, `create*`, `get*`, `is*`, `zod*` semantics defined
+    - `*Service` reserved for background-side infrastructure; UI layers must access background logic via explicit proxy clients (no direct `*Service` imports)
+    - `on*` for event handlers; `$` suffix reserved for raw RxJS observables
+- **Policy scope management**
+  - ByteRover usage details belong in the `byterover` skill; `AGENTS.md` is for stable policy (not temporary notes/runbooks).
+  - Add child `AGENTS.md` only for local invariants/blast-radius/verification guidance; children refine rather than repeat and should describe stable responsibilities in `Contains`.
+  - Update the `AGENTS.md` tree when ownership, public APIs, dependencies, or verification boundaries change.

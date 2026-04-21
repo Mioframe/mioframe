@@ -1,0 +1,1 @@
+The repo-root AGENTS.md defines Feature-Sliced Design layer boundaries and dependency rules, plus conventions for naming, test colocation, and targeted pnpm-based verification (type-check/lint/format/tests) with Conventional Commits.
