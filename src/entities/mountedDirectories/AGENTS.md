@@ -10,6 +10,7 @@ Inherits the rules from `src/entities/AGENTS.md`. Applies to `src/entities/mount
 
 - Keep mount and disconnect state on top of shared filesystem services rather than direct browser APIs.
 - Expose mounted-directory state as read contracts plus explicit intents.
+- Keep mounted-directory display metadata such as optional descriptions in the entity contract so widgets do not infer or duplicate it.
 - Leave directory pickers, permission prompts, and other user-action surfaces to features.
 
 ## Anti-patterns

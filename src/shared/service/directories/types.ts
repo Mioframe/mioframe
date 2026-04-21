@@ -25,4 +25,4 @@ export interface DirectoryDescription extends EntryDescription {
   entries: EntryDescription[];
 }
 
-export const OPFSName = 'Origin private file system';
+export const OPFSName = 'Browser Storage';

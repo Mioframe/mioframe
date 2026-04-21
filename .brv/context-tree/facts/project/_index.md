@@ -1,12 +1,10 @@
 ---
-children_hash: c49cd7e0a9e1838fe035eb2b3eced7b4b53eab28e296e3f96027cdc89efb7f74
-compression_ratio: 0.6096997690531177
-condensation_order: 1
-covers: [context.md, testing_preferences.md]
-covers_token_total: 433
-summary_level: d1
-token_count: 264
-type: summary
+tags: []
+keywords: []
+importance: 53
+recency: 1
+maturity: draft
+accessCount: 1
 ---
 
 # Project — Testing Constraints & Preferences (d1)
