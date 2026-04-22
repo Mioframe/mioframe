@@ -1,15 +1,45 @@
 {
   "active_context": [
     {
-      "order": 3,
-      "path": "_index.md",
-      "tokens": 1640,
+      "order": 2,
+      "path": "architecture/_index.md",
+      "tokens": 1086,
+      "type": "summary"
+    },
+    {
+      "order": 2,
+      "path": "facts/_index.md",
+      "tokens": 627,
       "type": "summary"
     },
     {
       "path": "facts/project/_index.md",
       "tokens": 287,
       "type": "summary"
+    },
+    {
+      "abstractPath": "architecture/app_bootstrap/vue_app_setup_sentry_plugin_wiring.abstract.md",
+      "abstractTokens": 56,
+      "importance": 50,
+      "path": "architecture/app_bootstrap/vue_app_setup_sentry_plugin_wiring.md",
+      "tokens": 56,
+      "type": "context"
+    },
+    {
+      "abstractPath": "architecture/observability/sentry_lazy_initialization_facade_vue.abstract.md",
+      "abstractTokens": 49,
+      "importance": 50,
+      "path": "architecture/observability/sentry_lazy_initialization_facade_vue.md",
+      "tokens": 49,
+      "type": "context"
+    },
+    {
+      "abstractPath": "architecture/observability/sentry_proxy_facade_vue.abstract.md",
+      "abstractTokens": 50,
+      "importance": 50,
+      "path": "architecture/observability/sentry_proxy_facade_vue.md",
+      "tokens": 50,
+      "type": "context"
     },
     {
       "importance": 50,
@@ -38,14 +68,6 @@
       "type": "context"
     },
     {
-      "abstractPath": "governance/repo_guidelines/agents_repository_policy.abstract.md",
-      "abstractTokens": 58,
-      "importance": 50,
-      "path": "governance/repo_guidelines/agents_repository_policy.md",
-      "tokens": 58,
-      "type": "context"
-    },
-    {
       "importance": 50,
       "path": "project_guidance/documentation-policy-keep-guidance-platform-neutral-and-align-test-guidance-with.md",
       "tokens": 259,
@@ -58,21 +80,21 @@
       "type": "context"
     },
     {
-      "abstractPath": "repo_guidelines/agents_guidance/repository_agents_policy.abstract.md",
-      "abstractTokens": 58,
+      "abstractPath": "repo_guidelines/agents_guidance/src_shared_lib_agents_guidelines.abstract.md",
+      "abstractTokens": 65,
       "importance": 50,
-      "path": "repo_guidelines/agents_guidance/repository_agents_policy.md",
-      "tokens": 58,
+      "path": "repo_guidelines/agents_guidance/src_shared_lib_agents_guidelines.md",
+      "tokens": 65,
       "type": "context"
     }
   ],
-  "generated_at": "2026-04-20T11:04:56.642Z",
+  "generated_at": "2026-04-22T06:40:27.291Z",
   "lane_tokens": {
-    "contexts": 2108,
+    "contexts": 2212,
     "stubs": 0,
-    "summaries": 1927
+    "summaries": 2000
   },
-  "source_fingerprint": "ba5254d6dae2c85490997905c119535b71feac63a88a214073d0172b9445ca12",
-  "total_tokens": 4035,
+  "source_fingerprint": "478d77f0dc9e9fa9b78c7761b38c0cb0f1e96e70c9efcb305fb45f8096e22a9a",
+  "total_tokens": 4212,
   "version": 1
 }
