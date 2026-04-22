@@ -2,11 +2,9 @@
 set -eu
 
 staged_paths_file="$(mktemp)"
-before_diff_path="$(mktemp)"
-after_diff_path="$(mktemp)"
 
 cleanup() {
-  rm -f "$staged_paths_file" "$before_diff_path" "$after_diff_path"
+  rm -f "$staged_paths_file"
 }
 
 trap cleanup EXIT INT TERM
@@ -31,12 +29,5 @@ if [ ! -s "$staged_paths_file" ]; then
   exit 0
 fi
 
-xargs -0 git diff --binary --no-ext-diff -- <"$staged_paths_file" >"$before_diff_path"
 xargs -0 pnpm exec oxfmt <"$staged_paths_file"
-xargs -0 git diff --binary --no-ext-diff -- <"$staged_paths_file" >"$after_diff_path"
-
-if ! cmp -s "$before_diff_path" "$after_diff_path"; then
-  printf '%s\n' 'Pre-commit formatting updated staged files.' >&2
-  printf '%s\n' 'Review the changes, stage what you want, and run commit again.' >&2
-  exit 1
-fi
+xargs -0 git add -- <"$staged_paths_file"
