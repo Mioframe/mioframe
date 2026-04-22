@@ -31,7 +31,10 @@ type StartSpanManualParameters = Parameters<SentryModule['startSpanManual']>;
  * `undefined`. Callback-based span helpers remain callable so wrapped work can
  * still run without checking whether Sentry is available.
  */
-export type SentryFacade = Omit<ProxySentryFacade, 'withScope' | 'startSpan' | 'startSpanManual'> & {
+export type SentryFacade = Omit<
+  ProxySentryFacade,
+  'withScope' | 'startSpan' | 'startSpanManual'
+> & {
   withScope: {
     <T>(callback: (scope: SentryScope) => T): T | undefined;
     <T>(scope: SentryScope | undefined, callback: (scope: SentryScope) => T): T | undefined;
@@ -76,7 +79,8 @@ const getSentryModule = async () => {
   return await sentryModulePromise;
 };
 
-const canInitializeSentry = (config: SentryConfig | undefined) => config?.enabled === true && !!config.dsn;
+const canInitializeSentry = (config: SentryConfig | undefined) =>
+  config?.enabled === true && !!config.dsn;
 
 const readRuntimeConfig = () => {
   if (!canInitializeSentry(runtimeConfig)) {

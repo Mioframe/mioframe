@@ -27,9 +27,7 @@ const createDeferred = <T>() => {
   } satisfies Deferred<T>;
 };
 
-const setupSentryMocks = (options?: {
-  moduleGate?: Deferred<undefined>;
-}) => {
+const setupSentryMocks = (options?: { moduleGate?: Deferred<undefined> }) => {
   const initMock = vi.fn();
   const replayIntegrationMock = vi.fn(() => ({ name: 'replay' }));
   const captureExceptionMock = vi.fn(() => 'exception-id');
@@ -180,7 +178,8 @@ describe('setupSentry', () => {
   });
 
   it('delegates proxied SDK calls after initialization, including non-curated methods', async () => {
-    const { captureMessageMock, setUserMock, flushMock, startInactiveSpanMock } = setupSentryMocks();
+    const { captureMessageMock, setUserMock, flushMock, startInactiveSpanMock } =
+      setupSentryMocks();
     const { sentryPlugin, ensureSentry, useSentry } = await import('./setupSentry');
     const app = createApp(TestAppRoot);
 
