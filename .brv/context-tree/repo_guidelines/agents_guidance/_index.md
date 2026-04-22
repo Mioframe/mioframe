@@ -1,76 +1,102 @@
 ---
-children_hash: 48214ad5062ef7033403fe79ef56eb3a84757860ee63f75fa052a3470a0feca9
-compression_ratio: 0.5957845433255269
+children_hash: 5933604a9a7643caa59c9411130c7927fe0fb190ba08b9541a945944fa0c8557
+compression_ratio: 0.3768844221105528
 condensation_order: 1
-covers: [repository_agents_policy.md]
-covers_token_total: 2135
+covers: [repository_agents_policy.md, src_shared_lib_agents_guidelines.md]
+covers_token_total: 3980
 summary_level: d1
-token_count: 1272
+token_count: 1500
 type: summary
 ---
-## Structural Summary (d1)
+# Structural summary (d1)
 
-### Repository AGENTS Policy (`repository_agents_policy.md`)
-- **Scope & precedence**
-  - Root `AGENTS.md` governs the entire repo **unless overridden** by a deeper, directory-level `AGENTS.md`.
-  - `AGENTS.md` is for **stable repo policy**; ByteRover operational details belong in the `byterover` skill documentation (not in `AGENTS.md`).
+## Repository AGENTS Policy (`repository_agents_policy.md`)
+- **Scope & inheritance**
+  - Repo-root `AGENTS.md` governs the whole repository unless overridden by deeper `AGENTS.md` files.
+  - ByteRover usage details belong in the `byterover` skill; `AGENTS.md` is for stable repo policy (not runbooks or temporary notes).
 
-- **Architecture: Feature-Sliced Design (FSD) responsibilities & boundaries**
-  - Repository uses FSD layers: `src/app`, `src/pages`, `src/widgets`, `src/features`, `src/entities`, `src/shared`.  
-    - `pages`: compose screens.
-    - `widgets`: compose larger sections; should not own domain rules.
-    - `features`: own user actions/flows (dialogs/forms/menus).
-    - `entities`: own domain read models + derived state.
-    - `shared`: cross-layer infrastructure + shared UI; must remain upper-layer-free.
-  - **Import direction constraints**
-    - `shared` **must not** import upper layers.
-    - `entities` may import **only** `shared`.
-    - `features` build on `entities` + `shared`.
-    - `widgets` may compose `features` + `entities` + `shared`, but avoid domain rules.
-    - UI-facing layers may reach background logic **only via explicit proxy clients**; do not directly import `*Service` modules into UI layers.
-  - Prefer importing via `index.ts` **public entry points** when available.
-  - Do not bypass entity/service APIs with direct storage access or ad hoc document mutation; avoid duplicating schemas/types/constants across layers.
+- **Architecture: Feature-Sliced Design (FSD) boundaries**
+  - Layers: `src/app`, `src/pages`, `src/widgets`, `src/features`, `src/entities`, `src/shared`.
+  - Responsibilities:
+    - `pages`: compose screens
+    - `widgets`: compose larger sections; should not own domain rules
+    - `features`: user actions (dialogs/forms/menus)
+    - `entities`: domain reads and derived state
+    - `shared`: cross-layer infrastructure; must remain upper-layer-free
+  - **Dependency constraints**
+    - `shared` must not import upper layers
+    - `entities` may import only `shared`
+    - `features` build on `entities` + `shared`
+    - Don’t pull dependencies “upward” against intended direction
+    - Import via `index.ts` public entry points when they exist
+    - UI-facing layers may access background logic only via explicit proxy clients (no direct `*Service` imports into UI layers)
 
-- **UI/runtime contract guidance**
-  - Treat **DOM parentage, scroll ownership, focus, teleport, overlays** as concrete runtime contracts; verify rendered hierarchy before moving wrappers/composition boundaries.
-  - Align with **Material 3** expectations; optimize for **mobile browsers first**; assume large datasets + low-end devices; keep main-thread work bounded.
-  - Keep component/composable contracts **narrow** (IDs/primitives/small display records; explicit emits/slots). Avoid pushing orchestration complexity into component props.
-  - When progress is knowable, **show progress** instead of defaulting to an indeterminate spinner.
+- **Contract & UI/runtime design rules**
+  - Treat UI runtime wiring as a **concrete contract**: DOM parentage, scroll ownership, focus, teleport, overlays; verify rendered hierarchy before refactors.
+  - Optimize for **Material 3** and **mobile-first**; assume large datasets and low-end devices; bound main-thread work.
+  - Keep contracts narrow: prefer IDs/primitives/small display records; explicit emits/slots over “service bags” or deep configs; avoid orchestration complexity in props.
+  - Keep validation/parsing/extraction close to the boundary that defines the contract.
+  - Lifecycle-manage resources: subscriptions, listeners, workers, timers, caches, file handles, blob URLs.
+  - Typed iteration preference: prefer typed collection helpers over raw `Object.keys/values/entries`; avoid local type assertions except rare boundary adapters.
 
-- **Lifecycle/resource management**
-  - Treat subscriptions/listeners/workers/timers/caches/blob URLs/file handles as **lifecycle-managed resources**.
-
-- **CRDT-backed state rules**
-  - Mutate live nested objects **inside the owning change callback**.
+- **CRDT mutation constraints**
+  - Mutate live nested objects **in place** inside the owning change callback.
   - Never assign a live document object back into the same document.
-  - Prefer shared helpers when matching the write shape: `put`, `patch`, `deepPutJsonObject`, `deepPatchJsonObject`.
+  - Prefer shared helpers when shape matches: `put`, `patch`, `deepPutJsonObject`, `deepPatchJsonObject`.
 
-- **TypeScript iteration rule**
-  - Prefer typed collection helpers over raw `Object.keys/values/entries` on typed records; avoid local type assertions except at rare boundary adapters.
+- **Verification workflow & tooling**
+  - Package manager: **`pnpm`**.
+  - Run the **narrowest relevant** checks:
+    - For logic changes: at least `pnpm type-check`
+    - Add focused `vitest`, Playwright, or reproducible smoke checks when relevant
+    - For lint/format-covered files: targeted `oxlint`, `eslint --fix`, and/or `oxfmt` for the touched scope
+    - When modifying tests: run the narrowest relevant mutation check for touched test scope (in addition to functional verification)
+  - Third-party semantics: verify via official docs or installed source; if unverified, explicitly say so.
 
-- **Verification & tooling (narrowest-target principle)**
-  - Use **pnpm** for package management/commands.
-  - After edits: run the **narrowest relevant** checks:
-    - For logic changes: at least `pnpm type-check`.
-    - Add focused `vitest`, Playwright, or reproducible smoke checks for behavior/schema/service/storage changes.
-    - For lint/format-covered files: targeted `oxlint`, `eslint --fix`, and/or `oxfmt` for touched scope (prefer targeted over repo-wide).
-    - When creating/modifying tests: run the narrowest relevant **mutation check** for the touched test scope in addition to functional verification.
-  - Third-party semantics: verify via **official docs or installed source**; if still ambiguous, explicitly mark as unverified.
+- **Testing conventions**
+  - Unit tests colocated as sibling `*.test.ts` files; **no `__tests__` directories**.
 
-- **Naming & conventions**
-  - Conventional Commits required.
-  - Directory naming: `pages/` and `widgets/` use **PascalCase**; other submodules use **lower camel case**.
-  - File naming: Vue components and class-centric files use **PascalCase**; other TS files use **lower camel case** or lowercase.
-  - Module naming: feature modules named for user actions (`<domain><Action>`); entity modules named for stable domain concepts.
-  - Visual components named for rendered surface with concrete suffixes (`Dialog`, `Sheet`, `Pane`, `ListItem`, `Button`, `State`), not vague roles (`Manager`, `Helper`).
-  - Prefix/suffix conventions:
-    - `MD*` reserved for shared Material-style primitives.
-    - `use*` reactive/lifecycle capabilities; `setup*` wiring + cleanup; `define*` declarative/side-effect-light; `create*` owned instance; `get*` pure lookup/derivation; `is*` boolean; `zod*` schemas; `*Service` background-side infrastructure; `on*` event handlers; `$` suffix reserved for raw RxJS observables.
+- **Naming conventions**
+  - Directories: `pages` and `widgets` use **PascalCase**; other submodules use **lower camel case**.
+  - Files: Vue components and class-centric files use **PascalCase**; other TS files use lower camel case or lowercase.
+  - Modules: features named by user actions (`<domain><Action>`); entities named for stable domain concepts.
+  - UI components named for rendered surface with concrete suffixes (`Dialog`, `Sheet`, `Pane`, `ListItem`, `Button`, `State`), not vague roles.
+  - Reserved naming:
+    - `MD*` prefix only for shared Material-style primitives
+    - `use*`, `setup*`, `define*`, `create*`, `get*`, `is*`, `zod*` convey semantics
+    - `*Service` reserved for background-side infrastructure
+    - `$` suffix reserved for raw RxJS observables
+    - `on*` for event handlers / callback bindings
 
-- **AGENTS tree management**
-  - Add a child `AGENTS.md` only when local invariants / blast-radius rules / reproducible verification can’t be expressed at the parent.
-  - Child `AGENTS.md` refines parent (no repetition); `Contains` should describe stable responsibilities, not current file dumps.
-  - Update the `AGENTS.md` tree alongside ownership/public API/dependency/verification boundary changes.
+- **Process conventions**
+  - Use **Conventional Commits**.
+  - Add child `AGENTS.md` only for local invariants / blast-radius rules / reproducible verification guidance; refine parent (don’t repeat), keep `Contains` stable, and update the AGENTS tree when ownership/API/dependency/verification boundaries change.
 
-- **Relationships**
-  - Related drill-down references: `architecture/feature_sliced_design/context.md`, `facts/project/testing_preferences.md`.
+- **Related drill-down**
+  - Mentions related entries: `architecture/feature_sliced_design/context.md`, `facts/project/testing_preferences.md`.
+
+---
+
+## `src/shared/lib` AGENTS Guidelines (`src_shared_lib_agents_guidelines.md`)
+- **Scope & inheritance**
+  - `src/shared/lib/AGENTS.md` inherits from `src/shared/AGENTS.md` and applies to descendants unless overridden.
+
+- **What belongs in `src/shared/lib`**
+  - Reusable non-UI helpers; storage/filesystem abstractions; schema helpers; typed contract wrappers around browser/third-party APIs; migrations; composables.
+
+- **Core patterns / constraints**
+  - Prefer **small, single-responsibility modules**.
+  - Wrap browser APIs, storage APIs, and third-party SDKs behind **typed contracts**.
+  - Keep validation/parsing/extraction at the boundary; keep platform typing workarounds at the boundary (avoid spreading allocations/complexity to callers).
+  - Explicitly design lifecycle behavior for composables/adapters: cleanup, cancellation, resubscribe behavior, memory profile are part of the contract.
+  - CRDT helpers: treat nested objects as live document objects; update in place; don’t reassign live objects back into the document.
+  - Must not import upper layers.
+  - Avoid vague “utility” modules without clear invariant/caller set/testable responsibility.
+  - Don’t mix generic helpers with project-specific policy unless intentionally shared.
+  - Emphasizes broad blast radius of shared/lib changes.
+
+- **New/explicit requirement**
+  - Exported functions in `src/shared/lib` must include **concise TSDoc** (readability at call sites and during refactors).
+
+- **Minimum verification**
+  - `pnpm type-check` **plus** focused unit tests or reproducible checks for the touched helper semantics (given wide impact).

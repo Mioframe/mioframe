@@ -1,16 +1,10 @@
 ---
-consolidated_at: '2026-04-20T12:10:55.230Z'
-consolidated_from:
-  - {date: '2026-04-20T12:10:55.230Z', path: repo_guidelines/agents_guidance/repository_agents_policy.abstract.md, reason: 'All three files cover the same single topic (Repository AGENTS policy). The .md file is the full canonical content; the abstract and overview are derivative summaries with no unique rules/specs beyond what is already present in the main file. This is redundant content (>50% overlap, effectively 100% topic overlap), so consolidate into one canonical file to avoid divergence.'}
-  - {date: '2026-04-20T12:10:55.230Z', path: repo_guidelines/agents_guidance/repository_agents_policy.overview.md, reason: 'All three files cover the same single topic (Repository AGENTS policy). The .md file is the full canonical content; the abstract and overview are derivative summaries with no unique rules/specs beyond what is already present in the main file. This is redundant content (>50% overlap, effectively 100% topic overlap), so consolidate into one canonical file to avoid divergence.'}
-createdAt: '2026-04-20T11:03:35.007Z'
-keywords: []
-related:
-  - architecture/feature_sliced_design/context.md
-  - facts/project/testing_preferences.md
+title: Repository AGENTS Policy
 summary: 'Top-level AGENTS.md policy: Feature-Sliced Design layer responsibilities, dependency constraints, verification expectations (pnpm/type-check/lint/format), and naming conventions.'
 tags: []
-title: Repository AGENTS Policy
+related: [architecture/feature_sliced_design/context.md, facts/project/testing_preferences.md]
+keywords: []
+createdAt: '2026-04-20T11:03:35.007Z'
 updatedAt: '2026-04-20T11:03:35.007Z'
 ---
 ## Reason
@@ -99,28 +93,3 @@ Verification example: after editing a file under lint/format rules, run targeted
 - **file_naming**: Vue components and class-centric files use PascalCase; other TypeScript files use lower camel case or lowercase. [convention]
 - **test_colocation**: Keep unit tests colocated as sibling *.test.ts files; do not introduce __tests__ directories. [convention]
 - **verification_lint_format**: After editing linted/formatted files, run the narrowest relevant targeted oxlint/eslint --fix/oxfmt pass for the touched scope. [convention]
-
----
-
-## Consolidated summary (formerly abstract/overview)
-The repo-root AGENTS.md defines Feature-Sliced Design layer boundaries and dependency rules, plus conventions for naming, test colocation, and targeted pnpm-based verification (type-check/lint/format/tests) with Conventional Commits.
-
-### Key points
-- Root `AGENTS.md` defines repo-wide policy unless overridden by deeper `AGENTS.md` files; it encodes Feature-Sliced Design (FSD) responsibilities, dependency direction, verification expectations, and naming conventions.
-- Changes should stay within the owning FSD layer and respect import direction; use `index.ts` public entry points when available and avoid pulling dependencies “upward.”
-- Verification is via `pnpm` and targeted checks (type-check, lint/format, tests); prefer narrow scope runs over repo-wide commands and verify ambiguous third-party behavior via official docs or installed source.
-- UI/runtime wiring (DOM parentage, scroll, focus, teleport, overlays) is treated as a concrete contract—validate rendered hierarchy before refactors; optimize for Material 3 and mobile-first performance constraints.
-- Keep contracts narrow and boundary-local: prefer primitives/IDs/small display records and explicit emits/slots; keep parsing/validation close to the defining boundary; avoid orchestration complexity in component props.
-- Lifecycle-manage resources (subscriptions, listeners, workers, timers, caches, file handles, blob URLs) and follow specific CRDT mutation rules (mutate within owning callback; don’t reassign live doc objects).
-- Use Conventional Commits; follow directory/file/module naming conventions (including reserved prefixes/suffixes like `MD*`, `$`, and `*Service`).
-
-### Notable entities, patterns, or decisions mentioned
-- **Entities / tools**: `pnpm`; `oxlint`, `eslint --fix`, `oxfmt`; TypeScript (`pnpm type-check`); `vitest`, Playwright; “mutation check” for touched test scope.
-- **Architecture**: Feature-Sliced Design layers `src/app`, `src/pages`, `src/widgets`, `src/features`, `src/entities`, `src/shared` with stated responsibilities and dependency constraints.
-- **Verification**: run the narrowest relevant checks; minimum `pnpm type-check` for logic changes; validate ambiguous third-party behavior; explicitly note when unverified.
-- **UI/runtime**: DOM hierarchy/scroll/focus/teleport/overlays as contract; Material 3 + mobile-first; bound main-thread work; prefer determinate progress.
-- **API/contract design**: narrow contracts; boundary-local parsing/validation; typed iteration helpers; avoid unnecessary type assertions.
-- **CRDT**: mutate inside owning change callback; don’t reassign live doc objects; prefer helpers `put`, `patch`, `deepPutJsonObject`, `deepPatchJsonObject`.
-- **Tests**: sibling `*.test.ts`, no `__tests__` dirs.
-- **Naming**: conventions for directories/files/modules/components; reserved prefixes/suffixes (`MD*`, `$`, `*Service`, etc.).
-- **Scope management**: ByteRover usage in `byterover` skill; child `AGENTS.md` only for local invariants; keep `Contains` stable; update AGENTS tree with ownership/API/dependency/verification changes.
