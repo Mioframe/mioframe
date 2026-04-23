@@ -1,12 +1,10 @@
 ---
-children_hash: 5933604a9a7643caa59c9411130c7927fe0fb190ba08b9541a945944fa0c8557
-compression_ratio: 0.3768844221105528
-condensation_order: 1
-covers: [repository_agents_policy.md, src_shared_lib_agents_guidelines.md]
-covers_token_total: 3980
-summary_level: d1
-token_count: 1500
-type: summary
+tags: []
+keywords: []
+importance: 53
+recency: 1
+maturity: draft
+accessCount: 1
 ---
 # Structural summary (d1)
 

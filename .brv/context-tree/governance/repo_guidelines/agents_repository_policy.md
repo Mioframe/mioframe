@@ -1,15 +1,14 @@
 ---
-consolidated_at: '2026-04-20T12:12:09.465Z'
-consolidated_from:
-  - {date: '2026-04-20T12:12:09.465Z', path: governance/repo_guidelines/agents_repository_policy.abstract.md, reason: All three files describe the same topic (repo-wide AGENTS.md policy). The abstract and overview are derivative summaries of the main policy document and overlap heavily (>50%) in meaning/content. Consolidating into the richest file avoids redundancy and keeps a single canonical source; the merged output preserves the full policy plus the abstract/overview as explicit summary sections for quick scanning.}
-  - {date: '2026-04-20T12:12:09.465Z', path: governance/repo_guidelines/agents_repository_policy.overview.md, reason: All three files describe the same topic (repo-wide AGENTS.md policy). The abstract and overview are derivative summaries of the main policy document and overlap heavily (>50%) in meaning/content. Consolidating into the richest file avoids redundancy and keeps a single canonical source; the merged output preserves the full policy plus the abstract/overview as explicit summary sections for quick scanning.}
-createdAt: '2026-04-20T10:37:24.747Z'
-keywords: []
-related:
-  - architecture/feature_sliced_design/context.md
+title: AGENTS Repository Policy
 summary: 'Repository-wide AGENTS.md policy: FSD layer responsibilities and boundaries, verification requirements (type-check + targeted tests), naming conventions, and constraints for shared/entities/features/widgets/pages.'
 tags: []
-title: AGENTS Repository Policy
+related: [architecture/feature_sliced_design/context.md]
+keywords: []
+importance: 56
+recency: 1
+maturity: draft
+accessCount: 2
+createdAt: '2026-04-20T10:37:24.747Z'
 updatedAt: '2026-04-20T10:37:24.747Z'
 ---
 

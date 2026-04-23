@@ -1,16 +1,14 @@
 ---
-consolidated_at: '2026-04-20T12:10:55.230Z'
-consolidated_from:
-  - {date: '2026-04-20T12:10:55.230Z', path: repo_guidelines/agents_guidance/repository_agents_policy.abstract.md, reason: 'All three files cover the same single topic (Repository AGENTS policy). The .md file is the full canonical content; the abstract and overview are derivative summaries with no unique rules/specs beyond what is already present in the main file. This is redundant content (>50% overlap, effectively 100% topic overlap), so consolidate into one canonical file to avoid divergence.'}
-  - {date: '2026-04-20T12:10:55.230Z', path: repo_guidelines/agents_guidance/repository_agents_policy.overview.md, reason: 'All three files cover the same single topic (Repository AGENTS policy). The .md file is the full canonical content; the abstract and overview are derivative summaries with no unique rules/specs beyond what is already present in the main file. This is redundant content (>50% overlap, effectively 100% topic overlap), so consolidate into one canonical file to avoid divergence.'}
-createdAt: '2026-04-20T11:03:35.007Z'
-keywords: []
-related:
-  - architecture/feature_sliced_design/context.md
-  - facts/project/testing_preferences.md
+title: Repository AGENTS Policy
 summary: 'Top-level AGENTS.md policy: Feature-Sliced Design layer responsibilities, dependency constraints, verification expectations (pnpm/type-check/lint/format), and naming conventions.'
 tags: []
-title: Repository AGENTS Policy
+related: [architecture/feature_sliced_design/context.md, facts/project/testing_preferences.md]
+keywords: []
+importance: 56
+recency: 1
+maturity: draft
+accessCount: 2
+createdAt: '2026-04-20T11:03:35.007Z'
 updatedAt: '2026-04-20T11:03:35.007Z'
 ---
 ## Reason
