@@ -8,16 +8,15 @@ import { DocumentRenameDialog } from '@feature/documentRename';
 import { useDocument } from '@entity/cfrDocument';
 import { DomainError } from '@shared/lib/error';
 import DatabaseViewWidget from '@widget/DocumentView/Database/DatabaseViewWidget.vue';
-import { zodQuery } from './model';
-import { zodToVueProps } from '@shared/lib/zodToVueProps';
+import type { Query } from './model';
 
-const props = defineProps(zodToVueProps(zodQuery));
-
-const { documentDirectory, documentId } = toRefs(props);
+const props = defineProps<Query>();
 
 const slots = defineSlots<{
   navigationButton: () => unknown;
 }>();
+
+const { documentDirectory, documentId } = toRefs(props);
 
 const { state: documentDescription } = useDocument(documentDirectory, documentId);
 

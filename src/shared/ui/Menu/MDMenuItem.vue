@@ -14,7 +14,6 @@ const props = withDefaults(
 
 const emit = defineEmits<{
   click: [T];
-  'update:showSubmenu': [value: boolean | undefined];
 }>();
 
 const onClickItem = (subItem?: T) => {

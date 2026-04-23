@@ -27,7 +27,7 @@ const props = defineProps<{
 const { path, documentId } = toRefs(props);
 
 const emit = defineEmits<{
-  created: [id: DatabasePropertyId, property: DatabaseUnknownProperty];
+  created: [payload: { id: DatabasePropertyId; property: DatabaseUnknownProperty }];
   cancel: [];
 }>();
 
@@ -83,7 +83,7 @@ const { post } = useDatabaseProperties(path, documentId);
 const onCreate = async () => {
   if (assembledProperty.value) {
     const id = await post(assembledProperty.value);
-    emit('created', id, assembledProperty.value);
+    emit('created', { id, property: assembledProperty.value });
   } else {
     addSnackbar({ text: 'Property is not fully filled' });
   }
