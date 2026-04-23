@@ -4,10 +4,10 @@ summary: 'Repository-wide AGENTS.md policy: FSD layer responsibilities and bound
 tags: []
 related: [architecture/feature_sliced_design/context.md]
 keywords: []
-importance: 56
+importance: 59
 recency: 1
 maturity: draft
-accessCount: 2
+accessCount: 3
 createdAt: '2026-04-20T10:37:24.747Z'
 updatedAt: '2026-04-20T10:37:24.747Z'
 ---

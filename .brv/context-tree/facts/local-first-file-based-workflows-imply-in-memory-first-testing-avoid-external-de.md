@@ -1,10 +1,10 @@
 ---
 tags: []
 keywords: []
-importance: 53
+importance: 56
 recency: 1
 maturity: draft
-accessCount: 1
+accessCount: 2
 ---
 
 # Local-first, file-based workflows imply in-memory-first testing (avoid external deps)

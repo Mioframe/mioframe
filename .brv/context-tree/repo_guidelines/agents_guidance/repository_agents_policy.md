@@ -4,10 +4,10 @@ summary: 'Top-level AGENTS.md policy: Feature-Sliced Design layer responsibiliti
 tags: []
 related: [architecture/feature_sliced_design/context.md, facts/project/testing_preferences.md]
 keywords: []
-importance: 56
+importance: 59
 recency: 1
 maturity: draft
-accessCount: 2
+accessCount: 3
 createdAt: '2026-04-20T11:03:35.007Z'
 updatedAt: '2026-04-20T11:03:35.007Z'
 ---
