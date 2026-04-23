@@ -1,1 +1,0 @@
-Unit tests should be fast and in-memory, favoring lightweight isolation over external dependencies or integration-style setup.
