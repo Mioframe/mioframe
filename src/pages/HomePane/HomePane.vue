@@ -6,12 +6,16 @@ import { PathUtils } from '@shared/lib/virtualFileSystem';
 import { GOOGLE_DRIVE_ROOT_NAME } from '@shared/service/google/useGoogleService';
 import { GoogleDriveWidget } from '@widget/GoogleDriveWidget';
 import { LocalFSWidget } from '@widget/LocalFSWidget';
+import { StarterExamplesWidget } from '@widget/StarterExamplesWidget';
+import type { AMDocumentId } from '@shared/lib/automerge';
+import { useLocalSettings } from '@entity/localSettings';
 
 defineSlots<{
   navigationButton: () => unknown;
 }>();
 
 const { open } = useStackNavigation();
+const { settings } = useLocalSettings();
 
 const onClickGoogleDriveUser = async (email: string) => {
   await open(
@@ -26,11 +30,29 @@ const onClickGoogleDriveUser = async (email: string) => {
 const onClickLocalPath = async (path: string) => {
   await open('repo', { repoPath: path }, { target: 'repo' });
 };
+
+const openDocument = async (documentDirectory: string, documentId: AMDocumentId) => {
+  await open(
+    'document',
+    {
+      documentDirectory,
+      documentId,
+    },
+    {
+      target: 'document',
+    },
+  );
+};
 </script>
 
 <template>
   <MDPane class="home" allow-bottom-navigation>
     <MDAppBar />
+
+    <StarterExamplesWidget
+      v-if="!settings.hideStarterWidget"
+      @open-document="openDocument($event.documentDirectory, $event.documentId)"
+    />
 
     <LocalFSWidget @click-path="onClickLocalPath" />
 
@@ -43,5 +65,8 @@ const onClickLocalPath = async (path: string) => {
 .home {
   --md-container-color: inherit;
   --md-content-color: inherit;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
 }
 </style>
