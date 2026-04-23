@@ -97,7 +97,7 @@
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-oxlint": "~1.59.0",
     "eslint-plugin-playwright": "^2.3.0",
-    "eslint-plugin-vue": "~10.8.0",
+    "eslint-plugin-vue": "~10.9.0",
     "happy-dom": "^20.8.9",
     "husky": "^9.1.7",
     "npm-run-all2": "^8.0.4",

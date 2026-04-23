@@ -1,9 +1,9 @@
 import { sessionUniqueId } from '@shared/lib/uniqueId';
 import type { MaybeElementRef } from '@vueuse/core';
-import { createGlobalState, tryOnScopeDispose, unrefElement, until } from '@vueuse/core';
-import { isBoolean, isUndefined } from 'es-toolkit';
+import { createGlobalState, tryOnScopeDispose, unrefElement } from '@vueuse/core';
+import { isUndefined } from 'es-toolkit';
 import type { Ref } from 'vue';
-import { computed, nextTick, reactive, ref, shallowRef, watch, watchEffect } from 'vue';
+import { computed, reactive, ref, shallowRef, watch, watchEffect } from 'vue';
 
 type AlertDescription = {
   type: 'alert' | 'confirm';
@@ -24,34 +24,27 @@ export const useDialogState = createGlobalState(() => {
     supportingText: string,
     confirmLabel?: string,
     symbolName?: string,
-  ) => {
-    const id = sessionUniqueId('dialog');
+  ) =>
+    await new Promise<boolean>((resolve) => {
+      const id = sessionUniqueId('dialog');
 
-    const resultState = ref<boolean>();
+      const callback = (result: boolean) => {
+        alertSet.delete(alertDescription);
+        resolve(result);
+      };
 
-    const callback = (result: boolean) => {
-      alertSet.delete(alertDescription);
-      resultState.value = result;
-    };
+      const alertDescription: AlertDescription = {
+        type,
+        id,
+        headline,
+        supportingText,
+        confirmLabel,
+        callback,
+        symbolName,
+      };
 
-    const alertDescription: AlertDescription = {
-      type,
-      id,
-      headline,
-      supportingText,
-      confirmLabel,
-      callback,
-      symbolName,
-    };
-
-    alertSet.add(alertDescription);
-
-    await nextTick();
-
-    await until(() => isBoolean(resultState.value)).toBe(true);
-
-    return resultState.value;
-  };
+      alertSet.add(alertDescription);
+    });
 
   const confirm = (
     headline: string,

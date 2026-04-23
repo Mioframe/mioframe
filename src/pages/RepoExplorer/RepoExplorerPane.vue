@@ -8,20 +8,19 @@ import { useFSNodeStat } from '@entity/fsEntry';
 import { MDPane } from '@shared/ui/Layout';
 import { MDAppBar } from '@shared/ui/AppBar';
 import type { AMDocumentId } from '@shared/lib/automerge/automergeTypes';
-import { zodQuery } from './model';
 import { useStackNavigation } from '@page/routes';
-import { zodToVueProps } from '@shared/lib/zodToVueProps';
+import type { Query } from './model';
 import { PathUtils } from '@shared/lib/virtualFileSystem';
 import { FSEntryManageMenuButton } from '@feature/entryManage';
 import { RepositoryExplorerWidget } from '@widget/RepositoryExplorerWidget';
 
-const props = defineProps(zodToVueProps(zodQuery));
-
-const { repoPath: directoryPath } = toRefs(props);
+const props = defineProps<Query>();
 
 defineSlots<{
   navigationButton: () => unknown;
 }>();
+
+const { repoPath: directoryPath } = toRefs(props);
 
 const createDirectoryParentPath = ref<string>();
 
