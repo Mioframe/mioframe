@@ -4,6 +4,10 @@ summary: 'Optional Sentry integration: stable Proxy-based facade over callable @
 tags: []
 related: [architecture/observability/sentry_lazy_initialization_facade_vue.md]
 keywords: []
+importance: 56
+recency: 1
+maturity: draft
+accessCount: 2
 createdAt: '2026-04-22T06:38:04.097Z'
 updatedAt: '2026-04-22T06:38:04.097Z'
 ---
