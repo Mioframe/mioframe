@@ -8,8 +8,6 @@ const props = defineProps<{
   operator: UNARY_FILTER_OPERATOR;
 }>();
 
-const { operator } = toRefs(props);
-
 const emit = defineEmits<{
   apply: [];
   cancel: [];
@@ -18,6 +16,8 @@ const emit = defineEmits<{
 defineSlots<{
   valueField: () => unknown;
 }>();
+
+const { operator } = toRefs(props);
 
 const filterLabel = computed(() => OPERATOR_LABEL[operator.value]);
 

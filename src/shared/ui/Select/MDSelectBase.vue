@@ -9,6 +9,10 @@ import { toString } from 'es-toolkit/compat';
 import { sessionUniqueId } from '@shared/lib/uniqueId';
 import { useSelectOptions } from './provideOptions';
 
+const modelValue = defineModel<Value[]>({
+  required: true,
+});
+
 const props = defineProps<{
   labelText: string;
   supportingText?: string | undefined;
@@ -18,16 +22,12 @@ const props = defineProps<{
   multiple?: boolean | undefined;
 }>();
 
-const { multiple } = toRefs(props);
-
-const modelValue = defineModel<Value[]>({
-  required: true,
-});
-
 defineSlots<{
   valueContainer: () => unknown;
   options: () => unknown;
 }>();
+
+const { multiple } = toRefs(props);
 
 const fieldContainerRef = useTemplateRef<MaybeElement>('fieldContainerRef');
 
@@ -133,8 +133,8 @@ const selectId = sessionUniqueId('select');
                 :key="valueToString(value)"
                 :label="valueToString(value)"
                 type="input"
-                @click="onClickValue(value)"
-                @click-close="onClickValue(value)"
+                @click="() => onClickValue(value)"
+                @click-close="() => onClickValue(value)"
               />
             </template>
 

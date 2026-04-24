@@ -24,14 +24,14 @@ withDefaults(
   },
 );
 
-const slots = defineSlots<{
-  default(): unknown;
-  icon(): unknown;
-}>();
-
 const emit = defineEmits<{
   cancel: [];
   apply: [];
+}>();
+
+const slots = defineSlots<{
+  default(): unknown;
+  icon(): unknown;
 }>();
 
 const dialogContainer = useOverlayContainer();

@@ -27,11 +27,11 @@ const props = defineProps<{
   viewId: DatabaseViewId;
 }>();
 
-const { path, documentId, viewId } = toRefs(props);
-
 defineSlots<{
   trailingIcon: (p: { propertyId: DatabasePropertyId; direction: SORT_DIRECTION }) => unknown;
 }>();
+
+const { path, documentId, viewId } = toRefs(props);
 
 const container = useTemplateRef<MaybeElement>('container');
 
@@ -112,7 +112,7 @@ const onClickRemoveItem = async (propertyId: DatabasePropertyId) => {
             color="standard"
             tooltip="remove"
             md-symbol-name="delete"
-            @click="onClickRemoveItem(propertyId)"
+            @click="() => onClickRemoveItem(propertyId)"
           />
         </template>
       </DatabaseSortingListItem>
@@ -143,7 +143,7 @@ const onClickRemoveItem = async (propertyId: DatabasePropertyId) => {
         :property-id="propertyId"
         :path="path"
         :document-id="documentId"
-        @click="onClickAddSortingMenu(propertyId)"
+        @click="() => onClickAddSortingMenu(propertyId)"
       />
     </MDMenuBase>
   </section>

@@ -14,8 +14,8 @@ const { alertSet } = useDialogState();
     :supporting-text="item.supportingText"
     :apply-label="item.confirmLabel ?? 'Ok'"
     :has-cancel-action="item.type === 'confirm'"
-    @apply="item.callback(true)"
-    @cancel="item.callback(false)"
+    @apply="() => item.callback(true)"
+    @cancel="() => item.callback(false)"
   >
     <template v-if="item.symbolName" #icon>
       <MDSymbol :name="item.symbolName" />

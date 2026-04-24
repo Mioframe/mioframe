@@ -10,12 +10,12 @@ const props = defineProps<{
   path: string;
 }>();
 
-const { path } = toRefs(props);
-
 const emit = defineEmits<{
   created: [name: string];
   cancel: [];
 }>();
+
+const { path } = toRefs(props);
 
 const errorText = ref<string>();
 const { data: directoryStat } = useFSNodeStat(path);

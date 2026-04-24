@@ -1,4 +1,7 @@
+import type { PropType } from 'vue';
 import type { z } from 'zod/mini';
+import { safeParse } from 'zod/mini';
+import { objectEntries } from '../objectEntries';
 
 type OptionalKeys<T> = {
   [K in keyof T]-?: object extends Pick<T, K> ? K : never;
@@ -30,11 +33,25 @@ export const zodToVueProps = <
   T extends MandateOptionalWithUndefined<z.output<Z>>,
 >(
   zod: Z,
-) =>
-  // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- required for Vue props type assertion
-  Object.keys(zod.def.shape) as {
+): {
+  [K in keyof T]: {
+    required: Extract<T[K], undefined> extends never ? true : false;
+    type: PropType<T[K]>;
+  };
+} => {
+  const props = objectEntries(zod.shape).map(([key, value]) => [
+    key,
+    {
+      required: !safeParse(value, undefined).success,
+      type: null,
+    },
+  ]);
+
+  // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- Vue cannot infer prop types from Zod schemas at runtime
+  return Object.fromEntries(props) as {
     [K in keyof T]: {
       required: Extract<T[K], undefined> extends never ? true : false;
-      type: () => T[K];
+      type: PropType<T[K]>;
     };
   };
+};

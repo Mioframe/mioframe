@@ -109,7 +109,7 @@ const { isRetryAuthorizationLoading, onRetryAuthorization } = useGoogleDriveReco
           :document-id="docId"
           :path="directoryPath"
           class="repository-explorer-widget__list-item"
-          @click="onClickDocument(docId)"
+          @click="() => onClickDocument(docId)"
         >
           <template #trailingIcon>
             <DocumentManageMenuButton :directory-path="directoryPath" :document-id="docId" />
@@ -155,7 +155,7 @@ const { isRetryAuthorizationLoading, onRetryAuthorization } = useGoogleDriveReco
           :supporting-text="description"
           :type="nodeType"
           class="repository-explorer-widget__list-item"
-          @click="onClickDirectoryEntry(name, nodeType)"
+          @click="() => onClickDirectoryEntry(name, nodeType)"
         >
           <template #trailingIcon>
             <FSEntryManageMenuButton :path="PathUtils.join(directoryPath, name)" />

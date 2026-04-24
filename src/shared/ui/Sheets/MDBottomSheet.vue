@@ -6,6 +6,16 @@ import { type MaybeElement } from '@vueuse/core';
 import { watch } from 'vue';
 import { useOverlayContainer } from '../Overlay';
 
+const showModel = defineModel<boolean>('show', { required: true });
+
+const fullscreen = defineModel<boolean>('fullscreen', {
+  default: undefined,
+});
+
+const collapsed = defineModel<boolean>('collapsed', {
+  default: undefined,
+});
+
 const props = withDefaults(
   defineProps<{
     type?: 'standard' | 'modal' | undefined;
@@ -17,18 +27,6 @@ const props = withDefaults(
   {},
 );
 
-const { label } = toRefs(props);
-
-const showModel = defineModel<boolean>('show', { required: true });
-
-const fullscreen = defineModel<boolean>('fullscreen', {
-  default: undefined,
-});
-
-const collapsed = defineModel<boolean>('collapsed', {
-  default: undefined,
-});
-
 const emit = defineEmits<{
   clickContainer: [];
 }>();
@@ -36,6 +34,8 @@ const emit = defineEmits<{
 defineSlots<{
   default: () => unknown;
 }>();
+
+const { label } = toRefs(props);
 
 const bottomSheetContainerEl = useTemplateRef<MaybeElement>('bottomSheetContainerEl');
 

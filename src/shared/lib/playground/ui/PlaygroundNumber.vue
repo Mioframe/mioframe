@@ -1,7 +1,7 @@
 <script setup lang="ts">
-defineProps<{ label: string; step?: number; min?: number; max?: number }>();
-
 const value = defineModel<number>({ required: true });
+
+defineProps<{ label: string; step?: number; min?: number; max?: number }>();
 </script>
 
 <template>

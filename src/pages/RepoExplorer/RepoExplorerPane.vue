@@ -8,25 +8,30 @@ import { useFSNodeStat } from '@entity/fsEntry';
 import { MDPane } from '@shared/ui/Layout';
 import { MDAppBar } from '@shared/ui/AppBar';
 import type { AMDocumentId } from '@shared/lib/automerge/automergeTypes';
-import { zodQuery } from './model';
 import { useStackNavigation } from '@page/routes';
 import { zodToVueProps } from '@shared/lib/zodToVueProps';
+import { zodQuery } from './model';
 import { PathUtils } from '@shared/lib/virtualFileSystem';
 import { FSEntryManageMenuButton } from '@feature/entryManage';
 import { RepositoryExplorerWidget } from '@widget/RepositoryExplorerWidget';
 
+// eslint-disable-next-line vue/define-props-declaration -- z.infer output is too complex for Vue macro runtime inference
 const props = defineProps(zodToVueProps(zodQuery));
-
-const { repoPath: directoryPath } = toRefs(props);
 
 defineSlots<{
   navigationButton: () => unknown;
 }>();
 
+const { repoPath: directoryPath } = toRefs(props);
+
 const createDirectoryParentPath = ref<string>();
 
 const onClickCreateDirectory = () => {
   createDirectoryParentPath.value = directoryPath.value;
+};
+
+const onCloseCreateDirectoryDialog = () => {
+  createDirectoryParentPath.value = undefined;
 };
 
 const { data: directoryStat } = useFSNodeStat(directoryPath);
@@ -43,6 +48,10 @@ const showCreateDocumentDialog = ref(false);
 
 const onClickCreateDocument = () => {
   showCreateDocumentDialog.value = true;
+};
+
+const onCloseCreateDocumentDialog = () => {
+  showCreateDocumentDialog.value = false;
 };
 
 const onClickDocument = async (documentId: AMDocumentId) => {
@@ -112,15 +121,15 @@ const onClickReturnHome = async () => {
     <DocumentCreationDialog
       v-if="directoryPath && showCreateDocumentDialog"
       :path="directoryPath"
-      @cancel="showCreateDocumentDialog = false"
-      @created="showCreateDocumentDialog = false"
+      @cancel="onCloseCreateDocumentDialog"
+      @created="onCloseCreateDocumentDialog"
     />
 
     <DirectoryCreateDialog
       v-if="createDirectoryParentPath"
       :path="createDirectoryParentPath"
-      @cancel="createDirectoryParentPath = undefined"
-      @created="createDirectoryParentPath = undefined"
+      @cancel="onCloseCreateDirectoryDialog"
+      @created="onCloseCreateDirectoryDialog"
     />
   </MDPane>
 </template>

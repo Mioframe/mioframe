@@ -1,9 +1,11 @@
 <script setup lang="ts" generic="T extends MenuButtonDescription<T>">
 import type { MaybeElement } from '@vueuse/core';
-import { computed, ref, toRefs } from 'vue';
+import { computed, toRefs } from 'vue';
 import type { MenuButtonDescription, MenuButtonList } from './types';
 import MDMenuItem from './MDMenuItem.vue';
 import MDMenuBase from './MDMenuBase.vue';
+
+const showModel = defineModel<boolean>('show', { required: true });
 
 const props = withDefaults(
   defineProps<{
@@ -22,21 +24,18 @@ const props = withDefaults(
   },
 );
 
-const { target, btns, outsideIgnore, placement } = toRefs(props);
-
 const emit = defineEmits<{
   click: [menuItem: T];
   interactionOutside: [];
   deactivateFocus: [];
 }>();
 
-const showModel = defineModel<boolean>('show', { required: true });
+const { target, btns, outsideIgnore, placement } = toRefs(props);
 
 const onClickItem = (menuItem: T) => {
   emit('click', menuItem);
 };
 
-const showSubmenu = ref<boolean | undefined>();
 const itemRole = computed(() => (props.role === 'listbox' ? 'option' : undefined));
 </script>
 
@@ -59,7 +58,6 @@ const itemRole = computed(() => (props.role === 'listbox' ? 'option' : undefined
       :item="item"
       :item-role="itemRole"
       @click="onClickItem"
-      @update:show-submenu="showSubmenu = $event"
     />
   </MDMenuBase>
 </template>

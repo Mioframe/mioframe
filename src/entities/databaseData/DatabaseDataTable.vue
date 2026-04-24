@@ -19,8 +19,6 @@ const props = defineProps<{
   idQuery?: ItemIdQuery | undefined;
 }>();
 
-const { directoryPath, documentId, viewId, idQuery } = toRefs(props);
-
 const slots = defineSlots<{
   property: (p: { propertyId: DatabasePropertyId }) => unknown;
   value: (p: { itemId: DatabaseItemId; propertyId: DatabasePropertyId }) => unknown;
@@ -28,6 +26,8 @@ const slots = defineSlots<{
   actionHead: (p: EmptyObject) => unknown;
   after: () => unknown;
 }>();
+
+const { directoryPath, documentId, viewId, idQuery } = toRefs(props);
 
 const { itemIdList } = useDatabaseData(directoryPath, documentId, viewId, idQuery);
 </script>

@@ -5,6 +5,10 @@ import { toNumber } from 'es-toolkit/compat';
 import { computed, ref, toRefs, useTemplateRef, watch, watchEffect } from 'vue';
 import { MDState } from '../State';
 
+const modelFullscreen = defineModel<boolean>('fullscreen', {
+  default: undefined,
+});
+
 const props = withDefaults(
   defineProps<{
     width?: number | undefined;
@@ -14,12 +18,6 @@ const props = withDefaults(
   { collapsed: undefined, type: 'standard' },
 );
 
-const { width, collapsed: collapsedProp, type: sheetType } = toRefs(props);
-
-const modelFullscreen = defineModel<boolean>('fullscreen', {
-  default: undefined,
-});
-
 const emit = defineEmits<{
   'update:collapsed': [boolean];
   clickContainer: [];
@@ -28,6 +26,8 @@ const emit = defineEmits<{
 defineSlots<{
   default(): unknown;
 }>();
+
+const { width, collapsed: collapsedProp, type: sheetType } = toRefs(props);
 
 const containerEl = useTemplateRef('containerEl');
 

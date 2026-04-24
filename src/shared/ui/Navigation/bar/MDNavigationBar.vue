@@ -31,7 +31,7 @@ const onClick = (button: T) => {
       :active="active === button"
       class="md-navigation-bar__button"
       :type="type"
-      @click="onClick(button)"
+      @click="() => onClick(button)"
     />
   </div>
 </template>

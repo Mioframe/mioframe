@@ -6,9 +6,9 @@ import { deepPutJsonObject } from '@shared/lib/changeObject';
 import { isObjectLike } from '@shared/lib/typeGuards';
 import { debounce, isEqual, isUndefined } from 'es-toolkit';
 
-defineProps<{ label: string }>();
-
 const value = defineModel<unknown>({ required: true });
+
+defineProps<{ label: string }>();
 
 const editorRef = useTemplateRef('editorRef');
 

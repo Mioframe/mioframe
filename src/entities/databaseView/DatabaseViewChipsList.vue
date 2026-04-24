@@ -65,7 +65,7 @@ const isSelected = (viewId: DatabaseViewId): boolean => {
       :selected="isSelected(viewId)"
       :type="type"
       :autofocus="!index ? autofocus : undefined"
-      @click="onClickViewChip(viewId)"
+      @click="() => onClickViewChip(viewId)"
     />
   </div>
 </template>
