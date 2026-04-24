@@ -46,7 +46,7 @@ const getUpdatedDefaultValueProperty = (
     @created="onCreated"
     @cancel="onCancel"
   >
-    <template #after="{ property, onUpdateDefaultValue, onUpdateProperty }">
+    <template #after="{ property, submitProperty, onUpdateDefaultValue, onUpdateProperty }">
       <DatabasePropertySettingsSection
         :property="property"
         :directory-path="directoryPath"
@@ -54,13 +54,14 @@ const getUpdatedDefaultValueProperty = (
       />
 
       <DatabasePropertyValueField
-        :value="property.default"
-        :property="getDefaultValueProperty(property)"
+        v-if="submitProperty"
+        :value="submitProperty.default"
+        :property="getDefaultValueProperty(submitProperty)"
         :directory-path="directoryPath"
         @update:value="onUpdateDefaultValue"
         @update:property="
           (updatedProperty) =>
-            onUpdateProperty(getUpdatedDefaultValueProperty(property, updatedProperty))
+            onUpdateProperty(getUpdatedDefaultValueProperty(submitProperty, updatedProperty))
         "
       />
     </template>
