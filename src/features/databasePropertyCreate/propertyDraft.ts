@@ -1,8 +1,8 @@
-import { zodBooleanProperty } from '@entity/databaseBoolean/boolean';
-import { zodDateProperty } from '@entity/databaseDate/date';
-import { zodNumberProperty } from '@entity/databaseNumber/model';
-import { zodRelationProperty, type Relation } from '@entity/databaseRelation/model';
-import { zodStringProperty } from '@entity/databaseString/string';
+import { zodBooleanProperty } from '@entity/databaseBoolean';
+import { zodDateProperty } from '@entity/databaseDate';
+import { zodNumberProperty } from '@entity/databaseNumber';
+import { zodRelationProperty, type Relation } from '@entity/databaseRelation';
+import { zodStringProperty } from '@entity/databaseString';
 import type { DatabaseUnknownProperty } from '@shared/lib/databaseDocument';
 import { zodDatabaseUnknownProperty } from '@shared/lib/databaseDocument';
 import { zodIs } from '@shared/lib/validateZodScheme';
