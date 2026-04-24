@@ -3,7 +3,6 @@ import { computed, ref, toRefs, watch } from 'vue';
 import { MDDialog } from '@shared/ui/Dialog';
 import { MDTextField } from '@shared/ui/TextField';
 import { MDSelectBase, MDSelectOption } from '@shared/ui/Select';
-import type { PartialDeep } from 'type-fest';
 import { PROPERTY_TYPE_BOOLEAN, createBooleanProperty } from '@entity/databaseBoolean';
 import { PROPERTY_TYPE_DATE, createDateProperty } from '@entity/databaseDate';
 import { PROPERTY_TYPE_NUMBER, createNumberProperty } from '@entity/databaseNumber';
@@ -11,13 +10,9 @@ import { PROPERTY_TYPE_RELATION, createRelationProperty } from '@entity/database
 import { PROPERTY_TYPE_STRING, createStringProperty } from '@entity/databaseString';
 import { useSnackbar } from '@shared/ui/Snackbar';
 import type { AMDocumentId } from '@shared/lib/automerge';
-import {
-  zodDatabaseUnknownProperty,
-  type DatabasePropertyId,
-  type DatabaseUnknownProperty,
-} from '@shared/lib/databaseDocument';
-import { zodIs } from '@shared/lib/validateZodScheme';
+import type { DatabasePropertyId, DatabaseUnknownProperty } from '@shared/lib/databaseDocument';
 import { useDatabaseProperties } from '@entity/databaseProperty';
+import { getCreatableProperty, getDraftProperty, type PropertyDraft } from './propertyDraft';
 
 const props = defineProps<{
   path: string;
@@ -32,6 +27,7 @@ const emit = defineEmits<{
 defineSlots<{
   after: (p: {
     property: DatabaseUnknownProperty;
+    submitProperty: DatabaseUnknownProperty | undefined;
     onUpdateDefaultValue: (v: unknown) => void;
     onUpdateProperty: (v: DatabaseUnknownProperty) => void;
   }) => unknown;
@@ -66,11 +62,6 @@ const propertyTypeOptions = [
   },
 ] as const;
 
-type PropertyDraft = PartialDeep<Omit<DatabaseUnknownProperty, 'name' | 'type'>> & {
-  name?: string | undefined;
-  type?: DatabaseUnknownProperty['type'] | undefined;
-};
-
 const partialPropertyState = ref<PropertyDraft>({});
 
 const typeSelect = ref<(string | number)[]>([propertyTypeOptions[0].type]);
@@ -100,20 +91,18 @@ const onUpdateDefaultValue = (value: unknown) => {
   partialPropertyState.value.default = value;
 };
 
-const assembledProperty = computed((): undefined | DatabaseUnknownProperty => {
-  return zodIs(partialPropertyState.value, zodDatabaseUnknownProperty)
-    ? partialPropertyState.value
-    : undefined;
-});
+const draftProperty = computed(() => getDraftProperty(partialPropertyState.value));
+
+const submitProperty = computed(() => getCreatableProperty(partialPropertyState.value));
 
 const { addSnackbar } = useSnackbar();
 
 const { post } = useDatabaseProperties(path, documentId);
 
 const onCreate = async () => {
-  if (assembledProperty.value) {
-    const id = await post(assembledProperty.value);
-    emit('created', { id, property: assembledProperty.value });
+  if (submitProperty.value) {
+    const id = await post(submitProperty.value);
+    emit('created', { id, property: submitProperty.value });
   } else {
     addSnackbar({ text: 'Property is not fully filled' });
   }
@@ -183,9 +172,10 @@ const propertyNameModel = computed<string | undefined>({
     </MDSelectBase>
 
     <slot
-      v-if="assembledProperty"
+      v-if="draftProperty"
       name="after"
-      :property="assembledProperty"
+      :property="draftProperty"
+      :submit-property="submitProperty"
       :on-update-default-value="onUpdateDefaultValue"
       :on-update-property="onUpdateProperty"
     />

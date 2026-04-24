@@ -1,6 +1,8 @@
 export {
   PROPERTY_TYPE_RELATION,
   createRelationProperty,
+  isRelationDraftProperty,
+  type RelationDraftProperty,
   zodRelationProperty,
   zodRelationValue,
   type Relation,
