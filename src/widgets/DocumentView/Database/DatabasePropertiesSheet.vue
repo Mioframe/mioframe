@@ -1,22 +1,18 @@
 <script setup lang="ts">
 import { DatabasePropertyList } from '@entity/databaseProperty';
 import { DatabasePropertyRemoveDialog } from '@feature/databasePropertyRemove';
+import { DatabasePropertyEditDialog } from '@feature/databasePropertyEdit';
 import type { AMDocumentId } from '@shared/lib/automerge';
-import type { DatabasePropertyId } from '@shared/lib/databaseDocument';
+import type { DatabasePropertyId, DatabaseUnknownProperty } from '@shared/lib/databaseDocument';
 import { MD_SYS_TYPESCALE } from '@shared/lib/md';
 import { MDButton } from '@shared/ui/Button';
 import { MDSymbol } from '@shared/ui/Icon';
 import { defineMenuButtonList, MDContextMenuButton } from '@shared/ui/Menu';
 import { MDBottomSheet, MDBottomSheetSection } from '@shared/ui/Sheets';
 import { ref } from 'vue';
+import DatabasePropertySettingsSection from './DatabasePropertySettingsSection.vue';
+import DatabasePropertyValueField from './DatabasePropertyValueField.vue';
 import PropertyCreateDialogWidget from './PropertyCreateDialogWidget.vue';
-import { DatabasePropertyEditDialog } from '@feature/databasePropertyEdit';
-import { DatabaseRelationPropertyEditSection } from '@feature/databaseRelationPropertyEdit';
-import { zodIs } from '@shared/lib/validateZodScheme';
-import { zodRelationProperty } from '@entity/databaseRelation';
-import { DatabaseBooleanPropertyEditSection } from '@feature/databaseBooleanPropertyEdit';
-import { zodBooleanProperty } from '@entity/databaseBoolean';
-import ValueField from './ValueField.vue';
 
 defineProps<{
   directoryPath: string;
@@ -26,6 +22,8 @@ defineProps<{
 const emit = defineEmits<{
   closed: [];
 }>();
+
+const DEFAULT_VALUE_LABEL = 'Default value';
 
 enum PROPERTY_ACTION {
   remove,
@@ -46,7 +44,6 @@ const propertyContextBtns = defineMenuButtonList([
 ]);
 
 const removePropertyId = ref<DatabasePropertyId>();
-
 const editPropertyId = ref<DatabasePropertyId>();
 
 const onClickPropertyContextAction = (
@@ -73,6 +70,39 @@ const onClosed = () => {
 };
 
 const isShowAddProperty = ref(false);
+
+const onToggleCreateProperty = () => {
+  isShowAddProperty.value = !isShowAddProperty.value;
+};
+
+const onCloseRemovePropertyDialog = () => {
+  removePropertyId.value = undefined;
+};
+
+const onCloseEditPropertyDialog = () => {
+  editPropertyId.value = undefined;
+};
+
+const onCreatedProperty = () => {
+  isShowAddProperty.value = false;
+};
+
+const onCancelCreateProperty = () => {
+  isShowAddProperty.value = false;
+};
+
+const getDefaultValueProperty = (property: DatabaseUnknownProperty): DatabaseUnknownProperty => ({
+  ...property,
+  name: DEFAULT_VALUE_LABEL,
+});
+
+const getUpdatedDefaultValueProperty = (
+  property: DatabaseUnknownProperty,
+  updatedProperty: DatabaseUnknownProperty,
+): DatabaseUnknownProperty => ({
+  ...updatedProperty,
+  name: property.name,
+});
 </script>
 
 <template>
@@ -89,13 +119,13 @@ const isShowAddProperty = ref(false);
           <MDContextMenuButton
             :btns="propertyContextBtns"
             :tooltip="`options ${property?.name}`"
-            @click="onClickPropertyContextAction($event, propertyId)"
+            @click="(payload) => onClickPropertyContextAction(payload, propertyId)"
           />
         </template>
       </DatabasePropertyList>
 
       <div class="db-properties-sheet__actions">
-        <MDButton label="add property" @click="isShowAddProperty = !isShowAddProperty">
+        <MDButton label="add property" @click="onToggleCreateProperty">
           <template #icon>
             <MDSymbol name="contextual_token_add" />
           </template>
@@ -108,8 +138,8 @@ const isShowAddProperty = ref(false);
       :path="directoryPath"
       :document-id="documentId"
       :property-id="removePropertyId"
-      @removed="removePropertyId = undefined"
-      @cancel="removePropertyId = undefined"
+      @removed="onCloseRemovePropertyDialog"
+      @cancel="onCloseRemovePropertyDialog"
     />
 
     <DatabasePropertyEditDialog
@@ -117,32 +147,25 @@ const isShowAddProperty = ref(false);
       :path="directoryPath"
       :document-id="documentId"
       :property-id="editPropertyId"
-      @edited="editPropertyId = undefined"
-      @cancel="editPropertyId = undefined"
+      @edited="onCloseEditPropertyDialog"
+      @cancel="onCloseEditPropertyDialog"
     >
       <template #after="{ property, onUpdateProperty, onUpdateDefaultValue }">
-        <!-- // TODO: это секция уникальных настроек свойств, используется в создании и редактировании, объединить в общий виджет? -->
-        <DatabaseRelationPropertyEditSection
-          v-if="zodIs(property, zodRelationProperty)"
+        <DatabasePropertySettingsSection
           :property="property"
           :directory-path="directoryPath"
           @update:property="onUpdateProperty"
         />
 
-        <DatabaseBooleanPropertyEditSection
-          v-else-if="zodIs(property, zodBooleanProperty)"
-          :property="property"
-          @update:property="onUpdateProperty"
-        />
-
-        <!-- fixme: подготовить ValueField для отображения default значения -->
-        <ValueField
-          :document-id="documentId"
-          :property-id="editPropertyId"
+        <DatabasePropertyValueField
           :value="property.default"
+          :property="getDefaultValueProperty(property)"
           :directory-path="directoryPath"
           @update:value="onUpdateDefaultValue"
-          @update:property="onUpdateProperty"
+          @update:property="
+            (updatedProperty) =>
+              onUpdateProperty(getUpdatedDefaultValueProperty(property, updatedProperty))
+          "
         />
       </template>
     </DatabasePropertyEditDialog>
@@ -151,8 +174,8 @@ const isShowAddProperty = ref(false);
       v-if="isShowAddProperty"
       :document-id="documentId"
       :directory-path="directoryPath"
-      @created="isShowAddProperty = false"
-      @cancel="isShowAddProperty = false"
+      @created="onCreatedProperty"
+      @cancel="onCancelCreateProperty"
     />
   </MDBottomSheet>
 </template>

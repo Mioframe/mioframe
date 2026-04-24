@@ -1,27 +1,27 @@
 <script setup lang="ts">
-import { BooleanInline, PROPERTY_TYPE_BOOLEAN } from '@entity/databaseBoolean';
-import { DateValueInline, PROPERTY_TYPE_DATE } from '@entity/databaseDate';
-import { NumberValueInline, PROPERTY_TYPE_NUMBER } from '@entity/databaseNumber';
 import type { ParentRelation } from '@entity/databaseRelation';
-import { PROPERTY_TYPE_RELATION, RelationValueInline } from '@entity/databaseRelation';
-import { PROPERTY_TYPE_STRING, StringValueInline } from '@entity/databaseString';
-import type { DatabaseItemId } from '@shared/lib/databaseDocument';
-import { type DatabasePropertyId } from '@shared/lib/databaseDocument';
-import DatabaseViewLayout from './DatabaseViewLayout.vue';
-import { toRefs } from 'vue';
-import type { AMDocumentId } from '@shared/lib/automerge';
 import { useDatabaseProperty } from '@entity/databaseProperty';
 import { useDatabaseEffectiveValue } from '@entity/databaseValue';
+import type { AMDocumentId } from '@shared/lib/automerge';
+import type { DatabaseItemId, DatabasePropertyId } from '@shared/lib/databaseDocument';
 import { MDCircularProgressIndicator } from '@shared/ui/ProgressIndicators';
+import { toRefs } from 'vue';
+import DatabasePropertyValueInline from './DatabasePropertyValueInline.vue';
 
-const props = defineProps<{
-  editable?: boolean;
-  directoryPath: string;
-  documentId: AMDocumentId;
-  propertyId: DatabasePropertyId;
-  parentRelation?: ParentRelation;
-  itemId: DatabaseItemId;
-}>();
+const props = withDefaults(
+  defineProps<{
+    editable?: boolean;
+    directoryPath: string;
+    documentId: AMDocumentId;
+    propertyId: DatabasePropertyId;
+    parentRelation?: ParentRelation;
+    itemId: DatabaseItemId;
+    tabIndex?: number;
+  }>(),
+  {
+    tabIndex: 0,
+  },
+);
 
 const emit = defineEmits<{ click: [] }>();
 
@@ -36,74 +36,23 @@ const { value, isLoading } = useDatabaseEffectiveValue(
   propertyId,
 );
 
-// Note: filter rendering still needs a property-aware path without itemId.
+const onClick = () => {
+  emit('click');
+};
 </script>
 
 <template>
   <MDCircularProgressIndicator v-if="isLoading" :size="16" />
 
-  <BooleanInline
-    v-else-if="property?.type === PROPERTY_TYPE_BOOLEAN"
+  <DatabasePropertyValueInline
+    v-else
     :value="value"
-    :path="directoryPath"
-    :editable="editable"
-    :document-id="documentId"
-    :property-id="propertyId"
-    @click="emit('click')"
-  />
-
-  <NumberValueInline
-    v-else-if="property?.type === PROPERTY_TYPE_NUMBER"
-    :value="value"
-    @click="emit('click')"
-  />
-
-  <StringValueInline
-    v-else-if="property?.type === PROPERTY_TYPE_STRING"
-    :value="value"
-    @click="emit('click')"
-  />
-
-  <DateValueInline
-    v-else-if="property?.type === PROPERTY_TYPE_DATE"
-    :value="value"
-    @click="emit('click')"
-  />
-
-  <RelationValueInline
-    v-else-if="property?.type === PROPERTY_TYPE_RELATION"
-    :value="value"
-    :document-id="documentId"
-    :property-id="propertyId"
+    :property="property"
     :directory-path="directoryPath"
+    :property-id="propertyId"
+    :editable="editable"
     :parent-relation="parentRelation"
-    @click="emit('click')"
-  >
-    <template
-      #default="{
-        relationDocumentId: relationDocHandle,
-        relationDirectoryPath: relationDirectory,
-        viewId,
-        value: relationValue,
-        parentRelation: relationParentRelation,
-      }"
-    >
-      <DatabaseViewLayout
-        :document-id="relationDocHandle"
-        :path="relationDirectory"
-        :view-id="viewId"
-        :item-id-query="{ $in: relationValue }"
-      >
-        <template #value="{ propertyId: relationPropertyId, itemId: relationItemId }">
-          <ValueInline
-            :item-id="relationItemId"
-            :document-id="relationDocHandle"
-            :directory-path="relationDirectory"
-            :property-id="relationPropertyId"
-            :parent-relation="relationParentRelation"
-          />
-        </template>
-      </DatabaseViewLayout>
-    </template>
-  </RelationValueInline>
+    :tab-index="tabIndex"
+    @click="onClick"
+  />
 </template>

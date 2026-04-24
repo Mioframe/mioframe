@@ -1,42 +1,36 @@
 <script setup lang="ts">
-import type { AMDocumentId } from '@shared/lib/automerge';
-import { type DatabasePropertyId } from '@shared/lib/databaseDocument';
 import { MDCheckbox } from '@shared/ui/Checkbox';
 import { isBoolean } from 'es-toolkit';
 import { computed, toRefs } from 'vue';
-import { zodBooleanProperty } from './boolean';
-import { useDatabaseProperty } from '@entity/databaseProperty';
-import { zodCheck } from '@shared/lib/validateZodScheme';
+import type { BooleanProperty } from './boolean';
 
-const props = defineProps<{
-  value: unknown;
-  editable?: boolean;
-  path: string;
-  documentId: AMDocumentId;
-  propertyId: DatabasePropertyId;
-}>();
+const props = withDefaults(
+  defineProps<{
+    value: unknown;
+    editable?: boolean;
+    property: BooleanProperty;
+    tabIndex?: number;
+  }>(),
+  {
+    tabIndex: 0,
+  },
+);
 
 const emit = defineEmits<{ click: [] }>();
 
-const { value, documentId, propertyId, path } = toRefs(props);
+const { value, property } = toRefs(props);
 
-const { property } = useDatabaseProperty(path, documentId, propertyId);
+const name = computed(() => property.value.name);
 
-const booleanProperty = computed(() => {
-  if (zodCheck(zodBooleanProperty, property.value)) {
-    return property.value;
-  }
-
-  return undefined;
-});
-
-const name = computed(() => booleanProperty.value?.name);
-
-const indeterminate = computed(() => booleanProperty.value?.indeterminate);
+const indeterminate = computed(() => property.value.indeterminate);
 
 const convertedValue = computed(() =>
-  isBoolean(value.value) ? value.value : booleanProperty.value?.default,
+  isBoolean(value.value) ? value.value : property.value.default,
 );
+
+const onClick = () => {
+  emit('click');
+};
 </script>
 
 <template>
@@ -44,7 +38,8 @@ const convertedValue = computed(() =>
     :model-value="convertedValue"
     :indeterminate="indeterminate"
     :readonly="!editable"
+    :tab-index="tabIndex"
     :tooltip="name"
-    @click="emit('click')"
+    @click="onClick"
   />
 </template>

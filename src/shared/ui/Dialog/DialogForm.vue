@@ -163,7 +163,6 @@ useOnEscapeKeyStacked(() => {
     min-width: 280px;
     width: 100%;
     max-width: min(560px, 100dvw);
-    width: fit-content;
 
     --md-container-color: var(--md-sys-color-surface-container-high);
     box-shadow: var(--md-sys-elevation-level3);

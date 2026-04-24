@@ -11,7 +11,9 @@ Inherits the rules from `src/widgets/AGENTS.md`. Applies to `src/widgets/Documen
 - Treat this directory as composition for database document UI, not as a domain layer.
 - Pass document IDs, view IDs, and other narrow display inputs instead of large mutable document objects.
 - Route inline edits and toolbar actions through entity or feature APIs rather than mutating document state directly.
-- Use slots or small render helpers to connect value-type-specific UI to the shared layout without baking schema rules into the widget layer.
+- Keep value-type-specific render, edit, and property-settings branching centralized in dedicated widget composition components rather than repeating `v-if` trees across sheets, filters, and inline surfaces.
+- Use slots to pass those widget-level compositions into features instead of making features depend on widget internals.
+- Prefer explicit props and named event handlers in these composition components; do not hide value-field contracts behind object-literal `v-bind` bags or anonymous inline callbacks.
 
 ## Anti-patterns
 
