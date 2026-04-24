@@ -7,6 +7,12 @@ import { usePressed } from './usePressed';
 import { useLastHover } from '@shared/lib/useLastHover';
 import MDLayer from './MDLayer.vue';
 
+const pressedModel = defineModel<boolean>('pressed');
+
+const hoverModel = defineModel<boolean>('hover');
+
+const focusedModel = defineModel<boolean>('focused', { default: false });
+
 const {
   is = 'div',
   disableRipple,
@@ -35,12 +41,6 @@ const emit = defineEmits<{
 defineSlots<{
   default: () => unknown;
 }>();
-
-const pressedModel = defineModel<boolean>('pressed');
-
-const hoverModel = defineModel<boolean>('hover');
-
-const focusedModel = defineModel<boolean>('focused', { default: false });
 
 const enableRipple = computed(() => !disableRipple || ['button', 'a'].includes(is));
 

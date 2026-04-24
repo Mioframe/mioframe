@@ -14,14 +14,12 @@ import { useOverlayContainer } from '../Overlay';
 import { useOnEscapeKeyStackedWhen } from '@shared/lib/useOnEscapeKeyStacked';
 import { useOnBackNavigationStackedWhen } from '@shared/lib/onBackNavigation';
 
+const showModel = defineModel<boolean>('show', { default: false });
+
 const props = defineProps<{
   disabledTeleport?: boolean;
   targetElement?: MaybeElement;
 }>();
-
-const { disabledTeleport, targetElement } = toRefs(props);
-
-const showModel = defineModel<boolean>('show', { default: false });
 
 const emit = defineEmits<{
   interactionOutside: [];
@@ -30,6 +28,8 @@ const emit = defineEmits<{
 defineSlots<{
   default(): unknown;
 }>();
+
+const { disabledTeleport, targetElement } = toRefs(props);
 
 const showState = ref<boolean>(false);
 

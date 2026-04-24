@@ -11,13 +11,13 @@ const props = defineProps<{
   propertyId: DatabasePropertyId;
 }>();
 
-const { path, documentId, propertyId } = toRefs(props);
-
-const { property } = useDatabaseProperty(path, documentId, propertyId);
-
 const emit = defineEmits<{
   click: [];
 }>();
+
+const { path, documentId, propertyId } = toRefs(props);
+
+const { property } = useDatabaseProperty(path, documentId, propertyId);
 
 const item = computed(() => ({
   label: property.value?.name ?? 'unknown property',

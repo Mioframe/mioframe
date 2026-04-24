@@ -6,13 +6,13 @@ import { computed, toRefs } from 'vue';
 import { DatabaseDocumentSelectOption, useDocument } from '@entity/cfrDocument';
 import type { AMDocumentId } from '@shared/lib/automerge';
 
+const relationModel = defineModel<Relation | undefined>();
+
 const props = defineProps<{
   path: string;
 }>();
 
 const { path } = toRefs(props);
-
-const relationModel = defineModel<Relation | undefined>();
 
 const relationDocumentId = computed(() => relationModel.value?.documentId);
 

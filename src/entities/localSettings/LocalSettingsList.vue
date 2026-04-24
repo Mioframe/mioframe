@@ -10,6 +10,20 @@ const { settings, SETTINGS_DESCRIPTION, SETTINGS_LABEL } = useLocalSettings();
   <MDListContainer is="div" class="local-settings">
     <MDListItem
       is="button"
+      :headline="SETTINGS_LABEL.hideStarterWidget"
+      @click="settings.hideStarterWidget = !settings.hideStarterWidget"
+    >
+      <template #supportingText>
+        {{ SETTINGS_DESCRIPTION.hideStarterWidget }}
+      </template>
+
+      <template #trailingIcon>
+        <MDCheckbox v-model="settings.hideStarterWidget" />
+      </template>
+    </MDListItem>
+
+    <MDListItem
+      is="button"
       :headline="SETTINGS_LABEL.showPerformance"
       @click="settings.showPerformance = !settings.showPerformance"
     >

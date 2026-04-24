@@ -14,7 +14,7 @@ const { list, isItemButton } = defineProps<{
 }>();
 
 const emit = defineEmits<{
-  clickItem: [item: T, index: number];
+  clickItem: [payload: { item: T; index: number }];
 }>();
 
 const slots = defineSlots<{
@@ -26,7 +26,7 @@ const slots = defineSlots<{
 const listProp = computed(() => list);
 
 const onClickItem = (item: T, index: number) => {
-  emit('clickItem', item, index);
+  emit('clickItem', { item, index });
 };
 
 const itemTag = computed((): 'button' | 'li' | 'a' | 'div' => (isItemButton ? 'button' : 'li'));
@@ -43,7 +43,7 @@ const containerTag = computed((): 'ul' | 'div' => (itemTag.value === 'li' ? 'ul'
         :key="item.key"
         :headline="item.headline"
         :supporting-text="item.supportingText"
-        @click="onClickItem(item, index)"
+        @click="() => onClickItem(item, index)"
       >
         <template v-if="!!slots.leadingAvatarContainer" #leadingAvatarContainer>
           <slot name="leadingAvatarContainer" :item="item" :index="index" />

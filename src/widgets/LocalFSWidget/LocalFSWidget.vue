@@ -35,7 +35,7 @@ const isOpfsEntry = (name: string) => name === OPFSName;
       :key="deviceFile.name"
       :headline="deviceFile.name"
       :supporting-text="deviceFile.description"
-      @click="onClickDeviceFile(deviceFile.name)"
+      @click="() => onClickDeviceFile(deviceFile.name)"
     >
       <template #leadingIcon>
         <MDSymbol name="folder_managed" />
@@ -45,7 +45,7 @@ const isOpfsEntry = (name: string) => name === OPFSName;
         <MDIconButton
           tooltip="disconnect local directory"
           md-symbol-name="link_off"
-          @click="disconnectDeviceDirectory(deviceFile.name)"
+          @click="() => disconnectDeviceDirectory(deviceFile.name)"
         />
       </template>
     </MDListItem>

@@ -27,11 +27,11 @@ const props = defineProps<{
   viewId: DatabaseViewId;
 }>();
 
-const { path: directoryPath, documentId, viewId } = toRefs(props);
-
 defineSlots<{
   value: (p: { value: unknown; propertyId: DatabasePropertyId }) => unknown;
 }>();
+
+const { path: directoryPath, documentId, viewId } = toRefs(props);
 
 const temporaryStateNewFilter = ref<{
   operator: UNARY_FILTER_OPERATOR;
@@ -139,7 +139,7 @@ const onClickRemove = async (pathFilter: PropertyKey[]) => {
           :tooltip="`remove object ${filterPath.join('.')}`"
           md-symbol-name="delete"
           size="extra-small"
-          @click="onClickRemove(filterPath)"
+          @click="() => onClickRemove(filterPath)"
         />
       </template>
 

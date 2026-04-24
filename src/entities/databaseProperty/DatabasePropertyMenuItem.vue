@@ -5,6 +5,8 @@ import { useDatabaseProperty } from './useDatabaseProperty';
 import type { AMDocumentId } from '@shared/lib/automerge';
 import { MDMenuItemBase } from '@shared/ui/Menu';
 
+const showSubmenu = defineModel<boolean | undefined>('showSubmenu');
+
 const props = defineProps<{
   path: string;
   documentId: AMDocumentId;
@@ -12,13 +14,11 @@ const props = defineProps<{
   role?: string | undefined;
 }>();
 
-const { path, documentId, propertyId } = toRefs(props);
-
-const showSubmenu = defineModel<boolean | undefined>('showSubmenu');
-
 const slots = defineSlots<{
   submenu: () => unknown;
 }>();
+
+const { path, documentId, propertyId } = toRefs(props);
 
 const { property } = useDatabaseProperty(path, documentId, propertyId);
 

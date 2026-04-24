@@ -20,6 +20,6 @@ const onClickUnaryOperator = (operator: UNARY_FILTER_OPERATOR) => {
     v-for="operator in UNARY_FILTER_OPERATOR"
     :key="operator"
     :operator="operator"
-    @click="onClickUnaryOperator(operator)"
+    @click="() => onClickUnaryOperator(operator)"
   />
 </template>

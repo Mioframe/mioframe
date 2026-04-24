@@ -1,1 +1,0 @@
-The repository-wide AGENTS.md policy defines Feature-Sliced Design layer responsibilities and import constraints, naming conventions, and required verification (pnpm type-check, targeted tests, and mutation checks when tests change).

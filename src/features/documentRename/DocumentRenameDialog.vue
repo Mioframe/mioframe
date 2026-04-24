@@ -10,12 +10,12 @@ const props = defineProps<{
   documentId: AMDocumentId;
 }>();
 
-const { documentId, path } = toRefs(props);
-
 const emit = defineEmits<{
   renamed: [];
   cancel: [];
 }>();
+
+const { documentId, path } = toRefs(props);
 
 const { state: documentDescription, patch: documentPatch } = useDocument(path, documentId);
 

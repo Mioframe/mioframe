@@ -11,8 +11,6 @@ const props = defineProps<{
   isButton?: boolean;
 }>();
 
-const { name } = toRefs(props);
-
 defineEmits<{
   click: [name: string];
 }>();
@@ -20,6 +18,8 @@ defineEmits<{
 const slots = defineSlots<{
   trailingIcon(): unknown;
 }>();
+
+const { name } = toRefs(props);
 </script>
 
 <template>

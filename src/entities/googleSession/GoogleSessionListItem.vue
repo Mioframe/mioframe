@@ -8,18 +8,18 @@ const props = defineProps<{
   session: GoogleSessionDisplay;
 }>();
 
-const { session } = toRefs(props);
+const emit = defineEmits<{
+  click: [];
+}>();
 
 const slots = defineSlots<{
   trailingIcon(): unknown;
 }>();
 
+const { session } = toRefs(props);
+
 const headline = computed(() => session.value.profile.name ?? 'Google profile');
 const supportingText = computed(() => session.value.profile.email);
-
-const emit = defineEmits<{
-  click: [];
-}>();
 </script>
 
 <template>

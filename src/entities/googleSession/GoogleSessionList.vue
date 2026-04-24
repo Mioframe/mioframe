@@ -3,11 +3,11 @@ import { MDListContainer } from '@shared/ui/Lists';
 import GoogleSessionListItem from './GoogleSessionListItem.vue';
 import { useGoogleSessions } from './useGoogleSessions';
 
-const { sessionList } = useGoogleSessions();
-
 defineSlots<{
   after: () => unknown;
 }>();
+
+const { sessionList } = useGoogleSessions();
 </script>
 
 <template>

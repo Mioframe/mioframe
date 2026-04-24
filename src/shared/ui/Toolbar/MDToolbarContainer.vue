@@ -21,11 +21,11 @@ const props = withDefaults(
   { layout: 'horizontal', color: 'standard' },
 );
 
-const { autoHide, autoHideTarget } = toRefs(props);
-
 defineSlots<{
   default: () => unknown;
 }>();
+
+const { autoHide, autoHideTarget } = toRefs(props);
 
 const autoHideTargetEl = computed(() =>
   autoHide.value ? findClosestElement(autoHideTarget.value) : undefined,

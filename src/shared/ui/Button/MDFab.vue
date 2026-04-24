@@ -23,12 +23,12 @@ const props = withDefaults(
   { color: 'primary' },
 );
 
-defineSlots<{
-  icon(): unknown;
-}>();
-
 defineEmits<{
   click: [payload: MouseEvent];
+}>();
+
+defineSlots<{
+  icon(): unknown;
 }>();
 
 const sizeClass = computed(() => {

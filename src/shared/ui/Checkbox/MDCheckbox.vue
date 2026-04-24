@@ -24,12 +24,12 @@ const props = withDefaults(
   },
 );
 
-const { error, disabled, indeterminate, modelValue } = toRefs(props);
-
 const emit = defineEmits<{
   'update:modelValue': [v: boolean | undefined];
   click: [];
 }>();
+
+const { error, disabled, indeterminate, modelValue } = toRefs(props);
 
 const stateValue = computed({
   get: () => {

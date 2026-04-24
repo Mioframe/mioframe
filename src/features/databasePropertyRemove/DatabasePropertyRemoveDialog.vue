@@ -12,14 +12,14 @@ const props = defineProps<{
   propertyId: DatabasePropertyId;
 }>();
 
-const { path, documentId, propertyId } = toRefs(props);
-
-const { remove } = useDatabaseProperties(path, documentId);
-
 const emit = defineEmits<{
   removed: [];
   cancel: [];
 }>();
+
+const { path, documentId, propertyId } = toRefs(props);
+
+const { remove } = useDatabaseProperties(path, documentId);
 
 const onApplyRemoveProperty = async () => {
   await remove(propertyId.value);

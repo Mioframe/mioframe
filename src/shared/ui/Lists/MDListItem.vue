@@ -11,15 +11,15 @@ const { is = 'div' } = defineProps<{
   draggable?: boolean | undefined;
 }>();
 
+const emit = defineEmits<{
+  click: [e: MouseEvent];
+}>();
+
 const slots = defineSlots<{
   leadingIcon: () => unknown;
   trailingIcon: () => unknown;
   leadingAvatarContainer: () => unknown;
   supportingText: () => unknown;
-}>();
-
-const emit = defineEmits<{
-  click: [e: MouseEvent];
 }>();
 
 const onClick = (e: MouseEvent) => {

@@ -15,6 +15,8 @@ import { useMatchSorter } from '@shared/lib/useMatchSorter';
 import { useOnEscapeKeyStackedWhen } from '@shared/lib/useOnEscapeKeyStacked';
 import { useOnBackNavigationStackedWhen } from '@shared/lib/onBackNavigation';
 
+const showModel = defineModel<boolean>('show', { required: true });
+
 const props = withDefaults(
   defineProps<{
     target: MaybeElement;
@@ -31,18 +33,16 @@ const props = withDefaults(
   },
 );
 
-const { target, outsideIgnore, placement } = toRefs(props);
-
 const emit = defineEmits<{
   interactionOutside: [];
   deactivateFocus: [];
 }>();
 
-const showModel = defineModel<boolean>('show', { required: true });
-
 defineSlots<{
   default: () => unknown;
 }>();
+
+const { target, outsideIgnore, placement } = toRefs(props);
 
 const listContainerRef = useTemplateRef<MaybeElement>('listContainerRef');
 

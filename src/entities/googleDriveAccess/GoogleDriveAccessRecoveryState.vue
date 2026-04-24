@@ -10,6 +10,10 @@ const { errors, path } = defineProps<{
   errors: unknown[];
 }>();
 
+defineSlots<{
+  actions: () => unknown;
+}>();
+
 const { state } = useGoogleDriveAccessRecoveryState({
   path: () => path,
   errors: () => errors,
@@ -42,10 +46,6 @@ const supportingText = computed(() => {
       return `Access to this Google Drive data requires signing in as ${expectedEmail.value}.`;
   }
 });
-
-defineSlots<{
-  actions: () => unknown;
-}>();
 </script>
 
 <template>

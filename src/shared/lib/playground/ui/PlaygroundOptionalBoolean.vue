@@ -2,9 +2,9 @@
 import { isUndefined } from 'es-toolkit';
 import { useTemplateRef, watchEffect } from 'vue';
 
-defineProps<{ label: string }>();
-
 const value = defineModel<boolean | undefined>({ default: undefined });
+
+defineProps<{ label: string }>();
 
 const onClickBoolean = () => {
   value.value = isUndefined(value.value) ? true : value.value ? false : undefined;

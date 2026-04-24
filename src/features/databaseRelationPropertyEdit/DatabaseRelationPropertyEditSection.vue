@@ -3,6 +3,10 @@ import type { Relation, RelationProperty } from '@entity/databaseRelation';
 import DatabaseRelationPropertyField from './DatabaseRelationPropertyField.vue';
 import { computed } from 'vue';
 
+const propertyModel = defineModel<PartialRelationProperty>('property', {
+  required: true,
+});
+
 defineProps<{
   directoryPath: string;
 }>();
@@ -10,10 +14,6 @@ defineProps<{
 interface PartialRelationProperty extends Omit<RelationProperty, 'relation'> {
   relation?: Relation | undefined;
 }
-
-const propertyModel = defineModel<PartialRelationProperty>('property', {
-  required: true,
-});
 
 const relationModel = computed({
   get: () => propertyModel.value.relation,
