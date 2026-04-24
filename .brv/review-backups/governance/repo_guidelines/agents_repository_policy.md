@@ -4,83 +4,9 @@ summary: 'Repository-wide AGENTS.md policy: FSD layer responsibilities and bound
 tags: []
 related: [architecture/feature_sliced_design/context.md]
 keywords: []
-importance: 59
-recency: 1
-maturity: draft
-accessCount: 3
 createdAt: '2026-04-20T10:37:24.747Z'
 updatedAt: '2026-04-20T10:37:24.747Z'
 ---
-
-## Abstract
-The repository-wide AGENTS.md policy defines Feature-Sliced Design layer responsibilities and import constraints, naming conventions, and required verification (pnpm type-check, targeted tests, and mutation checks when tests change).
-
-## Overview
-### Key points
-- Defines **repo-wide AGENTS.md policy** (root-scoped) for **Feature-Sliced Design (FSD)** responsibilities, dependency direction, and when/why to add **child AGENTS.md** files for local invariants.
-- Enforces **layer boundaries & import rules**: keep changes in the owning layer, avoid “pulling dependencies upward,” and prefer importing through **public `index.ts` entry points** when available.
-- Requires **narrow, targeted verification after edits**: at minimum `pnpm type-check` for logic changes, plus focused `vitest`/Playwright/smoke checks for behavior-sensitive changes.
-- Adds a strict **mutation testing requirement**: if tests are created/modified, run the **narrowest relevant mutation check** for the touched scope in addition to functional verification.
-- Establishes **UI/runtime contract discipline** (DOM parentage, scroll/focus, teleport/overlay wiring) and **mobile-first, Material 3** performance expectations.
-- Sets **naming conventions** for directories, files, modules, and common prefixes/suffixes (`use*`, `setup*`, `*Service`, `$` for observables, etc.), plus **Conventional Commits** and **pnpm-only** tooling.
-
-### Structure / sections summary
-- **Reason**: States the intent—capture stable, repository-wide AGENTS.md rules (FSD, naming, verification, constraints).
-- **Raw Concept**
-  - **Task**: Document contributor/agent policy from `AGENTS.md`.
-  - **Changes**: Records layer rules, verification (incl. mutation testing), naming/process rules.
-  - **Flow**: Change within owning layer → follow constraints → run narrowest relevant verification (+ mutation if tests touched) → commit with Conventional Commits.
-  - **Timestamp**: 2026-04-20.
-- **Narrative**
-  - **Structure**: Root AGENTS.md is stable policy; child AGENTS.md can refine local rules.
-  - **Dependencies**: Assumes FSD folder layout and pnpm workflows; verify ambiguous third-party semantics via official docs/installed source.
-  - **Highlights**: Runtime UI contracts; Material 3 + mobile-first performance; lifecycle resource management; verification guidance including mutation testing when tests change.
-  - **Rules**: Restates mutation testing requirement when tests are created/modified.
-- **File Contents: `AGENTS.md`**
-  - **Contains**: Defines responsibilities for `src/app`, `src/pages`, `src/widgets`, `src/features`, `src/entities`, `src/shared`.
-  - **Patterns**: Prescriptive practices (FSD boundaries, contract narrowness, typed iteration helpers, CRDT mutation rules, progress reporting, test colocation).
-  - **Anti-patterns**: Explicit “don’ts” (upward deps, bypassing APIs/storage, schema duplication, orchestration in props, desktop-first assumptions, misusing AGENTS.md).
-  - **Constraints**: Import restrictions per layer; UI↔background access via proxy clients; verification/tooling conventions; naming conventions; rules for adding/updating child AGENTS.md.
-- **Facts**: Extracted conventions (scope/override, pnpm, Conventional Commits, test location, mutation testing, FSD import rules, naming rules).
-
-### Notable entities, patterns, or decisions mentioned
-- **FSD layers & responsibilities**
-  - `src/app`: bootstrap/routing/global shells/styles
-  - `src/pages`: route/pane composition + navigation state
-  - `src/widgets`: screen-scale compositions
-  - `src/features`: user-triggered flows (dialogs/forms/menus/destructive actions)
-  - `src/entities`: domain read models, typed access patterns, small reusable UI
-  - `src/shared`: cross-layer infra/services/schemas/utils/shared UI
-- **Dependency/constraint decisions**
-  - `shared` **must not** import upper layers; `entities` import only `shared`; `features` build on `entities`+`shared`; `widgets` compose lower layers but avoid domain rules.
-  - UI-facing layers may access background logic only through **explicit proxy clients**; do **not** import `*Service` modules into UI layers or shared UI.
-  - Import via **`index.ts` public entry points** when present.
-- **Verification decisions**
-  - Use **pnpm**; after edits run the **narrowest relevant verification**.
-  - For logic changes: at least `pnpm type-check`; add targeted `vitest`/Playwright/smoke checks when behavior/schema/service/storage changes.
-  - If tests change: run **mutation testing** for the **touched scope**.
-  - Prefer targeted `oxlint`, `eslint --fix`, `oxfmt` runs over repo-wide commands.
-- **Runtime/UI contract patterns**
-  - Treat **DOM parentage, scroll ownership, focus, teleport, overlay wiring** as concrete runtime contracts; verify rendered hierarchy before moving wrappers/composition boundaries.
-  - Optimize for **Material 3** and **mobile-first**; assume large datasets and low-end devices; bound main-thread work.
-  - Surface **determinate progress** when knowable.
-- **Code/design patterns**
-  - Keep component/composable contracts narrow: prefer IDs/primitives/small display records and explicit emits/slots over “service bags” and deep configs.
-  - Keep validation/parsing/extraction near the contract boundary that defines it.
-  - Treat subscriptions/listeners/workers/timers/caches/file handles/blob URLs as lifecycle-managed resources.
-  - Prefer **typed collection helpers** over raw `Object.keys/values/entries`; avoid type assertions except rare boundary adapters.
-  - **CRDT-backed state rule**: mutate live nested objects inside owning change callback; never assign a live document object back into itself; prefer helpers `put`, `patch`, `deepPutJsonObject`, `deepPatchJsonObject` when matching the write shape.
-- **Naming conventions**
-  - Directories: `pages` and `widgets` use **PascalCase**; other submodules use **lower camel case**.
-  - Files: Vue components & class-centric files use **PascalCase**; other TS files lower camel case or lowercase.
-  - Modules: feature modules named for user actions like `<domain><Action>`; entity modules named for stable domain concepts.
-  - Visual components named by rendered surface with concrete suffixes (`Dialog`, `Sheet`, `Pane`, `ListItem`, `Button`, `State`); avoid vague `Manager`/`Helper`.
-  - Prefix/suffix semantics: `MD*` only for shared Material primitives; `use*`, `setup*`, `define*`, `create*`, `get*`, `is*`, `zod*`, `*Service`; `on*` for handlers; `$` suffix reserved for raw RxJS observables.
-- **Repository process decisions**
-  - Use **Conventional Commits**.
-  - Unit tests must be **colocated** as sibling `*.test.ts`; do **not** create `__tests__` directories.
-  - Add child `AGENTS.md` only for local invariants/blast-radius/verification guidance; refine parent rather than repeat; update AGENTS.md tree when ownership/APIs/dependencies/verification boundaries change.
-
 ## Reason
 Capture repository-wide AGENTS.md rules including layered architecture (FSD), naming conventions, verification requirements, and constraints.
 
@@ -181,6 +107,17 @@ Applies to the whole repository unless a deeper `AGENTS.md` overrides it.
 - Update the `AGENTS.md` tree together with ownership, public API, dependency, or verification-boundary changes.
 
 ```
+
+**INSTRUCTIONS:**
+- The file contents above have been pre-loaded for you
+- Use this content to understand the context and create comprehensive knowledge topics
+- DO NOT use read_file tool for the files above - the content is already provided
+- Proceed with the normal workflow: detect domains, find existing knowledge, create/update topics
+- PRESERVE all diagrams (Mermaid, PlantUML, ASCII art) verbatim using narrative.diagrams array
+- PRESERVE all tables with every row - do not summarize table data
+- PRESERVE exact code examples, API signatures, and interface definitions
+- PRESERVE step-by-step procedures and numbered instructions in narrative.rules
+
 
 ## Facts
 - **agents_md_scope**: This AGENTS.md applies to the whole repository unless a deeper AGENTS.md overrides it. [convention]

@@ -5,6 +5,7 @@ import MainApp from './MainApp.vue';
 import { createHead } from '@unhead/vue/client';
 import { router } from './router';
 import { backNavigationHandler } from '@shared/lib/onBackNavigation';
+import { sentryPlugin } from '@shared/lib/setupSentry';
 import { setupStackNavigation } from '@page/routes';
 import { setupGoogleSessions } from '@entity/googleSession';
 import { GOOGLE_CLIENT_ID } from '@shared/config';
@@ -13,12 +14,11 @@ import { GOOGLE_CLIENT_ID } from '@shared/config';
  * Инициализация и настройка Vue приложения
  */
 export const setupApp = async (app: App = createApp(MainApp)) => {
-  const SENTRY_DSN = import.meta.env.VITE_SENTRY_DSN;
+  app.use(sentryPlugin, {
+    dsn: import.meta.env.VITE_SENTRY_DSN,
+    enabled: import.meta.env.PROD,
+  });
 
-  if (SENTRY_DSN?.length && import.meta.env.PROD) {
-    const { setupSentry } = await import('./setupSentry');
-    setupSentry(app, SENTRY_DSN);
-  }
   setupStackNavigation(router);
 
   if (import.meta.env.DEV) {

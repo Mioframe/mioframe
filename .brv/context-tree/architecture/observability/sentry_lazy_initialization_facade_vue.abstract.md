@@ -1,0 +1,1 @@
+Defines a stable no-op Sentry facade for Vue that lazily imports and initializes @sentry/vue only once when enabled+dsn config is registered (via plugin or API), warning once in dev when missing.

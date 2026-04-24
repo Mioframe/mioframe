@@ -1,0 +1,1 @@
+This document describes a Vue Sentry integration that uses a stable Proxy-based facade with lazy one-time SDK initialization, dev warn-once on missing config, and no-op yet callback-safe span helpers.

@@ -1,0 +1,1 @@
+src/shared/lib guidelines mandate small single-responsibility helpers with typed API/SDK wrappers, boundary-local validation and explicit lifecycle/CRDT in-place updates, plus concise TSDoc on exports and minimum verification (pnpm type-check + focused tests).

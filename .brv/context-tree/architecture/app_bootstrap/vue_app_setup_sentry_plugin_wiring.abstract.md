@@ -1,0 +1,1 @@
+The Vue setupApp bootstrap registers sentryPlugin early using VITE_SENTRY_DSN and PROD-only enablement, then configures navigation/router/head/back handling with optional DEV playground and Google sessions gated by env flags.
