@@ -3,7 +3,12 @@
 import { createApp, defineComponent, h, nextTick, ref } from 'vue';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-const propertyRef = ref({
+const propertyRef = ref<{
+  default?: unknown;
+  indeterminate?: boolean;
+  name: string;
+  type: string;
+}>({
   default: 'untitled',
   name: 'Title',
   type: 'string',
@@ -32,16 +37,24 @@ vi.mock('./ValueInline.vue', () => ({
   default: defineComponent({
     name: 'ValueInlineStub',
 
+    props: {
+      tabIndex: {
+        required: false,
+        type: Number,
+      },
+    },
+
     emits: {
       click: () => true,
     },
 
-    setup(_props, { emit }) {
+    setup(props, { emit }) {
       return () =>
         h(
           'button',
           {
             class: 'value-inline-stub',
+            tabindex: props.tabIndex,
             type: 'button',
             onClick: () => {
               emit('click');
@@ -58,6 +71,10 @@ vi.mock('./ValueField.vue', () => ({
     name: 'ValueFieldStub',
 
     props: {
+      inputSize: {
+        required: false,
+        type: Number,
+      },
       value: {
         required: false,
         type: null,
@@ -74,6 +91,7 @@ vi.mock('./ValueField.vue', () => ({
     setup(props, { emit }) {
       return () =>
         h('input', {
+          'data-input-size': props.inputSize,
           value: String(props.value ?? ''),
           onInput: (event: Event) => {
             const target = event.currentTarget;
@@ -92,9 +110,10 @@ vi.mock('./ValueField.vue', () => ({
 vi.mock('@shared/ui/State', () => ({
   MDState: defineComponent({
     name: 'MDStateStub',
+    inheritAttrs: false,
 
-    setup(_props, { slots }) {
-      return () => h('div', slots.default?.());
+    setup(_props, { attrs, slots }) {
+      return () => h('div', attrs, slots.default?.());
     },
   }),
 }));
@@ -283,6 +302,107 @@ describe('EditableInlineValue', () => {
 
     expect(secondInputEl.value).toBe('new external value');
     expect(postValueMock).not.toHaveBeenCalledWith('draft');
+
+    app.unmount();
+  });
+
+  it('toggles boolean values immediately without opening the editor', async () => {
+    propertyRef.value = {
+      default: false,
+      indeterminate: true,
+      name: 'Done',
+      type: 'boolean',
+    };
+    valueRef.value = undefined;
+
+    const { app, container } = mountEditableInlineValue();
+    const triggerEl = container.querySelector('.value-inline-stub');
+
+    if (!(triggerEl instanceof HTMLButtonElement)) {
+      throw new Error('Expected inline trigger button');
+    }
+
+    triggerEl.dispatchEvent(new MouseEvent('click', { bubbles: false }));
+    await nextTick();
+
+    expect(container.querySelector('input')).toBeNull();
+    expect(postValueMock).toHaveBeenCalledWith(false);
+
+    app.unmount();
+  });
+
+  it('uses the wrapper as the only tab stop for boolean inline values', () => {
+    propertyRef.value = {
+      default: false,
+      indeterminate: true,
+      name: 'Done',
+      type: 'boolean',
+    };
+
+    const { app, container } = mountEditableInlineValue();
+    const wrapperEl = container.querySelector('.editable-inline-value');
+    const inlineButtonEl = container.querySelector('.value-inline-stub');
+
+    if (!(wrapperEl instanceof HTMLDivElement)) {
+      throw new Error('Expected inline wrapper');
+    }
+
+    if (!(inlineButtonEl instanceof HTMLButtonElement)) {
+      throw new Error('Expected inline trigger button');
+    }
+
+    expect(wrapperEl.getAttribute('tabindex')).toBe('0');
+    expect(wrapperEl.getAttribute('role')).toBe('checkbox');
+    expect(inlineButtonEl.getAttribute('tabindex')).toBe('-1');
+
+    app.unmount();
+  });
+
+  it('toggles boolean values from wrapper keyboard interaction', async () => {
+    propertyRef.value = {
+      default: false,
+      indeterminate: true,
+      name: 'Done',
+      type: 'boolean',
+    };
+    valueRef.value = undefined;
+
+    const { app, container } = mountEditableInlineValue();
+    const wrapperEl = container.querySelector('.editable-inline-value');
+
+    if (!(wrapperEl instanceof HTMLDivElement)) {
+      throw new Error('Expected inline wrapper');
+    }
+
+    wrapperEl.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, key: ' ' }));
+    await nextTick();
+
+    expect(container.querySelector('input')).toBeNull();
+    expect(postValueMock).toHaveBeenCalledWith(false);
+
+    app.unmount();
+  });
+
+  it('passes the clamped string input size to the inline editor', async () => {
+    valueRef.value = 'x'.repeat(60);
+
+    const { app, container } = mountEditableInlineValue();
+    const triggerEl = container.querySelector('.value-inline-stub');
+
+    if (!(triggerEl instanceof HTMLButtonElement)) {
+      throw new Error('Expected inline trigger button');
+    }
+
+    triggerEl.click();
+    await nextTick();
+
+    const inputEl = container.querySelector('input');
+
+    if (!(inputEl instanceof HTMLInputElement)) {
+      throw new Error('Expected inline editor input');
+    }
+
+    expect(inputEl.dataset.inputSize).toBe('48');
 
     app.unmount();
   });

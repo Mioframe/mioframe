@@ -1,6 +1,7 @@
 import { zodDocumentId } from '@shared/lib/automerge';
 import type { DatabasePropertyId } from '@shared/lib/databaseDocument';
 import {
+  createProperty,
   zodDatabaseItemId,
   zodDatabaseViewId,
   zodGeneralProperty,
@@ -28,3 +29,6 @@ export const zodRelationValue = array(zodDatabaseItemId);
 export type RelationValue = output<typeof zodRelationValue>;
 
 export type ParentRelation = Record<DatabasePropertyId, RelationValue>;
+
+export const createRelationProperty = (name: string) =>
+  createProperty(PROPERTY_TYPE_RELATION, name);

@@ -5,6 +5,8 @@ import { MD_SYS_TYPESCALE } from '@shared/lib/md';
 import { MDBottomSheet, MDBottomSheetSection } from '@shared/ui/Sheets';
 import { toRefs } from 'vue';
 import { DatabaseFilterForm } from '@feature/databaseFilterEdit';
+import DatabasePropertyValueInlineById from './DatabasePropertyValueInlineById.vue';
+import ValueField from './ValueField.vue';
 
 const props = defineProps<{
   directoryPath: string;
@@ -30,16 +32,24 @@ const onClosed = () => {
 
       <div class="db-filters-sheet__filters">
         <DatabaseFilterForm :path="directoryPath" :document-id="documentId" :view-id="viewId">
-          <template #value="{ value }">
-            <span>{{ value }}</span>
-            <!--
-              todo: нужна версия без itemId
-              <ValueInline 
+          <template #value="{ value, propertyId }">
+            <DatabasePropertyValueInlineById
+              :value="value"
               :directory-path="directoryPath"
               :document-id="documentId"
               :property-id="propertyId"
-              /> 
-            -->
+            />
+          </template>
+
+          <template #valueField="{ value, propertyId, updateValue }">
+            <ValueField
+              :value="value"
+              :directory-path="directoryPath"
+              :document-id="documentId"
+              :property-id="propertyId"
+              autofocus
+              @update:value="updateValue"
+            />
           </template>
         </DatabaseFilterForm>
       </div>

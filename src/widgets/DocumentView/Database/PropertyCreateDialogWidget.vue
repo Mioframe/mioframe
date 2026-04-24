@@ -1,13 +1,9 @@
 <script setup lang="ts">
-import { zodRelationProperty } from '@entity/databaseRelation';
 import { DatabasePropertyCreationDialog } from '@feature/databasePropertyCreate';
-import { DatabaseRelationPropertyEditSection } from '@feature/databaseRelationPropertyEdit';
 import type { AMDocumentId } from '@shared/lib/automerge';
-import { zodBooleanProperty } from '@entity/databaseBoolean';
-import { DatabaseBooleanPropertyEditSection } from '@feature/databaseBooleanPropertyEdit';
-import { zodIs } from '@shared/lib/validateZodScheme';
-import { extend, optional } from 'zod/v4-mini';
-import { zodRelation } from '@entity/databaseRelation/model';
+import type { DatabaseUnknownProperty } from '@shared/lib/databaseDocument';
+import DatabasePropertySettingsSection from './DatabasePropertySettingsSection.vue';
+import DatabasePropertyValueField from './DatabasePropertyValueField.vue';
 
 defineProps<{
   documentId: AMDocumentId;
@@ -19,8 +15,27 @@ const emit = defineEmits<{
   cancel: [];
 }>();
 
-const zodPartialRelation = extend(zodRelationProperty, {
-  relation: optional(zodRelation),
+const DEFAULT_VALUE_LABEL = 'Default value';
+
+const onCreated = () => {
+  emit('created');
+};
+
+const onCancel = () => {
+  emit('cancel');
+};
+
+const getDefaultValueProperty = (property: DatabaseUnknownProperty): DatabaseUnknownProperty => ({
+  ...property,
+  name: DEFAULT_VALUE_LABEL,
+});
+
+const getUpdatedDefaultValueProperty = (
+  property: DatabaseUnknownProperty,
+  updatedProperty: DatabaseUnknownProperty,
+): DatabaseUnknownProperty => ({
+  ...updatedProperty,
+  name: property.name,
 });
 </script>
 
@@ -28,36 +43,26 @@ const zodPartialRelation = extend(zodRelationProperty, {
   <DatabasePropertyCreationDialog
     :path="directoryPath"
     :document-id="documentId"
-    @created="emit('created')"
-    @cancel="emit('cancel')"
+    @created="onCreated"
+    @cancel="onCancel"
   >
-    <template #after="{ property, onUpdateProperty }">
-      <DatabaseRelationPropertyEditSection
-        v-if="zodIs(property, zodPartialRelation)"
+    <template #after="{ property, onUpdateDefaultValue, onUpdateProperty }">
+      <DatabasePropertySettingsSection
         :property="property"
         :directory-path="directoryPath"
         @update:property="onUpdateProperty"
       />
 
-      <DatabaseBooleanPropertyEditSection
-        v-else-if="zodIs(property, zodBooleanProperty)"
-        :property="property"
-        @update:property="onUpdateProperty"
-      />
-
-      <!-- fixme: подготовить для создания default field -->
-      <!--
-        <ValueField
-        :document-id="documentId"
-        :property="{ ...property, name: 'default value' }"
+      <DatabasePropertyValueField
         :value="property.default"
+        :property="getDefaultValueProperty(property)"
         :directory-path="directoryPath"
         @update:value="onUpdateDefaultValue"
-        @update:property="onUpdateProperty"
-        >
-        <template #unknownProperty> <div /> </template>
-        </ValueField> 
-      -->
+        @update:property="
+          (updatedProperty) =>
+            onUpdateProperty(getUpdatedDefaultValueProperty(property, updatedProperty))
+        "
+      />
     </template>
   </DatabasePropertyCreationDialog>
 </template>

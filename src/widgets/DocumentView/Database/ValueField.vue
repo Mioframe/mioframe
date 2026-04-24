@@ -1,31 +1,25 @@
 <script setup lang="ts">
-import { zodBooleanProperty } from '@entity/databaseBoolean';
-import { zodDateProperty } from '@entity/databaseDate';
-import { zodNumberProperty } from '@entity/databaseNumber';
-import { zodRelationProperty } from '@entity/databaseRelation';
-import { zodStringProperty } from '@entity/databaseString';
-import { BooleanValueField } from '@feature/booleanValueEdit';
-import { DateValueField } from '@feature/dateValueEdit';
-import { NumberValueField } from '@feature/numberValueEdit';
-import { RelationValueField } from '@feature/relationValueEdit';
-import { StringValueField } from '@feature/stringValueEdit';
+import { useDatabaseProperty } from '@entity/databaseProperty';
+import type { AMDocumentId } from '@shared/lib/automerge';
 import type { DatabasePropertyId, DatabaseUnknownProperty } from '@shared/lib/databaseDocument';
-import { zodIs } from '@shared/lib/validateZodScheme';
-import DatabaseViewLayout from './DatabaseViewLayout.vue';
-import { MDCheckbox } from '@shared/ui/Checkbox';
 import type { ClassValue } from 'vue';
 import { toRefs } from 'vue';
-import type { AMDocumentId } from '@shared/lib/automerge';
-import { useDatabaseProperty } from '@entity/databaseProperty';
+import DatabasePropertyValueField from './DatabasePropertyValueField.vue';
 
-const props = defineProps<{
-  directoryPath: string;
-  documentId: AMDocumentId;
-  propertyId: DatabasePropertyId;
-  value: unknown;
-  class?: ClassValue;
-  autofocus?: boolean;
-}>();
+const props = withDefaults(
+  defineProps<{
+    directoryPath: string;
+    documentId: AMDocumentId;
+    propertyId: DatabasePropertyId;
+    value: unknown;
+    class?: ClassValue;
+    autofocus?: boolean;
+    inputSize?: number;
+  }>(),
+  {
+    inputSize: 0,
+  },
+);
 
 const emit = defineEmits<{
   'update:value': [v: unknown];
@@ -33,88 +27,33 @@ const emit = defineEmits<{
   keydown: [e: KeyboardEvent];
 }>();
 
-defineSlots<{
-  unknownProperty: () => unknown;
-}>();
-
-const { directoryPath: path, documentId, propertyId, class: propClass } = toRefs(props);
+const { directoryPath: path, documentId, propertyId } = toRefs(props);
 
 const { property } = useDatabaseProperty(path, documentId, propertyId);
 
-const onUpdateValue = (v: unknown) => {
-  emit('update:value', v);
+const onUpdateValue = (value: unknown) => {
+  emit('update:value', value);
 };
 
-const onUpdateProperty = (v: DatabaseUnknownProperty) => {
-  emit('update:property', v);
+const onUpdateProperty = (property: DatabaseUnknownProperty) => {
+  emit('update:property', property);
+};
+
+const onKeydown = (event: KeyboardEvent) => {
+  emit('keydown', event);
 };
 </script>
 
 <template>
-  <StringValueField
-    v-if="zodIs(property, zodStringProperty)"
-    :model-value="value"
-    :property="property"
-    :class="propClass"
-    :autofocus="autofocus"
-    @update:model-value="onUpdateValue"
-    @keydown="emit('keydown', $event)"
-  />
-
-  <NumberValueField
-    v-else-if="zodIs(property, zodNumberProperty)"
-    :class="propClass"
-    :model-value="value"
-    :property="property"
-    :autofocus="autofocus"
-    @update:model-value="onUpdateValue"
-    @keydown="emit('keydown', $event)"
-  />
-
-  <BooleanValueField
-    v-else-if="zodIs(property, zodBooleanProperty)"
-    :class="propClass"
-    :model-value="value"
-    :property="property"
-    :autofocus="autofocus"
-    @update:model-value="onUpdateValue"
-  />
-
-  <DateValueField
-    v-else-if="zodIs(property, zodDateProperty)"
-    :class="propClass"
-    :model-value="value"
-    :property="property"
-    :autofocus="autofocus"
-    @update:model-value="onUpdateValue"
-    @keydown="emit('keydown', $event)"
-  />
-
-  <RelationValueField
-    v-else-if="zodIs(property, zodRelationProperty)"
-    :class="propClass"
+  <DatabasePropertyValueField
     :value="value"
-    :directory-path="path"
     :property="property"
+    :directory-path="path"
+    :class="props.class"
     :autofocus="autofocus"
+    :input-size="props.inputSize"
     @update:value="onUpdateValue"
     @update:property="onUpdateProperty"
-  >
-    <template #data="{ documentId: relationDocHandle, onSelect, value: selectedValue, viewId }">
-      <DatabaseViewLayout :document-id="relationDocHandle" :view-id="viewId" :path="path">
-        <template #action="{ itemId }">
-          <MDCheckbox
-            :model-value="selectedValue.includes(itemId)"
-            @update:model-value="() => onSelect(itemId)"
-          />
-        </template>
-      </DatabaseViewLayout>
-    </template>
-  </RelationValueField>
-
-  <slot v-else name="unknownProperty">
-    <div :class="propClass">
-      There is no suitable input field for property "{{ property?.name }}"
-    </div>
-  </slot>
+    @keydown="onKeydown"
+  />
 </template>

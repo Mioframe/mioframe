@@ -75,7 +75,8 @@ const { itemIdList } = useDatabaseData(directoryPath, documentId, viewId, idQuer
   &__value {
     :deep() {
       > * {
-        display: inline-block;
+        display: block;
+        width: 100%;
       }
     }
   }
