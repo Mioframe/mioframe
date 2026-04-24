@@ -1,36 +1,19 @@
 import type { CFRDocumentContent } from '@shared/lib/cfrDocument';
-import { zodCFRDocumentContent } from '@shared/lib/cfrDocument';
-import { DB_VIEW_LAYOUT } from './migrations/versions';
-import type { DataBaseStateLatest } from './types';
-import { DATABASE_DOCUMENT_TYPE } from './types';
+import { DB_VIEW_LAYOUT } from '@shared/lib/databaseDocument';
 
 type StatusKey = 'backlog' | 'planned' | 'doing' | 'waiting' | 'done';
 type PurchaseTypeKey = 'produce' | 'pantry' | 'pharmacy' | 'household' | 'hardware';
 
-type RelatedDocumentSeed<TKey extends string> = {
-  content: CFRDocumentContent;
-  defaultViewId: string;
-  itemIds: Record<TKey, string>;
-};
-
 type RelatedDocumentReference<TKey extends string> = {
   documentId: string;
-  viewId: string;
   itemIds: Record<TKey, string>;
+  viewId: string;
 };
 
-type ExampleProperty = {
-  default?: unknown;
-  name: string;
-  relation?: {
-    documentId: string;
-    viewId: string;
-  };
-  type: string;
-};
-
-type ExampleDatabaseState = Omit<DataBaseStateLatest, 'properties'> & {
-  properties: Record<string, ExampleProperty>;
+type RelatedStarterExample<TKey extends string> = {
+  defaultViewId: string;
+  recipe: Pick<CFRDocumentContent, 'body' | 'name'>;
+  itemIds: Record<TKey, string>;
 };
 
 const PROPERTY_TYPE_BOOLEAN = 'boolean';
@@ -39,57 +22,92 @@ const PROPERTY_TYPE_NUMBER = 'number';
 const PROPERTY_TYPE_RELATION = 'relation';
 const PROPERTY_TYPE_STRING = 'string';
 
-const createDatabaseExampleDocument = (name: string, body: ExampleDatabaseState) =>
-  zodCFRDocumentContent.parse({
-    body,
-    name,
-    type: DATABASE_DOCUMENT_TYPE,
-    version: 1,
-  });
+const createStatusesBody = (itemIds: Record<StatusKey, string>) => ({
+  data: {
+    [itemIds.backlog]: { propertyId_focus: 1, propertyId_status: 'Backlog' },
+    [itemIds.planned]: { propertyId_focus: 2, propertyId_status: 'Planned' },
+    [itemIds.doing]: { propertyId_focus: 3, propertyId_status: 'Doing' },
+    [itemIds.waiting]: { propertyId_focus: 1, propertyId_status: 'Waiting' },
+    [itemIds.done]: { propertyId_focus: 0, propertyId_status: 'Done' },
+  },
+  properties: {
+    propertyId_focus: { name: 'Focus', type: PROPERTY_TYPE_NUMBER },
+    propertyId_status: { name: 'Status', type: PROPERTY_TYPE_STRING },
+  },
+  version: 3,
+  views: {
+    viewId_statusLibrary: {
+      layout: DB_VIEW_LAYOUT.TABLE,
+      name: 'Status library',
+      order: 0,
+      sorting: {
+        propertyId_focus: { direction: 1, priority: 0 },
+      },
+    },
+  },
+});
 
-export const createStatusesExampleDocument = (): RelatedDocumentSeed<StatusKey> => {
-  const itemIds: Record<StatusKey, string> = {
-    backlog: 'itemId_backlog',
-    planned: 'itemId_planned',
-    doing: 'itemId_doing',
-    waiting: 'itemId_waiting',
-    done: 'itemId_done',
-  };
+const createPurchaseTypesBody = (itemIds: Record<PurchaseTypeKey, string>) => ({
+  data: {
+    [itemIds.produce]: { propertyId_bestFor: 'Supermarket', propertyId_type: 'Produce' },
+    [itemIds.pantry]: { propertyId_bestFor: 'Supermarket', propertyId_type: 'Pantry' },
+    [itemIds.pharmacy]: { propertyId_bestFor: 'Pharmacy', propertyId_type: 'Pharmacy' },
+    [itemIds.household]: { propertyId_bestFor: 'Supermarket', propertyId_type: 'Household' },
+    [itemIds.hardware]: { propertyId_bestFor: 'Hardware', propertyId_type: 'Hardware' },
+  },
+  properties: {
+    propertyId_bestFor: { name: 'Best for', type: PROPERTY_TYPE_STRING },
+    propertyId_type: { name: 'Type', type: PROPERTY_TYPE_STRING },
+  },
+  version: 3,
+  views: {
+    viewId_typeLibrary: {
+      layout: DB_VIEW_LAYOUT.TABLE,
+      name: 'Type library',
+      order: 0,
+    },
+  },
+});
 
-  return {
-    content: createDatabaseExampleDocument('Statuses', {
-      data: {
-        [itemIds.backlog]: { propertyId_focus: 1, propertyId_status: 'Backlog' },
-        [itemIds.planned]: { propertyId_focus: 2, propertyId_status: 'Planned' },
-        [itemIds.doing]: { propertyId_focus: 3, propertyId_status: 'Doing' },
-        [itemIds.waiting]: { propertyId_focus: 1, propertyId_status: 'Waiting' },
-        [itemIds.done]: { propertyId_focus: 0, propertyId_status: 'Done' },
-      },
-      properties: {
-        propertyId_focus: { name: 'Focus', type: PROPERTY_TYPE_NUMBER },
-        propertyId_status: { name: 'Status', type: PROPERTY_TYPE_STRING },
-      },
-      version: 3,
-      views: {
-        viewId_statusLibrary: {
-          layout: DB_VIEW_LAYOUT.TABLE,
-          name: 'Status library',
-          order: 0,
-          sorting: {
-            propertyId_focus: { direction: 1, priority: 0 },
-          },
-        },
-      },
-    }),
-    defaultViewId: 'viewId_statusLibrary',
-    itemIds,
-  };
+const statusItemIds: Record<StatusKey, string> = {
+  backlog: 'itemId_backlog',
+  planned: 'itemId_planned',
+  doing: 'itemId_doing',
+  waiting: 'itemId_waiting',
+  done: 'itemId_done',
 };
 
-export const createWeeklyPlanExampleDocument = (
+const purchaseTypeItemIds: Record<PurchaseTypeKey, string> = {
+  produce: 'itemId_produce',
+  pantry: 'itemId_pantry',
+  pharmacy: 'itemId_pharmacy',
+  household: 'itemId_household',
+  hardware: 'itemId_hardware',
+};
+
+export const statusesStarterExample: RelatedStarterExample<StatusKey> = {
+  defaultViewId: 'viewId_statusLibrary',
+  recipe: {
+    body: createStatusesBody(statusItemIds),
+    name: 'Statuses',
+  },
+  itemIds: statusItemIds,
+};
+
+export const purchaseTypesStarterExample: RelatedStarterExample<PurchaseTypeKey> = {
+  defaultViewId: 'viewId_typeLibrary',
+  recipe: {
+    body: createPurchaseTypesBody(purchaseTypeItemIds),
+    name: 'Purchase Types',
+  },
+  itemIds: purchaseTypeItemIds,
+};
+
+export const createWeeklyPlanStarterExample = (
   relation: RelatedDocumentReference<StatusKey>,
-): CFRDocumentContent =>
-  createDatabaseExampleDocument('Plan Week', {
+): Pick<CFRDocumentContent, 'body' | 'name'> => ({
+  name: 'Plan Week',
+  body: {
     data: {
       itemId_plan_1: {
         propertyId_done: false,
@@ -153,82 +171,43 @@ export const createWeeklyPlanExampleDocument = (
         },
       },
     },
-  });
+  },
+});
 
-export const createPurchaseTypesExampleDocument = (): RelatedDocumentSeed<PurchaseTypeKey> => {
-  const itemIds: Record<PurchaseTypeKey, string> = {
-    produce: 'itemId_produce',
-    pantry: 'itemId_pantry',
-    pharmacy: 'itemId_pharmacy',
-    household: 'itemId_household',
-    hardware: 'itemId_hardware',
-  };
-
-  return {
-    content: createDatabaseExampleDocument('Purchase Types', {
-      data: {
-        [itemIds.produce]: { propertyId_bestFor: 'Supermarket', propertyId_type: 'Produce' },
-        [itemIds.pantry]: { propertyId_bestFor: 'Supermarket', propertyId_type: 'Pantry' },
-        [itemIds.pharmacy]: { propertyId_bestFor: 'Pharmacy', propertyId_type: 'Pharmacy' },
-        [itemIds.household]: { propertyId_bestFor: 'Supermarket', propertyId_type: 'Household' },
-        [itemIds.hardware]: { propertyId_bestFor: 'Hardware', propertyId_type: 'Hardware' },
-      },
-      properties: {
-        propertyId_bestFor: { name: 'Best for', type: PROPERTY_TYPE_STRING },
-        propertyId_type: { name: 'Type', type: PROPERTY_TYPE_STRING },
-      },
-      version: 3,
-      views: {
-        viewId_typeLibrary: {
-          layout: DB_VIEW_LAYOUT.TABLE,
-          name: 'Type library',
-          order: 0,
-        },
-      },
-    }),
-    defaultViewId: 'viewId_typeLibrary',
-    itemIds,
-  };
-};
-
-export const createShoppingListExampleDocument = (
+export const createShoppingListStarterExample = (
   relation: RelatedDocumentReference<PurchaseTypeKey>,
-): CFRDocumentContent =>
-  createDatabaseExampleDocument('Shopping List', {
+): Pick<CFRDocumentContent, 'body' | 'name'> => ({
+  name: 'Shopping List',
+  body: {
     data: {
       itemId_shopping_1: {
         propertyId_item: 'Bananas',
         propertyId_purchased: false,
         propertyId_quantity: 6,
-        propertyId_store: 'Supermarket',
         propertyId_type: [relation.itemIds.produce],
       },
       itemId_shopping_2: {
         propertyId_item: 'Pasta',
         propertyId_purchased: false,
         propertyId_quantity: 2,
-        propertyId_store: 'Supermarket',
         propertyId_type: [relation.itemIds.pantry],
       },
       itemId_shopping_3: {
         propertyId_item: 'Dish soap',
         propertyId_purchased: true,
         propertyId_quantity: 1,
-        propertyId_store: 'Supermarket',
         propertyId_type: [relation.itemIds.household],
       },
       itemId_shopping_4: {
         propertyId_item: 'Vitamin D',
         propertyId_purchased: false,
         propertyId_quantity: 1,
-        propertyId_store: 'Pharmacy',
         propertyId_type: [relation.itemIds.pharmacy],
       },
       itemId_shopping_5: {
         propertyId_item: 'Wall hooks',
         propertyId_purchased: false,
         propertyId_quantity: 4,
-        propertyId_store: 'Hardware',
         propertyId_type: [relation.itemIds.hardware],
       },
     },
@@ -240,7 +219,6 @@ export const createShoppingListExampleDocument = (
         type: PROPERTY_TYPE_BOOLEAN,
       },
       propertyId_quantity: { name: 'Qty', type: PROPERTY_TYPE_NUMBER },
-      propertyId_store: { name: 'Store', type: PROPERTY_TYPE_STRING },
       propertyId_type: {
         name: 'Type',
         relation: {
@@ -258,12 +236,16 @@ export const createShoppingListExampleDocument = (
         order: 0,
         sorting: {
           propertyId_purchased: { direction: 0, priority: 0 },
-          propertyId_store: { direction: 0, priority: 1 },
+          propertyId_type: { direction: 0, priority: 1 },
         },
       },
       viewId_supermarket: {
         filter: {
-          propertyId_store: { $eq: 'Supermarket' },
+          $or: [
+            { propertyId_type: { $eq: [relation.itemIds.produce] } },
+            { propertyId_type: { $eq: [relation.itemIds.pantry] } },
+            { propertyId_type: { $eq: [relation.itemIds.household] } },
+          ],
         },
         layout: DB_VIEW_LAYOUT.TABLE,
         name: 'Supermarket',
@@ -271,7 +253,7 @@ export const createShoppingListExampleDocument = (
       },
       viewId_pharmacy: {
         filter: {
-          propertyId_store: { $eq: 'Pharmacy' },
+          propertyId_type: { $eq: [relation.itemIds.pharmacy] },
         },
         layout: DB_VIEW_LAYOUT.TABLE,
         name: 'Pharmacy',
@@ -279,11 +261,12 @@ export const createShoppingListExampleDocument = (
       },
       viewId_hardware: {
         filter: {
-          propertyId_store: { $eq: 'Hardware' },
+          propertyId_type: { $eq: [relation.itemIds.hardware] },
         },
         layout: DB_VIEW_LAYOUT.TABLE,
         name: 'Hardware',
         order: 3,
       },
     },
-  });
+  },
+});
