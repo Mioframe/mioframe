@@ -14,8 +14,6 @@ const props = defineProps<{
   propertyId: DatabasePropertyId;
 }>();
 
-const { path, documentId, propertyId } = toRefs(props);
-
 const emit = defineEmits<{
   edited: [];
   cancel: [];
@@ -28,6 +26,8 @@ defineSlots<{
     onUpdateProperty: (v: DatabaseUnknownProperty) => void;
   }) => unknown;
 }>();
+
+const { path, documentId, propertyId } = toRefs(props);
 
 const { property, patch } = useDatabaseProperty(path, documentId, propertyId);
 

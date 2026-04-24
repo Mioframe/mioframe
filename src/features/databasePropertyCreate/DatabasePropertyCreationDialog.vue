@@ -24,8 +24,6 @@ const props = defineProps<{
   documentId: AMDocumentId;
 }>();
 
-const { path, documentId } = toRefs(props);
-
 const emit = defineEmits<{
   created: [payload: { id: DatabasePropertyId; property: DatabaseUnknownProperty }];
   cancel: [];
@@ -38,6 +36,8 @@ defineSlots<{
     onUpdateProperty: (v: DatabaseUnknownProperty) => void;
   }) => unknown;
 }>();
+
+const { path, documentId } = toRefs(props);
 
 const PROPERTY_TYPES = {
   PROPERTY_TYPE_STRING,

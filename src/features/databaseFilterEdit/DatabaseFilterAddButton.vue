@@ -20,8 +20,6 @@ const props = defineProps<{
   filterPath: FilterPath;
 }>();
 
-const { directoryPath, documentId, filterPath } = toRefs(props);
-
 const emit = defineEmits<{
   clickUnary: [
     {
@@ -30,6 +28,8 @@ const emit = defineEmits<{
     },
   ];
 }>();
+
+const { directoryPath, documentId, filterPath } = toRefs(props);
 
 const addButtonEl = useTemplateRef<MaybeElement>('addButton');
 

@@ -10,6 +10,10 @@ const props = withDefaults(
   },
 );
 
+defineSlots<{
+  default: () => unknown;
+}>();
+
 const classVariant = computed(() => `_${props.variant}`);
 </script>
 

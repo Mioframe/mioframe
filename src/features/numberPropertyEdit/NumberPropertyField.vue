@@ -2,8 +2,6 @@
 import { isNumber } from 'es-toolkit/compat';
 import { computed, ref } from 'vue';
 
-const stateValue = ref<number>();
-
 const props = defineProps<{
   value?: unknown;
   label?: string;
@@ -13,6 +11,8 @@ const emit = defineEmits<{
   'update:value': [value?: number];
   keydown: [payload: KeyboardEvent];
 }>();
+
+const stateValue = ref<number>();
 
 const modelValue = computed<number | undefined>({
   get: () => (isNumber(props.value) ? props.value : stateValue.value),

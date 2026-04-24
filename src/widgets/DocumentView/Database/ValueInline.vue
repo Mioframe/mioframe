@@ -23,11 +23,11 @@ const props = defineProps<{
   itemId: DatabaseItemId;
 }>();
 
+const emit = defineEmits<{ click: [] }>();
+
 const { documentId, propertyId, directoryPath, itemId } = toRefs(props);
 
 const { property } = useDatabaseProperty(directoryPath, documentId, propertyId);
-
-const emit = defineEmits<{ click: [] }>();
 
 const { value, isLoading } = useDatabaseEffectiveValue(
   directoryPath,

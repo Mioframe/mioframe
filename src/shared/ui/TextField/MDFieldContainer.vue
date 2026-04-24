@@ -25,7 +25,9 @@ const props = withDefaults(
   },
 );
 
-const { focused, id } = toRefs(props);
+const emit = defineEmits<{
+  click: [event: MouseEvent];
+}>();
 
 const slots = defineSlots<{
   default(p: { id: string }): unknown;
@@ -33,9 +35,7 @@ const slots = defineSlots<{
   trailingIcon(p: EmptyObject): unknown;
 }>();
 
-const emit = defineEmits<{
-  click: [event: MouseEvent];
-}>();
+const { focused, id } = toRefs(props);
 
 const staticId = sessionUniqueId('MDFieldContainer');
 

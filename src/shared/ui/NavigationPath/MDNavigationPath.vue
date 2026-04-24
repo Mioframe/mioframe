@@ -8,11 +8,11 @@ const props = defineProps<{
   path: string;
 }>();
 
-const { path } = toRefs(props);
-
 const emit = defineEmits<{
   click: [path: string];
 }>();
+
+const { path } = toRefs(props);
 
 const pathArray = computed(() => path.value.split(PathUtils.SEPARATOR));
 
@@ -29,7 +29,7 @@ const onClickPath = (index: number) => {
         tooltip="home"
         md-symbol-name="home"
         class="md-navigation-path__item"
-        @click="onClickPath(indexPath)"
+        @click="() => onClickPath(indexPath)"
       />
 
       <template v-else>
@@ -39,7 +39,7 @@ const onClickPath = (index: number) => {
           :label="name"
           color="text"
           class="md-navigation-path__item"
-          @click="onClickPath(indexPath)"
+          @click="() => onClickPath(indexPath)"
         />
       </template>
     </template>

@@ -17,12 +17,12 @@ const props = defineProps<{
   documentId: AMDocumentId;
 }>();
 
-const { documentId, directoryPath: path } = toRefs(props);
-
 const emit = defineEmits<{
   created: [id: DatabaseViewId];
   cancel: [];
 }>();
+
+const { documentId, directoryPath: path } = toRefs(props);
 
 const initialState = (): {
   layout: DB_VIEW_LAYOUT;

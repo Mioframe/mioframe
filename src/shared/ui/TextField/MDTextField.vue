@@ -4,6 +4,8 @@ import { useTextareaAutosize } from '@vueuse/core';
 import { toString } from 'es-toolkit/compat';
 import MDFieldContainer from './MDFieldContainer.vue';
 
+const modelValue = defineModel<string | undefined>();
+
 const props = withDefaults(
   defineProps<{
     labelText: string;
@@ -34,14 +36,17 @@ const props = withDefaults(
   { inputType: 'text', type: 'outlined' },
 );
 
-const { inputType, type, autofocus } = toRefs(props);
+defineEmits<{
+  focus: [e: FocusEvent];
+  keydown: [payload: KeyboardEvent];
+}>();
 
 const slots = defineSlots<{
   leadingIcon(): unknown;
   trailingIcon(): unknown;
 }>();
 
-const modelValue = defineModel<string | undefined>();
+const { inputType, type, autofocus } = toRefs(props);
 
 const inputRef = useTemplateRef('inputRef');
 
@@ -54,11 +59,6 @@ useTextareaAutosize({
   input: computed(() => modelValueString.value),
   styleProp: 'minHeight',
 });
-
-defineEmits<{
-  focus: [e: FocusEvent];
-  keydown: [payload: KeyboardEvent];
-}>();
 
 watch(
   [inputRef, autofocus],

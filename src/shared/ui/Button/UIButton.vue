@@ -14,14 +14,14 @@ const props = defineProps<{
   shadow?: boolean;
 }>();
 
-const slots = defineSlots<{
-  default(): unknown;
-  icon(): unknown;
-}>();
-
 const emit = defineEmits<{
   click: [e: MouseEvent];
   pointerdown: [e: PointerEvent];
+}>();
+
+const slots = defineSlots<{
+  default(): unknown;
+  icon(): unknown;
 }>();
 
 const growClass = computed(() =>

@@ -16,6 +16,8 @@ import { useOverlayContainer } from '../Overlay';
 import { useOnEscapeKeyStackedWhen } from '@shared/lib/useOnEscapeKeyStacked';
 import { useOnBackNavigationStackedWhen } from '@shared/lib/onBackNavigation';
 
+const showModel = defineModel<boolean | undefined>('show');
+
 const props = withDefaults(
   defineProps<{
     subhead: string;
@@ -30,10 +32,6 @@ const props = withDefaults(
   },
 );
 
-const { subhead, targetElement, useClick, useHover, placement } = toRefs(props);
-
-const showModel = defineModel<boolean | undefined>('show');
-
 const emit = defineEmits<{
   interactionOutside: [e: Event];
 }>();
@@ -42,6 +40,8 @@ const slots = defineSlots<{
   text(): unknown;
   actions(): unknown;
 }>();
+
+const { subhead, targetElement, useClick, useHover, placement } = toRefs(props);
 
 const parentEl = useParentElement();
 

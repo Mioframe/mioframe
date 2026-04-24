@@ -2,6 +2,8 @@
 import { sessionUniqueId } from '@shared/lib/uniqueId';
 import MDCheckbox from './MDCheckbox.vue';
 
+const modelValue = defineModel<boolean | undefined>();
+
 defineProps<{
   disabled?: boolean | undefined;
   label: string;
@@ -10,8 +12,6 @@ defineProps<{
   readonly?: boolean | undefined;
   autofocus?: boolean | undefined;
 }>();
-
-const modelValue = defineModel<boolean | undefined>();
 
 const id = sessionUniqueId('BooleanPropertyField');
 </script>

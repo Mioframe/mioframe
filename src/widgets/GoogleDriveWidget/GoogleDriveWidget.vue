@@ -4,11 +4,11 @@ import { GoogleSessionAddListItem } from '@feature/googleSessionAdd';
 import { GoogleSessionManageMenuButton } from '@feature/googleSessionManage';
 import { MDListContainer } from '@shared/ui/Lists';
 
-const { sessionList } = useGoogleSessions();
-
 const emit = defineEmits<{
   clickUser: [email: string];
 }>();
+
+const { sessionList } = useGoogleSessions();
 </script>
 
 <template>
@@ -17,7 +17,7 @@ const emit = defineEmits<{
       v-for="session in sessionList"
       :key="session.email"
       :session="session"
-      @click="emit('clickUser', session.email)"
+      @click="() => emit('clickUser', session.email)"
     >
       <template #trailingIcon>
         <GoogleSessionManageMenuButton :email="session.email" />

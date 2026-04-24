@@ -12,11 +12,11 @@ const props = defineProps<{
   autoHide?: boolean;
 }>();
 
-const { autoHide } = toRefs(props);
-
 defineSlots<{
   default(): unknown;
 }>();
+
+const { autoHide } = toRefs(props);
 
 const fabContainerEl = useTemplateRef('fabContainer');
 

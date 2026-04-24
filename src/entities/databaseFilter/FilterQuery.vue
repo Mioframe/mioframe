@@ -18,14 +18,14 @@ const props = defineProps<{
   viewId: DatabaseViewId;
 }>();
 
-const { directoryPath, documentId, viewId } = toRefs(props);
-
 defineSlots<{
   property: (p: { propertyId: DatabasePropertyId }) => unknown;
   value: (p: { value: unknown; path: PropertyKey[]; property: string }) => unknown;
   objectAppend: (p: { path: PropertyKey[] }) => unknown;
   groupAppend: (p: { path: PropertyKey[]; operator: LogicalOperator }) => unknown;
 }>();
+
+const { directoryPath, documentId, viewId } = toRefs(props);
 
 const { filterQuery } = useDatabaseViewFilter(directoryPath, documentId, viewId);
 

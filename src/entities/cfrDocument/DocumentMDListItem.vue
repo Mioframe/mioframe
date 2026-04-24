@@ -14,8 +14,6 @@ const props = defineProps<{
   is?: 'button' | 'div' | 'li';
 }>();
 
-const { documentId, path } = toRefs(props);
-
 const emit = defineEmits<{
   click: [e: MouseEvent];
 }>();
@@ -25,6 +23,8 @@ const slots = defineSlots<{
   trailingIcon: (p: { documentName?: string | undefined }) => unknown;
   leadingAvatarContainer: () => unknown;
 }>();
+
+const { documentId, path } = toRefs(props);
 
 const { state: documentDescription, isLoading, errorMessage } = useDocument(path, documentId);
 

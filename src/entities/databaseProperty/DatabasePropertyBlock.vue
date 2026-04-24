@@ -10,11 +10,11 @@ const props = defineProps<{
   propertyId: DatabasePropertyId;
 }>();
 
-const { path, documentId, propertyId } = toRefs(props);
-
 defineSlots<{
   default: (p: { property?: Readonly<DatabaseUnknownProperty> | undefined }) => unknown;
 }>();
+
+const { path, documentId, propertyId } = toRefs(props);
 
 const { property } = useDatabaseProperty(path, documentId, propertyId);
 

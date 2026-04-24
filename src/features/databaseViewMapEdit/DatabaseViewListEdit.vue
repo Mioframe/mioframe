@@ -16,8 +16,6 @@ const props = defineProps<{
   documentId: AMDocumentId;
 }>();
 
-const { directoryPath: path, documentId } = toRefs(props);
-
 const emit = defineEmits<{
   clickView: [viewId: DatabaseViewId];
 }>();
@@ -26,6 +24,8 @@ const slots = defineSlots<{
   trailingIcon: (p: { viewId: DatabaseViewId }) => unknown;
   leadingIcon: (p: { viewId: DatabaseViewId }) => unknown;
 }>();
+
+const { directoryPath: path, documentId } = toRefs(props);
 
 const { reorder, views: viewList } = useDatabaseViews(path, documentId);
 
@@ -86,7 +86,7 @@ const onClickView = (id: DatabaseViewId) => {
         'md-state_drag': draggedViewId === id,
         'db-view-map-edit__view-item_touch': isDragging && activeProfile.input === 'touch',
       }"
-      @click="onClickView(id)"
+      @click="() => onClickView(id)"
     >
       <template v-if="!!slots.leadingIcon" #leadingIcon>
         <slot name="leadingIcon" :view-id="id" />

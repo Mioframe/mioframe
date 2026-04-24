@@ -1,6 +1,4 @@
 <script setup lang="ts">
-defineProps<{ label: string }>();
-
 const value = defineModel<string | undefined>({
   set: (v) => {
     if (!v || v.length < 1) {
@@ -10,6 +8,8 @@ const value = defineModel<string | undefined>({
   },
   get: (v) => v,
 });
+
+defineProps<{ label: string }>();
 </script>
 
 <template>

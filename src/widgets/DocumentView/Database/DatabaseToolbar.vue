@@ -15,6 +15,8 @@ import DatabaseFiltersSheet from './DatabaseFiltersSheet.vue';
 import { useDatabaseProperties } from '@entity/databaseProperty';
 import type { PartialDeep } from 'type-fest';
 
+const selectedViewId = defineModel<DatabaseViewId | undefined>('selectedViewId');
+
 const props = defineProps<{
   documentId: AMDocumentId;
   directoryPath: string;
@@ -22,8 +24,6 @@ const props = defineProps<{
 }>();
 
 const { documentId, directoryPath: path, autoHideTarget } = toRefs(props);
-
-const selectedViewId = defineModel<DatabaseViewId | undefined>('selectedViewId');
 
 const showViewSettings = ref(false);
 

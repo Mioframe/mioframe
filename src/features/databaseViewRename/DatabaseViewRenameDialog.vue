@@ -13,6 +13,11 @@ const props = defineProps<{
   viewId: DatabaseViewId;
 }>();
 
+const emit = defineEmits<{
+  completed: [name: string];
+  cancel: [];
+}>();
+
 const { directoryPath: path, documentId, viewId } = toRefs(props);
 
 const { view: stateView, patch } = useDatabaseView(path, documentId, viewId);
@@ -35,11 +40,6 @@ const resetNameState = () => {
 watchEffect(() => {
   resetNameState();
 });
-
-const emit = defineEmits<{
-  completed: [name: string];
-  cancel: [];
-}>();
 
 const loading = ref(0);
 

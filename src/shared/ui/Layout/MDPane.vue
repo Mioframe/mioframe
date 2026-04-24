@@ -7,11 +7,11 @@ const props = defineProps<{
   allowBottomNavigation?: boolean;
 }>();
 
-const { allowBottomNavigation } = toRefs(props);
-
 defineSlots<{
   default: () => unknown;
 }>();
+
+const { allowBottomNavigation } = toRefs(props);
 
 const paneContentEl = useTemplateRef('paneContentEl');
 

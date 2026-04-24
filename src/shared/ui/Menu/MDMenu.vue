@@ -5,6 +5,8 @@ import type { MenuButtonDescription, MenuButtonList } from './types';
 import MDMenuItem from './MDMenuItem.vue';
 import MDMenuBase from './MDMenuBase.vue';
 
+const showModel = defineModel<boolean>('show', { required: true });
+
 const props = withDefaults(
   defineProps<{
     target: MaybeElement;
@@ -22,15 +24,13 @@ const props = withDefaults(
   },
 );
 
-const { target, btns, outsideIgnore, placement } = toRefs(props);
-
 const emit = defineEmits<{
   click: [menuItem: T];
   interactionOutside: [];
   deactivateFocus: [];
 }>();
 
-const showModel = defineModel<boolean>('show', { required: true });
+const { target, btns, outsideIgnore, placement } = toRefs(props);
 
 const onClickItem = (menuItem: T) => {
   emit('click', menuItem);

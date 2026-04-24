@@ -7,6 +7,8 @@ import { useInjectFocusRegister } from './focusProvider';
 import { findClosestElement } from '@shared/lib/useClosestElement';
 import MDMenuBase from './MDMenuBase.vue';
 
+const showSubmenuModel = defineModel<boolean | undefined>('showSubmenu');
+
 const props = withDefaults(
   defineProps<{
     label: string;
@@ -19,10 +21,6 @@ const props = withDefaults(
   {},
 );
 
-const { label } = toRefs(props);
-
-const showSubmenuModel = defineModel<boolean | undefined>('showSubmenu');
-
 const emit = defineEmits<{
   click: [];
 }>();
@@ -30,6 +28,8 @@ const emit = defineEmits<{
 const slots = defineSlots<{
   submenu: () => unknown;
 }>();
+
+const { label } = toRefs(props);
 
 const listItemEl = useTemplateRef<MaybeElement>('listItemEl');
 

@@ -26,6 +26,16 @@ const props = withDefaults(
   { cancelLabel: 'Cancel', type: 'basic' },
 );
 
+const emit = defineEmits<{
+  cancel: [];
+  apply: [];
+}>();
+
+const slots = defineSlots<{
+  default(): unknown;
+  icon(): unknown;
+}>();
+
 const {
   applyLabel,
   cancelLabel,
@@ -36,16 +46,6 @@ const {
   type: dialogType,
   class: stylesClass,
 } = toRefs(props);
-
-const slots = defineSlots<{
-  default(): unknown;
-  icon(): unknown;
-}>();
-
-const emit = defineEmits<{
-  cancel: [];
-  apply: [];
-}>();
 
 const ariaHidden = useModalAriaHidden();
 

@@ -10,13 +10,13 @@ import { useFocusTrap } from '@vueuse/integrations/useFocusTrap';
 import { useOnEscapeKeyStackedWhen } from '@shared/lib/useOnEscapeKeyStacked';
 import { useOnBackNavigationStackedWhen } from '@shared/lib/onBackNavigation';
 
-defineSlots<{
-  default(): unknown;
-}>();
-
 const openModel = defineModel<boolean>('open', { required: true });
 
 const scrollPositionModel = defineModel<number | undefined>('scrollPosition');
+
+defineSlots<{
+  default(): unknown;
+}>();
 
 const containerEl = useTemplateRef<HTMLElement>('containerEl');
 
