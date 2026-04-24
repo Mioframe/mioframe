@@ -1,51 +1,19 @@
 <script setup lang="ts">
-import { computed } from 'vue';
-import type { AMDocumentId } from '@shared/lib/automerge';
 import { MDButton } from '@shared/ui/Button';
 import { MDCard } from '@shared/ui/Card';
 import { MDSymbol } from '@shared/ui/Icon';
 import type { StarterExampleDefinition } from '@entity/starterExample';
-import { useExampleDocumentsCreate } from './useExampleDocumentsCreate';
 
 const props = defineProps<{
   definition: StarterExampleDefinition;
+  errorMessage?: string;
+  isBusy: boolean;
+  isLoading: boolean;
 }>();
 
 const emit = defineEmits<{
-  openDocument: [payload: { documentDirectory: string; documentId: AMDocumentId }];
+  create: [];
 }>();
-
-const {
-  createShoppingExample,
-  createWeeklyPlanExample,
-  isCreatingShoppingExample,
-  isCreatingWeeklyPlanExample,
-  shoppingErrorMessage,
-  weeklyPlanErrorMessage,
-} = useExampleDocumentsCreate();
-
-const isLoading = computed(() =>
-  props.definition.id === 'weeklyPlan'
-    ? isCreatingWeeklyPlanExample.value
-    : isCreatingShoppingExample.value,
-);
-
-const errorMessage = computed(() =>
-  props.definition.id === 'weeklyPlan' ? weeklyPlanErrorMessage.value : shoppingErrorMessage.value,
-);
-
-const isBusy = computed(() => isCreatingWeeklyPlanExample.value || isCreatingShoppingExample.value);
-
-const onCreate = async () => {
-  const createdExample =
-    props.definition.id === 'weeklyPlan'
-      ? await createWeeklyPlanExample()
-      : await createShoppingExample();
-
-  if (createdExample) {
-    emit('openDocument', createdExample);
-  }
-};
 </script>
 
 <template>
@@ -60,17 +28,17 @@ const onCreate = async () => {
     <MDButton
       :label="definition.buttonLabel"
       :color="definition.buttonColor"
-      :loading="isLoading"
-      :disabled="isBusy"
-      @click="onCreate"
+      :loading="props.isLoading"
+      :disabled="props.isBusy"
+      @click="emit('create')"
     >
       <template #icon>
         <MDSymbol :name="definition.iconName" />
       </template>
     </MDButton>
 
-    <p v-if="errorMessage" class="example-document-create-card__error">
-      {{ errorMessage }}
+    <p v-if="props.errorMessage" class="example-document-create-card__error">
+      {{ props.errorMessage }}
     </p>
   </MDCard>
 </template>
