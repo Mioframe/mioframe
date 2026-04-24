@@ -207,6 +207,7 @@ const onFocusOut = () => {
     flex-direction: column;
     flex-grow: 1;
     cursor: text;
+    max-width: 100%;
 
     .md-field-container__leading-icon ~ & {
       margin-left: 16px;

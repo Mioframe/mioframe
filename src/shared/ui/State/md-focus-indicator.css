@@ -13,7 +13,7 @@
 
   transition-timing-function: var(--md-sys-motion-easing-standard-index);
   transition-duration: var(--md-sys-motion-duration-short2);
-  transition-property: opacity, top, left, width, height;
+  transition-property: opacity, top, left, width, height, border-radius;
 
   --md-focus-indicator-thickness: var(--md-sys-state-focus-indicator-thickness, 3px);
   --md-focus-indicator-offset: var(--md-sys-state-focus-indicator-outer-offset, 2px);
