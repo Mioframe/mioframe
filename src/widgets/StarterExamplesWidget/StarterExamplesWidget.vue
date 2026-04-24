@@ -68,7 +68,7 @@ const onCreateExample = async (exampleId: StarterExampleId) => {
         :is-loading="
           definition.id === 'weeklyPlan' ? isCreatingWeeklyPlanExample : isCreatingShoppingExample
         "
-        @create="onCreateExample(definition.id)"
+        @create="() => onCreateExample(definition.id)"
       />
     </div>
   </MDCard>

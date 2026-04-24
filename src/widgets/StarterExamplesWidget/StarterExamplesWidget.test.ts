@@ -38,21 +38,7 @@ vi.mock('@feature/exampleDocumentsCreate', () => ({
     },
 
     setup(props, { emit }) {
-      return () =>
-        h(
-          'button',
-          {
-            class: `example-card-${(props.definition as { id: string }).id}`,
-            'data-busy': String(props.isBusy),
-            'data-error': props.errorMessage ?? '',
-            'data-loading': String(props.isLoading),
-            type: 'button',
-            onClick: () => {
-              emit('create');
-            },
-          },
-          (props.definition as { id: string }).id,
-        );
+      return () => h('button', createButtonProps(props, emit), getDefinitionId(props.definition));
     },
   }),
   useExampleDocumentsCreate: () => ({
@@ -86,6 +72,38 @@ vi.mock('@shared/ui/Card', () => ({
 }));
 
 import StarterExamplesWidget from './StarterExamplesWidget.vue';
+
+const getDefinitionId = (definition: unknown) => {
+  if (
+    typeof definition !== 'object' ||
+    definition === null ||
+    !('id' in definition) ||
+    typeof definition.id !== 'string'
+  ) {
+    throw new Error('Expected starter example definition');
+  }
+
+  return definition.id;
+};
+
+const createButtonProps = (
+  props: {
+    definition: unknown;
+    errorMessage: string | undefined;
+    isBusy: boolean;
+    isLoading: boolean;
+  },
+  emit: (event: 'create') => void,
+) => ({
+  class: `example-card-${getDefinitionId(props.definition)}`,
+  'data-busy': String(props.isBusy),
+  'data-error': props.errorMessage ?? '',
+  'data-loading': String(props.isLoading),
+  type: 'button',
+  onClick: () => {
+    emit('create');
+  },
+});
 
 const mountStarterExamplesWidget = () => {
   const container = document.createElement('div');

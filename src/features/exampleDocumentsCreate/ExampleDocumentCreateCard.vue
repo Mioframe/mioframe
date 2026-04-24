@@ -6,7 +6,7 @@ import type { StarterExampleDefinition } from '@entity/starterExample';
 
 const props = defineProps<{
   definition: StarterExampleDefinition;
-  errorMessage?: string;
+  errorMessage: string | undefined;
   isBusy: boolean;
   isLoading: boolean;
 }>();
@@ -14,6 +14,10 @@ const props = defineProps<{
 const emit = defineEmits<{
   create: [];
 }>();
+
+const onCreate = () => {
+  emit('create');
+};
 </script>
 
 <template>
@@ -30,7 +34,7 @@ const emit = defineEmits<{
       :color="definition.buttonColor"
       :loading="props.isLoading"
       :disabled="props.isBusy"
-      @click="emit('create')"
+      @click="onCreate"
     >
       <template #icon>
         <MDSymbol :name="definition.iconName" />
