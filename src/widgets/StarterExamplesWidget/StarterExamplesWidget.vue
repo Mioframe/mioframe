@@ -1,6 +1,10 @@
 <script setup lang="ts">
-import { starterExampleDefinitions } from '@entity/starterExample';
-import { ExampleDocumentCreateCard } from '@feature/exampleDocumentsCreate';
+import { computed } from 'vue';
+import { starterExampleDefinitions, type StarterExampleId } from '@entity/starterExample';
+import {
+  ExampleDocumentCreateCard,
+  useExampleDocumentsCreate,
+} from '@feature/exampleDocumentsCreate';
 import { StarterExamplesDismissButton } from '@feature/starterExamplesDismiss';
 import type { AMDocumentId } from '@shared/lib/automerge';
 import { MDCard } from '@shared/ui/Card';
@@ -9,8 +13,28 @@ const emit = defineEmits<{
   openDocument: [payload: { documentDirectory: string; documentId: AMDocumentId }];
 }>();
 
+const {
+  createShoppingExample,
+  createWeeklyPlanExample,
+  isCreatingShoppingExample,
+  isCreatingWeeklyPlanExample,
+  shoppingErrorMessage,
+  weeklyPlanErrorMessage,
+} = useExampleDocumentsCreate();
+
+const isBusy = computed(() => isCreatingWeeklyPlanExample.value || isCreatingShoppingExample.value);
+
 const onOpenDocument = (payload: { documentDirectory: string; documentId: AMDocumentId }) => {
   emit('openDocument', payload);
+};
+
+const onCreateExample = async (exampleId: StarterExampleId) => {
+  const createdExample =
+    exampleId === 'weeklyPlan' ? await createWeeklyPlanExample() : await createShoppingExample();
+
+  if (createdExample) {
+    onOpenDocument(createdExample);
+  }
 };
 </script>
 
@@ -37,7 +61,14 @@ const onOpenDocument = (payload: { documentDirectory: string; documentId: AMDocu
         :key="definition.id"
         class="starter-examples-widget__create-card"
         :definition="definition"
-        @open-document="onOpenDocument"
+        :error-message="
+          definition.id === 'weeklyPlan' ? weeklyPlanErrorMessage : shoppingErrorMessage
+        "
+        :is-busy="isBusy"
+        :is-loading="
+          definition.id === 'weeklyPlan' ? isCreatingWeeklyPlanExample : isCreatingShoppingExample
+        "
+        @create="onCreateExample(definition.id)"
       />
     </div>
   </MDCard>
