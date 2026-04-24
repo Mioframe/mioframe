@@ -2,11 +2,12 @@
 set -eu
 
 staged_paths_file="$(mktemp)"
-before_diff_path="$(mktemp)"
-after_diff_path="$(mktemp)"
+full_staged_paths_file="$(mktemp)"
+mixed_staged_paths_file="$(mktemp)"
+oxfmt_stderr_file="$(mktemp)"
 
 cleanup() {
-  rm -f "$staged_paths_file" "$before_diff_path" "$after_diff_path"
+  rm -f "$staged_paths_file" "$full_staged_paths_file" "$mixed_staged_paths_file" "$oxfmt_stderr_file"
 }
 
 trap cleanup EXIT INT TERM
@@ -31,12 +32,45 @@ if [ ! -s "$staged_paths_file" ]; then
   exit 0
 fi
 
-xargs -0 git diff --binary --no-ext-diff -- <"$staged_paths_file" >"$before_diff_path"
-xargs -0 pnpm exec oxfmt <"$staged_paths_file"
-xargs -0 git diff --binary --no-ext-diff -- <"$staged_paths_file" >"$after_diff_path"
+export full_staged_paths_file
+export mixed_staged_paths_file
 
-if ! cmp -s "$before_diff_path" "$after_diff_path"; then
-  printf '%s\n' 'Pre-commit formatting updated staged files.' >&2
-  printf '%s\n' 'Review the changes, stage what you want, and run commit again.' >&2
+xargs -0 -n 1 sh -c '
+  path="$1"
+
+  if git diff --quiet -- "$path"; then
+    printf "%s\0" "$path" >>"$full_staged_paths_file"
+    exit 0
+  else
+    status="$?"
+  fi
+
+  if [ "$status" -eq 1 ]; then
+    printf "%s\0" "$path" >>"$mixed_staged_paths_file"
+    exit 0
+  fi
+
+  exit "$status"
+' sh <"$staged_paths_file"
+
+if [ -s "$mixed_staged_paths_file" ]; then
+  printf '%s\n' 'Pre-commit formatting skipped partially staged files:' >&2
+  xargs -0 -n 1 printf '  %s\n' <"$mixed_staged_paths_file" >&2
+  printf '%s\n' 'Stage the intended hunks or commit them separately, then run commit again.' >&2
   exit 1
 fi
+
+if [ ! -s "$full_staged_paths_file" ]; then
+  exit 0
+fi
+
+if ! xargs -0 pnpm exec oxfmt --no-error-on-unmatched-pattern <"$full_staged_paths_file" 2>"$oxfmt_stderr_file"; then
+  cat "$oxfmt_stderr_file" >&2
+  exit 1
+fi
+
+if [ -s "$oxfmt_stderr_file" ] && ! grep -qx 'No files found matching the given patterns.' "$oxfmt_stderr_file"; then
+  cat "$oxfmt_stderr_file" >&2
+fi
+
+xargs -0 git add -- <"$full_staged_paths_file"

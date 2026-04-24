@@ -4,10 +4,10 @@ summary: README-derived overview of Beaver positioning (local-first, no cloud), 
 tags: []
 related: [repo_guidelines/package_scripts/context.md]
 keywords: []
-importance: 53
+importance: 62
 recency: 1
 maturity: draft
-accessCount: 1
+accessCount: 4
 createdAt: '2026-04-18T13:44:05.067Z'
 updatedAt: '2026-04-18T13:44:05.067Z'
 ---

@@ -10,6 +10,7 @@ Inherits the rules from `src/shared/AGENTS.md`. Applies to `src/shared/lib` and 
 
 - Prefer small modules with one clear responsibility.
 - Wrap browser APIs, storage APIs, and third-party SDKs behind typed contracts.
+- Add concise TSDoc to exported functions so shared contracts stay readable at the call site and during refactors.
 - Keep runtime validation, parsing, and extraction close to the boundary code that needs them.
 - Keep workaround code for awkward platform typings at the boundary rather than spreading extra runtime allocations through callers.
 - Design lifecycle behavior explicitly for composables and adapters: cleanup, cancellation, resubscribe behavior, and memory profile are part of the contract.
