@@ -5,11 +5,12 @@ import { DEVICE_FILES } from '@entity/mountedDirectories';
 import { PathUtils, FileSystemError, VfsError } from '@shared/lib/virtualFileSystem';
 import type { AMDocumentId } from '@shared/lib/automerge';
 import {
-  createPurchaseTypesExampleDocument,
-  createShoppingListExampleDocument,
-  createStatusesExampleDocument,
-  createWeeklyPlanExampleDocument,
-} from '@shared/lib/databaseDocument';
+  createShoppingListStarterExample,
+  createWeeklyPlanStarterExample,
+  purchaseTypesStarterExample,
+  statusesStarterExample,
+} from '@entity/starterExample';
+import { createStarterExampleDocument } from './createStarterExampleDocument';
 
 const EXAMPLES_DIRECTORY_NAME = 'Examples';
 
@@ -62,13 +63,17 @@ export const useExampleDocumentsCreate = () => {
 
     try {
       const documentDirectory = await createIndexedExampleDirectory();
-      const statuses = createStatusesExampleDocument();
-      const statusesDocumentId = await createDocument(documentDirectory, statuses.content);
-      const weeklyPlan = createWeeklyPlanExampleDocument({
-        documentId: statusesDocumentId,
-        viewId: statuses.defaultViewId,
-        itemIds: statuses.itemIds,
-      });
+      const statusesDocumentId = await createDocument(
+        documentDirectory,
+        createStarterExampleDocument(statusesStarterExample.recipe),
+      );
+      const weeklyPlan = createStarterExampleDocument(
+        createWeeklyPlanStarterExample({
+          documentId: statusesDocumentId,
+          viewId: statusesStarterExample.defaultViewId,
+          itemIds: statusesStarterExample.itemIds,
+        }),
+      );
       const documentId = await createDocument(documentDirectory, weeklyPlan);
 
       return {
@@ -90,16 +95,17 @@ export const useExampleDocumentsCreate = () => {
 
     try {
       const documentDirectory = await createIndexedExampleDirectory();
-      const purchaseTypes = createPurchaseTypesExampleDocument();
       const purchaseTypesDocumentId = await createDocument(
         documentDirectory,
-        purchaseTypes.content,
+        createStarterExampleDocument(purchaseTypesStarterExample.recipe),
       );
-      const shoppingList = createShoppingListExampleDocument({
-        documentId: purchaseTypesDocumentId,
-        viewId: purchaseTypes.defaultViewId,
-        itemIds: purchaseTypes.itemIds,
-      });
+      const shoppingList = createStarterExampleDocument(
+        createShoppingListStarterExample({
+          documentId: purchaseTypesDocumentId,
+          viewId: purchaseTypesStarterExample.defaultViewId,
+          itemIds: purchaseTypesStarterExample.itemIds,
+        }),
+      );
       const documentId = await createDocument(documentDirectory, shoppingList);
 
       return {

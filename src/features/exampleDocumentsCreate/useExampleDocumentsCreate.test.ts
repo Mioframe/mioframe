@@ -31,6 +31,22 @@ const getCreatedDocumentName = (callIndex: number) => {
   return content.name;
 };
 
+const createDeferred = <T>() => {
+  let resolve!: (value: T | PromiseLike<T>) => void;
+  let reject!: (reason?: unknown) => void;
+
+  const promise = new Promise<T>((nextResolve, nextReject) => {
+    resolve = nextResolve;
+    reject = nextReject;
+  });
+
+  return {
+    promise,
+    reject,
+    resolve,
+  };
+};
+
 describe('useExampleDocumentsCreate', () => {
   beforeEach(() => {
     createDirectoryMock.mockReset();
@@ -89,6 +105,86 @@ describe('useExampleDocumentsCreate', () => {
     expect(getCreatedDocumentName(1)).toBe('Shopping List');
     expect(result).toBeUndefined();
     expect(shoppingErrorMessage.value).toBe('Cannot write document');
+    expect(isCreatingShoppingExample.value).toBe(false);
+  });
+
+  it('reports weekly plan errors when creating the example directory fails for a non-existing-directory reason', async () => {
+    createDirectoryMock.mockRejectedValueOnce(new Error('No permission to create directory'));
+
+    const { createWeeklyPlanExample, weeklyPlanErrorMessage } = useExampleDocumentsCreate();
+
+    const result = await createWeeklyPlanExample();
+
+    expect(createDirectoryMock).toHaveBeenCalledTimes(1);
+    expect(createDocumentMock).not.toHaveBeenCalled();
+    expect(result).toBeUndefined();
+    expect(weeklyPlanErrorMessage.value).toBe('No permission to create directory');
+  });
+
+  it('does not retry directory creation for VfsError codes other than FileExists', async () => {
+    createDirectoryMock.mockRejectedValueOnce(
+      new VfsError(FileSystemError.NoPermissions, 'No permission to create directory'),
+    );
+
+    const { createWeeklyPlanExample, weeklyPlanErrorMessage } = useExampleDocumentsCreate();
+
+    const result = await createWeeklyPlanExample();
+
+    expect(createDirectoryMock).toHaveBeenCalledTimes(1);
+    expect(createDocumentMock).not.toHaveBeenCalled();
+    expect(result).toBeUndefined();
+    expect(weeklyPlanErrorMessage.value).toBe('No permission to create directory');
+  });
+
+  it('exposes weekly loading while creation is in flight and clears it after completion', async () => {
+    const firstCreateDocument = createDeferred<string>();
+
+    createDocumentMock.mockReset();
+    createDocumentMock
+      .mockReturnValueOnce(firstCreateDocument.promise)
+      .mockResolvedValueOnce('primary-doc-id');
+
+    const { createWeeklyPlanExample, isCreatingWeeklyPlanExample } = useExampleDocumentsCreate();
+
+    const resultPromise = createWeeklyPlanExample();
+
+    expect(isCreatingWeeklyPlanExample.value).toBe(true);
+
+    firstCreateDocument.resolve('related-doc-id');
+
+    const result = await resultPromise;
+
+    expect(result).toEqual({
+      documentDirectory: '/Device Files/Browser Storage/Examples',
+      documentId: 'primary-doc-id',
+    });
+    expect(isCreatingWeeklyPlanExample.value).toBe(false);
+  });
+
+  it('exposes shopping loading while creation is in flight and returns the created document payload', async () => {
+    const firstCreateDocument = createDeferred<string>();
+
+    createDocumentMock.mockReset();
+    createDocumentMock
+      .mockReturnValueOnce(firstCreateDocument.promise)
+      .mockResolvedValueOnce('shopping-doc-id');
+
+    const { createShoppingExample, isCreatingShoppingExample, shoppingErrorMessage } =
+      useExampleDocumentsCreate();
+
+    const resultPromise = createShoppingExample();
+
+    expect(isCreatingShoppingExample.value).toBe(true);
+
+    firstCreateDocument.resolve('purchase-types-doc-id');
+
+    const result = await resultPromise;
+
+    expect(result).toEqual({
+      documentDirectory: '/Device Files/Browser Storage/Examples',
+      documentId: 'shopping-doc-id',
+    });
+    expect(shoppingErrorMessage.value).toBeUndefined();
     expect(isCreatingShoppingExample.value).toBe(false);
   });
 });
