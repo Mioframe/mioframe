@@ -7,10 +7,12 @@ import { MDIconButton } from '@shared/ui/Button';
 import { DocumentRenameDialog } from '@feature/documentRename';
 import { useDocument } from '@entity/cfrDocument';
 import { DomainError } from '@shared/lib/error';
+import { zodToVueProps } from '@shared/lib/zodToVueProps';
 import DatabaseViewWidget from '@widget/DocumentView/Database/DatabaseViewWidget.vue';
-import type { Query } from './model';
+import { zodQuery } from './model';
 
-const props = defineProps<Query>();
+// eslint-disable-next-line vue/define-props-declaration -- z.infer output is too complex for Vue macro runtime inference
+const props = defineProps(zodToVueProps(zodQuery));
 
 const slots = defineSlots<{
   navigationButton: () => unknown;
@@ -33,6 +35,10 @@ const showRenameDocument = ref(false);
 
 const onClickRenameDocument = () => {
   showRenameDocument.value = true;
+};
+
+const onCloseRenameDocument = () => {
+  showRenameDocument.value = false;
 };
 </script>
 
@@ -64,8 +70,8 @@ const onClickRenameDocument = () => {
       v-if="showRenameDocument"
       :path="documentDirectory"
       :document-id="documentId"
-      @renamed="showRenameDocument = false"
-      @cancel="showRenameDocument = false"
+      @renamed="onCloseRenameDocument"
+      @cancel="onCloseRenameDocument"
     />
   </MDPane>
 </template>
