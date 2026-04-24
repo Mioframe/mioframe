@@ -2,9 +2,9 @@
 import { BooleanValueField, zodBooleanProperty } from '@entity/databaseBoolean';
 import { DateValueField, zodDateProperty } from '@entity/databaseDate';
 import { NumberValueField, zodNumberProperty } from '@entity/databaseNumber';
-import { RelationValueField, zodRelationProperty } from '@entity/databaseRelation';
+import { zodRelationProperty } from '@entity/databaseRelation';
 import { StringValueField, zodStringProperty } from '@entity/databaseString';
-import { DatabaseRelationValueFieldData } from '@entity/databaseValue';
+import { RelationValueField, RelationValueFieldData } from '@feature/relationValueEdit';
 import type { DatabaseUnknownProperty } from '@shared/lib/databaseDocument';
 import { zodIs } from '@shared/lib/validateZodScheme';
 import type { ClassValue } from 'vue';
@@ -108,7 +108,7 @@ const onKeydown = (event: KeyboardEvent) => {
     @update:property="onUpdateProperty"
   >
     <template #data="{ documentId: relationDocHandle, onSelect, value: selectedValue, viewId }">
-      <DatabaseRelationValueFieldData
+      <RelationValueFieldData
         :directory-path="directoryPath"
         :document-id="relationDocHandle"
         :selected-value="selectedValue"
@@ -123,7 +123,7 @@ const onKeydown = (event: KeyboardEvent) => {
             :property-id="relationPropertyId"
           />
         </template>
-      </DatabaseRelationValueFieldData>
+      </RelationValueFieldData>
     </template>
   </RelationValueField>
 

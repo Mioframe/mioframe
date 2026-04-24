@@ -8,7 +8,8 @@ import type {
   DatabaseViewId,
 } from '@shared/lib/databaseDocument';
 import { MDCheckbox } from '@shared/ui/Checkbox';
-import { toRefs } from 'vue';
+import { MDCircularProgressIndicator } from '@shared/ui/ProgressIndicators';
+import { computed, toRefs } from 'vue';
 
 const props = defineProps<{
   directoryPath: string;
@@ -24,7 +25,9 @@ defineSlots<{
 
 const { directoryPath, documentId, viewId } = toRefs(props);
 
-const { propertiesIdList } = useDatabaseProperties(directoryPath, documentId);
+const { propertiesIdList, isLoading } = useDatabaseProperties(directoryPath, documentId);
+
+const displayPropertiesIdList = computed(() => propertiesIdList.value ?? []);
 
 const onUpdateSelectedValue = (itemId: DatabaseItemId) => {
   props.onSelect(itemId);
@@ -32,12 +35,13 @@ const onUpdateSelectedValue = (itemId: DatabaseItemId) => {
 </script>
 
 <template>
+  <MDCircularProgressIndicator v-if="isLoading && !propertiesIdList" :size="24" />
+
   <DatabaseDataTable
-    v-if="propertiesIdList"
     :directory-path="directoryPath"
     :document-id="documentId"
     :view-id="viewId"
-    :properties="propertiesIdList"
+    :properties="displayPropertiesIdList"
   >
     <template #property="{ propertyId }">
       <DatabasePropertyBlock
@@ -58,6 +62,4 @@ const onUpdateSelectedValue = (itemId: DatabaseItemId) => {
       />
     </template>
   </DatabaseDataTable>
-
-  <div v-else />
 </template>
