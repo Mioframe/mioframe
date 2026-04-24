@@ -16,9 +16,9 @@ const props = defineProps<{
   propertyId: DatabasePropertyId;
 }>();
 
-const { value, documentId, propertyId, path } = toRefs(props);
-
 const emit = defineEmits<{ click: [] }>();
+
+const { value, documentId, propertyId, path } = toRefs(props);
 
 const { property } = useDatabaseProperty(path, documentId, propertyId);
 

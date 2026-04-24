@@ -10,12 +10,12 @@ const props = defineProps<{
   documentId: AMDocumentId;
 }>();
 
-const { documentId, path } = toRefs(props);
-
 const emit = defineEmits<{
   cancel: [];
   deleted: [];
 }>();
+
+const { documentId, path } = toRefs(props);
 
 const loading = ref(0);
 

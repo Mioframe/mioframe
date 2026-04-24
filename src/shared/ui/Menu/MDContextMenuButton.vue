@@ -18,6 +18,10 @@ const {
   width?: 'default' | 'narrow' | 'wide' | undefined;
 }>();
 
+const emit = defineEmits<{
+  click: [item: T];
+}>();
+
 const showMenu = ref(false);
 
 const targetBtn = useTemplateRef<MaybeElement>('targetBtn');
@@ -29,10 +33,6 @@ const onClickTarget = () => {
 
   showMenu.value = !showMenu.value;
 };
-
-const emit = defineEmits<{
-  click: [item: T];
-}>();
 
 const onClick = async (item: T) => {
   showMenu.value = false;

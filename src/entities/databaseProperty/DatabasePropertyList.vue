@@ -11,14 +11,14 @@ const props = defineProps<{
   documentId: AMDocumentId;
 }>();
 
-const { documentId, directoryPath: path } = toRefs(props);
-
 const slots = defineSlots<{
   trailingIcon: (p: {
     property?: DatabaseUnknownProperty | undefined;
     propertyId: DatabasePropertyId;
   }) => unknown;
 }>();
+
+const { documentId, directoryPath: path } = toRefs(props);
 
 const { propertiesIdList: properties } = useDatabaseProperties(path, documentId);
 </script>

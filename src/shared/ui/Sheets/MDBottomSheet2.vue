@@ -16,8 +16,6 @@ const props = withDefaults(
   {},
 );
 
-const { label, class: classProp } = toRefs(props);
-
 const emit = defineEmits<{
   /**
    * signals the complete hiding of the sheet
@@ -28,6 +26,8 @@ const emit = defineEmits<{
 defineSlots<{
   default: () => unknown;
 }>();
+
+const { label, class: classProp } = toRefs(props);
 
 const to = useOverlayContainer();
 

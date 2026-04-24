@@ -21,12 +21,12 @@ const {
   selected?: boolean | undefined;
 }>();
 
-const slots = defineSlots<{
-  icon(): unknown;
-}>();
-
 defineEmits<{
   click: [event: MouseEvent];
+}>();
+
+const slots = defineSlots<{
+  icon(): unknown;
 }>();
 </script>
 

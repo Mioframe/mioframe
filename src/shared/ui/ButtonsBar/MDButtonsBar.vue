@@ -10,12 +10,12 @@ const { elevation, enable } = defineProps<{
   elevation?: boolean;
 }>();
 
-defineSlots<{
-  icon(p: { item: T }): unknown;
-}>();
-
 const emit = defineEmits<{
   click: [item: T];
+}>();
+
+defineSlots<{
+  icon(p: { item: T }): unknown;
 }>();
 
 const enableList = computed(() => (isArray(enable) ? enable : [enable]));
@@ -36,7 +36,7 @@ const enableList = computed(() => (isArray(enable) ? enable : [enable]));
       :class="{
         item_enable: enableList?.includes(item),
       }"
-      @click="emit('click', item)"
+      @click="() => emit('click', item)"
     >
       <div class="item__icon">
         <slot name="icon" :item="item">

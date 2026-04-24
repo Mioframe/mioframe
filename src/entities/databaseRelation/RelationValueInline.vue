@@ -22,7 +22,9 @@ const props = defineProps<{
   parentRelation?: ParentRelation | undefined;
 }>();
 
-const { directoryPath, value, documentId, propertyId, parentRelation } = toRefs(props);
+const emit = defineEmits<{
+  click: [];
+}>();
 
 defineSlots<{
   default: (p: {
@@ -34,9 +36,7 @@ defineSlots<{
   }) => unknown;
 }>();
 
-const emit = defineEmits<{
-  click: [];
-}>();
+const { directoryPath, value, documentId, propertyId, parentRelation } = toRefs(props);
 
 const { property } = useRelationProperty(directoryPath, documentId, propertyId);
 

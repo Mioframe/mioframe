@@ -12,11 +12,11 @@ const props = defineProps<{
   viewId: DatabaseViewId;
 }>();
 
-const { directoryPath, documentId, viewId } = toRefs(props);
-
 const emit = defineEmits<{
   closed: [];
 }>();
+
+const { directoryPath, documentId, viewId } = toRefs(props);
 
 const onClosed = () => {
   emit('closed');

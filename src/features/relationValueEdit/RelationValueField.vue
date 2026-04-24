@@ -14,8 +14,6 @@ const props = defineProps<{
   autofocus?: boolean;
 }>();
 
-const { directoryPath, value, property } = toRefs(props);
-
 const emit = defineEmits<{
   'update:value': [value: DatabaseItemId[]];
   'update:property': [property: RelationProperty];
@@ -30,6 +28,8 @@ defineSlots<{
     viewId: DatabaseViewId;
   }) => unknown;
 }>();
+
+const { directoryPath, value, property } = toRefs(props);
 
 const relationValue = computed<RelationValue>(() =>
   zodIs(value.value, zodRelationValue) ? value.value : [],

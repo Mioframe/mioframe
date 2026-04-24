@@ -41,13 +41,13 @@ const {
   shape?: 'round' | 'square' | undefined;
 }>();
 
+const emit = defineEmits<{
+  click: [event: MouseEvent];
+}>();
+
 const slots = defineSlots<{
   icon(): unknown;
   richTooltipContent(): unknown;
-}>();
-
-const emit = defineEmits<{
-  click: [event: MouseEvent];
 }>();
 
 const onClick = (e: MouseEvent) => {

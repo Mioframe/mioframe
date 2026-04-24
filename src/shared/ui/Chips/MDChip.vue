@@ -12,14 +12,14 @@ const { type: chipType, selected = false } = defineProps<{
   autofocus?: boolean | undefined;
 }>();
 
-const slots = defineSlots<{
-  leadingIcon: T extends 'assist' ? () => unknown : undefined;
-  trailingIcon: T extends 'filter' ? () => unknown : undefined;
-}>();
-
 const emit = defineEmits<{
   click: [event: MouseEvent];
   clickClose: [event: MouseEvent];
+}>();
+
+const slots = defineSlots<{
+  leadingIcon: T extends 'assist' ? () => unknown : undefined;
+  trailingIcon: T extends 'filter' ? () => unknown : undefined;
 }>();
 
 const onClickClose = (e: MouseEvent) => {

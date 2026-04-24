@@ -5,6 +5,10 @@ import type { SelectOption } from './types';
 import MDSelectBase from './MDSelectBase.vue';
 import MDSelectOption from './MDSelectOption.vue';
 
+const modelValue = defineModel<T[]>({
+  required: true,
+});
+
 const props = defineProps<{
   labelText: string;
   options: T[];
@@ -15,15 +19,11 @@ const props = defineProps<{
   multiple?: boolean | undefined;
 }>();
 
-const { options } = toRefs(props);
-
-const modelValue = defineModel<T[]>({
-  required: true,
-});
-
 defineSlots<{
   valueContainer: () => unknown;
 }>();
+
+const { options } = toRefs(props);
 
 const modelProxyValue = computed({
   get: () => modelValue.value.map(({ key }) => key),

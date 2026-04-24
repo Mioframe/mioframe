@@ -12,8 +12,6 @@ const props = defineProps<{
   documentId: AMDocumentId;
 }>();
 
-const { documentId } = toRefs(props);
-
 const emit = defineEmits<{
   added: [id: DatabaseItemId];
   cancel: [];
@@ -27,6 +25,8 @@ defineSlots<{
     index: number;
   }): unknown;
 }>();
+
+const { documentId } = toRefs(props);
 
 const onCreated = (id: DatabaseItemId) => {
   emit('added', id);

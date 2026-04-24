@@ -27,8 +27,6 @@ const props = withDefaults(
   },
 );
 
-const { directoryPath, documentId, applyLabel, headline, supportingText, itemId } = toRefs(props);
-
 const emit = defineEmits<{
   updated: [item: DatabaseItem];
   created: [id: DatabaseItemId];
@@ -43,6 +41,8 @@ defineSlots<{
     index: number;
   }): unknown;
 }>();
+
+const { directoryPath, documentId, applyLabel, headline, supportingText, itemId } = toRefs(props);
 
 const itemState = ref<DatabaseItem>({});
 const touchedPropertyIdSet = shallowRef<Set<DatabasePropertyId>>(new Set());

@@ -12,12 +12,12 @@ const props = defineProps<{
   path: string;
 }>();
 
-const { path } = toRefs(props);
-
 const emit = defineEmits<{
   created: [];
   cancel: [];
 }>();
+
+const { path } = toRefs(props);
 
 const stateName = ref<string>();
 const errorText = ref<string>();

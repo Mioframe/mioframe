@@ -15,18 +15,18 @@ import { defineMenuButtonList, MDContextMenuButton } from '@shared/ui/Menu';
 import { MDBottomSheet, MDBottomSheetSection } from '@shared/ui/Sheets';
 import { ref, shallowRef, toRefs } from 'vue';
 
+const selectedViewId = defineModel<DatabaseViewId | undefined>('selectedViewId');
+
 const props = defineProps<{
   path: string;
   documentId: AMDocumentId;
 }>();
 
-const { documentId, path } = toRefs(props);
-
-const selectedViewId = defineModel<DatabaseViewId | undefined>('selectedViewId');
-
 const emit = defineEmits<{
   closed: [];
 }>();
+
+const { documentId, path } = toRefs(props);
 
 const onClosed = () => {
   emit('closed');

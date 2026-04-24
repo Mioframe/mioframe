@@ -6,15 +6,15 @@ import { MDIconButton } from '../../Button';
 import { computed } from 'vue';
 import type { NavigationButton } from '../types';
 
+const railType = defineModel<RAIL_TYPE | undefined>('type', {
+  default: RAIL_TYPE.collapsed,
+});
+
 const props = defineProps<{
   buttons: T[];
   active?: T | undefined;
   hasMenu?: boolean | undefined;
 }>();
-
-const railType = defineModel<RAIL_TYPE | undefined>('type', {
-  default: RAIL_TYPE.collapsed,
-});
 
 const emit = defineEmits<{
   click: [button: T];
@@ -67,7 +67,7 @@ const showMenuBtn = computed(() => props.hasMenu);
       :active="active === button"
       :type="buttonType"
       :has-ripple="railType === RAIL_TYPE.expanded"
-      @click="onClick(button)"
+      @click="() => onClick(button)"
     />
   </section>
 </template>

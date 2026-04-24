@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { ref, watch, watchEffect } from 'vue';
 
-const { step = 0.01 } = defineProps<{ label: string; step?: number | undefined }>();
-
 const value = defineModel<number | undefined>();
+
+const { step = 0.01 } = defineProps<{ label: string; step?: number | undefined }>();
 
 const isNotUndefined = ref(false);
 

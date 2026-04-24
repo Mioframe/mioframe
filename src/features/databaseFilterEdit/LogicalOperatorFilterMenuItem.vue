@@ -19,8 +19,6 @@ const props = defineProps<{
   documentId: AMDocumentId;
 }>();
 
-const { directoryPath: path, documentId } = toRefs(props);
-
 const emit = defineEmits<{
   clickUnary: [
     {
@@ -29,6 +27,8 @@ const emit = defineEmits<{
     },
   ];
 }>();
+
+const { directoryPath: path, documentId } = toRefs(props);
 
 const label = computed(() => OPERATOR_LABEL[props.operator]);
 
@@ -89,7 +89,7 @@ const onClickUnaryInProperty = (
           v-for="subOperator in UNARY_FILTER_OPERATOR"
           :key="subOperator"
           :operator="subOperator"
-          @click="onClickUnary(subOperator)"
+          @click="() => onClickUnary(subOperator)"
         />
       </template>
 

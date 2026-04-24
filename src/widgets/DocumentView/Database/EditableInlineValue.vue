@@ -29,11 +29,11 @@ const props = withDefaults(
   {},
 );
 
-const { propertyId, documentId, directoryPath: path, itemId, class: propClass } = toRefs(props);
-
 const emit = defineEmits<{
   'update:property': [property: DatabaseUnknownProperty];
 }>();
+
+const { propertyId, documentId, directoryPath: path, itemId, class: propClass } = toRefs(props);
 
 const { property } = useDatabaseProperty(path, documentId, propertyId);
 

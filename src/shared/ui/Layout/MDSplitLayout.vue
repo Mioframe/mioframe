@@ -21,8 +21,6 @@ const props = defineProps<{
   panes: Pane[];
 }>();
 
-const { navigationButtons } = toRefs(props);
-
 const emit = defineEmits<{
   clickNavigation: [button: NavigationButton];
   clickBack: [];
@@ -32,6 +30,8 @@ defineSlots<{
   navigation: () => unknown;
   body: () => unknown;
 }>();
+
+const { navigationButtons } = toRefs(props);
 
 const mainEl = useTemplateRef('mainEl');
 

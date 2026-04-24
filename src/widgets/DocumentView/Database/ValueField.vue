@@ -27,8 +27,6 @@ const props = defineProps<{
   autofocus?: boolean;
 }>();
 
-const { directoryPath: path, documentId, propertyId, class: propClass } = toRefs(props);
-
 const emit = defineEmits<{
   'update:value': [v: unknown];
   'update:property': [v: DatabaseUnknownProperty];
@@ -38,6 +36,8 @@ const emit = defineEmits<{
 defineSlots<{
   unknownProperty: () => unknown;
 }>();
+
+const { directoryPath: path, documentId, propertyId, class: propClass } = toRefs(props);
 
 const { property } = useDatabaseProperty(path, documentId, propertyId);
 
@@ -105,7 +105,7 @@ const onUpdateProperty = (v: DatabaseUnknownProperty) => {
         <template #action="{ itemId }">
           <MDCheckbox
             :model-value="selectedValue.includes(itemId)"
-            @update:model-value="onSelect(itemId)"
+            @update:model-value="() => onSelect(itemId)"
           />
         </template>
       </DatabaseViewLayout>
