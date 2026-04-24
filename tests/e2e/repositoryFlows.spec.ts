@@ -24,7 +24,7 @@ test('creates, navigates, renames, and removes directories through the explorer 
   await openDirectory(page, originalName);
 
   await page.getByRole('button', { name: /^back$/i }).click();
-  await expect(page).toHaveURL(/Origin%20private%20file%20system/i);
+  await expect(page).toHaveURL(/Browser%20Storage/i);
 
   const renamedName = createUniqueName('renamed workspace');
   await renameExplorerEntry(page, originalName, renamedName);

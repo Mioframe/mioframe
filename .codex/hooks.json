@@ -26,14 +26,7 @@
     ],
     "PostToolUse": [
       {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "sh scripts/byterover/codexHooks.sh PostToolUse",
-            "statusMessage": "Refreshing BRV memory sync",
-            "timeout": 120000
-          }
-        ]
+        "hooks": []
       }
     ],
     "Stop": [

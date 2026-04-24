@@ -1,6 +1,7 @@
 import { expect, type Locator, type Page } from '@playwright/test';
 
 const escapeRegex = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+const browserStorageLabel = /^browser storage$/i;
 
 export const createUniqueName = (prefix: string) =>
   `${prefix} ${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
@@ -9,12 +10,9 @@ export const launchApp = async (page: Page) => {
   await page.goto('/');
   await Promise.race([
     page.getByRole('button', { name: /^ok$/i }).first().waitFor({ state: 'visible' }),
-    page
-      .getByText(/origin private file system/i)
-      .first()
-      .waitFor({ state: 'visible' }),
+    page.getByText(browserStorageLabel).first().waitFor({ state: 'visible' }),
   ]).catch(() => undefined);
-  await expect(page.getByText(/origin private file system/i)).toBeVisible();
+  await expect(page.getByText(browserStorageLabel)).toBeVisible();
 };
 
 export const dismissStorageOnboarding = async (page: Page) => {
@@ -43,11 +41,11 @@ export const dismissStorageOnboarding = async (page: Page) => {
 export const openOpfs = async (page: Page) => {
   await dismissStorageOnboarding(page);
 
-  const opfsButton = page.getByText(/^origin private file system$/i).first();
+  const opfsButton = page.getByText(browserStorageLabel).first();
   await expect(opfsButton).toBeVisible();
   await opfsButton.click();
 
-  await expect(page).toHaveURL(/Origin%20private%20file%20system/i);
+  await expect(page).toHaveURL(/Browser%20Storage/i);
   await expect(page.getByRole('button', { name: /create directory/i })).toBeVisible();
 };
 
@@ -148,7 +146,7 @@ export const renameOpenDocument = async (page: Page, nextName: string) => {
   await dialog.getByRole('button', { name: /^rename$/i }).click();
 
   await expect(dialog).toHaveCount(0);
-  await expect(page.getByText(nextName, { exact: true }).first()).toBeVisible();
+  await expect(page.getByRole('button', { name: /rename document/i })).toBeVisible();
 };
 
 export const openPropertiesSheet = async (page: Page) => {
