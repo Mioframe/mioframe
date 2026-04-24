@@ -143,6 +143,7 @@ watch(
     line-height: var(--md-sys-typescale-body-large-line-height);
     height: 1lh;
     min-width: 100%;
+    max-width: 100%;
     font-size: var(--md-sys-typescale-body-large-size);
     font-weight: var(--md-sys-typescale-body-large-weight);
     letter-spacing: var(--md-sys-typescale-body-large-tracking);

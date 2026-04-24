@@ -165,7 +165,7 @@ const stringInputSize = computed(() => {
   const currentValue = stateValue.value ?? value.value;
   const currentValueString = typeof currentValue === 'string' ? currentValue : String(currentValue);
 
-  return Math.min(Math.max(currentValueString.length, 12), 48);
+  return Math.max(currentValueString.length, 12);
 });
 
 const editPopoverStyle = computed(() => {
@@ -177,7 +177,6 @@ const editPopoverStyle = computed(() => {
 
   if (stringInputSize.value) {
     style.width = `min(calc(${stringInputSize.value}ch + 64px), calc(100dvw - 32px))`;
-    style.maxWidth = 'calc(100dvw - 32px)';
   }
 
   return style;
@@ -278,6 +277,7 @@ const ariaChecked = computed(() => {
     display: flex;
     flex-direction: column;
     padding-top: 1step;
+    max-width: 100%;
   }
 
   &__value-field {
