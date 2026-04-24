@@ -64,6 +64,7 @@ let runtimeConfig: SentryConfig | undefined;
 let initPromise: Promise<SentryFacade> | undefined;
 let appRef: App | undefined;
 let warnedMissingConfig = false;
+let warnedInitFailure = false;
 
 const warnMissingConfigOnce = () => {
   if (import.meta.env.PROD || warnedMissingConfig) {
@@ -72,6 +73,18 @@ const warnMissingConfigOnce = () => {
 
   warnedMissingConfig = true;
   console.warn('[sentry] Sentry is not configured. Calls will be ignored.');
+};
+
+const warnInitFailureOnce = (error: unknown) => {
+  if (import.meta.env.PROD || warnedInitFailure) {
+    return;
+  }
+
+  warnedInitFailure = true;
+  console.warn(
+    '[sentry] Sentry failed to initialize. Calls will remain no-op until a retry succeeds.',
+    error,
+  );
 };
 
 const getSentryModule = async () => {
@@ -213,7 +226,14 @@ export const ensureSentry = async (app?: App): Promise<SentryFacade> => {
     return sentryFacade;
   })();
 
-  return await initPromise;
+  try {
+    return await initPromise;
+  } catch (error) {
+    initPromise = undefined;
+    sentryModulePromise = undefined;
+    warnInitFailureOnce(error);
+    return sentryFacade;
+  }
 };
 
 /**

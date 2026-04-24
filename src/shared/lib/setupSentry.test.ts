@@ -27,7 +27,13 @@ const createDeferred = <T>() => {
   } satisfies Deferred<T>;
 };
 
-const setupSentryMocks = (options?: { moduleGate?: Deferred<undefined> }) => {
+const setupSentryMocks = (options?: {
+  importErrorOnce?: unknown;
+  moduleGate?: Deferred<undefined>;
+}) => {
+  let importAttempts = 0;
+  const shouldRejectImportOnce = options ? 'importErrorOnce' in options : false;
+  const importErrorOnce = options?.importErrorOnce;
   const initMock = vi.fn();
   const replayIntegrationMock = vi.fn(() => ({ name: 'replay' }));
   const captureExceptionMock = vi.fn(() => 'exception-id');
@@ -69,8 +75,14 @@ const setupSentryMocks = (options?: { moduleGate?: Deferred<undefined> }) => {
   };
 
   vi.doMock('@sentry/vue', async () => {
+    importAttempts += 1;
+
     if (options?.moduleGate) {
       await options.moduleGate.promise;
+    }
+
+    if (importAttempts === 1 && shouldRejectImportOnce) {
+      throw importErrorOnce;
     }
 
     return sentryModule;
@@ -85,6 +97,7 @@ const setupSentryMocks = (options?: { moduleGate?: Deferred<undefined> }) => {
     withScopeMock,
     startSpanManualMock,
     startInactiveSpanMock,
+    getImportAttempts: () => importAttempts,
   };
 };
 
@@ -229,6 +242,108 @@ describe('setupSentry', () => {
     expect(useSentry().captureMessage('after-ready')).toBe('message-id');
     expect(captureMessageMock).toHaveBeenCalledOnce();
     expect(captureMessageMock).toHaveBeenCalledWith('after-ready');
+  });
+
+  it('recovers after a failed Sentry module import', async () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    const importError = new Error('chunk failed');
+    const { initMock, captureMessageMock, getImportAttempts } = setupSentryMocks({
+      importErrorOnce: importError,
+    });
+    const { registerSentryConfig, ensureSentry, useSentry } = await import('./setupSentry');
+
+    registerSentryConfig({
+      dsn: 'https://example@sentry.io/123',
+      enabled: true,
+    });
+
+    await expect(ensureSentry()).resolves.toBe(useSentry());
+    expect(initMock).not.toHaveBeenCalled();
+    expect(getImportAttempts()).toBe(1);
+    expect(useSentry().captureMessage('during-failure')).toBeUndefined();
+
+    await expect(ensureSentry()).resolves.toBe(useSentry());
+
+    expect(getImportAttempts()).toBe(2);
+    expect(initMock).toHaveBeenCalledOnce();
+    expect(useSentry().captureMessage('after-retry')).toBe('message-id');
+    expect(captureMessageMock).toHaveBeenCalledWith('after-retry');
+    expect(warnSpy).toHaveBeenCalledWith(
+      '[sentry] Sentry failed to initialize. Calls will remain no-op until a retry succeeds.',
+      expect.objectContaining({
+        cause: importError,
+      }),
+    );
+  });
+
+  it('recovers after Sentry init throws', async () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    const initError = new Error('init failed');
+    const { initMock, captureMessageMock, getImportAttempts } = setupSentryMocks();
+    const { registerSentryConfig, ensureSentry, useSentry } = await import('./setupSentry');
+
+    initMock.mockImplementationOnce(() => {
+      throw initError;
+    });
+    initMock.mockImplementationOnce(() => {
+      throw initError;
+    });
+
+    registerSentryConfig({
+      dsn: 'https://example@sentry.io/123',
+      enabled: true,
+    });
+
+    await expect(ensureSentry()).resolves.toBe(useSentry());
+    await expect(ensureSentry()).resolves.toBe(useSentry());
+    expect(warnSpy).toHaveBeenCalledTimes(1);
+
+    await expect(ensureSentry()).resolves.toBe(useSentry());
+
+    expect(getImportAttempts()).toBe(1);
+    expect(initMock).toHaveBeenCalledTimes(3);
+    expect(useSentry().captureMessage('after-retry')).toBe('message-id');
+    expect(captureMessageMock).toHaveBeenCalledWith('after-retry');
+    expect(warnSpy).toHaveBeenCalledWith(
+      '[sentry] Sentry failed to initialize. Calls will remain no-op until a retry succeeds.',
+      initError,
+    );
+  });
+
+  it('keeps facade-triggered initialization failures as recoverable no-ops', async () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    const importError = new Error('facade import failed');
+    const { initMock, getImportAttempts } = setupSentryMocks({
+      importErrorOnce: importError,
+    });
+    const { registerSentryConfig, useSentry } = await import('./setupSentry');
+
+    registerSentryConfig({
+      dsn: 'https://example@sentry.io/123',
+      enabled: true,
+    });
+
+    expect(useSentry().captureMessage('fire-and-forget-failure')).toBeUndefined();
+
+    await vi.waitFor(() => {
+      expect(warnSpy).toHaveBeenCalledWith(
+        '[sentry] Sentry failed to initialize. Calls will remain no-op until a retry succeeds.',
+        expect.objectContaining({
+          cause: importError,
+        }),
+      );
+    });
+
+    expect(getImportAttempts()).toBe(1);
+    expect(initMock).not.toHaveBeenCalled();
+    expect(useSentry().captureMessage('fire-and-forget-retry')).toBeUndefined();
+
+    await vi.waitFor(() => {
+      expect(initMock).toHaveBeenCalledOnce();
+    });
+
+    expect(getImportAttempts()).toBe(2);
+    expect(useSentry().captureMessage('after-retry')).toBe('message-id');
   });
 
   it('delegates callback-based methods after initialization', async () => {
