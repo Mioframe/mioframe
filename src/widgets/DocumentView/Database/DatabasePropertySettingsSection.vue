@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { BooleanPropertySettingsSection, zodBooleanProperty } from '@entity/databaseBoolean';
-import { RelationPropertySettingsSection, zodRelationProperty } from '@entity/databaseRelation';
+import { zodRelationProperty } from '@entity/databaseRelation';
+import { DatabaseRelationPropertyEditSection } from '@feature/databaseRelationPropertyEdit';
 import type { DatabaseUnknownProperty } from '@shared/lib/databaseDocument';
 import { zodIs } from '@shared/lib/validateZodScheme';
 
@@ -19,7 +20,7 @@ const onUpdateProperty = (property: DatabaseUnknownProperty) => {
 </script>
 
 <template>
-  <RelationPropertySettingsSection
+  <DatabaseRelationPropertyEditSection
     v-if="zodIs(property, zodRelationProperty)"
     :property="property"
     :directory-path="directoryPath"
