@@ -17,7 +17,7 @@
     "setup:git-hooks": "node .husky/install.mjs",
     "type-check": "vue-tsc --build",
     "lint": "run-s lint:oxlint lint:eslint",
-    "lint:eslint": "eslint . --cache --fix",
+    "lint:eslint": "eslint . --cache --fix --concurrency=auto",
     "lint:oxlint": "oxlint . --fix",
     "format": "oxfmt .",
     "e2e": "playwright test",
