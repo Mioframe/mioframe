@@ -18,7 +18,7 @@ import ValueField from './ValueField.vue';
 import { MD_SYS_TYPESCALE } from '@shared/lib/md';
 import { useDatabaseProperties } from '@entity/databaseProperty';
 import { DomainError } from '@shared/lib/error';
-import { useDatabaseViews } from '@entity/databaseView';
+import { useDatabaseViewSelection } from '@entity/databaseView';
 import { useDatabaseData } from '@entity/databaseData/useDatabaseData';
 
 const props = defineProps<{
@@ -27,8 +27,12 @@ const props = defineProps<{
 }>();
 
 const { directoryPath: path, documentId } = toRefs(props);
-
-const firstViewId = computed(() => databaseViewList.value?.at(0)?.[0]);
+const stateExplicitViewId = shallowRef<DatabaseViewId>();
+const {
+  viewList: databaseViewList,
+  explicitViewId,
+  effectiveViewId,
+} = useDatabaseViewSelection(path, documentId, stateExplicitViewId);
 
 const documentError = computed(() => {
   if (databaseViewList.value instanceof DomainError) {
@@ -37,17 +41,6 @@ const documentError = computed(() => {
 
   return undefined;
 });
-
-const stateSelectedViewId = shallowRef<DatabaseViewId>();
-
-const selectedViewId = computed({
-  get: () => {
-    return stateSelectedViewId.value ?? firstViewId.value;
-  },
-  set: (id) => (stateSelectedViewId.value = id),
-});
-
-const { views: databaseViewList } = useDatabaseViews(path, documentId);
 
 enum ITEM_CONTEXT_ACTION {
   edit,
@@ -122,7 +115,7 @@ const databaseViewRef = useTemplateRef('databaseViewRef');
       </section>
 
       <DatabaseToolbar
-        v-model:selected-view-id="selectedViewId"
+        v-model:explicit-view-id="explicitViewId"
         :document-id="documentId"
         :directory-path="path"
         :auto-hide-target="databaseViewRef"
@@ -132,7 +125,7 @@ const databaseViewRef = useTemplateRef('databaseViewRef');
     <DatabaseViewLayout
       v-else
       :document-id="documentId"
-      :view-id="selectedViewId"
+      :view-id="effectiveViewId"
       :path="path"
       class="database-view__layout"
     >
@@ -155,7 +148,7 @@ const databaseViewRef = useTemplateRef('databaseViewRef');
 
       <template #after>
         <DatabaseToolbar
-          v-model:selected-view-id="selectedViewId"
+          v-model:explicit-view-id="explicitViewId"
           :document-id="documentId"
           :directory-path="path"
           :auto-hide-target="databaseViewRef"
@@ -180,6 +173,7 @@ const databaseViewRef = useTemplateRef('databaseViewRef');
           :directory-path="path"
           :autofocus="!index"
           @update:value="update"
+          @update:property="onUpdateProperty(propertyId, $event)"
         />
       </template>
     </DatabaseItemEditDialog>

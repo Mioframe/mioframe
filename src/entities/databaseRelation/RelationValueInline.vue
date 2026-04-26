@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useDatabaseViewSelection } from '@entity/databaseView';
 import { MDSymbol } from '@shared/ui/Icon';
 import { isNil, uniq } from 'es-toolkit';
 import { computed, ref, toRefs, useTemplateRef } from 'vue';
@@ -43,7 +44,12 @@ const verifiedValue = computed(() =>
 
 const relationDocumentId = computed(() => property.value.relation.documentId);
 
-const relationViewId = computed(() => property.value.relation.viewId);
+const relationExplicitViewId = computed(() => property.value.relation.viewId);
+const { effectiveViewId } = useDatabaseViewSelection(
+  directoryPath,
+  relationDocumentId,
+  relationExplicitViewId,
+);
 
 const hasRenderRecursion = computed(() => {
   if (
@@ -118,7 +124,7 @@ const interactionOutside = (e: Event) => {
             :value="verifiedValue"
             :relation-document-id="relationDocumentId"
             :relation-directory-path="directoryPath"
-            :view-id="relationViewId"
+            :view-id="effectiveViewId"
             :parent-relation="mergedParentRelation"
           >
             {{ verifiedValue }}
@@ -132,7 +138,7 @@ const interactionOutside = (e: Event) => {
         :value="verifiedValue"
         :relation-document-id="relationDocumentId"
         :relation-directory-path="directoryPath"
-        :view-id="relationViewId"
+        :view-id="effectiveViewId"
         :parent-relation="mergedParentRelation"
       >
         {{ verifiedValue }}

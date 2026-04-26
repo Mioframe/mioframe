@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useDatabaseViewSelection } from '@entity/databaseView';
 import type { AMDocumentId } from '@shared/lib/automerge';
 import type { DatabasePropertyId, DatabaseUnknownProperty } from '@shared/lib/databaseDocument';
 import { type DatabaseViewId } from '@shared/lib/databaseDocument';
@@ -15,7 +16,7 @@ import DatabaseFiltersSheet from './DatabaseFiltersSheet.vue';
 import { useDatabaseProperties } from '@entity/databaseProperty';
 import type { PartialDeep } from 'type-fest';
 
-const selectedViewId = defineModel<DatabaseViewId | undefined>('selectedViewId');
+const explicitViewId = defineModel<DatabaseViewId | undefined>('explicitViewId');
 
 const props = defineProps<{
   documentId: AMDocumentId;
@@ -24,6 +25,11 @@ const props = defineProps<{
 }>();
 
 const { documentId, directoryPath: path, autoHideTarget } = toRefs(props);
+const { explicitViewId: viewSelection, effectiveViewId } = useDatabaseViewSelection(
+  path,
+  documentId,
+  explicitViewId,
+);
 
 const showViewSettings = ref(false);
 
@@ -91,7 +97,7 @@ const hasProperties = computed(() => {
 
     <DatabaseViewsSheet
       v-if="showViewSettings"
-      v-model:selected-view-id="selectedViewId"
+      v-model:explicit-view-id="viewSelection"
       :path="path"
       :document-id="documentId"
       @closed="showViewSettings = false"
@@ -101,7 +107,7 @@ const hasProperties = computed(() => {
       v-if="showSortSettings"
       :directory-path="path"
       :document-id="documentId"
-      :view-id="selectedViewId"
+      :view-id="effectiveViewId"
       @closed="showSortSettings = false"
     />
 
@@ -113,9 +119,9 @@ const hasProperties = computed(() => {
     />
 
     <DatabaseFiltersSheet
-      v-if="showFilterSettings && selectedViewId"
+      v-if="showFilterSettings && effectiveViewId"
       :document-id="documentId"
-      :view-id="selectedViewId"
+      :view-id="effectiveViewId"
       :directory-path="path"
       @closed="showFilterSettings = false"
     />

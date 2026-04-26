@@ -176,6 +176,37 @@ export const createStringProperty = async (
   return name;
 };
 
+export const createRelationProperty = async (
+  page: Page,
+  relatedDocumentName: string,
+  name = createUniqueName('relation property'),
+) => {
+  const sheet = await openPropertiesSheet(page);
+  await sheet.getByRole('button', { name: /add property/i }).click();
+
+  const dialog = page.getByRole('dialog', { name: /create property/i });
+  await expect(dialog).toBeVisible();
+  await dialog.getByLabel(/^name$/i).fill(name);
+
+  await dialog.getByRole('combobox', { name: /property type/i }).click();
+  await page.getByRole('option', { name: /^relation$/i }).click();
+
+  const relationDocumentField = dialog.getByRole('combobox', { name: /database document/i });
+  await relationDocumentField.click();
+  await page
+    .getByRole('option', { name: new RegExp(`^${escapeRegex(relatedDocumentName)}$`, 'i') })
+    .click();
+
+  await dialog.getByRole('button', { name: /^create$/i }).click();
+
+  await expect(dialog).toHaveCount(0);
+  await closeBottomSheet(page, /database properties sheet/i);
+  await expect(
+    page.getByRole('columnheader', { name: new RegExp(`^${escapeRegex(name)}$`, 'i') }),
+  ).toBeVisible();
+  return name;
+};
+
 export const renameProperty = async (page: Page, currentName: string, nextName: string) => {
   const sheet = await openPropertiesSheet(page);
   const row = sheet.getByRole('listitem').filter({ hasText: currentName }).first();
@@ -352,7 +383,7 @@ export const openFilterSheet = async (page: Page) => {
   return sheet;
 };
 
-export const addEqualFilter = async (page: Page, propertyName: string, value: string) => {
+export const openEqualFilterDialog = async (page: Page, propertyName: string) => {
   const sheet = await openFilterSheet(page);
   await sheet.getByRole('button', { name: /^and$/i }).click();
   const propertyMenu = page.getByRole('menu').last();
@@ -361,10 +392,15 @@ export const addEqualFilter = async (page: Page, propertyName: string, value: st
     .click();
 
   const operatorMenu = page.getByRole('menu').last();
-  await operatorMenu.getByRole('menuitem', { name: /^equal$/i }).click();
+  await operatorMenu.getByRole('menuitem', { name: /^(=|equal)$/i }).click();
 
   const dialog = page.getByRole('dialog', { name: /filter settings/i });
   await expect(dialog).toBeVisible();
+  return dialog;
+};
+
+export const addEqualFilter = async (page: Page, propertyName: string, value: string) => {
+  const dialog = await openEqualFilterDialog(page, propertyName);
   await dialog.getByLabel(new RegExp(`^${escapeRegex(propertyName)}$`, 'i')).fill(value);
   await dialog.getByRole('button', { name: /^apply$/i }).click();
 
