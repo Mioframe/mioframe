@@ -3,19 +3,18 @@ import { BooleanInline, zodBooleanProperty } from '@entity/databaseBoolean';
 import { DateValueInline, zodDateProperty } from '@entity/databaseDate';
 import { NumberValueInline, zodNumberProperty } from '@entity/databaseNumber';
 import type { ParentRelation } from '@entity/databaseRelation';
-import { RelationValueInline, zodRelationProperty } from '@entity/databaseRelation';
+import { zodRelationProperty } from '@entity/databaseRelation';
 import { StringValueInline, zodStringProperty } from '@entity/databaseString';
-import type { DatabaseUnknownProperty } from '@shared/lib/databaseDocument';
-import type { DatabasePropertyId } from '@shared/lib/databaseDocument';
+import type { DatabasePropertyId, DatabaseUnknownProperty } from '@shared/lib/databaseDocument';
 import { zodIs } from '@shared/lib/validateZodScheme';
-import DatabaseViewLayout from './DatabaseViewLayout.vue';
-import ValueInline from './ValueInline.vue';
+import { toRefs } from 'vue';
+import DatabaseRelationValueInline from './DatabaseRelationValueInline.vue';
 
 defineOptions({
   name: 'DatabasePropertyValueInline',
 });
 
-withDefaults(
+const props = withDefaults(
   defineProps<{
     value: unknown;
     property?: DatabaseUnknownProperty | undefined;
@@ -33,6 +32,9 @@ withDefaults(
 const emit = defineEmits<{
   click: [];
 }>();
+
+const { value, property, editable, directoryPath, propertyId, parentRelation, tabIndex } =
+  toRefs(props);
 
 const onClick = () => {
   emit('click');
@@ -65,7 +67,7 @@ const onClick = () => {
 
   <DateValueInline v-else-if="zodIs(property, zodDateProperty)" :value="value" @click="onClick" />
 
-  <RelationValueInline
+  <DatabaseRelationValueInline
     v-else-if="zodIs(property, zodRelationProperty)"
     :value="value"
     :property="property"
@@ -73,34 +75,7 @@ const onClick = () => {
     :property-id="propertyId"
     :parent-relation="parentRelation"
     @click="onClick"
-  >
-    <template
-      #default="{
-        relationDocumentId: relationDocHandle,
-        relationDirectoryPath: relationDirectory,
-        viewId,
-        value: relationValue,
-        parentRelation: relationParentRelation,
-      }"
-    >
-      <DatabaseViewLayout
-        :document-id="relationDocHandle"
-        :path="relationDirectory"
-        :view-id="viewId"
-        :item-id-query="{ $in: relationValue }"
-      >
-        <template #value="{ propertyId: relationPropertyId, itemId: relationItemId }">
-          <ValueInline
-            :item-id="relationItemId"
-            :document-id="relationDocHandle"
-            :directory-path="relationDirectory"
-            :property-id="relationPropertyId"
-            :parent-relation="relationParentRelation"
-          />
-        </template>
-      </DatabaseViewLayout>
-    </template>
-  </RelationValueInline>
+  />
 
   <span v-else>Unsupported property type "{{ property.type }}"</span>
 </template>
