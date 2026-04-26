@@ -99,6 +99,14 @@ const hasProperties = computed(() =>
 );
 
 const databaseViewRef = useTemplateRef('databaseViewRef');
+
+const onCancelEditItemDialog = () => {
+  isShowEditItemDialog.value = false;
+};
+
+const onUpdatedEditItemDialog = () => {
+  isShowEditItemDialog.value = false;
+};
 </script>
 
 <template>
@@ -135,14 +143,14 @@ const databaseViewRef = useTemplateRef('databaseViewRef');
           :property-id="propertyId"
           :document-id="documentId"
           :directory-path="path"
-          @update:property="onUpdateProperty(propertyId, $event)"
+          @update:property="($event) => onUpdateProperty(propertyId, $event)"
         />
       </template>
 
       <template #action="{ itemId }">
         <MDContextMenuButton
           :btns="itemContextualButtons"
-          @click="onClickItemContextBtn($event, itemId)"
+          @click="($event) => onClickItemContextBtn($event, itemId)"
         />
       </template>
 
@@ -162,8 +170,8 @@ const databaseViewRef = useTemplateRef('databaseViewRef');
       :document-id="documentId"
       :item-id="editedItemId"
       apply-label="Edit"
-      @cancel="isShowEditItemDialog = false"
-      @updated="isShowEditItemDialog = false"
+      @cancel="onCancelEditItemDialog"
+      @updated="onUpdatedEditItemDialog"
     >
       <template #valueField="{ update, value, propertyId, index }">
         <ValueField
@@ -173,7 +181,7 @@ const databaseViewRef = useTemplateRef('databaseViewRef');
           :directory-path="path"
           :autofocus="!index"
           @update:value="update"
-          @update:property="onUpdateProperty(propertyId, $event)"
+          @update:property="($event) => onUpdateProperty(propertyId, $event)"
         />
       </template>
     </DatabaseItemEditDialog>

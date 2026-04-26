@@ -11,7 +11,7 @@ const props = defineProps<{
   isButton?: boolean;
 }>();
 
-defineEmits<{
+const emit = defineEmits<{
   click: [name: string];
 }>();
 
@@ -20,6 +20,10 @@ const slots = defineSlots<{
 }>();
 
 const { name } = toRefs(props);
+
+const onListItemClick = () => {
+  emit('click', name.value);
+};
 </script>
 
 <template>
@@ -27,7 +31,7 @@ const { name } = toRefs(props);
     :is="isButton ? 'button' : undefined"
     :headline="name"
     :supporting-text="supportingText"
-    @click="$emit('click', name)"
+    @click="onListItemClick"
   >
     <template #leadingIcon>
       <MDSymbol v-if="type === FSNodeType.Directory" name="folder" />

@@ -8,10 +8,14 @@ defineProps<{
 const emit = defineEmits<{
   click: [];
 }>();
+
+const onValueClick = () => {
+  emit('click');
+};
 </script>
 
 <template>
-  <span class="string" @click="emit('click')">
+  <span class="string" @click="onValueClick">
     <MDSymbol v-if="!value" name="unknown_med" class="string__empty" />
 
     <template v-else>

@@ -35,12 +35,16 @@ const onUpdateValue = (value: unknown) => {
   emit('update:value', value);
 };
 
-const onUpdateProperty = (property: DatabaseUnknownProperty) => {
-  emit('update:property', property);
+const onUpdateProperty = (nextProperty: DatabaseUnknownProperty) => {
+  emit('update:property', nextProperty);
 };
 
 const onKeydown = (event: KeyboardEvent) => {
   emit('keydown', event);
+};
+
+const onPropertyUpdate = (nextProperty: DatabaseUnknownProperty) => {
+  onUpdateProperty(nextProperty);
 };
 </script>
 
@@ -53,7 +57,7 @@ const onKeydown = (event: KeyboardEvent) => {
     :autofocus="autofocus"
     :input-size="props.inputSize"
     @update:value="onUpdateValue"
-    @update:property="onUpdateProperty"
+    @update:property="onPropertyUpdate"
     @keydown="onKeydown"
   />
 </template>

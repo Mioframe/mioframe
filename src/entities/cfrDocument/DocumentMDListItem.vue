@@ -31,6 +31,10 @@ const { state: documentDescription, isLoading, errorMessage } = useDocument(path
 const documentName = computed(() => documentDescription.value?.name);
 
 const headline = computed(() => documentName.value ?? 'Untitled Document');
+
+const onListItemClick = (event: MouseEvent) => {
+  emit('click', event);
+};
 </script>
 
 <template>
@@ -39,7 +43,7 @@ const headline = computed(() => documentName.value ?? 'Untitled Document');
     :headline="headline"
     :supporting-text="supportingText"
     :aria-label="`document ${headline}`"
-    @click="emit('click', $event)"
+    @click="onListItemClick"
   >
     <template #leadingIcon>
       <slot name="leadingIcon">

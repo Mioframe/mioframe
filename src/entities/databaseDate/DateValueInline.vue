@@ -24,10 +24,14 @@ const dayjsValue = computed(() => {
 const formatValue = computed(() => dayjsValue.value?.format('l'));
 
 const datetime = computed(() => dayjsValue.value?.format('YYYY-MM-DD'));
+
+const onValueClick = () => {
+  emit('click');
+};
 </script>
 
 <template>
-  <time v-if="formatValue" :datetime="datetime" @click="emit('click')">{{ formatValue }}</time>
+  <time v-if="formatValue" :datetime="datetime" @click="onValueClick">{{ formatValue }}</time>
 
-  <span v-else @click="emit('click')">undefined</span>
+  <span v-else @click="onValueClick">undefined</span>
 </template>

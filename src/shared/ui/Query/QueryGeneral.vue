@@ -23,6 +23,8 @@ defineSlots<{
   objectAppend: (p: { path: PropertyKey[] }) => unknown;
   groupAppend: (p: { path: PropertyKey[]; operator: LogicalOperator }) => unknown;
 }>();
+
+const emptyPath: PropertyKey[] = [];
 </script>
 
 <template>
@@ -197,7 +199,7 @@ defineSlots<{
     </template>
 
     <template #value>
-      <slot name="value" :value="value" :path="[]" :property="property" />
+      <slot name="value" :value="value" :path="emptyPath" :property="property" />
     </template>
   </QueryItem>
 
