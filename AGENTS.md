@@ -29,6 +29,15 @@ Applies to the whole repository unless a deeper `AGENTS.md` overrides it.
 - When progress is knowable, surface progress instead of falling back to an indeterminate spinner.
 - Keep unit tests colocated with the source file they verify, using sibling `*.test.ts` files. Do not introduce `__tests__` directories.
 
+## Testing UI and Components
+
+- Do not use unit tests as the default verification method for Vue UI components.
+- Component behavior that depends on real DOM layout, focus, keyboard navigation, pointer or touch input, teleport, overlays, scrolling, responsive styling, browser APIs, or Material state visuals must be verified with Playwright/e2e or a reproducible browser smoke check.
+- Move reusable UI state transitions and business rules into composables or pure helpers, and cover those with focused unit tests.
+- Unit tests remain the preferred verification method for composables, pure helpers, schemas, migrations, services, storage helpers, CRDT write helpers, state transitions, validation, normalization, and pure transformations.
+- Component unit tests are allowed for small render or wiring contracts that do not depend on browser layout or interaction semantics.
+- The absence or removal of a Vue component unit test is not a regression by itself when the behavior is covered by Playwright/e2e, a reproducible browser smoke check, or focused tests for extracted composable or helper logic.
+
 ## Anti-patterns
 
 - Do not pull dependencies upward against the intended layer direction.
