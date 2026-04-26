@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { useDatabaseViewSelection } from '@entity/databaseView';
 import { MDSymbol } from '@shared/ui/Icon';
 import { isNil, uniq } from 'es-toolkit';
 import { computed, ref, toRefs, useTemplateRef } from 'vue';
@@ -19,6 +18,7 @@ const props = defineProps<{
   directoryPath: string;
   property: RelationProperty;
   propertyId: DatabasePropertyId;
+  viewId?: DatabaseViewId | undefined;
   parentRelation?: ParentRelation | undefined;
 }>();
 
@@ -36,20 +36,13 @@ defineSlots<{
   }) => unknown;
 }>();
 
-const { directoryPath, value, property, propertyId, parentRelation } = toRefs(props);
+const { directoryPath, value, property, propertyId, viewId, parentRelation } = toRefs(props);
 
 const verifiedValue = computed(() =>
   zodIs(value.value, zodRelationValue) && value.value.length > 0 ? value.value : undefined,
 );
 
 const relationDocumentId = computed(() => property.value.relation.documentId);
-
-const relationExplicitViewId = computed(() => property.value.relation.viewId);
-const { effectiveViewId } = useDatabaseViewSelection(
-  directoryPath,
-  relationDocumentId,
-  relationExplicitViewId,
-);
 
 const hasRenderRecursion = computed(() => {
   if (
@@ -87,10 +80,18 @@ const interactionOutside = (e: Event) => {
     showValue.value = false;
   }
 };
+
+const onClick = () => {
+  emit('click');
+};
+
+const onClickShowValueButton = () => {
+  showValue.value = !showValue.value;
+};
 </script>
 
 <template>
-  <div class="relation-value" @click="emit('click')">
+  <div class="relation-value" @click="onClick">
     <MDSymbol
       v-if="isNil(verifiedValue) || !relationDocumentId"
       name="unknown_med"
@@ -103,7 +104,7 @@ const interactionOutside = (e: Event) => {
         :label="`${showValue ? 'hide' : 'show'} value`"
         color="text"
         size="small"
-        @click="showValue = !showValue"
+        @click="onClickShowValueButton"
       >
         <template #icon>
           <MDSymbol v-if="!showValue" name="visibility" />
@@ -124,7 +125,7 @@ const interactionOutside = (e: Event) => {
             :value="verifiedValue"
             :relation-document-id="relationDocumentId"
             :relation-directory-path="directoryPath"
-            :view-id="effectiveViewId"
+            :view-id="viewId"
             :parent-relation="mergedParentRelation"
           >
             {{ verifiedValue }}
@@ -138,7 +139,7 @@ const interactionOutside = (e: Event) => {
         :value="verifiedValue"
         :relation-document-id="relationDocumentId"
         :relation-directory-path="directoryPath"
-        :view-id="effectiveViewId"
+        :view-id="viewId"
         :parent-relation="mergedParentRelation"
       >
         {{ verifiedValue }}
