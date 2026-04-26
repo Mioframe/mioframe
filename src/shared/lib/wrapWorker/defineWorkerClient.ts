@@ -5,10 +5,12 @@ import { transformers } from './workerTransformerMap';
 import type { DomainError } from '../error';
 
 export const defineWorkerClient = <T extends Record<string, unknown>>(
-  worker: Worker,
+  worker: Worker | (() => Worker),
   serviceId: string,
   _setup: () => T,
 ) =>
   createGlobalState((): ClientObject<T, DomainError | FileSystemHandle> => {
-    return createClient<T, DomainError | FileSystemHandle>(worker, serviceId, transformers);
+    const resolvedWorker = typeof worker === 'function' ? worker() : worker;
+
+    return createClient<T, DomainError | FileSystemHandle>(resolvedWorker, serviceId, transformers);
   });
