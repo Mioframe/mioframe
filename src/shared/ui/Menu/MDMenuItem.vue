@@ -19,6 +19,10 @@ const emit = defineEmits<{
 const onClickItem = (subItem?: T) => {
   emit('click', subItem ?? props.item);
 };
+
+const onClickSubItem = (subItem: T) => {
+  onClickItem(subItem);
+};
 </script>
 
 <template>
@@ -34,7 +38,7 @@ const onClickItem = (subItem?: T) => {
         :key="v.label"
         :item="v"
         :item-role="itemRole"
-        @click="onClickItem($event)"
+        @click="onClickSubItem"
       />
     </template>
   </MDMenuItemBase>

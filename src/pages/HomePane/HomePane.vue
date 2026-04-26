@@ -43,6 +43,16 @@ const openDocument = async (documentDirectory: string, documentId: AMDocumentId)
     },
   );
 };
+
+const onOpenStarterExampleDocument = ({
+  documentDirectory,
+  documentId,
+}: {
+  documentDirectory: string;
+  documentId: AMDocumentId;
+}) => {
+  return openDocument(documentDirectory, documentId);
+};
 </script>
 
 <template>
@@ -51,7 +61,7 @@ const openDocument = async (documentDirectory: string, documentId: AMDocumentId)
 
     <StarterExamplesWidget
       v-if="!settings.hideStarterWidget"
-      @open-document="openDocument($event.documentDirectory, $event.documentId)"
+      @open-document="onOpenStarterExampleDocument"
     />
 
     <LocalFSWidget @click-path="onClickLocalPath" />

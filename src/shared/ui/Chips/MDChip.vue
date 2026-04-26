@@ -26,6 +26,10 @@ const onClickClose = (e: MouseEvent) => {
   e.stopPropagation();
   emit('clickClose', e);
 };
+
+const onChipClick = (event: MouseEvent) => {
+  emit('click', event);
+};
 </script>
 
 <template>
@@ -42,7 +46,7 @@ const onClickClose = (e: MouseEvent) => {
     type="button"
     :draggable="draggable"
     :autofocus="autofocus"
-    @click="emit('click', $event)"
+    @click="onChipClick"
   >
     <div
       v-if="!!slots.leadingIcon || (chipType === 'filter' && selected)"

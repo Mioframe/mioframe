@@ -31,6 +31,10 @@ const { draggedId, displayItemIdList } = useReorderSurface(containerEl, {
       .filter((item): item is NonNullable<typeof item> => Boolean(item));
   },
 });
+
+const onItemContextMenu = (event: MouseEvent) => {
+  event.preventDefault();
+};
 </script>
 
 <template>
@@ -61,7 +65,7 @@ const { draggedId, displayItemIdList } = useReorderSurface(containerEl, {
             :style="{
               background: itemMap.get(itemId)?.color,
             }"
-            @contextmenu.prevent="() => undefined"
+            @contextmenu="onItemContextMenu"
           >
             {{ itemMap.get(itemId)?.label }}
           </div>

@@ -206,7 +206,7 @@ export const createStackNavigation = <P extends PaneMap>(
     ): Promise<void> => {
       const maxPanes = additionalPanes + 1;
 
-      const { index: currentPaneIndex = -1 } = paneCtx ?? {};
+      const currentPaneIndex = paneCtx?.value.index ?? -1;
 
       const targetPaneIndex =
         target === 'current' ? currentPaneIndex : currentPanesName.value.indexOf(target);

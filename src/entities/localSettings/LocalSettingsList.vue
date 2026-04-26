@@ -4,6 +4,18 @@ import { useLocalSettings } from './useLocalSettings';
 import { MDCheckbox } from '@shared/ui/Checkbox';
 
 const { settings, SETTINGS_DESCRIPTION, SETTINGS_LABEL } = useLocalSettings();
+
+const onClickHideStarterWidget = () => {
+  settings.value.hideStarterWidget = !settings.value.hideStarterWidget;
+};
+
+const onClickShowPerformance = () => {
+  settings.value.showPerformance = !settings.value.showPerformance;
+};
+
+const onClickShowAutomergeFiles = () => {
+  settings.value.showAutomergeFiles = !settings.value.showAutomergeFiles;
+};
 </script>
 
 <template>
@@ -11,7 +23,7 @@ const { settings, SETTINGS_DESCRIPTION, SETTINGS_LABEL } = useLocalSettings();
     <MDListItem
       is="button"
       :headline="SETTINGS_LABEL.hideStarterWidget"
-      @click="settings.hideStarterWidget = !settings.hideStarterWidget"
+      @click="onClickHideStarterWidget"
     >
       <template #supportingText>
         {{ SETTINGS_DESCRIPTION.hideStarterWidget }}
@@ -25,7 +37,7 @@ const { settings, SETTINGS_DESCRIPTION, SETTINGS_LABEL } = useLocalSettings();
     <MDListItem
       is="button"
       :headline="SETTINGS_LABEL.showPerformance"
-      @click="settings.showPerformance = !settings.showPerformance"
+      @click="onClickShowPerformance"
     >
       <template #supportingText>
         {{ SETTINGS_DESCRIPTION.showPerformance }}
@@ -39,7 +51,7 @@ const { settings, SETTINGS_DESCRIPTION, SETTINGS_LABEL } = useLocalSettings();
     <MDListItem
       is="button"
       :headline="SETTINGS_LABEL.showAutomergeFiles"
-      @click="settings.showAutomergeFiles = !settings.showAutomergeFiles"
+      @click="onClickShowAutomergeFiles"
     >
       <template #supportingText>
         {{ SETTINGS_DESCRIPTION.showAutomergeFiles }}

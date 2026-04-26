@@ -23,6 +23,9 @@ const slots = defineSlots<{
 const keyList = computed(() => keys(props.query));
 
 const lastKey = computed(() => keyList.value.at(-1));
+
+const emptyPath: PropertyKey[] = [];
+const prependQueryKeyToPath = (queryKey: string, path: PropertyKey[]) => [queryKey, ...path];
 </script>
 
 <template>
@@ -34,15 +37,24 @@ const lastKey = computed(() => keyList.value.at(-1));
         </template>
 
         <template #value="{ value: sValue, path, property }">
-          <slot name="value" :value="sValue" :path="[queryKey, ...path]" :property="property" />
+          <slot
+            name="value"
+            :value="sValue"
+            :path="prependQueryKeyToPath(queryKey, path)"
+            :property="property"
+          />
         </template>
 
         <template #objectAppend="{ path }">
-          <slot name="objectAppend" :path="[queryKey, ...path]" />
+          <slot name="objectAppend" :path="prependQueryKeyToPath(queryKey, path)" />
         </template>
 
         <template #groupAppend="{ path, operator }">
-          <slot name="groupAppend" :path="[queryKey, ...path]" :operator="operator" />
+          <slot
+            name="groupAppend"
+            :path="prependQueryKeyToPath(queryKey, path)"
+            :operator="operator"
+          />
         </template>
       </QueryObjectEntry>
 
@@ -52,6 +64,6 @@ const lastKey = computed(() => keyList.value.at(-1));
       />
     </template>
 
-    <slot name="objectAppend" :path="[]" />
+    <slot name="objectAppend" :path="emptyPath" />
   </QueryContainer>
 </template>

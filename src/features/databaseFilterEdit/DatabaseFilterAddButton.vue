@@ -142,7 +142,7 @@ const label = computed(() => {
           :path="directoryPath"
           :document-id="documentId"
           :property-id="propertyId"
-          @click-unary="onClickUnaryInProperty($event, propertyId)"
+          @click-unary="($event) => onClickUnaryInProperty($event, propertyId)"
         />
       </template>
     </template>

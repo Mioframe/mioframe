@@ -21,13 +21,17 @@ const {
   selected?: boolean | undefined;
 }>();
 
-defineEmits<{
+const emit = defineEmits<{
   click: [event: MouseEvent];
 }>();
 
 const slots = defineSlots<{
   icon(): unknown;
 }>();
+
+const onButtonClick = (event: MouseEvent) => {
+  emit('click', event);
+};
 </script>
 
 <template>
@@ -48,7 +52,7 @@ const slots = defineSlots<{
         'md-button_selected': selected,
       },
     ]"
-    @click.stop="$emit('click', $event)"
+    @click.stop="onButtonClick"
   >
     <div class="md-button__content">
       <span v-if="!!slots.icon" class="md-button__icon">

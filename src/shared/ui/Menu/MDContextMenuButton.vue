@@ -44,6 +44,10 @@ const onClickOutsideMenu = () => {
   showMenu.value = false;
 };
 
+const onDeactivateFocus = () => {
+  showMenu.value = false;
+};
+
 const idMenu = sessionUniqueId('menu');
 </script>
 
@@ -69,6 +73,6 @@ const idMenu = sessionUniqueId('menu');
     :aria-label="`${tooltip} menu`"
     @interaction-outside="onClickOutsideMenu"
     @click="onClick"
-    @deactivate-focus="showMenu = false"
+    @deactivate-focus="onDeactivateFocus"
   />
 </template>
