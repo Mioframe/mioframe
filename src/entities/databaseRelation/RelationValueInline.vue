@@ -85,7 +85,8 @@ const onClick = () => {
   emit('click');
 };
 
-const onClickShowValueButton = () => {
+const onClickShowValueButton = (e: Event) => {
+  e.stopPropagation();
   showValue.value = !showValue.value;
 };
 </script>
