@@ -3,8 +3,9 @@ import {
   addDatabaseItem,
   addSorting,
   addView,
-  closeDocumentPane,
   closeBottomSheet,
+  closeDocumentPane,
+  createRelationProperty,
   createDatabaseDocument,
   createDirectory,
   createStringProperty,
@@ -13,11 +14,11 @@ import {
   launchApp,
   openDirectory,
   openDocumentFromExplorer,
+  openEqualFilterDialog,
   openOpfs,
   openSortSheet,
   openViewsSheet,
   removeSorting,
-  removeView,
   renameView,
   selectView,
   toggleSortingDirection,
@@ -42,6 +43,15 @@ test('creates, renames, selects, and removes views through the view settings she
   await addDatabaseItem(page, propertyName, alphaValue);
   await addDatabaseItem(page, propertyName, betaValue);
 
+  const initialViewSheet = await openViewsSheet(page);
+  await expect(
+    initialViewSheet
+      .getByRole('listitem')
+      .filter({ hasText: /default view/i })
+      .getByRole('checkbox'),
+  ).toBeChecked();
+  await closeBottomSheet(page, /database views sheet/i);
+
   const secondViewName = await addView(page, createUniqueName('secondary view'));
   const renamedViewName = createUniqueName('focused view');
   await renameView(page, secondViewName, renamedViewName);
@@ -53,27 +63,36 @@ test('creates, renames, selects, and removes views through the view settings she
       .filter({ hasText: renamedViewName })
       .getByRole('checkbox'),
   ).toBeChecked();
-  await closeBottomSheet(page, /database views sheet/i);
 
-  await closeDocumentPane(page);
-  await openDocumentFromExplorer(page, documentName);
-  const reopenedViewSheet = await openViewsSheet(page);
-  await expect(
-    reopenedViewSheet.getByRole('listitem').filter({ hasText: renamedViewName }),
-  ).toBeVisible();
-  await closeBottomSheet(page, /database views sheet/i);
+  const selectedViewRow = selectedViewSheet
+    .getByRole('listitem')
+    .filter({ hasText: renamedViewName })
+    .first();
+  await selectedViewRow.getByRole('button', { name: /settings view/i }).click();
+  await page.getByRole('menuitem', { name: /^remove$/i }).click();
 
-  await selectView(page, /default view/i);
-  const defaultViewSheet = await openViewsSheet(page);
+  const removeDialog = page.getByRole('dialog', { name: /remove view\?/i });
+  await expect(removeDialog).toBeVisible();
+  await removeDialog.getByRole('button', { name: /^remove$/i }).click();
+  await expect(removeDialog).toHaveCount(0);
+
   await expect(
-    defaultViewSheet
+    selectedViewSheet
       .getByRole('listitem')
       .filter({ hasText: /default view/i })
       .getByRole('checkbox'),
   ).toBeChecked();
   await closeBottomSheet(page, /database views sheet/i);
 
-  await removeView(page, renamedViewName);
+  await closeDocumentPane(page);
+  await openDocumentFromExplorer(page, documentName);
+  const reopenedViewSheet = await openViewsSheet(page);
+  await expect(
+    reopenedViewSheet
+      .getByRole('listitem')
+      .filter({ hasText: /default view/i })
+      .getByRole('checkbox'),
+  ).toBeChecked();
   await closeBottomSheet(page, /database views sheet/i);
 });
 
@@ -127,4 +146,54 @@ test('adds sorting, toggles direction, and removes sorting controls', async ({ p
   await expect(
     reopenedSortSheetAfterRemoval.getByRole('listitem').filter({ hasText: propertyName }),
   ).toHaveCount(0);
+});
+
+test('uses the default related view in filter settings and persists an explicit relation view override', async ({
+  page,
+}) => {
+  await launchApp(page);
+  await openOpfs(page);
+
+  const directoryName = await createDirectory(page, createUniqueName('relation filter lab'));
+  await openDirectory(page, directoryName);
+
+  const sourceDocumentName = await createDatabaseDocument(
+    page,
+    createUniqueName('source database'),
+  );
+  const targetDocumentName = await createDatabaseDocument(
+    page,
+    createUniqueName('target database'),
+  );
+
+  await openDocumentFromExplorer(page, targetDocumentName);
+  const targetPropertyName = await createStringProperty(page, createUniqueName('target title'));
+  const targetItemValue = createUniqueName('filter row');
+  await addDatabaseItem(page, targetPropertyName, targetItemValue);
+  const secondViewName = await addView(page, createUniqueName('filterable linked items'));
+
+  await closeDocumentPane(page);
+  await openDocumentFromExplorer(page, sourceDocumentName);
+  await createStringProperty(page, createUniqueName('source title'));
+  const relationPropertyName = await createRelationProperty(page, targetDocumentName);
+
+  const dialog = await openEqualFilterDialog(page, relationPropertyName);
+  await expect(dialog.getByText(targetItemValue, { exact: true })).toBeVisible();
+
+  await dialog.getByRole('button', { name: new RegExp(`^${secondViewName}$`, 'i') }).click();
+  await expect(
+    dialog.getByRole('button', { name: new RegExp(`^${secondViewName}$`, 'i') }),
+  ).toHaveClass(/md-chip_selected/);
+
+  await dialog.getByRole('button', { name: /^cancel$/i }).click();
+  await expect(dialog).toHaveCount(0);
+  await closeBottomSheet(page, /database filters sheet/i);
+
+  const reopenedDialog = await openEqualFilterDialog(page, relationPropertyName);
+  await expect(
+    reopenedDialog.getByRole('button', { name: new RegExp(`^${secondViewName}$`, 'i') }),
+  ).toHaveClass(/md-chip_selected/);
+  await expect(reopenedDialog.getByText(targetItemValue, { exact: true })).toBeVisible();
+  await reopenedDialog.getByRole('button', { name: /^cancel$/i }).click();
+  await closeBottomSheet(page, /database filters sheet/i);
 });

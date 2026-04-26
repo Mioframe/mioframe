@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { useDatabaseViews } from '@entity/databaseView';
+import { useDatabaseViewSelection, useDatabaseViews } from '@entity/databaseView';
 import { DatabaseViewCreateDialog } from '@feature/databaseViewCreate';
 import { DatabaseViewListEdit } from '@feature/databaseViewMapEdit';
 import { DatabaseViewRenameDialog } from '@feature/databaseViewRename';
@@ -15,7 +15,7 @@ import { defineMenuButtonList, MDContextMenuButton } from '@shared/ui/Menu';
 import { MDBottomSheet, MDBottomSheetSection } from '@shared/ui/Sheets';
 import { ref, shallowRef, toRefs } from 'vue';
 
-const selectedViewId = defineModel<DatabaseViewId | undefined>('selectedViewId');
+const explicitViewId = defineModel<DatabaseViewId | undefined>('explicitViewId');
 
 const props = defineProps<{
   path: string;
@@ -27,6 +27,11 @@ const emit = defineEmits<{
 }>();
 
 const { documentId, path } = toRefs(props);
+const { effectiveViewId, setExplicitViewId } = useDatabaseViewSelection(
+  path,
+  documentId,
+  explicitViewId,
+);
 
 const onClosed = () => {
   emit('closed');
@@ -36,9 +41,9 @@ const { confirm } = useDialog();
 
 const { remove: removeView } = useDatabaseViews(path, documentId);
 
-const onChangeSelectedViewId = (viewId: DatabaseViewId, checked?: boolean) => {
+const onChangeExplicitViewId = (viewId: DatabaseViewId, checked?: boolean) => {
   if (checked) {
-    selectedViewId.value = viewId;
+    setExplicitViewId(viewId);
   }
 };
 
@@ -120,12 +125,12 @@ const isShowAddView = shallowRef(false);
           class="db-views-sheet__list"
           :directory-path="path"
           :document-id="documentId"
-          @click-view="onChangeSelectedViewId($event, true)"
+          @click-view="onChangeExplicitViewId($event, true)"
         >
           <template #leadingIcon="{ viewId }">
             <MDCheckbox
-              :model-value="viewId === selectedViewId"
-              @update:model-value="onChangeSelectedViewId(viewId, $event)"
+              :model-value="viewId === effectiveViewId"
+              @update:model-value="onChangeExplicitViewId(viewId, $event)"
             />
           </template>
 
