@@ -66,6 +66,22 @@ const { state } = useDocument(directoryPath, documentId);
 const documentName = computed(() => state.value?.name ?? 'unknown document');
 
 const menuTooltip = computed(() => `options ${documentName.value}`);
+
+const onCancelRemoveDialog = () => {
+  showRemoveDialog.value = false;
+};
+
+const onDeletedDocument = () => {
+  showRemoveDialog.value = false;
+};
+
+const onRenamedDocument = () => {
+  showRenameDialog.value = false;
+};
+
+const onCancelRenameDialog = () => {
+  showRenameDialog.value = false;
+};
 </script>
 
 <template>
@@ -79,15 +95,15 @@ const menuTooltip = computed(() => `options ${documentName.value}`);
     v-if="showRemoveDialog"
     :path="directoryPath"
     :document-id="documentId"
-    @cancel="showRemoveDialog = false"
-    @deleted="showRemoveDialog = false"
+    @cancel="onCancelRemoveDialog"
+    @deleted="onDeletedDocument"
   />
 
   <DocumentRenameDialog
     v-if="showRenameDialog"
     :path="directoryPath"
     :document-id="documentId"
-    @renamed="showRenameDialog = false"
-    @cancel="showRenameDialog = false"
+    @renamed="onRenamedDocument"
+    @cancel="onCancelRenameDialog"
   />
 </template>

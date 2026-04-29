@@ -37,6 +37,14 @@ const onClickItem = (menuItem: T) => {
 };
 
 const itemRole = computed(() => (props.role === 'listbox' ? 'option' : undefined));
+
+const onMenuDeactivateFocus = () => {
+  emit('deactivateFocus');
+};
+
+const onMenuInteractionOutside = () => {
+  emit('interactionOutside');
+};
 </script>
 
 <template>
@@ -49,8 +57,8 @@ const itemRole = computed(() => (props.role === 'listbox' ? 'option' : undefined
     :placement="placement"
     :aria-label="ariaLabel"
     :role="role"
-    @deactivate-focus="emit('deactivateFocus')"
-    @interaction-outside="emit('interactionOutside')"
+    @deactivate-focus="onMenuDeactivateFocus"
+    @interaction-outside="onMenuInteractionOutside"
   >
     <MDMenuItem
       v-for="item in btns"

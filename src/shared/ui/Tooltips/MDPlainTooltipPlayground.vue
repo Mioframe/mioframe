@@ -20,6 +20,11 @@ const state = useQueryValue<State>('state', {
 const target = useTemplateRef('target');
 
 const placementOptions = [undefined, 'top', 'right', 'bottom', 'left'] as const;
+
+const initialTargetPosition = {
+  x: 100,
+  y: 100,
+};
 </script>
 
 <template>
@@ -43,14 +48,7 @@ const placementOptions = [undefined, 'top', 'right', 'bottom', 'left'] as const;
     </template>
 
     <template #space>
-      <UseDraggable
-        ref="target"
-        class="target"
-        :initial-value="{
-          x: 100,
-          y: 100,
-        }"
-      >
+      <UseDraggable ref="target" class="target" :initial-value="initialTargetPosition">
         Target element<br />
         Drag me for change position!
       </UseDraggable>

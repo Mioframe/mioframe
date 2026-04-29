@@ -48,6 +48,10 @@ const btns = defineMenuButtonList([
 const onClick = (item: MenuButtonDescription) => {
   console.log('onClick', item);
 };
+
+const onToggleMenu = () => {
+  state.value.show = !state.value.show;
+};
 </script>
 
 <template>
@@ -55,7 +59,7 @@ const onClick = (item: MenuButtonDescription) => {
     <template #controllers />
 
     <template #space>
-      <MDButton ref="targetEl" label="target" @click="state.show = !state.show" />
+      <MDButton ref="targetEl" label="target" @click="onToggleMenu" />
 
       <MDMenu v-model:show="state.show" :target="targetEl" :btns="btns" @click="onClick" />
     </template>

@@ -29,6 +29,10 @@ const vModel = computed<string | undefined>({
     emit('update:modelValue', v ?? '');
   },
 });
+
+const onFieldKeydown = (event: KeyboardEvent) => {
+  emit('keydown', event);
+};
 </script>
 
 <template>
@@ -36,6 +40,6 @@ const vModel = computed<string | undefined>({
     v-model:model-value="vModel"
     :label-text="labelText"
     :autofocus="autofocus"
-    @keydown="$emit('keydown', $event)"
+    @keydown="onFieldKeydown"
   />
 </template>

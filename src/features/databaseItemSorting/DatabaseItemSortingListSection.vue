@@ -87,6 +87,10 @@ const onClickAddSortingMenu = async (propertyId: DatabasePropertyId) => {
 const onClickRemoveItem = async (propertyId: DatabasePropertyId) => {
   await removeSorting(propertyId);
 };
+
+const onInteractionOutside = () => {
+  isShowAddSortingMenu.value = false;
+};
 </script>
 
 <template>
@@ -135,7 +139,7 @@ const onClickRemoveItem = async (propertyId: DatabasePropertyId) => {
       v-if="propertyWithoutSorting.length"
       v-model:show="isShowAddSortingMenu"
       :target="addSortingBtn"
-      @interaction-outside="isShowAddSortingMenu = false"
+      @interaction-outside="onInteractionOutside"
     >
       <PropertySortDirectionMenuItem
         v-for="propertyId in propertyWithoutSorting"

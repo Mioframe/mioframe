@@ -27,6 +27,14 @@ const slots = defineSlots<{
 const growClass = computed(() =>
   isNumber(props.grow) ? `is-flex-grow-${props.grow}` : props.grow ? 'is-flex-grow-1' : undefined,
 );
+
+const onButtonPointerDown = (event: PointerEvent) => {
+  emit('pointerdown', event);
+};
+
+const onButtonClick = (event: MouseEvent) => {
+  emit('click', event);
+};
 </script>
 
 <template>
@@ -44,8 +52,8 @@ const growClass = computed(() =>
       },
       growClass,
     ]"
-    @pointerdown="emit('pointerdown', $event)"
-    @click="emit('click', $event)"
+    @pointerdown="onButtonPointerDown"
+    @click="onButtonClick"
   >
     <span v-if="!!slots.icon" class="icon">
       <slot name="icon" />

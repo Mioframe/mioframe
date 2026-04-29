@@ -62,6 +62,10 @@ const showWatchHandle = watch(
 );
 
 // fixme: убрать TeleportWithPlaceholder
+
+const onContainerClick = () => {
+  emit('clickContainer');
+};
 </script>
 
 <template>
@@ -83,7 +87,7 @@ const showWatchHandle = watch(
           :type="type"
           :aria-modal="openLikeModal ? 'true' : undefined"
           :aria-label="label"
-          @click-container="emit('clickContainer')"
+          @click-container="onContainerClick"
         >
           <slot />
         </MDBottomSheetContainer>

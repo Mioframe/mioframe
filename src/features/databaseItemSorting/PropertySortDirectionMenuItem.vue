@@ -23,8 +23,12 @@ const item = computed(() => ({
   label: property.value?.name ?? 'unknown property',
   key: propertyId.value,
 }));
+
+const onMenuItemClick = () => {
+  emit('click');
+};
 </script>
 
 <template>
-  <MDMenuItem :item="item" @click="emit('click')" />
+  <MDMenuItem :item="item" @click="onMenuItemClick" />
 </template>

@@ -25,6 +25,10 @@ const onApplyRemoveProperty = async () => {
   await remove(propertyId.value);
   emit('removed');
 };
+
+const onCancelRemoveProperty = () => {
+  emit('cancel');
+};
 </script>
 
 <template>
@@ -34,7 +38,7 @@ const onApplyRemoveProperty = async () => {
     apply-label="Remove"
     has-cancel-action
     @apply="onApplyRemoveProperty"
-    @cancel="emit('cancel')"
+    @cancel="onCancelRemoveProperty"
   >
     <template #icon>
       <MDSymbol name="delete" />

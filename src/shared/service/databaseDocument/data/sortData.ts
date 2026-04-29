@@ -44,7 +44,7 @@ export const sortData = (
   const entries = isArray(data) ? data : recordEntries(data);
 
   if (!sorting) {
-    return partialSort(entries, undefined, firstIndex ?? 0, lastIndex ?? entries.length - 1);
+    return entries.slice(firstIndex ?? 0, (lastIndex ?? entries.length - 1) + 1);
   }
 
   const orderedSortingEntries = recordEntries(sorting).sort(

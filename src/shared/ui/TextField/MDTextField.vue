@@ -32,11 +32,12 @@ const props = withDefaults(
       | undefined;
     readonly?: boolean | undefined;
     autofocus?: boolean | undefined;
+    size?: number | undefined;
   }>(),
   { inputType: 'text', type: 'outlined' },
 );
 
-defineEmits<{
+const emit = defineEmits<{
   focus: [e: FocusEvent];
   keydown: [payload: KeyboardEvent];
 }>();
@@ -51,6 +52,14 @@ const { inputType, type, autofocus } = toRefs(props);
 const inputRef = useTemplateRef('inputRef');
 
 const modelValueString = computed(() => toString(modelValue.value));
+
+const onFocus = (event: FocusEvent) => {
+  emit('focus', event);
+};
+
+const onKeydown = (event: KeyboardEvent) => {
+  emit('keydown', event);
+};
 
 useTextareaAutosize({
   element: computed(() =>
@@ -97,8 +106,8 @@ watch(
         :disabled="disabled"
         :maxlength="maxCharacters"
         :readonly="readonly"
-        @focus="$emit('focus', $event)"
-        @keydown="$emit('keydown', $event)"
+        @focus="onFocus"
+        @keydown="onKeydown"
       />
 
       <input
@@ -111,8 +120,9 @@ watch(
         :maxlength="maxCharacters"
         :type="inputType"
         :readonly="readonly"
-        @focus="$emit('focus', $event)"
-        @keydown="$emit('keydown', $event)"
+        :size="size"
+        @focus="onFocus"
+        @keydown="onKeydown"
       />
     </template>
 
@@ -133,6 +143,7 @@ watch(
     line-height: var(--md-sys-typescale-body-large-line-height);
     height: 1lh;
     min-width: 100%;
+    max-width: 100%;
     font-size: var(--md-sys-typescale-body-large-size);
     font-weight: var(--md-sys-typescale-body-large-weight);
     letter-spacing: var(--md-sys-typescale-body-large-tracking);

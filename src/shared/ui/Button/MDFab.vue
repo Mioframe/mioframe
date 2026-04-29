@@ -23,7 +23,7 @@ const props = withDefaults(
   { color: 'primary' },
 );
 
-defineEmits<{
+const emit = defineEmits<{
   click: [payload: MouseEvent];
 }>();
 
@@ -38,6 +38,10 @@ const sizeClass = computed(() => {
 const typeClass = computed(() => {
   return `md-fab_${props.color}`;
 });
+
+const onFabClick = (event: MouseEvent) => {
+  emit('click', event);
+};
 </script>
 
 <template>
@@ -46,7 +50,7 @@ const typeClass = computed(() => {
     :aria-label="tooltip"
     class="md-fab"
     :class="[sizeClass, typeClass]"
-    @click="$emit('click', $event)"
+    @click="onFabClick"
   >
     <span class="md-fab__icon">
       <MDCircularProgressIndicator v-if="loading" />

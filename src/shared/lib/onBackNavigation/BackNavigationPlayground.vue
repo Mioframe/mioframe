@@ -30,6 +30,14 @@ const goPlusOne = async () => {
 onBackNavigation(() => {
   return false;
 });
+
+const onBackClick = () => {
+  router.back();
+};
+
+const onForwardClick = () => {
+  router.forward();
+};
 </script>
 
 <template>
@@ -37,9 +45,9 @@ onBackNavigation(() => {
     <template #space>
       <pre class="md">{{ currentStep }}</pre>
 
-      <MDButton label="back" @click="router.back()" />
+      <MDButton label="back" @click="onBackClick" />
 
-      <MDButton label="forward" @click="router.forward()" />
+      <MDButton label="forward" @click="onForwardClick" />
 
       <MDButton label="query +1" @click="goPlusOne" />
 

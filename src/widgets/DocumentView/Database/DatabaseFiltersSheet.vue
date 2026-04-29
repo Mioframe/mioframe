@@ -1,10 +1,17 @@
 <script setup lang="ts">
+import { useDatabaseProperties } from '@entity/databaseProperty';
 import type { AMDocumentId } from '@shared/lib/automerge';
-import type { DatabaseViewId } from '@shared/lib/databaseDocument';
+import type {
+  DatabasePropertyId,
+  DatabaseUnknownProperty,
+  DatabaseViewId,
+} from '@shared/lib/databaseDocument';
 import { MD_SYS_TYPESCALE } from '@shared/lib/md';
 import { MDBottomSheet, MDBottomSheetSection } from '@shared/ui/Sheets';
 import { toRefs } from 'vue';
 import { DatabaseFilterForm } from '@feature/databaseFilterEdit';
+import DatabasePropertyValueInlineById from './DatabasePropertyValueInlineById.vue';
+import DatabasePropertyValueFieldById from './DatabasePropertyValueFieldById.vue';
 
 const props = defineProps<{
   directoryPath: string;
@@ -17,9 +24,17 @@ const emit = defineEmits<{
 }>();
 
 const { directoryPath, documentId, viewId } = toRefs(props);
+const { patch: patchProperty } = useDatabaseProperties(directoryPath, documentId);
 
 const onClosed = () => {
   emit('closed');
+};
+
+const onUpdateProperty = async (
+  propertyId: DatabasePropertyId,
+  property: DatabaseUnknownProperty,
+) => {
+  await patchProperty(directoryPath.value, documentId.value, propertyId, property);
 };
 </script>
 
@@ -30,16 +45,25 @@ const onClosed = () => {
 
       <div class="db-filters-sheet__filters">
         <DatabaseFilterForm :path="directoryPath" :document-id="documentId" :view-id="viewId">
-          <template #value="{ value }">
-            <span>{{ value }}</span>
-            <!--
-              todo: нужна версия без itemId
-              <ValueInline 
+          <template #value="{ value, propertyId }">
+            <DatabasePropertyValueInlineById
+              :value="value"
               :directory-path="directoryPath"
               :document-id="documentId"
               :property-id="propertyId"
-              /> 
-            -->
+            />
+          </template>
+
+          <template #valueField="{ value, propertyId, updateValue }">
+            <DatabasePropertyValueFieldById
+              :value="value"
+              :directory-path="directoryPath"
+              :document-id="documentId"
+              :property-id="propertyId"
+              autofocus
+              @update:value="updateValue"
+              @update:property="($event) => onUpdateProperty(propertyId, $event)"
+            />
           </template>
         </DatabaseFilterForm>
       </div>

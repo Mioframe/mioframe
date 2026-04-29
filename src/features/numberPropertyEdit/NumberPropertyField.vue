@@ -21,6 +21,10 @@ const modelValue = computed<number | undefined>({
     emit('update:value', stateValue.value);
   },
 });
+
+const onFieldKeydown = (event: KeyboardEvent) => {
+  emit('keydown', event);
+};
 </script>
 
 <template>
@@ -34,7 +38,7 @@ const modelValue = computed<number | undefined>({
         type="number"
         step="any"
         :placeholder="label"
-        @keydown="$emit('keydown', $event)"
+        @keydown="onFieldKeydown"
       />
     </div>
   </div>

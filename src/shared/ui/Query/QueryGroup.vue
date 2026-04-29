@@ -18,6 +18,9 @@ const slots = defineSlots<{
   groupAppend: (p: { path: PropertyKey[]; operator: LogicalOperator }) => unknown;
   objectAppend: (p: { path: PropertyKey[] }) => unknown;
 }>();
+
+const emptyPath: PropertyKey[] = [];
+const prependIndexToPath = (index: number, path: PropertyKey[]) => [index, ...path];
 </script>
 
 <template>
@@ -34,15 +37,20 @@ const slots = defineSlots<{
         </template>
 
         <template #value="{ value: sValue, path, property: sProperty }">
-          <slot name="value" :value="sValue" :path="[index, ...path]" :property="sProperty" />
+          <slot
+            name="value"
+            :value="sValue"
+            :path="prependIndexToPath(index, path)"
+            :property="sProperty"
+          />
         </template>
 
         <template #objectAppend="{ path }">
-          <slot name="objectAppend" :path="[index, ...path]" />
+          <slot name="objectAppend" :path="prependIndexToPath(index, path)" />
         </template>
 
         <template #groupAppend="{ path, operator: sOperator }">
-          <slot name="groupAppend" :path="[index, ...path]" :operator="sOperator" />
+          <slot name="groupAppend" :path="prependIndexToPath(index, path)" :operator="sOperator" />
         </template>
       </QueryGeneral>
 
@@ -52,6 +60,6 @@ const slots = defineSlots<{
       />
     </template>
 
-    <slot name="groupAppend" :path="[]" :operator="operator" />
+    <slot name="groupAppend" :path="emptyPath" :operator="operator" />
   </QueryContainer>
 </template>

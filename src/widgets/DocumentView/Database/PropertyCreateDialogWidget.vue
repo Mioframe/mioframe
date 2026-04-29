@@ -1,13 +1,8 @@
 <script setup lang="ts">
-import { zodRelationProperty } from '@entity/databaseRelation';
 import { DatabasePropertyCreationDialog } from '@feature/databasePropertyCreate';
-import { DatabaseRelationPropertyEditSection } from '@feature/databaseRelationPropertyEdit';
 import type { AMDocumentId } from '@shared/lib/automerge';
-import { zodBooleanProperty } from '@entity/databaseBoolean';
-import { DatabaseBooleanPropertyEditSection } from '@feature/databaseBooleanPropertyEdit';
-import { zodIs } from '@shared/lib/validateZodScheme';
-import { extend, optional } from 'zod/v4-mini';
-import { zodRelation } from '@entity/databaseRelation/model';
+import DatabasePropertySettingsSection from './DatabasePropertySettingsSection.vue';
+import DatabasePropertyValueField from './DatabasePropertyValueField.vue';
 
 defineProps<{
   documentId: AMDocumentId;
@@ -19,45 +14,38 @@ const emit = defineEmits<{
   cancel: [];
 }>();
 
-const zodPartialRelation = extend(zodRelationProperty, {
-  relation: optional(zodRelation),
-});
+const onCreated = () => {
+  emit('created');
+};
+
+const onCancel = () => {
+  emit('cancel');
+};
 </script>
 
 <template>
   <DatabasePropertyCreationDialog
     :path="directoryPath"
     :document-id="documentId"
-    @created="emit('created')"
-    @cancel="emit('cancel')"
+    @created="onCreated"
+    @cancel="onCancel"
   >
-    <template #after="{ property, onUpdateProperty }">
-      <DatabaseRelationPropertyEditSection
-        v-if="zodIs(property, zodPartialRelation)"
+    <template #after="{ property, submitProperty, onUpdateDefaultValue, onUpdateProperty }">
+      <DatabasePropertySettingsSection
         :property="property"
         :directory-path="directoryPath"
         @update:property="onUpdateProperty"
       />
 
-      <DatabaseBooleanPropertyEditSection
-        v-else-if="zodIs(property, zodBooleanProperty)"
-        :property="property"
-        @update:property="onUpdateProperty"
-      />
-
-      <!-- fixme: подготовить для создания default field -->
-      <!--
-        <ValueField
-        :document-id="documentId"
-        :property="{ ...property, name: 'default value' }"
-        :value="property.default"
+      <DatabasePropertyValueField
+        v-if="submitProperty"
+        :value="submitProperty.default"
+        label="Default value"
+        :property="submitProperty"
         :directory-path="directoryPath"
         @update:value="onUpdateDefaultValue"
         @update:property="onUpdateProperty"
-        >
-        <template #unknownProperty> <div /> </template>
-        </ValueField> 
-      -->
+      />
     </template>
   </DatabasePropertyCreationDialog>
 </template>

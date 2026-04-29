@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { useDatabaseViews } from '@entity/databaseView';
+import { useDatabaseViewSelection, useDatabaseViews } from '@entity/databaseView';
 import { DatabaseViewCreateDialog } from '@feature/databaseViewCreate';
 import { DatabaseViewListEdit } from '@feature/databaseViewMapEdit';
 import { DatabaseViewRenameDialog } from '@feature/databaseViewRename';
@@ -15,7 +15,7 @@ import { defineMenuButtonList, MDContextMenuButton } from '@shared/ui/Menu';
 import { MDBottomSheet, MDBottomSheetSection } from '@shared/ui/Sheets';
 import { ref, shallowRef, toRefs } from 'vue';
 
-const selectedViewId = defineModel<DatabaseViewId | undefined>('selectedViewId');
+const explicitViewId = defineModel<DatabaseViewId | undefined>('explicitViewId');
 
 const props = defineProps<{
   path: string;
@@ -27,6 +27,11 @@ const emit = defineEmits<{
 }>();
 
 const { documentId, path } = toRefs(props);
+const { effectiveViewId, setExplicitViewId } = useDatabaseViewSelection(
+  path,
+  documentId,
+  explicitViewId,
+);
 
 const onClosed = () => {
   emit('closed');
@@ -36,9 +41,9 @@ const { confirm } = useDialog();
 
 const { remove: removeView } = useDatabaseViews(path, documentId);
 
-const onChangeSelectedViewId = (viewId: DatabaseViewId, checked?: boolean) => {
+const onChangeExplicitViewId = (viewId: DatabaseViewId, checked?: boolean) => {
   if (checked) {
-    selectedViewId.value = viewId;
+    setExplicitViewId(viewId);
   }
 };
 
@@ -97,6 +102,30 @@ const onClickViewContextMenu = async (
 };
 
 const isShowAddView = shallowRef(false);
+
+const onSelectViewPreset = (viewId: DatabaseViewId) => {
+  onChangeExplicitViewId(viewId, true);
+};
+
+const onOpenAddViewDialog = () => {
+  isShowAddView.value = true;
+};
+
+const onCreatedView = () => {
+  isShowAddView.value = false;
+};
+
+const onCancelCreateView = () => {
+  isShowAddView.value = false;
+};
+
+const onCancelRenameView = () => {
+  renameViewId.value = undefined;
+};
+
+const onRenameViewCompleted = () => {
+  renameViewId.value = undefined;
+};
 </script>
 
 <template>
@@ -120,12 +149,12 @@ const isShowAddView = shallowRef(false);
           class="db-views-sheet__list"
           :directory-path="path"
           :document-id="documentId"
-          @click-view="onChangeSelectedViewId($event, true)"
+          @click-view="onSelectViewPreset"
         >
           <template #leadingIcon="{ viewId }">
             <MDCheckbox
-              :model-value="viewId === selectedViewId"
-              @update:model-value="onChangeSelectedViewId(viewId, $event)"
+              :model-value="viewId === effectiveViewId"
+              @update:model-value="($event) => onChangeExplicitViewId(viewId, $event)"
             />
           </template>
 
@@ -133,13 +162,13 @@ const isShowAddView = shallowRef(false);
             <MDContextMenuButton
               :btns="viewContextMenu"
               tooltip="settings view"
-              @click="onClickViewContextMenu(viewId, $event)"
+              @click="($event) => onClickViewContextMenu(viewId, $event)"
             />
           </template>
         </DatabaseViewListEdit>
 
         <div class="db-views-sheet__actions">
-          <MDButton label="add view" @click="isShowAddView = true">
+          <MDButton label="add view" @click="onOpenAddViewDialog">
             <template #icon>
               <MDSymbol name="add" />
             </template>
@@ -152,8 +181,8 @@ const isShowAddView = shallowRef(false);
       v-if="isShowAddView"
       :directory-path="path"
       :document-id="documentId"
-      @created="isShowAddView = false"
-      @cancel="isShowAddView = false"
+      @created="onCreatedView"
+      @cancel="onCancelCreateView"
     />
 
     <DatabaseViewRenameDialog
@@ -161,8 +190,8 @@ const isShowAddView = shallowRef(false);
       :directory-path="path"
       :document-id="documentId"
       :view-id="renameViewId"
-      @cancel="renameViewId = undefined"
-      @completed="renameViewId = undefined"
+      @cancel="onCancelRenameView"
+      @completed="onRenameViewCompleted"
     />
   </MDBottomSheet>
 </template>

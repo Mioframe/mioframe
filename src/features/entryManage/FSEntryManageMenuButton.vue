@@ -151,6 +151,26 @@ const onRenamedEntry = () => {
 };
 
 const menuTooltip = computed(() => `options ${fsEntryName.value}`);
+
+const onCancelCreateDocument = () => {
+  showCreateDocumentDialog.value = false;
+};
+
+const onCreatedDocument = () => {
+  showCreateDocumentDialog.value = false;
+};
+
+const onCancelCreateDirectory = () => {
+  showCreateDirectoryDialog.value = false;
+};
+
+const onCreatedDirectory = () => {
+  showCreateDirectoryDialog.value = false;
+};
+
+const onCancelRenameEntry = () => {
+  showRenameDialog.value = false;
+};
 </script>
 
 <template>
@@ -159,21 +179,21 @@ const menuTooltip = computed(() => `options ${fsEntryName.value}`);
   <DocumentCreationDialog
     v-if="showCreateDocumentDialog"
     :path="path"
-    @cancel="showCreateDocumentDialog = false"
-    @created="showCreateDocumentDialog = false"
+    @cancel="onCancelCreateDocument"
+    @created="onCreatedDocument"
   />
 
   <DirectoryCreateDialog
     v-if="showCreateDirectoryDialog"
     :path="path"
-    @cancel="showCreateDirectoryDialog = false"
-    @created="showCreateDirectoryDialog = false"
+    @cancel="onCancelCreateDirectory"
+    @created="onCreatedDirectory"
   />
 
   <FSEntryRenameDialog
     v-if="showRenameDialog"
     :path="path"
-    @cancel="showRenameDialog = false"
+    @cancel="onCancelRenameEntry"
     @renamed="onRenamedEntry"
   />
 </template>

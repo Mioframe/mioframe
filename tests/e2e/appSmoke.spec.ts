@@ -5,7 +5,7 @@ test('loads the app, dismisses storage onboarding, and opens the OPFS root', asy
   await launchApp(page);
 
   await dismissStorageOnboarding(page);
-  await expect(page.getByText(/^origin private file system$/i)).toBeVisible();
+  await expect(page.getByText(/^browser storage$/i)).toBeVisible();
 
   await openOpfs(page);
 });

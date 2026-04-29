@@ -20,6 +20,10 @@ const { session } = toRefs(props);
 
 const headline = computed(() => session.value.profile.name ?? 'Google profile');
 const supportingText = computed(() => session.value.profile.email);
+
+const onListItemClick = () => {
+  emit('click');
+};
 </script>
 
 <template>
@@ -27,7 +31,7 @@ const supportingText = computed(() => session.value.profile.email);
     is="button"
     :headline="headline"
     :supporting-text="supportingText"
-    @click="emit('click')"
+    @click="onListItemClick"
   >
     <template #leadingAvatarContainer>
       <GoogleSessionAvatar :profile-image-url="session.profile.picture" />

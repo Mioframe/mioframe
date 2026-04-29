@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { RelationProperty } from '@entity/databaseRelation';
 import { zodRelationValue, type RelationValue } from '@entity/databaseRelation';
-import { DatabaseViewChipsList } from '@entity/databaseView';
+import { DatabaseViewChipsList, useDatabaseViewSelection } from '@entity/databaseView';
 import type { AMDocumentId } from '@shared/lib/cfrDocument';
 import { type DatabaseItemId, type DatabaseViewId } from '@shared/lib/databaseDocument';
 import { zodIs } from '@shared/lib/validateZodScheme';
@@ -12,6 +12,7 @@ const props = defineProps<{
   directoryPath: string;
   property: RelationProperty;
   autofocus?: boolean;
+  label?: string | undefined;
 }>();
 
 const emit = defineEmits<{
@@ -48,36 +49,46 @@ const onSelect = (itemId: DatabaseItemId) => {
 
 const relationDocumentId = computed(() => property.value.relation.documentId);
 
-const onClickViewChip = (viewId: DatabaseViewId) => {
+const setRelationExplicitViewId = (viewId: DatabaseViewId | undefined) => {
   emit('update:property', {
     ...property.value,
     relation: { ...property.value.relation, viewId },
   });
 };
 
-const viewId = computed(() => property.value.relation.viewId);
+const explicitViewId = computed(() => property.value.relation.viewId);
+const { effectiveViewId, setExplicitViewId } = useDatabaseViewSelection(
+  directoryPath,
+  relationDocumentId,
+  explicitViewId,
+);
+
+const onClickViewChip = (viewId: DatabaseViewId) => {
+  setRelationExplicitViewId(viewId);
+  setExplicitViewId(viewId);
+};
 </script>
 
 <template>
-  <div class="relation-value-field">
+  <div class="relation-value-field" role="group" :aria-label="label ?? property.name">
     <DatabaseViewChipsList
       :directory-path="directoryPath"
       class="relation-value-field__views"
       :document-id="relationDocumentId"
       type="filter"
-      :selected-id="viewId"
+      :selected-id="effectiveViewId"
       :autofocus="autofocus"
       @click="onClickViewChip"
     />
 
-    <div v-if="viewId" class="relation-value-field__data">
+    <div v-if="effectiveViewId" class="relation-value-field__data">
       <slot
         name="data"
         :on-select="onSelect"
         :directory-path="directoryPath"
         :document-id="relationDocumentId"
         :value="relationValue"
-        :view-id="viewId"
+        :view-id="effectiveViewId"
       />
     </div>
   </div>
