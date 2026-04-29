@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { DatabasePropertyCreationDialog } from '@feature/databasePropertyCreate';
 import type { AMDocumentId } from '@shared/lib/automerge';
-import type { DatabaseUnknownProperty } from '@shared/lib/databaseDocument';
 import DatabasePropertySettingsSection from './DatabasePropertySettingsSection.vue';
 import DatabasePropertyValueField from './DatabasePropertyValueField.vue';
 
@@ -15,8 +14,6 @@ const emit = defineEmits<{
   cancel: [];
 }>();
 
-const DEFAULT_VALUE_LABEL = 'Default value';
-
 const onCreated = () => {
   emit('created');
 };
@@ -24,19 +21,6 @@ const onCreated = () => {
 const onCancel = () => {
   emit('cancel');
 };
-
-const getDefaultValueProperty = (property: DatabaseUnknownProperty): DatabaseUnknownProperty => ({
-  ...property,
-  name: DEFAULT_VALUE_LABEL,
-});
-
-const getUpdatedDefaultValueProperty = (
-  property: DatabaseUnknownProperty,
-  updatedProperty: DatabaseUnknownProperty,
-): DatabaseUnknownProperty => ({
-  ...updatedProperty,
-  name: property.name,
-});
 </script>
 
 <template>
@@ -56,13 +40,11 @@ const getUpdatedDefaultValueProperty = (
       <DatabasePropertyValueField
         v-if="submitProperty"
         :value="submitProperty.default"
-        :property="getDefaultValueProperty(submitProperty)"
+        property-label="Default value"
+        :property="submitProperty"
         :directory-path="directoryPath"
         @update:value="onUpdateDefaultValue"
-        @update:property="
-          (updatedProperty) =>
-            onUpdateProperty(getUpdatedDefaultValueProperty(submitProperty, updatedProperty))
-        "
+        @update:property="onUpdateProperty"
       />
     </template>
   </DatabasePropertyCreationDialog>

@@ -4,9 +4,14 @@ import { MDTextField } from '@shared/ui/TextField';
 import { toNumber, toString } from 'es-toolkit/compat';
 import { computed } from 'vue';
 
-const { property, modelValue: value } = defineProps<{
+const {
+  property,
+  modelValue: value,
+  label,
+} = defineProps<{
   property: NumberProperty;
   modelValue: unknown;
+  label?: string | undefined;
   autofocus?: boolean;
 }>();
 
@@ -15,7 +20,7 @@ const emit = defineEmits<{
   keydown: [payload: KeyboardEvent];
 }>();
 
-const labelText = computed(() => property.name);
+const labelText = computed(() => label ?? property.name);
 
 const vModel = computed<string | undefined>({
   get: () => (value == null ? undefined : toString(value)),

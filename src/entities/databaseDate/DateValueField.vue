@@ -3,9 +3,14 @@ import type { DateProperty } from './date';
 import { MDTextField } from '@shared/ui/TextField';
 import { computed } from 'vue';
 
-const { property, modelValue: value } = defineProps<{
+const {
+  property,
+  modelValue: value,
+  label,
+} = defineProps<{
   property: DateProperty;
   modelValue: unknown;
+  label?: string | undefined;
   autofocus?: boolean;
 }>();
 
@@ -14,7 +19,7 @@ const emit = defineEmits<{
   keydown: [payload: KeyboardEvent];
 }>();
 
-const labelText = computed(() => property.name);
+const labelText = computed(() => label ?? property.name);
 
 const vModel = computed<string | undefined>({
   get: () => (value == null ? undefined : String(value)),

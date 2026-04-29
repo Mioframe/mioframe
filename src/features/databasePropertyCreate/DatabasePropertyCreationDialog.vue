@@ -12,7 +12,12 @@ import { useSnackbar } from '@shared/ui/Snackbar';
 import type { AMDocumentId } from '@shared/lib/automerge';
 import type { DatabasePropertyId, DatabaseUnknownProperty } from '@shared/lib/databaseDocument';
 import { useDatabaseProperties } from '@entity/databaseProperty';
-import { getCreatableProperty, getDraftProperty, type PropertyDraft } from './propertyDraft';
+import {
+  getCreatableProperty,
+  getDraftProperty,
+  getTypeSwitchedPropertyDraft,
+  type PropertyDraft,
+} from './propertyDraft';
 
 const props = defineProps<{
   path: string;
@@ -79,10 +84,10 @@ watch(
       return;
     }
 
-    partialPropertyState.value = {
-      ...descriptor.createProperty(partialPropertyState.value.name ?? ''),
-      default: partialPropertyState.value.default,
-    };
+    partialPropertyState.value = getTypeSwitchedPropertyDraft(
+      partialPropertyState.value,
+      descriptor.createProperty,
+    );
   },
   { immediate: true },
 );
