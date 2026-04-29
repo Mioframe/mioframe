@@ -3,6 +3,14 @@ import { expect, type Locator, type Page } from '@playwright/test';
 const escapeRegex = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 const browserStorageLabel = /^browser storage$/i;
 
+type DatabasePropertyType = 'string' | 'number' | 'boolean' | 'date' | 'relation';
+type DatabaseItemFieldValue = string | number | boolean | string[];
+type RecordEntries<R extends Record<PropertyKey, unknown>> = [keyof R, R[keyof R]][];
+
+const recordEntries = <R extends Record<PropertyKey, unknown>>(value: R): RecordEntries<R> =>
+  // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- typed Object.entries wrapper for e2e fixture maps
+  Object.entries(value) as RecordEntries<R>;
+
 export const createUniqueName = (prefix: string) =>
   `${prefix} ${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 
@@ -160,12 +168,45 @@ export const createStringProperty = async (
   page: Page,
   name = createUniqueName('string property'),
 ) => {
+  return createDatabaseProperty(page, { name, type: 'string' });
+};
+
+export const createDatabaseProperty = async (
+  page: Page,
+  {
+    name,
+    relatedDocumentName,
+    type,
+  }: {
+    name: string;
+    type: DatabasePropertyType;
+    relatedDocumentName?: string | undefined;
+  },
+) => {
   const sheet = await openPropertiesSheet(page);
   await sheet.getByRole('button', { name: /add property/i }).click();
 
   const dialog = page.getByRole('dialog', { name: /create property/i });
   await expect(dialog).toBeVisible();
   await dialog.getByLabel(/^name$/i).fill(name);
+
+  if (type !== 'string') {
+    await dialog.getByRole('combobox', { name: /property type/i }).click();
+    await page.getByRole('option', { name: new RegExp(`^${type}$`, 'i') }).click();
+  }
+
+  if (type === 'relation') {
+    if (!relatedDocumentName) {
+      throw new Error('relatedDocumentName is required to create a relation property');
+    }
+
+    const relationDocumentField = dialog.getByRole('combobox', { name: /database document/i });
+    await relationDocumentField.click();
+    await page
+      .getByRole('option', { name: new RegExp(`^${escapeRegex(relatedDocumentName)}$`, 'i') })
+      .click();
+  }
+
   await dialog.getByRole('button', { name: /^create$/i }).click();
 
   await expect(dialog).toHaveCount(0);
@@ -181,30 +222,7 @@ export const createRelationProperty = async (
   relatedDocumentName: string,
   name = createUniqueName('relation property'),
 ) => {
-  const sheet = await openPropertiesSheet(page);
-  await sheet.getByRole('button', { name: /add property/i }).click();
-
-  const dialog = page.getByRole('dialog', { name: /create property/i });
-  await expect(dialog).toBeVisible();
-  await dialog.getByLabel(/^name$/i).fill(name);
-
-  await dialog.getByRole('combobox', { name: /property type/i }).click();
-  await page.getByRole('option', { name: /^relation$/i }).click();
-
-  const relationDocumentField = dialog.getByRole('combobox', { name: /database document/i });
-  await relationDocumentField.click();
-  await page
-    .getByRole('option', { name: new RegExp(`^${escapeRegex(relatedDocumentName)}$`, 'i') })
-    .click();
-
-  await dialog.getByRole('button', { name: /^create$/i }).click();
-
-  await expect(dialog).toHaveCount(0);
-  await closeBottomSheet(page, /database properties sheet/i);
-  await expect(
-    page.getByRole('columnheader', { name: new RegExp(`^${escapeRegex(name)}$`, 'i') }),
-  ).toBeVisible();
-  return name;
+  return createDatabaseProperty(page, { name, relatedDocumentName, type: 'relation' });
 };
 
 export const renameProperty = async (page: Page, currentName: string, nextName: string) => {
@@ -247,25 +265,82 @@ export const removeProperty = async (page: Page, name: string) => {
 };
 
 export const addDatabaseItem = async (page: Page, propertyName: string, value: string) => {
+  await addDatabaseItemValues(page, { [propertyName]: value });
+  await expect(page.getByText(value, { exact: true })).toBeVisible();
+};
+
+const updateDatabaseItemDialogField = async (
+  page: Page,
+  dialog: Locator,
+  propertyName: string,
+  value: DatabaseItemFieldValue,
+) => {
+  const label = new RegExp(`^${escapeRegex(propertyName)}$`, 'i');
+
+  if (typeof value === 'boolean') {
+    const checkbox = dialog.getByLabel(label);
+    if ((await checkbox.isChecked()) !== value) {
+      await checkbox.click();
+    }
+    return;
+  }
+
+  if (Array.isArray(value)) {
+    for (const relationItemValue of value) {
+      // Relation rows are rendered inside the item dialog; each selected row has its own checkbox.
+      // eslint-disable-next-line no-await-in-loop
+      await findDatabaseRow(dialog, relationItemValue).getByRole('checkbox').click();
+    }
+    return;
+  }
+
+  await dialog.getByText(propertyName, { exact: true }).click();
+
+  const field = (
+    typeof value === 'number'
+      ? dialog.getByRole('spinbutton', { name: label })
+      : dialog.getByRole('textbox', { name: label })
+  ).first();
+  await expect(field).toBeFocused();
+  await page.keyboard.press('ControlOrMeta+A');
+  await page.keyboard.insertText(String(value));
+};
+
+export const addDatabaseItemValues = async (
+  page: Page,
+  values: Record<string, DatabaseItemFieldValue>,
+) => {
   await page.getByRole('button', { name: /add item/i }).click();
 
   const dialog = page.getByRole('dialog', { name: /add item/i });
   await expect(dialog).toBeVisible();
-  await dialog.getByLabel(new RegExp(`^${escapeRegex(propertyName)}$`, 'i')).fill(value);
+  for (const [propertyName, value] of recordEntries(values)) {
+    // Dialog fields can reveal async relation data, so keep updates sequential.
+    // eslint-disable-next-line no-await-in-loop
+    await updateDatabaseItemDialogField(page, dialog, propertyName, value);
+  }
   await dialog.getByRole('button', { name: /^add$/i }).click();
 
   await expect(dialog).toHaveCount(0);
-  await expect(page.getByText(value, { exact: true })).toBeVisible();
 };
 
-export const findDatabaseRow = (page: Page, value: string): Locator =>
-  page.locator('tbody[role="list"] > tr').filter({ hasText: value }).first();
+export const findDatabaseRow = (root: Page | Locator, value: string): Locator =>
+  root.locator('tbody[role="list"] > tr').filter({ hasText: value }).first();
 
 export const editDatabaseItem = async (
   page: Page,
   previousValue: string,
   propertyName: string,
   nextValue: string,
+) => {
+  await editDatabaseItemValues(page, previousValue, { [propertyName]: nextValue });
+  await expect(page.getByText(nextValue, { exact: true })).toBeVisible();
+};
+
+export const editDatabaseItemValues = async (
+  page: Page,
+  previousValue: string,
+  values: Record<string, DatabaseItemFieldValue>,
 ) => {
   const row = findDatabaseRow(page, previousValue);
   await expect(row).toBeVisible();
@@ -274,11 +349,14 @@ export const editDatabaseItem = async (
 
   const dialog = page.getByRole('dialog', { name: /edit item/i });
   await expect(dialog).toBeVisible();
-  await dialog.getByLabel(new RegExp(`^${escapeRegex(propertyName)}$`, 'i')).fill(nextValue);
+  for (const [propertyName, value] of recordEntries(values)) {
+    // Dialog fields can reveal async relation data, so keep updates sequential.
+    // eslint-disable-next-line no-await-in-loop
+    await updateDatabaseItemDialogField(page, dialog, propertyName, value);
+  }
   await dialog.getByRole('button', { name: /^edit$/i }).click();
 
   await expect(dialog).toHaveCount(0);
-  await expect(page.getByText(nextValue, { exact: true })).toBeVisible();
 };
 
 export const removeDatabaseItem = async (page: Page, value: string) => {
@@ -377,8 +455,11 @@ export const removeSorting = async (page: Page, propertyName: string) => {
 };
 
 export const openFilterSheet = async (page: Page) => {
-  await page.getByRole('button', { name: /^filter$/i }).click();
   const sheet = page.getByRole('dialog', { name: /database filters sheet/i });
+  const alreadyVisible = await sheet.isVisible().catch(() => false);
+  if (!alreadyVisible) {
+    await page.getByRole('button', { name: /^filter$/i }).click();
+  }
   await expect(sheet).toBeVisible();
   return sheet;
 };
@@ -405,6 +486,41 @@ export const addEqualFilter = async (page: Page, propertyName: string, value: st
   await dialog.getByRole('button', { name: /^apply$/i }).click();
 
   await expect(dialog).toHaveCount(0);
+};
+
+export const setInlineDatabaseValue = async (
+  page: Page,
+  rowValue: string,
+  propertyName: string,
+  value: string | number | boolean,
+) => {
+  const row = findDatabaseRow(page, rowValue);
+  await expect(row).toBeVisible();
+
+  if (typeof value === 'boolean') {
+    const checkbox = row
+      .getByRole('checkbox', {
+        name: new RegExp(`^${escapeRegex(propertyName)}$`, 'i'),
+      })
+      .first();
+    const isChecked = (await checkbox.getAttribute('aria-checked')) === 'true';
+    if (isChecked !== value) {
+      await checkbox.click();
+    }
+    return;
+  }
+
+  await row
+    .getByRole('button', { name: new RegExp(`^${escapeRegex(propertyName)}$`, 'i') })
+    .click();
+  const field =
+    typeof value === 'number'
+      ? page.getByRole('spinbutton', { name: new RegExp(`^${escapeRegex(propertyName)}$`, 'i') })
+      : page.getByRole('textbox', { name: new RegExp(`^${escapeRegex(propertyName)}$`, 'i') });
+  await expect(field).toBeVisible();
+  await field.fill(String(value));
+  await field.press('Enter');
+  await expect(field).toHaveCount(0);
 };
 
 export const removeFirstFilter = async (page: Page) => {

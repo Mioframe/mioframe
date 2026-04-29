@@ -1,9 +1,11 @@
 import { expect, test } from '@playwright/test';
 import {
   addDatabaseItem,
+  addDatabaseItemValues,
   addView,
   closeBottomSheet,
   closeDocumentPane,
+  createDatabaseProperty,
   createRelationProperty,
   createDatabaseDocument,
   createDirectory,
@@ -11,12 +13,14 @@ import {
   createUniqueName,
   dismissStorageOnboarding,
   editDatabaseItem,
+  editDatabaseItemValues,
   findDatabaseRow,
   launchApp,
   openDirectory,
   openDocumentFromExplorer,
   openOpfs,
   removeDatabaseItem,
+  setInlineDatabaseValue,
 } from './helpers';
 
 test('shows the empty database state, creates the first property, and manages item lifecycle', async ({
@@ -103,6 +107,70 @@ test('uses the default related view in item edit and persists an explicit relati
   ).toHaveClass(/md-chip_selected/);
   await expect(reopenedDialog.getByText(targetItemValue, { exact: true })).toBeVisible();
   await reopenedDialog.getByRole('button', { name: /^cancel$/i }).click();
+});
+
+test('updates string, number, boolean, and date values inline and persists them', async ({
+  page,
+}) => {
+  await launchApp(page);
+  await openOpfs(page);
+
+  const directoryName = await createDirectory(page, createUniqueName('inline edit lab'));
+  await openDirectory(page, directoryName);
+
+  const documentName = await createDatabaseDocument(page, createUniqueName('inline values'));
+  await openDocumentFromExplorer(page, documentName);
+
+  const stringPropertyName = await createStringProperty(page, createUniqueName('task'));
+  const numberPropertyName = await createDatabaseProperty(page, {
+    name: createUniqueName('estimate'),
+    type: 'number',
+  });
+  const booleanPropertyName = await createDatabaseProperty(page, {
+    name: createUniqueName('done'),
+    type: 'boolean',
+  });
+  const datePropertyName = await createDatabaseProperty(page, {
+    name: createUniqueName('due'),
+    type: 'date',
+  });
+
+  const initialStringValue = createUniqueName('draft task');
+  const nextStringValue = createUniqueName('published task');
+  const nextNumberValue = 42;
+  const nextDateValue = '2026-04-27';
+
+  await addDatabaseItemValues(page, {
+    [stringPropertyName]: initialStringValue,
+  });
+
+  await setInlineDatabaseValue(page, initialStringValue, stringPropertyName, nextStringValue);
+  await expect(findDatabaseRow(page, nextStringValue)).toBeVisible();
+
+  await setInlineDatabaseValue(page, nextStringValue, numberPropertyName, nextNumberValue);
+  await setInlineDatabaseValue(page, nextStringValue, booleanPropertyName, true);
+  await setInlineDatabaseValue(page, nextStringValue, datePropertyName, nextDateValue);
+
+  const updatedRow = findDatabaseRow(page, nextStringValue);
+  await expect(updatedRow.getByText(String(nextNumberValue), { exact: true })).toBeVisible();
+  await expect(
+    updatedRow.getByRole('checkbox', { name: new RegExp(`^${booleanPropertyName}$`, 'i') }).first(),
+  ).toHaveAttribute('aria-checked', 'true');
+  await expect(updatedRow.locator(`time[datetime="${nextDateValue}"]`)).toBeVisible();
+
+  await page.reload();
+  await dismissStorageOnboarding(page);
+  await expect(page.getByRole('button', { name: /rename document/i })).toBeVisible();
+
+  const reloadedRow = findDatabaseRow(page, nextStringValue);
+  await expect(reloadedRow).toBeVisible();
+  await expect(reloadedRow.getByText(String(nextNumberValue), { exact: true })).toBeVisible();
+  await expect(
+    reloadedRow
+      .getByRole('checkbox', { name: new RegExp(`^${booleanPropertyName}$`, 'i') })
+      .first(),
+  ).toHaveAttribute('aria-checked', 'true');
+  await expect(reloadedRow.locator(`time[datetime="${nextDateValue}"]`)).toBeVisible();
 });
 
 test('creates a relation property, selects related records, and persists relation values', async ({
@@ -194,4 +262,52 @@ test('creates a relation property, selects related records, and persists relatio
   await expect(
     findDatabaseRow(page, sourceItemValue).getByText(secondTargetValue, { exact: true }),
   ).toBeVisible();
+});
+
+test('toggles recursive relation preview without opening an inline relation editor', async ({
+  page,
+}) => {
+  await launchApp(page);
+  await openOpfs(page);
+
+  const directoryName = await createDirectory(page, createUniqueName('recursive relation lab'));
+  await openDirectory(page, directoryName);
+
+  const documentName = await createDatabaseDocument(page, createUniqueName('recursive database'));
+  await openDocumentFromExplorer(page, documentName);
+
+  const titlePropertyName = await createStringProperty(page, createUniqueName('node'));
+  const firstItemValue = createUniqueName('node alpha');
+  const secondItemValue = createUniqueName('node beta');
+  await addDatabaseItem(page, titlePropertyName, firstItemValue);
+  await addDatabaseItem(page, titlePropertyName, secondItemValue);
+
+  const relationPropertyName = await createRelationProperty(
+    page,
+    documentName,
+    createUniqueName('related nodes'),
+  );
+
+  await editDatabaseItemValues(page, firstItemValue, {
+    [relationPropertyName]: [secondItemValue],
+  });
+  await editDatabaseItemValues(page, secondItemValue, {
+    [relationPropertyName]: [firstItemValue],
+  });
+
+  const firstRow = findDatabaseRow(page, firstItemValue);
+  await expect(firstRow.getByText(secondItemValue, { exact: true }).first()).toBeVisible();
+
+  const showButton = firstRow.getByRole('button', { name: /^show value$/i });
+  await expect(showButton).toBeVisible();
+  await showButton.click();
+
+  const hideButton = page.getByRole('button', { name: /^hide value$/i });
+  await expect(hideButton).toBeVisible();
+  await expect(hideButton).toBeFocused();
+  await expect(page.getByRole('button', { name: /^default view$/i })).toHaveCount(0);
+
+  await hideButton.click();
+  await expect(page.getByRole('button', { name: /^show value$/i }).first()).toBeVisible();
+  await expect(page.getByRole('button', { name: /^default view$/i })).toHaveCount(0);
 });
