@@ -31,7 +31,7 @@ const emit = defineEmits<{
   click: [];
 }>();
 
-const { error, disabled, indeterminate, modelValue } = toRefs(props);
+const { error, disabled, indeterminate, modelValue, readonly } = toRefs(props);
 
 const stateValue = computed({
   get: () => {
@@ -50,6 +50,10 @@ const symbolName = computed(() =>
 );
 
 const onClickContainer = (e: MouseEvent) => {
+  if (disabled.value || readonly.value) {
+    return;
+  }
+
   e.preventDefault();
   emit('click');
 
@@ -64,8 +68,14 @@ watchEffect(() => {
   }
 });
 
-const onKeydownContainer = ({ key }: KeyboardEvent) => {
+const onKeydownContainer = (event: KeyboardEvent) => {
+  if (disabled.value || readonly.value) {
+    return;
+  }
+
+  const { key } = event;
   if (['Enter', ' '].includes(key)) {
+    event.preventDefault();
     emit('click');
 
     stateValue.value = toggleBoolean(stateValue.value, toValue(indeterminate));
@@ -186,8 +196,6 @@ const onKeydownContainer = ({ key }: KeyboardEvent) => {
 
     &.md-checkbox_indeterminate,
     &.md-checkbox_selected {
-      pointer-events: none;
-
       .md-checkbox__container {
         --md-container-color: var(--md-sys-color-secondary);
         --md-content-color: var(--md-sys-color-on-secondary);
