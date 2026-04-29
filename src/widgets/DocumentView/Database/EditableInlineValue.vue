@@ -2,7 +2,7 @@
 import { computed, ref, toRefs, useTemplateRef, watch } from 'vue';
 import ValueInline from './ValueInline.vue';
 import { isEqual, isUndefined } from 'es-toolkit';
-import ValueField from './ValueField.vue';
+import DatabasePropertyValueFieldById from './DatabasePropertyValueFieldById.vue';
 import type { DatabaseItemId } from '@shared/lib/databaseDocument';
 import {
   type DatabasePropertyId,
@@ -232,7 +232,7 @@ const ariaChecked = computed(() => {
     @interaction-outside="commitEditor"
   >
     <div class="editable-inline-value__edit-popover" :style="editPopoverStyle">
-      <ValueField
+      <DatabasePropertyValueFieldById
         v-model:value="stateValue"
         class="editable-inline-value__value-field"
         :directory-path="path"
