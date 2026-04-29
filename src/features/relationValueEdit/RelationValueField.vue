@@ -12,6 +12,7 @@ const props = defineProps<{
   directoryPath: string;
   property: RelationProperty;
   autofocus?: boolean;
+  label?: string | undefined;
 }>();
 
 const emit = defineEmits<{
@@ -69,7 +70,7 @@ const onClickViewChip = (viewId: DatabaseViewId) => {
 </script>
 
 <template>
-  <div class="relation-value-field" role="group" :aria-label="property.name">
+  <div class="relation-value-field" role="group" :aria-label="label ?? property.name">
     <DatabaseViewChipsList
       :directory-path="directoryPath"
       class="relation-value-field__views"

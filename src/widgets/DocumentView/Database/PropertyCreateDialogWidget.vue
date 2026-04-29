@@ -40,7 +40,7 @@ const onCancel = () => {
       <DatabasePropertyValueField
         v-if="submitProperty"
         :value="submitProperty.default"
-        property-label="Default value"
+        label="Default value"
         :property="submitProperty"
         :directory-path="directoryPath"
         @update:value="onUpdateDefaultValue"

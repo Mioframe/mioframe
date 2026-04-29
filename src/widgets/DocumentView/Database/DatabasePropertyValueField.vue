@@ -14,7 +14,7 @@ const props = withDefaults(
   defineProps<{
     value: unknown;
     property?: DatabaseUnknownProperty | undefined;
-    propertyLabel?: string | undefined;
+    label?: string | undefined;
     directoryPath: string;
     class?: ClassValue;
     autofocus?: boolean;
@@ -53,7 +53,7 @@ const onKeydown = (event: KeyboardEvent) => {
     v-else-if="zodIs(property, zodStringProperty) && props.inputSize > 0"
     :model-value="value"
     :property="property"
-    :label="propertyLabel"
+    :label="label"
     :class="props.class"
     :autofocus="autofocus"
     :size="props.inputSize"
@@ -65,7 +65,7 @@ const onKeydown = (event: KeyboardEvent) => {
     v-else-if="zodIs(property, zodStringProperty)"
     :model-value="value"
     :property="property"
-    :label="propertyLabel"
+    :label="label"
     :class="props.class"
     :autofocus="autofocus"
     @update:model-value="onUpdateValue"
@@ -76,7 +76,7 @@ const onKeydown = (event: KeyboardEvent) => {
     v-else-if="zodIs(property, zodNumberProperty)"
     :model-value="value"
     :property="property"
-    :label="propertyLabel"
+    :label="label"
     :class="props.class"
     :autofocus="autofocus"
     @update:model-value="onUpdateValue"
@@ -87,7 +87,7 @@ const onKeydown = (event: KeyboardEvent) => {
     v-else-if="zodIs(property, zodBooleanProperty)"
     :model-value="value"
     :property="property"
-    :label="propertyLabel"
+    :label="label"
     :class="props.class"
     :autofocus="autofocus"
     @update:model-value="onUpdateValue"
@@ -97,7 +97,7 @@ const onKeydown = (event: KeyboardEvent) => {
     v-else-if="zodIs(property, zodDateProperty)"
     :model-value="value"
     :property="property"
-    :label="propertyLabel"
+    :label="label"
     :class="props.class"
     :autofocus="autofocus"
     @update:model-value="onUpdateValue"
@@ -109,6 +109,7 @@ const onKeydown = (event: KeyboardEvent) => {
     :value="value"
     :directory-path="directoryPath"
     :property="property"
+    :label="label"
     :autofocus="autofocus"
     @update:value="onUpdateValue"
     @update:property="onUpdateProperty"

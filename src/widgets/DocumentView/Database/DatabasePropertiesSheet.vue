@@ -144,7 +144,7 @@ const onCancelCreateProperty = () => {
 
         <DatabasePropertyValueField
           :value="property.default"
-          property-label="Default value"
+          label="Default value"
           :property="property"
           :directory-path="directoryPath"
           @update:value="onUpdateDefaultValue"
