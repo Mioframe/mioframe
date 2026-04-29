@@ -406,9 +406,12 @@ export const renameView = async (page: Page, currentName: string, nextName: stri
 
 export const selectView = async (page: Page, name: string | RegExp) => {
   const sheet = await openViewsSheet(page);
-  const target =
-    name instanceof RegExp ? sheet.getByText(name).first() : sheet.getByText(name, { exact: true });
-  await target.click();
+  const row =
+    name instanceof RegExp
+      ? sheet.getByRole('listitem').filter({ hasText: name }).first()
+      : sheet.getByRole('listitem').filter({ hasText: name }).first();
+  await row.click();
+  await expect(row.getByRole('checkbox')).toBeChecked();
   await closeBottomSheet(page, /database views sheet/i);
 };
 
