@@ -10,20 +10,14 @@ import DatabasePropertyValueInline from './DatabasePropertyValueInline.vue';
 
 const props = withDefaults(
   defineProps<{
-    editable?: boolean;
     directoryPath: string;
     documentId: AMDocumentId;
     propertyId: DatabasePropertyId;
     parentRelation?: ParentRelation;
     itemId: DatabaseItemId;
-    tabIndex?: number;
   }>(),
-  {
-    tabIndex: 0,
-  },
+  {},
 );
-
-const emit = defineEmits<{ click: [] }>();
 
 const { documentId, propertyId, directoryPath, itemId } = toRefs(props);
 
@@ -35,10 +29,6 @@ const { value, isLoading } = useDatabaseEffectiveValue(
   itemId,
   propertyId,
 );
-
-const onClick = () => {
-  emit('click');
-};
 </script>
 
 <template>
@@ -50,9 +40,6 @@ const onClick = () => {
     :property="property"
     :directory-path="directoryPath"
     :property-id="propertyId"
-    :editable="editable"
     :parent-relation="parentRelation"
-    :tab-index="tabIndex"
-    @click="onClick"
   />
 </template>

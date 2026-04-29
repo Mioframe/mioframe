@@ -22,10 +22,6 @@ const props = defineProps<{
   parentRelation?: ParentRelation | undefined;
 }>();
 
-const emit = defineEmits<{
-  click: [];
-}>();
-
 const relationDocumentId = computed(() => props.property.relation.documentId);
 const relationViewId = computed(() => props.property.relation.viewId);
 
@@ -34,10 +30,6 @@ const { effectiveViewId } = useDatabaseViewSelection(
   relationDocumentId,
   relationViewId,
 );
-
-const onClick = () => {
-  emit('click');
-};
 </script>
 
 <template>
@@ -48,7 +40,6 @@ const onClick = () => {
     :property-id="propertyId"
     :view-id="effectiveViewId"
     :parent-relation="parentRelation"
-    @click="onClick"
   >
     <template
       #default="{
