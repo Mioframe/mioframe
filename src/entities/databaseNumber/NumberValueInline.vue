@@ -5,14 +5,10 @@ import { isNil } from 'es-toolkit';
 defineProps<{
   value: unknown;
 }>();
-
-const emit = defineEmits<{
-  click: [];
-}>();
 </script>
 
 <template>
-  <span class="number" @click="emit('click')">
+  <span class="number">
     <MDSymbol v-if="isNil(value)" name="unknown_med" class="number__empty" />
 
     <template v-else>

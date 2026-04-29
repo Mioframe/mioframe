@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useDatabaseViewSelection } from '@entity/databaseView';
 import type { AMDocumentId } from '@shared/lib/automerge';
 import type { DatabasePropertyId, DatabaseUnknownProperty } from '@shared/lib/databaseDocument';
 import { type DatabaseViewId } from '@shared/lib/databaseDocument';
@@ -9,13 +10,13 @@ import DatabaseViewsSheet from './DatabaseViewsSheet.vue';
 import DatabaseSortSheet from './DatabaseSortSheet.vue';
 import DatabasePropertiesSheet from './DatabasePropertiesSheet.vue';
 import { DbItemAddDialog } from '@feature/databaseItemEdit';
-import ValueField from './ValueField.vue';
+import DatabasePropertyValueFieldById from './DatabasePropertyValueFieldById.vue';
 import type { MaybeElement } from '@vueuse/core';
 import DatabaseFiltersSheet from './DatabaseFiltersSheet.vue';
 import { useDatabaseProperties } from '@entity/databaseProperty';
 import type { PartialDeep } from 'type-fest';
 
-const selectedViewId = defineModel<DatabaseViewId | undefined>('selectedViewId');
+const explicitViewId = defineModel<DatabaseViewId | undefined>('explicitViewId');
 
 const props = defineProps<{
   documentId: AMDocumentId;
@@ -24,6 +25,11 @@ const props = defineProps<{
 }>();
 
 const { documentId, directoryPath: path, autoHideTarget } = toRefs(props);
+const { explicitViewId: viewSelection, effectiveViewId } = useDatabaseViewSelection(
+  path,
+  documentId,
+  explicitViewId,
+);
 
 const showViewSettings = ref(false);
 
@@ -44,6 +50,50 @@ const onUpdateProperty = async (
   await patchProperty(path.value, documentId.value, propertyId, v);
 };
 
+const onToggleViewSettings = () => {
+  showViewSettings.value = !showViewSettings.value;
+};
+
+const onToggleSortSettings = () => {
+  showSortSettings.value = !showSortSettings.value;
+};
+
+const onToggleAddItemDialog = () => {
+  isShowAddItem.value = !isShowAddItem.value;
+};
+
+const onToggleFilterSettings = () => {
+  showFilterSettings.value = !showFilterSettings.value;
+};
+
+const onTogglePropertySettings = () => {
+  showPropertySettings.value = !showPropertySettings.value;
+};
+
+const onCloseViewsSheet = () => {
+  showViewSettings.value = false;
+};
+
+const onCloseSortSheet = () => {
+  showSortSettings.value = false;
+};
+
+const onClosePropertiesSheet = () => {
+  showPropertySettings.value = false;
+};
+
+const onCloseFiltersSheet = () => {
+  showFilterSettings.value = false;
+};
+
+const onItemAdded = () => {
+  isShowAddItem.value = false;
+};
+
+const onCancelAddItem = () => {
+  isShowAddItem.value = false;
+};
+
 const hasProperties = computed(() => {
   const size = propertySize.value;
 
@@ -57,14 +107,14 @@ const hasProperties = computed(() => {
       v-if="hasProperties"
       tooltip="view settings"
       md-symbol-name="view_quilt"
-      @click="showViewSettings = !showViewSettings"
+      @click="onToggleViewSettings"
     />
 
     <MDIconButton
       v-if="hasProperties"
       tooltip="sort"
       md-symbol-name="sort_by_alpha"
-      @click="showSortSettings = !showSortSettings"
+      @click="onToggleSortSettings"
     />
 
     <MDIconButton
@@ -73,69 +123,69 @@ const hasProperties = computed(() => {
       md-symbol-name="add"
       color="filled"
       width="wide"
-      @click="isShowAddItem = !isShowAddItem"
+      @click="onToggleAddItemDialog"
     />
 
     <MDIconButton
       v-if="hasProperties"
       tooltip="filter"
       md-symbol-name="filter_alt"
-      @click="showFilterSettings = !showFilterSettings"
+      @click="onToggleFilterSettings"
     />
 
     <MDIconButton
       tooltip="configure properties"
       md-symbol-name="tune"
-      @click="showPropertySettings = !showPropertySettings"
+      @click="onTogglePropertySettings"
     />
 
     <DatabaseViewsSheet
       v-if="showViewSettings"
-      v-model:selected-view-id="selectedViewId"
+      v-model:explicit-view-id="viewSelection"
       :path="path"
       :document-id="documentId"
-      @closed="showViewSettings = false"
+      @closed="onCloseViewsSheet"
     />
 
     <DatabaseSortSheet
       v-if="showSortSettings"
       :directory-path="path"
       :document-id="documentId"
-      :view-id="selectedViewId"
-      @closed="showSortSettings = false"
+      :view-id="effectiveViewId"
+      @closed="onCloseSortSheet"
     />
 
     <DatabasePropertiesSheet
       v-if="showPropertySettings"
       :document-id="documentId"
       :directory-path="path"
-      @closed="showPropertySettings = false"
+      @closed="onClosePropertiesSheet"
     />
 
     <DatabaseFiltersSheet
-      v-if="showFilterSettings && selectedViewId"
+      v-if="showFilterSettings && effectiveViewId"
       :document-id="documentId"
-      :view-id="selectedViewId"
+      :view-id="effectiveViewId"
       :directory-path="path"
-      @closed="showFilterSettings = false"
+      @closed="onCloseFiltersSheet"
     />
 
     <DbItemAddDialog
       v-if="isShowAddItem"
       :directory-path="path"
       :document-id="documentId"
-      @added="isShowAddItem = false"
-      @cancel="isShowAddItem = false"
+      @added="onItemAdded"
+      @cancel="onCancelAddItem"
     >
       <template #valueField="{ update, value, propertyId, index }">
-        <ValueField
+        <DatabasePropertyValueFieldById
           :value="value"
           :document-id="documentId"
           :property-id="propertyId"
           :directory-path="path"
           :autofocus="!index"
           @update:value="update"
-          @update:property="onUpdateProperty(propertyId, $event)"
+          @update:property="($event) => onUpdateProperty(propertyId, $event)"
         />
       </template>
     </DbItemAddDialog>

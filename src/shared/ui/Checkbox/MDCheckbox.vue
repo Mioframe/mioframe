@@ -17,10 +17,12 @@ const props = withDefaults(
     readonly?: boolean | undefined;
     tooltip?: string | undefined;
     autofocus?: boolean | undefined;
+    tabIndex?: number | undefined;
   }>(),
   {
     modelValue: undefined,
     id: () => sessionUniqueId('checkbox'),
+    tabIndex: 0,
   },
 );
 
@@ -29,7 +31,7 @@ const emit = defineEmits<{
   click: [];
 }>();
 
-const { error, disabled, indeterminate, modelValue } = toRefs(props);
+const { error, disabled, indeterminate, modelValue, readonly } = toRefs(props);
 
 const stateValue = computed({
   get: () => {
@@ -48,6 +50,10 @@ const symbolName = computed(() =>
 );
 
 const onClickContainer = (e: MouseEvent) => {
+  if (disabled.value || readonly.value) {
+    return;
+  }
+
   e.preventDefault();
   emit('click');
 
@@ -62,8 +68,14 @@ watchEffect(() => {
   }
 });
 
-const onKeydownContainer = ({ key }: KeyboardEvent) => {
+const onKeydownContainer = (event: KeyboardEvent) => {
+  if (disabled.value || readonly.value) {
+    return;
+  }
+
+  const { key } = event;
   if (['Enter', ' '].includes(key)) {
+    event.preventDefault();
     emit('click');
 
     stateValue.value = toggleBoolean(stateValue.value, toValue(indeterminate));
@@ -84,7 +96,7 @@ const onKeydownContainer = ({ key }: KeyboardEvent) => {
       'md-checkbox_readonly': readonly,
     }"
     :disabled="disabled"
-    tabindex="0"
+    :tabindex="tabIndex"
     :aria-label="tooltip"
     :autofocus="autofocus"
     @click="onClickContainer"
@@ -117,6 +129,7 @@ const onKeydownContainer = ({ key }: KeyboardEvent) => {
   --md-state-height: 40px;
   --md-state-border-radius: 20px;
   --md-state-border: 0;
+  cursor: pointer;
 
   &__container {
     width: 18px;
@@ -128,6 +141,7 @@ const onKeydownContainer = ({ key }: KeyboardEvent) => {
     align-items: center;
     border: 2px solid var(--md-sys-color-on-surface-variant);
     box-sizing: border-box;
+    cursor: pointer;
   }
 
   &__icon {
@@ -162,22 +176,26 @@ const onKeydownContainer = ({ key }: KeyboardEvent) => {
   }
 
   &_disabled {
+    cursor: default;
+
     .md-checkbox__container {
       border-color: var(--md-sys-color-on-surface);
       --md-container-color: rgb(from var(--md-sys-color-on-surface) r g b / 0.38);
       --md-content-color: var(--md-sys-color-surface);
+      cursor: default;
     }
   }
 
   &_readonly {
+    cursor: default;
+
     .md-checkbox__container {
       border-color: var(--md-sys-color-secondary);
+      cursor: default;
     }
 
     &.md-checkbox_indeterminate,
     &.md-checkbox_selected {
-      pointer-events: none;
-
       .md-checkbox__container {
         --md-container-color: var(--md-sys-color-secondary);
         --md-content-color: var(--md-sys-color-on-secondary);

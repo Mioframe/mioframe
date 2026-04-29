@@ -8,6 +8,20 @@ import {
 import { sortData } from './sortData';
 
 describe('sortData', () => {
+  it('preserves the original entry order when no sorting is configured', () => {
+    const firstItemId = generateItemId();
+    const secondItemId = generateItemId();
+    const thirdItemId = generateItemId();
+
+    const sorted = sortData([
+      [firstItemId, {}],
+      [secondItemId, {}],
+      [thirdItemId, {}],
+    ]);
+
+    expect(sorted.map(([id]) => id)).toEqual([firstItemId, secondItemId, thirdItemId]);
+  });
+
   it('sorts missing string values consistently without falling back to item id', () => {
     const titlePropertyId = generatePropertyId();
     const firstItemId = generateItemId();

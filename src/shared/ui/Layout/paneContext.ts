@@ -1,4 +1,4 @@
-import type { InjectionKey } from 'vue';
+import type { InjectionKey, Ref } from 'vue';
 import { inject, provide } from 'vue';
 
 export type PaneContext = {
@@ -6,9 +6,9 @@ export type PaneContext = {
   index: number;
 };
 
-const KEY: InjectionKey<PaneContext> = Symbol('paneContext');
+const KEY: InjectionKey<Ref<PaneContext>> = Symbol('paneContext');
 
-export const setupPaneContext = (ctx: PaneContext) => {
+export const setupPaneContext = (ctx: Ref<PaneContext>) => {
   provide(KEY, ctx);
 };
 

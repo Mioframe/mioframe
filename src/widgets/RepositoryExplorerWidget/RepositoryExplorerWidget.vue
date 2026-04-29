@@ -90,6 +90,12 @@ const errorMessage = computed(() => directoryErrorMessage.value ?? repositoryErr
 const { isRetryAuthorizationLoading, onRetryAuthorization } = useGoogleDriveRecovery({
   path: directoryPath,
 });
+
+const recoveryErrors = [directoryError, repositoryError];
+
+const onReturnHomeClick = () => {
+  emit('clickReturnHome');
+};
 </script>
 
 <template>
@@ -119,7 +125,7 @@ const { isRetryAuthorizationLoading, onRetryAuthorization } = useGoogleDriveReco
         <GoogleDriveAccessRecoveryState
           v-if="hasGoogleDriveRecovery"
           :path="directoryPath"
-          :errors="[directoryError, repositoryError]"
+          :errors="recoveryErrors"
         >
           <template #actions>
             <MDButton
@@ -128,7 +134,7 @@ const { isRetryAuthorizationLoading, onRetryAuthorization } = useGoogleDriveReco
               @click="onRetryAuthorization"
             />
 
-            <MDButton label="Return Home" color="text" @click="emit('clickReturnHome')" />
+            <MDButton label="Return Home" color="text" @click="onReturnHomeClick" />
           </template>
         </GoogleDriveAccessRecoveryState>
 

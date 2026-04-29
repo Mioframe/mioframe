@@ -1,23 +1,23 @@
 <script setup lang="ts">
-import { computed, ref, toRefs, watchEffect } from 'vue';
+import { computed, ref, toRefs, watch } from 'vue';
 import { MDDialog } from '@shared/ui/Dialog';
 import { MDTextField } from '@shared/ui/TextField';
 import { MDSelectBase, MDSelectOption } from '@shared/ui/Select';
-import { PROPERTY_TYPE_STRING } from '@entity/databaseString';
-import { PROPERTY_TYPE_NUMBER } from '@entity/databaseNumber';
-import { PROPERTY_TYPE_BOOLEAN } from '@entity/databaseBoolean';
-import { PROPERTY_TYPE_DATE } from '@entity/databaseDate';
-import type { PartialDeep, ValueOf } from 'type-fest';
-import { PROPERTY_TYPE_RELATION } from '@entity/databaseRelation/model';
+import { PROPERTY_TYPE_BOOLEAN, createBooleanProperty } from '@entity/databaseBoolean';
+import { PROPERTY_TYPE_DATE, createDateProperty } from '@entity/databaseDate';
+import { PROPERTY_TYPE_NUMBER, createNumberProperty } from '@entity/databaseNumber';
+import { PROPERTY_TYPE_RELATION, createRelationProperty } from '@entity/databaseRelation';
+import { PROPERTY_TYPE_STRING, createStringProperty } from '@entity/databaseString';
 import { useSnackbar } from '@shared/ui/Snackbar';
 import type { AMDocumentId } from '@shared/lib/automerge';
-import {
-  zodDatabaseUnknownProperty,
-  type DatabasePropertyId,
-  type DatabaseUnknownProperty,
-} from '@shared/lib/databaseDocument';
-import { zodIs } from '@shared/lib/validateZodScheme';
+import type { DatabasePropertyId, DatabaseUnknownProperty } from '@shared/lib/databaseDocument';
 import { useDatabaseProperties } from '@entity/databaseProperty';
+import {
+  getCreatableProperty,
+  getDraftProperty,
+  getTypeSwitchedPropertyDraft,
+  type PropertyDraft,
+} from './propertyDraft';
 
 const props = defineProps<{
   path: string;
@@ -32,58 +32,82 @@ const emit = defineEmits<{
 defineSlots<{
   after: (p: {
     property: DatabaseUnknownProperty;
+    submitProperty: DatabaseUnknownProperty | undefined;
     onUpdateDefaultValue: (v: unknown) => void;
     onUpdateProperty: (v: DatabaseUnknownProperty) => void;
   }) => unknown;
 }>();
 
 const { path, documentId } = toRefs(props);
-
-const PROPERTY_TYPES = {
-  PROPERTY_TYPE_STRING,
-  PROPERTY_TYPE_NUMBER,
-  PROPERTY_TYPE_BOOLEAN,
-  PROPERTY_TYPE_DATE,
-  PROPERTY_TYPE_RELATION,
-} as const;
-
-type PropertyDraft = PartialDeep<Omit<DatabaseUnknownProperty, 'name' | 'type'>> & {
-  name?: string | undefined;
-  type?: ValueOf<typeof PROPERTY_TYPES> | undefined;
-};
+const propertyTypeOptions = [
+  {
+    createProperty: createStringProperty,
+    label: 'string',
+    type: PROPERTY_TYPE_STRING,
+  },
+  {
+    createProperty: createNumberProperty,
+    label: 'number',
+    type: PROPERTY_TYPE_NUMBER,
+  },
+  {
+    createProperty: createBooleanProperty,
+    label: 'boolean',
+    type: PROPERTY_TYPE_BOOLEAN,
+  },
+  {
+    createProperty: createDateProperty,
+    label: 'date',
+    type: PROPERTY_TYPE_DATE,
+  },
+  {
+    createProperty: createRelationProperty,
+    label: 'relation',
+    type: PROPERTY_TYPE_RELATION,
+  },
+] as const;
 
 const partialPropertyState = ref<PropertyDraft>({});
 
-const typeSelect = ref<(string | number)[]>([PROPERTY_TYPES.PROPERTY_TYPE_STRING]);
+const typeSelect = ref<(string | number)[]>([propertyTypeOptions[0].type]);
 
-const selectedPropertyType = computed<ValueOf<typeof PROPERTY_TYPES> | undefined>(() => {
+const selectedPropertyDescriptor = computed(() => {
   const type = typeSelect.value.at(0);
 
-  return Object.values(PROPERTY_TYPES).find((propertyType) => propertyType === type);
+  return propertyTypeOptions.find((descriptor) => descriptor.type === type);
 });
 
-watchEffect(() => {
-  partialPropertyState.value.type = selectedPropertyType.value;
-});
+watch(
+  selectedPropertyDescriptor,
+  (descriptor) => {
+    if (!descriptor) {
+      return;
+    }
+
+    partialPropertyState.value = getTypeSwitchedPropertyDraft(
+      partialPropertyState.value,
+      descriptor.createProperty,
+    );
+  },
+  { immediate: true },
+);
 
 const onUpdateDefaultValue = (value: unknown) => {
   partialPropertyState.value.default = value;
 };
 
-const assembledProperty = computed((): undefined | DatabaseUnknownProperty => {
-  return zodIs(partialPropertyState.value, zodDatabaseUnknownProperty)
-    ? partialPropertyState.value
-    : undefined;
-});
+const draftProperty = computed(() => getDraftProperty(partialPropertyState.value));
+
+const submitProperty = computed(() => getCreatableProperty(partialPropertyState.value));
 
 const { addSnackbar } = useSnackbar();
 
 const { post } = useDatabaseProperties(path, documentId);
 
 const onCreate = async () => {
-  if (assembledProperty.value) {
-    const id = await post(assembledProperty.value);
-    emit('created', { id, property: assembledProperty.value });
+  if (submitProperty.value) {
+    const id = await post(submitProperty.value);
+    emit('created', { id, property: submitProperty.value });
   } else {
     addSnackbar({ text: 'Property is not fully filled' });
   }
@@ -91,7 +115,7 @@ const onCreate = async () => {
 
 const resetState = () => {
   partialPropertyState.value = {};
-  typeSelect.value = [PROPERTY_TYPES.PROPERTY_TYPE_STRING];
+  typeSelect.value = [propertyTypeOptions[0].type];
 };
 
 const onCancel = () => {
@@ -144,18 +168,19 @@ const propertyNameModel = computed<string | undefined>({
 
       <template #options>
         <MDSelectOption
-          v-for="propertyType in PROPERTY_TYPES"
-          :key="propertyType"
-          :value="propertyType"
-          :label="propertyType"
+          v-for="descriptor in propertyTypeOptions"
+          :key="descriptor.type"
+          :value="descriptor.type"
+          :label="descriptor.label"
         />
       </template>
     </MDSelectBase>
 
     <slot
-      v-if="assembledProperty"
+      v-if="draftProperty"
       name="after"
-      :property="assembledProperty"
+      :property="draftProperty"
+      :submit-property="submitProperty"
       :on-update-default-value="onUpdateDefaultValue"
       :on-update-property="onUpdateProperty"
     />

@@ -4,14 +4,10 @@ import { MDSymbol } from '@shared/ui/Icon';
 defineProps<{
   value: unknown;
 }>();
-
-const emit = defineEmits<{
-  click: [];
-}>();
 </script>
 
 <template>
-  <span class="string" @click="emit('click')">
+  <span class="string">
     <MDSymbol v-if="!value" name="unknown_med" class="string__empty" />
 
     <template v-else>

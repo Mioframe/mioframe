@@ -10,3 +10,8 @@ export const zodBooleanProperty = extend(zodGeneralProperty(literal(PROPERTY_TYP
 });
 
 export type BooleanProperty = output<typeof zodBooleanProperty>;
+
+export const createBooleanProperty = (name: string): BooleanProperty => ({
+  name,
+  type: PROPERTY_TYPE_BOOLEAN,
+});

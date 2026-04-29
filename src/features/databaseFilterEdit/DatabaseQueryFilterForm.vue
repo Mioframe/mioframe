@@ -14,13 +14,10 @@ import DatabaseUnaryFilterFormDialog from './DatabaseUnaryFilterFormDialog.vue';
 import { get, set } from 'es-toolkit/compat';
 import { isUndefined } from 'es-toolkit';
 import { isArray, isEnumValue } from '@shared/lib/typeGuards';
-// FIXME: violation FSD
-import ValueField from '@widget/DocumentView/Database/ValueField.vue';
 import { zodIs } from '@shared/lib/validateZodScheme';
 import { MDIconButton } from '@shared/ui/Button';
 import type { FilterPath } from './types';
 import { zodFilterPath } from './types';
-
 const props = defineProps<{
   path: string;
   documentId: AMDocumentId;
@@ -29,6 +26,11 @@ const props = defineProps<{
 
 defineSlots<{
   value: (p: { value: unknown; propertyId: DatabasePropertyId }) => unknown;
+  valueField: (p: {
+    value: unknown;
+    propertyId: DatabasePropertyId;
+    updateValue: (value: unknown) => void;
+  }) => unknown;
 }>();
 
 const { path: directoryPath, documentId, viewId } = toRefs(props);
@@ -98,6 +100,12 @@ const onCancelFilterForm = () => {
   temporaryStateNewFilter.value = undefined;
 };
 
+const onUpdateTemporaryFilterValue = (value: unknown) => {
+  if (temporaryStateNewFilter.value) {
+    temporaryStateNewFilter.value.value = value;
+  }
+};
+
 const onClickRemove = async (pathFilter: PropertyKey[]) => {
   await removeFilter(pathFilter);
 };
@@ -130,10 +138,10 @@ const onClickRemove = async (pathFilter: PropertyKey[]) => {
           :value="value"
           :property-id="property"
         >
-          <span>{{ value }}</span>
+          <span>Unsupported filter value renderer</span>
         </slot>
 
-        <span v-else>{{ value }}</span>
+        <span v-else>Unsupported filter value renderer</span>
 
         <MDIconButton
           :tooltip="`remove object ${filterPath.join('.')}`"
@@ -171,13 +179,14 @@ const onClickRemove = async (pathFilter: PropertyKey[]) => {
       @apply="onApplyFilterForm"
     >
       <template v-if="temporaryPropertyId" #valueField>
-        <ValueField
-          v-model:value="temporaryStateNewFilter.value"
-          :directory-path="directoryPath"
-          :document-id="documentId"
+        <slot
+          name="valueField"
+          :value="temporaryStateNewFilter.value"
           :property-id="temporaryPropertyId"
-          autofocus
-        />
+          :update-value="onUpdateTemporaryFilterValue"
+        >
+          <span>Unsupported filter value editor</span>
+        </slot>
       </template>
     </DatabaseUnaryFilterFormDialog>
   </div>

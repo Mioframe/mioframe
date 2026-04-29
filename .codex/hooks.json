@@ -6,8 +6,8 @@
           {
             "type": "command",
             "command": "sh scripts/byterover/codexHooks.sh SessionStart",
-            "statusMessage": "Syncing BRV memory",
-            "timeout": 120000
+            "statusMessage": "Preparing BRV sync state",
+            "timeout": 4000
           }
         ]
       }
@@ -18,20 +18,8 @@
           {
             "type": "command",
             "command": "sh scripts/byterover/codexHooks.sh UserPromptSubmit",
-            "statusMessage": "Checking BRV memory sync",
-            "timeout": 120000
-          }
-        ]
-      }
-    ],
-    "PostToolUse": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "sh scripts/byterover/codexHooks.sh PostToolUse",
-            "statusMessage": "Refreshing BRV memory sync",
-            "timeout": 120000
+            "statusMessage": "Syncing BRV memory",
+            "timeout": 8000
           }
         ]
       }
@@ -43,7 +31,7 @@
             "type": "command",
             "command": "sh scripts/byterover/codexHooks.sh Stop",
             "statusMessage": "Publishing BRV memory",
-            "timeout": 120000
+            "timeout": 8000
           }
         ]
       }

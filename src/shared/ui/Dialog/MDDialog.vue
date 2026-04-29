@@ -5,7 +5,7 @@ import { TeleportContainer } from '@shared/lib/teleportContainer';
 import DialogForm from './DialogForm.vue';
 import type { MaybeElement } from '@vueuse/core';
 
-withDefaults(
+const props = withDefaults(
   defineProps<{
     /**
      * unique dialog title
@@ -37,6 +37,14 @@ const slots = defineSlots<{
 const dialogContainer = useOverlayContainer();
 
 const dialogEl = useTemplateRef<MaybeElement>('dialogEl');
+
+const onApplyAction = () => {
+  emit('apply');
+};
+
+const onCancelAction = () => {
+  emit('cancel');
+};
 </script>
 
 <template>
@@ -50,8 +58,9 @@ const dialogEl = useTemplateRef<MaybeElement>('dialogEl');
       :apply-label="applyLabel"
       :has-cancel-action="hasCancelAction"
       :loading="loading"
-      @apply="emit('apply')"
-      @cancel="emit('cancel')"
+      :class="props.class"
+      @apply="onApplyAction"
+      @cancel="onCancelAction"
     >
       <template #default>
         <slot />

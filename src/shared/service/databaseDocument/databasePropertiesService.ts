@@ -12,12 +12,47 @@ import {
   strictRecordSet,
 } from '@shared/lib/strictRecord';
 import type { PatchSource } from '@shared/lib/changeObject';
-import { deepPatchJsonObject } from '@shared/lib/changeObject';
+import { deepPatchJsonObject, isUnknownRecord } from '@shared/lib/changeObject';
 import { stringPath } from '../directories';
 import { distinctUntilChanged, map, type Observable } from 'rxjs';
 import { defineObservableQuery } from '@shared/lib/useObservableQuery';
-import { isEqual } from 'es-toolkit';
+import { cloneDeep, isEqual } from 'es-toolkit';
 import { defineCacheObservable } from '@shared/lib/defineCacheObservable';
+
+const pruneUndefinedJsonFields = (value: unknown): void => {
+  if (Array.isArray(value)) {
+    for (let index = value.length - 1; index >= 0; index -= 1) {
+      const nestedValue = value[index];
+
+      if (nestedValue === undefined) {
+        value.splice(index, 1);
+      } else {
+        pruneUndefinedJsonFields(nestedValue);
+      }
+    }
+
+    return;
+  }
+
+  if (isUnknownRecord(value)) {
+    for (const [key, nestedValue] of Object.entries(value)) {
+      if (nestedValue === undefined) {
+        // eslint-disable-next-line @typescript-eslint/no-dynamic-delete -- undefined keys must be removed before Automerge write
+        delete value[key];
+      } else {
+        pruneUndefinedJsonFields(nestedValue);
+      }
+    }
+  }
+};
+
+const removeUndefinedJsonFields = (property: DatabaseUnknownProperty): DatabaseUnknownProperty => {
+  const normalizedProperty = cloneDeep(property);
+
+  pruneUndefinedJsonFields(normalizedProperty);
+
+  return normalizedProperty;
+};
 
 export const useDatabasePropertiesService = (
   databaseState$: (q: {
@@ -70,8 +105,10 @@ export const useDatabasePropertiesService = (
     property: DatabaseUnknownProperty,
     id: DatabasePropertyId = generatePropertyId(),
   ) => {
+    const normalizedProperty = removeUndefinedJsonFields(property);
+
     await changeDatabase(path, documentId, (state) => {
-      strictRecordSet(state.properties, id, property);
+      strictRecordSet(state.properties, id, normalizedProperty);
     });
 
     return id;

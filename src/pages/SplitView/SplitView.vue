@@ -14,6 +14,8 @@ const settingsNavigationButton = defineNavigationButton({
   symbol: 'settings',
 });
 
+const navigationButtons: NavigationButton[] = [homeNavigationButton, settingsNavigationButton];
+
 const { open, back } = useStackNavigation();
 
 const onClickNavigation = async (button: NavigationButton) => {
@@ -55,7 +57,7 @@ const onClickBack = () => {
 <template>
   <MDSplitLayout
     class="main-view"
-    :navigation-buttons="[homeNavigationButton, settingsNavigationButton]"
+    :navigation-buttons="navigationButtons"
     has-menu-button
     :active-navigation-button="activeNavigationButton"
     :panes="panes"

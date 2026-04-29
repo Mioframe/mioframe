@@ -4,7 +4,7 @@ Inherits the rules from `src/entities/AGENTS.md`. Applies to `src/entities/datab
 
 ## Contains
 
-- Database view read state, selected-view access, and small reusable view-selection UI.
+- Database view read state, selected-view and effective-view access, and small reusable view-selection UI.
 
 ## Patterns
 

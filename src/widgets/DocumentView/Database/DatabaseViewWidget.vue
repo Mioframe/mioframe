@@ -14,11 +14,11 @@ import DatabaseViewLayout from './DatabaseViewLayout.vue';
 import DatabaseToolbar from './DatabaseToolbar.vue';
 import { DatabaseItemEditDialog } from '@feature/databaseItemEdit';
 import { isUndefined } from 'es-toolkit';
-import ValueField from './ValueField.vue';
+import DatabasePropertyValueFieldById from './DatabasePropertyValueFieldById.vue';
 import { MD_SYS_TYPESCALE } from '@shared/lib/md';
 import { useDatabaseProperties } from '@entity/databaseProperty';
 import { DomainError } from '@shared/lib/error';
-import { useDatabaseViews } from '@entity/databaseView';
+import { useDatabaseViewSelection } from '@entity/databaseView';
 import { useDatabaseData } from '@entity/databaseData/useDatabaseData';
 
 const props = defineProps<{
@@ -27,8 +27,12 @@ const props = defineProps<{
 }>();
 
 const { directoryPath: path, documentId } = toRefs(props);
-
-const firstViewId = computed(() => databaseViewList.value?.at(0)?.[0]);
+const stateExplicitViewId = shallowRef<DatabaseViewId>();
+const {
+  viewList: databaseViewList,
+  explicitViewId,
+  effectiveViewId,
+} = useDatabaseViewSelection(path, documentId, stateExplicitViewId);
 
 const documentError = computed(() => {
   if (databaseViewList.value instanceof DomainError) {
@@ -37,17 +41,6 @@ const documentError = computed(() => {
 
   return undefined;
 });
-
-const stateSelectedViewId = shallowRef<DatabaseViewId>();
-
-const selectedViewId = computed({
-  get: () => {
-    return stateSelectedViewId.value ?? firstViewId.value;
-  },
-  set: (id) => (stateSelectedViewId.value = id),
-});
-
-const { views: databaseViewList } = useDatabaseViews(path, documentId);
 
 enum ITEM_CONTEXT_ACTION {
   edit,
@@ -106,6 +99,14 @@ const hasProperties = computed(() =>
 );
 
 const databaseViewRef = useTemplateRef('databaseViewRef');
+
+const onCancelEditItemDialog = () => {
+  isShowEditItemDialog.value = false;
+};
+
+const onUpdatedEditItemDialog = () => {
+  isShowEditItemDialog.value = false;
+};
 </script>
 
 <template>
@@ -122,7 +123,7 @@ const databaseViewRef = useTemplateRef('databaseViewRef');
       </section>
 
       <DatabaseToolbar
-        v-model:selected-view-id="selectedViewId"
+        v-model:explicit-view-id="explicitViewId"
         :document-id="documentId"
         :directory-path="path"
         :auto-hide-target="databaseViewRef"
@@ -132,7 +133,7 @@ const databaseViewRef = useTemplateRef('databaseViewRef');
     <DatabaseViewLayout
       v-else
       :document-id="documentId"
-      :view-id="selectedViewId"
+      :view-id="effectiveViewId"
       :path="path"
       class="database-view__layout"
     >
@@ -142,20 +143,20 @@ const databaseViewRef = useTemplateRef('databaseViewRef');
           :property-id="propertyId"
           :document-id="documentId"
           :directory-path="path"
-          @update:property="onUpdateProperty(propertyId, $event)"
+          @update:property="($event) => onUpdateProperty(propertyId, $event)"
         />
       </template>
 
       <template #action="{ itemId }">
         <MDContextMenuButton
           :btns="itemContextualButtons"
-          @click="onClickItemContextBtn($event, itemId)"
+          @click="($event) => onClickItemContextBtn($event, itemId)"
         />
       </template>
 
       <template #after>
         <DatabaseToolbar
-          v-model:selected-view-id="selectedViewId"
+          v-model:explicit-view-id="explicitViewId"
           :document-id="documentId"
           :directory-path="path"
           :auto-hide-target="databaseViewRef"
@@ -169,17 +170,18 @@ const databaseViewRef = useTemplateRef('databaseViewRef');
       :document-id="documentId"
       :item-id="editedItemId"
       apply-label="Edit"
-      @cancel="isShowEditItemDialog = false"
-      @updated="isShowEditItemDialog = false"
+      @cancel="onCancelEditItemDialog"
+      @updated="onUpdatedEditItemDialog"
     >
       <template #valueField="{ update, value, propertyId, index }">
-        <ValueField
+        <DatabasePropertyValueFieldById
           :document-id="documentId"
           :property-id="propertyId"
           :value="value"
           :directory-path="path"
           :autofocus="!index"
           @update:value="update"
+          @update:property="($event) => onUpdateProperty(propertyId, $event)"
         />
       </template>
     </DatabaseItemEditDialog>

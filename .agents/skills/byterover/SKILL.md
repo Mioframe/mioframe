@@ -15,8 +15,9 @@ In Codex, run `brv` outside the default sandbox. `brv` starts a local daemon and
 
 ## Workflow
 
-1.  **Before Thinking:** Run `brv query` to understand existing patterns.
-2.  **After Implementing:** Run `brv curate` to save new patterns/decisions.
+1.  **Before Broad Exploration:** Run `brv search` first to find relevant stored context without LLM synthesis.
+2.  **When Search Is Insufficient:** Use `brv query` only when local search results are insufficient or a synthesized answer is needed.
+3.  **After Implementing:** Use `brv curate` only for durable decisions, confirmed pitfalls, or reusable project rules.
 
 ## Commands
 

@@ -7,13 +7,21 @@ import {
   type DatabaseViewId,
   type DatabaseViewsMap,
 } from '../migrations/versions';
+import { getNextViewOrder } from '../getNextViewOrder';
 
 export type MutationFn = (views: DatabaseViewsMap) => unknown;
 
 export const addViewMutation = (body: DataBaseStateLatest, view: DatabaseView): DatabaseViewId => {
   const viewId = generateViewId();
 
-  deepPatchJsonObject(body, { views: { [viewId]: view } });
+  deepPatchJsonObject(body, {
+    views: {
+      [viewId]: {
+        ...view,
+        order: getNextViewOrder(body.views),
+      },
+    },
+  });
 
   return viewId;
 };

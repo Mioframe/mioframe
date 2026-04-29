@@ -1,29 +1,25 @@
 <script setup lang="ts">
-import { zodIs } from '@shared/lib/validateZodScheme';
 import { MDSymbol } from '@shared/ui/Icon';
 import { isNil, uniq } from 'es-toolkit';
 import { computed, ref, toRefs, useTemplateRef } from 'vue';
 import type { ParentRelation, RelationValue } from './model';
-import { zodRelationValue } from './model';
 import type { AMDocumentId } from '@shared/lib/automerge';
 import type { DatabasePropertyId, DatabaseViewId } from '@shared/lib/databaseDocument';
-import { useRelationProperty } from './useRelationProperty';
 import { hasOwnKey } from '@shared/lib/typeGuards/hasOwnKey';
 import { get } from 'es-toolkit/compat';
 import { MDButton } from '@shared/ui/Button';
 import { unrefElement, type MaybeElement } from '@vueuse/core';
 import { MDRichTooltip } from '@shared/ui/Tooltips';
+import { zodIs } from '@shared/lib/validateZodScheme';
+import { type RelationProperty, zodRelationValue } from './model';
 
 const props = defineProps<{
   value: unknown;
-  documentId: AMDocumentId;
-  propertyId: DatabasePropertyId;
   directoryPath: string;
+  property: RelationProperty;
+  propertyId: DatabasePropertyId;
+  viewId?: DatabaseViewId | undefined;
   parentRelation?: ParentRelation | undefined;
-}>();
-
-const emit = defineEmits<{
-  click: [];
 }>();
 
 defineSlots<{
@@ -36,17 +32,13 @@ defineSlots<{
   }) => unknown;
 }>();
 
-const { directoryPath, value, documentId, propertyId, parentRelation } = toRefs(props);
-
-const { property } = useRelationProperty(directoryPath, documentId, propertyId);
+const { directoryPath, value, property, propertyId, viewId, parentRelation } = toRefs(props);
 
 const verifiedValue = computed(() =>
   zodIs(value.value, zodRelationValue) && value.value.length > 0 ? value.value : undefined,
 );
 
-const relationDocumentId = computed(() => property.value?.relation.documentId);
-
-const relationViewId = computed(() => property.value?.relation.viewId);
+const relationDocumentId = computed(() => property.value.relation.documentId);
 
 const hasRenderRecursion = computed(() => {
   if (
@@ -84,10 +76,15 @@ const interactionOutside = (e: Event) => {
     showValue.value = false;
   }
 };
+
+const onClickShowValueButton = (e: Event) => {
+  e.stopPropagation();
+  showValue.value = !showValue.value;
+};
 </script>
 
 <template>
-  <div class="relation-value" @click="emit('click')">
+  <div class="relation-value">
     <MDSymbol
       v-if="isNil(verifiedValue) || !relationDocumentId"
       name="unknown_med"
@@ -100,7 +97,7 @@ const interactionOutside = (e: Event) => {
         :label="`${showValue ? 'hide' : 'show'} value`"
         color="text"
         size="small"
-        @click="showValue = !showValue"
+        @click="onClickShowValueButton"
       >
         <template #icon>
           <MDSymbol v-if="!showValue" name="visibility" />
@@ -121,7 +118,7 @@ const interactionOutside = (e: Event) => {
             :value="verifiedValue"
             :relation-document-id="relationDocumentId"
             :relation-directory-path="directoryPath"
-            :view-id="relationViewId"
+            :view-id="viewId"
             :parent-relation="mergedParentRelation"
           >
             {{ verifiedValue }}
@@ -135,7 +132,7 @@ const interactionOutside = (e: Event) => {
         :value="verifiedValue"
         :relation-document-id="relationDocumentId"
         :relation-directory-path="directoryPath"
-        :view-id="relationViewId"
+        :view-id="viewId"
         :parent-relation="mergedParentRelation"
       >
         {{ verifiedValue }}
@@ -147,6 +144,7 @@ const interactionOutside = (e: Event) => {
 <style lang="css" scoped>
 .relation-value {
   display: inline-block;
+  overflow: auto;
 
   &__empty {
     opacity: 0.5;

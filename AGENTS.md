@@ -13,6 +13,10 @@ Applies to the whole repository unless a deeper `AGENTS.md` overrides it.
 
 ## Patterns
 
+- Prefer plan-first implementation over broad discovery.
+- Before broad repository exploration, use ByteRover local search to recall prior project decisions; use synthesized queries only when search results are insufficient.
+- Before editing, identify the smallest affected FSD owner layer and read only task-relevant files plus direct imports unless the task proves wider impact.
+- Split cross-layer work into separate schema/service, entity, feature, widget, and verification passes.
 - Keep changes in the layer that owns the behavior, and import through `index.ts` when a public entry point exists.
 - Preserve FSD boundaries: `pages` compose screens, `widgets` compose larger sections, `features` own user actions, `entities` own domain reads and derived state, and `shared` stays upper-layer-free.
 - Keep ByteRover usage details in the `byterover` skill. Use `AGENTS.md` for stable repo policy, not step-by-step `brv` runbooks.
@@ -20,12 +24,23 @@ Applies to the whole repository unless a deeper `AGENTS.md` overrides it.
 - Treat DOM parentage, scroll ownership, focus, teleport, and overlay wiring as concrete runtime contracts. Check the rendered hierarchy before moving wrappers or composition boundaries.
 - Keep the UI aligned with Material 3 expectations and optimize for mobile browsers first. Assume large datasets and low-end devices, and keep main-thread work bounded.
 - Keep component and composable contracts narrow. Prefer IDs, primitive values, small display records, and explicit emits or slots over service bags, deeply nested configs, or mixed read/write models.
+- Keep TSDoc on every public API accurate and complete. If you touch a public export that is missing TSDoc or has stale TSDoc, update it as part of the same change.
+- Prefer explicit component props and named handlers over object-literal `v-bind` bags and inline template callbacks. Keep template contracts readable and mechanically checkable.
 - Keep validation, parsing, and extraction close to the contract or boundary that defines them.
 - Treat subscriptions, listeners, workers, timers, caches, file handles, and blob URLs as lifecycle-managed resources.
 - Prefer typed collection helpers over raw `Object.keys`, `Object.values`, and `Object.entries` when iterating typed records. Do not add local type assertions just to paper over iteration typing outside rare boundary adapters.
 - For CRDT-backed state, mutate live nested objects inside the owning change callback, never assign a live document object back into the same document, and prefer shared helpers such as `put`, `patch`, `deepPutJsonObject`, and `deepPatchJsonObject` when they match the write shape.
 - When progress is knowable, surface progress instead of falling back to an indeterminate spinner.
 - Keep unit tests colocated with the source file they verify, using sibling `*.test.ts` files. Do not introduce `__tests__` directories.
+
+## Testing UI and Components
+
+- Do not use unit tests as the default verification method for Vue UI components.
+- Component behavior that depends on real DOM layout, focus, keyboard navigation, pointer or touch input, teleport, overlays, scrolling, responsive styling, browser APIs, or Material state visuals must be verified with Playwright/e2e or a reproducible browser smoke check.
+- Move reusable UI state transitions and business rules into composables or pure helpers, and cover those with focused unit tests.
+- Unit tests remain the preferred verification method for composables, pure helpers, schemas, migrations, services, storage helpers, CRDT write helpers, state transitions, validation, normalization, and pure transformations.
+- Component unit tests are allowed for small render or wiring contracts that do not depend on browser layout or interaction semantics.
+- The absence or removal of a Vue component unit test is not a regression by itself when the behavior is covered by Playwright/e2e, a reproducible browser smoke check, or focused tests for extracted composable or helper logic.
 
 ## Anti-patterns
 
@@ -45,6 +60,7 @@ Applies to the whole repository unless a deeper `AGENTS.md` overrides it.
 - UI-facing layers may cross into background logic only through explicit proxy clients. Do not directly import `*Service` modules into `pages`, `widgets`, `features`, `entities`, or shared UI.
 - Use `pnpm` for package management and project commands.
 - After edits, run the narrowest relevant verification. For logic changes, run at least `pnpm type-check`; add focused `vitest`, Playwright, or reproducible smoke checks for behavior, schema, service, or storage changes.
+- During implementation, use targeted verification. Run full e2e, full lint, or broad mutation checks only when explicitly requested or as final verification.
 - When creating or modifying tests, run the narrowest relevant mutation check for the touched test scope in addition to the focused functional verification.
 - After editing files that are covered by linting or formatting rules, run the narrowest relevant targeted `oxlint`, `eslint --fix`, and/or `oxfmt` pass for the touched scope.
 - Prefer targeted `oxlint`, `eslint --fix`, and `oxfmt` runs over repo-wide commands.
