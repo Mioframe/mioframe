@@ -3,7 +3,7 @@ import { DatabasePropertyList } from '@entity/databaseProperty';
 import { DatabasePropertyRemoveDialog } from '@feature/databasePropertyRemove';
 import { DatabasePropertyEditDialog } from '@feature/databasePropertyEdit';
 import type { AMDocumentId } from '@shared/lib/automerge';
-import type { DatabasePropertyId, DatabaseUnknownProperty } from '@shared/lib/databaseDocument';
+import type { DatabasePropertyId } from '@shared/lib/databaseDocument';
 import { MD_SYS_TYPESCALE } from '@shared/lib/md';
 import { MDButton } from '@shared/ui/Button';
 import { MDSymbol } from '@shared/ui/Icon';
@@ -22,8 +22,6 @@ defineProps<{
 const emit = defineEmits<{
   closed: [];
 }>();
-
-const DEFAULT_VALUE_LABEL = 'Default value';
 
 enum PROPERTY_ACTION {
   remove,
@@ -90,19 +88,6 @@ const onCreatedProperty = () => {
 const onCancelCreateProperty = () => {
   isShowAddProperty.value = false;
 };
-
-const getDefaultValueProperty = (property: DatabaseUnknownProperty): DatabaseUnknownProperty => ({
-  ...property,
-  name: DEFAULT_VALUE_LABEL,
-});
-
-const getUpdatedDefaultValueProperty = (
-  property: DatabaseUnknownProperty,
-  updatedProperty: DatabaseUnknownProperty,
-): DatabaseUnknownProperty => ({
-  ...updatedProperty,
-  name: property.name,
-});
 </script>
 
 <template>
@@ -159,13 +144,11 @@ const getUpdatedDefaultValueProperty = (
 
         <DatabasePropertyValueField
           :value="property.default"
-          :property="getDefaultValueProperty(property)"
+          property-label="Default value"
+          :property="property"
           :directory-path="directoryPath"
           @update:value="onUpdateDefaultValue"
-          @update:property="
-            (updatedProperty) =>
-              onUpdateProperty(getUpdatedDefaultValueProperty(property, updatedProperty))
-          "
+          @update:property="onUpdateProperty"
         />
       </template>
     </DatabasePropertyEditDialog>

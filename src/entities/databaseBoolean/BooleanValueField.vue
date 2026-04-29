@@ -4,9 +4,10 @@ import { MDCheckboxField } from '@shared/ui/Checkbox';
 import { isUndefined } from 'es-toolkit';
 import { computed } from 'vue';
 
-const { modelValue, property, disabled, autofocus } = defineProps<{
+const { modelValue, property, disabled, autofocus, label } = defineProps<{
   property: BooleanProperty;
   modelValue: unknown;
+  label?: string | undefined;
   disabled?: boolean;
   autofocus?: boolean;
 }>();
@@ -26,7 +27,7 @@ const value = computed({
 <template>
   <MDCheckboxField
     v-model:model-value="value"
-    :label="property.name"
+    :label="label ?? property.name"
     class="boolean-property-field"
     :indeterminate="property.indeterminate"
     :disabled="disabled"

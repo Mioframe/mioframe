@@ -1,6 +1,13 @@
+import { createNumberProperty } from '@entity/databaseNumber';
+import { createStringProperty } from '@entity/databaseString';
 import { Repo } from '@automerge/automerge-repo';
 import { describe, expect, it } from 'vitest';
-import { getCreatableProperty, getDraftProperty, type PropertyDraft } from './propertyDraft';
+import {
+  getCreatableProperty,
+  getDraftProperty,
+  getTypeSwitchedPropertyDraft,
+  type PropertyDraft,
+} from './propertyDraft';
 
 describe('propertyDraft', () => {
   it('rejects drafts that do not satisfy the generic property contract', () => {
@@ -44,5 +51,20 @@ describe('propertyDraft', () => {
 
     expect(getDraftProperty(propertyDraft)).toEqual(propertyDraft);
     expect(getCreatableProperty(propertyDraft)).toEqual(propertyDraft);
+  });
+
+  it('resets default when switching property type while keeping the name', () => {
+    const propertyDraft: PropertyDraft = {
+      name: 'Estimate',
+      type: 'string',
+      default: '42',
+    };
+
+    expect(getTypeSwitchedPropertyDraft(propertyDraft, createNumberProperty)).toEqual(
+      createNumberProperty('Estimate'),
+    );
+    expect(
+      getTypeSwitchedPropertyDraft(propertyDraft, createStringProperty).default,
+    ).toBeUndefined();
   });
 });

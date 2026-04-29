@@ -14,6 +14,17 @@ export type PropertyDraft = PartialDeep<Omit<DatabaseUnknownProperty, 'name' | '
   type?: DatabaseUnknownProperty['type'] | undefined;
 };
 
+export type PropertyDraftFactory = (name: string) => DatabaseUnknownProperty;
+
+export const getTypeSwitchedPropertyDraft = (
+  propertyDraft: PropertyDraft,
+  createProperty: PropertyDraftFactory,
+): PropertyDraft => {
+  const previousName = propertyDraft.name ?? '';
+
+  return createProperty(previousName);
+};
+
 export const getDraftProperty = (
   propertyDraft: PropertyDraft,
 ): DatabaseUnknownProperty | undefined =>
