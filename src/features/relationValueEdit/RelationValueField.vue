@@ -69,7 +69,7 @@ const onClickViewChip = (viewId: DatabaseViewId) => {
 </script>
 
 <template>
-  <div class="relation-value-field">
+  <div class="relation-value-field" role="group" :aria-label="property.name">
     <DatabaseViewChipsList
       :directory-path="directoryPath"
       class="relation-value-field__views"
