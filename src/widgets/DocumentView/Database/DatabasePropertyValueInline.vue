@@ -18,27 +18,13 @@ const props = withDefaults(
   defineProps<{
     value: unknown;
     property?: DatabaseUnknownProperty | undefined;
-    editable?: boolean;
     directoryPath: string;
     propertyId: DatabasePropertyId;
     parentRelation?: ParentRelation | undefined;
-    tabIndex?: number;
   }>(),
-  {
-    tabIndex: 0,
-  },
+  {},
 );
-
-const emit = defineEmits<{
-  click: [];
-}>();
-
-const { value, property, editable, directoryPath, propertyId, parentRelation, tabIndex } =
-  toRefs(props);
-
-const onClick = () => {
-  emit('click');
-};
+const { value, property, directoryPath, propertyId, parentRelation } = toRefs(props);
 </script>
 
 <template>
@@ -48,24 +34,13 @@ const onClick = () => {
     v-else-if="zodIs(property, zodBooleanProperty)"
     :value="value"
     :property="property"
-    :editable="editable"
-    :tab-index="tabIndex"
-    @click="onClick"
   />
 
-  <NumberValueInline
-    v-else-if="zodIs(property, zodNumberProperty)"
-    :value="value"
-    @click="onClick"
-  />
+  <NumberValueInline v-else-if="zodIs(property, zodNumberProperty)" :value="value" />
 
-  <StringValueInline
-    v-else-if="zodIs(property, zodStringProperty)"
-    :value="value"
-    @click="onClick"
-  />
+  <StringValueInline v-else-if="zodIs(property, zodStringProperty)" :value="value" />
 
-  <DateValueInline v-else-if="zodIs(property, zodDateProperty)" :value="value" @click="onClick" />
+  <DateValueInline v-else-if="zodIs(property, zodDateProperty)" :value="value" />
 
   <DatabaseRelationValueInline
     v-else-if="zodIs(property, zodRelationProperty)"
@@ -74,7 +49,6 @@ const onClick = () => {
     :directory-path="directoryPath"
     :property-id="propertyId"
     :parent-relation="parentRelation"
-    @click="onClick"
   />
 
   <span v-else>Unsupported property type "{{ property.type }}"</span>
