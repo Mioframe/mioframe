@@ -26,6 +26,7 @@ export const databaseStateV3 = defineVersion(
       const defaultView: DatabaseTableView = {
         layout: DB_VIEW_LAYOUT.TABLE,
         name: 'default view',
+        order: 0,
       };
 
       strictRecordSet(newState.views, defaultViewId, defaultView);

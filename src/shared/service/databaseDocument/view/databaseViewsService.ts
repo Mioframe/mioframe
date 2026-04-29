@@ -16,6 +16,7 @@ import type { PatchSource } from '@shared/lib/changeObject';
 import { deepPatchJsonObject } from '@shared/lib/changeObject';
 import { useDatabaseViewSortService } from './databaseViewSortService';
 import { setupDatabaseViewFilterService } from './databaseViewFilterService';
+import { getNextViewOrder } from '@shared/lib/databaseDocument/getNextViewOrder';
 import { distinctUntilChanged, map, type Observable } from 'rxjs';
 import { defineObservableQuery } from '@shared/lib/useObservableQuery';
 import { defineCacheObservable } from '@shared/lib/defineCacheObservable';
@@ -104,7 +105,10 @@ export const setupDatabaseViewsService = (
   const create = async (path: string, documentId: AMDocumentId, view: DatabaseView) => {
     const viewId = generateViewId();
     await changeDatabase(path, documentId, (state) => {
-      strictRecordSet(state.views, viewId, view);
+      strictRecordSet(state.views, viewId, {
+        ...view,
+        order: getNextViewOrder(state.views),
+      });
     });
     return viewId;
   };
