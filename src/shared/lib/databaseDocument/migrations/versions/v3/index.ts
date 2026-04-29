@@ -6,7 +6,26 @@ import { deepPatchJsonObject } from '@shared/lib/changeObject';
 import { isEmpty } from 'es-toolkit/compat';
 import type { DatabaseTableView } from '..';
 import { cloneDeep } from 'es-toolkit';
-import { strictRecordSet } from '@shared/lib/strictRecord';
+import { strictRecordIterableEntries, strictRecordSet } from '@shared/lib/strictRecord';
+
+const assignMissingViewOrders = (views: DatabaseViewsMap) => {
+  let nextOrder = -1;
+
+  for (const [, view] of strictRecordIterableEntries(views)()) {
+    if (typeof view.order === 'number' && Number.isFinite(view.order) && view.order > nextOrder) {
+      nextOrder = view.order;
+    }
+  }
+
+  for (const [, view] of strictRecordIterableEntries(views)()) {
+    if (typeof view.order === 'number' && Number.isFinite(view.order)) {
+      continue;
+    }
+
+    nextOrder += 1;
+    view.order = nextOrder;
+  }
+};
 
 export const databaseStateV3 = defineVersion(
   extend(databaseStateV2.schema, {
@@ -31,6 +50,8 @@ export const databaseStateV3 = defineVersion(
 
       strictRecordSet(newState.views, defaultViewId, defaultView);
     }
+
+    assignMissingViewOrders(newState.views);
 
     return newState;
   },
