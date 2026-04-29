@@ -42,7 +42,6 @@ const { value } = useDatabaseEffectiveValue(path, documentId, itemId, propertyId
 const { post: postValue } = useDatabaseStoredValue(path, documentId, itemId, propertyId);
 
 const showEditForm = ref(false);
-const suppressNextRootClick = ref(false);
 
 const stateValue = ref<unknown>();
 const syncStateValue = () => {
@@ -100,20 +99,6 @@ const cancelEditor = () => {
 };
 
 const onRootClick = async () => {
-  if (suppressNextRootClick.value) {
-    suppressNextRootClick.value = false;
-    return;
-  }
-
-  await activateInlineValue();
-};
-
-const onInlineClick = async () => {
-  suppressNextRootClick.value = true;
-  queueMicrotask(() => {
-    suppressNextRootClick.value = false;
-  });
-
   await activateInlineValue();
 };
 
@@ -219,9 +204,6 @@ const ariaChecked = computed(() => {
       :document-id="documentId"
       :item-id="itemId"
       :property-id="propertyId"
-      :tab-index="-1"
-      editable
-      @click="onInlineClick"
     />
   </MDState>
 

@@ -22,10 +22,6 @@ const props = defineProps<{
   parentRelation?: ParentRelation | undefined;
 }>();
 
-const emit = defineEmits<{
-  click: [];
-}>();
-
 defineSlots<{
   default: (p: {
     value: RelationValue;
@@ -81,10 +77,6 @@ const interactionOutside = (e: Event) => {
   }
 };
 
-const onClick = () => {
-  emit('click');
-};
-
 const onClickShowValueButton = (e: Event) => {
   e.stopPropagation();
   showValue.value = !showValue.value;
@@ -92,7 +84,7 @@ const onClickShowValueButton = (e: Event) => {
 </script>
 
 <template>
-  <div class="relation-value" @click="onClick">
+  <div class="relation-value">
     <MDSymbol
       v-if="isNil(verifiedValue) || !relationDocumentId"
       name="unknown_med"
