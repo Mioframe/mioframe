@@ -534,18 +534,18 @@ export const removeFirstFilter = async (page: Page) => {
     .click();
 };
 
-export const getDatabaseRowTexts = async (page: Page) => {
-  const rows = page.locator('tbody[role="list"] > tr');
+export const getDatabaseRowTexts = async (root: Page | Locator) => {
+  const rows = root.locator('tbody[role="list"] > tr');
   const rowCount = await rows.count();
-  const values = await Promise.all(
-    Array.from({ length: rowCount }, async (_, index) => rows.nth(index).innerText()),
+  return Promise.all(
+    Array.from({ length: rowCount }, async (_, index) =>
+      (await rows.nth(index).innerText()).trim(),
+    ),
   );
-
-  return values.map((value) => value.trim());
 };
 
-export const expectDatabaseValuesInOrder = async (page: Page, values: string[]) => {
-  const rowTexts = await getDatabaseRowTexts(page);
+export const expectDatabaseValuesInOrder = async (root: Page | Locator, values: string[]) => {
+  const rowTexts = await getDatabaseRowTexts(root);
   const joined = rowTexts.join(' | ');
 
   let searchStartIndex = 0;

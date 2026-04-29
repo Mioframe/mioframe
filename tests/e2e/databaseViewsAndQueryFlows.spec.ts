@@ -291,6 +291,7 @@ test('uses default relation view inline and switches to a selected relation view
   const betaValue = createUniqueName('beta target');
   await addDatabaseItem(page, targetPropertyName, alphaValue);
   await addDatabaseItem(page, targetPropertyName, betaValue);
+  await addSorting(page, targetPropertyName);
 
   const descendingViewName = await addView(page, createUniqueName('descending targets'));
   await selectView(page, descendingViewName);
@@ -309,20 +310,25 @@ test('uses default relation view inline and switches to a selected relation view
   await sourceRow
     .getByRole('button', { name: new RegExp(`^${relationPropertyName}$`, 'i') })
     .click();
+  const relationField = page.getByRole('group', {
+    name: new RegExp(`^${relationPropertyName}$`, 'i'),
+  });
 
-  await expect(page.getByRole('button', { name: /^default view$/i })).toHaveClass(
+  await expect(relationField.getByRole('button', { name: /^default view$/i })).toHaveClass(
     /md-chip_selected/,
   );
   await expect
-    .poll(() => expectDatabaseValuesInOrder(page, [alphaValue, betaValue]))
+    .poll(() => expectDatabaseValuesInOrder(relationField, [alphaValue, betaValue]))
     .toBeUndefined();
 
-  await page.getByRole('button', { name: new RegExp(`^${descendingViewName}$`, 'i') }).click();
+  await relationField
+    .getByRole('button', { name: new RegExp(`^${descendingViewName}$`, 'i') })
+    .click();
   await expect(
-    page.getByRole('button', { name: new RegExp(`^${descendingViewName}$`, 'i') }),
+    relationField.getByRole('button', { name: new RegExp(`^${descendingViewName}$`, 'i') }),
   ).toHaveClass(/md-chip_selected/);
   await expect
-    .poll(() => expectDatabaseValuesInOrder(page, [betaValue, alphaValue]))
+    .poll(() => expectDatabaseValuesInOrder(relationField, [betaValue, alphaValue]))
     .toBeUndefined();
 });
 
