@@ -11,7 +11,7 @@ import { MDBottomSheet, MDBottomSheetSection } from '@shared/ui/Sheets';
 import { toRefs } from 'vue';
 import { DatabaseFilterForm } from '@feature/databaseFilterEdit';
 import DatabasePropertyValueInlineById from './DatabasePropertyValueInlineById.vue';
-import ValueField from './ValueField.vue';
+import DatabasePropertyValueFieldById from './DatabasePropertyValueFieldById.vue';
 
 const props = defineProps<{
   directoryPath: string;
@@ -55,7 +55,7 @@ const onUpdateProperty = async (
           </template>
 
           <template #valueField="{ value, propertyId, updateValue }">
-            <ValueField
+            <DatabasePropertyValueFieldById
               :value="value"
               :directory-path="directoryPath"
               :document-id="documentId"

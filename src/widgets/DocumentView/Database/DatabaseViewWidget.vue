@@ -14,7 +14,7 @@ import DatabaseViewLayout from './DatabaseViewLayout.vue';
 import DatabaseToolbar from './DatabaseToolbar.vue';
 import { DatabaseItemEditDialog } from '@feature/databaseItemEdit';
 import { isUndefined } from 'es-toolkit';
-import ValueField from './ValueField.vue';
+import DatabasePropertyValueFieldById from './DatabasePropertyValueFieldById.vue';
 import { MD_SYS_TYPESCALE } from '@shared/lib/md';
 import { useDatabaseProperties } from '@entity/databaseProperty';
 import { DomainError } from '@shared/lib/error';
@@ -174,7 +174,7 @@ const onUpdatedEditItemDialog = () => {
       @updated="onUpdatedEditItemDialog"
     >
       <template #valueField="{ update, value, propertyId, index }">
-        <ValueField
+        <DatabasePropertyValueFieldById
           :document-id="documentId"
           :property-id="propertyId"
           :value="value"

@@ -10,7 +10,7 @@ import DatabaseViewsSheet from './DatabaseViewsSheet.vue';
 import DatabaseSortSheet from './DatabaseSortSheet.vue';
 import DatabasePropertiesSheet from './DatabasePropertiesSheet.vue';
 import { DbItemAddDialog } from '@feature/databaseItemEdit';
-import ValueField from './ValueField.vue';
+import DatabasePropertyValueFieldById from './DatabasePropertyValueFieldById.vue';
 import type { MaybeElement } from '@vueuse/core';
 import DatabaseFiltersSheet from './DatabaseFiltersSheet.vue';
 import { useDatabaseProperties } from '@entity/databaseProperty';
@@ -178,7 +178,7 @@ const hasProperties = computed(() => {
       @cancel="onCancelAddItem"
     >
       <template #valueField="{ update, value, propertyId, index }">
-        <ValueField
+        <DatabasePropertyValueFieldById
           :value="value"
           :document-id="documentId"
           :property-id="propertyId"
