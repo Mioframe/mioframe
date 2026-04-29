@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import type { NumberProperty } from './model';
+import { normalizeNumberValue } from './normalizeNumberValue';
 import { MDTextField } from '@shared/ui/TextField';
-import { toNumber, toString } from 'es-toolkit/compat';
+import { toString } from 'es-toolkit/compat';
 import { computed } from 'vue';
 
 const {
@@ -16,7 +17,7 @@ const {
 }>();
 
 const emit = defineEmits<{
-  'update:modelValue': [value: number];
+  'update:modelValue': [value: number | undefined];
   keydown: [payload: KeyboardEvent];
 }>();
 
@@ -25,7 +26,7 @@ const labelText = computed(() => label ?? property.name);
 const vModel = computed<string | undefined>({
   get: () => (value == null ? undefined : toString(value)),
   set: (v) => {
-    emit('update:modelValue', toNumber(v ?? ''));
+    emit('update:modelValue', normalizeNumberValue(v));
   },
 });
 
