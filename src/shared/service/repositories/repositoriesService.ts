@@ -14,6 +14,7 @@ import { defineCacheObservable } from '@shared/lib/defineCacheObservable';
 
 const setupRepositoriesService = () => {
   const { directoryContent$, vfs } = useFileSystemService();
+  const repoCache = new Map<string, Repo>();
 
   const getDocumentIdList$ = defineCacheObservable(
     ({
@@ -44,19 +45,26 @@ const setupRepositoriesService = () => {
       ),
   );
 
+  const getOrCreateRepo = (path: string) => {
+    let repo = repoCache.get(path);
+
+    if (!repo) {
+      repo = new Repo({
+        storage: createVFSAdapter(vfs, path),
+      });
+      repoCache.set(path, repo);
+    }
+
+    return repo;
+  };
+
   const repo$ = defineCacheObservable((path: string, initial: boolean = false) => {
     return getDocumentIdList$({ path }).pipe(
       filter((docs) => {
         return !(docs instanceof Error) && (initial || docs.length > 0);
       }),
       take(1),
-      switchMap(() =>
-        of(
-          new Repo({
-            storage: createVFSAdapter(vfs, path),
-          }),
-        ),
-      ),
+      switchMap(() => of(getOrCreateRepo(path))),
     );
   });
 
