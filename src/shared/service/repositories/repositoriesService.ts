@@ -117,7 +117,7 @@ const setupRepositoriesService = () => {
     return getDocumentIdList$({ path }).pipe(
       switchMap((docs) => {
         if (docs instanceof Error) {
-          throw docs;
+          return NEVER;
         }
 
         if (docs.length === 0) {

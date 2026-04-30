@@ -403,20 +403,43 @@ describe('useRepositoriesService', () => {
     expect(repoInstances.get(path)).toBeUndefined();
   });
 
-  it('getRepo$ propagates filesystem errors without creating repo', async () => {
+  it('getRepo$ keeps subscription alive after filesystem error and emits repo when documents appear', async () => {
     const path = '/repo-fs-error';
-    createDirectoryContentSubject(path, []);
+    const directoryContentSubject = createDirectoryContentSubject(path, []);
     const { useRepositoriesService } = await import('./repositoriesService');
     const service = useRepositoriesService();
     const error = new Error('directory content failed');
+    const next = vi.fn();
+    const complete = vi.fn();
+    const errorHandler = vi.fn();
 
-    directoryContentByPath.get(path)?.next(error);
+    const subscription = service.getRepo$(path).subscribe({
+      next,
+      complete,
+      error: errorHandler,
+    });
+
+    directoryContentSubject.next(error);
 
     await vi.runAllTimersAsync();
-    await expect(firstValueFrom(service.getRepo$(path))).rejects.toThrow(
-      'directory content failed',
-    );
     expect(repoInstances.get(path)).toBeUndefined();
+    expect(next).not.toHaveBeenCalled();
+    expect(complete).not.toHaveBeenCalled();
+    expect(errorHandler).not.toHaveBeenCalled();
+
+    directoryContentSubject.next([
+      [getDocumentFileName(parseAutomergeUrl(generateAutomergeUrl()).documentId), fileStat],
+    ]);
+
+    await vi.runAllTimersAsync();
+
+    expect(next).toHaveBeenCalledTimes(1);
+    expect(next.mock.calls[0]?.[0]).toBe(repoInstances.get(path)?.[0]);
+    expect(complete).not.toHaveBeenCalled();
+    expect(errorHandler).not.toHaveBeenCalled();
+    expect(repoInstances.get(path)).toHaveLength(1);
+
+    subscription.unsubscribe();
   });
 
   it('deleteDocument does not remove storage files when target document is absent', async () => {
