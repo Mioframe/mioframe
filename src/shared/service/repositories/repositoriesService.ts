@@ -73,7 +73,6 @@ const setupRepositoriesService = () => {
       return concat(of(repo), NEVER);
     }).pipe(
       finalize(() => {
-        void repo?.shutdown();
         repo = undefined;
         repoObservableCache.delete(path);
       }),
