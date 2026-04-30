@@ -25,11 +25,11 @@ import {
 } from 'rxjs';
 import { defineObservableQuery } from '@shared/lib/useObservableQuery';
 import { defineCacheObservable } from '@shared/lib/defineCacheObservable';
-import { delay } from 'es-toolkit';
-
 /** Idle timeout before an unused Automerge Repo instance is removed from service cache. */
 export const REPO_IDLE_TIMEOUT_MS = 60_000;
-const AUTOMERGE_DELETE_SETTLE_TIMEOUT_MS = 175;
+const DOCUMENT_DELETE_CLEANUP_RETRY_DELAY_MS = 50;
+const DOCUMENT_DELETE_CLEANUP_MAX_ATTEMPTS = 8;
+const DOCUMENT_DELETE_CLEANUP_EMPTY_PASSES_REQUIRED = 2;
 
 const setupRepositoriesService = () => {
   const { directoryContent$, vfs } = useFileSystemService();
@@ -122,10 +122,26 @@ const setupRepositoriesService = () => {
     );
   };
 
+  const wait = async (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
+
   async function getRepo(path: string, initial: true): Promise<Repo>;
   async function getRepo(path: string, initial?: false): Promise<undefined | Repo>;
   async function getRepo(path: string, initial = false) {
-    return firstValueFrom(repo$(path, initial));
+    if (initial) {
+      return firstValueFrom(repo$(path, true));
+    }
+
+    const documentIdList = await firstValueFrom(getDocumentIdList$({ path }));
+
+    if (documentIdList instanceof Error) {
+      throw documentIdList;
+    }
+
+    if (documentIdList.length === 0) {
+      return undefined;
+    }
+
+    return firstValueFrom(repoByPath$(path).pipe(take(1)));
   }
 
   const removeDocumentStorageFiles = async (path: string, id: AMDocumentId) => {
@@ -138,18 +154,39 @@ const setupRepositoriesService = () => {
     );
   };
 
+  const cleanupDeletedDocumentStorageFiles = async (path: string, id: AMDocumentId) => {
+    let emptyPassCount = 0;
+
+    // Cleanup must stay sequential so each pass observes storage files recreated by Automerge.
+    for (let attempt = 0; attempt < DOCUMENT_DELETE_CLEANUP_MAX_ATTEMPTS; attempt += 1) {
+      // eslint-disable-next-line no-await-in-loop -- each pass must re-read current storage state
+      const documentStorageFiles = await getDocumentStorageFiles(path, id);
+
+      if (documentStorageFiles.length === 0) {
+        emptyPassCount += 1;
+
+        if (emptyPassCount >= DOCUMENT_DELETE_CLEANUP_EMPTY_PASSES_REQUIRED) {
+          return;
+        }
+      } else {
+        emptyPassCount = 0;
+        // eslint-disable-next-line no-await-in-loop -- deletion must finish before next storage scan
+        await removeDocumentStorageFiles(path, id);
+      }
+
+      if (attempt < DOCUMENT_DELETE_CLEANUP_MAX_ATTEMPTS - 1) {
+        // eslint-disable-next-line no-await-in-loop -- wait needed so late Automerge files can appear before next pass
+        await wait(DOCUMENT_DELETE_CLEANUP_RETRY_DELAY_MS);
+      }
+    }
+  };
+
   const deleteDocument = async (path: string, id: AMDocumentId) => {
     const repo = await getRepo(path);
 
     repo?.delete(id);
 
-    await delay(AUTOMERGE_DELETE_SETTLE_TIMEOUT_MS);
-
-    await removeDocumentStorageFiles(path, id);
-
-    if ((await getDocumentStorageFiles(path, id)).length > 0) {
-      await removeDocumentStorageFiles(path, id);
-    }
+    await cleanupDeletedDocumentStorageFiles(path, id);
   };
 
   const createDocument = async (path: string, initialValue: CFRDocumentContent) => {

@@ -63,6 +63,26 @@ describe('propertyDraft', () => {
       name: 'Estimate',
       type: 'number',
     });
+
+    expect(
+      getCreatableProperty({
+        name: 'Done',
+        type: 'boolean',
+      }),
+    ).toEqual({
+      name: 'Done',
+      type: 'boolean',
+    });
+
+    expect(
+      getCreatableProperty({
+        name: 'Due date',
+        type: 'date',
+      }),
+    ).toEqual({
+      name: 'Due date',
+      type: 'date',
+    });
   });
 
   it('rejects unknown or incomplete property kinds as creatable', () => {
