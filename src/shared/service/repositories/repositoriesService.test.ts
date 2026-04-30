@@ -274,6 +274,30 @@ describe('useRepositoriesService', () => {
     ]);
   });
 
+  it('deleteDocument does not remove plain file that starts with document id but is not an automerge file', async () => {
+    const path = '/repo';
+    const targetDocumentId = parseAutomergeUrl(generateAutomergeUrl()).documentId;
+    const lookalikeFileName = `${targetDocumentId}_notes.txt`;
+    createDirectoryContentSubject(path, [
+      [getStorageFileName(targetDocumentId, 'snapshot', 'hash-a'), fileStat],
+      [lookalikeFileName, fileStat],
+    ]);
+    const { useRepositoriesService } = await import('./repositoriesService');
+    const service = useRepositoriesService();
+
+    const deletePromise = service.deleteDocument(path, targetDocumentId);
+
+    await vi.runAllTimersAsync();
+    await deletePromise;
+
+    expect(vfsDelete).toHaveBeenCalledTimes(1);
+    expect(vfsDelete).toHaveBeenCalledWith(
+      getDocumentPath(path, getStorageFileName(targetDocumentId, 'snapshot', 'hash-a')),
+    );
+    expect(vfsDelete).not.toHaveBeenCalledWith(getDocumentPath(path, lookalikeFileName));
+    expect(directoryContentByPath.get(path)?.getValue()).toEqual([[lookalikeFileName, fileStat]]);
+  });
+
   it('deleteDocument removes snapshot recreated right after repo.delete', async () => {
     const path = '/repo';
     const targetDocumentId = parseAutomergeUrl(generateAutomergeUrl()).documentId;
@@ -290,13 +314,15 @@ describe('useRepositoriesService', () => {
     expect(repo).toBeDefined();
 
     repo?.delete.mockImplementation(() => {
-      const currentValue = directoryContentSubject.getValue();
+      setTimeout(() => {
+        const currentValue = directoryContentSubject.getValue();
 
-      if (currentValue instanceof Error) {
-        throw currentValue;
-      }
+        if (currentValue instanceof Error) {
+          throw currentValue;
+        }
 
-      directoryContentSubject.next([...currentValue, [recreatedSnapshotFile, fileStat]]);
+        directoryContentSubject.next([...currentValue, [recreatedSnapshotFile, fileStat]]);
+      }, 0);
     });
 
     const deletePromise = service.deleteDocument(path, targetDocumentId);
