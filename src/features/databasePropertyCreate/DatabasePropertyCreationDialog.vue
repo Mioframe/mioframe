@@ -15,6 +15,7 @@ import {
 } from './model/propertyDraft';
 import {
   databasePropertyCreateDescriptors,
+  getDefaultDatabasePropertyCreateDescriptor,
   getDatabasePropertyCreateDescriptor,
 } from './model/databasePropertyCreateDescriptors';
 
@@ -39,7 +40,7 @@ defineSlots<{
 
 const { path, documentId } = toRefs(props);
 const partialPropertyState = ref<PropertyDraft>({});
-const defaultPropertyCreateDescriptor = databasePropertyCreateDescriptors[0]!;
+const defaultPropertyCreateDescriptor = getDefaultDatabasePropertyCreateDescriptor();
 
 const typeSelect = ref<(string | number)[]>([defaultPropertyCreateDescriptor.type]);
 

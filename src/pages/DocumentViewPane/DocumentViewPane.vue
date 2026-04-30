@@ -7,6 +7,7 @@ import { MDIconButton } from '@shared/ui/Button';
 import { DocumentRenameDialog } from '@feature/documentRename';
 import { useDocument } from '@entity/cfrDocument';
 import { DomainError } from '@shared/lib/error';
+import { MDCircularProgressIndicator } from '@shared/ui/ProgressIndicators';
 import { zodToVueProps } from '@shared/lib/zodToVueProps';
 import DatabaseViewWidget from '@widget/DocumentView/Database/DatabaseViewWidget.vue';
 import { zodQuery } from './model';
@@ -20,7 +21,7 @@ const slots = defineSlots<{
 
 const { documentDirectory, documentId } = toRefs(props);
 
-const { state: documentDescription } = useDocument(documentDirectory, documentId);
+const { state: documentDescription, isLoading } = useDocument(documentDirectory, documentId);
 
 const documentType = computed(() => {
   if (documentDescription.value instanceof DomainError) {
@@ -30,6 +31,13 @@ const documentType = computed(() => {
 });
 
 const documentName = computed(() => documentDescription.value?.name ?? 'unname');
+
+const showRenameButton = computed(
+  () =>
+    !isLoading.value &&
+    !(documentDescription.value instanceof DomainError) &&
+    !!documentDescription.value,
+);
 
 const showRenameDocument = ref(false);
 
@@ -43,7 +51,7 @@ const onCloseRenameDocument = () => {
 </script>
 
 <template>
-  <MDPane>
+  <MDPane class="document-view-pane">
     <MDAppBar :headline="documentName">
       <template v-if="!!slots.navigationButton" #leadingButton>
         <slot name="navigationButton" />
@@ -51,6 +59,7 @@ const onCloseRenameDocument = () => {
 
       <template #trailingElements>
         <MDIconButton
+          v-if="showRenameButton"
           tooltip="Rename document"
           md-symbol-name="edit"
           @click="onClickRenameDocument"
@@ -58,8 +67,12 @@ const onCloseRenameDocument = () => {
       </template>
     </MDAppBar>
 
+    <div v-if="isLoading" class="document-view-pane__loading">
+      <MDCircularProgressIndicator :size="24" />
+    </div>
+
     <DatabaseViewWidget
-      v-if="documentType === DATABASE_DOCUMENT_TYPE"
+      v-else-if="documentType === DATABASE_DOCUMENT_TYPE"
       :directory-path="documentDirectory"
       :document-id="documentId"
     />
@@ -75,3 +88,13 @@ const onCloseRenameDocument = () => {
     />
   </MDPane>
 </template>
+
+<style lang="css" scoped>
+.document-view-pane {
+  &__loading {
+    display: flex;
+    justify-content: center;
+    padding: 16px;
+  }
+}
+</style>
