@@ -5,6 +5,7 @@ import {
 } from '@automerge/automerge-repo';
 import { BehaviorSubject, firstValueFrom, Subscription } from 'rxjs';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import type { AMDocumentId } from '@shared/lib/automerge';
 import { partialKeyToFileName } from '@shared/lib/automergeAdapter';
 import { FSNodeType, type FSNodeStat } from '@shared/lib/virtualFileSystem';
 import type { CFRDocumentContent } from '@shared/lib/cfrDocument';
@@ -12,7 +13,6 @@ import type { CFRDocumentContent } from '@shared/lib/cfrDocument';
 type MockRepoInstance = {
   create: ReturnType<typeof vi.fn<(initialValue: CFRDocumentContent) => { documentId: string }>>;
   delete: ReturnType<typeof vi.fn>;
-  shutdown: ReturnType<typeof vi.fn<() => Promise<void>>>;
 };
 
 const directoryContentByPath = vi.hoisted(
@@ -24,6 +24,16 @@ const createDirectoryContentSubject = (path: string, initialValue: [string, FSNo
   const subject = new BehaviorSubject<[string, FSNodeStat][] | Error>(initialValue);
   directoryContentByPath.set(path, subject);
   return subject;
+};
+
+const getDocumentFileName = (documentId: AMDocumentId) => {
+  const fileName = partialKeyToFileName([documentId]);
+
+  if (!fileName) {
+    throw new Error(`Failed to create file name for document "${documentId}"`);
+  }
+
+  return fileName;
 };
 
 const fileStat = {
@@ -65,7 +75,6 @@ vi.mock('@automerge/automerge-repo', async (importOriginal) => {
     });
 
     readonly delete = vi.fn();
-    readonly shutdown = vi.fn(async () => undefined);
     lastCreatedValue?: CFRDocumentContent | undefined;
 
     constructor(readonly config: RepoConfig & { storage?: { path?: string | undefined } }) {
@@ -113,11 +122,9 @@ describe('useRepositoriesService', () => {
     expect(repoInstances.get(path)).toHaveLength(1);
     expect(createdRepo?.create).toHaveBeenCalledWith(initialValue);
 
-    const documentFileName = partialKeyToFileName([createdDocumentId]);
+    const documentFileName = getDocumentFileName(createdDocumentId);
 
-    expect(documentFileName).toBeDefined();
-
-    directoryContentSubject.next([[documentFileName ?? createdDocumentId, fileStat]]);
+    directoryContentSubject.next([[documentFileName, fileStat]]);
 
     const openedRepo = await firstValueFrom(service.getRepo$(path));
 
@@ -138,11 +145,11 @@ describe('useRepositoriesService', () => {
     const service = useRepositoriesService();
 
     const createdDocumentId = await service.createDocument(path, initialValue);
-    const documentFileName = partialKeyToFileName([createdDocumentId]);
+    const documentFileName = getDocumentFileName(createdDocumentId);
 
     expect(repoInstances.get(path)).toHaveLength(1);
 
-    directoryContentSubject.next([[documentFileName ?? createdDocumentId, fileStat]]);
+    directoryContentSubject.next([[documentFileName, fileStat]]);
 
     await firstValueFrom(service.getRepo$(path));
     await service.deleteDocument(path, createdDocumentId);
@@ -167,9 +174,9 @@ describe('useRepositoriesService', () => {
 
     const createdDocumentId = await service.createDocument(path, initialValue);
     const createdRepo = repoInstances.get(path)?.[0];
-    const documentFileName = partialKeyToFileName([createdDocumentId]);
+    const documentFileName = getDocumentFileName(createdDocumentId);
 
-    directoryContentSubject.next([[documentFileName ?? createdDocumentId, fileStat]]);
+    directoryContentSubject.next([[documentFileName, fileStat]]);
 
     const openedRepo = await firstValueFrom(service.getRepo$(path, false));
 
@@ -208,13 +215,10 @@ describe('useRepositoriesService', () => {
     const subscription: Subscription = service.getRepo$(path, true).subscribe();
 
     expect(repoInstances.get(path)).toHaveLength(1);
+    const firstRepo = repoInstances.get(path)?.[0];
 
     subscription.unsubscribe();
     await vi.advanceTimersByTimeAsync(REPO_IDLE_TIMEOUT_MS);
-
-    const firstRepo = repoInstances.get(path)?.[0];
-
-    expect(firstRepo?.shutdown).toHaveBeenCalledTimes(1);
 
     const recreatedRepo = await firstValueFrom(service.getRepo$(path, true));
 
@@ -236,18 +240,18 @@ describe('useRepositoriesService', () => {
 
     const createdDocumentId = await service.createDocument(path, initialValue);
     const createdRepo = repoInstances.get(path)?.[0];
-    const documentFileName = partialKeyToFileName([createdDocumentId]);
+    const documentFileName = getDocumentFileName(createdDocumentId);
 
     await vi.advanceTimersByTimeAsync(REPO_IDLE_TIMEOUT_MS - 1);
-    directoryContentSubject.next([[documentFileName ?? createdDocumentId, fileStat]]);
+    directoryContentSubject.next([[documentFileName, fileStat]]);
 
     const openedRepo = await firstValueFrom(service.getRepo$(path));
 
     expect(openedRepo).toBe(createdRepo);
-    expect(createdRepo?.shutdown).not.toHaveBeenCalled();
+    expect(repoInstances.get(path)).toHaveLength(1);
 
     await vi.advanceTimersByTimeAsync(1);
-    expect(createdRepo?.shutdown).not.toHaveBeenCalled();
+    expect(repoInstances.get(path)).toHaveLength(1);
   });
 
   it('waits for first document when initial flag is false', async () => {
@@ -263,7 +267,7 @@ describe('useRepositoriesService', () => {
 
     directoryContentSubject.next([
       ['notes.txt', fileStat],
-      [partialKeyToFileName([parseAutomergeUrl(generateAutomergeUrl()).documentId])!, fileStat],
+      [getDocumentFileName(parseAutomergeUrl(generateAutomergeUrl()).documentId), fileStat],
     ]);
 
     await expect(pendingRepoPromise).resolves.toBeDefined();
@@ -276,7 +280,7 @@ describe('useRepositoriesService', () => {
     const { useRepositoriesService } = await import('./repositoriesService');
     const service = useRepositoriesService();
     const firstDocumentId = parseAutomergeUrl(generateAutomergeUrl()).documentId;
-    const firstFileName = partialKeyToFileName([firstDocumentId])!;
+    const firstFileName = getDocumentFileName(firstDocumentId);
     const secondDocumentId = parseAutomergeUrl(generateAutomergeUrl()).documentId;
 
     directoryContentSubject.next(new Error('directory failed'));
@@ -288,7 +292,7 @@ describe('useRepositoriesService', () => {
       [firstFileName, fileStat],
       [firstFileName, fileStat],
       ['plain.txt', fileStat],
-      [partialKeyToFileName([secondDocumentId])!, { ...fileStat, type: FSNodeType.Directory }],
+      [getDocumentFileName(secondDocumentId), { ...fileStat, type: FSNodeType.Directory }],
     ]);
 
     await expect(firstValueFrom(service.getDocumentIdList$({ path }))).resolves.toEqual([
@@ -302,21 +306,24 @@ describe('useRepositoriesService', () => {
     const { REPO_IDLE_TIMEOUT_MS, useRepositoriesService } = await import('./repositoriesService');
     const service = useRepositoriesService();
     const firstSubscription = service.getRepo$(path, true).subscribe();
+    const firstRepo = repoInstances.get(path)?.[0];
 
     firstSubscription.unsubscribe();
     await vi.advanceTimersByTimeAsync(REPO_IDLE_TIMEOUT_MS - 1);
 
-    const firstRepo = repoInstances.get(path)?.[0];
     const secondSubscription = service.getRepo$(path, true).subscribe();
 
     await vi.advanceTimersByTimeAsync(1);
 
-    expect(firstRepo?.shutdown).not.toHaveBeenCalled();
     expect(repoInstances.get(path)).toHaveLength(1);
+    expect(repoInstances.get(path)?.[0]).toBe(firstRepo);
 
     secondSubscription.unsubscribe();
     await vi.advanceTimersByTimeAsync(REPO_IDLE_TIMEOUT_MS);
 
-    expect(firstRepo?.shutdown).toHaveBeenCalledTimes(1);
+    const recreatedRepo = await firstValueFrom(service.getRepo$(path, true));
+
+    expect(repoInstances.get(path)).toHaveLength(2);
+    expect(recreatedRepo).not.toBe(firstRepo);
   });
 });

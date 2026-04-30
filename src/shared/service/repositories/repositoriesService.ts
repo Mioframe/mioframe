@@ -26,7 +26,7 @@ import {
 import { defineObservableQuery } from '@shared/lib/useObservableQuery';
 import { defineCacheObservable } from '@shared/lib/defineCacheObservable';
 
-/** Idle timeout before an unused Automerge Repo instance is disposed and removed from cache. */
+/** Idle timeout before an unused Automerge Repo instance is removed from service cache. */
 export const REPO_IDLE_TIMEOUT_MS = 60_000;
 
 const setupRepositoriesService = () => {

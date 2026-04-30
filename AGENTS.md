@@ -60,6 +60,7 @@ Applies to the whole repository unless a deeper `AGENTS.md` overrides it.
 - UI-facing layers may cross into background logic only through explicit proxy clients. Do not directly import `*Service` modules into `pages`, `widgets`, `features`, `entities`, or shared UI.
 - Use `pnpm` for package management and project commands.
 - After edits, run the narrowest relevant verification. For logic changes, run at least `pnpm type-check`; add focused `vitest`, Playwright, or reproducible smoke checks for behavior, schema, service, or storage changes.
+- After editing any `*.ts` file, always run the narrowest relevant type-check and targeted lint or format pass for the touched scope before considering the task done.
 - During implementation, use targeted verification. Run full e2e, full lint, or broad mutation checks only when explicitly requested or as final verification.
 - When creating or modifying tests, run the narrowest relevant mutation check for the touched test scope in addition to the focused functional verification.
 - After editing files that are covered by linting or formatting rules, run the narrowest relevant targeted `oxlint`, `eslint --fix`, and/or `oxfmt` pass for the touched scope.
