@@ -1,7 +1,7 @@
-import { createNumberProperty } from '@entity/databaseNumber';
-import { createStringProperty } from '@entity/databaseString';
 import { Repo } from '@automerge/automerge-repo';
 import { describe, expect, it } from 'vitest';
+import { createNumberProperty } from '@entity/databaseNumber';
+import { createStringProperty } from '@entity/databaseString';
 import {
   getCreatableProperty,
   getDraftProperty,
@@ -44,13 +44,41 @@ describe('propertyDraft', () => {
   });
 
   it('keeps simple property kinds creatable without extra type-specific fields', () => {
-    const propertyDraft: PropertyDraft = {
+    expect(
+      getCreatableProperty({
+        name: 'Title',
+        type: 'string',
+      }),
+    ).toEqual({
       name: 'Title',
       type: 'string',
-    };
+    });
 
-    expect(getDraftProperty(propertyDraft)).toEqual(propertyDraft);
-    expect(getCreatableProperty(propertyDraft)).toEqual(propertyDraft);
+    expect(
+      getCreatableProperty({
+        name: 'Estimate',
+        type: 'number',
+      }),
+    ).toEqual({
+      name: 'Estimate',
+      type: 'number',
+    });
+  });
+
+  it('rejects unknown or incomplete property kinds as creatable', () => {
+    expect(
+      getCreatableProperty({
+        name: 'Broken',
+        type: 'unsupported',
+      } as PropertyDraft),
+    ).toBeUndefined();
+
+    expect(
+      getCreatableProperty({
+        default: 'orphan',
+        type: 'string',
+      }),
+    ).toBeUndefined();
   });
 
   it('resets default when switching property type while keeping the name', () => {
