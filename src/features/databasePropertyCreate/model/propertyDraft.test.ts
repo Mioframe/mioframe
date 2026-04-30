@@ -66,12 +66,7 @@ describe('propertyDraft', () => {
   });
 
   it('rejects unknown or incomplete property kinds as creatable', () => {
-    expect(
-      getCreatableProperty({
-        name: 'Broken',
-        type: 'unsupported',
-      } as PropertyDraft),
-    ).toBeUndefined();
+    expect(getCreatableProperty({ name: 'Broken', type: 'unsupported' })).toBeUndefined();
 
     expect(
       getCreatableProperty({

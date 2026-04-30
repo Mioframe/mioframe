@@ -75,3 +75,16 @@ export const getDatabasePropertyCreateDescriptor = (
   type: DatabaseUnknownProperty['type'] | undefined,
 ): DatabasePropertyCreateDescriptor | undefined =>
   databasePropertyCreateDescriptors.find((descriptor) => descriptor.type === type);
+
+/**
+ * Returns the default create-flow descriptor used to initialize the dialog state.
+ */
+export const getDefaultDatabasePropertyCreateDescriptor = (): DatabasePropertyCreateDescriptor => {
+  const descriptor = databasePropertyCreateDescriptors[0];
+
+  if (!descriptor) {
+    throw new Error('databasePropertyCreateDescriptors must define at least one property type');
+  }
+
+  return descriptor;
+};
