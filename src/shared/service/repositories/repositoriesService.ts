@@ -10,7 +10,6 @@ import type { CFRDocumentContent } from '@shared/lib/cfrDocument';
 import {
   concat,
   defer,
-  filter,
   finalize,
   firstValueFrom,
   map,
@@ -116,9 +115,17 @@ const setupRepositoriesService = () => {
     }
 
     return getDocumentIdList$({ path }).pipe(
-      filter((docs) => !(docs instanceof Error) && docs.length > 0),
-      take(1),
-      switchMap(() => repoByPath$(path)),
+      switchMap((docs) => {
+        if (docs instanceof Error) {
+          throw docs;
+        }
+
+        if (docs.length === 0) {
+          return NEVER;
+        }
+
+        return repoByPath$(path);
+      }),
     );
   };
 

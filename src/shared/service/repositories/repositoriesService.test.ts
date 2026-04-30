@@ -403,7 +403,23 @@ describe('useRepositoriesService', () => {
     expect(repoInstances.get(path)).toBeUndefined();
   });
 
-  it('deleteDocument does not create repo when document already absent', async () => {
+  it('getRepo$ propagates filesystem errors without creating repo', async () => {
+    const path = '/repo-fs-error';
+    createDirectoryContentSubject(path, []);
+    const { useRepositoriesService } = await import('./repositoriesService');
+    const service = useRepositoriesService();
+    const error = new Error('directory content failed');
+
+    directoryContentByPath.get(path)?.next(error);
+
+    await vi.runAllTimersAsync();
+    await expect(firstValueFrom(service.getRepo$(path))).rejects.toThrow(
+      'directory content failed',
+    );
+    expect(repoInstances.get(path)).toBeUndefined();
+  });
+
+  it('deleteDocument does not remove storage files when target document is absent', async () => {
     const path = '/missing-doc';
     const otherDocumentId = parseAutomergeUrl(generateAutomergeUrl()).documentId;
     const missingDocumentId = parseAutomergeUrl(generateAutomergeUrl()).documentId;
