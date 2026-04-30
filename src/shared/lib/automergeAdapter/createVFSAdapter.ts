@@ -1,11 +1,10 @@
 import type { StorageAdapterInterface } from '@automerge/automerge-repo';
 import type { AMChunk } from '@shared/lib/automerge';
-import { zodIs } from '@shared/lib/validateZodScheme';
 import { isStandardBufferView } from '@shared/lib/isStandardBufferView';
 import { PathUtils, type VirtualFileSystem } from '../virtualFileSystem';
-import type { PartialAutomergeFileName, PartialStorageKey, StorageKey } from './types';
-import { KEY_SEPARATE, zodPartialAutomergeFileName } from './types';
+import type { PartialStorageKey, StorageKey } from './types';
 import { fileNameToPartialKey } from './fileNameToPartialKey';
+import { getPartialStorageKeyFileNamePrefix } from './getPartialStorageKeyFileNamePrefix';
 import { partialKeyToFileName } from './partialKeyToFileName';
 
 export const createVFSAdapter = (vfs: VirtualFileSystem, path: string): StorageAdapterInterface => {
@@ -32,14 +31,7 @@ export const createVFSAdapter = (vfs: VirtualFileSystem, path: string): StorageA
   };
 
   const loadRange = async (keyPrefix: PartialStorageKey): Promise<AMChunk[]> => {
-    const maybePartialAutomergeFileName = keyPrefix.join(KEY_SEPARATE);
-
-    const keyPrefixString: PartialAutomergeFileName | undefined = zodIs(
-      maybePartialAutomergeFileName,
-      zodPartialAutomergeFileName,
-    )
-      ? maybePartialAutomergeFileName
-      : undefined;
+    const keyPrefixString = getPartialStorageKeyFileNamePrefix(keyPrefix);
 
     if (keyPrefixString) {
       const directoryContent = await vfs.readDirectory(path);
@@ -82,14 +74,7 @@ export const createVFSAdapter = (vfs: VirtualFileSystem, path: string): StorageA
   };
 
   const removeRange = async (keyPrefix: PartialStorageKey) => {
-    const maybePartialAutomergeFileName = keyPrefix.join(KEY_SEPARATE);
-
-    const keyPrefixString: PartialAutomergeFileName | undefined = zodIs(
-      maybePartialAutomergeFileName,
-      zodPartialAutomergeFileName,
-    )
-      ? maybePartialAutomergeFileName
-      : undefined;
+    const keyPrefixString = getPartialStorageKeyFileNamePrefix(keyPrefix);
 
     if (keyPrefixString) {
       const directoryContent = await vfs.readDirectory(path);
