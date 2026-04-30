@@ -128,12 +128,20 @@ export const createDatabaseDocument = async (
   await dialog.getByRole('button', { name: /^create$/i }).click();
 
   await expect(dialog).toHaveCount(0);
-  await expect(page.getByText(name, { exact: true })).toBeVisible();
+  await expect(
+    page.getByRole('listitem', {
+      name: new RegExp(`^document ${escapeRegex(name)}$`, 'i'),
+    }),
+  ).toBeVisible();
   return name;
 };
 
 export const openDocumentFromExplorer = async (page: Page, name: string) => {
-  await page.getByText(name, { exact: true }).click();
+  await page
+    .getByRole('listitem', {
+      name: new RegExp(`^document ${escapeRegex(name)}$`, 'i'),
+    })
+    .click();
   await expect(page.getByRole('button', { name: /rename document/i })).toBeVisible();
 };
 
