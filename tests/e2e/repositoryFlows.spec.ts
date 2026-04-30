@@ -5,6 +5,7 @@ import {
   createDirectory,
   createUniqueName,
   dismissStorageOnboarding,
+  expectNoDocumentsInExplorer,
   launchApp,
   openDirectory,
   openDocumentFromExplorer,
@@ -55,4 +56,22 @@ test('creates a document in a directory, opens it, renames it, and removes it fr
   await closeDocumentPane(page);
 
   await removeExplorerEntry(page, renamedDocumentName);
+  await expectNoDocumentsInExplorer(page);
+});
+
+test('removes a document from explorer without rename and leaves no broken document item', async ({
+  page,
+}) => {
+  await launchApp(page);
+  await openOpfs(page);
+
+  const directoryName = await createDirectory(page, createUniqueName('records'));
+  await openDirectory(page, directoryName);
+
+  const documentName = await createDatabaseDocument(page, createUniqueName('catalog'));
+  await openDocumentFromExplorer(page, documentName);
+  await closeDocumentPane(page);
+
+  await removeExplorerEntry(page, documentName);
+  await expectNoDocumentsInExplorer(page);
 });

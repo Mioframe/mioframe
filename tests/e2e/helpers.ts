@@ -166,6 +166,12 @@ export const closeDocumentPane = async (page: Page) => {
   await expect(page.getByRole('button', { name: /rename document/i })).toHaveCount(0);
 };
 
+export const expectNoDocumentsInExplorer = async (page: Page) => {
+  await expect(page.getByText('Untitled Document', { exact: true })).toHaveCount(0);
+  await expect(page.getByRole('listitem', { name: /^document /i })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: /^options unknown document$/i })).toHaveCount(0);
+};
+
 export const renameOpenDocument = async (page: Page, nextName: string) => {
   await page.getByRole('button', { name: /rename document/i }).click();
 

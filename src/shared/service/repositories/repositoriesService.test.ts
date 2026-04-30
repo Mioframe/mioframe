@@ -19,6 +19,43 @@ const directoryContentByPath = vi.hoisted(
   () => new Map<string, BehaviorSubject<[string, FSNodeStat][] | Error>>(),
 );
 const repoInstances = vi.hoisted(() => new Map<string, MockRepoInstance[]>());
+const vfsReadDirectory = vi.hoisted(() =>
+  vi.fn((path: string) => {
+    const subject = directoryContentByPath.get(path);
+
+    if (!subject) {
+      throw new Error(`Missing mocked directory content for "${path}"`);
+    }
+
+    const currentValue = subject.getValue();
+
+    if (currentValue instanceof Error) {
+      throw currentValue;
+    }
+
+    return currentValue;
+  }),
+);
+const vfsDelete = vi.hoisted(() =>
+  vi.fn((filePath: string) => {
+    const slashIndex = filePath.lastIndexOf('/');
+    const directoryPath = slashIndex > 0 ? filePath.slice(0, slashIndex) : '/';
+    const fileName = filePath.slice(slashIndex + 1);
+    const subject = directoryContentByPath.get(directoryPath);
+
+    if (!subject) {
+      throw new Error(`Missing mocked directory content for "${directoryPath}"`);
+    }
+
+    const currentValue = subject.getValue();
+
+    if (currentValue instanceof Error) {
+      throw currentValue;
+    }
+
+    subject.next(currentValue.filter(([name]) => name !== fileName));
+  }),
+);
 
 const createDirectoryContentSubject = (path: string, initialValue: [string, FSNodeStat][] = []) => {
   const subject = new BehaviorSubject<[string, FSNodeStat][] | Error>(initialValue);
@@ -31,6 +68,17 @@ const getDocumentFileName = (documentId: AMDocumentId) => {
 
   if (!fileName) {
     throw new Error(`Failed to create file name for document "${documentId}"`);
+  }
+
+  return fileName;
+};
+
+const getDocumentPath = (directoryPath: string, fileName: string) => `${directoryPath}/${fileName}`;
+const getStorageFileName = (...key: Parameters<typeof partialKeyToFileName>[0]) => {
+  const fileName = partialKeyToFileName(key);
+
+  if (!fileName) {
+    throw new Error(`Failed to create storage file name for key "${key.join('/')}"`);
   }
 
   return fileName;
@@ -56,7 +104,11 @@ vi.mock('../fileSystem', () => ({
 
       return subject.asObservable();
     },
-    vfs: { kind: 'mock-vfs' },
+    vfs: {
+      kind: 'mock-vfs',
+      readDirectory: vfsReadDirectory,
+      delete: vfsDelete,
+    },
   }),
 }));
 
@@ -97,6 +149,8 @@ describe('useRepositoriesService', () => {
     vi.resetModules();
     directoryContentByPath.clear();
     repoInstances.clear();
+    vfsReadDirectory.mockClear();
+    vfsDelete.mockClear();
   });
 
   afterEach(() => {
@@ -152,12 +206,107 @@ describe('useRepositoriesService', () => {
     directoryContentSubject.next([[documentFileName, fileStat]]);
 
     await firstValueFrom(service.getRepo$(path));
-    await service.deleteDocument(path, createdDocumentId);
+    const deletePromise = service.deleteDocument(path, createdDocumentId);
+    await vi.runAllTimersAsync();
+    await deletePromise;
 
     const [repo] = repoInstances.get(path) ?? [];
 
     expect(repoInstances.get(path)).toHaveLength(1);
     expect(repo?.delete).toHaveBeenCalledWith(createdDocumentId);
+  });
+
+  it('deleteDocument removes all automerge files for target document id', async () => {
+    const path = '/repo';
+    const targetDocumentId = parseAutomergeUrl(generateAutomergeUrl()).documentId;
+    const otherDocumentId = parseAutomergeUrl(generateAutomergeUrl()).documentId;
+    createDirectoryContentSubject(path, [
+      [getStorageFileName(targetDocumentId), fileStat],
+      [getStorageFileName(targetDocumentId, 'snapshot', 'hash-a'), fileStat],
+      [getStorageFileName(targetDocumentId, 'incremental', 'hash-b'), fileStat],
+      [getStorageFileName(otherDocumentId, 'snapshot', 'hash-c'), fileStat],
+      ['notes.txt', fileStat],
+    ]);
+    const { useRepositoriesService } = await import('./repositoriesService');
+    const service = useRepositoriesService();
+
+    const deletePromise = service.deleteDocument(path, targetDocumentId);
+
+    await vi.runAllTimersAsync();
+    await deletePromise;
+
+    expect(vfsDelete).toHaveBeenCalledTimes(3);
+    expect(vfsDelete).toHaveBeenCalledWith(
+      getDocumentPath(path, getStorageFileName(targetDocumentId)),
+    );
+    expect(vfsDelete).toHaveBeenCalledWith(
+      getDocumentPath(path, getStorageFileName(targetDocumentId, 'snapshot', 'hash-a')),
+    );
+    expect(vfsDelete).toHaveBeenCalledWith(
+      getDocumentPath(path, getStorageFileName(targetDocumentId, 'incremental', 'hash-b')),
+    );
+    expect(directoryContentByPath.get(path)?.getValue()).toEqual([
+      [getStorageFileName(otherDocumentId, 'snapshot', 'hash-c'), fileStat],
+      ['notes.txt', fileStat],
+    ]);
+  });
+
+  it('deleteDocument does not remove files for other document ids', async () => {
+    const path = '/repo';
+    const targetDocumentId = parseAutomergeUrl(generateAutomergeUrl()).documentId;
+    const otherDocumentId = parseAutomergeUrl(generateAutomergeUrl()).documentId;
+    createDirectoryContentSubject(path, [
+      [getStorageFileName(targetDocumentId, 'snapshot', 'hash-a'), fileStat],
+      [getStorageFileName(otherDocumentId), fileStat],
+      [getStorageFileName(otherDocumentId, 'snapshot', 'hash-b'), fileStat],
+    ]);
+    const { useRepositoriesService } = await import('./repositoriesService');
+    const service = useRepositoriesService();
+
+    const deletePromise = service.deleteDocument(path, targetDocumentId);
+
+    await vi.runAllTimersAsync();
+    await deletePromise;
+
+    expect(directoryContentByPath.get(path)?.getValue()).toEqual([
+      [getStorageFileName(otherDocumentId), fileStat],
+      [getStorageFileName(otherDocumentId, 'snapshot', 'hash-b'), fileStat],
+    ]);
+  });
+
+  it('deleteDocument removes snapshot recreated right after repo.delete', async () => {
+    const path = '/repo';
+    const targetDocumentId = parseAutomergeUrl(generateAutomergeUrl()).documentId;
+    const initialSnapshotFile = getStorageFileName(targetDocumentId, 'snapshot', 'hash-a');
+    const recreatedSnapshotFile = getStorageFileName(targetDocumentId, 'snapshot', 'hash-b');
+    const directoryContentSubject = createDirectoryContentSubject(path, [
+      [initialSnapshotFile, fileStat],
+    ]);
+    const { useRepositoriesService } = await import('./repositoriesService');
+    const service = useRepositoriesService();
+    await firstValueFrom(service.getRepo$(path));
+    const [repo] = repoInstances.get(path) ?? [];
+
+    expect(repo).toBeDefined();
+
+    repo?.delete.mockImplementation(() => {
+      const currentValue = directoryContentSubject.getValue();
+
+      if (currentValue instanceof Error) {
+        throw currentValue;
+      }
+
+      directoryContentSubject.next([...currentValue, [recreatedSnapshotFile, fileStat]]);
+    });
+
+    const deletePromise = service.deleteDocument(path, targetDocumentId);
+
+    await vi.runAllTimersAsync();
+    await deletePromise;
+
+    expect(vfsDelete).toHaveBeenCalledWith(getDocumentPath(path, initialSnapshotFile));
+    expect(vfsDelete).toHaveBeenCalledWith(getDocumentPath(path, recreatedSnapshotFile));
+    expect(directoryContentByPath.get(path)?.getValue()).toEqual([]);
   });
 
   it('reuses same repo for initial=true and initial=false requests in same directory', async () => {
