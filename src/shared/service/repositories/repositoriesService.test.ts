@@ -335,6 +335,96 @@ describe('useRepositoriesService', () => {
     expect(directoryContentByPath.get(path)?.getValue()).toEqual([]);
   });
 
+  it('deleteDocument removes storage file recreated after cleanup retry delay', async () => {
+    const path = '/repo';
+    const targetDocumentId = parseAutomergeUrl(generateAutomergeUrl()).documentId;
+    const delayedSnapshotFile = getStorageFileName(targetDocumentId, 'snapshot', 'hash-late');
+    const directoryContentSubject = createDirectoryContentSubject(path, [
+      [getStorageFileName(targetDocumentId, 'snapshot', 'hash-a'), fileStat],
+    ]);
+    const { useRepositoriesService } = await import('./repositoriesService');
+    const service = useRepositoriesService();
+    await firstValueFrom(service.getRepo$(path));
+    const [repo] = repoInstances.get(path) ?? [];
+
+    repo?.delete.mockImplementation(() => {
+      setTimeout(() => {
+        const currentValue = directoryContentSubject.getValue();
+
+        if (currentValue instanceof Error) {
+          throw currentValue;
+        }
+
+        directoryContentSubject.next([...currentValue, [delayedSnapshotFile, fileStat]]);
+      }, 60);
+    });
+
+    const deletePromise = service.deleteDocument(path, targetDocumentId);
+
+    await vi.runAllTimersAsync();
+    await deletePromise;
+
+    expect(vfsDelete).toHaveBeenCalledWith(
+      getDocumentPath(path, getStorageFileName(targetDocumentId, 'snapshot', 'hash-a')),
+    );
+    expect(vfsDelete).toHaveBeenCalledWith(getDocumentPath(path, delayedSnapshotFile));
+    expect(directoryContentByPath.get(path)?.getValue()).toEqual([]);
+  });
+
+  it('deleteDocument resolves in empty directory without creating repo', async () => {
+    const path = '/empty-dir';
+    const targetDocumentId = parseAutomergeUrl(generateAutomergeUrl()).documentId;
+    createDirectoryContentSubject(path, []);
+    const { useRepositoriesService } = await import('./repositoriesService');
+    const service = useRepositoriesService();
+
+    const deletePromise = service.deleteDocument(path, targetDocumentId);
+
+    await vi.runAllTimersAsync();
+    await expect(deletePromise).resolves.toBeUndefined();
+    expect(repoInstances.get(path)).toBeUndefined();
+    expect(vfsDelete).not.toHaveBeenCalled();
+  });
+
+  it('deleteDocument propagates filesystem errors without hanging', async () => {
+    const path = '/fs-error';
+    const targetDocumentId = parseAutomergeUrl(generateAutomergeUrl()).documentId;
+    createDirectoryContentSubject(path, []);
+    const { useRepositoriesService } = await import('./repositoriesService');
+    const service = useRepositoriesService();
+    const error = new Error('filesystem failed');
+
+    directoryContentByPath.get(path)?.next(error);
+
+    await vi.runAllTimersAsync();
+    await expect(service.deleteDocument(path, targetDocumentId)).rejects.toThrow(
+      'filesystem failed',
+    );
+    expect(repoInstances.get(path)).toBeUndefined();
+  });
+
+  it('deleteDocument does not create repo when document already absent', async () => {
+    const path = '/missing-doc';
+    const otherDocumentId = parseAutomergeUrl(generateAutomergeUrl()).documentId;
+    const missingDocumentId = parseAutomergeUrl(generateAutomergeUrl()).documentId;
+    createDirectoryContentSubject(path, [
+      [getStorageFileName(otherDocumentId, 'snapshot', 'hash-a'), fileStat],
+    ]);
+    const { useRepositoriesService } = await import('./repositoriesService');
+    const service = useRepositoriesService();
+
+    const deletePromise = service.deleteDocument(path, missingDocumentId);
+
+    await vi.runAllTimersAsync();
+    await expect(deletePromise).resolves.toBeUndefined();
+    expect(repoInstances.get(path)).toHaveLength(1);
+    expect(repoInstances.get(path)?.[0]?.delete).toHaveBeenCalledWith(missingDocumentId);
+    expect(vfsDelete).not.toHaveBeenCalled();
+    expect(directoryContentByPath.get(path)?.getValue()).toEqual([
+      [getStorageFileName(otherDocumentId, 'snapshot', 'hash-a'), fileStat],
+    ]);
+  });
+
   it('reuses same repo for initial=true and initial=false requests in same directory', async () => {
     const path = '/shared-repo';
     const directoryContentSubject = createDirectoryContentSubject(path);
