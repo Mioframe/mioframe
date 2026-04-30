@@ -5,11 +5,7 @@ import { zodIs } from '@shared/lib/validateZodScheme';
 import { Repo } from '@automerge/automerge-repo';
 import { createVFSAdapter } from '@shared/lib/automergeAdapter/createVFSAdapter';
 import { createGlobalState } from '@vueuse/core';
-import {
-  fileNameToPartialKey,
-  getPartialStorageKeyFileNamePrefix,
-  zodAutomergeFileName,
-} from '@shared/lib/automergeAdapter';
+import { fileNameToPartialKey, zodAutomergeFileName } from '@shared/lib/automergeAdapter';
 import type { CFRDocumentContent } from '@shared/lib/cfrDocument';
 import {
   concat,
@@ -29,6 +25,7 @@ import {
 } from 'rxjs';
 import { defineObservableQuery } from '@shared/lib/useObservableQuery';
 import { defineCacheObservable } from '@shared/lib/defineCacheObservable';
+import { delay } from 'es-toolkit';
 
 /** Idle timeout before an unused Automerge Repo instance is removed from service cache. */
 export const REPO_IDLE_TIMEOUT_MS = 60_000;
@@ -39,12 +36,6 @@ const setupRepositoriesService = () => {
   const repoObservableCache = new Map<string, Observable<Repo>>();
 
   const getDocumentStorageFiles = async (path: string, id: AMDocumentId) => {
-    const keyPrefixString = getPartialStorageKeyFileNamePrefix([id]);
-
-    if (!keyPrefixString) {
-      return [];
-    }
-
     const entries = await vfs.readDirectory(path);
 
     return entries.filter(([name, stat]) => {
@@ -52,7 +43,7 @@ const setupRepositoriesService = () => {
         return false;
       }
 
-      return name.startsWith(keyPrefixString);
+      return fileNameToPartialKey(name)?.at(0) === id;
     });
   };
 
@@ -152,9 +143,7 @@ const setupRepositoriesService = () => {
 
     repo?.delete(id);
 
-    await new Promise<void>((resolve) => {
-      setTimeout(resolve, AUTOMERGE_DELETE_SETTLE_TIMEOUT_MS);
-    });
+    await delay(AUTOMERGE_DELETE_SETTLE_TIMEOUT_MS);
 
     await removeDocumentStorageFiles(path, id);
 
