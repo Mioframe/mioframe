@@ -7,7 +7,7 @@ import { createVFSAdapter } from '@shared/lib/automergeAdapter/createVFSAdapter'
 import { createGlobalState } from '@vueuse/core';
 import { fileNameToPartialKey, zodAutomergeFileName } from '@shared/lib/automergeAdapter';
 import type { CFRDocumentContent } from '@shared/lib/cfrDocument';
-import { filter, of } from 'rxjs';
+import { filter, finalize, of } from 'rxjs';
 import { firstValueFrom, map, switchMap, take } from 'rxjs';
 import { defineObservableQuery } from '@shared/lib/useObservableQuery';
 import { defineCacheObservable } from '@shared/lib/defineCacheObservable';
@@ -65,6 +65,9 @@ const setupRepositoriesService = () => {
       }),
       take(1),
       switchMap(() => of(getOrCreateRepo(path))),
+      finalize(() => {
+        repoCache.delete(path);
+      }),
     );
   });
 
