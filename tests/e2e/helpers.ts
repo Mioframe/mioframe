@@ -2,6 +2,8 @@ import { expect, type Locator, type Page } from '@playwright/test';
 
 const escapeRegex = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 const browserStorageLabel = /^browser storage$/i;
+const previewHost = '127.0.0.1';
+const defaultPreviewPort = '4173';
 
 type DatabasePropertyType = 'string' | 'number' | 'boolean' | 'date' | 'relation';
 type DatabaseItemFieldValue = string | number | boolean | string[];
@@ -14,8 +16,19 @@ const recordEntries = <R extends Record<PropertyKey, unknown>>(value: R): Record
 export const createUniqueName = (prefix: string) =>
   `${prefix} ${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 
+const getBaseURL = () => {
+  const externalBaseURL = process.env.PLAYWRIGHT_EXTERNAL_BASE_URL;
+  if (externalBaseURL) {
+    return externalBaseURL;
+  }
+
+  // Playwright populates this env var from `webServer.wait.stdout` named captures.
+  const previewPort = process.env.PLAYWRIGHT_PREVIEW_PORT ?? defaultPreviewPort;
+  return `https://${previewHost}:${previewPort}`;
+};
+
 export const launchApp = async (page: Page) => {
-  await page.goto('/');
+  await page.goto(getBaseURL());
   await Promise.race([
     page.getByRole('button', { name: /^ok$/i }).first().waitFor({ state: 'visible' }),
     page.getByText(browserStorageLabel).first().waitFor({ state: 'visible' }),
