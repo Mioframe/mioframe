@@ -178,7 +178,6 @@ const setupRepositoriesService = () => {
      * @param id идентификатор документа
      */
     deleteDocument,
-    removeDocumentStorageFiles,
   };
 };
 
