@@ -23,7 +23,7 @@
     "format": "oxfmt .",
     "e2e": "playwright test",
     "e2e:headed": "playwright test --headed",
-    "e2e:install": "playwright install chromium",
+    "e2e:install": "playwright install --with-deps chromium",
     "e2e:ui": "playwright test --ui",
     "test": "vitest",
     "test:run": "vitest run",
