@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 
+const isFixMode = process.argv.includes('--fix');
 const FORMATTABLE_EXTENSIONS = new Set([
   '.css',
   '.html',
@@ -259,11 +260,15 @@ function buildCommands(changedFiles) {
   const commands = [];
 
   if (formattableFiles.length > 0) {
-    commands.push({ kind: 'run', command: 'pnpm', args: ['exec', 'oxfmt', ...formattableFiles] });
+    commands.push({
+      kind: 'run',
+      command: 'pnpm',
+      args: ['exec', 'oxfmt', ...(isFixMode ? [] : ['--check']), ...formattableFiles],
+    });
   } else {
     commands.push({
       kind: 'skipped',
-      command: 'pnpm exec oxfmt',
+      command: `pnpm exec oxfmt${isFixMode ? '' : ' --check'}`,
       reason: 'no changed formattable existing files',
     });
   }
@@ -272,17 +277,24 @@ function buildCommands(changedFiles) {
     commands.push({
       kind: 'run',
       command: 'pnpm',
-      args: ['exec', 'oxlint', '--fix', ...lintableFiles],
+      args: ['exec', 'oxlint', ...(isFixMode ? ['--fix'] : []), ...lintableFiles],
     });
     commands.push({
       kind: 'run',
       command: 'pnpm',
-      args: ['exec', 'eslint', '--cache', '--fix', '--concurrency=auto', ...lintableFiles],
+      args: [
+        'exec',
+        'eslint',
+        '--cache',
+        ...(isFixMode ? ['--fix'] : []),
+        '--concurrency=auto',
+        ...lintableFiles,
+      ],
     });
   } else {
     commands.push({
       kind: 'skipped',
-      command: 'pnpm exec oxlint --fix / pnpm exec eslint --cache --fix --concurrency=auto',
+      command: `pnpm exec oxlint${isFixMode ? ' --fix' : ''} / pnpm exec eslint --cache${isFixMode ? ' --fix' : ''} --concurrency=auto`,
       reason: 'no changed lintable existing files',
     });
   }
@@ -350,6 +362,7 @@ function printSummary(changedFiles, results) {
   const status = results.some((result) => result.status === 'failed') ? 'failed' : 'passed';
 
   console.log('\nVERIFY RESULT');
+  console.log(`mode: ${isFixMode ? 'fix' : 'check'}`);
   console.log(`changed files: ${changedFiles.length}`);
   console.log(`status: ${status}`);
   console.log('commands:');
