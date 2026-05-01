@@ -340,13 +340,11 @@ function buildCommands(changedFiles) {
   }
 
   if (mutationScope.length > 0) {
-    for (const sourceFile of mutationScope) {
-      commands.push({
-        kind: 'run',
-        command: 'pnpm',
-        args: ['exec', 'stryker', 'run', '-m', sourceFile],
-      });
-    }
+    commands.push({
+      kind: 'run',
+      command: 'pnpm',
+      args: ['exec', 'stryker', 'run', '-m', mutationScope.join(',')],
+    });
   } else {
     commands.push({
       kind: 'skipped',
