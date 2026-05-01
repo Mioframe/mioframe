@@ -54,8 +54,17 @@ const onClickCopyDetails = async () => {
     return;
   }
 
-  await navigator.clipboard.writeText(errorDetails.value);
-  addSnackbar({ text: 'Save error details copied' });
+  if (!('clipboard' in navigator)) {
+    addSnackbar({ text: 'Clipboard is not available' });
+    return;
+  }
+
+  try {
+    await navigator.clipboard.writeText(errorDetails.value);
+    addSnackbar({ text: 'Save error details copied' });
+  } catch {
+    addSnackbar({ text: 'Could not copy save error details' });
+  }
 };
 
 const onInteractionOutside = () => {
