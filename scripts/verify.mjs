@@ -3,6 +3,7 @@ import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 
 const isFixMode = process.argv.includes('--fix');
+const cliBaseRef = getCliBaseRef(process.argv.slice(2));
 const FORMATTABLE_EXTENSIONS = new Set([
   '.css',
   '.html',
@@ -82,9 +83,88 @@ function runGitCommand(args, options = {}) {
     .filter((line) => line.length > 0);
 }
 
+function getCliBaseRef(argv) {
+  for (let index = 0; index < argv.length; index += 1) {
+    const argument = argv[index];
+
+    if (argument === '--base') {
+      const value = argv[index + 1];
+
+      if (!value || value.startsWith('--')) {
+        throw new Error('Missing value for --base. Example: pnpm verify --base origin/develop');
+      }
+
+      return value;
+    }
+
+    if (argument.startsWith('--base=')) {
+      const value = argument.slice('--base='.length);
+
+      if (value.length === 0) {
+        throw new Error('Missing value for --base. Example: pnpm verify --base origin/develop');
+      }
+
+      return value;
+    }
+  }
+
+  return null;
+}
+
+function ensureBaseRefExists(baseRef) {
+  const result = spawnSync('git', ['rev-parse', '--verify', baseRef], {
+    encoding: 'utf8',
+    stdio: ['inherit', 'pipe', 'pipe'],
+  });
+
+  if (result.status === 0) {
+    return;
+  }
+
+  process.stdout.write(result.stdout ?? '');
+  process.stderr.write(result.stderr ?? '');
+  throw new Error(
+    [
+      `Base ref does not exist: ${baseRef}`,
+      'Fetch the branch and try again:',
+      'git fetch origin',
+      `pnpm verify --base ${baseRef}`,
+    ].join('\n'),
+  );
+}
+
+function getForkPoint(baseRef) {
+  const forkPoint = runGitCommand(['merge-base', '--fork-point', baseRef, 'HEAD'], {
+    allowFailure: true,
+  })[0];
+
+  if (forkPoint) {
+    return forkPoint;
+  }
+
+  const mergeBase = runGitCommand(['merge-base', baseRef, 'HEAD'], {
+    allowFailure: true,
+  })[0];
+
+  if (mergeBase) {
+    return mergeBase;
+  }
+
+  throw new Error(
+    [
+      `Cannot determine fork point for base ref: ${baseRef}`,
+      'Both commands failed:',
+      `git merge-base --fork-point ${baseRef} HEAD`,
+      `git merge-base ${baseRef} HEAD`,
+    ].join('\n'),
+  );
+}
+
 function getChangedFiles() {
   const githubBaseRef = process.env.GITHUB_BASE_REF;
+  const envBaseRef = process.env.VERIFY_BASE;
   let changedFiles = [];
+  let scope = 'local-changes';
 
   if (githubBaseRef) {
     const mergeBase = runGitCommand(['merge-base', 'HEAD', `origin/${githubBaseRef}`], {
@@ -96,7 +176,22 @@ function getChangedFiles() {
       '--name-only',
       '--diff-filter=ACMR',
       `${mergeBase}...HEAD`,
+      '--',
     ]);
+    scope = `github-base origin/${githubBaseRef}`;
+  } else if (cliBaseRef || envBaseRef) {
+    const baseRef = cliBaseRef ?? envBaseRef;
+    ensureBaseRefExists(baseRef);
+
+    const forkPoint = getForkPoint(baseRef);
+
+    changedFiles = [
+      ...runGitCommand(['diff', '--name-only', '--diff-filter=ACMR', `${forkPoint}...HEAD`, '--']),
+      ...runGitCommand(['diff', '--name-only', '--diff-filter=ACMR', 'HEAD', '--']),
+      ...runGitCommand(['diff', '--cached', '--name-only', '--diff-filter=ACMR', '--']),
+      ...runGitCommand(['ls-files', '--others', '--exclude-standard']),
+    ];
+    scope = `local-base ${baseRef}`;
   } else {
     changedFiles = [
       ...runGitCommand(['diff', '--name-only', '--diff-filter=ACMR', 'HEAD', '--']),
@@ -112,10 +207,16 @@ function getChangedFiles() {
         'HEAD~1..HEAD',
         '--',
       ]);
+      scope = 'local-last-commit';
     }
   }
 
-  return uniqSorted(changedFiles.map(toPosixPath).filter((filePath) => !isIgnored(filePath)));
+  return {
+    changedFiles: uniqSorted(
+      changedFiles.map(toPosixPath).filter((filePath) => !isIgnored(filePath)),
+    ),
+    scope,
+  };
 }
 
 function isTypeCheckTarget(filePath) {
@@ -356,11 +457,12 @@ function buildCommands(changedFiles) {
   return commands;
 }
 
-function printSummary(changedFiles, results) {
+function printSummary(changedFiles, scope, results) {
   const status = results.some((result) => result.status === 'failed') ? 'failed' : 'passed';
 
   console.log('\nVERIFY RESULT');
   console.log(`mode: ${isFixMode ? 'fix' : 'check'}`);
+  console.log(`scope: ${scope}`);
   console.log(`changed files: ${changedFiles.length}`);
   console.log(`status: ${status}`);
   console.log('commands:');
@@ -378,7 +480,7 @@ function printSummary(changedFiles, results) {
 }
 
 function main() {
-  const changedFiles = getChangedFiles();
+  const { changedFiles, scope } = getChangedFiles();
   const commands = buildCommands(changedFiles);
   const results = [];
 
@@ -395,7 +497,7 @@ function main() {
     results.push(runCommand(entry.command, entry.args));
   }
 
-  const status = printSummary(changedFiles, results);
+  const status = printSummary(changedFiles, scope, results);
   process.exitCode = status === 'failed' ? 1 : 0;
 }
 

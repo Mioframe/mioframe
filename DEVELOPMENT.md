@@ -100,11 +100,23 @@ pnpm dev
 Before committing:
 
 ```bash
-# Auto-fix
-pnpm lint && pnpm format
+# Auto-fix changed files
+pnpm verify --fix
 
-# Verify
-pnpm lint && pnpm format --check
+# Verify changed files
+pnpm verify
+```
+
+To verify the full current feature branch against its parent branch locally:
+
+```bash
+pnpm verify --base origin/develop
+```
+
+For stacked branches, point `--base` to the parent feature branch instead:
+
+```bash
+pnpm verify --base origin/<parent-feature-branch>
 ```
 
 ### Commit Messages
