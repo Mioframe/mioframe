@@ -3,11 +3,6 @@ import { computed, ref, toRefs, watch } from 'vue';
 import { MDDialog } from '@shared/ui/Dialog';
 import { MDTextField } from '@shared/ui/TextField';
 import { MDSelectBase, MDSelectOption } from '@shared/ui/Select';
-import { PROPERTY_TYPE_BOOLEAN, createBooleanProperty } from '@entity/databaseBoolean';
-import { PROPERTY_TYPE_DATE, createDateProperty } from '@entity/databaseDate';
-import { PROPERTY_TYPE_NUMBER, createNumberProperty } from '@entity/databaseNumber';
-import { PROPERTY_TYPE_RELATION, createRelationProperty } from '@entity/databaseRelation';
-import { PROPERTY_TYPE_STRING, createStringProperty } from '@entity/databaseString';
 import { useSnackbar } from '@shared/ui/Snackbar';
 import type { AMDocumentId } from '@shared/lib/automerge';
 import type { DatabasePropertyId, DatabaseUnknownProperty } from '@shared/lib/databaseDocument';
@@ -17,7 +12,12 @@ import {
   getDraftProperty,
   getTypeSwitchedPropertyDraft,
   type PropertyDraft,
-} from './propertyDraft';
+} from './model/propertyDraft';
+import {
+  databasePropertyCreateDescriptors,
+  getDefaultDatabasePropertyCreateDescriptor,
+  getDatabasePropertyCreateDescriptor,
+} from './model/databasePropertyCreateDescriptors';
 
 const props = defineProps<{
   path: string;
@@ -39,42 +39,15 @@ defineSlots<{
 }>();
 
 const { path, documentId } = toRefs(props);
-const propertyTypeOptions = [
-  {
-    createProperty: createStringProperty,
-    label: 'string',
-    type: PROPERTY_TYPE_STRING,
-  },
-  {
-    createProperty: createNumberProperty,
-    label: 'number',
-    type: PROPERTY_TYPE_NUMBER,
-  },
-  {
-    createProperty: createBooleanProperty,
-    label: 'boolean',
-    type: PROPERTY_TYPE_BOOLEAN,
-  },
-  {
-    createProperty: createDateProperty,
-    label: 'date',
-    type: PROPERTY_TYPE_DATE,
-  },
-  {
-    createProperty: createRelationProperty,
-    label: 'relation',
-    type: PROPERTY_TYPE_RELATION,
-  },
-] as const;
-
 const partialPropertyState = ref<PropertyDraft>({});
+const defaultPropertyCreateDescriptor = getDefaultDatabasePropertyCreateDescriptor();
 
-const typeSelect = ref<(string | number)[]>([propertyTypeOptions[0].type]);
+const typeSelect = ref<(string | number)[]>([defaultPropertyCreateDescriptor.type]);
 
 const selectedPropertyDescriptor = computed(() => {
   const type = typeSelect.value.at(0);
 
-  return propertyTypeOptions.find((descriptor) => descriptor.type === type);
+  return getDatabasePropertyCreateDescriptor(typeof type === 'string' ? type : undefined);
 });
 
 watch(
@@ -86,7 +59,7 @@ watch(
 
     partialPropertyState.value = getTypeSwitchedPropertyDraft(
       partialPropertyState.value,
-      descriptor.createProperty,
+      descriptor.createDraftProperty,
     );
   },
   { immediate: true },
@@ -115,7 +88,7 @@ const onCreate = async () => {
 
 const resetState = () => {
   partialPropertyState.value = {};
-  typeSelect.value = [propertyTypeOptions[0].type];
+  typeSelect.value = [defaultPropertyCreateDescriptor.type];
 };
 
 const onCancel = () => {
@@ -168,7 +141,7 @@ const propertyNameModel = computed<string | undefined>({
 
       <template #options>
         <MDSelectOption
-          v-for="descriptor in propertyTypeOptions"
+          v-for="descriptor in databasePropertyCreateDescriptors"
           :key="descriptor.type"
           :value="descriptor.type"
           :label="descriptor.label"

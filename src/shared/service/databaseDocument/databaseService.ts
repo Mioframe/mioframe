@@ -19,6 +19,8 @@ import { distinctUntilChanged, map } from 'rxjs';
 import { defineObservableQuery } from '@shared/lib/useObservableQuery';
 import { defineCacheObservable } from '@shared/lib/defineCacheObservable';
 
+export type DatabaseStateQueryResult = DatabaseState | Error | undefined;
+
 export const useDatabaseDocumentService = createGlobalState(() => {
   const { change: changeCFRDocument, cfrDocumentState$ } = useDocumentService();
 
@@ -29,19 +31,29 @@ export const useDatabaseDocumentService = createGlobalState(() => {
     }: {
       documentId: AMDocumentId;
       path: string;
-    }): Observable<DatabaseState | undefined> =>
+    }): Observable<DatabaseStateQueryResult> =>
       cfrDocumentState$({ documentId, path }).pipe(
         map((cfrDocument) => {
+          if (cfrDocument instanceof Error) {
+            return cfrDocument;
+          }
+
           if (zodCheck(zodDatabaseDocumentWithContent, cfrDocument)) {
             return cfrDocument.body;
           }
+
           return undefined;
         }),
         distinctUntilChanged(),
         map((body) => {
+          if (body instanceof Error) {
+            return body;
+          }
+
           if (body) {
             return databaseBodyMigrations.getLatestData(body);
           }
+
           return undefined;
         }),
         distinctUntilChanged(),

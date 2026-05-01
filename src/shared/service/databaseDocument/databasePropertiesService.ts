@@ -18,6 +18,7 @@ import { distinctUntilChanged, map, type Observable } from 'rxjs';
 import { defineObservableQuery } from '@shared/lib/useObservableQuery';
 import { cloneDeep, isEqual } from 'es-toolkit';
 import { defineCacheObservable } from '@shared/lib/defineCacheObservable';
+import type { DatabaseStateQueryResult } from './databaseService';
 
 const pruneUndefinedJsonFields = (value: unknown): void => {
   if (Array.isArray(value)) {
@@ -58,7 +59,7 @@ export const useDatabasePropertiesService = (
   databaseState$: (q: {
     documentId: AMDocumentId;
     path: string;
-  }) => Observable<DatabaseState | undefined>,
+  }) => Observable<DatabaseStateQueryResult>,
   changeDatabase: (
     path: string,
     documentId: AMDocumentId,
@@ -68,7 +69,13 @@ export const useDatabasePropertiesService = (
   const databaseProperties$ = defineCacheObservable(
     ({ documentId, path }: { documentId: AMDocumentId; path: string }) =>
       databaseState$({ documentId, path }).pipe(
-        map((state): DatabaseUnknownPropertiesMap | undefined => state?.properties),
+        map((state): DatabaseUnknownPropertiesMap | Error | undefined => {
+          if (state instanceof Error) {
+            return state;
+          }
+
+          return state?.properties;
+        }),
         distinctUntilChanged(),
       ),
   );
@@ -87,6 +94,10 @@ export const useDatabasePropertiesService = (
     }) =>
       databaseProperties$({ documentId, path }).pipe(
         map((properties) => {
+          if (properties instanceof Error) {
+            return properties;
+          }
+
           if (properties && id) {
             return properties[id];
           }
@@ -135,6 +146,10 @@ export const useDatabasePropertiesService = (
         path,
       }).pipe(
         map((properties) => {
+          if (properties instanceof Error) {
+            return properties;
+          }
+
           if (properties) {
             return Array.from(strictRecordIterableKeys(properties)());
           }

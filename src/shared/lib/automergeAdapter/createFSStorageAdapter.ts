@@ -1,11 +1,4 @@
-import type {
-  DirectoryForStorageAdapter,
-  PartialAutomergeFileName,
-  PartialStorageKey,
-  StorageKey,
-} from './types';
-import { KEY_SEPARATE, zodPartialAutomergeFileName } from './types';
-import { zodIs } from '../validateZodScheme';
+import type { DirectoryForStorageAdapter, PartialStorageKey, StorageKey } from './types';
 import { find, from, toArray } from 'ix/Ix.asynciterable';
 import { filter, map } from 'ix/Ix.asynciterable.operators';
 import { isNil, isString } from 'es-toolkit';
@@ -13,6 +6,7 @@ import type { AMChunk, AMStorageAdapterInterface } from '../automerge/automergeT
 import { toString } from 'es-toolkit/compat';
 import { partialKeyToFileName } from './partialKeyToFileName';
 import { fileNameToPartialKey } from './fileNameToPartialKey';
+import { getPartialStorageKeyFileNamePrefix } from './getPartialStorageKeyFileNamePrefix';
 
 export const createFSStorageAdapter = (
   directory: DirectoryForStorageAdapter,
@@ -67,14 +61,7 @@ export const createFSStorageAdapter = (
   };
 
   const loadRange = async (keyPrefix: PartialStorageKey): Promise<AMChunk[]> => {
-    const maybePartialAutomergeFileName = keyPrefix.join(KEY_SEPARATE);
-
-    const keyPrefixString: PartialAutomergeFileName | undefined = zodIs(
-      maybePartialAutomergeFileName,
-      zodPartialAutomergeFileName,
-    )
-      ? maybePartialAutomergeFileName
-      : undefined;
+    const keyPrefixString = getPartialStorageKeyFileNamePrefix(keyPrefix);
 
     const chunkList: AMChunk[] = await toArray(
       from(directory.entries()).pipe(
@@ -109,14 +96,7 @@ export const createFSStorageAdapter = (
   };
 
   const removeRange = async (keyPrefix: PartialStorageKey) => {
-    const maybePartialAutomergeFileName = keyPrefix.join(KEY_SEPARATE);
-
-    const keyPrefixString: PartialAutomergeFileName | undefined = zodIs(
-      maybePartialAutomergeFileName,
-      zodPartialAutomergeFileName,
-    )
-      ? maybePartialAutomergeFileName
-      : undefined;
+    const keyPrefixString = getPartialStorageKeyFileNamePrefix(keyPrefix);
 
     await from(directory.entries()).forEach(async ([name, entry]) => {
       if (

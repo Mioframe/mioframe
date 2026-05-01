@@ -23,12 +23,13 @@ import { combineLatest, distinctUntilChanged, map, type Observable } from 'rxjs'
 import { defineObservableQuery } from '@shared/lib/useObservableQuery';
 import { defineCacheObservable } from '@shared/lib/defineCacheObservable';
 import { isEqual } from 'es-toolkit';
+import type { DatabaseStateQueryResult } from './databaseService';
 
 export const setupDatabaseDataService = (
   databaseState$: (q: {
     documentId: AMDocumentId;
     path: string;
-  }) => Observable<DatabaseState | undefined>,
+  }) => Observable<DatabaseStateQueryResult>,
 
   changeDatabaseState: (
     path: string,
@@ -79,7 +80,13 @@ export const setupDatabaseDataService = (
   const databaseData$ = defineCacheObservable(
     ({ documentId, path }: { path: string; documentId: AMDocumentId }) =>
       databaseState$({ documentId, path }).pipe(
-        map((state) => state?.data),
+        map((state) => {
+          if (state instanceof Error) {
+            return state;
+          }
+
+          return state?.data;
+        }),
         distinctUntilChanged(),
       ),
   );
@@ -87,7 +94,13 @@ export const setupDatabaseDataService = (
   const databaseProperties$ = defineCacheObservable(
     ({ documentId, path }: { path: string; documentId: AMDocumentId }) =>
       databaseState$({ documentId, path }).pipe(
-        map((state): DatabaseUnknownPropertiesMap | undefined => state?.properties),
+        map((state): DatabaseUnknownPropertiesMap | Error | undefined => {
+          if (state instanceof Error) {
+            return state;
+          }
+
+          return state?.properties;
+        }),
         distinctUntilChanged(),
       ),
   );
@@ -125,6 +138,22 @@ export const setupDatabaseDataService = (
         databaseSorting$({ documentId, path, viewId }),
       ]).pipe(
         map(([data, properties, filter, sorting]) => {
+          if (data instanceof Error) {
+            return data;
+          }
+
+          if (properties instanceof Error) {
+            return properties;
+          }
+
+          if (filter instanceof Error) {
+            return filter;
+          }
+
+          if (sorting instanceof Error) {
+            return sorting;
+          }
+
           if (data) {
             const idList = queryIdList(data, {
               filter,
@@ -155,7 +184,13 @@ export const setupDatabaseDataService = (
       itemId?: DatabaseItemId | undefined;
     }) =>
       databaseData$({ documentId, path }).pipe(
-        map((data) => (itemId ? data?.[itemId] : undefined)),
+        map((data) => {
+          if (data instanceof Error) {
+            return data;
+          }
+
+          return itemId ? data?.[itemId] : undefined;
+        }),
         distinctUntilChanged((a, b) => isEqual(a, b)),
       ),
   );
@@ -174,7 +209,17 @@ export const setupDatabaseDataService = (
         databaseItem$({ documentId, itemId, path }),
         databaseProperties$({ documentId, path }),
       ]).pipe(
-        map(([item, properties]) => getDatabaseEffectiveItem(item, properties)),
+        map(([item, properties]) => {
+          if (item instanceof Error) {
+            return item;
+          }
+
+          if (properties instanceof Error) {
+            return properties;
+          }
+
+          return getDatabaseEffectiveItem(item, properties);
+        }),
         distinctUntilChanged((a, b) => isEqual(a, b)),
       ),
   );
@@ -192,7 +237,13 @@ export const setupDatabaseDataService = (
       propertyId: DatabasePropertyId;
     }) =>
       databaseItem$({ documentId, itemId, path }).pipe(
-        map((item) => item?.[propertyId]),
+        map((item) => {
+          if (item instanceof Error) {
+            return item;
+          }
+
+          return item?.[propertyId];
+        }),
         distinctUntilChanged(),
       ),
   );
@@ -213,9 +264,17 @@ export const setupDatabaseDataService = (
         databaseItem$({ documentId, itemId, path }),
         databaseProperties$({ documentId, path }),
       ]).pipe(
-        map(([item, properties]) =>
-          getDatabaseEffectiveValue(item, propertyId, properties?.[propertyId]),
-        ),
+        map(([item, properties]) => {
+          if (item instanceof Error) {
+            return item;
+          }
+
+          if (properties instanceof Error) {
+            return properties;
+          }
+
+          return getDatabaseEffectiveValue(item, propertyId, properties?.[propertyId]);
+        }),
         distinctUntilChanged((a, b) => isEqual(a, b)),
       ),
   );
