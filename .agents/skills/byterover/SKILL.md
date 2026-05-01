@@ -1,6 +1,6 @@
 ---
 name: byterover
-description: 'Use this skill before broad repository exploration to recall project knowledge with brv search, and before the final response after non-trivial implementation to decide whether durable knowledge must be captured with brv curate. Prefer brv search before brv query. Do not curate transient task details.'
+description: 'Use this skill before broad repository exploration to recall project knowledge with brv search, and before the final response after non-trivial implementation to decide whether durable knowledge must be captured with brv curate. Prefer brv search before brv query. Curate reusable lessons, pitfalls, decisions, and corrected mistakes, not transient task details.'
 ---
 
 # ByteRover knowledge workflow
@@ -48,12 +48,14 @@ Run `brv curate` when the task produced any of these:
 - a reusable implementation rule;
 - a decision that should guide future agents;
 - a repeated user correction;
+- a mistake the agent made or nearly made, plus the corrected approach;
 - a verified third-party or tool behavior that was previously uncertain;
-- a non-obvious testing, verification, CRDT, storage, UI, or FSD lesson.
+- a non-obvious testing, verification, CRDT, storage, UI, FSD, or performance lesson.
 
 Do not run `brv curate` for:
 
 - transient task progress;
+- task summaries or commit summaries;
 - obvious facts already documented;
 - one-off implementation details unlikely to repeat;
 - general knowledge unrelated to this project;
@@ -65,16 +67,58 @@ When unsure, run `brv search` first to avoid duplicate memory:
 brv search "<candidate memory topic>" --limit 5
 ```
 
-Then curate only if the knowledge is new or meaningfully updated:
+Then curate only if the knowledge is new or meaningfully updated.
+
+## Lesson format
+
+Curate experience as lessons, not as task history.
+
+Use this structure when saving a corrected mistake, pitfall, or reusable workflow:
+
+```md
+# Lesson: <short name>
+
+## Trigger
+When this lesson applies.
+
+## Mistake to avoid
+What the agent did wrong, nearly did wrong, or might incorrectly assume.
+
+## Correct approach
+What future agents should do instead in this project.
+
+## Verification
+How to check the correct behavior or avoid regression.
+
+## Applies to
+Relevant paths, layers, commands, skills, or task types.
+```
+
+Example curation command:
 
 ```bash
-brv curate "<durable project knowledge>"
+brv curate "# Lesson: Prefer browser checks for DOM-dependent Vue behavior
+
+## Trigger
+Changing Vue UI behavior involving focus, teleport, scroll, overlays, pointer/touch input, responsive layout, or Material visual states.
+
+## Mistake to avoid
+Do not add Vue component unit tests for behavior that depends on real browser layout or interaction semantics.
+
+## Correct approach
+Use the ui-browser-behavior skill and verify with Playwright/e2e or a reproducible browser smoke check. Extract pure state transitions to composables/helpers only when they can be tested without browser semantics.
+
+## Verification
+Run the focused Playwright spec or document the browser smoke check, then run final pnpm verify.
+
+## Applies to
+Vue components in pages, widgets, features, entities UI, and shared UI."
 ```
 
 Include source files only when they add important context, with at most five project-scoped files:
 
 ```bash
-brv curate "<durable project knowledge>" -f src/example/file.ts
+brv curate "<lesson content>" -f src/example/file.ts
 ```
 
 ## Capture quality
@@ -83,9 +127,11 @@ Curated knowledge must be short, reusable, and project-specific.
 
 Good entries include:
 
-- what was learned;
+- the trigger that makes the lesson relevant;
+- the mistake, pitfall, or wrong assumption to avoid;
+- the correct project-specific approach;
+- the verification method;
 - where it applies;
-- what future agents should do or avoid;
 - source files when needed.
 
 Bad entries include:
@@ -93,7 +139,8 @@ Bad entries include:
 - task summaries;
 - commit summaries;
 - vague statements such as "fixed tests";
-- duplicated rules already present in `AGENTS.md` or skills.
+- duplicated rules already present in `AGENTS.md` or skills;
+- implementation details without a reusable lesson.
 
 ## Final response requirement
 
