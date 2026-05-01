@@ -4,13 +4,21 @@ Applies to the whole repository unless a deeper `AGENTS.md` overrides it.
 
 ## Mandatory verification
 
-Before reporting completion, run:
+During implementation, use this command when automatic formatting or lint fixes are useful:
+
+```bash
+pnpm verify --fix
+```
+
+Before reporting completion, always run the read-only check:
 
 ```bash
 pnpm verify
 ```
 
 Do not replace this command with manually selected checks.
+
+The final verification must not use `--fix`.
 
 If `pnpm verify` fails:
 
