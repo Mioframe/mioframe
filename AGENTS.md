@@ -2,6 +2,39 @@
 
 Applies to the whole repository unless a deeper `AGENTS.md` overrides it.
 
+## Mandatory verification
+
+During implementation, use this command when automatic formatting or lint fixes are useful:
+
+```bash
+pnpm verify --fix
+```
+
+Before reporting completion, always run the read-only check:
+
+```bash
+pnpm verify
+```
+
+Do not replace this command with manually selected checks.
+
+The final verification must not use `--fix`.
+
+If `pnpm verify` fails:
+
+- fix the failure if it is caused by the change;
+- otherwise report the exact failing command and output;
+- do not claim the task is complete.
+
+Final response must include:
+
+```text
+VERIFY RESULT
+command: pnpm verify
+status: passed | failed | not run
+reason if not run:
+```
+
 ## Contains
 
 - `src/app`: bootstrap, routing, global shells, and global styles.
