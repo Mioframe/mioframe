@@ -22,6 +22,8 @@ Do not replace the final read-only check with manually selected checks. The fina
 
 If `pnpm verify` fails, fix failures caused by the change. Otherwise report the exact failing command and output, and do not claim the task is complete.
 
+Before the final response after non-trivial implementation, use the `byterover` skill end-of-task capture gate to decide whether durable project knowledge should be curated.
+
 Final response must include:
 
 ```text
@@ -29,6 +31,10 @@ VERIFY RESULT
 command: pnpm verify
 status: passed | failed | not run
 reason if not run:
+
+BRV RESULT
+status: curated | skipped | failed | not available
+reason:
 ```
 
 ## Contains
