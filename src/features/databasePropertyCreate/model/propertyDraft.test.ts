@@ -1,4 +1,4 @@
-import { Repo } from '@automerge/automerge-repo';
+import { generateAutomergeUrl, parseAutomergeUrl } from '@automerge/automerge-repo';
 import { describe, expect, it } from 'vitest';
 import { createNumberProperty } from '@entity/databaseNumber';
 import { createStringProperty } from '@entity/databaseString';
@@ -31,7 +31,7 @@ describe('propertyDraft', () => {
   });
 
   it('treats completed relation properties as creatable', () => {
-    const documentId = new Repo({}).create({}).documentId;
+    const documentId = parseAutomergeUrl(generateAutomergeUrl()).documentId;
     const propertyDraft: PropertyDraft = {
       name: 'Related tasks',
       relation: {
