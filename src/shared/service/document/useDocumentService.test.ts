@@ -17,7 +17,7 @@ type MockRepo = {
 };
 
 const documentIdListByPath = vi.hoisted(() => new Map<string, BehaviorSubject<Error | string[]>>());
-const repoByPath = vi.hoisted(() => new Map<string, BehaviorSubject<any>>());
+const repoByPath = vi.hoisted(() => new Map<string, BehaviorSubject<MockRepo>>());
 
 const createMockDocHandle = (initialDoc: CFRDocumentContent): MockDocHandle => {
   const listeners = new Map<string, Set<(payload?: unknown) => void>>();
@@ -106,7 +106,7 @@ describe('useDocumentService', () => {
     } satisfies MockRepo;
 
     documentIdListByPath.set(path, documentIdList$);
-    repoByPath.set(path, new BehaviorSubject(repo));
+    repoByPath.set(path, new BehaviorSubject<MockRepo>(repo));
 
     const { useDocumentService } = await import('./useDocumentService');
     const service = useDocumentService();
@@ -124,8 +124,13 @@ describe('useDocumentService', () => {
     await vi.waitFor(() => {
       expect(next).toHaveBeenCalledTimes(1);
     });
-    expect(next.mock.calls[0]?.[0]).toBeInstanceOf(Error);
-    expect((next.mock.calls[0]?.[0] as Error).message).toBe('directory failed');
+    const firstEmission = next.mock.calls[0]?.[0];
+
+    expect(firstEmission).toBeInstanceOf(Error);
+    if (!(firstEmission instanceof Error)) {
+      throw new Error('Expected first emission to be Error');
+    }
+    expect(firstEmission.message).toBe('directory failed');
     expect(error).not.toHaveBeenCalled();
     expect(complete).not.toHaveBeenCalled();
 
@@ -153,7 +158,7 @@ describe('useDocumentService', () => {
     } satisfies MockRepo;
 
     documentIdListByPath.set(path, new BehaviorSubject<Error | string[]>([]));
-    repoByPath.set(path, new BehaviorSubject(repo));
+    repoByPath.set(path, new BehaviorSubject<MockRepo>(repo));
 
     const { useDocumentService } = await import('./useDocumentService');
     const service = useDocumentService();
@@ -165,7 +170,7 @@ describe('useDocumentService', () => {
   it('emits undefined for missing documentId so callers can leave loading state', async () => {
     const path = '/repo';
     documentIdListByPath.set(path, new BehaviorSubject<Error | string[]>([]));
-    repoByPath.set(path, new BehaviorSubject({ find: vi.fn() }));
+    repoByPath.set(path, new BehaviorSubject<MockRepo>({ find: vi.fn() }));
 
     const { useDocumentService } = await import('./useDocumentService');
     const service = useDocumentService();
@@ -185,7 +190,7 @@ describe('useDocumentService', () => {
     } satisfies MockRepo;
 
     documentIdListByPath.set(path, new BehaviorSubject<Error | string[]>([documentId]));
-    repoByPath.set(path, new BehaviorSubject(repo));
+    repoByPath.set(path, new BehaviorSubject<MockRepo>(repo));
 
     const { useDocumentService } = await import('./useDocumentService');
     const service = useDocumentService();
@@ -205,7 +210,7 @@ describe('useDocumentService', () => {
     } satisfies MockRepo;
 
     documentIdListByPath.set(path, new BehaviorSubject<Error | string[]>([documentId]));
-    repoByPath.set(path, new BehaviorSubject(repo));
+    repoByPath.set(path, new BehaviorSubject<MockRepo>(repo));
 
     const { useDocumentService } = await import('./useDocumentService');
     const service = useDocumentService();
@@ -260,7 +265,7 @@ describe('useDocumentService', () => {
     } satisfies MockRepo;
 
     documentIdListByPath.set(path, new BehaviorSubject<Error | string[]>([documentId]));
-    repoByPath.set(path, new BehaviorSubject(repo));
+    repoByPath.set(path, new BehaviorSubject<MockRepo>(repo));
 
     const { useDocumentService } = await import('./useDocumentService');
     const service = useDocumentService();
@@ -289,7 +294,7 @@ describe('useDocumentService', () => {
     } satisfies MockRepo;
 
     documentIdListByPath.set(path, new BehaviorSubject<Error | string[]>([documentId]));
-    repoByPath.set(path, new BehaviorSubject(repo));
+    repoByPath.set(path, new BehaviorSubject<MockRepo>(repo));
 
     const { useDocumentService } = await import('./useDocumentService');
     const service = useDocumentService();
@@ -312,7 +317,7 @@ describe('useDocumentService', () => {
     } satisfies MockRepo;
 
     documentIdListByPath.set(path, new BehaviorSubject<Error | string[]>([documentId]));
-    repoByPath.set(path, new BehaviorSubject(repo));
+    repoByPath.set(path, new BehaviorSubject<MockRepo>(repo));
 
     const { useDocumentService } = await import('./useDocumentService');
     const service = useDocumentService();
@@ -334,7 +339,7 @@ describe('useDocumentService', () => {
     const repoError = new Error('repo failed');
 
     documentIdListByPath.set(path, new BehaviorSubject<Error | string[]>(repoError));
-    repoByPath.set(path, new BehaviorSubject({ find: vi.fn() }));
+    repoByPath.set(path, new BehaviorSubject<MockRepo>({ find: vi.fn() }));
 
     const { useDocumentService } = await import('./useDocumentService');
     const service = useDocumentService();
@@ -349,7 +354,7 @@ describe('useDocumentService', () => {
     const documentId = parseAutomergeUrl(generateAutomergeUrl()).documentId;
 
     documentIdListByPath.set(path, new BehaviorSubject<Error | string[]>([]));
-    repoByPath.set(path, new BehaviorSubject({ find: vi.fn() }));
+    repoByPath.set(path, new BehaviorSubject<MockRepo>({ find: vi.fn() }));
 
     const { useDocumentService } = await import('./useDocumentService');
     const service = useDocumentService();
