@@ -1,6 +1,6 @@
 import { zodDocumentId, type AMDocumentId } from '@shared/lib/automerge';
 import { useFileSystemService } from '../fileSystem';
-import { FSNodeType, PathUtils } from '@shared/lib/virtualFileSystem';
+import { FSNodeType } from '@shared/lib/virtualFileSystem';
 import { zodIs } from '@shared/lib/validateZodScheme';
 import { Repo } from '@automerge/automerge-repo';
 import { createVFSAdapter } from '@shared/lib/automergeAdapter/createVFSAdapter';
@@ -24,27 +24,16 @@ import {
 } from 'rxjs';
 import { defineObservableQuery } from '@shared/lib/useObservableQuery';
 import { defineCacheObservable } from '@shared/lib/defineCacheObservable';
+import {
+  cleanupDeletedDocumentStorageFiles,
+  getDocumentStorageFiles,
+} from './repositoryStorageFiles';
 /** Idle timeout before an unused Automerge Repo instance is removed from service cache. */
 export const REPO_IDLE_TIMEOUT_MS = 60_000;
-const DOCUMENT_DELETE_CLEANUP_RETRY_DELAY_MS = 50;
-const DOCUMENT_DELETE_CLEANUP_MAX_ATTEMPTS = 8;
-const DOCUMENT_DELETE_CLEANUP_EMPTY_PASSES_REQUIRED = 2;
 
 const setupRepositoriesService = () => {
   const { directoryContent$, vfs } = useFileSystemService();
   const repoObservableCache = new Map<string, Observable<Repo>>();
-
-  const getDocumentStorageFiles = async (path: string, id: AMDocumentId) => {
-    const entries = await vfs.readDirectory(path);
-
-    return entries.filter(([name, stat]) => {
-      if (stat.type !== FSNodeType.File) {
-        return false;
-      }
-
-      return fileNameToPartialKey(name)?.at(0) === id;
-    });
-  };
 
   const getDocumentIdList$ = defineCacheObservable(
     ({
@@ -129,8 +118,6 @@ const setupRepositoriesService = () => {
     );
   };
 
-  const wait = async (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
-
   async function getRepo(path: string, initial: true): Promise<Repo>;
   async function getRepo(path: string, initial?: false): Promise<undefined | Repo>;
   async function getRepo(path: string, initial = false) {
@@ -151,49 +138,18 @@ const setupRepositoriesService = () => {
     return firstValueFrom(repoByPath$(path).pipe(take(1)));
   }
 
-  const removeDocumentStorageFiles = async (path: string, id: AMDocumentId) => {
-    const documentStorageFiles = await getDocumentStorageFiles(path, id);
-
-    await Promise.all(
-      documentStorageFiles.map(async ([name]) => {
-        await vfs.delete(PathUtils.join(path, name));
-      }),
-    );
-  };
-
-  const cleanupDeletedDocumentStorageFiles = async (path: string, id: AMDocumentId) => {
-    let emptyPassCount = 0;
-
-    // Cleanup must stay sequential so each pass observes storage files recreated by Automerge.
-    for (let attempt = 0; attempt < DOCUMENT_DELETE_CLEANUP_MAX_ATTEMPTS; attempt += 1) {
-      // eslint-disable-next-line no-await-in-loop -- each pass must re-read current storage state
-      const documentStorageFiles = await getDocumentStorageFiles(path, id);
-
-      if (documentStorageFiles.length === 0) {
-        emptyPassCount += 1;
-
-        if (emptyPassCount >= DOCUMENT_DELETE_CLEANUP_EMPTY_PASSES_REQUIRED) {
-          return;
-        }
-      } else {
-        emptyPassCount = 0;
-        // eslint-disable-next-line no-await-in-loop -- deletion must finish before next storage scan
-        await removeDocumentStorageFiles(path, id);
-      }
-
-      if (attempt < DOCUMENT_DELETE_CLEANUP_MAX_ATTEMPTS - 1) {
-        // eslint-disable-next-line no-await-in-loop -- wait needed so late Automerge files can appear before next pass
-        await wait(DOCUMENT_DELETE_CLEANUP_RETRY_DELAY_MS);
-      }
-    }
-  };
-
   const deleteDocument = async (path: string, id: AMDocumentId) => {
+    const documentStorageFiles = await getDocumentStorageFiles(vfs, path, id);
+
+    if (documentStorageFiles.length === 0) {
+      return;
+    }
+
     const repo = await getRepo(path);
 
     repo?.delete(id);
 
-    await cleanupDeletedDocumentStorageFiles(path, id);
+    await cleanupDeletedDocumentStorageFiles(vfs, path, id);
   };
 
   const createDocument = async (path: string, initialValue: CFRDocumentContent) => {

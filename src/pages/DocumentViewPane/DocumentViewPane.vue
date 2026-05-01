@@ -7,6 +7,8 @@ import { MDIconButton } from '@shared/ui/Button';
 import { DocumentRenameDialog } from '@feature/documentRename';
 import { useDocument } from '@entity/cfrDocument';
 import { DomainError } from '@shared/lib/error';
+import { MDEmptyState } from '@shared/ui/EmptyState';
+import { MDSymbol } from '@shared/ui/Icon';
 import { MDCircularProgressIndicator } from '@shared/ui/ProgressIndicators';
 import { zodToVueProps } from '@shared/lib/zodToVueProps';
 import DatabaseViewWidget from '@widget/DocumentView/Database/DatabaseViewWidget.vue';
@@ -21,7 +23,11 @@ const slots = defineSlots<{
 
 const { documentDirectory, documentId } = toRefs(props);
 
-const { state: documentDescription, isLoading } = useDocument(documentDirectory, documentId);
+const {
+  state: documentDescription,
+  isLoading,
+  errorMessage,
+} = useDocument(documentDirectory, documentId);
 
 const documentType = computed(() => {
   if (documentDescription.value instanceof DomainError) {
@@ -30,11 +36,24 @@ const documentType = computed(() => {
   return documentDescription.value?.type;
 });
 
-const documentName = computed(() => documentDescription.value?.name ?? 'unname');
+const documentName = computed(() => {
+  if (isLoading.value) {
+    return 'Loading document';
+  }
+
+  return documentDescription.value?.name ?? 'Document not found';
+});
+
+const showNotFound = computed(
+  () => !isLoading.value && !errorMessage.value && !documentDescription.value,
+);
+
+const errorHeadline = computed(() => 'Could not open document');
 
 const showRenameButton = computed(
   () =>
     !isLoading.value &&
+    !errorMessage.value &&
     !(documentDescription.value instanceof DomainError) &&
     !!documentDescription.value,
 );
@@ -67,9 +86,31 @@ const onCloseRenameDocument = () => {
       </template>
     </MDAppBar>
 
-    <div v-if="isLoading" class="document-view-pane__loading">
+    <div v-if="isLoading" class="document-view-pane__state">
       <MDCircularProgressIndicator :size="24" />
     </div>
+
+    <MDEmptyState
+      v-else-if="errorMessage"
+      class="document-view-pane__empty-state"
+      :headline="errorHeadline"
+      :supporting-text="errorMessage"
+    >
+      <template #icon>
+        <MDSymbol name="error" class="document-view-pane__empty-state-icon" />
+      </template>
+    </MDEmptyState>
+
+    <MDEmptyState
+      v-else-if="showNotFound"
+      class="document-view-pane__empty-state"
+      headline="Document not found"
+      supporting-text="This document no longer exists in the current directory."
+    >
+      <template #icon>
+        <MDSymbol name="description" />
+      </template>
+    </MDEmptyState>
 
     <DatabaseViewWidget
       v-else-if="documentType === DATABASE_DOCUMENT_TYPE"
@@ -91,10 +132,18 @@ const onCloseRenameDocument = () => {
 
 <style lang="css" scoped>
 .document-view-pane {
-  &__loading {
+  &__state {
     display: flex;
     justify-content: center;
     padding: 16px;
+  }
+
+  &__empty-state {
+    margin: 16px;
+  }
+
+  &__empty-state-icon {
+    --md-content-color: var(--md-sys-color-error);
   }
 }
 </style>

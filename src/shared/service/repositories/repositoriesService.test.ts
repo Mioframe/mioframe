@@ -456,12 +456,54 @@ describe('useRepositoriesService', () => {
 
     await vi.runAllTimersAsync();
     await expect(deletePromise).resolves.toBeUndefined();
-    expect(repoInstances.get(path)).toHaveLength(1);
-    expect(repoInstances.get(path)?.[0]?.delete).toHaveBeenCalledWith(missingDocumentId);
+    expect(repoInstances.get(path)).toBeUndefined();
     expect(vfsDelete).not.toHaveBeenCalled();
     expect(directoryContentByPath.get(path)?.getValue()).toEqual([
       [getStorageFileName(otherDocumentId, 'snapshot', 'hash-a'), fileStat],
     ]);
+  });
+
+  it('deleteDocument rejects when deleted document storage files remain after cleanup attempts', async () => {
+    const path = '/cleanup-failure';
+    const targetDocumentId = parseAutomergeUrl(generateAutomergeUrl()).documentId;
+    const targetSnapshotFile = getStorageFileName(targetDocumentId, 'snapshot', 'hash-a');
+    const directoryContentSubject = createDirectoryContentSubject(path, [
+      [targetSnapshotFile, fileStat],
+    ]);
+    const { useRepositoriesService } = await import('./repositoriesService');
+    const service = useRepositoriesService();
+
+    await firstValueFrom(service.getRepo$(path));
+    const [repo] = repoInstances.get(path) ?? [];
+
+    vfsDelete.mockImplementation((filePath: string) => {
+      const slashIndex = filePath.lastIndexOf('/');
+      const directoryPath = slashIndex > 0 ? filePath.slice(0, slashIndex) : '/';
+      const fileName = filePath.slice(slashIndex + 1);
+      const subject = directoryContentByPath.get(directoryPath);
+
+      if (!subject) {
+        throw new Error(`Missing mocked directory content for "${directoryPath}"`);
+      }
+
+      const currentValue = subject.getValue();
+
+      if (currentValue instanceof Error) {
+        throw currentValue;
+      }
+
+      subject.next(currentValue.filter(([name]) => name !== fileName));
+      subject.next([[targetSnapshotFile, fileStat]]);
+    });
+
+    const deletePromiseExpectation = expect(
+      service.deleteDocument(path, targetDocumentId),
+    ).rejects.toThrow('Failed to cleanup deleted document storage files');
+    await vi.runAllTimersAsync();
+    await deletePromiseExpectation;
+    expect(repo?.delete).toHaveBeenCalledTimes(1);
+    expect(repo?.delete).toHaveBeenCalledWith(targetDocumentId);
+    expect(directoryContentSubject.getValue()).toEqual([[targetSnapshotFile, fileStat]]);
   });
 
   it('reuses same repo for initial=true and initial=false requests in same directory', async () => {

@@ -1,7 +1,7 @@
 import type { StorageAdapterInterface } from '@automerge/automerge-repo';
 import type { AMChunk } from '@shared/lib/automerge';
 import { isStandardBufferView } from '@shared/lib/isStandardBufferView';
-import { PathUtils, type VirtualFileSystem } from '../virtualFileSystem';
+import { FileSystemError, PathUtils, type VirtualFileSystem, VfsError } from '../virtualFileSystem';
 import type { PartialStorageKey, StorageKey } from './types';
 import { fileNameToPartialKey } from './fileNameToPartialKey';
 import { getPartialStorageKeyFileNamePrefix } from './getPartialStorageKeyFileNamePrefix';
@@ -69,7 +69,15 @@ export const createVFSAdapter = (vfs: VirtualFileSystem, path: string): StorageA
     const fileName = partialKeyToFileName(key);
 
     if (fileName) {
-      await vfs.delete(PathUtils.join(path, fileName));
+      try {
+        await vfs.delete(PathUtils.join(path, fileName));
+      } catch (error) {
+        if (error instanceof VfsError && error.code === FileSystemError.FileNotFound) {
+          return;
+        }
+
+        throw error;
+      }
     }
   };
 
