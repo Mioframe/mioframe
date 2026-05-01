@@ -100,12 +100,19 @@ pnpm dev
 Before committing:
 
 ```bash
-# Auto-fix changed files
+# Primary agent verification command
 pnpm verify --fix
-
-# Verify changed files
-pnpm verify
 ```
+
+Agent workflow:
+
+- `pnpm verify --fix` is the main verification command before an agent finishes a task.
+- A repeated `pnpm verify` after `pnpm verify --fix` is not required.
+- The agent must read the final `action required` block in the verify summary.
+- If `action required: None.`, verification is complete.
+- If the summary lists warnings or errors, fix them and run `pnpm verify --fix` again.
+
+Use plain `pnpm verify` when you want a read-only check without auto-fixes.
 
 To verify the full current feature branch against its parent branch locally:
 

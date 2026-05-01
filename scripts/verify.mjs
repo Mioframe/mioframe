@@ -325,22 +325,60 @@ function formatCommand(command, args) {
   return [command, ...args].map(quoteArg).join(' ');
 }
 
-function runCommand(command, args) {
+function trimWarningLine(line) {
+  return line.trim().replace(/\s+/g, ' ');
+}
+
+function isZeroWarningLine(line) {
+  return /\b0 warnings?\b/i.test(line) && !/\b[1-9]\d* warnings?\b/i.test(line);
+}
+
+function getWarningSummary(output) {
+  const lines = output
+    .split('\n')
+    .map(trimWarningLine)
+    .filter((line) => /\bwarnings?\b/i.test(line))
+    .filter((line) => !isZeroWarningLine(line));
+
+  if (lines.length === 0) {
+    return '';
+  }
+
+  return uniqSorted(lines).slice(0, 3).join(' | ');
+}
+
+function runCommand(label, command, args) {
   const formattedCommand = formatCommand(command, args);
-  console.log(`\n$ ${formattedCommand}`);
+  console.log(`\n[${label}] $ ${formattedCommand}`);
 
   const result = spawnSync(command, args, {
-    stdio: 'inherit',
+    stdio: ['inherit', 'pipe', 'pipe'],
     encoding: 'utf8',
   });
+
+  const stdout = result.stdout ?? '';
+  const stderr = result.stderr ?? '';
+
+  process.stdout.write(stdout);
+  process.stderr.write(stderr);
 
   if (result.error) {
     throw result.error;
   }
 
+  const warningSummary = ['eslint', 'oxlint'].includes(label)
+    ? getWarningSummary(`${stdout}\n${stderr}`)
+    : '';
+
   return {
+    label,
     command: formattedCommand,
+    exitCode: result.status ?? 1,
     status: result.status === 0 ? 'passed' : 'failed',
+    stdout,
+    stderr,
+    hasWarnings: warningSummary.length > 0,
+    warningSummary,
   };
 }
 
@@ -363,12 +401,14 @@ function buildCommands(changedFiles) {
   if (formattableFiles.length > 0) {
     commands.push({
       kind: 'run',
+      label: 'format',
       command: 'pnpm',
       args: ['exec', 'oxfmt', ...(isFixMode ? [] : ['--check']), ...formattableFiles],
     });
   } else {
     commands.push({
       kind: 'skipped',
+      label: 'format',
       command: `pnpm exec oxfmt${isFixMode ? '' : ' --check'}`,
       reason: 'no changed formattable existing files',
     });
@@ -377,11 +417,13 @@ function buildCommands(changedFiles) {
   if (lintableFiles.length > 0) {
     commands.push({
       kind: 'run',
+      label: 'oxlint',
       command: 'pnpm',
       args: ['exec', 'oxlint', ...(isFixMode ? ['--fix'] : []), ...lintableFiles],
     });
     commands.push({
       kind: 'run',
+      label: 'eslint',
       command: 'pnpm',
       args: [
         'exec',
@@ -395,16 +437,24 @@ function buildCommands(changedFiles) {
   } else {
     commands.push({
       kind: 'skipped',
-      command: `pnpm exec oxlint${isFixMode ? ' --fix' : ''} / pnpm exec eslint --cache${isFixMode ? ' --fix' : ''} --concurrency=auto`,
+      label: 'oxlint',
+      command: `pnpm exec oxlint${isFixMode ? ' --fix' : ''}`,
+      reason: 'no changed lintable existing files',
+    });
+    commands.push({
+      kind: 'skipped',
+      label: 'eslint',
+      command: `pnpm exec eslint --cache${isFixMode ? ' --fix' : ''} --concurrency=auto`,
       reason: 'no changed lintable existing files',
     });
   }
 
   if (changedFiles.some(isTypeCheckTarget)) {
-    commands.push({ kind: 'run', command: 'pnpm', args: ['type-check'] });
+    commands.push({ kind: 'run', label: 'type-check', command: 'pnpm', args: ['type-check'] });
   } else {
     commands.push({
       kind: 'skipped',
+      label: 'type-check',
       command: 'pnpm type-check',
       reason: 'no type-check relevant changes',
     });
@@ -413,28 +463,32 @@ function buildCommands(changedFiles) {
   if (vitestScope.length > 0) {
     commands.push({
       kind: 'run',
+      label: 'unit-tests',
       command: 'pnpm',
       args: ['exec', 'vitest', 'run', ...vitestScope],
     });
   } else {
     commands.push({
       kind: 'skipped',
+      label: 'unit-tests',
       command: 'pnpm exec vitest run',
       reason: 'empty focused unit-test scope',
     });
   }
 
   if (changedFiles.includes('playwright.config.ts')) {
-    commands.push({ kind: 'run', command: 'pnpm', args: ['e2e'] });
+    commands.push({ kind: 'run', label: 'e2e', command: 'pnpm', args: ['e2e'] });
   } else if (changedE2ESpecs.length > 0) {
     commands.push({
       kind: 'run',
+      label: 'e2e',
       command: 'pnpm',
       args: ['exec', 'playwright', 'test', ...changedE2ESpecs],
     });
   } else {
     commands.push({
       kind: 'skipped',
+      label: 'e2e',
       command: 'pnpm exec playwright test',
       reason: 'empty e2e scope',
     });
@@ -443,12 +497,14 @@ function buildCommands(changedFiles) {
   if (mutationScope.length > 0) {
     commands.push({
       kind: 'run',
+      label: 'mutation',
       command: 'pnpm',
       args: ['exec', 'stryker', 'run', '-m', mutationScope.join(',')],
     });
   } else {
     commands.push({
       kind: 'skipped',
+      label: 'mutation',
       command: 'pnpm exec stryker run -m <source file>',
       reason: 'empty mutation scope',
     });
@@ -457,8 +513,36 @@ function buildCommands(changedFiles) {
   return commands;
 }
 
+function getActionRequired(results) {
+  const actions = [];
+  const failedResults = results.filter((result) => result.status === 'failed');
+  const warningResults = results.filter(
+    (result) => result.status !== 'failed' && result.hasWarnings,
+  );
+
+  for (const result of failedResults) {
+    actions.push(`Fix failed ${result.label} errors. Run: ${result.command}`);
+  }
+
+  if (failedResults.length > 0) {
+    actions.push(`After fixes, run: pnpm verify${isFixMode ? ' --fix' : ''}`);
+  }
+
+  for (const result of warningResults) {
+    actions.push(`Fix ${result.label} warnings. Run: ${result.command}`);
+    actions.push(`Reason: ${result.warningSummary}`);
+  }
+
+  if (actions.length === 0) {
+    actions.push('None.');
+  }
+
+  return actions;
+}
+
 function printSummary(changedFiles, scope, results) {
   const status = results.some((result) => result.status === 'failed') ? 'failed' : 'passed';
+  const actionRequired = getActionRequired(results);
 
   console.log('\nVERIFY RESULT');
   console.log(`mode: ${isFixMode ? 'fix' : 'check'}`);
@@ -469,11 +553,18 @@ function printSummary(changedFiles, scope, results) {
 
   for (const result of results) {
     if (result.status === 'skipped') {
-      console.log(`- ${result.command}: skipped (${result.reason})`);
+      console.log(`- ${result.label}: skipped (${result.reason})`);
       continue;
     }
 
-    console.log(`- ${result.command}: ${result.status}`);
+    const warningSuffix = result.hasWarnings ? ' (warnings found)' : '';
+    console.log(`- ${result.label}: ${result.status}${warningSuffix} (${result.command})`);
+  }
+
+  console.log('action required:');
+
+  for (const action of actionRequired) {
+    console.log(`- ${action}`);
   }
 
   return status;
@@ -487,14 +578,20 @@ function main() {
   for (const entry of commands) {
     if (entry.kind === 'skipped') {
       results.push({
+        label: entry.label,
         command: entry.command,
         status: 'skipped',
         reason: entry.reason,
+        exitCode: null,
+        stdout: '',
+        stderr: '',
+        hasWarnings: false,
+        warningSummary: '',
       });
       continue;
     }
 
-    results.push(runCommand(entry.command, entry.args));
+    results.push(runCommand(entry.label, entry.command, entry.args));
   }
 
   const status = printSummary(changedFiles, scope, results);
