@@ -29,6 +29,7 @@ const emit = defineEmits<{
 defineSlots<{
   navigation: () => unknown;
   body: () => unknown;
+  appBarTrailing: () => unknown;
 }>();
 
 const { navigationButtons } = toRefs(props);
@@ -166,6 +167,10 @@ const bodyStyle = computed(
         <component :is="component" v-bind="paneProps" class="body__pane">
           <template #navigationButton>
             <MDIconButton tooltip="back" md-symbol-name="arrow_back" @click="onClickBack" />
+          </template>
+
+          <template v-if="showPanes.length - 1 - paneIndex === 0" #appBarTrailing>
+            <slot name="appBarTrailing" />
           </template>
         </component>
 

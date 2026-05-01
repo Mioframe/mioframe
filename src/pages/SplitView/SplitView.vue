@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { SaveStatusButton } from '@feature/saveStatusButton';
 import { useStackNavigation } from '@page/routes';
 import { MDSplitLayout } from '@shared/ui/Layout';
 import { defineNavigationButton, type NavigationButton } from '@shared/ui/Navigation';
@@ -63,5 +64,9 @@ const onClickBack = () => {
     :panes="panes"
     @click-navigation="onClickNavigation"
     @click-back="onClickBack"
-  />
+  >
+    <template #appBarTrailing>
+      <SaveStatusButton />
+    </template>
+  </MDSplitLayout>
 </template>

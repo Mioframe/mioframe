@@ -5,12 +5,17 @@ import { MDPane } from '@shared/ui/Layout';
 
 defineSlots<{
   navigationButton: () => unknown;
+  appBarTrailing: () => unknown;
 }>();
 </script>
 
 <template>
   <MDPane allow-bottom-navigation>
-    <MDAppBar headline="Settings" />
+    <MDAppBar headline="Settings">
+      <template #trailingElements>
+        <slot name="appBarTrailing" />
+      </template>
+    </MDAppBar>
 
     <LocalSettingsList />
   </MDPane>

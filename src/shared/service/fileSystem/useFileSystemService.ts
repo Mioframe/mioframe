@@ -172,6 +172,10 @@ const setupFileSystemService = () => {
 
   const remove = (path: string, recursive?: boolean) => vfs.delete(path, recursive);
 
+  const acknowledgeVfsActivityError = () => {
+    vfs.acknowledgeActivityError();
+  };
+
   const getUniqueDeviceDirectoryName = (
     baseName: string,
     records: PersistedDeviceDirectoryRecord[],
@@ -261,6 +265,8 @@ const setupFileSystemService = () => {
     directoryContent: defineObservableQuery(directoryContent$),
     fsNodeStat$,
     fsNodeStat: defineObservableQuery(fsNodeStat$),
+    vfsActivity: fromObservable(vfs.activity$),
+    acknowledgeVfsActivityError,
     move,
     delete: remove,
     remove,

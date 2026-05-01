@@ -19,6 +19,7 @@ const props = defineProps(zodToVueProps(zodQuery));
 
 const slots = defineSlots<{
   navigationButton: () => unknown;
+  appBarTrailing: () => unknown;
 }>();
 
 const { documentDirectory, documentId } = toRefs(props);
@@ -83,6 +84,7 @@ const onCloseRenameDocument = () => {
           md-symbol-name="edit"
           @click="onClickRenameDocument"
         />
+        <slot name="appBarTrailing" />
       </template>
     </MDAppBar>
 

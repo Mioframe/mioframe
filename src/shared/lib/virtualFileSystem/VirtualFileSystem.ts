@@ -5,6 +5,7 @@ import { EventEmitter, VfsEventSource, VfsEventType } from './EventEmitter';
 import { PathUtils } from './PathUtils';
 import { FileSystemError, VfsError } from './VfsError';
 import { LockManager } from './LockManager';
+import { createVfsActivityTracker } from './VfsActivityTracker';
 import type { Promisable } from 'type-fest';
 
 /**
@@ -51,12 +52,29 @@ export class VirtualFileSystem {
   private readonly locks: LockManager;
 
   /**
+   * Tracks VFS mutation activity derived from provider mutations.
+   */
+  private readonly activityTracker = createVfsActivityTracker();
+
+  /**
    * Creates a VirtualFileSystem instance.
    *
    * @param locksManager Optional lock manager. If not provided, a new one is created.
    */
   constructor(locksManager?: LockManager) {
     this.locks = locksManager ?? new LockManager();
+  }
+
+  /**
+   * Read-only VFS mutation activity stream.
+   */
+  public readonly activity$ = this.activityTracker.state$;
+
+  /**
+   * Acknowledges the current VFS activity error, if present.
+   */
+  public acknowledgeActivityError(): void {
+    this.activityTracker.acknowledgeError();
   }
 
   private emitVfsEvent(event: Omit<VfsEvent, 'source'>) {
@@ -277,28 +295,30 @@ export class VirtualFileSystem {
    * @param content Content (string, Blob, BufferSource)
    */
   public async writeFile(path: string, content: FileContent): Promise<void> {
-    return this.locks.request(path, async () => {
-      const { provider, relativePath } = this.resolve(path);
+    return this.activityTracker.track({ type: 'writeFile', path }, () =>
+      this.locks.request(path, async () => {
+        const { provider, relativePath } = this.resolve(path);
 
-      const exists = await provider
-        .stat(relativePath)
-        .then(() => true)
-        .catch(() => false);
+        const exists = await provider
+          .stat(relativePath)
+          .then(() => true)
+          .catch(() => false);
 
-      await provider.writeFile(relativePath, content, {
-        create: true,
-        overwrite: true,
-      });
+        await provider.writeFile(relativePath, content, {
+          create: true,
+          overwrite: true,
+        });
 
-      const stat = await provider.stat(relativePath);
+        const stat = await provider.stat(relativePath);
 
-      this.emitVfsEvent({
-        type: exists ? VfsEventType.UPDATE : VfsEventType.CREATE,
-        path,
-        nodeType: FSNodeType.File,
-        size: stat.size,
-      });
-    });
+        this.emitVfsEvent({
+          type: exists ? VfsEventType.UPDATE : VfsEventType.CREATE,
+          path,
+          nodeType: FSNodeType.File,
+          size: stat.size,
+        });
+      }),
+    );
   }
 
   /**
@@ -337,12 +357,14 @@ export class VirtualFileSystem {
    * @throws VfsError if the directory already exists or parent not found
    */
   public async createDirectory(path: string): Promise<void> {
-    const { provider, relativePath } = this.resolve(path);
-    await provider.createDirectory(relativePath);
-    this.emitVfsEvent({
-      type: VfsEventType.CREATE,
-      path,
-      nodeType: FSNodeType.Directory,
+    return this.activityTracker.track({ type: 'createDirectory', path }, async () => {
+      const { provider, relativePath } = this.resolve(path);
+      await provider.createDirectory(relativePath);
+      this.emitVfsEvent({
+        type: VfsEventType.CREATE,
+        path,
+        nodeType: FSNodeType.Directory,
+      });
     });
   }
 
@@ -374,13 +396,15 @@ export class VirtualFileSystem {
    * @param recursive If true, deletes non-empty directories recursively
    */
   public async delete(path: string, recursive: boolean = false): Promise<void> {
-    const stat = await this.stat(path);
+    return this.activityTracker.track({ type: 'delete', path }, async () => {
+      const stat = await this.stat(path);
 
-    await this.locks.request(path, async () => this.#unlockedDelete(path, recursive));
-    this.emitVfsEvent({
-      type: VfsEventType.DELETE,
-      path,
-      nodeType: stat.type,
+      await this.locks.request(path, async () => this.#unlockedDelete(path, recursive));
+      this.emitVfsEvent({
+        type: VfsEventType.DELETE,
+        path,
+        nodeType: stat.type,
+      });
     });
   }
 
@@ -396,6 +420,20 @@ export class VirtualFileSystem {
       return;
     }
 
+    return this.activityTracker.track({ type: 'move', path: oldPath, newPath }, () =>
+      this.#moveInternal(oldPath, newPath),
+    );
+  }
+
+  /**
+   * Helper method for moving files/directories between different providers.
+   * Locks should already be acquired by the calling method (move).
+   *
+   * @param sourcePath Source path of the item to move
+   * @param targetPath Target path where to move the item
+   */
+
+  async #moveInternal(oldPath: string, newPath: string): Promise<void> {
     // Check for recursive renaming
     // Cannot rename directory so that new name is inside old path
     // For example: /A -> /A/B (not allowed as B would be inside A)
@@ -406,7 +444,6 @@ export class VirtualFileSystem {
       );
     }
 
-    // Get node type before move
     const stat = await this.stat(oldPath);
     const targetParentStat = await this.stat(PathUtils.dirname(newPath));
 
@@ -423,13 +460,10 @@ export class VirtualFileSystem {
       );
     }
 
-    // 1. Sort paths for locking to avoid deadlock.
-    // If one process does rename(A, B) and another does rename(B, A), without sorting deadlocks can occur.
-    // Always lock the "smaller" path first.
     const pathA = oldPath < newPath ? oldPath : newPath;
     const pathB = oldPath < newPath ? newPath : oldPath;
 
-    return this.locks.request(pathA, async () => {
+    await this.locks.request(pathA, async () => {
       return this.locks.request(pathB, async () => {
         const source = this.resolve(oldPath);
         const target = this.resolve(newPath);
@@ -449,14 +483,6 @@ export class VirtualFileSystem {
       });
     });
   }
-
-  /**
-   * Helper method for moving files/directories between different providers.
-   * Locks should already be acquired by the calling method (move).
-   *
-   * @param sourcePath Source path of the item to move
-   * @param targetPath Target path where to move the item
-   */
 
   private async moveCrossProvider(sourcePath: string, targetPath: string): Promise<void> {
     const source = this.resolve(sourcePath);
@@ -486,7 +512,7 @@ export class VirtualFileSystem {
         const childTarget = PathUtils.join(targetPath, name);
 
         // eslint-disable-next-line no-await-in-loop -- recursive moves touch the same source tree and keep error ordering clearer when processed sequentially
-        await this.move(childSource, childTarget);
+        await this.#moveInternal(childSource, childTarget);
       }
 
       await source.provider.delete(source.relativePath, false);

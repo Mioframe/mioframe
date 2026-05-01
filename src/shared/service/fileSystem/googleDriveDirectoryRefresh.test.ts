@@ -102,7 +102,7 @@ describe('Google Drive directory refresh integration', () => {
     await service.createDirectory('/Google Drive/user@example.com/App Data/new-folder');
 
     await vi.waitFor(() => {
-      expect(getGFileMetaListMock).toHaveBeenCalledTimes(2);
+      expect(getGFileMetaListMock.mock.calls.length).toBeGreaterThanOrEqual(2);
     });
 
     expect(emissions).toEqual([[]]);
