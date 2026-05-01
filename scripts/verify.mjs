@@ -349,6 +349,8 @@ function getWarningSummary(output) {
 
 function runCommand(label, command, args) {
   const formattedCommand = formatCommand(command, args);
+  const shouldCaptureOutput = ['eslint', 'oxlint'].includes(label);
+
   console.log(`\n[${label}] $ ${formattedCommand}`);
 
   const result = spawnSync(command, args, {
@@ -369,9 +371,7 @@ function runCommand(label, command, args) {
     throw result.error;
   }
 
-  const warningSummary = ['eslint', 'oxlint'].includes(label)
-    ? getWarningSummary(`${stdout}\n${stderr}`)
-    : '';
+  const warningSummary = shouldCaptureOutput ? getWarningSummary(`${stdout}\n${stderr}`) : '';
 
   return {
     label,
