@@ -189,7 +189,7 @@ pnpm e2e:headed
 
 **Test Configuration**:
 
-- Base URL: `https://127.0.0.1:4173`
+- Base URL: dynamic local preview URL, or `PLAYWRIGHT_EXTERNAL_BASE_URL` when provided
 - Browsers: Desktop Chrome + Mobile Chrome (Pixel 5)
 - Retries: 0 locally, 2 on CI
 

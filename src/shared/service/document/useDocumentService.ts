@@ -4,7 +4,7 @@ import { useRepositoriesService } from '../repositories';
 import type { CFRDocumentContent } from '@shared/lib/cfrDocument';
 import { zodCFRDocumentContent } from '@shared/lib/cfrDocument';
 import { zodIs } from '@shared/lib/validateZodScheme';
-import { isEqual, isNotNil, omit } from 'es-toolkit';
+import { isEqual, omit } from 'es-toolkit';
 import { applyCFRDocumentMigration } from '@shared/lib/cfrDocument/migrations';
 import type { PatchSource } from '@shared/lib/changeObject';
 import { deepPatchJsonObject, deepPutJsonObject } from '@shared/lib/changeObject';
@@ -13,9 +13,9 @@ import type { UnknownRecord } from 'type-fest';
 import {
   auditTime,
   distinctUntilChanged,
-  filter,
   map,
   Observable,
+  of,
   shareReplay,
   startWith,
   switchMap,
@@ -25,7 +25,7 @@ import { DomainError } from '@shared/lib/error';
 import { defineCacheObservable } from '@shared/lib/defineCacheObservable';
 
 const setupDocumentService = () => {
-  const { getRepo$ } = useRepositoriesService();
+  const { getDocumentIdList$, getRepo$ } = useRepositoriesService();
 
   const getDocHandle$ = defineCacheObservable(
     ({
@@ -34,42 +34,61 @@ const setupDocumentService = () => {
     }: {
       directoryPath: string;
       documentId?: AMDocumentId | undefined;
-    }) =>
-      getRepo$(directoryPath).pipe(
-        filter(isNotNil),
-        auditTime(100),
-        switchMap((repo) => {
-          return new Observable<AMDocHandle | undefined>((subscribe) => {
-            if (documentId) {
-              void repo
-                .find<UnknownRecord>(documentId)
-                .then((handle) => {
-                  subscribe.next(handle);
-                })
-                .catch(() => {
-                  subscribe.next(undefined);
-                });
-            } else {
-              subscribe.next(undefined);
-            }
-          });
+    }) => {
+      if (!documentId) {
+        return of(undefined);
+      }
+
+      return getDocumentIdList$({ path: directoryPath }).pipe(
+        switchMap((documentIdList) => {
+          if (documentIdList instanceof Error) {
+            return of(documentIdList);
+          }
+
+          if (!documentIdList.includes(documentId)) {
+            return of(undefined);
+          }
+
+          return getRepo$(directoryPath).pipe(
+            auditTime(100),
+            switchMap((repo) => {
+              return new Observable<AMDocHandle | Error | undefined>((subscriber) => {
+                void repo
+                  .find<UnknownRecord>(documentId)
+                  .then((handle) => {
+                    subscriber.next(handle);
+                  })
+                  .catch(() => {
+                    subscriber.next(undefined);
+                  });
+              });
+            }),
+          );
         }),
         distinctUntilChanged(),
-      ),
+      );
+    },
   );
 
   const docHandle = defineObservableQuery(getDocHandle$);
 
   const cfrContent$ = defineCacheObservable((directoryPath: string, documentId?: AMDocumentId) =>
     getDocHandle$({ directoryPath, documentId }).pipe(
-      filter(isNotNil),
-      switchMap((handle) =>
-        new Observable<UnknownRecord | undefined>((subscribe) => {
+      switchMap((handle) => {
+        if (handle instanceof Error) {
+          return of(handle);
+        }
+
+        if (!handle) {
+          return of(undefined);
+        }
+
+        return new Observable<UnknownRecord | undefined>((subscriber) => {
           const onChange = ({ doc }: DocHandleChangePayload<UnknownRecord>) => {
-            subscribe.next(doc);
+            subscriber.next(doc);
           };
           const onDelete = () => {
-            subscribe.next(undefined);
+            subscriber.next(undefined);
           };
           handle.addListener('change', onChange);
           handle.addListener('delete', onDelete);
@@ -78,8 +97,8 @@ const setupDocumentService = () => {
             handle.removeListener('change', onChange);
             handle.removeListener('delete', onDelete);
           };
-        }).pipe(startWith(((): UnknownRecord => handle.doc())())),
-      ),
+        }).pipe(startWith(((): UnknownRecord => handle.doc())()));
+      }),
       distinctUntilChanged(),
     ),
   );
@@ -88,6 +107,10 @@ const setupDocumentService = () => {
     ({ documentId, path }: { path: string; documentId?: AMDocumentId | undefined }) =>
       cfrContent$(path, documentId).pipe(
         map((doc) => {
+          if (doc instanceof Error) {
+            return doc;
+          }
+
           if (zodIs(doc, zodCFRDocumentContent)) {
             return doc;
           }
@@ -105,6 +128,10 @@ const setupDocumentService = () => {
     ({ documentId, path }: { path: string; documentId?: AMDocumentId | undefined }) =>
       cfrDocumentState$({ documentId, path }).pipe(
         map((state) => {
+          if (state instanceof Error) {
+            return state;
+          }
+
           if (state) {
             return omit(state, ['body']);
           }
@@ -121,6 +148,10 @@ const setupDocumentService = () => {
     content: CFRDocumentContent,
   ) => {
     const handle = await docHandle.fetch({ directoryPath, documentId });
+
+    if (handle instanceof Error) {
+      throw handle;
+    }
 
     if (!handle) {
       throw new DomainError(`Document "${documentId}" not found at "${directoryPath}"`);
@@ -140,6 +171,10 @@ const setupDocumentService = () => {
   ) => {
     const handle = await docHandle.fetch({ directoryPath, documentId });
 
+    if (handle instanceof Error) {
+      throw handle;
+    }
+
     if (!handle) {
       throw new DomainError(`Document "${documentId}" not found at "${directoryPath}"`);
     }
@@ -157,6 +192,10 @@ const setupDocumentService = () => {
     callback: (doc: CFRDocumentContent) => unknown,
   ) => {
     const handle = await docHandle.fetch({ directoryPath, documentId });
+
+    if (handle instanceof Error) {
+      throw handle;
+    }
 
     if (!handle) {
       throw new DomainError(`Document "${documentId}" not found at "${directoryPath}"`);

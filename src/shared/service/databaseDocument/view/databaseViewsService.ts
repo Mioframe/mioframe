@@ -21,12 +21,13 @@ import { distinctUntilChanged, map, type Observable } from 'rxjs';
 import { defineObservableQuery } from '@shared/lib/useObservableQuery';
 import { defineCacheObservable } from '@shared/lib/defineCacheObservable';
 import { isEqual } from 'es-toolkit';
+import type { DatabaseStateQueryResult } from '../databaseService';
 
 export const setupDatabaseViewsService = (
   databaseState$: (q: {
     documentId: AMDocumentId;
     path: string;
-  }) => Observable<DatabaseState | undefined>,
+  }) => Observable<DatabaseStateQueryResult>,
   changeDatabase: (
     path: string,
     documentId: AMDocumentId,
@@ -36,7 +37,13 @@ export const setupDatabaseViewsService = (
   const databaseViews$ = defineCacheObservable(
     ({ documentId, path }: { documentId: AMDocumentId; path: string }) =>
       databaseState$({ documentId, path }).pipe(
-        map((state) => state?.views),
+        map((state) => {
+          if (state instanceof Error) {
+            return state;
+          }
+
+          return state?.views;
+        }),
         distinctUntilChanged(),
       ),
   );
@@ -44,11 +51,15 @@ export const setupDatabaseViewsService = (
   const viewList$ = defineCacheObservable(
     ({ documentId, path }: { documentId: AMDocumentId; path: string }) =>
       databaseViews$({ documentId, path }).pipe(
-        map((viewsRecord) =>
-          Array.from(strictRecordIterableEntries(viewsRecord)()).sort(
+        map((viewsRecord) => {
+          if (viewsRecord instanceof Error) {
+            return viewsRecord;
+          }
+
+          return Array.from(strictRecordIterableEntries(viewsRecord)()).sort(
             ([, { order: a = 0 }], [, { order: b = 0 }]) => a - b,
-          ),
-        ),
+          );
+        }),
       ),
   );
 
@@ -65,7 +76,13 @@ export const setupDatabaseViewsService = (
       viewId?: DatabaseViewId | undefined;
     }) =>
       databaseViews$({ documentId, path }).pipe(
-        map((views) => (viewId ? views?.[viewId] : undefined)),
+        map((views) => {
+          if (views instanceof Error) {
+            return views;
+          }
+
+          return viewId ? views?.[viewId] : undefined;
+        }),
         distinctUntilChanged((a, b) => isEqual(a, b)),
       ),
   );

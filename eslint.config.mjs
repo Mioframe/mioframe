@@ -6,6 +6,7 @@ import pluginVitest from '@vitest/eslint-plugin';
 import pluginPlaywright from 'eslint-plugin-playwright';
 import pluginOxlint from 'eslint-plugin-oxlint';
 import skipFormatting from 'eslint-config-prettier/flat';
+import comments from '@eslint-community/eslint-plugin-eslint-comments/configs';
 
 const gitignorePath = fileURLToPath(new URL('./.gitignore', import.meta.url));
 
@@ -123,6 +124,9 @@ export default defineConfigWithVueTs(
       '@typescript-eslint/prefer-promise-reject-errors': 'error',
     },
   },
+
+  comments.recommended,
+  { rules: { '@eslint-community/eslint-comments/require-description': ['warn', { ignore: [] }] } },
 
   skipFormatting,
 );

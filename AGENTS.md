@@ -19,6 +19,7 @@ Applies to the whole repository unless a deeper `AGENTS.md` overrides it.
 - Split cross-layer work into separate schema/service, entity, feature, widget, and verification passes.
 - Keep changes in the layer that owns the behavior, and import through `index.ts` when a public entry point exists.
 - Preserve FSD boundaries: `pages` compose screens, `widgets` compose larger sections, `features` own user actions, `entities` own domain reads and derived state, and `shared` stays upper-layer-free.
+- When existing code already owns a non-trivial matching, parsing, filtering, or storage algorithm, reuse that implementation or extract a shared helper first; do not reimplement the same algorithm in another layer and let it drift.
 - Keep ByteRover usage details in the `byterover` skill. Use `AGENTS.md` for stable repo policy, not step-by-step `brv` runbooks.
 - Verify third-party semantics from official docs or installed source before relying on ambiguous helpers, options, or return values. If the behavior is still unverified, say so.
 - Treat DOM parentage, scroll ownership, focus, teleport, and overlay wiring as concrete runtime contracts. Check the rendered hierarchy before moving wrappers or composition boundaries.
@@ -59,11 +60,8 @@ Applies to the whole repository unless a deeper `AGENTS.md` overrides it.
 - `widgets` may compose `features`, `entities`, and `shared`, but should not own domain rules.
 - UI-facing layers may cross into background logic only through explicit proxy clients. Do not directly import `*Service` modules into `pages`, `widgets`, `features`, `entities`, or shared UI.
 - Use `pnpm` for package management and project commands.
-- After edits, run the narrowest relevant verification. For logic changes, run at least `pnpm type-check`; add focused `vitest`, Playwright, or reproducible smoke checks for behavior, schema, service, or storage changes.
-- During implementation, use targeted verification. Run full e2e, full lint, or broad mutation checks only when explicitly requested or as final verification.
-- When creating or modifying tests, run the narrowest relevant mutation check for the touched test scope in addition to the focused functional verification.
-- After editing files that are covered by linting or formatting rules, run the narrowest relevant targeted `oxlint`, `eslint --fix`, and/or `oxfmt` pass for the touched scope.
-- Prefer targeted `oxlint`, `eslint --fix`, and `oxfmt` runs over repo-wide commands.
+- After edits, run the narrowest relevant verification for the touched scope. For TypeScript or other logic changes, run at least `pnpm type-check`; add the corresponding focused test or smoke check for changed tests, UI/e2e behavior, or schema, service, and storage behavior.
+- Run lint and format only for the touched scope with targeted `oxlint`, `eslint --fix`, and/or `oxfmt` as relevant. Use full e2e, full lint, or broad mutation checks only when explicitly requested or as final verification before a wide merge.
 - Use Conventional Commits.
 - `pages` and `widgets` directories use PascalCase. Other submodules use lower camel case.
 - Vue components and class-centric files use PascalCase. Other TypeScript files use lower camel case or lowercase.
