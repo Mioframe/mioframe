@@ -22,7 +22,7 @@ export const useDatabaseViewSortService = (
     documentId: AMDocumentId;
     path: string;
     viewId?: DatabaseViewId | undefined;
-  }) => Observable<DatabaseView | undefined>,
+  }) => Observable<DatabaseView | Error | undefined>,
   changeView: (
     path: string,
     documentId: AMDocumentId,
@@ -83,7 +83,13 @@ export const useDatabaseViewSortService = (
       viewId?: DatabaseViewId | undefined;
     }) =>
       databaseView$({ documentId, path, viewId }).pipe(
-        map((view) => view?.sorting),
+        map((view) => {
+          if (view instanceof Error) {
+            return view;
+          }
+
+          return view?.sorting;
+        }),
         distinctUntilChanged(),
       ),
   );
@@ -100,6 +106,10 @@ export const useDatabaseViewSortService = (
     }) =>
       databaseSorting$({ documentId, path, viewId }).pipe(
         map((sorting) => {
+          if (sorting instanceof Error) {
+            return sorting;
+          }
+
           if (sorting) {
             return Array.from(strictRecordIterableEntries(sorting)()).sort(
               ([, { priority: a }], [, { priority: b }]) => a - b,
@@ -124,7 +134,13 @@ export const useDatabaseViewSortService = (
       propertyId: DatabasePropertyId;
     }) =>
       databaseSorting$({ documentId, path, viewId }).pipe(
-        map((sorting) => sorting?.[propertyId]),
+        map((sorting) => {
+          if (sorting instanceof Error) {
+            return sorting;
+          }
+
+          return sorting?.[propertyId];
+        }),
         distinctUntilChanged((a, b) => isEqual(a, b)),
       ),
   );
@@ -143,6 +159,10 @@ export const useDatabaseViewSortService = (
     }) =>
       databaseSorting$({ documentId, path, viewId }).pipe(
         map((sorting) => {
+          if (sorting instanceof Error) {
+            return sorting;
+          }
+
           if (sorting) {
             return Array.from(strictRecordIterableEntries(sorting)())
               .sort(([, { priority: a }], [, { priority: b }]) => a - b)
@@ -193,8 +213,13 @@ export const useDatabaseViewSortService = (
     viewId: DatabaseViewId,
     propertyId: DatabasePropertyId,
   ) => {
-    const oldDirection = (await databaseSort.fetch({ documentId, path, propertyId, viewId }))
-      ?.direction;
+    const currentSort = await databaseSort.fetch({ documentId, path, propertyId, viewId });
+
+    if (currentSort instanceof Error) {
+      throw currentSort;
+    }
+
+    const oldDirection = currentSort?.direction;
 
     await patch(path, documentId, viewId, propertyId, {
       direction:

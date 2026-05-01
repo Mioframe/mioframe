@@ -17,7 +17,7 @@ export const setupDatabaseViewFilterService = (
     documentId: AMDocumentId;
     path: string;
     viewId?: DatabaseViewId | undefined;
-  }) => Observable<DatabaseView | undefined>,
+  }) => Observable<DatabaseView | Error | undefined>,
   changeView: (
     path: string,
     documentId: AMDocumentId,
@@ -36,7 +36,13 @@ export const setupDatabaseViewFilterService = (
       viewId?: DatabaseViewId | undefined;
     }) =>
       databaseView$({ documentId, path, viewId }).pipe(
-        map((view) => view?.filter),
+        map((view) => {
+          if (view instanceof Error) {
+            return view;
+          }
+
+          return view?.filter;
+        }),
         distinctUntilChanged((a, b) => isEqual(a, b)),
       ),
   );

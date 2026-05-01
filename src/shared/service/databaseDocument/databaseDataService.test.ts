@@ -123,6 +123,7 @@ describe('setupDatabaseDataService', () => {
           }
 
           if (
+            !(value instanceof Error) &&
             value &&
             value.length === expectedIdList.length &&
             value.every((itemId, index) => itemId === expectedIdList[index])
