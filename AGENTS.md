@@ -67,6 +67,14 @@ reason if not run:
 - When progress is knowable, surface progress instead of falling back to an indeterminate spinner.
 - Keep unit tests colocated with the source file they verify, using sibling `*.test.ts` files. Do not introduce `__tests__` directories.
 
+## Test-first changes
+
+- Use test-first only for behavior changes, bug fixes, migrations, data transformations, storage semantics, or UI flows where the expected outcome can be reproduced by an existing focused test or smoke check.
+- Before production edits, add or update the smallest relevant existing test or smoke check, then run only that target and confirm it fails for the expected reason. If a focused failing check cannot be produced quickly, stop expanding and state the risk instead of creating broad speculative coverage.
+- After the minimal implementation, rerun the same target, then follow the verification rules above.
+- Skip test-first for refactors, type-only changes, formatting, comments, renames, documentation, and internal cleanup with no observable behavior change.
+- Do not create a new test layer or broaden coverage beyond the changed behavior just to satisfy test-first. Follow `Testing UI and Components` when choosing between e2e, browser smoke, unit, composable, helper, schema, service, or storage tests.
+
 ## Testing UI and Components
 
 - Do not use unit tests as the default verification method for Vue UI components.
