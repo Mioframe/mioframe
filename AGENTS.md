@@ -54,6 +54,8 @@ reason if not run:
 - Preserve FSD boundaries: `pages` compose screens, `widgets` compose larger sections, `features` own user actions, `entities` own domain reads and derived state, and `shared` stays upper-layer-free.
 - When existing code already owns a non-trivial matching, parsing, filtering, or storage algorithm, reuse that implementation or extract a shared helper first; do not reimplement the same algorithm in another layer and let it drift.
 - Keep ByteRover usage details in the `byterover` skill. Use `AGENTS.md` for stable repo policy, not step-by-step `brv` runbooks.
+- Use the `test-first` skill for behavior changes, bug fixes, migrations, data transformations, storage semantics, and UI flows when the expected outcome can be reproduced by a focused test or smoke check.
+- Do not use test-first for refactors, type-only changes, formatting, comments, renames, documentation, or internal cleanup with no observable behavior change.
 - Verify third-party semantics from official docs or installed source before relying on ambiguous helpers, options, or return values. If the behavior is still unverified, say so.
 - Treat DOM parentage, scroll ownership, focus, teleport, and overlay wiring as concrete runtime contracts. Check the rendered hierarchy before moving wrappers or composition boundaries.
 - Keep the UI aligned with Material 3 expectations and optimize for mobile browsers first. Assume large datasets and low-end devices, and keep main-thread work bounded.
@@ -66,14 +68,6 @@ reason if not run:
 - For CRDT-backed state, mutate live nested objects inside the owning change callback, never assign a live document object back into the same document, and prefer shared helpers such as `put`, `patch`, `deepPutJsonObject`, and `deepPatchJsonObject` when they match the write shape.
 - When progress is knowable, surface progress instead of falling back to an indeterminate spinner.
 - Keep unit tests colocated with the source file they verify, using sibling `*.test.ts` files. Do not introduce `__tests__` directories.
-
-## Test-first changes
-
-- Use test-first only for behavior changes, bug fixes, migrations, data transformations, storage semantics, or UI flows where the expected outcome can be reproduced by an existing focused test or smoke check.
-- Before production edits, add or update the smallest relevant existing test or smoke check, then run only that target and confirm it fails for the expected reason. If a focused failing check cannot be produced quickly, stop expanding and state the risk instead of creating broad speculative coverage.
-- After the minimal implementation, rerun the same target, then follow the verification rules above.
-- Skip test-first for refactors, type-only changes, formatting, comments, renames, documentation, and internal cleanup with no observable behavior change.
-- Do not create a new test layer or broaden coverage beyond the changed behavior just to satisfy test-first. Follow `Testing UI and Components` when choosing between e2e, browser smoke, unit, composable, helper, schema, service, or storage tests.
 
 ## Testing UI and Components
 
