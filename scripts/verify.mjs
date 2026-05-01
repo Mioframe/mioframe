@@ -352,15 +352,18 @@ function runCommand(label, command, args) {
   console.log(`\n[${label}] $ ${formattedCommand}`);
 
   const result = spawnSync(command, args, {
-    stdio: ['inherit', 'pipe', 'pipe'],
+    stdio: shouldCaptureOutput ? ['inherit', 'pipe', 'pipe'] : 'inherit',
     encoding: 'utf8',
+    maxBuffer: 16 * 1024 * 1024,
   });
 
-  const stdout = result.stdout ?? '';
-  const stderr = result.stderr ?? '';
+  const stdout = shouldCaptureOutput ? (result.stdout ?? '') : '';
+  const stderr = shouldCaptureOutput ? (result.stderr ?? '') : '';
 
-  process.stdout.write(stdout);
-  process.stderr.write(stderr);
+  if (shouldCaptureOutput) {
+    process.stdout.write(stdout);
+    process.stderr.write(stderr);
+  }
 
   if (result.error) {
     throw result.error;
