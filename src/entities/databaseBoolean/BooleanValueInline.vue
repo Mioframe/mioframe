@@ -25,6 +25,7 @@ const convertedValue = computed(() =>
 
 <template>
   <MDCheckbox
+    class="boolean-value-inline__checkbox"
     :model-value="convertedValue"
     :indeterminate="indeterminate"
     readonly
@@ -33,3 +34,9 @@ const convertedValue = computed(() =>
     aria-hidden="true"
   />
 </template>
+
+<style scoped>
+.boolean-value-inline__checkbox {
+  margin-inline: auto;
+}
+</style>
