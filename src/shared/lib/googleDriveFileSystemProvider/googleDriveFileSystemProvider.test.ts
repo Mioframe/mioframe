@@ -492,7 +492,6 @@ describe('googleDriveFileSystemProvider', () => {
         type: FSNodeType.File,
         size: 7,
         creationTime: new Date('2024-01-02T00:00:00.000Z').valueOf(),
-        modificationTime: new Date('2024-01-03T00:00:00.000Z').valueOf(),
         capabilities: {
           canDelete: true,
           canChangePath: true,

@@ -99,8 +99,7 @@ export interface GoogleDriveFileSystemProviderOptions {
  *   - `My Drive/` - Main user storage
  *   - `Shared with me/` - Files shared with the user
  *   - `App Data/` - Hidden application data folder
- * @param options - Provider dependencies.
- * @param providerOptions
+ * @param providerOptions - Provider dependencies.
  * @returns IFileSystemProvider implementation for Google Drive.
  * @example
  * ```
@@ -281,9 +280,9 @@ export const googleDriveFileSystemProvider = (
       },
     }) satisfies FSNodeStat;
 
-  const getContentSize = (content: FileContent): number | undefined => {
+  const getContentSize = (content: FileContent): number => {
     if (typeof content === 'string') {
-      return new Blob([content]).size;
+      return new TextEncoder().encode(content).byteLength;
     }
     if (content instanceof Blob) {
       return content.size;
@@ -291,10 +290,7 @@ export const googleDriveFileSystemProvider = (
     if (content instanceof ArrayBuffer) {
       return content.byteLength;
     }
-    if (ArrayBuffer.isView(content)) {
-      return content.byteLength;
-    }
-    return undefined;
+    return content.byteLength;
   };
 
   /**
@@ -439,14 +435,9 @@ export const googleDriveFileSystemProvider = (
       return {
         stat: {
           type: FSNodeType.File,
-          size:
-            getContentSize(content) ??
-            (existingEntry.size ? parseInt(existingEntry.size, 10) : undefined),
+          size: getContentSize(content),
           creationTime: existingEntry.createdTime
             ? dayjs(existingEntry.createdTime).valueOf()
-            : undefined,
-          modificationTime: existingEntry.modifiedTime
-            ? dayjs(existingEntry.modifiedTime).valueOf()
             : undefined,
           capabilities: getEntryCapabilities(existingEntry),
         },
