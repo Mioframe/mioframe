@@ -487,7 +487,7 @@ export const createWithContent = async (
     });
   }
 
-  const { body, size } = await createUploadBody(file);
+  const { body } = await createUploadBody(file);
   const boundary = `drive-multipart-${uid(24)}`;
   const multipartBody = new Blob([
     `--${boundary}\r\n`,
@@ -506,7 +506,6 @@ export const createWithContent = async (
     headers: {
       Authorization: `Bearer ${auth.ACCESS_TOKEN}`,
       'Content-Type': `multipart/related; boundary=${boundary}`,
-      'Content-Length': (multipartBody.size || size).toString(),
     },
     searchParams: {
       key: auth.API_KEY,
@@ -516,7 +515,7 @@ export const createWithContent = async (
     body: multipartBody,
   });
 
-  const result = zodGDriveFileMeta.parse(await response.clone().json());
+  const result = zodGDriveFileMeta.parse(await response.json());
 
   invalidateCache(...resource.parents);
 
@@ -537,7 +536,7 @@ export const upload = async (
   file: FileSystemWriteChunkType,
   onUploadProgress?: (progress: Progress, chunk: Uint8Array) => void,
 ): Promise<Response> => {
-  const { body, size } = await createUploadBody(file);
+  const { body } = await createUploadBody(file);
 
   const response = await googleRequest(
     `https://www.googleapis.com/upload/drive/v3/files/${fileId}`,
@@ -545,7 +544,6 @@ export const upload = async (
       method: 'PATCH',
       headers: {
         'Content-Type': body.type,
-        'Content-Length': size.toString(),
         Authorization: `Bearer ${auth.ACCESS_TOKEN}`,
       },
       searchParams: {
@@ -592,5 +590,6 @@ export default {
   download,
   create,
   upload,
+  createWithContent,
   clearCaches,
 };

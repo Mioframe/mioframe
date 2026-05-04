@@ -893,6 +893,9 @@ describe('createWithContent', () => {
     expect(request.headers.get('Authorization')).toBe('Bearer token');
     expect(request.headers.get('Content-Type')).toContain('multipart/related; boundary=');
 
+    // Content-Length should not be set manually (browser controls this)
+    expect(request.headers.has('Content-Length')).toBe(false);
+
     expect(requestBody).toContain('Content-Type: application/json; charset=UTF-8');
     expect(requestBody).toContain(JSON.stringify({ name: 'notes.txt', parents: ['parent-id'] }));
     expect(requestBody).toContain('Content-Type: text/plain');

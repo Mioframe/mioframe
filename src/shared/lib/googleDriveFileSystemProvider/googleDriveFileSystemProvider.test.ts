@@ -1385,4 +1385,199 @@ describe('googleDriveFileSystemProvider', () => {
 
     expect(onEvent).toHaveBeenCalledTimes(1);
   });
+
+  it('uses createWithContent for small new files and skips create + upload', async () => {
+    const requestToken = vi.fn(() => Promise.resolve('token'));
+    const provider = googleDriveFileSystemProvider({
+      $sessions: new BehaviorSubject<string[]>(['user@example.com']),
+      requestToken,
+    });
+
+    getGFileMetaListMock
+      .mockResolvedValueOnce({
+        files: [],
+      })
+      .mockResolvedValueOnce({
+        files: [
+          {
+            id: 'root',
+            name: 'My Drive',
+            mimeType: 'application/vnd.google-apps.folder',
+            modifiedTime: '2024-01-01T00:00:00.000Z',
+            capabilities: {
+              canAddChildren: true,
+            },
+          },
+        ],
+      });
+    createWithContentMock.mockResolvedValue({
+      result: {
+        id: 'created-file-id',
+        name: 'small.txt',
+        size: '100',
+        createdTime: '2024-01-02T00:00:00.000Z',
+        modifiedTime: '2024-01-02T00:00:00.000Z',
+        capabilities: {
+          canTrash: true,
+          canRename: true,
+        },
+      },
+    });
+
+    const smallContent = new Blob(['small content'], { type: 'text/plain' });
+
+    await expect(
+      provider.writeFile('/user@example.com/My Drive/small.txt', smallContent, {
+        create: true,
+        overwrite: true,
+      }),
+    ).resolves.toEqual({
+      stat: {
+        type: FSNodeType.File,
+        size: smallContent.size,
+        creationTime: expect.any(Number),
+        capabilities: {
+          canDelete: true,
+          canChangePath: true,
+          canEditChildren: false,
+        },
+      },
+    });
+
+    expect(createWithContentMock).toHaveBeenCalledWith(
+      { ACCESS_TOKEN: 'token' },
+      { name: 'small.txt', parents: ['root'] },
+      smallContent,
+    );
+    expect(createMock).not.toHaveBeenCalled();
+    expect(uploadMock).not.toHaveBeenCalled();
+  });
+
+  it('uses createWithContent for files exactly at the multipart limit', async () => {
+    const requestToken = vi.fn(() => Promise.resolve('token'));
+    const provider = googleDriveFileSystemProvider({
+      $sessions: new BehaviorSubject<string[]>(['user@example.com']),
+      requestToken,
+    });
+
+    getGFileMetaListMock
+      .mockResolvedValueOnce({
+        files: [],
+      })
+      .mockResolvedValueOnce({
+        files: [
+          {
+            id: 'root',
+            name: 'My Drive',
+            mimeType: 'application/vnd.google-apps.folder',
+            modifiedTime: '2024-01-01T00:00:00.000Z',
+            capabilities: {
+              canAddChildren: true,
+            },
+          },
+        ],
+      });
+    createWithContentMock.mockResolvedValue({
+      result: {
+        id: 'created-file-id',
+        name: 'at-limit.bin',
+        size: '5242880',
+        createdTime: 1704153600000,
+        modifiedTime: 1704153600000,
+        capabilities: {
+          canTrash: true,
+          canRename: true,
+        },
+      },
+    });
+
+    const exactLimitContent = new Blob([new Uint8Array(5 * 1024 * 1024)], {
+      type: 'application/octet-stream',
+    });
+
+    await expect(
+      provider.writeFile('/user@example.com/My Drive/at-limit.bin', exactLimitContent, {
+        create: true,
+        overwrite: true,
+      }),
+    ).resolves.toEqual({
+      stat: {
+        type: FSNodeType.File,
+        size: exactLimitContent.size,
+        creationTime: expect.any(Number),
+        capabilities: {
+          canDelete: true,
+          canChangePath: true,
+          canEditChildren: false,
+        },
+      },
+    });
+
+    expect(createWithContentMock).toHaveBeenCalledWith(
+      { ACCESS_TOKEN: 'token' },
+      { name: 'at-limit.bin', parents: ['root'] },
+      exactLimitContent,
+    );
+    expect(createMock).not.toHaveBeenCalled();
+    expect(uploadMock).not.toHaveBeenCalled();
+  });
+
+  it('uses create + upload for files exceeding the multipart limit', async () => {
+    const requestToken = vi.fn(() => Promise.resolve('token'));
+    const provider = googleDriveFileSystemProvider({
+      $sessions: new BehaviorSubject<string[]>(['user@example.com']),
+      requestToken,
+    });
+
+    getGFileMetaListMock
+      .mockResolvedValueOnce({
+        files: [],
+      })
+      .mockResolvedValueOnce({
+        files: [
+          {
+            id: 'root',
+            name: 'My Drive',
+            mimeType: 'application/vnd.google-apps.folder',
+            modifiedTime: '2024-01-01T00:00:00.000Z',
+            capabilities: {
+              canAddChildren: true,
+            },
+          },
+        ],
+      });
+    createMock.mockResolvedValue({
+      result: {
+        id: 'created-file-id',
+      },
+    });
+    uploadMock.mockResolvedValue(undefined);
+
+    const oneByteOverLimit = new Blob([new Uint8Array(5 * 1024 * 1024 + 1)], {
+      type: 'application/octet-stream',
+    });
+
+    await expect(
+      provider.writeFile('/user@example.com/My Drive/over-limit.bin', oneByteOverLimit, {
+        create: true,
+        overwrite: true,
+      }),
+    ).resolves.toEqual({
+      stat: {
+        type: FSNodeType.File,
+        size: oneByteOverLimit.size,
+      },
+    });
+
+    expect(createMock).toHaveBeenCalledWith(
+      { ACCESS_TOKEN: 'token' },
+      { name: 'over-limit.bin', parents: ['root'] },
+    );
+    expect(uploadMock).toHaveBeenCalledWith(
+      { ACCESS_TOKEN: 'token' },
+      'created-file-id',
+      oneByteOverLimit,
+    );
+    expect(createWithContentMock).not.toHaveBeenCalled();
+  });
 });
