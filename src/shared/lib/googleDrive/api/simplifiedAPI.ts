@@ -312,21 +312,18 @@ const createUploadBody = async (
   file: FileSystemWriteChunkType,
 ): Promise<{
   body: Blob;
-  size: number;
 }> => {
   if (typeof file === 'string') {
     const body = new Blob([file], { type: 'text/plain' });
 
     return {
       body,
-      size: body.size,
     };
   }
 
   if (file instanceof Blob) {
     return {
       body: file,
-      size: file.size,
     };
   }
 
@@ -341,7 +338,6 @@ const createUploadBody = async (
 
     return {
       body,
-      size: body.size,
     };
   }
 
