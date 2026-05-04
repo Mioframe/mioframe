@@ -1,6 +1,6 @@
 ---
 name: byterover
-description: 'Use this skill before broad repository exploration to recall project knowledge with brv search, and before the final response after non-trivial implementation to decide whether durable knowledge must be captured with brv curate. Prefer brv search before brv query. Curate reusable lessons, pitfalls, decisions, and corrected mistakes, not transient task details.'
+description: "Use this skill before broad repository exploration to recall project knowledge with brv search, and before the final response after non-trivial implementation to decide whether durable knowledge must be captured with brv curate. Prefer brv search before brv query. Curate reusable lessons, pitfalls, decisions, and corrected mistakes, not transient task details."
 ---
 
 # ByteRover knowledge workflow
@@ -79,18 +79,23 @@ Use this structure when saving a corrected mistake, pitfall, or reusable workflo
 # Lesson: <short name>
 
 ## Trigger
+
 When this lesson applies.
 
 ## Mistake to avoid
+
 What the agent did wrong, nearly did wrong, or might incorrectly assume.
 
 ## Correct approach
+
 What future agents should do instead in this project.
 
 ## Verification
+
 How to check the correct behavior or avoid regression.
 
 ## Applies to
+
 Relevant paths, layers, commands, skills, or task types.
 ```
 
