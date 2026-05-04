@@ -543,7 +543,7 @@ export const upload = async (
     {
       method: 'PATCH',
       headers: {
-        'Content-Type': body.type,
+        'Content-Type': body.type || 'application/octet-stream',
         Authorization: `Bearer ${auth.ACCESS_TOKEN}`,
       },
       searchParams: {
