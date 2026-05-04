@@ -7,6 +7,8 @@ import pluginPlaywright from 'eslint-plugin-playwright';
 import pluginOxlint from 'eslint-plugin-oxlint';
 import skipFormatting from 'eslint-config-prettier/flat';
 import comments from '@eslint-community/eslint-plugin-eslint-comments/configs';
+import { jsdoc } from 'eslint-plugin-jsdoc';
+import tsdoc from 'eslint-plugin-tsdoc';
 
 const gitignorePath = fileURLToPath(new URL('./.gitignore', import.meta.url));
 
@@ -127,6 +129,48 @@ export default defineConfigWithVueTs(
 
   comments.recommended,
   { rules: { '@eslint-community/eslint-comments/require-description': ['warn', { ignore: [] }] } },
+
+  jsdoc({
+    config: 'flat/recommended-typescript',
+    rules: {
+      'jsdoc/require-jsdoc': [
+        'warn',
+        {
+          publicOnly: {
+            esm: true,
+            cjs: false,
+            window: false,
+          },
+          enableFixer: false,
+          require: {
+            FunctionDeclaration: true,
+            ClassDeclaration: true,
+            ClassExpression: true,
+            MethodDefinition: true,
+            ArrowFunctionExpression: true,
+            FunctionExpression: true,
+          },
+          contexts: [
+            'TSInterfaceDeclaration',
+            'TSTypeAliasDeclaration',
+            'TSEnumDeclaration',
+            'TSMethodSignature',
+            'TSPropertySignature',
+          ],
+        },
+      ],
+    },
+  }),
+
+  {
+    files: ['**/*.{ts,vue}'],
+    plugins: {
+      tsdoc,
+    },
+    rules: {
+      'tsdoc/syntax': 'warn',
+    },
+  },
 
   skipFormatting,
 );

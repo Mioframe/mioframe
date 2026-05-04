@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { FSNodeStat, IFileSystemProvider, VfsEvent } from '@shared/lib/virtualFileSystem';
 import { FSNodeType, VfsEventSource, VfsEventType } from '@shared/lib/virtualFileSystem';
+import type { VfsActivityState } from '@shared/lib/virtualFileSystem';
 import { OPFSName } from '../directories';
 
 const getRecordListMock = vi.fn();
@@ -839,5 +840,63 @@ describe('useFileSystemService', () => {
     await new Promise((resolve) => setTimeout(resolve, 0));
 
     expect(provider.stat).toHaveBeenCalledTimes(2);
+  });
+
+  it('exposes vfsActivity updates through the service query', async () => {
+    const service = await createService();
+    const states: VfsActivityState[] = [];
+    const subscription = service.vfsActivity.subscribe({
+      next: (state) => {
+        states.push(state);
+      },
+    });
+
+    await service.createDirectory('/tracked');
+
+    await vi.waitFor(() => {
+      expect(states).toContainEqual({
+        status: 'active',
+        activeCount: 1,
+        lastError: undefined,
+      });
+      expect(states).toContainEqual({
+        status: 'idle',
+        activeCount: 0,
+        lastError: undefined,
+      });
+    });
+
+    (await subscription)();
+  });
+
+  it('acknowledges vfs activity errors through the service API', async () => {
+    const service = await createService();
+
+    await expect(service.move('/missing', '/other')).rejects.toBeInstanceOf(Error);
+
+    await vi.waitFor(async () => {
+      await expect(service.vfsActivity.fetch()).resolves.toMatchObject({
+        status: 'error',
+        activeCount: 0,
+        lastError: {
+          acknowledged: false,
+          operationType: 'move',
+          path: '/missing',
+          newPath: '/other',
+        },
+      });
+    });
+
+    service.acknowledgeVfsActivityError();
+
+    await vi.waitFor(async () => {
+      await expect(service.vfsActivity.fetch()).resolves.toMatchObject({
+        status: 'idle',
+        activeCount: 0,
+        lastError: {
+          acknowledged: true,
+        },
+      });
+    });
   });
 });
