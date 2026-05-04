@@ -4,6 +4,7 @@ import type {
   FSNodeCapabilities,
   FSNodeStat,
   WriteOptions,
+  WriteFileResult,
 } from './IFileSystemProvider';
 import { FSNodeType } from './IFileSystemProvider';
 import { FileSystemError, VfsError } from './VfsError';
@@ -26,7 +27,7 @@ type AnyEntry = FileEntry | DirectoryEntry;
  * Used for temporary files, tests, or caching.
  */
 export class MemoryFileSystem implements IFileSystemProvider {
-  /** Storage: Path -> Entry object */
+  /** Storage: path to entry object. */
   private store: Map<string, AnyEntry> = new Map();
 
   private static readonly ROOT_CAPABILITIES = {
@@ -46,6 +47,7 @@ export class MemoryFileSystem implements IFileSystemProvider {
     canEditChildren: true,
   } satisfies FSNodeCapabilities;
 
+  /** Creates an in-memory file system with a writable root directory. */
   constructor() {
     // Initialize the root directory
     this.store.set('/', {
@@ -71,6 +73,12 @@ export class MemoryFileSystem implements IFileSystemProvider {
     return entry;
   }
 
+  /**
+   * Resolves effective capabilities for a stored entry.
+   * @param path - Normalized entry path.
+   * @param entry - Stored entry metadata.
+   * @returns Effective node capabilities for the entry.
+   */
   private getCapabilities(path: string, entry: AnyEntry): FSNodeCapabilities {
     if (path === '/') {
       return MemoryFileSystem.ROOT_CAPABILITIES;
@@ -190,7 +198,11 @@ export class MemoryFileSystem implements IFileSystemProvider {
    * @returns A promise that resolves when the file is written
    * @throws VfsError if file operations fail (e.g., file exists, parent not found)
    */
-  public async writeFile(path: string, content: FileContent, options: WriteOptions): Promise<void> {
+  public async writeFile(
+    path: string,
+    content: FileContent,
+    options: WriteOptions,
+  ): Promise<WriteFileResult> {
     const normalized = PathUtils.normalize(path);
     const parentPath = PathUtils.dirname(normalized);
 
@@ -245,6 +257,10 @@ export class MemoryFileSystem implements IFileSystemProvider {
         capabilities: MemoryFileSystem.FILE_CAPABILITIES,
       });
     }
+
+    return {
+      stat: await this.stat(normalized),
+    };
   }
 
   /**

@@ -458,6 +458,148 @@ describe('googleDriveFileSystemProvider', () => {
     );
   });
 
+  it('returns stat for writeFile on an existing Google Drive file', async () => {
+    const requestToken = vi.fn(() => Promise.resolve('token'));
+    const provider = googleDriveFileSystemProvider({
+      $sessions: new BehaviorSubject<string[]>(['user@example.com']),
+      requestToken,
+    });
+
+    getGFileMetaListMock.mockResolvedValueOnce({
+      files: [
+        {
+          id: 'file-id',
+          name: 'notes.txt',
+          mimeType: 'text/plain',
+          size: '99',
+          createdTime: '2024-01-02T00:00:00.000Z',
+          modifiedTime: '2024-01-03T00:00:00.000Z',
+          capabilities: {
+            canRename: true,
+            canTrash: true,
+          },
+        },
+      ],
+    });
+
+    await expect(
+      provider.writeFile('/user@example.com/My Drive/notes.txt', 'content', {
+        create: true,
+        overwrite: true,
+      }),
+    ).resolves.toEqual({
+      stat: {
+        type: FSNodeType.File,
+        size: 7,
+        creationTime: new Date('2024-01-02T00:00:00.000Z').valueOf(),
+        modificationTime: new Date('2024-01-03T00:00:00.000Z').valueOf(),
+        capabilities: {
+          canDelete: true,
+          canChangePath: true,
+          canEditChildren: false,
+        },
+      },
+    });
+  });
+
+  it('returns minimal stat for create plus upload writeFile path', async () => {
+    const requestToken = vi.fn(() => Promise.resolve('token'));
+    const provider = googleDriveFileSystemProvider({
+      $sessions: new BehaviorSubject<string[]>(['user@example.com']),
+      requestToken,
+    });
+
+    getGFileMetaListMock
+      .mockResolvedValueOnce({
+        files: [],
+      })
+      .mockResolvedValueOnce({
+        files: [
+          {
+            id: 'root',
+            name: 'My Drive',
+            mimeType: 'application/vnd.google-apps.folder',
+            modifiedTime: '2024-01-01T00:00:00.000Z',
+            capabilities: {
+              canAddChildren: true,
+            },
+          },
+        ],
+      })
+      .mockResolvedValueOnce({
+        files: [],
+      });
+    createMock.mockResolvedValue({
+      result: {
+        id: 'created-file-id',
+      },
+    });
+    uploadMock.mockResolvedValue(undefined);
+
+    await expect(
+      provider.writeFile('/user@example.com/My Drive/notes.txt', 'content', {
+        create: true,
+        overwrite: true,
+      }),
+    ).resolves.toEqual({
+      stat: {
+        type: FSNodeType.File,
+        size: 7,
+      },
+    });
+  });
+
+  it('derives writeFile stat size from string, blob, array buffer, and typed array content', async () => {
+    const requestToken = vi.fn(() => Promise.resolve('token'));
+    const provider = googleDriveFileSystemProvider({
+      $sessions: new BehaviorSubject<string[]>(['user@example.com']),
+      requestToken,
+    });
+    const contents = [
+      { value: 'hello', expectedSize: 5 },
+      { value: new Blob(['hello']), expectedSize: 5 },
+      { value: new TextEncoder().encode('hello').buffer, expectedSize: 5 },
+      { value: new Uint8Array([1, 2, 3, 4]), expectedSize: 4 },
+    ] as const;
+
+    const results = await Promise.all(
+      contents.map(async ({ value, expectedSize }, index) => {
+        getGFileMetaListMock.mockResolvedValueOnce({
+          files: [
+            {
+              id: `file-${index}`,
+              name: `notes-${index}.txt`,
+              mimeType: 'text/plain',
+              size: '999',
+              modifiedTime: '2024-01-03T00:00:00.000Z',
+            },
+          ],
+        });
+
+        const result = await provider.writeFile(
+          `/user@example.com/My Drive/notes-${index}.txt`,
+          value,
+          {
+            create: true,
+            overwrite: true,
+          },
+        );
+
+        return {
+          expectedSize,
+          size: result.stat.size,
+        };
+      }),
+    );
+
+    expect(results).toEqual([
+      { expectedSize: 5, size: 5 },
+      { expectedSize: 5, size: 5 },
+      { expectedSize: 5, size: 5 },
+      { expectedSize: 4, size: 4 },
+    ]);
+  });
+
   it('rejects writeFile when an existing file cannot be overwritten', async () => {
     const requestToken = vi.fn(() => Promise.resolve('token'));
     const provider = googleDriveFileSystemProvider({

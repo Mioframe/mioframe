@@ -5,6 +5,7 @@ export {
   type FSNodeStat,
   type FileContent,
   FSNodeType,
+  type WriteFileResult,
   type WriteOptions,
 } from './IFileSystemProvider';
 export { EventEmitter, VfsEventSource, VfsEventType, type VfsEvent } from './EventEmitter';
