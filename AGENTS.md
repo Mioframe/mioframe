@@ -53,6 +53,11 @@ reason:
 - Before editing, identify the smallest affected FSD owner layer and read only task-relevant files plus direct imports unless the task proves wider impact.
 - Split cross-layer work into separate schema/service, entity, feature, widget, and verification passes.
 - Keep changes in the layer that owns the behavior, and import through `index.ts` when a public entry point exists.
+- Keep files small enough for agents to reason about locally. Prefer 100-300 lines for new production files and avoid growing ordinary implementation files beyond 500 lines without a clear reason.
+- When a file approaches 500-700 lines or mixes multiple responsibilities, extract by FSD ownership first: pure logic to `shared/lib`, infrastructure to `shared/service`, domain reads to `entities`, user actions to `features`, and composition to `widgets` or `pages`.
+- Do not split files by line count alone. Keep one cohesive module intact when it is linear, generated-like, schema-heavy, or mostly repetitive registry/config data.
+- For Vue components, keep templates, browser interaction state, data mapping, and persistence orchestration separated. Extract reusable state transitions into composables or pure helpers before adding more component complexity.
+- For large refactors, keep behavior-preserving extraction separate from behavior changes. Verify the extraction first, then make functional changes in a smaller diff.
 - Preserve FSD boundaries: `pages` compose screens, `widgets` compose larger sections, `features` own user actions, `entities` own domain reads and derived state, and `shared` stays upper-layer-free.
 - When existing code already owns a non-trivial matching, parsing, filtering, or storage algorithm, reuse that implementation or extract a shared helper first; do not reimplement the same algorithm in another layer and let it drift.
 - Keep ByteRover usage details in the `byterover` skill. Use `AGENTS.md` for stable repo policy, not step-by-step `brv` runbooks.
