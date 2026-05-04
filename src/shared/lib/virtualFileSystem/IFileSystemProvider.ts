@@ -18,6 +18,9 @@ export enum FSNodeType {
   Directory,
 }
 
+/**
+ * Provider-reported capabilities for a file system node.
+ */
 export interface FSNodeCapabilities {
   /** Flag that explicitly allows deletion from the file system */
   canDelete?: boolean | undefined;
@@ -56,66 +59,74 @@ export interface WriteOptions {
 }
 
 /**
+ * Result of a successful write operation.
+ */
+export interface WriteFileResult {
+  /** Stat of the written file after the write completes */
+  stat: FSNodeStat;
+}
+
+/**
  * Virtual file system provider interface
  * Defines the contract for file system operations
  */
 export interface IFileSystemProvider {
   /**
    * Get file system node statistics by path
-   * @param path Path to the file system node
+   * @param path - Path to the file system node.
    * @returns Promise that resolves to the node statistics
    */
   stat(path: string): Promise<FSNodeStat>;
 
   /**
    * Read file content
-   * @param path Path to the file
+   * @param path - Path to the file.
    * @returns Promise that resolves to a File object with the file content
    */
   readFile(path: string): Promise<File>;
 
   /**
    * Write content to a file
-   * @param path Path to the file
-   * @param content Content to write
-   * @param options Write options
-   * @returns Promise that resolves after the write operation completes
+   * @param path - Path to the file.
+   * @param content - Content to write.
+   * @param options - Write options.
+   * @returns Promise that resolves to the written file stat.
    */
-  writeFile(path: string, content: FileContent, options: WriteOptions): Promise<void>;
+  writeFile(path: string, content: FileContent, options: WriteOptions): Promise<WriteFileResult>;
 
   /**
    * Read directory contents
-   * @param path Path to the directory
+   * @param path - Path to the directory.
    * @returns Promise that resolves to an array of pairs [file_name, statistics]
    */
   readDirectory(path: string): Promise<[string, FSNodeStat][]>;
 
   /**
    * Create a directory
-   * @param path Path to the new directory
+   * @param path - Path to the new directory.
    * @returns Promise that resolves after the directory is created
    */
   createDirectory(path: string): Promise<void>;
 
   /**
    * Delete a file or directory
-   * @param path Path to the item to delete
-   * @param recursive If true, delete recursively (for directories)
+   * @param path - Path to the item to delete.
+   * @param recursive - If true, delete recursively for directories.
    * @returns Promise that resolves after the deletion completes
    */
   delete(path: string, recursive: boolean): Promise<void>;
 
   /**
    * Rename a file or directory
-   * @param oldPath Old path
-   * @param newPath New path
+   * @param oldPath - Old path.
+   * @param newPath - New path.
    * @returns Promise that resolves after the rename operation completes
    */
   move(oldPath: string, newPath: string): Promise<void>;
 
   /**
    * Watch for changes in the file system (optional)
-   * @param callback Callback function to handle events
+   * @param callback - Callback function to handle events.
    * @returns Function to cancel watching
    */
   watch?(callback: (event: VfsEvent) => void): (() => void) | undefined;

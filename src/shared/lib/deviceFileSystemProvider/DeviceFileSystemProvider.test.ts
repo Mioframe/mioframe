@@ -159,6 +159,22 @@ describe('DeviceFileSystemProvider', () => {
     expect(await (await fileSystem.readFile('/note.txt')).text()).toBe('hello');
   });
 
+  it('should return the nested provider write result', async () => {
+    mountRecord('Projects');
+
+    await expect(
+      provider.writeFile('/Projects/note.txt', 'hello', {
+        create: true,
+        overwrite: true,
+      }),
+    ).resolves.toMatchObject({
+      stat: {
+        type: FSNodeType.File,
+        size: 5,
+      },
+    });
+  });
+
   it('should support cross-mounted moves for nested paths', async () => {
     const { fileSystem: sourceFileSystem } = mountRecord('Projects');
     const { fileSystem: targetFileSystem } = mountRecord('Browser Storage');

@@ -3,6 +3,7 @@ import type {
   FSNodeStat,
   IFileSystemProvider,
   VfsEvent,
+  WriteFileResult,
   WriteOptions,
 } from '../virtualFileSystem';
 import {
@@ -58,7 +59,7 @@ export enum GoogleDriveMount {
   SpecificFolder = 'specificFolder',
 }
 
-/** Optional mounting configuration for Google Drive file systems. */
+/** Mount options for selecting the visible Google Drive root. */
 export interface GoogleDriveFsOptions {
   /**
    * Mount mode.
@@ -72,12 +73,15 @@ export interface GoogleDriveFsOptions {
    */
   rootId?: string;
 
-  /** Optional error observer for provider-level failures. */
+  /** Optional callback invoked when provider operations surface an error. */
   onError?: (error: unknown) => unknown;
 }
 
+/** Runtime dependencies required to build the Google Drive VFS provider. */
 interface GoogleDriveProviderDeps {
+  /** Requests an access token for the target email and Google scope set. */
   requestToken: (scope: GOOGLE_SCOPE[], email: string) => Promise<string>;
+  /** Reactive authenticated Google session email list. */
   $sessions: Observable<string[]>;
 }
 
@@ -98,7 +102,7 @@ interface GoogleDriveProviderDeps {
  *   - `Shared with me/` - Files shared with the user
  *   - `App Data/` - Hidden application data folder
  * @param deps - Provider dependencies.
- * @returns Google Drive-backed VFS provider implementation.
+ * @returns IFileSystemProvider implementation for Google Drive.
  * @example
  * ```
  * const provider = googleDriveFileSystemProvider({
@@ -115,7 +119,6 @@ interface GoogleDriveProviderDeps {
  */
 export const googleDriveFileSystemProvider = (deps: GoogleDriveProviderDeps) => {
   const { requestToken, $sessions: sessions$ } = deps;
-
   const extractEmailFromPath = (path: string): string => {
     const email = getGoogleDrivePathEmail(path);
 
@@ -162,34 +165,14 @@ export const googleDriveFileSystemProvider = (deps: GoogleDriveProviderDeps) => 
     return token;
   };
 
-  const getContentSize = (content: FileContent): number | undefined => {
-    if (typeof content === 'string') {
-      return new Blob([content]).size;
-    }
-
-    if (content instanceof Blob) {
-      return content.size;
-    }
-
-    if (content instanceof ArrayBuffer) {
-      return content.byteLength;
-    }
-
-    if (ArrayBuffer.isView(content)) {
-      return content.byteLength;
-    }
-
-    return undefined;
-  };
-
   /**
    * Resolves a VFS path to a Google Drive file/folder ID.
    *
    * Traverses the path segment by segment, querying Google Drive API for each
    * directory entry. For "Shared with me" space, uses the `sharedWithMe` flag
    * in the query; otherwise uses `parentId` to restrict search to the parent folder.
-   * @param rawPath - VFS path rooted at a mounted Google Drive account.
-   * @returns Resolved Google Drive entry metadata.
+   * @param rawPath - Absolute Google Drive VFS path.
+   * @returns Matching Google Drive entry metadata.
    */
   const resolvePath = async (rawPath: string): Promise<GDriveFileMeta> => {
     const path = PathUtils.normalize(rawPath);
@@ -297,10 +280,23 @@ export const googleDriveFileSystemProvider = (deps: GoogleDriveProviderDeps) => 
       },
     }) satisfies FSNodeStat;
 
+  const getContentSize = (content: FileContent): number => {
+    if (typeof content === 'string') {
+      return new TextEncoder().encode(content).byteLength;
+    }
+    if (content instanceof Blob) {
+      return content.size;
+    }
+    if (content instanceof ArrayBuffer) {
+      return content.byteLength;
+    }
+    return content.byteLength;
+  };
+
   /**
    * Gets file or directory statistics.
-   * @param rawPath - VFS path to inspect.
-   * @returns File or directory stat for the requested entry.
+   * @param rawPath - Absolute Google Drive VFS path.
+   * @returns File or directory stat for the resolved path.
    */
   const stat = async (rawPath: string): Promise<FSNodeStat> => {
     const path = PathUtils.normalize(rawPath);
@@ -348,8 +344,8 @@ export const googleDriveFileSystemProvider = (deps: GoogleDriveProviderDeps) => 
 
   /**
    * Reads a file from Google Drive.
-   * @param path - VFS file path to download.
-   * @returns Downloaded browser File instance.
+   * @param path - Absolute Google Drive VFS path to a file.
+   * @returns Downloaded file payload.
    */
   const readFile = async (path: string): Promise<File> => {
     const entry = await resolvePath(path);
@@ -369,16 +365,16 @@ export const googleDriveFileSystemProvider = (deps: GoogleDriveProviderDeps) => 
 
   /**
    * Writes data to a file in Google Drive.
-   * @param path - VFS file path to create or overwrite.
-   * @param content - File content to write.
-   * @param options - Create and overwrite flags from the VFS contract.
-   * @returns Resolves when the write completes successfully.
+   * @param path - Absolute Google Drive VFS path to a file.
+   * @param content - Content to write.
+   * @param options - Write mode flags.
+   * @returns Written file stat without a follow-up stat request.
    */
   const writeFile = async (
     path: string,
     content: FileContent,
     options: WriteOptions,
-  ): Promise<void> => {
+  ): Promise<WriteFileResult> => {
     const parentPath = PathUtils.dirname(path);
     const fileName = PathUtils.basename(path);
 
@@ -435,6 +431,17 @@ export const googleDriveFileSystemProvider = (deps: GoogleDriveProviderDeps) => 
       const token = await getTokenForPath(path);
 
       await upload({ ACCESS_TOKEN: token }, existingEntry.id, content);
+
+      return {
+        stat: {
+          type: FSNodeType.File,
+          size: getContentSize(content),
+          creationTime: existingEntry.createdTime
+            ? dayjs(existingEntry.createdTime).valueOf()
+            : undefined,
+          capabilities: getEntryCapabilities(existingEntry),
+        },
+      };
     } else {
       if (!options.create) {
         throw new VfsError(FileSystemError.FileNotFound, `File not found: ${path}`);
@@ -447,10 +454,19 @@ export const googleDriveFileSystemProvider = (deps: GoogleDriveProviderDeps) => 
         parents: [parentEntry.id],
       } satisfies Parameters<typeof create>[1];
 
-      if (contentSize !== undefined && contentSize <= GOOGLE_DRIVE_MULTIPART_UPLOAD_LIMIT) {
-        await createWithContent(auth, resource, content);
+      if (contentSize <= GOOGLE_DRIVE_MULTIPART_UPLOAD_LIMIT) {
+        const created = await createWithContent(auth, resource, content);
 
-        return;
+        return {
+          stat: {
+            type: FSNodeType.File,
+            size: contentSize,
+            creationTime: created.result.createdTime
+              ? dayjs(created.result.createdTime).valueOf()
+              : undefined,
+            capabilities: getEntryCapabilities(created.result),
+          },
+        };
       }
 
       const created = await create(auth, resource);
@@ -463,6 +479,13 @@ export const googleDriveFileSystemProvider = (deps: GoogleDriveProviderDeps) => 
         });
         throw uploadError;
       }
+
+      return {
+        stat: {
+          type: FSNodeType.File,
+          size: getContentSize(content),
+        },
+      };
     }
   };
 
@@ -507,8 +530,8 @@ export const googleDriveFileSystemProvider = (deps: GoogleDriveProviderDeps) => 
 
   /**
    * Reads the contents of a directory.
-   * @param rawPath - VFS directory path to list.
-   * @returns Directory entry names with their stats.
+   * @param rawPath - Absolute Google Drive VFS path to a directory.
+   * @returns Directory entries with mapped VFS stats.
    */
   const readDirectory = async (rawPath: string): Promise<[string, FSNodeStat][]> => {
     const pathArray = PathUtils.split(rawPath);
@@ -573,8 +596,7 @@ export const googleDriveFileSystemProvider = (deps: GoogleDriveProviderDeps) => 
 
   /**
    * Creates a directory in Google Drive.
-   * @param path - VFS directory path to create.
-   * @returns Resolves when the directory is created.
+   * @param path - Absolute Google Drive VFS path to the new directory.
    */
   const createDirectory = async (path: string): Promise<void> => {
     try {
@@ -619,9 +641,8 @@ export const googleDriveFileSystemProvider = (deps: GoogleDriveProviderDeps) => 
 
   /**
    * Deletes a file or directory from Google Drive.
-   * @param path - VFS path to delete.
+   * @param path - Absolute Google Drive VFS path to delete.
    * @param recursive - Whether directory deletion may recurse.
-   * @returns Resolves when the entry is trashed successfully.
    */
   const _delete = async (path: string, recursive: boolean): Promise<void> => {
     if (path === '/') {
@@ -677,9 +698,8 @@ export const googleDriveFileSystemProvider = (deps: GoogleDriveProviderDeps) => 
 
   /**
    * Renames a file or directory in Google Drive.
-   * @param oldPath - Existing VFS path.
-   * @param newPath - Destination VFS path.
-   * @returns Resolves when the move or rename completes successfully.
+   * @param oldPath - Current absolute Google Drive VFS path.
+   * @param newPath - New absolute Google Drive VFS path.
    */
   const move = async (oldPath: string, newPath: string): Promise<void> => {
     const normalizedOld = PathUtils.normalize(oldPath);

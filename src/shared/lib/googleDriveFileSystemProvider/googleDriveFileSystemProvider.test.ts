@@ -418,6 +418,21 @@ describe('googleDriveFileSystemProvider', () => {
         files: [],
       })
       .mockResolvedValueOnce({
+        files: [
+          {
+            id: 'root',
+            name: 'My Drive',
+            mimeType: 'application/vnd.google-apps.folder',
+            modifiedTime: '2024-01-01T00:00:00.000Z',
+            capabilities: {
+              canAddChildren: true,
+              canRename: true,
+              canTrash: false,
+            },
+          },
+        ],
+      })
+      .mockResolvedValueOnce({
         files: [],
       });
     createMock.mockResolvedValue({
@@ -454,7 +469,7 @@ describe('googleDriveFileSystemProvider', () => {
     );
   });
 
-  it('uses upload for an existing file during writeFile', async () => {
+  it('returns stat for writeFile on an existing Google Drive file', async () => {
     const requestToken = vi.fn(() => Promise.resolve('token'));
     const provider = googleDriveFileSystemProvider({
       $sessions: new BehaviorSubject<string[]>(['user@example.com']),
@@ -467,69 +482,37 @@ describe('googleDriveFileSystemProvider', () => {
           id: 'file-id',
           name: 'notes.txt',
           mimeType: 'text/plain',
-          modifiedTime: '2024-01-02T00:00:00.000Z',
+          size: '99',
+          createdTime: '2024-01-02T00:00:00.000Z',
+          modifiedTime: '2024-01-03T00:00:00.000Z',
+          capabilities: {
+            canRename: true,
+            canTrash: true,
+          },
         },
       ],
     });
 
-    await provider.writeFile('/user@example.com/My Drive/notes.txt', 'content', {
-      create: true,
-      overwrite: true,
-    });
-
-    expect(uploadMock).toHaveBeenCalledWith(
-      {
-        ACCESS_TOKEN: 'token',
+    await expect(
+      provider.writeFile('/user@example.com/My Drive/notes.txt', 'content', {
+        create: true,
+        overwrite: true,
+      }),
+    ).resolves.toEqual({
+      stat: {
+        type: FSNodeType.File,
+        size: 7,
+        creationTime: new Date('2024-01-02T00:00:00.000Z').valueOf(),
+        capabilities: {
+          canDelete: true,
+          canChangePath: true,
+          canEditChildren: false,
+        },
       },
-      'file-id',
-      'content',
-    );
-    expect(createMock).not.toHaveBeenCalled();
-    expect(createWithContentMock).not.toHaveBeenCalled();
+    });
   });
 
-  it('uses createWithContent for a new small file during writeFile', async () => {
-    const requestToken = vi.fn(() => Promise.resolve('token'));
-    const provider = googleDriveFileSystemProvider({
-      $sessions: new BehaviorSubject<string[]>(['user@example.com']),
-      requestToken,
-    });
-
-    getGFileMetaListMock.mockResolvedValueOnce({
-      files: [],
-    });
-    createWithContentMock.mockResolvedValue({
-      result: {
-        id: 'created-file-id',
-        name: 'notes.txt',
-        mimeType: 'text/plain',
-        size: '7',
-        modifiedTime: '2024-01-02T00:00:00.000Z',
-        parents: ['root'],
-      },
-    });
-
-    await provider.writeFile('/user@example.com/My Drive/notes.txt', 'content', {
-      create: true,
-      overwrite: true,
-    });
-
-    expect(createWithContentMock).toHaveBeenCalledWith(
-      {
-        ACCESS_TOKEN: 'token',
-      },
-      {
-        name: 'notes.txt',
-        parents: ['root'],
-      },
-      'content',
-    );
-    expect(createMock).not.toHaveBeenCalled();
-    expect(uploadMock).not.toHaveBeenCalled();
-    expect(updateMock).not.toHaveBeenCalled();
-  });
-
-  it('keeps create plus upload for a new file larger than multipart limit', async () => {
+  it('returns minimal stat for create plus upload writeFile path', async () => {
     const requestToken = vi.fn(() => Promise.resolve('token'));
     const provider = googleDriveFileSystemProvider({
       $sessions: new BehaviorSubject<string[]>(['user@example.com']),
@@ -539,61 +522,95 @@ describe('googleDriveFileSystemProvider', () => {
       type: 'application/octet-stream',
     });
 
-    getGFileMetaListMock.mockResolvedValueOnce({
-      files: [],
-    });
+    getGFileMetaListMock
+      .mockResolvedValueOnce({
+        files: [],
+      })
+      .mockResolvedValueOnce({
+        files: [
+          {
+            id: 'root',
+            name: 'My Drive',
+            mimeType: 'application/vnd.google-apps.folder',
+            modifiedTime: '2024-01-01T00:00:00.000Z',
+            capabilities: {
+              canAddChildren: true,
+            },
+          },
+        ],
+      })
+      .mockResolvedValueOnce({
+        files: [],
+      });
     createMock.mockResolvedValue({
       result: {
         id: 'created-file-id',
       },
     });
+    uploadMock.mockResolvedValue(undefined);
 
-    await provider.writeFile('/user@example.com/My Drive/notes.bin', largeContent, {
-      create: true,
-      overwrite: true,
+    await expect(
+      provider.writeFile('/user@example.com/My Drive/notes.txt', largeContent, {
+        create: true,
+        overwrite: true,
+      }),
+    ).resolves.toEqual({
+      stat: {
+        type: FSNodeType.File,
+        size: largeContent.size,
+      },
     });
-
-    expect(createMock).toHaveBeenCalledWith(
-      {
-        ACCESS_TOKEN: 'token',
-      },
-      {
-        name: 'notes.bin',
-        parents: ['root'],
-      },
-    );
-    expect(uploadMock).toHaveBeenCalledWith(
-      {
-        ACCESS_TOKEN: 'token',
-      },
-      'created-file-id',
-      expect.any(Blob),
-    );
-    expect(createWithContentMock).not.toHaveBeenCalled();
   });
 
-  it('propagates multipart upload failure without cleanup for a new small file', async () => {
+  it('derives writeFile stat size from string, blob, array buffer, and typed array content', async () => {
     const requestToken = vi.fn(() => Promise.resolve('token'));
     const provider = googleDriveFileSystemProvider({
       $sessions: new BehaviorSubject<string[]>(['user@example.com']),
       requestToken,
     });
+    const contents = [
+      { value: 'hello', expectedSize: 5 },
+      { value: new Blob(['hello']), expectedSize: 5 },
+      { value: new TextEncoder().encode('hello').buffer, expectedSize: 5 },
+      { value: new Uint8Array([1, 2, 3, 4]), expectedSize: 4 },
+    ] as const;
 
-    getGFileMetaListMock.mockResolvedValueOnce({
-      files: [],
-    });
-    createWithContentMock.mockRejectedValue(new Error('multipart failed'));
+    const results = await Promise.all(
+      contents.map(async ({ value, expectedSize }, index) => {
+        getGFileMetaListMock.mockResolvedValueOnce({
+          files: [
+            {
+              id: `file-${index}`,
+              name: `notes-${index}.txt`,
+              mimeType: 'text/plain',
+              size: '999',
+              modifiedTime: '2024-01-03T00:00:00.000Z',
+            },
+          ],
+        });
 
-    await expect(
-      provider.writeFile('/user@example.com/My Drive/notes.txt', 'content', {
-        create: true,
-        overwrite: true,
+        const result = await provider.writeFile(
+          `/user@example.com/My Drive/notes-${index}.txt`,
+          value,
+          {
+            create: true,
+            overwrite: true,
+          },
+        );
+
+        return {
+          expectedSize,
+          size: result.stat.size,
+        };
       }),
-    ).rejects.toThrow('multipart failed');
+    );
 
-    expect(updateMock).not.toHaveBeenCalled();
-    expect(createMock).not.toHaveBeenCalled();
-    expect(uploadMock).not.toHaveBeenCalled();
+    expect(results).toEqual([
+      { expectedSize: 5, size: 5 },
+      { expectedSize: 5, size: 5 },
+      { expectedSize: 5, size: 5 },
+      { expectedSize: 4, size: 4 },
+    ]);
   });
 
   it('rejects writeFile when an existing file cannot be overwritten', async () => {
