@@ -1482,8 +1482,8 @@ describe('googleDriveFileSystemProvider', () => {
         id: 'created-file-id',
         name: 'at-limit.bin',
         size: '5242880',
-        createdTime: 1704153600000,
-        modifiedTime: 1704153600000,
+        createdTime: '2024-01-02T00:00:00.000Z',
+        modifiedTime: '2024-01-02T00:00:00.000Z',
         capabilities: {
           canTrash: true,
           canRename: true,
