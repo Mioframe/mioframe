@@ -72,7 +72,6 @@ useEventListener(refEl, 'mouseup', (e: MouseEvent) => {
 const { vibrate } = useVibrate();
 
 useEventListener(refEl, 'click', (e) => {
-  e.stopPropagation();
   vibrate([10]);
   emit('click', e);
 });

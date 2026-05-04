@@ -50,13 +50,18 @@ const symbolName = computed(() =>
 );
 
 const onClickContainer = (e: MouseEvent) => {
-  if (disabled.value || readonly.value) {
+  if (disabled.value) {
     return;
   }
 
   e.preventDefault();
   emit('click');
 
+  if (readonly.value) {
+    return;
+  }
+
+  e.stopPropagation();
   stateValue.value = toggleBoolean(stateValue.value, toValue(indeterminate));
 };
 
@@ -69,17 +74,24 @@ watchEffect(() => {
 });
 
 const onKeydownContainer = (event: KeyboardEvent) => {
-  if (disabled.value || readonly.value) {
+  const { key } = event;
+  if (!['Enter', ' '].includes(key)) {
     return;
   }
 
-  const { key } = event;
-  if (['Enter', ' '].includes(key)) {
-    event.preventDefault();
-    emit('click');
-
-    stateValue.value = toggleBoolean(stateValue.value, toValue(indeterminate));
+  if (disabled.value) {
+    return;
   }
+
+  event.preventDefault();
+  emit('click');
+
+  if (readonly.value) {
+    return;
+  }
+
+  event.stopPropagation();
+  stateValue.value = toggleBoolean(stateValue.value, toValue(indeterminate));
 };
 </script>
 

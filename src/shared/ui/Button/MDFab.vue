@@ -40,6 +40,7 @@ const typeClass = computed(() => {
 });
 
 const onFabClick = (event: MouseEvent) => {
+  event.stopPropagation();
   emit('click', event);
 };
 </script>

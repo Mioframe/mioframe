@@ -148,7 +148,16 @@ test('updates string, number, boolean, and date values inline and persists them'
   await expect(findDatabaseRow(page, nextStringValue)).toBeVisible();
 
   await setInlineDatabaseValue(page, nextStringValue, numberPropertyName, nextNumberValue);
-  await setInlineDatabaseValue(page, nextStringValue, booleanPropertyName, true);
+
+  const booleanCell = findDatabaseRow(page, nextStringValue)
+    .getByRole('checkbox', {
+      name: new RegExp(`^${booleanPropertyName}$`, 'i'),
+    })
+    .first();
+  await expect(booleanCell).toBeVisible();
+  await booleanCell.click();
+  await expect(booleanCell).toHaveAttribute('aria-checked', 'true');
+
   await setInlineDatabaseValue(page, nextStringValue, datePropertyName, nextDateValue);
 
   const updatedRow = findDatabaseRow(page, nextStringValue);
