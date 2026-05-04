@@ -5,6 +5,7 @@ import { EventEmitter, VfsEventSource, VfsEventType } from './EventEmitter';
 import { PathUtils } from './PathUtils';
 import { FileSystemError, VfsError } from './VfsError';
 import { LockManager } from './LockManager';
+import { createVfsActivityTracker } from './VfsActivityTracker';
 import type { Promisable } from 'type-fest';
 
 /**
@@ -51,12 +52,28 @@ export class VirtualFileSystem {
   private readonly locks: LockManager;
 
   /**
+   * Tracks VFS mutation activity derived from provider mutations.
+   */
+  private readonly activityTracker = createVfsActivityTracker();
+
+  /**
    * Creates a VirtualFileSystem instance.
-   *
-   * @param locksManager Optional lock manager. If not provided, a new one is created.
+   * @param locksManager - Optional lock manager. If not provided, a new one is created.
    */
   constructor(locksManager?: LockManager) {
     this.locks = locksManager ?? new LockManager();
+  }
+
+  /**
+   * Read-only VFS mutation activity stream.
+   */
+  public readonly activity$ = this.activityTracker.state$;
+
+  /**
+   * Acknowledges the current VFS activity error, if present.
+   */
+  public acknowledgeActivityError(): void {
+    this.activityTracker.acknowledgeError();
   }
 
   private emitVfsEvent(event: Omit<VfsEvent, 'source'>) {
@@ -87,10 +104,9 @@ export class VirtualFileSystem {
 
   /**
    * Subscribes to events for a specific path or all paths if no path is specified.
-   *
-   * @param path Path to the file or directory. If not provided, listens to all VFS events.
-   * @param callback Callback function to execute when an event occurs.
-   * @param options Watch options (e.g., recursive).
+   * @param path - Path to the file or directory. If not provided, listens to all VFS events.
+   * @param callback - Callback function to execute when an event occurs.
+   * @param options - Watch options (e.g., recursive).
    * @returns Function to unsubscribe from events.
    */
   public watch(
@@ -101,12 +117,18 @@ export class VirtualFileSystem {
 
   /**
    * Subscribes to all events with a single listener function.
-   *
-   * @param callback Callback function to execute when an event occurs.
+   * @param callback - Callback function to execute when an event occurs.
    * @returns Function to unsubscribe from events.
    */
   public watch(callback: (event: VfsEvent) => Promisable<void>): () => void;
 
+  /**
+   * Implements the overloaded watch signatures and normalizes the subscription target.
+   * @param pathOrCallback - Path to watch or the listener for a global subscription.
+   * @param callback - Listener used when subscribing to a specific path.
+   * @param options - Watch options for path-scoped subscriptions.
+   * @returns Function to unsubscribe from events.
+   */
   public watch(
     pathOrCallback: string | ((event: VfsEvent) => void),
     callback?: (event: VfsEvent) => Promisable<void>,
@@ -159,10 +181,8 @@ export class VirtualFileSystem {
 
   /**
    * Mounts a file system provider at the specified path.
-   *
-   * @param path Mount path (e.g., '/mnt/disk1').
-   * @param provider Provider instance (e.g., MemoryFileSystem).
-   *
+   * @param path - Mount path (e.g., '/mnt/disk1').
+   * @param provider - Provider instance (e.g., MemoryFileSystem).
    * @example
    * vfs.mount('/data', new MemoryFileSystem());
    */
@@ -204,8 +224,7 @@ export class VirtualFileSystem {
 
   /**
    * Unmounts a provider at the specified path.
-   *
-   * @param path Path where the provider was mounted.
+   * @param path - Path where the provider was mounted.
    */
   public unmount(path: string): void {
     const normalized = PathUtils.normalize(path);
@@ -217,13 +236,13 @@ export class VirtualFileSystem {
     }
   }
 
+  /* eslint-disable-next-line jsdoc/require-throws-type -- TSDoc syntax does not support JSDoc typed @throws tags. */
   /**
    * Determines the responsible provider for the specified path
    * and returns the path relative to that provider's root.
-   *
-   * @param path The absolute path to resolve
+   * @param path - The absolute path to resolve.
    * @returns Object containing the provider instance and the relative path
-   * @throws VfsError if no provider is mounted at the given path
+   * @throws If no provider is mounted at the given path.
    */
   private resolve(path: string): {
     provider: IFileSystemProvider;
@@ -248,8 +267,7 @@ export class VirtualFileSystem {
 
   /**
    * Gets information about a file or directory.
-   *
-   * @param path Absolute path to the file or directory
+   * @param path - Absolute path to the file or directory.
    * @returns Promise that resolves to FileStat object with node statistics
    */
   public async stat(path: string): Promise<FSNodeStat> {
@@ -259,8 +277,7 @@ export class VirtualFileSystem {
 
   /**
    * Reads the content of a file.
-   *
-   * @param path Absolute path to the file
+   * @param path - Absolute path to the file.
    * @returns Promise that resolves to File object (Blob)
    */
   public async readFile(path: string): Promise<File> {
@@ -272,40 +289,41 @@ export class VirtualFileSystem {
 
   /**
    * Writes content to a file. If the file doesn't exist, it creates it; if it does, it overwrites it.
-   *
-   * @param path Absolute path to the file
-   * @param content Content (string, Blob, BufferSource)
+   * @param path - Absolute path to the file.
+   * @param content - Content (string, Blob, BufferSource).
+   * @returns Promise that resolves when the write and event emission are complete.
    */
   public async writeFile(path: string, content: FileContent): Promise<void> {
-    return this.locks.request(path, async () => {
-      const { provider, relativePath } = this.resolve(path);
+    return this.activityTracker.track({ type: 'writeFile', path }, () =>
+      this.locks.request(path, async () => {
+        const { provider, relativePath } = this.resolve(path);
 
-      const exists = await provider
-        .stat(relativePath)
-        .then(() => true)
-        .catch(() => false);
+        const exists = await provider
+          .stat(relativePath)
+          .then(() => true)
+          .catch(() => false);
 
-      await provider.writeFile(relativePath, content, {
-        create: true,
-        overwrite: true,
-      });
+        await provider.writeFile(relativePath, content, {
+          create: true,
+          overwrite: true,
+        });
 
-      const stat = await provider.stat(relativePath);
+        const stat = await provider.stat(relativePath);
 
-      this.emitVfsEvent({
-        type: exists ? VfsEventType.UPDATE : VfsEventType.CREATE,
-        path,
-        nodeType: FSNodeType.File,
-        size: stat.size,
-      });
-    });
+        this.emitVfsEvent({
+          type: exists ? VfsEventType.UPDATE : VfsEventType.CREATE,
+          path,
+          nodeType: FSNodeType.File,
+          size: stat.size,
+        });
+      }),
+    );
   }
 
   /**
    * Reads the contents of a directory.
-   *
-   * @param path Absolute path to the directory
-   * @returns Promise that resolves to array of tuples [name, type]
+   * @param path - Absolute path to the directory.
+   * @returns Promise that resolves to an array of `[name, stat]` tuples.
    */
   public async readDirectory(path: string): Promise<[string, FSNodeStat][]> {
     const normalizedPath = PathUtils.normalize(path);
@@ -330,27 +348,30 @@ export class VirtualFileSystem {
     return Array.from(entryMap.entries());
   }
 
+  /* eslint-disable-next-line jsdoc/require-throws-type -- TSDoc syntax does not support JSDoc typed @throws tags. */
   /**
    * Creates a new directory.
-   *
-   * @param path Absolute path to the new directory
-   * @throws VfsError if the directory already exists or parent not found
+   * @param path - Absolute path to the new directory.
+   * @returns Promise that resolves when the directory is created and the event is emitted.
+   * @throws If the directory already exists or the parent is not found.
    */
   public async createDirectory(path: string): Promise<void> {
-    const { provider, relativePath } = this.resolve(path);
-    await provider.createDirectory(relativePath);
-    this.emitVfsEvent({
-      type: VfsEventType.CREATE,
-      path,
-      nodeType: FSNodeType.Directory,
+    return this.activityTracker.track({ type: 'createDirectory', path }, async () => {
+      const { provider, relativePath } = this.resolve(path);
+      await provider.createDirectory(relativePath);
+      this.emitVfsEvent({
+        type: VfsEventType.CREATE,
+        path,
+        nodeType: FSNodeType.Directory,
+      });
     });
   }
 
   /**
    * Deletes a file or directory.
-   *
-   * @param path Absolute path to the item to delete
-   * @param recursive If true, deletes non-empty directories recursively
+   * @param path - Absolute path to the item to delete.
+   * @param recursive - If true, deletes non-empty directories recursively.
+   * @returns Promise that resolves when the provider deletion finishes.
    */
   async #unlockedDelete(path: string, recursive: boolean = false): Promise<void> {
     const { provider, relativePath } = this.resolve(path);
@@ -369,33 +390,49 @@ export class VirtualFileSystem {
 
   /**
    * Deletes a file or directory.
-   *
-   * @param path Absolute path to the item to delete
-   * @param recursive If true, deletes non-empty directories recursively
+   * @param path - Absolute path to the item to delete.
+   * @param recursive - If true, deletes non-empty directories recursively.
+   * @returns Promise that resolves when the deletion and event emission are complete.
    */
   public async delete(path: string, recursive: boolean = false): Promise<void> {
-    const stat = await this.stat(path);
+    return this.activityTracker.track({ type: 'delete', path }, async () => {
+      const stat = await this.stat(path);
 
-    await this.locks.request(path, async () => this.#unlockedDelete(path, recursive));
-    this.emitVfsEvent({
-      type: VfsEventType.DELETE,
-      path,
-      nodeType: stat.type,
+      await this.locks.request(path, async () => this.#unlockedDelete(path, recursive));
+      this.emitVfsEvent({
+        type: VfsEventType.DELETE,
+        path,
+        nodeType: stat.type,
+      });
     });
   }
 
   /**
    * Renames or moves a file/directory.
    * Supports moving between different providers (cross-provider move).
-   *
-   * @param oldPath Current path of the item
-   * @param newPath New path for the item
+   * @param oldPath - Current path of the item.
+   * @param newPath - New path for the item.
+   * @returns Promise that resolves when the move and event emission are complete.
    */
   public async move(oldPath: string, newPath: string): Promise<void> {
     if (oldPath === newPath) {
       return;
     }
 
+    return this.activityTracker.track({ type: 'move', path: oldPath, newPath }, () =>
+      this.#moveInternal(oldPath, newPath),
+    );
+  }
+
+  /**
+   * Moves a file or directory after validating the move contract and acquiring
+   * the required source and target path locks internally.
+   * @param oldPath - Current path of the item to move
+   * @param newPath - Target path where to move the item
+   * @returns Promise that resolves when the move is complete.
+   */
+
+  async #moveInternal(oldPath: string, newPath: string): Promise<void> {
     // Check for recursive renaming
     // Cannot rename directory so that new name is inside old path
     // For example: /A -> /A/B (not allowed as B would be inside A)
@@ -406,7 +443,6 @@ export class VirtualFileSystem {
       );
     }
 
-    // Get node type before move
     const stat = await this.stat(oldPath);
     const targetParentStat = await this.stat(PathUtils.dirname(newPath));
 
@@ -423,13 +459,11 @@ export class VirtualFileSystem {
       );
     }
 
-    // 1. Sort paths for locking to avoid deadlock.
-    // If one process does rename(A, B) and another does rename(B, A), without sorting deadlocks can occur.
-    // Always lock the "smaller" path first.
+    // Sort lock acquisition order to avoid deadlocks during opposing moves.
     const pathA = oldPath < newPath ? oldPath : newPath;
     const pathB = oldPath < newPath ? newPath : oldPath;
 
-    return this.locks.request(pathA, async () => {
+    await this.locks.request(pathA, async () => {
       return this.locks.request(pathB, async () => {
         const source = this.resolve(oldPath);
         const target = this.resolve(newPath);
@@ -449,14 +483,6 @@ export class VirtualFileSystem {
       });
     });
   }
-
-  /**
-   * Helper method for moving files/directories between different providers.
-   * Locks should already be acquired by the calling method (move).
-   *
-   * @param sourcePath Source path of the item to move
-   * @param targetPath Target path where to move the item
-   */
 
   private async moveCrossProvider(sourcePath: string, targetPath: string): Promise<void> {
     const source = this.resolve(sourcePath);
@@ -486,7 +512,7 @@ export class VirtualFileSystem {
         const childTarget = PathUtils.join(targetPath, name);
 
         // eslint-disable-next-line no-await-in-loop -- recursive moves touch the same source tree and keep error ordering clearer when processed sequentially
-        await this.move(childSource, childTarget);
+        await this.#moveInternal(childSource, childTarget);
       }
 
       await source.provider.delete(source.relativePath, false);
@@ -496,8 +522,7 @@ export class VirtualFileSystem {
 
   /**
    * Checks if a file or directory exists.
-   *
-   * @param path Absolute path to check
+   * @param path - Absolute path to check.
    * @returns Promise that resolves to true if item exists, false otherwise
    */
   public async exists(path: string): Promise<boolean> {
@@ -512,8 +537,7 @@ export class VirtualFileSystem {
 
   /**
    * Convenient method for reading text content from a file.
-   *
-   * @param path Absolute path to the file
+   * @param path - Absolute path to the file.
    * @returns Promise that resolves to the text content of the file
    */
   public async readText(path: string): Promise<string> {
@@ -523,7 +547,6 @@ export class VirtualFileSystem {
 
   /**
    * Getter for listing all mount points.
-   *
    * @returns Array of mounted paths
    */
   get mountsList() {

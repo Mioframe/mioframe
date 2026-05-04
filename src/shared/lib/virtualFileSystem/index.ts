@@ -10,3 +10,11 @@ export {
 export { EventEmitter, VfsEventSource, VfsEventType, type VfsEvent } from './EventEmitter';
 export { PathUtils } from './PathUtils';
 export { FileSystemError, VfsError } from './VfsError';
+export {
+  createVfsActivityTracker,
+  type VfsActivityTracker,
+  type VfsActivityError,
+  type VfsActivityState,
+  type VfsActivityStatus,
+  type VfsMutationOperationType,
+} from './VfsActivityTracker';

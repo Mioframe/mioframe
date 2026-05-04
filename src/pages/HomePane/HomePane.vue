@@ -12,6 +12,7 @@ import { useLocalSettings } from '@entity/localSettings';
 
 defineSlots<{
   navigationButton: () => unknown;
+  appBarTrailing: () => unknown;
 }>();
 
 const { open } = useStackNavigation();
@@ -57,7 +58,11 @@ const onOpenStarterExampleDocument = ({
 
 <template>
   <MDPane class="home" allow-bottom-navigation>
-    <MDAppBar />
+    <MDAppBar>
+      <template #trailingElements>
+        <slot name="appBarTrailing" />
+      </template>
+    </MDAppBar>
 
     <StarterExamplesWidget
       v-if="!settings.hideStarterWidget"

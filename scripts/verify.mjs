@@ -3,6 +3,7 @@ import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 
 const isFixMode = process.argv.includes('--fix');
+const cliBaseRef = getCliBaseRef(process.argv.slice(2));
 const FORMATTABLE_EXTENSIONS = new Set([
   '.css',
   '.html',
@@ -82,9 +83,88 @@ function runGitCommand(args, options = {}) {
     .filter((line) => line.length > 0);
 }
 
+function getCliBaseRef(argv) {
+  for (let index = 0; index < argv.length; index += 1) {
+    const argument = argv[index];
+
+    if (argument === '--base') {
+      const value = argv[index + 1];
+
+      if (!value || value.startsWith('--')) {
+        throw new Error('Missing value for --base. Example: pnpm verify --base origin/develop');
+      }
+
+      return value;
+    }
+
+    if (argument.startsWith('--base=')) {
+      const value = argument.slice('--base='.length);
+
+      if (value.length === 0) {
+        throw new Error('Missing value for --base. Example: pnpm verify --base origin/develop');
+      }
+
+      return value;
+    }
+  }
+
+  return null;
+}
+
+function ensureBaseRefExists(baseRef) {
+  const result = spawnSync('git', ['rev-parse', '--verify', baseRef], {
+    encoding: 'utf8',
+    stdio: ['inherit', 'pipe', 'pipe'],
+  });
+
+  if (result.status === 0) {
+    return;
+  }
+
+  process.stdout.write(result.stdout ?? '');
+  process.stderr.write(result.stderr ?? '');
+  throw new Error(
+    [
+      `Base ref does not exist: ${baseRef}`,
+      'Fetch the branch and try again:',
+      'git fetch origin',
+      `pnpm verify --base ${baseRef}`,
+    ].join('\n'),
+  );
+}
+
+function getForkPoint(baseRef) {
+  const forkPoint = runGitCommand(['merge-base', '--fork-point', baseRef, 'HEAD'], {
+    allowFailure: true,
+  })[0];
+
+  if (forkPoint) {
+    return forkPoint;
+  }
+
+  const mergeBase = runGitCommand(['merge-base', baseRef, 'HEAD'], {
+    allowFailure: true,
+  })[0];
+
+  if (mergeBase) {
+    return mergeBase;
+  }
+
+  throw new Error(
+    [
+      `Cannot determine fork point for base ref: ${baseRef}`,
+      'Both commands failed:',
+      `git merge-base --fork-point ${baseRef} HEAD`,
+      `git merge-base ${baseRef} HEAD`,
+    ].join('\n'),
+  );
+}
+
 function getChangedFiles() {
   const githubBaseRef = process.env.GITHUB_BASE_REF;
+  const envBaseRef = process.env.VERIFY_BASE;
   let changedFiles = [];
+  let scope = 'local-changes';
 
   if (githubBaseRef) {
     const mergeBase = runGitCommand(['merge-base', 'HEAD', `origin/${githubBaseRef}`], {
@@ -96,7 +176,22 @@ function getChangedFiles() {
       '--name-only',
       '--diff-filter=ACMR',
       `${mergeBase}...HEAD`,
+      '--',
     ]);
+    scope = `github-base origin/${githubBaseRef}`;
+  } else if (cliBaseRef || envBaseRef) {
+    const baseRef = cliBaseRef ?? envBaseRef;
+    ensureBaseRefExists(baseRef);
+
+    const forkPoint = getForkPoint(baseRef);
+
+    changedFiles = [
+      ...runGitCommand(['diff', '--name-only', '--diff-filter=ACMR', `${forkPoint}...HEAD`, '--']),
+      ...runGitCommand(['diff', '--name-only', '--diff-filter=ACMR', 'HEAD', '--']),
+      ...runGitCommand(['diff', '--cached', '--name-only', '--diff-filter=ACMR', '--']),
+      ...runGitCommand(['ls-files', '--others', '--exclude-standard']),
+    ];
+    scope = `local-base ${baseRef}`;
   } else {
     changedFiles = [
       ...runGitCommand(['diff', '--name-only', '--diff-filter=ACMR', 'HEAD', '--']),
@@ -112,10 +207,16 @@ function getChangedFiles() {
         'HEAD~1..HEAD',
         '--',
       ]);
+      scope = 'local-last-commit';
     }
   }
 
-  return uniqSorted(changedFiles.map(toPosixPath).filter((filePath) => !isIgnored(filePath)));
+  return {
+    changedFiles: uniqSorted(
+      changedFiles.map(toPosixPath).filter((filePath) => !isIgnored(filePath)),
+    ),
+    scope,
+  };
 }
 
 function isTypeCheckTarget(filePath) {
@@ -224,22 +325,63 @@ function formatCommand(command, args) {
   return [command, ...args].map(quoteArg).join(' ');
 }
 
-function runCommand(command, args) {
+function trimWarningLine(line) {
+  return line.trim().replace(/\s+/g, ' ');
+}
+
+function isZeroWarningLine(line) {
+  return /\b0 warnings?\b/i.test(line) && !/\b[1-9]\d* warnings?\b/i.test(line);
+}
+
+function getWarningSummary(output) {
+  const lines = output
+    .split('\n')
+    .map(trimWarningLine)
+    .filter((line) => /\bwarnings?\b/i.test(line))
+    .filter((line) => !isZeroWarningLine(line));
+
+  if (lines.length === 0) {
+    return '';
+  }
+
+  return uniqSorted(lines).slice(0, 3).join(' | ');
+}
+
+function runCommand(label, command, args) {
   const formattedCommand = formatCommand(command, args);
-  console.log(`\n$ ${formattedCommand}`);
+  const shouldCaptureOutput = ['eslint', 'oxlint'].includes(label);
+
+  console.log(`\n[${label}] $ ${formattedCommand}`);
 
   const result = spawnSync(command, args, {
-    stdio: 'inherit',
+    stdio: shouldCaptureOutput ? ['inherit', 'pipe', 'pipe'] : 'inherit',
     encoding: 'utf8',
+    maxBuffer: 16 * 1024 * 1024,
   });
+
+  const stdout = shouldCaptureOutput ? (result.stdout ?? '') : '';
+  const stderr = shouldCaptureOutput ? (result.stderr ?? '') : '';
+
+  if (shouldCaptureOutput) {
+    process.stdout.write(stdout);
+    process.stderr.write(stderr);
+  }
 
   if (result.error) {
     throw result.error;
   }
 
+  const warningSummary = shouldCaptureOutput ? getWarningSummary(`${stdout}\n${stderr}`) : '';
+
   return {
+    label,
     command: formattedCommand,
+    exitCode: result.status ?? 1,
     status: result.status === 0 ? 'passed' : 'failed',
+    stdout,
+    stderr,
+    hasWarnings: warningSummary.length > 0,
+    warningSummary,
   };
 }
 
@@ -262,12 +404,14 @@ function buildCommands(changedFiles) {
   if (formattableFiles.length > 0) {
     commands.push({
       kind: 'run',
+      label: 'format',
       command: 'pnpm',
       args: ['exec', 'oxfmt', ...(isFixMode ? [] : ['--check']), ...formattableFiles],
     });
   } else {
     commands.push({
       kind: 'skipped',
+      label: 'format',
       command: `pnpm exec oxfmt${isFixMode ? '' : ' --check'}`,
       reason: 'no changed formattable existing files',
     });
@@ -276,11 +420,13 @@ function buildCommands(changedFiles) {
   if (lintableFiles.length > 0) {
     commands.push({
       kind: 'run',
+      label: 'oxlint',
       command: 'pnpm',
       args: ['exec', 'oxlint', ...(isFixMode ? ['--fix'] : []), ...lintableFiles],
     });
     commands.push({
       kind: 'run',
+      label: 'eslint',
       command: 'pnpm',
       args: [
         'exec',
@@ -294,16 +440,24 @@ function buildCommands(changedFiles) {
   } else {
     commands.push({
       kind: 'skipped',
-      command: `pnpm exec oxlint${isFixMode ? ' --fix' : ''} / pnpm exec eslint --cache${isFixMode ? ' --fix' : ''} --concurrency=auto`,
+      label: 'oxlint',
+      command: `pnpm exec oxlint${isFixMode ? ' --fix' : ''}`,
+      reason: 'no changed lintable existing files',
+    });
+    commands.push({
+      kind: 'skipped',
+      label: 'eslint',
+      command: `pnpm exec eslint --cache${isFixMode ? ' --fix' : ''} --concurrency=auto`,
       reason: 'no changed lintable existing files',
     });
   }
 
   if (changedFiles.some(isTypeCheckTarget)) {
-    commands.push({ kind: 'run', command: 'pnpm', args: ['type-check'] });
+    commands.push({ kind: 'run', label: 'type-check', command: 'pnpm', args: ['type-check'] });
   } else {
     commands.push({
       kind: 'skipped',
+      label: 'type-check',
       command: 'pnpm type-check',
       reason: 'no type-check relevant changes',
     });
@@ -312,28 +466,32 @@ function buildCommands(changedFiles) {
   if (vitestScope.length > 0) {
     commands.push({
       kind: 'run',
+      label: 'unit-tests',
       command: 'pnpm',
       args: ['exec', 'vitest', 'run', ...vitestScope],
     });
   } else {
     commands.push({
       kind: 'skipped',
+      label: 'unit-tests',
       command: 'pnpm exec vitest run',
       reason: 'empty focused unit-test scope',
     });
   }
 
   if (changedFiles.includes('playwright.config.ts')) {
-    commands.push({ kind: 'run', command: 'pnpm', args: ['e2e'] });
+    commands.push({ kind: 'run', label: 'e2e', command: 'pnpm', args: ['e2e'] });
   } else if (changedE2ESpecs.length > 0) {
     commands.push({
       kind: 'run',
+      label: 'e2e',
       command: 'pnpm',
       args: ['exec', 'playwright', 'test', ...changedE2ESpecs],
     });
   } else {
     commands.push({
       kind: 'skipped',
+      label: 'e2e',
       command: 'pnpm exec playwright test',
       reason: 'empty e2e scope',
     });
@@ -342,12 +500,14 @@ function buildCommands(changedFiles) {
   if (mutationScope.length > 0) {
     commands.push({
       kind: 'run',
+      label: 'mutation',
       command: 'pnpm',
       args: ['exec', 'stryker', 'run', '-m', mutationScope.join(',')],
     });
   } else {
     commands.push({
       kind: 'skipped',
+      label: 'mutation',
       command: 'pnpm exec stryker run -m <source file>',
       reason: 'empty mutation scope',
     });
@@ -356,46 +516,88 @@ function buildCommands(changedFiles) {
   return commands;
 }
 
-function printSummary(changedFiles, results) {
+function getActionRequired(results) {
+  const actions = [];
+  const failedResults = results.filter((result) => result.status === 'failed');
+  const warningResults = results.filter(
+    (result) => result.status !== 'failed' && result.hasWarnings,
+  );
+
+  for (const result of failedResults) {
+    actions.push(`Fix failed ${result.label} errors. Run: ${result.command}`);
+  }
+
+  if (failedResults.length > 0) {
+    actions.push(`After fixes, run: pnpm verify${isFixMode ? ' --fix' : ''}`);
+  }
+
+  for (const result of warningResults) {
+    actions.push(`Fix ${result.label} warnings. Run: ${result.command}`);
+    actions.push(`Reason: ${result.warningSummary}`);
+  }
+
+  if (actions.length === 0) {
+    actions.push('None.');
+  }
+
+  return actions;
+}
+
+function printSummary(changedFiles, scope, results) {
   const status = results.some((result) => result.status === 'failed') ? 'failed' : 'passed';
+  const actionRequired = getActionRequired(results);
 
   console.log('\nVERIFY RESULT');
   console.log(`mode: ${isFixMode ? 'fix' : 'check'}`);
+  console.log(`scope: ${scope}`);
   console.log(`changed files: ${changedFiles.length}`);
   console.log(`status: ${status}`);
   console.log('commands:');
 
   for (const result of results) {
     if (result.status === 'skipped') {
-      console.log(`- ${result.command}: skipped (${result.reason})`);
+      console.log(`- ${result.label}: skipped (${result.reason})`);
       continue;
     }
 
-    console.log(`- ${result.command}: ${result.status}`);
+    const warningSuffix = result.hasWarnings ? ' (warnings found)' : '';
+    console.log(`- ${result.label}: ${result.status}${warningSuffix} (${result.command})`);
+  }
+
+  console.log('action required:');
+
+  for (const action of actionRequired) {
+    console.log(`- ${action}`);
   }
 
   return status;
 }
 
 function main() {
-  const changedFiles = getChangedFiles();
+  const { changedFiles, scope } = getChangedFiles();
   const commands = buildCommands(changedFiles);
   const results = [];
 
   for (const entry of commands) {
     if (entry.kind === 'skipped') {
       results.push({
+        label: entry.label,
         command: entry.command,
         status: 'skipped',
         reason: entry.reason,
+        exitCode: null,
+        stdout: '',
+        stderr: '',
+        hasWarnings: false,
+        warningSummary: '',
       });
       continue;
     }
 
-    results.push(runCommand(entry.command, entry.args));
+    results.push(runCommand(entry.label, entry.command, entry.args));
   }
 
-  const status = printSummary(changedFiles, results);
+  const status = printSummary(changedFiles, scope, results);
   process.exitCode = status === 'failed' ? 1 : 0;
 }
 

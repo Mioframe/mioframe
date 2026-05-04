@@ -20,6 +20,7 @@ const props = defineProps(zodToVueProps(zodQuery));
 
 defineSlots<{
   navigationButton: () => unknown;
+  appBarTrailing: () => unknown;
 }>();
 
 const { repoPath: directoryPath } = toRefs(props);
@@ -87,6 +88,7 @@ const onClickReturnHome = async () => {
 
       <template #trailingElements>
         <FSEntryManageMenuButton :path="directoryPath" />
+        <slot name="appBarTrailing" />
       </template>
     </MDAppBar>
 

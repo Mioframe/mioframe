@@ -1,3 +1,4 @@
+import { firstValueFrom } from 'rxjs';
 import { describe, it, expect, beforeEach } from 'vitest';
 import { MemoryFileSystem } from './MemoryFileSystem';
 import { VirtualFileSystem } from './VirtualFileSystem';
@@ -11,6 +12,7 @@ import type {
 import { FSNodeType } from './IFileSystemProvider';
 import { FileSystemError, VfsError } from './VfsError';
 import { LockManager } from './LockManager';
+import type { VfsActivityState } from './VfsActivityTracker';
 
 describe('VirtualFileSystem', () => {
   let vfs: VirtualFileSystem;
@@ -32,6 +34,8 @@ describe('VirtualFileSystem', () => {
     delete: (path, recursive) => memoryFS.delete(path, recursive),
     move: (oldPath, newPath) => memoryFS.move(oldPath, newPath),
   });
+
+  const getActivityState = async (): Promise<VfsActivityState> => firstValueFrom(vfs.activity$);
 
   describe('mount method', () => {
     it('should mount a provider at the specified path', () => {
@@ -191,6 +195,63 @@ describe('VirtualFileSystem', () => {
         type: 'create',
         path: '/mnt/test/folder',
       });
+    });
+  });
+
+  describe('activity tracking', () => {
+    it('tracks mutating operations', async () => {
+      vfs.mount('/mnt/test', memoryFS);
+
+      await vfs.writeFile('/mnt/test/file.txt', 'content');
+      expect(await getActivityState()).toMatchObject({ status: 'idle', activeCount: 0 });
+
+      await vfs.createDirectory('/mnt/test/folder');
+      expect(await getActivityState()).toMatchObject({ status: 'idle', activeCount: 0 });
+
+      await vfs.move('/mnt/test/file.txt', '/mnt/test/file-renamed.txt');
+      expect(await getActivityState()).toMatchObject({ status: 'idle', activeCount: 0 });
+
+      await vfs.delete('/mnt/test/file-renamed.txt');
+      expect(await getActivityState()).toMatchObject({ status: 'idle', activeCount: 0 });
+    });
+
+    it('does not track read-only operations', async () => {
+      vfs.mount('/mnt/test', memoryFS);
+      await memoryFS.createDirectory('/folder');
+      await memoryFS.writeFile('/folder/file.txt', 'content', { create: true, overwrite: true });
+
+      const states: VfsActivityState[] = [];
+      const subscription = vfs.activity$.subscribe((state) => {
+        states.push(state);
+      });
+
+      await vfs.stat('/mnt/test/folder/file.txt');
+      await vfs.readFile('/mnt/test/folder/file.txt');
+      await vfs.readDirectory('/mnt/test/folder');
+      await vfs.exists('/mnt/test/folder/file.txt');
+      await vfs.readText('/mnt/test/folder/file.txt');
+      vfs.watch('/mnt/test', () => undefined)();
+      vfs.mount('/secondary', new MemoryFileSystem());
+      vfs.unmount('/secondary');
+
+      expect(states).toEqual([{ status: 'idle', activeCount: 0, lastError: undefined }]);
+
+      subscription.unsubscribe();
+    });
+
+    it('does not create activity for move noop', async () => {
+      vfs.mount('/mnt/test', memoryFS);
+
+      const states: VfsActivityState[] = [];
+      const subscription = vfs.activity$.subscribe((state) => {
+        states.push(state);
+      });
+
+      await vfs.move('/mnt/test/file.txt', '/mnt/test/file.txt');
+
+      expect(states).toEqual([{ status: 'idle', activeCount: 0, lastError: undefined }]);
+
+      subscription.unsubscribe();
     });
   });
 
@@ -1157,6 +1218,33 @@ describe('VirtualFileSystem', () => {
 
       const renameEvents = events.filter((e) => e.type === 'rename');
       expect(renameEvents.some((e) => e.newPath === '/mnt/provider2/destdir')).toBe(true);
+    });
+
+    it('tracks cross-provider directory move only once', async () => {
+      const memoryFS1 = new MemoryFileSystem();
+      const memoryFS2 = new MemoryFileSystem();
+
+      vfs.mount('/mnt/provider1', memoryFS1);
+      vfs.mount('/mnt/provider2', memoryFS2);
+
+      await vfs.createDirectory('/mnt/provider1/sourcedir');
+      await vfs.createDirectory('/mnt/provider1/sourcedir/nested');
+      await vfs.writeFile('/mnt/provider1/sourcedir/nested/file.txt', 'content');
+
+      const states: VfsActivityState[] = [];
+      const subscription = vfs.activity$.subscribe((state) => {
+        states.push(state);
+      });
+
+      await vfs.move('/mnt/provider1/sourcedir', '/mnt/provider2/destdir');
+
+      expect(states).toEqual([
+        { status: 'idle', activeCount: 0, lastError: undefined },
+        { status: 'active', activeCount: 1, lastError: undefined },
+        { status: 'idle', activeCount: 0, lastError: undefined },
+      ]);
+
+      subscription.unsubscribe();
     });
 
     it('should not duplicate events when using multiple watchers', async () => {
