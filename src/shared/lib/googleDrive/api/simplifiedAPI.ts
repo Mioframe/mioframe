@@ -2,6 +2,7 @@ import { toMerged } from 'es-toolkit';
 import { fileTypeFromBuffer } from 'file-type';
 import type { Input, Options as KyOptions, Progress } from 'ky';
 import ky, { HTTPError } from 'ky';
+import { uid } from 'uid';
 import type { ZodMiniType } from 'zod/v4-mini';
 import { z } from 'zod/v4-mini';
 import { HttpStatusCode } from '../../error/httpStatus';
@@ -15,6 +16,7 @@ import type {
   UpdateParams,
 } from './types';
 import {
+  fieldsGDriveFileMeta,
   fieldsGDriveList,
   zodGDriveFileMeta,
   zodGDriveListResponse,
@@ -44,6 +46,9 @@ const dedupeApiFetch = dedupe(apiFetch);
 
 /**
  * Internal request handler with error normalization.
+ * @param url - Request URL or Request object for the Google Drive API call.
+ * @param options - Optional request options, including auth and query parameters.
+ * @returns Successful response or a normalized GoogleDriveError.
  */
 const googleRequest = async (url: Input, options?: ApiOptions): Promise<Response> => {
   try {
@@ -274,6 +279,9 @@ const invalidateCache = withLog(
 
 /**
  * Retrieves metadata for a single Google Drive file.
+ * @param auth - Google auth parameters for the request.
+ * @param fileId - Google Drive file id.
+ * @returns Parsed file metadata.
  */
 export const getGDriveFileMeta = async (
   auth: GoogleAuthParams,
@@ -300,14 +308,55 @@ export const getGDriveFileMeta = async (
   return result;
 };
 
+const createUploadBody = async (
+  file: FileSystemWriteChunkType,
+): Promise<{
+  body: Blob;
+  size: number;
+}> => {
+  if (typeof file === 'string') {
+    const body = new Blob([file], { type: 'text/plain' });
+
+    return {
+      body,
+      size: body.size,
+    };
+  }
+
+  if (file instanceof Blob) {
+    return {
+      body: file,
+      size: file.size,
+    };
+  }
+
+  if (file instanceof ArrayBuffer || ArrayBuffer.isView(file)) {
+    const buffer =
+      file instanceof ArrayBuffer
+        ? new Uint8Array(file)
+        : new Uint8Array(file.buffer, file.byteOffset, file.byteLength);
+    const mimeTypeInfo = await fileTypeFromBuffer(buffer);
+    const contentType = mimeTypeInfo ? mimeTypeInfo.mime : 'application/octet-stream';
+    const body = new Blob([buffer], { type: contentType });
+
+    return {
+      body,
+      size: body.size,
+    };
+  }
+
+  throw new Error('Unsupported file type');
+};
+
 /**
  * Updates file metadata (name, parents, trash status).
+ * @param auth - Google auth parameters for the request.
+ * @param fileId - Google Drive file id.
+ * @param params - Partial metadata update payload.
+ * @returns Empty successful response payload from Drive.
  */
-export const update = async (
-  auth: GoogleAuthParams,
-  fileId: string,
-  { name, addParents, removeParents, trashed }: UpdateParams,
-) => {
+export const update = async (auth: GoogleAuthParams, fileId: string, params: UpdateParams) => {
+  const { name, addParents, removeParents, trashed } = params;
   const result = await authorizedRequest(
     'patch',
     `https://www.googleapis.com/drive/v3/files/${fileId}`,
@@ -347,12 +396,17 @@ const gDriveFileContentCache = new Cache<string, { file: File; modifiedTime: str
 
 /**
  * Downloads file content as a File object.
+ * @param auth - Google auth parameters for the request.
+ * @param fileId - Google Drive file id.
+ * @param params - Optional progress callback configuration.
+ * @returns Downloaded browser File instance.
  */
 export const download = async (
   auth: GoogleAuthParams,
   fileId: string,
-  { onDownloadProgress }: DownloadParams = {},
+  params: DownloadParams = {},
 ): Promise<File> => {
+  const { onDownloadProgress } = params;
   const { name, modifiedTime } = await getGDriveFileMeta(auth, fileId);
 
   const cachedFile = gDriveFileContentCache.get(fileId);
@@ -387,6 +441,9 @@ export const download = async (
 
 /**
  * Creates a new file in Google Drive.
+ * @param auth - Google auth parameters for the request.
+ * @param resource - Metadata for the Drive file to create.
+ * @returns Created file id payload.
  */
 export const create = async (auth: GoogleAuthParams, resource: CreateResource) => {
   if (resource.parents.length === 0) {
@@ -412,7 +469,67 @@ export const create = async (auth: GoogleAuthParams, resource: CreateResource) =
 };
 
 /**
+ * Creates a new file and uploads its content in a single multipart Drive request.
+ * @param auth - Google auth parameters for the request.
+ * @param resource - Metadata for the Drive file to create.
+ * @param file - Initial file content to upload.
+ * @returns Parsed metadata of the created Drive file.
+ */
+export const createWithContent = async (
+  auth: GoogleAuthParams,
+  resource: CreateResource,
+  file: FileSystemWriteChunkType,
+): Promise<{ result: GDriveFileMeta }> => {
+  if (resource.parents.length === 0) {
+    throw new GoogleDriveError({
+      code: HttpStatusCode.FORBIDDEN,
+      message: 'Parents array cannot be empty',
+    });
+  }
+
+  const { body, size } = await createUploadBody(file);
+  const boundary = `drive-multipart-${uid(24)}`;
+  const multipartBody = new Blob([
+    `--${boundary}\r\n`,
+    'Content-Type: application/json; charset=UTF-8\r\n\r\n',
+    JSON.stringify(resource),
+    '\r\n',
+    `--${boundary}\r\n`,
+    `Content-Type: ${body.type || 'application/octet-stream'}\r\n\r\n`,
+    body,
+    '\r\n',
+    `--${boundary}--`,
+  ]);
+
+  const response = await googleRequest('https://www.googleapis.com/upload/drive/v3/files', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${auth.ACCESS_TOKEN}`,
+      'Content-Type': `multipart/related; boundary=${boundary}`,
+      'Content-Length': (multipartBody.size || size).toString(),
+    },
+    searchParams: {
+      key: auth.API_KEY,
+      uploadType: 'multipart',
+      fields: fieldsGDriveFileMeta,
+    },
+    body: multipartBody,
+  });
+
+  const result = zodGDriveFileMeta.parse(await response.clone().json());
+
+  invalidateCache(...resource.parents);
+
+  return { result };
+};
+
+/**
  * Uploads content to an existing Google Drive file.
+ * @param auth - Google auth parameters for the request.
+ * @param fileId - Google Drive file id.
+ * @param file - File content to upload.
+ * @param onUploadProgress - Optional progress callback for upload progress events.
+ * @returns Raw successful upload response.
  */
 export const upload = async (
   auth: GoogleAuthParams,
@@ -420,20 +537,7 @@ export const upload = async (
   file: FileSystemWriteChunkType,
   onUploadProgress?: (progress: Progress, chunk: Uint8Array) => void,
 ): Promise<Response> => {
-  let body: Blob;
-
-  if (typeof file === 'string') {
-    body = new Blob([file], { type: 'text/plain' });
-  } else if (file instanceof Blob) {
-    body = file;
-  } else if (file instanceof ArrayBuffer || ArrayBuffer.isView(file)) {
-    const buffer = file instanceof ArrayBuffer ? new Uint8Array(file) : new Uint8Array(file.buffer);
-    const mimeTypeInfo = await fileTypeFromBuffer(buffer);
-    const contentType = mimeTypeInfo ? mimeTypeInfo.mime : 'application/octet-stream';
-    body = new Blob([buffer], { type: contentType });
-  } else {
-    throw new Error('Unsupported file type');
-  }
+  const { body, size } = await createUploadBody(file);
 
   const response = await googleRequest(
     `https://www.googleapis.com/upload/drive/v3/files/${fileId}`,
@@ -441,7 +545,7 @@ export const upload = async (
       method: 'PATCH',
       headers: {
         'Content-Type': body.type,
-        'Content-Length': body.size.toString(),
+        'Content-Length': size.toString(),
         Authorization: `Bearer ${auth.ACCESS_TOKEN}`,
       },
       searchParams: {

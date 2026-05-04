@@ -17,6 +17,7 @@ import { dayjs } from '../dayjs';
 import type { GDriveFileMeta } from '@shared/lib/googleDrive/api';
 import {
   create,
+  createWithContent,
   download,
   getGFileMetaList,
   SPACE,
@@ -34,6 +35,7 @@ import {
 } from './googleDrivePath';
 
 const GOOGLE_MIME_FOLDER = 'application/vnd.google-apps.folder';
+const GOOGLE_DRIVE_MULTIPART_UPLOAD_LIMIT = 5 * 1024 * 1024;
 /** Internal identifier for the virtual folder "Shared With Me" */
 const SHARED_WITH_ME_ID = 'sharedWithMe';
 const GOOGLE_DRIVE_ROOT_DESCRIPTION = 'Cloud storage from Google Drive';
@@ -56,6 +58,7 @@ export enum GoogleDriveMount {
   SpecificFolder = 'specificFolder',
 }
 
+/** Optional mounting configuration for Google Drive file systems. */
 export interface GoogleDriveFsOptions {
   /**
    * Mount mode.
@@ -69,7 +72,13 @@ export interface GoogleDriveFsOptions {
    */
   rootId?: string;
 
+  /** Optional error observer for provider-level failures. */
   onError?: (error: unknown) => unknown;
+}
+
+interface GoogleDriveProviderDeps {
+  requestToken: (scope: GOOGLE_SCOPE[], email: string) => Promise<string>;
+  $sessions: Observable<string[]>;
 }
 
 /**
@@ -88,12 +97,8 @@ export interface GoogleDriveFsOptions {
  *   - `My Drive/` - Main user storage
  *   - `Shared with me/` - Files shared with the user
  *   - `App Data/` - Hidden application data folder
- *
- * @param requestToken - Function to request OAuth2 token for given scope and email
- * @param $sessions - Reactive list of authenticated session emails
- *
- * @returns IFileSystemProvider implementation for Google Drive
- *
+ * @param deps - Provider dependencies.
+ * @returns Google Drive-backed VFS provider implementation.
  * @example
  * ```
  * const provider = googleDriveFileSystemProvider({
@@ -108,13 +113,9 @@ export interface GoogleDriveFsOptions {
  * await provider.createDirectory('/user1@example.com/My Drive/Reports/2024');
  * ```
  */
-export const googleDriveFileSystemProvider = ({
-  requestToken,
-  $sessions,
-}: {
-  requestToken: (scope: GOOGLE_SCOPE[], email: string) => Promise<string>;
-  $sessions: Observable<string[]>;
-}) => {
+export const googleDriveFileSystemProvider = (deps: GoogleDriveProviderDeps) => {
+  const { requestToken, $sessions: sessions$ } = deps;
+
   const extractEmailFromPath = (path: string): string => {
     const email = getGoogleDrivePathEmail(path);
 
@@ -161,12 +162,34 @@ export const googleDriveFileSystemProvider = ({
     return token;
   };
 
+  const getContentSize = (content: FileContent): number | undefined => {
+    if (typeof content === 'string') {
+      return new Blob([content]).size;
+    }
+
+    if (content instanceof Blob) {
+      return content.size;
+    }
+
+    if (content instanceof ArrayBuffer) {
+      return content.byteLength;
+    }
+
+    if (ArrayBuffer.isView(content)) {
+      return content.byteLength;
+    }
+
+    return undefined;
+  };
+
   /**
    * Resolves a VFS path to a Google Drive file/folder ID.
    *
    * Traverses the path segment by segment, querying Google Drive API for each
    * directory entry. For "Shared with me" space, uses the `sharedWithMe` flag
    * in the query; otherwise uses `parentId` to restrict search to the parent folder.
+   * @param rawPath - VFS path rooted at a mounted Google Drive account.
+   * @returns Resolved Google Drive entry metadata.
    */
   const resolvePath = async (rawPath: string): Promise<GDriveFileMeta> => {
     const path = PathUtils.normalize(rawPath);
@@ -276,6 +299,8 @@ export const googleDriveFileSystemProvider = ({
 
   /**
    * Gets file or directory statistics.
+   * @param rawPath - VFS path to inspect.
+   * @returns File or directory stat for the requested entry.
    */
   const stat = async (rawPath: string): Promise<FSNodeStat> => {
     const path = PathUtils.normalize(rawPath);
@@ -323,6 +348,8 @@ export const googleDriveFileSystemProvider = ({
 
   /**
    * Reads a file from Google Drive.
+   * @param path - VFS file path to download.
+   * @returns Downloaded browser File instance.
    */
   const readFile = async (path: string): Promise<File> => {
     const entry = await resolvePath(path);
@@ -342,6 +369,10 @@ export const googleDriveFileSystemProvider = ({
 
   /**
    * Writes data to a file in Google Drive.
+   * @param path - VFS file path to create or overwrite.
+   * @param content - File content to write.
+   * @param options - Create and overwrite flags from the VFS contract.
+   * @returns Resolves when the write completes successfully.
    */
   const writeFile = async (
     path: string,
@@ -409,33 +440,34 @@ export const googleDriveFileSystemProvider = ({
         throw new VfsError(FileSystemError.FileNotFound, `File not found: ${path}`);
       }
 
-      const created = await create(
-        { ACCESS_TOKEN: await getTokenForPath(path) },
-        {
-          name: fileName,
-          parents: [parentEntry.id],
-        },
-      );
+      const auth = { ACCESS_TOKEN: await getTokenForPath(path) };
+      const contentSize = getContentSize(content);
+      const resource = {
+        name: fileName,
+        parents: [parentEntry.id],
+      } satisfies Parameters<typeof create>[1];
+
+      if (contentSize !== undefined && contentSize <= GOOGLE_DRIVE_MULTIPART_UPLOAD_LIMIT) {
+        await createWithContent(auth, resource, content);
+
+        return;
+      }
+
+      const created = await create(auth, resource);
 
       try {
-        await upload({ ACCESS_TOKEN: await getTokenForPath(path) }, created.result.id, content);
+        await upload(auth, created.result.id, content);
       } catch (uploadError) {
-        await update(
-          {
-            ACCESS_TOKEN: await getTokenForPath(path),
-          },
-          created.result.id,
-          {
-            trashed: true,
-          },
-        );
+        await update(auth, created.result.id, {
+          trashed: true,
+        });
         throw uploadError;
       }
     }
   };
 
   const readRootDirectory = async (): Promise<[string, FSNodeStat][]> => {
-    const accountList = await firstValueFrom($sessions);
+    const accountList = await firstValueFrom(sessions$);
 
     return accountList.map((email): [string, FSNodeStat] => [
       email,
@@ -459,7 +491,7 @@ export const googleDriveFileSystemProvider = ({
 
   const watch = (callback: (event: VfsEvent) => void) => {
     // ObservableIDB-backed session streams replay the current store snapshot on subscribe; provider watchers should react only to later session-store changes.
-    const subscription = $sessions.pipe(skip(1)).subscribe(() => {
+    const subscription = sessions$.pipe(skip(1)).subscribe(() => {
       callback({
         source: VfsEventSource.PROVIDER,
         type: VfsEventType.UPDATE,
@@ -475,6 +507,8 @@ export const googleDriveFileSystemProvider = ({
 
   /**
    * Reads the contents of a directory.
+   * @param rawPath - VFS directory path to list.
+   * @returns Directory entry names with their stats.
    */
   const readDirectory = async (rawPath: string): Promise<[string, FSNodeStat][]> => {
     const pathArray = PathUtils.split(rawPath);
@@ -539,6 +573,8 @@ export const googleDriveFileSystemProvider = ({
 
   /**
    * Creates a directory in Google Drive.
+   * @param path - VFS directory path to create.
+   * @returns Resolves when the directory is created.
    */
   const createDirectory = async (path: string): Promise<void> => {
     try {
@@ -583,6 +619,9 @@ export const googleDriveFileSystemProvider = ({
 
   /**
    * Deletes a file or directory from Google Drive.
+   * @param path - VFS path to delete.
+   * @param recursive - Whether directory deletion may recurse.
+   * @returns Resolves when the entry is trashed successfully.
    */
   const _delete = async (path: string, recursive: boolean): Promise<void> => {
     if (path === '/') {
@@ -638,6 +677,9 @@ export const googleDriveFileSystemProvider = ({
 
   /**
    * Renames a file or directory in Google Drive.
+   * @param oldPath - Existing VFS path.
+   * @param newPath - Destination VFS path.
+   * @returns Resolves when the move or rename completes successfully.
    */
   const move = async (oldPath: string, newPath: string): Promise<void> => {
     const normalizedOld = PathUtils.normalize(oldPath);

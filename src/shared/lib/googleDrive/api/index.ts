@@ -1,4 +1,11 @@
-export { create, download, getGFileMetaList, update, upload } from './simplifiedAPI';
+export {
+  create,
+  createWithContent,
+  download,
+  getGFileMetaList,
+  update,
+  upload,
+} from './simplifiedAPI';
 export {
   type GoogleAuthParams,
   SPACE,
@@ -9,6 +16,7 @@ export {
   type GDriveListResponse,
   type ListParams,
   type UpdateParams,
+  fieldsGDriveFileMeta,
   zodGDriveListResponse,
   zodGoogleErrorResponse,
 } from './types';

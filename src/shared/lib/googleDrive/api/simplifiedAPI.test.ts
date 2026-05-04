@@ -838,3 +838,98 @@ describe('simplifiedAPI cache invalidation', () => {
     );
   });
 });
+
+describe('createWithContent', () => {
+  beforeEach(() => {
+    vi.resetModules();
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+    vi.unstubAllGlobals();
+  });
+
+  it('sends multipart request with metadata and content', async () => {
+    let requestBody = '';
+    const fetchMock = vi.fn<typeof fetch>().mockImplementation(async (input) => {
+      if (!(input instanceof Request)) {
+        throw new Error('Expected fetch to receive a Request');
+      }
+      requestBody = await input.clone().text();
+
+      return createJsonResponse({
+        id: 'file-id',
+        name: 'notes.txt',
+        mimeType: 'text/plain',
+        size: '7',
+        modifiedTime: '2024-01-02T00:00:00.000Z',
+        parents: ['parent-id'],
+      });
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { createWithContent } = await import('./simplifiedAPI');
+
+    await createWithContent(
+      { ACCESS_TOKEN: 'token' },
+      {
+        name: 'notes.txt',
+        parents: ['parent-id'],
+      },
+      'content',
+    );
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const [request] = fetchMock.mock.calls[0] ?? [];
+
+    expect(request instanceof Request).toBe(true);
+    if (!(request instanceof Request)) {
+      throw new Error('Expected fetch to receive a Request');
+    }
+    expect(request.url).toContain(
+      'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart',
+    );
+    expect(request.method).toBe('POST');
+    expect(request.headers.get('Authorization')).toBe('Bearer token');
+    expect(request.headers.get('Content-Type')).toContain('multipart/related; boundary=');
+
+    expect(requestBody).toContain('Content-Type: application/json; charset=UTF-8');
+    expect(requestBody).toContain(JSON.stringify({ name: 'notes.txt', parents: ['parent-id'] }));
+    expect(requestBody).toContain('Content-Type: text/plain');
+    expect(requestBody).toContain('content');
+  });
+
+  it('uses fieldsGDriveFileMeta in multipart request', async () => {
+    const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(
+      createJsonResponse({
+        id: 'file-id',
+        name: 'notes.txt',
+        mimeType: 'text/plain',
+        modifiedTime: '2024-01-02T00:00:00.000Z',
+      }),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { createWithContent } = await import('./simplifiedAPI');
+    const { fieldsGDriveFileMeta } = await import('./types');
+
+    await createWithContent(
+      { ACCESS_TOKEN: 'token' },
+      {
+        name: 'notes.txt',
+        parents: ['parent-id'],
+      },
+      new Blob(['content'], { type: 'text/plain' }),
+    );
+
+    const [request] = fetchMock.mock.calls[0] ?? [];
+
+    expect(request instanceof Request).toBe(true);
+    if (!(request instanceof Request)) {
+      throw new Error('Expected fetch to receive a Request');
+    }
+    const requestUrl = new URL(request.url);
+
+    expect(requestUrl.searchParams.get('fields')).toBe(fieldsGDriveFileMeta);
+  });
+});
