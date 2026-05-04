@@ -1,6 +1,6 @@
 ---
 name: byterover
-description: "Use this skill before broad repository exploration to recall project knowledge with brv search, and before the final response after non-trivial implementation to decide whether durable knowledge must be captured with brv curate. Prefer brv search before brv query. Curate reusable lessons, pitfalls, decisions, and corrected mistakes, not transient task details."
+description: 'Use this skill before broad repository exploration to recall project knowledge with brv search, and before the final response after non-trivial implementation to decide whether durable knowledge must be captured with brv curate. Prefer brv search before brv query. Curate reusable lessons, pitfalls, decisions, and corrected mistakes, not transient task details.'
 ---
 
 # ByteRover knowledge workflow
@@ -99,28 +99,33 @@ How to check the correct behavior or avoid regression.
 Relevant paths, layers, commands, skills, or task types.
 ```
 
-Example curation command:
+Example lesson content:
 
-```bash
-brv curate "# Lesson: Prefer browser checks for DOM-dependent Vue behavior
+```md
+# Lesson: Prefer browser checks for DOM-dependent Vue behavior
 
 ## Trigger
+
 Changing Vue UI behavior involving focus, teleport, scroll, overlays, pointer/touch input, responsive layout, or Material visual states.
 
 ## Mistake to avoid
+
 Do not add Vue component unit tests for behavior that depends on real browser layout or interaction semantics.
 
 ## Correct approach
+
 Use the ui-browser-behavior skill and verify with Playwright/e2e or a reproducible browser smoke check. Extract pure state transitions to composables/helpers only when they can be tested without browser semantics.
 
 ## Verification
+
 Run the focused Playwright spec or document the browser smoke check, then run final pnpm verify.
 
 ## Applies to
-Vue components in pages, widgets, features, entities UI, and shared UI."
+
+Vue components in pages, widgets, features, entities UI, and shared UI.
 ```
 
-Include source files only when they add important context, with at most five project-scoped files:
+Curate the lesson content, optionally with source files when they add important context. Include at most five project-scoped files:
 
 ```bash
 brv curate "<lesson content>" -f src/example/file.ts
