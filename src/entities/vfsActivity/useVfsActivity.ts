@@ -10,6 +10,7 @@ const DEFAULT_STATE: VfsActivityState = {
 
 /**
  * Reads VFS mutation activity from the main file-system service and derives UI-facing display state.
+ * @returns Reactive VFS activity state plus derived UI flags.
  */
 export const useVfsActivity = () => {
   const {

@@ -20,7 +20,11 @@ import {
   useFileSystemDirectoryHandleService,
 } from './setupFileSystemDirectoryHandleService';
 
+/**
+ * UI-facing options for reading directory content through the shared file-system service.
+ */
 export interface ReadDirectoryOptions {
+  /** Hides Automerge sidecar files from the returned listing. */
   hideAutomergeFiles?: boolean;
 }
 
@@ -276,4 +280,8 @@ const setupFileSystemService = () => {
   };
 };
 
+/**
+ * Exposes the singleton UI-facing file-system service state and commands.
+ * @returns Shared file-system service instance for the current app runtime.
+ */
 export const useFileSystemService = createGlobalState(setupFileSystemService);

@@ -15,11 +15,17 @@ export type VfsMutationOperationType = 'writeFile' | 'createDirectory' | 'delete
  * Serializable description of the last failed VFS mutation.
  */
 export interface VfsActivityError {
+  /** Mutation kind that failed. */
   operationType: VfsMutationOperationType;
+  /** Path targeted by the failed mutation. */
   path: string;
+  /** Destination path for move operations, when relevant. */
   newPath?: string;
+  /** User-displayable failure message. */
   message: string;
+  /** Failure timestamp in Unix milliseconds. */
   occurredAt: number;
+  /** Whether the UI has dismissed the latest failure. */
   acknowledged: boolean;
 }
 
@@ -27,8 +33,11 @@ export interface VfsActivityError {
  * Snapshot of the current VFS mutation activity.
  */
 export interface VfsActivityState {
+  /** Aggregate tracker status derived from active work and last error. */
   status: VfsActivityStatus;
+  /** Number of currently running tracked mutations. */
   activeCount: number;
+  /** Last observed mutation failure, if any. */
   lastError?: VfsActivityError;
 }
 
@@ -36,8 +45,11 @@ export interface VfsActivityState {
  * Serializable descriptor of a tracked VFS mutation.
  */
 export interface VfsMutationOperation {
+  /** Mutation kind being tracked. */
   type: VfsMutationOperationType;
+  /** Source or target path associated with the mutation. */
   path: string;
+  /** Destination path for move operations, when relevant. */
   newPath?: string;
 }
 
@@ -57,9 +69,8 @@ export interface VfsActivityTracker {
 
   /**
    * Runs a tracked mutation and updates activity state before and after completion.
-   *
-   * @param operation Serializable mutation metadata stored on failure.
-   * @param run Async mutation body.
+   * @param operation - Serializable mutation metadata stored on failure.
+   * @param run - Async mutation body.
    * @returns Promise resolved with the mutation result.
    */
   track<T>(operation: VfsMutationOperation, run: () => Promise<T>): Promise<T>;
@@ -95,7 +106,6 @@ const createState = (state: VfsActivitySnapshot): VfsActivityState => {
 
 /**
  * Creates a VFS activity tracker that retains the last unacknowledged mutation error.
- *
  * @returns Tracker with a read-only state stream and tracked mutation helpers.
  */
 export const createVfsActivityTracker = (): VfsActivityTracker => {
@@ -106,6 +116,10 @@ export const createVfsActivityTracker = (): VfsActivityTracker => {
     }),
   );
 
+  /**
+   * Applies a state transition and emits the derived public snapshot.
+   * @param updater - Pure transition that computes the next internal snapshot.
+   */
   const patchState = (updater: (state: VfsActivityState) => VfsActivitySnapshot): void => {
     state$.next(createState(updater(state$.value)));
   };
