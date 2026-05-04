@@ -115,10 +115,9 @@ describe('simplifiedAPI cache invalidation', () => {
     ]);
   });
 
-  it('does not cache empty App Data directory lists before create', async () => {
+  it('caches empty App Data directory lists', async () => {
     const fetchMock = vi
       .fn<typeof fetch>()
-      .mockResolvedValueOnce(createJsonResponse({ files: [] }))
       .mockResolvedValueOnce(createJsonResponse({ files: [] }))
       .mockResolvedValueOnce(createJsonResponse({ id: 'new-folder-id' }))
       .mockResolvedValueOnce(
@@ -153,10 +152,12 @@ describe('simplifiedAPI cache invalidation', () => {
       fetchAll: true,
     };
 
-    await getGFileMetaList(auth, listParams);
-    await getGFileMetaList(auth, listParams);
+    const firstResult = await getGFileMetaList(auth, listParams);
+    const cachedResult = await getGFileMetaList(auth, listParams);
 
-    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(cachedResult).toEqual(firstResult);
+    expect(cachedResult.files).toEqual([]);
 
     await create(auth, {
       name: 'new-folder',
@@ -166,7 +167,7 @@ describe('simplifiedAPI cache invalidation', () => {
 
     const refreshedResult = await getGFileMetaList(auth, listParams);
 
-    expect(fetchMock).toHaveBeenCalledTimes(4);
+    expect(fetchMock).toHaveBeenCalledTimes(3);
     expect(refreshedResult.files).toEqual([
       expect.objectContaining({
         id: 'new-folder-id',
@@ -934,5 +935,247 @@ describe('createWithContent', () => {
     const requestUrl = new URL(request.url);
 
     expect(requestUrl.searchParams.get('fields')).toBe(fieldsGDriveFileMeta);
+  });
+
+  it('caches created file metadata in gFileMetaCache', async () => {
+    const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(
+      createJsonResponse({
+        id: 'new-file-id',
+        name: 'notes.txt',
+        mimeType: 'text/plain',
+        size: '7',
+        modifiedTime: '2024-01-02T00:00:00.000Z',
+        parents: ['parent-id'],
+      }),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { clearCaches, createWithContent, getGDriveFileMeta } = await import('./simplifiedAPI');
+
+    clearCaches();
+
+    await createWithContent(
+      { ACCESS_TOKEN: 'token' },
+      {
+        name: 'notes.txt',
+        parents: ['parent-id'],
+      },
+      'content',
+    );
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+
+    const metadata = await getGDriveFileMeta({ ACCESS_TOKEN: 'token' }, 'new-file-id');
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(metadata).toEqual(
+      expect.objectContaining({
+        id: 'new-file-id',
+        name: 'notes.txt',
+        mimeType: 'text/plain',
+      }),
+    );
+  });
+
+  it('invalidates parent list-cache after createWithContent', async () => {
+    const fetchMock = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(
+        createJsonResponse({
+          files: [
+            {
+              id: 'existing-file',
+              name: 'existing.txt',
+              mimeType: 'text/plain',
+              modifiedTime: '2024-01-01T00:00:00.000Z',
+              parents: ['parent-id'],
+            },
+          ],
+        }),
+      )
+      .mockResolvedValueOnce(
+        createJsonResponse({
+          id: 'new-file-id',
+          name: 'notes.txt',
+          mimeType: 'text/plain',
+          size: '7',
+          modifiedTime: '2024-01-02T00:00:00.000Z',
+          parents: ['parent-id'],
+        }),
+      )
+      .mockResolvedValueOnce(
+        createJsonResponse({
+          files: [
+            {
+              id: 'existing-file',
+              name: 'existing.txt',
+              mimeType: 'text/plain',
+              modifiedTime: '2024-01-01T00:00:00.000Z',
+              parents: ['parent-id'],
+            },
+            {
+              id: 'new-file-id',
+              name: 'notes.txt',
+              mimeType: 'text/plain',
+              size: '7',
+              modifiedTime: '2024-01-02T00:00:00.000Z',
+              parents: ['parent-id'],
+            },
+          ],
+        }),
+      );
+
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { clearCaches, createWithContent, getGFileMetaList } = await import('./simplifiedAPI');
+
+    clearCaches();
+
+    const auth = { ACCESS_TOKEN: 'token' };
+    const listParams = {
+      q: {
+        parentId: 'parent-id',
+        trashed: false,
+      },
+      spaces: [SPACE.drive],
+      fetchAll: true,
+    };
+
+    await getGFileMetaList(auth, listParams);
+    await createWithContent(
+      auth,
+      {
+        name: 'notes.txt',
+        parents: ['parent-id'],
+      },
+      'content',
+    );
+    const refreshedResult = await getGFileMetaList(auth, listParams);
+
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+    expect(refreshedResult.files).toEqual([
+      expect.objectContaining({ id: 'existing-file' }),
+      expect.objectContaining({ id: 'new-file-id' }),
+    ]);
+  });
+
+  it('negative cache does not hide created file after parent cache invalidation', async () => {
+    const fetchMock = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(createJsonResponse({ files: [] }))
+      .mockResolvedValueOnce(
+        createJsonResponse({
+          id: 'new-file-id',
+          name: 'notes.txt',
+          mimeType: 'text/plain',
+          size: '7',
+          modifiedTime: '2024-01-02T00:00:00.000Z',
+          parents: ['parent-id'],
+        }),
+      )
+      .mockResolvedValueOnce(
+        createJsonResponse({
+          files: [
+            {
+              id: 'new-file-id',
+              name: 'notes.txt',
+              mimeType: 'text/plain',
+              size: '7',
+              modifiedTime: '2024-01-02T00:00:00.000Z',
+              parents: ['parent-id'],
+            },
+          ],
+        }),
+      );
+
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { clearCaches, createWithContent, getGFileMetaList } = await import('./simplifiedAPI');
+
+    clearCaches();
+
+    const auth = { ACCESS_TOKEN: 'token' };
+    const listParams = {
+      q: {
+        parentId: 'parent-id',
+        trashed: false,
+      },
+      spaces: [SPACE.drive],
+      fetchAll: true,
+    };
+
+    await getGFileMetaList(auth, listParams);
+    await createWithContent(
+      auth,
+      {
+        name: 'notes.txt',
+        parents: ['parent-id'],
+      },
+      'content',
+    );
+    const refreshedResult = await getGFileMetaList(auth, listParams);
+
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+    expect(refreshedResult.files).toEqual([
+      expect.objectContaining({
+        id: 'new-file-id',
+        name: 'notes.txt',
+      }),
+    ]);
+  });
+
+  it('does not cache error responses', async () => {
+    const fetchMock = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(
+        createJsonResponse(
+          {
+            error: {
+              code: HttpStatusCode.NOT_FOUND,
+              message: 'File not found',
+            },
+          },
+          HttpStatusCode.NOT_FOUND,
+        ),
+      )
+      .mockResolvedValueOnce(
+        createJsonResponse({
+          files: [
+            {
+              id: 'existing-file',
+              name: 'existing.txt',
+              mimeType: 'text/plain',
+              modifiedTime: '2024-01-01T00:00:00.000Z',
+              parents: ['parent-id'],
+            },
+          ],
+        }),
+      );
+
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { clearCaches, getGFileMetaList } = await import('./simplifiedAPI');
+
+    clearCaches();
+
+    const auth = { ACCESS_TOKEN: 'token' };
+    const listParams = {
+      q: {
+        parentId: 'parent-id',
+        trashed: false,
+      },
+      spaces: [SPACE.drive],
+      fetchAll: true,
+    };
+
+    await expect(getGFileMetaList(auth, listParams)).rejects.toMatchObject({
+      name: 'GoogleDriveError',
+      code: HttpStatusCode.NOT_FOUND,
+    });
+
+    const result = await getGFileMetaList(auth, listParams);
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(result.files).toEqual([expect.objectContaining({ id: 'existing-file' })]);
   });
 });
