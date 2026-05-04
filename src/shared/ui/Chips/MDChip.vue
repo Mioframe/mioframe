@@ -28,6 +28,7 @@ const onClickClose = (e: MouseEvent) => {
 };
 
 const onChipClick = (event: MouseEvent) => {
+  event.stopPropagation();
   emit('click', event);
 };
 </script>
