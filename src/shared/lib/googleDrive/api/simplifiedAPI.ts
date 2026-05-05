@@ -503,7 +503,7 @@ export const createWithContent = async (
 
   const result = zodGDriveFileMeta.parse(await response.json());
 
-  invalidateCache(...resource.parents);
+  invalidateCache(...resource.parents, ...(result.parents ?? []));
   gFileMetaCache.set(result.id, result);
 
   return { result };

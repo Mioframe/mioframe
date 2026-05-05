@@ -32,8 +32,24 @@ function collectTestFiles(dir) {
 
 function getSourceCandidates(testFile) {
   const sourceBase = testFile.slice(0, -TEST_FILE_SUFFIX.length);
+  const dirPath = path.dirname(testFile);
+  const baseName = path.basename(sourceBase);
 
-  return SOURCE_EXTENSIONS.map((extension) => `${sourceBase}${extension}`);
+  let candidates = SOURCE_EXTENSIONS.map((extension) => `${sourceBase}${extension}`);
+
+  const parts = baseName.split('.');
+
+  if (parts.length >= 2) {
+    const trimmedBaseName = parts.slice(0, -1).join('.');
+    const trimmedPath = path.join(dirPath, trimmedBaseName);
+
+    candidates = [
+      ...candidates,
+      ...SOURCE_EXTENSIONS.map((extension) => `${trimmedPath}${extension}`),
+    ];
+  }
+
+  return candidates;
 }
 
 const mutate = [
