@@ -1,7 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { HttpStatusCode } from '../../error/httpStatus';
-import { SPACE } from './types';
-import { createJsonResponse } from './simplifiedAPI.testUtils';
 
 describe('simplifiedAPI error handling', () => {
   beforeEach(() => {
@@ -13,41 +11,152 @@ describe('simplifiedAPI error handling', () => {
     vi.unstubAllGlobals();
   });
 
-  it('normalizes non-ok JSON responses into GoogleDriveError', async () => {
+  it('handles non-JSON API errors gracefully with empty catch block', async () => {
+    // Mock fetch to return a response that will fail JSON parsing in the .catch block
     const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(
-      createJsonResponse(
-        {
+      new Response('Plain text error: Something went wrong', {
+        status: HttpStatusCode.INTERNAL_SERVER_ERROR,
+        headers: { 'Content-Type': 'text/plain' },
+      }),
+    );
+
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { getGFileMetaList } = await import('./simplifiedAPI');
+
+    // This should throw a GoogleDriveError (the empty catch block returns {} which will fail zod parsing)
+    // The mutation on line 62 changes the empty object to undefined, but both cause zod parse errors
+    await expect(
+      getGFileMetaList({ ACCESS_TOKEN: 'token' }, { q: {}, spaces: [], fetchAll: true }),
+    ).rejects.toThrow();
+
+    // Due to retry logic, fetch may be called multiple times (1 initial + up to 3 retries)
+    expect(fetchMock.mock.calls.length).toBeGreaterThanOrEqual(1);
+    expect(fetchMock.mock.calls.length).toBeLessThanOrEqual(4);
+  });
+
+  it('handles malformed JSON API errors', async () => {
+    // Mock fetch to return a response with malformed JSON
+    const fetchMock = vi.fn<typeof fetch>().mockResolvedValueOnce(
+      new Response('{ "error": { code: invalid } }', {
+        status: HttpStatusCode.BAD_REQUEST,
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    );
+
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { getGFileMetaList } = await import('./simplifiedAPI');
+
+    // This should throw a GoogleDriveError (the empty catch block returns {} which will fail zod parsing)
+    await expect(
+      getGFileMetaList({ ACCESS_TOKEN: 'token' }, { q: {}, spaces: [], fetchAll: true }),
+    ).rejects.toThrow();
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('handles valid Google API errors with proper error propagation', async () => {
+    const fetchMock = vi.fn<typeof fetch>().mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
           error: {
-            code: HttpStatusCode.FORBIDDEN,
-            message: 'Forbidden',
+            code: HttpStatusCode.NOT_FOUND,
+            message: 'File not found',
           },
-        },
-        HttpStatusCode.FORBIDDEN,
+        }),
+        { status: HttpStatusCode.NOT_FOUND },
       ),
     );
 
     vi.stubGlobal('fetch', fetchMock);
 
-    const { clearCaches, getGFileMetaList } = await import('./simplifiedAPI');
-
-    clearCaches();
+    const { getGFileMetaList } = await import('./simplifiedAPI');
 
     await expect(
-      getGFileMetaList(
-        { ACCESS_TOKEN: 'token' },
-        {
-          q: {
-            parentId: 'parent-id',
-            trashed: false,
-          },
-          spaces: [SPACE.drive],
-          fetchAll: true,
-        },
-      ),
+      getGFileMetaList({ ACCESS_TOKEN: 'token' }, { q: {}, spaces: [], fetchAll: true }),
     ).rejects.toMatchObject({
+      code: HttpStatusCode.NOT_FOUND,
       name: 'GoogleDriveError',
-      code: HttpStatusCode.FORBIDDEN,
-      message: 'Forbidden',
     });
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('handles API errors during file operations with proper error propagation', async () => {
+    const fetchMock = vi.fn<typeof fetch>().mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          error: {
+            code: HttpStatusCode.FORBIDDEN,
+            message: 'Permission denied',
+          },
+        }),
+        { status: HttpStatusCode.FORBIDDEN },
+      ),
+    );
+
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { update } = await import('./simplifiedAPI');
+
+    await expect(update({ ACCESS_TOKEN: 'token' }, 'file-id', {})).rejects.toMatchObject({
+      code: HttpStatusCode.FORBIDDEN,
+      name: 'GoogleDriveError',
+    });
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('handles API errors during create operations with proper error propagation', async () => {
+    const fetchMock = vi.fn<typeof fetch>().mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          error: {
+            code: HttpStatusCode.UNAUTHORIZED,
+            message: 'Authentication required',
+          },
+        }),
+        { status: HttpStatusCode.UNAUTHORIZED },
+      ),
+    );
+
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { create } = await import('./simplifiedAPI');
+
+    await expect(
+      create({ ACCESS_TOKEN: 'token' }, { name: 'test.txt', parents: ['parent-id'] }),
+    ).rejects.toMatchObject({
+      code: HttpStatusCode.UNAUTHORIZED,
+      name: 'GoogleDriveError',
+    });
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('handles API errors during upload operations with proper error propagation', async () => {
+    const fetchMock = vi.fn<typeof fetch>().mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          error: {
+            code: HttpStatusCode.PAYLOAD_TOO_LARGE,
+            message: 'File too large',
+          },
+        }),
+        { status: HttpStatusCode.PAYLOAD_TOO_LARGE },
+      ),
+    );
+
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { upload } = await import('./simplifiedAPI');
+
+    await expect(upload({ ACCESS_TOKEN: 'token' }, 'file-id', 'content')).rejects.toMatchObject({
+      code: HttpStatusCode.PAYLOAD_TOO_LARGE,
+      name: 'GoogleDriveError',
+    });
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 });

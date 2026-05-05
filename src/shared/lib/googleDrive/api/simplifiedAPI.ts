@@ -410,7 +410,7 @@ export const download = async (
       alt: 'media',
     },
     ...(onDownloadProgress ? { onDownloadProgress } : {}),
-    dedupe: true,
+    dedupe: !onDownloadProgress,
   })
     .then((r) => r.blob())
     .then(
