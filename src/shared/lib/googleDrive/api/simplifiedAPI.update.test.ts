@@ -1,7 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { HttpStatusCode } from '../../error/httpStatus';
 import { SPACE } from './types';
-import { createFolderMimeType, createJsonResponse } from './simplifiedAPI.testUtils';
+import { createJsonResponse } from './simplifiedAPI.testUtils';
 
 describe('simplifiedAPI update', () => {
   beforeEach(() => {
