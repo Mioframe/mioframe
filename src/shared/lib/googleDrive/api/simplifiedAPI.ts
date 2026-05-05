@@ -234,30 +234,47 @@ const gFileMetaCache = new Cache<string, GDriveFileMeta>({
 });
 
 /**
- * Invalidates cache entries for specified file IDs and dependent entries.
- * @param fileIdList - List of file IDs to invalidate cache entries for.
+ * Invalidates cache entries for a specific file that changed.
+ * Removes metadata, content, and dependent list-cache entries.
+ * @param fileIdList - List of file IDs whose individual caches should be invalidated.
  */
-const invalidateCache = (...fileIdList: string[]): void => {
+export const invalidateFileCache = (...fileIdList: string[]): void => {
   fileIdList.forEach((fileId) => {
     gFileMetaCache.delete(fileId);
     gDriveFileContentCache.delete(fileId);
-    const metadataKeysToDelete: string[] = [];
-    gFileMetaCache.forEach(({ parents }, key) => {
-      if (parents?.includes(fileId)) {
-        metadataKeysToDelete.push(key);
-      }
-    });
-    metadataKeysToDelete.forEach((key) => {
-      gFileMetaCache.delete(key);
-    });
 
     const listKeysToDelete: string[] = [];
-    gFileMetaListCache.forEachEntry(({ files }, key, listParams) => {
-      const matchesParentId = typeof listParams !== 'string' && listParams.q?.parentId === fileId;
+    gFileMetaListCache.forEachEntry(({ files }, key) => {
       const matchesFileRelation =
         files?.some(({ id, parents = [] }) => [id, ...parents].includes(fileId)) ?? false;
 
-      if (matchesParentId || matchesFileRelation) {
+      if (matchesFileRelation) {
+        listKeysToDelete.push(key);
+      }
+    });
+    listKeysToDelete.forEach((key) => {
+      gFileMetaListCache.delete(key);
+    });
+  });
+};
+
+/**
+ * Invalidates cached directory lists when the composition of a folder changes.
+ * Only clears `gFileMetaListCache` entries for affected parent directories.
+ * Does not touch individual file metadata or content caches.
+ * @param parentIdList - List of parent/folder IDs whose list caches should be invalidated.
+ */
+const invalidateDirectoryListCache = (...parentIdList: string[]): void => {
+  parentIdList.forEach((parentId) => {
+    const listKeysToDelete: string[] = [];
+    gFileMetaListCache.forEachEntry(({ files }, key, listParams) => {
+      if (typeof listParams === 'string') return;
+
+      const matchesQueryParentId = listParams.q?.parentId === parentId;
+      const matchesCachedFileParents =
+        files?.some(({ parents = [] }) => parents.includes(parentId)) ?? false;
+
+      if (matchesQueryParentId || matchesCachedFileParents) {
         listKeysToDelete.push(key);
       }
     });
@@ -360,7 +377,8 @@ export const update = async (auth: GoogleAuthParams, fileId: string, params: Upd
     z.object({}),
   );
 
-  invalidateCache(fileId, ...(addParents ?? []), ...(removeParents ?? []));
+  invalidateFileCache(fileId);
+  invalidateDirectoryListCache(...(addParents ?? []), ...(removeParents ?? []));
 
   return result;
 };
@@ -449,7 +467,7 @@ export const create = async (auth: GoogleAuthParams, resource: CreateResource) =
     z.object({ id: z.string() }),
   );
 
-  invalidateCache(...resource.parents);
+  invalidateDirectoryListCache(...resource.parents);
 
   return result;
 };
@@ -503,7 +521,7 @@ export const createWithContent = async (
 
   const result = zodGDriveFileMeta.parse(await response.json());
 
-  invalidateCache(...resource.parents, ...(result.parents ?? []));
+  invalidateDirectoryListCache(...resource.parents, ...(result.parents ?? []));
   gFileMetaCache.set(result.id, result);
 
   return { result };
@@ -542,7 +560,7 @@ export const upload = async (
     },
   );
 
-  invalidateCache(fileId);
+  invalidateFileCache(fileId);
 
   return response;
 };
