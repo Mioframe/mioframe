@@ -13,6 +13,26 @@ describe('createWithContent', () => {
     vi.unstubAllGlobals();
   });
 
+  it('rejects createWithContent requests with an empty parents array', async () => {
+    const { createWithContent } = await import('./simplifiedAPI');
+
+    await expect(
+      createWithContent(
+        {
+          ACCESS_TOKEN: 'token',
+        },
+        {
+          name: 'notes.txt',
+          parents: [],
+          mimeType: 'text/plain',
+        },
+        'content',
+      ),
+    ).rejects.toMatchObject({
+      code: HttpStatusCode.FORBIDDEN,
+    });
+  });
+
   it('sends multipart request with metadata and content', async () => {
     let requestBody = '';
     const fetchMock = vi.fn<typeof fetch>().mockImplementation(async (input) => {
