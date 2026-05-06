@@ -5,6 +5,7 @@ import { DocumentRenameDialog } from '@feature/documentRename';
 import { useExportDocument } from '@feature/exportDocument';
 import type { AMDocumentId } from '@shared/lib/automerge';
 import { DomainError } from '@shared/lib/error';
+import { isUserFileSelectionCancel } from '@shared/lib/fileSystem';
 import { reportHandledError } from '@shared/lib/reportHandledError';
 import { defineMenuButtonList, MDContextMenuButton } from '@shared/ui/Menu';
 import { useSnackbar } from '@shared/ui/Snackbar';
@@ -42,9 +43,6 @@ const documentActionButtons = defineMenuButtonList([
 const { saveJsonFile } = useExportDocument();
 const { addSnackbar } = useSnackbar();
 
-const shouldSkipExportErrorReport = (error: unknown) =>
-  error instanceof DOMException && error.name === 'AbortError';
-
 const showRenameDialog = shallowRef(false);
 const showRemoveDialog = shallowRef(false);
 
@@ -69,7 +67,7 @@ const onClickMenuAction = async ({ key }: { key: DocumentContextEvent }) => {
         addSnackbar({
           text: error instanceof DomainError ? error.message : 'Could not export the document',
         });
-        if (!shouldSkipExportErrorReport(error)) {
+        if (!isUserFileSelectionCancel(error)) {
           reportHandledError(error, {
             feature: 'documentExport',
             action: 'exportDocumentJson',

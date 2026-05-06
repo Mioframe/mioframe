@@ -97,6 +97,29 @@ describe('useImportDocument', () => {
     });
   });
 
+  it('creates a document from valid Beaver JSON and returns its id', async () => {
+    fileOpenMock.mockResolvedValue({
+      text: vi.fn().mockResolvedValue(
+        JSON.stringify({
+          body: {},
+          name: 'Doc',
+          type: 'note',
+          version: 1,
+        }),
+      ),
+    });
+
+    const { importJsonFile } = useImportDocument();
+
+    await expect(importJsonFile('/documents')).resolves.toBe('document-id');
+    expect(createDocumentMock).toHaveBeenCalledWith('/documents', {
+      body: {},
+      name: 'Doc',
+      type: 'note',
+      version: 1,
+    });
+  });
+
   it('preserves an existing DomainError when document creation fails', async () => {
     fileOpenMock.mockResolvedValue({
       text: vi.fn().mockResolvedValue(

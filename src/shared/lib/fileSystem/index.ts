@@ -6,6 +6,7 @@ export type {
 export { isFileFSEntry } from './FileFSEntry';
 export type { FileFSEntry } from './FileFSEntry';
 export { isEntryPath, isGeneralFSEntry } from './GeneralFSEntry';
+export { isUserFileSelectionCancel } from './isUserFileSelectionCancel';
 export type {
   EntryPath,
   GeneralFSEntry,

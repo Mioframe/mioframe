@@ -1,38 +1,25 @@
 /**
- * HTTP Status Code enum — стандартные коды ответов HTTP/1.1 (RFC 7231, RFC 9110).
+ * Standard HTTP response status codes used by Beaver.
  *
- * @module error.HttpStatus
- * @description
- * Этот модуль предоставляет типизированные константы для всех стандартных HTTP статус-кодов.
- * Используется в слоях обработки ошибок и адаптерах Google Drive API для корректной классификации ответов сервера.
+ * This enum provides typed constants for standard HTTP status codes used in
+ * error handling and Google Drive API adapters.
  *
- * ## Категории статус-кодов
- * - **2xx (Success):** Успешное выполнение запроса. Исключены кэш-связанные коды (204, 206).
- * - **3xx (Redirection):** Перенаправления — исключены по требованиям проекта.
- * - **4xx (Client Errors):** Ошибки клиента — некорректный запрос или ресурс недоступен.
- * - **5xx (Server Errors):** Ошибки сервера — внутренняя проблема сервиса.
+ * Categories:
+ * - `2xx`: successful requests
+ * - `4xx`: client errors
+ * - `5xx`: server errors
+ * Based on RFC 7231 and RFC 9110.
+ * @example
+ * ```ts
+ * if (response.status === HttpStatusCode.UNAUTHORIZED) {
+ *   // Redirect to login
+ * }
  *
- * ## Использование
- * ```typescript
- * import { HttpStatusCode, HttpError } from '@/shared/lib/error';
- *
- * try {
- *   const response = await api.getUser(id);
- *   if (response.status === HttpStatusCode.UNAUTHORIZED) {
- *     // Перенаправить на страницу логина
- *   }
- * } catch (error) {
- *   if (error instanceof HttpError && error.statusCode === HttpStatusCode.NOT_FOUND) {
- *     console.log('Пользователь не найден');
- *   }
+ * if (error.code === HttpStatusCode.NOT_FOUND) {
+ *   console.log('Resource not found');
  * }
  * ```
- *
- * ## Примечания
- * - Все значения соответствуют официальным спецификациям IETF.
- * - Для кастомных статус-кодов используйте отдельный enum (например, `CustomStatusCode`).
  */
-
 export enum HttpStatusCode {
   // Success (2xx) — успешное выполнение запроса
   /** Успешный ответ с данными */

@@ -1,5 +1,5 @@
 import { DomainError } from '@shared/lib/error';
-import { ensureSentry } from './setupSentry';
+import { ensureSentry, isSentryReportingConfigured } from './setupSentry';
 
 type ReportHandledErrorOptions = {
   feature: string;
@@ -35,6 +35,10 @@ const enqueueHandledReport = (entry: HandledReportEntry) => {
   }
 };
 
+const dropHandledReportQueue = () => {
+  handledReportQueue.length = 0;
+};
+
 const sendHandledReport = (
   entry: HandledReportEntry,
   sentry: Awaited<ReturnType<typeof ensureSentry>>,
@@ -60,6 +64,11 @@ const sendHandledReport = (
 
 const flushHandledReports = async () => {
   if (handledReportQueue.length === 0) {
+    return;
+  }
+
+  if (!isSentryReportingConfigured()) {
+    dropHandledReportQueue();
     return;
   }
 
@@ -125,6 +134,11 @@ export const reportHandledError = (error: unknown, options: ReportHandledErrorOp
   }
 
   try {
+    if (!isSentryReportingConfigured()) {
+      dropHandledReportQueue();
+      return;
+    }
+
     enqueueHandledReport({
       error: reportedError,
       extras,

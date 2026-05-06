@@ -1,16 +1,10 @@
 import type { AMDocumentId } from '@shared/lib/automerge';
 import { DomainError } from '@shared/lib/error';
+import { isUserFileSelectionCancel } from '@shared/lib/fileSystem';
 import { useMainServiceClient } from '@shared/service';
 import { stringify } from 'safe-stable-stringify';
 import { fileSave } from 'browser-fs-access';
-
-/**
- * Detects when the user dismisses the native save dialog without choosing a destination.
- * @param error - The thrown save dialog error.
- * @returns Whether the error represents a user cancellation.
- */
-const isUserFileSelectionCancel = (error: unknown) =>
-  error instanceof DOMException && error.name === 'AbortError';
+import { ExportDocumentErrorCode } from './exportDocumentErrorCode';
 
 /**
  * Creates JSON document export actions for a document in a directory.
@@ -40,11 +34,16 @@ export const useExportDocument = () => {
         throw error;
       }
 
-      throw new DomainError('Could not export the document', { cause: error });
+      throw new DomainError('Could not export the document', {
+        cause: error,
+        code: ExportDocumentErrorCode.documentExportFailed,
+      });
     }
 
     if (!documentState) {
-      throw new DomainError('The document is not available for export');
+      throw new DomainError('The document is not available for export', {
+        code: ExportDocumentErrorCode.documentExportUnavailable,
+      });
     }
 
     const jsonString = stringify(documentState);
@@ -70,7 +69,10 @@ export const useExportDocument = () => {
         throw error;
       }
 
-      throw new DomainError('Could not export the document', { cause: error });
+      throw new DomainError('Could not export the document', {
+        cause: error,
+        code: ExportDocumentErrorCode.documentExportFailed,
+      });
     }
   };
 

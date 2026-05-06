@@ -4,7 +4,9 @@ import type { App, Plugin } from 'vue';
  * Runtime configuration for the optional Sentry integration.
  */
 export type SentryConfig = {
+  /** Sentry DSN used for SDK initialization. */
   dsn?: string;
+  /** Whether runtime configuration allows Sentry initialization. */
   enabled?: boolean;
 };
 
@@ -95,6 +97,14 @@ const getSentryModule = async () => {
 const canInitializeSentry = (config: SentryConfig | undefined) =>
   config?.enabled === true && !!config.dsn;
 
+/**
+ * Returns whether runtime configuration currently allows real Sentry reporting.
+ * This reflects configuration only. A `true` result does not guarantee the SDK
+ * has finished initializing yet.
+ * @returns Whether handled reports should be kept for Sentry delivery.
+ */
+export const isSentryReportingConfigured = () => canInitializeSentry(runtimeConfig);
+
 const readRuntimeConfig = () => {
   if (!canInitializeSentry(runtimeConfig)) {
     warnMissingConfigOnce();
@@ -174,7 +184,6 @@ const sentryFacade = createSentryFacade();
 
 /**
  * Registers runtime Sentry configuration without loading the SDK.
- *
  * @param config - Runtime config used to decide whether Sentry should initialize.
  */
 export const registerSentryConfig = (config: SentryConfig) => {
@@ -183,10 +192,8 @@ export const registerSentryConfig = (config: SentryConfig) => {
 
 /**
  * Lazily imports and initializes `@sentry/vue` once.
- *
  * If configuration is missing, the returned facade stays in no-op mode. When
  * an app instance is provided, it is cached and passed to `Sentry.init`.
- *
  * @param app - Optional Vue app instance used for Vue-specific Sentry wiring.
  * @returns The stable Sentry facade, backed by the real SDK after initialization.
  */
@@ -238,10 +245,8 @@ export const ensureSentry = async (app?: App): Promise<SentryFacade> => {
 
 /**
  * Compatibility wrapper that enables Sentry and initializes it for a Vue app.
- *
  * Prefer `sentryPlugin` for app bootstrap, but keep this helper available for
  * call sites that still want an explicit setup function.
- *
  * @param app - Vue app instance used during Sentry initialization.
  * @param dsn - Sentry DSN to register and initialize.
  * @returns The stable Sentry facade.
@@ -257,10 +262,8 @@ export const setupSentry = async (app: App, dsn: string) => {
 
 /**
  * Returns the stable Sentry facade.
- *
  * The returned object is always safe to use. Before Sentry finishes
  * initializing, methods no-op or run their callback-based fallbacks.
- *
  * @returns Stable function-only Sentry facade.
  */
 export const useSentry = (): SentryFacade => sentryFacade;

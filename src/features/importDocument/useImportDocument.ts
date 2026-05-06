@@ -1,15 +1,9 @@
 import { DomainError } from '@shared/lib/error';
+import { isUserFileSelectionCancel } from '@shared/lib/fileSystem';
 import { useMainServiceClient } from '@shared/service';
 import { fileOpen } from 'browser-fs-access';
 import { zodCFRDocumentContent } from '@shared/lib/cfrDocument';
-
-/**
- * Detects when the user dismisses the native file picker without selecting a file.
- * @param error - The thrown picker error.
- * @returns Whether the error represents a user cancellation.
- */
-const isUserFileSelectionCancel = (error: unknown) =>
-  error instanceof DOMException && error.name === 'AbortError';
+import { ImportDocumentErrorCode } from './importDocumentErrorCode';
 
 /**
  * Creates JSON document import actions for a target directory.
@@ -43,7 +37,10 @@ export const useImportDocument = () => {
         throw error;
       }
 
-      throw new DomainError('Could not open the selected file', { cause: error });
+      throw new DomainError('Could not open the selected file', {
+        cause: error,
+        code: ImportDocumentErrorCode.fileOpenFailed,
+      });
     }
 
     let text: string;
@@ -51,7 +48,10 @@ export const useImportDocument = () => {
     try {
       text = await file.text();
     } catch (error) {
-      throw new DomainError('Could not import the document', { cause: error });
+      throw new DomainError('Could not import the document', {
+        cause: error,
+        code: ImportDocumentErrorCode.fileReadFailed,
+      });
     }
 
     let data: unknown;
@@ -59,7 +59,10 @@ export const useImportDocument = () => {
     try {
       data = JSON.parse(text);
     } catch (error) {
-      throw new DomainError('The selected file is not valid JSON', { cause: error });
+      throw new DomainError('The selected file is not valid JSON', {
+        cause: error,
+        code: ImportDocumentErrorCode.invalidJson,
+      });
     }
 
     let initialValue: ReturnType<typeof zodCFRDocumentContent.parse>;
@@ -69,6 +72,7 @@ export const useImportDocument = () => {
     } catch (error) {
       throw new DomainError('The selected JSON file is not a Beaver document', {
         cause: error,
+        code: ImportDocumentErrorCode.invalidDocumentFormat,
       });
     }
 
@@ -81,7 +85,10 @@ export const useImportDocument = () => {
         throw error;
       }
 
-      throw new DomainError('Could not import the document', { cause: error });
+      throw new DomainError('Could not import the document', {
+        cause: error,
+        code: ImportDocumentErrorCode.documentImportFailed,
+      });
     }
   };
 

@@ -5,8 +5,9 @@ import { DirectoryCreateDialog } from '@feature/directoryCreate';
 import { DocumentCreationDialog } from '@feature/documentCreate';
 import { useRemoveFSEntry } from '@feature/entryRemove';
 import { FSEntryRenameDialog } from '@feature/entryRename';
-import { useImportDocument } from '@feature/importDocument';
+import { ImportDocumentErrorCode, useImportDocument } from '@feature/importDocument';
 import { DomainError } from '@shared/lib/error';
+import { isUserFileSelectionCancel } from '@shared/lib/fileSystem';
 import { reportHandledError } from '@shared/lib/reportHandledError';
 import { FSNodeType, PathUtils } from '@shared/lib/virtualFileSystem';
 import { defineMenuButtonList, MDContextMenuButton } from '@shared/ui/Menu';
@@ -117,10 +118,8 @@ const { importJsonFile } = useImportDocument();
 const { addSnackbar } = useSnackbar();
 
 const shouldSkipImportErrorReport = (error: unknown) =>
-  (error instanceof DOMException && error.name === 'AbortError') ||
-  (error instanceof DomainError &&
-    (error.message === 'The selected file is not valid JSON' ||
-      error.message === 'The selected JSON file is not a Beaver document'));
+  isUserFileSelectionCancel(error) ||
+  (error instanceof DomainError && error.code === ImportDocumentErrorCode.invalidJson);
 
 const onClickMenuAction = async ({ key }: { key: FSEntryContextEvent }) => {
   switch (key) {

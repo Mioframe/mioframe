@@ -94,6 +94,34 @@ describe('useExportDocument', () => {
     });
   });
 
+  it('returns true and saves the document JSON on success', async () => {
+    const { saveJsonFile } = useExportDocument();
+
+    await expect(saveJsonFile('/documents', documentId)).resolves.toBe(true);
+
+    expect(fetchMock).toHaveBeenCalledWith({
+      path: '/documents',
+      documentId,
+    });
+    expect(fileSaveMock).toHaveBeenCalledOnce();
+
+    const [blob, options] = fileSaveMock.mock.calls[0] ?? [];
+
+    expect(options).toEqual({
+      fileName: `${documentId}.json`,
+      extensions: ['.json'],
+      mimeTypes: ['application/json'],
+    });
+    await expect(blob.text()).resolves.toBe(
+      JSON.stringify({
+        body: {},
+        name: 'Doc',
+        type: 'note',
+        version: 1,
+      }),
+    );
+  });
+
   it('does not treat non-AbortError save failures as user cancellation', async () => {
     const cause = new DOMException('Permission denied', 'NotAllowedError');
     fileSaveMock.mockRejectedValueOnce(cause);

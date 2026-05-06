@@ -43,7 +43,14 @@ const waitForAsyncWork = async () => {
   });
 };
 
-const { ensureSentryMock, mockScope, noopFacade, realFacade, throwingFacade } = vi.hoisted(() => {
+const {
+  ensureSentryMock,
+  isSentryReportingConfiguredMock,
+  mockScope,
+  noopFacade,
+  realFacade,
+  throwingFacade,
+} = vi.hoisted(() => {
   const scopeSetTagMock = vi.fn();
   const scopeSetExtrasMock = vi.fn();
   const scope = {
@@ -72,6 +79,7 @@ const { ensureSentryMock, mockScope, noopFacade, realFacade, throwingFacade } = 
 
   return {
     ensureSentryMock: vi.fn(),
+    isSentryReportingConfiguredMock: vi.fn(() => true),
     mockScope: scope,
     noopFacade: createFacade(undefined),
     realFacade: createFacade('event-id'),
@@ -81,12 +89,15 @@ const { ensureSentryMock, mockScope, noopFacade, realFacade, throwingFacade } = 
 
 vi.mock('./setupSentry', () => ({
   ensureSentry: ensureSentryMock,
+  isSentryReportingConfigured: isSentryReportingConfiguredMock,
 }));
 
 describe('reportHandledError', () => {
   beforeEach(() => {
     vi.resetModules();
     ensureSentryMock.mockReset();
+    isSentryReportingConfiguredMock.mockReset();
+    isSentryReportingConfiguredMock.mockReturnValue(true);
     mockScope.setExtras.mockReset();
     mockScope.setTag.mockReset();
     noopFacade.captureException.mockClear();
@@ -190,7 +201,25 @@ describe('reportHandledError', () => {
     });
   });
 
-  it('keeps a failed entry queued without starting an infinite retry loop on a no-op facade', async () => {
+  it('drops handled reports immediately when Sentry reporting is disabled', async () => {
+    isSentryReportingConfiguredMock.mockReturnValue(false);
+    ensureSentryMock.mockResolvedValue(noopFacade);
+
+    const { reportHandledError } = await import('./reportHandledError');
+
+    reportHandledError(new Error('first'), {
+      feature: 'documents',
+      action: 'save',
+    });
+
+    await waitForAsyncWork();
+    await waitForAsyncWork();
+
+    expect(ensureSentryMock).not.toHaveBeenCalled();
+    expect(noopFacade.captureException).not.toHaveBeenCalled();
+  });
+
+  it('keeps a failed entry queued without starting an infinite retry loop when Sentry is configured but still no-op', async () => {
     ensureSentryMock.mockResolvedValue(noopFacade);
 
     const { reportHandledError } = await import('./reportHandledError');
@@ -211,7 +240,7 @@ describe('reportHandledError', () => {
     expect(noopFacade.captureException).toHaveBeenCalledTimes(1);
   });
 
-  it('retries queued entries on the next reportHandledError call after a no-op facade', async () => {
+  it('retries queued entries on the next reportHandledError call after a configured no-op facade', async () => {
     ensureSentryMock.mockResolvedValueOnce(noopFacade).mockResolvedValue(realFacade);
 
     const { reportHandledError } = await import('./reportHandledError');
