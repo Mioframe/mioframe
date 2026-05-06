@@ -237,6 +237,7 @@ describe('reportHandledError', () => {
       'first',
       'second',
     ]);
+    expect(ensureSentryMock).toHaveBeenCalledTimes(2);
   });
 
   it('keeps entries queued when withScope or captureException throws', async () => {
