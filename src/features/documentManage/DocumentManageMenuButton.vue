@@ -4,6 +4,7 @@ import { DocumentRemoveDialog } from '@feature/documentRemove';
 import { DocumentRenameDialog } from '@feature/documentRename';
 import { useExportDocument } from '@feature/exportDocument';
 import type { AMDocumentId } from '@shared/lib/automerge';
+import { DomainError } from '@shared/lib/error';
 import { reportHandledError } from '@shared/lib/reportHandledError';
 import { defineMenuButtonList, MDContextMenuButton } from '@shared/ui/Menu';
 import { useSnackbar } from '@shared/ui/Snackbar';
@@ -66,7 +67,7 @@ const onClickMenuAction = async ({ key }: { key: DocumentContextEvent }) => {
         }
       } catch (error) {
         addSnackbar({
-          text: error instanceof Error ? error.message : 'Could not export the document',
+          text: error instanceof DomainError ? error.message : 'Could not export the document',
         });
         if (!shouldSkipExportErrorReport(error)) {
           reportHandledError(error, {

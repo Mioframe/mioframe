@@ -154,7 +154,7 @@ const onClickMenuAction = async ({ key }: { key: FSEntryContextEvent }) => {
           }
         } catch (error) {
           addSnackbar({
-            text: error instanceof Error ? error.message : 'Could not import the document',
+            text: error instanceof DomainError ? error.message : 'Could not import the document',
           });
           if (!shouldSkipImportErrorReport(error)) {
             reportHandledError(error, {
