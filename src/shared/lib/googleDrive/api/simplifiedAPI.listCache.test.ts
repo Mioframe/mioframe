@@ -97,7 +97,7 @@ describe('simplifiedAPI list cache invalidation', () => {
     ]);
   });
 
-  it('does not cache empty App Data directory lists before create', async () => {
+  it('caches empty App Data directory lists and invalidates them after create', async () => {
     const fetchMock = vi
       .fn<typeof fetch>()
       .mockResolvedValueOnce(createJsonResponse({ files: [] }))

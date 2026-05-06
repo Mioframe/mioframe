@@ -65,16 +65,19 @@ describe('simplifiedAPI update', () => {
     await update(auth, 'file-to-update', { name: 'new-name.txt' });
 
     // Verify PATCH request has correct searchParams and JSON body
-    const updateRequest = fetchMock.mock.calls[2]?.[0];
-    if (updateRequest instanceof Request) {
-      expect(updateRequest.url).toContain('/drive/v3/files/file-to-update');
-      expect(updateRequest.method).toBe('PATCH');
-      // Verify trashed is NOT in searchParams when not specified
-      expect(updateRequest.url).not.toContain('trashed%3D');
-      await expect(updateRequest.clone().json()).resolves.toEqual({
-        name: 'new-name.txt',
-      });
+    const updateRequest = fetchMock.mock.calls[1]?.[0];
+    expect(updateRequest).toBeInstanceOf(Request);
+    if (!(updateRequest instanceof Request)) {
+      throw new Error('Expected update request to be a Request instance');
     }
+
+    expect(updateRequest.url).toContain('/drive/v3/files/file-to-update');
+    expect(updateRequest.method).toBe('PATCH');
+    // Verify trashed is NOT in searchParams when not specified
+    expect(updateRequest.url).not.toContain('trashed%3D');
+    await expect(updateRequest.clone().json()).resolves.toEqual({
+      name: 'new-name.txt',
+    });
 
     const refreshedResult = await getGFileMetaList(auth, listParams);
 
@@ -180,10 +183,13 @@ describe('simplifiedAPI update', () => {
 
     // Verify PATCH request has correct searchParams with addParents (not URL encoded)
     const updateRequest = fetchMock.mock.calls[2]?.[0];
-    if (updateRequest instanceof Request) {
-      expect(updateRequest.url).toContain('addParents=new-parent');
-      await expect(updateRequest.clone().json()).resolves.toEqual({});
+    expect(updateRequest).toBeInstanceOf(Request);
+    if (!(updateRequest instanceof Request)) {
+      throw new Error('Expected update request to be a Request instance');
     }
+
+    expect(updateRequest.url).toContain('addParents=new-parent');
+    await expect(updateRequest.clone().json()).resolves.toEqual({});
 
     const refreshedNewParentResult = await getGFileMetaList(auth, newParentListParams);
     const refreshedOldParentResult = await getGFileMetaList(auth, oldParentListParams);
@@ -277,10 +283,13 @@ describe('simplifiedAPI update', () => {
 
     // Verify PATCH request has correct searchParams with removeParents (not URL encoded)
     const updateRequest = fetchMock.mock.calls[2]?.[0];
-    if (updateRequest instanceof Request) {
-      expect(updateRequest.url).toContain('removeParents=parent-to-remove');
-      await expect(updateRequest.clone().json()).resolves.toEqual({});
+    expect(updateRequest).toBeInstanceOf(Request);
+    if (!(updateRequest instanceof Request)) {
+      throw new Error('Expected update request to be a Request instance');
     }
+
+    expect(updateRequest.url).toContain('removeParents=parent-to-remove');
+    await expect(updateRequest.clone().json()).resolves.toEqual({});
 
     const refreshedRemovedParentResult = await getGFileMetaList(auth, removedParentListParams);
     const refreshedRemainingParentResult = await getGFileMetaList(auth, remainingParentListParams);
@@ -338,10 +347,13 @@ describe('simplifiedAPI update', () => {
 
     // Verify PATCH request has correct JSON body with trashed=true and searchParams without removeParents/addParents
     const updateRequest = fetchMock.mock.calls[1]?.[0];
-    if (updateRequest instanceof Request) {
-      expect(updateRequest.url).not.toContain('addParents%3D');
-      expect(updateRequest.url).not.toContain('removeParents%3D');
+    expect(updateRequest).toBeInstanceOf(Request);
+    if (!(updateRequest instanceof Request)) {
+      throw new Error('Expected update request to be a Request instance');
     }
+
+    expect(updateRequest.url).not.toContain('addParents%3D');
+    expect(updateRequest.url).not.toContain('removeParents%3D');
 
     const refreshedResult = await getGFileMetaList(auth, listParams);
 
@@ -391,8 +403,11 @@ describe('simplifiedAPI update', () => {
 
     // Verify PATCH request has correct JSON body with trashed=false
     const updateRequest = fetchMock.mock.calls[1]?.[0];
-    if (updateRequest instanceof Request) {
-      expect(updateRequest.method).toBe('PATCH');
+    expect(updateRequest).toBeInstanceOf(Request);
+    if (!(updateRequest instanceof Request)) {
+      throw new Error('Expected update request to be a Request instance');
     }
+
+    expect(updateRequest.method).toBe('PATCH');
   });
 });

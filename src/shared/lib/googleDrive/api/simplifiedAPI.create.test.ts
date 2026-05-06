@@ -123,17 +123,20 @@ describe('simplifiedAPI create', () => {
 
     // Verify POST request has correct URL and method
     const createRequest = fetchMock.mock.calls[1]?.[0];
-    if (createRequest instanceof Request) {
-      expect(createRequest.url).toContain('/drive/v3/files');
-      expect(createRequest.method).toBe('POST');
-      expect(createRequest.headers.get('Authorization')).toBe('Bearer token');
-      expect(createRequest.url).toContain('key=api-key');
-      await expect(createRequest.clone().json()).resolves.toMatchObject({
-        name: 'new-folder',
-        parents: ['parent-id'],
-        mimeType: createFolderMimeType,
-      });
+    expect(createRequest).toBeInstanceOf(Request);
+    if (!(createRequest instanceof Request)) {
+      throw new Error('Expected create request to be a Request instance');
     }
+
+    expect(createRequest.url).toContain('/drive/v3/files');
+    expect(createRequest.method).toBe('POST');
+    expect(createRequest.headers.get('Authorization')).toBe('Bearer token');
+    expect(createRequest.url).toContain('key=api-key');
+    await expect(createRequest.clone().json()).resolves.toMatchObject({
+      name: 'new-folder',
+      parents: ['parent-id'],
+      mimeType: createFolderMimeType,
+    });
 
     // Verify cache invalidation - subsequent list should fetch again
     await getGFileMetaList(auth, listParams);

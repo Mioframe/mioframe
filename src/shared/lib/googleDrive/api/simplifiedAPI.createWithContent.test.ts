@@ -106,21 +106,24 @@ describe('simplifiedAPI createWithContent', () => {
 
     // Verify POST request has correct URL and method
     const createRequest = fetchMock.mock.calls[1]?.[0];
-    if (createRequest instanceof Request) {
-      expect(createRequest.url).toContain('/upload/drive/v3/files');
-      expect(createRequest.method).toBe('POST');
-      expect(createRequest.headers.get('Content-Type')).toContain('multipart/related');
-      expect(createRequest.headers.get('Authorization')).toBe('Bearer token');
-      expect(createRequest.url).toContain('uploadType=multipart');
-      expect(createRequest.url).toContain('fields=');
-
-      const multipartText = await createRequest.clone().text();
-      expect(multipartText).toContain('Content-Type: application/json; charset=UTF-8');
-      expect(multipartText).toContain('"name":"test.txt"');
-      expect(multipartText).toContain('"parents":["parent-id"]');
-      expect(multipartText).toContain('Content-Type: text/plain');
-      expect(multipartText).toContain('test content');
+    expect(createRequest).toBeInstanceOf(Request);
+    if (!(createRequest instanceof Request)) {
+      throw new Error('Expected create request to be a Request instance');
     }
+
+    expect(createRequest.url).toContain('/upload/drive/v3/files');
+    expect(createRequest.method).toBe('POST');
+    expect(createRequest.headers.get('Content-Type')).toContain('multipart/related');
+    expect(createRequest.headers.get('Authorization')).toBe('Bearer token');
+    expect(createRequest.url).toContain('uploadType=multipart');
+    expect(createRequest.url).toContain('fields=');
+
+    const multipartText = await createRequest.clone().text();
+    expect(multipartText).toContain('Content-Type: application/json; charset=UTF-8');
+    expect(multipartText).toContain('"name":"test.txt"');
+    expect(multipartText).toContain('"parents":["parent-id"]');
+    expect(multipartText).toContain('Content-Type: text/plain');
+    expect(multipartText).toContain('test content');
 
     // Verify cache invalidation - subsequent list should fetch again
     await getGFileMetaList(auth, listParams);
@@ -156,17 +159,20 @@ describe('simplifiedAPI createWithContent', () => {
 
     // Verify POST request has correct Content-Type header with multipart boundary
     const createRequest = fetchMock.mock.calls[0]?.[0];
-    if (createRequest instanceof Request) {
-      expect(createRequest.url).toContain('/upload/drive/v3/files');
-      expect(createRequest.method).toBe('POST');
-      expect(createRequest.headers.get('Content-Type')).toContain('multipart/related');
-      expect(createRequest.url).toContain('uploadType=multipart');
-
-      const multipartText = await createRequest.clone().text();
-      expect(multipartText).toContain('"name":"string-file.txt"');
-      expect(multipartText).toContain('Content-Type: text/plain');
-      expect(multipartText).toContain('This is a text file content');
+    expect(createRequest).toBeInstanceOf(Request);
+    if (!(createRequest instanceof Request)) {
+      throw new Error('Expected create request to be a Request instance');
     }
+
+    expect(createRequest.url).toContain('/upload/drive/v3/files');
+    expect(createRequest.method).toBe('POST');
+    expect(createRequest.headers.get('Content-Type')).toContain('multipart/related');
+    expect(createRequest.url).toContain('uploadType=multipart');
+
+    const multipartText = await createRequest.clone().text();
+    expect(multipartText).toContain('"name":"string-file.txt"');
+    expect(multipartText).toContain('Content-Type: text/plain');
+    expect(multipartText).toContain('This is a text file content');
   });
 
   it('handles file content as ArrayBuffer', async () => {
@@ -203,11 +209,14 @@ describe('simplifiedAPI createWithContent', () => {
 
     // Verify POST request has correct Content-Type header with multipart boundary
     const createRequest = fetchMock.mock.calls[0]?.[0];
-    if (createRequest instanceof Request) {
-      expect(createRequest.url).toContain('/upload/drive/v3/files');
-      expect(createRequest.method).toBe('POST');
-      expect(createRequest.headers.get('Content-Type')).toContain('multipart/related');
+    expect(createRequest).toBeInstanceOf(Request);
+    if (!(createRequest instanceof Request)) {
+      throw new Error('Expected create request to be a Request instance');
     }
+
+    expect(createRequest.url).toContain('/upload/drive/v3/files');
+    expect(createRequest.method).toBe('POST');
+    expect(createRequest.headers.get('Content-Type')).toContain('multipart/related');
 
     const { getGDriveFileMeta } = await import('./simplifiedAPI');
     const cachedMeta = await getGDriveFileMeta(
@@ -253,14 +262,17 @@ describe('simplifiedAPI createWithContent', () => {
 
     // Verify POST request has correct Content-Type header with multipart boundary
     const createRequest = fetchMock.mock.calls[0]?.[0];
-    if (createRequest instanceof Request) {
-      expect(createRequest.url).toContain('/upload/drive/v3/files');
-      expect(createRequest.method).toBe('POST');
-      expect(createRequest.headers.get('Content-Type')).toContain('multipart/related');
-
-      const multipartText = await createRequest.clone().text();
-      expect(multipartText).toContain('Content-Type: application/octet-stream');
+    expect(createRequest).toBeInstanceOf(Request);
+    if (!(createRequest instanceof Request)) {
+      throw new Error('Expected create request to be a Request instance');
     }
+
+    expect(createRequest.url).toContain('/upload/drive/v3/files');
+    expect(createRequest.method).toBe('POST');
+    expect(createRequest.headers.get('Content-Type')).toContain('multipart/related');
+
+    const multipartText = await createRequest.clone().text();
+    expect(multipartText).toContain('Content-Type: application/octet-stream');
   });
 
   it('handles file content as Blob', async () => {
@@ -293,14 +305,17 @@ describe('simplifiedAPI createWithContent', () => {
 
     // Verify POST request has correct Content-Type header with multipart boundary
     const createRequest = fetchMock.mock.calls[0]?.[0];
-    if (createRequest instanceof Request) {
-      expect(createRequest.url).toContain('/upload/drive/v3/files');
-      expect(createRequest.method).toBe('POST');
-      expect(createRequest.headers.get('Content-Type')).toContain('multipart/related');
-
-      const multipartText = await createRequest.clone().text();
-      expect(multipartText).toContain('Content-Type: text/plain');
-      expect(multipartText).toContain('blob content');
+    expect(createRequest).toBeInstanceOf(Request);
+    if (!(createRequest instanceof Request)) {
+      throw new Error('Expected create request to be a Request instance');
     }
+
+    expect(createRequest.url).toContain('/upload/drive/v3/files');
+    expect(createRequest.method).toBe('POST');
+    expect(createRequest.headers.get('Content-Type')).toContain('multipart/related');
+
+    const multipartText = await createRequest.clone().text();
+    expect(multipartText).toContain('Content-Type: text/plain');
+    expect(multipartText).toContain('blob content');
   });
 });

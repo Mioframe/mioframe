@@ -548,8 +548,11 @@ describe('simplifiedAPI upload', () => {
 
     // Verify upload request uses fallback Content-Type when detection fails
     const uploadRequest = fetchMock.mock.calls[2]?.[0];
-    if (uploadRequest instanceof Request) {
-      expect(uploadRequest.headers.get('Content-Type')).toBe('application/octet-stream');
+    expect(uploadRequest).toBeInstanceOf(Request);
+    if (!(uploadRequest instanceof Request)) {
+      throw new Error('Expected upload request to be a Request instance');
     }
+
+    expect(uploadRequest.headers.get('Content-Type')).toBe('application/octet-stream');
   });
 });
