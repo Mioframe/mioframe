@@ -10,6 +10,7 @@ import { provideOverlayContainer } from '@shared/ui/Overlay';
 import { useMainContentAriaHidden } from '@shared/ui/AriaHidden';
 import { useFocusIndicator } from '@shared/ui/State/useFocusIndicator';
 import { setupMetaThemeColor } from '@shared/lib/metaThemeColor';
+import { usePreventUnloadDuringActiveWrites } from '@feature/preventUnloadDuringActiveWrites';
 
 const { addSnackbar } = useSnackbar();
 
@@ -31,6 +32,7 @@ const { settings } = useLocalSettings();
 const mainAriaHidden = useMainContentAriaHidden();
 
 useFocusIndicator();
+usePreventUnloadDuringActiveWrites();
 
 setupMetaThemeColor();
 </script>
