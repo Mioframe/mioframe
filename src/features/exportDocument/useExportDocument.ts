@@ -28,10 +28,20 @@ export const useExportDocument = () => {
    * @returns `true` when the export succeeds, or `false` when the user cancels the save dialog.
    */
   const saveJsonFile = async (path: string, documentId: AMDocumentId) => {
-    const documentState = await cfrDocumentState.fetch({
-      path,
-      documentId,
-    });
+    let documentState: Awaited<ReturnType<typeof cfrDocumentState.fetch>>;
+
+    try {
+      documentState = await cfrDocumentState.fetch({
+        path,
+        documentId,
+      });
+    } catch (error) {
+      if (error instanceof DomainError) {
+        throw error;
+      }
+
+      throw new DomainError('Could not export the document', { cause: error });
+    }
 
     if (!documentState) {
       throw new DomainError('The document is not available for export');
@@ -54,6 +64,10 @@ export const useExportDocument = () => {
     } catch (error) {
       if (isUserFileSelectionCancel(error)) {
         return false;
+      }
+
+      if (error instanceof DomainError) {
+        throw error;
       }
 
       throw new DomainError('Could not export the document', { cause: error });

@@ -42,7 +42,14 @@ export const useImportDocument = () => {
       throw error;
     }
 
-    const text = await file.text();
+    let text: string;
+
+    try {
+      text = await file.text();
+    } catch (error) {
+      throw new DomainError('Could not import the document', { cause: error });
+    }
+
     let data: unknown;
 
     try {
@@ -66,6 +73,10 @@ export const useImportDocument = () => {
 
       return documentId;
     } catch (error) {
+      if (error instanceof DomainError) {
+        throw error;
+      }
+
       throw new DomainError('Could not import the document', { cause: error });
     }
   };
