@@ -150,6 +150,13 @@ describe('useImportDocument', () => {
 
     const { importJsonFile } = useImportDocument();
 
-    await expect(importJsonFile('/documents')).rejects.toBe(cause);
+    const error = await importJsonFile('/documents').catch((caughtError: unknown) => caughtError);
+
+    expect(error).toBeInstanceOf(DomainError);
+    expect(error).toMatchObject({
+      message: 'Could not open the selected file',
+      cause,
+    });
+    expect(createDocumentMock).not.toHaveBeenCalled();
   });
 });

@@ -39,7 +39,11 @@ export const useImportDocument = () => {
         return;
       }
 
-      throw error;
+      if (error instanceof DomainError) {
+        throw error;
+      }
+
+      throw new DomainError('Could not open the selected file', { cause: error });
     }
 
     let text: string;
