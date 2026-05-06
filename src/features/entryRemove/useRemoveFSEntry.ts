@@ -3,6 +3,10 @@ import { PathUtils, VfsError, FileSystemError } from '@shared/lib/virtualFileSys
 import { useDialog } from '@shared/ui/Dialog';
 import { useSnackbar } from '@shared/ui/Snackbar';
 
+/**
+ * Creates a remove action that shows user-facing feedback for file-system entry deletion.
+ * @returns Remove helpers for file-system entries.
+ */
 export const useRemoveFSEntry = () => {
   const { confirm } = useDialog();
   const { addSnackbar } = useSnackbar();
@@ -39,14 +43,17 @@ export const useRemoveFSEntry = () => {
               await removeEntry(path, true);
             } catch (recursiveError) {
               addSnackbar({
-                text: `Error: ${recursiveError instanceof Error ? recursiveError.message : 'Error deleting Entry'}`,
+                text:
+                  recursiveError instanceof Error
+                    ? recursiveError.message
+                    : 'Could not remove the directory',
               });
               throw recursiveError;
             }
           }
         } else {
           addSnackbar({
-            text: `Error: ${error instanceof Error ? error.message : 'Error deleting Entry'}`,
+            text: error instanceof Error ? error.message : 'Could not remove the item',
           });
           throw error;
         }

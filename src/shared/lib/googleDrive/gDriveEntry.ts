@@ -1,9 +1,16 @@
-import { pathToString } from '@shared/service/directories';
 import type { DirectoryGDriveEntry, RootGDriveEntry } from './types';
 import { DomainError } from '../error';
 import type { GoogleAuthParams } from './api';
 import { update } from './api/simplifiedAPI';
 
+/**
+ * Creates a Google Drive entry facade with remove and rename operations.
+ * @param auth - Google authentication parameters.
+ * @param name - Entry name.
+ * @param fileId - Google Drive file identifier, if available.
+ * @param parentEntry - Parent directory entry, if available.
+ * @returns A Google Drive entry facade.
+ */
 export const createGDriveEntry = (
   auth: GoogleAuthParams,
   name: string,
@@ -14,18 +21,18 @@ export const createGDriveEntry = (
 
   const remove = async () => {
     if (!parentEntry) {
-      throw new Error('Cannot remove root directory');
+      throw new DomainError('Could not remove the item');
     }
 
     if (!('removeByName' in parentEntry)) {
-      throw new Error(`don't have "removeByName" method in ${pathToString(parentEntry.path)}`);
+      throw new DomainError('Could not remove the item');
     }
     await parentEntry.removeByName(currentName);
   };
 
   const rename = async (newName: string): Promise<void> => {
     if (!fileId) {
-      throw new DomainError('You cannot rename an entry without a fileId.');
+      throw new DomainError('Could not rename the item');
     }
     await update(auth, fileId, {
       name: newName,

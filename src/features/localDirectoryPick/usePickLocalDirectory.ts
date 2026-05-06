@@ -4,6 +4,10 @@ import { ref, toRef } from 'vue';
 import { useDialog } from '@shared/ui/Dialog';
 import { useSnackbar } from '@shared/ui/Snackbar';
 
+/**
+ * Creates a directory picker flow for mounting a local folder into the app.
+ * @returns Reactive directory-picking state and action.
+ */
 export const usePickLocalDirectory = () => {
   const loading = ref(false);
   const { alert } = useDialog();
@@ -50,6 +54,9 @@ export const usePickLocalDirectory = () => {
       await addDeviceDirectory(directoryHandle);
     } catch (error) {
       if (!(error instanceof DOMException && error.name === 'AbortError')) {
+        addSnackbar({
+          text: 'Could not add the folder',
+        });
         throw error;
       }
     } finally {
