@@ -794,7 +794,7 @@ describe('simplifiedAPI upload cache behavior', () => {
     vi.unstubAllGlobals();
   });
 
-  it('invalidateFileCache clears file metadata and content caches after upload', async () => {
+  it('upload clears file metadata cache through the public API', async () => {
     const fetchMock = vi
       .fn<typeof fetch>()
       // First call: getGDriveFileMeta initial fetch (caches metadata)
@@ -807,7 +807,9 @@ describe('simplifiedAPI upload cache behavior', () => {
           parents: ['parent-id'],
         }),
       )
-      // Second call: getGDriveFileMeta after invalidation (should fetch again)
+      // Second call: upload request
+      .mockResolvedValueOnce(new Response('{}', { status: 200 }))
+      // Third call: getGDriveFileMeta after invalidation (should fetch again)
       .mockResolvedValueOnce(
         createJsonResponse({
           id: 'file-id',
@@ -820,7 +822,7 @@ describe('simplifiedAPI upload cache behavior', () => {
 
     vi.stubGlobal('fetch', fetchMock);
 
-    const { clearCaches, getGDriveFileMeta, invalidateFileCache } = await import('./simplifiedAPI');
+    const { clearCaches, getGDriveFileMeta, upload } = await import('./simplifiedAPI');
 
     clearCaches();
 
@@ -831,12 +833,11 @@ describe('simplifiedAPI upload cache behavior', () => {
     expect(fetchMock).toHaveBeenCalledTimes(1);
     expect(firstResult.name).toBe('existing.txt');
 
-    // Simulate what upload does — invalidate the uploaded file's cache
-    invalidateFileCache('file-id');
+    await upload(auth, 'file-id', 'next content');
 
     // Next call should make a new network request (cache was invalidated)
     const secondResult = await getGDriveFileMeta(auth, 'file-id');
-    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(fetchMock).toHaveBeenCalledTimes(3);
     expect(secondResult.name).toBe('updated.txt');
   });
 });

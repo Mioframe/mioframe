@@ -15,7 +15,6 @@ export type {
   GoogleErrorResponse,
 } from './types';
 export {
-  clearCaches,
   create,
   createWithContent,
   download,

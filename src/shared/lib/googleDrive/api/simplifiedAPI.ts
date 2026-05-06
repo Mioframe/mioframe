@@ -238,7 +238,7 @@ const gFileMetaCache = new Cache<string, GDriveFileMeta>({
  * Removes metadata, content, and dependent list-cache entries.
  * @param fileIdList - List of file IDs whose individual caches should be invalidated.
  */
-export const invalidateFileCache = (...fileIdList: string[]): void => {
+const invalidateFileCache = (...fileIdList: string[]): void => {
   fileIdList.forEach((fileId) => {
     gFileMetaCache.delete(fileId);
     gDriveFileContentCache.delete(fileId);
@@ -430,7 +430,7 @@ export const download = async (
     ...(onDownloadProgress ? { onDownloadProgress } : {}),
     dedupe: !onDownloadProgress,
   })
-    .then((r) => r.blob())
+    .then((r) => r.clone().blob())
     .then(
       (blob) =>
         new File([blob], name, {

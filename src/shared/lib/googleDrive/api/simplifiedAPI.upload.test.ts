@@ -149,6 +149,69 @@ describe('simplifiedAPI upload', () => {
     expect(downloadRequest.url).toContain('alt=media');
   });
 
+  it('deduplicates concurrent downloads when no progress callback is provided', async () => {
+    const downloadDeferred = Promise.resolve(new Response(new Blob(['shared']), { status: 200 }));
+    const fetchMock = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(
+        createJsonResponse({
+          id: 'file-id',
+          name: 'notes.txt',
+          mimeType: 'text/plain',
+          modifiedTime: '2024-01-01T00:00:00.000Z',
+          parents: ['parent-id'],
+        }),
+      )
+      .mockImplementationOnce(() => downloadDeferred);
+
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { clearCaches, download } = await import('./simplifiedAPI');
+
+    clearCaches();
+
+    const [first, second] = await Promise.all([
+      download({ ACCESS_TOKEN: 'token' }, 'file-id'),
+      download({ ACCESS_TOKEN: 'token' }, 'file-id'),
+    ]);
+
+    expect(await first.text()).toBe('shared');
+    expect(await second.text()).toBe('shared');
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it('does not deduplicate concurrent downloads when a progress callback is provided', async () => {
+    const onDownloadProgress = vi.fn();
+    const fetchMock = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(
+        createJsonResponse({
+          id: 'file-id',
+          name: 'notes.txt',
+          mimeType: 'text/plain',
+          modifiedTime: '2024-01-01T00:00:00.000Z',
+          parents: ['parent-id'],
+        }),
+      )
+      .mockResolvedValueOnce(new Response(new Blob(['first']), { status: 200 }))
+      .mockResolvedValueOnce(new Response(new Blob(['second']), { status: 200 }));
+
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { clearCaches, download } = await import('./simplifiedAPI');
+
+    clearCaches();
+
+    const [first, second] = await Promise.all([
+      download({ ACCESS_TOKEN: 'token' }, 'file-id', { onDownloadProgress }),
+      download({ ACCESS_TOKEN: 'token' }, 'file-id'),
+    ]);
+
+    expect(await first.text()).toBe('first');
+    expect(await second.text()).toBe('second');
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+  });
+
   it('deduplicates concurrent metadata reads for the same file id', async () => {
     const metadataDeferred = Promise.resolve(
       createJsonResponse({
