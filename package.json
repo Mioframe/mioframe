@@ -16,6 +16,7 @@
     "prepare": "node .husky/install.mjs",
     "setup:git-hooks": "node .husky/install.mjs",
     "verify": "node scripts/verify.mjs",
+    "verify:fix": "node scripts/verify.mjs --fix",
     "type-check": "vue-tsc --build",
     "lint": "run-s lint:oxlint lint:eslint",
     "lint:eslint": "eslint . --cache --fix --concurrency=auto",

@@ -1,30 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { HttpStatusCode } from '../../error/httpStatus';
 import { SPACE } from './types';
+import {
+  createDeferred,
+  createFolderMimeType,
+  createJsonResponse,
+} from './simplifiedAPI.testUtils';
 
-const createFolderMimeType = 'application/vnd.google-apps.folder';
-
-const createJsonResponse = (payload: unknown, status = 200) =>
-  new Response(JSON.stringify(payload), {
-    status,
-    headers: {
-      'Content-Type': 'application/json',
-    },
-  });
-
-const createDeferred = <T>() => {
-  let resolve!: (value: T) => void;
-  let reject!: (reason?: unknown) => void;
-
-  const promise = new Promise<T>((res, rej) => {
-    resolve = res;
-    reject = rej;
-  });
-
-  return { promise, resolve, reject };
-};
-
-describe('simplifiedAPI cache invalidation', () => {
+describe('simplifiedAPI list cache invalidation', () => {
   beforeEach(() => {
     vi.resetModules();
   });
@@ -115,10 +97,9 @@ describe('simplifiedAPI cache invalidation', () => {
     ]);
   });
 
-  it('does not cache empty App Data directory lists before create', async () => {
+  it('caches empty App Data directory lists and invalidates them after create', async () => {
     const fetchMock = vi
       .fn<typeof fetch>()
-      .mockResolvedValueOnce(createJsonResponse({ files: [] }))
       .mockResolvedValueOnce(createJsonResponse({ files: [] }))
       .mockResolvedValueOnce(createJsonResponse({ id: 'new-folder-id' }))
       .mockResolvedValueOnce(
@@ -153,10 +134,12 @@ describe('simplifiedAPI cache invalidation', () => {
       fetchAll: true,
     };
 
-    await getGFileMetaList(auth, listParams);
-    await getGFileMetaList(auth, listParams);
+    const firstResult = await getGFileMetaList(auth, listParams);
+    const cachedResult = await getGFileMetaList(auth, listParams);
 
-    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(cachedResult).toEqual(firstResult);
+    expect(cachedResult.files).toEqual([]);
 
     await create(auth, {
       name: 'new-folder',
@@ -166,7 +149,7 @@ describe('simplifiedAPI cache invalidation', () => {
 
     const refreshedResult = await getGFileMetaList(auth, listParams);
 
-    expect(fetchMock).toHaveBeenCalledTimes(4);
+    expect(fetchMock).toHaveBeenCalledTimes(3);
     expect(refreshedResult.files).toEqual([
       expect.objectContaining({
         id: 'new-folder-id',
@@ -648,193 +631,213 @@ describe('simplifiedAPI cache invalidation', () => {
       expect.objectContaining({ id: 'new-folder-id' }),
     ]);
   });
+});
 
-  it('fetches only a single page when fetchAll is false', async () => {
-    const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(
-      createJsonResponse({
-        files: [
-          {
-            id: 'folder-a-id',
-            name: 'folder-a',
-            mimeType: createFolderMimeType,
-            modifiedTime: '2024-01-01T00:00:00.000Z',
-            parents: ['parent-id'],
-          },
-        ],
-        nextPageToken: 'next-page',
-      }),
-    );
-
-    vi.stubGlobal('fetch', fetchMock);
-
-    const { clearCaches, getGFileMetaList } = await import('./simplifiedAPI');
-
-    clearCaches();
-
-    const result = await getGFileMetaList(
-      { ACCESS_TOKEN: 'token' },
-      {
-        q: {
-          parentId: 'parent-id',
-          trashed: false,
-        },
-        spaces: [SPACE.drive],
-        pageToken: 'current-page',
-        pageSize: 25,
-        fetchAll: false,
-      },
-    );
-
-    expect(fetchMock).toHaveBeenCalledTimes(1);
-    expect(result).toEqual({
-      files: [expect.objectContaining({ id: 'folder-a-id' })],
-      nextPageToken: 'next-page',
-    });
+describe('simplifiedAPI createWithContent cache behavior', () => {
+  beforeEach(() => {
+    vi.resetModules();
   });
 
-  it('rejects create requests with an empty parents array', async () => {
-    const { create } = await import('./simplifiedAPI');
-
-    await expect(
-      create(
-        {
-          ACCESS_TOKEN: 'token',
-        },
-        {
-          name: 'orphan-folder',
-          parents: [],
-          mimeType: createFolderMimeType,
-        },
-      ),
-    ).rejects.toMatchObject({
-      code: HttpStatusCode.FORBIDDEN,
-    });
+  afterEach(() => {
+    vi.restoreAllMocks();
+    vi.unstubAllGlobals();
   });
 
-  it('reuses the cached file download when metadata has not changed', async () => {
-    const mediaBlob = new Blob(['cached-content'], { type: 'text/plain' });
+  it('does not invalidate metadata of sibling files after createWithContent', async () => {
     const fetchMock = vi
       .fn<typeof fetch>()
+      // 1. getGDriveFileMeta for sibling (caches metadata)
       .mockResolvedValueOnce(
         createJsonResponse({
-          id: 'file-id',
-          name: 'notes.txt',
+          id: 'sibling-file-id',
+          name: 'sibling.txt',
           mimeType: 'text/plain',
           modifiedTime: '2024-01-01T00:00:00.000Z',
           parents: ['parent-id'],
         }),
       )
-      .mockResolvedValueOnce(new Response(mediaBlob, { status: 200 }));
+      // 2. createWithContent POST request (multipart)
+      .mockResolvedValueOnce(
+        createJsonResponse({
+          id: 'new-file-with-content-id',
+          name: 'test.txt',
+          mimeType: 'text/plain',
+          modifiedTime: '2024-01-02T00:00:00.000Z',
+          parents: ['parent-id'],
+        }),
+      );
 
     vi.stubGlobal('fetch', fetchMock);
 
-    const { clearCaches, download } = await import('./simplifiedAPI');
+    const { clearCaches, createWithContent, getGDriveFileMeta } = await import('./simplifiedAPI');
 
     clearCaches();
 
-    const firstFile = await download({ ACCESS_TOKEN: 'token' }, 'file-id');
-    const secondFile = await download({ ACCESS_TOKEN: 'token' }, 'file-id');
+    const auth = { ACCESS_TOKEN: 'token' };
 
+    // Cache sibling metadata
+    const cachedSibling = await getGDriveFileMeta(auth, 'sibling-file-id');
+    expect(cachedSibling).toMatchObject({
+      id: 'sibling-file-id',
+      name: 'sibling.txt',
+      mimeType: 'text/plain',
+    });
+
+    // Create a blob for file content
+    const fileBlob = new Blob(['test content'], { type: 'text/plain' });
+
+    await createWithContent(
+      auth,
+      { name: 'test.txt', parents: ['parent-id'], mimeType: 'text/plain' },
+      fileBlob,
+    );
+
+    // Re-fetch sibling metadata — should come from cache (no new network request)
+    const freshSibling = await getGDriveFileMeta(auth, 'sibling-file-id');
+    expect(freshSibling).toMatchObject({
+      id: 'sibling-file-id',
+      name: 'sibling.txt',
+    });
+
+    // Total fetch count should be exactly 2 (initial sibling + createWithContent)
     expect(fetchMock).toHaveBeenCalledTimes(2);
-    expect(await firstFile.text()).toBe('cached-content');
-    expect(secondFile).toBe(firstFile);
   });
 
-  it('normalizes non-ok JSON responses into GoogleDriveError', async () => {
-    const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(
-      createJsonResponse(
-        {
-          error: {
-            code: HttpStatusCode.FORBIDDEN,
-            message: 'Forbidden',
-          },
-        },
-        HttpStatusCode.FORBIDDEN,
-      ),
-    );
-
-    vi.stubGlobal('fetch', fetchMock);
-
-    const { clearCaches, getGFileMetaList } = await import('./simplifiedAPI');
-
-    clearCaches();
-
-    await expect(
-      getGFileMetaList(
-        { ACCESS_TOKEN: 'token' },
-        {
-          q: {
-            parentId: 'parent-id',
-            trashed: false,
-          },
-          spaces: [SPACE.drive],
-          fetchAll: true,
-        },
-      ),
-    ).rejects.toMatchObject({
-      name: 'GoogleDriveError',
-      code: HttpStatusCode.FORBIDDEN,
-      message: 'Forbidden',
-    });
-  });
-
-  it('uploads string content as text/plain and invalidates cached downloads', async () => {
+  it('still invalidates parent list-cache after createWithContent', async () => {
     const fetchMock = vi
       .fn<typeof fetch>()
+      // 1. getGFileMetaList initial fetch
       .mockResolvedValueOnce(
         createJsonResponse({
-          id: 'file-id',
-          name: 'notes.txt',
-          mimeType: 'text/plain',
-          modifiedTime: '2024-01-01T00:00:00.000Z',
-          parents: ['parent-id'],
+          files: [
+            {
+              id: 'existing-file-id',
+              name: 'folder.txt',
+              mimeType: 'text/plain',
+              modifiedTime: '2024-01-01T00:00:00.000Z',
+              parents: ['parent-id'],
+            },
+          ],
         }),
       )
-      .mockResolvedValueOnce(new Response(new Blob(['cached']), { status: 200 }))
-      .mockResolvedValueOnce(new Response('{}', { status: 200 }))
+      // 2. createWithContent POST request (multipart)
       .mockResolvedValueOnce(
         createJsonResponse({
-          id: 'file-id',
-          name: 'notes.txt',
+          id: 'new-file-with-content-id',
+          name: 'test.txt',
           mimeType: 'text/plain',
           modifiedTime: '2024-01-02T00:00:00.000Z',
           parents: ['parent-id'],
         }),
       )
-      .mockResolvedValueOnce(new Response(new Blob(['fresh']), { status: 200 }));
+      // 3. getGFileMetaList after cache invalidation
+      .mockResolvedValueOnce(
+        createJsonResponse({
+          files: [
+            {
+              id: 'existing-file-id',
+              name: 'folder.txt',
+              mimeType: 'text/plain',
+              modifiedTime: '2024-01-01T00:00:00.000Z',
+              parents: ['parent-id'],
+            },
+            {
+              id: 'new-file-with-content-id',
+              name: 'test.txt',
+              mimeType: 'text/plain',
+              modifiedTime: '2024-01-02T00:00:00.000Z',
+              parents: ['parent-id'],
+            },
+          ],
+        }),
+      );
 
     vi.stubGlobal('fetch', fetchMock);
 
-    const { clearCaches, download, upload } = await import('./simplifiedAPI');
+    const { clearCaches, createWithContent, getGFileMetaList } = await import('./simplifiedAPI');
 
     clearCaches();
 
-    await download({ ACCESS_TOKEN: 'token' }, 'file-id');
-    await upload({ ACCESS_TOKEN: 'token' }, 'file-id', 'next content');
-    const refreshed = await download({ ACCESS_TOKEN: 'token' }, 'file-id');
-
-    const uploadRequest = fetchMock.mock.calls[2]?.[0];
-
-    expect(uploadRequest).toBeInstanceOf(Request);
-    if (!(uploadRequest instanceof Request)) {
-      throw new Error('Expected upload request to be a Request instance');
-    }
-
-    expect(uploadRequest.method).toBe('PATCH');
-    expect(uploadRequest.headers.get('Authorization')).toBe('Bearer token');
-    expect(uploadRequest.headers.get('Content-Type')).toBe('text/plain');
-    expect(await refreshed.text()).toBe('fresh');
-  });
-
-  it('rejects unsupported upload payloads', async () => {
-    const { upload } = await import('./simplifiedAPI');
-    const unsupportedChunk: WriteParams = {
-      type: 'write',
-      data: null,
+    const auth = { ACCESS_TOKEN: 'token' };
+    const listParams = {
+      q: { parentId: 'parent-id', trashed: false },
+      spaces: [SPACE.drive],
+      fetchAll: true,
     };
 
-    await expect(upload({ ACCESS_TOKEN: 'token' }, 'file-id', unsupportedChunk)).rejects.toThrow(
-      'Unsupported file type',
+    await getGFileMetaList(auth, listParams);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+
+    // Create a blob for file content
+    const fileBlob = new Blob(['test content'], { type: 'text/plain' });
+
+    await createWithContent(
+      auth,
+      { name: 'test.txt', parents: ['parent-id'], mimeType: 'text/plain' },
+      fileBlob,
     );
+
+    // Verify cache invalidation - subsequent list should fetch again
+    await getGFileMetaList(auth, listParams);
+
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+  });
+});
+
+describe('simplifiedAPI upload cache behavior', () => {
+  beforeEach(() => {
+    vi.resetModules();
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+    vi.unstubAllGlobals();
+  });
+
+  it('upload clears file metadata cache through the public API', async () => {
+    const fetchMock = vi
+      .fn<typeof fetch>()
+      // First call: getGDriveFileMeta initial fetch (caches metadata)
+      .mockResolvedValueOnce(
+        createJsonResponse({
+          id: 'file-id',
+          name: 'existing.txt',
+          mimeType: 'text/plain',
+          modifiedTime: '2024-01-01T00:00:00.000Z',
+          parents: ['parent-id'],
+        }),
+      )
+      // Second call: upload request
+      .mockResolvedValueOnce(new Response('{}', { status: 200 }))
+      // Third call: getGDriveFileMeta after invalidation (should fetch again)
+      .mockResolvedValueOnce(
+        createJsonResponse({
+          id: 'file-id',
+          name: 'updated.txt',
+          mimeType: 'text/plain',
+          modifiedTime: '2024-01-02T00:00:00.000Z',
+          parents: ['parent-id'],
+        }),
+      );
+
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { clearCaches, getGDriveFileMeta, upload } = await import('./simplifiedAPI');
+
+    clearCaches();
+
+    const auth = { ACCESS_TOKEN: 'token' };
+
+    // First call caches the metadata
+    const firstResult = await getGDriveFileMeta(auth, 'file-id');
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(firstResult.name).toBe('existing.txt');
+
+    await upload(auth, 'file-id', 'next content');
+
+    // Next call should make a new network request (cache was invalidated)
+    const secondResult = await getGDriveFileMeta(auth, 'file-id');
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+    expect(secondResult.name).toBe('updated.txt');
   });
 });

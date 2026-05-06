@@ -133,6 +133,12 @@ export default defineConfigWithVueTs(
   jsdoc({
     config: 'flat/recommended-typescript',
     rules: {
+      'jsdoc/check-param-names': [
+        'warn',
+        {
+          checkDestructured: false,
+        },
+      ],
       'jsdoc/require-jsdoc': [
         'warn',
         {
@@ -157,6 +163,13 @@ export default defineConfigWithVueTs(
             'TSMethodSignature',
             'TSPropertySignature',
           ],
+        },
+      ],
+      'jsdoc/require-param': [
+        'warn',
+        {
+          checkDestructured: false,
+          checkDestructuredRoots: true,
         },
       ],
     },

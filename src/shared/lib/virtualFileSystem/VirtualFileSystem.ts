@@ -236,7 +236,6 @@ export class VirtualFileSystem {
     }
   }
 
-  /* eslint-disable-next-line jsdoc/require-throws-type -- TSDoc syntax does not support JSDoc typed @throws tags. */
   /**
    * Determines the responsible provider for the specified path
    * and returns the path relative to that provider's root.
@@ -346,7 +345,6 @@ export class VirtualFileSystem {
     return Array.from(entryMap.entries());
   }
 
-  /* eslint-disable-next-line jsdoc/require-throws-type -- TSDoc syntax does not support JSDoc typed @throws tags. */
   /**
    * Creates a new directory.
    * @param path - Absolute path to the new directory.
