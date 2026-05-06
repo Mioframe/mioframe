@@ -19,12 +19,15 @@ type HandledReportEntry = {
 const handledReportQueue: HandledReportEntry[] = [];
 let flushPromise: Promise<void> | undefined;
 
-const enqueueHandledReport = (entry: HandledReportEntry) => {
-  handledReportQueue.push(entry);
-
+const trimHandledReportQueue = () => {
   if (handledReportQueue.length > HANDLED_REPORT_QUEUE_LIMIT) {
     handledReportQueue.splice(0, handledReportQueue.length - HANDLED_REPORT_QUEUE_LIMIT);
   }
+};
+
+const enqueueHandledReport = (entry: HandledReportEntry) => {
+  handledReportQueue.push(entry);
+  trimHandledReportQueue();
 };
 
 const sendHandledReport = (
@@ -56,7 +59,7 @@ const flushHandledReports = async () => {
   }
 
   const sentry = await ensureSentry();
-  const queuedEntries = [...handledReportQueue];
+  const queuedEntries = handledReportQueue.splice(0);
   const failedEntries: HandledReportEntry[] = [];
 
   for (const entry of queuedEntries) {
@@ -67,8 +70,10 @@ const flushHandledReports = async () => {
     }
   }
 
-  handledReportQueue.length = 0;
-  handledReportQueue.push(...failedEntries);
+  if (failedEntries.length > 0) {
+    handledReportQueue.unshift(...failedEntries);
+    trimHandledReportQueue();
+  }
 };
 
 const kickoffHandledReportFlush = () => {
@@ -80,6 +85,10 @@ const kickoffHandledReportFlush = () => {
     .catch(() => undefined)
     .finally(() => {
       flushPromise = undefined;
+
+      if (handledReportQueue.length > 0) {
+        kickoffHandledReportFlush();
+      }
     });
 };
 

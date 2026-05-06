@@ -37,6 +37,12 @@ const createDeferred = <T>() => {
   } satisfies Deferred<T>;
 };
 
+const waitForAsyncWork = async () => {
+  await new Promise<void>((resolve) => {
+    setTimeout(resolve, 0);
+  });
+};
+
 const { ensureSentryMock, mockScope, noopFacade, realFacade, throwingFacade } = vi.hoisted(() => {
   const scopeSetTagMock = vi.fn();
   const scopeSetExtrasMock = vi.fn();
@@ -46,7 +52,7 @@ const { ensureSentryMock, mockScope, noopFacade, realFacade, throwingFacade } = 
   };
 
   const createFacade = (captureResult?: string) => {
-    const captureException = vi.fn(() => captureResult);
+    const captureException = vi.fn<(error: Error) => string | undefined>(() => captureResult);
     const withScope = vi.fn((callback: (innerScope: MockSentryScope) => unknown) =>
       callback(scope),
     );
@@ -58,7 +64,7 @@ const { ensureSentryMock, mockScope, noopFacade, realFacade, throwingFacade } = 
   };
 
   const facadeThatThrows = {
-    captureException: vi.fn(() => {
+    captureException: vi.fn<(error: Error) => string | undefined>(() => {
       throw new Error('capture failed');
     }),
     withScope: vi.fn((callback: (innerScope: MockSentryScope) => unknown) => callback(scope)),
@@ -91,7 +97,8 @@ describe('reportHandledError', () => {
     throwingFacade.withScope.mockClear();
   });
 
-  afterEach(() => {
+  afterEach(async () => {
+    await waitForAsyncWork();
     vi.clearAllMocks();
   });
 
@@ -184,7 +191,7 @@ describe('reportHandledError', () => {
   });
 
   it('retries queued entries after a no-op facade returns an undefined event id', async () => {
-    ensureSentryMock.mockResolvedValueOnce(noopFacade).mockResolvedValueOnce(realFacade);
+    ensureSentryMock.mockResolvedValueOnce(noopFacade).mockResolvedValue(realFacade);
 
     const { reportHandledError } = await import('./reportHandledError');
 
@@ -212,7 +219,7 @@ describe('reportHandledError', () => {
   });
 
   it('keeps entries queued when withScope or captureException throws', async () => {
-    ensureSentryMock.mockResolvedValueOnce(throwingFacade).mockResolvedValueOnce(realFacade);
+    ensureSentryMock.mockResolvedValueOnce(throwingFacade).mockResolvedValue(realFacade);
 
     const { reportHandledError } = await import('./reportHandledError');
 
@@ -286,5 +293,71 @@ describe('reportHandledError', () => {
     await vi.waitFor(() => {
       expect(realFacade.captureException).toHaveBeenCalledTimes(2);
     });
+  });
+
+  it('keeps an entry added during flush and sends it in the follow-up flush', async () => {
+    ensureSentryMock.mockResolvedValue(realFacade);
+
+    const { reportHandledError } = await import('./reportHandledError');
+    const triggerSecondEntry = vi.fn(() => {
+      reportHandledError(new Error('second'), {
+        feature: 'documents',
+        action: 'save',
+      });
+
+      return 'event-id';
+    });
+
+    realFacade.captureException.mockImplementationOnce((error: Error) => {
+      expect(error.message).toBe('first');
+      return triggerSecondEntry();
+    });
+
+    reportHandledError(new Error('first'), {
+      feature: 'documents',
+      action: 'save',
+    });
+
+    await vi.waitFor(() => {
+      expect(realFacade.captureException).toHaveBeenCalledTimes(2);
+    });
+
+    expect(getReportedErrors(realFacade).map((error) => error.message)).toEqual([
+      'first',
+      'second',
+    ]);
+    expect(ensureSentryMock).toHaveBeenCalledTimes(2);
+  });
+
+  it('preserves failed entries and new entries added during flush for the next successful retry', async () => {
+    ensureSentryMock.mockResolvedValueOnce(noopFacade).mockResolvedValue(realFacade);
+
+    const { reportHandledError } = await import('./reportHandledError');
+
+    noopFacade.captureException.mockImplementationOnce((error: Error) => {
+      expect(error.message).toBe('first');
+      reportHandledError(new Error('second'), {
+        feature: 'documents',
+        action: 'save',
+      });
+
+      return undefined;
+    });
+
+    reportHandledError(new Error('first'), {
+      feature: 'documents',
+      action: 'save',
+    });
+
+    await vi.waitFor(() => {
+      expect(realFacade.captureException).toHaveBeenCalledTimes(2);
+    });
+
+    expect(getReportedErrors(realFacade).map((error) => error.message)).toEqual([
+      'first',
+      'second',
+    ]);
+    expect(noopFacade.captureException).toHaveBeenCalledTimes(1);
+    expect(ensureSentryMock).toHaveBeenCalledTimes(2);
   });
 });
