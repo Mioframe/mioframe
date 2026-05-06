@@ -6,6 +6,8 @@ import { DocumentCreationDialog } from '@feature/documentCreate';
 import { useRemoveFSEntry } from '@feature/entryRemove';
 import { FSEntryRenameDialog } from '@feature/entryRename';
 import { useImportDocument } from '@feature/importDocument';
+import { DomainError } from '@shared/lib/error';
+import { reportHandledError } from '@shared/lib/reportHandledError';
 import { FSNodeType, PathUtils } from '@shared/lib/virtualFileSystem';
 import { defineMenuButtonList, MDContextMenuButton } from '@shared/ui/Menu';
 import { defineMenuButton } from '@shared/ui/Menu/defineMenuButtonList';
@@ -114,6 +116,12 @@ const showRenameDialog = shallowRef(false);
 const { importJsonFile } = useImportDocument();
 const { addSnackbar } = useSnackbar();
 
+const shouldSkipImportErrorReport = (error: unknown) =>
+  (error instanceof DOMException && error.name === 'AbortError') ||
+  (error instanceof DomainError &&
+    (error.message === 'The selected file is not valid JSON' ||
+      error.message === 'The selected JSON file is not a Beaver document'));
+
 const onClickMenuAction = async ({ key }: { key: FSEntryContextEvent }) => {
   switch (key) {
     case FSEntryContextEvent.createDirectory: {
@@ -148,6 +156,13 @@ const onClickMenuAction = async ({ key }: { key: FSEntryContextEvent }) => {
           addSnackbar({
             text: error instanceof Error ? error.message : 'Could not import the document',
           });
+          if (!shouldSkipImportErrorReport(error)) {
+            reportHandledError(error, {
+              feature: 'documentImport',
+              action: 'importDocumentJson',
+              path: path.value,
+            });
+          }
         }
       }
       break;

@@ -1,4 +1,5 @@
 import { useFileSystem } from '@entity/mountedDirectories';
+import { reportHandledError } from '@shared/lib/reportHandledError';
 import { PathUtils, VfsError, FileSystemError } from '@shared/lib/virtualFileSystem';
 import { useDialog } from '@shared/ui/Dialog';
 import { useSnackbar } from '@shared/ui/Snackbar';
@@ -48,14 +49,22 @@ export const useRemoveFSEntry = () => {
                     ? recursiveError.message
                     : 'Could not remove the directory',
               });
-              throw recursiveError;
+              reportHandledError(recursiveError, {
+                feature: 'entryRemove',
+                action: 'removeEntryRecursive',
+                path,
+              });
             }
           }
         } else {
           addSnackbar({
             text: error instanceof Error ? error.message : 'Could not remove the item',
           });
-          throw error;
+          reportHandledError(error, {
+            feature: 'entryRemove',
+            action: 'removeEntry',
+            path,
+          });
         }
       }
     }

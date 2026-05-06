@@ -1,7 +1,7 @@
 import { useFileSystem } from '@entity/mountedDirectories';
 import { isFunction } from 'es-toolkit';
 import { ref, toRef } from 'vue';
-import { DomainError } from '@shared/lib/error';
+import { reportHandledError } from '@shared/lib/reportHandledError';
 import { useDialog } from '@shared/ui/Dialog';
 import { useSnackbar } from '@shared/ui/Snackbar';
 
@@ -58,10 +58,10 @@ export const usePickLocalDirectory = () => {
         addSnackbar({
           text: 'Could not add the folder',
         });
-        if (error instanceof DomainError) {
-          throw error;
-        }
-        throw new DomainError('Could not add the folder', { cause: error });
+        reportHandledError(error, {
+          feature: 'localDirectoryPick',
+          action: 'pickLocalDirectory',
+        });
       }
     } finally {
       loading.value = false;
