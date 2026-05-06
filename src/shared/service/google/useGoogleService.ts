@@ -265,8 +265,17 @@ const setupGoogleService = (): GoogleService => {
   });
 
   const mountGoogleProvider = async () => {
-    await vfs.createDirectory(googleDrivePath);
+    if (!(await vfs.exists(googleDrivePath))) {
+      await vfs.createDirectory(googleDrivePath);
+    }
+
     vfs.mount(googleDrivePath, googleDriveProvider);
+  };
+
+  const removeGoogleDriveRootDirectory = async () => {
+    if (await vfs.exists(googleDrivePath)) {
+      await vfs.delete(googleDrivePath);
+    }
   };
 
   const bindGoogleApi = (api: GoogleApi) => {
@@ -291,7 +300,8 @@ const setupGoogleService = (): GoogleService => {
 
     vfs.unmount(googleDrivePath);
     googleDriveIntegrationEnabled = false;
-    return Promise.resolve();
+
+    return removeGoogleDriveRootDirectory();
   };
 
   const deleteSession = async (email: string) => {

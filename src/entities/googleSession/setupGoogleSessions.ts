@@ -29,10 +29,10 @@ const createGoogleApi = (clientId: string): GoogleApi => {
  * Binds the lazy Google auth API implementation to the shared Google service.
  * @param clientId - Google OAuth client ID used for future user-initiated auth flows.
  */
-export const setupGoogleSessions = (clientId: string) => {
+export const setupGoogleSessions = async (clientId: string): Promise<void> => {
   const {
     google: { bindGoogleApi },
   } = useMainServiceClient();
 
-  void bindGoogleApi(createGoogleApi(clientId));
+  await bindGoogleApi(createGoogleApi(clientId));
 };

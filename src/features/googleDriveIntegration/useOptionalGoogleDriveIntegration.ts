@@ -13,17 +13,37 @@ export const useOptionalGoogleDriveIntegration = () => {
     google: { disableGoogleDriveIntegration, enableGoogleDriveIntegration },
   } = useMainServiceClient();
   let isGoogleApiBound = false;
+  let setupGoogleSessionsPromise: Promise<void> | undefined;
+  let revision = 0;
 
   watch(
     () => settings.value.googleDriveIntegrationEnabled,
     async (googleDriveIntegrationEnabled) => {
+      const currentRevision = ++revision;
+
       if (googleDriveIntegrationEnabled === true && GOOGLE_CLIENT_ID) {
         if (!isGoogleApiBound) {
-          setupGoogleSessions(GOOGLE_CLIENT_ID);
-          isGoogleApiBound = true;
+          setupGoogleSessionsPromise ??= setupGoogleSessions(GOOGLE_CLIENT_ID)
+            .then(() => {
+              isGoogleApiBound = true;
+            })
+            .finally(() => {
+              setupGoogleSessionsPromise = undefined;
+            });
+
+          await setupGoogleSessionsPromise;
+        }
+
+        if (currentRevision !== revision) {
+          return;
         }
 
         await enableGoogleDriveIntegration();
+
+        if (currentRevision !== revision) {
+          await disableGoogleDriveIntegration();
+        }
+
         return;
       }
 

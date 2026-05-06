@@ -51,12 +51,30 @@ const flushMicrotasks = async () => {
   await Promise.resolve();
 };
 
+const createMockGoogleDriveProvider = () => {
+  const provider = new MemoryFileSystem();
+
+  return {
+    createDirectory: provider.createDirectory.bind(provider),
+    delete: provider.delete.bind(provider),
+    move: provider.move.bind(provider),
+    readDirectory: provider.readDirectory.bind(provider),
+    readFile: provider.readFile.bind(provider),
+    stat: provider.stat.bind(provider),
+    watch: () => () => {},
+    writeFile: provider.writeFile.bind(provider),
+  };
+};
+
 vi.mock('../fileSystem', () => ({
   useFileSystemService: () => ({
     vfs: {
       createDirectory: createDirectoryMock,
+      delete: (path: string, recursive?: boolean) => mockVfs.delete(path, recursive),
+      exists: (path: string) => mockVfs.exists(path),
       mount: mountMock,
       readDirectory: (path: string) => mockVfs.readDirectory(path),
+      stat: (path: string) => mockVfs.stat(path),
       unmount: unmountMock,
     },
   }),
@@ -90,6 +108,7 @@ describe('useGoogleService', () => {
     createDirectoryMock.mockReset();
     mountMock.mockReset();
     unmountMock.mockReset();
+    vi.mocked(googleDriveFileSystemProvider).mockImplementation(createMockGoogleDriveProvider);
 
     sessionStoreValue = {};
     sessionsSubject = new BehaviorSubject<string[]>([]);
@@ -664,5 +683,37 @@ describe('useGoogleService', () => {
 
     expect(mountMock).toHaveBeenCalledTimes(1);
     expect(unmountMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('enable -> disable -> enable works', async () => {
+    const service = await createService();
+    await bindApi(service);
+
+    await service.enableGoogleDriveIntegration();
+    await expect(mockVfs.readDirectory('/Google Drive')).resolves.toEqual([]);
+
+    await service.disableGoogleDriveIntegration();
+    await expect(mockVfs.stat('/Google Drive')).rejects.toMatchObject({
+      code: FileSystemError.FileNotFound,
+    });
+
+    await service.enableGoogleDriveIntegration();
+    await expect(mockVfs.readDirectory('/Google Drive')).resolves.toEqual([]);
+  });
+
+  it('disable removes Google Drive from root directory', async () => {
+    const service = await createService();
+    await bindApi(service);
+
+    await service.enableGoogleDriveIntegration();
+    await service.disableGoogleDriveIntegration();
+
+    await expect(mockVfs.stat('/Google Drive')).rejects.toMatchObject({
+      code: FileSystemError.FileNotFound,
+    });
+    await expect(mockVfs.readDirectory('/')).resolves.not.toContainEqual([
+      'Google Drive',
+      expect.anything(),
+    ]);
   });
 });
