@@ -7,6 +7,7 @@ import type {
   FileContent,
   FSNodeStat,
   IFileSystemProvider,
+  WriteFileResult,
   WriteOptions,
 } from './IFileSystemProvider';
 import { FSNodeType } from './IFileSystemProvider';
@@ -303,6 +304,60 @@ describe('VirtualFileSystem', () => {
       vfs.mount('/mnt/test', memoryFS);
 
       await expect(vfs.writeFile('', 'content')).rejects.toThrow();
+    });
+
+    it('uses writeFile result stat instead of reading provider stat again after a successful write', async () => {
+      const writeStat = {
+        type: FSNodeType.File,
+        size: 7,
+      } satisfies FSNodeStat;
+      const provider: IFileSystemProvider = {
+        stat: (path) => {
+          if (path === '/file.txt') {
+            return Promise.reject(new Error('post-write stat should not run'));
+          }
+
+          return Promise.resolve({
+            type: FSNodeType.Directory,
+          });
+        },
+        readFile: () => Promise.resolve(new File(['content'], 'file.txt')),
+        writeFile: (): Promise<WriteFileResult> =>
+          Promise.resolve({
+            stat: writeStat,
+          }),
+        readDirectory: () => Promise.resolve([]),
+        createDirectory: () => Promise.resolve(undefined),
+        delete: () => Promise.resolve(undefined),
+        move: () => Promise.resolve(undefined),
+      };
+
+      vfs.mount('/mnt/test', provider);
+
+      await expect(vfs.writeFile('/mnt/test/file.txt', 'content')).resolves.toBeUndefined();
+    });
+
+    it('emits create and update based on the pre-write existence check', async () => {
+      const events: Array<{ type: string; path: string; size?: number | undefined }> = [];
+
+      vfs.mount('/mnt/test', memoryFS);
+      vfs.watch('/mnt/test', (event) => {
+        events.push({ type: event.type, path: event.path, size: event.size });
+      });
+
+      await vfs.writeFile('/mnt/test/file.txt', 'create');
+      await vfs.writeFile('/mnt/test/file.txt', 'updated');
+
+      expect(events).toContainEqual({
+        type: VfsEventType.CREATE,
+        path: '/mnt/test/file.txt',
+        size: 6,
+      });
+      expect(events).toContainEqual({
+        type: VfsEventType.UPDATE,
+        path: '/mnt/test/file.txt',
+        size: 7,
+      });
     });
   });
 

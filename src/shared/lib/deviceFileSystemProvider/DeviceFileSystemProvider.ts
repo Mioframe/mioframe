@@ -3,6 +3,7 @@ import type {
   FSNodeStat,
   IFileSystemProvider,
   VfsEvent,
+  WriteFileResult,
   WriteOptions,
 } from '../virtualFileSystem';
 import {
@@ -19,9 +20,13 @@ import { WebFileSystemProvider } from '../webFileSystemProvider';
 
 export const DEVICE_FILES_ROOT_NAME = 'Device Files';
 
+/** Persisted mounted device-directory descriptor. */
 export interface DeviceFileRecord {
+  /** Stable mounted root name shown in the VFS. */
   name: string;
+  /** Optional mounted root description shown in listings. */
   description?: string;
+  /** Browser directory handle for the mounted root. */
   handle: FileSystemDirectoryHandle;
 }
 
@@ -29,14 +34,25 @@ interface ActiveDeviceFileRecord extends DeviceFileRecord {
   provider: IFileSystemProvider;
 }
 
+interface MountedRootStatOptions {
+  description?: string;
+}
+
+/** Factory options for the device file system provider. */
 export interface DeviceFileSystemProviderOptions {
+  /** Factory used to build the nested provider for a mounted directory handle. */
   createProvider?: (handle: FileSystemDirectoryHandle) => IFileSystemProvider;
 }
 
+/** Provider that exposes mounted device directories as VFS roots. */
 export interface DeviceFileSystemProvider extends IFileSystemProvider {
+  /** Lists persisted mounted roots. */
   listRecords(): DeviceFileRecord[];
+  /** Adds or replaces a mounted root. */
   upsertRecord(record: DeviceFileRecord): void;
+  /** Removes a mounted root by name. */
   removeRecord(name: string): void;
+  /** Subscribes to provider-level events. */
   watch(callback: (event: VfsEvent) => void): () => void;
 }
 
@@ -52,16 +68,26 @@ const rootDirectoryStat = {
 
 const isMountedRootPath = (path: string) => PathUtils.split(path).length <= 1;
 
-const getMountedRootStat = ({ description }: { description?: string }): FSNodeStat => ({
-  type: FSNodeType.Directory,
-  ...(description === undefined ? {} : { description }),
-  capabilities: {
-    canDelete: false,
-    canChangePath: false,
-    canEditChildren: true,
-  },
-});
+const getMountedRootStat = (options: MountedRootStatOptions): FSNodeStat => {
+  const { description } = options;
 
+  return {
+    type: FSNodeType.Directory,
+    ...(description === undefined ? {} : { description }),
+    capabilities: {
+      canDelete: false,
+      canChangePath: false,
+      canEditChildren: true,
+    },
+  };
+};
+
+/**
+ * Resolves the mounted record and provider-relative path for nested writes.
+ * @param path - Absolute VFS path.
+ * @param records - Mounted root records keyed by root name.
+ * @returns Mounted record plus provider-relative path.
+ */
 const resolveRecordForWrite = (path: string, records: Map<string, ActiveDeviceFileRecord>) => {
   const [rootName, ...relativePath] = PathUtils.split(path);
   const record = rootName ? records.get(rootName) : undefined;
@@ -76,9 +102,15 @@ const resolveRecordForWrite = (path: string, records: Map<string, ActiveDeviceFi
   };
 };
 
-export const DeviceFileSystemProvider = ({
-  createProvider = WebFileSystemProvider,
-}: DeviceFileSystemProviderOptions = {}): DeviceFileSystemProvider => {
+/**
+ * Creates a provider that exposes mounted device directories as top-level entries.
+ * @param providerOptions - Provider factory overrides.
+ * @returns Device file system provider backed by mounted nested providers.
+ */
+export const DeviceFileSystemProvider = (
+  providerOptions: DeviceFileSystemProviderOptions = {},
+): DeviceFileSystemProvider => {
+  const { createProvider = WebFileSystemProvider } = providerOptions;
   const vfs = new VirtualFileSystem();
   const events = new EventEmitter();
   const records = new Map<string, ActiveDeviceFileRecord>();
@@ -172,7 +204,7 @@ export const DeviceFileSystemProvider = ({
     path: string,
     content: FileContent,
     options: WriteOptions,
-  ): Promise<void> => {
+  ): Promise<WriteFileResult> => {
     const normalizedPath = PathUtils.normalize(path);
 
     if (isMountedRootPath(normalizedPath)) {

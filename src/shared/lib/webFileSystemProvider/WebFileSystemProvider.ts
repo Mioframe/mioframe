@@ -3,10 +3,16 @@ import type {
   FSNodeCapabilities,
   FSNodeStat,
   IFileSystemProvider,
+  WriteFileResult,
 } from '../virtualFileSystem';
 import { FileSystemError, FSNodeType, PathUtils, VfsError } from '../virtualFileSystem';
 import type { WriteOptions } from '../virtualFileSystem/IFileSystemProvider';
 
+/**
+ * Creates a VFS provider backed by the browser File System Access API.
+ * @param rootHandle - Root directory handle for the mounted provider.
+ * @returns VFS provider backed by browser file system handles.
+ */
 export const WebFileSystemProvider = (
   rootHandle: FileSystemDirectoryHandle,
 ): IFileSystemProvider => {
@@ -153,7 +159,7 @@ export const WebFileSystemProvider = (
     path: string,
     content: FileContent,
     { create, overwrite }: WriteOptions,
-  ): Promise<void> => {
+  ): Promise<WriteFileResult> => {
     let handle: FileSystemFileHandle | undefined;
 
     try {
@@ -175,6 +181,10 @@ export const WebFileSystemProvider = (
     const writable = await handle.createWritable();
     await writable.write(content);
     await writable.close();
+
+    return {
+      stat: await fileHandleStat(handle),
+    };
   };
 
   const readDirectory = async (path: string): Promise<[string, FSNodeStat][]> => {
