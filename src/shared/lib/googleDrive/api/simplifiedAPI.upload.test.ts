@@ -179,16 +179,50 @@ describe('simplifiedAPI upload', () => {
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
-  it('rejects unsupported upload payloads', async () => {
-    const { upload } = await import('./simplifiedAPI');
-    const unsupportedChunk: WriteParams = {
-      type: 'write',
-      data: null,
-    };
+  it('invalidates cached downloads after upload', async () => {
+    const fetchMock = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(
+        createJsonResponse({
+          id: 'file-id',
+          name: 'notes.txt',
+          mimeType: 'text/plain',
+          modifiedTime: '2024-01-01T00:00:00.000Z',
+          parents: ['parent-id'],
+        }),
+      )
+      .mockResolvedValueOnce(new Response(new Blob(['cached']), { status: 200 }))
+      .mockResolvedValueOnce(createJsonResponse({}))
+      .mockResolvedValueOnce(
+        createJsonResponse({
+          id: 'file-id',
+          name: 'notes.txt',
+          mimeType: 'text/plain',
+          modifiedTime: '2024-01-02T00:00:00.000Z', // changed time
+          parents: ['parent-id'],
+        }),
+      )
+      .mockResolvedValueOnce(new Response(new Blob(['fresh']), { status: 200 }));
 
-    await expect(upload({ ACCESS_TOKEN: 'token' }, 'file-id', unsupportedChunk)).rejects.toThrow(
-      'Unsupported file type',
-    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { clearCaches, download, upload } = await import('./simplifiedAPI');
+
+    clearCaches();
+
+    // Initial download (cache miss)
+    await download({ ACCESS_TOKEN: 'token' }, 'file-id');
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+
+    // Upload changes file metadata
+    await upload({ ACCESS_TOKEN: 'token' }, 'file-id', 'next content');
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+
+    // Download should fetch fresh data (cache invalidated)
+    const refreshed = await download({ ACCESS_TOKEN: 'token' }, 'file-id');
+    expect(refreshed.type).toBe('');
+    expect(await refreshed.text()).toBe('fresh');
+    expect(fetchMock).toHaveBeenCalledTimes(5);
   });
 
   it('uploads Uint8Array content with detected MIME type', async () => {

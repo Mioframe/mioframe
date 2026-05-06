@@ -595,7 +595,7 @@ function getActionRequired(results) {
 }
 
 function printSummary(changedFiles, scope, results) {
-  const status = results.some((result) => result.status === 'failed') ? 'failed' : 'passed';
+  const status = results.some((result) => result.status === 'failed') ? 'failed ❌' : 'passed ✅';
   const actionRequired = getActionRequired(results);
 
   console.log('\nVERIFY RESULT');

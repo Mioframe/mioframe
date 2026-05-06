@@ -138,7 +138,6 @@ describe('simplifiedAPI create', () => {
     // Verify cache invalidation - subsequent list should fetch again
     await getGFileMetaList(auth, listParams);
 
-    // Should be at least 2 calls (initial + create), possibly more due to refresh
-    expect(fetchMock.mock.calls.length).toBeGreaterThanOrEqual(2);
+    expect(fetchMock).toHaveBeenCalledTimes(3);
   });
 });

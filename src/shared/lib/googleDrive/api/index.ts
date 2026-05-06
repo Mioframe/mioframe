@@ -14,4 +14,13 @@ export type {
   zodGoogleErrorResponse,
   GoogleErrorResponse,
 } from './types';
-export * from './simplifiedAPI';
+export {
+  clearCaches,
+  create,
+  createWithContent,
+  download,
+  getGDriveFileMeta,
+  getGFileMetaList,
+  update,
+  upload,
+} from './simplifiedAPI';
