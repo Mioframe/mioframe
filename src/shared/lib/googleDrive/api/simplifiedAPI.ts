@@ -26,7 +26,6 @@ import {
   type ListParams,
 } from './types';
 import { Cache } from '@shared/lib/cache';
-import { withLog } from '@shared/lib/logger';
 import { buildQuery } from '@shared/lib/googleDrive/api/queryBuild';
 
 /**
@@ -104,41 +103,44 @@ const googleRequest = async (url: Input, options?: ApiOptions): Promise<Response
 
 /**
  * Internal request handler with authentication and response validation.
+ * @param method - HTTP method for the request.
+ * @param url - Full request URL for the Google Drive API call.
+ * @param auth - Google auth parameters with ACCESS_TOKEN (Bearer token) and API_KEY.
+ * @param options - Optional request options.
+ * @param responseSchema - Zod schema for parsing the response.
+ * @returns Authenticated API response parsed according to responseSchema.
  */
-const authorizedRequest = withLog(
-  async <R>(
-    method: Required<KyOptions['method']>,
-    url: `https://${string}`,
-    { ACCESS_TOKEN, API_KEY }: GoogleAuthParams,
-    options: ApiOptions = {},
-    responseSchema: ZodMiniType<R>,
-  ): Promise<{ result: R }> => {
-    const response = await (
-      await googleRequest(
-        url,
-        toMerged(
-          {
-            method,
-            headers: {
-              Authorization: `Bearer ${ACCESS_TOKEN}`,
-            },
-            searchParams: {
-              key: API_KEY,
-            },
+const authorizedRequest = async <R>(
+  method: Required<KyOptions['method']>,
+  url: `https://${string}`,
+  { ACCESS_TOKEN, API_KEY }: GoogleAuthParams,
+  options: ApiOptions = {},
+  responseSchema: ZodMiniType<R>,
+): Promise<{ result: R }> => {
+  const response = await (
+    await googleRequest(
+      url,
+      toMerged(
+        {
+          method,
+          headers: {
+            Authorization: `Bearer ${ACCESS_TOKEN}`,
           },
-          options,
-        ),
-      )
+          searchParams: {
+            key: API_KEY,
+          },
+        },
+        options,
+      ),
     )
-      .clone()
-      .json();
+  )
+    .clone()
+    .json();
 
-    const result = responseSchema.parse(response);
+  const result = responseSchema.parse(response);
 
-    return { result };
-  },
-  { name: 'authorizedRequest', showResult: true },
-);
+  return { result };
+};
 
 /**
  * LRU cache for paginated file metadata lists.
@@ -153,129 +155,134 @@ const gFileMetaListCache = new Cache<ListParams, GDriveListResponse>({
  *
  * The query parameter `q` is automatically transformed using `buildQuery()` to ensure
  * consistent formatting and proper handling of special characters.
+ * @param auth - Google auth parameters for the request.
+ * @param listParams - Parameters for listing files (pageSize, pageToken, q, spaces, fetchAll).
+ * @returns List of Google Drive files.
  */
-export const getGFileMetaList = withLog(
-  async (
-    auth: GoogleAuthParams,
-    { pageSize = 1000, pageToken = '', q, spaces = [], fetchAll = true }: ListParams,
-  ) => {
-    let result: GDriveListResponse | undefined = undefined;
+export const getGFileMetaList = async (auth: GoogleAuthParams, listParams: ListParams) => {
+  const { pageSize = 1000, pageToken = '', q, spaces = [], fetchAll = true } = listParams;
+  let result: GDriveListResponse | undefined = undefined;
 
-    const fields = fieldsGDriveList;
-    const cacheKey = {
-      pageSize,
-      pageToken,
-      q,
-      spaces,
-      fetchAll,
-      fields,
-    };
+  const fields = fieldsGDriveList;
+  const cacheKey = {
+    pageSize,
+    pageToken,
+    q,
+    spaces,
+    fetchAll,
+    fields,
+  };
 
-    result = gFileMetaListCache.get(cacheKey);
+  result = gFileMetaListCache.get(cacheKey);
 
-    if (result) {
-      return result;
-    }
-
-    const fetchPage = async (nextPageToken: string) =>
-      authorizedRequest(
-        'get',
-        'https://www.googleapis.com/drive/v3/files',
-        auth,
-        {
-          searchParams: {
-            pageSize,
-            pageToken: nextPageToken,
-            q: q ? buildQuery(q) : '',
-            spaces: spaces.join(','),
-            fields,
-          },
-          dedupe: true,
-        },
-        zodGDriveListResponse,
-      );
-
-    if (!fetchAll) {
-      result = (await fetchPage(pageToken)).result;
-    } else {
-      let currentPageToken: string | undefined = pageToken;
-      const allFiles: GDriveFileMeta[] = [];
-
-      do {
-        // eslint-disable-next-line no-await-in-loop -- each next page token comes from the previous response, so pagination must stay sequential
-        const pageResult = await fetchPage(currentPageToken);
-        if (pageResult.result.files) {
-          allFiles.push(...pageResult.result.files);
-        }
-        currentPageToken = pageResult.result.nextPageToken;
-      } while (currentPageToken);
-
-      result = {
-        files: allFiles,
-        nextPageToken: undefined,
-      };
-    }
-
-    if (result.files?.length) {
-      result.files.forEach((v) => {
-        gFileMetaCache.set(v.id, v);
-      });
-      gFileMetaListCache.set(cacheKey, result);
-    }
-
+  if (result) {
     return result;
-  },
-  {
-    name: 'getGFileMetaList',
-    showResult: true,
-    showArgs: true,
-    snapshot: true,
-  },
-);
+  }
 
-/**
- * LRU cache for individual file metadata.
- */
+  const fetchPage = async (nextPageToken: string) =>
+    authorizedRequest(
+      'get',
+      'https://www.googleapis.com/drive/v3/files',
+      auth,
+      {
+        searchParams: {
+          pageSize,
+          pageToken: nextPageToken,
+          q: q ? buildQuery(q) : '',
+          spaces: spaces.join(','),
+          fields,
+        },
+        dedupe: true,
+      },
+      zodGDriveListResponse,
+    );
+
+  if (!fetchAll) {
+    result = (await fetchPage(pageToken)).result;
+  } else {
+    let currentPageToken: string | undefined = pageToken;
+    const allFiles: GDriveFileMeta[] = [];
+
+    do {
+      // eslint-disable-next-line no-await-in-loop -- each next page token comes from the previous response, so pagination must stay sequential
+      const pageResult = await fetchPage(currentPageToken);
+      if (pageResult.result.files) {
+        allFiles.push(...pageResult.result.files);
+      }
+      currentPageToken = pageResult.result.nextPageToken;
+    } while (currentPageToken);
+
+    result = {
+      files: allFiles,
+      nextPageToken: undefined,
+    };
+  }
+
+  if (result.files) {
+    result.files.forEach((v) => {
+      gFileMetaCache.set(v.id, v);
+    });
+    gFileMetaListCache.set(cacheKey, result);
+  }
+
+  return result;
+};
+
 const gFileMetaCache = new Cache<string, GDriveFileMeta>({
   max: 500,
   ttl: 30e3,
 });
 
 /**
- * Invalidates cache entries for specified file IDs and dependent entries.
+ * Invalidates cache entries for a specific file that changed.
+ * Removes metadata, content, and dependent list-cache entries.
+ * @param fileIdList - List of file IDs whose individual caches should be invalidated.
  */
-const invalidateCache = withLog(
-  (...fileIdList: string[]): void => {
-    fileIdList.forEach((fileId) => {
-      gFileMetaCache.delete(fileId);
-      gDriveFileContentCache.delete(fileId);
-      const metadataKeysToDelete: string[] = [];
-      gFileMetaCache.forEach(({ parents }, key) => {
-        if (parents?.includes(fileId)) {
-          metadataKeysToDelete.push(key);
-        }
-      });
-      metadataKeysToDelete.forEach((key) => {
-        gFileMetaCache.delete(key);
-      });
+const invalidateFileCache = (...fileIdList: string[]): void => {
+  fileIdList.forEach((fileId) => {
+    gFileMetaCache.delete(fileId);
+    gDriveFileContentCache.delete(fileId);
 
-      const listKeysToDelete: string[] = [];
-      gFileMetaListCache.forEachEntry(({ files }, key, listParams) => {
-        const matchesParentId = typeof listParams !== 'string' && listParams.q?.parentId === fileId;
-        const matchesFileRelation =
-          files?.some(({ id, parents = [] }) => [id, ...parents].includes(fileId)) ?? false;
+    const listKeysToDelete: string[] = [];
+    gFileMetaListCache.forEachEntry(({ files }, key) => {
+      const matchesFileRelation =
+        files?.some(({ id, parents = [] }) => [id, ...parents].includes(fileId)) ?? false;
 
-        if (matchesParentId || matchesFileRelation) {
-          listKeysToDelete.push(key);
-        }
-      });
-      listKeysToDelete.forEach((key) => {
-        gFileMetaListCache.delete(key);
-      });
+      if (matchesFileRelation) {
+        listKeysToDelete.push(key);
+      }
     });
-  },
-  { name: 'invalidateCache', showArgs: true },
-);
+    listKeysToDelete.forEach((key) => {
+      gFileMetaListCache.delete(key);
+    });
+  });
+};
+
+/**
+ * Invalidates cached directory lists when the composition of a folder changes.
+ * Only clears `gFileMetaListCache` entries for affected parent directories.
+ * Does not touch individual file metadata or content caches.
+ * @param parentIdList - List of parent/folder IDs whose list caches should be invalidated.
+ */
+const invalidateDirectoryListCache = (...parentIdList: string[]): void => {
+  parentIdList.forEach((parentId) => {
+    const listKeysToDelete: string[] = [];
+    gFileMetaListCache.forEachEntry(({ files }, key, listParams) => {
+      if (typeof listParams === 'string') return;
+
+      const matchesQueryParentId = listParams.q?.parentId === parentId;
+      const matchesCachedFileParents =
+        files?.some(({ parents = [] }) => parents.includes(parentId)) ?? false;
+
+      if (matchesQueryParentId || matchesCachedFileParents) {
+        listKeysToDelete.push(key);
+      }
+    });
+    listKeysToDelete.forEach((key) => {
+      gFileMetaListCache.delete(key);
+    });
+  });
+};
 
 /**
  * Retrieves metadata for a single Google Drive file.
@@ -370,7 +377,8 @@ export const update = async (auth: GoogleAuthParams, fileId: string, params: Upd
     z.object({}),
   );
 
-  invalidateCache(fileId, ...(addParents ?? []), ...(removeParents ?? []));
+  invalidateFileCache(fileId);
+  invalidateDirectoryListCache(...(addParents ?? []), ...(removeParents ?? []));
 
   return result;
 };
@@ -420,9 +428,9 @@ export const download = async (
       alt: 'media',
     },
     ...(onDownloadProgress ? { onDownloadProgress } : {}),
-    dedupe: true,
+    dedupe: !onDownloadProgress,
   })
-    .then((r) => r.blob())
+    .then((r) => r.clone().blob())
     .then(
       (blob) =>
         new File([blob], name, {
@@ -459,7 +467,7 @@ export const create = async (auth: GoogleAuthParams, resource: CreateResource) =
     z.object({ id: z.string() }),
   );
 
-  invalidateCache(...resource.parents);
+  invalidateDirectoryListCache(...resource.parents);
 
   return result;
 };
@@ -513,7 +521,8 @@ export const createWithContent = async (
 
   const result = zodGDriveFileMeta.parse(await response.json());
 
-  invalidateCache(...resource.parents);
+  invalidateDirectoryListCache(...resource.parents, ...(result.parents ?? []));
+  gFileMetaCache.set(result.id, result);
 
   return { result };
 };
@@ -551,7 +560,7 @@ export const upload = async (
     },
   );
 
-  invalidateCache(fileId);
+  invalidateFileCache(fileId);
 
   return response;
 };

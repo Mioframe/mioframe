@@ -1,22 +1,25 @@
+export { SPACE } from './types';
+export type {
+  GoogleAuthParams,
+  ListParams,
+  GDriveFileMeta,
+  GDriveListResponse,
+  ApiOptions,
+  CreateResource,
+  DownloadParams,
+  UpdateParams,
+  fieldsGDriveFileMeta,
+  zodGDriveFileMeta,
+  zodGDriveListResponse,
+  zodGoogleErrorResponse,
+  GoogleErrorResponse,
+} from './types';
 export {
   create,
   createWithContent,
   download,
+  getGDriveFileMeta,
   getGFileMetaList,
   update,
   upload,
 } from './simplifiedAPI';
-export {
-  type GoogleAuthParams,
-  SPACE,
-  type ApiOptions,
-  type CreateResource,
-  type DownloadParams,
-  type GDriveFileMeta,
-  type GDriveListResponse,
-  type ListParams,
-  type UpdateParams,
-  fieldsGDriveFileMeta,
-  zodGDriveListResponse,
-  zodGoogleErrorResponse,
-} from './types';
