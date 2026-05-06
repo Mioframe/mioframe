@@ -78,7 +78,7 @@ export interface GoogleDriveFsOptions {
 }
 
 /** Runtime dependencies required to build the Google Drive VFS provider. */
-interface GoogleDriveProviderDeps {
+export interface GoogleDriveFileSystemProviderOptions {
   /** Requests an access token for the target email and Google scope set. */
   requestToken: (scope: GOOGLE_SCOPE[], email: string) => Promise<string>;
   /** Reactive authenticated Google session email list. */
@@ -101,7 +101,7 @@ interface GoogleDriveProviderDeps {
  *   - `My Drive/` - Main user storage
  *   - `Shared with me/` - Files shared with the user
  *   - `App Data/` - Hidden application data folder
- * @param deps - Provider dependencies.
+ * @param providerOptions - Provider dependencies.
  * @returns IFileSystemProvider implementation for Google Drive.
  * @example
  * ```
@@ -117,8 +117,10 @@ interface GoogleDriveProviderDeps {
  * await provider.createDirectory('/user1@example.com/My Drive/Reports/2024');
  * ```
  */
-export const googleDriveFileSystemProvider = (deps: GoogleDriveProviderDeps) => {
-  const { requestToken, $sessions: sessions$ } = deps;
+export const googleDriveFileSystemProvider = (
+  providerOptions: GoogleDriveFileSystemProviderOptions,
+) => {
+  const { requestToken, $sessions } = providerOptions;
   const extractEmailFromPath = (path: string): string => {
     const email = getGoogleDrivePathEmail(path);
 
@@ -490,7 +492,7 @@ export const googleDriveFileSystemProvider = (deps: GoogleDriveProviderDeps) => 
   };
 
   const readRootDirectory = async (): Promise<[string, FSNodeStat][]> => {
-    const accountList = await firstValueFrom(sessions$);
+    const accountList = await firstValueFrom($sessions);
 
     return accountList.map((email): [string, FSNodeStat] => [
       email,
@@ -514,7 +516,7 @@ export const googleDriveFileSystemProvider = (deps: GoogleDriveProviderDeps) => 
 
   const watch = (callback: (event: VfsEvent) => void) => {
     // ObservableIDB-backed session streams replay the current store snapshot on subscribe; provider watchers should react only to later session-store changes.
-    const subscription = sessions$.pipe(skip(1)).subscribe(() => {
+    const subscription = $sessions.pipe(skip(1)).subscribe(() => {
       callback({
         source: VfsEventSource.PROVIDER,
         type: VfsEventType.UPDATE,
