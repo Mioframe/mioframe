@@ -7,11 +7,11 @@ import { router } from './router';
 import { backNavigationHandler } from '@shared/lib/onBackNavigation';
 import { sentryPlugin } from '@shared/lib/setupSentry';
 import { setupStackNavigation } from '@page/routes';
-import { setupGoogleSessions } from '@entity/googleSession';
-import { GOOGLE_CLIENT_ID } from '@shared/config';
 
 /**
- * Инициализация и настройка Vue приложения
+ * Initializes the root Vue application and wires global app-level plugins.
+ * @param app - Optional pre-created Vue app instance used by tests and alternative bootstraps.
+ * @returns The configured Vue app instance.
  */
 export const setupApp = async (app: App = createApp(MainApp)) => {
   app.use(sentryPlugin, {
@@ -48,10 +48,5 @@ export const setupApp = async (app: App = createApp(MainApp)) => {
   );
 
   app.use(backNavigationHandler);
-
-  if (GOOGLE_CLIENT_ID) {
-    setupGoogleSessions(GOOGLE_CLIENT_ID);
-  }
-
   return app;
 };

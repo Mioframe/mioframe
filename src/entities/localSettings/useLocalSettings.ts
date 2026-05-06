@@ -6,6 +6,7 @@ const zodSettingsStorage = z._default(
   z.object({
     showPerformance: z.optional(z.boolean()),
     showAutomergeFiles: z.optional(z.boolean()),
+    googleDriveIntegrationEnabled: z.optional(z.boolean()),
     hideStarterWidget: z.optional(z.boolean()),
     panesWidth: z._default(z.array(z.number()), []),
   }),
@@ -18,6 +19,7 @@ export const useLocalSettings = createGlobalState(() => {
   const SETTINGS_DESCRIPTION: Record<keyof SettingsStorage, string> = {
     showPerformance: 'Show performance layer',
     showAutomergeFiles: 'Show *.automerge files in explorer',
+    googleDriveIntegrationEnabled: 'Enable optional Google Drive integration',
     hideStarterWidget: 'Hide starter examples on the home screen',
     panesWidth: 'Store panes width',
   };
@@ -25,6 +27,7 @@ export const useLocalSettings = createGlobalState(() => {
   const SETTINGS_LABEL: Record<keyof SettingsStorage, string> = {
     showPerformance: 'Performance layer',
     showAutomergeFiles: 'Show *.automerge files',
+    googleDriveIntegrationEnabled: 'Google Drive',
     hideStarterWidget: 'Hide starter examples',
     panesWidth: 'Pane widths',
   };

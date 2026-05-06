@@ -71,7 +71,10 @@ const onOpenStarterExampleDocument = ({
 
     <LocalFSWidget @click-path="onClickLocalPath" />
 
-    <GoogleDriveWidget @click-user="onClickGoogleDriveUser" />
+    <GoogleDriveWidget
+      v-if="settings.googleDriveIntegrationEnabled === true"
+      @click-user="onClickGoogleDriveUser"
+    />
     <!-- todo: создать и добавить виджет избранных директорий и документов -->
   </MDPane>
 </template>

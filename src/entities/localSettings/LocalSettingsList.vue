@@ -16,6 +16,10 @@ const onClickShowPerformance = () => {
 const onClickShowAutomergeFiles = () => {
   settings.value.showAutomergeFiles = !settings.value.showAutomergeFiles;
 };
+
+const onClickGoogleDriveIntegrationEnabled = () => {
+  settings.value.googleDriveIntegrationEnabled = !settings.value.googleDriveIntegrationEnabled;
+};
 </script>
 
 <template>
@@ -45,6 +49,20 @@ const onClickShowAutomergeFiles = () => {
 
       <template #trailingIcon>
         <MDCheckbox v-model="settings.showPerformance" />
+      </template>
+    </MDListItem>
+
+    <MDListItem
+      is="button"
+      :headline="SETTINGS_LABEL.googleDriveIntegrationEnabled"
+      @click="onClickGoogleDriveIntegrationEnabled"
+    >
+      <template #supportingText>
+        {{ SETTINGS_DESCRIPTION.googleDriveIntegrationEnabled }}
+      </template>
+
+      <template #trailingIcon>
+        <MDCheckbox v-model="settings.googleDriveIntegrationEnabled" />
       </template>
     </MDListItem>
 
