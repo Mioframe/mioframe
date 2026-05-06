@@ -1,5 +1,5 @@
 import { DomainError } from '@shared/lib/error';
-import { useSentry } from './setupSentry';
+import { ensureSentry } from './setupSentry';
 
 type ReportHandledErrorOptions = {
   feature: string;
@@ -8,6 +8,80 @@ type ReportHandledErrorOptions = {
 };
 
 const HANDLED_NON_ERROR_MESSAGE = 'Handled non-error exception';
+const HANDLED_REPORT_QUEUE_LIMIT = 50;
+
+type HandledReportEntry = {
+  error: Error;
+  extras: Record<string, unknown>;
+  options: ReportHandledErrorOptions;
+};
+
+const handledReportQueue: HandledReportEntry[] = [];
+let flushPromise: Promise<void> | undefined;
+
+const enqueueHandledReport = (entry: HandledReportEntry) => {
+  handledReportQueue.push(entry);
+
+  if (handledReportQueue.length > HANDLED_REPORT_QUEUE_LIMIT) {
+    handledReportQueue.splice(0, handledReportQueue.length - HANDLED_REPORT_QUEUE_LIMIT);
+  }
+};
+
+const sendHandledReport = (
+  entry: HandledReportEntry,
+  sentry: Awaited<ReturnType<typeof ensureSentry>>,
+) => {
+  try {
+    const eventId = sentry.withScope((scope) => {
+      scope.setTag('handled', 'true');
+      scope.setTag('feature', entry.options.feature);
+      scope.setTag('action', entry.options.action);
+
+      if (Object.keys(entry.extras).length > 0) {
+        scope.setExtras(entry.extras);
+      }
+
+      return sentry.captureException(entry.error);
+    });
+
+    return eventId !== undefined;
+  } catch {
+    return false;
+  }
+};
+
+const flushHandledReports = async () => {
+  if (handledReportQueue.length === 0) {
+    return;
+  }
+
+  const sentry = await ensureSentry();
+  const queuedEntries = [...handledReportQueue];
+  const failedEntries: HandledReportEntry[] = [];
+
+  for (const entry of queuedEntries) {
+    const wasSent = sendHandledReport(entry, sentry);
+
+    if (!wasSent) {
+      failedEntries.push(entry);
+    }
+  }
+
+  handledReportQueue.length = 0;
+  handledReportQueue.push(...failedEntries);
+};
+
+const kickoffHandledReportFlush = () => {
+  if (flushPromise) {
+    return;
+  }
+
+  flushPromise = flushHandledReports()
+    .catch(() => undefined)
+    .finally(() => {
+      flushPromise = undefined;
+    });
+};
 
 /**
  * Reports a user-handled error to Sentry without rethrowing it. Domain errors with an `Error`
@@ -16,9 +90,6 @@ const HANDLED_NON_ERROR_MESSAGE = 'Handled non-error exception';
  * @param options - Feature metadata attached to the Sentry scope.
  */
 export const reportHandledError = (error: unknown, options: ReportHandledErrorOptions) => {
-  const sentry = useSentry();
-  const { action, feature, path } = options;
-
   let reportedError: Error;
   const extras: Record<string, unknown> = {};
 
@@ -32,19 +103,18 @@ export const reportHandledError = (error: unknown, options: ReportHandledErrorOp
     extras.originalError = error;
   }
 
-  if (path !== undefined) {
-    extras.path = path;
+  if (options.path !== undefined) {
+    extras.path = options.path;
   }
 
-  sentry.withScope((scope) => {
-    scope.setTag('handled', 'true');
-    scope.setTag('feature', feature);
-    scope.setTag('action', action);
-
-    if (Object.keys(extras).length > 0) {
-      scope.setExtras(extras);
-    }
-
-    sentry.captureException(reportedError);
-  });
+  try {
+    enqueueHandledReport({
+      error: reportedError,
+      extras,
+      options,
+    });
+    kickoffHandledReportFlush();
+  } catch {
+    // Reporting must remain fire-and-forget for UI handlers.
+  }
 };
