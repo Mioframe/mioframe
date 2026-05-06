@@ -9,20 +9,30 @@ import {
 class MockBeforeUnloadTarget {
   public readonly addEventListener = vi.fn(
     (_type: 'beforeunload', listener: (event: BeforeUnloadEvent) => void) => {
-      this.listener = listener;
+      this.listeners.add(listener);
     },
   );
 
   public readonly removeEventListener = vi.fn(
     (_type: 'beforeunload', listener: (event: BeforeUnloadEvent) => void) => {
-      if (this.listener === listener) {
-        this.listener = undefined;
-      }
+      this.listeners.delete(listener);
     },
   );
 
-  public listener: ((event: BeforeUnloadEvent) => void) | undefined;
+  public readonly listeners = new Set<(event: BeforeUnloadEvent) => void>();
 }
+
+const getRequiredListener = (
+  target: MockBeforeUnloadTarget,
+): ((event: BeforeUnloadEvent) => void) => {
+  const [listener] = [...target.listeners];
+
+  if (listener === undefined) {
+    throw new Error('Expected a beforeunload listener to be registered.');
+  }
+
+  return listener;
+};
 
 const createState = (overrides: Partial<VfsActivityState> = {}): VfsActivityState => ({
   status: 'idle',
@@ -102,7 +112,8 @@ describe('useBeforeUnloadGuard', () => {
     const event = new BeforeUnloadEvent();
     const preventDefault = vi.spyOn(event, 'preventDefault');
 
-    target.listener?.(event);
+    const listener = getRequiredListener(target);
+    listener(event);
 
     expect(preventDefault).toHaveBeenCalledTimes(1);
     // eslint-disable-next-line @typescript-eslint/no-deprecated -- The guard must set returnValue for browser prompts.
@@ -123,14 +134,14 @@ describe('useBeforeUnloadGuard', () => {
       );
     });
 
-    const listener = target.listener;
+    const listener = getRequiredListener(target);
 
     isBlocked.value = false;
     await Promise.resolve();
 
     expect(target.removeEventListener).toHaveBeenCalledTimes(1);
     expect(target.removeEventListener).toHaveBeenCalledWith('beforeunload', listener);
-    expect(target.listener).toBeUndefined();
+    expect(target.listeners.size).toBe(0);
 
     scope.stop();
   });
@@ -169,12 +180,70 @@ describe('useBeforeUnloadGuard', () => {
       );
     });
 
-    const listener = target.listener;
+    const listener = getRequiredListener(target);
 
     scope.stop();
 
     expect(target.removeEventListener).toHaveBeenCalledTimes(1);
     expect(target.removeEventListener).toHaveBeenCalledWith('beforeunload', listener);
-    expect(target.listener).toBeUndefined();
+    expect(target.listeners.size).toBe(0);
+  });
+
+  it('keeps multiple guard listeners independent on the same target', () => {
+    const target = new MockBeforeUnloadTarget();
+    const firstScope = effectScope();
+    const secondScope = effectScope();
+
+    firstScope.run(() => {
+      useBeforeUnloadGuard(
+        computed(() => true),
+        target,
+      );
+    });
+
+    secondScope.run(() => {
+      useBeforeUnloadGuard(
+        computed(() => true),
+        target,
+      );
+    });
+
+    expect(target.addEventListener).toHaveBeenCalledTimes(2);
+
+    const firstListener = target.addEventListener.mock.calls[0]?.[1];
+    const secondListener = target.addEventListener.mock.calls[1]?.[1];
+
+    expect(firstListener).toEqual(expect.any(Function));
+    expect(secondListener).toEqual(expect.any(Function));
+
+    if (firstListener === undefined || secondListener === undefined) {
+      throw new Error('Expected both beforeunload listeners to be registered.');
+    }
+
+    expect(firstListener).not.toBe(secondListener);
+    expect(target.listeners.has(firstListener)).toBe(true);
+    expect(target.listeners.has(secondListener)).toBe(true);
+
+    firstScope.stop();
+
+    expect(target.removeEventListener).toHaveBeenCalledTimes(1);
+    expect(target.removeEventListener).toHaveBeenCalledWith('beforeunload', firstListener);
+    expect(target.listeners.has(firstListener)).toBe(false);
+    expect(target.listeners.has(secondListener)).toBe(true);
+
+    const event = new BeforeUnloadEvent();
+    const preventDefault = vi.spyOn(event, 'preventDefault');
+
+    secondListener(event);
+
+    expect(preventDefault).toHaveBeenCalledTimes(1);
+    // eslint-disable-next-line @typescript-eslint/no-deprecated -- The guard must set returnValue for browser prompts.
+    expect(event.returnValue).toBe('');
+
+    secondScope.stop();
+
+    expect(target.removeEventListener).toHaveBeenCalledTimes(2);
+    expect(target.removeEventListener).toHaveBeenLastCalledWith('beforeunload', secondListener);
+    expect(target.listeners.size).toBe(0);
   });
 });

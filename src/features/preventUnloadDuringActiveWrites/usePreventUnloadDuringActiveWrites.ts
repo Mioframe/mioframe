@@ -7,12 +7,6 @@ interface BeforeUnloadTarget {
   removeEventListener(type: 'beforeunload', listener: (event: BeforeUnloadEvent) => void): void;
 }
 
-const onBeforeUnload = (event: BeforeUnloadEvent) => {
-  event.preventDefault();
-  // eslint-disable-next-line @typescript-eslint/no-deprecated -- Browser unload prompts still rely on returnValue.
-  event.returnValue = '';
-};
-
 /**
  * Returns whether active VFS mutations should block page unload.
  * @param state - Current VFS activity state.
@@ -30,6 +24,12 @@ export const useBeforeUnloadGuard = (
   isBlocked: ComputedRef<boolean>,
   target: BeforeUnloadTarget,
 ): void => {
+  const onBeforeUnload = (event: BeforeUnloadEvent): void => {
+    event.preventDefault();
+    // eslint-disable-next-line @typescript-eslint/no-deprecated -- Browser unload prompts still rely on returnValue.
+    event.returnValue = '';
+  };
+
   watch(
     isBlocked,
     (blocked, _previous, onCleanup) => {
@@ -54,5 +54,7 @@ export const usePreventUnloadDuringActiveWrites = (): void => {
   const { state } = useVfsActivity();
   const isBlocked = computed(() => shouldPreventUnloadDuringActiveWrites(state.value));
 
-  useBeforeUnloadGuard(isBlocked, window);
+  if (typeof window !== 'undefined') {
+    useBeforeUnloadGuard(isBlocked, window);
+  }
 };
