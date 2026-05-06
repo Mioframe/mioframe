@@ -89,6 +89,15 @@ describe('MemoryFileSystem', () => {
     );
   });
 
+  it('returns written file stat from writeFile', async () => {
+    const result = await memoryFS.writeFile('/notes.txt', 'draft', {
+      create: true,
+      overwrite: true,
+    });
+
+    expect(result.stat).toEqual(await memoryFS.stat('/notes.txt'));
+  });
+
   it('updates file contents and modification time when overwriting an existing file', async () => {
     await memoryFS.writeFile('/notes.txt', 'draft', {
       create: true,

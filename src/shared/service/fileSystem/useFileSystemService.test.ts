@@ -125,7 +125,14 @@ const createDiagnosticProvider = ({
   const provider = {
     stat: vi.fn(() => Promise.resolve(directoryStat)),
     readFile: vi.fn(() => Promise.resolve(new File([], 'unused'))),
-    writeFile: vi.fn(() => Promise.resolve(undefined)),
+    writeFile: vi.fn(() =>
+      Promise.resolve({
+        stat: {
+          type: FSNodeType.File,
+          size: 0,
+        },
+      }),
+    ),
     readDirectory,
     createDirectory,
     delete: vi.fn(() => Promise.resolve(undefined)),

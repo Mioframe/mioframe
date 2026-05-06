@@ -169,6 +169,7 @@ export default defineConfigWithVueTs(
     },
     rules: {
       'tsdoc/syntax': 'warn',
+      'jsdoc/require-throws-type': 'off', // TSDoc syntax does not support JSDoc typed @throws tags.
     },
   },
 
