@@ -18,6 +18,7 @@ import { dayjs } from '../dayjs';
 import type { GDriveFileMeta } from '@shared/lib/googleDrive/api';
 import {
   create,
+  createWithContent,
   download,
   getGFileMetaList,
   SPACE,
@@ -35,6 +36,7 @@ import {
 } from './googleDrivePath';
 
 const GOOGLE_MIME_FOLDER = 'application/vnd.google-apps.folder';
+const GOOGLE_DRIVE_MULTIPART_UPLOAD_LIMIT = 5 * 1024 * 1024;
 /** Internal identifier for the virtual folder "Shared With Me" */
 const SHARED_WITH_ME_ID = 'sharedWithMe';
 const GOOGLE_DRIVE_ROOT_DESCRIPTION = 'Cloud storage from Google Drive';
@@ -447,26 +449,36 @@ export const googleDriveFileSystemProvider = (
         throw new VfsError(FileSystemError.FileNotFound, `File not found: ${path}`);
       }
 
-      const created = await create(
-        { ACCESS_TOKEN: await getTokenForPath(path) },
-        {
-          name: fileName,
-          parents: [parentEntry.id],
-        },
-      );
+      const auth = { ACCESS_TOKEN: await getTokenForPath(path) };
+      const contentSize = getContentSize(content);
+      const resource = {
+        name: fileName,
+        parents: [parentEntry.id],
+      } satisfies Parameters<typeof create>[1];
+
+      if (contentSize <= GOOGLE_DRIVE_MULTIPART_UPLOAD_LIMIT) {
+        const created = await createWithContent(auth, resource, content);
+
+        return {
+          stat: {
+            type: FSNodeType.File,
+            size: contentSize,
+            creationTime: created.result.createdTime
+              ? dayjs(created.result.createdTime).valueOf()
+              : undefined,
+            capabilities: getEntryCapabilities(created.result),
+          },
+        };
+      }
+
+      const created = await create(auth, resource);
 
       try {
-        await upload({ ACCESS_TOKEN: await getTokenForPath(path) }, created.result.id, content);
+        await upload(auth, created.result.id, content);
       } catch (uploadError) {
-        await update(
-          {
-            ACCESS_TOKEN: await getTokenForPath(path),
-          },
-          created.result.id,
-          {
-            trashed: true,
-          },
-        );
+        await update(auth, created.result.id, {
+          trashed: true,
+        });
         throw uploadError;
       }
 

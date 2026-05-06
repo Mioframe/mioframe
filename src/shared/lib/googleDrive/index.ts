@@ -8,14 +8,16 @@ export {
   type GDriveListResponse,
   type ListParams,
   type UpdateParams,
+  type fieldsGDriveFileMeta,
+  type zodGDriveListResponse,
+  type zodGoogleErrorResponse,
   SPACE,
   create,
+  createWithContent,
   download,
   getGFileMetaList,
   update,
   upload,
-  zodGDriveListResponse,
-  zodGoogleErrorResponse,
   type GoogleAuthParams,
 } from './api';
 export { DriveQueryBuilder } from './DriveQueryBuilder';

@@ -234,32 +234,66 @@ function isTypeCheckTarget(filePath) {
   );
 }
 
-function getSiblingTestFile(filePath) {
+function getAllSiblingTestFiles(filePath) {
   if (!filePath.startsWith('src/')) {
-    return null;
+    return [];
   }
 
   if (filePath.endsWith('.test.ts')) {
-    return fileExists(filePath) ? filePath : null;
+    return fileExists(filePath) ? [filePath] : [];
   }
 
   const extension = path.posix.extname(filePath);
 
   if (!SOURCE_EXTENSIONS.includes(extension)) {
-    return null;
+    return [];
   }
 
-  const candidate = `${filePath.slice(0, -extension.length)}.test.ts`;
-  return fileExists(candidate) ? candidate : null;
+  const baseName = path.posix.basename(filePath, extension);
+  const dirPath = path.posix.dirname(filePath);
+  const nameWithoutExt = filePath.slice(0, -extension.length);
+
+  const exactMatch = `${nameWithoutExt}.test.ts`;
+
+  if (fileExists(exactMatch)) {
+    return [exactMatch];
+  }
+
+  const testCandidates = [];
+
+  try {
+    const entries = fs.readdirSync(dirPath, { withFileTypes: true });
+
+    for (const entry of entries) {
+      if (!entry.isFile() || !entry.name.endsWith('.test.ts')) {
+        continue;
+      }
+
+      const candidateBase = entry.name.slice(0, -'.test.ts'.length);
+      const parts = candidateBase.split('.');
+
+      if (parts.length < 2) {
+        continue;
+      }
+
+      if (parts[0] === baseName) {
+        testCandidates.push(path.posix.join(dirPath, entry.name));
+      }
+    }
+  } catch {
+    // directory read failure — fall through to empty array
+  }
+
+  return uniqSorted(testCandidates);
 }
 
 function getVitestScope(changedFiles) {
   const scope = [];
 
   for (const filePath of changedFiles) {
-    const testFile = getSiblingTestFile(filePath);
+    const testFiles = getAllSiblingTestFiles(filePath);
 
-    if (testFile) {
+    for (const testFile of testFiles) {
       scope.push(testFile);
     }
   }
@@ -273,12 +307,29 @@ function isSharedUiFile(filePath) {
 
 function getMutationSourceCandidate(testFilePath) {
   const basePath = testFilePath.slice(0, -'.test.ts'.length);
+  const dirPath = path.posix.dirname(testFilePath);
+  const baseName = path.posix.basename(basePath);
 
   for (const extension of SOURCE_EXTENSIONS) {
     const candidate = `${basePath}${extension}`;
 
     if (fileExists(candidate)) {
       return candidate;
+    }
+  }
+
+  const parts = baseName.split('.');
+
+  if (parts.length >= 2) {
+    const trimmedBaseName = parts.slice(0, -1).join('.');
+    const trimmedPath = `${dirPath}/${trimmedBaseName}`;
+
+    for (const extension of SOURCE_EXTENSIONS) {
+      const candidate = `${trimmedPath}${extension}`;
+
+      if (fileExists(candidate)) {
+        return candidate;
+      }
     }
   }
 
@@ -307,9 +358,9 @@ function getMutationScope(changedFiles) {
       continue;
     }
 
-    const siblingTest = getSiblingTestFile(filePath);
+    const siblingTests = getAllSiblingTestFiles(filePath);
 
-    if (siblingTest) {
+    if (siblingTests.length > 0) {
       scope.push(filePath);
     }
   }
@@ -544,7 +595,7 @@ function getActionRequired(results) {
 }
 
 function printSummary(changedFiles, scope, results) {
-  const status = results.some((result) => result.status === 'failed') ? 'failed' : 'passed';
+  const status = results.some((result) => result.status === 'failed') ? 'failed ❌' : 'passed ✅';
   const actionRequired = getActionRequired(results);
 
   console.log('\nVERIFY RESULT');
