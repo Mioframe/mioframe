@@ -190,7 +190,28 @@ describe('reportHandledError', () => {
     });
   });
 
-  it('retries queued entries after a no-op facade returns an undefined event id', async () => {
+  it('keeps a failed entry queued without starting an infinite retry loop on a no-op facade', async () => {
+    ensureSentryMock.mockResolvedValue(noopFacade);
+
+    const { reportHandledError } = await import('./reportHandledError');
+
+    reportHandledError(new Error('first'), {
+      feature: 'documents',
+      action: 'save',
+    });
+
+    await vi.waitFor(() => {
+      expect(noopFacade.captureException).toHaveBeenCalledTimes(1);
+    });
+
+    await waitForAsyncWork();
+    await waitForAsyncWork();
+
+    expect(ensureSentryMock).toHaveBeenCalledTimes(1);
+    expect(noopFacade.captureException).toHaveBeenCalledTimes(1);
+  });
+
+  it('retries queued entries on the next reportHandledError call after a no-op facade', async () => {
     ensureSentryMock.mockResolvedValueOnce(noopFacade).mockResolvedValue(realFacade);
 
     const { reportHandledError } = await import('./reportHandledError');
@@ -329,8 +350,8 @@ describe('reportHandledError', () => {
     expect(ensureSentryMock).toHaveBeenCalledTimes(2);
   });
 
-  it('preserves failed entries and new entries added during flush for the next successful retry', async () => {
-    ensureSentryMock.mockResolvedValueOnce(noopFacade).mockResolvedValue(realFacade);
+  it('preserves failed and newly queued entries without looping when follow-up flush also sees no-op Sentry', async () => {
+    ensureSentryMock.mockResolvedValue(noopFacade);
 
     const { reportHandledError } = await import('./reportHandledError');
 
@@ -350,14 +371,61 @@ describe('reportHandledError', () => {
     });
 
     await vi.waitFor(() => {
-      expect(realFacade.captureException).toHaveBeenCalledTimes(2);
+      expect(noopFacade.captureException).toHaveBeenCalledTimes(3);
+    });
+
+    await waitForAsyncWork();
+    await waitForAsyncWork();
+
+    expect(getReportedErrors(noopFacade).map((error) => error.message)).toEqual([
+      'first',
+      'first',
+      'second',
+    ]);
+    expect(ensureSentryMock).toHaveBeenCalledTimes(2);
+  });
+
+  it('retries failed and newly queued entries together on the next reportHandledError call', async () => {
+    ensureSentryMock
+      .mockResolvedValueOnce(noopFacade)
+      .mockResolvedValueOnce(noopFacade)
+      .mockResolvedValue(realFacade);
+
+    const { reportHandledError } = await import('./reportHandledError');
+
+    noopFacade.captureException.mockImplementationOnce((error: Error) => {
+      expect(error.message).toBe('first');
+      reportHandledError(new Error('second'), {
+        feature: 'documents',
+        action: 'save',
+      });
+
+      return undefined;
+    });
+
+    reportHandledError(new Error('first'), {
+      feature: 'documents',
+      action: 'save',
+    });
+
+    await vi.waitFor(() => {
+      expect(noopFacade.captureException).toHaveBeenCalledTimes(3);
+    });
+
+    reportHandledError(new Error('third'), {
+      feature: 'documents',
+      action: 'save',
+    });
+
+    await vi.waitFor(() => {
+      expect(realFacade.captureException).toHaveBeenCalledTimes(3);
     });
 
     expect(getReportedErrors(realFacade).map((error) => error.message)).toEqual([
       'first',
       'second',
+      'third',
     ]);
-    expect(noopFacade.captureException).toHaveBeenCalledTimes(1);
-    expect(ensureSentryMock).toHaveBeenCalledTimes(2);
+    expect(ensureSentryMock).toHaveBeenCalledTimes(3);
   });
 });

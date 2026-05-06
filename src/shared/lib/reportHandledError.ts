@@ -18,6 +18,7 @@ type HandledReportEntry = {
 
 const handledReportQueue: HandledReportEntry[] = [];
 let flushPromise: Promise<void> | undefined;
+let hasQueuedReportsDuringFlush = false;
 
 const trimHandledReportQueue = () => {
   if (handledReportQueue.length > HANDLED_REPORT_QUEUE_LIMIT) {
@@ -28,6 +29,10 @@ const trimHandledReportQueue = () => {
 const enqueueHandledReport = (entry: HandledReportEntry) => {
   handledReportQueue.push(entry);
   trimHandledReportQueue();
+
+  if (flushPromise) {
+    hasQueuedReportsDuringFlush = true;
+  }
 };
 
 const sendHandledReport = (
@@ -84,9 +89,12 @@ const kickoffHandledReportFlush = () => {
   flushPromise = flushHandledReports()
     .catch(() => undefined)
     .finally(() => {
-      flushPromise = undefined;
+      const shouldFlushQueuedReports = hasQueuedReportsDuringFlush;
 
-      if (handledReportQueue.length > 0) {
+      flushPromise = undefined;
+      hasQueuedReportsDuringFlush = false;
+
+      if (shouldFlushQueuedReports && handledReportQueue.length > 0) {
         kickoffHandledReportFlush();
       }
     });
