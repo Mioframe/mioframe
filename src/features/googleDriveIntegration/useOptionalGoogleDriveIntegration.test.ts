@@ -2,6 +2,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { effectScope, nextTick, ref, type EffectScope } from 'vue';
 
 const settings = ref<{ googleDriveIntegrationEnabled?: boolean }>({});
+let googleClientId: string | undefined = 'test-google-client-id';
+let googleDriveIntegrationAvailable = true;
 const setGoogleDriveIntegrationEnabledMock = vi.fn();
 const bindGoogleApiMock = vi.fn();
 const requestAccessTokenMock = vi.fn();
@@ -10,7 +12,6 @@ const loadGsiMock = vi.fn();
 const loadGoogleMock = vi.fn();
 const loadGapiMock = vi.fn();
 const loadOauth2Mock = vi.fn();
-const clientId = 'test-google-client-id';
 const activeScopes: EffectScope[] = [];
 
 type Deferred<T> = {
@@ -64,7 +65,12 @@ vi.mock('@shared/service', () => ({
 }));
 
 vi.mock('@shared/config', () => ({
-  GOOGLE_CLIENT_ID: clientId,
+  get GOOGLE_CLIENT_ID() {
+    return googleClientId;
+  },
+  get GOOGLE_DRIVE_INTEGRATION_AVAILABLE() {
+    return googleDriveIntegrationAvailable;
+  },
 }));
 
 vi.mock('@shared/lib/googleApi', () => ({
@@ -79,7 +85,10 @@ vi.mock('@shared/lib/googleApi', () => ({
 describe('useOptionalGoogleDriveIntegration', () => {
   beforeEach(() => {
     vi.restoreAllMocks();
+    vi.resetModules();
     settings.value = {};
+    googleClientId = 'test-google-client-id';
+    googleDriveIntegrationAvailable = true;
     setGoogleDriveIntegrationEnabledMock.mockReset();
     bindGoogleApiMock.mockReset();
     requestAccessTokenMock.mockReset();
@@ -139,10 +148,42 @@ describe('useOptionalGoogleDriveIntegration', () => {
     });
 
     await vi.waitFor(() => {
-      expect(setupGoogleSessionsSpy).toHaveBeenCalledWith(clientId);
+      expect(setupGoogleSessionsSpy).toHaveBeenCalledWith(googleClientId);
       expect(bindGoogleApiMock).toHaveBeenCalledTimes(1);
       expect(setGoogleDriveIntegrationEnabledMock).toHaveBeenLastCalledWith(true);
     });
+    expect(requestAccessTokenMock).not.toHaveBeenCalled();
+    expect(loadGoogleMock).not.toHaveBeenCalled();
+    expect(loadGsiMock).not.toHaveBeenCalled();
+    expect(loadGapiMock).not.toHaveBeenCalled();
+    expect(loadOauth2Mock).not.toHaveBeenCalled();
+
+    scope.stop();
+  });
+
+  it('keeps Google integration disabled when Google Drive integration is unavailable', async () => {
+    settings.value = {
+      googleDriveIntegrationEnabled: true,
+    };
+    googleClientId = undefined;
+    googleDriveIntegrationAvailable = false;
+
+    const scope = createTrackedScope();
+    const googleSessionModule = await import('@entity/googleSession');
+    const setupGoogleSessionsSpy = vi.spyOn(googleSessionModule, 'setupGoogleSessions');
+    const { useOptionalGoogleDriveIntegration } =
+      await import('./useOptionalGoogleDriveIntegration');
+
+    scope.run(() => {
+      useOptionalGoogleDriveIntegration();
+    });
+
+    await Promise.resolve();
+
+    expect(setupGoogleSessionsSpy).not.toHaveBeenCalled();
+    expect(bindGoogleApiMock).not.toHaveBeenCalled();
+    expect(setGoogleDriveIntegrationEnabledMock).toHaveBeenCalledTimes(1);
+    expect(setGoogleDriveIntegrationEnabledMock).toHaveBeenLastCalledWith(false);
     expect(requestAccessTokenMock).not.toHaveBeenCalled();
     expect(loadGoogleMock).not.toHaveBeenCalled();
     expect(loadGsiMock).not.toHaveBeenCalled();

@@ -9,6 +9,7 @@ import { LocalFSWidget } from '@widget/LocalFSWidget';
 import { StarterExamplesWidget } from '@widget/StarterExamplesWidget';
 import type { AMDocumentId } from '@shared/lib/automerge';
 import { useLocalSettings } from '@entity/localSettings';
+import { GOOGLE_DRIVE_INTEGRATION_AVAILABLE } from '@shared/config';
 
 defineSlots<{
   navigationButton: () => unknown;
@@ -72,7 +73,7 @@ const onOpenStarterExampleDocument = ({
     <LocalFSWidget @click-path="onClickLocalPath" />
 
     <GoogleDriveWidget
-      v-if="settings.googleDriveIntegrationEnabled === true"
+      v-if="settings.googleDriveIntegrationEnabled === true && GOOGLE_DRIVE_INTEGRATION_AVAILABLE"
       @click-user="onClickGoogleDriveUser"
     />
     <!-- todo: создать и добавить виджет избранных директорий и документов -->

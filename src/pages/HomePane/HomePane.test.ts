@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createApp, defineComponent, h, nextTick, ref } from 'vue';
 
 const settings = ref<{ googleDriveIntegrationEnabled?: boolean }>({});
+let googleDriveIntegrationAvailable = true;
 
 vi.mock('@entity/localSettings', () => ({
   useLocalSettings: () => ({
@@ -18,6 +19,12 @@ vi.mock('@page/routes', () => ({
 
 vi.mock('@shared/service/google/useGoogleService', () => ({
   GOOGLE_DRIVE_ROOT_NAME: 'Google Drive',
+}));
+
+vi.mock('@shared/config', () => ({
+  get GOOGLE_DRIVE_INTEGRATION_AVAILABLE() {
+    return googleDriveIntegrationAvailable;
+  },
 }));
 
 vi.mock('@shared/ui/Layout', () => ({
@@ -85,6 +92,8 @@ const mountHomePane = async () => {
 
 describe('HomePane', () => {
   afterEach(() => {
+    vi.resetModules();
+    googleDriveIntegrationAvailable = true;
     settings.value = {};
     document.body.innerHTML = '';
   });
@@ -107,6 +116,19 @@ describe('HomePane', () => {
     const { root, unmount } = await mountHomePane();
 
     expect(root.querySelector('[data-testid="google-drive-widget"]')).not.toBeNull();
+
+    unmount();
+  });
+
+  it('hides the Google Drive widget when the saved setting is enabled but integration is unavailable', async () => {
+    googleDriveIntegrationAvailable = false;
+    settings.value = {
+      googleDriveIntegrationEnabled: true,
+    };
+
+    const { root, unmount } = await mountHomePane();
+
+    expect(root.querySelector('[data-testid="google-drive-widget"]')).toBeNull();
 
     unmount();
   });
