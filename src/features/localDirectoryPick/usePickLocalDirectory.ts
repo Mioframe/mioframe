@@ -1,9 +1,16 @@
 import { useFileSystem } from '@entity/mountedDirectories';
+import { DomainError } from '@shared/lib/error';
+import { isUserFileSelectionCancel } from '@shared/lib/fileSystem';
 import { isFunction } from 'es-toolkit';
 import { ref, toRef } from 'vue';
+import { reportHandledError } from '@shared/lib/reportHandledError';
 import { useDialog } from '@shared/ui/Dialog';
 import { useSnackbar } from '@shared/ui/Snackbar';
 
+/**
+ * Creates a directory picker flow for mounting a local folder into the app.
+ * @returns Reactive directory-picking state and action.
+ */
 export const usePickLocalDirectory = () => {
   const loading = ref(false);
   const { alert } = useDialog();
@@ -49,8 +56,14 @@ export const usePickLocalDirectory = () => {
 
       await addDeviceDirectory(directoryHandle);
     } catch (error) {
-      if (!(error instanceof DOMException && error.name === 'AbortError')) {
-        throw error;
+      if (!isUserFileSelectionCancel(error)) {
+        addSnackbar({
+          text: error instanceof DomainError ? error.message : 'Could not add the folder',
+        });
+        reportHandledError(error, {
+          feature: 'localDirectoryPick',
+          action: 'pickLocalDirectory',
+        });
       }
     } finally {
       loading.value = false;

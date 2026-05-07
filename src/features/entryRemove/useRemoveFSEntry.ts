@@ -1,8 +1,14 @@
 import { useFileSystem } from '@entity/mountedDirectories';
+import { DomainError } from '@shared/lib/error';
+import { reportHandledError } from '@shared/lib/reportHandledError';
 import { PathUtils, VfsError, FileSystemError } from '@shared/lib/virtualFileSystem';
 import { useDialog } from '@shared/ui/Dialog';
 import { useSnackbar } from '@shared/ui/Snackbar';
 
+/**
+ * Creates a remove action that shows user-facing feedback for file-system entry deletion.
+ * @returns Remove helpers for file-system entries.
+ */
 export const useRemoveFSEntry = () => {
   const { confirm } = useDialog();
   const { addSnackbar } = useSnackbar();
@@ -39,16 +45,27 @@ export const useRemoveFSEntry = () => {
               await removeEntry(path, true);
             } catch (recursiveError) {
               addSnackbar({
-                text: `Error: ${recursiveError instanceof Error ? recursiveError.message : 'Error deleting Entry'}`,
+                text:
+                  recursiveError instanceof DomainError
+                    ? recursiveError.message
+                    : 'Could not remove the directory',
               });
-              throw recursiveError;
+              reportHandledError(recursiveError, {
+                feature: 'entryRemove',
+                action: 'removeEntryRecursive',
+                path,
+              });
             }
           }
         } else {
           addSnackbar({
-            text: `Error: ${error instanceof Error ? error.message : 'Error deleting Entry'}`,
+            text: error instanceof DomainError ? error.message : 'Could not remove the item',
           });
-          throw error;
+          reportHandledError(error, {
+            feature: 'entryRemove',
+            action: 'removeEntry',
+            path,
+          });
         }
       }
     }

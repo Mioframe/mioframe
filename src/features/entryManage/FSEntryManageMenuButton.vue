@@ -5,10 +5,14 @@ import { DirectoryCreateDialog } from '@feature/directoryCreate';
 import { DocumentCreationDialog } from '@feature/documentCreate';
 import { useRemoveFSEntry } from '@feature/entryRemove';
 import { FSEntryRenameDialog } from '@feature/entryRename';
-import { useImportDocument } from '@feature/importDocument';
+import { ImportDocumentErrorCode, useImportDocument } from '@feature/importDocument';
+import { DomainError } from '@shared/lib/error';
+import { isUserFileSelectionCancel } from '@shared/lib/fileSystem';
+import { reportHandledError } from '@shared/lib/reportHandledError';
 import { FSNodeType, PathUtils } from '@shared/lib/virtualFileSystem';
 import { defineMenuButtonList, MDContextMenuButton } from '@shared/ui/Menu';
 import { defineMenuButton } from '@shared/ui/Menu/defineMenuButtonList';
+import { useSnackbar } from '@shared/ui/Snackbar';
 import { computed, shallowRef, toRefs } from 'vue';
 
 const props = defineProps<{
@@ -111,6 +115,11 @@ const showCreateDocumentDialog = shallowRef(false);
 const showRenameDialog = shallowRef(false);
 
 const { importJsonFile } = useImportDocument();
+const { addSnackbar } = useSnackbar();
+
+const shouldSkipImportErrorReport = (error: unknown) =>
+  isUserFileSelectionCancel(error) ||
+  (error instanceof DomainError && error.code === ImportDocumentErrorCode.invalidJson);
 
 const onClickMenuAction = async ({ key }: { key: FSEntryContextEvent }) => {
   switch (key) {
@@ -136,7 +145,24 @@ const onClickMenuAction = async ({ key }: { key: FSEntryContextEvent }) => {
     }
     case FSEntryContextEvent.importJson: {
       if (isDirectory.value) {
-        await importJsonFile(path.value);
+        try {
+          const documentId = await importJsonFile(path.value);
+
+          if (documentId) {
+            addSnackbar({ text: 'Document imported' });
+          }
+        } catch (error) {
+          addSnackbar({
+            text: error instanceof DomainError ? error.message : 'Could not import the document',
+          });
+          if (!shouldSkipImportErrorReport(error)) {
+            reportHandledError(error, {
+              feature: 'documentImport',
+              action: 'importDocumentJson',
+              path: path.value,
+            });
+          }
+        }
       }
       break;
     }

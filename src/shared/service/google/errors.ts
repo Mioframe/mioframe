@@ -1,5 +1,8 @@
 import { DomainError } from '@shared/lib/error';
 
+/**
+ * Stable error codes for Google authorization flows.
+ */
 export enum GoogleAuthErrorCode {
   popupBlocked = 'popup_blocked',
   reauthRequired = 'reauth_required',
@@ -7,26 +10,50 @@ export enum GoogleAuthErrorCode {
   revokeFailed = 'revoke_failed',
 }
 
-export class GoogleAuthError extends DomainError {
+/**
+ * Context used to build a Google authorization error.
+ */
+type GoogleAuthErrorDetails = {
+  /** Stable authorization error code. */
+  code: GoogleAuthErrorCode;
+  /** Expected account email when relevant. */
+  expectedEmail?: string | undefined;
+  /** Actual authorized account email when relevant. */
+  actualEmail?: string | undefined;
+  /** Account email associated with the revoke flow. */
+  email?: string | undefined;
+};
+
+/**
+ * Optional constructor options for Google authorization errors.
+ */
+type GoogleAuthErrorOptions = {
+  /** Underlying cause preserved for debugging. */
+  cause?: unknown;
+};
+
+/**
+ * Domain error for user-facing Google authorization failures.
+ */
+export class GoogleAuthError extends DomainError<GoogleAuthErrorCode> {
   override name = 'GoogleAuthError';
-  readonly code: GoogleAuthErrorCode;
+  /** Stable authorization error code. */
+  override readonly code: GoogleAuthErrorCode;
+  /** Expected account email when relevant. */
   readonly expectedEmail?: string | undefined;
+  /** Actual authorized account email when relevant. */
   readonly actualEmail?: string | undefined;
+  /** Account email associated with the revoke flow. */
   readonly email?: string | undefined;
 
+  /**
+   * Creates a Google authorization error from typed flow context.
+   * @param details - Structured details that determine the user-facing message.
+   * @param options - Optional cause preserved for debugging.
+   */
   constructor(
-    {
-      code,
-      expectedEmail,
-      actualEmail,
-      email,
-    }: {
-      code: GoogleAuthErrorCode;
-      expectedEmail?: string | undefined;
-      actualEmail?: string | undefined;
-      email?: string | undefined;
-    },
-    options?: { cause?: unknown },
+    { code, expectedEmail, actualEmail, email }: GoogleAuthErrorDetails,
+    options?: GoogleAuthErrorOptions,
   ) {
     super(
       GoogleAuthError.getMessage({
@@ -43,17 +70,12 @@ export class GoogleAuthError extends DomainError {
     this.email = email;
   }
 
-  private static getMessage({
-    code,
-    expectedEmail,
-    actualEmail,
-    email,
-  }: {
-    code: GoogleAuthErrorCode;
-    expectedEmail?: string | undefined;
-    actualEmail?: string | undefined;
-    email?: string | undefined;
-  }) {
+  /**
+   * Builds the user-facing authorization message from typed error details.
+   * @param details - Structured authorization failure details.
+   * @returns User-facing message for the current authorization failure.
+   */
+  private static getMessage({ code, expectedEmail, actualEmail, email }: GoogleAuthErrorDetails) {
     switch (code) {
       case GoogleAuthErrorCode.popupBlocked:
         return 'Browser blocked the Google authorization popup';
