@@ -36,10 +36,10 @@ vi.mock('@shared/ui/Lists', () => ({
       },
       is: {
         type: String,
-        default: 'div',
+        required: true,
       },
       type: {
-        type: String,
+        type: [String, Boolean],
         default: undefined,
       },
     },
@@ -49,10 +49,13 @@ vi.mock('@shared/ui/Lists', () => ({
         h(
           props.is,
           {
-            type: props.type,
-            onClick: () => {
-              emit('click');
-            },
+            type: typeof props.type === 'string' ? props.type : undefined,
+            onClick:
+              props.is === 'button'
+                ? () => {
+                    emit('click');
+                  }
+                : undefined,
           },
           [h('span', props.headline), slots.supportingText?.(), slots.trailingIcon?.()],
         );
@@ -79,7 +82,7 @@ vi.mock('@shared/ui/Checkbox', () => ({
     },
     emits: ['update:modelValue'],
     setup(props, { emit }) {
-      const toggle = () => {
+      const onChange = () => {
         if (props.disabled) {
           return;
         }
@@ -95,7 +98,7 @@ vi.mock('@shared/ui/Checkbox', () => ({
           'aria-label': props.ariaLabel,
           onClick: (event: MouseEvent) => {
             event.stopPropagation();
-            toggle();
+            onChange();
           },
           onKeydown: (event: KeyboardEvent) => {
             if (!['Enter', ' '].includes(event.key)) {
@@ -103,7 +106,7 @@ vi.mock('@shared/ui/Checkbox', () => ({
             }
 
             event.preventDefault();
-            toggle();
+            onChange();
           },
         });
     },
@@ -135,10 +138,15 @@ const mountSettingsSections = async ({
 };
 
 const getButtonByText = (root: HTMLElement, text: string) =>
-  Array.from(root.querySelectorAll('button')).find((button) => button.textContent.includes(text));
+  Array.from(root.querySelectorAll('button')).find((button) => button.textContent.includes(text)) ??
+  null;
 
 const getCheckbox = (root: HTMLElement, label: string) =>
   root.querySelector<HTMLInputElement>(`input[type="checkbox"][aria-label="${label}"]`);
+
+const getStaticRowByText = (root: HTMLElement, text: string) =>
+  Array.from(root.querySelectorAll('div')).find((element) => element.textContent.includes(text)) ??
+  null;
 
 describe('SettingsSections', () => {
   afterEach(() => {
@@ -193,15 +201,38 @@ describe('SettingsSections', () => {
 
     const { root, unmount } = await mountSettingsSections();
     const checkbox = getCheckbox(root, 'Google Drive');
+    const googleDriveButton = getButtonByText(root, 'Google Drive');
 
     expect(root.textContent).toContain('Google Drive is not available in this build.');
     expect(checkbox?.checked).toBe(false);
     expect(checkbox?.disabled).toBe(true);
+    expect(googleDriveButton).toBeNull();
 
-    getButtonByText(root, 'Google Drive')?.click();
+    getStaticRowByText(root, 'Google Drive')?.dispatchEvent(
+      new MouseEvent('click', { bubbles: true }),
+    );
     await nextTick();
 
     expect(settings.value.googleDriveIntegrationEnabled).toBe(true);
+
+    unmount();
+  });
+
+  it('renders disabled Error diagnostics as a disabled unchecked checkbox without a button row', async () => {
+    const { root, unmount } = await mountSettingsSections();
+    const checkbox = getCheckbox(root, 'Error diagnostics');
+    const errorDiagnosticsButton = getButtonByText(root, 'Error diagnostics');
+
+    expect(checkbox?.checked).toBe(false);
+    expect(checkbox?.disabled).toBe(true);
+    expect(errorDiagnosticsButton).toBeNull();
+
+    getStaticRowByText(root, 'Error diagnostics')?.dispatchEvent(
+      new MouseEvent('click', { bubbles: true }),
+    );
+    await nextTick();
+
+    expect(settings.value).toEqual({});
 
     unmount();
   });

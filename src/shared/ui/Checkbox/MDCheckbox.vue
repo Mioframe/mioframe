@@ -110,7 +110,7 @@ const onKeydownContainer = (event: KeyboardEvent) => {
     }"
     :disabled="disabled"
     :tabindex="tabIndex"
-    :aria-label="tooltip ?? ariaLabel"
+    :aria-label="tooltip"
     :autofocus="autofocus"
     @click="onClickContainer"
     @keydown="onKeydownContainer"

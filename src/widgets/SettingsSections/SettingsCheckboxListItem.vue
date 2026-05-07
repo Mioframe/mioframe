@@ -2,28 +2,38 @@
 import { MDCheckbox } from '@shared/ui/Checkbox';
 import { MDListItem } from '@shared/ui/Lists';
 
-const props = defineProps<{
-  headline: string;
-  supportingText: string;
-  checked: boolean;
-  disabled?: boolean | undefined;
-}>();
+const props = withDefaults(
+  defineProps<{
+    headline: string;
+    supportingText: string;
+    checked: boolean;
+    disabled?: boolean | undefined;
+  }>(),
+  {
+    disabled: false,
+  },
+);
 
 const emit = defineEmits<{
-  toggle: [];
+  change: [];
 }>();
 
-const onToggle = () => {
+const onChange = () => {
   if (props.disabled) {
     return;
   }
 
-  emit('toggle');
+  emit('change');
 };
 </script>
 
 <template>
-  <MDListItem is="button" type="button" :headline="headline" @click="onToggle">
+  <MDListItem
+    :is="disabled ? 'div' : 'button'"
+    :type="disabled ? false : 'button'"
+    :headline="headline"
+    @click="onChange"
+  >
     <template #supportingText>
       {{ supportingText }}
     </template>
@@ -33,7 +43,7 @@ const onToggle = () => {
         :model-value="checked"
         :disabled="disabled"
         :aria-label="headline"
-        @update:model-value="onToggle"
+        @update:model-value="onChange"
       />
     </template>
   </MDListItem>

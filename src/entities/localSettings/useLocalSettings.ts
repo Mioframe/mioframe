@@ -12,26 +12,7 @@ const zodSettingsStorage = z._default(
   }),
   { panesWidth: [] },
 );
-
-type SettingsStorage = z.infer<typeof zodSettingsStorage>;
-
 export const useLocalSettings = createGlobalState(() => {
-  const SETTINGS_DESCRIPTION: Record<keyof SettingsStorage, string> = {
-    showPerformance: 'Show performance layer',
-    showAutomergeFiles: 'Show *.automerge files in explorer',
-    googleDriveIntegrationEnabled: 'Enable optional Google Drive integration',
-    hideStarterWidget: 'Hide starter examples on the home screen',
-    panesWidth: 'Store panes width',
-  };
-
-  const SETTINGS_LABEL: Record<keyof SettingsStorage, string> = {
-    showPerformance: 'Performance layer',
-    showAutomergeFiles: 'Show *.automerge files',
-    googleDriveIntegrationEnabled: 'Google Drive',
-    hideStarterWidget: 'Hide starter examples',
-    panesWidth: 'Pane widths',
-  };
-
   const defaultValue = zodSettingsStorage.parse(undefined);
 
   const { data: settings } = useIDBKeyval('settings', defaultValue, {
@@ -41,5 +22,5 @@ export const useLocalSettings = createGlobalState(() => {
     },
   });
 
-  return { settings, SETTINGS_DESCRIPTION, SETTINGS_LABEL };
+  return { settings };
 });

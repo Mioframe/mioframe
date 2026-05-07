@@ -3,7 +3,7 @@ import { useLocalSettings } from '@entity/localSettings';
 import { GOOGLE_DRIVE_INTEGRATION_AVAILABLE } from '@shared/config';
 import { MDListContainer, MDListItem } from '@shared/ui/Lists';
 import SettingsSection from './SettingsSection.vue';
-import SettingsToggleItem from './SettingsToggleItem.vue';
+import SettingsCheckboxListItem from './SettingsCheckboxListItem.vue';
 
 const emit = defineEmits<{
   openPrivacyHelp: [];
@@ -33,7 +33,7 @@ const onOpenPrivacyHelp = () => {
   <div class="settings-sections">
     <SettingsSection title="Privacy & diagnostics">
       <MDListContainer is="div">
-        <SettingsToggleItem
+        <SettingsCheckboxListItem
           headline="Error diagnostics"
           supporting-text="Diagnostics are not available in this build."
           :checked="false"
@@ -44,7 +44,7 @@ const onOpenPrivacyHelp = () => {
 
     <SettingsSection title="Integrations">
       <MDListContainer is="div">
-        <SettingsToggleItem
+        <SettingsCheckboxListItem
           headline="Google Drive"
           :supporting-text="
             GOOGLE_DRIVE_INTEGRATION_AVAILABLE
@@ -57,18 +57,18 @@ const onOpenPrivacyHelp = () => {
               : false
           "
           :disabled="!GOOGLE_DRIVE_INTEGRATION_AVAILABLE"
-          @toggle="onToggleGoogleDrive"
+          @change="onToggleGoogleDrive"
         />
       </MDListContainer>
     </SettingsSection>
 
     <SettingsSection title="Home screen">
       <MDListContainer is="div">
-        <SettingsToggleItem
+        <SettingsCheckboxListItem
           headline="Starter examples"
           supporting-text="Show starter examples on the home screen."
           :checked="settings.hideStarterWidget !== true"
-          @toggle="onToggleStarterExamples"
+          @change="onToggleStarterExamples"
         />
       </MDListContainer>
     </SettingsSection>

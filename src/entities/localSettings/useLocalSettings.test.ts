@@ -13,17 +13,15 @@ describe('useLocalSettings', () => {
     useIDBKeyvalMock.mockReset();
   });
 
-  it('initializes starter widget settings as undefined and exposes labels and descriptions', async () => {
+  it('defaults hideStarterWidget to undefined', async () => {
     useIDBKeyvalMock.mockImplementation((_key, defaultValue: object) => ({
       data: ref(structuredClone(defaultValue)),
     }));
 
     const { useLocalSettings } = await import('./useLocalSettings');
-    const { settings, SETTINGS_DESCRIPTION, SETTINGS_LABEL } = useLocalSettings();
+    const { settings } = useLocalSettings();
 
     expect(settings.value.hideStarterWidget).toBeUndefined();
-    expect(SETTINGS_LABEL.hideStarterWidget).toBe('Hide starter examples');
-    expect(SETTINGS_DESCRIPTION.hideStarterWidget).toBe('Hide starter examples on the home screen');
   });
 
   it('persists false, true, and undefined starter widget states without coercing to true by default', async () => {
@@ -44,19 +42,15 @@ describe('useLocalSettings', () => {
     expect(settings.value.hideStarterWidget).toBeUndefined();
   });
 
-  it('defaults Google Drive integration to disabled and exposes its labels and descriptions', async () => {
+  it('defaults googleDriveIntegrationEnabled to undefined', async () => {
     useIDBKeyvalMock.mockImplementation((_key, defaultValue: object) => ({
       data: ref(structuredClone(defaultValue)),
     }));
 
     const { useLocalSettings } = await import('./useLocalSettings');
-    const { settings, SETTINGS_DESCRIPTION, SETTINGS_LABEL } = useLocalSettings();
+    const { settings } = useLocalSettings();
 
     expect(settings.value.googleDriveIntegrationEnabled).toBeUndefined();
-    expect(SETTINGS_LABEL.googleDriveIntegrationEnabled).toBe('Google Drive');
-    expect(SETTINGS_DESCRIPTION.googleDriveIntegrationEnabled).toBe(
-      'Enable optional Google Drive integration',
-    );
   });
 
   it('persists true and undefined Google Drive integration states without defaulting to true', async () => {
