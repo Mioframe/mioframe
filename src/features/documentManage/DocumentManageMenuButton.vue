@@ -4,7 +4,11 @@ import { DocumentRemoveDialog } from '@feature/documentRemove';
 import { DocumentRenameDialog } from '@feature/documentRename';
 import { useExportDocument } from '@feature/exportDocument';
 import type { AMDocumentId } from '@shared/lib/automerge';
+import { DomainError } from '@shared/lib/error';
+import { isUserFileSelectionCancel } from '@shared/lib/fileSystem';
+import { reportHandledError } from '@shared/lib/reportHandledError';
 import { defineMenuButtonList, MDContextMenuButton } from '@shared/ui/Menu';
+import { useSnackbar } from '@shared/ui/Snackbar';
 import { computed, shallowRef, toRefs } from 'vue';
 
 const props = defineProps<{
@@ -37,6 +41,7 @@ const documentActionButtons = defineMenuButtonList([
 ]);
 
 const { saveJsonFile } = useExportDocument();
+const { addSnackbar } = useSnackbar();
 
 const showRenameDialog = shallowRef(false);
 const showRemoveDialog = shallowRef(false);
@@ -52,7 +57,24 @@ const onClickMenuAction = async ({ key }: { key: DocumentContextEvent }) => {
       break;
     }
     case DocumentContextEvent.exportJson: {
-      await saveJsonFile(directoryPath.value, documentId.value);
+      try {
+        const exported = await saveJsonFile(directoryPath.value, documentId.value);
+
+        if (exported) {
+          addSnackbar({ text: 'Document exported' });
+        }
+      } catch (error) {
+        addSnackbar({
+          text: error instanceof DomainError ? error.message : 'Could not export the document',
+        });
+        if (!isUserFileSelectionCancel(error)) {
+          reportHandledError(error, {
+            feature: 'documentExport',
+            action: 'exportDocumentJson',
+            path: directoryPath.value,
+          });
+        }
+      }
       break;
     }
 
