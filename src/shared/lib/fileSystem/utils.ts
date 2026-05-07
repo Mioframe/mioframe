@@ -4,6 +4,7 @@ import type { FileFSEntry } from './FileFSEntry';
 import { isEqual } from 'es-toolkit';
 import { pathToString } from '@shared/service/directories';
 import { DomainError } from '../error';
+import { FileSystemDomainErrorCode } from './fileSystemErrorCode';
 
 const isNestedPath = (dest: string[], target: string[]) =>
   dest.length >= target.length && isEqual(dest.slice(0, target.length), target);
@@ -20,6 +21,7 @@ export const moveDirectoryTo = async (
 ) => {
   if (isNestedPath(dest.path, currentDirectoryEntry.path)) {
     throw new DomainError('Could not move the directory', {
+      code: FileSystemDomainErrorCode.directoryMoveFailed,
       cause: new Error(
         `impossible to move "${currentDirectoryEntry.name}" from "${currentDirectoryEntry.path.slice(0, -1).join('/')}" to "${dest.path.join('/')}"`,
       ),
@@ -31,12 +33,14 @@ export const moveDirectoryTo = async (
   await from(currentDirectoryEntry.entries()).forEach(async ([, entry]) => {
     if (!('moveTo' in entry)) {
       throw new DomainError('Could not move the item', {
+        code: FileSystemDomainErrorCode.entryMoveFailed,
         cause: new Error(`"${pathToString(entry.path)}" don't have moveTo method`),
       });
     }
 
     if (!('createDirectory' in newDirectoryEntry)) {
       throw new DomainError('Could not move the directory', {
+        code: FileSystemDomainErrorCode.directoryMoveFailed,
         cause: new Error(`"${pathToString(newDirectoryEntry.path)}" don't writable directory`),
       });
     }
@@ -46,6 +50,7 @@ export const moveDirectoryTo = async (
 
   if (!('remove' in currentDirectoryEntry)) {
     throw new DomainError('Could not remove the directory', {
+      code: FileSystemDomainErrorCode.directoryRemoveFailed,
       cause: new Error(`"${pathToString(currentDirectoryEntry.path)}" don't have remove method`),
     });
   }
@@ -71,6 +76,7 @@ export const copyDirectoryTo = async (
 
   if (isNestedPath(destPath, currentPath)) {
     throw new DomainError('Could not copy the directory', {
+      code: FileSystemDomainErrorCode.directoryCopyFailed,
       cause: new Error(`impossible to copy "${currentPath.join('/')}" to "${destPath.join('/')}"`),
     });
   }
@@ -82,12 +88,14 @@ export const copyDirectoryTo = async (
   await from(currentDirectoryEntry.entries()).forEach(async ([, entry]) => {
     if (!('copyTo' in entry)) {
       throw new DomainError('Could not copy the item', {
+        code: FileSystemDomainErrorCode.entryCopyFailed,
         cause: new Error(`"${pathToString(entry.path)}" don't have copyTo method`),
       });
     }
 
     if (!('createDirectory' in newDirectoryEntry)) {
       throw new DomainError('Could not copy the directory', {
+        code: FileSystemDomainErrorCode.directoryCopyFailed,
         cause: new Error(`"${pathToString(newDirectoryEntry.path)}" don't writable directory`),
       });
     }

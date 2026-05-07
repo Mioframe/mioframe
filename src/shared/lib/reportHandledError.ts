@@ -122,6 +122,15 @@ export const reportHandledError = (error: unknown, options: ReportHandledErrorOp
   if (error instanceof DomainError && error.cause instanceof Error) {
     reportedError = error.cause;
     extras.userMessage = error.message;
+    if (error.code !== undefined) {
+      extras.domainErrorCode = error.code;
+    }
+  } else if (error instanceof DomainError) {
+    reportedError = error;
+    extras.userMessage = error.message;
+    if (error.code !== undefined) {
+      extras.domainErrorCode = error.code;
+    }
   } else if (error instanceof Error) {
     reportedError = error;
   } else {
