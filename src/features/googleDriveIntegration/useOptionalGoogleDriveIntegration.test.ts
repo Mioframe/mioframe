@@ -265,4 +265,58 @@ describe('useOptionalGoogleDriveIntegration', () => {
 
     scope.stop();
   });
+
+  it('keeps the final state enabled for true, false, true when the first enable resolves last', async () => {
+    const firstEnableGate = createDeferred<undefined>();
+    let enableCallCount = 0;
+    let googleDriveEnabled = false;
+
+    enableGoogleDriveIntegrationMock.mockImplementation(async () => {
+      enableCallCount += 1;
+
+      if (enableCallCount === 1) {
+        await firstEnableGate.promise;
+      }
+
+      googleDriveEnabled = true;
+    });
+    disableGoogleDriveIntegrationMock.mockImplementation(() => {
+      googleDriveEnabled = false;
+      return Promise.resolve();
+    });
+
+    const scope = createTrackedScope();
+    const { useOptionalGoogleDriveIntegration } =
+      await import('./useOptionalGoogleDriveIntegration');
+
+    scope.run(() => {
+      useOptionalGoogleDriveIntegration();
+    });
+
+    await flushMicrotasks();
+
+    settings.value = {
+      googleDriveIntegrationEnabled: true,
+    };
+    await flushMicrotasks();
+
+    settings.value = {
+      googleDriveIntegrationEnabled: false,
+    };
+    await flushMicrotasks();
+
+    settings.value = {
+      googleDriveIntegrationEnabled: true,
+    };
+    await flushMicrotasks();
+
+    firstEnableGate.resolve(undefined);
+    await flushMicrotasks();
+
+    expect(googleDriveEnabled).toBe(true);
+    expect(enableGoogleDriveIntegrationMock).toHaveBeenCalledTimes(1);
+    expect(disableGoogleDriveIntegrationMock).toHaveBeenCalledTimes(2);
+
+    scope.stop();
+  });
 });

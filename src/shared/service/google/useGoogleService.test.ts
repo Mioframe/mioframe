@@ -21,6 +21,8 @@ const getSessionMock = vi.fn();
 const getSessionStoreMock = vi.fn();
 const clearSessionStoreMock = vi.fn();
 const createDirectoryMock = vi.fn();
+const deleteMock = vi.fn();
+const existsMock = vi.fn();
 const mountMock = vi.fn();
 const unmountMock = vi.fn();
 
@@ -70,8 +72,8 @@ vi.mock('../fileSystem', () => ({
   useFileSystemService: () => ({
     vfs: {
       createDirectory: createDirectoryMock,
-      delete: (path: string, recursive?: boolean) => mockVfs.delete(path, recursive),
-      exists: (path: string) => mockVfs.exists(path),
+      delete: deleteMock,
+      exists: existsMock,
       mount: mountMock,
       readDirectory: (path: string) => mockVfs.readDirectory(path),
       stat: (path: string) => mockVfs.stat(path),
@@ -106,6 +108,8 @@ describe('useGoogleService', () => {
     getSessionStoreMock.mockReset();
     clearSessionStoreMock.mockReset();
     createDirectoryMock.mockReset();
+    deleteMock.mockReset();
+    existsMock.mockReset();
     mountMock.mockReset();
     unmountMock.mockReset();
     vi.mocked(googleDriveFileSystemProvider).mockImplementation(createMockGoogleDriveProvider);
@@ -129,6 +133,10 @@ describe('useGoogleService', () => {
       syncSessionStoreSubject();
     });
     createDirectoryMock.mockImplementation((path: string) => mockVfs.createDirectory(path));
+    deleteMock.mockImplementation((path: string, recursive?: boolean) =>
+      mockVfs.delete(path, recursive),
+    );
+    existsMock.mockImplementation((path: string) => mockVfs.exists(path));
     mountMock.mockImplementation((path: string, provider: IFileSystemProvider) => {
       mockVfs.mount(path, provider);
     });
@@ -441,9 +449,12 @@ describe('useGoogleService', () => {
     await expect(service.sessionList.fetch()).resolves.toEqual([]);
   });
 
-  it('passes reactive sessions to the Google Drive provider', async () => {
+  it('creates the Google Drive provider lazily with reactive sessions', async () => {
     const service = await createService();
     await bindApi(service);
+    expect(googleDriveFileSystemProvider).not.toHaveBeenCalled();
+
+    await service.enableGoogleDriveIntegration();
 
     expect(googleDriveFileSystemProvider).toHaveBeenCalledWith({
       $sessions: expect.objectContaining({
@@ -452,6 +463,69 @@ describe('useGoogleService', () => {
       requestToken: expect.any(Function),
     });
     expect(service.sessionList).toBeDefined();
+  });
+
+  it('mounts Google Drive into the VFS root without creating a backing directory', async () => {
+    const service = await createService();
+    await bindApi(service);
+
+    await service.enableGoogleDriveIntegration();
+
+    const rootEntries = await mockVfs.readDirectory('/');
+
+    expect(rootEntries).toContainEqual([
+      'Google Drive',
+      expect.objectContaining({
+        type: 2,
+      }),
+    ]);
+    expect(createDirectoryMock).not.toHaveBeenCalled();
+    expect(mountMock).toHaveBeenCalledTimes(1);
+    expect(mountMock).toHaveBeenCalledWith('/Google Drive', expect.any(Object));
+  });
+
+  it('unmounts Google Drive from the VFS root without deleting a backing directory', async () => {
+    const service = await createService();
+    await bindApi(service);
+    await service.enableGoogleDriveIntegration();
+
+    await service.disableGoogleDriveIntegration();
+
+    const rootEntries = await mockVfs.readDirectory('/');
+
+    expect(rootEntries.find(([name]) => name === 'Google Drive')).toBeUndefined();
+    expect(deleteMock).not.toHaveBeenCalled();
+    expect(unmountMock).toHaveBeenCalledTimes(1);
+    expect(unmountMock).toHaveBeenCalledWith('/Google Drive');
+  });
+
+  it('deduplicates concurrent enable calls and mounts once', async () => {
+    const service = await createService();
+    await bindApi(service);
+
+    await Promise.all([
+      service.enableGoogleDriveIntegration(),
+      service.enableGoogleDriveIntegration(),
+    ]);
+
+    expect(mountMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('reaches the final enabled state for enable, disable, enable without a backing directory', async () => {
+    const service = await createService();
+    await bindApi(service);
+
+    await service.enableGoogleDriveIntegration();
+    await service.disableGoogleDriveIntegration();
+    await service.enableGoogleDriveIntegration();
+
+    const rootEntries = await mockVfs.readDirectory('/');
+
+    expect(rootEntries.find(([name]) => name === 'Google Drive')).toBeDefined();
+    expect(createDirectoryMock).not.toHaveBeenCalled();
+    expect(deleteMock).not.toHaveBeenCalled();
+    expect(mountMock).toHaveBeenCalledTimes(2);
+    expect(unmountMock).toHaveBeenCalledTimes(1);
   });
 
   it('revokes access and removes the session from session list', async () => {

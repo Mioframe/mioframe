@@ -15,6 +15,7 @@ import { isGoogleAuthPopupBlocked } from './googlePopupError';
 import { distinctUntilChanged, map } from 'rxjs';
 import { keys } from '@shared/lib/objectKeys';
 import type { GoogleSessionProfile } from './googleSessionProfile';
+import type { IFileSystemProvider } from '@shared/lib/virtualFileSystem';
 
 type TokenResponse = google.accounts.oauth2.TokenResponse;
 type UserinfoResult = Awaited<ReturnType<GoogleApi['userinfoGet']>>['result'];
@@ -67,6 +68,9 @@ export type GoogleService = {
 const setupGoogleService = (): GoogleService => {
   let googleApi: undefined | GoogleApi;
   let googleDriveIntegrationEnabled = false;
+  let desiredGoogleDriveIntegrationEnabled = false;
+  let googleDriveLifecyclePromise: Promise<void> = Promise.resolve();
+  let googleDriveProvider: IFileSystemProvider | undefined;
 
   const {
     $store: $sessionStore,
@@ -259,23 +263,36 @@ const setupGoogleService = (): GoogleService => {
 
   const { vfs } = useFileSystemService();
   const googleDrivePath = PathUtils.join('/', GOOGLE_DRIVE_ROOT_NAME);
-  const googleDriveProvider = googleDriveFileSystemProvider({
-    $sessions,
-    requestToken,
-  });
+  const getGoogleDriveProvider = (): IFileSystemProvider => {
+    googleDriveProvider ??= googleDriveFileSystemProvider({
+      $sessions,
+      requestToken,
+    });
 
-  const mountGoogleProvider = async () => {
-    if (!(await vfs.exists(googleDrivePath))) {
-      await vfs.createDirectory(googleDrivePath);
-    }
-
-    vfs.mount(googleDrivePath, googleDriveProvider);
+    return googleDriveProvider;
   };
+  const applyGoogleDriveIntegrationState = (): void => {
+    while (googleDriveIntegrationEnabled !== desiredGoogleDriveIntegrationEnabled) {
+      if (desiredGoogleDriveIntegrationEnabled) {
+        vfs.mount(googleDrivePath, getGoogleDriveProvider());
+        googleDriveIntegrationEnabled = true;
 
-  const removeGoogleDriveRootDirectory = async () => {
-    if (await vfs.exists(googleDrivePath)) {
-      await vfs.delete(googleDrivePath);
+        continue;
+      }
+
+      vfs.unmount(googleDrivePath);
+      googleDriveIntegrationEnabled = false;
     }
+  };
+  const reconcileGoogleDriveIntegration = (enabled: boolean): Promise<void> => {
+    desiredGoogleDriveIntegrationEnabled = enabled;
+    googleDriveLifecyclePromise = googleDriveLifecyclePromise
+      .catch(() => undefined)
+      .then(() => {
+        applyGoogleDriveIntegrationState();
+      });
+
+    return googleDriveLifecyclePromise;
   };
 
   const bindGoogleApi = (api: GoogleApi) => {
@@ -284,24 +301,11 @@ const setupGoogleService = (): GoogleService => {
   };
 
   const enableGoogleDriveIntegration = async () => {
-    if (googleDriveIntegrationEnabled) {
-      return;
-    }
-
-    await mountGoogleProvider();
-
-    googleDriveIntegrationEnabled = true;
+    await reconcileGoogleDriveIntegration(true);
   };
 
   const disableGoogleDriveIntegration = () => {
-    if (!googleDriveIntegrationEnabled) {
-      return Promise.resolve();
-    }
-
-    vfs.unmount(googleDrivePath);
-    googleDriveIntegrationEnabled = false;
-
-    return removeGoogleDriveRootDirectory();
+    return reconcileGoogleDriveIntegration(false);
   };
 
   const deleteSession = async (email: string) => {

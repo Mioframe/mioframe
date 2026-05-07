@@ -5,7 +5,7 @@ import {
   revokeGoogleAccess,
 } from '@shared/lib/googleApi';
 import { useMainServiceClient } from '@shared/service';
-import type { GoogleApi } from '@shared/service/google/useGoogleService';
+import type { GoogleApi } from '@shared/service/google';
 
 type UserinfoGet = (request: {
   oauth_token?: string | undefined;
