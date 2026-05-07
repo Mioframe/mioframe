@@ -16,6 +16,7 @@ const props = withDefaults(
     id?: string | undefined;
     readonly?: boolean | undefined;
     tooltip?: string | undefined;
+    ariaLabel?: string | undefined;
     autofocus?: boolean | undefined;
     tabIndex?: number | undefined;
   }>(),
@@ -109,7 +110,7 @@ const onKeydownContainer = (event: KeyboardEvent) => {
     }"
     :disabled="disabled"
     :tabindex="tabIndex"
-    :aria-label="tooltip"
+    :aria-label="tooltip ?? ariaLabel"
     :autofocus="autofocus"
     @click="onClickContainer"
     @keydown="onKeydownContainer"
@@ -120,6 +121,7 @@ const onKeydownContainer = (event: KeyboardEvent) => {
       v-model="stateValue"
       type="checkbox"
       :disabled="disabled"
+      :aria-label="ariaLabel"
       class="md-checkbox__input"
       tabindex="-1"
     />

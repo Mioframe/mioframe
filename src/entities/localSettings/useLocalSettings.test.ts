@@ -59,7 +59,7 @@ describe('useLocalSettings', () => {
     );
   });
 
-  it('persists false and true Google Drive integration states', async () => {
+  it('persists true and undefined Google Drive integration states without defaulting to true', async () => {
     useIDBKeyvalMock.mockImplementation((_key, defaultValue: object) => ({
       data: ref(structuredClone(defaultValue)),
     }));
@@ -67,10 +67,10 @@ describe('useLocalSettings', () => {
     const { useLocalSettings } = await import('./useLocalSettings');
     const { settings } = useLocalSettings();
 
-    settings.value.googleDriveIntegrationEnabled = false;
-    expect(settings.value.googleDriveIntegrationEnabled).toBe(false);
-
     settings.value.googleDriveIntegrationEnabled = true;
     expect(settings.value.googleDriveIntegrationEnabled).toBe(true);
+
+    settings.value.googleDriveIntegrationEnabled = undefined;
+    expect(settings.value.googleDriveIntegrationEnabled).toBeUndefined();
   });
 });
