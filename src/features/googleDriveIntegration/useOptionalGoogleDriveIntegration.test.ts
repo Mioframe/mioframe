@@ -2,8 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { effectScope, nextTick, ref, type EffectScope } from 'vue';
 
 const settings = ref<{ googleDriveIntegrationEnabled?: boolean }>({});
-const enableGoogleDriveIntegrationMock = vi.fn();
-const disableGoogleDriveIntegrationMock = vi.fn();
+const setGoogleDriveIntegrationEnabledMock = vi.fn();
 const bindGoogleApiMock = vi.fn();
 const requestAccessTokenMock = vi.fn();
 const revokeGoogleAccessMock = vi.fn();
@@ -59,8 +58,7 @@ vi.mock('@shared/service', () => ({
   useMainServiceClient: () => ({
     google: {
       bindGoogleApi: bindGoogleApiMock,
-      disableGoogleDriveIntegration: disableGoogleDriveIntegrationMock,
-      enableGoogleDriveIntegration: enableGoogleDriveIntegrationMock,
+      setGoogleDriveIntegrationEnabled: setGoogleDriveIntegrationEnabledMock,
     },
   }),
 }));
@@ -82,8 +80,7 @@ describe('useOptionalGoogleDriveIntegration', () => {
   beforeEach(() => {
     vi.restoreAllMocks();
     settings.value = {};
-    enableGoogleDriveIntegrationMock.mockReset();
-    disableGoogleDriveIntegrationMock.mockReset();
+    setGoogleDriveIntegrationEnabledMock.mockReset();
     bindGoogleApiMock.mockReset();
     requestAccessTokenMock.mockReset();
     revokeGoogleAccessMock.mockReset();
@@ -91,8 +88,7 @@ describe('useOptionalGoogleDriveIntegration', () => {
     loadGoogleMock.mockReset();
     loadGapiMock.mockReset();
     loadOauth2Mock.mockReset();
-    enableGoogleDriveIntegrationMock.mockResolvedValue(undefined);
-    disableGoogleDriveIntegrationMock.mockResolvedValue(undefined);
+    setGoogleDriveIntegrationEnabledMock.mockResolvedValue(undefined);
     bindGoogleApiMock.mockResolvedValue(undefined);
   });
 
@@ -115,8 +111,8 @@ describe('useOptionalGoogleDriveIntegration', () => {
 
     await Promise.resolve();
 
-    expect(disableGoogleDriveIntegrationMock).toHaveBeenCalledTimes(1);
-    expect(enableGoogleDriveIntegrationMock).not.toHaveBeenCalled();
+    expect(setGoogleDriveIntegrationEnabledMock).toHaveBeenCalledTimes(1);
+    expect(setGoogleDriveIntegrationEnabledMock).toHaveBeenLastCalledWith(false);
     expect(setupGoogleSessionsSpy).not.toHaveBeenCalled();
     expect(requestAccessTokenMock).not.toHaveBeenCalled();
     expect(loadGoogleMock).not.toHaveBeenCalled();
@@ -145,8 +141,7 @@ describe('useOptionalGoogleDriveIntegration', () => {
     await vi.waitFor(() => {
       expect(setupGoogleSessionsSpy).toHaveBeenCalledWith(clientId);
       expect(bindGoogleApiMock).toHaveBeenCalledTimes(1);
-      expect(enableGoogleDriveIntegrationMock).toHaveBeenCalledTimes(1);
-      expect(disableGoogleDriveIntegrationMock).not.toHaveBeenCalled();
+      expect(setGoogleDriveIntegrationEnabledMock).toHaveBeenLastCalledWith(true);
     });
     expect(requestAccessTokenMock).not.toHaveBeenCalled();
     expect(loadGoogleMock).not.toHaveBeenCalled();
@@ -174,14 +169,14 @@ describe('useOptionalGoogleDriveIntegration', () => {
       googleDriveIntegrationEnabled: true,
     };
     await vi.waitFor(() => {
-      expect(enableGoogleDriveIntegrationMock).toHaveBeenCalledTimes(1);
+      expect(setGoogleDriveIntegrationEnabledMock).toHaveBeenLastCalledWith(true);
     });
 
     settings.value = {
       googleDriveIntegrationEnabled: false,
     };
     await vi.waitFor(() => {
-      expect(disableGoogleDriveIntegrationMock).toHaveBeenCalledTimes(2);
+      expect(setGoogleDriveIntegrationEnabledMock).toHaveBeenLastCalledWith(false);
     });
 
     settings.value = {
@@ -189,8 +184,7 @@ describe('useOptionalGoogleDriveIntegration', () => {
     };
     await vi.waitFor(() => {
       expect(setupGoogleSessionsSpy).toHaveBeenCalledTimes(1);
-      expect(enableGoogleDriveIntegrationMock).toHaveBeenCalledTimes(2);
-      expect(disableGoogleDriveIntegrationMock).toHaveBeenCalledTimes(2);
+      expect(setGoogleDriveIntegrationEnabledMock).toHaveBeenLastCalledWith(true);
     });
 
     scope.stop();
@@ -214,27 +208,25 @@ describe('useOptionalGoogleDriveIntegration', () => {
     await flushMicrotasks();
 
     expect(bindGoogleApiMock).toHaveBeenCalledTimes(1);
-    expect(enableGoogleDriveIntegrationMock).not.toHaveBeenCalled();
+    expect(setGoogleDriveIntegrationEnabledMock).not.toHaveBeenCalled();
 
     bindGate.resolve(undefined);
     await vi.waitFor(() => {
-      expect(enableGoogleDriveIntegrationMock).toHaveBeenCalledTimes(1);
+      expect(setGoogleDriveIntegrationEnabledMock).toHaveBeenLastCalledWith(true);
     });
 
     scope.stop();
   });
 
-  it('keeps the final state disabled when enable resolves after a later disable', async () => {
+  it('keeps the final state disabled when setup resolves after a later disable', async () => {
     const enableGate = createDeferred<undefined>();
-    let googleDriveEnabled = false;
 
-    enableGoogleDriveIntegrationMock.mockImplementation(async () => {
+    setGoogleDriveIntegrationEnabledMock.mockImplementation(async (enabled: boolean) => {
+      if (!enabled) {
+        return;
+      }
+
       await enableGate.promise;
-      googleDriveEnabled = true;
-    });
-    disableGoogleDriveIntegrationMock.mockImplementation(() => {
-      googleDriveEnabled = false;
-      return Promise.resolve();
     });
 
     const scope = createTrackedScope();
@@ -260,29 +252,25 @@ describe('useOptionalGoogleDriveIntegration', () => {
     enableGate.resolve(undefined);
     await flushMicrotasks();
 
-    expect(googleDriveEnabled).toBe(false);
-    expect(disableGoogleDriveIntegrationMock).toHaveBeenCalled();
+    expect(setGoogleDriveIntegrationEnabledMock).toHaveBeenLastCalledWith(false);
 
     scope.stop();
   });
 
-  it('keeps the final state enabled for true, false, true when the first enable resolves last', async () => {
+  it('keeps the final state enabled for true, false, true when the first setup resolves last', async () => {
     const firstEnableGate = createDeferred<undefined>();
     let enableCallCount = 0;
-    let googleDriveEnabled = false;
 
-    enableGoogleDriveIntegrationMock.mockImplementation(async () => {
+    setGoogleDriveIntegrationEnabledMock.mockImplementation(async (enabled: boolean) => {
+      if (!enabled) {
+        return;
+      }
+
       enableCallCount += 1;
 
       if (enableCallCount === 1) {
         await firstEnableGate.promise;
       }
-
-      googleDriveEnabled = true;
-    });
-    disableGoogleDriveIntegrationMock.mockImplementation(() => {
-      googleDriveEnabled = false;
-      return Promise.resolve();
     });
 
     const scope = createTrackedScope();
@@ -313,9 +301,8 @@ describe('useOptionalGoogleDriveIntegration', () => {
     firstEnableGate.resolve(undefined);
     await flushMicrotasks();
 
-    expect(googleDriveEnabled).toBe(true);
-    expect(enableGoogleDriveIntegrationMock).toHaveBeenCalledTimes(1);
-    expect(disableGoogleDriveIntegrationMock).toHaveBeenCalledTimes(2);
+    expect(setGoogleDriveIntegrationEnabledMock).toHaveBeenLastCalledWith(true);
+    expect(enableCallCount).toBe(1);
 
     scope.stop();
   });

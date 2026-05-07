@@ -454,7 +454,7 @@ describe('useGoogleService', () => {
     await bindApi(service);
     expect(googleDriveFileSystemProvider).not.toHaveBeenCalled();
 
-    await service.enableGoogleDriveIntegration();
+    await service.setGoogleDriveIntegrationEnabled(true);
 
     expect(googleDriveFileSystemProvider).toHaveBeenCalledWith({
       $sessions: expect.objectContaining({
@@ -469,7 +469,7 @@ describe('useGoogleService', () => {
     const service = await createService();
     await bindApi(service);
 
-    await service.enableGoogleDriveIntegration();
+    await service.setGoogleDriveIntegrationEnabled(true);
 
     const rootEntries = await mockVfs.readDirectory('/');
 
@@ -487,9 +487,9 @@ describe('useGoogleService', () => {
   it('unmounts Google Drive from the VFS root without deleting a backing directory', async () => {
     const service = await createService();
     await bindApi(service);
-    await service.enableGoogleDriveIntegration();
+    await service.setGoogleDriveIntegrationEnabled(true);
 
-    await service.disableGoogleDriveIntegration();
+    await service.setGoogleDriveIntegrationEnabled(false);
 
     const rootEntries = await mockVfs.readDirectory('/');
 
@@ -504,20 +504,51 @@ describe('useGoogleService', () => {
     await bindApi(service);
 
     await Promise.all([
-      service.enableGoogleDriveIntegration(),
-      service.enableGoogleDriveIntegration(),
+      service.setGoogleDriveIntegrationEnabled(true),
+      service.setGoogleDriveIntegrationEnabled(true),
     ]);
 
     expect(mountMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('concurrent calls with different desired states keep the last requested state', async () => {
+    const service = await createService();
+    await bindApi(service);
+
+    await Promise.all([
+      service.setGoogleDriveIntegrationEnabled(true),
+      service.setGoogleDriveIntegrationEnabled(false),
+    ]);
+
+    await expect(mockVfs.stat('/Google Drive')).rejects.toMatchObject({
+      code: FileSystemError.FileNotFound,
+    });
+    expect(mountMock).not.toHaveBeenCalled();
+    expect(unmountMock).not.toHaveBeenCalled();
+  });
+
+  it('concurrent true, false, true requests settle to enabled', async () => {
+    const service = await createService();
+    await bindApi(service);
+
+    await Promise.all([
+      service.setGoogleDriveIntegrationEnabled(true),
+      service.setGoogleDriveIntegrationEnabled(false),
+      service.setGoogleDriveIntegrationEnabled(true),
+    ]);
+
+    await expect(mockVfs.readDirectory('/Google Drive')).resolves.toEqual([]);
+    expect(mountMock).toHaveBeenCalledTimes(1);
+    expect(unmountMock).not.toHaveBeenCalled();
   });
 
   it('reaches the final enabled state for enable, disable, enable without a backing directory', async () => {
     const service = await createService();
     await bindApi(service);
 
-    await service.enableGoogleDriveIntegration();
-    await service.disableGoogleDriveIntegration();
-    await service.enableGoogleDriveIntegration();
+    await service.setGoogleDriveIntegrationEnabled(true);
+    await service.setGoogleDriveIntegrationEnabled(false);
+    await service.setGoogleDriveIntegrationEnabled(true);
 
     const rootEntries = await mockVfs.readDirectory('/');
 
@@ -737,8 +768,8 @@ describe('useGoogleService', () => {
     const service = await createService();
     await bindApi(service);
 
-    await service.enableGoogleDriveIntegration();
-    await service.disableGoogleDriveIntegration();
+    await service.setGoogleDriveIntegrationEnabled(true);
+    await service.setGoogleDriveIntegrationEnabled(false);
 
     expect(mountMock).toHaveBeenCalledTimes(1);
     expect(unmountMock).toHaveBeenCalledWith('/Google Drive');
@@ -750,10 +781,10 @@ describe('useGoogleService', () => {
     const service = await createService();
     await bindApi(service);
 
-    await service.enableGoogleDriveIntegration();
-    await service.enableGoogleDriveIntegration();
-    await service.disableGoogleDriveIntegration();
-    await service.disableGoogleDriveIntegration();
+    await service.setGoogleDriveIntegrationEnabled(true);
+    await service.setGoogleDriveIntegrationEnabled(true);
+    await service.setGoogleDriveIntegrationEnabled(false);
+    await service.setGoogleDriveIntegrationEnabled(false);
 
     expect(mountMock).toHaveBeenCalledTimes(1);
     expect(unmountMock).toHaveBeenCalledTimes(1);
@@ -763,15 +794,15 @@ describe('useGoogleService', () => {
     const service = await createService();
     await bindApi(service);
 
-    await service.enableGoogleDriveIntegration();
+    await service.setGoogleDriveIntegrationEnabled(true);
     await expect(mockVfs.readDirectory('/Google Drive')).resolves.toEqual([]);
 
-    await service.disableGoogleDriveIntegration();
+    await service.setGoogleDriveIntegrationEnabled(false);
     await expect(mockVfs.stat('/Google Drive')).rejects.toMatchObject({
       code: FileSystemError.FileNotFound,
     });
 
-    await service.enableGoogleDriveIntegration();
+    await service.setGoogleDriveIntegrationEnabled(true);
     await expect(mockVfs.readDirectory('/Google Drive')).resolves.toEqual([]);
   });
 
@@ -779,8 +810,8 @@ describe('useGoogleService', () => {
     const service = await createService();
     await bindApi(service);
 
-    await service.enableGoogleDriveIntegration();
-    await service.disableGoogleDriveIntegration();
+    await service.setGoogleDriveIntegrationEnabled(true);
+    await service.setGoogleDriveIntegrationEnabled(false);
 
     await expect(mockVfs.stat('/Google Drive')).rejects.toMatchObject({
       code: FileSystemError.FileNotFound,

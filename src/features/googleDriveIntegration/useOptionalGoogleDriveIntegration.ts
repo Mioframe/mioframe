@@ -11,14 +11,10 @@ export const useOptionalGoogleDriveIntegration = () => {
   const googleClientId = GOOGLE_CLIENT_ID;
   const { settings } = useLocalSettings();
   const {
-    google: { disableGoogleDriveIntegration, enableGoogleDriveIntegration },
+    google: { setGoogleDriveIntegrationEnabled },
   } = useMainServiceClient();
   let isGoogleApiBound = false;
   let setupGoogleSessionsPromise: Promise<void> | undefined;
-  let desiredEnabled = false;
-  let desiredRevision = 0;
-  let appliedRevision = -1;
-  let reconcilePromise: Promise<void> | undefined;
 
   const ensureGoogleApiBound = async () => {
     if (isGoogleApiBound) {
@@ -39,49 +35,17 @@ export const useOptionalGoogleDriveIntegration = () => {
 
     await setupGoogleSessionsPromise;
   };
-  const reconcileGoogleDriveIntegration = () => {
-    reconcilePromise ??= (async () => {
-      /* eslint-disable no-await-in-loop -- reconcile must stay serial so each await can observe the latest desired state. */
-      while (appliedRevision !== desiredRevision) {
-        const revisionToApply = desiredRevision;
-
-        if (desiredEnabled) {
-          await ensureGoogleApiBound();
-
-          if (revisionToApply !== desiredRevision) {
-            continue;
-          }
-
-          await enableGoogleDriveIntegration();
-        } else {
-          await disableGoogleDriveIntegration();
-        }
-
-        if (revisionToApply !== desiredRevision) {
-          continue;
-        }
-
-        appliedRevision = revisionToApply;
-      }
-      /* eslint-enable no-await-in-loop -- serial reconcile is intentional for deterministic enable/disable ordering. */
-    })().finally(() => {
-      reconcilePromise = undefined;
-
-      if (appliedRevision !== desiredRevision) {
-        void reconcileGoogleDriveIntegration();
-      }
-    });
-
-    return reconcilePromise;
-  };
-
   watch(
-    () => settings.value.googleDriveIntegrationEnabled,
-    async (googleDriveIntegrationEnabled) => {
-      desiredEnabled = googleDriveIntegrationEnabled === true && Boolean(googleClientId);
-      desiredRevision += 1;
+    () => settings.value.googleDriveIntegrationEnabled === true && Boolean(googleClientId),
+    async (enabled) => {
+      if (enabled) {
+        await ensureGoogleApiBound();
+      }
 
-      await reconcileGoogleDriveIntegration();
+      const nextEnabled =
+        settings.value.googleDriveIntegrationEnabled === true && Boolean(googleClientId);
+
+      await setGoogleDriveIntegrationEnabled(nextEnabled);
     },
     { immediate: true },
   );

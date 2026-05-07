@@ -16,6 +16,7 @@ import { distinctUntilChanged, map } from 'rxjs';
 import { keys } from '@shared/lib/objectKeys';
 import type { GoogleSessionProfile } from './googleSessionProfile';
 import type { IFileSystemProvider } from '@shared/lib/virtualFileSystem';
+import pLimit from 'p-limit';
 
 type TokenResponse = google.accounts.oauth2.TokenResponse;
 type UserinfoResult = Awaited<ReturnType<GoogleApi['userinfoGet']>>['result'];
@@ -49,6 +50,8 @@ export type GoogleSessionDisplay = {
 export type GoogleService = {
   /** Binds the lazy Google API implementation without mounting Drive. */
   bindGoogleApi: (api: GoogleApi) => Promise<void>;
+  /** Applies the desired Google Drive mounted state into the shared VFS. */
+  setGoogleDriveIntegrationEnabled: (enabled: boolean) => Promise<void>;
   /** Mounts the Google Drive provider into the shared VFS. */
   enableGoogleDriveIntegration: () => Promise<void>;
   /** Unmounts Google Drive without deleting sessions or revoking access. */
@@ -69,8 +72,8 @@ const setupGoogleService = (): GoogleService => {
   let googleApi: undefined | GoogleApi;
   let googleDriveIntegrationEnabled = false;
   let desiredGoogleDriveIntegrationEnabled = false;
-  let googleDriveLifecyclePromise: Promise<void> = Promise.resolve();
   let googleDriveProvider: IFileSystemProvider | undefined;
+  const applyGoogleDriveIntegrationLimit = pLimit(1);
 
   const {
     $store: $sessionStore,
@@ -271,28 +274,30 @@ const setupGoogleService = (): GoogleService => {
 
     return googleDriveProvider;
   };
-  const applyGoogleDriveIntegrationState = (): void => {
-    while (googleDriveIntegrationEnabled !== desiredGoogleDriveIntegrationEnabled) {
-      if (desiredGoogleDriveIntegrationEnabled) {
-        vfs.mount(googleDrivePath, getGoogleDriveProvider());
-        googleDriveIntegrationEnabled = true;
-
-        continue;
-      }
-
-      vfs.unmount(googleDrivePath);
-      googleDriveIntegrationEnabled = false;
+  const applyGoogleDriveIntegrationState = (enabled: boolean): void => {
+    if (enabled) {
+      vfs.mount(googleDrivePath, getGoogleDriveProvider());
+      googleDriveIntegrationEnabled = true;
+      return;
     }
-  };
-  const reconcileGoogleDriveIntegration = (enabled: boolean): Promise<void> => {
-    desiredGoogleDriveIntegrationEnabled = enabled;
-    googleDriveLifecyclePromise = googleDriveLifecyclePromise
-      .catch(() => undefined)
-      .then(() => {
-        applyGoogleDriveIntegrationState();
-      });
 
-    return googleDriveLifecyclePromise;
+    vfs.unmount(googleDrivePath);
+    googleDriveIntegrationEnabled = false;
+  };
+  const setGoogleDriveIntegrationEnabled = (enabled: boolean): Promise<void> => {
+    desiredGoogleDriveIntegrationEnabled = enabled;
+
+    return applyGoogleDriveIntegrationLimit(() => {
+      for (;;) {
+        const nextEnabled = desiredGoogleDriveIntegrationEnabled;
+
+        if (googleDriveIntegrationEnabled === nextEnabled) {
+          return;
+        }
+
+        applyGoogleDriveIntegrationState(nextEnabled);
+      }
+    });
   };
 
   const bindGoogleApi = (api: GoogleApi) => {
@@ -301,11 +306,11 @@ const setupGoogleService = (): GoogleService => {
   };
 
   const enableGoogleDriveIntegration = async () => {
-    await reconcileGoogleDriveIntegration(true);
+    await setGoogleDriveIntegrationEnabled(true);
   };
 
   const disableGoogleDriveIntegration = () => {
-    return reconcileGoogleDriveIntegration(false);
+    return setGoogleDriveIntegrationEnabled(false);
   };
 
   const deleteSession = async (email: string) => {
@@ -348,6 +353,7 @@ const setupGoogleService = (): GoogleService => {
 
   return {
     bindGoogleApi,
+    setGoogleDriveIntegrationEnabled,
     enableGoogleDriveIntegration,
     disableGoogleDriveIntegration,
     requestToken,

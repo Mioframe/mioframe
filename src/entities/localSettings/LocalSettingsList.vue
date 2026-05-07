@@ -62,7 +62,7 @@ const onClickGoogleDriveIntegrationEnabled = () => {
       </template>
 
       <template #trailingIcon>
-        <MDCheckbox v-model="settings.googleDriveIntegrationEnabled" />
+        <MDCheckbox :model-value="settings.googleDriveIntegrationEnabled" readonly />
       </template>
     </MDListItem>
 
