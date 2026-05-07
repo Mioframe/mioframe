@@ -9,6 +9,9 @@ import type { GoogleAuthError } from './errors';
 import { GoogleAuthErrorCode } from './errors';
 import { BehaviorSubject } from 'rxjs';
 import type { GoogleSessionProfile } from './googleSessionProfile';
+import { MemoryFileSystem } from '@shared/lib/virtualFileSystem/MemoryFileSystem';
+import { FileSystemError, VirtualFileSystem } from '@shared/lib/virtualFileSystem';
+import type { IFileSystemProvider } from '@shared/lib/virtualFileSystem';
 
 const requestTokenMock = vi.fn();
 const userinfoGetMock = vi.fn();
@@ -17,6 +20,11 @@ const updateSessionStoreMock = vi.fn();
 const getSessionMock = vi.fn();
 const getSessionStoreMock = vi.fn();
 const clearSessionStoreMock = vi.fn();
+const createDirectoryMock = vi.fn();
+const deleteMock = vi.fn();
+const existsMock = vi.fn();
+const mountMock = vi.fn();
+const unmountMock = vi.fn();
 
 type SessionRecord = {
   accessToken: string;
@@ -30,6 +38,7 @@ type SessionStore = Record<string, SessionRecord | undefined>;
 let sessionStoreValue: SessionStore;
 let sessionsSubject: BehaviorSubject<string[]>;
 let sessionStoreSubject: BehaviorSubject<SessionStore>;
+let mockVfs: VirtualFileSystem;
 
 const syncSessionsSubject = () => {
   sessionsSubject.next(Object.keys(sessionStoreValue));
@@ -44,11 +53,31 @@ const flushMicrotasks = async () => {
   await Promise.resolve();
 };
 
+const createMockGoogleDriveProvider = () => {
+  const provider = new MemoryFileSystem();
+
+  return {
+    createDirectory: provider.createDirectory.bind(provider),
+    delete: provider.delete.bind(provider),
+    move: provider.move.bind(provider),
+    readDirectory: provider.readDirectory.bind(provider),
+    readFile: provider.readFile.bind(provider),
+    stat: provider.stat.bind(provider),
+    watch: () => () => {},
+    writeFile: provider.writeFile.bind(provider),
+  };
+};
+
 vi.mock('../fileSystem', () => ({
   useFileSystemService: () => ({
     vfs: {
-      createDirectory: vi.fn(),
-      mount: vi.fn(),
+      createDirectory: createDirectoryMock,
+      delete: deleteMock,
+      exists: existsMock,
+      mount: mountMock,
+      readDirectory: (path: string) => mockVfs.readDirectory(path),
+      stat: (path: string) => mockVfs.stat(path),
+      unmount: unmountMock,
     },
   }),
 }));
@@ -78,10 +107,18 @@ describe('useGoogleService', () => {
     getSessionMock.mockReset();
     getSessionStoreMock.mockReset();
     clearSessionStoreMock.mockReset();
+    createDirectoryMock.mockReset();
+    deleteMock.mockReset();
+    existsMock.mockReset();
+    mountMock.mockReset();
+    unmountMock.mockReset();
+    vi.mocked(googleDriveFileSystemProvider).mockImplementation(createMockGoogleDriveProvider);
 
     sessionStoreValue = {};
     sessionsSubject = new BehaviorSubject<string[]>([]);
     sessionStoreSubject = new BehaviorSubject<SessionStore>({});
+    mockVfs = new VirtualFileSystem();
+    mockVfs.mount('/', new MemoryFileSystem());
 
     getSessionStoreMock.mockImplementation(() => sessionStoreValue);
     updateSessionStoreMock.mockImplementation((nextStore: SessionStore) => {
@@ -95,6 +132,17 @@ describe('useGoogleService', () => {
       syncSessionsSubject();
       syncSessionStoreSubject();
     });
+    createDirectoryMock.mockImplementation((path: string) => mockVfs.createDirectory(path));
+    deleteMock.mockImplementation((path: string, recursive?: boolean) =>
+      mockVfs.delete(path, recursive),
+    );
+    existsMock.mockImplementation((path: string) => mockVfs.exists(path));
+    mountMock.mockImplementation((path: string, provider: IFileSystemProvider) => {
+      mockVfs.mount(path, provider);
+    });
+    unmountMock.mockImplementation((path: string) => {
+      mockVfs.unmount(path);
+    });
 
     revokeMock.mockResolvedValue(undefined);
     userinfoGetMock.mockResolvedValue({
@@ -105,8 +153,10 @@ describe('useGoogleService', () => {
   const createService = async () => {
     const { useGoogleService } = await import('./useGoogleService');
 
-    const service = useGoogleService();
+    return useGoogleService();
+  };
 
+  const bindApi = async (service: Awaited<ReturnType<typeof createService>>) => {
     await service.bindGoogleApi({
       requestAccessToken: requestTokenMock,
       userinfoGet: userinfoGetMock,
@@ -114,8 +164,6 @@ describe('useGoogleService', () => {
     });
 
     await flushMicrotasks();
-
-    return service;
   };
 
   it('deduplicates concurrent token requests for the same email and scopes', async () => {
@@ -131,6 +179,7 @@ describe('useGoogleService', () => {
     });
 
     const service = await createService();
+    await bindApi(service);
     const scope = DRIVE_GOOGLE_SCOPE.all;
 
     const [firstToken, secondToken] = await Promise.all([
@@ -171,6 +220,7 @@ describe('useGoogleService', () => {
     syncSessionStoreSubject();
 
     const service = await createService();
+    await bindApi(service);
 
     await expect(service.sessionList.fetch()).resolves.toEqual([
       {
@@ -198,6 +248,7 @@ describe('useGoogleService', () => {
     syncSessionStoreSubject();
 
     const service = await createService();
+    await bindApi(service);
 
     await expect(service.sessionList.fetch()).resolves.toEqual([
       {
@@ -229,6 +280,7 @@ describe('useGoogleService', () => {
     syncSessionStoreSubject();
 
     const service = await createService();
+    await bindApi(service);
 
     await expect(service.sessionList.fetch()).resolves.toEqual([
       {
@@ -255,6 +307,7 @@ describe('useGoogleService', () => {
       });
 
     const service = await createService();
+    await bindApi(service);
 
     const [driveToken, profileToken] = await Promise.all([
       service.requestToken([DRIVE_GOOGLE_SCOPE.all], 'user@example.com'),
@@ -282,6 +335,7 @@ describe('useGoogleService', () => {
     syncSessionStoreSubject();
 
     const service = await createService();
+    await bindApi(service);
 
     const token = await service.requestToken([DRIVE_GOOGLE_SCOPE.all], 'user@example.com');
 
@@ -311,6 +365,7 @@ describe('useGoogleService', () => {
     });
 
     const service = await createService();
+    await bindApi(service);
 
     const token = await service.requestToken([DRIVE_GOOGLE_SCOPE.all], 'user@example.com');
 
@@ -336,6 +391,7 @@ describe('useGoogleService', () => {
     });
 
     const service = await createService();
+    await bindApi(service);
     const scope = DRIVE_GOOGLE_SCOPE.all;
 
     const firstResults = await Promise.allSettled([
@@ -384,6 +440,7 @@ describe('useGoogleService', () => {
     syncSessionStoreSubject();
 
     const service = await createService();
+    await bindApi(service);
 
     await service.deleteSession('user@example.com');
 
@@ -392,8 +449,12 @@ describe('useGoogleService', () => {
     await expect(service.sessionList.fetch()).resolves.toEqual([]);
   });
 
-  it('passes reactive sessions to the Google Drive provider', async () => {
+  it('creates the Google Drive provider lazily with reactive sessions', async () => {
     const service = await createService();
+    await bindApi(service);
+    expect(googleDriveFileSystemProvider).not.toHaveBeenCalled();
+
+    await service.setGoogleDriveIntegrationEnabled(true);
 
     expect(googleDriveFileSystemProvider).toHaveBeenCalledWith({
       $sessions: expect.objectContaining({
@@ -402,6 +463,100 @@ describe('useGoogleService', () => {
       requestToken: expect.any(Function),
     });
     expect(service.sessionList).toBeDefined();
+  });
+
+  it('mounts Google Drive into the VFS root without creating a backing directory', async () => {
+    const service = await createService();
+    await bindApi(service);
+
+    await service.setGoogleDriveIntegrationEnabled(true);
+
+    const rootEntries = await mockVfs.readDirectory('/');
+
+    expect(rootEntries).toContainEqual([
+      'Google Drive',
+      expect.objectContaining({
+        type: 2,
+      }),
+    ]);
+    expect(createDirectoryMock).not.toHaveBeenCalled();
+    expect(mountMock).toHaveBeenCalledTimes(1);
+    expect(mountMock).toHaveBeenCalledWith('/Google Drive', expect.any(Object));
+  });
+
+  it('unmounts Google Drive from the VFS root without deleting a backing directory', async () => {
+    const service = await createService();
+    await bindApi(service);
+    await service.setGoogleDriveIntegrationEnabled(true);
+
+    await service.setGoogleDriveIntegrationEnabled(false);
+
+    const rootEntries = await mockVfs.readDirectory('/');
+
+    expect(rootEntries.find(([name]) => name === 'Google Drive')).toBeUndefined();
+    expect(deleteMock).not.toHaveBeenCalled();
+    expect(unmountMock).toHaveBeenCalledTimes(1);
+    expect(unmountMock).toHaveBeenCalledWith('/Google Drive');
+  });
+
+  it('deduplicates concurrent enable calls and mounts once', async () => {
+    const service = await createService();
+    await bindApi(service);
+
+    await Promise.all([
+      service.setGoogleDriveIntegrationEnabled(true),
+      service.setGoogleDriveIntegrationEnabled(true),
+    ]);
+
+    expect(mountMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('concurrent calls with different desired states keep the last requested state', async () => {
+    const service = await createService();
+    await bindApi(service);
+
+    await Promise.all([
+      service.setGoogleDriveIntegrationEnabled(true),
+      service.setGoogleDriveIntegrationEnabled(false),
+    ]);
+
+    await expect(mockVfs.stat('/Google Drive')).rejects.toMatchObject({
+      code: FileSystemError.FileNotFound,
+    });
+    expect(mountMock).not.toHaveBeenCalled();
+    expect(unmountMock).not.toHaveBeenCalled();
+  });
+
+  it('concurrent true, false, true requests settle to enabled', async () => {
+    const service = await createService();
+    await bindApi(service);
+
+    await Promise.all([
+      service.setGoogleDriveIntegrationEnabled(true),
+      service.setGoogleDriveIntegrationEnabled(false),
+      service.setGoogleDriveIntegrationEnabled(true),
+    ]);
+
+    await expect(mockVfs.readDirectory('/Google Drive')).resolves.toEqual([]);
+    expect(mountMock).toHaveBeenCalledTimes(1);
+    expect(unmountMock).not.toHaveBeenCalled();
+  });
+
+  it('reaches the final enabled state for enable, disable, enable without a backing directory', async () => {
+    const service = await createService();
+    await bindApi(service);
+
+    await service.setGoogleDriveIntegrationEnabled(true);
+    await service.setGoogleDriveIntegrationEnabled(false);
+    await service.setGoogleDriveIntegrationEnabled(true);
+
+    const rootEntries = await mockVfs.readDirectory('/');
+
+    expect(rootEntries.find(([name]) => name === 'Google Drive')).toBeDefined();
+    expect(createDirectoryMock).not.toHaveBeenCalled();
+    expect(deleteMock).not.toHaveBeenCalled();
+    expect(mountMock).toHaveBeenCalledTimes(2);
+    expect(unmountMock).toHaveBeenCalledTimes(1);
   });
 
   it('revokes access and removes the session from session list', async () => {
@@ -419,6 +574,7 @@ describe('useGoogleService', () => {
     syncSessionStoreSubject();
 
     const service = await createService();
+    await bindApi(service);
 
     await service.revokeAccess('user@example.com');
 
@@ -438,6 +594,7 @@ describe('useGoogleService', () => {
     revokeMock.mockRejectedValueOnce(new Error('revoke failed'));
 
     const service = await createService();
+    await bindApi(service);
 
     await expect(service.revokeAccess('user@example.com')).rejects.toMatchObject({
       code: GoogleAuthErrorCode.revokeFailed,
@@ -457,6 +614,7 @@ describe('useGoogleService', () => {
     requestTokenMock.mockRejectedValueOnce(new GoogleClientConfigError(popupBlockedError));
 
     const service = await createService();
+    await bindApi(service);
 
     await expect(
       service.requestToken([DRIVE_GOOGLE_SCOPE.all], 'user@example.com'),
@@ -478,6 +636,7 @@ describe('useGoogleService', () => {
     });
 
     const service = await createService();
+    await bindApi(service);
 
     await expect(
       service.requestToken([DRIVE_GOOGLE_SCOPE.all], 'user@example.com'),
@@ -524,6 +683,7 @@ describe('useGoogleService', () => {
     });
 
     const service = await createService();
+    await bindApi(service);
 
     await service.requestToken([DRIVE_GOOGLE_SCOPE.all], 'user@example.com');
 
@@ -567,6 +727,7 @@ describe('useGoogleService', () => {
     });
 
     const service = await createService();
+    await bindApi(service);
 
     await service.requestToken([DRIVE_GOOGLE_SCOPE.all], 'user@example.com');
 
@@ -585,9 +746,79 @@ describe('useGoogleService', () => {
 
   it('clears sessions', async () => {
     const service = await createService();
+    await bindApi(service);
 
     await service.clear();
 
     expect(clearSessionStoreMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not mount Google Drive until integration is explicitly enabled', async () => {
+    const service = await createService();
+    await bindApi(service);
+
+    expect(mountMock).not.toHaveBeenCalled();
+    await expect(mockVfs.readDirectory('/Google Drive/user@example.com')).rejects.toMatchObject({
+      code: FileSystemError.FileNotFound,
+    });
+    expect(requestTokenMock).not.toHaveBeenCalled();
+  });
+
+  it('mounts and unmounts Google Drive integration without clearing sessions or revoking access', async () => {
+    const service = await createService();
+    await bindApi(service);
+
+    await service.setGoogleDriveIntegrationEnabled(true);
+    await service.setGoogleDriveIntegrationEnabled(false);
+
+    expect(mountMock).toHaveBeenCalledTimes(1);
+    expect(unmountMock).toHaveBeenCalledWith('/Google Drive');
+    expect(clearSessionStoreMock).not.toHaveBeenCalled();
+    expect(revokeMock).not.toHaveBeenCalled();
+  });
+
+  it('keeps repeated enable and disable operations idempotent', async () => {
+    const service = await createService();
+    await bindApi(service);
+
+    await service.setGoogleDriveIntegrationEnabled(true);
+    await service.setGoogleDriveIntegrationEnabled(true);
+    await service.setGoogleDriveIntegrationEnabled(false);
+    await service.setGoogleDriveIntegrationEnabled(false);
+
+    expect(mountMock).toHaveBeenCalledTimes(1);
+    expect(unmountMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('enable -> disable -> enable works', async () => {
+    const service = await createService();
+    await bindApi(service);
+
+    await service.setGoogleDriveIntegrationEnabled(true);
+    await expect(mockVfs.readDirectory('/Google Drive')).resolves.toEqual([]);
+
+    await service.setGoogleDriveIntegrationEnabled(false);
+    await expect(mockVfs.stat('/Google Drive')).rejects.toMatchObject({
+      code: FileSystemError.FileNotFound,
+    });
+
+    await service.setGoogleDriveIntegrationEnabled(true);
+    await expect(mockVfs.readDirectory('/Google Drive')).resolves.toEqual([]);
+  });
+
+  it('disable removes Google Drive from root directory', async () => {
+    const service = await createService();
+    await bindApi(service);
+
+    await service.setGoogleDriveIntegrationEnabled(true);
+    await service.setGoogleDriveIntegrationEnabled(false);
+
+    await expect(mockVfs.stat('/Google Drive')).rejects.toMatchObject({
+      code: FileSystemError.FileNotFound,
+    });
+    await expect(mockVfs.readDirectory('/')).resolves.not.toContainEqual([
+      'Google Drive',
+      expect.anything(),
+    ]);
   });
 });

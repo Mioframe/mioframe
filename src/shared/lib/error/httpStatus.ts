@@ -1,5 +1,24 @@
 /**
  * Standard HTTP response status codes used by Beaver.
+ *
+ * This enum provides typed constants for standard HTTP status codes used in
+ * error handling and Google Drive API adapters.
+ *
+ * Categories:
+ * - `2xx`: successful requests
+ * - `4xx`: client errors
+ * - `5xx`: server errors
+ * Based on RFC 7231 and RFC 9110.
+ * @example
+ * ```ts
+ * if (response.status === HttpStatusCode.UNAUTHORIZED) {
+ *   // Redirect to login
+ * }
+ *
+ * if (error.code === HttpStatusCode.NOT_FOUND) {
+ *   console.log('Resource not found');
+ * }
+ * ```
  */
 export enum HttpStatusCode {
   OK = 200,
