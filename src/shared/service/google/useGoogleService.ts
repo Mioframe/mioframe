@@ -288,13 +288,8 @@ const setupGoogleService = (): GoogleService => {
     desiredGoogleDriveIntegrationEnabled = enabled;
 
     return applyGoogleDriveIntegrationLimit(() => {
-      for (;;) {
-        const nextEnabled = desiredGoogleDriveIntegrationEnabled;
-
-        if (googleDriveIntegrationEnabled === nextEnabled) {
-          return;
-        }
-
+      const nextEnabled = desiredGoogleDriveIntegrationEnabled;
+      if (googleDriveIntegrationEnabled !== nextEnabled) {
         applyGoogleDriveIntegrationState(nextEnabled);
       }
     });
