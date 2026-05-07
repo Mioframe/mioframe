@@ -242,11 +242,14 @@ export const ensureSentry = async (app?: App): Promise<SentryFacade> => {
 };
 
 /**
- * Compatibility wrapper that enables Sentry and initializes it for a Vue app.
+ * Compatibility wrapper that registers runtime config and initializes Sentry
+ * for a Vue app.
  * Prefer `sentryPlugin` for app bootstrap, but keep this helper available for
- * call sites that still want an explicit setup function.
+ * call sites that still want an explicit setup function. SDK initialization
+ * does not enable event delivery by itself; handled reports remain gated by
+ * `setSentryReportingEnabled`.
  * @param app - Vue app instance used during Sentry initialization.
- * @param dsn - Sentry DSN to register and initialize.
+ * @param dsn - Sentry DSN to register before lazy initialization.
  * @returns The stable Sentry facade.
  */
 export const setupSentry = async (app: App, dsn: string) => {
@@ -267,7 +270,8 @@ export const setupSentry = async (app: App, dsn: string) => {
 export const useSentry = (): SentryFacade => sentryFacade;
 
 /**
- * Vue plugin that registers optional Sentry runtime config and starts lazy initialization.
+ * Vue plugin that registers optional Sentry runtime config and stores the Vue
+ * app reference for future lazy initialization.
  */
 export const sentryPlugin: Plugin = {
   install(app, config: SentryConfig = {}) {
