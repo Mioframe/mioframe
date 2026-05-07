@@ -11,6 +11,7 @@ import { useMainContentAriaHidden } from '@shared/ui/AriaHidden';
 import { useFocusIndicator } from '@shared/ui/State/useFocusIndicator';
 import { setupMetaThemeColor } from '@shared/lib/metaThemeColor';
 import { usePreventUnloadDuringActiveWrites } from '@feature/preventUnloadDuringActiveWrites';
+import { useOptionalGoogleDriveIntegration } from '@feature/googleDriveIntegration';
 
 const { addSnackbar } = useSnackbar();
 
@@ -33,6 +34,7 @@ const mainAriaHidden = useMainContentAriaHidden();
 
 useFocusIndicator();
 usePreventUnloadDuringActiveWrites();
+useOptionalGoogleDriveIntegration();
 
 setupMetaThemeColor();
 </script>

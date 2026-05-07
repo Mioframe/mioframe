@@ -3,12 +3,13 @@ import { MDPane } from '@shared/ui/Layout';
 import { MDAppBar } from '@shared/ui/AppBar';
 import { useStackNavigation } from '@page/routes';
 import { PathUtils } from '@shared/lib/virtualFileSystem';
-import { GOOGLE_DRIVE_ROOT_NAME } from '@shared/service/google/useGoogleService';
+import { GOOGLE_DRIVE_ROOT_NAME } from '@shared/service/google';
 import { GoogleDriveWidget } from '@widget/GoogleDriveWidget';
 import { LocalFSWidget } from '@widget/LocalFSWidget';
 import { StarterExamplesWidget } from '@widget/StarterExamplesWidget';
 import type { AMDocumentId } from '@shared/lib/automerge';
 import { useLocalSettings } from '@entity/localSettings';
+import { GOOGLE_DRIVE_INTEGRATION_AVAILABLE } from '@shared/config';
 
 defineSlots<{
   navigationButton: () => unknown;
@@ -71,7 +72,10 @@ const onOpenStarterExampleDocument = ({
 
     <LocalFSWidget @click-path="onClickLocalPath" />
 
-    <GoogleDriveWidget @click-user="onClickGoogleDriveUser" />
+    <GoogleDriveWidget
+      v-if="settings.googleDriveIntegrationEnabled === true && GOOGLE_DRIVE_INTEGRATION_AVAILABLE"
+      @click-user="onClickGoogleDriveUser"
+    />
     <!-- todo: создать и добавить виджет избранных директорий и документов -->
   </MDPane>
 </template>

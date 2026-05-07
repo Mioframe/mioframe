@@ -2,8 +2,10 @@
 import { MDListContainer, MDListItem } from '@shared/ui/Lists';
 import { useLocalSettings } from './useLocalSettings';
 import { MDCheckbox } from '@shared/ui/Checkbox';
+import { GOOGLE_DRIVE_INTEGRATION_AVAILABLE } from '@shared/config';
 
 const { settings, SETTINGS_DESCRIPTION, SETTINGS_LABEL } = useLocalSettings();
+const unavailableGoogleDriveDescription = 'Google Drive integration is not configured';
 
 const onClickHideStarterWidget = () => {
   settings.value.hideStarterWidget = !settings.value.hideStarterWidget;
@@ -15,6 +17,14 @@ const onClickShowPerformance = () => {
 
 const onClickShowAutomergeFiles = () => {
   settings.value.showAutomergeFiles = !settings.value.showAutomergeFiles;
+};
+
+const onClickGoogleDriveIntegrationEnabled = () => {
+  if (!GOOGLE_DRIVE_INTEGRATION_AVAILABLE) {
+    return;
+  }
+
+  settings.value.googleDriveIntegrationEnabled = !settings.value.googleDriveIntegrationEnabled;
 };
 </script>
 
@@ -45,6 +55,30 @@ const onClickShowAutomergeFiles = () => {
 
       <template #trailingIcon>
         <MDCheckbox v-model="settings.showPerformance" />
+      </template>
+    </MDListItem>
+
+    <MDListItem
+      is="button"
+      :headline="SETTINGS_LABEL.googleDriveIntegrationEnabled"
+      @click="onClickGoogleDriveIntegrationEnabled"
+    >
+      <template #supportingText>
+        {{
+          GOOGLE_DRIVE_INTEGRATION_AVAILABLE
+            ? SETTINGS_DESCRIPTION.googleDriveIntegrationEnabled
+            : unavailableGoogleDriveDescription
+        }}
+      </template>
+
+      <template #trailingIcon>
+        <MDCheckbox
+          :model-value="
+            GOOGLE_DRIVE_INTEGRATION_AVAILABLE ? settings.googleDriveIntegrationEnabled : false
+          "
+          :disabled="!GOOGLE_DRIVE_INTEGRATION_AVAILABLE"
+          readonly
+        />
       </template>
     </MDListItem>
 
