@@ -5,6 +5,7 @@ export type {
 } from './DirectoryFSEntry';
 export { isFileFSEntry } from './FileFSEntry';
 export type { FileFSEntry } from './FileFSEntry';
+export { FileSystemDomainErrorCode } from './fileSystemErrorCode';
 export { isEntryPath, isGeneralFSEntry } from './GeneralFSEntry';
 export { isUserFileSelectionCancel } from './isUserFileSelectionCancel';
 export type {

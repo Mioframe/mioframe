@@ -113,7 +113,7 @@ describe('reportHandledError', () => {
     vi.clearAllMocks();
   });
 
-  it('reports the DomainError cause and stores the user-facing message after Sentry resolves', async () => {
+  it('reports the DomainError cause and stores the user-facing message and code after Sentry resolves', async () => {
     const gate = createDeferred<MockSentryFacade>();
     ensureSentryMock.mockReturnValue(gate.promise);
 
@@ -121,11 +121,17 @@ describe('reportHandledError', () => {
     const { reportHandledError } = await import('./reportHandledError');
     const cause = new Error('write failed');
 
-    reportHandledError(new DomainError('Could not save', { cause }), {
-      feature: 'documents',
-      action: 'save',
-      path: '/docs/a',
-    });
+    reportHandledError(
+      new DomainError('Could not save', {
+        cause,
+        code: 'document-export-failed',
+      }),
+      {
+        feature: 'documents',
+        action: 'save',
+        path: '/docs/a',
+      },
+    );
 
     expect(realFacade.captureException).not.toHaveBeenCalled();
 
@@ -138,6 +144,7 @@ describe('reportHandledError', () => {
     expect(mockScope.setExtras).toHaveBeenCalledWith({
       path: '/docs/a',
       userMessage: 'Could not save',
+      domainErrorCode: 'document-export-failed',
     });
   });
 
