@@ -6,7 +6,7 @@ import type { App, Plugin } from 'vue';
 export type SentryConfig = {
   /** Sentry DSN used for SDK initialization. */
   dsn?: string;
-  /** Whether runtime configuration allows Sentry initialization. */
+  /** Whether runtime configuration allows lazy Sentry initialization. */
   enabled?: boolean;
 };
 
@@ -54,10 +54,6 @@ export type SentryFacade = Omit<
   ) => T | undefined;
 };
 
-const DEFAULT_TRACES_SAMPLE_RATE = 0.7;
-const DEFAULT_REPLAYS_SESSION_SAMPLE_RATE = 0.7;
-const DEFAULT_REPLAYS_ON_ERROR_SAMPLE_RATE = 1.0;
-
 const NOOP_FINISH: Parameters<StartSpanManualParameters[1]>[1] = () => undefined;
 
 let sentryModulePromise: Promise<SentryModule> | undefined;
@@ -65,6 +61,7 @@ let loadedSentryModule: SentryModule | undefined;
 let runtimeConfig: SentryConfig | undefined;
 let initPromise: Promise<SentryFacade> | undefined;
 let appRef: App | undefined;
+let isSentryReportingEnabled = false;
 let warnedMissingConfig = false;
 let warnedInitFailure = false;
 
@@ -105,6 +102,15 @@ const canInitializeSentry = (config: SentryConfig | undefined) =>
  */
 export const isSentryReportingConfigured = () => canInitializeSentry(runtimeConfig);
 
+/**
+ * Enables or disables Sentry event delivery at runtime.
+ * Initialization still remains lazy and requires valid runtime config.
+ * @param enabled - Whether Sentry should be allowed to send reports.
+ */
+export const setSentryReportingEnabled = (enabled: boolean) => {
+  isSentryReportingEnabled = enabled;
+};
+
 const readRuntimeConfig = () => {
   if (!canInitializeSentry(runtimeConfig)) {
     warnMissingConfigOnce();
@@ -113,22 +119,10 @@ const readRuntimeConfig = () => {
 
   return runtimeConfig;
 };
-
-const kickoffSentryInitIfPossible = () => {
-  if (loadedSentryModule || initPromise) {
-    return;
-  }
-
-  if (canInitializeSentry(runtimeConfig)) {
-    void ensureSentry(appRef);
-    return;
-  }
-
-  warnMissingConfigOnce();
-};
-
 const invokeNoopSentryMethod = (methodName: string, args: unknown[]) => {
-  kickoffSentryInitIfPossible();
+  if (!canInitializeSentry(runtimeConfig)) {
+    warnMissingConfigOnce();
+  }
 
   if (methodName === 'startSpan') {
     const callback = args[1];
@@ -222,10 +216,14 @@ export const ensureSentry = async (app?: App): Promise<SentryFacade> => {
     sentry.init({
       dsn,
       ...(appRef ? { app: appRef } : {}),
-      integrations: [sentry.replayIntegration()],
-      tracesSampleRate: DEFAULT_TRACES_SAMPLE_RATE,
-      replaysSessionSampleRate: DEFAULT_REPLAYS_SESSION_SAMPLE_RATE,
-      replaysOnErrorSampleRate: DEFAULT_REPLAYS_ON_ERROR_SAMPLE_RATE,
+      tracesSampleRate: 0,
+      beforeSend: (event) => {
+        if (!isSentryReportingEnabled) {
+          return null;
+        }
+
+        return event;
+      },
     });
 
     loadedSentryModule = sentry;
@@ -275,9 +273,5 @@ export const sentryPlugin: Plugin = {
   install(app, config: SentryConfig = {}) {
     registerSentryConfig(config);
     appRef = app;
-
-    if (canInitializeSentry(config)) {
-      void ensureSentry(app);
-    }
   },
 };

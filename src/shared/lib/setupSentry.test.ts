@@ -1,41 +1,15 @@
 import { createApp } from 'vue';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-type Deferred<T> = {
-  promise: Promise<T>;
-  resolve: (value: T) => void;
-  reject: (reason?: unknown) => void;
-};
-
 const TestAppRoot = {
   template: '<div />',
 };
 
-const createDeferred = <T>() => {
-  let resolve!: (value: T) => void;
-  let reject!: (reason?: unknown) => void;
-
-  const promise = new Promise<T>((innerResolve, innerReject) => {
-    resolve = innerResolve;
-    reject = innerReject;
-  });
-
-  return {
-    promise,
-    resolve,
-    reject,
-  } satisfies Deferred<T>;
-};
-
-const setupSentryMocks = (options?: {
-  importErrorOnce?: unknown;
-  moduleGate?: Deferred<undefined>;
-}) => {
+const setupSentryMocks = (options?: { importErrorOnce?: unknown }) => {
   let importAttempts = 0;
   const shouldRejectImportOnce = options ? 'importErrorOnce' in options : false;
   const importErrorOnce = options?.importErrorOnce;
   const initMock = vi.fn();
-  const replayIntegrationMock = vi.fn(() => ({ name: 'replay' }));
   const captureExceptionMock = vi.fn(() => 'exception-id');
   const captureMessageMock = vi.fn(() => 'message-id');
   const captureEventMock = vi.fn(() => 'event-id');
@@ -57,7 +31,6 @@ const setupSentryMocks = (options?: {
 
   const sentryModule = {
     init: initMock,
-    replayIntegration: replayIntegrationMock,
     captureException: captureExceptionMock,
     captureMessage: captureMessageMock,
     captureEvent: captureEventMock,
@@ -74,12 +47,8 @@ const setupSentryMocks = (options?: {
     startInactiveSpan: startInactiveSpanMock,
   };
 
-  vi.doMock('@sentry/vue', async () => {
+  vi.doMock('@sentry/vue', () => {
     importAttempts += 1;
-
-    if (options?.moduleGate) {
-      await options.moduleGate.promise;
-    }
 
     if (importAttempts === 1 && shouldRejectImportOnce) {
       throw importErrorOnce;
@@ -90,7 +59,6 @@ const setupSentryMocks = (options?: {
 
   return {
     initMock,
-    replayIntegrationMock,
     captureMessageMock,
     setUserMock,
     flushMock,
@@ -150,6 +118,19 @@ describe('setupSentry', () => {
     await expect(ensureSentry()).resolves.toBe(useSentry());
   });
 
+  it('does not import @sentry/vue during plugin install even with valid config', async () => {
+    const { getImportAttempts } = setupSentryMocks();
+    const { sentryPlugin } = await import('./setupSentry');
+    const app = createApp(TestAppRoot);
+
+    app.use(sentryPlugin, {
+      dsn: 'https://example@sentry.io/123',
+      enabled: true,
+    });
+
+    expect(getImportAttempts()).toBe(0);
+  });
+
   it('warns only once in dev when Sentry is unavailable', async () => {
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
 
@@ -166,8 +147,9 @@ describe('setupSentry', () => {
   });
 
   it('initializes the SDK only once across repeated ensureSentry calls', async () => {
-    const { initMock, replayIntegrationMock } = setupSentryMocks();
-    const { registerSentryConfig, ensureSentry } = await import('./setupSentry');
+    const { initMock } = setupSentryMocks();
+    const { registerSentryConfig, ensureSentry, setSentryReportingEnabled } =
+      await import('./setupSentry');
     const app = createApp(TestAppRoot);
 
     registerSentryConfig({
@@ -175,25 +157,30 @@ describe('setupSentry', () => {
       enabled: true,
     });
 
+    setSentryReportingEnabled(true);
+
     const [firstFacade, secondFacade] = await Promise.all([ensureSentry(app), ensureSentry(app)]);
 
     expect(firstFacade).toBe(secondFacade);
     expect(initMock).toHaveBeenCalledTimes(1);
-    expect(replayIntegrationMock).toHaveBeenCalledTimes(1);
-    expect(initMock).toHaveBeenCalledWith({
+
+    const initOptions = initMock.mock.calls[0]?.[0];
+    expect(initOptions).toMatchObject({
       app,
       dsn: 'https://example@sentry.io/123',
-      integrations: [{ name: 'replay' }],
-      tracesSampleRate: 0.7,
-      replaysSessionSampleRate: 0.7,
-      replaysOnErrorSampleRate: 1.0,
+      tracesSampleRate: 0,
     });
+    expect(initOptions).not.toHaveProperty('integrations');
+    expect(initOptions).not.toHaveProperty('replaysSessionSampleRate');
+    expect(initOptions).not.toHaveProperty('replaysOnErrorSampleRate');
+    expect(initOptions.beforeSend).toEqual(expect.any(Function));
   });
 
   it('delegates proxied SDK calls after initialization, including non-curated methods', async () => {
     const { captureMessageMock, setUserMock, flushMock, startInactiveSpanMock } =
       setupSentryMocks();
-    const { sentryPlugin, ensureSentry, useSentry } = await import('./setupSentry');
+    const { sentryPlugin, ensureSentry, setSentryReportingEnabled, useSentry } =
+      await import('./setupSentry');
     const app = createApp(TestAppRoot);
 
     app.use(sentryPlugin, {
@@ -201,6 +188,7 @@ describe('setupSentry', () => {
       enabled: true,
     });
 
+    setSentryReportingEnabled(true);
     await ensureSentry();
 
     expect(useSentry().captureMessage('hello')).toBe('message-id');
@@ -220,28 +208,30 @@ describe('setupSentry', () => {
     expect(flushMock).toHaveBeenCalledOnce();
   });
 
-  it('kicks off initialization from facade usage while staying callable during the async gap', async () => {
-    const moduleGate = createDeferred<undefined>();
-    const { initMock, captureMessageMock } = setupSentryMocks({ moduleGate });
-    const { registerSentryConfig, useSentry } = await import('./setupSentry');
+  it('ensureSentry imports SDK only for valid runtime config', async () => {
+    const { getImportAttempts } = setupSentryMocks();
+    const { ensureSentry, registerSentryConfig } = await import('./setupSentry');
+
+    await ensureSentry();
+    registerSentryConfig({
+      enabled: true,
+    });
+    await ensureSentry();
+    registerSentryConfig({
+      dsn: 'https://example@sentry.io/123',
+      enabled: false,
+    });
+    await ensureSentry();
+
+    expect(getImportAttempts()).toBe(0);
 
     registerSentryConfig({
       dsn: 'https://example@sentry.io/123',
       enabled: true,
     });
+    await ensureSentry();
 
-    expect(useSentry().captureMessage('before-ready')).toBeUndefined();
-    expect(captureMessageMock).not.toHaveBeenCalled();
-
-    moduleGate.resolve(undefined);
-
-    await vi.waitFor(() => {
-      expect(initMock).toHaveBeenCalledTimes(1);
-    });
-
-    expect(useSentry().captureMessage('after-ready')).toBe('message-id');
-    expect(captureMessageMock).toHaveBeenCalledOnce();
-    expect(captureMessageMock).toHaveBeenCalledWith('after-ready');
+    expect(getImportAttempts()).toBe(1);
   });
 
   it('recovers after a failed Sentry module import', async () => {
@@ -250,12 +240,14 @@ describe('setupSentry', () => {
     const { initMock, captureMessageMock, getImportAttempts } = setupSentryMocks({
       importErrorOnce: importError,
     });
-    const { registerSentryConfig, ensureSentry, useSentry } = await import('./setupSentry');
+    const { registerSentryConfig, ensureSentry, setSentryReportingEnabled, useSentry } =
+      await import('./setupSentry');
 
     registerSentryConfig({
       dsn: 'https://example@sentry.io/123',
       enabled: true,
     });
+    setSentryReportingEnabled(true);
 
     await expect(ensureSentry()).resolves.toBe(useSentry());
     expect(initMock).not.toHaveBeenCalled();
@@ -280,7 +272,8 @@ describe('setupSentry', () => {
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
     const initError = new Error('init failed');
     const { initMock, captureMessageMock, getImportAttempts } = setupSentryMocks();
-    const { registerSentryConfig, ensureSentry, useSentry } = await import('./setupSentry');
+    const { registerSentryConfig, ensureSentry, setSentryReportingEnabled, useSentry } =
+      await import('./setupSentry');
 
     initMock.mockImplementationOnce(() => {
       throw initError;
@@ -293,6 +286,7 @@ describe('setupSentry', () => {
       dsn: 'https://example@sentry.io/123',
       enabled: true,
     });
+    setSentryReportingEnabled(true);
 
     await expect(ensureSentry()).resolves.toBe(useSentry());
     await expect(ensureSentry()).resolves.toBe(useSentry());
@@ -310,12 +304,8 @@ describe('setupSentry', () => {
     );
   });
 
-  it('keeps facade-triggered initialization failures as recoverable no-ops', async () => {
-    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
-    const importError = new Error('facade import failed');
-    const { initMock, getImportAttempts } = setupSentryMocks({
-      importErrorOnce: importError,
-    });
+  it('keeps facade calls as safe no-op until ensureSentry is called explicitly', async () => {
+    const { getImportAttempts, captureMessageMock } = setupSentryMocks();
     const { registerSentryConfig, useSentry } = await import('./setupSentry');
 
     registerSentryConfig({
@@ -323,27 +313,9 @@ describe('setupSentry', () => {
       enabled: true,
     });
 
-    expect(useSentry().captureMessage('fire-and-forget-failure')).toBeUndefined();
-
-    await vi.waitFor(() => {
-      expect(warnSpy).toHaveBeenCalledWith(
-        '[sentry] Sentry failed to initialize. Calls will remain no-op until a retry succeeds.',
-        expect.objectContaining({
-          cause: importError,
-        }),
-      );
-    });
-
-    expect(getImportAttempts()).toBe(1);
-    expect(initMock).not.toHaveBeenCalled();
-    expect(useSentry().captureMessage('fire-and-forget-retry')).toBeUndefined();
-
-    await vi.waitFor(() => {
-      expect(initMock).toHaveBeenCalledOnce();
-    });
-
-    expect(getImportAttempts()).toBe(2);
-    expect(useSentry().captureMessage('after-retry')).toBe('message-id');
+    expect(useSentry().captureMessage('not-initialized')).toBeUndefined();
+    expect(getImportAttempts()).toBe(0);
+    expect(captureMessageMock).not.toHaveBeenCalled();
   });
 
   it('delegates callback-based methods after initialization', async () => {
@@ -371,5 +343,49 @@ describe('setupSentry', () => {
     expect(withScopeMock).toHaveBeenCalledOnce();
     expect(scopeCallback).toHaveBeenCalledOnce();
     expect(startSpanManualMock).toHaveBeenCalledOnce();
+  });
+
+  it('beforeSend drops events while reporting is disabled', async () => {
+    const { initMock } = setupSentryMocks();
+    const { registerSentryConfig, ensureSentry } = await import('./setupSentry');
+
+    registerSentryConfig({
+      dsn: 'https://example@sentry.io/123',
+      enabled: true,
+    });
+
+    await ensureSentry();
+
+    const initOptions = initMock.mock.calls[0]?.[0];
+    const beforeSend = initOptions?.beforeSend;
+    const event = { message: 'test-event' };
+
+    expect(beforeSend).toEqual(expect.any(Function));
+    if (beforeSend instanceof Function) {
+      expect(beforeSend(event)).toBeNull();
+    }
+  });
+
+  it('beforeSend keeps events while reporting is enabled', async () => {
+    const { initMock } = setupSentryMocks();
+    const { registerSentryConfig, ensureSentry, setSentryReportingEnabled } =
+      await import('./setupSentry');
+
+    registerSentryConfig({
+      dsn: 'https://example@sentry.io/123',
+      enabled: true,
+    });
+    setSentryReportingEnabled(true);
+
+    await ensureSentry();
+
+    const initOptions = initMock.mock.calls[0]?.[0];
+    const beforeSend = initOptions?.beforeSend;
+    const event = { message: 'test-event' };
+
+    expect(beforeSend).toEqual(expect.any(Function));
+    if (beforeSend instanceof Function) {
+      expect(beforeSend(event)).toBe(event);
+    }
   });
 });
