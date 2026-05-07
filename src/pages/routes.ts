@@ -1,6 +1,6 @@
 import { documentViewPane } from './DocumentViewPane';
+import { dataStoragePrivacyPane } from './DataStoragePrivacyPane';
 import { homePane } from './HomePane';
-import { privacyHelpPane } from './PrivacyHelpPane';
 import { repoExplorerPane } from './RepoExplorer';
 import { settingsPane } from './Settings';
 import { createStackNavigation } from './SplitView/defineStackNavigation';
@@ -14,7 +14,7 @@ const { setupStackNavigation: setup, useStackNavigation: use } = createStackNavi
     repo: repoExplorerPane,
     document: documentViewPane,
     settings: settingsPane,
-    privacyHelp: privacyHelpPane,
+    dataStoragePrivacy: dataStoragePrivacyPane,
   },
   {
     defaultPane: 'home',

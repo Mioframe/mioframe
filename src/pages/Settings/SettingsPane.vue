@@ -11,8 +11,8 @@ defineSlots<{
 
 const { open } = useStackNavigation();
 
-const onOpenPrivacyHelp = async () => {
-  await open('privacyHelp', {}, { target: 'settings' });
+const onSelectDataStoragePrivacy = async () => {
+  await open('dataStoragePrivacy', {}, { target: 'settings' });
 };
 </script>
 
@@ -24,6 +24,6 @@ const onOpenPrivacyHelp = async () => {
       </template>
     </MDAppBar>
 
-    <SettingsSections @open-privacy-help="onOpenPrivacyHelp" />
+    <SettingsSections @select-data-storage-privacy="onSelectDataStoragePrivacy" />
   </MDPane>
 </template>

@@ -37,7 +37,7 @@ vi.mock('@shared/ui/AppBar', () => ({
 vi.mock('@widget/SettingsSections', () => ({
   SettingsSections: defineComponent({
     name: 'SettingsSectionsStub',
-    emits: ['openPrivacyHelp'],
+    emits: ['selectDataStoragePrivacy'],
     setup(_props, { emit }) {
       return () =>
         h(
@@ -45,10 +45,10 @@ vi.mock('@widget/SettingsSections', () => ({
           {
             type: 'button',
             onClick: () => {
-              emit('openPrivacyHelp');
+              emit('selectDataStoragePrivacy');
             },
           },
-          'Open privacy help',
+          'Select data storage and privacy',
         );
     },
   }),
@@ -85,7 +85,7 @@ describe('SettingsPane', () => {
     root.querySelector('button')?.click();
     await nextTick();
 
-    expect(open).toHaveBeenCalledWith('privacyHelp', {}, { target: 'settings' });
+    expect(open).toHaveBeenCalledWith('dataStoragePrivacy', {}, { target: 'settings' });
 
     unmount();
   });

@@ -27,10 +27,10 @@ vi.mock('@shared/ui/AppBar', () => ({
 }));
 
 it('renders the local-first and privacy help content in-app', async () => {
-  const { default: PrivacyHelpPane } = await import('./PrivacyHelpPane.vue');
+  const { default: DataStoragePrivacyPane } = await import('./DataStoragePrivacyPane.vue');
   const root = document.createElement('div');
   document.body.appendChild(root);
-  const app = createApp(PrivacyHelpPane);
+  const app = createApp(DataStoragePrivacyPane);
 
   app.mount(root);
   await nextTick();

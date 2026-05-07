@@ -6,7 +6,7 @@ import SettingsSection from './SettingsSection.vue';
 import SettingsCheckboxListItem from './SettingsCheckboxListItem.vue';
 
 const emit = defineEmits<{
-  openPrivacyHelp: [];
+  selectDataStoragePrivacy: [];
 }>();
 
 const { settings } = useLocalSettings();
@@ -24,8 +24,8 @@ const onToggleGoogleDrive = () => {
     settings.value.googleDriveIntegrationEnabled === true ? undefined : true;
 };
 
-const onOpenPrivacyHelp = () => {
-  emit('openPrivacyHelp');
+const onClickDataStoragePrivacy = () => {
+  emit('selectDataStoragePrivacy');
 };
 </script>
 
@@ -79,7 +79,7 @@ const onOpenPrivacyHelp = () => {
           is="button"
           type="button"
           headline="Data storage and privacy"
-          @click="onOpenPrivacyHelp"
+          @click="onClickDataStoragePrivacy"
         >
           <template #supportingText>
             Learn where your data is stored and what can leave this device.

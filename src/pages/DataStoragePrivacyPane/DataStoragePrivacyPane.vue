@@ -9,26 +9,30 @@ defineSlots<{
 </script>
 
 <template>
-  <MDPane class="privacy-help-pane" allow-bottom-navigation>
+  <MDPane class="data-storage-privacy-pane" allow-bottom-navigation>
     <MDAppBar headline="Data storage and privacy">
       <template #trailingElements>
         <slot name="appBarTrailing" />
       </template>
     </MDAppBar>
 
-    <div class="privacy-help-pane__content">
-      <section class="privacy-help-pane__section" aria-labelledby="local-first-heading">
-        <h2 id="local-first-heading" class="privacy-help-pane__title">Local-first by default</h2>
+    <div class="data-storage-privacy-pane__content">
+      <section class="data-storage-privacy-pane__section" aria-labelledby="local-first-heading">
+        <h2 id="local-first-heading" class="data-storage-privacy-pane__title">
+          Local-first by default
+        </h2>
         <p>Mioframe 0.1 is local-first. You can use the app without creating a Mioframe account.</p>
       </section>
 
-      <section class="privacy-help-pane__section" aria-labelledby="storage-heading">
-        <h2 id="storage-heading" class="privacy-help-pane__title">Where your data is stored</h2>
+      <section class="data-storage-privacy-pane__section" aria-labelledby="storage-heading">
+        <h2 id="storage-heading" class="data-storage-privacy-pane__title">
+          Where your data is stored
+        </h2>
         <p>Documents are stored in browser storage or in folders that you explicitly choose.</p>
       </section>
 
-      <section class="privacy-help-pane__section" aria-labelledby="google-drive-heading">
-        <h2 id="google-drive-heading" class="privacy-help-pane__title">Google Drive</h2>
+      <section class="data-storage-privacy-pane__section" aria-labelledby="google-drive-heading">
+        <h2 id="google-drive-heading" class="data-storage-privacy-pane__title">Google Drive</h2>
         <p>
           Google Drive is optional and is used only after you enable the integration and connect a
           Google account.
@@ -43,25 +47,25 @@ defineSlots<{
 </template>
 
 <style scoped>
-.privacy-help-pane {
+.data-storage-privacy-pane {
   --md-container-color: inherit;
   --md-content-color: inherit;
 }
 
-.privacy-help-pane__content {
+.data-storage-privacy-pane__content {
   display: flex;
   flex-direction: column;
   gap: 20px;
   padding: 16px;
 }
 
-.privacy-help-pane__section {
+.data-storage-privacy-pane__section {
   display: flex;
   flex-direction: column;
   gap: 8px;
 }
 
-.privacy-help-pane__title {
+.data-storage-privacy-pane__title {
   margin: 0;
   font-family: var(--md-sys-typescale-title-medium-font);
   font-size: var(--md-sys-typescale-title-medium-size);

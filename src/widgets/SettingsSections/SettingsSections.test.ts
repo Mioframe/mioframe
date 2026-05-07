@@ -114,15 +114,15 @@ vi.mock('@shared/ui/Checkbox', () => ({
 }));
 
 const mountSettingsSections = async ({
-  onOpenPrivacyHelp,
+  onSelectDataStoragePrivacy,
 }: {
-  onOpenPrivacyHelp?: (() => void) | undefined;
+  onSelectDataStoragePrivacy?: (() => void) | undefined;
 } = {}) => {
   const { SettingsSections } = await import('./index');
   const root = document.createElement('div');
   document.body.appendChild(root);
   const app = createApp(SettingsSections, {
-    onOpenPrivacyHelp,
+    onSelectDataStoragePrivacy,
   });
 
   app.mount(root);
@@ -157,8 +157,8 @@ describe('SettingsSections', () => {
   });
 
   it('renders the four release settings sections and opens privacy help from Help', async () => {
-    const onOpenPrivacyHelp = vi.fn();
-    const { root, unmount } = await mountSettingsSections({ onOpenPrivacyHelp });
+    const onSelectDataStoragePrivacy = vi.fn();
+    const { root, unmount } = await mountSettingsSections({ onSelectDataStoragePrivacy });
 
     expect(root.textContent).toContain('Privacy & diagnostics');
     expect(root.textContent).toContain('Integrations');
@@ -172,7 +172,7 @@ describe('SettingsSections', () => {
     getButtonByText(root, 'Data storage and privacy')?.click();
     await nextTick();
 
-    expect(onOpenPrivacyHelp).toHaveBeenCalledTimes(1);
+    expect(onSelectDataStoragePrivacy).toHaveBeenCalledTimes(1);
 
     unmount();
   });
