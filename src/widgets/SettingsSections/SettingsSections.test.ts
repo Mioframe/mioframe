@@ -4,6 +4,7 @@ import { createApp, defineComponent, h, nextTick, ref } from 'vue';
 
 const settings = ref<{
   diagnosticsEnabled?: boolean;
+  diagnosticsConsentRequested?: boolean;
   googleDriveIntegrationEnabled?: boolean;
   hideStarterWidget?: boolean;
 }>({});
@@ -199,7 +200,9 @@ describe('SettingsSections', () => {
     expect(root.textContent).toContain('Integrations');
     expect(root.textContent).toContain('Home screen');
     expect(root.textContent).toContain('Help');
-    expect(root.textContent).toContain('Send technical error reports to help fix crashes.');
+    expect(root.textContent).toContain(
+      'Send technical error reports to help developers fix crashes and unexpected failures.',
+    );
     expect(root.textContent).toContain(
       'Learn where your data is stored and what can leave this device.',
     );
@@ -263,12 +266,14 @@ describe('SettingsSections', () => {
     unmount();
   });
 
-  it('toggles Error diagnostics between true and undefined with row click', async () => {
+  it('toggles Error diagnostics between true and false with row click', async () => {
     const { root, unmount } = await mountSettingsSections();
     const errorDiagnosticsButton = getButtonByText(root, 'Error diagnostics');
     const errorDiagnosticsRow = getCheckboxRow(root, 'Error diagnostics');
 
-    expect(root.textContent).toContain('Send technical error reports to help fix crashes.');
+    expect(root.textContent).toContain(
+      'Send technical error reports to help developers fix crashes and unexpected failures.',
+    );
     expect(errorDiagnosticsButton).not.toBeNull();
     expect(errorDiagnosticsRow?.getAttribute('aria-checked')).toBe('false');
 
@@ -276,12 +281,14 @@ describe('SettingsSections', () => {
     await nextTick();
 
     expect(settings.value.diagnosticsEnabled).toBe(true);
+    expect(settings.value.diagnosticsConsentRequested).toBe(true);
     expect(errorDiagnosticsRow?.getAttribute('aria-checked')).toBe('true');
 
     errorDiagnosticsButton?.click();
     await nextTick();
 
-    expect(settings.value.diagnosticsEnabled).toBeUndefined();
+    expect(settings.value.diagnosticsEnabled).toBe(false);
+    expect(settings.value.diagnosticsConsentRequested).toBe(true);
     expect(errorDiagnosticsRow?.getAttribute('aria-checked')).toBe('false');
 
     unmount();

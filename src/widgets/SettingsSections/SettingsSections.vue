@@ -20,7 +20,8 @@ const onToggleDiagnostics = () => {
     return;
   }
 
-  settings.value.diagnosticsEnabled = settings.value.diagnosticsEnabled === true ? undefined : true;
+  settings.value.diagnosticsEnabled = !settings.value.diagnosticsEnabled;
+  settings.value.diagnosticsConsentRequested = true;
 };
 
 const onToggleGoogleDrive = () => {
@@ -45,7 +46,7 @@ const onClickDataStoragePrivacy = () => {
           headline="Error diagnostics"
           :supporting-text="
             SENTRY_DIAGNOSTICS_AVAILABLE
-              ? 'Send technical error reports to help fix crashes.'
+              ? 'Send technical error reports to help developers fix crashes and unexpected failures.'
               : 'Diagnostics are not available in this build.'
           "
           :checked="SENTRY_DIAGNOSTICS_AVAILABLE ? settings.diagnosticsEnabled === true : false"

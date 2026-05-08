@@ -1,7 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { effectScope, nextTick, ref, type EffectScope } from 'vue';
 
-const settings = ref<{ diagnosticsEnabled?: boolean }>({});
+const settings = ref<{ diagnosticsEnabled: boolean }>({
+  diagnosticsEnabled: false,
+});
 const activeScopes: EffectScope[] = [];
 let sentryReportingConfigured = true;
 const ensureSentryMock = vi.fn();
@@ -35,7 +37,9 @@ vi.mock('@shared/lib/setupSentry', () => ({
 describe('useDiagnosticsReporting', () => {
   beforeEach(() => {
     vi.resetModules();
-    settings.value = {};
+    settings.value = {
+      diagnosticsEnabled: false,
+    };
     sentryReportingConfigured = true;
     ensureSentryMock.mockReset();
     ensureSentryMock.mockResolvedValue(undefined);
@@ -66,7 +70,7 @@ describe('useDiagnosticsReporting', () => {
     expect(ensureSentryMock).toHaveBeenCalledTimes(1);
   });
 
-  it('disables Sentry reporting when diagnostics are undefined', async () => {
+  it('disables Sentry reporting when diagnostics are false by default', async () => {
     const scope = createTrackedScope();
     const { useDiagnosticsReporting } = await import('./useDiagnosticsReporting');
 
@@ -99,7 +103,7 @@ describe('useDiagnosticsReporting', () => {
     expect(ensureSentryMock).not.toHaveBeenCalled();
   });
 
-  it('turns reporting back off when diagnostics are toggled from true to undefined', async () => {
+  it('turns reporting back off when diagnostics are toggled from true to false', async () => {
     settings.value = {
       diagnosticsEnabled: true,
     };
@@ -113,9 +117,12 @@ describe('useDiagnosticsReporting', () => {
 
     await flushMicrotasks();
 
-    settings.value = {};
+    settings.value = {
+      diagnosticsEnabled: false,
+    };
     await flushMicrotasks();
 
     expect(setSentryReportingEnabledMock).toHaveBeenLastCalledWith(false);
+    expect(ensureSentryMock).toHaveBeenCalledTimes(1);
   });
 });

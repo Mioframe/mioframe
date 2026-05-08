@@ -11,6 +11,7 @@ type AlertDescription = {
   supportingText: string;
   id: string;
   confirmLabel?: string | undefined;
+  cancelLabel?: string | undefined;
   symbolName?: string | undefined;
   callback: (result: boolean) => void;
 };
@@ -24,6 +25,7 @@ export const useDialogState = createGlobalState(() => {
     supportingText: string,
     confirmLabel?: string,
     symbolName?: string,
+    cancelLabel?: string,
   ) =>
     await new Promise<boolean>((resolve) => {
       const id = sessionUniqueId('dialog');
@@ -39,6 +41,7 @@ export const useDialogState = createGlobalState(() => {
         headline,
         supportingText,
         confirmLabel,
+        cancelLabel,
         callback,
         symbolName,
       };
@@ -51,7 +54,8 @@ export const useDialogState = createGlobalState(() => {
     supportingText: string,
     confirmLabel?: string,
     symbolName?: string,
-  ) => addDialog('confirm', headline, supportingText, confirmLabel, symbolName);
+    cancelLabel?: string,
+  ) => addDialog('confirm', headline, supportingText, confirmLabel, symbolName, cancelLabel);
 
   const alert = (
     headline: string,
@@ -73,6 +77,10 @@ export const useDialogState = createGlobalState(() => {
   };
 });
 
+/**
+ * Returns global alert and confirm dialog helpers.
+ * @returns Global dialog actions.
+ */
 export const useDialog = () => {
   const { alert, confirm } = useDialogState();
   return {
@@ -81,6 +89,11 @@ export const useDialog = () => {
   };
 };
 
+/**
+ * Tracks whether the current dialog instance is open for overlay coordination.
+ * @param open - Reactive dialog open state.
+ * @returns Shared dialog container ref for teleport coordination.
+ */
 export const useMonitorOpenDialog = (open: Ref<boolean>) => {
   const { numberOfOpenDialogs, globalDialogContainer } = useDialogState();
 
@@ -112,6 +125,11 @@ export const useMonitorOpenDialog = (open: Ref<boolean>) => {
   };
 };
 
+/**
+ * Registers the shared teleport target used by alert dialogs.
+ * @param dialogContainer - Global dialog container element reference.
+ * @returns Whether any shared alert dialog is currently open.
+ */
 export const useDialogContainer = (dialogContainer: MaybeElementRef) => {
   const { numberOfOpenDialogs, globalDialogContainer } = useDialogState();
 

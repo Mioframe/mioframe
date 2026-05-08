@@ -13,6 +13,7 @@ const { alertSet } = useDialogState();
     :headline="item.headline"
     :supporting-text="item.supportingText"
     :apply-label="item.confirmLabel ?? 'Ok'"
+    :cancel-label="item.cancelLabel"
     :has-cancel-action="item.type === 'confirm'"
     @apply="() => item.callback(true)"
     @cancel="() => item.callback(false)"

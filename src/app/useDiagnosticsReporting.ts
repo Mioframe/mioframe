@@ -13,7 +13,7 @@ export const useDiagnosticsReporting = () => {
   const { settings } = useLocalSettings();
 
   watch(
-    () => settings.value.diagnosticsEnabled === true,
+    () => settings.value.diagnosticsEnabled,
     async (diagnosticsEnabled) => {
       const reportingEnabled = diagnosticsEnabled && isSentryReportingConfigured();
 

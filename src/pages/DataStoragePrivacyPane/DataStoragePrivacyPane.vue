@@ -46,6 +46,22 @@ defineSlots<{
           does not revoke access from Google.
         </p>
       </section>
+
+      <section class="data-storage-privacy-pane__section" aria-labelledby="diagnostics-heading">
+        <h2 id="diagnostics-heading" class="data-storage-privacy-pane__title">Error diagnostics</h2>
+        <p>
+          Error diagnostics are optional. Mioframe can send technical error reports when something
+          breaks so developers can investigate crashes and unexpected failures.
+        </p>
+        <p>
+          You can enable or disable error diagnostics in Settings at any time. Document contents are
+          not intentionally included in these reports.
+        </p>
+        <p>
+          Technical reports may still include metadata such as stack traces, browser details, or the
+          current app URL when an error happens.
+        </p>
+      </section>
     </div>
   </MDPane>
 </template>

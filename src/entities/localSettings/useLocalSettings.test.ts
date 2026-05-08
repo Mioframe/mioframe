@@ -2,6 +2,14 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ref } from 'vue';
 
 const useIDBKeyvalMock = vi.fn();
+type DiagnosticsSerializerOptions = {
+  serializer: {
+    read: (value: unknown) => {
+      diagnosticsEnabled: boolean;
+      diagnosticsConsentRequested: boolean;
+    };
+  };
+};
 
 vi.mock('@vueuse/integrations/useIDBKeyval', () => ({
   useIDBKeyval: (...args: unknown[]) => useIDBKeyvalMock(...args),
@@ -16,6 +24,7 @@ describe('useLocalSettings', () => {
   it('defaults hideStarterWidget to undefined', async () => {
     useIDBKeyvalMock.mockImplementation((_key, defaultValue: object) => ({
       data: ref(structuredClone(defaultValue)),
+      isFinished: ref(true),
     }));
 
     const { useLocalSettings } = await import('./useLocalSettings');
@@ -27,6 +36,7 @@ describe('useLocalSettings', () => {
   it('persists false, true, and undefined starter widget states without coercing to true by default', async () => {
     useIDBKeyvalMock.mockImplementation((_key, defaultValue: object) => ({
       data: ref(structuredClone(defaultValue)),
+      isFinished: ref(true),
     }));
 
     const { useLocalSettings } = await import('./useLocalSettings');
@@ -45,6 +55,7 @@ describe('useLocalSettings', () => {
   it('defaults googleDriveIntegrationEnabled to undefined', async () => {
     useIDBKeyvalMock.mockImplementation((_key, defaultValue: object) => ({
       data: ref(structuredClone(defaultValue)),
+      isFinished: ref(true),
     }));
 
     const { useLocalSettings } = await import('./useLocalSettings');
@@ -56,6 +67,7 @@ describe('useLocalSettings', () => {
   it('persists true and undefined Google Drive integration states without defaulting to true', async () => {
     useIDBKeyvalMock.mockImplementation((_key, defaultValue: object) => ({
       data: ref(structuredClone(defaultValue)),
+      isFinished: ref(true),
     }));
 
     const { useLocalSettings } = await import('./useLocalSettings');
@@ -68,20 +80,34 @@ describe('useLocalSettings', () => {
     expect(settings.value.googleDriveIntegrationEnabled).toBeUndefined();
   });
 
-  it('defaults diagnosticsEnabled to undefined', async () => {
+  it('defaults diagnosticsEnabled to false', async () => {
     useIDBKeyvalMock.mockImplementation((_key, defaultValue: object) => ({
       data: ref(structuredClone(defaultValue)),
+      isFinished: ref(true),
     }));
 
     const { useLocalSettings } = await import('./useLocalSettings');
     const { settings } = useLocalSettings();
 
-    expect(settings.value.diagnosticsEnabled).toBeUndefined();
+    expect(settings.value.diagnosticsEnabled).toBe(false);
   });
 
-  it('persists true and undefined diagnostics states without defaulting to true', async () => {
+  it('defaults diagnosticsConsentRequested to false', async () => {
     useIDBKeyvalMock.mockImplementation((_key, defaultValue: object) => ({
       data: ref(structuredClone(defaultValue)),
+      isFinished: ref(true),
+    }));
+
+    const { useLocalSettings } = await import('./useLocalSettings');
+    const { settings } = useLocalSettings();
+
+    expect(settings.value.diagnosticsConsentRequested).toBe(false);
+  });
+
+  it('persists true and false diagnostics states without coercing them to undefined', async () => {
+    useIDBKeyvalMock.mockImplementation((_key, defaultValue: object) => ({
+      data: ref(structuredClone(defaultValue)),
+      isFinished: ref(true),
     }));
 
     const { useLocalSettings } = await import('./useLocalSettings');
@@ -90,7 +116,34 @@ describe('useLocalSettings', () => {
     settings.value.diagnosticsEnabled = true;
     expect(settings.value.diagnosticsEnabled).toBe(true);
 
-    settings.value.diagnosticsEnabled = undefined;
-    expect(settings.value.diagnosticsEnabled).toBeUndefined();
+    settings.value.diagnosticsEnabled = false;
+    expect(settings.value.diagnosticsEnabled).toBe(false);
+  });
+
+  it('migrates missing diagnostics fields to false when reading existing settings', async () => {
+    let capturedOptions: DiagnosticsSerializerOptions | undefined;
+
+    useIDBKeyvalMock.mockImplementation(
+      (_key, defaultValue: object, options?: DiagnosticsSerializerOptions) => {
+        capturedOptions = options;
+
+        return {
+          data: ref(structuredClone(defaultValue)),
+          isFinished: ref(true),
+        };
+      },
+    );
+
+    const { useLocalSettings } = await import('./useLocalSettings');
+    useLocalSettings();
+
+    if (!capturedOptions) {
+      throw new Error('Expected useIDBKeyval options to be captured');
+    }
+
+    const migrated = capturedOptions.serializer.read({});
+
+    expect(migrated.diagnosticsEnabled).toBe(false);
+    expect(migrated.diagnosticsConsentRequested).toBe(false);
   });
 });
