@@ -52,6 +52,10 @@ it('renders the local-first and privacy help content in-app', async () => {
     'Turning off Google Drive in Settings only disables the integration inside this app. It does not revoke access from Google.',
   );
   expect(root.textContent).toContain('You can use the app without creating a Mioframe account.');
+  expect(root.textContent).toContain('Error diagnostics');
+  expect(root.textContent).toContain('Error diagnostics are optional');
+  expect(root.textContent).toContain('Document contents are not intentionally included');
+  expect(root.textContent).toContain('stack traces, browser details, or the current app URL');
 
   app.unmount();
   root.remove();

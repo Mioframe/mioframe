@@ -18,6 +18,23 @@ type AlertDescription = {
 
 export const useDialogState = createGlobalState(() => {
   const alertSet = reactive(new Set<AlertDescription>());
+  const pendingDialogs: AlertDescription[] = [];
+  let activeDialog: AlertDescription | undefined;
+
+  const showNextDialog = () => {
+    if (!isUndefined(activeDialog)) {
+      return;
+    }
+
+    const nextDialog = pendingDialogs.shift();
+
+    if (isUndefined(nextDialog)) {
+      return;
+    }
+
+    activeDialog = nextDialog;
+    alertSet.add(nextDialog);
+  };
 
   const addDialog = async (
     type: 'alert' | 'confirm',
@@ -32,7 +49,9 @@ export const useDialogState = createGlobalState(() => {
 
       const callback = (result: boolean) => {
         alertSet.delete(alertDescription);
+        activeDialog = undefined;
         resolve(result);
+        showNextDialog();
       };
 
       const alertDescription: AlertDescription = {
@@ -46,7 +65,8 @@ export const useDialogState = createGlobalState(() => {
         symbolName,
       };
 
-      alertSet.add(alertDescription);
+      pendingDialogs.push(alertDescription);
+      showNextDialog();
     });
 
   const confirm = (
