@@ -1,12 +1,19 @@
 <script setup lang="ts">
-import { LocalSettingsList } from '@entity/localSettings';
+import { useStackNavigation } from '@page/routes';
 import { MDAppBar } from '@shared/ui/AppBar';
 import { MDPane } from '@shared/ui/Layout';
+import { SettingsSections } from '@widget/SettingsSections';
 
 defineSlots<{
   navigationButton: () => unknown;
   appBarTrailing: () => unknown;
 }>();
+
+const { open } = useStackNavigation();
+
+const onSelectDataStoragePrivacy = async () => {
+  await open('dataStoragePrivacy', {}, { target: 'dataStoragePrivacy' });
+};
 </script>
 
 <template>
@@ -17,6 +24,6 @@ defineSlots<{
       </template>
     </MDAppBar>
 
-    <LocalSettingsList />
+    <SettingsSections @select-data-storage-privacy="onSelectDataStoragePrivacy" />
   </MDPane>
 </template>

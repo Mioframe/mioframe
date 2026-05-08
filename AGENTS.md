@@ -76,6 +76,7 @@ reason:
 - Keep component and composable contracts narrow. Prefer IDs, primitive values, small display records, and explicit emits or slots over service bags, deeply nested configs, or mixed read/write models.
 - Keep TSDoc on every public API accurate and complete. If you touch a public export that is missing TSDoc or has stale TSDoc, update it as part of the same change.
 - Prefer explicit component props and named handlers over object-literal `v-bind` bags and inline template callbacks. Keep template contracts readable and mechanically checkable.
+- Emitted component events should describe the user action or selection owned by that component, not a parent command. Prefer domain names such as `select*` for list or menu choices, and avoid `open*` unless the component itself opens the pane, dialog, or route.
 - Keep validation, parsing, and extraction close to the contract or boundary that defines them.
 - Prefer typed collection helpers over raw `Object.keys`, `Object.values`, and `Object.entries` when iterating typed records. Do not add local type assertions just to paper over iteration typing outside rare boundary adapters.
 - When progress is knowable, surface progress instead of falling back to an indeterminate spinner.

@@ -18,24 +18,25 @@ export const useRemoveFSEntry = () => {
   const remove = async (path: string) => {
     const name = PathUtils.basename(path);
 
-    const sure = await confirm(
-      `Remove "${name}"?`,
-      `Are you sure you want to remove "${path}"?`,
-      'Remove',
-      'delete',
-    );
+    const sure = await confirm({
+      headline: `Remove "${name}"?`,
+      supportingText: `Are you sure you want to remove "${path}"?`,
+      confirmLabel: 'Remove',
+      symbolName: 'delete',
+    });
 
     if (sure) {
       try {
         await removeEntry(path);
       } catch (error) {
         if (error instanceof VfsError && error.code === FileSystemError.DirectoryNotEmpty) {
-          const confirmNested = await confirm(
-            'Directory not empty',
-            'This directory contains files or subdirectories. Do you want to remove them as well?',
-            'Remove all',
-            'cancel',
-          );
+          const confirmNested = await confirm({
+            headline: 'Directory not empty',
+            supportingText:
+              'This directory contains files or subdirectories. Do you want to remove them as well?',
+            confirmLabel: 'Remove all',
+            symbolName: 'cancel',
+          });
 
           if (confirmNested) {
             addSnackbar({

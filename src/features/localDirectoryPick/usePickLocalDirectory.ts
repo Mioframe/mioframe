@@ -45,10 +45,10 @@ export const usePickLocalDirectory = () => {
     loading.value = true;
 
     try {
-      await alert(
-        'Mounting user directory',
-        'Allow and select a directory to use in the application',
-      );
+      await alert({
+        headline: 'Mounting user directory',
+        supportingText: 'Allow and select a directory to use in the application',
+      });
 
       const directoryHandle = await window.showDirectoryPicker({
         mode: 'readwrite',
