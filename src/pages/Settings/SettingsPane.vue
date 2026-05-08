@@ -12,7 +12,7 @@ defineSlots<{
 const { open } = useStackNavigation();
 
 const onSelectDataStoragePrivacy = async () => {
-  await open('dataStoragePrivacy', {}, { target: 'settings' });
+  await open('dataStoragePrivacy', {}, { target: 'dataStoragePrivacy' });
 };
 </script>
 

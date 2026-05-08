@@ -21,7 +21,12 @@ vi.mock('@shared/ui/AppBar', () => ({
       },
     },
     setup(props, { slots }) {
-      return () => h('header', [h('h1', props.headline), slots.trailingElements?.()]);
+      return () =>
+        h('header', [
+          h('div', { 'data-slot': 'leading-button' }, slots.leadingButton?.()),
+          h('h1', props.headline),
+          h('div', { 'data-slot': 'trailing-elements' }, slots.trailingElements?.()),
+        ]);
     },
   }),
 }));
@@ -47,6 +52,31 @@ it('renders the local-first and privacy help content in-app', async () => {
     'Turning off Google Drive in Settings only disables the integration inside this app. It does not revoke access from Google.',
   );
   expect(root.textContent).toContain('You can use the app without creating a Mioframe account.');
+
+  app.unmount();
+  root.remove();
+});
+
+it('renders the navigation button slot in the app bar leading button area', async () => {
+  const { default: DataStoragePrivacyPane } = await import('./DataStoragePrivacyPane.vue');
+  const root = document.createElement('div');
+  document.body.appendChild(root);
+  const app = createApp(
+    defineComponent({
+      setup() {
+        return () =>
+          h(DataStoragePrivacyPane, null, {
+            navigationButton: () => h('button', { type: 'button' }, 'Back'),
+          });
+      },
+    }),
+  );
+
+  app.mount(root);
+  await nextTick();
+
+  const leadingButtonSlot = root.querySelector('[data-slot="leading-button"]');
+  expect(leadingButtonSlot?.textContent).toContain('Back');
 
   app.unmount();
   root.remove();

@@ -85,7 +85,7 @@ describe('SettingsPane', () => {
     root.querySelector('button')?.click();
     await nextTick();
 
-    expect(open).toHaveBeenCalledWith('dataStoragePrivacy', {}, { target: 'settings' });
+    expect(open).toHaveBeenCalledWith('dataStoragePrivacy', {}, { target: 'dataStoragePrivacy' });
 
     unmount();
   });

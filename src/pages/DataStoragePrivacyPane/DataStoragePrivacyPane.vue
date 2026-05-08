@@ -11,6 +11,10 @@ defineSlots<{
 <template>
   <MDPane class="data-storage-privacy-pane" allow-bottom-navigation>
     <MDAppBar headline="Data storage and privacy">
+      <template #leadingButton>
+        <slot name="navigationButton" />
+      </template>
+
       <template #trailingElements>
         <slot name="appBarTrailing" />
       </template>

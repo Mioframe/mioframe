@@ -1,0 +1,103 @@
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { createApp, nextTick } from 'vue';
+import SettingsCheckboxListItem from './SettingsCheckboxListItem.vue';
+
+vi.mock('@shared/ui/State/useRipple', () => ({
+  useRipple: () => undefined,
+}));
+
+const mountSettingsCheckboxListItem = async ({
+  checked = false,
+  disabled = false,
+  onChange,
+}: {
+  checked?: boolean | undefined;
+  disabled?: boolean | undefined;
+  onChange?: (() => void) | undefined;
+} = {}) => {
+  const root = document.createElement('div');
+  document.body.appendChild(root);
+  const app = createApp(SettingsCheckboxListItem, {
+    headline: 'Google Drive',
+    supportingText: 'Connect Google Drive accounts to open files you choose.',
+    checked,
+    disabled,
+    onChange,
+  });
+
+  app.mount(root);
+  await nextTick();
+
+  return {
+    root,
+    unmount: () => {
+      app.unmount();
+      root.remove();
+    },
+  };
+};
+
+const getCheckboxRow = (root: HTMLElement) => root.querySelector<HTMLElement>('[role="checkbox"]');
+
+describe('SettingsCheckboxListItem', () => {
+  afterEach(() => {
+    document.body.innerHTML = '';
+  });
+
+  it('renders an enabled checkbox row as a single interactive checkbox control', async () => {
+    const onChange = vi.fn();
+    const { root, unmount } = await mountSettingsCheckboxListItem({ onChange });
+
+    const row = getCheckboxRow(root);
+
+    expect(row?.tagName).toBe('BUTTON');
+    expect(row?.getAttribute('type')).toBe('button');
+    expect(row?.getAttribute('aria-checked')).toBe('false');
+    expect(row?.querySelector('input')).toBeNull();
+    expect(row?.querySelector('label')).toBeNull();
+    expect(row?.querySelectorAll('button')).toHaveLength(0);
+
+    const visualCheckbox = row?.querySelector<HTMLElement>('.md-checkbox');
+    expect(visualCheckbox).not.toBeNull();
+    expect(visualCheckbox?.getAttribute('aria-hidden')).toBe('true');
+
+    row?.click();
+    await nextTick();
+    expect(onChange).toHaveBeenCalledTimes(1);
+
+    row?.dispatchEvent(new KeyboardEvent('keydown', { key: ' ', bubbles: true }));
+    await nextTick();
+    expect(onChange).toHaveBeenCalledTimes(2);
+
+    row?.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+    await nextTick();
+    expect(onChange).toHaveBeenCalledTimes(3);
+
+    unmount();
+  });
+
+  it('renders a disabled checkbox row with checkbox semantics but without interactivity', async () => {
+    const onChange = vi.fn();
+    const { root, unmount } = await mountSettingsCheckboxListItem({
+      checked: true,
+      disabled: true,
+      onChange,
+    });
+
+    const row = getCheckboxRow(root);
+
+    expect(row?.tagName).toBe('DIV');
+    expect(row?.getAttribute('aria-checked')).toBe('true');
+    expect(row?.getAttribute('aria-disabled')).toBe('true');
+    expect(row?.hasAttribute('tabindex')).toBe(false);
+
+    row?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    row?.dispatchEvent(new KeyboardEvent('keydown', { key: ' ', bubbles: true }));
+    row?.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+    await nextTick();
+
+    expect(onChange).not.toHaveBeenCalled();
+
+    unmount();
+  });
+});

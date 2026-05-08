@@ -2,24 +2,19 @@
 import { MDCheckbox } from '@shared/ui/Checkbox';
 import { MDListItem } from '@shared/ui/Lists';
 
-const props = withDefaults(
-  defineProps<{
-    headline: string;
-    supportingText: string;
-    checked: boolean;
-    disabled?: boolean | undefined;
-  }>(),
-  {
-    disabled: false,
-  },
-);
+const { headline, supportingText, checked, disabled } = defineProps<{
+  headline: string;
+  supportingText: string;
+  checked: boolean;
+  disabled?: boolean | undefined;
+}>();
 
 const emit = defineEmits<{
   change: [];
 }>();
 
 const onChange = () => {
-  if (props.disabled) {
+  if (disabled) {
     return;
   }
 
@@ -27,7 +22,7 @@ const onChange = () => {
 };
 
 const onKeydown = (event: KeyboardEvent) => {
-  if (props.disabled || !['Enter', ' '].includes(event.key)) {
+  if (disabled || !['Enter', ' '].includes(event.key)) {
     return;
   }
 
@@ -40,9 +35,10 @@ const onKeydown = (event: KeyboardEvent) => {
   <MDListItem
     :is="disabled ? 'div' : 'button'"
     :type="disabled ? false : 'button'"
-    :item-role="disabled ? undefined : 'checkbox'"
+    item-role="checkbox"
     :headline="headline"
-    :aria-checked="disabled ? undefined : checked"
+    :aria-checked="checked"
+    :aria-disabled="disabled ? 'true' : undefined"
     @click="onChange"
     @keydown="onKeydown"
   >

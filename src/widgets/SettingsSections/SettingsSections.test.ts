@@ -249,7 +249,10 @@ describe('SettingsSections', () => {
 
     expect(root.textContent).toContain('Google Drive is not available in this build.');
     expect(googleDriveButton).toBeNull();
-    expect(googleDriveRow).toBeNull();
+    expect(googleDriveRow).not.toBeNull();
+    expect(googleDriveRow?.tagName).toBe('DIV');
+    expect(googleDriveRow?.getAttribute('aria-disabled')).toBe('true');
+    expect(googleDriveRow?.getAttribute('aria-checked')).toBe('false');
     expect(googleDriveStaticRow?.tagName).toBe('DIV');
 
     googleDriveStaticRow?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
@@ -297,7 +300,10 @@ describe('SettingsSections', () => {
 
     expect(root.textContent).toContain('Diagnostics are not available in this build.');
     expect(errorDiagnosticsButton).toBeNull();
-    expect(errorDiagnosticsRow).toBeNull();
+    expect(errorDiagnosticsRow).not.toBeNull();
+    expect(errorDiagnosticsRow?.tagName).toBe('DIV');
+    expect(errorDiagnosticsRow?.getAttribute('aria-disabled')).toBe('true');
+    expect(errorDiagnosticsRow?.getAttribute('aria-checked')).toBe('false');
     expect(errorDiagnosticsStaticRow?.tagName).toBe('DIV');
 
     errorDiagnosticsStaticRow?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
