@@ -1,23 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { effectScope, nextTick, ref, type EffectScope } from 'vue';
+import { computed, effectScope, nextTick, ref, type EffectScope } from 'vue';
 
-const settings = ref<{
-  diagnosticsEnabled: boolean;
-  diagnosticsConsentRequested: boolean;
-}>({
-  diagnosticsEnabled: false,
+const settings = ref<{ diagnosticsConsentRequested: boolean }>({
   diagnosticsConsentRequested: false,
 });
-const confirmMock =
-  vi.fn<
-    (
-      headline: string,
-      supportingText: string,
-      confirmLabel?: string,
-      symbolName?: string,
-      cancelLabel?: string,
-    ) => Promise<boolean>
-  >();
+const acceptDiagnosticsConsentMock = vi.fn();
+const rejectDiagnosticsConsentMock = vi.fn();
+const confirmMock = vi.fn<(options: object) => Promise<boolean>>();
 const isFinished = ref(true);
 const activeScopes: EffectScope[] = [];
 let sentryDiagnosticsAvailable = true;
@@ -37,8 +26,14 @@ const createTrackedScope = (): EffectScope => {
 
 vi.mock('@entity/localSettings', () => ({
   useLocalSettings: () => ({
-    settings,
     isFinished,
+  }),
+  useDiagnosticsSettings: () => ({
+    diagnosticsEnabled: computed(() => false),
+    diagnosticsConsentRequested: computed(() => settings.value.diagnosticsConsentRequested),
+    acceptDiagnosticsConsent: acceptDiagnosticsConsentMock,
+    rejectDiagnosticsConsent: rejectDiagnosticsConsentMock,
+    setDiagnosticsEnabledByUser: vi.fn(),
   }),
 }));
 
@@ -58,11 +53,12 @@ describe('useDiagnosticsConsentRequest', () => {
   beforeEach(() => {
     vi.resetModules();
     settings.value = {
-      diagnosticsEnabled: false,
       diagnosticsConsentRequested: false,
     };
     sentryDiagnosticsAvailable = true;
     isFinished.value = true;
+    acceptDiagnosticsConsentMock.mockReset();
+    rejectDiagnosticsConsentMock.mockReset();
     confirmMock.mockReset();
     confirmMock.mockResolvedValue(true);
   });
@@ -86,15 +82,10 @@ describe('useDiagnosticsConsentRequest', () => {
     await flushMicrotasks();
 
     expect(confirmMock).not.toHaveBeenCalled();
-    expect(settings.value).toEqual({
-      diagnosticsEnabled: false,
-      diagnosticsConsentRequested: false,
-    });
   });
 
   it('does not show a dialog when consent was already requested', async () => {
     settings.value = {
-      diagnosticsEnabled: false,
       diagnosticsConsentRequested: true,
     };
 
@@ -121,16 +112,16 @@ describe('useDiagnosticsConsentRequest', () => {
     await flushMicrotasks();
 
     expect(confirmMock).toHaveBeenCalledTimes(1);
-    expect(confirmMock).toHaveBeenCalledWith(
-      'Help improve Mioframe?',
-      'Mioframe can send technical error reports when something breaks. This helps developers find and fix crashes. Document contents are not intentionally included.',
-      'Allow',
-      undefined,
-      'Not now',
-    );
+    expect(confirmMock).toHaveBeenCalledWith({
+      headline: 'Help improve Mioframe?',
+      supportingText:
+        'Mioframe can send technical error reports when something breaks. This helps developers find and fix crashes. Document contents are not intentionally included.',
+      confirmLabel: 'Allow',
+      cancelLabel: 'Not now',
+    });
   });
 
-  it('stores consent when the user confirms the diagnostics dialog', async () => {
+  it('Allow calls acceptDiagnosticsConsent', async () => {
     confirmMock.mockResolvedValue(true);
 
     const scope = createTrackedScope();
@@ -142,13 +133,11 @@ describe('useDiagnosticsConsentRequest', () => {
 
     await flushMicrotasks();
 
-    expect(settings.value).toEqual({
-      diagnosticsEnabled: true,
-      diagnosticsConsentRequested: true,
-    });
+    expect(acceptDiagnosticsConsentMock).toHaveBeenCalledTimes(1);
+    expect(rejectDiagnosticsConsentMock).not.toHaveBeenCalled();
   });
 
-  it('stores rejection when the user cancels the diagnostics dialog', async () => {
+  it('Not now calls rejectDiagnosticsConsent', async () => {
     confirmMock.mockResolvedValue(false);
 
     const scope = createTrackedScope();
@@ -160,10 +149,8 @@ describe('useDiagnosticsConsentRequest', () => {
 
     await flushMicrotasks();
 
-    expect(settings.value).toEqual({
-      diagnosticsEnabled: false,
-      diagnosticsConsentRequested: true,
-    });
+    expect(rejectDiagnosticsConsentMock).toHaveBeenCalledTimes(1);
+    expect(acceptDiagnosticsConsentMock).not.toHaveBeenCalled();
   });
 
   it('does not create a second dialog when the composable is called again in the same session', async () => {
@@ -192,10 +179,25 @@ describe('useDiagnosticsConsentRequest', () => {
 
     resolveConfirm?.(true);
     await flushMicrotasks();
+    expect(acceptDiagnosticsConsentMock).toHaveBeenCalledTimes(1);
+  });
 
-    expect(settings.value).toEqual({
-      diagnosticsEnabled: true,
-      diagnosticsConsentRequested: true,
+  it('does not show a dialog before hydration finishes', async () => {
+    isFinished.value = false;
+
+    const scope = createTrackedScope();
+    const { useDiagnosticsConsentRequest } = await import('./useDiagnosticsConsentRequest');
+
+    scope.run(() => {
+      useDiagnosticsConsentRequest();
     });
+
+    await flushMicrotasks();
+    expect(confirmMock).not.toHaveBeenCalled();
+
+    isFinished.value = true;
+    await flushMicrotasks();
+
+    expect(confirmMock).toHaveBeenCalledTimes(1);
   });
 });

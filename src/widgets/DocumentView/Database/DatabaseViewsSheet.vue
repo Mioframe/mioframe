@@ -78,12 +78,12 @@ const onClickViewContextMenu = async (
   switch (action) {
     case VIEW_CONTEXT_ACTION.remove: {
       if (
-        await confirm(
-          'Remove view?',
-          'Are you sure you want to delete View presets?',
-          'Remove',
-          'delete',
-        )
+        await confirm({
+          headline: 'Remove view?',
+          supportingText: 'Are you sure you want to delete View presets?',
+          confirmLabel: 'Remove',
+          symbolName: 'delete',
+        })
       ) {
         await removeView(viewId);
       }

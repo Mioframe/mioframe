@@ -1,5 +1,5 @@
 import { DomainError } from '@shared/lib/error';
-import { ensureSentry, isSentryReportingConfigured } from './setupSentry';
+import { ensureSentry, isSentryConfigured, isSentryReportingEnabled } from './setupSentry';
 
 type ReportHandledErrorOptions = {
   feature: string;
@@ -35,7 +35,10 @@ const enqueueHandledReport = (entry: HandledReportEntry) => {
   }
 };
 
-const dropHandledReportQueue = () => {
+/**
+ * Clears queued handled reports and prevents old entries from retrying later.
+ */
+export const clearQueuedHandledReports = () => {
   handledReportQueue.length = 0;
 };
 
@@ -67,8 +70,8 @@ const flushHandledReports = async () => {
     return;
   }
 
-  if (!isSentryReportingConfigured()) {
-    dropHandledReportQueue();
+  if (!isSentryConfigured() || !isSentryReportingEnabled()) {
+    clearQueuedHandledReports();
     return;
   }
 
@@ -110,6 +113,14 @@ const kickoffHandledReportFlush = () => {
 };
 
 /**
+ * Flushes queued handled reports when reporting is currently allowed.
+ * Parallel flush cycles are collapsed into the active in-flight run.
+ */
+export const flushQueuedHandledReports = () => {
+  kickoffHandledReportFlush();
+};
+
+/**
  * Reports a user-handled error to Sentry without rethrowing it. Domain errors with an `Error`
  * cause report the underlying cause while keeping the user-facing message as extra context.
  * @param error - The handled error or thrown value.
@@ -143,8 +154,12 @@ export const reportHandledError = (error: unknown, options: ReportHandledErrorOp
   }
 
   try {
-    if (!isSentryReportingConfigured()) {
-      dropHandledReportQueue();
+    if (!isSentryConfigured()) {
+      clearQueuedHandledReports();
+      return;
+    }
+
+    if (!isSentryReportingEnabled()) {
       return;
     }
 

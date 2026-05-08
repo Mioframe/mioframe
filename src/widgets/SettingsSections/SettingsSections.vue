@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { useLocalSettings } from '@entity/localSettings';
+import { useDiagnosticsSettings, useLocalSettings } from '@entity/localSettings';
 import { GOOGLE_DRIVE_INTEGRATION_AVAILABLE, SENTRY_DIAGNOSTICS_AVAILABLE } from '@shared/config';
 import { MDListContainer, MDListItem } from '@shared/ui/Lists';
 import SettingsSection from './SettingsSection.vue';
@@ -10,6 +10,7 @@ const emit = defineEmits<{
 }>();
 
 const { settings } = useLocalSettings();
+const { diagnosticsEnabled, setDiagnosticsEnabledByUser } = useDiagnosticsSettings();
 
 const onToggleStarterExamples = () => {
   settings.value.hideStarterWidget = settings.value.hideStarterWidget === true ? undefined : true;
@@ -20,8 +21,7 @@ const onToggleDiagnostics = () => {
     return;
   }
 
-  settings.value.diagnosticsEnabled = !settings.value.diagnosticsEnabled;
-  settings.value.diagnosticsConsentRequested = true;
+  setDiagnosticsEnabledByUser(!diagnosticsEnabled.value);
 };
 
 const onToggleGoogleDrive = () => {
@@ -49,7 +49,7 @@ const onClickDataStoragePrivacy = () => {
               ? 'Send technical error reports to help developers fix crashes and unexpected failures.'
               : 'Diagnostics are not available in this build.'
           "
-          :checked="SENTRY_DIAGNOSTICS_AVAILABLE ? settings.diagnosticsEnabled === true : false"
+          :checked="SENTRY_DIAGNOSTICS_AVAILABLE ? diagnosticsEnabled : false"
           :disabled="!SENTRY_DIAGNOSTICS_AVAILABLE"
           @change="onToggleDiagnostics"
         />

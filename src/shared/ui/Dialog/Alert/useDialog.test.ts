@@ -17,8 +17,8 @@ describe('useDialogState', () => {
     const { confirm } = useDialog();
     const state = useDialogState();
 
-    const firstPromise = confirm('First headline', 'First body');
-    const secondPromise = confirm('Second headline', 'Second body');
+    const firstPromise = confirm({ headline: 'First headline', supportingText: 'First body' });
+    const secondPromise = confirm({ headline: 'Second headline', supportingText: 'Second body' });
 
     expect([...state.alertSet]).toHaveLength(1);
     expect([...state.alertSet].map((dialog) => dialog.headline)).toEqual(['First headline']);
@@ -44,9 +44,9 @@ describe('useDialogState', () => {
     const { alert, confirm } = useDialog();
     const state = useDialogState();
 
-    const firstPromise = alert('Alert headline', 'Alert body');
-    const secondPromise = confirm('Confirm headline', 'Confirm body');
-    const thirdPromise = alert('Final headline', 'Final body');
+    const firstPromise = alert({ headline: 'Alert headline', supportingText: 'Alert body' });
+    const secondPromise = confirm({ headline: 'Confirm headline', supportingText: 'Confirm body' });
+    const thirdPromise = alert({ headline: 'Final headline', supportingText: 'Final body' });
 
     expect([...state.alertSet].map((dialog) => dialog.headline)).toEqual(['Alert headline']);
 
@@ -73,9 +73,9 @@ describe('useDialogState', () => {
     const { alert, confirm } = useDialog();
     const state = useDialogState();
 
-    const firstPromise = confirm('First headline', 'First body');
-    const secondPromise = alert('Second headline', 'Second body');
-    const thirdPromise = confirm('Third headline', 'Third body');
+    const firstPromise = confirm({ headline: 'First headline', supportingText: 'First body' });
+    const secondPromise = alert({ headline: 'Second headline', supportingText: 'Second body' });
+    const thirdPromise = confirm({ headline: 'Third headline', supportingText: 'Third body' });
 
     expect([...state.alertSet].map((dialog) => dialog.headline)).toEqual(['First headline']);
 

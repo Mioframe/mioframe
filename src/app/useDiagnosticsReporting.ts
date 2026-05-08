@@ -1,7 +1,11 @@
 import { useLocalSettings } from '@entity/localSettings';
 import {
+  clearQueuedHandledReports,
+  flushQueuedHandledReports,
+} from '@shared/lib/reportHandledError';
+import {
   ensureSentry,
-  isSentryReportingConfigured,
+  isSentryConfigured,
   setSentryReportingEnabled,
 } from '@shared/lib/setupSentry';
 import { watch } from 'vue';
@@ -10,18 +14,38 @@ import { watch } from 'vue';
  * Keeps runtime Sentry reporting aligned with the local diagnostics opt-in.
  */
 export const useDiagnosticsReporting = () => {
-  const { settings } = useLocalSettings();
+  const { settings, isFinished } = useLocalSettings();
+  let sequence = 0;
 
   watch(
-    () => settings.value.diagnosticsEnabled,
-    async (diagnosticsEnabled) => {
-      const reportingEnabled = diagnosticsEnabled && isSentryReportingConfigured();
+    [isFinished, () => settings.value.diagnosticsEnabled],
+    async ([hydrated, diagnosticsEnabled]) => {
+      const currentSequence = ++sequence;
 
-      setSentryReportingEnabled(reportingEnabled);
-
-      if (reportingEnabled) {
-        await ensureSentry();
+      if (!hydrated) {
+        return;
       }
+
+      if (!isSentryConfigured()) {
+        setSentryReportingEnabled(false);
+        clearQueuedHandledReports();
+        return;
+      }
+
+      if (diagnosticsEnabled) {
+        setSentryReportingEnabled(true);
+        await ensureSentry();
+
+        if (currentSequence !== sequence) {
+          return;
+        }
+
+        flushQueuedHandledReports();
+        return;
+      }
+
+      setSentryReportingEnabled(false);
+      clearQueuedHandledReports();
     },
     { immediate: true },
   );

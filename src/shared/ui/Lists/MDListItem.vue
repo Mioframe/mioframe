@@ -1,13 +1,13 @@
 <script setup lang="ts" generic="Is extends 'button' | 'a' | 'div' | 'li' = 'div'">
 import { MDState } from '../State';
 
-const { is = 'div' } = defineProps<{
+const { is = 'div', disabled } = defineProps<{
   headline: string;
   supportingText?: string | undefined;
   is?: Is | undefined;
   type?: (Is extends 'button' ? 'button' | 'submit' | 'reset' : false) | undefined;
   itemRole?: string | undefined;
-
+  disabled?: boolean | undefined;
   draggable?: boolean | undefined;
 }>();
 
@@ -24,12 +24,20 @@ const slots = defineSlots<{
 }>();
 
 const onClick = (e: MouseEvent) => {
+  if (disabled) {
+    return;
+  }
+
   if (['button', 'a'].includes(is)) {
     emit('click', e);
   }
 };
 
 const onKeydown = (e: KeyboardEvent) => {
+  if (disabled) {
+    return;
+  }
+
   if (['button', 'a'].includes(is)) {
     emit('keydown', e);
   }
@@ -41,8 +49,9 @@ const onKeydown = (e: KeyboardEvent) => {
     :is="is"
     class="md-list-item"
     :draggable="draggable"
+    :disabled="disabled"
     :type="type"
-    :disable-ripple="is === 'li'"
+    :disable-ripple="disabled || is === 'li'"
     :role="itemRole ?? 'listitem'"
     @click="onClick"
     @keydown="onKeydown"

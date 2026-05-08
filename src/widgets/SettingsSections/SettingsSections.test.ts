@@ -1,6 +1,6 @@
 /* eslint-disable vue/one-component-per-file -- This test file intentionally defines several tiny inline stub components. */
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { createApp, defineComponent, h, nextTick, ref } from 'vue';
+import { computed, createApp, defineComponent, h, nextTick, ref } from 'vue';
 
 const settings = ref<{
   diagnosticsEnabled?: boolean;
@@ -10,10 +10,23 @@ const settings = ref<{
 }>({});
 let googleDriveIntegrationAvailable = true;
 let sentryDiagnosticsAvailable = true;
+const setDiagnosticsEnabledByUserMock = vi.fn((enabled: boolean) => {
+  settings.value.diagnosticsEnabled = enabled;
+  settings.value.diagnosticsConsentRequested = true;
+});
 
 vi.mock('@entity/localSettings', () => ({
   useLocalSettings: () => ({
     settings,
+  }),
+  useDiagnosticsSettings: () => ({
+    diagnosticsEnabled: computed(() => settings.value.diagnosticsEnabled === true),
+    diagnosticsConsentRequested: computed(
+      () => settings.value.diagnosticsConsentRequested === true,
+    ),
+    acceptDiagnosticsConsent: vi.fn(),
+    rejectDiagnosticsConsent: vi.fn(),
+    setDiagnosticsEnabledByUser: setDiagnosticsEnabledByUserMock,
   }),
 }));
 
@@ -52,6 +65,10 @@ vi.mock('@shared/ui/Lists', () => ({
         type: String,
         default: undefined,
       },
+      disabled: {
+        type: Boolean,
+        default: false,
+      },
     },
     emits: ['click', 'keydown'],
     setup(props, { attrs, emit, slots }) {
@@ -62,14 +79,15 @@ vi.mock('@shared/ui/Lists', () => ({
             ...attrs,
             type: typeof props.type === 'string' ? props.type : undefined,
             role: props.itemRole ?? 'listitem',
+            disabled: props.is === 'button' && props.disabled ? true : undefined,
             onClick:
-              props.is === 'button'
+              props.is === 'button' && !props.disabled
                 ? () => {
                     emit('click');
                   }
                 : undefined,
             onKeydown:
-              props.is === 'button'
+              props.is === 'button' && !props.disabled
                 ? (event: KeyboardEvent) => {
                     emit('keydown', event);
                   }
@@ -189,6 +207,7 @@ describe('SettingsSections', () => {
     googleDriveIntegrationAvailable = true;
     sentryDiagnosticsAvailable = true;
     settings.value = {};
+    setDiagnosticsEnabledByUserMock.mockClear();
     document.body.innerHTML = '';
   });
 
@@ -280,6 +299,7 @@ describe('SettingsSections', () => {
     errorDiagnosticsButton?.click();
     await nextTick();
 
+    expect(setDiagnosticsEnabledByUserMock).toHaveBeenCalledWith(true);
     expect(settings.value.diagnosticsEnabled).toBe(true);
     expect(settings.value.diagnosticsConsentRequested).toBe(true);
     expect(errorDiagnosticsRow?.getAttribute('aria-checked')).toBe('true');
@@ -287,6 +307,7 @@ describe('SettingsSections', () => {
     errorDiagnosticsButton?.click();
     await nextTick();
 
+    expect(setDiagnosticsEnabledByUserMock).toHaveBeenLastCalledWith(false);
     expect(settings.value.diagnosticsEnabled).toBe(false);
     expect(settings.value.diagnosticsConsentRequested).toBe(true);
     expect(errorDiagnosticsRow?.getAttribute('aria-checked')).toBe('false');
@@ -316,6 +337,7 @@ describe('SettingsSections', () => {
     errorDiagnosticsStaticRow?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
     await nextTick();
 
+    expect(setDiagnosticsEnabledByUserMock).not.toHaveBeenCalled();
     expect(settings.value.diagnosticsEnabled).toBe(true);
 
     unmount();

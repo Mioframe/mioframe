@@ -4,10 +4,13 @@ import { effectScope, nextTick, ref, type EffectScope } from 'vue';
 const settings = ref<{ diagnosticsEnabled: boolean }>({
   diagnosticsEnabled: false,
 });
+const isFinished = ref(false);
 const activeScopes: EffectScope[] = [];
-let sentryReportingConfigured = true;
+let sentryConfigured = true;
 const ensureSentryMock = vi.fn();
 const setSentryReportingEnabledMock = vi.fn();
+const flushQueuedHandledReportsMock = vi.fn();
+const clearQueuedHandledReportsMock = vi.fn();
 
 const flushMicrotasks = async () => {
   await nextTick();
@@ -16,22 +19,26 @@ const flushMicrotasks = async () => {
 
 const createTrackedScope = (): EffectScope => {
   const scope = effectScope();
-
   activeScopes.push(scope);
-
   return scope;
 };
 
 vi.mock('@entity/localSettings', () => ({
   useLocalSettings: () => ({
     settings,
+    isFinished,
   }),
 }));
 
 vi.mock('@shared/lib/setupSentry', () => ({
   ensureSentry: ensureSentryMock,
-  isSentryReportingConfigured: () => sentryReportingConfigured,
+  isSentryConfigured: () => sentryConfigured,
   setSentryReportingEnabled: setSentryReportingEnabledMock,
+}));
+
+vi.mock('@shared/lib/reportHandledError', () => ({
+  flushQueuedHandledReports: flushQueuedHandledReportsMock,
+  clearQueuedHandledReports: clearQueuedHandledReportsMock,
 }));
 
 describe('useDiagnosticsReporting', () => {
@@ -40,10 +47,13 @@ describe('useDiagnosticsReporting', () => {
     settings.value = {
       diagnosticsEnabled: false,
     };
-    sentryReportingConfigured = true;
+    isFinished.value = false;
+    sentryConfigured = true;
     ensureSentryMock.mockReset();
     ensureSentryMock.mockResolvedValue(undefined);
     setSentryReportingEnabledMock.mockReset();
+    flushQueuedHandledReportsMock.mockReset();
+    clearQueuedHandledReportsMock.mockReset();
   });
 
   afterEach(() => {
@@ -52,10 +62,8 @@ describe('useDiagnosticsReporting', () => {
     }
   });
 
-  it('enables Sentry reporting only when diagnostics are opted in and config is available', async () => {
-    settings.value = {
-      diagnosticsEnabled: true,
-    };
+  it('does nothing before local settings hydration finishes', async () => {
+    settings.value = { diagnosticsEnabled: true };
 
     const scope = createTrackedScope();
     const { useDiagnosticsReporting } = await import('./useDiagnosticsReporting');
@@ -64,13 +72,40 @@ describe('useDiagnosticsReporting', () => {
       useDiagnosticsReporting();
     });
 
+    await flushMicrotasks();
+
+    expect(setSentryReportingEnabledMock).not.toHaveBeenCalled();
+    expect(ensureSentryMock).not.toHaveBeenCalled();
+    expect(flushQueuedHandledReportsMock).not.toHaveBeenCalled();
+    expect(clearQueuedHandledReportsMock).not.toHaveBeenCalled();
+  });
+
+  it('enables reporting, initializes Sentry, then flushes after hydration', async () => {
+    settings.value = { diagnosticsEnabled: true };
+
+    const scope = createTrackedScope();
+    const { useDiagnosticsReporting } = await import('./useDiagnosticsReporting');
+
+    scope.run(() => {
+      useDiagnosticsReporting();
+    });
+
+    isFinished.value = true;
     await flushMicrotasks();
 
     expect(setSentryReportingEnabledMock).toHaveBeenCalledWith(true);
     expect(ensureSentryMock).toHaveBeenCalledTimes(1);
+    expect(flushQueuedHandledReportsMock).toHaveBeenCalledTimes(1);
+    expect(clearQueuedHandledReportsMock).not.toHaveBeenCalled();
+    expect(setSentryReportingEnabledMock.mock.invocationCallOrder[0] ?? 0).toBeLessThan(
+      ensureSentryMock.mock.invocationCallOrder[0] ?? 0,
+    );
+    expect(ensureSentryMock.mock.invocationCallOrder[0] ?? 0).toBeLessThan(
+      flushQueuedHandledReportsMock.mock.invocationCallOrder[0] ?? 0,
+    );
   });
 
-  it('disables Sentry reporting when diagnostics are false by default', async () => {
+  it('disables reporting and clears the queue after hydration when diagnostics are disabled', async () => {
     const scope = createTrackedScope();
     const { useDiagnosticsReporting } = await import('./useDiagnosticsReporting');
 
@@ -78,17 +113,18 @@ describe('useDiagnosticsReporting', () => {
       useDiagnosticsReporting();
     });
 
+    isFinished.value = true;
     await flushMicrotasks();
 
     expect(setSentryReportingEnabledMock).toHaveBeenCalledWith(false);
+    expect(clearQueuedHandledReportsMock).toHaveBeenCalledTimes(1);
     expect(ensureSentryMock).not.toHaveBeenCalled();
+    expect(flushQueuedHandledReportsMock).not.toHaveBeenCalled();
   });
 
-  it('disables Sentry reporting when config is unavailable even if diagnostics are enabled', async () => {
-    settings.value = {
-      diagnosticsEnabled: true,
-    };
-    sentryReportingConfigured = false;
+  it('disables reporting and clears the queue when Sentry is unavailable', async () => {
+    settings.value = { diagnosticsEnabled: true };
+    sentryConfigured = false;
 
     const scope = createTrackedScope();
     const { useDiagnosticsReporting } = await import('./useDiagnosticsReporting');
@@ -97,16 +133,24 @@ describe('useDiagnosticsReporting', () => {
       useDiagnosticsReporting();
     });
 
+    isFinished.value = true;
     await flushMicrotasks();
 
     expect(setSentryReportingEnabledMock).toHaveBeenCalledWith(false);
+    expect(clearQueuedHandledReportsMock).toHaveBeenCalledTimes(1);
     expect(ensureSentryMock).not.toHaveBeenCalled();
+    expect(flushQueuedHandledReportsMock).not.toHaveBeenCalled();
   });
 
-  it('turns reporting back off when diagnostics are toggled from true to false', async () => {
-    settings.value = {
-      diagnosticsEnabled: true,
-    };
+  it('does not flush when an older ensureSentry resolves after a fast true to false toggle', async () => {
+    let resolveEnsure: (() => void) | undefined;
+    ensureSentryMock.mockImplementation(
+      () =>
+        new Promise<void>((resolve) => {
+          resolveEnsure = resolve;
+        }),
+    );
+    settings.value = { diagnosticsEnabled: true };
 
     const scope = createTrackedScope();
     const { useDiagnosticsReporting } = await import('./useDiagnosticsReporting');
@@ -115,14 +159,17 @@ describe('useDiagnosticsReporting', () => {
       useDiagnosticsReporting();
     });
 
+    isFinished.value = true;
     await flushMicrotasks();
 
-    settings.value = {
-      diagnosticsEnabled: false,
-    };
+    settings.value = { diagnosticsEnabled: false };
+    await flushMicrotasks();
+
+    resolveEnsure?.();
     await flushMicrotasks();
 
     expect(setSentryReportingEnabledMock).toHaveBeenLastCalledWith(false);
-    expect(ensureSentryMock).toHaveBeenCalledTimes(1);
+    expect(clearQueuedHandledReportsMock).toHaveBeenCalledTimes(1);
+    expect(flushQueuedHandledReportsMock).not.toHaveBeenCalled();
   });
 });

@@ -210,7 +210,8 @@ describe('setupSentry', () => {
 
   it('ensureSentry imports SDK only for valid runtime config', async () => {
     const { getImportAttempts } = setupSentryMocks();
-    const { ensureSentry, registerSentryConfig } = await import('./setupSentry');
+    const { ensureSentry, isSentryConfigured, registerSentryConfig } =
+      await import('./setupSentry');
 
     await ensureSentry();
     registerSentryConfig({
@@ -223,6 +224,7 @@ describe('setupSentry', () => {
     });
     await ensureSentry();
 
+    expect(isSentryConfigured()).toBe(false);
     expect(getImportAttempts()).toBe(0);
 
     registerSentryConfig({
@@ -231,7 +233,18 @@ describe('setupSentry', () => {
     });
     await ensureSentry();
 
+    expect(isSentryConfigured()).toBe(true);
     expect(getImportAttempts()).toBe(1);
+  });
+
+  it('setSentryReportingEnabled does not import the SDK by itself', async () => {
+    const { getImportAttempts } = setupSentryMocks();
+    const { isSentryReportingEnabled, setSentryReportingEnabled } = await import('./setupSentry');
+
+    setSentryReportingEnabled(true);
+
+    expect(isSentryReportingEnabled()).toBe(true);
+    expect(getImportAttempts()).toBe(0);
   });
 
   it('recovers after a failed Sentry module import', async () => {
@@ -382,6 +395,25 @@ describe('setupSentry', () => {
     const initOptions = initMock.mock.calls[0]?.[0];
     const beforeSend = initOptions?.beforeSend;
     const event = { message: 'test-event' };
+
+    expect(beforeSend).toEqual(expect.any(Function));
+    if (beforeSend instanceof Function) {
+      expect(beforeSend(event)).toBe(event);
+    }
+  });
+
+  it('setupSentry enables reporting and keeps beforeSend open', async () => {
+    const { initMock } = setupSentryMocks();
+    const { isSentryReportingEnabled, setupSentry } = await import('./setupSentry');
+    const app = createApp(TestAppRoot);
+
+    await setupSentry(app, 'https://example@sentry.io/123');
+
+    expect(isSentryReportingEnabled()).toBe(true);
+
+    const initOptions = initMock.mock.calls[0]?.[0];
+    const beforeSend = initOptions?.beforeSend;
+    const event = { message: 'setup-event' };
 
     expect(beforeSend).toEqual(expect.any(Function));
     if (beforeSend instanceof Function) {

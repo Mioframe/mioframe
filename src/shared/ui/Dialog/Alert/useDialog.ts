@@ -16,6 +16,26 @@ type AlertDescription = {
   callback: (result: boolean) => void;
 };
 
+/**
+ * Shared object options for alert and confirm dialogs.
+ */
+export type DialogOptions = {
+  /** Primary dialog title. */
+  headline: string;
+  /** Supporting body text rendered under the headline. */
+  supportingText: string;
+  /** Label for the primary confirmation action. */
+  confirmLabel?: string | undefined;
+  /** Label for the secondary cancel action. */
+  cancelLabel?: string | undefined;
+  /** Optional Material symbol name displayed in the dialog. */
+  symbolName?: string | undefined;
+};
+
+/**
+ * Returns the global queued dialog state shared by alert and confirm helpers.
+ * @returns Dialog queue state and dialog open bookkeeping.
+ */
 export const useDialogState = createGlobalState(() => {
   const alertSet = reactive(new Set<AlertDescription>());
   const pendingDialogs: AlertDescription[] = [];
@@ -36,14 +56,7 @@ export const useDialogState = createGlobalState(() => {
     alertSet.add(nextDialog);
   };
 
-  const addDialog = async (
-    type: 'alert' | 'confirm',
-    headline: string,
-    supportingText: string,
-    confirmLabel?: string,
-    symbolName?: string,
-    cancelLabel?: string,
-  ) =>
+  const addDialog = async (type: 'alert' | 'confirm', options: DialogOptions) =>
     await new Promise<boolean>((resolve) => {
       const id = sessionUniqueId('dialog');
       let resolved = false;
@@ -63,32 +76,21 @@ export const useDialogState = createGlobalState(() => {
       const alertDescription: AlertDescription = {
         type,
         id,
-        headline,
-        supportingText,
-        confirmLabel,
-        cancelLabel,
+        headline: options.headline,
+        supportingText: options.supportingText,
+        confirmLabel: options.confirmLabel,
+        cancelLabel: options.cancelLabel,
         callback,
-        symbolName,
+        symbolName: options.symbolName,
       };
 
       pendingDialogs.push(alertDescription);
       showNextDialog();
     });
 
-  const confirm = (
-    headline: string,
-    supportingText: string,
-    confirmLabel?: string,
-    symbolName?: string,
-    cancelLabel?: string,
-  ) => addDialog('confirm', headline, supportingText, confirmLabel, symbolName, cancelLabel);
+  const confirm = (options: DialogOptions) => addDialog('confirm', options);
 
-  const alert = (
-    headline: string,
-    supportingText: string,
-    confirmLabel?: string,
-    symbolName?: string,
-  ) => addDialog('alert', headline, supportingText, confirmLabel, symbolName);
+  const alert = (options: Omit<DialogOptions, 'cancelLabel'>) => addDialog('alert', options);
 
   const numberOfOpenDialogs = ref(0);
 

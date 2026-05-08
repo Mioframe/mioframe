@@ -61,7 +61,7 @@ let loadedSentryModule: SentryModule | undefined;
 let runtimeConfig: SentryConfig | undefined;
 let initPromise: Promise<SentryFacade> | undefined;
 let appRef: App | undefined;
-let isSentryReportingEnabled = false;
+let reportingEnabled = false;
 let warnedMissingConfig = false;
 let warnedInitFailure = false;
 
@@ -95,12 +95,18 @@ const canInitializeSentry = (config: SentryConfig | undefined) =>
   config?.enabled === true && !!config.dsn;
 
 /**
- * Returns whether runtime configuration currently allows real Sentry reporting.
- * This reflects configuration only. A `true` result does not guarantee the SDK
- * has finished initializing yet.
- * @returns Whether handled reports should be kept for Sentry delivery.
+ * Returns whether the runtime configuration is valid for lazy Sentry initialization.
+ * This only reflects registered config and does not imply delivery is currently allowed.
+ * @returns Whether Sentry has valid runtime config.
  */
-export const isSentryReportingConfigured = () => canInitializeSentry(runtimeConfig);
+export const isSentryConfigured = () => canInitializeSentry(runtimeConfig);
+
+/**
+ * Returns whether runtime delivery to Sentry is currently allowed.
+ * This gate is independent from SDK initialization and can be toggled without importing Sentry.
+ * @returns Whether Sentry event delivery is enabled right now.
+ */
+export const isSentryReportingEnabled = () => reportingEnabled;
 
 /**
  * Enables or disables Sentry event delivery at runtime.
@@ -108,11 +114,11 @@ export const isSentryReportingConfigured = () => canInitializeSentry(runtimeConf
  * @param enabled - Whether Sentry should be allowed to send reports.
  */
 export const setSentryReportingEnabled = (enabled: boolean) => {
-  isSentryReportingEnabled = enabled;
+  reportingEnabled = enabled;
 };
 
 const readRuntimeConfig = () => {
-  if (!canInitializeSentry(runtimeConfig)) {
+  if (!isSentryConfigured()) {
     warnMissingConfigOnce();
     return undefined;
   }
@@ -120,7 +126,7 @@ const readRuntimeConfig = () => {
   return runtimeConfig;
 };
 const invokeNoopSentryMethod = (methodName: string, args: unknown[]) => {
-  if (!canInitializeSentry(runtimeConfig)) {
+  if (!isSentryConfigured()) {
     warnMissingConfigOnce();
   }
 
@@ -218,7 +224,7 @@ export const ensureSentry = async (app?: App): Promise<SentryFacade> => {
       ...(appRef ? { app: appRef } : {}),
       tracesSampleRate: 0,
       beforeSend: (event) => {
-        if (!isSentryReportingEnabled) {
+        if (!isSentryReportingEnabled()) {
           return null;
         }
 
@@ -245,9 +251,8 @@ export const ensureSentry = async (app?: App): Promise<SentryFacade> => {
  * Compatibility wrapper that registers runtime config and initializes Sentry
  * for a Vue app.
  * Prefer `sentryPlugin` for app bootstrap, but keep this helper available for
- * call sites that still want an explicit setup function. SDK initialization
- * does not enable event delivery by itself; handled reports remain gated by
- * `setSentryReportingEnabled`.
+ * call sites that still want an explicit setup function. This compatibility API
+ * preserves the legacy behavior where an explicit setup call enables delivery.
  * @param app - Vue app instance used during Sentry initialization.
  * @param dsn - Sentry DSN to register before lazy initialization.
  * @returns The stable Sentry facade.
@@ -257,6 +262,8 @@ export const setupSentry = async (app: App, dsn: string) => {
     dsn,
     enabled: true,
   });
+
+  setSentryReportingEnabled(true);
 
   return await ensureSentry(app);
 };
@@ -279,3 +286,5 @@ export const sentryPlugin: Plugin = {
     appRef = app;
   },
 };
+
+export { isSentryConfigured as isSentryReportingConfigured };

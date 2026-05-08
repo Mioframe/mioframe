@@ -37,6 +37,7 @@ const onKeydown = (event: KeyboardEvent) => {
     :type="disabled ? false : 'button'"
     item-role="checkbox"
     :headline="headline"
+    :disabled="disabled"
     :aria-checked="checked"
     :aria-disabled="disabled ? 'true' : undefined"
     @click="onChange"
