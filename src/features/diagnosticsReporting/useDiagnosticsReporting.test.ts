@@ -1,8 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { effectScope, nextTick, ref, type EffectScope } from 'vue';
 
-const settings = ref<{ diagnosticsEnabled: boolean }>({
+const settings = ref<{
+  diagnosticsEnabled: boolean;
+  diagnosticsConsentRequested: boolean;
+}>({
   diagnosticsEnabled: false,
+  diagnosticsConsentRequested: false,
 });
 const isFinished = ref(false);
 const activeScopes: EffectScope[] = [];
@@ -46,6 +50,7 @@ describe('useDiagnosticsReporting', () => {
     vi.resetModules();
     settings.value = {
       diagnosticsEnabled: false,
+      diagnosticsConsentRequested: false,
     };
     isFinished.value = false;
     sentryConfigured = true;
@@ -63,7 +68,10 @@ describe('useDiagnosticsReporting', () => {
   });
 
   it('does nothing before local settings hydration finishes', async () => {
-    settings.value = { diagnosticsEnabled: true };
+    settings.value = {
+      diagnosticsEnabled: true,
+      diagnosticsConsentRequested: true,
+    };
 
     const scope = createTrackedScope();
     const { useDiagnosticsReporting } = await import('./useDiagnosticsReporting');
@@ -81,7 +89,10 @@ describe('useDiagnosticsReporting', () => {
   });
 
   it('enables reporting, initializes Sentry, then flushes after hydration', async () => {
-    settings.value = { diagnosticsEnabled: true };
+    settings.value = {
+      diagnosticsEnabled: true,
+      diagnosticsConsentRequested: true,
+    };
 
     const scope = createTrackedScope();
     const { useDiagnosticsReporting } = await import('./useDiagnosticsReporting');
@@ -105,7 +116,34 @@ describe('useDiagnosticsReporting', () => {
     );
   });
 
+  it('keeps reporting state unknown after hydration before diagnostics consent is answered', async () => {
+    settings.value = {
+      diagnosticsEnabled: false,
+      diagnosticsConsentRequested: false,
+    };
+
+    const scope = createTrackedScope();
+    const { useDiagnosticsReporting } = await import('./useDiagnosticsReporting');
+
+    scope.run(() => {
+      useDiagnosticsReporting();
+    });
+
+    isFinished.value = true;
+    await flushMicrotasks();
+
+    expect(setSentryReportingStateMock).toHaveBeenCalledWith('unknown');
+    expect(clearQueuedHandledReportsMock).not.toHaveBeenCalled();
+    expect(ensureSentryMock).not.toHaveBeenCalled();
+    expect(flushQueuedHandledReportsMock).not.toHaveBeenCalled();
+  });
+
   it('disables reporting and clears the queue after hydration when diagnostics are disabled', async () => {
+    settings.value = {
+      diagnosticsEnabled: false,
+      diagnosticsConsentRequested: true,
+    };
+
     const scope = createTrackedScope();
     const { useDiagnosticsReporting } = await import('./useDiagnosticsReporting');
 
@@ -123,7 +161,10 @@ describe('useDiagnosticsReporting', () => {
   });
 
   it('disables reporting and clears the queue when Sentry is unavailable', async () => {
-    settings.value = { diagnosticsEnabled: true };
+    settings.value = {
+      diagnosticsEnabled: true,
+      diagnosticsConsentRequested: true,
+    };
     sentryConfigured = false;
 
     const scope = createTrackedScope();
@@ -150,7 +191,10 @@ describe('useDiagnosticsReporting', () => {
           resolveEnsure = resolve;
         }),
     );
-    settings.value = { diagnosticsEnabled: true };
+    settings.value = {
+      diagnosticsEnabled: true,
+      diagnosticsConsentRequested: true,
+    };
 
     const scope = createTrackedScope();
     const { useDiagnosticsReporting } = await import('./useDiagnosticsReporting');
@@ -162,7 +206,10 @@ describe('useDiagnosticsReporting', () => {
     isFinished.value = true;
     await flushMicrotasks();
 
-    settings.value = { diagnosticsEnabled: false };
+    settings.value = {
+      diagnosticsEnabled: false,
+      diagnosticsConsentRequested: true,
+    };
     await flushMicrotasks();
 
     resolveEnsure?.();

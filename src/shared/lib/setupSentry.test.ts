@@ -455,34 +455,51 @@ describe('setupSentry', () => {
   });
 
   it('beforeSend drops events when state is unknown', async () => {
-    const { getSentryReportingState } = await import('./setupSentry');
+    const { initMock } = setupSentryMocks();
+    const { registerSentryConfig, ensureSentry, setSentryReportingState } =
+      await import('./setupSentry');
 
-    expect(getSentryReportingState()).toBe('unknown');
+    registerSentryConfig({
+      dsn: 'https://example@sentry.io/123',
+      enabled: true,
+    });
 
-    // beforeSend checks getSentryReportingState() !== 'enabled', so unknown returns null
-    const result = getSentryReportingState() === 'enabled' ? { message: 'test-event' } : null;
-    expect(result).toBeNull();
+    setSentryReportingState('unknown');
+
+    await ensureSentry();
+
+    const initOptions = initMock.mock.calls[0]?.[0];
+    const beforeSend = initOptions?.beforeSend;
+    const event = { message: 'test-event' };
+
+    expect(beforeSend).toEqual(expect.any(Function));
+    if (beforeSend instanceof Function) {
+      expect(beforeSend(event)).toBeNull();
+    }
   });
 
   it('beforeSend drops events when state is disabled', async () => {
-    const { setSentryReportingState, getSentryReportingState } = await import('./setupSentry');
+    const { initMock } = setupSentryMocks();
+    const { registerSentryConfig, ensureSentry, setSentryReportingState } =
+      await import('./setupSentry');
+
+    registerSentryConfig({
+      dsn: 'https://example@sentry.io/123',
+      enabled: true,
+    });
 
     setSentryReportingState('disabled');
 
-    expect(getSentryReportingState()).toBe('disabled');
+    await ensureSentry();
 
-    // beforeSend checks getSentryReportingState() !== 'enabled', so disabled returns null
-    const result = getSentryReportingState() === 'enabled' ? { message: 'test-event' } : null;
-    expect(result).toBeNull();
-  });
+    const initOptions = initMock.mock.calls[0]?.[0];
+    const beforeSend = initOptions?.beforeSend;
+    const event = { message: 'test-event' };
 
-  it('beforeSend keeps events when state is enabled', async () => {
-    const { setSentryReportingState, getSentryReportingState } = await import('./setupSentry');
-
-    setSentryReportingState('enabled');
-
-    // beforeSend checks getSentryReportingState() !== 'enabled', so enabled returns event
-    expect(getSentryReportingState()).toBe('enabled');
+    expect(beforeSend).toEqual(expect.any(Function));
+    if (beforeSend instanceof Function) {
+      expect(beforeSend(event)).toBeNull();
+    }
   });
 
   it('setupSentry compatibility sets state to enabled', async () => {

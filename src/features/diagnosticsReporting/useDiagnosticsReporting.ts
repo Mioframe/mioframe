@@ -14,8 +14,12 @@ export const useDiagnosticsReporting = () => {
   let sequence = 0;
 
   watch(
-    [isFinished, () => settings.value.diagnosticsEnabled],
-    async ([hydrated, diagnosticsEnabled]) => {
+    [
+      isFinished,
+      () => settings.value.diagnosticsEnabled,
+      () => settings.value.diagnosticsConsentRequested,
+    ],
+    async ([hydrated, diagnosticsEnabled, diagnosticsConsentRequested]) => {
       const currentSequence = ++sequence;
 
       if (!hydrated) {
@@ -40,8 +44,14 @@ export const useDiagnosticsReporting = () => {
         return;
       }
 
-      setSentryReportingState('disabled');
-      clearQueuedHandledReports();
+      // oxlint-disable-next-line no-unnecessary-boolean-literal-compare -- strict boolean from watcher callback
+      if (diagnosticsConsentRequested === true) {
+        setSentryReportingState('disabled');
+        clearQueuedHandledReports();
+        return;
+      }
+
+      setSentryReportingState('unknown');
     },
     { immediate: true },
   );

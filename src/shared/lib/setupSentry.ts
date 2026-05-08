@@ -311,5 +311,3 @@ export const sentryPlugin: Plugin = {
     appRef = app;
   },
 };
-
-export { isSentryConfigured as isSentryReportingConfigured };
