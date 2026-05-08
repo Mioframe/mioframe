@@ -3,11 +3,7 @@ import {
   clearQueuedHandledReports,
   flushQueuedHandledReports,
 } from '@shared/lib/reportHandledError';
-import {
-  ensureSentry,
-  isSentryConfigured,
-  setSentryReportingEnabled,
-} from '@shared/lib/setupSentry';
+import { ensureSentry, isSentryConfigured, setSentryReportingState } from '@shared/lib/setupSentry';
 import { watch } from 'vue';
 
 /**
@@ -27,13 +23,13 @@ export const useDiagnosticsReporting = () => {
       }
 
       if (!isSentryConfigured()) {
-        setSentryReportingEnabled(false);
+        setSentryReportingState('disabled');
         clearQueuedHandledReports();
         return;
       }
 
       if (diagnosticsEnabled) {
-        setSentryReportingEnabled(true);
+        setSentryReportingState('enabled');
         await ensureSentry();
 
         if (currentSequence !== sequence) {
@@ -44,7 +40,7 @@ export const useDiagnosticsReporting = () => {
         return;
       }
 
-      setSentryReportingEnabled(false);
+      setSentryReportingState('disabled');
       clearQueuedHandledReports();
     },
     { immediate: true },

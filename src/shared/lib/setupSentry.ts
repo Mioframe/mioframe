@@ -61,7 +61,15 @@ let loadedSentryModule: SentryModule | undefined;
 let runtimeConfig: SentryConfig | undefined;
 let initPromise: Promise<SentryFacade> | undefined;
 let appRef: App | undefined;
-let reportingEnabled = false;
+/**
+ * Tracks whether Sentry event delivery is allowed.
+ * `unknown` means local settings have not been hydrated yet, so the user's
+ * diagnostics preference is still unknown. Errors that arrive while in this
+ * state are queued and flushed once the state transitions to `enabled`.
+ */
+export type SentryReportingState = 'unknown' | 'enabled' | 'disabled';
+
+let reportingState: SentryReportingState = 'unknown';
 let warnedMissingConfig = false;
 let warnedInitFailure = false;
 
@@ -102,11 +110,28 @@ const canInitializeSentry = (config: SentryConfig | undefined) =>
 export const isSentryConfigured = () => canInitializeSentry(runtimeConfig);
 
 /**
+ * Returns the current Sentry reporting state.
+ * `unknown` means local settings have not been hydrated yet.
+ * @returns The current reporting state.
+ */
+export const getSentryReportingState = () => reportingState;
+
+/**
+ * Sets the Sentry reporting state at runtime.
+ * Use `'enabled'` when the user opts in to diagnostics, `'disabled'` when
+ * they opt out, and `'unknown'` before local settings are hydrated.
+ * @param state - The reporting state to set.
+ */
+export const setSentryReportingState = (state: SentryReportingState) => {
+  reportingState = state;
+};
+
+/**
  * Returns whether runtime delivery to Sentry is currently allowed.
  * This gate is independent from SDK initialization and can be toggled without importing Sentry.
  * @returns Whether Sentry event delivery is enabled right now.
  */
-export const isSentryReportingEnabled = () => reportingEnabled;
+export const isSentryReportingEnabled = () => reportingState === 'enabled';
 
 /**
  * Enables or disables Sentry event delivery at runtime.
@@ -114,7 +139,7 @@ export const isSentryReportingEnabled = () => reportingEnabled;
  * @param enabled - Whether Sentry should be allowed to send reports.
  */
 export const setSentryReportingEnabled = (enabled: boolean) => {
-  reportingEnabled = enabled;
+  reportingState = enabled ? 'enabled' : 'disabled';
 };
 
 const readRuntimeConfig = () => {
@@ -224,7 +249,7 @@ export const ensureSentry = async (app?: App): Promise<SentryFacade> => {
       ...(appRef ? { app: appRef } : {}),
       tracesSampleRate: 0,
       beforeSend: (event) => {
-        if (!isSentryReportingEnabled()) {
+        if (getSentryReportingState() !== 'enabled') {
           return null;
         }
 

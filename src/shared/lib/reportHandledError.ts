@@ -1,5 +1,5 @@
 import { DomainError } from '@shared/lib/error';
-import { ensureSentry, isSentryConfigured, isSentryReportingEnabled } from './setupSentry';
+import { ensureSentry, getSentryReportingState, isSentryConfigured } from './setupSentry';
 
 type ReportHandledErrorOptions = {
   feature: string;
@@ -18,7 +18,6 @@ type HandledReportEntry = {
 
 const handledReportQueue: HandledReportEntry[] = [];
 let flushPromise: Promise<void> | undefined;
-let queuedDuringFlush = false;
 
 const trimHandledReportQueue = () => {
   if (handledReportQueue.length > HANDLED_REPORT_QUEUE_LIMIT) {
@@ -29,10 +28,6 @@ const trimHandledReportQueue = () => {
 const enqueueHandledReport = (entry: HandledReportEntry) => {
   handledReportQueue.push(entry);
   trimHandledReportQueue();
-
-  if (flushPromise) {
-    queuedDuringFlush = true;
-  }
 };
 
 /**
@@ -65,51 +60,37 @@ const sendHandledReport = (
   }
 };
 
-const flushHandledReports = async () => {
+const flushQueuedHandledReportsOnce = async () => {
   if (handledReportQueue.length === 0) {
     return;
   }
 
-  if (!isSentryConfigured() || !isSentryReportingEnabled()) {
+  if (!isSentryConfigured()) {
     clearQueuedHandledReports();
     return;
   }
 
-  const sentry = await ensureSentry();
-  const queuedEntries = handledReportQueue.splice(0);
-  const failedEntries: HandledReportEntry[] = [];
-
-  for (const entry of queuedEntries) {
-    const wasSent = sendHandledReport(entry, sentry);
-
-    if (!wasSent) {
-      failedEntries.push(entry);
-    }
-  }
-
-  if (failedEntries.length > 0) {
-    handledReportQueue.unshift(...failedEntries);
-    trimHandledReportQueue();
-  }
-};
-
-const kickoffHandledReportFlush = () => {
-  if (flushPromise) {
+  if (getSentryReportingState() !== 'enabled') {
     return;
   }
 
-  flushPromise = flushHandledReports()
-    .catch(() => undefined)
-    .finally(() => {
-      const shouldFlushQueuedReports = queuedDuringFlush;
+  const sentry = await ensureSentry();
 
-      flushPromise = undefined;
-      queuedDuringFlush = false;
+  while (handledReportQueue.length > 0) {
+    const entry = handledReportQueue.shift();
 
-      if (shouldFlushQueuedReports && handledReportQueue.length > 0) {
-        kickoffHandledReportFlush();
-      }
-    });
+    if (!entry) {
+      return;
+    }
+
+    const wasSent = sendHandledReport(entry, sentry);
+
+    if (!wasSent) {
+      handledReportQueue.unshift(entry);
+      trimHandledReportQueue();
+      return;
+    }
+  }
 };
 
 /**
@@ -117,7 +98,9 @@ const kickoffHandledReportFlush = () => {
  * Parallel flush cycles are collapsed into the active in-flight run.
  */
 export const flushQueuedHandledReports = () => {
-  kickoffHandledReportFlush();
+  flushPromise ??= flushQueuedHandledReportsOnce().finally(() => {
+    flushPromise = undefined;
+  });
 };
 
 /**
@@ -159,7 +142,9 @@ export const reportHandledError = (error: unknown, options: ReportHandledErrorOp
       return;
     }
 
-    if (!isSentryReportingEnabled()) {
+    const reportingState = getSentryReportingState();
+
+    if (reportingState === 'disabled') {
       return;
     }
 
@@ -168,7 +153,10 @@ export const reportHandledError = (error: unknown, options: ReportHandledErrorOp
       extras,
       options,
     });
-    kickoffHandledReportFlush();
+
+    if (reportingState === 'enabled') {
+      flushQueuedHandledReports();
+    }
   } catch {
     // Reporting must remain fire-and-forget for UI handlers.
   }

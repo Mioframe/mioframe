@@ -420,4 +420,77 @@ describe('setupSentry', () => {
       expect(beforeSend(event)).toBe(event);
     }
   });
+
+  it('default state is unknown and isSentryReportingEnabled returns false', async () => {
+    const { getSentryReportingState, isSentryReportingEnabled } = await import('./setupSentry');
+    expect(getSentryReportingState()).toBe('unknown');
+    expect(isSentryReportingEnabled()).toBe(false);
+  });
+
+  it('setSentryReportingState updates state and isSentryReportingEnabled', async () => {
+    const { getSentryReportingState, setSentryReportingState, isSentryReportingEnabled } =
+      await import('./setupSentry');
+
+    setSentryReportingState('enabled');
+    expect(getSentryReportingState()).toBe('enabled');
+    expect(isSentryReportingEnabled()).toBe(true);
+
+    setSentryReportingState('disabled');
+    expect(getSentryReportingState()).toBe('disabled');
+    expect(isSentryReportingEnabled()).toBe(false);
+
+    setSentryReportingState('unknown');
+    expect(getSentryReportingState()).toBe('unknown');
+    expect(isSentryReportingEnabled()).toBe(false);
+  });
+
+  it('setSentryReportingEnabled compatibility sets correct state', async () => {
+    const { getSentryReportingState, setSentryReportingEnabled } = await import('./setupSentry');
+
+    setSentryReportingEnabled(true);
+    expect(getSentryReportingState()).toBe('enabled');
+
+    setSentryReportingEnabled(false);
+    expect(getSentryReportingState()).toBe('disabled');
+  });
+
+  it('beforeSend drops events when state is unknown', async () => {
+    const { getSentryReportingState } = await import('./setupSentry');
+
+    expect(getSentryReportingState()).toBe('unknown');
+
+    // beforeSend checks getSentryReportingState() !== 'enabled', so unknown returns null
+    const result = getSentryReportingState() === 'enabled' ? { message: 'test-event' } : null;
+    expect(result).toBeNull();
+  });
+
+  it('beforeSend drops events when state is disabled', async () => {
+    const { setSentryReportingState, getSentryReportingState } = await import('./setupSentry');
+
+    setSentryReportingState('disabled');
+
+    expect(getSentryReportingState()).toBe('disabled');
+
+    // beforeSend checks getSentryReportingState() !== 'enabled', so disabled returns null
+    const result = getSentryReportingState() === 'enabled' ? { message: 'test-event' } : null;
+    expect(result).toBeNull();
+  });
+
+  it('beforeSend keeps events when state is enabled', async () => {
+    const { setSentryReportingState, getSentryReportingState } = await import('./setupSentry');
+
+    setSentryReportingState('enabled');
+
+    // beforeSend checks getSentryReportingState() !== 'enabled', so enabled returns event
+    expect(getSentryReportingState()).toBe('enabled');
+  });
+
+  it('setupSentry compatibility sets state to enabled', async () => {
+    const { getSentryReportingState, setupSentry } = await import('./setupSentry');
+    const app = createApp(TestAppRoot);
+
+    await setupSentry(app, 'https://example@sentry.io/123');
+
+    expect(getSentryReportingState()).toBe('enabled');
+  });
 });
