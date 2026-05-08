@@ -49,6 +49,7 @@ const useEscapeKeyStack = createGlobalState(() => {
  *
  * Return `true` to pass the key press to the next stacked handler.
  * Return `false` or nothing to consume the key press and stop propagation.
+ * @param handle
  */
 export const useOnEscapeKeyStacked = (handle: EscapeHandler) => {
   const onEscapeKeyStacked = useEscapeKeyStack();
@@ -65,6 +66,8 @@ export const useOnEscapeKeyStacked = (handle: EscapeHandler) => {
  *
  * Return `true` to pass the key press to the next stacked handler.
  * Return `false` or nothing to consume the key press and stop propagation.
+ * @param when
+ * @param handle
  */
 export const useOnEscapeKeyStackedWhen = (
   when: MaybeRefOrGetter<boolean | undefined>,

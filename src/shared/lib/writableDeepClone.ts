@@ -6,10 +6,8 @@ import type { WritableDeep } from 'type-fest';
  *
  * Uses es-toolkit's cloneDeep internally to create a complete copy
  * that can be freely mutated without affecting the original.
- *
  * @param v - Value to clone
  * @returns A deeply writable copy with WritableDeep<T> type
- *
  * @example
  * ```ts
  * const original = { nested: { value: 1 } } as const;

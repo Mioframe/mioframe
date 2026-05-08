@@ -17,23 +17,36 @@ interface SortableInternal extends Sortable {
 
 const reorderItemSelector = `[${REORDER_ITEM_ATTRIBUTE}]`;
 
-/** Reads the stable item id assigned through `data-sortable-id`. */
+/**
+ * Reads the stable item id assigned through `data-sortable-id`.
+ * @param item
+ */
 const readItemId = (item: HTMLElement | null): string | undefined => {
   const rawItemId = item?.getAttribute(REORDER_ITEM_ATTRIBUTE);
 
   return rawItemId ?? undefined;
 };
 
-/** Returns the current DOM order as seen by SortableJS. */
+/**
+ * Returns the current DOM order as seen by SortableJS.
+ * @param sortable
+ */
 const readOrderedIds = (sortable: Sortable | undefined): string[] =>
   sortable ? sortable.toArray().filter(Boolean) : [];
 
-/** Invokes SortableJS internal drop handling to cancel or finish a session early. */
+/**
+ * Invokes SortableJS internal drop handling to cancel or finish a session early.
+ * @param sortable
+ * @param event
+ */
 const runDrop = (sortable: SortableInternal | undefined, event?: Event) => {
   sortable?._onDrop?.(event);
 };
 
-/** Resolves the actual auto-scroll target for SortableJS. */
+/**
+ * Resolves the actual auto-scroll target for SortableJS.
+ * @param scrollContainerEl
+ */
 const resolveScrollTarget = (
   scrollContainerEl: HTMLElement | SVGElement | null | undefined,
 ): boolean | HTMLElement => {
@@ -44,7 +57,10 @@ const resolveScrollTarget = (
   return true;
 };
 
-/** Maps the library layout vocabulary to SortableJS direction options. */
+/**
+ * Maps the library layout vocabulary to SortableJS direction options.
+ * @param layout
+ */
 const resolveDirection = (layout: ReorderLayout): Sortable.Options['direction'] | undefined => {
   if (layout === 'grid') {
     return undefined;
@@ -53,7 +69,11 @@ const resolveDirection = (layout: ReorderLayout): Sortable.Options['direction'] 
   return layout;
 };
 
-/** Creates and owns a SortableJS instance for a reorder surface container. */
+/**
+ * Creates and owns a SortableJS instance for a reorder surface container.
+ * @param container
+ * @param root0
+ */
 export const createSortableAdapter = (
   container: MaybeElementRef,
   {
@@ -108,7 +128,10 @@ export const createSortableAdapter = (
     sortableRef.value = undefined;
   };
 
-  /** Creates a new SortableJS instance for the current container element. */
+  /**
+   * Creates a new SortableJS instance for the current container element.
+   * @param containerEl
+   */
   const createInstance = (containerEl: HTMLElement) => {
     destroy();
 

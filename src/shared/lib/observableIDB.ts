@@ -1,6 +1,5 @@
 /**
  * Observable wrapper around idb-keyval for reactive data storage in IndexedDB.
- *
  * @description
  * The class provides reactive access to data stored in IndexedDB via the `idb-keyval` library.
  * Uses `BehaviorSubject` from RxJS to ensure reactivity and instant UI updates.
@@ -18,7 +17,6 @@
  * - On initialization, the value may be `null` if the key does not exist in IndexedDB
  * - Zod validation returns an object `{ success: boolean; data?: T; error?: unknown }`
  * - If validation fails, the Observable still emits the result with `success: false`
- *
  * @example
  * ```typescript
  * import { observableIDB } from './observableIDB';
@@ -53,9 +51,7 @@ import type z from 'zod/v4-mini';
 
 /**
  * Class for reactive storage and access to data in IndexedDB with Zod validation.
- *
- * @typeParam T - Type of stored data, must match the Zod schema
- *
+ * @template T - Type of stored data, must match the Zod schema
  * @param key - Unique key for storage in IndexedDB (IDBValidKey)
  * @param zod - Zod schema for data validation and serialization
  */
@@ -63,7 +59,6 @@ export class ObservableIDB<T> {
   /**
    * RxJS behavioral subject holding the current state of data.
    * Initialized with `null` until data is loaded or set.
-   *
    * @remarks
    * Emits Zod validation results: `{ success: boolean; data?: T; error?: unknown }`
    * or `null` if no data exists in IndexedDB.
@@ -72,10 +67,8 @@ export class ObservableIDB<T> {
 
   /**
    * ObservableIDB constructor.
-   *
    * @param key - Unique key for storing data in IndexedDB
    * @param zod - Zod schema for data validation and serialization
-   *
    * @example
    * ```typescript
    * const config = new ObservableIDB<Config>('app_config', z.object({
@@ -93,9 +86,7 @@ export class ObservableIDB<T> {
 
   /**
    * Internal method to update BehaviorSubject with validation result.
-   *
    * @param v - Data to validate and store
-   *
    * @remarks
    * Uses `zod.safeParse()` for safe data validation.
    * The result is always emitted, regardless of validation success or failure.
@@ -106,14 +97,11 @@ export class ObservableIDB<T> {
 
   /**
    * Initializes the instance by loading data from IndexedDB.
-   *
    * @returns `void` (async operation, result ignored via void)
-   *
    * @description
    * Asynchronously loads data by key from IndexedDB and updates the BehaviorSubject.
    * If no data exists in storage, emits `null`.
    * Called automatically when the class instance is created.
-   *
    * @example
    * ```typescript
    * const settings = new ObservableIDB<Settings>('user_settings', schema);
@@ -127,14 +115,11 @@ export class ObservableIDB<T> {
 
   /**
    * Returns an Observable for reactive observation of data changes.
-   *
    * @returns Observable emitting Zod validation results or `null`
-   *
    * @description
    * Subscribing to this Observable allows reacting to any data changes:
    * - On initialization (first value may be `null`)
    * - After calling the `set()` method
-   *
    * @example
    * ```typescript
    * const observable = userSettings.observable();
@@ -158,11 +143,8 @@ export class ObservableIDB<T> {
 
   /**
    * Asynchronously saves data to IndexedDB and updates reactive state.
-   *
    * @param newValue - New data to save
-   *
    * @returns `Promise<void>` - resolves after writing to IndexedDB and updating BehaviorSubject
-   *
    * @description
    * Two-step operation:
    * 1. Write data to IndexedDB via `idb-keyval.set()`
@@ -170,7 +152,6 @@ export class ObservableIDB<T> {
    *
    * **Important:** Validation occurs after writing, so if validation fails,
    * data will still be saved in IndexedDB (consider adding pre-write validation).
-   *
    * @example
    * ```typescript
    * // Successful update

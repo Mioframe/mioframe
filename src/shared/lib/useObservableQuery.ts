@@ -7,7 +7,6 @@ import { readonly, shallowRef, toValue, watch } from 'vue';
  * Factory function for creating observable query configuration.
  * Accepts a get$ function that returns Observable<T> given query parameters Q.
  * Returns a QueryDefinition object with subscribe and fetch methods.
- *
  * @param get$ Function accepting query parameters and returning Observable<T>
  * @returns Query configuration object with subscribe and fetch methods
  */
@@ -18,7 +17,6 @@ export const defineObservableQuery = <T, Q>(
     /**
      * Subscribes to the Observable returned by get$.
      * Passes query parameters and optional event handlers (next/error/complete).
-     *
      * @param args Object with query parameters and optional event handlers
      * @returns Unsubscribe function, called to stop the subscription
      */
@@ -55,7 +53,6 @@ export const defineObservableQuery = <T, Q>(
     /**
      * Performs a single fetch request with a default timeout of 30 seconds.
      * Converts Observable to Promise via firstValueFrom and applies the timeout operator.
-     *
      * @param query Request parameters
      * @param waitTime Timeout in milliseconds (default: 30000)
      * @returns Promise with the first value from the stream or undefined on completion/error
@@ -68,7 +65,6 @@ export const defineObservableQuery = <T, Q>(
 /**
  * Query configuration interface with methods for subscribing to a data stream and single retrieval.
  * Used as the type for the object returned by defineObservableQuery.
- *
  * @template T Type of data passed through the stream (Observable<T>)
  * @template Q Type of query parameters
  */
@@ -76,7 +72,6 @@ export type QueryDefinition<T, Q> = {
   /**
    * Subscribes to the Observable returned by get$.
    * Passes query parameters and optional event handlers (next/error/complete).
-   *
    * @param args Object with required query parameters and optional event handlers:
    * - `query`: Request parameters passed to the get$ function
    * - `next`: Handler for successful values from the stream (called when data is received)
@@ -94,7 +89,6 @@ export type QueryDefinition<T, Q> = {
   /**
    * Performs a single fetch request with a default timeout of 30 seconds.
    * Converts Observable to Promise via firstValueFrom and applies the timeout operator.
-   *
    * @param query Request parameters passed to the get$ function
    * @param waitTime Timeout in milliseconds (default: 30000)
    * @returns Promise with the first value from the stream or undefined if Observable completes without emissions. Throws TimeoutError or source error on failure.
@@ -110,7 +104,6 @@ export interface UseQueryOptions {
   /**
    * Flag to preserve previous data on reactive queryArgs change.
    * When enabled, data is retained from the prior request and error is cleared.
-   *
    * @default false
    */
   preserveOnQueryChange?: boolean;
@@ -124,14 +117,12 @@ export interface UseQueryOptions {
  * - if preserveOnQueryChange is enabled — error is cleared, data is retained
  * - otherwise — all states (data, error, isLoading) are reset.
  * Returns readonly reactive refs for data, error, isLoading and a refetch method for manual request restart.
- *
  * @template T Type of data passed through the stream (Observable<T>)
  * @template Q Type of query parameters
  * @param queryDef Configuration object with subscribe and fetch methods (result of defineObservableQuery call)
  * @param queryArgs Reactive source of query arguments (Ref, getter, or value). When undefined, current subscription is cancelled without creating a new one.
  * @param options Behavior settings when query parameters change
  * @returns Object with readonly reactive refs for data, error, isLoading and async refetch method
- *
  * @example
  * // Basic usage with reactive object
  * const query = reactive({ page: 1 });
@@ -169,8 +160,7 @@ export function useObservableQuery<T, Q>(
   /**
    * Handler for successful value reception from the stream.
    * Checks if the value is an error (RxJS may pass Error as next-value),
-   and updates corresponding states accordingly.
-   *
+   *and updates corresponding states accordingly.
    * @param v Value from Observable stream
    */
   const onNext = (v: T) => {
@@ -187,7 +177,6 @@ export function useObservableQuery<T, Q>(
   /**
    * Stream error handler.
    * Stores the error in state and resets the loading flag.
-   *
    * @param e Error occurred in the stream (can be any unknown type)
    */
   const onError = (e: unknown) => {
@@ -201,7 +190,6 @@ export function useObservableQuery<T, Q>(
    * Observer for reactive query arguments.
    * Automatically creates/cancels subscription on queryArgs change via await subscribe call.
    * On undefined — cancels current subscription and resets state (unless preservation mode is enabled).
-   *
    * @param newQuery New request parameters
    * @param _oldQuery Previous request parameters (unused)
    * @param onCleanup Cleanup function called when unsubscribing from watch
@@ -263,7 +251,6 @@ export function useObservableQuery<T, Q>(
      * Async method for manual request restart.
      * Performs single fetch via queryDef.fetch and updates state with data.
      * If queryArgs equals undefined — does nothing.
-     *
      * @returns Promise<void>
      */
     refetch: async () => {

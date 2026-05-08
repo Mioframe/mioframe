@@ -2,7 +2,6 @@ import type { FSNodeType } from './IFileSystemProvider';
 
 /**
  * Virtual file system event types.
- *
  * @remarks
  * Events are divided into two categories:
  *

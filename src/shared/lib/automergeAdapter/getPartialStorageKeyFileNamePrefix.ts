@@ -4,6 +4,7 @@ import { KEY_SEPARATE, zodPartialAutomergeFileName } from './types';
 
 /**
  * Returns the Automerge storage filename prefix used to match all files for a partial storage key.
+ * @param keyPrefix
  */
 export const getPartialStorageKeyFileNamePrefix = (
   keyPrefix: PartialStorageKey,

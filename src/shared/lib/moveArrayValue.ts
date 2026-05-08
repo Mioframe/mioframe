@@ -3,11 +3,9 @@
  *
  * Mutates the original array in place. Supports negative indices
  * which are normalized relative to array length.
- *
  * @param arr - The array to modify (mutated in place)
  * @param fromIndex - Source index (supports negative indices)
  * @param toIndex - Destination index (supports negative indices)
- *
  * @example
  * ```ts
  * const arr = [1, 2, 3, 4, 5];

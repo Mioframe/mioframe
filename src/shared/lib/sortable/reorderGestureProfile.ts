@@ -43,7 +43,10 @@ export const getDefaultReorderInput = (): ReorderInput => {
   return 'pointer';
 };
 
-/** Normalizes browser pointer types into the library input vocabulary. */
+/**
+ * Normalizes browser pointer types into the library input vocabulary.
+ * @param pointerType
+ */
 export const getReorderInputFromPointerType = (pointerType: string | undefined): ReorderInput => {
   switch (pointerType) {
     case 'touch':
@@ -57,7 +60,10 @@ export const getReorderInputFromPointerType = (pointerType: string | undefined):
   }
 };
 
-/** Prevents immediate activation on touch-like inputs that need long-press behavior. */
+/**
+ * Prevents immediate activation on touch-like inputs that need long-press behavior.
+ * @param root0
+ */
 const resolveActivation = ({
   activation,
   input,
@@ -72,7 +78,10 @@ const resolveActivation = ({
   return activation;
 };
 
-/** Returns the drag movement threshold for the current density and input mode. */
+/**
+ * Returns the drag movement threshold for the current density and input mode.
+ * @param root0
+ */
 const getMoveThreshold = ({
   density,
   input,
@@ -93,7 +102,10 @@ const getMoveThreshold = ({
   return baseThreshold;
 };
 
-/** Returns the press delay used before drag activation begins. */
+/**
+ * Returns the press delay used before drag activation begins.
+ * @param root0
+ */
 const getDelay = ({
   activation,
   input,
@@ -112,7 +124,10 @@ const getDelay = ({
   return 0;
 };
 
-/** Resolves the full runtime gesture profile consumed by the reorder engine. */
+/**
+ * Resolves the full runtime gesture profile consumed by the reorder engine.
+ * @param root0
+ */
 export const getReorderGestureProfile = ({
   input,
   layout,

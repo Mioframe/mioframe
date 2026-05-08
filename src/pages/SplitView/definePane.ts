@@ -16,6 +16,7 @@ export function definePane<T extends UnknownRecord>(p: {
 }): Pane<T>;
 /**
  * Определить параметры Pane для навигации
+ * @param root0
  */
 export function definePane<T extends UnknownRecord = EmptyObject>({
   component,

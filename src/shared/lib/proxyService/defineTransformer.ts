@@ -12,7 +12,6 @@
  * NOT responsible for:
  * - Implementing the transformers themselves (user provides the logic)
  * - Managing the lifecycle of SuperJSON instance
- *
  * @example
  * ```ts
  * // Register a custom type transformer
@@ -35,11 +34,9 @@ import { keys } from '../objectKeys';
  *
  * The closure pattern allows preserving types `T` (original) and `J` (JSON representation)
  * inside the returned function, avoiding the use of `any` in transformer arrays.
- *
  * @param name - Unique name for identifying the transformer in SuperJSON
  * @param transformer - Object with serialize/deserialize methods
  * @returns Closure accepting SuperJSON and Provider for registration
- *
  * @example
  * ```ts
  * // Define a custom class
@@ -85,11 +82,9 @@ export const defineTransformer =
  * ```
  *   [Error instance] --serialize--> { message, name, stack, cause, ...customProps } --deserialize--> [Error instance]
  * ```
- *
  * @param identifier - Unique transformer identifier (used by SuperJSON for registration)
  * @param ErrorClass - Constructor function of the error class to use during deserialization
  * @returns TransformerRegistration callback for registration with SuperJSON
- *
  * @example
  * ```ts
  * // Define a custom error class

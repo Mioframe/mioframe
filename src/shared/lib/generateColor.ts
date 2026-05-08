@@ -1,8 +1,7 @@
 /**
  * Options for generating HSL color.
- *
- * @property s - Color saturation in percentage (0-100). Default: 70%.
- * @property l - Color lightness in percentage (0-100). Default: 50%.
+ * s - Color saturation in percentage (0-100). Default: 70%.
+ * l - Color lightness in percentage (0-100). Default: 50%.
  */
 export type ColorOptions = { s?: number; l?: number };
 
@@ -18,7 +17,6 @@ const GOLDEN_RATIO = 0.618033988749895;
  * Uses a linear congruential pattern (31 * acc + char) followed by a
  * bit-wise XOR shift to ensure uniform distribution of unsigned 32-bit
  * hash values in the range [0, 2³²).
- *
  * @param s - String to hash.
  * @returns Unsigned 32-bit integer.
  * @example
@@ -37,7 +35,6 @@ const getHash = (s: string) => {
  * The color is determined by a string identifier, ensuring reproducibility with
  * identical input data. The hash is multiplied by the golden ratio for better
  * distribution of shades around the color wheel.
- *
  * @param str - Unique identifier (e.g., document ID, slug, heading)
  * @param options - Options for adjusting saturation and lightness
  * @returns A CSS HSL color string.
@@ -60,7 +57,6 @@ export const generateHsl = (str: string, { s = 70, l = 50 }: ColorOptions = {}) 
  *
  * Converts a 32-bit hash to a 24-bit RGB value using the lower 24 bits
  * of the hash. Guarantees reproducibility with identical input data.
- *
  * @param str - Unique identifier for color generation
  * @returns A CSS HEX color string.
  * @example
