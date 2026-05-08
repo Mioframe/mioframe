@@ -67,4 +67,37 @@ describe('useDialogState', () => {
     await expect(thirdPromise).resolves.toBe(true);
     expect([...state.alertSet]).toHaveLength(0);
   });
+
+  it('ignores repeated callback calls for an already closed dialog', async () => {
+    const { useDialog, useDialogState } = await loadDialogModule();
+    const { alert, confirm } = useDialog();
+    const state = useDialogState();
+
+    const firstPromise = confirm('First headline', 'First body');
+    const secondPromise = alert('Second headline', 'Second body');
+    const thirdPromise = confirm('Third headline', 'Third body');
+
+    expect([...state.alertSet].map((dialog) => dialog.headline)).toEqual(['First headline']);
+
+    const firstDialog = [...state.alertSet][0];
+    firstDialog?.callback(true);
+    firstDialog?.callback(false);
+    await Promise.resolve();
+
+    expect([...state.alertSet].map((dialog) => dialog.headline)).toEqual(['Second headline']);
+    expect(await firstPromise).toBe(true);
+
+    const secondDialog = [...state.alertSet][0];
+    secondDialog?.callback(false);
+    await Promise.resolve();
+
+    expect([...state.alertSet].map((dialog) => dialog.headline)).toEqual(['Third headline']);
+    expect(await secondPromise).toBe(false);
+
+    const thirdDialog = [...state.alertSet][0];
+    thirdDialog?.callback(true);
+
+    await expect(thirdPromise).resolves.toBe(true);
+    expect([...state.alertSet]).toHaveLength(0);
+  });
 });

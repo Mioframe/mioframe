@@ -46,8 +46,14 @@ export const useDialogState = createGlobalState(() => {
   ) =>
     await new Promise<boolean>((resolve) => {
       const id = sessionUniqueId('dialog');
+      let resolved = false;
 
       const callback = (result: boolean) => {
+        if (resolved || activeDialog !== alertDescription) {
+          return;
+        }
+
+        resolved = true;
         alertSet.delete(alertDescription);
         activeDialog = undefined;
         resolve(result);
