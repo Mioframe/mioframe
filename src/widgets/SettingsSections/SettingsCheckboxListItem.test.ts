@@ -57,9 +57,11 @@ describe('SettingsCheckboxListItem', () => {
     expect(row?.querySelector('label')).toBeNull();
     expect(row?.querySelectorAll('button')).toHaveLength(0);
 
-    const visualCheckbox = row?.querySelector<HTMLElement>('.md-checkbox');
+    const visualCheckbox = row?.querySelector<HTMLElement>('[aria-hidden="true"]');
     expect(visualCheckbox).not.toBeNull();
-    expect(visualCheckbox?.getAttribute('aria-hidden')).toBe('true');
+    expect(visualCheckbox?.querySelector('input')).toBeNull();
+    expect(visualCheckbox?.querySelector('label')).toBeNull();
+    expect(visualCheckbox?.hasAttribute('tabindex')).toBe(false);
 
     row?.click();
     await nextTick();
@@ -70,6 +72,10 @@ describe('SettingsCheckboxListItem', () => {
     expect(onChange).toHaveBeenCalledTimes(2);
 
     row?.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+    await nextTick();
+    expect(onChange).toHaveBeenCalledTimes(3);
+
+    row?.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }));
     await nextTick();
     expect(onChange).toHaveBeenCalledTimes(3);
 
@@ -91,7 +97,7 @@ describe('SettingsCheckboxListItem', () => {
     expect(row?.getAttribute('aria-disabled')).toBe('true');
     expect(row?.hasAttribute('tabindex')).toBe(false);
 
-    row?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    row?.click();
     row?.dispatchEvent(new KeyboardEvent('keydown', { key: ' ', bubbles: true }));
     row?.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
     await nextTick();
