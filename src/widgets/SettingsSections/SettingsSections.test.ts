@@ -3,10 +3,12 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createApp, defineComponent, h, nextTick, ref } from 'vue';
 
 const settings = ref<{
+  diagnosticsEnabled?: boolean;
   googleDriveIntegrationEnabled?: boolean;
   hideStarterWidget?: boolean;
 }>({});
 let googleDriveIntegrationAvailable = true;
+let sentryDiagnosticsAvailable = true;
 
 vi.mock('@entity/localSettings', () => ({
   useLocalSettings: () => ({
@@ -17,6 +19,9 @@ vi.mock('@entity/localSettings', () => ({
 vi.mock('@shared/config', () => ({
   get GOOGLE_DRIVE_INTEGRATION_AVAILABLE() {
     return googleDriveIntegrationAvailable;
+  },
+  get SENTRY_DIAGNOSTICS_AVAILABLE() {
+    return sentryDiagnosticsAvailable;
   },
 }));
 
@@ -181,6 +186,7 @@ describe('SettingsSections', () => {
   afterEach(() => {
     vi.resetModules();
     googleDriveIntegrationAvailable = true;
+    sentryDiagnosticsAvailable = true;
     settings.value = {};
     document.body.innerHTML = '';
   });
@@ -193,7 +199,7 @@ describe('SettingsSections', () => {
     expect(root.textContent).toContain('Integrations');
     expect(root.textContent).toContain('Home screen');
     expect(root.textContent).toContain('Help');
-    expect(root.textContent).toContain('Diagnostics are not available in this build.');
+    expect(root.textContent).toContain('Send technical error reports to help fix crashes.');
     expect(root.textContent).toContain(
       'Learn where your data is stored and what can leave this device.',
     );
@@ -254,12 +260,42 @@ describe('SettingsSections', () => {
     unmount();
   });
 
-  it('renders disabled Error diagnostics as a disabled unchecked checkbox without a button row', async () => {
+  it('toggles Error diagnostics between true and undefined with row click', async () => {
+    const { root, unmount } = await mountSettingsSections();
+    const errorDiagnosticsButton = getButtonByText(root, 'Error diagnostics');
+    const errorDiagnosticsRow = getCheckboxRow(root, 'Error diagnostics');
+
+    expect(root.textContent).toContain('Send technical error reports to help fix crashes.');
+    expect(errorDiagnosticsButton).not.toBeNull();
+    expect(errorDiagnosticsRow?.getAttribute('aria-checked')).toBe('false');
+
+    errorDiagnosticsButton?.click();
+    await nextTick();
+
+    expect(settings.value.diagnosticsEnabled).toBe(true);
+    expect(errorDiagnosticsRow?.getAttribute('aria-checked')).toBe('true');
+
+    errorDiagnosticsButton?.click();
+    await nextTick();
+
+    expect(settings.value.diagnosticsEnabled).toBeUndefined();
+    expect(errorDiagnosticsRow?.getAttribute('aria-checked')).toBe('false');
+
+    unmount();
+  });
+
+  it('shows Error diagnostics as disabled and off when Sentry config is unavailable', async () => {
+    sentryDiagnosticsAvailable = false;
+    settings.value = {
+      diagnosticsEnabled: true,
+    };
+
     const { root, unmount } = await mountSettingsSections();
     const errorDiagnosticsButton = getButtonByText(root, 'Error diagnostics');
     const errorDiagnosticsRow = getCheckboxRow(root, 'Error diagnostics');
     const errorDiagnosticsStaticRow = getStaticRowByText(root, 'Error diagnostics');
 
+    expect(root.textContent).toContain('Diagnostics are not available in this build.');
     expect(errorDiagnosticsButton).toBeNull();
     expect(errorDiagnosticsRow).toBeNull();
     expect(errorDiagnosticsStaticRow?.tagName).toBe('DIV');
@@ -267,7 +303,7 @@ describe('SettingsSections', () => {
     errorDiagnosticsStaticRow?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
     await nextTick();
 
-    expect(settings.value).toEqual({});
+    expect(settings.value.diagnosticsEnabled).toBe(true);
 
     unmount();
   });

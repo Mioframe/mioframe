@@ -67,4 +67,30 @@ describe('useLocalSettings', () => {
     settings.value.googleDriveIntegrationEnabled = undefined;
     expect(settings.value.googleDriveIntegrationEnabled).toBeUndefined();
   });
+
+  it('defaults diagnosticsEnabled to undefined', async () => {
+    useIDBKeyvalMock.mockImplementation((_key, defaultValue: object) => ({
+      data: ref(structuredClone(defaultValue)),
+    }));
+
+    const { useLocalSettings } = await import('./useLocalSettings');
+    const { settings } = useLocalSettings();
+
+    expect(settings.value.diagnosticsEnabled).toBeUndefined();
+  });
+
+  it('persists true and undefined diagnostics states without defaulting to true', async () => {
+    useIDBKeyvalMock.mockImplementation((_key, defaultValue: object) => ({
+      data: ref(structuredClone(defaultValue)),
+    }));
+
+    const { useLocalSettings } = await import('./useLocalSettings');
+    const { settings } = useLocalSettings();
+
+    settings.value.diagnosticsEnabled = true;
+    expect(settings.value.diagnosticsEnabled).toBe(true);
+
+    settings.value.diagnosticsEnabled = undefined;
+    expect(settings.value.diagnosticsEnabled).toBeUndefined();
+  });
 });

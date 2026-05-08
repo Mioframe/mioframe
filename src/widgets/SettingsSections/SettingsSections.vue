@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { useLocalSettings } from '@entity/localSettings';
-import { GOOGLE_DRIVE_INTEGRATION_AVAILABLE } from '@shared/config';
+import { GOOGLE_DRIVE_INTEGRATION_AVAILABLE, SENTRY_DIAGNOSTICS_AVAILABLE } from '@shared/config';
 import { MDListContainer, MDListItem } from '@shared/ui/Lists';
 import SettingsSection from './SettingsSection.vue';
 import SettingsCheckboxListItem from './SettingsCheckboxListItem.vue';
@@ -13,6 +13,14 @@ const { settings } = useLocalSettings();
 
 const onToggleStarterExamples = () => {
   settings.value.hideStarterWidget = settings.value.hideStarterWidget === true ? undefined : true;
+};
+
+const onToggleDiagnostics = () => {
+  if (!SENTRY_DIAGNOSTICS_AVAILABLE) {
+    return;
+  }
+
+  settings.value.diagnosticsEnabled = settings.value.diagnosticsEnabled === true ? undefined : true;
 };
 
 const onToggleGoogleDrive = () => {
@@ -35,9 +43,14 @@ const onClickDataStoragePrivacy = () => {
       <MDListContainer is="div">
         <SettingsCheckboxListItem
           headline="Error diagnostics"
-          supporting-text="Diagnostics are not available in this build."
-          :checked="false"
-          disabled
+          :supporting-text="
+            SENTRY_DIAGNOSTICS_AVAILABLE
+              ? 'Send technical error reports to help fix crashes.'
+              : 'Diagnostics are not available in this build.'
+          "
+          :checked="SENTRY_DIAGNOSTICS_AVAILABLE ? settings.diagnosticsEnabled === true : false"
+          :disabled="!SENTRY_DIAGNOSTICS_AVAILABLE"
+          @change="onToggleDiagnostics"
         />
       </MDListContainer>
     </SettingsSection>

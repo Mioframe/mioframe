@@ -4,6 +4,7 @@ import { z } from 'zod/v4-mini';
 
 const zodSettingsStorage = z._default(
   z.object({
+    diagnosticsEnabled: z.optional(z.boolean()),
     showPerformance: z.optional(z.boolean()),
     showAutomergeFiles: z.optional(z.boolean()),
     googleDriveIntegrationEnabled: z.optional(z.boolean()),
