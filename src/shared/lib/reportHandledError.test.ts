@@ -45,7 +45,8 @@ const waitForAsyncWork = async () => {
 
 const {
   ensureSentryMock,
-  isSentryReportingConfiguredMock,
+  isSentryConfiguredMock,
+  getSentryReportingStateMock,
   mockScope,
   noopFacade,
   realFacade,
@@ -79,7 +80,8 @@ const {
 
   return {
     ensureSentryMock: vi.fn(),
-    isSentryReportingConfiguredMock: vi.fn(() => true),
+    isSentryConfiguredMock: vi.fn(() => true),
+    getSentryReportingStateMock: vi.fn(() => 'enabled'),
     mockScope: scope,
     noopFacade: createFacade(undefined),
     realFacade: createFacade('event-id'),
@@ -89,15 +91,18 @@ const {
 
 vi.mock('./setupSentry', () => ({
   ensureSentry: ensureSentryMock,
-  isSentryReportingConfigured: isSentryReportingConfiguredMock,
+  isSentryConfigured: isSentryConfiguredMock,
+  getSentryReportingState: getSentryReportingStateMock,
 }));
 
 describe('reportHandledError', () => {
   beforeEach(() => {
     vi.resetModules();
     ensureSentryMock.mockReset();
-    isSentryReportingConfiguredMock.mockReset();
-    isSentryReportingConfiguredMock.mockReturnValue(true);
+    isSentryConfiguredMock.mockReset();
+    isSentryConfiguredMock.mockReturnValue(true);
+    getSentryReportingStateMock.mockReset();
+    getSentryReportingStateMock.mockReturnValue('enabled');
     mockScope.setExtras.mockReset();
     mockScope.setTag.mockReset();
     noopFacade.captureException.mockClear();
@@ -208,11 +213,64 @@ describe('reportHandledError', () => {
     });
   });
 
-  it('drops handled reports immediately when Sentry reporting is disabled', async () => {
-    isSentryReportingConfiguredMock.mockReturnValue(false);
+  it('does not queue new reports and clears the queue when Sentry is not configured', async () => {
+    const { reportHandledError } = await import('./reportHandledError');
+
+    ensureSentryMock.mockResolvedValue(realFacade);
+
+    reportHandledError(new Error('first'), {
+      feature: 'documents',
+      action: 'save',
+    });
+    await vi.waitFor(() => {
+      expect(realFacade.captureException).toHaveBeenCalledTimes(1);
+    });
+
+    isSentryConfiguredMock.mockReturnValue(false);
+
+    reportHandledError(new Error('second'), {
+      feature: 'documents',
+      action: 'save',
+    });
+
+    isSentryConfiguredMock.mockReturnValue(true);
+    const { flushQueuedHandledReports } = await import('./reportHandledError');
+    flushQueuedHandledReports();
+
+    await waitForAsyncWork();
+    expect(realFacade.captureException).toHaveBeenCalledTimes(1);
+    expect(ensureSentryMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('queues but does not flush while reporting state is unknown', async () => {
+    getSentryReportingStateMock.mockReturnValue('unknown');
+    ensureSentryMock.mockResolvedValue(realFacade);
+
+    const { reportHandledError, flushQueuedHandledReports } = await import('./reportHandledError');
+
+    reportHandledError(new Error('first'), {
+      feature: 'documents',
+      action: 'save',
+    });
+
+    expect(ensureSentryMock).not.toHaveBeenCalled();
+    expect(realFacade.captureException).not.toHaveBeenCalled();
+
+    getSentryReportingStateMock.mockReturnValue('enabled');
+    flushQueuedHandledReports();
+
+    await vi.waitFor(() => {
+      expect(realFacade.captureException).toHaveBeenCalledWith(
+        expect.objectContaining({ message: 'first' }),
+      );
+    });
+  });
+
+  it('does not queue new reports when reporting is disabled', async () => {
+    getSentryReportingStateMock.mockReturnValue('disabled');
     ensureSentryMock.mockResolvedValue(noopFacade);
 
-    const { reportHandledError } = await import('./reportHandledError');
+    const { reportHandledError, flushQueuedHandledReports } = await import('./reportHandledError');
 
     reportHandledError(new Error('first'), {
       feature: 'documents',
@@ -220,10 +278,63 @@ describe('reportHandledError', () => {
     });
 
     await waitForAsyncWork();
-    await waitForAsyncWork();
 
     expect(ensureSentryMock).not.toHaveBeenCalled();
     expect(noopFacade.captureException).not.toHaveBeenCalled();
+
+    getSentryReportingStateMock.mockReturnValue('enabled');
+    flushQueuedHandledReports();
+
+    await waitForAsyncWork();
+    expect(realFacade.captureException).not.toHaveBeenCalled();
+  });
+
+  it('queues and flushes when reporting is enabled', async () => {
+    ensureSentryMock.mockResolvedValue(realFacade);
+
+    const { reportHandledError } = await import('./reportHandledError');
+
+    reportHandledError(new Error('boom'), {
+      feature: 'documents',
+      action: 'save',
+    });
+
+    await vi.waitFor(() => {
+      expect(realFacade.captureException).toHaveBeenCalledWith(
+        expect.objectContaining({ message: 'boom' }),
+      );
+    });
+  });
+
+  it('unconfigured clears queue so unknown errors are lost', async () => {
+    const gate = createDeferred<MockSentryFacade>();
+    getSentryReportingStateMock.mockReturnValue('unknown');
+    ensureSentryMock.mockReturnValue(gate.promise);
+
+    const { reportHandledError, flushQueuedHandledReports } = await import('./reportHandledError');
+
+    reportHandledError(new Error('first'), {
+      feature: 'documents',
+      action: 'save',
+    });
+
+    expect(realFacade.captureException).not.toHaveBeenCalled();
+
+    isSentryConfiguredMock.mockReturnValue(false);
+
+    reportHandledError(new Error('second'), {
+      feature: 'documents',
+      action: 'save',
+    });
+
+    isSentryConfiguredMock.mockReturnValue(true);
+    getSentryReportingStateMock.mockReturnValue('enabled');
+
+    flushQueuedHandledReports();
+    gate.resolve(realFacade);
+
+    await waitForAsyncWork();
+    expect(realFacade.captureException).not.toHaveBeenCalled();
   });
 
   it('keeps a failed entry queued without starting an infinite retry loop when Sentry is configured but still no-op', async () => {
@@ -274,6 +385,29 @@ describe('reportHandledError', () => {
       'second',
     ]);
     expect(ensureSentryMock).toHaveBeenCalledTimes(2);
+  });
+
+  it('clearQueuedHandledReports prevents later retry', async () => {
+    ensureSentryMock.mockResolvedValue(noopFacade);
+
+    const { clearQueuedHandledReports, flushQueuedHandledReports, reportHandledError } =
+      await import('./reportHandledError');
+
+    reportHandledError(new Error('first'), {
+      feature: 'documents',
+      action: 'save',
+    });
+
+    await vi.waitFor(() => {
+      expect(noopFacade.captureException).toHaveBeenCalledTimes(1);
+    });
+
+    clearQueuedHandledReports();
+    ensureSentryMock.mockResolvedValue(realFacade);
+    flushQueuedHandledReports();
+
+    await waitForAsyncWork();
+    expect(realFacade.captureException).not.toHaveBeenCalled();
   });
 
   it('keeps entries queued when withScope or captureException throws', async () => {
@@ -384,85 +518,5 @@ describe('reportHandledError', () => {
       'first',
       'second',
     ]);
-    expect(ensureSentryMock).toHaveBeenCalledTimes(2);
-  });
-
-  it('preserves failed and newly queued entries without looping when follow-up flush also sees no-op Sentry', async () => {
-    ensureSentryMock.mockResolvedValue(noopFacade);
-
-    const { reportHandledError } = await import('./reportHandledError');
-
-    noopFacade.captureException.mockImplementationOnce((error: Error) => {
-      expect(error.message).toBe('first');
-      reportHandledError(new Error('second'), {
-        feature: 'documents',
-        action: 'save',
-      });
-
-      return undefined;
-    });
-
-    reportHandledError(new Error('first'), {
-      feature: 'documents',
-      action: 'save',
-    });
-
-    await vi.waitFor(() => {
-      expect(noopFacade.captureException).toHaveBeenCalledTimes(3);
-    });
-
-    await waitForAsyncWork();
-    await waitForAsyncWork();
-
-    expect(getReportedErrors(noopFacade).map((error) => error.message)).toEqual([
-      'first',
-      'first',
-      'second',
-    ]);
-    expect(ensureSentryMock).toHaveBeenCalledTimes(2);
-  });
-
-  it('retries failed and newly queued entries together on the next reportHandledError call', async () => {
-    ensureSentryMock
-      .mockResolvedValueOnce(noopFacade)
-      .mockResolvedValueOnce(noopFacade)
-      .mockResolvedValue(realFacade);
-
-    const { reportHandledError } = await import('./reportHandledError');
-
-    noopFacade.captureException.mockImplementationOnce((error: Error) => {
-      expect(error.message).toBe('first');
-      reportHandledError(new Error('second'), {
-        feature: 'documents',
-        action: 'save',
-      });
-
-      return undefined;
-    });
-
-    reportHandledError(new Error('first'), {
-      feature: 'documents',
-      action: 'save',
-    });
-
-    await vi.waitFor(() => {
-      expect(noopFacade.captureException).toHaveBeenCalledTimes(3);
-    });
-
-    reportHandledError(new Error('third'), {
-      feature: 'documents',
-      action: 'save',
-    });
-
-    await vi.waitFor(() => {
-      expect(realFacade.captureException).toHaveBeenCalledTimes(3);
-    });
-
-    expect(getReportedErrors(realFacade).map((error) => error.message)).toEqual([
-      'first',
-      'second',
-      'third',
-    ]);
-    expect(ensureSentryMock).toHaveBeenCalledTimes(3);
   });
 });

@@ -1,0 +1,1 @@
+export { useDiagnosticsReporting } from './useDiagnosticsReporting';

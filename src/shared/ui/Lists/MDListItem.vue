@@ -1,18 +1,19 @@
 <script setup lang="ts" generic="Is extends 'button' | 'a' | 'div' | 'li' = 'div'">
 import { MDState } from '../State';
 
-const { is = 'div' } = defineProps<{
+const { is = 'div', disabled } = defineProps<{
   headline: string;
   supportingText?: string | undefined;
   is?: Is | undefined;
   type?: (Is extends 'button' ? 'button' | 'submit' | 'reset' : false) | undefined;
   itemRole?: string | undefined;
-
+  disabled?: boolean | undefined;
   draggable?: boolean | undefined;
 }>();
 
 const emit = defineEmits<{
   click: [e: MouseEvent];
+  keydown: [e: KeyboardEvent];
 }>();
 
 const slots = defineSlots<{
@@ -23,8 +24,22 @@ const slots = defineSlots<{
 }>();
 
 const onClick = (e: MouseEvent) => {
+  if (disabled) {
+    return;
+  }
+
   if (['button', 'a'].includes(is)) {
     emit('click', e);
+  }
+};
+
+const onKeydown = (e: KeyboardEvent) => {
+  if (disabled) {
+    return;
+  }
+
+  if (['button', 'a'].includes(is)) {
+    emit('keydown', e);
   }
 };
 </script>
@@ -34,10 +49,12 @@ const onClick = (e: MouseEvent) => {
     :is="is"
     class="md-list-item"
     :draggable="draggable"
+    :disabled="disabled"
     :type="type"
-    :disable-ripple="is === 'li'"
+    :disable-ripple="disabled || is === 'li'"
     :role="itemRole ?? 'listitem'"
     @click="onClick"
+    @keydown="onKeydown"
   >
     <span v-if="!!slots.leadingIcon" class="md-list-item__leading-icon">
       <slot name="leadingIcon" />

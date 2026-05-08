@@ -1,4 +1,5 @@
 import { documentViewPane } from './DocumentViewPane';
+import { dataStoragePrivacyPane } from './DataStoragePrivacyPane';
 import { homePane } from './HomePane';
 import { repoExplorerPane } from './RepoExplorer';
 import { settingsPane } from './Settings';
@@ -13,6 +14,7 @@ const { setupStackNavigation: setup, useStackNavigation: use } = createStackNavi
     repo: repoExplorerPane,
     document: documentViewPane,
     settings: settingsPane,
+    dataStoragePrivacy: dataStoragePrivacyPane,
   },
   {
     defaultPane: 'home',
@@ -20,14 +22,14 @@ const { setupStackNavigation: setup, useStackNavigation: use } = createStackNavi
   },
 );
 
-export const setupStackNavigation = ({
-  addRoute,
-}: {
-  addRoute: (route: RouteRecordRaw) => void;
-}) => {
-  setup({ addRoute });
+/**
+ * Registers the split-view stack navigation routes for the application shell.
+ * @param router - Router registration hooks used during app bootstrap.
+ */
+export const setupStackNavigation = (router: { addRoute: (route: RouteRecordRaw) => void }) => {
+  setup(router);
 
-  addRoute({
+  router.addRoute({
     path: '/:pathMatch(.*)*',
     name: 'NotFound',
     redirect: {
@@ -36,4 +38,7 @@ export const setupStackNavigation = ({
   });
 };
 
+/**
+ * Exposes reactive pane-stack navigation helpers for app pages and widgets.
+ */
 export const useStackNavigation = use;
