@@ -42,18 +42,30 @@ vi.mock('@shared/ui/Lists', () => ({
         type: [String, Boolean],
         default: undefined,
       },
+      itemRole: {
+        type: String,
+        default: undefined,
+      },
     },
-    emits: ['click'],
-    setup(props, { emit, slots }) {
+    emits: ['click', 'keydown'],
+    setup(props, { attrs, emit, slots }) {
       return () =>
         h(
           props.is,
           {
+            ...attrs,
             type: typeof props.type === 'string' ? props.type : undefined,
+            role: props.itemRole ?? 'listitem',
             onClick:
               props.is === 'button'
                 ? () => {
                     emit('click');
+                  }
+                : undefined,
+            onKeydown:
+              props.is === 'button'
+                ? (event: KeyboardEvent) => {
+                    emit('keydown', event);
                   }
                 : undefined,
           },
@@ -75,9 +87,13 @@ vi.mock('@shared/ui/Checkbox', () => ({
         type: Boolean,
         default: false,
       },
+      presentation: {
+        type: Boolean,
+        default: false,
+      },
       ariaLabel: {
         type: String,
-        required: true,
+        default: undefined,
       },
     },
     emits: ['update:modelValue'],
@@ -91,24 +107,30 @@ vi.mock('@shared/ui/Checkbox', () => ({
       };
 
       return () =>
-        h('input', {
-          type: 'checkbox',
-          checked: props.modelValue,
-          disabled: props.disabled,
-          'aria-label': props.ariaLabel,
-          onClick: (event: MouseEvent) => {
-            event.stopPropagation();
-            onChange();
-          },
-          onKeydown: (event: KeyboardEvent) => {
-            if (!['Enter', ' '].includes(event.key)) {
-              return;
-            }
+        props.presentation
+          ? h('div', {
+              'aria-hidden': 'true',
+              'data-state': props.modelValue ? 'checked' : 'unchecked',
+              'data-disabled': props.disabled ? 'true' : 'false',
+            })
+          : h('input', {
+              type: 'checkbox',
+              checked: props.modelValue,
+              disabled: props.disabled,
+              'aria-label': props.ariaLabel,
+              onClick: (event: MouseEvent) => {
+                event.stopPropagation();
+                onChange();
+              },
+              onKeydown: (event: KeyboardEvent) => {
+                if (!['Enter', ' '].includes(event.key)) {
+                  return;
+                }
 
-            event.preventDefault();
-            onChange();
-          },
-        });
+                event.preventDefault();
+                onChange();
+              },
+            });
     },
   }),
 }));
@@ -141,8 +163,15 @@ const getButtonByText = (root: HTMLElement, text: string) =>
   Array.from(root.querySelectorAll('button')).find((button) => button.textContent.includes(text)) ??
   null;
 
-const getCheckbox = (root: HTMLElement, label: string) =>
-  root.querySelector<HTMLInputElement>(`input[type="checkbox"][aria-label="${label}"]`);
+const getCheckboxRow = (root: HTMLElement, label: string) =>
+  Array.from(root.querySelectorAll<HTMLElement>('[role="checkbox"]')).find((element) =>
+    element.textContent.includes(label),
+  ) ?? null;
+
+const getVisualCheckbox = (root: HTMLElement, label: string) =>
+  Array.from(root.querySelectorAll<HTMLElement>('[aria-hidden="true"]')).find((element) =>
+    (element.parentElement?.parentElement?.textContent ?? '').includes(label),
+  ) ?? null;
 
 const getStaticRowByText = (root: HTMLElement, text: string) =>
   Array.from(root.querySelectorAll('div')).find((element) => element.textContent.includes(text)) ??
@@ -179,16 +208,24 @@ describe('SettingsSections', () => {
 
   it('toggles Google Drive between true and undefined with row click and keyboard', async () => {
     const { root, unmount } = await mountSettingsSections();
+    const googleDriveRow = getCheckboxRow(root, 'Google Drive');
+
+    expect(googleDriveRow?.getAttribute('aria-checked')).toBe('false');
+    expect(getVisualCheckbox(root, 'Google Drive')).not.toBeNull();
+    expect(root.querySelector('input[type="checkbox"][aria-label="Google Drive"]')).toBeNull();
 
     getButtonByText(root, 'Google Drive')?.click();
     await nextTick();
     expect(settings.value.googleDriveIntegrationEnabled).toBe(true);
+    expect(googleDriveRow?.getAttribute('aria-checked')).toBe('true');
 
-    const checkbox = getCheckbox(root, 'Google Drive');
-    checkbox?.dispatchEvent(new KeyboardEvent('keydown', { key: ' ', bubbles: true }));
+    getButtonByText(root, 'Google Drive')?.dispatchEvent(
+      new KeyboardEvent('keydown', { key: ' ', bubbles: true }),
+    );
     await nextTick();
 
     expect(settings.value.googleDriveIntegrationEnabled).toBeUndefined();
+    expect(googleDriveRow?.getAttribute('aria-checked')).toBe('false');
 
     unmount();
   });
@@ -200,17 +237,16 @@ describe('SettingsSections', () => {
     };
 
     const { root, unmount } = await mountSettingsSections();
-    const checkbox = getCheckbox(root, 'Google Drive');
     const googleDriveButton = getButtonByText(root, 'Google Drive');
+    const googleDriveRow = getCheckboxRow(root, 'Google Drive');
+    const googleDriveStaticRow = getStaticRowByText(root, 'Google Drive');
 
     expect(root.textContent).toContain('Google Drive is not available in this build.');
-    expect(checkbox?.checked).toBe(false);
-    expect(checkbox?.disabled).toBe(true);
     expect(googleDriveButton).toBeNull();
+    expect(googleDriveRow).toBeNull();
+    expect(googleDriveStaticRow?.tagName).toBe('DIV');
 
-    getStaticRowByText(root, 'Google Drive')?.dispatchEvent(
-      new MouseEvent('click', { bubbles: true }),
-    );
+    googleDriveStaticRow?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
     await nextTick();
 
     expect(settings.value.googleDriveIntegrationEnabled).toBe(true);
@@ -220,16 +256,15 @@ describe('SettingsSections', () => {
 
   it('renders disabled Error diagnostics as a disabled unchecked checkbox without a button row', async () => {
     const { root, unmount } = await mountSettingsSections();
-    const checkbox = getCheckbox(root, 'Error diagnostics');
     const errorDiagnosticsButton = getButtonByText(root, 'Error diagnostics');
+    const errorDiagnosticsRow = getCheckboxRow(root, 'Error diagnostics');
+    const errorDiagnosticsStaticRow = getStaticRowByText(root, 'Error diagnostics');
 
-    expect(checkbox?.checked).toBe(false);
-    expect(checkbox?.disabled).toBe(true);
     expect(errorDiagnosticsButton).toBeNull();
+    expect(errorDiagnosticsRow).toBeNull();
+    expect(errorDiagnosticsStaticRow?.tagName).toBe('DIV');
 
-    getStaticRowByText(root, 'Error diagnostics')?.dispatchEvent(
-      new MouseEvent('click', { bubbles: true }),
-    );
+    errorDiagnosticsStaticRow?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
     await nextTick();
 
     expect(settings.value).toEqual({});
@@ -239,19 +274,24 @@ describe('SettingsSections', () => {
 
   it('toggles starter examples between hidden and default with row click and keyboard', async () => {
     const { root, unmount } = await mountSettingsSections();
-    const checkbox = getCheckbox(root, 'Starter examples');
+    const starterExamplesRow = getCheckboxRow(root, 'Starter examples');
 
-    expect(checkbox?.checked).toBe(true);
+    expect(starterExamplesRow?.getAttribute('aria-checked')).toBe('true');
+    expect(getVisualCheckbox(root, 'Starter examples')).not.toBeNull();
 
     getButtonByText(root, 'Starter examples')?.click();
     await nextTick();
 
     expect(settings.value.hideStarterWidget).toBe(true);
+    expect(starterExamplesRow?.getAttribute('aria-checked')).toBe('false');
 
-    checkbox?.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+    getButtonByText(root, 'Starter examples')?.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }),
+    );
     await nextTick();
 
     expect(settings.value.hideStarterWidget).toBeUndefined();
+    expect(starterExamplesRow?.getAttribute('aria-checked')).toBe('true');
 
     unmount();
   });

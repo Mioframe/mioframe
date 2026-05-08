@@ -13,6 +13,7 @@ const { is = 'div' } = defineProps<{
 
 const emit = defineEmits<{
   click: [e: MouseEvent];
+  keydown: [e: KeyboardEvent];
 }>();
 
 const slots = defineSlots<{
@@ -27,6 +28,12 @@ const onClick = (e: MouseEvent) => {
     emit('click', e);
   }
 };
+
+const onKeydown = (e: KeyboardEvent) => {
+  if (['button', 'a'].includes(is)) {
+    emit('keydown', e);
+  }
+};
 </script>
 
 <template>
@@ -38,6 +45,7 @@ const onClick = (e: MouseEvent) => {
     :disable-ripple="is === 'li'"
     :role="itemRole ?? 'listitem'"
     @click="onClick"
+    @keydown="onKeydown"
   >
     <span v-if="!!slots.leadingIcon" class="md-list-item__leading-icon">
       <slot name="leadingIcon" />

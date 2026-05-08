@@ -19,6 +19,7 @@ const props = withDefaults(
     ariaLabel?: string | undefined;
     autofocus?: boolean | undefined;
     tabIndex?: number | undefined;
+    presentation?: boolean | undefined;
   }>(),
   {
     modelValue: undefined,
@@ -32,7 +33,7 @@ const emit = defineEmits<{
   click: [];
 }>();
 
-const { error, disabled, indeterminate, modelValue, readonly } = toRefs(props);
+const { error, disabled, indeterminate, modelValue, presentation, readonly } = toRefs(props);
 
 const stateValue = computed({
   get: () => {
@@ -51,6 +52,10 @@ const symbolName = computed(() =>
 );
 
 const onClickContainer = (e: MouseEvent) => {
+  if (presentation.value) {
+    return;
+  }
+
   if (disabled.value) {
     return;
   }
@@ -75,6 +80,10 @@ watchEffect(() => {
 });
 
 const onKeydownContainer = (event: KeyboardEvent) => {
+  if (presentation.value) {
+    return;
+  }
+
   const { key } = event;
   if (!['Enter', ' '].includes(key)) {
     return;
@@ -98,7 +107,31 @@ const onKeydownContainer = (event: KeyboardEvent) => {
 
 <template>
   <MDState
+    is="div"
+    v-if="presentation"
+    class="md-checkbox"
+    :class="{
+      'md-checkbox_selected': stateValue === true,
+      'md-checkbox_indeterminate': isNil(stateValue),
+      'md-checkbox_error': error,
+      'md-checkbox_disabled': disabled,
+      'md-checkbox_presentation': presentation,
+      'md-checkbox_readonly': readonly,
+    }"
+    :disabled="disabled"
+    disable-ripple
+    aria-hidden="true"
+  >
+    <div class="md md-checkbox__container">
+      <MDSymbol v-if="symbolName" class="md-checkbox__icon" :name="symbolName" />
+    </div>
+
+    <MDPlainTooltip v-if="tooltip" :text="tooltip" />
+  </MDState>
+
+  <MDState
     is="label"
+    v-else
     :for="id"
     class="md-checkbox"
     :class="{
@@ -106,6 +139,7 @@ const onKeydownContainer = (event: KeyboardEvent) => {
       'md-checkbox_indeterminate': isNil(stateValue),
       'md-checkbox_error': error,
       'md-checkbox_disabled': disabled,
+      'md-checkbox_presentation': presentation,
       'md-checkbox_readonly': readonly,
     }"
     :disabled="disabled"
@@ -214,6 +248,14 @@ const onKeydownContainer = (event: KeyboardEvent) => {
         --md-container-color: var(--md-sys-color-secondary);
         --md-content-color: var(--md-sys-color-on-secondary);
       }
+    }
+  }
+
+  &_presentation {
+    cursor: default;
+
+    .md-checkbox__container {
+      cursor: default;
     }
   }
 }

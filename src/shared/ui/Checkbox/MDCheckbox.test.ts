@@ -1,3 +1,4 @@
+/* eslint-disable vue/one-component-per-file -- This test file mounts small inline Vue apps to verify primitive behavior. */
 import { afterEach, describe, expect, it } from 'vitest';
 import { createApp, h, nextTick } from 'vue';
 import MDCheckbox from './MDCheckbox.vue';
@@ -12,12 +13,13 @@ const mountCheckbox = async (props: Record<string, unknown>) => {
   app.mount(root);
   await nextTick();
 
-  const checkbox = root.querySelector('label.md-checkbox');
+  const checkbox = root.querySelector('.md-checkbox');
   if (!checkbox) {
-    throw new Error('MDCheckbox root label was not rendered');
+    throw new Error('MDCheckbox root element was not rendered');
   }
 
   return {
+    root,
     checkbox,
     unmount: () => {
       app.unmount();
@@ -51,4 +53,70 @@ describe('MDCheckbox', () => {
 
     unmount();
   });
+
+  it('renders a native input in the default interactive mode', async () => {
+    const { root, unmount } = await mountCheckbox({
+      modelValue: true,
+      ariaLabel: 'Enable sync',
+    });
+
+    expect(root.querySelector('input[type="checkbox"]')).not.toBeNull();
+
+    unmount();
+  });
+
+  it('renders a non-interactive aria-hidden checkbox in presentation mode', async () => {
+    const { root, checkbox, unmount } = await mountCheckbox({
+      modelValue: true,
+      ariaLabel: 'Enable sync',
+      presentation: true,
+    });
+
+    expect(root.querySelector('input[type="checkbox"]')).toBeNull();
+    expect(checkbox.getAttribute('aria-hidden')).toBe('true');
+    expect(checkbox.hasAttribute('tabindex')).toBe(false);
+
+    unmount();
+  });
+
+  it('does not emit toggle behavior from presentation mode interactions', async () => {
+    const updates: Array<boolean | undefined> = [];
+    let clicks = 0;
+    const root = document.createElement('div');
+    document.body.appendChild(root);
+    const app = createApp({
+      render: () =>
+        h(MDCheckbox, {
+          modelValue: false,
+          ariaLabel: 'Enable sync',
+          presentation: true,
+          onClick: () => {
+            clicks += 1;
+          },
+          'onUpdate:modelValue': (value: boolean | undefined) => {
+            updates.push(value);
+          },
+        }),
+    });
+
+    app.mount(root);
+    await nextTick();
+
+    const checkbox = root.querySelector<HTMLElement>('.md-checkbox');
+    if (!checkbox) {
+      throw new Error('MDCheckbox root element was not rendered');
+    }
+
+    checkbox.click();
+    checkbox.dispatchEvent(new KeyboardEvent('keydown', { key: ' ', bubbles: true }));
+    checkbox.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+    await nextTick();
+
+    expect(clicks).toBe(0);
+    expect(updates).toEqual([]);
+
+    app.unmount();
+    root.remove();
+  });
 });
+/* eslint-enable vue/one-component-per-file -- Re-enable the rule after the inline test app definitions. */

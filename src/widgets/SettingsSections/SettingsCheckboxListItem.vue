@@ -25,26 +25,33 @@ const onChange = () => {
 
   emit('change');
 };
+
+const onKeydown = (event: KeyboardEvent) => {
+  if (props.disabled || !['Enter', ' '].includes(event.key)) {
+    return;
+  }
+
+  event.preventDefault();
+  onChange();
+};
 </script>
 
 <template>
   <MDListItem
     :is="disabled ? 'div' : 'button'"
     :type="disabled ? false : 'button'"
+    :item-role="disabled ? undefined : 'checkbox'"
     :headline="headline"
+    :aria-checked="disabled ? undefined : checked"
     @click="onChange"
+    @keydown="onKeydown"
   >
     <template #supportingText>
       {{ supportingText }}
     </template>
 
     <template #trailingIcon>
-      <MDCheckbox
-        :model-value="checked"
-        :disabled="disabled"
-        :aria-label="headline"
-        @update:model-value="onChange"
-      />
+      <MDCheckbox presentation :model-value="checked" :disabled="disabled" />
     </template>
   </MDListItem>
 </template>
