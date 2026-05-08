@@ -73,8 +73,12 @@ describe('MDCheckbox', () => {
     });
 
     expect(root.querySelector('input[type="checkbox"]')).toBeNull();
+    expect(checkbox.tagName).toBe('DIV');
     expect(checkbox.getAttribute('aria-hidden')).toBe('true');
     expect(checkbox.hasAttribute('tabindex')).toBe(false);
+    expect(checkbox.classList.contains('md-state')).toBe(false);
+    expect(root.querySelector('.md-state__layer')).toBeNull();
+    expect(root.querySelector('.md-state__target')).toBeNull();
 
     unmount();
   });

@@ -106,8 +106,7 @@ const onKeydownContainer = (event: KeyboardEvent) => {
 </script>
 
 <template>
-  <MDState
-    is="div"
+  <div
     v-if="presentation"
     class="md-checkbox"
     :class="{
@@ -118,8 +117,6 @@ const onKeydownContainer = (event: KeyboardEvent) => {
       'md-checkbox_presentation': presentation,
       'md-checkbox_readonly': readonly,
     }"
-    :disabled="disabled"
-    disable-ripple
     aria-hidden="true"
   >
     <div class="md md-checkbox__container">
@@ -127,7 +124,7 @@ const onKeydownContainer = (event: KeyboardEvent) => {
     </div>
 
     <MDPlainTooltip v-if="tooltip" :text="tooltip" />
-  </MDState>
+  </div>
 
   <MDState
     is="label"
