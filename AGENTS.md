@@ -67,9 +67,13 @@ reason:
 - Keep ByteRover usage details in the `byterover` skill. Use `AGENTS.md` for stable repo policy, not step-by-step `brv` runbooks.
 - Use the `test-first` skill for behavior changes, bug fixes, migrations, data transformations, storage semantics, and UI flows when the expected outcome can be reproduced by a focused test or smoke check.
 - Do not use test-first for refactors, type-only changes, formatting, comments, renames, documentation, or internal cleanup with no observable behavior change.
+- Use the `component-contract-testing` skill for adding or reviewing Vue component unit tests for small render, props, emits, slots, or child-component wiring contracts.
+- Do not use component contract tests for browser behavior; use Playwright/e2e or a reproducible browser smoke check instead.
 - Use the `mutation-testing` skill for high-risk changes to pure logic, schemas, migrations, storage helpers, CRDT write helpers, validation, normalization, filtering, sorting, matching, service logic, or data transformations when focused unit/integration tests were added or changed.
 - Do not use mutation testing for UI component behavior, Playwright/e2e-only flows, refactors, type-only changes, formatting, comments, renames, or documentation.
 - Use the `ui-browser-behavior` skill for UI changes involving real DOM layout, focus, keyboard navigation, pointer or touch input, teleport, overlays, scrolling, responsive styling, browser APIs, Material state visuals, or mobile behavior.
+- Use the `visual-regression-testing` skill for visual appearance checks, screenshot snapshots, Material visual states, responsive layout snapshots, or visual regression coverage.
+- Do not use Vitest, happy-dom, or Vue Test Utils for visual appearance; use Playwright screenshots against an isolated dev-only playground runtime.
 - Use the `crdt-storage` skill for Automerge/CRDT changes, repo or document handle lifecycle, storage helpers, VFS behavior, subscriptions, listeners, workers, timers, caches, file handles, or blob URLs.
 - Verify third-party semantics from official docs or installed source before relying on ambiguous helpers, options, or return values. If the behavior is still unverified, say so.
 - Keep the UI aligned with Material 3 expectations and optimize for mobile browsers first. Assume large datasets and low-end devices, and keep main-thread work bounded.
@@ -86,10 +90,27 @@ reason:
 
 - Do not use unit tests as the default verification method for Vue UI components.
 - Component behavior that depends on real DOM layout, focus, keyboard navigation, pointer or touch input, teleport, overlays, scrolling, responsive styling, browser APIs, or Material state visuals must be verified with Playwright/e2e or a reproducible browser smoke check.
+- Use `@vue/test-utils` only for component contract tests: conditional rendering, props, emits, slots, simple child-component wiring, and connecting extracted composable or helper state to template output.
+- Do not hand-roll component mounting with repeated `createApp`, manual `document.body` cleanup, ad hoc inline stubs, and `querySelector`-driven assertions.
+- Prefer assertions against emitted events, props passed to stubs, slot content, and stable accessible text or labels when they are part of the component contract.
+- Avoid adding `data-testid` only for unit tests unless there is no stable user-visible or component-level contract to assert.
 - Move reusable UI state transitions and business rules into composables or pure helpers, and cover those with focused unit tests.
 - Unit tests remain the preferred verification method for composables, pure helpers, schemas, migrations, services, storage helpers, CRDT write helpers, state transitions, validation, normalization, and pure transformations.
-- Component unit tests are allowed for small render or wiring contracts that do not depend on browser layout or interaction semantics.
 - The absence or removal of a Vue component unit test is not a regression by itself when the behavior is covered by Playwright/e2e, a reproducible browser smoke check, or focused tests for extracted composable or helper logic.
+
+## Visual regression testing
+
+- Use Playwright screenshot assertions for appearance regressions; do not use Vitest, happy-dom, or Vue Test Utils for visual appearance.
+- Use the existing playground pages through an isolated dev-only playground runtime. Do not add production routes only for visual tests.
+- The visual runtime must not inherit product app effects such as storage permission requests, diagnostics consent/reporting, optional integrations, unload guards, live performance overlays, network initialization, or product lifecycle behavior.
+- Prefer a dedicated playground shell or explicit app setup boundary over route-name checks inside product components.
+- Keep playground pages deterministic and fixture-driven. They must not own business logic, storage orchestration, or network behavior.
+- Place visual specs under `tests/e2e/visual/<surface>.spec.ts` so Playwright and focused verification can discover them.
+- Prefer screenshots of a single stable surface, component gallery, dialog, sheet, menu, or responsive layout region over full-page screenshots.
+- Add visual tests only for shared UI primitives, important Material states, mobile/desktop layout regressions, previously broken visual states, or CSS-heavy components where visual regressions are likely and costly.
+- Do not add visual snapshots for every component by default.
+- Keep snapshots deterministic: fixed viewport, stable fixture data, settled fonts/icons/rendering, no live dates, no random IDs, no network content, no loading spinners, and masked dynamic regions when needed.
+- Update snapshots only after inspecting the visual diff and confirming the appearance change is intentional.
 
 ## CRDT and lifecycle invariants
 
