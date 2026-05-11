@@ -26,23 +26,23 @@
 - **CRDT-backed state management** using Automerge for conflict-free collaboration
 - **Mobile-first design** following Material 3 guidelines
 - **Type-safe development** with strict TypeScript configuration
-- **Focused testing** with unit, component contract, mutation, and E2E coverage
+- **Focused testing** with unit, component contract, visual regression, mutation, and E2E coverage
 - **Performance optimization** for low-end devices and large datasets
 
 ### Tech Stack
 
-| Layer      | Technology                              | Purpose                          |
-| ---------- | --------------------------------------- | -------------------------------- |
-| Framework  | Vue 3.5+                                | Reactive UI rendering            |
-| Build Tool | Vite 7+                                 | Fast HMR and production builds   |
-| Language   | TypeScript 5.9+                         | Static type checking             |
-| State      | Automerge 2.5+                          | CRDT-based collaborative editing |
-| Router     | Vue Router 5                            | Application routing              |
-| HTTP       | ky 1.x                                  | Lightweight fetch wrapper        |
-| Testing    | Vitest + Vue Test Utils + Playwright    | Unit, component contract, E2E    |
-| Mutation   | StrykerJS                               | Test quality checks              |
-| Linting    | oxlint + ESLint 10+                     | Code quality enforcement         |
-| Formatting | oxfmt                                   | Consistent code formatting       |
+| Layer      | Technology                              | Purpose                                  |
+| ---------- | --------------------------------------- | ---------------------------------------- |
+| Framework  | Vue 3.5+                                | Reactive UI rendering                    |
+| Build Tool | Vite 7+                                 | Fast HMR and production builds           |
+| Language   | TypeScript 5.9+                         | Static type checking                     |
+| State      | Automerge 2.5+                          | CRDT-based collaborative editing         |
+| Router     | Vue Router 5                            | Application routing                      |
+| HTTP       | ky 1.x                                  | Lightweight fetch wrapper                |
+| Testing    | Vitest + Vue Test Utils + Playwright    | Unit, component contract, E2E, visual    |
+| Mutation   | StrykerJS                               | Test quality checks                      |
+| Linting    | oxlint + ESLint 10+                     | Code quality enforcement                 |
+| Formatting | oxfmt                                   | Consistent code formatting               |
 
 ---
 
@@ -150,7 +150,8 @@ Types: feat, fix, docs, refactor, test, chore
 graph TB
     A[Pure logic and services: Vitest] --> B[Component contracts: Vue Test Utils]
     B --> C[Browser behavior: Playwright]
-    A --> D[High-risk logic quality: Stryker]
+    C --> D[Visual appearance: Playwright screenshots]
+    A --> E[High-risk logic quality: Stryker]
 ```
 
 ### Unit & Integration Tests (Vitest)
@@ -192,6 +193,49 @@ Do not use component contract tests for:
 - Material visual states.
 
 Use Playwright/e2e or a reproducible browser smoke check for those cases.
+
+### Visual Regression Tests (Playwright screenshots)
+
+**Scope**: visual appearance, rendered layout, and Material state regressions.
+
+Use Playwright screenshot assertions for visual appearance. Do not use Vitest, happy-dom, or Vue Test Utils for appearance checks.
+
+Use the existing dev-only playground as the visual harness:
+
+- add or reuse a playground page for the component surface;
+- keep playground states deterministic and fixture-driven;
+- avoid business logic, storage orchestration, and network behavior in playground pages;
+- do not add production routes only for visual tests.
+
+Place visual specs under:
+
+```text
+tests/e2e/visual/<surface>.spec.ts
+```
+
+Use visual tests for:
+
+- shared UI primitives;
+- important states such as enabled, disabled, selected, checked, unchecked, error, loading, focus-visible, hover, or pressed;
+- mobile and desktop layout regressions;
+- previously broken visual states;
+- CSS-heavy components where visual regressions are likely and costly.
+
+Do not add visual snapshots for every component by default.
+
+Prefer screenshots of one stable surface, component gallery, dialog, sheet, menu, or responsive layout region. Avoid full-page screenshots unless the whole page layout is the invariant.
+
+Focused visual run:
+
+```bash
+pnpm exec playwright test tests/e2e/visual/<surface>.spec.ts
+```
+
+Update snapshots only after confirming the visual change is intentional:
+
+```bash
+pnpm exec playwright test tests/e2e/visual/<surface>.spec.ts --update-snapshots
+```
 
 ### Mutation Testing (StrykerJS)
 
@@ -321,7 +365,7 @@ pnpm preview
 | `pnpm test:run`      | Single-run Vitest tests      |
 | `pnpm test:coverage` | Coverage diagnostics         |
 | `pnpm test:mutate`   | Mutation testing             |
-| `pnpm e2e`           | E2E tests                    |
+| `pnpm e2e`           | E2E and visual tests         |
 | `pnpm e2e:ui`        | E2E with UI runner           |
 | `pnpm lint`          | Full lint pipeline           |
 | `pnpm format`        | Format all files             |
@@ -333,7 +377,7 @@ pnpm preview
 | ---------------------- | ------------------------------ |
 | `vite.config.ts`       | Build configuration            |
 | `vitest.config.ts`     | Test configuration             |
-| `playwright.config.ts` | E2E test configuration         |
+| `playwright.config.ts` | E2E and visual test config     |
 | `stryker.config.mjs`   | Mutation testing configuration |
 | `eslint.config.mjs`    | ESLint configuration           |
 | `tsconfig.json`        | TypeScript project references  |
