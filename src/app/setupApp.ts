@@ -14,22 +14,13 @@ import { setupStackNavigation } from '@page/routes';
  * @param app - Optional pre-created Vue app instance used by tests and alternative bootstraps.
  * @returns The configured Vue app instance.
  */
-export const setupApp = async (app: App = createApp(MainApp)) => {
+export const setupApp = (app: App = createApp(MainApp)) => {
   app.use(sentryPlugin, {
     dsn: SENTRY_DSN,
     enabled: import.meta.env.PROD,
   });
 
   setupStackNavigation(router);
-
-  if (import.meta.env.DEV) {
-    const [{ setupPlayground }, { playgroundPages }] = await Promise.all([
-      import('@shared/lib/playground'),
-      import('./playgroundPages'),
-    ]);
-
-    setupPlayground(router, playgroundPages);
-  }
 
   app.use(router);
 

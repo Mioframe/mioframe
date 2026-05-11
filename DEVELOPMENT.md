@@ -31,18 +31,18 @@
 
 ### Tech Stack
 
-| Layer      | Technology                              | Purpose                                  |
-| ---------- | --------------------------------------- | ---------------------------------------- |
-| Framework  | Vue 3.5+                                | Reactive UI rendering                    |
-| Build Tool | Vite 7+                                 | Fast HMR and production builds           |
-| Language   | TypeScript 5.9+                         | Static type checking                     |
-| State      | Automerge 2.5+                          | CRDT-based collaborative editing         |
-| Router     | Vue Router 5                            | Application routing                      |
-| HTTP       | ky 1.x                                  | Lightweight fetch wrapper                |
-| Testing    | Vitest + Vue Test Utils + Playwright    | Unit, component contract, E2E, visual    |
-| Mutation   | StrykerJS                               | Test quality checks                      |
-| Linting    | oxlint + ESLint 10+                     | Code quality enforcement                 |
-| Formatting | oxfmt                                   | Consistent code formatting               |
+| Layer      | Technology                           | Purpose                               |
+| ---------- | ------------------------------------ | ------------------------------------- |
+| Framework  | Vue 3.5+                             | Reactive UI rendering                 |
+| Build Tool | Vite 7+                              | Fast HMR and production builds        |
+| Language   | TypeScript 5.9+                      | Static type checking                  |
+| State      | Automerge 2.5+                       | CRDT-based collaborative editing      |
+| Router     | Vue Router 5                         | Application routing                   |
+| HTTP       | ky 1.x                               | Lightweight fetch wrapper             |
+| Testing    | Vitest + Vue Test Utils + Playwright | Unit, component contract, E2E, visual |
+| Mutation   | StrykerJS                            | Test quality checks                   |
+| Linting    | oxlint + ESLint 10+                  | Code quality enforcement              |
+| Formatting | oxfmt                                | Consistent code formatting            |
 
 ---
 
@@ -50,12 +50,12 @@
 
 ### System Requirements
 
-| Component | Minimum Version | Notes                        |
-| --------- | --------------- | ---------------------------- |
-| Node.js   | 24.x            | CI and tooling baseline      |
-| pnpm      | 10.x            | Project lockfile format      |
-| Git       | 2.x             | Required for hooks setup     |
-| Browser   | Chrome 120+     | E2E testing baseline         |
+| Component | Minimum Version | Notes                    |
+| --------- | --------------- | ------------------------ |
+| Node.js   | 24.x            | CI and tooling baseline  |
+| pnpm      | 10.x            | Project lockfile format  |
+| Git       | 2.x             | Required for hooks setup |
+| Browser   | Chrome 120+     | E2E testing baseline     |
 
 ---
 
@@ -205,6 +205,7 @@ Use existing playground pages through an isolated dev-only playground runtime:
 - add or reuse a playground page for the component surface;
 - keep playground states deterministic and fixture-driven;
 - reuse app styles and only the shared UI infrastructure required for rendering;
+- open visual playground surfaces through the isolated runtime, not through `MainApp.vue` or the product app shell;
 - isolate product runtime effects such as storage permission requests, diagnostics consent/reporting, optional integrations, unload guards, live performance overlays, network initialization, and product lifecycle behavior;
 - prefer a dedicated playground shell or explicit app setup boundary over route-name checks inside product components;
 - avoid business logic, storage orchestration, and network behavior in playground pages;

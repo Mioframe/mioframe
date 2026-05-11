@@ -37,6 +37,9 @@ export interface UseDatabaseViewResult {
  *
  * This composable requires a concrete `viewId` and intentionally does not resolve any default or
  * effective view semantics for callers.
+ * @param path
+ * @param documentId
+ * @param viewId
  */
 export const useDatabaseView = (
   path: Ref<string>,

@@ -24,7 +24,6 @@ type MandateOptionalWithUndefined<T> = {
  *
  * Note: The function returns a minimal type assertion that Vue can properly type-check
  * during component compilation, rather than the full Zod schema structure.
- *
  * @param zod - The Zod schema object to convert
  * @returns Vue props definition object for use with defineProps
  */

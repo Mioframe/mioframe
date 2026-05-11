@@ -108,6 +108,7 @@ const useOverlayNavigationState = createGlobalState(() => {
 });
 
 /**
+ * @param id
  * @deprecated
  */
 export const useOverlayNavigation = (id: Ref<PropertyKey>) => {

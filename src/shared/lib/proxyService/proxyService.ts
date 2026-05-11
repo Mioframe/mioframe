@@ -3,7 +3,6 @@
  *
  * This module provides utilities for creating clients and services that can communicate across different execution contexts,
  * allowing functions to be called remotely on a server-side object as if they were local.
- *
  * @module ProxyService
  */
 
@@ -42,7 +41,6 @@ import type { SuperJSONResult } from 'superjson';
  *
  * This internal helper routes calls through the communication provider to execute functions
  * located at a specific path within a remote object structure.
- *
  * @param provider - Communication provider for sending messages
  * @param serviceId - Identifier of the target service
  * @param path - Path to follow to find the function (e.g., ['obj', 'method'])
@@ -76,7 +74,6 @@ const callRemotePath = async (
  *
  * This utility function navigates through nested object properties using a path array
  * and executes the final property if it's a function, throwing an error if not found.
- *
  * @param target - Target record to find and execute the function on
  * @param path - Path of properties leading to the function (e.g., ['obj', 'method'])
  * @param args - Arguments to pass to the found function
@@ -100,7 +97,6 @@ const callPath = async (
  *
  * This function creates a JavaScript Proxy that intercepts property access and method calls,
  * routing them through the communication provider to the appropriate remote service.
- *
  * @param provider - Communication provider for sending messages
  * @param serviceId - Identifier of the target service
  * @param path - Current path in the proxy chain (used internally)
@@ -139,7 +135,6 @@ const serviceReadyRegister = new Set<string>();
  *
  * This function implements a handshake mechanism between client and service,
  * ensuring that remote services are properly initialized before making calls.
- *
  * @param provider - Communication provider for sending messages
  * @param serviceId - Identifier of the target service
  * @param timeout - Maximum time (in ms) to wait for readiness
@@ -182,7 +177,6 @@ const waitServiceReady = (provider: Provider, serviceId: string, timeout = 5e3) 
  *
  * This is the primary entry point for creating proxy clients that enable calling
  * methods on remote services as if they were local objects.
- *
  * @param provider - Communication provider for sending messages
  * @param serviceId - Identifier of the target service
  * @param transformers - Optional custom transformers for data serialization/deserialization
@@ -212,7 +206,6 @@ const remoteFunctions = new WeakMap<AnyFunction, FunctionDescription>();
  *
  * This utility creates metadata about functions so they can be properly identified
  * and routed when called from remote execution contexts.
- *
  * @param localFunction - The original local function
  * @returns A description that can be serialized and sent to remote contexts
  */
@@ -259,7 +252,6 @@ const remoteFunctionsRegistry = new FinalizationRegistry(
  *
  * This function generates a local proxy that, when invoked, will route execution
  * to the appropriate remote function through the communication provider.
- *
  * @param provider - Communication provider for sending messages
  * @param serviceId - Identifier of the target service
  * @param remoteFunctionDescription - Description of the remote function to create a proxy for
@@ -305,7 +297,6 @@ const createProxyFunction = (
  *
  * Called from the service-side message handler after processing a call.
  * No readiness check needed — the caller already completed the handshake before sending the call.
- *
  * @param provider - Communication provider for sending messages
  * @param serviceId - Identifier of the target service
  * @param resultId - ID of the request that this is a response to
@@ -326,7 +317,6 @@ const sendResult = (provider: Provider, serviceId: string, resultId: string, res
  *
  * Called from the service-side message handler after processing a call.
  * No readiness check needed — the caller already completed the handshake before sending the call.
- *
  * @param provider - Communication provider for sending messages
  * @param serviceId - Identifier of the target service
  * @param resultId - ID of the request that this is a response to
@@ -365,7 +355,6 @@ const superJson = new SuperJSON({ dedupe: true });
  *
  * This function handles serialization of complex data structures so they can be sent
  * across execution contexts while preserving types and references.
- *
  * @param data - Data to serialize
  * @returns Serialized representation that can be transmitted over the wire
  */
@@ -379,7 +368,6 @@ export const serialize = <T>(data: T) =>
  *
  * This function reverses the serialization process, reconstructing complex objects
  * and restoring their proper JavaScript types from serialized representations.
- *
  * @param data - Data that was serialized with the corresponding serialize function
  * @returns The deserialized value in its proper type
  */
@@ -394,7 +382,6 @@ export const deserialize = <T>(data: SerializeJson<T>) =>
  *
  * This is the main entry point for setting up services that can accept and process
  * remote method calls from proxy clients in different execution contexts.
- *
  * @param provider - Communication provider for sending messages
  * @param serviceId - Identifier for this service instance
  * @param transformers - Optional custom transformers for data serialization/deserialization

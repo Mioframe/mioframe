@@ -39,6 +39,7 @@ const multiPathCompare = (a: unknown, b: unknown, comparePathList: ComparePath[]
  * @param comparePathList
  * @param firstIndex
  * @param lastIndex
+ * @param compareFn
  * @returns
  */
 export const partialSort = <T>(

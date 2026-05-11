@@ -1,4 +1,5 @@
 import type { PluginOption } from 'vite';
+import { resolve } from 'node:path';
 import { defineConfig, loadEnv } from 'vite';
 import { dependencies, devDependencies } from './package.json';
 import { getResolveAlias } from './config/alias';
@@ -57,6 +58,10 @@ export default defineConfig(({ mode, isPreview }) => {
         },
       },
       rollupOptions: {
+        input: {
+          main: resolve(__dirname, 'index.html'),
+          visualPlayground: resolve(__dirname, 'visual-playground.html'),
+        },
         output: {
           manualChunks(id) {
             for (const name of Object.keys({

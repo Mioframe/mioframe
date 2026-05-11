@@ -24,6 +24,7 @@ Required boundaries:
 - Add or reuse a playground page for the component surface under test.
 - Keep playground states deterministic and fixture-driven.
 - Keep the visual playground dev-only; do not add production routes only for visual tests.
+- Open visual playground surfaces through the isolated runtime, not through `MainApp.vue` or the product app shell.
 - Reuse application styles and shared UI infrastructure required to render the component correctly.
 - Isolate product runtime behavior from playground rendering. Prefer a dedicated playground shell or explicit app setup boundary over route-name checks inside product components.
 - Do not put business logic, storage orchestration, network behavior, diagnostics, optional integrations, or permission prompts into playground pages.

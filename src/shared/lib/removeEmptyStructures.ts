@@ -8,12 +8,9 @@ import { keys } from './objectKeys';
  * - Empty arrays
  * - Empty plain objects
  * - All properties that lead to empty structures
- *
  * @warning Mutates the original object/array in place
- *
  * @param data - Object, array, or primitive to process
  * @returns The same data with empty structures removed, or undefined if the structure itself is empty
- *
  * @example
  * ```ts
  * removeEmptyStructures({ a: [], b: {} });      // returns undefined

@@ -8,7 +8,6 @@ import { computed, shallowRef, watch } from 'vue';
  *
  * Automatically syncs the theme-color meta tag with the current body background color,
  * reacting to color scheme changes (light/dark mode).
- *
  * @example
  * ```ts
  * // Call once in app initialization

@@ -23,6 +23,7 @@ export const setupDocHandleState = (docHandle: AMDocHandle): DocHandleState => {
 
   /**
    * Изменение состояния без триггера
+   * @param doc
    */
   const programReplaceDocRef = (doc: AMDoc | undefined) => {
     if (doc) {
@@ -34,6 +35,7 @@ export const setupDocHandleState = (docHandle: AMDocHandle): DocHandleState => {
 
   /**
    * Обработка события изменения из automerge
+   * @param root0
    */
   const onChangeDoc = ({ doc }: AMDocHandleChangePayload) => {
     programReplaceDocRef(doc);
@@ -41,6 +43,7 @@ export const setupDocHandleState = (docHandle: AMDocHandle): DocHandleState => {
 
   /**
    * Обработка события удаления из automerge
+   * @param _payload
    */
   const onDeleteDoc = (_payload: AMDocHandleDeletePayload) => {
     programReplaceDocRef(undefined);

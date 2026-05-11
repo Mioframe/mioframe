@@ -27,6 +27,8 @@ interface ScopePoolOptions {
 /**
  * Создает пул реактивных областей с подсчетом ссылок.
  * Автоматически удаляет scope, когда количество подписчиков становится 0.
+ * @param setupFn
+ * @param options
  */
 export const defineScopePool = <K extends WeakKey, V extends object>(
   // TODO: добавить поддержку примитивов и использовать для кеширования путей в сервисе.
@@ -101,6 +103,8 @@ export const defineScopePool = <K extends WeakKey, V extends object>(
 /**
  * Реактивно подключается к пулу областей.
  * Автоматически управляет жизненным циклом (retain/release).
+ * @param usePool
+ * @param keyOrGetter
  */
 export const usePoolState = <K extends WeakKey, V>(
   usePool: UseScopePool<K, V>,
@@ -151,6 +155,7 @@ export const usePoolState = <K extends WeakKey, V>(
 
 /**
  * Создает готовый хук для конкретного пула (синтаксический сахар)
+ * @param usePool
  */
 export const createUsePoolHook =
   <K extends WeakKey, V>(usePool: UseScopePool<K, V>) =>

@@ -16,7 +16,11 @@ const recordEntries = <R extends Record<PropertyKey, unknown>>(value: R): Record
 export const createUniqueName = (prefix: string) =>
   `${prefix} ${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 
-const getBaseURL = () => {
+/**
+ * Resolves the Playwright base URL for preview-backed browser tests.
+ * @returns The absolute base URL used by Playwright in the current test environment.
+ */
+export const getBaseURL = () => {
   const externalBaseURL = process.env.PLAYWRIGHT_EXTERNAL_BASE_URL;
   if (externalBaseURL) {
     return externalBaseURL;

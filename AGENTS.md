@@ -102,6 +102,7 @@ reason:
 
 - Use Playwright screenshot assertions for appearance regressions; do not use Vitest, happy-dom, or Vue Test Utils for visual appearance.
 - Use the existing playground pages through an isolated dev-only playground runtime. Do not add production routes only for visual tests.
+- Visual tests must use the isolated visual playground runtime, not `MainApp.vue` or the product app shell.
 - The visual runtime must not inherit product app effects such as storage permission requests, diagnostics consent/reporting, optional integrations, unload guards, live performance overlays, network initialization, or product lifecycle behavior.
 - Prefer a dedicated playground shell or explicit app setup boundary over route-name checks inside product components.
 - Keep playground pages deterministic and fixture-driven. They must not own business logic, storage orchestration, or network behavior.

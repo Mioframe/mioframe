@@ -7,7 +7,6 @@ const KEY: InjectionKey<{ numberOfBottomNavigationBans: Ref<number> }> =
 
 /**
  * Разрешение на отображение нижней панели навигации вместе с отображаемыми Pane.
- *
  * @description Создаёт реестр разрешений на использование нижнего бара навигации с размещёнными Pane
  */
 export const useAllowedBottomNavigation = () => {
@@ -56,7 +55,6 @@ export const defineAllowedBottomNavigation = (allowed: Ref<boolean>) => {
 
 /**
  * Разрешение использовать элементы управления в нижней части экрана.
- *
  * @description Разрешение определяется в Pane.
  */
 export const useAllowBottomControls = () => {
