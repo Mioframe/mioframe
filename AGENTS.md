@@ -73,7 +73,7 @@ reason:
 - Do not use mutation testing for UI component behavior, Playwright/e2e-only flows, refactors, type-only changes, formatting, comments, renames, or documentation.
 - Use the `ui-browser-behavior` skill for UI changes involving real DOM layout, focus, keyboard navigation, pointer or touch input, teleport, overlays, scrolling, responsive styling, browser APIs, Material state visuals, or mobile behavior.
 - Use the `visual-regression-testing` skill for visual appearance checks, screenshot snapshots, Material visual states, responsive layout snapshots, or visual regression coverage.
-- Do not use Vitest, happy-dom, or Vue Test Utils for visual appearance; use Playwright screenshots against the dev-only playground.
+- Do not use Vitest, happy-dom, or Vue Test Utils for visual appearance; use Playwright screenshots against an isolated dev-only playground runtime.
 - Use the `crdt-storage` skill for Automerge/CRDT changes, repo or document handle lifecycle, storage helpers, VFS behavior, subscriptions, listeners, workers, timers, caches, file handles, or blob URLs.
 - Verify third-party semantics from official docs or installed source before relying on ambiguous helpers, options, or return values. If the behavior is still unverified, say so.
 - Keep the UI aligned with Material 3 expectations and optimize for mobile browsers first. Assume large datasets and low-end devices, and keep main-thread work bounded.
@@ -101,7 +101,9 @@ reason:
 ## Visual regression testing
 
 - Use Playwright screenshot assertions for appearance regressions; do not use Vitest, happy-dom, or Vue Test Utils for visual appearance.
-- Use the existing dev-only playground as the visual test harness. Do not add production routes only for visual tests.
+- Use the existing playground pages through an isolated dev-only playground runtime. Do not add production routes only for visual tests.
+- The visual runtime must not inherit product app effects such as storage permission requests, diagnostics consent/reporting, optional integrations, unload guards, live performance overlays, network initialization, or product lifecycle behavior.
+- Prefer a dedicated playground shell or explicit app setup boundary over route-name checks inside product components.
 - Keep playground pages deterministic and fixture-driven. They must not own business logic, storage orchestration, or network behavior.
 - Place visual specs under `tests/e2e/visual/<surface>.spec.ts` so Playwright and focused verification can discover them.
 - Prefer screenshots of a single stable surface, component gallery, dialog, sheet, menu, or responsive layout region over full-page screenshots.
