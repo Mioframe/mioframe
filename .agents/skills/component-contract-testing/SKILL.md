@@ -57,5 +57,5 @@ Reject or rewrite the test when:
 1. It simulates a realistic user flow that belongs in Playwright.
 2. It asserts DOM details unrelated to the component contract.
 3. It duplicates business logic assertions already covered by a composable/helper test.
-4. It uses `happy-dom` as if it were a browser.
+4. It relies on happy-dom for behaviors it cannot accurately simulate, such as layout or visibility.
 5. It grows into broad pseudo-e2e coverage.
