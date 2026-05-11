@@ -1,6 +1,6 @@
 ---
 name: visual-regression-testing
-description: 'Use this skill when adding or reviewing visual appearance checks, screenshot snapshots, Material visual states, responsive layout snapshots, or visual regression coverage. Use Playwright screenshots against the dev-only playground; do not use Vitest, happy-dom, or Vue Test Utils for appearance.'
+description: 'Use this skill when adding or reviewing visual appearance checks, screenshot snapshots, Material visual states, responsive layout snapshots, or visual regression coverage. Use Playwright screenshots against an isolated dev-only playground runtime; do not use Vitest, happy-dom, or Vue Test Utils for appearance.'
 ---
 
 # Visual regression testing
@@ -15,15 +15,36 @@ Do not use Vitest, happy-dom, or Vue Test Utils to verify appearance, layout, re
 
 ## Harness rule
 
-Use the existing dev-only playground as the visual test harness.
+Use the existing playground pages as the visual test harness, but run them through an isolated dev-only playground runtime.
+
+The visual runtime must not inherit product app effects from the normal root app, such as storage permission requests, diagnostics consent/reporting, optional integrations, unload guards, live performance overlays, network initialization, or other product lifecycle behavior.
+
+Required boundaries:
 
 - Add or reuse a playground page for the component surface under test.
 - Keep playground states deterministic and fixture-driven.
-- Do not add production routes only for visual tests.
-- Do not create a second app bootstrap unless the playground cannot represent the required state.
-- Do not put business logic, storage orchestration, or network behavior into playground pages.
+- Keep the visual playground dev-only; do not add production routes only for visual tests.
+- Reuse application styles and shared UI infrastructure required to render the component correctly.
+- Isolate product runtime behavior from playground rendering. Prefer a dedicated playground shell or explicit app setup boundary over route-name checks inside product components.
+- Do not put business logic, storage orchestration, network behavior, diagnostics, optional integrations, or permission prompts into playground pages.
 
-The playground route is intended for stable component surfaces and visual states. It should stay a rendering harness, not an alternate application.
+The playground is intended for stable component surfaces and visual states. It should stay a rendering harness, not an alternate product application.
+
+## Isolation review
+
+Before adding visual snapshots, check whether the page is rendered under the normal product root app. If so, verify that product effects cannot affect the screenshot.
+
+Reject or refactor the setup when visual tests can be affected by:
+
+- onboarding, permission, diagnostics, or storage dialogs;
+- snackbars or error reporting side effects;
+- optional integration setup;
+- background writes, workers, timers, or unload guards;
+- live performance overlays;
+- network or account state;
+- route guards or product navigation state unrelated to the component surface.
+
+Do not solve isolation by sprinkling `if playground route` checks through product features. Extract product runtime effects behind a product shell boundary, or create a dedicated playground shell that only provides the minimum shared infrastructure required for rendering.
 
 ## Test location
 
@@ -105,6 +126,7 @@ Reject or rewrite a visual test when:
 1. It can be covered better by a pure unit test or component contract test.
 2. It captures a broad page without a clear visual invariant.
 3. It depends on random, time-based, network, storage, or loading state.
-4. It uses test-only production routes instead of the dev-only playground.
-5. It updates snapshots without explaining the intended visual change.
-6. It duplicates an e2e behavior assertion instead of checking appearance.
+4. It uses test-only production routes instead of an isolated dev-only playground runtime.
+5. It inherits product app behavior that can affect screenshots.
+6. It updates snapshots without explaining the intended visual change.
+7. It duplicates an e2e behavior assertion instead of checking appearance.
