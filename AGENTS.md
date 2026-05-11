@@ -72,6 +72,8 @@ reason:
 - Use the `mutation-testing` skill for high-risk changes to pure logic, schemas, migrations, storage helpers, CRDT write helpers, validation, normalization, filtering, sorting, matching, service logic, or data transformations when focused unit/integration tests were added or changed.
 - Do not use mutation testing for UI component behavior, Playwright/e2e-only flows, refactors, type-only changes, formatting, comments, renames, or documentation.
 - Use the `ui-browser-behavior` skill for UI changes involving real DOM layout, focus, keyboard navigation, pointer or touch input, teleport, overlays, scrolling, responsive styling, browser APIs, Material state visuals, or mobile behavior.
+- Use the `visual-regression-testing` skill for visual appearance checks, screenshot snapshots, Material visual states, responsive layout snapshots, or visual regression coverage.
+- Do not use Vitest, happy-dom, or Vue Test Utils for visual appearance; use Playwright screenshots against the dev-only playground.
 - Use the `crdt-storage` skill for Automerge/CRDT changes, repo or document handle lifecycle, storage helpers, VFS behavior, subscriptions, listeners, workers, timers, caches, file handles, or blob URLs.
 - Verify third-party semantics from official docs or installed source before relying on ambiguous helpers, options, or return values. If the behavior is still unverified, say so.
 - Keep the UI aligned with Material 3 expectations and optimize for mobile browsers first. Assume large datasets and low-end devices, and keep main-thread work bounded.
@@ -95,6 +97,18 @@ reason:
 - Move reusable UI state transitions and business rules into composables or pure helpers, and cover those with focused unit tests.
 - Unit tests remain the preferred verification method for composables, pure helpers, schemas, migrations, services, storage helpers, CRDT write helpers, state transitions, validation, normalization, and pure transformations.
 - The absence or removal of a Vue component unit test is not a regression by itself when the behavior is covered by Playwright/e2e, a reproducible browser smoke check, or focused tests for extracted composable or helper logic.
+
+## Visual regression testing
+
+- Use Playwright screenshot assertions for appearance regressions; do not use Vitest, happy-dom, or Vue Test Utils for visual appearance.
+- Use the existing dev-only playground as the visual test harness. Do not add production routes only for visual tests.
+- Keep playground pages deterministic and fixture-driven. They must not own business logic, storage orchestration, or network behavior.
+- Place visual specs under `tests/e2e/visual/<surface>.spec.ts` so Playwright and focused verification can discover them.
+- Prefer screenshots of a single stable surface, component gallery, dialog, sheet, menu, or responsive layout region over full-page screenshots.
+- Add visual tests only for shared UI primitives, important Material states, mobile/desktop layout regressions, previously broken visual states, or CSS-heavy components where visual regressions are likely and costly.
+- Do not add visual snapshots for every component by default.
+- Keep snapshots deterministic: fixed viewport, stable fixture data, settled fonts/icons/rendering, no live dates, no random IDs, no network content, no loading spinners, and masked dynamic regions when needed.
+- Update snapshots only after inspecting the visual diff and confirming the appearance change is intentional.
 
 ## CRDT and lifecycle invariants
 
