@@ -200,10 +200,13 @@ Use Playwright/e2e or a reproducible browser smoke check for those cases.
 
 Use Playwright screenshot assertions for visual appearance. Do not use Vitest, happy-dom, or Vue Test Utils for appearance checks.
 
-Use the existing dev-only playground as the visual harness:
+Use existing playground pages through an isolated dev-only playground runtime:
 
 - add or reuse a playground page for the component surface;
 - keep playground states deterministic and fixture-driven;
+- reuse app styles and only the shared UI infrastructure required for rendering;
+- isolate product runtime effects such as storage permission requests, diagnostics consent/reporting, optional integrations, unload guards, live performance overlays, network initialization, and product lifecycle behavior;
+- prefer a dedicated playground shell or explicit app setup boundary over route-name checks inside product components;
 - avoid business logic, storage orchestration, and network behavior in playground pages;
 - do not add production routes only for visual tests.
 
