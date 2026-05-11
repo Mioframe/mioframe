@@ -67,6 +67,8 @@ reason:
 - Keep ByteRover usage details in the `byterover` skill. Use `AGENTS.md` for stable repo policy, not step-by-step `brv` runbooks.
 - Use the `test-first` skill for behavior changes, bug fixes, migrations, data transformations, storage semantics, and UI flows when the expected outcome can be reproduced by a focused test or smoke check.
 - Do not use test-first for refactors, type-only changes, formatting, comments, renames, documentation, or internal cleanup with no observable behavior change.
+- Use the `component-contract-testing` skill before adding or reviewing Vue component unit tests for small render, props, emits, slots, or child-component wiring contracts.
+- Do not use component contract tests for browser behavior; use Playwright/e2e or a reproducible browser smoke check instead.
 - Use the `mutation-testing` skill for high-risk changes to pure logic, schemas, migrations, storage helpers, CRDT write helpers, validation, normalization, filtering, sorting, matching, service logic, or data transformations when focused unit/integration tests were added or changed.
 - Do not use mutation testing for UI component behavior, Playwright/e2e-only flows, refactors, type-only changes, formatting, comments, renames, or documentation.
 - Use the `ui-browser-behavior` skill for UI changes involving real DOM layout, focus, keyboard navigation, pointer or touch input, teleport, overlays, scrolling, responsive styling, browser APIs, Material state visuals, or mobile behavior.
@@ -86,9 +88,12 @@ reason:
 
 - Do not use unit tests as the default verification method for Vue UI components.
 - Component behavior that depends on real DOM layout, focus, keyboard navigation, pointer or touch input, teleport, overlays, scrolling, responsive styling, browser APIs, or Material state visuals must be verified with Playwright/e2e or a reproducible browser smoke check.
+- Use `@vue/test-utils` only for component contract tests: conditional rendering, props, emits, slots, simple child-component wiring, and connecting extracted composable or helper state to template output.
+- Do not hand-roll component mounting with repeated `createApp`, manual `document.body` cleanup, ad hoc inline stubs, and `querySelector`-driven assertions.
+- Prefer assertions against emitted events, props passed to stubs, slot content, and stable accessible text or labels when they are part of the component contract.
+- Avoid adding `data-testid` only for unit tests unless there is no stable user-visible or component-level contract to assert.
 - Move reusable UI state transitions and business rules into composables or pure helpers, and cover those with focused unit tests.
 - Unit tests remain the preferred verification method for composables, pure helpers, schemas, migrations, services, storage helpers, CRDT write helpers, state transitions, validation, normalization, and pure transformations.
-- Component unit tests are allowed for small render or wiring contracts that do not depend on browser layout or interaction semantics.
 - The absence or removal of a Vue component unit test is not a regression by itself when the behavior is covered by Playwright/e2e, a reproducible browser smoke check, or focused tests for extracted composable or helper logic.
 
 ## CRDT and lifecycle invariants
