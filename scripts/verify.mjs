@@ -26,6 +26,7 @@ const SOURCE_EXTENSIONS = ['.ts', '.vue'];
 const IGNORED_PREFIXES = [
   'node_modules/',
   'dist/',
+  'storybook-static/',
   'coverage/',
   'reports/',
   'playwright-report/',
@@ -445,9 +446,16 @@ function buildCommands(changedFiles) {
     LINTABLE_EXTENSIONS.has(path.posix.extname(filePath)),
   );
   const vitestScope = getVitestScope(changedFiles);
+  const changedVisualSpecs = changedFiles.filter(
+    (filePath) =>
+      filePath.startsWith('tests/e2e/visual/') && filePath.endsWith('.ts') && fileExists(filePath),
+  );
   const changedE2ESpecs = changedFiles.filter(
     (filePath) =>
-      filePath.startsWith('tests/e2e/') && filePath.endsWith('.ts') && fileExists(filePath),
+      filePath.startsWith('tests/e2e/') &&
+      !filePath.startsWith('tests/e2e/visual/') &&
+      filePath.endsWith('.ts') &&
+      fileExists(filePath),
   );
   const mutationScope = getMutationScope(changedFiles);
   const commands = [];
@@ -545,6 +553,36 @@ function buildCommands(changedFiles) {
       label: 'e2e',
       command: 'pnpm exec playwright test',
       reason: 'empty e2e scope',
+    });
+  }
+
+  if (changedFiles.includes('playwright.visual.config.ts')) {
+    commands.push({
+      kind: 'run',
+      label: 'visual',
+      command: 'pnpm',
+      args: ['test:visual'],
+    });
+  } else if (changedVisualSpecs.length > 0) {
+    commands.push({
+      kind: 'run',
+      label: 'visual',
+      command: 'pnpm',
+      args: [
+        'exec',
+        'playwright',
+        'test',
+        '--config',
+        'playwright.visual.config.ts',
+        ...changedVisualSpecs,
+      ],
+    });
+  } else {
+    commands.push({
+      kind: 'skipped',
+      label: 'visual',
+      command: 'pnpm test:visual',
+      reason: 'empty visual scope',
     });
   }
 

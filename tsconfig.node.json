@@ -2,10 +2,11 @@
 {
   "extends": "@tsconfig/node24/tsconfig.json",
   "include": [
+    ".storybook/**/*.ts",
     "config/**/*.ts",
     "vite.config.*",
     "vitest.config.*",
-    "playwright.config.*",
+    "playwright*.config.*",
     "pwa-assets.config.*",
     "eslint.config.*",
     "tests/**/*.ts"
@@ -16,7 +17,9 @@
     "module": "preserve",
     "moduleResolution": "bundler",
     "types": ["node"],
+    "lib": ["ESNext", "DOM", "DOM.Iterable"],
     "noEmit": true,
+    "allowImportingTsExtensions": true,
     "resolveJsonModule": true,
     "allowSyntheticDefaultImports": true
   }
