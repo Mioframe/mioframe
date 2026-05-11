@@ -95,6 +95,7 @@
     "@vitest/eslint-plugin": "^1.6.13",
     "@vue/devtools-api": "8.1.1",
     "@vue/eslint-config-typescript": "^14.7.0",
+    "@vue/test-utils": "^2.4.10",
     "@vue/tsconfig": "^0.9.1",
     "eslint": "^10.2.0",
     "eslint-config-prettier": "^10.1.8",
