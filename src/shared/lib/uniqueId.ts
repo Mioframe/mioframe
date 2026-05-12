@@ -1,4 +1,5 @@
 import { useSessionStorage } from '@vueuse/core';
+
 const idCounterStorage = useSessionStorage<Record<string, string>>(
   'idCounter',
   {},
@@ -7,18 +8,10 @@ const idCounterStorage = useSessionStorage<Record<string, string>>(
   },
 );
 
-const radix = 36;
-
-/**
- * String identifier shape returned by {@link sessionUniqueId}.
- */
 export type UniqueId<S extends string> = `${S}${string}`;
 
-/**
- * Returns a stable per-session identifier with a prefix-specific counter.
- * @param prefix - Stable prefix for the generated identifier family.
- * @returns Session-scoped identifier string with the provided prefix.
- */
+const radix = 36;
+
 export const sessionUniqueId = <S extends string>(prefix: S): UniqueId<S> => {
   let currentCount = parseInt(idCounterStorage.value[prefix] ?? '0', radix);
 
