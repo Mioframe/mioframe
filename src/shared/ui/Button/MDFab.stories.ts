@@ -61,3 +61,24 @@ export const VisualStates: Story = {
     `,
   }),
 };
+
+export const VisualInteractionStates: Story = {
+  tags: ['visual'],
+  render: () => ({
+    components: { MDFab },
+    template: `
+      <div data-testid="visual-md-fab-interaction-states" class="visual-surface">
+        <div class="visual-row">
+          <MDFab tooltip="Primary hover target" color="primary" md-symbol="add" />
+          <MDFab tooltip="Secondary" color="secondary" md-symbol="edit" />
+          <MDFab tooltip="Tonal" color="tonal-primary" md-symbol="check" />
+        </div>
+        <div class="visual-row">
+          <MDFab tooltip="Medium" size="medium" md-symbol="star" />
+          <MDFab tooltip="Focus target" size="large" color="tertiary" md-symbol="share" />
+          <MDFab tooltip="Tonal secondary" color="tonal-secondary" md-symbol="menu" />
+        </div>
+      </div>
+    `,
+  }),
+};

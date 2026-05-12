@@ -34,12 +34,12 @@ export default defineConfig({
   },
   webServer: {
     command:
-      'pnpm storybook:build && ' +
+      'node scripts/runWithStorybookEnv.mjs storybook build && ' +
       'pnpm exec vite preview ' +
       '--config .storybook/vite.preview.config.ts ' +
       `--host ${host} --port ${port} --strictPort --outDir storybook-static`,
     url: storybookURL,
-    reuseExistingServer: false,
+    reuseExistingServer: !process.env.CI,
     timeout: 240_000,
     stdout: 'pipe',
     stderr: 'pipe',

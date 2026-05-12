@@ -7,17 +7,22 @@ const storybookIconStateStub = fileURLToPath(
   new URL('./stubs/useMaterialDesignSymbols.ts', import.meta.url),
 );
 const baseAliases = getResolveAlias();
+const isStorybookBuild = process.env.BEAVER_STORYBOOK === '1';
+const storybookBuildDate = '2025-01-01T00:00:00.000Z';
 
 const config: StorybookConfig = {
   stories: ['../src/**/*.stories.@(ts|tsx|js|jsx|mjs|vue)'],
   // Storybook 10 includes controls/actions/docs and viewport in the framework preset.
   addons: ['@storybook/addon-a11y'],
+  core: {
+    disableTelemetry: true,
+  },
   framework: {
     name: '@storybook/vue3-vite',
     options: {
       docgen: {
         plugin: 'vue-component-meta',
-        tsconfig: 'tsconfig.app.json',
+        tsconfig: 'tsconfig.storybook.json',
       },
     },
   },
@@ -41,7 +46,9 @@ const config: StorybookConfig = {
         ],
       },
       define: {
-        __BUILD_DATE__: JSON.stringify(new Date().toISOString()),
+        __BUILD_DATE__: JSON.stringify(
+          isStorybookBuild ? storybookBuildDate : new Date().toISOString(),
+        ),
       },
     });
   },

@@ -1,0 +1,26 @@
+{
+  "extends": "./tsconfig.app.json",
+  "include": [
+    "env.d.ts",
+    ".storybook/**/*.ts",
+    "config/**/*.ts",
+    "src/**/*",
+    "src/**/*.vue",
+    "src/**/*.stories.ts",
+    "src/**/*.stories.tsx",
+    "src/**/*.stories.js",
+    "src/**/*.stories.jsx",
+    "src/**/*.stories.mjs",
+    "src/**/*.stories.vue"
+  ],
+  "exclude": [],
+  "compilerOptions": {
+    "composite": true,
+    "noEmit": true,
+    "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.storybook.tsbuildinfo",
+    "types": ["node", "@types/wicg-file-system-access"],
+    "lib": ["ESNext", "DOM", "DOM.Iterable", "WebWorker"],
+    "allowImportingTsExtensions": true,
+    "resolveJsonModule": true
+  }
+}

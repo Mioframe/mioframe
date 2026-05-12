@@ -74,3 +74,30 @@ export const VisualStates: Story = {
     `,
   }),
 };
+
+export const VisualInteractionStates: Story = {
+  tags: ['visual'],
+  render: () => ({
+    components: { MDCheckbox },
+    template: `
+      <div data-testid="visual-md-checkbox-interaction-states" class="visual-surface">
+        <div class="visual-row">
+          <MDCheckbox id="storybook-md-checkbox-hover" aria-label="Hover target" :model-value="false" />
+          <span>Hover target</span>
+        </div>
+        <div class="visual-row">
+          <MDCheckbox id="storybook-md-checkbox-focus" aria-label="Focus target" :model-value="true" />
+          <span>Focus target</span>
+        </div>
+        <div class="visual-row">
+          <MDCheckbox id="storybook-md-checkbox-readonly-hover" aria-label="Readonly hover target" :model-value="true" readonly />
+          <span>Readonly hover target</span>
+        </div>
+        <div class="visual-row">
+          <MDCheckbox id="storybook-md-checkbox-readonly-focus" aria-label="Readonly focus target" :model-value="true" readonly />
+          <span>Readonly focus target</span>
+        </div>
+      </div>
+    `,
+  }),
+};

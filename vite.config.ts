@@ -14,18 +14,23 @@ import {
 export default defineConfig(({ mode, isPreview }) => {
   const env = loadEnv(mode, process.cwd(), '');
   const isPreviewBuild = !!isPreview;
+  const isStorybookBuild = process.env.BEAVER_STORYBOOK === '1';
 
-  const sslPlugins = getSslPlugins({ mode, isPreview: isPreviewBuild });
-  const pwaPlugins = getPwaPlugins({ mode, isPreview: isPreviewBuild });
-  const sentryPlugins = getSentryPlugins({
-    mode,
-    isPreview: isPreviewBuild,
-    authToken: env.SENTRY_AUTH_TOKEN,
-  });
+  const sslPlugins = isStorybookBuild ? [] : getSslPlugins({ mode, isPreview: isPreviewBuild });
+  const pwaPlugins = isStorybookBuild ? [] : getPwaPlugins({ mode, isPreview: isPreviewBuild });
+  const sentryPlugins = isStorybookBuild
+    ? []
+    : getSentryPlugins({
+        mode,
+        isPreview: isPreviewBuild,
+        authToken: env.SENTRY_AUTH_TOKEN,
+      });
 
   const dateNow = new Date().toISOString();
 
-  console.log('\n__BUILD_DATE__:', dateNow);
+  if (!isStorybookBuild) {
+    console.log('\n__BUILD_DATE__:', dateNow);
+  }
 
   return {
     base: env.BASE_URL,
