@@ -1,5 +1,5 @@
 import type { Preview } from '@storybook/vue3-vite';
-import 'material-symbols';
+import 'material-symbols/rounded.css';
 import '../src/app/styles/styles.css';
 import './visual.css';
 

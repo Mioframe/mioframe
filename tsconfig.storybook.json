@@ -1,5 +1,5 @@
 {
-  "extends": "./tsconfig.app.json",
+  "extends": "./tsconfig.src.json",
   "include": [
     "env.d.ts",
     ".storybook/**/*.ts",
@@ -13,10 +13,7 @@
     "src/**/*.stories.mjs",
     "src/**/*.stories.vue"
   ],
-  "exclude": [],
   "compilerOptions": {
-    "composite": true,
-    "noEmit": true,
     "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.storybook.tsbuildinfo",
     "types": ["node", "@types/wicg-file-system-access"],
     "lib": ["ESNext", "DOM", "DOM.Iterable", "WebWorker"],

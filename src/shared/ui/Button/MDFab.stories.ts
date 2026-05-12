@@ -21,6 +21,36 @@ export default meta;
 
 type Story = StoryObj<typeof meta>;
 
+const fabStatesTemplate = `
+  <div data-testid="visual-md-fab-states" class="visual-surface">
+    <div class="visual-row">
+      <MDFab tooltip="Primary" color="primary" md-symbol="add" />
+      <MDFab tooltip="Secondary" color="secondary" md-symbol="edit" />
+      <MDFab tooltip="Tonal" color="tonal-primary" md-symbol="check" />
+    </div>
+    <div class="visual-row">
+      <MDFab tooltip="Medium" size="medium" md-symbol="star" />
+      <MDFab tooltip="Large" size="large" md-symbol="menu" />
+      <MDFab tooltip="Tertiary" color="tertiary" md-symbol="share" />
+    </div>
+  </div>
+`;
+
+const fabInteractionStatesTemplate = `
+  <div data-testid="visual-md-fab-interaction-states" class="visual-surface">
+    <div class="visual-row">
+      <MDFab tooltip="Primary hover target" color="primary" md-symbol="add" />
+      <MDFab tooltip="Secondary" color="secondary" md-symbol="edit" />
+      <MDFab tooltip="Tonal" color="tonal-primary" md-symbol="check" />
+    </div>
+    <div class="visual-row">
+      <MDFab tooltip="Medium" size="medium" md-symbol="star" />
+      <MDFab tooltip="Focus target" size="large" color="tertiary" md-symbol="share" />
+      <MDFab tooltip="Tonal secondary" color="tonal-secondary" md-symbol="menu" />
+    </div>
+  </div>
+`;
+
 export const Default: Story = {};
 
 export const Secondary: Story = {
@@ -45,20 +75,7 @@ export const VisualStates: Story = {
   tags: ['visual'],
   render: () => ({
     components: { MDFab },
-    template: `
-      <div data-testid="visual-md-fab-states" class="visual-surface">
-        <div class="visual-row">
-          <MDFab tooltip="Primary" color="primary" md-symbol="add" />
-          <MDFab tooltip="Secondary" color="secondary" md-symbol="edit" />
-          <MDFab tooltip="Tonal" color="tonal-primary" md-symbol="check" />
-        </div>
-        <div class="visual-row">
-          <MDFab tooltip="Medium" size="medium" md-symbol="star" />
-          <MDFab tooltip="Large" size="large" md-symbol="menu" />
-          <MDFab tooltip="Tertiary" color="tertiary" md-symbol="share" />
-        </div>
-      </div>
-    `,
+    template: fabStatesTemplate,
   }),
 };
 
@@ -66,19 +83,6 @@ export const VisualInteractionStates: Story = {
   tags: ['visual'],
   render: () => ({
     components: { MDFab },
-    template: `
-      <div data-testid="visual-md-fab-interaction-states" class="visual-surface">
-        <div class="visual-row">
-          <MDFab tooltip="Primary hover target" color="primary" md-symbol="add" />
-          <MDFab tooltip="Secondary" color="secondary" md-symbol="edit" />
-          <MDFab tooltip="Tonal" color="tonal-primary" md-symbol="check" />
-        </div>
-        <div class="visual-row">
-          <MDFab tooltip="Medium" size="medium" md-symbol="star" />
-          <MDFab tooltip="Focus target" size="large" color="tertiary" md-symbol="share" />
-          <MDFab tooltip="Tonal secondary" color="tonal-secondary" md-symbol="menu" />
-        </div>
-      </div>
-    `,
+    template: fabInteractionStatesTemplate,
   }),
 };

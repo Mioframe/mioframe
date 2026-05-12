@@ -1,9 +1,8 @@
 import { expect, test } from '@playwright/test';
-import { disableAnimations, openStory } from './storybook';
+import { openStory } from './storybook';
 
 test('MDCheckbox visual states match baseline', async ({ page }) => {
   await openStory(page, 'shared-ui-mdcheckbox--visual-states');
-  await disableAnimations(page);
 
   const surface = page.getByTestId('visual-md-checkbox-states');
 
@@ -12,7 +11,6 @@ test('MDCheckbox visual states match baseline', async ({ page }) => {
 
 test('MDCheckbox interaction states match baseline', async ({ page }) => {
   await openStory(page, 'shared-ui-mdcheckbox--visual-interaction-states');
-  await disableAnimations(page);
 
   await page.locator('label[for="storybook-md-checkbox-hover"]').hover();
   await page.locator('label[for="storybook-md-checkbox-focus"]').focus();
@@ -29,7 +27,6 @@ test('MDCheckbox interaction states match baseline', async ({ page }) => {
 
 test('MDFab visual states match baseline', async ({ page }) => {
   await openStory(page, 'shared-ui-mdfab--visual-states');
-  await disableAnimations(page);
 
   const surface = page.getByTestId('visual-md-fab-states');
 
@@ -38,7 +35,6 @@ test('MDFab visual states match baseline', async ({ page }) => {
 
 test('MDFab interaction states match baseline', async ({ page }) => {
   await openStory(page, 'shared-ui-mdfab--visual-interaction-states');
-  await disableAnimations(page);
 
   await page.getByRole('button', { name: 'Primary hover target' }).hover();
   await page.getByRole('button', { name: 'Focus target' }).focus();

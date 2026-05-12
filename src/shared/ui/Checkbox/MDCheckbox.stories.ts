@@ -22,6 +22,52 @@ export default meta;
 
 type Story = StoryObj<typeof meta>;
 
+const checkboxStatesTemplate = `
+  <div data-testid="visual-md-checkbox-states" class="visual-surface">
+    <div class="visual-row">
+      <MDCheckbox id="storybook-md-checkbox-unchecked" aria-label="Unchecked" :model-value="false" />
+      <span>Unchecked</span>
+    </div>
+    <div class="visual-row">
+      <MDCheckbox id="storybook-md-checkbox-checked" aria-label="Checked" :model-value="true" />
+      <span>Checked</span>
+    </div>
+    <div class="visual-row">
+      <MDCheckbox id="storybook-md-checkbox-indeterminate" aria-label="Indeterminate" indeterminate />
+      <span>Indeterminate</span>
+    </div>
+    <div class="visual-row">
+      <MDCheckbox id="storybook-md-checkbox-disabled" aria-label="Disabled" :model-value="true" disabled />
+      <span>Disabled</span>
+    </div>
+    <div class="visual-row">
+      <MDCheckbox id="storybook-md-checkbox-readonly" aria-label="Readonly" :model-value="true" readonly />
+      <span>Readonly</span>
+    </div>
+  </div>
+`;
+
+const checkboxInteractionStatesTemplate = `
+  <div data-testid="visual-md-checkbox-interaction-states" class="visual-surface">
+    <div class="visual-row">
+      <MDCheckbox id="storybook-md-checkbox-hover" aria-label="Hover target" :model-value="false" />
+      <span>Hover target</span>
+    </div>
+    <div class="visual-row">
+      <MDCheckbox id="storybook-md-checkbox-focus" aria-label="Focus target" :model-value="true" />
+      <span>Focus target</span>
+    </div>
+    <div class="visual-row">
+      <MDCheckbox id="storybook-md-checkbox-readonly-hover" aria-label="Readonly hover target" :model-value="true" readonly />
+      <span>Readonly hover target</span>
+    </div>
+    <div class="visual-row">
+      <MDCheckbox id="storybook-md-checkbox-readonly-focus" aria-label="Readonly focus target" :model-value="true" readonly />
+      <span>Readonly focus target</span>
+    </div>
+  </div>
+`;
+
 export const Default: Story = {};
 
 export const Checked: Story = {
@@ -48,30 +94,7 @@ export const VisualStates: Story = {
   tags: ['visual'],
   render: () => ({
     components: { MDCheckbox },
-    template: `
-      <div data-testid="visual-md-checkbox-states" class="visual-surface">
-        <div class="visual-row">
-          <MDCheckbox id="storybook-md-checkbox-unchecked" aria-label="Unchecked" :model-value="false" />
-          <span>Unchecked</span>
-        </div>
-        <div class="visual-row">
-          <MDCheckbox id="storybook-md-checkbox-checked" aria-label="Checked" :model-value="true" />
-          <span>Checked</span>
-        </div>
-        <div class="visual-row">
-          <MDCheckbox id="storybook-md-checkbox-indeterminate" aria-label="Indeterminate" indeterminate />
-          <span>Indeterminate</span>
-        </div>
-        <div class="visual-row">
-          <MDCheckbox id="storybook-md-checkbox-disabled" aria-label="Disabled" :model-value="true" disabled />
-          <span>Disabled</span>
-        </div>
-        <div class="visual-row">
-          <MDCheckbox id="storybook-md-checkbox-readonly" aria-label="Readonly" :model-value="true" readonly />
-          <span>Readonly</span>
-        </div>
-      </div>
-    `,
+    template: checkboxStatesTemplate,
   }),
 };
 
@@ -79,25 +102,6 @@ export const VisualInteractionStates: Story = {
   tags: ['visual'],
   render: () => ({
     components: { MDCheckbox },
-    template: `
-      <div data-testid="visual-md-checkbox-interaction-states" class="visual-surface">
-        <div class="visual-row">
-          <MDCheckbox id="storybook-md-checkbox-hover" aria-label="Hover target" :model-value="false" />
-          <span>Hover target</span>
-        </div>
-        <div class="visual-row">
-          <MDCheckbox id="storybook-md-checkbox-focus" aria-label="Focus target" :model-value="true" />
-          <span>Focus target</span>
-        </div>
-        <div class="visual-row">
-          <MDCheckbox id="storybook-md-checkbox-readonly-hover" aria-label="Readonly hover target" :model-value="true" readonly />
-          <span>Readonly hover target</span>
-        </div>
-        <div class="visual-row">
-          <MDCheckbox id="storybook-md-checkbox-readonly-focus" aria-label="Readonly focus target" :model-value="true" readonly />
-          <span>Readonly focus target</span>
-        </div>
-      </div>
-    `,
+    template: checkboxInteractionStatesTemplate,
   }),
 };

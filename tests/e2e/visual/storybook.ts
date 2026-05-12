@@ -12,12 +12,13 @@ export const openStory = async (page: Page, storyId: string) => {
   await page.evaluate(async () => {
     await document.fonts.ready;
   });
+  await stabilizeVisualPage(page);
 };
 
 /**
  * @param page - The Playwright page used by the visual test.
  */
-export const disableAnimations = async (page: Page) => {
+export const stabilizeVisualPage = async (page: Page) => {
   await page.addStyleTag({
     content: `
       *, *::before, *::after {

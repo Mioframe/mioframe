@@ -6,9 +6,7 @@ import { getResolveAlias } from '../config/alias.ts';
 const storybookIconStateStub = fileURLToPath(
   new URL('./stubs/useMaterialDesignSymbols.ts', import.meta.url),
 );
-const baseAliases = getResolveAlias();
-const isStorybookBuild = process.env.BEAVER_STORYBOOK === '1';
-const storybookBuildDate = '2025-01-01T00:00:00.000Z';
+const baseAliases = Object.entries(getResolveAlias());
 
 const config: StorybookConfig = {
   stories: ['../src/**/*.stories.@(ts|tsx|js|jsx|mjs|vue)'],
@@ -32,23 +30,17 @@ const config: StorybookConfig = {
         alias: [
           // Storybook-only icon stub keeps visual snapshots deterministic by avoiding loader side effects.
           {
-            find: './useMaterialDesignSymbols',
+            find: '@shared/ui/Icon/useMaterialDesignSymbols',
             replacement: storybookIconStateStub,
           },
-          {
-            find: /(^|\/)src\/shared\/ui\/Icon\/useMaterialDesignSymbols(?:\.ts)?$/,
-            replacement: storybookIconStateStub,
-          },
-          ...Object.entries(baseAliases).map(([find, replacement]) => ({
+          ...baseAliases.map(([find, replacement]) => ({
             find,
             replacement,
           })),
         ],
       },
       define: {
-        __BUILD_DATE__: JSON.stringify(
-          isStorybookBuild ? storybookBuildDate : new Date().toISOString(),
-        ),
+        __BUILD_DATE__: JSON.stringify('2025-01-01T00:00:00.000Z'),
       },
     });
   },
