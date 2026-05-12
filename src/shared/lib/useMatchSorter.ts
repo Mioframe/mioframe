@@ -7,11 +7,9 @@ import { computed, toValue } from 'vue';
  *
  * Provides reactive sorted results based on fuzzy matching against a search value.
  * Uses match-sorter for intelligent ranking and filtering.
- *
  * @param list - Array of strings to filter
  * @param value - Search value (reactive)
  * @returns Computed array of matched and ranked strings
- *
  * @example
  * ```ts
  * const items = ['apple', 'banana', 'apricot', 'cherry'];

@@ -6,9 +6,7 @@ import { onKeyStroke, refAutoReset } from '@vueuse/core';
  * Creates a reactive ref that captures single key presses (exactly one character).
  * Useful for quick search triggers or keyboard shortcuts.
  * The value resets to undefined after 500ms of inactivity.
- *
  * @returns Ref that contains the last single character key pressed
- *
  * @example
  * ```ts
  * const input = useFastKeyboardInput();

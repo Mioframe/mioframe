@@ -13,6 +13,7 @@ const STOP_STATUS = Symbol('stop');
 /**
  * use subscriptions from worker as computed ref
  * @param subscribeService
+ * @param defaultValue
  * @returns
  */
 export function createSubscribeClient<V>(

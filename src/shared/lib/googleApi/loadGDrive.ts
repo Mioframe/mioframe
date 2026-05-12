@@ -16,6 +16,8 @@ export const loadGDrive = async (clientId: string, gapi?: typeof window.gapi) =>
     gDrive = {
       ...g.client.drive,
       /**
+       * @param fileId
+       * @param file
        * @deprecated
        */
       uploadFile: async (fileId: string, file: FileSystemWriteChunkType) => {
@@ -28,6 +30,7 @@ export const loadGDrive = async (clientId: string, gapi?: typeof window.gapi) =>
         );
       },
       /**
+       * @param fileId
        * @deprecated
        */
       downloadFile: async (fileId: string): Promise<File> => {

@@ -16,6 +16,7 @@ export type PatchSource<T> = PartialDeep<T>;
  * overwrites modified values from source to target
  * @param target - mutable object
  * @param source - object with new values
+ * @param options
  */
 export function deepPatchJsonObject<T extends object, S extends PatchSource<T> | object>(
   target: T,

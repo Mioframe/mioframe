@@ -3,10 +3,8 @@
  *
  * For arrays, returns an array of indices (0, 1, 2, ...).
  * For objects, returns an array of object keys using Object.keys().
- *
  * @param obj - The object or array to extract keys from
  * @returns Array of indices for arrays, or array of property keys for objects
- *
  * @example
  * ```ts
  * keys({ a: 1, b: 2 }) // returns ['a', 'b']

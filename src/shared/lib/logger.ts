@@ -24,7 +24,6 @@ interface LogOptions {
   showTrace?: boolean;
 }
 
-/** @readonly */
 const COLORS = {
   success: '#2ecc71',
   warn: '#f1c40f',
@@ -168,7 +167,6 @@ function logExecution<Args extends unknown[], Return>(
 
 /**
  * Method decorator for logging class method execution.
- *
  * @example
  * ```typescript
  * class UserService {
@@ -179,7 +177,6 @@ function logExecution<Args extends unknown[], Return>(
  *   async saveUser(user: User): Promise<void> { await this.db.save(user); }
  * }
  * ```
- *
  * @param options - Logging configuration options
  * @returns Method decorator function
  * @throws Re-throws any error thrown by the decorated method
@@ -206,7 +203,6 @@ export function Log(options: LogOptions = {}) {
 
 /**
  * Wrap a standalone function with logging capabilities.
- *
  * @example
  * ```typescript
  * const fetchUser = withLog(
@@ -215,7 +211,6 @@ export function Log(options: LogOptions = {}) {
  * );
  * await fetchUser('123');
  * ```
- *
  * @param fn - Function to wrap
  * @param options - Logging options (name is required)
  * @returns Wrapped function with logging

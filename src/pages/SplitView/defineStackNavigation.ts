@@ -37,12 +37,10 @@ interface OpenOptions {
    *
    * When set, the navigation stack will be truncated to this number plus one (the current pane).
    * Useful for limiting concurrent open panes in a tab-like interface.
-   *
    * @default 1 (allows one additional pane)
    * @example
    * // Allow up to 2 panes total
    * await navigation.open('settings', {}, { additionalPanes: 1 });
-   *
    * @example
    * // Allow up to 5 panes total
    * await navigation.open('documents', {}, { additionalPanes: 4 });
@@ -54,7 +52,6 @@ interface OpenOptions {
    *
    * When true, the browser history won't be updated and the back button
    * won't navigate away from this state. Useful for modal-like behavior.
-   *
    * @default false
    * @example
    * // Open settings without adding to history
@@ -68,16 +65,13 @@ interface OpenOptions {
    * - 'add': Prepend to the beginning of the stack (new top-level pane)
    * - 'current': Replace the currently active pane
    * - number: Insert at the specified index (0-based)
-   *
    * @default 'current'
    * @example
    * // Open as a new top-level pane
    * await navigation.open('documents', {}, { target: 'add' });
-   *
    * @example
    * // Replace the current pane
    * await navigation.open('settings', {}, { target: 'current' });
-   *
    * @example
    * // Insert at index 0 (front of stack)
    * await navigation.open('notifications', {}, { target: 0 });
@@ -91,7 +85,6 @@ export interface UseStackNavigationReturn<P extends PaneMap> {
    *
    * Navigates to the specified pane, optionally replacing or adding to the current stack.
    * Props are serialized into the URL query string for state persistence.
-   *
    * @template K - The pane name key (must be a string key of P)
    * @param name - The pane name to open
    * @param props - Props to pass to the pane, parsed by the pane's model schema
@@ -100,19 +93,15 @@ export interface UseStackNavigationReturn<P extends PaneMap> {
    * @example
    * // Open default pane
    * await navigation.open('documents');
-   *
    * @example
    * // Open with props - props are serialized to query string
    * await navigation.open('documents', { filter: 'active', sort: 'name' });
-   *
    * @example
    * // Open as new top-level pane
    * await navigation.open('documents', {}, { target: 'add' });
-   *
    * @example
    * // Open with limit on total panes
    * await navigation.open('settings', {}, { additionalPanes: 1 });
-   *
    * @example
    * // Replace current pane instead of adding to stack
    * await navigation.open('settings', {}, { target: 'current' });
@@ -132,7 +121,6 @@ export interface UseStackNavigationReturn<P extends PaneMap> {
    * - `props`: Parsed props from the URL query string
    *
    * This is reactive and updates when the navigation stack changes.
-   *
    * @example
    * // Iterate over active panes
    * for (const pane of navigation.panesComponents.value) {

@@ -1,5 +1,6 @@
 /**
  * Normalizes text-field number input into a persisted numeric value.
+ * @param value
  */
 export const normalizeNumberValue = (value: string | undefined): number | undefined => {
   if (value == null || value === '') {

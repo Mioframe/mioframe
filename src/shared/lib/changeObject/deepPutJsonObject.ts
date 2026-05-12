@@ -9,6 +9,7 @@ import { keys } from '../objectKeys';
  * overwrites all values from source to target
  * @param target - mutable object
  * @param source - object with new values
+ * @param options
  */
 export const deepPutJsonObject = <S extends object>(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any -- it doesn't matter what the target object is

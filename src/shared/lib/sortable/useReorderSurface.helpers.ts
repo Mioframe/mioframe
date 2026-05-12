@@ -66,15 +66,26 @@ export type CompleteReorderSurfaceDragResult =
       payload: ReorderCommitPayload;
     };
 
-/** Clones the external item list into mutable local state. */
+/**
+ * Clones the external item list into mutable local state.
+ * @param itemIdList
+ */
 export const cloneReorderItemIdList = (itemIdList: readonly string[] | undefined): string[] =>
   itemIdList ? [...itemIdList] : [];
 
-/** Compares two ordered id lists without allocating intermediate structures. */
+/**
+ * Compares two ordered id lists without allocating intermediate structures.
+ * @param left
+ * @param right
+ */
 export const isSameOrderedIds = (left: readonly string[], right: readonly string[]): boolean =>
   left.length === right.length && left.every((id, index) => id === right[index]);
 
-/** Checks whether two lists contain the same ids even if their order differs. */
+/**
+ * Checks whether two lists contain the same ids even if their order differs.
+ * @param left
+ * @param right
+ */
 export const hasSameItemSet = (left: readonly string[], right: readonly string[]): boolean => {
   if (left.length !== right.length) {
     return false;
@@ -85,14 +96,20 @@ export const hasSameItemSet = (left: readonly string[], right: readonly string[]
   return right.every((id) => leftSet.has(id));
 };
 
-/** Clears optimistic commit bookkeeping after confirmation, rollback, or cancel. */
+/**
+ * Clears optimistic commit bookkeeping after confirmation, rollback, or cancel.
+ * @param state
+ */
 export const clearOptimisticState = (state: ReorderSurfaceState) => {
   state.optimisticOrderedIds = undefined;
   state.optimisticBaseOrderedIds = undefined;
   state.optimisticCommitMarker = undefined;
 };
 
-/** Resets the transient drag session fields once a session ends. */
+/**
+ * Resets the transient drag session fields once a session ends.
+ * @param state
+ */
 export const resetDragState = (state: ReorderSurfaceState) => {
   state.isDragging = false;
   state.draggedId = undefined;
@@ -101,7 +118,10 @@ export const resetDragState = (state: ReorderSurfaceState) => {
   state.shouldRollbackOnEnd = false;
 };
 
-/** Creates the initial local reorder state from the authoritative external order. */
+/**
+ * Creates the initial local reorder state from the authoritative external order.
+ * @param itemIdList
+ */
 export const createReorderSurfaceState = (
   itemIdList: readonly string[] | undefined,
 ): ReorderSurfaceState => {
@@ -122,7 +142,11 @@ export const createReorderSurfaceState = (
   };
 };
 
-/** Reconciles a fresh external order with the current drag or optimistic session. */
+/**
+ * Reconciles a fresh external order with the current drag or optimistic session.
+ * @param state
+ * @param rawItemIdList
+ */
 export const syncReorderSurfaceExternalItemIdList = (
   state: ReorderSurfaceState,
   rawItemIdList: readonly string[] | undefined,
@@ -159,7 +183,10 @@ export const syncReorderSurfaceExternalItemIdList = (
   state.displayItemIdList = nextItemIdList;
 };
 
-/** Marks the active drag session for rollback and click suppression. */
+/**
+ * Marks the active drag session for rollback and click suppression.
+ * @param state
+ */
 export const requestReorderSurfaceCancel = (state: ReorderSurfaceState) => {
   if (!state.isDragging) {
     return;
@@ -169,7 +196,11 @@ export const requestReorderSurfaceCancel = (state: ReorderSurfaceState) => {
   state.suppressNextClick = true;
 };
 
-/** Captures drag-start state before the DOM begins to preview a new order. */
+/**
+ * Captures drag-start state before the DOM begins to preview a new order.
+ * @param state
+ * @param root0
+ */
 export const startReorderSurfaceDrag = (
   state: ReorderSurfaceState,
   { itemId, orderedIds, fromIndex, profile }: StartReorderSurfaceDragOptions,
@@ -183,7 +214,11 @@ export const startReorderSurfaceDrag = (
   state.shouldRollbackOnEnd = fromIndex < 0;
 };
 
-/** Updates local display order while SortableJS is previewing a drag move. */
+/**
+ * Updates local display order while SortableJS is previewing a drag move.
+ * @param state
+ * @param orderedIds
+ */
 export const previewReorderSurfaceDrag = (
   state: ReorderSurfaceState,
   orderedIds: readonly string[],
@@ -191,7 +226,11 @@ export const previewReorderSurfaceDrag = (
   state.displayItemIdList = cloneReorderItemIdList(orderedIds);
 };
 
-/** Resolves whether drag end is a no-op, rollback, or a new commit request. */
+/**
+ * Resolves whether drag end is a no-op, rollback, or a new commit request.
+ * @param state
+ * @param root0
+ */
 export const completeReorderSurfaceDrag = (
   state: ReorderSurfaceState,
   { orderedIds, fromIndex, toIndex, currentItemIdList }: CompleteReorderSurfaceDragOptions,
@@ -256,7 +295,11 @@ export const completeReorderSurfaceDrag = (
   };
 };
 
-/** Restores the latest external order when an optimistic commit is rejected. */
+/**
+ * Restores the latest external order when an optimistic commit is rejected.
+ * @param state
+ * @param commitId
+ */
 export const rollbackReorderSurfaceCommit = (state: ReorderSurfaceState, commitId: symbol) => {
   if (state.optimisticCommitMarker !== commitId) {
     return;
@@ -266,22 +309,37 @@ export const rollbackReorderSurfaceCommit = (state: ReorderSurfaceState, commitI
   state.displayItemIdList = cloneReorderItemIdList(state.latestExternalItemIdList);
 };
 
-/** Narrows an event to a pointer event carrying `pointerType`. */
+/**
+ * Narrows an event to a pointer event carrying `pointerType`.
+ * @param event
+ */
 export const isPointerEvent = (event: Event): event is PointerEvent & { pointerType: string } =>
   'pointerType' in event && typeof event.pointerType === 'string';
 
-/** Detects touchstart-like events used to switch the active input mode. */
+/**
+ * Detects touchstart-like events used to switch the active input mode.
+ * @param event
+ */
 export const isTouchLikeEvent = (event: Event): event is TouchEvent =>
   event.type === 'touchstart' || ('touches' in event && typeof event.touches === 'object');
 
-/** Detects mouse-down events used to restore pointer mode on desktop. */
+/**
+ * Detects mouse-down events used to restore pointer mode on desktop.
+ * @param event
+ */
 export const isMouseLikeEvent = (event: Event): event is MouseEvent => event.type === 'mousedown';
 
-/** Enables haptic feedback by default for touch-like drag starts when supported. */
+/**
+ * Enables haptic feedback by default for touch-like drag starts when supported.
+ * @param input
+ */
 export const shouldUseBestEffortReorderHaptics = (input: ReorderInput): boolean =>
   input === 'touch';
 
-/** Clears selection and focus artifacts left behind by touch-like drag sessions. */
+/**
+ * Clears selection and focus artifacts left behind by touch-like drag sessions.
+ * @param containerEl
+ */
 export const cleanupPostDragInteraction = (
   containerEl: HTMLElement | SVGElement | null | undefined,
 ) => {
@@ -306,7 +364,11 @@ export const cleanupPostDragInteraction = (
   }
 };
 
-/** Skips drag activation on interactive descendants inside a reorder item. */
+/**
+ * Skips drag activation on interactive descendants inside a reorder item.
+ * @param target
+ * @param interactiveSelector
+ */
 export const shouldIgnoreTarget = (
   target: EventTarget | null,
   interactiveSelector: string,

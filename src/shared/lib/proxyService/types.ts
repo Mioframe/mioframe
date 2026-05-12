@@ -3,7 +3,6 @@
  *
  * This module defines all TypeScript types used in the proxyService implementation
  * which enables remote function calls and object property access across different execution contexts.
- *
  * @module ProxyServiceTypes
  */
 
@@ -26,9 +25,8 @@ export type AnyFunction = (...param: any[]) => any;
  *
  * This type is used for creating proxies that route operations to a remote service.
  * The generic parameters allow for proper typing of both regular values and special exception types.
- *
- * @typeParam T - The type of the target record
- * @typeParam Exceptions - Types that should not be transformed (remain as-is)
+ * @template T - The type of the target record
+ * @template Exceptions - Types that should not be transformed (remain as-is)
  */
 export type ClientObject<T extends Record<string, unknown>, Exceptions = never> = [T] extends [
   Exceptions,
@@ -43,9 +41,8 @@ export type ClientObject<T extends Record<string, unknown>, Exceptions = never> 
  *
  * This helper type recursively processes the types of properties in a ClientObject,
  * ensuring proper transformation of nested structures while preserving exception types.
- *
- * @typeParam T - The type of the value being processed
- * @typeParam Exceptions - Types that should not be transformed (remain as-is)
+ * @template T - The type of the value being processed
+ * @template Exceptions - Types that should not be transformed (remain as-is)
  */
 type ClientValue<T, Exceptions = never> = [T] extends [Exceptions]
   ? T
@@ -70,8 +67,7 @@ export const zodFunctionDescription = z.object({
  *
  * This type describes the metadata needed to identify and route calls to functions
  * that have been exposed across execution contexts.
- *
- * @typeParam F - The type of the original function
+ * @template F - The type of the original function
  */
 export type FunctionDescription<F = unknown> = F extends AnyFunction
   ? z.output<typeof zodFunctionDescription> & {
@@ -91,7 +87,6 @@ const zodMessage = z.object({
  *
  * This helper function creates schemas for validating serialized data structures
  * that are transmitted between different execution contexts.
- *
  * @param zodJson - Optional Zod schema to validate the JSON data
  * @returns Zod schema for serialized data with JSON and metadata
  */
@@ -233,8 +228,7 @@ type SERIALIZE_BRAND = typeof SERIALIZE_BRAND;
 
 /**
  * Type representing serialized data with branded typing for TypeScript inference.
- *
- * @typeParam T - The type of original value before serialization
+ * @template T - The type of original value before serialization
  */
 export type SerializeJson<T = unknown> = Omit<SuperJSONResult, 'meta'> & {
   meta?: SuperJSONResult['meta'] | undefined;
@@ -246,9 +240,8 @@ export type SerializeJson<T = unknown> = Omit<SuperJSONResult, 'meta'> & {
  *
  * This interface defines how custom data types should be serialized and deserialized when transmitted
  * across execution contexts, enabling support for complex objects beyond basic JavaScript primitives.
- *
- * @typeParam T - The original type being transformed
- * @typeParam J - The JSON representation for serialization
+ * @template T - The original type being transformed
+ * @template J - The JSON representation for serialization
  */
 export type CustomTransformer<T = unknown, J = unknown> = {
   /**

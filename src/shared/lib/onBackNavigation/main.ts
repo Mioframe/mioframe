@@ -121,6 +121,7 @@ export const backNavigationHandler: Plugin = {
  *
  * Return `false` to consume the back action and keep the current route.
  * Return `true` to allow the router navigation to continue.
+ * @param updateGuard
  */
 export const onBackNavigation = (
   updateGuard: (
@@ -171,6 +172,7 @@ export const onBackNavigation = (
  *
  * Return `true` to pass the back action to the next stacked handler.
  * Return `false` or nothing to consume the back action and stop propagation.
+ * @param handle
  */
 export const useOnBackNavigationStacked = (handle: BackNavigationHandler) => {
   const { onBackNavigationStacked } = useBackNavigationStack();
@@ -187,6 +189,8 @@ export const useOnBackNavigationStacked = (handle: BackNavigationHandler) => {
  *
  * Return `true` to pass the back action to the next stacked handler.
  * Return `false` or nothing to consume the back action and stop propagation.
+ * @param when
+ * @param handle
  */
 export const useOnBackNavigationStackedWhen = (
   when: MaybeRefOrGetter<boolean | undefined>,
