@@ -26,10 +26,10 @@ export default defineConfig(({ mode, isPreview }) => {
         authToken: env.SENTRY_AUTH_TOKEN,
       });
 
-  const dateNow = new Date().toISOString();
+  const buildDate = isStorybookBuild ? '2025-01-01T00:00:00.000Z' : new Date().toISOString();
 
   if (!isStorybookBuild) {
-    console.log('\n__BUILD_DATE__:', dateNow);
+    console.log('\n__BUILD_DATE__:', buildDate);
   }
 
   return {
@@ -77,7 +77,7 @@ export default defineConfig(({ mode, isPreview }) => {
       },
     },
     define: {
-      __BUILD_DATE__: JSON.stringify(dateNow),
+      __BUILD_DATE__: JSON.stringify(buildDate),
     },
   };
 });

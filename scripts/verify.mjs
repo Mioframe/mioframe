@@ -309,6 +309,10 @@ function isSharedUiFile(filePath) {
 function isVisualRelevantFile(filePath) {
   return (
     filePath === 'playwright.visual.config.ts' ||
+    filePath === 'vite.config.ts' ||
+    filePath === 'package.json' ||
+    filePath === 'tsconfig.storybook.json' ||
+    filePath === 'scripts/runWithStorybookEnv.mjs' ||
     filePath === 'src/app/styles/styles.css' ||
     filePath.startsWith('.storybook/') ||
     filePath.startsWith('tests/e2e/visual/') ||
