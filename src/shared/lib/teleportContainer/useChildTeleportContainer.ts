@@ -74,8 +74,8 @@ export const useParentTeleportContainerStack = () => {
 };
 
 /**
- * key - телепортированный контейнер
- * value - источник телепортации
+ * @property key - телепортированный контейнер
+ * @property value - источник телепортации
  */
 export const teleportContainerAndParent = reactive<Map<WebElement, WebElement>>(new Map());
 
