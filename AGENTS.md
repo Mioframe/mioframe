@@ -113,6 +113,9 @@ reason:
 - Add visual tests only for shared UI primitives, important Material states, mobile/desktop layout regressions, previously broken visual states, or CSS-heavy components where visual regressions are likely and costly.
 - Do not add visual snapshots for every component by default.
 - Keep visual tests deterministic: fixed viewport, fixed fixture data, no network, no random IDs, no live dates, no loading spinners, disabled animations/transitions, settled fonts/icons/rendering, and masked dynamic regions when needed.
+- Accept and update visual baselines only from a stable Linux/Chromium environment such as CI or a pinned Playwright Docker image; treat local diffs from different environments as advisory/debugging only.
+- Do not update visual baselines from headed mode, do not hide ordinary text in screenshots, and do not loosen screenshot thresholds only to suppress text anti-aliasing noise.
+- If a future test intentionally validates typography or text rendering, keep that coverage explicit and separate from generic component visual baselines.
 - Do not use Storybook as an e2e runner.
 - Update snapshots only after inspecting the visual diff and confirming the appearance change is intentional.
 

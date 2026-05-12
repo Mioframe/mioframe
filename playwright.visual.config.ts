@@ -11,12 +11,22 @@ export default defineConfig({
   retries: process.env.CI ? 1 : 0,
   reporter: process.env.CI ? [['line'], ['html', { open: 'never' }]] : 'list',
   workers: 1,
+  expect: {
+    toHaveScreenshot: {
+      animations: 'disabled',
+      caret: 'hide',
+      scale: 'css',
+    },
+  },
   use: {
     ...devices['Desktop Chrome'],
     channel: 'chromium',
     baseURL: storybookURL,
     viewport: { width: 1280, height: 900 },
     deviceScaleFactor: 1,
+    colorScheme: 'light',
+    locale: 'en-US',
+    timezoneId: 'UTC',
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
     video: 'retain-on-failure',
