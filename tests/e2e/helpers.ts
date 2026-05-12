@@ -1,9 +1,10 @@
 import { expect, type Locator, type Page } from '@playwright/test';
+import toolingConfig from '../../config/tooling.json' with { type: 'json' };
 
 const escapeRegex = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 const browserStorageLabel = /^browser storage$/i;
-const previewHost = '127.0.0.1';
-const defaultPreviewPort = '4173';
+const previewHost = toolingConfig.localServer.host;
+const defaultPreviewPort = String(toolingConfig.appPreview.port);
 
 type DatabasePropertyType = 'string' | 'number' | 'boolean' | 'date' | 'relation';
 type DatabaseItemFieldValue = string | number | boolean | string[];

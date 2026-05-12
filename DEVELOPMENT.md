@@ -262,13 +262,13 @@ Legacy playground status:
 Focused visual run:
 
 ```bash
-pnpm exec playwright test tests/e2e/visual/<surface>.spec.ts
+pnpm exec playwright test --config playwright.visual.config.ts tests/e2e/visual/<surface>.spec.ts
 ```
 
 Update snapshots only after confirming the visual change is intentional:
 
 ```bash
-pnpm exec playwright test tests/e2e/visual/<surface>.spec.ts --update-snapshots
+pnpm exec playwright test --config playwright.visual.config.ts tests/e2e/visual/<surface>.spec.ts --update-snapshots
 ```
 
 ### Mutation Testing (StrykerJS)
