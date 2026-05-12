@@ -314,7 +314,7 @@ function isVisualRelevantFile(filePath) {
     filePath.startsWith('tests/e2e/visual/') ||
     filePath.startsWith('src/shared/ui/') ||
     filePath.startsWith('src/shared/lib/md/') ||
-    filePath.endsWith('.stories.ts')
+    /\.stories\.(ts|tsx|js|jsx|mjs|vue)$/.test(filePath)
   );
 }
 

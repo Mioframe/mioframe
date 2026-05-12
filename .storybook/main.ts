@@ -25,6 +25,7 @@ const config: StorybookConfig = {
     return mergeConfig(baseConfig, {
       resolve: {
         alias: [
+          // Storybook-only icon stub keeps visual snapshots deterministic by avoiding loader side effects.
           {
             find: './useMaterialDesignSymbols',
             replacement: storybookIconStateStub,
