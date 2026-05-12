@@ -1,7 +1,8 @@
 import { defineConfig, devices } from '@playwright/test';
+import toolingConfig from './config/tooling.json' with { type: 'json' };
 
-const port = 4173;
-const host = '127.0.0.1';
+const host = toolingConfig.localServer.host;
+const port = toolingConfig.appPreview.port;
 const externalBaseURL = process.env.PLAYWRIGHT_EXTERNAL_BASE_URL;
 const escapedHost = host.replaceAll('.', '\\.');
 const previewURLPattern = new RegExp(
@@ -10,6 +11,7 @@ const previewURLPattern = new RegExp(
 
 export default defineConfig({
   testDir: './tests/e2e',
+  testIgnore: ['visual/**'],
   // Tests share origin-bound OPFS state, so file-level parallelism is intentionally disabled.
   fullyParallel: false,
   forbidOnly: !!process.env.CI,
@@ -34,7 +36,7 @@ export default defineConfig({
         },
         ignoreHTTPSErrors: true,
         stdout: 'pipe',
-        timeout: 240_000,
+        timeout: toolingConfig.playwright.webServerTimeoutMs,
         wait: {
           stdout: previewURLPattern,
         },

@@ -1,7 +1,10 @@
 import { defineConfig, devices } from '@playwright/test';
+import toolingConfig from './config/tooling.json' with { type: 'json' };
 
-const port = 6007;
-const host = '127.0.0.1';
+const host = toolingConfig.localServer.host;
+const port = toolingConfig.storybook.visualPreview.port;
+const storybookStaticDir = toolingConfig.storybook.staticDir;
+const strictPort = toolingConfig.storybook.visualPreview.strictPort;
 const storybookURL = `http://${host}:${port}`;
 
 export default defineConfig({
@@ -34,13 +37,13 @@ export default defineConfig({
   },
   webServer: {
     command:
-      'node scripts/runWithStorybookEnv.mjs storybook build && ' +
+      'node scripts/storybook.mjs build && ' +
       'pnpm exec vite preview ' +
       '--config .storybook/vite.preview.config.ts ' +
-      `--host ${host} --port ${port} --strictPort --outDir storybook-static`,
+      `--host ${host} --port ${port} ${strictPort ? '--strictPort ' : ''}--outDir ${storybookStaticDir}`,
     url: storybookURL,
     reuseExistingServer: !process.env.CI,
-    timeout: 240_000,
+    timeout: toolingConfig.playwright.webServerTimeoutMs,
     stdout: 'pipe',
     stderr: 'pipe',
   },

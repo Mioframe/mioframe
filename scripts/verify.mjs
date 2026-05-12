@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
+import toolingConfig from '../config/tooling.json' with { type: 'json' };
 
 const isFixMode = process.argv.includes('--fix');
 const cliBaseRef = getCliBaseRef(process.argv.slice(2));
@@ -23,10 +24,11 @@ const FORMATTABLE_EXTENSIONS = new Set([
 
 const LINTABLE_EXTENSIONS = new Set(['.js', '.jsx', '.mjs', '.mts', '.ts', '.tsx', '.vue']);
 const SOURCE_EXTENSIONS = ['.ts', '.vue'];
+const storybookStaticDirPrefix = `${toolingConfig.storybook.staticDir}/`;
 const IGNORED_PREFIXES = [
   'node_modules/',
   'dist/',
-  'storybook-static/',
+  storybookStaticDirPrefix,
   'coverage/',
   'reports/',
   'playwright-report/',
@@ -225,6 +227,7 @@ function isTypeCheckTarget(filePath) {
 
   return (
     filePath === 'package.json' ||
+    filePath === 'config/tooling.json' ||
     filePath === 'pnpm-lock.yaml' ||
     filePath === 'env.d.ts' ||
     filePath === 'vite-env.d.ts' ||
@@ -308,12 +311,14 @@ function isSharedUiFile(filePath) {
 
 function isVisualRelevantFile(filePath) {
   return (
+    filePath === 'config/tooling.json' ||
     filePath === 'playwright.visual.config.ts' ||
     filePath === 'vite.config.ts' ||
     filePath === 'package.json' ||
     filePath === 'tsconfig.storybook.json' ||
-    filePath === 'scripts/runWithStorybookEnv.mjs' ||
+    filePath === 'scripts/storybook.mjs' ||
     filePath === 'src/app/styles/styles.css' ||
+    filePath === 'src/app/styles/fonts.css' ||
     filePath.startsWith('.storybook/') ||
     filePath.startsWith('tests/e2e/visual/') ||
     filePath.startsWith('src/shared/ui/') ||

@@ -1,6 +1,7 @@
 import type { PluginOption } from 'vite';
 import { defineConfig, loadEnv } from 'vite';
 import { dependencies, devDependencies } from './package.json';
+import toolingConfig from './config/tooling.json' with { type: 'json' };
 import { getResolveAlias } from './config/alias';
 import {
   getBaseVitePlugins,
@@ -26,7 +27,9 @@ export default defineConfig(({ mode, isPreview }) => {
         authToken: env.SENTRY_AUTH_TOKEN,
       });
 
-  const buildDate = isStorybookBuild ? '2025-01-01T00:00:00.000Z' : new Date().toISOString();
+  const buildDate = isStorybookBuild
+    ? toolingConfig.storybook.deterministicBuildDate
+    : new Date().toISOString();
 
   if (!isStorybookBuild) {
     console.log('\n__BUILD_DATE__:', buildDate);

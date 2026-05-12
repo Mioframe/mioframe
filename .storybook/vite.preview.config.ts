@@ -1,9 +1,10 @@
 import { defineConfig } from 'vite';
+import toolingConfig from '../config/tooling.json' with { type: 'json' };
 
 export default defineConfig({
   preview: {
-    host: '127.0.0.1',
-    port: 6007,
-    strictPort: true,
+    host: toolingConfig.localServer.host,
+    port: toolingConfig.storybook.visualPreview.port,
+    strictPort: toolingConfig.storybook.visualPreview.strictPort,
   },
 });

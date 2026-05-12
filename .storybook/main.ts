@@ -2,6 +2,7 @@ import type { StorybookConfig } from '@storybook/vue3-vite';
 import { fileURLToPath, URL } from 'node:url';
 import { mergeConfig } from 'vite';
 import { getResolveAlias } from '../config/alias.ts';
+import toolingConfig from '../config/tooling.json' with { type: 'json' };
 
 const storybookIconStateStub = fileURLToPath(
   new URL('./stubs/useMaterialDesignSymbols.ts', import.meta.url),
@@ -40,7 +41,7 @@ const config: StorybookConfig = {
         ],
       },
       define: {
-        __BUILD_DATE__: JSON.stringify('2025-01-01T00:00:00.000Z'),
+        __BUILD_DATE__: JSON.stringify(toolingConfig.storybook.deterministicBuildDate),
       },
     });
   },
