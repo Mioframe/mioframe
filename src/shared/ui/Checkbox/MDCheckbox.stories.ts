@@ -4,9 +4,9 @@ import MDCheckbox from './MDCheckbox.vue';
 const meta = {
   title: 'shared/ui/MDCheckbox',
   component: MDCheckbox,
-  tags: ['visual'],
   args: {
     ariaLabel: 'Diagnostics',
+    id: 'storybook-md-checkbox-default',
     modelValue: false,
   },
   argTypes: {
@@ -51,23 +51,23 @@ export const VisualStates: Story = {
     template: `
       <div data-testid="visual-md-checkbox-states" class="visual-surface">
         <div class="visual-row">
-          <MDCheckbox aria-label="Unchecked" :model-value="false" />
+          <MDCheckbox id="storybook-md-checkbox-unchecked" aria-label="Unchecked" :model-value="false" />
           <span>Unchecked</span>
         </div>
         <div class="visual-row">
-          <MDCheckbox aria-label="Checked" :model-value="true" />
+          <MDCheckbox id="storybook-md-checkbox-checked" aria-label="Checked" :model-value="true" />
           <span>Checked</span>
         </div>
         <div class="visual-row">
-          <MDCheckbox aria-label="Indeterminate" indeterminate />
+          <MDCheckbox id="storybook-md-checkbox-indeterminate" aria-label="Indeterminate" indeterminate />
           <span>Indeterminate</span>
         </div>
         <div class="visual-row">
-          <MDCheckbox aria-label="Disabled" :model-value="true" disabled />
+          <MDCheckbox id="storybook-md-checkbox-disabled" aria-label="Disabled" :model-value="true" disabled />
           <span>Disabled</span>
         </div>
         <div class="visual-row">
-          <MDCheckbox aria-label="Readonly" :model-value="true" readonly />
+          <MDCheckbox id="storybook-md-checkbox-readonly" aria-label="Readonly" :model-value="true" readonly />
           <span>Readonly</span>
         </div>
       </div>

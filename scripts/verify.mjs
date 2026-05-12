@@ -306,6 +306,18 @@ function isSharedUiFile(filePath) {
   return filePath.startsWith('src/shared/ui/');
 }
 
+function isVisualRelevantFile(filePath) {
+  return (
+    filePath === 'playwright.visual.config.ts' ||
+    filePath === 'src/app/styles/styles.css' ||
+    filePath.startsWith('.storybook/') ||
+    filePath.startsWith('tests/e2e/visual/') ||
+    filePath.startsWith('src/shared/ui/') ||
+    filePath.startsWith('src/shared/lib/md/') ||
+    filePath.endsWith('.stories.ts')
+  );
+}
+
 function getMutationSourceCandidate(testFilePath) {
   const basePath = testFilePath.slice(0, -'.test.ts'.length);
   const dirPath = path.posix.dirname(testFilePath);
@@ -450,6 +462,7 @@ function buildCommands(changedFiles) {
     (filePath) =>
       filePath.startsWith('tests/e2e/visual/') && filePath.endsWith('.ts') && fileExists(filePath),
   );
+  const hasVisualRelevantChanges = changedFiles.some(isVisualRelevantFile);
   const changedE2ESpecs = changedFiles.filter(
     (filePath) =>
       filePath.startsWith('tests/e2e/') &&
@@ -556,26 +569,12 @@ function buildCommands(changedFiles) {
     });
   }
 
-  if (changedFiles.includes('playwright.visual.config.ts')) {
+  if (hasVisualRelevantChanges || changedVisualSpecs.length > 0) {
     commands.push({
       kind: 'run',
       label: 'visual',
       command: 'pnpm',
       args: ['test:visual'],
-    });
-  } else if (changedVisualSpecs.length > 0) {
-    commands.push({
-      kind: 'run',
-      label: 'visual',
-      command: 'pnpm',
-      args: [
-        'exec',
-        'playwright',
-        'test',
-        '--config',
-        'playwright.visual.config.ts',
-        ...changedVisualSpecs,
-      ],
     });
   } else {
     commands.push({

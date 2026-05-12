@@ -4,7 +4,6 @@ import MDFab from './MDFab.vue';
 const meta = {
   title: 'shared/ui/MDFab',
   component: MDFab,
-  tags: ['visual'],
   args: {
     tooltip: 'Create item',
     color: 'primary',
@@ -56,7 +55,7 @@ export const VisualStates: Story = {
         <div class="visual-row">
           <MDFab tooltip="Medium" size="medium" md-symbol="star" />
           <MDFab tooltip="Large" size="large" md-symbol="menu" />
-          <MDFab tooltip="Loading" color="tertiary" :loading="true" />
+          <MDFab tooltip="Tertiary" color="tertiary" md-symbol="share" />
         </div>
       </div>
     `,

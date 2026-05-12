@@ -385,33 +385,38 @@ pnpm preview
 
 ### Command Reference
 
-| Command              | Description                  |
-| -------------------- | ---------------------------- |
-| `pnpm dev`           | Start development server     |
-| `pnpm build`         | Production build             |
-| `pnpm preview`       | Preview production build     |
-| `pnpm verify`        | Final read-only verification |
-| `pnpm verify:fix`    | Automatic fix verification   |
-| `pnpm test`          | Vitest watch mode            |
-| `pnpm test:run`      | Single-run Vitest tests      |
-| `pnpm test:coverage` | Coverage diagnostics         |
-| `pnpm test:mutate`   | Mutation testing             |
-| `pnpm e2e`           | E2E and visual tests         |
-| `pnpm e2e:ui`        | E2E with UI runner           |
-| `pnpm lint`          | Full lint pipeline           |
-| `pnpm format`        | Format all files             |
-| `pnpm type-check`    | TypeScript type checking     |
+| Command                   | Description                  |
+| ------------------------- | ---------------------------- |
+| `pnpm dev`                | Start development server     |
+| `pnpm build`              | Production build             |
+| `pnpm preview`            | Preview production build     |
+| `pnpm verify`             | Final read-only verification |
+| `pnpm verify:fix`         | Automatic fix verification   |
+| `pnpm test`               | Vitest watch mode            |
+| `pnpm test:run`           | Single-run Vitest tests      |
+| `pnpm test:coverage`      | Coverage diagnostics         |
+| `pnpm test:mutate`        | Mutation testing             |
+| `pnpm storybook`          | Storybook dev server         |
+| `pnpm storybook:build`    | Build Storybook              |
+| `pnpm test:visual`        | Visual regression tests      |
+| `pnpm test:visual:update` | Update visual snapshots      |
+| `pnpm e2e`                | E2E tests                    |
+| `pnpm e2e:ui`             | E2E with UI runner           |
+| `pnpm lint`               | Full lint pipeline           |
+| `pnpm format`             | Format all files             |
+| `pnpm type-check`         | TypeScript type checking     |
 
 ### Configuration Files
 
-| File                   | Purpose                        |
-| ---------------------- | ------------------------------ |
-| `vite.config.ts`       | Build configuration            |
-| `vitest.config.ts`     | Test configuration             |
-| `playwright.config.ts` | E2E and visual test config     |
-| `stryker.config.mjs`   | Mutation testing configuration |
-| `eslint.config.mjs`    | ESLint configuration           |
-| `tsconfig.json`        | TypeScript project references  |
+| File                          | Purpose                        |
+| ----------------------------- | ------------------------------ |
+| `vite.config.ts`              | Build configuration            |
+| `vitest.config.ts`            | Test configuration             |
+| `playwright.config.ts`        | E2E test config                |
+| `playwright.visual.config.ts` | Visual regression config       |
+| `stryker.config.mjs`          | Mutation testing configuration |
+| `eslint.config.mjs`           | ESLint configuration           |
+| `tsconfig.json`               | TypeScript project references  |
 
 ---
 
