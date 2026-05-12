@@ -5,7 +5,6 @@ import { from } from 'ix/Ix.asynciterable';
  *
  * Updates targetMap to reflect the keys and values of sourceMap.
  * Adds, updates, or removes entries as needed.
- *
  * @param sourceMap - The map to copy keys and values from.
  * @param targetMap - The map to be updated.
  * @template K, V

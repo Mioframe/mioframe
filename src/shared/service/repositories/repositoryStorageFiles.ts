@@ -17,7 +17,6 @@ export const DOCUMENT_DELETE_CLEANUP_EMPTY_PASSES_REQUIRED = 2;
 
 /**
  * Lists Automerge storage files that belong to one document inside a repository directory.
- *
  * @param vfs Mounted virtual file system used by the repository storage adapter
  * @param path Absolute repository directory path
  * @param id Target Automerge document id
@@ -42,7 +41,6 @@ export const getDocumentStorageFiles = async (
 /**
  * Removes all currently visible Automerge storage files for one document.
  * Missing files are treated as already removed because Automerge may race with the cleanup pass.
- *
  * @param vfs Mounted virtual file system used by the repository storage adapter
  * @param path Absolute repository directory path
  * @param id Target Automerge document id
@@ -74,7 +72,6 @@ const wait = async (ms: number) => new Promise<void>((resolve) => setTimeout(res
 /**
  * Repeatedly removes storage files for a deleted document until the directory stays empty
  * for the required number of confirmation passes.
- *
  * @param vfs Mounted virtual file system used by the repository storage adapter
  * @param path Absolute repository directory path
  * @param id Target Automerge document id

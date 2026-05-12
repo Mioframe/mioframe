@@ -15,6 +15,8 @@ export type PropertyDraftFactory = (name: string) => DatabaseUnknownProperty;
 
 /**
  * Recreates the draft for a newly selected type while preserving the current name.
+ * @param propertyDraft
+ * @param createDraftProperty
  */
 export const getTypeSwitchedPropertyDraft = (
   propertyDraft: PropertyDraft,
@@ -27,6 +29,7 @@ export const getTypeSwitchedPropertyDraft = (
 
 /**
  * Returns a draft that matches the generic property contract used by the dialog.
+ * @param propertyDraft
  */
 export const getDraftProperty = (
   propertyDraft: PropertyDraft,
@@ -35,6 +38,7 @@ export const getDraftProperty = (
 
 /**
  * Returns a property only when the current draft matches a creatable property descriptor schema.
+ * @param propertyDraft
  */
 export const getCreatableProperty = (
   propertyDraft: PropertyDraft,

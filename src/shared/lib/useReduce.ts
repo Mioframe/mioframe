@@ -22,7 +22,6 @@ import { strictRecordGet, strictRecordIterableKeys } from './strictRecord/wrapSt
  * If the accumulator is an Array, it resets the length to zero.
  * If it's a Set or Map, it calls the built-in .clear() method.
  * For plain objects, it iterates over own enumerable properties and deletes them.
- *
  * @param acc - The accumulator to be cleared.
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- universal clearer must accept any accumulator type
@@ -50,10 +49,8 @@ function defaultClearer(acc: any): void {
  * A universal Vue 3 hook that accumulates values from a reactive iterable source in an incremental manner.
  * Unlike standard reduce implementations which create a new accumulator on every update, this hook mutates the
  * accumulator "in place", thus minimizing unnecessary reactive updates and reducing memory allocations.
- *
  * @template T - The type of items in the source iterable.
  * @template A - The type of the accumulator.
- *
  * @param source - A reactive ref that wraps any iterable (e.g., Array, Set, Map, etc.) of type T.
  * @param reducer - A function that is called for each item in the source. It receives:
  *                  - acc: The current accumulator, which is mutated in place.
@@ -63,7 +60,6 @@ function defaultClearer(acc: any): void {
  * @param initialValue - A mutable initial accumulator of type A. This object will be updated in place.
  * @param clearer - (Optional) A function used to clear the accumulator before filling it.
  *                  If not provided, the defaultClearer is used.
- *
  * @returns A ref containing the accumulator (of type A) that is updated reactively as the source changes.
  */
 export function useReduceIterable<A, T>(

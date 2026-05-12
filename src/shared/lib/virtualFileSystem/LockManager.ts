@@ -11,7 +11,6 @@ export class LockManager {
   /**
    * Executes the exclusiveTask function in exclusive access mode to the path.
    * If the path is already occupied, queues the task.
-   *
    * @param path - The path to lock
    * @param exclusiveTask - The task to execute exclusively
    * @returns A promise that resolves with the result of the exclusive task
@@ -45,7 +44,6 @@ export class LockManager {
 
   /**
    * Checks if a path is currently locked.
-   *
    * @param path - The path to check
    * @returns True if the path is locked, false otherwise
    */

@@ -54,10 +54,8 @@ const useGlobalHover = createGlobalState(() => {
  *
  * Global state that tracks the most recently hovered element among multiple targets.
  * Useful for tooltips, context menus, or hover-based UI patterns.
- *
  * @param rawEl - Element or ref to track
  * @returns Computed ref that is true if this element is the last hovered
- *
  * @example
  * ```ts
  * const isLast = useLastHover(itemRef);
