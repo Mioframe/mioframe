@@ -9,12 +9,10 @@ import queryString from 'qs';
  *
  * Creates a reactive state object that stays in sync with URL query string parameters.
  * Changes to either the state or the URL are reflected in both.
- *
  * @param queryRootName - The query parameter name to use
  * @param initialState - Default values for the state
  * @param mode - URL update mode: 'push' or 'replace'
  * @returns Reactive object synchronized with URL query params
- *
  * @example
  * ```ts
  * const filters = useQueryValue('filters', { search: '', page: 1 });

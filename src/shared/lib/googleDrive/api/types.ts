@@ -52,8 +52,10 @@ export interface ListParams {
   spaces?: SPACE[];
   /** Automatically fetch all result pages. Default: `false` */
   fetchAll?: boolean;
-  /** Fields to sample via JSON Path. Default: `nextPageToken,files(id,name,mimeType,size,createdTime,modifiedTime,parents,capabilities(canTrash,canRename,canAddChildren))`
-   * Important: All added fields must be included in the Zod schema (GDriveFile), otherwise they will be filtered out */
+  /**
+   * Fields to sample via JSON Path. Default: `nextPageToken,files(id,name,mimeType,size,createdTime,modifiedTime,parents,capabilities(canTrash,canRename,canAddChildren))`
+   * Important: All added fields must be included in the Zod schema (GDriveFile), otherwise they will be filtered out
+   */
   fields?: string;
 }
 

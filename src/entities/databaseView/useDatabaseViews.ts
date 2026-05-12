@@ -52,6 +52,8 @@ export interface UseDatabaseViewsResult {
  * This composable is the raw entity read/write contract for database views. It does not apply any
  * default-view fallback or selection policy; consumers that need a current view should resolve that
  * separately through a higher-level selection contract.
+ * @param path
+ * @param documentId
  */
 export const useDatabaseViews = (
   path: Ref<string>,

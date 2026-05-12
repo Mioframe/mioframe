@@ -37,6 +37,7 @@ type CreateUpdatedData<Ops extends MigrateFunction[], T extends object> = (
  *
  * Migration chain is validated: each migration must accept output of previous.
  * First migration accepts any type T.
+ * @param migrations
  */
 export function defineMigrations<T extends object, Ops extends MigrateFunction[]>(
   ...migrations: Ops & MigrateConstraint<T, Ops>

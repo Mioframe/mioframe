@@ -1,7 +1,12 @@
 import type { Directive, VNode } from 'vue';
 import { REORDER_IGNORE_ATTRIBUTE, REORDER_ITEM_ATTRIBUTE } from './constants';
 
-/** Warns in development when a directive relies on a component root element contract. */
+/**
+ * Warns in development when a directive relies on a component root element contract.
+ * @param directiveName
+ * @param vnode
+ * @param element
+ */
 const warnDirectiveRootCoupling = (directiveName: string, vnode: VNode, element: unknown) => {
   if (import.meta.env.PROD || typeof vnode.type === 'string') {
     return;
@@ -26,7 +31,11 @@ const warnDirectiveRootCoupling = (directiveName: string, vnode: VNode, element:
   );
 };
 
-/** Narrows an arbitrary directive host to `HTMLElement` with a dev warning on mismatch. */
+/**
+ * Narrows an arbitrary directive host to `HTMLElement` with a dev warning on mismatch.
+ * @param directiveName
+ * @param element
+ */
 const asHtmlElement = (directiveName: string, element: unknown): HTMLElement | undefined => {
   if (element instanceof HTMLElement) {
     return element;
@@ -41,7 +50,12 @@ const asHtmlElement = (directiveName: string, element: unknown): HTMLElement | u
   return undefined;
 };
 
-/** Updates a DOM attribute while preserving the "attribute absent" case. */
+/**
+ * Updates a DOM attribute while preserving the "attribute absent" case.
+ * @param element
+ * @param attributeName
+ * @param attributeValue
+ */
 const setOrRemoveAttribute = (
   element: HTMLElement,
   attributeName: string,

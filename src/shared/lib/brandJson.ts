@@ -3,7 +3,6 @@
  *
  * Provides branded string types to ensure JSON strings are properly
  * typed and prevent mixing plain strings with JSON representations.
- *
  * @example
  * ```ts
  * const data = { key: 'value' };
@@ -15,7 +14,6 @@ export type JsonString<T> = string & { readonly __brandJsonStringType: T };
 
 /**
  * Stringifies an object to a branded JSON string.
- *
  * @param obj - Value to stringify
  * @returns Branded JSON string with type information
  */
@@ -26,7 +24,6 @@ export const jsonStringify = <T>(obj: T): JsonString<T> => {
 
 /**
  * Parses a branded JSON string back to its original type.
- *
  * @param jsonStr - Branded JSON string to parse
  * @returns Parsed object with full type inference
  */

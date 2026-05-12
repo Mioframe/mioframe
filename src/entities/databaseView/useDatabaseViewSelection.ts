@@ -73,6 +73,9 @@ export interface UseDatabaseViewSelectionResult {
  * When `explicitViewIdState` is writable, stale explicit selections are cleared automatically
  * after view-list updates. When it is readonly, the composable keeps the same read semantics but
  * does not attempt to persist fallback decisions back to the caller.
+ * @param path
+ * @param documentId
+ * @param explicitViewIdState
  */
 export const useDatabaseViewSelection = (
   path: Ref<string>,

@@ -27,17 +27,14 @@ interface LiveResourceOptions<T, Q> {
 
 /**
  * Reactive resource with auto-fetch and subscription support.
- *
  * @deprecated Use `useQuery` with `defineQuery` instead.
  *
  * A generalized pattern for reactive resources that need both initial fetch
  * and ongoing subscription-based updates. Combines useAsyncState with
  * subscription logic for real-time data.
- *
  * @param source - Reactive source (query/params) that triggers refetch
  * @param options - Configuration with fetch and subscribe functions
  * @returns Object with state, errorMessage, isLoading, isReady, and refresh
- *
  * @example
  * ```ts
  * const resource = useLiveResource(userId, {

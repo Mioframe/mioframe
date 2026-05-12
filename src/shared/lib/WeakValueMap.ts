@@ -4,9 +4,8 @@
  * Значения хранятся через WeakRef, поэтому если на объект нет внешних сильных ссылок,
  * сборщик мусора может его удалить, а запись автоматически будет очищена из коллекции
  * с помощью FinalizationRegistry.
- *
- * @typeParam K — тип ключей (хранятся сильно, могут быть любыми, например: string, number, объект)
- * @typeParam V — тип значений (ограничен объектами, поскольку WeakRef может ссылаться только на объекты)
+ * @template K — тип ключей (хранятся сильно, могут быть любыми, например: string, number, объект)
+ * @template V — тип значений (ограничен объектами, поскольку WeakRef может ссылаться только на объекты)
  */
 export class WeakValueMap<K, V extends object> implements Iterable<[K, V]> {
   // Приватное хранилище: сильные ссылки на ключи, а значения обёрнуты в WeakRef.
@@ -23,7 +22,6 @@ export class WeakValueMap<K, V extends object> implements Iterable<[K, V]> {
 
   /**
    * Добавляет или обновляет запись в коллекции.
-   *
    * @param key — ключ записи.
    * @param value — объект-значение.
    * @returns this для возможности цепочки вызовов.
@@ -38,7 +36,6 @@ export class WeakValueMap<K, V extends object> implements Iterable<[K, V]> {
   /**
    * Возвращает значение по ключу, если оно существует и ещё не было удалено сборщиком мусора.
    * Если объект был сборщиком удалён, соответствующая запись очищается.
-   *
    * @param key — ключ записи.
    * @returns Объект V, либо undefined.
    */
@@ -55,7 +52,6 @@ export class WeakValueMap<K, V extends object> implements Iterable<[K, V]> {
 
   /**
    * Проверяет наличие «живого» значения по ключу.
-   *
    * @param key — ключ.
    * @returns true, если значение существует и ещё не удалено сборщиком мусора.
    */
@@ -74,7 +70,6 @@ export class WeakValueMap<K, V extends object> implements Iterable<[K, V]> {
    * Удаляет запись по ключу.
    *
    * Если значение ещё существует, отменяет его регистрацию в FinalizationRegistry.
-   *
    * @param key — ключ для удаления.
    * @returns true, если запись была удалена.
    */
@@ -154,7 +149,6 @@ export class WeakValueMap<K, V extends object> implements Iterable<[K, V]> {
 
   /**
    * Вызывает callback для каждой «живой» записи в коллекции.
-   *
    * @param callback — функция, принимающая (value, key, map).
    * @param thisArg — значение, используемое в качестве this при вызове callback.
    */

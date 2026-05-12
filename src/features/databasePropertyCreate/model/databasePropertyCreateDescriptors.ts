@@ -70,6 +70,7 @@ export const databasePropertyCreateDescriptors: DatabasePropertyCreateDescriptor
 
 /**
  * Finds the create-flow descriptor for a property type.
+ * @param type
  */
 export const getDatabasePropertyCreateDescriptor = (
   type: DatabaseUnknownProperty['type'] | undefined,

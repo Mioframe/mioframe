@@ -29,7 +29,11 @@ import {
 } from './useReorderSurface.helpers';
 import type { ReorderInput, UseReorderSurfaceOptions } from './reorderTypes';
 
-/** Public composable that wires DOM input, SortableJS, and optimistic reorder state. */
+/**
+ * Public composable that wires DOM input, SortableJS, and optimistic reorder state.
+ * @param container
+ * @param options
+ */
 export const useReorderSurface = (
   container: MaybeElementRef,
   options: UseReorderSurfaceOptions,
@@ -54,7 +58,10 @@ export const useReorderSurface = (
   const state = reactive(createReorderSurfaceState(toValue(options.itemIdList)));
   const isReorderSession = computed(() => state.isDragging);
 
-  /** Applies touch-specific cleanup after a drag session completes or is cancelled. */
+  /**
+   * Applies touch-specific cleanup after a drag session completes or is cancelled.
+   * @param input
+   */
   const cleanupAfterDrag = (input: ReorderInput) => {
     if (['touch', 'pen'].includes(input)) {
       requestAnimationFrame(() => {
@@ -63,7 +70,10 @@ export const useReorderSurface = (
     }
   };
 
-  /** Tracks the last meaningful input mode used on the reorder surface. */
+  /**
+   * Tracks the last meaningful input mode used on the reorder surface.
+   * @param event
+   */
   const syncPointerInput = (event: Event) => {
     if (
       shouldClearReorderPostDragSuppressionOnInput({

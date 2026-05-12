@@ -1,12 +1,10 @@
 /**
  * Builds a Google Drive API query string from structured parameters.
- *
  * @param name - File name to search for (exact match).
  * @param sharedWithMe - Whether to search in "Shared with me" space.
  * @param trashed - Whether to include trashed items.
  * @param parentId - Parent folder ID to search within.
  * @returns A query string compatible with Google Drive API v3.
- *
  * @example
  * ```
  * buildQuery({ name: 'report', sharedWithMe: true })

@@ -18,7 +18,10 @@ export const defaultReorderInteractiveSelector = [
   `[${REORDER_IGNORE_ATTRIBUTE}]`,
 ].join(', ');
 
-/** Scopes an interactive selector to reorder items and their descendants. */
+/**
+ * Scopes an interactive selector to reorder items and their descendants.
+ * @param interactiveSelector
+ */
 export const getReorderDescendantInteractiveSelector = (interactiveSelector: string): string =>
   interactiveSelector
     .split(',')
