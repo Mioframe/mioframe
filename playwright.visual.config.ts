@@ -4,7 +4,6 @@ import toolingConfig from './config/tooling.json' with { type: 'json' };
 const host = toolingConfig.localServer.host;
 const port = toolingConfig.storybook.visualPreview.port;
 const storybookStaticDir = toolingConfig.storybook.staticDir;
-const strictPort = toolingConfig.storybook.visualPreview.strictPort;
 const storybookURL = `http://${host}:${port}`;
 
 export default defineConfig({
@@ -40,7 +39,7 @@ export default defineConfig({
       'node scripts/storybook.mjs build && ' +
       'pnpm exec vite preview ' +
       '--config .storybook/vite.preview.config.ts ' +
-      `--host ${host} --port ${port} ${strictPort ? '--strictPort ' : ''}--outDir ${storybookStaticDir}`,
+      `--outDir ${storybookStaticDir}`,
     url: storybookURL,
     reuseExistingServer: !process.env.CI,
     timeout: toolingConfig.playwright.webServerTimeoutMs,
