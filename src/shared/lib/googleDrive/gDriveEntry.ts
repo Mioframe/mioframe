@@ -28,7 +28,7 @@ export const createGDriveEntry = (
 
     if (!('removeByName' in parentEntry)) {
       throw new DomainError('Could not remove the item', {
-        cause: new Error(`don't have "removeByName" method in ${parentEntry.path.join('/')}`),
+        cause: new Error('The parent entry does not support removal by name'),
       });
     }
     await parentEntry.removeByName(currentName);
@@ -37,7 +37,7 @@ export const createGDriveEntry = (
   const rename = async (newName: string): Promise<void> => {
     if (!fileId) {
       throw new DomainError('Could not rename the item', {
-        cause: new Error('You cannot rename an entry without a fileId.'),
+        cause: new Error('The selected item does not support renaming'),
       });
     }
     await update(auth, fileId, {

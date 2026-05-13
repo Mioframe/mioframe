@@ -5,9 +5,11 @@ import {
   FSNodeType,
   VfsEventSource,
   VfsEventType,
+  VfsError,
 } from '@shared/lib/virtualFileSystem';
 import type { GDriveFileMeta } from '@shared/lib/googleDrive/api';
 import { DRIVE_GOOGLE_SCOPE } from '@shared/lib/googleApi';
+import { GoogleAuthError, GoogleAuthErrorCode } from '@shared/service/google/errors';
 
 const {
   createMock,
@@ -288,6 +290,175 @@ describe('googleDriveFileSystemProvider', () => {
     });
   });
 
+  it('sanitizes raw stat failures from token or API boundaries', async () => {
+    const requestToken = vi
+      .fn()
+      .mockRejectedValueOnce(
+        new Error(
+          'Token request failed for user@example.com file gd-123 path /user@example.com/My Drive/Taxes',
+        ),
+      );
+    const provider = googleDriveFileSystemProvider({
+      $sessions: new BehaviorSubject<string[]>(['user@example.com']),
+      requestToken,
+    });
+
+    const error = await provider
+      .stat('/user@example.com/My Drive/Taxes')
+      .catch((caughtError: unknown) => caughtError);
+
+    expect(error).toBeInstanceOf(VfsError);
+    expect(error).toMatchObject({
+      code: FileSystemError.FileNotFound,
+      message: 'Google Drive stat operation failed',
+      cause: expect.objectContaining({
+        message: 'Google Drive stat request failed',
+      }),
+    });
+    expect(error).not.toHaveProperty(
+      'cause.message',
+      'Token request failed for user@example.com file gd-123 path /user@example.com/My Drive/Taxes',
+    );
+  });
+
+  it('sanitizes Google authorization errors with account emails before they become VfsError causes', async () => {
+    const provider = googleDriveFileSystemProvider({
+      $sessions: new BehaviorSubject<string[]>(['user@example.com']),
+      requestToken: vi.fn().mockRejectedValueOnce(
+        new GoogleAuthError({
+          code: GoogleAuthErrorCode.reauthRequired,
+          expectedEmail: 'user@example.com',
+        }),
+      ),
+    });
+
+    const error = await provider
+      .stat('/user@example.com/My Drive/Taxes')
+      .catch((caughtError: unknown) => caughtError);
+
+    expect(error).toBeInstanceOf(VfsError);
+    expect(error).toMatchObject({
+      code: FileSystemError.FileNotFound,
+      message: 'Google Drive stat operation failed',
+      cause: expect.objectContaining({
+        message: 'Google Drive stat request failed',
+      }),
+    });
+
+    expect(error).not.toHaveProperty(
+      'cause.message',
+      'Google Drive access requires authorization for user@example.com',
+    );
+  });
+
+  it('sanitizes nested causes inside VfsError instances before rewrapping them', async () => {
+    const provider = googleDriveFileSystemProvider({
+      $sessions: new BehaviorSubject<string[]>(['user@example.com']),
+      requestToken: vi
+        .fn()
+        .mockRejectedValueOnce(
+          new VfsError(
+            FileSystemError.Unknown,
+            'Outer safe message',
+            new Error('raw /private/path gd-123'),
+          ),
+        ),
+    });
+
+    const error = await provider
+      .stat('/user@example.com/My Drive/Taxes')
+      .catch((caughtError: unknown) => caughtError);
+
+    expect(error).toBeInstanceOf(VfsError);
+    expect(error).toMatchObject({
+      code: FileSystemError.FileNotFound,
+      message: 'Google Drive stat operation failed',
+      cause: expect.objectContaining({
+        message: 'Google Drive stat request failed',
+      }),
+    });
+    expect(error).not.toHaveProperty('cause.message', 'Outer safe message');
+  });
+
+  it('sanitizes raw download failures while preserving the VfsError code', async () => {
+    const provider = googleDriveFileSystemProvider({
+      $sessions: new BehaviorSubject<string[]>(['user@example.com']),
+      requestToken: vi.fn().mockResolvedValue('token'),
+    });
+    getGFileMetaListMock.mockResolvedValueOnce({
+      files: [
+        {
+          id: 'gd-123',
+          name: 'Taxes 2025.pdf',
+          mimeType: 'application/pdf',
+          modifiedTime: '2024-01-01T00:00:00.000Z',
+        } satisfies GDriveFileMeta,
+      ],
+    });
+    downloadMock.mockRejectedValueOnce(
+      new Error('Download failed for gd-123 at /user@example.com/My Drive/Taxes 2025.pdf'),
+    );
+
+    const error = await provider
+      .readFile('/user@example.com/My Drive/Taxes 2025.pdf')
+      .catch((caughtError: unknown) => caughtError);
+
+    expect(error).toBeInstanceOf(VfsError);
+    expect(error).toMatchObject({
+      code: FileSystemError.Unknown,
+      message: 'Google Drive download operation failed',
+      cause: expect.objectContaining({
+        message: 'Google Drive download request failed',
+      }),
+    });
+    expect(error).not.toHaveProperty(
+      'cause.message',
+      'Download failed for gd-123 at /user@example.com/My Drive/Taxes 2025.pdf',
+    );
+  });
+
+  it('sanitizes raw upload failures during rollback while preserving the VfsError code', async () => {
+    const provider = googleDriveFileSystemProvider({
+      $sessions: new BehaviorSubject<string[]>(['user@example.com']),
+      requestToken: vi.fn().mockResolvedValue('token'),
+    });
+    const largeContent = new Blob([new Uint8Array(5 * 1024 * 1024 + 1)], {
+      type: 'application/octet-stream',
+    });
+    getGFileMetaListMock.mockResolvedValueOnce({ files: [] });
+    createMock.mockResolvedValueOnce({
+      result: {
+        id: 'created-1',
+      },
+    });
+    uploadMock.mockRejectedValueOnce(
+      new Error(
+        'Upload failed for created-1 file gd-456 /user@example.com/My Drive/Taxes 2025.pdf',
+      ),
+    );
+    updateMock.mockResolvedValueOnce({ result: {} });
+
+    const error = await provider
+      .writeFile('/user@example.com/My Drive/Taxes 2025.pdf', largeContent, {
+        create: true,
+        overwrite: true,
+      })
+      .catch((caughtError: unknown) => caughtError);
+
+    expect(error).toBeInstanceOf(VfsError);
+    expect(error).toMatchObject({
+      code: FileSystemError.Unknown,
+      message: 'Google Drive upload operation failed',
+      cause: expect.objectContaining({
+        message: 'Google Drive upload request failed',
+      }),
+    });
+    expect(error).not.toHaveProperty(
+      'cause.message',
+      'Upload failed for created-1 file gd-456 /user@example.com/My Drive/Taxes 2025.pdf',
+    );
+  });
+
   it('wraps paths without an email in a not-found stat error', async () => {
     const provider = googleDriveFileSystemProvider({
       $sessions: new BehaviorSubject<string[]>(['user@example.com']),
@@ -447,7 +618,13 @@ describe('googleDriveFileSystemProvider', () => {
         create: true,
         overwrite: true,
       }),
-    ).rejects.toThrow('upload failed');
+    ).rejects.toMatchObject({
+      code: FileSystemError.Unknown,
+      message: 'Google Drive upload operation failed',
+      cause: expect.objectContaining({
+        message: 'Google Drive upload request failed',
+      }),
+    });
 
     expect(createMock).toHaveBeenCalledWith(
       {

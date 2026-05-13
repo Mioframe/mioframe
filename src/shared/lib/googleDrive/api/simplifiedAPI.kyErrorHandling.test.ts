@@ -54,10 +54,9 @@ describe('simplifiedAPI ky error normalization', () => {
       getGFileMetaList({ ACCESS_TOKEN: 'token' }, { q: {}, spaces: [], fetchAll: true }),
     ).rejects.toMatchObject({
       code: HttpStatusCode.FORBIDDEN,
-      message: 'Permission denied',
+      message: 'Google Drive request failed',
       cause: expect.objectContaining({
-        code: HttpStatusCode.FORBIDDEN,
-        message: 'Permission denied',
+        message: 'Google Drive API request failed',
       }),
     });
 
@@ -85,10 +84,9 @@ describe('simplifiedAPI ky error normalization', () => {
       getGFileMetaList({ ACCESS_TOKEN: 'token' }, { q: {}, spaces: [], fetchAll: true }),
     ).rejects.toMatchObject({
       code: HttpStatusCode.TOO_MANY_REQUESTS,
-      message: 'Rate limited',
+      message: 'Google Drive request failed',
       cause: expect.objectContaining({
-        code: HttpStatusCode.TOO_MANY_REQUESTS,
-        message: 'Rate limited',
+        message: 'Google Drive API request failed',
       }),
     });
 

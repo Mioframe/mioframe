@@ -52,9 +52,11 @@ describe('useExportDocument', () => {
     expect(fileSaveMock).not.toHaveBeenCalled();
   });
 
-  it('preserves the original cause when fetching the document state fails', async () => {
-    const cause = new Error('Fetch failed');
-    fetchMock.mockRejectedValueOnce(cause);
+  it('replaces raw document load failure details with a safe cause', async () => {
+    const rawCause = new Error(
+      'Could not load /Device files/Private/Tax 2025/document.json for document-id 4Z1fFANPScpDsLXmC1KsBCn4mWYu',
+    );
+    fetchMock.mockRejectedValueOnce(rawCause);
 
     const { saveJsonFile } = useExportDocument();
 
@@ -65,8 +67,12 @@ describe('useExportDocument', () => {
     expect(error).toBeInstanceOf(DomainError);
     expect(error).toMatchObject({
       message: 'Could not export the document',
-      cause,
+      code: 'document-export-failed',
+      cause: expect.objectContaining({
+        message: 'Document repository read operation failed',
+      }),
     });
+    expect(error).not.toHaveProperty('cause.message', rawCause.message);
     expect(fileSaveMock).not.toHaveBeenCalled();
   });
 
@@ -123,8 +129,11 @@ describe('useExportDocument', () => {
   });
 
   it('does not treat non-AbortError save failures as user cancellation', async () => {
-    const cause = new DOMException('Permission denied', 'NotAllowedError');
-    fileSaveMock.mockRejectedValueOnce(cause);
+    const rawCause = new DOMException(
+      'Could not save /Device files/Private/Tax 2025/4Z1fFANPScpDsLXmC1KsBCn4mWYu.json',
+      'NotAllowedError',
+    );
+    fileSaveMock.mockRejectedValueOnce(rawCause);
 
     const { saveJsonFile } = useExportDocument();
 
@@ -135,7 +144,31 @@ describe('useExportDocument', () => {
     expect(error).toBeInstanceOf(DomainError);
     expect(error).toMatchObject({
       message: 'Could not export the document',
-      cause,
+      code: 'document-export-failed',
+      cause: expect.objectContaining({
+        message: 'Selected file save operation failed',
+      }),
+    });
+    expect(error).not.toHaveProperty('cause.message', rawCause.message);
+  });
+
+  it('preserves a safe cause message for reporting when export loading fails', async () => {
+    fetchMock.mockRejectedValueOnce(
+      new Error('Could not load /Device files/Private/Tax 2025/document.json'),
+    );
+
+    const { saveJsonFile } = useExportDocument();
+
+    const error = await saveJsonFile('/documents', documentId).catch(
+      (caughtError: unknown) => caughtError,
+    );
+
+    expect(error).toBeInstanceOf(DomainError);
+    expect(error).toMatchObject({
+      message: 'Could not export the document',
+      cause: expect.objectContaining({
+        message: 'Document repository read operation failed',
+      }),
     });
   });
 

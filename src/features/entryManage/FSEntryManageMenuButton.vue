@@ -119,7 +119,9 @@ const { addSnackbar } = useSnackbar();
 
 const shouldSkipImportErrorReport = (error: unknown) =>
   isUserFileSelectionCancel(error) ||
-  (error instanceof DomainError && error.code === ImportDocumentErrorCode.invalidJson);
+  (error instanceof DomainError &&
+    (error.code === ImportDocumentErrorCode.invalidJson ||
+      error.code === ImportDocumentErrorCode.invalidDocumentFormat));
 
 const onClickMenuAction = async ({ key }: { key: FSEntryContextEvent }) => {
   switch (key) {
@@ -159,7 +161,6 @@ const onClickMenuAction = async ({ key }: { key: FSEntryContextEvent }) => {
             reportHandledError(error, {
               feature: 'documentImport',
               action: 'importDocumentJson',
-              path: path.value,
             });
           }
         }

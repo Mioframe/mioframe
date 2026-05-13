@@ -1,5 +1,50 @@
 import type { App, Plugin } from 'vue';
 
+const SAFE_EVENT_EXTRA_KEYS = ['userMessage', 'domainErrorCode', 'originalThrownType'] as const;
+const SAFE_EVENT_TAG_KEYS = ['handled', 'feature', 'action'] as const;
+type SentryTagValue = boolean | number | string | null | undefined;
+
+const pickEventFields = (source: Record<string, unknown> | undefined, keys: readonly string[]) => {
+  const result: Record<string, unknown> = {};
+
+  if (!source) {
+    return result;
+  }
+
+  for (const key of keys) {
+    if (key in source) {
+      result[key] = source[key];
+    }
+  }
+
+  return result;
+};
+
+const isSentryTagValue = (value: unknown): value is SentryTagValue =>
+  value === null ||
+  value === undefined ||
+  typeof value === 'boolean' ||
+  typeof value === 'number' ||
+  typeof value === 'string';
+
+const pickEventTags = (source: Record<string, unknown> | undefined, keys: readonly string[]) => {
+  const result: Record<string, SentryTagValue> = {};
+
+  if (!source) {
+    return result;
+  }
+
+  for (const key of keys) {
+    const value = source[key];
+
+    if (value !== undefined && isSentryTagValue(value)) {
+      result[key] = value;
+    }
+  }
+
+  return result;
+};
+
 /**
  * Runtime configuration for the optional Sentry integration.
  */
@@ -253,7 +298,23 @@ export const ensureSentry = async (app?: App): Promise<SentryFacade> => {
           return null;
         }
 
-        return event;
+        const {
+          breadcrumbs: _breadcrumbs,
+          contexts: _contexts,
+          extra,
+          request: _request,
+          tags,
+          user: _user,
+          ...safeEvent
+        } = event;
+        const safeTags = pickEventTags(tags, SAFE_EVENT_TAG_KEYS);
+        const safeExtra = pickEventFields(extra, SAFE_EVENT_EXTRA_KEYS);
+
+        return {
+          ...safeEvent,
+          ...(Object.keys(safeExtra).length > 0 ? { extra: safeExtra } : {}),
+          ...(Object.keys(safeTags).length > 0 ? { tags: safeTags } : {}),
+        };
       },
     });
 

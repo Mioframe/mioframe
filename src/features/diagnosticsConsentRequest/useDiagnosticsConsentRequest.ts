@@ -31,7 +31,7 @@ export const useDiagnosticsConsentRequest = () => {
         const diagnosticsEnabled = await confirm({
           headline: 'Help improve Mioframe?',
           supportingText:
-            'Mioframe can send technical error reports when something breaks. This helps developers find and fix crashes. Document contents are not intentionally included.',
+            'Mioframe can send technical error reports when something breaks. This helps developers find and fix crashes. Reports do not include document contents, record values, document names, folder names, local folder paths, document ids, or file ids.',
           confirmLabel: 'Allow',
           cancelLabel: 'Not now',
         });

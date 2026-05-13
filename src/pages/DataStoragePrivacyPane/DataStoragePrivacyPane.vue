@@ -54,12 +54,16 @@ defineSlots<{
           breaks so developers can investigate crashes and unexpected failures.
         </p>
         <p>
-          You can enable or disable error diagnostics in Settings at any time. Document contents are
-          not intentionally included in these reports.
+          You can enable or disable error diagnostics in Settings at any time. When enabled,
+          Mioframe sends technical error reports only after an error happens.
         </p>
         <p>
-          Technical reports may still include metadata such as stack traces, browser details, or the
-          current app URL when an error happens.
+          These reports do not include document contents, record values, document names, folder
+          names, local folder paths, document ids, or file ids.
+        </p>
+        <p>
+          Technical reports may still include stack traces, app version or build information, error
+          type or code, and a safe application error message.
         </p>
       </section>
     </div>

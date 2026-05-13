@@ -68,7 +68,7 @@ export class MemoryFileSystem implements IFileSystemProvider {
   private getEntry(path: string): AnyEntry {
     const entry = this.store.get(path);
     if (!entry) {
-      throw new VfsError(FileSystemError.FileNotFound, `File not found: ${path}`);
+      throw new VfsError(FileSystemError.FileNotFound, 'File system entry not found');
     }
     return entry;
   }
@@ -121,7 +121,7 @@ export class MemoryFileSystem implements IFileSystemProvider {
     const entry = this.getEntry(normalized);
 
     if (entry.type !== FSNodeType.Directory) {
-      throw new VfsError(FileSystemError.FileNotADirectory, `${path} is not a directory`);
+      throw new VfsError(FileSystemError.FileNotADirectory, 'The selected item is not a directory');
     }
 
     const children: [string, FSNodeStat][] = [];
@@ -149,17 +149,14 @@ export class MemoryFileSystem implements IFileSystemProvider {
   public async createDirectory(path: string): Promise<void> {
     const normalized = PathUtils.normalize(path);
     if (this.store.has(normalized)) {
-      throw new VfsError(FileSystemError.FileExists, `Directory already exists: ${path}`);
+      throw new VfsError(FileSystemError.FileExists, 'Directory already exists');
     }
 
     const parentPath = PathUtils.dirname(normalized);
     const parentEntry = this.getEntry(parentPath);
 
     if (parentEntry.type !== FSNodeType.Directory) {
-      throw new VfsError(
-        FileSystemError.FileNotADirectory,
-        `Parent path ${parentPath} is not a directory`,
-      );
+      throw new VfsError(FileSystemError.FileNotADirectory, 'The parent item is not a directory');
     }
 
     this.store.set(normalized, {
@@ -184,7 +181,7 @@ export class MemoryFileSystem implements IFileSystemProvider {
     const entry = this.getEntry(normalized);
 
     if (entry.type !== FSNodeType.File) {
-      throw new VfsError(FileSystemError.FileIsADirectory, `${path} is a directory`);
+      throw new VfsError(FileSystemError.FileIsADirectory, 'The selected item is a directory');
     }
 
     return Promise.resolve(entry.content);
@@ -213,7 +210,7 @@ export class MemoryFileSystem implements IFileSystemProvider {
     // Проверка родительской директории
     if (!parentEntry || parentEntry.type !== FSNodeType.Directory) {
       return Promise.reject(
-        new VfsError(FileSystemError.FileNotFound, `Parent directory not found: ${parentPath}`),
+        new VfsError(FileSystemError.FileNotFound, 'Parent directory not found'),
       );
     }
 
@@ -224,16 +221,11 @@ export class MemoryFileSystem implements IFileSystemProvider {
     if (entry) {
       if (entry.type !== FSNodeType.File) {
         return Promise.reject(
-          new VfsError(FileSystemError.FileIsADirectory, `${path} is a directory`),
+          new VfsError(FileSystemError.FileIsADirectory, 'The selected item is a directory'),
         );
       }
       if (!options.overwrite) {
-        return Promise.reject(
-          new VfsError(
-            FileSystemError.FileExists,
-            `File already exists and overwrite is false: ${path}`,
-          ),
-        );
+        return Promise.reject(new VfsError(FileSystemError.FileExists, 'File already exists'));
       }
 
       entry.content = file;
@@ -241,12 +233,7 @@ export class MemoryFileSystem implements IFileSystemProvider {
       entry.modificationTime = now;
     } else {
       if (!options.create) {
-        return Promise.reject(
-          new VfsError(
-            FileSystemError.FileNotFound,
-            `File does not exist and create is false: ${path}`,
-          ),
-        );
+        return Promise.reject(new VfsError(FileSystemError.FileNotFound, 'File not found'));
       }
       this.store.set(normalized, {
         type: FSNodeType.File,
@@ -277,7 +264,7 @@ export class MemoryFileSystem implements IFileSystemProvider {
     if (entry.capabilities?.canDelete !== true) {
       throw new VfsError(
         FileSystemError.NoPermissions,
-        `Deletion is not allowed for path: ${path}`,
+        'File system delete operation is not allowed',
       );
     }
 
@@ -293,7 +280,7 @@ export class MemoryFileSystem implements IFileSystemProvider {
       }
 
       if (hasChildren && !recursive) {
-        return Promise.reject(new Error(`Directory not empty: ${path}`));
+        return Promise.reject(new Error('Directory not empty'));
       }
 
       if (hasChildren && recursive) {
@@ -303,7 +290,7 @@ export class MemoryFileSystem implements IFileSystemProvider {
             if (storedEntry.capabilities?.canDelete !== true) {
               throw new VfsError(
                 FileSystemError.NoPermissions,
-                `Deletion is not allowed for path: ${storedPath}`,
+                'File system delete operation is not allowed',
               );
             }
 
@@ -336,7 +323,7 @@ export class MemoryFileSystem implements IFileSystemProvider {
       return Promise.reject(
         new VfsError(
           FileSystemError.NotSupported,
-          `Cannot move directory into itself: ${oldPath} -> ${newPath}`,
+          'Cannot move a directory into itself or one of its subdirectories',
         ),
       );
     }
@@ -344,25 +331,20 @@ export class MemoryFileSystem implements IFileSystemProvider {
     const entry = this.getEntry(normalizedOld);
 
     if (this.store.has(normalizedNew)) {
-      return Promise.reject(
-        new VfsError(FileSystemError.FileExists, `Target already exists: ${newPath}`),
-      );
+      return Promise.reject(new VfsError(FileSystemError.FileExists, 'Target already exists'));
     }
 
     const newParentPath = PathUtils.dirname(normalizedNew);
     const newParentEntry = this.store.get(newParentPath);
     if (!newParentEntry || newParentEntry.type !== FSNodeType.Directory) {
       return Promise.reject(
-        new VfsError(
-          FileSystemError.FileNotFound,
-          `Target parent directory not found: ${newParentPath}`,
-        ),
+        new VfsError(FileSystemError.FileNotFound, 'Target parent directory not found'),
       );
     }
     if (newParentEntry.capabilities?.canEditChildren !== true) {
       throw new VfsError(
         FileSystemError.NoPermissions,
-        `Path change is not allowed inside directory: ${newParentPath}`,
+        'The destination directory is not writable',
       );
     }
 
@@ -387,7 +369,7 @@ export class MemoryFileSystem implements IFileSystemProvider {
         if (childEntry.capabilities?.canChangePath !== true) {
           throw new VfsError(
             FileSystemError.NoPermissions,
-            `Path change is not allowed for path: ${oldKey}`,
+            'The selected item does not support moving',
           );
         }
 
@@ -402,7 +384,7 @@ export class MemoryFileSystem implements IFileSystemProvider {
       if (entry.capabilities?.canChangePath !== true) {
         throw new VfsError(
           FileSystemError.NoPermissions,
-          `Path change is not allowed for path: ${normalizedOld}`,
+          'The selected item does not support moving',
         );
       }
       this.store.delete(normalizedOld);
@@ -415,7 +397,7 @@ export class MemoryFileSystem implements IFileSystemProvider {
       if (entry.capabilities?.canChangePath !== true) {
         throw new VfsError(
           FileSystemError.NoPermissions,
-          `Path change is not allowed for path: ${normalizedOld}`,
+          'The selected item does not support moving',
         );
       }
       this.store.delete(normalizedOld);
