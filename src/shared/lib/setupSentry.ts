@@ -37,7 +37,7 @@ const pickEventTags = (source: Record<string, unknown> | undefined, keys: readon
   for (const key of keys) {
     const value = source[key];
 
-    if (isSentryTagValue(value)) {
+    if (value !== undefined && isSentryTagValue(value)) {
       result[key] = value;
     }
   }
@@ -308,24 +308,19 @@ export const ensureSentry = async (app?: App): Promise<SentryFacade> => {
 
         const {
           breadcrumbs: _breadcrumbs,
-          request: originalRequest,
+          contexts: _contexts,
+          extra,
+          request: _request,
+          tags,
           user: _user,
-          ...restEvent
+          ...safeEvent
         } = event;
-        const safeTags = pickEventTags(getSafeRecord(event.tags), SAFE_EVENT_TAG_KEYS);
-        const safeExtra = pickEventFields(getSafeRecord(event.extra), SAFE_EVENT_EXTRA_KEYS);
-        const safeRequest = getSafeRecord(originalRequest);
+        const safeTags = pickEventTags(getSafeRecord(tags), SAFE_EVENT_TAG_KEYS);
+        const safeExtra = pickEventFields(getSafeRecord(extra), SAFE_EVENT_EXTRA_KEYS);
 
         return {
-          ...restEvent,
+          ...safeEvent,
           ...(Object.keys(safeExtra).length > 0 ? { extra: safeExtra } : {}),
-          ...(safeRequest
-            ? {
-                request: Object.fromEntries(
-                  Object.entries(safeRequest).filter(([key]) => key !== 'url'),
-                ),
-              }
-            : {}),
           ...(Object.keys(safeTags).length > 0 ? { tags: safeTags } : {}),
         };
       },

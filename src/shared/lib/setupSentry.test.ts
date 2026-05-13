@@ -426,13 +426,232 @@ describe('setupSentry', () => {
           userMessage: 'Could not export the document',
         },
         message: 'test-event',
-        request: {},
         tags: {
           action: 'exportDocumentJson',
           feature: 'documentExport',
           handled: 'true',
         },
       });
+    }
+  });
+
+  it('beforeSend drops unsafe-only extra payloads', async () => {
+    const { initMock } = setupSentryMocks();
+    const { registerSentryConfig, ensureSentry, setSentryReportingEnabled } =
+      await import('./setupSentry');
+
+    registerSentryConfig({
+      dsn: 'https://example@sentry.io/123',
+      enabled: true,
+    });
+    setSentryReportingEnabled(true);
+
+    await ensureSentry();
+
+    const initOptions = initMock.mock.calls[0]?.[0];
+    const beforeSend = initOptions?.beforeSend;
+    const event = {
+      extra: {
+        documentId: 'secret',
+        path: '/private',
+      },
+      message: 'test-event',
+    };
+
+    expect(beforeSend).toEqual(expect.any(Function));
+    if (beforeSend instanceof Function) {
+      expect(beforeSend(event)).toEqual({
+        message: 'test-event',
+      });
+    }
+  });
+
+  it('beforeSend keeps only allowlisted extra keys from mixed payloads', async () => {
+    const { initMock } = setupSentryMocks();
+    const { registerSentryConfig, ensureSentry, setSentryReportingEnabled } =
+      await import('./setupSentry');
+
+    registerSentryConfig({
+      dsn: 'https://example@sentry.io/123',
+      enabled: true,
+    });
+    setSentryReportingEnabled(true);
+
+    await ensureSentry();
+
+    const initOptions = initMock.mock.calls[0]?.[0];
+    const beforeSend = initOptions?.beforeSend;
+    const event = {
+      extra: {
+        domainErrorCode: 'document-export-failed',
+        originalThrownType: 'string',
+        path: '/private',
+        userMessage: 'Could not export the document',
+      },
+      message: 'test-event',
+    };
+
+    expect(beforeSend).toEqual(expect.any(Function));
+    if (beforeSend instanceof Function) {
+      expect(beforeSend(event)).toEqual({
+        extra: {
+          domainErrorCode: 'document-export-failed',
+          originalThrownType: 'string',
+          userMessage: 'Could not export the document',
+        },
+        message: 'test-event',
+      });
+    }
+  });
+
+  it('beforeSend drops unsafe-only tags', async () => {
+    const { initMock } = setupSentryMocks();
+    const { registerSentryConfig, ensureSentry, setSentryReportingEnabled } =
+      await import('./setupSentry');
+
+    registerSentryConfig({
+      dsn: 'https://example@sentry.io/123',
+      enabled: true,
+    });
+    setSentryReportingEnabled(true);
+
+    await ensureSentry();
+
+    const initOptions = initMock.mock.calls[0]?.[0];
+    const beforeSend = initOptions?.beforeSend;
+    const event = {
+      message: 'test-event',
+      tags: {
+        path: '/private',
+      },
+    };
+
+    expect(beforeSend).toEqual(expect.any(Function));
+    if (beforeSend instanceof Function) {
+      expect(beforeSend(event)).toEqual({
+        message: 'test-event',
+      });
+    }
+  });
+
+  it('beforeSend keeps only allowlisted tags from mixed payloads', async () => {
+    const { initMock } = setupSentryMocks();
+    const { registerSentryConfig, ensureSentry, setSentryReportingEnabled } =
+      await import('./setupSentry');
+
+    registerSentryConfig({
+      dsn: 'https://example@sentry.io/123',
+      enabled: true,
+    });
+    setSentryReportingEnabled(true);
+
+    await ensureSentry();
+
+    const initOptions = initMock.mock.calls[0]?.[0];
+    const beforeSend = initOptions?.beforeSend;
+    const event = {
+      message: 'test-event',
+      tags: {
+        action: 'exportDocumentJson',
+        feature: 'documentExport',
+        handled: 'true',
+        path: '/private',
+      },
+    };
+
+    expect(beforeSend).toEqual(expect.any(Function));
+    if (beforeSend instanceof Function) {
+      expect(beforeSend(event)).toEqual({
+        message: 'test-event',
+        tags: {
+          action: 'exportDocumentJson',
+          feature: 'documentExport',
+          handled: 'true',
+        },
+      });
+    }
+  });
+
+  it('beforeSend removes request, contexts, breadcrumbs, and user entirely', async () => {
+    const { initMock } = setupSentryMocks();
+    const { registerSentryConfig, ensureSentry, setSentryReportingEnabled } =
+      await import('./setupSentry');
+
+    registerSentryConfig({
+      dsn: 'https://example@sentry.io/123',
+      enabled: true,
+    });
+    setSentryReportingEnabled(true);
+
+    await ensureSentry();
+
+    const initOptions = initMock.mock.calls[0]?.[0];
+    const beforeSend = initOptions?.beforeSend;
+    const event = {
+      breadcrumbs: [{ message: 'user breadcrumb' }],
+      contexts: {
+        browser: {
+          name: 'Chrome',
+        },
+      },
+      message: 'test-event',
+      request: {
+        method: 'POST',
+        url: 'https://app.example/doc/secret-id',
+      },
+      user: {
+        id: 'user-1',
+      },
+    };
+
+    expect(beforeSend).toEqual(expect.any(Function));
+    if (beforeSend instanceof Function) {
+      expect(beforeSend(event)).toEqual({
+        message: 'test-event',
+      });
+    }
+  });
+
+  it('beforeSend preserves core error event fields', async () => {
+    const { initMock } = setupSentryMocks();
+    const { registerSentryConfig, ensureSentry, setSentryReportingEnabled } =
+      await import('./setupSentry');
+
+    registerSentryConfig({
+      dsn: 'https://example@sentry.io/123',
+      enabled: true,
+    });
+    setSentryReportingEnabled(true);
+
+    await ensureSentry();
+
+    const initOptions = initMock.mock.calls[0]?.[0];
+    const beforeSend = initOptions?.beforeSend;
+    const event = {
+      environment: 'production',
+      exception: {
+        values: [
+          {
+            stacktrace: {
+              frames: [
+                {
+                  filename: 'src/shared/lib/reportHandledError.ts',
+                  function: 'reportHandledError',
+                },
+              ],
+            },
+            type: 'Error',
+            value: 'boom',
+          },
+        ],
+      },
+      message: 'test-event',
+      release: '1.2.3',
+    };
+
+    expect(beforeSend).toEqual(expect.any(Function));
+    if (beforeSend instanceof Function) {
+      expect(beforeSend(event)).toEqual(event);
     }
   });
 

@@ -62,8 +62,8 @@ defineSlots<{
           names, local folder paths, document ids, or file ids.
         </p>
         <p>
-          Technical reports may still include stack traces, browser details, app version or build
-          information, error type or code, and a safe application error message.
+          Technical reports may still include stack traces, app version or build information, error
+          type or code, and a safe application error message.
         </p>
       </section>
     </div>

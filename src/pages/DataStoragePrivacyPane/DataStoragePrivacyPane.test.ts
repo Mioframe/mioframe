@@ -61,7 +61,7 @@ it('renders the local-first and privacy help content in-app', async () => {
     'do not include document contents, record values, document names, folder names, local folder paths, document ids, or file ids.',
   );
   expect(root.textContent).toContain(
-    'stack traces, browser details, app version or build information, error type or code, and a safe application error message.',
+    'stack traces, app version or build information, error type or code, and a safe application error message.',
   );
 
   app.unmount();
