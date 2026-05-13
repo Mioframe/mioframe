@@ -5,12 +5,13 @@ import MarkdownIt from 'markdown-it';
  */
 export interface RenderMarkdownOptions {
   /**
-   * Adds `target="_blank"` and `rel="noopener noreferrer"` to absolute links.
+   * Adds `target="_blank"` and `rel="noopener noreferrer"` to `http`, `https`,
+   * and protocol-relative links.
    */
   readonly openExternalLinksInNewTab?: boolean;
 }
 
-const isExternalLinkHref = (href: string): boolean => /^(?:[a-z][a-z\d+.-]*:|\/\/)/iu.test(href);
+const isExternalLinkHref = (href: string): boolean => /^(?:https?:|\/\/)/iu.test(href);
 
 const createMarkdownRenderer = (openExternalLinksInNewTab = false) => {
   const markdown = new MarkdownIt({
@@ -20,11 +21,21 @@ const createMarkdownRenderer = (openExternalLinksInNewTab = false) => {
     breaks: false,
   });
 
-  if (!openExternalLinksInNewTab) {
-    return markdown;
-  }
-
   const fallbackLinkOpenRenderer: NonNullable<typeof markdown.renderer.rules.link_open> = (
+    tokens,
+    idx,
+    options,
+    _env,
+    self,
+  ) => self.renderToken(tokens, idx, options);
+  const fallbackTableOpenRenderer: NonNullable<typeof markdown.renderer.rules.table_open> = (
+    tokens,
+    idx,
+    options,
+    _env,
+    self,
+  ) => self.renderToken(tokens, idx, options);
+  const fallbackTableCloseRenderer: NonNullable<typeof markdown.renderer.rules.table_close> = (
     tokens,
     idx,
     options,
@@ -33,6 +44,25 @@ const createMarkdownRenderer = (openExternalLinksInNewTab = false) => {
   ) => self.renderToken(tokens, idx, options);
 
   const defaultLinkOpenRenderer = markdown.renderer.rules.link_open ?? fallbackLinkOpenRenderer;
+  const defaultTableOpenRenderer = markdown.renderer.rules.table_open ?? fallbackTableOpenRenderer;
+  const defaultTableCloseRenderer =
+    markdown.renderer.rules.table_close ?? fallbackTableCloseRenderer;
+
+  markdown.renderer.rules.table_open = (tokens, idx, options, env, self) =>
+    `<div class="markdown-content__table-scroll">${defaultTableOpenRenderer(
+      tokens,
+      idx,
+      options,
+      env,
+      self,
+    )}`;
+
+  markdown.renderer.rules.table_close = (tokens, idx, options, env, self) =>
+    `${defaultTableCloseRenderer(tokens, idx, options, env, self)}</div>`;
+
+  if (!openExternalLinksInNewTab) {
+    return markdown;
+  }
 
   markdown.renderer.rules.link_open = (tokens, idx, options, env, self) => {
     const token = tokens[idx];

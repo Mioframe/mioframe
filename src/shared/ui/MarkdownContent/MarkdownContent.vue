@@ -33,7 +33,6 @@ const renderedMarkdown = computed(() =>
 <style scoped>
 .markdown-content {
   --markdown-block-gap: 16px;
-  --markdown-heading-gap: 24px;
   --markdown-inline-code-background: var(--md-sys-color-surface-container-low);
   --markdown-code-block-background: var(--md-sys-color-surface-container-low);
   --markdown-surface-background: var(--md-sys-color-surface-container-lowest);
@@ -69,7 +68,6 @@ const renderedMarkdown = computed(() =>
 
 .markdown-content--article {
   --markdown-block-gap: 20px;
-  --markdown-heading-gap: 32px;
   --markdown-surface-background: var(--md-sys-color-surface-container-low);
   --markdown-heading-1-font: var(--md-sys-typescale-headline-large-font);
   --markdown-heading-1-weight: var(--md-sys-typescale-headline-large-weight);
@@ -95,7 +93,6 @@ const renderedMarkdown = computed(() =>
 
 .markdown-content--compact {
   --markdown-block-gap: 12px;
-  --markdown-heading-gap: 18px;
   --markdown-inline-code-background: var(--md-sys-color-surface-container-lowest);
   --markdown-code-block-background: var(--md-sys-color-surface-container-lowest);
   --markdown-heading-1-font: var(--md-sys-typescale-headline-small-font);
@@ -236,11 +233,14 @@ const renderedMarkdown = computed(() =>
   margin: 0;
 }
 
-.markdown-content :deep(table) {
+.markdown-content :deep(.markdown-content__table-scroll) {
   overflow-x: auto;
-  min-width: 100%;
-  width: max-content;
   max-width: 100%;
+}
+
+.markdown-content :deep(table) {
+  width: 100%;
+  min-width: max-content;
   border-collapse: collapse;
   border-spacing: 0;
   border-radius: var(--md-sys-shape-corner-medium);

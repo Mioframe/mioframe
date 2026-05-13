@@ -55,18 +55,39 @@ export default meta;
 
 type Story = StoryObj<typeof meta>;
 
-export const Default: Story = {};
+const renderInSurface = (
+  variant: 'body' | 'article' | 'compact',
+  cardVariant: 'outlined' | 'filled',
+) => ({
+  components: { MarkdownContent, MDCard },
+  setup: () => ({
+    sampleMarkdown,
+  }),
+  template: `
+    <div style="max-width: 840px; width: 100%;">
+      <MDCard variant="${cardVariant}" style="max-width: 720px; padding: 24px; gap: 0;">
+        <MarkdownContent :source="sampleMarkdown" variant="${variant}" />
+      </MDCard>
+    </div>
+  `,
+});
+
+export const Default: Story = {
+  render: () => renderInSurface('body', 'outlined'),
+};
 
 export const Article: Story = {
   args: {
     variant: 'article',
   },
+  render: () => renderInSurface('article', 'filled'),
 };
 
 export const Compact: Story = {
   args: {
     variant: 'compact',
   },
+  render: () => renderInSurface('compact', 'outlined'),
 };
 
 export const VariantsOverview: Story = {
