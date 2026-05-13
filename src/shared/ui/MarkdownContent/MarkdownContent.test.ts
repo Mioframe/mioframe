@@ -44,6 +44,18 @@ describe('MarkdownContent', () => {
     expect(content.classes()).toContain('markdown-content--compact');
   });
 
+  it('passes the table wrapper class and renders tables inside the scroll container', () => {
+    const wrapper = mount(MarkdownContent, {
+      props: {
+        source: ['| Name | Value |', '| --- | --- |', '| Alpha | 1 |'].join('\n'),
+      },
+    });
+
+    const tableWrapper = wrapper.get('.markdown-content__table-scroll');
+
+    expect(tableWrapper.find('table').exists()).toBe(true);
+  });
+
   it('escapes raw html so script tags do not become executable dom nodes', () => {
     const wrapper = mount(MarkdownContent, {
       props: {

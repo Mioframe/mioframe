@@ -15,13 +15,24 @@ describe('renderMarkdown', () => {
     expect(rendered).toContain('<li>two</li>');
   });
 
-  it('wraps tables in a dedicated scroll container while keeping the table element intact', () => {
+  it('wraps tables only when a wrapper class name is provided', () => {
+    const rendered = renderMarkdown(
+      ['| Name | Value |', '| --- | --- |', '| Alpha | 1 |'].join('\n'),
+      { tableWrapperClassName: 'custom-table-wrapper' },
+    );
+
+    expect(rendered).toContain('<div class="custom-table-wrapper"><table>');
+    expect(rendered).toMatch(/<\/table>\s*<\/div>/u);
+  });
+
+  it('does not add a table wrapper when no wrapper class name is provided', () => {
     const rendered = renderMarkdown(
       ['| Name | Value |', '| --- | --- |', '| Alpha | 1 |'].join('\n'),
     );
 
-    expect(rendered).toContain('<div class="markdown-content__table-scroll"><table>');
-    expect(rendered).toMatch(/<\/table>\s*<\/div>/u);
+    expect(rendered).toContain('<table>');
+    expect(rendered).not.toContain('markdown-content__table-scroll');
+    expect(rendered).not.toContain('<div class=');
   });
 
   it('renders markdown links', () => {
@@ -56,6 +67,7 @@ describe('renderMarkdown', () => {
     const rendered = renderMarkdown(
       [
         '[External](https://example.com)',
+        '[Http](http://example.com)',
         '[Protocol Relative](//example.com/docs)',
         '[Mail](mailto:test@example.com)',
         '[Phone](tel:+123)',
@@ -67,6 +79,9 @@ describe('renderMarkdown', () => {
 
     expect(rendered).toContain(
       '<a href="https://example.com" target="_blank" rel="noopener noreferrer">External</a>',
+    );
+    expect(rendered).toContain(
+      '<a href="http://example.com" target="_blank" rel="noopener noreferrer">Http</a>',
     );
     expect(rendered).toContain(
       '<a href="//example.com/docs" target="_blank" rel="noopener noreferrer">Protocol Relative</a>',

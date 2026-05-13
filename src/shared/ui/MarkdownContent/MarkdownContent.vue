@@ -17,10 +17,12 @@ const props = withDefaults(
 );
 
 const contentClassName = computed(() => ['markdown-content', `markdown-content--${props.variant}`]);
+const tableWrapperClassName = 'markdown-content__table-scroll';
 
 const renderedMarkdown = computed(() =>
   renderMarkdown(props.source, {
     openExternalLinksInNewTab: props.openExternalLinksInNewTab,
+    tableWrapperClassName,
   }),
 );
 </script>
@@ -235,16 +237,19 @@ const renderedMarkdown = computed(() =>
 
 .markdown-content :deep(.markdown-content__table-scroll) {
   overflow-x: auto;
+  overflow-y: hidden;
   max-width: 100%;
-}
-
-.markdown-content :deep(table) {
-  width: 100%;
-  min-width: max-content;
-  border-collapse: collapse;
-  border-spacing: 0;
+  border: 1px solid var(--markdown-border-color);
   border-radius: var(--md-sys-shape-corner-medium);
   background-color: var(--md-sys-color-surface-container-lowest);
+}
+
+.markdown-content :deep(.markdown-content__table-scroll > table) {
+  width: 100%;
+  min-width: max-content;
+  border-collapse: separate;
+  border-spacing: 0;
+  background-color: transparent;
 }
 
 .markdown-content :deep(thead) {

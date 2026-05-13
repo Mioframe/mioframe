@@ -2,43 +2,71 @@ import type { Meta, StoryObj } from '@storybook/vue3-vite';
 import { MDCard } from '@shared/ui/Card';
 import MarkdownContent from './MarkdownContent.vue';
 
-const sampleMarkdown = `# Markdown Content
+const kitchenSinkMarkdown = `# Markdown Content
 
-Paragraph text with a [link](https://example.com), **strong** emphasis, *italic* emphasis, and \`inline code\`.
+Paragraph text with **strong** emphasis, *italic* emphasis, \`inline code\`, and a regular [link](/docs/getting-started).
+
+Second paragraph with an external [OpenAI link](https://openai.com) that can opt into \`target="_blank"\`.
 
 ## Lists
 
 - Bullet one
 - Bullet two
+- Nested items
+  - Nested bullet
+  - Another nested bullet with \`code\`
 
 1. First item
 2. Second item
+3. Third item
+   1. Nested ordered item
+   2. Nested ordered item two
 
-## Quote
+### Quotes
 
 > Markdown content stays inside the parent layout.
+>
+> Second quoted paragraph keeps the block styling and spacing visible.
 
 ## Code Block
 
 \`\`\`ts
 export const message = 'hello markdown';
+console.log(message);
 \`\`\`
 
 ## Table
 
-| Name | Value |
-| --- | --- |
-| Alpha | 1 |
-| Beta | 2 |
-`;
+| Name | Value | Notes |
+| --- | --- | --- |
+| Alpha | 1 | Regular table content |
+| Beta | 2 | Header background should clip cleanly |
+
+## Wide Table
+
+| Column A | Column B | Column C | Column D | Column E | Column F |
+| --- | --- | --- | --- | --- | --- |
+| Very long project value that should stay inside the scroller | Another long value for overflow testing | Material-style wrapper | Rounded outline | Inner horizontal scroll | Layout stays stable |
+| Short | Medium value | More content | More content | More content | More content |
+
+---
+
+Raw HTML stays escaped: <div class="unsafe-html">not rendered as DOM</div>`;
+
+const wideTableMarkdown = `## Wide Table
+
+| Column A | Column B | Column C | Column D | Column E | Column F | Column G |
+| --- | --- | --- | --- | --- | --- | --- |
+| Very long value that should require horizontal scrolling inside the table wrapper | Another long value | More content | More content | More content | More content | More content |
+| Second row with long content to prove the card width stays constrained | Another long value | More content | More content | More content | More content | More content |`;
 
 const meta = {
   title: 'shared/ui/MarkdownContent',
   component: MarkdownContent,
   args: {
-    source: sampleMarkdown,
+    source: kitchenSinkMarkdown,
     variant: 'body',
-    openExternalLinksInNewTab: false,
+    openExternalLinksInNewTab: true,
   },
   argTypes: {
     variant: {
@@ -55,47 +83,79 @@ export default meta;
 
 type Story = StoryObj<typeof meta>;
 
-const renderInSurface = (
-  variant: 'body' | 'article' | 'compact',
-  cardVariant: 'outlined' | 'filled',
-) => ({
-  components: { MarkdownContent, MDCard },
-  setup: () => ({
-    sampleMarkdown,
-  }),
-  template: `
+const renderInSurface =
+  (defaultVariant: 'body' | 'article' | 'compact', cardVariant: 'outlined' | 'filled') =>
+  (args: { variant?: 'body' | 'article' | 'compact'; openExternalLinksInNewTab?: boolean }) => ({
+    components: { MarkdownContent, MDCard },
+    setup: () => ({
+      args,
+      kitchenSinkMarkdown,
+      defaultVariant,
+    }),
+    template: `
     <div style="max-width: 840px; width: 100%;">
       <MDCard variant="${cardVariant}" style="max-width: 720px; padding: 24px; gap: 0;">
-        <MarkdownContent :source="sampleMarkdown" variant="${variant}" />
+        <MarkdownContent
+          :source="kitchenSinkMarkdown"
+          :variant="args.variant ?? defaultVariant"
+          :open-external-links-in-new-tab="args.openExternalLinksInNewTab ?? true"
+        />
       </MDCard>
     </div>
   `,
-});
+  });
 
 export const Default: Story = {
-  render: () => renderInSurface('body', 'outlined'),
+  render: renderInSurface('body', 'outlined'),
 };
 
 export const Article: Story = {
   args: {
     variant: 'article',
   },
-  render: () => renderInSurface('article', 'filled'),
+  render: renderInSurface('article', 'filled'),
 };
 
 export const Compact: Story = {
   args: {
     variant: 'compact',
   },
-  render: () => renderInSurface('compact', 'outlined'),
+  render: renderInSurface('compact', 'outlined'),
+};
+
+export const WideTable: Story = {
+  tags: ['visual'],
+  render: (args) => ({
+    components: { MarkdownContent, MDCard },
+    setup: () => ({
+      args,
+      wideTableMarkdown,
+    }),
+    template: `
+      <div style="max-width: 420px; width: 100%;">
+        <MDCard
+          data-testid="visual-markdown-content-wide-table"
+          variant="outlined"
+          style="max-width: 320px; padding: 20px; gap: 0;"
+        >
+          <MarkdownContent
+            :source="wideTableMarkdown"
+            variant="body"
+            :open-external-links-in-new-tab="args.openExternalLinksInNewTab ?? true"
+          />
+        </MDCard>
+      </div>
+    `,
+  }),
 };
 
 export const VariantsOverview: Story = {
   tags: ['visual'],
-  render: () => ({
+  render: (args) => ({
     components: { MarkdownContent, MDCard },
     setup: () => ({
-      sampleMarkdown,
+      args,
+      kitchenSinkMarkdown,
     }),
     template: `
       <div
@@ -103,13 +163,25 @@ export const VariantsOverview: Story = {
         style="display: grid; gap: 24px; max-width: 840px; width: 100%;"
       >
         <MDCard variant="outlined" style="max-width: 720px; padding: 24px; gap: 0;">
-          <MarkdownContent :source="sampleMarkdown" variant="body" />
+          <MarkdownContent
+            :source="kitchenSinkMarkdown"
+            variant="body"
+            :open-external-links-in-new-tab="args.openExternalLinksInNewTab ?? true"
+          />
         </MDCard>
         <MDCard variant="filled" style="max-width: 720px; padding: 28px; gap: 0;">
-          <MarkdownContent :source="sampleMarkdown" variant="article" />
+          <MarkdownContent
+            :source="kitchenSinkMarkdown"
+            variant="article"
+            :open-external-links-in-new-tab="args.openExternalLinksInNewTab ?? true"
+          />
         </MDCard>
         <MDCard variant="outlined" style="max-width: 640px; padding: 20px; gap: 0;">
-          <MarkdownContent :source="sampleMarkdown" variant="compact" />
+          <MarkdownContent
+            :source="kitchenSinkMarkdown"
+            variant="compact"
+            :open-external-links-in-new-tab="args.openExternalLinksInNewTab ?? true"
+          />
         </MDCard>
       </div>
     `,

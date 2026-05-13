@@ -19,8 +19,8 @@ export enum SPACE {
 
 /**
  * Authentication parameters for Google Drive API requests.
- * @property ACCESS_TOKEN - required OAuth2 access token
- * @property API_KEY - optional API key for additional requests
+ * ACCESS_TOKEN - required OAuth2 access token
+ * API_KEY - optional API key for additional requests
  */
 export interface GoogleAuthParams {
   API_KEY?: string;
