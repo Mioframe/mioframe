@@ -1,0 +1,22 @@
+{
+  "localServer": {
+    "host": "127.0.0.1"
+  },
+  "appPreview": {
+    "port": 4173
+  },
+  "storybook": {
+    "devServer": {
+      "port": 6006
+    },
+    "visualPreview": {
+      "port": 6007,
+      "strictPort": true
+    },
+    "staticDir": "storybook-static",
+    "deterministicBuildDate": "2025-01-01T00:00:00.000Z"
+  },
+  "playwright": {
+    "webServerTimeoutMs": 240000
+  }
+}

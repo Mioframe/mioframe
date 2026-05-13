@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
+import toolingConfig from '../config/tooling.json' with { type: 'json' };
 
 const isFixMode = process.argv.includes('--fix');
 const cliBaseRef = getCliBaseRef(process.argv.slice(2));
@@ -23,9 +24,11 @@ const FORMATTABLE_EXTENSIONS = new Set([
 
 const LINTABLE_EXTENSIONS = new Set(['.js', '.jsx', '.mjs', '.mts', '.ts', '.tsx', '.vue']);
 const SOURCE_EXTENSIONS = ['.ts', '.vue'];
+const storybookStaticDirPrefix = `${toolingConfig.storybook.staticDir}/`;
 const IGNORED_PREFIXES = [
   'node_modules/',
   'dist/',
+  storybookStaticDirPrefix,
   'coverage/',
   'reports/',
   'playwright-report/',
@@ -224,6 +227,7 @@ function isTypeCheckTarget(filePath) {
 
   return (
     filePath === 'package.json' ||
+    filePath === 'config/tooling.json' ||
     filePath === 'pnpm-lock.yaml' ||
     filePath === 'env.d.ts' ||
     filePath === 'vite-env.d.ts' ||
@@ -303,6 +307,24 @@ function getVitestScope(changedFiles) {
 
 function isSharedUiFile(filePath) {
   return filePath.startsWith('src/shared/ui/');
+}
+
+function isVisualRelevantFile(filePath) {
+  return (
+    filePath === 'config/tooling.json' ||
+    filePath === 'playwright.visual.config.ts' ||
+    filePath === 'vite.config.ts' ||
+    filePath === 'package.json' ||
+    filePath === 'tsconfig.storybook.json' ||
+    filePath === 'scripts/storybook.mjs' ||
+    filePath === 'src/app/styles/styles.css' ||
+    filePath === 'src/app/styles/fonts.css' ||
+    filePath.startsWith('.storybook/') ||
+    filePath.startsWith('tests/e2e/visual/') ||
+    filePath.startsWith('src/shared/ui/') ||
+    filePath.startsWith('src/shared/lib/md/') ||
+    /\.stories\.(ts|tsx|js|jsx|mjs|vue)$/.test(filePath)
+  );
 }
 
 function getMutationSourceCandidate(testFilePath) {
@@ -445,9 +467,17 @@ function buildCommands(changedFiles) {
     LINTABLE_EXTENSIONS.has(path.posix.extname(filePath)),
   );
   const vitestScope = getVitestScope(changedFiles);
+  const changedVisualSpecs = changedFiles.filter(
+    (filePath) =>
+      filePath.startsWith('tests/e2e/visual/') && filePath.endsWith('.ts') && fileExists(filePath),
+  );
+  const hasVisualRelevantChanges = changedFiles.some(isVisualRelevantFile);
   const changedE2ESpecs = changedFiles.filter(
     (filePath) =>
-      filePath.startsWith('tests/e2e/') && filePath.endsWith('.ts') && fileExists(filePath),
+      filePath.startsWith('tests/e2e/') &&
+      !filePath.startsWith('tests/e2e/visual/') &&
+      filePath.endsWith('.ts') &&
+      fileExists(filePath),
   );
   const mutationScope = getMutationScope(changedFiles);
   const commands = [];
@@ -545,6 +575,22 @@ function buildCommands(changedFiles) {
       label: 'e2e',
       command: 'pnpm exec playwright test',
       reason: 'empty e2e scope',
+    });
+  }
+
+  if (hasVisualRelevantChanges || changedVisualSpecs.length > 0) {
+    commands.push({
+      kind: 'run',
+      label: 'visual',
+      command: 'pnpm',
+      args: ['test:visual'],
+    });
+  } else {
+    commands.push({
+      kind: 'skipped',
+      label: 'visual',
+      command: 'pnpm test:visual',
+      reason: 'empty visual scope',
     });
   }
 
