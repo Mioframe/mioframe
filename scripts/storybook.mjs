@@ -18,7 +18,7 @@ const args =
         '--host',
         toolingConfig.localServer.host,
       ]
-    : ['storybook', 'build'];
+    : ['storybook', 'build', '--output-dir', toolingConfig.storybook.staticDir];
 
 const child = spawn(args.join(' '), {
   stdio: 'inherit',
