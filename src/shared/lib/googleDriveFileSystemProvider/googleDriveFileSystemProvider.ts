@@ -28,7 +28,7 @@ import {
 import type { GOOGLE_SCOPE } from '@shared/lib/googleApi';
 import { DRIVE_GOOGLE_SCOPE } from '@shared/lib/googleApi';
 import { firstValueFrom, skip, type Observable } from 'rxjs';
-import { createSafeErrorCause, DomainError } from '@shared/lib/error';
+import { createSafeErrorCause } from '@shared/lib/error';
 import { GoogleDriveError } from '@shared/lib/googleDrive/error';
 import {
   getGoogleDrivePathEmail,
@@ -124,11 +124,11 @@ export const googleDriveFileSystemProvider = (
 ) => {
   const { requestToken, $sessions } = providerOptions;
   const toSafeGoogleDriveCause = (error: unknown, safeMessage: string) => {
-    if (
-      error instanceof VfsError ||
-      error instanceof GoogleDriveError ||
-      error instanceof DomainError
-    ) {
+    if (error instanceof GoogleDriveError) {
+      return error;
+    }
+
+    if (error instanceof VfsError && error.cause === undefined) {
       return error;
     }
 
@@ -349,11 +349,16 @@ export const googleDriveFileSystemProvider = (
         capabilities: getEntryCapabilities(entry),
       };
     } catch (e) {
-      if (e instanceof VfsError) throw e;
+      const safeCause = toSafeGoogleDriveCause(e, 'Google Drive stat request failed');
+
+      if (safeCause instanceof VfsError && safeCause.code !== FileSystemError.Unknown) {
+        throw safeCause;
+      }
+
       throw new VfsError(
         FileSystemError.FileNotFound,
         'Google Drive stat operation failed',
-        toSafeGoogleDriveCause(e, 'Google Drive stat request failed'),
+        safeCause,
       );
     }
   };

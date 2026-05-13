@@ -9,6 +9,7 @@ import {
 } from '@shared/lib/virtualFileSystem';
 import type { GDriveFileMeta } from '@shared/lib/googleDrive/api';
 import { DRIVE_GOOGLE_SCOPE } from '@shared/lib/googleApi';
+import { GoogleAuthError, GoogleAuthErrorCode } from '@shared/service/google/errors';
 
 const {
   createMock,
@@ -318,6 +319,65 @@ describe('googleDriveFileSystemProvider', () => {
       'cause.message',
       'Token request failed for user@example.com file gd-123 path /user@example.com/My Drive/Taxes',
     );
+  });
+
+  it('sanitizes Google authorization errors with account emails before they become VfsError causes', async () => {
+    const provider = googleDriveFileSystemProvider({
+      $sessions: new BehaviorSubject<string[]>(['user@example.com']),
+      requestToken: vi.fn().mockRejectedValueOnce(
+        new GoogleAuthError({
+          code: GoogleAuthErrorCode.reauthRequired,
+          expectedEmail: 'user@example.com',
+        }),
+      ),
+    });
+
+    const error = await provider
+      .stat('/user@example.com/My Drive/Taxes')
+      .catch((caughtError: unknown) => caughtError);
+
+    expect(error).toBeInstanceOf(VfsError);
+    expect(error).toMatchObject({
+      code: FileSystemError.FileNotFound,
+      message: 'Google Drive stat operation failed',
+      cause: expect.objectContaining({
+        message: 'Google Drive stat request failed',
+      }),
+    });
+
+    expect(error).not.toHaveProperty(
+      'cause.message',
+      'Google Drive access requires authorization for user@example.com',
+    );
+  });
+
+  it('sanitizes nested causes inside VfsError instances before rewrapping them', async () => {
+    const provider = googleDriveFileSystemProvider({
+      $sessions: new BehaviorSubject<string[]>(['user@example.com']),
+      requestToken: vi
+        .fn()
+        .mockRejectedValueOnce(
+          new VfsError(
+            FileSystemError.Unknown,
+            'Outer safe message',
+            new Error('raw /private/path gd-123'),
+          ),
+        ),
+    });
+
+    const error = await provider
+      .stat('/user@example.com/My Drive/Taxes')
+      .catch((caughtError: unknown) => caughtError);
+
+    expect(error).toBeInstanceOf(VfsError);
+    expect(error).toMatchObject({
+      code: FileSystemError.FileNotFound,
+      message: 'Google Drive stat operation failed',
+      cause: expect.objectContaining({
+        message: 'Google Drive stat request failed',
+      }),
+    });
+    expect(error).not.toHaveProperty('cause.message', 'Outer safe message');
   });
 
   it('sanitizes raw download failures while preserving the VfsError code', async () => {
