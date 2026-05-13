@@ -6,6 +6,16 @@ describe('renderMarkdown', () => {
     expect(renderMarkdown('# Title')).toContain('<h1>Title</h1>');
   });
 
+  it('renders h4 through h6 headings', () => {
+    const rendered = renderMarkdown(
+      ['#### Title 4', '##### Title 5', '###### Title 6'].join('\n\n'),
+    );
+
+    expect(rendered).toContain('<h4>Title 4</h4>');
+    expect(rendered).toContain('<h5>Title 5</h5>');
+    expect(rendered).toContain('<h6>Title 6</h6>');
+  });
+
   it('renders paragraphs and lists', () => {
     const rendered = renderMarkdown(['First paragraph', '', '- one', '- two'].join('\n'));
 
@@ -41,6 +51,17 @@ describe('renderMarkdown', () => {
     );
   });
 
+  it('renders strikethrough text with the default markdown-it support', () => {
+    expect(renderMarkdown('~~deleted text~~')).toContain('<s>deleted text</s>');
+  });
+
+  it('renders angle-bracket autolinks and email autolinks via markdown syntax even when linkify is disabled', () => {
+    const rendered = renderMarkdown(['<https://example.com>', '<user@example.com>'].join('\n\n'));
+
+    expect(rendered).toContain('<a href="https://example.com">https://example.com</a>');
+    expect(rendered).toContain('<a href="mailto:user@example.com">user@example.com</a>');
+  });
+
   it('keeps default link rendering unchanged when the option is disabled', () => {
     const rendered = renderMarkdown('[Docs](https://example.com)');
 
@@ -53,6 +74,24 @@ describe('renderMarkdown', () => {
 
     expect(rendered).not.toContain('<script>');
     expect(rendered).toContain('&lt;script&gt;alert(1)&lt;/script&gt;');
+  });
+
+  it('renders markdown image syntax with the default markdown-it image support', () => {
+    const rendered = renderMarkdown('![Alt](./image.png)');
+
+    expect(rendered).toContain('<p><img src="./image.png" alt="Alt"></p>');
+  });
+
+  it('preserves aligned tables inside the wrapper markup', () => {
+    const rendered = renderMarkdown(
+      ['| Left | Center | Right |', '| :--- | :---: | ---: |', '| one | two | three |'].join('\n'),
+      { tableWrapperClassName: 'custom-table-wrapper' },
+    );
+
+    expect(rendered).toContain('<div class="custom-table-wrapper"><table>');
+    expect(rendered).toContain('<th style="text-align:left">Left</th>');
+    expect(rendered).toContain('<th style="text-align:center">Center</th>');
+    expect(rendered).toContain('<th style="text-align:right">Right</th>');
   });
 
   it('does not render javascript protocol links as clickable anchors', () => {

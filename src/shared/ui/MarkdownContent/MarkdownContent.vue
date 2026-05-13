@@ -55,6 +55,21 @@ const renderedMarkdown = computed(() =>
   --markdown-heading-3-size: var(--md-sys-typescale-title-large-size);
   --markdown-heading-3-line-height: var(--md-sys-typescale-title-large-line-height);
   --markdown-heading-3-tracking: var(--md-sys-typescale-title-large-tracking);
+  --markdown-heading-4-font: var(--md-sys-typescale-title-medium-font);
+  --markdown-heading-4-weight: var(--md-sys-typescale-title-medium-weight);
+  --markdown-heading-4-size: var(--md-sys-typescale-title-medium-size);
+  --markdown-heading-4-line-height: var(--md-sys-typescale-title-medium-line-height);
+  --markdown-heading-4-tracking: var(--md-sys-typescale-title-medium-tracking);
+  --markdown-heading-5-font: var(--md-sys-typescale-title-small-font);
+  --markdown-heading-5-weight: var(--md-sys-typescale-title-small-weight);
+  --markdown-heading-5-size: var(--md-sys-typescale-title-small-size);
+  --markdown-heading-5-line-height: var(--md-sys-typescale-title-small-line-height);
+  --markdown-heading-5-tracking: var(--md-sys-typescale-title-small-tracking);
+  --markdown-heading-6-font: var(--md-sys-typescale-label-large-font);
+  --markdown-heading-6-weight: var(--md-sys-typescale-label-large-weight);
+  --markdown-heading-6-size: var(--md-sys-typescale-label-large-size);
+  --markdown-heading-6-line-height: var(--md-sys-typescale-label-large-line-height);
+  --markdown-heading-6-tracking: var(--md-sys-typescale-label-large-tracking);
 
   display: grid;
   align-content: start;
@@ -86,6 +101,21 @@ const renderedMarkdown = computed(() =>
   --markdown-heading-3-size: var(--md-sys-typescale-title-medium-size);
   --markdown-heading-3-line-height: var(--md-sys-typescale-title-medium-line-height);
   --markdown-heading-3-tracking: var(--md-sys-typescale-title-medium-tracking);
+  --markdown-heading-4-font: var(--md-sys-typescale-title-small-font);
+  --markdown-heading-4-weight: var(--md-sys-typescale-title-small-weight);
+  --markdown-heading-4-size: var(--md-sys-typescale-title-small-size);
+  --markdown-heading-4-line-height: var(--md-sys-typescale-title-small-line-height);
+  --markdown-heading-4-tracking: var(--md-sys-typescale-title-small-tracking);
+  --markdown-heading-5-font: var(--md-sys-typescale-label-large-font);
+  --markdown-heading-5-weight: var(--md-sys-typescale-label-large-weight);
+  --markdown-heading-5-size: var(--md-sys-typescale-label-large-size);
+  --markdown-heading-5-line-height: var(--md-sys-typescale-label-large-line-height);
+  --markdown-heading-5-tracking: var(--md-sys-typescale-label-large-tracking);
+  --markdown-heading-6-font: var(--md-sys-typescale-label-medium-font);
+  --markdown-heading-6-weight: var(--md-sys-typescale-label-medium-weight);
+  --markdown-heading-6-size: var(--md-sys-typescale-label-medium-size);
+  --markdown-heading-6-line-height: var(--md-sys-typescale-label-medium-line-height);
+  --markdown-heading-6-tracking: var(--md-sys-typescale-label-medium-tracking);
 
   font-size: var(--md-sys-typescale-body-large-size);
   font-weight: var(--md-sys-typescale-body-large-weight);
@@ -112,6 +142,21 @@ const renderedMarkdown = computed(() =>
   --markdown-heading-3-size: var(--md-sys-typescale-title-medium-size);
   --markdown-heading-3-line-height: var(--md-sys-typescale-title-medium-line-height);
   --markdown-heading-3-tracking: var(--md-sys-typescale-title-medium-tracking);
+  --markdown-heading-4-font: var(--md-sys-typescale-title-small-font);
+  --markdown-heading-4-weight: var(--md-sys-typescale-title-small-weight);
+  --markdown-heading-4-size: var(--md-sys-typescale-title-small-size);
+  --markdown-heading-4-line-height: var(--md-sys-typescale-title-small-line-height);
+  --markdown-heading-4-tracking: var(--md-sys-typescale-title-small-tracking);
+  --markdown-heading-5-font: var(--md-sys-typescale-label-large-font);
+  --markdown-heading-5-weight: var(--md-sys-typescale-label-large-weight);
+  --markdown-heading-5-size: var(--md-sys-typescale-label-large-size);
+  --markdown-heading-5-line-height: var(--md-sys-typescale-label-large-line-height);
+  --markdown-heading-5-tracking: var(--md-sys-typescale-label-large-tracking);
+  --markdown-heading-6-font: var(--md-sys-typescale-label-medium-font);
+  --markdown-heading-6-weight: var(--md-sys-typescale-label-medium-weight);
+  --markdown-heading-6-size: var(--md-sys-typescale-label-medium-size);
+  --markdown-heading-6-line-height: var(--md-sys-typescale-label-medium-line-height);
+  --markdown-heading-6-tracking: var(--md-sys-typescale-label-medium-tracking);
 
   font-size: var(--md-sys-typescale-body-small-size);
   font-weight: var(--md-sys-typescale-body-small-weight);
@@ -125,7 +170,10 @@ const renderedMarkdown = computed(() =>
 
 .markdown-content :deep(h1),
 .markdown-content :deep(h2),
-.markdown-content :deep(h3) {
+.markdown-content :deep(h3),
+.markdown-content :deep(h4),
+.markdown-content :deep(h5),
+.markdown-content :deep(h6) {
   margin: 0;
   color: var(--md-sys-color-on-surface);
   overflow-wrap: anywhere;
@@ -153,6 +201,30 @@ const renderedMarkdown = computed(() =>
   font-weight: var(--markdown-heading-3-weight);
   line-height: var(--markdown-heading-3-line-height);
   letter-spacing: var(--markdown-heading-3-tracking);
+}
+
+.markdown-content :deep(h4) {
+  font-family: var(--markdown-heading-4-font);
+  font-size: var(--markdown-heading-4-size);
+  font-weight: var(--markdown-heading-4-weight);
+  line-height: var(--markdown-heading-4-line-height);
+  letter-spacing: var(--markdown-heading-4-tracking);
+}
+
+.markdown-content :deep(h5) {
+  font-family: var(--markdown-heading-5-font);
+  font-size: var(--markdown-heading-5-size);
+  font-weight: var(--markdown-heading-5-weight);
+  line-height: var(--markdown-heading-5-line-height);
+  letter-spacing: var(--markdown-heading-5-tracking);
+}
+
+.markdown-content :deep(h6) {
+  font-family: var(--markdown-heading-6-font);
+  font-size: var(--markdown-heading-6-size);
+  font-weight: var(--markdown-heading-6-weight);
+  line-height: var(--markdown-heading-6-line-height);
+  letter-spacing: var(--markdown-heading-6-tracking);
 }
 
 .markdown-content :deep(p),

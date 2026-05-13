@@ -30,6 +30,18 @@ describe('MarkdownContent', () => {
     expect(wrapper.text()).not.toContain('Plain text');
   });
 
+  it('renders h4 through h6 headings in the dom', () => {
+    const wrapper = mount(MarkdownContent, {
+      props: {
+        source: ['#### Title 4', '##### Title 5', '###### Title 6'].join('\n\n'),
+      },
+    });
+
+    expect(wrapper.find('h4').text()).toBe('Title 4');
+    expect(wrapper.find('h5').text()).toBe('Title 5');
+    expect(wrapper.find('h6').text()).toBe('Title 6');
+  });
+
   it('adds the variant modifier class', () => {
     const wrapper = mount(MarkdownContent, {
       props: {
@@ -47,13 +59,21 @@ describe('MarkdownContent', () => {
   it('passes the table wrapper class and renders tables inside the scroll container', () => {
     const wrapper = mount(MarkdownContent, {
       props: {
-        source: ['| Name | Value |', '| --- | --- |', '| Alpha | 1 |'].join('\n'),
+        source: ['| Left | Center | Right |', '| :--- | :---: | ---: |', '| Alpha | 1 | 2 |'].join(
+          '\n',
+        ),
       },
     });
 
     const tableWrapper = wrapper.get('.markdown-content__table-scroll');
+    const headings = tableWrapper.findAll('th');
 
     expect(tableWrapper.find('table').exists()).toBe(true);
+    expect(headings.map((heading) => heading.attributes('style'))).toEqual([
+      'text-align:left',
+      'text-align:center',
+      'text-align:right',
+    ]);
   });
 
   it('escapes raw html so script tags do not become executable dom nodes', () => {
@@ -65,6 +85,19 @@ describe('MarkdownContent', () => {
 
     expect(wrapper.find('script').exists()).toBe(false);
     expect(wrapper.text()).toContain('<script>alert(1)</script>');
+  });
+
+  it('keeps the default markdown image rendering without any extra image-specific wrapper logic', () => {
+    const wrapper = mount(MarkdownContent, {
+      props: {
+        source: '![Alt](./image.png)',
+      },
+    });
+
+    expect(wrapper.find('img').attributes()).toMatchObject({
+      src: './image.png',
+      alt: 'Alt',
+    });
   });
 
   it('adds new-tab attributes only to external links when requested', () => {

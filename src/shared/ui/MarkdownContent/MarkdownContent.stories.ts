@@ -8,6 +8,11 @@ Paragraph text with **strong** emphasis, *italic* emphasis, \`inline code\`, and
 
 Second paragraph with an external [OpenAI link](https://openai.com) that can opt into \`target="_blank"\`.
 
+Third paragraph ends with a hard line break.  
+This line should stay in the same paragraph after the explicit break.
+This next line uses a soft
+line break so the current wrapping behavior stays visible.
+
 ## Lists
 
 - Bullet one
@@ -27,6 +32,21 @@ Second paragraph with an external [OpenAI link](https://openai.com) that can opt
 > Markdown content stays inside the parent layout.
 >
 > Second quoted paragraph keeps the block styling and spacing visible.
+>
+> - Nested bullet one
+> - Nested bullet two with \`nested code\`
+
+#### Heading Level 4
+
+Compact heading level with ~~deleted text~~ and escaped markdown characters: *not italic*.
+
+##### Heading Level 5
+
+Angle-bracket autolinks still render through markdown syntax: <https://example.com> and <user@example.com>.
+
+###### Heading Level 6
+
+Inline code with special characters: \`const pattern = /<tag>\\s+\\*value\\*/u;\`
 
 ## Code Block
 
@@ -35,6 +55,11 @@ export const message = 'hello markdown';
 console.log(message);
 \`\`\`
 
+Indented code block:
+
+    const indented = '<section data-kind="sample">';
+    console.log(indented);
+
 ## Table
 
 | Name | Value | Notes |
@@ -42,12 +67,24 @@ console.log(message);
 | Alpha | 1 | Regular table content |
 | Beta | 2 | Header background should clip cleanly |
 
+## Aligned Table
+
+| Left | Center | Right |
+| :--- | :---: | ---: |
+| left | centered | right |
+| filled |  | trailing |
+|  | empty left | 123 |
+
 ## Wide Table
 
 | Column A | Column B | Column C | Column D | Column E | Column F |
 | --- | --- | --- | --- | --- | --- |
 | Very long project value that should stay inside the scroller | Another long value for overflow testing | Material-style wrapper | Rounded outline | Inner horizontal scroll | Layout stays stable |
 | Short | Medium value | More content | More content | More content | More content |
+
+Long unbroken content for overflow-wrap checks:
+https://example.com/some/really/really/really/really/really/really/long/path/without/breaks
+supercalifragilisticexpialidociousMarkdownOverflowProbeWithoutNaturalBreakpoints
 
 ---
 
