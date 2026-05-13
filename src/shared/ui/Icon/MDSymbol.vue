@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, toRefs } from 'vue';
-import { useIconStates } from './useMaterialDesignSymbols';
+import { useIconStates } from '@shared/ui/Icon/useMaterialDesignSymbols';
 
 const props = defineProps<{
   /**

@@ -26,6 +26,7 @@ temp/
 *.local.*
 tsconfig.*.tsbuildinfo
 coverage/
+storybook-static/
 reports/mutation/
 playwright-report/
 test-results/

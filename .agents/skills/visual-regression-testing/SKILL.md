@@ -1,6 +1,6 @@
 ---
 name: visual-regression-testing
-description: 'Use this skill when adding or reviewing visual appearance checks, screenshot snapshots, Material visual states, responsive layout snapshots, or visual regression coverage. Use Playwright screenshots against an isolated dev-only playground runtime; do not use Vitest, happy-dom, or Vue Test Utils for appearance.'
+description: 'Use this skill when adding or reviewing visual appearance checks, screenshot snapshots, Material visual states, responsive layout snapshots, or visual regression coverage. Use Playwright screenshots against Storybook stories; do not use Vitest, happy-dom, or Vue Test Utils for appearance.'
 ---
 
 # Visual regression testing
@@ -15,24 +15,23 @@ Do not use Vitest, happy-dom, or Vue Test Utils to verify appearance, layout, re
 
 ## Harness rule
 
-Use the existing playground pages as the visual test harness, but run them through an isolated dev-only playground runtime.
+Use Storybook as the preferred visual test harness.
 
 The visual runtime must not inherit product app effects from the normal root app, such as storage permission requests, diagnostics consent/reporting, optional integrations, unload guards, live performance overlays, network initialization, or other product lifecycle behavior.
 
 Required boundaries:
 
-- Add or reuse a playground page for the component surface under test.
-- Keep playground states deterministic and fixture-driven.
-- Keep the visual playground dev-only; do not add production routes only for visual tests.
+- Add or reuse a colocated Storybook story for the component surface under test.
+- Keep stories deterministic and fixture-driven.
 - Reuse application styles and shared UI infrastructure required to render the component correctly.
-- Isolate product runtime behavior from playground rendering. Prefer a dedicated playground shell or explicit app setup boundary over route-name checks inside product components.
-- Do not put business logic, storage orchestration, network behavior, diagnostics, optional integrations, or permission prompts into playground pages.
+- Isolate product runtime behavior from Storybook rendering. Do not import `MainApp.vue`, call `setupApp`, or add route-based conditionals to disable product effects.
+- Do not put business logic, storage orchestration, network behavior, diagnostics, optional integrations, or permission prompts into stories.
 
-The playground is intended for stable component surfaces and visual states. It should stay a rendering harness, not an alternate product application.
+Storybook is intended for stable component surfaces and visual states. It should stay a rendering harness, not an alternate product application or an e2e runner.
 
 ## Isolation review
 
-Before adding visual snapshots, check whether the page is rendered under the normal product root app. If so, verify that product effects cannot affect the screenshot.
+Before adding visual snapshots, check whether the story is rendered under an isolated Storybook runtime. If it depends on the normal product root app, refactor the setup so the screenshot cannot be affected by product effects.
 
 Reject or refactor the setup when visual tests can be affected by:
 
@@ -44,7 +43,7 @@ Reject or refactor the setup when visual tests can be affected by:
 - network or account state;
 - route guards or product navigation state unrelated to the component surface.
 
-Do not solve isolation by sprinkling `if playground route` checks through product features. Extract product runtime effects behind a product shell boundary, or create a dedicated playground shell that only provides the minimum shared infrastructure required for rendering.
+Do not solve isolation by sprinkling `if Storybook` or route checks through product features. Keep the isolation in Storybook config and story fixtures.
 
 ## Test location
 
@@ -92,6 +91,8 @@ Before adding or updating snapshots:
 5. Wait for fonts, icons, and async rendering to settle before taking the screenshot.
 6. Mask dynamic regions when they cannot be made deterministic.
 7. Keep screenshots small enough for reviewers to understand the diff.
+8. Accept or refresh baselines only from stable Linux/Chromium rendering such as CI or a pinned Playwright Docker image; treat local diffs from other environments as advisory.
+9. Do not refresh baselines from headed mode, do not hide ordinary text, and do not raise screenshot thresholds just to suppress text anti-aliasing noise.
 
 ## Interaction state rule
 
@@ -118,6 +119,7 @@ pnpm exec playwright test tests/e2e/visual/<surface>.spec.ts --update-snapshots
 ```
 
 Do not update snapshots as a reflex. Inspect the diff first and confirm the appearance change is intended.
+If a test intentionally verifies typography or text rendering, keep it explicit and separate from general-purpose visual baselines.
 
 ## Review checklist
 
@@ -126,7 +128,7 @@ Reject or rewrite a visual test when:
 1. It can be covered better by a pure unit test or component contract test.
 2. It captures a broad page without a clear visual invariant.
 3. It depends on random, time-based, network, storage, or loading state.
-4. It uses test-only production routes instead of an isolated dev-only playground runtime.
+4. It renders through `MainApp.vue`, the product `/playground`, or any other product route instead of Storybook stories.
 5. It inherits product app behavior that can affect screenshots.
 6. It updates snapshots without explaining the intended visual change.
 7. It duplicates an e2e behavior assertion instead of checking appearance.

@@ -31,18 +31,18 @@
 
 ### Tech Stack
 
-| Layer      | Technology                              | Purpose                                  |
-| ---------- | --------------------------------------- | ---------------------------------------- |
-| Framework  | Vue 3.5+                                | Reactive UI rendering                    |
-| Build Tool | Vite 7+                                 | Fast HMR and production builds           |
-| Language   | TypeScript 5.9+                         | Static type checking                     |
-| State      | Automerge 2.5+                          | CRDT-based collaborative editing         |
-| Router     | Vue Router 5                            | Application routing                      |
-| HTTP       | ky 1.x                                  | Lightweight fetch wrapper                |
-| Testing    | Vitest + Vue Test Utils + Playwright    | Unit, component contract, E2E, visual    |
-| Mutation   | StrykerJS                               | Test quality checks                      |
-| Linting    | oxlint + ESLint 10+                     | Code quality enforcement                 |
-| Formatting | oxfmt                                   | Consistent code formatting               |
+| Layer      | Technology                           | Purpose                               |
+| ---------- | ------------------------------------ | ------------------------------------- |
+| Framework  | Vue 3.5+                             | Reactive UI rendering                 |
+| Build Tool | Vite 7+                              | Fast HMR and production builds        |
+| Language   | TypeScript 5.9+                      | Static type checking                  |
+| State      | Automerge 2.5+                       | CRDT-based collaborative editing      |
+| Router     | Vue Router 5                         | Application routing                   |
+| HTTP       | ky 1.x                               | Lightweight fetch wrapper             |
+| Testing    | Vitest + Vue Test Utils + Playwright | Unit, component contract, E2E, visual |
+| Mutation   | StrykerJS                            | Test quality checks                   |
+| Linting    | oxlint + ESLint 10+                  | Code quality enforcement              |
+| Formatting | oxfmt                                | Consistent code formatting            |
 
 ---
 
@@ -50,12 +50,12 @@
 
 ### System Requirements
 
-| Component | Minimum Version | Notes                        |
-| --------- | --------------- | ---------------------------- |
-| Node.js   | 24.x            | CI and tooling baseline      |
-| pnpm      | 10.x            | Project lockfile format      |
-| Git       | 2.x             | Required for hooks setup     |
-| Browser   | Chrome 120+     | E2E testing baseline         |
+| Component | Minimum Version | Notes                    |
+| --------- | --------------- | ------------------------ |
+| Node.js   | 24.x            | CI and tooling baseline  |
+| pnpm      | 10.x            | Project lockfile format  |
+| Git       | 2.x             | Required for hooks setup |
+| Browser   | Chrome 120+     | E2E testing baseline     |
 
 ---
 
@@ -149,9 +149,10 @@ Types: feat, fix, docs, refactor, test, chore
 ```mermaid
 graph TB
     A[Pure logic and services: Vitest] --> B[Component contracts: Vue Test Utils]
-    B --> C[Browser behavior: Playwright]
+    B --> C[Component playground and docs: Storybook]
     C --> D[Visual appearance: Playwright screenshots]
-    A --> E[High-risk logic quality: Stryker]
+    D --> E[Browser behavior and user scenarios: Playwright E2E]
+    A --> F[High-risk logic quality: Stryker]
 ```
 
 ### Unit & Integration Tests (Vitest)
@@ -194,21 +195,44 @@ Do not use component contract tests for:
 
 Use Playwright/e2e or a reproducible browser smoke check for those cases.
 
+### Storybook
+
+**Scope**: isolated component playground, deterministic variants, and the standard visual state harness for shared UI work.
+
+Use Storybook for:
+
+- colocated CSF stories named `<Component>.stories.ts`;
+- manual component review and variant exploration;
+- deterministic visual surfaces used by Playwright screenshot tests;
+- documenting the supported states of stable shared UI primitives.
+
+Story rules:
+
+- Keep stories deterministic and fixture-driven.
+- Do not import `MainApp.vue` or call `setupApp`.
+- Do not connect product stores, diagnostics, storage prompts, Google Drive integration, unload guards, snackbars, overlays, or router lifecycle behavior.
+- Do not move business logic into stories or change component public APIs just to satisfy Storybook.
+- Tag screenshot-ready stories with `visual`.
+- Do not add stories for every component by default.
+
 ### Visual Regression Tests (Playwright screenshots)
 
 **Scope**: visual appearance, rendered layout, and Material state regressions.
 
 Use Playwright screenshot assertions for visual appearance. Do not use Vitest, happy-dom, or Vue Test Utils for appearance checks.
 
-Use existing playground pages through an isolated dev-only playground runtime:
+Use Storybook as the preferred visual harness:
 
-- add or reuse a playground page for the component surface;
-- keep playground states deterministic and fixture-driven;
+- render screenshots through Storybook stories, not through `MainApp.vue` or the product `/playground`;
+- keep stories deterministic and fixture-driven;
 - reuse app styles and only the shared UI infrastructure required for rendering;
-- isolate product runtime effects such as storage permission requests, diagnostics consent/reporting, optional integrations, unload guards, live performance overlays, network initialization, and product lifecycle behavior;
-- prefer a dedicated playground shell or explicit app setup boundary over route-name checks inside product components;
-- avoid business logic, storage orchestration, and network behavior in playground pages;
-- do not add production routes only for visual tests.
+- isolate product runtime effects such as storage permission requests, diagnostics consent/reporting, optional integrations, unload guards, snackbars, overlays, live performance overlays, network initialization, and router lifecycle behavior;
+- avoid business logic, storage orchestration, stores, and network behavior in stories;
+- use locator screenshots instead of full-page screenshots whenever possible;
+- do not use Storybook as an e2e runner.
+- accept or update baselines only from stable Linux/Chromium rendering such as CI or a pinned Playwright Docker image, and treat local non-CI diffs as advisory/debugging only;
+- do not update baselines from headed mode, do not hide ordinary text, and do not raise screenshot thresholds just to suppress text anti-aliasing noise;
+- keep typography/text-rendering assertions explicit and separate when a test intentionally needs them.
 
 Place visual specs under:
 
@@ -228,16 +252,23 @@ Do not add visual snapshots for every component by default.
 
 Prefer screenshots of one stable surface, component gallery, dialog, sheet, menu, or responsive layout region. Avoid full-page screenshots unless the whole page layout is the invariant.
 
+Legacy playground status:
+
+- The existing product/dev playground is legacy and manual-only.
+- New component playground work should go to Storybook.
+- Do not add new visual regression surfaces to the product playground.
+- Migrate useful legacy playground examples to Storybook gradually.
+
 Focused visual run:
 
 ```bash
-pnpm exec playwright test tests/e2e/visual/<surface>.spec.ts
+pnpm exec playwright test --config playwright.visual.config.ts tests/e2e/visual/<surface>.spec.ts
 ```
 
 Update snapshots only after confirming the visual change is intentional:
 
 ```bash
-pnpm exec playwright test tests/e2e/visual/<surface>.spec.ts --update-snapshots
+pnpm exec playwright test --config playwright.visual.config.ts tests/e2e/visual/<surface>.spec.ts --update-snapshots
 ```
 
 ### Mutation Testing (StrykerJS)
@@ -357,33 +388,38 @@ pnpm preview
 
 ### Command Reference
 
-| Command              | Description                  |
-| -------------------- | ---------------------------- |
-| `pnpm dev`           | Start development server     |
-| `pnpm build`         | Production build             |
-| `pnpm preview`       | Preview production build     |
-| `pnpm verify`        | Final read-only verification |
-| `pnpm verify:fix`    | Automatic fix verification   |
-| `pnpm test`          | Vitest watch mode            |
-| `pnpm test:run`      | Single-run Vitest tests      |
-| `pnpm test:coverage` | Coverage diagnostics         |
-| `pnpm test:mutate`   | Mutation testing             |
-| `pnpm e2e`           | E2E and visual tests         |
-| `pnpm e2e:ui`        | E2E with UI runner           |
-| `pnpm lint`          | Full lint pipeline           |
-| `pnpm format`        | Format all files             |
-| `pnpm type-check`    | TypeScript type checking     |
+| Command                   | Description                  |
+| ------------------------- | ---------------------------- |
+| `pnpm dev`                | Start development server     |
+| `pnpm build`              | Production build             |
+| `pnpm preview`            | Preview production build     |
+| `pnpm verify`             | Final read-only verification |
+| `pnpm verify:fix`         | Automatic fix verification   |
+| `pnpm test`               | Vitest watch mode            |
+| `pnpm test:run`           | Single-run Vitest tests      |
+| `pnpm test:coverage`      | Coverage diagnostics         |
+| `pnpm test:mutate`        | Mutation testing             |
+| `pnpm storybook`          | Storybook dev server         |
+| `pnpm storybook:build`    | Build Storybook              |
+| `pnpm test:visual`        | Visual regression tests      |
+| `pnpm test:visual:update` | Update visual snapshots      |
+| `pnpm e2e`                | E2E tests                    |
+| `pnpm e2e:ui`             | E2E with UI runner           |
+| `pnpm lint`               | Full lint pipeline           |
+| `pnpm format`             | Format all files             |
+| `pnpm type-check`         | TypeScript type checking     |
 
 ### Configuration Files
 
-| File                   | Purpose                        |
-| ---------------------- | ------------------------------ |
-| `vite.config.ts`       | Build configuration            |
-| `vitest.config.ts`     | Test configuration             |
-| `playwright.config.ts` | E2E and visual test config     |
-| `stryker.config.mjs`   | Mutation testing configuration |
-| `eslint.config.mjs`    | ESLint configuration           |
-| `tsconfig.json`        | TypeScript project references  |
+| File                          | Purpose                        |
+| ----------------------------- | ------------------------------ |
+| `vite.config.ts`              | Build configuration            |
+| `vitest.config.ts`            | Test configuration             |
+| `playwright.config.ts`        | E2E test config                |
+| `playwright.visual.config.ts` | Visual regression config       |
+| `stryker.config.mjs`          | Mutation testing configuration |
+| `eslint.config.mjs`           | ESLint configuration           |
+| `tsconfig.json`               | TypeScript project references  |
 
 ---
 

@@ -1,6 +1,7 @@
 import type { PluginOption } from 'vite';
 import { defineConfig, loadEnv } from 'vite';
 import { dependencies, devDependencies } from './package.json';
+import toolingConfig from './config/tooling.json' with { type: 'json' };
 import { getResolveAlias } from './config/alias';
 import {
   getBaseVitePlugins,
@@ -14,18 +15,25 @@ import {
 export default defineConfig(({ mode, isPreview }) => {
   const env = loadEnv(mode, process.cwd(), '');
   const isPreviewBuild = !!isPreview;
+  const isStorybookBuild = process.env.BEAVER_STORYBOOK === '1';
 
-  const sslPlugins = getSslPlugins({ mode, isPreview: isPreviewBuild });
-  const pwaPlugins = getPwaPlugins({ mode, isPreview: isPreviewBuild });
-  const sentryPlugins = getSentryPlugins({
-    mode,
-    isPreview: isPreviewBuild,
-    authToken: env.SENTRY_AUTH_TOKEN,
-  });
+  const sslPlugins = isStorybookBuild ? [] : getSslPlugins({ mode, isPreview: isPreviewBuild });
+  const pwaPlugins = isStorybookBuild ? [] : getPwaPlugins({ mode, isPreview: isPreviewBuild });
+  const sentryPlugins = isStorybookBuild
+    ? []
+    : getSentryPlugins({
+        mode,
+        isPreview: isPreviewBuild,
+        authToken: env.SENTRY_AUTH_TOKEN,
+      });
 
-  const dateNow = new Date().toISOString();
+  const buildDate = isStorybookBuild
+    ? toolingConfig.storybook.deterministicBuildDate
+    : new Date().toISOString();
 
-  console.log('\n__BUILD_DATE__:', dateNow);
+  if (!isStorybookBuild) {
+    console.log('\n__BUILD_DATE__:', buildDate);
+  }
 
   return {
     base: env.BASE_URL,
@@ -72,7 +80,7 @@ export default defineConfig(({ mode, isPreview }) => {
       },
     },
     define: {
-      __BUILD_DATE__: JSON.stringify(dateNow),
+      __BUILD_DATE__: JSON.stringify(buildDate),
     },
   };
 });

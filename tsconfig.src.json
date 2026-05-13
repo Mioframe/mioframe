@@ -1,0 +1,28 @@
+{
+  "extends": "@vue/tsconfig/tsconfig.dom.json",
+  "compilerOptions": {
+    "composite": true,
+    "noEmit": true,
+    "types": ["@types/wicg-file-system-access"],
+    "lib": ["ESNext", "DOM", "DOM.Iterable", "WebWorker"],
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true,
+    "noImplicitReturns": true,
+    "noImplicitOverride": true,
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": true,
+    "paths": {
+      "@shared/*": ["./src/shared/*"],
+      "@feature/*": ["./src/features/*"],
+      "@entity/*": ["./src/entities/*"],
+      "@widget/*": ["./src/widgets/*"],
+      "@page/*": ["./src/pages/*"],
+      "@/*": ["./src/*"]
+    }
+  },
+  "vueCompilerOptions": {
+    "strictTemplates": true,
+    "checkUnknownProps": true
+  }
+}

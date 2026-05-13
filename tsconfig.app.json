@@ -1,30 +1,15 @@
 {
-  "extends": "@vue/tsconfig/tsconfig.dom.json",
+  "extends": "./tsconfig.src.json",
   "include": ["env.d.ts", "src/**/*", "src/**/*.vue"],
+  "exclude": [
+    "src/**/*.stories.ts",
+    "src/**/*.stories.tsx",
+    "src/**/*.stories.js",
+    "src/**/*.stories.jsx",
+    "src/**/*.stories.mjs",
+    "src/**/*.stories.vue"
+  ],
   "compilerOptions": {
-    "composite": true,
-    "noEmit": true,
-    "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.app.tsbuildinfo",
-    "types": ["@types/wicg-file-system-access"],
-    "lib": ["ESNext", "DOM", "DOM.Iterable", "WebWorker"],
-    "noUnusedLocals": true,
-    "noUnusedParameters": true,
-    "noFallthroughCasesInSwitch": true,
-    "noImplicitReturns": true,
-    "noImplicitOverride": true,
-    "noUncheckedIndexedAccess": true,
-    "exactOptionalPropertyTypes": true,
-    "paths": {
-      "@shared/*": ["./src/shared/*"],
-      "@feature/*": ["./src/features/*"],
-      "@entity/*": ["./src/entities/*"],
-      "@widget/*": ["./src/widgets/*"],
-      "@page/*": ["./src/pages/*"],
-      "@/*": ["./src/*"]
-    }
-  },
-  "vueCompilerOptions": {
-    "strictTemplates": true,
-    "checkUnknownProps": true
+    "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.app.tsbuildinfo"
   }
 }
