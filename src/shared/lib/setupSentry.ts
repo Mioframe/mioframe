@@ -45,14 +45,6 @@ const pickEventTags = (source: Record<string, unknown> | undefined, keys: readon
   return result;
 };
 
-const getSafeRecord = (value: unknown) => {
-  if (!value || typeof value !== 'object') {
-    return undefined;
-  }
-
-  return Object.fromEntries(Object.entries(value));
-};
-
 /**
  * Runtime configuration for the optional Sentry integration.
  */
@@ -315,8 +307,8 @@ export const ensureSentry = async (app?: App): Promise<SentryFacade> => {
           user: _user,
           ...safeEvent
         } = event;
-        const safeTags = pickEventTags(getSafeRecord(tags), SAFE_EVENT_TAG_KEYS);
-        const safeExtra = pickEventFields(getSafeRecord(extra), SAFE_EVENT_EXTRA_KEYS);
+        const safeTags = pickEventTags(tags, SAFE_EVENT_TAG_KEYS);
+        const safeExtra = pickEventFields(extra, SAFE_EVENT_EXTRA_KEYS);
 
         return {
           ...safeEvent,
