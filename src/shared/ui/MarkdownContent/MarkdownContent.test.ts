@@ -94,10 +94,12 @@ describe('MarkdownContent', () => {
       },
     });
 
+    expect(wrapper.findAll('img')).toHaveLength(1);
     expect(wrapper.find('img').attributes()).toMatchObject({
       src: './image.png',
       alt: 'Alt',
     });
+    expect(wrapper.find('.markdown-content > p > img').exists()).toBe(true);
   });
 
   it('adds new-tab attributes only to external links when requested', () => {

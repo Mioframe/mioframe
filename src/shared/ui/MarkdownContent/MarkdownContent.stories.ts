@@ -38,7 +38,7 @@ line break so the current wrapping behavior stays visible.
 
 #### Heading Level 4
 
-Compact heading level with ~~deleted text~~ and escaped markdown characters: *not italic*.
+Compact heading level with ~~deleted text~~ and escaped markdown characters: \\*not italic\\*.
 
 ##### Heading Level 5
 
@@ -81,6 +81,10 @@ Indented code block:
 | --- | --- | --- | --- | --- | --- |
 | Very long project value that should stay inside the scroller | Another long value for overflow testing | Material-style wrapper | Rounded outline | Inner horizontal scroll | Layout stays stable |
 | Short | Medium value | More content | More content | More content | More content |
+
+## Images
+
+![Markdown example image](https://placehold.co/960x540/png)
 
 Long unbroken content for overflow-wrap checks:
 https://example.com/some/really/really/really/really/really/really/long/path/without/breaks

@@ -233,6 +233,7 @@ const renderedMarkdown = computed(() =>
 .markdown-content :deep(blockquote),
 .markdown-content :deep(pre),
 .markdown-content :deep(table),
+.markdown-content :deep(img),
 .markdown-content :deep(hr) {
   margin: 0;
 }
@@ -301,6 +302,13 @@ const renderedMarkdown = computed(() =>
   background-color: transparent;
   color: inherit;
   white-space: pre;
+}
+
+.markdown-content :deep(img) {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  border-radius: var(--md-sys-shape-corner-medium);
 }
 
 .markdown-content :deep(blockquote > *) {

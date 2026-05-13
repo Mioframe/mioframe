@@ -54,9 +54,10 @@ const createMarkdownRenderer = (renderOptions: RenderMarkdownOptions = {}) => {
       markdown.renderer.rules.table_open ?? fallbackTableOpenRenderer;
     const defaultTableCloseRenderer =
       markdown.renderer.rules.table_close ?? fallbackTableCloseRenderer;
+    const escapedTableWrapperClassName = markdown.utils.escapeHtml(tableWrapperClassName);
 
     markdown.renderer.rules.table_open = (tokens, idx, rendererOptions, env, self) =>
-      `<div class="${tableWrapperClassName}">${defaultTableOpenRenderer(
+      `<div class="${escapedTableWrapperClassName}">${defaultTableOpenRenderer(
         tokens,
         idx,
         rendererOptions,

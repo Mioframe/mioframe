@@ -35,6 +35,19 @@ describe('renderMarkdown', () => {
     expect(rendered).toMatch(/<\/table>\s*<\/div>/u);
   });
 
+  it('escapes a malicious table wrapper class name instead of creating extra html attributes', () => {
+    const rendered = renderMarkdown(
+      ['| Name | Value |', '| --- | --- |', '| Alpha | 1 |'].join('\n'),
+      { tableWrapperClassName: 'x" onclick="alert(1)' },
+    );
+    const wrapperTagMatch = rendered.match(/<div class="[^"]*"><table>/u);
+
+    expect(rendered).toContain('<div class="x&quot; onclick=&quot;alert(1)"><table>');
+    expect(wrapperTagMatch?.[0]).toBe('<div class="x&quot; onclick=&quot;alert(1)"><table>');
+    expect(rendered).not.toContain('<div class="x" onclick="alert(1)"><table>');
+    expect(rendered).toContain('<td>1</td>');
+  });
+
   it('does not add a table wrapper when no wrapper class name is provided', () => {
     const rendered = renderMarkdown(
       ['| Name | Value |', '| --- | --- |', '| Alpha | 1 |'].join('\n'),
