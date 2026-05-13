@@ -43,7 +43,7 @@ describe('useRemoveFSEntry', () => {
   });
 
   it('shows a snackbar, reports, and does not rethrow when non-recursive remove fails', async () => {
-    const error = new Error('remove failed');
+    const error = new Error('Failed to remove /docs/file.json for gd-123');
     confirmMock.mockResolvedValueOnce(true);
     removeEntryMock.mockRejectedValueOnce(error);
 
@@ -55,6 +55,32 @@ describe('useRemoveFSEntry', () => {
     expect(addSnackbarMock).toHaveBeenCalledWith({
       text: 'Could not remove the item',
     });
+    expect(reportHandledErrorMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        message: 'Could not remove the item',
+        cause: expect.objectContaining({
+          message: 'File system remove operation failed',
+        }),
+      }),
+      {
+        feature: 'entryRemove',
+        action: 'removeEntry',
+      },
+    );
+  });
+
+  it('reports a trusted VfsError directly for non-recursive removal failures', async () => {
+    const error = new VfsError(
+      FileSystemError.NoPermissions,
+      'File system delete operation is not allowed',
+    );
+    confirmMock.mockResolvedValueOnce(true);
+    removeEntryMock.mockRejectedValueOnce(error);
+
+    const { remove } = useRemoveFSEntry();
+
+    await expect(remove('/docs/file.json')).resolves.toBeUndefined();
+
     expect(reportHandledErrorMock).toHaveBeenCalledWith(error, {
       feature: 'entryRemove',
       action: 'removeEntry',
@@ -85,6 +111,32 @@ describe('useRemoveFSEntry', () => {
       feature: 'entryRemove',
       action: 'removeEntryRecursive',
     });
+  });
+
+  it('wraps untrusted recursive removal errors before reporting', async () => {
+    const directoryNotEmptyError = new VfsError(FileSystemError.DirectoryNotEmpty);
+    const recursiveError = new Error('Failed to remove /docs/folder/private for gd-456');
+    confirmMock.mockResolvedValueOnce(true).mockResolvedValueOnce(true);
+    removeEntryMock
+      .mockRejectedValueOnce(directoryNotEmptyError)
+      .mockRejectedValueOnce(recursiveError);
+
+    const { remove } = useRemoveFSEntry();
+
+    await expect(remove('/docs/folder')).resolves.toBeUndefined();
+
+    expect(reportHandledErrorMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        message: 'Could not remove the directory',
+        cause: expect.objectContaining({
+          message: 'File system recursive remove operation failed',
+        }),
+      }),
+      {
+        feature: 'entryRemove',
+        action: 'removeEntryRecursive',
+      },
+    );
   });
 
   it('does not remove or report when the user cancels confirmation', async () => {

@@ -28,6 +28,8 @@ import {
 import type { GOOGLE_SCOPE } from '@shared/lib/googleApi';
 import { DRIVE_GOOGLE_SCOPE } from '@shared/lib/googleApi';
 import { firstValueFrom, skip, type Observable } from 'rxjs';
+import { createSafeErrorCause, DomainError } from '@shared/lib/error';
+import { GoogleDriveError } from '@shared/lib/googleDrive/error';
 import {
   getGoogleDrivePathEmail,
   getGoogleDrivePathSpace,
@@ -121,6 +123,17 @@ export const googleDriveFileSystemProvider = (
   providerOptions: GoogleDriveFileSystemProviderOptions,
 ) => {
   const { requestToken, $sessions } = providerOptions;
+  const toSafeGoogleDriveCause = (error: unknown, safeMessage: string) => {
+    if (
+      error instanceof VfsError ||
+      error instanceof GoogleDriveError ||
+      error instanceof DomainError
+    ) {
+      return error;
+    }
+
+    return createSafeErrorCause(safeMessage);
+  };
   const extractEmailFromPath = (path: string): string => {
     const email = getGoogleDrivePathEmail(path);
 
@@ -337,7 +350,11 @@ export const googleDriveFileSystemProvider = (
       };
     } catch (e) {
       if (e instanceof VfsError) throw e;
-      throw new VfsError(FileSystemError.FileNotFound, 'Google Drive stat operation failed', e);
+      throw new VfsError(
+        FileSystemError.FileNotFound,
+        'Google Drive stat operation failed',
+        toSafeGoogleDriveCause(e, 'Google Drive stat request failed'),
+      );
     }
   };
 
@@ -361,7 +378,11 @@ export const googleDriveFileSystemProvider = (
     try {
       return await download({ ACCESS_TOKEN: token }, entry.id);
     } catch (e) {
-      throw new VfsError(FileSystemError.Unknown, 'Google Drive download operation failed', e);
+      throw new VfsError(
+        FileSystemError.Unknown,
+        'Google Drive download operation failed',
+        toSafeGoogleDriveCause(e, 'Google Drive download request failed'),
+      );
     }
   };
 
@@ -426,7 +447,15 @@ export const googleDriveFileSystemProvider = (
 
       const token = await getTokenForPath(path);
 
-      await upload({ ACCESS_TOKEN: token }, existingEntry.id, content);
+      try {
+        await upload({ ACCESS_TOKEN: token }, existingEntry.id, content);
+      } catch (e) {
+        throw new VfsError(
+          FileSystemError.Unknown,
+          'Google Drive upload operation failed',
+          toSafeGoogleDriveCause(e, 'Google Drive upload request failed'),
+        );
+      }
 
       return {
         stat: {
@@ -451,7 +480,16 @@ export const googleDriveFileSystemProvider = (
       } satisfies Parameters<typeof create>[1];
 
       if (contentSize <= GOOGLE_DRIVE_MULTIPART_UPLOAD_LIMIT) {
-        const created = await createWithContent(auth, resource, content);
+        let created;
+        try {
+          created = await createWithContent(auth, resource, content);
+        } catch (e) {
+          throw new VfsError(
+            FileSystemError.Unknown,
+            'Google Drive file create operation failed',
+            toSafeGoogleDriveCause(e, 'Google Drive create request failed'),
+          );
+        }
 
         return {
           stat: {
@@ -465,15 +503,37 @@ export const googleDriveFileSystemProvider = (
         };
       }
 
-      const created = await create(auth, resource);
+      let created;
+      try {
+        created = await create(auth, resource);
+      } catch (e) {
+        throw new VfsError(
+          FileSystemError.Unknown,
+          'Google Drive file create operation failed',
+          toSafeGoogleDriveCause(e, 'Google Drive create request failed'),
+        );
+      }
 
       try {
         await upload(auth, created.result.id, content);
       } catch (uploadError) {
-        await update(auth, created.result.id, {
-          trashed: true,
-        });
-        throw uploadError;
+        try {
+          await update(auth, created.result.id, {
+            trashed: true,
+          });
+        } catch {
+          throw new VfsError(
+            FileSystemError.Unknown,
+            'Google Drive upload rollback operation failed',
+            createSafeErrorCause('Google Drive upload rollback request failed'),
+          );
+        }
+
+        throw new VfsError(
+          FileSystemError.Unknown,
+          'Google Drive upload operation failed',
+          toSafeGoogleDriveCause(uploadError, 'Google Drive upload request failed'),
+        );
       }
 
       return {
@@ -620,16 +680,24 @@ export const googleDriveFileSystemProvider = (
       throw new VfsError(FileSystemError.FileNotADirectory, 'The parent item is not a directory');
     }
 
-    await create(
-      {
-        ACCESS_TOKEN: await getTokenForPath(path),
-      },
-      {
-        name: dirName,
-        parents: [parentEntry.id],
-        mimeType: GOOGLE_MIME_FOLDER,
-      },
-    );
+    try {
+      await create(
+        {
+          ACCESS_TOKEN: await getTokenForPath(path),
+        },
+        {
+          name: dirName,
+          parents: [parentEntry.id],
+          mimeType: GOOGLE_MIME_FOLDER,
+        },
+      );
+    } catch (e) {
+      throw new VfsError(
+        FileSystemError.Unknown,
+        'Google Drive directory create operation failed',
+        toSafeGoogleDriveCause(e, 'Google Drive create request failed'),
+      );
+    }
   };
 
   /**
@@ -678,15 +746,23 @@ export const googleDriveFileSystemProvider = (
       }
     }
 
-    await update(
-      {
-        ACCESS_TOKEN: await getTokenForPath(path),
-      },
-      entry.id,
-      {
-        trashed: true,
-      },
-    );
+    try {
+      await update(
+        {
+          ACCESS_TOKEN: await getTokenForPath(path),
+        },
+        entry.id,
+        {
+          trashed: true,
+        },
+      );
+    } catch (e) {
+      throw new VfsError(
+        FileSystemError.Unknown,
+        'Google Drive delete operation failed',
+        toSafeGoogleDriveCause(e, 'Google Drive update request failed'),
+      );
+    }
   };
 
   /**
@@ -744,18 +820,28 @@ export const googleDriveFileSystemProvider = (
     const currentParents = sourceEntry.parents ?? [];
     const removeParents = currentParents.filter((p) => p !== destinationParentEntry.id);
 
-    await update(
-      {
-        ACCESS_TOKEN: await getTokenForPath(oldPath),
-      },
-      sourceEntry.id,
-      {
-        name: newFileName,
-        addParents:
-          removeParents.length === currentParents.length ? [destinationParentEntry.id] : undefined,
-        removeParents: removeParents.length > 0 ? removeParents : undefined,
-      },
-    );
+    try {
+      await update(
+        {
+          ACCESS_TOKEN: await getTokenForPath(oldPath),
+        },
+        sourceEntry.id,
+        {
+          name: newFileName,
+          addParents:
+            removeParents.length === currentParents.length
+              ? [destinationParentEntry.id]
+              : undefined,
+          removeParents: removeParents.length > 0 ? removeParents : undefined,
+        },
+      );
+    } catch (e) {
+      throw new VfsError(
+        FileSystemError.Unknown,
+        'Google Drive move operation failed',
+        toSafeGoogleDriveCause(e, 'Google Drive update request failed'),
+      );
+    }
   };
 
   return {
