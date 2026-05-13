@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/vue3-vite';
+import { MDCard } from '@shared/ui/Card';
 import MarkdownContent from './MarkdownContent.vue';
 
 const sampleMarkdown = `# Markdown Content
@@ -71,18 +72,24 @@ export const Compact: Story = {
 export const VariantsOverview: Story = {
   tags: ['visual'],
   render: () => ({
-    components: { MarkdownContent },
+    components: { MarkdownContent, MDCard },
     setup: () => ({
       sampleMarkdown,
     }),
     template: `
       <div
         data-testid="visual-markdown-content-variants"
-        style="display: grid; gap: 24px; max-width: 720px;"
+        style="display: grid; gap: 24px; max-width: 840px; width: 100%;"
       >
-        <MarkdownContent :source="sampleMarkdown" variant="body" />
-        <MarkdownContent :source="sampleMarkdown" variant="article" />
-        <MarkdownContent :source="sampleMarkdown" variant="compact" />
+        <MDCard variant="outlined" style="max-width: 720px; padding: 24px; gap: 0;">
+          <MarkdownContent :source="sampleMarkdown" variant="body" />
+        </MDCard>
+        <MDCard variant="filled" style="max-width: 720px; padding: 28px; gap: 0;">
+          <MarkdownContent :source="sampleMarkdown" variant="article" />
+        </MDCard>
+        <MDCard variant="outlined" style="max-width: 640px; padding: 20px; gap: 0;">
+          <MarkdownContent :source="sampleMarkdown" variant="compact" />
+        </MDCard>
       </div>
     `,
   }),

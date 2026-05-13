@@ -35,10 +35,29 @@ const renderedMarkdown = computed(() =>
   --markdown-block-gap: 16px;
   --markdown-heading-gap: 24px;
   --markdown-inline-code-background: var(--md-sys-color-surface-container-low);
-  --markdown-surface-background: var(--md-sys-color-surface-container-low);
+  --markdown-code-block-background: var(--md-sys-color-surface-container-low);
+  --markdown-surface-background: var(--md-sys-color-surface-container-lowest);
   --markdown-border-color: var(--md-sys-color-outline-variant);
   --markdown-accent-color: var(--md-sys-color-primary);
+  --markdown-heading-1-font: var(--md-sys-typescale-headline-medium-font);
+  --markdown-heading-1-weight: var(--md-sys-typescale-headline-medium-weight);
+  --markdown-heading-1-size: var(--md-sys-typescale-headline-medium-size);
+  --markdown-heading-1-line-height: var(--md-sys-typescale-headline-medium-line-height);
+  --markdown-heading-1-tracking: var(--md-sys-typescale-headline-medium-tracking);
+  --markdown-heading-2-font: var(--md-sys-typescale-headline-small-font);
+  --markdown-heading-2-weight: var(--md-sys-typescale-headline-small-weight);
+  --markdown-heading-2-size: var(--md-sys-typescale-headline-small-size);
+  --markdown-heading-2-line-height: var(--md-sys-typescale-headline-small-line-height);
+  --markdown-heading-2-tracking: var(--md-sys-typescale-headline-small-tracking);
+  --markdown-heading-3-font: var(--md-sys-typescale-title-large-font);
+  --markdown-heading-3-weight: var(--md-sys-typescale-title-large-weight);
+  --markdown-heading-3-size: var(--md-sys-typescale-title-large-size);
+  --markdown-heading-3-line-height: var(--md-sys-typescale-title-large-line-height);
+  --markdown-heading-3-tracking: var(--md-sys-typescale-title-large-tracking);
 
+  display: grid;
+  align-content: start;
+  gap: var(--markdown-block-gap);
   min-width: 0;
   color: var(--md-sys-color-on-surface);
   font-family: var(--md-sys-typescale-body-medium-font);
@@ -51,8 +70,25 @@ const renderedMarkdown = computed(() =>
 .markdown-content--article {
   --markdown-block-gap: 20px;
   --markdown-heading-gap: 32px;
+  --markdown-surface-background: var(--md-sys-color-surface-container-low);
+  --markdown-heading-1-font: var(--md-sys-typescale-headline-large-font);
+  --markdown-heading-1-weight: var(--md-sys-typescale-headline-large-weight);
+  --markdown-heading-1-size: var(--md-sys-typescale-headline-large-size);
+  --markdown-heading-1-line-height: var(--md-sys-typescale-headline-large-line-height);
+  --markdown-heading-1-tracking: var(--md-sys-typescale-headline-large-tracking);
+  --markdown-heading-2-font: var(--md-sys-typescale-title-large-font);
+  --markdown-heading-2-weight: var(--md-sys-typescale-title-large-weight);
+  --markdown-heading-2-size: var(--md-sys-typescale-title-large-size);
+  --markdown-heading-2-line-height: var(--md-sys-typescale-title-large-line-height);
+  --markdown-heading-2-tracking: var(--md-sys-typescale-title-large-tracking);
+  --markdown-heading-3-font: var(--md-sys-typescale-title-medium-font);
+  --markdown-heading-3-weight: var(--md-sys-typescale-title-medium-weight);
+  --markdown-heading-3-size: var(--md-sys-typescale-title-medium-size);
+  --markdown-heading-3-line-height: var(--md-sys-typescale-title-medium-line-height);
+  --markdown-heading-3-tracking: var(--md-sys-typescale-title-medium-tracking);
 
   font-size: var(--md-sys-typescale-body-large-size);
+  font-weight: var(--md-sys-typescale-body-large-weight);
   line-height: var(--md-sys-typescale-body-large-line-height);
   letter-spacing: var(--md-sys-typescale-body-large-tracking);
 }
@@ -60,8 +96,26 @@ const renderedMarkdown = computed(() =>
 .markdown-content--compact {
   --markdown-block-gap: 12px;
   --markdown-heading-gap: 18px;
+  --markdown-inline-code-background: var(--md-sys-color-surface-container-lowest);
+  --markdown-code-block-background: var(--md-sys-color-surface-container-lowest);
+  --markdown-heading-1-font: var(--md-sys-typescale-headline-small-font);
+  --markdown-heading-1-weight: var(--md-sys-typescale-headline-small-weight);
+  --markdown-heading-1-size: var(--md-sys-typescale-headline-small-size);
+  --markdown-heading-1-line-height: var(--md-sys-typescale-headline-small-line-height);
+  --markdown-heading-1-tracking: var(--md-sys-typescale-headline-small-tracking);
+  --markdown-heading-2-font: var(--md-sys-typescale-title-large-font);
+  --markdown-heading-2-weight: var(--md-sys-typescale-title-large-weight);
+  --markdown-heading-2-size: var(--md-sys-typescale-title-large-size);
+  --markdown-heading-2-line-height: var(--md-sys-typescale-title-large-line-height);
+  --markdown-heading-2-tracking: var(--md-sys-typescale-title-large-tracking);
+  --markdown-heading-3-font: var(--md-sys-typescale-title-medium-font);
+  --markdown-heading-3-weight: var(--md-sys-typescale-title-medium-weight);
+  --markdown-heading-3-size: var(--md-sys-typescale-title-medium-size);
+  --markdown-heading-3-line-height: var(--md-sys-typescale-title-medium-line-height);
+  --markdown-heading-3-tracking: var(--md-sys-typescale-title-medium-tracking);
 
   font-size: var(--md-sys-typescale-body-small-size);
+  font-weight: var(--md-sys-typescale-body-small-weight);
   line-height: var(--md-sys-typescale-body-small-line-height);
   letter-spacing: var(--md-sys-typescale-body-small-tracking);
 }
@@ -73,37 +127,33 @@ const renderedMarkdown = computed(() =>
 .markdown-content :deep(h1),
 .markdown-content :deep(h2),
 .markdown-content :deep(h3) {
-  margin: 0 0 var(--markdown-block-gap);
+  margin: 0;
   color: var(--md-sys-color-on-surface);
-  font-weight: var(--md-ref-typeface-weight-bold);
   overflow-wrap: anywhere;
 }
 
-.markdown-content :deep(h1:not(:first-child)),
-.markdown-content :deep(h2:not(:first-child)),
-.markdown-content :deep(h3:not(:first-child)) {
-  margin-top: var(--markdown-heading-gap);
-}
-
 .markdown-content :deep(h1) {
-  font-size: var(--md-sys-typescale-headline-large-size);
-  line-height: var(--md-sys-typescale-headline-large-line-height);
-  letter-spacing: var(--md-sys-typescale-headline-large-tracking);
+  font-family: var(--markdown-heading-1-font);
+  font-size: var(--markdown-heading-1-size);
+  font-weight: var(--markdown-heading-1-weight);
+  line-height: var(--markdown-heading-1-line-height);
+  letter-spacing: var(--markdown-heading-1-tracking);
 }
 
 .markdown-content :deep(h2) {
-  font-size: var(--md-sys-typescale-headline-medium-size);
-  line-height: var(--md-sys-typescale-headline-medium-line-height);
-  letter-spacing: var(--md-sys-typescale-headline-medium-tracking);
+  font-family: var(--markdown-heading-2-font);
+  font-size: var(--markdown-heading-2-size);
+  font-weight: var(--markdown-heading-2-weight);
+  line-height: var(--markdown-heading-2-line-height);
+  letter-spacing: var(--markdown-heading-2-tracking);
 }
 
 .markdown-content :deep(h3) {
-  font-size: var(--md-sys-typescale-title-large-size, var(--md-sys-typescale-body-large-size));
-  line-height: var(
-    --md-sys-typescale-title-large-line-height,
-    var(--md-sys-typescale-body-large-line-height)
-  );
-  letter-spacing: var(--md-sys-typescale-title-large-tracking, 0);
+  font-family: var(--markdown-heading-3-font);
+  font-size: var(--markdown-heading-3-size);
+  font-weight: var(--markdown-heading-3-weight);
+  line-height: var(--markdown-heading-3-line-height);
+  letter-spacing: var(--markdown-heading-3-tracking);
 }
 
 .markdown-content :deep(p),
@@ -113,7 +163,7 @@ const renderedMarkdown = computed(() =>
 .markdown-content :deep(pre),
 .markdown-content :deep(table),
 .markdown-content :deep(hr) {
-  margin: 0 0 var(--markdown-block-gap);
+  margin: 0;
 }
 
 .markdown-content :deep(p),
@@ -140,25 +190,27 @@ const renderedMarkdown = computed(() =>
 
 .markdown-content :deep(ul),
 .markdown-content :deep(ol) {
+  display: grid;
+  gap: calc(var(--markdown-block-gap) * 0.35);
   padding-inline-start: 1.5em;
 }
 
-.markdown-content :deep(li + li) {
-  margin-top: calc(var(--markdown-block-gap) * 0.35);
-}
-
 .markdown-content :deep(blockquote) {
-  padding: 12px 16px;
-  border-inline-start: 4px solid var(--markdown-border-color);
+  display: grid;
+  gap: 8px;
+  padding: 16px;
+  border: 1px solid var(--markdown-border-color);
+  border-inline-start-width: 3px;
   background-color: var(--markdown-surface-background);
   border-radius: var(--md-sys-shape-corner-medium);
   color: var(--md-sys-color-on-surface-variant);
 }
 
 .markdown-content :deep(code) {
-  padding: 0.12em 0.32em;
+  padding: 0.18em 0.4em;
   border-radius: var(--md-sys-shape-corner-extra-small);
   background-color: var(--markdown-inline-code-background);
+  color: var(--md-sys-color-on-surface);
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   font-size: 0.92em;
 }
@@ -166,25 +218,33 @@ const renderedMarkdown = computed(() =>
 .markdown-content :deep(pre) {
   overflow-x: auto;
   max-width: 100%;
-  padding: 16px;
+  padding: 14px 16px;
   border-radius: var(--md-sys-shape-corner-large);
-  background-color: var(--md-sys-color-surface-container);
+  background-color: var(--markdown-code-block-background);
+  border: 1px solid var(--markdown-border-color);
 }
 
 .markdown-content :deep(pre code) {
   display: block;
   padding: 0;
   background-color: transparent;
+  color: inherit;
   white-space: pre;
 }
 
+.markdown-content :deep(blockquote > *) {
+  margin: 0;
+}
+
 .markdown-content :deep(table) {
-  display: block;
   overflow-x: auto;
+  min-width: 100%;
   width: max-content;
   max-width: 100%;
   border-collapse: collapse;
   border-spacing: 0;
+  border-radius: var(--md-sys-shape-corner-medium);
+  background-color: var(--md-sys-color-surface-container-lowest);
 }
 
 .markdown-content :deep(thead) {
@@ -194,17 +254,35 @@ const renderedMarkdown = computed(() =>
 .markdown-content :deep(th),
 .markdown-content :deep(td) {
   padding: 10px 12px;
-  border: 1px solid var(--markdown-border-color);
+  border: 0;
+  border-bottom: 1px solid var(--markdown-border-color);
   text-align: left;
   vertical-align: top;
+}
+
+.markdown-content :deep(th) {
+  font-family: var(--md-sys-typescale-label-large-font);
+  font-size: var(--md-sys-typescale-label-large-size);
+  font-weight: var(--md-sys-typescale-label-large-weight);
+  line-height: var(--md-sys-typescale-label-large-line-height);
+  letter-spacing: var(--md-sys-typescale-label-large-tracking);
+  color: var(--md-sys-color-on-surface-variant);
+}
+
+.markdown-content :deep(td) {
+  font-family: var(--md-sys-typescale-body-medium-font);
+  font-size: var(--md-sys-typescale-body-medium-size);
+  font-weight: var(--md-sys-typescale-body-medium-weight);
+  line-height: var(--md-sys-typescale-body-medium-line-height);
+  letter-spacing: var(--md-sys-typescale-body-medium-tracking);
+}
+
+.markdown-content :deep(tbody tr:last-child td) {
+  border-bottom: 0;
 }
 
 .markdown-content :deep(hr) {
   border: 0;
   border-top: 1px solid var(--markdown-border-color);
-}
-
-.markdown-content :deep(:last-child) {
-  margin-bottom: 0;
 }
 </style>
