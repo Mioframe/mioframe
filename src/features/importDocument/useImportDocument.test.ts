@@ -77,7 +77,7 @@ describe('useImportDocument', () => {
       ),
     });
 
-    const cause = new Error('Create failed');
+    const cause = new Error('Could not write the imported document');
     createDocumentMock.mockRejectedValueOnce(cause);
 
     const { importJsonFile } = useImportDocument();
@@ -141,7 +141,7 @@ describe('useImportDocument', () => {
   });
 
   it('wraps file read errors with a user-facing DomainError', async () => {
-    const cause = new Error('Read failed');
+    const cause = new Error('Could not read the selected file');
     fileOpenMock.mockResolvedValue({
       text: vi.fn().mockRejectedValue(cause),
     });
@@ -168,7 +168,7 @@ describe('useImportDocument', () => {
   });
 
   it('does not treat non-AbortError picker failures as user cancellation', async () => {
-    const cause = new DOMException('Permission denied', 'NotAllowedError');
+    const cause = new DOMException('Could not access the selected file', 'NotAllowedError');
     fileOpenMock.mockRejectedValueOnce(cause);
 
     const { importJsonFile } = useImportDocument();
@@ -181,5 +181,33 @@ describe('useImportDocument', () => {
       cause,
     });
     expect(createDocumentMock).not.toHaveBeenCalled();
+  });
+
+  it('preserves a safe cause message for reporting when document creation fails', async () => {
+    fileOpenMock.mockResolvedValue({
+      text: vi.fn().mockResolvedValue(
+        JSON.stringify({
+          body: {},
+          name: 'Doc',
+          type: 'note',
+          version: 1,
+        }),
+      ),
+    });
+
+    const cause = new Error('Could not write the imported document');
+    createDocumentMock.mockRejectedValueOnce(cause);
+
+    const { importJsonFile } = useImportDocument();
+
+    const error = await importJsonFile('/documents').catch((caughtError: unknown) => caughtError);
+
+    expect(error).toBeInstanceOf(DomainError);
+    expect(error).toMatchObject({
+      message: 'Could not import the document',
+      cause: expect.objectContaining({
+        message: 'Could not write the imported document',
+      }),
+    });
   });
 });

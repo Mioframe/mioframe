@@ -154,7 +154,7 @@ const setupDocumentService = () => {
     }
 
     if (!handle) {
-      throw new DomainError(`Document "${documentId}" not found at "${directoryPath}"`);
+      throw new DomainError('The document could not be found');
     }
 
     handle.change((doc) => {
@@ -176,7 +176,7 @@ const setupDocumentService = () => {
     }
 
     if (!handle) {
-      throw new DomainError(`Document "${documentId}" not found at "${directoryPath}"`);
+      throw new DomainError('The document could not be found');
     }
 
     handle.change((doc) => {
@@ -198,7 +198,7 @@ const setupDocumentService = () => {
     }
 
     if (!handle) {
-      throw new DomainError(`Document "${documentId}" not found at "${directoryPath}"`);
+      throw new DomainError('The document could not be found');
     }
 
     return new Promise<void>((resolve, reject) => {

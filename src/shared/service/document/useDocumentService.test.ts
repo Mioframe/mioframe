@@ -361,12 +361,15 @@ describe('useDocumentService', () => {
 
     await expect(service.put(path, documentId, createDocument())).rejects.toMatchObject({
       __isDomainError: true,
+      message: 'The document could not be found',
     });
     await expect(service.patch(path, documentId, { name: 'Next' })).rejects.toMatchObject({
       __isDomainError: true,
+      message: 'The document could not be found',
     });
     await expect(service.change(path, documentId, vi.fn())).rejects.toMatchObject({
       __isDomainError: true,
+      message: 'The document could not be found',
     });
   });
 });

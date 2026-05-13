@@ -54,7 +54,6 @@ export const useRemoveFSEntry = () => {
               reportHandledError(recursiveError, {
                 feature: 'entryRemove',
                 action: 'removeEntryRecursive',
-                path,
               });
             }
           }
@@ -65,7 +64,6 @@ export const useRemoveFSEntry = () => {
           reportHandledError(error, {
             feature: 'entryRemove',
             action: 'removeEntry',
-            path,
           });
         }
       }

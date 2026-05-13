@@ -159,7 +159,6 @@ const onClickMenuAction = async ({ key }: { key: FSEntryContextEvent }) => {
             reportHandledError(error, {
               feature: 'documentImport',
               action: 'importDocumentJson',
-              path: path.value,
             });
           }
         }

@@ -54,8 +54,15 @@ it('renders the local-first and privacy help content in-app', async () => {
   expect(root.textContent).toContain('You can use the app without creating a Mioframe account.');
   expect(root.textContent).toContain('Error diagnostics');
   expect(root.textContent).toContain('Error diagnostics are optional');
-  expect(root.textContent).toContain('Document contents are not intentionally included');
-  expect(root.textContent).toContain('stack traces, browser details, or the current app URL');
+  expect(root.textContent).toContain(
+    'Mioframe sends technical error reports only after an error happens.',
+  );
+  expect(root.textContent).toContain(
+    'do not include document contents, record values, document names, folder names, local folder paths, document ids, or file ids.',
+  );
+  expect(root.textContent).toContain(
+    'stack traces, browser details, app version or build information, error type or code, and a safe application error message.',
+  );
 
   app.unmount();
   root.remove();

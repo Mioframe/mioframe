@@ -53,7 +53,7 @@ describe('useExportDocument', () => {
   });
 
   it('preserves the original cause when fetching the document state fails', async () => {
-    const cause = new Error('Fetch failed');
+    const cause = new Error('Could not load the document for export');
     fetchMock.mockRejectedValueOnce(cause);
 
     const { saveJsonFile } = useExportDocument();
@@ -123,7 +123,7 @@ describe('useExportDocument', () => {
   });
 
   it('does not treat non-AbortError save failures as user cancellation', async () => {
-    const cause = new DOMException('Permission denied', 'NotAllowedError');
+    const cause = new DOMException('Could not save the exported file', 'NotAllowedError');
     fileSaveMock.mockRejectedValueOnce(cause);
 
     const { saveJsonFile } = useExportDocument();
@@ -136,6 +136,25 @@ describe('useExportDocument', () => {
     expect(error).toMatchObject({
       message: 'Could not export the document',
       cause,
+    });
+  });
+
+  it('preserves a safe cause message for reporting when export loading fails', async () => {
+    const cause = new Error('Could not load the document for export');
+    fetchMock.mockRejectedValueOnce(cause);
+
+    const { saveJsonFile } = useExportDocument();
+
+    const error = await saveJsonFile('/documents', documentId).catch(
+      (caughtError: unknown) => caughtError,
+    );
+
+    expect(error).toBeInstanceOf(DomainError);
+    expect(error).toMatchObject({
+      message: 'Could not export the document',
+      cause: expect.objectContaining({
+        message: 'Could not load the document for export',
+      }),
     });
   });
 

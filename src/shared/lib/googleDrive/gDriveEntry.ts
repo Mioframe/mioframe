@@ -28,7 +28,7 @@ export const createGDriveEntry = (
 
     if (!('removeByName' in parentEntry)) {
       throw new DomainError('Could not remove the item', {
-        cause: new Error(`don't have "removeByName" method in ${parentEntry.path.join('/')}`),
+        cause: new Error('The parent entry does not support removal by name'),
       });
     }
     await parentEntry.removeByName(currentName);

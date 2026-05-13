@@ -162,7 +162,7 @@ const setupDirectoryStoreService = () => {
 
     return new Promise((resolve, reject) => {
       const timeoutId = setTimeout(() => {
-        reject(new DomainError(`The entry ${stringPath(rawPath)} timeout expired`));
+        reject(new DomainError('The requested entry could not be loaded in time'));
       }, 30e3);
 
       void until(
@@ -378,7 +378,7 @@ const setupDirectoryStoreService = () => {
     if ('remove' in entry) {
       await entry.remove();
     } else {
-      throw new DomainError(`"${pathToString(entry.path)}" don't have "remove" method`);
+      throw new DomainError('The selected item cannot be removed');
     }
 
     strictRecordSet(stateEntries, pathString, new EntryNotFoundError(rawPath));
@@ -401,7 +401,7 @@ const setupDirectoryStoreService = () => {
       removeCachedEntry(pathString);
       await locateEntryFromRoot(path);
     } else {
-      throw new DomainError(`"${pathToString(entry.path)}" don't have "rename" method`);
+      throw new DomainError('The selected item cannot be renamed');
     }
   };
 

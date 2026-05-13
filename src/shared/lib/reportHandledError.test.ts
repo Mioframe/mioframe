@@ -134,7 +134,6 @@ describe('reportHandledError', () => {
       {
         feature: 'documents',
         action: 'save',
-        path: '/docs/a',
       },
     );
 
@@ -147,7 +146,6 @@ describe('reportHandledError', () => {
     });
 
     expect(mockScope.setExtras).toHaveBeenCalledWith({
-      path: '/docs/a',
       userMessage: 'Could not save',
       domainErrorCode: 'document-export-failed',
     });
@@ -170,7 +168,7 @@ describe('reportHandledError', () => {
     expect(mockScope.setExtras).not.toHaveBeenCalled();
   });
 
-  it('wraps a non-Error and preserves the original thrown value', async () => {
+  it('wraps a non-Error without preserving the original thrown value', async () => {
     ensureSentryMock.mockResolvedValue(realFacade);
 
     const { reportHandledError } = await import('./reportHandledError');
@@ -187,8 +185,35 @@ describe('reportHandledError', () => {
       message: 'Handled non-error exception',
     });
     expect(mockScope.setExtras).toHaveBeenCalledWith({
-      originalError: 'boom',
+      originalThrownType: 'string',
     });
+  });
+
+  it('does not send a user path in handled error extras', async () => {
+    ensureSentryMock.mockResolvedValue(realFacade);
+
+    const { DomainError } = await import('@shared/lib/error');
+    const { reportHandledError } = await import('./reportHandledError');
+
+    reportHandledError(
+      new DomainError('Could not save', {
+        cause: new Error('Could not save the document'),
+      }),
+      {
+        feature: 'documents',
+        action: 'save',
+      },
+    );
+
+    await vi.waitFor(() => {
+      expect(realFacade.captureException).toHaveBeenCalled();
+    });
+    expect(mockScope.setExtras).toHaveBeenCalledWith({
+      userMessage: 'Could not save',
+    });
+    expect(mockScope.setExtras).not.toHaveBeenCalledWith(
+      expect.objectContaining({ path: '/docs/a' }),
+    );
   });
 
   it('queues handled reports until lazy Sentry initialization completes', async () => {

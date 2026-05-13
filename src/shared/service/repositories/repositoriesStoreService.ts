@@ -4,7 +4,7 @@ import {
 } from '@shared/lib/cfrDocument/useDirectoryRepo';
 import type { EntryPath } from '@shared/lib/fileSystem';
 import { createGlobalState } from '@vueuse/core';
-import { stringPath, useDirectoryStoreService } from '../directories';
+import { useDirectoryStoreService } from '../directories';
 import type { AMDocumentId } from '@shared/lib/automerge';
 import { defineSubscribeByQueryService } from '@shared/lib/subscriptions';
 import type { CFRDocumentContent } from '@shared/lib/cfrDocument';
@@ -23,7 +23,7 @@ export const useRepositoriesStoreService = createGlobalState(() => {
     }
 
     if (!entry || entry.type === 'file') {
-      return new DomainError(`Entry ${stringPath(path)} is not directory with document repo`);
+      return new DomainError('The selected location is not a document repository');
     }
 
     const directoryRepo = getDirectoryRepoScope(entry.raw); // fixme: нужен механизм для release

@@ -58,7 +58,6 @@ describe('useRemoveFSEntry', () => {
     expect(reportHandledErrorMock).toHaveBeenCalledWith(error, {
       feature: 'entryRemove',
       action: 'removeEntry',
-      path: '/docs/file.json',
     });
   });
 
@@ -85,7 +84,6 @@ describe('useRemoveFSEntry', () => {
     expect(reportHandledErrorMock).toHaveBeenCalledWith(recursiveError, {
       feature: 'entryRemove',
       action: 'removeEntryRecursive',
-      path: '/docs/folder',
     });
   });
 

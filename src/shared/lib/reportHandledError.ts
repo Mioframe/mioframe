@@ -4,7 +4,6 @@ import { ensureSentry, getSentryReportingState, isSentryConfigured } from './set
 type ReportHandledErrorOptions = {
   feature: string;
   action: string;
-  path?: string | undefined;
 };
 
 const HANDLED_NON_ERROR_MESSAGE = 'Handled non-error exception';
@@ -129,11 +128,8 @@ export const reportHandledError = (error: unknown, options: ReportHandledErrorOp
     reportedError = error;
   } else {
     reportedError = new Error(HANDLED_NON_ERROR_MESSAGE);
-    extras.originalError = error;
-  }
-
-  if (options.path !== undefined) {
-    extras.path = options.path;
+    extras.originalThrownType =
+      error === null ? 'null' : Array.isArray(error) ? 'array' : typeof error;
   }
 
   try {

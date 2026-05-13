@@ -394,11 +394,45 @@ describe('setupSentry', () => {
 
     const initOptions = initMock.mock.calls[0]?.[0];
     const beforeSend = initOptions?.beforeSend;
-    const event = { message: 'test-event' };
+    const event = {
+      breadcrumbs: [{ message: 'user breadcrumb' }],
+      extra: {
+        domainErrorCode: 'document-export-failed',
+        originalThrownType: 'string',
+        path: '/docs/private',
+        userMessage: 'Could not export the document',
+      },
+      message: 'test-event',
+      request: {
+        url: 'https://app.example/doc/secret-id',
+      },
+      tags: {
+        action: 'exportDocumentJson',
+        feature: 'documentExport',
+        handled: 'true',
+        path: '/docs/private',
+      },
+      user: {
+        id: 'user-1',
+      },
+    };
 
     expect(beforeSend).toEqual(expect.any(Function));
     if (beforeSend instanceof Function) {
-      expect(beforeSend(event)).toBe(event);
+      expect(beforeSend(event)).toEqual({
+        extra: {
+          domainErrorCode: 'document-export-failed',
+          originalThrownType: 'string',
+          userMessage: 'Could not export the document',
+        },
+        message: 'test-event',
+        request: {},
+        tags: {
+          action: 'exportDocumentJson',
+          feature: 'documentExport',
+          handled: 'true',
+        },
+      });
     }
   });
 
@@ -413,11 +447,19 @@ describe('setupSentry', () => {
 
     const initOptions = initMock.mock.calls[0]?.[0];
     const beforeSend = initOptions?.beforeSend;
-    const event = { message: 'setup-event' };
+    const event = {
+      extra: { userMessage: 'Could not save', path: '/docs/private' },
+      message: 'setup-event',
+    };
 
     expect(beforeSend).toEqual(expect.any(Function));
     if (beforeSend instanceof Function) {
-      expect(beforeSend(event)).toBe(event);
+      expect(beforeSend(event)).toEqual({
+        extra: {
+          userMessage: 'Could not save',
+        },
+        message: 'setup-event',
+      });
     }
   });
 
