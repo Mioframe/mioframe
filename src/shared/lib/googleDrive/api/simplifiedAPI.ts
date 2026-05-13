@@ -7,6 +7,7 @@ import type { ZodMiniType } from 'zod/v4-mini';
 import { z } from 'zod/v4-mini';
 import { HttpStatusCode } from '../../error/httpStatus';
 import { GoogleDriveError } from '../error';
+import { createSafeErrorCause } from '../../error';
 import { dedupe } from '../../dedupe';
 import type {
   CreateResource,
@@ -63,15 +64,14 @@ const googleRequest = async (url: Input, options?: ApiOptions): Promise<Response
 
       const { error: googleError } = zodGoogleErrorResponse.parse(errorBody);
 
-      const { code, message } = googleError;
+      const { code } = googleError;
 
       throw new GoogleDriveError(
         {
           code,
-          message,
-          details: googleError,
+          message: 'Google Drive request failed',
         },
-        { cause: googleError },
+        { cause: createSafeErrorCause('Google Drive API request failed') },
       );
     }
 
@@ -85,15 +85,14 @@ const googleRequest = async (url: Input, options?: ApiOptions): Promise<Response
 
       const { error: googleError } = zodGoogleErrorResponse.parse(errorBody);
 
-      const { code, message } = googleError;
+      const { code } = googleError;
 
       throw new GoogleDriveError(
         {
           code,
-          message,
-          details: googleError,
+          message: 'Google Drive request failed',
         },
-        { cause: googleError },
+        { cause: createSafeErrorCause('Google Drive API request failed') },
       );
     }
 
@@ -453,7 +452,7 @@ export const create = async (auth: GoogleAuthParams, resource: CreateResource) =
   if (resource.parents.length === 0) {
     throw new GoogleDriveError({
       code: HttpStatusCode.FORBIDDEN,
-      message: 'Parents array cannot be empty',
+      message: 'Google Drive create operation requires a parent directory',
     });
   }
 
@@ -487,7 +486,7 @@ export const createWithContent = async (
   if (resource.parents.length === 0) {
     throw new GoogleDriveError({
       code: HttpStatusCode.FORBIDDEN,
-      message: 'Parents array cannot be empty',
+      message: 'Google Drive create operation requires a parent directory',
     });
   }
 

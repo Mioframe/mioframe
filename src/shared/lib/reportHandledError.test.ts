@@ -216,6 +216,26 @@ describe('reportHandledError', () => {
     );
   });
 
+  it('accepts only feature and action metadata, without path options', async () => {
+    ensureSentryMock.mockResolvedValue(realFacade);
+
+    const { reportHandledError } = await import('./reportHandledError');
+
+    reportHandledError(new Error('boom'), {
+      feature: 'documents',
+      action: 'save',
+    });
+
+    await vi.waitFor(() => {
+      expect(realFacade.captureException).toHaveBeenCalledWith(expect.any(Error));
+    });
+    expect(mockScope.setTag).toHaveBeenCalledWith('feature', 'documents');
+    expect(mockScope.setTag).toHaveBeenCalledWith('action', 'save');
+    expect(mockScope.setExtras).not.toHaveBeenCalledWith(
+      expect.objectContaining({ path: expect.anything() }),
+    );
+  });
+
   it('queues handled reports until lazy Sentry initialization completes', async () => {
     const gate = createDeferred<MockSentryFacade>();
     ensureSentryMock.mockReturnValue(gate.promise);

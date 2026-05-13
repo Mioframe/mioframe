@@ -78,6 +78,10 @@ describe('simplifiedAPI error handling', () => {
     ).rejects.toMatchObject({
       code: HttpStatusCode.NOT_FOUND,
       name: 'GoogleDriveError',
+      message: 'Google Drive request failed',
+      cause: expect.objectContaining({
+        message: 'Google Drive API request failed',
+      }),
     });
 
     expect(fetchMock).toHaveBeenCalledTimes(1);
@@ -103,6 +107,10 @@ describe('simplifiedAPI error handling', () => {
     await expect(update({ ACCESS_TOKEN: 'token' }, 'file-id', {})).rejects.toMatchObject({
       code: HttpStatusCode.FORBIDDEN,
       name: 'GoogleDriveError',
+      message: 'Google Drive request failed',
+      cause: expect.objectContaining({
+        message: 'Google Drive API request failed',
+      }),
     });
 
     expect(fetchMock).toHaveBeenCalledTimes(1);
@@ -130,6 +138,10 @@ describe('simplifiedAPI error handling', () => {
     ).rejects.toMatchObject({
       code: HttpStatusCode.UNAUTHORIZED,
       name: 'GoogleDriveError',
+      message: 'Google Drive request failed',
+      cause: expect.objectContaining({
+        message: 'Google Drive API request failed',
+      }),
     });
 
     expect(fetchMock).toHaveBeenCalledTimes(1);
@@ -155,8 +167,46 @@ describe('simplifiedAPI error handling', () => {
     await expect(upload({ ACCESS_TOKEN: 'token' }, 'file-id', 'content')).rejects.toMatchObject({
       code: HttpStatusCode.PAYLOAD_TOO_LARGE,
       name: 'GoogleDriveError',
+      message: 'Google Drive request failed',
+      cause: expect.objectContaining({
+        message: 'Google Drive API request failed',
+      }),
     });
 
     expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not preserve raw Google API messages that may contain file ids or names', async () => {
+    const fetchMock = vi.fn<typeof fetch>().mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          error: {
+            code: HttpStatusCode.NOT_FOUND,
+            message: 'File gd-123 "Tax 2025" was not found in folder Private',
+          },
+        }),
+        { status: HttpStatusCode.NOT_FOUND },
+      ),
+    );
+
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { getGFileMetaList } = await import('./simplifiedAPI');
+
+    const error = await getGFileMetaList(
+      { ACCESS_TOKEN: 'token' },
+      { q: {}, spaces: [], fetchAll: true },
+    ).catch((caughtError: unknown) => caughtError);
+
+    expect(error).toMatchObject({
+      message: 'Google Drive request failed',
+      cause: expect.objectContaining({
+        message: 'Google Drive API request failed',
+      }),
+    });
+    expect(error).not.toHaveProperty(
+      'message',
+      'File gd-123 "Tax 2025" was not found in folder Private',
+    );
   });
 });

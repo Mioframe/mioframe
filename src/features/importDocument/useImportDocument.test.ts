@@ -65,7 +65,7 @@ describe('useImportDocument', () => {
     expect(createDocumentMock).not.toHaveBeenCalled();
   });
 
-  it('preserves the original cause when document creation fails', async () => {
+  it('replaces raw repository failure details with a safe cause when document creation fails', async () => {
     fileOpenMock.mockResolvedValue({
       text: vi.fn().mockResolvedValue(
         JSON.stringify({
@@ -77,8 +77,10 @@ describe('useImportDocument', () => {
       ),
     });
 
-    const cause = new Error('Could not write the imported document');
-    createDocumentMock.mockRejectedValueOnce(cause);
+    const rawCause = new Error(
+      'Failed to write /Device files/Private/Tax 2025/document.json for file-id gd-123',
+    );
+    createDocumentMock.mockRejectedValueOnce(rawCause);
 
     const { importJsonFile } = useImportDocument();
 
@@ -93,8 +95,12 @@ describe('useImportDocument', () => {
     expect(error).toBeInstanceOf(DomainError);
     expect(error).toMatchObject({
       message: 'Could not import the document',
-      cause,
+      code: 'document-import-failed',
+      cause: expect.objectContaining({
+        message: 'Document repository write operation failed',
+      }),
     });
+    expect(error).not.toHaveProperty('cause.message', rawCause.message);
   });
 
   it('creates a document from valid Beaver JSON and returns its id', async () => {
@@ -140,10 +146,10 @@ describe('useImportDocument', () => {
     await expect(importJsonFile('/documents')).rejects.toBe(cause);
   });
 
-  it('wraps file read errors with a user-facing DomainError', async () => {
-    const cause = new Error('Could not read the selected file');
+  it('wraps file read errors with a privacy-safe technical cause', async () => {
+    const rawCause = new Error('Could not read /Device files/Private/Tax 2025/document.json');
     fileOpenMock.mockResolvedValue({
-      text: vi.fn().mockRejectedValue(cause),
+      text: vi.fn().mockRejectedValue(rawCause),
     });
 
     const { importJsonFile } = useImportDocument();
@@ -153,8 +159,12 @@ describe('useImportDocument', () => {
     expect(error).toBeInstanceOf(DomainError);
     expect(error).toMatchObject({
       message: 'Could not import the document',
-      cause,
+      code: 'file-read-failed',
+      cause: expect.objectContaining({
+        message: 'Selected file read failed',
+      }),
     });
+    expect(error).not.toHaveProperty('cause.message', rawCause.message);
     expect(createDocumentMock).not.toHaveBeenCalled();
   });
 
@@ -168,8 +178,11 @@ describe('useImportDocument', () => {
   });
 
   it('does not treat non-AbortError picker failures as user cancellation', async () => {
-    const cause = new DOMException('Could not access the selected file', 'NotAllowedError');
-    fileOpenMock.mockRejectedValueOnce(cause);
+    const rawCause = new DOMException(
+      'Could not access /Device files/Private/Tax 2025/document.json',
+      'NotAllowedError',
+    );
+    fileOpenMock.mockRejectedValueOnce(rawCause);
 
     const { importJsonFile } = useImportDocument();
 
@@ -178,8 +191,12 @@ describe('useImportDocument', () => {
     expect(error).toBeInstanceOf(DomainError);
     expect(error).toMatchObject({
       message: 'Could not open the selected file',
-      cause,
+      code: 'file-open-failed',
+      cause: expect.objectContaining({
+        message: 'Selected file open operation failed',
+      }),
     });
+    expect(error).not.toHaveProperty('cause.message', rawCause.message);
     expect(createDocumentMock).not.toHaveBeenCalled();
   });
 
@@ -206,7 +223,7 @@ describe('useImportDocument', () => {
     expect(error).toMatchObject({
       message: 'Could not import the document',
       cause: expect.objectContaining({
-        message: 'Could not write the imported document',
+        message: 'Document repository write operation failed',
       }),
     });
   });
