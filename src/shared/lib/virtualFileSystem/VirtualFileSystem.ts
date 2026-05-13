@@ -259,7 +259,7 @@ export class VirtualFileSystem {
       }
     }
 
-    throw new VfsError(FileSystemError.FileNotFound, `No provider mounted for path: ${path}`);
+    throw new VfsError(FileSystemError.FileNotFound, 'No provider is mounted for the path');
   }
 
   // --- API Methods ---
@@ -377,7 +377,7 @@ export class VirtualFileSystem {
     if (stat.capabilities?.canDelete !== true) {
       throw new VfsError(
         FileSystemError.NoPermissions,
-        `Deletion is not allowed for path: ${path}`,
+        'File system delete operation is not allowed',
       );
     }
 
@@ -435,7 +435,7 @@ export class VirtualFileSystem {
     if (PathUtils.isChildOrSame(oldPath, newPath)) {
       throw new VfsError(
         FileSystemError.NotSupported,
-        `Cannot rename directory to a path inside itself: ${oldPath} -> ${newPath}`,
+        'Cannot move a directory into itself or one of its subdirectories',
       );
     }
 
@@ -445,13 +445,13 @@ export class VirtualFileSystem {
     if (stat.capabilities?.canChangePath !== true) {
       throw new VfsError(
         FileSystemError.NoPermissions,
-        `Path change is not allowed for path: ${oldPath}`,
+        'The selected item does not support moving',
       );
     }
     if (targetParentStat.capabilities?.canEditChildren !== true) {
       throw new VfsError(
         FileSystemError.NoPermissions,
-        `Path change is not allowed inside directory: ${PathUtils.dirname(newPath)}`,
+        'The destination directory is not writable',
       );
     }
 

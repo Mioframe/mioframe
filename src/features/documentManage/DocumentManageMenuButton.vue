@@ -71,7 +71,6 @@ const onClickMenuAction = async ({ key }: { key: DocumentContextEvent }) => {
           reportHandledError(error, {
             feature: 'documentExport',
             action: 'exportDocumentJson',
-            path: directoryPath.value,
           });
         }
       }

@@ -2,7 +2,6 @@ import { from } from 'ix/Ix.asynciterable';
 import type { DirectoryFSEntry, WritableDirectoryFSEntry } from './DirectoryFSEntry';
 import type { FileFSEntry } from './FileFSEntry';
 import { isEqual } from 'es-toolkit';
-import { pathToString } from '@shared/service/directories';
 import { DomainError } from '../error';
 import { FileSystemDomainErrorCode } from './fileSystemErrorCode';
 
@@ -22,9 +21,7 @@ export const moveDirectoryTo = async (
   if (isNestedPath(dest.path, currentDirectoryEntry.path)) {
     throw new DomainError('Could not move the directory', {
       code: FileSystemDomainErrorCode.directoryMoveFailed,
-      cause: new Error(
-        `impossible to move "${currentDirectoryEntry.name}" from "${currentDirectoryEntry.path.slice(0, -1).join('/')}" to "${dest.path.join('/')}"`,
-      ),
+      cause: new Error('Cannot move a directory into itself or one of its subdirectories'),
     });
   }
 
@@ -34,14 +31,14 @@ export const moveDirectoryTo = async (
     if (!('moveTo' in entry)) {
       throw new DomainError('Could not move the item', {
         code: FileSystemDomainErrorCode.entryMoveFailed,
-        cause: new Error(`"${pathToString(entry.path)}" don't have moveTo method`),
+        cause: new Error('The selected item does not support moving'),
       });
     }
 
     if (!('createDirectory' in newDirectoryEntry)) {
       throw new DomainError('Could not move the directory', {
         code: FileSystemDomainErrorCode.directoryMoveFailed,
-        cause: new Error(`"${pathToString(newDirectoryEntry.path)}" don't writable directory`),
+        cause: new Error('The destination directory is not writable'),
       });
     }
 
@@ -51,7 +48,7 @@ export const moveDirectoryTo = async (
   if (!('remove' in currentDirectoryEntry)) {
     throw new DomainError('Could not remove the directory', {
       code: FileSystemDomainErrorCode.directoryRemoveFailed,
-      cause: new Error(`"${pathToString(currentDirectoryEntry.path)}" don't have remove method`),
+      cause: new Error('The selected directory does not support removal'),
     });
   }
 
@@ -77,7 +74,7 @@ export const copyDirectoryTo = async (
   if (isNestedPath(destPath, currentPath)) {
     throw new DomainError('Could not copy the directory', {
       code: FileSystemDomainErrorCode.directoryCopyFailed,
-      cause: new Error(`impossible to copy "${currentPath.join('/')}" to "${destPath.join('/')}"`),
+      cause: new Error('Cannot copy a directory into itself or one of its subdirectories'),
     });
   }
 
@@ -89,14 +86,14 @@ export const copyDirectoryTo = async (
     if (!('copyTo' in entry)) {
       throw new DomainError('Could not copy the item', {
         code: FileSystemDomainErrorCode.entryCopyFailed,
-        cause: new Error(`"${pathToString(entry.path)}" don't have copyTo method`),
+        cause: new Error('The selected item does not support copying'),
       });
     }
 
     if (!('createDirectory' in newDirectoryEntry)) {
       throw new DomainError('Could not copy the directory', {
         code: FileSystemDomainErrorCode.directoryCopyFailed,
-        cause: new Error(`"${pathToString(newDirectoryEntry.path)}" don't writable directory`),
+        cause: new Error('The destination directory is not writable'),
       });
     }
 

@@ -7,12 +7,10 @@ import { HttpStatusCode } from '../error/httpStatus';
 type GoogleDriveErrorInit = {
   /** HTTP-like Google Drive error code. */
   code: HttpStatusCode;
-  /** User-facing error message. */
+  /** Project-controlled error message safe for diagnostics. */
   message: string;
   /** Underlying cause preserved for debugging. */
   cause?: unknown;
-  /** Additional API details attached to the failure. */
-  details?: Record<string, unknown> | undefined;
 };
 
 /**
@@ -30,9 +28,6 @@ export class GoogleDriveError extends DomainError<HttpStatusCode> {
   override name = 'GoogleDriveError';
   /** HTTP-like Google Drive error code. */
   override code: HttpStatusCode;
-  /** Additional API details attached to the failure. */
-  details?: Record<string, unknown> | undefined;
-
   /**
    * Creates a Google Drive error from either an init object or a plain message.
    * @param options - Full error details or a fallback message.
@@ -43,10 +38,9 @@ export class GoogleDriveError extends DomainError<HttpStatusCode> {
       super(options, { cause });
       this.code = HttpStatusCode.INTERNAL_SERVER_ERROR;
     } else {
-      const { code, message, details } = options;
+      const { code, message } = options;
       super(message, { cause });
       this.code = code;
-      this.details = details;
     }
   }
 }

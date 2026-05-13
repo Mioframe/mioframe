@@ -75,3 +75,4 @@ export class DomainError<TCode extends PropertyKey = string> extends Error {
 }
 
 export { HttpStatusCode } from './httpStatus';
+export { createSafeErrorCause } from './createSafeErrorCause';

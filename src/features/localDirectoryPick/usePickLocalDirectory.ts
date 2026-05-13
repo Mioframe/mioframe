@@ -1,5 +1,5 @@
 import { useFileSystem } from '@entity/mountedDirectories';
-import { DomainError } from '@shared/lib/error';
+import { createSafeErrorCause, DomainError } from '@shared/lib/error';
 import { isUserFileSelectionCancel } from '@shared/lib/fileSystem';
 import { isFunction } from 'es-toolkit';
 import { ref, toRef } from 'vue';
@@ -57,10 +57,17 @@ export const usePickLocalDirectory = () => {
       await addDeviceDirectory(directoryHandle);
     } catch (error) {
       if (!isUserFileSelectionCancel(error)) {
+        const reportedError =
+          error instanceof DomainError
+            ? error
+            : new DomainError('Could not add the folder', {
+                cause: createSafeErrorCause('Directory picker operation failed'),
+              });
+
         addSnackbar({
-          text: error instanceof DomainError ? error.message : 'Could not add the folder',
+          text: reportedError.message,
         });
-        reportHandledError(error, {
+        reportHandledError(reportedError, {
           feature: 'localDirectoryPick',
           action: 'pickLocalDirectory',
         });

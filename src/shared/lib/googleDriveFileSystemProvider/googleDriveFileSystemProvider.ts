@@ -28,6 +28,8 @@ import {
 import type { GOOGLE_SCOPE } from '@shared/lib/googleApi';
 import { DRIVE_GOOGLE_SCOPE } from '@shared/lib/googleApi';
 import { firstValueFrom, skip, type Observable } from 'rxjs';
+import { createSafeErrorCause } from '@shared/lib/error';
+import { GoogleDriveError } from '@shared/lib/googleDrive/error';
 import {
   getGoogleDrivePathEmail,
   getGoogleDrivePathSpace,
@@ -121,11 +123,22 @@ export const googleDriveFileSystemProvider = (
   providerOptions: GoogleDriveFileSystemProviderOptions,
 ) => {
   const { requestToken, $sessions } = providerOptions;
+  const toSafeGoogleDriveCause = (error: unknown, safeMessage: string) => {
+    if (error instanceof GoogleDriveError) {
+      return error;
+    }
+
+    if (error instanceof VfsError && error.cause === undefined) {
+      return error;
+    }
+
+    return createSafeErrorCause(safeMessage);
+  };
   const extractEmailFromPath = (path: string): string => {
     const email = getGoogleDrivePathEmail(path);
 
     if (!email) {
-      throw new Error(`Google Drive path must start with an email: ${path}`);
+      throw new Error('Google Drive path must start with an account root');
     }
 
     return email;
@@ -223,16 +236,13 @@ export const googleDriveFileSystemProvider = (
       const file = result.files?.at(0);
 
       if (!file) {
-        throw new VfsError(
-          FileSystemError.FileNotFound,
-          `Entry not found: ${partName} in path ${rawPath}`,
-        );
+        throw new VfsError(FileSystemError.FileNotFound, 'Google Drive entry not found');
       }
 
       if (!isLast && file.mimeType !== GOOGLE_MIME_FOLDER) {
         throw new VfsError(
           FileSystemError.FileNotADirectory,
-          `Path segment is not a directory: ${partName}`,
+          'A Google Drive path segment is not a directory',
         );
       }
 
@@ -241,7 +251,7 @@ export const googleDriveFileSystemProvider = (
     }
 
     if (!currentEntry) {
-      throw new VfsError(FileSystemError.FileNotFound, `Path not found: ${rawPath}`);
+      throw new VfsError(FileSystemError.FileNotFound, 'Google Drive path not found');
     }
 
     return currentEntry;
@@ -339,8 +349,17 @@ export const googleDriveFileSystemProvider = (
         capabilities: getEntryCapabilities(entry),
       };
     } catch (e) {
-      if (e instanceof VfsError) throw e;
-      throw new VfsError(FileSystemError.FileNotFound, `Stat failed for ${path}`, e);
+      const safeCause = toSafeGoogleDriveCause(e, 'Google Drive stat request failed');
+
+      if (safeCause instanceof VfsError && safeCause.code !== FileSystemError.Unknown) {
+        throw safeCause;
+      }
+
+      throw new VfsError(
+        FileSystemError.FileNotFound,
+        'Google Drive stat operation failed',
+        safeCause,
+      );
     }
   };
 
@@ -353,7 +372,10 @@ export const googleDriveFileSystemProvider = (
     const entry = await resolvePath(path);
 
     if (entry.mimeType === GOOGLE_MIME_FOLDER) {
-      throw new VfsError(FileSystemError.FileIsADirectory, `Cannot read directory: ${path}`);
+      throw new VfsError(
+        FileSystemError.FileIsADirectory,
+        'The selected Google Drive item is a directory',
+      );
     }
 
     const token = await getTokenForPath(path);
@@ -361,7 +383,11 @@ export const googleDriveFileSystemProvider = (
     try {
       return await download({ ACCESS_TOKEN: token }, entry.id);
     } catch (e) {
-      throw new VfsError(FileSystemError.Unknown, `Failed to download file: ${path}`, e);
+      throw new VfsError(
+        FileSystemError.Unknown,
+        'Google Drive download operation failed',
+        toSafeGoogleDriveCause(e, 'Google Drive download request failed'),
+      );
     }
   };
 
@@ -386,19 +412,13 @@ export const googleDriveFileSystemProvider = (
       parentEntry = await resolvePath(parentPath);
     } catch (e) {
       if (e instanceof VfsError && e.code === FileSystemError.FileNotFound) {
-        throw new VfsError(
-          FileSystemError.FileNotFound,
-          `Parent directory not found: ${parentPath}`,
-        );
+        throw new VfsError(FileSystemError.FileNotFound, 'Parent directory not found');
       }
       throw e;
     }
 
     if (parentEntry.mimeType !== GOOGLE_MIME_FOLDER) {
-      throw new VfsError(
-        FileSystemError.FileNotADirectory,
-        `Parent is not a directory: ${parentPath}`,
-      );
+      throw new VfsError(FileSystemError.FileNotADirectory, 'The parent item is not a directory');
     }
 
     if (parentEntry.id === SHARED_WITH_ME_ID) {
@@ -421,18 +441,26 @@ export const googleDriveFileSystemProvider = (
     if (existingEntry) {
       // Update existing file
       if (!options.overwrite) {
-        throw new VfsError(FileSystemError.FileExists, `File exists: ${path}`);
+        throw new VfsError(FileSystemError.FileExists, 'File already exists');
       }
       if (existingEntry.mimeType === GOOGLE_MIME_FOLDER) {
         throw new VfsError(
           FileSystemError.FileIsADirectory,
-          `Cannot overwrite directory with file: ${path}`,
+          'Cannot overwrite a directory with a file',
         );
       }
 
       const token = await getTokenForPath(path);
 
-      await upload({ ACCESS_TOKEN: token }, existingEntry.id, content);
+      try {
+        await upload({ ACCESS_TOKEN: token }, existingEntry.id, content);
+      } catch (e) {
+        throw new VfsError(
+          FileSystemError.Unknown,
+          'Google Drive upload operation failed',
+          toSafeGoogleDriveCause(e, 'Google Drive upload request failed'),
+        );
+      }
 
       return {
         stat: {
@@ -446,7 +474,7 @@ export const googleDriveFileSystemProvider = (
       };
     } else {
       if (!options.create) {
-        throw new VfsError(FileSystemError.FileNotFound, `File not found: ${path}`);
+        throw new VfsError(FileSystemError.FileNotFound, 'File not found');
       }
 
       const auth = { ACCESS_TOKEN: await getTokenForPath(path) };
@@ -457,7 +485,16 @@ export const googleDriveFileSystemProvider = (
       } satisfies Parameters<typeof create>[1];
 
       if (contentSize <= GOOGLE_DRIVE_MULTIPART_UPLOAD_LIMIT) {
-        const created = await createWithContent(auth, resource, content);
+        let created;
+        try {
+          created = await createWithContent(auth, resource, content);
+        } catch (e) {
+          throw new VfsError(
+            FileSystemError.Unknown,
+            'Google Drive file create operation failed',
+            toSafeGoogleDriveCause(e, 'Google Drive create request failed'),
+          );
+        }
 
         return {
           stat: {
@@ -471,15 +508,37 @@ export const googleDriveFileSystemProvider = (
         };
       }
 
-      const created = await create(auth, resource);
+      let created;
+      try {
+        created = await create(auth, resource);
+      } catch (e) {
+        throw new VfsError(
+          FileSystemError.Unknown,
+          'Google Drive file create operation failed',
+          toSafeGoogleDriveCause(e, 'Google Drive create request failed'),
+        );
+      }
 
       try {
         await upload(auth, created.result.id, content);
       } catch (uploadError) {
-        await update(auth, created.result.id, {
-          trashed: true,
-        });
-        throw uploadError;
+        try {
+          await update(auth, created.result.id, {
+            trashed: true,
+          });
+        } catch {
+          throw new VfsError(
+            FileSystemError.Unknown,
+            'Google Drive upload rollback operation failed',
+            createSafeErrorCause('Google Drive upload rollback request failed'),
+          );
+        }
+
+        throw new VfsError(
+          FileSystemError.Unknown,
+          'Google Drive upload operation failed',
+          toSafeGoogleDriveCause(uploadError, 'Google Drive upload request failed'),
+        );
       }
 
       return {
@@ -549,7 +608,7 @@ export const googleDriveFileSystemProvider = (
     const entry = await resolvePath(rawPath);
 
     if (entry.mimeType !== GOOGLE_MIME_FOLDER) {
-      throw new VfsError(FileSystemError.FileNotADirectory, `Not a directory: ${rawPath}`);
+      throw new VfsError(FileSystemError.FileNotADirectory, 'The selected item is not a directory');
     }
 
     const { space } = resolvePathSpace(rawPath);
@@ -603,7 +662,7 @@ export const googleDriveFileSystemProvider = (
   const createDirectory = async (path: string): Promise<void> => {
     try {
       await resolvePath(path);
-      throw new VfsError(FileSystemError.FileExists, `Directory already exists: ${path}`);
+      throw new VfsError(FileSystemError.FileExists, 'Directory already exists');
     } catch (e) {
       if (e instanceof VfsError && e.code === FileSystemError.FileExists) throw e;
       if (!(e instanceof VfsError && e.code === FileSystemError.FileNotFound)) throw e;
@@ -623,22 +682,27 @@ export const googleDriveFileSystemProvider = (
     }
 
     if (parentEntry.mimeType !== GOOGLE_MIME_FOLDER) {
-      throw new VfsError(
-        FileSystemError.FileNotADirectory,
-        `Parent is not a directory: ${parentPath}`,
-      );
+      throw new VfsError(FileSystemError.FileNotADirectory, 'The parent item is not a directory');
     }
 
-    await create(
-      {
-        ACCESS_TOKEN: await getTokenForPath(path),
-      },
-      {
-        name: dirName,
-        parents: [parentEntry.id],
-        mimeType: GOOGLE_MIME_FOLDER,
-      },
-    );
+    try {
+      await create(
+        {
+          ACCESS_TOKEN: await getTokenForPath(path),
+        },
+        {
+          name: dirName,
+          parents: [parentEntry.id],
+          mimeType: GOOGLE_MIME_FOLDER,
+        },
+      );
+    } catch (e) {
+      throw new VfsError(
+        FileSystemError.Unknown,
+        'Google Drive directory create operation failed',
+        toSafeGoogleDriveCause(e, 'Google Drive create request failed'),
+      );
+    }
   };
 
   /**
@@ -656,7 +720,7 @@ export const googleDriveFileSystemProvider = (
     if (getEntryCapabilities(entry)?.canDelete !== true) {
       throw new VfsError(
         FileSystemError.NoPermissions,
-        `Deletion is not allowed for path: ${path}`,
+        'File system delete operation is not allowed',
       );
     }
 
@@ -687,15 +751,23 @@ export const googleDriveFileSystemProvider = (
       }
     }
 
-    await update(
-      {
-        ACCESS_TOKEN: await getTokenForPath(path),
-      },
-      entry.id,
-      {
-        trashed: true,
-      },
-    );
+    try {
+      await update(
+        {
+          ACCESS_TOKEN: await getTokenForPath(path),
+        },
+        entry.id,
+        {
+          trashed: true,
+        },
+      );
+    } catch (e) {
+      throw new VfsError(
+        FileSystemError.Unknown,
+        'Google Drive delete operation failed',
+        toSafeGoogleDriveCause(e, 'Google Drive update request failed'),
+      );
+    }
   };
 
   /**
@@ -714,13 +786,13 @@ export const googleDriveFileSystemProvider = (
     if (getEntryCapabilities(sourceEntry)?.canChangePath !== true) {
       throw new VfsError(
         FileSystemError.NoPermissions,
-        `Path change is not allowed for path: ${oldPath}`,
+        'The selected item does not support moving',
       );
     }
 
     try {
       await resolvePath(normalizedNew);
-      throw new VfsError(FileSystemError.FileExists, `Destination exists: ${newPath}`);
+      throw new VfsError(FileSystemError.FileExists, 'Destination already exists');
     } catch (e) {
       if (e instanceof VfsError && e.code !== FileSystemError.FileNotFound) throw e;
     }
@@ -740,31 +812,41 @@ export const googleDriveFileSystemProvider = (
     if (destinationParentEntry.mimeType !== GOOGLE_MIME_FOLDER) {
       throw new VfsError(
         FileSystemError.FileNotADirectory,
-        `Destination parent is not a directory: ${newDirName}`,
+        'The destination parent is not a directory',
       );
     }
     if (getEntryCapabilities(destinationParentEntry)?.canEditChildren !== true) {
       throw new VfsError(
         FileSystemError.NoPermissions,
-        `Path change is not allowed inside directory: ${newDirName}`,
+        'The destination directory is not writable',
       );
     }
 
     const currentParents = sourceEntry.parents ?? [];
     const removeParents = currentParents.filter((p) => p !== destinationParentEntry.id);
 
-    await update(
-      {
-        ACCESS_TOKEN: await getTokenForPath(oldPath),
-      },
-      sourceEntry.id,
-      {
-        name: newFileName,
-        addParents:
-          removeParents.length === currentParents.length ? [destinationParentEntry.id] : undefined,
-        removeParents: removeParents.length > 0 ? removeParents : undefined,
-      },
-    );
+    try {
+      await update(
+        {
+          ACCESS_TOKEN: await getTokenForPath(oldPath),
+        },
+        sourceEntry.id,
+        {
+          name: newFileName,
+          addParents:
+            removeParents.length === currentParents.length
+              ? [destinationParentEntry.id]
+              : undefined,
+          removeParents: removeParents.length > 0 ? removeParents : undefined,
+        },
+      );
+    } catch (e) {
+      throw new VfsError(
+        FileSystemError.Unknown,
+        'Google Drive move operation failed',
+        toSafeGoogleDriveCause(e, 'Google Drive update request failed'),
+      );
+    }
   };
 
   return {

@@ -1,4 +1,4 @@
-import { DomainError } from '@shared/lib/error';
+import { createSafeErrorCause, DomainError } from '@shared/lib/error';
 import { isUserFileSelectionCancel } from '@shared/lib/fileSystem';
 import { useMainServiceClient } from '@shared/service';
 import { fileOpen } from 'browser-fs-access';
@@ -38,7 +38,7 @@ export const useImportDocument = () => {
       }
 
       throw new DomainError('Could not open the selected file', {
-        cause: error,
+        cause: createSafeErrorCause('Selected file open operation failed'),
         code: ImportDocumentErrorCode.fileOpenFailed,
       });
     }
@@ -47,9 +47,9 @@ export const useImportDocument = () => {
 
     try {
       text = await file.text();
-    } catch (error) {
+    } catch {
       throw new DomainError('Could not import the document', {
-        cause: error,
+        cause: createSafeErrorCause('Selected file read failed'),
         code: ImportDocumentErrorCode.fileReadFailed,
       });
     }
@@ -86,7 +86,7 @@ export const useImportDocument = () => {
       }
 
       throw new DomainError('Could not import the document', {
-        cause: error,
+        cause: createSafeErrorCause('Document repository write operation failed'),
         code: ImportDocumentErrorCode.documentImportFailed,
       });
     }
