@@ -48,7 +48,7 @@ vi.mock('@widget/SettingsSections', () => ({
               emit('selectDataStoragePrivacy');
             },
           },
-          'Select data storage and privacy',
+          'Select privacy policy',
         );
     },
   }),
@@ -79,7 +79,7 @@ describe('SettingsPane', () => {
     document.body.innerHTML = '';
   });
 
-  it('opens the in-app privacy help pane from Settings', async () => {
+  it('opens the in-app privacy policy pane from Settings', async () => {
     const { root, unmount } = await mountSettingsPane();
 
     root.querySelector('button')?.click();

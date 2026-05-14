@@ -211,7 +211,7 @@ describe('SettingsSections', () => {
     document.body.innerHTML = '';
   });
 
-  it('renders the four release settings sections and opens privacy help from Help', async () => {
+  it('renders the four release settings sections and opens the privacy policy from Help', async () => {
     const onSelectDataStoragePrivacy = vi.fn();
     const { root, unmount } = await mountSettingsSections({ onSelectDataStoragePrivacy });
 
@@ -226,7 +226,7 @@ describe('SettingsSections', () => {
       'Learn where your data is stored and what can leave this device.',
     );
 
-    getButtonByText(root, 'Data storage and privacy')?.click();
+    getButtonByText(root, 'Privacy policy')?.click();
     await nextTick();
 
     expect(onSelectDataStoragePrivacy).toHaveBeenCalledTimes(1);

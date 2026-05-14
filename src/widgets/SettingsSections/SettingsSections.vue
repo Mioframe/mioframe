@@ -92,7 +92,7 @@ const onClickDataStoragePrivacy = () => {
         <MDListItem
           is="button"
           type="button"
-          headline="Data storage and privacy"
+          headline="Privacy policy"
           @click="onClickDataStoragePrivacy"
         >
           <template #supportingText>
