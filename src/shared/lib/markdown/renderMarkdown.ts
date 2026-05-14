@@ -16,14 +16,48 @@ export interface RenderMarkdownOptions {
 }
 
 const isExternalLinkHref = (href: string): boolean => /^(?:https?:|\/\/)/iu.test(href);
+const allowedAbsoluteLinkProtocolRe = /^(?:https?:|mailto:|tel:)/iu;
+const customSchemeRe = /^[a-z][a-z\d+.-]*:/iu;
+
+const isAllowedMarkdownLink = (url: string): boolean => {
+  const trimmedUrl = url.trim();
+
+  if (trimmedUrl === '') {
+    return false;
+  }
+
+  if (allowedAbsoluteLinkProtocolRe.test(trimmedUrl)) {
+    return true;
+  }
+
+  if (trimmedUrl.startsWith('//')) {
+    return true;
+  }
+
+  if (
+    trimmedUrl.startsWith('/') ||
+    trimmedUrl.startsWith('#') ||
+    trimmedUrl.startsWith('./') ||
+    trimmedUrl.startsWith('../')
+  ) {
+    return true;
+  }
+
+  if (customSchemeRe.test(trimmedUrl)) {
+    return false;
+  }
+
+  return true;
+};
 
 const createMarkdownRenderer = (renderOptions: RenderMarkdownOptions = {}) => {
   const markdown = new MarkdownIt({
     html: false,
     linkify: false,
-    typographer: true,
+    typographer: false,
     breaks: false,
   });
+  markdown.validateLink = isAllowedMarkdownLink;
   const { openExternalLinksInNewTab = false, tableWrapperClassName } = renderOptions;
 
   const fallbackLinkOpenRenderer: NonNullable<typeof markdown.renderer.rules.link_open> = (

@@ -101,6 +101,17 @@ const wideTableMarkdown = `## Wide Table
 | Very long value that should require horizontal scrolling inside the table wrapper | Another long value | More content | More content | More content | More content | More content |
 | Second row with long content to prove the card width stays constrained | Another long value | More content | More content | More content | More content | More content |`;
 
+const variantsOverviewMarkdown = `# Markdown Content
+
+Paragraph text with **strong** emphasis, *italic* emphasis, and a [regular link](/docs/getting-started).
+
+- Bullet one
+- Bullet two
+
+> Markdown content stays inside the parent layout.
+
+\`inline code\` and ~~deleted text~~ stay visible.`;
+
 const meta = {
   title: 'shared/ui/MarkdownContent',
   component: MarkdownContent,
@@ -196,30 +207,30 @@ export const VariantsOverview: Story = {
     components: { MarkdownContent, MDCard },
     setup: () => ({
       args,
-      kitchenSinkMarkdown,
+      variantsOverviewMarkdown,
     }),
     template: `
       <div
         data-testid="visual-markdown-content-variants"
-        style="display: grid; gap: 24px; max-width: 840px; width: 100%;"
+        style="display: inline-grid; gap: 24px; justify-items: start; max-width: 840px; width: fit-content;"
       >
         <MDCard variant="outlined" style="max-width: 720px; padding: 24px; gap: 0;">
           <MarkdownContent
-            :source="kitchenSinkMarkdown"
+            :source="variantsOverviewMarkdown"
             variant="body"
             :open-external-links-in-new-tab="args.openExternalLinksInNewTab ?? true"
           />
         </MDCard>
         <MDCard variant="filled" style="max-width: 720px; padding: 28px; gap: 0;">
           <MarkdownContent
-            :source="kitchenSinkMarkdown"
+            :source="variantsOverviewMarkdown"
             variant="article"
             :open-external-links-in-new-tab="args.openExternalLinksInNewTab ?? true"
           />
         </MDCard>
         <MDCard variant="outlined" style="max-width: 640px; padding: 20px; gap: 0;">
           <MarkdownContent
-            :source="kitchenSinkMarkdown"
+            :source="variantsOverviewMarkdown"
             variant="compact"
             :open-external-links-in-new-tab="args.openExternalLinksInNewTab ?? true"
           />

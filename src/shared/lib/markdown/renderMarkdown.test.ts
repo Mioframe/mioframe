@@ -64,6 +64,34 @@ describe('renderMarkdown', () => {
     );
   });
 
+  it('renders only the explicitly allowed markdown link shapes as anchors', () => {
+    const rendered = renderMarkdown(
+      [
+        '[Https](https://example.com)',
+        '[Http](http://example.com)',
+        '[Protocol Relative](//example.com/docs)',
+        '[Mail](mailto:test@example.com)',
+        '[Phone](tel:+123)',
+        '[Root Relative](/docs/page)',
+        '[Hash](#section)',
+        '[Dot Relative](./page)',
+        '[Dot Dot Relative](../page)',
+        '[Plain Relative](page.md)',
+      ].join('\n\n'),
+    );
+
+    expect(rendered).toContain('<a href="https://example.com">Https</a>');
+    expect(rendered).toContain('<a href="http://example.com">Http</a>');
+    expect(rendered).toContain('<a href="//example.com/docs">Protocol Relative</a>');
+    expect(rendered).toContain('<a href="mailto:test@example.com">Mail</a>');
+    expect(rendered).toContain('<a href="tel:+123">Phone</a>');
+    expect(rendered).toContain('<a href="/docs/page">Root Relative</a>');
+    expect(rendered).toContain('<a href="#section">Hash</a>');
+    expect(rendered).toContain('<a href="./page">Dot Relative</a>');
+    expect(rendered).toContain('<a href="../page">Dot Dot Relative</a>');
+    expect(rendered).toContain('<a href="page.md">Plain Relative</a>');
+  });
+
   it('renders strikethrough text with the default markdown-it support', () => {
     expect(renderMarkdown('~~deleted text~~')).toContain('<s>deleted text</s>');
   });
@@ -95,6 +123,15 @@ describe('renderMarkdown', () => {
     expect(rendered).toContain('<p><img src="./image.png" alt="Alt"></p>');
   });
 
+  it('does not silently transform punctuation when typographer mode is disabled', () => {
+    const rendered = renderMarkdown('"quoted text" -- plain dash');
+
+    expect(rendered).toContain('<p>&quot;quoted text&quot; -- plain dash</p>');
+    expect(rendered).not.toContain('“quoted text”');
+    expect(rendered).not.toContain('&ldquo;quoted text&rdquo;');
+    expect(rendered).not.toContain('–');
+  });
+
   it('preserves aligned tables inside the wrapper markup', () => {
     const rendered = renderMarkdown(
       ['| Left | Center | Right |', '| :--- | :---: | ---: |', '| one | two | three |'].join('\n'),
@@ -107,11 +144,31 @@ describe('renderMarkdown', () => {
     expect(rendered).toContain('<th style="text-align:right">Right</th>');
   });
 
-  it('does not render javascript protocol links as clickable anchors', () => {
-    const rendered = renderMarkdown('[x](javascript:alert(1))');
+  it('does not render forbidden or custom-protocol links as clickable anchors', () => {
+    const rendered = renderMarkdown(
+      [
+        '[JavaScript](javascript:alert(1))',
+        '[VBScript](vbscript:msgbox(1))',
+        '[File](file:///etc/passwd)',
+        '[Data](data:text/html;base64,PHNjcmlwdD5hbGVydCgxKTwvc2NyaXB0Pg==)',
+        '[Custom](foo:bar)',
+      ].join('\n\n'),
+    );
 
-    expect(rendered).toContain('<p>[x](javascript:alert(1))</p>');
+    expect(rendered).toContain('<p>[JavaScript](javascript:alert(1))</p>');
+    expect(rendered).toContain('<p>[VBScript](vbscript:msgbox(1))</p>');
+    expect(rendered).toContain('<p>[File](file:///etc/passwd)</p>');
+    expect(rendered).toContain(
+      '<p>[Data](data:text/html;base64,PHNjcmlwdD5hbGVydCgxKTwvc2NyaXB0Pg==)</p>',
+    );
+    expect(rendered).toContain('<p>[Custom](foo:bar)</p>');
     expect(rendered).not.toContain('href="javascript:alert(1)"');
+    expect(rendered).not.toContain('href="vbscript:msgbox(1)"');
+    expect(rendered).not.toContain('href="file:///etc/passwd"');
+    expect(rendered).not.toContain(
+      'href="data:text/html;base64,PHNjcmlwdD5hbGVydCgxKTwvc2NyaXB0Pg=="',
+    );
+    expect(rendered).not.toContain('href="foo:bar"');
     expect(rendered).not.toContain('<a ');
   });
 
