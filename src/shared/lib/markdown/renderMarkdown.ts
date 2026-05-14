@@ -57,7 +57,8 @@ const createMarkdownRenderer = (renderOptions: RenderMarkdownOptions = {}) => {
     typographer: false,
     breaks: false,
   });
-  markdown.validateLink = isAllowedMarkdownLink;
+  const defaultValidateLink = markdown.validateLink.bind(markdown);
+  markdown.validateLink = (url) => defaultValidateLink(url) && isAllowedMarkdownLink(url);
   const { openExternalLinksInNewTab = false, tableWrapperClassName } = renderOptions;
 
   const fallbackLinkOpenRenderer: NonNullable<typeof markdown.renderer.rules.link_open> = (

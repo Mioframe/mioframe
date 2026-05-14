@@ -1,7 +1,13 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { renderMarkdown } from './renderMarkdown';
 
 describe('renderMarkdown', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+    vi.doUnmock('markdown-it');
+    vi.resetModules();
+  });
+
   it('renders markdown headings as heading tags', () => {
     expect(renderMarkdown('# Title')).toContain('<h1>Title</h1>');
   });
@@ -170,6 +176,43 @@ describe('renderMarkdown', () => {
     );
     expect(rendered).not.toContain('href="foo:bar"');
     expect(rendered).not.toContain('<a ');
+  });
+
+  it('keeps markdown-it default link validation in addition to the project whitelist', () => {
+    return (async () => {
+      vi.resetModules();
+
+      const actualMarkdownIt = await vi.importActual<typeof import('markdown-it')>('markdown-it');
+
+      vi.doMock('markdown-it', () => ({
+        default: function MockMarkdownIt(
+          ...args: ConstructorParameters<typeof actualMarkdownIt.default>
+        ) {
+          const instance = new actualMarkdownIt.default(...args);
+          const originalValidateLink = instance.validateLink.bind(instance);
+
+          instance.validateLink = (url) =>
+            url === 'https://example.com/blocked-by-default' ? false : originalValidateLink(url);
+
+          return instance;
+        },
+      }));
+
+      const { renderMarkdown: renderMarkdownWithMockedDefault } = await import('./renderMarkdown');
+      const rendered = renderMarkdownWithMockedDefault(
+        [
+          '[Blocked By Default](https://example.com/blocked-by-default)',
+          '[Allowed By Both](https://example.com/allowed-by-both)',
+        ].join('\n\n'),
+      );
+
+      expect(rendered).toContain(
+        '<p>[Blocked By Default](https://example.com/blocked-by-default)</p>',
+      );
+      expect(rendered).toContain(
+        '<a href="https://example.com/allowed-by-both">Allowed By Both</a>',
+      );
+    })();
   });
 
   it('adds new-tab attributes only to absolute links when requested', () => {
