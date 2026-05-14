@@ -54,6 +54,12 @@ it('renders the local-first and privacy help content in-app', async () => {
   );
   expect(root.textContent).toContain('Google Drive integration is optional.');
   expect(root.textContent).toContain(
+    'Mioframe uses Google Drive only after you enable the integration in Settings and connect a Google account.',
+  );
+  expect(root.textContent).toContain(
+    'Google Drive access is used to provide file-manager behavior inside Mioframe.',
+  );
+  expect(root.textContent).toContain(
     'Mioframe can send technical error reports to Sentry when an error happens.',
   );
   expect(root.textContent).toContain(

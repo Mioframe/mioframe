@@ -40,6 +40,10 @@ Right now, I am working on more flexible data modeling.
 After that, I'm going to add more ways to view, structure, and populate data.
 Meanwhile, I continue to improve performance and tune the interface for larger datasets.
 
+## Privacy
+
+Privacy details for the release are available in [Privacy Policy](./PRIVACY.md).
+
 ## Feedback
 
 Mioframe is still under active development, and your feedback genuinely helps shape where it goes next. If you want to share thoughts, report a problem, or suggest an idea, feel free to reach out on GitHub:
@@ -50,7 +54,6 @@ Mioframe is still under active development, and your feedback genuinely helps sh
 ## Development
 
 Developer setup, build, test, and linting instructions live in [DEVELOPMENT.md](./DEVELOPMENT.md).
-Privacy details for the release live in [Privacy Policy](./PRIVACY.md).
 
 ## Implemented Features and Plans
 

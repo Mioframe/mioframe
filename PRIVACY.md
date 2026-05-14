@@ -26,7 +26,9 @@ Mioframe does not send document contents, record values, document names, folder 
 
 Google Drive integration is optional.
 
-Mioframe uses Google Drive only after you enable the integration in Settings and connect a Google account. When enabled, Mioframe can use Google Drive to open files you choose through the app.
+Mioframe uses Google Drive only after you enable the integration in Settings and connect a Google account. When enabled, Mioframe can show and work with files and folders available through the connected Google Drive account according to the permissions granted during Google sign-in.
+
+Google Drive access is used to provide file-manager behavior inside Mioframe.
 
 Turning off Google Drive in Mioframe Settings disables the integration inside Mioframe. It does not revoke Mioframe's access from your Google Account.
 
