@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { computed } from 'vue';
 import privacyPolicyMarkdown from '../../../PRIVACY.md?raw';
 import { MDAppBar } from '@shared/ui/AppBar';
 import { MDPane } from '@shared/ui/Layout';
@@ -8,6 +9,8 @@ defineSlots<{
   navigationButton: () => unknown;
   appBarTrailing: () => unknown;
 }>();
+
+const privacyPolicyContent = computed(() => privacyPolicyMarkdown.replace(/^# .*\n+/, ''));
 </script>
 
 <template>
@@ -24,7 +27,7 @@ defineSlots<{
 
     <div class="data-storage-privacy-pane__content">
       <MarkdownContent
-        :source="privacyPolicyMarkdown"
+        :source="privacyPolicyContent"
         variant="article"
         open-external-links-in-new-tab
       />

@@ -28,7 +28,22 @@ Google Drive integration is optional.
 
 Mioframe uses Google Drive only after you enable the integration in Settings and connect a Google account. When enabled, Mioframe can show and work with files and folders available through the connected Google Drive account according to the permissions granted during Google sign-in.
 
-Google Drive access is used to provide file-manager behavior inside Mioframe.
+### Google account and session data stored locally
+
+When you connect Google Drive, Mioframe stores the following Google account and session data locally in browser storage:
+
+- Google account email;
+- optional profile name;
+- optional profile picture;
+- granted Google scopes;
+- access token;
+- token expiration time.
+
+Mioframe uses this data only to keep the Google Drive integration working and to make Google Drive API requests on your behalf.
+
+These Google account and session details are not sent to the developer.
+
+Google Drive access is used to provide file-manager behavior inside Mioframe. Depending on the permissions you grant and the actions you take in the app, Mioframe can list, read, download, create, upload, rename, move, and trash files and folders in your Google Drive.
 
 Turning off Google Drive in Mioframe Settings disables the integration inside Mioframe. It does not revoke Mioframe's access from your Google Account.
 
