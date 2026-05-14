@@ -50,6 +50,7 @@ Mioframe is still under active development, and your feedback genuinely helps sh
 ## Development
 
 Developer setup, build, test, and linting instructions live in [DEVELOPMENT.md](./DEVELOPMENT.md).
+Privacy details for the release live in [Privacy Policy](./PRIVACY.md).
 
 ## Implemented Features and Plans
 
