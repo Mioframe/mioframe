@@ -1,7 +1,7 @@
 /**
  * Options for generating HSL color.
- * @property s - Color saturation in percentage (0-100). Default: 70%.
- * @property l - Color lightness in percentage (0-100). Default: 50%.
+ * s - Color saturation in percentage (0-100). Default: 70%.
+ * l - Color lightness in percentage (0-100). Default: 50%.
  */
 export type ColorOptions = { s?: number; l?: number };
 

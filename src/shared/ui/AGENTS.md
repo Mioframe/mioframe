@@ -13,6 +13,7 @@ Inherits the rules from `src/shared/AGENTS.md`. Applies to `src/shared/ui` and i
 - Accessibility, keyboard behavior, and focus management are part of the component contract.
 - Extend an existing primitive through props or slots before adding a near-duplicate component.
 - Keep scroll-aware, sticky, floating, and teleport-aware behavior tied to the actual rendered DOM hierarchy.
+- Do not write styles that affect the styling or positioning of neighboring elements in the parent flow. External spacing or visual treatment may move or style the component itself, but must not reach outward and change how adjacent elements are laid out or rendered.
 
 ## Anti-patterns
 
