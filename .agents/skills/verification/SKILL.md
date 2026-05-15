@@ -47,6 +47,20 @@ Prefer the project `pnpm verify` script when it can infer the changed-file scope
 
 Use `pnpm verify --verbose` when you need full streamed command output in the terminal. It is a diagnostic mode, not a separate quality gate.
 
+## Mode-specific verification
+
+When changing tooling, scripts, CI, Storybook, Playwright, build config, package scripts, or command output, verify every user-visible mode touched by the change.
+
+Examples:
+
+- verify script changes: check default mode, `--fix`, and `--verbose` when affected;
+- GitHub Actions changes: ensure the workflow command still exposes useful logs and annotations;
+- Storybook changes: run the Storybook build or the narrow visual command that exercises the changed config;
+- Playwright config changes: run the affected project or config, not only a generic unit test;
+- package, dependency, or config changes: run type-check or build when runtime behavior or generated types can be affected.
+
+Do not rely on final `pnpm verify` alone when the changed behavior is a mode that `pnpm verify` does not exercise directly.
+
 ## Failure handling
 
 If `pnpm verify` fails:
