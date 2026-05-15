@@ -1,6 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import { spawnSync } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import toolingConfig from '../config/tooling.json' with { type: 'json' };
 
 const isFixMode = process.argv.includes('--fix');
@@ -10,6 +10,7 @@ const VERIFY_DIR = '.verify';
 const VERIFY_LOG_DIR = path.posix.join(VERIFY_DIR, 'logs');
 const MAX_RELEVANT_LINES = 20;
 const MAX_FILE_ARGS_IN_SUMMARY = 4;
+const MAX_ROLLING_BUFFER_CHARS = 128 * 1024;
 const FORMATTABLE_EXTENSIONS = new Set([
   '.css',
   '.html',
@@ -412,11 +413,21 @@ function ensureLogsDirectory() {
   fs.mkdirSync(VERIFY_LOG_DIR, { recursive: true });
 }
 
-function writeLog(label, command, output) {
-  const logPath = getLogPath(label);
-  const fileContent = [`# command`, command, '', '# output', output].join('\n');
-  fs.writeFileSync(logPath, fileContent, 'utf8');
-  return logPath;
+function appendToRollingBuffer(buffer, chunk) {
+  const nextBuffer = `${buffer}${chunk}`;
+
+  if (nextBuffer.length <= MAX_ROLLING_BUFFER_CHARS) {
+    return nextBuffer;
+  }
+
+  return nextBuffer.slice(-MAX_ROLLING_BUFFER_CHARS);
+}
+
+function closeLogStream(stream) {
+  return new Promise((resolve, reject) => {
+    stream.once('error', reject);
+    stream.end(() => resolve());
+  });
 }
 
 function summarizeCommandForDisplay(command, args) {
@@ -483,29 +494,67 @@ function getOutputTail(output) {
   return lines.slice(-MAX_RELEVANT_LINES);
 }
 
-function runCommand(label, command, args) {
+async function runCommand(label, command, args) {
   const formattedCommand = formatCommand(command, args);
   const displayCommand = summarizeCommandForDisplay(command, args);
-  const stdio = isVerboseMode ? 'inherit' : ['inherit', 'pipe', 'pipe'];
+  const logPath = getLogPath(label);
+  const logStream = fs.createWriteStream(logPath, { encoding: 'utf8' });
+  logStream.write(`# command\n${formattedCommand}\n\n# output\n`);
 
   console.log(`\n[${label}] running ${displayCommand}`);
 
-  const result = spawnSync(command, args, {
-    stdio,
-    encoding: 'utf8',
-    maxBuffer: 16 * 1024 * 1024,
+  const child = spawn(command, args, {
+    stdio: ['inherit', 'pipe', 'pipe'],
   });
 
-  if (result.error) {
-    throw result.error;
+  let outputBuffer = '';
+  let exitCode = 1;
+  let spawnError = null;
+
+  const onStdout = (chunk) => {
+    const text = chunk.toString();
+    logStream.write(text);
+    outputBuffer = appendToRollingBuffer(outputBuffer, text);
+
+    if (isVerboseMode) {
+      process.stdout.write(chunk);
+    }
+  };
+
+  const onStderr = (chunk) => {
+    const text = chunk.toString();
+    logStream.write(text);
+    outputBuffer = appendToRollingBuffer(outputBuffer, text);
+
+    if (isVerboseMode) {
+      process.stderr.write(chunk);
+    }
+  };
+
+  child.stdout?.on('data', onStdout);
+  child.stderr?.on('data', onStderr);
+
+  await new Promise((resolve) => {
+    child.once('error', (error) => {
+      spawnError = error;
+      logStream.write(`\n[verify] spawn error: ${error.message}\n`);
+      resolve();
+    });
+
+    child.once('close', (code) => {
+      exitCode = code ?? 1;
+      resolve();
+    });
+  });
+
+  await closeLogStream(logStream);
+
+  if (spawnError) {
+    throw spawnError;
   }
 
-  const stdout = result.stdout ?? '';
-  const stderr = result.stderr ?? '';
-  const combinedOutput = [stdout, stderr].filter((value) => value.length > 0).join('\n');
-  const logPath = writeLog(label, formattedCommand, combinedOutput);
-  const warningSummary = getWarningSummary(combinedOutput);
-  const exitCode = result.status ?? 1;
+  const logOutput = fs.readFileSync(logPath, 'utf8');
+  const warningSummary = getWarningSummary(logOutput);
   const status = exitCode === 0 ? 'passed' : 'failed';
 
   if (status === 'passed' && !warningSummary) {
@@ -520,7 +569,7 @@ function runCommand(label, command, args) {
     console.log(`[${label}] exit code: ${exitCode}`);
     console.log(`[${label}] output tail:`);
 
-    for (const tailLine of getOutputTail(combinedOutput)) {
+    for (const tailLine of getOutputTail(outputBuffer)) {
       console.log(`  ${tailLine}`);
     }
 
@@ -534,8 +583,8 @@ function runCommand(label, command, args) {
     logPath,
     exitCode,
     status,
-    stdout,
-    stderr,
+    stdout: '',
+    stderr: '',
     hasWarnings: warningSummary.length > 0,
     warningSummary,
   };
@@ -557,10 +606,7 @@ function buildCommands(changedFiles) {
   const hasVisualRelevantChanges = changedFiles.some(isVisualRelevantFile);
   const changedE2ESpecs = changedFiles.filter(
     (filePath) =>
-      filePath.startsWith('tests/e2e/') &&
-      !filePath.startsWith('tests/e2e/visual/') &&
-      filePath.endsWith('.ts') &&
-      fileExists(filePath),
+      !filePath.startsWith('tests/e2e/visual/') && filePath.endsWith('.ts') && fileExists(filePath),
   );
   const mutationScope = getMutationScope(changedFiles);
   const commands = [];
@@ -755,13 +801,15 @@ function printSummary(changedFiles, scope, results) {
   return status;
 }
 
-function main() {
+async function main() {
   const { changedFiles, scope } = getChangedFiles();
   const commands = buildCommands(changedFiles);
   const results = [];
   ensureLogsDirectory();
 
-  for (const entry of commands) {
+  await commands.reduce(async (previousRun, entry) => {
+    await previousRun;
+
     if (entry.kind === 'skipped') {
       results.push({
         label: entry.label,
@@ -774,11 +822,11 @@ function main() {
         hasWarnings: false,
         warningSummary: '',
       });
-      continue;
+      return;
     }
 
-    results.push(runCommand(entry.label, entry.command, entry.args));
-  }
+    results.push(await runCommand(entry.label, entry.command, entry.args));
+  }, Promise.resolve());
 
   const status = printSummary(changedFiles, scope, results);
   process.exitCode = status === 'failed' ? 1 : 0;
@@ -788,4 +836,4 @@ if (!directoryExists('.git')) {
   throw new Error('Repository root is required to run verify.');
 }
 
-main();
+await main();
