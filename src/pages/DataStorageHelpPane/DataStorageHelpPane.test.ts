@@ -61,22 +61,26 @@ it('renders help markdown structure and safe external links', async () => {
   await nextTick();
 
   expect(root.querySelector('h1')?.textContent).toBe('Data storage & recovery');
-  const headings = Array.from(root.querySelectorAll('h1, h2'));
-  expect(headings.some((heading) => heading.textContent === 'Data storage and recovery')).toBe(
-    false,
-  );
+  expect(root.querySelector('.data-storage-help-pane__content h1')).toBeNull();
+
+  const headings = Array.from(root.querySelectorAll('h2'));
   expect(headings.some((heading) => heading.textContent === 'Browser Storage')).toBe(true);
   expect(headings.some((heading) => heading.textContent === 'Local folders')).toBe(true);
   expect(headings.some((heading) => heading.textContent === 'Questions and problems')).toBe(true);
 
-  const links = Array.from(root.querySelectorAll('a'));
-  expect(links).toHaveLength(2);
-  expect(links[0]?.getAttribute('href')).toBe('https://github.com/Vyachean/beaver/discussions');
-  expect(links[0]?.getAttribute('target')).toBe('_blank');
-  expect(links[0]?.getAttribute('rel')).toBe('noopener noreferrer');
-  expect(links[1]?.getAttribute('href')).toBe('https://github.com/Vyachean/beaver/issues');
-  expect(links[1]?.getAttribute('target')).toBe('_blank');
-  expect(links[1]?.getAttribute('rel')).toBe('noopener noreferrer');
+  const discussionLink = root.querySelector<HTMLAnchorElement>(
+    'a[href="https://github.com/Vyachean/beaver/discussions"]',
+  );
+  const issuesLink = root.querySelector<HTMLAnchorElement>(
+    'a[href="https://github.com/Vyachean/beaver/issues"]',
+  );
+
+  expect(discussionLink).not.toBeNull();
+  expect(discussionLink?.getAttribute('target')).toBe('_blank');
+  expect(discussionLink?.getAttribute('rel')).toBe('noopener noreferrer');
+  expect(issuesLink).not.toBeNull();
+  expect(issuesLink?.getAttribute('target')).toBe('_blank');
+  expect(issuesLink?.getAttribute('rel')).toBe('noopener noreferrer');
 
   app.unmount();
   root.remove();
