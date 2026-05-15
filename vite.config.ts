@@ -1,6 +1,6 @@
 import type { PluginOption } from 'vite';
 import { defineConfig, loadEnv } from 'vite';
-import { dependencies, devDependencies, name, version } from './package.json';
+import { dependencies, devDependencies, version } from './package.json';
 import toolingConfig from './config/tooling.json' with { type: 'json' };
 import { getResolveAlias } from './config/alias';
 import {
@@ -16,7 +16,6 @@ export default defineConfig(({ mode, isPreview }) => {
   const env = loadEnv(mode, process.cwd(), '');
   const isPreviewBuild = !!isPreview;
   const isStorybookBuild = process.env.BEAVER_STORYBOOK === '1';
-  const appName = name.slice(0, 1).toUpperCase() + name.slice(1);
 
   const sslPlugins = isStorybookBuild ? [] : getSslPlugins({ mode, isPreview: isPreviewBuild });
   const pwaPlugins = isStorybookBuild ? [] : getPwaPlugins({ mode, isPreview: isPreviewBuild });
@@ -31,8 +30,7 @@ export default defineConfig(({ mode, isPreview }) => {
   const buildDate = isStorybookBuild
     ? toolingConfig.storybook.deterministicBuildDate
     : new Date().toISOString();
-  const buildId =
-    process.env.VITE_BUILD_ID || process.env.GITHUB_SHA || (isStorybookBuild ? 'storybook' : '');
+  const buildId = env.VITE_BUILD_ID || process.env.VITE_BUILD_ID || process.env.GITHUB_SHA || '';
 
   if (!isStorybookBuild) {
     console.log('\n__BUILD_DATE__:', buildDate);
@@ -83,7 +81,6 @@ export default defineConfig(({ mode, isPreview }) => {
       },
     },
     define: {
-      __APP_NAME__: JSON.stringify(appName),
       __APP_VERSION__: JSON.stringify(version),
       __BUILD_DATE__: JSON.stringify(buildDate),
       __BUILD_ID__: JSON.stringify(buildId),

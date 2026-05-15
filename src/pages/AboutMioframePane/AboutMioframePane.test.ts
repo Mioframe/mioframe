@@ -6,6 +6,10 @@ const clipboardWriteTextMock = vi.fn<Navigator['clipboard']['writeText']>();
 const addSnackbarMock = vi.fn();
 const diagnosticsEnabled = ref(true);
 let appBuildId: string | undefined = 'sha-1234567';
+let sentryDiagnosticsAvailable = true;
+type NavigatorWithUserAgentData = Navigator & { userAgentData?: unknown };
+const navigatorWithUserAgentData: NavigatorWithUserAgentData = navigator;
+const navigatorPrototypeWithUserAgentData: NavigatorWithUserAgentData = Navigator.prototype;
 
 vi.mock('@entity/localSettings', () => ({
   useDiagnosticsSettings: () => ({
@@ -25,7 +29,9 @@ vi.mock('@shared/config', () => ({
     return appBuildId;
   },
   GOOGLE_DRIVE_INTEGRATION_AVAILABLE: true,
-  SENTRY_DIAGNOSTICS_AVAILABLE: true,
+  get SENTRY_DIAGNOSTICS_AVAILABLE() {
+    return sentryDiagnosticsAvailable;
+  },
 }));
 
 vi.mock('@shared/ui/Layout', () => ({
@@ -175,6 +181,49 @@ it('copies safe diagnostics metadata and shows a success snackbar', async () => 
   unmount();
 });
 
+it('copies diagnostics with disabled status when diagnostics are unavailable in this build', async () => {
+  sentryDiagnosticsAvailable = false;
+  diagnosticsEnabled.value = true;
+  const { root, unmount } = await mountAboutMioframePane();
+
+  root.querySelector('button')?.click();
+  await nextTick();
+
+  const copiedText = clipboardWriteTextMock.mock.calls[0]?.[0] ?? '';
+  expect(copiedText).toContain('Diagnostics available: no');
+  expect(copiedText).toContain('Diagnostics enabled: no');
+
+  unmount();
+});
+
+it('includes platform in copied diagnostics when userAgentData is available via the prototype', async () => {
+  Object.defineProperty(Navigator.prototype, 'userAgentData', {
+    configurable: true,
+    value: {
+      platform: 'PrototypeOS',
+    },
+  });
+  delete navigatorWithUserAgentData.userAgentData;
+
+  const { root, unmount } = await mountAboutMioframePane();
+
+  root.querySelector('button')?.click();
+  await nextTick();
+
+  const copiedText = clipboardWriteTextMock.mock.calls[0]?.[0] ?? '';
+  expect(copiedText).toContain('Platform: PrototypeOS');
+
+  unmount();
+
+  delete navigatorPrototypeWithUserAgentData.userAgentData;
+  Object.defineProperty(navigatorWithUserAgentData, 'userAgentData', {
+    configurable: true,
+    value: {
+      platform: 'UnitTestOS',
+    },
+  });
+});
+
 it('shows a failure snackbar when clipboard write fails', async () => {
   clipboardWriteTextMock.mockRejectedValueOnce(new Error('copy failed'));
   const { root, unmount } = await mountAboutMioframePane();
@@ -189,10 +238,18 @@ it('shows a failure snackbar when clipboard write fails', async () => {
 
 afterEach(() => {
   appBuildId = 'sha-1234567';
+  sentryDiagnosticsAvailable = true;
   diagnosticsEnabled.value = true;
   addSnackbarMock.mockReset();
   clipboardWriteTextMock.mockReset();
   document.body.innerHTML = '';
+  delete navigatorPrototypeWithUserAgentData.userAgentData;
+  Object.defineProperty(navigator, 'userAgentData', {
+    configurable: true,
+    value: {
+      platform: 'UnitTestOS',
+    },
+  });
 });
 
 Object.defineProperty(navigator, 'clipboard', {

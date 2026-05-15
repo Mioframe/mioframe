@@ -24,8 +24,8 @@ const { addSnackbar } = useSnackbar();
 
 const formattedBuildDate = computed(() => new Date(APP_BUILD_DATE).toLocaleString());
 const getPlatform = () => {
-  const userAgentData = Object.getOwnPropertyDescriptor(navigator, 'userAgentData')?.value;
-  if (typeof userAgentData !== 'object') {
+  const userAgentData = Reflect.get(navigator, 'userAgentData');
+  if (!userAgentData || typeof userAgentData !== 'object') {
     return undefined;
   }
 
@@ -34,13 +34,15 @@ const getPlatform = () => {
 };
 
 const diagnosticsText = computed(() => {
+  const diagnosticsEffectivelyEnabled =
+    SENTRY_DIAGNOSTICS_AVAILABLE && diagnosticsEnabled.value === true;
   const lines = [
     `App: ${APP_NAME}`,
     `Version: ${APP_VERSION}`,
     `Build date: ${formattedBuildDate.value}`,
     ...(APP_BUILD_ID ? [`Build id: ${APP_BUILD_ID}`] : []),
     `Diagnostics available: ${SENTRY_DIAGNOSTICS_AVAILABLE ? 'yes' : 'no'}`,
-    `Diagnostics enabled: ${diagnosticsEnabled.value === true ? 'yes' : 'no'}`,
+    `Diagnostics enabled: ${diagnosticsEffectivelyEnabled ? 'yes' : 'no'}`,
     `Google Drive available: ${GOOGLE_DRIVE_INTEGRATION_AVAILABLE ? 'yes' : 'no'}`,
     `Browser: ${navigator.userAgent}`,
   ];

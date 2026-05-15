@@ -1,4 +1,4 @@
-export const APP_NAME = __APP_NAME__;
+export const APP_NAME = 'Mioframe';
 export const APP_VERSION = __APP_VERSION__;
 export const APP_BUILD_DATE = __BUILD_DATE__;
 export const APP_BUILD_ID = __BUILD_ID__ || undefined;
