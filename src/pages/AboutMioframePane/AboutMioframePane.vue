@@ -39,7 +39,7 @@ const diagnosticsText = computed(() => {
   const lines = [
     `App: ${APP_NAME}`,
     `Version: ${APP_VERSION}`,
-    `Build date: ${formattedBuildDate.value}`,
+    `Build date: ${APP_BUILD_DATE}`,
     ...(APP_BUILD_ID ? [`Build id: ${APP_BUILD_ID}`] : []),
     `Diagnostics available: ${SENTRY_DIAGNOSTICS_AVAILABLE ? 'yes' : 'no'}`,
     `Diagnostics enabled: ${diagnosticsEffectivelyEnabled ? 'yes' : 'no'}`,

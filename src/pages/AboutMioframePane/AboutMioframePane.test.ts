@@ -7,6 +7,8 @@ const addSnackbarMock = vi.fn();
 const diagnosticsEnabled = ref(true);
 let appBuildId: string | undefined = 'sha-1234567';
 let sentryDiagnosticsAvailable = true;
+const appBuildDate = '2026-05-15T12:34:56.000Z';
+const formattedAppBuildDate = new Date(appBuildDate).toLocaleString();
 type NavigatorWithUserAgentData = Navigator & { userAgentData?: unknown };
 const navigatorWithUserAgentData: NavigatorWithUserAgentData = navigator;
 const navigatorPrototypeWithUserAgentData: NavigatorWithUserAgentData = Navigator.prototype;
@@ -24,7 +26,7 @@ vi.mock('@entity/localSettings', () => ({
 vi.mock('@shared/config', () => ({
   APP_NAME: 'Mioframe',
   APP_VERSION: '0.0.1',
-  APP_BUILD_DATE: '2026-05-15T12:34:56.000Z',
+  APP_BUILD_DATE: appBuildDate,
   get APP_BUILD_ID() {
     return appBuildId;
   },
@@ -135,7 +137,8 @@ it('renders About Mioframe details and the leading navigation slot', async () =>
   expect(root.textContent).toContain('About Mioframe');
   expect(root.textContent).toContain('Mioframe');
   expect(root.textContent).toContain('Version: 0.0.1');
-  expect(root.textContent).toContain('Build date:');
+  expect(root.textContent).toContain(`Build date: ${formattedAppBuildDate}`);
+  expect(root.textContent).not.toContain(`Build date: ${appBuildDate}`);
   expect(root.textContent).toContain('Build: sha-1234567');
   expect(root.textContent).not.toContain('Beaver');
   expect(root.querySelector('[data-slot="leading-button"]')?.textContent).toContain('Back');
@@ -162,7 +165,8 @@ it('copies safe diagnostics metadata and shows a success snackbar', async () => 
   const copiedText = clipboardWriteTextMock.mock.calls[0]?.[0] ?? '';
   expect(copiedText).toContain('App: Mioframe');
   expect(copiedText).toContain('Version: 0.0.1');
-  expect(copiedText).toContain('Build date:');
+  expect(copiedText).toContain(`Build date: ${appBuildDate}`);
+  expect(copiedText).not.toContain(`Build date: ${formattedAppBuildDate}`);
   expect(copiedText).toContain('Build id: sha-1234567');
   expect(copiedText).toContain('Diagnostics available: yes');
   expect(copiedText).toContain('Diagnostics enabled: yes');
