@@ -4,8 +4,6 @@ Mioframe is a local-first app. Mioframe does not store your documents on a Miofr
 
 ## Where your data is stored
 
-Mioframe does not store your documents on a Mioframe server.
-
 This page focuses on the local storage locations available in Mioframe:
 
 - **Browser Storage**, which is storage managed by your browser for this app. Technically, this may be backed by browser-managed storage such as OPFS.
