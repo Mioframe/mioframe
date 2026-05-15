@@ -31,7 +31,7 @@ Use focused searches for names related to the domain, behavior, helper, config, 
 
 Do not start with broad repository exploration unless targeted search shows the impact is wider than expected.
 
-## Acceptance matrix guidance
+## Acceptance and risk matrix guidance
 
 Include only states relevant to the task, but consider:
 
