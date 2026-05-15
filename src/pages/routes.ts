@@ -1,4 +1,5 @@
 import { aboutMioframePane } from './AboutMioframePane';
+import { dataStorageHelpPane } from './DataStorageHelpPane';
 import { documentViewPane } from './DocumentViewPane';
 import { dataStoragePrivacyPane } from './DataStoragePrivacyPane';
 import { homePane } from './HomePane';
@@ -16,6 +17,7 @@ const { setupStackNavigation: setup, useStackNavigation: use } = createStackNavi
     document: documentViewPane,
     settings: settingsPane,
     dataStoragePrivacy: dataStoragePrivacyPane,
+    dataStorageHelp: dataStorageHelpPane,
     aboutMioframe: aboutMioframePane,
   },
   {
