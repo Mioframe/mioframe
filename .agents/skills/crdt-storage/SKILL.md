@@ -34,9 +34,10 @@ Use this workflow when the task touches any of these areas:
 4. Keep writes small and scoped to the owning change callback.
 5. Ensure subscriptions and handles recover from legitimate transient states such as missing documents when that is expected behavior.
 6. Add cleanup or finalization for resources that can outlive the caller.
-7. Add or update focused tests for storage semantics, migrations, normalization, CRDT write helpers, or lifecycle behavior when the change affects behavior.
-8. Consider the `mutation-testing` skill after focused unit/integration tests pass for high-risk pure data logic.
-9. Run the narrowest relevant verification, then follow the final verification rule from `AGENTS.md`.
+7. For lifecycle, integration, or cache state changes, define the applicable state-transition matrix before implementation is considered complete.
+8. Add or update focused tests for storage semantics, migrations, normalization, CRDT write helpers, or lifecycle behavior when the change affects behavior.
+9. Consider the `mutation-testing` skill after focused unit/integration tests pass for high-risk pure data logic.
+10. Run the narrowest relevant verification, then follow the final verification rule from `AGENTS.md`.
 
 ## Testing guidance
 
@@ -52,6 +53,21 @@ Use focused unit or integration tests for:
 - VFS behavior that can be tested without real browser interaction.
 
 Use Playwright/e2e or a browser smoke check only when the behavior requires real browser APIs, file picker behavior, user interaction, or UI integration.
+
+## State-transition matrix
+
+When editing lifecycle, integration, or cache state, cover applicable transitions:
+
+- initial disabled or unavailable state;
+- enable after startup;
+- disable after enable;
+- repeated enable calls;
+- enable to disable while setup is pending;
+- enable to disable to enable while the first async operation resolves late;
+- cleanup when the owning scope stops;
+- multiple independent callers using the same target or service.
+
+Cover applicable transitions with focused tests before considering the implementation complete.
 
 ## Cache and lifecycle checks
 
