@@ -34,7 +34,7 @@ Use this workflow when the task touches any of these areas:
 4. Keep writes small and scoped to the owning change callback.
 5. Ensure subscriptions and handles recover from legitimate transient states such as missing documents when that is expected behavior.
 6. Add cleanup or finalization for resources that can outlive the caller.
-7. For lifecycle, integration, or cache state changes, define the applicable state-transition matrix before implementation is considered complete.
+7. For lifecycle, integration, or cache state changes, define the applicable state-transition matrix as part of the implementation preflight.
 8. Add or update focused tests for storage semantics, migrations, normalization, CRDT write helpers, or lifecycle behavior when the change affects behavior.
 9. Consider the `mutation-testing` skill after focused unit/integration tests pass for high-risk pure data logic.
 10. Run the narrowest relevant verification, then follow the final verification rule from `AGENTS.md`.
@@ -67,7 +67,7 @@ When editing lifecycle, integration, or cache state, cover applicable transition
 - cleanup when the owning scope stops;
 - multiple independent callers using the same target or service.
 
-Cover applicable transitions with focused tests before considering the implementation complete.
+Cover applicable transitions with focused tests to drive the implementation.
 
 ## Cache and lifecycle checks
 
