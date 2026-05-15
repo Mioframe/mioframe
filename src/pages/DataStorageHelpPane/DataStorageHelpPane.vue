@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { computed } from 'vue';
 import dataStorageHelpMarkdown from '../../../docs/user/data-storage-and-recovery.md?raw';
 import { MDAppBar } from '@shared/ui/AppBar';
 import { MDPane } from '@shared/ui/Layout';
@@ -10,7 +9,7 @@ defineSlots<{
   appBarTrailing: () => unknown;
 }>();
 
-const dataStorageHelpContent = computed(() => dataStorageHelpMarkdown.replace(/^# .*\n+/, ''));
+const dataStorageHelpContent = dataStorageHelpMarkdown.replace(/^# .*\r?\n+/, '');
 </script>
 
 <template>
