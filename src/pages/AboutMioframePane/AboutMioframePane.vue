@@ -9,6 +9,7 @@ import {
   GOOGLE_DRIVE_INTEGRATION_AVAILABLE,
   SENTRY_DIAGNOSTICS_AVAILABLE,
 } from '@shared/config';
+import { dayjs } from '@shared/lib/dayjs';
 import { MDAppBar } from '@shared/ui/AppBar';
 import { MDButton } from '@shared/ui/Button';
 import { MDPane } from '@shared/ui/Layout';
@@ -22,12 +23,7 @@ defineSlots<{
 const { diagnosticsEnabled } = useDiagnosticsSettings();
 const { addSnackbar } = useSnackbar();
 
-const formattedBuildDate = computed(() =>
-  new Date(APP_BUILD_DATE).toLocaleString(undefined, {
-    dateStyle: 'medium',
-    timeStyle: 'short',
-  }),
-);
+const formattedBuildDate = computed(() => dayjs(APP_BUILD_DATE).format('lll'));
 const getPlatform = () => {
   const userAgentData = Reflect.get(navigator, 'userAgentData');
   if (!userAgentData || typeof userAgentData !== 'object') {

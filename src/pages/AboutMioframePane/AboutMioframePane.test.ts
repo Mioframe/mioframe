@@ -1,6 +1,7 @@
 /* eslint-disable vue/one-component-per-file -- This test file intentionally defines several tiny inline stub components. */
 import { afterEach, expect, it, vi } from 'vitest';
 import { computed, createApp, defineComponent, h, nextTick, ref } from 'vue';
+import { dayjs } from '@shared/lib/dayjs';
 
 const clipboardWriteTextMock = vi.fn<Navigator['clipboard']['writeText']>();
 const addSnackbarMock = vi.fn();
@@ -8,10 +9,7 @@ const diagnosticsEnabled = ref(true);
 let appBuildId: string | undefined = 'sha-1234567';
 let sentryDiagnosticsAvailable = true;
 const appBuildDate = '2026-05-15T12:34:56.000Z';
-const formattedAppBuildDate = new Date(appBuildDate).toLocaleString(undefined, {
-  dateStyle: 'medium',
-  timeStyle: 'short',
-});
+const formattedAppBuildDate = dayjs(appBuildDate).format('lll');
 type NavigatorWithUserAgentData = Navigator & { userAgentData?: unknown };
 const navigatorWithUserAgentData: NavigatorWithUserAgentData = navigator;
 const navigatorPrototypeWithUserAgentData: NavigatorWithUserAgentData = Navigator.prototype;
