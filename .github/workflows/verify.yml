@@ -24,4 +24,13 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
       - run: pnpm e2e:install
-      - run: pnpm verify
+      - run: pnpm verify --verbose
+
+      - name: Upload verify logs
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: verify-logs
+          path: .verify/logs/
+          if-no-files-found: ignore
+          retention-days: 7
