@@ -43,6 +43,7 @@ Meanwhile, I continue to improve performance and tune the interface for larger d
 ## Privacy
 
 Privacy details for the release are available in [Privacy Policy](./PRIVACY.md).
+
 User documentation is available in [docs/user/README.md](./docs/user/README.md).
 
 ## Feedback

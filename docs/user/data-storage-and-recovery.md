@@ -1,13 +1,17 @@
 # Data storage and recovery
 
-Mioframe is a local-first app. Your documents are stored on your device first, not on a Mioframe server.
+Mioframe is a local-first app. Mioframe does not store your documents on a Mioframe server.
 
 ## Where your data is stored
 
-Mioframe currently works with two main storage locations:
+Mioframe does not store your documents on a Mioframe server.
+
+This page focuses on the local storage locations available in Mioframe:
 
 - **Browser Storage**, which is storage managed by your browser for this app. Technically, this may be backed by browser-managed storage such as OPFS.
 - **Local folders**, which are folders on your device that you explicitly choose through the app.
+
+If you enable Google Drive integration, Mioframe can also work with files and folders available through your connected Google Drive account. Google Drive data remains subject to your Google Account and Google Drive settings.
 
 ## Browser Storage
 
