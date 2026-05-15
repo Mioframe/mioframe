@@ -4,7 +4,12 @@ import { spawnSync } from 'node:child_process';
 import toolingConfig from '../config/tooling.json' with { type: 'json' };
 
 const isFixMode = process.argv.includes('--fix');
+const isVerboseMode = process.argv.includes('--verbose');
 const cliBaseRef = getCliBaseRef(process.argv.slice(2));
+const VERIFY_DIR = '.verify';
+const VERIFY_LOG_DIR = path.posix.join(VERIFY_DIR, 'logs');
+const MAX_RELEVANT_LINES = 20;
+const MAX_FILE_ARGS_IN_SUMMARY = 4;
 const FORMATTABLE_EXTENSIONS = new Set([
   '.css',
   '.html',
@@ -398,6 +403,51 @@ function formatCommand(command, args) {
   return [command, ...args].map(quoteArg).join(' ');
 }
 
+function getLogPath(label) {
+  return path.posix.join(VERIFY_LOG_DIR, `${label}.log`);
+}
+
+function ensureLogsDirectory() {
+  fs.rmSync(VERIFY_LOG_DIR, { recursive: true, force: true });
+  fs.mkdirSync(VERIFY_LOG_DIR, { recursive: true });
+}
+
+function writeLog(label, command, output) {
+  const logPath = getLogPath(label);
+  const fileContent = [`# command`, command, '', '# output', output].join('\n');
+  fs.writeFileSync(logPath, fileContent, 'utf8');
+  return logPath;
+}
+
+function summarizeCommandForDisplay(command, args) {
+  const groupedFileArgs = [];
+  const otherArgs = [];
+
+  for (const arg of args) {
+    if (arg.includes('/') && fileExists(arg)) {
+      groupedFileArgs.push(arg);
+      continue;
+    }
+
+    otherArgs.push(arg);
+  }
+
+  if (groupedFileArgs.length === 0) {
+    return formatCommand(command, args);
+  }
+
+  const previewFiles = groupedFileArgs.slice(0, MAX_FILE_ARGS_IN_SUMMARY).map(quoteArg);
+  const remainingCount = groupedFileArgs.length - previewFiles.length;
+  const fileSummaryParts = [...previewFiles];
+
+  if (remainingCount > 0) {
+    fileSummaryParts.push(`<+${remainingCount} files>`);
+  }
+
+  const displayArgs = [...otherArgs, ...fileSummaryParts];
+  return formatCommand(command, displayArgs);
+}
+
 function trimWarningLine(line) {
   return line.trim().replace(/\s+/g, ' ');
 }
@@ -420,37 +470,70 @@ function getWarningSummary(output) {
   return uniqSorted(lines).slice(0, 3).join(' | ');
 }
 
+function getOutputTail(output) {
+  const lines = output
+    .split('\n')
+    .map((line) => line.trimEnd())
+    .filter((line) => line.trim().length > 0);
+
+  if (lines.length === 0) {
+    return ['(no output captured)'];
+  }
+
+  return lines.slice(-MAX_RELEVANT_LINES);
+}
+
 function runCommand(label, command, args) {
   const formattedCommand = formatCommand(command, args);
-  const shouldCaptureOutput = ['eslint', 'oxlint'].includes(label);
+  const displayCommand = summarizeCommandForDisplay(command, args);
+  const stdio = isVerboseMode ? 'inherit' : ['inherit', 'pipe', 'pipe'];
 
-  console.log(`\n[${label}] $ ${formattedCommand}`);
+  console.log(`\n[${label}] running ${displayCommand}`);
 
   const result = spawnSync(command, args, {
-    stdio: shouldCaptureOutput ? ['inherit', 'pipe', 'pipe'] : 'inherit',
+    stdio,
     encoding: 'utf8',
     maxBuffer: 16 * 1024 * 1024,
   });
-
-  const stdout = shouldCaptureOutput ? (result.stdout ?? '') : '';
-  const stderr = shouldCaptureOutput ? (result.stderr ?? '') : '';
-
-  if (shouldCaptureOutput) {
-    process.stdout.write(stdout);
-    process.stderr.write(stderr);
-  }
 
   if (result.error) {
     throw result.error;
   }
 
-  const warningSummary = shouldCaptureOutput ? getWarningSummary(`${stdout}\n${stderr}`) : '';
+  const stdout = result.stdout ?? '';
+  const stderr = result.stderr ?? '';
+  const combinedOutput = [stdout, stderr].filter((value) => value.length > 0).join('\n');
+  const logPath = writeLog(label, formattedCommand, combinedOutput);
+  const warningSummary = getWarningSummary(combinedOutput);
+  const exitCode = result.status ?? 1;
+  const status = exitCode === 0 ? 'passed' : 'failed';
+
+  if (status === 'passed' && !warningSummary) {
+    console.log(`[${label}] passed ✅`);
+  } else if (status === 'passed' && warningSummary) {
+    console.log(`[${label}] passed with warnings ⚠️`);
+    console.log(`[${label}] warnings: ${warningSummary}`);
+    console.log(`[${label}] full log: ${logPath}`);
+  } else {
+    console.log(`[${label}] failed ❌`);
+    console.log(`[${label}] command: ${formattedCommand}`);
+    console.log(`[${label}] exit code: ${exitCode}`);
+    console.log(`[${label}] output tail:`);
+
+    for (const tailLine of getOutputTail(combinedOutput)) {
+      console.log(`  ${tailLine}`);
+    }
+
+    console.log(`[${label}] full log: ${logPath}`);
+  }
 
   return {
     label,
     command: formattedCommand,
-    exitCode: result.status ?? 1,
-    status: result.status === 0 ? 'passed' : 'failed',
+    displayCommand,
+    logPath,
+    exitCode,
+    status,
     stdout,
     stderr,
     hasWarnings: warningSummary.length > 0,
@@ -646,9 +729,11 @@ function printSummary(changedFiles, scope, results) {
 
   console.log('\nVERIFY RESULT');
   console.log(`mode: ${isFixMode ? 'fix' : 'check'}`);
+  console.log(`verbose: ${isVerboseMode ? 'on' : 'off'}`);
   console.log(`scope: ${scope}`);
   console.log(`changed files: ${changedFiles.length}`);
   console.log(`status: ${status}`);
+  console.log(`logs: ${VERIFY_LOG_DIR}`);
   console.log('commands:');
 
   for (const result of results) {
@@ -658,7 +743,7 @@ function printSummary(changedFiles, scope, results) {
     }
 
     const warningSuffix = result.hasWarnings ? ' (warnings found)' : '';
-    console.log(`- ${result.label}: ${result.status}${warningSuffix} (${result.command})`);
+    console.log(`- ${result.label}: ${result.status}${warningSuffix} (${result.displayCommand})`);
   }
 
   console.log('action required:');
@@ -674,6 +759,7 @@ function main() {
   const { changedFiles, scope } = getChangedFiles();
   const commands = buildCommands(changedFiles);
   const results = [];
+  ensureLogsDirectory();
 
   for (const entry of commands) {
     if (entry.kind === 'skipped') {

@@ -38,6 +38,15 @@ Use the narrowest useful check for the current change:
 
 Prefer the project `pnpm verify` script when it can infer the changed-file scope. It already runs changed-file formatting, lint, type-check, focused Vitest, changed Playwright specs, and narrow Stryker scope when applicable.
 
+`pnpm verify` uses summary-first terminal output by default:
+
+- passed checks print concise status lines;
+- failed checks print the check label, exact command, exit code, relevant output tail, and log path;
+- warning-only checks print a warning summary and log path;
+- full command logs are written per check under `.verify/logs/`.
+
+Use `pnpm verify --verbose` when you need full streamed command output in the terminal. It is a diagnostic mode, not a separate quality gate.
+
 ## Failure handling
 
 If `pnpm verify` fails:
