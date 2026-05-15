@@ -26,13 +26,28 @@ If any condition is false, skip test-first and use the normal verification rules
 ## Workflow
 
 1. Identify the smallest existing verification target that should own the changed behavior.
-2. Add or update one focused test or smoke check for that behavior before production edits.
-3. Run only that target and confirm it fails for the expected reason.
-4. If a focused failing check cannot be produced quickly, stop expanding coverage and state the risk in the final response.
-5. Implement the minimal production change.
-6. Rerun the same target and confirm it passes.
-7. Run the narrowest additional verification required by `AGENTS.md`.
-8. Run the final `pnpm verify` check required by `AGENTS.md` before reporting completion.
+2. Build a minimal acceptance matrix before writing the test. Include only states relevant to the task.
+3. Add or update one focused test or smoke check for the highest-risk matrix item before production edits.
+4. Run only that target and confirm it fails for the expected reason.
+5. If a focused failing check cannot be produced quickly, stop expanding coverage and state the risk in the final response.
+6. Implement the minimal production change.
+7. Rerun the same target and confirm it passes.
+8. Run the narrowest additional verification required by `AGENTS.md`.
+9. Run the final `pnpm verify` check required by `AGENTS.md` before reporting completion.
+
+## Acceptance matrix guidance
+
+Include only states that are relevant to the task, but consider:
+
+- unavailable or disabled integrations;
+- missing browser APIs or unsupported runtime;
+- async pending, cancellation, stale completion, and repeated toggles;
+- invalid, malformed, or hostile input;
+- cache invalidation after create, update, delete, or failed lookup;
+- data-safety-sensitive values in diagnostics, URLs, names, ids, and content;
+- accessibility structure and heading hierarchy for rendered UI.
+
+The first focused test should target the highest-risk applicable matrix item, not just the happy path.
 
 ## Choosing the check
 
