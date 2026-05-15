@@ -606,7 +606,10 @@ function buildCommands(changedFiles) {
   const hasVisualRelevantChanges = changedFiles.some(isVisualRelevantFile);
   const changedE2ESpecs = changedFiles.filter(
     (filePath) =>
-      !filePath.startsWith('tests/e2e/visual/') && filePath.endsWith('.ts') && fileExists(filePath),
+      filePath.startsWith('tests/e2e/') &&
+      !filePath.startsWith('tests/e2e/visual/') &&
+      filePath.endsWith('.ts') &&
+      fileExists(filePath),
   );
   const mutationScope = getMutationScope(changedFiles);
   const commands = [];
@@ -807,9 +810,7 @@ async function main() {
   const results = [];
   ensureLogsDirectory();
 
-  await commands.reduce(async (previousRun, entry) => {
-    await previousRun;
-
+  for (const entry of commands) {
     if (entry.kind === 'skipped') {
       results.push({
         label: entry.label,
@@ -822,11 +823,11 @@ async function main() {
         hasWarnings: false,
         warningSummary: '',
       });
-      return;
+      continue;
     }
 
     results.push(await runCommand(entry.label, entry.command, entry.args));
-  }, Promise.resolve());
+  }
 
   const status = printSummary(changedFiles, scope, results);
   process.exitCode = status === 'failed' ? 1 : 0;
