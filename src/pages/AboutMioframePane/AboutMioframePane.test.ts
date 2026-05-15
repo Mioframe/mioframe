@@ -8,7 +8,10 @@ const diagnosticsEnabled = ref(true);
 let appBuildId: string | undefined = 'sha-1234567';
 let sentryDiagnosticsAvailable = true;
 const appBuildDate = '2026-05-15T12:34:56.000Z';
-const formattedAppBuildDate = new Date(appBuildDate).toLocaleString();
+const formattedAppBuildDate = new Date(appBuildDate).toLocaleString(undefined, {
+  dateStyle: 'medium',
+  timeStyle: 'short',
+});
 type NavigatorWithUserAgentData = Navigator & { userAgentData?: unknown };
 const navigatorWithUserAgentData: NavigatorWithUserAgentData = navigator;
 const navigatorPrototypeWithUserAgentData: NavigatorWithUserAgentData = Navigator.prototype;

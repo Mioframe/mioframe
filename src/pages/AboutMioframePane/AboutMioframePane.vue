@@ -22,7 +22,12 @@ defineSlots<{
 const { diagnosticsEnabled } = useDiagnosticsSettings();
 const { addSnackbar } = useSnackbar();
 
-const formattedBuildDate = computed(() => new Date(APP_BUILD_DATE).toLocaleString());
+const formattedBuildDate = computed(() =>
+  new Date(APP_BUILD_DATE).toLocaleString(undefined, {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+  }),
+);
 const getPlatform = () => {
   const userAgentData = Reflect.get(navigator, 'userAgentData');
   if (!userAgentData || typeof userAgentData !== 'object') {

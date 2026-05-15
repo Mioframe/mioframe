@@ -31,6 +31,10 @@ export default defineConfig(({ mode, isPreview }) => {
     ? toolingConfig.storybook.deterministicBuildDate
     : new Date().toISOString();
   const buildId = env.VITE_BUILD_ID || process.env.VITE_BUILD_ID || process.env.GITHUB_SHA || '';
+  const dependencyNames = Object.keys({
+    ...dependencies,
+    ...devDependencies,
+  });
 
   if (!isStorybookBuild) {
     console.log('\n__BUILD_DATE__:', buildDate);
@@ -68,10 +72,7 @@ export default defineConfig(({ mode, isPreview }) => {
       rollupOptions: {
         output: {
           manualChunks(id) {
-            for (const dependencyName of Object.keys({
-              ...dependencies,
-              ...devDependencies,
-            })) {
+            for (const dependencyName of dependencyNames) {
               if (id.includes(`/${dependencyName}`)) {
                 return `vendor/${dependencyName}`;
               }
