@@ -160,17 +160,20 @@ vi.mock('@shared/ui/Checkbox', () => ({
 }));
 
 const mountSettingsSections = async ({
-  onSelectDataStoragePrivacy,
+  onSelectPrivacyPolicy,
+  onSelectDataStorageHelp,
   onSelectAboutMioframe,
 }: {
-  onSelectDataStoragePrivacy?: (() => void) | undefined;
+  onSelectPrivacyPolicy?: (() => void) | undefined;
+  onSelectDataStorageHelp?: (() => void) | undefined;
   onSelectAboutMioframe?: (() => void) | undefined;
 } = {}) => {
   const { SettingsSections } = await import('./index');
   const root = document.createElement('div');
   document.body.appendChild(root);
   const app = createApp(SettingsSections, {
-    onSelectDataStoragePrivacy,
+    onSelectPrivacyPolicy,
+    onSelectDataStorageHelp,
     onSelectAboutMioframe,
   });
 
@@ -215,10 +218,12 @@ describe('SettingsSections', () => {
   });
 
   it('renders the four release settings sections and opens Help entries', async () => {
-    const onSelectDataStoragePrivacy = vi.fn();
+    const onSelectPrivacyPolicy = vi.fn();
+    const onSelectDataStorageHelp = vi.fn();
     const onSelectAboutMioframe = vi.fn();
     const { root, unmount } = await mountSettingsSections({
-      onSelectDataStoragePrivacy,
+      onSelectPrivacyPolicy,
+      onSelectDataStorageHelp,
       onSelectAboutMioframe,
     });
 
@@ -229,8 +234,10 @@ describe('SettingsSections', () => {
     expect(root.textContent).toContain(
       'Send technical error reports to help developers fix crashes and unexpected failures.',
     );
+    expect(root.textContent).toContain('Read how Mioframe handles privacy and diagnostics.');
+    expect(root.textContent).toContain('Data storage & recovery');
     expect(root.textContent).toContain(
-      'Learn where your data is stored and what can leave this device.',
+      'Learn where your data is stored and how to back up or restore documents.',
     );
     expect(root.textContent).toContain('About Mioframe');
     expect(root.textContent).toContain('Version and build information.');
@@ -238,7 +245,12 @@ describe('SettingsSections', () => {
     getButtonByText(root, 'Privacy policy')?.click();
     await nextTick();
 
-    expect(onSelectDataStoragePrivacy).toHaveBeenCalledTimes(1);
+    expect(onSelectPrivacyPolicy).toHaveBeenCalledTimes(1);
+
+    getButtonByText(root, 'Data storage & recovery')?.click();
+    await nextTick();
+
+    expect(onSelectDataStorageHelp).toHaveBeenCalledTimes(1);
 
     getButtonByText(root, 'About Mioframe')?.click();
     await nextTick();

@@ -44,6 +44,8 @@ Meanwhile, I continue to improve performance and tune the interface for larger d
 
 Privacy details for the release are available in [Privacy Policy](./PRIVACY.md).
 
+User documentation is available in [docs/user/README.md](./docs/user/README.md).
+
 ## Feedback
 
 Mioframe is still under active development, and your feedback genuinely helps shape where it goes next. If you want to share thoughts, report a problem, or suggest an idea, feel free to reach out on GitHub:

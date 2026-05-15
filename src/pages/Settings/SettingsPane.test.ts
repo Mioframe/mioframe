@@ -37,19 +37,31 @@ vi.mock('@shared/ui/AppBar', () => ({
 vi.mock('@widget/SettingsSections', () => ({
   SettingsSections: defineComponent({
     name: 'SettingsSectionsStub',
-    emits: ['selectDataStoragePrivacy'],
+    emits: ['selectPrivacyPolicy', 'selectDataStorageHelp'],
     setup(_props, { emit }) {
       return () =>
-        h(
-          'button',
-          {
-            type: 'button',
-            onClick: () => {
-              emit('selectDataStoragePrivacy');
+        h('div', [
+          h(
+            'button',
+            {
+              type: 'button',
+              onClick: () => {
+                emit('selectPrivacyPolicy');
+              },
             },
-          },
-          'Select privacy policy',
-        );
+            'Select privacy policy',
+          ),
+          h(
+            'button',
+            {
+              type: 'button',
+              onClick: () => {
+                emit('selectDataStorageHelp');
+              },
+            },
+            'Select data storage help',
+          ),
+        ]);
     },
   }),
 }));
@@ -82,10 +94,21 @@ describe('SettingsPane', () => {
   it('opens the in-app privacy policy pane from Settings', async () => {
     const { root, unmount } = await mountSettingsPane();
 
-    root.querySelector('button')?.click();
+    root.querySelectorAll('button')[0]?.click();
     await nextTick();
 
     expect(open).toHaveBeenCalledWith('dataStoragePrivacy', {}, { target: 'dataStoragePrivacy' });
+
+    unmount();
+  });
+
+  it('opens the data storage and recovery pane from Settings', async () => {
+    const { root, unmount } = await mountSettingsPane();
+
+    root.querySelectorAll('button')[1]?.click();
+    await nextTick();
+
+    expect(open).toHaveBeenCalledWith('dataStorageHelp', {}, { target: 'dataStorageHelp' });
 
     unmount();
   });

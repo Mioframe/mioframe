@@ -11,8 +11,12 @@ defineSlots<{
 
 const { open } = useStackNavigation();
 
-const onSelectDataStoragePrivacy = async () => {
+const onSelectPrivacyPolicy = async () => {
   await open('dataStoragePrivacy', {}, { target: 'dataStoragePrivacy' });
+};
+
+const onSelectDataStorageHelp = async () => {
+  await open('dataStorageHelp', {}, { target: 'dataStorageHelp' });
 };
 
 const onSelectAboutMioframe = async () => {
@@ -29,7 +33,8 @@ const onSelectAboutMioframe = async () => {
     </MDAppBar>
 
     <SettingsSections
-      @select-data-storage-privacy="onSelectDataStoragePrivacy"
+      @select-privacy-policy="onSelectPrivacyPolicy"
+      @select-data-storage-help="onSelectDataStorageHelp"
       @select-about-mioframe="onSelectAboutMioframe"
     />
   </MDPane>
