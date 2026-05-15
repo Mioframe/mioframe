@@ -1,6 +1,6 @@
 import type { PluginOption } from 'vite';
 import { defineConfig, loadEnv } from 'vite';
-import { dependencies, devDependencies } from './package.json';
+import { dependencies, devDependencies, version } from './package.json';
 import toolingConfig from './config/tooling.json' with { type: 'json' };
 import { getResolveAlias } from './config/alias';
 import {
@@ -30,6 +30,11 @@ export default defineConfig(({ mode, isPreview }) => {
   const buildDate = isStorybookBuild
     ? toolingConfig.storybook.deterministicBuildDate
     : new Date().toISOString();
+  const buildId = env.VITE_BUILD_ID || process.env.VITE_BUILD_ID || process.env.GITHUB_SHA || '';
+  const dependencyNames = Object.keys({
+    ...dependencies,
+    ...devDependencies,
+  });
 
   if (!isStorybookBuild) {
     console.log('\n__BUILD_DATE__:', buildDate);
@@ -67,12 +72,9 @@ export default defineConfig(({ mode, isPreview }) => {
       rollupOptions: {
         output: {
           manualChunks(id) {
-            for (const name of Object.keys({
-              ...dependencies,
-              ...devDependencies,
-            })) {
-              if (id.includes(`/${name}`)) {
-                return `vendor/${name}`;
+            for (const dependencyName of dependencyNames) {
+              if (id.includes(`/${dependencyName}`)) {
+                return `vendor/${dependencyName}`;
               }
             }
           },
@@ -80,7 +82,9 @@ export default defineConfig(({ mode, isPreview }) => {
       },
     },
     define: {
+      __APP_VERSION__: JSON.stringify(version),
       __BUILD_DATE__: JSON.stringify(buildDate),
+      __BUILD_ID__: JSON.stringify(buildId),
     },
   };
 });

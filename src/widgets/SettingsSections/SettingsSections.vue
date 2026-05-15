@@ -7,6 +7,7 @@ import SettingsCheckboxListItem from './SettingsCheckboxListItem.vue';
 
 const emit = defineEmits<{
   selectDataStoragePrivacy: [];
+  selectAboutMioframe: [];
 }>();
 
 const { settings } = useLocalSettings();
@@ -35,6 +36,10 @@ const onToggleGoogleDrive = () => {
 
 const onClickDataStoragePrivacy = () => {
   emit('selectDataStoragePrivacy');
+};
+
+const onClickAboutMioframe = () => {
+  emit('selectAboutMioframe');
 };
 </script>
 
@@ -98,6 +103,15 @@ const onClickDataStoragePrivacy = () => {
           <template #supportingText>
             Learn where your data is stored and what can leave this device.
           </template>
+        </MDListItem>
+
+        <MDListItem
+          is="button"
+          type="button"
+          headline="About Mioframe"
+          @click="onClickAboutMioframe"
+        >
+          <template #supportingText>Version and build information.</template>
         </MDListItem>
       </MDListContainer>
     </SettingsSection>

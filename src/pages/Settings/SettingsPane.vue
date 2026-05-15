@@ -14,6 +14,10 @@ const { open } = useStackNavigation();
 const onSelectDataStoragePrivacy = async () => {
   await open('dataStoragePrivacy', {}, { target: 'dataStoragePrivacy' });
 };
+
+const onSelectAboutMioframe = async () => {
+  await open('aboutMioframe', {}, { target: 'aboutMioframe' });
+};
 </script>
 
 <template>
@@ -24,6 +28,9 @@ const onSelectDataStoragePrivacy = async () => {
       </template>
     </MDAppBar>
 
-    <SettingsSections @select-data-storage-privacy="onSelectDataStoragePrivacy" />
+    <SettingsSections
+      @select-data-storage-privacy="onSelectDataStoragePrivacy"
+      @select-about-mioframe="onSelectAboutMioframe"
+    />
   </MDPane>
 </template>
