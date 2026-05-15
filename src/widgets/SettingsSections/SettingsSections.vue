@@ -6,7 +6,8 @@ import SettingsSection from './SettingsSection.vue';
 import SettingsCheckboxListItem from './SettingsCheckboxListItem.vue';
 
 const emit = defineEmits<{
-  selectDataStoragePrivacy: [];
+  selectPrivacyPolicy: [];
+  selectDataStorageHelp: [];
   selectAboutMioframe: [];
 }>();
 
@@ -34,8 +35,12 @@ const onToggleGoogleDrive = () => {
     settings.value.googleDriveIntegrationEnabled === true ? undefined : true;
 };
 
-const onClickDataStoragePrivacy = () => {
-  emit('selectDataStoragePrivacy');
+const onClickPrivacyPolicy = () => {
+  emit('selectPrivacyPolicy');
+};
+
+const onClickDataStorageHelp = () => {
+  emit('selectDataStorageHelp');
 };
 
 const onClickAboutMioframe = () => {
@@ -98,10 +103,19 @@ const onClickAboutMioframe = () => {
           is="button"
           type="button"
           headline="Privacy policy"
-          @click="onClickDataStoragePrivacy"
+          @click="onClickPrivacyPolicy"
+        >
+          <template #supportingText> Read how Mioframe handles privacy and diagnostics. </template>
+        </MDListItem>
+
+        <MDListItem
+          is="button"
+          type="button"
+          headline="Data storage & recovery"
+          @click="onClickDataStorageHelp"
         >
           <template #supportingText>
-            Learn where your data is stored and what can leave this device.
+            Learn where your data is stored and how to back up or restore documents.
           </template>
         </MDListItem>
 
