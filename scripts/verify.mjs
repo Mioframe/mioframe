@@ -435,7 +435,7 @@ function summarizeCommandForDisplay(command, args) {
   const otherArgs = [];
 
   for (const arg of args) {
-    if (arg.includes('/') && fileExists(arg)) {
+    if (!arg.startsWith('-') && fileExists(arg)) {
       groupedFileArgs.push(arg);
       continue;
     }
@@ -447,7 +447,7 @@ function summarizeCommandForDisplay(command, args) {
     return formatCommand(command, args);
   }
 
-  const previewFiles = groupedFileArgs.slice(0, MAX_FILE_ARGS_IN_SUMMARY).map(quoteArg);
+  const previewFiles = groupedFileArgs.slice(0, MAX_FILE_ARGS_IN_SUMMARY);
   const remainingCount = groupedFileArgs.length - previewFiles.length;
   const fileSummaryParts = [...previewFiles];
 
@@ -467,7 +467,11 @@ function isZeroWarningLine(line) {
   return /\b0 warnings?\b/i.test(line) && !/\b[1-9]\d* warnings?\b/i.test(line);
 }
 
-function getWarningSummary(output) {
+function getWarningSummary(label, output) {
+  if (!['oxlint', 'eslint'].includes(label)) {
+    return '';
+  }
+
   const lines = output
     .split('\n')
     .map(trimWarningLine)
@@ -554,7 +558,7 @@ async function runCommand(label, command, args) {
   }
 
   const logOutput = fs.readFileSync(logPath, 'utf8');
-  const warningSummary = getWarningSummary(logOutput);
+  const warningSummary = getWarningSummary(label, logOutput);
   const status = exitCode === 0 ? 'passed' : 'failed';
 
   if (status === 'passed' && !warningSummary) {
@@ -826,6 +830,7 @@ async function main() {
       continue;
     }
 
+    // oxlint-disable-next-line no-await-in-loop -- verify checks must run sequentially for stable summary/log ordering.
     results.push(await runCommand(entry.label, entry.command, entry.args));
   }
 
