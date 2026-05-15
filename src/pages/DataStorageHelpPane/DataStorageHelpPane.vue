@@ -9,7 +9,7 @@ defineSlots<{
   appBarTrailing: () => unknown;
 }>();
 
-const dataStorageHelpContent = dataStorageHelpMarkdown.replace(/^# .*\r?\n+/, '');
+const dataStorageHelpContent = dataStorageHelpMarkdown.replace(/^#\s+.*\r?\n+/, '');
 </script>
 
 <template>
