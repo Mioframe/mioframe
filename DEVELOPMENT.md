@@ -110,6 +110,21 @@ Before reporting completion after code or documentation edits, run the read-only
 pnpm verify
 ```
 
+By default, `pnpm verify` is summary-first:
+
+- each successful check prints a concise pass line;
+- failed checks print the label, exact command, exit code, and a relevant output tail;
+- checks with warnings print a warning summary;
+- full stdout/stderr for each executed check is written to `.verify/logs/<check>.log`.
+
+Use verbose mode when you need full live command output in the terminal:
+
+```bash
+pnpm verify --verbose
+```
+
+`--verbose` can be combined with `--fix` when applying automatic fixes.
+
 Agent workflow:
 
 - Use `pnpm verify --fix` only to apply automatic formatting or lint fixes.

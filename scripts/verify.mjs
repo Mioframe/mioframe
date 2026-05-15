@@ -1,10 +1,16 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import { spawnSync } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import toolingConfig from '../config/tooling.json' with { type: 'json' };
 
 const isFixMode = process.argv.includes('--fix');
+const isVerboseMode = process.argv.includes('--verbose');
 const cliBaseRef = getCliBaseRef(process.argv.slice(2));
+const VERIFY_DIR = '.verify';
+const VERIFY_LOG_DIR = path.posix.join(VERIFY_DIR, 'logs');
+const MAX_RELEVANT_LINES = 20;
+const MAX_FILE_ARGS_IN_SUMMARY = 4;
+const MAX_ROLLING_BUFFER_CHARS = 128 * 1024;
 const FORMATTABLE_EXTENSIONS = new Set([
   '.css',
   '.html',
@@ -398,6 +404,61 @@ function formatCommand(command, args) {
   return [command, ...args].map(quoteArg).join(' ');
 }
 
+function getLogPath(label) {
+  return path.posix.join(VERIFY_LOG_DIR, `${label}.log`);
+}
+
+function ensureLogsDirectory() {
+  fs.rmSync(VERIFY_LOG_DIR, { recursive: true, force: true });
+  fs.mkdirSync(VERIFY_LOG_DIR, { recursive: true });
+}
+
+function appendToRollingBuffer(buffer, chunk) {
+  const nextBuffer = `${buffer}${chunk}`;
+
+  if (nextBuffer.length <= MAX_ROLLING_BUFFER_CHARS) {
+    return nextBuffer;
+  }
+
+  return nextBuffer.slice(-MAX_ROLLING_BUFFER_CHARS);
+}
+
+function closeLogStream(stream) {
+  return new Promise((resolve, reject) => {
+    stream.once('error', reject);
+    stream.end(() => resolve());
+  });
+}
+
+function summarizeCommandForDisplay(command, args) {
+  const groupedFileArgs = [];
+  const otherArgs = [];
+
+  for (const arg of args) {
+    if (!arg.startsWith('-') && fileExists(arg)) {
+      groupedFileArgs.push(arg);
+      continue;
+    }
+
+    otherArgs.push(arg);
+  }
+
+  if (groupedFileArgs.length === 0) {
+    return formatCommand(command, args);
+  }
+
+  const previewFiles = groupedFileArgs.slice(0, MAX_FILE_ARGS_IN_SUMMARY);
+  const remainingCount = groupedFileArgs.length - previewFiles.length;
+  const fileSummaryParts = [...previewFiles];
+
+  if (remainingCount > 0) {
+    fileSummaryParts.push(`<+${remainingCount} files>`);
+  }
+
+  const displayArgs = [...otherArgs, ...fileSummaryParts];
+  return formatCommand(command, displayArgs);
+}
+
 function trimWarningLine(line) {
   return line.trim().replace(/\s+/g, ' ');
 }
@@ -406,7 +467,11 @@ function isZeroWarningLine(line) {
   return /\b0 warnings?\b/i.test(line) && !/\b[1-9]\d* warnings?\b/i.test(line);
 }
 
-function getWarningSummary(output) {
+function getWarningSummary(label, output) {
+  if (!['oxlint', 'eslint'].includes(label)) {
+    return '';
+  }
+
   const lines = output
     .split('\n')
     .map(trimWarningLine)
@@ -420,39 +485,110 @@ function getWarningSummary(output) {
   return uniqSorted(lines).slice(0, 3).join(' | ');
 }
 
-function runCommand(label, command, args) {
+function getOutputTail(output) {
+  const lines = output
+    .split('\n')
+    .map((line) => line.trimEnd())
+    .filter((line) => line.trim().length > 0);
+
+  if (lines.length === 0) {
+    return ['(no output captured)'];
+  }
+
+  return lines.slice(-MAX_RELEVANT_LINES);
+}
+
+async function runCommand(label, command, args) {
   const formattedCommand = formatCommand(command, args);
-  const shouldCaptureOutput = ['eslint', 'oxlint'].includes(label);
+  const displayCommand = summarizeCommandForDisplay(command, args);
+  const logPath = getLogPath(label);
+  const logStream = fs.createWriteStream(logPath, { encoding: 'utf8' });
+  logStream.write(`# command\n${formattedCommand}\n\n# output\n`);
 
-  console.log(`\n[${label}] $ ${formattedCommand}`);
+  console.log(`\n[${label}] running ${displayCommand}`);
 
-  const result = spawnSync(command, args, {
-    stdio: shouldCaptureOutput ? ['inherit', 'pipe', 'pipe'] : 'inherit',
-    encoding: 'utf8',
-    maxBuffer: 16 * 1024 * 1024,
+  const child = spawn(command, args, {
+    stdio: ['inherit', 'pipe', 'pipe'],
   });
 
-  const stdout = shouldCaptureOutput ? (result.stdout ?? '') : '';
-  const stderr = shouldCaptureOutput ? (result.stderr ?? '') : '';
+  let outputBuffer = '';
+  let exitCode = 1;
+  let spawnError = null;
 
-  if (shouldCaptureOutput) {
-    process.stdout.write(stdout);
-    process.stderr.write(stderr);
+  const onStdout = (chunk) => {
+    const text = chunk.toString();
+    logStream.write(text);
+    outputBuffer = appendToRollingBuffer(outputBuffer, text);
+
+    if (isVerboseMode) {
+      process.stdout.write(chunk);
+    }
+  };
+
+  const onStderr = (chunk) => {
+    const text = chunk.toString();
+    logStream.write(text);
+    outputBuffer = appendToRollingBuffer(outputBuffer, text);
+
+    if (isVerboseMode) {
+      process.stderr.write(chunk);
+    }
+  };
+
+  child.stdout?.on('data', onStdout);
+  child.stderr?.on('data', onStderr);
+
+  await new Promise((resolve) => {
+    child.once('error', (error) => {
+      spawnError = error;
+      logStream.write(`\n[verify] spawn error: ${error.message}\n`);
+      resolve();
+    });
+
+    child.once('close', (code) => {
+      exitCode = code ?? 1;
+      resolve();
+    });
+  });
+
+  await closeLogStream(logStream);
+
+  if (spawnError) {
+    throw spawnError;
   }
 
-  if (result.error) {
-    throw result.error;
-  }
+  const logOutput = fs.readFileSync(logPath, 'utf8');
+  const warningSummary = getWarningSummary(label, logOutput);
+  const status = exitCode === 0 ? 'passed' : 'failed';
 
-  const warningSummary = shouldCaptureOutput ? getWarningSummary(`${stdout}\n${stderr}`) : '';
+  if (status === 'passed' && !warningSummary) {
+    console.log(`[${label}] passed ✅`);
+  } else if (status === 'passed' && warningSummary) {
+    console.log(`[${label}] passed with warnings ⚠️`);
+    console.log(`[${label}] warnings: ${warningSummary}`);
+    console.log(`[${label}] full log: ${logPath}`);
+  } else {
+    console.log(`[${label}] failed ❌`);
+    console.log(`[${label}] command: ${formattedCommand}`);
+    console.log(`[${label}] exit code: ${exitCode}`);
+    console.log(`[${label}] output tail:`);
+
+    for (const tailLine of getOutputTail(outputBuffer)) {
+      console.log(`  ${tailLine}`);
+    }
+
+    console.log(`[${label}] full log: ${logPath}`);
+  }
 
   return {
     label,
     command: formattedCommand,
-    exitCode: result.status ?? 1,
-    status: result.status === 0 ? 'passed' : 'failed',
-    stdout,
-    stderr,
+    displayCommand,
+    logPath,
+    exitCode,
+    status,
+    stdout: '',
+    stderr: '',
     hasWarnings: warningSummary.length > 0,
     warningSummary,
   };
@@ -646,9 +782,11 @@ function printSummary(changedFiles, scope, results) {
 
   console.log('\nVERIFY RESULT');
   console.log(`mode: ${isFixMode ? 'fix' : 'check'}`);
+  console.log(`verbose: ${isVerboseMode ? 'on' : 'off'}`);
   console.log(`scope: ${scope}`);
   console.log(`changed files: ${changedFiles.length}`);
   console.log(`status: ${status}`);
+  console.log(`logs: ${VERIFY_LOG_DIR}`);
   console.log('commands:');
 
   for (const result of results) {
@@ -658,7 +796,7 @@ function printSummary(changedFiles, scope, results) {
     }
 
     const warningSuffix = result.hasWarnings ? ' (warnings found)' : '';
-    console.log(`- ${result.label}: ${result.status}${warningSuffix} (${result.command})`);
+    console.log(`- ${result.label}: ${result.status}${warningSuffix} (${result.displayCommand})`);
   }
 
   console.log('action required:');
@@ -670,10 +808,11 @@ function printSummary(changedFiles, scope, results) {
   return status;
 }
 
-function main() {
+async function main() {
   const { changedFiles, scope } = getChangedFiles();
   const commands = buildCommands(changedFiles);
   const results = [];
+  ensureLogsDirectory();
 
   for (const entry of commands) {
     if (entry.kind === 'skipped') {
@@ -691,7 +830,8 @@ function main() {
       continue;
     }
 
-    results.push(runCommand(entry.label, entry.command, entry.args));
+    // oxlint-disable-next-line no-await-in-loop -- verify checks must run sequentially for stable summary/log ordering.
+    results.push(await runCommand(entry.label, entry.command, entry.args));
   }
 
   const status = printSummary(changedFiles, scope, results);
@@ -702,4 +842,4 @@ if (!directoryExists('.git')) {
   throw new Error('Repository root is required to run verify.');
 }
 
-main();
+await main();
