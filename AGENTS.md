@@ -131,7 +131,7 @@ reason:
 - Raw `Error` may be preserved in reportable flows only when its message is project-controlled and does not include user-controlled values.
 - Errors from browser APIs, storage, network, Google API, File API, Automerge/repo internals, Zod, or any external library are untrusted by default and must be wrapped with a safe project-controlled cause message before they can reach handled diagnostics.
 - Do not include local paths, virtual paths, file names, folder names, document names, document ids, file ids, Google Drive file ids, record values, document contents, or raw external error text in `Error.message`, `DomainError.message`, or `DomainError.cause.message` when the error may be reported.
-- Do not add path/name/id-bearing messages to reportable error flows.
+- Do not add path/name/id-bearing messages to reportable error flows. Avoid messages like `Failed for <path>` or `Could not remove <name>`.
 - Do not pass raw browser, filesystem, File API, File System API, Google API, IndexedDB, VFS, Automerge, Zod, or other low-level external errors as `cause` when the error may be reported. Wrap them in a project-controlled safe technical cause message instead.
 - Do not pass path, name, id, URL parameters, or other user-controlled values to `reportHandledError` options, Sentry `extra`, or Sentry `tags`.
 - Prefer stable domain error codes, safe user-facing messages, safe technical cause messages, and `feature` or `action` metadata.
