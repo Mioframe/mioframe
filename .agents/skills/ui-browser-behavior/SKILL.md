@@ -30,11 +30,22 @@ Use this workflow when the change touches any of these areas:
 
 1. Identify the user-visible behavior and the owning layer.
 2. Check the rendered hierarchy before moving wrappers, teleports, scroll owners, or composition boundaries.
-3. Keep component contracts narrow: prefer explicit props, named handlers, explicit emits, and slots over service bags or large config objects.
-4. Move reusable state transitions or business rules into composables or pure helpers when they can be tested without the browser.
-5. Verify browser-dependent behavior with Playwright/e2e or a reproducible browser smoke check.
-6. Use component unit tests only for small render or wiring contracts that do not depend on browser semantics.
-7. Run the narrowest relevant UI verification, then follow the final verification rule from `AGENTS.md`.
+3. For panes, docs, markdown, settings, dialogs, and app bars, apply the rendered structure checklist.
+4. Keep component contracts narrow: prefer explicit props, named handlers, explicit emits, and slots over service bags or large config objects.
+5. Move reusable state transitions or business rules into composables or pure helpers when they can be tested without the browser.
+6. Verify browser-dependent behavior with Playwright/e2e or a reproducible browser smoke check.
+7. Use component unit tests only for small render or wiring contracts that do not depend on browser semantics.
+8. Run the narrowest relevant UI verification, then follow the final verification rule from `AGENTS.md`.
+
+## Rendered structure checklist
+
+For rendered panes, docs, markdown, settings, dialogs, and app bars, check before implementation is complete:
+
+- one clear page-level heading or app-bar heading; avoid duplicate top-level headings;
+- slots preserve navigation and trailing actions;
+- browser APIs are guarded when unavailable or prototype-defined;
+- user-visible text and diagnostics use the correct format for their purpose;
+- Material typography and spacing reuse shared tokens or shared components before local CSS.
 
 ## Choosing verification
 
