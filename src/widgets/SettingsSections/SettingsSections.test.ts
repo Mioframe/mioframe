@@ -161,11 +161,11 @@ vi.mock('@shared/ui/Checkbox', () => ({
 
 const mountSettingsSections = async ({
   onSelectPrivacyPolicy,
-  onSelectDataStorageHelp,
+  onSelectHelp,
   onSelectAboutMioframe,
 }: {
   onSelectPrivacyPolicy?: (() => void) | undefined;
-  onSelectDataStorageHelp?: (() => void) | undefined;
+  onSelectHelp?: (() => void) | undefined;
   onSelectAboutMioframe?: (() => void) | undefined;
 } = {}) => {
   const { SettingsSections } = await import('./index');
@@ -173,7 +173,7 @@ const mountSettingsSections = async ({
   document.body.appendChild(root);
   const app = createApp(SettingsSections, {
     onSelectPrivacyPolicy,
-    onSelectDataStorageHelp,
+    onSelectHelp,
     onSelectAboutMioframe,
   });
 
@@ -219,11 +219,11 @@ describe('SettingsSections', () => {
 
   it('renders the four release settings sections and opens Help entries', async () => {
     const onSelectPrivacyPolicy = vi.fn();
-    const onSelectDataStorageHelp = vi.fn();
+    const onSelectHelp = vi.fn();
     const onSelectAboutMioframe = vi.fn();
     const { root, unmount } = await mountSettingsSections({
       onSelectPrivacyPolicy,
-      onSelectDataStorageHelp,
+      onSelectHelp,
       onSelectAboutMioframe,
     });
 
@@ -235,9 +235,8 @@ describe('SettingsSections', () => {
       'Send technical error reports to help developers fix crashes and unexpected failures.',
     );
     expect(root.textContent).toContain('Read how Mioframe handles privacy and diagnostics.');
-    expect(root.textContent).toContain('Data storage & recovery');
     expect(root.textContent).toContain(
-      'Learn where your data is stored and how to back up or restore documents.',
+      'Read data storage, backup, restore, and troubleshooting guides.',
     );
     expect(root.textContent).toContain('About Mioframe');
     expect(root.textContent).toContain('Version and build information.');
@@ -247,10 +246,10 @@ describe('SettingsSections', () => {
 
     expect(onSelectPrivacyPolicy).toHaveBeenCalledTimes(1);
 
-    getButtonByText(root, 'Data storage & recovery')?.click();
+    getButtonByText(root, 'Help')?.click();
     await nextTick();
 
-    expect(onSelectDataStorageHelp).toHaveBeenCalledTimes(1);
+    expect(onSelectHelp).toHaveBeenCalledTimes(1);
 
     getButtonByText(root, 'About Mioframe')?.click();
     await nextTick();

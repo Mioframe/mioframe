@@ -1,7 +1,7 @@
 import { aboutMioframePane } from './AboutMioframePane';
-import { dataStorageHelpPane } from './DataStorageHelpPane';
 import { documentViewPane } from './DocumentViewPane';
 import { dataStoragePrivacyPane } from './DataStoragePrivacyPane';
+import { helpArticlePane, helpIndexPane } from './Help';
 import { homePane } from './HomePane';
 import { repoExplorerPane } from './RepoExplorer';
 import { settingsPane } from './Settings';
@@ -17,7 +17,8 @@ const { setupStackNavigation: setup, useStackNavigation: use } = createStackNavi
     document: documentViewPane,
     settings: settingsPane,
     dataStoragePrivacy: dataStoragePrivacyPane,
-    dataStorageHelp: dataStorageHelpPane,
+    helpIndex: helpIndexPane,
+    helpArticle: helpArticlePane,
     aboutMioframe: aboutMioframePane,
   },
   {

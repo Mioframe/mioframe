@@ -7,7 +7,7 @@ import SettingsCheckboxListItem from './SettingsCheckboxListItem.vue';
 
 const emit = defineEmits<{
   selectPrivacyPolicy: [];
-  selectDataStorageHelp: [];
+  selectHelp: [];
   selectAboutMioframe: [];
 }>();
 
@@ -39,8 +39,8 @@ const onClickPrivacyPolicy = () => {
   emit('selectPrivacyPolicy');
 };
 
-const onClickDataStorageHelp = () => {
-  emit('selectDataStorageHelp');
+const onClickHelp = () => {
+  emit('selectHelp');
 };
 
 const onClickAboutMioframe = () => {
@@ -108,14 +108,9 @@ const onClickAboutMioframe = () => {
           <template #supportingText> Read how Mioframe handles privacy and diagnostics. </template>
         </MDListItem>
 
-        <MDListItem
-          is="button"
-          type="button"
-          headline="Data storage & recovery"
-          @click="onClickDataStorageHelp"
-        >
+        <MDListItem is="button" type="button" headline="Help" @click="onClickHelp">
           <template #supportingText>
-            Learn where your data is stored and how to back up or restore documents.
+            Read data storage, backup, restore, and troubleshooting guides.
           </template>
         </MDListItem>
 

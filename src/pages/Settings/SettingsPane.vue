@@ -15,8 +15,8 @@ const onSelectPrivacyPolicy = async () => {
   await open('dataStoragePrivacy', {}, { target: 'dataStoragePrivacy' });
 };
 
-const onSelectDataStorageHelp = async () => {
-  await open('dataStorageHelp', {}, { target: 'dataStorageHelp' });
+const onSelectHelp = async () => {
+  await open('helpIndex', {}, { target: 'helpIndex' });
 };
 
 const onSelectAboutMioframe = async () => {
@@ -34,7 +34,7 @@ const onSelectAboutMioframe = async () => {
 
     <SettingsSections
       @select-privacy-policy="onSelectPrivacyPolicy"
-      @select-data-storage-help="onSelectDataStorageHelp"
+      @select-help="onSelectHelp"
       @select-about-mioframe="onSelectAboutMioframe"
     />
   </MDPane>
