@@ -31,7 +31,7 @@ vi.mock('@shared/ui/AppBar', () => ({
   }),
 }));
 
-it('renders the data storage and recovery help content in-app', async () => {
+it('renders the compatibility index help content in-app', async () => {
   const { default: DataStorageHelpPane } = await import('./DataStorageHelpPane.vue');
   const root = document.createElement('div');
   document.body.appendChild(root);
@@ -41,10 +41,10 @@ it('renders the data storage and recovery help content in-app', async () => {
   await nextTick();
 
   expect(root.textContent).toContain('Data storage & recovery');
-  expect(root.textContent).toContain('Browser Storage');
-  expect(root.textContent).toMatch(/local folders/i);
-  expect(root.textContent).toContain('Export JSON');
-  expect(root.textContent).toContain('Import JSON');
+  expect(root.textContent).toContain('short compatibility index');
+  expect(root.textContent).toContain('Data storage');
+  expect(root.textContent).toContain('Backup and restore');
+  expect(root.textContent).toContain('Troubleshooting data problems');
   expect(root.textContent).toMatch(/GitHub (Discussions|Issues)/);
 
   app.unmount();
@@ -63,11 +63,15 @@ it('renders help markdown structure and safe external links', async () => {
   expect(root.querySelector('h1')?.textContent).toBe('Data storage & recovery');
   expect(root.querySelector('.data-storage-help-pane__content h1')).toBeNull();
 
-  const headings = Array.from(root.querySelectorAll('h2'));
-  expect(headings.some((heading) => heading.textContent === 'Browser Storage')).toBe(true);
-  expect(headings.some((heading) => heading.textContent === 'Local folders')).toBe(true);
-  expect(headings.some((heading) => heading.textContent === 'Questions and problems')).toBe(true);
+  expect(root.querySelectorAll('h2')).toHaveLength(0);
 
+  const dataStorageLink = root.querySelector<HTMLAnchorElement>('a[href="./data-storage.md"]');
+  const backupAndRestoreLink = root.querySelector<HTMLAnchorElement>(
+    'a[href="./backup-and-restore.md"]',
+  );
+  const troubleshootingLink = root.querySelector<HTMLAnchorElement>(
+    'a[href="./data-troubleshooting.md"]',
+  );
   const discussionLink = root.querySelector<HTMLAnchorElement>(
     'a[href="https://github.com/Vyachean/beaver/discussions"]',
   );
@@ -75,6 +79,9 @@ it('renders help markdown structure and safe external links', async () => {
     'a[href="https://github.com/Vyachean/beaver/issues"]',
   );
 
+  expect(dataStorageLink).not.toBeNull();
+  expect(backupAndRestoreLink).not.toBeNull();
+  expect(troubleshootingLink).not.toBeNull();
   expect(discussionLink).not.toBeNull();
   expect(discussionLink?.getAttribute('target')).toBe('_blank');
   expect(discussionLink?.getAttribute('rel')).toBe('noopener noreferrer');

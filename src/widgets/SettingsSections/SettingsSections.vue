@@ -7,7 +7,9 @@ import SettingsCheckboxListItem from './SettingsCheckboxListItem.vue';
 
 const emit = defineEmits<{
   selectPrivacyPolicy: [];
-  selectDataStorageHelp: [];
+  selectDataStorage: [];
+  selectBackupAndRestore: [];
+  selectDataTroubleshooting: [];
   selectAboutMioframe: [];
 }>();
 
@@ -39,8 +41,16 @@ const onClickPrivacyPolicy = () => {
   emit('selectPrivacyPolicy');
 };
 
-const onClickDataStorageHelp = () => {
-  emit('selectDataStorageHelp');
+const onClickDataStorage = () => {
+  emit('selectDataStorage');
+};
+
+const onClickBackupAndRestore = () => {
+  emit('selectBackupAndRestore');
+};
+
+const onClickDataTroubleshooting = () => {
+  emit('selectDataTroubleshooting');
 };
 
 const onClickAboutMioframe = () => {
@@ -108,14 +118,31 @@ const onClickAboutMioframe = () => {
           <template #supportingText> Read how Mioframe handles privacy and diagnostics. </template>
         </MDListItem>
 
+        <MDListItem is="button" type="button" headline="Data storage" @click="onClickDataStorage">
+          <template #supportingText>
+            Learn where your documents can be stored and what Browser Storage means.
+          </template>
+        </MDListItem>
+
         <MDListItem
           is="button"
           type="button"
-          headline="Data storage & recovery"
-          @click="onClickDataStorageHelp"
+          headline="Backup and restore"
+          @click="onClickBackupAndRestore"
         >
           <template #supportingText>
-            Learn where your data is stored and how to back up or restore documents.
+            Back up one document with Export JSON and restore one with Import JSON.
+          </template>
+        </MDListItem>
+
+        <MDListItem
+          is="button"
+          type="button"
+          headline="Troubleshooting data problems"
+          @click="onClickDataTroubleshooting"
+        >
+          <template #supportingText>
+            Find next steps when import, local folder access, or data recovery fails.
           </template>
         </MDListItem>
 

@@ -1,7 +1,10 @@
 import { aboutMioframePane } from './AboutMioframePane';
+import { backupAndRestorePane } from './BackupAndRestorePane';
+import { dataStoragePane } from './DataStoragePane';
 import { dataStorageHelpPane } from './DataStorageHelpPane';
 import { documentViewPane } from './DocumentViewPane';
 import { dataStoragePrivacyPane } from './DataStoragePrivacyPane';
+import { dataTroubleshootingPane } from './DataTroubleshootingPane';
 import { homePane } from './HomePane';
 import { repoExplorerPane } from './RepoExplorer';
 import { settingsPane } from './Settings';
@@ -17,6 +20,9 @@ const { setupStackNavigation: setup, useStackNavigation: use } = createStackNavi
     document: documentViewPane,
     settings: settingsPane,
     dataStoragePrivacy: dataStoragePrivacyPane,
+    dataStorage: dataStoragePane,
+    backupAndRestore: backupAndRestorePane,
+    dataTroubleshooting: dataTroubleshootingPane,
     dataStorageHelp: dataStorageHelpPane,
     aboutMioframe: aboutMioframePane,
   },

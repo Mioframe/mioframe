@@ -161,11 +161,15 @@ vi.mock('@shared/ui/Checkbox', () => ({
 
 const mountSettingsSections = async ({
   onSelectPrivacyPolicy,
-  onSelectDataStorageHelp,
+  onSelectDataStorage,
+  onSelectBackupAndRestore,
+  onSelectDataTroubleshooting,
   onSelectAboutMioframe,
 }: {
   onSelectPrivacyPolicy?: (() => void) | undefined;
-  onSelectDataStorageHelp?: (() => void) | undefined;
+  onSelectDataStorage?: (() => void) | undefined;
+  onSelectBackupAndRestore?: (() => void) | undefined;
+  onSelectDataTroubleshooting?: (() => void) | undefined;
   onSelectAboutMioframe?: (() => void) | undefined;
 } = {}) => {
   const { SettingsSections } = await import('./index');
@@ -173,7 +177,9 @@ const mountSettingsSections = async ({
   document.body.appendChild(root);
   const app = createApp(SettingsSections, {
     onSelectPrivacyPolicy,
-    onSelectDataStorageHelp,
+    onSelectDataStorage,
+    onSelectBackupAndRestore,
+    onSelectDataTroubleshooting,
     onSelectAboutMioframe,
   });
 
@@ -219,11 +225,15 @@ describe('SettingsSections', () => {
 
   it('renders the four release settings sections and opens Help entries', async () => {
     const onSelectPrivacyPolicy = vi.fn();
-    const onSelectDataStorageHelp = vi.fn();
+    const onSelectDataStorage = vi.fn();
+    const onSelectBackupAndRestore = vi.fn();
+    const onSelectDataTroubleshooting = vi.fn();
     const onSelectAboutMioframe = vi.fn();
     const { root, unmount } = await mountSettingsSections({
       onSelectPrivacyPolicy,
-      onSelectDataStorageHelp,
+      onSelectDataStorage,
+      onSelectBackupAndRestore,
+      onSelectDataTroubleshooting,
       onSelectAboutMioframe,
     });
 
@@ -235,9 +245,17 @@ describe('SettingsSections', () => {
       'Send technical error reports to help developers fix crashes and unexpected failures.',
     );
     expect(root.textContent).toContain('Read how Mioframe handles privacy and diagnostics.');
-    expect(root.textContent).toContain('Data storage & recovery');
+    expect(root.textContent).toContain('Data storage');
     expect(root.textContent).toContain(
-      'Learn where your data is stored and how to back up or restore documents.',
+      'Learn where your documents can be stored and what Browser Storage means.',
+    );
+    expect(root.textContent).toContain('Backup and restore');
+    expect(root.textContent).toContain(
+      'Back up one document with Export JSON and restore one with Import JSON.',
+    );
+    expect(root.textContent).toContain('Troubleshooting data problems');
+    expect(root.textContent).toContain(
+      'Find next steps when import, local folder access, or data recovery fails.',
     );
     expect(root.textContent).toContain('About Mioframe');
     expect(root.textContent).toContain('Version and build information.');
@@ -247,10 +265,20 @@ describe('SettingsSections', () => {
 
     expect(onSelectPrivacyPolicy).toHaveBeenCalledTimes(1);
 
-    getButtonByText(root, 'Data storage & recovery')?.click();
+    getButtonByText(root, 'Data storage')?.click();
     await nextTick();
 
-    expect(onSelectDataStorageHelp).toHaveBeenCalledTimes(1);
+    expect(onSelectDataStorage).toHaveBeenCalledTimes(1);
+
+    getButtonByText(root, 'Backup and restore')?.click();
+    await nextTick();
+
+    expect(onSelectBackupAndRestore).toHaveBeenCalledTimes(1);
+
+    getButtonByText(root, 'Troubleshooting data problems')?.click();
+    await nextTick();
+
+    expect(onSelectDataTroubleshooting).toHaveBeenCalledTimes(1);
 
     getButtonByText(root, 'About Mioframe')?.click();
     await nextTick();
