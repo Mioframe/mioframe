@@ -3,6 +3,7 @@ import { computed } from 'vue';
 import { MDAppBar } from '@shared/ui/AppBar';
 import { MDPane } from '@shared/ui/Layout';
 import { MarkdownContent } from '@shared/ui/MarkdownContent';
+import { stripMarkdownTitle } from './stripMarkdownTitle';
 
 const props = defineProps<{
   headline: string;
@@ -19,7 +20,7 @@ defineSlots<{
   appBarTrailing: () => unknown;
 }>();
 
-const content = computed(() => props.markdown.replace(/^#\s+.*\r?\n+/, ''));
+const content = computed(() => stripMarkdownTitle(props.markdown));
 
 const onContentClick = (event: MouseEvent) => {
   emit('contentClick', event);
