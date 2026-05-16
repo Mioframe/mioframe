@@ -15,16 +15,8 @@ const onSelectPrivacyPolicy = async () => {
   await open('dataStoragePrivacy', {}, { target: 'dataStoragePrivacy' });
 };
 
-const onSelectDataStorage = async () => {
-  await open('dataStorage', {}, { target: 'dataStorage' });
-};
-
-const onSelectBackupAndRestore = async () => {
-  await open('backupAndRestore', {}, { target: 'backupAndRestore' });
-};
-
-const onSelectDataTroubleshooting = async () => {
-  await open('dataTroubleshooting', {}, { target: 'dataTroubleshooting' });
+const onSelectHelp = async () => {
+  await open('helpIndex', {}, { target: 'helpIndex' });
 };
 
 const onSelectAboutMioframe = async () => {
@@ -42,9 +34,7 @@ const onSelectAboutMioframe = async () => {
 
     <SettingsSections
       @select-privacy-policy="onSelectPrivacyPolicy"
-      @select-data-storage="onSelectDataStorage"
-      @select-backup-and-restore="onSelectBackupAndRestore"
-      @select-data-troubleshooting="onSelectDataTroubleshooting"
+      @select-help="onSelectHelp"
       @select-about-mioframe="onSelectAboutMioframe"
     />
   </MDPane>

@@ -7,9 +7,7 @@ import SettingsCheckboxListItem from './SettingsCheckboxListItem.vue';
 
 const emit = defineEmits<{
   selectPrivacyPolicy: [];
-  selectDataStorage: [];
-  selectBackupAndRestore: [];
-  selectDataTroubleshooting: [];
+  selectHelp: [];
   selectAboutMioframe: [];
 }>();
 
@@ -41,16 +39,8 @@ const onClickPrivacyPolicy = () => {
   emit('selectPrivacyPolicy');
 };
 
-const onClickDataStorage = () => {
-  emit('selectDataStorage');
-};
-
-const onClickBackupAndRestore = () => {
-  emit('selectBackupAndRestore');
-};
-
-const onClickDataTroubleshooting = () => {
-  emit('selectDataTroubleshooting');
+const onClickHelp = () => {
+  emit('selectHelp');
 };
 
 const onClickAboutMioframe = () => {
@@ -118,31 +108,9 @@ const onClickAboutMioframe = () => {
           <template #supportingText> Read how Mioframe handles privacy and diagnostics. </template>
         </MDListItem>
 
-        <MDListItem is="button" type="button" headline="Data storage" @click="onClickDataStorage">
+        <MDListItem is="button" type="button" headline="Help" @click="onClickHelp">
           <template #supportingText>
-            Learn where your documents can be stored and what Browser Storage means.
-          </template>
-        </MDListItem>
-
-        <MDListItem
-          is="button"
-          type="button"
-          headline="Backup and restore"
-          @click="onClickBackupAndRestore"
-        >
-          <template #supportingText>
-            Back up one document with Export JSON and restore one with Import JSON.
-          </template>
-        </MDListItem>
-
-        <MDListItem
-          is="button"
-          type="button"
-          headline="Troubleshooting data problems"
-          @click="onClickDataTroubleshooting"
-        >
-          <template #supportingText>
-            Find next steps when import, local folder access, or data recovery fails.
+            Read data storage, backup, restore, and troubleshooting guides.
           </template>
         </MDListItem>
 

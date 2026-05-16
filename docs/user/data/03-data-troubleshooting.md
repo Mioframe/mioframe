@@ -80,7 +80,7 @@ If the document existed only in Browser Storage and that storage was cleared or 
 
 If you have an exported JSON backup, use Mioframe's **Import JSON** action to restore that one document into an available location.
 
-See [Backup and restore](./backup-and-restore.md) for the import steps.
+See [Backup and restore](./02-backup-and-restore.md) for the import steps.
 
 ## You do not have an exported JSON backup
 

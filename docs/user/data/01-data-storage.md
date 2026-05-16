@@ -43,4 +43,4 @@ Browser Storage should not be your only backup for important documents.
 
 If you want a separate backup copy of a document, use Mioframe's document-level **Export JSON** action and keep the exported file somewhere you control.
 
-For practical backup and restore steps, see [Backup and restore](./backup-and-restore.md). For common failure scenarios, see [Troubleshooting data problems](./data-troubleshooting.md).
+For practical backup and restore steps, see [Backup and restore](./02-backup-and-restore.md). For common failure scenarios, see [Troubleshooting data problems](./03-data-troubleshooting.md).

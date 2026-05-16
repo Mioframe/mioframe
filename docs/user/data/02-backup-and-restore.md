@@ -22,9 +22,11 @@ Common times to export a backup include:
 
 ## How to back up one document
 
-1. Open the document you want to back up.
-2. Use the document's **Export JSON** action in the app.
-3. Choose a save location for the exported JSON file.
+1. Open the folder or repository view that contains the document.
+2. Find the document in the list.
+3. Open the document options menu.
+4. Choose **Export JSON**.
+5. Choose where to save the exported JSON file.
 
 Keep exported backups somewhere you control and can find again, such as:
 
@@ -36,10 +38,10 @@ If a document is important, keep more than one copy in places you manage.
 
 ## How to restore or import one document
 
-1. Open the place in the app where you want to add the document.
-2. Use the **Import JSON** action in the app.
-3. Choose the JSON file you previously exported or received.
-4. Finish the import.
+1. Open the target folder in the app.
+2. Open the folder options menu.
+3. Choose **Import JSON**.
+4. Choose the JSON file.
 
 If the file is valid and the target location is available, Mioframe imports that one document.
 
@@ -47,6 +49,6 @@ If the file is valid and the target location is available, Mioframe imports that
 
 - Export JSON and Import JSON work on one document at a time.
 - They do not restore an entire workspace, folder structure, or browser storage state.
-- They do not recreate data that was never exported.
+- Mioframe cannot recreate data that was never exported or otherwise preserved.
 
-If import or recovery fails, see [Troubleshooting data problems](./data-troubleshooting.md).
+If import or recovery fails, see [Troubleshooting data problems](./03-data-troubleshooting.md).

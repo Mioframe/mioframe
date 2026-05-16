@@ -37,12 +37,7 @@ vi.mock('@shared/ui/AppBar', () => ({
 vi.mock('@widget/SettingsSections', () => ({
   SettingsSections: defineComponent({
     name: 'SettingsSectionsStub',
-    emits: [
-      'selectPrivacyPolicy',
-      'selectDataStorage',
-      'selectBackupAndRestore',
-      'selectDataTroubleshooting',
-    ],
+    emits: ['selectPrivacyPolicy', 'selectHelp'],
     setup(_props, { emit }) {
       return () =>
         h('div', [
@@ -61,30 +56,10 @@ vi.mock('@widget/SettingsSections', () => ({
             {
               type: 'button',
               onClick: () => {
-                emit('selectDataStorage');
+                emit('selectHelp');
               },
             },
-            'Select data storage',
-          ),
-          h(
-            'button',
-            {
-              type: 'button',
-              onClick: () => {
-                emit('selectBackupAndRestore');
-              },
-            },
-            'Select backup and restore',
-          ),
-          h(
-            'button',
-            {
-              type: 'button',
-              onClick: () => {
-                emit('selectDataTroubleshooting');
-              },
-            },
-            'Select data troubleshooting',
+            'Select help',
           ),
         ]);
     },
@@ -127,35 +102,13 @@ describe('SettingsPane', () => {
     unmount();
   });
 
-  it('opens the data storage pane from Settings', async () => {
+  it('opens the help index from Settings', async () => {
     const { root, unmount } = await mountSettingsPane();
 
     root.querySelectorAll('button')[1]?.click();
     await nextTick();
 
-    expect(open).toHaveBeenCalledWith('dataStorage', {}, { target: 'dataStorage' });
-
-    unmount();
-  });
-
-  it('opens the backup and restore pane from Settings', async () => {
-    const { root, unmount } = await mountSettingsPane();
-
-    root.querySelectorAll('button')[2]?.click();
-    await nextTick();
-
-    expect(open).toHaveBeenCalledWith('backupAndRestore', {}, { target: 'backupAndRestore' });
-
-    unmount();
-  });
-
-  it('opens the troubleshooting data problems pane from Settings', async () => {
-    const { root, unmount } = await mountSettingsPane();
-
-    root.querySelectorAll('button')[3]?.click();
-    await nextTick();
-
-    expect(open).toHaveBeenCalledWith('dataTroubleshooting', {}, { target: 'dataTroubleshooting' });
+    expect(open).toHaveBeenCalledWith('helpIndex', {}, { target: 'helpIndex' });
 
     unmount();
   });

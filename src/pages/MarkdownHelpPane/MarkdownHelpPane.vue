@@ -10,12 +10,20 @@ const props = defineProps<{
   paneClass: string;
 }>();
 
+const emit = defineEmits<{
+  contentClick: [event: MouseEvent];
+}>();
+
 defineSlots<{
   navigationButton: () => unknown;
   appBarTrailing: () => unknown;
 }>();
 
 const content = computed(() => props.markdown.replace(/^#\s+.*\r?\n+/, ''));
+
+const onContentClick = (event: MouseEvent) => {
+  emit('contentClick', event);
+};
 </script>
 
 <template>
@@ -30,7 +38,7 @@ const content = computed(() => props.markdown.replace(/^#\s+.*\r?\n+/, ''));
       </template>
     </MDAppBar>
 
-    <div class="markdown-help-pane__content">
+    <div class="markdown-help-pane__content" @click="onContentClick">
       <MarkdownContent :source="content" variant="article" open-external-links-in-new-tab />
     </div>
   </MDPane>
