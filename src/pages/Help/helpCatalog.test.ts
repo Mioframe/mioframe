@@ -57,4 +57,16 @@ describe('helpCatalog', () => {
     ).toBeNull();
     expect(resolveHelpArticleHref('data/01-data-storage.md', './missing.md', catalog)).toBeNull();
   });
+
+  it('returns null instead of throwing for malformed href input', () => {
+    const catalog = createHelpCatalog({
+      '../../../docs/user/data/01-data-storage.md': '# Data storage',
+      '../../../docs/user/data/02-backup-and-restore.md': '# Backup and restore',
+    });
+
+    expect(() =>
+      resolveHelpArticleHref('data/01-data-storage.md', '//[.md', catalog),
+    ).not.toThrow();
+    expect(resolveHelpArticleHref('data/01-data-storage.md', '//[.md', catalog)).toBeNull();
+  });
 });

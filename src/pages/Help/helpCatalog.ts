@@ -110,14 +110,18 @@ export const resolveHelpArticleHref = (
     return null;
   }
 
-  const baseUrl = new URL(currentSourcePath, 'https://help.local/docs/user/');
-  const resolvedUrl = new URL(href, baseUrl);
+  try {
+    const baseUrl = new URL(currentSourcePath, 'https://help.local/docs/user/');
+    const resolvedUrl = new URL(href, baseUrl);
 
-  if (resolvedUrl.origin !== 'https://help.local') {
+    if (resolvedUrl.origin !== 'https://help.local') {
+      return null;
+    }
+
+    const resolvedPath = resolvedUrl.pathname.replace(/^\/docs\/user\//, '');
+    const target = catalog.find((article) => article.sourcePath === resolvedPath);
+    return target?.slug ?? null;
+  } catch {
     return null;
   }
-
-  const resolvedPath = resolvedUrl.pathname.replace(/^\/docs\/user\//, '');
-  const target = catalog.find((article) => article.sourcePath === resolvedPath);
-  return target?.slug ?? null;
 };
