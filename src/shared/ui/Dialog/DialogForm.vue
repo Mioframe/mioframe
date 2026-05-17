@@ -34,7 +34,6 @@ const emit = defineEmits<{
 const slots = defineSlots<{
   default(): unknown;
   icon(): unknown;
-  actions(): unknown;
 }>();
 
 const {
@@ -127,14 +126,9 @@ useOnEscapeKeyStacked(() => {
       </div>
 
       <div class="md-dialog__actions">
-        <template v-if="slots.actions">
-          <slot name="actions" />
-        </template>
-        <template v-else>
-          <MDButton v-if="hasCancelAction" :label="cancelLabel" color="text" @click="onCancel" />
+        <MDButton v-if="hasCancelAction" :label="cancelLabel" color="text" @click="onCancel" />
 
-          <MDButton :label="applyLabel" :loading="loading" color="text" form-action="submit" />
-        </template>
+        <MDButton :label="applyLabel" :loading="loading" color="text" form-action="submit" />
       </div>
     </form>
   </dialog>

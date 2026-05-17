@@ -32,7 +32,6 @@ const emit = defineEmits<{
 const slots = defineSlots<{
   default(): unknown;
   icon(): unknown;
-  actions(): unknown;
 }>();
 
 const dialogContainer = useOverlayContainer();
@@ -69,10 +68,6 @@ const onCancelAction = () => {
 
       <template v-if="slots.icon" #icon>
         <slot name="icon" />
-      </template>
-
-      <template v-if="slots.actions" #actions>
-        <slot name="actions" />
       </template>
     </DialogForm>
   </TeleportContainer>

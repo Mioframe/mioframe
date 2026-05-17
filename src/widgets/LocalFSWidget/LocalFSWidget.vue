@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { DEVICE_FILES, useFileSystem } from '@entity/mountedDirectories';
 import { useDisconnectDeviceDirectory } from '@feature/deviceDirectoryDisconnect';
-import { MioframeSpacePickDialog, usePickMioframeSpace } from '@feature/mioframeSpacePick';
+import { usePickMioframeSpace } from '@feature/mioframeSpacePick';
 import { MDIconButton } from '@shared/ui/Button';
 import { MDSymbol } from '@shared/ui/Icon';
 import { MDListContainer, MDListItem } from '@shared/ui/Lists';
@@ -14,22 +14,7 @@ const emit = defineEmits<{
 
 const { deviceFiles } = useFileSystem();
 const { disconnectDeviceDirectory } = useDisconnectDeviceDirectory();
-const {
-  dialogState,
-  loading,
-  openMioframeSpaceDialog,
-  openCreateDialog,
-  openExistingSpace,
-  createNewSpace,
-  chooseAnotherLocation,
-  useSelectedFolder,
-  createSubfolderFromSelectedFolder,
-  closeDialog,
-} = usePickMioframeSpace();
-
-const onClickMioframeSpace = () => {
-  openMioframeSpaceDialog();
-};
+const { loading, createSpace, openSpace } = usePickMioframeSpace();
 
 const onClickDeviceFile = (name: string) => {
   emit('clickPath', PathUtils.join('/', DEVICE_FILES, name));
@@ -63,26 +48,26 @@ const isOpfsEntry = (name: string) => name === OPFSName;
 
     <MDListItem
       is="button"
-      headline="Create or open Mioframe space"
-      supporting-text="Choose a folder for Mioframe documents and service files"
-      @click="onClickMioframeSpace"
+      headline="Create space"
+      supporting-text="Create or select a new folder. The folder name will be used as the space name."
+      :disabled="loading"
+      @click="createSpace"
+    >
+      <template #leadingIcon>
+        <MDSymbol name="create_new_folder" />
+      </template>
+    </MDListItem>
+
+    <MDListItem
+      is="button"
+      headline="Open space"
+      supporting-text="Select an existing Mioframe space folder."
+      :disabled="loading"
+      @click="openSpace"
     >
       <template #leadingIcon>
         <MDSymbol name="folder_open" />
       </template>
     </MDListItem>
-
-    <MioframeSpacePickDialog
-      v-if="dialogState"
-      :state="dialogState"
-      :loading="loading"
-      @close="closeDialog"
-      @create="openCreateDialog"
-      @open-existing="openExistingSpace"
-      @create-new-space="createNewSpace"
-      @choose-another-location="chooseAnotherLocation"
-      @use-selected-folder="useSelectedFolder"
-      @create-subfolder="createSubfolderFromSelectedFolder"
-    />
   </MDListContainer>
 </template>

@@ -4,45 +4,17 @@ import { isUserFileSelectionCancel } from '@shared/lib/fileSystem';
 import { isFunction } from 'es-toolkit';
 import { ref, toRef } from 'vue';
 import { reportHandledError } from '@shared/lib/reportHandledError';
+import { useDialog } from '@shared/ui/Dialog';
 import { useSnackbar } from '@shared/ui/Snackbar';
-import {
-  createMioframeSubfolder,
-  inspectMioframeSpaceDirectory,
-  MIOFRAME_SPACE_FOLDER_NAME,
-  type MioframeSpaceInspection,
-} from './mioframeSpacePick.helpers';
-
-type EntryDialogState = {
-  kind: 'entry';
-};
-
-type CreateDialogState = {
-  kind: 'create';
-};
-
-type ConfirmDialogState = {
-  kind: 'confirmUseFolder';
-  handle: FileSystemDirectoryHandle;
-  headline: string;
-  supportingText: string;
-  confirmLabel: string;
-};
-
-type WarningDialogState = {
-  kind: 'warning';
-  handle: FileSystemDirectoryHandle;
-  headline: string;
-  supportingText: string;
-};
-
-/** Reactive dialog states used by the Mioframe space picker flow. */
-export type MioframeSpaceDialogState =
-  | EntryDialogState
-  | CreateDialogState
-  | ConfirmDialogState
-  | WarningDialogState;
+import { inspectMioframeSpaceDirectory } from './mioframeSpacePick.helpers';
 
 const UNSUPPORTED_MESSAGE = 'Your browser does not support choosing folders for Mioframe spaces';
+const CREATE_GUARDRAIL_HEADLINE = 'Choose a dedicated folder';
+const CREATE_GUARDRAIL_TEXT =
+  'This folder already contains other files. Create or select an empty folder for the new Mioframe space.';
+const OPEN_GUARDRAIL_HEADLINE = 'No Mioframe space found';
+const OPEN_GUARDRAIL_TEXT =
+  'This folder does not contain Mioframe service files. Select an existing Mioframe space folder.';
 
 const buildAddFolderError = () =>
   new DomainError('Could not open the Mioframe space', {
@@ -55,21 +27,13 @@ const buildAddFolderError = () =>
  */
 export const usePickMioframeSpace = () => {
   const loading = ref(false);
-  const dialogState = ref<MioframeSpaceDialogState>();
+  const { confirm } = useDialog();
   const { addSnackbar } = useSnackbar();
   const { addDeviceDirectory } = useFileSystem();
 
   const isSupported = toRef(
     () => 'showDirectoryPicker' in window && isFunction(window.showDirectoryPicker),
   );
-
-  const closeDialog = () => {
-    if (loading.value) {
-      return;
-    }
-
-    dialogState.value = undefined;
-  };
 
   const showUnsupportedMessage = () => {
     addSnackbar({
@@ -87,7 +51,6 @@ export const usePickMioframeSpace = () => {
 
   const mountMioframeSpace = async (handle: FileSystemDirectoryHandle) => {
     await addDeviceDirectory(handle);
-    dialogState.value = undefined;
   };
 
   const runPicker = async () => {
@@ -106,58 +69,6 @@ export const usePickMioframeSpace = () => {
       feature: 'mioframeSpacePick',
       action,
     });
-  };
-
-  const showUseFolderWarning = (
-    handle: FileSystemDirectoryHandle,
-    folderName: string,
-  ): WarningDialogState => ({
-    kind: 'warning',
-    handle,
-    headline: `Use the whole ${folderName} folder?`,
-    supportingText:
-      'Mioframe will store documents and service files directly in this folder. In a common folder, this may look like many technical files.\n\nIt is better to create a dedicated folder for the Mioframe space.',
-  });
-
-  const showUseFolderConfirmation = (
-    handle: FileSystemDirectoryHandle,
-    inspection: MioframeSpaceInspection,
-  ): ConfirmDialogState => ({
-    kind: 'confirmUseFolder',
-    handle,
-    headline: 'Use this folder as a Mioframe space?',
-    supportingText: inspection.isEmpty
-      ? 'This folder is empty. Mioframe will store documents and service files inside it.'
-      : 'This folder does not look like an existing Mioframe space. Mioframe will store documents and service files inside it.',
-    confirmLabel: 'Use this folder',
-  });
-
-  const evaluatePickedFolder = async (
-    handle: FileSystemDirectoryHandle,
-    {
-      allowCreateSubfolder,
-    }: {
-      allowCreateSubfolder: boolean;
-    },
-  ) => {
-    const inspection = await inspectMioframeSpaceDirectory(handle);
-
-    if (inspection.looksLikeExistingSpace) {
-      await mountMioframeSpace(handle);
-      return;
-    }
-
-    if (inspection.looksRiskyByName || inspection.looksLargeAndOrdinary) {
-      dialogState.value = showUseFolderWarning(handle, handle.name);
-      return;
-    }
-
-    if (allowCreateSubfolder && handle.name !== MIOFRAME_SPACE_FOLDER_NAME) {
-      dialogState.value = showUseFolderConfirmation(handle, inspection);
-      return;
-    }
-
-    dialogState.value = showUseFolderConfirmation(handle, inspection);
   };
 
   const withPicker = async (action: string, run: () => Promise<void>) => {
@@ -183,106 +94,72 @@ export const usePickMioframeSpace = () => {
     }
   };
 
-  const openMioframeSpaceDialog = () => {
-    if (loading.value) {
-      return;
-    }
-
-    if (!isSupported.value) {
-      showUnsupportedMessage();
-      return;
-    }
-
-    dialogState.value = { kind: 'entry' };
-  };
-
-  const openCreateDialog = () => {
-    dialogState.value = { kind: 'create' };
-  };
-
-  const createNewSpace = async () => {
-    await withPicker('createNewSpace', async () => {
-      const parentHandle = await runPicker();
-      const mioframeHandle = await createMioframeSubfolder(parentHandle);
-      await mountMioframeSpace(mioframeHandle);
+  const askToChooseAnotherFolder = async (headline: string, supportingText: string) =>
+    await confirm({
+      headline,
+      supportingText,
+      confirmLabel: 'Choose another folder',
+      cancelLabel: 'Cancel',
     });
-  };
 
-  const chooseAnotherLocation = async () => {
-    await withPicker('chooseAnotherLocation', async () => {
+  const createSpace = async () => {
+    const chooseCreateSpace = async (): Promise<void> => {
       const selectedHandle = await runPicker();
-      await evaluatePickedFolder(selectedHandle, {
-        allowCreateSubfolder: true,
-      });
-    });
-  };
+      const inspection = await inspectMioframeSpaceDirectory(selectedHandle);
 
-  const openExistingSpace = async () => {
-    await withPicker('openExistingSpace', async () => {
-      const selectedHandle = await runPicker();
-      await evaluatePickedFolder(selectedHandle, {
-        allowCreateSubfolder: false,
-      });
-    });
-  };
-
-  const useSelectedFolder = async () => {
-    const state = dialogState.value;
-
-    if (
-      loading.value ||
-      state === undefined ||
-      (state.kind !== 'warning' && state.kind !== 'confirmUseFolder')
-    ) {
-      return;
-    }
-
-    loading.value = true;
-
-    try {
-      await mountMioframeSpace(state.handle);
-    } catch (error) {
-      handleUnexpectedPickerError(error, 'useSelectedFolder');
-    } finally {
-      loading.value = false;
-    }
-  };
-
-  const createSubfolderFromSelectedFolder = async () => {
-    const state = dialogState.value;
-
-    if (loading.value || state?.kind !== 'warning') {
-      return;
-    }
-
-    loading.value = true;
-
-    try {
-      const mioframeHandle = await createMioframeSubfolder(state.handle);
-      await mountMioframeSpace(mioframeHandle);
-    } catch (error) {
-      if (!isUserFileSelectionCancel(error)) {
-        addSnackbar({
-          text: `Could not create the ${MIOFRAME_SPACE_FOLDER_NAME} folder. Choose or create a dedicated folder manually.`,
-        });
-        dialogState.value = { kind: 'create' };
+      if (
+        !inspection.looksRiskyByName &&
+        !inspection.looksLargeAndOrdinary &&
+        !inspection.looksLikeExistingSpace
+      ) {
+        await mountMioframeSpace(selectedHandle);
+        return;
       }
-    } finally {
-      loading.value = false;
-    }
+
+      const shouldContinueChoosing = await askToChooseAnotherFolder(
+        CREATE_GUARDRAIL_HEADLINE,
+        CREATE_GUARDRAIL_TEXT,
+      );
+
+      if (shouldContinueChoosing) {
+        await chooseCreateSpace();
+      }
+    };
+
+    await withPicker('createSpace', async () => {
+      await chooseCreateSpace();
+    });
+  };
+
+  const openSpace = async () => {
+    const chooseExistingSpace = async (): Promise<void> => {
+      const selectedHandle = await runPicker();
+      const inspection = await inspectMioframeSpaceDirectory(selectedHandle);
+
+      if (inspection.looksLikeExistingSpace) {
+        await mountMioframeSpace(selectedHandle);
+        return;
+      }
+
+      const shouldContinueChoosing = await askToChooseAnotherFolder(
+        OPEN_GUARDRAIL_HEADLINE,
+        OPEN_GUARDRAIL_TEXT,
+      );
+
+      if (shouldContinueChoosing) {
+        await chooseExistingSpace();
+      }
+    };
+
+    await withPicker('openSpace', async () => {
+      await chooseExistingSpace();
+    });
   };
 
   return {
     isSupported,
     loading,
-    dialogState,
-    openMioframeSpaceDialog,
-    openCreateDialog,
-    openExistingSpace,
-    createNewSpace,
-    chooseAnotherLocation,
-    useSelectedFolder,
-    createSubfolderFromSelectedFolder,
-    closeDialog,
+    createSpace,
+    openSpace,
   };
 };
