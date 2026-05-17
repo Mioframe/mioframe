@@ -4,6 +4,7 @@ import { MDState } from '../State';
 const { is = 'div', disabled } = defineProps<{
   headline: string;
   supportingText?: string | undefined;
+  multilineSupportingText?: boolean | undefined;
   is?: Is | undefined;
   type?: (Is extends 'button' ? 'button' | 'submit' | 'reset' : false) | undefined;
   itemRole?: string | undefined;
@@ -67,7 +68,13 @@ const onKeydown = (e: KeyboardEvent) => {
     <div class="md-list-item__body">
       <span class="md-list-item__headline">{{ headline }}</span>
 
-      <div v-if="supportingText || !!slots.supportingText" class="md-list-item__supporting-text">
+      <div
+        v-if="supportingText || !!slots.supportingText"
+        class="md-list-item__supporting-text"
+        :class="{
+          'md-list-item__supporting-text--multiline': multilineSupportingText,
+        }"
+      >
         <slot name="supportingText">{{ supportingText }}</slot>
       </div>
     </div>
@@ -161,6 +168,12 @@ const onKeydown = (e: KeyboardEvent) => {
     font-size: var(--md-sys-typescale-body-medium-size);
     letter-spacing: var(--md-sys-typescale-body-medium-tracking);
     font-weight: var(--md-sys-typescale-body-medium-weight);
+  }
+
+  &__supporting-text--multiline {
+    white-space: normal;
+    overflow: visible;
+    text-overflow: clip;
   }
 
   &__leading-avatar-container {

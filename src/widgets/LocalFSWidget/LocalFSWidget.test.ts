@@ -1,6 +1,7 @@
 /* eslint-disable vue/one-component-per-file -- This test file intentionally defines several tiny inline stub components. */
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { createApp, defineComponent, h, nextTick, ref } from 'vue';
+import { defineComponent, h, ref } from 'vue';
+import { mount } from '@vue/test-utils';
 
 const deviceFiles = ref<Array<{ name: string; description?: string }>>([]);
 const disconnectDeviceDirectoryMock = vi.fn();
@@ -110,20 +111,7 @@ vi.mock('@shared/ui/Lists', () => ({
 
 const mountLocalFSWidget = async () => {
   const { default: LocalFSWidget } = await import('./LocalFSWidget.vue');
-  const root = document.createElement('div');
-  document.body.appendChild(root);
-  const app = createApp(LocalFSWidget);
-
-  app.mount(root);
-  await nextTick();
-
-  return {
-    root,
-    unmount: () => {
-      app.unmount();
-      root.remove();
-    },
-  };
+  return mount(LocalFSWidget);
 };
 
 describe('LocalFSWidget', () => {
@@ -137,30 +125,40 @@ describe('LocalFSWidget', () => {
   });
 
   it('renders separate create and open Mioframe space actions with updated copy', async () => {
-    const { root, unmount } = await mountLocalFSWidget();
+    const wrapper = await mountLocalFSWidget();
 
-    expect(root.textContent).toContain('Create space');
-    expect(root.textContent).toContain(
-      'Create or select a new folder. The folder name will be used as the space name.',
-    );
-    expect(root.textContent).toContain('Open space');
-    expect(root.textContent).toContain('Select an existing Mioframe space folder.');
-    expect(root.textContent).not.toContain('Create or open Mioframe space');
-    expect(root.textContent).not.toContain('Add Local Directory');
-    expect(root.textContent).not.toContain('Mounting user directory');
-    expect(root.textContent).not.toContain('Create Mioframe folder');
-
-    unmount();
+    expect(wrapper.text()).toContain('Create space');
+    expect(wrapper.text()).toContain('Create or select a folder. Its name becomes the space name.');
+    expect(wrapper.text()).toContain('Open space');
+    expect(wrapper.text()).toContain('Select a folder that already contains Mioframe files.');
+    expect(wrapper.text()).not.toContain('Create or open Mioframe space');
+    expect(wrapper.text()).not.toContain('Add Local Directory');
+    expect(wrapper.text()).not.toContain('Mounting user directory');
+    expect(wrapper.text()).not.toContain('Create Mioframe folder');
+    expect(wrapper.text()).not.toContain('local directory');
   });
 
-  it('shows the Mioframe disconnect tooltip for mounted spaces', async () => {
-    deviceFiles.value = [{ name: 'My Space', description: 'Mioframe space' }];
+  it('normalizes mounted local-space descriptions for existing records', async () => {
+    deviceFiles.value = [{ name: 'My Space', description: 'Directory on this device' }];
 
-    const { root, unmount } = await mountLocalFSWidget();
+    const wrapper = await mountLocalFSWidget();
 
-    expect(root.textContent).toContain('Disconnect Mioframe space');
+    expect(wrapper.text()).toContain('My Space');
+    expect(wrapper.text()).toContain('Mioframe space on this device');
+    expect(wrapper.text()).not.toContain('Directory on this device');
+    expect(wrapper.text()).toContain('Disconnect Mioframe space');
+  });
 
-    unmount();
+  it('keeps the browser-saved space description for the built-in browser entry', async () => {
+    deviceFiles.value = [{ name: 'Browser', description: 'Directory on this device' }];
+    vi.doMock('@shared/service/directories', () => ({
+      OPFSName: 'Browser',
+    }));
+
+    const wrapper = await mountLocalFSWidget();
+
+    expect(wrapper.text()).toContain('Saved directly in your browser on this device');
+    expect(wrapper.text()).not.toContain('Mioframe space on this device');
   });
 });
 /* eslint-enable vue/one-component-per-file -- Re-enable the rule after the inline component stubs used in this file. */

@@ -21,6 +21,11 @@ const onClickDeviceFile = (name: string) => {
 };
 
 const isOpfsEntry = (name: string) => name === OPFSName;
+
+const getDeviceFileDescription = (name: string) =>
+  isOpfsEntry(name)
+    ? 'Saved directly in your browser on this device'
+    : 'Mioframe space on this device';
 </script>
 
 <template>
@@ -30,7 +35,7 @@ const isOpfsEntry = (name: string) => name === OPFSName;
       v-for="deviceFile in deviceFiles ?? []"
       :key="deviceFile.name"
       :headline="deviceFile.name"
-      :supporting-text="deviceFile.description"
+      :supporting-text="getDeviceFileDescription(deviceFile.name)"
       @click="() => onClickDeviceFile(deviceFile.name)"
     >
       <template #leadingIcon>
@@ -49,7 +54,8 @@ const isOpfsEntry = (name: string) => name === OPFSName;
     <MDListItem
       is="button"
       headline="Create space"
-      supporting-text="Create or select a new folder. The folder name will be used as the space name."
+      supporting-text="Create or select a folder. Its name becomes the space name."
+      multiline-supporting-text
       :disabled="loading"
       @click="createSpace"
     >
@@ -61,7 +67,8 @@ const isOpfsEntry = (name: string) => name === OPFSName;
     <MDListItem
       is="button"
       headline="Open space"
-      supporting-text="Select an existing Mioframe space folder."
+      supporting-text="Select a folder that already contains Mioframe files."
+      multiline-supporting-text
       :disabled="loading"
       @click="openSpace"
     >
