@@ -338,7 +338,7 @@ describe('useFileSystemService', () => {
           handle: opfsHandle,
         },
         {
-          description: undefined,
+          description: 'Mioframe space on this device',
           name: 'Work',
           handle: grantedHandle,
         },
@@ -362,6 +362,43 @@ describe('useFileSystemService', () => {
     await expect(service.deviceFiles.fetch()).resolves.toEqual([]);
   });
 
+  it('normalizes legacy mounted-directory descriptions during hydration', async () => {
+    const legacyHandle = createDirectoryHandleMock({
+      name: 'Archive',
+      permissionState: 'granted',
+      sameEntryKey: 'archive',
+    });
+
+    getRecordListMock.mockResolvedValue([
+      {
+        description: 'Directory on this device',
+        name: 'Archive',
+        handle: legacyHandle,
+      },
+    ]);
+
+    const service = await createService();
+
+    await vi.waitFor(async () => {
+      await expect(service.deviceFiles.fetch()).resolves.toEqual([
+        {
+          description: 'Mioframe space on this device',
+          name: 'Archive',
+          handle: legacyHandle,
+        },
+      ]);
+    });
+    await vi.waitFor(() => {
+      expect(updateRecordListMock).toHaveBeenCalledWith([
+        {
+          description: 'Mioframe space on this device',
+          name: 'Archive',
+          handle: legacyHandle,
+        },
+      ]);
+    });
+  });
+
   it('adds unique device directory names and reuses existing handles', async () => {
     const firstHandle = createDirectoryHandleMock({
       name: 'Work',
@@ -383,39 +420,39 @@ describe('useFileSystemService', () => {
       .mockResolvedValueOnce([])
       .mockResolvedValueOnce([])
       .mockResolvedValueOnce([
-        { description: 'Directory on this device', name: 'Work', handle: firstHandle },
+        { description: 'Mioframe space on this device', name: 'Work', handle: firstHandle },
       ])
       .mockResolvedValueOnce([
-        { description: 'Directory on this device', name: 'Work', handle: duplicateHandle },
+        { description: 'Mioframe space on this device', name: 'Work', handle: duplicateHandle },
       ]);
 
     const service = await createService();
 
     await expect(service.addDeviceDirectory(firstHandle)).resolves.toEqual({
-      description: 'Directory on this device',
+      description: 'Mioframe space on this device',
       name: 'Work',
       handle: firstHandle,
     });
     await expect(service.addDeviceDirectory(duplicateHandle)).resolves.toEqual({
-      description: 'Directory on this device',
+      description: 'Mioframe space on this device',
       name: 'Work',
       handle: duplicateHandle,
     });
     await expect(service.addDeviceDirectory(secondHandle)).resolves.toEqual({
-      description: 'Directory on this device',
+      description: 'Mioframe space on this device',
       name: 'Work (2)',
       handle: secondHandle,
     });
 
     expect(updateRecordListMock).toHaveBeenNthCalledWith(1, [
-      { description: 'Directory on this device', name: 'Work', handle: firstHandle },
+      { description: 'Mioframe space on this device', name: 'Work', handle: firstHandle },
     ]);
     expect(updateRecordListMock).toHaveBeenNthCalledWith(2, [
-      { description: 'Directory on this device', name: 'Work', handle: duplicateHandle },
+      { description: 'Mioframe space on this device', name: 'Work', handle: duplicateHandle },
     ]);
     expect(updateRecordListMock).toHaveBeenNthCalledWith(3, [
-      { description: 'Directory on this device', name: 'Work', handle: duplicateHandle },
-      { description: 'Directory on this device', name: 'Work (2)', handle: secondHandle },
+      { description: 'Mioframe space on this device', name: 'Work', handle: duplicateHandle },
+      { description: 'Mioframe space on this device', name: 'Work (2)', handle: secondHandle },
     ]);
   });
 
@@ -433,10 +470,10 @@ describe('useFileSystemService', () => {
 
     getRecordListMock
       .mockResolvedValueOnce([
-        { description: 'Directory on this device', name: 'Projects', handle: oldHandle },
+        { description: 'Mioframe space on this device', name: 'Projects', handle: oldHandle },
       ])
       .mockResolvedValueOnce([
-        { description: 'Directory on this device', name: 'Projects', handle: oldHandle },
+        { description: 'Mioframe space on this device', name: 'Projects', handle: oldHandle },
       ]);
 
     const service = await createService();
@@ -456,7 +493,7 @@ describe('useFileSystemService', () => {
     await vi.waitFor(() => {
       expect(snapshots.at(-1)).toEqual([
         {
-          description: 'Directory on this device',
+          description: 'Mioframe space on this device',
           name: 'Projects',
           handle: oldHandle,
         },
@@ -464,19 +501,19 @@ describe('useFileSystemService', () => {
     });
 
     await expect(service.addDeviceDirectory(renamedHandle)).resolves.toEqual({
-      description: 'Directory on this device',
+      description: 'Mioframe space on this device',
       name: 'Archive',
       handle: renamedHandle,
     });
     await expect(service.deviceFiles.fetch()).resolves.toEqual([
       {
-        description: 'Directory on this device',
+        description: 'Mioframe space on this device',
         name: 'Archive',
         handle: renamedHandle,
       },
     ]);
     expect(updateRecordListMock).toHaveBeenCalledWith([
-      { description: 'Directory on this device', name: 'Archive', handle: renamedHandle },
+      { description: 'Mioframe space on this device', name: 'Archive', handle: renamedHandle },
     ]);
 
     unsubscribe();
@@ -739,27 +776,27 @@ describe('useFileSystemService', () => {
     getRecordListMock
       .mockResolvedValueOnce([])
       .mockResolvedValueOnce([
-        { description: 'Directory on this device', name: 'Projects', handle: originalHandle },
+        { description: 'Mioframe space on this device', name: 'Projects', handle: originalHandle },
       ])
       .mockResolvedValueOnce([
-        { description: 'Directory on this device', name: 'Projects', handle: originalHandle },
+        { description: 'Mioframe space on this device', name: 'Projects', handle: originalHandle },
       ])
       .mockResolvedValueOnce([
-        { description: 'Directory on this device', name: 'Archive', handle: renamedHandle },
+        { description: 'Mioframe space on this device', name: 'Archive', handle: renamedHandle },
       ])
       .mockResolvedValueOnce([
-        { description: 'Directory on this device', name: 'Archive', handle: renamedHandle },
+        { description: 'Mioframe space on this device', name: 'Archive', handle: renamedHandle },
       ]);
 
     const service = await createService();
 
     await expect(service.addDeviceDirectory(originalHandle)).resolves.toEqual({
-      description: 'Directory on this device',
+      description: 'Mioframe space on this device',
       name: 'Projects',
       handle: originalHandle,
     });
     await expect(service.deviceFiles.fetch()).resolves.toContainEqual({
-      description: 'Directory on this device',
+      description: 'Mioframe space on this device',
       name: 'Projects',
       handle: originalHandle,
     });
@@ -773,13 +810,13 @@ describe('useFileSystemService', () => {
     ]);
 
     await expect(service.addDeviceDirectory(renamedHandle)).resolves.toEqual({
-      description: 'Directory on this device',
+      description: 'Mioframe space on this device',
       name: 'Archive',
       handle: renamedHandle,
     });
     await expect(service.deviceFiles.fetch()).resolves.toEqual([
       {
-        description: 'Directory on this device',
+        description: 'Mioframe space on this device',
         name: 'Archive',
         handle: renamedHandle,
       },
@@ -788,7 +825,7 @@ describe('useFileSystemService', () => {
     await service.removeDeviceDirectory('Missing');
     await expect(service.deviceFiles.fetch()).resolves.toEqual([
       {
-        description: 'Directory on this device',
+        description: 'Mioframe space on this device',
         name: 'Archive',
         handle: renamedHandle,
       },

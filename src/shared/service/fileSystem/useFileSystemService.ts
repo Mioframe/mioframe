@@ -31,8 +31,21 @@ export interface ReadDirectoryOptions {
 export { DEVICE_FILES_ROOT_NAME };
 export type { DeviceFileRecord };
 
-const LOCAL_DEVICE_DIRECTORY_DESCRIPTION = 'Directory on this device';
+const LOCAL_DEVICE_DIRECTORY_DESCRIPTION = 'Mioframe space on this device';
+const LEGACY_LOCAL_DEVICE_DIRECTORY_DESCRIPTION = 'Directory on this device';
 const OPFS_DIRECTORY_DESCRIPTION = 'Saved directly in your browser on this device';
+
+const normalizeDeviceDirectoryDescription = (description?: string) =>
+  description === undefined || description === LEGACY_LOCAL_DEVICE_DIRECTORY_DESCRIPTION
+    ? LOCAL_DEVICE_DIRECTORY_DESCRIPTION
+    : description;
+
+const normalizePersistedDeviceDirectoryRecord = (record: PersistedDeviceDirectoryRecord) => ({
+  ...record,
+  ...(record.name === OPFSName
+    ? { description: OPFS_DIRECTORY_DESCRIPTION }
+    : { description: normalizeDeviceDirectoryDescription(record.description) }),
+});
 
 const setupFileSystemService = () => {
   const vfs = new VirtualFileSystem();
@@ -134,8 +147,9 @@ const setupFileSystemService = () => {
 
   const hydrateDeviceDirectories = async () => {
     const records = await getRecordList();
+    const normalizedRecords = records.map(normalizePersistedDeviceDirectoryRecord);
     const permissionStates = await Promise.all(
-      records.map(async (record) => ({
+      normalizedRecords.map(async (record) => ({
         permissionState: await record.handle.queryPermission?.({
           mode: 'readwrite',
         }),
@@ -148,6 +162,12 @@ const setupFileSystemService = () => {
         deviceFileSystemProvider.upsertRecord(record);
       }
     });
+
+    if (
+      normalizedRecords.some((record, index) => record.description !== records[index]?.description)
+    ) {
+      await updateRecordList(normalizedRecords);
+    }
 
     syncActiveDeviceFiles();
   };

@@ -19,13 +19,6 @@ const { loading, createSpace, openSpace } = usePickMioframeSpace();
 const onClickDeviceFile = (name: string) => {
   emit('clickPath', PathUtils.join('/', DEVICE_FILES, name));
 };
-
-const isOpfsEntry = (name: string) => name === OPFSName;
-
-const getDeviceFileDescription = (name: string) =>
-  isOpfsEntry(name)
-    ? 'Saved directly in your browser on this device'
-    : 'Mioframe space on this device';
 </script>
 
 <template>
@@ -35,14 +28,14 @@ const getDeviceFileDescription = (name: string) =>
       v-for="deviceFile in deviceFiles ?? []"
       :key="deviceFile.name"
       :headline="deviceFile.name"
-      :supporting-text="getDeviceFileDescription(deviceFile.name)"
+      :supporting-text="deviceFile.description"
       @click="() => onClickDeviceFile(deviceFile.name)"
     >
       <template #leadingIcon>
         <MDSymbol name="folder_managed" />
       </template>
 
-      <template v-if="!isOpfsEntry(deviceFile.name)" #trailingIcon>
+      <template v-if="deviceFile.name !== OPFSName" #trailingIcon>
         <MDIconButton
           tooltip="Disconnect Mioframe space"
           md-symbol-name="link_off"

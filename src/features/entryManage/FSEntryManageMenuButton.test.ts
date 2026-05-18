@@ -3,9 +3,11 @@ import { flushPromises, mount } from '@vue/test-utils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { defineComponent, h, ref } from 'vue';
 
-const importJsonFileMock = vi.fn();
-const reportHandledErrorMock = vi.fn();
-const addSnackbarMock = vi.fn();
+const { importJsonFileMock, reportHandledErrorMock, addSnackbarMock } = vi.hoisted(() => ({
+  importJsonFileMock: vi.fn(),
+  reportHandledErrorMock: vi.fn(),
+  addSnackbarMock: vi.fn(),
+}));
 
 vi.mock('@entity/directory/useDirectory', () => ({
   useDirectory: () => ({
@@ -58,12 +60,15 @@ vi.mock('@feature/entryRename', () => ({
   }),
 }));
 
-vi.mock('@feature/importDocument', async () => {
-  const actual =
-    await vi.importActual<typeof import('@feature/importDocument')>('@feature/importDocument');
-
+vi.mock('@feature/importDocument', () => {
   return {
-    ...actual,
+    ImportDocumentErrorCode: {
+      fileOpenFailed: 'file-open-failed',
+      fileReadFailed: 'file-read-failed',
+      invalidJson: 'invalid-json',
+      invalidDocumentFormat: 'invalid-document-format',
+      documentImportFailed: 'document-import-failed',
+    },
     useImportDocument: () => ({
       importJsonFile: importJsonFileMock,
     }),

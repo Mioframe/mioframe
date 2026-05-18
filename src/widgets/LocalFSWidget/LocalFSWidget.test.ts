@@ -138,19 +138,20 @@ describe('LocalFSWidget', () => {
     expect(wrapper.text()).not.toContain('local directory');
   });
 
-  it('normalizes mounted local-space descriptions for existing records', async () => {
-    deviceFiles.value = [{ name: 'My Space', description: 'Directory on this device' }];
+  it('renders mounted local-space descriptions from the entity contract', async () => {
+    deviceFiles.value = [{ name: 'My Space', description: 'Mioframe space on this device' }];
 
     const wrapper = await mountLocalFSWidget();
 
     expect(wrapper.text()).toContain('My Space');
     expect(wrapper.text()).toContain('Mioframe space on this device');
-    expect(wrapper.text()).not.toContain('Directory on this device');
     expect(wrapper.text()).toContain('Disconnect Mioframe space');
   });
 
   it('keeps the browser-saved space description for the built-in browser entry', async () => {
-    deviceFiles.value = [{ name: 'Browser', description: 'Directory on this device' }];
+    deviceFiles.value = [
+      { name: 'Browser', description: 'Saved directly in your browser on this device' },
+    ];
     vi.doMock('@shared/service/directories', () => ({
       OPFSName: 'Browser',
     }));
