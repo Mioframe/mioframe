@@ -150,16 +150,30 @@ describe('LocalFSWidget', () => {
 
   it('keeps the browser-saved space description for the built-in browser entry', async () => {
     deviceFiles.value = [
-      { name: 'Browser', description: 'Saved directly in your browser on this device' },
+      { name: 'Browser Storage', description: 'Saved directly in your browser on this device' },
     ];
-    vi.doMock('@shared/service/directories', () => ({
-      OPFSName: 'Browser',
-    }));
 
     const wrapper = await mountLocalFSWidget();
 
     expect(wrapper.text()).toContain('Saved directly in your browser on this device');
     expect(wrapper.text()).not.toContain('Mioframe space on this device');
+  });
+
+  it('keeps a user-mounted Browser Storage folder disconnectable and the built-in browser entry protected', async () => {
+    deviceFiles.value = [
+      { name: 'Browser Storage', description: 'Saved directly in your browser on this device' },
+      { name: 'Browser Storage (2)', description: 'Mioframe space on this device' },
+    ];
+
+    const wrapper = await mountLocalFSWidget();
+    const disconnectButtons = wrapper.findAll('button[title="Disconnect Mioframe space"]');
+
+    expect(wrapper.text()).toContain('Browser Storage');
+    expect(wrapper.text()).toContain('Browser Storage (2)');
+
+    await Promise.all(disconnectButtons.map((button) => button.trigger('click')));
+
+    expect(disconnectDeviceDirectoryMock.mock.calls).toEqual([['Browser Storage (2)']]);
   });
 });
 /* eslint-enable vue/one-component-per-file -- Re-enable the rule after the inline component stubs used in this file. */

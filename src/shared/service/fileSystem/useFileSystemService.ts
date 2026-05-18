@@ -206,6 +206,7 @@ const setupFileSystemService = () => {
     ignoredRecord?: PersistedDeviceDirectoryRecord,
   ) => {
     const isTaken = (name: string) =>
+      name === OPFSName ||
       records.some((record) => record !== ignoredRecord && record.name === name);
 
     if (!isTaken(baseName)) {

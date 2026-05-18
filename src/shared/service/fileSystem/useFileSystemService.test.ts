@@ -456,6 +456,100 @@ describe('useFileSystemService', () => {
     ]);
   });
 
+  it('adds incrementing names for different handles with the same folder name', async () => {
+    const firstHandle = createDirectoryHandleMock({
+      name: 'Projects',
+      permissionState: 'granted',
+      sameEntryKey: 'projects-1',
+    });
+    const secondHandle = createDirectoryHandleMock({
+      name: 'Projects',
+      permissionState: 'granted',
+      sameEntryKey: 'projects-2',
+    });
+    const thirdHandle = createDirectoryHandleMock({
+      name: 'Projects',
+      permissionState: 'granted',
+      sameEntryKey: 'projects-3',
+    });
+
+    let persistedRecords: Array<{
+      description?: string | undefined;
+      name: string;
+      handle: FileSystemDirectoryHandle;
+    }> = [];
+    getRecordListMock.mockImplementation(() => Promise.resolve(persistedRecords));
+    updateRecordListMock.mockImplementation((nextRecords) => {
+      persistedRecords = nextRecords;
+      return Promise.resolve(undefined);
+    });
+
+    const service = await createService();
+
+    await expect(service.addDeviceDirectory(firstHandle)).resolves.toEqual({
+      description: 'Mioframe space on this device',
+      name: 'Projects',
+      handle: firstHandle,
+    });
+    await expect(service.addDeviceDirectory(secondHandle)).resolves.toEqual({
+      description: 'Mioframe space on this device',
+      name: 'Projects (2)',
+      handle: secondHandle,
+    });
+    await expect(service.addDeviceDirectory(thirdHandle)).resolves.toEqual({
+      description: 'Mioframe space on this device',
+      name: 'Projects (3)',
+      handle: thirdHandle,
+    });
+  });
+
+  it('reserves the Browser Storage name for the built-in browser entry', async () => {
+    const conflictingHandle = createDirectoryHandleMock({
+      name: OPFSName,
+      permissionState: 'granted',
+      sameEntryKey: 'conflicting-browser-storage',
+    });
+    getDirectoryMock.mockResolvedValue(createDirectoryHandleMock({ name: OPFSName }));
+    let persistedRecords: Array<{
+      description?: string | undefined;
+      name: string;
+      handle: FileSystemDirectoryHandle;
+    }> = [];
+    getRecordListMock.mockImplementation(() => Promise.resolve(persistedRecords));
+    updateRecordListMock.mockImplementation((nextRecords) => {
+      persistedRecords = nextRecords;
+      return Promise.resolve(undefined);
+    });
+
+    const service = await createService();
+
+    await vi.waitFor(() => {
+      expect(getDirectoryMock).toHaveBeenCalled();
+    });
+
+    await expect(service.addDeviceDirectory(conflictingHandle)).resolves.toEqual({
+      description: 'Mioframe space on this device',
+      name: `${OPFSName} (2)`,
+      handle: conflictingHandle,
+    });
+    await vi.waitFor(async () => {
+      await expect(service.deviceFiles.fetch()).resolves.toEqual(
+        expect.arrayContaining([
+          {
+            description: 'Saved directly in your browser on this device',
+            name: OPFSName,
+            handle: expect.objectContaining({ name: OPFSName }),
+          },
+          {
+            description: 'Mioframe space on this device',
+            name: `${OPFSName} (2)`,
+            handle: conflictingHandle,
+          },
+        ]),
+      );
+    });
+  });
+
   it('renames an existing mounted handle and removes the previous mounted name', async () => {
     const oldHandle = createDirectoryHandleMock({
       name: 'Projects',
@@ -517,6 +611,42 @@ describe('useFileSystemService', () => {
     ]);
 
     unsubscribe();
+  });
+
+  it('renames an existing mounted handle safely when the new folder name conflicts with Browser Storage', async () => {
+    const oldHandle = createDirectoryHandleMock({
+      name: 'Projects',
+      permissionState: 'granted',
+      sameEntryKey: 'shared-handle',
+    });
+    const renamedHandle = createDirectoryHandleMock({
+      name: OPFSName,
+      permissionState: 'granted',
+      sameEntryKey: 'shared-handle',
+    });
+    getDirectoryMock.mockResolvedValue(createDirectoryHandleMock({ name: OPFSName }));
+    getRecordListMock
+      .mockResolvedValueOnce([
+        { description: 'Mioframe space on this device', name: 'Projects', handle: oldHandle },
+      ])
+      .mockResolvedValueOnce([
+        { description: 'Mioframe space on this device', name: 'Projects', handle: oldHandle },
+      ]);
+
+    const service = await createService();
+
+    await expect(service.addDeviceDirectory(renamedHandle)).resolves.toEqual({
+      description: 'Mioframe space on this device',
+      name: `${OPFSName} (2)`,
+      handle: renamedHandle,
+    });
+    expect(updateRecordListMock).toHaveBeenCalledWith([
+      {
+        description: 'Mioframe space on this device',
+        name: `${OPFSName} (2)`,
+        handle: renamedHandle,
+      },
+    ]);
   });
 
   it('overlays mounted directory descriptions into root directory listings', async () => {
