@@ -1,29 +1,46 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { MDDialog } from '@shared/ui/Dialog';
 import { MDTextField } from '@shared/ui/TextField';
+import {
+  getMioframeSpaceNameError,
+  normalizeMioframeSpaceName,
+} from './spaceNameValidation';
+import type { CreateSpaceNameSubmitResult } from './usePickMioframeSpace';
 
-const modelValue = defineModel<string | undefined>('modelValue');
+const SPACE_FOLDER_PLACEHOLDER = '<space name>';
+const EXISTING_ORDINARY_FOLDER_ERROR =
+  'A folder with this name already exists. Choose another name.';
+
+type DialogMode = 'create' | 'existing-space-conflict';
 
 const props = defineProps<{
-  mode?: 'create' | 'existing-space-conflict' | undefined;
   selectedLocation: string;
-  resultFolder: string;
-  errorText?: string | undefined;
   loading?: boolean | undefined;
+  submitSpaceName: (spaceName: string) => Promise<CreateSpaceNameSubmitResult>;
+  openExistingSpace: () => Promise<boolean>;
 }>();
 
 const emit = defineEmits<{
-  apply: [];
   cancel: [];
 }>();
 
+const spaceName = ref<string | undefined>(undefined);
+const errorText = ref<string | undefined>(undefined);
+const mode = ref<DialogMode>('create');
+
+const normalizedSpaceName = computed(() => normalizeMioframeSpaceName(spaceName.value));
+
+const resultFolder = computed(
+  () => `${props.selectedLocation} / ${normalizedSpaceName.value || SPACE_FOLDER_PLACEHOLDER}`,
+);
+
 const supportingText = computed(() => {
-  if (props.errorText) {
-    return props.errorText;
+  if (errorText.value) {
+    return errorText.value;
   }
 
-  if (props.mode === 'existing-space-conflict') {
+  if (mode.value === 'existing-space-conflict') {
     return 'A Mioframe space with this name already exists here. Open the existing space, or change the name to go back to creating a new one.';
   }
 
@@ -31,21 +48,59 @@ const supportingText = computed(() => {
 });
 
 const headline = computed(() =>
-  props.mode === 'existing-space-conflict' ? 'Space already exists' : 'Name new space',
+  mode.value === 'existing-space-conflict' ? 'Space already exists' : 'Name new space',
 );
 
 const dialogSupportingText = computed(() =>
-  props.mode === 'existing-space-conflict'
+  mode.value === 'existing-space-conflict'
     ? 'This name already belongs to an existing Mioframe space in the selected location.'
     : 'Choose a name for the new Mioframe space.',
 );
 
 const applyLabel = computed(() =>
-  props.mode === 'existing-space-conflict' ? 'Open existing space' : 'Create',
+  mode.value === 'existing-space-conflict' ? 'Open existing space' : 'Create',
 );
 
-const onApply = () => {
-  emit('apply');
+watch(spaceName, () => {
+  errorText.value = undefined;
+
+  if (mode.value === 'existing-space-conflict') {
+    mode.value = 'create';
+  }
+});
+
+const onApply = async () => {
+  if (mode.value === 'existing-space-conflict') {
+    if (await props.openExistingSpace()) {
+      return;
+    }
+
+    mode.value = 'existing-space-conflict';
+    return;
+  }
+
+  const fieldError = getMioframeSpaceNameError(spaceName.value);
+
+  if (fieldError) {
+    errorText.value = fieldError;
+    return;
+  }
+
+  const result = await props.submitSpaceName(normalizedSpaceName.value);
+
+  if (result.status === 'existing-space-conflict') {
+    mode.value = 'existing-space-conflict';
+    return;
+  }
+
+  if (result.status === 'ordinary-folder-exists') {
+    errorText.value = EXISTING_ORDINARY_FOLDER_ERROR;
+    return;
+  }
+
+  if (result.status === 'invalid-folder-name') {
+    errorText.value = 'Enter a valid folder name.';
+  }
 };
 
 const onCancel = () => {
@@ -65,7 +120,7 @@ const onCancel = () => {
     @cancel="onCancel"
   >
     <MDTextField
-      v-model:model-value="modelValue"
+      v-model:model-value="spaceName"
       label-text="Space name"
       :error="!!errorText"
       :supporting-text="supportingText"
