@@ -1,32 +1,31 @@
 <script setup lang="ts">
 import { ref, toRef } from 'vue';
-import { isFunction } from 'es-toolkit';
 import { isUserFileSelectionCancel } from '@shared/lib/fileSystem';
+import { reportHandledError } from '@shared/lib/reportHandledError';
 import { MDSymbol } from '@shared/ui/Icon';
 import { MDListItem } from '@shared/ui/Lists';
 import { useSnackbar } from '@shared/ui/Snackbar';
 import MioframeSpaceCreateDialog from './MioframeSpaceCreateDialog.vue';
-
-const UNSUPPORTED_MESSAGE = 'Your browser does not support choosing folders for Mioframe spaces';
+import {
+  isDirectoryPickerSupported,
+  showDirectoryPickerUnsupportedMessage,
+} from './directoryPickerSupport';
+import { buildCreateSpaceError } from './mioframeSpacePick.errors';
 
 const { addSnackbar } = useSnackbar();
 const loading = ref(false);
 const parentHandle = ref<FileSystemDirectoryHandle | undefined>(undefined);
-const isSupported = toRef(
-  () => 'showDirectoryPicker' in window && isFunction(window.showDirectoryPicker),
-);
+const isSupported = toRef(isDirectoryPickerSupported);
 
-const showUnsupportedMessage = () => {
+const handleUnexpectedPickerError = () => {
+  const error = buildCreateSpaceError();
+
   addSnackbar({
-    text: UNSUPPORTED_MESSAGE,
-    actionLabel: 'More details',
-    timeout: 5e3,
-    callback: () => {
-      window.open(
-        'https://developer.mozilla.org/en-US/docs/Web/API/Window/showDirectoryPicker',
-        '_blank',
-      );
-    },
+    text: error.message,
+  });
+  reportHandledError(error, {
+    feature: 'mioframeSpaceCreate',
+    action: 'pickParentFolder',
   });
 };
 
@@ -36,7 +35,7 @@ const createSpace = async () => {
   }
 
   if (!isSupported.value) {
-    showUnsupportedMessage();
+    showDirectoryPickerUnsupportedMessage(addSnackbar);
     return;
   }
 
@@ -48,7 +47,7 @@ const createSpace = async () => {
     });
   } catch (error) {
     if (!isUserFileSelectionCancel(error)) {
-      throw error;
+      handleUnexpectedPickerError();
     }
   } finally {
     loading.value = false;
