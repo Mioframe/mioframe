@@ -13,7 +13,7 @@ const emit = defineEmits<{
 
 const { deviceFiles } = useFileSystem();
 const { disconnectDeviceDirectory } = useDisconnectDeviceDirectory();
-const { loading, createSpace, openSpace } = usePickMioframeSpace();
+const { loading, createSpace, openSpace, hasActiveDialog } = usePickMioframeSpace();
 
 const onClickDeviceFile = (name: string) => {
   emit('clickPath', PathUtils.join('/', DEVICE_FILES, name));
@@ -62,5 +62,5 @@ const onDisconnectDeviceFile = (name: string) => {
     </MDListItem>
   </MDListContainer>
 
-  <MioframeSpacePickDialogs />
+  <MioframeSpacePickDialogs v-if="hasActiveDialog" />
 </template>

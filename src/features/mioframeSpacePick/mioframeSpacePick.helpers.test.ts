@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/consistent-type-assertions -- DOM File System Access API mocks need structural casting in tests. */
 import { describe, expect, it, vi } from 'vitest';
 import { inspectMioframeSpaceDirectory } from './mioframeSpacePick.helpers';
+import { storageAdapterMarkerFileName } from '@shared/lib/automergeAdapter';
 
 const createDirectoryHandle = ({
   name,
@@ -62,39 +63,33 @@ const createDirectoryHandle = ({
 
 describe('inspectMioframeSpaceDirectory', () => {
   it('returns immediately when the current marker file exists', async () => {
-    const valuesMock = vi.fn(() => {
-      throw new Error('values() should not be called');
-    });
     const handle = createDirectoryHandle({
       name: 'Documents',
       getFileHandle: vi.fn(() => Promise.resolve({ kind: 'file' } as FileSystemFileHandle)),
     });
-    handle.values = valuesMock as unknown as FileSystemDirectoryHandle['values'];
 
     await expect(inspectMioframeSpaceDirectory(handle)).resolves.toEqual({
       looksLikeExistingSpace: true,
-      isEmpty: false,
-      hasOrdinaryEntries: false,
-      looksRiskyByName: true,
     });
-    expect(valuesMock).not.toHaveBeenCalled();
   });
 
-  it('succeeds when the marker exists even if listing the directory would fail', async () => {
+  it('uses the Automerge adapter marker contract for existing-space detection', async () => {
+    const getFileHandle = vi.fn((fileName: string) => {
+      if (fileName === storageAdapterMarkerFileName) {
+        return Promise.resolve({ kind: 'file' } as FileSystemFileHandle);
+      }
+
+      throw new DOMException('missing marker', 'NotFoundError');
+    });
     const handle = createDirectoryHandle({
       name: 'Project Space',
-      getFileHandle: vi.fn(() => Promise.resolve({ kind: 'file' } as FileSystemFileHandle)),
+      getFileHandle,
     });
-    handle.values = vi.fn(() => {
-      throw new DOMException('listing denied', 'SecurityError');
-    }) as unknown as FileSystemDirectoryHandle['values'];
 
-    await expect(inspectMioframeSpaceDirectory(handle)).resolves.toMatchObject({
+    await expect(inspectMioframeSpaceDirectory(handle)).resolves.toEqual({
       looksLikeExistingSpace: true,
-      isEmpty: false,
-      hasOrdinaryEntries: false,
-      looksRiskyByName: false,
     });
+    expect(getFileHandle).toHaveBeenCalledWith(storageAdapterMarkerFileName);
   });
 
   it('treats a missing marker file as not an existing Mioframe space', async () => {
@@ -106,7 +101,6 @@ describe('inspectMioframeSpaceDirectory', () => {
     );
 
     expect(inspection.looksLikeExistingSpace).toBe(false);
-    expect(inspection.hasOrdinaryEntries).toBe(true);
   });
 
   it('treats a NotFoundError marker lookup as missing and still inspects entries', async () => {
@@ -120,8 +114,6 @@ describe('inspectMioframeSpaceDirectory', () => {
 
     await expect(inspectMioframeSpaceDirectory(handle)).resolves.toMatchObject({
       looksLikeExistingSpace: false,
-      isEmpty: false,
-      hasOrdinaryEntries: true,
     });
   });
 

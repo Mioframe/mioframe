@@ -24,7 +24,7 @@ const supportingText = computed(() => {
   }
 
   if (props.mode === 'existing-space-conflict') {
-    return 'A Mioframe space with this name already exists in the selected location. Open it or choose a different name.';
+    return 'A Mioframe space with this name already exists here. Open the existing space, or change the name to go back to creating a new one.';
   }
 
   return 'Mioframe will create a folder with this name inside the selected location.';
@@ -36,12 +36,12 @@ const headline = computed(() =>
 
 const dialogSupportingText = computed(() =>
   props.mode === 'existing-space-conflict'
-    ? 'Choose a different name or open the existing Mioframe space.'
+    ? 'This name already belongs to an existing Mioframe space in the selected location.'
     : 'Choose a name for the new Mioframe space.',
 );
 
 const applyLabel = computed(() =>
-  props.mode === 'existing-space-conflict' ? 'Open space' : 'Create',
+  props.mode === 'existing-space-conflict' ? 'Open existing space' : 'Create',
 );
 
 const onApply = () => {

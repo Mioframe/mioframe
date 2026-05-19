@@ -7,6 +7,7 @@ const deviceFiles = ref<Array<{ name: string; description?: string }>>([]);
 const disconnectDeviceDirectoryMock = vi.fn();
 const createSpaceMock = vi.fn();
 const openSpaceMock = vi.fn();
+const hasActiveDialog = ref(false);
 const mioframeDialogHostStub = defineComponent({
   name: 'MioframeSpacePickDialogsStub',
   setup() {
@@ -33,6 +34,7 @@ vi.mock('@feature/mioframeSpacePick', () => ({
     loading: false,
     createSpace: createSpaceMock,
     openSpace: openSpaceMock,
+    hasActiveDialog,
   }),
 }));
 
@@ -136,6 +138,7 @@ describe('LocalFSWidget', () => {
     disconnectDeviceDirectoryMock.mockReset();
     createSpaceMock.mockReset();
     openSpaceMock.mockReset();
+    hasActiveDialog.value = false;
     document.body.innerHTML = '';
   });
 
@@ -156,7 +159,16 @@ describe('LocalFSWidget', () => {
     expect(wrapper.text()).not.toContain('stored directly in that folder');
   });
 
-  it('renders the Mioframe space dialog host once and does not depend on create-dialog internals', async () => {
+  it('does not mount the Mioframe space dialog host while the feature is idle', async () => {
+    const wrapper = await mountLocalFSWidget();
+
+    expect(wrapper.find('[data-testid="mioframe-space-pick-dialogs"]').exists()).toBe(false);
+    expect(wrapper.text()).not.toContain('Name new space');
+  });
+
+  it('mounts the Mioframe space dialog host only when the feature has an active dialog', async () => {
+    hasActiveDialog.value = true;
+
     const wrapper = await mountLocalFSWidget();
 
     expect(wrapper.findAll('[data-testid="mioframe-space-pick-dialogs"]')).toHaveLength(1);

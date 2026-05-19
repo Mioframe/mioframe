@@ -136,6 +136,7 @@ const setupPickMioframeSpace = () => {
   const isSupported = toRef(
     () => 'showDirectoryPicker' in window && isFunction(window.showDirectoryPicker),
   );
+  const hasActiveDialog = computed(() => createFlowInternalState.value.status !== 'idle');
 
   const showUnsupportedMessage = () => {
     addSnackbar({
@@ -224,6 +225,10 @@ const setupPickMioframeSpace = () => {
   };
 
   const createSpace = async () => {
+    if (hasActiveDialog.value) {
+      return;
+    }
+
     await withPicker('createSpace', async () => {
       const parentHandle = await runPicker();
       createFlowInternalState.value = createEditingState(parentHandle, undefined);
@@ -376,38 +381,49 @@ const setupPickMioframeSpace = () => {
     }
   };
 
-  const openSpace = async () => {
-    await withPicker('openSpace', async () => {
-      // Sequential picker, inspection, and confirmation steps are the intended retry flow here.
-      for (;;) {
-        // eslint-disable-next-line no-await-in-loop -- The next picker must wait for the prior retry choice.
-        const selectedHandle = await runPicker();
-        let inspection;
+  const pickExistingMioframeSpace = async () => {
+    /* eslint-disable no-await-in-loop -- The retry flow is intentionally sequential: pick, inspect, confirm, then optionally pick again. */
+    for (;;) {
+      const selectedHandle = await runPicker();
+      let inspection;
 
-        try {
-          // eslint-disable-next-line no-await-in-loop -- Inspection depends on the folder chosen in this loop iteration.
-          inspection = await inspectMioframeSpaceDirectory(selectedHandle);
-        } catch {
-          throw wrapUnexpectedInspectionError('openSpace');
-        }
-
-        if (inspection.looksLikeExistingSpace) {
-          // eslint-disable-next-line no-await-in-loop -- Mounting is the successful terminal action for this iteration.
-          await mountMioframeSpace(selectedHandle);
-          return;
-        }
-
-        // eslint-disable-next-line no-await-in-loop -- Retry confirmation is part of the sequential open-space flow.
-        if (!(await askToRetryOpenSpace())) {
-          return;
-        }
+      try {
+        inspection = await inspectMioframeSpaceDirectory(selectedHandle);
+      } catch {
+        throw wrapUnexpectedInspectionError('openSpace');
       }
+
+      if (inspection.looksLikeExistingSpace) {
+        return selectedHandle;
+      }
+
+      if (!(await askToRetryOpenSpace())) {
+        return;
+      }
+    }
+    /* eslint-enable no-await-in-loop -- The retry flow is intentionally sequential: pick, inspect, confirm, then optionally pick again. */
+  };
+
+  const openSpace = async () => {
+    if (hasActiveDialog.value) {
+      return;
+    }
+
+    await withPicker('openSpace', async () => {
+      const selectedHandle = await pickExistingMioframeSpace();
+
+      if (!selectedHandle) {
+        return;
+      }
+
+      await mountMioframeSpace(selectedHandle);
     });
   };
 
   return {
     isSupported,
     loading,
+    hasActiveDialog,
     createFlowState: computed<CreateFlowState>(() => {
       const state = createFlowInternalState.value;
 

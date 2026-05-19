@@ -22,20 +22,27 @@ const onApply = () => {
 </script>
 
 <template>
-  <MioframeSpaceCreateDialog
-    v-if="createFlowState.status !== 'idle'"
-    :model-value="createFlowState.spaceName"
-    :mode="
-      createFlowState.status === 'existing-space-conflict' ? 'existing-space-conflict' : 'create'
+  <template
+    v-if="
+      createFlowState.status === 'editing-name' ||
+      createFlowState.status === 'checking-name' ||
+      createFlowState.status === 'submitting' ||
+      createFlowState.status === 'existing-space-conflict'
     "
-    :error-text="createFlowState.errorText"
-    :selected-location="createFlowState.selectedLocation"
-    :result-folder="createFlowState.resultFolder"
-    :loading="loading"
-    @update:model-value="updateCreateSpaceName"
-    @apply="onApply"
-    @cancel="cancelCreateSpace"
-  />
-
-  <span v-else hidden />
+  >
+    <MioframeSpaceCreateDialog
+      :model-value="createFlowState.spaceName"
+      :mode="
+        createFlowState.status === 'existing-space-conflict' ? 'existing-space-conflict' : 'create'
+      "
+      :error-text="createFlowState.errorText"
+      :selected-location="createFlowState.selectedLocation"
+      :result-folder="createFlowState.resultFolder"
+      :loading="loading"
+      @update:model-value="updateCreateSpaceName"
+      @apply="onApply"
+      @cancel="cancelCreateSpace"
+    />
+  </template>
+  <template v-else />
 </template>
