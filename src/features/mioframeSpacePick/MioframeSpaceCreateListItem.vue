@@ -2,9 +2,9 @@
 import { MDSymbol } from '@shared/ui/Icon';
 import { MDListItem } from '@shared/ui/Lists';
 import MioframeSpaceCreateDialog from './MioframeSpaceCreateDialog.vue';
-import { usePickMioframeSpace } from './usePickMioframeSpace';
+import { useCreateMioframeSpace } from './useCreateMioframeSpace';
 
-const { createDialogState, createSpace, loading } = usePickMioframeSpace();
+const { createDialogState, createSpace, loading } = useCreateMioframeSpace();
 </script>
 
 <template>
