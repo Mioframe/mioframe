@@ -31,6 +31,7 @@ const onDisconnectDeviceFile = (name: string) => {
       :key="deviceFile.name"
       :name="deviceFile.name"
       :description="deviceFile.description"
+      :can-disconnect="deviceFile.canDisconnect"
       @click-path="onClickDeviceFile"
       @disconnect="onDisconnectDeviceFile"
     />
