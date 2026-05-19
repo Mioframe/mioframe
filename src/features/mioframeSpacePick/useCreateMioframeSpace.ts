@@ -11,28 +11,21 @@ const EXISTING_ORDINARY_FOLDER_ERROR =
   'A folder with this name already exists. Choose another name.';
 const INVALID_FOLDER_NAME_ERROR = 'Enter a valid folder name.';
 
-export type CreateDialogStatus =
-  | 'editing-name'
-  | 'checking-name'
-  | 'submitting'
-  | 'existing-space-conflict';
-
-export type CreateDialogState = {
-  status: CreateDialogStatus;
-  selectedLocation: string;
-};
+export type CreateDialogState =
+  | {
+      status: 'editing-name' | 'checking-name' | 'submitting';
+      selectedLocation: string;
+    }
+  | {
+      status: 'existing-space-conflict';
+      selectedLocation: string;
+      conflictSpaceName: string;
+    };
 
 export class CreateMioframeSpaceFieldError extends Error {
   constructor(readonly fieldMessage: string) {
     super(fieldMessage);
     this.name = 'CreateMioframeSpaceFieldError';
-  }
-}
-
-class CreateMioframeSpaceHandledError extends Error {
-  constructor() {
-    super('Create Mioframe space submission was handled');
-    this.name = 'CreateMioframeSpaceHandledError';
   }
 }
 
@@ -42,15 +35,31 @@ export const isCreateMioframeSpaceFieldError = (
 
 export const useCreateMioframeSpace = (parentHandle: Ref<FileSystemDirectoryHandle>) => {
   const loading = ref(false);
-  const status = ref<CreateDialogStatus>('editing-name');
+  const createDialogState = ref<CreateDialogState>({
+    status: 'editing-name',
+    selectedLocation: parentHandle.value.name,
+  });
   const existingConflictTargetHandle = ref<FileSystemDirectoryHandle | undefined>(undefined);
   const { addSnackbar } = useSnackbar();
   const { addDeviceDirectory } = useFileSystem();
 
-  const createDialogState = computed<CreateDialogState>(() => ({
-    status: status.value,
-    selectedLocation: parentHandle.value.name,
-  }));
+  const selectedLocation = computed(() => parentHandle.value.name);
+
+  const setStatus = (status: Exclude<CreateDialogState['status'], 'existing-space-conflict'>) => {
+    createDialogState.value = {
+      status,
+      selectedLocation: selectedLocation.value,
+    };
+  };
+
+  const setConflictState = (spaceName: string, targetHandle: FileSystemDirectoryHandle) => {
+    existingConflictTargetHandle.value = targetHandle;
+    createDialogState.value = {
+      status: 'existing-space-conflict',
+      selectedLocation: selectedLocation.value,
+      conflictSpaceName: spaceName,
+    };
+  };
 
   const handleUnexpectedError = (error: unknown) => {
     const reportedError = error instanceof DomainError ? error : buildCreateSpaceError();
@@ -68,14 +77,14 @@ export const useCreateMioframeSpace = (parentHandle: Ref<FileSystemDirectoryHand
     throw new CreateMioframeSpaceFieldError(fieldMessage);
   };
 
-  const submitCreateSpaceName = async (spaceName: string): Promise<void> => {
+  const submitCreateSpaceName = async (spaceName: string): Promise<boolean> => {
     if (loading.value) {
-      throw new CreateMioframeSpaceHandledError();
+      return false;
     }
 
     const normalizedName = normalizeMioframeSpaceName(spaceName);
     loading.value = true;
-    status.value = 'checking-name';
+    setStatus('checking-name');
     existingConflictTargetHandle.value = undefined;
 
     try {
@@ -92,7 +101,7 @@ export const useCreateMioframeSpace = (parentHandle: Ref<FileSystemDirectoryHand
               create: true,
             });
           } catch (createError) {
-            status.value = 'editing-name';
+            setStatus('editing-name');
 
             if (createError instanceof TypeError) {
               throwFieldError(INVALID_FOLDER_NAME_ERROR);
@@ -101,12 +110,12 @@ export const useCreateMioframeSpace = (parentHandle: Ref<FileSystemDirectoryHand
             throw createError;
           }
 
-          status.value = 'submitting';
+          setStatus('submitting');
           await addDeviceDirectory(createdHandle);
-          return;
+          return true;
         }
 
-        status.value = 'editing-name';
+        setStatus('editing-name');
 
         if (error instanceof DOMException && error.name === 'TypeMismatchError') {
           throwFieldError(EXISTING_ORDINARY_FOLDER_ERROR);
@@ -128,46 +137,46 @@ export const useCreateMioframeSpace = (parentHandle: Ref<FileSystemDirectoryHand
       }
 
       if (inspection.looksLikeExistingSpace) {
-        status.value = 'existing-space-conflict';
-        existingConflictTargetHandle.value = targetHandle;
-        return;
+        setConflictState(normalizedName, targetHandle);
+        return false;
       }
 
-      status.value = 'editing-name';
+      setStatus('editing-name');
       throwFieldError(EXISTING_ORDINARY_FOLDER_ERROR);
     } catch (error) {
       if (error instanceof CreateMioframeSpaceFieldError) {
         throw error;
       }
 
-      status.value = 'editing-name';
+      setStatus('editing-name');
       handleUnexpectedError(error);
-      throw new CreateMioframeSpaceHandledError();
+      return false;
     } finally {
       loading.value = false;
     }
   };
 
-  const openExistingSpaceFromConflict = async (): Promise<void> => {
-    if (status.value !== 'existing-space-conflict' || loading.value) {
-      throw new CreateMioframeSpaceHandledError();
+  const openExistingSpaceFromConflict = async (): Promise<boolean> => {
+    if (createDialogState.value.status !== 'existing-space-conflict' || loading.value) {
+      return false;
     }
 
     const targetHandle = existingConflictTargetHandle.value;
 
     if (!targetHandle) {
-      throw new CreateMioframeSpaceHandledError();
+      return false;
     }
 
     loading.value = true;
-    status.value = 'submitting';
+    setStatus('submitting');
 
     try {
       await addDeviceDirectory(targetHandle);
+      return true;
     } catch (error) {
-      status.value = 'existing-space-conflict';
+      setConflictState(createDialogState.value.selectedLocation, targetHandle);
       handleUnexpectedError(error);
-      throw new CreateMioframeSpaceHandledError();
+      return false;
     } finally {
       loading.value = false;
     }
