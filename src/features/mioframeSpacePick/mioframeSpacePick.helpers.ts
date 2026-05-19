@@ -48,11 +48,17 @@ export const isRiskyMioframeSpaceFolderName = (name: string) =>
 export const inspectMioframeSpaceDirectory = async (
   handle: FileSystemDirectoryHandle,
 ): Promise<MioframeSpaceInspection> => {
-  let looksLikeExistingSpace = false;
+  const looksRiskyByName = isRiskyMioframeSpaceFolderName(handle.name);
 
   try {
     await handle.getFileHandle(CURRENT_MIOFRAME_SPACE_MARKER);
-    looksLikeExistingSpace = true;
+
+    return {
+      looksLikeExistingSpace: true,
+      isEmpty: false,
+      hasOrdinaryEntries: false,
+      looksRiskyByName,
+    };
   } catch (error) {
     if (!isMissingMioframeSpaceMarkerError(error)) {
       throw error;
@@ -63,8 +69,8 @@ export const inspectMioframeSpaceDirectory = async (
 
   return {
     isEmpty: firstEntry.done ?? false,
-    looksLikeExistingSpace,
-    looksRiskyByName: isRiskyMioframeSpaceFolderName(handle.name),
-    hasOrdinaryEntries: !(firstEntry.done ?? false) && !looksLikeExistingSpace,
+    looksLikeExistingSpace: false,
+    looksRiskyByName,
+    hasOrdinaryEntries: !(firstEntry.done ?? false),
   };
 };

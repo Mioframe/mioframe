@@ -480,6 +480,9 @@ describe('usePickMioframeSpace', () => {
     expect(reportHandledErrorMock).toHaveBeenCalledWith(
       expect.objectContaining({
         message: 'Could not open the Mioframe space',
+        cause: expect.objectContaining({
+          message: 'Opening the Mioframe space failed',
+        }),
       }),
       {
         feature: 'mioframeSpacePick',
@@ -503,6 +506,9 @@ describe('usePickMioframeSpace', () => {
     expect(reportHandledErrorMock).toHaveBeenCalledWith(
       expect.objectContaining({
         message: 'Could not create the Mioframe space',
+        cause: expect.objectContaining({
+          message: 'Creating the Mioframe space failed',
+        }),
       }),
       {
         feature: 'mioframeSpacePick',
@@ -533,12 +539,66 @@ describe('usePickMioframeSpace', () => {
     expect(reportHandledErrorMock).toHaveBeenCalledWith(
       expect.objectContaining({
         message: 'Could not open the Mioframe space',
+        cause: expect.objectContaining({
+          message: 'Opening the Mioframe space failed',
+        }),
       }),
       {
         feature: 'mioframeSpacePick',
         action: 'openSpace',
       },
     );
+    const [reportedError] = reportHandledErrorMock.mock.calls.at(-1) ?? [];
+    expect(reportedError).toBeInstanceOf(Error);
+    expect(reportedError).toMatchObject({
+      message: 'Could not open the Mioframe space',
+      cause: expect.objectContaining({
+        message: 'Opening the Mioframe space failed',
+      }),
+    });
+    expect(reportedError).not.toBeInstanceOf(DOMException);
+  });
+
+  it('reports a privacy-safe error when marker inspection fails unexpectedly during create', async () => {
+    const selectedHandle = createDirectoryHandle({
+      name: 'Protected Space',
+      entries: [['notes.txt', createFileHandle('notes.txt')]],
+    });
+    selectedHandle.getFileHandle = vi.fn(async () => {
+      throw new DOMException('permission denied: Protected Space', 'SecurityError');
+    });
+    showDirectoryPickerMock.mockResolvedValueOnce(selectedHandle);
+
+    const { createSpace } = usePickMioframeSpace();
+
+    await createSpace();
+
+    expect(addDeviceDirectoryMock).not.toHaveBeenCalled();
+    expect(confirmMock).not.toHaveBeenCalled();
+    expect(addSnackbarMock).toHaveBeenCalledWith({
+      text: 'Could not create the Mioframe space',
+    });
+    expect(reportHandledErrorMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        message: 'Could not create the Mioframe space',
+        cause: expect.objectContaining({
+          message: 'Creating the Mioframe space failed',
+        }),
+      }),
+      {
+        feature: 'mioframeSpacePick',
+        action: 'createSpace',
+      },
+    );
+    const [reportedError] = reportHandledErrorMock.mock.calls.at(-1) ?? [];
+    expect(reportedError).toBeInstanceOf(Error);
+    expect(reportedError).toMatchObject({
+      message: 'Could not create the Mioframe space',
+      cause: expect.objectContaining({
+        message: 'Creating the Mioframe space failed',
+      }),
+    });
+    expect(reportedError).not.toBeInstanceOf(DOMException);
   });
 });
 /* eslint-enable @typescript-eslint/consistent-type-assertions, @typescript-eslint/require-await -- Re-enable after DOM File System Access API test mocks. */

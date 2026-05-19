@@ -60,15 +60,12 @@ vi.mock('@feature/entryRename', () => ({
   }),
 }));
 
-vi.mock('@feature/importDocument', () => {
+vi.mock('@feature/importDocument', async () => {
+  const actual =
+    await vi.importActual<typeof import('@feature/importDocument')>('@feature/importDocument');
+
   return {
-    ImportDocumentErrorCode: {
-      fileOpenFailed: 'file-open-failed',
-      fileReadFailed: 'file-read-failed',
-      invalidJson: 'invalid-json',
-      invalidDocumentFormat: 'invalid-document-format',
-      documentImportFailed: 'document-import-failed',
-    },
+    ...actual,
     useImportDocument: () => ({
       importJsonFile: importJsonFileMock,
     }),

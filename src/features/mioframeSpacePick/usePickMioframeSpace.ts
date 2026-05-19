@@ -30,6 +30,9 @@ const buildCreateSpaceError = () =>
 const buildOpenSpaceError = () =>
   buildAddFolderError('Could not open the Mioframe space', 'Opening the Mioframe space failed');
 
+const wrapUnexpectedInspectionError = (action: 'createSpace' | 'openSpace'): DomainError =>
+  action === 'createSpace' ? buildCreateSpaceError() : buildOpenSpaceError();
+
 /**
  * Creates the user-facing flow for creating or opening a Mioframe space.
  * @returns Reactive dialog state and actions for the Mioframe space picker.
@@ -132,7 +135,13 @@ export const usePickMioframeSpace = () => {
   const createSpace = async () => {
     await withPicker('createSpace', async () => {
       const selectedHandle = await runPicker();
-      const inspection = await inspectMioframeSpaceDirectory(selectedHandle);
+      let inspection;
+
+      try {
+        inspection = await inspectMioframeSpaceDirectory(selectedHandle);
+      } catch {
+        throw wrapUnexpectedInspectionError('createSpace');
+      }
 
       if (inspection.looksLikeExistingSpace) {
         if (await askToOpenExistingSpace()) {
@@ -155,7 +164,13 @@ export const usePickMioframeSpace = () => {
   const openSpace = async () => {
     const chooseExistingSpace = async (): Promise<void> => {
       const selectedHandle = await runPicker();
-      const inspection = await inspectMioframeSpaceDirectory(selectedHandle);
+      let inspection;
+
+      try {
+        inspection = await inspectMioframeSpaceDirectory(selectedHandle);
+      } catch {
+        throw wrapUnexpectedInspectionError('openSpace');
+      }
 
       if (inspection.looksLikeExistingSpace) {
         await mountMioframeSpace(selectedHandle);

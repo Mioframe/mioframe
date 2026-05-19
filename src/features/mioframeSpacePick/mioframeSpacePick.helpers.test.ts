@@ -61,6 +61,42 @@ const createDirectoryHandle = ({
   }) as FileSystemDirectoryHandle;
 
 describe('inspectMioframeSpaceDirectory', () => {
+  it('returns immediately when the current marker file exists', async () => {
+    const valuesMock = vi.fn(() => {
+      throw new Error('values() should not be called');
+    });
+    const handle = createDirectoryHandle({
+      name: 'Documents',
+      getFileHandle: vi.fn(() => Promise.resolve({ kind: 'file' } as FileSystemFileHandle)),
+    });
+    handle.values = valuesMock as unknown as FileSystemDirectoryHandle['values'];
+
+    await expect(inspectMioframeSpaceDirectory(handle)).resolves.toEqual({
+      looksLikeExistingSpace: true,
+      isEmpty: false,
+      hasOrdinaryEntries: false,
+      looksRiskyByName: true,
+    });
+    expect(valuesMock).not.toHaveBeenCalled();
+  });
+
+  it('succeeds when the marker exists even if listing the directory would fail', async () => {
+    const handle = createDirectoryHandle({
+      name: 'Project Space',
+      getFileHandle: vi.fn(() => Promise.resolve({ kind: 'file' } as FileSystemFileHandle)),
+    });
+    handle.values = vi.fn(() => {
+      throw new DOMException('listing denied', 'SecurityError');
+    }) as unknown as FileSystemDirectoryHandle['values'];
+
+    await expect(inspectMioframeSpaceDirectory(handle)).resolves.toMatchObject({
+      looksLikeExistingSpace: true,
+      isEmpty: false,
+      hasOrdinaryEntries: false,
+      looksRiskyByName: false,
+    });
+  });
+
   it('treats a missing marker file as not an existing Mioframe space', async () => {
     const inspection = await inspectMioframeSpaceDirectory(
       createDirectoryHandle({
@@ -71,6 +107,22 @@ describe('inspectMioframeSpaceDirectory', () => {
 
     expect(inspection.looksLikeExistingSpace).toBe(false);
     expect(inspection.hasOrdinaryEntries).toBe(true);
+  });
+
+  it('treats a NotFoundError marker lookup as missing and still inspects entries', async () => {
+    const handle = createDirectoryHandle({
+      name: 'Project Space',
+      entries: [['notes.txt', { kind: 'file', name: 'notes.txt' } as FileSystemFileHandle]],
+      getFileHandle: vi.fn(() =>
+        Promise.reject(new DOMException('missing marker', 'NotFoundError')),
+      ),
+    });
+
+    await expect(inspectMioframeSpaceDirectory(handle)).resolves.toMatchObject({
+      looksLikeExistingSpace: false,
+      isEmpty: false,
+      hasOrdinaryEntries: true,
+    });
   });
 
   it('rethrows non-NotFound marker lookup failures', async () => {

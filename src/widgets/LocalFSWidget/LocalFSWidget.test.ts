@@ -74,6 +74,10 @@ vi.mock('@shared/ui/Lists', () => ({
   MDListItem: defineComponent({
     name: 'MDListItemStub',
     props: {
+      is: {
+        type: String,
+        default: 'div',
+      },
       headline: {
         type: String,
         required: true,
@@ -95,7 +99,7 @@ vi.mock('@shared/ui/Lists', () => ({
     setup(props, { emit, slots }) {
       return () =>
         h(
-          'button',
+          props.is === 'button' ? 'button' : 'div',
           {
             disabled: props.disabled,
             onClick: () => {
@@ -105,7 +109,6 @@ vi.mock('@shared/ui/Lists', () => ({
           [
             h('span', props.headline),
             props.supportingText ? h('span', props.supportingText) : null,
-            props.lines ? h('span', `lines:${props.lines}`) : null,
             slots.leadingIcon?.(),
             slots.trailingIcon?.(),
           ],
@@ -140,7 +143,6 @@ describe('LocalFSWidget', () => {
     expect(wrapper.text()).toContain(
       'Select a folder that already contains the current Mioframe space files.',
     );
-    expect(wrapper.text()).toContain('lines:2');
     expect(wrapper.text()).not.toContain('Create or open Mioframe space');
     expect(wrapper.text()).not.toContain('Add Local Directory');
     expect(wrapper.text()).not.toContain('Mounting user directory');

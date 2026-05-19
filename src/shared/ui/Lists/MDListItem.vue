@@ -27,8 +27,23 @@ const slots = defineSlots<{
 
 const itemTag = computed<'button' | 'a' | 'div' | 'li'>(() => props.is ?? 'div');
 const isNativeInteractive = computed(() => itemTag.value === 'button' || itemTag.value === 'a');
+const resolvedLines = computed(() => props.lines ?? 1);
+const minHeight = computed(() => {
+  switch (resolvedLines.value) {
+    case 3:
+      return '88px';
+    case 2:
+      return '72px';
+    default:
+      return '56px';
+  }
+});
 const resolvedRole = computed(() => {
   if (isNativeInteractive.value) {
+    return undefined;
+  }
+
+  if (itemTag.value === 'li') {
     return undefined;
   }
 
@@ -39,9 +54,9 @@ const stateAttrs = computed(() => ({
   role: props.itemRole ?? resolvedRole.value ?? null,
 }));
 const supportingTextClass = computed(() => ({
-  'md-list-item__supporting-text--one-line': props.lines !== 2 && props.lines !== 3,
-  'md-list-item__supporting-text--two-lines': props.lines === 2,
-  'md-list-item__supporting-text--three-lines': props.lines === 3,
+  'md-list-item__supporting-text--one-line': resolvedLines.value === 1,
+  'md-list-item__supporting-text--two-lines': resolvedLines.value === 2,
+  'md-list-item__supporting-text--three-lines': resolvedLines.value === 3,
 }));
 
 const onClick = (e: MouseEvent) => {
@@ -69,6 +84,7 @@ const onKeydown = (e: KeyboardEvent) => {
   <MDState
     :is="itemTag"
     class="md-list-item"
+    :style="{ '--md-list-item-min-height': minHeight }"
     :draggable="props.draggable"
     :disabled="props.disabled"
     :disable-ripple="props.disabled || itemTag === 'li'"
@@ -105,10 +121,7 @@ const onKeydown = (e: KeyboardEvent) => {
 <style scoped>
 .md-list-item {
   --horizontal-gap: var(--md-list-item-horizontal-gap, 16px);
-  --min-height: var(
-    --md-list-item-min-height,
-    v-bind('lines === 3 ? "88px" : lines === 2 ? "72px" : "56px"')
-  );
+  --min-height: var(--md-list-item-min-height, 56px);
   --border-radius: var(--md-list-item-border-radius, 0px);
 
   --md-container-color: var(--md-list-item-container-color, var(--md-sys-color-surface));

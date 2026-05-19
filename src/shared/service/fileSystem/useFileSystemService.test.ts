@@ -728,6 +728,53 @@ describe('useFileSystemService', () => {
     ]);
   });
 
+  it('hydrates active device files in the same deterministic order that persisted migrations are saved', async () => {
+    const firstHandle = createDirectoryHandleMock({
+      name: OPFSName,
+      permissionState: 'granted',
+      sameEntryKey: 'first-browser-storage',
+    });
+    const secondHandle = createDirectoryHandleMock({
+      name: 'Archive',
+      permissionState: 'granted',
+      sameEntryKey: 'archive',
+    });
+
+    getRecordListMock.mockResolvedValue([
+      { description: 'Directory on this device', name: OPFSName, handle: firstHandle },
+      { description: 'Directory on this device', name: 'Archive', handle: secondHandle },
+    ]);
+
+    const service = await createService();
+
+    await vi.waitFor(async () => {
+      await expect(service.deviceFiles.fetch()).resolves.toEqual([
+        {
+          description: 'Mioframe space on this device',
+          name: `${OPFSName} (2)`,
+          handle: firstHandle,
+        },
+        {
+          description: 'Mioframe space on this device',
+          name: 'Archive',
+          handle: secondHandle,
+        },
+      ]);
+    });
+    expect(updateRecordListMock).toHaveBeenCalledWith([
+      {
+        description: 'Mioframe space on this device',
+        name: `${OPFSName} (2)`,
+        handle: firstHandle,
+      },
+      {
+        description: 'Mioframe space on this device',
+        name: 'Archive',
+        handle: secondHandle,
+      },
+    ]);
+  });
+
   it('renames an existing mounted handle and removes the previous mounted name', async () => {
     const oldHandle = createDirectoryHandleMock({
       name: 'Projects',
