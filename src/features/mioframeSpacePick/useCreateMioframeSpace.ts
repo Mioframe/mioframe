@@ -1,7 +1,5 @@
 import { useFileSystem } from '@entity/mountedDirectories';
-import { isUserFileSelectionCancel } from '@shared/lib/fileSystem';
-import { isFunction } from 'es-toolkit';
-import { computed, ref, toRef } from 'vue';
+import { computed, ref, type Ref } from 'vue';
 import { DomainError } from '@shared/lib/error';
 import { reportHandledError } from '@shared/lib/reportHandledError';
 import { useSnackbar } from '@shared/ui/Snackbar';
@@ -9,35 +7,16 @@ import { inspectMioframeSpaceDirectory } from './mioframeSpacePick.helpers';
 import { normalizeMioframeSpaceName } from './spaceNameValidation';
 import { buildCreateSpaceError } from './mioframeSpacePick.errors';
 
-const UNSUPPORTED_MESSAGE = 'Your browser does not support choosing folders for Mioframe spaces';
-
-type CreateFlowActiveState = {
-  parentHandle: FileSystemDirectoryHandle;
-  selectedLocation: string;
-};
-
-type CreateFlowInternalState =
-  | {
-      status: 'idle';
-    }
-  | ({
-      status: 'editing-name' | 'checking-name' | 'submitting';
-    } & CreateFlowActiveState)
-  | ({
-      status: 'existing-space-conflict';
-      targetHandle: FileSystemDirectoryHandle;
-    } & CreateFlowActiveState);
-
-type PublicCreateFlowIdleState = {
-  status: 'idle';
-};
+export type CreateDialogStatus =
+  | 'editing-name'
+  | 'checking-name'
+  | 'submitting'
+  | 'existing-space-conflict';
 
 export type CreateDialogState = {
-  status: 'editing-name' | 'checking-name' | 'submitting' | 'existing-space-conflict';
+  status: CreateDialogStatus;
   selectedLocation: string;
 };
-
-export type CreateFlowState = PublicCreateFlowIdleState | CreateDialogState;
 
 export type CreateSpaceNameSubmitResult =
   | { status: 'created' }
@@ -46,63 +25,17 @@ export type CreateSpaceNameSubmitResult =
   | { status: 'invalid-folder-name' }
   | { status: 'failed' };
 
-const createActiveState = (
-  status: Exclude<CreateFlowInternalState['status'], 'idle' | 'existing-space-conflict'>,
-  parentHandle: FileSystemDirectoryHandle,
-): CreateFlowInternalState => ({
-  status,
-  parentHandle,
-  selectedLocation: parentHandle.name,
-});
-
-const createExistingConflictState = (
-  parentHandle: FileSystemDirectoryHandle,
-  targetHandle: FileSystemDirectoryHandle,
-): CreateFlowInternalState => ({
-  status: 'existing-space-conflict',
-  parentHandle,
-  targetHandle,
-  selectedLocation: parentHandle.name,
-});
-
-export const useCreateMioframeSpace = () => {
+export const useCreateMioframeSpace = (parentHandle: Ref<FileSystemDirectoryHandle>) => {
   const loading = ref(false);
+  const status = ref<CreateDialogStatus>('editing-name');
+  const existingConflictTargetHandle = ref<FileSystemDirectoryHandle | undefined>(undefined);
   const { addSnackbar } = useSnackbar();
   const { addDeviceDirectory } = useFileSystem();
-  const createFlowInternalState = ref<CreateFlowInternalState>({
-    status: 'idle',
-  });
 
-  const isSupported = toRef(
-    () => 'showDirectoryPicker' in window && isFunction(window.showDirectoryPicker),
-  );
-  const createDialogState = computed<CreateDialogState | undefined>(() => {
-    const state = createFlowInternalState.value;
-
-    if (state.status === 'idle') {
-      return undefined;
-    }
-
-    return {
-      status: state.status,
-      selectedLocation: state.selectedLocation,
-    };
-  });
-  const hasActiveDialog = computed(() => createDialogState.value !== undefined);
-
-  const showUnsupportedMessage = () => {
-    addSnackbar({
-      text: UNSUPPORTED_MESSAGE,
-      actionLabel: 'More details',
-      timeout: 5e3,
-      callback: () => {
-        window.open(
-          'https://developer.mozilla.org/en-US/docs/Web/API/Window/showDirectoryPicker',
-          '_blank',
-        );
-      },
-    });
-  };
+  const createDialogState = computed<CreateDialogState>(() => ({
+    status: status.value,
+    selectedLocation: parentHandle.value.name,
+  }));
 
   const handleUnexpectedError = (error: unknown) => {
     const reportedError = error instanceof DomainError ? error : buildCreateSpaceError();
@@ -116,69 +49,33 @@ export const useCreateMioframeSpace = () => {
     });
   };
 
-  const runPicker = async () =>
-    await window.showDirectoryPicker({
-      mode: 'readwrite',
-    });
-
-  const closeCreateSpaceDialog = () => {
-    createFlowInternalState.value = {
-      status: 'idle',
-    };
-  };
-
-  const createSpace = async () => {
-    if (loading.value || hasActiveDialog.value) {
-      return;
-    }
-
-    if (!isSupported.value) {
-      showUnsupportedMessage();
-      return;
-    }
-
-    loading.value = true;
-
-    try {
-      const parentHandle = await runPicker();
-      createFlowInternalState.value = createActiveState('editing-name', parentHandle);
-    } catch (error) {
-      if (!isUserFileSelectionCancel(error)) {
-        handleUnexpectedError(error);
-      }
-    } finally {
-      loading.value = false;
-    }
-  };
-
   const submitCreateSpaceName = async (
     spaceName: string,
   ): Promise<CreateSpaceNameSubmitResult> => {
-    const dialogState = createFlowInternalState.value;
-
-    if (dialogState.status === 'idle' || loading.value) {
+    if (loading.value) {
       return { status: 'failed' };
     }
 
     const normalizedName = normalizeMioframeSpaceName(spaceName);
     loading.value = true;
-    createFlowInternalState.value = createActiveState('checking-name', dialogState.parentHandle);
+    status.value = 'checking-name';
+    existingConflictTargetHandle.value = undefined;
 
     try {
       let targetHandle: FileSystemDirectoryHandle;
 
       try {
-        targetHandle = await dialogState.parentHandle.getDirectoryHandle(normalizedName);
+        targetHandle = await parentHandle.value.getDirectoryHandle(normalizedName);
       } catch (error) {
         if (error instanceof DOMException && error.name === 'NotFoundError') {
           let createdHandle: FileSystemDirectoryHandle;
 
           try {
-            createdHandle = await dialogState.parentHandle.getDirectoryHandle(normalizedName, {
+            createdHandle = await parentHandle.value.getDirectoryHandle(normalizedName, {
               create: true,
             });
           } catch (createError) {
-            createFlowInternalState.value = createActiveState('editing-name', dialogState.parentHandle);
+            status.value = 'editing-name';
 
             if (createError instanceof TypeError) {
               return { status: 'invalid-folder-name' };
@@ -187,13 +84,12 @@ export const useCreateMioframeSpace = () => {
             throw createError;
           }
 
-          createFlowInternalState.value = createActiveState('submitting', dialogState.parentHandle);
+          status.value = 'submitting';
           await addDeviceDirectory(createdHandle);
-          closeCreateSpaceDialog();
           return { status: 'created' };
         }
 
-        createFlowInternalState.value = createActiveState('editing-name', dialogState.parentHandle);
+        status.value = 'editing-name';
 
         if (error instanceof DOMException && error.name === 'TypeMismatchError') {
           return { status: 'ordinary-folder-exists' };
@@ -215,17 +111,15 @@ export const useCreateMioframeSpace = () => {
       }
 
       if (inspection.looksLikeExistingSpace) {
-        createFlowInternalState.value = createExistingConflictState(
-          dialogState.parentHandle,
-          targetHandle,
-        );
+        status.value = 'existing-space-conflict';
+        existingConflictTargetHandle.value = targetHandle;
         return { status: 'existing-space-conflict' };
       }
 
-      createFlowInternalState.value = createActiveState('editing-name', dialogState.parentHandle);
+      status.value = 'editing-name';
       return { status: 'ordinary-folder-exists' };
     } catch (error) {
-      createFlowInternalState.value = createActiveState('editing-name', dialogState.parentHandle);
+      status.value = 'editing-name';
       handleUnexpectedError(error);
       return { status: 'failed' };
     } finally {
@@ -234,24 +128,24 @@ export const useCreateMioframeSpace = () => {
   };
 
   const openExistingSpaceFromConflict = async (): Promise<boolean> => {
-    const dialogState = createFlowInternalState.value;
+    if (status.value !== 'existing-space-conflict' || loading.value) {
+      return false;
+    }
 
-    if (dialogState.status !== 'existing-space-conflict' || loading.value) {
+    const targetHandle = existingConflictTargetHandle.value;
+
+    if (!targetHandle) {
       return false;
     }
 
     loading.value = true;
-    createFlowInternalState.value = createActiveState('submitting', dialogState.parentHandle);
+    status.value = 'submitting';
 
     try {
-      await addDeviceDirectory(dialogState.targetHandle);
-      closeCreateSpaceDialog();
+      await addDeviceDirectory(targetHandle);
       return true;
     } catch (error) {
-      createFlowInternalState.value = createExistingConflictState(
-        dialogState.parentHandle,
-        dialogState.targetHandle,
-      );
+      status.value = 'existing-space-conflict';
       handleUnexpectedError(error);
       return false;
     } finally {
@@ -260,16 +154,9 @@ export const useCreateMioframeSpace = () => {
   };
 
   return {
-    isSupported,
     loading,
-    hasActiveDialog,
     createDialogState,
-    createFlowState: computed<CreateFlowState>(() => createDialogState.value ?? { status: 'idle' }),
-    createSpace,
     submitCreateSpaceName,
-    cancelCreateSpace: closeCreateSpaceDialog,
     openExistingSpaceFromConflict,
   };
 };
-
-export type CreateMioframeSpaceContext = ReturnType<typeof useCreateMioframeSpace>;
