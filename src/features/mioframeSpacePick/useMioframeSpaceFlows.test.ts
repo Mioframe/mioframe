@@ -281,18 +281,18 @@ describe('useCreateMioframeSpace', () => {
       conflictSpaceName: 'Work Notes',
     });
     expect(addSnackbarMock).toHaveBeenCalledWith({
-      text: 'Could not create the Mioframe space',
+      text: 'Could not open the Mioframe space',
     });
     expect(reportHandledErrorMock).toHaveBeenCalledWith(
       expect.objectContaining({
-        message: 'Could not create the Mioframe space',
+        message: 'Could not open the Mioframe space',
         cause: expect.objectContaining({
-          message: 'Creating the Mioframe space failed',
+          message: 'Opening the Mioframe space failed',
         }),
       }),
       {
         feature: 'mioframeSpaceCreate',
-        action: 'createSpace',
+        action: 'openExistingSpaceFromConflict',
       },
     );
   });

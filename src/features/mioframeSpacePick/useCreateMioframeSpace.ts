@@ -5,7 +5,7 @@ import { reportHandledError } from '@shared/lib/reportHandledError';
 import { useSnackbar } from '@shared/ui/Snackbar';
 import { inspectMioframeSpaceDirectory } from './mioframeSpacePick.helpers';
 import { normalizeMioframeSpaceName } from './spaceNameValidation';
-import { buildCreateSpaceError } from './mioframeSpacePick.errors';
+import { buildCreateSpaceError, buildOpenSpaceError } from './mioframeSpacePick.errors';
 
 const EXISTING_ORDINARY_FOLDER_ERROR =
   'A folder with this name already exists. Choose another name.';
@@ -81,15 +81,22 @@ export const useCreateMioframeSpace = (parentHandle: Ref<FileSystemDirectoryHand
     };
   };
 
-  const handleUnexpectedError = (error: unknown) => {
-    const reportedError = error instanceof DomainError ? error : buildCreateSpaceError();
+  const handleUnexpectedError = (
+    error: unknown,
+    options?: {
+      fallbackError?: DomainError;
+      action?: 'createSpace' | 'openExistingSpaceFromConflict';
+    },
+  ) => {
+    const reportedError =
+      error instanceof DomainError ? error : (options?.fallbackError ?? buildCreateSpaceError());
 
     addSnackbar({
       text: reportedError.message,
     });
     reportHandledError(reportedError, {
       feature: 'mioframeSpaceCreate',
-      action: 'createSpace',
+      action: options?.action ?? 'createSpace',
     });
   };
 
@@ -209,7 +216,10 @@ export const useCreateMioframeSpace = (parentHandle: Ref<FileSystemDirectoryHand
       return true;
     } catch (error) {
       setConflictState(conflictSpaceName, targetHandle);
-      handleUnexpectedError(error);
+      handleUnexpectedError(error, {
+        fallbackError: buildOpenSpaceError(),
+        action: 'openExistingSpaceFromConflict',
+      });
       return false;
     } finally {
       loading.value = false;
