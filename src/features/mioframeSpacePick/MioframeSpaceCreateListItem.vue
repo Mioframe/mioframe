@@ -54,7 +54,7 @@ const createSpace = async () => {
   }
 };
 
-const closeDialog = () => {
+const resetCreateDialog = () => {
   parentHandle.value = undefined;
 };
 </script>
@@ -76,6 +76,8 @@ const closeDialog = () => {
   <MioframeSpaceCreateDialog
     v-if="parentHandle"
     :parent-handle="parentHandle"
-    @close="closeDialog"
+    @created="resetCreateDialog"
+    @opened-existing-space="resetCreateDialog"
+    @canceled="resetCreateDialog"
   />
 </template>
