@@ -27,14 +27,13 @@ const { createDialogState, loading, submitCreateSpaceName, openExistingSpaceFrom
 
 const spaceName = ref<string | undefined>(undefined);
 const errorText = ref<string | undefined>(undefined);
-const existingSpaceConflictName = ref<string | undefined>(undefined);
 
 const selectedLocation = computed(() => createDialogState.value.selectedLocation);
 const normalizedSpaceName = computed(() => normalizeMioframeSpaceName(spaceName.value));
 const hasExistingSpaceConflict = computed(
   () =>
-    existingSpaceConflictName.value !== undefined &&
-    existingSpaceConflictName.value === normalizedSpaceName.value,
+    createDialogState.value.status === 'existing-space-conflict' &&
+    createDialogState.value.conflictSpaceName === normalizedSpaceName.value,
 );
 
 const resultFolder = computed(
@@ -73,11 +72,8 @@ watch(spaceName, () => {
 
 const onApply = async () => {
   if (hasExistingSpaceConflict.value) {
-    try {
-      await openExistingSpaceFromConflict();
+    if (await openExistingSpaceFromConflict()) {
       emit('close');
-    } catch {
-      // Error is already handled by the create flow.
     }
     return;
   }
@@ -89,23 +85,17 @@ const onApply = async () => {
     return;
   }
 
-  existingSpaceConflictName.value = undefined;
-
   try {
-    await submitCreateSpaceName(normalizedSpaceName.value);
+    const shouldClose = await submitCreateSpaceName(normalizedSpaceName.value);
+
+    if (shouldClose) {
+      emit('close');
+    }
   } catch (error) {
     if (isCreateMioframeSpaceFieldError(error)) {
       errorText.value = error.fieldMessage;
     }
-    return;
   }
-
-  if (createDialogState.value.status === 'existing-space-conflict') {
-    existingSpaceConflictName.value = normalizedSpaceName.value;
-    return;
-  }
-
-  emit('close');
 };
 </script>
 
