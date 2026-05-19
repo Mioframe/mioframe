@@ -24,10 +24,6 @@ export const isMissingMioframeSpaceMarkerError = (error: unknown) =>
 export const inspectMioframeSpaceDirectory = async (
   handle: FileSystemDirectoryHandle,
 ): Promise<MioframeSpaceInspection> => {
-  if (!storageAdapterMarkerFileName) {
-    throw new Error('Missing storage adapter marker filename');
-  }
-
   try {
     await handle.getFileHandle(storageAdapterMarkerFileName);
 
