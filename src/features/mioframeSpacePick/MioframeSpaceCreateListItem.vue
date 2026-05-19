@@ -2,9 +2,13 @@
 import { MDSymbol } from '@shared/ui/Icon';
 import { MDListItem } from '@shared/ui/Lists';
 import MioframeSpaceCreateDialog from './MioframeSpaceCreateDialog.vue';
+import { provideCreateMioframeSpaceContext } from './createMioframeSpaceContext';
 import { useCreateMioframeSpace } from './useCreateMioframeSpace';
 
-const { createDialogState, createSpace, loading } = useCreateMioframeSpace();
+const createFlow = useCreateMioframeSpace();
+const { createDialogState, createSpace, loading } = createFlow;
+
+provideCreateMioframeSpaceContext(createFlow);
 </script>
 
 <template>
