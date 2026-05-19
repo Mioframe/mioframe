@@ -1,6 +1,5 @@
 import { useFileSystem } from '@entity/mountedDirectories';
 import { isUserFileSelectionCancel } from '@shared/lib/fileSystem';
-import { createGlobalState } from '@vueuse/core';
 import { isFunction } from 'es-toolkit';
 import { computed, ref, toRef } from 'vue';
 import { DomainError } from '@shared/lib/error';
@@ -66,7 +65,7 @@ const createExistingConflictState = (
   selectedLocation: parentHandle.name,
 });
 
-const setupCreateMioframeSpace = () => {
+export const useCreateMioframeSpace = () => {
   const loading = ref(false);
   const { addSnackbar } = useSnackbar();
   const { addDeviceDirectory } = useFileSystem();
@@ -273,4 +272,4 @@ const setupCreateMioframeSpace = () => {
   };
 };
 
-export const useCreateMioframeSpace = createGlobalState(setupCreateMioframeSpace);
+export type CreateMioframeSpaceContext = ReturnType<typeof useCreateMioframeSpace>;
