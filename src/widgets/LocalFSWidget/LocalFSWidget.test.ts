@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { defineComponent, h, ref } from 'vue';
 import { mount } from '@vue/test-utils';
 
-const deviceFiles = ref<Array<{ name: string; description?: string }>>([]);
+const deviceFiles = ref<Array<{ name: string; description?: string; canDisconnect: boolean }>>([]);
 const disconnectDeviceDirectoryMock = vi.fn();
 const createSpaceMock = vi.fn();
 const openSpaceMock = vi.fn();
@@ -176,7 +176,9 @@ describe('LocalFSWidget', () => {
   });
 
   it('renders mounted local-space descriptions from the entity contract', async () => {
-    deviceFiles.value = [{ name: 'My Space', description: 'Mioframe space on this device' }];
+    deviceFiles.value = [
+      { name: 'My Space', description: 'Mioframe space on this device', canDisconnect: true },
+    ];
 
     const wrapper = await mountLocalFSWidget();
 
@@ -187,7 +189,11 @@ describe('LocalFSWidget', () => {
 
   it('keeps the browser-saved space description for the built-in browser entry', async () => {
     deviceFiles.value = [
-      { name: 'Browser Storage', description: 'Saved directly in your browser on this device' },
+      {
+        name: 'Browser Storage',
+        description: 'Saved directly in your browser on this device',
+        canDisconnect: false,
+      },
     ];
 
     const wrapper = await mountLocalFSWidget();
@@ -198,8 +204,16 @@ describe('LocalFSWidget', () => {
 
   it('keeps a user-mounted Browser Storage folder disconnectable and the built-in browser entry protected', async () => {
     deviceFiles.value = [
-      { name: 'Browser Storage', description: 'Saved directly in your browser on this device' },
-      { name: 'Browser Storage (2)', description: 'Mioframe space on this device' },
+      {
+        name: 'Browser Storage',
+        description: 'Saved directly in your browser on this device',
+        canDisconnect: false,
+      },
+      {
+        name: 'Browser Storage (2)',
+        description: 'Mioframe space on this device',
+        canDisconnect: true,
+      },
     ];
 
     const wrapper = await mountLocalFSWidget();
@@ -214,7 +228,9 @@ describe('LocalFSWidget', () => {
   });
 
   it('does not emit clickPath when the trailing disconnect action is clicked', async () => {
-    deviceFiles.value = [{ name: 'My Space', description: 'Mioframe space on this device' }];
+    deviceFiles.value = [
+      { name: 'My Space', description: 'Mioframe space on this device', canDisconnect: true },
+    ];
 
     const wrapper = await mountLocalFSWidget();
 
