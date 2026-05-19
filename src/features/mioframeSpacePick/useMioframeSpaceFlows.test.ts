@@ -2,10 +2,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ref } from 'vue';
 import { storageAdapterMarkerFileName } from '@shared/lib/automergeAdapter';
-import {
-  isCreateMioframeSpaceFieldError,
-  useCreateMioframeSpace,
-} from './useCreateMioframeSpace';
+import { isCreateMioframeSpaceFieldError, useCreateMioframeSpace } from './useCreateMioframeSpace';
 import { useOpenMioframeSpace } from './useOpenMioframeSpace';
 
 const {
@@ -122,8 +119,8 @@ const createDirectoryHandle = ({
 
       throw new DOMException('File not found', 'NotFoundError');
     }),
-    getFile(fileName: string, options?: FileSystemGetFileOptions) {
-      return handle.getFileHandle(fileName, options);
+    getFile(fileName: string, _options?: FileSystemGetFileOptions) {
+      return handle.getFileHandle(fileName);
     },
     getDirectory(directoryName: string, options?: FileSystemGetDirectoryOptions) {
       return handle.getDirectoryHandle(directoryName, options);
@@ -142,8 +139,8 @@ const createDirectoryHandle = ({
 };
 
 const expectFieldError = async (promise: Promise<unknown>, message: string) => {
-  await expect(promise).rejects.toSatisfy((error: unknown) =>
-    isCreateMioframeSpaceFieldError(error) && error.fieldMessage === message,
+  await expect(promise).rejects.toSatisfy(
+    (error: unknown) => isCreateMioframeSpaceFieldError(error) && error.fieldMessage === message,
   );
 };
 
@@ -201,7 +198,10 @@ describe('useCreateMioframeSpace', () => {
     });
     const createFlow = useCreateMioframeSpace(ref(parentHandle));
 
-    await expectFieldError(createFlow.submitCreateSpaceName('Invalid'), 'Enter a valid folder name.');
+    await expectFieldError(
+      createFlow.submitCreateSpaceName('Invalid'),
+      'Enter a valid folder name.',
+    );
     expect(addDeviceDirectoryMock).not.toHaveBeenCalled();
     expect(createFlow.createDialogState.value).toEqual({
       status: 'editing-name',
@@ -252,6 +252,49 @@ describe('useCreateMioframeSpace', () => {
     await expect(createFlow.openExistingSpaceFromConflict()).resolves.toBe(true);
 
     expect(addDeviceDirectoryMock).toHaveBeenCalledWith(existingSpaceHandle);
+  });
+
+  it('restores the same conflict state when opening an existing Mioframe subfolder fails', async () => {
+    const existingSpaceHandle = createDirectoryHandle({
+      name: 'Work Notes',
+      entries: [[markerFileName, createFileHandle(markerFileName)]],
+    });
+    const parentHandle = createDirectoryHandle({
+      name: 'Documents',
+      subdirectoryFactory: (directoryName) => {
+        if (directoryName === 'Work Notes') {
+          return existingSpaceHandle;
+        }
+
+        throw new DOMException('Missing directory', 'NotFoundError');
+      },
+    });
+    addDeviceDirectoryMock.mockRejectedValueOnce(new Error('raw filesystem detail'));
+    const createFlow = useCreateMioframeSpace(ref(parentHandle));
+
+    await expect(createFlow.submitCreateSpaceName('Work Notes')).resolves.toBe(false);
+    await expect(createFlow.openExistingSpaceFromConflict()).resolves.toBe(false);
+
+    expect(createFlow.createDialogState.value).toEqual({
+      status: 'existing-space-conflict',
+      selectedLocation: 'Documents',
+      conflictSpaceName: 'Work Notes',
+    });
+    expect(addSnackbarMock).toHaveBeenCalledWith({
+      text: 'Could not create the Mioframe space',
+    });
+    expect(reportHandledErrorMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        message: 'Could not create the Mioframe space',
+        cause: expect.objectContaining({
+          message: 'Creating the Mioframe space failed',
+        }),
+      }),
+      {
+        feature: 'mioframeSpaceCreate',
+        action: 'createSpace',
+      },
+    );
   });
 
   it('throws a field error for an existing ordinary subfolder', async () => {

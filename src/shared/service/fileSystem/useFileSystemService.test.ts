@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { FSNodeStat, IFileSystemProvider, VfsEvent } from '@shared/lib/virtualFileSystem';
-import { FSNodeType, VfsEventSource, VfsEventType } from '@shared/lib/virtualFileSystem';
+import { FSNodeType, VfsEventSource } from '@shared/lib/virtualFileSystem';
 import { OPFSName } from '../directories';
 
 const getRecordListMock = vi.fn();
@@ -414,9 +414,7 @@ describe('useFileSystemService', () => {
         handle: renamedHandle,
       },
     ]);
-    expect(updateRecordListMock).toHaveBeenCalledWith([
-      { name: 'Archive', handle: renamedHandle },
-    ]);
+    expect(updateRecordListMock).toHaveBeenCalledWith([{ name: 'Archive', handle: renamedHandle }]);
   });
 
   it('removes matching device directory names from persistence and active state', async () => {
@@ -462,13 +460,11 @@ describe('useFileSystemService', () => {
     service.vfs.mount('/drive', provider);
 
     const results: [string, FSNodeStat][][] = [];
-    const subscription = service
-      .directoryContent$({ path: '/drive/folder' })
-      .subscribe((value) => {
-        if (!(value instanceof Error)) {
-          results.push(value);
-        }
-      });
+    const subscription = service.directoryContent$({ path: '/drive/folder' }).subscribe((value) => {
+      if (!(value instanceof Error)) {
+        results.push(value);
+      }
+    });
 
     await vi.waitFor(() => {
       expect(readDirectoryMock).toHaveBeenCalledTimes(1);

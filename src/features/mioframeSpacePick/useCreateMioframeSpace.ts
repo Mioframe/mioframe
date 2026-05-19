@@ -11,28 +11,48 @@ const EXISTING_ORDINARY_FOLDER_ERROR =
   'A folder with this name already exists. Choose another name.';
 const INVALID_FOLDER_NAME_ERROR = 'Enter a valid folder name.';
 
+/** Reactive create-dialog states shown after parent-folder selection. */
 export type CreateDialogState =
   | {
+      /** The dialog is editing or validating a new space name, or mounting a new space. */
       status: 'editing-name' | 'checking-name' | 'submitting';
+      /** Current parent-folder label shown in the dialog. */
       selectedLocation: string;
     }
   | {
+      /** The submitted name matches an existing Mioframe space in the selected location. */
       status: 'existing-space-conflict';
+      /** Current parent-folder label shown in the dialog. */
       selectedLocation: string;
+      /** Conflicting space name that may be opened instead of recreated. */
       conflictSpaceName: string;
     };
 
+/** Field-level validation error surfaced back to the create-space dialog. */
 export class CreateMioframeSpaceFieldError extends Error {
+  /**
+   * @param fieldMessage - User-facing validation message for the space-name field.
+   */
   constructor(readonly fieldMessage: string) {
     super(fieldMessage);
     this.name = 'CreateMioframeSpaceFieldError';
   }
 }
 
+/**
+ * Checks whether an unknown error is the create-space field-validation sentinel.
+ * @param error - Unknown thrown value from the create-space flow.
+ * @returns True when the error is a `CreateMioframeSpaceFieldError`.
+ */
 export const isCreateMioframeSpaceFieldError = (
   error: unknown,
 ): error is CreateMioframeSpaceFieldError => error instanceof CreateMioframeSpaceFieldError;
 
+/**
+ * Manages create-space dialog state after the user has picked a parent directory.
+ * @param parentHandle - Directory where the new Mioframe space may be created.
+ * @returns Reactive dialog state plus create/open actions for the current parent directory.
+ */
 export const useCreateMioframeSpace = (parentHandle: Ref<FileSystemDirectoryHandle>) => {
   const loading = ref(false);
   const createDialogState = ref<CreateDialogState>({
@@ -77,6 +97,12 @@ export const useCreateMioframeSpace = (parentHandle: Ref<FileSystemDirectoryHand
     throw new CreateMioframeSpaceFieldError(fieldMessage);
   };
 
+  /**
+   * Returns true only when the space was created and mounted successfully, so the dialog may close.
+   * Returns false when the dialog must remain open because the flow moved to another state or handled an error.
+   * @param spaceName - User-entered space name to validate, inspect, create, and mount.
+   * @returns Whether the create flow completed and the dialog may close.
+   */
   const submitCreateSpaceName = async (spaceName: string): Promise<boolean> => {
     if (loading.value) {
       return false;
@@ -154,14 +180,22 @@ export const useCreateMioframeSpace = (parentHandle: Ref<FileSystemDirectoryHand
     } finally {
       loading.value = false;
     }
+
+    return false;
   };
 
+  /**
+   * Returns true only when the existing conflicted space was mounted successfully, so the dialog may close.
+   * Returns false when the dialog must remain open because the flow stayed in conflict or handled an error.
+   * @returns Whether the existing-space open flow completed and the dialog may close.
+   */
   const openExistingSpaceFromConflict = async (): Promise<boolean> => {
     if (createDialogState.value.status !== 'existing-space-conflict' || loading.value) {
       return false;
     }
 
     const targetHandle = existingConflictTargetHandle.value;
+    const conflictSpaceName = createDialogState.value.conflictSpaceName;
 
     if (!targetHandle) {
       return false;
@@ -174,7 +208,7 @@ export const useCreateMioframeSpace = (parentHandle: Ref<FileSystemDirectoryHand
       await addDeviceDirectory(targetHandle);
       return true;
     } catch (error) {
-      setConflictState(createDialogState.value.selectedLocation, targetHandle);
+      setConflictState(conflictSpaceName, targetHandle);
       handleUnexpectedError(error);
       return false;
     } finally {

@@ -205,7 +205,9 @@ const setupFileSystemService = () => {
     syncActiveDeviceFiles();
   };
 
-  void mountDeviceFiles();
+  const deviceFilesReady = mountDeviceFiles();
+
+  void deviceFilesReady;
 
   const move = (oldPath: string, newPath: string) => vfs.move(oldPath, newPath);
 
@@ -251,6 +253,8 @@ const setupFileSystemService = () => {
   const addDeviceDirectory = async (
     handle: FileSystemDirectoryHandle,
   ): Promise<DeviceFileRecord> => {
+    await deviceFilesReady;
+
     const records = normalizePersistedDeviceDirectoryRecords(await getRecordList());
     const existingRecord = await findRecordByHandle(records, handle);
     const nextRecord = {
@@ -282,6 +286,8 @@ const setupFileSystemService = () => {
     if (name === OPFSName) {
       return;
     }
+
+    await deviceFilesReady;
 
     const records = normalizePersistedDeviceDirectoryRecords(await getRecordList());
     const nextRecords = records.filter((record) => record.name !== name);
