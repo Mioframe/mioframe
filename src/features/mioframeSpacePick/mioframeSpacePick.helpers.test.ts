@@ -103,7 +103,7 @@ describe('inspectMioframeSpaceDirectory', () => {
     expect(inspection.looksLikeExistingSpace).toBe(false);
   });
 
-  it('treats a NotFoundError marker lookup as missing and still inspects entries', async () => {
+  it('treats a NotFoundError marker lookup as a missing Mioframe marker', async () => {
     const handle = createDirectoryHandle({
       name: 'Project Space',
       entries: [['notes.txt', { kind: 'file', name: 'notes.txt' } as FileSystemFileHandle]],
