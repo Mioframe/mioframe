@@ -6,11 +6,12 @@ import {
   getMioframeSpaceNameError,
   normalizeMioframeSpaceName,
 } from './spaceNameValidation';
-import { useCreateMioframeSpace } from './useCreateMioframeSpace';
+import {
+  isCreateMioframeSpaceFieldError,
+  useCreateMioframeSpace,
+} from './useCreateMioframeSpace';
 
 const SPACE_FOLDER_PLACEHOLDER = '<space name>';
-const EXISTING_ORDINARY_FOLDER_ERROR =
-  'A folder with this name already exists. Choose another name.';
 
 const props = defineProps<{
   parentHandle: FileSystemDirectoryHandle;
@@ -72,8 +73,11 @@ watch(spaceName, () => {
 
 const onApply = async () => {
   if (hasExistingSpaceConflict.value) {
-    if (await openExistingSpaceFromConflict()) {
+    try {
+      await openExistingSpaceFromConflict();
       emit('close');
+    } catch {
+      // Error is already handled by the create flow.
     }
     return;
   }
@@ -85,28 +89,23 @@ const onApply = async () => {
     return;
   }
 
-  const result = await submitCreateSpaceName(normalizedSpaceName.value);
+  existingSpaceConflictName.value = undefined;
 
-  if (result.status === 'created') {
-    emit('close');
+  try {
+    await submitCreateSpaceName(normalizedSpaceName.value);
+  } catch (error) {
+    if (isCreateMioframeSpaceFieldError(error)) {
+      errorText.value = error.fieldMessage;
+    }
     return;
   }
 
-  if (result.status === 'existing-space-conflict') {
+  if (createDialogState.value.status === 'existing-space-conflict') {
     existingSpaceConflictName.value = normalizedSpaceName.value;
     return;
   }
 
-  existingSpaceConflictName.value = undefined;
-
-  if (result.status === 'ordinary-folder-exists') {
-    errorText.value = EXISTING_ORDINARY_FOLDER_ERROR;
-    return;
-  }
-
-  if (result.status === 'invalid-folder-name') {
-    errorText.value = 'Enter a valid folder name.';
-  }
+  emit('close');
 };
 </script>
 
