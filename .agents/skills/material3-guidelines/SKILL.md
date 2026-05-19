@@ -21,7 +21,7 @@ Do not use this skill for non-UI-only changes, type-only edits, internal storage
 
 ## Source of truth
 
-Use the `material3` MCP server from `github:Vyachean/m3-docs-mcp` as the reliable lookup source for official Material 3 documentation.
+Use the `material3` MCP server from https://github.com/Vyachean/m3-docs-mcp as the reliable lookup source for official Material 3 documentation.
 
 Prefer these MCP tools when available:
 
