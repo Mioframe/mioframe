@@ -5,15 +5,6 @@ import { mount } from '@vue/test-utils';
 
 const deviceFiles = ref<Array<{ name: string; description?: string; canDisconnect: boolean }>>([]);
 const disconnectDeviceDirectoryMock = vi.fn();
-const createSpaceMock = vi.fn();
-const openSpaceMock = vi.fn();
-const hasActiveDialog = ref(false);
-const mioframeDialogHostStub = defineComponent({
-  name: 'MioframeSpacePickDialogsStub',
-  setup() {
-    return () => h('div', { 'data-testid': 'mioframe-space-pick-dialogs' });
-  },
-});
 
 vi.mock('@entity/mountedDirectories', () => ({
   DEVICE_FILES: 'Device files',
@@ -29,12 +20,25 @@ vi.mock('@feature/deviceDirectoryDisconnect', () => ({
 }));
 
 vi.mock('@feature/mioframeSpacePick', () => ({
-  MioframeSpacePickDialogs: mioframeDialogHostStub,
-  usePickMioframeSpace: () => ({
-    loading: false,
-    createSpace: createSpaceMock,
-    openSpace: openSpaceMock,
-    hasActiveDialog,
+  MioframeSpaceCreateListItem: defineComponent({
+    name: 'MioframeSpaceCreateListItemStub',
+    setup() {
+      return () =>
+        h('button', { 'data-testid': 'mioframe-create-space-list-item' }, [
+          'Create space',
+          h('span', 'Choose where Mioframe should create a new folder for your documents.'),
+        ]);
+    },
+  }),
+  MioframeSpaceOpenListItem: defineComponent({
+    name: 'MioframeSpaceOpenListItemStub',
+    setup() {
+      return () =>
+        h('button', { 'data-testid': 'mioframe-open-space-list-item' }, [
+          'Open space',
+          h('span', 'Choose a folder that already contains a Mioframe space.'),
+        ]);
+    },
   }),
 }));
 
@@ -95,14 +99,6 @@ vi.mock('@shared/ui/Lists', () => ({
         type: String,
         default: undefined,
       },
-      disabled: {
-        type: Boolean,
-        default: false,
-      },
-      lines: {
-        type: Number,
-        default: undefined,
-      },
     },
     emits: ['click'],
     setup(props, { emit, slots }) {
@@ -110,7 +106,6 @@ vi.mock('@shared/ui/Lists', () => ({
         h(
           props.is === 'button' ? 'button' : 'div',
           {
-            disabled: props.disabled,
             onClick: () => {
               emit('click');
             },
@@ -136,43 +131,33 @@ describe('LocalFSWidget', () => {
     vi.resetModules();
     deviceFiles.value = [];
     disconnectDeviceDirectoryMock.mockReset();
-    createSpaceMock.mockReset();
-    openSpaceMock.mockReset();
-    hasActiveDialog.value = false;
     document.body.innerHTML = '';
   });
 
-  it('renders separate create and open Mioframe space actions with updated copy', async () => {
+  it('mounts Mioframe create and open flows as feature-owned list items', async () => {
     const wrapper = await mountLocalFSWidget();
 
+    expect(wrapper.findAll('[data-testid="mioframe-create-space-list-item"]')).toHaveLength(1);
+    expect(wrapper.findAll('[data-testid="mioframe-open-space-list-item"]')).toHaveLength(1);
     expect(wrapper.text()).toContain('Create space');
     expect(wrapper.text()).toContain(
       'Choose where Mioframe should create a new folder for your documents.',
     );
     expect(wrapper.text()).toContain('Open space');
     expect(wrapper.text()).toContain('Choose a folder that already contains a Mioframe space.');
+    expect(wrapper.find('[data-testid="mioframe-space-pick-dialogs"]').exists()).toBe(false);
+  });
+
+  it('does not know Mioframe space picker internals', async () => {
+    const wrapper = await mountLocalFSWidget();
+
+    expect(wrapper.text()).not.toContain('Name new space');
     expect(wrapper.text()).not.toContain('Create or open Mioframe space');
     expect(wrapper.text()).not.toContain('Add Local Directory');
     expect(wrapper.text()).not.toContain('Mounting user directory');
     expect(wrapper.text()).not.toContain('Create Mioframe folder');
     expect(wrapper.text()).not.toContain('local directory');
     expect(wrapper.text()).not.toContain('stored directly in that folder');
-  });
-
-  it('does not mount the Mioframe space dialog host while the feature is idle', async () => {
-    const wrapper = await mountLocalFSWidget();
-
-    expect(wrapper.find('[data-testid="mioframe-space-pick-dialogs"]').exists()).toBe(false);
-    expect(wrapper.text()).not.toContain('Name new space');
-  });
-
-  it('mounts the Mioframe space dialog host only when the feature has an active dialog', async () => {
-    hasActiveDialog.value = true;
-
-    const wrapper = await mountLocalFSWidget();
-
-    expect(wrapper.findAll('[data-testid="mioframe-space-pick-dialogs"]')).toHaveLength(1);
-    expect(wrapper.text()).not.toContain('Name new space');
   });
 
   it('renders mounted local-space descriptions from the entity contract', async () => {
