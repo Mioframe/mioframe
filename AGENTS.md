@@ -49,7 +49,6 @@ reason:
 ## Patterns
 
 - Prefer plan-first implementation over broad discovery.
-- Write agent tasks, task descriptions, and durable repo instructions in English only.
 - Before broad repository exploration, use ByteRover local search to recall prior project decisions; use synthesized queries only when search results are insufficient.
 - Use the `implementation-preflight` skill before non-trivial implementation work to identify the owner layer, reuse opportunities, acceptance matrix, risk matrix, and focused verification before the first production edit.
 - Before editing, identify the smallest affected FSD owner layer and read only task-relevant files plus direct imports unless the task proves wider impact.
