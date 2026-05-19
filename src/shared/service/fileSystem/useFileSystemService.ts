@@ -38,6 +38,9 @@ const normalizePersistedDeviceDirectoryRecord = (
   handle: record.handle,
 });
 
+const normalizePersistedDeviceDirectoryRecords = (records: PersistedDeviceDirectoryRecord[]) =>
+  records.map(normalizePersistedDeviceDirectoryRecord);
+
 const didPersistedDeviceDirectoryRecordsChange = (
   nextRecords: PersistedDeviceDirectoryRecord[],
   previousRecords: PersistedDeviceDirectoryRecord[],
@@ -248,7 +251,7 @@ const setupFileSystemService = () => {
   const addDeviceDirectory = async (
     handle: FileSystemDirectoryHandle,
   ): Promise<DeviceFileRecord> => {
-    const records = await getRecordList();
+    const records = normalizePersistedDeviceDirectoryRecords(await getRecordList());
     const existingRecord = await findRecordByHandle(records, handle);
     const nextRecord = {
       name: getUniqueDeviceDirectoryName(handle.name, records, existingRecord),
@@ -280,7 +283,7 @@ const setupFileSystemService = () => {
       return;
     }
 
-    const records = await getRecordList();
+    const records = normalizePersistedDeviceDirectoryRecords(await getRecordList());
     const nextRecords = records.filter((record) => record.name !== name);
 
     if (nextRecords.length === records.length) {
