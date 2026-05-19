@@ -4,7 +4,6 @@ import { isUserFileSelectionCancel } from '@shared/lib/fileSystem';
 import { reportHandledError } from '@shared/lib/reportHandledError';
 import { useDialog } from '@shared/ui/Dialog';
 import { useSnackbar } from '@shared/ui/Snackbar';
-import { createGlobalState } from '@vueuse/core';
 import { isFunction } from 'es-toolkit';
 import { ref, toRef } from 'vue';
 import { inspectMioframeSpaceDirectory } from './mioframeSpacePick.helpers';
@@ -14,7 +13,7 @@ const UNSUPPORTED_MESSAGE = 'Your browser does not support choosing folders for 
 const OPEN_GUARDRAIL_HEADLINE = 'No Mioframe space found';
 const OPEN_GUARDRAIL_TEXT = 'Choose a folder where a Mioframe space has already been created.';
 
-const setupOpenMioframeSpace = () => {
+export const useOpenMioframeSpace = () => {
   const loading = ref(false);
   const { confirm } = useDialog();
   const { addSnackbar } = useSnackbar();
@@ -121,5 +120,3 @@ const setupOpenMioframeSpace = () => {
     openSpace,
   };
 };
-
-export const useOpenMioframeSpace = createGlobalState(setupOpenMioframeSpace);
