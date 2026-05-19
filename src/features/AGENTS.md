@@ -1,6 +1,6 @@
 # src/features
 
-Inherits the rules from the root `AGENTS.md`. Applies to `src/features` and its descendants until a deeper `AGENTS.md` overrides it.
+Inherits the rules from `src/AGENTS.md`. Applies to `src/features` and its descendants until a deeper `AGENTS.md` overrides it.
 
 ## Contains
 

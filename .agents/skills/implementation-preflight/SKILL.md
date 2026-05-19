@@ -23,6 +23,8 @@ Answer these before the first production edit:
 4. **Risk matrix**: which browser, lifecycle, async, cache, CI/tooling, accessibility, visual, or data-safety risks apply?
 5. **Verification**: what focused check proves the riskiest behavior, and what final verification is required?
 
+For user-visible UI or UX changes, run the `material3-guidelines` skill as part of this preflight before choosing component structure, layout, interaction behavior, or visual verification.
+
 ## Bounded reuse search
 
 Before creating a new helper, component, config, dependency, or test pattern, check reuse with targeted repository search or direct imports.
@@ -42,6 +44,7 @@ Include only states relevant to the task, but consider:
 - cache invalidation after create, update, delete, or failed lookup;
 - data-safety-sensitive values in diagnostics, URLs, names, ids, and content;
 - accessibility structure and heading hierarchy for rendered UI;
+- Material 3 component choice, placement, adaptive layout, focus, keyboard, touch, motion, and visual state guidance when UI/UX changes are involved;
 - CI, build, Storybook, Playwright, verify, fix, or verbose modes when tooling changes.
 
 The first implementation should cover the applicable matrix, not only the happy path. If a matrix item is intentionally not covered, state why.
