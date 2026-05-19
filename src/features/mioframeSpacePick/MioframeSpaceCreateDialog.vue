@@ -6,7 +6,7 @@ import {
   getMioframeSpaceNameError,
   normalizeMioframeSpaceName,
 } from './spaceNameValidation';
-import { useCreateMioframeSpace } from './useCreateMioframeSpace';
+import { useCreateMioframeSpaceContext } from './createMioframeSpaceContext';
 
 const SPACE_FOLDER_PLACEHOLDER = '<space name>';
 const EXISTING_ORDINARY_FOLDER_ERROR =
@@ -18,7 +18,7 @@ const {
   submitCreateSpaceName,
   cancelCreateSpace,
   openExistingSpaceFromConflict,
-} = useCreateMioframeSpace();
+} = useCreateMioframeSpaceContext();
 
 const spaceName = ref<string | undefined>(undefined);
 const errorText = ref<string | undefined>(undefined);
