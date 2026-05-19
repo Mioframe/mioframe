@@ -15,6 +15,10 @@ import { buildOpenSpaceError } from './mioframeSpacePick.errors';
 const OPEN_GUARDRAIL_HEADLINE = 'No Mioframe space found';
 const OPEN_GUARDRAIL_TEXT = 'Choose a folder where a Mioframe space has already been created.';
 
+/**
+ * Exposes the open-existing-space flow for Mioframe directories selected through the browser picker.
+ * @returns Reactive picker support, loading state, and the open action for existing Mioframe spaces.
+ */
 export const useOpenMioframeSpace = () => {
   const loading = ref(false);
   const { confirm } = useDialog();

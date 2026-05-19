@@ -2,16 +2,8 @@
 import { computed, ref, watch } from 'vue';
 import { MDDialog } from '@shared/ui/Dialog';
 import { MDTextField } from '@shared/ui/TextField';
-import {
-  getMioframeSpaceNameError,
-  normalizeMioframeSpaceName,
-} from './spaceNameValidation';
-import {
-  isCreateMioframeSpaceFieldError,
-  useCreateMioframeSpace,
-} from './useCreateMioframeSpace';
-
-const SPACE_FOLDER_PLACEHOLDER = '<space name>';
+import { getMioframeSpaceNameError, normalizeMioframeSpaceName } from './spaceNameValidation';
+import { isCreateMioframeSpaceFieldError, useCreateMioframeSpace } from './useCreateMioframeSpace';
 
 const props = defineProps<{
   parentHandle: FileSystemDirectoryHandle;
@@ -22,6 +14,8 @@ const emit = defineEmits<{
   openedExistingSpace: [];
   canceled: [];
 }>();
+
+const SPACE_FOLDER_PLACEHOLDER = '<space name>';
 
 const parentHandle = computed(() => props.parentHandle);
 const { createDialogState, loading, submitCreateSpaceName, openExistingSpaceFromConflict } =
@@ -72,6 +66,10 @@ watch(spaceName, () => {
   errorText.value = undefined;
 });
 
+const onCancel = () => {
+  emit('canceled');
+};
+
 const onApply = async () => {
   if (hasExistingSpaceConflict.value) {
     if (await openExistingSpaceFromConflict()) {
@@ -110,7 +108,7 @@ const onApply = async () => {
     has-cancel-action
     :loading="loading"
     @apply="onApply"
-    @cancel="emit('canceled')"
+    @cancel="onCancel"
   >
     <MDTextField
       v-model:model-value="spaceName"
