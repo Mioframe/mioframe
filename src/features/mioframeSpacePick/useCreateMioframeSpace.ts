@@ -7,6 +7,10 @@ import { inspectMioframeSpaceDirectory } from './mioframeSpacePick.helpers';
 import { normalizeMioframeSpaceName } from './spaceNameValidation';
 import { buildCreateSpaceError } from './mioframeSpacePick.errors';
 
+const EXISTING_ORDINARY_FOLDER_ERROR =
+  'A folder with this name already exists. Choose another name.';
+const INVALID_FOLDER_NAME_ERROR = 'Enter a valid folder name.';
+
 export type CreateDialogStatus =
   | 'editing-name'
   | 'checking-name'
@@ -18,12 +22,23 @@ export type CreateDialogState = {
   selectedLocation: string;
 };
 
-export type CreateSpaceNameSubmitResult =
-  | { status: 'created' }
-  | { status: 'existing-space-conflict' }
-  | { status: 'ordinary-folder-exists' }
-  | { status: 'invalid-folder-name' }
-  | { status: 'failed' };
+export class CreateMioframeSpaceFieldError extends Error {
+  constructor(readonly fieldMessage: string) {
+    super(fieldMessage);
+    this.name = 'CreateMioframeSpaceFieldError';
+  }
+}
+
+class CreateMioframeSpaceHandledError extends Error {
+  constructor() {
+    super('Create Mioframe space submission was handled');
+    this.name = 'CreateMioframeSpaceHandledError';
+  }
+}
+
+export const isCreateMioframeSpaceFieldError = (
+  error: unknown,
+): error is CreateMioframeSpaceFieldError => error instanceof CreateMioframeSpaceFieldError;
 
 export const useCreateMioframeSpace = (parentHandle: Ref<FileSystemDirectoryHandle>) => {
   const loading = ref(false);
@@ -49,11 +64,13 @@ export const useCreateMioframeSpace = (parentHandle: Ref<FileSystemDirectoryHand
     });
   };
 
-  const submitCreateSpaceName = async (
-    spaceName: string,
-  ): Promise<CreateSpaceNameSubmitResult> => {
+  const throwFieldError = (fieldMessage: string): never => {
+    throw new CreateMioframeSpaceFieldError(fieldMessage);
+  };
+
+  const submitCreateSpaceName = async (spaceName: string): Promise<void> => {
     if (loading.value) {
-      return { status: 'failed' };
+      throw new CreateMioframeSpaceHandledError();
     }
 
     const normalizedName = normalizeMioframeSpaceName(spaceName);
@@ -78,7 +95,7 @@ export const useCreateMioframeSpace = (parentHandle: Ref<FileSystemDirectoryHand
             status.value = 'editing-name';
 
             if (createError instanceof TypeError) {
-              return { status: 'invalid-folder-name' };
+              throwFieldError(INVALID_FOLDER_NAME_ERROR);
             }
 
             throw createError;
@@ -86,17 +103,17 @@ export const useCreateMioframeSpace = (parentHandle: Ref<FileSystemDirectoryHand
 
           status.value = 'submitting';
           await addDeviceDirectory(createdHandle);
-          return { status: 'created' };
+          return;
         }
 
         status.value = 'editing-name';
 
         if (error instanceof DOMException && error.name === 'TypeMismatchError') {
-          return { status: 'ordinary-folder-exists' };
+          throwFieldError(EXISTING_ORDINARY_FOLDER_ERROR);
         }
 
         if (error instanceof TypeError) {
-          return { status: 'invalid-folder-name' };
+          throwFieldError(INVALID_FOLDER_NAME_ERROR);
         }
 
         throw error;
@@ -113,29 +130,33 @@ export const useCreateMioframeSpace = (parentHandle: Ref<FileSystemDirectoryHand
       if (inspection.looksLikeExistingSpace) {
         status.value = 'existing-space-conflict';
         existingConflictTargetHandle.value = targetHandle;
-        return { status: 'existing-space-conflict' };
+        return;
       }
 
       status.value = 'editing-name';
-      return { status: 'ordinary-folder-exists' };
+      throwFieldError(EXISTING_ORDINARY_FOLDER_ERROR);
     } catch (error) {
+      if (error instanceof CreateMioframeSpaceFieldError) {
+        throw error;
+      }
+
       status.value = 'editing-name';
       handleUnexpectedError(error);
-      return { status: 'failed' };
+      throw new CreateMioframeSpaceHandledError();
     } finally {
       loading.value = false;
     }
   };
 
-  const openExistingSpaceFromConflict = async (): Promise<boolean> => {
+  const openExistingSpaceFromConflict = async (): Promise<void> => {
     if (status.value !== 'existing-space-conflict' || loading.value) {
-      return false;
+      throw new CreateMioframeSpaceHandledError();
     }
 
     const targetHandle = existingConflictTargetHandle.value;
 
     if (!targetHandle) {
-      return false;
+      throw new CreateMioframeSpaceHandledError();
     }
 
     loading.value = true;
@@ -143,11 +164,10 @@ export const useCreateMioframeSpace = (parentHandle: Ref<FileSystemDirectoryHand
 
     try {
       await addDeviceDirectory(targetHandle);
-      return true;
     } catch (error) {
       status.value = 'existing-space-conflict';
       handleUnexpectedError(error);
-      return false;
+      throw new CreateMioframeSpaceHandledError();
     } finally {
       loading.value = false;
     }
