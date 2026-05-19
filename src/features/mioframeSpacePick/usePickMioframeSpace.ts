@@ -8,13 +8,11 @@ import { reportHandledError } from '@shared/lib/reportHandledError';
 import { useDialog } from '@shared/ui/Dialog';
 import { useSnackbar } from '@shared/ui/Snackbar';
 import { inspectMioframeSpaceDirectory } from './mioframeSpacePick.helpers';
-import { getMioframeSpaceNameError, normalizeMioframeSpaceName } from './spaceNameValidation';
+import { normalizeMioframeSpaceName } from './spaceNameValidation';
 
 const UNSUPPORTED_MESSAGE = 'Your browser does not support choosing folders for Mioframe spaces';
 const OPEN_GUARDRAIL_HEADLINE = 'No Mioframe space found';
 const OPEN_GUARDRAIL_TEXT = 'Choose a folder where a Mioframe space has already been created.';
-const EXISTING_ORDINARY_FOLDER_ERROR =
-  'A folder with this name already exists. Choose another name.';
 
 const buildAddFolderError = (message: string, causeMessage: string) =>
   new DomainError(message, {
@@ -33,9 +31,6 @@ const wrapUnexpectedInspectionError = (action: 'createSpace' | 'openSpace'): Dom
 type CreateFlowActiveState = {
   parentHandle: FileSystemDirectoryHandle;
   selectedLocation: string;
-  resultFolder: string;
-  spaceName: string | undefined;
-  errorText: string | undefined;
 };
 
 type CreateFlowInternalState =
@@ -57,72 +52,41 @@ type PublicCreateFlowIdleState = {
 type PublicCreateFlowDialogState = {
   status: 'editing-name' | 'checking-name' | 'submitting' | 'existing-space-conflict';
   selectedLocation: string;
-  resultFolder: string;
-  spaceName: string | undefined;
-  errorText: string | undefined;
 };
 
-/**
- * Public create-space flow state consumed by the feature-owned dialog host.
- */
+/** Public create-space flow state consumed by the feature-owned list item. */
 export type CreateFlowState = PublicCreateFlowIdleState | PublicCreateFlowDialogState;
-const SPACE_FOLDER_PLACEHOLDER = '<space name>';
 
-const buildResultFolder = (parentName: string, spaceName: string | undefined) => {
-  const normalizedName = normalizeMioframeSpaceName(spaceName);
-  return `${parentName} / ${normalizedName || SPACE_FOLDER_PLACEHOLDER}`;
-};
+/** Result of submitting a locally validated create-space name from the dialog. */
+export type CreateSpaceNameSubmitResult =
+  | { status: 'created' }
+  | { status: 'existing-space-conflict' }
+  | { status: 'ordinary-folder-exists' }
+  | { status: 'invalid-folder-name' }
+  | { status: 'failed' };
 
 const createActiveState = (
+  status: Exclude<CreateFlowInternalState['status'], 'idle' | 'existing-space-conflict'>,
   parentHandle: FileSystemDirectoryHandle,
-  spaceName: string | undefined,
-  errorText?: string,
-): CreateFlowActiveState => ({
+): CreateFlowInternalState => ({
+  status,
   parentHandle,
   selectedLocation: parentHandle.name,
-  resultFolder: buildResultFolder(parentHandle.name, spaceName),
-  spaceName,
-  errorText,
-});
-
-const createEditingState = (
-  parentHandle: FileSystemDirectoryHandle,
-  spaceName: string | undefined,
-  errorText?: string,
-): CreateFlowInternalState => ({
-  status: 'editing-name',
-  ...createActiveState(parentHandle, spaceName, errorText),
-});
-
-const createCheckingState = (
-  parentHandle: FileSystemDirectoryHandle,
-  spaceName: string | undefined,
-): CreateFlowInternalState => ({
-  status: 'checking-name',
-  ...createActiveState(parentHandle, spaceName, undefined),
-});
-
-const createSubmittingState = (
-  parentHandle: FileSystemDirectoryHandle,
-  spaceName: string | undefined,
-): CreateFlowInternalState => ({
-  status: 'submitting',
-  ...createActiveState(parentHandle, spaceName, undefined),
 });
 
 const createExistingConflictState = (
   parentHandle: FileSystemDirectoryHandle,
-  spaceName: string | undefined,
   targetHandle: FileSystemDirectoryHandle,
 ): CreateFlowInternalState => ({
   status: 'existing-space-conflict',
+  parentHandle,
   targetHandle,
-  ...createActiveState(parentHandle, spaceName, undefined),
+  selectedLocation: parentHandle.name,
 });
 
 /**
  * Creates the user-facing flow for creating or opening a Mioframe space.
- * @returns Reactive dialog state and actions for the Mioframe space picker.
+ * @returns Reactive flow state and actions for the Mioframe space picker.
  */
 const setupPickMioframeSpace = () => {
   const loading = ref(false);
@@ -156,11 +120,10 @@ const setupPickMioframeSpace = () => {
     await addDeviceDirectory(handle);
   };
 
-  const runPicker = async () => {
-    return await window.showDirectoryPicker({
+  const runPicker = async () =>
+    await window.showDirectoryPicker({
       mode: 'readwrite',
     });
-  };
 
   const handleUnexpectedPickerError = (error: unknown, action: 'createSpace' | 'openSpace') => {
     const fallbackError =
@@ -213,17 +176,6 @@ const setupPickMioframeSpace = () => {
       cancelLabel: 'Cancel',
     });
 
-  const updateCreateSpaceName = (spaceName: string | undefined) => {
-    if (createFlowInternalState.value.status === 'idle') {
-      return;
-    }
-
-    createFlowInternalState.value = createEditingState(
-      createFlowInternalState.value.parentHandle,
-      spaceName,
-    );
-  };
-
   const createSpace = async () => {
     if (hasActiveDialog.value) {
       return;
@@ -231,38 +183,22 @@ const setupPickMioframeSpace = () => {
 
     await withPicker('createSpace', async () => {
       const parentHandle = await runPicker();
-      createFlowInternalState.value = createEditingState(parentHandle, undefined);
+      createFlowInternalState.value = createActiveState('editing-name', parentHandle);
     });
   };
 
-  const submitCreateSpace = async () => {
+  const submitCreateSpaceName = async (
+    spaceName: string,
+  ): Promise<CreateSpaceNameSubmitResult> => {
     const dialogState = createFlowInternalState.value;
 
-    if (
-      dialogState.status === 'idle' ||
-      dialogState.status === 'existing-space-conflict' ||
-      loading.value
-    ) {
-      return;
+    if (dialogState.status === 'idle' || loading.value) {
+      return { status: 'failed' };
     }
 
-    const fieldError = getMioframeSpaceNameError(dialogState.spaceName);
-
-    if (fieldError) {
-      createFlowInternalState.value = createEditingState(
-        dialogState.parentHandle,
-        dialogState.spaceName,
-        fieldError,
-      );
-      return;
-    }
-
-    const normalizedName = normalizeMioframeSpaceName(dialogState.spaceName);
+    const normalizedName = normalizeMioframeSpaceName(spaceName);
     loading.value = true;
-    createFlowInternalState.value = createCheckingState(
-      dialogState.parentHandle,
-      dialogState.spaceName,
-    );
+    createFlowInternalState.value = createActiveState('checking-name', dialogState.parentHandle);
 
     try {
       let targetHandle: FileSystemDirectoryHandle;
@@ -278,43 +214,29 @@ const setupPickMioframeSpace = () => {
               create: true,
             });
           } catch (createError) {
+            createFlowInternalState.value = createActiveState('editing-name', dialogState.parentHandle);
+
             if (createError instanceof TypeError) {
-              createFlowInternalState.value = createEditingState(
-                dialogState.parentHandle,
-                dialogState.spaceName,
-                'Enter a valid folder name.',
-              );
-              return;
+              return { status: 'invalid-folder-name' };
             }
 
             throw createError;
           }
 
-          createFlowInternalState.value = createSubmittingState(
-            dialogState.parentHandle,
-            dialogState.spaceName,
-          );
+          createFlowInternalState.value = createActiveState('submitting', dialogState.parentHandle);
           await mountMioframeSpace(createdHandle);
           closeCreateSpaceDialog();
-          return;
+          return { status: 'created' };
         }
 
+        createFlowInternalState.value = createActiveState('editing-name', dialogState.parentHandle);
+
         if (error instanceof DOMException && error.name === 'TypeMismatchError') {
-          createFlowInternalState.value = createEditingState(
-            dialogState.parentHandle,
-            dialogState.spaceName,
-            EXISTING_ORDINARY_FOLDER_ERROR,
-          );
-          return;
+          return { status: 'ordinary-folder-exists' };
         }
 
         if (error instanceof TypeError) {
-          createFlowInternalState.value = createEditingState(
-            dialogState.parentHandle,
-            dialogState.spaceName,
-            'Enter a valid folder name.',
-          );
-          return;
+          return { status: 'invalid-folder-name' };
         }
 
         throw error;
@@ -331,51 +253,43 @@ const setupPickMioframeSpace = () => {
       if (inspection.looksLikeExistingSpace) {
         createFlowInternalState.value = createExistingConflictState(
           dialogState.parentHandle,
-          dialogState.spaceName,
           targetHandle,
         );
-        return;
+        return { status: 'existing-space-conflict' };
       }
 
-      createFlowInternalState.value = createEditingState(
-        dialogState.parentHandle,
-        dialogState.spaceName,
-        EXISTING_ORDINARY_FOLDER_ERROR,
-      );
+      createFlowInternalState.value = createActiveState('editing-name', dialogState.parentHandle);
+      return { status: 'ordinary-folder-exists' };
     } catch (error) {
-      createFlowInternalState.value = createEditingState(
-        dialogState.parentHandle,
-        dialogState.spaceName,
-      );
+      createFlowInternalState.value = createActiveState('editing-name', dialogState.parentHandle);
       handleUnexpectedPickerError(error, 'createSpace');
+      return { status: 'failed' };
     } finally {
       loading.value = false;
     }
   };
 
-  const openExistingSpaceFromConflict = async () => {
+  const openExistingSpaceFromConflict = async (): Promise<boolean> => {
     const dialogState = createFlowInternalState.value;
 
     if (dialogState.status !== 'existing-space-conflict' || loading.value) {
-      return;
+      return false;
     }
 
     loading.value = true;
-    createFlowInternalState.value = createSubmittingState(
-      dialogState.parentHandle,
-      dialogState.spaceName,
-    );
+    createFlowInternalState.value = createActiveState('submitting', dialogState.parentHandle);
 
     try {
       await mountMioframeSpace(dialogState.targetHandle);
       closeCreateSpaceDialog();
+      return true;
     } catch (error) {
       createFlowInternalState.value = createExistingConflictState(
         dialogState.parentHandle,
-        dialogState.spaceName,
         dialogState.targetHandle,
       );
       handleUnexpectedPickerError(error, 'createSpace');
+      return false;
     } finally {
       loading.value = false;
     }
@@ -434,14 +348,10 @@ const setupPickMioframeSpace = () => {
       return {
         status: state.status,
         selectedLocation: state.selectedLocation,
-        resultFolder: state.resultFolder,
-        spaceName: state.spaceName,
-        errorText: state.errorText,
       };
     }),
     createSpace,
-    updateCreateSpaceName,
-    submitCreateSpace,
+    submitCreateSpaceName,
     cancelCreateSpace: closeCreateSpaceDialog,
     openExistingSpaceFromConflict,
     openSpace,
@@ -450,7 +360,7 @@ const setupPickMioframeSpace = () => {
 
 /**
  * Creates the user-facing flow for creating or opening a Mioframe space.
- * Shared state lets the LocalFS widget trigger actions while the feature host owns dialog rendering.
- * @returns Mioframe space actions plus explicit create-flow state for the feature host.
+ * Shared state lets the feature-owned list items coordinate create and open flows.
+ * @returns Mioframe space actions plus explicit create-flow state for the feature list items.
  */
 export const usePickMioframeSpace = createGlobalState(setupPickMioframeSpace);
