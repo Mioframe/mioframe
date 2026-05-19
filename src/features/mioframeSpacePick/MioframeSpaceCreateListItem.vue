@@ -8,20 +8,10 @@ const {
   createFlowState,
   createSpace,
   loading,
-  updateCreateSpaceName,
-  submitCreateSpace,
+  submitCreateSpaceName,
   cancelCreateSpace,
   openExistingSpaceFromConflict,
 } = usePickMioframeSpace();
-
-const onApply = () => {
-  if (createFlowState.value.status === 'existing-space-conflict') {
-    void openExistingSpaceFromConflict();
-    return;
-  }
-
-  void submitCreateSpace();
-};
 </script>
 
 <template>
@@ -45,16 +35,10 @@ const onApply = () => {
       createFlowState.status === 'submitting' ||
       createFlowState.status === 'existing-space-conflict'
     "
-    :model-value="createFlowState.spaceName"
-    :mode="
-      createFlowState.status === 'existing-space-conflict' ? 'existing-space-conflict' : 'create'
-    "
-    :error-text="createFlowState.errorText"
     :selected-location="createFlowState.selectedLocation"
-    :result-folder="createFlowState.resultFolder"
     :loading="loading"
-    @update:model-value="updateCreateSpaceName"
-    @apply="onApply"
+    :submit-space-name="submitCreateSpaceName"
+    :open-existing-space="openExistingSpaceFromConflict"
     @cancel="cancelCreateSpace"
   />
 </template>
