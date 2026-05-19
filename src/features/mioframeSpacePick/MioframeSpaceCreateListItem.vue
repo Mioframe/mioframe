@@ -5,7 +5,7 @@ import MioframeSpaceCreateDialog from './MioframeSpaceCreateDialog.vue';
 import { usePickMioframeSpace } from './usePickMioframeSpace';
 
 const {
-  createFlowState,
+  createDialogState,
   createSpace,
   loading,
   submitCreateSpaceName,
@@ -29,13 +29,8 @@ const {
   </MDListItem>
 
   <MioframeSpaceCreateDialog
-    v-if="
-      createFlowState.status === 'editing-name' ||
-      createFlowState.status === 'checking-name' ||
-      createFlowState.status === 'submitting' ||
-      createFlowState.status === 'existing-space-conflict'
-    "
-    :selected-location="createFlowState.selectedLocation"
+    v-if="createDialogState"
+    :selected-location="createDialogState.selectedLocation"
     :loading="loading"
     :submit-space-name="submitCreateSpaceName"
     :open-existing-space="openExistingSpaceFromConflict"
