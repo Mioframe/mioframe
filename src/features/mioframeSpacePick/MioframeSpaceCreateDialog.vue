@@ -18,7 +18,9 @@ const props = defineProps<{
 }>();
 
 const emit = defineEmits<{
-  close: [];
+  created: [];
+  openedExistingSpace: [];
+  canceled: [];
 }>();
 
 const parentHandle = computed(() => props.parentHandle);
@@ -73,7 +75,7 @@ watch(spaceName, () => {
 const onApply = async () => {
   if (hasExistingSpaceConflict.value) {
     if (await openExistingSpaceFromConflict()) {
-      emit('close');
+      emit('openedExistingSpace');
     }
     return;
   }
@@ -86,10 +88,10 @@ const onApply = async () => {
   }
 
   try {
-    const shouldClose = await submitCreateSpaceName(normalizedSpaceName.value);
+    const wasCreated = await submitCreateSpaceName(normalizedSpaceName.value);
 
-    if (shouldClose) {
-      emit('close');
+    if (wasCreated) {
+      emit('created');
     }
   } catch (error) {
     if (isCreateMioframeSpaceFieldError(error)) {
@@ -108,7 +110,7 @@ const onApply = async () => {
     has-cancel-action
     :loading="loading"
     @apply="onApply"
-    @cancel="emit('close')"
+    @cancel="emit('canceled')"
   >
     <MDTextField
       v-model:model-value="spaceName"
