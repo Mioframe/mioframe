@@ -49,13 +49,13 @@ type PublicCreateFlowIdleState = {
   status: 'idle';
 };
 
-type PublicCreateFlowDialogState = {
+export type CreateDialogState = {
   status: 'editing-name' | 'checking-name' | 'submitting' | 'existing-space-conflict';
   selectedLocation: string;
 };
 
-/** Public create-space flow state consumed by the feature-owned list item. */
-export type CreateFlowState = PublicCreateFlowIdleState | PublicCreateFlowDialogState;
+/** Public create-space flow state consumed by tests and low-level flow assertions. */
+export type CreateFlowState = PublicCreateFlowIdleState | CreateDialogState;
 
 /** Result of submitting a locally validated create-space name from the dialog. */
 export type CreateSpaceNameSubmitResult =
@@ -100,7 +100,19 @@ const setupPickMioframeSpace = () => {
   const isSupported = toRef(
     () => 'showDirectoryPicker' in window && isFunction(window.showDirectoryPicker),
   );
-  const hasActiveDialog = computed(() => createFlowInternalState.value.status !== 'idle');
+  const createDialogState = computed<CreateDialogState | undefined>(() => {
+    const state = createFlowInternalState.value;
+
+    if (state.status === 'idle') {
+      return undefined;
+    }
+
+    return {
+      status: state.status,
+      selectedLocation: state.selectedLocation,
+    };
+  });
+  const hasActiveDialog = computed(() => createDialogState.value !== undefined);
 
   const showUnsupportedMessage = () => {
     addSnackbar({
@@ -338,18 +350,8 @@ const setupPickMioframeSpace = () => {
     isSupported,
     loading,
     hasActiveDialog,
-    createFlowState: computed<CreateFlowState>(() => {
-      const state = createFlowInternalState.value;
-
-      if (state.status === 'idle') {
-        return state;
-      }
-
-      return {
-        status: state.status,
-        selectedLocation: state.selectedLocation,
-      };
-    }),
+    createDialogState,
+    createFlowState: computed<CreateFlowState>(() => createDialogState.value ?? { status: 'idle' }),
     createSpace,
     submitCreateSpaceName,
     cancelCreateSpace: closeCreateSpaceDialog,
