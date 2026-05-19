@@ -7,6 +7,12 @@ const deviceFiles = ref<Array<{ name: string; description?: string }>>([]);
 const disconnectDeviceDirectoryMock = vi.fn();
 const createSpaceMock = vi.fn();
 const openSpaceMock = vi.fn();
+const mioframeDialogHostStub = defineComponent({
+  name: 'MioframeSpacePickDialogsStub',
+  setup() {
+    return () => h('div', { 'data-testid': 'mioframe-space-pick-dialogs' });
+  },
+});
 
 vi.mock('@entity/mountedDirectories', () => ({
   DEVICE_FILES: 'Device files',
@@ -22,23 +28,10 @@ vi.mock('@feature/deviceDirectoryDisconnect', () => ({
 }));
 
 vi.mock('@feature/mioframeSpacePick', () => ({
-  MioframeSpaceCreateDialog: defineComponent({
-    name: 'MioframeSpaceCreateDialogStub',
-    setup() {
-      return () => null;
-    },
-  }),
+  MioframeSpacePickDialogs: mioframeDialogHostStub,
   usePickMioframeSpace: () => ({
     loading: false,
-    showCreateSpaceDialog: false,
-    createSpaceName: undefined,
-    createSpaceDialogError: undefined,
-    createSpaceSelectedLocation: '',
-    createSpaceResultFolder: '',
     createSpace: createSpaceMock,
-    updateCreateSpaceName: vi.fn(),
-    submitCreateSpace: vi.fn(),
-    cancelCreateSpace: vi.fn(),
     openSpace: openSpaceMock,
   }),
 }));
@@ -161,6 +154,13 @@ describe('LocalFSWidget', () => {
     expect(wrapper.text()).not.toContain('Create Mioframe folder');
     expect(wrapper.text()).not.toContain('local directory');
     expect(wrapper.text()).not.toContain('stored directly in that folder');
+  });
+
+  it('renders the Mioframe space dialog host once and does not depend on create-dialog internals', async () => {
+    const wrapper = await mountLocalFSWidget();
+
+    expect(wrapper.findAll('[data-testid="mioframe-space-pick-dialogs"]')).toHaveLength(1);
+    expect(wrapper.text()).not.toContain('Name new space');
   });
 
   it('renders mounted local-space descriptions from the entity contract', async () => {

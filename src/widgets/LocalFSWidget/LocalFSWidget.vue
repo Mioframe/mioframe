@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { DEVICE_FILES, useFileSystem } from '@entity/mountedDirectories';
 import { useDisconnectDeviceDirectory } from '@feature/deviceDirectoryDisconnect';
-import { MioframeSpaceCreateDialog, usePickMioframeSpace } from '@feature/mioframeSpacePick';
+import { MioframeSpacePickDialogs, usePickMioframeSpace } from '@feature/mioframeSpacePick';
 import { MDSymbol } from '@shared/ui/Icon';
 import { MDListContainer, MDListItem } from '@shared/ui/Lists';
 import { PathUtils } from '@shared/lib/virtualFileSystem';
@@ -13,19 +13,7 @@ const emit = defineEmits<{
 
 const { deviceFiles } = useFileSystem();
 const { disconnectDeviceDirectory } = useDisconnectDeviceDirectory();
-const {
-  loading,
-  showCreateSpaceDialog,
-  createSpaceName,
-  createSpaceDialogError,
-  createSpaceSelectedLocation,
-  createSpaceResultFolder,
-  createSpace,
-  updateCreateSpaceName,
-  submitCreateSpace,
-  cancelCreateSpace,
-  openSpace,
-} = usePickMioframeSpace();
+const { loading, createSpace, openSpace } = usePickMioframeSpace();
 
 const onClickDeviceFile = (name: string) => {
   emit('clickPath', PathUtils.join('/', DEVICE_FILES, name));
@@ -74,15 +62,5 @@ const onDisconnectDeviceFile = (name: string) => {
     </MDListItem>
   </MDListContainer>
 
-  <MioframeSpaceCreateDialog
-    v-if="showCreateSpaceDialog"
-    :model-value="createSpaceName"
-    :error-text="createSpaceDialogError"
-    :selected-location="createSpaceSelectedLocation"
-    :result-folder="createSpaceResultFolder"
-    :loading="loading"
-    @update:model-value="updateCreateSpaceName"
-    @apply="submitCreateSpace"
-    @cancel="cancelCreateSpace"
-  />
+  <MioframeSpacePickDialogs />
 </template>

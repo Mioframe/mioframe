@@ -6,6 +6,7 @@ import { MDTextField } from '@shared/ui/TextField';
 const modelValue = defineModel<string | undefined>('modelValue');
 
 const props = defineProps<{
+  mode?: 'create' | 'existing-space-conflict' | undefined;
   selectedLocation: string;
   resultFolder: string;
   errorText?: string | undefined;
@@ -17,9 +18,30 @@ const emit = defineEmits<{
   cancel: [];
 }>();
 
-const supportingText = computed(
-  () =>
-    props.errorText ?? 'Mioframe will create a folder with this name inside the selected location.',
+const supportingText = computed(() => {
+  if (props.errorText) {
+    return props.errorText;
+  }
+
+  if (props.mode === 'existing-space-conflict') {
+    return 'A Mioframe space with this name already exists in the selected location. Open it or choose a different name.';
+  }
+
+  return 'Mioframe will create a folder with this name inside the selected location.';
+});
+
+const headline = computed(() =>
+  props.mode === 'existing-space-conflict' ? 'Space already exists' : 'Name new space',
+);
+
+const dialogSupportingText = computed(() =>
+  props.mode === 'existing-space-conflict'
+    ? 'Choose a different name or open the existing Mioframe space.'
+    : 'Choose a name for the new Mioframe space.',
+);
+
+const applyLabel = computed(() =>
+  props.mode === 'existing-space-conflict' ? 'Open space' : 'Create',
 );
 
 const onApply = () => {
@@ -33,9 +55,9 @@ const onCancel = () => {
 
 <template>
   <MDDialog
-    headline="Name new space"
-    supporting-text="Choose a name for the new Mioframe space."
-    apply-label="Create"
+    :headline="headline"
+    :supporting-text="dialogSupportingText"
+    :apply-label="applyLabel"
     cancel-label="Cancel"
     has-cancel-action
     :loading="loading"
