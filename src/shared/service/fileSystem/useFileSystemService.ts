@@ -42,9 +42,7 @@ const normalizeDeviceDirectoryDescription = (description?: string) =>
 
 const normalizePersistedDeviceDirectoryRecord = (record: PersistedDeviceDirectoryRecord) => ({
   ...record,
-  ...(record.name === OPFSName
-    ? { description: OPFS_DIRECTORY_DESCRIPTION }
-    : { description: normalizeDeviceDirectoryDescription(record.description) }),
+  description: normalizeDeviceDirectoryDescription(record.description),
 });
 
 const setupFileSystemService = () => {
@@ -147,7 +145,17 @@ const setupFileSystemService = () => {
 
   const hydrateDeviceDirectories = async () => {
     const records = await getRecordList();
-    const normalizedRecords = records.map(normalizePersistedDeviceDirectoryRecord);
+    const normalizedRecords: PersistedDeviceDirectoryRecord[] = [];
+
+    records.forEach((record) => {
+      const normalizedRecord = normalizePersistedDeviceDirectoryRecord(record);
+      const nextName = getUniqueDeviceDirectoryName(normalizedRecord.name, normalizedRecords);
+
+      normalizedRecords.push({
+        ...normalizedRecord,
+        name: nextName,
+      });
+    });
     const permissionStates = await Promise.all(
       normalizedRecords.map(async (record) => ({
         permissionState: await record.handle.queryPermission?.({

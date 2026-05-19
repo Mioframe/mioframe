@@ -18,8 +18,10 @@ const props = withDefaults(
     supportingText: string;
     type?: 'basic' | 'full-screen' | undefined;
     cancelLabel?: string | undefined;
+    tertiaryLabel?: string | undefined;
     applyLabel: string;
     hasCancelAction?: boolean | undefined;
+    hasTertiaryAction?: boolean | undefined;
     loading?: boolean | number | undefined;
     class?: unknown;
   }>(),
@@ -29,6 +31,7 @@ const props = withDefaults(
 const emit = defineEmits<{
   cancel: [];
   apply: [];
+  tertiary: [];
 }>();
 
 const slots = defineSlots<{
@@ -39,7 +42,9 @@ const slots = defineSlots<{
 const {
   applyLabel,
   cancelLabel,
+  tertiaryLabel,
   hasCancelAction,
+  hasTertiaryAction,
   headline,
   loading,
   supportingText,
@@ -81,6 +86,12 @@ const onSubmit = () => {
 const onCancel = () => {
   if (!loading.value && hasCancelAction.value) {
     emit('cancel');
+  }
+};
+
+const onTertiary = () => {
+  if (!loading.value && hasTertiaryAction.value) {
+    emit('tertiary');
   }
 };
 
@@ -126,6 +137,13 @@ useOnEscapeKeyStacked(() => {
       </div>
 
       <div class="md-dialog__actions">
+        <MDButton
+          v-if="hasTertiaryAction"
+          :label="tertiaryLabel ?? ''"
+          color="text"
+          @click="onTertiary"
+        />
+
         <MDButton v-if="hasCancelAction" :label="cancelLabel" color="text" @click="onCancel" />
 
         <MDButton :label="applyLabel" :loading="loading" color="text" form-action="submit" />

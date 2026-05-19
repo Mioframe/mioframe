@@ -6,14 +6,15 @@ import type { Ref } from 'vue';
 import { computed, reactive, ref, shallowRef, watch, watchEffect } from 'vue';
 
 type AlertDescription = {
-  type: 'alert' | 'confirm';
+  type: 'alert' | 'confirm' | 'choice';
   headline: string;
   supportingText: string;
   id: string;
   confirmLabel?: string | undefined;
   cancelLabel?: string | undefined;
+  tertiaryLabel?: string | undefined;
   symbolName?: string | undefined;
-  callback: (result: boolean) => void;
+  callback: (result: boolean | 'tertiary') => void;
 };
 
 /**
@@ -28,6 +29,8 @@ export type DialogOptions = {
   confirmLabel?: string | undefined;
   /** Label for the secondary cancel action. */
   cancelLabel?: string | undefined;
+  /** Label for an optional tertiary action. */
+  tertiaryLabel?: string | undefined;
   /** Optional Material symbol name displayed in the dialog. */
   symbolName?: string | undefined;
 };
@@ -56,12 +59,12 @@ export const useDialogState = createGlobalState(() => {
     alertSet.add(nextDialog);
   };
 
-  const addDialog = async (type: 'alert' | 'confirm', options: DialogOptions) =>
-    await new Promise<boolean>((resolve) => {
+  const addDialog = async (type: 'alert' | 'confirm' | 'choice', options: DialogOptions) =>
+    await new Promise<boolean | 'tertiary'>((resolve) => {
       const id = sessionUniqueId('dialog');
       let resolved = false;
 
-      const callback = (result: boolean) => {
+      const callback = (result: boolean | 'tertiary') => {
         if (resolved || activeDialog !== alertDescription) {
           return;
         }
@@ -80,6 +83,7 @@ export const useDialogState = createGlobalState(() => {
         supportingText: options.supportingText,
         confirmLabel: options.confirmLabel,
         cancelLabel: options.cancelLabel,
+        tertiaryLabel: options.tertiaryLabel,
         callback,
         symbolName: options.symbolName,
       };
@@ -88,9 +92,12 @@ export const useDialogState = createGlobalState(() => {
       showNextDialog();
     });
 
-  const confirm = (options: DialogOptions) => addDialog('confirm', options);
+  const confirm = async (options: DialogOptions) => (await addDialog('confirm', options)) === true;
 
-  const alert = (options: Omit<DialogOptions, 'cancelLabel'>) => addDialog('alert', options);
+  const choose = (options: DialogOptions) => addDialog('choice', options);
+
+  const alert = async (options: Omit<DialogOptions, 'cancelLabel'>) =>
+    (await addDialog('alert', options)) === true;
 
   const numberOfOpenDialogs = ref(0);
 
@@ -98,6 +105,7 @@ export const useDialogState = createGlobalState(() => {
 
   return {
     alert,
+    choose,
     confirm,
     alertSet,
     numberOfOpenDialogs,
@@ -110,9 +118,10 @@ export const useDialogState = createGlobalState(() => {
  * @returns Global dialog actions.
  */
 export const useDialog = () => {
-  const { alert, confirm } = useDialogState();
+  const { alert, choose, confirm } = useDialogState();
   return {
     alert,
+    choose,
     confirm,
   };
 };

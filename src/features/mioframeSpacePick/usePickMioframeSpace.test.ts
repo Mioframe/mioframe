@@ -5,12 +5,14 @@ import { usePickMioframeSpace } from './usePickMioframeSpace';
 const {
   addDeviceDirectoryMock,
   addSnackbarMock,
+  chooseMock,
   confirmMock,
   reportHandledErrorMock,
   showDirectoryPickerMock,
 } = vi.hoisted(() => ({
   addDeviceDirectoryMock: vi.fn(),
   addSnackbarMock: vi.fn(),
+  chooseMock: vi.fn(),
   confirmMock: vi.fn(),
   reportHandledErrorMock: vi.fn(),
   showDirectoryPickerMock: vi.fn(),
@@ -30,6 +32,7 @@ vi.mock('@shared/ui/Snackbar', () => ({
 
 vi.mock('@shared/ui/Dialog', () => ({
   useDialog: () => ({
+    choose: chooseMock,
     confirm: confirmMock,
   }),
 }));
@@ -106,7 +109,17 @@ const createDirectoryHandle = ({
       })()) as FileSystemDirectoryHandle['values'],
     getDirectoryHandle: getDirectoryHandleMock,
     getDirectoryHandleMock,
-    getFileHandle: vi.fn(),
+    getFileHandle: vi.fn(async (fileName: string, _options?: FileSystemGetFileOptions) => {
+      const entry = entries.find(([entryName, childHandle]) => {
+        return entryName === fileName && childHandle.kind === 'file';
+      })?.[1];
+
+      if (entry?.kind === 'file') {
+        return entry as FileSystemFileHandle;
+      }
+
+      throw new DOMException('File not found', 'NotFoundError');
+    }),
     getFile(fileName: string, options?: FileSystemGetFileOptions) {
       return handle.getFileHandle(fileName, options);
     },
@@ -130,10 +143,12 @@ describe('usePickMioframeSpace', () => {
   beforeEach(() => {
     addDeviceDirectoryMock.mockReset();
     addSnackbarMock.mockReset();
+    chooseMock.mockReset();
     confirmMock.mockReset();
     reportHandledErrorMock.mockReset();
     showDirectoryPickerMock.mockReset();
     addDeviceDirectoryMock.mockResolvedValue(undefined);
+    chooseMock.mockResolvedValue(false);
     confirmMock.mockResolvedValue(false);
     Object.defineProperty(window, 'showDirectoryPicker', {
       configurable: true,
@@ -208,7 +223,7 @@ describe('usePickMioframeSpace', () => {
     expect(showDirectoryPickerMock).toHaveBeenCalledTimes(1);
   });
 
-  it('create space mounts a suitable folder directly', async () => {
+  it('create space mounts an empty folder directly', async () => {
     const selectedHandle = createDirectoryHandle({ name: 'Project Space' });
     showDirectoryPickerMock.mockResolvedValueOnce(selectedHandle);
 
@@ -232,24 +247,26 @@ describe('usePickMioframeSpace', () => {
     expect(selectedHandle.getDirectoryHandleMock).not.toHaveBeenCalled();
   });
 
-  it('create space guards against broad common folder names', async () => {
+  it('create space asks for confirmation before using a broad common folder name', async () => {
     showDirectoryPickerMock.mockResolvedValueOnce(createDirectoryHandle({ name: 'Documents' }));
+    chooseMock.mockResolvedValueOnce(false);
 
     const { createSpace } = usePickMioframeSpace();
 
     await createSpace();
 
-    expect(confirmMock).toHaveBeenCalledWith({
-      headline: 'Choose a dedicated folder',
+    expect(chooseMock).toHaveBeenCalledWith({
+      headline: 'Create Mioframe space here?',
       supportingText:
-        'This folder already contains other files. Create or select an empty folder for the new Mioframe space.',
-      confirmLabel: 'Choose another folder',
+        'This folder already contains files. Mioframe will store its space files directly in the selected folder.',
+      confirmLabel: 'Create here',
       cancelLabel: 'Cancel',
+      tertiaryLabel: 'Choose another folder',
     });
     expect(addDeviceDirectoryMock).not.toHaveBeenCalled();
   });
 
-  it('create space guards against folders with many ordinary files', async () => {
+  it('create space asks for confirmation before using a non-empty ordinary folder', async () => {
     const selectedHandle = createDirectoryHandle({
       name: 'Project Space',
       entries: Array.from({ length: 12 }, (_, index) => [
@@ -258,13 +275,76 @@ describe('usePickMioframeSpace', () => {
       ]),
     });
     showDirectoryPickerMock.mockResolvedValueOnce(selectedHandle);
+    chooseMock.mockResolvedValueOnce(false);
 
     const { createSpace } = usePickMioframeSpace();
 
     await createSpace();
 
-    expect(confirmMock).toHaveBeenCalledTimes(1);
+    expect(chooseMock).toHaveBeenCalledTimes(1);
     expect(addDeviceDirectoryMock).not.toHaveBeenCalled();
+  });
+
+  it('create space mounts a non-empty ordinary folder after explicit confirmation', async () => {
+    const selectedHandle = createDirectoryHandle({
+      name: 'Project Space',
+      entries: [['notes.txt', createFileHandle('notes.txt')]],
+    });
+    showDirectoryPickerMock.mockResolvedValueOnce(selectedHandle);
+    chooseMock.mockResolvedValueOnce(true);
+
+    const { createSpace } = usePickMioframeSpace();
+
+    await createSpace();
+
+    expect(addDeviceDirectoryMock).toHaveBeenCalledWith(selectedHandle);
+  });
+
+  it('create space retries folder selection when the user chooses another folder', async () => {
+    const firstHandle = createDirectoryHandle({
+      name: 'Project Space',
+      entries: [['notes.txt', createFileHandle('notes.txt')]],
+    });
+    const secondHandle = createDirectoryHandle({ name: 'Empty Space' });
+    showDirectoryPickerMock.mockResolvedValueOnce(firstHandle).mockResolvedValueOnce(secondHandle);
+    chooseMock.mockResolvedValueOnce('tertiary');
+
+    const { createSpace } = usePickMioframeSpace();
+
+    await createSpace();
+
+    expect(showDirectoryPickerMock).toHaveBeenCalledTimes(2);
+    expect(addDeviceDirectoryMock).toHaveBeenCalledWith(secondHandle);
+  });
+
+  it('create space does not mount when the user cancels the confirmation', async () => {
+    const selectedHandle = createDirectoryHandle({
+      name: 'Project Space',
+      entries: [['notes.txt', createFileHandle('notes.txt')]],
+    });
+    showDirectoryPickerMock.mockResolvedValueOnce(selectedHandle);
+    chooseMock.mockResolvedValueOnce(false);
+
+    const { createSpace } = usePickMioframeSpace();
+
+    await createSpace();
+
+    expect(addDeviceDirectoryMock).not.toHaveBeenCalled();
+  });
+
+  it('create space mounts an existing Mioframe space instead of treating it like a plain new folder', async () => {
+    const selectedHandle = createDirectoryHandle({
+      name: 'Existing Space',
+      entries: [['storage-adapter-id.automerge', createFileHandle('storage-adapter-id.automerge')]],
+    });
+    showDirectoryPickerMock.mockResolvedValueOnce(selectedHandle);
+
+    const { createSpace } = usePickMioframeSpace();
+
+    await createSpace();
+
+    expect(addDeviceDirectoryMock).toHaveBeenCalledWith(selectedHandle);
+    expect(chooseMock).not.toHaveBeenCalled();
   });
 
   it('open space opens the system directory picker directly', async () => {
@@ -282,10 +362,20 @@ describe('usePickMioframeSpace', () => {
     expect(addDeviceDirectoryMock).toHaveBeenCalledWith(existingSpaceHandle);
   });
 
-  it('open space mounts a folder that appears to contain an existing Mioframe space', async () => {
+  it('open space still detects the current marker file after many unrelated entries', async () => {
     const existingSpaceHandle = createDirectoryHandle({
-      name: 'Archive',
-      entries: [['another-id.automerge', createFileHandle('another-id.automerge')]],
+      name: 'Deep Space',
+      entries: [
+        ...Array.from(
+          { length: 40 },
+          (_, index) =>
+            [`notes-${index}.txt`, createFileHandle(`notes-${index}.txt`)] satisfies [
+              string,
+              FileSystemHandle,
+            ],
+        ),
+        ['storage-adapter-id.automerge', createFileHandle('storage-adapter-id.automerge')],
+      ],
     });
     showDirectoryPickerMock.mockResolvedValueOnce(existingSpaceHandle);
 
@@ -295,6 +385,36 @@ describe('usePickMioframeSpace', () => {
 
     expect(addDeviceDirectoryMock).toHaveBeenCalledWith(existingSpaceHandle);
     expect(confirmMock).not.toHaveBeenCalled();
+  });
+
+  it('open space mounts a folder that contains the current marker file', async () => {
+    const existingSpaceHandle = createDirectoryHandle({
+      name: 'Archive',
+      entries: [['storage-adapter-id.automerge', createFileHandle('storage-adapter-id.automerge')]],
+    });
+    showDirectoryPickerMock.mockResolvedValueOnce(existingSpaceHandle);
+
+    const { openSpace } = usePickMioframeSpace();
+
+    await openSpace();
+
+    expect(addDeviceDirectoryMock).toHaveBeenCalledWith(existingSpaceHandle);
+    expect(confirmMock).not.toHaveBeenCalled();
+  });
+
+  it('open space does not treat legacy marker file names as a current Mioframe space', async () => {
+    const selectedHandle = createDirectoryHandle({
+      name: 'Archive',
+      entries: [['another-id.automerge', createFileHandle('another-id.automerge')]],
+    });
+    showDirectoryPickerMock.mockResolvedValueOnce(selectedHandle);
+
+    const { openSpace } = usePickMioframeSpace();
+
+    await openSpace();
+
+    expect(addDeviceDirectoryMock).not.toHaveBeenCalled();
+    expect(confirmMock).toHaveBeenCalled();
   });
 
   it('open space does not mount a folder that lacks Mioframe space signals', async () => {
@@ -311,7 +431,7 @@ describe('usePickMioframeSpace', () => {
     expect(confirmMock).toHaveBeenCalledWith({
       headline: 'No Mioframe space found',
       supportingText:
-        'This folder does not contain Mioframe service files. Select an existing Mioframe space folder.',
+        'This folder does not contain the current Mioframe space marker file. Select an existing Mioframe space folder.',
       confirmLabel: 'Choose another folder',
       cancelLabel: 'Cancel',
     });
@@ -325,7 +445,7 @@ describe('usePickMioframeSpace', () => {
     });
     const validHandle = createDirectoryHandle({
       name: 'Existing Space',
-      entries: [['space-id.automerge', createFileHandle('space-id.automerge')]],
+      entries: [['storage-adapter-id.automerge', createFileHandle('storage-adapter-id.automerge')]],
     });
     showDirectoryPickerMock.mockResolvedValueOnce(invalidHandle).mockResolvedValueOnce(validHandle);
     confirmMock.mockResolvedValueOnce(true);
@@ -346,7 +466,7 @@ describe('usePickMioframeSpace', () => {
   it('reports a privacy-safe error when opening a selected folder fails', async () => {
     const existingSpaceHandle = createDirectoryHandle({
       name: 'Existing Space',
-      entries: [['space-id.automerge', createFileHandle('space-id.automerge')]],
+      entries: [['storage-adapter-id.automerge', createFileHandle('storage-adapter-id.automerge')]],
     });
     addDeviceDirectoryMock.mockRejectedValueOnce(new Error('raw filesystem detail'));
     showDirectoryPickerMock.mockResolvedValueOnce(existingSpaceHandle);

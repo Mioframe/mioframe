@@ -1,5 +1,4 @@
-import { zodAutomergeFileName } from '@shared/lib/automergeAdapter';
-import { zodIs } from '@shared/lib/validateZodScheme';
+const CURRENT_MIOFRAME_SPACE_MARKER = 'storage-adapter-id.automerge';
 
 const RISKY_FOLDER_NAMES = new Set([
   'desktop',
@@ -10,25 +9,18 @@ const RISKY_FOLDER_NAMES = new Set([
   'onedrive',
   'icloud drive',
 ]);
-const MAX_SCANNED_ENTRIES = 24;
-const MANY_ORDINARY_ENTRIES_THRESHOLD = 12;
-
 /**
- * Summary of the bounded folder scan used by Mioframe space selection.
+ * Summary of the folder inspection used by Mioframe space selection.
  */
 export type MioframeSpaceInspection = {
-  /** Whether the scan observed no entries. */
+  /** Whether the folder currently contains no entries. */
   isEmpty: boolean;
-  /** Whether the folder contains existing Mioframe service files. */
+  /** Whether the folder contains the current Mioframe service marker. */
   looksLikeExistingSpace: boolean;
   /** Whether the visible folder name is a broad common user folder. */
   looksRiskyByName: boolean;
-  /** Whether the bounded scan found many non-service entries. */
-  looksLargeAndOrdinary: boolean;
-  /** Number of non-service entries encountered during the bounded scan. */
-  ordinaryEntryCount: number;
-  /** Total number of scanned entries before the scan completed or stopped. */
-  scannedEntryCount: number;
+  /** Whether the folder contains unrelated entries without the current marker. */
+  hasOrdinaryEntries: boolean;
 };
 
 /**
@@ -40,37 +32,29 @@ export const isRiskyMioframeSpaceFolderName = (name: string) =>
   RISKY_FOLDER_NAMES.has(name.trim().toLowerCase());
 
 /**
- * Inspects the visible entries of a picked folder to decide whether it already looks like a Mioframe space.
+ * Inspects a picked folder to decide whether it is empty, already contains the current Mioframe
+ * marker, or contains ordinary entries that require explicit confirmation before reuse.
  * @param handle - Folder handle selected by the user.
- * @returns Summary of the bounded folder inspection.
+ * @returns Summary of the folder inspection.
  */
 export const inspectMioframeSpaceDirectory = async (
   handle: FileSystemDirectoryHandle,
 ): Promise<MioframeSpaceInspection> => {
-  let scannedEntryCount = 0;
-  let ordinaryEntryCount = 0;
-  let automergeFileCount = 0;
+  let looksLikeExistingSpace = false;
 
-  for await (const [name, childHandle] of handle.entries()) {
-    scannedEntryCount += 1;
-
-    if (childHandle.kind === 'file' && zodIs(name, zodAutomergeFileName)) {
-      automergeFileCount += 1;
-    } else {
-      ordinaryEntryCount += 1;
-    }
-
-    if (scannedEntryCount >= MAX_SCANNED_ENTRIES) {
-      break;
-    }
+  try {
+    await handle.getFileHandle(CURRENT_MIOFRAME_SPACE_MARKER);
+    looksLikeExistingSpace = true;
+  } catch {
+    looksLikeExistingSpace = false;
   }
 
+  const firstEntry = await handle.values().next();
+
   return {
-    isEmpty: scannedEntryCount === 0,
-    looksLikeExistingSpace: automergeFileCount > 0,
+    isEmpty: firstEntry.done ?? false,
+    looksLikeExistingSpace,
     looksRiskyByName: isRiskyMioframeSpaceFolderName(handle.name),
-    looksLargeAndOrdinary: ordinaryEntryCount >= MANY_ORDINARY_ENTRIES_THRESHOLD,
-    ordinaryEntryCount,
-    scannedEntryCount,
+    hasOrdinaryEntries: !(firstEntry.done ?? false) && !looksLikeExistingSpace,
   };
 };

@@ -4,7 +4,7 @@ import { MDState } from '../State';
 const { is = 'div', disabled } = defineProps<{
   headline: string;
   supportingText?: string | undefined;
-  multilineSupportingText?: boolean | undefined;
+  lines?: 1 | 2 | 3 | undefined;
   is?: Is | undefined;
   type?: (Is extends 'button' ? 'button' | 'submit' | 'reset' : false) | undefined;
   itemRole?: string | undefined;
@@ -72,7 +72,8 @@ const onKeydown = (e: KeyboardEvent) => {
         v-if="supportingText || !!slots.supportingText"
         class="md-list-item__supporting-text"
         :class="{
-          'md-list-item__supporting-text--multiline': multilineSupportingText,
+          'md-list-item__supporting-text--two-lines': lines === 2,
+          'md-list-item__supporting-text--three-lines': lines === 3,
         }"
       >
         <slot name="supportingText">{{ supportingText }}</slot>
@@ -88,7 +89,10 @@ const onKeydown = (e: KeyboardEvent) => {
 <style scoped>
 .md-list-item {
   --horizontal-gap: var(--md-list-item-horizontal-gap, 16px);
-  --min-height: var(--md-list-item-min-height, 56px);
+  --min-height: var(
+    --md-list-item-min-height,
+    v-bind('lines === 3 ? "88px" : lines === 2 ? "72px" : "56px"')
+  );
   --border-radius: var(--md-list-item-border-radius, 0px);
 
   --md-container-color: var(--md-list-item-container-color, var(--md-sys-color-surface));
@@ -138,7 +142,7 @@ const onKeydown = (e: KeyboardEvent) => {
     display: flex;
     flex-direction: column;
     flex-grow: 1;
-    overflow: auto;
+    min-width: 0;
 
     .md-list-item__leading-avatar-container ~ &,
     .md-list-item__leading-icon ~ & {
@@ -158,9 +162,11 @@ const onKeydown = (e: KeyboardEvent) => {
   }
 
   &__supporting-text {
-    white-space: nowrap;
+    display: -webkit-box;
     overflow: hidden;
     text-overflow: ellipsis;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 1;
 
     color: var(--md-sys-color-on-surface-variant);
     font-family: var(--md-sys-typescale-body-medium-font);
@@ -170,10 +176,12 @@ const onKeydown = (e: KeyboardEvent) => {
     font-weight: var(--md-sys-typescale-body-medium-weight);
   }
 
-  &__supporting-text--multiline {
-    white-space: normal;
-    overflow: visible;
-    text-overflow: clip;
+  &__supporting-text--two-lines {
+    -webkit-line-clamp: 2;
+  }
+
+  &__supporting-text--three-lines {
+    -webkit-line-clamp: 3;
   }
 
   &__leading-avatar-container {

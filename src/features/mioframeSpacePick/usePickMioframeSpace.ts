@@ -9,12 +9,12 @@ import { useSnackbar } from '@shared/ui/Snackbar';
 import { inspectMioframeSpaceDirectory } from './mioframeSpacePick.helpers';
 
 const UNSUPPORTED_MESSAGE = 'Your browser does not support choosing folders for Mioframe spaces';
-const CREATE_GUARDRAIL_HEADLINE = 'Choose a dedicated folder';
+const CREATE_CONFIRM_HEADLINE = 'Create Mioframe space here?';
 const CREATE_GUARDRAIL_TEXT =
-  'This folder already contains other files. Create or select an empty folder for the new Mioframe space.';
+  'This folder already contains files. Mioframe will store its space files directly in the selected folder.';
 const OPEN_GUARDRAIL_HEADLINE = 'No Mioframe space found';
 const OPEN_GUARDRAIL_TEXT =
-  'This folder does not contain Mioframe service files. Select an existing Mioframe space folder.';
+  'This folder does not contain the current Mioframe space marker file. Select an existing Mioframe space folder.';
 
 const buildAddFolderError = () =>
   new DomainError('Could not open the Mioframe space', {
@@ -27,7 +27,7 @@ const buildAddFolderError = () =>
  */
 export const usePickMioframeSpace = () => {
   const loading = ref(false);
-  const { confirm } = useDialog();
+  const { choose, confirm } = useDialog();
   const { addSnackbar } = useSnackbar();
   const { addDeviceDirectory } = useFileSystem();
 
@@ -102,26 +102,36 @@ export const usePickMioframeSpace = () => {
       cancelLabel: 'Cancel',
     });
 
+  const askWhereToCreateSpace = async () =>
+    await choose({
+      headline: CREATE_CONFIRM_HEADLINE,
+      supportingText: CREATE_GUARDRAIL_TEXT,
+      confirmLabel: 'Create here',
+      cancelLabel: 'Cancel',
+      tertiaryLabel: 'Choose another folder',
+    });
+
   const createSpace = async () => {
     const chooseCreateSpace = async (): Promise<void> => {
       const selectedHandle = await runPicker();
       const inspection = await inspectMioframeSpaceDirectory(selectedHandle);
 
       if (
-        !inspection.looksRiskyByName &&
-        !inspection.looksLargeAndOrdinary &&
-        !inspection.looksLikeExistingSpace
+        inspection.looksLikeExistingSpace ||
+        (!inspection.looksRiskyByName && inspection.isEmpty)
       ) {
         await mountMioframeSpace(selectedHandle);
         return;
       }
 
-      const shouldContinueChoosing = await askToChooseAnotherFolder(
-        CREATE_GUARDRAIL_HEADLINE,
-        CREATE_GUARDRAIL_TEXT,
-      );
+      const selection = await askWhereToCreateSpace();
 
-      if (shouldContinueChoosing) {
+      if (selection === true) {
+        await mountMioframeSpace(selectedHandle);
+        return;
+      }
+
+      if (selection === 'tertiary') {
         await chooseCreateSpace();
       }
     };

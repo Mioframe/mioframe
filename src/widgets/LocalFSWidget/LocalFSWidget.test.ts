@@ -45,8 +45,8 @@ vi.mock('@shared/ui/Button', () => ({
           'button',
           {
             title: props.tooltip,
-            onClick: () => {
-              emit('click');
+            onClick: (event: MouseEvent) => {
+              emit('click', event);
             },
           },
           props.tooltip,
@@ -86,6 +86,10 @@ vi.mock('@shared/ui/Lists', () => ({
         type: Boolean,
         default: false,
       },
+      lines: {
+        type: Number,
+        default: undefined,
+      },
     },
     emits: ['click'],
     setup(props, { emit, slots }) {
@@ -101,6 +105,7 @@ vi.mock('@shared/ui/Lists', () => ({
           [
             h('span', props.headline),
             props.supportingText ? h('span', props.supportingText) : null,
+            props.lines ? h('span', `lines:${props.lines}`) : null,
             slots.leadingIcon?.(),
             slots.trailingIcon?.(),
           ],
@@ -128,9 +133,14 @@ describe('LocalFSWidget', () => {
     const wrapper = await mountLocalFSWidget();
 
     expect(wrapper.text()).toContain('Create space');
-    expect(wrapper.text()).toContain('Create or select a folder. Its name becomes the space name.');
+    expect(wrapper.text()).toContain(
+      'Create or select a folder. Mioframe files will be stored directly in that folder.',
+    );
     expect(wrapper.text()).toContain('Open space');
-    expect(wrapper.text()).toContain('Select a folder that already contains Mioframe files.');
+    expect(wrapper.text()).toContain(
+      'Select a folder that already contains the current Mioframe space files.',
+    );
+    expect(wrapper.text()).toContain('lines:2');
     expect(wrapper.text()).not.toContain('Create or open Mioframe space');
     expect(wrapper.text()).not.toContain('Add Local Directory');
     expect(wrapper.text()).not.toContain('Mounting user directory');
@@ -174,6 +184,17 @@ describe('LocalFSWidget', () => {
     await Promise.all(disconnectButtons.map((button) => button.trigger('click')));
 
     expect(disconnectDeviceDirectoryMock.mock.calls).toEqual([['Browser Storage (2)']]);
+  });
+
+  it('does not emit clickPath when the trailing disconnect action is clicked', async () => {
+    deviceFiles.value = [{ name: 'My Space', description: 'Mioframe space on this device' }];
+
+    const wrapper = await mountLocalFSWidget();
+
+    await wrapper.get('button[title="Disconnect Mioframe space"]').trigger('click');
+
+    expect(disconnectDeviceDirectoryMock).toHaveBeenCalledWith('My Space');
+    expect(wrapper.emitted('clickPath')).toBeUndefined();
   });
 });
 /* eslint-enable vue/one-component-per-file -- Re-enable the rule after the inline component stubs used in this file. */

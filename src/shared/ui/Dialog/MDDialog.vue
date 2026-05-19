@@ -14,8 +14,10 @@ const props = withDefaults(
     supportingText: string;
     type?: 'basic' | 'full-screen' | undefined;
     cancelLabel?: string | undefined;
+    tertiaryLabel?: string | undefined;
     applyLabel?: string | undefined;
     hasCancelAction?: boolean | undefined;
+    hasTertiaryAction?: boolean | undefined;
     loading?: boolean | number | undefined;
     class?: never;
   }>(),
@@ -27,6 +29,7 @@ const props = withDefaults(
 const emit = defineEmits<{
   cancel: [];
   apply: [];
+  tertiary: [];
 }>();
 
 const slots = defineSlots<{
@@ -45,6 +48,10 @@ const onApplyAction = () => {
 const onCancelAction = () => {
   emit('cancel');
 };
+
+const onTertiaryAction = () => {
+  emit('tertiary');
+};
 </script>
 
 <template>
@@ -55,12 +62,15 @@ const onCancelAction = () => {
       :supporting-text="supportingText"
       :type="type"
       :cancel-label="cancelLabel"
+      :tertiary-label="tertiaryLabel"
       :apply-label="applyLabel"
       :has-cancel-action="hasCancelAction"
+      :has-tertiary-action="hasTertiaryAction"
       :loading="loading"
       :class="props.class"
       @apply="onApplyAction"
       @cancel="onCancelAction"
+      @tertiary="onTertiaryAction"
     >
       <template #default>
         <slot />

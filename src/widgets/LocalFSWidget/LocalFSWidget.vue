@@ -19,6 +19,11 @@ const { loading, createSpace, openSpace } = usePickMioframeSpace();
 const onClickDeviceFile = (name: string) => {
   emit('clickPath', PathUtils.join('/', DEVICE_FILES, name));
 };
+
+const onDisconnectDeviceFile = (event: MouseEvent, name: string) => {
+  event.stopPropagation();
+  void disconnectDeviceDirectory(name);
+};
 </script>
 
 <template>
@@ -39,7 +44,7 @@ const onClickDeviceFile = (name: string) => {
         <MDIconButton
           tooltip="Disconnect Mioframe space"
           md-symbol-name="link_off"
-          @click="() => disconnectDeviceDirectory(deviceFile.name)"
+          @click="(event) => onDisconnectDeviceFile(event, deviceFile.name)"
         />
       </template>
     </MDListItem>
@@ -47,8 +52,8 @@ const onClickDeviceFile = (name: string) => {
     <MDListItem
       is="button"
       headline="Create space"
-      supporting-text="Create or select a folder. Its name becomes the space name."
-      multiline-supporting-text
+      supporting-text="Create or select a folder. Mioframe files will be stored directly in that folder."
+      :lines="2"
       :disabled="loading"
       @click="createSpace"
     >
@@ -60,8 +65,8 @@ const onClickDeviceFile = (name: string) => {
     <MDListItem
       is="button"
       headline="Open space"
-      supporting-text="Select a folder that already contains Mioframe files."
-      multiline-supporting-text
+      supporting-text="Select a folder that already contains the current Mioframe space files."
+      :lines="2"
       :disabled="loading"
       @click="openSpace"
     >
