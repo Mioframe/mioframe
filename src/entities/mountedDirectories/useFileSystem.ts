@@ -5,8 +5,26 @@ import { isUndefined } from 'es-toolkit';
 import { useObservableQuery } from '@shared/lib/useObservableQuery';
 import { DEVICE_FILES_ROOT_NAME, type DeviceFileRecord } from '@shared/service/fileSystem';
 import { useObservable } from '@shared/lib/useObservable';
+import { OPFSName } from '@shared/service/directories';
 
 export const DEVICE_FILES = DEVICE_FILES_ROOT_NAME;
+
+export type MountedDirectoryDisplayRecord = DeviceFileRecord & {
+  description: string;
+  canDisconnect: boolean;
+};
+
+const LOCAL_MIOFRAME_SPACE_DESCRIPTION = 'Mioframe space on this device';
+const BROWSER_STORAGE_DESCRIPTION = 'Saved directly in your browser on this device';
+
+const toMountedDirectoryDisplayRecord = (
+  record: DeviceFileRecord,
+): MountedDirectoryDisplayRecord => ({
+  ...record,
+  canDisconnect: record.name !== OPFSName,
+  description:
+    record.name === OPFSName ? BROWSER_STORAGE_DESCRIPTION : LOCAL_MIOFRAME_SPACE_DESCRIPTION,
+});
 
 const setupFileSystem = () => {
   const {
@@ -49,6 +67,9 @@ const setupFileSystem = () => {
   });
 
   const { data: activeDeviceFiles } = useObservable(deviceFiles);
+  const mountedDirectories = computed(() =>
+    activeDeviceFiles.value?.map(toMountedDirectoryDisplayRecord),
+  );
 
   const disconnectDeviceFile = async (deviceFile: Pick<DeviceFileRecord, 'name'> | string) => {
     await removeDeviceDirectory(typeof deviceFile === 'string' ? deviceFile : deviceFile.name);
@@ -56,7 +77,7 @@ const setupFileSystem = () => {
 
   return {
     rootDirectory,
-    deviceFiles: activeDeviceFiles,
+    deviceFiles: mountedDirectories,
     errorMessage,
     isLoading,
 
