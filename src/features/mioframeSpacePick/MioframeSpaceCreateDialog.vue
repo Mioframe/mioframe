@@ -12,8 +12,6 @@ const SPACE_FOLDER_PLACEHOLDER = '<space name>';
 const EXISTING_ORDINARY_FOLDER_ERROR =
   'A folder with this name already exists. Choose another name.';
 
-type DialogMode = 'create' | 'existing-space-conflict';
-
 const props = defineProps<{
   selectedLocation: string;
   loading?: boolean | undefined;
@@ -27,9 +25,14 @@ const emit = defineEmits<{
 
 const spaceName = ref<string | undefined>(undefined);
 const errorText = ref<string | undefined>(undefined);
-const mode = ref<DialogMode>('create');
+const existingSpaceConflictName = ref<string | undefined>(undefined);
 
 const normalizedSpaceName = computed(() => normalizeMioframeSpaceName(spaceName.value));
+const hasExistingSpaceConflict = computed(
+  () =>
+    existingSpaceConflictName.value !== undefined &&
+    existingSpaceConflictName.value === normalizedSpaceName.value,
+);
 
 const resultFolder = computed(
   () => `${props.selectedLocation} / ${normalizedSpaceName.value || SPACE_FOLDER_PLACEHOLDER}`,
@@ -40,7 +43,7 @@ const supportingText = computed(() => {
     return errorText.value;
   }
 
-  if (mode.value === 'existing-space-conflict') {
+  if (hasExistingSpaceConflict.value) {
     return 'A Mioframe space with this name already exists here. Open the existing space, or change the name to go back to creating a new one.';
   }
 
@@ -48,34 +51,26 @@ const supportingText = computed(() => {
 });
 
 const headline = computed(() =>
-  mode.value === 'existing-space-conflict' ? 'Space already exists' : 'Name new space',
+  hasExistingSpaceConflict.value ? 'Space already exists' : 'Name new space',
 );
 
 const dialogSupportingText = computed(() =>
-  mode.value === 'existing-space-conflict'
+  hasExistingSpaceConflict.value
     ? 'This name already belongs to an existing Mioframe space in the selected location.'
     : 'Choose a name for the new Mioframe space.',
 );
 
 const applyLabel = computed(() =>
-  mode.value === 'existing-space-conflict' ? 'Open existing space' : 'Create',
+  hasExistingSpaceConflict.value ? 'Open existing space' : 'Create',
 );
 
 watch(spaceName, () => {
   errorText.value = undefined;
-
-  if (mode.value === 'existing-space-conflict') {
-    mode.value = 'create';
-  }
 });
 
 const onApply = async () => {
-  if (mode.value === 'existing-space-conflict') {
-    if (await props.openExistingSpace()) {
-      return;
-    }
-
-    mode.value = 'existing-space-conflict';
+  if (hasExistingSpaceConflict.value) {
+    await props.openExistingSpace();
     return;
   }
 
@@ -89,9 +84,11 @@ const onApply = async () => {
   const result = await props.submitSpaceName(normalizedSpaceName.value);
 
   if (result.status === 'existing-space-conflict') {
-    mode.value = 'existing-space-conflict';
+    existingSpaceConflictName.value = normalizedSpaceName.value;
     return;
   }
+
+  existingSpaceConflictName.value = undefined;
 
   if (result.status === 'ordinary-folder-exists') {
     errorText.value = EXISTING_ORDINARY_FOLDER_ERROR;
