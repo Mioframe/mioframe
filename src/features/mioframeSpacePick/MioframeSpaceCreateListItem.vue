@@ -1,14 +1,39 @@
 <script setup lang="ts">
+import { ref } from 'vue';
 import { MDSymbol } from '@shared/ui/Icon';
 import { MDListItem } from '@shared/ui/Lists';
 import MioframeSpaceCreateDialog from './MioframeSpaceCreateDialog.vue';
-import { provideCreateMioframeSpaceContext } from './createMioframeSpaceContext';
-import { useCreateMioframeSpace } from './useCreateMioframeSpace';
+import { useCreateMioframeSpace, type CreateSpaceNameSubmitResult } from './useCreateMioframeSpace';
 
 const createFlow = useCreateMioframeSpace();
-const { createDialogState, createSpace, loading } = createFlow;
+const {
+  createDialogState,
+  createSpace,
+  loading,
+  submitCreateSpaceName,
+  cancelCreateSpace,
+  openExistingSpaceFromConflict,
+} = createFlow;
+const submitResult = ref<(CreateSpaceNameSubmitResult & { spaceName: string }) | undefined>(
+  undefined,
+);
 
-provideCreateMioframeSpaceContext(createFlow);
+const onSubmit = async (spaceName: string) => {
+  submitResult.value = undefined;
+  submitResult.value = {
+    ...(await submitCreateSpaceName(spaceName)),
+    spaceName,
+  };
+};
+
+const onOpenExistingSpace = () => {
+  void openExistingSpaceFromConflict();
+};
+
+const onCancel = () => {
+  submitResult.value = undefined;
+  cancelCreateSpace();
+};
 </script>
 
 <template>
@@ -25,5 +50,13 @@ provideCreateMioframeSpaceContext(createFlow);
     </template>
   </MDListItem>
 
-  <MioframeSpaceCreateDialog v-if="createDialogState" />
+  <MioframeSpaceCreateDialog
+    v-if="createDialogState"
+    :selected-location="createDialogState.selectedLocation"
+    :loading="loading"
+    :submit-result="submitResult"
+    @submit="onSubmit"
+    @open-existing-space="onOpenExistingSpace"
+    @cancel="onCancel"
+  />
 </template>
