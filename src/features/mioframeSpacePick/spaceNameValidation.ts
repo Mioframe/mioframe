@@ -1,3 +1,21 @@
+import { custom } from 'zod/v4-mini';
+
+const CONTROL_CHARACTER_EXPRESSION = /[\u0000-\u001F]/u;
+const RESERVED_FOLDER_NAMES = new Set(['.', '..']);
+const INVALID_FOLDER_NAME_CHARACTERS = /[\\/:*?"<>|]/u;
+
+const zodNonEmptyMioframeSpaceName = custom<string>(
+  (value): value is string => typeof value === 'string' && value.length > 0,
+);
+
+const zodValidMioframeSpaceFolderName = custom<string>(
+  (value): value is string =>
+    typeof value === 'string' &&
+    !RESERVED_FOLDER_NAMES.has(value) &&
+    !CONTROL_CHARACTER_EXPRESSION.test(value) &&
+    !INVALID_FOLDER_NAME_CHARACTERS.test(value),
+);
+
 /**
  * Returns a normalized user-provided Mioframe space name.
  * @param name - Raw form value.
@@ -13,29 +31,11 @@ export const normalizeMioframeSpaceName = (name: string | undefined) => name?.tr
 export const getMioframeSpaceNameError = (name: string | undefined) => {
   const normalizedName = normalizeMioframeSpaceName(name);
 
-  if (!normalizedName) {
+  if (!zodNonEmptyMioframeSpaceName.safeParse(normalizedName).success) {
     return 'Enter a space name.';
   }
 
-  const hasControlCharacter = Array.from(normalizedName).some((character) => {
-    const codePoint = character.codePointAt(0) ?? 0;
-    return codePoint <= 0x1f;
-  });
-
-  if (
-    normalizedName === '.' ||
-    normalizedName === '..' ||
-    hasControlCharacter ||
-    normalizedName.includes('/') ||
-    normalizedName.includes('\\') ||
-    normalizedName.includes(':') ||
-    normalizedName.includes('*') ||
-    normalizedName.includes('?') ||
-    normalizedName.includes('"') ||
-    normalizedName.includes('<') ||
-    normalizedName.includes('>') ||
-    normalizedName.includes('|')
-  ) {
+  if (!zodValidMioframeSpaceFolderName.safeParse(normalizedName).success) {
     return 'Enter a valid folder name.';
   }
 
