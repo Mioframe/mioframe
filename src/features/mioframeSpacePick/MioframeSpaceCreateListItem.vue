@@ -4,14 +4,7 @@ import { MDListItem } from '@shared/ui/Lists';
 import MioframeSpaceCreateDialog from './MioframeSpaceCreateDialog.vue';
 import { usePickMioframeSpace } from './usePickMioframeSpace';
 
-const {
-  createDialogState,
-  createSpace,
-  loading,
-  submitCreateSpaceName,
-  cancelCreateSpace,
-  openExistingSpaceFromConflict,
-} = usePickMioframeSpace();
+const { createDialogState, createSpace, loading } = usePickMioframeSpace();
 </script>
 
 <template>
@@ -28,12 +21,5 @@ const {
     </template>
   </MDListItem>
 
-  <MioframeSpaceCreateDialog
-    v-if="createDialogState"
-    :selected-location="createDialogState.selectedLocation"
-    :loading="loading"
-    :submit-space-name="submitCreateSpaceName"
-    :open-existing-space="openExistingSpaceFromConflict"
-    @cancel="cancelCreateSpace"
-  />
+  <MioframeSpaceCreateDialog v-if="createDialogState" />
 </template>
