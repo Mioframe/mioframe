@@ -1,6 +1,6 @@
 # src/app
 
-Inherits the rules from the root `AGENTS.md`. Applies to `src/app` and its descendants until a deeper `AGENTS.md` overrides it.
+Inherits the rules from `src/AGENTS.md`. Applies to `src/app` and its descendants until a deeper `AGENTS.md` overrides it.
 
 ## Contains
 
