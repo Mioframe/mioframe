@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { MDSymbol } from '@shared/ui/Icon';
 import { MDListItem } from '@shared/ui/Lists';
-import { usePickMioframeSpace } from './usePickMioframeSpace';
+import { useOpenMioframeSpace } from './useOpenMioframeSpace';
 
-const { loading, openSpace } = usePickMioframeSpace();
+const { loading, openSpace } = useOpenMioframeSpace();
 </script>
 
 <template>
