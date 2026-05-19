@@ -1,6 +1,5 @@
 import { useFileSystem } from '@entity/mountedDirectories';
 import { DomainError } from '@shared/lib/error';
-import { isUserFileSelectionCancel } from '@shared/lib/fileSystem';
 import { reportHandledError } from '@shared/lib/reportHandledError';
 import { useDialog } from '@shared/ui/Dialog';
 import { useSnackbar } from '@shared/ui/Snackbar';
@@ -8,6 +7,7 @@ import { ref, toRef } from 'vue';
 import { inspectMioframeSpaceDirectory } from './mioframeSpacePick.helpers';
 import {
   isDirectoryPickerSupported,
+  pickWritableDirectory,
   showDirectoryPickerUnsupportedMessage,
 } from './directoryPickerSupport';
 import { buildOpenSpaceError } from './mioframeSpacePick.errors';
@@ -39,11 +39,6 @@ export const useOpenMioframeSpace = () => {
     });
   };
 
-  const runPicker = async () =>
-    await window.showDirectoryPicker({
-      mode: 'readwrite',
-    });
-
   const askToRetryOpenSpace = async () =>
     await confirm({
       headline: OPEN_GUARDRAIL_HEADLINE,
@@ -55,7 +50,12 @@ export const useOpenMioframeSpace = () => {
   const pickExistingMioframeSpace = async () => {
     /* eslint-disable no-await-in-loop -- The retry flow is intentionally sequential: pick, inspect, confirm, then optionally pick again. */
     for (;;) {
-      const selectedHandle = await runPicker();
+      const selectedHandle = await pickWritableDirectory();
+
+      if (!selectedHandle) {
+        return;
+      }
+
       let inspection;
 
       try {
@@ -96,9 +96,7 @@ export const useOpenMioframeSpace = () => {
 
       await addDeviceDirectory(selectedHandle);
     } catch (error) {
-      if (!isUserFileSelectionCancel(error)) {
-        handleUnexpectedError(error);
-      }
+      handleUnexpectedError(error);
     } finally {
       loading.value = false;
     }

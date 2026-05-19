@@ -1,8 +1,8 @@
 /* eslint-disable @typescript-eslint/consistent-type-assertions, @typescript-eslint/require-await -- DOM File System Access API mocks need structural casting in tests. */
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { ref } from 'vue';
 import { storageAdapterMarkerFileName } from '@shared/lib/automergeAdapter';
-import { isCreateMioframeSpaceFieldError, useCreateMioframeSpace } from './useCreateMioframeSpace';
+import { useCreateMioframeSpace } from './useCreateMioframeSpace';
+import { inspectMioframeSpaceDirectory } from './mioframeSpacePick.helpers';
 import { useOpenMioframeSpace } from './useOpenMioframeSpace';
 
 const {
@@ -41,25 +41,40 @@ vi.mock('@shared/lib/reportHandledError', () => ({
   reportHandledError: reportHandledErrorMock,
 }));
 
+type MockFileHandle = FileSystemFileHandle & {
+  createWritableMock: ReturnType<typeof vi.fn>;
+};
+
 type MockDirectoryHandle = FileSystemDirectoryHandle & {
   getDirectoryHandleMock: ReturnType<typeof vi.fn>;
+  getFileHandleMock: ReturnType<typeof vi.fn>;
 };
 
 const markerFileName = storageAdapterMarkerFileName;
 
-const createFileHandle = (name: string): FileSystemFileHandle =>
-  ({
+const createFileHandle = (name: string): MockFileHandle => {
+  const writable = {
+    close: vi.fn(() => Promise.resolve()),
+    write: vi.fn(() => Promise.resolve()),
+    seek: vi.fn(() => Promise.resolve()),
+    truncate: vi.fn(() => Promise.resolve()),
+  } as unknown as FileSystemWritableFileStream;
+  const createWritableMock = vi.fn(() => Promise.resolve(writable));
+
+  return {
     kind: 'file',
     name,
     isSameEntry: vi.fn(() => Promise.resolve(false)),
-    createWritable: vi.fn(),
+    createWritable: createWritableMock,
     createSyncAccessHandle: vi.fn(),
     getFile: vi.fn(),
     requestPermission: vi.fn(() => Promise.resolve('granted')),
     queryPermission: vi.fn(() => Promise.resolve('granted')),
     isFile: true,
     isDirectory: false,
-  }) as FileSystemFileHandle;
+    createWritableMock,
+  } as MockFileHandle;
+};
 
 const createDirectoryHandle = ({
   name,
@@ -72,11 +87,30 @@ const createDirectoryHandle = ({
     | ((directoryName: string, options?: FileSystemGetDirectoryOptions) => unknown)
     | undefined;
 }): MockDirectoryHandle => {
+  const entryMap = new Map(entries);
   const getDirectoryHandleMock = vi.fn(
     async (directoryName: string, options?: FileSystemGetDirectoryOptions) =>
       (subdirectoryFactory?.(directoryName, options) ??
         createDirectoryHandle({ name: directoryName })) as FileSystemDirectoryHandle,
   );
+  const getFileHandleMock = vi.fn(
+    async (fileName: string, options?: FileSystemGetFileOptions): Promise<FileSystemFileHandle> => {
+      const existingEntry = entryMap.get(fileName);
+
+      if (existingEntry?.kind === 'file') {
+        return existingEntry as FileSystemFileHandle;
+      }
+
+      if (options?.create) {
+        const fileHandle = createFileHandle(fileName);
+        entryMap.set(fileName, fileHandle);
+        return fileHandle;
+      }
+
+      throw new DOMException('File not found', 'NotFoundError');
+    },
+  );
+
   const handle = {
     kind: 'directory',
     name,
@@ -88,39 +122,30 @@ const createDirectoryHandle = ({
     entries: (() =>
       (async function* () {
         await Promise.resolve();
-        for (const entry of entries) {
+        for (const entry of entryMap.entries()) {
           yield entry as [string, FileSystemDirectoryHandle | FileSystemFileHandle];
         }
       })()) as FileSystemDirectoryHandle['entries'],
     keys: (() =>
       (async function* () {
         await Promise.resolve();
-        for (const [entryName] of entries) {
+        for (const [entryName] of entryMap.entries()) {
           yield entryName;
         }
       })()) as FileSystemDirectoryHandle['keys'],
     values: (() =>
       (async function* () {
         await Promise.resolve();
-        for (const [, childHandle] of entries) {
+        for (const [, childHandle] of entryMap.entries()) {
           yield childHandle as FileSystemDirectoryHandle | FileSystemFileHandle;
         }
       })()) as FileSystemDirectoryHandle['values'],
     getDirectoryHandle: getDirectoryHandleMock,
     getDirectoryHandleMock,
-    getFileHandle: vi.fn(async (fileName: string) => {
-      const entry = entries.find(([entryName, childHandle]) => {
-        return entryName === fileName && childHandle.kind === 'file';
-      })?.[1];
-
-      if (entry?.kind === 'file') {
-        return entry as FileSystemFileHandle;
-      }
-
-      throw new DOMException('File not found', 'NotFoundError');
-    }),
-    getFile(fileName: string, _options?: FileSystemGetFileOptions) {
-      return handle.getFileHandle(fileName);
+    getFileHandle: getFileHandleMock,
+    getFileHandleMock,
+    getFile(fileName: string, options?: FileSystemGetFileOptions) {
+      return handle.getFileHandle(fileName, options);
     },
     getDirectory(directoryName: string, options?: FileSystemGetDirectoryOptions) {
       return handle.getDirectoryHandle(directoryName, options);
@@ -138,12 +163,6 @@ const createDirectoryHandle = ({
   return handle as unknown as MockDirectoryHandle;
 };
 
-const expectFieldError = async (promise: Promise<unknown>, message: string) => {
-  await expect(promise).rejects.toSatisfy(
-    (error: unknown) => isCreateMioframeSpaceFieldError(error) && error.fieldMessage === message,
-  );
-};
-
 describe('useCreateMioframeSpace', () => {
   beforeEach(() => {
     addDeviceDirectoryMock.mockReset();
@@ -153,19 +172,26 @@ describe('useCreateMioframeSpace', () => {
     showDirectoryPickerMock.mockReset();
     addDeviceDirectoryMock.mockResolvedValue(undefined);
     confirmMock.mockResolvedValue(false);
-  });
-
-  it('starts in editing state for the selected parent folder', () => {
-    const parentHandle = createDirectoryHandle({ name: 'Documents' });
-    const createFlow = useCreateMioframeSpace(ref(parentHandle));
-
-    expect(createFlow.createDialogState.value).toEqual({
-      status: 'editing-name',
-      selectedLocation: 'Documents',
+    Object.defineProperty(window, 'showDirectoryPicker', {
+      configurable: true,
+      value: showDirectoryPickerMock,
     });
   });
 
-  it('creates and mounts a subfolder using the submitted name', async () => {
+  it('picks the parent directory inside the create flow', async () => {
+    const parentHandle = createDirectoryHandle({ name: 'Documents' });
+    showDirectoryPickerMock.mockResolvedValueOnce(parentHandle);
+    const createFlow = useCreateMioframeSpace();
+
+    await createFlow.pickParentDirectory();
+
+    expect(showDirectoryPickerMock).toHaveBeenCalledWith({
+      mode: 'readwrite',
+    });
+    expect(createFlow.parentHandle.value).toEqual(parentHandle);
+  });
+
+  it('creates, initializes, and mounts a new space, then returns an explicit created result', async () => {
     const createdSpaceHandle = createDirectoryHandle({ name: 'Work Notes' });
     const parentHandle = createDirectoryHandle({
       name: 'Documents',
@@ -177,39 +203,65 @@ describe('useCreateMioframeSpace', () => {
         throw new DOMException('Missing directory', 'NotFoundError');
       },
     });
-    const createFlow = useCreateMioframeSpace(ref(parentHandle));
+    showDirectoryPickerMock.mockResolvedValueOnce(parentHandle);
+    const createFlow = useCreateMioframeSpace();
 
-    await expect(createFlow.submitCreateSpaceName('Work Notes')).resolves.toBe(true);
+    await createFlow.pickParentDirectory();
+
+    await expect(createFlow.submitCreateSpaceName('  Work Notes  ')).resolves.toEqual({
+      status: 'created',
+    });
 
     expect(parentHandle.getDirectoryHandleMock).toHaveBeenNthCalledWith(1, 'Work Notes');
     expect(parentHandle.getDirectoryHandleMock).toHaveBeenNthCalledWith(2, 'Work Notes', {
       create: true,
     });
+    expect(createdSpaceHandle.getFileHandleMock).toHaveBeenCalledWith(markerFileName, {
+      create: true,
+    });
     expect(addDeviceDirectoryMock).toHaveBeenCalledWith(createdSpaceHandle);
-    expect(addDeviceDirectoryMock).not.toHaveBeenCalledWith(parentHandle);
+    await expect(inspectMioframeSpaceDirectory(createdSpaceHandle)).resolves.toEqual({
+      looksLikeExistingSpace: true,
+    });
   });
 
-  it('throws a field error when the browser rejects the submitted folder name', async () => {
+  it('returns a field-error result for an invalid name and does not mount anything', async () => {
+    const parentHandle = createDirectoryHandle({ name: 'Documents' });
+    showDirectoryPickerMock.mockResolvedValueOnce(parentHandle);
+    const createFlow = useCreateMioframeSpace();
+
+    await createFlow.pickParentDirectory();
+
+    await expect(createFlow.submitCreateSpaceName('   ')).resolves.toEqual({
+      status: 'field-error',
+      fieldMessage: 'Enter a space name.',
+    });
+    expect(addDeviceDirectoryMock).not.toHaveBeenCalled();
+    expect(parentHandle.getDirectoryHandleMock).not.toHaveBeenCalled();
+  });
+
+  it('returns a field-error result for an existing ordinary subfolder and does not mount it', async () => {
+    const existingOrdinaryHandle = createDirectoryHandle({
+      name: 'Work Notes',
+      entries: [['notes.txt', createFileHandle('notes.txt')]],
+    });
     const parentHandle = createDirectoryHandle({
       name: 'Documents',
-      subdirectoryFactory: () => {
-        throw new TypeError('Invalid name');
-      },
+      subdirectoryFactory: () => existingOrdinaryHandle,
     });
-    const createFlow = useCreateMioframeSpace(ref(parentHandle));
+    showDirectoryPickerMock.mockResolvedValueOnce(parentHandle);
+    const createFlow = useCreateMioframeSpace();
 
-    await expectFieldError(
-      createFlow.submitCreateSpaceName('Invalid'),
-      'Enter a valid folder name.',
-    );
-    expect(addDeviceDirectoryMock).not.toHaveBeenCalled();
-    expect(createFlow.createDialogState.value).toEqual({
-      status: 'editing-name',
-      selectedLocation: 'Documents',
+    await createFlow.pickParentDirectory();
+
+    await expect(createFlow.submitCreateSpaceName('Work Notes')).resolves.toEqual({
+      status: 'field-error',
+      fieldMessage: 'A folder with this name already exists. Choose another name.',
     });
+    expect(addDeviceDirectoryMock).not.toHaveBeenCalled();
   });
 
-  it('keeps the dialog open in conflict state for an existing Mioframe subfolder', async () => {
+  it('returns self-contained conflict state for an existing Mioframe subfolder and opens it', async () => {
     const existingSpaceHandle = createDirectoryHandle({
       name: 'Work Notes',
       entries: [[markerFileName, createFileHandle(markerFileName)]],
@@ -224,33 +276,20 @@ describe('useCreateMioframeSpace', () => {
         throw new DOMException('Missing directory', 'NotFoundError');
       },
     });
-    const createFlow = useCreateMioframeSpace(ref(parentHandle));
+    showDirectoryPickerMock.mockResolvedValueOnce(parentHandle);
+    const createFlow = useCreateMioframeSpace();
 
-    await expect(createFlow.submitCreateSpaceName('Work Notes')).resolves.toBe(false);
+    await createFlow.pickParentDirectory();
 
-    expect(confirmMock).not.toHaveBeenCalled();
-    expect(createFlow.createDialogState.value).toEqual({
+    await expect(createFlow.submitCreateSpaceName('Work Notes')).resolves.toEqual({
       status: 'existing-space-conflict',
       selectedLocation: 'Documents',
-      conflictSpaceName: 'Work Notes',
+      submittedSpaceName: 'Work Notes',
+      targetHandle: existingSpaceHandle,
     });
-    expect(addDeviceDirectoryMock).not.toHaveBeenCalled();
-  });
-
-  it('opens the existing Mioframe subfolder from conflict state', async () => {
-    const existingSpaceHandle = createDirectoryHandle({
-      name: 'Work Notes',
-      entries: [[markerFileName, createFileHandle(markerFileName)]],
+    await expect(createFlow.openExistingSpaceFromConflict()).resolves.toEqual({
+      status: 'opened-existing-space',
     });
-    const parentHandle = createDirectoryHandle({
-      name: 'Documents',
-      subdirectoryFactory: () => existingSpaceHandle,
-    });
-    const createFlow = useCreateMioframeSpace(ref(parentHandle));
-
-    await createFlow.submitCreateSpaceName('Work Notes');
-    await expect(createFlow.openExistingSpaceFromConflict()).resolves.toBe(true);
-
     expect(addDeviceDirectoryMock).toHaveBeenCalledWith(existingSpaceHandle);
   });
 
@@ -261,25 +300,26 @@ describe('useCreateMioframeSpace', () => {
     });
     const parentHandle = createDirectoryHandle({
       name: 'Documents',
-      subdirectoryFactory: (directoryName) => {
-        if (directoryName === 'Work Notes') {
-          return existingSpaceHandle;
-        }
-
-        throw new DOMException('Missing directory', 'NotFoundError');
-      },
+      subdirectoryFactory: () => existingSpaceHandle,
     });
+    showDirectoryPickerMock.mockResolvedValueOnce(parentHandle);
     addDeviceDirectoryMock.mockRejectedValueOnce(new Error('raw filesystem detail'));
-    const createFlow = useCreateMioframeSpace(ref(parentHandle));
+    const createFlow = useCreateMioframeSpace();
 
-    await expect(createFlow.submitCreateSpaceName('Work Notes')).resolves.toBe(false);
-    await expect(createFlow.openExistingSpaceFromConflict()).resolves.toBe(false);
+    await createFlow.pickParentDirectory();
+    const conflictResult = await createFlow.submitCreateSpaceName('Work Notes');
+    const openResult = await createFlow.openExistingSpaceFromConflict();
 
-    expect(createFlow.createDialogState.value).toEqual({
+    expect(conflictResult).toEqual({
       status: 'existing-space-conflict',
       selectedLocation: 'Documents',
-      conflictSpaceName: 'Work Notes',
+      submittedSpaceName: 'Work Notes',
+      targetHandle: existingSpaceHandle,
     });
+    expect(openResult).toEqual({
+      status: 'handled-error',
+    });
+    expect(createFlow.conflict.value).toEqual(conflictResult);
     expect(addSnackbarMock).toHaveBeenCalledWith({
       text: 'Could not open the Mioframe space',
     });
@@ -297,28 +337,6 @@ describe('useCreateMioframeSpace', () => {
     );
   });
 
-  it('throws a field error for an existing ordinary subfolder', async () => {
-    const existingOrdinaryHandle = createDirectoryHandle({
-      name: 'Work Notes',
-      entries: [['notes.txt', createFileHandle('notes.txt')]],
-    });
-    const parentHandle = createDirectoryHandle({
-      name: 'Documents',
-      subdirectoryFactory: () => existingOrdinaryHandle,
-    });
-    const createFlow = useCreateMioframeSpace(ref(parentHandle));
-
-    await expectFieldError(
-      createFlow.submitCreateSpaceName('Work Notes'),
-      'A folder with this name already exists. Choose another name.',
-    );
-    expect(addDeviceDirectoryMock).not.toHaveBeenCalled();
-    expect(createFlow.createDialogState.value).toEqual({
-      status: 'editing-name',
-      selectedLocation: 'Documents',
-    });
-  });
-
   it('reports a privacy-safe error when create mounting fails', async () => {
     const createdSpaceHandle = createDirectoryHandle({ name: 'Work Notes' });
     const parentHandle = createDirectoryHandle({
@@ -331,11 +349,15 @@ describe('useCreateMioframeSpace', () => {
         throw new DOMException('Missing directory', 'NotFoundError');
       },
     });
+    showDirectoryPickerMock.mockResolvedValueOnce(parentHandle);
     addDeviceDirectoryMock.mockRejectedValueOnce(new Error('raw filesystem detail'));
-    const createFlow = useCreateMioframeSpace(ref(parentHandle));
+    const createFlow = useCreateMioframeSpace();
 
-    await expect(createFlow.submitCreateSpaceName('Work Notes')).resolves.toBe(false);
+    await createFlow.pickParentDirectory();
 
+    await expect(createFlow.submitCreateSpaceName('Work Notes')).resolves.toEqual({
+      status: 'handled-error',
+    });
     expect(addSnackbarMock).toHaveBeenCalledWith({
       text: 'Could not create the Mioframe space',
     });
@@ -394,6 +416,42 @@ describe('useOpenMioframeSpace', () => {
     expect(showDirectoryPickerMock).toHaveBeenCalledTimes(2);
     expect(addDeviceDirectoryMock).toHaveBeenCalledWith(existingSpaceHandle);
     expect(addDeviceDirectoryMock).not.toHaveBeenCalledWith(ordinaryHandle);
+  });
+
+  it('lets the user cancel after an ordinary folder without mounting it', async () => {
+    const ordinaryHandle = createDirectoryHandle({
+      name: 'Project Space',
+      entries: [['notes.txt', createFileHandle('notes.txt')]],
+    });
+    showDirectoryPickerMock.mockResolvedValueOnce(ordinaryHandle);
+    confirmMock.mockResolvedValueOnce(false);
+
+    await useOpenMioframeSpace().openSpace();
+
+    expect(showDirectoryPickerMock).toHaveBeenCalledTimes(1);
+    expect(addDeviceDirectoryMock).not.toHaveBeenCalled();
+  });
+
+  it('reports a privacy-safe error when open flow hits an unexpected picker failure', async () => {
+    showDirectoryPickerMock.mockRejectedValueOnce(new Error('raw picker detail'));
+
+    await useOpenMioframeSpace().openSpace();
+
+    expect(addSnackbarMock).toHaveBeenCalledWith({
+      text: 'Could not open the Mioframe space',
+    });
+    expect(reportHandledErrorMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        message: 'Could not open the Mioframe space',
+        cause: expect.objectContaining({
+          message: 'Opening the Mioframe space failed',
+        }),
+      }),
+      {
+        feature: 'mioframeSpaceOpen',
+        action: 'openSpace',
+      },
+    );
   });
 });
 /* eslint-enable @typescript-eslint/consistent-type-assertions, @typescript-eslint/require-await -- Re-enable after DOM File System Access API test mocks. */

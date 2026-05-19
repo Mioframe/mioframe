@@ -2,43 +2,42 @@
 import { computed, ref, watch } from 'vue';
 import { MDDialog } from '@shared/ui/Dialog';
 import { MDTextField } from '@shared/ui/TextField';
-import { getMioframeSpaceNameError, normalizeMioframeSpaceName } from './spaceNameValidation';
-import { isCreateMioframeSpaceFieldError, useCreateMioframeSpace } from './useCreateMioframeSpace';
+import { parseMioframeSpaceName } from './spaceNameValidation';
+import type { CreateSpaceConflict } from './useCreateMioframeSpace';
 
 const props = defineProps<{
-  parentHandle: FileSystemDirectoryHandle;
+  selectedLocation: string;
+  loading: boolean;
+  conflict: CreateSpaceConflict | undefined;
+  errorText: string | undefined;
 }>();
 
 const emit = defineEmits<{
-  created: [];
-  openedExistingSpace: [];
+  create: [spaceName: string];
+  openExistingSpace: [];
+  clearError: [];
   canceled: [];
 }>();
 
 const SPACE_FOLDER_PLACEHOLDER = '<space name>';
 
-const parentHandle = computed(() => props.parentHandle);
-const { createDialogState, loading, submitCreateSpaceName, openExistingSpaceFromConflict } =
-  useCreateMioframeSpace(parentHandle);
-
 const spaceName = ref<string | undefined>(undefined);
-const errorText = ref<string | undefined>(undefined);
 
-const selectedLocation = computed(() => createDialogState.value.selectedLocation);
-const normalizedSpaceName = computed(() => normalizeMioframeSpaceName(spaceName.value));
+const normalizedSpaceName = computed(() => {
+  const parsedName = parseMioframeSpaceName(spaceName.value);
+  return parsedName.success ? parsedName.name : (spaceName.value?.trim() ?? '');
+});
 const hasExistingSpaceConflict = computed(
-  () =>
-    createDialogState.value.status === 'existing-space-conflict' &&
-    createDialogState.value.conflictSpaceName === normalizedSpaceName.value,
+  () => props.conflict?.submittedSpaceName === normalizedSpaceName.value,
 );
 
 const resultFolder = computed(
-  () => `${selectedLocation.value} / ${normalizedSpaceName.value || SPACE_FOLDER_PLACEHOLDER}`,
+  () => `${props.selectedLocation} / ${normalizedSpaceName.value || SPACE_FOLDER_PLACEHOLDER}`,
 );
 
 const supportingText = computed(() => {
-  if (errorText.value) {
-    return errorText.value;
+  if (props.errorText) {
+    return props.errorText;
   }
 
   if (hasExistingSpaceConflict.value) {
@@ -63,39 +62,22 @@ const applyLabel = computed(() =>
 );
 
 watch(spaceName, () => {
-  errorText.value = undefined;
+  if (props.errorText) {
+    emit('clearError');
+  }
 });
 
 const onCancel = () => {
   emit('canceled');
 };
 
-const onApply = async () => {
+const onApply = () => {
   if (hasExistingSpaceConflict.value) {
-    if (await openExistingSpaceFromConflict()) {
-      emit('openedExistingSpace');
-    }
+    emit('openExistingSpace');
     return;
   }
 
-  const fieldError = getMioframeSpaceNameError(spaceName.value);
-
-  if (fieldError) {
-    errorText.value = fieldError;
-    return;
-  }
-
-  try {
-    const wasCreated = await submitCreateSpaceName(normalizedSpaceName.value);
-
-    if (wasCreated) {
-      emit('created');
-    }
-  } catch (error) {
-    if (isCreateMioframeSpaceFieldError(error)) {
-      errorText.value = error.fieldMessage;
-    }
-  }
+  emit('create', spaceName.value ?? '');
 };
 </script>
 
@@ -106,20 +88,22 @@ const onApply = async () => {
     :apply-label="applyLabel"
     cancel-label="Cancel"
     has-cancel-action
-    :loading="loading"
+    :loading="props.loading"
     @apply="onApply"
     @cancel="onCancel"
   >
     <MDTextField
       v-model:model-value="spaceName"
       label-text="Space name"
-      :error="!!errorText"
+      :error="!!props.errorText"
       :supporting-text="supportingText"
       autofocus
     />
 
     <div class="mioframe-space-create-dialog__details">
-      <p class="mioframe-space-create-dialog__detail">Selected location: {{ selectedLocation }}</p>
+      <p class="mioframe-space-create-dialog__detail">
+        Selected location: {{ props.selectedLocation }}
+      </p>
 
       <p class="mioframe-space-create-dialog__detail">Space folder: {{ resultFolder }}</p>
     </div>

@@ -1,91 +1,90 @@
 import { useFileSystem } from '@entity/mountedDirectories';
-import { computed, ref, type Ref } from 'vue';
+import { ensureStorageAdapterMarkerFile } from '@shared/lib/automergeAdapter';
 import { DomainError } from '@shared/lib/error';
 import { reportHandledError } from '@shared/lib/reportHandledError';
 import { useSnackbar } from '@shared/ui/Snackbar';
-import { inspectMioframeSpaceDirectory } from './mioframeSpacePick.helpers';
-import { normalizeMioframeSpaceName } from './spaceNameValidation';
+import { ref, toRef } from 'vue';
+import {
+  isDirectoryPickerSupported,
+  pickWritableDirectory,
+  showDirectoryPickerUnsupportedMessage,
+} from './directoryPickerSupport';
 import { buildCreateSpaceError, buildOpenSpaceError } from './mioframeSpacePick.errors';
+import { inspectMioframeSpaceDirectory } from './mioframeSpacePick.helpers';
+import { parseMioframeSpaceName } from './spaceNameValidation';
 
 const EXISTING_ORDINARY_FOLDER_ERROR =
   'A folder with this name already exists. Choose another name.';
 const INVALID_FOLDER_NAME_ERROR = 'Enter a valid folder name.';
 
-/** Reactive create-dialog states shown after parent-folder selection. */
-export type CreateDialogState =
-  | {
-      /** The dialog is editing or validating a new space name, or mounting a new space. */
-      status: 'editing-name' | 'checking-name' | 'submitting';
-      /** Current parent-folder label shown in the dialog. */
-      selectedLocation: string;
-    }
-  | {
-      /** The submitted name matches an existing Mioframe space in the selected location. */
-      status: 'existing-space-conflict';
-      /** Current parent-folder label shown in the dialog. */
-      selectedLocation: string;
-      /** Conflicting space name that may be opened instead of recreated. */
-      conflictSpaceName: string;
-    };
-
-/** Field-level validation error surfaced back to the create-space dialog. */
-export class CreateMioframeSpaceFieldError extends Error {
-  /**
-   * @param fieldMessage - User-facing validation message for the space-name field.
-   */
-  constructor(readonly fieldMessage: string) {
-    super(fieldMessage);
-    this.name = 'CreateMioframeSpaceFieldError';
-  }
+/** Self-contained conflict state for an existing Mioframe space found during create. */
+export interface CreateSpaceConflict {
+  /** Stable discriminator for the create conflict branch. */
+  status: 'existing-space-conflict';
+  /** Current parent-folder label shown to the user. */
+  selectedLocation: string;
+  /** Parsed, normalized space name submitted by the user. */
+  submittedSpaceName: string;
+  /** Existing Mioframe directory handle that can be opened instead of recreated. */
+  targetHandle: FileSystemDirectoryHandle;
 }
 
-/**
- * Checks whether an unknown error is the create-space field-validation sentinel.
- * @param error - Unknown thrown value from the create-space flow.
- * @returns True when the error is a `CreateMioframeSpaceFieldError`.
- */
-export const isCreateMioframeSpaceFieldError = (
-  error: unknown,
-): error is CreateMioframeSpaceFieldError => error instanceof CreateMioframeSpaceFieldError;
+/** Explicit create-space submit result for user-visible outcomes and handled failures. */
+export type CreateSpaceSubmitResult =
+  | {
+      /** New Mioframe space was created, initialized, and mounted successfully. */
+      status: 'created';
+    }
+  | {
+      /** User-facing field validation or ordinary-folder conflict message. */
+      status: 'field-error';
+      /** Field-level message that should be shown in the create dialog. */
+      fieldMessage: string;
+    }
+  | CreateSpaceConflict
+  | {
+      /** Unexpected failure was handled with privacy-safe diagnostics and UI feedback. */
+      status: 'handled-error';
+    };
+
+/** Explicit conflict-resolution result when opening an existing Mioframe space. */
+export type OpenExistingSpaceResult =
+  | {
+      /** Existing Mioframe space was mounted successfully. */
+      status: 'opened-existing-space';
+    }
+  | {
+      /** Unexpected failure was handled with privacy-safe diagnostics and UI feedback. */
+      status: 'handled-error';
+    };
 
 /**
- * Manages create-space dialog state after the user has picked a parent directory.
- * @param parentHandle - Directory where the new Mioframe space may be created.
- * @returns Reactive dialog state plus create/open actions for the current parent directory.
+ * Manages Mioframe create-space picker, dialog, and conflict resolution state.
+ * @returns Reactive picker/dialog state plus create/open actions.
  */
-export const useCreateMioframeSpace = (parentHandle: Ref<FileSystemDirectoryHandle>) => {
+export const useCreateMioframeSpace = () => {
   const loading = ref(false);
-  const createDialogState = ref<CreateDialogState>({
-    status: 'editing-name',
-    selectedLocation: parentHandle.value.name,
-  });
-  const existingConflictTargetHandle = ref<FileSystemDirectoryHandle | undefined>(undefined);
+  const parentHandle = ref<FileSystemDirectoryHandle | undefined>(undefined);
+  const conflict = ref<CreateSpaceConflict | undefined>(undefined);
   const { addSnackbar } = useSnackbar();
   const { addDeviceDirectory } = useFileSystem();
+  const isSupported = toRef(isDirectoryPickerSupported);
 
-  const selectedLocation = computed(() => parentHandle.value.name);
-
-  const setStatus = (status: Exclude<CreateDialogState['status'], 'existing-space-conflict'>) => {
-    createDialogState.value = {
-      status,
-      selectedLocation: selectedLocation.value,
-    };
-  };
-
-  const setConflictState = (spaceName: string, targetHandle: FileSystemDirectoryHandle) => {
-    existingConflictTargetHandle.value = targetHandle;
-    createDialogState.value = {
-      status: 'existing-space-conflict',
-      selectedLocation: selectedLocation.value,
-      conflictSpaceName: spaceName,
-    };
-  };
+  const createConflictState = (
+    submittedSpaceName: string,
+    targetHandle: FileSystemDirectoryHandle,
+  ): CreateSpaceConflict => ({
+    status: 'existing-space-conflict',
+    selectedLocation: parentHandle.value?.name ?? '',
+    submittedSpaceName,
+    targetHandle,
+  });
 
   const handleUnexpectedError = (
     error: unknown,
     options?: {
       fallbackError?: DomainError;
-      action?: 'createSpace' | 'openExistingSpaceFromConflict';
+      action?: 'pickParentFolder' | 'createSpace' | 'openExistingSpaceFromConflict';
     },
   ) => {
     const reportedError =
@@ -100,62 +99,105 @@ export const useCreateMioframeSpace = (parentHandle: Ref<FileSystemDirectoryHand
     });
   };
 
-  const throwFieldError = (fieldMessage: string): never => {
-    throw new CreateMioframeSpaceFieldError(fieldMessage);
+  const resetCreateDialog = () => {
+    parentHandle.value = undefined;
+    conflict.value = undefined;
   };
 
   /**
-   * Returns true only when the space was created and mounted successfully, so the dialog may close.
-   * Returns false when the dialog must remain open because the flow moved to another state or handled an error.
-   * @param spaceName - User-entered space name to validate, inspect, create, and mount.
-   * @returns Whether the create flow completed and the dialog may close.
+   * Opens the parent-directory picker for creating a new Mioframe space.
    */
-  const submitCreateSpaceName = async (spaceName: string): Promise<boolean> => {
-    if (loading.value) {
-      return false;
+  const pickParentDirectory = async () => {
+    if (loading.value || parentHandle.value) {
+      return;
     }
 
-    const normalizedName = normalizeMioframeSpaceName(spaceName);
+    if (!isSupported.value) {
+      showDirectoryPickerUnsupportedMessage(addSnackbar);
+      return;
+    }
+
     loading.value = true;
-    setStatus('checking-name');
-    existingConflictTargetHandle.value = undefined;
+
+    try {
+      parentHandle.value = await pickWritableDirectory();
+    } catch {
+      handleUnexpectedError(buildCreateSpaceError(), {
+        action: 'pickParentFolder',
+      });
+    } finally {
+      loading.value = false;
+    }
+  };
+
+  /**
+   * Validates, creates, initializes, and mounts a new Mioframe space from the current parent folder.
+   * @param rawSpaceName - Raw form value entered by the user.
+   * @returns Explicit result for create success, validation, conflict, or handled failure.
+   */
+  const submitCreateSpaceName = async (rawSpaceName: string): Promise<CreateSpaceSubmitResult> => {
+    if (loading.value || !parentHandle.value) {
+      return {
+        status: 'handled-error',
+      };
+    }
+
+    const parsedSpaceName = parseMioframeSpaceName(rawSpaceName);
+
+    if (!parsedSpaceName.success) {
+      conflict.value = undefined;
+      return {
+        status: 'field-error',
+        fieldMessage: parsedSpaceName.error,
+      };
+    }
+
+    loading.value = true;
+    conflict.value = undefined;
 
     try {
       let targetHandle: FileSystemDirectoryHandle;
 
       try {
-        targetHandle = await parentHandle.value.getDirectoryHandle(normalizedName);
+        targetHandle = await parentHandle.value.getDirectoryHandle(parsedSpaceName.name);
       } catch (error) {
         if (error instanceof DOMException && error.name === 'NotFoundError') {
           let createdHandle: FileSystemDirectoryHandle;
 
           try {
-            createdHandle = await parentHandle.value.getDirectoryHandle(normalizedName, {
+            createdHandle = await parentHandle.value.getDirectoryHandle(parsedSpaceName.name, {
               create: true,
             });
           } catch (createError) {
-            setStatus('editing-name');
-
             if (createError instanceof TypeError) {
-              throwFieldError(INVALID_FOLDER_NAME_ERROR);
+              return {
+                status: 'field-error',
+                fieldMessage: INVALID_FOLDER_NAME_ERROR,
+              };
             }
 
             throw createError;
           }
 
-          setStatus('submitting');
+          await ensureStorageAdapterMarkerFile(createdHandle);
           await addDeviceDirectory(createdHandle);
-          return true;
+          return {
+            status: 'created',
+          };
         }
 
-        setStatus('editing-name');
-
         if (error instanceof DOMException && error.name === 'TypeMismatchError') {
-          throwFieldError(EXISTING_ORDINARY_FOLDER_ERROR);
+          return {
+            status: 'field-error',
+            fieldMessage: EXISTING_ORDINARY_FOLDER_ERROR,
+          };
         }
 
         if (error instanceof TypeError) {
-          throwFieldError(INVALID_FOLDER_NAME_ERROR);
+          return {
+            status: 'field-error',
+            fieldMessage: INVALID_FOLDER_NAME_ERROR,
+          };
         }
 
         throw error;
@@ -170,65 +212,64 @@ export const useCreateMioframeSpace = (parentHandle: Ref<FileSystemDirectoryHand
       }
 
       if (inspection.looksLikeExistingSpace) {
-        setConflictState(normalizedName, targetHandle);
-        return false;
+        conflict.value = createConflictState(parsedSpaceName.name, targetHandle);
+        return conflict.value;
       }
 
-      setStatus('editing-name');
-      throwFieldError(EXISTING_ORDINARY_FOLDER_ERROR);
+      return {
+        status: 'field-error',
+        fieldMessage: EXISTING_ORDINARY_FOLDER_ERROR,
+      };
     } catch (error) {
-      if (error instanceof CreateMioframeSpaceFieldError) {
-        throw error;
-      }
-
-      setStatus('editing-name');
       handleUnexpectedError(error);
-      return false;
+      return {
+        status: 'handled-error',
+      };
     } finally {
       loading.value = false;
     }
-
-    return false;
   };
 
   /**
-   * Returns true only when the existing conflicted space was mounted successfully, so the dialog may close.
-   * Returns false when the dialog must remain open because the flow stayed in conflict or handled an error.
-   * @returns Whether the existing-space open flow completed and the dialog may close.
+   * Mounts the currently conflicted existing Mioframe space instead of creating a new one.
+   * @returns Explicit result for existing-space open success or handled failure.
    */
-  const openExistingSpaceFromConflict = async (): Promise<boolean> => {
-    if (createDialogState.value.status !== 'existing-space-conflict' || loading.value) {
-      return false;
-    }
-
-    const targetHandle = existingConflictTargetHandle.value;
-    const conflictSpaceName = createDialogState.value.conflictSpaceName;
-
-    if (!targetHandle) {
-      return false;
+  const openExistingSpaceFromConflict = async (): Promise<OpenExistingSpaceResult> => {
+    if (!conflict.value || loading.value) {
+      return {
+        status: 'handled-error',
+      };
     }
 
     loading.value = true;
-    setStatus('submitting');
+    const activeConflict = conflict.value;
 
     try {
-      await addDeviceDirectory(targetHandle);
-      return true;
+      await addDeviceDirectory(activeConflict.targetHandle);
+      return {
+        status: 'opened-existing-space',
+      };
     } catch (error) {
-      setConflictState(conflictSpaceName, targetHandle);
+      conflict.value = activeConflict;
       handleUnexpectedError(error, {
         fallbackError: buildOpenSpaceError(),
         action: 'openExistingSpaceFromConflict',
       });
-      return false;
+      return {
+        status: 'handled-error',
+      };
     } finally {
       loading.value = false;
     }
   };
 
   return {
+    isSupported,
     loading,
-    createDialogState,
+    parentHandle,
+    conflict,
+    pickParentDirectory,
+    resetCreateDialog,
     submitCreateSpaceName,
     openExistingSpaceFromConflict,
   };

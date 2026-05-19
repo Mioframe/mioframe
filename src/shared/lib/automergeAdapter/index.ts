@@ -14,3 +14,4 @@ export { fileNameToPartialKey } from './fileNameToPartialKey';
 export { getPartialStorageKeyFileNamePrefix } from './getPartialStorageKeyFileNamePrefix';
 export { partialKeyToFileName } from './partialKeyToFileName';
 export { storageAdapterMarkerFileName } from './storageAdapterMarkerFileName';
+export { ensureStorageAdapterMarkerFile } from './ensureStorageAdapterMarkerFile';

@@ -1,61 +1,56 @@
 <script setup lang="ts">
-import { ref, toRef } from 'vue';
-import { isUserFileSelectionCancel } from '@shared/lib/fileSystem';
-import { reportHandledError } from '@shared/lib/reportHandledError';
+import { computed, ref } from 'vue';
 import { MDSymbol } from '@shared/ui/Icon';
 import { MDListItem } from '@shared/ui/Lists';
-import { useSnackbar } from '@shared/ui/Snackbar';
 import MioframeSpaceCreateDialog from './MioframeSpaceCreateDialog.vue';
-import {
-  isDirectoryPickerSupported,
-  showDirectoryPickerUnsupportedMessage,
-} from './directoryPickerSupport';
-import { buildCreateSpaceError } from './mioframeSpacePick.errors';
+import { useCreateMioframeSpace } from './useCreateMioframeSpace';
 
-const { addSnackbar } = useSnackbar();
-const loading = ref(false);
-const parentHandle = ref<FileSystemDirectoryHandle | undefined>(undefined);
-const isSupported = toRef(isDirectoryPickerSupported);
+const {
+  loading,
+  parentHandle,
+  conflict,
+  pickParentDirectory,
+  resetCreateDialog,
+  submitCreateSpaceName,
+  openExistingSpaceFromConflict,
+} = useCreateMioframeSpace();
+const errorText = ref<string | undefined>(undefined);
 
-const handleUnexpectedPickerError = () => {
-  const error = buildCreateSpaceError();
+const selectedLocation = computed(() => parentHandle.value?.name ?? '');
 
-  addSnackbar({
-    text: error.message,
-  });
-  reportHandledError(error, {
-    feature: 'mioframeSpaceCreate',
-    action: 'pickParentFolder',
-  });
-};
+const onCreate = async (spaceName: string) => {
+  const result = await submitCreateSpaceName(spaceName);
 
-const createSpace = async () => {
-  if (loading.value || parentHandle.value) {
+  if (result.status === 'created') {
+    resetCreateDialog();
+    errorText.value = undefined;
     return;
   }
 
-  if (!isSupported.value) {
-    showDirectoryPickerUnsupportedMessage(addSnackbar);
+  if (result.status === 'field-error') {
+    errorText.value = result.fieldMessage;
     return;
   }
 
-  loading.value = true;
+  errorText.value = undefined;
+};
 
-  try {
-    parentHandle.value = await window.showDirectoryPicker({
-      mode: 'readwrite',
-    });
-  } catch (error) {
-    if (!isUserFileSelectionCancel(error)) {
-      handleUnexpectedPickerError();
-    }
-  } finally {
-    loading.value = false;
+const onOpenExistingSpace = async () => {
+  const result = await openExistingSpaceFromConflict();
+
+  if (result.status === 'opened-existing-space') {
+    resetCreateDialog();
+    errorText.value = undefined;
   }
 };
 
-const resetCreateDialog = () => {
-  parentHandle.value = undefined;
+const onCancel = () => {
+  errorText.value = undefined;
+  resetCreateDialog();
+};
+
+const onClearError = () => {
+  errorText.value = undefined;
 };
 </script>
 
@@ -66,7 +61,7 @@ const resetCreateDialog = () => {
     supporting-text="Choose where Mioframe should create a new folder for your documents."
     :lines="2"
     :disabled="loading || !!parentHandle"
-    @click="createSpace"
+    @click="pickParentDirectory"
   >
     <template #leadingIcon>
       <MDSymbol name="create_new_folder" />
@@ -75,9 +70,13 @@ const resetCreateDialog = () => {
 
   <MioframeSpaceCreateDialog
     v-if="parentHandle"
-    :parent-handle="parentHandle"
-    @created="resetCreateDialog"
-    @opened-existing-space="resetCreateDialog"
-    @canceled="resetCreateDialog"
+    :selected-location="selectedLocation"
+    :loading="loading"
+    :conflict="conflict"
+    :error-text="errorText"
+    @create="onCreate"
+    @open-existing-space="onOpenExistingSpace"
+    @clear-error="onClearError"
+    @canceled="onCancel"
   />
 </template>

@@ -1,4 +1,5 @@
 import { isFunction } from 'es-toolkit';
+import { isUserFileSelectionCancel } from '@shared/lib/fileSystem';
 import type { useSnackbar } from '@shared/ui/Snackbar';
 
 const UNSUPPORTED_MESSAGE = 'Your browser does not support choosing folders for Mioframe spaces';
@@ -28,4 +29,22 @@ export const showDirectoryPickerUnsupportedMessage = (
       );
     },
   });
+};
+
+/**
+ * Opens the writable directory picker and treats user cancellation as no selection.
+ * @returns Picked directory handle, or `undefined` when the user cancels the picker.
+ */
+export const pickWritableDirectory = async () => {
+  try {
+    return await window.showDirectoryPicker({
+      mode: 'readwrite',
+    });
+  } catch (error) {
+    if (isUserFileSelectionCancel(error)) {
+      return undefined;
+    }
+
+    throw error;
+  }
 };
