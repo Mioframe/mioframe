@@ -1,4 +1,3 @@
-export { usePickMioframeSpace } from './usePickMioframeSpace';
 export { useCreateMioframeSpace } from './useCreateMioframeSpace';
 export { useOpenMioframeSpace } from './useOpenMioframeSpace';
 export { default as MioframeSpaceCreateDialog } from './MioframeSpaceCreateDialog.vue';
