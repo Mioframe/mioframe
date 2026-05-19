@@ -1,12 +1,11 @@
 <script setup lang="ts">
 import { DEVICE_FILES, useFileSystem } from '@entity/mountedDirectories';
 import { useDisconnectDeviceDirectory } from '@feature/deviceDirectoryDisconnect';
-import { usePickMioframeSpace } from '@feature/mioframeSpacePick';
-import { MDIconButton } from '@shared/ui/Button';
+import { MioframeSpaceCreateDialog, usePickMioframeSpace } from '@feature/mioframeSpacePick';
 import { MDSymbol } from '@shared/ui/Icon';
 import { MDListContainer, MDListItem } from '@shared/ui/Lists';
 import { PathUtils } from '@shared/lib/virtualFileSystem';
-import { OPFSName } from '@shared/service/directories';
+import LocalFSDeviceFileListItem from './LocalFSDeviceFileListItem.vue';
 
 const emit = defineEmits<{
   clickPath: [path: string];
@@ -14,45 +13,44 @@ const emit = defineEmits<{
 
 const { deviceFiles } = useFileSystem();
 const { disconnectDeviceDirectory } = useDisconnectDeviceDirectory();
-const { loading, createSpace, openSpace } = usePickMioframeSpace();
+const {
+  loading,
+  showCreateSpaceDialog,
+  createSpaceName,
+  createSpaceDialogError,
+  createSpaceSelectedLocation,
+  createSpaceResultFolder,
+  createSpace,
+  updateCreateSpaceName,
+  submitCreateSpace,
+  cancelCreateSpace,
+  openSpace,
+} = usePickMioframeSpace();
 
 const onClickDeviceFile = (name: string) => {
   emit('clickPath', PathUtils.join('/', DEVICE_FILES, name));
 };
 
-const onDisconnectDeviceFile = (event: MouseEvent, name: string) => {
-  event.stopPropagation();
+const onDisconnectDeviceFile = (name: string) => {
   void disconnectDeviceDirectory(name);
 };
 </script>
 
 <template>
   <MDListContainer is="div">
-    <MDListItem
-      is="button"
+    <LocalFSDeviceFileListItem
       v-for="deviceFile in deviceFiles ?? []"
       :key="deviceFile.name"
-      :headline="deviceFile.name"
-      :supporting-text="deviceFile.description"
-      @click="() => onClickDeviceFile(deviceFile.name)"
-    >
-      <template #leadingIcon>
-        <MDSymbol name="folder_managed" />
-      </template>
-
-      <template v-if="deviceFile.name !== OPFSName" #trailingIcon>
-        <MDIconButton
-          tooltip="Disconnect Mioframe space"
-          md-symbol-name="link_off"
-          @click="(event) => onDisconnectDeviceFile(event, deviceFile.name)"
-        />
-      </template>
-    </MDListItem>
+      :name="deviceFile.name"
+      :description="deviceFile.description"
+      @click-path="onClickDeviceFile"
+      @disconnect="onDisconnectDeviceFile"
+    />
 
     <MDListItem
       is="button"
       headline="Create space"
-      supporting-text="Create or select a folder. Mioframe files will be stored directly in that folder."
+      supporting-text="Choose where Mioframe should create a new folder for your documents."
       :lines="2"
       :disabled="loading"
       @click="createSpace"
@@ -65,7 +63,7 @@ const onDisconnectDeviceFile = (event: MouseEvent, name: string) => {
     <MDListItem
       is="button"
       headline="Open space"
-      supporting-text="Select a folder that already contains the current Mioframe space files."
+      supporting-text="Choose a folder that already contains a Mioframe space."
       :lines="2"
       :disabled="loading"
       @click="openSpace"
@@ -75,4 +73,16 @@ const onDisconnectDeviceFile = (event: MouseEvent, name: string) => {
       </template>
     </MDListItem>
   </MDListContainer>
+
+  <MioframeSpaceCreateDialog
+    v-if="showCreateSpaceDialog"
+    :model-value="createSpaceName"
+    :error-text="createSpaceDialogError"
+    :selected-location="createSpaceSelectedLocation"
+    :result-folder="createSpaceResultFolder"
+    :loading="loading"
+    @update:model-value="updateCreateSpaceName"
+    @apply="submitCreateSpace"
+    @cancel="cancelCreateSpace"
+  />
 </template>

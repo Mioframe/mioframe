@@ -22,9 +22,23 @@ vi.mock('@feature/deviceDirectoryDisconnect', () => ({
 }));
 
 vi.mock('@feature/mioframeSpacePick', () => ({
+  MioframeSpaceCreateDialog: defineComponent({
+    name: 'MioframeSpaceCreateDialogStub',
+    setup() {
+      return () => null;
+    },
+  }),
   usePickMioframeSpace: () => ({
     loading: false,
+    showCreateSpaceDialog: false,
+    createSpaceName: undefined,
+    createSpaceDialogError: undefined,
+    createSpaceSelectedLocation: '',
+    createSpaceResultFolder: '',
     createSpace: createSpaceMock,
+    updateCreateSpaceName: vi.fn(),
+    submitCreateSpace: vi.fn(),
+    cancelCreateSpace: vi.fn(),
     openSpace: openSpaceMock,
   }),
 }));
@@ -137,17 +151,16 @@ describe('LocalFSWidget', () => {
 
     expect(wrapper.text()).toContain('Create space');
     expect(wrapper.text()).toContain(
-      'Create or select a folder. Mioframe files will be stored directly in that folder.',
+      'Choose where Mioframe should create a new folder for your documents.',
     );
     expect(wrapper.text()).toContain('Open space');
-    expect(wrapper.text()).toContain(
-      'Select a folder that already contains the current Mioframe space files.',
-    );
+    expect(wrapper.text()).toContain('Choose a folder that already contains a Mioframe space.');
     expect(wrapper.text()).not.toContain('Create or open Mioframe space');
     expect(wrapper.text()).not.toContain('Add Local Directory');
     expect(wrapper.text()).not.toContain('Mounting user directory');
     expect(wrapper.text()).not.toContain('Create Mioframe folder');
     expect(wrapper.text()).not.toContain('local directory');
+    expect(wrapper.text()).not.toContain('stored directly in that folder');
   });
 
   it('renders mounted local-space descriptions from the entity contract', async () => {
