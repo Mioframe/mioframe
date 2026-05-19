@@ -45,6 +45,20 @@ const normalizePersistedDeviceDirectoryRecord = (record: PersistedDeviceDirector
   description: normalizeDeviceDirectoryDescription(record.description),
 });
 
+const didPersistedDeviceDirectoryRecordsChange = (
+  nextRecords: PersistedDeviceDirectoryRecord[],
+  previousRecords: PersistedDeviceDirectoryRecord[],
+) =>
+  nextRecords.length !== previousRecords.length ||
+  nextRecords.some((record, index) => {
+    const previousRecord = previousRecords[index];
+    return (
+      previousRecord === undefined ||
+      record.name !== previousRecord.name ||
+      record.description !== previousRecord.description
+    );
+  });
+
 const setupFileSystemService = () => {
   const vfs = new VirtualFileSystem();
   const deviceFileSystemProvider = DeviceFileSystemProvider();
@@ -171,9 +185,7 @@ const setupFileSystemService = () => {
       }
     });
 
-    if (
-      normalizedRecords.some((record, index) => record.description !== records[index]?.description)
-    ) {
+    if (didPersistedDeviceDirectoryRecordsChange(normalizedRecords, records)) {
       await updateRecordList(normalizedRecords);
     }
 

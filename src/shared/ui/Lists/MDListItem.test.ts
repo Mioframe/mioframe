@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import MDListItem from './MDListItem.vue';
 
 describe('MDListItem', () => {
-  it('keeps supporting text single-line by default', () => {
+  it('keeps the default one-line supporting text variant', () => {
     const wrapper = mount(MDListItem, {
       props: {
         headline: 'Create space',
@@ -11,6 +11,9 @@ describe('MDListItem', () => {
       },
     });
 
+    expect(wrapper.get('.md-list-item__supporting-text').classes()).toContain(
+      'md-list-item__supporting-text--one-line',
+    );
     expect(wrapper.get('.md-list-item__supporting-text').classes()).not.toContain(
       'md-list-item__supporting-text--two-lines',
     );
@@ -45,5 +48,27 @@ describe('MDListItem', () => {
     expect(wrapper.get('.md-list-item__supporting-text').classes()).toContain(
       'md-list-item__supporting-text--three-lines',
     );
+  });
+
+  it('defaults button items to type button', () => {
+    const wrapper = mount(MDListItem, {
+      props: {
+        is: 'button',
+        headline: 'Create space',
+      },
+    });
+
+    expect(wrapper.get('button').attributes('type')).toBe('button');
+  });
+
+  it('does not force a listitem role onto native interactive elements', () => {
+    const wrapper = mount(MDListItem, {
+      props: {
+        is: 'button',
+        headline: 'Open space',
+      },
+    });
+
+    expect(wrapper.get('button').attributes('role')).toBeUndefined();
   });
 });

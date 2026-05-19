@@ -24,6 +24,14 @@ export type MioframeSpaceInspection = {
 };
 
 /**
+ * Returns whether the thrown marker lookup error means the marker file is simply absent.
+ * @param error - Marker lookup failure.
+ * @returns Whether the folder is missing the current marker file.
+ */
+export const isMissingMioframeSpaceMarkerError = (error: unknown) =>
+  error instanceof DOMException && error.name === 'NotFoundError';
+
+/**
  * Returns whether the selected folder name commonly represents a broad user folder.
  * @param name - User-visible folder name reported by the picker handle.
  * @returns Whether the folder name should be treated as risky for a new space.
@@ -45,8 +53,10 @@ export const inspectMioframeSpaceDirectory = async (
   try {
     await handle.getFileHandle(CURRENT_MIOFRAME_SPACE_MARKER);
     looksLikeExistingSpace = true;
-  } catch {
-    looksLikeExistingSpace = false;
+  } catch (error) {
+    if (!isMissingMioframeSpaceMarkerError(error)) {
+      throw error;
+    }
   }
 
   const firstEntry = await handle.values().next();

@@ -1,12 +1,13 @@
-<script setup lang="ts" generic="Is extends 'button' | 'a' | 'div' | 'li' = 'div'">
+<script setup lang="ts">
 import { MDState } from '../State';
+import { computed } from 'vue';
 
-const { is = 'div', disabled } = defineProps<{
+const props = defineProps<{
   headline: string;
   supportingText?: string | undefined;
   lines?: 1 | 2 | 3 | undefined;
-  is?: Is | undefined;
-  type?: (Is extends 'button' ? 'button' | 'submit' | 'reset' : false) | undefined;
+  is?: 'button' | 'a' | 'div' | 'li' | undefined;
+  type?: 'button' | 'submit' | 'reset' | false | undefined;
   itemRole?: string | undefined;
   disabled?: boolean | undefined;
   draggable?: boolean | undefined;
@@ -24,22 +25,41 @@ const slots = defineSlots<{
   supportingText: () => unknown;
 }>();
 
+const itemTag = computed<'button' | 'a' | 'div' | 'li'>(() => props.is ?? 'div');
+const isNativeInteractive = computed(() => itemTag.value === 'button' || itemTag.value === 'a');
+const resolvedRole = computed(() => {
+  if (isNativeInteractive.value) {
+    return undefined;
+  }
+
+  return 'listitem';
+});
+const stateAttrs = computed(() => ({
+  type: itemTag.value === 'button' ? props.type || 'button' : undefined,
+  role: props.itemRole ?? resolvedRole.value ?? null,
+}));
+const supportingTextClass = computed(() => ({
+  'md-list-item__supporting-text--one-line': props.lines !== 2 && props.lines !== 3,
+  'md-list-item__supporting-text--two-lines': props.lines === 2,
+  'md-list-item__supporting-text--three-lines': props.lines === 3,
+}));
+
 const onClick = (e: MouseEvent) => {
-  if (disabled) {
+  if (props.disabled) {
     return;
   }
 
-  if (['button', 'a'].includes(is)) {
+  if (isNativeInteractive.value) {
     emit('click', e);
   }
 };
 
 const onKeydown = (e: KeyboardEvent) => {
-  if (disabled) {
+  if (props.disabled) {
     return;
   }
 
-  if (['button', 'a'].includes(is)) {
+  if (isNativeInteractive.value) {
     emit('keydown', e);
   }
 };
@@ -47,13 +67,12 @@ const onKeydown = (e: KeyboardEvent) => {
 
 <template>
   <MDState
-    :is="is"
+    :is="itemTag"
     class="md-list-item"
-    :draggable="draggable"
-    :disabled="disabled"
-    :type="type"
-    :disable-ripple="disabled || is === 'li'"
-    :role="itemRole ?? 'listitem'"
+    :draggable="props.draggable"
+    :disabled="props.disabled"
+    :disable-ripple="props.disabled || itemTag === 'li'"
+    v-bind="stateAttrs"
     @click="onClick"
     @keydown="onKeydown"
   >
@@ -71,10 +90,7 @@ const onKeydown = (e: KeyboardEvent) => {
       <div
         v-if="supportingText || !!slots.supportingText"
         class="md-list-item__supporting-text"
-        :class="{
-          'md-list-item__supporting-text--two-lines': lines === 2,
-          'md-list-item__supporting-text--three-lines': lines === 3,
-        }"
+        :class="supportingTextClass"
       >
         <slot name="supportingText">{{ supportingText }}</slot>
       </div>
@@ -174,6 +190,10 @@ const onKeydown = (e: KeyboardEvent) => {
     font-size: var(--md-sys-typescale-body-medium-size);
     letter-spacing: var(--md-sys-typescale-body-medium-tracking);
     font-weight: var(--md-sys-typescale-body-medium-weight);
+  }
+
+  &__supporting-text--one-line {
+    -webkit-line-clamp: 1;
   }
 
   &__supporting-text--two-lines {

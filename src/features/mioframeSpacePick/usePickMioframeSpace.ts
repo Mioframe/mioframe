@@ -15,11 +15,20 @@ const CREATE_GUARDRAIL_TEXT =
 const OPEN_GUARDRAIL_HEADLINE = 'No Mioframe space found';
 const OPEN_GUARDRAIL_TEXT =
   'This folder does not contain the current Mioframe space marker file. Select an existing Mioframe space folder.';
+const EXISTING_SPACE_HEADLINE = 'Open existing Mioframe space?';
+const EXISTING_SPACE_TEXT =
+  'This folder already contains the current Mioframe space marker file. Open that space instead of creating a new one.';
 
-const buildAddFolderError = () =>
-  new DomainError('Could not open the Mioframe space', {
-    cause: createSafeErrorCause('Mioframe space selection failed'),
+const buildAddFolderError = (message: string, causeMessage: string) =>
+  new DomainError(message, {
+    cause: createSafeErrorCause(causeMessage),
   });
+
+const buildCreateSpaceError = () =>
+  buildAddFolderError('Could not create the Mioframe space', 'Creating the Mioframe space failed');
+
+const buildOpenSpaceError = () =>
+  buildAddFolderError('Could not open the Mioframe space', 'Opening the Mioframe space failed');
 
 /**
  * Creates the user-facing flow for creating or opening a Mioframe space.
@@ -27,7 +36,7 @@ const buildAddFolderError = () =>
  */
 export const usePickMioframeSpace = () => {
   const loading = ref(false);
-  const { choose, confirm } = useDialog();
+  const { confirm } = useDialog();
   const { addSnackbar } = useSnackbar();
   const { addDeviceDirectory } = useFileSystem();
 
@@ -59,8 +68,10 @@ export const usePickMioframeSpace = () => {
     });
   };
 
-  const handleUnexpectedPickerError = (error: unknown, action: string) => {
-    const reportedError = error instanceof DomainError ? error : buildAddFolderError();
+  const handleUnexpectedPickerError = (error: unknown, action: 'createSpace' | 'openSpace') => {
+    const fallbackError =
+      action === 'createSpace' ? buildCreateSpaceError() : buildOpenSpaceError();
+    const reportedError = error instanceof DomainError ? error : fallbackError;
 
     addSnackbar({
       text: reportedError.message,
@@ -71,7 +82,7 @@ export const usePickMioframeSpace = () => {
     });
   };
 
-  const withPicker = async (action: string, run: () => Promise<void>) => {
+  const withPicker = async (action: 'createSpace' | 'openSpace', run: () => Promise<void>) => {
     if (loading.value) {
       return;
     }
@@ -103,41 +114,41 @@ export const usePickMioframeSpace = () => {
     });
 
   const askWhereToCreateSpace = async () =>
-    await choose({
+    await confirm({
       headline: CREATE_CONFIRM_HEADLINE,
       supportingText: CREATE_GUARDRAIL_TEXT,
       confirmLabel: 'Create here',
       cancelLabel: 'Cancel',
-      tertiaryLabel: 'Choose another folder',
+    });
+
+  const askToOpenExistingSpace = async () =>
+    await confirm({
+      headline: EXISTING_SPACE_HEADLINE,
+      supportingText: EXISTING_SPACE_TEXT,
+      confirmLabel: 'Open space',
+      cancelLabel: 'Cancel',
     });
 
   const createSpace = async () => {
-    const chooseCreateSpace = async (): Promise<void> => {
+    await withPicker('createSpace', async () => {
       const selectedHandle = await runPicker();
       const inspection = await inspectMioframeSpaceDirectory(selectedHandle);
 
-      if (
-        inspection.looksLikeExistingSpace ||
-        (!inspection.looksRiskyByName && inspection.isEmpty)
-      ) {
+      if (inspection.looksLikeExistingSpace) {
+        if (await askToOpenExistingSpace()) {
+          await mountMioframeSpace(selectedHandle);
+        }
+        return;
+      }
+
+      if (!inspection.looksRiskyByName && inspection.isEmpty) {
         await mountMioframeSpace(selectedHandle);
         return;
       }
 
-      const selection = await askWhereToCreateSpace();
-
-      if (selection === true) {
+      if (await askWhereToCreateSpace()) {
         await mountMioframeSpace(selectedHandle);
-        return;
       }
-
-      if (selection === 'tertiary') {
-        await chooseCreateSpace();
-      }
-    };
-
-    await withPicker('createSpace', async () => {
-      await chooseCreateSpace();
     });
   };
 
