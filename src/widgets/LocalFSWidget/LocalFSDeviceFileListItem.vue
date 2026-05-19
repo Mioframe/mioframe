@@ -2,11 +2,11 @@
 import { MDIconButton } from '@shared/ui/Button';
 import { MDSymbol } from '@shared/ui/Icon';
 import { MDListItem } from '@shared/ui/Lists';
-import { OPFSName } from '@shared/service/directories';
 
 const props = defineProps<{
   name: string;
   description?: string | undefined;
+  canDisconnect?: boolean | undefined;
 }>();
 
 const emit = defineEmits<{
@@ -30,7 +30,7 @@ const onClickDisconnect = (event: MouseEvent) => {
       <MDSymbol name="folder_managed" />
     </template>
 
-    <template v-if="name !== OPFSName" #trailingIcon>
+    <template v-if="canDisconnect" #trailingIcon>
       <MDIconButton
         tooltip="Disconnect Mioframe space"
         md-symbol-name="link_off"
