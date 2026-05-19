@@ -10,11 +10,13 @@ import { inspectMioframeSpaceDirectory } from './mioframeSpacePick.helpers';
 
 const UNSUPPORTED_MESSAGE = 'Your browser does not support choosing folders for Mioframe spaces';
 const CREATE_CONFIRM_HEADLINE = 'Create Mioframe space here?';
-const CREATE_GUARDRAIL_TEXT =
-  'This folder already contains files. Mioframe will store its space files directly in the selected folder.';
+const CREATE_RISKY_FOLDER_TEXT =
+  'This is a common system folder. Mioframe files will be stored directly in the selected folder.';
+const CREATE_NON_EMPTY_FOLDER_TEXT =
+  'This folder already contains files. Mioframe files will be stored directly in the selected folder.';
 const OPEN_GUARDRAIL_HEADLINE = 'No Mioframe space found';
 const OPEN_GUARDRAIL_TEXT =
-  'This folder does not contain the current Mioframe space marker file. Select an existing Mioframe space folder.';
+  'The selected folder is not a Mioframe space because the current Mioframe space marker file was not found.';
 const EXISTING_SPACE_HEADLINE = 'Open existing Mioframe space?';
 const EXISTING_SPACE_TEXT =
   'This folder already contains the current Mioframe space marker file. Open that space instead of creating a new one.';
@@ -39,7 +41,7 @@ const wrapUnexpectedInspectionError = (action: 'createSpace' | 'openSpace'): Dom
  */
 export const usePickMioframeSpace = () => {
   const loading = ref(false);
-  const { confirm } = useDialog();
+  const { alert, confirm } = useDialog();
   const { addSnackbar } = useSnackbar();
   const { addDeviceDirectory } = useFileSystem();
 
@@ -108,18 +110,17 @@ export const usePickMioframeSpace = () => {
     }
   };
 
-  const askToChooseAnotherFolder = async (headline: string, supportingText: string) =>
-    await confirm({
-      headline,
-      supportingText,
-      confirmLabel: 'Choose another folder',
-      cancelLabel: 'Cancel',
+  const explainWhyOpenCannotContinue = async () =>
+    await alert({
+      headline: OPEN_GUARDRAIL_HEADLINE,
+      supportingText: OPEN_GUARDRAIL_TEXT,
+      confirmLabel: 'OK',
     });
 
-  const askWhereToCreateSpace = async () =>
+  const askWhereToCreateSpace = async (supportingText: string) =>
     await confirm({
       headline: CREATE_CONFIRM_HEADLINE,
-      supportingText: CREATE_GUARDRAIL_TEXT,
+      supportingText,
       confirmLabel: 'Create here',
       cancelLabel: 'Cancel',
     });
@@ -155,14 +156,18 @@ export const usePickMioframeSpace = () => {
         return;
       }
 
-      if (await askWhereToCreateSpace()) {
+      const createConfirmationText = inspection.looksRiskyByName
+        ? CREATE_RISKY_FOLDER_TEXT
+        : CREATE_NON_EMPTY_FOLDER_TEXT;
+
+      if (await askWhereToCreateSpace(createConfirmationText)) {
         await mountMioframeSpace(selectedHandle);
       }
     });
   };
 
   const openSpace = async () => {
-    const chooseExistingSpace = async (): Promise<void> => {
+    await withPicker('openSpace', async () => {
       const selectedHandle = await runPicker();
       let inspection;
 
@@ -177,18 +182,7 @@ export const usePickMioframeSpace = () => {
         return;
       }
 
-      const shouldContinueChoosing = await askToChooseAnotherFolder(
-        OPEN_GUARDRAIL_HEADLINE,
-        OPEN_GUARDRAIL_TEXT,
-      );
-
-      if (shouldContinueChoosing) {
-        await chooseExistingSpace();
-      }
-    };
-
-    await withPicker('openSpace', async () => {
-      await chooseExistingSpace();
+      await explainWhyOpenCannotContinue();
     });
   };
 

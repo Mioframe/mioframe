@@ -5,12 +5,14 @@ import { usePickMioframeSpace } from './usePickMioframeSpace';
 const {
   addDeviceDirectoryMock,
   addSnackbarMock,
+  alertMock,
   confirmMock,
   reportHandledErrorMock,
   showDirectoryPickerMock,
 } = vi.hoisted(() => ({
   addDeviceDirectoryMock: vi.fn(),
   addSnackbarMock: vi.fn(),
+  alertMock: vi.fn(),
   confirmMock: vi.fn(),
   reportHandledErrorMock: vi.fn(),
   showDirectoryPickerMock: vi.fn(),
@@ -30,6 +32,7 @@ vi.mock('@shared/ui/Snackbar', () => ({
 
 vi.mock('@shared/ui/Dialog', () => ({
   useDialog: () => ({
+    alert: alertMock,
     confirm: confirmMock,
   }),
 }));
@@ -140,10 +143,12 @@ describe('usePickMioframeSpace', () => {
   beforeEach(() => {
     addDeviceDirectoryMock.mockReset();
     addSnackbarMock.mockReset();
+    alertMock.mockReset();
     confirmMock.mockReset();
     reportHandledErrorMock.mockReset();
     showDirectoryPickerMock.mockReset();
     addDeviceDirectoryMock.mockResolvedValue(undefined);
+    alertMock.mockResolvedValue(true);
     confirmMock.mockResolvedValue(false);
     Object.defineProperty(window, 'showDirectoryPicker', {
       configurable: true,
@@ -253,10 +258,11 @@ describe('usePickMioframeSpace', () => {
     expect(confirmMock).toHaveBeenCalledWith({
       headline: 'Create Mioframe space here?',
       supportingText:
-        'This folder already contains files. Mioframe will store its space files directly in the selected folder.',
+        'This is a common system folder. Mioframe files will be stored directly in the selected folder.',
       confirmLabel: 'Create here',
       cancelLabel: 'Cancel',
     });
+    expect(showDirectoryPickerMock).toHaveBeenCalledTimes(1);
     expect(addDeviceDirectoryMock).not.toHaveBeenCalled();
   });
 
@@ -276,6 +282,14 @@ describe('usePickMioframeSpace', () => {
     await createSpace();
 
     expect(confirmMock).toHaveBeenCalledTimes(1);
+    expect(confirmMock).toHaveBeenCalledWith({
+      headline: 'Create Mioframe space here?',
+      supportingText:
+        'This folder already contains files. Mioframe files will be stored directly in the selected folder.',
+      confirmLabel: 'Create here',
+      cancelLabel: 'Cancel',
+    });
+    expect(showDirectoryPickerMock).toHaveBeenCalledTimes(1);
     expect(addDeviceDirectoryMock).not.toHaveBeenCalled();
   });
 
@@ -291,6 +305,7 @@ describe('usePickMioframeSpace', () => {
 
     await createSpace();
 
+    expect(showDirectoryPickerMock).toHaveBeenCalledTimes(1);
     expect(addDeviceDirectoryMock).toHaveBeenCalledWith(selectedHandle);
   });
 
@@ -306,6 +321,7 @@ describe('usePickMioframeSpace', () => {
 
     await createSpace();
 
+    expect(showDirectoryPickerMock).toHaveBeenCalledTimes(1);
     expect(addDeviceDirectoryMock).not.toHaveBeenCalled();
   });
 
@@ -413,53 +429,54 @@ describe('usePickMioframeSpace', () => {
     await openSpace();
 
     expect(addDeviceDirectoryMock).not.toHaveBeenCalled();
-    expect(confirmMock).toHaveBeenCalled();
+    expect(alertMock).toHaveBeenCalledWith({
+      headline: 'No Mioframe space found',
+      supportingText:
+        'The selected folder is not a Mioframe space because the current Mioframe space marker file was not found.',
+      confirmLabel: 'OK',
+    });
   });
 
-  it('open space does not mount a folder that lacks Mioframe space signals', async () => {
-    const selectedHandle = createDirectoryHandle({
+  it('open space with an ordinary folder and no marker shows an explanation without retrying', async () => {
+    const ordinaryHandle = createDirectoryHandle({
       name: 'Project Space',
       entries: [['notes.txt', createFileHandle('notes.txt')]],
     });
-    showDirectoryPickerMock.mockResolvedValueOnce(selectedHandle);
+    showDirectoryPickerMock.mockResolvedValueOnce(ordinaryHandle);
 
     const { openSpace } = usePickMioframeSpace();
 
     await openSpace();
 
-    expect(confirmMock).toHaveBeenCalledWith({
+    expect(alertMock).toHaveBeenCalledWith({
       headline: 'No Mioframe space found',
       supportingText:
-        'This folder does not contain the current Mioframe space marker file. Select an existing Mioframe space folder.',
-      confirmLabel: 'Choose another folder',
-      cancelLabel: 'Cancel',
+        'The selected folder is not a Mioframe space because the current Mioframe space marker file was not found.',
+      confirmLabel: 'OK',
     });
+    expect(showDirectoryPickerMock).toHaveBeenCalledTimes(1);
     expect(addDeviceDirectoryMock).not.toHaveBeenCalled();
   });
 
-  it('open space retries selection instead of offering create-here behavior', async () => {
-    const invalidHandle = createDirectoryHandle({
-      name: 'Regular Folder',
+  it('open space with Documents and no marker shows an explanation without retrying', async () => {
+    const documentsHandle = createDirectoryHandle({
+      name: 'Documents',
       entries: [['notes.txt', createFileHandle('notes.txt')]],
     });
-    const validHandle = createDirectoryHandle({
-      name: 'Existing Space',
-      entries: [['storage-adapter-id.automerge', createFileHandle('storage-adapter-id.automerge')]],
-    });
-    showDirectoryPickerMock.mockResolvedValueOnce(invalidHandle).mockResolvedValueOnce(validHandle);
-    confirmMock.mockResolvedValueOnce(true);
+    showDirectoryPickerMock.mockResolvedValueOnce(documentsHandle);
 
     const { openSpace } = usePickMioframeSpace();
 
     await openSpace();
 
-    expect(confirmMock).toHaveBeenCalledWith(
-      expect.not.objectContaining({
-        confirmLabel: 'Create here',
-      }),
-    );
-    expect(showDirectoryPickerMock).toHaveBeenCalledTimes(2);
-    expect(addDeviceDirectoryMock).toHaveBeenCalledWith(validHandle);
+    expect(alertMock).toHaveBeenCalledWith({
+      headline: 'No Mioframe space found',
+      supportingText:
+        'The selected folder is not a Mioframe space because the current Mioframe space marker file was not found.',
+      confirmLabel: 'OK',
+    });
+    expect(showDirectoryPickerMock).toHaveBeenCalledTimes(1);
+    expect(addDeviceDirectoryMock).not.toHaveBeenCalled();
   });
 
   it('reports a privacy-safe error when opening a selected folder fails', async () => {
