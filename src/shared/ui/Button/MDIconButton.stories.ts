@@ -36,7 +36,16 @@ export const VisualStates: Story = {
         <div class="visual-row">
           <MDIconButton tooltip="Tonal" color="tonal" md-symbol-name="bookmark" />
           <MDIconButton tooltip="Selected toggle" type="toggle" selected md-symbol-name="check" />
-          <MDIconButton tooltip="Disabled" disabled md-symbol-name="block" />
+          <MDIconButton tooltip="Disabled standard" disabled md-symbol-name="block" />
+        </div>
+        <div class="visual-row">
+          <MDIconButton tooltip="Disabled filled" color="filled" disabled md-symbol-name="favorite" />
+          <MDIconButton tooltip="Disabled tonal" color="tonal" disabled md-symbol-name="bookmark" />
+          <MDIconButton tooltip="Disabled outlined" color="outlined" disabled md-symbol-name="edit" />
+        </div>
+        <div data-testid="visual-md-icon-button-targets" class="visual-row">
+          <MDIconButton tooltip="Extra small target" size="extra-small" md-symbol-name="add" />
+          <MDIconButton tooltip="Small target" size="small" md-symbol-name="add" />
         </div>
       </div>
     `,
@@ -50,9 +59,14 @@ export const VisualInteractionStates: Story = {
     template: `
       <div data-testid="visual-md-icon-button-interaction-states" class="visual-surface">
         <div class="visual-row">
-          <MDIconButton tooltip="Hover target" md-symbol-name="add" />
-          <MDIconButton tooltip="Focus target" color="filled" md-symbol-name="search" />
-          <MDIconButton tooltip="Pressed target" color="outlined" md-symbol-name="share" />
+          <MDIconButton class="md-state_hover" tooltip="Hover" md-symbol-name="add" />
+          <MDIconButton class="md-state_focused" tooltip="Focus" color="filled" md-symbol-name="search" />
+          <MDIconButton class="md-state_pressed" tooltip="Pressed" color="outlined" md-symbol-name="share" />
+        </div>
+        <div class="visual-row">
+          <MDIconButton class="md-state_hover" tooltip="Toggle hover" type="toggle" md-symbol-name="bookmark" />
+          <MDIconButton class="md-state_focused" tooltip="Toggle focus selected" type="toggle" selected md-symbol-name="bookmark" />
+          <MDIconButton class="md-state_pressed" tooltip="Toggle pressed selected" type="toggle" selected color="tonal" md-symbol-name="bookmark" />
         </div>
       </div>
     `,

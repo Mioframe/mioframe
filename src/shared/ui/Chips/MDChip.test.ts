@@ -55,6 +55,31 @@ describe('MDChip', () => {
     expect(wrapper.emitted('clickClose')).toHaveLength(1);
   });
 
+  it('does not emit chip clicks when disabled', async () => {
+    const wrapper = mountChip({ disabled: true, type: 'assist' });
+
+    await wrapper.get('button').trigger('click');
+
+    expect(wrapper.emitted('click')).toBeUndefined();
+    expect(document.body.querySelector('.md-ripple')).toBeNull();
+  });
+
+  it('does not emit input chip close clicks when disabled', async () => {
+    const wrapper = mountChip({ disabled: true });
+
+    const buttons = wrapper.findAll('button');
+    expect(buttons).toHaveLength(2);
+    expect(buttons[0]?.attributes('disabled')).toBeDefined();
+    expect(buttons[1]?.attributes('disabled')).toBeDefined();
+
+    const closeButton = buttons[1];
+    expect(closeButton).toBeDefined();
+    await closeButton?.trigger('click');
+
+    expect(wrapper.emitted('clickClose')).toBeUndefined();
+    expect(wrapper.emitted('click')).toBeUndefined();
+  });
+
   it('focuses the host button when autofocus is enabled', async () => {
     const focusSpy = vi.spyOn(HTMLButtonElement.prototype, 'focus');
     const wrapper = mountChip({ autofocus: true, type: 'assist' });

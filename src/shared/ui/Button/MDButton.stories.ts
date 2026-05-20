@@ -36,7 +36,12 @@ export const VisualStates: Story = {
         <div class="visual-row">
           <MDButton label="Tonal" color="tonal" />
           <MDButton label="Elevated" color="elevated" />
-          <MDButton label="Disabled" color="filled" disabled />
+          <MDButton label="Disabled filled" color="filled" disabled />
+        </div>
+        <div class="visual-row">
+          <MDButton label="Disabled tonal" color="tonal" disabled />
+          <MDButton label="Disabled outlined" color="outlined" disabled />
+          <MDButton label="Disabled text" color="text" disabled />
         </div>
       </div>
     `,
@@ -50,9 +55,14 @@ export const VisualInteractionStates: Story = {
     template: `
       <div data-testid="visual-md-button-interaction-states" class="visual-surface">
         <div class="visual-row">
-          <MDButton label="Hover target" color="filled" />
-          <MDButton label="Focus target" color="outlined" />
-          <MDButton label="Pressed target" color="tonal" />
+          <MDButton class="md-state_hover" label="Hover" color="filled" />
+          <MDButton class="md-state_focused" label="Focus" color="outlined" />
+          <MDButton class="md-state_pressed" label="Pressed" color="tonal" />
+        </div>
+        <div class="visual-row">
+          <MDButton class="md-state_hover" label="Outlined hover" color="outlined" />
+          <MDButton class="md-state_focused" label="Outlined focus" color="outlined" />
+          <MDButton class="md-state_pressed" label="Outlined pressed" color="outlined" />
         </div>
       </div>
     `,

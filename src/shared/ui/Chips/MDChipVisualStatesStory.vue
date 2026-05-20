@@ -1,5 +1,5 @@
 <template>
-  <div v-bind="rootAttrs" class="visual-surface">
+  <div id="visual-md-chip-states" class="visual-surface">
     <div class="visual-row">
       <MDChip label="Assist" type="assist" />
       <MDChip label="Filter" type="filter" />
@@ -8,15 +8,20 @@
     <div class="visual-row">
       <MDChip label="Input chip" type="input" />
       <MDChip label="Elevated" type="assist" elevated />
-      <MDChip label="Assist with icon" type="assist" />
+      <MDChip label="Suggestion" type="suggestion" />
+    </div>
+    <div class="visual-row">
+      <MDChip label="Disabled assist" type="assist" disabled />
+      <MDChip label="Disabled filter" type="filter" selected disabled />
+      <MDChip label="Disabled input chip" type="input" disabled />
+    </div>
+    <div id="visual-md-chip-targets" class="visual-row">
+      <MDChip label="Close target" type="input" />
+      <MDChip label="Disabled suggestion" type="suggestion" disabled />
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
 import MDChip from './MDChip.vue';
-
-const rootAttrs = {
-  'data-testid': 'visual-md-chip-states',
-};
 </script>

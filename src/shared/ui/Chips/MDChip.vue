@@ -1,4 +1,4 @@
-<script setup lang="ts" generic="T extends 'assist' | 'filter' | 'input'">
+<script setup lang="ts">
 import { computed, ref, useTemplateRef, watch } from 'vue';
 import { MDIconButton } from '../Button';
 import MDSymbol from '../Icon/MDSymbol.vue';
@@ -7,10 +7,11 @@ import { MDStateLayer, useRipple, useStateLayer } from '../State';
 const props = defineProps<{
   elevated?: boolean | undefined;
   label: string;
-  type: T;
-  selected?: (T extends 'filter' ? boolean : undefined) | undefined;
+  type: 'assist' | 'filter' | 'input' | 'suggestion';
+  selected?: boolean | undefined;
   draggable?: boolean | undefined;
   autofocus?: boolean | undefined;
+  disabled?: boolean | undefined;
 }>();
 
 const emit = defineEmits<{
@@ -19,8 +20,8 @@ const emit = defineEmits<{
 }>();
 
 const slots = defineSlots<{
-  leadingIcon: T extends 'assist' ? () => unknown : undefined;
-  trailingIcon: T extends 'filter' ? () => unknown : undefined;
+  leadingIcon(): unknown;
+  trailingIcon(): unknown;
 }>();
 
 const chipType = computed(() => props.type);
@@ -29,15 +30,16 @@ const selected = computed(() => Boolean(props.selected));
 const actionEl = useTemplateRef<HTMLButtonElement>('actionEl');
 const dragged = ref(false);
 const { hover, focused, durationPressedState } = useStateLayer(actionEl, { dragged });
+const showVisualState = computed(() => !props.disabled);
 
-useRipple(actionEl);
+useRipple(computed(() => (props.disabled ? undefined : actionEl.value)));
 
 watch(
-  [actionEl, () => props.autofocus],
-  ([element, autofocus]) => {
+  [actionEl, () => props.autofocus, () => props.disabled],
+  ([element, autofocus, disabled]) => {
     // The chip host owns autofocus because DatabaseViewChipsList focuses the
     // first rendered MDChip action when a database view selector opens.
-    if (autofocus && element) {
+    if (autofocus && element && !disabled) {
       element.focus();
     }
   },
@@ -50,11 +52,19 @@ const onClickClose = (e: MouseEvent) => {
 };
 
 const onChipClick = (event: MouseEvent) => {
+  if (props.disabled) {
+    return;
+  }
+
   event.stopPropagation();
   emit('click', event);
 };
 
 const onDragStart = () => {
+  if (props.disabled) {
+    return;
+  }
+
   dragged.value = true;
 };
 
@@ -72,23 +82,32 @@ const onDragEnd = () => {
       {
         'md-chip_elevated': props.elevated,
         'md-chip_selected': selected,
-        'md-state_hover': hover,
-        'md-state_focused': focused,
-        'md-state_pressed': durationPressedState,
-        'md-state_dragged': dragged,
+        'md-chip_disabled': props.disabled,
+        'md-state_hover': showVisualState && hover,
+        'md-state_focused': showVisualState && focused,
+        'md-state_pressed': showVisualState && durationPressedState,
+        'md-state_dragged': showVisualState && dragged,
       },
     ]"
-    :draggable="props.draggable ? 'true' : undefined"
+    :aria-disabled="props.disabled ? 'true' : undefined"
+    :draggable="props.draggable && !props.disabled ? 'true' : undefined"
     @dragstart="onDragStart"
     @dragend="onDragEnd"
     @drop="onDragEnd"
   >
-    <button ref="actionEl" type="button" class="md-chip__action" @click="onChipClick">
+    <button
+      ref="actionEl"
+      type="button"
+      class="md-chip__action"
+      :disabled="props.disabled"
+      @click="onChipClick"
+    >
       <MDStateLayer
         :hover="hover"
         :focused="focused"
         :pressed="durationPressedState"
         :dragged="dragged"
+        :disabled="props.disabled"
       />
 
       <span
@@ -109,6 +128,7 @@ const onDragEnd = () => {
       tooltip="remove"
       md-symbol-name="close"
       size="extra-small"
+      :disabled="props.disabled"
       class="md-chip__close-btn"
       @click="onClickClose"
     />
@@ -123,14 +143,16 @@ const onDragEnd = () => {
       {
         'md-chip_elevated': props.elevated,
         'md-chip_selected': selected,
-        'md-state_hover': hover,
-        'md-state_focused': focused,
-        'md-state_pressed': durationPressedState,
-        'md-state_dragged': dragged,
+        'md-chip_disabled': props.disabled,
+        'md-state_hover': showVisualState && hover,
+        'md-state_focused': showVisualState && focused,
+        'md-state_pressed': showVisualState && durationPressedState,
+        'md-state_dragged': showVisualState && dragged,
       },
     ]"
     type="button"
-    :draggable="props.draggable ? 'true' : undefined"
+    :disabled="props.disabled"
+    :draggable="props.draggable && !props.disabled ? 'true' : undefined"
     @click="onChipClick"
     @dragstart="onDragStart"
     @dragend="onDragEnd"
@@ -141,6 +163,7 @@ const onDragEnd = () => {
       :focused="focused"
       :pressed="durationPressedState"
       :dragged="dragged"
+      :disabled="props.disabled"
     />
 
     <span
@@ -246,9 +269,10 @@ const onDragEnd = () => {
   }
 
   &__close-btn {
-    margin-right: 4px;
+    margin-right: 0;
     margin-left: 0;
     flex-shrink: 0;
+    --md-icon-button-target-size: 48dp;
   }
 
   &__leading-icon {
@@ -262,7 +286,7 @@ const onDragEnd = () => {
 
   &_input-shell {
     padding: 0;
-    gap: 4px;
+    gap: 0;
   }
 
   &_elevated {
@@ -303,6 +327,10 @@ const onDragEnd = () => {
     .md-chip__trailing-icon {
       --md-content-color: var(--md-sys-color-primary);
     }
+  }
+
+  &_suggestion {
+    --md-content-color: var(--md-sys-color-on-surface-variant);
   }
 
   &.md-state_hover {

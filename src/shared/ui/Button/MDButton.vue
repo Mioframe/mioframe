@@ -104,6 +104,9 @@ useRipple(computed(() => (props.disabled ? undefined : buttonEl.value)));
   --md-button-border-style: solid;
   --md-button-border-color: transparent;
   --md-button-box-sizing: border-box;
+  --md-button-disabled-container-color: transparent;
+  --md-button-disabled-content-color: rgb(from var(--md-sys-color-on-surface) r g b / 0.38);
+  --md-button-disabled-border-color: transparent;
   position: relative;
   display: inline-flex;
   align-items: center;
@@ -193,6 +196,9 @@ useRipple(computed(() => (props.disabled ? undefined : buttonEl.value)));
 
     &.md-state_disabled,
     &:disabled {
+      --md-container-color: rgb(from var(--md-sys-color-on-surface) r g b / 0.12);
+      --md-content-color: var(--md-button-disabled-content-color);
+      --md-button-icon-color: var(--md-button-disabled-content-color);
       --md-state-box-shadow: var(--md-sys-elevation-level0);
     }
 
@@ -239,6 +245,13 @@ useRipple(computed(() => (props.disabled ? undefined : buttonEl.value)));
       --md-state-box-shadow: var(--md-sys-elevation-level1);
       z-index: 1;
     }
+
+    &.md-state_disabled,
+    &:disabled {
+      --md-container-color: rgb(from var(--md-sys-color-on-surface) r g b / 0.12);
+      --md-content-color: var(--md-button-disabled-content-color);
+      --md-button-icon-color: var(--md-button-disabled-content-color);
+    }
   }
 
   &.md-button_color-tonal {
@@ -268,6 +281,13 @@ useRipple(computed(() => (props.disabled ? undefined : buttonEl.value)));
       --md-content-color: var(--md-sys-color-on-secondary-container);
       --md-button-icon-color: var(--md-sys-color-on-secondary-container);
     }
+
+    &.md-state_disabled,
+    &:disabled {
+      --md-container-color: rgb(from var(--md-sys-color-on-surface) r g b / 0.12);
+      --md-content-color: var(--md-button-disabled-content-color);
+      --md-button-icon-color: var(--md-button-disabled-content-color);
+    }
   }
 
   &.md-button_color-outlined {
@@ -287,6 +307,9 @@ useRipple(computed(() => (props.disabled ? undefined : buttonEl.value)));
 
     &.md-state_disabled,
     &:disabled {
+      --md-container-color: transparent;
+      --md-content-color: var(--md-button-disabled-content-color);
+      --md-button-icon-color: var(--md-button-disabled-content-color);
       --md-button-border-color: rgb(from var(--md-sys-color-on-surface) r g b / 0.12);
     }
 
@@ -299,8 +322,8 @@ useRipple(computed(() => (props.disabled ? undefined : buttonEl.value)));
 
     &:focus-visible,
     &.md-state_focused {
-      --md-content-color: var(--md-sys-color-on-secondary-container);
-      --md-button-icon-color: var(--md-sys-color-on-secondary-container);
+      --md-content-color: var(--md-sys-color-on-surface-variant);
+      --md-button-icon-color: var(--md-sys-color-on-surface-variant);
     }
   }
 
@@ -324,6 +347,13 @@ useRipple(computed(() => (props.disabled ? undefined : buttonEl.value)));
     &.md-state_focused {
       --md-content-color: var(--md-sys-color-primary);
       --md-button-icon-color: var(--md-sys-color-primary);
+    }
+
+    &.md-state_disabled,
+    &:disabled {
+      --md-container-color: transparent;
+      --md-content-color: var(--md-button-disabled-content-color);
+      --md-button-icon-color: var(--md-button-disabled-content-color);
     }
   }
 

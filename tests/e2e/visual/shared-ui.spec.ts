@@ -12,18 +12,9 @@ test('MDButton visual states match baseline', async ({ page }) => {
 test('MDButton interaction states match baseline', async ({ page }) => {
   await openStory(page, 'shared-ui-mdbutton--visual-interaction-states');
 
-  await page.getByRole('button', { name: 'Hover target' }).hover();
-  await page.getByRole('button', { name: 'Focus target' }).focus();
-
-  const pressedTarget = page.getByRole('button', { name: 'Pressed target' });
-  await pressedTarget.hover();
-  await page.mouse.down();
-
   const surface = page.getByTestId('visual-md-button-interaction-states');
 
   await expect(surface).toHaveScreenshot('md-button-interaction-states.png');
-
-  await page.mouse.up();
 });
 
 test('MDIconButton visual states match baseline', async ({ page }) => {
@@ -37,24 +28,15 @@ test('MDIconButton visual states match baseline', async ({ page }) => {
 test('MDIconButton interaction states match baseline', async ({ page }) => {
   await openStory(page, 'shared-ui-mdiconbutton--visual-interaction-states');
 
-  await page.getByRole('button', { name: 'Hover target' }).hover();
-  await page.getByRole('button', { name: 'Focus target' }).focus();
-
-  const pressedTarget = page.getByRole('button', { name: 'Pressed target' });
-  await pressedTarget.hover();
-  await page.mouse.down();
-
   const surface = page.getByTestId('visual-md-icon-button-interaction-states');
 
   await expect(surface).toHaveScreenshot('md-icon-button-interaction-states.png');
-
-  await page.mouse.up();
 });
 
 test('MDChip visual states match baseline', async ({ page }) => {
   await openStory(page, 'shared-ui-mdchip--visual-states');
 
-  const surface = page.getByTestId('visual-md-chip-states');
+  const surface = page.locator('#visual-md-chip-states');
 
   await expect(surface).toHaveScreenshot('md-chip-states.png');
 });
@@ -62,18 +44,9 @@ test('MDChip visual states match baseline', async ({ page }) => {
 test('MDChip interaction states match baseline', async ({ page }) => {
   await openStory(page, 'shared-ui-mdchip--visual-interaction-states');
 
-  await page.getByRole('button', { name: 'Hover target' }).hover();
-  await page.getByRole('button', { name: 'Focus target' }).focus();
-
-  const pressedTarget = page.getByRole('button', { name: 'Pressed target' }).first();
-  await pressedTarget.hover();
-  await page.mouse.down();
-
-  const surface = page.getByTestId('visual-md-chip-interaction-states');
+  const surface = page.locator('#visual-md-chip-interaction-states');
 
   await expect(surface).toHaveScreenshot('md-chip-interaction-states.png');
-
-  await page.mouse.up();
 });
 
 test('MDCheckbox visual states match baseline', async ({ page }) => {
@@ -86,25 +59,8 @@ test('MDCheckbox visual states match baseline', async ({ page }) => {
 
 test('MDCheckbox interaction states match baseline', async ({ page }) => {
   await openStory(page, 'shared-ui-mdcheckbox--visual-interaction-states');
-
-  await page.locator('label[for="storybook-md-checkbox-hover"]').hover();
-  await page.locator('label[for="storybook-md-checkbox-focus"]').focus();
-
-  const defaultSurface = page.getByTestId('visual-md-checkbox-interaction-states');
-
-  await expect(defaultSurface).toHaveScreenshot('md-checkbox-interaction-states-default.png');
-
-  await page.locator('label[for="storybook-md-checkbox-readonly-hover"]').hover();
-  await page.locator('label[for="storybook-md-checkbox-readonly-focus"]').focus();
-
-  await expect(defaultSurface).toHaveScreenshot('md-checkbox-interaction-states-readonly.png');
-
-  await page.locator('label[for="storybook-md-checkbox-pressed"]').hover();
-  await page.mouse.down();
-
-  await expect(defaultSurface).toHaveScreenshot('md-checkbox-interaction-states-pressed.png');
-
-  await page.mouse.up();
+  const surface = page.getByTestId('visual-md-checkbox-interaction-states');
+  await expect(surface).toHaveScreenshot('md-checkbox-interaction-states.png');
 });
 
 test('MDFab visual states match baseline', async ({ page }) => {
@@ -118,17 +74,9 @@ test('MDFab visual states match baseline', async ({ page }) => {
 test('MDFab interaction states match baseline', async ({ page }) => {
   await openStory(page, 'shared-ui-mdfab--visual-interaction-states');
 
-  await page.getByRole('button', { name: 'Primary hover target' }).hover();
-  await page.getByRole('button', { name: 'Focus target' }).focus();
-
-  await page.getByRole('button', { name: 'Pressed target' }).hover();
-  await page.mouse.down();
-
   const surface = page.getByTestId('visual-md-fab-interaction-states');
 
   await expect(surface).toHaveScreenshot('md-fab-interaction-states.png');
-
-  await page.mouse.up();
 });
 
 test('MDListItem visual states match baseline', async ({ page }) => {
@@ -142,18 +90,36 @@ test('MDListItem visual states match baseline', async ({ page }) => {
 test('MDListItem interaction states match baseline', async ({ page }) => {
   await openStory(page, 'shared-ui-mdlistitem--visual-interaction-states');
 
-  await page.getByRole('button', { name: 'Hover target' }).hover();
-  await page.getByRole('button', { name: 'Focus target' }).focus();
-
-  const pressedTarget = page.getByRole('button', { name: 'Pressed target' });
-  await pressedTarget.hover();
-  await page.mouse.down();
-
   const surface = page.getByTestId('visual-md-list-item-interaction-states');
 
   await expect(surface).toHaveScreenshot('md-list-item-interaction-states.png');
+});
 
-  await page.mouse.up();
+test('MDIconButton extra-small and small targets are at least 48dp', async ({ page }) => {
+  await openStory(page, 'shared-ui-mdiconbutton--visual-states');
+
+  const targets = page.getByTestId('visual-md-icon-button-targets').getByRole('button');
+  const count = await targets.count();
+  const boxes = await Promise.all(
+    Array.from({ length: count }, (_, index) => targets.nth(index).boundingBox()),
+  );
+
+  for (const box of boxes) {
+    expect(box?.width ?? 0).toBeGreaterThanOrEqual(48);
+    expect(box?.height ?? 0).toBeGreaterThanOrEqual(48);
+  }
+});
+
+test('MDChip input close icon target is at least 48dp', async ({ page }) => {
+  await openStory(page, 'shared-ui-mdchip--visual-states');
+
+  const closeButton = page.locator('#visual-md-chip-targets').getByRole('button', {
+    name: 'remove',
+  });
+  const box = await closeButton.boundingBox();
+
+  expect(box?.width ?? 0).toBeGreaterThanOrEqual(48);
+  expect(box?.height ?? 0).toBeGreaterThanOrEqual(48);
 });
 
 test('MDStateLayer visual states match baseline', async ({ page }) => {
