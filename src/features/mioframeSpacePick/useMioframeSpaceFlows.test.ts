@@ -10,6 +10,7 @@ const {
   addDeviceDirectoryMock,
   addSnackbarMock,
   confirmMock,
+  disconnectDeviceFileMock,
   initializeRepositoryMock,
   reportHandledErrorMock,
   showDirectoryPickerMock,
@@ -17,6 +18,7 @@ const {
   addDeviceDirectoryMock: vi.fn(),
   addSnackbarMock: vi.fn(),
   confirmMock: vi.fn(),
+  disconnectDeviceFileMock: vi.fn(),
   initializeRepositoryMock: vi.fn(),
   reportHandledErrorMock: vi.fn(),
   showDirectoryPickerMock: vi.fn(),
@@ -25,6 +27,7 @@ const {
 vi.mock('@entity/mountedDirectories', () => ({
   useFileSystem: () => ({
     addDeviceDirectory: addDeviceDirectoryMock,
+    disconnectDeviceFile: disconnectDeviceFileMock,
   }),
 }));
 
@@ -179,10 +182,12 @@ describe('useMioframeSpaceParentPicker', () => {
     addDeviceDirectoryMock.mockReset();
     addSnackbarMock.mockReset();
     confirmMock.mockReset();
+    disconnectDeviceFileMock.mockReset();
     initializeRepositoryMock.mockReset();
     reportHandledErrorMock.mockReset();
     showDirectoryPickerMock.mockReset();
     addDeviceDirectoryMock.mockResolvedValue(undefined);
+    disconnectDeviceFileMock.mockResolvedValue(undefined);
     initializeRepositoryMock.mockResolvedValue(undefined);
     confirmMock.mockResolvedValue(false);
     Object.defineProperty(window, 'showDirectoryPicker', {
@@ -238,6 +243,7 @@ describe('useCreateMioframeSpace', () => {
     addDeviceDirectoryMock.mockReset();
     addSnackbarMock.mockReset();
     confirmMock.mockReset();
+    disconnectDeviceFileMock.mockReset();
     initializeRepositoryMock.mockReset();
     reportHandledErrorMock.mockReset();
     showDirectoryPickerMock.mockReset();
@@ -245,6 +251,7 @@ describe('useCreateMioframeSpace', () => {
       name: 'Work Notes',
       handle: undefined,
     });
+    disconnectDeviceFileMock.mockResolvedValue(undefined);
     initializeRepositoryMock.mockResolvedValue(undefined);
     confirmMock.mockResolvedValue(false);
     Object.defineProperty(window, 'showDirectoryPicker', {
@@ -279,6 +286,7 @@ describe('useCreateMioframeSpace', () => {
     });
     expect(addDeviceDirectoryMock).toHaveBeenCalledWith(createdSpaceHandle);
     expect(initializeRepositoryMock).toHaveBeenCalledWith('/Device Files/Work Notes');
+    expect(disconnectDeviceFileMock).not.toHaveBeenCalled();
   });
 
   it('initializes with the mounted directory name returned from addDeviceDirectory', async () => {
@@ -478,7 +486,7 @@ describe('useCreateMioframeSpace', () => {
     );
   });
 
-  it('reports a privacy-safe error when repository initialization fails after mounting', async () => {
+  it('rolls back the mounted record when repository initialization fails after mounting', async () => {
     const createdSpaceHandle = createDirectoryHandle({ name: 'Work Notes' });
     const parentHandle = createDirectoryHandle({
       name: 'Documents',
@@ -498,6 +506,7 @@ describe('useCreateMioframeSpace', () => {
     const createFlow = useCreateMioframeSpace(ref(parentHandle));
 
     await expect(createFlow.createSpace('Work Notes')).resolves.toBe(false);
+    expect(disconnectDeviceFileMock).toHaveBeenCalledWith('Work Notes');
     expect(addSnackbarMock).toHaveBeenCalledWith({
       text: 'Could not create the Mioframe space',
     });
@@ -522,6 +531,54 @@ describe('useCreateMioframeSpace', () => {
     );
   });
 
+  it('reports a privacy-safe error when rollback after repository initialization failure fails', async () => {
+    const createdSpaceHandle = createDirectoryHandle({ name: 'Work Notes' });
+    const parentHandle = createDirectoryHandle({
+      name: 'Documents',
+      subdirectoryFactory: (directoryName, options) => {
+        if (directoryName === 'Work Notes' && options?.create) {
+          return createdSpaceHandle;
+        }
+
+        throw new DOMException('Missing directory', 'NotFoundError');
+      },
+    });
+    addDeviceDirectoryMock.mockResolvedValueOnce({
+      name: 'Work Notes',
+      handle: createdSpaceHandle,
+    });
+    initializeRepositoryMock.mockRejectedValueOnce(new Error('raw filesystem detail'));
+    disconnectDeviceFileMock.mockRejectedValueOnce(new Error('raw rollback detail'));
+    const createFlow = useCreateMioframeSpace(ref(parentHandle));
+
+    await expect(createFlow.createSpace('Work Notes')).resolves.toBe(false);
+
+    expect(reportHandledErrorMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        message: 'Could not roll back failed Mioframe space creation',
+        cause: expect.objectContaining({
+          message: 'Rolling back failed Mioframe space creation failed',
+        }),
+      }),
+      {
+        feature: 'mioframeSpaceCreate',
+        action: 'rollbackCreateSpaceMount',
+      },
+    );
+    expect(reportHandledErrorMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        message: 'Could not create the Mioframe space',
+        cause: expect.objectContaining({
+          message: 'Creating the Mioframe space failed',
+        }),
+      }),
+      {
+        feature: 'mioframeSpaceCreate',
+        action: 'createSpace',
+      },
+    );
+  });
+
   it('reports a privacy-safe error when create mounting fails', async () => {
     const createdSpaceHandle = createDirectoryHandle({ name: 'Work Notes' });
     const parentHandle = createDirectoryHandle({
@@ -539,6 +596,7 @@ describe('useCreateMioframeSpace', () => {
 
     await expect(createFlow.createSpace('Work Notes')).resolves.toBe(false);
     expect(initializeRepositoryMock).not.toHaveBeenCalled();
+    expect(disconnectDeviceFileMock).not.toHaveBeenCalled();
     expect(addSnackbarMock).toHaveBeenCalledWith({
       text: 'Could not create the Mioframe space',
     });
@@ -589,6 +647,7 @@ describe('useOpenMioframeSpace', () => {
     addDeviceDirectoryMock.mockReset();
     addSnackbarMock.mockReset();
     confirmMock.mockReset();
+    disconnectDeviceFileMock.mockReset();
     initializeRepositoryMock.mockReset();
     reportHandledErrorMock.mockReset();
     showDirectoryPickerMock.mockReset();
@@ -596,6 +655,7 @@ describe('useOpenMioframeSpace', () => {
       name: 'Work Notes',
       handle: undefined,
     });
+    disconnectDeviceFileMock.mockResolvedValue(undefined);
     initializeRepositoryMock.mockResolvedValue(undefined);
     confirmMock.mockResolvedValue(false);
     Object.defineProperty(window, 'showDirectoryPicker', {
