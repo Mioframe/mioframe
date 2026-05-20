@@ -22,6 +22,7 @@ type CreateSpaceExistingSpace = {
   handle: FileSystemDirectoryHandle;
 };
 
+/** Field-level create-space issue surfaced to the create-space dialog. */
 export type CreateSpaceFieldIssue = {
   /** User-facing field issue text. */
   message: string;
