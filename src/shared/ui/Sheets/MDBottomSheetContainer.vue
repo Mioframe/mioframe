@@ -3,7 +3,7 @@ import { tryOnBeforeUnmount, useCssVar, useEventListener, useWindowSize } from '
 import { isBoolean, throttle } from 'es-toolkit';
 import { toNumber } from 'es-toolkit/compat';
 import { computed, ref, toRefs, useTemplateRef, watch, watchEffect } from 'vue';
-import { MDStateLayer, useStateLayer } from '../State';
+import { MDStateLayer, useRipple, useStateLayer } from '../State';
 
 const modelFullscreen = defineModel<boolean>('fullscreen', {
   default: undefined,
@@ -76,9 +76,9 @@ const {
   hover: dragHandleHover,
   focused: dragHandleFocused,
   durationPressedState: dragHandlePressed,
-} = useStateLayer(dragHandleEl, {
-  enableRipple: () => true,
-});
+} = useStateLayer(dragHandleEl);
+
+useRipple(dragHandleEl);
 
 const { height: windowHeight } = useWindowSize();
 

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { StyleValue } from 'vue';
 import { computed, nextTick, useTemplateRef, watch } from 'vue';
-import { MDStateLayer, useStateLayer } from '../State';
+import { MDStateLayer, useRipple, useStateLayer } from '../State';
 import { useScroll } from '@shared/lib/scrollTo';
 import { useModalAriaHidden } from '../AriaHidden';
 import { usePaneContainer } from '../Layout/useMDContainer';
@@ -29,9 +29,9 @@ const {
   hover: dragHandleHover,
   focused: dragHandleFocused,
   durationPressedState: dragHandlePressed,
-} = useStateLayer(dragHandleEl, {
-  enableRipple: () => true,
-});
+} = useStateLayer(dragHandleEl);
+
+useRipple(dragHandleEl);
 
 const bodyEl = useTemplateRef<HTMLElement>('bodyEl');
 

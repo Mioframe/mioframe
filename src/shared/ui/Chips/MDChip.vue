@@ -1,8 +1,8 @@
 <script setup lang="ts" generic="T extends 'assist' | 'filter' | 'input'">
-import { computed, ref, useTemplateRef } from 'vue';
+import { computed, ref, useTemplateRef, watch } from 'vue';
 import { MDIconButton } from '../Button';
 import MDSymbol from '../Icon/MDSymbol.vue';
-import { MDStateLayer, useStateLayer } from '../State';
+import { MDStateLayer, useRipple, useStateLayer } from '../State';
 
 const props = defineProps<{
   elevated?: boolean | undefined;
@@ -22,8 +22,26 @@ const slots = defineSlots<{
   leadingIcon: T extends 'assist' ? () => unknown : undefined;
   trailingIcon: T extends 'filter' ? () => unknown : undefined;
 }>();
+
 const chipType = computed(() => props.type);
+const isInputChip = computed(() => chipType.value === 'input');
 const selected = computed(() => Boolean(props.selected));
+const actionEl = useTemplateRef<HTMLButtonElement>('actionEl');
+const dragged = ref(false);
+const { hover, focused, durationPressedState } = useStateLayer(actionEl, { dragged });
+const showVisualState = computed(() => true);
+
+useRipple(actionEl);
+
+watch(
+  [actionEl, () => props.autofocus],
+  ([element, autofocus]) => {
+    if (autofocus && element) {
+      element.focus();
+    }
+  },
+  { immediate: true },
+);
 
 const onClickClose = (e: MouseEvent) => {
   e.stopPropagation();
@@ -35,14 +53,6 @@ const onChipClick = (event: MouseEvent) => {
   emit('click', event);
 };
 
-const buttonEl = useTemplateRef<HTMLButtonElement>('buttonEl');
-const dragged = ref(false);
-const { hover, focused, durationPressedState } = useStateLayer(buttonEl, {
-  autofocus: () => props.autofocus,
-  enableRipple: () => true,
-  dragged,
-});
-
 const onDragStart = () => {
   dragged.value = true;
 };
@@ -53,17 +63,68 @@ const onDragEnd = () => {
 </script>
 
 <template>
+  <span
+    v-if="isInputChip"
+    class="md-chip md-chip_input-shell"
+    :class="[
+      `md-chip_${chipType}`,
+      {
+        'md-chip_elevated': props.elevated,
+        'md-chip_selected': selected,
+        'md-state_hover': showVisualState && hover,
+        'md-state_focused': showVisualState && focused,
+        'md-state_pressed': showVisualState && durationPressedState,
+        'md-state_drag': dragged,
+      },
+    ]"
+    :draggable="props.draggable ? 'true' : undefined"
+    @dragstart="onDragStart"
+    @dragend="onDragEnd"
+    @drop="onDragEnd"
+  >
+    <button ref="actionEl" type="button" class="md-chip__action" @click="onChipClick">
+      <MDStateLayer
+        :hover="hover"
+        :focused="focused"
+        :pressed="durationPressedState"
+        :dragged="dragged"
+      />
+
+      <span
+        v-if="!!slots.leadingIcon || (chipType === 'filter' && selected)"
+        class="md-chip__leading-icon"
+      >
+        <MDSymbol v-if="chipType === 'filter' && selected" name="check" />
+
+        <slot v-else name="leadingIcon" />
+      </span>
+
+      <span class="md-chip__label-text">
+        {{ props.label }}
+      </span>
+    </button>
+
+    <MDIconButton
+      tooltip="remove"
+      md-symbol-name="close"
+      size="extra-small"
+      class="md-chip__close-btn"
+      @click="onClickClose"
+    />
+  </span>
+
   <button
-    ref="buttonEl"
+    v-else
+    ref="actionEl"
     class="md-chip"
     :class="[
       `md-chip_${chipType}`,
       {
         'md-chip_elevated': props.elevated,
         'md-chip_selected': selected,
-        'md-state_hover': hover,
-        'md-state_focused': focused,
-        'md-state_pressed': durationPressedState,
+        'md-state_hover': showVisualState && hover,
+        'md-state_focused': showVisualState && focused,
+        'md-state_pressed': showVisualState && durationPressedState,
         'md-state_drag': dragged,
       },
     ]"
@@ -81,31 +142,22 @@ const onDragEnd = () => {
       :dragged="dragged"
     />
 
-    <div
+    <span
       v-if="!!slots.leadingIcon || (chipType === 'filter' && selected)"
       class="md-chip__leading-icon"
     >
       <MDSymbol v-if="chipType === 'filter' && selected" name="check" />
 
       <slot v-else name="leadingIcon" />
-    </div>
+    </span>
 
     <span class="md-chip__label-text">
       {{ props.label }}
     </span>
 
-    <MDIconButton
-      v-if="chipType === 'input'"
-      tooltip="remove"
-      md-symbol-name="close"
-      size="extra-small"
-      class="md-chip__close-btn"
-      @click="onClickClose"
-    />
-
-    <div v-else-if="chipType === 'filter' && !!slots.trailingIcon" class="md-chip__trailing-icon">
+    <span v-if="chipType === 'filter' && !!slots.trailingIcon" class="md-chip__trailing-icon">
       <slot name="trailingIcon" />
-    </div>
+    </span>
   </button>
 </template>
 
@@ -128,6 +180,22 @@ const onDragEnd = () => {
   -webkit-tap-highlight-color: transparent;
   transition-property: color, background-color, border-color, box-shadow, border-radius;
   transition-duration: var(--md-sys-motion-duration-short4, 0.2s);
+
+  &__action {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    min-width: 0;
+    align-self: stretch;
+    flex: 1 1 auto;
+    padding: 0 8px 0 16px;
+    border: 0;
+    border-radius: inherit;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    cursor: inherit;
+  }
 
   &__label-text {
     position: relative;
@@ -177,9 +245,9 @@ const onDragEnd = () => {
   }
 
   &__close-btn {
-    margin-right: -16px;
-    --md-target-width: 48px;
-    --md-target-height: 48px;
+    margin-right: 4px;
+    margin-left: 0;
+    flex-shrink: 0;
   }
 
   &__leading-icon {
@@ -189,6 +257,11 @@ const onDragEnd = () => {
   &__trailing-icon {
     margin-left: 8px;
     margin-right: -8px;
+  }
+
+  &_input-shell {
+    padding: 0;
+    gap: 4px;
   }
 
   &_elevated {
@@ -208,8 +281,6 @@ const onDragEnd = () => {
   }
 
   &_filter {
-    /* --md-content-color: var(--md-sys-color-on-surface-variant); */
-
     &.md-chip_selected {
       --md-content-color: var(--md-sys-color-on-secondary-container);
       --md-container-color: var(--md-sys-color-secondary-container);

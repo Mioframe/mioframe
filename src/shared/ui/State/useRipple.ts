@@ -35,13 +35,7 @@ const startRipple = async ({
   rippleEl.style.setProperty('--md-ripple-x', `${offsetX}px`);
   rippleEl.style.setProperty('--md-ripple-diameter', `${diameter}px`);
 
-  const mdStateTarget = target.querySelector(':scope > .md-state-layer > .md-state-layer__target');
-
-  if (mdStateTarget) {
-    mdStateTarget.before(rippleEl);
-  } else {
-    target.prepend(rippleEl);
-  }
+  target.prepend(rippleEl);
 
   const duration = 1e3;
 

@@ -2,7 +2,7 @@
 import { computed, useTemplateRef } from 'vue';
 import { MDCircularProgressIndicator } from '../ProgressIndicators';
 import { MDPlainTooltip } from '../Tooltips';
-import { MDStateLayer, useStateLayer } from '../State';
+import { MDStateLayer, useRipple, useStateLayer } from '../State';
 import { MDSymbol } from '../Icon';
 
 const props = withDefaults(
@@ -45,9 +45,9 @@ const onFabClick = (event: MouseEvent) => {
 };
 
 const buttonEl = useTemplateRef<HTMLButtonElement>('buttonEl');
-const { hover, focused, durationPressedState } = useStateLayer(buttonEl, {
-  enableRipple: () => true,
-});
+const { hover, focused, durationPressedState } = useStateLayer(buttonEl);
+
+useRipple(buttonEl);
 </script>
 
 <template>
@@ -75,7 +75,7 @@ const { hover, focused, durationPressedState } = useStateLayer(buttonEl, {
       <slot v-else name="icon">
         <MDSymbol v-if="mdSymbol" :name="mdSymbol" />
 
-        <div v-else class="empty-icon" />
+        <span v-else class="empty-icon" />
       </slot>
     </span>
 

@@ -21,11 +21,6 @@ defineProps<{
 
 <style lang="css" scoped>
 .md-layer {
-  --md-state-hover-layer-opacity: 0.08;
-  --md-state-focus-layer-opacity: 0.1;
-  --md-state-pressed-layer-opacity: 0.1;
-  --md-state-dragged-layer-opacity: 0.16;
-
   border-radius: inherit;
   background: none;
   background-color: rgb(from var(--md-content-color) r g b / 0);
@@ -35,19 +30,23 @@ defineProps<{
   &._hover {
     will-change: background-color;
 
-    background-color: rgb(from var(--md-content-color) r g b / var(--md-state-hover-layer-opacity));
+    background-color: rgb(
+      from var(--md-content-color) r g b / var(--md-state-hover-layer-opacity, 0.08)
+    );
   }
   &._pressed {
     background-color: rgb(
-      from var(--md-content-color) r g b / var(--md-state-pressed-layer-opacity)
+      from var(--md-content-color) r g b / var(--md-state-pressed-layer-opacity, 0.1)
     );
   }
   &._focused {
-    background-color: rgb(from var(--md-content-color) r g b / var(--md-state-focus-layer-opacity));
+    background-color: rgb(
+      from var(--md-content-color) r g b / var(--md-state-focus-layer-opacity, 0.1)
+    );
   }
   &._drag {
     background-color: rgb(
-      from var(--md-content-color) r g b / var(--md-state-dragged-layer-opacity)
+      from var(--md-content-color) r g b / var(--md-state-dragged-layer-opacity, 0.16)
     );
   }
 }

@@ -1,6 +1,6 @@
 <script setup lang="ts" generic="Is extends 'button' | 'a' | 'div' | 'li' = 'div'">
 import { computed, useTemplateRef } from 'vue';
-import { MDStateLayer, useStateLayer } from '../State';
+import { MDStateLayer, useRipple, useStateLayer } from '../State';
 
 const { is = 'div', disabled } = defineProps<{
   headline: string;
@@ -45,11 +45,10 @@ const onKeydown = (e: KeyboardEvent) => {
 };
 
 const hostEl = useTemplateRef<HTMLElement>('hostEl');
-const enableRipple = computed(() => !disabled && is !== 'li');
-const { hover, focused, durationPressedState } = useStateLayer(hostEl, {
-  disabled: () => disabled,
-  enableRipple,
-});
+const showVisualState = computed(() => !disabled);
+const { hover, focused, durationPressedState } = useStateLayer(hostEl);
+
+useRipple(computed(() => (!disabled && is !== 'li' ? hostEl.value : undefined)));
 </script>
 
 <template>
@@ -63,9 +62,9 @@ const { hover, focused, durationPressedState } = useStateLayer(hostEl, {
     :aria-disabled="disabled && is !== 'button' ? 'true' : undefined"
     :role="itemRole ?? 'listitem'"
     :class="{
-      'md-state_hover': hover,
-      'md-state_focused': focused,
-      'md-state_pressed': durationPressedState,
+      'md-state_hover': showVisualState && hover,
+      'md-state_focused': showVisualState && focused,
+      'md-state_pressed': showVisualState && durationPressedState,
       'md-state_disabled': disabled,
     }"
     @click="onClick"
@@ -86,13 +85,13 @@ const { hover, focused, durationPressedState } = useStateLayer(hostEl, {
       <slot name="leadingAvatarContainer" />
     </span>
 
-    <div class="md-list-item__body">
+    <span class="md-list-item__body">
       <span class="md-list-item__headline">{{ headline }}</span>
 
-      <div v-if="supportingText || !!slots.supportingText" class="md-list-item__supporting-text">
+      <span v-if="supportingText || !!slots.supportingText" class="md-list-item__supporting-text">
         <slot name="supportingText">{{ supportingText }}</slot>
-      </div>
-    </div>
+      </span>
+    </span>
 
     <span v-if="!!slots.trailingIcon" class="md-list-item__trailing-icon">
       <slot name="trailingIcon" />
@@ -108,8 +107,6 @@ const { hover, focused, durationPressedState } = useStateLayer(hostEl, {
 
   --md-container-color: var(--md-list-item-container-color, var(--md-sys-color-surface));
   --md-content-color: var(--md-list-item-content-color, var(--md-sys-color-on-surface));
-
-  --md-target-offset: 0px;
 
   position: relative;
   display: flex;

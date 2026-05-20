@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { isNumber } from 'es-toolkit/compat';
-import { useTemplateRef } from 'vue';
+import { computed, useTemplateRef } from 'vue';
 import { MDCircularProgressIndicator } from '../ProgressIndicators';
-import { MDStateLayer, useStateLayer } from '../State';
+import { MDStateLayer, useRipple, useStateLayer } from '../State';
 
 const props = withDefaults(
   defineProps<{
@@ -38,10 +38,10 @@ const onButtonClick = (event: MouseEvent) => {
 };
 
 const buttonEl = useTemplateRef<HTMLButtonElement>('buttonEl');
-const { hover, focused, durationPressedState } = useStateLayer(buttonEl, {
-  disabled: () => props.disabled,
-  enableRipple: () => !props.disabled,
-});
+const { hover, focused, durationPressedState } = useStateLayer(buttonEl);
+const showVisualState = computed(() => !props.disabled);
+
+useRipple(computed(() => (props.disabled ? undefined : buttonEl.value)));
 </script>
 
 <template>
@@ -60,9 +60,9 @@ const { hover, focused, durationPressedState } = useStateLayer(buttonEl, {
         'md-button_icon': !!$slots.icon,
         'md-button_loading': props.loading,
         'md-button_selected': props.selected,
-        'md-state_hover': hover,
-        'md-state_focused': focused,
-        'md-state_pressed': durationPressedState,
+        'md-state_hover': showVisualState && hover,
+        'md-state_focused': showVisualState && focused,
+        'md-state_pressed': showVisualState && durationPressedState,
         'md-state_disabled': props.disabled,
       },
     ]"
@@ -75,7 +75,7 @@ const { hover, focused, durationPressedState } = useStateLayer(buttonEl, {
       :disabled="props.disabled"
     />
 
-    <div class="md-button__content">
+    <span class="md-button__content">
       <span v-if="!!slots.icon" class="md-button__icon">
         <slot name="icon" />
       </span>
@@ -87,7 +87,7 @@ const { hover, focused, durationPressedState } = useStateLayer(buttonEl, {
         class="md-button__progress-indicator"
         :progress="isNumber(props.loading) ? props.loading : undefined"
       />
-    </div>
+    </span>
   </button>
 </template>
 
@@ -104,9 +104,6 @@ const { hover, focused, durationPressedState } = useStateLayer(buttonEl, {
   --md-button-border-style: solid;
   --md-button-border-color: transparent;
   --md-button-box-sizing: border-box;
-  --md-target-max-width: max(48px, 100%);
-  --md-target-max-height: max(48px, 100%);
-
   position: relative;
   display: inline-flex;
   align-items: center;

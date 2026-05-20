@@ -11,7 +11,7 @@ import {
 import { MDOverlayTooltip } from '@shared/ui/Tooltips';
 import { toggleBoolean } from '@shared/ui/Checkbox';
 import type { AMDocumentId } from '@shared/lib/automerge';
-import { MDStateLayer, useStateLayer } from '@shared/ui/State';
+import { MDStateLayer, useRipple, useStateLayer } from '@shared/ui/State';
 import { useElementSize } from '@vueuse/core';
 import { zodBooleanProperty } from '@entity/databaseBoolean';
 import { useDatabaseProperty } from '@entity/databaseProperty';
@@ -183,9 +183,9 @@ const ariaChecked = computed(() => {
   return !!value.value;
 });
 
-const { hover, focused, durationPressedState } = useStateLayer(inlineEl, {
-  enableRipple: () => true,
-});
+const { hover, focused, durationPressedState } = useStateLayer(inlineEl);
+
+useRipple(inlineEl);
 </script>
 
 <template>

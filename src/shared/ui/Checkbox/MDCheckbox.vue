@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { computed, toRefs, toValue, useTemplateRef, watchEffect } from 'vue';
+import { computed, toRefs, toValue, useTemplateRef, watch, watchEffect } from 'vue';
 import { MDSymbol } from '../Icon';
 import { isNil, isUndefined } from 'es-toolkit';
-import { MDStateLayer, useStateLayer } from '../State';
+import { MDStateLayer, useRipple, useStateLayer } from '../State';
 import { toggleBoolean } from './toggleBoolean';
 import { sessionUniqueId } from '@shared/lib/uniqueId';
 import { MDPlainTooltip } from '../Tooltips';
@@ -105,11 +105,21 @@ const onKeydownContainer = (event: KeyboardEvent) => {
 };
 
 const checkboxEl = useTemplateRef<HTMLElement>('checkboxEl');
-const { hover, focused, durationPressedState } = useStateLayer(checkboxEl, {
-  disabled,
-  autofocus: () => props.autofocus,
-  enableRipple: () => !presentation.value && !disabled.value,
-});
+const { hover, focused, durationPressedState } = useStateLayer(checkboxEl);
+const interactiveTabIndex = computed(() => (disabled.value ? -1 : props.tabIndex));
+const showVisualState = computed(() => !disabled.value);
+
+useRipple(computed(() => (!presentation.value && !disabled.value ? checkboxEl.value : undefined)));
+
+watch(
+  [checkboxEl, () => props.autofocus, disabled],
+  ([element, autofocus, isDisabled]) => {
+    if (autofocus && element && !isDisabled) {
+      element.focus();
+    }
+  },
+  { immediate: true },
+);
 </script>
 
 <template>
@@ -145,12 +155,12 @@ const { hover, focused, durationPressedState } = useStateLayer(checkboxEl, {
       'md-checkbox_disabled': disabled,
       'md-checkbox_presentation': presentation,
       'md-checkbox_readonly': readonly,
-      'md-state_hover': hover,
-      'md-state_focused': focused,
-      'md-state_pressed': durationPressedState,
+      'md-state_hover': showVisualState && hover,
+      'md-state_focused': showVisualState && focused,
+      'md-state_pressed': showVisualState && durationPressedState,
       'md-state_disabled': disabled,
     }"
-    :tabindex="tabIndex"
+    :tabindex="interactiveTabIndex"
     :aria-label="tooltip ?? ariaLabel"
     @click="onClickContainer"
     @keydown="onKeydownContainer"

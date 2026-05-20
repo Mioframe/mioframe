@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import { useTemplateRef } from 'vue';
+import { computed, useTemplateRef } from 'vue';
 import { MDCircularProgressIndicator } from '../ProgressIndicators';
 import { MDPlainTooltip, MDRichTooltip } from '../Tooltips';
 import { MDSymbol } from '../Icon';
-import { MDStateLayer, useStateLayer } from '../State';
+import { MDStateLayer, useRipple, useStateLayer } from '../State';
 
 const {
   color = 'standard',
@@ -53,14 +53,10 @@ const onClick = (e: MouseEvent) => {
 };
 
 const buttonEl = useTemplateRef<HTMLButtonElement>('buttonEl');
-const {
-  hover,
-  focused: focusVisible,
-  durationPressedState,
-} = useStateLayer(buttonEl, {
-  disabled: () => disabled,
-  enableRipple: () => !disabled,
-});
+const { hover, focused: focusVisible, durationPressedState } = useStateLayer(buttonEl);
+const showVisualState = computed(() => !disabled);
+
+useRipple(computed(() => (disabled ? undefined : buttonEl.value)));
 </script>
 
 <template>
@@ -80,9 +76,9 @@ const {
         'md-icon-button_pressed': pressed,
         'md-icon-button_focused': focused,
         'md-icon-button_loading': loading,
-        'md-state_hover': hover,
-        'md-state_focused': focusVisible,
-        'md-state_pressed': durationPressedState,
+        'md-state_hover': showVisualState && hover,
+        'md-state_focused': showVisualState && focusVisible,
+        'md-state_pressed': showVisualState && durationPressedState,
         'md-state_disabled': disabled,
       },
     ]"
