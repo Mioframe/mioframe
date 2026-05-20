@@ -191,7 +191,6 @@ const setupFileSystemService = () => {
     await mountProvider(deviceFilesPath, deviceFileSystemProvider);
     await mountOpfs();
     await hydrateDeviceDirectories();
-    syncActiveDeviceFiles();
   };
 
   const deviceFilesReady = mountDeviceFiles();
