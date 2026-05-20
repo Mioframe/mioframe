@@ -35,7 +35,7 @@ const startRipple = async ({
   rippleEl.style.setProperty('--md-ripple-x', `${offsetX}px`);
   rippleEl.style.setProperty('--md-ripple-diameter', `${diameter}px`);
 
-  const mdStateTarget = target.querySelector(':scope > .md-state__target');
+  const mdStateTarget = target.querySelector(':scope > .md-state-layer > .md-state-layer__target');
 
   if (mdStateTarget) {
     mdStateTarget.before(rippleEl);
@@ -74,20 +74,26 @@ const startRipple = async ({
 
 let lastTarget: Element | undefined = undefined;
 
+/**
+ * Attach Material-style ripple rendering to an interactive host element.
+ * @param rawEl - Reactive element source for the host that should render the ripple.
+ */
 export const useRipple = (rawEl: MaybeElementRef) => {
   const el = computed(() => unrefElement(rawEl));
 
   let lastAnimation: Animation | undefined = undefined;
 
-  const onPressDown = async ({
-    target,
-    clientX,
-    clientY,
-  }: {
+  /**
+   * Start a ripple from the current pointer or keyboard activation location.
+   * @param press - Activation metadata for the ripple origin.
+   */
+  const onPressDown = async (press: {
     target: EventTarget | null;
     clientX: number;
     clientY: number;
   }) => {
+    const { target, clientX, clientY } = press;
+
     if (
       target instanceof Element &&
       target === unrefElement(el) &&
@@ -103,6 +109,7 @@ export const useRipple = (rawEl: MaybeElementRef) => {
     }
   };
 
+  /** Shorten the active ripple after release so it settles like Material press feedback. */
   const onPressUp = () => {
     lastTarget = undefined;
     if (lastAnimation?.effect instanceof KeyframeEffect) {

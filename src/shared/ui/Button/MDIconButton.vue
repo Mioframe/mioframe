@@ -1,8 +1,9 @@
 <script setup lang="ts">
+import { useTemplateRef } from 'vue';
 import { MDCircularProgressIndicator } from '../ProgressIndicators';
 import { MDPlainTooltip, MDRichTooltip } from '../Tooltips';
 import { MDSymbol } from '../Icon';
-import { MDState } from '../State';
+import { MDStateLayer, useStateLayer } from '../State';
 
 const {
   color = 'standard',
@@ -30,14 +31,10 @@ const {
   mdSymbolName?: string | undefined;
   type?: 'default' | 'toggle' | undefined;
   selected?: boolean | undefined;
-  /**
-   * @default 'small'
-   */
+  /** Defaults to `small`. */
   size?: 'extra-small' | 'small' | 'medium' | 'large' | 'extra-large' | undefined;
   width?: 'narrow' | 'default' | 'wide' | undefined;
-  /**
-   * @default 'round'
-   */
+  /** Defaults to `round`. */
   shape?: 'round' | 'square' | undefined;
 }>();
 
@@ -54,11 +51,21 @@ const onClick = (e: MouseEvent) => {
   e.stopPropagation();
   emit('click', e);
 };
+
+const buttonEl = useTemplateRef<HTMLButtonElement>('buttonEl');
+const {
+  hover,
+  focused: focusVisible,
+  durationPressedState,
+} = useStateLayer(buttonEl, {
+  disabled: () => disabled,
+  enableRipple: () => !disabled,
+});
 </script>
 
 <template>
-  <MDState
-    is="button"
+  <button
+    ref="buttonEl"
     :disabled="disabled"
     :type="formAction ?? 'button'"
     class="md-icon-button"
@@ -73,11 +80,22 @@ const onClick = (e: MouseEvent) => {
         'md-icon-button_pressed': pressed,
         'md-icon-button_focused': focused,
         'md-icon-button_loading': loading,
+        'md-state_hover': hover,
+        'md-state_focused': focusVisible,
+        'md-state_pressed': durationPressedState,
+        'md-state_disabled': disabled,
       },
     ]"
     :aria-label="tooltip"
     @click="onClick"
   >
+    <MDStateLayer
+      :hover="hover"
+      :focused="focusVisible"
+      :pressed="durationPressedState"
+      :disabled="disabled"
+    />
+
     <span class="md-icon-button__icon">
       <slot name="icon">
         <MDSymbol v-if="mdSymbolName" :name="mdSymbolName" />
@@ -102,7 +120,7 @@ const onClick = (e: MouseEvent) => {
     </MDRichTooltip>
 
     <MDPlainTooltip v-else :text="tooltip" />
-  </MDState>
+  </button>
 </template>
 
 <style scoped>
@@ -113,26 +131,26 @@ const onClick = (e: MouseEvent) => {
   --md-icon-button-border-width: 0px;
   --md-icon-button-padding: 0px;
 
-  --md-state-display: inline-flex;
-  --md-state-align-items: center;
-  --md-state-justify-content: center;
-  --md-state-border: 0;
-  --md-state-border-width: var(--md-icon-button-border-width);
-  --md-state-box-sizing: content-box;
-  --md-state-height: calc(
-    var(--md-icon-button-container-height) - (var(--md-icon-button-border-width) * 2)
-  );
-  --md-state-padding-top: 0;
-  --md-state-padding-bottom: 0;
-  --md-state-padding-left: calc(var(--md-icon-button-padding) - var(--md-icon-button-border-width));
-  --md-state-padding-right: calc(
-    var(--md-icon-button-padding) - var(--md-icon-button-border-width)
-  );
-  --md-state-border-radius: var(--md-icon-button-container-shape);
+  position: relative;
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  height: calc(var(--md-icon-button-container-height) - (var(--md-icon-button-border-width) * 2));
+  padding: 0 calc(var(--md-icon-button-padding) - var(--md-icon-button-border-width));
+  border-radius: var(--md-icon-button-container-shape);
+  border: var(--md-icon-button-border-width) solid transparent;
+  box-sizing: content-box;
+  background: var(--md-container-color, transparent);
+  color: var(--md-content-color, inherit);
   vertical-align: middle;
   user-select: none;
+  transition-property: color, background-color, border-color, border-radius;
+  transition-duration: var(--md-sys-motion-duration-short4, 0.2s);
+  -webkit-tap-highlight-color: transparent;
 
   &__icon {
+    position: relative;
+    z-index: 1;
     display: inline-flex;
     justify-content: center;
     align-items: center;
@@ -192,21 +210,21 @@ const onClick = (e: MouseEvent) => {
   }
 
   &_color-outlined {
-    --md-state-border-style: solid;
-    --md-state-border-color: var(--md-sys-color-outline);
+    border-style: solid;
+    border-color: var(--md-sys-color-outline);
     --md-icon-button-border-width: 1px;
     --md-container-color: transparent;
     --md-content-color: var(--md-sys-color-on-surface-variant);
     --md-symbol-fill: 1;
 
     &.md-icon-button_type-toggle {
-      --md-state-border-color: var(--md-sys-color-outline);
+      border-color: var(--md-sys-color-outline);
       --md-container-color: transparent;
       --md-content-color: var(--md-sys-color-on-surface-variant);
       --md-symbol-fill: 0;
 
       &.md-icon-button_selected {
-        --md-state-border-color: var(--md-container-color);
+        border-color: var(--md-container-color);
         --md-container-color: var(--md-sys-color-inverse-surface);
         --md-content-color: var(--md-sys-color-inverse-on-surface);
         --md-symbol-fill: 1;

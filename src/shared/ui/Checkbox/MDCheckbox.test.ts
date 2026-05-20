@@ -77,8 +77,8 @@ describe('MDCheckbox', () => {
     expect(checkbox.getAttribute('aria-hidden')).toBe('true');
     expect(checkbox.hasAttribute('tabindex')).toBe(false);
     expect(checkbox.classList.contains('md-state')).toBe(false);
-    expect(root.querySelector('.md-state__layer')).toBeNull();
-    expect(root.querySelector('.md-state__target')).toBeNull();
+    expect(root.querySelector('.md-state-layer')).toBeNull();
+    expect(root.querySelector('.md-state-layer__target')).toBeNull();
 
     unmount();
   });

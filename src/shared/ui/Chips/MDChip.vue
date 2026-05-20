@@ -1,9 +1,10 @@
 <script setup lang="ts" generic="T extends 'assist' | 'filter' | 'input'">
+import { computed, ref, useTemplateRef } from 'vue';
 import { MDIconButton } from '../Button';
 import MDSymbol from '../Icon/MDSymbol.vue';
-import { MDState } from '../State';
+import { MDStateLayer, useStateLayer } from '../State';
 
-const { type: chipType, selected = false } = defineProps<{
+const props = defineProps<{
   elevated?: boolean | undefined;
   label: string;
   type: T;
@@ -21,6 +22,8 @@ const slots = defineSlots<{
   leadingIcon: T extends 'assist' ? () => unknown : undefined;
   trailingIcon: T extends 'filter' ? () => unknown : undefined;
 }>();
+const chipType = computed(() => props.type);
+const selected = computed(() => Boolean(props.selected));
 
 const onClickClose = (e: MouseEvent) => {
   e.stopPropagation();
@@ -31,24 +34,53 @@ const onChipClick = (event: MouseEvent) => {
   event.stopPropagation();
   emit('click', event);
 };
+
+const buttonEl = useTemplateRef<HTMLButtonElement>('buttonEl');
+const dragged = ref(false);
+const { hover, focused, durationPressedState } = useStateLayer(buttonEl, {
+  autofocus: () => props.autofocus,
+  enableRipple: () => true,
+  dragged,
+});
+
+const onDragStart = () => {
+  dragged.value = true;
+};
+
+const onDragEnd = () => {
+  dragged.value = false;
+};
 </script>
 
 <template>
-  <MDState
-    is="button"
+  <button
+    ref="buttonEl"
     class="md-chip"
     :class="[
       `md-chip_${chipType}`,
       {
-        'md-chip_elevated': elevated,
+        'md-chip_elevated': props.elevated,
         'md-chip_selected': selected,
+        'md-state_hover': hover,
+        'md-state_focused': focused,
+        'md-state_pressed': durationPressedState,
+        'md-state_drag': dragged,
       },
     ]"
     type="button"
-    :draggable="draggable"
-    :autofocus="autofocus"
+    :draggable="props.draggable ? 'true' : undefined"
     @click="onChipClick"
+    @dragstart="onDragStart"
+    @dragend="onDragEnd"
+    @drop="onDragEnd"
   >
+    <MDStateLayer
+      :hover="hover"
+      :focused="focused"
+      :pressed="durationPressedState"
+      :dragged="dragged"
+    />
+
     <div
       v-if="!!slots.leadingIcon || (chipType === 'filter' && selected)"
       class="md-chip__leading-icon"
@@ -59,7 +91,7 @@ const onChipClick = (event: MouseEvent) => {
     </div>
 
     <span class="md-chip__label-text">
-      {{ label }}
+      {{ props.label }}
     </span>
 
     <MDIconButton
@@ -74,30 +106,32 @@ const onChipClick = (event: MouseEvent) => {
     <div v-else-if="chipType === 'filter' && !!slots.trailingIcon" class="md-chip__trailing-icon">
       <slot name="trailingIcon" />
     </div>
-  </MDState>
+  </button>
 </template>
 
 <style lang="css" scoped>
 .md-chip {
   position: relative;
+  display: inline-flex;
+  align-items: center;
+  min-width: 88dp;
+  height: 32dp;
+  padding: 0 16px;
+  border-radius: var(--md-sys-shape-corner-small);
+  border: 1dp solid var(--md-sys-color-outline-variant);
+  background: var(--md-container-color, transparent);
+  color: var(--md-content-color, inherit);
   vertical-align: middle;
   cursor: pointer;
   flex-shrink: 0;
-  --md-state-display: inline-flex;
-  --md-state-align-items: center;
-  --md-state-border-radius: var(--md-sys-shape-corner-small);
-  --md-state-height: 32dp;
-  --md-state-border-color: var(--md-sys-color-outline-variant);
-  --md-state-border-width: 1dp;
-  --md-state-border-style: solid;
-  --md-state-padding-top: 0;
-  --md-state-padding-right: 16px;
-  --md-state-padding-bottom: 0;
-  --md-state-padding-left: 16px;
-  --md-state-min-width: 88dp;
   --md-content-color: var(--md-sys-color-on-surface);
+  -webkit-tap-highlight-color: transparent;
+  transition-property: color, background-color, border-color, box-shadow, border-radius;
+  transition-duration: var(--md-sys-motion-duration-short4, 0.2s);
 
   &__label-text {
+    position: relative;
+    z-index: 1;
     font-family: var(--md-sys-typescale-label-large-font);
     font-weight: var(--md-sys-typescale-label-large-weight);
     font-size: var(--md-sys-typescale-label-large-size);
@@ -113,6 +147,8 @@ const onChipClick = (event: MouseEvent) => {
 
   &__leading-icon,
   &__trailing-icon {
+    position: relative;
+    z-index: 1;
     display: inline-flex;
     justify-content: center;
     align-items: center;
@@ -177,8 +213,8 @@ const onChipClick = (event: MouseEvent) => {
     &.md-chip_selected {
       --md-content-color: var(--md-sys-color-on-secondary-container);
       --md-container-color: var(--md-sys-color-secondary-container);
-      --md-state-border-color: var(--md-sys-color-secondary-container);
-      --md-state-border-width: 0;
+      border-color: var(--md-sys-color-secondary-container);
+      border-width: 0;
     }
 
     &.md-chip_elevated {
@@ -205,7 +241,7 @@ const onChipClick = (event: MouseEvent) => {
   :disabled {
     --md-content-color: rgb(var(--md-sys-color-on-surface) / r g b 0.38);
     pointer-events: none;
-    --md-state-border-color: rgb(from var(--md-sys-color-on-surface) / r g b 0.12);
+    border-color: rgb(from var(--md-sys-color-on-surface) / r g b 0.12);
     --md-state-box-shadow: var(--md-sys-elevation-level0);
   }
 }

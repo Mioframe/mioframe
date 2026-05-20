@@ -11,7 +11,7 @@ import {
 import { MDOverlayTooltip } from '@shared/ui/Tooltips';
 import { toggleBoolean } from '@shared/ui/Checkbox';
 import type { AMDocumentId } from '@shared/lib/automerge';
-import { MDState } from '@shared/ui/State';
+import { MDStateLayer, useStateLayer } from '@shared/ui/State';
 import { useElementSize } from '@vueuse/core';
 import { zodBooleanProperty } from '@entity/databaseBoolean';
 import { useDatabaseProperty } from '@entity/databaseProperty';
@@ -182,11 +182,14 @@ const ariaChecked = computed(() => {
 
   return !!value.value;
 });
+
+const { hover, focused, durationPressedState } = useStateLayer(inlineEl, {
+  enableRipple: () => true,
+});
 </script>
 
 <template>
-  <MDState
-    is="div"
+  <div
     ref="inlineEl"
     class="editable-inline-value"
     tabindex="0"
@@ -195,17 +198,26 @@ const ariaChecked = computed(() => {
     :aria-haspopup="isBooleanProperty ? undefined : 'dialog'"
     :aria-expanded="isBooleanProperty ? undefined : showEditForm"
     :aria-label="property?.name"
-    :class="propClass"
+    :class="[
+      propClass,
+      {
+        'md-state_hover': hover,
+        'md-state_focused': focused,
+        'md-state_pressed': durationPressedState,
+      },
+    ]"
     @click="onRootClick"
     @keydown="onRootKeydown"
   >
+    <MDStateLayer :hover="hover" :focused="focused" :pressed="durationPressedState" />
+
     <ValueInline
       :directory-path="path"
       :document-id="documentId"
       :item-id="itemId"
       :property-id="propertyId"
     />
-  </MDState>
+  </div>
 
   <MDOverlayTooltip
     v-if="property"
@@ -232,22 +244,14 @@ const ariaChecked = computed(() => {
 
 <style scoped>
 .editable-inline-value {
+  position: relative;
   display: flex;
   align-items: stretch;
   width: 100%;
   min-height: 100%;
   cursor: pointer;
-  --md-state-border-radius: 1step;
-  --md-state-display: flex;
-  --md-state-align-items: stretch;
-  --md-state-width: 100%;
-  --md-state-min-width: 100%;
-  --md-state-height: 100%;
-  --md-state-min-height: 100%;
-  --md-state-padding-top: 1step;
-  --md-state-padding-right: 1step;
-  --md-state-padding-bottom: 1step;
-  --md-state-padding-left: 1step;
+  padding: 1step;
+  border-radius: 1step;
   transition-property: background-color;
   transition-duration: 0.1s;
 
@@ -266,7 +270,7 @@ const ariaChecked = computed(() => {
     width: 100%;
   }
 
-  :deep(.md-state__content) {
+  > :not(.md-state-layer) {
     flex-grow: 1;
     min-width: 0;
   }

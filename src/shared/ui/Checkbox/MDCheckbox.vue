@@ -2,7 +2,7 @@
 import { computed, toRefs, toValue, useTemplateRef, watchEffect } from 'vue';
 import { MDSymbol } from '../Icon';
 import { isNil, isUndefined } from 'es-toolkit';
-import { MDState } from '../State';
+import { MDStateLayer, useStateLayer } from '../State';
 import { toggleBoolean } from './toggleBoolean';
 import { sessionUniqueId } from '@shared/lib/uniqueId';
 import { MDPlainTooltip } from '../Tooltips';
@@ -103,6 +103,13 @@ const onKeydownContainer = (event: KeyboardEvent) => {
   event.stopPropagation();
   stateValue.value = toggleBoolean(stateValue.value, toValue(indeterminate));
 };
+
+const checkboxEl = useTemplateRef<HTMLElement>('checkboxEl');
+const { hover, focused, durationPressedState } = useStateLayer(checkboxEl, {
+  disabled,
+  autofocus: () => props.autofocus,
+  enableRipple: () => !presentation.value && !disabled.value,
+});
 </script>
 
 <template>
@@ -126,9 +133,9 @@ const onKeydownContainer = (event: KeyboardEvent) => {
     <MDPlainTooltip v-if="tooltip" :text="tooltip" />
   </div>
 
-  <MDState
-    is="label"
+  <label
     v-else
+    ref="checkboxEl"
     :for="id"
     class="md-checkbox"
     :class="{
@@ -138,14 +145,23 @@ const onKeydownContainer = (event: KeyboardEvent) => {
       'md-checkbox_disabled': disabled,
       'md-checkbox_presentation': presentation,
       'md-checkbox_readonly': readonly,
+      'md-state_hover': hover,
+      'md-state_focused': focused,
+      'md-state_pressed': durationPressedState,
+      'md-state_disabled': disabled,
     }"
-    :disabled="disabled"
     :tabindex="tabIndex"
     :aria-label="tooltip ?? ariaLabel"
-    :autofocus="autofocus"
     @click="onClickContainer"
     @keydown="onKeydownContainer"
   >
+    <MDStateLayer
+      :hover="hover"
+      :focused="focused"
+      :pressed="durationPressedState"
+      :disabled="disabled"
+    />
+
     <input
       :id="id"
       ref="inputEl"
@@ -162,21 +178,25 @@ const onKeydownContainer = (event: KeyboardEvent) => {
     </div>
 
     <MDPlainTooltip v-if="tooltip" :text="tooltip" />
-  </MDState>
+  </label>
 </template>
 
 <style lang="css" scoped>
 .md-checkbox {
-  --md-state-display: inline-flex;
-  --md-state-justify-content: center;
-  --md-state-align-items: center;
-  --md-state-width: 40px;
-  --md-state-height: 40px;
-  --md-state-border-radius: 20px;
-  --md-state-border: 0;
+  position: relative;
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  width: 40px;
+  height: 40px;
+  border: 0;
+  border-radius: 20px;
   cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
 
   &__container {
+    position: relative;
+    z-index: 1;
     width: 18px;
     height: 18px;
     border-radius: 2px;

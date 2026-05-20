@@ -3,7 +3,7 @@ import { tryOnBeforeUnmount, useCssVar, useEventListener, useWindowSize } from '
 import { isBoolean, throttle } from 'es-toolkit';
 import { toNumber } from 'es-toolkit/compat';
 import { computed, ref, toRefs, useTemplateRef, watch, watchEffect } from 'vue';
-import { MDState } from '../State';
+import { MDStateLayer, useStateLayer } from '../State';
 
 const modelFullscreen = defineModel<boolean>('fullscreen', {
   default: undefined,
@@ -71,6 +71,15 @@ const onClickDragHandle = () => {
   }
 };
 
+const dragHandleEl = useTemplateRef<HTMLButtonElement>('dragHandleEl');
+const {
+  hover: dragHandleHover,
+  focused: dragHandleFocused,
+  durationPressedState: dragHandlePressed,
+} = useStateLayer(dragHandleEl, {
+  enableRipple: () => true,
+});
+
 const { height: windowHeight } = useWindowSize();
 
 const fullscreen = computed(
@@ -135,14 +144,25 @@ tryOnBeforeUnmount(() => {
     @click.self="onClickContainer"
   >
     <div ref="headerEl" class="md-bottom-sheet-container__header md">
-      <MDState
-        is="button"
+      <button
+        ref="dragHandleEl"
+        type="button"
         class="md-bottom-sheet-container__drag-handle"
         :aria-label="collapsedState ? undefined : 'close sheet'"
+        :class="{
+          'md-state_hover': dragHandleHover,
+          'md-state_focused': dragHandleFocused,
+          'md-state_pressed': dragHandlePressed,
+        }"
         @click="onClickDragHandle"
       >
+        <MDStateLayer
+          :hover="dragHandleHover"
+          :focused="dragHandleFocused"
+          :pressed="dragHandlePressed"
+        />
         <span class="md-bottom-sheet-container__drag-pill" />
-      </MDState>
+      </button>
     </div>
 
     <slot />
@@ -204,11 +224,13 @@ tryOnBeforeUnmount(() => {
   }
 
   &__drag-handle {
-    --md-state-height: var(--md-bottom-sheet-drag-height);
-    --md-state-width: 100%;
-    --md-state-border-radius: var(--md-bottom-sheet-border-radius);
-    --md-state-display: flex;
-    --md-state-border: 0;
+    position: relative;
+    display: flex;
+    width: 100%;
+    height: var(--md-bottom-sheet-drag-height);
+    border: 0;
+    border-radius: var(--md-bottom-sheet-border-radius);
+    background: transparent;
   }
 
   &__drag-pill {

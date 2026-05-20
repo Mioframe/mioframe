@@ -1,5 +1,6 @@
 <script setup lang="ts" generic="Is extends 'button' | 'a' | 'div' | 'li' = 'div'">
-import { MDState } from '../State';
+import { computed, useTemplateRef } from 'vue';
+import { MDStateLayer, useStateLayer } from '../State';
 
 const { is = 'div', disabled } = defineProps<{
   headline: string;
@@ -42,20 +43,41 @@ const onKeydown = (e: KeyboardEvent) => {
     emit('keydown', e);
   }
 };
+
+const hostEl = useTemplateRef<HTMLElement>('hostEl');
+const enableRipple = computed(() => !disabled && is !== 'li');
+const { hover, focused, durationPressedState } = useStateLayer(hostEl, {
+  disabled: () => disabled,
+  enableRipple,
+});
 </script>
 
 <template>
-  <MDState
+  <component
     :is="is"
+    ref="hostEl"
     class="md-list-item"
     :draggable="draggable"
-    :disabled="disabled"
-    :type="type"
-    :disable-ripple="disabled || is === 'li'"
+    :disabled="is === 'button' && disabled ? true : undefined"
+    :type="is === 'button' ? type : undefined"
+    :aria-disabled="disabled && is !== 'button' ? 'true' : undefined"
     :role="itemRole ?? 'listitem'"
+    :class="{
+      'md-state_hover': hover,
+      'md-state_focused': focused,
+      'md-state_pressed': durationPressedState,
+      'md-state_disabled': disabled,
+    }"
     @click="onClick"
     @keydown="onKeydown"
   >
+    <MDStateLayer
+      :hover="hover"
+      :focused="focused"
+      :pressed="durationPressedState"
+      :disabled="disabled"
+    />
+
     <span v-if="!!slots.leadingIcon" class="md-list-item__leading-icon">
       <slot name="leadingIcon" />
     </span>
@@ -75,7 +97,7 @@ const onKeydown = (e: KeyboardEvent) => {
     <span v-if="!!slots.trailingIcon" class="md-list-item__trailing-icon">
       <slot name="trailingIcon" />
     </span>
-  </MDState>
+  </component>
 </template>
 
 <style scoped>
@@ -88,20 +110,22 @@ const onKeydown = (e: KeyboardEvent) => {
   --md-content-color: var(--md-list-item-content-color, var(--md-sys-color-on-surface));
 
   --md-target-offset: 0px;
-  --md-focus-indicator-offset: -2px;
 
-  --md-state-display: flex;
-  --md-state-padding-top: 8px;
-  --md-state-padding-right: var(--horizontal-gap);
-  --md-state-padding-bottom: 8px;
-  --md-state-padding-left: var(--horizontal-gap);
-  --md-state-align-items: center;
-  --md-state-min-height: var(--min-height);
-  --md-state-box-sizing: border-box;
-  --md-state-border-radius: var(--border-radius);
-  --md-state-border-width: 0;
+  position: relative;
+  display: flex;
+  align-items: center;
+  min-height: var(--min-height);
+  box-sizing: border-box;
+  padding: 8px var(--horizontal-gap);
+  border: 0;
+  border-radius: var(--border-radius);
+  background: var(--md-container-color);
+  color: var(--md-content-color);
   font-family: var(--md-sys-typescale-body-large-font);
   text-align: start;
+  transition-property: color, background-color, border-radius, box-shadow;
+  transition-duration: var(--md-sys-motion-duration-short4, 0.2s);
+  -webkit-tap-highlight-color: transparent;
 
   &:first-child {
     border-top-right-radius: max(var(--border-radius), var(--md-list-container-border-radius, 0px));
@@ -120,6 +144,8 @@ const onKeydown = (e: KeyboardEvent) => {
   }
 
   &__leading-icon {
+    position: relative;
+    z-index: 1;
     display: flex;
     min-width: 24px;
     min-height: 24px;
@@ -128,6 +154,8 @@ const onKeydown = (e: KeyboardEvent) => {
   }
 
   &__body {
+    position: relative;
+    z-index: 1;
     display: flex;
     flex-direction: column;
     flex-grow: 1;
@@ -164,6 +192,8 @@ const onKeydown = (e: KeyboardEvent) => {
   }
 
   &__leading-avatar-container {
+    position: relative;
+    z-index: 1;
     display: flex;
     justify-content: center;
     align-items: center;
@@ -174,6 +204,8 @@ const onKeydown = (e: KeyboardEvent) => {
   }
 
   &__trailing-icon {
+    position: relative;
+    z-index: 1;
     margin-left: var(--horizontal-gap);
 
     color: var(--md-sys-color-on-surface-variant);
