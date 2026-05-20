@@ -11,7 +11,7 @@ const props = defineProps<{
   checkCreateSpaceNameAvailability: (
     normalizedName: string,
   ) => Promise<CreateSpaceNameIssue | undefined>;
-  createSpace: (normalizedName: string) => Promise<boolean>;
+  createSpace: (normalizedName: string) => Promise<boolean | CreateSpaceNameIssue>;
   openExistingSpace: (targetHandle: FileSystemDirectoryHandle) => Promise<boolean>;
 }>();
 
@@ -104,10 +104,15 @@ const onApply = async () => {
     return;
   }
 
-  const didCreate = await props.createSpace(parsedName.name);
+  const createResult = await props.createSpace(parsedName.name);
 
-  if (didCreate) {
+  if (createResult === true) {
     emit('completed');
+    return;
+  }
+
+  if (createResult) {
+    fieldIssue.value = createResult;
   }
 };
 </script>

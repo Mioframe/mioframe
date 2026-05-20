@@ -38,6 +38,7 @@ interface CreateSpaceExistingSpaceIssue {
 
 /** Field-level create-space issues surfaced to the dialog. */
 export type CreateSpaceNameIssue = CreateSpaceTextIssue | CreateSpaceExistingSpaceIssue;
+type CreateSpaceResult = boolean | CreateSpaceNameIssue;
 
 /** Internal error used to stop submit handling after availability-check diagnostics were reported. */
 class HandledCreateSpaceAvailabilityError extends Error {}
@@ -74,6 +75,56 @@ export const useCreateMioframeSpace = () => {
 
   const resetCreateDialog = () => {
     parentHandle.value = undefined;
+  };
+
+  const classifyExistingTarget = async (
+    normalizedName: string,
+  ): Promise<CreateSpaceNameIssue | undefined> => {
+    if (!parentHandle.value) {
+      return undefined;
+    }
+
+    let targetHandle: FileSystemDirectoryHandle;
+
+    try {
+      targetHandle = await parentHandle.value.getDirectoryHandle(normalizedName);
+    } catch (error) {
+      if (error instanceof DOMException && error.name === 'NotFoundError') {
+        return undefined;
+      }
+
+      if (error instanceof DOMException && error.name === 'TypeMismatchError') {
+        return {
+          kind: 'text',
+          text: EXISTING_ORDINARY_FOLDER_ERROR,
+        };
+      }
+
+      if (error instanceof TypeError) {
+        return {
+          kind: 'text',
+          text: INVALID_FOLDER_NAME_ERROR,
+        };
+      }
+
+      throw error;
+    }
+
+    const inspection = await inspectMioframeSpaceDirectory(targetHandle);
+
+    if (inspection.looksLikeExistingSpace) {
+      return {
+        kind: 'existing-space',
+        text: INVALID_EXISTING_SPACE_ERROR,
+        normalizedName,
+        targetHandle,
+      };
+    }
+
+    return {
+      kind: 'text',
+      text: EXISTING_ORDINARY_FOLDER_ERROR,
+    };
   };
 
   const pickParentDirectory = async () => {
@@ -114,47 +165,7 @@ export const useCreateMioframeSpace = () => {
     loading.value = true;
 
     try {
-      let targetHandle: FileSystemDirectoryHandle;
-
-      try {
-        targetHandle = await parentHandle.value.getDirectoryHandle(normalizedName);
-      } catch (error) {
-        if (error instanceof DOMException && error.name === 'NotFoundError') {
-          return undefined;
-        }
-
-        if (error instanceof DOMException && error.name === 'TypeMismatchError') {
-          return {
-            kind: 'text',
-            text: EXISTING_ORDINARY_FOLDER_ERROR,
-          };
-        }
-
-        if (error instanceof TypeError) {
-          return {
-            kind: 'text',
-            text: INVALID_FOLDER_NAME_ERROR,
-          };
-        }
-
-        throw error;
-      }
-
-      const inspection = await inspectMioframeSpaceDirectory(targetHandle);
-
-      if (inspection.looksLikeExistingSpace) {
-        return {
-          kind: 'existing-space',
-          text: INVALID_EXISTING_SPACE_ERROR,
-          normalizedName,
-          targetHandle,
-        };
-      }
-
-      return {
-        kind: 'text',
-        text: EXISTING_ORDINARY_FOLDER_ERROR,
-      };
+      return await classifyExistingTarget(normalizedName);
     } catch (error) {
       handleUnexpectedError(error);
       throw new HandledCreateSpaceAvailabilityError();
@@ -166,9 +177,9 @@ export const useCreateMioframeSpace = () => {
   /**
    * Creates, initializes, and mounts a new Mioframe space from the current parent folder.
    * @param normalizedName - Parsed and normalized space name.
-   * @returns `true` on success, otherwise `false` after handled diagnostics.
+   * @returns `true` on success, a field issue if the name became unavailable, otherwise `false`.
    */
-  const createSpace = async (normalizedName: string): Promise<boolean> => {
+  const createSpace = async (normalizedName: string): Promise<CreateSpaceResult> => {
     if (loading.value || !parentHandle.value) {
       return false;
     }
@@ -176,6 +187,12 @@ export const useCreateMioframeSpace = () => {
     loading.value = true;
 
     try {
+      const existingTargetIssue = await classifyExistingTarget(normalizedName);
+
+      if (existingTargetIssue) {
+        return existingTargetIssue;
+      }
+
       const createdHandle = await parentHandle.value.getDirectoryHandle(normalizedName, {
         create: true,
       });

@@ -3,6 +3,7 @@ import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { mount } from '@vue/test-utils';
 import { defineComponent, h } from 'vue';
 import MioframeSpaceCreateDialog from './MioframeSpaceCreateDialog.vue';
+import type { CreateSpaceNameIssue } from './useCreateMioframeSpace';
 
 const createSpaceMock = vi.fn();
 const checkCreateSpaceNameAvailabilityMock = vi.fn();
@@ -218,6 +219,30 @@ describe('MioframeSpaceCreateDialog', () => {
     await wrapper.get('button').trigger('click');
 
     expect(wrapper.emitted('completed')).toEqual([[]]);
+  });
+
+  it('keeps the dialog open and shows a create-time field issue without overwriting it on a later false result', async () => {
+    const lateIssue: CreateSpaceNameIssue = {
+      kind: 'existing-space',
+      text: 'A Mioframe space with this name already exists here. Open the existing space, or choose another name.',
+      normalizedName: 'Work Notes',
+      targetHandle: createDirectoryHandle('Work Notes'),
+    };
+    checkCreateSpaceNameAvailabilityMock.mockResolvedValue(undefined);
+    createSpaceMock.mockResolvedValueOnce(lateIssue).mockResolvedValueOnce(false);
+    const wrapper = mountDialog();
+
+    await wrapper.get('input').setValue('Work Notes');
+    await wrapper.get('button').trigger('click');
+
+    expect(wrapper.text()).toContain('Space already exists');
+    expect(wrapper.text()).toContain('Open existing space');
+    expect(wrapper.emitted('completed')).toBeUndefined();
+
+    await wrapper.get('button').trigger('click');
+
+    expect(wrapper.text()).toContain('Open existing space');
+    expect(wrapper.emitted('completed')).toBeUndefined();
   });
 
   it('keeps the existing-space issue visible when opening the conflicted space fails', async () => {

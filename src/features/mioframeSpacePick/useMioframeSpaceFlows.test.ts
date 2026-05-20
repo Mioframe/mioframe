@@ -214,7 +214,8 @@ describe('useCreateMioframeSpace', () => {
     await expect(createFlow.createSpace('Work Notes')).resolves.toBe(true);
 
     expect(parentHandle.getDirectoryHandleMock).toHaveBeenNthCalledWith(1, 'Work Notes');
-    expect(parentHandle.getDirectoryHandleMock).toHaveBeenNthCalledWith(2, 'Work Notes', {
+    expect(parentHandle.getDirectoryHandleMock).toHaveBeenNthCalledWith(2, 'Work Notes');
+    expect(parentHandle.getDirectoryHandleMock).toHaveBeenNthCalledWith(3, 'Work Notes', {
       create: true,
     });
     expect(createdSpaceHandle.getFileHandleMock).toHaveBeenCalledWith(markerFileName);
@@ -287,6 +288,96 @@ describe('useCreateMioframeSpace', () => {
     });
     await expect(createFlow.openExistingSpace(existingSpaceHandle)).resolves.toBe(true);
     expect(addDeviceDirectoryMock).toHaveBeenCalledWith(existingSpaceHandle);
+  });
+
+  it('re-checks before create and refuses to initialize an ordinary folder that appeared after availability passed', async () => {
+    const existingOrdinaryHandle = createDirectoryHandle({
+      name: 'Work Notes',
+      entries: [['notes.txt', createFileHandle('notes.txt')]],
+    });
+    let targetExists = false;
+    const parentHandle = createDirectoryHandle({
+      name: 'Documents',
+      subdirectoryFactory: (directoryName, options) => {
+        if (directoryName !== 'Work Notes') {
+          throw new DOMException('Missing directory', 'NotFoundError');
+        }
+
+        if (options?.create) {
+          throw new Error('create should not run for a stale ordinary-folder conflict');
+        }
+
+        if (!targetExists) {
+          throw new DOMException('Missing directory', 'NotFoundError');
+        }
+
+        return existingOrdinaryHandle;
+      },
+    });
+    showDirectoryPickerMock.mockResolvedValueOnce(parentHandle);
+    const createFlow = useCreateMioframeSpace();
+
+    await createFlow.pickParentDirectory();
+    await expect(
+      createFlow.checkCreateSpaceNameAvailability('Work Notes'),
+    ).resolves.toBeUndefined();
+
+    targetExists = true;
+
+    await expect(createFlow.createSpace('Work Notes')).resolves.toEqual({
+      kind: 'text',
+      text: 'A folder with this name already exists. Choose another name.',
+    });
+    expect(existingOrdinaryHandle.getFileHandleMock).not.toHaveBeenCalledWith(markerFileName, {
+      create: true,
+    });
+    expect(addDeviceDirectoryMock).not.toHaveBeenCalled();
+  });
+
+  it('re-checks before create and returns an existing-space issue when a Mioframe folder appeared after availability passed', async () => {
+    const existingSpaceHandle = createDirectoryHandle({
+      name: 'Work Notes',
+      entries: [[markerFileName, createFileHandle(markerFileName)]],
+    });
+    let targetExists = false;
+    const parentHandle = createDirectoryHandle({
+      name: 'Documents',
+      subdirectoryFactory: (directoryName, options) => {
+        if (directoryName !== 'Work Notes') {
+          throw new DOMException('Missing directory', 'NotFoundError');
+        }
+
+        if (options?.create) {
+          throw new Error('create should not run for a stale existing-space conflict');
+        }
+
+        if (!targetExists) {
+          throw new DOMException('Missing directory', 'NotFoundError');
+        }
+
+        return existingSpaceHandle;
+      },
+    });
+    showDirectoryPickerMock.mockResolvedValueOnce(parentHandle);
+    const createFlow = useCreateMioframeSpace();
+
+    await createFlow.pickParentDirectory();
+    await expect(
+      createFlow.checkCreateSpaceNameAvailability('Work Notes'),
+    ).resolves.toBeUndefined();
+
+    targetExists = true;
+
+    await expect(createFlow.createSpace('Work Notes')).resolves.toEqual({
+      kind: 'existing-space',
+      text: 'A Mioframe space with this name already exists here. Open the existing space, or choose another name.',
+      normalizedName: 'Work Notes',
+      targetHandle: existingSpaceHandle,
+    });
+    expect(existingSpaceHandle.getFileHandleMock).not.toHaveBeenCalledWith(markerFileName, {
+      create: true,
+    });
+    expect(addDeviceDirectoryMock).not.toHaveBeenCalled();
   });
 
   it('reports a privacy-safe error when opening an existing conflicted space fails', async () => {
