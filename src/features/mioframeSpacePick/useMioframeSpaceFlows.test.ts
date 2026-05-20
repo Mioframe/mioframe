@@ -291,8 +291,7 @@ describe('useCreateMioframeSpace', () => {
     const createFlow = useCreateMioframeSpace(ref(parentHandle));
 
     await expect(createFlow.checkCreateSpaceNameAvailability('Work Notes')).resolves.toEqual({
-      kind: 'text',
-      text: 'A folder with this name already exists. Choose another name.',
+      message: 'A folder with this name already exists. Choose another name.',
     });
     expect(addDeviceDirectoryMock).not.toHaveBeenCalled();
   });
@@ -315,10 +314,12 @@ describe('useCreateMioframeSpace', () => {
     const createFlow = useCreateMioframeSpace(ref(parentHandle));
 
     await expect(createFlow.checkCreateSpaceNameAvailability('Work Notes')).resolves.toEqual({
-      kind: 'existing-space',
-      text: 'A Mioframe space with this name already exists here. Open the existing space, or choose another name.',
-      normalizedName: 'Work Notes',
-      targetHandle: existingSpaceHandle,
+      message:
+        'A Mioframe space with this name already exists here. Open the existing space, or choose another name.',
+      existingSpace: {
+        normalizedName: 'Work Notes',
+        handle: existingSpaceHandle,
+      },
     });
     await expect(createFlow.openExistingSpace(existingSpaceHandle)).resolves.toBe(true);
     expect(addDeviceDirectoryMock).toHaveBeenCalledWith(existingSpaceHandle);
@@ -356,8 +357,7 @@ describe('useCreateMioframeSpace', () => {
     targetExists = true;
 
     await expect(createFlow.createSpace('Work Notes')).resolves.toEqual({
-      kind: 'text',
-      text: 'A folder with this name already exists. Choose another name.',
+      message: 'A folder with this name already exists. Choose another name.',
     });
     expect(existingOrdinaryHandle.getFileHandleMock).not.toHaveBeenCalledWith(markerFileName, {
       create: true,
@@ -397,10 +397,12 @@ describe('useCreateMioframeSpace', () => {
     targetExists = true;
 
     await expect(createFlow.createSpace('Work Notes')).resolves.toEqual({
-      kind: 'existing-space',
-      text: 'A Mioframe space with this name already exists here. Open the existing space, or choose another name.',
-      normalizedName: 'Work Notes',
-      targetHandle: existingSpaceHandle,
+      message:
+        'A Mioframe space with this name already exists here. Open the existing space, or choose another name.',
+      existingSpace: {
+        normalizedName: 'Work Notes',
+        handle: existingSpaceHandle,
+      },
     });
     expect(existingSpaceHandle.getFileHandleMock).not.toHaveBeenCalledWith(markerFileName, {
       create: true,
@@ -421,10 +423,12 @@ describe('useCreateMioframeSpace', () => {
     const createFlow = useCreateMioframeSpace(ref(parentHandle));
 
     await expect(createFlow.checkCreateSpaceNameAvailability('Work Notes')).resolves.toEqual({
-      kind: 'existing-space',
-      text: 'A Mioframe space with this name already exists here. Open the existing space, or choose another name.',
-      normalizedName: 'Work Notes',
-      targetHandle: existingSpaceHandle,
+      message:
+        'A Mioframe space with this name already exists here. Open the existing space, or choose another name.',
+      existingSpace: {
+        normalizedName: 'Work Notes',
+        handle: existingSpaceHandle,
+      },
     });
     await expect(createFlow.openExistingSpace(existingSpaceHandle)).resolves.toBe(false);
     expect(addSnackbarMock).toHaveBeenCalledWith({
@@ -460,6 +464,33 @@ describe('useCreateMioframeSpace', () => {
     const createFlow = useCreateMioframeSpace(ref(parentHandle));
 
     await expect(createFlow.createSpace('Work Notes')).resolves.toBe(false);
+    expect(addSnackbarMock).toHaveBeenCalledWith({
+      text: 'Could not create the Mioframe space',
+    });
+    expect(reportHandledErrorMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        message: 'Could not create the Mioframe space',
+        cause: expect.objectContaining({
+          message: 'Creating the Mioframe space failed',
+        }),
+      }),
+      {
+        feature: 'mioframeSpaceCreate',
+        action: 'createSpace',
+      },
+    );
+  });
+
+  it('returns false after reporting a privacy-safe error when availability inspection fails unexpectedly', async () => {
+    const parentHandle = createDirectoryHandle({
+      name: 'Documents',
+      subdirectoryFactory: () => {
+        throw new Error('raw filesystem detail');
+      },
+    });
+    const createFlow = useCreateMioframeSpace(ref(parentHandle));
+
+    await expect(createFlow.checkCreateSpaceNameAvailability('Work Notes')).resolves.toBe(false);
     expect(addSnackbarMock).toHaveBeenCalledWith({
       text: 'Could not create the Mioframe space',
     });

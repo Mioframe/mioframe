@@ -67,23 +67,3 @@ export const parseMioframeSpaceName = (
     name,
   };
 };
-
-/**
- * Returns a normalized user-provided Mioframe space name.
- * @param name - Raw form value.
- * @returns Trimmed name.
- */
-export const normalizeMioframeSpaceName = (name: string | undefined) => {
-  const parsedName = parseMioframeSpaceName(name);
-  return parsedName.success ? parsedName.name : (name?.trim() ?? '');
-};
-
-/**
- * Returns a field error for an invalid Mioframe space name.
- * @param name - Raw form value.
- * @returns Field-level validation error when the name is invalid.
- */
-export const getMioframeSpaceNameError = (name: string | undefined) => {
-  const parsedName = parseMioframeSpaceName(name);
-  return parsedName.success ? undefined : parsedName.error;
-};

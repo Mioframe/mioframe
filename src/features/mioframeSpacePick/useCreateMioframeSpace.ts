@@ -13,30 +13,23 @@ const INVALID_EXISTING_SPACE_ERROR =
   'A Mioframe space with this name already exists here. Open the existing space, or choose another name.';
 const INVALID_FOLDER_NAME_ERROR = 'Enter a valid folder name.';
 
-interface CreateSpaceTextIssue {
-  /** Stable discriminator for a plain text field issue. */
-  kind: 'text';
-  /** User-facing field issue text. */
-  text: string;
-}
-
-interface CreateSpaceExistingSpaceIssue {
-  /** Stable discriminator for an existing Mioframe space conflict. */
-  kind: 'existing-space';
-  /** User-facing field issue text. */
-  text: string;
-  /** Parsed normalized name that produced the conflict. */
+type CreateSpaceExistingSpace = {
+  /** Existing Mioframe normalized name that produced the conflict. */
   normalizedName: string;
   /** Existing Mioframe directory handle that can be opened instead. */
-  targetHandle: FileSystemDirectoryHandle;
+  handle: FileSystemDirectoryHandle;
+};
+
+interface CreateSpaceTextIssue {
+  /** User-facing field issue text. */
+  message: string;
+  /** Existing Mioframe directory that can be opened instead. */
+  existingSpace?: CreateSpaceExistingSpace;
 }
-
 /** Field-level create-space issues surfaced to the dialog. */
-export type CreateSpaceNameIssue = CreateSpaceTextIssue | CreateSpaceExistingSpaceIssue;
-type CreateSpaceResult = boolean | CreateSpaceNameIssue;
-
-/** Internal error used to stop submit handling after availability-check diagnostics were reported. */
-class HandledCreateSpaceAvailabilityError extends Error {}
+export type CreateSpaceFieldIssue = CreateSpaceTextIssue;
+type CreateSpaceAvailabilityResult = CreateSpaceFieldIssue | undefined | false;
+type CreateSpaceResult = true | CreateSpaceFieldIssue | false;
 
 /**
  * Owns create/open filesystem actions for a selected Mioframe-space parent directory.
@@ -73,7 +66,7 @@ export const useCreateMioframeSpace = (
 
   const classifyExistingTarget = async (
     normalizedName: string,
-  ): Promise<CreateSpaceNameIssue | undefined> => {
+  ): Promise<CreateSpaceFieldIssue | undefined> => {
     const parentHandle = getParentHandle();
 
     if (!parentHandle) {
@@ -91,15 +84,13 @@ export const useCreateMioframeSpace = (
 
       if (error instanceof DOMException && error.name === 'TypeMismatchError') {
         return {
-          kind: 'text',
-          text: EXISTING_ORDINARY_FOLDER_ERROR,
+          message: EXISTING_ORDINARY_FOLDER_ERROR,
         };
       }
 
       if (error instanceof TypeError) {
         return {
-          kind: 'text',
-          text: INVALID_FOLDER_NAME_ERROR,
+          message: INVALID_FOLDER_NAME_ERROR,
         };
       }
 
@@ -110,16 +101,16 @@ export const useCreateMioframeSpace = (
 
     if (inspection.looksLikeExistingSpace) {
       return {
-        kind: 'existing-space',
-        text: INVALID_EXISTING_SPACE_ERROR,
-        normalizedName,
-        targetHandle,
+        message: INVALID_EXISTING_SPACE_ERROR,
+        existingSpace: {
+          normalizedName,
+          handle: targetHandle,
+        },
       };
     }
 
     return {
-      kind: 'text',
-      text: EXISTING_ORDINARY_FOLDER_ERROR,
+      message: EXISTING_ORDINARY_FOLDER_ERROR,
     };
   };
 
@@ -130,7 +121,7 @@ export const useCreateMioframeSpace = (
    */
   const checkCreateSpaceNameAvailability = async (
     normalizedName: string,
-  ): Promise<CreateSpaceNameIssue | undefined> => {
+  ): Promise<CreateSpaceAvailabilityResult> => {
     if (loading.value || !getParentHandle()) {
       return undefined;
     }
@@ -141,7 +132,7 @@ export const useCreateMioframeSpace = (
       return await classifyExistingTarget(normalizedName);
     } catch (error) {
       handleUnexpectedError(error);
-      throw new HandledCreateSpaceAvailabilityError();
+      return false;
     } finally {
       loading.value = false;
     }

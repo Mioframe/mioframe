@@ -27,6 +27,8 @@ const normalizePersistedRecord = ({
   handle: FileSystemDirectoryHandle;
   name: string;
 }): PersistedDeviceDirectoryRecord => ({
+  // Legacy `description` is intentionally dropped from the normalized read model.
+  // Existing raw storage is rewritten only on the next explicit storage update.
   name,
   handle,
 });

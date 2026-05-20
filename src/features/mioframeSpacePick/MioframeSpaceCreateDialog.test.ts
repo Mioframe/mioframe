@@ -3,7 +3,7 @@ import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { mount } from '@vue/test-utils';
 import { defineComponent, h } from 'vue';
 import MioframeSpaceCreateDialog from './MioframeSpaceCreateDialog.vue';
-import type { CreateSpaceNameIssue } from './useCreateMioframeSpace';
+import type { CreateSpaceFieldIssue } from './useCreateMioframeSpace';
 
 const { createSpaceMock, checkCreateSpaceNameAvailabilityMock, openExistingSpaceMock } = vi.hoisted(
   () => ({
@@ -178,8 +178,7 @@ describe('MioframeSpaceCreateDialog', () => {
 
   it('keeps ordinary-folder availability issues open and does not create', async () => {
     checkCreateSpaceNameAvailabilityMock.mockResolvedValueOnce({
-      kind: 'text',
-      text: 'A folder with this name already exists. Choose another name.',
+      message: 'A folder with this name already exists. Choose another name.',
     });
     const wrapper = mountDialog();
 
@@ -197,10 +196,12 @@ describe('MioframeSpaceCreateDialog', () => {
   it('switches to open-existing recovery and clears it when the field changes', async () => {
     const handle = createDirectoryHandle('Work Notes');
     checkCreateSpaceNameAvailabilityMock.mockResolvedValueOnce({
-      kind: 'existing-space',
-      text: 'A Mioframe space with this name already exists here. Open the existing space, or choose another name.',
-      normalizedName: 'Work Notes',
-      targetHandle: handle,
+      message:
+        'A Mioframe space with this name already exists here. Open the existing space, or choose another name.',
+      existingSpace: {
+        normalizedName: 'Work Notes',
+        handle,
+      },
     });
     openExistingSpaceMock.mockResolvedValueOnce(true);
     const wrapper = mountDialog();
@@ -222,6 +223,29 @@ describe('MioframeSpaceCreateDialog', () => {
     expect(wrapper.text()).not.toContain('Space already exists');
   });
 
+  it('stays open without overwriting the current issue when availability handling already reported a failure', async () => {
+    checkCreateSpaceNameAvailabilityMock.mockResolvedValueOnce({
+      message: 'A folder with this name already exists. Choose another name.',
+    });
+    checkCreateSpaceNameAvailabilityMock.mockResolvedValueOnce(false);
+    const wrapper = mountDialog();
+
+    await wrapper.get('input').setValue('Work Notes');
+    await wrapper.get('button').trigger('click');
+
+    expect(wrapper.text()).toContain(
+      'A folder with this name already exists. Choose another name.',
+    );
+
+    await wrapper.get('button').trigger('click');
+
+    expect(createSpaceMock).not.toHaveBeenCalled();
+    expect(wrapper.text()).toContain(
+      'A folder with this name already exists. Choose another name.',
+    );
+    expect(wrapper.emitted('completed')).toBeUndefined();
+  });
+
   it('creates with the parsed normalized name and closes only on success', async () => {
     checkCreateSpaceNameAvailabilityMock.mockResolvedValue(undefined);
     createSpaceMock.mockResolvedValueOnce(false).mockResolvedValueOnce(true);
@@ -240,11 +264,13 @@ describe('MioframeSpaceCreateDialog', () => {
   });
 
   it('keeps the dialog open and shows a create-time field issue without overwriting it on a later false result', async () => {
-    const lateIssue: CreateSpaceNameIssue = {
-      kind: 'existing-space',
-      text: 'A Mioframe space with this name already exists here. Open the existing space, or choose another name.',
-      normalizedName: 'Work Notes',
-      targetHandle: createDirectoryHandle('Work Notes'),
+    const lateIssue: CreateSpaceFieldIssue = {
+      message:
+        'A Mioframe space with this name already exists here. Open the existing space, or choose another name.',
+      existingSpace: {
+        normalizedName: 'Work Notes',
+        handle: createDirectoryHandle('Work Notes'),
+      },
     };
     checkCreateSpaceNameAvailabilityMock.mockResolvedValue(undefined);
     createSpaceMock.mockResolvedValueOnce(lateIssue).mockResolvedValueOnce(false);
@@ -266,10 +292,12 @@ describe('MioframeSpaceCreateDialog', () => {
   it('keeps the existing-space issue visible when opening the conflicted space fails', async () => {
     const handle = createDirectoryHandle('Work Notes');
     checkCreateSpaceNameAvailabilityMock.mockResolvedValueOnce({
-      kind: 'existing-space',
-      text: 'A Mioframe space with this name already exists here. Open the existing space, or choose another name.',
-      normalizedName: 'Work Notes',
-      targetHandle: handle,
+      message:
+        'A Mioframe space with this name already exists here. Open the existing space, or choose another name.',
+      existingSpace: {
+        normalizedName: 'Work Notes',
+        handle,
+      },
     });
     openExistingSpaceMock.mockResolvedValueOnce(false);
     const wrapper = mountDialog();

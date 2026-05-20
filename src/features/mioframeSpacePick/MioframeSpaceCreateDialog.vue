@@ -3,7 +3,7 @@ import { computed, ref } from 'vue';
 import { MDDialog } from '@shared/ui/Dialog';
 import { MDTextField } from '@shared/ui/TextField';
 import { parseMioframeSpaceName } from './spaceNameValidation';
-import { useCreateMioframeSpace, type CreateSpaceNameIssue } from './useCreateMioframeSpace';
+import { useCreateMioframeSpace, type CreateSpaceFieldIssue } from './useCreateMioframeSpace';
 
 const props = defineProps<{
   parentHandle: FileSystemDirectoryHandle;
@@ -19,15 +19,17 @@ const { loading, checkCreateSpaceNameAvailability, createSpace, openExistingSpac
   useCreateMioframeSpace(() => props.parentHandle);
 
 const spaceName = ref<string | undefined>(undefined);
-const fieldIssue = ref<CreateSpaceNameIssue | undefined>(undefined);
+const fieldIssue = ref<CreateSpaceFieldIssue | undefined>(undefined);
 
 const previewSpaceName = computed(() => spaceName.value?.trim() ?? '');
 const activeExistingSpaceIssue = computed(() => {
-  if (fieldIssue.value?.kind !== 'existing-space') {
+  if (!fieldIssue.value?.existingSpace) {
     return undefined;
   }
 
-  return fieldIssue.value.normalizedName === previewSpaceName.value ? fieldIssue.value : undefined;
+  return fieldIssue.value.existingSpace.normalizedName === previewSpaceName.value
+    ? fieldIssue.value.existingSpace
+    : undefined;
 });
 
 const resultFolder = computed(
@@ -36,7 +38,7 @@ const resultFolder = computed(
 
 const supportingText = computed(() => {
   if (fieldIssue.value) {
-    return fieldIssue.value.text;
+    return fieldIssue.value.message;
   }
 
   return 'Mioframe will create a folder with this name inside the selected location.';
@@ -67,7 +69,7 @@ const onCancel = () => {
 
 const onApply = async () => {
   if (activeExistingSpaceIssue.value) {
-    const didOpen = await openExistingSpace(activeExistingSpaceIssue.value.targetHandle);
+    const didOpen = await openExistingSpace(activeExistingSpaceIssue.value.handle);
 
     if (didOpen) {
       emit('completed');
@@ -80,23 +82,19 @@ const onApply = async () => {
 
   if (!parsedName.success) {
     fieldIssue.value = {
-      kind: 'text',
-      text: parsedName.error,
+      message: parsedName.error,
     };
     return;
   }
 
-  let availabilityIssue: CreateSpaceNameIssue | undefined;
+  const availabilityIssue = await checkCreateSpaceNameAvailability(parsedName.name);
 
-  try {
-    availabilityIssue = await checkCreateSpaceNameAvailability(parsedName.name);
-  } catch {
+  if (availabilityIssue === false) {
     return;
   }
 
-  fieldIssue.value = availabilityIssue;
-
   if (availabilityIssue) {
+    fieldIssue.value = availabilityIssue;
     return;
   }
 

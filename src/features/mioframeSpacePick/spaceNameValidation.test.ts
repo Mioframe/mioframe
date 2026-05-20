@@ -1,9 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import {
-  getMioframeSpaceNameError,
-  normalizeMioframeSpaceName,
-  parseMioframeSpaceName,
-} from './spaceNameValidation';
+import { parseMioframeSpaceName } from './spaceNameValidation';
 
 describe('parseMioframeSpaceName', () => {
   it('returns the empty-name error for an empty string', () => {
@@ -57,16 +53,5 @@ describe('parseMioframeSpaceName', () => {
       success: false,
       error: 'Enter a valid folder name.',
     });
-  });
-});
-
-describe('spaceNameValidation compatibility helpers', () => {
-  it('keeps normalizeMioframeSpaceName aligned with parser normalization', () => {
-    expect(normalizeMioframeSpaceName('  Work Notes  ')).toBe('Work Notes');
-  });
-
-  it('keeps getMioframeSpaceNameError aligned with parser failures', () => {
-    expect(getMioframeSpaceNameError('..')).toBe('Enter a valid folder name.');
-    expect(getMioframeSpaceNameError('  ')).toBe('Enter a space name.');
   });
 });
