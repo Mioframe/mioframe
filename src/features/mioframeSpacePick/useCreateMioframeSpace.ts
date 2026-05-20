@@ -1,8 +1,10 @@
 import { useFileSystem } from '@entity/mountedDirectories';
-import { ensureStorageAdapterMarkerFile } from '@shared/lib/automergeAdapter';
+import { useMainServiceClient } from '@shared/service';
 import { DomainError } from '@shared/lib/error';
 import { reportHandledError } from '@shared/lib/reportHandledError';
+import { DEVICE_FILES_ROOT_NAME } from '@shared/service/fileSystem';
 import { useSnackbar } from '@shared/ui/Snackbar';
+import { PathUtils } from '@shared/lib/virtualFileSystem';
 import { ref, toValue, type MaybeRefOrGetter } from 'vue';
 import { buildCreateSpaceError, buildOpenSpaceError } from './mioframeSpacePick.errors';
 import { inspectMioframeSpaceDirectory } from './mioframeSpacePick.helpers';
@@ -42,6 +44,9 @@ export const useCreateMioframeSpace = (
   const loading = ref(false);
   const { addSnackbar } = useSnackbar();
   const { addDeviceDirectory } = useFileSystem();
+  const {
+    repositories: { initializeRepository },
+  } = useMainServiceClient();
 
   const getParentHandle = () => toValue(parentHandleSource);
 
@@ -162,8 +167,8 @@ export const useCreateMioframeSpace = (
       const createdHandle = await parentHandle.getDirectoryHandle(normalizedName, {
         create: true,
       });
-      await ensureStorageAdapterMarkerFile(createdHandle);
-      await addDeviceDirectory(createdHandle);
+      const mountedRecord = await addDeviceDirectory(createdHandle);
+      await initializeRepository(PathUtils.join('/', DEVICE_FILES_ROOT_NAME, mountedRecord.name));
       return true;
     } catch (error) {
       handleUnexpectedError(error, {
