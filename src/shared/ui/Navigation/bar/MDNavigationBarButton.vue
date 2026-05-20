@@ -1,8 +1,7 @@
 <script setup lang="ts">
 import { useTemplateRef } from 'vue';
 import { MDSymbol } from '../../Icon';
-import MDLayer from '../../State/MDLayer.vue';
-import { usePressed, useRipple } from '../../State';
+import { MDStateLayer, usePressed, useRipple } from '../../State';
 import { useLastHover } from '@shared/lib/useLastHover';
 import { useFirstFocus } from '@shared/lib/useFirstFocus';
 import type { BAR_TYPE } from './types';
@@ -43,12 +42,7 @@ const onClick = (event: MouseEvent) => {
     :class="[{ _active: active }, `_type-${type}`]"
     @click="onClick"
   >
-    <MDLayer
-      class="md-navigation-bar-button__layer"
-      :hover="userHover"
-      :focused="userFocused"
-      :pressed="durationPressedState"
-    />
+    <MDStateLayer :hover="userHover" :focused="userFocused" :pressed="durationPressedState" />
 
     <MDSymbol class="md-navigation-bar-button__symbol" :name="symbol" />
 
@@ -70,13 +64,6 @@ const onClick = (event: MouseEvent) => {
   justify-items: center;
   --md-content-color: var(--md-sys-color-on-surface-variant);
   gap: 4px;
-
-  &__layer {
-    position: absolute;
-    inset: 0;
-    z-index: 1;
-  }
-
   &__symbol {
     position: relative;
     z-index: 1;

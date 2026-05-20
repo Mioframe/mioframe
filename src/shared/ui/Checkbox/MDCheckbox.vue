@@ -114,8 +114,8 @@ useRipple(computed(() => (!presentation.value && !disabled.value ? checkboxEl.va
 watch(
   [checkboxEl, () => props.autofocus, disabled],
   ([element, autofocus, isDisabled]) => {
-    // The checkbox host owns autofocus because current field consumers focus the
-    // actual interactive control after creating inline editors.
+    // The checkbox host owns autofocus because inline boolean editors pass the
+    // prop through MDCheckboxField and must focus the interactive checkbox host.
     if (autofocus && element && !isDisabled) {
       element.focus();
     }

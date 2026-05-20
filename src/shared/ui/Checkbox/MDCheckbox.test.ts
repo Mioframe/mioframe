@@ -105,8 +105,7 @@ describe('MDCheckbox', () => {
       readonly: true,
     });
 
-    const parent = document.createElement('button');
-    parent.type = 'button';
+    const parent = document.createElement('div');
     parent.addEventListener('click', onParentClick);
     parent.append(wrapper.element);
     document.body.append(parent);
@@ -124,8 +123,7 @@ describe('MDCheckbox', () => {
       modelValue: true,
       readonly: true,
     });
-    const parent = document.createElement('button');
-    parent.type = 'button';
+    const parent = document.createElement('div');
     parent.addEventListener('keydown', parentKeydown);
     parent.append(wrapper.element);
     document.body.append(parent);

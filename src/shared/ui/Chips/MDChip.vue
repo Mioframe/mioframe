@@ -35,8 +35,8 @@ useRipple(actionEl);
 watch(
   [actionEl, () => props.autofocus],
   ([element, autofocus]) => {
-    // The chip host owns autofocus because current view-selector consumers focus
-    // the first chip button after the chip list renders.
+    // The chip host owns autofocus because DatabaseViewChipsList focuses the
+    // first rendered MDChip action when a database view selector opens.
     if (autofocus && element) {
       element.focus();
     }
