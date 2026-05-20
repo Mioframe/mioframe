@@ -1,6 +1,6 @@
 import { useFileSystem } from '@entity/mountedDirectories';
 import { useMainServiceClient } from '@shared/service';
-import { DomainError } from '@shared/lib/error';
+import { createSafeErrorCause, DomainError } from '@shared/lib/error';
 import { reportHandledError } from '@shared/lib/reportHandledError';
 import { DEVICE_FILES_ROOT_NAME } from '@shared/service/fileSystem';
 import { useSnackbar } from '@shared/ui/Snackbar';
@@ -22,14 +22,12 @@ type CreateSpaceExistingSpace = {
   handle: FileSystemDirectoryHandle;
 };
 
-interface CreateSpaceTextIssue {
+export type CreateSpaceFieldIssue = {
   /** User-facing field issue text. */
   message: string;
   /** Existing Mioframe directory that can be opened instead. */
   existingSpace?: CreateSpaceExistingSpace;
-}
-/** Field-level create-space issues surfaced to the dialog. */
-export type CreateSpaceFieldIssue = CreateSpaceTextIssue;
+};
 type CreateSpaceAvailabilityResult = CreateSpaceFieldIssue | undefined | false;
 type CreateSpaceResult = true | CreateSpaceFieldIssue | false;
 
@@ -43,7 +41,7 @@ export const useCreateMioframeSpace = (
 ) => {
   const loading = ref(false);
   const { addSnackbar } = useSnackbar();
-  const { addDeviceDirectory } = useFileSystem();
+  const { addDeviceDirectory, disconnectDeviceFile } = useFileSystem();
   const {
     repositories: { initializeRepository },
   } = useMainServiceClient();
@@ -67,6 +65,18 @@ export const useCreateMioframeSpace = (
       feature: 'mioframeSpaceCreate',
       action: options?.action ?? 'createSpace',
     });
+  };
+
+  const reportRollbackError = () => {
+    reportHandledError(
+      new DomainError('Could not roll back failed Mioframe space creation', {
+        cause: createSafeErrorCause('Rolling back failed Mioframe space creation failed'),
+      }),
+      {
+        feature: 'mioframeSpaceCreate',
+        action: 'rollbackCreateSpaceMount',
+      },
+    );
   };
 
   const classifyExistingTarget = async (
@@ -156,6 +166,7 @@ export const useCreateMioframeSpace = (
     }
 
     loading.value = true;
+    let mountedRecord: { name: string } | undefined;
 
     try {
       const existingTargetIssue = await classifyExistingTarget(normalizedName);
@@ -167,10 +178,18 @@ export const useCreateMioframeSpace = (
       const createdHandle = await parentHandle.getDirectoryHandle(normalizedName, {
         create: true,
       });
-      const mountedRecord = await addDeviceDirectory(createdHandle);
+      mountedRecord = await addDeviceDirectory(createdHandle);
       await initializeRepository(PathUtils.join('/', DEVICE_FILES_ROOT_NAME, mountedRecord.name));
       return true;
     } catch (error) {
+      if (mountedRecord) {
+        try {
+          await disconnectDeviceFile(mountedRecord.name);
+        } catch {
+          reportRollbackError();
+        }
+      }
+
       handleUnexpectedError(error, {
         action: 'createSpace',
       });
