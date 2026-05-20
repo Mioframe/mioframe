@@ -1,11 +1,13 @@
-<script setup lang="ts" generic="Is extends 'button' | 'a' | 'div' | 'li' = 'div'">
+<script setup lang="ts">
 import { MDState } from '../State';
+import { computed } from 'vue';
 
-const { is = 'div', disabled } = defineProps<{
+const props = defineProps<{
   headline: string;
   supportingText?: string | undefined;
-  is?: Is | undefined;
-  type?: (Is extends 'button' ? 'button' | 'submit' | 'reset' : false) | undefined;
+  lines?: 1 | 2 | 3 | undefined;
+  is?: 'button' | 'a' | 'div' | 'li' | undefined;
+  type?: 'button' | 'submit' | 'reset' | false | undefined;
   itemRole?: string | undefined;
   disabled?: boolean | undefined;
   draggable?: boolean | undefined;
@@ -23,22 +25,56 @@ const slots = defineSlots<{
   supportingText: () => unknown;
 }>();
 
+const itemTag = computed<'button' | 'a' | 'div' | 'li'>(() => props.is ?? 'div');
+const isNativeInteractive = computed(() => itemTag.value === 'button' || itemTag.value === 'a');
+const resolvedLines = computed(() => props.lines ?? 1);
+const minHeight = computed(() => {
+  switch (resolvedLines.value) {
+    case 3:
+      return '88px';
+    case 2:
+      return '72px';
+    default:
+      return '56px';
+  }
+});
+const resolvedRole = computed(() => {
+  if (isNativeInteractive.value) {
+    return undefined;
+  }
+
+  if (itemTag.value === 'li') {
+    return undefined;
+  }
+
+  return 'listitem';
+});
+const stateAttrs = computed(() => ({
+  type: itemTag.value === 'button' ? props.type || 'button' : undefined,
+  role: props.itemRole ?? resolvedRole.value ?? null,
+}));
+const supportingTextClass = computed(() => ({
+  'md-list-item__supporting-text--one-line': resolvedLines.value === 1,
+  'md-list-item__supporting-text--two-lines': resolvedLines.value === 2,
+  'md-list-item__supporting-text--three-lines': resolvedLines.value === 3,
+}));
+
 const onClick = (e: MouseEvent) => {
-  if (disabled) {
+  if (props.disabled) {
     return;
   }
 
-  if (['button', 'a'].includes(is)) {
+  if (isNativeInteractive.value) {
     emit('click', e);
   }
 };
 
 const onKeydown = (e: KeyboardEvent) => {
-  if (disabled) {
+  if (props.disabled) {
     return;
   }
 
-  if (['button', 'a'].includes(is)) {
+  if (isNativeInteractive.value) {
     emit('keydown', e);
   }
 };
@@ -46,13 +82,13 @@ const onKeydown = (e: KeyboardEvent) => {
 
 <template>
   <MDState
-    :is="is"
+    :is="itemTag"
     class="md-list-item"
-    :draggable="draggable"
-    :disabled="disabled"
-    :type="type"
-    :disable-ripple="disabled || is === 'li'"
-    :role="itemRole ?? 'listitem'"
+    :style="{ '--md-list-item-min-height': minHeight }"
+    :draggable="props.draggable"
+    :disabled="props.disabled"
+    :disable-ripple="props.disabled || itemTag === 'li'"
+    v-bind="stateAttrs"
     @click="onClick"
     @keydown="onKeydown"
   >
@@ -67,7 +103,11 @@ const onKeydown = (e: KeyboardEvent) => {
     <div class="md-list-item__body">
       <span class="md-list-item__headline">{{ headline }}</span>
 
-      <div v-if="supportingText || !!slots.supportingText" class="md-list-item__supporting-text">
+      <div
+        v-if="supportingText || !!slots.supportingText"
+        class="md-list-item__supporting-text"
+        :class="supportingTextClass"
+      >
         <slot name="supportingText">{{ supportingText }}</slot>
       </div>
     </div>
@@ -131,7 +171,7 @@ const onKeydown = (e: KeyboardEvent) => {
     display: flex;
     flex-direction: column;
     flex-grow: 1;
-    overflow: auto;
+    min-width: 0;
 
     .md-list-item__leading-avatar-container ~ &,
     .md-list-item__leading-icon ~ & {
@@ -151,9 +191,11 @@ const onKeydown = (e: KeyboardEvent) => {
   }
 
   &__supporting-text {
-    white-space: nowrap;
+    display: -webkit-box;
     overflow: hidden;
     text-overflow: ellipsis;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 1;
 
     color: var(--md-sys-color-on-surface-variant);
     font-family: var(--md-sys-typescale-body-medium-font);
@@ -161,6 +203,18 @@ const onKeydown = (e: KeyboardEvent) => {
     font-size: var(--md-sys-typescale-body-medium-size);
     letter-spacing: var(--md-sys-typescale-body-medium-tracking);
     font-weight: var(--md-sys-typescale-body-medium-weight);
+  }
+
+  &__supporting-text--one-line {
+    -webkit-line-clamp: 1;
+  }
+
+  &__supporting-text--two-lines {
+    -webkit-line-clamp: 2;
+  }
+
+  &__supporting-text--three-lines {
+    -webkit-line-clamp: 3;
   }
 
   &__leading-avatar-container {

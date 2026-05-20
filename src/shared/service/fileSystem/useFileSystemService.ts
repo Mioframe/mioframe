@@ -31,8 +31,19 @@ export interface ReadDirectoryOptions {
 export { DEVICE_FILES_ROOT_NAME };
 export type { DeviceFileRecord };
 
-const LOCAL_DEVICE_DIRECTORY_DESCRIPTION = 'Directory on this device';
-const OPFS_DIRECTORY_DESCRIPTION = 'Saved directly in your browser on this device';
+const didPersistedDeviceDirectoryRecordsChange = (
+  nextRecords: PersistedDeviceDirectoryRecord[],
+  previousRecords: PersistedDeviceDirectoryRecord[],
+) =>
+  nextRecords.length !== previousRecords.length ||
+  nextRecords.some((record, index) => {
+    const previousRecord = previousRecords[index];
+    return (
+      previousRecord === undefined ||
+      record.name !== previousRecord.name ||
+      record.handle !== previousRecord.handle
+    );
+  });
 
 const setupFileSystemService = () => {
   const vfs = new VirtualFileSystem();
@@ -134,8 +145,18 @@ const setupFileSystemService = () => {
 
   const hydrateDeviceDirectories = async () => {
     const records = await getRecordList();
+    const normalizedRecords: PersistedDeviceDirectoryRecord[] = [];
+
+    records.forEach((record) => {
+      const nextName = getUniqueDeviceDirectoryName(record.name, normalizedRecords);
+
+      normalizedRecords.push({
+        ...record,
+        name: nextName,
+      });
+    });
     const permissionStates = await Promise.all(
-      records.map(async (record) => ({
+      normalizedRecords.map(async (record) => ({
         permissionState: await record.handle.queryPermission?.({
           mode: 'readwrite',
         }),
@@ -149,6 +170,10 @@ const setupFileSystemService = () => {
       }
     });
 
+    if (didPersistedDeviceDirectoryRecordsChange(normalizedRecords, records)) {
+      await updateRecordList(normalizedRecords);
+    }
+
     syncActiveDeviceFiles();
   };
 
@@ -156,7 +181,6 @@ const setupFileSystemService = () => {
     const fileSystemDirectoryHandle = await navigator.storage?.getDirectory();
     if (fileSystemDirectoryHandle) {
       deviceFileSystemProvider.upsertRecord({
-        description: OPFS_DIRECTORY_DESCRIPTION,
         name: OPFSName,
         handle: fileSystemDirectoryHandle,
       });
@@ -167,10 +191,11 @@ const setupFileSystemService = () => {
     await mountProvider(deviceFilesPath, deviceFileSystemProvider);
     await mountOpfs();
     await hydrateDeviceDirectories();
-    syncActiveDeviceFiles();
   };
 
-  void mountDeviceFiles();
+  const deviceFilesReady = mountDeviceFiles();
+
+  void deviceFilesReady;
 
   const move = (oldPath: string, newPath: string) => vfs.move(oldPath, newPath);
 
@@ -186,6 +211,7 @@ const setupFileSystemService = () => {
     ignoredRecord?: PersistedDeviceDirectoryRecord,
   ) => {
     const isTaken = (name: string) =>
+      name === OPFSName ||
       records.some((record) => record !== ignoredRecord && record.name === name);
 
     if (!isTaken(baseName)) {
@@ -215,15 +241,15 @@ const setupFileSystemService = () => {
   const addDeviceDirectory = async (
     handle: FileSystemDirectoryHandle,
   ): Promise<DeviceFileRecord> => {
+    await deviceFilesReady;
+
     const records = await getRecordList();
     const existingRecord = await findRecordByHandle(records, handle);
     const nextRecord = {
-      description: LOCAL_DEVICE_DIRECTORY_DESCRIPTION,
       name: getUniqueDeviceDirectoryName(handle.name, records, existingRecord),
       handle,
     } satisfies DeviceFileRecord;
     const nextPersistedRecord = {
-      description: nextRecord.description,
       name: nextRecord.name,
       handle: nextRecord.handle,
     } satisfies PersistedDeviceDirectoryRecord;
@@ -248,6 +274,8 @@ const setupFileSystemService = () => {
     if (name === OPFSName) {
       return;
     }
+
+    await deviceFilesReady;
 
     const records = await getRecordList();
     const nextRecords = records.filter((record) => record.name !== name);

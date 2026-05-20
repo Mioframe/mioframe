@@ -3,9 +3,11 @@ import { flushPromises, mount } from '@vue/test-utils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { defineComponent, h, ref } from 'vue';
 
-const importJsonFileMock = vi.fn();
-const reportHandledErrorMock = vi.fn();
-const addSnackbarMock = vi.fn();
+const { importJsonFileMock, reportHandledErrorMock, addSnackbarMock } = vi.hoisted(() => ({
+  importJsonFileMock: vi.fn(),
+  reportHandledErrorMock: vi.fn(),
+  addSnackbarMock: vi.fn(),
+}));
 
 vi.mock('@entity/directory/useDirectory', () => ({
   useDirectory: () => ({

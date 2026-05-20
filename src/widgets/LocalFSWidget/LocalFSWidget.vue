@@ -1,12 +1,10 @@
 <script setup lang="ts">
 import { DEVICE_FILES, useFileSystem } from '@entity/mountedDirectories';
 import { useDisconnectDeviceDirectory } from '@feature/deviceDirectoryDisconnect';
-import { usePickLocalDirectory } from '@feature/localDirectoryPick';
-import { MDIconButton } from '@shared/ui/Button';
-import { MDSymbol } from '@shared/ui/Icon';
-import { MDListContainer, MDListItem } from '@shared/ui/Lists';
+import { MioframeSpaceCreateListItem, MioframeSpaceOpenListItem } from '@feature/mioframeSpacePick';
+import { MDListContainer } from '@shared/ui/Lists';
 import { PathUtils } from '@shared/lib/virtualFileSystem';
-import { OPFSName } from '@shared/service/directories';
+import LocalFSDeviceFileListItem from './LocalFSDeviceFileListItem.vue';
 
 const emit = defineEmits<{
   clickPath: [path: string];
@@ -14,51 +12,29 @@ const emit = defineEmits<{
 
 const { deviceFiles } = useFileSystem();
 const { disconnectDeviceDirectory } = useDisconnectDeviceDirectory();
-const { pickLocalDirectory } = usePickLocalDirectory();
-
-const onClickAddLocalDirectory = async () => {
-  await pickLocalDirectory();
-};
 
 const onClickDeviceFile = (name: string) => {
   emit('clickPath', PathUtils.join('/', DEVICE_FILES, name));
 };
 
-const isOpfsEntry = (name: string) => name === OPFSName;
+const onDisconnectDeviceFile = (name: string) => {
+  void disconnectDeviceDirectory(name);
+};
 </script>
 
 <template>
   <MDListContainer is="div">
-    <MDListItem
-      is="button"
+    <LocalFSDeviceFileListItem
       v-for="deviceFile in deviceFiles ?? []"
       :key="deviceFile.name"
-      :headline="deviceFile.name"
-      :supporting-text="deviceFile.description"
-      @click="() => onClickDeviceFile(deviceFile.name)"
-    >
-      <template #leadingIcon>
-        <MDSymbol name="folder_managed" />
-      </template>
+      :name="deviceFile.name"
+      :description="deviceFile.description"
+      :can-disconnect="deviceFile.canDisconnect"
+      @click-path="onClickDeviceFile"
+      @disconnect="onDisconnectDeviceFile"
+    />
 
-      <template v-if="!isOpfsEntry(deviceFile.name)" #trailingIcon>
-        <MDIconButton
-          tooltip="disconnect local directory"
-          md-symbol-name="link_off"
-          @click="() => disconnectDeviceDirectory(deviceFile.name)"
-        />
-      </template>
-    </MDListItem>
-
-    <MDListItem
-      is="button"
-      headline="Add Local Directory"
-      supporting-text="Pick a folder from this device to keep it available here"
-      @click="onClickAddLocalDirectory"
-    >
-      <template #leadingIcon>
-        <MDSymbol name="folder_open" />
-      </template>
-    </MDListItem>
+    <MioframeSpaceCreateListItem />
+    <MioframeSpaceOpenListItem />
   </MDListContainer>
 </template>

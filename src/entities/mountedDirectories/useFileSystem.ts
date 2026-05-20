@@ -5,8 +5,33 @@ import { isUndefined } from 'es-toolkit';
 import { useObservableQuery } from '@shared/lib/useObservableQuery';
 import { DEVICE_FILES_ROOT_NAME, type DeviceFileRecord } from '@shared/service/fileSystem';
 import { useObservable } from '@shared/lib/useObservable';
+import { OPFSName } from '@shared/service/directories';
 
+/** Root directory label used for mounted device-backed Mioframe spaces. */
 export const DEVICE_FILES = DEVICE_FILES_ROOT_NAME;
+
+/** UI-facing mounted-directory record enriched with local presentation fields. */
+export type MountedDirectoryDisplayRecord = DeviceFileRecord & {
+  description: string;
+  canDisconnect: boolean;
+};
+
+const LOCAL_MIOFRAME_SPACE_DESCRIPTION = 'Mioframe space on this device';
+const BROWSER_STORAGE_DESCRIPTION = 'Saved directly in your browser on this device';
+
+/**
+ * Maps a raw mounted directory record to the widget-facing display contract.
+ * @param record - Mounted directory record returned by the file-system service.
+ * @returns Display-ready mounted directory record for the Local FS UI.
+ */
+const toMountedDirectoryDisplayRecord = (
+  record: DeviceFileRecord,
+): MountedDirectoryDisplayRecord => ({
+  ...record,
+  canDisconnect: record.name !== OPFSName,
+  description:
+    record.name === OPFSName ? BROWSER_STORAGE_DESCRIPTION : LOCAL_MIOFRAME_SPACE_DESCRIPTION,
+});
 
 const setupFileSystem = () => {
   const {
@@ -49,6 +74,9 @@ const setupFileSystem = () => {
   });
 
   const { data: activeDeviceFiles } = useObservable(deviceFiles);
+  const mountedDirectories = computed(() =>
+    activeDeviceFiles.value?.map(toMountedDirectoryDisplayRecord),
+  );
 
   const disconnectDeviceFile = async (deviceFile: Pick<DeviceFileRecord, 'name'> | string) => {
     await removeDeviceDirectory(typeof deviceFile === 'string' ? deviceFile : deviceFile.name);
@@ -56,7 +84,7 @@ const setupFileSystem = () => {
 
   return {
     rootDirectory,
-    deviceFiles: activeDeviceFiles,
+    deviceFiles: mountedDirectories,
     errorMessage,
     isLoading,
 
@@ -70,4 +98,5 @@ const setupFileSystem = () => {
   };
 };
 
+/** Returns the shared mounted-directories facade backed by the main file-system service. */
 export const useFileSystem = createGlobalState(setupFileSystem);
