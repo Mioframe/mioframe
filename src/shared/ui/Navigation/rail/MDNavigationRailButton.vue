@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { useLastHover } from '@shared/lib/useLastHover';
 import { MDSymbol } from '../../Icon';
-import { MDLayer, usePressed, useRipple } from '../../State';
+import MDLayer from '../../State/MDLayer.vue';
+import { usePressed, useRipple } from '../../State';
 import { computed, useTemplateRef } from 'vue';
 import { useFirstFocus } from '@shared/lib/useFirstFocus';
 import { BUTTON_TYPE } from './types';

@@ -26,7 +26,7 @@ const props = withDefaults(
       :hover="!props.disabled && props.hover"
       :focused="!props.disabled && props.focused"
       :pressed="!props.disabled && props.pressed"
-      :drag="!props.disabled && props.dragged"
+      :dragged="!props.disabled && props.dragged"
     />
   </span>
 </template>

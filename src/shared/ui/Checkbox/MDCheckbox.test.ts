@@ -1,126 +1,139 @@
-/* eslint-disable vue/one-component-per-file -- This test file mounts small inline Vue apps to verify primitive behavior. */
-import { afterEach, describe, expect, it } from 'vitest';
-import { createApp, h, nextTick } from 'vue';
+import { mount } from '@vue/test-utils';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { nextTick } from 'vue';
 import MDCheckbox from './MDCheckbox.vue';
 
-const mountCheckbox = async (props: Record<string, unknown>) => {
-  const root = document.createElement('div');
-  document.body.appendChild(root);
-  const app = createApp({
-    render: () => h(MDCheckbox, props),
-  });
-
-  app.mount(root);
-  await nextTick();
-
-  const checkbox = root.querySelector('.md-checkbox');
-  if (!checkbox) {
-    throw new Error('MDCheckbox root element was not rendered');
-  }
-
-  return {
-    root,
-    checkbox,
-    unmount: () => {
-      app.unmount();
-      root.remove();
+const mountCheckbox = (props: Record<string, unknown> = {}) =>
+  mount(MDCheckbox, {
+    attachTo: document.body,
+    props: {
+      ariaLabel: 'Enable sync',
+      ...props,
     },
-  };
-};
+    global: {
+      stubs: {
+        MDPlainTooltip: {
+          template: '<span class="md-plain-tooltip-stub" />',
+        },
+        MDSymbol: {
+          template: '<span class="md-symbol-stub" />',
+        },
+      },
+    },
+  });
 
 describe('MDCheckbox', () => {
   afterEach(() => {
     document.body.innerHTML = '';
   });
 
-  it('uses ariaLabel as the focusable container label when tooltip is absent', async () => {
-    const { checkbox, unmount } = await mountCheckbox({
-      ariaLabel: 'Enable sync',
-    });
+  it('uses ariaLabel as the focusable container label when tooltip is absent', () => {
+    const wrapper = mountCheckbox();
 
-    expect(checkbox.getAttribute('aria-label')).toBe('Enable sync');
-
-    unmount();
+    expect(wrapper.get('.md-checkbox').attributes('aria-label')).toBe('Enable sync');
   });
 
-  it('prefers tooltip over ariaLabel on the focusable container', async () => {
-    const { checkbox, unmount } = await mountCheckbox({
-      ariaLabel: 'Enable sync',
+  it('prefers tooltip over ariaLabel on the focusable container', () => {
+    const wrapper = mountCheckbox({
       tooltip: 'Sync with Google Drive',
     });
 
-    expect(checkbox.getAttribute('aria-label')).toBe('Sync with Google Drive');
-
-    unmount();
+    expect(wrapper.get('.md-checkbox').attributes('aria-label')).toBe('Sync with Google Drive');
   });
 
-  it('renders a native input in the default interactive mode', async () => {
-    const { root, unmount } = await mountCheckbox({
+  it('renders a native input in the default interactive mode', () => {
+    const wrapper = mountCheckbox({
       modelValue: true,
-      ariaLabel: 'Enable sync',
     });
 
-    expect(root.querySelector('input[type="checkbox"]')).not.toBeNull();
-
-    unmount();
+    expect(wrapper.find('input[type="checkbox"]').exists()).toBe(true);
   });
 
-  it('renders a non-interactive aria-hidden checkbox in presentation mode', async () => {
-    const { root, checkbox, unmount } = await mountCheckbox({
+  it('renders a non-interactive aria-hidden checkbox in presentation mode', () => {
+    const wrapper = mountCheckbox({
       modelValue: true,
-      ariaLabel: 'Enable sync',
       presentation: true,
     });
 
-    expect(root.querySelector('input[type="checkbox"]')).toBeNull();
-    expect(checkbox.tagName).toBe('DIV');
-    expect(checkbox.getAttribute('aria-hidden')).toBe('true');
-    expect(checkbox.hasAttribute('tabindex')).toBe(false);
-    expect(checkbox.classList.contains('md-state')).toBe(false);
-    expect(root.querySelector('.md-state-layer')).toBeNull();
-    expect(root.querySelector('.md-state-layer__target')).toBeNull();
+    const checkbox = wrapper.get('.md-checkbox');
 
-    unmount();
+    expect(wrapper.find('input[type="checkbox"]').exists()).toBe(false);
+    expect(checkbox.element.tagName).toBe('DIV');
+    expect(checkbox.attributes('aria-hidden')).toBe('true');
+    expect(checkbox.attributes('tabindex')).toBeUndefined();
+    expect(wrapper.find('.md-state-layer').exists()).toBe(false);
   });
 
   it('does not emit toggle behavior from presentation mode interactions', async () => {
-    const updates: Array<boolean | undefined> = [];
-    let clicks = 0;
-    const root = document.createElement('div');
-    document.body.appendChild(root);
-    const app = createApp({
-      render: () =>
-        h(MDCheckbox, {
-          modelValue: false,
-          ariaLabel: 'Enable sync',
-          presentation: true,
-          onClick: () => {
-            clicks += 1;
-          },
-          'onUpdate:modelValue': (value: boolean | undefined) => {
-            updates.push(value);
-          },
-        }),
+    const wrapper = mountCheckbox({
+      modelValue: false,
+      presentation: true,
     });
 
-    app.mount(root);
+    await wrapper.get('.md-checkbox').trigger('click');
+    await wrapper.get('.md-checkbox').trigger('keydown', { key: ' ' });
+    await wrapper.get('.md-checkbox').trigger('keydown', { key: 'Enter' });
+
+    expect(wrapper.emitted('click')).toBeUndefined();
+    expect(wrapper.emitted('update:modelValue')).toBeUndefined();
+  });
+
+  it('focuses the host when autofocus is enabled', async () => {
+    const focusSpy = vi.spyOn(HTMLElement.prototype, 'focus');
+    const wrapper = mountCheckbox({
+      autofocus: true,
+    });
     await nextTick();
 
-    const checkbox = root.querySelector<HTMLElement>('.md-checkbox');
-    if (!checkbox) {
-      throw new Error('MDCheckbox root element was not rendered');
-    }
+    expect(focusSpy).toHaveBeenCalled();
+    expect(wrapper.get('.md-checkbox').attributes('tabindex')).toBe('0');
+  });
 
-    checkbox.click();
-    checkbox.dispatchEvent(new KeyboardEvent('keydown', { key: ' ', bubbles: true }));
-    checkbox.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
-    await nextTick();
+  it('does not autofocus when disabled', () => {
+    const wrapper = mountCheckbox({
+      autofocus: true,
+      disabled: true,
+    });
 
-    expect(clicks).toBe(0);
-    expect(updates).toEqual([]);
+    expect(document.activeElement).not.toBe(wrapper.get('.md-checkbox').element);
+  });
 
-    app.unmount();
-    root.remove();
+  it('stops readonly click activation from bubbling to parent containers', async () => {
+    const onParentClick = vi.fn();
+    const wrapper = mountCheckbox({
+      modelValue: true,
+      readonly: true,
+    });
+
+    const parent = document.createElement('button');
+    parent.type = 'button';
+    parent.addEventListener('click', onParentClick);
+    parent.append(wrapper.element);
+    document.body.append(parent);
+
+    await wrapper.get('.md-checkbox').trigger('click');
+
+    expect(wrapper.emitted('click')).toHaveLength(1);
+    expect(wrapper.emitted('update:modelValue')).toBeUndefined();
+    expect(onParentClick).not.toHaveBeenCalled();
+  });
+
+  it('stops readonly keyboard activation from bubbling to parent containers', async () => {
+    const parentKeydown = vi.fn();
+    const wrapper = mountCheckbox({
+      modelValue: true,
+      readonly: true,
+    });
+    const parent = document.createElement('button');
+    parent.type = 'button';
+    parent.addEventListener('keydown', parentKeydown);
+    parent.append(wrapper.element);
+    document.body.append(parent);
+
+    await wrapper.get('.md-checkbox').trigger('keydown', { key: ' ' });
+
+    expect(wrapper.emitted('click')).toHaveLength(1);
+    expect(wrapper.emitted('update:modelValue')).toBeUndefined();
+    expect(parentKeydown).not.toHaveBeenCalled();
   });
 });
-/* eslint-enable vue/one-component-per-file -- Re-enable the rule after the inline test app definitions. */

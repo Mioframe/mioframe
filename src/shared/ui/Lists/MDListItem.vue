@@ -2,7 +2,11 @@
 import { computed, useTemplateRef } from 'vue';
 import { MDStateLayer, useRipple, useStateLayer } from '../State';
 
-const { is = 'div', disabled } = defineProps<{
+const {
+  is = 'div',
+  disabled,
+  itemRole,
+} = defineProps<{
   headline: string;
   supportingText?: string | undefined;
   is?: Is | undefined;
@@ -47,6 +51,17 @@ const onKeydown = (e: KeyboardEvent) => {
 const hostEl = useTemplateRef<HTMLElement>('hostEl');
 const showVisualState = computed(() => !disabled);
 const { hover, focused, durationPressedState } = useStateLayer(hostEl);
+const hostRole = computed(() => {
+  if (itemRole) {
+    return itemRole;
+  }
+
+  if (is === 'div') {
+    return 'listitem';
+  }
+
+  return undefined;
+});
 
 useRipple(computed(() => (!disabled && is !== 'li' ? hostEl.value : undefined)));
 </script>
@@ -60,7 +75,7 @@ useRipple(computed(() => (!disabled && is !== 'li' ? hostEl.value : undefined)))
     :disabled="is === 'button' && disabled ? true : undefined"
     :type="is === 'button' ? type : undefined"
     :aria-disabled="disabled && is !== 'button' ? 'true' : undefined"
-    :role="itemRole ?? 'listitem'"
+    :role="hostRole"
     :class="{
       'md-state_hover': showVisualState && hover,
       'md-state_focused': showVisualState && focused,

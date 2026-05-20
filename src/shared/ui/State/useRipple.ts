@@ -29,7 +29,7 @@ const startRipple = async ({
       Math.hypot(right - clientX, bottom - clientY),
     ) * 2;
 
-  const rippleEl = document.createElement('div');
+  const rippleEl = document.createElement('span');
   rippleEl.classList.add('md-ripple');
   rippleEl.style.setProperty('--md-ripple-y', `${offsetY}px`);
   rippleEl.style.setProperty('--md-ripple-x', `${offsetX}px`);

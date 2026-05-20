@@ -61,13 +61,13 @@ const onClickContainer = (e: MouseEvent) => {
   }
 
   e.preventDefault();
+  e.stopPropagation();
   emit('click');
 
   if (readonly.value) {
     return;
   }
 
-  e.stopPropagation();
   stateValue.value = toggleBoolean(stateValue.value, toValue(indeterminate));
 };
 
@@ -94,13 +94,13 @@ const onKeydownContainer = (event: KeyboardEvent) => {
   }
 
   event.preventDefault();
+  event.stopPropagation();
   emit('click');
 
   if (readonly.value) {
     return;
   }
 
-  event.stopPropagation();
   stateValue.value = toggleBoolean(stateValue.value, toValue(indeterminate));
 };
 
@@ -114,6 +114,8 @@ useRipple(computed(() => (!presentation.value && !disabled.value ? checkboxEl.va
 watch(
   [checkboxEl, () => props.autofocus, disabled],
   ([element, autofocus, isDisabled]) => {
+    // The checkbox host owns autofocus because current field consumers focus the
+    // actual interactive control after creating inline editors.
     if (autofocus && element && !isDisabled) {
       element.focus();
     }

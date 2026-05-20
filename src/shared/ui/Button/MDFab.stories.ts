@@ -46,7 +46,7 @@ const fabInteractionStatesTemplate = `
     <div class="visual-row">
       <MDFab tooltip="Medium" size="medium" md-symbol="star" />
       <MDFab tooltip="Focus target" size="large" color="tertiary" md-symbol="share" />
-      <MDFab tooltip="Tonal secondary" color="tonal-secondary" md-symbol="menu" />
+      <MDFab tooltip="Pressed target" color="tonal-secondary" md-symbol="menu" />
     </div>
   </div>
 `;

@@ -29,13 +29,14 @@ const selected = computed(() => Boolean(props.selected));
 const actionEl = useTemplateRef<HTMLButtonElement>('actionEl');
 const dragged = ref(false);
 const { hover, focused, durationPressedState } = useStateLayer(actionEl, { dragged });
-const showVisualState = computed(() => true);
 
 useRipple(actionEl);
 
 watch(
   [actionEl, () => props.autofocus],
   ([element, autofocus]) => {
+    // The chip host owns autofocus because current view-selector consumers focus
+    // the first chip button after the chip list renders.
     if (autofocus && element) {
       element.focus();
     }
@@ -71,10 +72,10 @@ const onDragEnd = () => {
       {
         'md-chip_elevated': props.elevated,
         'md-chip_selected': selected,
-        'md-state_hover': showVisualState && hover,
-        'md-state_focused': showVisualState && focused,
-        'md-state_pressed': showVisualState && durationPressedState,
-        'md-state_drag': dragged,
+        'md-state_hover': hover,
+        'md-state_focused': focused,
+        'md-state_pressed': durationPressedState,
+        'md-state_dragged': dragged,
       },
     ]"
     :draggable="props.draggable ? 'true' : undefined"
@@ -122,10 +123,10 @@ const onDragEnd = () => {
       {
         'md-chip_elevated': props.elevated,
         'md-chip_selected': selected,
-        'md-state_hover': showVisualState && hover,
-        'md-state_focused': showVisualState && focused,
-        'md-state_pressed': showVisualState && durationPressedState,
-        'md-state_drag': dragged,
+        'md-state_hover': hover,
+        'md-state_focused': focused,
+        'md-state_pressed': durationPressedState,
+        'md-state_dragged': dragged,
       },
     ]"
     type="button"

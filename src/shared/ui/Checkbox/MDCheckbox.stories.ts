@@ -65,6 +65,10 @@ const checkboxInteractionStatesTemplate = `
       <MDCheckbox id="storybook-md-checkbox-readonly-focus" aria-label="Readonly focus target" :model-value="true" readonly />
       <span>Readonly focus target</span>
     </div>
+    <div class="visual-row">
+      <MDCheckbox id="storybook-md-checkbox-pressed" aria-label="Pressed target" :model-value="false" />
+      <span>Pressed target</span>
+    </div>
   </div>
 `;
 

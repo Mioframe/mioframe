@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { useTemplateRef } from 'vue';
 import { MDSymbol } from '../../Icon';
-import { MDLayer, usePressed, useRipple } from '../../State';
+import MDLayer from '../../State/MDLayer.vue';
+import { usePressed, useRipple } from '../../State';
 import { useLastHover } from '@shared/lib/useLastHover';
 import { useFirstFocus } from '@shared/lib/useFirstFocus';
 import type { BAR_TYPE } from './types';

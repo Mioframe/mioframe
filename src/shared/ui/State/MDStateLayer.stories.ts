@@ -50,7 +50,7 @@ const StateLayerDemoHost = defineComponent({
         'md-state_hover': !props.disabled && hover,
         'md-state_focused': !props.disabled && focused,
         'md-state_pressed': !props.disabled && durationPressedState,
-        'md-state_drag': !props.disabled && props.dragged,
+        'md-state_dragged': !props.disabled && props.dragged,
       }"
     >
       <MDStateLayer
@@ -113,14 +113,14 @@ export const VisualStates: Story = {
         <div class="visual-row">
           <div class="visual-cell" style="display:grid;gap:8px;justify-items:start;">
             <span class="visual-label">Dragged</span>
-            <button class="demo-host md-state_drag" type="button" style="position:relative;display:inline-flex;align-items:center;justify-content:center;min-width:160px;height:56px;padding:0 24px;border:0;border-radius:20px;background:var(--md-sys-color-primary);color:var(--md-sys-color-on-primary);box-shadow:var(--md-sys-elevation-level2);">
+            <button class="demo-host md-state_dragged" type="button" style="position:relative;display:inline-flex;align-items:center;justify-content:center;min-width:160px;height:56px;padding:0 24px;border:0;border-radius:20px;background:var(--md-sys-color-primary);color:var(--md-sys-color-on-primary);box-shadow:var(--md-sys-elevation-level2);">
               <MDStateLayer dragged />
               <span class="demo-host__label" style="position:relative;z-index:1;">Dragged</span>
             </button>
           </div>
           <div class="visual-cell" style="display:grid;gap:8px;justify-items:start;">
             <span class="visual-label">Disabled</span>
-            <button class="demo-host md-state_hover md-state_focused md-state_pressed md-state_drag" type="button" disabled style="position:relative;display:inline-flex;align-items:center;justify-content:center;min-width:160px;height:56px;padding:0 24px;border:0;border-radius:20px;background:rgb(from var(--md-sys-color-on-surface) r g b / 0.12);color:rgb(from var(--md-sys-color-on-surface) r g b / 0.38);">
+            <button class="demo-host md-state_hover md-state_focused md-state_pressed md-state_dragged" type="button" disabled style="position:relative;display:inline-flex;align-items:center;justify-content:center;min-width:160px;height:56px;padding:0 24px;border:0;border-radius:20px;background:rgb(from var(--md-sys-color-on-surface) r g b / 0.12);color:rgb(from var(--md-sys-color-on-surface) r g b / 0.38);">
               <MDStateLayer hover focused pressed dragged disabled />
               <span class="demo-host__label" style="position:relative;z-index:1;">Disabled</span>
             </button>

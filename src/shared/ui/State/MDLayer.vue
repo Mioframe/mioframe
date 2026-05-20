@@ -3,24 +3,25 @@ defineProps<{
   hover?: boolean;
   pressed?: boolean;
   focused?: boolean;
-  drag?: boolean;
+  dragged?: boolean;
 }>();
 </script>
 
 <template>
-  <div
+  <span
     class="md-layer"
     :class="{
       _hover: hover,
       _pressed: pressed,
       _focused: focused,
-      _drag: drag,
+      _dragged: dragged,
     }"
   />
 </template>
 
 <style lang="css" scoped>
 .md-layer {
+  display: block;
   border-radius: inherit;
   background: none;
   background-color: rgb(from var(--md-content-color) r g b / 0);
@@ -44,7 +45,7 @@ defineProps<{
       from var(--md-content-color) r g b / var(--md-state-focus-layer-opacity, 0.1)
     );
   }
-  &._drag {
+  &._dragged {
     background-color: rgb(
       from var(--md-content-color) r g b / var(--md-state-dragged-layer-opacity, 0.16)
     );
