@@ -1,83 +1,114 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue';
+import { computed, ref } from 'vue';
 import { MDDialog } from '@shared/ui/Dialog';
 import { MDTextField } from '@shared/ui/TextField';
 import { parseMioframeSpaceName } from './spaceNameValidation';
-import type { CreateSpaceConflict } from './useCreateMioframeSpace';
+import type { CreateSpaceNameIssue } from './useCreateMioframeSpace';
 
 const props = defineProps<{
   selectedLocation: string;
   loading: boolean;
-  conflict: CreateSpaceConflict | undefined;
-  errorText: string | undefined;
+  checkCreateSpaceNameAvailability: (
+    normalizedName: string,
+  ) => Promise<CreateSpaceNameIssue | undefined>;
+  createSpace: (normalizedName: string) => Promise<boolean>;
+  openExistingSpace: (targetHandle: FileSystemDirectoryHandle) => Promise<boolean>;
 }>();
 
 const emit = defineEmits<{
-  create: [spaceName: string];
-  openExistingSpace: [];
-  clearError: [];
+  completed: [];
   canceled: [];
 }>();
 
 const SPACE_FOLDER_PLACEHOLDER = '<space name>';
 
 const spaceName = ref<string | undefined>(undefined);
+const fieldIssue = ref<CreateSpaceNameIssue | undefined>(undefined);
 
-const normalizedSpaceName = computed(() => {
-  const parsedName = parseMioframeSpaceName(spaceName.value);
-  return parsedName.success ? parsedName.name : (spaceName.value?.trim() ?? '');
+const previewSpaceName = computed(() => spaceName.value?.trim() ?? '');
+const activeExistingSpaceIssue = computed(() => {
+  if (fieldIssue.value?.kind !== 'existing-space') {
+    return undefined;
+  }
+
+  return fieldIssue.value.normalizedName === previewSpaceName.value ? fieldIssue.value : undefined;
 });
-const hasExistingSpaceConflict = computed(
-  () => props.conflict?.submittedSpaceName === normalizedSpaceName.value,
-);
 
 const resultFolder = computed(
-  () => `${props.selectedLocation} / ${normalizedSpaceName.value || SPACE_FOLDER_PLACEHOLDER}`,
+  () => `${props.selectedLocation} / ${previewSpaceName.value || SPACE_FOLDER_PLACEHOLDER}`,
 );
 
 const supportingText = computed(() => {
-  if (props.errorText) {
-    return props.errorText;
-  }
-
-  if (hasExistingSpaceConflict.value) {
-    return 'A Mioframe space with this name already exists here. Open the existing space, or change the name to go back to creating a new one.';
+  if (fieldIssue.value) {
+    return fieldIssue.value.text;
   }
 
   return 'Mioframe will create a folder with this name inside the selected location.';
 });
 
 const headline = computed(() =>
-  hasExistingSpaceConflict.value ? 'Space already exists' : 'Name new space',
+  activeExistingSpaceIssue.value ? 'Space already exists' : 'Name new space',
 );
 
 const dialogSupportingText = computed(() =>
-  hasExistingSpaceConflict.value
+  activeExistingSpaceIssue.value
     ? 'This name already belongs to an existing Mioframe space in the selected location.'
     : 'Choose a name for the new Mioframe space.',
 );
 
 const applyLabel = computed(() =>
-  hasExistingSpaceConflict.value ? 'Open existing space' : 'Create',
+  activeExistingSpaceIssue.value ? 'Open existing space' : 'Create',
 );
 
-watch(spaceName, () => {
-  if (props.errorText) {
-    emit('clearError');
-  }
-});
+const onSpaceNameChange = (value: string | undefined) => {
+  spaceName.value = value;
+  fieldIssue.value = undefined;
+};
 
 const onCancel = () => {
   emit('canceled');
 };
 
-const onApply = () => {
-  if (hasExistingSpaceConflict.value) {
-    emit('openExistingSpace');
+const onApply = async () => {
+  if (activeExistingSpaceIssue.value) {
+    const didOpen = await props.openExistingSpace(activeExistingSpaceIssue.value.targetHandle);
+
+    if (didOpen) {
+      emit('completed');
+    }
+
     return;
   }
 
-  emit('create', spaceName.value ?? '');
+  const parsedName = parseMioframeSpaceName(spaceName.value);
+
+  if (!parsedName.success) {
+    fieldIssue.value = {
+      kind: 'text',
+      text: parsedName.error,
+    };
+    return;
+  }
+
+  let availabilityIssue: CreateSpaceNameIssue | undefined;
+
+  try {
+    availabilityIssue = await props.checkCreateSpaceNameAvailability(parsedName.name);
+  } catch {
+    return;
+  }
+
+  fieldIssue.value = availabilityIssue;
+
+  if (availabilityIssue) {
+    return;
+  }
+
+  const didCreate = await props.createSpace(parsedName.name);
+
+  if (didCreate) {
+    emit('completed');
+  }
 };
 </script>
 
@@ -93,11 +124,12 @@ const onApply = () => {
     @cancel="onCancel"
   >
     <MDTextField
-      v-model:model-value="spaceName"
+      :model-value="spaceName"
       label-text="Space name"
-      :error="!!props.errorText"
+      :error="!!fieldIssue"
       :supporting-text="supportingText"
       autofocus
+      @update:model-value="onSpaceNameChange"
     />
 
     <div class="mioframe-space-create-dialog__details">
