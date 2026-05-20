@@ -1,21 +1,11 @@
 <script setup lang="ts">
-import { computed } from 'vue';
 import { MDSymbol } from '@shared/ui/Icon';
 import { MDListItem } from '@shared/ui/Lists';
 import MioframeSpaceCreateDialog from './MioframeSpaceCreateDialog.vue';
-import { useCreateMioframeSpace } from './useCreateMioframeSpace';
+import { useMioframeSpaceParentPicker } from './useMioframeSpaceParentPicker';
 
-const {
-  loading,
-  parentHandle,
-  pickParentDirectory,
-  resetCreateDialog,
-  checkCreateSpaceNameAvailability,
-  createSpace,
-  openExistingSpace,
-} = useCreateMioframeSpace();
-
-const selectedLocation = computed(() => parentHandle.value?.name ?? '');
+const { loading, parentHandle, pickParentDirectory, resetParentDirectory } =
+  useMioframeSpaceParentPicker();
 </script>
 
 <template>
@@ -34,12 +24,8 @@ const selectedLocation = computed(() => parentHandle.value?.name ?? '');
 
   <MioframeSpaceCreateDialog
     v-if="parentHandle"
-    :selected-location="selectedLocation"
-    :loading="loading"
-    :check-create-space-name-availability="checkCreateSpaceNameAvailability"
-    :create-space="createSpace"
-    :open-existing-space="openExistingSpace"
-    @completed="resetCreateDialog"
-    @canceled="resetCreateDialog"
+    :parent-handle="parentHandle"
+    @completed="resetParentDirectory"
+    @canceled="resetParentDirectory"
   />
 </template>

@@ -3,12 +3,7 @@ import { ensureStorageAdapterMarkerFile } from '@shared/lib/automergeAdapter';
 import { DomainError } from '@shared/lib/error';
 import { reportHandledError } from '@shared/lib/reportHandledError';
 import { useSnackbar } from '@shared/ui/Snackbar';
-import { ref, toRef } from 'vue';
-import {
-  isDirectoryPickerSupported,
-  pickWritableDirectory,
-  showDirectoryPickerUnsupportedMessage,
-} from './directoryPickerSupport';
+import { ref, toValue, type MaybeRefOrGetter } from 'vue';
 import { buildCreateSpaceError, buildOpenSpaceError } from './mioframeSpacePick.errors';
 import { inspectMioframeSpaceDirectory } from './mioframeSpacePick.helpers';
 
@@ -44,21 +39,24 @@ type CreateSpaceResult = boolean | CreateSpaceNameIssue;
 class HandledCreateSpaceAvailabilityError extends Error {}
 
 /**
- * Manages Mioframe create-space picker state and explicit create/open actions.
- * @returns Reactive picker state plus filesystem-backed create/open actions.
+ * Owns create/open filesystem actions for a selected Mioframe-space parent directory.
+ * @param parentHandleSource - Selected parent directory handle source.
+ * @returns Reactive loading state plus filesystem-backed create/open actions.
  */
-export const useCreateMioframeSpace = () => {
+export const useCreateMioframeSpace = (
+  parentHandleSource: MaybeRefOrGetter<FileSystemDirectoryHandle | undefined>,
+) => {
   const loading = ref(false);
-  const parentHandle = ref<FileSystemDirectoryHandle | undefined>(undefined);
   const { addSnackbar } = useSnackbar();
   const { addDeviceDirectory } = useFileSystem();
-  const isSupported = toRef(isDirectoryPickerSupported);
+
+  const getParentHandle = () => toValue(parentHandleSource);
 
   const handleUnexpectedError = (
     error: unknown,
     options?: {
       fallbackError?: DomainError;
-      action?: 'pickParentFolder' | 'createSpace' | 'openExistingSpace';
+      action?: 'createSpace' | 'openExistingSpace';
     },
   ) => {
     const reportedError =
@@ -73,21 +71,19 @@ export const useCreateMioframeSpace = () => {
     });
   };
 
-  const resetCreateDialog = () => {
-    parentHandle.value = undefined;
-  };
-
   const classifyExistingTarget = async (
     normalizedName: string,
   ): Promise<CreateSpaceNameIssue | undefined> => {
-    if (!parentHandle.value) {
+    const parentHandle = getParentHandle();
+
+    if (!parentHandle) {
       return undefined;
     }
 
     let targetHandle: FileSystemDirectoryHandle;
 
     try {
-      targetHandle = await parentHandle.value.getDirectoryHandle(normalizedName);
+      targetHandle = await parentHandle.getDirectoryHandle(normalizedName);
     } catch (error) {
       if (error instanceof DOMException && error.name === 'NotFoundError') {
         return undefined;
@@ -127,29 +123,6 @@ export const useCreateMioframeSpace = () => {
     };
   };
 
-  const pickParentDirectory = async () => {
-    if (loading.value || parentHandle.value) {
-      return;
-    }
-
-    if (!isSupported.value) {
-      showDirectoryPickerUnsupportedMessage(addSnackbar);
-      return;
-    }
-
-    loading.value = true;
-
-    try {
-      parentHandle.value = await pickWritableDirectory();
-    } catch {
-      handleUnexpectedError(buildCreateSpaceError(), {
-        action: 'pickParentFolder',
-      });
-    } finally {
-      loading.value = false;
-    }
-  };
-
   /**
    * Checks whether the submitted normalized space name can be created in the current parent folder.
    * @param normalizedName - Parsed and normalized space name.
@@ -158,7 +131,7 @@ export const useCreateMioframeSpace = () => {
   const checkCreateSpaceNameAvailability = async (
     normalizedName: string,
   ): Promise<CreateSpaceNameIssue | undefined> => {
-    if (loading.value || !parentHandle.value) {
+    if (loading.value || !getParentHandle()) {
       return undefined;
     }
 
@@ -180,7 +153,9 @@ export const useCreateMioframeSpace = () => {
    * @returns `true` on success, a field issue if the name became unavailable, otherwise `false`.
    */
   const createSpace = async (normalizedName: string): Promise<CreateSpaceResult> => {
-    if (loading.value || !parentHandle.value) {
+    const parentHandle = getParentHandle();
+
+    if (loading.value || !parentHandle) {
       return false;
     }
 
@@ -193,7 +168,7 @@ export const useCreateMioframeSpace = () => {
         return existingTargetIssue;
       }
 
-      const createdHandle = await parentHandle.value.getDirectoryHandle(normalizedName, {
+      const createdHandle = await parentHandle.getDirectoryHandle(normalizedName, {
         create: true,
       });
       await ensureStorageAdapterMarkerFile(createdHandle);
@@ -237,10 +212,6 @@ export const useCreateMioframeSpace = () => {
 
   return {
     loading,
-    parentHandle,
-    isSupported,
-    pickParentDirectory,
-    resetCreateDialog,
     checkCreateSpaceNameAvailability,
     createSpace,
     openExistingSpace,

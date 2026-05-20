@@ -3,16 +3,10 @@ import { computed, ref } from 'vue';
 import { MDDialog } from '@shared/ui/Dialog';
 import { MDTextField } from '@shared/ui/TextField';
 import { parseMioframeSpaceName } from './spaceNameValidation';
-import type { CreateSpaceNameIssue } from './useCreateMioframeSpace';
+import { useCreateMioframeSpace, type CreateSpaceNameIssue } from './useCreateMioframeSpace';
 
 const props = defineProps<{
-  selectedLocation: string;
-  loading: boolean;
-  checkCreateSpaceNameAvailability: (
-    normalizedName: string,
-  ) => Promise<CreateSpaceNameIssue | undefined>;
-  createSpace: (normalizedName: string) => Promise<boolean | CreateSpaceNameIssue>;
-  openExistingSpace: (targetHandle: FileSystemDirectoryHandle) => Promise<boolean>;
+  parentHandle: FileSystemDirectoryHandle;
 }>();
 
 const emit = defineEmits<{
@@ -21,6 +15,8 @@ const emit = defineEmits<{
 }>();
 
 const SPACE_FOLDER_PLACEHOLDER = '<space name>';
+const { loading, checkCreateSpaceNameAvailability, createSpace, openExistingSpace } =
+  useCreateMioframeSpace(() => props.parentHandle);
 
 const spaceName = ref<string | undefined>(undefined);
 const fieldIssue = ref<CreateSpaceNameIssue | undefined>(undefined);
@@ -35,7 +31,7 @@ const activeExistingSpaceIssue = computed(() => {
 });
 
 const resultFolder = computed(
-  () => `${props.selectedLocation} / ${previewSpaceName.value || SPACE_FOLDER_PLACEHOLDER}`,
+  () => `${props.parentHandle.name} / ${previewSpaceName.value || SPACE_FOLDER_PLACEHOLDER}`,
 );
 
 const supportingText = computed(() => {
@@ -71,7 +67,7 @@ const onCancel = () => {
 
 const onApply = async () => {
   if (activeExistingSpaceIssue.value) {
-    const didOpen = await props.openExistingSpace(activeExistingSpaceIssue.value.targetHandle);
+    const didOpen = await openExistingSpace(activeExistingSpaceIssue.value.targetHandle);
 
     if (didOpen) {
       emit('completed');
@@ -93,7 +89,7 @@ const onApply = async () => {
   let availabilityIssue: CreateSpaceNameIssue | undefined;
 
   try {
-    availabilityIssue = await props.checkCreateSpaceNameAvailability(parsedName.name);
+    availabilityIssue = await checkCreateSpaceNameAvailability(parsedName.name);
   } catch {
     return;
   }
@@ -104,7 +100,7 @@ const onApply = async () => {
     return;
   }
 
-  const createResult = await props.createSpace(parsedName.name);
+  const createResult = await createSpace(parsedName.name);
 
   if (createResult === true) {
     emit('completed');
@@ -124,7 +120,7 @@ const onApply = async () => {
     :apply-label="applyLabel"
     cancel-label="Cancel"
     has-cancel-action
-    :loading="props.loading"
+    :loading="loading"
     @apply="onApply"
     @cancel="onCancel"
   >
@@ -139,7 +135,7 @@ const onApply = async () => {
 
     <div class="mioframe-space-create-dialog__details">
       <p class="mioframe-space-create-dialog__detail">
-        Selected location: {{ props.selectedLocation }}
+        Selected location: {{ props.parentHandle.name }}
       </p>
 
       <p class="mioframe-space-create-dialog__detail">Space folder: {{ resultFolder }}</p>

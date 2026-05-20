@@ -5,9 +5,13 @@ import { defineComponent, h } from 'vue';
 import MioframeSpaceCreateDialog from './MioframeSpaceCreateDialog.vue';
 import type { CreateSpaceNameIssue } from './useCreateMioframeSpace';
 
-const createSpaceMock = vi.fn();
-const checkCreateSpaceNameAvailabilityMock = vi.fn();
-const openExistingSpaceMock = vi.fn();
+const { createSpaceMock, checkCreateSpaceNameAvailabilityMock, openExistingSpaceMock } = vi.hoisted(
+  () => ({
+    createSpaceMock: vi.fn(),
+    checkCreateSpaceNameAvailabilityMock: vi.fn(),
+    openExistingSpaceMock: vi.fn(),
+  }),
+);
 
 const createDirectoryHandle = (name: string): FileSystemDirectoryHandle => ({
   kind: 'directory',
@@ -128,14 +132,28 @@ vi.mock('@shared/ui/TextField', () => ({
   }),
 }));
 
-const mountDialog = () =>
-  mount(MioframeSpaceCreateDialog, {
-    props: {
-      selectedLocation: 'Documents',
+vi.mock('./useCreateMioframeSpace', async () => {
+  const actual = await vi.importActual<typeof import('./useCreateMioframeSpace')>(
+    './useCreateMioframeSpace',
+  );
+
+  return {
+    ...actual,
+    useCreateMioframeSpace: () => ({
       loading: false,
       checkCreateSpaceNameAvailability: checkCreateSpaceNameAvailabilityMock,
       createSpace: createSpaceMock,
       openExistingSpace: openExistingSpaceMock,
+    }),
+  };
+});
+
+const parentHandle = createDirectoryHandle('Documents');
+
+const mountDialog = () =>
+  mount(MioframeSpaceCreateDialog, {
+    props: {
+      parentHandle,
     },
   });
 

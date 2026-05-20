@@ -220,7 +220,7 @@ describe('useFileSystemService', () => {
     });
   });
 
-  it('drops legacy persisted descriptions during hydration', async () => {
+  it('hydrates normalized persisted records without rewriting them', async () => {
     const legacyHandle = createDirectoryHandleMock({
       name: 'Archive',
       permissionState: 'granted',
@@ -228,7 +228,6 @@ describe('useFileSystemService', () => {
     });
     getRecordListMock.mockResolvedValue([
       {
-        description: 'Directory on this device',
         name: 'Archive',
         handle: legacyHandle,
       },
@@ -244,12 +243,7 @@ describe('useFileSystemService', () => {
         },
       ]);
     });
-    expect(updateRecordListMock).toHaveBeenCalledWith([
-      {
-        name: 'Archive',
-        handle: legacyHandle,
-      },
-    ]);
+    expect(updateRecordListMock).not.toHaveBeenCalled();
   });
 
   it('adds unique device directory names and reuses existing handles without display copy', async () => {
@@ -354,8 +348,8 @@ describe('useFileSystemService', () => {
     });
     getDirectoryMock.mockResolvedValue(opfsHandle);
     getRecordListMock.mockResolvedValue([
-      { description: 'Directory on this device', name: OPFSName, handle: firstHandle },
-      { description: 'Directory on this device', name: 'Archive', handle: secondHandle },
+      { name: OPFSName, handle: firstHandle },
+      { name: 'Archive', handle: secondHandle },
     ]);
 
     const service = await createService();

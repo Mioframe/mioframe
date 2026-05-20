@@ -31,16 +31,6 @@ export interface ReadDirectoryOptions {
 export { DEVICE_FILES_ROOT_NAME };
 export type { DeviceFileRecord };
 
-const normalizePersistedDeviceDirectoryRecord = (
-  record: PersistedDeviceDirectoryRecord,
-): PersistedDeviceDirectoryRecord => ({
-  name: record.name,
-  handle: record.handle,
-});
-
-const normalizePersistedDeviceDirectoryRecords = (records: PersistedDeviceDirectoryRecord[]) =>
-  records.map(normalizePersistedDeviceDirectoryRecord);
-
 const didPersistedDeviceDirectoryRecordsChange = (
   nextRecords: PersistedDeviceDirectoryRecord[],
   previousRecords: PersistedDeviceDirectoryRecord[],
@@ -51,7 +41,7 @@ const didPersistedDeviceDirectoryRecordsChange = (
     return (
       previousRecord === undefined ||
       record.name !== previousRecord.name ||
-      record.description !== previousRecord.description
+      record.handle !== previousRecord.handle
     );
   });
 
@@ -158,11 +148,10 @@ const setupFileSystemService = () => {
     const normalizedRecords: PersistedDeviceDirectoryRecord[] = [];
 
     records.forEach((record) => {
-      const normalizedRecord = normalizePersistedDeviceDirectoryRecord(record);
-      const nextName = getUniqueDeviceDirectoryName(normalizedRecord.name, normalizedRecords);
+      const nextName = getUniqueDeviceDirectoryName(record.name, normalizedRecords);
 
       normalizedRecords.push({
-        ...normalizedRecord,
+        ...record,
         name: nextName,
       });
     });
@@ -255,7 +244,7 @@ const setupFileSystemService = () => {
   ): Promise<DeviceFileRecord> => {
     await deviceFilesReady;
 
-    const records = normalizePersistedDeviceDirectoryRecords(await getRecordList());
+    const records = await getRecordList();
     const existingRecord = await findRecordByHandle(records, handle);
     const nextRecord = {
       name: getUniqueDeviceDirectoryName(handle.name, records, existingRecord),
@@ -289,7 +278,7 @@ const setupFileSystemService = () => {
 
     await deviceFilesReady;
 
-    const records = normalizePersistedDeviceDirectoryRecords(await getRecordList());
+    const records = await getRecordList();
     const nextRecords = records.filter((record) => record.name !== name);
 
     if (nextRecords.length === records.length) {
