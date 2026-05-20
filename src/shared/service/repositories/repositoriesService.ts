@@ -160,6 +160,14 @@ const setupRepositoriesService = () => {
     return documentId;
   };
 
+  /**
+   * Initializes repository storage for an empty mounted directory through the shared repo cache.
+   * @param path - Absolute path to the repository root.
+   */
+  const initializeRepository = async (path: string): Promise<void> => {
+    await getRepo(path, true);
+  };
+
   const documentIdList = defineObservableQuery(getDocumentIdList$);
 
   return {
@@ -168,14 +176,19 @@ const setupRepositoriesService = () => {
     getRepo$: repo$,
     /**
      * Создать документ в репозитории
-     * @param path абсолютный путь к репозиторию
-     * @returns идентификатор созданного документа
+     * @param path - Абсолютный путь к репозиторию.
+     * @returns Идентификатор созданного документа.
      */
     createDocument,
     /**
+     * Инициализировать хранилище репозитория без создания документа
+     * @param path - Абсолютный путь к репозиторию.
+     */
+    initializeRepository,
+    /**
      * Удаление документа из репозитория
-     * @param path абсолютный путь репозитория
-     * @param id идентификатор документа
+     * @param path - Абсолютный путь репозитория.
+     * @param id - Идентификатор документа.
      */
     deleteDocument,
   };

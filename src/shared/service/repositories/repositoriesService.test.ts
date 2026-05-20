@@ -216,6 +216,58 @@ describe('useRepositoriesService', () => {
     expect(repo?.delete).toHaveBeenCalledWith(createdDocumentId);
   });
 
+  it('initializeRepository creates a repo through the existing path cache without creating documents', async () => {
+    const path = '/initialized-repo';
+    createDirectoryContentSubject(path, []);
+    const { useRepositoriesService } = await import('./repositoriesService');
+    const service = useRepositoriesService();
+
+    await expect(service.initializeRepository(path)).resolves.toBeUndefined();
+
+    const [repo] = repoInstances.get(path) ?? [];
+
+    expect(repoInstances.get(path)).toHaveLength(1);
+    expect(repo?.create).not.toHaveBeenCalled();
+  });
+
+  it('initializeRepository followed by createDocument reuses the same repo instance', async () => {
+    const path = '/init-then-create';
+    createDirectoryContentSubject(path, []);
+    const { useRepositoriesService } = await import('./repositoriesService');
+    const service = useRepositoriesService();
+    const initialValue = {
+      body: [],
+      name: 'Seed document',
+      type: 'document',
+      version: 1,
+    } satisfies CFRDocumentContent;
+
+    await service.initializeRepository(path);
+    const initializedRepo = repoInstances.get(path)?.[0];
+
+    const createdDocumentId = await service.createDocument(path, initialValue);
+
+    expect(createdDocumentId).toBeDefined();
+    expect(repoInstances.get(path)).toHaveLength(1);
+    expect(repoInstances.get(path)?.[0]).toBe(initializedRepo);
+    expect(initializedRepo?.create).toHaveBeenCalledWith(initialValue);
+  });
+
+  it('initializeRepository followed by forced repo access reuses the same repo instance', async () => {
+    const path = '/init-then-force-access';
+    createDirectoryContentSubject(path, []);
+    const { useRepositoriesService } = await import('./repositoriesService');
+    const service = useRepositoriesService();
+
+    await service.initializeRepository(path);
+    const initializedRepo = repoInstances.get(path)?.[0];
+
+    const reopenedRepo = await firstValueFrom(service.getRepo$(path, true));
+
+    expect(reopenedRepo).toBe(initializedRepo);
+    expect(repoInstances.get(path)).toHaveLength(1);
+  });
+
   it('deleteDocument removes all automerge files for target document id', async () => {
     const path = '/repo';
     const targetDocumentId = parseAutomergeUrl(generateAutomergeUrl()).documentId;

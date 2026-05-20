@@ -88,9 +88,10 @@ export const useDialogState = createGlobalState(() => {
       showNextDialog();
     });
 
-  const confirm = (options: DialogOptions) => addDialog('confirm', options);
+  const confirm = async (options: DialogOptions) => await addDialog('confirm', options);
 
-  const alert = (options: Omit<DialogOptions, 'cancelLabel'>) => addDialog('alert', options);
+  const alert = async (options: Omit<DialogOptions, 'cancelLabel'>) =>
+    await addDialog('alert', options);
 
   const numberOfOpenDialogs = ref(0);
 

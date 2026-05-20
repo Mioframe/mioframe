@@ -6,10 +6,8 @@ import { array, catch as zCatch, custom, object, optional, string } from 'zod/v4
 import type { DeviceFileRecord } from '@shared/lib/deviceFileSystemProvider';
 import { isFileSystemDirectoryHandle } from '@shared/lib/typeGuards';
 
-export type PersistedDeviceDirectoryRecord = Pick<
-  DeviceFileRecord,
-  'description' | 'handle' | 'name'
->;
+/** Normalized persisted mounted-directory record stored at the IndexedDB boundary. */
+export type PersistedDeviceDirectoryRecord = Pick<DeviceFileRecord, 'handle' | 'name'>;
 
 const KEY = 'device-directory-handles';
 
@@ -22,7 +20,6 @@ const zodDeviceDirectoryRecord = object({
 const zodDeviceDirectoryRecordList = zCatch(array(zodDeviceDirectoryRecord), []);
 
 const normalizePersistedRecord = ({
-  description,
   handle,
   name,
 }: {
@@ -30,9 +27,10 @@ const normalizePersistedRecord = ({
   handle: FileSystemDirectoryHandle;
   name: string;
 }): PersistedDeviceDirectoryRecord => ({
+  // Legacy `description` is intentionally dropped from the normalized read model.
+  // Existing raw storage is rewritten only on the next explicit storage update.
   name,
   handle,
-  ...(description === undefined ? {} : { description }),
 });
 
 const setupFileSystemDirectoryHandleService = () => {

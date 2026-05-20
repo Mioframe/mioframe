@@ -25,6 +25,21 @@ Answer these before the first production edit:
 
 For user-visible UI or UX changes, run the `material3-guidelines` skill as part of this preflight before choosing component structure, layout, interaction behavior, or visual verification.
 
+## Feature-flow guardrails
+
+Use these rules for create/open/import/export, setup, picker, dialog, storage, permission, recovery, and other multi-step user flows.
+
+- Start with a scenario matrix that covers the happy path, user cancellation, unsupported platform/API, permission denial, invalid input, duplicate/conflict state, stale data/race, partial failure, rollback failure, and recovery action when those states can occur.
+- Separate different user intents into different feature contracts before coding. Do not begin with a generic all-in-one composable, dialog, or state machine when flows have different acceptance rules, UX copy, domain invariants, or recovery paths.
+- Define an ownership map before the first production edit: user action state belongs in `features`, domain read/display state in `entities`, persistence and lifecycle ordering in `shared/service`, pure parsing or detection in `shared/lib`, and screen composition in `widgets` or `pages`.
+- Keep domain and storage invariants below UI layers. UI may ask for an action and display the result, but uniqueness, reserved names, marker detection, persisted-record normalization, migrations, and lifecycle ordering must be enforced by the owner of the data.
+- Make allowed and disallowed target states explicit before implementation. Prefer refusing invalid targets with clear recovery over accepting broad inputs and compensating later with warning dialogs.
+- Keep flow outcomes typed and local to the boundary that needs them. Avoid broad `status` protocols, command choreography, or result objects that mix field issues, transport failures, domain conflicts, and UI navigation unless several independent callers need the protocol.
+- If a feature needs a shared UI primitive change, decide whether that primitive change is a separate prerequisite. When it remains in the feature PR, keep it minimal, Material-verified, and independently tested so the feature review does not hide shared UI regressions.
+- Delete obsolete code paths, facades, providers, and tests in the same pass that introduces their replacement unless backwards compatibility is required. Do not leave dual flows for review to reconcile.
+- When two consecutive review rounds uncover ownership mistakes, mixed responsibilities, or new user scenarios, stop patching and redo this preflight. Update the scenario matrix, ownership map, and verification matrix before more edits.
+- Prefer tests for domain invariants and extracted state transitions before component wiring. Component tests should verify only contracts that the component owns; browser behavior, layout, focus, gestures, and Material visual states require browser or visual verification.
+
 ## Bounded reuse search
 
 Before creating a new helper, component, config, dependency, or test pattern, check reuse with targeted repository search or direct imports.

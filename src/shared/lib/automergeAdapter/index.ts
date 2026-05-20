@@ -13,3 +13,4 @@ export type * from './types';
 export { fileNameToPartialKey } from './fileNameToPartialKey';
 export { getPartialStorageKeyFileNamePrefix } from './getPartialStorageKeyFileNamePrefix';
 export { partialKeyToFileName } from './partialKeyToFileName';
+export { storageAdapterMarkerFileName } from './storageAdapterMarkerFileName';
