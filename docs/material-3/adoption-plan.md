@@ -6,12 +6,22 @@ Adopt Material 3 incrementally through foundation-first, component-family work. 
 
 ## Phase 1: Policies
 
-Add and review the Material 3 foundation policies:
+Add and review the Material 3 foundation and implementation policies:
 
 - source of truth;
 - units;
 - tokens;
+- baseline theme;
 - component tokens;
+- token validation;
+- component registry;
+- component conversion checklist;
+- interaction states;
+- accessibility;
+- layout and adaptive behavior;
+- density and spacing;
+- iconography;
+- overlays;
 - shared UI API;
 - Storybook;
 - verification;
@@ -26,11 +36,19 @@ Audit existing implementation against the policies:
 - `src/shared/lib/md/tokens.css`;
 - PostCSS custom unit handling;
 - `MDState` and state layer primitives;
+- icon primitives and Material Symbols handling;
+- overlay primitives and stacking behavior;
 - public `MD*` component props;
 - Storybook story hierarchy and coverage;
 - visual regression coverage.
 
-The audit should produce a parity matrix before component conversion starts.
+The audit must produce:
+
+- an expanded component registry;
+- a token inventory and validation plan;
+- a shared UI API migration list;
+- a Storybook coverage plan;
+- a prioritized component-family conversion order.
 
 ## Phase 3: Buttons pilot
 
@@ -46,11 +64,16 @@ Pilot scope:
 The pilot must establish the practical pattern for:
 
 - component tokens;
+- token validation;
 - public prop naming;
+- icon handling;
+- density, spacing, and target area handling;
 - invalid Material combinations;
 - Storybook documentation;
 - visual regression surfaces;
 - documented deviations.
+
+Use [Component conversion checklist](./component-conversion-checklist.md) as the pilot completion gate.
 
 ## Phase 4: Core components
 
@@ -62,6 +85,8 @@ After the Buttons pilot is accepted, convert component families in dependency an
 4. Chips and menus;
 5. Navigation, app bars, toolbars, and sheets;
 6. Cards, progress indicators, tooltips, dividers, and project-specific surfaces.
+
+Every converted component family must update [Component registry](./component-registry.md) and document remaining deviations.
 
 ## Phase 5: Structure cleanup
 
