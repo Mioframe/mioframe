@@ -18,11 +18,11 @@ Consumers may override public component tokens, but they must not define the can
 
 ## Naming
 
-Map Material token names to CSS custom properties mechanically:
+Map Material token names to CSS custom properties mechanically. The variant or style segment is optional because some tokens apply to the component generally rather than to a specific variant.
 
 ```text
-md.comp.<component>.<variant-or-style>.<element>.<property>
---md-comp-<component>-<variant-or-style>-<element>-<property>
+md.comp.<component>.[variant-or-style].<element>.<property>
+--md-comp-<component>-[variant-or-style]-<element>-<property>
 ```
 
 Examples:
