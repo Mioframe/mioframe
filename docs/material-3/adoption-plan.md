@@ -38,7 +38,7 @@ Resolved foundation decisions:
 - Start with a tokenized Material baseline theme with mandatory light and dark schemes.
 - Future base palette customization must update reference/system tokens rather than component CSS.
 - Do not keep old shared UI APIs only for internal compatibility; update in-repository consumers in the same focused migration.
-- Overlay stack values do not need to be chosen in the policy phase, but overlay stacking ownership must be centralized during the overlay audit.
+- Overlay containment ownership already exists through `useOverlayContainer`, `TeleportContainer`, child teleported container registration, and outside-interaction containment. Preserve and reuse that model instead of introducing a numeric z-index ownership model by default.
 
 ## Phase 2: Foundation audit
 
@@ -48,7 +48,7 @@ Audit existing implementation against the policies:
 - PostCSS custom unit handling, including adding `sp` support before typography migration relies on it;
 - `MDState` and state layer primitives;
 - icon primitives and Material Symbols handling;
-- overlay primitives and stacking behavior;
+- overlay primitives: `useOverlayContainer`, `TeleportContainer`, teleported container registry, outside-interaction containment, escape/back stacking, focus trap behavior, and any remaining local z-index usage;
 - public `MD*` component props;
 - Storybook story hierarchy and coverage;
 - visual regression coverage.
@@ -59,7 +59,7 @@ The audit must produce:
 - a token inventory and validation plan;
 - a typography token migration from legacy `pt` to Material `sp`;
 - a baseline light/dark theme plan;
-- an overlay stack ownership plan;
+- an overlay containment review based on the existing shared overlay primitives, with focused follow-ups only for gaps;
 - a shared UI API migration list without compatibility-only aliases unless technically necessary;
 - a Storybook coverage plan;
 - a prioritized component-family conversion order.
