@@ -18,6 +18,89 @@ describe('MDListItem', () => {
     document.body.innerHTML = '';
   });
 
+  it('defaults to a valid one-line list item', () => {
+    const wrapper = mountListItem();
+
+    expect(wrapper.attributes('role')).toBe('listitem');
+    expect(wrapper.attributes('style')).toContain('--md-list-item-min-height: 56px');
+    expect(wrapper.get('.md-list-item__supporting-text').classes()).toContain(
+      'md-list-item__supporting-text--one-line',
+    );
+  });
+
+  it('uses the explicit two-line variant when requested', () => {
+    const wrapper = mountListItem({
+      lines: 2,
+    });
+
+    expect(wrapper.attributes('style')).toContain('--md-list-item-min-height: 72px');
+    expect(wrapper.get('.md-list-item__supporting-text').classes()).toContain(
+      'md-list-item__supporting-text--two-lines',
+    );
+  });
+
+  it('uses the explicit three-line variant when requested', () => {
+    const wrapper = mountListItem({
+      lines: 3,
+    });
+
+    expect(wrapper.attributes('style')).toContain('--md-list-item-min-height: 88px');
+    expect(wrapper.get('.md-list-item__supporting-text').classes()).toContain(
+      'md-list-item__supporting-text--three-lines',
+    );
+  });
+
+  it('defaults button items to type button', () => {
+    const wrapper = mountListItem({
+      is: 'button',
+      headline: 'Create space',
+    });
+
+    expect(wrapper.get('button').attributes('type')).toBe('button');
+  });
+
+  it('does not force a listitem role onto native interactive elements', () => {
+    const wrapper = mountListItem({
+      is: 'button',
+      headline: 'Open space',
+    });
+
+    expect(wrapper.get('button').attributes('role')).toBeUndefined();
+  });
+
+  it('keeps native list semantics for non-interactive li items', () => {
+    const wrapper = mountListItem({
+      is: 'li',
+      headline: 'Saved item',
+    });
+
+    expect(wrapper.element.tagName).toBe('LI');
+    expect(wrapper.attributes('role')).toBeUndefined();
+  });
+
+  it('renders trailing actions without turning the row into a primary action', () => {
+    const wrapper = mountListItem(
+      {
+        headline: 'Mounted space',
+      },
+      {},
+    );
+
+    wrapper.unmount();
+    const trailingWrapper = mount(MDListItem, {
+      attachTo: document.body,
+      props: {
+        headline: 'Mounted space',
+      },
+      slots: {
+        trailingIcon: '<button type="button">Disconnect</button>',
+      },
+    });
+
+    expect(trailingWrapper.find('button').text()).toBe('Disconnect');
+    expect(trailingWrapper.emitted('click')).toBeUndefined();
+  });
+
   it('keeps button hosts free of nested interactive descendants and divs', () => {
     const wrapper = mountListItem({
       is: 'button',

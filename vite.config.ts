@@ -49,6 +49,9 @@ export default defineConfig(({ mode, isPreview }) => {
     },
     server: {
       host: true,
+      watch: {
+        ignored: ['**/.stryker-tmp/**'],
+      },
       headers: {
         'Cross-Origin-Opener-Policy': 'same-origin-allow-popups',
         'Cross-Origin-Embedder-Policy': 'require-corp',
