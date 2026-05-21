@@ -24,7 +24,20 @@ A public CSS custom property starting with `--md-` must be Material-compatible:
 - it should be a direct, documented adaptation of an official Material token; or
 - it should be listed as a documented project deviation.
 
-Project-only implementation helpers must not be introduced as public `--md-*` tokens. Use a project namespace such as `--beaver-*` for project-specific values that do not correspond to Material vocabulary.
+Project-only implementation helpers must not be introduced as public `--md-*` tokens. Use the neutral `--app-*` namespace for app-specific values that do not correspond to Material vocabulary.
+
+## App-specific namespace
+
+Use `--app-*` for project-specific CSS custom properties that intentionally sit outside Material token vocabulary.
+
+Examples:
+
+- app-specific debug or diagnostic colors;
+- app shell measurements that are not Material layout tokens;
+- product-only integration surfaces;
+- compatibility aliases that are not intended as public Material tokens.
+
+Do not use repository-name-specific prefixes for new tokens. The token vocabulary should remain stable if the repository or product name changes.
 
 ## Reference tokens
 
@@ -73,5 +86,5 @@ Before converting a component family, audit the relevant token families:
 - existing public `--md-*` tokens;
 - local component variables that should become `--md-comp-*` tokens;
 - hardcoded Material values inside component CSS;
-- values that are project-specific and need `--beaver-*` or another project namespace;
+- values that are app-specific and need `--app-*` namespace;
 - deprecated Material tokens such as surface tint color when the official guidance marks them as deprecated.
