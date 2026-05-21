@@ -6,6 +6,16 @@ Material shared UI components must expose a Material-compatible component token 
 
 Component tokens describe parts of a component and state-specific styling, such as container color, label text color, icon size, outline color, state layer opacity, container height, and container shape.
 
+## Ownership
+
+Define `--md-comp-*` tokens at the component definition boundary.
+
+A component family owns its own component tokens. For example, button component tokens should be defined with the Button family rather than in unrelated consumers or screen-level CSS.
+
+The foundation layer may provide shared reference and system tokens. It should not become a dumping ground for every component token unless a later structure cleanup intentionally extracts component token files under `src/shared/lib/md/tokens/comp/`.
+
+Consumers may override public component tokens, but they must not define the canonical token contract for a shared Material component.
+
 ## Naming
 
 Map Material token names to CSS custom properties mechanically:
@@ -28,7 +38,7 @@ Examples:
 
 When official Material 3 component specs list component tokens, use those names and meanings.
 
-When the official docs describe a component measurement or role but the exact token is missing from the cache, define the closest Material-compatible `--md-comp-*` token and document the mapping in the component policy or Storybook docs.
+When the official docs describe a component measurement or role but the exact token is missing from the cache, define the closest Material-compatible `--md-comp-*` token at the component definition boundary and document the mapping in the component policy or Storybook docs.
 
 Do not invent local `--md-comp-*` tokens for app-specific behavior. Use the neutral `--app-*` namespace for app-specific extensions.
 
