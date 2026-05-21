@@ -29,12 +29,23 @@ Add and review the Material 3 foundation and implementation policies:
 
 This phase should not reorganize shared UI source files or change component behavior.
 
+Resolved foundation decisions:
+
+- `sp` is the target Material typography authoring unit; existing Material typography `pt` usage is legacy and should be migrated during the foundation audit.
+- `dp` remains the target Material measurement authoring unit.
+- `--app-*` is the neutral namespace for app-specific CSS custom properties outside Material token vocabulary.
+- Canonical `--md-comp-*` tokens are defined at the component definition boundary.
+- Start with a tokenized Material baseline theme with mandatory light and dark schemes.
+- Future base palette customization must update reference/system tokens rather than component CSS.
+- Do not keep old shared UI APIs only for internal compatibility; update in-repository consumers in the same focused migration.
+- Overlay stack values do not need to be chosen in the policy phase, but overlay stacking ownership must be centralized during the overlay audit.
+
 ## Phase 2: Foundation audit
 
 Audit existing implementation against the policies:
 
 - `src/shared/lib/md/tokens.css`;
-- PostCSS custom unit handling;
+- PostCSS custom unit handling, including adding `sp` support before typography migration relies on it;
 - `MDState` and state layer primitives;
 - icon primitives and Material Symbols handling;
 - overlay primitives and stacking behavior;
@@ -46,7 +57,10 @@ The audit must produce:
 
 - an expanded component registry;
 - a token inventory and validation plan;
-- a shared UI API migration list;
+- a typography token migration from legacy `pt` to Material `sp`;
+- a baseline light/dark theme plan;
+- an overlay stack ownership plan;
+- a shared UI API migration list without compatibility-only aliases unless technically necessary;
 - a Storybook coverage plan;
 - a prioritized component-family conversion order.
 
@@ -63,7 +77,7 @@ Pilot scope:
 
 The pilot must establish the practical pattern for:
 
-- component tokens;
+- component tokens defined at the component boundary;
 - token validation;
 - public prop naming;
 - icon handling;
