@@ -8,7 +8,20 @@
       supporting-text="Disabled state"
       disabled
     />
-    <MDListItem is="li" headline="Static host" supporting-text="Ripple disabled host" />
+    <MDListItem
+      is="a"
+      headline="Disabled anchor host"
+      supporting-text="No focus or navigation"
+      disabled
+    />
+    <MDListItem is="li" headline="Static host" supporting-text="Non-interactive baseline" />
+    <MDListItem
+      is="div"
+      headline="Disabled static host"
+      supporting-text="Disabled visual treatment"
+      disabled
+      tabindex="0"
+    />
   </div>
 </template>
 

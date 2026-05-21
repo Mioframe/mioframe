@@ -113,9 +113,10 @@ test('MDIconButton extra-small and small targets are at least 48dp', async ({ pa
 test('MDChip input close icon target is at least 48dp', async ({ page }) => {
   await openStory(page, 'shared-ui-mdchip--visual-states');
 
-  const closeButton = page.locator('#visual-md-chip-targets').getByRole('button', {
-    name: 'remove',
-  });
+  const closeButton = page
+    .locator('#visual-md-chip-targets')
+    .getByRole('button', { name: 'remove' })
+    .first();
   const box = await closeButton.boundingBox();
 
   expect(box?.width ?? 0).toBeGreaterThanOrEqual(48);

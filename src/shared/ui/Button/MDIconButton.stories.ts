@@ -39,9 +39,18 @@ export const VisualStates: Story = {
           <MDIconButton tooltip="Disabled standard" disabled md-symbol-name="block" />
         </div>
         <div class="visual-row">
+          <MDIconButton tooltip="Disabled standard toggle" type="toggle" disabled md-symbol-name="bookmark" />
+          <MDIconButton tooltip="Disabled standard toggle selected" type="toggle" selected disabled md-symbol-name="bookmark" />
+          <MDIconButton tooltip="Disabled filled toggle selected" type="toggle" selected color="filled" disabled md-symbol-name="favorite" />
+        </div>
+        <div class="visual-row">
+          <MDIconButton tooltip="Disabled tonal toggle selected" type="toggle" selected color="tonal" disabled md-symbol-name="bookmark" />
+          <MDIconButton tooltip="Disabled outlined toggle selected" type="toggle" selected color="outlined" disabled md-symbol-name="edit" />
+          <MDIconButton tooltip="Disabled outlined" color="outlined" disabled md-symbol-name="edit" />
+        </div>
+        <div class="visual-row">
           <MDIconButton tooltip="Disabled filled" color="filled" disabled md-symbol-name="favorite" />
           <MDIconButton tooltip="Disabled tonal" color="tonal" disabled md-symbol-name="bookmark" />
-          <MDIconButton tooltip="Disabled outlined" color="outlined" disabled md-symbol-name="edit" />
         </div>
         <div data-testid="visual-md-icon-button-targets" class="visual-row">
           <MDIconButton tooltip="Extra small target" size="extra-small" md-symbol-name="add" />

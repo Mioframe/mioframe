@@ -264,7 +264,7 @@ const onDragEnd = () => {
 
     .md-chip_disabled &,
     .md-chip:disabled & {
-      --md-content-color: rgb(var(--md-sys-color-on-surface) / r g b 0.38);
+      --md-content-color: rgb(from var(--md-sys-color-on-surface) r g b / 0.38);
     }
   }
 
@@ -297,7 +297,7 @@ const onDragEnd = () => {
     &.md-chip_disabled,
     &:disabled {
       --md-state-box-shadow: var(--md-sys-elevation-level0);
-      --md-container-color: rgb(from var(--md-sys-color-on-surface) / r g b 0.12);
+      --md-container-color: rgb(from var(--md-sys-color-on-surface) r g b / 0.12);
     }
 
     &:hover {
@@ -339,9 +339,9 @@ const onDragEnd = () => {
 
   &_disabled,
   :disabled {
-    --md-content-color: rgb(var(--md-sys-color-on-surface) / r g b 0.38);
+    --md-content-color: rgb(from var(--md-sys-color-on-surface) r g b / 0.38);
     pointer-events: none;
-    border-color: rgb(from var(--md-sys-color-on-surface) / r g b 0.12);
+    border-color: rgb(from var(--md-sys-color-on-surface) r g b / 0.12);
     --md-state-box-shadow: var(--md-sys-elevation-level0);
   }
 }

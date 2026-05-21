@@ -1,10 +1,15 @@
 <script setup lang="ts" generic="Is extends 'button' | 'a' | 'div' | 'li' = 'div'">
-import { computed, useTemplateRef } from 'vue';
+import { computed, ref, useAttrs, useTemplateRef } from 'vue';
 import { MDStateLayer, useRipple, useStateLayer } from '../State';
+
+defineOptions({
+  inheritAttrs: false,
+});
 
 const {
   is = 'div',
   disabled,
+  draggable: draggableProp,
   itemRole,
 } = defineProps<{
   headline: string;
@@ -28,8 +33,20 @@ const slots = defineSlots<{
   supportingText: () => unknown;
 }>();
 
+const attrs = useAttrs();
+
+const isButtonHost = computed(() => is === 'button');
+const isAnchorHost = computed(() => is === 'a');
+const isStaticHost = computed(() => is === 'div' || is === 'li');
+const activationKeys = new Set([' ', 'Enter']);
+
 const onClick = (e: MouseEvent) => {
   if (disabled) {
+    if (isAnchorHost.value || isStaticHost.value) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+
     return;
   }
 
@@ -40,6 +57,11 @@ const onClick = (e: MouseEvent) => {
 
 const onKeydown = (e: KeyboardEvent) => {
   if (disabled) {
+    if ((isAnchorHost.value || isStaticHost.value) && activationKeys.has(e.key)) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+
     return;
   }
 
@@ -49,8 +71,9 @@ const onKeydown = (e: KeyboardEvent) => {
 };
 
 const hostEl = useTemplateRef<HTMLElement>('hostEl');
+const dragged = ref(false);
 const showVisualState = computed(() => !disabled);
-const { hover, focused, durationPressedState } = useStateLayer(hostEl);
+const { hover, focused, durationPressedState } = useStateLayer(hostEl, { dragged });
 const hostRole = computed(() => {
   if (itemRole) {
     return itemRole;
@@ -63,6 +86,33 @@ const hostRole = computed(() => {
   return undefined;
 });
 
+const hostTabIndex = computed(() => {
+  const rawTabIndex = attrs.tabindex;
+  if (disabled && (isAnchorHost.value || isStaticHost.value) && rawTabIndex !== undefined) {
+    return -1;
+  }
+
+  if (disabled && isAnchorHost.value) {
+    return -1;
+  }
+
+  return rawTabIndex;
+});
+
+const hostDraggable = computed(() => (!disabled ? draggableProp : undefined));
+
+const onDragStart = () => {
+  if (disabled) {
+    return;
+  }
+
+  dragged.value = true;
+};
+
+const onDragEnd = () => {
+  dragged.value = false;
+};
+
 useRipple(computed(() => (!disabled && is !== 'li' ? hostEl.value : undefined)));
 </script>
 
@@ -70,25 +120,32 @@ useRipple(computed(() => (!disabled && is !== 'li' ? hostEl.value : undefined)))
   <component
     :is="is"
     ref="hostEl"
+    v-bind="attrs"
     class="md-list-item"
-    :draggable="draggable"
-    :disabled="is === 'button' && disabled ? true : undefined"
-    :type="is === 'button' ? type : undefined"
-    :aria-disabled="disabled && is !== 'button' ? 'true' : undefined"
+    :draggable="hostDraggable"
+    :disabled="isButtonHost && disabled ? true : undefined"
+    :type="isButtonHost ? type : undefined"
+    :tabindex="hostTabIndex"
+    :aria-disabled="disabled && !isButtonHost ? 'true' : undefined"
     :role="hostRole"
     :class="{
       'md-state_hover': showVisualState && hover,
       'md-state_focused': showVisualState && focused,
       'md-state_pressed': showVisualState && durationPressedState,
+      'md-state_dragged': showVisualState && dragged,
       'md-state_disabled': disabled,
     }"
     @click="onClick"
     @keydown="onKeydown"
+    @dragstart="onDragStart"
+    @dragend="onDragEnd"
+    @drop="onDragEnd"
   >
     <MDStateLayer
       :hover="hover"
       :focused="focused"
       :pressed="durationPressedState"
+      :dragged="dragged"
       :disabled="disabled"
     />
 
@@ -122,6 +179,12 @@ useRipple(computed(() => (!disabled && is !== 'li' ? hostEl.value : undefined)))
 
   --md-container-color: var(--md-list-item-container-color, var(--md-sys-color-surface));
   --md-content-color: var(--md-list-item-content-color, var(--md-sys-color-on-surface));
+  --md-list-item-supporting-color: var(
+    --md-list-item-supporting-color-override,
+    var(--md-sys-color-on-surface-variant)
+  );
+  --md-list-item-disabled-content-color: rgb(from var(--md-sys-color-on-surface) r g b / 0.38);
+  --md-list-item-disabled-supporting-color: rgb(from var(--md-sys-color-on-surface) r g b / 0.38);
 
   position: relative;
   display: flex;
@@ -162,7 +225,7 @@ useRipple(computed(() => (!disabled && is !== 'li' ? hostEl.value : undefined)))
     min-width: 24px;
     min-height: 24px;
 
-    color: var(--md-sys-color-on-surface-variant);
+    color: var(--md-list-item-supporting-color);
   }
 
   &__body {
@@ -195,7 +258,7 @@ useRipple(computed(() => (!disabled && is !== 'li' ? hostEl.value : undefined)))
     overflow: hidden;
     text-overflow: ellipsis;
 
-    color: var(--md-sys-color-on-surface-variant);
+    color: var(--md-list-item-supporting-color);
     font-family: var(--md-sys-typescale-body-medium-font);
     line-height: var(--md-sys-typescale-body-medium-line-height);
     font-size: var(--md-sys-typescale-body-medium-size);
@@ -220,7 +283,14 @@ useRipple(computed(() => (!disabled && is !== 'li' ? hostEl.value : undefined)))
     z-index: 1;
     margin-left: var(--horizontal-gap);
 
-    color: var(--md-sys-color-on-surface-variant);
+    color: var(--md-list-item-supporting-color);
+  }
+
+  &.md-state_disabled,
+  &:disabled,
+  &[aria-disabled='true'] {
+    --md-content-color: var(--md-list-item-disabled-content-color);
+    --md-list-item-supporting-color: var(--md-list-item-disabled-supporting-color);
   }
 }
 </style>

@@ -36,9 +36,10 @@ export const VisualStates: Story = {
         <div class="visual-row">
           <MDButton label="Tonal" color="tonal" />
           <MDButton label="Elevated" color="elevated" />
-          <MDButton label="Disabled filled" color="filled" disabled />
+          <MDButton label="Disabled elevated" color="elevated" disabled />
         </div>
         <div class="visual-row">
+          <MDButton label="Disabled filled" color="filled" disabled />
           <MDButton label="Disabled tonal" color="tonal" disabled />
           <MDButton label="Disabled outlined" color="outlined" disabled />
           <MDButton label="Disabled text" color="text" disabled />

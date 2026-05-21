@@ -83,7 +83,7 @@ useRipple(computed(() => (props.disabled ? undefined : buttonEl.value)));
       <span v-if="props.label" class="md-button__label-text">{{ props.label }}</span>
 
       <MDCircularProgressIndicator
-        v-if="props.loading"
+        v-if="props.loading !== undefined && props.loading !== false"
         class="md-button__progress-indicator"
         :progress="isNumber(props.loading) ? props.loading : undefined"
       />
@@ -128,7 +128,7 @@ useRipple(computed(() => (props.disabled ? undefined : buttonEl.value)));
   font-weight: var(--md-sys-typescale-label-large-weight);
   letter-spacing: var(--md-sys-typescale-label-large-tracking);
   user-select: none;
-  transition-property: box-shadow, color, background-color, border-radius;
+  transition-property: box-shadow, color, background-color, border-color, border-radius;
   transition-duration: var(--md-sys-motion-duration-short4, 0.2s);
   -webkit-tap-highlight-color: transparent;
 
