@@ -4,6 +4,16 @@
 
 The Material baseline theme is the project foundation for shared UI tokens. Component work must not redefine baseline color, typography, shape, elevation, motion, or state decisions locally.
 
+## Theme model
+
+Start with a tokenized Material baseline theme.
+
+The theme must support both light and dark color schemes from the beginning. Components must consume theme roles through tokens and must not hardcode light-only or dark-only colors.
+
+Future work may add user customization of the base palette. The foundation must be structured so a generated or user-selected palette can update reference and system tokens without rewriting components.
+
+Dynamic or user-custom color is not required for the initial foundation implementation, but the token model must not block it.
+
 ## Foundation families
 
 The baseline theme policy covers:
@@ -20,9 +30,13 @@ The baseline theme policy covers:
 
 Color roles must be used according to their Material meaning and intended pairings. Components should use component tokens that point to system color roles rather than hardcoded palette values.
 
+The initial theme should define Material baseline light and dark schemes. Palette customization belongs above the token model and should update reference/system tokens rather than component CSS.
+
 ## Typography
 
 Typography values must be provided through `md.sys.typescale.*` tokens. Components should use typography tokens instead of local font-size, line-height, weight, or tracking values unless the official component spec defines a component-specific override.
+
+Typography authoring values use `sp` as defined in [Units](./units.md).
 
 ## Shape
 
@@ -52,5 +66,5 @@ Before broad component conversion, audit the existing baseline token file and cl
 - Material system token;
 - Material component token;
 - compatibility alias;
-- project-specific token that needs project namespace;
+- app-specific token that needs `--app-*` namespace;
 - obsolete token to remove.
