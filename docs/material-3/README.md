@@ -6,14 +6,29 @@ The policies apply before changing shared UI primitives, Material-style wrappers
 
 ## Policy set
 
+Foundation policies:
+
 - [Source of truth](./source-of-truth.md)
 - [Units](./units.md)
 - [Tokens](./tokens.md)
+- [Baseline theme](./baseline-theme.md)
 - [Component tokens](./component-tokens.md)
+- [Interaction states](./interaction-states.md)
+- [Accessibility](./accessibility.md)
+- [Layout and adaptive behavior](./layout-adaptive.md)
 - [Shared UI API](./shared-ui-api.md)
 - [Storybook](./storybook.md)
 - [Verification](./verification.md)
 - [Deviations](./deviations.md)
+
+Implementation policies:
+
+- [Component registry](./component-registry.md)
+- [Token validation](./token-validation.md)
+- [Iconography](./icons.md)
+- [Density and spacing](./density-spacing.md)
+- [Overlays](./overlays.md)
+- [Component conversion checklist](./component-conversion-checklist.md)
 - [Adoption plan](./adoption-plan.md)
 
 ## Goals
@@ -32,5 +47,6 @@ These policies are foundation documents. They do not require all existing code t
 
 1. Keep these policies small and reviewable.
 2. Audit existing tokens and shared UI APIs against the policies.
-3. Use Buttons as the first pilot component family after the foundation contract is accepted.
-4. Apply the same pattern to Lists, Dialogs, Text fields, selection controls, Navigation, App bars, Toolbars, and Sheets.
+3. Use [Component registry](./component-registry.md), [Token validation](./token-validation.md), and [Component conversion checklist](./component-conversion-checklist.md) for every component-family migration.
+4. Use Buttons as the first pilot component family after the foundation contract is accepted.
+5. Apply the same pattern to Lists, Dialogs, Text fields, selection controls, Navigation, App bars, Toolbars, and Sheets.
