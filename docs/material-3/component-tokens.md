@@ -30,7 +30,7 @@ When official Material 3 component specs list component tokens, use those names 
 
 When the official docs describe a component measurement or role but the exact token is missing from the cache, define the closest Material-compatible `--md-comp-*` token and document the mapping in the component policy or Storybook docs.
 
-Do not invent local `--md-comp-*` tokens for project-specific behavior. Use a project namespace for project-specific extensions.
+Do not invent local `--md-comp-*` tokens for app-specific behavior. Use the neutral `--app-*` namespace for app-specific extensions.
 
 ## Relationship to system tokens
 
@@ -63,7 +63,7 @@ The supported customization surface for shared Material components is:
 1. `--md-ref-*` when changing raw reference values;
 2. `--md-sys-*` when changing theme roles;
 3. `--md-comp-*` when changing a component part or state;
-4. project namespaced tokens for project-only behavior.
+4. `--app-*` for app-specific behavior that is not part of the Material token model.
 
 Consumers should not depend on private class names or private local component variables for styling.
 
