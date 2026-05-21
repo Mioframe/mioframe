@@ -61,7 +61,6 @@ const onClickContainer = (e: MouseEvent) => {
   }
 
   e.preventDefault();
-  e.stopPropagation();
   emit('click');
 
   if (readonly.value) {
@@ -94,7 +93,6 @@ const onKeydownContainer = (event: KeyboardEvent) => {
   }
 
   event.preventDefault();
-  event.stopPropagation();
   emit('click');
 
   if (readonly.value) {
