@@ -98,9 +98,9 @@ if (child.error) {
 
 if (child.signal) {
   process.kill(process.pid, child.signal);
+} else {
+  process.exit(child.status ?? 1);
 }
-
-process.exit(child.status ?? 1);
 
 function getInstalledPlaywrightVersion(repositoryRoot) {
   const playwrightPackageJsonPath = join(
