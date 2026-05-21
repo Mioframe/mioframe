@@ -255,10 +255,6 @@ useRipple(inlineEl);
   transition-property: background-color;
   transition-duration: 0.1s;
 
-  &:hover {
-    background-color: rgb(from var(--md-content-color) r g b / 0.04);
-  }
-
   &__edit-popover {
     display: flex;
     flex-direction: column;

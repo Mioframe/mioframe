@@ -338,7 +338,7 @@ const onDragEnd = () => {
   }
 
   &_disabled,
-  :disabled {
+  &:disabled {
     --md-content-color: rgb(from var(--md-sys-color-on-surface) r g b / 0.38);
     pointer-events: none;
     border-color: rgb(from var(--md-sys-color-on-surface) r g b / 0.12);
