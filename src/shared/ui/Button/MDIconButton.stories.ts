@@ -1,5 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/vue3-vite';
 import MDIconButton from './MDIconButton.vue';
+import MDIconButtonTargetHitVisualStory from './MDIconButtonTargetHitVisualStory.vue';
+import MDIconButtonToolbarInteractionStory from './MDIconButtonToolbarInteractionStory.vue';
 import MDIconButtonToolbarVisualStory from './MDIconButtonToolbarVisualStory.vue';
 
 const meta = {
@@ -88,5 +90,19 @@ export const CompactToolbarLayout: Story = {
   render: () => ({
     components: { MDIconButtonToolbarVisualStory },
     template: '<MDIconButtonToolbarVisualStory />',
+  }),
+};
+
+export const ExpandedTargetHitArea: Story = {
+  render: () => ({
+    components: { MDIconButtonTargetHitVisualStory },
+    template: '<MDIconButtonTargetHitVisualStory />',
+  }),
+};
+
+export const DenseToolbarInteraction: Story = {
+  render: () => ({
+    components: { MDIconButtonToolbarInteractionStory },
+    template: '<MDIconButtonToolbarInteractionStory />',
   }),
 };

@@ -41,6 +41,40 @@ test('MDIconButton compact toolbar layout matches baseline', async ({ page }) =>
   await expect(surface).toHaveScreenshot('md-icon-button-toolbar-layout.png');
 });
 
+test('MDIconButton expanded target activates clicks outside the visible button box', async ({
+  page,
+}) => {
+  await openStory(page, 'shared-ui-mdiconbutton--expanded-target-hit-area');
+
+  const surface = page.locator('#visual-md-icon-button-target-hit');
+  const button = surface.getByRole('button', { name: 'Expanded target', exact: true });
+  const target = surface.locator('.md-icon-button__target');
+  const count = page.locator('#visual-md-icon-button-target-hit-count');
+  const buttonBox = await button.boundingBox();
+  const targetBox = await target.boundingBox();
+
+  expect(buttonBox).not.toBeNull();
+  expect(targetBox).not.toBeNull();
+
+  if (buttonBox == null || targetBox == null) {
+    throw new Error('Missing MDIconButton bounding boxes for expanded target hit test.');
+  }
+
+  const clickPoint = {
+    x: buttonBox.x - 2,
+    y: buttonBox.y + buttonBox.height / 2,
+  };
+
+  expect(clickPoint.x).toBeGreaterThan(targetBox.x);
+  expect(clickPoint.x).toBeLessThan(targetBox.x + targetBox.width);
+  expect(clickPoint.y).toBeGreaterThan(targetBox.y);
+  expect(clickPoint.y).toBeLessThan(targetBox.y + targetBox.height);
+
+  await page.mouse.click(clickPoint.x, clickPoint.y);
+
+  await expect(count).toHaveText('1');
+});
+
 test('MDChip visual states match baseline', async ({ page }) => {
   await openStory(page, 'shared-ui-mdchip--visual-states');
 
@@ -165,6 +199,63 @@ test('MDIconButton keeps a 48dp target layer for extra-small and small sizes wit
     expect(box?.width).toBeGreaterThanOrEqual(48);
     expect(box?.height).toBeGreaterThanOrEqual(48);
   }
+});
+
+test('MDIconButton dense toolbar buttons keep click ownership near adjacent boundaries', async ({
+  page,
+}) => {
+  await openStory(page, 'shared-ui-mdiconbutton--dense-toolbar-interaction');
+
+  const surface = page.locator('#visual-md-icon-button-toolbar-interaction');
+  const addButton = surface.getByRole('button', { name: 'add', exact: true });
+  const filterButton = surface.getByRole('button', { name: 'filter', exact: true });
+  const addCount = page.locator('#toolbar-count-add');
+  const filterCount = page.locator('#toolbar-count-filter');
+  const addBox = await addButton.boundingBox();
+  const filterBox = await filterButton.boundingBox();
+
+  expect(addBox).not.toBeNull();
+  expect(filterBox).not.toBeNull();
+
+  if (addBox == null || filterBox == null) {
+    throw new Error('Missing MDIconButton bounding boxes for dense toolbar edge-click test.');
+  }
+
+  await page.mouse.click(addBox.x + addBox.width / 2, addBox.y + addBox.height / 2);
+  await expect(addCount).toHaveText('1');
+  await expect(filterCount).toHaveText('0');
+
+  await page.mouse.click(filterBox.x + filterBox.width / 2, filterBox.y + filterBox.height / 2);
+  await expect(addCount).toHaveText('1');
+  await expect(filterCount).toHaveText('1');
+
+  await page.mouse.click(addBox.x + addBox.width - 1, addBox.y + addBox.height / 2);
+  await expect(addCount).toHaveText('2');
+  await expect(filterCount).toHaveText('1');
+
+  await page.mouse.click(filterBox.x + 1, filterBox.y + filterBox.height / 2);
+  await expect(addCount).toHaveText('2');
+  await expect(filterCount).toHaveText('2');
+});
+
+test('MDIconButton dense toolbar hover handoff does not leave stale hover state', async ({
+  page,
+}) => {
+  await openStory(page, 'shared-ui-mdiconbutton--dense-toolbar-interaction');
+
+  const surface = page.locator('#visual-md-icon-button-toolbar-interaction');
+  const addButton = surface.getByRole('button', { name: 'add', exact: true });
+  const filterButton = surface.getByRole('button', { name: 'filter', exact: true });
+  const hovered = page.locator('#toolbar-hovered-button');
+
+  await addButton.hover();
+  await expect(hovered).toHaveText('add');
+  await expect(addButton).toHaveClass(/md-state_hover/);
+
+  await filterButton.hover();
+  await expect(hovered).toHaveText('filter');
+  await expect(filterButton).toHaveClass(/md-state_hover/);
+  await expect(addButton).not.toHaveClass(/md-state_hover/);
 });
 
 test('MDIconButton default small layout footprint remains 40dp', async ({ page }) => {
