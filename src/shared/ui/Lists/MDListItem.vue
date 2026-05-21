@@ -109,11 +109,7 @@ const hostRole = computed(() => {
 
 const hostTabIndex = computed(() => {
   const rawTabIndex = attrs.tabindex;
-  if (props.disabled && (isAnchorHost.value || isStaticHost.value) && rawTabIndex !== undefined) {
-    return -1;
-  }
-
-  if (props.disabled && isAnchorHost.value) {
+  if (props.disabled && (isAnchorHost.value || (isStaticHost.value && rawTabIndex !== undefined))) {
     return -1;
   }
 

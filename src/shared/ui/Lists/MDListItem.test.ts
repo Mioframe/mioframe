@@ -175,4 +175,14 @@ describe('MDListItem', () => {
     expect(wrapper.classes()).not.toContain('md-state_dragged');
     expect(document.body.querySelector('.md-ripple')).toBeNull();
   });
+
+  it('does not add tabindex to a disabled static host that did not have one', () => {
+    const wrapper = mountListItem({
+      is: 'div',
+      disabled: true,
+    });
+
+    expect(wrapper.attributes('tabindex')).toBeUndefined();
+    expect(wrapper.attributes('aria-disabled')).toBe('true');
+  });
 });

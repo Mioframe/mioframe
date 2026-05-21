@@ -2,16 +2,19 @@ import { mount } from '@vue/test-utils';
 import { describe, expect, it } from 'vitest';
 import MDIconButton from './MDIconButton.vue';
 
-const mountIconButton = () =>
+const mountIconButton = (props: Record<string, unknown> = {}) =>
   mount(MDIconButton, {
     props: {
       tooltip: 'Close',
       mdSymbolName: 'close',
+      ...props,
     },
     global: {
       stubs: {
         MDCircularProgressIndicator: {
-          template: '<span class="md-circular-progress-indicator-stub" />',
+          props: ['progress'],
+          template:
+            '<span class="md-circular-progress-indicator-stub" :data-progress="progress" />',
         },
         MDPlainTooltip: {
           template: '<span class="md-plain-tooltip-stub" />',
@@ -54,5 +57,30 @@ describe('MDIconButton', () => {
     expect(target.attributes('aria-hidden')).toBe('true');
     expect(directChildren[0]).toBe(target.element);
     expect(directChildren.every((child) => child.tagName === 'SPAN')).toBe(true);
+  });
+
+  it('treats loading=0 as an active loading state', () => {
+    const wrapper = mountIconButton({
+      loading: 0,
+    });
+
+    expect(wrapper.classes()).toContain('md-icon-button_loading');
+    expect(wrapper.find('.md-circular-progress-indicator-stub').exists()).toBe(true);
+    expect(wrapper.get('.md-circular-progress-indicator-stub').attributes('data-progress')).toBe(
+      '0',
+    );
+    expect(wrapper.get('.md-icon-button__icon').classes()).toContain('md-icon-button__icon');
+  });
+
+  it('does not render the progress indicator when loading is false or absent', () => {
+    const falseLoadingWrapper = mountIconButton({
+      loading: false,
+    });
+    const absentLoadingWrapper = mountIconButton();
+
+    expect(falseLoadingWrapper.classes()).not.toContain('md-icon-button_loading');
+    expect(falseLoadingWrapper.find('.md-circular-progress-indicator-stub').exists()).toBe(false);
+    expect(absentLoadingWrapper.classes()).not.toContain('md-icon-button_loading');
+    expect(absentLoadingWrapper.find('.md-circular-progress-indicator-stub').exists()).toBe(false);
   });
 });

@@ -75,7 +75,7 @@ useRipple(computed(() => (disabled ? undefined : buttonEl.value)));
         'md-icon-button_selected': selected,
         'md-icon-button_pressed': pressed,
         'md-icon-button_focused': focused,
-        'md-icon-button_loading': loading,
+        'md-icon-button_loading': loading !== undefined && loading !== false,
         'md-state_hover': showVisualState && hover,
         'md-state_focused': showVisualState && focusVisible,
         'md-state_pressed': showVisualState && durationPressedState,
@@ -101,7 +101,7 @@ useRipple(computed(() => (disabled ? undefined : buttonEl.value)));
     </span>
 
     <MDCircularProgressIndicator
-      v-if="loading"
+      v-if="loading !== undefined && loading !== false"
       class="md-icon-button__progress-indicator"
       :progress="loading === true ? 0 : loading"
     />
@@ -209,7 +209,7 @@ useRipple(computed(() => (disabled ? undefined : buttonEl.value)));
 
     &.md-state_disabled,
     &:disabled {
-      --md-container-color: rgb(from var(--md-sys-color-on-surface) r g b / 0.1);
+      --md-container-color: rgb(from var(--md-sys-color-on-surface) r g b / 0.12);
       --md-content-color: var(--md-icon-button-disabled-content-color);
       --md-symbol-fill: 0;
     }
@@ -234,7 +234,7 @@ useRipple(computed(() => (disabled ? undefined : buttonEl.value)));
 
     &.md-state_disabled,
     &:disabled {
-      --md-container-color: rgb(from var(--md-sys-color-on-surface) r g b / 0.1);
+      --md-container-color: rgb(from var(--md-sys-color-on-surface) r g b / 0.12);
       --md-content-color: var(--md-icon-button-disabled-content-color);
       --md-symbol-fill: 0;
     }
