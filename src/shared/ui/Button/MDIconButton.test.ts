@@ -44,4 +44,15 @@ describe('MDIconButton', () => {
     expect(directChildren.every((tagName) => tagName === 'SPAN')).toBe(true);
     expect(button.findAll('.md-icon-button__icon')).toHaveLength(1);
   });
+
+  it('renders a non-layout target layer as an inline-compatible direct child of the native button', () => {
+    const wrapper = mountIconButton();
+    const button = wrapper.get('button');
+    const directChildren = Array.from(button.element.children);
+    const target = button.get('.md-icon-button__target');
+
+    expect(target.attributes('aria-hidden')).toBe('true');
+    expect(directChildren[0]).toBe(target.element);
+    expect(directChildren.every((child) => child.tagName === 'SPAN')).toBe(true);
+  });
 });

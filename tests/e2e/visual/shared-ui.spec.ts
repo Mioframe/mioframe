@@ -111,6 +111,16 @@ test('MDListItem trailing action layout matches baseline', async ({ page }) => {
   await expect(surface).toHaveScreenshot('md-list-item-trailing-action.png');
 });
 
+test('MDListItem trailing action story avoids nested native buttons', async ({ page }) => {
+  await openStory(page, 'shared-ui-mdlistitem--trailing-action-layout');
+
+  const nestedButtons = page
+    .getByTestId('visual-md-list-item-trailing-action')
+    .locator('button button');
+
+  await expect(nestedButtons).toHaveCount(0);
+});
+
 test('MDIconButton compact toolbar buttons keep the develop-sized layout footprint', async ({
   page,
 }) => {
@@ -126,6 +136,45 @@ test('MDIconButton compact toolbar buttons keep the develop-sized layout footpri
     expect(box?.width).toBe(40);
     expect(box?.height).toBe(40);
   }
+});
+
+test('MDIconButton keeps a 48dp target layer for extra-small and small sizes without growing layout', async ({
+  page,
+}) => {
+  await openStory(page, 'shared-ui-mdiconbutton--visual-states');
+
+  const targetButtons = page.getByTestId('visual-md-icon-button-targets').getByRole('button');
+  const targetLayers = page
+    .getByTestId('visual-md-icon-button-targets')
+    .locator('.md-icon-button__target');
+  const buttonBoxes = await Promise.all([
+    targetButtons.nth(0).boundingBox(),
+    targetButtons.nth(1).boundingBox(),
+  ]);
+  const targetBoxes = await Promise.all([
+    targetLayers.nth(0).boundingBox(),
+    targetLayers.nth(1).boundingBox(),
+  ]);
+
+  expect(buttonBoxes[0]?.width).toBe(32);
+  expect(buttonBoxes[0]?.height).toBe(32);
+  expect(buttonBoxes[1]?.width).toBe(40);
+  expect(buttonBoxes[1]?.height).toBe(40);
+
+  for (const box of targetBoxes) {
+    expect(box?.width).toBeGreaterThanOrEqual(48);
+    expect(box?.height).toBeGreaterThanOrEqual(48);
+  }
+});
+
+test('MDIconButton default small layout footprint remains 40dp', async ({ page }) => {
+  await openStory(page, 'shared-ui-mdiconbutton--visual-states');
+
+  const button = page.getByRole('button', { name: 'Standard', exact: true });
+  const box = await button.boundingBox();
+
+  expect(box?.width).toBe(40);
+  expect(box?.height).toBe(40);
 });
 
 test('MDListItem trailing actions keep the compact icon-button footprint', async ({ page }) => {

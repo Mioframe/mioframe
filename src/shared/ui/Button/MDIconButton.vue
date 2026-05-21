@@ -85,6 +85,8 @@ useRipple(computed(() => (disabled ? undefined : buttonEl.value)));
     :aria-label="tooltip"
     @click="onClick"
   >
+    <span class="md-icon-button__target" aria-hidden="true" />
+
     <MDStateLayer
       :hover="hover"
       :focused="focusVisible"
@@ -126,6 +128,7 @@ useRipple(computed(() => (disabled ? undefined : buttonEl.value)));
   --md-icon-button-icon-size: 24px;
   --md-icon-button-border-width: 0px;
   --md-icon-button-padding: 0px;
+  --md-icon-button-target-size: var(--md-icon-button-container-height);
   --md-icon-button-disabled-content-color: rgb(from var(--md-sys-color-on-surface) r g b / 0.38);
   --md-icon-button-disabled-container-color: transparent;
   --md-icon-button-disabled-border-color: transparent;
@@ -147,9 +150,23 @@ useRipple(computed(() => (disabled ? undefined : buttonEl.value)));
   transition-duration: var(--md-sys-motion-duration-short4, 0.2s);
   -webkit-tap-highlight-color: transparent;
 
+  &__target {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    z-index: 0;
+    display: block;
+    width: var(--md-icon-button-target-size);
+    height: var(--md-icon-button-target-size);
+    min-width: var(--md-icon-button-target-size);
+    min-height: var(--md-icon-button-target-size);
+    transform: translate(-50%, -50%);
+    background: transparent;
+  }
+
   &__icon {
     position: relative;
-    z-index: 1;
+    z-index: 2;
     display: inline-flex;
     justify-content: center;
     align-items: center;
@@ -168,6 +185,7 @@ useRipple(computed(() => (disabled ? undefined : buttonEl.value)));
 
   &__progress-indicator {
     position: absolute;
+    z-index: 2;
     width: var(--md-icon-button-icon-size, 1lh);
     height: var(--md-icon-button-icon-size, 1lh);
   }
@@ -282,6 +300,7 @@ useRipple(computed(() => (disabled ? undefined : buttonEl.value)));
     &-extra-small {
       --md-icon-button-container-height: 32dp;
       --md-icon-button-icon-size: 20dp;
+      --md-icon-button-target-size: 48dp;
 
       &.md-icon-button_width-narrow {
         --md-icon-button-padding: 4dp;
@@ -314,6 +333,7 @@ useRipple(computed(() => (disabled ? undefined : buttonEl.value)));
     &-small {
       --md-icon-button-container-height: 40dp;
       --md-icon-button-icon-size: 24dp;
+      --md-icon-button-target-size: 48dp;
 
       &.md-icon-button_width-narrow {
         --md-icon-button-padding: 4dp;
