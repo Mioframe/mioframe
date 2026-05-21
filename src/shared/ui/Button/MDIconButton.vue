@@ -126,7 +126,6 @@ useRipple(computed(() => (disabled ? undefined : buttonEl.value)));
   --md-icon-button-icon-size: 24px;
   --md-icon-button-border-width: 0px;
   --md-icon-button-padding: 0px;
-  --md-icon-button-target-size: var(--md-icon-button-container-height);
   --md-icon-button-disabled-content-color: rgb(from var(--md-sys-color-on-surface) r g b / 0.38);
   --md-icon-button-disabled-container-color: transparent;
   --md-icon-button-disabled-border-color: transparent;
@@ -136,8 +135,6 @@ useRipple(computed(() => (disabled ? undefined : buttonEl.value)));
   justify-content: center;
   align-items: center;
   height: calc(var(--md-icon-button-container-height) - (var(--md-icon-button-border-width) * 2));
-  min-width: calc(var(--md-icon-button-target-size) - (var(--md-icon-button-border-width) * 2));
-  min-height: calc(var(--md-icon-button-target-size) - (var(--md-icon-button-border-width) * 2));
   padding: 0 calc(var(--md-icon-button-padding) - var(--md-icon-button-border-width));
   border-radius: var(--md-icon-button-container-shape);
   border: var(--md-icon-button-border-width) solid transparent;
@@ -285,7 +282,6 @@ useRipple(computed(() => (disabled ? undefined : buttonEl.value)));
     &-extra-small {
       --md-icon-button-container-height: 32dp;
       --md-icon-button-icon-size: 20dp;
-      --md-icon-button-target-size: 48dp;
 
       &.md-icon-button_width-narrow {
         --md-icon-button-padding: 4dp;
@@ -318,7 +314,6 @@ useRipple(computed(() => (disabled ? undefined : buttonEl.value)));
     &-small {
       --md-icon-button-container-height: 40dp;
       --md-icon-button-icon-size: 24dp;
-      --md-icon-button-target-size: 48dp;
 
       &.md-icon-button_width-narrow {
         --md-icon-button-padding: 4dp;
@@ -351,7 +346,6 @@ useRipple(computed(() => (disabled ? undefined : buttonEl.value)));
     &-medium {
       --md-icon-button-container-height: 56dp;
       --md-icon-button-icon-size: 24dp;
-      --md-icon-button-target-size: 56dp;
 
       &.md-icon-button_width-narrow {
         --md-icon-button-padding: 12dp;
@@ -384,7 +378,6 @@ useRipple(computed(() => (disabled ? undefined : buttonEl.value)));
     &-large {
       --md-icon-button-container-height: 96dp;
       --md-icon-button-icon-size: 32dp;
-      --md-icon-button-target-size: 96dp;
 
       &.md-icon-button_width-narrow {
         --md-icon-button-padding: 16dp;
@@ -417,7 +410,6 @@ useRipple(computed(() => (disabled ? undefined : buttonEl.value)));
     &-extra-large {
       --md-icon-button-container-height: 136dp;
       --md-icon-button-icon-size: 40dp;
-      --md-icon-button-target-size: 136dp;
 
       &.md-icon-button_width-narrow {
         --md-icon-button-padding: 32dp;

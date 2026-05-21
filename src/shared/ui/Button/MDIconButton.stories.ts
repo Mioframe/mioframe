@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/vue3-vite';
 import MDIconButton from './MDIconButton.vue';
+import MDIconButtonToolbarVisualStory from './MDIconButtonToolbarVisualStory.vue';
 
 const meta = {
   title: 'shared/ui/MDIconButton',
@@ -79,5 +80,13 @@ export const VisualInteractionStates: Story = {
         </div>
       </div>
     `,
+  }),
+};
+
+export const CompactToolbarLayout: Story = {
+  tags: ['visual'],
+  render: () => ({
+    components: { MDIconButtonToolbarVisualStory },
+    template: '<MDIconButtonToolbarVisualStory />',
   }),
 };

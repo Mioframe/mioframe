@@ -35,4 +35,13 @@ describe('MDIconButton', () => {
     expect(button.find('div').exists()).toBe(false);
     expect(button.find('input, select, textarea, a[href], [role="button"]').exists()).toBe(false);
   });
+
+  it('keeps the icon host as the only non-tooltip element inside the native button', () => {
+    const wrapper = mountIconButton();
+    const button = wrapper.get('button');
+    const directChildren = Array.from(button.element.children).map((child) => child.tagName);
+
+    expect(directChildren.every((tagName) => tagName === 'SPAN')).toBe(true);
+    expect(button.findAll('.md-icon-button__icon')).toHaveLength(1);
+  });
 });

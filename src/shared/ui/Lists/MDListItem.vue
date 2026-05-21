@@ -11,7 +11,7 @@ const props = defineProps<{
   supportingText?: string | undefined;
   lines?: 1 | 2 | 3 | undefined;
   is?: Is | undefined;
-  type?: (Is extends 'button' ? 'button' | 'submit' | 'reset' : false) | undefined;
+  type?: 'button' | 'submit' | 'reset' | false | undefined;
   itemRole?: string | undefined;
   disabled?: boolean | undefined;
   draggable?: boolean | undefined;
@@ -41,7 +41,7 @@ const buttonType = computed<'button' | 'submit' | 'reset' | undefined | false>((
     return undefined;
   }
 
-  return props.type;
+  return props.type || 'button';
 });
 const resolvedLines = computed(() => props.lines ?? 1);
 const minHeight = computed(() => {

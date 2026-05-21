@@ -91,7 +91,7 @@ Before adding or updating snapshots:
 5. Wait for fonts, icons, and async rendering to settle before taking the screenshot.
 6. Mask dynamic regions when they cannot be made deterministic.
 7. Keep screenshots small enough for reviewers to understand the diff.
-8. Accept or refresh baselines only from stable Linux/Chromium rendering such as CI or a pinned Playwright Docker image; treat local diffs from other environments as advisory.
+8. Accept or refresh baselines only from stable Linux/Chromium rendering such as CI or a pinned Playwright image through Podman; treat local diffs from other environments as advisory.
 9. Do not refresh baselines from headed mode, do not hide ordinary text, and do not raise screenshot thresholds just to suppress text anti-aliasing noise.
 
 ## Interaction state rule

@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/vue3-vite';
 import MDListItemInteractionStatesStory from './MDListItemInteractionStatesStory.vue';
+import MDListItemTrailingActionVisualStory from './MDListItemTrailingActionVisualStory.vue';
 import MDListItemVisualStatesStory from './MDListItemVisualStatesStory.vue';
 
 const meta = {
@@ -34,5 +35,13 @@ export const VisualInteractionStates: Story = {
   render: () => ({
     components: { MDListItemInteractionStatesStory },
     template: '<MDListItemInteractionStatesStory />',
+  }),
+};
+
+export const TrailingActionLayout: Story = {
+  tags: ['visual'],
+  render: () => ({
+    components: { MDListItemTrailingActionVisualStory },
+    template: '<MDListItemTrailingActionVisualStory />',
   }),
 };

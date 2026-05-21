@@ -98,7 +98,31 @@ describe('MDCheckbox', () => {
     expect(document.activeElement).not.toBe(wrapper.get('.md-checkbox').element);
   });
 
-  it('stops readonly click activation from bubbling to parent containers', async () => {
+  it('toggles value in editable mode', async () => {
+    const wrapper = mountCheckbox({
+      modelValue: false,
+    });
+
+    await wrapper.get('.md-checkbox').trigger('click');
+
+    expect(wrapper.emitted('click')).toHaveLength(1);
+    expect(wrapper.emitted('update:modelValue')).toEqual([[true]]);
+  });
+
+  it('keeps disabled mode inactive', async () => {
+    const wrapper = mountCheckbox({
+      modelValue: false,
+      disabled: true,
+    });
+
+    await wrapper.get('.md-checkbox').trigger('click');
+    await wrapper.get('.md-checkbox').trigger('keydown', { key: ' ' });
+
+    expect(wrapper.emitted('click')).toBeUndefined();
+    expect(wrapper.emitted('update:modelValue')).toBeUndefined();
+  });
+
+  it('lets readonly click activation bubble to parent containers', async () => {
     const onParentClick = vi.fn();
     const wrapper = mountCheckbox({
       modelValue: true,
@@ -114,10 +138,10 @@ describe('MDCheckbox', () => {
 
     expect(wrapper.emitted('click')).toHaveLength(1);
     expect(wrapper.emitted('update:modelValue')).toBeUndefined();
-    expect(onParentClick).not.toHaveBeenCalled();
+    expect(onParentClick).toHaveBeenCalledTimes(1);
   });
 
-  it('stops readonly keyboard activation from bubbling to parent containers', async () => {
+  it('lets readonly keyboard activation bubble to parent containers', async () => {
     const parentKeydown = vi.fn();
     const wrapper = mountCheckbox({
       modelValue: true,
@@ -132,6 +156,6 @@ describe('MDCheckbox', () => {
 
     expect(wrapper.emitted('click')).toHaveLength(1);
     expect(wrapper.emitted('update:modelValue')).toBeUndefined();
-    expect(parentKeydown).not.toHaveBeenCalled();
+    expect(parentKeydown).toHaveBeenCalledTimes(1);
   });
 });

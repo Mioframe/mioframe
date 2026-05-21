@@ -33,6 +33,14 @@ test('MDIconButton interaction states match baseline', async ({ page }) => {
   await expect(surface).toHaveScreenshot('md-icon-button-interaction-states.png');
 });
 
+test('MDIconButton compact toolbar layout matches baseline', async ({ page }) => {
+  await openStory(page, 'shared-ui-mdiconbutton--compact-toolbar-layout');
+
+  const surface = page.getByTestId('visual-md-icon-button-toolbar-layout');
+
+  await expect(surface).toHaveScreenshot('md-icon-button-toolbar-layout.png');
+});
+
 test('MDChip visual states match baseline', async ({ page }) => {
   await openStory(page, 'shared-ui-mdchip--visual-states');
 
@@ -95,32 +103,46 @@ test('MDListItem interaction states match baseline', async ({ page }) => {
   await expect(surface).toHaveScreenshot('md-list-item-interaction-states.png');
 });
 
-test('MDIconButton extra-small and small targets are at least 48dp', async ({ page }) => {
-  await openStory(page, 'shared-ui-mdiconbutton--visual-states');
+test('MDListItem trailing action layout matches baseline', async ({ page }) => {
+  await openStory(page, 'shared-ui-mdlistitem--trailing-action-layout');
 
-  const targets = page.getByTestId('visual-md-icon-button-targets').getByRole('button');
-  const count = await targets.count();
+  const surface = page.getByTestId('visual-md-list-item-trailing-action');
+
+  await expect(surface).toHaveScreenshot('md-list-item-trailing-action.png');
+});
+
+test('MDIconButton compact toolbar buttons keep the develop-sized layout footprint', async ({
+  page,
+}) => {
+  await openStory(page, 'shared-ui-mdiconbutton--compact-toolbar-layout');
+
+  const buttons = page.getByTestId('visual-md-icon-button-toolbar-layout').getByRole('button');
+  const count = await buttons.count();
   const boxes = await Promise.all(
-    Array.from({ length: count }, (_, index) => targets.nth(index).boundingBox()),
+    Array.from({ length: count }, (_, index) => buttons.nth(index).boundingBox()),
   );
 
   for (const box of boxes) {
-    expect(box?.width ?? 0).toBeGreaterThanOrEqual(48);
-    expect(box?.height ?? 0).toBeGreaterThanOrEqual(48);
+    expect(box?.width).toBe(40);
+    expect(box?.height).toBe(40);
   }
 });
 
-test('MDChip input close icon target is at least 48dp', async ({ page }) => {
-  await openStory(page, 'shared-ui-mdchip--visual-states');
+test('MDListItem trailing actions keep the compact icon-button footprint', async ({ page }) => {
+  await openStory(page, 'shared-ui-mdlistitem--trailing-action-layout');
 
-  const closeButton = page
-    .locator('#visual-md-chip-targets')
-    .getByRole('button', { name: 'remove' })
-    .first();
-  const box = await closeButton.boundingBox();
+  const buttons = page
+    .getByTestId('visual-md-list-item-trailing-action')
+    .locator('.md-list-item__trailing-icon button');
+  const count = await buttons.count();
+  const boxes = await Promise.all(
+    Array.from({ length: count }, (_, index) => buttons.nth(index).boundingBox()),
+  );
 
-  expect(box?.width ?? 0).toBeGreaterThanOrEqual(48);
-  expect(box?.height ?? 0).toBeGreaterThanOrEqual(48);
+  for (const box of boxes) {
+    expect(box?.width).toBe(40);
+    expect(box?.height).toBe(40);
+  }
 });
 
 test('MDStateLayer visual states match baseline', async ({ page }) => {

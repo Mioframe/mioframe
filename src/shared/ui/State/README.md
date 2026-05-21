@@ -16,6 +16,7 @@
 - Disabled hosts must also expose `md-state_disabled`, native `:disabled`, or
   `aria-disabled="true"` so parent-class state rendering is suppressed.
 - Touch target sizing is not part of `MDStateLayer`.
+- `MDIconButton` keeps its compact layout footprint tied to container height, icon size, padding, and border width. If a larger touch target is needed, it must not resize the root layout box or require a wrapper around the native button.
 - Host components own native element choice, semantics, roles, keyboard behavior, disabled semantics, event propagation policy, accessibility behavior, and touch target or layout policy.
 - FAB disabled state is not a Material inherited disabled state. If a FAB action is unavailable, do not render the FAB.
 - Native interactive hosts must keep valid DOM. Do not render block wrapper elements or nested interactive controls inside native buttons.
