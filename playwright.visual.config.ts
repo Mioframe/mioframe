@@ -5,6 +5,7 @@ const host = toolingConfig.localServer.host;
 const port = toolingConfig.storybook.visualPreview.port;
 const storybookStaticDir = toolingConfig.storybook.staticDir;
 const storybookURL = `http://${host}:${port}`;
+const viteBin = './node_modules/.bin/vite';
 
 export default defineConfig({
   testDir: './tests/e2e/visual',
@@ -37,7 +38,7 @@ export default defineConfig({
   webServer: {
     command:
       'node scripts/storybook.mjs build && ' +
-      'pnpm exec vite preview ' +
+      `${viteBin} preview ` +
       '--config .storybook/vite.preview.config.ts ' +
       `--outDir ${storybookStaticDir}`,
     url: storybookURL,
