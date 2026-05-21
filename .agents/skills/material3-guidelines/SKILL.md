@@ -31,9 +31,15 @@ Use these policies as the project contract:
 - `docs/material-3/tokens.md`
 - `docs/material-3/baseline-theme.md`
 - `docs/material-3/component-tokens.md`
+- `docs/material-3/token-validation.md`
+- `docs/material-3/component-registry.md`
+- `docs/material-3/component-conversion-checklist.md`
 - `docs/material-3/interaction-states.md`
 - `docs/material-3/accessibility.md`
 - `docs/material-3/layout-adaptive.md`
+- `docs/material-3/density-spacing.md`
+- `docs/material-3/icons.md`
+- `docs/material-3/overlays.md`
 - `docs/material-3/shared-ui-api.md`
 - `docs/material-3/storybook.md`
 - `docs/material-3/verification.md`
@@ -65,6 +71,8 @@ Before the first production edit, identify:
 3. **Project fit**: whether existing project policies, FSD ownership, mobile-first constraints, privacy, accessibility, or performance requirements add stricter constraints.
 4. **Deviation**: any deliberate mismatch with Material 3, with the reason and blast radius.
 5. **Verification**: the focused Storybook, browser smoke, Playwright/e2e, visual regression, token/unit check, or accessibility-oriented check that proves the Material-relevant behavior.
+
+For shared UI component-family work, also update or consult `docs/material-3/component-registry.md` and use `docs/material-3/component-conversion-checklist.md` as the completion checklist.
 
 ## Output discipline
 
