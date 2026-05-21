@@ -17,16 +17,16 @@ A developer should be able to read the official Material 3 documentation and pre
 
 ## Preferred prop vocabulary
 
-| Material concept | Preferred prop name | Notes |
-| --- | --- | --- |
-| Variant | `variant` | Example: `default`, `toggle` when the docs describe variants. |
-| Color style | `colorStyle` | Example: `elevated`, `filled`, `tonal`, `outlined`, `text`. |
-| Size | `size` | Use Material size names. |
-| Shape | `shape` | Use Material shape names. |
-| Selection state | `selected` | For toggle/selection-capable components. |
-| Disabled state | `disabled` | Native disabled semantics where supported. |
-| Loading/progress state | `loading` or `progress` | Prefer progress when numeric progress is the main contract. |
-| Native button type | `nativeType` or `htmlType` | Do not call this `variant` or `formAction`. |
+| Material concept       | Preferred prop name        | Notes                                                         |
+| ---------------------- | -------------------------- | ------------------------------------------------------------- |
+| Variant                | `variant`                  | Example: `default`, `toggle` when the docs describe variants. |
+| Color style            | `colorStyle`               | Example: `elevated`, `filled`, `tonal`, `outlined`, `text`.   |
+| Size                   | `size`                     | Use Material size names.                                      |
+| Shape                  | `shape`                    | Use Material shape names.                                     |
+| Selection state        | `selected`                 | For toggle/selection-capable components.                      |
+| Disabled state         | `disabled`                 | Native disabled semantics where supported.                    |
+| Loading/progress state | `loading` or `progress`    | Prefer progress when numeric progress is the main contract.   |
+| Native button type     | `nativeType` or `htmlType` | Do not call this `variant` or `formAction`.                   |
 
 ## Invalid combinations
 

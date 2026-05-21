@@ -19,12 +19,12 @@ A token validation pass should identify:
 
 Use these namespaces for public styling contracts:
 
-| Namespace | Use |
-| --- | --- |
-| `--md-ref-*` | Material reference tokens. |
-| `--md-sys-*` | Material system tokens. |
-| `--md-comp-*` | Material component tokens. |
-| `--app-*` | App-specific tokens outside Material vocabulary. |
+| Namespace     | Use                                              |
+| ------------- | ------------------------------------------------ |
+| `--md-ref-*`  | Material reference tokens.                       |
+| `--md-sys-*`  | Material system tokens.                          |
+| `--md-comp-*` | Material component tokens.                       |
+| `--app-*`     | App-specific tokens outside Material vocabulary. |
 
 Do not introduce new public token namespaces without updating this document.
 

@@ -12,8 +12,8 @@ The foundation audit must create or expand the actual registry. Do not fill regi
 
 Use this table shape:
 
-| Material surface | Project component | Status | Material docs | Tokens | API | Storybook | Visual tests | Deviations |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Material surface     | Project component     | Status     | Material docs     | Tokens             | API                | Storybook       | Visual tests    | Deviations    |
+| -------------------- | --------------------- | ---------- | ----------------- | ------------------ | ------------------ | --------------- | --------------- | ------------- |
 | `<official surface>` | `<project component>` | `<status>` | `<checked pages>` | `<status/details>` | `<status/details>` | `<path/status>` | `<path/status>` | `<none/link>` |
 
 ## Status values

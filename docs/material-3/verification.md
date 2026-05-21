@@ -8,17 +8,17 @@ Visual screenshots alone are not enough. Verification should cover the relevant 
 
 ## Verification matrix
 
-| Changed layer | Expected verification |
-| --- | --- |
-| Source policy or docs | Read the affected docs and check links/paths. |
-| Unit conversion | Focused PostCSS transform check or generated CSS inspection. |
-| Reference/system tokens | Token diff review and at least one rendered surface if values affect UI. |
-| Component tokens | Storybook surface showing affected variants/states and token usage. |
-| Public component API | TypeScript checks, consumer migration review, and Storybook controls/docs. |
-| Interaction states | Browser-based state checks, preferably Storybook + Playwright for visual states. |
-| Accessibility behavior | Keyboard/focus/ARIA checks in a real browser surface when behavior changes. |
-| Adaptive layout | Responsive browser smoke or visual tests for affected breakpoints. |
-| Visual appearance | Playwright screenshot assertions against deterministic Storybook stories. |
+| Changed layer           | Expected verification                                                            |
+| ----------------------- | -------------------------------------------------------------------------------- |
+| Source policy or docs   | Read the affected docs and check links/paths.                                    |
+| Unit conversion         | Focused PostCSS transform check or generated CSS inspection.                     |
+| Reference/system tokens | Token diff review and at least one rendered surface if values affect UI.         |
+| Component tokens        | Storybook surface showing affected variants/states and token usage.              |
+| Public component API    | TypeScript checks, consumer migration review, and Storybook controls/docs.       |
+| Interaction states      | Browser-based state checks, preferably Storybook + Playwright for visual states. |
+| Accessibility behavior  | Keyboard/focus/ARIA checks in a real browser surface when behavior changes.      |
+| Adaptive layout         | Responsive browser smoke or visual tests for affected breakpoints.               |
+| Visual appearance       | Playwright screenshot assertions against deterministic Storybook stories.        |
 
 ## Required Material lookup
 

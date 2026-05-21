@@ -10,11 +10,11 @@ A developer who knows the official Material 3 token model should be able to unde
 
 Material 3 defines three token classes. The project maps them to CSS custom properties as follows:
 
-| Material token class | Material example | CSS custom property example |
-| --- | --- | --- |
-| Reference | `md.ref.palette.primary40` | `--md-ref-palette-primary40` |
-| System | `md.sys.color.primary` | `--md-sys-color-primary` |
-| Component | `md.comp.button.filled.container.color` | `--md-comp-button-filled-container-color` |
+| Material token class | Material example                        | CSS custom property example               |
+| -------------------- | --------------------------------------- | ----------------------------------------- |
+| Reference            | `md.ref.palette.primary40`              | `--md-ref-palette-primary40`              |
+| System               | `md.sys.color.primary`                  | `--md-sys-color-primary`                  |
+| Component            | `md.comp.button.filled.container.color` | `--md-comp-button-filled-container-color` |
 
 ## Public `--md-*` rule
 
