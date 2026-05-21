@@ -1,4 +1,5 @@
 import { spawn } from 'node:child_process';
+import { join } from 'node:path';
 import toolingConfig from '../config/tooling.json' with { type: 'json' };
 
 const mode = process.argv[2];
@@ -11,18 +12,22 @@ if (mode !== 'dev' && mode !== 'build') {
 const args =
   mode === 'dev'
     ? [
-        'storybook',
+        join(process.cwd(), 'node_modules', '.bin', 'storybook'),
         'dev',
         '-p',
         String(toolingConfig.storybook.devServer.port),
         '--host',
         toolingConfig.localServer.host,
       ]
-    : ['storybook', 'build', '--output-dir', toolingConfig.storybook.staticDir];
+    : [
+        join(process.cwd(), 'node_modules', '.bin', 'storybook'),
+        'build',
+        '--output-dir',
+        toolingConfig.storybook.staticDir,
+      ];
 
-const child = spawn(args.join(' '), {
+const child = spawn(args[0], args.slice(1), {
   stdio: 'inherit',
-  shell: true,
   env: {
     ...process.env,
     BEAVER_STORYBOOK: '1',

@@ -777,7 +777,9 @@ function getActionRequired(results) {
 }
 
 function printSummary(changedFiles, scope, results) {
-  const status = results.some((result) => result.status === 'failed') ? 'failed ❌' : 'passed ✅';
+  const hasFailed = results.some((result) => result.status === 'failed');
+  const status = hasFailed ? 'failed' : 'passed';
+  const displayStatus = hasFailed ? 'failed ❌' : 'passed ✅';
   const actionRequired = getActionRequired(results);
 
   console.log('\nVERIFY RESULT');
@@ -785,7 +787,7 @@ function printSummary(changedFiles, scope, results) {
   console.log(`verbose: ${isVerboseMode ? 'on' : 'off'}`);
   console.log(`scope: ${scope}`);
   console.log(`changed files: ${changedFiles.length}`);
-  console.log(`status: ${status}`);
+  console.log(`status: ${displayStatus}`);
   console.log(`logs: ${VERIFY_LOG_DIR}`);
   console.log('commands:');
 
@@ -805,7 +807,10 @@ function printSummary(changedFiles, scope, results) {
     console.log(`- ${action}`);
   }
 
-  return status;
+  return {
+    status,
+    hasFailed,
+  };
 }
 
 async function main() {
@@ -834,8 +839,8 @@ async function main() {
     results.push(await runCommand(entry.label, entry.command, entry.args));
   }
 
-  const status = printSummary(changedFiles, scope, results);
-  process.exitCode = status === 'failed' ? 1 : 0;
+  const summary = printSummary(changedFiles, scope, results);
+  process.exitCode = summary.hasFailed ? 1 : 0;
 }
 
 if (!directoryExists('.git')) {

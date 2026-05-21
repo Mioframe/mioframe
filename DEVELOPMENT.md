@@ -245,7 +245,7 @@ Use Storybook as the preferred visual harness:
 - avoid business logic, storage orchestration, stores, and network behavior in stories;
 - use locator screenshots instead of full-page screenshots whenever possible;
 - do not use Storybook as an e2e runner.
-- accept or update baselines only from stable Linux/Chromium rendering such as CI or a pinned Playwright Docker image, and treat local non-CI diffs as advisory/debugging only;
+- accept or update baselines only from stable Linux/Chromium container flow such as CI or a pinned Playwright image through Podman, and treat local non-CI diffs as advisory/debugging only;
 - do not update baselines from headed mode, do not hide ordinary text, and do not raise screenshot thresholds just to suppress text anti-aliasing noise;
 - keep typography/text-rendering assertions explicit and separate when a test intentionally needs them.
 
@@ -274,16 +274,16 @@ Legacy playground status:
 - Do not add new visual regression surfaces to the product playground.
 - Migrate useful legacy playground examples to Storybook gradually.
 
-Focused visual run:
+Focused visual run in the canonical Podman environment:
 
 ```bash
-pnpm exec playwright test --config playwright.visual.config.ts tests/e2e/visual/<surface>.spec.ts
+pnpm test:visual -- tests/e2e/visual/<surface>.spec.ts
 ```
 
-Update snapshots only after confirming the visual change is intentional:
+Update snapshots only after confirming the visual change is intentional. Baselines must be generated only through the canonical Podman environment:
 
 ```bash
-pnpm exec playwright test --config playwright.visual.config.ts tests/e2e/visual/<surface>.spec.ts --update-snapshots
+pnpm test:visual:update -- tests/e2e/visual/<surface>.spec.ts
 ```
 
 ### Mutation Testing (StrykerJS)
@@ -403,26 +403,26 @@ pnpm preview
 
 ### Command Reference
 
-| Command                   | Description                  |
-| ------------------------- | ---------------------------- |
-| `pnpm dev`                | Start development server     |
-| `pnpm build`              | Production build             |
-| `pnpm preview`            | Preview production build     |
-| `pnpm verify`             | Final read-only verification |
-| `pnpm verify:fix`         | Automatic fix verification   |
-| `pnpm test`               | Vitest watch mode            |
-| `pnpm test:run`           | Single-run Vitest tests      |
-| `pnpm test:coverage`      | Coverage diagnostics         |
-| `pnpm test:mutate`        | Mutation testing             |
-| `pnpm storybook`          | Storybook dev server         |
-| `pnpm storybook:build`    | Build Storybook              |
-| `pnpm test:visual`        | Visual regression tests      |
-| `pnpm test:visual:update` | Update visual snapshots      |
-| `pnpm e2e`                | E2E tests                    |
-| `pnpm e2e:ui`             | E2E with UI runner           |
-| `pnpm lint`               | Full lint pipeline           |
-| `pnpm format`             | Format all files             |
-| `pnpm type-check`         | TypeScript type checking     |
+| Command                   | Description                                                 |
+| ------------------------- | ----------------------------------------------------------- |
+| `pnpm dev`                | Start development server                                    |
+| `pnpm build`              | Production build                                            |
+| `pnpm preview`            | Preview production build                                    |
+| `pnpm verify`             | Final read-only verification                                |
+| `pnpm verify:fix`         | Automatic fix verification                                  |
+| `pnpm test`               | Vitest watch mode                                           |
+| `pnpm test:run`           | Single-run Vitest tests                                     |
+| `pnpm test:coverage`      | Coverage diagnostics                                        |
+| `pnpm test:mutate`        | Mutation testing                                            |
+| `pnpm storybook`          | Storybook dev server                                        |
+| `pnpm storybook:build`    | Build Storybook                                             |
+| `pnpm test:visual`        | Visual regression tests in the canonical Podman environment |
+| `pnpm test:visual:update` | Update visual snapshots in the canonical Podman environment |
+| `pnpm e2e`                | E2E tests                                                   |
+| `pnpm e2e:ui`             | E2E with UI runner                                          |
+| `pnpm lint`               | Full lint pipeline                                          |
+| `pnpm format`             | Format all files                                            |
+| `pnpm type-check`         | TypeScript type checking                                    |
 
 ### Configuration Files
 
