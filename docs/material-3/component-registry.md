@@ -6,19 +6,15 @@ The shared UI kit must be tracked as a registry that maps official Material 3 su
 
 Do not migrate components only by local inspection. Use the registry to keep the UI kit coherent and to avoid duplicating or partially reimplementing the same Material surface in multiple places.
 
-## Registry table
+## Registry template
 
-Maintain the registry as the source of planning truth for Material component conversion.
+The foundation audit must create or expand the actual registry. Do not fill registry rows with guessed statuses.
+
+Use this table shape:
 
 | Material surface | Project component | Status | Material docs | Tokens | API | Storybook | Visual tests | Deviations |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| Buttons | `MDButton` | partial | `components/buttons/*` | partial | partial | missing/partial | missing/partial | TBD |
-| Icon buttons | `MDIconButton` | partial | `components/icon-buttons/*` | partial | partial | missing/partial | missing/partial | TBD |
-| FAB | `MDFab` | partial | `components/floating-action-button/*` | partial | partial | partial | partial | TBD |
-| Lists | `MDList`, `MDListItem` | partial | `components/lists/*` | partial | partial | missing | missing | TBD |
-| Dialogs | `MDDialog` | partial | `components/dialogs/*` | partial | partial | missing | missing | TBD |
-
-This initial table is intentionally incomplete. The foundation audit must expand it before broad component conversion.
+| `<official surface>` | `<project component>` | `<status>` | `<checked pages>` | `<status/details>` | `<status/details>` | `<path/status>` | `<path/status>` | `<none/link>` |
 
 ## Status values
 
