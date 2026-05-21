@@ -245,7 +245,7 @@ Use Storybook as the preferred visual harness:
 - avoid business logic, storage orchestration, stores, and network behavior in stories;
 - use locator screenshots instead of full-page screenshots whenever possible;
 - do not use Storybook as an e2e runner.
-- accept or update baselines only from stable Linux/Chromium rendering such as CI or a pinned Playwright Docker image, and treat local non-CI diffs as advisory/debugging only;
+- accept or update baselines only from stable Linux/Chromium container flow such as CI or a pinned Playwright image through Podman, and treat local non-CI diffs as advisory/debugging only;
 - do not update baselines from headed mode, do not hide ordinary text, and do not raise screenshot thresholds just to suppress text anti-aliasing noise;
 - keep typography/text-rendering assertions explicit and separate when a test intentionally needs them.
 

@@ -1,12 +1,7 @@
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { release } from 'node:os';
 import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
-import playwrightPackageJson from '../node_modules/@playwright/test/package.json' with { type: 'json' };
-
-const PLAYWRIGHT_VERSION = playwrightPackageJson.version;
-const DEFAULT_IMAGE = `mcr.microsoft.com/playwright:v${PLAYWRIGHT_VERSION}-noble`;
-const VOLUME_MODE = '/work';
 const CONTAINER_WORKDIR = '/work';
 const PODMAN_USERNS_ENV = 'PLAYWRIGHT_VISUAL_PODMAN_USERNS';
 const PODMAN_IMAGE_ENV = 'PLAYWRIGHT_VISUAL_IMAGE';
@@ -53,7 +48,9 @@ if (!existsSync(localPlaywrightBin)) {
   process.exit(1);
 }
 
-const image = process.env[PODMAN_IMAGE_ENV] || DEFAULT_IMAGE;
+const image =
+  process.env[PODMAN_IMAGE_ENV] ||
+  `mcr.microsoft.com/playwright:v${getInstalledPlaywrightVersion(repositoryPath)}-noble`;
 const podmanArgs = [
   'run',
   '--rm',
@@ -66,7 +63,7 @@ const podmanArgs = [
   '--env',
   'PLAYWRIGHT_VISUAL_CONTAINER=1',
   '--volume',
-  `${repositoryPath}:${VOLUME_MODE}${getVolumeLabelSuffix()}`,
+  `${repositoryPath}:${CONTAINER_WORKDIR}${getVolumeLabelSuffix()}`,
 ];
 
 const usernsMode = process.env[PODMAN_USERNS_ENV] || 'keep-id';
@@ -104,6 +101,47 @@ if (child.signal) {
 }
 
 process.exit(child.status ?? 1);
+
+function getInstalledPlaywrightVersion(repositoryRoot) {
+  const playwrightPackageJsonPath = join(
+    repositoryRoot,
+    'node_modules',
+    '@playwright',
+    'test',
+    'package.json',
+  );
+
+  if (!existsSync(playwrightPackageJsonPath)) {
+    console.error(
+      'Installed Playwright metadata is missing at `node_modules/@playwright/test/package.json`.',
+    );
+    console.error('Run `pnpm install` before visual regression tests.');
+    process.exit(1);
+  }
+
+  let packageJson;
+
+  try {
+    packageJson = JSON.parse(readFileSync(playwrightPackageJsonPath, 'utf8'));
+  } catch (error) {
+    console.error(
+      'Installed Playwright metadata at `node_modules/@playwright/test/package.json` is invalid.',
+    );
+    console.error('Run `pnpm install` before visual regression tests.');
+    console.error(error instanceof Error ? error.message : String(error));
+    process.exit(1);
+  }
+
+  if (typeof packageJson.version !== 'string' || packageJson.version.trim() === '') {
+    console.error(
+      'Installed Playwright metadata at `node_modules/@playwright/test/package.json` is missing a valid `version`.',
+    );
+    console.error('Run `pnpm install` before visual regression tests.');
+    process.exit(1);
+  }
+
+  return packageJson.version;
+}
 
 function getVolumeLabelSuffix() {
   const configured = process.env[PODMAN_VOLUME_LABEL_ENV];
