@@ -44,12 +44,17 @@ Project-specific components may use project vocabulary, but they must not be doc
 
 When a project-specific component uses Material tokens or states, document the Material foundations it uses and the project-specific behavior it adds.
 
-## Deprecation
+## API migrations
 
-When renaming an existing public prop toward Material vocabulary:
+Do not keep old shared UI APIs only for compatibility with previous internal usage. When a Material-aligned API rename is needed, update all in-repository consumers in the same focused migration.
 
-1. introduce the Material-compatible prop;
-2. keep the old prop as a temporary compatibility alias when practical;
-3. prefer one canonical path in new code;
-4. document the migration in the component Storybook page;
-5. remove the compatibility alias in a focused cleanup after consumers migrate.
+Compatibility aliases are allowed only when an immediate full migration is technically unsafe or would make the change too broad to review. Such aliases must be documented as temporary deviations with a removal target.
+
+Preferred migration flow:
+
+1. identify the Material-compatible API;
+2. update the component implementation;
+3. update all project consumers;
+4. update Storybook and visual surfaces;
+5. remove obsolete props, emits, slots, and token names;
+6. document any remaining temporary compatibility surface as a deviation.
