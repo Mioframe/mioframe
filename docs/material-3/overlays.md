@@ -31,7 +31,7 @@ Every overlay-like surface must explicitly define:
 - scroll locking;
 - scrim usage;
 - elevation level;
-- z-index or stacking order;
+- z-index or stacking ownership;
 - teleport/container strategy;
 - nested overlay behavior;
 - accessibility name, role, and description.
@@ -42,9 +42,15 @@ Use the relevant official Material component docs before changing overlay behavi
 
 If Material guidance is incomplete for a shared overlay concern, document the project decision as a local overlay policy or deviation.
 
-## Stacking
+## Stacking ownership
 
-Stacking must be centralized enough to prevent dialogs, sheets, menus, and tooltips from competing with unrelated z-index values.
+The risk is not the absence of final numeric `z-index` values in this policy. The risk is letting dialogs, sheets, menus, tooltips, and future overlays assign unrelated local stacking values that later conflict.
+
+At this stage, the contract is ownership:
+
+- overlay stacking must be centralized enough to keep overlay surfaces ordered predictably;
+- component-local z-index values are allowed only when they reference the shared overlay stack or document why the surface is outside that stack;
+- the concrete stack scale should be defined during the overlay foundation audit, after existing overlay components and teleport targets are inspected.
 
 Do not add component-local z-index values without checking the existing overlay stack and documenting the intended layer.
 
