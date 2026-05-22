@@ -14,6 +14,17 @@ const openModel = defineModel<boolean>('open', { required: true });
 
 const scrollPositionModel = defineModel<number | undefined>('scrollPosition');
 
+const props = withDefaults(
+  defineProps<{
+    dragHandleExpandLabel?: string | undefined;
+    dragHandleCloseLabel?: string | undefined;
+  }>(),
+  {
+    dragHandleCloseLabel: 'Close sheet',
+    dragHandleExpandLabel: 'Expand sheet',
+  },
+);
+
 defineSlots<{
   default(): unknown;
 }>();
@@ -146,6 +157,7 @@ useOnBackNavigationStackedWhen(openModel, () => {
           ref="dragHandleEl"
           type="button"
           class="md-bottom-sheet__drag-handle"
+          :aria-label="openModel ? props.dragHandleCloseLabel : props.dragHandleExpandLabel"
           :class="{
             'md-state_hover': dragHandleHover,
             'md-state_focused': dragHandleFocused,

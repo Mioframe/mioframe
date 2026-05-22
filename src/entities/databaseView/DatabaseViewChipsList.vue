@@ -58,15 +58,28 @@ const isSelected = (viewId: DatabaseViewId): boolean => {
 
 <template>
   <div class="database-view-chips-list">
-    <MDChip
-      v-for="({ viewId, label }, index) in viewButtons"
-      :key="viewId"
-      :label="label"
-      :selected="isSelected(viewId)"
-      :type="type"
-      :autofocus="!index ? autofocus : undefined"
-      @click="() => onClickViewChip(viewId)"
-    />
+    <template v-if="type === 'filter'">
+      <MDChip
+        v-for="({ viewId, label }, index) in viewButtons"
+        :key="viewId"
+        :label="label"
+        :selected="isSelected(viewId)"
+        type="filter"
+        :autofocus="!index ? autofocus : undefined"
+        @click="() => onClickViewChip(viewId)"
+      />
+    </template>
+
+    <template v-else>
+      <MDChip
+        v-for="({ viewId, label }, index) in viewButtons"
+        :key="viewId"
+        :label="label"
+        :type="type"
+        :autofocus="!index ? autofocus : undefined"
+        @click="() => onClickViewChip(viewId)"
+      />
+    </template>
   </div>
 </template>
 

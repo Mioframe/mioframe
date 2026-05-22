@@ -12,6 +12,7 @@ const props = defineProps<{
   draggable?: boolean | undefined;
   autofocus?: boolean | undefined;
   disabled?: boolean | undefined;
+  closeTooltip?: string | undefined;
 }>();
 
 const emit = defineEmits<{
@@ -20,13 +21,16 @@ const emit = defineEmits<{
 }>();
 
 const slots = defineSlots<{
-  leadingIcon(): unknown;
-  trailingIcon(): unknown;
+  leadingIcon?: () => unknown;
+  trailingIcon?: () => unknown;
 }>();
 
 const chipType = computed(() => props.type);
 const isInputChip = computed(() => chipType.value === 'input');
+const isAssistChip = computed(() => chipType.value === 'assist');
+const isFilterChip = computed(() => chipType.value === 'filter');
 const selected = computed(() => Boolean(props.selected));
+const closeTooltip = computed(() => props.closeTooltip ?? 'remove');
 const actionEl = useTemplateRef<HTMLButtonElement>('actionEl');
 const dragged = ref(false);
 const { hover, focused, durationPressedState } = useStateLayer(actionEl, { dragged });
@@ -111,10 +115,10 @@ const onDragEnd = () => {
       />
 
       <span
-        v-if="!!slots.leadingIcon || (chipType === 'filter' && selected)"
+        v-if="(isFilterChip && selected) || (isAssistChip && !!slots.leadingIcon)"
         class="md-chip__leading-icon"
       >
-        <MDSymbol v-if="chipType === 'filter' && selected" name="check" />
+        <MDSymbol v-if="isFilterChip && selected" name="check" />
 
         <slot v-else name="leadingIcon" />
       </span>
@@ -125,7 +129,7 @@ const onDragEnd = () => {
     </button>
 
     <MDIconButton
-      tooltip="remove"
+      :tooltip="closeTooltip"
       md-symbol-name="close"
       size="extra-small"
       :disabled="props.disabled"
@@ -167,10 +171,10 @@ const onDragEnd = () => {
     />
 
     <span
-      v-if="!!slots.leadingIcon || (chipType === 'filter' && selected)"
+      v-if="(isFilterChip && selected) || (isAssistChip && !!slots.leadingIcon)"
       class="md-chip__leading-icon"
     >
-      <MDSymbol v-if="chipType === 'filter' && selected" name="check" />
+      <MDSymbol v-if="isFilterChip && selected" name="check" />
 
       <slot v-else name="leadingIcon" />
     </span>
@@ -179,7 +183,7 @@ const onDragEnd = () => {
       {{ props.label }}
     </span>
 
-    <span v-if="chipType === 'filter' && !!slots.trailingIcon" class="md-chip__trailing-icon">
+    <span v-if="isFilterChip && !!slots.trailingIcon" class="md-chip__trailing-icon">
       <slot name="trailingIcon" />
     </span>
   </button>

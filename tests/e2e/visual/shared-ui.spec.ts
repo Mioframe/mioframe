@@ -17,6 +17,41 @@ test('MDButton interaction states match baseline', async ({ page }) => {
   await expect(surface).toHaveScreenshot('md-button-interaction-states.png');
 });
 
+test('MDButton expanded target activates clicks outside the visible button box', async ({
+  page,
+}) => {
+  await openStory(page, 'shared-ui-mdbutton--expanded-target-hit-area');
+
+  const surface = page.locator('#visual-md-button-target-hit');
+  const button = surface.getByRole('button', { name: 'OK', exact: true });
+  const target = surface.locator('.md-button__target');
+  const count = page.locator('#visual-md-button-target-hit-count');
+  const buttonBox = await button.boundingBox();
+  const targetBox = await target.boundingBox();
+
+  expect(buttonBox).not.toBeNull();
+  expect(targetBox).not.toBeNull();
+
+  if (buttonBox == null || targetBox == null) {
+    throw new Error('Missing MDButton bounding boxes for expanded target hit test.');
+  }
+
+  const clickPoint = {
+    x: buttonBox.x + buttonBox.width / 2,
+    y: buttonBox.y - 2,
+  };
+
+  expect(clickPoint.x).toBeGreaterThan(targetBox.x);
+  expect(clickPoint.x).toBeLessThan(targetBox.x + targetBox.width);
+  expect(clickPoint.y).toBeGreaterThan(targetBox.y);
+  expect(clickPoint.y).toBeLessThan(targetBox.y + targetBox.height);
+  expect(clickPoint.y).toBeLessThan(buttonBox.y);
+
+  await page.mouse.click(clickPoint.x, clickPoint.y);
+
+  await expect(count).toHaveText('1');
+});
+
 test('MDIconButton visual states match baseline', async ({ page }) => {
   await openStory(page, 'shared-ui-mdiconbutton--visual-states');
 
@@ -193,6 +228,31 @@ test('MDIconButton keeps a 48dp target layer for extra-small and small sizes wit
   expect(buttonBoxes[0]?.width).toBe(32);
   expect(buttonBoxes[0]?.height).toBe(32);
   expect(buttonBoxes[1]?.width).toBe(40);
+  expect(buttonBoxes[1]?.height).toBe(40);
+
+  for (const box of targetBoxes) {
+    expect(box?.width).toBeGreaterThanOrEqual(48);
+    expect(box?.height).toBeGreaterThanOrEqual(48);
+  }
+});
+
+test('MDButton keeps a 48dp target layer for extra-small and small sizes without growing layout', async ({
+  page,
+}) => {
+  await openStory(page, 'shared-ui-mdbutton--target-layers');
+
+  const targetButtons = page.getByTestId('visual-md-button-targets').getByRole('button');
+  const targetLayers = page.getByTestId('visual-md-button-targets').locator('.md-button__target');
+  const buttonBoxes = await Promise.all([
+    targetButtons.nth(0).boundingBox(),
+    targetButtons.nth(1).boundingBox(),
+  ]);
+  const targetBoxes = await Promise.all([
+    targetLayers.nth(0).boundingBox(),
+    targetLayers.nth(1).boundingBox(),
+  ]);
+
+  expect(buttonBoxes[0]?.height).toBe(32);
   expect(buttonBoxes[1]?.height).toBe(40);
 
   for (const box of targetBoxes) {

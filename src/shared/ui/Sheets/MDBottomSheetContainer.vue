@@ -14,8 +14,15 @@ const props = withDefaults(
     width?: number | undefined;
     collapsed?: boolean | undefined;
     type?: 'standard' | 'modal' | undefined;
+    dragHandleExpandLabel?: string | undefined;
+    dragHandleCollapseLabel?: string | undefined;
   }>(),
-  { collapsed: undefined, type: 'standard' },
+  {
+    collapsed: undefined,
+    dragHandleCollapseLabel: 'Collapse sheet',
+    dragHandleExpandLabel: 'Expand sheet',
+    type: 'standard',
+  },
 );
 
 const emit = defineEmits<{
@@ -148,7 +155,7 @@ tryOnBeforeUnmount(() => {
         ref="dragHandleEl"
         type="button"
         class="md-bottom-sheet-container__drag-handle"
-        :aria-label="collapsedState ? undefined : 'close sheet'"
+        :aria-label="collapsedState ? props.dragHandleExpandLabel : props.dragHandleCollapseLabel"
         :class="{
           'md-state_hover': dragHandleHover,
           'md-state_focused': dragHandleFocused,

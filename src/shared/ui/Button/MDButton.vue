@@ -68,6 +68,8 @@ useRipple(computed(() => (props.disabled ? undefined : buttonEl.value)));
     ]"
     @click.stop="onButtonClick"
   >
+    <span class="md-button__target" aria-hidden="true" />
+
     <MDStateLayer
       :hover="hover"
       :focused="focused"
@@ -104,6 +106,7 @@ useRipple(computed(() => (props.disabled ? undefined : buttonEl.value)));
   --md-button-border-style: solid;
   --md-button-border-color: transparent;
   --md-button-box-sizing: border-box;
+  --md-button-target-size: var(--md-button-height);
   --md-button-disabled-container-color: transparent;
   --md-button-disabled-content-color: rgb(from var(--md-sys-color-on-surface) r g b / 0.38);
   --md-button-disabled-border-color: transparent;
@@ -132,9 +135,23 @@ useRipple(computed(() => (props.disabled ? undefined : buttonEl.value)));
   transition-duration: var(--md-sys-motion-duration-short4, 0.2s);
   -webkit-tap-highlight-color: transparent;
 
+  &__target {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    z-index: 0;
+    display: block;
+    width: var(--md-button-target-size);
+    height: var(--md-button-target-size);
+    min-width: var(--md-button-target-size);
+    min-height: var(--md-button-target-size);
+    transform: translate(-50%, -50%);
+    background: transparent;
+  }
+
   &__content {
     position: relative;
-    z-index: 1;
+    z-index: 2;
     display: flex;
     justify-content: center;
     align-items: center;
@@ -170,6 +187,7 @@ useRipple(computed(() => (props.disabled ? undefined : buttonEl.value)));
 
   &__progress-indicator {
     position: absolute;
+    z-index: 2;
     width: 24px;
     height: 24px;
     --md-circular-progress-color: var(--md-content-color);
@@ -362,6 +380,7 @@ useRipple(computed(() => (props.disabled ? undefined : buttonEl.value)));
       --md-button-height: 32px;
       --md-button-padding: 12px;
       --md-button-icon-gap: 4px;
+      --md-button-target-size: 48dp;
 
       &.md-button_shape-square {
         --md-button-border-radius: 12px;
@@ -377,6 +396,7 @@ useRipple(computed(() => (props.disabled ? undefined : buttonEl.value)));
       --md-button-height: 40px;
       --md-button-padding: 16px;
       --md-button-icon-gap: 8px;
+      --md-button-target-size: 48dp;
 
       &.md-button_shape-square {
         --md-button-border-radius: 12px;

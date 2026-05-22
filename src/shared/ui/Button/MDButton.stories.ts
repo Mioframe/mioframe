@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/vue3-vite';
 import MDButton from './MDButton.vue';
+import MDButtonTargetHitVisualStory from './MDButtonTargetHitVisualStory.vue';
 
 const meta = {
   title: 'shared/ui/MDButton',
@@ -64,6 +65,27 @@ export const VisualInteractionStates: Story = {
           <MDButton class="md-state_hover" label="Outlined hover" color="outlined" />
           <MDButton class="md-state_focused" label="Outlined focus" color="outlined" />
           <MDButton class="md-state_pressed" label="Outlined pressed" color="outlined" />
+        </div>
+      </div>
+    `,
+  }),
+};
+
+export const ExpandedTargetHitArea: Story = {
+  render: () => ({
+    components: { MDButtonTargetHitVisualStory },
+    template: '<MDButtonTargetHitVisualStory />',
+  }),
+};
+
+export const TargetLayers: Story = {
+  render: () => ({
+    components: { MDButton },
+    template: `
+      <div data-testid="visual-md-button-targets" class="visual-surface">
+        <div class="visual-row">
+          <MDButton label="XS target" size="extra-small" />
+          <MDButton label="S target" size="small" />
         </div>
       </div>
     `,

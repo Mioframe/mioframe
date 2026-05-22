@@ -29,6 +29,17 @@ describe('MDButton', () => {
     expect(button.findAll('span').length).toBeGreaterThan(0);
   });
 
+  it('renders a non-layout target layer as a direct child of the native button', () => {
+    const wrapper = mountButton({ size: 'extra-small' });
+    const button = wrapper.get('button');
+    const directChildren = Array.from(button.element.children);
+    const target = button.get('.md-button__target');
+
+    expect(target.attributes('aria-hidden')).toBe('true');
+    expect(directChildren[0]).toBe(target.element);
+    expect(directChildren.every((child) => child.tagName === 'SPAN')).toBe(true);
+  });
+
   it('treats loading=0 as an active loading state', () => {
     const wrapper = mountButton({
       loading: 0,

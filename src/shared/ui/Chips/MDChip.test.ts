@@ -80,6 +80,22 @@ describe('MDChip', () => {
     expect(wrapper.emitted('click')).toBeUndefined();
   });
 
+  it('uses a configurable accessible label for the input chip close button', () => {
+    const wrapper = mountChip({ closeTooltip: 'Remove filter chip' });
+    const buttons = wrapper.findAll('button');
+    const closeButton = buttons[1];
+
+    expect(closeButton?.attributes('aria-label')).toBe('Remove filter chip');
+  });
+
+  it('keeps the default close button label for backward compatibility', () => {
+    const wrapper = mountChip();
+    const buttons = wrapper.findAll('button');
+    const closeButton = buttons[1];
+
+    expect(closeButton?.attributes('aria-label')).toBe('remove');
+  });
+
   it('focuses the host button when autofocus is enabled', async () => {
     const focusSpy = vi.spyOn(HTMLButtonElement.prototype, 'focus');
     const wrapper = mountChip({ autofocus: true, type: 'assist' });
