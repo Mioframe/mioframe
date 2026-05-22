@@ -7,7 +7,7 @@ import {
   PlaygroundUnion,
 } from '@shared/lib/playground';
 import { useQueryValue } from '@shared/lib/useQueryState';
-import MDChip from './MDChip.vue';
+import { MDAssistChip, MDFilterChip, MDInputChip } from './index';
 import { MDSymbol } from '../Icon';
 
 type State = {
@@ -48,30 +48,24 @@ const state = useQueryValue<State>('state', {
     </template>
 
     <template #space>
-      <MDChip
-        v-if="state.type === 'assist'"
-        :elevated="state.elevated"
-        :label="state.label"
-        :type="state.type"
-      >
+      <MDAssistChip v-if="state.type === 'assist'" :elevated="state.elevated" :label="state.label">
         <template v-if="state.leadingIcon" #leadingIcon>
           <MDSymbol name="broken_image" />
         </template>
-      </MDChip>
+      </MDAssistChip>
 
-      <MDChip
+      <MDFilterChip
         v-else-if="state.type === 'filter'"
         :elevated="state.elevated"
         :label="state.label"
         :selected="state.selected"
-        :type="state.type"
       >
         <template v-if="state.trailingIcon" #trailingIcon>
           <MDSymbol name="broken_image" />
         </template>
-      </MDChip>
+      </MDFilterChip>
 
-      <MDChip v-else :elevated="state.elevated" :label="state.label" :type="state.type" />
+      <MDInputChip v-else :elevated="state.elevated" :label="state.label" />
     </template>
   </PlaygroundStory>
 </template>

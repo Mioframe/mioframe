@@ -6,7 +6,6 @@ const meta = {
   title: 'shared/ui/MDChip',
   args: {
     label: 'Chip label',
-    type: 'assist',
   },
   argTypes: {
     onClick: { action: 'click' },

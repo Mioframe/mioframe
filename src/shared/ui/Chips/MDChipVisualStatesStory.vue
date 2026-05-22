@@ -1,32 +1,46 @@
 <template>
   <div id="visual-md-chip-states" class="visual-surface">
     <div class="visual-row">
-      <MDChip label="Assist" type="assist" />
-      <MDChip label="Filter" type="filter" />
-      <MDChip label="Selected filter" type="filter" selected />
+      <MDAssistChip label="Assist" />
+      <MDAssistChip label="Assist with icon">
+        <template #leadingIcon>
+          <MDSymbol name="search" />
+        </template>
+      </MDAssistChip>
+      <MDFilterChip label="Filter" />
     </div>
     <div class="visual-row">
-      <MDChip label="Input chip" type="input" />
-      <MDChip label="Elevated" type="assist" elevated />
-      <MDChip label="Suggestion" type="suggestion" />
+      <MDFilterChip label="Selected filter" selected />
+      <MDFilterChip label="Trailing icon">
+        <template #trailingIcon>
+          <MDSymbol name="arrow_drop_down" />
+        </template>
+      </MDFilterChip>
+      <MDInputChip label="Input chip" />
     </div>
     <div class="visual-row">
-      <MDChip label="Disabled assist" type="assist" disabled />
-      <MDChip label="Disabled filter" type="filter" disabled />
-      <MDChip label="Disabled input chip" type="input" disabled />
+      <MDInputChip label="Custom close label" close-tooltip="Remove input chip" />
+      <MDAssistChip label="Elevated" elevated />
+      <MDSuggestionChip label="Suggestion" />
     </div>
     <div class="visual-row">
-      <MDChip label="Disabled suggestion" type="suggestion" disabled />
-      <MDChip label="Disabled selected filter" type="filter" selected disabled />
-      <MDChip label="Disabled elevated assist" type="assist" elevated disabled />
+      <MDAssistChip label="Disabled assist" disabled />
+      <MDFilterChip label="Disabled filter" disabled />
+      <MDInputChip label="Disabled input chip" disabled />
     </div>
     <div id="visual-md-chip-targets" class="visual-row">
-      <MDChip label="Close target" type="input" />
-      <MDChip label="Disabled close target" type="input" disabled />
+      <MDSuggestionChip label="Disabled suggestion" disabled />
+      <MDFilterChip label="Disabled selected filter" selected disabled />
+      <MDAssistChip label="Disabled elevated assist" elevated disabled />
+    </div>
+    <div class="visual-row">
+      <MDInputChip label="Close target" />
+      <MDInputChip label="Disabled close target" disabled />
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import MDChip from './MDChip.vue';
+import { MDSymbol } from '../Icon';
+import { MDAssistChip, MDFilterChip, MDInputChip, MDSuggestionChip } from './index';
 </script>

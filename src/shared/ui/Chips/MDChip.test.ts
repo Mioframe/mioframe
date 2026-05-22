@@ -1,14 +1,14 @@
 import { mount } from '@vue/test-utils';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { nextTick } from 'vue';
-import MDChip from './MDChip.vue';
+import MDAssistChip from './MDAssistChip.vue';
+import MDInputChip from './MDInputChip.vue';
 
-const mountChip = (props: Record<string, unknown> = {}) =>
-  mount(MDChip, {
+const mountInputChip = (props: Record<string, unknown> = {}) =>
+  mount(MDInputChip, {
     attachTo: document.body,
     props: {
       label: 'Filter value',
-      type: 'input',
       ...props,
     },
     global: {
@@ -32,7 +32,7 @@ describe('MDChip', () => {
   });
 
   it('renders input chips as two sibling buttons without nested buttons or divs', () => {
-    const wrapper = mountChip();
+    const wrapper = mountInputChip();
 
     const buttons = wrapper.findAll('button');
 
@@ -44,7 +44,7 @@ describe('MDChip', () => {
   });
 
   it('emits close clicks without triggering the chip click event', async () => {
-    const wrapper = mountChip();
+    const wrapper = mountInputChip();
 
     await wrapper.get('.md-chip__action').trigger('click');
     expect(wrapper.emitted('click')).toHaveLength(1);
@@ -56,7 +56,13 @@ describe('MDChip', () => {
   });
 
   it('does not emit chip clicks when disabled', async () => {
-    const wrapper = mountChip({ disabled: true, type: 'assist' });
+    const wrapper = mount(MDAssistChip, {
+      attachTo: document.body,
+      props: {
+        disabled: true,
+        label: 'Assist value',
+      },
+    });
 
     await wrapper.get('button').trigger('click');
 
@@ -65,7 +71,7 @@ describe('MDChip', () => {
   });
 
   it('does not emit input chip close clicks when disabled', async () => {
-    const wrapper = mountChip({ disabled: true });
+    const wrapper = mountInputChip({ disabled: true });
 
     const buttons = wrapper.findAll('button');
     expect(buttons).toHaveLength(2);
@@ -81,7 +87,7 @@ describe('MDChip', () => {
   });
 
   it('uses a configurable accessible label for the input chip close button', () => {
-    const wrapper = mountChip({ closeTooltip: 'Remove filter chip' });
+    const wrapper = mountInputChip({ closeTooltip: 'Remove filter chip' });
     const buttons = wrapper.findAll('button');
     const closeButton = buttons[1];
 
@@ -89,7 +95,7 @@ describe('MDChip', () => {
   });
 
   it('keeps the default close button label for backward compatibility', () => {
-    const wrapper = mountChip();
+    const wrapper = mountInputChip();
     const buttons = wrapper.findAll('button');
     const closeButton = buttons[1];
 
@@ -98,7 +104,20 @@ describe('MDChip', () => {
 
   it('focuses the host button when autofocus is enabled', async () => {
     const focusSpy = vi.spyOn(HTMLButtonElement.prototype, 'focus');
-    const wrapper = mountChip({ autofocus: true, type: 'assist' });
+    const wrapper = mount(MDAssistChip, {
+      attachTo: document.body,
+      props: {
+        autofocus: true,
+        label: 'Assist value',
+      },
+      global: {
+        stubs: {
+          MDSymbol: {
+            template: '<span class="md-symbol-stub" />',
+          },
+        },
+      },
+    });
     await nextTick();
 
     expect(focusSpy).toHaveBeenCalled();

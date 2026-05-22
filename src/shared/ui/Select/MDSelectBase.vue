@@ -4,7 +4,7 @@ import { onKeyStroke, useFocusWithin, type MaybeElement } from '@vueuse/core';
 import { MDMenuBase } from '../Menu';
 import { MDSymbol } from '../Icon';
 import { MDFieldContainer } from '../TextField';
-import { MDChip } from '../Chips';
+import { MDInputChip } from '../Chips';
 import { toString } from 'es-toolkit/compat';
 import { sessionUniqueId } from '@shared/lib/uniqueId';
 import { useSelectOptions } from './provideOptions';
@@ -128,11 +128,10 @@ const selectId = sessionUniqueId('select');
         <div class="md-select__value-container md-focus-indicator_hidden" tabindex="0">
           <slot name="valueContainer">
             <template v-if="multiple">
-              <MDChip
+              <MDInputChip
                 v-for="value in modelValue"
                 :key="valueToString(value)"
                 :label="valueToString(value)"
-                type="input"
                 @click="() => onClickValue(value)"
                 @click-close="() => onClickValue(value)"
               />

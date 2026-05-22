@@ -42,7 +42,7 @@ watch(
   [actionEl, () => props.autofocus, () => props.disabled],
   ([element, autofocus, disabled]) => {
     // The chip host owns autofocus because DatabaseViewChipsList focuses the
-    // first rendered MDChip action when a database view selector opens.
+    // first rendered chip action when a database view selector opens.
     if (autofocus && element && !disabled) {
       element.focus();
     }
@@ -259,94 +259,56 @@ const onDragEnd = () => {
         height: 100%;
         --md-symbol-size: 18dp;
       }
-
-      .md-icon-button {
-        --md-icon-button-icon-size: 18dp;
-        --md-icon-button-padding: 0px;
-      }
     }
-
-    .md-chip_disabled &,
-    .md-chip:disabled & {
-      --md-content-color: rgb(from var(--md-sys-color-on-surface) r g b / 0.38);
-    }
-  }
-
-  &__close-btn {
-    margin-right: 0;
-    margin-left: 0;
-    flex-shrink: 0;
-    --md-icon-button-target-size: 48dp;
-  }
-
-  &__leading-icon {
-    margin-left: -8px;
   }
 
   &__trailing-icon {
     margin-left: 8px;
-    margin-right: -8px;
+  }
+
+  &__close-btn {
+    border-top-left-radius: 0;
+    border-bottom-left-radius: 0;
+    flex-shrink: 0;
+    --md-icon-button-icon-color: inherit;
+    --md-state-layer-shape: inherit;
   }
 
   &_input-shell {
-    padding: 0;
-    gap: 0;
+    padding-right: 0;
   }
 
-  &_elevated {
-    z-index: 1;
-    --md-state-box-shadow: var(--md-sys-elevation-level1);
-    --md-container-color: var(--md-sys-color-surface-container-low);
+  &_assist {
+    --md-container-color: var(--md-sys-color-surface);
 
-    &.md-chip_disabled,
-    &:disabled {
-      --md-state-box-shadow: var(--md-sys-elevation-level0);
-      --md-container-color: rgb(from var(--md-sys-color-on-surface) r g b / 0.12);
-    }
-
-    &:hover {
-      --md-state-box-shadow: var(--md-sys-elevation-level2);
+    &.md-chip_elevated {
+      border-color: transparent;
+      box-shadow: var(--md-sys-elevation-level1);
     }
   }
 
   &_filter {
+    --md-container-color: var(--md-sys-color-surface);
+
     &.md-chip_selected {
-      --md-content-color: var(--md-sys-color-on-secondary-container);
       --md-container-color: var(--md-sys-color-secondary-container);
-      border-color: var(--md-sys-color-secondary-container);
-      border-width: 0;
-    }
-
-    &.md-chip_elevated {
-      --md-container-color: var(--md-sys-color-surface-container-low);
-
-      &.md-chip_selected {
-        --md-container-color: var(--md-sys-color-secondary-container);
-      }
+      --md-content-color: var(--md-sys-color-on-secondary-container);
+      border-color: transparent;
     }
   }
 
-  &_assist {
-    .md-chip__leading-icon,
-    .md-chip__trailing-icon {
-      --md-content-color: var(--md-sys-color-primary);
-    }
+  &_input {
+    --md-container-color: var(--md-sys-color-surface);
   }
 
   &_suggestion {
-    --md-content-color: var(--md-sys-color-on-surface-variant);
+    --md-container-color: var(--md-sys-color-surface-container-low);
+    border-color: transparent;
   }
 
-  &.md-state_hover {
-    --md-content-color: var(--md-sys-color-on-surface);
-  }
-
-  &_disabled,
-  &:disabled {
-    --md-content-color: rgb(from var(--md-sys-color-on-surface) r g b / 0.38);
-    pointer-events: none;
-    border-color: rgb(from var(--md-sys-color-on-surface) r g b / 0.12);
-    --md-state-box-shadow: var(--md-sys-elevation-level0);
+  &_disabled {
+    cursor: default;
+    opacity: 0.38;
   }
 }
 </style>
