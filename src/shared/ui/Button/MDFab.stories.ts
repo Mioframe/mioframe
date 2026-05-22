@@ -39,14 +39,14 @@ const fabStatesTemplate = `
 const fabInteractionStatesTemplate = `
   <div data-testid="visual-md-fab-interaction-states" class="visual-surface">
     <div class="visual-row">
-      <MDFab tooltip="Primary hover target" color="primary" md-symbol="add" />
+      <MDFab class="md-state_hover" tooltip="Primary hover" color="primary" md-symbol="add" />
       <MDFab tooltip="Secondary" color="secondary" md-symbol="edit" />
       <MDFab tooltip="Tonal" color="tonal-primary" md-symbol="check" />
     </div>
     <div class="visual-row">
       <MDFab tooltip="Medium" size="medium" md-symbol="star" />
-      <MDFab tooltip="Focus target" size="large" color="tertiary" md-symbol="share" />
-      <MDFab tooltip="Tonal secondary" color="tonal-secondary" md-symbol="menu" />
+      <MDFab class="md-state_focused" tooltip="Focus" size="large" color="tertiary" md-symbol="share" />
+      <MDFab class="md-state_pressed" tooltip="Pressed" color="tonal-secondary" md-symbol="menu" />
     </div>
   </div>
 `;

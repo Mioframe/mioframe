@@ -1,8 +1,9 @@
 <script setup lang="ts">
+import { computed, useTemplateRef } from 'vue';
 import { MDCircularProgressIndicator } from '../ProgressIndicators';
 import { MDPlainTooltip, MDRichTooltip } from '../Tooltips';
 import { MDSymbol } from '../Icon';
-import { MDState } from '../State';
+import { MDStateLayer, useRipple, useStateLayer } from '../State';
 
 const {
   color = 'standard',
@@ -30,14 +31,10 @@ const {
   mdSymbolName?: string | undefined;
   type?: 'default' | 'toggle' | undefined;
   selected?: boolean | undefined;
-  /**
-   * @default 'small'
-   */
+  /** Defaults to `small`. */
   size?: 'extra-small' | 'small' | 'medium' | 'large' | 'extra-large' | undefined;
   width?: 'narrow' | 'default' | 'wide' | undefined;
-  /**
-   * @default 'round'
-   */
+  /** Defaults to `round`. */
   shape?: 'round' | 'square' | undefined;
 }>();
 
@@ -54,11 +51,17 @@ const onClick = (e: MouseEvent) => {
   e.stopPropagation();
   emit('click', e);
 };
+
+const buttonEl = useTemplateRef<HTMLButtonElement>('buttonEl');
+const { hover, focused: focusVisible, durationPressedState } = useStateLayer(buttonEl);
+const showVisualState = computed(() => !disabled);
+
+useRipple(computed(() => (disabled ? undefined : buttonEl.value)));
 </script>
 
 <template>
-  <MDState
-    is="button"
+  <button
+    ref="buttonEl"
     :disabled="disabled"
     :type="formAction ?? 'button'"
     class="md-icon-button"
@@ -72,12 +75,25 @@ const onClick = (e: MouseEvent) => {
         'md-icon-button_selected': selected,
         'md-icon-button_pressed': pressed,
         'md-icon-button_focused': focused,
-        'md-icon-button_loading': loading,
+        'md-icon-button_loading': loading !== undefined && loading !== false,
+        'md-state_hover': showVisualState && hover,
+        'md-state_focused': showVisualState && focusVisible,
+        'md-state_pressed': showVisualState && durationPressedState,
+        'md-state_disabled': disabled,
       },
     ]"
     :aria-label="tooltip"
     @click="onClick"
   >
+    <span class="md-icon-button__target" aria-hidden="true" />
+
+    <MDStateLayer
+      :hover="hover"
+      :focused="focusVisible"
+      :pressed="durationPressedState"
+      :disabled="disabled"
+    />
+
     <span class="md-icon-button__icon">
       <slot name="icon">
         <MDSymbol v-if="mdSymbolName" :name="mdSymbolName" />
@@ -85,7 +101,7 @@ const onClick = (e: MouseEvent) => {
     </span>
 
     <MDCircularProgressIndicator
-      v-if="loading"
+      v-if="loading !== undefined && loading !== false"
       class="md-icon-button__progress-indicator"
       :progress="loading === true ? 0 : loading"
     />
@@ -102,7 +118,7 @@ const onClick = (e: MouseEvent) => {
     </MDRichTooltip>
 
     <MDPlainTooltip v-else :text="tooltip" />
-  </MDState>
+  </button>
 </template>
 
 <style scoped>
@@ -112,27 +128,45 @@ const onClick = (e: MouseEvent) => {
   --md-icon-button-icon-size: 24px;
   --md-icon-button-border-width: 0px;
   --md-icon-button-padding: 0px;
+  --md-icon-button-target-size: var(--md-icon-button-container-height);
+  --md-icon-button-disabled-content-color: rgb(from var(--md-sys-color-on-surface) r g b / 0.38);
+  --md-icon-button-disabled-container-color: transparent;
+  --md-icon-button-disabled-border-color: transparent;
 
-  --md-state-display: inline-flex;
-  --md-state-align-items: center;
-  --md-state-justify-content: center;
-  --md-state-border: 0;
-  --md-state-border-width: var(--md-icon-button-border-width);
-  --md-state-box-sizing: content-box;
-  --md-state-height: calc(
-    var(--md-icon-button-container-height) - (var(--md-icon-button-border-width) * 2)
-  );
-  --md-state-padding-top: 0;
-  --md-state-padding-bottom: 0;
-  --md-state-padding-left: calc(var(--md-icon-button-padding) - var(--md-icon-button-border-width));
-  --md-state-padding-right: calc(
-    var(--md-icon-button-padding) - var(--md-icon-button-border-width)
-  );
-  --md-state-border-radius: var(--md-icon-button-container-shape);
+  position: relative;
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  height: calc(var(--md-icon-button-container-height) - (var(--md-icon-button-border-width) * 2));
+  padding: 0 calc(var(--md-icon-button-padding) - var(--md-icon-button-border-width));
+  border-radius: var(--md-icon-button-container-shape);
+  border: var(--md-icon-button-border-width) solid transparent;
+  box-sizing: content-box;
+  background: var(--md-container-color, transparent);
+  color: var(--md-content-color, inherit);
   vertical-align: middle;
   user-select: none;
+  transition-property: color, background-color, border-color, border-radius;
+  transition-duration: var(--md-sys-motion-duration-short4, 0.2s);
+  -webkit-tap-highlight-color: transparent;
+
+  &__target {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    z-index: 0;
+    display: block;
+    width: var(--md-icon-button-target-size);
+    height: var(--md-icon-button-target-size);
+    min-width: var(--md-icon-button-target-size);
+    min-height: var(--md-icon-button-target-size);
+    transform: translate(-50%, -50%);
+    background: transparent;
+  }
 
   &__icon {
+    position: relative;
+    z-index: 2;
     display: inline-flex;
     justify-content: center;
     align-items: center;
@@ -151,6 +185,7 @@ const onClick = (e: MouseEvent) => {
 
   &__progress-indicator {
     position: absolute;
+    z-index: 2;
     width: var(--md-icon-button-icon-size, 1lh);
     height: var(--md-icon-button-icon-size, 1lh);
   }
@@ -171,6 +206,13 @@ const onClick = (e: MouseEvent) => {
         --md-symbol-fill: 1;
       }
     }
+
+    &.md-state_disabled,
+    &:disabled {
+      --md-container-color: rgb(from var(--md-sys-color-on-surface) r g b / 0.12);
+      --md-content-color: var(--md-icon-button-disabled-content-color);
+      --md-symbol-fill: 0;
+    }
   }
 
   &_color-tonal {
@@ -189,28 +231,43 @@ const onClick = (e: MouseEvent) => {
         --md-symbol-fill: 1;
       }
     }
+
+    &.md-state_disabled,
+    &:disabled {
+      --md-container-color: rgb(from var(--md-sys-color-on-surface) r g b / 0.12);
+      --md-content-color: var(--md-icon-button-disabled-content-color);
+      --md-symbol-fill: 0;
+    }
   }
 
   &_color-outlined {
-    --md-state-border-style: solid;
-    --md-state-border-color: var(--md-sys-color-outline);
+    border-style: solid;
+    border-color: var(--md-sys-color-outline);
     --md-icon-button-border-width: 1px;
     --md-container-color: transparent;
     --md-content-color: var(--md-sys-color-on-surface-variant);
     --md-symbol-fill: 1;
 
     &.md-icon-button_type-toggle {
-      --md-state-border-color: var(--md-sys-color-outline);
+      border-color: var(--md-sys-color-outline);
       --md-container-color: transparent;
       --md-content-color: var(--md-sys-color-on-surface-variant);
       --md-symbol-fill: 0;
 
       &.md-icon-button_selected {
-        --md-state-border-color: var(--md-container-color);
+        border-color: var(--md-container-color);
         --md-container-color: var(--md-sys-color-inverse-surface);
         --md-content-color: var(--md-sys-color-inverse-on-surface);
         --md-symbol-fill: 1;
       }
+    }
+
+    &.md-state_disabled,
+    &:disabled {
+      border-color: rgb(from var(--md-sys-color-on-surface) r g b / 0.12);
+      --md-container-color: transparent;
+      --md-content-color: var(--md-icon-button-disabled-content-color);
+      --md-symbol-fill: 0;
     }
   }
 
@@ -230,12 +287,20 @@ const onClick = (e: MouseEvent) => {
         --md-symbol-fill: 1;
       }
     }
+
+    &.md-state_disabled,
+    &:disabled {
+      --md-container-color: transparent;
+      --md-content-color: var(--md-icon-button-disabled-content-color);
+      --md-symbol-fill: 0;
+    }
   }
 
   &_size {
     &-extra-small {
       --md-icon-button-container-height: 32dp;
       --md-icon-button-icon-size: 20dp;
+      --md-icon-button-target-size: 48dp;
 
       &.md-icon-button_width-narrow {
         --md-icon-button-padding: 4dp;
@@ -268,6 +333,7 @@ const onClick = (e: MouseEvent) => {
     &-small {
       --md-icon-button-container-height: 40dp;
       --md-icon-button-icon-size: 24dp;
+      --md-icon-button-target-size: 48dp;
 
       &.md-icon-button_width-narrow {
         --md-icon-button-padding: 4dp;

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { MDChip } from '@shared/ui/Chips';
+import { MDInputChip } from '@shared/ui/Chips';
 import { computed, toRefs } from 'vue';
 import { OPERATOR_LABEL } from './types';
 import type { UNARY_FILTER_OPERATOR } from '@shared/lib/databaseDocument/migrations/versions/v2/view/filter';
@@ -22,5 +22,5 @@ const label = computed(
 </script>
 
 <template>
-  <MDChip class="db-simple-filter-value" type="input" :label="label" />
+  <MDInputChip class="db-simple-filter-value" :label="label" />
 </template>

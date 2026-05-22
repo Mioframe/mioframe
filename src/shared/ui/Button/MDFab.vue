@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, useTemplateRef } from 'vue';
 import { MDCircularProgressIndicator } from '../ProgressIndicators';
 import { MDPlainTooltip } from '../Tooltips';
-import { MDState } from '../State';
+import { MDStateLayer, useRipple, useStateLayer } from '../State';
 import { MDSymbol } from '../Icon';
 
 const props = withDefaults(
@@ -43,28 +43,44 @@ const onFabClick = (event: MouseEvent) => {
   event.stopPropagation();
   emit('click', event);
 };
+
+const buttonEl = useTemplateRef<HTMLButtonElement>('buttonEl');
+const { hover, focused, durationPressedState } = useStateLayer(buttonEl);
+
+useRipple(buttonEl);
 </script>
 
 <template>
-  <MDState
-    is="button"
+  <button
+    ref="buttonEl"
+    type="button"
     :aria-label="tooltip"
     class="md-fab"
-    :class="[sizeClass, typeClass]"
+    :class="[
+      sizeClass,
+      typeClass,
+      {
+        'md-state_hover': hover,
+        'md-state_focused': focused,
+        'md-state_pressed': durationPressedState,
+      },
+    ]"
     @click="onFabClick"
   >
+    <MDStateLayer :hover="hover" :focused="focused" :pressed="durationPressedState" />
+
     <span class="md-fab__icon">
       <MDCircularProgressIndicator v-if="loading" />
 
       <slot v-else name="icon">
         <MDSymbol v-if="mdSymbol" :name="mdSymbol" />
 
-        <div v-else class="empty-icon" />
+        <span v-else class="empty-icon" />
       </slot>
     </span>
 
     <MDPlainTooltip :text="tooltip" />
-  </MDState>
+  </button>
 </template>
 
 <style scoped>
@@ -75,15 +91,20 @@ const onFabClick = (event: MouseEvent) => {
   --md-container-color: var(--md-fab-container-color);
   --md-content-color: var(--md-fab-icon-color);
 
-  --md-state-display: flex;
-  --md-state-justify-content: center;
-  --md-state-align-items: center;
-  --md-state-width: var(--md-fab-container-size);
-  --md-state-height: var(--md-fab-container-size);
-  --md-state-border: 0;
-  --md-state-border-radius: var(--md-fab-container-shape);
   --md-state-box-shadow: var(--md-sys-elevation-level3);
 
+  position: relative;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: var(--md-fab-container-size);
+  height: var(--md-fab-container-size);
+  border: 0;
+  border-radius: var(--md-fab-container-shape);
+  background: var(--md-container-color);
+  color: var(--md-content-color);
+  box-shadow: var(--md-state-box-shadow);
+  -webkit-tap-highlight-color: transparent;
   &_primary {
     --md-fab-container-color: var(--md-sys-color-primary);
     --md-fab-icon-color: var(--md-sys-color-on-primary);
@@ -119,6 +140,8 @@ const onFabClick = (event: MouseEvent) => {
   }
 
   &__icon {
+    position: relative;
+    z-index: 1;
     display: inline-flex;
     width: var(--md-fab-icon-size);
     height: var(--md-fab-icon-size);

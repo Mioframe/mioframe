@@ -1,25 +1,29 @@
 <script setup lang="ts">
 import { isNumber } from 'es-toolkit/compat';
+import { computed, useTemplateRef } from 'vue';
 import { MDCircularProgressIndicator } from '../ProgressIndicators';
-import { MDState } from '../State';
+import { MDStateLayer, useRipple, useStateLayer } from '../State';
 
-const {
-  color = 'filled',
-  formAction = 'button',
-  type = 'default',
-  size = 'small',
-  shape = 'round',
-} = defineProps<{
-  formAction?: 'submit' | 'reset' | 'button' | undefined;
-  color?: 'elevated' | 'filled' | 'tonal' | 'outlined' | 'text' | undefined;
-  label: string;
-  disabled?: boolean | undefined;
-  loading?: number | boolean | undefined;
-  type?: 'default' | 'toggle' | undefined;
-  size?: 'extra-small' | 'small' | 'medium' | 'large' | 'extra-large' | undefined;
-  shape?: 'round' | 'square' | undefined;
-  selected?: boolean | undefined;
-}>();
+const props = withDefaults(
+  defineProps<{
+    formAction?: 'submit' | 'reset' | 'button' | undefined;
+    color?: 'elevated' | 'filled' | 'tonal' | 'outlined' | 'text' | undefined;
+    label: string;
+    disabled?: boolean | undefined;
+    loading?: number | boolean | undefined;
+    type?: 'default' | 'toggle' | undefined;
+    size?: 'extra-small' | 'small' | 'medium' | 'large' | 'extra-large' | undefined;
+    shape?: 'round' | 'square' | undefined;
+    selected?: boolean | undefined;
+  }>(),
+  {
+    color: 'filled',
+    formAction: 'button',
+    type: 'default',
+    size: 'small',
+    shape: 'round',
+  },
+);
 
 const emit = defineEmits<{
   click: [event: MouseEvent];
@@ -32,42 +36,61 @@ const slots = defineSlots<{
 const onButtonClick = (event: MouseEvent) => {
   emit('click', event);
 };
+
+const buttonEl = useTemplateRef<HTMLButtonElement>('buttonEl');
+const { hover, focused, durationPressedState } = useStateLayer(buttonEl);
+const showVisualState = computed(() => !props.disabled);
+
+useRipple(computed(() => (props.disabled ? undefined : buttonEl.value)));
 </script>
 
 <template>
-  <MDState
-    is="button"
-    :aria-label="label"
-    :disabled="disabled"
-    :type="formAction"
+  <button
+    ref="buttonEl"
+    :aria-label="props.label"
+    :disabled="props.disabled"
+    :type="props.formAction"
     class="md-button"
     :class="[
-      `md-button_color-${color}`,
-      `md-button_type-${type}`,
-      `md-button_size-${size}`,
-      `md-button_shape-${shape}`,
+      `md-button_color-${props.color}`,
+      `md-button_type-${props.type}`,
+      `md-button_size-${props.size}`,
+      `md-button_shape-${props.shape}`,
       {
         'md-button_icon': !!$slots.icon,
-        'md-button_loading': loading,
-        'md-button_selected': selected,
+        'md-button_loading': props.loading !== undefined && props.loading !== false,
+        'md-button_selected': props.selected,
+        'md-state_hover': showVisualState && hover,
+        'md-state_focused': showVisualState && focused,
+        'md-state_pressed': showVisualState && durationPressedState,
+        'md-state_disabled': props.disabled,
       },
     ]"
     @click.stop="onButtonClick"
   >
-    <div class="md-button__content">
+    <span class="md-button__target" aria-hidden="true" />
+
+    <MDStateLayer
+      :hover="hover"
+      :focused="focused"
+      :pressed="durationPressedState"
+      :disabled="props.disabled"
+    />
+
+    <span class="md-button__content">
       <span v-if="!!slots.icon" class="md-button__icon">
         <slot name="icon" />
       </span>
 
-      <span v-if="label" class="md-button__label-text">{{ label }}</span>
+      <span v-if="props.label" class="md-button__label-text">{{ props.label }}</span>
 
       <MDCircularProgressIndicator
-        v-if="loading"
+        v-if="props.loading !== undefined && props.loading !== false"
         class="md-button__progress-indicator"
-        :progress="isNumber(loading) ? loading : undefined"
+        :progress="isNumber(props.loading) ? props.loading : undefined"
       />
-    </div>
-  </MDState>
+    </span>
+  </button>
 </template>
 
 <style scoped>
@@ -76,19 +99,31 @@ const onButtonClick = (event: MouseEvent) => {
   --md-button-icon-size: 18px;
   --md-button-height: 40px;
   --md-button-padding: 16px;
+  --md-button-padding-left: var(--md-button-padding);
+  --md-button-padding-right: var(--md-button-padding);
   --md-button-icon-gap: 8px;
-  --md-target-width: max(48px, 100%);
-  --md-target-height: max(48px, 100%);
-
-  --md-state-display: inline-flex;
-  --md-state-align-items: center;
-  --md-state-justify-content: center;
-  --md-state-border: 0;
-  --md-state-border-radius: var(--md-button-border-radius);
-  --md-state-height: var(--md-button-height);
-  --md-state-padding-left: var(--md-button-padding);
-  --md-state-padding-right: var(--md-button-padding);
-
+  --md-button-border-width: 0px;
+  --md-button-border-style: solid;
+  --md-button-border-color: transparent;
+  --md-button-box-sizing: border-box;
+  --md-button-target-size: var(--md-button-height);
+  --md-button-disabled-container-color: transparent;
+  --md-button-disabled-content-color: rgb(from var(--md-sys-color-on-surface) r g b / 0.38);
+  --md-button-disabled-border-color: transparent;
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: var(--md-button-height);
+  padding-left: var(--md-button-padding-left);
+  padding-right: var(--md-button-padding-right);
+  border: var(--md-button-border-width) var(--md-button-border-style) var(--md-button-border-color);
+  box-sizing: var(--md-button-box-sizing);
+  border-radius: var(--md-button-border-radius);
+  background: var(--md-container-color, transparent);
+  box-shadow: var(--md-state-box-shadow);
+  color: var(--md-content-color, inherit);
+  outline-color: var(--md-state-outline-color);
   vertical-align: middle;
   font-family: var(--md-sys-typescale-label-large-font);
   line-height: var(--md-sys-typescale-label-large-line-height);
@@ -96,8 +131,27 @@ const onButtonClick = (event: MouseEvent) => {
   font-weight: var(--md-sys-typescale-label-large-weight);
   letter-spacing: var(--md-sys-typescale-label-large-tracking);
   user-select: none;
+  transition-property: box-shadow, color, background-color, border-color, border-radius;
+  transition-duration: var(--md-sys-motion-duration-short4, 0.2s);
+  -webkit-tap-highlight-color: transparent;
+
+  &__target {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    z-index: 0;
+    display: block;
+    width: var(--md-button-target-size);
+    height: var(--md-button-target-size);
+    min-width: var(--md-button-target-size);
+    min-height: var(--md-button-target-size);
+    transform: translate(-50%, -50%);
+    background: transparent;
+  }
 
   &__content {
+    position: relative;
+    z-index: 2;
     display: flex;
     justify-content: center;
     align-items: center;
@@ -133,6 +187,7 @@ const onButtonClick = (event: MouseEvent) => {
 
   &__progress-indicator {
     position: absolute;
+    z-index: 2;
     width: 24px;
     height: 24px;
     --md-circular-progress-color: var(--md-content-color);
@@ -159,6 +214,9 @@ const onButtonClick = (event: MouseEvent) => {
 
     &.md-state_disabled,
     &:disabled {
+      --md-container-color: rgb(from var(--md-sys-color-on-surface) r g b / 0.12);
+      --md-content-color: var(--md-button-disabled-content-color);
+      --md-button-icon-color: var(--md-button-disabled-content-color);
       --md-state-box-shadow: var(--md-sys-elevation-level0);
     }
 
@@ -205,6 +263,13 @@ const onButtonClick = (event: MouseEvent) => {
       --md-state-box-shadow: var(--md-sys-elevation-level1);
       z-index: 1;
     }
+
+    &.md-state_disabled,
+    &:disabled {
+      --md-container-color: rgb(from var(--md-sys-color-on-surface) r g b / 0.12);
+      --md-content-color: var(--md-button-disabled-content-color);
+      --md-button-icon-color: var(--md-button-disabled-content-color);
+    }
   }
 
   &.md-button_color-tonal {
@@ -234,13 +299,20 @@ const onButtonClick = (event: MouseEvent) => {
       --md-content-color: var(--md-sys-color-on-secondary-container);
       --md-button-icon-color: var(--md-sys-color-on-secondary-container);
     }
+
+    &.md-state_disabled,
+    &:disabled {
+      --md-container-color: rgb(from var(--md-sys-color-on-surface) r g b / 0.12);
+      --md-content-color: var(--md-button-disabled-content-color);
+      --md-button-icon-color: var(--md-button-disabled-content-color);
+    }
   }
 
   &.md-button_color-outlined {
-    --md-state-border-style: solid;
-    --md-state-border-color: var(--md-sys-color-outline-variant);
-    --md-state-border-width: 1px;
-    --md-state-box-sizing: border-box;
+    --md-button-border-style: solid;
+    --md-button-border-color: var(--md-sys-color-outline-variant);
+    --md-button-border-width: 1px;
+    --md-button-box-sizing: border-box;
     --md-content-color: var(--md-sys-color-on-surface-variant);
     --md-state-box-shadow: var(--md-sys-elevation-level0);
 
@@ -253,31 +325,34 @@ const onButtonClick = (event: MouseEvent) => {
 
     &.md-state_disabled,
     &:disabled {
-      --md-state-outline-color: rgb(from var(--md-sys-color-on-surface) r g b / 0.12);
+      --md-container-color: transparent;
+      --md-content-color: var(--md-button-disabled-content-color);
+      --md-button-icon-color: var(--md-button-disabled-content-color);
+      --md-button-border-color: rgb(from var(--md-sys-color-on-surface) r g b / 0.12);
     }
 
     &.md-state_hover,
     &:hover {
       --md-content-color: var(--md-sys-color-primary);
-      --button-icon-color: var(--md-sys-color-primary);
-      --md-state-outline-color: var(--md-sys-color-outline);
+      --md-button-icon-color: var(--md-sys-color-primary);
+      --md-button-border-color: var(--md-sys-color-outline);
     }
 
     &:focus-visible,
     &.md-state_focused {
-      --md-content-color: var(--md-sys-color-on-secondary-container);
-      --md-button-icon-color: var(--md-sys-color-on-secondary-container);
+      --md-content-color: var(--md-sys-color-on-surface-variant);
+      --md-button-icon-color: var(--md-sys-color-on-surface-variant);
     }
   }
 
   &.md-button_color-text {
     --md-content-color: var(--md-sys-color-primary);
-    --md-state-padding-left: 12px;
-    --md-state-padding-right: 12px;
+    --md-button-padding-left: 12px;
+    --md-button-padding-right: 12px;
     --md-state-box-shadow: var(--md-sys-elevation-level0);
 
     &.md-button_icon {
-      --md-state-padding-right: 16px;
+      --md-button-padding-right: 16px;
     }
 
     &.md-state_hover,
@@ -290,6 +365,13 @@ const onButtonClick = (event: MouseEvent) => {
     &.md-state_focused {
       --md-content-color: var(--md-sys-color-primary);
       --md-button-icon-color: var(--md-sys-color-primary);
+    }
+
+    &.md-state_disabled,
+    &:disabled {
+      --md-container-color: transparent;
+      --md-content-color: var(--md-button-disabled-content-color);
+      --md-button-icon-color: var(--md-button-disabled-content-color);
     }
   }
 
@@ -298,6 +380,7 @@ const onButtonClick = (event: MouseEvent) => {
       --md-button-height: 32px;
       --md-button-padding: 12px;
       --md-button-icon-gap: 4px;
+      --md-button-target-size: 48dp;
 
       &.md-button_shape-square {
         --md-button-border-radius: 12px;
@@ -313,6 +396,7 @@ const onButtonClick = (event: MouseEvent) => {
       --md-button-height: 40px;
       --md-button-padding: 16px;
       --md-button-icon-gap: 8px;
+      --md-button-target-size: 48dp;
 
       &.md-button_shape-square {
         --md-button-border-radius: 12px;
