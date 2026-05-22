@@ -49,19 +49,29 @@ const state = useQueryValue<State>('state', {
 
     <template #space>
       <MDChip
+        v-if="state.type === 'assist'"
         :elevated="state.elevated"
         :label="state.label"
-        :selected="state.selected"
         :type="state.type"
       >
         <template v-if="state.leadingIcon" #leadingIcon>
           <MDSymbol name="broken_image" />
         </template>
+      </MDChip>
 
+      <MDChip
+        v-else-if="state.type === 'filter'"
+        :elevated="state.elevated"
+        :label="state.label"
+        :selected="state.selected"
+        :type="state.type"
+      >
         <template v-if="state.trailingIcon" #trailingIcon>
           <MDSymbol name="broken_image" />
         </template>
       </MDChip>
+
+      <MDChip v-else :elevated="state.elevated" :label="state.label" :type="state.type" />
     </template>
   </PlaygroundStory>
 </template>

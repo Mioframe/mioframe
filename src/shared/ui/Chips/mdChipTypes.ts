@@ -1,6 +1,8 @@
+import type { AllowedComponentProps, ComponentCustomProps, VNodeProps } from 'vue';
+
 export type MDChipType = 'assist' | 'filter' | 'input' | 'suggestion';
 
-type MDChipBaseProps = {
+export type MDChipBaseProps = {
   elevated?: boolean | undefined;
   label: string;
   draggable?: boolean | undefined;
@@ -31,6 +33,12 @@ export type MDChipPropsByType = {
   };
 };
 
+export type MDChipProps<T extends MDChipType> = MDChipBaseProps & {
+  type: T;
+  selected?: T extends 'filter' ? boolean | undefined : never;
+  closeTooltip?: T extends 'input' ? string | undefined : never;
+};
+
 export type MDChipSlotsByType = {
   assist: {
     leadingIcon?: () => unknown;
@@ -50,6 +58,28 @@ export type MDChipSlotsByType = {
   };
 };
 
+export type MDChipSlots<T extends MDChipType> = {
+  leadingIcon?: T extends 'assist' ? () => unknown : never;
+  trailingIcon?: T extends 'filter' ? () => unknown : never;
+};
+
 export type MDChipEmits = {
   (event: 'click' | 'clickClose', eventObject: MouseEvent): void;
 };
+
+export type MDChipPublicProps<T extends MDChipType> = MDChipProps<T> &
+  VNodeProps &
+  AllowedComponentProps &
+  ComponentCustomProps & {
+    onClick?: ((eventObject: MouseEvent) => unknown) | undefined;
+    onClickClose?: ((eventObject: MouseEvent) => unknown) | undefined;
+  };
+
+export type MDChipComponent<T extends MDChipType = MDChipType> = (
+  props: MDChipPublicProps<T>,
+  ctx?: {
+    slots: MDChipSlots<T>;
+    attrs: Record<string, unknown>;
+    emit: MDChipEmits;
+  },
+) => unknown;

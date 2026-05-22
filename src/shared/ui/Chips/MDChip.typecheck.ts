@@ -1,13 +1,24 @@
-import type { MDChipPropsByType, MDChipSlotsByType } from './mdChipTypes';
+import type { ComponentProps, ComponentSlots } from 'vue-component-type-helpers';
+import type { MDChipComponent } from './mdChipTypes';
 
-type AssistProps = MDChipPropsByType['assist'];
-type FilterProps = MDChipPropsByType['filter'];
-type InputProps = MDChipPropsByType['input'];
-type SuggestionProps = MDChipPropsByType['suggestion'];
+type AssistChip = MDChipComponent<'assist'>;
+type FilterChip = MDChipComponent<'filter'>;
+type InputChip = MDChipComponent<'input'>;
+type SuggestionChip = MDChipComponent<'suggestion'>;
 
-type AssistSlots = MDChipSlotsByType['assist'];
-type FilterSlots = MDChipSlotsByType['filter'];
-type InputSlots = MDChipSlotsByType['input'];
+type AssistProps = ComponentProps<AssistChip>;
+type FilterProps = ComponentProps<FilterChip>;
+type InputProps = ComponentProps<InputChip>;
+type SuggestionProps = ComponentProps<SuggestionChip>;
+
+type AssistSlots = ComponentSlots<AssistChip>;
+type FilterSlots = ComponentSlots<FilterChip>;
+type InputSlots = ComponentSlots<InputChip>;
+type SuggestionSlots = ComponentSlots<SuggestionChip>;
+
+type ExpectTrue<T extends true> = T;
+type ExpectFalse<T extends false> = T;
+type IsAssignable<From, To> = [From] extends [To] ? true : false;
 
 const assistProps: AssistProps = {
   label: 'Assist',
@@ -40,6 +51,64 @@ const filterSlots: FilterSlots = {
 };
 
 const inputSlots: InputSlots = {};
+const suggestionSlots: SuggestionSlots = {};
+
+const assistLeadingIconIsValid: ExpectTrue<IsAssignable<{ leadingIcon: () => null }, AssistSlots>> =
+  true;
+const filterSelectedIsValid: ExpectTrue<
+  IsAssignable<{ label: 'Filter'; type: 'filter'; selected: true }, FilterProps>
+> = true;
+const filterTrailingIconIsValid: ExpectTrue<
+  IsAssignable<{ trailingIcon: () => null }, FilterSlots>
+> = true;
+const inputCloseTooltipIsValid: ExpectTrue<
+  IsAssignable<{ label: 'Input'; type: 'input'; closeTooltip: 'Remove chip' }, InputProps>
+> = true;
+const suggestionStaysNarrow: ExpectTrue<
+  IsAssignable<{ label: 'Suggestion'; type: 'suggestion' }, SuggestionProps>
+> = true;
+
+const assistRejectsSelected: ExpectFalse<
+  IsAssignable<{ label: 'Assist'; type: 'assist'; selected: true }, AssistProps>
+> = false;
+const inputRejectsSelected: ExpectFalse<
+  IsAssignable<{ label: 'Input'; type: 'input'; selected: true }, InputProps>
+> = false;
+const suggestionRejectsSelected: ExpectFalse<
+  IsAssignable<{ label: 'Suggestion'; type: 'suggestion'; selected: true }, SuggestionProps>
+> = false;
+
+const assistRejectsCloseTooltip: ExpectFalse<
+  IsAssignable<{ label: 'Assist'; type: 'assist'; closeTooltip: 'Remove assist' }, AssistProps>
+> = false;
+const filterRejectsCloseTooltip: ExpectFalse<
+  IsAssignable<{ label: 'Filter'; type: 'filter'; closeTooltip: 'Remove filter' }, FilterProps>
+> = false;
+const suggestionRejectsCloseTooltip: ExpectFalse<
+  IsAssignable<
+    { label: 'Suggestion'; type: 'suggestion'; closeTooltip: 'Remove suggestion' },
+    SuggestionProps
+  >
+> = false;
+
+const filterRejectsLeadingIcon: ExpectFalse<
+  IsAssignable<{ leadingIcon: () => null }, FilterSlots>
+> = false;
+const inputRejectsLeadingIcon: ExpectFalse<IsAssignable<{ leadingIcon: () => null }, InputSlots>> =
+  false;
+const suggestionRejectsLeadingIcon: ExpectFalse<
+  IsAssignable<{ leadingIcon: () => null }, SuggestionSlots>
+> = false;
+
+const assistRejectsTrailingIcon: ExpectFalse<
+  IsAssignable<{ trailingIcon: () => null }, AssistSlots>
+> = false;
+const inputRejectsTrailingIcon: ExpectFalse<
+  IsAssignable<{ trailingIcon: () => null }, InputSlots>
+> = false;
+const suggestionRejectsTrailingIcon: ExpectFalse<
+  IsAssignable<{ trailingIcon: () => null }, SuggestionSlots>
+> = false;
 
 void assistProps;
 void filterProps;
@@ -48,24 +117,21 @@ void suggestionProps;
 void assistSlots;
 void filterSlots;
 void inputSlots;
-
-// @ts-expect-error selected is only valid for filter chips
-const _invalidAssistSelected: AssistProps = { label: 'Assist', type: 'assist', selected: true };
-
-const _invalidFilterCloseTooltip: FilterProps = {
-  label: 'Filter',
-  type: 'filter',
-  // @ts-expect-error closeTooltip is only valid for input chips
-  closeTooltip: 'Remove filter',
-};
-
-// @ts-expect-error assist chips do not accept trailingIcon
-const _invalidAssistSlots: AssistSlots = { trailingIcon: () => null };
-
-// @ts-expect-error filter chips do not accept leadingIcon
-const _invalidFilterSlots: FilterSlots = { leadingIcon: () => null };
-
-void _invalidAssistSelected;
-void _invalidFilterCloseTooltip;
-void _invalidAssistSlots;
-void _invalidFilterSlots;
+void suggestionSlots;
+void assistLeadingIconIsValid;
+void filterSelectedIsValid;
+void filterTrailingIconIsValid;
+void inputCloseTooltipIsValid;
+void suggestionStaysNarrow;
+void assistRejectsSelected;
+void inputRejectsSelected;
+void suggestionRejectsSelected;
+void assistRejectsCloseTooltip;
+void filterRejectsCloseTooltip;
+void suggestionRejectsCloseTooltip;
+void filterRejectsLeadingIcon;
+void inputRejectsLeadingIcon;
+void suggestionRejectsLeadingIcon;
+void assistRejectsTrailingIcon;
+void inputRejectsTrailingIcon;
+void suggestionRejectsTrailingIcon;
