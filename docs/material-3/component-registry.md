@@ -8,9 +8,7 @@ Do not migrate components only by local inspection. Use the registry to keep the
 
 ## Registry template
 
-The foundation audit must create or expand the actual registry. Do not fill registry rows with guessed statuses.
-
-Use this table shape:
+Use this table shape for new rows:
 
 | Material surface     | Project component     | Status     | Material docs     | Tokens             | API                | Storybook       | Visual tests    | Deviations    |
 | -------------------- | --------------------- | ---------- | ----------------- | ------------------ | ------------------ | --------------- | --------------- | ------------- |
@@ -27,9 +25,39 @@ Use these status values consistently:
 - `deprecated`: component remains only as a compatibility surface;
 - `blocked`: Material guidance is missing, conflicting, or unavailable.
 
-## Required fields
+## Foundation audit snapshot
 
-Each registry row should answer:
+The current detailed audit lives in [Material 3 foundation audit](./foundation-audit.md).
+
+Rows below are intentionally conservative. `partial` does not mean Material 3 alignment; it means the project has an implementation surface that still needs source-backed API, token, Storybook, verification, and deviation work before it can be marked `aligned`.
+
+| Material surface | Project component | Status | Next check |
+| --- | --- | --- | --- |
+| Buttons | `MDButton` | `partial` | First pilot. Verify variants, props, target area, `--md-comp-button-*`, Storybook hierarchy, visual states. |
+| Icon buttons | `MDIconButton` | `partial` | Include in Buttons pilot. Verify selected/toggle behavior, icon sizing, toolbar target behavior. |
+| Floating action buttons | `MDFab`, `MDFabContainer` | `partial` | Include in Buttons pilot. Separate Material FAB behavior from project placement helpers. |
+| Lists | `MDList`, `MDListItem`, `MDListContainer` | `partial` | Verify row interaction, trailing actions, density, supporting text, and target area. |
+| Dialogs | `Dialog/*` shared UI surfaces | `partial` | Verify modal semantics, actions, focus, scroll, adaptive layout, and destructive flows. |
+| Text fields | `MDTextField`, `MDFieldContainer` | `partial` | Verify labels, supporting/error text, value contract, slots, and states. |
+| Selection controls | `MDCheckbox`, `MDCheckboxField`, `MDSelectBase` | `partial` | Verify checkbox/select semantics, keyboard behavior, menu ownership, and accessibility. |
+| Chips | `MDChipBase` and chip wrappers | `partial` | Verify strict chip type contracts and invalid combinations. |
+| Menus | `MDMenuBase`, `MDMenuItemBase`, `MDContextMenuButton` | `partial` | Verify positioning, keyboard, focus, selection, and context-menu extension. |
+| Navigation | Navigation bar, rail, and path surfaces | `partial` / `project-specific` | Verify official bar/rail mapping; keep navigation path project-specific unless a Material mapping is found. |
+| App bars and toolbars | `MDAppBar`, toolbar containers | `partial` / `project-specific` | Verify app bar mapping; keep toolbar containers project-specific unless they map to a Material surface. |
+| Bottom sheets | `MDBottomSheet*` surfaces | `partial` | Verify modal/persistent behavior, drag handle, focus, scroll, back behavior, and duplicate `*2` surfaces. |
+| Cards | `MDCard` | `partial` | Verify variants, clickability, elevation, and content slots. |
+| Progress indicators | Shared progress indicator surfaces | `partial` | Expand beyond the current single progress component token. |
+| Tooltips | `MDPlainTooltip`, `MDRichTooltip`, `MDOverlayTooltip` | `partial` | Verify plain/rich contracts, trigger ownership, delay, and overlay containment. |
+| Dividers | `MDDivider` | `partial` | Verify inset/full-bleed and orientation contracts. |
+| Snackbars | `MDSnackbar` | `partial` | Verify action, dismiss, timeout, live-region, and queue/portal ownership. |
+| Tables | `MDTable` | `project-specific` | Do not claim official alignment until current Material data-table guidance is verified. |
+| Empty states | `MDEmptyState` | `project-specific` | Treat as product UX surface using Material foundations. |
+| Pane/layout | `MDPane`, `MDSplitLayout` | `project-specific` | Treat as adaptive layout primitives, not official Material components. |
+| Buttons bar | `MDButtonsBar` | `project-specific` | Treat as action-layout helper unless mapped through dialogs/buttons. |
+
+## Required fields for aligned rows
+
+Before any row is marked `aligned`, it must answer:
 
 1. Which official Material surface does this correspond to?
 2. Which project component or components implement it?
