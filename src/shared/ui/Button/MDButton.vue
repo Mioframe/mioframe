@@ -58,7 +58,7 @@ useRipple(computed(() => (props.disabled ? undefined : buttonEl.value)));
       `md-button_shape-${props.shape}`,
       {
         'md-button_icon': !!$slots.icon,
-        'md-button_loading': props.loading,
+        'md-button_loading': props.loading !== undefined && props.loading !== false,
         'md-button_selected': props.selected,
         'md-state_hover': showVisualState && hover,
         'md-state_focused': showVisualState && focused,
