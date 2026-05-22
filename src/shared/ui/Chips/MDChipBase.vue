@@ -112,6 +112,7 @@ const onDragEnd = () => {
         :pressed="durationPressedState"
         :dragged="dragged"
         :disabled="props.disabled"
+        class="md-chip__state-layer"
       />
 
       <span
@@ -168,6 +169,7 @@ const onDragEnd = () => {
       :pressed="durationPressedState"
       :dragged="dragged"
       :disabled="props.disabled"
+      class="md-chip__state-layer"
     />
 
     <span
@@ -191,6 +193,7 @@ const onDragEnd = () => {
 
 <style lang="css" scoped>
 .md-chip {
+  --border-width: 1dp;
   position: relative;
   display: inline-flex;
   align-items: center;
@@ -198,7 +201,7 @@ const onDragEnd = () => {
   height: 32dp;
   padding: 0 16px;
   border-radius: var(--md-sys-shape-corner-small);
-  border: 1dp solid var(--md-sys-color-outline-variant);
+  border: var(--border-width) solid var(--md-sys-color-outline-variant);
   background: var(--md-container-color, transparent);
   color: var(--md-content-color, inherit);
   vertical-align: middle;
@@ -208,6 +211,11 @@ const onDragEnd = () => {
   -webkit-tap-highlight-color: transparent;
   transition-property: color, background-color, border-color, box-shadow, border-radius;
   transition-duration: var(--md-sys-motion-duration-short4, 0.2s);
+  box-sizing: inherit;
+
+  &__state-layer {
+    inset: calc(-1 * var(--border-width));
+  }
 
   &__action {
     position: relative;
@@ -267,15 +275,13 @@ const onDragEnd = () => {
   }
 
   &__close-btn {
-    border-top-left-radius: 0;
-    border-bottom-left-radius: 0;
+    border-radius: inherit;
     flex-shrink: 0;
-    --md-icon-button-icon-color: inherit;
-    --md-state-layer-shape: inherit;
   }
 
   &_input-shell {
     padding-right: 0;
+    padding-left: 0;
   }
 
   &_assist {
