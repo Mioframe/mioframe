@@ -1,0 +1,156 @@
+# Material 3 component family audit
+
+This file records component-family findings from the current implementation and Material 3 cache. It complements [Material 3 foundation audit](./foundation-audit.md) and [Foundation audit details](./foundation-audit-details.md).
+
+## Buttons: `MDButton`
+
+Material cache confirms default/toggle variants, elevated/filled/tonal/outlined/text color configurations, five sizes, round/square shapes, 16dp recommended small padding, no text toggle button, 48x48dp target area for extra-small/small buttons, and 20dp standard icons.
+
+Current state:
+
+- strong match for M3 Expressive variants: color, type, size, shape, selected state, shape morph, optional icon, loading, and 48dp target layers exist;
+- uses `MDStateLayer`, ripple, and progress indicator;
+- has visual and target-area tests.
+
+Gaps:
+
+- local `--md-button-*` variables instead of `--md-comp-button-*`;
+- API allows `type="toggle"` with `color="text"`, while Material docs exclude text toggle buttons;
+- `formAction` diverges from native button `type` terminology;
+- icon size is 18px while Material cache states 20dp;
+- loading is a project extension and must be documented.
+
+Verdict: best first component pilot after the small foundation token/state prerequisite.
+
+## Icon buttons: `MDIconButton`
+
+Material cache confirms default/toggle variants, filled/tonal/outlined/standard colors, size/width/shape configurations, tooltip on web, and outlined-to-filled icon treatment for toggle state.
+
+Current state:
+
+- supports color, type, selected, size, width, shape, tooltip, symbol name, icon slot, and rich tooltip slot;
+- implements selected symbol fill behavior and 48dp target layers;
+- has visual, target-area, toolbar, and dense-toolbar behavior tests.
+
+Gaps:
+
+- local `--md-icon-button-*` variables instead of `--md-comp-icon-button-*`;
+- loading and rich tooltip content are project extensions;
+- compact toolbar sizing is intentionally tested but must be documented if it deviates from Material layout expectations.
+
+Verdict: include in Buttons pilot.
+
+## FAB: `MDFab`, `MDFabContainer`
+
+Material cache confirms FAB, medium FAB, and large FAB; small FAB is no longer recommended; variants are size-based; primary/secondary/tertiary and container color styles are current; surface FABs are no longer recommended.
+
+Current state:
+
+- supports default, medium, and large sizes;
+- no small FAB exists;
+- supports primary, secondary, tertiary, and `tonal-*` color values;
+- has tooltip, symbol slot/name, loading, state layer, and visual tests.
+
+Gaps:
+
+- local `--md-fab-*` variables instead of `--md-comp-fab-*`;
+- public color names `tonal-primary`, `tonal-secondary`, and `tonal-tertiary` should be reviewed against Material container color naming;
+- `MDFabContainer` is project-specific placement infrastructure, not the Material FAB itself;
+- loading is a project extension;
+- `columns: var(--md-fab-icon-color)` inside icon styles appears to be a typo and should be confirmed/fixed during migration.
+
+Verdict: include in Buttons pilot after base buttons and icon buttons.
+
+## Lists: `MDList`, `MDListItem`, `MDListContainer`
+
+Material cache confirms lists help users find and act on items; items should be scannable and consistently formatted; M3 baseline heights are 56dp, 72dp, and 88dp; M3 Expressive adds standard/segmented styles and improved selection states.
+
+Current state:
+
+- `MDListItem` supports headline, supporting text, 1/2/3 line heights, leading icon/avatar, trailing icon, native `button`/`a`/`div`/`li` hosts, disabled, draggable, and role override;
+- uses state layer, ripple, and keyboard handling;
+- has visual/interaction/trailing-action tests.
+
+Gaps:
+
+- local list variables instead of `--md-comp-list-*` and `--md-comp-list-item-*`;
+- heights are authored as px rather than dp;
+- selected and segmented list styles are not first-class contracts;
+- trailing action needs an explicit contract instead of being only a `trailingIcon` slot convention.
+
+Verdict: second migration family after Buttons.
+
+## Dialogs: `DialogForm`
+
+Material cache confirms basic and full-screen dialogs; dialogs should be single-task prompts and commonly confirm high-risk actions.
+
+Current state:
+
+- supports headline, supporting text, optional icon, body slot, cancel/apply actions, loading, `basic`/`full-screen` type, focus trap, escape, and browser back handling.
+
+Gaps:
+
+- uses a native `dialog` with fixed scrim and local z-index instead of the shared overlay container/teleport ownership model;
+- no registry-backed visual/browser coverage found;
+- full-screen implementation is not confirmed beyond the public type class;
+- action ordering/count, destructive action semantics, focus restoration, nested overlays, and scroll behavior need browser verification.
+
+Verdict: migrate after Buttons and Lists; start with overlay ownership.
+
+## Text fields: `MDTextField`, `MDFieldContainer`
+
+Current state:
+
+- supports filled/outlined type, label, supporting text, disabled, error, counter, native input types, multiline, readonly, autofocus, leading/trailing icons, and focus/keydown emits.
+
+Gaps:
+
+- local field variables instead of `--md-comp-text-field-*`;
+- `MDFieldContainer` is public-looking but acts as an implementation primitive;
+- label motion, padding, icon behavior, focus indicator, disabled/error colors, and counter behavior need source-backed review;
+- no registry-backed visual coverage found.
+
+Verdict: migrate after dialogs or with select controls if menu ownership is ready.
+
+## Chips: `MDChipBase`
+
+Material cache confirms assist, filter, input, and suggestion variants; elevation defaults to 0 but can be elevated; chip stroke changed from outline to outline variant.
+
+Current state:
+
+- supports all four variants, selected, elevated, draggable, disabled, autofocus, leading/trailing icon slots, and input close action;
+- uses state layer, ripple, `MDSymbol`, and `MDIconButton`;
+- has visual and interaction tests.
+
+Gaps:
+
+- one broad base component permits combinations that may be invalid per chip type;
+- no `--md-comp-chip-*` token set;
+- disabled state uses whole-chip opacity;
+- input close action needs keyboard/accessibility verification.
+
+Verdict: prefer strict type-specific wrapper contracts during chip migration.
+
+## Menus: `MDMenuBase`
+
+Material cache confirms menus are temporary action sets; persistent actions belong in toolbars; menus can open from icon buttons, split buttons, and text fields; context menus are element-specific and usually secondary-click driven.
+
+Current state:
+
+- uses `useOverlayContainer`, `TeleportContainer`, `onInteractionOutside`, Floating UI, focus trap, keyboard search, escape stack, and browser back stack;
+- renders through `MDListContainer` with default `role="menu"`.
+
+Gaps:
+
+- no `--md-comp-menu-*` token set;
+- CSS capitalizes first letters of list item headlines, which is not a Material menu rule and should be removed or documented as product-specific;
+- no registry-backed visual/browser tests for positioning, focus, outside interaction, nested overlays, or mobile viewport behavior;
+- M3 Expressive vertical menu features are not represented.
+
+Verdict: overlay model is better aligned than dialogs; migrate after selection controls/chips depending on dependencies.
+
+## Remaining component groups
+
+The registry still treats navigation, app bars, toolbars, sheets, cards, progress indicators, tooltips, dividers, snackbars, tables, empty states, panes, and buttons bar as `partial` or `project-specific` until each family receives the same source-backed audit.
+
+For those groups, do not claim alignment until the component-family PR checks the relevant cache pages, defines `--md-comp-*` tokens where applicable, documents public API/deviations, and adds high-value Storybook/visual/browser coverage.
