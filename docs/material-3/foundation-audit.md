@@ -4,15 +4,32 @@
 
 This audit starts Phase 2 from [Material 3 adoption plan](./adoption-plan.md). It records the current foundation state before any component-family migration.
 
-This document is intentionally documentation-only. It must not migrate component implementations, rename public props, reorganize shared UI source files, or update visual snapshots.
+This document is documentation-only. It must not migrate component implementations, rename public props, reorganize shared UI source files, or update visual snapshots.
+
+Detailed findings are split across related documents:
+
+- [Foundation audit details](./foundation-audit-details.md)
+- [Component family audit](./component-family-audit.md)
+- [Secondary component family audit](./secondary-component-family-audit.md)
+- [Component registry](./component-registry.md)
 
 ## Source status
 
-- Project policy sources checked: every policy listed by `.agents/skills/material3-guidelines/SKILL.md` remains the project contract for UI work.
-- Repository implementation sources checked: `src/shared/lib/md/tokens.css`, `postcss.config.js`, existing `src/shared/ui/**/MD*.vue` surfaces found through repository search, and representative Storybook files such as `src/shared/ui/Button/MDButton.stories.ts`.
-- Official Material 3 MCP status: not available in the current execution environment.
-- Fallback cache status: `Vyachean/m3-docs-cache/index.json` is available, captured from `https://m3.material.io` at `2026-05-19T05:56:22.642Z`, with 357 captured pages, 609 attempted pages, and 20 failed pages.
-- Fallback cache warning: the cache marks several old or internal routes as suspicious/not-found. Use stable cache paths such as `components/buttons/overview.md`, `components/buttons/guidelines.md`, `components/buttons/specs.md`, and `components/buttons/accessibility.md`, not the failed `google-material-3/pages/...` or `m3/pages/...` routes.
+Project sources checked:
+
+- Material 3 project policies listed by `.agents/skills/material3-guidelines/SKILL.md`.
+- `src/shared/lib/md/tokens.css`.
+- `postcss.config.js`.
+- Existing `src/shared/ui/**/MD*.vue` surfaces found through repository search.
+- Representative Storybook files such as `src/shared/ui/Button/MDButton.stories.ts`.
+- `tests/e2e/visual/shared-ui.spec.ts`.
+
+Material source checked:
+
+- `Vyachean/m3-docs-cache`, captured from `https://m3.material.io` at `2026-05-19T05:56:22.642Z`.
+- Component cache pages for Buttons, Icon buttons, FAB, Lists, Dialogs, Text fields, Checkbox, Chips, Menus, Navigation bar, Bottom sheets, Cards, Progress indicators, Tooltips, and Snackbar.
+
+Use stable cache paths under `pages/components/...`. Avoid old failed or suspicious `google-material-3/pages/...` and `m3/pages/...` routes from the cache quality report.
 
 ## Confirmed foundation state
 
@@ -24,7 +41,7 @@ This document is intentionally documentation-only. It must not migrate component
 - reference typeface tokens;
 - system shape corner tokens;
 - light system color role mappings;
-- dark system color role overrides under `@media (prefers-color-scheme: dark)`;
+- dark system color role overrides under `prefers-color-scheme`;
 - system elevation tokens;
 - system typescale tokens;
 - system state opacity and focus-indicator tokens;
@@ -33,15 +50,15 @@ This document is intentionally documentation-only. It must not migrate component
 
 Current gaps:
 
-- Component-family tokens are mostly still local implementation variables inside components, for example `MDButton.vue` uses local `--md-button-*` variables instead of canonical public `--md-comp-button-*` tokens.
+- Component-family tokens are mostly still local implementation variables inside components. For example, `MDButton.vue` uses local `--md-button-*` variables instead of canonical public `--md-comp-button-*` tokens.
 - `--unknownColor` is a debug fallback and should not be treated as a production token.
-- `--md-sys-color-surface-tint-color` is explicitly marked deprecated and should be removed or isolated as a compatibility alias during a focused token cleanup.
-- The token bundle is monolithic. The adoption plan already says structural cleanup should happen later, after the foundation audit and pilot prove the pattern.
-- Baseline theme has light and dark system color mappings, but the audit has not yet proven full parity against every official Material role.
+- `--md-sys-color-surface-tint-color` is explicitly marked deprecated and should be removed or isolated as a compatibility alias during focused token cleanup.
+- The token bundle is monolithic. Keep it until the audit and pilot prove the next structure.
+- Baseline theme has light and dark system color mappings, but full parity with every Material role is not yet validated by tooling.
 
 ### Units and typography
 
-`postcss.config.js` currently converts these custom units:
+`postcss.config.js` currently converts:
 
 - `step` through `--one-step`;
 - `pt` through `--one-pt`;
@@ -50,84 +67,78 @@ Current gaps:
 Confirmed gap:
 
 - `sp` support is not currently present in PostCSS.
-- `src/shared/lib/md/tokens.css` still defines Material typescale sizes, tracking, and line heights with `pt`.
+- `tokens.css` still defines Material typescale sizes, tracking, and line heights with `pt`.
 - The next typography foundation task should add `sp` conversion first, then migrate Material typography authoring values from `pt` to `sp` without changing rendered output unintentionally.
 
 ### State layers
 
-The shared state primitives exist as `src/shared/ui/State/MDStateLayer.vue`, `useStateLayer`, and `useRipple`, and they are already used by `MDButton.vue` for hover, focus, pressed, disabled, and ripple behavior.
+The shared state primitives exist as `MDStateLayer`, `useStateLayer`, and `useRipple`. They are already used by key interactive components.
 
 Current gaps:
 
-- State layer behavior is not yet documented as the canonical primitive for every interactive `MD*` component family.
-- Existing visual stories cover some state surfaces, but the registry must make coverage explicit per component family.
-- Dragged and selected states need per-component review rather than assuming a global state-layer mapping.
+- `MDStateLayer` does not directly consume the declared `--md-sys-state-*-state-layer-opacity` tokens.
+- Dragged and selected states need per-component review rather than a global assumption.
+- State-layer behavior should be documented as the canonical primitive for every interactive `MD*` component family.
 
 ### Icons
 
-`src/shared/ui/Icon/MDSymbol.vue` exists as the Material Symbol primitive.
+`MDSymbol` exists as the Material Symbol primitive.
 
 Current gaps:
 
-- The audit has not yet verified whether every icon-bearing Material component uses `MDSymbol` directly or accepts icon slots that can preserve Material Symbol sizing.
-- The public icon API strategy should be documented per component family: slot-only, symbol-name prop, or project-specific wrapper.
+- Not every icon-bearing component has a verified public icon API strategy.
+- Each family should decide between slot-only, symbol-name prop, or project-specific wrapper APIs.
+- Icon sizes must be checked per family against Material cache pages.
 
 ### Overlays
 
-The adoption plan states that overlay ownership already exists through `useOverlayContainer`, `TeleportContainer`, child teleported container registration, and outside-interaction containment. The audit should preserve this model.
+The project already has overlay ownership policy around `useOverlayContainer`, teleport containers, child teleported container registration, and outside-interaction containment.
 
 Current gaps:
 
-- Overlay component families still need per-surface review: dialogs, menus, tooltips, bottom sheets, select menus, and context menus.
-- Any remaining local z-index usage should be inventoried and either justified as local stacking inside an owned overlay or scheduled for replacement through the existing containment model.
-- Escape/back stacking and focus-trap behavior should be verified by browser smoke or Playwright checks when a specific overlay family is migrated.
+- Menus use the shared overlay and teleport model.
+- Dialogs currently use a separate native dialog and fixed scrim path.
+- Bottom sheets, tooltips, select menus, and context menus still need per-surface overlay review.
+- Escape/back stacking, focus trap, scroll locking, and local z-index usage need browser verification when a specific overlay family is migrated.
 
 ### Storybook
 
-Confirmed state from representative stories:
+Current state:
 
-- `src/shared/ui/Button/MDButton.stories.ts` exists and includes visual stories tagged with `visual` for button states and interaction states.
-- Some current Storybook titles still use paths such as `shared/ui/MDButton` rather than the policy target `Material 3/Components/...` or `Project UI/...`.
-- Several visual helper stories already exist for buttons, icon buttons, chips, lists, and target-hit areas.
+- Representative shared UI stories exist.
+- Visual helper stories already exist for buttons, icon buttons, chips, lists, and target-hit areas.
+- Some stories still use titles such as `shared/ui/MDButton` rather than `Material 3/Components/...` or `Project UI/...`.
 
 Current gaps:
 
 - Story hierarchy is not yet normalized to look like Material 3 documentation.
 - Stories do not consistently record checked Material docs, token status, public API notes, and deviations.
-- Legacy playground components still exist and should not be expanded as the primary documentation surface.
+- Legacy playground components should not be expanded as the primary documentation surface.
 
 ### Visual regression
 
-Confirmed state:
+Current state:
 
-- Visual stories are already present for some high-risk UI surfaces.
-- The repository policy requires Playwright screenshots through Storybook for visual appearance, not Vue unit tests.
+- Visual tests already cover important state surfaces for Buttons, Icon buttons, FABs, Chips, Checkboxes, List items, and State layers.
+- Playwright through Storybook is the correct verification path for visual appearance.
 
 Current gaps:
 
-- The project does not yet have a registry-level map from component family to visual coverage.
-- The next visual coverage work should prioritize shared UI primitives, Material state visuals, target hit areas, overlays, and mobile/desktop adaptive surfaces. It should not add screenshots for every component by default.
-
-## Component-family baseline
-
-The expanded registry lives in [Component registry](./component-registry.md). At this audit stage, most components are `partial` because they exist but do not yet have docs-backed API, canonical component tokens, normalized Storybook docs, visual/browser verification, and documented deviations.
-
-The first implementation family should remain Buttons unless a deeper source-backed review contradicts this. Buttons already have a clear implementation surface, Storybook visual states, target-hit stories, and representative Material variants.
+- Dialogs, text fields, menus, sheets, navigation, cards, tooltips, snackbars, and progress indicators need registry-backed Storybook and visual or browser coverage.
+- Visual coverage should stay focused on high-value states, target areas, overlays, and responsive surfaces. It should not become screenshot coverage for every component by default.
 
 ## Token inventory plan
 
 Use this classification during component-family conversion:
 
-| Token category | Definition | Current examples | Required action |
-| --- | --- | --- | --- |
-| Reference token | Material reference palette or typeface value. | `--md-ref-palette-primary40`, `--md-ref-typeface-plain` | Keep under Material vocabulary; verify against official roles. |
-| System token | Material system role consumed by many components. | `--md-sys-color-primary`, `--md-sys-shape-corner-large`, `--md-sys-state-hover-state-layer-opacity` | Keep public and stable; fill missing roles only from official docs. |
-| Public component token | Canonical component boundary token. | `--md-comp-progress-indicator-active-indicator-color` | Expand per component family using `--md-comp-*`. |
-| Private implementation variable | Local component CSS variable with no public contract. | `--md-button-height`, `--md-button-padding` | Either convert to `--md-comp-*` or keep private with non-public naming during family migration. |
-| App-specific token | Project/application value outside Material token vocabulary. | `--app-*` target namespace from policy | Move non-Material app values here instead of inventing `--md-*`. |
-| Compatibility alias | Temporary alias for old in-repo usage. | `--md-sys-color-surface-tint-color` | Remove when possible; document if temporarily retained. |
-| Obsolete/debug token | Not part of production contract. | `--unknownColor` | Remove or isolate from production token API. |
-| Unresolved token | Material-looking token without verified source or clear ownership. | Any newly found ad hoc `--md-*` | Block alignment until classified. |
+- Reference tokens: Material reference palette or typeface values, such as `--md-ref-palette-primary40` and `--md-ref-typeface-plain`. Keep under Material vocabulary and verify against official roles.
+- System tokens: Material system roles consumed by many components, such as `--md-sys-color-primary`, `--md-sys-shape-corner-large`, and `--md-sys-state-hover-state-layer-opacity`. Keep public and stable.
+- Public component tokens: component boundary tokens such as `--md-comp-progress-indicator-active-indicator-color`. Expand per component family using `--md-comp-*`.
+- Private implementation variables: local component variables such as `--md-button-height` and `--md-button-padding`. Convert to `--md-comp-*` only when they are part of the public component contract.
+- App-specific tokens: project values outside Material vocabulary. Move them to `--app-*` instead of inventing new `--md-*` tokens.
+- Compatibility aliases: temporary aliases for old in-repo usage, such as `--md-sys-color-surface-tint-color`. Remove when possible and document if temporarily retained.
+- Obsolete or debug tokens: values such as `--unknownColor`. Remove or isolate from production token API.
+- Unresolved tokens: Material-looking variables without verified source or clear ownership. Block alignment until classified.
 
 ## Typography migration plan
 
@@ -139,43 +150,26 @@ Use this classification during component-family conversion:
 
 ## Baseline theme gap analysis
 
-| Area | Current state | Gap | Follow-up |
-| --- | --- | --- | --- |
-| Reference palette | Partial palette is present. | Not proven complete against every Material role/tone. | Audit against cache/MCP color role pages. |
-| System color | Light and dark mappings exist. | Needs full role parity check and removal of deprecated alias. | Token validation PR. |
-| Typography | Typescale tokens exist. | Uses `pt`; no `sp` unit conversion. | `sp` foundation PR before typography migration. |
-| Shape | Core corner tokens exist. | Mixed `px`, `dp`, and `cqmin`; needs source-backed review. | Shape token audit. |
-| Elevation | Levels 0-5 exist. | Dark-mode overrides are partial; surface tint behavior not fully verified. | Elevation/color validation. |
-| Motion | Duration and easing tokens exist. | Token names and component usage need source-backed verification. | Motion token audit during component migration. |
-| State | Opacity/focus indicator tokens exist. | Dragged/selected/loading coverage is per-component, not global. | Per-family checklist. |
-| Component tokens | Almost absent globally. | Component CSS owns local variables. | Introduce `--md-comp-*` during each family conversion. |
-
-## Overlay review plan
-
-Preserve the existing overlay ownership model by default. For each overlay family, audit:
-
-- the owning rendered DOM hierarchy;
-- teleport container ownership;
-- outside-interaction containment;
-- escape/back stacking;
-- focus trap and restoration;
-- scroll-container behavior;
-- local z-index usage;
-- mobile viewport behavior.
-
-Do not introduce a numeric z-index ownership model unless a concrete reviewed gap cannot be solved through existing overlay containment.
+- Reference palette: partial palette is present, but completeness across every role and tone is not validated.
+- System color: light and dark mappings exist; full role parity and deprecated alias removal need a token validation PR.
+- Typography: typescale tokens exist, but they use `pt` and need `sp` support before migration.
+- Shape: core corner tokens exist, but mixed `px`, `dp`, and `cqmin` values need source-backed review.
+- Elevation: levels 0-5 exist, but dark-mode overrides and surface tint behavior need validation.
+- Motion: duration and easing tokens exist, but names and component usage need verification during component migration.
+- State: opacity and focus-indicator tokens exist, but dragged, selected, and loading coverage is per-component rather than global.
+- Component tokens: component CSS still owns most local variables. Introduce `--md-comp-*` during each family conversion.
 
 ## Shared UI API migration list
 
 Initial public API risks to review during component-family conversion:
 
-- Buttons: `color` should be reviewed against Material variant vocabulary; `formAction` hides native `type` semantics and should be reviewed; `type="toggle"`, `shape`, `size`, `selected`, and `loading` need official-doc-backed classification as Material, extension, or project-specific behavior.
-- Icon buttons: verify variant, selected/toggle, target area, and icon sizing contracts.
-- FAB: verify size, label/extended behavior, placement helpers, and container responsibilities.
+- Buttons: review `color`, `formAction`, `type`, `shape`, `size`, `selected`, and `loading` against Material vocabulary and project extensions.
+- Icon buttons: verify variant, selected/toggle, target area, width, shape, tooltip, and icon sizing contracts.
+- FAB: verify size, color naming, placement helpers, loading, and container responsibilities.
 - Lists: verify interactive list item contract, trailing action behavior, density, supporting text, leading/trailing content, and target-area rules.
 - Dialogs: verify action count, destructive flows, focus behavior, modal semantics, adaptive behavior, and scroll behavior.
-- Text fields/select/checkbox: verify value/update contracts, error/supporting text, labels, accessibility, and menu ownership.
-- Chips/menus/tooltips/snackbars/navigation/sheets: classify project extensions and missing official variants before public API changes.
+- Text fields and selection controls: verify value/update contracts, error/supporting text, labels, accessibility, and menu ownership.
+- Chips, menus, tooltips, snackbars, navigation, and sheets: classify project extensions and missing official variants before public API changes.
 
 Do not keep old shared UI APIs only for internal compatibility. Migrate in-repository consumers in the same focused family PR unless a compatibility alias is technically necessary and documented.
 
@@ -183,13 +177,13 @@ Do not keep old shared UI APIs only for internal compatibility. Migrate in-repos
 
 Use these target roots:
 
-- `Material 3/Components/<Surface>` for official Material-aligned components;
+- `Material 3/Components/<Surface>` for official Material-aligned components.
 - `Project UI/<Surface>` for project-specific components that only use Material foundations.
 
 Every aligned component-family story should document:
 
 - official Material pages checked;
-- supported variants/configurations;
+- supported variants and configurations;
 - public props and slots;
 - public component tokens;
 - states and accessibility notes;
@@ -202,12 +196,12 @@ Do not expand legacy playgrounds as the primary documentation surface. Convert u
 
 Prioritize visual screenshots for:
 
-1. Button, icon button, and FAB variants/states/target areas.
+1. Button, icon button, and FAB variants, states, and target areas.
 2. List item states, density, leading/trailing content, and trailing action combinations.
 3. Dialog and sheet responsive layouts, focus surfaces, and scroll boundaries.
-4. Text field/select/checkbox states, error/supporting text, and disabled states.
-5. Navigation bar/rail/app bar responsive switching and selected states.
-6. Chips/menus/tooltips/snackbars only where CSS-heavy states or overlays are likely to regress.
+4. Text field, select, and checkbox states, error/supporting text, and disabled states.
+5. Navigation bar, rail, and app bar responsive switching and selected states.
+6. Chips, menus, tooltips, and snackbars only where CSS-heavy states or overlays are likely to regress.
 
 Avoid generic screenshots for every component. Each visual story must prove a high-value Material state, layout, target-area, overlay, or previously broken surface.
 
@@ -215,24 +209,32 @@ Avoid generic screenshots for every component. Each visual story must prove a hi
 
 Keep the adoption-plan order:
 
-1. Buttons pilot: `MDButton`, `MDIconButton`, `MDFab`, `MDFabContainer`, deprecated button compatibility exports.
-2. Lists: `MDList`, `MDListItem`, `MDListContainer`.
+1. Buttons pilot: `MDButton`, `MDIconButton`, `MDFab`, `MDFabContainer`, and deprecated button compatibility exports.
+2. Lists: `MDList`, `MDListItem`, and `MDListContainer`.
 3. Dialogs and overlays needed by dialogs.
-4. Text fields and selection controls: `MDTextField`, `MDFieldContainer`, `MDSelectBase`, `MDCheckbox`, `MDCheckboxField`.
-5. Chips and menus: `MDChipBase`, chip wrappers, `MDMenuBase`, `MDMenuItemBase`, context menus.
-6. Navigation, app bars, toolbars, and sheets: navigation bar/rail/path, `MDAppBar`, toolbar containers, bottom sheets.
+4. Text fields and selection controls: `MDTextField`, `MDFieldContainer`, `MDSelectBase`, `MDCheckbox`, and `MDCheckboxField`.
+5. Chips and menus: `MDChipBase`, chip wrappers, `MDMenuBase`, `MDMenuItemBase`, and context menus.
+6. Navigation, app bars, toolbars, and sheets.
 7. Cards, progress indicators, tooltips, dividers, snackbars, tables, empty states, panes, and project-specific surfaces.
 
 ## Next implementation PR
 
-The smallest safe next implementation PR is the Buttons pilot.
+The smallest safe next implementation PR is foundation token wiring, followed by the Buttons pilot.
 
-Before editing Button code, the agent must:
+Foundation token wiring should:
 
-- check `components/buttons/overview.md`, `components/buttons/guidelines.md`, `components/buttons/specs.md`, and `components/buttons/accessibility.md` through Material MCP or `m3-docs-cache` fallback;
+- add `sp` unit support;
+- wire `MDStateLayer` to system state opacity tokens;
+- decide and document dragged state;
+- isolate or remove `--unknownColor` from public production token API;
+- run focused visual checks for state-layer consumers.
+
+Buttons pilot should:
+
+- check the relevant Material cache pages;
 - update the Buttons registry row from `partial` toward `aligned`;
-- define public `--md-comp-button-*` tokens at the component boundary;
+- define public `--md-comp-button-*`, `--md-comp-icon-button-*`, and `--md-comp-fab-*` tokens;
 - classify every current public prop and slot;
 - document invalid combinations or project-specific extensions;
 - normalize Storybook hierarchy and docs;
-- keep existing target-hit visual coverage and add only missing high-value visual/browser checks.
+- keep existing target-hit visual coverage and add only missing high-value visual or browser checks.
