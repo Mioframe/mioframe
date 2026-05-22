@@ -6,56 +6,71 @@ The shared UI kit must be tracked as a registry that maps official Material 3 su
 
 Do not migrate components only by local inspection. Use the registry to keep the UI kit coherent and to avoid duplicating or partially reimplementing the same Material surface in multiple places.
 
-## Registry template
+## Related audit documents
 
-Use this table shape for new rows:
-
-| Material surface     | Project component     | Status     | Material docs     | Tokens             | API                | Storybook       | Visual tests    | Deviations    |
-| -------------------- | --------------------- | ---------- | ----------------- | ------------------ | ------------------ | --------------- | --------------- | ------------- |
-| `<official surface>` | `<project component>` | `<status>` | `<checked pages>` | `<status/details>` | `<status/details>` | `<path/status>` | `<path/status>` | `<none/link>` |
+- [Material 3 foundation audit](./foundation-audit.md)
+- [Foundation audit details](./foundation-audit-details.md)
+- [Component family audit](./component-family-audit.md)
+- [Secondary component family audit](./secondary-component-family-audit.md)
 
 ## Status values
 
 Use these status values consistently:
 
-- `missing`: no project component exists;
-- `partial`: project component exists but is not fully aligned or verified;
-- `aligned`: component has docs-backed API, tokens, Storybook, verification, and documented deviations;
-- `project-specific`: component is not an official Material component but uses Material foundations;
-- `deprecated`: component remains only as a compatibility surface;
+- `missing`: no project component exists.
+- `partial`: project component exists but is not fully aligned or verified.
+- `aligned`: component has docs-backed API, tokens, Storybook, verification, and documented deviations.
+- `project-specific`: component is not an official Material component but uses Material foundations.
+- `deprecated`: component remains only as a compatibility surface.
 - `blocked`: Material guidance is missing, conflicting, or unavailable.
+
+## Registry row fields
+
+Each registry row should record:
+
+- Material surface.
+- Project component or components.
+- Status.
+- Material docs checked.
+- Token status.
+- Public API status.
+- Storybook status.
+- Visual or browser verification status.
+- Deviations or unsupported features.
 
 ## Foundation audit snapshot
 
-The current detailed audit lives in [Material 3 foundation audit](./foundation-audit.md).
+Rows below are intentionally conservative. `partial` does not mean Material 3 alignment. It means the project has an implementation surface that still needs source-backed API, token, Storybook, verification, and deviation work before it can be marked `aligned`.
 
-Rows below are intentionally conservative. `partial` does not mean Material 3 alignment; it means the project has an implementation surface that still needs source-backed API, token, Storybook, verification, and deviation work before it can be marked `aligned`.
+### Primary official surfaces
 
-| Material surface | Project component | Status | Next check |
-| --- | --- | --- | --- |
-| Buttons | `MDButton` | `partial` | First pilot. Verify variants, props, target area, `--md-comp-button-*`, Storybook hierarchy, visual states. |
-| Icon buttons | `MDIconButton` | `partial` | Include in Buttons pilot. Verify selected/toggle behavior, icon sizing, toolbar target behavior. |
-| Floating action buttons | `MDFab`, `MDFabContainer` | `partial` | Include in Buttons pilot. Separate Material FAB behavior from project placement helpers. |
-| Lists | `MDList`, `MDListItem`, `MDListContainer` | `partial` | Verify row interaction, trailing actions, density, supporting text, and target area. |
-| Dialogs | `Dialog/*` shared UI surfaces | `partial` | Verify modal semantics, actions, focus, scroll, adaptive layout, and destructive flows. |
-| Text fields | `MDTextField`, `MDFieldContainer` | `partial` | Verify labels, supporting/error text, value contract, slots, and states. |
-| Selection controls | `MDCheckbox`, `MDCheckboxField`, `MDSelectBase` | `partial` | Verify checkbox/select semantics, keyboard behavior, menu ownership, and accessibility. |
-| Chips | `MDChipBase` and chip wrappers | `partial` | Verify strict chip type contracts and invalid combinations. |
-| Menus | `MDMenuBase`, `MDMenuItemBase`, `MDContextMenuButton` | `partial` | Verify positioning, keyboard, focus, selection, and context-menu extension. |
-| Navigation | Navigation bar, rail, and path surfaces | `partial` / `project-specific` | Verify official bar/rail mapping; keep navigation path project-specific unless a Material mapping is found. |
-| App bars and toolbars | `MDAppBar`, toolbar containers | `partial` / `project-specific` | Verify app bar mapping; keep toolbar containers project-specific unless they map to a Material surface. |
-| Bottom sheets | `MDBottomSheet*` surfaces | `partial` | Verify modal/persistent behavior, drag handle, focus, scroll, back behavior, and duplicate `*2` surfaces. |
-| Cards | `MDCard` | `partial` | Verify variants, clickability, elevation, and content slots. |
-| Progress indicators | Shared progress indicator surfaces | `partial` | Expand beyond the current single progress component token. |
-| Tooltips | `MDPlainTooltip`, `MDRichTooltip`, `MDOverlayTooltip` | `partial` | Verify plain/rich contracts, trigger ownership, delay, and overlay containment. |
-| Dividers | `MDDivider` | `partial` | Verify inset/full-bleed and orientation contracts. |
-| Snackbars | `MDSnackbar` | `partial` | Verify action, dismiss, timeout, live-region, and queue/portal ownership. |
-| Tables | `MDTable` | `project-specific` | Do not claim official alignment until current Material data-table guidance is verified. |
-| Empty states | `MDEmptyState` | `project-specific` | Treat as product UX surface using Material foundations. |
-| Pane/layout | `MDPane`, `MDSplitLayout` | `project-specific` | Treat as adaptive layout primitives, not official Material components. |
-| Buttons bar | `MDButtonsBar` | `project-specific` | Treat as action-layout helper unless mapped through dialogs/buttons. |
+- Buttons: `MDButton` is `partial`. First pilot. Verify variants, props, target area, `--md-comp-button-*`, Storybook hierarchy, and visual states.
+- Icon buttons: `MDIconButton` is `partial`. Include in Buttons pilot. Verify selected/toggle behavior, icon sizing, and toolbar target behavior.
+- Floating action buttons: `MDFab` and `MDFabContainer` are `partial`. Include in Buttons pilot. Separate Material FAB behavior from project placement helpers.
+- Lists: `MDList`, `MDListItem`, and `MDListContainer` are `partial`. Verify row interaction, trailing actions, density, supporting text, and target area.
+- Dialogs: shared `Dialog/*` surfaces are `partial`. Verify modal semantics, actions, focus, scroll, adaptive layout, and destructive flows.
+- Text fields: `MDTextField` and `MDFieldContainer` are `partial`. Verify labels, supporting/error text, value contract, slots, and states.
+- Selection controls: `MDCheckbox`, `MDCheckboxField`, and `MDSelectBase` are `partial`. Verify checkbox/select semantics, keyboard behavior, menu ownership, and accessibility.
+- Chips: `MDChipBase` and chip wrappers are `partial`. Verify strict chip type contracts and invalid combinations.
+- Menus: `MDMenuBase`, `MDMenuItemBase`, and `MDContextMenuButton` are `partial`. Verify positioning, keyboard, focus, selection, and context-menu extension.
+- Bottom sheets: `MDBottomSheet*` surfaces are `partial`. Verify modal/persistent behavior, drag handle, focus, scroll, back behavior, and duplicate `*2` surfaces.
+- Cards: `MDCard` is `partial`. Verify variants, clickability, elevation, and content slots.
+- Progress indicators: shared progress indicator surfaces are `partial`. Expand beyond the current single progress component token.
+- Tooltips: `MDPlainTooltip`, `MDRichTooltip`, and `MDOverlayTooltip` are `partial`. Verify plain/rich contracts, trigger ownership, delay, and overlay containment.
+- Dividers: `MDDivider` is `partial`. Verify inset/full-bleed and orientation contracts.
+- Snackbars: `MDSnackbar` is `partial`. Verify action, dismiss, timeout, live-region, and queue/portal ownership.
 
-## Required fields for aligned rows
+### Mixed or project-specific surfaces
+
+- Navigation bar and rail surfaces are `partial`. Verify official bar/rail mapping and adaptive ownership.
+- Navigation path is `project-specific` unless a Material mapping is found.
+- `MDAppBar` is `partial`; toolbar containers are `project-specific` unless they map to app bar guidance.
+- `MDTable` is `project-specific` until current Material data-table guidance is verified.
+- `MDEmptyState` is `project-specific` and should be treated as a product UX surface using Material foundations.
+- `MDPane` and `MDSplitLayout` are `project-specific` adaptive layout primitives.
+- `MDButtonsBar` is `project-specific` unless mapped through dialogs or buttons.
+
+## Requirements before marking a row aligned
 
 Before any row is marked `aligned`, it must answer:
 
@@ -72,10 +87,10 @@ Before any row is marked `aligned`, it must answer:
 
 Before starting a component family conversion:
 
-1. update or add the registry row;
-2. identify the Material docs to check;
-3. identify existing project components and deprecated aliases;
-4. decide whether the component is official Material-aligned or project-specific;
-5. define the verification target.
+1. Update or add the registry row.
+2. Identify the Material docs to check.
+3. Identify existing project components and deprecated aliases.
+4. Decide whether the component is official Material-aligned or project-specific.
+5. Define the verification target.
 
 A component family is not done until the registry row can be marked `aligned` or its remaining gaps are explicitly documented.
