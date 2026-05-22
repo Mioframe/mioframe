@@ -2,7 +2,7 @@
 import type { AMDocumentId } from '@shared/lib/automerge';
 import { type DatabaseViewId } from '@shared/lib/databaseDocument';
 import { useReduceIterable } from '@shared/lib/useReduce';
-import { MDChip } from '@shared/ui/Chips';
+import { MDAssistChip, MDFilterChip, MDInputChip } from '@shared/ui/Chips';
 import { isArray, isUndefined } from 'es-toolkit/compat';
 import { toRefs } from 'vue';
 import { useDatabaseViews } from './useDatabaseViews';
@@ -58,15 +58,36 @@ const isSelected = (viewId: DatabaseViewId): boolean => {
 
 <template>
   <div class="database-view-chips-list">
-    <MDChip
-      v-for="({ viewId, label }, index) in viewButtons"
-      :key="viewId"
-      :label="label"
-      :selected="isSelected(viewId)"
-      :type="type"
-      :autofocus="!index ? autofocus : undefined"
-      @click="() => onClickViewChip(viewId)"
-    />
+    <template v-if="type === 'filter'">
+      <MDFilterChip
+        v-for="({ viewId, label }, index) in viewButtons"
+        :key="viewId"
+        :label="label"
+        :selected="isSelected(viewId)"
+        :autofocus="!index ? autofocus : undefined"
+        @click="() => onClickViewChip(viewId)"
+      />
+    </template>
+
+    <template v-else-if="type === 'assist'">
+      <MDAssistChip
+        v-for="({ viewId, label }, index) in viewButtons"
+        :key="viewId"
+        :label="label"
+        :autofocus="!index ? autofocus : undefined"
+        @click="() => onClickViewChip(viewId)"
+      />
+    </template>
+
+    <template v-else>
+      <MDInputChip
+        v-for="({ viewId, label }, index) in viewButtons"
+        :key="viewId"
+        :label="label"
+        :autofocus="!index ? autofocus : undefined"
+        @click="() => onClickViewChip(viewId)"
+      />
+    </template>
   </div>
 </template>
 

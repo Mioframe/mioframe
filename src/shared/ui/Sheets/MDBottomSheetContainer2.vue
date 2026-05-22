@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { StyleValue } from 'vue';
 import { computed, nextTick, useTemplateRef, watch } from 'vue';
-import { MDState } from '../State';
+import { MDStateLayer, useRipple, useStateLayer } from '../State';
 import { useScroll } from '@shared/lib/scrollTo';
 import { useModalAriaHidden } from '../AriaHidden';
 import { usePaneContainer } from '../Layout/useMDContainer';
@@ -14,6 +14,17 @@ const openModel = defineModel<boolean>('open', { required: true });
 
 const scrollPositionModel = defineModel<number | undefined>('scrollPosition');
 
+const props = withDefaults(
+  defineProps<{
+    dragHandleExpandLabel?: string | undefined;
+    dragHandleCloseLabel?: string | undefined;
+  }>(),
+  {
+    dragHandleCloseLabel: 'Close sheet',
+    dragHandleExpandLabel: 'Expand sheet',
+  },
+);
+
 defineSlots<{
   default(): unknown;
 }>();
@@ -23,6 +34,15 @@ const containerEl = useTemplateRef<HTMLElement>('containerEl');
 const onClickDragHandle = () => {
   openModel.value = !openModel.value;
 };
+
+const dragHandleEl = useTemplateRef<HTMLButtonElement>('dragHandleEl');
+const {
+  hover: dragHandleHover,
+  focused: dragHandleFocused,
+  durationPressedState: dragHandlePressed,
+} = useStateLayer(dragHandleEl);
+
+useRipple(dragHandleEl);
 
 const bodyEl = useTemplateRef<HTMLElement>('bodyEl');
 
@@ -133,9 +153,25 @@ useOnBackNavigationStackedWhen(openModel, () => {
   >
     <div ref="bodyEl" class="md md-bottom-sheet__body" :style="bodyStyle">
       <div class="md-bottom-sheet__header">
-        <MDState is="button" class="md-bottom-sheet__drag-handle" @click="onClickDragHandle">
+        <button
+          ref="dragHandleEl"
+          type="button"
+          class="md-bottom-sheet__drag-handle"
+          :aria-label="openModel ? props.dragHandleCloseLabel : props.dragHandleExpandLabel"
+          :class="{
+            'md-state_hover': dragHandleHover,
+            'md-state_focused': dragHandleFocused,
+            'md-state_pressed': dragHandlePressed,
+          }"
+          @click="onClickDragHandle"
+        >
+          <MDStateLayer
+            :hover="dragHandleHover"
+            :focused="dragHandleFocused"
+            :pressed="dragHandlePressed"
+          />
           <span class="md-bottom-sheet__drag-pill" />
-        </MDState>
+        </button>
       </div>
 
       <slot />
@@ -201,10 +237,13 @@ useOnBackNavigationStackedWhen(openModel, () => {
   }
 
   &__drag-handle {
-    --md-state-width: 100%;
-    --md-state-display: block;
+    position: relative;
+    display: block;
+    width: 100%;
     padding: 2step;
     border-radius: 2step;
+    border: 0;
+    background: transparent;
   }
 
   &__drag-pill {

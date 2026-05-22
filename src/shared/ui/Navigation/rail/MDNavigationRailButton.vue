@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { useLastHover } from '@shared/lib/useLastHover';
 import { MDSymbol } from '../../Icon';
-import { MDLayer, usePressed, useRipple } from '../../State';
+import { MDStateLayer, usePressed, useRipple } from '../../State';
 import { computed, useTemplateRef } from 'vue';
 import { useFirstFocus } from '@shared/lib/useFirstFocus';
 import { BUTTON_TYPE } from './types';
@@ -51,25 +51,23 @@ const onClick = (event: MouseEvent) => {
     ]"
     @click="onClick"
   >
-    <MDLayer
+    <MDStateLayer
       v-if="horizontal"
-      class="md-navigation-rail-button__layer"
       :hover="userHover"
       :focused="userFocused"
       :pressed="durationPressedState"
     />
 
-    <div class="md-navigation-rail-button__symbol-container">
-      <MDLayer
+    <span class="md-navigation-rail-button__symbol-container">
+      <MDStateLayer
         v-if="type === BUTTON_TYPE.vertical"
-        class="md-navigation-rail-button__layer"
         :hover="userHover"
         :focused="userFocused"
         :pressed="durationPressedState"
       />
 
       <MDSymbol class="md-navigation-rail-button__symbol" :name="symbol" />
-    </div>
+    </span>
 
     <span class="md-navigation-rail-button__label">
       {{ label }}
@@ -96,6 +94,9 @@ const onClick = (event: MouseEvent) => {
   }
 
   &__symbol-container {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
     --md-symbol-size: 24px;
     border-radius: var(--md-sys-shape-corner-full);
     --md-content-color: var(--md-sys-color-on-surface-variant);
@@ -107,13 +108,6 @@ const onClick = (event: MouseEvent) => {
   &__symbol {
     transition-property: font-variation-settings;
   }
-
-  &__layer {
-    position: absolute;
-    inset: 0;
-    z-index: 1;
-  }
-
   &__label {
     margin-top: 4px;
     padding-bottom: 6px;
