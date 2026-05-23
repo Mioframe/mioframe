@@ -1,0 +1,90 @@
+<script setup lang="ts">
+import { FSEntryMDListItem } from '@entity/fsEntry';
+import { FSEntryManageMenuButton } from '@feature/entryManage';
+import { FSNodeType, PathUtils } from '@shared/lib/virtualFileSystem';
+import { MDListContainer } from '@shared/ui/Lists';
+import type { MioframeDirectoryEntry } from '@entity/mioframeSpaceDirectory';
+
+const props = defineProps<{
+  directoryPath: string;
+  visibleFileEntries: readonly MioframeDirectoryEntry[];
+}>();
+
+const emit = defineEmits<{
+  selectPath: [path: string];
+}>();
+
+const onClickDirectoryEntry = (name: string, fileType: FSNodeType) => {
+  if (fileType === FSNodeType.Directory) {
+    emit('selectPath', PathUtils.join(props.directoryPath, name));
+  }
+};
+</script>
+
+<template>
+  <section class="repository-explorer-section" aria-labelledby="mioframe-files-title">
+    <div class="repository-explorer-section__copy">
+      <h2 id="mioframe-files-title" class="repository-explorer-section__title">Files</h2>
+      <p class="repository-explorer-section__supporting-text">
+        Regular files and folders. Mioframe service files are hidden.
+      </p>
+    </div>
+
+    <MDListContainer is="div" class="repository-explorer-section__list">
+      <FSEntryMDListItem
+        v-for="[name, { description, type: nodeType }] in visibleFileEntries"
+        :key="name"
+        is-button
+        :name="name"
+        :supporting-text="description"
+        :type="nodeType"
+        class="repository-explorer-section__list-item"
+        @click="() => onClickDirectoryEntry(name, nodeType)"
+      >
+        <template #trailingIcon>
+          <FSEntryManageMenuButton :path="PathUtils.join(directoryPath, name)" />
+        </template>
+      </FSEntryMDListItem>
+    </MDListContainer>
+  </section>
+</template>
+
+<style scoped>
+.repository-explorer-section {
+  display: grid;
+  gap: 8px;
+
+  &__copy {
+    display: grid;
+    gap: 4px;
+    padding: 0 16px;
+  }
+
+  &__title {
+    margin: 0;
+    font-family: var(--md-sys-typescale-title-medium-font);
+    font-size: var(--md-sys-typescale-title-medium-size);
+    font-weight: var(--md-sys-typescale-title-medium-weight);
+    line-height: var(--md-sys-typescale-title-medium-line-height);
+    letter-spacing: var(--md-sys-typescale-title-medium-tracking);
+  }
+
+  &__supporting-text {
+    margin: 0;
+    color: var(--md-sys-color-on-surface-variant);
+    font-family: var(--md-sys-typescale-body-small-font);
+    font-size: var(--md-sys-typescale-body-small-size);
+    font-weight: var(--md-sys-typescale-body-small-weight);
+    line-height: var(--md-sys-typescale-body-small-line-height);
+    letter-spacing: var(--md-sys-typescale-body-small-tracking);
+  }
+
+  &__list {
+    flex: 1 0;
+  }
+
+  &__list-item {
+    --md-list-item-border-radius: 8px;
+  }
+}
+</style>

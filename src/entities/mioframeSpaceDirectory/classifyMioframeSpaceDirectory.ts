@@ -6,6 +6,7 @@ import { zodIs } from '@shared/lib/validateZodScheme';
 /** User-facing folder states for the opened Mioframe directory screen. */
 export type MioframeSpaceDirectoryState =
   | 'regularFolder'
+  | 'inconsistentMioframeData'
   | 'emptyMioframeSpace'
   | 'mioframeSpaceWithDocuments';
 
@@ -45,7 +46,7 @@ export const classifyMioframeSpaceDirectory = ({
 
   if (!hasMarkerFile) {
     return {
-      state: 'regularFolder',
+      state: documentIds.length > 0 ? 'inconsistentMioframeData' : 'regularFolder',
       hasMarkerFile,
       visibleFileEntries,
     };

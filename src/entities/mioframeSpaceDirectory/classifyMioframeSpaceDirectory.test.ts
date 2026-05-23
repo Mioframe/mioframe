@@ -23,6 +23,17 @@ describe('classifyMioframeSpaceDirectory', () => {
     expect(result.visibleFileEntries.map(([name]) => name)).toEqual(['notes.txt', 'Projects']);
   });
 
+  it('classifies inconsistent Mioframe data when document ids exist without the marker', () => {
+    const result = classifyMioframeSpaceDirectory({
+      directoryEntries: [['notes.txt', createStat(FSNodeType.File)]],
+      documentIds: ['test-doc-id'],
+    });
+
+    expect(result.state).toBe('inconsistentMioframeData');
+    expect(result.hasMarkerFile).toBe(false);
+    expect(result.visibleFileEntries.map(([name]) => name)).toEqual(['notes.txt']);
+  });
+
   it('classifies an empty Mioframe space when the marker exists without documents', () => {
     const result = classifyMioframeSpaceDirectory({
       directoryEntries: [

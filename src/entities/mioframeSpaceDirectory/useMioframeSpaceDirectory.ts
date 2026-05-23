@@ -3,7 +3,7 @@ import { useObservableQuery } from '@shared/lib/useObservableQuery';
 import { isUndefined } from 'es-toolkit';
 import { computed, type Ref } from 'vue';
 import { useMainServiceClient } from '@shared/service';
-import { classifyMioframeSpaceDirectory } from './classifyMioframeSpaceDirectory';
+import { deriveMioframeSpaceDirectoryViewState } from './deriveMioframeSpaceDirectoryViewState';
 
 /**
  * Reads the current folder and derives Mioframe-space presentation state for the explorer screen.
@@ -43,22 +43,20 @@ export const useMioframeSpaceDirectory = (directoryPath: Ref<string>) => {
     return error instanceof Error ? error.message : 'Error reading repository';
   });
 
-  const presentation = computed(() =>
-    classifyMioframeSpaceDirectory({
-      directoryEntries: directoryEntries.value ?? [],
-      documentIds: documentIds.value ?? [],
+  const viewState = computed(() =>
+    deriveMioframeSpaceDirectoryViewState({
+      directoryEntries: directoryEntries.value,
+      directoryErrorMessage: directoryErrorMessage.value,
+      documentIds: documentIds.value,
+      repositoryErrorMessage: repositoryErrorMessage.value,
+      isDirectoryLoading: isDirectoryLoading.value,
+      isRepositoryLoading: isRepositoryLoading.value,
     }),
   );
 
   return {
-    directoryEntries,
-    documentIds,
-    presentation,
     directoryError,
-    directoryErrorMessage,
     repositoryError,
-    repositoryErrorMessage,
-    isDirectoryLoading,
-    isRepositoryLoading,
+    viewState,
   };
 };

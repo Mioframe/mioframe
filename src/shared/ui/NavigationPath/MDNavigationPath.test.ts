@@ -47,7 +47,7 @@ vi.mock('../Button', () => ({
               emit('click');
             },
           },
-          props.tooltip,
+          h('span', { 'aria-hidden': 'true' }, 'icon'),
         );
     },
   }),
@@ -83,7 +83,7 @@ describe('MDNavigationPath', () => {
     expect(wrapper.text()).toContain('Google Drive');
     expect(wrapper.text()).toContain('My Drive');
     expect(wrapper.text()).toContain('Projects');
-    expect(wrapper.text()).not.toContain('Главная');
+    expect(wrapper.text()).not.toContain('Home');
     expect(wrapper.text()).not.toContain('Mioframe');
   });
 

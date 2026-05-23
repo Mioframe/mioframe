@@ -11,20 +11,16 @@ const onClose = () => {
 </script>
 
 <template>
-  <MDBottomSheet label="Как хранятся документы" @closed="onClose">
+  <MDBottomSheet label="How Mioframe documents are stored" @closed="onClose">
     <MDBottomSheetSection class="mioframe-storage-info-sheet">
-      <h2 class="mioframe-storage-info-sheet__title">Как хранятся документы</h2>
+      <h2 class="mioframe-storage-info-sheet__title">How Mioframe documents are stored</h2>
 
       <div class="mioframe-storage-info-sheet__content">
-        <p>Mioframe показывает документы отдельно, а служебные файлы скрывает в списке файлов.</p>
-        <p>Эти файлы находятся в текущей папке и нужны для сохранения, истории и восстановления.</p>
-        <p>Обычно их не нужно открывать или изменять вручную.</p>
-        <p>Пространство Mioframe — это папка целиком.</p>
-        <p>Документы Mioframe показываются отдельно от обычных файлов.</p>
-        <p>
-          Служебные файлы скрыты по умолчанию и обычно не требуют ручного открытия или изменения.
-        </p>
-        <p>Для переноса или бэкапа нужно копировать всю папку пространства.</p>
+        <p>Mioframe shows its documents separately from ordinary files in the same folder.</p>
+        <p>Service files are hidden from the file list by default.</p>
+        <p>Those files are required for saving, history, and recovery.</p>
+        <p>You normally should not open or change those files by hand.</p>
+        <p>To move or back up a Mioframe space, copy the whole folder.</p>
       </div>
     </MDBottomSheetSection>
   </MDBottomSheet>

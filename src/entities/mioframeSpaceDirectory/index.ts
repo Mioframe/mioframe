@@ -5,3 +5,8 @@ export type {
   MioframeSpaceDirectoryState,
 } from './classifyMioframeSpaceDirectory';
 export { useMioframeSpaceDirectory } from './useMioframeSpaceDirectory';
+export {
+  deriveMioframeSpaceDirectoryViewState,
+  type MioframeSpaceDirectoryReadyState,
+  type MioframeSpaceDirectoryViewState,
+} from './deriveMioframeSpaceDirectoryViewState';

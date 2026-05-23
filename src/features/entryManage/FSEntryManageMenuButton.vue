@@ -17,6 +17,7 @@ import { computed, shallowRef, toRefs } from 'vue';
 
 const props = defineProps<{
   path: string;
+  showDocumentActions?: boolean | undefined;
 }>();
 
 const { path } = toRefs(props);
@@ -63,6 +64,11 @@ const { data: fsEntryStat } = useFSNodeStat(path);
 
 const directoryActionButtons = defineMenuButtonList([
   createDirectoryButton,
+  renameButton,
+  removeButton,
+]);
+const directoryActionButtonsWithDocumentActions = defineMenuButtonList([
+  createDirectoryButton,
   createDocumentButton,
   renameButton,
   importJsonButton,
@@ -90,7 +96,11 @@ const canRenameEntry = computed(() => fsEntryStat.value?.capabilities?.canChange
 const canRemoveEntry = computed(() => fsEntryStat.value?.capabilities?.canDelete);
 
 const actionButtons = computed(() => {
-  const buttonList = isDirectory.value ? directoryActionButtons : fileActionButtons;
+  const buttonList = isDirectory.value
+    ? props.showDocumentActions
+      ? directoryActionButtonsWithDocumentActions
+      : directoryActionButtons
+    : fileActionButtons;
 
   return buttonList.filter(({ key }) => {
     switch (key) {

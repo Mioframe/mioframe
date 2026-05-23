@@ -148,6 +148,7 @@ describe('FSEntryManageMenuButton', () => {
     const wrapper = mount(FSEntryManageMenuButton, {
       props: {
         path: '/target',
+        showDocumentActions: true,
       },
     });
 
@@ -169,6 +170,7 @@ describe('FSEntryManageMenuButton', () => {
     const wrapper = mount(FSEntryManageMenuButton, {
       props: {
         path: '/target',
+        showDocumentActions: true,
       },
     });
 

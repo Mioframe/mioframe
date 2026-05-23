@@ -7,7 +7,7 @@ import { MDSymbol } from '../Icon';
 
 const props = withDefaults(
   defineProps<{
-    size?: 'medium' | 'large' | undefined;
+    size?: 'small' | 'medium' | 'large' | undefined;
     color?:
       | 'primary'
       | 'secondary'
@@ -17,10 +17,14 @@ const props = withDefaults(
       | 'tonal-tertiary'
       | undefined;
     tooltip: string;
+    label: string;
     loading?: number | boolean | undefined;
     mdSymbol?: string | undefined;
   }>(),
-  { color: 'primary' },
+  {
+    color: 'primary',
+    size: 'small',
+  },
 );
 
 const emit = defineEmits<{
@@ -31,13 +35,8 @@ defineSlots<{
   icon(): unknown;
 }>();
 
-const sizeClass = computed(() => {
-  return props.size ? `md-fab_${props.size}` : undefined;
-});
-
-const typeClass = computed(() => {
-  return `md-fab_${props.color}`;
-});
+const sizeClass = computed(() => `md-extended-fab_${props.size}`);
+const typeClass = computed(() => `md-extended-fab_${props.color}`);
 
 const onFabClick = (event: MouseEvent) => {
   event.stopPropagation();
@@ -55,7 +54,7 @@ useRipple(buttonEl);
     ref="buttonEl"
     type="button"
     :aria-label="tooltip"
-    class="md-fab"
+    class="md-extended-fab"
     :class="[
       sizeClass,
       typeClass,
@@ -69,41 +68,44 @@ useRipple(buttonEl);
   >
     <MDStateLayer :hover="hover" :focused="focused" :pressed="durationPressedState" />
 
-    <span class="md-fab__icon">
+    <span class="md-extended-fab__icon">
       <MDCircularProgressIndicator v-if="loading" />
 
       <slot v-else name="icon">
         <MDSymbol v-if="mdSymbol" :name="mdSymbol" />
-
-        <span v-else class="empty-icon" />
       </slot>
     </span>
+
+    <span class="md-extended-fab__label">{{ label }}</span>
+
     <MDPlainTooltip :text="tooltip" />
   </button>
 </template>
 
 <style scoped>
-.md-fab {
+.md-extended-fab {
   --md-fab-icon-size: 24dp;
   --md-fab-container-size: 56dp;
+  --md-fab-horizontal-padding: 16dp;
   --md-fab-container-shape: var(--md-sys-shape-corner-large);
   --md-container-color: var(--md-fab-container-color);
   --md-content-color: var(--md-fab-icon-color);
-
   --md-state-box-shadow: var(--md-sys-elevation-level3);
 
   position: relative;
-  display: flex;
-  justify-content: center;
+  display: inline-flex;
   align-items: center;
-  width: var(--md-fab-container-size);
+  gap: 12px;
+  min-width: var(--md-fab-container-size);
   height: var(--md-fab-container-size);
+  padding: 0 var(--md-fab-horizontal-padding);
   border: 0;
   border-radius: var(--md-fab-container-shape);
   background: var(--md-container-color);
   color: var(--md-content-color);
   box-shadow: var(--md-state-box-shadow);
   -webkit-tap-highlight-color: transparent;
+
   &_primary {
     --md-fab-container-color: var(--md-sys-color-primary);
     --md-fab-icon-color: var(--md-sys-color-on-primary);
@@ -138,15 +140,28 @@ useRipple(buttonEl);
     --md-state-box-shadow: var(--md-sys-elevation-level4);
   }
 
-  &__icon {
+  &__icon,
+  &__label {
     position: relative;
     z-index: 1;
+  }
+
+  &__icon {
     display: inline-flex;
     width: var(--md-fab-icon-size);
     height: var(--md-fab-icon-size);
     color: var(--md-fab-icon-color);
     justify-content: center;
     align-items: center;
+  }
+
+  &__label {
+    font-family: var(--md-sys-typescale-label-large-font);
+    font-weight: var(--md-sys-typescale-label-large-weight);
+    font-size: var(--md-sys-typescale-label-large-size);
+    line-height: var(--md-sys-typescale-label-large-line-height);
+    letter-spacing: var(--md-sys-typescale-label-large-tracking);
+    white-space: nowrap;
   }
 
   &_medium {
@@ -159,34 +174,6 @@ useRipple(buttonEl);
     --md-fab-container-size: 96dp;
     --md-fab-icon-size: 36dp;
     --md-fab-container-shape: var(--md-sys-shape-corner-extra-large);
-  }
-
-  .empty-icon {
-    box-sizing: border-box;
-    border: 1px solid currentColor;
-    background:
-      linear-gradient(
-        45deg,
-        currentColor 25%,
-        transparent 25%,
-        transparent 75%,
-        currentColor 75%,
-        currentColor
-      ),
-      linear-gradient(
-        45deg,
-        currentColor 25%,
-        transparent 25%,
-        transparent 75%,
-        currentColor 75%,
-        currentColor
-      );
-    background-position:
-      0 0,
-      5px 5px;
-    background-size: 10px 10px;
-    height: 100%;
-    width: 100%;
   }
 }
 </style>

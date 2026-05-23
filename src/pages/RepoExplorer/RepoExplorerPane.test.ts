@@ -39,13 +39,42 @@ vi.mock('@feature/documentAdd', () => ({
   }),
 }));
 
-vi.mock('@feature/repoExplorerScreenMenu', () => ({
-  RepoExplorerScreenMenuButton: defineComponent({
-    name: 'RepoExplorerScreenMenuButtonStub',
+vi.mock('@feature/entryManage', () => ({
+  FSEntryManageMenuButton: defineComponent({
+    name: 'FSEntryManageMenuButtonStub',
     setup() {
-      return () => h('button', 'Меню экрана');
+      return () => h('button', 'Current directory actions');
     },
   }),
+}));
+
+vi.mock('@feature/documentCreate', () => ({
+  DocumentCreationDialog: defineComponent({
+    name: 'DocumentCreationDialogStub',
+    setup() {
+      return () => h('div', { 'data-testid': 'document-create-dialog' });
+    },
+  }),
+}));
+
+vi.mock('@feature/importDocument', () => ({
+  ImportDocumentErrorCode: {
+    invalidJson: 'invalidJson',
+    invalidDocumentFormat: 'invalidDocumentFormat',
+  },
+  useImportDocument: () => ({
+    importJsonFile: vi.fn(),
+  }),
+}));
+
+vi.mock('@shared/ui/Snackbar', () => ({
+  useSnackbar: () => ({
+    addSnackbar: vi.fn(),
+  }),
+}));
+
+vi.mock('@shared/lib/reportHandledError', () => ({
+  reportHandledError: vi.fn(),
 }));
 
 vi.mock('@shared/ui/Layout', () => ({
@@ -99,6 +128,34 @@ vi.mock('@shared/ui/Button', () => ({
             },
           },
           props.label ?? slots.icon?.(),
+        );
+    },
+  }),
+  MDExtendedFab: defineComponent({
+    name: 'MDExtendedFabStub',
+    props: {
+      tooltip: {
+        type: String,
+        required: true,
+      },
+      label: {
+        type: String,
+        required: true,
+      },
+    },
+    emits: ['click'],
+    setup(props, { emit }) {
+      return () =>
+        h(
+          'button',
+          {
+            type: 'button',
+            'aria-label': props.tooltip,
+            onClick: () => {
+              emit('click', new MouseEvent('click'));
+            },
+          },
+          props.label,
         );
     },
   }),
@@ -157,11 +214,12 @@ describe('RepoExplorerPane', () => {
   it('keeps the document add CTA separate from the create-folder FAB and opens the add sheet', async () => {
     const wrapper = await mountPane();
 
-    expect(wrapper.text()).toContain('+ Добавить');
-    expect(wrapper.find('button[aria-label="Добавить в документы Mioframe"]').exists()).toBe(true);
+    expect(wrapper.text()).toContain('Current directory actions');
+    expect(wrapper.text()).toContain('Add');
+    expect(wrapper.find('button[aria-label="Add document"]').exists()).toBe(true);
     expect(wrapper.find('button[aria-label="Create directory"]').exists()).toBe(true);
 
-    await wrapper.get('button[aria-label="Добавить в документы Mioframe"]').trigger('click');
+    await wrapper.get('button[aria-label="Add document"]').trigger('click');
 
     expect(wrapper.find('[data-testid="document-add-sheet"]').exists()).toBe(true);
     expect(wrapper.find('[data-testid="directory-create-dialog"]').exists()).toBe(false);
@@ -172,7 +230,7 @@ describe('RepoExplorerPane', () => {
 
     const wrapper = await mountPane();
 
-    expect(wrapper.find('button[aria-label="Добавить в документы Mioframe"]').exists()).toBe(false);
+    expect(wrapper.find('button[aria-label="Add document"]').exists()).toBe(false);
     expect(wrapper.find('button[aria-label="Create directory"]').exists()).toBe(false);
   });
 });
