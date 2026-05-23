@@ -88,6 +88,16 @@ reason:
 - When progress is knowable, surface progress instead of falling back to an indeterminate spinner.
 - Keep unit tests colocated with the source file they verify, using sibling `*.test.ts` files. Do not introduce `__tests__` directories.
 
+## Implementation quality gates
+
+- Treat implementation preflight as a contract, not a planning note. Before final verification, compare the resulting diff against the preflight owner-layer plan, acceptance matrix, and risk matrix. If the diff violates the plan, either refactor it or explicitly report the remaining risk instead of claiming completion.
+- Preserve existing user scenarios unless the task explicitly removes them. When replacing a menu, navigation control, status indicator, or shared surface, list the old user actions it provided and ensure they are still reachable or intentionally removed by the task.
+- Do not treat a green `pnpm verify` as architectural approval. Verification proves that automated checks passed; it does not prove FSD ownership, Material correctness, browser behavior, accessibility, or UX acceptance unless those checks were actually covered.
+- Keep user-facing copy in the application's established UI language. Task descriptions, design notes, and review comments may use another language; do not copy their text into product UI unless that language already matches the surrounding UI.
+- For user-visible UI tasks, verify the primary acceptance scenario in the rendered product or a representative Storybook/browser harness before final completion. Unit or component-contract tests may support this, but they must not replace browser verification for layout, scrolling, focus, overlays, touch, or Material visual states.
+- Before changing a shared UI primitive, perform a blast-radius check: inspect existing consumers, define the public API change, preserve existing behavior by default, update or add Storybook/visual/browser coverage when appearance or interaction changes, and avoid one-off props that only serve a single feature.
+- Keep high-risk cross-layer work incremental. Prefer committing or verifying pure read-model changes before feature sheets, widget composition, shared UI primitives, and visual behavior changes. Do not bundle unrelated architectural changes only because they are needed by the same screen.
+
 ## Testing UI and Components
 
 - Do not use unit tests as the default verification method for Vue UI components.
