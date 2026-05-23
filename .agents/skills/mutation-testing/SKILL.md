@@ -33,7 +33,7 @@ If any condition is false, skip mutation testing and use the normal verification
 1. Run the focused unit or integration tests first and confirm they pass.
 2. Select the narrowest changed source file or glob for mutation testing.
 3. Run Stryker against that narrow scope.
-4. Inspect survived mutants.
+4. Inspect survived mutants before editing more code.
 5. Strengthen tests only when a survived mutant exposes a missing behavior assertion.
 6. Treat equivalent or irrelevant mutants as analysis findings, not as a reason to add brittle tests.
 7. Do not change production behavior only to kill a mutant.
@@ -84,6 +84,12 @@ For each meaningful survived mutant:
 3. Keep the assertion behavior-focused, not implementation-focused.
 4. Rerun the focused test.
 5. Rerun the same narrow mutation scope.
+
+Useful mutation fixes usually assert boundaries, branches, and user-visible outcomes that should already matter: empty vs non-empty input, valid vs invalid input, cancellation vs failure, error precedence, filtering inclusion/exclusion, sorting direction, and fallback behavior.
+
+If survived mutants cluster in a large UI component, do not add brittle component tests against implementation details. First extract the pure derivation or decision logic into a helper/composable owned by the correct layer, then cover that extracted logic with focused tests.
+
+If the mutation report points at unrelated files, reduce the mutation scope or revert unrelated changes. Do not broaden production changes to satisfy a mutation report that was scoped too widely.
 
 For equivalent or irrelevant mutants:
 
