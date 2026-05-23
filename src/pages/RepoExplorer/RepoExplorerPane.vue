@@ -3,7 +3,6 @@ import { computed, ref, toRefs } from 'vue';
 import { DirectoryCreateDialog } from '@feature/directoryCreate';
 import { MDFab, MDFabContainer } from '@shared/ui/Button';
 import { MDSymbol } from '@shared/ui/Icon';
-import { DocumentCreationDialog } from '@feature/documentCreate';
 import { useFSNodeStat } from '@entity/fsEntry';
 import { MDPane } from '@shared/ui/Layout';
 import { MDAppBar } from '@shared/ui/AppBar';
@@ -12,8 +11,9 @@ import { useStackNavigation } from '@page/routes';
 import { zodToVueProps } from '@shared/lib/zodToVueProps';
 import { zodQuery } from './model';
 import { PathUtils } from '@shared/lib/virtualFileSystem';
-import { FSEntryManageMenuButton } from '@feature/entryManage';
+import { RepoExplorerScreenMenuButton } from '@feature/repoExplorerScreenMenu';
 import { RepositoryExplorerWidget } from '@widget/RepositoryExplorerWidget';
+import { DocumentAddSheet } from '@feature/documentAdd';
 
 // eslint-disable-next-line vue/define-props-declaration -- z.infer output is too complex for Vue macro runtime inference
 const props = defineProps(zodToVueProps(zodQuery));
@@ -45,14 +45,14 @@ const onClickPath = async (path: string) => {
   });
 };
 
-const showCreateDocumentDialog = ref(false);
+const showDocumentAddSheet = ref(false);
 
-const onClickCreateDocument = () => {
-  showCreateDocumentDialog.value = true;
+const onClickAddDocument = () => {
+  showDocumentAddSheet.value = true;
 };
 
-const onCloseCreateDocumentDialog = () => {
-  showCreateDocumentDialog.value = false;
+const onCloseDocumentAddSheet = () => {
+  showDocumentAddSheet.value = false;
 };
 
 const onClickDocument = async (documentId: AMDocumentId) => {
@@ -87,7 +87,7 @@ const onClickReturnHome = async () => {
       </template>
 
       <template #trailingElements>
-        <FSEntryManageMenuButton :path="directoryPath" />
+        <RepoExplorerScreenMenuButton />
         <slot name="appBarTrailing" />
       </template>
     </MDAppBar>
@@ -100,31 +100,27 @@ const onClickReturnHome = async () => {
     >
       <template v-if="canEditDirectoryContents" #after>
         <MDFabContainer auto-hide>
+          <MDFab
+            tooltip="Добавить в документы Mioframe"
+            color="primary"
+            md-symbol="add"
+            label="+ Добавить"
+            @click="onClickAddDocument"
+          />
+
           <MDFab tooltip="Create directory" color="tonal-primary" @click="onClickCreateDirectory">
             <template #icon>
               <MDSymbol name="create_new_folder" />
-            </template>
-          </MDFab>
-
-          <MDFab
-            tooltip="Create document"
-            size="medium"
-            color="tonal-primary"
-            @click="onClickCreateDocument"
-          >
-            <template #icon>
-              <MDSymbol name="edit_document" />
             </template>
           </MDFab>
         </MDFabContainer>
       </template>
     </RepositoryExplorerWidget>
 
-    <DocumentCreationDialog
-      v-if="directoryPath && showCreateDocumentDialog"
+    <DocumentAddSheet
+      v-if="directoryPath && showDocumentAddSheet"
       :path="directoryPath"
-      @cancel="onCloseCreateDocumentDialog"
-      @created="onCloseCreateDocumentDialog"
+      @close="onCloseDocumentAddSheet"
     />
 
     <DirectoryCreateDialog

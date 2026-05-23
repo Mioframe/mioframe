@@ -1,22 +1,14 @@
 <script setup lang="ts">
 import { useVfsActivity } from '@entity/vfsActivity';
 import { useMainServiceClient } from '@shared/service';
-import { MDButton, MDIconButton } from '@shared/ui/Button';
+import { MDButton } from '@shared/ui/Button';
+import { MDAssistChip } from '@shared/ui/Chips';
 import { MDSymbol } from '@shared/ui/Icon';
 import { useSnackbar } from '@shared/ui/Snackbar';
 import { MDOverlayTooltip } from '@shared/ui/Tooltips';
 import type { ComponentPublicInstance } from 'vue';
 import { computed, ref, useTemplateRef } from 'vue';
-import {
-  formatSaveStatusErrorDetails,
-  formatSaveStatusTimestamp,
-  STATUS_LABELS,
-} from './saveStatusText';
-
-const STATUS_ICONS = {
-  idle: 'check_circle',
-  error: 'error',
-} as const;
+import { formatSaveStatusErrorDetails } from './saveStatusText';
 
 const triggerRef = useTemplateRef<ComponentPublicInstance>('triggerRef');
 const showErrorDetails = ref(false);
@@ -24,20 +16,24 @@ const { addSnackbar } = useSnackbar();
 const {
   fileSystem: { acknowledgeVfsActivityError: dismissSaveStatusError },
 } = useMainServiceClient();
-const { hasUnacknowledgedError, isActive, state } = useVfsActivity();
+const { hasUnacknowledgedError, state } = useVfsActivity();
 
 const isError = computed(() => state.value.status === 'error');
-const tooltip = computed(() => STATUS_LABELS[state.value.status]);
-const iconName = computed(() =>
-  state.value.status === 'active' ? undefined : STATUS_ICONS[state.value.status],
-);
+const label = computed(() => {
+  if (state.value.status === 'active') {
+    return 'Сохраняем';
+  }
+
+  if (state.value.status === 'error') {
+    return 'Ошибка';
+  }
+
+  return undefined;
+});
 const errorDetails = computed(() => formatSaveStatusErrorDetails(state.value.lastError));
-const formattedErrorTime = computed(() =>
-  state.value.lastError ? formatSaveStatusTimestamp(state.value.lastError.occurredAt) : undefined,
-);
 
 const onClickTrigger = () => {
-  if (!isError.value) {
+  if (state.value.status === 'idle') {
     return;
   }
 
@@ -73,11 +69,14 @@ const onInteractionOutside = () => {
 </script>
 
 <template>
-  <MDIconButton ref="triggerRef" :tooltip="tooltip" :loading="isActive" @click="onClickTrigger">
-    <template v-if="iconName" #icon>
-      <MDSymbol :name="iconName" :class="{ 'save-status-button__icon_error': isError }" />
+  <MDAssistChip v-if="label" ref="triggerRef" :label="label" @click="onClickTrigger">
+    <template #leadingIcon>
+      <MDSymbol
+        :name="isError ? 'error' : 'sync'"
+        :class="{ 'save-status-button__icon_error': isError }"
+      />
     </template>
-  </MDIconButton>
+  </MDAssistChip>
 
   <MDOverlayTooltip
     v-if="isError && hasUnacknowledgedError"
@@ -86,22 +85,15 @@ const onInteractionOutside = () => {
     @interaction-outside="onInteractionOutside"
   >
     <div class="save-status-button__tooltip">
-      <p>
-        The app could not confirm that your data was written to storage. Do not close the app if
-        your latest changes are important.
-      </p>
-      <p>Operation: {{ state.lastError?.operationType }}</p>
-      <p>Path: {{ state.lastError?.path }}</p>
-      <p v-if="state.lastError?.newPath">New path: {{ state.lastError.newPath }}</p>
-      <p>Time: {{ formattedErrorTime }}</p>
-      <p>Message: {{ state.lastError?.message }}</p>
+      <p>Не удалось подтвердить последнее сохранение.</p>
+      <p>Проверьте папку и повторите действие, если данные должны были измениться.</p>
     </div>
 
     <div class="save-status-button__actions">
-      <MDButton color="text" label="Dismiss" @click="onClickDismissError" />
+      <MDButton color="text" label="Закрыть" @click="onClickDismissError" />
       <MDButton
         color="text"
-        label="Copy details"
+        label="Скопировать детали"
         :disabled="!errorDetails"
         @click="onClickCopyDetails"
       />

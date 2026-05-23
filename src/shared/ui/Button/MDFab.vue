@@ -19,6 +19,7 @@ const props = withDefaults(
     tooltip: string;
     loading?: number | boolean | undefined;
     mdSymbol?: string | undefined;
+    label?: string | undefined;
   }>(),
   { color: 'primary' },
 );
@@ -79,6 +80,8 @@ useRipple(buttonEl);
       </slot>
     </span>
 
+    <span v-if="label" class="md-fab__label">{{ label }}</span>
+
     <MDPlainTooltip :text="tooltip" />
   </button>
 </template>
@@ -87,6 +90,7 @@ useRipple(buttonEl);
 .md-fab {
   --md-fab-icon-size: 24dp;
   --md-fab-container-size: 56dp;
+  --md-fab-horizontal-padding: 0;
   --md-fab-container-shape: var(--md-sys-shape-corner-large);
   --md-container-color: var(--md-fab-container-color);
   --md-content-color: var(--md-fab-icon-color);
@@ -97,8 +101,11 @@ useRipple(buttonEl);
   display: flex;
   justify-content: center;
   align-items: center;
-  width: var(--md-fab-container-size);
+  gap: 12px;
+  width: max-content;
+  min-width: var(--md-fab-container-size);
   height: var(--md-fab-container-size);
+  padding: 0 var(--md-fab-horizontal-padding);
   border: 0;
   border-radius: var(--md-fab-container-shape);
   background: var(--md-container-color);
@@ -148,6 +155,21 @@ useRipple(buttonEl);
     columns: var(--md-fab-icon-color);
     justify-content: center;
     align-items: center;
+  }
+
+  &__label {
+    position: relative;
+    z-index: 1;
+    font-family: var(--md-sys-typescale-label-large-font);
+    font-weight: var(--md-sys-typescale-label-large-weight);
+    font-size: var(--md-sys-typescale-label-large-size);
+    line-height: var(--md-sys-typescale-label-large-line-height);
+    letter-spacing: var(--md-sys-typescale-label-large-tracking);
+    white-space: nowrap;
+  }
+
+  &:has(.md-fab__label) {
+    --md-fab-horizontal-padding: 16dp;
   }
 
   &_medium {
