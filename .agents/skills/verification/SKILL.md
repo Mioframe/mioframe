@@ -1,6 +1,6 @@
 ---
 name: verification
-description: 'Use this skill when choosing targeted checks, using pnpm verify --fix, interpreting verification failures, avoiding duplicate verification runs, or preparing the final VERIFY RESULT report. Final completion after edits requires read-only pnpm verify.'
+description: 'Use this skill when choosing targeted checks, using pnpm verify --fix, interpreting verification failures or warnings, avoiding duplicate verification runs, or preparing the final VERIFY RESULT report. Final completion after edits requires read-only pnpm verify.'
 ---
 
 # Verification workflow
@@ -71,6 +71,17 @@ If `pnpm verify` fails:
 4. Rerun final `pnpm verify` before reporting completion.
 5. If the failure is unrelated or cannot be fixed, report the exact failing command and relevant output.
 6. Do not claim the task is complete while final verification is failing.
+
+## Warning handling
+
+Treat warnings in touched files as follow-up work, not as harmless noise.
+
+After final verification:
+
+1. Inspect warning-only summaries when `pnpm verify` reports them.
+2. Fix warnings caused by the current change, especially lint, accessibility, deprecation, Storybook, Playwright, type, or mutation warnings.
+3. If a warning remains, explicitly state whether it is pre-existing, unrelated, or intentionally deferred.
+4. Do not describe the result as clean when new warnings remain in touched files.
 
 ## Avoid duplicate checks
 
