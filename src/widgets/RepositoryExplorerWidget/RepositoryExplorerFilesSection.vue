@@ -4,6 +4,7 @@ import { FSEntryManageMenuButton } from '@feature/entryManage';
 import { FSNodeType, PathUtils } from '@shared/lib/virtualFileSystem';
 import { MDListContainer } from '@shared/ui/Lists';
 import type { MioframeDirectoryEntry } from '@entity/mioframeSpaceDirectory';
+import { computed } from 'vue';
 
 const props = defineProps<{
   directoryPath: string;
@@ -13,6 +14,8 @@ const props = defineProps<{
 const emit = defineEmits<{
   selectPath: [path: string];
 }>();
+
+const hasVisibleFiles = computed(() => props.visibleFileEntries.length > 0);
 
 const onClickDirectoryEntry = (name: string, fileType: FSNodeType) => {
   if (fileType === FSNodeType.Directory) {
@@ -30,7 +33,7 @@ const onClickDirectoryEntry = (name: string, fileType: FSNodeType) => {
       </p>
     </div>
 
-    <MDListContainer is="div" class="repository-explorer-section__list">
+    <MDListContainer is="div" v-if="hasVisibleFiles" class="repository-explorer-section__list">
       <FSEntryMDListItem
         v-for="[name, { description, type: nodeType }] in visibleFileEntries"
         :key="name"
@@ -46,6 +49,10 @@ const onClickDirectoryEntry = (name: string, fileType: FSNodeType) => {
         </template>
       </FSEntryMDListItem>
     </MDListContainer>
+
+    <p v-else class="repository-explorer-section__empty-text">
+      No regular files or folders to show. Mioframe service files are hidden.
+    </p>
   </section>
 </template>
 
@@ -85,6 +92,17 @@ const onClickDirectoryEntry = (name: string, fileType: FSNodeType) => {
 
   &__list-item {
     --md-list-item-border-radius: 8px;
+  }
+
+  &__empty-text {
+    margin: 0;
+    padding: 0 16px;
+    color: var(--md-sys-color-on-surface-variant);
+    font-family: var(--md-sys-typescale-body-small-font);
+    font-size: var(--md-sys-typescale-body-small-size);
+    font-weight: var(--md-sys-typescale-body-small-weight);
+    line-height: var(--md-sys-typescale-body-small-line-height);
+    letter-spacing: var(--md-sys-typescale-body-small-tracking);
   }
 }
 </style>

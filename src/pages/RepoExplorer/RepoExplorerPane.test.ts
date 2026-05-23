@@ -4,6 +4,10 @@ import { defineComponent, h, ref } from 'vue';
 import { mount } from '@vue/test-utils';
 
 const canEditChildren = ref(true);
+const { openMock, importDocumentMock } = vi.hoisted(() => ({
+  openMock: vi.fn(),
+  importDocumentMock: vi.fn(),
+}));
 
 vi.mock('@entity/fsEntry', () => ({
   useFSNodeStat: () => ({
@@ -17,7 +21,7 @@ vi.mock('@entity/fsEntry', () => ({
 
 vi.mock('@page/routes', () => ({
   useStackNavigation: () => ({
-    open: vi.fn(),
+    open: openMock,
   }),
 }));
 
@@ -33,8 +37,38 @@ vi.mock('@feature/directoryCreate', () => ({
 vi.mock('@feature/documentAdd', () => ({
   DocumentAddSheet: defineComponent({
     name: 'DocumentAddSheetStub',
-    setup() {
-      return () => h('div', { 'data-testid': 'document-add-sheet' });
+    emits: ['close', 'selectCreate', 'selectImport'],
+    setup(_props, { emit }) {
+      return () =>
+        h('div', { 'data-testid': 'document-add-sheet' }, [
+          h(
+            'button',
+            {
+              onClick: () => {
+                emit('selectCreate');
+              },
+            },
+            'Create from sheet',
+          ),
+          h(
+            'button',
+            {
+              onClick: () => {
+                emit('selectImport');
+              },
+            },
+            'Import from sheet',
+          ),
+          h(
+            'button',
+            {
+              onClick: () => {
+                emit('close');
+              },
+            },
+            'Close sheet',
+          ),
+        ]);
     },
   }),
 }));
@@ -58,12 +92,8 @@ vi.mock('@feature/documentCreate', () => ({
 }));
 
 vi.mock('@feature/importDocument', () => ({
-  ImportDocumentErrorCode: {
-    invalidJson: 'invalidJson',
-    invalidDocumentFormat: 'invalidDocumentFormat',
-  },
-  useImportDocument: () => ({
-    importJsonFile: vi.fn(),
+  useImportDocumentAction: () => ({
+    importDocument: importDocumentMock,
   }),
 }));
 
@@ -136,7 +166,7 @@ vi.mock('@shared/ui/Button', () => ({
     props: {
       tooltip: {
         type: String,
-        required: true,
+        default: undefined,
       },
       label: {
         type: String,
@@ -150,7 +180,7 @@ vi.mock('@shared/ui/Button', () => ({
           'button',
           {
             type: 'button',
-            'aria-label': props.tooltip,
+            'aria-label': props.tooltip ?? props.label,
             onClick: () => {
               emit('click', new MouseEvent('click'));
             },
@@ -185,8 +215,39 @@ vi.mock('@shared/ui/Icon', () => ({
 vi.mock('@widget/RepositoryExplorerWidget', () => ({
   RepositoryExplorerWidget: defineComponent({
     name: 'RepositoryExplorerWidgetStub',
-    setup(_props, { slots }) {
-      return () => h('main', [slots.after?.()]);
+    emits: ['clickPath', 'clickReturnHome', 'clickDocument'],
+    setup(_props, { slots, emit }) {
+      return () =>
+        h('main', [
+          h(
+            'button',
+            {
+              onClick: () => {
+                emit('clickPath', '/Google Drive/My Drive');
+              },
+            },
+            'Path',
+          ),
+          h(
+            'button',
+            {
+              onClick: () => {
+                emit('clickReturnHome');
+              },
+            },
+            'Home',
+          ),
+          h(
+            'button',
+            {
+              onClick: () => {
+                emit('clickDocument', 'document-id');
+              },
+            },
+            'Document',
+          ),
+          slots.after?.(),
+        ]);
     },
   }),
 }));
@@ -208,6 +269,8 @@ const mountPane = async () => {
 describe('RepoExplorerPane', () => {
   afterEach(() => {
     canEditChildren.value = true;
+    openMock.mockReset();
+    importDocumentMock.mockReset();
     document.body.innerHTML = '';
   });
 
@@ -232,6 +295,64 @@ describe('RepoExplorerPane', () => {
 
     expect(wrapper.find('button[aria-label="Add document"]').exists()).toBe(false);
     expect(wrapper.find('button[aria-label="Create directory"]').exists()).toBe(false);
+  });
+
+  it('renders the current folder title and keeps dialogs hidden by default', async () => {
+    const wrapper = await mountPane();
+
+    expect(wrapper.text()).toContain('Mioframe');
+    expect(wrapper.find('[data-testid="document-add-sheet"]').exists()).toBe(false);
+    expect(wrapper.find('[data-testid="document-create-dialog"]').exists()).toBe(false);
+    expect(wrapper.find('[data-testid="directory-create-dialog"]').exists()).toBe(false);
+  });
+
+  it('opens the create document dialog after selecting create from the add sheet', async () => {
+    const wrapper = await mountPane();
+
+    await wrapper.get('button[aria-label="Add document"]').trigger('click');
+    await wrapper.get('[data-testid="document-add-sheet"] button').trigger('click');
+
+    expect(wrapper.find('[data-testid="document-create-dialog"]').exists()).toBe(true);
+  });
+
+  it('delegates import from the add sheet to the shared import action', async () => {
+    const wrapper = await mountPane();
+
+    await wrapper.get('button[aria-label="Add document"]').trigger('click');
+    await wrapper.findAll('[data-testid="document-add-sheet"] button')[1]?.trigger('click');
+
+    expect(importDocumentMock).toHaveBeenCalledWith('/Google Drive/My Drive/Mioframe');
+  });
+
+  it('routes breadcrumb, home, and document selections through stack navigation', async () => {
+    const wrapper = await mountPane();
+    const buttons = wrapper.findAll('button');
+    const pathButton = buttons.find((button) => button.text() === 'Path');
+    const homeButton = buttons.find((button) => button.text() === 'Home');
+    const documentButton = buttons.find((button) => button.text() === 'Document');
+
+    if (!pathButton || !homeButton || !documentButton) {
+      throw new Error('Expected repository widget action buttons');
+    }
+
+    await pathButton.trigger('click');
+    await homeButton.trigger('click');
+    await documentButton.trigger('click');
+
+    expect(openMock).toHaveBeenCalledWith('repo', {
+      repoPath: '/Google Drive/My Drive',
+    });
+    expect(openMock).toHaveBeenCalledWith('home', {}, { additionalPanes: 0, replace: true });
+    expect(openMock).toHaveBeenCalledWith(
+      'document',
+      {
+        documentDirectory: '/Google Drive/My Drive/Mioframe',
+        documentId: 'document-id',
+      },
+      {
+        target: 'document',
+      },
+    );
   });
 });
 /* eslint-enable vue/one-component-per-file -- Re-enable after inline stubs. */

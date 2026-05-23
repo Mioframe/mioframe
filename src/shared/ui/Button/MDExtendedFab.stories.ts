@@ -5,7 +5,6 @@ const meta = {
   title: 'shared/ui/MDExtendedFab',
   component: MDExtendedFab,
   args: {
-    tooltip: 'Add document',
     label: 'Add',
     color: 'primary',
     mdSymbol: 'add',
@@ -29,11 +28,11 @@ export const VisualStates: Story = {
   render: () => ({
     components: { MDExtendedFab },
     template: `
-      <div data-testid="visual-md-extended-fab-states" class="visual-surface">
+        <div data-testid="visual-md-extended-fab-states" class="visual-surface">
         <div class="visual-row">
-          <MDExtendedFab tooltip="Add document" label="Add" color="primary" md-symbol="add" />
-          <MDExtendedFab tooltip="Share selection" label="Share" color="secondary" md-symbol="share" />
-          <MDExtendedFab tooltip="Archive item" label="Archive" color="tonal-primary" md-symbol="archive" />
+          <MDExtendedFab label="Add" color="primary" md-symbol="add" />
+          <MDExtendedFab label="Share" color="secondary" md-symbol="share" />
+          <MDExtendedFab label="Archive" color="tonal-primary" md-symbol="archive" />
         </div>
       </div>
     `,

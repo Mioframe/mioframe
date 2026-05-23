@@ -22,13 +22,10 @@ const emit = defineEmits<{
 const { path, omitCurrent } = toRefs(props);
 
 const pathSegments = computed(() =>
-  path.value
-    .split(PathUtils.SEPARATOR)
-    .map((name, index, array) => ({
-      name,
-      path: PathUtils.join(...array.slice(0, index + 1)),
-    }))
-    .filter(({ path: itemPath }) => itemPath !== ''),
+  PathUtils.split(path.value).map((name, index, array) => ({
+    name,
+    path: PathUtils.join(PathUtils.SEPARATOR, ...array.slice(0, index + 1)),
+  })),
 );
 
 const visibleSegments = computed(() =>

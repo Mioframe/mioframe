@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, toRefs } from 'vue';
+import { computed, nextTick, ref, toRefs } from 'vue';
 import { DirectoryCreateDialog } from '@feature/directoryCreate';
 import { MDExtendedFab, MDFab, MDFabContainer } from '@shared/ui/Button';
 import { MDSymbol } from '@shared/ui/Icon';
@@ -15,11 +15,7 @@ import { FSEntryManageMenuButton } from '@feature/entryManage';
 import { RepositoryExplorerWidget } from '@widget/RepositoryExplorerWidget';
 import { DocumentAddSheet } from '@feature/documentAdd';
 import { DocumentCreationDialog } from '@feature/documentCreate';
-import { ImportDocumentErrorCode, useImportDocument } from '@feature/importDocument';
-import { DomainError } from '@shared/lib/error';
-import { reportHandledError } from '@shared/lib/reportHandledError';
-import { useSnackbar } from '@shared/ui/Snackbar';
-import { nextTick } from 'vue';
+import { useImportDocumentAction } from '@feature/importDocument';
 
 // eslint-disable-next-line vue/define-props-declaration -- z.infer output is too complex for Vue macro runtime inference
 const props = defineProps(zodToVueProps(zodQuery));
@@ -53,8 +49,7 @@ const onClickPath = async (path: string) => {
 
 const showDocumentAddSheet = ref(false);
 const showCreateDocumentDialog = ref(false);
-const { importJsonFile } = useImportDocument();
-const { addSnackbar } = useSnackbar();
+const { importDocument } = useImportDocumentAction();
 
 const onClickAddDocument = () => {
   showDocumentAddSheet.value = true;
@@ -73,34 +68,9 @@ const onCloseCreateDocumentDialog = () => {
   showCreateDocumentDialog.value = false;
 };
 
-const shouldSkipImportErrorReport = (error: unknown) =>
-  error instanceof DomainError &&
-  (error.code === ImportDocumentErrorCode.invalidJson ||
-    error.code === ImportDocumentErrorCode.invalidDocumentFormat);
-
 const onSelectImportDocument = async () => {
   await nextTick();
-
-  try {
-    const documentId = await importJsonFile(directoryPath.value);
-
-    if (!documentId) {
-      return;
-    }
-
-    addSnackbar({ text: 'Document imported' });
-  } catch (error) {
-    addSnackbar({
-      text: error instanceof DomainError ? error.message : 'Could not import the document',
-    });
-
-    if (!shouldSkipImportErrorReport(error)) {
-      reportHandledError(error, {
-        feature: 'documentImport',
-        action: 'importDocumentJson',
-      });
-    }
-  }
+  await importDocument(directoryPath.value);
 };
 
 const onClickDocument = async (documentId: AMDocumentId) => {
@@ -149,8 +119,7 @@ const onClickReturnHome = async () => {
       <template v-if="canEditDirectoryContents" #after>
         <MDFabContainer auto-hide>
           <MDExtendedFab
-            tooltip="Add document"
-            label="Add"
+            label="Add document"
             color="primary"
             md-symbol="add"
             @click="onClickAddDocument"

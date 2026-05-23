@@ -87,6 +87,38 @@ describe('MDNavigationPath', () => {
     expect(wrapper.text()).not.toContain('Mioframe');
   });
 
+  it('renders only parent segments for a nested path without an extra root item', async () => {
+    const wrapper = await mountNavigationPath({
+      path: '/Documents/Project',
+    });
+
+    const labels = wrapper.findAll('button').map((button) => button.text());
+
+    expect(labels).toEqual(['icon', 'Documents']);
+    expect(wrapper.text()).not.toContain('Project');
+  });
+
+  it('renders only the home icon for the root path', async () => {
+    const wrapper = await mountNavigationPath({
+      path: '/',
+    });
+
+    expect(wrapper.findAll('button')).toHaveLength(1);
+    expect(wrapper.find('button[aria-label="Home"]').exists()).toBe(true);
+    expect(wrapper.text()).not.toContain('>');
+  });
+
+  it('does not render an empty-label path button', async () => {
+    const wrapper = await mountNavigationPath({
+      path: '/Documents/Project',
+      omitCurrent: false,
+    });
+
+    const pathButtons = wrapper.findAll('button').slice(1);
+
+    expect(pathButtons.every((button) => button.text().trim().length > 0)).toBe(true);
+  });
+
   it('emits clickHome from the home icon', async () => {
     const wrapper = await mountNavigationPath({
       path: '/Google Drive/My Drive/Projects',

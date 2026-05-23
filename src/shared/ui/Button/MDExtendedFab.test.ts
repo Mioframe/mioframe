@@ -25,4 +25,22 @@ describe('MDExtendedFab', () => {
     expect(button.find('div').exists()).toBe(false);
     expect(button.find('input, select, textarea, a[href], [role="button"]').exists()).toBe(false);
   });
+
+  it('uses the visible label as the accessible name when tooltip is omitted', () => {
+    const wrapper = mount(MDExtendedFab, {
+      props: {
+        label: 'Create',
+        mdSymbol: 'add',
+      },
+      global: {
+        stubs: {
+          MDCircularProgressIndicator: { template: '<span />' },
+          MDPlainTooltip: { template: '<span />' },
+          MDSymbol: { template: '<span />' },
+        },
+      },
+    });
+
+    expect(wrapper.get('button').attributes('aria-label')).toBe('Create');
+  });
 });

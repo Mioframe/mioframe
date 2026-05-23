@@ -26,6 +26,17 @@ const emit = defineEmits<{
 const { directoryPath, documentIds, folderState } = toRefs(props);
 
 const showStorageInfoSheet = shallowRef(false);
+const openStorageInfoSheet = () => {
+  showStorageInfoSheet.value = true;
+};
+
+const closeStorageInfoSheet = () => {
+  showStorageInfoSheet.value = false;
+};
+
+const onSelectDocument = (documentId: AMDocumentId) => {
+  emit('selectDocument', documentId);
+};
 
 const documentCountLabel = computed(() => {
   if (documentIds.value.length === 1) {
@@ -66,32 +77,30 @@ const emptySupportingText = computed(() => {
   <section class="repository-explorer-section" aria-labelledby="mioframe-documents-title">
     <div class="repository-explorer-section__header">
       <div class="repository-explorer-section__copy">
-        <h2 id="mioframe-documents-title" class="repository-explorer-section__title">
-          Mioframe documents
-        </h2>
+        <h2 id="mioframe-documents-title" class="repository-explorer-section__title">Documents</h2>
         <p class="repository-explorer-section__supporting-text">{{ documentCountLabel }}</p>
       </div>
 
       <MDIconButton
-        tooltip="How Mioframe documents are stored"
+        tooltip="How documents are stored"
         md-symbol-name="info"
-        @click="showStorageInfoSheet = true"
+        @click="openStorageInfoSheet"
       />
     </div>
 
     <MDListContainer
-      v-if="documentIds.length > 0"
       is="div"
+      v-if="documentIds.length > 0"
       class="repository-explorer-section__list"
     >
       <CFRDocumentMDListItem
+        is="button"
         v-for="documentId in documentIds"
         :key="documentId"
-        is="button"
         :document-id="documentId"
         :path="directoryPath"
         class="repository-explorer-section__list-item"
-        @click="() => emit('selectDocument', documentId)"
+        @click="() => onSelectDocument(documentId)"
       >
         <template #trailingIcon>
           <DocumentManageMenuButton :directory-path="directoryPath" :document-id="documentId" />
@@ -110,7 +119,7 @@ const emptySupportingText = computed(() => {
       </template>
     </MDEmptyState>
 
-    <MioframeStorageInfoSheet v-if="showStorageInfoSheet" @close="showStorageInfoSheet = false" />
+    <MioframeStorageInfoSheet v-if="showStorageInfoSheet" @close="closeStorageInfoSheet" />
   </section>
 </template>
 

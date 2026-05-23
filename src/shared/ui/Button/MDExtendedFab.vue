@@ -16,8 +16,8 @@ const props = withDefaults(
       | 'tonal-secondary'
       | 'tonal-tertiary'
       | undefined;
-    tooltip: string;
     label: string;
+    tooltip?: string | undefined;
     loading?: number | boolean | undefined;
     mdSymbol?: string | undefined;
   }>(),
@@ -53,7 +53,7 @@ useRipple(buttonEl);
   <button
     ref="buttonEl"
     type="button"
-    :aria-label="tooltip"
+    :aria-label="tooltip ?? label"
     class="md-extended-fab"
     :class="[
       sizeClass,
@@ -78,7 +78,7 @@ useRipple(buttonEl);
 
     <span class="md-extended-fab__label">{{ label }}</span>
 
-    <MDPlainTooltip :text="tooltip" />
+    <MDPlainTooltip v-if="tooltip" :text="tooltip" />
   </button>
 </template>
 

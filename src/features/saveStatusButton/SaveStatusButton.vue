@@ -8,7 +8,7 @@ import { useSnackbar } from '@shared/ui/Snackbar';
 import { MDOverlayTooltip } from '@shared/ui/Tooltips';
 import type { ComponentPublicInstance } from 'vue';
 import { computed, ref, useTemplateRef } from 'vue';
-import { formatSaveStatusErrorDetails } from './saveStatusText';
+import { formatSaveStatusErrorDetails, STATUS_LABELS } from './saveStatusText';
 
 const triggerRef = useTemplateRef<ComponentPublicInstance>('triggerRef');
 const showErrorDetails = ref(false);
@@ -19,17 +19,10 @@ const {
 const { hasUnacknowledgedError, state } = useVfsActivity();
 
 const isError = computed(() => state.value.status === 'error');
-const label = computed(() => {
-  if (state.value.status === 'active') {
-    return 'Сохраняем';
-  }
-
-  if (state.value.status === 'error') {
-    return 'Ошибка';
-  }
-
-  return undefined;
-});
+const isActive = computed(() => state.value.status === 'active');
+const label = computed(() =>
+  state.value.status === 'idle' ? undefined : STATUS_LABELS[state.value.status],
+);
 const errorDetails = computed(() => formatSaveStatusErrorDetails(state.value.lastError));
 
 const onClickTrigger = () => {
@@ -42,6 +35,10 @@ const onClickTrigger = () => {
 
 const onClickDismissError = () => {
   dismissSaveStatusError();
+  showErrorDetails.value = false;
+};
+
+const onClickCloseDetails = () => {
   showErrorDetails.value = false;
 };
 
@@ -79,21 +76,33 @@ const onInteractionOutside = () => {
   </MDAssistChip>
 
   <MDOverlayTooltip
-    v-if="isError && hasUnacknowledgedError"
+    v-if="isActive || (isError && hasUnacknowledgedError)"
     :show="showErrorDetails"
     :target-element="triggerRef"
     @interaction-outside="onInteractionOutside"
   >
     <div class="save-status-button__tooltip">
-      <p>Не удалось подтвердить последнее сохранение.</p>
-      <p>Проверьте папку и повторите действие, если данные должны были измениться.</p>
+      <template v-if="isActive">
+        <p>Changes are still being saved.</p>
+        <p>Keep this folder open until saving finishes.</p>
+      </template>
+
+      <template v-else>
+        <p>Could not confirm the last save.</p>
+        <p>Check this folder and retry if data should have changed.</p>
+      </template>
     </div>
 
     <div class="save-status-button__actions">
-      <MDButton color="text" label="Закрыть" @click="onClickDismissError" />
       <MDButton
         color="text"
-        label="Скопировать детали"
+        :label="isError ? 'Dismiss' : 'Close'"
+        @click="isError ? onClickDismissError() : onClickCloseDetails()"
+      />
+      <MDButton
+        v-if="isError"
+        color="text"
+        label="Copy details"
         :disabled="!errorDetails"
         @click="onClickCopyDetails"
       />

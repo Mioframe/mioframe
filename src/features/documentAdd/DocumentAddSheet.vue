@@ -29,15 +29,13 @@ const onClosed = () => {
     <MDBottomSheetSection class="document-add-sheet">
       <div class="document-add-sheet__header">
         <h2 class="document-add-sheet__title">Add document</h2>
-        <p class="document-add-sheet__supporting-text">
-          Choose what to add to this Mioframe space.
-        </p>
+        <p class="document-add-sheet__supporting-text">Choose what to add to this folder.</p>
       </div>
 
       <MDListItem
         is="button"
         headline="Create new document"
-        supporting-text="Create a new Mioframe document in this folder."
+        supporting-text="Create a new document in this folder."
         @click="onClickCreateDocument"
       >
         <template #leadingIcon>
