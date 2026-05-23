@@ -4,6 +4,7 @@ import { isUndefined } from 'es-toolkit';
 import { computed, type Ref } from 'vue';
 import { useMainServiceClient } from '@shared/service';
 import { deriveMioframeSpaceDirectoryViewState } from './deriveMioframeSpaceDirectoryViewState';
+import { resolveSafeErrorMessage } from '../directory/resolveSafeErrorMessage';
 
 /**
  * Reads the current folder and derives Mioframe-space presentation state for the explorer screen.
@@ -40,7 +41,7 @@ export const useMioframeSpaceDirectory = (directoryPath: Ref<string>) => {
       return undefined;
     }
 
-    return error instanceof Error ? error.message : 'Error reading repository';
+    return resolveSafeErrorMessage(error, 'Error reading repository');
   });
 
   const viewState = computed(() =>

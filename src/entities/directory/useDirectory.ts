@@ -3,7 +3,14 @@ import type { ReadDirectoryOptions } from '@shared/service/fileSystem';
 import { useMainServiceClient } from '@shared/service/useService';
 import { isUndefined } from 'es-toolkit';
 import { computed, toValue, type Ref } from 'vue';
+import { resolveSafeErrorMessage } from './resolveSafeErrorMessage';
 
+/**
+ * Reads directory entries and exposes reactive loading/error state.
+ * @param path - Absolute filesystem path to read.
+ * @param options - Optional read parameters forwarded to the service layer.
+ * @returns Reactive data, raw error, user-facing message, loading flag, and refetch method.
+ */
 export const useDirectory = (
   path: Ref<string>,
   options?: Ref<ReadDirectoryOptions | undefined>,
@@ -24,11 +31,7 @@ export const useDirectory = (
       return undefined;
     }
 
-    if (e instanceof Error) {
-      return e.message;
-    }
-
-    return 'Error reading directory';
+    return resolveSafeErrorMessage(e);
   });
 
   return {
