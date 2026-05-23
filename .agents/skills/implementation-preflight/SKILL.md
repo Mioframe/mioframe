@@ -1,6 +1,6 @@
 ---
 name: implementation-preflight
-description: 'Use this skill before non-trivial implementation work to reduce corrective commits by identifying the owner layer, reusable project code, acceptance matrix, risk matrix, and focused verification before the first production edit.'
+description: 'Use this skill before non-trivial implementation work to reduce corrective commits by identifying the owner layer, reusable project code, acceptance matrix, risk matrix, task breadth, work passes, and focused verification before the first production edit.'
 ---
 
 # Implementation preflight
@@ -21,9 +21,19 @@ Answer these before the first production edit:
 2. **Reuse**: what existing helpers, components, configs, schemas, services, tests, or dependencies already cover nearby behavior?
 3. **Acceptance matrix**: what non-happy-path states must work in the first implementation?
 4. **Risk matrix**: which browser, lifecycle, async, cache, CI/tooling, accessibility, visual, or data-safety risks apply?
-5. **Verification**: what focused check proves the riskiest behavior, and what final verification is required?
+5. **Breadth and passes**: which independent domains are touched, and what order keeps the work incremental?
+6. **Verification**: what focused check proves the riskiest behavior, and what final verification is required?
 
 For user-visible UI or UX changes, run the `material3-guidelines` skill as part of this preflight before choosing component structure, layout, interaction behavior, or visual verification.
+
+## Breadth control
+
+Before editing, count independent domains in the task. Examples of separate domains include domain read models, storage semantics, diagnostics, navigation, shared UI primitives, browser layout, e2e coverage, visual snapshots, tooling, and copy/language normalization.
+
+- If the task touches four or more independent domains, split the work into explicit passes and run focused verification after each risky pass.
+- Keep behavior-preserving cleanup separate from functional changes when practical.
+- If the user did not explicitly ask to finish one existing branch, prefer proposing a split into smaller tasks before starting a broad corrective implementation.
+- If the task must stay in one branch, make the pass order explicit and do not start the next risky pass until the previous one has a focused check.
 
 ## Feature-flow guardrails
 
