@@ -26,6 +26,19 @@ Answer these before the first production edit:
 
 For user-visible UI or UX changes, run the `material3-guidelines` skill as part of this preflight before choosing component structure, layout, interaction behavior, or visual verification.
 
+## Wide UI and refactor gate
+
+For non-trivial UI, UX, or cross-layer refactors, do not edit production code until the preflight also records:
+
+- confirmed domain invariants from the task, existing code, and later user clarifications;
+- existing user scenarios that must remain reachable, especially menus, navigation, settings, status indicators, and shared surfaces being replaced;
+- the FSD owner layer for each changed behavior and the public API entry points that must be used instead of deep imports;
+- settings, preferences, persisted state, or feature flags that the change reads, removes, or changes semantically;
+- shared UI primitives affected by the change and their consumer blast radius;
+- browser, visual, Storybook, e2e, mutation, and focused unit verification required for the changed surface.
+
+Before final handoff, compare the diff against this gate. If a scenario, invariant, owner layer, or public API decision changed during implementation, update the preflight and fix the implementation before claiming completion.
+
 ## Breadth control
 
 Before editing, count independent domains in the task. Examples of separate domains include domain read models, storage semantics, diagnostics, navigation, shared UI primitives, browser layout, e2e coverage, visual snapshots, tooling, and copy/language normalization.
