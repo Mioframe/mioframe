@@ -42,18 +42,40 @@ const onClickCloseDetails = () => {
   showErrorDetails.value = false;
 };
 
+const detailActionLabel = computed(() => (isError.value ? 'Dismiss' : 'Close'));
+
+const onClickDetailAction = () => {
+  if (isError.value) {
+    onClickDismissError();
+    return;
+  }
+
+  onClickCloseDetails();
+};
+
+const isClipboardWithWriteText = (value: unknown): value is Pick<Clipboard, 'writeText'> => {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    'writeText' in value &&
+    typeof value.writeText === 'function'
+  );
+};
+
 const onClickCopyDetails = async () => {
   if (!errorDetails.value) {
     return;
   }
 
-  if (!('clipboard' in navigator)) {
+  const clipboard = Reflect.get(navigator, 'clipboard');
+
+  if (!isClipboardWithWriteText(clipboard)) {
     addSnackbar({ text: 'Clipboard is not available' });
     return;
   }
 
   try {
-    await navigator.clipboard.writeText(errorDetails.value);
+    await clipboard.writeText(errorDetails.value);
     addSnackbar({ text: 'Save error details copied' });
   } catch {
     addSnackbar({ text: 'Could not copy save error details' });
@@ -94,11 +116,7 @@ const onInteractionOutside = () => {
     </div>
 
     <div class="save-status-button__actions">
-      <MDButton
-        color="text"
-        :label="isError ? 'Dismiss' : 'Close'"
-        @click="isError ? onClickDismissError() : onClickCloseDetails()"
-      />
+      <MDButton color="text" :label="detailActionLabel" @click="onClickDetailAction" />
       <MDButton
         v-if="isError"
         color="text"

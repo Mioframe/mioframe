@@ -23,8 +23,9 @@ export type MioframeSpaceDirectoryPresentation = {
   visibleFileEntries: readonly MioframeDirectoryEntry[];
 };
 
-const isMioframeServiceFile = (name: string) =>
-  name === storageAdapterMarkerFileName || zodIs(name, zodAutomergeFileName);
+const isMioframeServiceFile = (name: string, hideAutomergeFiles: boolean) =>
+  name === storageAdapterMarkerFileName ||
+  (hideAutomergeFiles && zodIs(name, zodAutomergeFileName));
 
 /**
  * Classifies a folder into the Mioframe space states needed by the explorer screen.
@@ -34,26 +35,38 @@ const isMioframeServiceFile = (name: string) =>
 export const classifyMioframeSpaceDirectory = ({
   directoryEntries,
   documentIds,
+  hideAutomergeFiles = true,
 }: {
   directoryEntries: readonly MioframeDirectoryEntry[];
   documentIds: readonly string[];
+  hideAutomergeFiles?: boolean | undefined;
 }): MioframeSpaceDirectoryPresentation => {
   const hasMarkerFile = directoryEntries.some(([name, stat]) => {
     return stat.type === FSNodeType.File && name === storageAdapterMarkerFileName;
   });
 
-  const visibleFileEntries = directoryEntries.filter(([name]) => !isMioframeServiceFile(name));
+  const visibleFileEntries = directoryEntries.filter(
+    ([name]) => !isMioframeServiceFile(name, hideAutomergeFiles),
+  );
 
-  if (!hasMarkerFile) {
+  if (documentIds.length > 0) {
     return {
-      state: documentIds.length > 0 ? 'inconsistentMioframeData' : 'regularFolder',
+      state: 'mioframeSpaceWithDocuments',
+      hasMarkerFile,
+      visibleFileEntries,
+    };
+  }
+
+  if (hasMarkerFile) {
+    return {
+      state: 'emptyMioframeSpace',
       hasMarkerFile,
       visibleFileEntries,
     };
   }
 
   return {
-    state: documentIds.length > 0 ? 'mioframeSpaceWithDocuments' : 'emptyMioframeSpace',
+    state: 'regularFolder',
     hasMarkerFile,
     visibleFileEntries,
   };

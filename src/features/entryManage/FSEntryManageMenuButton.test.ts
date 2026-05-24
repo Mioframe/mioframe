@@ -1,90 +1,11 @@
-/* eslint-disable vue/one-component-per-file -- This test file intentionally defines inline stubs and a small harness component. */
 import { flushPromises, mount } from '@vue/test-utils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { defineComponent, h, ref } from 'vue';
+import { defineComponent, h } from 'vue';
+import { FSNodeType } from '@shared/lib/virtualFileSystem';
 
-const {
-  importDocumentMock,
-  removeMock,
-  selectedLabel,
-  isDirectoryEntry,
-  canEditChildren,
-  canChangePath,
-  canDelete,
-  renderedLabels,
-} = vi.hoisted(() => ({
-  importDocumentMock: vi.fn(),
-  removeMock: vi.fn(),
+const { selectedLabel, renderedLabels } = vi.hoisted(() => ({
   selectedLabel: { value: 'Import JSON' },
-  isDirectoryEntry: { value: true },
-  canEditChildren: { value: true },
-  canChangePath: { value: true },
-  canDelete: { value: true },
   renderedLabels: { value: new Array<string>() },
-}));
-
-vi.mock('@entity/directory/useDirectory', () => ({
-  useDirectory: () => ({
-    data: ref([
-      [
-        'target',
-        {
-          type: isDirectoryEntry.value ? 2 : 1,
-        },
-      ],
-    ]),
-  }),
-}));
-
-vi.mock('@entity/fsEntry', () => ({
-  useFSNodeStat: () => ({
-    data: ref({
-      capabilities: {
-        canChangePath: canChangePath.value,
-        canDelete: canDelete.value,
-        canEditChildren: canEditChildren.value,
-      },
-    }),
-  }),
-}));
-
-vi.mock('@feature/directoryCreate', () => ({
-  DirectoryCreateDialog: defineComponent({
-    name: 'DirectoryCreateDialogStub',
-    setup() {
-      return () => h('div', { 'data-testid': 'create-directory-dialog' });
-    },
-  }),
-}));
-
-vi.mock('@feature/documentCreate', () => ({
-  DocumentCreationDialog: defineComponent({
-    name: 'DocumentCreationDialogStub',
-    setup() {
-      return () => h('div', { 'data-testid': 'create-document-dialog' });
-    },
-  }),
-}));
-
-vi.mock('@feature/entryRemove', () => ({
-  useRemoveFSEntry: () => ({
-    remove: removeMock,
-  }),
-}));
-
-vi.mock('@feature/entryRename', () => ({
-  FSEntryRenameDialog: defineComponent({
-    name: 'FSEntryRenameDialogStub',
-    setup() {
-      return () => h('div', { 'data-testid': 'rename-entry-dialog' });
-    },
-  }),
-}));
-
-vi.mock('@feature/importDocument', () => ({
-  useImportDocumentAction: () => ({
-    importDocument: importDocumentMock,
-  }),
 }));
 
 vi.mock('@shared/ui/Menu', () => ({
@@ -134,34 +55,36 @@ vi.mock('@shared/ui/Menu', () => ({
   defineMenuButtonList: <T>(buttons: T[]) => buttons,
 }));
 
-vi.mock('@shared/ui/Menu/defineMenuButtonList', () => ({
-  defineMenuButton: <T extends object>(button: T) => button,
-}));
-
 describe('FSEntryManageMenuButton', () => {
   beforeEach(() => {
-    importDocumentMock.mockReset();
-    removeMock.mockReset();
     selectedLabel.value = 'Import JSON';
-    isDirectoryEntry.value = true;
-    canEditChildren.value = true;
-    canChangePath.value = true;
-    canDelete.value = true;
     renderedLabels.value = [];
   });
 
-  const mountButton = async (props?: { showDocumentActions?: boolean }) => {
+  const mountButton = async (
+    props?: Partial<{
+      canChangePath: boolean;
+      canDelete: boolean;
+      canEditChildren: boolean;
+      entryType: FSNodeType;
+      showDocumentActions: boolean;
+    }>,
+  ) => {
     const { default: FSEntryManageMenuButton } = await import('./FSEntryManageMenuButton.vue');
 
     return mount(FSEntryManageMenuButton, {
       props: {
         path: '/target',
+        entryType: FSNodeType.Directory,
+        canEditChildren: true,
+        canChangePath: true,
+        canDelete: true,
         ...props,
       },
     });
   };
 
-  it('renders document actions only when legacy document actions are enabled for a directory', async () => {
+  it('renders nested-directory document actions only when enabled by the parent layer', async () => {
     await mountButton({ showDocumentActions: true });
 
     expect(renderedLabels.value).toEqual([
@@ -173,71 +96,58 @@ describe('FSEntryManageMenuButton', () => {
     ]);
   });
 
-  it('keeps directory actions separate from document actions on the split-folder screen', async () => {
-    await mountButton();
+  it('keeps current-folder menus free of document actions when the parent disables them', async () => {
+    await mountButton({ showDocumentActions: false });
 
     expect(renderedLabels.value).toEqual(['Create directory', 'Rename', 'Remove']);
   });
 
   it('uses file-only actions for regular files', async () => {
-    isDirectoryEntry.value = false;
-
-    await mountButton();
+    await mountButton({ entryType: FSNodeType.File });
 
     expect(renderedLabels.value).toEqual(['Rename', 'Remove']);
   });
 
-  it('keeps dialogs closed by default and exposes the entry-specific menu tooltip', async () => {
+  it('filters actions when capabilities are missing', async () => {
+    await mountButton({
+      canChangePath: false,
+      canDelete: false,
+      canEditChildren: false,
+      showDocumentActions: true,
+    });
+
+    expect(renderedLabels.value).toEqual([]);
+  });
+
+  it('exposes the entry-specific menu tooltip', async () => {
     const wrapper = await mountButton();
 
     expect(wrapper.text()).toContain('options target');
-    expect(wrapper.find('[data-testid="create-directory-dialog"]').exists()).toBe(false);
-    expect(wrapper.find('[data-testid="create-document-dialog"]').exists()).toBe(false);
-    expect(wrapper.find('[data-testid="rename-entry-dialog"]').exists()).toBe(false);
   });
 
-  it('opens the create-directory dialog for directory actions', async () => {
+  it('emits create directory when the action is selected', async () => {
     selectedLabel.value = 'Create directory';
-
-    const wrapper = await mountButton();
-
-    await wrapper.get('button').trigger('click');
-
-    expect(wrapper.find('[data-testid="create-directory-dialog"]').exists()).toBe(true);
-  });
-
-  it('opens the create-document dialog for legacy directory document actions', async () => {
-    selectedLabel.value = 'Create document';
-
-    const wrapper = await mountButton({ showDocumentActions: true });
-
-    await wrapper.get('button').trigger('click');
-
-    expect(wrapper.find('[data-testid="create-document-dialog"]').exists()).toBe(true);
-  });
-
-  it('opens the rename dialog when rename is selected', async () => {
-    selectedLabel.value = 'Rename';
-
-    const wrapper = await mountButton();
-
-    await wrapper.get('button').trigger('click');
-
-    expect(wrapper.find('[data-testid="rename-entry-dialog"]').exists()).toBe(true);
-  });
-
-  it('calls remove for delete actions', async () => {
-    selectedLabel.value = 'Remove';
 
     const wrapper = await mountButton();
 
     await wrapper.get('button').trigger('click');
     await flushPromises();
 
-    expect(removeMock).toHaveBeenCalledWith('/target');
+    expect(wrapper.emitted('onCreateDirectory')).toHaveLength(1);
   });
 
-  it('delegates directory import actions to the shared import feature action', async () => {
+  it('emits create document when the nested-directory action is selected', async () => {
+    selectedLabel.value = 'Create document';
+
+    const wrapper = await mountButton({ showDocumentActions: true });
+
+    await wrapper.get('button').trigger('click');
+    await flushPromises();
+
+    expect(wrapper.emitted('onCreateDocument')).toHaveLength(1);
+  });
+
+  it('emits import json when the nested-directory action is selected', async () => {
     selectedLabel.value = 'Import JSON';
 
     const wrapper = await mountButton({ showDocumentActions: true });
@@ -245,7 +155,28 @@ describe('FSEntryManageMenuButton', () => {
     await wrapper.get('button').trigger('click');
     await flushPromises();
 
-    expect(importDocumentMock).toHaveBeenCalledWith('/target');
+    expect(wrapper.emitted('onImportJson')).toHaveLength(1);
+  });
+
+  it('emits rename when the action is selected', async () => {
+    selectedLabel.value = 'Rename';
+
+    const wrapper = await mountButton();
+
+    await wrapper.get('button').trigger('click');
+    await flushPromises();
+
+    expect(wrapper.emitted('onRename')).toHaveLength(1);
+  });
+
+  it('emits remove when the action is selected', async () => {
+    selectedLabel.value = 'Remove';
+
+    const wrapper = await mountButton();
+
+    await wrapper.get('button').trigger('click');
+    await flushPromises();
+
+    expect(wrapper.emitted('onRemove')).toHaveLength(1);
   });
 });
-/* eslint-enable vue/one-component-per-file -- Re-enable the rule after the inline test stubs used in this file. */

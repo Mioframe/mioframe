@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import { FSEntryMDListItem } from '@entity/fsEntry';
-import { FSEntryManageMenuButton } from '@feature/entryManage';
 import { FSNodeType, PathUtils } from '@shared/lib/virtualFileSystem';
 import { MDListContainer } from '@shared/ui/Lists';
 import type { MioframeDirectoryEntry } from '@entity/mioframeSpaceDirectory';
 import { computed } from 'vue';
+import RepositoryExplorerEntryManageButton from './RepositoryExplorerEntryManageButton.vue';
 
 const props = defineProps<{
   directoryPath: string;
@@ -21,6 +21,10 @@ const onClickDirectoryEntry = (name: string, fileType: FSNodeType) => {
   if (fileType === FSNodeType.Directory) {
     emit('selectPath', PathUtils.join(props.directoryPath, name));
   }
+};
+
+const onClickVisibleEntry = (name: string, fileType: FSNodeType) => {
+  onClickDirectoryEntry(name, fileType);
 };
 </script>
 
@@ -42,10 +46,14 @@ const onClickDirectoryEntry = (name: string, fileType: FSNodeType) => {
         :supporting-text="description"
         :type="nodeType"
         class="repository-explorer-section__list-item"
-        @click="() => onClickDirectoryEntry(name, nodeType)"
+        @click="() => onClickVisibleEntry(name, nodeType)"
       >
         <template #trailingIcon>
-          <FSEntryManageMenuButton :path="PathUtils.join(directoryPath, name)" />
+          <RepositoryExplorerEntryManageButton
+            :path="PathUtils.join(directoryPath, name)"
+            :entry-type="nodeType"
+            :show-document-actions="nodeType === FSNodeType.Directory"
+          />
         </template>
       </FSEntryMDListItem>
     </MDListContainer>

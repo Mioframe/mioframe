@@ -38,6 +38,10 @@ const onSelectDocument = (documentId: AMDocumentId) => {
   emit('selectDocument', documentId);
 };
 
+const onClickDocument = (documentId: AMDocumentId) => {
+  onSelectDocument(documentId);
+};
+
 const documentCountLabel = computed(() => {
   if (documentIds.value.length === 1) {
     return '1 document';
@@ -100,7 +104,7 @@ const emptySupportingText = computed(() => {
         :document-id="documentId"
         :path="directoryPath"
         class="repository-explorer-section__list-item"
-        @click="() => onSelectDocument(documentId)"
+        @click="() => onClickDocument(documentId)"
       >
         <template #trailingIcon>
           <DocumentManageMenuButton :directory-path="directoryPath" :document-id="documentId" />

@@ -17,7 +17,8 @@ const onClose = () => {
 
       <div class="mioframe-storage-info-sheet__content">
         <p>Mioframe shows its documents separately from ordinary files in the same folder.</p>
-        <p>Service files are hidden from the file list by default.</p>
+        <p>The Mioframe marker file is hidden from the file list.</p>
+        <p>Automerge service files stay hidden unless you turn on the setting to show them.</p>
         <p>Those files are required for saving, history, and recovery.</p>
         <p>You normally should not open or change those files by hand.</p>
         <p>To move or back up a Mioframe space, copy the whole folder.</p>

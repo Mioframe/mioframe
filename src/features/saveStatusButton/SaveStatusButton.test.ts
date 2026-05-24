@@ -6,6 +6,8 @@ import { computed, defineComponent, h, ref } from 'vue';
 
 const vfsState = ref<VfsActivityState>({ status: 'idle', activeCount: 0 });
 const dismissSaveStatusErrorMock = vi.fn();
+const addSnackbarMock = vi.fn();
+const writeClipboardMock = vi.fn();
 
 vi.mock('@entity/vfsActivity', () => ({
   useVfsActivity: () => ({
@@ -26,7 +28,7 @@ vi.mock('@shared/service', () => ({
 
 vi.mock('@shared/ui/Snackbar', () => ({
   useSnackbar: () => ({
-    addSnackbar: vi.fn(),
+    addSnackbar: addSnackbarMock,
   }),
 }));
 
@@ -110,7 +112,13 @@ const mountSaveStatusButton = async () => {
 describe('SaveStatusButton', () => {
   afterEach(() => {
     dismissSaveStatusErrorMock.mockReset();
+    addSnackbarMock.mockReset();
+    writeClipboardMock.mockReset();
     vfsState.value = { status: 'idle', activeCount: 0 };
+    Object.defineProperty(globalThis.navigator, 'clipboard', {
+      configurable: true,
+      value: { writeText: writeClipboardMock },
+    });
   });
 
   it('stays hidden while idle', async () => {
@@ -181,6 +189,76 @@ describe('SaveStatusButton', () => {
     const wrapper = await mountSaveStatusButton();
 
     expect(wrapper.text()).not.toContain('Could not confirm the last save.');
+  });
+
+  it('shows a snackbar when clipboard support is unavailable', async () => {
+    vfsState.value = {
+      status: 'error',
+      activeCount: 0,
+      lastError: {
+        operationType: 'writeFile',
+        path: '/private.txt',
+        message: 'write failed',
+        occurredAt: 1,
+        acknowledged: false,
+      },
+    } as const;
+    Object.defineProperty(globalThis.navigator, 'clipboard', {
+      configurable: true,
+      value: undefined,
+    });
+
+    const wrapper = await mountSaveStatusButton();
+
+    await wrapper.get('button').trigger('click');
+    await wrapper.findAll('button')[2]?.trigger('click');
+
+    expect(addSnackbarMock).toHaveBeenCalledWith({ text: 'Clipboard is not available' });
+  });
+
+  it('copies details when clipboard writing succeeds', async () => {
+    vfsState.value = {
+      status: 'error',
+      activeCount: 0,
+      lastError: {
+        operationType: 'writeFile',
+        path: '/private.txt',
+        message: 'write failed',
+        occurredAt: 1,
+        acknowledged: false,
+      },
+    } as const;
+    writeClipboardMock.mockResolvedValue(undefined);
+
+    const wrapper = await mountSaveStatusButton();
+
+    await wrapper.get('button').trigger('click');
+    await wrapper.findAll('button')[2]?.trigger('click');
+
+    expect(writeClipboardMock).toHaveBeenCalledOnce();
+    expect(addSnackbarMock).toHaveBeenCalledWith({ text: 'Save error details copied' });
+  });
+
+  it('shows a snackbar when copying details fails', async () => {
+    vfsState.value = {
+      status: 'error',
+      activeCount: 0,
+      lastError: {
+        operationType: 'writeFile',
+        path: '/private.txt',
+        message: 'write failed',
+        occurredAt: 1,
+        acknowledged: false,
+      },
+    } as const;
+    writeClipboardMock.mockRejectedValue(new Error('copy failed'));
+
+    const wrapper = await mountSaveStatusButton();
+
+    await wrapper.get('button').trigger('click');
+    await wrapper.findAll('button')[2]?.trigger('click');
+
+    expect(addSnackbarMock).toHaveBeenCalledWith({ text: 'Could not copy save error details' });
   });
 });
 /* eslint-enable vue/one-component-per-file -- Re-enable after focused inline stubs. */

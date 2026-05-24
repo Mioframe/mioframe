@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { DomainError } from '@shared/lib/error';
-import { resolveSafeErrorMessage } from './resolveSafeErrorMessage';
+import { DomainError, resolveSafeErrorMessage } from '@shared/lib/error';
 
 describe('resolveSafeErrorMessage', () => {
   it('returns the DomainError message unchanged', () => {

@@ -5,13 +5,23 @@ import type {
 } from './classifyMioframeSpaceDirectory';
 import { classifyMioframeSpaceDirectory } from './classifyMioframeSpaceDirectory';
 
+/**
+ * Ready repository explorer state after directory and repository reads have both succeeded.
+ */
 export type MioframeSpaceDirectoryReadyState = {
+  /** View state discriminator for successful explorer reads. */
   status: 'ready';
+  /** Classified Mioframe folder state for the current directory. */
   folderState: MioframeSpaceDirectoryState;
+  /** Repository document ids that remain visible in the Documents section. */
   documentIds: readonly AMDocumentId[];
+  /** Non-document file entries that remain visible in the Files section. */
   visibleFileEntries: readonly MioframeDirectoryEntry[];
 };
 
+/**
+ * User-facing state for the split repository explorer documents/files surface.
+ */
 export type MioframeSpaceDirectoryViewState =
   | {
       status: 'loading';
@@ -34,6 +44,7 @@ export const deriveMioframeSpaceDirectoryViewState = ({
   repositoryErrorMessage,
   isDirectoryLoading,
   isRepositoryLoading,
+  hideAutomergeFiles = true,
 }: {
   directoryEntries?: readonly MioframeDirectoryEntry[] | undefined;
   directoryErrorMessage?: string | undefined;
@@ -41,6 +52,7 @@ export const deriveMioframeSpaceDirectoryViewState = ({
   repositoryErrorMessage?: string | undefined;
   isDirectoryLoading: boolean;
   isRepositoryLoading: boolean;
+  hideAutomergeFiles?: boolean | undefined;
 }): MioframeSpaceDirectoryViewState => {
   if (directoryErrorMessage) {
     return {
@@ -65,12 +77,13 @@ export const deriveMioframeSpaceDirectoryViewState = ({
   const presentation = classifyMioframeSpaceDirectory({
     directoryEntries,
     documentIds,
+    hideAutomergeFiles,
   });
 
   return {
     status: 'ready',
     folderState: presentation.state,
-    documentIds: presentation.hasMarkerFile ? documentIds : [],
+    documentIds,
     visibleFileEntries: presentation.visibleFileEntries,
   };
 };

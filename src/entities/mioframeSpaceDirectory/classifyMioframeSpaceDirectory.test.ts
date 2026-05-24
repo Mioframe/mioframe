@@ -9,7 +9,7 @@ const createStat = (type: FSNodeType): FSNodeStat => ({
 });
 
 describe('classifyMioframeSpaceDirectory', () => {
-  it('classifies a regular folder when the marker is absent', () => {
+  it('classifies a regular folder when the marker is absent and no documents exist', () => {
     const result = classifyMioframeSpaceDirectory({
       directoryEntries: [
         ['notes.txt', createStat(FSNodeType.File)],
@@ -23,15 +23,26 @@ describe('classifyMioframeSpaceDirectory', () => {
     expect(result.visibleFileEntries.map(([name]) => name)).toEqual(['notes.txt', 'Projects']);
   });
 
-  it('classifies inconsistent Mioframe data when document ids exist without the marker', () => {
+  it('classifies folders as mioframe spaces when document ids exist (even without marker file)', () => {
     const result = classifyMioframeSpaceDirectory({
       directoryEntries: [['notes.txt', createStat(FSNodeType.File)]],
       documentIds: ['test-doc-id'],
     });
 
-    expect(result.state).toBe('inconsistentMioframeData');
+    expect(result.state).toBe('mioframeSpaceWithDocuments');
     expect(result.hasMarkerFile).toBe(false);
     expect(result.visibleFileEntries.map(([name]) => name)).toEqual(['notes.txt']);
+  });
+
+  it('treats the marker as present only when it is a file', () => {
+    const result = classifyMioframeSpaceDirectory({
+      directoryEntries: [[storageAdapterMarkerFileName, createStat(FSNodeType.Directory)]],
+      documentIds: [],
+    });
+
+    expect(result.state).toBe('regularFolder');
+    expect(result.hasMarkerFile).toBe(false);
+    expect(result.visibleFileEntries.map(([name]) => name)).toEqual([]);
   });
 
   it('classifies an empty Mioframe space when the marker exists without documents', () => {
@@ -73,5 +84,22 @@ describe('classifyMioframeSpaceDirectory', () => {
     });
 
     expect(result.visibleFileEntries.map(([name]) => name)).toEqual(['plain.json']);
+  });
+
+  it('keeps Automerge document files visible when the user enables them', () => {
+    const result = classifyMioframeSpaceDirectory({
+      directoryEntries: [
+        [storageAdapterMarkerFileName, createStat(FSNodeType.File)],
+        ['test-doc-id.snapshot.automerge', createStat(FSNodeType.File)],
+        ['plain.json', createStat(FSNodeType.File)],
+      ],
+      documentIds: ['test-doc-id'],
+      hideAutomergeFiles: false,
+    });
+
+    expect(result.visibleFileEntries.map(([name]) => name)).toEqual([
+      'test-doc-id.snapshot.automerge',
+      'plain.json',
+    ]);
   });
 });

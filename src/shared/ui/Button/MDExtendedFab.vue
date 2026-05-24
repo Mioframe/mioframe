@@ -22,7 +22,7 @@ const props = withDefaults(
     mdSymbol?: string | undefined;
   }>(),
   {
-    color: 'primary',
+    color: 'tonal-primary',
     size: 'small',
   },
 );
@@ -156,11 +156,11 @@ useRipple(buttonEl);
   }
 
   &__label {
-    font-family: var(--md-sys-typescale-label-large-font);
-    font-weight: var(--md-sys-typescale-label-large-weight);
-    font-size: var(--md-sys-typescale-label-large-size);
-    line-height: var(--md-sys-typescale-label-large-line-height);
-    letter-spacing: var(--md-sys-typescale-label-large-tracking);
+    font-family: var(--md-sys-typescale-title-medium-font);
+    font-weight: var(--md-sys-typescale-title-medium-weight);
+    font-size: var(--md-sys-typescale-title-medium-size);
+    line-height: var(--md-sys-typescale-title-medium-line-height);
+    letter-spacing: var(--md-sys-typescale-title-medium-tracking);
     white-space: nowrap;
   }
 

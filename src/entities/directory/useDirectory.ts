@@ -1,9 +1,9 @@
-import { useObservableQuery } from '@shared/lib/useObservableQuery';
+import { resolveSafeErrorMessage } from '@shared/lib/error';
 import type { ReadDirectoryOptions } from '@shared/service/fileSystem';
 import { useMainServiceClient } from '@shared/service/useService';
 import { isUndefined } from 'es-toolkit';
 import { computed, toValue, type Ref } from 'vue';
-import { resolveSafeErrorMessage } from './resolveSafeErrorMessage';
+import { useObservableQuery } from '@shared/lib/useObservableQuery';
 
 /**
  * Reads directory entries and exposes reactive loading/error state.

@@ -10,10 +10,10 @@ import {
 } from '@entity/googleDriveAccess';
 import type { AMDocumentId } from '@shared/lib/automerge/automergeTypes';
 import { MDEmptyState } from '@shared/ui/EmptyState';
-import { useMioframeSpaceDirectory } from '@entity/mioframeSpaceDirectory';
 import { MDCircularProgressIndicator } from '@shared/ui/ProgressIndicators';
 import RepositoryExplorerDocumentsSection from './RepositoryExplorerDocumentsSection.vue';
 import RepositoryExplorerFilesSection from './RepositoryExplorerFilesSection.vue';
+import { useRepositoryExplorerDirectoryState } from './useRepositoryExplorerDirectoryState';
 
 const props = defineProps<{
   directoryPath: string;
@@ -31,7 +31,8 @@ defineSlots<{
 
 const { directoryPath } = toRefs(props);
 
-const { directoryError, repositoryError, viewState } = useMioframeSpaceDirectory(directoryPath);
+const { directoryError, repositoryError, viewState } =
+  useRepositoryExplorerDirectoryState(directoryPath);
 
 const onClickPath = (path: string) => {
   emit('clickPath', path);
@@ -49,6 +50,7 @@ const hasGoogleDriveRecovery = computed(
       repositoryError.value,
     ]),
 );
+const recoveryErrors = computed(() => [directoryError.value, repositoryError.value]);
 
 const { isRetryAuthorizationLoading, onRetryAuthorization } = useGoogleDriveRecovery({
   path: directoryPath,
@@ -72,7 +74,7 @@ const onReturnHomeClick = () => {
       <GoogleDriveAccessRecoveryState
         v-if="hasGoogleDriveRecovery"
         :path="directoryPath"
-        :errors="[directoryError, repositoryError]"
+        :errors="recoveryErrors"
       >
         <template #actions>
           <MDButton

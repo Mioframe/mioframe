@@ -1,5 +1,5 @@
 /**
- * @deprecated
+ * @deprecated Use `MDButton` for Material 3 button surfaces. `UIButton` remains only for legacy callers.
  */
 export { default as UIButton } from './UIButton.vue';
 

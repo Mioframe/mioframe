@@ -25,6 +25,34 @@ describe('deriveMioframeSpaceDirectoryViewState', () => {
     });
   });
 
+  it('prioritizes directory errors over repository errors', () => {
+    expect(
+      deriveMioframeSpaceDirectoryViewState({
+        directoryErrorMessage: 'Could not read this folder',
+        repositoryErrorMessage: 'Could not load the Mioframe documents in this folder',
+        isDirectoryLoading: false,
+        isRepositoryLoading: false,
+      }),
+    ).toEqual({
+      status: 'error',
+      message: 'Could not read this folder',
+    });
+  });
+
+  it('returns repository errors after the directory read succeeds', () => {
+    expect(
+      deriveMioframeSpaceDirectoryViewState({
+        directoryEntries: [['Notes', createStat(FSNodeType.Directory)]],
+        repositoryErrorMessage: 'Could not load the Mioframe documents in this folder',
+        isDirectoryLoading: false,
+        isRepositoryLoading: false,
+      }),
+    ).toEqual({
+      status: 'error',
+      message: 'Could not load the Mioframe documents in this folder',
+    });
+  });
+
   it('returns a regular folder only when the marker is absent and no documents are detected', () => {
     expect(
       deriveMioframeSpaceDirectoryViewState({
@@ -41,7 +69,7 @@ describe('deriveMioframeSpaceDirectoryViewState', () => {
     });
   });
 
-  it('keeps document ids hidden when the marker is absent and data is inconsistent', () => {
+  it('classifies folders with documents as mioframe spaces even without marker file', () => {
     expect(
       deriveMioframeSpaceDirectoryViewState({
         directoryEntries: [['Notes', createStat(FSNodeType.Directory)]],
@@ -51,8 +79,8 @@ describe('deriveMioframeSpaceDirectoryViewState', () => {
       }),
     ).toEqual({
       status: 'ready',
-      folderState: 'inconsistentMioframeData',
-      documentIds: [],
+      folderState: 'mioframeSpaceWithDocuments',
+      documentIds: [documentId],
       visibleFileEntries: [['Notes', createStat(FSNodeType.Directory)]],
     });
   });
@@ -89,6 +117,29 @@ describe('deriveMioframeSpaceDirectoryViewState', () => {
       folderState: 'mioframeSpaceWithDocuments',
       documentIds: [documentId],
       visibleFileEntries: [['Notes', createStat(FSNodeType.Directory)]],
+    });
+  });
+
+  it('keeps independent loading branches explicit until both reads finish', () => {
+    expect(
+      deriveMioframeSpaceDirectoryViewState({
+        directoryEntries: [['Notes', createStat(FSNodeType.Directory)]],
+        documentIds: [documentId],
+        isDirectoryLoading: false,
+        isRepositoryLoading: true,
+      }),
+    ).toEqual({
+      status: 'loading',
+    });
+
+    expect(
+      deriveMioframeSpaceDirectoryViewState({
+        documentIds: [documentId],
+        isDirectoryLoading: true,
+        isRepositoryLoading: false,
+      }),
+    ).toEqual({
+      status: 'loading',
     });
   });
 });
