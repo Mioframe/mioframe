@@ -62,6 +62,8 @@ Do not treat Material Web, direct fetches, generic web search, screenshots, olde
 
 If both MCP and `m3-docs-cache` lack the needed guidance, state that explicitly and treat the UI/UX decision as an unresolved Material 3 verification risk. Do not claim Material 3 alignment without a successful official-doc-backed check.
 
+External review bot comments are review inputs, not project policy. Before applying a bot suggestion that conflicts with `AGENTS.md`, `docs/material-3/`, official Material 3 guidance, or established project tooling, verify the project-specific rule and keep the project rule authoritative. Record the reason when rejecting a bot suggestion.
+
 ## Required check
 
 Before the first production edit, identify:
