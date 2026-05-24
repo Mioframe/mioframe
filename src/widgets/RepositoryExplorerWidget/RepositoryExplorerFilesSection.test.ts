@@ -9,17 +9,22 @@ vi.mock('@entity/fsEntry', () => ({
     name: 'FSEntryMDListItemStub',
     props: {
       name: { type: String, required: true },
+      isButton: { type: Boolean, default: false },
     },
     emits: ['click'],
     setup(props, { emit, slots }) {
       return () =>
         h(
-          'button',
+          props.isButton ? 'button' : 'div',
           {
-            type: 'button',
-            onClick: () => {
-              emit('click');
-            },
+            ...(props.isButton
+              ? {
+                  type: 'button',
+                  onClick: () => {
+                    emit('click', props.name);
+                  },
+                }
+              : {}),
           },
           [props.name, slots.trailingIcon?.()],
         );
@@ -81,7 +86,7 @@ describe('RepositoryExplorerFilesSection', () => {
     expect(wrapper.text()).toContain(`file-actions-${FSNodeType.File}`);
   });
 
-  it('emits selectPath only for nested directories', async () => {
+  it('renders only directories as interactive and emits selectPath only for them', async () => {
     const { default: RepositoryExplorerFilesSection } =
       await import('./RepositoryExplorerFilesSection.vue');
 
@@ -97,8 +102,11 @@ describe('RepositoryExplorerFilesSection', () => {
     });
 
     const buttons = wrapper.findAll('button');
+    expect(buttons).toHaveLength(1);
+    expect(buttons[0]?.text()).toContain('Nested');
+    expect(wrapper.text()).toContain('note.txt');
+
     await buttons[0]?.trigger('click');
-    await buttons[1]?.trigger('click');
 
     expect(wrapper.emitted('selectPath')).toEqual([['/repo/Nested']]);
   });

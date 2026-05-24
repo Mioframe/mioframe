@@ -94,7 +94,7 @@ describe('useImportDocumentAction', () => {
   });
 
   it('reports unexpected import failures with safe metadata', async () => {
-    const error = new Error('unexpected failure');
+    const error = new Error('unexpected failure at /private/path/notes.json');
     importJsonFileMock.mockRejectedValue(error);
 
     const { useImportDocumentAction } = await import('./useImportDocumentAction');
@@ -104,7 +104,18 @@ describe('useImportDocumentAction', () => {
     expect(addSnackbarMock).toHaveBeenCalledWith({
       text: 'Could not import the document',
     });
-    expect(reportHandledErrorMock).toHaveBeenCalledWith(error, {
+    expect(reportHandledErrorMock).toHaveBeenCalledTimes(1);
+    const [reportedError, metadata] = reportHandledErrorMock.mock.calls[0] ?? [];
+    expect(reportedError).toBeInstanceOf(Error);
+    expect(reportedError).toMatchObject({
+      message: 'Could not import the document',
+      code: 'document-import-failed',
+      cause: expect.objectContaining({
+        message: 'Document JSON import failed',
+      }),
+    });
+    expect(reportedError).not.toBe(error);
+    expect(metadata).toEqual({
       feature: 'documentImport',
       action: 'importDocumentJson',
     });

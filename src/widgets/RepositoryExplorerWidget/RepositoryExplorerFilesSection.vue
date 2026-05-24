@@ -18,22 +18,24 @@ const emit = defineEmits<{
 
 const hasVisibleFiles = computed(() => props.visibleFileEntries.length > 0);
 
-const onClickDirectoryEntry = (name: string, fileType: FSNodeType) => {
-  if (fileType === FSNodeType.Directory) {
-    emit('selectPath', PathUtils.join(props.directoryPath, name));
-  }
-};
-
-const visibleEntryClickHandlers = computed(() =>
-  Object.fromEntries(
-    props.visibleFileEntries.map(([name, { type: fileType }]) => [
-      name,
-      () => {
-        onClickDirectoryEntry(name, fileType);
-      },
-    ]),
-  ),
+const visibleDirectoryNames = computed(
+  () =>
+    new Set(
+      props.visibleFileEntries.flatMap(([name, { type }]) =>
+        type === FSNodeType.Directory ? [name] : [],
+      ),
+    ),
 );
+
+const isDirectoryEntry = (name: string) => visibleDirectoryNames.value.has(name);
+
+const onClickEntry = (name: string) => {
+  if (!isDirectoryEntry(name)) {
+    return;
+  }
+
+  emit('selectPath', PathUtils.join(props.directoryPath, name));
+};
 
 const supportingText = computed(() =>
   props.hideAutomergeFiles
@@ -59,12 +61,12 @@ const emptyText = computed(() =>
       <FSEntryMDListItem
         v-for="[name, { description, type: nodeType }] in visibleFileEntries"
         :key="name"
-        is-button
+        :is-button="nodeType === FSNodeType.Directory"
         :name="name"
         :supporting-text="description"
         :type="nodeType"
         class="repository-explorer-section__list-item"
-        @click="visibleEntryClickHandlers[name]"
+        @click="onClickEntry"
       >
         <template #trailingIcon>
           <RepositoryExplorerEntryManageButton
