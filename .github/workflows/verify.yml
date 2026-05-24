@@ -32,12 +32,31 @@ jobs:
       - run: podman --version
       - run: pnpm install --frozen-lockfile
       - run: pnpm e2e:install
-      - run: pnpm verify --fix
+      - name: Run autofix verification
+        id: autofix_verify
+        run: |
+          set +e
+          pnpm verify --fix
+          status=$?
+          set -e
+          echo "exit_code=$status" >> "$GITHUB_OUTPUT"
 
-      - name: Commit autofix changes
+      - name: Handle autofix changes
         run: |
           if git diff --quiet --exit-code; then
-            exit 0
+            status="${{ steps.autofix_verify.outputs.exit_code }}"
+
+            if [ "$status" -ne 0 ]; then
+              echo "pnpm verify --fix failed without producing mechanical changes."
+            fi
+
+            exit "$status"
+          fi
+
+          if [ -z "${BEAVER_CI_AUTOFIX_TOKEN}" ]; then
+            echo "pnpm verify --fix produced mechanical changes, but CI cannot commit them without BEAVER_CI_AUTOFIX_TOKEN."
+            echo "Add the repository secret to enable CI autofix commits, or rerun without expecting autofix pushes."
+            exit 1
           fi
 
           git config user.name "github-actions[bot]"
@@ -45,12 +64,19 @@ jobs:
           git add -A
           git commit -m "chore: apply CI autofix"
           git push origin HEAD:${{ github.event.pull_request.head.ref }}
+          echo "Autofix commit pushed; waiting for a new workflow run on the updated head."
+          exit 1
         env:
-          # Prefer a repository secret token because pushes created with GITHUB_TOKEN may
-          # not enqueue a fresh workflow run on the new commit. The verify job below
-          # re-checks out the PR head branch so this run still validates the latest branch
-          # state even when the fallback token is used.
-          GITHUB_TOKEN: ${{ secrets.BEAVER_CI_AUTOFIX_TOKEN != '' && secrets.BEAVER_CI_AUTOFIX_TOKEN || github.token }}
+          BEAVER_CI_AUTOFIX_TOKEN: ${{ secrets.BEAVER_CI_AUTOFIX_TOKEN }}
+
+      - name: Upload autofix logs
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: autofix-logs
+          path: .verify/logs/
+          if-no-files-found: ignore
+          retention-days: 7
 
   verify:
     needs:
@@ -64,8 +90,11 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || github.ref }}
-          repository: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name || github.repository }}
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.head.ref || github.ref }}
+
+      - name: Fetch pull request base branch
+        if: github.event_name == 'pull_request'
+        run: git fetch --no-tags --depth=1 origin "refs/heads/${GITHUB_BASE_REF}:refs/remotes/origin/${GITHUB_BASE_REF}"
 
       - uses: pnpm/action-setup@v4
 

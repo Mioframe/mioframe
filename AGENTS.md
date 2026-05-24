@@ -12,7 +12,7 @@ During implementation, use this command only when automatic formatting or lint f
 pnpm verify --fix
 ```
 
-For same-repository pull requests, CI may auto-commit safe mechanical fixer output produced by `pnpm verify --fix` before the final read-only gate. Agents should still run `pnpm verify --fix` locally when useful before the final local `pnpm verify`.
+For same-repository pull requests, CI may auto-commit safe mechanical fixer output produced by `pnpm verify --fix` before the final read-only gate, but only when `BEAVER_CI_AUTOFIX_TOKEN` is configured. Without that secret, CI may still run read-only verification but must not push autofix commits. Agents should still run `pnpm verify --fix` locally when useful before the final local `pnpm verify`.
 
 Before reporting completion after edits, always run the read-only check:
 
@@ -71,7 +71,7 @@ reason:
 - Use the `test-first` skill for behavior changes, bug fixes, migrations, data transformations, storage semantics, and UI flows when the expected outcome can be reproduced by a focused test or smoke check.
 - Do not use test-first for refactors, type-only changes, formatting, comments, renames, documentation, or internal cleanup with no observable behavior change.
 - If CI auto-commits fixer output to a same-repository PR branch, pull or rebase before continuing local work so local diffs and final verification match the branch tip.
-- CI autofix is limited to existing safe fixer output from `pnpm verify --fix`; it must not auto-update visual snapshots, rewrite test expectations, change mutation thresholds, or perform GitHub-side review operations.
+- CI autofix is limited to existing safe fixer output from `pnpm verify --fix`; it requires `BEAVER_CI_AUTOFIX_TOKEN` to push, stops the old workflow run after pushing so a fresh run can validate the updated head, and must not auto-update visual snapshots, rewrite test expectations, change mutation thresholds, or perform GitHub-side review operations.
 - Use the `component-contract-testing` skill for adding or reviewing Vue component unit tests for small render, props, emits, slots, or child-component wiring contracts.
 - Do not use component contract tests for browser behavior; use Playwright/e2e or a reproducible browser smoke check instead.
 - Use the `mutation-testing` skill for high-risk changes to pure logic, schemas, migrations, storage helpers, CRDT write helpers, validation, normalization, filtering, sorting, matching, service logic, or data transformations when focused unit/integration tests were added or changed.
