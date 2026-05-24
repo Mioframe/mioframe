@@ -31,7 +31,7 @@ defineSlots<{
 
 const { directoryPath } = toRefs(props);
 
-const { directoryError, repositoryError, viewState } =
+const { directoryError, hideAutomergeFiles, repositoryError, viewState } =
   useRepositoryExplorerDirectoryState(directoryPath);
 
 const onClickPath = (path: string) => {
@@ -112,6 +112,7 @@ const onReturnHomeClick = () => {
 
         <RepositoryExplorerFilesSection
           :directory-path="directoryPath"
+          :hide-automerge-files="hideAutomergeFiles"
           :visible-file-entries="viewState.visibleFileEntries"
           @select-path="onClickPath"
         />

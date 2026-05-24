@@ -6,7 +6,6 @@ import { zodIs } from '@shared/lib/validateZodScheme';
 /** User-facing folder states for the opened Mioframe directory screen. */
 export type MioframeSpaceDirectoryState =
   | 'regularFolder'
-  | 'inconsistentMioframeData'
   | 'emptyMioframeSpace'
   | 'mioframeSpaceWithDocuments';
 

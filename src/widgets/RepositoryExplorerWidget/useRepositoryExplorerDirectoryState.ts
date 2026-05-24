@@ -63,6 +63,7 @@ export const useRepositoryExplorerDirectoryState = (directoryPath: Ref<string>) 
 
   return {
     directoryError,
+    hideAutomergeFiles,
     repositoryError,
     viewState,
   };

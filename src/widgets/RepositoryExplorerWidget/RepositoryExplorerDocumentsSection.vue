@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { MioframeSpaceDirectoryState } from '@entity/mioframeSpaceDirectory';
 import { DocumentManageMenuButton } from '@feature/documentManage';
 import { MioframeStorageInfoSheet } from '@feature/mioframeStorageInfo';
 import type { AMDocumentId } from '@shared/lib/automerge/automergeTypes';
@@ -12,11 +13,7 @@ import { computed, shallowRef, toRefs } from 'vue';
 const props = defineProps<{
   directoryPath: string;
   documentIds: readonly AMDocumentId[];
-  folderState:
-    | 'regularFolder'
-    | 'inconsistentMioframeData'
-    | 'emptyMioframeSpace'
-    | 'mioframeSpaceWithDocuments';
+  folderState: MioframeSpaceDirectoryState;
 }>();
 
 const emit = defineEmits<{
@@ -38,9 +35,16 @@ const onSelectDocument = (documentId: AMDocumentId) => {
   emit('selectDocument', documentId);
 };
 
-const onClickDocument = (documentId: AMDocumentId) => {
-  onSelectDocument(documentId);
-};
+const onDocumentClickHandlers = computed(() =>
+  Object.fromEntries(
+    documentIds.value.map((documentId) => [
+      documentId,
+      () => {
+        onSelectDocument(documentId);
+      },
+    ]),
+  ),
+);
 
 const documentCountLabel = computed(() => {
   if (documentIds.value.length === 1) {
@@ -56,8 +60,6 @@ const emptyHeadline = computed(() => {
       return 'This folder is not a Mioframe space yet.';
     case 'emptyMioframeSpace':
       return 'No Mioframe documents yet.';
-    case 'inconsistentMioframeData':
-      return 'This folder contains incomplete Mioframe data.';
     default:
       return undefined;
   }
@@ -69,8 +71,6 @@ const emptySupportingText = computed(() => {
       return 'Add your first document to turn this folder into a Mioframe space.';
     case 'emptyMioframeSpace':
       return 'Create or import a document to add Mioframe documents here.';
-    case 'inconsistentMioframeData':
-      return 'Open the full Mioframe space folder or restore the missing Mioframe files before working with these documents.';
     default:
       return undefined;
   }
@@ -104,7 +104,7 @@ const emptySupportingText = computed(() => {
         :document-id="documentId"
         :path="directoryPath"
         class="repository-explorer-section__list-item"
-        @click="() => onClickDocument(documentId)"
+        @click="onDocumentClickHandlers[documentId]"
       >
         <template #trailingIcon>
           <DocumentManageMenuButton :directory-path="directoryPath" :document-id="documentId" />

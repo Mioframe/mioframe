@@ -45,23 +45,23 @@ const onCloseRenameDialog = () => {
   showRenameDialog.value = false;
 };
 
-const onCreateDirectory = () => {
+const onSelectCreateDirectory = () => {
   showCreateDirectoryDialog.value = true;
 };
 
-const onCreateDocument = () => {
+const onSelectCreateDocument = () => {
   showCreateDocumentDialog.value = true;
 };
 
-const onRename = () => {
+const onSelectRename = () => {
   showRenameDialog.value = true;
 };
 
-const onRemove = async () => {
+const onSelectRemove = async () => {
   await remove(path.value);
 };
 
-const onImportJson = async () => {
+const onSelectImportJson = async () => {
   await importDocument(path.value);
 };
 </script>
@@ -74,11 +74,11 @@ const onImportJson = async () => {
     :can-change-path="canChangePath"
     :can-delete="canDelete"
     :show-document-actions="showDocumentActions"
-    @on-create-directory="onCreateDirectory"
-    @on-create-document="onCreateDocument"
-    @on-rename="onRename"
-    @on-remove="onRemove"
-    @on-import-json="onImportJson"
+    @select-create-directory="onSelectCreateDirectory"
+    @select-create-document="onSelectCreateDocument"
+    @select-rename="onSelectRename"
+    @select-remove="onSelectRemove"
+    @select-import-json="onSelectImportJson"
   />
 
   <DirectoryCreateDialog

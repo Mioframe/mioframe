@@ -102,4 +102,13 @@ describe('classifyMioframeSpaceDirectory', () => {
       'plain.json',
     ]);
   });
+
+  it('no longer exposes an inconsistent state when documents exist without a marker', () => {
+    const result = classifyMioframeSpaceDirectory({
+      directoryEntries: [['Folder', createStat(FSNodeType.Directory)]],
+      documentIds: ['test-doc-id'],
+    });
+
+    expect(result.state).toBe('mioframeSpaceWithDocuments');
+  });
 });

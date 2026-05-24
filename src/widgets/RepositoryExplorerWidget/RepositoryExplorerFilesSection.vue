@@ -8,6 +8,7 @@ import RepositoryExplorerEntryManageButton from './RepositoryExplorerEntryManage
 
 const props = defineProps<{
   directoryPath: string;
+  hideAutomergeFiles: boolean;
   visibleFileEntries: readonly MioframeDirectoryEntry[];
 }>();
 
@@ -23,18 +24,35 @@ const onClickDirectoryEntry = (name: string, fileType: FSNodeType) => {
   }
 };
 
-const onClickVisibleEntry = (name: string, fileType: FSNodeType) => {
-  onClickDirectoryEntry(name, fileType);
-};
+const visibleEntryClickHandlers = computed(() =>
+  Object.fromEntries(
+    props.visibleFileEntries.map(([name, { type: fileType }]) => [
+      name,
+      () => {
+        onClickDirectoryEntry(name, fileType);
+      },
+    ]),
+  ),
+);
+
+const supportingText = computed(() =>
+  props.hideAutomergeFiles
+    ? 'Regular files and folders. Mioframe service files are hidden.'
+    : 'Regular files, folders, and Mioframe document files.',
+);
+
+const emptyText = computed(() =>
+  props.hideAutomergeFiles
+    ? 'No regular files or folders to show. Mioframe service files are hidden.'
+    : 'No regular files, folders, or Mioframe document files to show.',
+);
 </script>
 
 <template>
   <section class="repository-explorer-section" aria-labelledby="mioframe-files-title">
     <div class="repository-explorer-section__copy">
       <h2 id="mioframe-files-title" class="repository-explorer-section__title">Files</h2>
-      <p class="repository-explorer-section__supporting-text">
-        Regular files and folders. Mioframe service files are hidden.
-      </p>
+      <p class="repository-explorer-section__supporting-text">{{ supportingText }}</p>
     </div>
 
     <MDListContainer is="div" v-if="hasVisibleFiles" class="repository-explorer-section__list">
@@ -46,7 +64,7 @@ const onClickVisibleEntry = (name: string, fileType: FSNodeType) => {
         :supporting-text="description"
         :type="nodeType"
         class="repository-explorer-section__list-item"
-        @click="() => onClickVisibleEntry(name, nodeType)"
+        @click="visibleEntryClickHandlers[name]"
       >
         <template #trailingIcon>
           <RepositoryExplorerEntryManageButton
@@ -58,9 +76,7 @@ const onClickVisibleEntry = (name: string, fileType: FSNodeType) => {
       </FSEntryMDListItem>
     </MDListContainer>
 
-    <p v-else class="repository-explorer-section__empty-text">
-      No regular files or folders to show. Mioframe service files are hidden.
-    </p>
+    <p v-else class="repository-explorer-section__empty-text">{{ emptyText }}</p>
   </section>
 </template>
 

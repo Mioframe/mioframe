@@ -15,11 +15,11 @@ type FSEntryManageMenuButtonProps = {
 const props = defineProps<FSEntryManageMenuButtonProps>();
 
 const emit = defineEmits<{
-  onCreateDirectory: [];
-  onCreateDocument: [];
-  onRename: [];
-  onRemove: [];
-  onImportJson: [];
+  selectCreateDirectory: [];
+  selectCreateDocument: [];
+  selectRename: [];
+  selectRemove: [];
+  selectImportJson: [];
 }>();
 const { path } = toRefs(props);
 
@@ -80,19 +80,19 @@ const menuTooltip = computed(() => `options ${fsEntryName.value}`);
 const onClickMenuAction = ({ key }: { key: string }) => {
   switch (key) {
     case 'createDirectory':
-      emit('onCreateDirectory');
+      emit('selectCreateDirectory');
       break;
     case 'createDocument':
-      emit('onCreateDocument');
+      emit('selectCreateDocument');
       break;
     case 'remove':
-      emit('onRemove');
+      emit('selectRemove');
       break;
     case 'rename':
-      emit('onRename');
+      emit('selectRename');
       break;
     case 'importJson':
-      emit('onImportJson');
+      emit('selectImportJson');
       break;
   }
 };

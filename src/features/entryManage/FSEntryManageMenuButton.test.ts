@@ -133,7 +133,7 @@ describe('FSEntryManageMenuButton', () => {
     await wrapper.get('button').trigger('click');
     await flushPromises();
 
-    expect(wrapper.emitted('onCreateDirectory')).toHaveLength(1);
+    expect(wrapper.emitted('selectCreateDirectory')).toHaveLength(1);
   });
 
   it('emits create document when the nested-directory action is selected', async () => {
@@ -144,7 +144,7 @@ describe('FSEntryManageMenuButton', () => {
     await wrapper.get('button').trigger('click');
     await flushPromises();
 
-    expect(wrapper.emitted('onCreateDocument')).toHaveLength(1);
+    expect(wrapper.emitted('selectCreateDocument')).toHaveLength(1);
   });
 
   it('emits import json when the nested-directory action is selected', async () => {
@@ -155,7 +155,7 @@ describe('FSEntryManageMenuButton', () => {
     await wrapper.get('button').trigger('click');
     await flushPromises();
 
-    expect(wrapper.emitted('onImportJson')).toHaveLength(1);
+    expect(wrapper.emitted('selectImportJson')).toHaveLength(1);
   });
 
   it('emits rename when the action is selected', async () => {
@@ -166,7 +166,7 @@ describe('FSEntryManageMenuButton', () => {
     await wrapper.get('button').trigger('click');
     await flushPromises();
 
-    expect(wrapper.emitted('onRename')).toHaveLength(1);
+    expect(wrapper.emitted('selectRename')).toHaveLength(1);
   });
 
   it('emits remove when the action is selected', async () => {
@@ -177,6 +177,6 @@ describe('FSEntryManageMenuButton', () => {
     await wrapper.get('button').trigger('click');
     await flushPromises();
 
-    expect(wrapper.emitted('onRemove')).toHaveLength(1);
+    expect(wrapper.emitted('selectRemove')).toHaveLength(1);
   });
 });

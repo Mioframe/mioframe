@@ -69,6 +69,7 @@ describe('RepositoryExplorerFilesSection', () => {
     const wrapper = mount(RepositoryExplorerFilesSection, {
       props: {
         directoryPath: '/repo',
+        hideAutomergeFiles: true,
         visibleFileEntries: [
           ['Nested', { type: FSNodeType.Directory, capabilities: {}, description: 'dir' }],
           ['note.txt', { type: FSNodeType.File, capabilities: {}, description: 'file' }],
@@ -87,6 +88,7 @@ describe('RepositoryExplorerFilesSection', () => {
     const wrapper = mount(RepositoryExplorerFilesSection, {
       props: {
         directoryPath: '/repo',
+        hideAutomergeFiles: true,
         visibleFileEntries: [
           ['Nested', { type: FSNodeType.Directory, capabilities: {}, description: 'dir' }],
           ['note.txt', { type: FSNodeType.File, capabilities: {}, description: 'file' }],
@@ -99,6 +101,31 @@ describe('RepositoryExplorerFilesSection', () => {
     await buttons[1]?.trigger('click');
 
     expect(wrapper.emitted('selectPath')).toEqual([['/repo/Nested']]);
+  });
+
+  it('matches the supporting copy to whether Automerge files are hidden', async () => {
+    const { default: RepositoryExplorerFilesSection } =
+      await import('./RepositoryExplorerFilesSection.vue');
+
+    const hiddenWrapper = mount(RepositoryExplorerFilesSection, {
+      props: {
+        directoryPath: '/repo',
+        hideAutomergeFiles: true,
+        visibleFileEntries: [],
+      },
+    });
+
+    const visibleWrapper = mount(RepositoryExplorerFilesSection, {
+      props: {
+        directoryPath: '/repo',
+        hideAutomergeFiles: false,
+        visibleFileEntries: [],
+      },
+    });
+
+    expect(hiddenWrapper.text()).toContain('Mioframe service files are hidden.');
+    expect(visibleWrapper.text()).toContain('Mioframe document files');
+    expect(visibleWrapper.text()).not.toContain('Mioframe service files are hidden.');
   });
 });
 /* eslint-enable vue/one-component-per-file -- Re-enable after focused inline stubs. */
