@@ -55,6 +55,7 @@ try {
 
 - `DomainError.message` may be user-facing. Keep it safe and avoid paths, names, ids, URLs, record values, or raw external text.
 - `DomainError.cause` may be reported later. Use `createSafeErrorCause` or another project-controlled safe cause for external/browser/storage/network/Zod errors.
+- `reportHandledError` reports an `Error` cause from a `DomainError` instead of the wrapper error. Passing a `DomainError` directly is safe only when its cause is also privacy-safe or absent.
 - Raw `Error` may be preserved only when the message is project-controlled and cannot contain user-controlled values.
 - Expected user-input errors can keep detailed causes only when the flow guarantees they will not be reported. Prefer safe causes anyway if future reuse is likely.
 
@@ -80,6 +81,7 @@ Before final handoff, check touched error flows:
 
 - Can this error reach `reportHandledError` now or through an existing helper?
 - Does any `Error.message`, `DomainError.message`, or `cause.message` include path, name, id, URL, content, raw external text, or validation payload?
+- If a `DomainError` reaches `reportHandledError`, is its `cause` either absent or privacy-safe by construction?
 - Are expected user outcomes excluded from reporting?
 - Are unexpected unknown errors wrapped before reporting?
 - Are `reportHandledError` options limited to stable safe metadata?
