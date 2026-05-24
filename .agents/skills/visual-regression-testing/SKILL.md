@@ -29,6 +29,14 @@ Required boundaries:
 
 Storybook is intended for stable component surfaces and visual states. It should stay a rendering harness, not an alternate product application or an e2e runner.
 
+## Story identity contract
+
+When a visual spec opens a Storybook story by id, the story `title` and story export name are part of the visual test contract.
+
+Do not rename Storybook titles, story exports, or visual `data-testid` anchors in touched visual stories unless the matching visual specs and snapshots are intentionally updated in the same pass.
+
+Prefer keeping existing story ids stable when only component internals, tokens, or visual states change. If a story id must change, update the Playwright `openStory` call and prove the story still renders the expected stable screenshot surface before refreshing baselines.
+
 ## Isolation review
 
 Before adding visual snapshots, check whether the story is rendered under an isolated Storybook runtime. If it depends on the normal product root app, refactor the setup so the screenshot cannot be affected by product effects.
