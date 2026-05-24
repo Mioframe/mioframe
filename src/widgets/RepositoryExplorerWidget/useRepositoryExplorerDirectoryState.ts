@@ -1,6 +1,6 @@
-import { useDirectory } from '@entity/directory/useDirectory';
-import { useLocalSettings } from '@entity/localSettings/useLocalSettings';
-import { deriveMioframeSpaceDirectoryViewState } from '@entity/mioframeSpaceDirectory/deriveMioframeSpaceDirectoryViewState';
+import { useDirectory } from '@entity/directory';
+import { useLocalSettings } from '@entity/localSettings';
+import { deriveMioframeSpaceDirectoryViewState } from '@entity/mioframeSpaceDirectory';
 import { resolveSafeErrorMessage } from '@shared/lib/error';
 import { useObservableQuery } from '@shared/lib/useObservableQuery';
 import { useMainServiceClient } from '@shared/service';
