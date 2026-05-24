@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from '@storybook/vue3-vite';
 import MDExtendedFab from './MDExtendedFab.vue';
 
 const meta = {
-  title: 'Material 3/Components/Extended FAB',
+  title: 'shared/ui/MDExtendedFab',
   component: MDExtendedFab,
   args: {
     label: 'Add',
