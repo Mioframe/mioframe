@@ -120,4 +120,40 @@ describe('useImportDocumentAction', () => {
       action: 'importDocumentJson',
     });
   });
+
+  it('does not report an inbound domain error with a private cause directly', async () => {
+    const { DomainError } = await import('@shared/lib/error');
+    const { ImportDocumentErrorCode } = await import('./importDocumentErrorCode');
+    const rawCause = new Error('failed to import /Users/alice/Documents/private.json');
+    const error = new DomainError('Could not import the document', {
+      cause: rawCause,
+      code: ImportDocumentErrorCode.fileReadFailed,
+    });
+    importJsonFileMock.mockRejectedValue(error);
+
+    const { useImportDocumentAction } = await import('./useImportDocumentAction');
+    const { importDocument } = useImportDocumentAction();
+
+    await expect(importDocument('/documents')).resolves.toBeUndefined();
+    expect(addSnackbarMock).toHaveBeenCalledWith({
+      text: 'Could not import the document',
+    });
+    expect(reportHandledErrorMock).toHaveBeenCalledTimes(1);
+
+    const [reportedError, metadata] = reportHandledErrorMock.mock.calls[0] ?? [];
+    expect(reportedError).toBeInstanceOf(Error);
+    expect(reportedError).toMatchObject({
+      message: 'Could not import the document',
+      code: ImportDocumentErrorCode.documentImportFailed,
+      cause: expect.objectContaining({
+        message: 'Document JSON import failed',
+      }),
+    });
+    expect(reportedError).not.toBe(error);
+    expect(reportedError?.cause).not.toBe(rawCause);
+    expect(metadata).toEqual({
+      feature: 'documentImport',
+      action: 'importDocumentJson',
+    });
+  });
 });

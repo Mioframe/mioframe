@@ -11,11 +11,7 @@ const shouldSkipImportErrorReport = (error: unknown) =>
     (error.code === ImportDocumentErrorCode.invalidJson ||
       error.code === ImportDocumentErrorCode.invalidDocumentFormat));
 
-const toSafeImportReportError = (error: unknown) => {
-  if (error instanceof DomainError) {
-    return error;
-  }
-
+const toSafeImportReportError = () => {
   return new DomainError('Could not import the document', {
     cause: createSafeErrorCause('Document JSON import failed'),
     code: ImportDocumentErrorCode.documentImportFailed,
@@ -47,7 +43,7 @@ export const useImportDocumentAction = () => {
       });
 
       if (!shouldSkipImportErrorReport(error)) {
-        reportHandledError(toSafeImportReportError(error), {
+        reportHandledError(toSafeImportReportError(), {
           feature: 'documentImport',
           action: 'importDocumentJson',
         });
