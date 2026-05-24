@@ -4,7 +4,9 @@ import { spawn, spawnSync } from 'node:child_process';
 import toolingConfig from '../config/tooling.json' with { type: 'json' };
 
 const isFixMode = process.argv.includes('--fix');
+const isFixOnlyMode = process.argv.includes('--fix-only');
 const isVerboseMode = process.argv.includes('--verbose');
+const shouldApplyFixers = isFixMode || isFixOnlyMode;
 const cliBaseRef = getCliBaseRef(process.argv.slice(2));
 const VERIFY_DIR = '.verify';
 const VERIFY_LOG_DIR = path.posix.join(VERIFY_DIR, 'logs');
@@ -623,13 +625,13 @@ function buildCommands(changedFiles) {
       kind: 'run',
       label: 'format',
       command: 'pnpm',
-      args: ['exec', 'oxfmt', ...(isFixMode ? [] : ['--check']), ...formattableFiles],
+      args: ['exec', 'oxfmt', ...(shouldApplyFixers ? [] : ['--check']), ...formattableFiles],
     });
   } else {
     commands.push({
       kind: 'skipped',
       label: 'format',
-      command: `pnpm exec oxfmt${isFixMode ? '' : ' --check'}`,
+      command: `pnpm exec oxfmt${shouldApplyFixers ? '' : ' --check'}`,
       reason: 'no changed formattable existing files',
     });
   }
@@ -639,7 +641,7 @@ function buildCommands(changedFiles) {
       kind: 'run',
       label: 'oxlint',
       command: 'pnpm',
-      args: ['exec', 'oxlint', ...(isFixMode ? ['--fix'] : []), ...lintableFiles],
+      args: ['exec', 'oxlint', ...(shouldApplyFixers ? ['--fix'] : []), ...lintableFiles],
     });
     commands.push({
       kind: 'run',
@@ -649,7 +651,7 @@ function buildCommands(changedFiles) {
         'exec',
         'eslint',
         '--cache',
-        ...(isFixMode ? ['--fix'] : []),
+        ...(shouldApplyFixers ? ['--fix'] : []),
         '--concurrency=auto',
         ...lintableFiles,
       ],
@@ -658,15 +660,19 @@ function buildCommands(changedFiles) {
     commands.push({
       kind: 'skipped',
       label: 'oxlint',
-      command: `pnpm exec oxlint${isFixMode ? ' --fix' : ''}`,
+      command: `pnpm exec oxlint${shouldApplyFixers ? ' --fix' : ''}`,
       reason: 'no changed lintable existing files',
     });
     commands.push({
       kind: 'skipped',
       label: 'eslint',
-      command: `pnpm exec eslint --cache${isFixMode ? ' --fix' : ''} --concurrency=auto`,
+      command: `pnpm exec eslint --cache${shouldApplyFixers ? ' --fix' : ''} --concurrency=auto`,
       reason: 'no changed lintable existing files',
     });
+  }
+
+  if (isFixOnlyMode) {
+    return commands;
   }
 
   if (changedFiles.some(isTypeCheckTarget)) {
@@ -781,9 +787,10 @@ function printSummary(changedFiles, scope, results) {
   const status = hasFailed ? 'failed' : 'passed';
   const displayStatus = hasFailed ? 'failed ❌' : 'passed ✅';
   const actionRequired = getActionRequired(results);
+  const mode = isFixOnlyMode ? 'fix-only' : isFixMode ? 'fix' : 'check';
 
   console.log('\nVERIFY RESULT');
-  console.log(`mode: ${isFixMode ? 'fix' : 'check'}`);
+  console.log(`mode: ${mode}`);
   console.log(`verbose: ${isVerboseMode ? 'on' : 'off'}`);
   console.log(`scope: ${scope}`);
   console.log(`changed files: ${changedFiles.length}`);
@@ -814,6 +821,10 @@ function printSummary(changedFiles, scope, results) {
 }
 
 async function main() {
+  if (isFixMode && isFixOnlyMode) {
+    throw new Error('Use either --fix or --fix-only, not both.');
+  }
+
   const { changedFiles, scope } = getChangedFiles();
   const commands = buildCommands(changedFiles);
   const results = [];

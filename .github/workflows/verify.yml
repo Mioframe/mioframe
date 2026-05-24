@@ -20,7 +20,7 @@ jobs:
         with:
           fetch-depth: 0
           ref: ${{ github.event.pull_request.head.ref }}
-          token: ${{ secrets.BEAVER_CI_AUTOFIX_TOKEN != '' && secrets.BEAVER_CI_AUTOFIX_TOKEN || github.token }}
+          persist-credentials: false
 
       - uses: pnpm/action-setup@v4
 
@@ -29,14 +29,12 @@ jobs:
           node-version: 24
           cache: pnpm
 
-      - run: podman --version
       - run: pnpm install --frozen-lockfile
-      - run: pnpm e2e:install
-      - name: Run autofix verification
+      - name: Run autofix fixers
         id: autofix_verify
         run: |
           set +e
-          pnpm verify --fix
+          pnpm ci:autofix
           status=$?
           set -e
           echo "exit_code=$status" >> "$GITHUB_OUTPUT"
@@ -47,23 +45,26 @@ jobs:
             status="${{ steps.autofix_verify.outputs.exit_code }}"
 
             if [ "$status" -ne 0 ]; then
-              echo "pnpm verify --fix failed without producing mechanical changes."
+              echo "pnpm ci:autofix failed without producing mechanical changes."
             fi
 
             exit "$status"
           fi
 
           if [ -z "${BEAVER_CI_AUTOFIX_TOKEN}" ]; then
-            echo "pnpm verify --fix produced mechanical changes, but CI cannot commit them without BEAVER_CI_AUTOFIX_TOKEN."
+            echo "pnpm ci:autofix produced mechanical changes, but CI cannot commit them without BEAVER_CI_AUTOFIX_TOKEN."
             echo "Add the repository secret to enable CI autofix commits, or rerun without expecting autofix pushes."
             exit 1
           fi
 
+          remote_url="https://x-access-token:${BEAVER_CI_AUTOFIX_TOKEN}@github.com/${{ github.repository }}.git"
+
+          # Use the standard GitHub Actions bot noreply identity for automation commits.
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -A
           git commit -m "chore: apply CI autofix"
-          git push origin HEAD:${{ github.event.pull_request.head.ref }}
+          git push "$remote_url" HEAD:${{ github.event.pull_request.head.ref }}
           echo "Autofix commit pushed; waiting for a new workflow run on the updated head."
           exit 1
         env:
