@@ -7,13 +7,65 @@ on:
       - main
 
 jobs:
-  verify:
+  autofix:
+    if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+
+    steps:
+      # Check out the real PR branch, not the synthetic merge ref, so safe fixer output
+      # can be committed back to the branch under review.
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.ref }}
+          token: ${{ secrets.BEAVER_CI_AUTOFIX_TOKEN != '' && secrets.BEAVER_CI_AUTOFIX_TOKEN || github.token }}
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - run: podman --version
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm e2e:install
+      - run: pnpm verify --fix
+
+      - name: Commit autofix changes
+        run: |
+          if git diff --quiet --exit-code; then
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "chore: apply CI autofix"
+          git push origin HEAD:${{ github.event.pull_request.head.ref }}
+        env:
+          # Prefer a repository secret token because pushes created with GITHUB_TOKEN may
+          # not enqueue a fresh workflow run on the new commit. The verify job below
+          # re-checks out the PR head branch so this run still validates the latest branch
+          # state even when the fallback token is used.
+          GITHUB_TOKEN: ${{ secrets.BEAVER_CI_AUTOFIX_TOKEN != '' && secrets.BEAVER_CI_AUTOFIX_TOKEN || github.token }}
+
+  verify:
+    needs:
+      - autofix
+    if: always() && (needs.autofix.result == 'success' || needs.autofix.result == 'skipped')
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
 
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || github.ref }}
+          repository: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name || github.repository }}
 
       - uses: pnpm/action-setup@v4
 
