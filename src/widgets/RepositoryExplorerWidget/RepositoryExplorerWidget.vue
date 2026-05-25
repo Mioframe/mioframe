@@ -37,7 +37,7 @@ const {
   errorMessage,
   hideAutomergeFiles,
   isLoading,
-  mioframeSpaceState,
+  isRepositoryInitialized,
   regularFileEntries,
   repositoryError,
 } = useRepositoryExplorerDirectoryState(directoryPath);
@@ -115,7 +115,7 @@ const onReturnHomeClick = () => {
         <RepositoryExplorerDocumentsSection
           :directory-path="directoryPath"
           :document-ids="documentIds ?? []"
-          :folder-state="mioframeSpaceState"
+          :is-repository-initialized="isRepositoryInitialized"
           @select-document="onClickDocument"
         />
 

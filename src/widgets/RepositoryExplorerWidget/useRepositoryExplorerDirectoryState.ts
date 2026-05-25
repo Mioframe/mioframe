@@ -1,12 +1,8 @@
 import { useDirectory } from '@entity/directory';
 import { useLocalSettings } from '@entity/localSettings';
-import {
-  getMioframeSpaceDirectoryState,
-  getRegularDirectoryEntries,
-  hasMioframeMarkerFile,
-} from '@entity/mioframeSpaceDirectory';
 import { useRepository } from '@entity/repository';
 import { resolveSafeErrorMessage } from '@shared/lib/error';
+import { getRegularDirectoryEntries } from '@shared/service/repositories';
 import { computed, type Ref } from 'vue';
 
 /**
@@ -29,7 +25,8 @@ export const useRepositoryExplorerDirectoryState = (directoryPath: Ref<string>) 
   );
 
   const {
-    state: documentIds,
+    documentIds,
+    isInitialized: isRepositoryInitialized,
     error: repositoryError,
     errorMessage: repositoryErrorMessage,
     isLoading: isRepositoryLoading,
@@ -47,22 +44,10 @@ export const useRepositoryExplorerDirectoryState = (directoryPath: Ref<string>) 
       !directoryEntries.value ||
       !documentIds.value,
   );
-  const mioframeMarkerFile = computed(() =>
-    directoryEntries.value ? hasMioframeMarkerFile(directoryEntries.value) : false,
-  );
   const regularFileEntries = computed(() =>
     directoryEntries.value
-      ? getRegularDirectoryEntries({
-          directoryEntries: directoryEntries.value,
-          hideAutomergeFiles: hideAutomergeFiles.value,
-        })
+      ? getRegularDirectoryEntries(directoryEntries.value, hideAutomergeFiles.value)
       : [],
-  );
-  const mioframeSpaceState = computed(() =>
-    getMioframeSpaceDirectoryState({
-      hasMarkerFile: mioframeMarkerFile.value,
-      documentIds: documentIds.value ?? [],
-    }),
   );
 
   return {
@@ -72,8 +57,7 @@ export const useRepositoryExplorerDirectoryState = (directoryPath: Ref<string>) 
     errorMessage,
     hideAutomergeFiles,
     isLoading,
-    hasMioframeMarkerFile: mioframeMarkerFile,
-    mioframeSpaceState,
+    isRepositoryInitialized,
     regularFileEntries,
     repositoryError,
     repositoryErrorMessage,

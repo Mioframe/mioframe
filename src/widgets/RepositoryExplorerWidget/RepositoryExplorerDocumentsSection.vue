@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import type { MioframeSpaceDirectoryState } from '@entity/mioframeSpaceDirectory';
 import { DocumentManageMenuButton } from '@feature/documentManage';
 import { MioframeStorageInfoSheet } from '@feature/mioframeStorageInfo';
 import type { AMDocumentId } from '@shared/lib/automerge/automergeTypes';
@@ -13,14 +12,14 @@ import { computed, shallowRef, toRefs } from 'vue';
 const props = defineProps<{
   directoryPath: string;
   documentIds: readonly AMDocumentId[];
-  folderState: MioframeSpaceDirectoryState;
+  isRepositoryInitialized: boolean;
 }>();
 
 const emit = defineEmits<{
   selectDocument: [documentId: AMDocumentId];
 }>();
 
-const { directoryPath, documentIds, folderState } = toRefs(props);
+const { directoryPath, documentIds, isRepositoryInitialized } = toRefs(props);
 
 const showStorageInfoSheet = shallowRef(false);
 const openStorageInfoSheet = () => {
@@ -44,25 +43,23 @@ const documentCountLabel = computed(() => {
 });
 
 const emptyHeadline = computed(() => {
-  switch (folderState.value) {
-    case 'regularFolder':
-      return 'This folder is not a Mioframe space yet.';
-    case 'emptyMioframeSpace':
-      return 'No Mioframe documents yet.';
-    default:
-      return undefined;
+  if (documentIds.value.length > 0) {
+    return undefined;
   }
+
+  return isRepositoryInitialized.value
+    ? 'No Mioframe documents yet.'
+    : 'This folder is not a Mioframe space yet.';
 });
 
 const emptySupportingText = computed(() => {
-  switch (folderState.value) {
-    case 'regularFolder':
-      return 'Add your first document to turn this folder into a Mioframe space.';
-    case 'emptyMioframeSpace':
-      return 'Create or import a document to add Mioframe documents here.';
-    default:
-      return undefined;
+  if (documentIds.value.length > 0) {
+    return undefined;
   }
+
+  return isRepositoryInitialized.value
+    ? 'Create or import a document to add Mioframe documents here.'
+    : 'Add your first document to turn this folder into a Mioframe space.';
 });
 </script>
 

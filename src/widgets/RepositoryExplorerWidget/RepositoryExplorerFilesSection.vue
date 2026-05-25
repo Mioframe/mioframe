@@ -1,15 +1,15 @@
 <script setup lang="ts">
 import { FSEntryMDListItem } from '@entity/fsEntry';
+import type { RepositoryDirectoryEntry } from '@shared/service/repositories';
 import { FSNodeType, PathUtils } from '@shared/lib/virtualFileSystem';
 import { MDListContainer } from '@shared/ui/Lists';
-import type { MioframeDirectoryEntry } from '@entity/mioframeSpaceDirectory';
 import { computed } from 'vue';
 import RepositoryExplorerEntryManageButton from './RepositoryExplorerEntryManageButton.vue';
 
 const props = defineProps<{
   directoryPath: string;
   hideAutomergeFiles: boolean;
-  regularFileEntries: readonly MioframeDirectoryEntry[];
+  regularFileEntries: readonly RepositoryDirectoryEntry[];
 }>();
 
 const emit = defineEmits<{

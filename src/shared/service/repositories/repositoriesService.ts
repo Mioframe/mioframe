@@ -1,11 +1,8 @@
-import { zodDocumentId, type AMDocumentId } from '@shared/lib/automerge';
+import type { AMDocumentId } from '@shared/lib/automerge';
 import { useFileSystemService } from '../fileSystem';
-import { FSNodeType } from '@shared/lib/virtualFileSystem';
-import { zodIs } from '@shared/lib/validateZodScheme';
 import { Repo } from '@automerge/automerge-repo';
 import { createVFSAdapter } from '@shared/lib/automergeAdapter/createVFSAdapter';
 import { createGlobalState } from '@vueuse/core';
-import { fileNameToPartialKey, zodAutomergeFileName } from '@shared/lib/automergeAdapter';
 import type { CFRDocumentContent } from '@shared/lib/cfrDocument';
 import {
   concat,
@@ -26,6 +23,7 @@ import { defineObservableQuery } from '@shared/lib/useObservableQuery';
 import { defineCacheObservable } from '@shared/lib/defineCacheObservable';
 import {
   cleanupDeletedDocumentStorageFiles,
+  getRepositoryFacts,
   getDocumentStorageFiles,
 } from './repositoryStorageFiles';
 /** Idle timeout before an unused Automerge Repo instance is removed from service cache. */
@@ -35,7 +33,7 @@ const setupRepositoriesService = () => {
   const { directoryContent$, vfs } = useFileSystemService();
   const repoObservableCache = new Map<string, Observable<Repo>>();
 
-  const getDocumentIdList$ = defineCacheObservable(
+  const getRepositoryFacts$ = defineCacheObservable(
     ({
       path,
     }: {
@@ -49,17 +47,28 @@ const setupRepositoriesService = () => {
           if (value instanceof Error) {
             return value;
           }
-          return value.reduce((documentIdList: AMDocumentId[], [name, { type }]) => {
-            if (type === FSNodeType.File && zodIs(name, zodAutomergeFileName)) {
-              const [documentId] = fileNameToPartialKey(name) ?? [];
 
-              if (zodIs(documentId, zodDocumentId) && !documentIdList.includes(documentId)) {
-                documentIdList.push(documentId);
-              }
-            }
+          return getRepositoryFacts(value);
+        }),
+      ),
+  );
 
-            return documentIdList;
-          }, []);
+  const getDocumentIdList$ = defineCacheObservable(
+    ({
+      path,
+    }: {
+      /**
+       * Путь репозитория
+       */
+      path: string;
+    }) =>
+      getRepositoryFacts$({ path }).pipe(
+        map((value) => {
+          if (value instanceof Error) {
+            return value;
+          }
+
+          return value.documentIds;
         }),
       ),
   );
@@ -169,10 +178,13 @@ const setupRepositoriesService = () => {
   };
 
   const documentIdList = defineObservableQuery(getDocumentIdList$);
+  const repositoryFacts = defineObservableQuery(getRepositoryFacts$);
 
   return {
     documentIdList,
+    repositoryFacts,
     getDocumentIdList$,
+    getRepositoryFacts$,
     getRepo$: repo$,
     /**
      * Создать документ в репозитории

@@ -5,33 +5,37 @@ import { useMainServiceClient } from '@shared/service';
 import { computed, type Ref } from 'vue';
 
 /**
- * Reads repository document ids for a folder and exposes safe repository mutations.
+ * Reads repository facts for a folder and exposes safe repository mutations.
  * @param path - Absolute folder path whose repository data should be observed.
- * @returns Repository document ids, loading and error state, and create/delete actions.
+ * @returns Repository facts, loading and error state, and create/delete actions.
  */
 export const useRepository = (path: Ref<string>) => {
   const {
-    repositories: { createDocument, deleteDocument, documentIdList },
+    repositories: { createDocument, deleteDocument, repositoryFacts },
   } = useMainServiceClient();
 
   const {
-    data: state,
+    data: facts,
     refetch,
     error,
     isLoading,
   } = useObservableQuery(
-    documentIdList,
+    repositoryFacts,
     computed(() => ({
       path: path.value,
     })),
   );
+
+  const documentIds = computed(() => facts.value?.documentIds);
+  const isInitialized = computed(() => facts.value?.isInitialized ?? false);
 
   const errorMessage = computed(() =>
     resolveSafeErrorMessage(error.value, 'Could not load the Mioframe documents in this folder'),
   );
 
   return {
-    state,
+    documentIds,
+    isInitialized,
     refetch,
     error,
     errorMessage,

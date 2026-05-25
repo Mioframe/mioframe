@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { storageAdapterMarkerFileName } from '@shared/lib/automergeAdapter';
+import { Repo } from '@automerge/automerge-repo';
+import { partialKeyToFileName, storageAdapterMarkerFileName } from '@shared/lib/automergeAdapter';
 import { DomainError } from '@shared/lib/error';
 import { FSNodeType } from '@shared/lib/virtualFileSystem';
 import { effectScope, ref } from 'vue';
@@ -9,6 +10,17 @@ const useRepositoryMock = vi.fn();
 const settingsRef = ref<{ showAutomergeFiles?: boolean | undefined }>({
   showAutomergeFiles: false,
 });
+
+const createDocumentStorageFileName = () => {
+  const documentId = new Repo().create({}).documentId;
+  const fileName = partialKeyToFileName([documentId, 'snapshot', 'hash']);
+
+  if (!fileName) {
+    throw new Error(`Failed to create repository storage file for "${documentId}"`);
+  }
+
+  return fileName;
+};
 
 vi.mock('@entity/directory', () => ({
   useDirectory: (...args: unknown[]) => useDirectoryMock(...args),
@@ -54,7 +66,8 @@ describe('useRepositoryExplorerDirectoryState', () => {
       isLoading: ref(false),
     });
     useRepositoryMock.mockReturnValue({
-      state: ref(['doc-1']),
+      documentIds: ref(['doc-1']),
+      isInitialized: ref(true),
       error: ref(undefined),
       errorMessage: ref(undefined),
       isLoading: ref(false),
@@ -64,8 +77,7 @@ describe('useRepositoryExplorerDirectoryState', () => {
 
     expect(useRepositoryMock).toHaveBeenCalledWith(expect.objectContaining({ value: '/repo' }));
     expect(state.documentIds.value).toEqual(['doc-1']);
-    expect(state.hasMioframeMarkerFile.value).toBe(false);
-    expect(state.mioframeSpaceState.value).toBe('mioframeSpaceWithDocuments');
+    expect(state.isRepositoryInitialized.value).toBe(true);
     expect(state.regularFileEntries.value.map(([name]) => name)).toEqual([
       'Document 1.mio',
       'notes.txt',
@@ -82,7 +94,8 @@ describe('useRepositoryExplorerDirectoryState', () => {
       isLoading: ref(false),
     });
     useRepositoryMock.mockReturnValue({
-      state: ref(undefined),
+      documentIds: ref(undefined),
+      isInitialized: ref(false),
       error: ref(new Error('/private/repository path leaked')),
       errorMessage: ref('Could not load the Mioframe documents in this folder'),
       isLoading: ref(false),
@@ -105,7 +118,8 @@ describe('useRepositoryExplorerDirectoryState', () => {
       isLoading: ref(false),
     });
     useRepositoryMock.mockReturnValue({
-      state: ref(undefined),
+      documentIds: ref(undefined),
+      isInitialized: ref(false),
       error: ref(new DomainError('Repository is unavailable', { code: 'repositoryUnavailable' })),
       errorMessage: ref('Repository is unavailable'),
       isLoading: ref(false),
@@ -126,7 +140,8 @@ describe('useRepositoryExplorerDirectoryState', () => {
       isLoading: ref(false),
     });
     useRepositoryMock.mockReturnValue({
-      state: ref(undefined),
+      documentIds: ref(undefined),
+      isInitialized: ref(false),
       error: ref(undefined),
       errorMessage: ref(undefined),
       isLoading: ref(true),
@@ -146,7 +161,8 @@ describe('useRepositoryExplorerDirectoryState', () => {
       isLoading: ref(false),
     });
     useRepositoryMock.mockReturnValue({
-      state: ref([]),
+      documentIds: ref([]),
+      isInitialized: ref(false),
       error: ref(undefined),
       errorMessage: ref(undefined),
       isLoading: ref(false),
@@ -162,23 +178,23 @@ describe('useRepositoryExplorerDirectoryState', () => {
   });
 
   it('filters regular file entries according to the current Automerge visibility setting', async () => {
+    const documentStorageFileName = createDocumentStorageFileName();
+
     useDirectoryMock.mockReturnValue({
       data: ref([
         [
           storageAdapterMarkerFileName,
           { type: FSNodeType.File, capabilities: {}, description: 'marker' },
         ],
-        [
-          'test-doc-id.snapshot.automerge',
-          { type: FSNodeType.File, capabilities: {}, description: 'doc' },
-        ],
+        [documentStorageFileName, { type: FSNodeType.File, capabilities: {}, description: 'doc' }],
         ['notes.txt', { type: FSNodeType.File, capabilities: {}, description: 'file' }],
       ]),
       error: ref(undefined),
       isLoading: ref(false),
     });
     useRepositoryMock.mockReturnValue({
-      state: ref([]),
+      documentIds: ref([]),
+      isInitialized: ref(true),
       error: ref(undefined),
       errorMessage: ref(undefined),
       isLoading: ref(false),

@@ -16,7 +16,7 @@ const { path } = toRefs(props);
 
 const relationDocumentId = computed(() => relationModel.value?.documentId);
 
-const { state: documentIdList } = useRepository(path);
+const { documentIds: documentIdList } = useRepository(path);
 
 const modelSelectedDocumentId = computed<AMDocumentId[]>({
   get: () => (relationDocumentId.value ? [relationDocumentId.value] : []),

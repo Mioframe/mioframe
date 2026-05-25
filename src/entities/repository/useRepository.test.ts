@@ -4,7 +4,7 @@ import type { AMDocumentId, CFRDocumentContent } from '@shared/lib/cfrDocument';
 import { DomainError } from '@shared/lib/error';
 import { effectScope, ref } from 'vue';
 
-const documentIdListMock = vi.fn();
+const repositoryFactsMock = vi.fn();
 const createDocumentMock = vi.fn();
 const deleteDocumentMock = vi.fn();
 const useObservableQueryMock = vi.fn();
@@ -21,7 +21,7 @@ vi.mock('@shared/service', () => ({
     repositories: {
       createDocument: createDocumentMock,
       deleteDocument: deleteDocumentMock,
-      documentIdList: documentIdListMock,
+      repositoryFacts: repositoryFactsMock,
     },
   }),
 }));
@@ -84,23 +84,40 @@ describe('useRepository', () => {
 
   it('queries repository document ids for the current path', async () => {
     useObservableQueryMock.mockReturnValue({
-      data: ref(['doc-1']),
+      data: ref({ documentIds: ['doc-1'], isInitialized: true }),
       error: ref(undefined),
       isLoading: ref(false),
       refetch: vi.fn(),
     });
 
     const { scope, state } = await mountUseRepository('/repo/subfolder');
-    expect(useObservableQueryMock).toHaveBeenCalledWith(documentIdListMock, expect.any(Object));
+    expect(useObservableQueryMock).toHaveBeenCalledWith(repositoryFactsMock, expect.any(Object));
     expect(useObservableQueryMock.mock.calls[0]?.[1]?.value).toEqual({ path: '/repo/subfolder' });
-    expect(state.state.value).toEqual(['doc-1']);
+    expect(state.documentIds.value).toEqual(['doc-1']);
+    expect(state.isInitialized.value).toBe(true);
+
+    scope.stop();
+  });
+
+  it('defaults isInitialized to false until repository facts are available', async () => {
+    useObservableQueryMock.mockReturnValue({
+      data: ref(undefined),
+      error: ref(undefined),
+      isLoading: ref(true),
+      refetch: vi.fn(),
+    });
+
+    const { scope, state } = await mountUseRepository();
+
+    expect(state.documentIds.value).toBeUndefined();
+    expect(state.isInitialized.value).toBe(false);
 
     scope.stop();
   });
 
   it('delegates repository mutations through the current folder path', async () => {
     useObservableQueryMock.mockReturnValue({
-      data: ref(['doc-1']),
+      data: ref({ documentIds: ['doc-1'], isInitialized: true }),
       error: ref(undefined),
       isLoading: ref(false),
       refetch: vi.fn(),
