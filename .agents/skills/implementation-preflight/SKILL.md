@@ -39,6 +39,25 @@ For non-trivial UI, UX, or cross-layer refactors, do not edit production code un
 
 Before final handoff, compare the diff against this gate. If a scenario, invariant, owner layer, or public API decision changed during implementation, update the preflight and fix the implementation before claiming completion.
 
+## Declarative FSD composition gate
+
+For UI work that touches `entities`, `features`, `widgets`, or `pages`, record the model/UI/action/composition split before coding:
+
+- **Entity model** owns stable entity facts, domain read models, and small derived entity state. It must not expose screen view-state objects that combine loading, error, user-facing message, ready status, and widget/page-specific branch order.
+- **Entity UI** may render the entity and emit semantic selection events. It must not import feature actions; pass action surfaces from widgets/pages through slots when entity UI needs trailing actions.
+- **Features** own user-triggered actions such as create, import, rename, remove, dialogs, sheets, and action menus.
+- **Widgets/pages** compose entities, entity UI, features, and shared UI. They may choose loading/error/recovery/content branch order, but should keep those dependencies visible through named computed values and template branches.
+
+Treat these as architecture smells that require redesign before production edits:
+
+- entity exports named `ViewState`, `ReadyState`, `Presentation`, `Classification`, or another combined object for a specific screen;
+- entity model includes `status: 'loading' | 'error' | 'ready'`, screen fallback copy, or UI error messages;
+- widget/page bypasses an existing entity public API and wires shared services or observable queries directly for entity reads;
+- widget/page hides recovery, error, loading, and content precedence inside a helper when straightforward computed values and template branches would be clearer;
+- a section component is moved toward entity UI while still importing feature actions directly.
+
+Prefer small, named derived facts such as `has*`, `is*`, `get*State`, and `get*Entries` over vague combined values. If a combined state object is still necessary, document why explicit computed dependencies are insufficient and which layer owns that object.
+
 ## Breadth control
 
 Before editing, count independent domains in the task. Examples of separate domains include domain read models, storage semantics, diagnostics, navigation, shared UI primitives, browser layout, e2e coverage, visual snapshots, tooling, and copy/language normalization.
