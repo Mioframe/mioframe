@@ -1,4 +1,3 @@
-import { useDirectory } from '@entity/directory';
 import { useLocalSettings } from '@entity/localSettings';
 import { useRepository } from '@entity/repository';
 import { resolveSafeErrorMessage } from '@shared/lib/error';
@@ -15,24 +14,19 @@ export const useRepositoryExplorerDirectoryState = (directoryPath: Ref<string>) 
   const hideAutomergeFiles = computed(() => settings.value.showAutomergeFiles !== true);
 
   const {
-    data: directoryEntries,
-    error: directoryError,
-    isLoading: isDirectoryLoading,
-  } = useDirectory(
+    documentIds,
+    isInitialized: isRepositoryInitialized,
+    repositoryVisibleEntries,
+    repositoryFactsError: repositoryError,
+    repositoryVisibleEntriesError: directoryError,
+    errorMessage: repositoryErrorMessage,
+    isLoading: isRepositoryLoading,
+  } = useRepository(
     directoryPath,
     computed(() => ({
       hideAutomergeFiles: hideAutomergeFiles.value,
-      hideRepositoryStorageFiles: true,
     })),
   );
-
-  const {
-    documentIds,
-    isInitialized: isRepositoryInitialized,
-    error: repositoryError,
-    errorMessage: repositoryErrorMessage,
-    isLoading: isRepositoryLoading,
-  } = useRepository(directoryPath);
 
   const directoryErrorMessage = computed(() =>
     resolveSafeErrorMessage(directoryError.value, 'Could not read this folder'),
@@ -40,16 +34,12 @@ export const useRepositoryExplorerDirectoryState = (directoryPath: Ref<string>) 
 
   const errorMessage = computed(() => directoryErrorMessage.value ?? repositoryErrorMessage.value);
   const isLoading = computed(
-    () =>
-      isDirectoryLoading.value ||
-      isRepositoryLoading.value ||
-      !directoryEntries.value ||
-      !documentIds.value,
+    () => isRepositoryLoading.value || !repositoryVisibleEntries.value || !documentIds.value,
   );
-  const regularFileEntries = computed(() => directoryEntries.value ?? []);
+  const regularFileEntries = computed(() => repositoryVisibleEntries.value ?? []);
 
   return {
-    directoryError,
+    directoryError: repositoryError,
     directoryErrorMessage,
     documentIds,
     errorMessage,

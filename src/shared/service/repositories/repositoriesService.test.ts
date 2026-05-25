@@ -722,6 +722,32 @@ describe('useRepositoriesService', () => {
     });
   });
 
+  it('exposes repository-visible directory entries with marker files hidden and Automerge visibility configurable', async () => {
+    const path = '/visible-entries';
+    const documentId = parseAutomergeUrl(generateAutomergeUrl()).documentId;
+    createDirectoryContentSubject(path, [
+      [getStorageFileName('storage-adapter-id'), fileStat],
+      [getDocumentFileName(documentId), fileStat],
+      ['plain.txt', fileStat],
+      ['nested', { ...fileStat, type: FSNodeType.Directory }],
+    ]);
+    const { useRepositoriesService } = await import('./repositoriesService');
+    const service = useRepositoriesService();
+
+    await expect(firstValueFrom(service.getRepositoryVisibleEntries$({ path }))).resolves.toEqual([
+      ['plain.txt', fileStat],
+      ['nested', { ...fileStat, type: FSNodeType.Directory }],
+    ]);
+
+    await expect(
+      firstValueFrom(service.getRepositoryVisibleEntries$({ path, hideAutomergeFiles: false })),
+    ).resolves.toEqual([
+      [getDocumentFileName(documentId), fileStat],
+      ['plain.txt', fileStat],
+      ['nested', { ...fileStat, type: FSNodeType.Directory }],
+    ]);
+  });
+
   it('cancels pending cleanup when same repo gets new subscriber before timeout', async () => {
     const path = '/cancel-cleanup';
     createDirectoryContentSubject(path);

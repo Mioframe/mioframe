@@ -509,7 +509,7 @@ describe('useFileSystemService', () => {
     ).resolves.toEqual([['visible.txt', fileStat]]);
   });
 
-  it('filters repository marker files and keeps Automerge visibility configurable', async () => {
+  it('keeps repository storage files visible because repository filtering is owned elsewhere', async () => {
     const documentStorageFileName = createDocumentStorageFileName();
     const readDirectoryMock = vi
       .fn<(path: string) => Promise<[string, FSNodeStat][]>>()
@@ -527,23 +527,18 @@ describe('useFileSystemService', () => {
     await expect(
       service.directoryContent.fetch({
         path: '/drive/folder',
-        options: {
-          hideAutomergeFiles: true,
-          hideRepositoryStorageFiles: true,
-        },
+        options: { hideAutomergeFiles: true },
       }),
     ).resolves.toEqual([['visible.txt', fileStat]]);
 
     await expect(
       service.directoryContent.fetch({
         path: '/drive/folder',
-        options: {
-          hideAutomergeFiles: false,
-          hideRepositoryStorageFiles: true,
-        },
+        options: { hideAutomergeFiles: false },
       }),
     ).resolves.toEqual([
       [documentStorageFileName, fileStat],
+      [storageAdapterMarkerFileName, fileStat],
       ['visible.txt', fileStat],
     ]);
   });

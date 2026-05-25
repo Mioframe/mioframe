@@ -24,6 +24,7 @@ import { defineCacheObservable } from '@shared/lib/defineCacheObservable';
 import {
   cleanupDeletedDocumentStorageFiles,
   getRepositoryFacts,
+  getRegularDirectoryEntries,
   getDocumentStorageFiles,
 } from './repositoryStorageFiles';
 /** Idle timeout before an unused Automerge Repo instance is removed from service cache. */
@@ -49,6 +50,27 @@ const setupRepositoriesService = () => {
           }
 
           return getRepositoryFacts(value);
+        }),
+      ),
+  );
+
+  const getRepositoryVisibleEntries$ = defineCacheObservable(
+    ({
+      hideAutomergeFiles = true,
+      path,
+    }: {
+      /** Whether Automerge storage files should stay hidden in repository-aware file listings. */
+      hideAutomergeFiles?: boolean | undefined;
+      /** Absolute repository path whose visible entries should be observed. */
+      path: string;
+    }) =>
+      directoryContent$({ path }).pipe(
+        map((value) => {
+          if (value instanceof Error) {
+            return value;
+          }
+
+          return getRegularDirectoryEntries(value, hideAutomergeFiles);
         }),
       ),
   );
@@ -179,12 +201,15 @@ const setupRepositoriesService = () => {
 
   const documentIdList = defineObservableQuery(getDocumentIdList$);
   const repositoryFacts = defineObservableQuery(getRepositoryFacts$);
+  const repositoryVisibleEntries = defineObservableQuery(getRepositoryVisibleEntries$);
 
   return {
     documentIdList,
     repositoryFacts,
+    repositoryVisibleEntries,
     getDocumentIdList$,
     getRepositoryFacts$,
+    getRepositoryVisibleEntries$,
     getRepo$: repo$,
     /**
      * Создать документ в репозитории

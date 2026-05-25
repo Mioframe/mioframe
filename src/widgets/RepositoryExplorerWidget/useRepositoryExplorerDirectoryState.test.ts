@@ -3,15 +3,10 @@ import { DomainError } from '@shared/lib/error';
 import { FSNodeType } from '@shared/lib/virtualFileSystem';
 import { effectScope, ref } from 'vue';
 
-const useDirectoryMock = vi.fn();
 const useRepositoryMock = vi.fn();
 const settingsRef = ref<{ showAutomergeFiles?: boolean | undefined }>({
   showAutomergeFiles: false,
 });
-
-vi.mock('@entity/directory', () => ({
-  useDirectory: (...args: unknown[]) => useDirectoryMock(...args),
-}));
 
 vi.mock('@entity/localSettings', () => ({
   useLocalSettings: () => ({
@@ -44,49 +39,42 @@ describe('useRepositoryExplorerDirectoryState', () => {
   });
 
   it('derives ready state from repository document ids exposed by the repository entity', async () => {
-    useDirectoryMock.mockReturnValue({
-      data: ref([
-        ['Document 1.mio', { type: FSNodeType.File, capabilities: {}, description: 'file' }],
-        ['notes.txt', { type: FSNodeType.File, capabilities: {}, description: 'file' }],
-      ]),
-      error: ref(undefined),
-      isLoading: ref(false),
-    });
     useRepositoryMock.mockReturnValue({
       documentIds: ref(['doc-1']),
       isInitialized: ref(true),
-      error: ref(undefined),
+      repositoryVisibleEntries: ref([
+        ['Document 1.mio', { type: FSNodeType.File, capabilities: {}, description: 'file' }],
+        ['notes.txt', { type: FSNodeType.File, capabilities: {}, description: 'file' }],
+      ]),
+      repositoryFactsError: ref(undefined),
+      repositoryVisibleEntriesError: ref(undefined),
       errorMessage: ref(undefined),
       isLoading: ref(false),
     });
 
     const { scope, state } = await mountUseRepositoryExplorerDirectoryState();
 
-    expect(useRepositoryMock).toHaveBeenCalledWith(expect.objectContaining({ value: '/repo' }));
+    expect(useRepositoryMock.mock.calls[0]?.[0]?.value).toBe('/repo');
     expect(state.documentIds.value).toEqual(['doc-1']);
     expect(state.isRepositoryInitialized.value).toBe(true);
     expect(state.regularFileEntries.value.map(([name]) => name)).toEqual([
       'Document 1.mio',
       'notes.txt',
     ]);
-    expect(useDirectoryMock.mock.calls[0]?.[1]?.value).toEqual({
+    expect(useRepositoryMock.mock.calls[0]?.[1]?.value).toEqual({
       hideAutomergeFiles: true,
-      hideRepositoryStorageFiles: true,
     });
 
     scope.stop();
   });
 
   it('shows the safe repository fallback message when the repository entity reports an unsafe error', async () => {
-    useDirectoryMock.mockReturnValue({
-      data: ref([]),
-      error: ref(undefined),
-      isLoading: ref(false),
-    });
     useRepositoryMock.mockReturnValue({
       documentIds: ref(undefined),
       isInitialized: ref(false),
-      error: ref(new Error('/private/repository path leaked')),
+      repositoryVisibleEntries: ref(undefined),
+      repositoryFactsError: ref(new Error('/private/repository path leaked')),
+      repositoryVisibleEntriesError: ref(undefined),
       errorMessage: ref('Could not load the Mioframe documents in this folder'),
       isLoading: ref(false),
     });
@@ -102,15 +90,16 @@ describe('useRepositoryExplorerDirectoryState', () => {
   });
 
   it('keeps directory errors ahead of repository errors', async () => {
-    useDirectoryMock.mockReturnValue({
-      data: ref(undefined),
-      error: ref(new DomainError('Could not read this folder', { code: 'folderReadFailed' })),
-      isLoading: ref(false),
-    });
     useRepositoryMock.mockReturnValue({
       documentIds: ref(undefined),
       isInitialized: ref(false),
-      error: ref(new DomainError('Repository is unavailable', { code: 'repositoryUnavailable' })),
+      repositoryVisibleEntries: ref(undefined),
+      repositoryFactsError: ref(
+        new DomainError('Repository is unavailable', { code: 'repositoryUnavailable' }),
+      ),
+      repositoryVisibleEntriesError: ref(
+        new DomainError('Could not read this folder', { code: 'folderReadFailed' }),
+      ),
       errorMessage: ref('Repository is unavailable'),
       isLoading: ref(false),
     });
@@ -124,15 +113,14 @@ describe('useRepositoryExplorerDirectoryState', () => {
   });
 
   it('stays loading until both directory and repository reads are ready', async () => {
-    useDirectoryMock.mockReturnValue({
-      data: ref([['notes.txt', { type: FSNodeType.File, capabilities: {}, description: 'file' }]]),
-      error: ref(undefined),
-      isLoading: ref(false),
-    });
     useRepositoryMock.mockReturnValue({
       documentIds: ref(undefined),
       isInitialized: ref(false),
-      error: ref(undefined),
+      repositoryVisibleEntries: ref([
+        ['notes.txt', { type: FSNodeType.File, capabilities: {}, description: 'file' }],
+      ]),
+      repositoryFactsError: ref(undefined),
+      repositoryVisibleEntriesError: ref(undefined),
       errorMessage: ref(undefined),
       isLoading: ref(true),
     });
@@ -145,15 +133,12 @@ describe('useRepositoryExplorerDirectoryState', () => {
   });
 
   it('tracks whether Automerge files should stay hidden from local settings', async () => {
-    useDirectoryMock.mockReturnValue({
-      data: ref([]),
-      error: ref(undefined),
-      isLoading: ref(false),
-    });
     useRepositoryMock.mockReturnValue({
       documentIds: ref([]),
       isInitialized: ref(false),
-      error: ref(undefined),
+      repositoryVisibleEntries: ref([]),
+      repositoryFactsError: ref(undefined),
+      repositoryVisibleEntriesError: ref(undefined),
       errorMessage: ref(undefined),
       isLoading: ref(false),
     });
@@ -162,24 +147,22 @@ describe('useRepositoryExplorerDirectoryState', () => {
     const { scope, state } = await mountUseRepositoryExplorerDirectoryState();
 
     expect(state.hideAutomergeFiles.value).toBe(false);
-    expect(useDirectoryMock.mock.calls[0]?.[1]?.value).toEqual({
+    expect(useRepositoryMock.mock.calls[0]?.[1]?.value).toEqual({
       hideAutomergeFiles: false,
-      hideRepositoryStorageFiles: true,
     });
 
     scope.stop();
   });
 
   it('uses directory entries already filtered by the service-owned repository visibility rules', async () => {
-    useDirectoryMock.mockReturnValue({
-      data: ref([['notes.txt', { type: FSNodeType.File, capabilities: {}, description: 'file' }]]),
-      error: ref(undefined),
-      isLoading: ref(false),
-    });
     useRepositoryMock.mockReturnValue({
       documentIds: ref([]),
       isInitialized: ref(true),
-      error: ref(undefined),
+      repositoryVisibleEntries: ref([
+        ['notes.txt', { type: FSNodeType.File, capabilities: {}, description: 'file' }],
+      ]),
+      repositoryFactsError: ref(undefined),
+      repositoryVisibleEntriesError: ref(undefined),
       errorMessage: ref(undefined),
       isLoading: ref(false),
     });
