@@ -1,4 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { Repo } from '@automerge/automerge-repo';
+import { partialKeyToFileName, storageAdapterMarkerFileName } from '@shared/lib/automergeAdapter';
 import type { FSNodeStat, IFileSystemProvider, VfsEvent } from '@shared/lib/virtualFileSystem';
 import { FSNodeType, VfsEventSource } from '@shared/lib/virtualFileSystem';
 import { OPFSName } from '../directories';
@@ -31,6 +33,17 @@ const fileStat = {
     canChangePath: true,
   },
 } satisfies FSNodeStat;
+
+const createDocumentStorageFileName = () => {
+  const documentId = new Repo().create({}).documentId;
+  const fileName = partialKeyToFileName([documentId, 'snapshot', 'hash']);
+
+  if (!fileName) {
+    throw new Error('Failed to create Automerge storage file fixture');
+  }
+
+  return fileName;
+};
 
 type MockDirectoryHandle = FileSystemDirectoryHandle & {
   __sameEntryKey: string;
@@ -494,6 +507,45 @@ describe('useFileSystemService', () => {
         options: { hideAutomergeFiles: true },
       }),
     ).resolves.toEqual([['visible.txt', fileStat]]);
+  });
+
+  it('filters repository marker files and keeps Automerge visibility configurable', async () => {
+    const documentStorageFileName = createDocumentStorageFileName();
+    const readDirectoryMock = vi
+      .fn<(path: string) => Promise<[string, FSNodeStat][]>>()
+      .mockResolvedValue([
+        [storageAdapterMarkerFileName, fileStat],
+        [documentStorageFileName, fileStat],
+        ['visible.txt', fileStat],
+      ]);
+    const { provider } = createDiagnosticProvider({ readDirectory: readDirectoryMock });
+    const service = await createService();
+
+    await service.createDirectory('/drive');
+    service.vfs.mount('/drive', provider);
+
+    await expect(
+      service.directoryContent.fetch({
+        path: '/drive/folder',
+        options: {
+          hideAutomergeFiles: true,
+          hideRepositoryStorageFiles: true,
+        },
+      }),
+    ).resolves.toEqual([['visible.txt', fileStat]]);
+
+    await expect(
+      service.directoryContent.fetch({
+        path: '/drive/folder',
+        options: {
+          hideAutomergeFiles: false,
+          hideRepositoryStorageFiles: true,
+        },
+      }),
+    ).resolves.toEqual([
+      [documentStorageFileName, fileStat],
+      ['visible.txt', fileStat],
+    ]);
   });
 
   it('emits errors as values for directoryContent$ and forwards non-Error failures to the observable error channel', async () => {

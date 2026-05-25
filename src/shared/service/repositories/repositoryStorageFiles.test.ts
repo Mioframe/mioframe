@@ -1,8 +1,10 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { Repo } from '@automerge/automerge-repo';
 import { partialKeyToFileName, storageAdapterMarkerFileName } from '@shared/lib/automergeAdapter';
-import { FSNodeType, type FSNodeStat } from '@shared/lib/virtualFileSystem';
+import { FSNodeType, type FSNodeStat, VirtualFileSystem } from '@shared/lib/virtualFileSystem';
+import { MemoryFileSystem } from '@shared/lib/virtualFileSystem/MemoryFileSystem';
 import {
+  cleanupDeletedDocumentStorageFiles,
   getRegularDirectoryEntries,
   getRepositoryFacts,
   isAutomergeDocumentFileName,
@@ -115,5 +117,39 @@ describe('repository storage file classifiers', () => {
     expect(shouldHideRepositoryStorageFile(fileName, true)).toBe(true);
     expect(shouldHideRepositoryStorageFile(fileName, false)).toBe(false);
     expect(shouldHideRepositoryStorageFile('plain.json', true)).toBe(false);
+  });
+});
+
+describe('cleanupDeletedDocumentStorageFiles privacy-safe messages', () => {
+  it('uses a safe failure message without path, document id, or file names', async () => {
+    const documentId = new Repo().create({}).documentId;
+    const fileName = partialKeyToFileName([documentId, 'snapshot', 'hash']);
+    const path = '/private/repositories/work';
+
+    if (!fileName) {
+      throw new Error(`Failed to create repository storage file for "${documentId}"`);
+    }
+
+    const vfs = new VirtualFileSystem();
+    vfs.mount('/', new MemoryFileSystem());
+    await vfs.createDirectory('/private');
+    await vfs.createDirectory('/private/repositories');
+    await vfs.createDirectory(path);
+    await vfs.writeFile(`${path}/${fileName}`, new File(['storage'], fileName));
+
+    vi.spyOn(vfs, 'delete').mockImplementation(() => Promise.resolve(undefined));
+
+    const error = await cleanupDeletedDocumentStorageFiles(vfs, path, documentId).catch(
+      (caughtError: unknown) => caughtError,
+    );
+
+    if (!(error instanceof Error)) {
+      throw new Error('Expected cleanupDeletedDocumentStorageFiles to reject with an Error');
+    }
+
+    expect(error.message).toBe('Failed to cleanup deleted document storage files');
+    expect(error.message).not.toContain(path);
+    expect(error.message).not.toContain(documentId);
+    expect(error.message).not.toContain(fileName);
   });
 });

@@ -1,15 +1,16 @@
 <script setup lang="ts">
 import { FSEntryMDListItem } from '@entity/fsEntry';
-import type { RepositoryDirectoryEntry } from '@shared/service/repositories';
-import { FSNodeType, PathUtils } from '@shared/lib/virtualFileSystem';
+import { FSNodeType, PathUtils, type FSNodeStat } from '@shared/lib/virtualFileSystem';
 import { MDListContainer } from '@shared/ui/Lists';
 import { computed } from 'vue';
 import RepositoryExplorerEntryManageButton from './RepositoryExplorerEntryManageButton.vue';
 
+type RepositoryExplorerFileEntry = readonly [name: string, stat: FSNodeStat];
+
 const props = defineProps<{
   directoryPath: string;
   hideAutomergeFiles: boolean;
-  regularFileEntries: readonly RepositoryDirectoryEntry[];
+  regularFileEntries: readonly RepositoryExplorerFileEntry[];
 }>();
 
 const emit = defineEmits<{

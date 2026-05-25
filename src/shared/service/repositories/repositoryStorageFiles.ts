@@ -194,14 +194,8 @@ export const cleanupDeletedDocumentStorageFiles = async (
   const remainingStorageFiles = await getDocumentStorageFiles(vfs, path, id);
 
   if (remainingStorageFiles.length > 0) {
-    const remainingFileNames = remainingStorageFiles.map(([name]) => name).join(', ');
-
-    throw new Error(
-      `Failed to cleanup deleted document storage files at "${path}" for document "${id}". Remaining files: ${remainingStorageFiles.length}. ${remainingFileNames}`,
-    );
+    throw new Error('Failed to cleanup deleted document storage files');
   }
 
-  console.warn(
-    `Deleted document storage cleanup at "${path}" for document "${id}" finished without ${DOCUMENT_DELETE_CLEANUP_EMPTY_PASSES_REQUIRED} confirmed empty passes`,
-  );
+  console.warn('Deleted document storage cleanup finished without confirmed empty passes');
 };

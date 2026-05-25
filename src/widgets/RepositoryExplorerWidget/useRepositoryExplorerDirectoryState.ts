@@ -2,13 +2,12 @@ import { useDirectory } from '@entity/directory';
 import { useLocalSettings } from '@entity/localSettings';
 import { useRepository } from '@entity/repository';
 import { resolveSafeErrorMessage } from '@shared/lib/error';
-import { getRegularDirectoryEntries } from '@shared/service/repositories';
 import { computed, type Ref } from 'vue';
 
 /**
- * Reads repository explorer directory state and derives the split Mioframe documents/files view.
+ * Reads directory entries and repository facts for Repository Explorer composition.
  * @param directoryPath - Absolute path of the opened folder.
- * @returns Safe directory and repository errors plus a derived explorer view state.
+ * @returns Explicit reactive values for repository facts, file visibility, loading, and safe errors.
  */
 export const useRepositoryExplorerDirectoryState = (directoryPath: Ref<string>) => {
   const { settings } = useLocalSettings();
@@ -21,7 +20,10 @@ export const useRepositoryExplorerDirectoryState = (directoryPath: Ref<string>) 
     isLoading: isDirectoryLoading,
   } = useDirectory(
     directoryPath,
-    computed(() => ({ hideAutomergeFiles: hideAutomergeFiles.value })),
+    computed(() => ({
+      hideAutomergeFiles: hideAutomergeFiles.value,
+      hideRepositoryStorageFiles: true,
+    })),
   );
 
   const {
@@ -44,11 +46,7 @@ export const useRepositoryExplorerDirectoryState = (directoryPath: Ref<string>) 
       !directoryEntries.value ||
       !documentIds.value,
   );
-  const regularFileEntries = computed(() =>
-    directoryEntries.value
-      ? getRegularDirectoryEntries(directoryEntries.value, hideAutomergeFiles.value)
-      : [],
-  );
+  const regularFileEntries = computed(() => directoryEntries.value ?? []);
 
   return {
     directoryError,

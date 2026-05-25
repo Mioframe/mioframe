@@ -15,6 +15,7 @@ import { isEqual, sortBy } from 'es-toolkit';
 import { defineObservableQuery } from '@shared/lib/useObservableQuery';
 import { defineCacheObservable } from '@shared/lib/defineCacheObservable';
 import { fromObservable } from '@shared/lib/useObservable';
+import { shouldHideRepositoryStorageFile } from '../repositories';
 import {
   type PersistedDeviceDirectoryRecord,
   useFileSystemDirectoryHandleService,
@@ -24,6 +25,8 @@ import {
  * UI-facing options for reading directory content through the shared file-system service.
  */
 export interface ReadDirectoryOptions {
+  /** Hides the repository storage marker file from the returned listing. */
+  hideRepositoryStorageFiles?: boolean;
   /** Hides Automerge sidecar files from the returned listing. */
   hideAutomergeFiles?: boolean;
 }
@@ -63,7 +66,7 @@ const setupFileSystemService = () => {
 
   const directoryContent$ = defineCacheObservable(
     ({
-      options: { hideAutomergeFiles = false } = {},
+      options: { hideAutomergeFiles = false, hideRepositoryStorageFiles = false } = {},
       path,
     }: {
       path: string;
@@ -100,6 +103,12 @@ const setupFileSystemService = () => {
           if (payload instanceof Error) {
             return payload;
           }
+          if (hideRepositoryStorageFiles) {
+            return payload.filter(
+              ([name]) => !shouldHideRepositoryStorageFile(name, hideAutomergeFiles),
+            );
+          }
+
           if (hideAutomergeFiles) {
             return payload.filter(([name]) => !zodIs(name, zodAutomergeFileName));
           }
