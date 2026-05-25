@@ -8,7 +8,7 @@ import { ExportDocumentErrorCode } from './exportDocumentErrorCode';
 
 /**
  * Creates JSON document export actions for a document in a directory.
- * @returns Export actions for Beaver JSON documents.
+ * @returns Export actions for Mioframe JSON documents.
  */
 export const useExportDocument = () => {
   const {
@@ -16,7 +16,7 @@ export const useExportDocument = () => {
   } = useMainServiceClient();
 
   /**
-   * Exports a Beaver document to a JSON file chosen by the user.
+   * Exports a Mioframe document to a JSON file chosen by the user.
    * @param path - The directory path that owns the document.
    * @param documentId - The document id to export.
    * @returns `true` when the export succeeds, or `false` when the user cancels the save dialog.
