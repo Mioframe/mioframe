@@ -92,7 +92,7 @@ const onInteractionOutside = () => {
     <template #leadingIcon>
       <MDSymbol
         :name="isError ? 'error' : 'sync'"
-        :class="{ 'save-status-button__icon_error': isError }"
+        :class="{ 'vfs-activity-status-chip__icon_error': isError }"
       />
     </template>
   </MDAssistChip>
@@ -103,7 +103,7 @@ const onInteractionOutside = () => {
     :target-element="triggerRef"
     @interaction-outside="onInteractionOutside"
   >
-    <div class="save-status-button__tooltip">
+    <div class="vfs-activity-status-chip__tooltip">
       <template v-if="isActive">
         <p>Changes are still being saved.</p>
         <p>Keep this folder open until saving finishes.</p>
@@ -115,7 +115,7 @@ const onInteractionOutside = () => {
       </template>
     </div>
 
-    <div class="save-status-button__actions">
+    <div class="vfs-activity-status-chip__actions">
       <MDButton color="text" :label="detailActionLabel" @click="onClickDetailAction" />
       <MDButton
         v-if="isError"
@@ -129,17 +129,17 @@ const onInteractionOutside = () => {
 </template>
 
 <style scoped>
-.save-status-button__icon_error {
+.vfs-activity-status-chip__icon_error {
   --md-content-color: var(--md-sys-color-error);
 }
 
-.save-status-button__tooltip {
+.vfs-activity-status-chip__tooltip {
   display: grid;
   gap: 8px;
   max-width: 480px;
 }
 
-.save-status-button__actions {
+.vfs-activity-status-chip__actions {
   display: flex;
   gap: 8px;
   margin-top: 12px;

@@ -73,6 +73,7 @@ const onReturnHomeClick = () => {
   <div class="repository-explorer-widget">
     <MDNavigationPath
       :path="directoryPath"
+      hide-current
       class="repository-explorer-widget__navigation-path"
       @click="onClickPath"
       @click-home="onReturnHomeClick"

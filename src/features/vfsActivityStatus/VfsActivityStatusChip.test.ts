@@ -103,13 +103,13 @@ vi.mock('@shared/ui/Tooltips', () => ({
   }),
 }));
 
-const mountSaveStatusButton = async () => {
-  const { default: SaveStatusButton } = await import('./SaveStatusButton.vue');
+const mountVfsActivityStatusChip = async () => {
+  const { default: VfsActivityStatusChip } = await import('./VfsActivityStatusChip.vue');
 
-  return mount(SaveStatusButton);
+  return mount(VfsActivityStatusChip);
 };
 
-describe('SaveStatusButton', () => {
+describe('VfsActivityStatusChip', () => {
   afterEach(() => {
     dismissSaveStatusErrorMock.mockReset();
     addSnackbarMock.mockReset();
@@ -122,7 +122,7 @@ describe('SaveStatusButton', () => {
   });
 
   it('stays hidden while idle', async () => {
-    const wrapper = await mountSaveStatusButton();
+    const wrapper = await mountVfsActivityStatusChip();
 
     expect(wrapper.find('button').exists()).toBe(false);
   });
@@ -130,7 +130,7 @@ describe('SaveStatusButton', () => {
   it('shows active save details from the single status control', async () => {
     vfsState.value = { status: 'active', activeCount: 1 };
 
-    const wrapper = await mountSaveStatusButton();
+    const wrapper = await mountVfsActivityStatusChip();
 
     expect(wrapper.text()).not.toContain('Changes are still being saved.');
 
@@ -159,7 +159,7 @@ describe('SaveStatusButton', () => {
       },
     } as const;
 
-    const wrapper = await mountSaveStatusButton();
+    const wrapper = await mountVfsActivityStatusChip();
 
     await wrapper.get('button').trigger('click');
 
@@ -186,7 +186,7 @@ describe('SaveStatusButton', () => {
       },
     } as const;
 
-    const wrapper = await mountSaveStatusButton();
+    const wrapper = await mountVfsActivityStatusChip();
 
     expect(wrapper.text()).not.toContain('Could not confirm the last save.');
   });
@@ -208,7 +208,7 @@ describe('SaveStatusButton', () => {
       value: undefined,
     });
 
-    const wrapper = await mountSaveStatusButton();
+    const wrapper = await mountVfsActivityStatusChip();
 
     await wrapper.get('button').trigger('click');
     await wrapper.findAll('button')[2]?.trigger('click');
@@ -230,7 +230,7 @@ describe('SaveStatusButton', () => {
     } as const;
     writeClipboardMock.mockResolvedValue(undefined);
 
-    const wrapper = await mountSaveStatusButton();
+    const wrapper = await mountVfsActivityStatusChip();
 
     await wrapper.get('button').trigger('click');
     await wrapper.findAll('button')[2]?.trigger('click');
@@ -253,7 +253,7 @@ describe('SaveStatusButton', () => {
     } as const;
     writeClipboardMock.mockRejectedValue(new Error('copy failed'));
 
-    const wrapper = await mountSaveStatusButton();
+    const wrapper = await mountVfsActivityStatusChip();
 
     await wrapper.get('button').trigger('click');
     await wrapper.findAll('button')[2]?.trigger('click');

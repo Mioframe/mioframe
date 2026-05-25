@@ -5,22 +5,17 @@ import { MDSymbol } from '../Icon';
 import { PathUtils } from '@shared/lib/virtualFileSystem';
 import MDNavigationPathSegmentButton from './MDNavigationPathSegmentButton.vue';
 
-const props = withDefaults(
-  defineProps<{
-    path: string;
-    omitCurrent?: boolean | undefined;
-  }>(),
-  {
-    omitCurrent: true,
-  },
-);
+const props = defineProps<{
+  path: string;
+  hideCurrent?: boolean | undefined;
+}>();
 
 const emit = defineEmits<{
   click: [path: string];
   clickHome: [];
 }>();
 
-const { path, omitCurrent } = toRefs(props);
+const { path, hideCurrent } = toRefs(props);
 
 const pathSegments = computed(() =>
   PathUtils.split(path.value).map((name, index, array) => ({
@@ -30,7 +25,7 @@ const pathSegments = computed(() =>
 );
 
 const visibleSegments = computed(() =>
-  omitCurrent.value ? pathSegments.value.slice(0, -1) : pathSegments.value,
+  hideCurrent.value === true ? pathSegments.value.slice(0, -1) : pathSegments.value,
 );
 
 const onClickHome = () => {
