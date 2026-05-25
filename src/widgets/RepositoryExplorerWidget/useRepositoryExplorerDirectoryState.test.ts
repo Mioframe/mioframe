@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { storageAdapterMarkerFileName } from '@shared/lib/automergeAdapter';
 import { DomainError } from '@shared/lib/error';
 import { FSNodeType } from '@shared/lib/virtualFileSystem';
 import { effectScope, ref } from 'vue';
@@ -62,10 +63,13 @@ describe('useRepositoryExplorerDirectoryState', () => {
     const { scope, state } = await mountUseRepositoryExplorerDirectoryState();
 
     expect(useRepositoryMock).toHaveBeenCalledWith(expect.objectContaining({ value: '/repo' }));
-    expect(state.viewState.value).toMatchObject({
-      status: 'ready',
-      documentIds: ['doc-1'],
-    });
+    expect(state.documentIds.value).toEqual(['doc-1']);
+    expect(state.hasMioframeMarkerFile.value).toBe(false);
+    expect(state.mioframeSpaceState.value).toBe('mioframeSpaceWithDocuments');
+    expect(state.regularFileEntries.value.map(([name]) => name)).toEqual([
+      'Document 1.mio',
+      'notes.txt',
+    ]);
     expect(useDirectoryMock.mock.calls[0]?.[1]?.value).toEqual({ hideAutomergeFiles: true });
 
     scope.stop();
@@ -86,10 +90,10 @@ describe('useRepositoryExplorerDirectoryState', () => {
 
     const { scope, state } = await mountUseRepositoryExplorerDirectoryState();
 
-    expect(state.viewState.value).toEqual({
-      status: 'error',
-      message: 'Could not load the Mioframe documents in this folder',
-    });
+    expect(state.repositoryErrorMessage.value).toBe(
+      'Could not load the Mioframe documents in this folder',
+    );
+    expect(state.errorMessage.value).toBe('Could not load the Mioframe documents in this folder');
 
     scope.stop();
   });
@@ -109,10 +113,28 @@ describe('useRepositoryExplorerDirectoryState', () => {
 
     const { scope, state } = await mountUseRepositoryExplorerDirectoryState();
 
-    expect(state.viewState.value).toEqual({
-      status: 'error',
-      message: 'Could not read this folder',
+    expect(state.directoryErrorMessage.value).toBe('Could not read this folder');
+    expect(state.errorMessage.value).toBe('Could not read this folder');
+
+    scope.stop();
+  });
+
+  it('stays loading until both directory and repository reads are ready', async () => {
+    useDirectoryMock.mockReturnValue({
+      data: ref([['notes.txt', { type: FSNodeType.File, capabilities: {}, description: 'file' }]]),
+      error: ref(undefined),
+      isLoading: ref(false),
     });
+    useRepositoryMock.mockReturnValue({
+      state: ref(undefined),
+      error: ref(undefined),
+      errorMessage: ref(undefined),
+      isLoading: ref(true),
+    });
+
+    const { scope, state } = await mountUseRepositoryExplorerDirectoryState();
+
+    expect(state.isLoading.value).toBe(true);
 
     scope.stop();
   });
@@ -135,6 +157,37 @@ describe('useRepositoryExplorerDirectoryState', () => {
 
     expect(state.hideAutomergeFiles.value).toBe(false);
     expect(useDirectoryMock.mock.calls[0]?.[1]?.value).toEqual({ hideAutomergeFiles: false });
+
+    scope.stop();
+  });
+
+  it('filters regular file entries according to the current Automerge visibility setting', async () => {
+    useDirectoryMock.mockReturnValue({
+      data: ref([
+        [
+          storageAdapterMarkerFileName,
+          { type: FSNodeType.File, capabilities: {}, description: 'marker' },
+        ],
+        [
+          'test-doc-id.snapshot.automerge',
+          { type: FSNodeType.File, capabilities: {}, description: 'doc' },
+        ],
+        ['notes.txt', { type: FSNodeType.File, capabilities: {}, description: 'file' }],
+      ]),
+      error: ref(undefined),
+      isLoading: ref(false),
+    });
+    useRepositoryMock.mockReturnValue({
+      state: ref([]),
+      error: ref(undefined),
+      errorMessage: ref(undefined),
+      isLoading: ref(false),
+    });
+
+    settingsRef.value = { showAutomergeFiles: false };
+    const { scope, state } = await mountUseRepositoryExplorerDirectoryState();
+
+    expect(state.regularFileEntries.value.map(([name]) => name)).toEqual(['notes.txt']);
 
     scope.stop();
   });

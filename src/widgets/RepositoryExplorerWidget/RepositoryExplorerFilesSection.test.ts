@@ -75,7 +75,7 @@ describe('RepositoryExplorerFilesSection', () => {
       props: {
         directoryPath: '/repo',
         hideAutomergeFiles: true,
-        visibleFileEntries: [
+        regularFileEntries: [
           ['Nested', { type: FSNodeType.Directory, capabilities: {}, description: 'dir' }],
           ['note.txt', { type: FSNodeType.File, capabilities: {}, description: 'file' }],
         ],
@@ -94,7 +94,7 @@ describe('RepositoryExplorerFilesSection', () => {
       props: {
         directoryPath: '/repo',
         hideAutomergeFiles: true,
-        visibleFileEntries: [
+        regularFileEntries: [
           ['Nested', { type: FSNodeType.Directory, capabilities: {}, description: 'dir' }],
           ['note.txt', { type: FSNodeType.File, capabilities: {}, description: 'file' }],
         ],
@@ -119,7 +119,7 @@ describe('RepositoryExplorerFilesSection', () => {
       props: {
         directoryPath: '/repo',
         hideAutomergeFiles: true,
-        visibleFileEntries: [],
+        regularFileEntries: [],
       },
     });
 
@@ -127,7 +127,7 @@ describe('RepositoryExplorerFilesSection', () => {
       props: {
         directoryPath: '/repo',
         hideAutomergeFiles: false,
-        visibleFileEntries: [],
+        regularFileEntries: [],
       },
     });
 

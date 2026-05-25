@@ -9,19 +9,19 @@ import RepositoryExplorerEntryManageButton from './RepositoryExplorerEntryManage
 const props = defineProps<{
   directoryPath: string;
   hideAutomergeFiles: boolean;
-  visibleFileEntries: readonly MioframeDirectoryEntry[];
+  regularFileEntries: readonly MioframeDirectoryEntry[];
 }>();
 
 const emit = defineEmits<{
   selectPath: [path: string];
 }>();
 
-const hasVisibleFiles = computed(() => props.visibleFileEntries.length > 0);
+const hasRegularFiles = computed(() => props.regularFileEntries.length > 0);
 
 const visibleDirectoryNames = computed(
   () =>
     new Set(
-      props.visibleFileEntries.flatMap(([name, { type }]) =>
+      props.regularFileEntries.flatMap(([name, { type }]) =>
         type === FSNodeType.Directory ? [name] : [],
       ),
     ),
@@ -57,9 +57,9 @@ const emptyText = computed(() =>
       <p class="repository-explorer-section__supporting-text">{{ supportingText }}</p>
     </div>
 
-    <MDListContainer is="div" v-if="hasVisibleFiles" class="repository-explorer-section__list">
+    <MDListContainer is="div" v-if="hasRegularFiles" class="repository-explorer-section__list">
       <FSEntryMDListItem
-        v-for="[name, { description, type: nodeType }] in visibleFileEntries"
+        v-for="[name, { description, type: nodeType }] in regularFileEntries"
         :key="name"
         :is-button="nodeType === FSNodeType.Directory"
         :name="name"

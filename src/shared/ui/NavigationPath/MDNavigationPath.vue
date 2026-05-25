@@ -75,13 +75,8 @@ const onClickPath = (targetPath: string) => {
   }
 
   &__home-button,
-  &__item,
   &__separator {
     flex-shrink: 0;
-  }
-
-  &__item {
-    --md-button-horizontal-padding: 8px;
   }
 
   &__separator {

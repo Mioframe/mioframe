@@ -1,114 +1,96 @@
 import { describe, expect, it } from 'vitest';
 import { storageAdapterMarkerFileName } from '@shared/lib/automergeAdapter';
 import { FSNodeType, type FSNodeStat } from '@shared/lib/virtualFileSystem';
-import { classifyMioframeSpaceDirectory } from './classifyMioframeSpaceDirectory';
+import {
+  getMioframeSpaceDirectoryState,
+  getRegularDirectoryEntries,
+  hasMioframeMarkerFile,
+  isMioframeServiceFile,
+} from './classifyMioframeSpaceDirectory';
 
 const createStat = (type: FSNodeType): FSNodeStat => ({
   type,
   capabilities: {},
 });
 
-describe('classifyMioframeSpaceDirectory', () => {
-  it('classifies a regular folder when the marker is absent and no documents exist', () => {
-    const result = classifyMioframeSpaceDirectory({
-      directoryEntries: [
+describe('hasMioframeMarkerFile', () => {
+  it('detects the marker file when it is present as a file', () => {
+    expect(
+      hasMioframeMarkerFile([
+        [storageAdapterMarkerFileName, createStat(FSNodeType.File)],
         ['notes.txt', createStat(FSNodeType.File)],
-        ['Projects', createStat(FSNodeType.Directory)],
-      ],
-      documentIds: [],
-    });
-
-    expect(result.state).toBe('regularFolder');
-    expect(result.hasMarkerFile).toBe(false);
-    expect(result.visibleFileEntries.map(([name]) => name)).toEqual(['notes.txt', 'Projects']);
-  });
-
-  it('classifies folders as mioframe spaces when document ids exist (even without marker file)', () => {
-    const result = classifyMioframeSpaceDirectory({
-      directoryEntries: [['notes.txt', createStat(FSNodeType.File)]],
-      documentIds: ['test-doc-id'],
-    });
-
-    expect(result.state).toBe('mioframeSpaceWithDocuments');
-    expect(result.hasMarkerFile).toBe(false);
-    expect(result.visibleFileEntries.map(([name]) => name)).toEqual(['notes.txt']);
+      ]),
+    ).toBe(true);
   });
 
   it('treats the marker as present only when it is a file', () => {
-    const result = classifyMioframeSpaceDirectory({
-      directoryEntries: [[storageAdapterMarkerFileName, createStat(FSNodeType.Directory)]],
-      documentIds: [],
-    });
+    expect(
+      hasMioframeMarkerFile([[storageAdapterMarkerFileName, createStat(FSNodeType.Directory)]]),
+    ).toBe(false);
+  });
+});
 
-    expect(result.state).toBe('regularFolder');
-    expect(result.hasMarkerFile).toBe(false);
-    expect(result.visibleFileEntries.map(([name]) => name)).toEqual([]);
+describe('getMioframeSpaceDirectoryState', () => {
+  it('returns a regular folder when there is no marker and no document ids', () => {
+    expect(
+      getMioframeSpaceDirectoryState({
+        hasMarkerFile: false,
+        documentIds: [],
+      }),
+    ).toBe('regularFolder');
   });
 
-  it('classifies an empty Mioframe space when the marker exists without documents', () => {
-    const result = classifyMioframeSpaceDirectory({
-      directoryEntries: [
-        [storageAdapterMarkerFileName, createStat(FSNodeType.File)],
-        ['notes.txt', createStat(FSNodeType.File)],
-      ],
-      documentIds: [],
-    });
-
-    expect(result.state).toBe('emptyMioframeSpace');
-    expect(result.hasMarkerFile).toBe(true);
-    expect(result.visibleFileEntries.map(([name]) => name)).toEqual(['notes.txt']);
+  it('returns an empty Mioframe space when the marker exists without documents', () => {
+    expect(
+      getMioframeSpaceDirectoryState({
+        hasMarkerFile: true,
+        documentIds: [],
+      }),
+    ).toBe('emptyMioframeSpace');
   });
 
-  it('classifies a Mioframe space with documents when the marker and documents exist', () => {
-    const result = classifyMioframeSpaceDirectory({
-      directoryEntries: [
-        [storageAdapterMarkerFileName, createStat(FSNodeType.File)],
-        ['test-doc-id.incremental.automerge', createStat(FSNodeType.File)],
-        ['Folder', createStat(FSNodeType.Directory)],
-      ],
-      documentIds: ['test-doc-id'],
-    });
-
-    expect(result.state).toBe('mioframeSpaceWithDocuments');
-    expect(result.visibleFileEntries.map(([name]) => name)).toEqual(['Folder']);
+  it('treats folders with document ids as Mioframe spaces even without a marker file', () => {
+    expect(
+      getMioframeSpaceDirectoryState({
+        hasMarkerFile: false,
+        documentIds: ['test-doc-id'],
+      }),
+    ).toBe('mioframeSpaceWithDocuments');
   });
+});
 
-  it('hides Mioframe service files from the regular files section by default', () => {
-    const result = classifyMioframeSpaceDirectory({
-      directoryEntries: [
-        [storageAdapterMarkerFileName, createStat(FSNodeType.File)],
-        ['test-doc-id.snapshot.automerge', createStat(FSNodeType.File)],
-        ['plain.json', createStat(FSNodeType.File)],
-      ],
-      documentIds: ['test-doc-id'],
-    });
-
-    expect(result.visibleFileEntries.map(([name]) => name)).toEqual(['plain.json']);
-  });
-
-  it('keeps Automerge document files visible when the user enables them', () => {
-    const result = classifyMioframeSpaceDirectory({
+describe('getRegularDirectoryEntries', () => {
+  it('hides Mioframe service files by default', () => {
+    const result = getRegularDirectoryEntries({
       directoryEntries: [
         [storageAdapterMarkerFileName, createStat(FSNodeType.File)],
         ['test-doc-id.snapshot.automerge', createStat(FSNodeType.File)],
         ['plain.json', createStat(FSNodeType.File)],
       ],
-      documentIds: ['test-doc-id'],
+    });
+
+    expect(result.map(([name]) => name)).toEqual(['plain.json']);
+  });
+
+  it('keeps Automerge document files visible when hiding is disabled', () => {
+    const result = getRegularDirectoryEntries({
+      directoryEntries: [
+        [storageAdapterMarkerFileName, createStat(FSNodeType.File)],
+        ['test-doc-id.snapshot.automerge', createStat(FSNodeType.File)],
+        ['plain.json', createStat(FSNodeType.File)],
+      ],
       hideAutomergeFiles: false,
     });
 
-    expect(result.visibleFileEntries.map(([name]) => name)).toEqual([
-      'test-doc-id.snapshot.automerge',
-      'plain.json',
-    ]);
+    expect(result.map(([name]) => name)).toEqual(['test-doc-id.snapshot.automerge', 'plain.json']);
   });
+});
 
-  it('no longer exposes an inconsistent state when documents exist without a marker', () => {
-    const result = classifyMioframeSpaceDirectory({
-      directoryEntries: [['Folder', createStat(FSNodeType.Directory)]],
-      documentIds: ['test-doc-id'],
-    });
-
-    expect(result.state).toBe('mioframeSpaceWithDocuments');
+describe('isMioframeServiceFile', () => {
+  it('matches the marker file and optional Automerge document files', () => {
+    expect(isMioframeServiceFile(storageAdapterMarkerFileName, true)).toBe(true);
+    expect(isMioframeServiceFile('test-doc-id.snapshot.automerge', true)).toBe(true);
+    expect(isMioframeServiceFile('test-doc-id.snapshot.automerge', false)).toBe(false);
+    expect(isMioframeServiceFile('plain.json', true)).toBe(false);
   });
 });

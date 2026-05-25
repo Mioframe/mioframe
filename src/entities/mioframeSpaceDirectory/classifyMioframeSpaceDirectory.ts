@@ -3,70 +3,68 @@ import type { FSNodeStat } from '@shared/lib/virtualFileSystem';
 import { FSNodeType } from '@shared/lib/virtualFileSystem';
 import { zodIs } from '@shared/lib/validateZodScheme';
 
-/** User-facing folder states for the opened Mioframe directory screen. */
+/** Stable Mioframe directory states derived from marker-file and document facts. */
 export type MioframeSpaceDirectoryState =
   | 'regularFolder'
   | 'emptyMioframeSpace'
   | 'mioframeSpaceWithDocuments';
 
-/** Directory entry contract consumed by the folder presentation classifier. */
+/** Directory entry contract consumed by Mioframe directory helpers. */
 export type MioframeDirectoryEntry = readonly [name: string, stat: FSNodeStat];
 
-/** Derived presentation data for the split Mioframe-documents and files screen. */
-export type MioframeSpaceDirectoryPresentation = {
-  /** High-level folder state shown by the explorer screen. */
-  state: MioframeSpaceDirectoryState;
-  /** Whether the current folder already contains the Mioframe marker file. */
-  hasMarkerFile: boolean;
-  /** Files and folders that remain visible after Mioframe service files are hidden. */
-  visibleFileEntries: readonly MioframeDirectoryEntry[];
-};
-
-const isMioframeServiceFile = (name: string, hideAutomergeFiles: boolean) =>
+/**
+ * Returns whether a file name belongs to Mioframe service storage.
+ * @param name - File name to classify.
+ * @param hideAutomergeFiles - Whether Automerge document files should count as service files.
+ * @returns Whether the file should be hidden as Mioframe service storage.
+ */
+export const isMioframeServiceFile = (name: string, hideAutomergeFiles: boolean) =>
   name === storageAdapterMarkerFileName ||
   (hideAutomergeFiles && zodIs(name, zodAutomergeFileName));
 
 /**
- * Classifies a folder into the Mioframe space states needed by the explorer screen.
- * @param params - Raw directory entries plus detected document ids.
- * @returns Folder state and the regular file entries that stay visible to the user.
+ * Returns whether the current directory includes the Mioframe marker file as a file entry.
+ * @param directoryEntries - Directory entries in the currently opened folder.
+ * @returns Whether the folder contains the Mioframe marker file.
  */
-export const classifyMioframeSpaceDirectory = ({
-  directoryEntries,
-  documentIds,
-  hideAutomergeFiles = true,
-}: {
-  directoryEntries: readonly MioframeDirectoryEntry[];
-  documentIds: readonly string[];
-  hideAutomergeFiles?: boolean | undefined;
-}): MioframeSpaceDirectoryPresentation => {
-  const hasMarkerFile = directoryEntries.some(([name, stat]) => {
+export const hasMioframeMarkerFile = (directoryEntries: readonly MioframeDirectoryEntry[]) =>
+  directoryEntries.some(([name, stat]) => {
     return stat.type === FSNodeType.File && name === storageAdapterMarkerFileName;
   });
 
-  const visibleFileEntries = directoryEntries.filter(
-    ([name]) => !isMioframeServiceFile(name, hideAutomergeFiles),
-  );
-
+/**
+ * Derives the stable Mioframe directory state from marker-file and repository facts.
+ * @param params - Marker-file and repository facts for the current folder.
+ * @returns The stable Mioframe directory state.
+ */
+export const getMioframeSpaceDirectoryState = ({
+  hasMarkerFile,
+  documentIds,
+}: {
+  hasMarkerFile: boolean;
+  documentIds: readonly string[];
+}): MioframeSpaceDirectoryState => {
   if (documentIds.length > 0) {
-    return {
-      state: 'mioframeSpaceWithDocuments',
-      hasMarkerFile,
-      visibleFileEntries,
-    };
+    return 'mioframeSpaceWithDocuments';
   }
 
   if (hasMarkerFile) {
-    return {
-      state: 'emptyMioframeSpace',
-      hasMarkerFile,
-      visibleFileEntries,
-    };
+    return 'emptyMioframeSpace';
   }
 
-  return {
-    state: 'regularFolder',
-    hasMarkerFile,
-    visibleFileEntries,
-  };
+  return 'regularFolder';
 };
+
+/**
+ * Returns user-facing file entries after Mioframe service files are filtered out.
+ * @param params - Directory entries plus the current Automerge visibility preference.
+ * @returns Directory entries that remain visible to the user.
+ */
+export const getRegularDirectoryEntries = ({
+  directoryEntries,
+  hideAutomergeFiles = true,
+}: {
+  directoryEntries: readonly MioframeDirectoryEntry[];
+  hideAutomergeFiles?: boolean | undefined;
+}): readonly MioframeDirectoryEntry[] =>
+  directoryEntries.filter(([name]) => !isMioframeServiceFile(name, hideAutomergeFiles));

@@ -31,8 +31,16 @@ defineSlots<{
 
 const { directoryPath } = toRefs(props);
 
-const { directoryError, hideAutomergeFiles, repositoryError, viewState } =
-  useRepositoryExplorerDirectoryState(directoryPath);
+const {
+  directoryError,
+  documentIds,
+  errorMessage,
+  hideAutomergeFiles,
+  isLoading,
+  mioframeSpaceState,
+  regularFileEntries,
+  repositoryError,
+} = useRepositoryExplorerDirectoryState(directoryPath);
 
 const onClickPath = (path: string) => {
   emit('clickPath', path);
@@ -44,7 +52,7 @@ const onClickDocument = (documentId: AMDocumentId) => {
 
 const hasGoogleDriveRecovery = computed(
   () =>
-    viewState.value.status === 'error' &&
+    !!errorMessage.value &&
     !!getGoogleDriveAccessRecoveryError(directoryPath.value, [
       directoryError.value,
       repositoryError.value,
@@ -88,32 +96,32 @@ const onReturnHomeClick = () => {
       </GoogleDriveAccessRecoveryState>
 
       <MDEmptyState
-        v-else-if="viewState.status === 'error'"
+        v-else-if="errorMessage"
         class="repository-explorer-widget__error"
         headline="Could not open this folder"
-        :supporting-text="viewState.message"
+        :supporting-text="errorMessage"
       >
         <template #icon>
           <MDSymbol name="error" class="repository-explorer-widget__error-icon" />
         </template>
       </MDEmptyState>
 
-      <div v-else-if="viewState.status === 'loading'" class="repository-explorer-widget__loading">
+      <div v-else-if="isLoading" class="repository-explorer-widget__loading">
         <MDCircularProgressIndicator :size="24" />
       </div>
 
       <div v-else class="repository-explorer-widget__content">
         <RepositoryExplorerDocumentsSection
           :directory-path="directoryPath"
-          :document-ids="viewState.documentIds"
-          :folder-state="viewState.folderState"
+          :document-ids="documentIds ?? []"
+          :folder-state="mioframeSpaceState"
           @select-document="onClickDocument"
         />
 
         <RepositoryExplorerFilesSection
           :directory-path="directoryPath"
           :hide-automerge-files="hideAutomergeFiles"
-          :visible-file-entries="viewState.visibleFileEntries"
+          :regular-file-entries="regularFileEntries"
           @select-path="onClickPath"
         />
       </div>

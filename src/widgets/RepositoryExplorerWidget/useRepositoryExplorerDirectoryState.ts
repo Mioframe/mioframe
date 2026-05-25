@@ -1,6 +1,10 @@
 import { useDirectory } from '@entity/directory';
 import { useLocalSettings } from '@entity/localSettings';
-import { deriveMioframeSpaceDirectoryViewState } from '@entity/mioframeSpaceDirectory';
+import {
+  getMioframeSpaceDirectoryState,
+  getRegularDirectoryEntries,
+  hasMioframeMarkerFile,
+} from '@entity/mioframeSpaceDirectory';
 import { useRepository } from '@entity/repository';
 import { resolveSafeErrorMessage } from '@shared/lib/error';
 import { computed, type Ref } from 'vue';
@@ -35,22 +39,43 @@ export const useRepositoryExplorerDirectoryState = (directoryPath: Ref<string>) 
     resolveSafeErrorMessage(directoryError.value, 'Could not read this folder'),
   );
 
-  const viewState = computed(() =>
-    deriveMioframeSpaceDirectoryViewState({
-      directoryEntries: directoryEntries.value,
-      directoryErrorMessage: directoryErrorMessage.value,
-      documentIds: documentIds.value,
-      repositoryErrorMessage: repositoryErrorMessage.value,
-      isDirectoryLoading: isDirectoryLoading.value,
-      isRepositoryLoading: isRepositoryLoading.value,
-      hideAutomergeFiles: hideAutomergeFiles.value,
+  const errorMessage = computed(() => directoryErrorMessage.value ?? repositoryErrorMessage.value);
+  const isLoading = computed(
+    () =>
+      isDirectoryLoading.value ||
+      isRepositoryLoading.value ||
+      !directoryEntries.value ||
+      !documentIds.value,
+  );
+  const mioframeMarkerFile = computed(() =>
+    directoryEntries.value ? hasMioframeMarkerFile(directoryEntries.value) : false,
+  );
+  const regularFileEntries = computed(() =>
+    directoryEntries.value
+      ? getRegularDirectoryEntries({
+          directoryEntries: directoryEntries.value,
+          hideAutomergeFiles: hideAutomergeFiles.value,
+        })
+      : [],
+  );
+  const mioframeSpaceState = computed(() =>
+    getMioframeSpaceDirectoryState({
+      hasMarkerFile: mioframeMarkerFile.value,
+      documentIds: documentIds.value ?? [],
     }),
   );
 
   return {
     directoryError,
+    directoryErrorMessage,
+    documentIds,
+    errorMessage,
     hideAutomergeFiles,
+    isLoading,
+    hasMioframeMarkerFile: mioframeMarkerFile,
+    mioframeSpaceState,
+    regularFileEntries,
     repositoryError,
-    viewState,
+    repositoryErrorMessage,
   };
 };

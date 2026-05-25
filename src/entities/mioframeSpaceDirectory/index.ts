@@ -1,11 +1,10 @@
-export { classifyMioframeSpaceDirectory } from './classifyMioframeSpaceDirectory';
+export {
+  getMioframeSpaceDirectoryState,
+  getRegularDirectoryEntries,
+  hasMioframeMarkerFile,
+  isMioframeServiceFile,
+} from './classifyMioframeSpaceDirectory';
 export type {
   MioframeDirectoryEntry,
-  MioframeSpaceDirectoryPresentation,
   MioframeSpaceDirectoryState,
 } from './classifyMioframeSpaceDirectory';
-export {
-  deriveMioframeSpaceDirectoryViewState,
-  type MioframeSpaceDirectoryReadyState,
-  type MioframeSpaceDirectoryViewState,
-} from './deriveMioframeSpaceDirectoryViewState';

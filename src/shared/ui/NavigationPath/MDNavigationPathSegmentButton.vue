@@ -18,3 +18,9 @@ const onClick = () => {
 <template>
   <MDButton :label="label" color="text" class="md-navigation-path__item" @click="onClick" />
 </template>
+
+<style scoped>
+.md-navigation-path__item {
+  --md-button-horizontal-padding: 8px;
+}
+</style>
