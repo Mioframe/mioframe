@@ -10,24 +10,11 @@ enum EntryRemoveErrorCode {
   recursiveRemoveFailed = 'recursive-remove-failed',
 }
 
-const toReportedRemoveError = (
-  error: unknown,
-  message: string,
-  causeMessage: string,
-  code: EntryRemoveErrorCode,
-) => {
-  if (error instanceof DomainError || error instanceof VfsError) {
-    return error;
-  }
-
-  return new DomainError(message, {
+const toReportedRemoveError = (message: string, causeMessage: string, code: EntryRemoveErrorCode) =>
+  new DomainError(message, {
     cause: createSafeErrorCause(causeMessage),
     code,
   });
-};
-
-const toRemoveFeedbackMessage = (error: unknown, fallbackMessage: string) =>
-  error instanceof DomainError ? error.message : fallbackMessage;
 
 /**
  * Creates a remove action that shows user-facing feedback for file-system entry deletion.
@@ -44,7 +31,7 @@ export const useRemoveFSEntry = () => {
 
     const sure = await confirm({
       headline: `Remove "${name}"?`,
-      supportingText: `Are you sure you want to remove "${path}"?`,
+      supportingText: 'This item will be removed.',
       confirmLabel: 'Remove',
       symbolName: 'delete',
     });
@@ -68,16 +55,15 @@ export const useRemoveFSEntry = () => {
             });
             try {
               await removeEntry(path, true);
-            } catch (recursiveError) {
+            } catch {
               const reportedError = toReportedRemoveError(
-                recursiveError,
                 'Could not remove the directory',
                 'File system recursive remove operation failed',
                 EntryRemoveErrorCode.recursiveRemoveFailed,
               );
 
               addSnackbar({
-                text: toRemoveFeedbackMessage(recursiveError, 'Could not remove the directory'),
+                text: 'Could not remove the directory',
               });
               reportHandledError(reportedError, {
                 feature: 'entryRemove',
@@ -87,14 +73,13 @@ export const useRemoveFSEntry = () => {
           }
         } else {
           const reportedError = toReportedRemoveError(
-            error,
             'Could not remove the item',
             'File system remove operation failed',
             EntryRemoveErrorCode.removeFailed,
           );
 
           addSnackbar({
-            text: toRemoveFeedbackMessage(error, 'Could not remove the item'),
+            text: 'Could not remove the item',
           });
           reportHandledError(reportedError, {
             feature: 'entryRemove',
