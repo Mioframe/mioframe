@@ -39,7 +39,7 @@ export const useRepositoryExplorerDirectoryState = (directoryPath: Ref<string>) 
   const regularFileEntries = computed(() => repositoryVisibleEntries.value ?? []);
 
   return {
-    directoryError: repositoryError,
+    directoryError: directoryError,
     directoryErrorMessage,
     documentIds,
     errorMessage,

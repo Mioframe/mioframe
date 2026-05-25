@@ -90,22 +90,27 @@ describe('useRepositoryExplorerDirectoryState', () => {
   });
 
   it('keeps directory errors ahead of repository errors', async () => {
+    const repositoryFactsError = new DomainError('Repository is unavailable', {
+      code: 'repositoryUnavailable',
+    });
+    const repositoryVisibleEntriesError = new DomainError('Could not read this folder', {
+      code: 'folderReadFailed',
+    });
+
     useRepositoryMock.mockReturnValue({
       documentIds: ref(undefined),
       isInitialized: ref(false),
       repositoryVisibleEntries: ref(undefined),
-      repositoryFactsError: ref(
-        new DomainError('Repository is unavailable', { code: 'repositoryUnavailable' }),
-      ),
-      repositoryVisibleEntriesError: ref(
-        new DomainError('Could not read this folder', { code: 'folderReadFailed' }),
-      ),
+      repositoryFactsError: ref(repositoryFactsError),
+      repositoryVisibleEntriesError: ref(repositoryVisibleEntriesError),
       errorMessage: ref('Repository is unavailable'),
       isLoading: ref(false),
     });
 
     const { scope, state } = await mountUseRepositoryExplorerDirectoryState();
 
+    expect(state.directoryError.value).toBe(repositoryVisibleEntriesError);
+    expect(state.repositoryError.value).toBe(repositoryFactsError);
     expect(state.directoryErrorMessage.value).toBe('Could not read this folder');
     expect(state.errorMessage.value).toBe('Could not read this folder');
 
