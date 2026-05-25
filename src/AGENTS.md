@@ -12,6 +12,23 @@ Use the `material3` MCP server from https://github.com/Vyachean/m3-docs-mcp as t
 
 Do not claim Material 3 alignment unless the relevant guidance was checked through MCP or the documented fallback cache. If that check is unavailable or incomplete, report it as an unresolved Material 3 verification risk.
 
+## Service and worker source of truth
+
+Service and worker code own heavy data operations, storage/protocol interpretation, indexing, lifecycle, cache invalidation, and canonical existence or initialization facts.
+
+UI layers must stay light. They may request actions and render facts from public APIs, but must not infer service-owned state by inspecting implementation details such as marker files, storage file names, raw directory entries, cache keys, adapter artifacts, or protocol internals.
+
+When a widget, page, feature, or entity UI needs a fact that belongs to storage, repository lifecycle, document discovery, synchronization, permissions, or cache state, expose that fact through the service and entity public API instead of re-deriving it in the UI thread.
+
+Avoid these patterns in source code:
+
+- widget/page determines whether a repository, storage, document set, or permission state exists by parsing service implementation details;
+- UI code duplicates service or worker scans, indexing, parsing, repository discovery, lifecycle checks, or cache decisions;
+- an entity is introduced only to re-label a service-owned concept while still deriving its canonical state outside the service;
+- feature actions compensate for missing service invariants with UI checks instead of enforcing those invariants at the service owner.
+
+The preferred flow is: service or worker determines canonical facts, entity exposes them in a typed reactive API, widget/page composes and renders them declaratively.
+
 ## Declarative FSD composition
 
 Vue UI should make data dependencies visible through named computed values, props, emits, slots, and template branches. Do not hide simple UI branch order behind broad screen state objects only to make a template shorter.
