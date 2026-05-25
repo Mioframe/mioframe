@@ -4,7 +4,7 @@
 
 [English version](./README.md)
 
-[👉 Запустить Mioframe](https://vyachean.github.io/beaver/)
+[👉 Запустить Mioframe](https://vyachean.github.io/mioframe/)
 
 ## Зачем я это сделал?
 
@@ -49,8 +49,8 @@ Mioframe — это приложение для тех, кто хочет сам
 
 Проект находится в активной разработке, поэтому ваш фидбек — это то, что помогает Mioframe развиваться. Вы можете поделиться им на GitHub:
 
-- Нашли баг? Пожалуйста, создайте [Issue](https://github.com/Vyachean/beaver/issues).
-- Есть идея или вопрос? Добро пожаловать в [Обсуждения](https://github.com/Vyachean/beaver/discussions).
+- Нашли баг? Пожалуйста, создайте [Issue](https://github.com/Vyachean/mioframe/issues).
+- Есть идея или вопрос? Добро пожаловать в [Обсуждения](https://github.com/Vyachean/mioframe/discussions).
 
 ## Разработка
 
