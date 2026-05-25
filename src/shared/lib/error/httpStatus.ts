@@ -1,5 +1,5 @@
 /**
- * Standard HTTP response status codes used by Beaver.
+ * Standard HTTP response status codes used by Mioframe.
  *
  * This enum provides typed constants for standard HTTP status codes used in
  * error handling and Google Drive API adapters.
