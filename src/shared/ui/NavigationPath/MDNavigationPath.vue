@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { computed, toRefs } from 'vue';
-import { MDButton, MDIconButton } from '../Button';
+import { MDIconButton } from '../Button';
 import { MDSymbol } from '../Icon';
 import { PathUtils } from '@shared/lib/virtualFileSystem';
+import MDNavigationPathSegmentButton from './MDNavigationPathSegmentButton.vue';
 
 const props = withDefaults(
   defineProps<{
@@ -53,12 +54,7 @@ const onClickPath = (targetPath: string) => {
     <template v-for="{ name, path: segmentPath } in visibleSegments" :key="segmentPath">
       <MDSymbol class="md-navigation-path__separator" name="chevron_right" />
 
-      <MDButton
-        :label="name"
-        color="text"
-        class="md-navigation-path__item"
-        @click="() => onClickPath(segmentPath)"
-      />
+      <MDNavigationPathSegmentButton :label="name" :path="segmentPath" @click="onClickPath" />
     </template>
   </div>
 </template>

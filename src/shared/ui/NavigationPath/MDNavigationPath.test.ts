@@ -53,6 +53,36 @@ vi.mock('../Button', () => ({
   }),
 }));
 
+vi.mock('./MDNavigationPathSegmentButton.vue', () => ({
+  default: defineComponent({
+    name: 'MDNavigationPathSegmentButtonStub',
+    props: {
+      label: {
+        type: String,
+        required: true,
+      },
+      path: {
+        type: String,
+        required: true,
+      },
+    },
+    emits: ['click'],
+    setup(props, { emit }) {
+      return () =>
+        h(
+          'button',
+          {
+            type: 'button',
+            onClick: () => {
+              emit('click', props.path);
+            },
+          },
+          props.label,
+        );
+    },
+  }),
+}));
+
 vi.mock('../Icon', () => ({
   MDSymbol: defineComponent({
     name: 'MDSymbolStub',
@@ -117,6 +147,17 @@ describe('MDNavigationPath', () => {
     const pathButtons = wrapper.findAll('button').slice(1);
 
     expect(pathButtons.every((button) => button.text().trim().length > 0)).toBe(true);
+  });
+
+  it('renders the current segment when omitCurrent is false', async () => {
+    const wrapper = await mountNavigationPath({
+      path: '/Documents/Project',
+      omitCurrent: false,
+    });
+
+    const labels = wrapper.findAll('button').map((button) => button.text());
+
+    expect(labels).toEqual(['icon', 'Documents', 'Project']);
   });
 
   it('emits clickHome from the home icon', async () => {
