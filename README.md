@@ -2,7 +2,7 @@
 
 A simple local app for your data. No cloud lock-in, no subscriptions, no extra friction.
 
-[👉 Open Mioframe](https://vyachean.github.io/beaver/)
+[👉 Open Mioframe](https://vyachean.github.io/mioframe/)
 
 ## Why I Built It
 
@@ -50,8 +50,8 @@ User documentation is available in [docs/user/README.md](./docs/user/README.md).
 
 Mioframe is still under active development, and your feedback genuinely helps shape where it goes next. If you want to share thoughts, report a problem, or suggest an idea, feel free to reach out on GitHub:
 
-- Found a bug? Please open an [Issue](https://github.com/Vyachean/beaver/issues).
-- Have an idea or a question? Join the [Discussions](https://github.com/Vyachean/beaver/discussions).
+- Found a bug? Please open an [Issue](https://github.com/Vyachean/mioframe/issues).
+- Have an idea or a question? Join the [Discussions](https://github.com/Vyachean/mioframe/discussions).
 
 ## Development
 
