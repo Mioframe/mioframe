@@ -33,7 +33,7 @@ jobs:
 
       - name: Build
         env:
-          BASE_URL: /${{ github.event.repository.name }}
+          BASE_URL: /${{ github.event.repository.name }}/
           VITE_GOOGLE_CLIENT_ID: ${{ secrets.VITE_GOOGLE_CLIENT_ID }}
           VITE_SENTRY_DSN: ${{ secrets.VITE_SENTRY_DSN }}
           SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
