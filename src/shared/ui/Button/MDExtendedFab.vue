@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, useTemplateRef } from 'vue';
+import { computed, useSlots, useTemplateRef } from 'vue';
 import { MDCircularProgressIndicator } from '../ProgressIndicators';
 import { MDPlainTooltip } from '../Tooltips';
 import { MDStateLayer, useRipple, useStateLayer } from '../State';
@@ -35,8 +35,11 @@ defineSlots<{
   icon(): unknown;
 }>();
 
+const slots = useSlots();
+
 const sizeClass = computed(() => `md-extended-fab_${props.size}`);
 const typeClass = computed(() => `md-extended-fab_${props.color}`);
+const hasIconContent = computed(() => Boolean(props.loading || props.mdSymbol || slots.icon));
 
 const onFabClick = (event: MouseEvent) => {
   event.stopPropagation();
@@ -68,7 +71,7 @@ useRipple(buttonEl);
   >
     <MDStateLayer :hover="hover" :focused="focused" :pressed="durationPressedState" />
 
-    <span class="md-extended-fab__icon">
+    <span v-if="hasIconContent" class="md-extended-fab__icon">
       <MDCircularProgressIndicator v-if="loading" />
 
       <slot v-else name="icon">

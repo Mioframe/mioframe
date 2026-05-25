@@ -236,6 +236,13 @@ describe('VfsActivityStatusChip', () => {
     await wrapper.findAll('button')[2]?.trigger('click');
 
     expect(writeClipboardMock).toHaveBeenCalledOnce();
+    const copiedText = writeClipboardMock.mock.calls[0]?.[0];
+    expect(typeof copiedText).toBe('string');
+    expect(copiedText).toContain('Could not save changes');
+    expect(copiedText).toContain('Operation: write file');
+    expect(copiedText).toContain('Details are hidden to protect private repository data.');
+    expect(copiedText).not.toContain('/private.txt');
+    expect(copiedText).not.toContain('write failed');
     expect(addSnackbarMock).toHaveBeenCalledWith({ text: 'Save error details copied' });
   });
 

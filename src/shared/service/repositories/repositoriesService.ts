@@ -39,7 +39,7 @@ const setupRepositoriesService = () => {
       path,
     }: {
       /**
-       * Путь репозитория
+       * Repository path.
        */
       path: string;
     }) =>
@@ -80,7 +80,7 @@ const setupRepositoriesService = () => {
       path,
     }: {
       /**
-       * Путь репозитория
+       * Repository path.
        */
       path: string;
     }) =>
@@ -212,20 +212,20 @@ const setupRepositoriesService = () => {
     getRepositoryVisibleEntries$,
     getRepo$: repo$,
     /**
-     * Создать документ в репозитории
-     * @param path - Абсолютный путь к репозиторию.
-     * @returns Идентификатор созданного документа.
+     * Creates a document in the repository.
+     * @param path - Absolute path to the repository.
+     * @returns Created document identifier.
      */
     createDocument,
     /**
-     * Инициализировать хранилище репозитория без создания документа
-     * @param path - Абсолютный путь к репозиторию.
+     * Initializes repository storage without creating a document.
+     * @param path - Absolute path to the repository.
      */
     initializeRepository,
     /**
-     * Удаление документа из репозитория
-     * @param path - Абсолютный путь репозитория.
-     * @param id - Идентификатор документа.
+     * Removes a document from the repository.
+     * @param path - Absolute repository path.
+     * @param id - Document identifier.
      */
     deleteDocument,
   };

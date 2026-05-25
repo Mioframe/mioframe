@@ -33,16 +33,14 @@ describe('saveStatusText', () => {
     ).toBe(
       [
         'Could not save changes',
-        'Operation: writeFile',
-        'Path: /old.md',
-        'New path: /new.md',
+        'Operation: write file',
         'Time: formatted time',
-        'Message: disk full',
+        'Details are hidden to protect private repository data.',
       ].join('\n'),
     );
   });
 
-  it('omits the new path line when the error does not contain one', () => {
+  it('omits private path and message details when the error does not contain one', () => {
     expect(
       formatSaveStatusErrorDetails({
         operationType: 'delete',
@@ -54,10 +52,9 @@ describe('saveStatusText', () => {
     ).toBe(
       [
         'Could not save changes',
-        'Operation: delete',
-        'Path: /old.md',
+        'Operation: delete entry',
         'Time: formatted time',
-        'Message: missing file',
+        'Details are hidden to protect private repository data.',
       ].join('\n'),
     );
   });

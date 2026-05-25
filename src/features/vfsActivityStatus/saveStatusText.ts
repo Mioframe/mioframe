@@ -27,12 +27,17 @@ export const formatSaveStatusErrorDetails = (
     return undefined;
   }
 
+  const operationLabel = {
+    writeFile: 'write file',
+    createDirectory: 'create directory',
+    delete: 'delete entry',
+    move: 'move entry',
+  } satisfies Record<VfsActivityError['operationType'], string>;
+
   return [
     'Could not save changes',
-    `Operation: ${error.operationType}`,
-    `Path: ${error.path}`,
-    ...(error.newPath ? [`New path: ${error.newPath}`] : []),
+    `Operation: ${operationLabel[error.operationType]}`,
     `Time: ${formatSaveStatusTimestamp(error.occurredAt)}`,
-    `Message: ${error.message}`,
+    'Details are hidden to protect private repository data.',
   ].join('\n');
 };

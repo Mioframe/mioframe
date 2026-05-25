@@ -5,15 +5,29 @@ import { PathUtils, VfsError, FileSystemError } from '@shared/lib/virtualFileSys
 import { useDialog } from '@shared/ui/Dialog';
 import { useSnackbar } from '@shared/ui/Snackbar';
 
-const toReportedRemoveError = (error: unknown, message: string, causeMessage: string) => {
+enum EntryRemoveErrorCode {
+  removeFailed = 'remove-failed',
+  recursiveRemoveFailed = 'recursive-remove-failed',
+}
+
+const toReportedRemoveError = (
+  error: unknown,
+  message: string,
+  causeMessage: string,
+  code: EntryRemoveErrorCode,
+) => {
   if (error instanceof DomainError || error instanceof VfsError) {
     return error;
   }
 
   return new DomainError(message, {
     cause: createSafeErrorCause(causeMessage),
+    code,
   });
 };
+
+const toRemoveFeedbackMessage = (error: unknown, fallbackMessage: string) =>
+  error instanceof DomainError ? error.message : fallbackMessage;
 
 /**
  * Creates a remove action that shows user-facing feedback for file-system entry deletion.
@@ -59,13 +73,11 @@ export const useRemoveFSEntry = () => {
                 recursiveError,
                 'Could not remove the directory',
                 'File system recursive remove operation failed',
+                EntryRemoveErrorCode.recursiveRemoveFailed,
               );
 
               addSnackbar({
-                text:
-                  recursiveError instanceof DomainError
-                    ? recursiveError.message
-                    : 'Could not remove the directory',
+                text: toRemoveFeedbackMessage(recursiveError, 'Could not remove the directory'),
               });
               reportHandledError(reportedError, {
                 feature: 'entryRemove',
@@ -78,10 +90,11 @@ export const useRemoveFSEntry = () => {
             error,
             'Could not remove the item',
             'File system remove operation failed',
+            EntryRemoveErrorCode.removeFailed,
           );
 
           addSnackbar({
-            text: error instanceof DomainError ? error.message : 'Could not remove the item',
+            text: toRemoveFeedbackMessage(error, 'Could not remove the item'),
           });
           reportHandledError(reportedError, {
             feature: 'entryRemove',
