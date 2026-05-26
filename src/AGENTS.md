@@ -6,7 +6,7 @@ Inherits the rules from the root `AGENTS.md`. Applies to all application source 
 
 For user-visible UI or UX changes, use the `material3-guidelines` skill before planning component choice, layout, interaction behavior, visual states, accessibility semantics, tokens, public UI API names, or verification.
 
-For shared UI primitives, Material-style wrappers, Material tokens, Material authoring units, Storybook UI documentation, or Material visual verification surfaces, also follow the relevant policies under `docs/material-3/` before editing production code.
+For shared UI primitives, Material-style wrappers, Material tokens, Storybook UI documentation, or Material visual verification surfaces, also follow the relevant policies under `docs/material-3/` before editing production code.
 
 Use the `material3` MCP server from https://github.com/Vyachean/m3-docs-mcp as the primary source of official Material 3 guidance. If MCP is unavailable or incomplete for the needed page, use `Vyachean/m3-docs-cache` as the fallback snapshot of official `m3.material.io` content.
 
@@ -49,6 +49,20 @@ Avoid these patterns in source code:
 - feature actions are imported into entity UI instead of being passed from widget/page composition through slots.
 
 Prefer small, named derived facts such as `has*`, `is*`, `get*State`, and `get*Entries`. If a combined state object is still necessary, keep it in the layer that owns that composition and document why explicit dependencies are insufficient.
+
+## User action preservation
+
+UI changes must preserve the intent, discoverability, and relative priority of existing user actions unless the task explicitly changes them.
+
+Before replacing, removing, merging, renaming, or moving an action surface, build an action preservation matrix with: old action, old entry point, old interaction tier, new entry point, new interaction tier, and verification path. Interaction tiers include primary, secondary, contextual, menu, overflow, fallback, and hidden.
+
+Do not treat raw reachability as scenario preservation. A path that is technically still available may still be a regression when it becomes less discoverable, takes more steps, moves to a different context, loses its affordance, or no longer matches the user's mental model.
+
+When a design-system rule or layout constraint conflicts with existing action topology, redesign the action model instead of deleting or hiding actions mechanically. Prefer a coherent composition that preserves user intent and priority. Escalate when preserving both the design rule and the existing interaction tier requires a product decision.
+
+New labels, icons, grouping, and containers must honestly describe the full set of actions or state behind them. Do not place a broader action set behind a narrow label, icon, or component name.
+
+Verification must exercise the resulting user path at the same level as the changed behavior. Component stubs can verify wiring contracts, but primary product flows require browser or e2e coverage when layout, discovery, focus, overlays, menus, sheets, or action hierarchy changes.
 
 ## Diagnostics and privacy
 
