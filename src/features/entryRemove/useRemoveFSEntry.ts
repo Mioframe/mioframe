@@ -17,8 +17,11 @@ const toReportedRemoveError = (message: string, causeMessage: string, code: Entr
   });
 
 /**
- * Creates a remove action that shows user-facing feedback for file-system entry deletion.
- * @returns Remove helpers for file-system entries.
+ * Creates a user-triggered remove action for file-system entries.
+ *
+ * The action owns confirmation dialogs, recursive-directory confirmation, snackbar feedback,
+ * and privacy-safe handled diagnostics for remove failures.
+ * @returns Remove helper for absolute file-system entry paths.
  */
 export const useRemoveFSEntry = () => {
   const { confirm } = useDialog();
@@ -26,6 +29,11 @@ export const useRemoveFSEntry = () => {
 
   const { remove: removeEntry } = useFileSystem();
 
+  /**
+   * Confirms and removes a file-system entry by absolute path.
+   * @param path - Absolute file-system entry path to remove.
+   * @returns Promise that resolves after the user decision and any requested remove attempt.
+   */
   const remove = async (path: string) => {
     const name = PathUtils.basename(path);
 
