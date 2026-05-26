@@ -109,6 +109,9 @@ describe('RepositoryExplorerFilesSection', () => {
     await buttons[0]?.trigger('click');
 
     expect(wrapper.emitted('selectPath')).toEqual([['/repo/Nested']]);
+    expect(wrapper.findAll('div').some((element) => element.text().includes('note.txt'))).toBe(
+      true,
+    );
   });
 
   it('matches the supporting copy to whether Automerge files are hidden', async () => {
@@ -134,6 +137,14 @@ describe('RepositoryExplorerFilesSection', () => {
     expect(hiddenWrapper.text()).toContain('Mioframe service files are hidden.');
     expect(visibleWrapper.text()).toContain('Mioframe document files');
     expect(visibleWrapper.text()).not.toContain('Mioframe service files are hidden.');
+    expect(hiddenWrapper.text()).toContain(
+      'No regular files or folders to show. Mioframe service files are hidden.',
+    );
+    expect(visibleWrapper.text()).toContain(
+      'No regular files, folders, or Mioframe document files to show.',
+    );
+    expect(hiddenWrapper.findAll('button')).toHaveLength(0);
+    expect(visibleWrapper.findAll('button')).toHaveLength(0);
   });
 });
 /* eslint-enable vue/one-component-per-file -- Re-enable after focused inline stubs. */

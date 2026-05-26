@@ -123,3 +123,87 @@ test('repo explorer breadcrumb remains horizontally scrollable on a compact view
   expect(hasHorizontalOverflow).toBe(true);
   await expect(page.getByText(deepestPathName, { exact: true })).toHaveCount(1);
 });
+
+test('repo explorer keeps clickable cursors and natural section flow on a wide viewport', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1440, height: 1100 });
+  await openBrowserStorage(page);
+
+  const directoryName = createUniqueName('workspace');
+  const documentName = createUniqueName('doc');
+  await createDirectoryFromAddSheet(page, directoryName);
+  const addSheet = await openAddSheet(page);
+  await addSheet.getByText(/^create document$/i).click();
+
+  const createDocumentDialog = page.getByRole('dialog', { name: /^create document$/i });
+  await expect(createDocumentDialog).toBeVisible();
+  await createDocumentDialog.getByLabel(/^name$/i).fill(documentName);
+  await createDocumentDialog.getByRole('button', { name: /^create$/i }).click();
+
+  const documentRow = page.getByRole('button', {
+    name: new RegExp(`^document ${documentName}$`, 'i'),
+  });
+  await expect(documentRow).toBeVisible();
+
+  const addFab = page.getByRole('button', { name: /^add$/i });
+
+  await expect(documentRow).toBeVisible();
+  await expect(addFab).toHaveCount(1);
+
+  const documentCursor = await documentRow.evaluate(
+    (element) => window.getComputedStyle(element).cursor,
+  );
+
+  expect(documentCursor).toBe('pointer');
+
+  const spacing = await page.evaluate(() => {
+    const title = (text: string) =>
+      Array.from(document.querySelectorAll('h2')).find(
+        (element) => element.innerText.trim() === text,
+      );
+    const documentsTitle = title('Documents');
+    const filesTitle = title('Files');
+    const documentRow = document.querySelector('[aria-label^="document "]');
+    const content = document.querySelector('.repository-explorer-widget__content');
+    const filesCopy = filesTitle?.closest('.repository-explorer-section')?.querySelector('p');
+
+    if (!(documentsTitle instanceof HTMLElement) || !(filesTitle instanceof HTMLElement)) {
+      throw new Error('Missing Repository Explorer section titles.');
+    }
+
+    if (!(documentRow instanceof HTMLElement) || !(filesCopy instanceof HTMLElement)) {
+      throw new Error('Missing Repository Explorer content rows.');
+    }
+
+    if (!(content instanceof HTMLElement)) {
+      throw new Error('Missing Repository Explorer content container.');
+    }
+
+    const documentsGap =
+      documentRow.getBoundingClientRect().top - documentsTitle.getBoundingClientRect().bottom;
+    const filesGap =
+      filesCopy.getBoundingClientRect().top - filesTitle.getBoundingClientRect().bottom;
+    const contentRect = content.getBoundingClientRect();
+
+    return {
+      documentsGap,
+      filesGap,
+      contentHeight: contentRect.height,
+      contentScrollHeight: content.scrollHeight,
+    };
+  });
+
+  expect(spacing.documentsGap).toBeLessThan(48);
+  expect(spacing.filesGap).toBeLessThan(64);
+  expect(spacing.contentHeight - spacing.contentScrollHeight).toBeLessThan(16);
+
+  const fabBox = await addFab.boundingBox();
+
+  expect(fabBox).not.toBeNull();
+
+  if (fabBox == null) {
+    throw new Error('Missing Add FAB box.');
+  }
+  expect(fabBox.height).toBeGreaterThan(0);
+});

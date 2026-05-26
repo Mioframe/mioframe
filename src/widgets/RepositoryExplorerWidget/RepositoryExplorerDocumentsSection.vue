@@ -150,10 +150,6 @@ const emptySupportingText = computed(() => {
     letter-spacing: var(--md-sys-typescale-body-small-tracking);
   }
 
-  &__list {
-    flex: 1 0;
-  }
-
   &__list-item {
     --md-list-item-border-radius: 8px;
   }

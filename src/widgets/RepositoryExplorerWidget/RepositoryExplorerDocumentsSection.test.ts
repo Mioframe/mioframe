@@ -95,6 +95,30 @@ vi.mock('@entity/cfrDocument', () => ({
 }));
 
 describe('RepositoryExplorerDocumentsSection', () => {
+  it('shows the singular document count, emits selection, and opens storage info', async () => {
+    const { default: RepositoryExplorerDocumentsSection } =
+      await import('./RepositoryExplorerDocumentsSection.vue');
+    const documentId = createDocumentId();
+
+    const wrapper = mount(RepositoryExplorerDocumentsSection, {
+      props: {
+        directoryPath: '/repo',
+        documentIds: [documentId],
+        isRepositoryInitialized: true,
+      },
+    });
+
+    expect(wrapper.text()).toContain('1 document');
+    expect(wrapper.text()).not.toContain('No Mioframe documents yet.');
+    expect(wrapper.text()).not.toContain('This folder is not a Mioframe space yet.');
+
+    await wrapper.get('button').trigger('click');
+    expect(wrapper.text()).toContain('storage-info');
+
+    await wrapper.findAll('button')[1]?.trigger('click');
+    expect(wrapper.emitted('selectDocument')).toEqual([[documentId]]);
+  });
+
   it('shows the regular-folder empty state before repository storage is initialized', async () => {
     const { default: RepositoryExplorerDocumentsSection } =
       await import('./RepositoryExplorerDocumentsSection.vue');
@@ -132,18 +156,20 @@ describe('RepositoryExplorerDocumentsSection', () => {
   it('renders documents when document ids are available even without initialization marker state', async () => {
     const { default: RepositoryExplorerDocumentsSection } =
       await import('./RepositoryExplorerDocumentsSection.vue');
-    const documentId = createDocumentId();
+    const firstDocumentId = createDocumentId();
+    const secondDocumentId = createDocumentId();
 
     const wrapper = mount(RepositoryExplorerDocumentsSection, {
       props: {
         directoryPath: '/repo',
-        documentIds: [documentId],
+        documentIds: [firstDocumentId, secondDocumentId],
         isRepositoryInitialized: false,
       },
     });
 
-    expect(wrapper.text()).toContain('1 document');
-    expect(wrapper.text()).toContain(documentId);
+    expect(wrapper.text()).toContain('2 documents');
+    expect(wrapper.text()).toContain(firstDocumentId);
+    expect(wrapper.text()).toContain(secondDocumentId);
     expect(wrapper.text()).not.toContain('This folder is not a Mioframe space yet.');
   });
 });
