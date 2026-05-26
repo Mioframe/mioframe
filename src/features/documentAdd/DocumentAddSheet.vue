@@ -4,8 +4,11 @@ import { MDBottomSheet, MDBottomSheetSection } from '@shared/ui/Sheets';
 import { MDSymbol } from '@shared/ui/Icon';
 
 const emit = defineEmits<{
+  /** Emitted when the sheet requests closing without choosing a document action. */
   close: [];
+  /** Emitted after the user selects creating a new document. */
   selectCreate: [];
+  /** Emitted after the user selects importing a JSON document. */
   selectImport: [];
 }>();
 
