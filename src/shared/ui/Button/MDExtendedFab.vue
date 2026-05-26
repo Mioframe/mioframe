@@ -7,7 +7,9 @@ import { MDSymbol } from '../Icon';
 
 const props = withDefaults(
   defineProps<{
+    /** Material Extended FAB size variant. */
     size?: 'small' | 'medium' | 'large' | undefined;
+    /** Material Extended FAB color role. Tonal primary is the shared default for this surface. */
     color?:
       | 'primary'
       | 'secondary'
@@ -16,9 +18,16 @@ const props = withDefaults(
       | 'tonal-secondary'
       | 'tonal-tertiary'
       | undefined;
+    /** Visible text label rendered inside the Extended FAB. */
     label: string;
+    /** Optional tooltip text. When present, it is also used as the accessible name. */
     tooltip?: string | undefined;
+    /**
+     * Loading state for the action. `true` shows indeterminate progress; a number shows
+     * determinate progress and keeps `0` visible as an active loading state.
+     */
     loading?: number | boolean | undefined;
+    /** Optional Material Symbols icon name used when no custom icon slot is provided. */
     mdSymbol?: string | undefined;
   }>(),
   {
@@ -28,10 +37,12 @@ const props = withDefaults(
 );
 
 const emit = defineEmits<{
+  /** Emitted after native click handling is stopped from bubbling to parent action surfaces. */
   click: [payload: MouseEvent];
 }>();
 
 defineSlots<{
+  /** Optional icon content rendered before the label when the component is not loading. */
   icon(): unknown;
 }>();
 
