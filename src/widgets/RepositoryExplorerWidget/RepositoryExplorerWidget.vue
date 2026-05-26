@@ -156,6 +156,7 @@ const onReturnHomeClick = () => {
     display: grid;
     gap: 24px;
     padding-bottom: 8px;
+    flex-grow: 1;
   }
 
   &__error-icon {
