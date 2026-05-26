@@ -6,12 +6,16 @@ import { PathUtils } from '@shared/lib/virtualFileSystem';
 import MDNavigationPathSegmentButton from './MDNavigationPathSegmentButton.vue';
 
 const props = defineProps<{
+  /** Absolute path rendered as clickable breadcrumb segments. */
   path: string;
+  /** Hides the current path segment when the parent surface already renders the current item. */
   hideCurrent?: boolean | undefined;
 }>();
 
 const emit = defineEmits<{
+  /** Emitted when the user selects a breadcrumb segment. */
   click: [path: string];
+  /** Emitted when the user selects the root/home navigation action. */
   clickHome: [];
 }>();
 
