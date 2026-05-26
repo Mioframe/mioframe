@@ -43,6 +43,7 @@ const IGNORED_PREFIXES = [
   'test-results/',
   '.stryker-tmp/',
 ];
+const CI_AUTOFIX_IGNORED_PREFIXES = ['.github/'];
 
 function toPosixPath(filePath) {
   return filePath.split(path.sep).join(path.posix.sep);
@@ -50,6 +51,12 @@ function toPosixPath(filePath) {
 
 function isIgnored(filePath) {
   return IGNORED_PREFIXES.some(
+    (prefix) => filePath === prefix.slice(0, -1) || filePath.startsWith(prefix),
+  );
+}
+
+function isCiAutofixIgnored(filePath) {
+  return CI_AUTOFIX_IGNORED_PREFIXES.some(
     (prefix) => filePath === prefix.slice(0, -1) || filePath.startsWith(prefix),
   );
 }
@@ -276,7 +283,7 @@ function getAllSiblingTestFiles(filePath) {
   try {
     const entries = fs.readdirSync(dirPath, { withFileTypes: true });
 
-    for (const entry of entries) {
+  for (const entry of entries) {
       if (!entry.isFile() || !entry.name.endsWith('.test.ts')) {
         continue;
       }
@@ -598,10 +605,13 @@ async function runCommand(label, command, args) {
 
 function buildCommands(changedFiles) {
   const existingChangedFiles = changedFiles.filter(fileExists);
-  const formattableFiles = existingChangedFiles.filter((filePath) =>
+  const fixerChangedFiles = isFixOnlyMode
+    ? existingChangedFiles.filter((filePath) => !isCiAutofixIgnored(filePath))
+    : existingChangedFiles;
+  const formattableFiles = fixerChangedFiles.filter((filePath) =>
     FORMATTABLE_EXTENSIONS.has(path.posix.extname(filePath)),
   );
-  const lintableFiles = existingChangedFiles.filter((filePath) =>
+  const lintableFiles = fixerChangedFiles.filter((filePath) =>
     LINTABLE_EXTENSIONS.has(path.posix.extname(filePath)),
   );
   const vitestScope = getVitestScope(changedFiles);
@@ -804,7 +814,7 @@ function printSummary(changedFiles, scope, results) {
       continue;
     }
 
-    const warningSuffix = result.hasWarnings ? ' (warnings found)' : '';
+  const warningSuffix = result.hasWarnings ? ' (warnings found)' : '';
     console.log(`- ${result.label}: ${result.status}${warningSuffix} (${result.displayCommand})`);
   }
 
