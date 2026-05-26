@@ -25,7 +25,7 @@ jobs:
           fetch-depth: 0
           ref: ${{ github.event.pull_request.head.ref }}
           persist-credentials: true
-          token: ${{ secrets.BEAVER_CI_AUTOFIX_TOKEN || github.token }}
+          token: ${{ secrets.BEAVER_CI_AUTOFIX_TOKEN }}
 
       - uses: pnpm/action-setup@v4
 
@@ -85,7 +85,7 @@ jobs:
   verify:
     needs:
       - autofix
-    if: always() && (needs.autofix.result == 'success' || needs.autofix.result == 'skipped')
+    if: ${{ !cancelled() && (needs.autofix.result == 'success' || needs.autofix.result == 'skipped') }}
     runs-on: ubuntu-24.04
     permissions:
       contents: read
