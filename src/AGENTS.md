@@ -6,7 +6,7 @@ Inherits the rules from the root `AGENTS.md`. Applies to all application source 
 
 For user-visible UI or UX changes, use the `material3-guidelines` skill before planning component choice, layout, interaction behavior, visual states, accessibility semantics, tokens, public UI API names, or verification.
 
-For shared UI primitives, Material-style wrappers, Material tokens, Material authoring units, Storybook UI documentation, or Material visual verification surfaces, also follow the relevant policies under `docs/material-3/` before editing production code.
+For shared UI primitives, Material-style wrappers, Material tokens, Storybook UI documentation, or Material visual verification surfaces, also follow the relevant policies under `docs/material-3/` before editing production code.
 
 Use the `material3` MCP server from https://github.com/Vyachean/m3-docs-mcp as the primary source of official Material 3 guidance. If MCP is unavailable or incomplete for the needed page, use `Vyachean/m3-docs-cache` as the fallback snapshot of official `m3.material.io` content.
 
@@ -52,17 +52,17 @@ Prefer small, named derived facts such as `has*`, `is*`, `get*State`, and `get*E
 
 ## User action preservation
 
-For UI refactors that replace, remove, merge, or move action surfaces, preserve the user scenario and the interaction tier, not only raw reachability.
+UI changes must preserve the intent, discoverability, and relative priority of existing user actions unless the task explicitly changes them.
 
-Before editing such a UI flow, list each old user action with its old entry point and interaction tier: primary, secondary, menu, overflow, fallback, or hidden. Define the new entry point, new tier, and verification path for each action.
+Before replacing, removing, merging, renaming, or moving an action surface, build an action preservation matrix with: old action, old entry point, old interaction tier, new entry point, new interaction tier, and verification path. Interaction tiers include primary, secondary, contextual, menu, overflow, fallback, and hidden.
 
-Primary actions must not be silently demoted to a menu, overflow, fallback, secondary surface, or longer path. A demotion is allowed only when the task explicitly requests it or the reviewer confirms the trade-off.
+Do not treat raw reachability as scenario preservation. A path that is technically still available may still be a regression when it becomes less discoverable, takes more steps, moves to a different context, loses its affordance, or no longer matches the user's mental model.
 
-When Material 3 action hierarchy requires reducing multiple primary actions to one FAB or one primary button, consolidate the domain actions behind a single explicit Add/action entry point instead of deleting or demoting them.
+When a design-system rule or layout constraint conflicts with existing action topology, redesign the action model instead of deleting or hiding actions mechanically. Prefer a coherent composition that preserves user intent and priority. Escalate when preserving both the design rule and the existing interaction tier requires a product decision.
 
-When old primary actions are consolidated into a sheet, menu, or action picker, the entry point label must be generic enough to honestly cover every action behind it. For example, do not use a document-specific label for an action picker that also creates folders.
+New labels, icons, grouping, and containers must honestly describe the full set of actions or state behind them. Do not place a broader action set behind a narrow label, icon, or component name.
 
-Tests must cover the new primary user path. Stubbed component text, fallback menu assertions, or implementation-detail checks do not prove that a primary scenario was preserved.
+Verification must exercise the resulting user path at the same level as the changed behavior. Component stubs can verify wiring contracts, but primary product flows require browser or e2e coverage when layout, discovery, focus, overlays, menus, sheets, or action hierarchy changes.
 
 ## Diagnostics and privacy
 
