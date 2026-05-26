@@ -9,10 +9,12 @@ import { autoUpdate, offset, shift, useFloating } from '@floating-ui/vue';
 import { useMainContentAriaHidden } from '../AriaHidden';
 
 const props = defineProps<{
+  /** Hides the floating action while scrolling down and restores it on upward scroll or focus. */
   autoHide?: boolean;
 }>();
 
 defineSlots<{
+  /** Single primary FAB or Extended FAB action rendered in the floating overlay surface. */
   default(): unknown;
 }>();
 
@@ -83,14 +85,18 @@ const ariaHidden = useMainContentAriaHidden();
 </script>
 
 <template>
-  <div ref="placeholderEl" class="md-fab-container__placeholder" :style="placeholderStyles">
+  <div
+    ref="placeholderEl"
+    class="md-fab-container md-fab-container__placeholder"
+    :style="placeholderStyles"
+  >
     <TeleportContainer :container="fabContainerEl" :to="overlayContainerEl">
       <div
         ref="fabContainer"
-        class="md-fab-container"
+        class="md-fab-container__surface"
         :class="{
-          'md-fab-container_auto-hide': autoHide,
-          'md-fab-container_hide': !show,
+          'md-fab-container__surface_auto-hide': autoHide,
+          'md-fab-container__surface_hidden': !show,
         }"
         :style="floatingStyles"
         :aria-hidden="ariaHidden"
@@ -104,32 +110,35 @@ const ariaHidden = useMainContentAriaHidden();
 <style scoped>
 .md-fab-container {
   display: flex;
-  flex-direction: column;
-  pointer-events: none;
-  background-color: transparent;
-  align-items: center;
-  align-self: flex-end;
-  justify-self: flex-end;
-  margin-top: auto;
-  margin-left: auto;
-  padding-bottom: 16px;
-  width: min-content;
-  padding-right: calc(16px - var(--md-pane-margin-x) - var(--md-pane-padding-x));
-  transition-timing-function: var(var(--md-sys-motion-easing-emphasized-decelerate));
-  transition-duration: var(--md-sys-motion-duration-long2);
-  transition-property: transform, opacity;
+}
 
-  &__placeholder {
+.md-fab-container__placeholder {
+  display: flex;
+  position: sticky;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  flex-shrink: 0;
+  width: 100%;
+
+  .md-fab-container__surface {
     display: flex;
-    position: sticky;
-    right: 0;
-    bottom: 0;
-    left: 0;
-    flex-shrink: 0;
-    width: 100%;
+    pointer-events: none;
+    background-color: transparent;
+    align-items: center;
+    align-self: flex-end;
+    justify-self: flex-end;
+    margin-top: auto;
+    margin-left: auto;
+    padding-bottom: 16px;
+    width: min-content;
+    padding-right: calc(16px - var(--md-pane-margin-x) - var(--md-pane-padding-x));
+    transition-timing-function: var(var(--md-sys-motion-easing-emphasized-decelerate));
+    transition-duration: var(--md-sys-motion-duration-long2);
+    transition-property: transform, opacity;
   }
 
-  &_hide {
+  .md-fab-container__surface_hidden {
     pointer-events: none;
     transition-timing-function: var(var(--md-sys-motion-easing-emphasized-accelerate));
     transition-duration: var(--md-sys-motion-duration-short4);
@@ -137,18 +146,8 @@ const ariaHidden = useMainContentAriaHidden();
     transform: translateY(100%) scale(0);
   }
 
-  :deep() {
-    > * {
-      pointer-events: auto;
-    }
-
-    > .md-fab {
-      margin-top: 16px;
-
-      &:not(.md-fab_small) {
-        margin-top: 24px;
-      }
-    }
+  :deep(> *) {
+    pointer-events: auto;
   }
 }
 </style>

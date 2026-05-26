@@ -124,34 +124,6 @@ vi.mock('@shared/ui/AppBar', () => ({
 }));
 
 vi.mock('@shared/ui/Button', () => ({
-  MDFab: defineComponent({
-    name: 'MDFabStub',
-    props: {
-      tooltip: {
-        type: String,
-        required: true,
-      },
-      label: {
-        type: String,
-        default: undefined,
-      },
-    },
-    emits: ['click'],
-    setup(props, { emit, slots }) {
-      return () =>
-        h(
-          'button',
-          {
-            type: 'button',
-            'aria-label': props.tooltip,
-            onClick: () => {
-              emit('click', new MouseEvent('click'));
-            },
-          },
-          props.label ?? slots.icon?.(),
-        );
-    },
-  }),
   MDExtendedFab: defineComponent({
     name: 'MDExtendedFabStub',
     props: {
@@ -219,7 +191,9 @@ vi.mock('@widget/RepositoryExplorerWidget', () => ({
           {
             type: 'button',
           },
-          props.showDocumentActions ? 'Nested directory actions' : 'Current directory actions',
+          props.showDocumentActions
+            ? 'Nested directory actions'
+            : 'Current directory actions: Create directory',
         );
     },
   }),
@@ -284,13 +258,13 @@ describe('RepoExplorerPane', () => {
     document.body.innerHTML = '';
   });
 
-  it('keeps the document add CTA separate from the create-folder FAB and opens the add sheet', async () => {
+  it('keeps Add document as the only floating action and opens the add sheet', async () => {
     const wrapper = await mountPane();
 
-    expect(wrapper.text()).toContain('Current directory actions');
+    expect(wrapper.text()).toContain('Current directory actions: Create directory');
     expect(wrapper.text()).toContain('Add document');
     expect(wrapper.find('button[aria-label="Add document"]').exists()).toBe(true);
-    expect(wrapper.find('button[aria-label="Create directory"]').exists()).toBe(true);
+    expect(wrapper.find('button[aria-label="Create directory"]').exists()).toBe(false);
 
     await wrapper.get('button[aria-label="Add document"]').trigger('click');
 

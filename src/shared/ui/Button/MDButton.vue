@@ -125,6 +125,7 @@ useRipple(computed(() => (props.disabled ? undefined : buttonEl.value)));
   color: var(--md-content-color, inherit);
   outline-color: var(--md-state-outline-color);
   vertical-align: middle;
+  cursor: pointer;
   font-family: var(--md-sys-typescale-label-large-font);
   line-height: var(--md-sys-typescale-label-large-line-height);
   font-size: var(--md-sys-typescale-label-large-size);
@@ -134,6 +135,10 @@ useRipple(computed(() => (props.disabled ? undefined : buttonEl.value)));
   transition-property: box-shadow, color, background-color, border-color, border-radius;
   transition-duration: var(--md-sys-motion-duration-short4, 0.2s);
   -webkit-tap-highlight-color: transparent;
+
+  &:disabled {
+    cursor: default;
+  }
 
   &__target {
     position: absolute;

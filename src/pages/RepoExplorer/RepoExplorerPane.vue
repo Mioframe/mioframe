@@ -1,9 +1,7 @@
 <script setup lang="ts">
 import { computed, nextTick, ref, toRefs } from 'vue';
-import { DirectoryCreateDialog } from '@feature/directoryCreate';
 import { DocumentCreationDialog } from '@feature/documentCreate';
-import { MDExtendedFab, MDFab, MDFabContainer } from '@shared/ui/Button';
-import { MDSymbol } from '@shared/ui/Icon';
+import { MDExtendedFab, MDFabContainer } from '@shared/ui/Button';
 import { useFSNodeStat } from '@entity/fsEntry';
 import { MDPane } from '@shared/ui/Layout';
 import { MDAppBar } from '@shared/ui/AppBar';
@@ -28,19 +26,6 @@ defineSlots<{
 }>();
 
 const { repoPath: directoryPath } = toRefs(props);
-
-const showCreateDirectoryDialog = ref(false);
-const createDirectoryParentPath = ref<string>();
-
-const onClickCreateDirectory = () => {
-  showCreateDirectoryDialog.value = true;
-  createDirectoryParentPath.value = directoryPath.value;
-};
-
-const onCloseCreateDirectoryDialog = () => {
-  showCreateDirectoryDialog.value = false;
-  createDirectoryParentPath.value = undefined;
-};
 
 const { data: directoryStat } = useFSNodeStat(directoryPath);
 
@@ -128,12 +113,6 @@ const onClickReturnHome = async () => {
       <template v-if="canEditDirectoryContents" #after>
         <MDFabContainer auto-hide>
           <MDExtendedFab label="Add document" md-symbol="add" @click="onClickAddDocument" />
-
-          <MDFab tooltip="Create directory" color="tonal-primary" @click="onClickCreateDirectory">
-            <template #icon>
-              <MDSymbol name="create_new_folder" />
-            </template>
-          </MDFab>
         </MDFabContainer>
       </template>
     </RepositoryExplorerWidget>
@@ -150,13 +129,6 @@ const onClickReturnHome = async () => {
       :path="directoryPath"
       @cancel="onCloseCreateDocumentDialog"
       @created="onCloseCreateDocumentDialog"
-    />
-
-    <DirectoryCreateDialog
-      v-if="showCreateDirectoryDialog && createDirectoryParentPath"
-      :path="createDirectoryParentPath"
-      @cancel="onCloseCreateDirectoryDialog"
-      @created="onCloseCreateDirectoryDialog"
     />
   </MDPane>
 </template>

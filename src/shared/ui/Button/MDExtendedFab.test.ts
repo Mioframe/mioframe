@@ -115,4 +115,26 @@ describe('MDExtendedFab', () => {
     expect(slotWrapper.find('.md-extended-fab__icon').exists()).toBe(true);
     expect(slotWrapper.find('[data-testid="slot-icon"]').exists()).toBe(true);
   });
+
+  it('uses BEM modifiers and emits click events', async () => {
+    const wrapper = mount(MDExtendedFab, {
+      props: {
+        label: 'Create',
+        mdSymbol: 'add',
+        size: 'medium',
+        color: 'primary',
+      },
+      global: {
+        stubs: globalStubs,
+      },
+    });
+
+    expect(wrapper.classes()).toContain('md-extended-fab');
+    expect(wrapper.classes()).toContain('md-extended-fab_size_medium');
+    expect(wrapper.classes()).toContain('md-extended-fab_color_primary');
+
+    await wrapper.get('button').trigger('click');
+
+    expect(wrapper.emitted('click')).toHaveLength(1);
+  });
 });
