@@ -115,8 +115,10 @@ const emptySupportingText = computed(() => {
 
 <style scoped>
 .repository-explorer-section {
-  display: grid;
   gap: 8px;
+  display: flex;
+  flex-direction: column;
+  flex-grow: 1;
 
   &__header {
     display: flex;

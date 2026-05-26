@@ -153,10 +153,12 @@ const onReturnHomeClick = () => {
   }
 
   &__content {
-    display: grid;
     align-content: start;
     gap: 24px;
     padding-bottom: 8px;
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
   }
 
   &__error-icon {
