@@ -3,7 +3,10 @@ import { describe, expect, it } from 'vitest';
 import MDExtendedFab from './MDExtendedFab.vue';
 
 const globalStubs = {
-  MDCircularProgressIndicator: { template: '<span data-testid="progress" />' },
+  MDCircularProgressIndicator: {
+    props: ['progress'],
+    template: '<span data-testid="progress" :data-progress="progress" />',
+  },
   MDPlainTooltip: { template: '<span />' },
   MDSymbol: { template: '<span data-testid="symbol" />' },
 };
@@ -68,6 +71,19 @@ describe('MDExtendedFab', () => {
 
     expect(loadingWrapper.find('.md-extended-fab__icon').exists()).toBe(true);
     expect(loadingWrapper.find('[data-testid="progress"]').exists()).toBe(true);
+
+    const zeroProgressWrapper = mount(MDExtendedFab, {
+      props: {
+        label: 'Create',
+        loading: 0,
+      },
+      global: {
+        stubs: globalStubs,
+      },
+    });
+
+    expect(zeroProgressWrapper.find('.md-extended-fab__icon').exists()).toBe(true);
+    expect(zeroProgressWrapper.find('[data-testid="progress"]').attributes('data-progress')).toBe('0');
 
     const symbolWrapper = mount(MDExtendedFab, {
       props: {
