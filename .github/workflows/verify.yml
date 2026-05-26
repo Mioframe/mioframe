@@ -115,32 +115,6 @@ jobs:
         env:
           BASE_REF: ${{ github.base_ref }}
 
-      - name: Detect e2e install need
-        id: e2e_install
-        run: |
-          set -euo pipefail
-
-          if [ -n "${BASE_REF}" ]; then
-            base="$(git merge-base HEAD "origin/${BASE_REF}")"
-            changed_files="$(git diff --name-only --diff-filter=ACMR "${base}...HEAD" --)"
-          elif git rev-parse --verify --quiet HEAD~1 >/dev/null; then
-            changed_files="$(git diff --name-only --diff-filter=ACMR HEAD~1..HEAD --)"
-          else
-            changed_files="$(git ls-files)"
-          fi
-
-          if printf '%s\n' "$changed_files" | awk '
-            $0 == "playwright.config.ts" { found = 1 }
-            /^tests\/e2e\/.*\.ts$/ && !/^tests\/e2e\/visual\// { found = 1 }
-            END { exit found ? 0 : 1 }
-          '; then
-            echo "needed=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "needed=false" >> "$GITHUB_OUTPUT"
-          fi
-        env:
-          BASE_REF: ${{ github.base_ref }}
-
       - uses: pnpm/action-setup@v4
 
       - uses: actions/setup-node@v4
@@ -150,9 +124,6 @@ jobs:
           cache-dependency-path: pnpm-lock.yaml
 
       - run: pnpm install --frozen-lockfile
-      - name: Install Playwright browsers for e2e
-        if: steps.e2e_install.outputs.needed == 'true'
-        run: pnpm e2e:install
       - run: pnpm verify --verbose
 
       - name: Upload verify logs
