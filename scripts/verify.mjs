@@ -283,7 +283,7 @@ function getAllSiblingTestFiles(filePath) {
   try {
     const entries = fs.readdirSync(dirPath, { withFileTypes: true });
 
-  for (const entry of entries) {
+    for (const entry of entries) {
       if (!entry.isFile() || !entry.name.endsWith('.test.ts')) {
         continue;
       }
@@ -814,7 +814,7 @@ function printSummary(changedFiles, scope, results) {
       continue;
     }
 
-  const warningSuffix = result.hasWarnings ? ' (warnings found)' : '';
+    const warningSuffix = result.hasWarnings ? ' (warnings found)' : '';
     console.log(`- ${result.label}: ${result.status}${warningSuffix} (${result.displayCommand})`);
   }
 
