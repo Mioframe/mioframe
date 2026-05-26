@@ -16,11 +16,11 @@ const onClick = () => {
 </script>
 
 <template>
-  <MDButton :label="label" color="text" class="md-navigation-path__item" @click="onClick" />
+  <MDButton :label="label" color="text" class="md-navigation-path-segment-button" @click="onClick" />
 </template>
 
 <style scoped>
-.md-navigation-path__item {
+.md-navigation-path-segment-button {
   --md-button-horizontal-padding: 8px;
 }
 </style>
