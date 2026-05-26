@@ -58,7 +58,11 @@ const emptyText = computed(() =>
       <p class="repository-explorer-files-section__supporting-text">{{ supportingText }}</p>
     </div>
 
-    <MDListContainer is="div" v-if="hasRegularFiles" class="repository-explorer-files-section__list">
+    <MDListContainer
+      is="div"
+      v-if="hasRegularFiles"
+      class="repository-explorer-files-section__list"
+    >
       <FSEntryMDListItem
         v-for="[name, { description, type: nodeType }] in regularFileEntries"
         :key="name"

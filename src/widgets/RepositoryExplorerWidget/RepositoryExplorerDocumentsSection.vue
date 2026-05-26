@@ -70,7 +70,9 @@ const emptySupportingText = computed(() => {
         <h2 id="mioframe-documents-title" class="repository-explorer-documents-section__title">
           Documents
         </h2>
-        <p class="repository-explorer-documents-section__supporting-text">{{ documentCountLabel }}</p>
+        <p class="repository-explorer-documents-section__supporting-text">
+          {{ documentCountLabel }}
+        </p>
       </div>
 
       <MDIconButton

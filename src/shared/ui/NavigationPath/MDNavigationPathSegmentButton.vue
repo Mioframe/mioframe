@@ -16,7 +16,12 @@ const onClick = () => {
 </script>
 
 <template>
-  <MDButton :label="label" color="text" class="md-navigation-path-segment-button" @click="onClick" />
+  <MDButton
+    :label="label"
+    color="text"
+    class="md-navigation-path-segment-button"
+    @click="onClick"
+  />
 </template>
 
 <style scoped>
