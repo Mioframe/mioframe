@@ -87,4 +87,32 @@ describe('MDFab', () => {
     expect(button.find('div').exists()).toBe(false);
     expect(button.find('input, select, textarea, a[href], [role="button"]').exists()).toBe(false);
   });
+
+  it('renders determinate progress when loading is 0', () => {
+    const wrapper = mount(MDFab, {
+      props: {
+        tooltip: 'Create item',
+        mdSymbol: 'add',
+        loading: 0,
+      },
+      global: {
+        stubs: {
+          MDCircularProgressIndicator: {
+            props: ['progress'],
+            template: '<span class="md-circular-progress-indicator-stub">{{ progress }}</span>',
+          },
+          MDPlainTooltip: {
+            template: '<span class="md-plain-tooltip-stub" />',
+          },
+          MDSymbol: {
+            template: '<span class="md-symbol-stub" />',
+          },
+        },
+      },
+    });
+
+    expect(wrapper.find('.md-circular-progress-indicator-stub').exists()).toBe(true);
+    expect(wrapper.find('.md-circular-progress-indicator-stub').text()).toBe('0');
+    expect(wrapper.find('.md-symbol-stub').exists()).toBe(false);
+  });
 });

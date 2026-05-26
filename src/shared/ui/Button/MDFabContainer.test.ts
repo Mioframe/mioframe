@@ -43,6 +43,19 @@ describe('MDFabContainer', () => {
     expect(wrapper.find('.md-fab-container__surface button').text()).toBe('Add document');
   });
 
+  it('keeps the placeholder and floating surface as separate BEM classes', () => {
+    const wrapper = mount(MDFabContainer, {
+      slots: {
+        default: h('button', { type: 'button' }, 'Add document'),
+      },
+    });
+
+    expect(wrapper.classes()).not.toContain('md-fab-container__surface');
+    expect(wrapper.find('.md-fab-container__surface').classes()).toContain(
+      'md-fab-container__surface',
+    );
+  });
+
   it('uses a BEM auto-hide modifier when auto-hide is enabled', () => {
     const wrapper = mount(MDFabContainer, {
       props: {

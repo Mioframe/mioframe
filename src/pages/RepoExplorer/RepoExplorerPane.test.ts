@@ -34,27 +34,36 @@ vi.mock('@feature/directoryCreate', () => ({
   }),
 }));
 
-vi.mock('@feature/documentAdd', () => ({
-  DocumentAddSheet: defineComponent({
-    name: 'DocumentAddSheetStub',
-    emits: ['close', 'selectCreate', 'selectImport'],
+vi.mock('@feature/entryAdd', () => ({
+  EntryAddSheet: defineComponent({
+    name: 'EntryAddSheetStub',
+    emits: ['close', 'selectCreateDirectory', 'selectCreateDocument', 'selectImportDocument'],
     setup(_props, { emit }) {
       return () =>
-        h('div', { 'data-testid': 'document-add-sheet' }, [
+        h('div', { 'data-testid': 'entry-add-sheet' }, [
           h(
             'button',
             {
               onClick: () => {
-                emit('selectCreate');
+                emit('selectCreateDirectory');
               },
             },
-            'Create from sheet',
+            'Create directory from sheet',
           ),
           h(
             'button',
             {
               onClick: () => {
-                emit('selectImport');
+                emit('selectCreateDocument');
+              },
+            },
+            'Create document from sheet',
+          ),
+          h(
+            'button',
+            {
+              onClick: () => {
+                emit('selectImportDocument');
               },
             },
             'Import from sheet',
@@ -258,17 +267,17 @@ describe('RepoExplorerPane', () => {
     document.body.innerHTML = '';
   });
 
-  it('keeps Add document as the only floating action and opens the add sheet', async () => {
+  it('renders one floating Add action and opens the add sheet', async () => {
     const wrapper = await mountPane();
 
     expect(wrapper.text()).toContain('Current directory actions: Create directory');
-    expect(wrapper.text()).toContain('Add document');
-    expect(wrapper.find('button[aria-label="Add document"]').exists()).toBe(true);
+    expect(wrapper.text()).toContain('Add');
+    expect(wrapper.findAll('button[aria-label="Add"]')).toHaveLength(1);
     expect(wrapper.find('button[aria-label="Create directory"]').exists()).toBe(false);
 
-    await wrapper.get('button[aria-label="Add document"]').trigger('click');
+    await wrapper.get('button[aria-label="Add"]').trigger('click');
 
-    expect(wrapper.find('[data-testid="document-add-sheet"]').exists()).toBe(true);
+    expect(wrapper.find('[data-testid="entry-add-sheet"]').exists()).toBe(true);
     expect(wrapper.find('[data-testid="directory-create-dialog"]').exists()).toBe(false);
   });
 
@@ -277,7 +286,7 @@ describe('RepoExplorerPane', () => {
 
     const wrapper = await mountPane();
 
-    expect(wrapper.find('button[aria-label="Add document"]').exists()).toBe(false);
+    expect(wrapper.find('button[aria-label="Add"]').exists()).toBe(false);
     expect(wrapper.find('button[aria-label="Create directory"]').exists()).toBe(false);
   });
 
@@ -285,16 +294,25 @@ describe('RepoExplorerPane', () => {
     const wrapper = await mountPane();
 
     expect(wrapper.text()).toContain('Mioframe');
-    expect(wrapper.find('[data-testid="document-add-sheet"]').exists()).toBe(false);
+    expect(wrapper.find('[data-testid="entry-add-sheet"]').exists()).toBe(false);
     expect(wrapper.find('[data-testid="document-create-dialog"]').exists()).toBe(false);
     expect(wrapper.find('[data-testid="directory-create-dialog"]').exists()).toBe(false);
   });
 
-  it('opens the create document dialog after selecting create from the add sheet', async () => {
+  it('opens the create directory dialog after selecting create directory from the add sheet', async () => {
     const wrapper = await mountPane();
 
-    await wrapper.get('button[aria-label="Add document"]').trigger('click');
-    await wrapper.get('[data-testid="document-add-sheet"] button').trigger('click');
+    await wrapper.get('button[aria-label="Add"]').trigger('click');
+    await wrapper.get('[data-testid="entry-add-sheet"] button').trigger('click');
+
+    expect(wrapper.find('[data-testid="directory-create-dialog"]').exists()).toBe(true);
+  });
+
+  it('opens the create document dialog after selecting create document from the add sheet', async () => {
+    const wrapper = await mountPane();
+
+    await wrapper.get('button[aria-label="Add"]').trigger('click');
+    await wrapper.findAll('[data-testid="entry-add-sheet"] button')[1]?.trigger('click');
 
     expect(wrapper.find('[data-testid="document-create-dialog"]').exists()).toBe(true);
   });
@@ -302,8 +320,8 @@ describe('RepoExplorerPane', () => {
   it('delegates import from the add sheet to the shared import action', async () => {
     const wrapper = await mountPane();
 
-    await wrapper.get('button[aria-label="Add document"]').trigger('click');
-    await wrapper.findAll('[data-testid="document-add-sheet"] button')[1]?.trigger('click');
+    await wrapper.get('button[aria-label="Add"]').trigger('click');
+    await wrapper.findAll('[data-testid="entry-add-sheet"] button')[2]?.trigger('click');
 
     expect(importDocumentMock).toHaveBeenCalledWith('/Google Drive/My Drive/Mioframe');
   });

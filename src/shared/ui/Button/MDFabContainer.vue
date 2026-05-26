@@ -120,34 +120,34 @@ const ariaHidden = useMainContentAriaHidden();
   left: 0;
   flex-shrink: 0;
   width: 100%;
+}
 
-  .md-fab-container__surface {
-    display: flex;
-    pointer-events: none;
-    background-color: transparent;
-    align-items: center;
-    align-self: flex-end;
-    justify-self: flex-end;
-    margin-top: auto;
-    margin-left: auto;
-    padding-bottom: 16px;
-    width: min-content;
-    padding-right: calc(16px - var(--md-pane-margin-x) - var(--md-pane-padding-x));
-    transition-timing-function: var(var(--md-sys-motion-easing-emphasized-decelerate));
-    transition-duration: var(--md-sys-motion-duration-long2);
-    transition-property: transform, opacity;
-  }
+.md-fab-container__surface {
+  display: flex;
+  pointer-events: none;
+  background-color: transparent;
+  align-items: center;
+  align-self: flex-end;
+  justify-self: flex-end;
+  margin-top: auto;
+  margin-left: auto;
+  padding-bottom: 16px;
+  width: min-content;
+  padding-right: calc(16px - var(--md-pane-margin-x) - var(--md-pane-padding-x));
+  transition-timing-function: var(--md-sys-motion-easing-emphasized-decelerate);
+  transition-duration: var(--md-sys-motion-duration-long2);
+  transition-property: transform, opacity;
+}
 
-  .md-fab-container__surface_hidden {
-    pointer-events: none;
-    transition-timing-function: var(var(--md-sys-motion-easing-emphasized-accelerate));
-    transition-duration: var(--md-sys-motion-duration-short4);
-    opacity: 0;
-    transform: translateY(100%) scale(0);
-  }
+.md-fab-container__surface_hidden {
+  pointer-events: none;
+  transition-timing-function: var(--md-sys-motion-easing-emphasized-accelerate);
+  transition-duration: var(--md-sys-motion-duration-short4);
+  opacity: 0;
+  transform: translateY(100%) scale(0);
+}
 
-  :deep(> *) {
-    pointer-events: auto;
-  }
+.md-fab-container__surface :deep(*) {
+  pointer-events: auto;
 }
 </style>

@@ -4,22 +4,29 @@ import { MDBottomSheet, MDBottomSheetSection } from '@shared/ui/Sheets';
 import { MDSymbol } from '@shared/ui/Icon';
 
 const emit = defineEmits<{
-  /** Emitted when the sheet requests closing without choosing a document action. */
+  /** Emitted when the sheet requests closing without choosing an add action. */
   close: [];
-  /** Emitted after the user selects creating a new document. */
-  selectCreate: [];
-  /** Emitted after the user selects importing a JSON document. */
-  selectImport: [];
+  /** Emitted after the user selects creating a document in the current directory. */
+  selectCreateDocument: [];
+  /** Emitted after the user selects importing a document into the current directory. */
+  selectImportDocument: [];
+  /** Emitted after the user selects creating a directory in the current directory. */
+  selectCreateDirectory: [];
 }>();
 
 const onClickCreateDocument = () => {
   emit('close');
-  emit('selectCreate');
+  emit('selectCreateDocument');
 };
 
 const onClickImportDocument = () => {
   emit('close');
-  emit('selectImport');
+  emit('selectImportDocument');
+};
+
+const onClickCreateDirectory = () => {
+  emit('close');
+  emit('selectCreateDirectory');
 };
 
 const onClosed = () => {
@@ -28,17 +35,17 @@ const onClosed = () => {
 </script>
 
 <template>
-  <MDBottomSheet label="Add document" @closed="onClosed">
-    <MDBottomSheetSection class="document-add-sheet">
-      <div class="document-add-sheet__header">
-        <h2 class="document-add-sheet__title">Add document</h2>
-        <p class="document-add-sheet__supporting-text">Choose what to add to this folder.</p>
+  <MDBottomSheet label="Add" @closed="onClosed">
+    <MDBottomSheetSection class="entry-add-sheet">
+      <div class="entry-add-sheet__header">
+        <h2 class="entry-add-sheet__title">Add</h2>
+        <p class="entry-add-sheet__supporting-text">Choose what to add to this folder.</p>
       </div>
 
       <MDListItem
         is="button"
-        headline="Create new document"
-        supporting-text="Create a new document in this folder."
+        headline="Create document"
+        supporting-text="Start a new document."
         @click="onClickCreateDocument"
       >
         <template #leadingIcon>
@@ -49,11 +56,22 @@ const onClosed = () => {
       <MDListItem
         is="button"
         headline="Import document"
-        supporting-text="Import a document from JSON."
+        supporting-text="Import a JSON document."
         @click="onClickImportDocument"
       >
         <template #leadingIcon>
           <MDSymbol name="upload_file" />
+        </template>
+      </MDListItem>
+
+      <MDListItem
+        is="button"
+        headline="Create directory"
+        supporting-text="Add a new folder here."
+        @click="onClickCreateDirectory"
+      >
+        <template #leadingIcon>
+          <MDSymbol name="create_new_folder" />
         </template>
       </MDListItem>
     </MDBottomSheetSection>
@@ -61,15 +79,15 @@ const onClosed = () => {
 </template>
 
 <style scoped>
-.document-add-sheet {
+.entry-add-sheet {
   padding: 0 0 16px;
 }
 
-.document-add-sheet__header {
+.entry-add-sheet__header {
   padding: 0 16px 8px;
 }
 
-.document-add-sheet__title {
+.entry-add-sheet__title {
   margin: 0;
   font-family: var(--md-sys-typescale-headline-small-font);
   font-size: var(--md-sys-typescale-headline-small-size);
@@ -78,7 +96,7 @@ const onClosed = () => {
   letter-spacing: var(--md-sys-typescale-headline-small-tracking);
 }
 
-.document-add-sheet__supporting-text {
+.entry-add-sheet__supporting-text {
   margin: 8px 0 0;
   color: var(--md-sys-color-on-surface-variant);
   font-family: var(--md-sys-typescale-body-medium-font);

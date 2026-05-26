@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { computed, nextTick, ref, toRefs } from 'vue';
+import { DirectoryCreateDialog } from '@feature/directoryCreate';
 import { DocumentCreationDialog } from '@feature/documentCreate';
+import { EntryAddSheet } from '@feature/entryAdd';
 import { MDExtendedFab, MDFabContainer } from '@shared/ui/Button';
 import { useFSNodeStat } from '@entity/fsEntry';
 import { MDPane } from '@shared/ui/Layout';
@@ -14,7 +16,6 @@ import {
   RepositoryExplorerEntryManageButton,
   RepositoryExplorerWidget,
 } from '@widget/RepositoryExplorerWidget';
-import { DocumentAddSheet } from '@feature/documentAdd';
 import { useImportDocumentAction } from '@feature/importDocument';
 
 // eslint-disable-next-line vue/define-props-declaration -- z.infer output is too complex for Vue macro runtime inference
@@ -37,16 +38,22 @@ const onClickPath = async (path: string) => {
   });
 };
 
-const showDocumentAddSheet = ref(false);
+const showEntryAddSheet = ref(false);
+const showCreateDirectoryDialog = ref(false);
 const showCreateDocumentDialog = ref(false);
 const { importDocument } = useImportDocumentAction();
 
-const onClickAddDocument = () => {
-  showDocumentAddSheet.value = true;
+const onClickAdd = () => {
+  showEntryAddSheet.value = true;
 };
 
-const onCloseDocumentAddSheet = () => {
-  showDocumentAddSheet.value = false;
+const onCloseEntryAddSheet = () => {
+  showEntryAddSheet.value = false;
+};
+
+const onSelectCreateDirectory = async () => {
+  await nextTick();
+  showCreateDirectoryDialog.value = true;
 };
 
 const onSelectCreateDocument = async () => {
@@ -56,6 +63,10 @@ const onSelectCreateDocument = async () => {
 
 const onCloseCreateDocumentDialog = () => {
   showCreateDocumentDialog.value = false;
+};
+
+const onCloseCreateDirectoryDialog = () => {
+  showCreateDirectoryDialog.value = false;
 };
 
 const onSelectImportDocument = async () => {
@@ -112,16 +123,24 @@ const onClickReturnHome = async () => {
     >
       <template v-if="canEditDirectoryContents" #after>
         <MDFabContainer auto-hide>
-          <MDExtendedFab label="Add document" md-symbol="add" @click="onClickAddDocument" />
+          <MDExtendedFab label="Add" md-symbol="add" @click="onClickAdd" />
         </MDFabContainer>
       </template>
     </RepositoryExplorerWidget>
 
-    <DocumentAddSheet
-      v-if="showDocumentAddSheet"
-      @close="onCloseDocumentAddSheet"
-      @select-create="onSelectCreateDocument"
-      @select-import="onSelectImportDocument"
+    <EntryAddSheet
+      v-if="showEntryAddSheet"
+      @close="onCloseEntryAddSheet"
+      @select-create-directory="onSelectCreateDirectory"
+      @select-create-document="onSelectCreateDocument"
+      @select-import-document="onSelectImportDocument"
+    />
+
+    <DirectoryCreateDialog
+      v-if="showCreateDirectoryDialog"
+      :path="directoryPath"
+      @cancel="onCloseCreateDirectoryDialog"
+      @created="onCloseCreateDirectoryDialog"
     />
 
     <DocumentCreationDialog

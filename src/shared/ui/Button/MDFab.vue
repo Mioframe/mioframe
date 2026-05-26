@@ -49,6 +49,11 @@ const typeClass = computed(() => {
   return `md-fab_color_${props.color}`;
 });
 
+const hasLoading = computed(() => props.loading !== undefined && props.loading !== false);
+const loadingProgress = computed(() =>
+  typeof props.loading === 'number' ? props.loading : undefined,
+);
+
 const onFabClick = (event: MouseEvent) => {
   event.stopPropagation();
   emit('click', event);
@@ -80,7 +85,7 @@ useRipple(buttonEl);
     <MDStateLayer :hover="hover" :focused="focused" :pressed="durationPressedState" />
 
     <span class="md-fab__icon">
-      <MDCircularProgressIndicator v-if="loading" />
+      <MDCircularProgressIndicator v-if="hasLoading" :progress="loadingProgress" />
 
       <slot v-else name="icon">
         <MDSymbol v-if="mdSymbol" :name="mdSymbol" />

@@ -1,14 +1,45 @@
-import { expect, test } from '@playwright/test';
-import { createDirectory, createUniqueName, launchApp, openDirectory, openOpfs } from './helpers';
+import { expect, type Page, test } from '@playwright/test';
+import { createUniqueName, dismissStorageOnboarding, launchApp, openDirectory } from './helpers';
 
-test('repo explorer keeps document and file actions separate on a compact viewport', async ({
+const browserStorageLabel = /^browser storage$/i;
+
+const openBrowserStorage = async (page: Page) => {
+  await launchApp(page);
+  await dismissStorageOnboarding(page);
+  const opfsButton = page.getByText(browserStorageLabel).first();
+  await expect(opfsButton).toBeVisible();
+  await opfsButton.click();
+  await expect(page).toHaveURL(/Browser%20Storage/i);
+  await expect(page.getByRole('button', { name: /^add$/i })).toBeVisible();
+};
+
+const openAddSheet = async (page: Page) => {
+  await page.getByRole('button', { name: /^add$/i }).click();
+  const addSheet = page.getByRole('dialog', { name: /^add$/i });
+  await expect(addSheet).toBeVisible();
+  return addSheet;
+};
+
+const createDirectoryFromAddSheet = async (page: Page, name: string) => {
+  const addSheet = await openAddSheet(page);
+  await expect(addSheet.getByText(/^create directory$/i)).toBeVisible();
+  await addSheet.getByText(/^create directory$/i).click();
+
+  const dialog = page.getByRole('dialog', { name: /create a new folder/i });
+  await expect(dialog).toBeVisible();
+  await dialog.getByLabel(/folder's name/i).fill(name);
+  await dialog.getByRole('button', { name: /^create$/i }).click();
+  await expect(page.getByText(name, { exact: true })).toBeVisible();
+};
+
+test('repo explorer keeps one primary Add flow and preserves directory creation on a compact viewport', async ({
   page,
 }) => {
   await page.setViewportSize({ width: 360, height: 800 });
-  await launchApp(page);
-  await openOpfs(page);
+  await openBrowserStorage(page);
 
-  const directoryName = await createDirectory(page, createUniqueName('workspace'));
+  const directoryName = createUniqueName('workspace');
+  await createDirectoryFromAddSheet(page, directoryName);
   await openDirectory(page, directoryName);
 
   const currentDirectoryMenu = page.getByRole('button', {
@@ -26,21 +57,31 @@ test('repo explorer keeps document and file actions separate on a compact viewpo
   await expect(page.getByRole('menuitem', { name: /^import json$/i })).toHaveCount(0);
   await page.keyboard.press('Escape');
 
-  await page.getByRole('button', { name: /^add document$/i }).click();
+  const addSheet = await openAddSheet(page);
+  await expect(addSheet.getByText(/^create document$/i)).toBeVisible();
+  await expect(addSheet.getByText(/^import document$/i)).toBeVisible();
+  await expect(addSheet.getByText(/^create directory$/i)).toBeVisible();
 
-  const addSheet = page.getByRole('dialog', { name: /^add document$/i });
-  await expect(addSheet).toBeVisible();
-  await addSheet.getByRole('button', { name: /create new document/i }).click();
+  await addSheet.getByText(/^create directory$/i).click();
   await expect(addSheet).toHaveCount(0);
-  await expect(page.getByRole('dialog', { name: /^create document$/i })).toBeVisible();
+  await expect(page.getByRole('dialog', { name: /create a new folder/i })).toBeVisible();
+  await page.getByRole('button', { name: /^cancel$/i }).click();
+
+  await openAddSheet(page);
+  await page
+    .getByRole('dialog', { name: /^add$/i })
+    .getByText(/^create document$/i)
+    .click();
+  const createDocumentDialog = page.getByRole('dialog', { name: /^create document$/i });
+  await expect(createDocumentDialog).toBeVisible();
+  await createDocumentDialog.getByRole('button', { name: /^cancel$/i }).click();
 });
 
 test('repo explorer breadcrumb remains horizontally scrollable on a compact viewport', async ({
   page,
 }) => {
   await page.setViewportSize({ width: 360, height: 800 });
-  await launchApp(page);
-  await openOpfs(page);
+  await openBrowserStorage(page);
 
   const pathNames = [
     createUniqueName('workspace collection'),
@@ -51,7 +92,7 @@ test('repo explorer breadcrumb remains horizontally scrollable on a compact view
   for (const pathName of pathNames) {
     // Each step depends on the previous directory being created and opened first.
     // eslint-disable-next-line no-await-in-loop -- each created directory becomes the next navigation target
-    await createDirectory(page, pathName);
+    await createDirectoryFromAddSheet(page, pathName);
     // eslint-disable-next-line no-await-in-loop -- each directory must open before the next child is created
     await openDirectory(page, pathName);
   }
