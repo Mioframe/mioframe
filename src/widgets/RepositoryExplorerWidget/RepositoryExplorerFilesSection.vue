@@ -52,13 +52,13 @@ const emptyText = computed(() =>
 </script>
 
 <template>
-  <section class="repository-explorer-section" aria-labelledby="mioframe-files-title">
-    <div class="repository-explorer-section__copy">
-      <h2 id="mioframe-files-title" class="repository-explorer-section__title">Files</h2>
-      <p class="repository-explorer-section__supporting-text">{{ supportingText }}</p>
+  <section class="repository-explorer-files-section" aria-labelledby="mioframe-files-title">
+    <div class="repository-explorer-files-section__copy">
+      <h2 id="mioframe-files-title" class="repository-explorer-files-section__title">Files</h2>
+      <p class="repository-explorer-files-section__supporting-text">{{ supportingText }}</p>
     </div>
 
-    <MDListContainer is="div" v-if="hasRegularFiles" class="repository-explorer-section__list">
+    <MDListContainer is="div" v-if="hasRegularFiles" class="repository-explorer-files-section__list">
       <FSEntryMDListItem
         v-for="[name, { description, type: nodeType }] in regularFileEntries"
         :key="name"
@@ -66,7 +66,7 @@ const emptyText = computed(() =>
         :name="name"
         :supporting-text="description"
         :type="nodeType"
-        class="repository-explorer-section__list-item"
+        class="repository-explorer-files-section__list-item"
         @click="onClickEntry"
       >
         <template #trailingIcon>
@@ -79,12 +79,12 @@ const emptyText = computed(() =>
       </FSEntryMDListItem>
     </MDListContainer>
 
-    <p v-else class="repository-explorer-section__empty-text">{{ emptyText }}</p>
+    <p v-else class="repository-explorer-files-section__empty-text">{{ emptyText }}</p>
   </section>
 </template>
 
 <style scoped>
-.repository-explorer-section {
+.repository-explorer-files-section {
   display: grid;
   gap: 8px;
 
