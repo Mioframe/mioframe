@@ -39,7 +39,11 @@ const slots = useSlots();
 
 const sizeClass = computed(() => `md-extended-fab_${props.size}`);
 const typeClass = computed(() => `md-extended-fab_${props.color}`);
-const hasIconContent = computed(() => Boolean(props.loading || props.mdSymbol || slots.icon));
+const hasLoading = computed(() => props.loading !== undefined && props.loading !== false);
+const loadingProgress = computed(() =>
+  typeof props.loading === 'number' ? props.loading : undefined,
+);
+const hasIconContent = computed(() => hasLoading.value || Boolean(props.mdSymbol || slots.icon));
 
 const onFabClick = (event: MouseEvent) => {
   event.stopPropagation();
@@ -72,7 +76,7 @@ useRipple(buttonEl);
     <MDStateLayer :hover="hover" :focused="focused" :pressed="durationPressedState" />
 
     <span v-if="hasIconContent" class="md-extended-fab__icon">
-      <MDCircularProgressIndicator v-if="loading" />
+      <MDCircularProgressIndicator v-if="hasLoading" :progress="loadingProgress" />
 
       <slot v-else name="icon">
         <MDSymbol v-if="mdSymbol" :name="mdSymbol" />
