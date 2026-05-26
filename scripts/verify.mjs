@@ -43,7 +43,7 @@ const IGNORED_PREFIXES = [
   'test-results/',
   '.stryker-tmp/',
 ];
-const CI_AUTOFIX_IGNORED_PREFIXES = ['.github/'];
+const FORMAT_LINT_IGNORED_PREFIXES = ['.github/'];
 
 function toPosixPath(filePath) {
   return filePath.split(path.sep).join(path.posix.sep);
@@ -55,8 +55,8 @@ function isIgnored(filePath) {
   );
 }
 
-function isCiAutofixIgnored(filePath) {
-  return CI_AUTOFIX_IGNORED_PREFIXES.some(
+function isFormatLintIgnored(filePath) {
+  return FORMAT_LINT_IGNORED_PREFIXES.some(
     (prefix) => filePath === prefix.slice(0, -1) || filePath.startsWith(prefix),
   );
 }
@@ -605,13 +605,13 @@ async function runCommand(label, command, args) {
 
 function buildCommands(changedFiles) {
   const existingChangedFiles = changedFiles.filter(fileExists);
-  const fixerChangedFiles = isFixOnlyMode
-    ? existingChangedFiles.filter((filePath) => !isCiAutofixIgnored(filePath))
-    : existingChangedFiles;
-  const formattableFiles = fixerChangedFiles.filter((filePath) =>
+  const formatLintFiles = existingChangedFiles.filter(
+    (filePath) => !isFormatLintIgnored(filePath),
+  );
+  const formattableFiles = formatLintFiles.filter((filePath) =>
     FORMATTABLE_EXTENSIONS.has(path.posix.extname(filePath)),
   );
-  const lintableFiles = fixerChangedFiles.filter((filePath) =>
+  const lintableFiles = formatLintFiles.filter((filePath) =>
     LINTABLE_EXTENSIONS.has(path.posix.extname(filePath)),
   );
   const vitestScope = getVitestScope(changedFiles);
