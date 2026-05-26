@@ -64,11 +64,13 @@ const emptySupportingText = computed(() => {
 </script>
 
 <template>
-  <section class="repository-explorer-section" aria-labelledby="mioframe-documents-title">
-    <div class="repository-explorer-section__header">
-      <div class="repository-explorer-section__copy">
-        <h2 id="mioframe-documents-title" class="repository-explorer-section__title">Documents</h2>
-        <p class="repository-explorer-section__supporting-text">{{ documentCountLabel }}</p>
+  <section class="repository-explorer-documents-section" aria-labelledby="mioframe-documents-title">
+    <div class="repository-explorer-documents-section__header">
+      <div class="repository-explorer-documents-section__copy">
+        <h2 id="mioframe-documents-title" class="repository-explorer-documents-section__title">
+          Documents
+        </h2>
+        <p class="repository-explorer-documents-section__supporting-text">{{ documentCountLabel }}</p>
       </div>
 
       <MDIconButton
@@ -81,7 +83,7 @@ const emptySupportingText = computed(() => {
     <MDListContainer
       is="div"
       v-if="documentIds.length > 0"
-      class="repository-explorer-section__list"
+      class="repository-explorer-documents-section__list"
     >
       <CFRDocumentMDListItem
         is="button"
@@ -89,7 +91,7 @@ const emptySupportingText = computed(() => {
         :key="documentId"
         :document-id="documentId"
         :path="directoryPath"
-        class="repository-explorer-section__list-item"
+        class="repository-explorer-documents-section__list-item"
         @click="onSelectDocument"
       >
         <template #trailingIcon>
@@ -100,7 +102,7 @@ const emptySupportingText = computed(() => {
 
     <MDEmptyState
       v-else-if="emptyHeadline"
-      class="repository-explorer-section__empty-state"
+      class="repository-explorer-documents-section__empty-state"
       :headline="emptyHeadline"
       :supporting-text="emptySupportingText ?? ''"
     >
@@ -114,7 +116,7 @@ const emptySupportingText = computed(() => {
 </template>
 
 <style scoped>
-.repository-explorer-section {
+.repository-explorer-documents-section {
   gap: 8px;
   display: flex;
   flex-direction: column;
