@@ -53,6 +53,36 @@ vi.mock('../Button', () => ({
   }),
 }));
 
+vi.mock('./MDNavigationPathSegmentButton.vue', () => ({
+  default: defineComponent({
+    name: 'MDNavigationPathSegmentButtonStub',
+    props: {
+      label: {
+        type: String,
+        required: true,
+      },
+      path: {
+        type: String,
+        required: true,
+      },
+    },
+    emits: ['click'],
+    setup(props, { emit }) {
+      return () =>
+        h(
+          'button',
+          {
+            type: 'button',
+            onClick: () => {
+              emit('click', props.path);
+            },
+          },
+          props.label,
+        );
+    },
+  }),
+}));
+
 vi.mock('../Icon', () => ({
   MDSymbol: defineComponent({
     name: 'MDSymbolStub',
@@ -62,7 +92,7 @@ vi.mock('../Icon', () => ({
   }),
 }));
 
-const mountNavigationPath = async (props: { path: string; omitCurrent?: boolean }) => {
+const mountNavigationPath = async (props: { path: string; hideCurrent?: boolean }) => {
   const { default: MDNavigationPath } = await import('./MDNavigationPath.vue');
 
   return mount(MDNavigationPath, {
@@ -75,7 +105,7 @@ describe('MDNavigationPath', () => {
     document.body.innerHTML = '';
   });
 
-  it('omits the current folder from the breadcrumb by default', async () => {
+  it('renders the current folder in the breadcrumb by default', async () => {
     const wrapper = await mountNavigationPath({
       path: '/Google Drive/My Drive/Projects/Mioframe',
     });
@@ -83,13 +113,14 @@ describe('MDNavigationPath', () => {
     expect(wrapper.text()).toContain('Google Drive');
     expect(wrapper.text()).toContain('My Drive');
     expect(wrapper.text()).toContain('Projects');
+    expect(wrapper.text()).toContain('Mioframe');
     expect(wrapper.text()).not.toContain('Home');
-    expect(wrapper.text()).not.toContain('Mioframe');
   });
 
-  it('renders only parent segments for a nested path without an extra root item', async () => {
+  it('hides the current folder when hideCurrent is true', async () => {
     const wrapper = await mountNavigationPath({
       path: '/Documents/Project',
+      hideCurrent: true,
     });
 
     const labels = wrapper.findAll('button').map((button) => button.text());
@@ -111,12 +142,23 @@ describe('MDNavigationPath', () => {
   it('does not render an empty-label path button', async () => {
     const wrapper = await mountNavigationPath({
       path: '/Documents/Project',
-      omitCurrent: false,
+      hideCurrent: false,
     });
 
     const pathButtons = wrapper.findAll('button').slice(1);
 
     expect(pathButtons.every((button) => button.text().trim().length > 0)).toBe(true);
+  });
+
+  it('renders the current segment when hideCurrent is false', async () => {
+    const wrapper = await mountNavigationPath({
+      path: '/Documents/Project',
+      hideCurrent: false,
+    });
+
+    const labels = wrapper.findAll('button').map((button) => button.text());
+
+    expect(labels).toEqual(['icon', 'Documents', 'Project']);
   });
 
   it('emits clickHome from the home icon', async () => {

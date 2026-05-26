@@ -6,7 +6,6 @@ const meta = {
   component: MDExtendedFab,
   args: {
     label: 'Add',
-    color: 'primary',
     mdSymbol: 'add',
   },
   argTypes: {
@@ -14,6 +13,12 @@ const meta = {
   },
   parameters: {
     layout: 'centered',
+    docs: {
+      description: {
+        component:
+          'Checked against Material 3 `components/extended-fab/guidelines` and `components/extended-fab/specs`.',
+      },
+    },
   },
 } satisfies Meta<typeof MDExtendedFab>;
 
@@ -30,9 +35,9 @@ export const VisualStates: Story = {
     template: `
         <div data-testid="visual-md-extended-fab-states" class="visual-surface">
         <div class="visual-row">
-          <MDExtendedFab label="Add" color="primary" md-symbol="add" />
-          <MDExtendedFab label="Share" color="secondary" md-symbol="share" />
-          <MDExtendedFab label="Archive" color="tonal-primary" md-symbol="archive" />
+          <MDExtendedFab label="Add" md-symbol="add" />
+          <MDExtendedFab label="Share" color="tonal-secondary" md-symbol="share" />
+          <MDExtendedFab label="Archive" color="primary" md-symbol="archive" />
         </div>
       </div>
     `,

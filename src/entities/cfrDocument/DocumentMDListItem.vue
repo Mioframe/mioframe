@@ -15,7 +15,7 @@ const props = defineProps<{
 }>();
 
 const emit = defineEmits<{
-  click: [e: MouseEvent];
+  click: [documentId: AMDocumentId];
 }>();
 
 const slots = defineSlots<{
@@ -32,8 +32,8 @@ const documentName = computed(() => documentDescription.value?.name);
 
 const headline = computed(() => documentName.value ?? 'Untitled Document');
 
-const onListItemClick = (event: MouseEvent) => {
-  emit('click', event);
+const onListItemClick = () => {
+  emit('click', documentId.value);
 };
 </script>
 

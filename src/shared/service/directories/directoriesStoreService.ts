@@ -22,14 +22,12 @@ import type { DirectoryDescription, EntryDescription } from './types';
 import { EntryNotDirectoryError, EntryNotFoundError } from './types';
 import { defineSubscribeByQueryService } from '@shared/lib/subscriptions/subscribeService';
 import { DomainError } from '@shared/lib/error';
-import { zodCheck } from '@shared/lib/validateZodScheme';
 import { entryPath, PATH_SEPARATOR, pathToString, stringPath, stringToPath } from './path';
 import type {
   DirectoryFSEntryState,
   ReadonlyDirectoryFSEntryState,
 } from '@shared/lib/fileSystem/directoryFSEntryState';
 import type { StaticDirectoryFSEntry } from '@shared/lib/fileSystem/DirectoryFSEntry';
-import { zodAutomergeFileName } from '@shared/lib/automergeAdapter';
 
 const setupDirectoryStoreService = () => {
   const stateEntries: StrictRecord<
@@ -300,10 +298,7 @@ const setupDirectoryStoreService = () => {
     path: entry.path,
   });
 
-  const directoryToDescription = (
-    entry: DirectoryFSEntryState,
-    { showAutomergeFiles }: { showAutomergeFiles?: boolean | undefined } = {},
-  ): DirectoryDescription => {
+  const directoryToDescription = (entry: DirectoryFSEntryState): DirectoryDescription => {
     return {
       name: entry.name,
       type: entry.type,
@@ -311,11 +306,6 @@ const setupDirectoryStoreService = () => {
       entries: Array.from(strictRecordIterableEntries(entry.entries)()).reduce(
         (acc: EntryDescription[], [, v]) => {
           const description = entryToDescription(v);
-
-          if (!showAutomergeFiles && zodCheck(zodAutomergeFileName, description.name)) {
-            return acc;
-          }
-
           acc.push(description);
 
           return acc;
@@ -340,10 +330,7 @@ const setupDirectoryStoreService = () => {
   };
 
   const subscribeEntry = defineSubscribeByQueryService(
-    (
-      path: EntryPath,
-      { showAutomergeFiles }: { showAutomergeFiles?: boolean | undefined } = {},
-    ): EntryDescription | DirectoryDescription | undefined | DomainError => {
+    (path: EntryPath): EntryDescription | DirectoryDescription | undefined | DomainError => {
       const entry = getEntry(path);
 
       if (entry instanceof DomainError) {
@@ -354,7 +341,7 @@ const setupDirectoryStoreService = () => {
         if (entry.type === 'file') {
           return entryToDescription(entry);
         }
-        return directoryToDescription(entry, { showAutomergeFiles });
+        return directoryToDescription(entry);
       }
       return undefined;
     },

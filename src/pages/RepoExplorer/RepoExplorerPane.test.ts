@@ -73,15 +73,6 @@ vi.mock('@feature/documentAdd', () => ({
   }),
 }));
 
-vi.mock('@feature/entryManage', () => ({
-  FSEntryManageMenuButton: defineComponent({
-    name: 'FSEntryManageMenuButtonStub',
-    setup() {
-      return () => h('button', 'Current directory actions');
-    },
-  }),
-}));
-
 vi.mock('@feature/documentCreate', () => ({
   DocumentCreationDialog: defineComponent({
     name: 'DocumentCreationDialogStub',
@@ -213,6 +204,25 @@ vi.mock('@shared/ui/Icon', () => ({
 }));
 
 vi.mock('@widget/RepositoryExplorerWidget', () => ({
+  RepositoryExplorerEntryManageButton: defineComponent({
+    name: 'RepositoryExplorerEntryManageButtonStub',
+    props: {
+      showDocumentActions: {
+        type: Boolean,
+        default: false,
+      },
+    },
+    setup(props) {
+      return () =>
+        h(
+          'button',
+          {
+            type: 'button',
+          },
+          props.showDocumentActions ? 'Nested directory actions' : 'Current directory actions',
+        );
+    },
+  }),
   RepositoryExplorerWidget: defineComponent({
     name: 'RepositoryExplorerWidgetStub',
     emits: ['clickPath', 'clickReturnHome', 'clickDocument'],
@@ -278,7 +288,7 @@ describe('RepoExplorerPane', () => {
     const wrapper = await mountPane();
 
     expect(wrapper.text()).toContain('Current directory actions');
-    expect(wrapper.text()).toContain('Add');
+    expect(wrapper.text()).toContain('Add document');
     expect(wrapper.find('button[aria-label="Add document"]').exists()).toBe(true);
     expect(wrapper.find('button[aria-label="Create directory"]').exists()).toBe(true);
 

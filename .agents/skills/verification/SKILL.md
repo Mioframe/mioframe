@@ -17,6 +17,10 @@ pnpm verify
 
 Do not replace the final read-only check with manually selected commands. Do not use `--fix` for the final check.
 
+A local coding agent must not report "done", "fixed", "ready", or equivalent completion after code edits unless it includes the final local `pnpm verify` result. If `pnpm verify` was not run, the work is not complete; say `not run`, explain why, and list the exact remaining command.
+
+Local coding agents work only with repository files and local commands. Do not treat GitHub CI, PR threads, PR metadata, reviewer requests, or bot comments as actions the local coding agent can complete. Leave GitHub state for the reviewer unless the user explicitly assigns GitHub work to a GitHub-capable assistant.
+
 ## When to use fix mode
 
 Use fix mode only when automatic formatting or lint fixes are useful:

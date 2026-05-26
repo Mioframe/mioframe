@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { SaveStatusButton } from '@feature/saveStatusButton';
+import { VfsActivityStatusChip } from '@feature/vfsActivityStatus';
 import { useStackNavigation } from '@page/routes';
 import { MDSplitLayout } from '@shared/ui/Layout';
 import { defineNavigationButton, type NavigationButton } from '@shared/ui/Navigation';
@@ -66,7 +66,7 @@ const onClickBack = () => {
     @click-back="onClickBack"
   >
     <template #appBarTrailing>
-      <SaveStatusButton />
+      <VfsActivityStatusChip />
     </template>
   </MDSplitLayout>
 </template>

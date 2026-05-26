@@ -1,25 +1,25 @@
 <script setup lang="ts">
 import { computed, toRefs } from 'vue';
-import { MDButton, MDIconButton } from '../Button';
+import { MDIconButton } from '../Button';
 import { MDSymbol } from '../Icon';
 import { PathUtils } from '@shared/lib/virtualFileSystem';
+import MDNavigationPathSegmentButton from './MDNavigationPathSegmentButton.vue';
 
-const props = withDefaults(
-  defineProps<{
-    path: string;
-    omitCurrent?: boolean | undefined;
-  }>(),
-  {
-    omitCurrent: true,
-  },
-);
+const props = defineProps<{
+  /** Absolute path rendered as clickable breadcrumb segments. */
+  path: string;
+  /** Hides the current path segment when the parent surface already renders the current item. */
+  hideCurrent?: boolean | undefined;
+}>();
 
 const emit = defineEmits<{
+  /** Emitted when the user selects a breadcrumb segment. */
   click: [path: string];
+  /** Emitted when the user selects the root/home navigation action. */
   clickHome: [];
 }>();
 
-const { path, omitCurrent } = toRefs(props);
+const { path, hideCurrent } = toRefs(props);
 
 const pathSegments = computed(() =>
   PathUtils.split(path.value).map((name, index, array) => ({
@@ -29,7 +29,7 @@ const pathSegments = computed(() =>
 );
 
 const visibleSegments = computed(() =>
-  omitCurrent.value ? pathSegments.value.slice(0, -1) : pathSegments.value,
+  hideCurrent.value === true ? pathSegments.value.slice(0, -1) : pathSegments.value,
 );
 
 const onClickHome = () => {
@@ -53,12 +53,7 @@ const onClickPath = (targetPath: string) => {
     <template v-for="{ name, path: segmentPath } in visibleSegments" :key="segmentPath">
       <MDSymbol class="md-navigation-path__separator" name="chevron_right" />
 
-      <MDButton
-        :label="name"
-        color="text"
-        class="md-navigation-path__item"
-        @click="() => onClickPath(segmentPath)"
-      />
+      <MDNavigationPathSegmentButton :label="name" :path="segmentPath" @click="onClickPath" />
     </template>
   </div>
 </template>
@@ -79,13 +74,8 @@ const onClickPath = (targetPath: string) => {
   }
 
   &__home-button,
-  &__item,
   &__separator {
     flex-shrink: 0;
-  }
-
-  &__item {
-    --md-button-horizontal-padding: 8px;
   }
 
   &__separator {

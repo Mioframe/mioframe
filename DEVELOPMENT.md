@@ -132,6 +132,9 @@ Agent workflow:
 - The final completion check is always read-only `pnpm verify`.
 - Read the final `VERIFY RESULT` summary.
 - If verification fails, fix failures caused by the change, or report the exact failing command and output.
+- Same-repository CI autofix commits require the `BEAVER_CI_AUTOFIX_TOKEN` repository secret; without it, CI may still run read-only verification but must not push autofix commits.
+- If CI pushes an autofix commit, pull or rebase before continuing local work so your branch matches the new head.
+- CI autofix never updates visual snapshots; use `pnpm test:visual:update` in the canonical visual flow for that.
 
 To verify the full current feature branch against its parent branch locally:
 

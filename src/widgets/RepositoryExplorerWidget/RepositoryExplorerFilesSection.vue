@@ -1,58 +1,85 @@
 <script setup lang="ts">
 import { FSEntryMDListItem } from '@entity/fsEntry';
-import { FSEntryManageMenuButton } from '@feature/entryManage';
-import { FSNodeType, PathUtils } from '@shared/lib/virtualFileSystem';
+import { FSNodeType, PathUtils, type FSNodeStat } from '@shared/lib/virtualFileSystem';
 import { MDListContainer } from '@shared/ui/Lists';
-import type { MioframeDirectoryEntry } from '@entity/mioframeSpaceDirectory';
 import { computed } from 'vue';
+import RepositoryExplorerEntryManageButton from './RepositoryExplorerEntryManageButton.vue';
+
+type RepositoryExplorerFileEntry = readonly [name: string, stat: FSNodeStat];
 
 const props = defineProps<{
   directoryPath: string;
-  visibleFileEntries: readonly MioframeDirectoryEntry[];
+  hideAutomergeFiles: boolean;
+  regularFileEntries: readonly RepositoryExplorerFileEntry[];
 }>();
 
 const emit = defineEmits<{
   selectPath: [path: string];
 }>();
 
-const hasVisibleFiles = computed(() => props.visibleFileEntries.length > 0);
+const hasRegularFiles = computed(() => props.regularFileEntries.length > 0);
 
-const onClickDirectoryEntry = (name: string, fileType: FSNodeType) => {
-  if (fileType === FSNodeType.Directory) {
-    emit('selectPath', PathUtils.join(props.directoryPath, name));
+const visibleDirectoryNames = computed(
+  () =>
+    new Set(
+      props.regularFileEntries.flatMap(([name, { type }]) =>
+        type === FSNodeType.Directory ? [name] : [],
+      ),
+    ),
+);
+
+const isDirectoryEntry = (name: string) => visibleDirectoryNames.value.has(name);
+
+const onClickEntry = (name: string) => {
+  if (!isDirectoryEntry(name)) {
+    return;
   }
+
+  emit('selectPath', PathUtils.join(props.directoryPath, name));
 };
+
+const supportingText = computed(() =>
+  props.hideAutomergeFiles
+    ? 'Regular files and folders. Mioframe service files are hidden.'
+    : 'Regular files, folders, and Mioframe document files.',
+);
+
+const emptyText = computed(() =>
+  props.hideAutomergeFiles
+    ? 'No regular files or folders to show. Mioframe service files are hidden.'
+    : 'No regular files, folders, or Mioframe document files to show.',
+);
 </script>
 
 <template>
   <section class="repository-explorer-section" aria-labelledby="mioframe-files-title">
     <div class="repository-explorer-section__copy">
       <h2 id="mioframe-files-title" class="repository-explorer-section__title">Files</h2>
-      <p class="repository-explorer-section__supporting-text">
-        Regular files and folders. Mioframe service files are hidden.
-      </p>
+      <p class="repository-explorer-section__supporting-text">{{ supportingText }}</p>
     </div>
 
-    <MDListContainer is="div" v-if="hasVisibleFiles" class="repository-explorer-section__list">
+    <MDListContainer is="div" v-if="hasRegularFiles" class="repository-explorer-section__list">
       <FSEntryMDListItem
-        v-for="[name, { description, type: nodeType }] in visibleFileEntries"
+        v-for="[name, { description, type: nodeType }] in regularFileEntries"
         :key="name"
-        is-button
+        :is-button="nodeType === FSNodeType.Directory"
         :name="name"
         :supporting-text="description"
         :type="nodeType"
         class="repository-explorer-section__list-item"
-        @click="() => onClickDirectoryEntry(name, nodeType)"
+        @click="onClickEntry"
       >
         <template #trailingIcon>
-          <FSEntryManageMenuButton :path="PathUtils.join(directoryPath, name)" />
+          <RepositoryExplorerEntryManageButton
+            :path="PathUtils.join(directoryPath, name)"
+            :entry-type="nodeType"
+            :show-document-actions="nodeType === FSNodeType.Directory"
+          />
         </template>
       </FSEntryMDListItem>
     </MDListContainer>
 
-    <p v-else class="repository-explorer-section__empty-text">
-      No regular files or folders to show. Mioframe service files are hidden.
-    </p>
+    <p v-else class="repository-explorer-section__empty-text">{{ emptyText }}</p>
   </section>
 </template>
 

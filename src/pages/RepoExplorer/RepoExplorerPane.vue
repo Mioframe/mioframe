@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, nextTick, ref, toRefs } from 'vue';
 import { DirectoryCreateDialog } from '@feature/directoryCreate';
+import { DocumentCreationDialog } from '@feature/documentCreate';
 import { MDExtendedFab, MDFab, MDFabContainer } from '@shared/ui/Button';
 import { MDSymbol } from '@shared/ui/Icon';
 import { useFSNodeStat } from '@entity/fsEntry';
@@ -10,11 +11,12 @@ import type { AMDocumentId } from '@shared/lib/automerge/automergeTypes';
 import { useStackNavigation } from '@page/routes';
 import { zodToVueProps } from '@shared/lib/zodToVueProps';
 import { zodQuery } from './model';
-import { PathUtils } from '@shared/lib/virtualFileSystem';
-import { FSEntryManageMenuButton } from '@feature/entryManage';
-import { RepositoryExplorerWidget } from '@widget/RepositoryExplorerWidget';
+import { FSNodeType, PathUtils } from '@shared/lib/virtualFileSystem';
+import {
+  RepositoryExplorerEntryManageButton,
+  RepositoryExplorerWidget,
+} from '@widget/RepositoryExplorerWidget';
 import { DocumentAddSheet } from '@feature/documentAdd';
-import { DocumentCreationDialog } from '@feature/documentCreate';
 import { useImportDocumentAction } from '@feature/importDocument';
 
 // eslint-disable-next-line vue/define-props-declaration -- z.infer output is too complex for Vue macro runtime inference
@@ -27,13 +29,16 @@ defineSlots<{
 
 const { repoPath: directoryPath } = toRefs(props);
 
+const showCreateDirectoryDialog = ref(false);
 const createDirectoryParentPath = ref<string>();
 
 const onClickCreateDirectory = () => {
+  showCreateDirectoryDialog.value = true;
   createDirectoryParentPath.value = directoryPath.value;
 };
 
 const onCloseCreateDirectoryDialog = () => {
+  showCreateDirectoryDialog.value = false;
   createDirectoryParentPath.value = undefined;
 };
 
@@ -105,7 +110,11 @@ const onClickReturnHome = async () => {
       </template>
 
       <template #trailingElements>
-        <FSEntryManageMenuButton :path="directoryPath" />
+        <RepositoryExplorerEntryManageButton
+          :path="directoryPath"
+          :entry-type="FSNodeType.Directory"
+        />
+
         <slot name="appBarTrailing" />
       </template>
     </MDAppBar>
@@ -118,12 +127,7 @@ const onClickReturnHome = async () => {
     >
       <template v-if="canEditDirectoryContents" #after>
         <MDFabContainer auto-hide>
-          <MDExtendedFab
-            label="Add document"
-            color="primary"
-            md-symbol="add"
-            @click="onClickAddDocument"
-          />
+          <MDExtendedFab label="Add document" md-symbol="add" @click="onClickAddDocument" />
 
           <MDFab tooltip="Create directory" color="tonal-primary" @click="onClickCreateDirectory">
             <template #icon>
@@ -142,14 +146,14 @@ const onClickReturnHome = async () => {
     />
 
     <DocumentCreationDialog
-      v-if="directoryPath && showCreateDocumentDialog"
+      v-if="showCreateDocumentDialog"
       :path="directoryPath"
       @cancel="onCloseCreateDocumentDialog"
       @created="onCloseCreateDocumentDialog"
     />
 
     <DirectoryCreateDialog
-      v-if="createDirectoryParentPath"
+      v-if="showCreateDirectoryDialog && createDirectoryParentPath"
       :path="createDirectoryParentPath"
       @cancel="onCloseCreateDirectoryDialog"
       @created="onCloseCreateDirectoryDialog"

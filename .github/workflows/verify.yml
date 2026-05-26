@@ -7,13 +7,97 @@ on:
       - main
 
 jobs:
-  verify:
+  autofix:
+    if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+
+    steps:
+      # Check out the real PR branch, not the synthetic merge ref, so safe fixer output
+      # can be committed back to the branch under review.
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.ref }}
+          persist-credentials: false
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+      - name: Run autofix fixers
+        id: autofix_verify
+        run: |
+          set +e
+          pnpm ci:autofix
+          status=$?
+          set -e
+          echo "exit_code=$status" >> "$GITHUB_OUTPUT"
+
+      - name: Handle autofix changes
+        run: |
+          if git diff --quiet --exit-code; then
+            status="${{ steps.autofix_verify.outputs.exit_code }}"
+
+            if [ "$status" -ne 0 ]; then
+              echo "pnpm ci:autofix failed without producing mechanical changes."
+            fi
+
+            exit "$status"
+          fi
+
+          if [ -z "${BEAVER_CI_AUTOFIX_TOKEN}" ]; then
+            echo "pnpm ci:autofix produced mechanical changes, but CI cannot commit them without BEAVER_CI_AUTOFIX_TOKEN."
+            echo "Add the repository secret to enable CI autofix commits, or rerun without expecting autofix pushes."
+            exit 1
+          fi
+
+          remote_url="https://x-access-token:${BEAVER_CI_AUTOFIX_TOKEN}@github.com/${{ github.repository }}.git"
+
+          # Use the standard GitHub Actions bot noreply identity for automation commits.
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "chore: apply CI autofix"
+          git push "$remote_url" HEAD:${{ github.event.pull_request.head.ref }}
+          echo "Autofix commit pushed; waiting for a new workflow run on the updated head."
+          exit 1
+        env:
+          BEAVER_CI_AUTOFIX_TOKEN: ${{ secrets.BEAVER_CI_AUTOFIX_TOKEN }}
+
+      - name: Upload autofix logs
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: autofix-logs
+          path: .verify/logs/
+          if-no-files-found: ignore
+          retention-days: 7
+
+  verify:
+    needs:
+      - autofix
+    if: always() && (needs.autofix.result == 'success' || needs.autofix.result == 'skipped')
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
 
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.head.ref || github.ref }}
+
+      - name: Fetch pull request base branch
+        if: github.event_name == 'pull_request'
+        run: git fetch --no-tags origin "refs/heads/${BASE_REF}:refs/remotes/origin/${BASE_REF}"
+        env:
+          BASE_REF: ${{ github.base_ref }}
 
       - uses: pnpm/action-setup@v4
 

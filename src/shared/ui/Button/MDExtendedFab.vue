@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, useTemplateRef } from 'vue';
+import { computed, useSlots, useTemplateRef } from 'vue';
 import { MDCircularProgressIndicator } from '../ProgressIndicators';
 import { MDPlainTooltip } from '../Tooltips';
 import { MDStateLayer, useRipple, useStateLayer } from '../State';
@@ -7,7 +7,9 @@ import { MDSymbol } from '../Icon';
 
 const props = withDefaults(
   defineProps<{
+    /** Material Extended FAB size variant. */
     size?: 'small' | 'medium' | 'large' | undefined;
+    /** Material Extended FAB color role. Tonal primary is the shared default for this surface. */
     color?:
       | 'primary'
       | 'secondary'
@@ -16,27 +18,43 @@ const props = withDefaults(
       | 'tonal-secondary'
       | 'tonal-tertiary'
       | undefined;
+    /** Visible text label rendered inside the Extended FAB. */
     label: string;
+    /** Optional tooltip text. When present, it is also used as the accessible name. */
     tooltip?: string | undefined;
+    /**
+     * Loading state for the action. `true` shows indeterminate progress; a number shows
+     * determinate progress and keeps `0` visible as an active loading state.
+     */
     loading?: number | boolean | undefined;
+    /** Optional Material Symbols icon name used when no custom icon slot is provided. */
     mdSymbol?: string | undefined;
   }>(),
   {
-    color: 'primary',
+    color: 'tonal-primary',
     size: 'small',
   },
 );
 
 const emit = defineEmits<{
+  /** Emitted after native click handling is stopped from bubbling to parent action surfaces. */
   click: [payload: MouseEvent];
 }>();
 
 defineSlots<{
+  /** Optional icon content rendered before the label when the component is not loading. */
   icon(): unknown;
 }>();
 
+const slots = useSlots();
+
 const sizeClass = computed(() => `md-extended-fab_${props.size}`);
 const typeClass = computed(() => `md-extended-fab_${props.color}`);
+const hasLoading = computed(() => props.loading !== undefined && props.loading !== false);
+const loadingProgress = computed(() =>
+  typeof props.loading === 'number' ? props.loading : undefined,
+);
+const hasIconContent = computed(() => hasLoading.value || Boolean(props.mdSymbol || slots.icon));
 
 const onFabClick = (event: MouseEvent) => {
   event.stopPropagation();
@@ -68,8 +86,8 @@ useRipple(buttonEl);
   >
     <MDStateLayer :hover="hover" :focused="focused" :pressed="durationPressedState" />
 
-    <span class="md-extended-fab__icon">
-      <MDCircularProgressIndicator v-if="loading" />
+    <span v-if="hasIconContent" class="md-extended-fab__icon">
+      <MDCircularProgressIndicator v-if="hasLoading" :progress="loadingProgress" />
 
       <slot v-else name="icon">
         <MDSymbol v-if="mdSymbol" :name="mdSymbol" />
@@ -156,11 +174,11 @@ useRipple(buttonEl);
   }
 
   &__label {
-    font-family: var(--md-sys-typescale-label-large-font);
-    font-weight: var(--md-sys-typescale-label-large-weight);
-    font-size: var(--md-sys-typescale-label-large-size);
-    line-height: var(--md-sys-typescale-label-large-line-height);
-    letter-spacing: var(--md-sys-typescale-label-large-tracking);
+    font-family: var(--md-sys-typescale-title-medium-font);
+    font-weight: var(--md-sys-typescale-title-medium-weight);
+    font-size: var(--md-sys-typescale-title-medium-size);
+    line-height: var(--md-sys-typescale-title-medium-line-height);
+    letter-spacing: var(--md-sys-typescale-title-medium-tracking);
     white-space: nowrap;
   }
 

@@ -2,6 +2,15 @@ import { mount } from '@vue/test-utils';
 import { describe, expect, it } from 'vitest';
 import MDExtendedFab from './MDExtendedFab.vue';
 
+const globalStubs = {
+  MDCircularProgressIndicator: {
+    props: ['progress'],
+    template: '<span data-testid="progress" :data-progress="progress" />',
+  },
+  MDPlainTooltip: { template: '<span />' },
+  MDSymbol: { template: '<span data-testid="symbol" />' },
+};
+
 describe('MDExtendedFab', () => {
   it('keeps native button content free of nested interactive descendants and divs', () => {
     const wrapper = mount(MDExtendedFab, {
@@ -11,11 +20,7 @@ describe('MDExtendedFab', () => {
         mdSymbol: 'add',
       },
       global: {
-        stubs: {
-          MDCircularProgressIndicator: { template: '<span />' },
-          MDPlainTooltip: { template: '<span />' },
-          MDSymbol: { template: '<span />' },
-        },
+        stubs: globalStubs,
       },
     });
 
@@ -33,14 +38,81 @@ describe('MDExtendedFab', () => {
         mdSymbol: 'add',
       },
       global: {
-        stubs: {
-          MDCircularProgressIndicator: { template: '<span />' },
-          MDPlainTooltip: { template: '<span />' },
-          MDSymbol: { template: '<span />' },
-        },
+        stubs: globalStubs,
       },
     });
 
     expect(wrapper.get('button').attributes('aria-label')).toBe('Create');
+  });
+
+  it('does not render an empty icon container when only a label is provided', () => {
+    const wrapper = mount(MDExtendedFab, {
+      props: {
+        label: 'Create',
+      },
+      global: {
+        stubs: globalStubs,
+      },
+    });
+
+    expect(wrapper.find('.md-extended-fab__icon').exists()).toBe(false);
+  });
+
+  it('renders the icon container for loading state, mdSymbol, and icon slot content', () => {
+    const loadingWrapper = mount(MDExtendedFab, {
+      props: {
+        label: 'Create',
+        loading: true,
+      },
+      global: {
+        stubs: globalStubs,
+      },
+    });
+
+    expect(loadingWrapper.find('.md-extended-fab__icon').exists()).toBe(true);
+    expect(loadingWrapper.find('[data-testid="progress"]').exists()).toBe(true);
+
+    const zeroProgressWrapper = mount(MDExtendedFab, {
+      props: {
+        label: 'Create',
+        loading: 0,
+      },
+      global: {
+        stubs: globalStubs,
+      },
+    });
+
+    expect(zeroProgressWrapper.find('.md-extended-fab__icon').exists()).toBe(true);
+    expect(zeroProgressWrapper.find('[data-testid="progress"]').attributes('data-progress')).toBe(
+      '0',
+    );
+
+    const symbolWrapper = mount(MDExtendedFab, {
+      props: {
+        label: 'Create',
+        mdSymbol: 'add',
+      },
+      global: {
+        stubs: globalStubs,
+      },
+    });
+
+    expect(symbolWrapper.find('.md-extended-fab__icon').exists()).toBe(true);
+    expect(symbolWrapper.find('[data-testid="symbol"]').exists()).toBe(true);
+
+    const slotWrapper = mount(MDExtendedFab, {
+      props: {
+        label: 'Create',
+      },
+      slots: {
+        icon: '<span data-testid="slot-icon">slot icon</span>',
+      },
+      global: {
+        stubs: globalStubs,
+      },
+    });
+
+    expect(slotWrapper.find('.md-extended-fab__icon').exists()).toBe(true);
+    expect(slotWrapper.find('[data-testid="slot-icon"]').exists()).toBe(true);
   });
 });

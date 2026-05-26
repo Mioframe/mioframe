@@ -12,18 +12,14 @@ import { computed, shallowRef, toRefs } from 'vue';
 const props = defineProps<{
   directoryPath: string;
   documentIds: readonly AMDocumentId[];
-  folderState:
-    | 'regularFolder'
-    | 'inconsistentMioframeData'
-    | 'emptyMioframeSpace'
-    | 'mioframeSpaceWithDocuments';
+  isRepositoryInitialized: boolean;
 }>();
 
 const emit = defineEmits<{
   selectDocument: [documentId: AMDocumentId];
 }>();
 
-const { directoryPath, documentIds, folderState } = toRefs(props);
+const { directoryPath, documentIds, isRepositoryInitialized } = toRefs(props);
 
 const showStorageInfoSheet = shallowRef(false);
 const openStorageInfoSheet = () => {
@@ -47,29 +43,23 @@ const documentCountLabel = computed(() => {
 });
 
 const emptyHeadline = computed(() => {
-  switch (folderState.value) {
-    case 'regularFolder':
-      return 'This folder is not a Mioframe space yet.';
-    case 'emptyMioframeSpace':
-      return 'No Mioframe documents yet.';
-    case 'inconsistentMioframeData':
-      return 'This folder contains incomplete Mioframe data.';
-    default:
-      return undefined;
+  if (documentIds.value.length > 0) {
+    return undefined;
   }
+
+  return isRepositoryInitialized.value
+    ? 'No Mioframe documents yet.'
+    : 'This folder is not a Mioframe space yet.';
 });
 
 const emptySupportingText = computed(() => {
-  switch (folderState.value) {
-    case 'regularFolder':
-      return 'Add your first document to turn this folder into a Mioframe space.';
-    case 'emptyMioframeSpace':
-      return 'Create or import a document to add Mioframe documents here.';
-    case 'inconsistentMioframeData':
-      return 'Open the full Mioframe space folder or restore the missing Mioframe files before working with these documents.';
-    default:
-      return undefined;
+  if (documentIds.value.length > 0) {
+    return undefined;
   }
+
+  return isRepositoryInitialized.value
+    ? 'Create or import a document to add Mioframe documents here.'
+    : 'Add your first document to turn this folder into a Mioframe space.';
 });
 </script>
 
@@ -100,7 +90,7 @@ const emptySupportingText = computed(() => {
         :document-id="documentId"
         :path="directoryPath"
         class="repository-explorer-section__list-item"
-        @click="() => onSelectDocument(documentId)"
+        @click="onSelectDocument"
       >
         <template #trailingIcon>
           <DocumentManageMenuButton :directory-path="directoryPath" :document-id="documentId" />
