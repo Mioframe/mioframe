@@ -50,6 +50,20 @@ Avoid these patterns in source code:
 
 Prefer small, named derived facts such as `has*`, `is*`, `get*State`, and `get*Entries`. If a combined state object is still necessary, keep it in the layer that owns that composition and document why explicit dependencies are insufficient.
 
+## User action preservation
+
+For UI refactors that replace, remove, merge, or move action surfaces, preserve the user scenario and the interaction tier, not only raw reachability.
+
+Before editing such a UI flow, list each old user action with its old entry point and interaction tier: primary, secondary, menu, overflow, fallback, or hidden. Define the new entry point, new tier, and verification path for each action.
+
+Primary actions must not be silently demoted to a menu, overflow, fallback, secondary surface, or longer path. A demotion is allowed only when the task explicitly requests it or the reviewer confirms the trade-off.
+
+When Material 3 action hierarchy requires reducing multiple primary actions to one FAB or one primary button, consolidate the domain actions behind a single explicit Add/action entry point instead of deleting or demoting them.
+
+When old primary actions are consolidated into a sheet, menu, or action picker, the entry point label must be generic enough to honestly cover every action behind it. For example, do not use a document-specific label for an action picker that also creates folders.
+
+Tests must cover the new primary user path. Stubbed component text, fallback menu assertions, or implementation-detail checks do not prove that a primary scenario was preserved.
+
 ## Diagnostics and privacy
 
 This section refines the root `Privacy-safe errors` rules for source code under `src`.
