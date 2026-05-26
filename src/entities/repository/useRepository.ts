@@ -53,17 +53,7 @@ export const useRepository = (
   const repositoryVisibleEntriesValue = computed<readonly RepositoryDirectoryEntry[] | undefined>(
     () => visibleEntries.value,
   );
-  const combinedError = computed(() => {
-    if (error.value instanceof Error) {
-      return error.value;
-    }
-
-    if (visibleEntriesError.value instanceof Error) {
-      return visibleEntriesError.value;
-    }
-
-    return undefined;
-  });
+  const combinedError = computed(() => error.value ?? visibleEntriesError.value ?? undefined);
 
   const errorMessage = computed(() =>
     resolveSafeErrorMessage(
