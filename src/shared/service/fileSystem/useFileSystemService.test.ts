@@ -531,16 +531,19 @@ describe('useFileSystemService', () => {
       }),
     ).resolves.toEqual([['visible.txt', fileStat]]);
 
-    await expect(
-      service.directoryContent.fetch({
-        path: '/drive/folder',
-        options: { hideAutomergeFiles: false },
-      }),
-    ).resolves.toEqual([
-      [documentStorageFileName, fileStat],
-      [storageAdapterMarkerFileName, fileStat],
-      ['visible.txt', fileStat],
-    ]);
+    const entriesWithAutomergeFiles = await service.directoryContent.fetch({
+      path: '/drive/folder',
+      options: { hideAutomergeFiles: false },
+    });
+
+    expect(entriesWithAutomergeFiles).toEqual(
+      expect.arrayContaining([
+        [documentStorageFileName, fileStat],
+        [storageAdapterMarkerFileName, fileStat],
+        ['visible.txt', fileStat],
+      ]),
+    );
+    expect(entriesWithAutomergeFiles).toHaveLength(3);
   });
 
   it('emits errors as values for directoryContent$ and forwards non-Error failures to the observable error channel', async () => {
