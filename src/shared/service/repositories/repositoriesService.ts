@@ -34,6 +34,13 @@ const setupRepositoriesService = () => {
   const { directoryContent$, vfs } = useFileSystemService();
   const repoObservableCache = new Map<string, Observable<Repo>>();
 
+  /**
+   * Observes canonical repository facts derived from repository storage files in a directory.
+   *
+   * `isInitialized` is a repository storage fact, not a UI state. It is true for marker-only
+   * repositories and repositories with document storage files. Directory read failures are
+   * returned as `Error` values so entity APIs can convert them into privacy-safe UI messages.
+   */
   const getRepositoryFacts$ = defineCacheObservable(
     ({
       path,
@@ -54,6 +61,14 @@ const setupRepositoriesService = () => {
       ),
   );
 
+  /**
+   * Observes repository-aware directory entries for Repository Explorer file listings.
+   *
+   * Repository marker files are always hidden. Automerge document storage files are hidden by
+   * default and are included only when `hideAutomergeFiles` is `false`. Directory read failures
+   * are returned as `Error` values so entity APIs can expose the raw boundary failure separately
+   * from repository fact failures.
+   */
   const getRepositoryVisibleEntries$ = defineCacheObservable(
     ({
       hideAutomergeFiles = true,
@@ -75,6 +90,12 @@ const setupRepositoriesService = () => {
       ),
   );
 
+  /**
+   * Observes document ids as a compatibility projection of repository facts.
+   *
+   * Prefer `getRepositoryFacts$` when callers also need repository initialization. Directory
+   * read failures are preserved as `Error` values for existing observable-query consumers.
+   */
   const getDocumentIdList$ = defineCacheObservable(
     ({
       path,
@@ -204,11 +225,17 @@ const setupRepositoriesService = () => {
   const repositoryVisibleEntries = defineObservableQuery(getRepositoryVisibleEntries$);
 
   return {
+    /** Observable-query wrapper for document ids derived from repository facts. */
     documentIdList,
+    /** Observable-query wrapper for canonical repository initialization facts and document ids. */
     repositoryFacts,
+    /** Observable-query wrapper for repository-aware visible directory entries. */
     repositoryVisibleEntries,
+    /** Low-level observable for document ids derived from repository facts. */
     getDocumentIdList$,
+    /** Low-level observable for canonical repository initialization facts and document ids. */
     getRepositoryFacts$,
+    /** Low-level observable for repository-aware visible directory entries. */
     getRepositoryVisibleEntries$,
     getRepo$: repo$,
     /**
