@@ -95,9 +95,9 @@ jobs:
 
       - name: Fetch pull request base branch
         if: github.event_name == 'pull_request'
-        run: |
-          git fetch --no-tags origin \
-            "refs/heads/${GITHUB_BASE_REF}:refs/remotes/origin/${GITHUB_BASE_REF}"
+        run: git fetch --no-tags origin "refs/heads/${BASE_REF}:refs/remotes/origin/${BASE_REF}"
+        env:
+          BASE_REF: ${{ github.base_ref }}
 
       - uses: pnpm/action-setup@v4
 
