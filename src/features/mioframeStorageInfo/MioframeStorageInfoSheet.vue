@@ -2,6 +2,7 @@
 import { MDBottomSheet, MDBottomSheetSection } from '@shared/ui/Sheets';
 
 const emit = defineEmits<{
+  /** Emitted when the storage information sheet finishes closing. */
   close: [];
 }>();
 
