@@ -92,6 +92,20 @@ reason:
 - When progress is knowable, surface progress instead of falling back to an indeterminate spinner.
 - Keep unit tests colocated with the source file they verify, using sibling `*.test.ts` files. Do not introduce `__tests__` directories.
 
+## Styling
+
+- Use component-scoped styles for Vue component implementation styles. Put global CSS only in app-level style modules or explicitly documented design-token/theme files.
+- The root class of a Vue component must match the component name in kebab-case, for example `MDFab` -> `md-fab` and `RepositoryExplorerWidget` -> `repository-explorer-widget`.
+- When a component renders a placeholder plus teleported or floating content, keep the root class on the root DOM element and model the teleported/floating surface as a BEM element, for example `md-fab-container` with `md-fab-container__surface`.
+- Use classic BEM syntax: block `block`, element `block__element`, boolean modifier `block_modifier`, key-value modifier `block_modifier_value`, element modifier `block__element_modifier`, and element key-value modifier `block__element_modifier_value`.
+- Do not introduce `block--modifier` or `block__element--modifier` naming unless a local legacy component already uses that style and the task is only preserving untouched code.
+- Avoid loose implementation classes that do not belong to the component block, such as `title`, `content`, or `empty-icon`. Prefer block-owned element classes such as `repository-explorer-section__title` or `md-fab__empty-icon`.
+- Prefer explicit key-value modifiers when a component has multiple modifier axes, for example `md-fab_color_primary` and `md-fab_size_medium` instead of ambiguous `md-fab_primary` and `md-fab_medium`.
+- Keep styling ownership local. A parent component should not style a child component's internal classes through `:deep()` unless this is an explicit integration boundary with documented blast radius. Prefer child props, slots, CSS custom properties, or parent-owned wrapper elements.
+- Use project Material tokens and component custom properties before hard-coded values. Preserve Material authoring units such as `dp` and `sp` where the project token pipeline expects them; do not rewrite them to `px` only because a generic CSS reviewer suggests it.
+- When a native interactive element is visually reset, restore required interaction affordances in the owning component, including an appropriate cursor for clickable enabled states and visible focus/state-layer behavior. Do not make disabled or non-action states look clickable.
+- Treat shared UI style changes as blast-radius changes: inspect consumers, preserve the public visual contract by default, and update Storybook/visual coverage when appearance, layout, interaction affordance, or Material state rendering changes.
+
 ## Implementation quality gates
 
 - Treat implementation preflight as a contract, not a planning note. Before final verification, compare the resulting diff against the preflight owner-layer plan, acceptance matrix, and risk matrix. If the diff violates the plan, either refactor it or explicitly report the remaining risk instead of claiming completion.
