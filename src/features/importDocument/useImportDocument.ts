@@ -7,7 +7,7 @@ import { ImportDocumentErrorCode } from './importDocumentErrorCode';
 
 /**
  * Creates JSON document import actions for a target directory.
- * @returns Import actions for Beaver JSON documents.
+ * @returns Import actions for Mioframe JSON documents.
  */
 export const useImportDocument = () => {
   const {
@@ -15,7 +15,7 @@ export const useImportDocument = () => {
   } = useMainServiceClient();
 
   /**
-   * Imports a Beaver document from a selected JSON file into the target directory.
+   * Imports a Mioframe document from a selected JSON file into the target directory.
    * @param path - The directory path where the imported document should be created.
    * @returns The created document id, or `undefined` when the user cancels file selection.
    */
@@ -70,7 +70,7 @@ export const useImportDocument = () => {
     try {
       initialValue = zodCFRDocumentContent.parse(data);
     } catch (error) {
-      throw new DomainError('The selected JSON file is not a Beaver document', {
+      throw new DomainError('The selected JSON file is not a Mioframe document', {
         cause: error,
         code: ImportDocumentErrorCode.invalidDocumentFormat,
       });

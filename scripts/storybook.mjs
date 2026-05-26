@@ -30,7 +30,7 @@ const child = spawn(args[0], args.slice(1), {
   stdio: 'inherit',
   env: {
     ...process.env,
-    BEAVER_STORYBOOK: '1',
+    APP_STORYBOOK: '1',
     STORYBOOK_DISABLE_TELEMETRY: '1',
   },
 });

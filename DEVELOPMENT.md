@@ -64,8 +64,8 @@
 ### 1. Clone and Install
 
 ```bash
-git clone https://github.com/Vyachean/beaver.git
-cd beaver
+git clone https://github.com/Vyachean/mioframe.git
+cd mioframe
 pnpm install
 ```
 

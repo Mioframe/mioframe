@@ -15,7 +15,7 @@ import {
 export default defineConfig(({ mode, isPreview }) => {
   const env = loadEnv(mode, process.cwd(), '');
   const isPreviewBuild = !!isPreview;
-  const isStorybookBuild = process.env.BEAVER_STORYBOOK === '1';
+  const isStorybookBuild = process.env.APP_STORYBOOK === '1';
 
   const sslPlugins = isStorybookBuild ? [] : getSslPlugins({ mode, isPreview: isPreviewBuild });
   const pwaPlugins = isStorybookBuild ? [] : getPwaPlugins({ mode, isPreview: isPreviewBuild });

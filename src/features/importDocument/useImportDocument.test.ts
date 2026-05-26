@@ -48,7 +48,7 @@ describe('useImportDocument', () => {
     expect(createDocumentMock).not.toHaveBeenCalled();
   });
 
-  it('wraps non-Beaver JSON with a user-facing DomainError', async () => {
+  it('wraps non-Mioframe JSON with a user-facing DomainError', async () => {
     fileOpenMock.mockResolvedValue({
       text: vi.fn().mockResolvedValue(JSON.stringify({ name: 'Doc' })),
     });
@@ -59,7 +59,7 @@ describe('useImportDocument', () => {
 
     expect(error).toBeInstanceOf(DomainError);
     expect(error).toMatchObject({
-      message: 'The selected JSON file is not a Beaver document',
+      message: 'The selected JSON file is not a Mioframe document',
     });
     expect(error).toHaveProperty('cause');
     expect(createDocumentMock).not.toHaveBeenCalled();
@@ -103,7 +103,7 @@ describe('useImportDocument', () => {
     expect(error).not.toHaveProperty('cause.message', rawCause.message);
   });
 
-  it('creates a document from valid Beaver JSON and returns its id', async () => {
+  it('creates a document from valid Mioframe JSON and returns its id', async () => {
     fileOpenMock.mockResolvedValue({
       text: vi.fn().mockResolvedValue(
         JSON.stringify({
@@ -138,7 +138,7 @@ describe('useImportDocument', () => {
       ),
     });
 
-    const cause = new DomainError('The selected JSON file is not a Beaver document');
+    const cause = new DomainError('The selected JSON file is not a Mioframe document');
     createDocumentMock.mockRejectedValueOnce(cause);
 
     const { importJsonFile } = useImportDocument();
