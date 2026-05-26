@@ -605,9 +605,7 @@ async function runCommand(label, command, args) {
 
 function buildCommands(changedFiles) {
   const existingChangedFiles = changedFiles.filter(fileExists);
-  const formatLintFiles = existingChangedFiles.filter(
-    (filePath) => !isFormatLintIgnored(filePath),
-  );
+  const formatLintFiles = existingChangedFiles.filter((filePath) => !isFormatLintIgnored(filePath));
   const formattableFiles = formatLintFiles.filter((filePath) =>
     FORMATTABLE_EXTENSIONS.has(path.posix.extname(filePath)),
   );
