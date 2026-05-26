@@ -14,7 +14,8 @@ const VERIFY_LOG_DIR = path.posix.join(VERIFY_DIR, 'logs');
 const MAX_RELEVANT_LINES = 20;
 const MAX_FILE_ARGS_IN_SUMMARY = 4;
 const MAX_ROLLING_BUFFER_CHARS = 128 * 1024;
-const EXPENSIVE_SKIP_REASON = 'previous check failed; skipped expensive verification to save CI minutes';
+const EXPENSIVE_SKIP_REASON =
+  'previous check failed; skipped expensive verification to save CI minutes';
 const FORMATTABLE_EXTENSIONS = new Set([
   '.css',
   '.html',
