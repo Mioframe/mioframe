@@ -6,6 +6,7 @@ import toolingConfig from '../config/tooling.json' with { type: 'json' };
 const isFixMode = process.argv.includes('--fix');
 const isFixOnlyMode = process.argv.includes('--fix-only');
 const isVerboseMode = process.argv.includes('--verbose');
+const isCi = process.env.CI === 'true' || process.env.GITHUB_ACTIONS === 'true';
 const shouldApplyFixers = isFixMode || isFixOnlyMode;
 const cliBaseRef = getCliBaseRef(process.argv.slice(2));
 const VERIFY_DIR = '.verify';
@@ -13,6 +14,7 @@ const VERIFY_LOG_DIR = path.posix.join(VERIFY_DIR, 'logs');
 const MAX_RELEVANT_LINES = 20;
 const MAX_FILE_ARGS_IN_SUMMARY = 4;
 const MAX_ROLLING_BUFFER_CHARS = 128 * 1024;
+const EXPENSIVE_SKIP_REASON = 'previous check failed; skipped expensive verification to save CI minutes';
 const FORMATTABLE_EXTENSIONS = new Set([
   '.css',
   '.html',
@@ -271,7 +273,6 @@ function getAllSiblingTestFiles(filePath) {
   const baseName = path.posix.basename(filePath, extension);
   const dirPath = path.posix.dirname(filePath);
   const nameWithoutExt = filePath.slice(0, -extension.length);
-
   const exactMatch = `${nameWithoutExt}.test.ts`;
 
   if (fileExists(exactMatch)) {
@@ -300,7 +301,7 @@ function getAllSiblingTestFiles(filePath) {
       }
     }
   } catch {
-    // directory read failure — fall through to empty array
+    // Directory read failure falls through to an empty focused test scope.
   }
 
   return uniqSorted(testCandidates);
@@ -603,6 +604,34 @@ async function runCommand(label, command, args) {
   };
 }
 
+function createSkippedResult(entry, reason = entry.reason) {
+  return {
+    label: entry.label,
+    command: entry.command,
+    status: 'skipped',
+    reason,
+    exitCode: null,
+    stdout: '',
+    stderr: '',
+    hasWarnings: false,
+    warningSummary: '',
+  };
+}
+
+function addE2ECommands(commands, e2eCommand) {
+  if (isCi) {
+    commands.push({
+      kind: 'run',
+      label: 'e2e-install',
+      command: 'pnpm',
+      args: ['e2e:install'],
+      expensive: true,
+    });
+  }
+
+  commands.push({ ...e2eCommand, expensive: true });
+}
+
 function buildCommands(changedFiles) {
   const existingChangedFiles = changedFiles.filter(fileExists);
   const formatLintFiles = existingChangedFiles.filter((filePath) => !isFormatLintIgnored(filePath));
@@ -711,9 +740,9 @@ function buildCommands(changedFiles) {
   }
 
   if (changedFiles.includes('playwright.config.ts')) {
-    commands.push({ kind: 'run', label: 'e2e', command: 'pnpm', args: ['e2e'] });
+    addE2ECommands(commands, { kind: 'run', label: 'e2e', command: 'pnpm', args: ['e2e'] });
   } else if (changedE2ESpecs.length > 0) {
-    commands.push({
+    addE2ECommands(commands, {
       kind: 'run',
       label: 'e2e',
       command: 'pnpm',
@@ -734,6 +763,7 @@ function buildCommands(changedFiles) {
       label: 'visual',
       command: 'pnpm',
       args: ['test:visual'],
+      expensive: true,
     });
   } else {
     commands.push({
@@ -750,6 +780,7 @@ function buildCommands(changedFiles) {
       label: 'mutation',
       command: 'pnpm',
       args: ['exec', 'stryker', 'run', '-m', mutationScope.join(',')],
+      expensive: true,
     });
   } else {
     commands.push({
@@ -836,26 +867,27 @@ async function main() {
   const { changedFiles, scope } = getChangedFiles();
   const commands = buildCommands(changedFiles);
   const results = [];
+  let hasFailed = false;
   ensureLogsDirectory();
 
   for (const entry of commands) {
     if (entry.kind === 'skipped') {
-      results.push({
-        label: entry.label,
-        command: entry.command,
-        status: 'skipped',
-        reason: entry.reason,
-        exitCode: null,
-        stdout: '',
-        stderr: '',
-        hasWarnings: false,
-        warningSummary: '',
-      });
+      results.push(createSkippedResult(entry));
       continue;
     }
 
-    // oxlint-disable-next-line no-await-in-loop -- verify checks must run sequentially for stable summary/log ordering.
-    results.push(await runCommand(entry.label, entry.command, entry.args));
+    if (hasFailed && entry.expensive === true) {
+      results.push(createSkippedResult(entry, EXPENSIVE_SKIP_REASON));
+      continue;
+    }
+
+    // oxlint-disable-next-line no-await-in-loop -- verify checks run sequentially for deterministic logs and fail-fast expensive gates.
+    const result = await runCommand(entry.label, entry.command, entry.args);
+    results.push(result);
+
+    if (result.status === 'failed') {
+      hasFailed = true;
+    }
   }
 
   const summary = printSummary(changedFiles, scope, results);
