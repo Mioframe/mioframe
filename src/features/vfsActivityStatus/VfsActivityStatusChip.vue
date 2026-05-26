@@ -88,7 +88,13 @@ const onInteractionOutside = () => {
 </script>
 
 <template>
-  <MDAssistChip v-if="label" ref="triggerRef" :label="label" @click="onClickTrigger">
+  <MDAssistChip
+    v-if="label"
+    ref="triggerRef"
+    :label="label"
+    class="vfs-activity-status-chip"
+    @click="onClickTrigger"
+  >
     <template #leadingIcon>
       <MDSymbol
         :name="isError ? 'error' : 'sync'"
