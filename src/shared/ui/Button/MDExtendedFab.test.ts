@@ -83,7 +83,9 @@ describe('MDExtendedFab', () => {
     });
 
     expect(zeroProgressWrapper.find('.md-extended-fab__icon').exists()).toBe(true);
-    expect(zeroProgressWrapper.find('[data-testid="progress"]').attributes('data-progress')).toBe('0');
+    expect(zeroProgressWrapper.find('[data-testid="progress"]').attributes('data-progress')).toBe(
+      '0',
+    );
 
     const symbolWrapper = mount(MDExtendedFab, {
       props: {
