@@ -157,46 +157,45 @@ test('repo explorer keeps clickable cursors and natural section flow on a wide v
 
   expect(documentCursor).toBe('pointer');
 
-  const spacing = await page.evaluate(() => {
-    const title = (text: string) =>
-      Array.from(document.querySelectorAll('h2')).find(
-        (element) => element.innerText.trim() === text,
-      );
-    const documentsTitle = title('Documents');
-    const filesTitle = title('Files');
-    const documentRow = document.querySelector('[aria-label^="document "]');
-    const content = document.querySelector('.repository-explorer-widget__content');
-    const filesCopy = filesTitle?.closest('.repository-explorer-section')?.querySelector('p');
+  const documentsTitle = page.getByRole('heading', { level: 2, name: 'Documents' });
+  const filesTitle = page.getByRole('heading', { level: 2, name: 'Files' });
+  const filesCopy = page.getByText('Regular files and folders. Mioframe service files are hidden.');
+  const content = page.locator('.repository-explorer-widget__content');
 
-    if (!(documentsTitle instanceof HTMLElement) || !(filesTitle instanceof HTMLElement)) {
-      throw new Error('Missing Repository Explorer section titles.');
-    }
+  await expect(documentsTitle).toBeVisible();
+  await expect(filesTitle).toBeVisible();
+  await expect(filesCopy).toBeVisible();
+  await expect(content).toBeVisible();
 
-    if (!(documentRow instanceof HTMLElement) || !(filesCopy instanceof HTMLElement)) {
-      throw new Error('Missing Repository Explorer content rows.');
-    }
+  const documentsTitleBox = await documentsTitle.boundingBox();
+  const filesTitleBox = await filesTitle.boundingBox();
+  const documentRowBox = await documentRow.boundingBox();
+  const filesCopyBox = await filesCopy.boundingBox();
+  const contentBox = await content.boundingBox();
+  const contentScrollHeight = await content.evaluate((element) => element.scrollHeight);
 
-    if (!(content instanceof HTMLElement)) {
-      throw new Error('Missing Repository Explorer content container.');
-    }
+  expect(documentsTitleBox).not.toBeNull();
+  expect(filesTitleBox).not.toBeNull();
+  expect(documentRowBox).not.toBeNull();
+  expect(filesCopyBox).not.toBeNull();
+  expect(contentBox).not.toBeNull();
 
-    const documentsGap =
-      documentRow.getBoundingClientRect().top - documentsTitle.getBoundingClientRect().bottom;
-    const filesGap =
-      filesCopy.getBoundingClientRect().top - filesTitle.getBoundingClientRect().bottom;
-    const contentRect = content.getBoundingClientRect();
+  if (
+    documentsTitleBox == null ||
+    filesTitleBox == null ||
+    documentRowBox == null ||
+    filesCopyBox == null ||
+    contentBox == null
+  ) {
+    throw new Error('Missing Repository Explorer layout boxes.');
+  }
 
-    return {
-      documentsGap,
-      filesGap,
-      contentHeight: contentRect.height,
-      contentScrollHeight: content.scrollHeight,
-    };
-  });
+  const documentsGap = documentRowBox.y - (documentsTitleBox.y + documentsTitleBox.height);
+  const filesGap = filesCopyBox.y - (filesTitleBox.y + filesTitleBox.height);
 
-  expect(spacing.documentsGap).toBeLessThan(48);
-  expect(spacing.filesGap).toBeLessThan(64);
-  expect(spacing.contentHeight - spacing.contentScrollHeight).toBeLessThan(16);
+  expect(documentsGap).toBeLessThan(48);
+  expect(filesGap).toBeLessThan(64);
+  expect(contentBox.height - contentScrollHeight).toBeLessThan(16);
 
   const fabBox = await addFab.boundingBox();
 
