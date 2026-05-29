@@ -328,7 +328,7 @@ const updateDatabaseItemDialogField = async (
     for (const relationItemValue of value) {
       // Relation rows are rendered inside the item dialog; each selected row has its own checkbox.
       // eslint-disable-next-line no-await-in-loop
-      await findDatabaseRow(dialog, relationItemValue).getByRole('checkbox').check();
+      await findDatabaseRow(dialog, relationItemValue).getByRole('checkbox').click();
     }
     return;
   }
