@@ -127,39 +127,39 @@ jobs:
 
       - name: Verify format
         timeout-minutes: 5
-        run: pnpm verify --verbose --only format
+        run: node scripts/verify-ci-step.mjs --verbose --only format
 
       - name: Verify oxlint
         timeout-minutes: 5
-        run: pnpm verify --verbose --only oxlint
+        run: node scripts/verify-ci-step.mjs --verbose --only oxlint
 
       - name: Verify eslint
         timeout-minutes: 10
-        run: pnpm verify --verbose --only eslint
+        run: node scripts/verify-ci-step.mjs --verbose --only eslint
 
       - name: Verify type-check
         timeout-minutes: 10
-        run: pnpm verify --verbose --only type-check
+        run: node scripts/verify-ci-step.mjs --verbose --only type-check
 
       - name: Verify unit tests
         timeout-minutes: 10
-        run: pnpm verify --verbose --only unit-tests
+        run: node scripts/verify-ci-step.mjs --verbose --only unit-tests
 
       - name: Verify e2e install
         timeout-minutes: 12
-        run: pnpm verify --verbose --only e2e-install
+        run: node scripts/verify-ci-step.mjs --verbose --only e2e-install
 
       - name: Verify e2e
         timeout-minutes: 15
-        run: pnpm verify --verbose --only e2e
+        run: node scripts/verify-ci-step.mjs --verbose --only e2e
 
       - name: Verify visual
         timeout-minutes: 18
-        run: pnpm verify --verbose --only visual
+        run: node scripts/verify-ci-step.mjs --verbose --only visual
 
       - name: Verify mutation
         timeout-minutes: 15
-        run: pnpm verify --verbose --only mutation
+        run: node scripts/verify-ci-step.mjs --verbose --only mutation
 
       - name: Upload verify logs
         if: ${{ failure() || cancelled() }}
