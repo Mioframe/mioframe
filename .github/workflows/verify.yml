@@ -141,16 +141,16 @@ jobs:
         run: pnpm verify --verbose --only unit-tests
 
       - name: Verify e2e install
-        run: pnpm verify --verbose --only e2e-install
+        run: node scripts/run-with-heartbeat.mjs --timeout-minutes 10 -- pnpm verify --verbose --only e2e-install
 
       - name: Verify e2e
-        run: pnpm verify --verbose --only e2e
+        run: node scripts/run-with-heartbeat.mjs --timeout-minutes 12 -- pnpm verify --verbose --only e2e
 
       - name: Verify visual
-        run: pnpm verify --verbose --only visual
+        run: node scripts/run-with-heartbeat.mjs --timeout-minutes 15 -- pnpm verify --verbose --only visual
 
       - name: Verify mutation
-        run: pnpm verify --verbose --only mutation
+        run: node scripts/run-with-heartbeat.mjs --timeout-minutes 12 -- pnpm verify --verbose --only mutation
 
       - name: Upload verify logs
         if: ${{ failure() || cancelled() }}
