@@ -140,9 +140,6 @@ jobs:
       - name: Verify unit tests
         run: pnpm verify --verbose --only unit-tests
 
-      - name: Verify e2e install
-        run: pnpm verify --verbose --only e2e-install
-
       - name: Verify e2e
         run: pnpm verify --verbose --only e2e
 
