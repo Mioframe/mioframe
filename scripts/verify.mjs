@@ -596,6 +596,15 @@ function formatHelpTimeout(milliseconds) {
   return `${minutes} minute${minutes === 1 ? '' : 's'}`;
 }
 
+function getLastMeaningfulLine(text) {
+  const lines = text
+    .split('\n')
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0);
+
+  return lines.at(-1) ?? null;
+}
+
 function printHelp() {
   console.log('Usage:');
   console.log('  pnpm verify [options]');
@@ -660,6 +669,8 @@ async function runCommand(label, command, args) {
   let killGraceTimer = null;
   const startedAt = Date.now();
   let lastOutputAt = startedAt;
+  let lastOutputLine = null;
+  let incompleteOutputLine = '';
   const commandTimeoutMs = COMMAND_TIMEOUT_MS_BY_LABEL[label] ?? null;
 
   const writeStatusLine = (line, destination = 'stdout') => {
@@ -676,11 +687,17 @@ async function runCommand(label, command, args) {
   };
 
   const heartbeatTimer = setInterval(() => {
-    writeStatusLine(
-      `[${label}] heartbeat: elapsed ${formatDuration(
-        Date.now() - startedAt,
-      )}; last output ${formatDuration(Date.now() - lastOutputAt)} ago`,
-    );
+    const heartbeatParts = [
+      `[${label}] heartbeat: elapsed ${formatDuration(Date.now() - startedAt)}`,
+      `last output ${formatDuration(Date.now() - lastOutputAt)} ago`,
+      `last line: ${lastOutputLine === null ? '<none>' : JSON.stringify(lastOutputLine)}`,
+    ];
+
+    if (commandTimeoutMs !== null) {
+      heartbeatParts.push(`timeout ${formatDuration(commandTimeoutMs)}`);
+    }
+
+    writeStatusLine(heartbeatParts.join('; '));
   }, HEARTBEAT_INTERVAL_MS);
 
   const timeoutTimer =
@@ -721,6 +738,14 @@ async function runCommand(label, command, args) {
     logStream.write(text);
     outputBuffer = appendToRollingBuffer(outputBuffer, text);
     lastOutputAt = Date.now();
+    const completeLines = `${incompleteOutputLine}${text}`.split('\n');
+    incompleteOutputLine = completeLines.pop() ?? '';
+    const completedOutput = completeLines.join('\n');
+    const latestLine = getLastMeaningfulLine(completedOutput);
+
+    if (latestLine !== null) {
+      lastOutputLine = latestLine;
+    }
 
     if (isVerboseMode) {
       process.stdout.write(chunk);
@@ -732,6 +757,14 @@ async function runCommand(label, command, args) {
     logStream.write(text);
     outputBuffer = appendToRollingBuffer(outputBuffer, text);
     lastOutputAt = Date.now();
+    const completeLines = `${incompleteOutputLine}${text}`.split('\n');
+    incompleteOutputLine = completeLines.pop() ?? '';
+    const completedOutput = completeLines.join('\n');
+    const latestLine = getLastMeaningfulLine(completedOutput);
+
+    if (latestLine !== null) {
+      lastOutputLine = latestLine;
+    }
 
     if (isVerboseMode) {
       process.stderr.write(chunk);
@@ -767,6 +800,12 @@ async function runCommand(label, command, args) {
 
       if (signal) {
         logStream.write(`\n[verify] process exited via signal ${signal}\n`);
+      }
+
+      const trailingLine = getLastMeaningfulLine(incompleteOutputLine);
+
+      if (trailingLine !== null) {
+        lastOutputLine = trailingLine;
       }
 
       resolve();
@@ -1119,6 +1158,9 @@ async function main() {
   const commands = selectOnlyCommands(buildCommands(changedFiles));
   const results = [];
   let hasFailed = false;
+  const runnableCommands = commands.filter((entry) => entry.kind === 'run');
+  const totalRunnableChecks = runnableCommands.length;
+  let completedRunnableChecks = 0;
   ensureLogsDirectory(cliOnlyLabel === null ? null : commands.map((entry) => entry.label));
 
   for (const entry of commands) {
@@ -1132,9 +1174,18 @@ async function main() {
       continue;
     }
 
+    if (cliOnlyLabel === null) {
+      console.log(
+        `[verify] check ${completedRunnableChecks + 1}/${totalRunnableChecks}: ${entry.label}`,
+      );
+    } else {
+      console.log(`[verify] focused check: ${entry.label}`);
+    }
+
     // oxlint-disable-next-line no-await-in-loop -- verify checks run sequentially for deterministic logs and fail-fast expensive gates.
     const result = await runCommand(entry.label, entry.command, entry.args);
     results.push(result);
+    completedRunnableChecks += 1;
 
     if (result.status === 'failed') {
       hasFailed = true;
