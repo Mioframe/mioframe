@@ -26,6 +26,14 @@ const VERIFY_LOG_DIR = path.posix.join(VERIFY_DIR, 'logs');
 const MAX_RELEVANT_LINES = 20;
 const MAX_FILE_ARGS_IN_SUMMARY = 4;
 const MAX_ROLLING_BUFFER_CHARS = 128 * 1024;
+const HEARTBEAT_INTERVAL_MS = 60_000;
+const KILL_GRACE_MS = 10_000;
+const COMMAND_TIMEOUT_MS_BY_LABEL = {
+  'e2e-install': 10 * 60 * 1000,
+  e2e: 12 * 60 * 1000,
+  visual: 15 * 60 * 1000,
+  mutation: 12 * 60 * 1000,
+};
 const EXPENSIVE_SKIP_REASON =
   'previous check failed; skipped expensive verification to save CI minutes';
 const FORMATTABLE_EXTENSIONS = new Set([
@@ -572,6 +580,14 @@ function getOutputTail(output) {
   return lines.slice(-MAX_RELEVANT_LINES);
 }
 
+function formatDuration(milliseconds) {
+  const totalSeconds = Math.max(0, Math.floor(milliseconds / 1000));
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+
+  return minutes === 0 ? `${seconds}s` : `${minutes}m ${seconds}s`;
+}
+
 async function runCommand(label, command, args) {
   const formattedCommand = formatCommand(command, args);
   const displayCommand = summarizeCommandForDisplay(command, args);
@@ -588,11 +604,71 @@ async function runCommand(label, command, args) {
   let outputBuffer = '';
   let exitCode = 1;
   let spawnError = null;
+  let timedOut = false;
+  let killGraceTimer = null;
+  const startedAt = Date.now();
+  let lastOutputAt = startedAt;
+  const commandTimeoutMs = COMMAND_TIMEOUT_MS_BY_LABEL[label] ?? null;
+
+  const writeStatusLine = (line, destination = 'stdout') => {
+    const text = `${line}\n`;
+    logStream.write(text);
+    outputBuffer = appendToRollingBuffer(outputBuffer, text);
+
+    if (destination === 'stderr') {
+      process.stderr.write(text);
+      return;
+    }
+
+    process.stdout.write(text);
+  };
+
+  const heartbeatTimer = setInterval(() => {
+    writeStatusLine(
+      `[${label}] heartbeat: elapsed ${formatDuration(
+        Date.now() - startedAt,
+      )}; last output ${formatDuration(Date.now() - lastOutputAt)} ago`,
+    );
+  }, HEARTBEAT_INTERVAL_MS);
+
+  const timeoutTimer =
+    commandTimeoutMs === null
+      ? null
+      : setTimeout(() => {
+          timedOut = true;
+          writeStatusLine(
+            `[${label}] timeout: exceeded ${formatDuration(commandTimeoutMs)}; sending SIGTERM`,
+            'stderr',
+          );
+          child.kill('SIGTERM');
+          killGraceTimer = setTimeout(() => {
+            writeStatusLine(
+              `[${label}] timeout: process still running after ${formatDuration(
+                KILL_GRACE_MS,
+              )}; sending SIGKILL`,
+              'stderr',
+            );
+            child.kill('SIGKILL');
+          }, KILL_GRACE_MS);
+        }, commandTimeoutMs);
+
+  const cleanupTimers = () => {
+    clearInterval(heartbeatTimer);
+
+    if (timeoutTimer !== null) {
+      clearTimeout(timeoutTimer);
+    }
+
+    if (killGraceTimer !== null) {
+      clearTimeout(killGraceTimer);
+    }
+  };
 
   const onStdout = (chunk) => {
     const text = chunk.toString();
     logStream.write(text);
     outputBuffer = appendToRollingBuffer(outputBuffer, text);
+    lastOutputAt = Date.now();
 
     if (isVerboseMode) {
       process.stdout.write(chunk);
@@ -603,6 +679,7 @@ async function runCommand(label, command, args) {
     const text = chunk.toString();
     logStream.write(text);
     outputBuffer = appendToRollingBuffer(outputBuffer, text);
+    lastOutputAt = Date.now();
 
     if (isVerboseMode) {
       process.stderr.write(chunk);
@@ -616,11 +693,30 @@ async function runCommand(label, command, args) {
     child.once('error', (error) => {
       spawnError = error;
       logStream.write(`\n[verify] spawn error: ${error.message}\n`);
+      cleanupTimers();
       resolve();
     });
 
-    child.once('close', (code) => {
+    child.once('close', (code, signal) => {
+      cleanupTimers();
+
+      if (timedOut) {
+        exitCode = 124;
+        const signalSuffix = signal ? `; process exited via ${signal}` : '';
+        writeStatusLine(
+          `[${label}] timeout: command failed after internal timeout${signalSuffix}`,
+          'stderr',
+        );
+        resolve();
+        return;
+      }
+
       exitCode = code ?? 1;
+
+      if (signal) {
+        logStream.write(`\n[verify] process exited via signal ${signal}\n`);
+      }
+
       resolve();
     });
   });
