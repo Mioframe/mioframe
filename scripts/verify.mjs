@@ -3,12 +3,13 @@ import path from 'node:path';
 import { spawn, spawnSync } from 'node:child_process';
 import toolingConfig from '../config/tooling.json' with { type: 'json' };
 
+const cliArgs = process.argv.slice(2);
+const isHelpMode = process.argv.includes('--help') || cliArgs.includes('help');
 const isFixMode = process.argv.includes('--fix');
 const isFixOnlyMode = process.argv.includes('--fix-only');
 const isVerboseMode = process.argv.includes('--verbose');
 const isCi = process.env.CI === 'true' || process.env.GITHUB_ACTIONS === 'true';
 const shouldApplyFixers = isFixMode || isFixOnlyMode;
-const cliBaseRef = getCliBaseRef(process.argv.slice(2));
 const VERIFY_LABELS = [
   'format',
   'oxlint',
@@ -20,7 +21,6 @@ const VERIFY_LABELS = [
   'visual',
   'mutation',
 ];
-const cliOnlyLabel = getCliOnlyLabel(process.argv.slice(2));
 const VERIFY_DIR = '.verify';
 const VERIFY_LOG_DIR = path.posix.join(VERIFY_DIR, 'logs');
 const MAX_RELEVANT_LINES = 20;
@@ -34,6 +34,8 @@ const COMMAND_TIMEOUT_MS_BY_LABEL = {
   visual: 15 * 60 * 1000,
   mutation: 12 * 60 * 1000,
 };
+const cliBaseRef = isHelpMode ? null : getCliBaseRef(cliArgs);
+const cliOnlyLabel = isHelpMode ? null : getCliOnlyLabel(cliArgs);
 const EXPENSIVE_SKIP_REASON =
   'previous check failed; skipped expensive verification to save CI minutes';
 const FORMATTABLE_EXTENSIONS = new Set([
@@ -588,6 +590,56 @@ function formatDuration(milliseconds) {
   return minutes === 0 ? `${seconds}s` : `${minutes}m ${seconds}s`;
 }
 
+function formatHelpTimeout(milliseconds) {
+  const minutes = Math.floor(milliseconds / 60_000);
+
+  return `${minutes} minute${minutes === 1 ? '' : 's'}`;
+}
+
+function printHelp() {
+  console.log('Usage:');
+  console.log('  pnpm verify [options]');
+  console.log('');
+  console.log('Options:');
+  console.log('  --help              Show this help.');
+  console.log('  --verbose           Stream command output to stdout/stderr.');
+  console.log('  --fix               Apply supported format/lint fixes, then run verification.');
+  console.log('  --fix-only          Apply supported format/lint fixes only.');
+  console.log('  --base <ref>        Verify changes against a local base ref.');
+  console.log('  --only <label>      Run one focused verification check.');
+  console.log('');
+  console.log('Labels for --only:');
+
+  for (const label of VERIFY_LABELS) {
+    console.log(`  ${label}`);
+  }
+
+  console.log('');
+  console.log('Examples:');
+  console.log('  pnpm verify');
+  console.log('  pnpm verify --verbose');
+  console.log('  pnpm verify --base origin/develop');
+  console.log('  pnpm verify --verbose --only type-check');
+  console.log('  pnpm verify --fix');
+  console.log('  pnpm verify --fix-only');
+  console.log('');
+  console.log('Notes:');
+  console.log('  - In CI, verify scope is based on GITHUB_BASE_REF.');
+  console.log('  - Focused --only runs preserve logs from other focused steps.');
+  console.log(`  - Logs are written to ${VERIFY_LOG_DIR}/.`);
+  console.log('  - Expensive checks have internal heartbeat/timeouts:');
+
+  for (const label of VERIFY_LABELS) {
+    const timeoutMs = COMMAND_TIMEOUT_MS_BY_LABEL[label];
+
+    if (timeoutMs === undefined) {
+      continue;
+    }
+
+    console.log(`    - ${label}: ${formatHelpTimeout(timeoutMs)}`);
+  }
+}
+
 async function runCommand(label, command, args) {
   const formattedCommand = formatCommand(command, args);
   const displayCommand = summarizeCommandForDisplay(command, args);
@@ -1091,6 +1143,11 @@ async function main() {
 
   const summary = printSummary(changedFiles, scope, results);
   process.exitCode = summary.hasFailed ? 1 : 0;
+}
+
+if (isHelpMode) {
+  printHelp();
+  process.exit(0);
 }
 
 if (!directoryExists('.git')) {
