@@ -111,6 +111,34 @@ export const closeBottomSheet = async (page: Page, label: string | RegExp) => {
   }
 };
 
+const clickUserCheckboxTarget = async (page: Page, checkbox: Locator) => {
+  const checkboxHost = checkbox.locator('xpath=ancestor::label[1]');
+  const target = (await checkboxHost.count()) > 0 ? checkboxHost : checkbox;
+  const targetBox = await target.boundingBox();
+  if (!targetBox) {
+    throw new Error('Checkbox user target is not visible');
+  }
+
+  await page.mouse.click(targetBox.x + targetBox.width / 2, targetBox.y + targetBox.height / 2);
+};
+
+export const setUserCheckboxState = async (page: Page, checkbox: Locator, checked: boolean) => {
+  if ((await checkbox.isChecked()) !== checked) {
+    await clickUserCheckboxTarget(page, checkbox);
+  }
+
+  if (checked) {
+    await expect(checkbox).toBeChecked();
+    return;
+  }
+
+  await expect(checkbox).not.toBeChecked();
+};
+
+export const checkUserCheckbox = async (page: Page, checkbox: Locator) => {
+  await setUserCheckboxState(page, checkbox, true);
+};
+
 export const createDirectory = async (page: Page, name = createUniqueName('folder')) => {
   const addSheet = await openEntryAddSheet(page);
   await expect(addSheet.getByText(/^create directory$/i)).toBeVisible();
@@ -338,9 +366,7 @@ const updateDatabaseItemDialogField = async (
 
   if (typeof value === 'boolean') {
     const checkbox = dialog.getByLabel(label);
-    if ((await checkbox.isChecked()) !== value) {
-      await checkbox.click();
-    }
+    await setUserCheckboxState(page, checkbox, value);
     return;
   }
 
@@ -348,7 +374,10 @@ const updateDatabaseItemDialogField = async (
     for (const relationItemValue of value) {
       // Relation rows are rendered inside the item dialog; each selected row has its own checkbox.
       // eslint-disable-next-line no-await-in-loop
-      await findDatabaseRow(dialog, relationItemValue).getByRole('checkbox').click();
+      await checkUserCheckbox(
+        page,
+        findDatabaseRow(dialog, relationItemValue).getByRole('checkbox'),
+      );
     }
     return;
   }
@@ -565,10 +594,7 @@ export const setInlineDatabaseValue = async (
         name: new RegExp(`^${escapeRegex(propertyName)}$`, 'i'),
       })
       .first();
-    const isChecked = (await checkbox.getAttribute('aria-checked')) === 'true';
-    if (isChecked !== value) {
-      await checkbox.click();
-    }
+    await setUserCheckboxState(page, checkbox, value);
     return;
   }
 

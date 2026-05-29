@@ -8,6 +8,7 @@ import {
   createDatabaseProperty,
   createRelationProperty,
   createDatabaseDocument,
+  checkUserCheckbox,
   createDirectory,
   createStringProperty,
   createUniqueName,
@@ -252,8 +253,8 @@ test('creates a relation property, selects related records, and persists relatio
   await expect(editDialog.getByText(firstTargetValue, { exact: true })).toBeVisible();
   await expect(editDialog.getByText(secondTargetValue, { exact: true })).toBeVisible();
 
-  await findDatabaseRow(page, firstTargetValue).getByRole('checkbox').click();
-  await findDatabaseRow(page, secondTargetValue).getByRole('checkbox').click();
+  await checkUserCheckbox(page, findDatabaseRow(page, firstTargetValue).getByRole('checkbox'));
+  await checkUserCheckbox(page, findDatabaseRow(page, secondTargetValue).getByRole('checkbox'));
   await editDialog.getByRole('button', { name: /^edit$/i }).click();
   await expect(editDialog).toHaveCount(0);
 

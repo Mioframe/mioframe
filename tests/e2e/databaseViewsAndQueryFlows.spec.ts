@@ -5,6 +5,7 @@ import {
   addEqualFilter,
   addSorting,
   addView,
+  checkUserCheckbox,
   closeBottomSheet,
   closeDocumentPane,
   createDatabaseProperty,
@@ -217,9 +218,10 @@ test('applies string, boolean, and relation filters and persists them after relo
   await expect(findDatabaseRow(page, relationMismatchValue)).toBeVisible();
 
   const booleanDialog = await openEqualFilterDialog(page, booleanPropertyName);
-  await booleanDialog
-    .getByRole('checkbox', { name: new RegExp(`^${booleanPropertyName}$`, 'i') })
-    .click();
+  await checkUserCheckbox(
+    page,
+    booleanDialog.getByRole('checkbox', { name: new RegExp(`^${booleanPropertyName}$`, 'i') }),
+  );
   await booleanDialog.getByRole('button', { name: /^apply$/i }).click();
   await expect(booleanDialog).toHaveCount(0);
   await closeBottomSheet(page, /database filters sheet/i);
@@ -228,7 +230,10 @@ test('applies string, boolean, and relation filters and persists them after relo
   await expect(findDatabaseRow(page, relationMismatchValue)).toBeVisible();
 
   const relationDialog = await openEqualFilterDialog(page, relationPropertyName);
-  await findDatabaseRow(relationDialog, targetAlphaValue).getByRole('checkbox').click();
+  await checkUserCheckbox(
+    page,
+    findDatabaseRow(relationDialog, targetAlphaValue).getByRole('checkbox'),
+  );
   await relationDialog.getByRole('button', { name: /^apply$/i }).click();
   await expect(relationDialog).toHaveCount(0);
   await closeBottomSheet(page, /database filters sheet/i);
