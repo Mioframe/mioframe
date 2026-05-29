@@ -124,7 +124,33 @@ jobs:
           cache-dependency-path: pnpm-lock.yaml
 
       - run: pnpm install --frozen-lockfile
-      - run: pnpm verify --verbose
+
+      - name: Verify format
+        run: pnpm verify --verbose --only format
+
+      - name: Verify oxlint
+        run: pnpm verify --verbose --only oxlint
+
+      - name: Verify eslint
+        run: pnpm verify --verbose --only eslint
+
+      - name: Verify type-check
+        run: pnpm verify --verbose --only type-check
+
+      - name: Verify unit tests
+        run: pnpm verify --verbose --only unit-tests
+
+      - name: Verify e2e install
+        run: pnpm verify --verbose --only e2e-install
+
+      - name: Verify e2e
+        run: pnpm verify --verbose --only e2e
+
+      - name: Verify visual
+        run: pnpm verify --verbose --only visual
+
+      - name: Verify mutation
+        run: pnpm verify --verbose --only mutation
 
       - name: Upload verify logs
         if: ${{ failure() || cancelled() }}

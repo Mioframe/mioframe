@@ -9,6 +9,18 @@ const isVerboseMode = process.argv.includes('--verbose');
 const isCi = process.env.CI === 'true' || process.env.GITHUB_ACTIONS === 'true';
 const shouldApplyFixers = isFixMode || isFixOnlyMode;
 const cliBaseRef = getCliBaseRef(process.argv.slice(2));
+const VERIFY_LABELS = [
+  'format',
+  'oxlint',
+  'eslint',
+  'type-check',
+  'unit-tests',
+  'e2e-install',
+  'e2e',
+  'visual',
+  'mutation',
+];
+const cliOnlyLabel = getCliOnlyLabel(process.argv.slice(2));
 const VERIFY_DIR = '.verify';
 const VERIFY_LOG_DIR = path.posix.join(VERIFY_DIR, 'logs');
 const MAX_RELEVANT_LINES = 20;
@@ -130,6 +142,48 @@ function getCliBaseRef(argv) {
   }
 
   return null;
+}
+
+function getCliOnlyLabel(argv) {
+  for (let index = 0; index < argv.length; index += 1) {
+    const argument = argv[index];
+
+    if (argument === '--only') {
+      const value = argv[index + 1];
+
+      if (!value || value.startsWith('--')) {
+        throw new Error(`Missing value for --only. Accepted labels: ${VERIFY_LABELS.join(', ')}`);
+      }
+
+      validateOnlyLabel(value);
+      return value;
+    }
+
+    if (argument.startsWith('--only=')) {
+      const value = argument.slice('--only='.length);
+
+      if (value.length === 0) {
+        throw new Error(`Missing value for --only. Accepted labels: ${VERIFY_LABELS.join(', ')}`);
+      }
+
+      validateOnlyLabel(value);
+      return value;
+    }
+  }
+
+  return null;
+}
+
+function validateOnlyLabel(label) {
+  if (VERIFY_LABELS.includes(label)) {
+    return;
+  }
+
+  throw new Error(
+    [`Invalid value for --only: ${label}`, `Accepted labels: ${VERIFY_LABELS.join(', ')}`].join(
+      '\n',
+    ),
+  );
 }
 
 function ensureBaseRefExists(baseRef) {
@@ -419,9 +473,18 @@ function getLogPath(label) {
   return path.posix.join(VERIFY_LOG_DIR, `${label}.log`);
 }
 
-function ensureLogsDirectory() {
-  fs.rmSync(VERIFY_LOG_DIR, { recursive: true, force: true });
+function ensureLogsDirectory(labelsToReset = null) {
+  if (labelsToReset === null) {
+    fs.rmSync(VERIFY_LOG_DIR, { recursive: true, force: true });
+    fs.mkdirSync(VERIFY_LOG_DIR, { recursive: true });
+    return;
+  }
+
   fs.mkdirSync(VERIFY_LOG_DIR, { recursive: true });
+
+  for (const label of labelsToReset) {
+    fs.rmSync(getLogPath(label), { force: true });
+  }
 }
 
 function appendToRollingBuffer(buffer, chunk) {
@@ -620,17 +683,36 @@ function createSkippedResult(entry, reason = entry.reason) {
 }
 
 function addE2ECommands(commands, e2eCommand) {
-  if (isCi) {
-    commands.push({
-      kind: 'run',
+  commands.push(createE2EInstallCommand());
+  commands.push({ ...e2eCommand, expensive: true });
+}
+
+function createE2EInstallCommand(reason) {
+  if (!isCi) {
+    return {
+      kind: 'skipped',
       label: 'e2e-install',
-      command: 'pnpm',
-      args: ['e2e:install'],
-      expensive: true,
-    });
+      command: 'pnpm e2e:install',
+      reason: 'not running in CI',
+    };
   }
 
-  commands.push({ ...e2eCommand, expensive: true });
+  if (reason) {
+    return {
+      kind: 'skipped',
+      label: 'e2e-install',
+      command: 'pnpm e2e:install',
+      reason,
+    };
+  }
+
+  return {
+    kind: 'run',
+    label: 'e2e-install',
+    command: 'pnpm',
+    args: ['e2e:install'],
+    expensive: true,
+  };
 }
 
 function buildCommands(changedFiles) {
@@ -750,6 +832,7 @@ function buildCommands(changedFiles) {
       args: ['exec', 'playwright', 'test', ...changedE2ESpecs],
     });
   } else {
+    commands.push(createE2EInstallCommand('empty e2e scope'));
     commands.push({
       kind: 'skipped',
       label: 'e2e',
@@ -795,6 +878,24 @@ function buildCommands(changedFiles) {
   return commands;
 }
 
+function selectOnlyCommands(commands) {
+  if (cliOnlyLabel === null) {
+    return commands;
+  }
+
+  const selectedCommands = commands.filter((entry) => entry.label === cliOnlyLabel);
+
+  if (selectedCommands.length > 0) {
+    return selectedCommands;
+  }
+
+  if (cliOnlyLabel === 'e2e-install') {
+    return [createE2EInstallCommand('empty e2e scope')];
+  }
+
+  throw new Error(`Verify command list is missing required label: ${cliOnlyLabel}`);
+}
+
 function getActionRequired(results) {
   const actions = [];
   const failedResults = results.filter((result) => result.status === 'failed');
@@ -832,6 +933,7 @@ function printSummary(changedFiles, scope, results) {
   console.log('\nVERIFY RESULT');
   console.log(`mode: ${mode}`);
   console.log(`verbose: ${isVerboseMode ? 'on' : 'off'}`);
+  console.log(`only: ${cliOnlyLabel ?? 'all'}`);
   console.log(`scope: ${scope}`);
   console.log(`changed files: ${changedFiles.length}`);
   console.log(`status: ${displayStatus}`);
@@ -866,10 +968,10 @@ async function main() {
   }
 
   const { changedFiles, scope } = getChangedFiles();
-  const commands = buildCommands(changedFiles);
+  const commands = selectOnlyCommands(buildCommands(changedFiles));
   const results = [];
   let hasFailed = false;
-  ensureLogsDirectory();
+  ensureLogsDirectory(cliOnlyLabel === null ? null : commands.map((entry) => entry.label));
 
   for (const entry of commands) {
     if (entry.kind === 'skipped') {
