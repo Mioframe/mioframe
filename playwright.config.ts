@@ -4,6 +4,7 @@ import toolingConfig from './config/tooling.json' with { type: 'json' };
 const host = toolingConfig.localServer.host;
 const port = toolingConfig.appPreview.port;
 const externalBaseURL = process.env.PLAYWRIGHT_EXTERNAL_BASE_URL;
+const browserChannel = process.env.CI ? 'chrome' : 'chromium';
 const escapedHost = host.replaceAll('.', '\\.');
 const previewURLPattern = new RegExp(
   String.raw`Local:\s+https://${escapedHost}:(?<playwright_preview_port>\d+)/`,
@@ -47,14 +48,14 @@ export default defineConfig({
       name: 'chromium',
       use: {
         ...devices['Desktop Chrome'],
-        channel: 'chromium',
+        channel: browserChannel,
       },
     },
     {
       name: 'Mobile Chrome',
       use: {
         ...devices['Pixel 5'],
-        channel: 'chromium',
+        channel: browserChannel,
       },
     },
   ],
