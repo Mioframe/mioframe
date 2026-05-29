@@ -41,7 +41,7 @@ export function runPlaywrightInContainer({
   ];
 
   for (const [key, value] of Object.entries(extraEnv)) {
-    podmanArgs.push('--env', `${key}=${value}`);
+    podmanArgs.push('--env', `${key}=${String(value)}`);
   }
 
   podmanArgs.push(
