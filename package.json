@@ -26,6 +26,7 @@
     "lint:oxlint": "oxlint . --fix",
     "format": "oxfmt .",
     "e2e": "playwright test",
+    "e2e:container": "node scripts/e2eContainer.mjs",
     "e2e:headed": "playwright test --headed",
     "e2e:install": "playwright install --with-deps chromium",
     "e2e:ui": "playwright test --ui",

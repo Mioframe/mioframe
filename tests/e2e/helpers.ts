@@ -68,7 +68,14 @@ export const openOpfs = async (page: Page) => {
   await opfsButton.click();
 
   await expect(page).toHaveURL(/Browser%20Storage/i);
-  await expect(page.getByRole('button', { name: /create directory/i })).toBeVisible();
+  await expect(page.getByRole('button', { name: /^add$/i })).toBeVisible();
+};
+
+export const openEntryAddSheet = async (page: Page) => {
+  await page.getByRole('button', { name: /^add$/i }).click();
+  const addSheet = page.getByRole('dialog', { name: /^add$/i });
+  await expect(addSheet).toBeVisible();
+  return addSheet;
 };
 
 export const closeBottomSheet = async (page: Page, label: string | RegExp) => {
@@ -85,7 +92,9 @@ export const closeBottomSheet = async (page: Page, label: string | RegExp) => {
 };
 
 export const createDirectory = async (page: Page, name = createUniqueName('folder')) => {
-  await page.getByRole('button', { name: /create directory/i }).click();
+  const addSheet = await openEntryAddSheet(page);
+  await expect(addSheet.getByText(/^create directory$/i)).toBeVisible();
+  await addSheet.getByText(/^create directory$/i).click();
 
   const dialog = page.getByRole('dialog', { name: /create a new folder/i });
   await expect(dialog).toBeVisible();
@@ -134,7 +143,9 @@ export const createDatabaseDocument = async (
   page: Page,
   name = createUniqueName('database document'),
 ) => {
-  await page.getByRole('button', { name: /create document/i }).click();
+  const addSheet = await openEntryAddSheet(page);
+  await expect(addSheet.getByText(/^create document$/i)).toBeVisible();
+  await addSheet.getByText(/^create document$/i).click();
 
   const dialog = page.getByRole('dialog', { name: /create document/i });
   await expect(dialog).toBeVisible();
@@ -143,7 +154,7 @@ export const createDatabaseDocument = async (
 
   await expect(dialog).toHaveCount(0);
   await expect(
-    page.getByRole('listitem', {
+    page.getByRole('button', {
       name: new RegExp(`^document ${escapeRegex(name)}$`, 'i'),
     }),
   ).toBeVisible();
@@ -152,7 +163,7 @@ export const createDatabaseDocument = async (
 
 export const openDocumentFromExplorer = async (page: Page, name: string) => {
   await page
-    .getByRole('listitem', {
+    .getByRole('button', {
       name: new RegExp(`^document ${escapeRegex(name)}$`, 'i'),
     })
     .click();
@@ -317,7 +328,7 @@ const updateDatabaseItemDialogField = async (
     for (const relationItemValue of value) {
       // Relation rows are rendered inside the item dialog; each selected row has its own checkbox.
       // eslint-disable-next-line no-await-in-loop
-      await findDatabaseRow(dialog, relationItemValue).getByRole('checkbox').click();
+      await findDatabaseRow(dialog, relationItemValue).getByRole('checkbox').check();
     }
     return;
   }

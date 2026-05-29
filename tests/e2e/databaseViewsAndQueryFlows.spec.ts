@@ -239,7 +239,7 @@ test('applies string, boolean, and relation filters and persists them after relo
   await expect(findDatabaseRow(page, relationMismatchValue)).toBeVisible();
 
   const relationDialog = await openEqualFilterDialog(page, relationPropertyName);
-  await findDatabaseRow(relationDialog, targetAlphaValue).getByRole('checkbox').click();
+  await findDatabaseRow(relationDialog, targetAlphaValue).getByRole('checkbox').check();
   await relationDialog.getByRole('button', { name: /^apply$/i }).click();
   await expect(relationDialog).toHaveCount(0);
   await closeBottomSheet(page, /database filters sheet/i);

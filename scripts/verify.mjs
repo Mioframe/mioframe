@@ -875,30 +875,29 @@ function addE2ECommands(commands, e2eCommand) {
 }
 
 function createE2EInstallCommand(reason) {
-  if (!isCi) {
-    return {
-      kind: 'skipped',
-      label: 'e2e-install',
-      command: 'pnpm e2e:install',
-      reason: 'not running in CI',
-    };
-  }
+  return {
+    kind: 'skipped',
+    label: 'e2e-install',
+    command: 'pnpm e2e:install',
+    reason: reason ?? 'browser install is not required; Playwright container provides browsers',
+  };
+}
 
-  if (reason) {
+function createE2ECommand(extraArgs = []) {
+  if (isCi) {
     return {
-      kind: 'skipped',
-      label: 'e2e-install',
-      command: 'pnpm e2e:install',
-      reason,
+      kind: 'run',
+      label: 'e2e',
+      command: 'pnpm',
+      args: ['e2e:container', ...extraArgs],
     };
   }
 
   return {
     kind: 'run',
-    label: 'e2e-install',
+    label: 'e2e',
     command: 'pnpm',
-    args: ['e2e:install'],
-    expensive: true,
+    args: ['exec', 'playwright', 'test', ...extraArgs],
   };
 }
 
@@ -1010,20 +1009,15 @@ function buildCommands(changedFiles) {
   }
 
   if (changedFiles.includes('playwright.config.ts')) {
-    addE2ECommands(commands, { kind: 'run', label: 'e2e', command: 'pnpm', args: ['e2e'] });
+    addE2ECommands(commands, createE2ECommand());
   } else if (changedE2ESpecs.length > 0) {
-    addE2ECommands(commands, {
-      kind: 'run',
-      label: 'e2e',
-      command: 'pnpm',
-      args: ['exec', 'playwright', 'test', ...changedE2ESpecs],
-    });
+    addE2ECommands(commands, createE2ECommand(changedE2ESpecs));
   } else {
     commands.push(createE2EInstallCommand('empty e2e scope'));
     commands.push({
       kind: 'skipped',
       label: 'e2e',
-      command: 'pnpm exec playwright test',
+      command: isCi ? 'pnpm e2e:container' : 'pnpm exec playwright test',
       reason: 'empty e2e scope',
     });
   }

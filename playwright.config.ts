@@ -4,7 +4,7 @@ import toolingConfig from './config/tooling.json' with { type: 'json' };
 const host = toolingConfig.localServer.host;
 const port = toolingConfig.appPreview.port;
 const externalBaseURL = process.env.PLAYWRIGHT_EXTERNAL_BASE_URL;
-const browserChannel = process.env.CI ? 'chrome' : 'chromium';
+const viteBin = './node_modules/.bin/vite';
 const escapedHost = host.replaceAll('.', '\\.');
 const previewURLPattern = new RegExp(
   String.raw`Local:\s+https://${escapedHost}:(?<playwright_preview_port>\d+)/`,
@@ -29,7 +29,7 @@ export default defineConfig({
   webServer: externalBaseURL
     ? undefined
     : {
-        command: `pnpm build && pnpm exec vite preview --host ${host} --port ${port}`,
+        command: `${viteBin} build && ${viteBin} preview --host ${host} --port ${port}`,
         env: {
           ...process.env,
           FORCE_COLOR: '0',
@@ -48,14 +48,14 @@ export default defineConfig({
       name: 'chromium',
       use: {
         ...devices['Desktop Chrome'],
-        channel: browserChannel,
+        channel: 'chromium',
       },
     },
     {
       name: 'Mobile Chrome',
       use: {
         ...devices['Pixel 5'],
-        channel: browserChannel,
+        channel: 'chromium',
       },
     },
   ],
