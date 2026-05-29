@@ -51,10 +51,7 @@ test('creates, renames, selects, and removes views through the view settings she
 
   const initialViewSheet = await openViewsSheet(page);
   await expect(
-    initialViewSheet
-      .getByRole('listitem')
-      .filter({ hasText: /default view/i })
-      .getByRole('checkbox'),
+    initialViewSheet.getByRole('button', { name: /default view/i }).getByRole('checkbox'),
   ).toBeChecked();
   await closeBottomSheet(page, /database views sheet/i);
 
@@ -65,14 +62,12 @@ test('creates, renames, selects, and removes views through the view settings she
   const selectedViewSheet = await openViewsSheet(page);
   await expect(
     selectedViewSheet
-      .getByRole('listitem')
-      .filter({ hasText: renamedViewName })
+      .getByRole('button', { name: new RegExp(renamedViewName, 'i') })
       .getByRole('checkbox'),
   ).toBeChecked();
 
   const selectedViewRow = selectedViewSheet
-    .getByRole('listitem')
-    .filter({ hasText: renamedViewName })
+    .getByRole('button', { name: new RegExp(renamedViewName, 'i') })
     .first();
   await selectedViewRow.getByRole('button', { name: /settings view/i }).click();
   await page.getByRole('menuitem', { name: /^remove$/i }).click();
@@ -83,10 +78,7 @@ test('creates, renames, selects, and removes views through the view settings she
   await expect(removeDialog).toHaveCount(0);
 
   await expect(
-    selectedViewSheet
-      .getByRole('listitem')
-      .filter({ hasText: /default view/i })
-      .getByRole('checkbox'),
+    selectedViewSheet.getByRole('button', { name: /default view/i }).getByRole('checkbox'),
   ).toBeChecked();
   await closeBottomSheet(page, /database views sheet/i);
 
@@ -94,10 +86,7 @@ test('creates, renames, selects, and removes views through the view settings she
   await openDocumentFromExplorer(page, documentName);
   const reopenedViewSheet = await openViewsSheet(page);
   await expect(
-    reopenedViewSheet
-      .getByRole('listitem')
-      .filter({ hasText: /default view/i })
-      .getByRole('checkbox'),
+    reopenedViewSheet.getByRole('button', { name: /default view/i }).getByRole('checkbox'),
   ).toBeChecked();
   await closeBottomSheet(page, /database views sheet/i);
 });
@@ -138,7 +127,7 @@ test('adds sorting, toggles direction, and removes sorting controls', async ({ p
   await openDocumentFromExplorer(page, documentName);
   const reopenedSortSheet = await openSortSheet(page);
   await expect(
-    reopenedSortSheet.getByRole('listitem').filter({ hasText: propertyName }).first(),
+    reopenedSortSheet.getByRole('button', { name: new RegExp(propertyName, 'i') }),
   ).toBeVisible();
   await closeBottomSheet(page, /database sort sheet/i);
 
@@ -150,7 +139,7 @@ test('adds sorting, toggles direction, and removes sorting controls', async ({ p
   await openDocumentFromExplorer(page, documentName);
   const reopenedSortSheetAfterRemoval = await openSortSheet(page);
   await expect(
-    reopenedSortSheetAfterRemoval.getByRole('listitem').filter({ hasText: propertyName }),
+    reopenedSortSheetAfterRemoval.getByRole('button', { name: new RegExp(propertyName, 'i') }),
   ).toHaveCount(0);
 });
 

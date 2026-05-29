@@ -87,8 +87,28 @@ export const closeBottomSheet = async (page: Page, label: string | RegExp) => {
   if (!isVisible) {
     return;
   }
-  await page.keyboard.press('Escape');
-  await expect(sheet).toHaveCount(0);
+
+  const closeButton = sheet.getByRole('button', { name: /close sheet/i });
+  const canUseCloseButton = await closeButton
+    .waitFor({ state: 'visible', timeout: 300 })
+    .then(() => true)
+    .catch(() => false);
+
+  if (canUseCloseButton) {
+    await closeButton.click();
+  } else {
+    await page.keyboard.press('Escape');
+  }
+
+  const isHidden = await sheet
+    .waitFor({ state: 'hidden', timeout: 2000 })
+    .then(() => true)
+    .catch(() => false);
+
+  if (!isHidden) {
+    await page.keyboard.press('Escape');
+    await sheet.waitFor({ state: 'hidden', timeout: 2000 });
+  }
 };
 
 export const createDirectory = async (page: Page, name = createUniqueName('folder')) => {
@@ -266,7 +286,7 @@ export const createRelationProperty = async (
 
 export const renameProperty = async (page: Page, currentName: string, nextName: string) => {
   const sheet = await openPropertiesSheet(page);
-  const row = sheet.getByRole('listitem').filter({ hasText: currentName }).first();
+  const row = findListRow(sheet, currentName);
   await row
     .getByRole('button', { name: new RegExp(`^options ${escapeRegex(currentName)}$`, 'i') })
     .click();
@@ -286,7 +306,7 @@ export const renameProperty = async (page: Page, currentName: string, nextName: 
 
 export const removeProperty = async (page: Page, name: string) => {
   const sheet = await openPropertiesSheet(page);
-  const row = sheet.getByRole('listitem').filter({ hasText: name }).first();
+  const row = findListRow(sheet, name);
   await row
     .getByRole('button', { name: new RegExp(`^options ${escapeRegex(name)}$`, 'i') })
     .click();
@@ -366,6 +386,9 @@ export const addDatabaseItemValues = async (
 export const findDatabaseRow = (root: Page | Locator, value: string): Locator =>
   root.locator('tbody[role="list"] > tr').filter({ hasText: value }).first();
 
+const findListRow = (root: Page | Locator, value: string | RegExp): Locator =>
+  root.getByRole('list').locator(':scope > *').filter({ hasText: value }).first();
+
 export const editDatabaseItem = async (
   page: Page,
   previousValue: string,
@@ -430,7 +453,7 @@ export const addView = async (page: Page, name = createUniqueName('view')) => {
 
 export const renameView = async (page: Page, currentName: string, nextName: string) => {
   const sheet = await openViewsSheet(page);
-  const row = sheet.getByRole('listitem').filter({ hasText: currentName }).first();
+  const row = findListRow(sheet, currentName);
   await row.getByRole('button', { name: /settings view/i }).click();
   await page.getByRole('menuitem', { name: /^rename$/i }).click();
 
@@ -445,10 +468,7 @@ export const renameView = async (page: Page, currentName: string, nextName: stri
 
 export const selectView = async (page: Page, name: string | RegExp) => {
   const sheet = await openViewsSheet(page);
-  const row =
-    name instanceof RegExp
-      ? sheet.getByRole('listitem').filter({ hasText: name }).first()
-      : sheet.getByRole('listitem').filter({ hasText: name }).first();
+  const row = findListRow(sheet, name);
   await row.click();
   await expect(row.getByRole('checkbox')).toBeChecked();
   await closeBottomSheet(page, /database views sheet/i);
@@ -456,7 +476,7 @@ export const selectView = async (page: Page, name: string | RegExp) => {
 
 export const removeView = async (page: Page, name: string) => {
   const sheet = await openViewsSheet(page);
-  const row = sheet.getByRole('listitem').filter({ hasText: name }).first();
+  const row = findListRow(sheet, name);
   await row.getByRole('button', { name: /settings view/i }).click();
   await page.getByRole('menuitem', { name: /^remove$/i }).click();
 
@@ -481,18 +501,18 @@ export const addSorting = async (page: Page, propertyName: string) => {
   await page
     .getByRole('menuitem', { name: new RegExp(`^${escapeRegex(propertyName)}$`, 'i') })
     .click();
-  await expect(sheet.getByRole('listitem').filter({ hasText: propertyName }).first()).toBeVisible();
+  await expect(findListRow(sheet, propertyName)).toBeVisible();
   await closeBottomSheet(page, /database sort sheet/i);
 };
 
 export const toggleSortingDirection = async (page: Page, propertyName: string) => {
   const sheet = await openSortSheet(page);
-  await sheet.getByRole('listitem').filter({ hasText: propertyName }).first().click();
+  await findListRow(sheet, propertyName).click();
 };
 
 export const removeSorting = async (page: Page, propertyName: string) => {
   const sheet = await openSortSheet(page);
-  const row = sheet.getByRole('listitem').filter({ hasText: propertyName }).first();
+  const row = findListRow(sheet, propertyName);
   await row.getByRole('button', { name: /^remove$/i }).click();
 };
 

@@ -217,6 +217,7 @@ watch(
     border: 2px solid var(--md-sys-color-on-surface-variant);
     box-sizing: border-box;
     cursor: pointer;
+    pointer-events: none;
   }
 
   &__icon {
@@ -228,7 +229,6 @@ watch(
 
   &__input {
     opacity: 0;
-    /* pointer-events: none; */
     background-color: transparent;
     position: absolute;
   }
