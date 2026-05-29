@@ -111,6 +111,29 @@ export const closeBottomSheet = async (page: Page, label: string | RegExp) => {
   }
 };
 
+const clickUserCheckboxTarget = async (checkbox: Locator) => {
+  const checkboxHost = checkbox.locator('xpath=ancestor::label[1]');
+  const target = (await checkboxHost.count()) > 0 ? checkboxHost.first() : checkbox;
+  await target.click();
+};
+
+export const setUserCheckboxState = async (checkbox: Locator, checked: boolean) => {
+  if ((await checkbox.isChecked()) !== checked) {
+    await clickUserCheckboxTarget(checkbox);
+  }
+
+  if (checked) {
+    await expect(checkbox).toBeChecked();
+    return;
+  }
+
+  await expect(checkbox).not.toBeChecked();
+};
+
+export const checkUserCheckbox = async (checkbox: Locator) => {
+  await setUserCheckboxState(checkbox, true);
+};
+
 export const createDirectory = async (page: Page, name = createUniqueName('folder')) => {
   const addSheet = await openEntryAddSheet(page);
   await expect(addSheet.getByText(/^create directory$/i)).toBeVisible();
@@ -338,9 +361,7 @@ const updateDatabaseItemDialogField = async (
 
   if (typeof value === 'boolean') {
     const checkbox = dialog.getByLabel(label);
-    if ((await checkbox.isChecked()) !== value) {
-      await checkbox.click();
-    }
+    await setUserCheckboxState(checkbox, value);
     return;
   }
 
@@ -348,7 +369,7 @@ const updateDatabaseItemDialogField = async (
     for (const relationItemValue of value) {
       // Relation rows are rendered inside the item dialog; each selected row has its own checkbox.
       // eslint-disable-next-line no-await-in-loop
-      await findDatabaseRow(dialog, relationItemValue).getByRole('checkbox').click();
+      await checkUserCheckbox(findDatabaseRow(dialog, relationItemValue).getByRole('checkbox'));
     }
     return;
   }
@@ -565,10 +586,7 @@ export const setInlineDatabaseValue = async (
         name: new RegExp(`^${escapeRegex(propertyName)}$`, 'i'),
       })
       .first();
-    const isChecked = (await checkbox.getAttribute('aria-checked')) === 'true';
-    if (isChecked !== value) {
-      await checkbox.click();
-    }
+    await setUserCheckboxState(checkbox, value);
     return;
   }
 
