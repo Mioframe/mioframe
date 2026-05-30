@@ -675,6 +675,28 @@ describe('useGoogleService', () => {
     expect(sessionStoreValue['user@example.com']).toBeUndefined();
   });
 
+  it('rejects fresh tokens missing the userinfo email scope before loading userinfo', async () => {
+    requestTokenMock.mockResolvedValueOnce({
+      access_token: 'partial-token',
+      expires_in: '3600',
+      scope: DRIVE_GOOGLE_SCOPE.all,
+    });
+
+    const service = await createService();
+    await bindApi(service);
+
+    await expect(
+      service.requestToken([DRIVE_GOOGLE_SCOPE.all], 'user@example.com'),
+    ).rejects.toMatchObject({
+      code: GoogleAuthErrorCode.reauthRequired,
+      expectedEmail: 'user@example.com',
+      name: 'GoogleAuthError',
+    } satisfies Partial<GoogleAuthError>);
+    expect(userinfoGetMock).not.toHaveBeenCalled();
+    expect(updateSessionStoreMock).not.toHaveBeenCalled();
+    expect(sessionStoreValue['user@example.com']).toBeUndefined();
+  });
+
   it('stores a new account when no expected email is provided', async () => {
     requestTokenMock.mockResolvedValueOnce({
       access_token: 'other-token',
