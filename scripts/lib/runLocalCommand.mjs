@@ -15,8 +15,44 @@ export async function runLocalCommand({ command, args, env = process.env, spawnP
       env,
     });
 
-    child.once('error', reject);
+    let terminatedBySignal = null;
+    let childClosed = false;
+
+    const onParentSignal = (signal) => {
+      if (terminatedBySignal) {
+        return;
+      }
+
+      terminatedBySignal = signal;
+      child.kill(signal);
+
+      if (childClosed) {
+        setImmediate(() => {
+          process.kill(process.pid, signal);
+        });
+      }
+    };
+
+    process.once('SIGINT', onParentSignal);
+    process.once('SIGTERM', onParentSignal);
+
+    child.once('error', (error) => {
+      process.removeListener('SIGINT', onParentSignal);
+      process.removeListener('SIGTERM', onParentSignal);
+      reject(error);
+    });
+
     child.once('close', (code, signal) => {
+      childClosed = true;
+      process.removeListener('SIGINT', onParentSignal);
+      process.removeListener('SIGTERM', onParentSignal);
+
+      if (terminatedBySignal) {
+        setImmediate(() => {
+          process.kill(process.pid, terminatedBySignal);
+        });
+      }
+
       resolve({
         signal: signal ?? null,
         status: signal ? null : (code ?? 1),

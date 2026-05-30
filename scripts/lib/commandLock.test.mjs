@@ -69,7 +69,7 @@ describe('releaseOwnedLock', () => {
     expect(fs.existsSync(lockDir)).toBe(true);
   });
 
-  it('does not delete a fresh lock created after stale metadata was read (race condition)', async () => {
+  it('returns false when stale metadata was replaced by a fresh owner before releaseOwnedLock reads it', async () => {
     const { lockDir } = createTempLockDir();
     const staleToken = 'stale-owner';
     const freshToken = 'fresh-owner';

@@ -394,56 +394,94 @@ function isTypeCheckTarget(filePath) {
   );
 }
 
-function getAllSiblingTestFiles(filePath) {
-  if (!filePath.startsWith('src/')) {
-    return [];
-  }
-
-  if (filePath.endsWith('.test.ts')) {
-    return fileExists(filePath) ? [filePath] : [];
-  }
-
-  const extension = path.posix.extname(filePath);
-
-  if (!SOURCE_EXTENSIONS.includes(extension)) {
-    return [];
-  }
-
-  const baseName = path.posix.basename(filePath, extension);
-  const dirPath = path.posix.dirname(filePath);
-  const nameWithoutExt = filePath.slice(0, -extension.length);
-  const exactMatch = `${nameWithoutExt}.test.ts`;
-
-  if (fileExists(exactMatch)) {
-    return [exactMatch];
-  }
-
-  const testCandidates = [];
-
-  try {
-    const entries = fs.readdirSync(dirPath, { withFileTypes: true });
-
-    for (const entry of entries) {
-      if (!entry.isFile() || !entry.name.endsWith('.test.ts')) {
-        continue;
-      }
-
-      const candidateBase = entry.name.slice(0, -'.test.ts'.length);
-      const parts = candidateBase.split('.');
-
-      if (parts.length < 2) {
-        continue;
-      }
-
-      if (parts[0] === baseName) {
-        testCandidates.push(path.posix.join(dirPath, entry.name));
-      }
+/**
+ * Find sibling test files for a production file path.
+ *
+ * For `src/` paths, maps `.ts` and `.vue` production files to colocated
+ * `.test.ts` files using exact basename matching and directory scan.
+ * For `scripts/` paths, maps `.mjs` production files to colocated
+ * `.test.mjs` and `.spec.mjs` files using exact name match.
+ * @param filePath Production file path relative to the repository root.
+ * @returns Sorted unique list of existing sibling test file paths, or an
+ * empty array when no tests are found.
+ */
+export function getAllSiblingTestFiles(filePath) {
+  if (filePath.startsWith('src/')) {
+    if (filePath.endsWith('.test.ts')) {
+      return fileExists(filePath) ? [filePath] : [];
     }
-  } catch {
-    // Directory read failure falls through to an empty focused test scope.
+
+    const extension = path.posix.extname(filePath);
+
+    if (!SOURCE_EXTENSIONS.includes(extension)) {
+      return [];
+    }
+
+    const baseName = path.posix.basename(filePath, extension);
+    const dirPath = path.posix.dirname(filePath);
+    const nameWithoutExt = filePath.slice(0, -extension.length);
+    const exactMatch = `${nameWithoutExt}.test.ts`;
+
+    if (fileExists(exactMatch)) {
+      return [exactMatch];
+    }
+
+    const testCandidates = [];
+
+    try {
+      const entries = fs.readdirSync(dirPath, { withFileTypes: true });
+
+      for (const entry of entries) {
+        if (!entry.isFile() || !entry.name.endsWith('.test.ts')) {
+          continue;
+        }
+
+        const candidateBase = entry.name.slice(0, -'.test.ts'.length);
+        const parts = candidateBase.split('.');
+
+        if (parts.length < 2) {
+          continue;
+        }
+
+        if (parts[0] === baseName) {
+          testCandidates.push(path.posix.join(dirPath, entry.name));
+        }
+      }
+    } catch {
+      // Directory read failure falls through to an empty focused test scope.
+    }
+
+    return uniqSorted(testCandidates);
   }
 
-  return uniqSorted(testCandidates);
+  if (filePath.startsWith('scripts/')) {
+    if (filePath.endsWith('.test.mjs') || filePath.endsWith('.spec.mjs')) {
+      return fileExists(filePath) ? [filePath] : [];
+    }
+
+    if (!filePath.endsWith('.mjs')) {
+      return [];
+    }
+
+    const nameWithoutExt = filePath.slice(0, -'.mjs'.length);
+    const testCandidates = [];
+
+    const exactTestMatch = `${nameWithoutExt}.test.mjs`;
+
+    if (fileExists(exactTestMatch)) {
+      testCandidates.push(exactTestMatch);
+    }
+
+    const exactSpecMatch = `${nameWithoutExt}.spec.mjs`;
+
+    if (fileExists(exactSpecMatch)) {
+      testCandidates.push(exactSpecMatch);
+    }
+
+    return uniqSorted(testCandidates);
+  }
+
+  return [];
 }
 
 function getVitestScope(changedFiles) {
@@ -760,6 +798,26 @@ async function runCommand(label, command, args, extraEnv = {}) {
   let lastOutputLine = null;
   let incompleteOutputLine = '';
   const commandTimeoutMs = COMMAND_TIMEOUT_MS_BY_LABEL[label] ?? null;
+  let terminatedBySignal = null;
+  let childClosed = false;
+
+  const onParentSignal = (signal) => {
+    if (terminatedBySignal !== null) {
+      return;
+    }
+
+    terminatedBySignal = signal;
+    child.kill(signal);
+
+    if (childClosed) {
+      setImmediate(() => {
+        process.kill(process.pid, signal);
+      });
+    }
+  };
+
+  process.once('SIGINT', onParentSignal);
+  process.once('SIGTERM', onParentSignal);
 
   const writeStatusLine = (line, destination = 'stdout') => {
     const text = `${line}\n`;
@@ -864,6 +922,8 @@ async function runCommand(label, command, args, extraEnv = {}) {
 
   await new Promise((resolve) => {
     child.once('error', (error) => {
+      process.removeListener('SIGINT', onParentSignal);
+      process.removeListener('SIGTERM', onParentSignal);
       spawnError = error;
       logStream.write(`\n[verify] spawn error: ${error.message}\n`);
       cleanupTimers();
@@ -871,6 +931,9 @@ async function runCommand(label, command, args, extraEnv = {}) {
     });
 
     child.once('close', (code, signal) => {
+      childClosed = true;
+      process.removeListener('SIGINT', onParentSignal);
+      process.removeListener('SIGTERM', onParentSignal);
       cleanupTimers();
 
       if (timedOut) {
@@ -894,6 +957,12 @@ async function runCommand(label, command, args, extraEnv = {}) {
 
       if (trailingLine !== null) {
         lastOutputLine = trailingLine;
+      }
+
+      if (terminatedBySignal !== null) {
+        setImmediate(() => {
+          process.kill(process.pid, terminatedBySignal);
+        });
       }
 
       resolve();

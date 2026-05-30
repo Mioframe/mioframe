@@ -1,6 +1,32 @@
 import { describe, expect, it } from 'vitest';
 
-import { getCliFilesOverride } from './verify.mjs';
+import { getCliFilesOverride, getAllSiblingTestFiles } from './verify.mjs';
+
+describe('getAllSiblingTestFiles', () => {
+  it('maps scripts production .mjs files to sibling .test.mjs', () => {
+    const result = getAllSiblingTestFiles('scripts/lib/commandLock.mjs');
+
+    expect(result).toContain('scripts/lib/commandLock.test.mjs');
+  });
+
+  it('returns already-test scripts .test.mjs files', () => {
+    const result = getAllSiblingTestFiles('scripts/lib/commandLock.test.mjs');
+
+    expect(result).toEqual(['scripts/lib/commandLock.test.mjs']);
+  });
+
+  it('still discovers src/ sibling tests', () => {
+    const result = getAllSiblingTestFiles('src/shared/lib/cache/index.ts');
+
+    expect(result).toContain('src/shared/lib/cache/index.test.ts');
+  });
+
+  it('returns empty for non-src non-scripts files', () => {
+    const result = getAllSiblingTestFiles('config/tooling.json');
+
+    expect(result).toEqual([]);
+  });
+});
 
 describe('getCliFilesOverride', () => {
   it('rejects bare --files with no paths', () => {

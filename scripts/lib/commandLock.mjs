@@ -67,23 +67,11 @@ export async function withExpensiveCommandLock(input, run) {
     await releaseLock();
   };
 
-  const onSignal = (signal) => {
-    void cleanup().finally(() => {
-      process.removeListener(signal, onSignal);
-      process.kill(process.pid, signal);
-    });
-  };
-
-  process.once('SIGINT', onSignal);
-  process.once('SIGTERM', onSignal);
-
   try {
     return await run({
       [LOCK_ENV_FLAG]: '1',
     });
   } finally {
-    process.removeListener('SIGINT', onSignal);
-    process.removeListener('SIGTERM', onSignal);
     await cleanup();
   }
 }
@@ -160,11 +148,13 @@ function isProcessAlive(pid) {
 }
 
 /**
- * Removes the lock directory only when the caller still owns the lock.
+ * Removes the lock directory only when the owner token on disk still matches.
  *
- * Always re-reads the current on-disk metadata to prevent a stale-lock
- * recovery from deleting a lock acquired by another process after the
- * stale metadata was read.
+ * Re-reads the current on-disk metadata and compares the owner token before
+ * removal so a stale-lock recovery does not delete a lock that was already
+ * re-acquired by a new owner. Note that there is still a TOCTOU window
+ * between the metadata read and `fs.rmSync`; this function does not provide
+ * atomic cross-process lock release.
  * @param lockDirectoryPath Lock directory to remove.
  * @param metadataPath Path to the lock metadata file.
  * @param ownerToken Expected owner token from the process that acquired the lock.
