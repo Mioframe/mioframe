@@ -53,7 +53,7 @@ export async function withExpensiveCommandLock(input, run, options = {}) {
     ownerToken,
   };
 
-  await acquireLock({
+  acquireLock({
     lockDirectoryPath,
     metadataPath,
     metadata: baseMetadata,
@@ -76,14 +76,14 @@ export async function withExpensiveCommandLock(input, run, options = {}) {
     }
   }, heartbeatIntervalMs);
 
-  const cleanup = async () => {
+  const cleanup = () => {
     if (released) {
       return;
     }
 
     released = true;
     clearInterval(heartbeatTimer);
-    await releaseLock();
+    releaseLock();
   };
 
   try {
@@ -91,7 +91,7 @@ export async function withExpensiveCommandLock(input, run, options = {}) {
       [LOCK_ENV_FLAG]: '1',
     });
   } finally {
-    await cleanup();
+    cleanup();
   }
 }
 
@@ -103,7 +103,7 @@ function shouldSkipLock() {
   return process.env[LOCK_ENV_FLAG] === '1';
 }
 
-async function acquireLock({ lockDirectoryPath, metadataPath, metadata, staleAfterMs }) {
+function acquireLock({ lockDirectoryPath, metadataPath, metadata, staleAfterMs }) {
   fs.mkdirSync(path.dirname(lockDirectoryPath), { recursive: true });
 
   try {
@@ -119,7 +119,7 @@ async function acquireLock({ lockDirectoryPath, metadataPath, metadata, staleAft
   const existingMetadata = readMetadata(metadataPath);
 
   if (existingMetadata !== null && isStaleLock(existingMetadata, staleAfterMs)) {
-    const removed = await releaseOwnedLock(
+    const removed = releaseOwnedLock(
       lockDirectoryPath,
       metadataPath,
       existingMetadata.ownerToken,
@@ -131,7 +131,7 @@ async function acquireLock({ lockDirectoryPath, metadataPath, metadata, staleAft
   }
 
   if (existingMetadata === null && isStaleLockDirectory(lockDirectoryPath, staleAfterMs)) {
-    const removed = await releaseStaleLockDirectory(lockDirectoryPath);
+    const removed = releaseStaleLockDirectory(lockDirectoryPath);
 
     if (removed) {
       return acquireLock({ lockDirectoryPath, metadataPath, metadata, staleAfterMs });
@@ -211,7 +211,7 @@ function isStaleLockDirectory(lockDirectoryPath, staleAfterMs) {
  * @returns `true` when the directory was removed, `false` when it was already
  * gone or removal failed.
  */
-async function releaseStaleLockDirectory(lockDirectoryPath) {
+function releaseStaleLockDirectory(lockDirectoryPath) {
   try {
     fs.rmSync(lockDirectoryPath, { recursive: true, force: false });
     return true;
@@ -237,7 +237,7 @@ async function releaseStaleLockDirectory(lockDirectoryPath) {
  * @param ownerToken Expected owner token from the process that acquired the lock.
  * @returns `true` when the lock was owned and removed, `false` otherwise.
  */
-export async function releaseOwnedLock(lockDirectoryPath, metadataPath, ownerToken) {
+export function releaseOwnedLock(lockDirectoryPath, metadataPath, ownerToken) {
   const currentMetadata = readMetadata(metadataPath);
 
   if (currentMetadata === null || currentMetadata.ownerToken !== ownerToken) {
