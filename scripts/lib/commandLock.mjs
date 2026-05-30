@@ -116,7 +116,6 @@ async function acquireLock({ lockDirectoryPath, metadataPath, metadata, staleAft
       lockDirectoryPath,
       metadataPath,
       existingMetadata.ownerToken,
-      existingMetadata,
     );
 
     if (removed) {
@@ -160,8 +159,19 @@ function isProcessAlive(pid) {
   }
 }
 
-async function releaseOwnedLock(lockDirectoryPath, metadataPath, ownerToken, knownMetadata = null) {
-  const currentMetadata = knownMetadata ?? readMetadata(metadataPath);
+/**
+ * Removes the lock directory only when the caller still owns the lock.
+ *
+ * Always re-reads the current on-disk metadata to prevent a stale-lock
+ * recovery from deleting a lock acquired by another process after the
+ * stale metadata was read.
+ * @param lockDirectoryPath Lock directory to remove.
+ * @param metadataPath Path to the lock metadata file.
+ * @param ownerToken Expected owner token from the process that acquired the lock.
+ * @returns `true` when the lock was owned and removed, `false` otherwise.
+ */
+export async function releaseOwnedLock(lockDirectoryPath, metadataPath, ownerToken) {
+  const currentMetadata = readMetadata(metadataPath);
 
   if (currentMetadata === null || currentMetadata.ownerToken !== ownerToken) {
     return false;
