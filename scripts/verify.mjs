@@ -195,11 +195,13 @@ function getCliOnlyLabel(argv) {
  */
 export function getCliFilesOverride(argv) {
   const explicitFiles = [];
+  let hasExplicitFilesFlag = false;
 
   for (let index = 0; index < argv.length; index += 1) {
     const argument = argv[index];
 
     if (argument === '--files') {
+      hasExplicitFilesFlag = true;
       let cursor = index + 1;
 
       if (cursor >= argv.length || argv[cursor].startsWith('--')) {
@@ -218,6 +220,7 @@ export function getCliFilesOverride(argv) {
     }
 
     if (argument.startsWith('--files=')) {
+      hasExplicitFilesFlag = true;
       const value = argument.slice('--files='.length);
 
       if (value.length === 0) {
@@ -233,6 +236,12 @@ export function getCliFilesOverride(argv) {
           .filter(Boolean),
       );
     }
+  }
+
+  if (hasExplicitFilesFlag && explicitFiles.length === 0) {
+    throw new Error(
+      'Missing value for --files. Example: pnpm verify --only eslint --files src/foo.ts',
+    );
   }
 
   if (explicitFiles.length === 0) {

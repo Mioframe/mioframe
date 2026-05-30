@@ -69,4 +69,51 @@ describe('runPlaywrightInContainer', () => {
 
     expect(events).toEqual(['lock-acquired', 'callback-returned', 'lock-released', 'apply-result']);
   });
+
+  it('prints a project-level diagnostic for non-zero podman exits', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    try {
+      await runPlaywrightInContainer(
+        {
+          ...baseOptions,
+          config: 'playwright.visual.config.ts',
+          label: 'visual',
+        },
+        {
+          applyContainerProcessResult: vi.fn(),
+          ensureLocalPlaywrightBinary: vi.fn(),
+          ensurePodmanAvailable: vi.fn(),
+          getInstalledPlaywrightVersion: vi.fn(() => '1.59.1'),
+          spawnSync: vi.fn(() => ({
+            error: undefined,
+            signal: null,
+            status: 125,
+          })),
+          withExpensiveCommandLock: vi.fn(async (_input, run) =>
+            run({ MIOFRAME_EXPENSIVE_COMMAND_LOCK_HELD: '1' }),
+          ),
+        },
+      );
+
+      const output = errorSpy.mock.calls.map(([line]) => String(line)).join('\n');
+      expect(output).toContain('Playwright container command failed.');
+      expect(output).toContain('label: visual');
+      expect(output).toContain('operation: Playwright tests in a Podman container');
+      expect(output).toContain('exit status: 125');
+      expect(output).toContain('config: playwright.visual.config.ts');
+      expect(output).toContain('  cpus: 2  override: PLAYWRIGHT_CONTAINER_CPUS');
+      expect(output).toContain('  memory: 6g  override: PLAYWRIGHT_CONTAINER_MEMORY');
+      expect(output).toContain('  memory-swap: 8g  override: PLAYWRIGHT_CONTAINER_MEMORY_SWAP');
+      expect(output).toContain('  pids-limit: 512  override: PLAYWRIGHT_CONTAINER_PIDS_LIMIT');
+      expect(output).toContain('  timeout: 900  override: PLAYWRIGHT_CONTAINER_TIMEOUT');
+      expect(output).toContain('  workers: 2  override: PLAYWRIGHT_CONTAINER_WORKERS');
+      expect(output).toContain(
+        'If Podman reports an unsupported resource option, rerun with the matching override or adjust config/tooling.json.',
+      );
+      expect(output).toContain('Raw Podman output is printed above.');
+    } finally {
+      errorSpy.mockRestore();
+    }
+  });
 });

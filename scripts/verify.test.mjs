@@ -15,6 +15,15 @@ describe('getCliFilesOverride', () => {
     );
   });
 
+  it('rejects empty comma-delimited --files values', () => {
+    expect(() => getCliFilesOverride(['--files=,'])).toThrow(
+      'Missing value for --files. Example: pnpm verify --only eslint --files src/foo.ts',
+    );
+    expect(() => getCliFilesOverride(['--files= , '])).toThrow(
+      'Missing value for --files. Example: pnpm verify --only eslint --files src/foo.ts',
+    );
+  });
+
   it('keeps explicit file lists working', () => {
     expect(getCliFilesOverride(['--only', 'eslint', '--files', 'scripts/verify.mjs'])).toEqual([
       'scripts/verify.mjs',
