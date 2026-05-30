@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { spawn, spawnSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
 import toolingConfig from '../config/tooling.json' with { type: 'json' };
 import { withExpensiveCommandLock } from './lib/commandLock.mjs';
 import { classifyCommandWeight, resolveEslintConcurrency } from './lib/commandWeight.mjs';
@@ -187,7 +188,12 @@ function getCliOnlyLabel(argv) {
   return null;
 }
 
-function getCliFilesOverride(argv) {
+/**
+ * Parse explicit file overrides from the verify CLI.
+ * @param argv Raw CLI arguments after the script name.
+ * @returns Explicit file list, or null when `--files` was not provided.
+ */
+export function getCliFilesOverride(argv) {
   const explicitFiles = [];
 
   for (let index = 0; index < argv.length; index += 1) {
@@ -195,6 +201,12 @@ function getCliFilesOverride(argv) {
 
     if (argument === '--files') {
       let cursor = index + 1;
+
+      if (cursor >= argv.length || argv[cursor].startsWith('--')) {
+        throw new Error(
+          'Missing value for --files. Example: pnpm verify --only eslint --files src/foo.ts',
+        );
+      }
 
       while (cursor < argv.length && !argv[cursor].startsWith('--')) {
         explicitFiles.push(argv[cursor]);
@@ -1283,13 +1295,28 @@ async function main() {
   process.exitCode = summary.hasFailed ? 1 : 0;
 }
 
-if (isHelpMode) {
-  printHelp();
-  process.exit(0);
+/**
+ * Run the verify CLI when the module is executed directly.
+ * @returns Process exit code that should be reported to the shell.
+ */
+export async function runVerifyCli() {
+  if (isHelpMode) {
+    printHelp();
+    return 0;
+  }
+
+  if (!directoryExists('.git')) {
+    throw new Error('Repository root is required to run verify.');
+  }
+
+  await main();
+  return process.exitCode ?? 0;
 }
 
-if (!directoryExists('.git')) {
-  throw new Error('Repository root is required to run verify.');
-}
+if (process.argv[1] === fileURLToPath(import.meta.url)) {
+  const exitCode = await runVerifyCli();
 
-await main();
+  if (isHelpMode) {
+    process.exit(exitCode);
+  }
+}

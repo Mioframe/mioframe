@@ -16,6 +16,14 @@ const GENERIC_PIDS_LIMIT_ENV = 'PLAYWRIGHT_CONTAINER_PIDS_LIMIT';
 const GENERIC_TIMEOUT_ENV = 'PLAYWRIGHT_CONTAINER_TIMEOUT';
 const GENERIC_WORKERS_ENV = 'PLAYWRIGHT_CONTAINER_WORKERS';
 const containerDefaults = toolingConfig.verification.playwrightContainer;
+const defaultDeps = {
+  applyContainerProcessResult,
+  ensureLocalPlaywrightBinary,
+  ensurePodmanAvailable,
+  getInstalledPlaywrightVersion,
+  spawnSync,
+  withExpensiveCommandLock,
+};
 
 /**
  * Run Playwright tests inside the repo's Podman wrapper with local safety limits.
@@ -32,30 +40,34 @@ const containerDefaults = toolingConfig.verification.playwrightContainer;
  * @param options.missingBinaryMessage Error shown when the local Playwright binary is unavailable.
  * @param options.podmanFailureMessage Error shown when `podman --version` fails.
  * @param [options.updateSnapshots] Whether to add `--update-snapshots`.
+ * @param [deps] Test seams for Podman execution and lock/result handling.
  * @returns Resolves after the Podman command exits.
  */
-export async function runPlaywrightInContainer({
-  label = 'playwright-container',
-  config,
-  extraArgs = [],
-  extraEnv = {},
-  imageEnvAliases = [],
-  podmanUsernsEnvAliases = [],
-  volumeLabelEnvAliases = [],
-  missingPodmanMessage,
-  missingMetadataMessage,
-  missingBinaryMessage,
-  podmanFailureMessage,
-  updateSnapshots = false,
-}) {
+export async function runPlaywrightInContainer(
+  {
+    label = 'playwright-container',
+    config,
+    extraArgs = [],
+    extraEnv = {},
+    imageEnvAliases = [],
+    podmanUsernsEnvAliases = [],
+    volumeLabelEnvAliases = [],
+    missingPodmanMessage,
+    missingMetadataMessage,
+    missingBinaryMessage,
+    podmanFailureMessage,
+    updateSnapshots = false,
+  },
+  deps = defaultDeps,
+) {
   const repositoryPath = process.cwd();
 
-  ensurePodmanAvailable(missingPodmanMessage, podmanFailureMessage);
-  ensureLocalPlaywrightBinary(repositoryPath, missingBinaryMessage);
+  deps.ensurePodmanAvailable(missingPodmanMessage, podmanFailureMessage);
+  deps.ensureLocalPlaywrightBinary(repositoryPath, missingBinaryMessage);
 
   const image =
     getFirstDefinedEnvValue([...imageEnvAliases, GENERIC_IMAGE_ENV]) ||
-    `mcr.microsoft.com/playwright:v${getInstalledPlaywrightVersion(repositoryPath, missingMetadataMessage)}-noble`;
+    `mcr.microsoft.com/playwright:v${deps.getInstalledPlaywrightVersion(repositoryPath, missingMetadataMessage)}-noble`;
   const run = async (lockEnv) => {
     const podmanArgs = [
       'run',
@@ -109,7 +121,7 @@ export async function runPlaywrightInContainer({
 
     podmanArgs.push(...extraArgs);
 
-    const child = spawnSync('podman', podmanArgs, {
+    const child = deps.spawnSync('podman', podmanArgs, {
       stdio: 'inherit',
       env: process.env,
     });
@@ -117,23 +129,27 @@ export async function runPlaywrightInContainer({
     if (child.error) {
       console.error('Failed to start Podman for Playwright container tests.');
       console.error(child.error.message);
-      process.exit(1);
+      return {
+        signal: null,
+        status: 1,
+      };
     }
 
-    if (child.signal) {
-      process.kill(process.pid, child.signal);
-    } else {
-      process.exit(child.status ?? 1);
-    }
+    return {
+      signal: child.signal ?? null,
+      status: child.status ?? 1,
+    };
   };
 
-  await withExpensiveCommandLock(
+  const result = await deps.withExpensiveCommandLock(
     {
       label,
       command: `podman run playwright test --config ${config}`,
     },
     run,
   );
+
+  deps.applyContainerProcessResult(result);
 }
 
 /**
@@ -156,6 +172,20 @@ export function parseVisualMode(argv) {
     passthroughArgs,
     updateSnapshots: mode === 'update',
   };
+}
+
+/**
+ * Apply a completed Podman process result after the expensive-command lock has been released.
+ * @param result Normalized child process result.
+ * @param [processObject] Process-like object used for exit propagation.
+ */
+export function applyContainerProcessResult(result, processObject = process) {
+  if (result.signal) {
+    processObject.kill(processObject.pid, result.signal);
+    return;
+  }
+
+  processObject.exitCode = result.status ?? 1;
 }
 
 function ensurePodmanAvailable(missingPodmanMessage, podmanFailureMessage) {
