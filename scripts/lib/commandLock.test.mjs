@@ -35,45 +35,37 @@ afterEach(() => {
 });
 
 describe('releaseOwnedLock', () => {
-  it('removes the lock directory when the owner token matches', async () => {
+  it('removes the lock directory when the owner token matches', () => {
     const { lockDir } = createTempLockDir();
     const ownerToken = 'token-abc';
     writeTestMetadata(lockDir, { ownerToken });
 
-    const result = await releaseOwnedLock(lockDir, path.join(lockDir, 'metadata.json'), ownerToken);
+    const result = releaseOwnedLock(lockDir, path.join(lockDir, 'metadata.json'), ownerToken);
 
     expect(result).toBe(true);
     expect(fs.existsSync(lockDir)).toBe(false);
   });
 
-  it('returns false when the owner token does not match current metadata', async () => {
+  it('returns false when the owner token does not match current metadata', () => {
     const { lockDir } = createTempLockDir();
     writeTestMetadata(lockDir, { ownerToken: 'actual-owner' });
 
-    const result = await releaseOwnedLock(
-      lockDir,
-      path.join(lockDir, 'metadata.json'),
-      'wrong-owner',
-    );
+    const result = releaseOwnedLock(lockDir, path.join(lockDir, 'metadata.json'), 'wrong-owner');
 
     expect(result).toBe(false);
     expect(fs.existsSync(lockDir)).toBe(true);
   });
 
-  it('returns false when the metadata file is missing', async () => {
+  it('returns false when the metadata file is missing', () => {
     const { lockDir } = createTempLockDir();
 
-    const result = await releaseOwnedLock(
-      lockDir,
-      path.join(lockDir, 'metadata.json'),
-      'any-token',
-    );
+    const result = releaseOwnedLock(lockDir, path.join(lockDir, 'metadata.json'), 'any-token');
 
     expect(result).toBe(false);
     expect(fs.existsSync(lockDir)).toBe(true);
   });
 
-  it('returns false when stale metadata was replaced by a fresh owner before releaseOwnedLock reads it', async () => {
+  it('returns false when stale metadata was replaced by a fresh owner before releaseOwnedLock reads it', () => {
     const { lockDir } = createTempLockDir();
     const staleToken = 'stale-owner';
     const freshToken = 'fresh-owner';
@@ -91,15 +83,13 @@ describe('releaseOwnedLock', () => {
     });
 
     // Original process tries to release using the stale token
-    const result = await releaseOwnedLock(lockDir, path.join(lockDir, 'metadata.json'), staleToken);
+    const result = releaseOwnedLock(lockDir, path.join(lockDir, 'metadata.json'), staleToken);
 
     expect(result).toBe(false);
     expect(fs.existsSync(lockDir)).toBe(true);
 
     // Verify the fresh metadata is still intact
-    const currentMetadata = JSON.parse(
-      fs.readFileSync(path.join(lockDir, 'metadata.json'), 'utf8'),
-    );
+    const currentMetadata = JSON.parse(fs.readFileSync(path.join(lockDir, 'metadata.json'), 'utf8'));
     expect(currentMetadata.ownerToken).toBe(freshToken);
   });
 });
