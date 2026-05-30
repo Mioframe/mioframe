@@ -35,7 +35,7 @@ export function createChildSignalForwarder(child) {
   return {
     /**
      * The signal that caused the child to terminate, or `null`.
-     * @returns
+     * @returns Signal name forwarded from the parent process, or `null`.
      */
     get terminatedBySignal() {
       return state.terminatedBySignal;
