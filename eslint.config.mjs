@@ -31,7 +31,7 @@ export default defineConfigWithVueTs(
 
   {
     ...pluginVitest.configs.recommended,
-    files: ['src/**/*.test.ts'],
+    files: ['src/**/*.test.ts', 'scripts/**/*.test.ts', 'scripts/**/*.test.mjs'],
     rules: {
       'vitest/expect-expect': 'off',
     },
@@ -55,7 +55,7 @@ export default defineConfigWithVueTs(
   },
 
   {
-    files: ['**/*.{ts,vue}'],
+    files: ['**/*.{ts,mts,tsx,vue}'],
     rules: {
       '@typescript-eslint/consistent-type-assertions': [
         'error',
@@ -67,6 +67,7 @@ export default defineConfigWithVueTs(
         'error',
         { allowInterfaces: 'with-single-extends' },
       ],
+      '@typescript-eslint/no-deprecated': 'error',
       'no-await-in-loop': 'warn',
       'vue/camelcase': 'off',
       'vue/component-api-style': ['warn', ['script-setup']],
@@ -176,7 +177,7 @@ export default defineConfigWithVueTs(
   }),
 
   {
-    files: ['**/*.{ts,vue}'],
+    files: ['**/*.{ts,mts,tsx,vue}'],
     plugins: {
       tsdoc,
     },
