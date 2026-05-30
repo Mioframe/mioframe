@@ -224,6 +224,13 @@ const setupGoogleService = (): GoogleService => {
         });
       }
 
+      if (!hasAllRequiredScopes(availableScopes, requestScopes)) {
+        throw new GoogleAuthError({
+          code: GoogleAuthErrorCode.reauthRequired,
+          expectedEmail,
+        });
+      }
+
       const oldStore = await getStore();
       const previousSession = oldStore[email];
 

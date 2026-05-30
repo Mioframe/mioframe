@@ -55,7 +55,7 @@ export default defineConfigWithVueTs(
   },
 
   {
-    files: ['**/*.{ts,vue}'],
+    files: ['**/*.{ts,mts,tsx,vue}'],
     rules: {
       '@typescript-eslint/consistent-type-assertions': [
         'error',
@@ -177,7 +177,7 @@ export default defineConfigWithVueTs(
   }),
 
   {
-    files: ['**/*.{ts,vue}'],
+    files: ['**/*.{ts,mts,tsx,vue}'],
     plugins: {
       tsdoc,
     },
