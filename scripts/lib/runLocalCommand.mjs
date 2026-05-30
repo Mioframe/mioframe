@@ -1,5 +1,7 @@
 import { spawn } from 'node:child_process';
 
+import { createChildSignalForwarder } from './signalForward.mjs';
+
 /**
  * @param input Spawn configuration for the local child process.
  * @param input.command Executable to run.
@@ -15,43 +17,17 @@ export async function runLocalCommand({ command, args, env = process.env, spawnP
       env,
     });
 
-    let terminatedBySignal = null;
-    let childClosed = false;
-
-    const onParentSignal = (signal) => {
-      if (terminatedBySignal) {
-        return;
-      }
-
-      terminatedBySignal = signal;
-      child.kill(signal);
-
-      if (childClosed) {
-        setImmediate(() => {
-          process.kill(process.pid, signal);
-        });
-      }
-    };
-
-    process.once('SIGINT', onParentSignal);
-    process.once('SIGTERM', onParentSignal);
+    const forwarder = createChildSignalForwarder(child);
 
     child.once('error', (error) => {
-      process.removeListener('SIGINT', onParentSignal);
-      process.removeListener('SIGTERM', onParentSignal);
+      forwarder.cleanup();
       reject(error);
     });
 
     child.once('close', (code, signal) => {
-      childClosed = true;
-      process.removeListener('SIGINT', onParentSignal);
-      process.removeListener('SIGTERM', onParentSignal);
-
-      if (terminatedBySignal) {
-        setImmediate(() => {
-          process.kill(process.pid, terminatedBySignal);
-        });
-      }
+      forwarder.childClosed = true;
+      forwarder.cleanup();
+      forwarder.propagateIfTerminated();
 
       resolve({
         signal: signal ?? null,

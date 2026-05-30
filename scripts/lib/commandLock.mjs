@@ -51,10 +51,17 @@ export async function withExpensiveCommandLock(input, run) {
   let released = false;
   const releaseLock = () => releaseOwnedLock(lockDirectoryPath, metadataPath, ownerToken);
   const heartbeatTimer = setInterval(() => {
-    writeMetadata(metadataPath, {
-      ...baseMetadata,
-      heartbeatAt: new Date().toISOString(),
-    });
+    try {
+      writeMetadata(metadataPath, {
+        ...baseMetadata,
+        heartbeatAt: new Date().toISOString(),
+      });
+    } catch (heartbeatError) {
+      console.error(
+        `[expensive-lock] heartbeat write failed for \`${input.label}\` at ${metadataPath}: ` +
+          `${heartbeatError?.message ?? heartbeatError}`,
+      );
+    }
   }, heartbeatIntervalMs);
 
   const cleanup = async () => {
@@ -111,6 +118,14 @@ async function acquireLock({ lockDirectoryPath, metadataPath, metadata, staleAft
     }
   }
 
+  if (existingMetadata === null && isStaleLockDirectory(lockDirectoryPath, staleAfterMs)) {
+    const removed = await releaseStaleLockDirectory(lockDirectoryPath);
+
+    if (removed) {
+      return acquireLock({ lockDirectoryPath, metadataPath, metadata, staleAfterMs });
+    }
+  }
+
   throw new Error(formatLockBusyMessage(existingMetadata, staleAfterMs));
 }
 
@@ -148,6 +163,56 @@ function isProcessAlive(pid) {
 }
 
 /**
+ * Check whether a lock directory is stale by inspecting its modification time.
+ * This is used as a fallback when `metadata.json` is missing or corrupted and
+ * the normal owner-token-based stale check cannot run.
+ *
+ * A directory's mtime is typically set to the creation time when `mkdirSync`
+ * creates it, so the directory age is a reasonable proxy for lock age.
+ * @param lockDirectoryPath Lock directory to check.
+ * @param staleAfterMs Stale threshold in milliseconds.
+ * @returns `true` when the directory mtime is older than `staleAfterMs`.
+ */
+function isStaleLockDirectory(lockDirectoryPath, staleAfterMs) {
+  try {
+    const directoryStat = fs.statSync(lockDirectoryPath);
+
+    if (!directoryStat.isDirectory()) {
+      return false;
+    }
+
+    const directoryAgeMs = Date.now() - directoryStat.mtimeMs;
+    return directoryAgeMs > staleAfterMs;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Force-remove a stale lock directory whose metadata is missing or corrupted.
+ * This is a last-resort recovery that does not check the owner token because
+ * the metadata is not available to verify ownership.
+ *
+ * Use only when the lock is confirmed stale (e.g. the directory is older than
+ * the stale threshold) and the normal owner-token release path cannot apply.
+ * @param lockDirectoryPath Lock directory to remove.
+ * @returns `true` when the directory was removed, `false` when it was already
+ * gone or removal failed.
+ */
+async function releaseStaleLockDirectory(lockDirectoryPath) {
+  try {
+    fs.rmSync(lockDirectoryPath, { recursive: true, force: false });
+    return true;
+  } catch (error) {
+    if (error && typeof error === 'object' && 'code' in error && error.code === 'ENOENT') {
+      return false;
+    }
+
+    return false;
+  }
+}
+
+/**
  * Removes the lock directory only when the owner token on disk still matches.
  *
  * Re-reads the current on-disk metadata and compares the owner token before
@@ -179,7 +244,13 @@ export async function releaseOwnedLock(lockDirectoryPath, metadataPath, ownerTok
   }
 }
 
-function writeMetadata(metadataPath, metadata) {
+/**
+ * Write lock metadata atomically using a temporary file and rename.
+ * Exported for testing.
+ * @param metadataPath Target metadata file path.
+ * @param metadata Object to serialize as JSON.
+ */
+export function writeMetadata(metadataPath, metadata) {
   const payload = JSON.stringify(metadata, null, 2);
   const tempPath = `${metadataPath}.tmp`;
   fs.writeFileSync(tempPath, `${payload}\n`, 'utf8');

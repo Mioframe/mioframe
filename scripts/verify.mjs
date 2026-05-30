@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url';
 import toolingConfig from '../config/tooling.json' with { type: 'json' };
 import { withExpensiveCommandLock } from './lib/commandLock.mjs';
 import { classifyCommandWeight, resolveEslintConcurrency } from './lib/commandWeight.mjs';
+import { createChildSignalForwarder } from './lib/signalForward.mjs';
 
 const cliArgs = process.argv.slice(2);
 const isHelpMode = process.argv.includes('--help') || cliArgs.includes('help');
@@ -798,26 +799,7 @@ async function runCommand(label, command, args, extraEnv = {}) {
   let lastOutputLine = null;
   let incompleteOutputLine = '';
   const commandTimeoutMs = COMMAND_TIMEOUT_MS_BY_LABEL[label] ?? null;
-  let terminatedBySignal = null;
-  let childClosed = false;
-
-  const onParentSignal = (signal) => {
-    if (terminatedBySignal !== null) {
-      return;
-    }
-
-    terminatedBySignal = signal;
-    child.kill(signal);
-
-    if (childClosed) {
-      setImmediate(() => {
-        process.kill(process.pid, signal);
-      });
-    }
-  };
-
-  process.once('SIGINT', onParentSignal);
-  process.once('SIGTERM', onParentSignal);
+  const forwarder = createChildSignalForwarder(child);
 
   const writeStatusLine = (line, destination = 'stdout') => {
     const text = `${line}\n`;
@@ -922,8 +904,7 @@ async function runCommand(label, command, args, extraEnv = {}) {
 
   await new Promise((resolve) => {
     child.once('error', (error) => {
-      process.removeListener('SIGINT', onParentSignal);
-      process.removeListener('SIGTERM', onParentSignal);
+      forwarder.cleanup();
       spawnError = error;
       logStream.write(`\n[verify] spawn error: ${error.message}\n`);
       cleanupTimers();
@@ -931,9 +912,8 @@ async function runCommand(label, command, args, extraEnv = {}) {
     });
 
     child.once('close', (code, signal) => {
-      childClosed = true;
-      process.removeListener('SIGINT', onParentSignal);
-      process.removeListener('SIGTERM', onParentSignal);
+      forwarder.childClosed = true;
+      forwarder.cleanup();
       cleanupTimers();
 
       if (timedOut) {
@@ -959,12 +939,7 @@ async function runCommand(label, command, args, extraEnv = {}) {
         lastOutputLine = trailingLine;
       }
 
-      if (terminatedBySignal !== null) {
-        setImmediate(() => {
-          process.kill(process.pid, terminatedBySignal);
-        });
-      }
-
+      forwarder.propagateIfTerminated();
       resolve();
     });
   });
