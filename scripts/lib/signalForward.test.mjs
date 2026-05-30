@@ -19,8 +19,8 @@ afterEach(() => {
  * Call the forwarder's onParentSignal directly instead of relying on
  * process.emit('SIGINT') which does not reliably trigger once-listeners in
  * vitest worker threads.
- * @param forwarder
- * @param signal
+ * @param forwarder Forwarder handle created by createChildSignalForwarder.
+ * @param signal Signal name to simulate from the parent process.
  */
 function emitParentSignal(forwarder, signal) {
   forwarder.onParentSignal(signal);
@@ -66,7 +66,7 @@ describe('createChildSignalForwarder', () => {
     const { child, forwarder } = makeForwarder();
 
     emitParentSignal(forwarder, 'SIGINT');
-    emitParentSignal(forwarder, 'SIGTERM'); // Second signal should be ignored
+    emitParentSignal(forwarder, 'SIGTERM');
 
     expect(forwarder.terminatedBySignal).toBe('SIGINT');
     expect(child.kill).toHaveBeenCalledTimes(1);
@@ -121,7 +121,7 @@ describe('createChildSignalForwarder', () => {
     forwarder.cleanup();
     expect(process.listeners('SIGINT')).not.toContain(forwarder.onParentSignal);
 
-    forwarder.cleanup(); // Second call should not throw or change anything
+    forwarder.cleanup();
     expect(process.listeners('SIGINT')).not.toContain(forwarder.onParentSignal);
   });
 });
