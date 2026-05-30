@@ -19,8 +19,8 @@ afterEach(() => {
  * Call the forwarder's onParentSignal directly instead of relying on
  * process.emit('SIGINT') which does not reliably trigger once-listeners in
  * vitest worker threads.
- * @param {import('./signalForward.mjs').ChildSignalForwarder} forwarder
- * @param {string} signal
+ * @param forwarder
+ * @param signal
  */
 function emitParentSignal(forwarder, signal) {
   forwarder.onParentSignal(signal);

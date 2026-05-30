@@ -37,7 +37,7 @@ export function createChildSignalForwarder(child) {
   return {
     /**
      * The signal that caused the child to terminate, or `null`.
-     * @returns {string|null}
+     * @returns
      */
     get terminatedBySignal() {
       return state.terminatedBySignal;
