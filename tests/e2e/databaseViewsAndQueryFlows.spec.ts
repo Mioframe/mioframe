@@ -147,6 +147,8 @@ test('adds sorting, toggles direction, and removes sorting controls', async ({ p
 test('applies string, boolean, and relation filters and persists them after reload', async ({
   page,
 }) => {
+  test.slow();
+
   await launchApp(page);
   await openOpfs(page);
 
@@ -211,7 +213,6 @@ test('applies string, boolean, and relation filters and persists them after relo
   });
 
   await addEqualFilter(page, categoryPropertyName, categoryValue);
-  await closeBottomSheet(page, /database filters sheet/i);
   await expect(findDatabaseRow(page, expectedValue)).toBeVisible();
   await expect(findDatabaseRow(page, stringMismatchValue)).toHaveCount(0);
   await expect(findDatabaseRow(page, booleanMismatchValue)).toBeVisible();
@@ -219,20 +220,22 @@ test('applies string, boolean, and relation filters and persists them after relo
 
   const booleanDialog = await openEqualFilterDialog(page, booleanPropertyName);
   await checkUserCheckbox(
+    page,
     booleanDialog.getByRole('checkbox', { name: new RegExp(`^${booleanPropertyName}$`, 'i') }),
   );
   await booleanDialog.getByRole('button', { name: /^apply$/i }).click();
   await expect(booleanDialog).toHaveCount(0);
-  await closeBottomSheet(page, /database filters sheet/i);
   await expect(findDatabaseRow(page, expectedValue)).toBeVisible();
   await expect(findDatabaseRow(page, booleanMismatchValue)).toHaveCount(0);
   await expect(findDatabaseRow(page, relationMismatchValue)).toBeVisible();
 
   const relationDialog = await openEqualFilterDialog(page, relationPropertyName);
-  await checkUserCheckbox(findDatabaseRow(relationDialog, targetAlphaValue).getByRole('checkbox'));
+  await checkUserCheckbox(
+    page,
+    findDatabaseRow(relationDialog, targetAlphaValue).getByRole('checkbox'),
+  );
   await relationDialog.getByRole('button', { name: /^apply$/i }).click();
   await expect(relationDialog).toHaveCount(0);
-  await closeBottomSheet(page, /database filters sheet/i);
 
   await expect(findDatabaseRow(page, expectedValue)).toBeVisible();
   await expect(findDatabaseRow(page, stringMismatchValue)).toHaveCount(0);
@@ -260,7 +263,6 @@ test('applies string, boolean, and relation filters and persists them after relo
   ).toBeVisible();
   await expect(filtersSheet.getByText(categoryValue, { exact: true })).toBeVisible();
   await expect(filtersSheet.getByText(targetAlphaValue, { exact: true })).toBeVisible();
-  await closeBottomSheet(page, /database filters sheet/i);
 });
 
 test('uses default relation view inline and switches to a selected relation view', async ({

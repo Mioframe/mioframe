@@ -156,7 +156,7 @@ test('updates string, number, boolean, and date values inline and persists them'
     })
     .first();
   await expect(booleanCell).toBeVisible();
-  await checkUserCheckbox(booleanCell);
+  await checkUserCheckbox(page, booleanCell);
 
   await setInlineDatabaseValue(page, nextStringValue, datePropertyName, nextDateValue);
 
@@ -252,8 +252,8 @@ test('creates a relation property, selects related records, and persists relatio
   await expect(editDialog.getByText(firstTargetValue, { exact: true })).toBeVisible();
   await expect(editDialog.getByText(secondTargetValue, { exact: true })).toBeVisible();
 
-  await checkUserCheckbox(findDatabaseRow(page, firstTargetValue).getByRole('checkbox'));
-  await checkUserCheckbox(findDatabaseRow(page, secondTargetValue).getByRole('checkbox'));
+  await checkUserCheckbox(page, findDatabaseRow(page, firstTargetValue).getByRole('checkbox'));
+  await checkUserCheckbox(page, findDatabaseRow(page, secondTargetValue).getByRole('checkbox'));
   await editDialog.getByRole('button', { name: /^edit$/i }).click();
   await expect(editDialog).toHaveCount(0);
 

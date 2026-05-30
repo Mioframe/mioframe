@@ -111,15 +111,25 @@ export const closeBottomSheet = async (page: Page, label: string | RegExp) => {
   }
 };
 
-const clickUserCheckboxTarget = async (checkbox: Locator) => {
+const clickUserCheckboxTarget = async (page: Page, checkbox: Locator) => {
   const checkboxHost = checkbox.locator('xpath=ancestor::label[1]');
-  const target = (await checkboxHost.count()) > 0 ? checkboxHost.first() : checkbox;
-  await target.click();
+  if ((await checkboxHost.count()) === 0) {
+    await checkbox.click();
+    return;
+  }
+
+  const target = checkboxHost.first();
+  const targetBox = await target.boundingBox();
+  if (!targetBox) {
+    throw new Error('Checkbox user target is not visible');
+  }
+
+  await page.mouse.click(targetBox.x + targetBox.width / 2, targetBox.y + targetBox.height / 2);
 };
 
-export const setUserCheckboxState = async (checkbox: Locator, checked: boolean) => {
+export const setUserCheckboxState = async (page: Page, checkbox: Locator, checked: boolean) => {
   if ((await checkbox.isChecked()) !== checked) {
-    await clickUserCheckboxTarget(checkbox);
+    await clickUserCheckboxTarget(page, checkbox);
   }
 
   if (checked) {
@@ -130,8 +140,8 @@ export const setUserCheckboxState = async (checkbox: Locator, checked: boolean) 
   await expect(checkbox).not.toBeChecked();
 };
 
-export const checkUserCheckbox = async (checkbox: Locator) => {
-  await setUserCheckboxState(checkbox, true);
+export const checkUserCheckbox = async (page: Page, checkbox: Locator) => {
+  await setUserCheckboxState(page, checkbox, true);
 };
 
 export const createDirectory = async (page: Page, name = createUniqueName('folder')) => {
@@ -361,7 +371,7 @@ const updateDatabaseItemDialogField = async (
 
   if (typeof value === 'boolean') {
     const checkbox = dialog.getByLabel(label);
-    await setUserCheckboxState(checkbox, value);
+    await setUserCheckboxState(page, checkbox, value);
     return;
   }
 
@@ -369,7 +379,10 @@ const updateDatabaseItemDialogField = async (
     for (const relationItemValue of value) {
       // Relation rows are rendered inside the item dialog; each selected row has its own checkbox.
       // eslint-disable-next-line no-await-in-loop
-      await checkUserCheckbox(findDatabaseRow(dialog, relationItemValue).getByRole('checkbox'));
+      await checkUserCheckbox(
+        page,
+        findDatabaseRow(dialog, relationItemValue).getByRole('checkbox'),
+      );
     }
     return;
   }
@@ -539,7 +552,10 @@ export const removeSorting = async (page: Page, propertyName: string) => {
 
 export const openFilterSheet = async (page: Page) => {
   const sheet = page.getByRole('dialog', { name: /database filters sheet/i });
-  const alreadyVisible = await sheet.isVisible().catch(() => false);
+  const alreadyVisible = await sheet
+    .waitFor({ state: 'visible', timeout: 500 })
+    .then(() => true)
+    .catch(() => false);
   if (!alreadyVisible) {
     await page.getByRole('button', { name: /^filter$/i }).click();
   }
@@ -586,7 +602,7 @@ export const setInlineDatabaseValue = async (
         name: new RegExp(`^${escapeRegex(propertyName)}$`, 'i'),
       })
       .first();
-    await setUserCheckboxState(checkbox, value);
+    await setUserCheckboxState(page, checkbox, value);
     return;
   }
 
