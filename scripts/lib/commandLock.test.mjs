@@ -89,7 +89,9 @@ describe('releaseOwnedLock', () => {
     expect(fs.existsSync(lockDir)).toBe(true);
 
     // Verify the fresh metadata is still intact
-    const currentMetadata = JSON.parse(fs.readFileSync(path.join(lockDir, 'metadata.json'), 'utf8'));
+    const currentMetadata = JSON.parse(
+      fs.readFileSync(path.join(lockDir, 'metadata.json'), 'utf8'),
+    );
     expect(currentMetadata.ownerToken).toBe(freshToken);
   });
 });
