@@ -216,6 +216,14 @@ const setupGoogleService = (): GoogleService => {
         throw new Error("don't have email");
       }
 
+      if (expectedEmail && expectedEmail !== email) {
+        throw new GoogleAuthError({
+          actualEmail: email,
+          code: GoogleAuthErrorCode.accountMismatch,
+          expectedEmail,
+        });
+      }
+
       const oldStore = await getStore();
       const previousSession = oldStore[email];
 
@@ -233,14 +241,6 @@ const setupGoogleService = (): GoogleService => {
       };
 
       await update(store);
-
-      if (expectedEmail && expectedEmail !== email) {
-        throw new GoogleAuthError({
-          actualEmail: email,
-          code: GoogleAuthErrorCode.accountMismatch,
-          expectedEmail,
-        });
-      }
 
       return accessToken;
     },

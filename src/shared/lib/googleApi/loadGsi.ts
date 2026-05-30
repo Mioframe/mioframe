@@ -8,6 +8,10 @@ import { GoogleClientConfigError, zodGoogleClientConfigError } from './googleCli
 
 let gsi: typeof window.google | undefined = undefined;
 
+/**
+ * Loads the Google Identity Services script and resolves the global client.
+ * @returns Loaded Google Identity Services global.
+ */
 export const loadGsi = async () =>
   new Promise<typeof window.google>((resolve) => {
     if (gsi) {
@@ -32,6 +36,11 @@ export const loadGsi = async () =>
 
 export const loadGoogle = loadGsi;
 
+/**
+ * Revokes a previously granted Google access token through GIS.
+ * @param accessToken - Google access token to revoke.
+ * @returns Promise that resolves when GIS finishes the revoke call.
+ */
 export const revokeGoogleAccess = async (accessToken: string) => {
   const google = await loadGoogle();
 
@@ -105,7 +114,7 @@ export const requestAccessToken = limitFunction(
         stateTokenClient.requestAccessToken({
           scope: scopes.join(' '),
           prompt: '',
-          hint: email,
+          login_hint: email,
         });
       } else {
         stateTokenClient.requestAccessToken({

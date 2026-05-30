@@ -342,6 +342,7 @@ describe('useGoogleService', () => {
     expect(token).toBe('cached-token');
     expect(requestTokenMock).not.toHaveBeenCalled();
     expect(updateSessionStoreMock).not.toHaveBeenCalled();
+    expect(userinfoGetMock).not.toHaveBeenCalled();
   });
 
   it('requests a fresh token when cached scopes do not cover the required scopes', async () => {
@@ -625,7 +626,7 @@ describe('useGoogleService', () => {
     } satisfies Partial<GoogleAuthError>);
   });
 
-  it('stores a different account but rejects access for the expected one', async () => {
+  it('rejects account mismatch without persisting the mismatched account', async () => {
     requestTokenMock.mockResolvedValueOnce({
       access_token: 'other-token',
       expires_in: '3600',
@@ -646,12 +647,67 @@ describe('useGoogleService', () => {
       expectedEmail: 'user@example.com',
       name: 'GoogleAuthError',
     });
+    expect(updateSessionStoreMock).not.toHaveBeenCalled();
+    expect(sessionStoreValue['other@example.com']).toBeUndefined();
+  });
+
+  it('stores a new account when no expected email is provided', async () => {
+    requestTokenMock.mockResolvedValueOnce({
+      access_token: 'other-token',
+      expires_in: '3600',
+      scope: `${DRIVE_GOOGLE_SCOPE.all} ${USER_INFO_GOOGLE_SCOPE.userinfoEmail}`,
+    });
+    userinfoGetMock.mockResolvedValueOnce({
+      result: { email: 'other@example.com', name: 'Other User' },
+    });
+
+    const service = await createService();
+    await bindApi(service);
+
+    await expect(service.requestToken([DRIVE_GOOGLE_SCOPE.all])).resolves.toBe('other-token');
+
     expect(updateSessionStoreMock).toHaveBeenCalledWith({
       'other@example.com': {
         accessToken: 'other-token',
         expiresAt: expect.any(Number),
         profile: {
           email: 'other@example.com',
+          name: 'Other User',
+        },
+        scopes: [DRIVE_GOOGLE_SCOPE.all, USER_INFO_GOOGLE_SCOPE.userinfoEmail],
+      },
+    });
+  });
+
+  it('stores scopes and profile after a successful expected-email match', async () => {
+    requestTokenMock.mockResolvedValueOnce({
+      access_token: 'matched-token',
+      expires_in: '3600',
+      scope: `${DRIVE_GOOGLE_SCOPE.all} ${USER_INFO_GOOGLE_SCOPE.userinfoEmail}`,
+    });
+    userinfoGetMock.mockResolvedValueOnce({
+      result: {
+        email: 'user@example.com',
+        name: 'Matched User',
+        picture: 'https://example.com/matched.png',
+      },
+    });
+
+    const service = await createService();
+    await bindApi(service);
+
+    await expect(service.requestToken([DRIVE_GOOGLE_SCOPE.all], 'user@example.com')).resolves.toBe(
+      'matched-token',
+    );
+
+    expect(updateSessionStoreMock).toHaveBeenCalledWith({
+      'user@example.com': {
+        accessToken: 'matched-token',
+        expiresAt: expect.any(Number),
+        profile: {
+          email: 'user@example.com',
+          name: 'Matched User',
+          picture: 'https://example.com/matched.png',
         },
         scopes: [DRIVE_GOOGLE_SCOPE.all, USER_INFO_GOOGLE_SCOPE.userinfoEmail],
       },

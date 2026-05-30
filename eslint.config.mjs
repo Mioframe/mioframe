@@ -67,6 +67,7 @@ export default defineConfigWithVueTs(
         'error',
         { allowInterfaces: 'with-single-extends' },
       ],
+      '@typescript-eslint/no-deprecated': 'error',
       'no-await-in-loop': 'warn',
       'vue/camelcase': 'off',
       'vue/component-api-style': ['warn', ['script-setup']],
