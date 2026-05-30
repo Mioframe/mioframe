@@ -4,6 +4,7 @@ import { release } from 'node:os';
 import { join } from 'node:path';
 import toolingConfig from '../config/tooling.json' with { type: 'json' };
 import { withExpensiveCommandLock } from './lib/commandLock.mjs';
+import { applyProcessResult } from './lib/processResult.mjs';
 
 const CONTAINER_WORKDIR = '/work';
 const GENERIC_IMAGE_ENV = 'PLAYWRIGHT_CONTAINER_IMAGE';
@@ -52,7 +53,7 @@ const PLAYWRIGHT_CONTAINER_LIMITS = [
   },
 ];
 const defaultDeps = {
-  applyContainerProcessResult,
+  applyProcessResult,
   ensureLocalPlaywrightBinary,
   ensurePodmanAvailable,
   getInstalledPlaywrightVersion,
@@ -190,7 +191,7 @@ export async function runPlaywrightInContainer(
     run,
   );
 
-  deps.applyContainerProcessResult(result);
+  deps.applyProcessResult(result);
 }
 
 /**
@@ -213,20 +214,6 @@ export function parseVisualMode(argv) {
     passthroughArgs,
     updateSnapshots: mode === 'update',
   };
-}
-
-/**
- * Apply a completed Podman process result after the expensive-command lock has been released.
- * @param result Normalized child process result.
- * @param [processObject] Process-like object used for exit propagation.
- */
-export function applyContainerProcessResult(result, processObject = process) {
-  if (result.signal) {
-    processObject.kill(processObject.pid, result.signal);
-    return;
-  }
-
-  processObject.exitCode = result.status ?? 1;
 }
 
 function ensurePodmanAvailable(missingPodmanMessage, podmanFailureMessage) {

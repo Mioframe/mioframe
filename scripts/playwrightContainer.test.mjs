@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { applyContainerProcessResult, runPlaywrightInContainer } from './playwrightContainer.mjs';
+import { runPlaywrightInContainer } from './playwrightContainer.mjs';
+import { applyProcessResult } from './lib/processResult.mjs';
 
 const baseOptions = {
   config: 'playwright.config.ts',
@@ -10,7 +11,7 @@ const baseOptions = {
   podmanFailureMessage: 'podman failed',
 };
 
-describe('applyContainerProcessResult', () => {
+describe('applyProcessResult', () => {
   it('sets process.exitCode for status exits', () => {
     const processObject = {
       exitCode: undefined,
@@ -18,7 +19,7 @@ describe('applyContainerProcessResult', () => {
       pid: 123,
     };
 
-    applyContainerProcessResult({ signal: null, status: 5 }, processObject);
+    applyProcessResult({ signal: null, status: 5 }, processObject);
 
     expect(processObject.exitCode).toBe(5);
     expect(processObject.kill).not.toHaveBeenCalled();
@@ -31,7 +32,7 @@ describe('applyContainerProcessResult', () => {
       pid: 456,
     };
 
-    applyContainerProcessResult({ signal: 'SIGTERM', status: null }, processObject);
+    applyProcessResult({ signal: 'SIGTERM', status: null }, processObject);
 
     expect(processObject.kill).toHaveBeenCalledWith(456, 'SIGTERM');
     expect(processObject.exitCode).toBeUndefined();
@@ -43,7 +44,7 @@ describe('runPlaywrightInContainer', () => {
     const events = [];
 
     await runPlaywrightInContainer(baseOptions, {
-      applyContainerProcessResult: vi.fn(() => {
+      applyProcessResult: vi.fn(() => {
         events.push('apply-result');
       }),
       ensureLocalPlaywrightBinary: vi.fn(),
@@ -81,7 +82,7 @@ describe('runPlaywrightInContainer', () => {
           label: 'visual',
         },
         {
-          applyContainerProcessResult: vi.fn(),
+          applyProcessResult: vi.fn(),
           ensureLocalPlaywrightBinary: vi.fn(),
           ensurePodmanAvailable: vi.fn(),
           getInstalledPlaywrightVersion: vi.fn(() => '1.59.1'),
