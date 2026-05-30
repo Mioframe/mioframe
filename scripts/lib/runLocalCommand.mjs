@@ -27,7 +27,6 @@ export async function runLocalCommand({ command, args, env = process.env, spawnP
     child.once('close', (code, signal) => {
       forwarder.childClosed = true;
       forwarder.cleanup();
-      forwarder.propagateIfTerminated();
 
       resolve({
         signal: signal ?? null,

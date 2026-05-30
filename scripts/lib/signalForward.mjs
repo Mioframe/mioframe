@@ -8,8 +8,6 @@ import process from 'node:process';
  * cleanup.
  *
  * Use {@link cleanup} to remove the listeners when the child errors or closes.
- * Call {@link propagateIfTerminated} after the child's `close` event to
- * re-emit the termination signal to the current process.
  * @param child ChildProcess whose `kill` method is called on parent signal.
  * @returns A forwarder handle with state accessors and lifecycle methods.
  */
@@ -54,19 +52,6 @@ export function createChildSignalForwarder(child) {
     cleanup() {
       process.removeListener('SIGINT', onParentSignal);
       process.removeListener('SIGTERM', onParentSignal);
-    },
-
-    /**
-     * If the child was terminated by a parent signal, re-emit that signal to
-     * the current process after a safe delay so the default behavior applies.
-     * Call this after cleanup is complete.
-     */
-    propagateIfTerminated() {
-      if (state.terminatedBySignal !== null) {
-        setImmediate(() => {
-          process.kill(process.pid, state.terminatedBySignal);
-        });
-      }
     },
   };
 }

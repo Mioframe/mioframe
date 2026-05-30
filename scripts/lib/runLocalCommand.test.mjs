@@ -55,6 +55,40 @@ describe('runLocalCommand', () => {
     }
   });
 
+  it('does not schedule process.kill via setImmediate when child exits by signal', async () => {
+    const child = new EventEmitter();
+    const spawn = vi.fn(() => child);
+    const processKillSpy = vi.spyOn(process, 'kill').mockImplementation(() => {});
+    const originalExitCode = process.exitCode;
+
+    try {
+      vi.useFakeTimers();
+
+      const promise = runLocalCommand({
+        args: ['exec', 'eslint', '.'],
+        command: 'pnpm',
+        spawnProcess: spawn,
+      });
+
+      child.emit('close', null, 'SIGTERM');
+
+      await vi.runAllTimersAsync();
+
+      await expect(promise).resolves.toEqual({
+        signal: 'SIGTERM',
+        status: null,
+      });
+
+      // Must not call process.kill itself even after all pending timers flush
+      expect(processKillSpy).not.toHaveBeenCalled();
+      expect(process.exitCode).toBe(originalExitCode);
+    } finally {
+      processKillSpy.mockRestore();
+      vi.useRealTimers();
+      process.exitCode = originalExitCode;
+    }
+  });
+
   it('rejects when spawn fails', async () => {
     const child = new EventEmitter();
     const spawn = vi.fn(() => child);

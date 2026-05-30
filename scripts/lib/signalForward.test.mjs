@@ -101,48 +101,6 @@ describe('createChildSignalForwarder', () => {
     vi.useRealTimers();
   });
 
-  it('propagateIfTerminated schedules self-signal when child was terminated', async () => {
-    const { forwarder } = makeForwarder();
-
-    // Terminate via SIGINT (childClosed is false, so no setImmediate scheduled)
-    emitParentSignal(forwarder, 'SIGINT');
-    expect(forwarder.terminatedBySignal).toBe('SIGINT');
-
-    // Clean up signal listeners (simulating what close handler does)
-    forwarder.cleanup();
-
-    // Use fake timers BEFORE calling propagateIfTerminated so setImmediate is intercepted
-    vi.useFakeTimers();
-
-    const killSpy = vi.spyOn(process, 'kill').mockImplementation(() => {});
-
-    forwarder.propagateIfTerminated();
-
-    // Should schedule via mocked setImmediate, not call directly
-    expect(killSpy).not.toHaveBeenCalled();
-
-    await vi.runAllTimersAsync();
-
-    expect(killSpy).toHaveBeenCalledWith(process.pid, 'SIGINT');
-
-    killSpy.mockRestore();
-    vi.useRealTimers();
-  });
-
-  it('propagateIfTerminated is a no-op when child was not terminated by parent signal', () => {
-    const { forwarder } = makeForwarder();
-
-    // Child exited normally, no parent signal
-    forwarder.cleanup();
-
-    const killSpy = vi.spyOn(process, 'kill').mockImplementation(() => {});
-
-    forwarder.propagateIfTerminated();
-
-    expect(killSpy).not.toHaveBeenCalled();
-    killSpy.mockRestore();
-  });
-
   it('cleanup removes signal listeners', () => {
     const { forwarder } = makeForwarder();
 
