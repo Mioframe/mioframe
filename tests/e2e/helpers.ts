@@ -68,7 +68,14 @@ export const openOpfs = async (page: Page) => {
   await opfsButton.click();
 
   await expect(page).toHaveURL(/Browser%20Storage/i);
-  await expect(page.getByRole('button', { name: /create directory/i })).toBeVisible();
+  await expect(page.getByRole('button', { name: /^add$/i })).toBeVisible();
+};
+
+export const openEntryAddSheet = async (page: Page) => {
+  await page.getByRole('button', { name: /^add$/i }).click();
+  const addSheet = page.getByRole('dialog', { name: /^add$/i });
+  await expect(addSheet).toBeVisible();
+  return addSheet;
 };
 
 export const closeBottomSheet = async (page: Page, label: string | RegExp) => {
@@ -80,12 +87,67 @@ export const closeBottomSheet = async (page: Page, label: string | RegExp) => {
   if (!isVisible) {
     return;
   }
-  await page.keyboard.press('Escape');
-  await expect(sheet).toHaveCount(0);
+
+  const closeButton = sheet.getByRole('button', { name: /close sheet/i });
+  const canUseCloseButton = await closeButton
+    .waitFor({ state: 'visible', timeout: 300 })
+    .then(() => true)
+    .catch(() => false);
+
+  if (canUseCloseButton) {
+    await closeButton.click();
+  } else {
+    await page.keyboard.press('Escape');
+  }
+
+  const isHidden = await sheet
+    .waitFor({ state: 'hidden', timeout: 2000 })
+    .then(() => true)
+    .catch(() => false);
+
+  if (!isHidden) {
+    await page.keyboard.press('Escape');
+    await sheet.waitFor({ state: 'hidden', timeout: 2000 });
+  }
+};
+
+const clickUserCheckboxTarget = async (page: Page, checkbox: Locator) => {
+  const checkboxHost = checkbox.locator('xpath=ancestor::label[1]');
+  if ((await checkboxHost.count()) === 0) {
+    await checkbox.click();
+    return;
+  }
+
+  const target = checkboxHost.first();
+  const targetBox = await target.boundingBox();
+  if (!targetBox) {
+    throw new Error('Checkbox user target is not visible');
+  }
+
+  await page.mouse.click(targetBox.x + targetBox.width / 2, targetBox.y + targetBox.height / 2);
+};
+
+export const setUserCheckboxState = async (page: Page, checkbox: Locator, checked: boolean) => {
+  if ((await checkbox.isChecked()) !== checked) {
+    await clickUserCheckboxTarget(page, checkbox);
+  }
+
+  if (checked) {
+    await expect(checkbox).toBeChecked();
+    return;
+  }
+
+  await expect(checkbox).not.toBeChecked();
+};
+
+export const checkUserCheckbox = async (page: Page, checkbox: Locator) => {
+  await setUserCheckboxState(page, checkbox, true);
 };
 
 export const createDirectory = async (page: Page, name = createUniqueName('folder')) => {
-  await page.getByRole('button', { name: /create directory/i }).click();
+  const addSheet = await openEntryAddSheet(page);
+  await expect(addSheet.getByText(/^create directory$/i)).toBeVisible();
+  await addSheet.getByText(/^create directory$/i).click();
 
   const dialog = page.getByRole('dialog', { name: /create a new folder/i });
   await expect(dialog).toBeVisible();
@@ -134,7 +196,9 @@ export const createDatabaseDocument = async (
   page: Page,
   name = createUniqueName('database document'),
 ) => {
-  await page.getByRole('button', { name: /create document/i }).click();
+  const addSheet = await openEntryAddSheet(page);
+  await expect(addSheet.getByText(/^create document$/i)).toBeVisible();
+  await addSheet.getByText(/^create document$/i).click();
 
   const dialog = page.getByRole('dialog', { name: /create document/i });
   await expect(dialog).toBeVisible();
@@ -143,7 +207,7 @@ export const createDatabaseDocument = async (
 
   await expect(dialog).toHaveCount(0);
   await expect(
-    page.getByRole('listitem', {
+    page.getByRole('button', {
       name: new RegExp(`^document ${escapeRegex(name)}$`, 'i'),
     }),
   ).toBeVisible();
@@ -152,7 +216,7 @@ export const createDatabaseDocument = async (
 
 export const openDocumentFromExplorer = async (page: Page, name: string) => {
   await page
-    .getByRole('listitem', {
+    .getByRole('button', {
       name: new RegExp(`^document ${escapeRegex(name)}$`, 'i'),
     })
     .click();
@@ -255,7 +319,7 @@ export const createRelationProperty = async (
 
 export const renameProperty = async (page: Page, currentName: string, nextName: string) => {
   const sheet = await openPropertiesSheet(page);
-  const row = sheet.getByRole('listitem').filter({ hasText: currentName }).first();
+  const row = findListRow(sheet, currentName);
   await row
     .getByRole('button', { name: new RegExp(`^options ${escapeRegex(currentName)}$`, 'i') })
     .click();
@@ -275,7 +339,7 @@ export const renameProperty = async (page: Page, currentName: string, nextName: 
 
 export const removeProperty = async (page: Page, name: string) => {
   const sheet = await openPropertiesSheet(page);
-  const row = sheet.getByRole('listitem').filter({ hasText: name }).first();
+  const row = findListRow(sheet, name);
   await row
     .getByRole('button', { name: new RegExp(`^options ${escapeRegex(name)}$`, 'i') })
     .click();
@@ -307,9 +371,7 @@ const updateDatabaseItemDialogField = async (
 
   if (typeof value === 'boolean') {
     const checkbox = dialog.getByLabel(label);
-    if ((await checkbox.isChecked()) !== value) {
-      await checkbox.click();
-    }
+    await setUserCheckboxState(page, checkbox, value);
     return;
   }
 
@@ -317,7 +379,10 @@ const updateDatabaseItemDialogField = async (
     for (const relationItemValue of value) {
       // Relation rows are rendered inside the item dialog; each selected row has its own checkbox.
       // eslint-disable-next-line no-await-in-loop
-      await findDatabaseRow(dialog, relationItemValue).getByRole('checkbox').click();
+      await checkUserCheckbox(
+        page,
+        findDatabaseRow(dialog, relationItemValue).getByRole('checkbox'),
+      );
     }
     return;
   }
@@ -354,6 +419,9 @@ export const addDatabaseItemValues = async (
 
 export const findDatabaseRow = (root: Page | Locator, value: string): Locator =>
   root.locator('tbody[role="list"] > tr').filter({ hasText: value }).first();
+
+const findListRow = (root: Page | Locator, value: string | RegExp): Locator =>
+  root.getByRole('list').locator(':scope > *').filter({ hasText: value }).first();
 
 export const editDatabaseItem = async (
   page: Page,
@@ -419,7 +487,7 @@ export const addView = async (page: Page, name = createUniqueName('view')) => {
 
 export const renameView = async (page: Page, currentName: string, nextName: string) => {
   const sheet = await openViewsSheet(page);
-  const row = sheet.getByRole('listitem').filter({ hasText: currentName }).first();
+  const row = findListRow(sheet, currentName);
   await row.getByRole('button', { name: /settings view/i }).click();
   await page.getByRole('menuitem', { name: /^rename$/i }).click();
 
@@ -434,10 +502,7 @@ export const renameView = async (page: Page, currentName: string, nextName: stri
 
 export const selectView = async (page: Page, name: string | RegExp) => {
   const sheet = await openViewsSheet(page);
-  const row =
-    name instanceof RegExp
-      ? sheet.getByRole('listitem').filter({ hasText: name }).first()
-      : sheet.getByRole('listitem').filter({ hasText: name }).first();
+  const row = findListRow(sheet, name);
   await row.click();
   await expect(row.getByRole('checkbox')).toBeChecked();
   await closeBottomSheet(page, /database views sheet/i);
@@ -445,7 +510,7 @@ export const selectView = async (page: Page, name: string | RegExp) => {
 
 export const removeView = async (page: Page, name: string) => {
   const sheet = await openViewsSheet(page);
-  const row = sheet.getByRole('listitem').filter({ hasText: name }).first();
+  const row = findListRow(sheet, name);
   await row.getByRole('button', { name: /settings view/i }).click();
   await page.getByRole('menuitem', { name: /^remove$/i }).click();
 
@@ -470,24 +535,27 @@ export const addSorting = async (page: Page, propertyName: string) => {
   await page
     .getByRole('menuitem', { name: new RegExp(`^${escapeRegex(propertyName)}$`, 'i') })
     .click();
-  await expect(sheet.getByRole('listitem').filter({ hasText: propertyName }).first()).toBeVisible();
+  await expect(findListRow(sheet, propertyName)).toBeVisible();
   await closeBottomSheet(page, /database sort sheet/i);
 };
 
 export const toggleSortingDirection = async (page: Page, propertyName: string) => {
   const sheet = await openSortSheet(page);
-  await sheet.getByRole('listitem').filter({ hasText: propertyName }).first().click();
+  await findListRow(sheet, propertyName).click();
 };
 
 export const removeSorting = async (page: Page, propertyName: string) => {
   const sheet = await openSortSheet(page);
-  const row = sheet.getByRole('listitem').filter({ hasText: propertyName }).first();
+  const row = findListRow(sheet, propertyName);
   await row.getByRole('button', { name: /^remove$/i }).click();
 };
 
 export const openFilterSheet = async (page: Page) => {
   const sheet = page.getByRole('dialog', { name: /database filters sheet/i });
-  const alreadyVisible = await sheet.isVisible().catch(() => false);
+  const alreadyVisible = await sheet
+    .waitFor({ state: 'visible', timeout: 500 })
+    .then(() => true)
+    .catch(() => false);
   if (!alreadyVisible) {
     await page.getByRole('button', { name: /^filter$/i }).click();
   }
@@ -534,10 +602,7 @@ export const setInlineDatabaseValue = async (
         name: new RegExp(`^${escapeRegex(propertyName)}$`, 'i'),
       })
       .first();
-    const isChecked = (await checkbox.getAttribute('aria-checked')) === 'true';
-    if (isChecked !== value) {
-      await checkbox.click();
-    }
+    await setUserCheckboxState(page, checkbox, value);
     return;
   }
 

@@ -329,4 +329,8 @@ useRipple(computed(() => (!props.disabled && itemTag.value !== 'li' ? hostEl.val
     --md-list-item-supporting-color: var(--md-list-item-disabled-supporting-color);
   }
 }
+
+.md-list-item:is(button:not(:disabled), a:not([aria-disabled='true'])) {
+  cursor: pointer;
+}
 </style>

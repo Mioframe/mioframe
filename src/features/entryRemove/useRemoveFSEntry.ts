@@ -5,19 +5,23 @@ import { PathUtils, VfsError, FileSystemError } from '@shared/lib/virtualFileSys
 import { useDialog } from '@shared/ui/Dialog';
 import { useSnackbar } from '@shared/ui/Snackbar';
 
-const toReportedRemoveError = (error: unknown, message: string, causeMessage: string) => {
-  if (error instanceof DomainError || error instanceof VfsError) {
-    return error;
-  }
+enum EntryRemoveErrorCode {
+  removeFailed = 'remove-failed',
+  recursiveRemoveFailed = 'recursive-remove-failed',
+}
 
-  return new DomainError(message, {
+const toReportedRemoveError = (message: string, causeMessage: string, code: EntryRemoveErrorCode) =>
+  new DomainError(message, {
     cause: createSafeErrorCause(causeMessage),
+    code,
   });
-};
 
 /**
- * Creates a remove action that shows user-facing feedback for file-system entry deletion.
- * @returns Remove helpers for file-system entries.
+ * Creates a user-triggered remove action for file-system entries.
+ *
+ * The action owns confirmation dialogs, recursive-directory confirmation, snackbar feedback,
+ * and privacy-safe handled diagnostics for remove failures.
+ * @returns Remove helper for absolute file-system entry paths.
  */
 export const useRemoveFSEntry = () => {
   const { confirm } = useDialog();
@@ -25,12 +29,17 @@ export const useRemoveFSEntry = () => {
 
   const { remove: removeEntry } = useFileSystem();
 
+  /**
+   * Confirms and removes a file-system entry by absolute path.
+   * @param path - Absolute file-system entry path to remove.
+   * @returns Promise that resolves after the user decision and any requested remove attempt.
+   */
   const remove = async (path: string) => {
     const name = PathUtils.basename(path);
 
     const sure = await confirm({
       headline: `Remove "${name}"?`,
-      supportingText: `Are you sure you want to remove "${path}"?`,
+      supportingText: 'This item will be removed.',
       confirmLabel: 'Remove',
       symbolName: 'delete',
     });
@@ -54,18 +63,15 @@ export const useRemoveFSEntry = () => {
             });
             try {
               await removeEntry(path, true);
-            } catch (recursiveError) {
+            } catch {
               const reportedError = toReportedRemoveError(
-                recursiveError,
                 'Could not remove the directory',
                 'File system recursive remove operation failed',
+                EntryRemoveErrorCode.recursiveRemoveFailed,
               );
 
               addSnackbar({
-                text:
-                  recursiveError instanceof DomainError
-                    ? recursiveError.message
-                    : 'Could not remove the directory',
+                text: 'Could not remove the directory',
               });
               reportHandledError(reportedError, {
                 feature: 'entryRemove',
@@ -75,13 +81,13 @@ export const useRemoveFSEntry = () => {
           }
         } else {
           const reportedError = toReportedRemoveError(
-            error,
             'Could not remove the item',
             'File system remove operation failed',
+            EntryRemoveErrorCode.removeFailed,
           );
 
           addSnackbar({
-            text: error instanceof DomainError ? error.message : 'Could not remove the item',
+            text: 'Could not remove the item',
           });
           reportHandledError(reportedError, {
             feature: 'entryRemove',

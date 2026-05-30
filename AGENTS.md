@@ -12,6 +12,8 @@ During implementation, use this command only when automatic formatting or lint f
 pnpm verify --fix
 ```
 
+For same-repository pull requests, CI may auto-commit safe mechanical fixer output produced by `pnpm ci:autofix` before the final read-only gate, but only when `BEAVER_CI_AUTOFIX_TOKEN` is configured. `pnpm ci:autofix` is limited to changed-file `oxfmt`, `oxlint --fix`, and `eslint --fix`; it must not run expensive verification gates or auto-update visual snapshots. Without that secret, CI may still run read-only verification but must not push autofix commits. Agents should still run `pnpm verify --fix` locally when useful before the final local `pnpm verify`.
+
 Before reporting completion after edits, always run the read-only check:
 
 ```bash
@@ -68,6 +70,8 @@ reason:
 - Keep ByteRover usage details in the `byterover` skill. Use `AGENTS.md` for stable repo policy, not step-by-step `brv` runbooks.
 - Use the `test-first` skill for behavior changes, bug fixes, migrations, data transformations, storage semantics, and UI flows when the expected outcome can be reproduced by a focused test or smoke check.
 - Do not use test-first for refactors, type-only changes, formatting, comments, renames, documentation, or internal cleanup with no observable behavior change.
+- If CI auto-commits fixer output to a same-repository PR branch, pull or rebase before continuing local work so local diffs and final verification match the branch tip.
+- CI autofix is limited to existing safe fixer output from `pnpm ci:autofix`; it requires `BEAVER_CI_AUTOFIX_TOKEN` to push, stops the old workflow run after pushing so a fresh run can validate the updated head, and must not auto-update visual snapshots, rewrite test expectations, change mutation thresholds, or perform GitHub-side review operations.
 - Use the `component-contract-testing` skill for adding or reviewing Vue component unit tests for small render, props, emits, slots, or child-component wiring contracts.
 - Do not use component contract tests for browser behavior; use Playwright/e2e or a reproducible browser smoke check instead.
 - Use the `mutation-testing` skill for high-risk changes to pure logic, schemas, migrations, storage helpers, CRDT write helpers, validation, normalization, filtering, sorting, matching, service logic, or data transformations when focused unit/integration tests were added or changed.
@@ -87,6 +91,36 @@ reason:
 - Prefer typed collection helpers over raw `Object.keys`, `Object.values`, and `Object.entries` when iterating typed records. Do not add local type assertions just to paper over iteration typing outside rare boundary adapters.
 - When progress is knowable, surface progress instead of falling back to an indeterminate spinner.
 - Keep unit tests colocated with the source file they verify, using sibling `*.test.ts` files. Do not introduce `__tests__` directories.
+
+## Styling
+
+- Use component-scoped styles for Vue component implementation styles. Put global CSS only in app-level style modules or explicitly documented design-token/theme files.
+- The root class of a Vue component must match the component name in kebab-case, for example `MDFab` -> `md-fab` and `RepositoryExplorerWidget` -> `repository-explorer-widget`.
+- When a component renders a placeholder plus teleported or floating content, keep the root class on the root DOM element and model the teleported/floating surface as a BEM element, for example `md-fab-container` with `md-fab-container__surface`.
+- Use classic BEM syntax: block `block`, element `block__element`, boolean modifier `block_modifier`, key-value modifier `block_modifier_value`, element modifier `block__element_modifier`, and element key-value modifier `block__element_modifier_value`.
+- Do not introduce `block--modifier` or `block__element--modifier` naming unless a local legacy component already uses that style and the task is only preserving untouched code.
+- Avoid loose implementation classes that do not belong to the component block, such as `title`, `content`, or `empty-icon`. Prefer block-owned element classes such as `repository-explorer-section__title` or `md-fab__empty-icon`.
+- Prefer explicit key-value modifiers when a component has multiple modifier axes, for example `md-fab_color_primary` and `md-fab_size_medium` instead of ambiguous `md-fab_primary` and `md-fab_medium`.
+- Keep styling ownership local. A parent component should not style a child component's internal classes through `:deep()` unless this is an explicit integration boundary with documented blast radius. Prefer child props, slots, CSS custom properties, or parent-owned wrapper elements.
+- Use project Material tokens and component custom properties before hard-coded values. Preserve Material authoring units such as `dp` and `sp` where the project token pipeline expects them; do not rewrite them to `px` only because a generic CSS reviewer suggests it.
+- When a native interactive element is visually reset, restore required interaction affordances in the owning component, including an appropriate cursor for clickable enabled states and visible focus/state-layer behavior. Do not make disabled or non-action states look clickable.
+- Treat shared UI style changes as blast-radius changes: inspect consumers, preserve the public visual contract by default, and update Storybook/visual coverage when appearance, layout, interaction affordance, or Material state rendering changes.
+
+## Implementation quality gates
+
+- Treat implementation preflight as a contract, not a planning note. Before final verification, compare the resulting diff against the preflight owner-layer plan, acceptance matrix, and risk matrix. If the diff violates the plan, either refactor it or explicitly report the remaining risk instead of claiming completion.
+- Preserve existing user scenarios unless the task explicitly removes them. When replacing a menu, navigation control, status indicator, or shared surface, list the old user actions it provided and ensure they are still reachable or intentionally removed by the task.
+- Do not treat a green `pnpm verify` as architectural approval. Verification proves that automated checks passed; it does not prove FSD ownership, Material correctness, browser behavior, accessibility, or UX acceptance unless those checks were actually covered.
+- Treat a failed final `pnpm verify` as a blocker. Do not present the task as complete, ready for merge, or acceptable when the final read-only verification failed, unless the user explicitly asked for a partial result.
+- Treat mutation-test failures in the touched scope as actionable quality failures. Strengthen tests, reduce the mutation scope by reverting unrelated changes, or fix the implementation before final handoff; do not use passing browser or visual checks to override a failing mutation gate.
+- Keep verification gates distinct. Browser and visual checks validate rendered behavior and appearance; unit, integration, and mutation checks validate logic robustness. Passing one gate does not excuse skipping or failing another gate that applies to the change.
+- Keep user-facing copy in the application's established UI language. Task descriptions, design notes, and review comments may use another language; do not copy their text into product UI unless that language already matches the surrounding UI.
+- After user-facing UI changes, perform a final copy-language scan of touched files and newly added UI surfaces. Remove mixed-language strings, stale task wording, and technical terms that are not already part of the surrounding product UI.
+- For user-visible UI tasks, verify the primary acceptance scenario in the rendered product or a representative Storybook/browser harness before final completion. Unit or component-contract tests may support this, but they must not replace browser verification for layout, scrolling, focus, overlays, touch, or Material visual states.
+- Before changing a shared UI primitive, perform a blast-radius check: inspect existing consumers, define the public API change, preserve existing behavior by default, update or add Storybook/visual/browser coverage when appearance or interaction changes, and avoid one-off props that only serve a single feature.
+- Keep high-risk cross-layer work incremental. Prefer committing or verifying pure read-model changes before feature sheets, widget composition, shared UI primitives, and visual behavior changes. Do not bundle unrelated architectural changes only because they are needed by the same screen.
+- Before final handoff after a refactor, scan for leftover artifacts from abandoned approaches: unused files, exports, stories, tests, feature modules, comments, and stale imports. Delete them or explain why they remain.
+- Treat later user clarifications as higher-priority than earlier task text. When a domain rule in the task conflicts with a later clarification or existing project invariant, stop and align the implementation with the latest confirmed rule instead of silently choosing one.
 
 ## Testing UI and Components
 

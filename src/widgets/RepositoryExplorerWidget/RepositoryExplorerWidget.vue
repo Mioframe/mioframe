@@ -8,19 +8,12 @@ import {
   getGoogleDriveAccessRecoveryError,
   GoogleDriveAccessRecoveryState,
 } from '@entity/googleDriveAccess';
-import { MDListContainer } from '@shared/ui/Lists';
-import { CFRDocumentMDListItem } from '@entity/cfrDocument';
-import { FSEntryMDListItem } from '@entity/fsEntry';
 import type { AMDocumentId } from '@shared/lib/automerge/automergeTypes';
-import { useRepository } from '@entity/repository';
-import { FSNodeType, PathUtils } from '@shared/lib/virtualFileSystem';
-import { useDirectory } from '@entity/directory/useDirectory';
-import type { ReadDirectoryOptions } from '@shared/service/fileSystem';
-import { useLocalSettings } from '@entity/localSettings';
-import { MDCircularProgressIndicator } from '@shared/ui/ProgressIndicators';
 import { MDEmptyState } from '@shared/ui/EmptyState';
-import { DocumentManageMenuButton } from '@feature/documentManage';
-import { FSEntryManageMenuButton } from '@feature/entryManage';
+import { MDCircularProgressIndicator } from '@shared/ui/ProgressIndicators';
+import RepositoryExplorerDocumentsSection from './RepositoryExplorerDocumentsSection.vue';
+import RepositoryExplorerFilesSection from './RepositoryExplorerFilesSection.vue';
+import { useRepositoryExplorerDirectoryState } from './useRepositoryExplorerDirectoryState';
 
 const props = defineProps<{
   directoryPath: string;
@@ -38,36 +31,20 @@ defineSlots<{
 
 const { directoryPath } = toRefs(props);
 
-const { settings } = useLocalSettings();
-
-const readDirectoryOptions = computed(
-  (): ReadDirectoryOptions => ({
-    hideAutomergeFiles: !settings.value.showAutomergeFiles,
-  }),
-);
-
 const {
-  data: directoryEntries,
-  error: directoryError,
-  errorMessage: directoryErrorMessage,
-  isLoading: directoryLoading,
-} = useDirectory(directoryPath, readDirectoryOptions);
+  directoryError,
+  documentIds,
+  errorMessage,
+  hideAutomergeFiles,
+  isLoading,
+  isRepositoryInitialized,
+  regularFileEntries,
+  repositoryError,
+} = useRepositoryExplorerDirectoryState(directoryPath);
 
 const onClickPath = (path: string) => {
   emit('clickPath', path);
 };
-
-const onClickDirectoryEntry = (name: string, fileType: FSNodeType) => {
-  if (fileType === FSNodeType.Directory) {
-    emit('clickPath', PathUtils.join(directoryPath.value, name));
-  }
-};
-
-const {
-  state: documentIdList,
-  error: repositoryError,
-  errorMessage: repositoryErrorMessage,
-} = useRepository(directoryPath);
 
 const onClickDocument = (documentId: AMDocumentId) => {
   emit('clickDocument', documentId);
@@ -75,23 +52,17 @@ const onClickDocument = (documentId: AMDocumentId) => {
 
 const hasGoogleDriveRecovery = computed(
   () =>
+    !!errorMessage.value &&
     !!getGoogleDriveAccessRecoveryError(directoryPath.value, [
       directoryError.value,
       repositoryError.value,
     ]),
 );
-
-const errorHeadline = computed(() =>
-  directoryErrorMessage.value ? 'Directory read error' : 'Repository read error',
-);
-
-const errorMessage = computed(() => directoryErrorMessage.value ?? repositoryErrorMessage.value);
+const recoveryErrors = computed(() => [directoryError.value, repositoryError.value]);
 
 const { isRetryAuthorizationLoading, onRetryAuthorization } = useGoogleDriveRecovery({
   path: directoryPath,
 });
-
-const recoveryErrors = [directoryError, repositoryError];
 
 const onReturnHomeClick = () => {
   emit('clickReturnHome');
@@ -102,72 +73,59 @@ const onReturnHomeClick = () => {
   <div class="repository-explorer-widget">
     <MDNavigationPath
       :path="directoryPath"
+      hide-current
       class="repository-explorer-widget__navigation-path"
       @click="onClickPath"
+      @click-home="onReturnHomeClick"
     />
 
     <div class="repository-explorer-widget__scrollable-content">
-      <MDListContainer is="div" class="repository-explorer-widget__content-list">
-        <CFRDocumentMDListItem
-          is="button"
-          v-for="docId in documentIdList"
-          :key="docId"
-          :document-id="docId"
-          :path="directoryPath"
-          class="repository-explorer-widget__list-item"
-          @click="() => onClickDocument(docId)"
-        >
-          <template #trailingIcon>
-            <DocumentManageMenuButton :directory-path="directoryPath" :document-id="docId" />
-          </template>
-        </CFRDocumentMDListItem>
+      <GoogleDriveAccessRecoveryState
+        v-if="hasGoogleDriveRecovery"
+        :path="directoryPath"
+        :errors="recoveryErrors"
+      >
+        <template #actions>
+          <MDButton
+            label="Retry authorization"
+            :loading="isRetryAuthorizationLoading"
+            @click="onRetryAuthorization"
+          />
 
-        <GoogleDriveAccessRecoveryState
-          v-if="hasGoogleDriveRecovery"
-          :path="directoryPath"
-          :errors="recoveryErrors"
-        >
-          <template #actions>
-            <MDButton
-              label="Retry Authorization"
-              :loading="isRetryAuthorizationLoading"
-              @click="onRetryAuthorization"
-            />
+          <MDButton label="Return home" color="text" @click="onReturnHomeClick" />
+        </template>
+      </GoogleDriveAccessRecoveryState>
 
-            <MDButton label="Return Home" color="text" @click="onReturnHomeClick" />
-          </template>
-        </GoogleDriveAccessRecoveryState>
+      <MDEmptyState
+        v-else-if="errorMessage"
+        class="repository-explorer-widget__error"
+        headline="Could not open this folder"
+        :supporting-text="errorMessage"
+      >
+        <template #icon>
+          <MDSymbol name="error" class="repository-explorer-widget__error-icon" />
+        </template>
+      </MDEmptyState>
 
-        <MDEmptyState
-          v-if="!hasGoogleDriveRecovery && errorMessage"
-          class="repository-explorer-widget__error"
-          :headline="errorHeadline"
-          :supporting-text="errorMessage"
-        >
-          <template #icon>
-            <MDSymbol name="error" class="repository-explorer-widget__error-icon" />
-          </template>
-        </MDEmptyState>
+      <div v-else-if="isLoading" class="repository-explorer-widget__loading">
+        <MDCircularProgressIndicator :size="24" />
+      </div>
 
-        <div v-if="directoryLoading" class="repository-explorer-widget__loading">
-          <MDCircularProgressIndicator :size="24" />
-        </div>
+      <div v-else class="repository-explorer-widget__content">
+        <RepositoryExplorerDocumentsSection
+          :directory-path="directoryPath"
+          :document-ids="documentIds ?? []"
+          :is-repository-initialized="isRepositoryInitialized"
+          @select-document="onClickDocument"
+        />
 
-        <FSEntryMDListItem
-          v-for="[name, { description, type: nodeType }] in directoryEntries"
-          :key="name"
-          is-button
-          :name="name"
-          :supporting-text="description"
-          :type="nodeType"
-          class="repository-explorer-widget__list-item"
-          @click="() => onClickDirectoryEntry(name, nodeType)"
-        >
-          <template #trailingIcon>
-            <FSEntryManageMenuButton :path="PathUtils.join(directoryPath, name)" />
-          </template>
-        </FSEntryMDListItem>
-      </MDListContainer>
+        <RepositoryExplorerFilesSection
+          :directory-path="directoryPath"
+          :hide-automerge-files="hideAutomergeFiles"
+          :regular-file-entries="regularFileEntries"
+          @select-path="onClickPath"
+        />
+      </div>
 
       <slot name="after" />
     </div>
@@ -182,18 +140,8 @@ const onReturnHomeClick = () => {
   min-height: 0;
 
   &__navigation-path {
-    position: sticky;
-    top: 0;
     flex-shrink: 0;
-    padding-left: 2step;
-  }
-
-  &__content-list {
-    flex: 1 0;
-  }
-
-  &__list-item {
-    --md-list-item-border-radius: 8px;
+    padding: 0 16px 8px;
   }
 
   &__scrollable-content {
@@ -204,16 +152,25 @@ const onReturnHomeClick = () => {
     min-height: 0;
   }
 
-  &__loading {
+  &__content {
+    align-content: start;
+    gap: 24px;
+    padding-bottom: 8px;
+    flex-grow: 1;
     display: flex;
-    justify-content: center;
-    align-items: center;
-    --md-content-color: var(--md-sys-color-primary);
-    padding: 2step;
+    flex-direction: column;
   }
 
   &__error-icon {
     --md-content-color: var(--md-sys-color-error);
+  }
+
+  &__loading {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 120px;
+    --md-content-color: var(--md-sys-color-primary);
   }
 }
 </style>

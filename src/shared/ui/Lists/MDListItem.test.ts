@@ -68,6 +68,26 @@ describe('MDListItem', () => {
     expect(wrapper.get('button').attributes('role')).toBeUndefined();
   });
 
+  it('marks enabled native interactive hosts as clickable without changing static hosts', () => {
+    const buttonWrapper = mountListItem({
+      is: 'button',
+      type: 'button',
+    });
+    const anchorWrapper = mountListItem({
+      is: 'a',
+    });
+    const staticWrapper = mountListItem({
+      is: 'div',
+    });
+
+    expect(buttonWrapper.classes()).toContain('md-list-item');
+    expect(anchorWrapper.classes()).toContain('md-list-item');
+    expect(staticWrapper.classes()).toContain('md-list-item');
+    expect(buttonWrapper.element.tagName).toBe('BUTTON');
+    expect(anchorWrapper.element.tagName).toBe('A');
+    expect(staticWrapper.element.tagName).toBe('DIV');
+  });
+
   it('keeps native list semantics for non-interactive li items', () => {
     const wrapper = mountListItem({
       is: 'li',
@@ -124,6 +144,17 @@ describe('MDListItem', () => {
 
     expect(wrapper.emitted('click')).toBeUndefined();
     expect(document.body.querySelector('.md-ripple')).toBeNull();
+  });
+
+  it('keeps disabled button hosts in the disabled native contract', () => {
+    const wrapper = mountListItem({
+      is: 'button',
+      type: 'button',
+      disabled: true,
+    });
+
+    expect(wrapper.get('button').attributes('disabled')).toBeDefined();
+    expect(wrapper.classes()).toContain('md-state_disabled');
   });
 
   it('prevents disabled anchor activation and removes it from tab order', () => {

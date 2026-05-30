@@ -7,7 +7,9 @@ import { MDSymbol } from '../Icon';
 
 const props = withDefaults(
   defineProps<{
+    /** Material FAB size variant. */
     size?: 'medium' | 'large' | undefined;
+    /** Material FAB color role. */
     color?:
       | 'primary'
       | 'secondary'
@@ -16,28 +18,41 @@ const props = withDefaults(
       | 'tonal-secondary'
       | 'tonal-tertiary'
       | undefined;
+    /** Accessible action label and tooltip text for the FAB. */
     tooltip: string;
+    /**
+     * Loading state for the action. `true` shows indeterminate progress; a number shows
+     * determinate progress and keeps `0` visible as an active loading state.
+     */
     loading?: number | boolean | undefined;
+    /** Optional Material Symbols icon name used when no custom icon slot is provided. */
     mdSymbol?: string | undefined;
   }>(),
   { color: 'primary' },
 );
 
 const emit = defineEmits<{
+  /** Emitted after native click handling is stopped from bubbling to parent action surfaces. */
   click: [payload: MouseEvent];
 }>();
 
 defineSlots<{
+  /** Optional icon content rendered when the component is not loading. */
   icon(): unknown;
 }>();
 
 const sizeClass = computed(() => {
-  return props.size ? `md-fab_${props.size}` : undefined;
+  return props.size ? `md-fab_size_${props.size}` : undefined;
 });
 
 const typeClass = computed(() => {
-  return `md-fab_${props.color}`;
+  return `md-fab_color_${props.color}`;
 });
+
+const hasLoading = computed(() => props.loading !== undefined && props.loading !== false);
+const loadingProgress = computed(() =>
+  typeof props.loading === 'number' ? props.loading : undefined,
+);
 
 const onFabClick = (event: MouseEvent) => {
   event.stopPropagation();
@@ -70,15 +85,14 @@ useRipple(buttonEl);
     <MDStateLayer :hover="hover" :focused="focused" :pressed="durationPressedState" />
 
     <span class="md-fab__icon">
-      <MDCircularProgressIndicator v-if="loading" />
+      <MDCircularProgressIndicator v-if="hasLoading" :progress="loadingProgress" />
 
       <slot v-else name="icon">
         <MDSymbol v-if="mdSymbol" :name="mdSymbol" />
 
-        <span v-else class="empty-icon" />
+        <span v-else class="md-fab__empty-icon" />
       </slot>
     </span>
-
     <MDPlainTooltip :text="tooltip" />
   </button>
 </template>
@@ -104,33 +118,39 @@ useRipple(buttonEl);
   background: var(--md-container-color);
   color: var(--md-content-color);
   box-shadow: var(--md-state-box-shadow);
+  cursor: pointer;
   -webkit-tap-highlight-color: transparent;
-  &_primary {
+
+  &:disabled {
+    cursor: default;
+  }
+
+  &_color_primary {
     --md-fab-container-color: var(--md-sys-color-primary);
     --md-fab-icon-color: var(--md-sys-color-on-primary);
   }
 
-  &_secondary {
+  &_color_secondary {
     --md-fab-container-color: var(--md-sys-color-secondary);
     --md-fab-icon-color: var(--md-sys-color-on-secondary);
   }
 
-  &_tertiary {
+  &_color_tertiary {
     --md-fab-container-color: var(--md-sys-color-tertiary);
     --md-fab-icon-color: var(--md-sys-color-on-tertiary);
   }
 
-  &_tonal-primary {
+  &_color_tonal-primary {
     --md-fab-container-color: var(--md-sys-color-primary-container);
     --md-fab-icon-color: var(--md-sys-color-on-primary-container);
   }
 
-  &_tonal-secondary {
+  &_color_tonal-secondary {
     --md-fab-container-color: var(--md-sys-color-secondary-container);
     --md-fab-icon-color: var(--md-sys-color-on-secondary-container);
   }
 
-  &_tonal-tertiary {
+  &_color_tonal-tertiary {
     --md-fab-container-color: var(--md-sys-color-tertiary-container);
     --md-fab-icon-color: var(--md-sys-color-on-tertiary-container);
   }
@@ -145,24 +165,24 @@ useRipple(buttonEl);
     display: inline-flex;
     width: var(--md-fab-icon-size);
     height: var(--md-fab-icon-size);
-    columns: var(--md-fab-icon-color);
+    color: var(--md-fab-icon-color);
     justify-content: center;
     align-items: center;
   }
 
-  &_medium {
+  &_size_medium {
     --md-fab-container-size: 80dp;
     --md-fab-icon-size: 28dp;
     --md-fab-container-shape: var(--md-sys-shape-corner-large-increased);
   }
 
-  &_large {
+  &_size_large {
     --md-fab-container-size: 96dp;
     --md-fab-icon-size: 36dp;
     --md-fab-container-shape: var(--md-sys-shape-corner-extra-large);
   }
 
-  .empty-icon {
+  &__empty-icon {
     box-sizing: border-box;
     border: 1px solid currentColor;
     background:

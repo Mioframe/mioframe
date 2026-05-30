@@ -145,10 +145,15 @@ useRipple(computed(() => (disabled ? undefined : buttonEl.value)));
   background: var(--md-container-color, transparent);
   color: var(--md-content-color, inherit);
   vertical-align: middle;
+  cursor: pointer;
   user-select: none;
   transition-property: color, background-color, border-color, border-radius;
   transition-duration: var(--md-sys-motion-duration-short4, 0.2s);
   -webkit-tap-highlight-color: transparent;
+
+  &:disabled {
+    cursor: default;
+  }
 
   &__target {
     position: absolute;

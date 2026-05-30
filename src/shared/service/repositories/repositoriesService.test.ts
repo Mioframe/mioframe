@@ -698,6 +698,56 @@ describe('useRepositoriesService', () => {
     ]);
   });
 
+  it('exposes repository initialization facts for marker-only and regular folders', async () => {
+    const markerOnlyPath = '/marker-only';
+    const regularFolderPath = '/regular-folder';
+    createDirectoryContentSubject(markerOnlyPath, [
+      [getStorageFileName('storage-adapter-id'), fileStat],
+    ]);
+    createDirectoryContentSubject(regularFolderPath, [['notes.txt', fileStat]]);
+    const { useRepositoriesService } = await import('./repositoriesService');
+    const service = useRepositoriesService();
+
+    await expect(
+      firstValueFrom(service.getRepositoryFacts$({ path: markerOnlyPath })),
+    ).resolves.toEqual({
+      documentIds: [],
+      isInitialized: true,
+    });
+    await expect(
+      firstValueFrom(service.getRepositoryFacts$({ path: regularFolderPath })),
+    ).resolves.toEqual({
+      documentIds: [],
+      isInitialized: false,
+    });
+  });
+
+  it('exposes repository-visible directory entries with marker files hidden and Automerge visibility configurable', async () => {
+    const path = '/visible-entries';
+    const documentId = parseAutomergeUrl(generateAutomergeUrl()).documentId;
+    createDirectoryContentSubject(path, [
+      [getStorageFileName('storage-adapter-id'), fileStat],
+      [getDocumentFileName(documentId), fileStat],
+      ['plain.txt', fileStat],
+      ['nested', { ...fileStat, type: FSNodeType.Directory }],
+    ]);
+    const { useRepositoriesService } = await import('./repositoriesService');
+    const service = useRepositoriesService();
+
+    await expect(firstValueFrom(service.getRepositoryVisibleEntries$({ path }))).resolves.toEqual([
+      ['plain.txt', fileStat],
+      ['nested', { ...fileStat, type: FSNodeType.Directory }],
+    ]);
+
+    await expect(
+      firstValueFrom(service.getRepositoryVisibleEntries$({ path, hideAutomergeFiles: false })),
+    ).resolves.toEqual([
+      [getDocumentFileName(documentId), fileStat],
+      ['plain.txt', fileStat],
+      ['nested', { ...fileStat, type: FSNodeType.Directory }],
+    ]);
+  });
+
   it('cancels pending cleanup when same repo gets new subscriber before timeout', async () => {
     const path = '/cancel-cleanup';
     createDirectoryContentSubject(path);
