@@ -1,1 +1,1 @@
-export {} from './useDirectory';
+export { useDirectory } from './useDirectory';

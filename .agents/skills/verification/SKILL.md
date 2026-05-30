@@ -1,6 +1,6 @@
 ---
 name: verification
-description: 'Use this skill when choosing targeted checks, using pnpm verify --fix, interpreting verification failures, avoiding duplicate verification runs, or preparing the final VERIFY RESULT report. Final completion after edits requires read-only pnpm verify.'
+description: 'Use this skill when choosing targeted checks, using pnpm verify --fix, interpreting verification failures or warnings, avoiding duplicate verification runs, or preparing the final VERIFY RESULT report. Final completion after edits requires read-only pnpm verify.'
 ---
 
 # Verification workflow
@@ -16,6 +16,10 @@ pnpm verify
 ```
 
 Do not replace the final read-only check with manually selected commands. Do not use `--fix` for the final check.
+
+A local coding agent must not report "done", "fixed", "ready", or equivalent completion after code edits unless it includes the final local `pnpm verify` result. If `pnpm verify` was not run, the work is not complete; say `not run`, explain why, and list the exact remaining command.
+
+Local coding agents work only with repository files and local commands. Do not treat GitHub CI, PR threads, PR metadata, reviewer requests, or bot comments as actions the local coding agent can complete. Leave GitHub state for the reviewer unless the user explicitly assigns GitHub work to a GitHub-capable assistant.
 
 ## When to use fix mode
 
@@ -71,6 +75,17 @@ If `pnpm verify` fails:
 4. Rerun final `pnpm verify` before reporting completion.
 5. If the failure is unrelated or cannot be fixed, report the exact failing command and relevant output.
 6. Do not claim the task is complete while final verification is failing.
+
+## Warning handling
+
+Treat warnings in touched files as follow-up work, not as harmless noise.
+
+After final verification:
+
+1. Inspect warning-only summaries when `pnpm verify` reports them.
+2. Fix warnings caused by the current change, especially lint, accessibility, deprecation, Storybook, Playwright, type, or mutation warnings.
+3. If a warning remains, explicitly state whether it is pre-existing, unrelated, or intentionally deferred.
+4. Do not describe the result as clean when new warnings remain in touched files.
 
 ## Avoid duplicate checks
 

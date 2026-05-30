@@ -6,14 +6,39 @@ on:
     branches:
       - main
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
-  verify:
+  autofix:
+    if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    env:
+      BEAVER_CI_AUTOFIX_TOKEN: ${{ secrets.BEAVER_CI_AUTOFIX_TOKEN }}
 
     steps:
-      - uses: actions/checkout@v4
+      # Check out the real PR branch, not the synthetic merge ref, so safe fixer output
+      # can be committed back to the branch under review when the autofix token is configured.
+      - name: Checkout with autofix token
+        if: env.BEAVER_CI_AUTOFIX_TOKEN != ''
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.ref }}
+          persist-credentials: true
+          token: ${{ secrets.BEAVER_CI_AUTOFIX_TOKEN }}
+
+      - name: Checkout read-only
+        if: env.BEAVER_CI_AUTOFIX_TOKEN == ''
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.ref }}
+          persist-credentials: false
 
       - uses: pnpm/action-setup@v4
 
@@ -21,14 +46,111 @@ jobs:
         with:
           node-version: 24
           cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
 
-      - run: podman --version
       - run: pnpm install --frozen-lockfile
-      - run: pnpm e2e:install
-      - run: pnpm verify --verbose
+      - name: Run autofix fixers
+        id: autofix_verify
+        run: |
+          set +e
+          pnpm ci:autofix
+          status=$?
+          set -e
+          echo "exit_code=$status" >> "$GITHUB_OUTPUT"
+
+      - name: Handle autofix changes
+        run: |
+          if git diff --quiet --exit-code; then
+            status="${{ steps.autofix_verify.outputs.exit_code }}"
+
+            if [ "$status" -ne 0 ]; then
+              echo "pnpm ci:autofix failed without producing mechanical changes."
+            fi
+
+            exit "$status"
+          fi
+
+          if [ -z "${BEAVER_CI_AUTOFIX_TOKEN}" ]; then
+            echo "pnpm ci:autofix produced mechanical changes, but CI cannot commit them without BEAVER_CI_AUTOFIX_TOKEN."
+            echo "Add the repository secret to enable CI autofix commits, or rerun without expecting autofix pushes."
+            exit 1
+          fi
+
+          # Use the standard GitHub Actions bot noreply identity for automation commits.
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "chore: apply CI autofix"
+          git push origin HEAD:${{ github.event.pull_request.head.ref }}
+          echo "Autofix commit pushed; waiting for a new workflow run on the updated head."
+          exit 1
+
+      - name: Upload autofix logs
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: autofix-logs
+          path: .verify/logs/
+          if-no-files-found: ignore
+          retention-days: 7
+
+  verify:
+    needs:
+      - autofix
+    if: ${{ !cancelled() && (needs.autofix.result == 'success' || needs.autofix.result == 'skipped') }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.head.ref || github.ref }}
+
+      - name: Fetch pull request base branch
+        if: github.event_name == 'pull_request'
+        run: git fetch --no-tags origin "refs/heads/${BASE_REF}:refs/remotes/origin/${BASE_REF}"
+        env:
+          BASE_REF: ${{ github.base_ref }}
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Verify format
+        run: pnpm verify --verbose --only format
+
+      - name: Verify oxlint
+        run: pnpm verify --verbose --only oxlint
+
+      - name: Verify eslint
+        run: pnpm verify --verbose --only eslint
+
+      - name: Verify type-check
+        run: pnpm verify --verbose --only type-check
+
+      - name: Verify unit tests
+        run: pnpm verify --verbose --only unit-tests
+
+      - name: Verify e2e
+        run: pnpm verify --verbose --only e2e
+
+      - name: Verify visual
+        run: pnpm verify --verbose --only visual
+
+      - name: Verify mutation
+        run: pnpm verify --verbose --only mutation
 
       - name: Upload verify logs
-        if: failure()
+        if: ${{ failure() || cancelled() }}
         uses: actions/upload-artifact@v4
         with:
           name: verify-logs

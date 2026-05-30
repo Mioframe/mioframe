@@ -46,9 +46,13 @@ test('creates a document in a directory, opens it, renames it, and removes it fr
   await openDirectory(page, directoryName);
 
   const originalDocumentName = await createDatabaseDocument(page, createUniqueName('catalog'));
-  await expect(page.getByRole('button', { name: /^all changes saved$/i })).toHaveCount(1);
+  await expect(
+    page.getByRole('button', {
+      name: new RegExp(`^document ${originalDocumentName}$`, 'i'),
+    }),
+  ).toBeVisible();
   await openDocumentFromExplorer(page, originalDocumentName);
-  await expect(page.getByRole('button', { name: /^all changes saved$/i })).toHaveCount(1);
+  await expect(page.getByRole('button', { name: /rename document/i })).toBeVisible();
 
   const renamedDocumentName = createUniqueName('renamed catalog');
   await renameOpenDocument(page, renamedDocumentName);

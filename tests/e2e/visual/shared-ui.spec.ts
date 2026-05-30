@@ -156,6 +156,14 @@ test('MDFab interaction states match baseline', async ({ page }) => {
   await expect(surface).toHaveScreenshot('md-fab-interaction-states.png');
 });
 
+test('MDExtendedFab visual states match baseline', async ({ page }) => {
+  await openStory(page, 'shared-ui-mdextendedfab--visual-states');
+
+  const surface = page.getByTestId('visual-md-extended-fab-states');
+
+  await expect(surface).toHaveScreenshot('md-extended-fab-states.png');
+});
+
 test('MDListItem visual states match baseline', async ({ page }) => {
   await openStory(page, 'shared-ui-mdlistitem--visual-states');
 

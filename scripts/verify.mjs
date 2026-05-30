@@ -3,14 +3,41 @@ import path from 'node:path';
 import { spawn, spawnSync } from 'node:child_process';
 import toolingConfig from '../config/tooling.json' with { type: 'json' };
 
+const cliArgs = process.argv.slice(2);
+const isHelpMode = process.argv.includes('--help') || cliArgs.includes('help');
 const isFixMode = process.argv.includes('--fix');
+const isFixOnlyMode = process.argv.includes('--fix-only');
 const isVerboseMode = process.argv.includes('--verbose');
-const cliBaseRef = getCliBaseRef(process.argv.slice(2));
+const isCi = process.env.CI === 'true' || process.env.GITHUB_ACTIONS === 'true';
+const shouldApplyFixers = isFixMode || isFixOnlyMode;
+const VERIFY_LABELS = [
+  'format',
+  'oxlint',
+  'eslint',
+  'type-check',
+  'unit-tests',
+  'e2e-install',
+  'e2e',
+  'visual',
+  'mutation',
+];
 const VERIFY_DIR = '.verify';
 const VERIFY_LOG_DIR = path.posix.join(VERIFY_DIR, 'logs');
 const MAX_RELEVANT_LINES = 20;
 const MAX_FILE_ARGS_IN_SUMMARY = 4;
 const MAX_ROLLING_BUFFER_CHARS = 128 * 1024;
+const HEARTBEAT_INTERVAL_MS = 60_000;
+const KILL_GRACE_MS = 10_000;
+const COMMAND_TIMEOUT_MS_BY_LABEL = {
+  'e2e-install': 10 * 60 * 1000,
+  e2e: 12 * 60 * 1000,
+  visual: 15 * 60 * 1000,
+  mutation: 12 * 60 * 1000,
+};
+const cliBaseRef = isHelpMode ? null : getCliBaseRef(cliArgs);
+const cliOnlyLabel = isHelpMode ? null : getCliOnlyLabel(cliArgs);
+const EXPENSIVE_SKIP_REASON =
+  'previous check failed; skipped expensive verification to save CI minutes';
 const FORMATTABLE_EXTENSIONS = new Set([
   '.css',
   '.html',
@@ -41,6 +68,7 @@ const IGNORED_PREFIXES = [
   'test-results/',
   '.stryker-tmp/',
 ];
+const FORMAT_LINT_IGNORED_PREFIXES = ['.github/'];
 
 function toPosixPath(filePath) {
   return filePath.split(path.sep).join(path.posix.sep);
@@ -48,6 +76,12 @@ function toPosixPath(filePath) {
 
 function isIgnored(filePath) {
   return IGNORED_PREFIXES.some(
+    (prefix) => filePath === prefix.slice(0, -1) || filePath.startsWith(prefix),
+  );
+}
+
+function isFormatLintIgnored(filePath) {
+  return FORMAT_LINT_IGNORED_PREFIXES.some(
     (prefix) => filePath === prefix.slice(0, -1) || filePath.startsWith(prefix),
   );
 }
@@ -118,6 +152,48 @@ function getCliBaseRef(argv) {
   }
 
   return null;
+}
+
+function getCliOnlyLabel(argv) {
+  for (let index = 0; index < argv.length; index += 1) {
+    const argument = argv[index];
+
+    if (argument === '--only') {
+      const value = argv[index + 1];
+
+      if (!value || value.startsWith('--')) {
+        throw new Error(`Missing value for --only. Accepted labels: ${VERIFY_LABELS.join(', ')}`);
+      }
+
+      validateOnlyLabel(value);
+      return value;
+    }
+
+    if (argument.startsWith('--only=')) {
+      const value = argument.slice('--only='.length);
+
+      if (value.length === 0) {
+        throw new Error(`Missing value for --only. Accepted labels: ${VERIFY_LABELS.join(', ')}`);
+      }
+
+      validateOnlyLabel(value);
+      return value;
+    }
+  }
+
+  return null;
+}
+
+function validateOnlyLabel(label) {
+  if (VERIFY_LABELS.includes(label)) {
+    return;
+  }
+
+  throw new Error(
+    [`Invalid value for --only: ${label}`, `Accepted labels: ${VERIFY_LABELS.join(', ')}`].join(
+      '\n',
+    ),
+  );
 }
 
 function ensureBaseRefExists(baseRef) {
@@ -262,7 +338,6 @@ function getAllSiblingTestFiles(filePath) {
   const baseName = path.posix.basename(filePath, extension);
   const dirPath = path.posix.dirname(filePath);
   const nameWithoutExt = filePath.slice(0, -extension.length);
-
   const exactMatch = `${nameWithoutExt}.test.ts`;
 
   if (fileExists(exactMatch)) {
@@ -291,7 +366,7 @@ function getAllSiblingTestFiles(filePath) {
       }
     }
   } catch {
-    // directory read failure — fall through to empty array
+    // Directory read failure falls through to an empty focused test scope.
   }
 
   return uniqSorted(testCandidates);
@@ -408,9 +483,18 @@ function getLogPath(label) {
   return path.posix.join(VERIFY_LOG_DIR, `${label}.log`);
 }
 
-function ensureLogsDirectory() {
-  fs.rmSync(VERIFY_LOG_DIR, { recursive: true, force: true });
+function ensureLogsDirectory(labelsToReset = null) {
+  if (labelsToReset === null) {
+    fs.rmSync(VERIFY_LOG_DIR, { recursive: true, force: true });
+    fs.mkdirSync(VERIFY_LOG_DIR, { recursive: true });
+    return;
+  }
+
   fs.mkdirSync(VERIFY_LOG_DIR, { recursive: true });
+
+  for (const label of labelsToReset) {
+    fs.rmSync(getLogPath(label), { force: true });
+  }
 }
 
 function appendToRollingBuffer(buffer, chunk) {
@@ -498,6 +582,73 @@ function getOutputTail(output) {
   return lines.slice(-MAX_RELEVANT_LINES);
 }
 
+function formatDuration(milliseconds) {
+  const totalSeconds = Math.max(0, Math.floor(milliseconds / 1000));
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+
+  return minutes === 0 ? `${seconds}s` : `${minutes}m ${seconds}s`;
+}
+
+function formatHelpTimeout(milliseconds) {
+  const minutes = Math.floor(milliseconds / 60_000);
+
+  return `${minutes} minute${minutes === 1 ? '' : 's'}`;
+}
+
+function getLastMeaningfulLine(text) {
+  const lines = text
+    .split('\n')
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0);
+
+  return lines.at(-1) ?? null;
+}
+
+function printHelp() {
+  console.log('Usage:');
+  console.log('  pnpm verify [options]');
+  console.log('');
+  console.log('Options:');
+  console.log('  --help              Show this help.');
+  console.log('  --verbose           Stream command output to stdout/stderr.');
+  console.log('  --fix               Apply supported format/lint fixes, then run verification.');
+  console.log('  --fix-only          Apply supported format/lint fixes only.');
+  console.log('  --base <ref>        Verify changes against a local base ref.');
+  console.log('  --only <label>      Run one focused verification check.');
+  console.log('');
+  console.log('Labels for --only:');
+
+  for (const label of VERIFY_LABELS) {
+    console.log(`  ${label}`);
+  }
+
+  console.log('');
+  console.log('Examples:');
+  console.log('  pnpm verify');
+  console.log('  pnpm verify --verbose');
+  console.log('  pnpm verify --base origin/develop');
+  console.log('  pnpm verify --verbose --only type-check');
+  console.log('  pnpm verify --fix');
+  console.log('  pnpm verify --fix-only');
+  console.log('');
+  console.log('Notes:');
+  console.log('  - In CI, verify scope is based on GITHUB_BASE_REF.');
+  console.log('  - Focused --only runs preserve logs from other focused steps.');
+  console.log(`  - Logs are written to ${VERIFY_LOG_DIR}/.`);
+  console.log('  - Expensive checks have internal heartbeat/timeouts:');
+
+  for (const label of VERIFY_LABELS) {
+    const timeoutMs = COMMAND_TIMEOUT_MS_BY_LABEL[label];
+
+    if (timeoutMs === undefined) {
+      continue;
+    }
+
+    console.log(`    - ${label}: ${formatHelpTimeout(timeoutMs)}`);
+  }
+}
+
 async function runCommand(label, command, args) {
   const formattedCommand = formatCommand(command, args);
   const displayCommand = summarizeCommandForDisplay(command, args);
@@ -514,11 +665,87 @@ async function runCommand(label, command, args) {
   let outputBuffer = '';
   let exitCode = 1;
   let spawnError = null;
+  let timedOut = false;
+  let killGraceTimer = null;
+  const startedAt = Date.now();
+  let lastOutputAt = startedAt;
+  let lastOutputLine = null;
+  let incompleteOutputLine = '';
+  const commandTimeoutMs = COMMAND_TIMEOUT_MS_BY_LABEL[label] ?? null;
+
+  const writeStatusLine = (line, destination = 'stdout') => {
+    const text = `${line}\n`;
+    logStream.write(text);
+    outputBuffer = appendToRollingBuffer(outputBuffer, text);
+
+    if (destination === 'stderr') {
+      process.stderr.write(text);
+      return;
+    }
+
+    process.stdout.write(text);
+  };
+
+  const heartbeatTimer = setInterval(() => {
+    const heartbeatParts = [
+      `[${label}] heartbeat: elapsed ${formatDuration(Date.now() - startedAt)}`,
+      `last output ${formatDuration(Date.now() - lastOutputAt)} ago`,
+      `last line: ${lastOutputLine === null ? '<none>' : JSON.stringify(lastOutputLine)}`,
+    ];
+
+    if (commandTimeoutMs !== null) {
+      heartbeatParts.push(`timeout ${formatDuration(commandTimeoutMs)}`);
+    }
+
+    writeStatusLine(heartbeatParts.join('; '));
+  }, HEARTBEAT_INTERVAL_MS);
+
+  const timeoutTimer =
+    commandTimeoutMs === null
+      ? null
+      : setTimeout(() => {
+          timedOut = true;
+          writeStatusLine(
+            `[${label}] timeout: exceeded ${formatDuration(commandTimeoutMs)}; sending SIGTERM`,
+            'stderr',
+          );
+          child.kill('SIGTERM');
+          killGraceTimer = setTimeout(() => {
+            writeStatusLine(
+              `[${label}] timeout: process still running after ${formatDuration(
+                KILL_GRACE_MS,
+              )}; sending SIGKILL`,
+              'stderr',
+            );
+            child.kill('SIGKILL');
+          }, KILL_GRACE_MS);
+        }, commandTimeoutMs);
+
+  const cleanupTimers = () => {
+    clearInterval(heartbeatTimer);
+
+    if (timeoutTimer !== null) {
+      clearTimeout(timeoutTimer);
+    }
+
+    if (killGraceTimer !== null) {
+      clearTimeout(killGraceTimer);
+    }
+  };
 
   const onStdout = (chunk) => {
     const text = chunk.toString();
     logStream.write(text);
     outputBuffer = appendToRollingBuffer(outputBuffer, text);
+    lastOutputAt = Date.now();
+    const completeLines = `${incompleteOutputLine}${text}`.split('\n');
+    incompleteOutputLine = completeLines.pop() ?? '';
+    const completedOutput = completeLines.join('\n');
+    const latestLine = getLastMeaningfulLine(completedOutput);
+
+    if (latestLine !== null) {
+      lastOutputLine = latestLine;
+    }
 
     if (isVerboseMode) {
       process.stdout.write(chunk);
@@ -529,6 +756,15 @@ async function runCommand(label, command, args) {
     const text = chunk.toString();
     logStream.write(text);
     outputBuffer = appendToRollingBuffer(outputBuffer, text);
+    lastOutputAt = Date.now();
+    const completeLines = `${incompleteOutputLine}${text}`.split('\n');
+    incompleteOutputLine = completeLines.pop() ?? '';
+    const completedOutput = completeLines.join('\n');
+    const latestLine = getLastMeaningfulLine(completedOutput);
+
+    if (latestLine !== null) {
+      lastOutputLine = latestLine;
+    }
 
     if (isVerboseMode) {
       process.stderr.write(chunk);
@@ -542,11 +778,36 @@ async function runCommand(label, command, args) {
     child.once('error', (error) => {
       spawnError = error;
       logStream.write(`\n[verify] spawn error: ${error.message}\n`);
+      cleanupTimers();
       resolve();
     });
 
-    child.once('close', (code) => {
+    child.once('close', (code, signal) => {
+      cleanupTimers();
+
+      if (timedOut) {
+        exitCode = 124;
+        const signalSuffix = signal ? `; process exited via ${signal}` : '';
+        writeStatusLine(
+          `[${label}] timeout: command failed after internal timeout${signalSuffix}`,
+          'stderr',
+        );
+        resolve();
+        return;
+      }
+
       exitCode = code ?? 1;
+
+      if (signal) {
+        logStream.write(`\n[verify] process exited via signal ${signal}\n`);
+      }
+
+      const trailingLine = getLastMeaningfulLine(incompleteOutputLine);
+
+      if (trailingLine !== null) {
+        lastOutputLine = trailingLine;
+      }
+
       resolve();
     });
   });
@@ -594,12 +855,59 @@ async function runCommand(label, command, args) {
   };
 }
 
+function createSkippedResult(entry, reason = entry.reason) {
+  return {
+    label: entry.label,
+    command: entry.command,
+    status: 'skipped',
+    reason,
+    exitCode: null,
+    stdout: '',
+    stderr: '',
+    hasWarnings: false,
+    warningSummary: '',
+  };
+}
+
+function addE2ECommands(commands, e2eCommand) {
+  commands.push(createE2EInstallCommand());
+  commands.push({ ...e2eCommand, expensive: true });
+}
+
+function createE2EInstallCommand(reason) {
+  return {
+    kind: 'skipped',
+    label: 'e2e-install',
+    command: 'pnpm e2e:install',
+    reason: reason ?? 'browser install is not required; Playwright container provides browsers',
+  };
+}
+
+function createE2ECommand(extraArgs = []) {
+  if (isCi) {
+    return {
+      kind: 'run',
+      label: 'e2e',
+      command: 'pnpm',
+      args: ['e2e:container', ...extraArgs],
+    };
+  }
+
+  return {
+    kind: 'run',
+    label: 'e2e',
+    command: 'pnpm',
+    args: ['exec', 'playwright', 'test', ...extraArgs],
+  };
+}
+
 function buildCommands(changedFiles) {
   const existingChangedFiles = changedFiles.filter(fileExists);
-  const formattableFiles = existingChangedFiles.filter((filePath) =>
+  const formatLintFiles = existingChangedFiles.filter((filePath) => !isFormatLintIgnored(filePath));
+  const formattableFiles = formatLintFiles.filter((filePath) =>
     FORMATTABLE_EXTENSIONS.has(path.posix.extname(filePath)),
   );
-  const lintableFiles = existingChangedFiles.filter((filePath) =>
+  const lintableFiles = formatLintFiles.filter((filePath) =>
     LINTABLE_EXTENSIONS.has(path.posix.extname(filePath)),
   );
   const vitestScope = getVitestScope(changedFiles);
@@ -623,13 +931,13 @@ function buildCommands(changedFiles) {
       kind: 'run',
       label: 'format',
       command: 'pnpm',
-      args: ['exec', 'oxfmt', ...(isFixMode ? [] : ['--check']), ...formattableFiles],
+      args: ['exec', 'oxfmt', ...(shouldApplyFixers ? [] : ['--check']), ...formattableFiles],
     });
   } else {
     commands.push({
       kind: 'skipped',
       label: 'format',
-      command: `pnpm exec oxfmt${isFixMode ? '' : ' --check'}`,
+      command: `pnpm exec oxfmt${shouldApplyFixers ? '' : ' --check'}`,
       reason: 'no changed formattable existing files',
     });
   }
@@ -639,7 +947,7 @@ function buildCommands(changedFiles) {
       kind: 'run',
       label: 'oxlint',
       command: 'pnpm',
-      args: ['exec', 'oxlint', ...(isFixMode ? ['--fix'] : []), ...lintableFiles],
+      args: ['exec', 'oxlint', ...(shouldApplyFixers ? ['--fix'] : []), ...lintableFiles],
     });
     commands.push({
       kind: 'run',
@@ -649,7 +957,7 @@ function buildCommands(changedFiles) {
         'exec',
         'eslint',
         '--cache',
-        ...(isFixMode ? ['--fix'] : []),
+        ...(shouldApplyFixers ? ['--fix'] : []),
         '--concurrency=auto',
         ...lintableFiles,
       ],
@@ -658,15 +966,19 @@ function buildCommands(changedFiles) {
     commands.push({
       kind: 'skipped',
       label: 'oxlint',
-      command: `pnpm exec oxlint${isFixMode ? ' --fix' : ''}`,
+      command: `pnpm exec oxlint${shouldApplyFixers ? ' --fix' : ''}`,
       reason: 'no changed lintable existing files',
     });
     commands.push({
       kind: 'skipped',
       label: 'eslint',
-      command: `pnpm exec eslint --cache${isFixMode ? ' --fix' : ''} --concurrency=auto`,
+      command: `pnpm exec eslint --cache${shouldApplyFixers ? ' --fix' : ''} --concurrency=auto`,
       reason: 'no changed lintable existing files',
     });
+  }
+
+  if (isFixOnlyMode) {
+    return commands;
   }
 
   if (changedFiles.some(isTypeCheckTarget)) {
@@ -697,19 +1009,15 @@ function buildCommands(changedFiles) {
   }
 
   if (changedFiles.includes('playwright.config.ts')) {
-    commands.push({ kind: 'run', label: 'e2e', command: 'pnpm', args: ['e2e'] });
+    addE2ECommands(commands, createE2ECommand());
   } else if (changedE2ESpecs.length > 0) {
-    commands.push({
-      kind: 'run',
-      label: 'e2e',
-      command: 'pnpm',
-      args: ['exec', 'playwright', 'test', ...changedE2ESpecs],
-    });
+    addE2ECommands(commands, createE2ECommand(changedE2ESpecs));
   } else {
+    commands.push(createE2EInstallCommand('empty e2e scope'));
     commands.push({
       kind: 'skipped',
       label: 'e2e',
-      command: 'pnpm exec playwright test',
+      command: isCi ? 'pnpm e2e:container' : 'pnpm exec playwright test',
       reason: 'empty e2e scope',
     });
   }
@@ -720,6 +1028,7 @@ function buildCommands(changedFiles) {
       label: 'visual',
       command: 'pnpm',
       args: ['test:visual'],
+      expensive: true,
     });
   } else {
     commands.push({
@@ -736,6 +1045,7 @@ function buildCommands(changedFiles) {
       label: 'mutation',
       command: 'pnpm',
       args: ['exec', 'stryker', 'run', '-m', mutationScope.join(',')],
+      expensive: true,
     });
   } else {
     commands.push({
@@ -747,6 +1057,24 @@ function buildCommands(changedFiles) {
   }
 
   return commands;
+}
+
+function selectOnlyCommands(commands) {
+  if (cliOnlyLabel === null) {
+    return commands;
+  }
+
+  const selectedCommands = commands.filter((entry) => entry.label === cliOnlyLabel);
+
+  if (selectedCommands.length > 0) {
+    return selectedCommands;
+  }
+
+  if (cliOnlyLabel === 'e2e-install') {
+    return [createE2EInstallCommand('empty e2e scope')];
+  }
+
+  throw new Error(`Verify command list is missing required label: ${cliOnlyLabel}`);
 }
 
 function getActionRequired(results) {
@@ -781,10 +1109,12 @@ function printSummary(changedFiles, scope, results) {
   const status = hasFailed ? 'failed' : 'passed';
   const displayStatus = hasFailed ? 'failed ❌' : 'passed ✅';
   const actionRequired = getActionRequired(results);
+  const mode = isFixOnlyMode ? 'fix-only' : isFixMode ? 'fix' : 'check';
 
   console.log('\nVERIFY RESULT');
-  console.log(`mode: ${isFixMode ? 'fix' : 'check'}`);
+  console.log(`mode: ${mode}`);
   console.log(`verbose: ${isVerboseMode ? 'on' : 'off'}`);
+  console.log(`only: ${cliOnlyLabel ?? 'all'}`);
   console.log(`scope: ${scope}`);
   console.log(`changed files: ${changedFiles.length}`);
   console.log(`status: ${displayStatus}`);
@@ -814,33 +1144,55 @@ function printSummary(changedFiles, scope, results) {
 }
 
 async function main() {
+  if (isFixMode && isFixOnlyMode) {
+    throw new Error('Use either --fix or --fix-only, not both.');
+  }
+
   const { changedFiles, scope } = getChangedFiles();
-  const commands = buildCommands(changedFiles);
+  const commands = selectOnlyCommands(buildCommands(changedFiles));
   const results = [];
-  ensureLogsDirectory();
+  let hasFailed = false;
+  const runnableCommands = commands.filter((entry) => entry.kind === 'run');
+  const totalRunnableChecks = runnableCommands.length;
+  let completedRunnableChecks = 0;
+  ensureLogsDirectory(cliOnlyLabel === null ? null : commands.map((entry) => entry.label));
 
   for (const entry of commands) {
     if (entry.kind === 'skipped') {
-      results.push({
-        label: entry.label,
-        command: entry.command,
-        status: 'skipped',
-        reason: entry.reason,
-        exitCode: null,
-        stdout: '',
-        stderr: '',
-        hasWarnings: false,
-        warningSummary: '',
-      });
+      results.push(createSkippedResult(entry));
       continue;
     }
 
-    // oxlint-disable-next-line no-await-in-loop -- verify checks must run sequentially for stable summary/log ordering.
-    results.push(await runCommand(entry.label, entry.command, entry.args));
+    if (hasFailed && entry.expensive === true) {
+      results.push(createSkippedResult(entry, EXPENSIVE_SKIP_REASON));
+      continue;
+    }
+
+    if (cliOnlyLabel === null) {
+      console.log(
+        `[verify] check ${completedRunnableChecks + 1}/${totalRunnableChecks}: ${entry.label}`,
+      );
+    } else {
+      console.log(`[verify] focused check: ${entry.label}`);
+    }
+
+    // oxlint-disable-next-line no-await-in-loop -- verify checks run sequentially for deterministic logs and fail-fast expensive gates.
+    const result = await runCommand(entry.label, entry.command, entry.args);
+    results.push(result);
+    completedRunnableChecks += 1;
+
+    if (result.status === 'failed') {
+      hasFailed = true;
+    }
   }
 
   const summary = printSummary(changedFiles, scope, results);
   process.exitCode = summary.hasFailed ? 1 : 0;
+}
+
+if (isHelpMode) {
+  printHelp();
+  process.exit(0);
 }
 
 if (!directoryExists('.git')) {

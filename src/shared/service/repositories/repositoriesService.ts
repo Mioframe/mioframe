@@ -1,11 +1,8 @@
-import { zodDocumentId, type AMDocumentId } from '@shared/lib/automerge';
+import type { AMDocumentId } from '@shared/lib/automerge';
 import { useFileSystemService } from '../fileSystem';
-import { FSNodeType } from '@shared/lib/virtualFileSystem';
-import { zodIs } from '@shared/lib/validateZodScheme';
 import { Repo } from '@automerge/automerge-repo';
 import { createVFSAdapter } from '@shared/lib/automergeAdapter/createVFSAdapter';
 import { createGlobalState } from '@vueuse/core';
-import { fileNameToPartialKey, zodAutomergeFileName } from '@shared/lib/automergeAdapter';
 import type { CFRDocumentContent } from '@shared/lib/cfrDocument';
 import {
   concat,
@@ -26,6 +23,8 @@ import { defineObservableQuery } from '@shared/lib/useObservableQuery';
 import { defineCacheObservable } from '@shared/lib/defineCacheObservable';
 import {
   cleanupDeletedDocumentStorageFiles,
+  getRepositoryFacts,
+  getRegularDirectoryEntries,
   getDocumentStorageFiles,
 } from './repositoryStorageFiles';
 /** Idle timeout before an unused Automerge Repo instance is removed from service cache. */
@@ -35,12 +34,19 @@ const setupRepositoriesService = () => {
   const { directoryContent$, vfs } = useFileSystemService();
   const repoObservableCache = new Map<string, Observable<Repo>>();
 
-  const getDocumentIdList$ = defineCacheObservable(
+  /**
+   * Observes canonical repository facts derived from repository storage files in a directory.
+   *
+   * `isInitialized` is a repository storage fact, not a UI state. It is true for marker-only
+   * repositories and repositories with document storage files. Directory read failures are
+   * returned as `Error` values so entity APIs can convert them into privacy-safe UI messages.
+   */
+  const getRepositoryFacts$ = defineCacheObservable(
     ({
       path,
     }: {
       /**
-       * Путь репозитория
+       * Repository path.
        */
       path: string;
     }) =>
@@ -49,17 +55,63 @@ const setupRepositoriesService = () => {
           if (value instanceof Error) {
             return value;
           }
-          return value.reduce((documentIdList: AMDocumentId[], [name, { type }]) => {
-            if (type === FSNodeType.File && zodIs(name, zodAutomergeFileName)) {
-              const [documentId] = fileNameToPartialKey(name) ?? [];
 
-              if (zodIs(documentId, zodDocumentId) && !documentIdList.includes(documentId)) {
-                documentIdList.push(documentId);
-              }
-            }
+          return getRepositoryFacts(value);
+        }),
+      ),
+  );
 
-            return documentIdList;
-          }, []);
+  /**
+   * Observes repository-aware directory entries for Repository Explorer file listings.
+   *
+   * Repository marker files are always hidden. Automerge document storage files are hidden by
+   * default and are included only when `hideAutomergeFiles` is `false`. Directory read failures
+   * are returned as `Error` values so entity APIs can expose the raw boundary failure separately
+   * from repository fact failures.
+   */
+  const getRepositoryVisibleEntries$ = defineCacheObservable(
+    ({
+      hideAutomergeFiles = true,
+      path,
+    }: {
+      /** Whether Automerge storage files should stay hidden in repository-aware file listings. */
+      hideAutomergeFiles?: boolean | undefined;
+      /** Absolute repository path whose visible entries should be observed. */
+      path: string;
+    }) =>
+      directoryContent$({ path }).pipe(
+        map((value) => {
+          if (value instanceof Error) {
+            return value;
+          }
+
+          return getRegularDirectoryEntries(value, hideAutomergeFiles);
+        }),
+      ),
+  );
+
+  /**
+   * Observes document ids as a compatibility projection of repository facts.
+   *
+   * Prefer `getRepositoryFacts$` when callers also need repository initialization. Directory
+   * read failures are preserved as `Error` values for existing observable-query consumers.
+   */
+  const getDocumentIdList$ = defineCacheObservable(
+    ({
+      path,
+    }: {
+      /**
+       * Repository path.
+       */
+      path: string;
+    }) =>
+      getRepositoryFacts$({ path }).pipe(
+        map((value) => {
+          if (value instanceof Error) {
+            return value;
+          }
+
+          return value.documentIds;
         }),
       ),
   );
@@ -169,26 +221,38 @@ const setupRepositoriesService = () => {
   };
 
   const documentIdList = defineObservableQuery(getDocumentIdList$);
+  const repositoryFacts = defineObservableQuery(getRepositoryFacts$);
+  const repositoryVisibleEntries = defineObservableQuery(getRepositoryVisibleEntries$);
 
   return {
+    /** Observable-query wrapper for document ids derived from repository facts. */
     documentIdList,
+    /** Observable-query wrapper for canonical repository initialization facts and document ids. */
+    repositoryFacts,
+    /** Observable-query wrapper for repository-aware visible directory entries. */
+    repositoryVisibleEntries,
+    /** Low-level observable for document ids derived from repository facts. */
     getDocumentIdList$,
+    /** Low-level observable for canonical repository initialization facts and document ids. */
+    getRepositoryFacts$,
+    /** Low-level observable for repository-aware visible directory entries. */
+    getRepositoryVisibleEntries$,
     getRepo$: repo$,
     /**
-     * Создать документ в репозитории
-     * @param path - Абсолютный путь к репозиторию.
-     * @returns Идентификатор созданного документа.
+     * Creates a document in the repository.
+     * @param path - Absolute path to the repository.
+     * @returns Created document identifier.
      */
     createDocument,
     /**
-     * Инициализировать хранилище репозитория без создания документа
-     * @param path - Абсолютный путь к репозиторию.
+     * Initializes repository storage without creating a document.
+     * @param path - Absolute path to the repository.
      */
     initializeRepository,
     /**
-     * Удаление документа из репозитория
-     * @param path - Абсолютный путь репозитория.
-     * @param id - Идентификатор документа.
+     * Removes a document from the repository.
+     * @param path - Absolute repository path.
+     * @param id - Document identifier.
      */
     deleteDocument,
   };

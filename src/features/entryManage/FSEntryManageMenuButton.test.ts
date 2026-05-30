@@ -1,85 +1,11 @@
-/* eslint-disable vue/one-component-per-file -- This test file intentionally defines inline stubs and a small harness component. */
 import { flushPromises, mount } from '@vue/test-utils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { defineComponent, h, ref } from 'vue';
+import { defineComponent, h } from 'vue';
+import { FSNodeType } from '@shared/lib/virtualFileSystem';
 
-const { importJsonFileMock, reportHandledErrorMock, addSnackbarMock } = vi.hoisted(() => ({
-  importJsonFileMock: vi.fn(),
-  reportHandledErrorMock: vi.fn(),
-  addSnackbarMock: vi.fn(),
-}));
-
-vi.mock('@entity/directory/useDirectory', () => ({
-  useDirectory: () => ({
-    data: ref([['target', { type: 2 }]]),
-  }),
-}));
-
-vi.mock('@entity/fsEntry', () => ({
-  useFSNodeStat: () => ({
-    data: ref({
-      capabilities: {
-        canChangePath: true,
-        canDelete: true,
-        canEditChildren: true,
-      },
-    }),
-  }),
-}));
-
-vi.mock('@feature/directoryCreate', () => ({
-  DirectoryCreateDialog: defineComponent({
-    name: 'DirectoryCreateDialogStub',
-    setup() {
-      return () => null;
-    },
-  }),
-}));
-
-vi.mock('@feature/documentCreate', () => ({
-  DocumentCreationDialog: defineComponent({
-    name: 'DocumentCreationDialogStub',
-    setup() {
-      return () => null;
-    },
-  }),
-}));
-
-vi.mock('@feature/entryRemove', () => ({
-  useRemoveFSEntry: () => ({
-    remove: vi.fn(),
-  }),
-}));
-
-vi.mock('@feature/entryRename', () => ({
-  FSEntryRenameDialog: defineComponent({
-    name: 'FSEntryRenameDialogStub',
-    setup() {
-      return () => null;
-    },
-  }),
-}));
-
-vi.mock('@feature/importDocument', async () => {
-  const actual =
-    await vi.importActual<typeof import('@feature/importDocument')>('@feature/importDocument');
-
-  return {
-    ...actual,
-    useImportDocument: () => ({
-      importJsonFile: importJsonFileMock,
-    }),
-  };
-});
-
-vi.mock('@shared/lib/reportHandledError', () => ({
-  reportHandledError: reportHandledErrorMock,
-}));
-
-vi.mock('@shared/ui/Snackbar', () => ({
-  useSnackbar: () => ({
-    addSnackbar: addSnackbarMock,
-  }),
+const { selectedLabel, renderedLabels } = vi.hoisted(() => ({
+  selectedLabel: { value: 'Import JSON' },
+  renderedLabels: { value: new Array<string>() },
 }));
 
 vi.mock('@shared/ui/Menu', () => ({
@@ -97,8 +23,14 @@ vi.mock('@shared/ui/Menu', () => ({
     },
     emits: ['click'],
     setup(props, { emit }) {
-      return () =>
-        h(
+      return () => {
+        renderedLabels.value = props.btns
+          .filter(
+            (button): button is { label: string } => typeof button === 'object' && button !== null,
+          )
+          .map((button) => button.label);
+
+        return h(
           'button',
           {
             type: 'button',
@@ -110,78 +42,141 @@ vi.mock('@shared/ui/Menu', () => ({
                     typeof button === 'object' &&
                     button !== null &&
                     'label' in button &&
-                    button.label === 'Import JSON',
+                    button.label === selectedLabel.value,
                 ) ?? props.btns[0],
               );
             },
           },
           props.tooltip,
         );
+      };
     },
   }),
   defineMenuButtonList: <T>(buttons: T[]) => buttons,
 }));
 
-vi.mock('@shared/ui/Menu/defineMenuButtonList', () => ({
-  defineMenuButton: <T extends object>(button: T) => button,
-}));
-
 describe('FSEntryManageMenuButton', () => {
   beforeEach(() => {
-    importJsonFileMock.mockReset();
-    reportHandledErrorMock.mockReset();
-    addSnackbarMock.mockReset();
+    selectedLabel.value = 'Import JSON';
+    renderedLabels.value = [];
   });
 
-  it('does not report invalid Beaver document format import errors', async () => {
-    const { DomainError } = await import('@shared/lib/error');
-    const { ImportDocumentErrorCode } = await import('@feature/importDocument');
+  const mountButton = async (
+    props?: Partial<{
+      canChangePath: boolean;
+      canDelete: boolean;
+      canEditChildren: boolean;
+      entryType: FSNodeType;
+      showDocumentActions: boolean;
+    }>,
+  ) => {
     const { default: FSEntryManageMenuButton } = await import('./FSEntryManageMenuButton.vue');
 
-    importJsonFileMock.mockRejectedValue(
-      new DomainError('Invalid Beaver document', {
-        cause: new Error('zod details'),
-        code: ImportDocumentErrorCode.invalidDocumentFormat,
-      }),
-    );
-
-    const wrapper = mount(FSEntryManageMenuButton, {
+    return mount(FSEntryManageMenuButton, {
       props: {
         path: '/target',
+        entryType: FSNodeType.Directory,
+        canEditChildren: true,
+        canChangePath: true,
+        canDelete: true,
+        ...props,
       },
     });
+  };
+
+  it('renders nested-directory document actions only when enabled by the parent layer', async () => {
+    await mountButton({ showDocumentActions: true });
+
+    expect(renderedLabels.value).toEqual([
+      'Create directory',
+      'Create document',
+      'Rename',
+      'Import JSON',
+      'Remove',
+    ]);
+  });
+
+  it('keeps current-folder menus free of document actions when the parent disables them', async () => {
+    await mountButton({ showDocumentActions: false });
+
+    expect(renderedLabels.value).toEqual(['Create directory', 'Rename', 'Remove']);
+  });
+
+  it('uses file-only actions for regular files', async () => {
+    await mountButton({ entryType: FSNodeType.File });
+
+    expect(renderedLabels.value).toEqual(['Rename', 'Remove']);
+  });
+
+  it('filters actions when capabilities are missing', async () => {
+    await mountButton({
+      canChangePath: false,
+      canDelete: false,
+      canEditChildren: false,
+      showDocumentActions: true,
+    });
+
+    expect(renderedLabels.value).toEqual([]);
+  });
+
+  it('exposes the entry-specific menu tooltip', async () => {
+    const wrapper = await mountButton();
+
+    expect(wrapper.text()).toContain('options target');
+  });
+
+  it('emits create directory when the action is selected', async () => {
+    selectedLabel.value = 'Create directory';
+
+    const wrapper = await mountButton();
 
     await wrapper.get('button').trigger('click');
     await flushPromises();
 
-    expect(reportHandledErrorMock).not.toHaveBeenCalled();
-    expect(addSnackbarMock).toHaveBeenCalledWith({
-      text: 'Invalid Beaver document',
-    });
+    expect(wrapper.emitted('selectCreateDirectory')).toHaveLength(1);
   });
 
-  it('still reports unexpected import errors', async () => {
-    const { default: FSEntryManageMenuButton } = await import('./FSEntryManageMenuButton.vue');
-    const error = new Error('unexpected failure');
+  it('emits create document when the nested-directory action is selected', async () => {
+    selectedLabel.value = 'Create document';
 
-    importJsonFileMock.mockRejectedValue(error);
-
-    const wrapper = mount(FSEntryManageMenuButton, {
-      props: {
-        path: '/target',
-      },
-    });
+    const wrapper = await mountButton({ showDocumentActions: true });
 
     await wrapper.get('button').trigger('click');
     await flushPromises();
 
-    expect(reportHandledErrorMock).toHaveBeenCalledWith(error, {
-      action: 'importDocumentJson',
-      feature: 'documentImport',
-    });
-    expect(addSnackbarMock).toHaveBeenCalledWith({
-      text: 'Could not import the document',
-    });
+    expect(wrapper.emitted('selectCreateDocument')).toHaveLength(1);
+  });
+
+  it('emits import json when the nested-directory action is selected', async () => {
+    selectedLabel.value = 'Import JSON';
+
+    const wrapper = await mountButton({ showDocumentActions: true });
+
+    await wrapper.get('button').trigger('click');
+    await flushPromises();
+
+    expect(wrapper.emitted('selectImportJson')).toHaveLength(1);
+  });
+
+  it('emits rename when the action is selected', async () => {
+    selectedLabel.value = 'Rename';
+
+    const wrapper = await mountButton();
+
+    await wrapper.get('button').trigger('click');
+    await flushPromises();
+
+    expect(wrapper.emitted('selectRename')).toHaveLength(1);
+  });
+
+  it('emits remove when the action is selected', async () => {
+    selectedLabel.value = 'Remove';
+
+    const wrapper = await mountButton();
+
+    await wrapper.get('button').trigger('click');
+    await flushPromises();
+
+    expect(wrapper.emitted('selectRemove')).toHaveLength(1);
   });
 });
-/* eslint-enable vue/one-component-per-file -- Re-enable the rule after the inline test stubs used in this file. */

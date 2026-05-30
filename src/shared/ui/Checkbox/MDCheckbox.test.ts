@@ -46,7 +46,10 @@ describe('MDCheckbox', () => {
       modelValue: true,
     });
 
-    expect(wrapper.find('input[type="checkbox"]').exists()).toBe(true);
+    const input = wrapper.get('input[type="checkbox"]');
+
+    expect(input.attributes('tabindex')).toBe('-1');
+    expect(wrapper.get('.md-checkbox').attributes('tabindex')).toBe('0');
   });
 
   it('renders a non-interactive aria-hidden checkbox in presentation mode', () => {
