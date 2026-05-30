@@ -22,7 +22,7 @@
     "verify:fix": "node scripts/verify.mjs --fix",
     "type-check": "vue-tsc --build",
     "lint": "run-s lint:oxlint lint:eslint",
-    "lint:eslint": "eslint . --cache --fix --concurrency=auto",
+    "lint:eslint": "node scripts/lintEslint.mjs",
     "lint:oxlint": "oxlint . --fix",
     "format": "oxfmt .",
     "e2e": "playwright test",
@@ -35,7 +35,7 @@
     "test": "vitest",
     "test:run": "vitest run",
     "test:coverage": "vitest run --coverage",
-    "test:mutate": "stryker run"
+    "test:mutate": "node scripts/mutate.mjs"
   },
   "dependencies": {
     "@automerge/automerge": "^3.2.5",

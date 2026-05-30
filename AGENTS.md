@@ -24,6 +24,8 @@ Do not replace the final read-only check with manually selected checks. The fina
 
 If `pnpm verify` fails, fix failures caused by the change. Otherwise report the exact failing command and output, and do not claim the task is complete.
 
+For local verification safety, agents may run focused checks for limited files, but must not start multiple expensive checks in parallel. Use `pnpm verify --only <label> --files ...` for focused local feedback, keep full `pnpm verify` as the completion gate, and if an expensive command is already running, inspect its logs or wait instead of starting another heavy command.
+
 Before the final response after non-trivial implementation, use the `byterover` skill end-of-task capture gate to decide whether durable project knowledge should be curated.
 
 Final response must include:

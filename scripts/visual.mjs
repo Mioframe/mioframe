@@ -7,7 +7,8 @@ if (error) {
   process.exit(1);
 }
 
-runPlaywrightInContainer({
+await runPlaywrightInContainer({
+  label: updateSnapshots ? 'visual-update' : 'visual',
   config: 'playwright.visual.config.ts',
   extraArgs: passthroughArgs,
   extraEnv: {

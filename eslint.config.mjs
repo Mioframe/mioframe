@@ -31,7 +31,7 @@ export default defineConfigWithVueTs(
 
   {
     ...pluginVitest.configs.recommended,
-    files: ['src/**/*.test.ts'],
+    files: ['src/**/*.test.ts', 'scripts/**/*.test.ts', 'scripts/**/*.test.mjs'],
     rules: {
       'vitest/expect-expect': 'off',
     },
