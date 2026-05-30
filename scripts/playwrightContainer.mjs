@@ -5,6 +5,7 @@ import { join } from 'node:path';
 import toolingConfig from '../config/tooling.json' with { type: 'json' };
 import { withExpensiveCommandLock } from './lib/commandLock.mjs';
 import { applyProcessResult } from './lib/processResult.mjs';
+import { runLocalCommand } from './lib/runLocalCommand.mjs';
 
 const CONTAINER_WORKDIR = '/work';
 const GENERIC_IMAGE_ENV = 'PLAYWRIGHT_CONTAINER_IMAGE';
@@ -57,6 +58,7 @@ const defaultDeps = {
   ensureLocalPlaywrightBinary,
   ensurePodmanAvailable,
   getInstalledPlaywrightVersion,
+  runLocalCommand,
   spawnSync,
   withExpensiveCommandLock,
 };
@@ -153,14 +155,16 @@ export async function runPlaywrightInContainer(
 
     podmanArgs.push(...extraArgs);
 
-    const child = deps.spawnSync('podman', podmanArgs, {
-      stdio: 'inherit',
-      env: process.env,
-    });
-
-    if (child.error) {
+    let child;
+    try {
+      child = await deps.runLocalCommand({
+        args: podmanArgs,
+        command: 'podman',
+        env: process.env,
+      });
+    } catch (error) {
       console.error('Failed to start Podman for Playwright container tests.');
-      console.error(child.error.message);
+      console.error(error instanceof Error ? error.message : String(error));
       return {
         signal: null,
         status: 1,

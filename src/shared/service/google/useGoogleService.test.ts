@@ -651,6 +651,39 @@ describe('useGoogleService', () => {
     expect(sessionStoreValue['other@example.com']).toBeUndefined();
   });
 
+  it('accepts expected email matches with different casing and preserves the actual returned email', async () => {
+    requestTokenMock.mockResolvedValueOnce({
+      access_token: 'matched-token',
+      expires_in: '3600',
+      scope: `${DRIVE_GOOGLE_SCOPE.all} ${USER_INFO_GOOGLE_SCOPE.userinfoEmail}`,
+    });
+    userinfoGetMock.mockResolvedValueOnce({
+      result: {
+        email: 'user@example.com',
+        name: 'Matched User',
+      },
+    });
+
+    const service = await createService();
+    await bindApi(service);
+
+    await expect(
+      service.requestToken([DRIVE_GOOGLE_SCOPE.all], ' User@Example.com '),
+    ).resolves.toBe('matched-token');
+
+    expect(updateSessionStoreMock).toHaveBeenCalledWith({
+      'user@example.com': {
+        accessToken: 'matched-token',
+        expiresAt: expect.any(Number),
+        profile: {
+          email: 'user@example.com',
+          name: 'Matched User',
+        },
+        scopes: [DRIVE_GOOGLE_SCOPE.all, USER_INFO_GOOGLE_SCOPE.userinfoEmail],
+      },
+    });
+  });
+
   it('rejects fresh tokens that do not include all required scopes', async () => {
     requestTokenMock.mockResolvedValueOnce({
       access_token: 'partial-token',

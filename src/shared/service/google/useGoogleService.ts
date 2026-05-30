@@ -118,6 +118,8 @@ const setupGoogleService = (): GoogleService => {
   );
 
   const normalizeScopes = (scopes: GOOGLE_SCOPE[]): GOOGLE_SCOPE[] => [...new Set(scopes)].sort();
+  const normalizeGoogleAccountEmailForComparison = (email: string): string =>
+    email.trim().toLowerCase();
   const hasAllRequiredScopes = (
     availableScopes: readonly GOOGLE_SCOPE[],
     requiredScopes: readonly GOOGLE_SCOPE[],
@@ -223,7 +225,11 @@ const setupGoogleService = (): GoogleService => {
         throw new Error("don't have email");
       }
 
-      if (expectedEmail && expectedEmail !== email) {
+      if (
+        expectedEmail &&
+        normalizeGoogleAccountEmailForComparison(expectedEmail) !==
+          normalizeGoogleAccountEmailForComparison(email)
+      ) {
         throw new GoogleAuthError({
           actualEmail: email,
           code: GoogleAuthErrorCode.accountMismatch,
