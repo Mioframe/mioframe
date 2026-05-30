@@ -1,9 +1,9 @@
-import { describe, expect, it, afterEach, beforeEach, vi } from 'vitest';
+import { describe, expect, it, afterEach, vi } from 'vitest';
 import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
 
-import { releaseOwnedLock, withExpensiveCommandLock, writeMetadata } from './commandLock.mjs';
+import { releaseOwnedLock, withExpensiveCommandLock } from './commandLock.mjs';
 
 const tempDirs = [];
 
@@ -107,49 +107,48 @@ describe('releaseOwnedLock', () => {
 // ---------------------------------------------------------------------------
 // Stale recovery for missing / corrupted metadata
 // ---------------------------------------------------------------------------
-// These tests manipulate the real config lock directory, which lives under
-// .verify/locks/expensive-command.lock (.verify is git-ignored). The stale
-// threshold from tooling.json is 30 s, so a directory with mtime 60+ s old
-// is considered stale.
-const CONFIG_LOCK_DIR = path.resolve('.verify/locks/expensive-command.lock');
+// These tests use isolated temp directories and forceLock so they exercise
+// real lock acquisition/recovery behavior regardless of the CI environment.
+const STALE_AFTER_MS = 50;
 
 describe('withExpensiveCommandLock stale recovery', () => {
-  beforeEach(() => {
-    fs.rmSync(CONFIG_LOCK_DIR, { recursive: true, force: true });
-  });
-
-  afterEach(() => {
-    fs.rmSync(CONFIG_LOCK_DIR, { recursive: true, force: true });
-  });
-
   it('stays blocked when lock directory is fresh but metadata is missing', async () => {
-    fs.mkdirSync(CONFIG_LOCK_DIR, { recursive: true });
+    const { lockDir } = createTempLockDir();
 
     await expect(
-      withExpensiveCommandLock({ label: 'test', command: 'test' }, async () => 'done'),
+      withExpensiveCommandLock({ label: 'test', command: 'test' }, async () => 'done', {
+        lockDirectoryPath: lockDir,
+        staleAfterMs: STALE_AFTER_MS,
+        forceLock: true,
+      }),
     ).rejects.toThrow('already running');
   });
 
   it('recovers when lock directory is stale and metadata is missing', async () => {
-    fs.mkdirSync(CONFIG_LOCK_DIR, { recursive: true });
+    const { lockDir } = createTempLockDir();
     const staleTime = new Date(Date.now() - 60_000);
-    fs.utimesSync(CONFIG_LOCK_DIR, staleTime, staleTime);
+    fs.utimesSync(lockDir, staleTime, staleTime);
 
     const result = await withExpensiveCommandLock(
       { label: 'test', command: 'test' },
       async () => 'done',
+      {
+        lockDirectoryPath: lockDir,
+        staleAfterMs: STALE_AFTER_MS,
+        forceLock: true,
+      },
     );
 
     expect(result).toBe('done');
-    expect(fs.existsSync(CONFIG_LOCK_DIR)).toBe(false);
+    expect(fs.existsSync(lockDir)).toBe(false);
   });
 
   it('recovers when lock directory is stale with valid metadata', async () => {
-    fs.mkdirSync(CONFIG_LOCK_DIR, { recursive: true });
+    const { lockDir } = createTempLockDir();
     const staleTime = new Date(Date.now() - 60_000);
-    fs.utimesSync(CONFIG_LOCK_DIR, staleTime, staleTime);
+    fs.utimesSync(lockDir, staleTime, staleTime);
 
-    writeTestMetadata(CONFIG_LOCK_DIR, {
+    writeTestMetadata(lockDir, {
       ownerToken: 'stale-token',
       pid: 9_999_999,
       hostname: os.hostname(),
@@ -159,16 +158,21 @@ describe('withExpensiveCommandLock stale recovery', () => {
     const result = await withExpensiveCommandLock(
       { label: 'test', command: 'test' },
       async () => 'done',
+      {
+        lockDirectoryPath: lockDir,
+        staleAfterMs: STALE_AFTER_MS,
+        forceLock: true,
+      },
     );
 
     expect(result).toBe('done');
-    expect(fs.existsSync(CONFIG_LOCK_DIR)).toBe(false);
+    expect(fs.existsSync(lockDir)).toBe(false);
   });
 
   it('stays blocked when lock directory is fresh with valid metadata (not stale)', async () => {
-    fs.mkdirSync(CONFIG_LOCK_DIR, { recursive: true });
+    const { lockDir } = createTempLockDir();
 
-    writeTestMetadata(CONFIG_LOCK_DIR, {
+    writeTestMetadata(lockDir, {
       ownerToken: 'fresh-token',
       pid: process.pid,
       hostname: os.hostname(),
@@ -176,55 +180,28 @@ describe('withExpensiveCommandLock stale recovery', () => {
     });
 
     await expect(
-      withExpensiveCommandLock({ label: 'test', command: 'test' }, async () => 'done'),
+      withExpensiveCommandLock({ label: 'test', command: 'test' }, async () => 'done', {
+        lockDirectoryPath: lockDir,
+        staleAfterMs: STALE_AFTER_MS,
+        forceLock: true,
+      }),
     ).rejects.toThrow('already running');
   });
 });
 
 // ---------------------------------------------------------------------------
-// Heartbeat write failure
+// Heartbeat write failure lifecycle
 // ---------------------------------------------------------------------------
 describe('heartbeat write failure handling', () => {
-  it('does not crash when writeMetadata fails and error is caught gracefully', () => {
-    const { lockDir } = createTempLockDir();
-    const metadataPath = path.join(lockDir, 'metadata.json');
-
-    // Initial metadata write (simulating acquireLock)
-    writeMetadata(metadataPath, { ownerToken: 'test-token' });
-
-    // Remove write permission on the lock directory so subsequent writes fail
-    fs.chmodSync(lockDir, 0o555);
-
-    // This is what the heartbeat interval does: writeMetadata inside try/catch
-    let caughtError = null;
-
-    try {
-      writeMetadata(metadataPath, {
-        ownerToken: 'test-token',
-        heartbeatAt: new Date().toISOString(),
-      });
-    } catch (error) {
-      caughtError = error;
-    }
-
-    // The write should have failed
-    expect(caughtError).not.toBe(null);
-    expect(caughtError.message).toMatch(/EACCES|EPERM|EEXIST|disk/i);
-
-    // Restore permissions for cleanup
-    fs.chmodSync(lockDir, 0o755);
-  });
-
-  it('does not crash with spy-on-writeFileSync failure and cleanup still runs', async () => {
-    vi.useFakeTimers();
-
-    const { lockDir } = createTempLockDir();
-    const metadataPath = path.join(lockDir, 'metadata.json');
-
-    // Write initial metadata
-    writeMetadata(metadataPath, { ownerToken: 'test' });
+  it('does not crash, logs diagnostic, and cleanup still runs when heartbeat write fails', async () => {
+    // Create a temp base directory without pre-creating the lock subdir so
+    // acquireLock can create it fresh (the lock dir must not exist yet).
+    const baseDir = fs.mkdtempSync(path.join(os.tmpdir(), 'commandlock-heartbeat-'));
+    tempDirs.push(baseDir);
+    const lockDir = path.join(baseDir, 'lock');
 
     // Spy on writeFileSync to throw for metadata writes after the first one
+    // (the initial acquireLock write must succeed; subsequent heartbeat writes fail).
     const originalWriteFileSync = fs.writeFileSync.bind(fs);
     let metadataWriteCount = 0;
 
@@ -242,32 +219,38 @@ describe('heartbeat write failure handling', () => {
       return originalWriteFileSync(filePath, ...args);
     });
 
-    // Use the temp lock dir as a custom lock directory by resolving the config
-    // path. We restore mocks and timers in the `finally`-style afterEach / restore.
+    const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
     try {
-      // Call writeMetadata in the same pattern as the heartbeat interval
-      // (try/catch with diagnostic) and verify no crash.
-      for (let attempt = 0; attempt < 3; attempt++) {
-        try {
-          writeMetadata(metadataPath, {
-            ownerToken: 'test',
-            heartbeatAt: new Date().toISOString(),
-          });
-        } catch {
-          // Expected to fail after the first write; heartbeat catches this.
-        }
-      }
+      const result = await withExpensiveCommandLock(
+        { label: 'test', command: 'test' },
+        async () => {
+          // Wait long enough for at least one heartbeat interval to fire
+          await new Promise((resolve) => setTimeout(resolve, 30));
+          return 'callback-result';
+        },
+        {
+          lockDirectoryPath: lockDir,
+          forceLock: true,
+          heartbeatIntervalMs: 10,
+          staleAfterMs: 50000,
+        },
+      );
 
-      // The second and third writes should have triggered the mock throw.
-      expect(metadataWriteCount).toBeGreaterThan(1);
+      expect(result).toBe('callback-result');
 
-      // Verify the lock directory still exists (cleanup hasn't run yet, which
-      // is expected since we're simulating individual heartbeat writes, not
-      // the full lock lifecycle).
-      expect(fs.existsSync(lockDir)).toBe(true);
+      // A heartbeat write failure diagnostic should have been logged
+      expect(consoleErrorSpy).toHaveBeenCalled();
+      expect(
+        consoleErrorSpy.mock.calls.some((call) =>
+          String(call[0]).includes('[expensive-lock] heartbeat write failed'),
+        ),
+      ).toBe(true);
+
+      // Lock directory should be cleaned up after the callback completes
+      expect(fs.existsSync(lockDir)).toBe(false);
     } finally {
       vi.restoreAllMocks();
-      vi.useRealTimers();
     }
   });
 });

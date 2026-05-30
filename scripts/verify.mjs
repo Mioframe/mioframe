@@ -4,6 +4,7 @@ import { spawn, spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import toolingConfig from '../config/tooling.json' with { type: 'json' };
 import { withExpensiveCommandLock } from './lib/commandLock.mjs';
+import { applyProcessResult } from './lib/processResult.mjs';
 import { classifyCommandWeight, resolveEslintConcurrency } from './lib/commandWeight.mjs';
 import { createChildSignalForwarder } from './lib/signalForward.mjs';
 
@@ -939,7 +940,6 @@ async function runCommand(label, command, args, extraEnv = {}) {
         lastOutputLine = trailingLine;
       }
 
-      forwarder.propagateIfTerminated();
       resolve();
     });
   });
@@ -984,6 +984,9 @@ async function runCommand(label, command, args, extraEnv = {}) {
     stderr: '',
     hasWarnings: warningSummary.length > 0,
     warningSummary,
+    terminatedBySignal: forwarder.terminatedBySignal,
+    // Populated for expensive commands to support applyProcessResult.
+    signal: forwarder.terminatedBySignal,
   };
 }
 
@@ -1332,9 +1335,20 @@ async function main() {
         },
         async (lockEnv) => runCommand(entry.label, entry.command, entry.args, lockEnv),
       );
+
+      // Signal propagation must happen after withExpensiveCommandLock cleanup,
+      // not inside the child close handler, so lock release completes before
+      // the process receives the termination signal.
+      if (result.terminatedBySignal) {
+        applyProcessResult({ signal: result.terminatedBySignal });
+      }
     } else {
       // oxlint-disable-next-line no-await-in-loop -- verify checks run sequentially for deterministic logs and fail-fast expensive gates.
       result = await runCommand(entry.label, entry.command, entry.args);
+
+      if (result.terminatedBySignal) {
+        applyProcessResult({ signal: result.terminatedBySignal });
+      }
     }
     results.push(result);
     completedRunnableChecks += 1;

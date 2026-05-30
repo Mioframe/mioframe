@@ -16,20 +16,32 @@ const LOCK_ENV_FLAG = 'MIOFRAME_EXPENSIVE_COMMAND_LOCK_HELD';
  * @param input.command Display command for lock metadata.
  * @param [input.cwd] Working directory for lock metadata.
  * @param run Callback that runs the guarded command.
+ * @param [options] Optional overrides (used in testing).
+ * @param [options.lockDirectoryPath] Override the lock directory path.
+ * @param [options.staleAfterMs] Override the stale threshold in ms.
+ * @param [options.heartbeatIntervalMs] Override the heartbeat interval in ms.
+ * @param [options.forceLock] When true, bypass the shouldSkipLock check.
  * @returns Callback result after the lock has been released.
  */
-export async function withExpensiveCommandLock(input, run) {
-  if (shouldSkipLock()) {
+export async function withExpensiveCommandLock(input, run, options = {}) {
+  const {
+    lockDirectoryPath: customLockDir,
+    staleAfterMs: customStaleAfterMs,
+    heartbeatIntervalMs: customHeartbeatMs,
+    forceLock = false,
+  } = options ?? {};
+
+  if (!forceLock && shouldSkipLock()) {
     return run({
       [LOCK_ENV_FLAG]: '1',
     });
   }
 
   const ownerToken = crypto.randomUUID();
-  const lockDirectoryPath = path.resolve(expensiveLockConfig.directory);
+  const lockDirectoryPath = path.resolve(customLockDir ?? expensiveLockConfig.directory);
   const metadataPath = path.join(lockDirectoryPath, LOCK_METADATA_FILE);
-  const heartbeatIntervalMs = expensiveLockConfig.heartbeatIntervalMs;
-  const staleAfterMs = expensiveLockConfig.staleAfterMs;
+  const heartbeatIntervalMs = customHeartbeatMs ?? expensiveLockConfig.heartbeatIntervalMs;
+  const staleAfterMs = customStaleAfterMs ?? expensiveLockConfig.staleAfterMs;
   const baseMetadata = {
     label: input.label,
     command: input.command,
