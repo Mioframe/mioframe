@@ -2,86 +2,207 @@ import { spawnSync } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
 import { release } from 'node:os';
 import { join } from 'node:path';
+import toolingConfig from '../config/tooling.json' with { type: 'json' };
+import { withExpensiveCommandLock } from './lib/commandLock.mjs';
+import { applyProcessResult } from './lib/processResult.mjs';
+import { runLocalCommand } from './lib/runLocalCommand.mjs';
 
 const CONTAINER_WORKDIR = '/work';
 const GENERIC_IMAGE_ENV = 'PLAYWRIGHT_CONTAINER_IMAGE';
 const GENERIC_PODMAN_USERNS_ENV = 'PLAYWRIGHT_CONTAINER_PODMAN_USERNS';
 const GENERIC_VOLUME_LABEL_ENV = 'PLAYWRIGHT_CONTAINER_VOLUME_LABEL';
+const GENERIC_CPUS_ENV = 'PLAYWRIGHT_CONTAINER_CPUS';
+const GENERIC_MEMORY_ENV = 'PLAYWRIGHT_CONTAINER_MEMORY';
+const GENERIC_MEMORY_SWAP_ENV = 'PLAYWRIGHT_CONTAINER_MEMORY_SWAP';
+const GENERIC_PIDS_LIMIT_ENV = 'PLAYWRIGHT_CONTAINER_PIDS_LIMIT';
+const GENERIC_TIMEOUT_ENV = 'PLAYWRIGHT_CONTAINER_TIMEOUT';
+const GENERIC_WORKERS_ENV = 'PLAYWRIGHT_CONTAINER_WORKERS';
+const containerDefaults = toolingConfig.verification.playwrightContainer;
+const PLAYWRIGHT_CONTAINER_LIMITS = [
+  {
+    envName: GENERIC_CPUS_ENV,
+    key: 'cpus',
+    podmanFlag: '--cpus',
+  },
+  {
+    envName: GENERIC_MEMORY_ENV,
+    key: 'memory',
+    podmanFlag: '--memory',
+  },
+  {
+    envName: GENERIC_MEMORY_SWAP_ENV,
+    key: 'memorySwap',
+    label: 'memory-swap',
+    podmanFlag: '--memory-swap',
+  },
+  {
+    envName: GENERIC_PIDS_LIMIT_ENV,
+    key: 'pidsLimit',
+    label: 'pids-limit',
+    podmanFlag: '--pids-limit',
+  },
+  {
+    envName: GENERIC_TIMEOUT_ENV,
+    key: 'timeoutSeconds',
+    label: 'timeout',
+    podmanFlag: '--timeout',
+  },
+  {
+    envName: GENERIC_WORKERS_ENV,
+    key: 'workers',
+    podmanFlag: '--workers',
+  },
+];
+const defaultDeps = {
+  applyProcessResult,
+  ensureLocalPlaywrightBinary,
+  ensurePodmanAvailable,
+  getInstalledPlaywrightVersion,
+  runLocalCommand,
+  spawnSync,
+  withExpensiveCommandLock,
+};
 
-export function runPlaywrightInContainer({
-  config,
-  extraArgs = [],
-  extraEnv = {},
-  imageEnvAliases = [],
-  podmanUsernsEnvAliases = [],
-  volumeLabelEnvAliases = [],
-  missingPodmanMessage,
-  missingMetadataMessage,
-  missingBinaryMessage,
-  podmanFailureMessage,
-  updateSnapshots = false,
-}) {
+/**
+ * Run Playwright tests inside the repo's Podman wrapper with local safety limits.
+ * @param options Container runner options.
+ * @param [options.label] Verification label for the expensive lock.
+ * @param options.config Playwright config file path inside the repo.
+ * @param [options.extraArgs] Additional Playwright CLI arguments.
+ * @param [options.extraEnv] Extra environment variables passed into the container.
+ * @param [options.imageEnvAliases] Environment variable aliases for the container image.
+ * @param [options.podmanUsernsEnvAliases] Environment variable aliases for `--userns`.
+ * @param [options.volumeLabelEnvAliases] Environment variable aliases for SELinux relabel mode.
+ * @param options.missingPodmanMessage Error shown when Podman is unavailable.
+ * @param options.missingMetadataMessage Error shown when Playwright package metadata is unavailable.
+ * @param options.missingBinaryMessage Error shown when the local Playwright binary is unavailable.
+ * @param options.podmanFailureMessage Error shown when `podman --version` fails.
+ * @param [options.updateSnapshots] Whether to add `--update-snapshots`.
+ * @param [deps] Test seams for Podman execution and lock/result handling.
+ * @returns Resolves after the Podman command exits.
+ */
+export async function runPlaywrightInContainer(
+  {
+    label = 'playwright-container',
+    config,
+    extraArgs = [],
+    extraEnv = {},
+    imageEnvAliases = [],
+    podmanUsernsEnvAliases = [],
+    volumeLabelEnvAliases = [],
+    missingPodmanMessage,
+    missingMetadataMessage,
+    missingBinaryMessage,
+    podmanFailureMessage,
+    updateSnapshots = false,
+  },
+  deps = defaultDeps,
+) {
   const repositoryPath = process.cwd();
 
-  ensurePodmanAvailable(missingPodmanMessage, podmanFailureMessage);
-  ensureLocalPlaywrightBinary(repositoryPath, missingBinaryMessage);
+  deps.ensurePodmanAvailable(missingPodmanMessage, podmanFailureMessage);
+  deps.ensureLocalPlaywrightBinary(repositoryPath, missingBinaryMessage);
 
   const image =
     getFirstDefinedEnvValue([...imageEnvAliases, GENERIC_IMAGE_ENV]) ||
-    `mcr.microsoft.com/playwright:v${getInstalledPlaywrightVersion(repositoryPath, missingMetadataMessage)}-noble`;
-  const podmanArgs = [
-    'run',
-    '--rm',
-    '--init',
-    '--ipc=host',
-    '--workdir',
-    CONTAINER_WORKDIR,
-    '--env',
-    'CI=1',
-  ];
+    `mcr.microsoft.com/playwright:v${deps.getInstalledPlaywrightVersion(repositoryPath, missingMetadataMessage)}-noble`;
+  const resourceLimits = getPlaywrightContainerResourceLimits();
+  const run = async (lockEnv) => {
+    const podmanArgs = [
+      'run',
+      '--rm',
+      '--init',
+      '--ipc=host',
+      '--workdir',
+      CONTAINER_WORKDIR,
+      '--env',
+      'CI=1',
+    ];
 
-  for (const [key, value] of Object.entries(extraEnv)) {
-    podmanArgs.push('--env', `${key}=${String(value)}`);
-  }
+    for (const limit of PLAYWRIGHT_CONTAINER_LIMITS) {
+      if (limit.podmanFlag === '--workers') {
+        continue;
+      }
 
-  podmanArgs.push(
-    '--volume',
-    `${repositoryPath}:${CONTAINER_WORKDIR}${getVolumeLabelSuffix(volumeLabelEnvAliases)}`,
+      podmanArgs.push(limit.podmanFlag, resourceLimits[limit.key]);
+    }
+
+    for (const [key, value] of Object.entries({ ...extraEnv, ...lockEnv })) {
+      podmanArgs.push('--env', `${key}=${String(value)}`);
+    }
+
+    podmanArgs.push(
+      '--volume',
+      `${repositoryPath}:${CONTAINER_WORKDIR}${getVolumeLabelSuffix(volumeLabelEnvAliases)}`,
+    );
+
+    const usernsMode =
+      getFirstDefinedEnvValue([...podmanUsernsEnvAliases, GENERIC_PODMAN_USERNS_ENV]) || 'keep-id';
+
+    if (usernsMode !== 'off') {
+      podmanArgs.push('--userns', usernsMode);
+    }
+
+    podmanArgs.push(image, './node_modules/.bin/playwright', 'test', '--config', config);
+
+    if (updateSnapshots) {
+      podmanArgs.push('--update-snapshots');
+    }
+
+    if (!extraArgs.some((arg) => arg === '--workers' || arg.startsWith('--workers='))) {
+      podmanArgs.push('--workers', resourceLimits.workers);
+    }
+
+    podmanArgs.push(...extraArgs);
+
+    let child;
+    try {
+      child = await deps.runLocalCommand({
+        args: podmanArgs,
+        command: 'podman',
+        env: process.env,
+      });
+    } catch (error) {
+      console.error('Failed to start Podman for Playwright container tests.');
+      console.error(error instanceof Error ? error.message : String(error));
+      return {
+        signal: null,
+        status: 1,
+      };
+    }
+
+    if (child.status !== 0 || child.signal) {
+      printPlaywrightContainerFailureDiagnostic({
+        config,
+        label,
+        resourceLimits,
+        signal: child.signal ?? null,
+        status: child.status ?? 1,
+      });
+    }
+
+    return {
+      signal: child.signal ?? null,
+      status: child.status ?? 1,
+    };
+  };
+
+  const result = await deps.withExpensiveCommandLock(
+    {
+      label,
+      command: `podman run playwright test --config ${config}`,
+    },
+    run,
   );
 
-  const usernsMode =
-    getFirstDefinedEnvValue([...podmanUsernsEnvAliases, GENERIC_PODMAN_USERNS_ENV]) || 'keep-id';
-
-  if (usernsMode !== 'off') {
-    podmanArgs.push('--userns', usernsMode);
-  }
-
-  podmanArgs.push(image, './node_modules/.bin/playwright', 'test', '--config', config);
-
-  if (updateSnapshots) {
-    podmanArgs.push('--update-snapshots');
-  }
-
-  podmanArgs.push(...extraArgs);
-
-  const child = spawnSync('podman', podmanArgs, {
-    stdio: 'inherit',
-    env: process.env,
-  });
-
-  if (child.error) {
-    console.error('Failed to start Podman for Playwright container tests.');
-    console.error(child.error.message);
-    process.exit(1);
-  }
-
-  if (child.signal) {
-    process.kill(process.pid, child.signal);
-  } else {
-    process.exit(child.status ?? 1);
-  }
+  deps.applyProcessResult(result);
 }
 
+/**
+ * Parse the visual runner mode from CLI arguments.
+ * @param argv Raw CLI arguments after the script name.
+ * @returns Parsed visual mode state.
+ */
 export function parseVisualMode(argv) {
   const [mode, ...passthroughArgs] = argv;
 
@@ -166,6 +287,44 @@ function getInstalledPlaywrightVersion(repositoryRoot, missingMetadataMessage) {
   }
 
   return packageJson.version;
+}
+
+function getPlaywrightContainerResourceLimits() {
+  return Object.fromEntries(
+    PLAYWRIGHT_CONTAINER_LIMITS.map(({ envName, key }) => [
+      key,
+      getFirstDefinedEnvValue([envName]) ?? String(containerDefaults[key]),
+    ]),
+  );
+}
+
+function printPlaywrightContainerFailureDiagnostic({
+  config,
+  label,
+  resourceLimits,
+  signal,
+  status,
+}) {
+  console.error('Playwright container command failed.');
+  console.error(`label: ${label}`);
+  console.error(`operation: Playwright tests in a Podman container`);
+  if (signal) {
+    console.error(`signal: ${signal}`);
+  } else {
+    console.error(`exit status: ${status}`);
+  }
+  console.error(`config: ${config}`);
+  console.error('resource limits:');
+
+  for (const limit of PLAYWRIGHT_CONTAINER_LIMITS) {
+    const limitLabel = limit.label ?? limit.key;
+    console.error(`  ${limitLabel}: ${resourceLimits[limit.key]}  override: ${limit.envName}`);
+  }
+
+  console.error(
+    'If Podman reports an unsupported resource option, rerun with the matching override or adjust config/tooling.json.',
+  );
+  console.error('Raw Podman output is printed above.');
 }
 
 function getVolumeLabelSuffix(volumeLabelEnvAliases) {

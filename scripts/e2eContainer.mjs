@@ -1,6 +1,7 @@
 import { runPlaywrightInContainer } from './playwrightContainer.mjs';
 
-runPlaywrightInContainer({
+await runPlaywrightInContainer({
+  label: 'e2e',
   config: 'playwright.config.ts',
   extraArgs: process.argv.slice(2),
   missingPodmanMessage:

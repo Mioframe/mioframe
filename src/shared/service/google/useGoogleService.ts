@@ -118,6 +118,8 @@ const setupGoogleService = (): GoogleService => {
   );
 
   const normalizeScopes = (scopes: GOOGLE_SCOPE[]): GOOGLE_SCOPE[] => [...new Set(scopes)].sort();
+  const normalizeGoogleAccountEmailForComparison = (email: string): string =>
+    email.trim().toLowerCase();
   const hasAllRequiredScopes = (
     availableScopes: readonly GOOGLE_SCOPE[],
     requiredScopes: readonly GOOGLE_SCOPE[],
@@ -206,6 +208,13 @@ const setupGoogleService = (): GoogleService => {
 
       const availableScopes = newScope.split(' ').filter((v) => zodIs(v, zodGOOGLE_SCOPE));
 
+      if (!hasAllRequiredScopes(availableScopes, requestScopes)) {
+        throw new GoogleAuthError({
+          code: GoogleAuthErrorCode.reauthRequired,
+          expectedEmail,
+        });
+      }
+
       const expiresAt = Date.now() + parseInt(expires_in) * 1e3;
 
       const { result } = await userinfoGet({ oauth_token: accessToken });
@@ -214,6 +223,18 @@ const setupGoogleService = (): GoogleService => {
 
       if (!email) {
         throw new Error("don't have email");
+      }
+
+      if (
+        expectedEmail &&
+        normalizeGoogleAccountEmailForComparison(expectedEmail) !==
+          normalizeGoogleAccountEmailForComparison(email)
+      ) {
+        throw new GoogleAuthError({
+          actualEmail: email,
+          code: GoogleAuthErrorCode.accountMismatch,
+          expectedEmail,
+        });
       }
 
       const oldStore = await getStore();
@@ -233,14 +254,6 @@ const setupGoogleService = (): GoogleService => {
       };
 
       await update(store);
-
-      if (expectedEmail && expectedEmail !== email) {
-        throw new GoogleAuthError({
-          actualEmail: email,
-          code: GoogleAuthErrorCode.accountMismatch,
-          expectedEmail,
-        });
-      }
 
       return accessToken;
     },

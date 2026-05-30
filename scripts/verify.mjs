@@ -1,7 +1,12 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { spawn, spawnSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
 import toolingConfig from '../config/tooling.json' with { type: 'json' };
+import { withExpensiveCommandLock } from './lib/commandLock.mjs';
+import { applyProcessResult } from './lib/processResult.mjs';
+import { classifyCommandWeight, resolveEslintConcurrency } from './lib/commandWeight.mjs';
+import { createChildSignalForwarder } from './lib/signalForward.mjs';
 
 const cliArgs = process.argv.slice(2);
 const isHelpMode = process.argv.includes('--help') || cliArgs.includes('help');
@@ -10,6 +15,7 @@ const isFixOnlyMode = process.argv.includes('--fix-only');
 const isVerboseMode = process.argv.includes('--verbose');
 const isCi = process.env.CI === 'true' || process.env.GITHUB_ACTIONS === 'true';
 const shouldApplyFixers = isFixMode || isFixOnlyMode;
+const cliFilesOverride = isHelpMode ? null : getCliFilesOverride(cliArgs);
 const VERIFY_LABELS = [
   'format',
   'oxlint',
@@ -184,6 +190,69 @@ function getCliOnlyLabel(argv) {
   return null;
 }
 
+/**
+ * Parse explicit file overrides from the verify CLI.
+ * @param argv Raw CLI arguments after the script name.
+ * @returns Explicit file list, or null when `--files` was not provided.
+ */
+export function getCliFilesOverride(argv) {
+  const explicitFiles = [];
+  let hasExplicitFilesFlag = false;
+
+  for (let index = 0; index < argv.length; index += 1) {
+    const argument = argv[index];
+
+    if (argument === '--files') {
+      hasExplicitFilesFlag = true;
+      let cursor = index + 1;
+
+      if (cursor >= argv.length || argv[cursor].startsWith('--')) {
+        throw new Error(
+          'Missing value for --files. Example: pnpm verify --only eslint --files src/foo.ts',
+        );
+      }
+
+      while (cursor < argv.length && !argv[cursor].startsWith('--')) {
+        explicitFiles.push(argv[cursor]);
+        cursor += 1;
+      }
+
+      index = cursor - 1;
+      continue;
+    }
+
+    if (argument.startsWith('--files=')) {
+      hasExplicitFilesFlag = true;
+      const value = argument.slice('--files='.length);
+
+      if (value.length === 0) {
+        throw new Error(
+          'Missing value for --files. Example: pnpm verify --only eslint --files src/foo.ts',
+        );
+      }
+
+      explicitFiles.push(
+        ...value
+          .split(',')
+          .map((item) => item.trim())
+          .filter(Boolean),
+      );
+    }
+  }
+
+  if (hasExplicitFilesFlag && explicitFiles.length === 0) {
+    throw new Error(
+      'Missing value for --files. Example: pnpm verify --only eslint --files src/foo.ts',
+    );
+  }
+
+  if (explicitFiles.length === 0) {
+    return null;
+  }
+
+  return uniqSorted(explicitFiles.map(toPosixPath));
+}
+
 function validateOnlyLabel(label) {
   if (VERIFY_LABELS.includes(label)) {
     return;
@@ -246,6 +315,13 @@ function getForkPoint(baseRef) {
 }
 
 function getChangedFiles() {
+  if (cliFilesOverride !== null) {
+    return {
+      changedFiles: uniqSorted(cliFilesOverride),
+      scope: 'explicit-files',
+    };
+  }
+
   const githubBaseRef = process.env.GITHUB_BASE_REF;
   const envBaseRef = process.env.VERIFY_BASE;
   let changedFiles = [];
@@ -320,62 +396,111 @@ function isTypeCheckTarget(filePath) {
   );
 }
 
-function getAllSiblingTestFiles(filePath) {
-  if (!filePath.startsWith('src/')) {
-    return [];
-  }
-
-  if (filePath.endsWith('.test.ts')) {
-    return fileExists(filePath) ? [filePath] : [];
-  }
-
-  const extension = path.posix.extname(filePath);
-
-  if (!SOURCE_EXTENSIONS.includes(extension)) {
-    return [];
-  }
-
-  const baseName = path.posix.basename(filePath, extension);
-  const dirPath = path.posix.dirname(filePath);
-  const nameWithoutExt = filePath.slice(0, -extension.length);
-  const exactMatch = `${nameWithoutExt}.test.ts`;
-
-  if (fileExists(exactMatch)) {
-    return [exactMatch];
-  }
-
-  const testCandidates = [];
-
-  try {
-    const entries = fs.readdirSync(dirPath, { withFileTypes: true });
-
-    for (const entry of entries) {
-      if (!entry.isFile() || !entry.name.endsWith('.test.ts')) {
-        continue;
-      }
-
-      const candidateBase = entry.name.slice(0, -'.test.ts'.length);
-      const parts = candidateBase.split('.');
-
-      if (parts.length < 2) {
-        continue;
-      }
-
-      if (parts[0] === baseName) {
-        testCandidates.push(path.posix.join(dirPath, entry.name));
-      }
+/**
+ * Find sibling test files for a production file path.
+ *
+ * For `src/` paths, maps `.ts` and `.vue` production files to colocated
+ * `.test.ts` files using exact basename matching and directory scan.
+ * For `scripts/` paths, maps `.mjs` production files to colocated
+ * `.test.mjs` and `.spec.mjs` files using exact name match.
+ * @param filePath Production file path relative to the repository root.
+ * @returns Sorted unique list of existing sibling test file paths, or an
+ * empty array when no tests are found.
+ */
+export function getAllSiblingTestFiles(filePath) {
+  if (filePath.startsWith('src/')) {
+    if (filePath.endsWith('.test.ts')) {
+      return fileExists(filePath) ? [filePath] : [];
     }
-  } catch {
-    // Directory read failure falls through to an empty focused test scope.
+
+    const extension = path.posix.extname(filePath);
+
+    if (!SOURCE_EXTENSIONS.includes(extension)) {
+      return [];
+    }
+
+    const baseName = path.posix.basename(filePath, extension);
+    const dirPath = path.posix.dirname(filePath);
+    const nameWithoutExt = filePath.slice(0, -extension.length);
+    const exactMatch = `${nameWithoutExt}.test.ts`;
+
+    if (fileExists(exactMatch)) {
+      return [exactMatch];
+    }
+
+    const testCandidates = [];
+
+    try {
+      const entries = fs.readdirSync(dirPath, { withFileTypes: true });
+
+      for (const entry of entries) {
+        if (!entry.isFile() || !entry.name.endsWith('.test.ts')) {
+          continue;
+        }
+
+        const candidateBase = entry.name.slice(0, -'.test.ts'.length);
+        const parts = candidateBase.split('.');
+
+        if (parts.length < 2) {
+          continue;
+        }
+
+        if (parts[0] === baseName) {
+          testCandidates.push(path.posix.join(dirPath, entry.name));
+        }
+      }
+    } catch {
+      // Directory read failure falls through to an empty focused test scope.
+    }
+
+    return uniqSorted(testCandidates);
   }
 
-  return uniqSorted(testCandidates);
+  if (filePath.startsWith('scripts/')) {
+    if (filePath.endsWith('.test.mjs') || filePath.endsWith('.spec.mjs')) {
+      return fileExists(filePath) ? [filePath] : [];
+    }
+
+    if (!filePath.endsWith('.mjs')) {
+      return [];
+    }
+
+    const nameWithoutExt = filePath.slice(0, -'.mjs'.length);
+    const testCandidates = [];
+
+    const exactTestMatch = `${nameWithoutExt}.test.mjs`;
+
+    if (fileExists(exactTestMatch)) {
+      testCandidates.push(exactTestMatch);
+    }
+
+    const exactSpecMatch = `${nameWithoutExt}.spec.mjs`;
+
+    if (fileExists(exactSpecMatch)) {
+      testCandidates.push(exactSpecMatch);
+    }
+
+    return uniqSorted(testCandidates);
+  }
+
+  return [];
 }
 
 function getVitestScope(changedFiles) {
   const scope = [];
 
   for (const filePath of changedFiles) {
+    if (
+      (filePath.endsWith('.test.ts') ||
+        filePath.endsWith('.spec.ts') ||
+        filePath.endsWith('.test.mjs') ||
+        filePath.endsWith('.spec.mjs')) &&
+      fileExists(filePath)
+    ) {
+      scope.push(filePath);
+      continue;
+    }
+
     const testFiles = getAllSiblingTestFiles(filePath);
 
     for (const testFile of testFiles) {
@@ -616,6 +741,7 @@ function printHelp() {
   console.log('  --fix-only          Apply supported format/lint fixes only.');
   console.log('  --base <ref>        Verify changes against a local base ref.');
   console.log('  --only <label>      Run one focused verification check.');
+  console.log('  --files <paths...>  Override changed-file detection with an explicit file list.');
   console.log('');
   console.log('Labels for --only:');
 
@@ -629,6 +755,7 @@ function printHelp() {
   console.log('  pnpm verify --verbose');
   console.log('  pnpm verify --base origin/develop');
   console.log('  pnpm verify --verbose --only type-check');
+  console.log('  pnpm verify --only eslint --files src/foo.ts src/bar.vue');
   console.log('  pnpm verify --fix');
   console.log('  pnpm verify --fix-only');
   console.log('');
@@ -649,7 +776,7 @@ function printHelp() {
   }
 }
 
-async function runCommand(label, command, args) {
+async function runCommand(label, command, args, extraEnv = {}) {
   const formattedCommand = formatCommand(command, args);
   const displayCommand = summarizeCommandForDisplay(command, args);
   const logPath = getLogPath(label);
@@ -660,6 +787,7 @@ async function runCommand(label, command, args) {
 
   const child = spawn(command, args, {
     stdio: ['inherit', 'pipe', 'pipe'],
+    env: { ...process.env, ...extraEnv },
   });
 
   let outputBuffer = '';
@@ -672,6 +800,7 @@ async function runCommand(label, command, args) {
   let lastOutputLine = null;
   let incompleteOutputLine = '';
   const commandTimeoutMs = COMMAND_TIMEOUT_MS_BY_LABEL[label] ?? null;
+  const forwarder = createChildSignalForwarder(child);
 
   const writeStatusLine = (line, destination = 'stdout') => {
     const text = `${line}\n`;
@@ -776,6 +905,7 @@ async function runCommand(label, command, args) {
 
   await new Promise((resolve) => {
     child.once('error', (error) => {
+      forwarder.cleanup();
       spawnError = error;
       logStream.write(`\n[verify] spawn error: ${error.message}\n`);
       cleanupTimers();
@@ -783,6 +913,8 @@ async function runCommand(label, command, args) {
     });
 
     child.once('close', (code, signal) => {
+      forwarder.childClosed = true;
+      forwarder.cleanup();
       cleanupTimers();
 
       if (timedOut) {
@@ -852,6 +984,9 @@ async function runCommand(label, command, args) {
     stderr: '',
     hasWarnings: warningSummary.length > 0,
     warningSummary,
+    terminatedBySignal: forwarder.terminatedBySignal,
+    // Populated for expensive commands to support applyProcessResult.
+    signal: forwarder.terminatedBySignal,
   };
 }
 
@@ -871,7 +1006,7 @@ function createSkippedResult(entry, reason = entry.reason) {
 
 function addE2ECommands(commands, e2eCommand) {
   commands.push(createE2EInstallCommand());
-  commands.push({ ...e2eCommand, expensive: true });
+  commands.push(e2eCommand);
 }
 
 function createE2EInstallCommand(reason) {
@@ -890,6 +1025,7 @@ function createE2ECommand(extraArgs = []) {
       label: 'e2e',
       command: 'pnpm',
       args: ['e2e:container', ...extraArgs],
+      weight: classifyCommandWeight({ label: 'e2e' }),
     };
   }
 
@@ -898,6 +1034,7 @@ function createE2ECommand(extraArgs = []) {
     label: 'e2e',
     command: 'pnpm',
     args: ['exec', 'playwright', 'test', ...extraArgs],
+    weight: classifyCommandWeight({ label: 'e2e' }),
   };
 }
 
@@ -925,6 +1062,7 @@ function buildCommands(changedFiles) {
   );
   const mutationScope = getMutationScope(changedFiles);
   const commands = [];
+  const eslintConcurrency = resolveEslintConcurrency();
 
   if (formattableFiles.length > 0) {
     commands.push({
@@ -948,6 +1086,7 @@ function buildCommands(changedFiles) {
       label: 'oxlint',
       command: 'pnpm',
       args: ['exec', 'oxlint', ...(shouldApplyFixers ? ['--fix'] : []), ...lintableFiles],
+      weight: classifyCommandWeight({ label: 'oxlint', fileCount: lintableFiles.length }),
     });
     commands.push({
       kind: 'run',
@@ -958,9 +1097,10 @@ function buildCommands(changedFiles) {
         'eslint',
         '--cache',
         ...(shouldApplyFixers ? ['--fix'] : []),
-        '--concurrency=auto',
+        `--concurrency=${eslintConcurrency}`,
         ...lintableFiles,
       ],
+      weight: classifyCommandWeight({ label: 'eslint', fileCount: lintableFiles.length }),
     });
   } else {
     commands.push({
@@ -972,7 +1112,7 @@ function buildCommands(changedFiles) {
     commands.push({
       kind: 'skipped',
       label: 'eslint',
-      command: `pnpm exec eslint --cache${shouldApplyFixers ? ' --fix' : ''} --concurrency=auto`,
+      command: `pnpm exec eslint --cache${shouldApplyFixers ? ' --fix' : ''} --concurrency=${eslintConcurrency}`,
       reason: 'no changed lintable existing files',
     });
   }
@@ -982,7 +1122,13 @@ function buildCommands(changedFiles) {
   }
 
   if (changedFiles.some(isTypeCheckTarget)) {
-    commands.push({ kind: 'run', label: 'type-check', command: 'pnpm', args: ['type-check'] });
+    commands.push({
+      kind: 'run',
+      label: 'type-check',
+      command: 'pnpm',
+      args: ['type-check'],
+      weight: classifyCommandWeight({ label: 'type-check' }),
+    });
   } else {
     commands.push({
       kind: 'skipped',
@@ -998,6 +1144,7 @@ function buildCommands(changedFiles) {
       label: 'unit-tests',
       command: 'pnpm',
       args: ['exec', 'vitest', 'run', ...vitestScope],
+      weight: classifyCommandWeight({ label: 'unit-tests', fileCount: vitestScope.length }),
     });
   } else {
     commands.push({
@@ -1028,7 +1175,7 @@ function buildCommands(changedFiles) {
       label: 'visual',
       command: 'pnpm',
       args: ['test:visual'],
-      expensive: true,
+      weight: classifyCommandWeight({ label: 'visual' }),
     });
   } else {
     commands.push({
@@ -1045,7 +1192,7 @@ function buildCommands(changedFiles) {
       label: 'mutation',
       command: 'pnpm',
       args: ['exec', 'stryker', 'run', '-m', mutationScope.join(',')],
-      expensive: true,
+      weight: classifyCommandWeight({ label: 'mutation' }),
     });
   } else {
     commands.push({
@@ -1163,7 +1310,7 @@ async function main() {
       continue;
     }
 
-    if (hasFailed && entry.expensive === true) {
+    if (hasFailed && entry.weight === 'expensive') {
       results.push(createSkippedResult(entry, EXPENSIVE_SKIP_REASON));
       continue;
     }
@@ -1177,7 +1324,32 @@ async function main() {
     }
 
     // oxlint-disable-next-line no-await-in-loop -- verify checks run sequentially for deterministic logs and fail-fast expensive gates.
-    const result = await runCommand(entry.label, entry.command, entry.args);
+    let result;
+
+    if (entry.weight === 'expensive') {
+      // oxlint-disable-next-line no-await-in-loop -- verify checks run sequentially for deterministic logs and fail-fast expensive gates.
+      result = await withExpensiveCommandLock(
+        {
+          label: entry.label,
+          command: formatCommand(entry.command, entry.args),
+        },
+        async (lockEnv) => runCommand(entry.label, entry.command, entry.args, lockEnv),
+      );
+
+      // Signal propagation must happen after withExpensiveCommandLock cleanup,
+      // not inside the child close handler, so lock release completes before
+      // the process receives the termination signal.
+      if (result.terminatedBySignal) {
+        applyProcessResult({ signal: result.terminatedBySignal });
+      }
+    } else {
+      // oxlint-disable-next-line no-await-in-loop -- verify checks run sequentially for deterministic logs and fail-fast expensive gates.
+      result = await runCommand(entry.label, entry.command, entry.args);
+
+      if (result.terminatedBySignal) {
+        applyProcessResult({ signal: result.terminatedBySignal });
+      }
+    }
     results.push(result);
     completedRunnableChecks += 1;
 
@@ -1190,13 +1362,28 @@ async function main() {
   process.exitCode = summary.hasFailed ? 1 : 0;
 }
 
-if (isHelpMode) {
-  printHelp();
-  process.exit(0);
+/**
+ * Run the verify CLI when the module is executed directly.
+ * @returns Process exit code that should be reported to the shell.
+ */
+export async function runVerifyCli() {
+  if (isHelpMode) {
+    printHelp();
+    return 0;
+  }
+
+  if (!directoryExists('.git')) {
+    throw new Error('Repository root is required to run verify.');
+  }
+
+  await main();
+  return process.exitCode ?? 0;
 }
 
-if (!directoryExists('.git')) {
-  throw new Error('Repository root is required to run verify.');
-}
+if (process.argv[1] === fileURLToPath(import.meta.url)) {
+  const exitCode = await runVerifyCli();
 
-await main();
+  if (isHelpMode) {
+    process.exit(exitCode);
+  }
+}
