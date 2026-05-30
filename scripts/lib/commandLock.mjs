@@ -119,11 +119,7 @@ function acquireLock({ lockDirectoryPath, metadataPath, metadata, staleAfterMs }
   const existingMetadata = readMetadata(metadataPath);
 
   if (existingMetadata !== null && isStaleLock(existingMetadata, staleAfterMs)) {
-    const removed = releaseOwnedLock(
-      lockDirectoryPath,
-      metadataPath,
-      existingMetadata.ownerToken,
-    );
+    const removed = releaseOwnedLock(lockDirectoryPath, metadataPath, existingMetadata.ownerToken);
 
     if (removed) {
       return acquireLock({ lockDirectoryPath, metadataPath, metadata, staleAfterMs });
