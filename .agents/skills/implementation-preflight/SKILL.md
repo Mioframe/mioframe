@@ -1,6 +1,6 @@
 ---
 name: implementation-preflight
-description: 'Use this skill before non-trivial implementation work to reduce corrective commits by identifying the owner layer, reusable project code, acceptance matrix, risk matrix, task breadth, work passes, and focused verification before the first production edit.'
+description: 'Use this skill before non-trivial implementation work to reduce corrective commits by identifying owner boundaries, reusable project code, acceptance matrix, risk matrix, task breadth, work passes, and focused verification before the first production edit.'
 ---
 
 # Implementation preflight
@@ -17,15 +17,17 @@ Do not use this skill for trivial typo fixes, formatting-only changes, comments-
 
 Answer these before the first production edit:
 
-1. **Owner**: which FSD layer owns the behavior, and which public entry points should be used?
-2. **Source of truth**: which service, worker, adapter, store, or entity owns the canonical fact being changed, and is any upper layer trying to infer it indirectly?
+1. **Owner map**: identify source of truth, runtime owner, user-action owner, UI composition owner, error owner, retry/navigation owner, and verification owner when they apply.
+2. **Public entry points**: which FSD layer owns the behavior, and which public APIs should be used instead of deep imports?
 3. **Reuse**: what existing helpers, components, configs, schemas, services, tests, or dependencies already cover nearby behavior?
 4. **Acceptance matrix**: what non-happy-path states must work in the first implementation?
 5. **Risk matrix**: which browser, lifecycle, async, cache, CI/tooling, accessibility, visual, or data-safety risks apply?
 6. **Breadth and passes**: which independent domains are touched, and what order keeps the work incremental?
 7. **Verification**: what focused check proves the riskiest behavior, and what final verification is required?
 
-For user-visible UI or UX changes, run the `material3-guidelines` skill as part of this preflight before choosing component structure, layout, interaction behavior, or visual verification.
+If any owner in the owner map is unclear for a cross-layer change, stop and resolve the architecture before editing.
+
+For user-visible UI or UX changes, run the `material3-guidelines` skill as part of this preflight before choosing component structure, layout, interaction behavior, or visual verification. For copy-only or wiring-only changes that keep existing components and Material behavior unchanged, record `Material impact: none` instead of doing a Material lookup.
 
 ## Wide UI and refactor gate
 
@@ -35,6 +37,8 @@ For non-trivial UI, UX, or cross-layer refactors, do not edit production code un
 - existing user scenarios that must remain reachable, especially menus, navigation, settings, status indicators, and shared surfaces being replaced;
 - the FSD owner layer for each changed behavior and the public API entry points that must be used instead of deep imports;
 - the service or worker that owns any storage, lifecycle, protocol, cache, or indexing fact used by the UI;
+- the boundary that owns typed errors or recovery states introduced by the change;
+- the layer that owns retry or navigation after a completed flow;
 - settings, preferences, persisted state, or feature flags that the change reads, removes, or changes semantically;
 - shared UI primitives affected by the change and their consumer blast radius;
 - browser, visual, Storybook, e2e, mutation, and focused unit verification required for the changed surface.
@@ -66,8 +70,8 @@ The preferred flow is: service or worker determines canonical facts, entity expo
 For UI work that touches `entities`, `features`, `widgets`, or `pages`, record the model/UI/action/composition split before coding:
 
 - **Entity model** owns stable entity facts, domain read models, and small derived entity state. It must not expose screen view-state objects that combine loading, error, user-facing message, ready status, and widget/page-specific branch order.
-- **Entity UI** may render the entity and emit semantic selection events. It must not import feature actions; pass action surfaces from widgets/pages through slots when entity UI needs trailing actions.
-- **Features** own user-triggered actions such as create, import, rename, remove, dialogs, sheets, and action menus.
+- **Entity UI** may render the entity and emit semantic selection events. It must not import feature actions; pass action surfaces from widgets/pages through slots when entity UI needs trailing buttons.
+- **Features** own user-triggered actions such as create, import, rename, remove, dialogs, sheets, action menus, and explicit recovery actions.
 - **Widgets/pages** compose entities, entity UI, features, and shared UI. They may choose loading/error/recovery/content branch order, but should keep those dependencies visible through named computed values and template branches.
 
 Treat these as architecture smells that require redesign before production edits:
@@ -95,13 +99,13 @@ Use these rules for create/open/import/export, setup, picker, dialog, storage, p
 
 - Start with a scenario matrix that covers the happy path, user cancellation, unsupported platform/API, permission denial, invalid input, duplicate/conflict state, stale data/race, partial failure, rollback failure, and recovery action when those states can occur.
 - Separate different user intents into different feature contracts before coding. Do not begin with a generic all-in-one composable, dialog, or state machine when flows have different acceptance rules, UX copy, domain invariants, or recovery paths.
-- Define an ownership map before the first production edit: user action state belongs in `features`, domain read/display state in `entities`, persistence and lifecycle ordering in `shared/service`, pure parsing or detection in `shared/lib`, and screen composition in `widgets` or `pages`.
+- Define the owner map before the first production edit: source of truth, runtime owner, user-action owner, UI composition owner, error owner, retry/navigation owner, and verification owner when they apply.
 - Keep domain and storage invariants below UI layers. UI may ask for an action and display the result, but uniqueness, reserved names, marker detection, persisted-record normalization, migrations, and lifecycle ordering must be enforced by the owner of the data.
 - Make allowed and disallowed target states explicit before implementation. Prefer refusing invalid targets with clear recovery over accepting broad inputs and compensating later with warning dialogs.
 - Keep flow outcomes typed and local to the boundary that needs them. Avoid broad `status` protocols, command choreography, or result objects that mix field issues, transport failures, domain conflicts, and UI navigation unless several independent callers need the protocol.
 - If a feature needs a shared UI primitive change, decide whether that primitive change is a separate prerequisite. When it remains in the feature PR, keep it minimal, Material-verified, and independently tested so the feature review does not hide shared UI regressions.
 - Delete obsolete code paths, facades, providers, and tests in the same pass that introduces their replacement unless backwards compatibility is required. Do not leave dual flows for review to reconcile.
-- When two consecutive review rounds uncover ownership mistakes, mixed responsibilities, or new user scenarios, stop patching and redo this preflight. Update the scenario matrix, ownership map, and verification matrix before more edits.
+- When two consecutive review rounds uncover ownership mistakes, mixed responsibilities, or new user scenarios, stop patching and redo this preflight. Update the scenario matrix, owner map, and verification matrix before more edits.
 - Prefer tests for domain invariants and extracted state transitions before component wiring. Component tests should verify only contracts that the component owns; browser behavior, layout, focus, gestures, and Material visual states require browser or visual verification.
 
 ## Bounded reuse search
