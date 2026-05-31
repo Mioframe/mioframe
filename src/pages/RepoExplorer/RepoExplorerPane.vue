@@ -1,24 +1,29 @@
 <script setup lang="ts">
-import { computed, nextTick, ref, toRefs, watch } from 'vue';
+import { computed, nextTick, ref, toRefs } from 'vue';
 import { DirectoryCreateDialog } from '@feature/directoryCreate';
+import { useDeviceDirectoryAccessRecovery } from '@feature/deviceDirectoryAccessRecovery';
 import { DocumentCreationDialog } from '@feature/documentCreate';
 import { EntryAddSheet } from '@feature/entryAdd';
+import { useGoogleDriveRecovery } from '@feature/googleDriveRecovery';
 import { MDExtendedFab, MDFabContainer } from '@shared/ui/Button';
+import { DeviceDirectoryAccessRecoveryState } from '@entity/deviceDirectoryAccess';
 import { useFSNodeStat } from '@entity/fsEntry';
-import { useLocalSettings } from '@entity/localSettings';
-import { useRepository } from '@entity/repository';
-import { useDeviceDirectoryAccessRecoveryState } from '@entity/deviceDirectoryAccess';
+import {
+  getGoogleDriveAccessRecoveryError,
+  GoogleDriveAccessRecoveryState,
+} from '@entity/googleDriveAccess';
 import { MDPane } from '@shared/ui/Layout';
 import { MDAppBar } from '@shared/ui/AppBar';
 import type { AMDocumentId } from '@shared/lib/automerge/automergeTypes';
 import { useStackNavigation } from '@page/routes';
 import { zodToVueProps } from '@shared/lib/zodToVueProps';
-import { useMainServiceClient } from '@shared/service';
 import { zodQuery } from './model';
 import { FSNodeType, PathUtils } from '@shared/lib/virtualFileSystem';
+import { MDButton } from '@shared/ui/Button';
 import {
   RepositoryExplorerEntryManageButton,
   RepositoryExplorerWidget,
+  useRepositoryExplorerDirectoryState,
 } from '@widget/RepositoryExplorerWidget';
 import { useImportDocumentAction } from '@feature/importDocument';
 
@@ -32,26 +37,42 @@ defineSlots<{
 
 const { repoPath: directoryPath } = toRefs(props);
 
-const { data: directoryStat } = useFSNodeStat(directoryPath);
-const { settings } = useLocalSettings();
-const { repositoryFactsError, repositoryVisibleEntriesError } = useRepository(
-  directoryPath,
-  computed(() => ({
-    hideAutomergeFiles: settings.value.showAutomergeFiles !== true,
-  })),
-);
+const { data: directoryStat, error: directoryStatError } = useFSNodeStat(directoryPath);
+const repositoryExplorerDirectoryState = useRepositoryExplorerDirectoryState(directoryPath);
+const {
+  documentIds,
+  errorMessage,
+  hideAutomergeFiles,
+  isLoading,
+  isRepositoryInitialized,
+  regularFileEntries,
+} = repositoryExplorerDirectoryState;
 const recoveryErrors = computed(() => [
-  repositoryVisibleEntriesError.value,
-  repositoryFactsError.value,
+  ...repositoryExplorerDirectoryState.recoveryErrors.value,
+  directoryStatError.value,
 ]);
-const { state: deviceDirectoryAccessRecovery } = useDeviceDirectoryAccessRecoveryState({
+const {
+  grantAccess,
+  grantDisabled: isDeviceDirectoryAccessGrantDisabled,
+  isGrantLoading: isGrantDeviceDirectoryAccessLoading,
+  message: deviceDirectoryAccessMessage,
+  recoveryState: deviceDirectoryAccessRecovery,
+} = useDeviceDirectoryAccessRecovery({
   errors: recoveryErrors,
 });
+const hasGoogleDriveRecovery = computed(
+  () =>
+    !!errorMessage.value &&
+    !!getGoogleDriveAccessRecoveryError(directoryPath.value, recoveryErrors.value),
+);
+const { isRetryAuthorizationLoading, onRetryAuthorization } = useGoogleDriveRecovery({
+  path: directoryPath,
+});
+const isRecoveryStateVisible = computed(
+  () => !!deviceDirectoryAccessRecovery.value || hasGoogleDriveRecovery.value,
+);
 
 const { open } = useStackNavigation();
-const {
-  fileSystem: { getDeviceDirectoryAccessRequest, resolveDeviceDirectoryAccessRequest },
-} = useMainServiceClient();
 
 const onClickPath = async (path: string) => {
   await open('repo', {
@@ -113,75 +134,25 @@ const title = computed(() => PathUtils.basename(directoryPath.value) || 'root');
 const canEditDirectoryContents = computed(
   () => directoryStat.value?.capabilities?.canEditChildren === true,
 );
-const deviceDirectoryAccessRequest = ref<
-  | {
-      id: string;
-      name: string;
-      handle: FileSystemDirectoryHandle;
-      mode: 'readwrite';
-    }
-  | undefined
->();
-const isGrantDeviceDirectoryAccessLoading = ref(false);
-const deviceDirectoryAccessMessage = ref<string>();
-
-watch(
-  () => deviceDirectoryAccessRecovery.value?.requestId,
-  async (requestId) => {
-    deviceDirectoryAccessRequest.value = undefined;
-    deviceDirectoryAccessMessage.value = undefined;
-
-    if (!requestId) {
-      return;
-    }
-
-    deviceDirectoryAccessRequest.value = await getDeviceDirectoryAccessRequest(requestId);
-  },
-  { immediate: true },
-);
 
 const onClickReturnHome = async () => {
   await open('home', {}, { additionalPanes: 0, replace: true });
 };
 
 const onGrantDeviceDirectoryAccess = async () => {
-  const accessRequest = deviceDirectoryAccessRequest.value;
+  const result = await grantAccess();
 
-  if (!accessRequest || isGrantDeviceDirectoryAccessLoading.value) {
-    return;
-  }
-
-  isGrantDeviceDirectoryAccessLoading.value = true;
-
-  try {
-    const permissionState = await accessRequest.handle.requestPermission({
-      mode: accessRequest.mode,
-    });
-
-    await resolveDeviceDirectoryAccessRequest({
-      id: accessRequest.id,
-      permissionState,
-    });
-
-    if (permissionState === 'granted') {
-      deviceDirectoryAccessMessage.value = undefined;
-      await open(
-        'repo',
-        {
-          repoPath: directoryPath.value,
-        },
-        {
-          replace: true,
-          target: 'current',
-        },
-      );
-      return;
-    }
-
-    deviceDirectoryAccessMessage.value =
-      'Mioframe still cannot open this space because your browser did not grant permission.';
-  } finally {
-    isGrantDeviceDirectoryAccessLoading.value = false;
+  if (result.status === 'granted') {
+    await open(
+      'repo',
+      {
+        repoPath: directoryPath.value,
+      },
+      {
+        replace: true,
+        target: 'current',
+      },
+    );
   }
 };
 
@@ -209,15 +180,48 @@ const onCancelDeviceDirectoryAccess = async () => {
 
     <RepositoryExplorerWidget
       :directory-path="directoryPath"
-      :device-directory-access-grant-disabled="!deviceDirectoryAccessRequest"
-      :device-directory-access-grant-loading="isGrantDeviceDirectoryAccessLoading"
-      :device-directory-access-message="deviceDirectoryAccessMessage"
+      :document-ids="documentIds"
+      :error-message="errorMessage"
+      :hide-automerge-files="hideAutomergeFiles"
+      :is-loading="isLoading"
+      :is-recovery-state-visible="isRecoveryStateVisible"
+      :is-repository-initialized="isRepositoryInitialized"
+      :regular-file-entries="regularFileEntries"
       @click-path="onClickPath"
       @click-document="onClickDocument"
       @click-return-home="onClickReturnHome"
-      @grant-device-directory-access="onGrantDeviceDirectoryAccess"
-      @cancel-device-directory-access="onCancelDeviceDirectoryAccess"
     >
+      <template #recovery>
+        <DeviceDirectoryAccessRecoveryState
+          v-if="deviceDirectoryAccessRecovery"
+          :errors="recoveryErrors"
+          :message="deviceDirectoryAccessMessage"
+        >
+          <template #actions>
+            <MDButton
+              label="Grant access"
+              :disabled="isDeviceDirectoryAccessGrantDisabled"
+              :loading="isGrantDeviceDirectoryAccessLoading"
+              @click="onGrantDeviceDirectoryAccess"
+            />
+
+            <MDButton label="Cancel" color="text" @click="onCancelDeviceDirectoryAccess" />
+          </template>
+        </DeviceDirectoryAccessRecoveryState>
+
+        <GoogleDriveAccessRecoveryState v-else :path="directoryPath" :errors="recoveryErrors">
+          <template #actions>
+            <MDButton
+              label="Retry authorization"
+              :loading="isRetryAuthorizationLoading"
+              @click="onRetryAuthorization"
+            />
+
+            <MDButton label="Return home" color="text" @click="onClickReturnHome" />
+          </template>
+        </GoogleDriveAccessRecoveryState>
+      </template>
+
       <template v-if="canEditDirectoryContents" #after>
         <MDFabContainer auto-hide>
           <MDExtendedFab label="Add" md-symbol="add" @click="onClickAdd" />

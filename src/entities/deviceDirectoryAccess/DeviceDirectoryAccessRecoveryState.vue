@@ -4,13 +4,13 @@ import { MDEmptyState } from '@shared/ui/EmptyState';
 import { MDSymbol } from '@shared/ui/Icon';
 import { useDeviceDirectoryAccessRecoveryState } from './useDeviceDirectoryAccessRecoveryState';
 
-const { errors } = defineProps<{
+const { errors, message } = defineProps<{
   errors: unknown[];
+  message?: string | undefined;
 }>();
 
 defineSlots<{
   actions: () => unknown;
-  message: (props: { spaceName: string }) => unknown;
 }>();
 
 const { state } = useDeviceDirectoryAccessRecoveryState({
@@ -22,27 +22,31 @@ const supportingText = computed(() => {
     return '';
   }
 
+  if (message) {
+    return message;
+  }
+
   return `Mioframe remembers "${state.value.spaceName}", but your browser requires permission before opening it.`;
 });
 </script>
 
 <template>
-  <MDEmptyState
-    v-if="state"
-    class="device-directory-access-recovery-state"
-    headline="Permission required"
-    :supporting-text="supportingText"
-  >
-    <template #icon>
-      <MDSymbol name="folder_managed" class="device-directory-access-recovery-state__icon" />
-    </template>
+  <div class="device-directory-access-recovery-state">
+    <MDEmptyState
+      v-if="state"
+      class="device-directory-access-recovery-state__content"
+      headline="Permission required"
+      :supporting-text="supportingText"
+    >
+      <template #icon>
+        <MDSymbol name="folder_managed" class="device-directory-access-recovery-state__icon" />
+      </template>
 
-    <template #actions>
-      <slot name="actions" />
-    </template>
-  </MDEmptyState>
-
-  <template v-else />
+      <template #actions>
+        <slot name="actions" />
+      </template>
+    </MDEmptyState>
+  </div>
 </template>
 
 <style scoped>

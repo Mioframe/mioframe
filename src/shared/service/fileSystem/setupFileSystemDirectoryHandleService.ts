@@ -3,11 +3,11 @@ import { createGlobalState } from '@vueuse/core';
 import { distinctUntilChanged, filter, firstValueFrom, map, type Observable } from 'rxjs';
 import { isEqual } from 'es-toolkit';
 import { array, catch as zCatch, custom, object, optional, string } from 'zod/v4-mini';
-import type { DeviceFileRecord } from '@shared/lib/deviceFileSystemProvider';
+import type { MountedDeviceFileRecord } from '@shared/lib/deviceFileSystemProvider';
 import { isFileSystemDirectoryHandle } from '@shared/lib/typeGuards';
 
 /** Normalized persisted mounted-directory record stored at the IndexedDB boundary. */
-export type PersistedDeviceDirectoryRecord = Pick<DeviceFileRecord, 'handle' | 'name'>;
+export type PersistedDeviceDirectoryRecord = Pick<MountedDeviceFileRecord, 'handle' | 'name'>;
 
 const KEY = 'device-directory-handles';
 

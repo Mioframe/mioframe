@@ -7,7 +7,11 @@ import type {
 } from '../virtualFileSystem';
 import { FileSystemError, FSNodeType, PathUtils, VfsError } from '../virtualFileSystem';
 import type { WriteOptions } from '../virtualFileSystem/IFileSystemProvider';
-import type { DeviceDirectoryAccessMode } from '@shared/service/fileSystem/errors';
+import { createWebFileSystemAccessRequiredError } from './createWebFileSystemAccessRequiredError';
+import type {
+  WebFileSystemAccessMode,
+  WebFileSystemAccessRequiredDetails,
+} from './WebFileSystemAccessRequiredError';
 
 /**
  * Access request context passed back to the owning service when provider permission is missing.
@@ -16,7 +20,7 @@ export interface WebFileSystemProviderAccessRequiredContext {
   /** Root directory handle that needs recovery. */
   handle: FileSystemDirectoryHandle;
   /** Permission mode required for the blocked operation. */
-  mode: DeviceDirectoryAccessMode;
+  mode: WebFileSystemAccessMode;
 }
 
 /**
@@ -24,7 +28,9 @@ export interface WebFileSystemProviderAccessRequiredContext {
  */
 export interface WebFileSystemProviderOptions {
   /** Called when the provider needs browser permission before continuing. */
-  onAccessRequired?: (context: WebFileSystemProviderAccessRequiredContext) => never;
+  onAccessRequired?: (
+    context: WebFileSystemProviderAccessRequiredContext,
+  ) => WebFileSystemAccessRequiredDetails;
 }
 
 /**
@@ -48,10 +54,15 @@ export const WebFileSystemProvider = (
     const permissionState = await queryWritePermission(rootHandle);
 
     if (permissionState !== 'granted') {
-      onAccessRequired?.({
+      const accessRequiredDetails = onAccessRequired?.({
         handle: rootHandle,
         mode: 'readwrite',
       });
+
+      if (accessRequiredDetails) {
+        throw createWebFileSystemAccessRequiredError(accessRequiredDetails);
+      }
+
       throw new VfsError(FileSystemError.NoPermissions, 'Permission required');
     }
   };

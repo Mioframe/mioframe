@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Repo } from '@automerge/automerge-repo';
 import { partialKeyToFileName, storageAdapterMarkerFileName } from '@shared/lib/automergeAdapter';
-import { DEVICE_DIRECTORY_ACCESS_REQUIRED_CODE } from '@shared/service/fileSystem';
+import { WEB_FILE_SYSTEM_ACCESS_REQUIRED_CODE } from '@shared/lib/webFileSystemProvider';
 import type { FSNodeStat, IFileSystemProvider, VfsEvent } from '@shared/lib/virtualFileSystem';
 import { FSNodeType, VfsEventSource } from '@shared/lib/virtualFileSystem';
 import { OPFSName } from '../directories';
@@ -233,16 +233,16 @@ describe('useFileSystemService', () => {
     await vi.waitFor(async () => {
       await expect(service.deviceFiles.fetch()).resolves.toEqual([
         {
+          canDisconnect: false,
           name: OPFSName,
-          handle: opfsHandle,
         },
         {
+          canDisconnect: true,
           name: 'Work',
-          handle: grantedHandle,
         },
         {
+          canDisconnect: true,
           name: 'Private',
-          handle: deniedHandle,
         },
       ]);
     });
@@ -268,8 +268,8 @@ describe('useFileSystemService', () => {
     await vi.waitFor(async () => {
       await expect(service.deviceFiles.fetch()).resolves.toEqual([
         {
+          canDisconnect: true,
           name: 'Archive',
-          handle: legacyHandle,
         },
       ]);
     });
@@ -300,14 +300,17 @@ describe('useFileSystemService', () => {
 
     await expect(service.addDeviceDirectory(firstHandle)).resolves.toEqual({
       name: 'Work',
+      kind: 'localDirectory',
       handle: firstHandle,
     });
     await expect(service.addDeviceDirectory(duplicateHandle)).resolves.toEqual({
       name: 'Work',
+      kind: 'localDirectory',
       handle: duplicateHandle,
     });
     await expect(service.addDeviceDirectory(secondHandle)).resolves.toEqual({
       name: 'Work (2)',
+      kind: 'localDirectory',
       handle: secondHandle,
     });
 
@@ -347,17 +350,18 @@ describe('useFileSystemService', () => {
 
     await expect(service.addDeviceDirectory(conflictingHandle)).resolves.toEqual({
       name: `${OPFSName} (2)`,
+      kind: 'localDirectory',
       handle: conflictingHandle,
     });
     await expect(service.deviceFiles.fetch()).resolves.toEqual(
       expect.arrayContaining([
         {
+          canDisconnect: false,
           name: OPFSName,
-          handle: expect.objectContaining({ name: OPFSName }),
         },
         {
+          canDisconnect: true,
           name: `${OPFSName} (2)`,
-          handle: conflictingHandle,
         },
       ]),
     );
@@ -387,16 +391,16 @@ describe('useFileSystemService', () => {
     await vi.waitFor(async () => {
       await expect(service.deviceFiles.fetch()).resolves.toEqual([
         {
+          canDisconnect: false,
           name: OPFSName,
-          handle: opfsHandle,
         },
         {
+          canDisconnect: true,
           name: `${OPFSName} (2)`,
-          handle: firstHandle,
         },
         {
+          canDisconnect: true,
           name: 'Archive',
-          handle: secondHandle,
         },
       ]);
     });
@@ -430,12 +434,13 @@ describe('useFileSystemService', () => {
 
     await expect(service.addDeviceDirectory(renamedHandle)).resolves.toEqual({
       name: 'Archive',
+      kind: 'localDirectory',
       handle: renamedHandle,
     });
     await expect(service.deviceFiles.fetch()).resolves.toEqual([
       {
+        canDisconnect: true,
         name: 'Archive',
-        handle: renamedHandle,
       },
     ]);
     expect(updateRecordListMock).toHaveBeenCalledWith([{ name: 'Archive', handle: renamedHandle }]);
@@ -487,8 +492,8 @@ describe('useFileSystemService', () => {
     await vi.waitFor(async () => {
       await expect(service.deviceFiles.fetch()).resolves.toEqual([
         {
+          canDisconnect: true,
           name: 'Work',
-          handle: promptHandle,
         },
       ]);
     });
@@ -499,9 +504,9 @@ describe('useFileSystemService', () => {
 
     expect(error).toBeInstanceOf(Error);
     expect(error).toMatchObject({
-      code: DEVICE_DIRECTORY_ACCESS_REQUIRED_CODE,
+      code: WEB_FILE_SYSTEM_ACCESS_REQUIRED_CODE,
       mode: 'readwrite',
-      name: 'DeviceDirectoryAccessRequiredError',
+      name: 'WebFileSystemAccessRequiredError',
       spaceName: 'Work',
     });
 
@@ -512,7 +517,7 @@ describe('useFileSystemService', () => {
     const serialized = error.toJSON();
 
     expect(serialized).toMatchObject({
-      code: DEVICE_DIRECTORY_ACCESS_REQUIRED_CODE,
+      code: WEB_FILE_SYSTEM_ACCESS_REQUIRED_CODE,
       message: 'Permission required to open this remembered local space',
       mode: 'readwrite',
       requestId: error.requestId,
@@ -542,8 +547,8 @@ describe('useFileSystemService', () => {
     await vi.waitFor(async () => {
       await expect(service.deviceFiles.fetch()).resolves.toEqual([
         {
+          canDisconnect: true,
           name: 'Work',
-          handle: deniedHandle,
         },
       ]);
     });
@@ -554,9 +559,9 @@ describe('useFileSystemService', () => {
 
     expect(error).toBeInstanceOf(Error);
     expect(error).toMatchObject({
-      code: DEVICE_DIRECTORY_ACCESS_REQUIRED_CODE,
+      code: WEB_FILE_SYSTEM_ACCESS_REQUIRED_CODE,
       mode: 'readwrite',
-      name: 'DeviceDirectoryAccessRequiredError',
+      name: 'WebFileSystemAccessRequiredError',
       spaceName: 'Work',
     });
 
@@ -564,18 +569,148 @@ describe('useFileSystemService', () => {
       throw new Error('Expected DeviceDirectoryAccessRequiredError');
     }
 
-    await service.resolveDeviceDirectoryAccessRequest({
-      id: error.requestId,
-      permissionState: 'denied',
-    });
-
-    await expect(service.getDeviceDirectoryAccessRequest(error.requestId)).resolves.toBeUndefined();
-    await expect(service.deviceFiles.fetch()).resolves.toEqual([
-      {
+    await expect(
+      service.resolveDeviceDirectoryAccessRequest({
+        id: error.requestId,
+        permissionState: 'denied',
+      }),
+    ).resolves.toEqual({
+      request: {
+        id: error.requestId,
         name: 'Work',
         handle: deniedHandle,
+        mode: 'readwrite',
+      },
+      status: 'denied',
+    });
+
+    await expect(service.getDeviceDirectoryAccessRequest(error.requestId)).resolves.toEqual({
+      id: error.requestId,
+      name: 'Work',
+      handle: deniedHandle,
+      mode: 'readwrite',
+    });
+    await expect(service.deviceFiles.fetch()).resolves.toEqual([
+      {
+        canDisconnect: true,
+        name: 'Work',
       },
     ]);
+  });
+
+  it('deduplicates pending requests for the same remembered space and mode', async () => {
+    const firstHandle = createDirectoryHandleMock({
+      name: 'Work',
+      permissionState: 'prompt',
+      sameEntryKey: 'work',
+    });
+    const secondHandle = createDirectoryHandleMock({
+      name: 'Work',
+      permissionState: 'prompt',
+      sameEntryKey: 'work',
+    });
+    getRecordListMock.mockResolvedValue([{ name: 'Work', handle: firstHandle }]);
+
+    const service = await createService();
+    await vi.waitFor(async () => {
+      await expect(service.deviceFiles.fetch()).resolves.toEqual([
+        {
+          canDisconnect: true,
+          name: 'Work',
+        },
+      ]);
+    });
+
+    await service.directoryContent.fetch({ path: '/Device Files/Work' });
+    const firstError = await service.fsNodeStat.fetch({ path: '/Device Files/Work/file.txt' });
+
+    expect(firstError).toBeInstanceOf(Error);
+    if (!isAccessErrorWithRequestId(firstError)) {
+      throw new Error('Expected first access error');
+    }
+
+    await service.addDeviceDirectory(secondHandle);
+    const secondError = await service.directoryContent.fetch({ path: '/Device Files/Work' });
+
+    expect(secondError).toBeInstanceOf(Error);
+    if (!isAccessErrorWithRequestId(secondError)) {
+      throw new Error('Expected second access error');
+    }
+
+    expect(secondError.requestId).toBe(firstError.requestId);
+    await expect(service.getDeviceDirectoryAccessRequest(firstError.requestId)).resolves.toEqual({
+      id: firstError.requestId,
+      name: 'Work',
+      handle: secondHandle,
+      mode: 'readwrite',
+    });
+  });
+
+  it('clears pending requests after permission is granted and when a directory is removed', async () => {
+    const grantedHandle = createDirectoryHandleMock({
+      name: 'Work',
+      permissionState: 'prompt',
+      sameEntryKey: 'work',
+    });
+    getRecordListMock.mockResolvedValue([{ name: 'Work', handle: grantedHandle }]);
+
+    const service = await createService();
+    await vi.waitFor(async () => {
+      await expect(service.deviceFiles.fetch()).resolves.toEqual([
+        {
+          canDisconnect: true,
+          name: 'Work',
+        },
+      ]);
+    });
+    const firstError = await service.directoryContent.fetch({ path: '/Device Files/Work' });
+
+    if (!isAccessErrorWithRequestId(firstError)) {
+      throw new Error('Expected first access error');
+    }
+
+    await expect(
+      service.resolveDeviceDirectoryAccessRequest({
+        id: firstError.requestId,
+        permissionState: 'granted',
+      }),
+    ).resolves.toEqual({
+      request: {
+        id: firstError.requestId,
+        name: 'Work',
+        handle: grantedHandle,
+        mode: 'readwrite',
+      },
+      status: 'granted',
+    });
+    await expect(
+      service.getDeviceDirectoryAccessRequest(firstError.requestId),
+    ).resolves.toBeUndefined();
+
+    const secondError = await service.directoryContent.fetch({ path: '/Device Files/Work' });
+
+    if (!isAccessErrorWithRequestId(secondError)) {
+      throw new Error('Expected second access error');
+    }
+
+    await service.removeDeviceDirectory('Work');
+    await expect(
+      service.getDeviceDirectoryAccessRequest(secondError.requestId),
+    ).resolves.toBeUndefined();
+  });
+
+  it('handles invalid access-request resolution ids safely', async () => {
+    const service = await createService();
+
+    await expect(
+      service.resolveDeviceDirectoryAccessRequest({
+        id: 'missing-request',
+        permissionState: 'granted',
+      }),
+    ).resolves.toEqual({
+      request: undefined,
+      status: 'missing',
+    });
   });
 
   it('re-reads directoryContent$ and emits an updated payload after createDirectory', async () => {

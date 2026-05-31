@@ -111,4 +111,53 @@ describe('setupFileSystemDirectoryHandleService', () => {
       },
     ]);
   });
+
+  it('returns an empty list when persisted storage reports invalid data', async () => {
+    observableMock.mockReturnValue(
+      new BehaviorSubject({
+        success: false as const,
+        error: new Error('invalid'),
+      }),
+    );
+
+    const { useFileSystemDirectoryHandleService } =
+      await import('./setupFileSystemDirectoryHandleService');
+
+    await expect(useFileSystemDirectoryHandleService().getRecordList()).resolves.toEqual([]);
+  });
+
+  it('ignores null storage emissions before returning the first record list', async () => {
+    const handle = createDirectoryHandle('Archive');
+    const subject = new BehaviorSubject<null | {
+      success: true;
+      data: Array<{
+        description?: string | undefined;
+        handle: FileSystemDirectoryHandle;
+        name: string;
+      }>;
+    }>(null);
+    observableMock.mockReturnValue(subject);
+
+    const { useFileSystemDirectoryHandleService } =
+      await import('./setupFileSystemDirectoryHandleService');
+
+    const pendingRecords = useFileSystemDirectoryHandleService().getRecordList();
+    subject.next({
+      success: true,
+      data: [
+        {
+          description: 'Directory on this device',
+          name: 'Archive',
+          handle,
+        },
+      ],
+    });
+
+    await expect(pendingRecords).resolves.toEqual([
+      {
+        name: 'Archive',
+        handle,
+      },
+    ]);
+  });
 });

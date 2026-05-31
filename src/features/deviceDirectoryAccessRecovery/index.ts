@@ -1,0 +1,1 @@
+export { useDeviceDirectoryAccessRecovery } from './useDeviceDirectoryAccessRecovery';

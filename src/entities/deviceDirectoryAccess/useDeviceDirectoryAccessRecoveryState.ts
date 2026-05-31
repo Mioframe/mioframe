@@ -1,14 +1,14 @@
 import { computed, toValue, type MaybeRefOrGetter } from 'vue';
 import {
-  DEVICE_DIRECTORY_ACCESS_REQUIRED_CODE,
-  DeviceDirectoryAccessRequiredError,
-} from '@shared/service/fileSystem';
+  WEB_FILE_SYSTEM_ACCESS_REQUIRED_CODE,
+  WebFileSystemAccessRequiredError,
+} from '@shared/lib/webFileSystemProvider';
 
 /**
  * Transport-safe access-required error shape used by the repo path recovery UI.
  */
 type DeviceDirectoryAccessRecoveryErrorLike = Error & {
-  code: typeof DEVICE_DIRECTORY_ACCESS_REQUIRED_CODE;
+  code: typeof WEB_FILE_SYSTEM_ACCESS_REQUIRED_CODE;
   mode: 'readwrite';
   requestId: string;
   spaceName: string;
@@ -24,7 +24,7 @@ const isDeviceDirectoryAccessRecoveryError = (
 ): error is DeviceDirectoryAccessRecoveryErrorLike =>
   error instanceof Error &&
   'code' in error &&
-  error.code === DEVICE_DIRECTORY_ACCESS_REQUIRED_CODE &&
+  error.code === WEB_FILE_SYSTEM_ACCESS_REQUIRED_CODE &&
   'requestId' in error &&
   typeof error.requestId === 'string' &&
   'spaceName' in error &&
@@ -40,7 +40,7 @@ const isDeviceDirectoryAccessRecoveryError = (
 export const getDeviceDirectoryAccessRecoveryError = (errors: unknown[]) => {
   for (const error of errors) {
     if (
-      error instanceof DeviceDirectoryAccessRequiredError ||
+      error instanceof WebFileSystemAccessRequiredError ||
       isDeviceDirectoryAccessRecoveryError(error)
     ) {
       return error;

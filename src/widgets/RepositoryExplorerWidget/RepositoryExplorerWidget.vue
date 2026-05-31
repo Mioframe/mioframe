@@ -1,55 +1,37 @@
 <script setup lang="ts">
-import { computed, toRefs } from 'vue';
-import {
-  DeviceDirectoryAccessRecoveryState,
-  getDeviceDirectoryAccessRecoveryError,
-} from '@entity/deviceDirectoryAccess';
-import { useGoogleDriveRecovery } from '@feature/googleDriveRecovery';
-import { MDButton } from '@shared/ui/Button';
+import { toRefs } from 'vue';
 import { MDSymbol } from '@shared/ui/Icon';
 import { MDNavigationPath } from '@shared/ui/NavigationPath';
-import {
-  getGoogleDriveAccessRecoveryError,
-  GoogleDriveAccessRecoveryState,
-} from '@entity/googleDriveAccess';
 import type { AMDocumentId } from '@shared/lib/automerge/automergeTypes';
 import { MDEmptyState } from '@shared/ui/EmptyState';
 import { MDCircularProgressIndicator } from '@shared/ui/ProgressIndicators';
 import RepositoryExplorerDocumentsSection from './RepositoryExplorerDocumentsSection.vue';
 import RepositoryExplorerFilesSection from './RepositoryExplorerFilesSection.vue';
-import { useRepositoryExplorerDirectoryState } from './useRepositoryExplorerDirectoryState';
+import type { RepositoryDirectoryEntry } from '@shared/service/repositories';
 
 const props = defineProps<{
   directoryPath: string;
-  deviceDirectoryAccessGrantDisabled?: boolean | undefined;
-  deviceDirectoryAccessGrantLoading?: boolean | undefined;
-  deviceDirectoryAccessMessage?: string | undefined;
+  documentIds?: readonly AMDocumentId[] | undefined;
+  errorMessage?: string | undefined;
+  hideAutomergeFiles: boolean;
+  isLoading: boolean;
+  isRecoveryStateVisible?: boolean | undefined;
+  isRepositoryInitialized: boolean;
+  regularFileEntries?: readonly RepositoryDirectoryEntry[] | undefined;
 }>();
 
 const emit = defineEmits<{
   clickPath: [path: string];
   clickDocument: [documentId: AMDocumentId];
   clickReturnHome: [];
-  grantDeviceDirectoryAccess: [];
-  cancelDeviceDirectoryAccess: [];
 }>();
 
 defineSlots<{
   after: () => unknown;
+  recovery: () => unknown;
 }>();
 
 const { directoryPath } = toRefs(props);
-
-const {
-  directoryError,
-  documentIds,
-  errorMessage,
-  hideAutomergeFiles,
-  isLoading,
-  isRepositoryInitialized,
-  regularFileEntries,
-  repositoryError,
-} = useRepositoryExplorerDirectoryState(directoryPath);
 
 const onClickPath = (path: string) => {
   emit('clickPath', path);
@@ -59,33 +41,8 @@ const onClickDocument = (documentId: AMDocumentId) => {
   emit('clickDocument', documentId);
 };
 
-const hasGoogleDriveRecovery = computed(
-  () =>
-    !!errorMessage.value &&
-    !!getGoogleDriveAccessRecoveryError(directoryPath.value, [
-      directoryError.value,
-      repositoryError.value,
-    ]),
-);
-const recoveryErrors = computed(() => [directoryError.value, repositoryError.value]);
-const hasDeviceDirectoryAccessRecovery = computed(
-  () => !!getDeviceDirectoryAccessRecoveryError(recoveryErrors.value),
-);
-
-const { isRetryAuthorizationLoading, onRetryAuthorization } = useGoogleDriveRecovery({
-  path: directoryPath,
-});
-
 const onReturnHomeClick = () => {
   emit('clickReturnHome');
-};
-
-const onGrantDeviceDirectoryAccess = () => {
-  emit('grantDeviceDirectoryAccess');
-};
-
-const onCancelDeviceDirectoryAccess = () => {
-  emit('cancelDeviceDirectoryAccess');
 };
 </script>
 
@@ -100,48 +57,7 @@ const onCancelDeviceDirectoryAccess = () => {
     />
 
     <div class="repository-explorer-widget__scrollable-content">
-      <DeviceDirectoryAccessRecoveryState
-        v-if="hasDeviceDirectoryAccessRecovery"
-        :errors="recoveryErrors"
-      >
-        <template #actions>
-          <MDButton
-            label="Grant access"
-            :disabled="deviceDirectoryAccessGrantDisabled"
-            :loading="deviceDirectoryAccessGrantLoading"
-            @click="onGrantDeviceDirectoryAccess"
-          />
-
-          <MDButton label="Cancel" color="text" @click="onCancelDeviceDirectoryAccess" />
-        </template>
-      </DeviceDirectoryAccessRecoveryState>
-
-      <MDEmptyState
-        v-else-if="deviceDirectoryAccessMessage"
-        class="repository-explorer-widget__error"
-        headline="Permission required"
-        :supporting-text="deviceDirectoryAccessMessage"
-      >
-        <template #icon>
-          <MDSymbol name="error" class="repository-explorer-widget__error-icon" />
-        </template>
-      </MDEmptyState>
-
-      <GoogleDriveAccessRecoveryState
-        v-else-if="hasGoogleDriveRecovery"
-        :path="directoryPath"
-        :errors="recoveryErrors"
-      >
-        <template #actions>
-          <MDButton
-            label="Retry authorization"
-            :loading="isRetryAuthorizationLoading"
-            @click="onRetryAuthorization"
-          />
-
-          <MDButton label="Return home" color="text" @click="onReturnHomeClick" />
-        </template>
-      </GoogleDriveAccessRecoveryState>
+      <slot v-if="isRecoveryStateVisible" name="recovery" />
 
       <MDEmptyState
         v-else-if="errorMessage"
@@ -169,7 +85,7 @@ const onCancelDeviceDirectoryAccess = () => {
         <RepositoryExplorerFilesSection
           :directory-path="directoryPath"
           :hide-automerge-files="hideAutomergeFiles"
-          :regular-file-entries="regularFileEntries"
+          :regular-file-entries="regularFileEntries ?? []"
           @select-path="onClickPath"
         />
       </div>

@@ -31,6 +31,7 @@ export const useRepositoryExplorerDirectoryState = (directoryPath: Ref<string>) 
   const directoryErrorMessage = computed(() =>
     resolveSafeErrorMessage(directoryError.value, 'Could not read this folder'),
   );
+  const recoveryErrors = computed(() => [directoryError.value, repositoryError.value]);
 
   const errorMessage = computed(() => directoryErrorMessage.value ?? repositoryErrorMessage.value);
   const isLoading = computed(
@@ -47,6 +48,7 @@ export const useRepositoryExplorerDirectoryState = (directoryPath: Ref<string>) 
     isLoading,
     isRepositoryInitialized,
     regularFileEntries,
+    recoveryErrors,
     repositoryError,
     repositoryErrorMessage,
   };

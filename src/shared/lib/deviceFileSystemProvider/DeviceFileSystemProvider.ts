@@ -20,17 +20,32 @@ import { WebFileSystemProvider } from '../webFileSystemProvider';
 
 export const DEVICE_FILES_ROOT_NAME = 'Device Files';
 
-/** Persisted mounted device-directory descriptor. */
-export interface DeviceFileRecord {
+/** Mounted provider kind used to separate local handles from browser storage. */
+export type DeviceFileKind = 'browserStorage' | 'localDirectory';
+
+/** Internal mounted device-directory descriptor. */
+export interface MountedDeviceFileRecord {
   /** Stable mounted root name shown in the VFS. */
   name: string;
   /** Optional mounted root description shown in listings. */
   description?: string;
+  /** Mounted root kind. */
+  kind: DeviceFileKind;
   /** Browser directory handle for the mounted root. */
   handle: FileSystemDirectoryHandle;
 }
 
-interface ActiveDeviceFileRecord extends DeviceFileRecord {
+/** Safe UI-facing mounted device-directory record. */
+export interface DeviceFileDisplayRecord {
+  /** Stable mounted root name shown in the VFS. */
+  name: string;
+  /** Optional mounted root description shown in listings. */
+  description?: string;
+  /** Whether the mounted root can be disconnected by the user. */
+  canDisconnect: boolean;
+}
+
+interface ActiveDeviceFileRecord extends MountedDeviceFileRecord {
   provider: IFileSystemProvider;
 }
 
@@ -41,15 +56,15 @@ interface MountedRootStatOptions {
 /** Factory options for the device file system provider. */
 export interface DeviceFileSystemProviderOptions {
   /** Factory used to build the nested provider for a mounted directory handle. */
-  createProvider?: (record: DeviceFileRecord) => IFileSystemProvider;
+  createProvider?: (record: MountedDeviceFileRecord) => IFileSystemProvider;
 }
 
 /** Provider that exposes mounted device directories as VFS roots. */
 export interface DeviceFileSystemProvider extends IFileSystemProvider {
-  /** Lists persisted mounted roots. */
-  listRecords(): DeviceFileRecord[];
+  /** Lists safe mounted-root display records for UI-facing code. */
+  listDisplayRecords(): DeviceFileDisplayRecord[];
   /** Adds or replaces a mounted root. */
-  upsertRecord(record: DeviceFileRecord): void;
+  upsertRecord(record: MountedDeviceFileRecord): void;
   /** Removes a mounted root by name. */
   removeRecord(name: string): void;
   /** Subscribes to provider-level events. */
@@ -115,14 +130,14 @@ export const DeviceFileSystemProvider = (
   const events = new EventEmitter();
   const records = new Map<string, ActiveDeviceFileRecord>();
 
-  const listRecords = (): DeviceFileRecord[] =>
-    Array.from(records.values(), ({ description, handle, name }) => ({
+  const listDisplayRecords = (): DeviceFileDisplayRecord[] =>
+    Array.from(records.values(), ({ description, kind, name }) => ({
+      canDisconnect: kind !== 'browserStorage',
       name,
-      handle,
       ...(description === undefined ? {} : { description }),
     }));
 
-  const upsertRecord = (record: DeviceFileRecord): void => {
+  const upsertRecord = (record: MountedDeviceFileRecord): void => {
     const existingRecord = records.get(record.name);
     const provider =
       existingRecord?.handle === record.handle ? existingRecord.provider : createProvider(record);
@@ -268,7 +283,7 @@ export const DeviceFileSystemProvider = (
   };
 
   return {
-    listRecords,
+    listDisplayRecords,
     upsertRecord,
     removeRecord,
     watch,

@@ -1,21 +1,33 @@
 /* eslint-disable vue/one-component-per-file -- Focused pane contract test with inline stubs. */
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { defineComponent, h, ref } from 'vue';
+import { computed, defineComponent, h, ref } from 'vue';
 import { mount } from '@vue/test-utils';
-import { DeviceDirectoryAccessRequiredError } from '@shared/service/fileSystem';
+import { WebFileSystemAccessRequiredError } from '@shared/lib/webFileSystemProvider';
 
 const canEditChildren = ref(true);
 const repositoryFactsError = ref<unknown>();
 const repositoryVisibleEntriesError = ref<unknown>();
+const repositoryExplorerDocumentIds = ref<string[]>([]);
+const repositoryExplorerErrorMessage = ref<string | undefined>();
+const repositoryExplorerHideAutomergeFiles = ref(true);
+const repositoryExplorerIsLoading = ref(false);
+const repositoryExplorerIsInitialized = ref(false);
+const repositoryExplorerRegularFileEntries = ref<unknown[]>([]);
+const repositoryExplorerRecoveryErrors = computed(() => [
+  repositoryVisibleEntriesError.value,
+  repositoryFactsError.value,
+]);
 const {
   getDeviceDirectoryAccessRequestMock,
   openMock,
   importDocumentMock,
+  requestTokenMock,
   resolveDeviceDirectoryAccessRequestMock,
 } = vi.hoisted(() => ({
   getDeviceDirectoryAccessRequestMock: vi.fn(),
   openMock: vi.fn(),
   importDocumentMock: vi.fn(),
+  requestTokenMock: vi.fn(),
   resolveDeviceDirectoryAccessRequestMock: vi.fn(),
 }));
 
@@ -70,6 +82,7 @@ vi.mock('@entity/fsEntry', () => ({
         canEditChildren: canEditChildren.value,
       },
     }),
+    error: ref(undefined),
   }),
 }));
 
@@ -99,6 +112,9 @@ vi.mock('@shared/service', () => ({
     fileSystem: {
       getDeviceDirectoryAccessRequest: getDeviceDirectoryAccessRequestMock,
       resolveDeviceDirectoryAccessRequest: resolveDeviceDirectoryAccessRequestMock,
+    },
+    google: {
+      requestToken: requestTokenMock,
     },
   }),
 }));
@@ -211,6 +227,38 @@ vi.mock('@shared/ui/AppBar', () => ({
 }));
 
 vi.mock('@shared/ui/Button', () => ({
+  MDButton: defineComponent({
+    name: 'MDButtonStub',
+    props: {
+      disabled: {
+        type: Boolean,
+        default: false,
+      },
+      label: {
+        type: String,
+        required: true,
+      },
+      loading: {
+        type: Boolean,
+        default: false,
+      },
+    },
+    emits: ['click'],
+    setup(props, { emit }) {
+      return () =>
+        h(
+          'button',
+          {
+            disabled: props.disabled,
+            type: 'button',
+            onClick: () => {
+              emit('click');
+            },
+          },
+          props.label,
+        );
+    },
+  }),
   MDExtendedFab: defineComponent({
     name: 'MDExtendedFabStub',
     props: {
@@ -287,26 +335,12 @@ vi.mock('@widget/RepositoryExplorerWidget', () => ({
   RepositoryExplorerWidget: defineComponent({
     name: 'RepositoryExplorerWidgetStub',
     props: {
-      deviceDirectoryAccessGrantDisabled: {
+      isRecoveryStateVisible: {
         type: Boolean,
         default: false,
-      },
-      deviceDirectoryAccessGrantLoading: {
-        type: Boolean,
-        default: false,
-      },
-      deviceDirectoryAccessMessage: {
-        type: String,
-        default: undefined,
       },
     },
-    emits: [
-      'clickPath',
-      'clickReturnHome',
-      'clickDocument',
-      'grantDeviceDirectoryAccess',
-      'cancelDeviceDirectoryAccess',
-    ],
+    emits: ['clickPath', 'clickReturnHome', 'clickDocument'],
     setup(props, { slots, emit }) {
       return () =>
         h('main', [
@@ -337,29 +371,19 @@ vi.mock('@widget/RepositoryExplorerWidget', () => ({
             },
             'Document',
           ),
-          h(
-            'button',
-            {
-              disabled: props.deviceDirectoryAccessGrantDisabled,
-              onClick: () => {
-                emit('grantDeviceDirectoryAccess');
-              },
-            },
-            'Grant access',
-          ),
-          h(
-            'button',
-            {
-              onClick: () => {
-                emit('cancelDeviceDirectoryAccess');
-              },
-            },
-            'Cancel access',
-          ),
-          props.deviceDirectoryAccessMessage ? h('span', props.deviceDirectoryAccessMessage) : null,
+          props.isRecoveryStateVisible ? slots.recovery?.() : null,
           slots.after?.(),
         ]);
     },
+  }),
+  useRepositoryExplorerDirectoryState: () => ({
+    documentIds: repositoryExplorerDocumentIds,
+    errorMessage: repositoryExplorerErrorMessage,
+    hideAutomergeFiles: repositoryExplorerHideAutomergeFiles,
+    isLoading: repositoryExplorerIsLoading,
+    isRepositoryInitialized: repositoryExplorerIsInitialized,
+    recoveryErrors: repositoryExplorerRecoveryErrors,
+    regularFileEntries: repositoryExplorerRegularFileEntries,
   }),
 }));
 
@@ -382,9 +406,16 @@ describe('RepoExplorerPane', () => {
     canEditChildren.value = true;
     repositoryFactsError.value = undefined;
     repositoryVisibleEntriesError.value = undefined;
+    repositoryExplorerDocumentIds.value = [];
+    repositoryExplorerErrorMessage.value = undefined;
+    repositoryExplorerHideAutomergeFiles.value = true;
+    repositoryExplorerIsLoading.value = false;
+    repositoryExplorerIsInitialized.value = false;
+    repositoryExplorerRegularFileEntries.value = [];
     getDeviceDirectoryAccessRequestMock.mockReset();
     openMock.mockReset();
     importDocumentMock.mockReset();
+    requestTokenMock.mockReset();
     resolveDeviceDirectoryAccessRequestMock.mockReset();
     document.body.innerHTML = '';
   });
@@ -481,10 +512,19 @@ describe('RepoExplorerPane', () => {
 
   it('loads the pending access request before enabling grant access and retries the current path after permission is granted', async () => {
     const handle = createPermissionHandle('granted');
-    repositoryVisibleEntriesError.value = new DeviceDirectoryAccessRequiredError({
+    repositoryVisibleEntriesError.value = new WebFileSystemAccessRequiredError({
       requestId: 'request-1',
       spaceName: 'Work',
       mode: 'readwrite',
+    });
+    resolveDeviceDirectoryAccessRequestMock.mockResolvedValue({
+      request: {
+        id: 'request-1',
+        name: 'Work',
+        handle,
+        mode: 'readwrite',
+      },
+      status: 'granted',
     });
     getDeviceDirectoryAccessRequestMock.mockResolvedValue({
       id: 'request-1',
@@ -532,10 +572,19 @@ describe('RepoExplorerPane', () => {
 
   it('keeps the recovery state and does not navigate when permission is denied', async () => {
     const handle = createPermissionHandle('denied');
-    repositoryVisibleEntriesError.value = new DeviceDirectoryAccessRequiredError({
+    repositoryVisibleEntriesError.value = new WebFileSystemAccessRequiredError({
       requestId: 'request-2',
       spaceName: 'Work',
       mode: 'readwrite',
+    });
+    resolveDeviceDirectoryAccessRequestMock.mockResolvedValue({
+      request: {
+        id: 'request-2',
+        name: 'Work',
+        handle,
+        mode: 'readwrite',
+      },
+      status: 'denied',
     });
     getDeviceDirectoryAccessRequestMock.mockResolvedValue({
       id: 'request-2',

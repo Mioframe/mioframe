@@ -1,10 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { FSNodeType } from '../virtualFileSystem';
 import { WebFileSystemProvider } from './WebFileSystemProvider';
-import {
-  DEVICE_DIRECTORY_ACCESS_REQUIRED_CODE,
-  DeviceDirectoryAccessRequiredError,
-} from '@shared/service/fileSystem';
+import { WEB_FILE_SYSTEM_ACCESS_REQUIRED_CODE, WebFileSystemAccessRequiredError } from '.';
 
 type MockRootDirectoryHandle = FileSystemDirectoryHandle & {
   requestPermissionMock: ReturnType<
@@ -121,17 +118,18 @@ describe('WebFileSystemProvider', () => {
     const { rootHandle } = createRootHandle('prompt');
     const provider = WebFileSystemProvider(rootHandle, {
       onAccessRequired: ({ mode }) => {
-        throw new DeviceDirectoryAccessRequiredError({
+        return {
           requestId: 'request-1',
           spaceName: 'Work',
           mode,
-        });
+        };
       },
     });
 
     await expect(provider.readDirectory('/')).rejects.toMatchObject({
-      code: DEVICE_DIRECTORY_ACCESS_REQUIRED_CODE,
+      code: WEB_FILE_SYSTEM_ACCESS_REQUIRED_CODE,
       mode: 'readwrite',
+      name: 'WebFileSystemAccessRequiredError',
       requestId: 'request-1',
       spaceName: 'Work',
     });
@@ -142,19 +140,74 @@ describe('WebFileSystemProvider', () => {
     const { rootHandle } = createRootHandle('denied');
     const provider = WebFileSystemProvider(rootHandle, {
       onAccessRequired: ({ mode }) => {
-        throw new DeviceDirectoryAccessRequiredError({
+        return {
           requestId: 'request-2',
           spaceName: 'Work',
           mode,
-        });
+        };
       },
     });
 
     await expect(provider.stat('/folder')).rejects.toMatchObject({
-      code: DEVICE_DIRECTORY_ACCESS_REQUIRED_CODE,
+      code: WEB_FILE_SYSTEM_ACCESS_REQUIRED_CODE,
       mode: 'readwrite',
+      name: 'WebFileSystemAccessRequiredError',
       requestId: 'request-2',
       spaceName: 'Work',
     });
+  });
+
+  it('falls back to a VfsError when no access-recovery callback is configured', async () => {
+    const { rootHandle } = createRootHandle('prompt');
+    const provider = WebFileSystemProvider(rootHandle);
+
+    await expect(provider.readDirectory('/')).rejects.toMatchObject({
+      code: 'EACCES',
+      name: 'VfsError',
+    });
+  });
+
+  it('marks denied file handles as non-writable in stat capabilities', async () => {
+    const { fileHandle, rootHandle } = createRootHandle('granted');
+    const provider = WebFileSystemProvider(rootHandle);
+
+    fileHandle.queryPermission = () => Promise.resolve('denied');
+
+    await expect(provider.stat('/note.txt')).resolves.toMatchObject({
+      capabilities: {
+        canChangePath: false,
+        canDelete: false,
+      },
+      type: FSNodeType.File,
+    });
+  });
+
+  it('serializes only safe metadata for worker transfer', async () => {
+    const { rootHandle } = createRootHandle('prompt');
+    const provider = WebFileSystemProvider(rootHandle, {
+      onAccessRequired: ({ mode }) => ({
+        requestId: 'request-3',
+        spaceName: 'Work',
+        mode,
+      }),
+    });
+
+    const thrownError = await provider
+      .readDirectory('/')
+      .catch((caughtError: unknown) => caughtError);
+
+    expect(thrownError).toBeInstanceOf(WebFileSystemAccessRequiredError);
+    if (!(thrownError instanceof WebFileSystemAccessRequiredError)) {
+      throw new Error('Expected WebFileSystemAccessRequiredError');
+    }
+
+    expect(thrownError.toJSON()).toMatchObject({
+      code: WEB_FILE_SYSTEM_ACCESS_REQUIRED_CODE,
+      message: 'Permission required to open this remembered local space',
+      mode: 'readwrite',
+      requestId: 'request-3',
+      spaceName: 'Work',
+    });
+    expect(JSON.stringify(thrownError.toJSON())).not.toContain('FileSystemDirectoryHandle');
   });
 });

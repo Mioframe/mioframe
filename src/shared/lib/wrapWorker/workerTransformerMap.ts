@@ -5,8 +5,8 @@ import type { ClientObject } from '../proxyService';
 import { VfsError } from '../virtualFileSystem';
 import { GoogleDriveError } from '../googleDrive';
 import { GoogleClientConfigError } from '../googleApi';
+import { WebFileSystemAccessRequiredError } from '../webFileSystemProvider';
 import { GoogleAuthError } from '@shared/service/google';
-import { DeviceDirectoryAccessRequiredError } from '@shared/service/fileSystem/errors';
 
 /** Shared worker/client transformer registry for service transport. */
 export const transformers = [
@@ -29,8 +29,8 @@ export const transformers = [
   defineCustomErrorTransformer('GoogleAuthError', GoogleAuthError),
   defineCustomErrorTransformer('GoogleClientConfigError', GoogleClientConfigError),
   defineCustomErrorTransformer(
-    'DeviceDirectoryAccessRequiredError',
-    DeviceDirectoryAccessRequiredError,
+    'WebFileSystemAccessRequiredError',
+    WebFileSystemAccessRequiredError,
   ),
   defineCustomErrorTransformer('DomainError', DomainError),
   defineCustomErrorTransformer('VfsError', VfsError),

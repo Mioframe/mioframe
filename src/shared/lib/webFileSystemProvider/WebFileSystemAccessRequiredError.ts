@@ -1,27 +1,39 @@
 import { DomainError } from '@shared/lib/error';
 
 /**
- * Stable code for remembered local-space access recovery.
+ * Stable code for remembered local-space access recovery emitted by the browser FS provider.
  */
-export const DEVICE_DIRECTORY_ACCESS_REQUIRED_CODE = 'device-directory-access-required';
+export const WEB_FILE_SYSTEM_ACCESS_REQUIRED_CODE = 'web-file-system-access-required';
 
 /**
  * Permission mode required to continue a blocked local-space operation.
  */
-export type DeviceDirectoryAccessMode = 'readwrite';
+export type WebFileSystemAccessMode = 'readwrite';
 
 /**
- * Serialized transport payload for a remembered local-space access-required error.
+ * Safe metadata needed to recover browser permission for a remembered local directory.
  */
-export type SerializedDeviceDirectoryAccessRequiredError = {
+export interface WebFileSystemAccessRequiredDetails {
+  /** Permission mode needed for the blocked operation. */
+  mode: WebFileSystemAccessMode;
+  /** Pending request identifier used to fetch the stored handle. */
+  requestId: string;
+  /** Safe remembered-space name shown to the user. */
+  spaceName: string;
+}
+
+/**
+ * Serialized transport payload for a provider-owned access-required error.
+ */
+export type SerializedWebFileSystemAccessRequiredError = {
   /** Optional safe cause. */
   cause?: unknown;
   /** Stable machine-readable code. */
-  code: typeof DEVICE_DIRECTORY_ACCESS_REQUIRED_CODE;
+  code: typeof WEB_FILE_SYSTEM_ACCESS_REQUIRED_CODE;
   /** Safe user-facing message. */
   message: string;
   /** Permission mode that must be granted. */
-  mode: DeviceDirectoryAccessMode;
+  mode: WebFileSystemAccessMode;
   /** Error class name. */
   name: string;
   /** Runtime access request identifier. */
@@ -35,27 +47,21 @@ export type SerializedDeviceDirectoryAccessRequiredError = {
 /**
  * Service-transfer-safe error raised when a remembered local space needs browser permission.
  */
-export class DeviceDirectoryAccessRequiredError extends DomainError<
-  typeof DEVICE_DIRECTORY_ACCESS_REQUIRED_CODE
+export class WebFileSystemAccessRequiredError extends DomainError<
+  typeof WEB_FILE_SYSTEM_ACCESS_REQUIRED_CODE
 > {
-  override name = 'DeviceDirectoryAccessRequiredError';
-  override readonly code = DEVICE_DIRECTORY_ACCESS_REQUIRED_CODE;
+  override name = 'WebFileSystemAccessRequiredError';
+  override readonly code = WEB_FILE_SYSTEM_ACCESS_REQUIRED_CODE;
   readonly requestId: string;
   readonly spaceName: string;
-  readonly mode: DeviceDirectoryAccessMode;
+  readonly mode: WebFileSystemAccessMode;
 
   /**
    * Creates an access-required error from runtime details or serialized transport data.
    * @param options - Safe transport data for the current access request.
    */
   constructor(
-    options:
-      | {
-          mode: DeviceDirectoryAccessMode;
-          requestId: string;
-          spaceName: string;
-        }
-      | SerializedDeviceDirectoryAccessRequiredError,
+    options: WebFileSystemAccessRequiredDetails | SerializedWebFileSystemAccessRequiredError,
   ) {
     if ('name' in options) {
       super(options);
@@ -66,7 +72,7 @@ export class DeviceDirectoryAccessRequiredError extends DomainError<
     }
 
     super('Permission required to open this remembered local space', {
-      code: DEVICE_DIRECTORY_ACCESS_REQUIRED_CODE,
+      code: WEB_FILE_SYSTEM_ACCESS_REQUIRED_CODE,
     });
     this.requestId = options.requestId;
     this.spaceName = options.spaceName;
@@ -77,7 +83,7 @@ export class DeviceDirectoryAccessRequiredError extends DomainError<
    * Serializes the access-required error for worker transport.
    * @returns Service-transfer-safe error payload.
    */
-  override toJSON(): SerializedDeviceDirectoryAccessRequiredError {
+  override toJSON(): SerializedWebFileSystemAccessRequiredError {
     return {
       ...super.toJSON(),
       code: this.code,

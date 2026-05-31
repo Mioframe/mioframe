@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { MemoryFileSystem } from '../virtualFileSystem/MemoryFileSystem';
 import { FileSystemError, FSNodeType, VirtualFileSystem, VfsError } from '../virtualFileSystem';
 import {
-  type DeviceFileRecord,
+  type MountedDeviceFileRecord,
   type DeviceFileSystemProvider as DeviceFileSystemProviderType,
   DeviceFileSystemProvider,
 } from './DeviceFileSystemProvider';
@@ -91,9 +91,10 @@ describe('DeviceFileSystemProvider', () => {
     const fileSystem = new MemoryFileSystem();
     const record = {
       name,
+      kind: name === 'Browser Storage' ? 'browserStorage' : 'localDirectory',
       handle,
       ...(description === undefined ? {} : { description }),
-    } satisfies DeviceFileRecord;
+    } satisfies MountedDeviceFileRecord;
 
     fileSystems.set(handle, fileSystem);
     provider.upsertRecord(record);
@@ -124,6 +125,23 @@ describe('DeviceFileSystemProvider', () => {
         );
       }),
     ).toBe(true);
+  });
+
+  it('should expose safe display records without handles', () => {
+    mountRecord('Browser Storage');
+    mountRecord('Projects');
+
+    expect(provider.listDisplayRecords()).toEqual([
+      {
+        canDisconnect: false,
+        name: 'Browser Storage',
+      },
+      {
+        canDisconnect: true,
+        name: 'Projects',
+      },
+    ]);
+    expect(JSON.stringify(provider.listDisplayRecords())).not.toContain('isSameEntry');
   });
 
   it('should expose root directory capabilities and description exactly', async () => {
@@ -329,6 +347,7 @@ describe('DeviceFileSystemProvider', () => {
     localProvider.upsertRecord({
       name: 'Projects',
       description: 'Directory on this device',
+      kind: 'localDirectory',
       handle,
     });
     await localProvider.writeFile('/Projects/first.txt', 'first', {
@@ -339,6 +358,7 @@ describe('DeviceFileSystemProvider', () => {
     localProvider.upsertRecord({
       name: 'Projects',
       description: 'Directory on this device',
+      kind: 'localDirectory',
       handle,
     });
     await localProvider.writeFile('/Projects/second.txt', 'second', {
