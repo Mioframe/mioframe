@@ -26,7 +26,7 @@ If `pnpm verify` fails, fix failures caused by the change. Otherwise report the 
 
 For local verification safety, agents may run focused checks for limited files, but must not start multiple expensive checks in parallel. Use `pnpm verify --only <label> --files ...` for focused local feedback, keep full `pnpm verify` as the completion gate, and if an expensive command is already running, inspect its logs or wait instead of starting another heavy command.
 
-Before the final response after non-trivial implementation, use the `byterover` skill end-of-task capture gate to decide whether durable project knowledge should be curated.
+Before the final response after non-trivial implementation, use the `byterover` skill end-of-task capture gate to decide whether durable project knowledge should be curated. For trivial or documentation-only changes that create no reusable project knowledge, report `BRV RESULT: skipped` without running `brv`.
 
 Final response must include:
 
@@ -54,14 +54,14 @@ reason:
 
 - Prefer plan-first implementation over broad discovery.
 - Before broad repository exploration, use ByteRover local search to recall prior project decisions; use synthesized queries only when search results are insufficient.
-- Use the `implementation-preflight` skill before non-trivial implementation work to identify the owner layer, reuse opportunities, acceptance matrix, risk matrix, and focused verification before the first production edit.
+- Use the `implementation-preflight` skill before non-trivial implementation work to identify owner boundaries, reuse opportunities, acceptance matrix, risk matrix, and focused verification before the first production edit.
 - Before editing, identify the smallest affected FSD owner layer and read only task-relevant files plus direct imports unless the task proves wider impact.
 - For cross-layer changes, write a compact owner map before production edits: source of truth, runtime owner, user-action owner, UI composition owner, error owner, retry/navigation owner, and verification owner. If any owner is unclear, stop and resolve the architecture before editing.
 - Split cross-layer work into separate schema/service, entity, feature, widget, and verification passes.
 - Keep changes in the layer that owns the behavior, and import through `index.ts` when a public entry point exists.
 - Pages may compose panes and own route navigation state, but must not orchestrate provider/service recovery flows, permission or auth prompts, pending request registries, or duplicate entity data reads. Put provider recovery state and user actions in entities/features/widgets.
 - Errors must be defined next to the boundary that owns and detects the failure. Provider failures belong next to the provider; service failures belong next to the service. Do not define a provider error in a service module only because the service supplies surrounding context.
-- UI-facing display records must not expose capabilities or provider internals such as `FileSystemHandle`, access tokens, API clients, adapters, providers, callbacks, or service bags. Expose these only through explicit action or recovery APIs.
+- UI-facing display records must not expose capabilities, credentials, clients, adapters, provider instances, callbacks, or service bags. Expose these only through explicit action or recovery APIs.
 - Any `DomainError` crossing a worker or service boundary must use the project service-transfer-safe constructor or transformer pattern and contain only safe serializable metadata. Do not place capabilities, clients, callbacks, provider objects, or raw external errors in `message`, `cause`, `toJSON`, diagnostics, or user-facing payloads.
 - Keep files small enough for agents to reason about locally. Prefer 100-300 lines for new production implementation files, treat 300-500 lines as acceptable only when the file is cohesive, and avoid growing ordinary implementation files beyond 500 lines without a clear reason.
 - Treat 500+ line implementation files as an extraction review trigger, not an automatic rewrite trigger. Before adding logic to such a file, identify its current responsibilities and extract the smallest stable unit that matches the change.
