@@ -1,6 +1,6 @@
 # src/shared/lib/webFileSystemProvider
 
-Inherits the rules from `src/shared/AGENTS.md`. Applies to the browser File System Access provider implementation.
+Inherits the rules from `src/shared/lib/AGENTS.md`. Applies to the browser File System Access provider implementation.
 
 ## Contains
 
