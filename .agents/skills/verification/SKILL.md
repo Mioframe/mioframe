@@ -97,7 +97,7 @@ Do not run full e2e, full lint, or full mutation checks manually when the task o
 
 ## Final response
 
-Always include this block after edits:
+Always include this verification block after edits:
 
 ```text
 VERIFY RESULT
@@ -105,5 +105,7 @@ command: pnpm verify
 status: passed | failed | not run
 reason if not run:
 ```
+
+Also include the `BRV RESULT` block required by the root `AGENTS.md`. Use the `byterover` skill to decide whether it is `curated`, `skipped`, `failed`, or `not available`.
 
 Use `not run` only when no repository verification could reasonably be run, such as documentation-only changes made through a remote editor. State the reason plainly.
