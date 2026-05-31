@@ -41,7 +41,7 @@ interface MountedRootStatOptions {
 /** Factory options for the device file system provider. */
 export interface DeviceFileSystemProviderOptions {
   /** Factory used to build the nested provider for a mounted directory handle. */
-  createProvider?: (handle: FileSystemDirectoryHandle) => IFileSystemProvider;
+  createProvider?: (record: DeviceFileRecord) => IFileSystemProvider;
 }
 
 /** Provider that exposes mounted device directories as VFS roots. */
@@ -110,7 +110,7 @@ const resolveRecordForWrite = (path: string, records: Map<string, ActiveDeviceFi
 export const DeviceFileSystemProvider = (
   providerOptions: DeviceFileSystemProviderOptions = {},
 ): DeviceFileSystemProvider => {
-  const { createProvider = WebFileSystemProvider } = providerOptions;
+  const { createProvider = ({ handle }) => WebFileSystemProvider(handle) } = providerOptions;
   const vfs = new VirtualFileSystem();
   const events = new EventEmitter();
   const records = new Map<string, ActiveDeviceFileRecord>();
@@ -125,9 +125,7 @@ export const DeviceFileSystemProvider = (
   const upsertRecord = (record: DeviceFileRecord): void => {
     const existingRecord = records.get(record.name);
     const provider =
-      existingRecord?.handle === record.handle
-        ? existingRecord.provider
-        : createProvider(record.handle);
+      existingRecord?.handle === record.handle ? existingRecord.provider : createProvider(record);
 
     records.set(record.name, {
       ...record,

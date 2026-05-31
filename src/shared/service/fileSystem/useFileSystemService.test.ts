@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Repo } from '@automerge/automerge-repo';
 import { partialKeyToFileName, storageAdapterMarkerFileName } from '@shared/lib/automergeAdapter';
+import { DEVICE_DIRECTORY_ACCESS_REQUIRED_CODE } from '@shared/service/fileSystem';
 import type { FSNodeStat, IFileSystemProvider, VfsEvent } from '@shared/lib/virtualFileSystem';
 import { FSNodeType, VfsEventSource } from '@shared/lib/virtualFileSystem';
 import { OPFSName } from '../directories';
@@ -50,6 +51,9 @@ type MockDirectoryHandle = FileSystemDirectoryHandle & {
   queryPermissionMock?: ReturnType<
     typeof vi.fn<(descriptor?: FileSystemHandlePermissionDescriptor) => Promise<PermissionState>>
   >;
+  requestPermissionMock: ReturnType<
+    typeof vi.fn<(descriptor?: FileSystemHandlePermissionDescriptor) => Promise<PermissionState>>
+  >;
   isSameEntryMock: ReturnType<
     typeof vi.fn<(other: { __sameEntryKey?: string; name?: string }) => Promise<boolean>>
   >;
@@ -69,6 +73,7 @@ const createDirectoryHandleMock = ({
   const queryPermissionMock = withQueryPermission
     ? vi.fn(() => Promise.resolve(permissionState))
     : undefined;
+  const requestPermissionMock = vi.fn(() => Promise.resolve(permissionState));
   const isSameEntryMock = vi.fn<
     (other: { __sameEntryKey?: string; name?: string }) => Promise<boolean>
   >((other) => Promise.resolve((other.__sameEntryKey ?? other.name) === sameEntryKey));
@@ -78,7 +83,8 @@ const createDirectoryHandleMock = ({
     name,
     ...(queryPermissionMock === undefined ? {} : { queryPermission: queryPermissionMock }),
     ...(queryPermissionMock === undefined ? {} : { queryPermissionMock }),
-    requestPermission: vi.fn(() => Promise.resolve(permissionState)),
+    requestPermission: requestPermissionMock,
+    requestPermissionMock,
     isSameEntry: isSameEntryMock,
     isSameEntryMock,
     __sameEntryKey: sameEntryKey,
@@ -166,6 +172,13 @@ const createDiagnosticProvider = ({
   };
 };
 
+const isAccessErrorWithRequestId = (
+  error: unknown,
+): error is Error & {
+  requestId: string;
+  toJSON: () => Record<string, unknown>;
+} => error instanceof Error && 'requestId' in error && typeof error.requestId === 'string';
+
 describe('useFileSystemService', () => {
   beforeEach(() => {
     vi.resetModules();
@@ -193,7 +206,7 @@ describe('useFileSystemService', () => {
     return useFileSystemService();
   };
 
-  it('hydrates only granted device directories and includes OPFS when available', async () => {
+  it('hydrates remembered device directories even when permission is not currently granted', async () => {
     const grantedHandle = createDirectoryHandleMock({
       name: 'Work',
       permissionState: 'granted',
@@ -218,8 +231,6 @@ describe('useFileSystemService', () => {
     const service = await createService();
 
     await vi.waitFor(async () => {
-      expect(grantedHandle.queryPermissionMock).toHaveBeenCalledWith({ mode: 'readwrite' });
-      expect(deniedHandle.queryPermissionMock).toHaveBeenCalledWith({ mode: 'readwrite' });
       await expect(service.deviceFiles.fetch()).resolves.toEqual([
         {
           name: OPFSName,
@@ -229,8 +240,14 @@ describe('useFileSystemService', () => {
           name: 'Work',
           handle: grantedHandle,
         },
+        {
+          name: 'Private',
+          handle: deniedHandle,
+        },
       ]);
     });
+    expect(grantedHandle.requestPermissionMock).not.toHaveBeenCalled();
+    expect(deniedHandle.requestPermissionMock).not.toHaveBeenCalled();
   });
 
   it('hydrates normalized persisted records without rewriting them', async () => {
@@ -447,6 +464,118 @@ describe('useFileSystemService', () => {
     await service.removeDeviceDirectory('Missing');
 
     expect(updateRecordListMock).not.toHaveBeenCalled();
+  });
+
+  it('returns undefined for an unknown device-directory access request id', async () => {
+    const service = await createService();
+
+    await expect(
+      service.getDeviceDirectoryAccessRequest('missing-request'),
+    ).resolves.toBeUndefined();
+  });
+
+  it('keeps remembered spaces mounted and exposes a pending access request when provider access is missing', async () => {
+    const promptHandle = createDirectoryHandleMock({
+      name: 'Work',
+      permissionState: 'prompt',
+      sameEntryKey: 'work',
+    });
+    getRecordListMock.mockResolvedValue([{ name: 'Work', handle: promptHandle }]);
+
+    const service = await createService();
+
+    await vi.waitFor(async () => {
+      await expect(service.deviceFiles.fetch()).resolves.toEqual([
+        {
+          name: 'Work',
+          handle: promptHandle,
+        },
+      ]);
+    });
+
+    const error = await service.directoryContent.fetch({
+      path: '/Device Files/Work',
+    });
+
+    expect(error).toBeInstanceOf(Error);
+    expect(error).toMatchObject({
+      code: DEVICE_DIRECTORY_ACCESS_REQUIRED_CODE,
+      mode: 'readwrite',
+      name: 'DeviceDirectoryAccessRequiredError',
+      spaceName: 'Work',
+    });
+
+    if (!isAccessErrorWithRequestId(error)) {
+      throw new Error('Expected DeviceDirectoryAccessRequiredError');
+    }
+
+    const serialized = error.toJSON();
+
+    expect(serialized).toMatchObject({
+      code: DEVICE_DIRECTORY_ACCESS_REQUIRED_CODE,
+      message: 'Permission required to open this remembered local space',
+      mode: 'readwrite',
+      requestId: error.requestId,
+      spaceName: 'Work',
+    });
+    expect(serialized.cause).toBeUndefined();
+    expect(JSON.stringify(serialized)).not.toContain('__sameEntryKey');
+
+    await expect(service.getDeviceDirectoryAccessRequest(error.requestId)).resolves.toEqual({
+      id: error.requestId,
+      name: 'Work',
+      handle: promptHandle,
+      mode: 'readwrite',
+    });
+    expect(promptHandle.requestPermissionMock).not.toHaveBeenCalled();
+  });
+
+  it('clears pending access requests on resolve and keeps remembered spaces after denial', async () => {
+    const deniedHandle = createDirectoryHandleMock({
+      name: 'Work',
+      permissionState: 'denied',
+      sameEntryKey: 'work',
+    });
+    getRecordListMock.mockResolvedValue([{ name: 'Work', handle: deniedHandle }]);
+
+    const service = await createService();
+    await vi.waitFor(async () => {
+      await expect(service.deviceFiles.fetch()).resolves.toEqual([
+        {
+          name: 'Work',
+          handle: deniedHandle,
+        },
+      ]);
+    });
+
+    const error = await service.directoryContent.fetch({
+      path: '/Device Files/Work',
+    });
+
+    expect(error).toBeInstanceOf(Error);
+    expect(error).toMatchObject({
+      code: DEVICE_DIRECTORY_ACCESS_REQUIRED_CODE,
+      mode: 'readwrite',
+      name: 'DeviceDirectoryAccessRequiredError',
+      spaceName: 'Work',
+    });
+
+    if (!isAccessErrorWithRequestId(error)) {
+      throw new Error('Expected DeviceDirectoryAccessRequiredError');
+    }
+
+    await service.resolveDeviceDirectoryAccessRequest({
+      id: error.requestId,
+      permissionState: 'denied',
+    });
+
+    await expect(service.getDeviceDirectoryAccessRequest(error.requestId)).resolves.toBeUndefined();
+    await expect(service.deviceFiles.fetch()).resolves.toEqual([
+      {
+        name: 'Work',
+        handle: deniedHandle,
+      },
+    ]);
   });
 
   it('re-reads directoryContent$ and emits an updated payload after createDirectory', async () => {

@@ -2,12 +2,66 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { defineComponent, h, ref } from 'vue';
 import { mount } from '@vue/test-utils';
+import { DeviceDirectoryAccessRequiredError } from '@shared/service/fileSystem';
 
 const canEditChildren = ref(true);
-const { openMock, importDocumentMock } = vi.hoisted(() => ({
+const repositoryFactsError = ref<unknown>();
+const repositoryVisibleEntriesError = ref<unknown>();
+const {
+  getDeviceDirectoryAccessRequestMock,
+  openMock,
+  importDocumentMock,
+  resolveDeviceDirectoryAccessRequestMock,
+} = vi.hoisted(() => ({
+  getDeviceDirectoryAccessRequestMock: vi.fn(),
   openMock: vi.fn(),
   importDocumentMock: vi.fn(),
+  resolveDeviceDirectoryAccessRequestMock: vi.fn(),
 }));
+
+type MockPermissionDirectoryHandle = FileSystemDirectoryHandle & {
+  requestPermissionMock: ReturnType<
+    typeof vi.fn<(descriptor?: FileSystemHandlePermissionDescriptor) => Promise<PermissionState>>
+  >;
+};
+
+const createPermissionHandle = (
+  permissionState: PermissionState,
+): MockPermissionDirectoryHandle => {
+  const requestPermissionMock = vi.fn(() => Promise.resolve(permissionState));
+
+  const handle: MockPermissionDirectoryHandle = {
+    kind: 'directory',
+    name: 'Work',
+    isSameEntry: vi.fn(() => Promise.resolve(false)),
+    requestPermission: requestPermissionMock,
+    requestPermissionMock,
+    queryPermission: vi.fn(() => Promise.resolve(permissionState)),
+    isFile: false,
+    isDirectory: true,
+    entries: vi.fn(),
+    keys: vi.fn(),
+    values: vi.fn(),
+    getDirectoryHandle: vi.fn(),
+    getFileHandle: vi.fn(),
+    removeEntry: vi.fn(),
+    resolve: vi.fn(),
+    getFile(fileName: string, options?: FileSystemGetFileOptions) {
+      return this.getFileHandle(fileName, options);
+    },
+    getDirectory(directoryName: string, options?: FileSystemGetDirectoryOptions) {
+      return this.getDirectoryHandle(directoryName, options);
+    },
+    getEntries() {
+      return this.values();
+    },
+    [Symbol.asyncIterator]() {
+      return this.entries();
+    },
+  };
+
+  return handle;
+};
 
 vi.mock('@entity/fsEntry', () => ({
   useFSNodeStat: () => ({
@@ -22,6 +76,30 @@ vi.mock('@entity/fsEntry', () => ({
 vi.mock('@page/routes', () => ({
   useStackNavigation: () => ({
     open: openMock,
+  }),
+}));
+
+vi.mock('@entity/localSettings', () => ({
+  useLocalSettings: () => ({
+    settings: ref({
+      showAutomergeFiles: false,
+    }),
+  }),
+}));
+
+vi.mock('@entity/repository', () => ({
+  useRepository: () => ({
+    repositoryFactsError,
+    repositoryVisibleEntriesError,
+  }),
+}));
+
+vi.mock('@shared/service', () => ({
+  useMainServiceClient: () => ({
+    fileSystem: {
+      getDeviceDirectoryAccessRequest: getDeviceDirectoryAccessRequestMock,
+      resolveDeviceDirectoryAccessRequest: resolveDeviceDirectoryAccessRequestMock,
+    },
   }),
 }));
 
@@ -208,8 +286,28 @@ vi.mock('@widget/RepositoryExplorerWidget', () => ({
   }),
   RepositoryExplorerWidget: defineComponent({
     name: 'RepositoryExplorerWidgetStub',
-    emits: ['clickPath', 'clickReturnHome', 'clickDocument'],
-    setup(_props, { slots, emit }) {
+    props: {
+      deviceDirectoryAccessGrantDisabled: {
+        type: Boolean,
+        default: false,
+      },
+      deviceDirectoryAccessGrantLoading: {
+        type: Boolean,
+        default: false,
+      },
+      deviceDirectoryAccessMessage: {
+        type: String,
+        default: undefined,
+      },
+    },
+    emits: [
+      'clickPath',
+      'clickReturnHome',
+      'clickDocument',
+      'grantDeviceDirectoryAccess',
+      'cancelDeviceDirectoryAccess',
+    ],
+    setup(props, { slots, emit }) {
       return () =>
         h('main', [
           h(
@@ -239,6 +337,26 @@ vi.mock('@widget/RepositoryExplorerWidget', () => ({
             },
             'Document',
           ),
+          h(
+            'button',
+            {
+              disabled: props.deviceDirectoryAccessGrantDisabled,
+              onClick: () => {
+                emit('grantDeviceDirectoryAccess');
+              },
+            },
+            'Grant access',
+          ),
+          h(
+            'button',
+            {
+              onClick: () => {
+                emit('cancelDeviceDirectoryAccess');
+              },
+            },
+            'Cancel access',
+          ),
+          props.deviceDirectoryAccessMessage ? h('span', props.deviceDirectoryAccessMessage) : null,
           slots.after?.(),
         ]);
     },
@@ -262,8 +380,12 @@ const mountPane = async () => {
 describe('RepoExplorerPane', () => {
   afterEach(() => {
     canEditChildren.value = true;
+    repositoryFactsError.value = undefined;
+    repositoryVisibleEntriesError.value = undefined;
+    getDeviceDirectoryAccessRequestMock.mockReset();
     openMock.mockReset();
     importDocumentMock.mockReset();
+    resolveDeviceDirectoryAccessRequestMock.mockReset();
     document.body.innerHTML = '';
   });
 
@@ -354,6 +476,97 @@ describe('RepoExplorerPane', () => {
       {
         target: 'document',
       },
+    );
+  });
+
+  it('loads the pending access request before enabling grant access and retries the current path after permission is granted', async () => {
+    const handle = createPermissionHandle('granted');
+    repositoryVisibleEntriesError.value = new DeviceDirectoryAccessRequiredError({
+      requestId: 'request-1',
+      spaceName: 'Work',
+      mode: 'readwrite',
+    });
+    getDeviceDirectoryAccessRequestMock.mockResolvedValue({
+      id: 'request-1',
+      name: 'Work',
+      handle,
+      mode: 'readwrite',
+    });
+
+    const wrapper = await mountPane();
+
+    await vi.waitFor(() => {
+      expect(getDeviceDirectoryAccessRequestMock).toHaveBeenCalledWith('request-1');
+    });
+
+    const grantButton = wrapper
+      .findAll('button')
+      .find((button) => button.text() === 'Grant access');
+
+    if (!grantButton) {
+      throw new Error('Expected Grant access button');
+    }
+
+    expect(grantButton.attributes('disabled')).toBeUndefined();
+
+    await grantButton.trigger('click');
+
+    expect(handle.requestPermissionMock).toHaveBeenCalledWith({
+      mode: 'readwrite',
+    });
+    expect(resolveDeviceDirectoryAccessRequestMock).toHaveBeenCalledWith({
+      id: 'request-1',
+      permissionState: 'granted',
+    });
+    expect(openMock).toHaveBeenCalledWith(
+      'repo',
+      {
+        repoPath: '/Google Drive/My Drive/Mioframe',
+      },
+      {
+        replace: true,
+        target: 'current',
+      },
+    );
+  });
+
+  it('keeps the recovery state and does not navigate when permission is denied', async () => {
+    const handle = createPermissionHandle('denied');
+    repositoryVisibleEntriesError.value = new DeviceDirectoryAccessRequiredError({
+      requestId: 'request-2',
+      spaceName: 'Work',
+      mode: 'readwrite',
+    });
+    getDeviceDirectoryAccessRequestMock.mockResolvedValue({
+      id: 'request-2',
+      name: 'Work',
+      handle,
+      mode: 'readwrite',
+    });
+
+    const wrapper = await mountPane();
+
+    await vi.waitFor(() => {
+      expect(getDeviceDirectoryAccessRequestMock).toHaveBeenCalledWith('request-2');
+    });
+
+    const grantButton = wrapper
+      .findAll('button')
+      .find((button) => button.text() === 'Grant access');
+
+    if (!grantButton) {
+      throw new Error('Expected Grant access button');
+    }
+
+    await grantButton.trigger('click');
+
+    expect(resolveDeviceDirectoryAccessRequestMock).toHaveBeenCalledWith({
+      id: 'request-2',
+      permissionState: 'denied',
+    });
+    expect(openMock).not.toHaveBeenCalledWith('repo', expect.anything(), expect.anything());
+    expect(wrapper.text()).toContain(
+      'Mioframe still cannot open this space because your browser did not grant permission.',
     );
   });
 });

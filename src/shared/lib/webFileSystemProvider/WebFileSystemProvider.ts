@@ -7,19 +7,53 @@ import type {
 } from '../virtualFileSystem';
 import { FileSystemError, FSNodeType, PathUtils, VfsError } from '../virtualFileSystem';
 import type { WriteOptions } from '../virtualFileSystem/IFileSystemProvider';
+import type { DeviceDirectoryAccessMode } from '@shared/service/fileSystem/errors';
+
+/**
+ * Access request context passed back to the owning service when provider permission is missing.
+ */
+export interface WebFileSystemProviderAccessRequiredContext {
+  /** Root directory handle that needs recovery. */
+  handle: FileSystemDirectoryHandle;
+  /** Permission mode required for the blocked operation. */
+  mode: DeviceDirectoryAccessMode;
+}
+
+/**
+ * Optional hooks for service-owned access recovery.
+ */
+export interface WebFileSystemProviderOptions {
+  /** Called when the provider needs browser permission before continuing. */
+  onAccessRequired?: (context: WebFileSystemProviderAccessRequiredContext) => never;
+}
 
 /**
  * Creates a VFS provider backed by the browser File System Access API.
  * @param rootHandle - Root directory handle for the mounted provider.
+ * @param options - Service-owned hooks for access recovery.
  * @returns VFS provider backed by browser file system handles.
  */
 export const WebFileSystemProvider = (
   rootHandle: FileSystemDirectoryHandle,
+  options: WebFileSystemProviderOptions = {},
 ): IFileSystemProvider => {
+  const { onAccessRequired } = options;
   const queryWritePermission = async (handle: FileSystemFileHandle | FileSystemDirectoryHandle) => {
     return (
       (await handle.queryPermission?.({ mode: 'readwrite' })) ?? (await handle.queryPermission?.())
     );
+  };
+
+  const ensureAccess = async (): Promise<void> => {
+    const permissionState = await queryWritePermission(rootHandle);
+
+    if (permissionState !== 'granted') {
+      onAccessRequired?.({
+        handle: rootHandle,
+        mode: 'readwrite',
+      });
+      throw new VfsError(FileSystemError.NoPermissions, 'Permission required');
+    }
   };
 
   async function getHandle(
@@ -121,17 +155,16 @@ export const WebFileSystemProvider = (
   };
 
   const stat = async (path: string): Promise<FSNodeStat> => {
+    await ensureAccess();
+
     const normalized = PathUtils.normalize(path);
     if (normalized === '/') {
-      const permissionState = await queryWritePermission(rootHandle);
-      const canWrite = permissionState !== 'denied';
-
       return {
         type: FSNodeType.Directory,
         capabilities: {
           canDelete: false,
           canChangePath: false,
-          canEditChildren: canWrite,
+          canEditChildren: true,
         },
       };
     }
@@ -151,6 +184,7 @@ export const WebFileSystemProvider = (
   };
 
   const readFile = async (path: string): Promise<File> => {
+    await ensureAccess();
     const handle = await getHandle(path, false, 'file');
     return handle.getFile();
   };
@@ -160,6 +194,7 @@ export const WebFileSystemProvider = (
     content: FileContent,
     { create, overwrite }: WriteOptions,
   ): Promise<WriteFileResult> => {
+    await ensureAccess();
     let handle: FileSystemFileHandle | undefined;
 
     try {
@@ -188,6 +223,7 @@ export const WebFileSystemProvider = (
   };
 
   const readDirectory = async (path: string): Promise<[string, FSNodeStat][]> => {
+    await ensureAccess();
     const directoryHandle = await getHandle(path, false, 'directory');
     const entries: [string, FSNodeStat][] = [];
 
@@ -199,6 +235,7 @@ export const WebFileSystemProvider = (
   };
 
   const createDirectory = async (path: string): Promise<void> => {
+    await ensureAccess();
     try {
       await getHandle(path, false, 'directory');
       throw new VfsError(FileSystemError.FileExists, `Directory already exists: ${path}`);
@@ -212,6 +249,7 @@ export const WebFileSystemProvider = (
   };
 
   const remove = async (path: string, recursive: boolean): Promise<void> => {
+    await ensureAccess();
     const normalized = PathUtils.normalize(path);
     const nodeStat = await stat(normalized);
 
@@ -251,6 +289,7 @@ export const WebFileSystemProvider = (
   };
 
   const move = async (oldPath: string, newPath: string): Promise<void> => {
+    await ensureAccess();
     const normalizedOld = PathUtils.normalize(oldPath);
     const normalizedNew = PathUtils.normalize(newPath);
 

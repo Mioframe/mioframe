@@ -74,7 +74,7 @@ describe('DeviceFileSystemProvider', () => {
   beforeEach(() => {
     fileSystems = new Map();
     provider = DeviceFileSystemProvider({
-      createProvider: (handle) => {
+      createProvider: ({ handle }) => {
         const fileSystem = fileSystems.get(handle);
 
         if (!fileSystem) {
@@ -306,17 +306,16 @@ describe('DeviceFileSystemProvider', () => {
   });
 
   it('should reuse the existing provider for the same mounted name and handle without emitting create twice', async () => {
-    const createProvider = (handle: FileSystemDirectoryHandle) => {
-      const fileSystem = fileSystems.get(handle);
-
-      if (!fileSystem) {
-        throw new Error(`Missing file system for ${handle.name}`);
-      }
-
-      return fileSystem;
-    };
     const localProvider = DeviceFileSystemProvider({
-      createProvider,
+      createProvider: ({ handle }) => {
+        const fileSystem = fileSystems.get(handle);
+
+        if (!fileSystem) {
+          throw new Error(`Missing file system for ${handle.name}`);
+        }
+
+        return fileSystem;
+      },
     });
     const handle = createHandle('Projects');
     const fileSystem = new MemoryFileSystem();

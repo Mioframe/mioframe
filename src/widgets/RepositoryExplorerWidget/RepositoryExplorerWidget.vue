@@ -1,5 +1,9 @@
 <script setup lang="ts">
 import { computed, toRefs } from 'vue';
+import {
+  DeviceDirectoryAccessRecoveryState,
+  getDeviceDirectoryAccessRecoveryError,
+} from '@entity/deviceDirectoryAccess';
 import { useGoogleDriveRecovery } from '@feature/googleDriveRecovery';
 import { MDButton } from '@shared/ui/Button';
 import { MDSymbol } from '@shared/ui/Icon';
@@ -17,12 +21,17 @@ import { useRepositoryExplorerDirectoryState } from './useRepositoryExplorerDire
 
 const props = defineProps<{
   directoryPath: string;
+  deviceDirectoryAccessGrantDisabled?: boolean | undefined;
+  deviceDirectoryAccessGrantLoading?: boolean | undefined;
+  deviceDirectoryAccessMessage?: string | undefined;
 }>();
 
 const emit = defineEmits<{
   clickPath: [path: string];
   clickDocument: [documentId: AMDocumentId];
   clickReturnHome: [];
+  grantDeviceDirectoryAccess: [];
+  cancelDeviceDirectoryAccess: [];
 }>();
 
 defineSlots<{
@@ -59,6 +68,9 @@ const hasGoogleDriveRecovery = computed(
     ]),
 );
 const recoveryErrors = computed(() => [directoryError.value, repositoryError.value]);
+const hasDeviceDirectoryAccessRecovery = computed(
+  () => !!getDeviceDirectoryAccessRecoveryError(recoveryErrors.value),
+);
 
 const { isRetryAuthorizationLoading, onRetryAuthorization } = useGoogleDriveRecovery({
   path: directoryPath,
@@ -66,6 +78,14 @@ const { isRetryAuthorizationLoading, onRetryAuthorization } = useGoogleDriveReco
 
 const onReturnHomeClick = () => {
   emit('clickReturnHome');
+};
+
+const onGrantDeviceDirectoryAccess = () => {
+  emit('grantDeviceDirectoryAccess');
+};
+
+const onCancelDeviceDirectoryAccess = () => {
+  emit('cancelDeviceDirectoryAccess');
 };
 </script>
 
@@ -80,8 +100,35 @@ const onReturnHomeClick = () => {
     />
 
     <div class="repository-explorer-widget__scrollable-content">
+      <DeviceDirectoryAccessRecoveryState
+        v-if="hasDeviceDirectoryAccessRecovery"
+        :errors="recoveryErrors"
+      >
+        <template #actions>
+          <MDButton
+            label="Grant access"
+            :disabled="deviceDirectoryAccessGrantDisabled"
+            :loading="deviceDirectoryAccessGrantLoading"
+            @click="onGrantDeviceDirectoryAccess"
+          />
+
+          <MDButton label="Cancel" color="text" @click="onCancelDeviceDirectoryAccess" />
+        </template>
+      </DeviceDirectoryAccessRecoveryState>
+
+      <MDEmptyState
+        v-else-if="deviceDirectoryAccessMessage"
+        class="repository-explorer-widget__error"
+        headline="Permission required"
+        :supporting-text="deviceDirectoryAccessMessage"
+      >
+        <template #icon>
+          <MDSymbol name="error" class="repository-explorer-widget__error-icon" />
+        </template>
+      </MDEmptyState>
+
       <GoogleDriveAccessRecoveryState
-        v-if="hasGoogleDriveRecovery"
+        v-else-if="hasGoogleDriveRecovery"
         :path="directoryPath"
         :errors="recoveryErrors"
       >
