@@ -9,17 +9,20 @@ Inherits the rules from `src/AGENTS.md`. Applies to `src/entities` and its desce
 ## Patterns
 
 - `entities` may import only `shared`.
-- Keep canonical domain access patterns and derived read state here rather than redistributing them into features or widgets.
+- Keep canonical domain access patterns and derived read state here rather than redistributing them into features, widgets, or pages.
 - Keep entity UI small, reusable, and display-oriented.
-- Keep entity props and composable inputs narrow: IDs, display records, and small query inputs are preferred over services, mutation bundles, or broad mutable models.
-- Entity UI may render domain state and emit intents, but user mutation flows, confirmation logic, and snackbar orchestration belong in `features`.
+- Keep entity props and composable inputs narrow: IDs, display records, and small query inputs are preferred over services, mutation bundles, provider objects, or broad mutable models.
+- Entity UI may render domain state and emit intents, but user mutation flows, confirmation logic, permission prompts, and snackbar orchestration belong in `features` or higher composition.
 - Keep stored and derived read contracts explicitly named rather than mixing them into one vague entity API.
+- Entity composables may adapt service query results into typed domain facts, but must not duplicate service-owned scans, indexing, persistence, or lifecycle decisions.
 
 ## Anti-patterns
 
-- Do not move dialog flows, action menus, or submit orchestration into `entities`.
+- Do not move dialog flows, action menus, submit orchestration, or browser prompt orchestration into `entities`.
 - Do not bypass shared contracts with direct storage or API access.
 - Do not turn entity components into heavy composition containers.
+- Do not expose provider capabilities, browser handles, service clients, or mixed read/write models through ordinary entity display records.
+- Do not define provider-specific errors here unless the entity itself detects the failure.
 
 ## Constraints
 
