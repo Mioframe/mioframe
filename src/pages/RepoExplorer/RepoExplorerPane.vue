@@ -1,17 +1,9 @@
 <script setup lang="ts">
 import { computed, nextTick, ref, toRefs } from 'vue';
 import { DirectoryCreateDialog } from '@feature/directoryCreate';
-import { useDeviceDirectoryAccessRecovery } from '@feature/deviceDirectoryAccessRecovery';
 import { DocumentCreationDialog } from '@feature/documentCreate';
 import { EntryAddSheet } from '@feature/entryAdd';
-import { useGoogleDriveRecovery } from '@feature/googleDriveRecovery';
 import { MDExtendedFab, MDFabContainer } from '@shared/ui/Button';
-import { DeviceDirectoryAccessRecoveryState } from '@entity/deviceDirectoryAccess';
-import { useFSNodeStat } from '@entity/fsEntry';
-import {
-  getGoogleDriveAccessRecoveryError,
-  GoogleDriveAccessRecoveryState,
-} from '@entity/googleDriveAccess';
 import { MDPane } from '@shared/ui/Layout';
 import { MDAppBar } from '@shared/ui/AppBar';
 import type { AMDocumentId } from '@shared/lib/automerge/automergeTypes';
@@ -19,11 +11,9 @@ import { useStackNavigation } from '@page/routes';
 import { zodToVueProps } from '@shared/lib/zodToVueProps';
 import { zodQuery } from './model';
 import { FSNodeType, PathUtils } from '@shared/lib/virtualFileSystem';
-import { MDButton } from '@shared/ui/Button';
 import {
   RepositoryExplorerEntryManageButton,
   RepositoryExplorerWidget,
-  useRepositoryExplorerDirectoryState,
 } from '@widget/RepositoryExplorerWidget';
 import { useImportDocumentAction } from '@feature/importDocument';
 
@@ -36,41 +26,6 @@ defineSlots<{
 }>();
 
 const { repoPath: directoryPath } = toRefs(props);
-
-const { data: directoryStat, error: directoryStatError } = useFSNodeStat(directoryPath);
-const repositoryExplorerDirectoryState = useRepositoryExplorerDirectoryState(directoryPath);
-const {
-  documentIds,
-  errorMessage,
-  hideAutomergeFiles,
-  isLoading,
-  isRepositoryInitialized,
-  regularFileEntries,
-} = repositoryExplorerDirectoryState;
-const recoveryErrors = computed(() => [
-  ...repositoryExplorerDirectoryState.recoveryErrors.value,
-  directoryStatError.value,
-]);
-const {
-  grantAccess,
-  grantDisabled: isDeviceDirectoryAccessGrantDisabled,
-  isGrantLoading: isGrantDeviceDirectoryAccessLoading,
-  message: deviceDirectoryAccessMessage,
-  recoveryState: deviceDirectoryAccessRecovery,
-} = useDeviceDirectoryAccessRecovery({
-  errors: recoveryErrors,
-});
-const hasGoogleDriveRecovery = computed(
-  () =>
-    !!errorMessage.value &&
-    !!getGoogleDriveAccessRecoveryError(directoryPath.value, recoveryErrors.value),
-);
-const { isRetryAuthorizationLoading, onRetryAuthorization } = useGoogleDriveRecovery({
-  path: directoryPath,
-});
-const isRecoveryStateVisible = computed(
-  () => !!deviceDirectoryAccessRecovery.value || hasGoogleDriveRecovery.value,
-);
 
 const { open } = useStackNavigation();
 
@@ -131,33 +86,21 @@ const onClickDocument = async (documentId: AMDocumentId) => {
 
 const title = computed(() => PathUtils.basename(directoryPath.value) || 'root');
 
-const canEditDirectoryContents = computed(
-  () => directoryStat.value?.capabilities?.canEditChildren === true,
-);
-
 const onClickReturnHome = async () => {
   await open('home', {}, { additionalPanes: 0, replace: true });
 };
 
-const onGrantDeviceDirectoryAccess = async () => {
-  const result = await grantAccess();
-
-  if (result.status === 'granted') {
-    await open(
-      'repo',
-      {
-        repoPath: directoryPath.value,
-      },
-      {
-        replace: true,
-        target: 'current',
-      },
-    );
-  }
-};
-
-const onCancelDeviceDirectoryAccess = async () => {
-  await open('home', {}, { additionalPanes: 0, replace: true });
+const onRetryCurrentPath = async () => {
+  await open(
+    'repo',
+    {
+      repoPath: directoryPath.value,
+    },
+    {
+      replace: true,
+      target: 'current',
+    },
+  );
 };
 </script>
 
@@ -180,50 +123,13 @@ const onCancelDeviceDirectoryAccess = async () => {
 
     <RepositoryExplorerWidget
       :directory-path="directoryPath"
-      :document-ids="documentIds"
-      :error-message="errorMessage"
-      :hide-automerge-files="hideAutomergeFiles"
-      :is-loading="isLoading"
-      :is-recovery-state-visible="isRecoveryStateVisible"
-      :is-repository-initialized="isRepositoryInitialized"
-      :regular-file-entries="regularFileEntries"
       @click-path="onClickPath"
       @click-document="onClickDocument"
       @click-return-home="onClickReturnHome"
+      @retry-current-path="onRetryCurrentPath"
     >
-      <template #recovery>
-        <DeviceDirectoryAccessRecoveryState
-          v-if="deviceDirectoryAccessRecovery"
-          :errors="recoveryErrors"
-          :message="deviceDirectoryAccessMessage"
-        >
-          <template #actions>
-            <MDButton
-              label="Grant access"
-              :disabled="isDeviceDirectoryAccessGrantDisabled"
-              :loading="isGrantDeviceDirectoryAccessLoading"
-              @click="onGrantDeviceDirectoryAccess"
-            />
-
-            <MDButton label="Cancel" color="text" @click="onCancelDeviceDirectoryAccess" />
-          </template>
-        </DeviceDirectoryAccessRecoveryState>
-
-        <GoogleDriveAccessRecoveryState v-else :path="directoryPath" :errors="recoveryErrors">
-          <template #actions>
-            <MDButton
-              label="Retry authorization"
-              :loading="isRetryAuthorizationLoading"
-              @click="onRetryAuthorization"
-            />
-
-            <MDButton label="Return home" color="text" @click="onClickReturnHome" />
-          </template>
-        </GoogleDriveAccessRecoveryState>
-      </template>
-
-      <template v-if="canEditDirectoryContents" #after>
-        <MDFabContainer auto-hide>
+      <template #after="{ canEditDirectoryContents }">
+        <MDFabContainer v-if="canEditDirectoryContents" auto-hide>
           <MDExtendedFab label="Add" md-symbol="add" @click="onClickAdd" />
         </MDFabContainer>
       </template>
