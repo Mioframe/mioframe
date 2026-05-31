@@ -37,6 +37,16 @@ Use this workflow when the change touches any of these areas:
 7. Use component unit tests only for small render or wiring contracts that do not depend on browser semantics.
 8. Run the narrowest relevant UI verification, then follow the final verification rule from `AGENTS.md`.
 
+## Browser capability prompts
+
+Use this section for browser APIs that require a user gesture, browser permission prompt, account prompt, picker, clipboard access, file-system access, or other main-thread capability flow.
+
+- Treat browser prompts as user-action flows. Do not trigger them on startup, route load, background refresh, or render.
+- UI may perform the browser-only prompt action, but must not become the owner of provider state, persisted capabilities, credentials, mounts, or domain data.
+- The provider/service that detects missing access should surface a typed recovery state or domain error. UI should render recovery, run the prompt from an explicit user action, report the result, and let the owning provider/service retry or continue.
+- Keep prompt-related components stable and declarative. Extract request loading, result handling, and retry state into a feature/entity composable when more than simple event wiring is needed.
+- Do not pass capabilities such as `FileSystemHandle`, credentials, clients, callbacks, or service objects through ordinary display props. Use explicit recovery/action APIs.
+
 ## Rendered structure checklist
 
 For rendered panes, docs, markdown, settings, dialogs, and app bars, check before implementation is complete:
@@ -45,7 +55,8 @@ For rendered panes, docs, markdown, settings, dialogs, and app bars, check befor
 - slots preserve navigation and trailing actions;
 - browser APIs are guarded when unavailable or prototype-defined;
 - user-visible text and diagnostics use the correct format for their purpose;
-- Material typography and spacing reuse shared tokens or shared components before local CSS.
+- Material typography and spacing reuse shared tokens or shared components before local CSS;
+- new Vue components render one stable root DOM element with the component block class; parent components own conditional rendering.
 
 ## Choosing verification
 
