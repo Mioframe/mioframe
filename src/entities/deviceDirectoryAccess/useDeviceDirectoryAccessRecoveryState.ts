@@ -10,7 +10,6 @@ import {
 type DeviceDirectoryAccessRecoveryErrorLike = Error & {
   code: typeof WEB_FILE_SYSTEM_ACCESS_REQUIRED_CODE;
   mode: 'readwrite';
-  requestId: string;
   spaceName: string;
 };
 
@@ -25,8 +24,6 @@ const isDeviceDirectoryAccessRecoveryError = (
   error instanceof Error &&
   'code' in error &&
   error.code === WEB_FILE_SYSTEM_ACCESS_REQUIRED_CODE &&
-  'requestId' in error &&
-  typeof error.requestId === 'string' &&
   'spaceName' in error &&
   typeof error.spaceName === 'string' &&
   'mode' in error &&
@@ -72,7 +69,6 @@ export const useDeviceDirectoryAccessRecoveryState = ({
 
     return {
       mode: error.mode,
-      requestId: error.requestId,
       spaceName: error.spaceName,
     };
   });

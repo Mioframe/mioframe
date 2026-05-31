@@ -14,15 +14,19 @@ export const useDeviceDirectoryAccessRecovery = ({
 }) => {
   const { state } = useDeviceDirectoryAccessRecoveryState({ errors });
   const {
-    fileSystem: { getDeviceDirectoryAccessRequest, resolveDeviceDirectoryAccessRequest },
+    fileSystem: {
+      cancelDeviceDirectoryAccessRequest,
+      getDeviceDirectoryAccessRequest,
+      resolveDeviceDirectoryAccessRequest,
+    },
   } = useMainServiceClient();
 
   const isGrantLoading = ref(false);
   const message = ref<string>();
+  let pendingRequestLoadVersion = 0;
   const pendingRequest = ref<
     | {
-        id: string;
-        name: string;
+        spaceName: string;
         handle: FileSystemDirectoryHandle;
         mode: 'readwrite';
       }
@@ -30,21 +34,45 @@ export const useDeviceDirectoryAccessRecovery = ({
   >();
 
   watch(
-    () => state.value?.requestId,
-    async (requestId) => {
+    () => state.value,
+    async (nextState, _previousState, onCleanup) => {
+      const currentLoadVersion = ++pendingRequestLoadVersion;
+      onCleanup(() => {
+        pendingRequestLoadVersion += 1;
+      });
+
       pendingRequest.value = undefined;
       message.value = undefined;
 
-      if (!requestId) {
+      if (!nextState) {
         return;
       }
 
-      pendingRequest.value = await getDeviceDirectoryAccessRequest(requestId);
+      const request = await getDeviceDirectoryAccessRequest(nextState);
+
+      if (currentLoadVersion !== pendingRequestLoadVersion) {
+        return;
+      }
+
+      pendingRequest.value = request;
     },
     { immediate: true },
   );
 
   const grantDisabled = computed(() => !pendingRequest.value || isGrantLoading.value);
+  const recoveryMessage = computed(() => {
+    if (message.value) {
+      return message.value;
+    }
+
+    const currentState = state.value;
+
+    if (!currentState) {
+      return '';
+    }
+
+    return `Mioframe remembers "${currentState.spaceName}", but your browser requires permission before opening it.`;
+  });
 
   const grantAccess = async () => {
     const request = pendingRequest.value;
@@ -60,8 +88,9 @@ export const useDeviceDirectoryAccessRecovery = ({
         mode: request.mode,
       });
       const result = await resolveDeviceDirectoryAccessRequest({
-        id: request.id,
+        mode: request.mode,
         permissionState,
+        spaceName: request.spaceName,
       });
 
       if (result.status === 'granted') {
@@ -79,12 +108,28 @@ export const useDeviceDirectoryAccessRecovery = ({
     }
   };
 
+  const cancelAccess = async () => {
+    const currentState = state.value;
+
+    if (!currentState) {
+      return false;
+    }
+
+    await cancelDeviceDirectoryAccessRequest(currentState);
+    pendingRequest.value = undefined;
+    message.value = undefined;
+
+    return true;
+  };
+
   return {
+    cancelAccess,
     grantAccess,
     grantDisabled,
     isGrantLoading,
     message,
     pendingRequest,
     recoveryState: computed(() => toValue(state)),
+    recoveryMessage,
   };
 };

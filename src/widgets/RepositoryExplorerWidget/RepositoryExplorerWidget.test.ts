@@ -2,6 +2,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { computed, defineComponent, h, ref } from 'vue';
 import { mount } from '@vue/test-utils';
+import { GoogleAuthError, GoogleAuthErrorCode } from '@shared/service/google';
 import { WebFileSystemAccessRequiredError } from '@shared/lib/webFileSystemProvider';
 
 const directoryStatRef = ref<{
@@ -21,6 +22,7 @@ const isLoadingRef = ref(false);
 const isRepositoryInitializedRef = ref(false);
 const regularFileEntriesRef = ref<unknown[] | undefined>([]);
 const repositoryRecoveryErrorsRef = ref<unknown[]>([]);
+const cancelDeviceDirectoryAccessRequestMock = vi.fn();
 const getDeviceDirectoryAccessRequestMock = vi.fn();
 const resolveDeviceDirectoryAccessRequestMock = vi.fn();
 const requestTokenMock = vi.fn();
@@ -77,6 +79,7 @@ vi.mock('@entity/fsEntry', () => ({
 vi.mock('@shared/service', () => ({
   useMainServiceClient: () => ({
     fileSystem: {
+      cancelDeviceDirectoryAccessRequest: cancelDeviceDirectoryAccessRequestMock,
       getDeviceDirectoryAccessRequest: getDeviceDirectoryAccessRequestMock,
       resolveDeviceDirectoryAccessRequest: resolveDeviceDirectoryAccessRequestMock,
     },
@@ -268,6 +271,24 @@ const mountWidget = async () => {
   });
 };
 
+const mountGoogleDriveWidget = async () => {
+  const { default: RepositoryExplorerWidget } = await import('./RepositoryExplorerWidget.vue');
+
+  return mount(RepositoryExplorerWidget, {
+    props: {
+      directoryPath: '/Google Drive/work@example.com/My Drive',
+    },
+    slots: {
+      after: ({ canEditDirectoryContents }: { canEditDirectoryContents: boolean }) =>
+        h(
+          'div',
+          { 'data-testid': 'after-slot' },
+          canEditDirectoryContents ? 'editable' : 'readonly',
+        ),
+    },
+  });
+};
+
 describe('RepositoryExplorerWidget', () => {
   afterEach(() => {
     directoryStatRef.value = {
@@ -283,6 +304,7 @@ describe('RepositoryExplorerWidget', () => {
     isRepositoryInitializedRef.value = false;
     regularFileEntriesRef.value = [];
     repositoryRecoveryErrorsRef.value = [];
+    cancelDeviceDirectoryAccessRequestMock.mockReset();
     getDeviceDirectoryAccessRequestMock.mockReset();
     resolveDeviceDirectoryAccessRequestMock.mockReset();
     requestTokenMock.mockReset();
@@ -307,7 +329,6 @@ describe('RepositoryExplorerWidget', () => {
     const handle = createPermissionHandle('granted');
     repositoryRecoveryErrorsRef.value = [
       new WebFileSystemAccessRequiredError({
-        requestId: 'request-1',
         spaceName: 'Work',
         mode: 'readwrite',
       }),
@@ -324,7 +345,10 @@ describe('RepositoryExplorerWidget', () => {
     const wrapper = await mountWidget();
 
     await vi.waitFor(() => {
-      expect(getDeviceDirectoryAccessRequestMock).toHaveBeenCalledWith('request-1');
+      expect(getDeviceDirectoryAccessRequestMock).toHaveBeenCalledWith({
+        mode: 'readwrite',
+        spaceName: 'Work',
+      });
     });
 
     const grantButtonBeforeLoad = wrapper
@@ -339,8 +363,7 @@ describe('RepositoryExplorerWidget', () => {
     expect(handle.requestPermissionMock).not.toHaveBeenCalled();
 
     resolveRequest({
-      id: 'request-1',
-      name: 'Work',
+      spaceName: 'Work',
       handle,
       mode: 'readwrite',
     });
@@ -359,21 +382,18 @@ describe('RepositoryExplorerWidget', () => {
     const handle = createPermissionHandle('granted');
     repositoryRecoveryErrorsRef.value = [
       new WebFileSystemAccessRequiredError({
-        requestId: 'request-2',
         spaceName: 'Work',
         mode: 'readwrite',
       }),
     ];
     getDeviceDirectoryAccessRequestMock.mockResolvedValue({
-      id: 'request-2',
-      name: 'Work',
+      spaceName: 'Work',
       handle,
       mode: 'readwrite',
     });
     resolveDeviceDirectoryAccessRequestMock.mockResolvedValue({
       request: {
-        id: 'request-2',
-        name: 'Work',
+        spaceName: 'Work',
         handle,
         mode: 'readwrite',
       },
@@ -383,7 +403,10 @@ describe('RepositoryExplorerWidget', () => {
     const wrapper = await mountWidget();
 
     await vi.waitFor(() => {
-      expect(getDeviceDirectoryAccessRequestMock).toHaveBeenCalledWith('request-2');
+      expect(getDeviceDirectoryAccessRequestMock).toHaveBeenCalledWith({
+        mode: 'readwrite',
+        spaceName: 'Work',
+      });
     });
 
     const grantButton = wrapper
@@ -400,8 +423,9 @@ describe('RepositoryExplorerWidget', () => {
       mode: 'readwrite',
     });
     expect(resolveDeviceDirectoryAccessRequestMock).toHaveBeenCalledWith({
-      id: 'request-2',
+      mode: 'readwrite',
       permissionState: 'granted',
+      spaceName: 'Work',
     });
     expect(wrapper.emitted('retryCurrentPath')).toEqual([[]]);
   });
@@ -410,21 +434,18 @@ describe('RepositoryExplorerWidget', () => {
     const handle = createPermissionHandle('denied');
     repositoryRecoveryErrorsRef.value = [
       new WebFileSystemAccessRequiredError({
-        requestId: 'request-3',
         spaceName: 'Work',
         mode: 'readwrite',
       }),
     ];
     getDeviceDirectoryAccessRequestMock.mockResolvedValue({
-      id: 'request-3',
-      name: 'Work',
+      spaceName: 'Work',
       handle,
       mode: 'readwrite',
     });
     resolveDeviceDirectoryAccessRequestMock.mockResolvedValue({
       request: {
-        id: 'request-3',
-        name: 'Work',
+        spaceName: 'Work',
         handle,
         mode: 'readwrite',
       },
@@ -434,7 +455,10 @@ describe('RepositoryExplorerWidget', () => {
     const wrapper = await mountWidget();
 
     await vi.waitFor(() => {
-      expect(getDeviceDirectoryAccessRequestMock).toHaveBeenCalledWith('request-3');
+      expect(getDeviceDirectoryAccessRequestMock).toHaveBeenCalledWith({
+        mode: 'readwrite',
+        spaceName: 'Work',
+      });
     });
 
     const grantButton = wrapper
@@ -448,13 +472,61 @@ describe('RepositoryExplorerWidget', () => {
     await grantButton.trigger('click');
 
     expect(resolveDeviceDirectoryAccessRequestMock).toHaveBeenCalledWith({
-      id: 'request-3',
+      mode: 'readwrite',
       permissionState: 'denied',
+      spaceName: 'Work',
     });
     expect(wrapper.emitted('retryCurrentPath')).toBeUndefined();
     expect(wrapper.text()).toContain(
       'Mioframe still cannot open this space because your browser did not grant permission.',
     );
+  });
+
+  it('cancels the pending request before returning home', async () => {
+    repositoryRecoveryErrorsRef.value = [
+      new WebFileSystemAccessRequiredError({
+        spaceName: 'Work',
+        mode: 'readwrite',
+      }),
+    ];
+    getDeviceDirectoryAccessRequestMock.mockResolvedValue(undefined);
+    cancelDeviceDirectoryAccessRequestMock.mockResolvedValue(true);
+
+    const wrapper = await mountWidget();
+
+    const cancelButton = wrapper.findAll('button').find((button) => button.text() === 'Cancel');
+
+    if (!cancelButton) {
+      throw new Error('Expected Cancel button');
+    }
+
+    await cancelButton.trigger('click');
+
+    expect(cancelDeviceDirectoryAccessRequestMock).toHaveBeenCalledWith({
+      mode: 'readwrite',
+      spaceName: 'Work',
+    });
+    expect(wrapper.emitted('clickReturnHome')).toEqual([[]]);
+  });
+
+  it('does not show Google Drive recovery when the widget has no error message', async () => {
+    repositoryRecoveryErrorsRef.value = [
+      new GoogleAuthError({
+        code: GoogleAuthErrorCode.reauthRequired,
+      }),
+    ];
+
+    const wrapperWithoutMessage = await mountGoogleDriveWidget();
+
+    expect(wrapperWithoutMessage.text()).not.toContain('Retry authorization');
+  });
+
+  it('treats missing edit capabilities as readonly for the after slot', async () => {
+    directoryStatRef.value = {};
+
+    const wrapper = await mountWidget();
+
+    expect(wrapper.get('[data-testid="after-slot"]').text()).toBe('readonly');
   });
 });
 /* eslint-enable vue/one-component-per-file -- Re-enable after inline stubs. */

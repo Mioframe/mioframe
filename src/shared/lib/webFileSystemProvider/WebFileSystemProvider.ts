@@ -27,6 +27,8 @@ export interface WebFileSystemProviderAccessRequiredContext {
  * Optional hooks for service-owned access recovery.
  */
 export interface WebFileSystemProviderOptions {
+  /** Disables user-directory recovery semantics for handles that should behave like internal storage. */
+  bypassAccessRequiredRecovery?: boolean;
   /** Called when the provider needs browser permission before continuing. */
   onAccessRequired?: (
     context: WebFileSystemProviderAccessRequiredContext,
@@ -43,7 +45,7 @@ export const WebFileSystemProvider = (
   rootHandle: FileSystemDirectoryHandle,
   options: WebFileSystemProviderOptions = {},
 ): IFileSystemProvider => {
-  const { onAccessRequired } = options;
+  const { bypassAccessRequiredRecovery = false, onAccessRequired } = options;
   const queryWritePermission = async (handle: FileSystemFileHandle | FileSystemDirectoryHandle) => {
     return (
       (await handle.queryPermission?.({ mode: 'readwrite' })) ?? (await handle.queryPermission?.())
@@ -54,6 +56,10 @@ export const WebFileSystemProvider = (
     const permissionState = await queryWritePermission(rootHandle);
 
     if (permissionState !== 'granted') {
+      if (bypassAccessRequiredRecovery) {
+        throw new VfsError(FileSystemError.NoPermissions, 'Permission required');
+      }
+
       const accessRequiredDetails = onAccessRequired?.({
         handle: rootHandle,
         mode: 'readwrite',

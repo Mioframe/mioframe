@@ -50,10 +50,11 @@ const recoveryErrors = computed(() => [
   directoryStatError.value,
 ]);
 const {
+  cancelAccess,
   grantAccess,
   grantDisabled,
   isGrantLoading,
-  message: deviceDirectoryAccessMessage,
+  recoveryMessage: deviceDirectoryAccessMessage,
   recoveryState: deviceDirectoryAccessRecovery,
 } = useDeviceDirectoryAccessRecovery({
   errors: recoveryErrors,
@@ -89,6 +90,11 @@ const onGrantDeviceDirectoryAccess = async () => {
     emit('retryCurrentPath');
   }
 };
+
+const onCancelDeviceDirectoryAccess = async () => {
+  await cancelAccess();
+  emit('clickReturnHome');
+};
 </script>
 
 <template>
@@ -105,8 +111,8 @@ const onGrantDeviceDirectoryAccess = async () => {
       <DeviceDirectoryAccessRecoveryState
         v-if="deviceDirectoryAccessRecovery"
         class="repository-explorer-widget__recovery"
-        :errors="recoveryErrors"
         :message="deviceDirectoryAccessMessage"
+        :space-name="deviceDirectoryAccessRecovery.spaceName"
       >
         <template #actions>
           <MDButton
@@ -116,7 +122,7 @@ const onGrantDeviceDirectoryAccess = async () => {
             @click="onGrantDeviceDirectoryAccess"
           />
 
-          <MDButton label="Cancel" color="text" @click="onReturnHomeClick" />
+          <MDButton label="Cancel" color="text" @click="onCancelDeviceDirectoryAccess" />
         </template>
       </DeviceDirectoryAccessRecoveryState>
 

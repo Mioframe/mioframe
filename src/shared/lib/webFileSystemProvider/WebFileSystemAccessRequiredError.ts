@@ -16,8 +16,6 @@ export type WebFileSystemAccessMode = 'readwrite';
 export interface WebFileSystemAccessRequiredDetails {
   /** Permission mode needed for the blocked operation. */
   mode: WebFileSystemAccessMode;
-  /** Pending request identifier used to fetch the stored handle. */
-  requestId: string;
   /** Safe remembered-space name shown to the user. */
   spaceName: string;
 }
@@ -26,8 +24,6 @@ export interface WebFileSystemAccessRequiredDetails {
  * Serialized transport payload for a provider-owned access-required error.
  */
 export type SerializedWebFileSystemAccessRequiredError = {
-  /** Optional safe cause. */
-  cause?: unknown;
   /** Stable machine-readable code. */
   code: typeof WEB_FILE_SYSTEM_ACCESS_REQUIRED_CODE;
   /** Safe user-facing message. */
@@ -36,8 +32,6 @@ export type SerializedWebFileSystemAccessRequiredError = {
   mode: WebFileSystemAccessMode;
   /** Error class name. */
   name: string;
-  /** Runtime access request identifier. */
-  requestId: string;
   /** Remembered local-space name shown to the user. */
   spaceName: string;
   /** Optional stack trace. */
@@ -52,7 +46,6 @@ export class WebFileSystemAccessRequiredError extends DomainError<
 > {
   override name = 'WebFileSystemAccessRequiredError';
   override readonly code = WEB_FILE_SYSTEM_ACCESS_REQUIRED_CODE;
-  readonly requestId: string;
   readonly spaceName: string;
   readonly mode: WebFileSystemAccessMode;
 
@@ -65,7 +58,6 @@ export class WebFileSystemAccessRequiredError extends DomainError<
   ) {
     if ('name' in options) {
       super(options);
-      this.requestId = options.requestId;
       this.spaceName = options.spaceName;
       this.mode = options.mode;
       return;
@@ -74,7 +66,6 @@ export class WebFileSystemAccessRequiredError extends DomainError<
     super('Permission required to open this remembered local space', {
       code: WEB_FILE_SYSTEM_ACCESS_REQUIRED_CODE,
     });
-    this.requestId = options.requestId;
     this.spaceName = options.spaceName;
     this.mode = options.mode;
   }
@@ -85,12 +76,12 @@ export class WebFileSystemAccessRequiredError extends DomainError<
    */
   override toJSON(): SerializedWebFileSystemAccessRequiredError {
     return {
-      ...super.toJSON(),
       code: this.code,
+      message: this.message,
       mode: this.mode,
       name: this.name,
-      requestId: this.requestId,
       spaceName: this.spaceName,
+      stack: this.stack,
     };
   }
 }

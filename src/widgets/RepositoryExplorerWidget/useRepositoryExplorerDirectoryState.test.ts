@@ -180,7 +180,6 @@ describe('useRepositoryExplorerDirectoryState', () => {
 
   it('keeps provider access errors available for higher-level recovery flows', async () => {
     const accessError = new WebFileSystemAccessRequiredError({
-      requestId: 'request-1',
       spaceName: 'Work',
       mode: 'readwrite',
     });

@@ -20,7 +20,6 @@ import { isEqual, sortBy } from 'es-toolkit';
 import { defineObservableQuery } from '@shared/lib/useObservableQuery';
 import { defineCacheObservable } from '@shared/lib/defineCacheObservable';
 import { fromObservable } from '@shared/lib/useObservable';
-import { generateId } from '@shared/lib/generateId';
 import {
   type PersistedDeviceDirectoryRecord,
   useFileSystemDirectoryHandleService,
@@ -38,10 +37,15 @@ export { DEVICE_FILES_ROOT_NAME };
 export type { DeviceFileDisplayRecord };
 
 type DeviceDirectoryAccessRequest = {
-  id: string;
-  name: string;
+  spaceName: string;
   handle: FileSystemDirectoryHandle;
   mode: WebFileSystemAccessMode;
+};
+
+type DeviceDirectoryAccessRequestKey = Pick<DeviceDirectoryAccessRequest, 'spaceName' | 'mode'>;
+
+type DeviceDirectoryAccessRequestResult = DeviceDirectoryAccessRequestKey & {
+  handle: FileSystemDirectoryHandle;
 };
 
 const didPersistedDeviceDirectoryRecordsChange = (
@@ -61,60 +65,35 @@ const didPersistedDeviceDirectoryRecordsChange = (
 const setupFileSystemService = () => {
   const vfs = new VirtualFileSystem();
   const pendingDeviceDirectoryAccessRequests = new Map<string, DeviceDirectoryAccessRequest>();
-  const pendingDeviceDirectoryAccessRequestIdsByKey = new Map<string, string>();
-  const getPendingRequestKey = (name: string, mode: WebFileSystemAccessMode) => `${name}:${mode}`;
+  const getPendingRequestKey = ({ mode, spaceName }: DeviceDirectoryAccessRequestKey) =>
+    `${spaceName}:${mode}`;
   const upsertPendingDeviceDirectoryAccessRequest = ({
     handle,
     mode,
-    name,
-  }: Omit<DeviceDirectoryAccessRequest, 'id'>) => {
-    const key = getPendingRequestKey(name, mode);
-    const existingRequestId = pendingDeviceDirectoryAccessRequestIdsByKey.get(key);
-
-    if (existingRequestId) {
-      const existingRequest = pendingDeviceDirectoryAccessRequests.get(existingRequestId);
-
-      if (existingRequest) {
-        const nextRequest = {
-          ...existingRequest,
-          handle,
-        };
-
-        pendingDeviceDirectoryAccessRequests.set(existingRequestId, nextRequest);
-        return nextRequest;
-      }
-    }
+    spaceName,
+  }: DeviceDirectoryAccessRequestResult) => {
+    const key = getPendingRequestKey({
+      mode,
+      spaceName,
+    });
 
     const request = {
-      id: generateId('deviceDirectoryAccessRequest'),
-      name,
+      spaceName,
       handle,
       mode,
     } satisfies DeviceDirectoryAccessRequest;
 
-    pendingDeviceDirectoryAccessRequests.set(request.id, request);
-    pendingDeviceDirectoryAccessRequestIdsByKey.set(key, request.id);
+    pendingDeviceDirectoryAccessRequests.set(key, request);
 
     return request;
   };
-  const deletePendingDeviceDirectoryAccessRequest = (id: string) => {
-    const request = pendingDeviceDirectoryAccessRequests.get(id);
-
-    if (!request) {
-      return false;
-    }
-
-    pendingDeviceDirectoryAccessRequests.delete(id);
-    pendingDeviceDirectoryAccessRequestIdsByKey.delete(
-      getPendingRequestKey(request.name, request.mode),
-    );
-
-    return true;
+  const deletePendingDeviceDirectoryAccessRequest = (key: DeviceDirectoryAccessRequestKey) => {
+    return pendingDeviceDirectoryAccessRequests.delete(getPendingRequestKey(key));
   };
-  const clearPendingDeviceDirectoryAccessRequestsForName = (name: string) => {
-    for (const [id, request] of pendingDeviceDirectoryAccessRequests.entries()) {
-      if (request.name === name) {
-        deletePendingDeviceDirectoryAccessRequest(id);
+  const clearPendingDeviceDirectoryAccessRequestsForName = (spaceName: string) => {
+    for (const [key, request] of pendingDeviceDirectoryAccessRequests.entries()) {
+      if (request.spaceName === spaceName) {
+        pendingDeviceDirectoryAccessRequests.delete(key);
       }
     }
   };
@@ -124,19 +103,20 @@ const setupFileSystemService = () => {
         ? WebFileSystemProvider(record.handle, {
             onAccessRequired: ({ handle, mode }) => {
               const request = upsertPendingDeviceDirectoryAccessRequest({
-                name: record.name,
+                spaceName: record.name,
                 handle,
                 mode,
               });
 
               return {
                 mode: request.mode,
-                requestId: request.id,
-                spaceName: request.name,
+                spaceName: request.spaceName,
               };
             },
           })
-        : WebFileSystemProvider(record.handle),
+        : WebFileSystemProvider(record.handle, {
+            bypassAccessRequiredRecovery: true,
+          }),
   });
   const { getRecordList, updateRecordList } = useFileSystemDirectoryHandleService();
   const activeDeviceFiles$ = new BehaviorSubject<DeviceFileDisplayRecord[]>([]);
@@ -323,7 +303,7 @@ const setupFileSystemService = () => {
 
   const addDeviceDirectory = async (
     handle: FileSystemDirectoryHandle,
-  ): Promise<MountedDeviceFileRecord> => {
+  ): Promise<{ name: string }> => {
     await deviceFilesReady;
 
     const records = await getRecordList();
@@ -351,7 +331,9 @@ const setupFileSystemService = () => {
     deviceFileSystemProvider.upsertRecord(nextRecord);
     syncActiveDeviceFiles();
 
-    return nextRecord;
+    return {
+      name: nextRecord.name,
+    };
   };
 
   const removeDeviceDirectory = async (name: string): Promise<void> => {
@@ -374,17 +356,33 @@ const setupFileSystemService = () => {
     syncActiveDeviceFiles();
   };
 
-  const getDeviceDirectoryAccessRequest = (id: string) =>
-    Promise.resolve(pendingDeviceDirectoryAccessRequests.get(id));
+  const getDeviceDirectoryAccessRequest = ({
+    mode,
+    spaceName,
+  }: DeviceDirectoryAccessRequestKey): Promise<DeviceDirectoryAccessRequestResult | undefined> =>
+    Promise.resolve(
+      pendingDeviceDirectoryAccessRequests.get(
+        getPendingRequestKey({
+          mode,
+          spaceName,
+        }),
+      ),
+    );
 
   const resolveDeviceDirectoryAccessRequest = ({
-    id,
+    mode,
     permissionState,
+    spaceName,
   }: {
-    id: string;
+    mode: WebFileSystemAccessMode;
     permissionState: PermissionState;
+    spaceName: string;
   }) => {
-    const request = pendingDeviceDirectoryAccessRequests.get(id);
+    const key = {
+      mode,
+      spaceName,
+    } satisfies DeviceDirectoryAccessRequestKey;
+    const request = pendingDeviceDirectoryAccessRequests.get(getPendingRequestKey(key));
 
     if (!request) {
       return Promise.resolve({
@@ -394,7 +392,7 @@ const setupFileSystemService = () => {
     }
 
     if (permissionState === 'granted') {
-      deletePendingDeviceDirectoryAccessRequest(id);
+      deletePendingDeviceDirectoryAccessRequest(key);
 
       return Promise.resolve({
         request,
@@ -407,6 +405,9 @@ const setupFileSystemService = () => {
       status: permissionState === 'denied' ? ('denied' as const) : ('cancelled' as const),
     });
   };
+
+  const cancelDeviceDirectoryAccessRequest = (key: DeviceDirectoryAccessRequestKey) =>
+    Promise.resolve(deletePendingDeviceDirectoryAccessRequest(key));
 
   return {
     vfs,
@@ -425,6 +426,7 @@ const setupFileSystemService = () => {
     removeDeviceDirectory,
     getDeviceDirectoryAccessRequest,
     resolveDeviceDirectoryAccessRequest,
+    cancelDeviceDirectoryAccessRequest,
     deviceFiles: fromObservable(activeDeviceFiles$),
   };
 };
