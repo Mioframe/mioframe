@@ -39,13 +39,13 @@ Use this workflow when the change touches any of these areas:
 
 ## Browser capability prompts
 
-Use this section for browser APIs that require a user gesture, browser permission prompt, account prompt, picker, clipboard access, file-system access, or other main-thread capability flow.
+Use this section for browser APIs that require a user gesture, browser permission prompt, account prompt, picker, clipboard access, file-system access, or another main-thread capability flow.
 
 - Treat browser prompts as user-action flows. Do not trigger them on startup, route load, background refresh, or render.
 - UI may perform the browser-only prompt action, but must not become the owner of provider state, persisted capabilities, credentials, mounts, or domain data.
 - The provider/service that detects missing access should surface a typed recovery state or domain error. UI should render recovery, run the prompt from an explicit user action, report the result, and let the owning provider/service retry or continue.
 - Keep prompt-related components stable and declarative. Extract request loading, result handling, and retry state into a feature/entity composable when more than simple event wiring is needed.
-- Do not pass capabilities such as `FileSystemHandle`, credentials, clients, callbacks, or service objects through ordinary display props. Use explicit recovery/action APIs.
+- Do not pass capabilities, credentials, clients, callbacks, or service objects through ordinary display props. Use explicit recovery/action APIs.
 
 ## Rendered structure checklist
 
