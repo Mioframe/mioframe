@@ -32,7 +32,12 @@ playwright-report/
 test-results/
 .sisyphus/
 .opencode/
-.claude/
+# Ignore local Claude state but allow project-level compatibility files.
+.claude/*
+!.claude/skills
+!.claude/README.md
+!.claude/agents
+.claude/settings.local.json
 tsconfig.tsbuildinfo
 .eslintcache
 .stryker-tmp/

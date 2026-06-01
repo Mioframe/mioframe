@@ -211,3 +211,11 @@ reason:
 - Add a child `AGENTS.md` only when a directory has local invariants, blast-radius rules, or reproducible verification guidance that the parent cannot express cleanly.
 - Child `AGENTS.md` files should refine the parent rather than repeat it, and their `Contains` sections should describe stable responsibilities instead of the current file list.
 - Update the `AGENTS.md` tree together with ownership, public API, dependency, or verification-boundary changes.
+
+## Agent environment compatibility
+
+`AGENTS.md` files and `.agents/skills/*/SKILL.md` are the canonical source of truth for agent instructions and project skills. Claude Code reads `CLAUDE.md` and `.claude/skills` instead; these are managed compatibility files generated from the canonical sources.
+
+- Do not duplicate project rules into `CLAUDE.md` files. Edit `AGENTS.md` or a skill `SKILL.md` instead.
+- Run `pnpm verify --fix` after adding, moving, or removing an `AGENTS.md` file or a skill to regenerate the compatibility layer.
+- `pnpm verify` fails when the compatibility layer is missing or stale.

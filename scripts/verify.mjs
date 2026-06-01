@@ -17,6 +17,7 @@ const isCi = process.env.CI === 'true' || process.env.GITHUB_ACTIONS === 'true';
 const shouldApplyFixers = isFixMode || isFixOnlyMode;
 const cliFilesOverride = isHelpMode ? null : getCliFilesOverride(cliArgs);
 const VERIFY_LABELS = [
+  'agent-environment',
   'format',
   'oxlint',
   'eslint',
@@ -1063,6 +1064,13 @@ function buildCommands(changedFiles) {
   const mutationScope = getMutationScope(changedFiles);
   const commands = [];
   const eslintConcurrency = resolveEslintConcurrency();
+
+  commands.push({
+    kind: 'run',
+    label: 'agent-environment',
+    command: 'node',
+    args: ['scripts/agentEnvironment.mjs', shouldApplyFixers ? '--fix' : '--check'],
+  });
 
   if (formattableFiles.length > 0) {
     commands.push({
