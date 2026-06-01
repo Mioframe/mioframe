@@ -4,16 +4,21 @@ import { FSNodeType } from '../virtualFileSystem';
 import { WebFileSystemProvider } from './WebFileSystemProvider';
 import { WEB_FILE_SYSTEM_ACCESS_REQUIRED_CODE, WebFileSystemAccessRequiredError } from '.';
 
-const createRootHandle = (permissionState: PermissionState = 'granted') => {
+const createRootHandle = (
+  permissionState: PermissionState = 'granted',
+  readPermissionState?: PermissionState,
+) => {
   const fileHandle = createFileHandleMock({
     fileContent: ['hello'],
     name: 'note.txt',
     permissionState,
+    ...(readPermissionState !== undefined ? { readPermissionState } : {}),
   });
   const rootHandle = createDirectoryHandleMock({
     entries: [fileHandle],
     name: '',
     permissionState,
+    ...(readPermissionState !== undefined ? { readPermissionState } : {}),
   });
 
   return {
@@ -48,7 +53,7 @@ describe('WebFileSystemProvider', () => {
     });
   });
 
-  it('throws a typed access-required DomainError when read permission is missing', async () => {
+  it('throws a typed access-required DomainError with mode:read when read permission is missing', async () => {
     const { rootHandle } = createRootHandle('prompt');
     const provider = WebFileSystemProvider(rootHandle, {
       permissionPolicy: 'userSelectedDirectory',
@@ -62,14 +67,36 @@ describe('WebFileSystemProvider', () => {
 
     await expect(provider.readDirectory('/')).rejects.toMatchObject({
       code: WEB_FILE_SYSTEM_ACCESS_REQUIRED_CODE,
-      mode: 'readwrite',
+      mode: 'read',
       name: 'WebFileSystemAccessRequiredError',
       spaceName: 'Work',
     });
     expect(rootHandle.requestPermissionMock).not.toHaveBeenCalled();
   });
 
-  it('throws the same typed access-required DomainError when permission is denied', async () => {
+  it('throws a typed access-required DomainError with mode:readwrite for write operations when permission is denied', async () => {
+    const { rootHandle } = createRootHandle('denied');
+    const provider = WebFileSystemProvider(rootHandle, {
+      permissionPolicy: 'userSelectedDirectory',
+      onAccessRequired: ({ mode }) => {
+        return {
+          spaceName: 'Work',
+          mode,
+        };
+      },
+    });
+
+    await expect(
+      provider.writeFile('/note.txt', 'x', { create: true, overwrite: true }),
+    ).rejects.toMatchObject({
+      code: WEB_FILE_SYSTEM_ACCESS_REQUIRED_CODE,
+      mode: 'readwrite',
+      name: 'WebFileSystemAccessRequiredError',
+      spaceName: 'Work',
+    });
+  });
+
+  it('throws a typed access-required DomainError with mode:read when stat permission is denied', async () => {
     const { rootHandle } = createRootHandle('denied');
     const provider = WebFileSystemProvider(rootHandle, {
       permissionPolicy: 'userSelectedDirectory',
@@ -83,7 +110,7 @@ describe('WebFileSystemProvider', () => {
 
     await expect(provider.stat('/folder')).rejects.toMatchObject({
       code: WEB_FILE_SYSTEM_ACCESS_REQUIRED_CODE,
-      mode: 'readwrite',
+      mode: 'read',
       name: 'WebFileSystemAccessRequiredError',
       spaceName: 'Work',
     });
@@ -142,7 +169,7 @@ describe('WebFileSystemProvider', () => {
     });
   });
 
-  it('falls back to generic queryPermission when the readwrite descriptor is unsupported', async () => {
+  it('falls back to generic queryPermission when the read descriptor is unsupported', async () => {
     const { rootHandle } = createRootHandle('granted');
     const queryPermissionMock = vi
       .fn<
@@ -174,7 +201,7 @@ describe('WebFileSystemProvider', () => {
       ],
     ]);
     expect(queryPermissionMock).toHaveBeenNthCalledWith(1, {
-      mode: 'readwrite',
+      mode: 'read',
     });
     expect(queryPermissionMock).toHaveBeenNthCalledWith(2);
   });
@@ -269,7 +296,7 @@ describe('WebFileSystemProvider', () => {
     expect(thrownError.toJSON()).toMatchObject({
       code: WEB_FILE_SYSTEM_ACCESS_REQUIRED_CODE,
       message: 'Permission required to open this remembered local space',
-      mode: 'readwrite',
+      mode: 'read',
       spaceName: 'Work',
     });
     expect(thrownError.toJSON()).not.toHaveProperty('cause');
@@ -361,6 +388,37 @@ describe('WebFileSystemProvider', () => {
       code: 'ENOENT',
       message: 'Source not found: /missing.txt',
       name: 'VfsError',
+    });
+  });
+
+  it('allows read operations when read is granted but readwrite is prompt', async () => {
+    const { rootHandle } = createRootHandle('prompt', 'granted');
+    const provider = WebFileSystemProvider(rootHandle, {
+      permissionPolicy: 'userSelectedDirectory',
+      onAccessRequired: ({ mode }) => ({ spaceName: 'Work', mode }),
+    });
+
+    await expect(provider.readDirectory('/')).resolves.toBeInstanceOf(Array);
+    await expect(provider.readFile('/note.txt')).resolves.toBeInstanceOf(File);
+    await expect(provider.stat('/note.txt')).resolves.toMatchObject({ type: FSNodeType.File });
+  });
+
+  it('throws mode:readwrite access error for write operations when readwrite is prompt but read is granted', async () => {
+    const { rootHandle } = createRootHandle('prompt', 'granted');
+    const provider = WebFileSystemProvider(rootHandle, {
+      permissionPolicy: 'userSelectedDirectory',
+      onAccessRequired: ({ mode }) => ({ spaceName: 'Work', mode }),
+    });
+
+    await expect(
+      provider.writeFile('/note.txt', 'x', { create: true, overwrite: true }),
+    ).rejects.toMatchObject({
+      code: WEB_FILE_SYSTEM_ACCESS_REQUIRED_CODE,
+      mode: 'readwrite',
+    });
+    await expect(provider.createDirectory('/new')).rejects.toMatchObject({
+      code: WEB_FILE_SYSTEM_ACCESS_REQUIRED_CODE,
+      mode: 'readwrite',
     });
   });
 

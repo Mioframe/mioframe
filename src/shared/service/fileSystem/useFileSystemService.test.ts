@@ -96,7 +96,7 @@ const createDiagnosticProvider = ({
 const isAccessErrorWithRecoveryKey = (
   error: unknown,
 ): error is Error & {
-  mode: 'readwrite';
+  mode: 'read' | 'readwrite';
   spaceName: string;
   toJSON: () => Record<string, unknown>;
 } =>
@@ -104,7 +104,7 @@ const isAccessErrorWithRecoveryKey = (
   'spaceName' in error &&
   typeof error.spaceName === 'string' &&
   'mode' in error &&
-  error.mode === 'readwrite';
+  (error.mode === 'read' || error.mode === 'readwrite');
 
 describe('useFileSystemService', () => {
   beforeEach(() => {
@@ -579,7 +579,7 @@ describe('useFileSystemService', () => {
     expect(error).toBeInstanceOf(Error);
     expect(error).toMatchObject({
       code: WEB_FILE_SYSTEM_ACCESS_REQUIRED_CODE,
-      mode: 'readwrite',
+      mode: 'read',
       name: 'WebFileSystemAccessRequiredError',
       spaceName: 'Work',
     });
@@ -593,7 +593,7 @@ describe('useFileSystemService', () => {
     expect(serialized).toMatchObject({
       code: WEB_FILE_SYSTEM_ACCESS_REQUIRED_CODE,
       message: 'Permission required to open this remembered local space',
-      mode: 'readwrite',
+      mode: 'read',
       spaceName: 'Work',
     });
     expect(serialized).not.toHaveProperty('cause');
@@ -605,7 +605,7 @@ describe('useFileSystemService', () => {
         spaceName: error.spaceName,
       }),
     ).resolves.toEqual({
-      mode: 'readwrite',
+      mode: 'read',
       spaceName: 'Work',
       handle: promptHandle,
     });
@@ -637,7 +637,7 @@ describe('useFileSystemService', () => {
     expect(error).toBeInstanceOf(Error);
     expect(error).toMatchObject({
       code: WEB_FILE_SYSTEM_ACCESS_REQUIRED_CODE,
-      mode: 'readwrite',
+      mode: 'read',
       name: 'WebFileSystemAccessRequiredError',
       spaceName: 'Work',
     });
@@ -654,7 +654,7 @@ describe('useFileSystemService', () => {
       }),
     ).resolves.toEqual({
       request: {
-        mode: 'readwrite',
+        mode: 'read',
         spaceName: 'Work',
         handle: deniedHandle,
       },
@@ -667,7 +667,7 @@ describe('useFileSystemService', () => {
         spaceName: error.spaceName,
       }),
     ).resolves.toEqual({
-      mode: 'readwrite',
+      mode: 'read',
       spaceName: 'Work',
       handle: deniedHandle,
     });
@@ -713,7 +713,7 @@ describe('useFileSystemService', () => {
       }),
     ).resolves.toEqual({
       request: {
-        mode: 'readwrite',
+        mode: 'read',
         spaceName: 'Work',
         handle: promptHandle,
       },
@@ -726,7 +726,7 @@ describe('useFileSystemService', () => {
         spaceName: error.spaceName,
       }),
     ).resolves.toEqual({
-      mode: 'readwrite',
+      mode: 'read',
       spaceName: 'Work',
       handle: promptHandle,
     });
@@ -779,7 +779,7 @@ describe('useFileSystemService', () => {
         spaceName: firstError.spaceName,
       }),
     ).resolves.toEqual({
-      mode: 'readwrite',
+      mode: 'read',
       spaceName: 'Work',
       handle: secondHandle,
     });
@@ -816,7 +816,7 @@ describe('useFileSystemService', () => {
       }),
     ).resolves.toEqual({
       request: {
-        mode: 'readwrite',
+        mode: 'read',
         spaceName: 'Work',
         handle: grantedHandle,
       },
@@ -842,6 +842,43 @@ describe('useFileSystemService', () => {
         spaceName: secondError.spaceName,
       }),
     ).resolves.toBeUndefined();
+  });
+
+  it('emits a VFS invalidation event for the space path after permission is granted', async () => {
+    const promptHandle = createDirectoryHandleMock({
+      name: 'Work',
+      permissionState: 'prompt',
+      sameEntryKey: 'work',
+    });
+    getRecordListMock.mockResolvedValue([{ name: 'Work', handle: promptHandle }]);
+
+    const service = await createService();
+
+    await vi.waitFor(async () => {
+      await expect(service.deviceFiles.fetch()).resolves.toEqual([
+        { canDisconnect: true, name: 'Work' },
+      ]);
+    });
+
+    const error = await service.directoryContent.fetch({ path: '/Device Files/Work' });
+
+    if (!isAccessErrorWithRecoveryKey(error)) {
+      throw new Error('Expected access error');
+    }
+
+    const watchedEvents: string[] = [];
+    const unwatch = service.vfs.watch('/Device Files/Work', () => {
+      watchedEvents.push('invalidated');
+    });
+
+    await service.resolveDeviceDirectoryAccessRequest({
+      mode: error.mode,
+      permissionState: 'granted',
+      spaceName: error.spaceName,
+    });
+
+    unwatch();
+    expect(watchedEvents).toEqual(['invalidated']);
   });
 
   it('cancels pending requests explicitly and recreates them on a later access attempt', async () => {
@@ -883,16 +920,16 @@ describe('useFileSystemService', () => {
     const nextError = await service.directoryContent.fetch({ path: '/Device Files/Work' });
 
     expect(nextError).toMatchObject({
-      mode: 'readwrite',
+      mode: 'read',
       spaceName: 'Work',
     });
     await expect(
       service.getDeviceDirectoryAccessRequest({
-        mode: 'readwrite',
+        mode: 'read',
         spaceName: 'Work',
       }),
     ).resolves.toEqual({
-      mode: 'readwrite',
+      mode: 'read',
       spaceName: 'Work',
       handle: promptHandle,
     });
@@ -935,17 +972,17 @@ describe('useFileSystemService', () => {
 
     await expect(
       service.getDeviceDirectoryAccessRequest({
-        mode: 'readwrite',
+        mode: 'read',
         spaceName: 'Work',
       }),
     ).resolves.toBeUndefined();
     await expect(
       service.getDeviceDirectoryAccessRequest({
-        mode: 'readwrite',
+        mode: 'read',
         spaceName: 'Archive',
       }),
     ).resolves.toEqual({
-      mode: 'readwrite',
+      mode: 'read',
       spaceName: 'Archive',
       handle: archiveHandle,
     });

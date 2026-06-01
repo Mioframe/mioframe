@@ -394,6 +394,7 @@ const setupFileSystemService = () => {
 
     if (permissionState === 'granted') {
       deletePendingDeviceDirectoryAccessRequest(key);
+      vfs.invalidatePath(PathUtils.join(deviceFilesPath, spaceName));
 
       return Promise.resolve({
         request,

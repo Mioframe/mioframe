@@ -1,5 +1,6 @@
 import { useDeviceDirectoryAccessRecoveryState } from '@entity/deviceDirectoryAccess';
 import { useMainServiceClient } from '@shared/service';
+import type { WebFileSystemAccessMode } from '@shared/lib/webFileSystemProvider';
 import { computed, ref, toValue, watch, type MaybeRefOrGetter } from 'vue';
 
 /**
@@ -28,7 +29,7 @@ export const useDeviceDirectoryAccessRecovery = ({
     | {
         spaceName: string;
         handle: FileSystemDirectoryHandle;
-        mode: 'readwrite';
+        mode: WebFileSystemAccessMode;
       }
     | undefined
   >();

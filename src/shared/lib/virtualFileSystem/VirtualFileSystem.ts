@@ -76,6 +76,19 @@ export class VirtualFileSystem {
     this.activityTracker.acknowledgeError();
   }
 
+  /**
+   * Emits a synthetic UPDATE event for a path so that active watchers refetch its state.
+   * Use this to reactively invalidate cached reads after an out-of-band change such as a
+   * browser permission grant that is not captured by a normal VFS mutation.
+   * @param path - Absolute VFS path whose watchers should be notified.
+   */
+  public invalidatePath(path: string): void {
+    this.emitVfsEvent({
+      type: VfsEventType.UPDATE,
+      path: PathUtils.normalize(path),
+    });
+  }
+
   private emitVfsEvent(event: Omit<VfsEvent, 'source'>) {
     this.events.emit({
       source: VfsEventSource.VFS,

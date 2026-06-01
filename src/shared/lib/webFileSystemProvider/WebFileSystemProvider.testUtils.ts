@@ -3,6 +3,11 @@ import { vi } from 'vitest';
 type BaseHandleOptions = {
   name: string;
   permissionState?: PermissionState;
+  /**
+   * Overrides the permission state returned for `queryPermission({ mode: 'read' })`.
+   * When omitted, the base `permissionState` is used for all modes.
+   */
+  readPermissionState?: PermissionState;
   sameEntryKey?: string;
   withQueryPermission?: boolean;
 };
@@ -56,9 +61,19 @@ type DirectoryHandleOptions = BaseHandleOptions & {
   entries?: Array<FileSystemFileHandle | FileSystemDirectoryHandle>;
 };
 
-const createPermissionMocks = (permissionState: PermissionState, withQueryPermission: boolean) => {
+const createPermissionMocks = (
+  permissionState: PermissionState,
+  withQueryPermission: boolean,
+  readPermissionState?: PermissionState,
+) => {
   const queryPermissionMock = withQueryPermission
-    ? vi.fn(() => Promise.resolve(permissionState))
+    ? vi.fn((descriptor?: FileSystemHandlePermissionDescriptor) => {
+        if (descriptor?.mode === 'read' && readPermissionState !== undefined) {
+          return Promise.resolve(readPermissionState);
+        }
+
+        return Promise.resolve(permissionState);
+      })
     : undefined;
   const requestPermissionMock = vi.fn(() => Promise.resolve(permissionState));
 
@@ -78,12 +93,14 @@ export const createFileHandleMock = ({
   lastModified = 123,
   name,
   permissionState = 'granted',
+  readPermissionState,
   sameEntryKey = name,
   withQueryPermission = true,
 }: FileHandleOptions): MockFileSystemFileHandle => {
   const { queryPermissionMock, requestPermissionMock } = createPermissionMocks(
     permissionState,
     withQueryPermission,
+    readPermissionState,
   );
   const writtenContent = [...fileContent];
   const writable = {
@@ -130,12 +147,14 @@ export const createDirectoryHandleMock = ({
   entries = [],
   name,
   permissionState = 'granted',
+  readPermissionState,
   sameEntryKey = name,
   withQueryPermission = true,
 }: DirectoryHandleOptions): MockFileSystemDirectoryHandle => {
   const { queryPermissionMock, requestPermissionMock } = createPermissionMocks(
     permissionState,
     withQueryPermission,
+    readPermissionState,
   );
   const isSameEntryMock = vi.fn<
     (other: { __sameEntryKey?: string; name?: string }) => Promise<boolean>

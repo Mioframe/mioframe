@@ -2,14 +2,18 @@ import { computed, toValue, type MaybeRefOrGetter } from 'vue';
 import {
   WEB_FILE_SYSTEM_ACCESS_REQUIRED_CODE,
   WebFileSystemAccessRequiredError,
+  type WebFileSystemAccessMode,
 } from '@shared/lib/webFileSystemProvider';
+
+const isWebFileSystemAccessMode = (value: unknown): value is WebFileSystemAccessMode =>
+  value === 'read' || value === 'readwrite';
 
 /**
  * Transport-safe access-required error shape used by the repo path recovery UI.
  */
 type DeviceDirectoryAccessRecoveryErrorLike = Error & {
   code: typeof WEB_FILE_SYSTEM_ACCESS_REQUIRED_CODE;
-  mode: 'readwrite';
+  mode: WebFileSystemAccessMode;
   spaceName: string;
 };
 
@@ -27,7 +31,7 @@ const isDeviceDirectoryAccessRecoveryError = (
   'spaceName' in error &&
   typeof error.spaceName === 'string' &&
   'mode' in error &&
-  error.mode === 'readwrite';
+  isWebFileSystemAccessMode(error.mode);
 
 /**
  * Finds the first access-required error emitted for a remembered local space.

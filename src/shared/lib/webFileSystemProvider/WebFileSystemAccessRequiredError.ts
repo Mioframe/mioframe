@@ -7,8 +7,10 @@ export const WEB_FILE_SYSTEM_ACCESS_REQUIRED_CODE = 'web-file-system-access-requ
 
 /**
  * Permission mode required to continue a blocked local-space operation.
+ * - 'read' — needed for stat, readFile, and readDirectory operations.
+ * - 'readwrite' — needed for writeFile, createDirectory, delete, and move operations.
  */
-export type WebFileSystemAccessMode = 'readwrite';
+export type WebFileSystemAccessMode = 'read' | 'readwrite';
 
 /**
  * Safe metadata needed to recover browser permission for a remembered local directory.

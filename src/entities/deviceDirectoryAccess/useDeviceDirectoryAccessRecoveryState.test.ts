@@ -7,7 +7,7 @@ import {
 } from './useDeviceDirectoryAccessRecoveryState';
 
 describe('useDeviceDirectoryAccessRecoveryState', () => {
-  it('derives the stable access key from provider-owned access errors', () => {
+  it('derives the stable access key from provider-owned readwrite access errors', () => {
     const error = new WebFileSystemAccessRequiredError({
       spaceName: 'Work',
       mode: 'readwrite',
@@ -23,6 +23,25 @@ describe('useDeviceDirectoryAccessRecoveryState', () => {
     expect(state.value).toEqual({
       mode: 'readwrite',
       spaceName: 'Work',
+    });
+  });
+
+  it('derives the stable access key from provider-owned read access errors', () => {
+    const error = new WebFileSystemAccessRequiredError({
+      spaceName: 'Archive',
+      mode: 'read',
+    });
+    const errorList = [error];
+    const errors = ref<unknown[]>(errorList);
+
+    const { state } = useDeviceDirectoryAccessRecoveryState({
+      errors,
+    });
+
+    expect(getDeviceDirectoryAccessRecoveryError(errorList)).toBe(error);
+    expect(state.value).toEqual({
+      mode: 'read',
+      spaceName: 'Archive',
     });
   });
 
@@ -48,13 +67,27 @@ describe('useDeviceDirectoryAccessRecoveryState', () => {
     expect(getDeviceDirectoryAccessRecoveryError([plainError])).toBe(plainError);
   });
 
+  it('accepts plain-object recovery payload with mode:read', () => {
+    const plainError = Object.assign(
+      new Error('Permission required to open this remembered local space'),
+      {
+        code: 'web-file-system-access-required',
+        mode: 'read',
+        name: 'WebFileSystemAccessRequiredError',
+        spaceName: 'Archive',
+      },
+    );
+
+    expect(getDeviceDirectoryAccessRecoveryError([plainError])).toBe(plainError);
+  });
+
   it('rejects malformed plain-object recovery payloads', () => {
     expect(
       getDeviceDirectoryAccessRecoveryError([
         {
           code: 'web-file-system-access-required',
           message: 'Permission required to open this remembered local space',
-          mode: 'read',
+          mode: 'write',
           name: 'WebFileSystemAccessRequiredError',
           spaceName: 'Archive',
         },
