@@ -3,9 +3,18 @@ import type {
   FSNodeCapabilities,
   FSNodeStat,
   IFileSystemProvider,
+  VfsEvent,
   WriteFileResult,
 } from '../virtualFileSystem';
-import { FileSystemError, FSNodeType, PathUtils, VfsError } from '../virtualFileSystem';
+import {
+  EventEmitter,
+  FileSystemError,
+  FSNodeType,
+  PathUtils,
+  VfsError,
+  VfsEventSource,
+  VfsEventType,
+} from '../virtualFileSystem';
 import type { WriteOptions } from '../virtualFileSystem/IFileSystemProvider';
 import type {
   WebFileSystemAccessMode,
@@ -44,8 +53,9 @@ export interface WebFileSystemProviderOptions {
 export const WebFileSystemProvider = (
   rootHandle: FileSystemDirectoryHandle,
   options: WebFileSystemProviderOptions,
-): IFileSystemProvider => {
+): IFileSystemProvider & { notifyAccessChanged(): void } => {
   const { onAccessRequired, permissionPolicy } = options;
+  const events = new EventEmitter();
 
   const queryModePermission = async (
     handle: FileSystemFileHandle | FileSystemDirectoryHandle,
@@ -156,8 +166,9 @@ export const WebFileSystemProvider = (
   const fileHandleStat = async (
     handle: FileSystemFileHandle | FileSystemDirectoryHandle,
   ): Promise<FSNodeStat> => {
-    const permissionState = await queryWritePermission(handle);
-    const canWrite = permissionState !== 'denied';
+    const canWrite =
+      permissionPolicy === 'originPrivateStorage' ||
+      (await queryWritePermission(handle)) === 'granted';
 
     if (handle.kind === 'file') {
       const file = await handle.getFile();
@@ -189,6 +200,10 @@ export const WebFileSystemProvider = (
   ): Promise<{ handle: FileSystemFileHandle | FileSystemDirectoryHandle; stat: FSNodeStat }> => {
     const normalized = PathUtils.normalize(path);
     if (normalized === '/') {
+      const canWriteRoot =
+        permissionPolicy === 'originPrivateStorage' ||
+        (await queryWritePermission(rootHandle)) === 'granted';
+
       return {
         handle: rootHandle,
         stat: {
@@ -196,7 +211,7 @@ export const WebFileSystemProvider = (
           capabilities: {
             canDelete: false,
             canChangePath: false,
-            canEditChildren: true,
+            canEditChildren: canWriteRoot,
           },
         },
       };
@@ -427,6 +442,16 @@ export const WebFileSystemProvider = (
     await remove(normalizedOld, true);
   };
 
+  const notifyAccessChanged = () => {
+    events.emit({
+      source: VfsEventSource.PROVIDER,
+      type: VfsEventType.UPDATE,
+      path: '/',
+    });
+  };
+
+  const watch = (callback: (event: VfsEvent) => void) => events.subscribe(callback);
+
   return {
     stat,
     readFile,
@@ -435,5 +460,7 @@ export const WebFileSystemProvider = (
     createDirectory,
     delete: remove,
     move,
+    notifyAccessChanged,
+    watch,
   };
 };

@@ -183,7 +183,15 @@ export const DeviceFileSystemProvider = (
     });
   };
 
-  const watch = (callback: (event: VfsEvent) => void) => events.subscribe(callback);
+  const watch = (callback: (event: VfsEvent) => void) => {
+    const unsubscribeRootEvents = events.subscribe(callback);
+    const unsubscribeNestedEvents = vfs.watch(callback);
+
+    return () => {
+      unsubscribeNestedEvents();
+      unsubscribeRootEvents();
+    };
+  };
 
   const stat = async (path: string): Promise<FSNodeStat> => {
     const normalizedPath = PathUtils.normalize(path);
@@ -200,7 +208,12 @@ export const DeviceFileSystemProvider = (
         throw new VfsError(FileSystemError.FileNotFound, `Directory not found: ${path}`);
       }
 
-      return getMountedRootStat(record);
+      const rootStat = await record.provider.stat('/');
+
+      return {
+        ...rootStat,
+        ...(record.description === undefined ? {} : { description: record.description }),
+      };
     }
 
     return vfs.stat(normalizedPath);

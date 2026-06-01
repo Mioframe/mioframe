@@ -2,6 +2,7 @@ import { createSafeErrorCause, DomainError } from '@shared/lib/error';
 import { isUserFileSelectionCancel } from '@shared/lib/fileSystem';
 import { reportHandledError } from '@shared/lib/reportHandledError';
 import { useSnackbar } from '@shared/ui/Snackbar';
+import { WebFileSystemAccessRequiredError } from '@shared/lib/webFileSystemProvider';
 import { ImportDocumentErrorCode } from './importDocumentErrorCode';
 import { useImportDocument } from './useImportDocument';
 
@@ -39,7 +40,12 @@ export const useImportDocumentAction = () => {
       return documentId;
     } catch (error) {
       addSnackbar({
-        text: error instanceof DomainError ? error.message : 'Could not import the document',
+        text:
+          error instanceof WebFileSystemAccessRequiredError && error.mode === 'readwrite'
+            ? 'Grant write access to edit this remembered space.'
+            : error instanceof DomainError
+              ? error.message
+              : 'Could not import the document',
       });
 
       if (!shouldSkipImportErrorReport(error)) {

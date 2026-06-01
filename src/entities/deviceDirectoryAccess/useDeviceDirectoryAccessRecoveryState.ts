@@ -58,8 +58,10 @@ export const getDeviceDirectoryAccessRecoveryError = (errors: unknown[]) => {
  */
 export const useDeviceDirectoryAccessRecoveryState = ({
   errors,
+  mode,
 }: {
   errors: MaybeRefOrGetter<unknown[]>;
+  mode?: MaybeRefOrGetter<WebFileSystemAccessMode | undefined>;
 }) => {
   /**
    * Current recovery payload for the active repo path, if one exists.
@@ -68,6 +70,12 @@ export const useDeviceDirectoryAccessRecoveryState = ({
     const error = getDeviceDirectoryAccessRecoveryError(toValue(errors));
 
     if (!error) {
+      return undefined;
+    }
+
+    const requiredMode = toValue(mode);
+
+    if (requiredMode !== undefined && error.mode !== requiredMode) {
       return undefined;
     }
 

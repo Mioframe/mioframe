@@ -10,10 +10,18 @@ import { computed, ref, toValue, watch, type MaybeRefOrGetter } from 'vue';
  */
 export const useDeviceDirectoryAccessRecovery = ({
   errors,
+  mode,
+  deniedMessage,
+  defaultRecoveryMessage,
 }: {
   errors: MaybeRefOrGetter<unknown[]>;
+  mode?: MaybeRefOrGetter<WebFileSystemAccessMode | undefined>;
+  deniedMessage?: string | undefined;
+  defaultRecoveryMessage?:
+    | ((state: { mode: WebFileSystemAccessMode; spaceName: string }) => string)
+    | undefined;
 }) => {
-  const { state } = useDeviceDirectoryAccessRecoveryState({ errors });
+  const { state } = useDeviceDirectoryAccessRecoveryState({ errors, mode });
   const {
     fileSystem: {
       cancelDeviceDirectoryAccessRequest,
@@ -72,7 +80,10 @@ export const useDeviceDirectoryAccessRecovery = ({
       return '';
     }
 
-    return `Mioframe remembers "${currentState.spaceName}", but your browser requires permission before opening it.`;
+    return (
+      defaultRecoveryMessage?.(currentState) ??
+      `Mioframe remembers "${currentState.spaceName}", but your browser requires permission before opening it.`
+    );
   });
 
   const grantAccess = async () => {
@@ -100,6 +111,7 @@ export const useDeviceDirectoryAccessRecovery = ({
       }
 
       message.value =
+        deniedMessage ??
         'Mioframe still cannot open this space because your browser did not grant permission.';
       pendingRequest.value = result.request ?? request;
 

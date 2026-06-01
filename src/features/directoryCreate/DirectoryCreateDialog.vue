@@ -2,6 +2,7 @@
 import { useFSNodeStat } from '@entity/fsEntry';
 import { useFileSystem } from '@entity/mountedDirectories';
 import { PathUtils } from '@shared/lib/virtualFileSystem';
+import { WebFileSystemAccessRequiredError } from '@shared/lib/webFileSystemProvider';
 import { MDDialog } from '@shared/ui/Dialog';
 import { MDTextField } from '@shared/ui/TextField';
 import { computed, ref, toRefs } from 'vue';
@@ -42,7 +43,12 @@ const onApply = async () => {
       await createDirectory(PathUtils.join(path.value, directoryName.value));
       emit('created', directoryName.value);
     } catch (error) {
-      errorText.value = error instanceof Error ? error.message : 'unknown error';
+      errorText.value =
+        error instanceof WebFileSystemAccessRequiredError && error.mode === 'readwrite'
+          ? 'Grant write access to edit this remembered space.'
+          : error instanceof Error
+            ? error.message
+            : 'unknown error';
     } finally {
       loading.value = false;
     }

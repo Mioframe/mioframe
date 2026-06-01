@@ -2,7 +2,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Repo } from '@automerge/automerge-repo';
 import { partialKeyToFileName, storageAdapterMarkerFileName } from '@shared/lib/automergeAdapter';
 import { WEB_FILE_SYSTEM_ACCESS_REQUIRED_CODE } from '@shared/lib/webFileSystemProvider';
-import { createDirectoryHandleMock } from '@shared/lib/webFileSystemProvider/WebFileSystemProvider.testUtils';
+import {
+  createDirectoryHandleMock,
+  createFileHandleMock,
+} from '@shared/lib/webFileSystemProvider/WebFileSystemProvider.testUtils';
 import type { FSNodeStat, IFileSystemProvider, VfsEvent } from '@shared/lib/virtualFileSystem';
 import { FSNodeType, VfsEventSource } from '@shared/lib/virtualFileSystem';
 import { OPFSName } from '../directories';
@@ -879,6 +882,176 @@ describe('useFileSystemService', () => {
 
     unwatch();
     expect(watchedEvents).toEqual(['invalidated']);
+  });
+
+  it('keeps read and readwrite pending requests separate for the same remembered space', async () => {
+    const promptHandle = createDirectoryHandleMock({
+      name: 'Work',
+      permissionState: 'prompt',
+      readPermissionState: 'granted',
+      sameEntryKey: 'work',
+    });
+    getRecordListMock.mockResolvedValue([{ name: 'Work', handle: promptHandle }]);
+
+    const service = await createService();
+
+    await vi.waitFor(async () => {
+      await expect(service.deviceFiles.fetch()).resolves.toEqual([
+        { canDisconnect: true, name: 'Work' },
+      ]);
+    });
+
+    const readResult = await service.directoryContent.fetch({ path: '/Device Files/Work' });
+
+    expect(readResult).toEqual([]);
+
+    const writeError = await service
+      .createDirectory('/Device Files/Work/next-folder')
+      .catch((caughtError: unknown) => caughtError);
+
+    expect(writeError).toMatchObject({
+      mode: 'readwrite',
+      spaceName: 'Work',
+    });
+    await expect(
+      service.getDeviceDirectoryAccessRequest({
+        mode: 'readwrite',
+        spaceName: 'Work',
+      }),
+    ).resolves.toEqual({
+      handle: promptHandle,
+      mode: 'readwrite',
+      spaceName: 'Work',
+    });
+    await expect(
+      service.getDeviceDirectoryAccessRequest({
+        mode: 'read',
+        spaceName: 'Work',
+      }),
+    ).resolves.toBeUndefined();
+  });
+
+  it('reactively refreshes directoryContent$ after permission is granted without a route retry', async () => {
+    const noteHandle = createFileHandleMock({
+      name: 'note.txt',
+      permissionState: 'prompt',
+      readPermissionState: 'granted',
+    });
+    const promptHandle = createDirectoryHandleMock({
+      entries: [noteHandle],
+      name: 'Work',
+      permissionState: 'prompt',
+      readPermissionState: 'prompt',
+      sameEntryKey: 'work',
+    });
+    getRecordListMock.mockResolvedValue([{ name: 'Work', handle: promptHandle }]);
+
+    const service = await createService();
+    await vi.waitFor(async () => {
+      await expect(service.deviceFiles.fetch()).resolves.toEqual([
+        { canDisconnect: true, name: 'Work' },
+      ]);
+    });
+    const results: Array<[string, FSNodeStat][] | Error> = [];
+    const subscription = service
+      .directoryContent$({ path: '/Device Files/Work' })
+      .subscribe((value) => {
+        results.push(value);
+      });
+
+    await vi.waitFor(() => {
+      expect(results).toContainEqual(
+        expect.objectContaining({
+          mode: 'read',
+          spaceName: 'Work',
+        }),
+      );
+    });
+
+    promptHandle.queryPermissionMock?.mockImplementation((descriptor) =>
+      Promise.resolve(descriptor?.mode === 'read' ? 'granted' : 'prompt'),
+    );
+    noteHandle.queryPermissionMock?.mockImplementation((descriptor) =>
+      Promise.resolve(descriptor?.mode === 'read' ? 'granted' : 'prompt'),
+    );
+
+    await service.resolveDeviceDirectoryAccessRequest({
+      mode: 'read',
+      permissionState: 'granted',
+      spaceName: 'Work',
+    });
+
+    await vi.waitFor(() => {
+      expect(results).toContainEqual([
+        [
+          'note.txt',
+          expect.objectContaining({
+            type: FSNodeType.File,
+          }),
+        ],
+      ]);
+    });
+
+    subscription.unsubscribe();
+  });
+
+  it('reactively refreshes fsNodeStat$ after permission is granted without remounting the route', async () => {
+    const noteHandle = createFileHandleMock({
+      name: 'note.txt',
+      permissionState: 'prompt',
+      readPermissionState: 'granted',
+    });
+    const promptHandle = createDirectoryHandleMock({
+      entries: [noteHandle],
+      name: 'Work',
+      permissionState: 'prompt',
+      readPermissionState: 'prompt',
+      sameEntryKey: 'work',
+    });
+    getRecordListMock.mockResolvedValue([{ name: 'Work', handle: promptHandle }]);
+
+    const service = await createService();
+    await vi.waitFor(async () => {
+      await expect(service.deviceFiles.fetch()).resolves.toEqual([
+        { canDisconnect: true, name: 'Work' },
+      ]);
+    });
+    const results: Array<FSNodeStat | Error> = [];
+    const subscription = service.fsNodeStat$({ path: '/Device Files/Work' }).subscribe((value) => {
+      results.push(value);
+    });
+
+    await vi.waitFor(() => {
+      expect(results).toContainEqual(
+        expect.objectContaining({
+          mode: 'read',
+          spaceName: 'Work',
+        }),
+      );
+    });
+
+    promptHandle.queryPermissionMock?.mockImplementation((descriptor) =>
+      Promise.resolve(descriptor?.mode === 'read' ? 'granted' : 'prompt'),
+    );
+
+    await service.resolveDeviceDirectoryAccessRequest({
+      mode: 'read',
+      permissionState: 'granted',
+      spaceName: 'Work',
+    });
+
+    await vi.waitFor(() => {
+      expect(results).toContainEqual(
+        expect.objectContaining({
+          capabilities: expect.objectContaining({
+            canEditChildren: false,
+          }),
+          type: FSNodeType.Directory,
+        }),
+      );
+    });
+
+    subscription.unsubscribe();
   });
 
   it('cancels pending requests explicitly and recreates them on a later access attempt', async () => {

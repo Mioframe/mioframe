@@ -89,19 +89,6 @@ const title = computed(() => PathUtils.basename(directoryPath.value) || 'root');
 const onClickReturnHome = async () => {
   await open('home', {}, { additionalPanes: 0, replace: true });
 };
-
-const onRetryCurrentPath = async () => {
-  await open(
-    'repo',
-    {
-      repoPath: directoryPath.value,
-    },
-    {
-      replace: true,
-      target: 'current',
-    },
-  );
-};
 </script>
 
 <template>
@@ -126,7 +113,6 @@ const onRetryCurrentPath = async () => {
       @click-path="onClickPath"
       @click-document="onClickDocument"
       @click-return-home="onClickReturnHome"
-      @retry-current-path="onRetryCurrentPath"
     >
       <template #after="{ canEditDirectoryContents }">
         <MDFabContainer v-if="canEditDirectoryContents" auto-hide>

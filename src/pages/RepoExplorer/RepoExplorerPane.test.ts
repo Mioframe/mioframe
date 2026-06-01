@@ -152,7 +152,7 @@ vi.mock('@widget/RepositoryExplorerWidget', () => ({
   }),
   RepositoryExplorerWidget: defineComponent({
     name: 'RepositoryExplorerWidgetStub',
-    emits: ['clickPath', 'clickReturnHome', 'clickDocument', 'retryCurrentPath'],
+    emits: ['clickPath', 'clickReturnHome', 'clickDocument'],
     setup(_props, { emit, slots }) {
       return () =>
         h('main', [
@@ -182,15 +182,6 @@ vi.mock('@widget/RepositoryExplorerWidget', () => ({
               },
             },
             'Document',
-          ),
-          h(
-            'button',
-            {
-              onClick: () => {
-                emit('retryCurrentPath');
-              },
-            },
-            'Retry current path',
           ),
           slots.after?.({
             canEditDirectoryContents: canEditDirectoryContents.value,
@@ -278,28 +269,35 @@ describe('RepoExplorerPane', () => {
     expect(importDocumentMock).toHaveBeenCalledWith('/Google Drive/My Drive/Mioframe');
   });
 
-  it('routes breadcrumb, home, document selection, and retry through stack navigation', async () => {
+  it('routes breadcrumb, home, and document selection through stack navigation', async () => {
     const wrapper = await mountPane();
     const buttons = wrapper.findAll('button');
     const pathButton = buttons.find((button) => button.text() === 'Path');
     const homeButton = buttons.find((button) => button.text() === 'Home');
     const documentButton = buttons.find((button) => button.text() === 'Document');
-    const retryButton = buttons.find((button) => button.text() === 'Retry current path');
 
-    if (!pathButton || !homeButton || !documentButton || !retryButton) {
+    if (!pathButton || !homeButton || !documentButton) {
       throw new Error('Expected repository widget action buttons');
     }
 
     await pathButton.trigger('click');
     await homeButton.trigger('click');
     await documentButton.trigger('click');
-    await retryButton.trigger('click');
 
-    expect(openMock).toHaveBeenCalledWith('repo', {
+    expect(openMock).toHaveBeenNthCalledWith(1, 'repo', {
       repoPath: '/Google Drive/My Drive',
     });
-    expect(openMock).toHaveBeenCalledWith('home', {}, { additionalPanes: 0, replace: true });
-    expect(openMock).toHaveBeenCalledWith(
+    expect(openMock).toHaveBeenNthCalledWith(
+      2,
+      'home',
+      {},
+      {
+        additionalPanes: 0,
+        replace: true,
+      },
+    );
+    expect(openMock).toHaveBeenNthCalledWith(
+      3,
       'document',
       {
         documentDirectory: '/Google Drive/My Drive/Mioframe',
@@ -307,16 +305,6 @@ describe('RepoExplorerPane', () => {
       },
       {
         target: 'document',
-      },
-    );
-    expect(openMock).toHaveBeenCalledWith(
-      'repo',
-      {
-        repoPath: '/Google Drive/My Drive/Mioframe',
-      },
-      {
-        replace: true,
-        target: 'current',
       },
     );
   });

@@ -325,12 +325,12 @@ describe('RepositoryExplorerWidget', () => {
     expect(wrapper.get('[data-testid="after-slot"]').text()).toBe('editable');
   });
 
-  it('loads the pending access request before enabling grant access and does not prompt on mount', async () => {
+  it('loads the pending read access request before enabling grant access and does not prompt on mount', async () => {
     const handle = createPermissionHandle('granted');
     repositoryRecoveryErrorsRef.value = [
       new WebFileSystemAccessRequiredError({
         spaceName: 'Work',
-        mode: 'readwrite',
+        mode: 'read',
       }),
     ];
 
@@ -346,7 +346,7 @@ describe('RepositoryExplorerWidget', () => {
 
     await vi.waitFor(() => {
       expect(getDeviceDirectoryAccessRequestMock).toHaveBeenCalledWith({
-        mode: 'readwrite',
+        mode: 'read',
         spaceName: 'Work',
       });
     });
@@ -365,7 +365,7 @@ describe('RepositoryExplorerWidget', () => {
     resolveRequest({
       spaceName: 'Work',
       handle,
-      mode: 'readwrite',
+      mode: 'read',
     });
 
     await vi.waitFor(() => {
@@ -378,24 +378,24 @@ describe('RepositoryExplorerWidget', () => {
     expect(handle.requestPermissionMock).not.toHaveBeenCalled();
   });
 
-  it('requests permission from the loaded handle and emits retryCurrentPath after grant', async () => {
+  it('requests permission from the loaded handle without retrying the route after grant', async () => {
     const handle = createPermissionHandle('granted');
     repositoryRecoveryErrorsRef.value = [
       new WebFileSystemAccessRequiredError({
         spaceName: 'Work',
-        mode: 'readwrite',
+        mode: 'read',
       }),
     ];
     getDeviceDirectoryAccessRequestMock.mockResolvedValue({
       spaceName: 'Work',
       handle,
-      mode: 'readwrite',
+      mode: 'read',
     });
     resolveDeviceDirectoryAccessRequestMock.mockResolvedValue({
       request: {
         spaceName: 'Work',
         handle,
-        mode: 'readwrite',
+        mode: 'read',
       },
       status: 'granted',
     });
@@ -404,7 +404,7 @@ describe('RepositoryExplorerWidget', () => {
 
     await vi.waitFor(() => {
       expect(getDeviceDirectoryAccessRequestMock).toHaveBeenCalledWith({
-        mode: 'readwrite',
+        mode: 'read',
         spaceName: 'Work',
       });
     });
@@ -420,14 +420,14 @@ describe('RepositoryExplorerWidget', () => {
     await grantButton.trigger('click');
 
     expect(handle.requestPermissionMock).toHaveBeenCalledWith({
-      mode: 'readwrite',
+      mode: 'read',
     });
     expect(resolveDeviceDirectoryAccessRequestMock).toHaveBeenCalledWith({
-      mode: 'readwrite',
+      mode: 'read',
       permissionState: 'granted',
       spaceName: 'Work',
     });
-    expect(wrapper.emitted('retryCurrentPath')).toEqual([[]]);
+    expect(wrapper.emitted('retryCurrentPath')).toBeUndefined();
   });
 
   it('keeps the recovery state and safe message after denial without retrying the route', async () => {
@@ -435,19 +435,19 @@ describe('RepositoryExplorerWidget', () => {
     repositoryRecoveryErrorsRef.value = [
       new WebFileSystemAccessRequiredError({
         spaceName: 'Work',
-        mode: 'readwrite',
+        mode: 'read',
       }),
     ];
     getDeviceDirectoryAccessRequestMock.mockResolvedValue({
       spaceName: 'Work',
       handle,
-      mode: 'readwrite',
+      mode: 'read',
     });
     resolveDeviceDirectoryAccessRequestMock.mockResolvedValue({
       request: {
         spaceName: 'Work',
         handle,
-        mode: 'readwrite',
+        mode: 'read',
       },
       status: 'denied',
     });
@@ -456,7 +456,7 @@ describe('RepositoryExplorerWidget', () => {
 
     await vi.waitFor(() => {
       expect(getDeviceDirectoryAccessRequestMock).toHaveBeenCalledWith({
-        mode: 'readwrite',
+        mode: 'read',
         spaceName: 'Work',
       });
     });
@@ -472,7 +472,7 @@ describe('RepositoryExplorerWidget', () => {
     await grantButton.trigger('click');
 
     expect(resolveDeviceDirectoryAccessRequestMock).toHaveBeenCalledWith({
-      mode: 'readwrite',
+      mode: 'read',
       permissionState: 'denied',
       spaceName: 'Work',
     });
@@ -486,7 +486,7 @@ describe('RepositoryExplorerWidget', () => {
     repositoryRecoveryErrorsRef.value = [
       new WebFileSystemAccessRequiredError({
         spaceName: 'Work',
-        mode: 'readwrite',
+        mode: 'read',
       }),
     ];
     getDeviceDirectoryAccessRequestMock.mockResolvedValue(undefined);
@@ -503,7 +503,7 @@ describe('RepositoryExplorerWidget', () => {
     await cancelButton.trigger('click');
 
     expect(cancelDeviceDirectoryAccessRequestMock).toHaveBeenCalledWith({
-      mode: 'readwrite',
+      mode: 'read',
       spaceName: 'Work',
     });
     expect(wrapper.emitted('clickReturnHome')).toEqual([[]]);
@@ -527,6 +527,21 @@ describe('RepositoryExplorerWidget', () => {
     const wrapper = await mountWidget();
 
     expect(wrapper.get('[data-testid="after-slot"]').text()).toBe('readonly');
+  });
+
+  it('does not treat write access recovery as a folder-open recovery screen', async () => {
+    repositoryRecoveryErrorsRef.value = [
+      new WebFileSystemAccessRequiredError({
+        spaceName: 'Work',
+        mode: 'readwrite',
+      }),
+    ];
+
+    const wrapper = await mountWidget();
+
+    expect(getDeviceDirectoryAccessRequestMock).not.toHaveBeenCalled();
+    expect(wrapper.text()).not.toContain('Grant access');
+    expect(wrapper.text()).not.toContain('Permission required');
   });
 });
 /* eslint-enable vue/one-component-per-file -- Re-enable after inline stubs. */

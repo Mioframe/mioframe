@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { createDirectoryHandleMock, createFileHandleMock } from './WebFileSystemProvider.testUtils';
+import type { VfsEvent } from '../virtualFileSystem';
 import { FSNodeType } from '../virtualFileSystem';
 import { WebFileSystemProvider } from './WebFileSystemProvider';
 import { WEB_FILE_SYSTEM_ACCESS_REQUIRED_CODE, WebFileSystemAccessRequiredError } from '.';
@@ -220,6 +221,27 @@ describe('WebFileSystemProvider', () => {
         canEditChildren: true,
       },
     });
+  });
+
+  it('emits an update for the mounted root after access state changes', () => {
+    const { rootHandle } = createRootHandle('prompt', 'granted');
+    const provider = WebFileSystemProvider(rootHandle, {
+      permissionPolicy: 'userSelectedDirectory',
+    });
+    const events: VfsEvent[] = [];
+    const unsubscribe = provider.watch?.((event) => {
+      events.push(event);
+    });
+
+    provider.notifyAccessChanged();
+    unsubscribe?.();
+
+    expect(events).toContainEqual({
+      source: 'provider',
+      type: 'update',
+      path: '/',
+    });
+    expect(rootHandle.requestPermissionMock).not.toHaveBeenCalled();
   });
 
   it('rejects writeFile when the target already exists and overwrite is false', async () => {

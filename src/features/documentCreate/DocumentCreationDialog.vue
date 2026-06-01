@@ -7,6 +7,7 @@ import { MDTextField } from '@shared/ui/TextField';
 import { MDSelectBase, MDSelectOption } from '@shared/ui/Select';
 import { useRepository } from '@entity/repository';
 import { strictRecordGet } from '@shared/lib/strictRecord';
+import { WebFileSystemAccessRequiredError } from '@shared/lib/webFileSystemProvider';
 
 const props = defineProps<{
   path: string;
@@ -52,7 +53,12 @@ const onCreate = async () => {
         body: {},
       });
     } catch (error) {
-      errorText.value = error instanceof Error ? error.message : 'unknown error';
+      errorText.value =
+        error instanceof WebFileSystemAccessRequiredError && error.mode === 'readwrite'
+          ? 'Grant write access to edit this remembered space.'
+          : error instanceof Error
+            ? error.message
+            : 'unknown error';
       return;
     } finally {
       loading.value = false;

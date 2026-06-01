@@ -7,7 +7,8 @@ import {
 } from '@shared/lib/deviceFileSystemProvider';
 import { zodIs } from '@shared/lib/validateZodScheme';
 import {
-  WebFileSystemProvider,
+  createOriginPrivateStorageProvider,
+  createUserSelectedDirectoryProvider,
   type WebFileSystemAccessMode,
 } from '@shared/lib/webFileSystemProvider';
 import type { FSNodeStat, IFileSystemProvider } from '@shared/lib/virtualFileSystem';
@@ -40,6 +41,7 @@ type DeviceDirectoryAccessRequest = {
   spaceName: string;
   handle: FileSystemDirectoryHandle;
   mode: WebFileSystemAccessMode;
+  refreshProvider: () => void;
 };
 
 type DeviceDirectoryAccessRequestKey = Pick<DeviceDirectoryAccessRequest, 'spaceName' | 'mode'>;
@@ -70,8 +72,10 @@ const setupFileSystemService = () => {
   const upsertPendingDeviceDirectoryAccessRequest = ({
     handle,
     mode,
+    refreshProvider,
     spaceName,
-  }: DeviceDirectoryAccessRequestResult) => {
+  }: DeviceDirectoryAccessRequestResult &
+    Pick<DeviceDirectoryAccessRequest, 'refreshProvider'>) => {
     const key = getPendingRequestKey({
       mode,
       spaceName,
@@ -81,6 +85,7 @@ const setupFileSystemService = () => {
       spaceName,
       handle,
       mode,
+      refreshProvider,
     } satisfies DeviceDirectoryAccessRequest;
 
     pendingDeviceDirectoryAccessRequests.set(key, request);
@@ -100,24 +105,29 @@ const setupFileSystemService = () => {
   const deviceFileSystemProvider = DeviceFileSystemProvider({
     createProvider: (record) =>
       record.kind === 'localDirectory'
-        ? WebFileSystemProvider(record.handle, {
-            permissionPolicy: 'userSelectedDirectory',
-            onAccessRequired: ({ handle, mode }) => {
-              const request = upsertPendingDeviceDirectoryAccessRequest({
-                spaceName: record.name,
-                handle,
-                mode,
-              });
+        ? (() => {
+            const provider = createUserSelectedDirectoryProvider(
+              record.handle,
+              ({ handle, mode }) => {
+                const request = upsertPendingDeviceDirectoryAccessRequest({
+                  spaceName: record.name,
+                  handle,
+                  mode,
+                  refreshProvider: () => {
+                    provider.notifyAccessChanged();
+                  },
+                });
 
-              return {
-                mode: request.mode,
-                spaceName: request.spaceName,
-              };
-            },
-          })
-        : WebFileSystemProvider(record.handle, {
-            permissionPolicy: 'originPrivateStorage',
-          }),
+                return {
+                  mode: request.mode,
+                  spaceName: request.spaceName,
+                };
+              },
+            );
+
+            return provider;
+          })()
+        : createOriginPrivateStorageProvider(record.handle),
   });
   const { getRecordList, updateRecordList } = useFileSystemDirectoryHandleService();
   const activeDeviceFiles$ = new BehaviorSubject<DeviceFileDisplayRecord[]>([]);
@@ -368,6 +378,14 @@ const setupFileSystemService = () => {
           spaceName,
         }),
       ),
+    ).then((request) =>
+      request
+        ? {
+            handle: request.handle,
+            mode: request.mode,
+            spaceName: request.spaceName,
+          }
+        : undefined,
     );
 
   const resolveDeviceDirectoryAccessRequest = ({
@@ -394,16 +412,24 @@ const setupFileSystemService = () => {
 
     if (permissionState === 'granted') {
       deletePendingDeviceDirectoryAccessRequest(key);
-      vfs.invalidatePath(PathUtils.join(deviceFilesPath, spaceName));
+      request.refreshProvider();
 
       return Promise.resolve({
-        request,
+        request: {
+          handle: request.handle,
+          mode: request.mode,
+          spaceName: request.spaceName,
+        },
         status: 'granted' as const,
       });
     }
 
     return Promise.resolve({
-      request,
+      request: {
+        handle: request.handle,
+        mode: request.mode,
+        spaceName: request.spaceName,
+      },
       status: permissionState === 'denied' ? ('denied' as const) : ('cancelled' as const),
     });
   };

@@ -1,14 +1,8 @@
 <script setup lang="ts">
 import { computed, toRefs } from 'vue';
-import { isNotNil } from 'es-toolkit';
-import { useDeviceDirectoryAccessRecovery } from '@feature/deviceDirectoryAccessRecovery';
-import { useGoogleDriveRecovery } from '@feature/googleDriveRecovery';
 import { useFSNodeStat } from '@entity/fsEntry';
 import { DeviceDirectoryAccessRecoveryState } from '@entity/deviceDirectoryAccess';
-import {
-  getGoogleDriveAccessRecoveryError,
-  GoogleDriveAccessRecoveryState,
-} from '@entity/googleDriveAccess';
+import { GoogleDriveAccessRecoveryState } from '@entity/googleDriveAccess';
 import { MDButton } from '@shared/ui/Button';
 import { MDSymbol } from '@shared/ui/Icon';
 import { MDNavigationPath } from '@shared/ui/NavigationPath';
@@ -18,6 +12,7 @@ import { MDCircularProgressIndicator } from '@shared/ui/ProgressIndicators';
 import RepositoryExplorerDocumentsSection from './RepositoryExplorerDocumentsSection.vue';
 import RepositoryExplorerFilesSection from './RepositoryExplorerFilesSection.vue';
 import { useRepositoryExplorerDirectoryState } from './useRepositoryExplorerDirectoryState';
+import { useRepositoryExplorerRecovery } from './useRepositoryExplorerRecovery';
 
 const props = defineProps<{
   directoryPath: string;
@@ -27,7 +22,6 @@ const emit = defineEmits<{
   clickPath: [path: string];
   clickDocument: [documentId: AMDocumentId];
   clickReturnHome: [];
-  retryCurrentPath: [];
 }>();
 
 defineSlots<{
@@ -43,12 +37,17 @@ const {
   hideAutomergeFiles,
   isLoading,
   isRepositoryInitialized,
+  recoveryErrors,
   recoveryErrors: repositoryRecoveryErrors,
   regularFileEntries,
 } = repositoryExplorerDirectoryState;
-const recoveryErrors = computed(() =>
-  [...repositoryRecoveryErrors.value, directoryStatError.value].filter(isNotNil),
-);
+const { deviceDirectoryAccess, googleDriveRecovery, hasGoogleDriveRecovery } =
+  useRepositoryExplorerRecovery({
+    directoryPath,
+    directoryStatError,
+    errorMessage,
+    repositoryRecoveryErrors,
+  });
 const {
   cancelAccess,
   grantAccess,
@@ -56,17 +55,8 @@ const {
   isGrantLoading,
   recoveryMessage: deviceDirectoryAccessMessage,
   recoveryState: deviceDirectoryAccessRecovery,
-} = useDeviceDirectoryAccessRecovery({
-  errors: recoveryErrors,
-});
-const hasGoogleDriveRecovery = computed(
-  () =>
-    !!errorMessage.value &&
-    !!getGoogleDriveAccessRecoveryError(directoryPath.value, recoveryErrors.value),
-);
-const { isRetryAuthorizationLoading, onRetryAuthorization } = useGoogleDriveRecovery({
-  path: directoryPath,
-});
+} = deviceDirectoryAccess;
+const { isRetryAuthorizationLoading, onRetryAuthorization } = googleDriveRecovery;
 const canEditDirectoryContents = computed(
   () => directoryStat.value?.capabilities?.canEditChildren === true,
 );
@@ -81,14 +71,6 @@ const onClickDocument = (documentId: AMDocumentId) => {
 
 const onReturnHomeClick = () => {
   emit('clickReturnHome');
-};
-
-const onGrantDeviceDirectoryAccess = async () => {
-  const result = await grantAccess();
-
-  if (result.status === 'granted') {
-    emit('retryCurrentPath');
-  }
 };
 
 const onCancelDeviceDirectoryAccess = async () => {
@@ -119,7 +101,7 @@ const onCancelDeviceDirectoryAccess = async () => {
             label="Grant access"
             :disabled="grantDisabled"
             :loading="isGrantLoading"
-            @click="onGrantDeviceDirectoryAccess"
+            @click="grantAccess"
           />
 
           <MDButton label="Cancel" color="text" @click="onCancelDeviceDirectoryAccess" />
