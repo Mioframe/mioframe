@@ -98,7 +98,7 @@ reason:
 - Prefer typed collection helpers over raw `Object.keys`, `Object.values`, and `Object.entries` when iterating typed records. Do not add local type assertions just to paper over iteration typing outside rare boundary adapters.
 - When progress is knowable, surface progress instead of falling back to an indeterminate spinner.
 - Keep unit tests colocated with the source file they verify, using sibling `*.test.ts` files. Do not introduce `__tests__` directories.
-- Keep test helpers colocated with the source or tests they support, using sibling `*.testUtils.ts` files. Do not introduce ad hoc `testUtils/` folders unless the package already uses that convention or multiple helper files justify a folder.
+- Keep test helpers colocated with the source or tests they support, using sibling `*.testUtils.ts` files. Do not export test helpers from production barrels. Helpers that import `vitest` must stay test-only and must never be imported by production code. Create global shared test utilities only after the same helper is needed by several unrelated modules. Do not introduce ad hoc `testUtils/` folders unless the package already uses that convention or multiple helper files justify a folder.
 
 ## Styling
 

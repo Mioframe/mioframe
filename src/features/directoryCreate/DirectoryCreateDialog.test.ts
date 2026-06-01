@@ -1,11 +1,10 @@
 /* eslint-disable vue/one-component-per-file -- Focused dialog contract test with inline stubs. */
 import { flushPromises, mount } from '@vue/test-utils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { computed, defineComponent, h, ref } from 'vue';
+import { defineComponent, h, ref } from 'vue';
 import { WebFileSystemAccessRequiredError } from '@shared/lib/webFileSystemProvider';
 
 const createDirectoryMock = vi.fn();
-const grantAccessMock = vi.fn();
 const directoryStatRef = ref<{
   capabilities?: {
     canEditChildren: boolean | undefined;
@@ -15,10 +14,9 @@ const directoryStatRef = ref<{
     canEditChildren: undefined,
   },
 });
-const recoveryStateRef = ref<{ mode: 'readwrite'; spaceName: string } | undefined>();
-const recoveryMessageRef = ref('Grant write access to edit this remembered space.');
-const grantDisabledRef = ref(false);
-const isGrantLoadingRef = ref(false);
+const getDeviceDirectoryAccessRequestMock = vi.fn();
+const resolveDeviceDirectoryAccessRequestMock = vi.fn();
+const cancelDeviceDirectoryAccessRequestMock = vi.fn();
 
 vi.mock('@entity/fsEntry', () => ({
   useFSNodeStat: () => ({
@@ -32,13 +30,13 @@ vi.mock('@entity/mountedDirectories', () => ({
   }),
 }));
 
-vi.mock('@feature/deviceDirectoryAccessRecovery', () => ({
-  useDeviceDirectoryAccessRecovery: () => ({
-    grantAccess: grantAccessMock,
-    grantDisabled: computed(() => grantDisabledRef.value),
-    isGrantLoading: computed(() => isGrantLoadingRef.value),
-    recoveryState: computed(() => recoveryStateRef.value),
-    recoveryMessage: computed(() => recoveryMessageRef.value),
+vi.mock('@shared/service', () => ({
+  useMainServiceClient: () => ({
+    fileSystem: {
+      getDeviceDirectoryAccessRequest: getDeviceDirectoryAccessRequestMock,
+      resolveDeviceDirectoryAccessRequest: resolveDeviceDirectoryAccessRequestMock,
+      cancelDeviceDirectoryAccessRequest: cancelDeviceDirectoryAccessRequestMock,
+    },
   }),
 }));
 
@@ -143,44 +141,76 @@ const mountDialog = async () => {
 describe('DirectoryCreateDialog', () => {
   beforeEach(() => {
     createDirectoryMock.mockReset();
-    grantAccessMock.mockReset();
+    getDeviceDirectoryAccessRequestMock.mockReset();
+    resolveDeviceDirectoryAccessRequestMock.mockReset();
+    cancelDeviceDirectoryAccessRequestMock.mockReset();
     directoryStatRef.value = {
       capabilities: {
         canEditChildren: undefined,
       },
     };
-    recoveryStateRef.value = undefined;
-    recoveryMessageRef.value = 'Grant write access to edit this remembered space.';
-    grantDisabledRef.value = false;
-    isGrantLoadingRef.value = false;
   });
 
-  it('attempts create when edit capability is unknown and then exposes write recovery', async () => {
-    createDirectoryMock.mockRejectedValue(
-      new WebFileSystemAccessRequiredError({
-        mode: 'readwrite',
-        spaceName: 'Work',
-      }),
-    );
-    recoveryStateRef.value = {
+  it('drives full write recovery flow when edit capability is unknown', async () => {
+    const requestPermissionMock = vi.fn(() => Promise.resolve<PermissionState>('granted'));
+    createDirectoryMock
+      .mockRejectedValueOnce(
+        new WebFileSystemAccessRequiredError({
+          mode: 'readwrite',
+          spaceName: 'Work',
+        }),
+      )
+      .mockResolvedValueOnce(undefined);
+    getDeviceDirectoryAccessRequestMock.mockResolvedValue({
+      handle: { requestPermission: requestPermissionMock },
       mode: 'readwrite',
       spaceName: 'Work',
-    };
+    });
+    resolveDeviceDirectoryAccessRequestMock.mockResolvedValue({
+      request: undefined,
+      status: 'granted',
+    });
 
     const wrapper = await mountDialog();
 
-    await wrapper.get('input').setValue('next-folder');
-    const applyButton = wrapper.findAll('button').find((button) => button.text() === 'Create');
+    expect(
+      wrapper.find('button[disabled]').exists() || !wrapper.text().includes('Grant write access'),
+    ).toBe(true);
 
-    if (!applyButton) {
-      throw new Error('Expected Create button');
-    }
+    await wrapper.get('input').setValue('next-folder');
+    const applyButton = wrapper.findAll('button').find((b) => b.text() === 'Create');
+
+    if (!applyButton) throw new Error('Expected Create button');
 
     await applyButton.trigger('click');
     await flushPromises();
 
     expect(createDirectoryMock).toHaveBeenCalledWith('/Device Files/Work/next-folder');
-    expect(wrapper.text()).toContain('Grant write access');
+    expect(getDeviceDirectoryAccessRequestMock).toHaveBeenCalledWith({
+      mode: 'readwrite',
+      spaceName: 'Work',
+    });
+
+    await flushPromises();
+
+    const grantButton = wrapper.findAll('button').find((b) => b.text() === 'Grant write access');
+    expect(grantButton).toBeDefined();
+    expect(grantButton?.attributes('disabled')).toBeUndefined();
+
+    if (!grantButton) throw new Error('Expected Grant write access button');
+
+    await grantButton.trigger('click');
+    await flushPromises();
+
+    expect(requestPermissionMock).toHaveBeenCalledWith({ mode: 'readwrite' });
+    expect(resolveDeviceDirectoryAccessRequestMock).toHaveBeenCalledWith({
+      mode: 'readwrite',
+      permissionState: 'granted',
+      spaceName: 'Work',
+    });
+
+    expect(createDirectoryMock).toHaveBeenCalledTimes(2);
+    expect(wrapper.emitted('created')).toBeDefined();
   });
 
   it('blocks immediately when edit capability is explicitly denied', async () => {

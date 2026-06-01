@@ -504,4 +504,132 @@ describe('WebFileSystemProvider', () => {
     expect(rootHandle.removeEntryMock).not.toHaveBeenCalled();
     expect(fileHandle.__writtenContent).toEqual(['hello']);
   });
+
+  it('attempts removeEntry when canDelete capability is undefined', async () => {
+    const fileHandle = createFileHandleMock({
+      name: 'note.txt',
+      permissionState: 'prompt',
+      readPermissionState: 'granted',
+    });
+    const rootHandle = createDirectoryHandleMock({
+      entries: [fileHandle],
+      name: '',
+      permissionState: 'granted',
+    });
+    const provider = WebFileSystemProvider(rootHandle, {
+      permissionPolicy: 'userSelectedDirectory',
+    });
+
+    await expect(provider.delete('/note.txt', false)).resolves.toBeUndefined();
+    expect(rootHandle.removeEntryMock).toHaveBeenCalledWith('note.txt', { recursive: false });
+  });
+
+  it('blocks remove immediately when canDelete capability is explicitly false', async () => {
+    const fileHandle = createFileHandleMock({
+      name: 'note.txt',
+      permissionState: 'denied',
+    });
+    const rootHandle = createDirectoryHandleMock({
+      entries: [fileHandle],
+      name: '',
+      permissionState: 'granted',
+    });
+    const provider = WebFileSystemProvider(rootHandle, {
+      permissionPolicy: 'userSelectedDirectory',
+    });
+
+    await expect(provider.delete('/note.txt', false)).rejects.toMatchObject({
+      code: 'EACCES',
+      name: 'VfsError',
+    });
+    expect(rootHandle.removeEntryMock).not.toHaveBeenCalled();
+  });
+
+  it('attempts move when source canChangePath capability is undefined', async () => {
+    const sourceFile = createFileHandleMock({
+      name: 'note.txt',
+      permissionState: 'prompt',
+      readPermissionState: 'granted',
+    });
+    const destinationDirectory = createDirectoryHandleMock({
+      name: 'Archive',
+      permissionState: 'granted',
+    });
+    const rootHandle = createDirectoryHandleMock({
+      entries: [sourceFile, destinationDirectory],
+      name: '',
+      permissionState: 'granted',
+    });
+    const provider = WebFileSystemProvider(rootHandle, {
+      permissionPolicy: 'userSelectedDirectory',
+    });
+
+    await expect(provider.move('/note.txt', '/Archive/note.txt')).resolves.toBeUndefined();
+  });
+
+  it('attempts destination write when canEditChildren capability is undefined', async () => {
+    const sourceFile = createFileHandleMock({
+      name: 'note.txt',
+      permissionState: 'granted',
+    });
+    const destinationDirectory = createDirectoryHandleMock({
+      name: 'Archive',
+      permissionState: 'prompt',
+      readPermissionState: 'granted',
+    });
+    const rootHandle = createDirectoryHandleMock({
+      entries: [sourceFile, destinationDirectory],
+      name: '',
+      permissionState: 'granted',
+    });
+    const provider = WebFileSystemProvider(rootHandle, {
+      permissionPolicy: 'userSelectedDirectory',
+    });
+
+    await expect(provider.move('/note.txt', '/Archive/note.txt')).resolves.toBeUndefined();
+  });
+
+  it('blocks move immediately when source canChangePath capability is explicitly false', async () => {
+    const sourceFile = createFileHandleMock({
+      name: 'note.txt',
+      permissionState: 'denied',
+    });
+    const rootHandle = createDirectoryHandleMock({
+      entries: [sourceFile],
+      name: '',
+      permissionState: 'granted',
+    });
+    const provider = WebFileSystemProvider(rootHandle, {
+      permissionPolicy: 'userSelectedDirectory',
+    });
+
+    await expect(provider.move('/note.txt', '/Archive/note.txt')).rejects.toMatchObject({
+      code: 'EACCES',
+      name: 'VfsError',
+    });
+  });
+
+  it('blocks move immediately when destination canEditChildren capability is explicitly false', async () => {
+    const sourceFile = createFileHandleMock({
+      name: 'note.txt',
+      permissionState: 'granted',
+    });
+    const destinationDirectory = createDirectoryHandleMock({
+      name: 'Archive',
+      permissionState: 'denied',
+    });
+    const rootHandle = createDirectoryHandleMock({
+      entries: [sourceFile, destinationDirectory],
+      name: '',
+      permissionState: 'granted',
+    });
+    const provider = WebFileSystemProvider(rootHandle, {
+      permissionPolicy: 'userSelectedDirectory',
+    });
+
+    await expect(provider.move('/note.txt', '/Archive/note.txt')).rejects.toMatchObject({
+      code: 'EACCES',
+      name: 'VfsError',
+    });
+  });
 });

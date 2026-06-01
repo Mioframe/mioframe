@@ -333,7 +333,7 @@ export const WebFileSystemProvider = (
     const normalized = PathUtils.normalize(path);
     const { stat: nodeStat } = await lookupPath(normalized);
 
-    if (nodeStat.capabilities?.canDelete !== true) {
+    if (nodeStat.capabilities?.canDelete === false) {
       throw new VfsError(
         FileSystemError.NoPermissions,
         `Deletion is not allowed for path: ${path}`,
@@ -388,7 +388,7 @@ export const WebFileSystemProvider = (
       throw error;
     }
 
-    if (sourceStat.capabilities?.canChangePath !== true) {
+    if (sourceStat.capabilities?.canChangePath === false) {
       throw new VfsError(
         FileSystemError.NoPermissions,
         `Path change is not allowed for path: ${oldPath}`,
@@ -400,7 +400,7 @@ export const WebFileSystemProvider = (
     const destinationDirHandle = await getHandle(newDirName, false, 'directory');
     const { stat: destinationStat } = await lookupPath(newDirName);
 
-    if (destinationStat.capabilities?.canEditChildren !== true) {
+    if (destinationStat.capabilities?.canEditChildren === false) {
       throw new VfsError(
         FileSystemError.NoPermissions,
         `Path change is not allowed inside directory: ${newDirName}`,
