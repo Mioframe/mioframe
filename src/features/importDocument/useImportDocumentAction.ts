@@ -1,6 +1,8 @@
 import { createSafeErrorCause, DomainError } from '@shared/lib/error';
 import { isUserFileSelectionCancel } from '@shared/lib/fileSystem';
 import { reportHandledError } from '@shared/lib/reportHandledError';
+import { useMainServiceClient } from '@shared/service';
+import { useDialog } from '@shared/ui/Dialog';
 import { useSnackbar } from '@shared/ui/Snackbar';
 import { WebFileSystemAccessRequiredError } from '@shared/lib/webFileSystemProvider';
 import { ImportDocumentErrorCode } from './importDocumentErrorCode';
@@ -24,12 +26,69 @@ const toSafeImportReportError = () => {
  * @returns Shared import action for feature callers that import a document into a directory.
  */
 export const useImportDocumentAction = () => {
-  const { importJsonFile } = useImportDocument();
+  const { createImportedDocument, readImportDocumentDraft } = useImportDocument();
   const { addSnackbar } = useSnackbar();
+  const { confirm } = useDialog();
+  const {
+    fileSystem: { getDeviceDirectoryAccessRequest, resolveDeviceDirectoryAccessRequest },
+  } = useMainServiceClient();
 
   const importDocument = async (path: string) => {
     try {
-      const documentId = await importJsonFile(path);
+      const draft = await readImportDocumentDraft();
+
+      if (!draft) {
+        return undefined;
+      }
+
+      let documentId: string | undefined;
+
+      try {
+        documentId = await createImportedDocument(path, draft);
+      } catch (error) {
+        if (!(error instanceof WebFileSystemAccessRequiredError) || error.mode !== 'readwrite') {
+          throw error;
+        }
+
+        const request = await getDeviceDirectoryAccessRequest({
+          mode: error.mode,
+          spaceName: error.spaceName,
+        });
+        const shouldGrantAccess = await confirm({
+          headline: 'Grant write access',
+          supportingText: `Mioframe remembers "${error.spaceName}", but your browser requires write access before importing a document into it.`,
+          confirmLabel: 'Grant access',
+          cancelLabel: 'Not now',
+        });
+
+        if (!shouldGrantAccess || !request) {
+          addSnackbar({
+            text: 'Grant write access to edit this remembered space.',
+          });
+          return undefined;
+        }
+
+        const permissionState = await request.handle.requestPermission({
+          mode: request.mode,
+        });
+        const result = await resolveDeviceDirectoryAccessRequest({
+          mode: request.mode,
+          permissionState,
+          spaceName: request.spaceName,
+        });
+
+        if (result.status !== 'granted') {
+          addSnackbar({
+            text:
+              result.status === 'denied'
+                ? 'Editing is not allowed in this remembered space because your browser denied write access.'
+                : 'Grant write access to edit this remembered space.',
+          });
+          return undefined;
+        }
+
+        documentId = await createImportedDocument(path, draft);
+      }
 
       if (!documentId) {
         return undefined;

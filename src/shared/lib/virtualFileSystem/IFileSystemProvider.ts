@@ -22,11 +22,26 @@ export enum FSNodeType {
  * Provider-reported capabilities for a file system node.
  */
 export interface FSNodeCapabilities {
-  /** Flag that explicitly allows deletion right now without requesting more permission */
+  /**
+   * Whether deletion is allowed right now.
+   * `true` means the provider explicitly allows deletion without additional recovery.
+   * `false` means the provider explicitly denies deletion.
+   * `undefined` means deletion is not guaranteed; callers may attempt it and must handle runtime errors.
+   */
   canDelete?: boolean | undefined;
-  /** Flag that explicitly allows renaming or moving the entry right now */
+  /**
+   * Whether renaming or moving the entry is allowed right now.
+   * `true` means the provider explicitly allows the operation without additional recovery.
+   * `false` means the provider explicitly denies the operation.
+   * `undefined` means the operation is not guaranteed; callers may attempt it and must handle runtime errors.
+   */
   canChangePath?: boolean | undefined;
-  /** Flag that explicitly allows mutating directory contents right now */
+  /**
+   * Whether mutating directory contents is allowed right now.
+   * `true` means the provider explicitly allows mutations without additional recovery.
+   * `false` means the provider explicitly denies mutations.
+   * `undefined` means mutations are not guaranteed; callers may attempt them and must handle runtime errors.
+   */
   canEditChildren?: boolean | undefined;
 }
 

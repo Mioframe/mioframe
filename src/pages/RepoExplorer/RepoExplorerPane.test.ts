@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { defineComponent, h, ref } from 'vue';
 import { mount } from '@vue/test-utils';
 
-const canEditDirectoryContents = ref(true);
+const canEditDirectoryContents = ref<boolean | undefined>(true);
 const openMock = vi.fn();
 const importDocumentMock = vi.fn();
 
@@ -225,12 +225,20 @@ describe('RepoExplorerPane', () => {
     expect(wrapper.find('[data-testid="directory-create-dialog"]').exists()).toBe(false);
   });
 
-  it('shows the create-folder FAB only when the widget reports editable directory contents', async () => {
+  it('hides the Add FAB only when the widget explicitly reports non-editable directory contents', async () => {
     canEditDirectoryContents.value = false;
 
     const wrapper = await mountPane();
 
     expect(wrapper.find('button[aria-label="Add"]').exists()).toBe(false);
+  });
+
+  it('keeps the Add FAB visible when the widget cannot guarantee editability yet', async () => {
+    canEditDirectoryContents.value = undefined;
+
+    const wrapper = await mountPane();
+
+    expect(wrapper.find('button[aria-label="Add"]').exists()).toBe(true);
   });
 
   it('renders the current folder title and keeps dialogs hidden by default', async () => {

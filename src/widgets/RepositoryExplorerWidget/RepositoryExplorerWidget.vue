@@ -25,7 +25,7 @@ const emit = defineEmits<{
 }>();
 
 defineSlots<{
-  after: (props: { canEditDirectoryContents: boolean }) => unknown;
+  after: (props: { canEditDirectoryContents: boolean | undefined }) => unknown;
 }>();
 
 const { directoryPath } = toRefs(props);
@@ -57,9 +57,7 @@ const {
   recoveryState: deviceDirectoryAccessRecovery,
 } = deviceDirectoryAccess;
 const { isRetryAuthorizationLoading, onRetryAuthorization } = googleDriveRecovery;
-const canEditDirectoryContents = computed(
-  () => directoryStat.value?.capabilities?.canEditChildren === true,
-);
+const canEditDirectoryContents = computed(() => directoryStat.value?.capabilities?.canEditChildren);
 
 const onClickPath = (path: string) => {
   emit('clickPath', path);

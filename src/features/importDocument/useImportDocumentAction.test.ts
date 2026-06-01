@@ -1,14 +1,28 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { WebFileSystemAccessRequiredError } from '@shared/lib/webFileSystemProvider';
 
-const { importJsonFileMock, addSnackbarMock, reportHandledErrorMock } = vi.hoisted(() => ({
-  importJsonFileMock: vi.fn(),
+const {
+  createImportedDocumentMock,
+  readImportDocumentDraftMock,
+  addSnackbarMock,
+  confirmMock,
+  getDeviceDirectoryAccessRequestMock,
+  reportHandledErrorMock,
+  resolveDeviceDirectoryAccessRequestMock,
+} = vi.hoisted(() => ({
+  createImportedDocumentMock: vi.fn(),
+  readImportDocumentDraftMock: vi.fn(),
   addSnackbarMock: vi.fn(),
+  confirmMock: vi.fn(),
+  getDeviceDirectoryAccessRequestMock: vi.fn(),
   reportHandledErrorMock: vi.fn(),
+  resolveDeviceDirectoryAccessRequestMock: vi.fn(),
 }));
 
 vi.mock('./useImportDocument', () => ({
   useImportDocument: () => ({
-    importJsonFile: importJsonFileMock,
+    createImportedDocument: createImportedDocumentMock,
+    readImportDocumentDraft: readImportDocumentDraftMock,
   }),
 }));
 
@@ -22,15 +36,34 @@ vi.mock('@shared/lib/reportHandledError', () => ({
   reportHandledError: reportHandledErrorMock,
 }));
 
+vi.mock('@shared/ui/Dialog', () => ({
+  useDialog: () => ({
+    confirm: confirmMock,
+  }),
+}));
+
+vi.mock('@shared/service', () => ({
+  useMainServiceClient: () => ({
+    fileSystem: {
+      getDeviceDirectoryAccessRequest: getDeviceDirectoryAccessRequestMock,
+      resolveDeviceDirectoryAccessRequest: resolveDeviceDirectoryAccessRequestMock,
+    },
+  }),
+}));
+
 describe('useImportDocumentAction', () => {
   beforeEach(() => {
-    importJsonFileMock.mockReset();
+    createImportedDocumentMock.mockReset();
+    readImportDocumentDraftMock.mockReset();
     addSnackbarMock.mockReset();
+    confirmMock.mockReset();
+    getDeviceDirectoryAccessRequestMock.mockReset();
     reportHandledErrorMock.mockReset();
+    resolveDeviceDirectoryAccessRequestMock.mockReset();
   });
 
   it('silently ignores file picker cancellation', async () => {
-    importJsonFileMock.mockResolvedValue(undefined);
+    readImportDocumentDraftMock.mockResolvedValue(undefined);
 
     const { useImportDocumentAction } = await import('./useImportDocumentAction');
     const { importDocument } = useImportDocumentAction();
@@ -43,7 +76,7 @@ describe('useImportDocumentAction', () => {
   it('shows invalid JSON errors without reporting them', async () => {
     const { DomainError } = await import('@shared/lib/error');
     const { ImportDocumentErrorCode } = await import('./importDocumentErrorCode');
-    importJsonFileMock.mockRejectedValue(
+    readImportDocumentDraftMock.mockRejectedValue(
       new DomainError('The selected file is not valid JSON', {
         cause: new Error('parse'),
         code: ImportDocumentErrorCode.invalidJson,
@@ -61,7 +94,11 @@ describe('useImportDocumentAction', () => {
   });
 
   it('shows a success snackbar after a document is imported', async () => {
-    importJsonFileMock.mockResolvedValue('document-id');
+    readImportDocumentDraftMock.mockResolvedValue({
+      fileName: 'draft.json',
+      initialValue: {},
+    });
+    createImportedDocumentMock.mockResolvedValue('document-id');
 
     const { useImportDocumentAction } = await import('./useImportDocumentAction');
     const { importDocument } = useImportDocumentAction();
@@ -76,7 +113,7 @@ describe('useImportDocumentAction', () => {
   it('shows invalid document format errors without reporting them', async () => {
     const { DomainError } = await import('@shared/lib/error');
     const { ImportDocumentErrorCode } = await import('./importDocumentErrorCode');
-    importJsonFileMock.mockRejectedValue(
+    readImportDocumentDraftMock.mockRejectedValue(
       new DomainError('The selected JSON file is not a Beaver document', {
         cause: new Error('zod'),
         code: ImportDocumentErrorCode.invalidDocumentFormat,
@@ -95,7 +132,11 @@ describe('useImportDocumentAction', () => {
 
   it('reports unexpected import failures with safe metadata', async () => {
     const error = new Error('unexpected failure at /private/path/notes.json');
-    importJsonFileMock.mockRejectedValue(error);
+    readImportDocumentDraftMock.mockResolvedValue({
+      fileName: 'draft.json',
+      initialValue: {},
+    });
+    createImportedDocumentMock.mockRejectedValue(error);
 
     const { useImportDocumentAction } = await import('./useImportDocumentAction');
     const { importDocument } = useImportDocumentAction();
@@ -129,7 +170,11 @@ describe('useImportDocumentAction', () => {
       cause: rawCause,
       code: ImportDocumentErrorCode.fileReadFailed,
     });
-    importJsonFileMock.mockRejectedValue(error);
+    readImportDocumentDraftMock.mockResolvedValue({
+      fileName: 'draft.json',
+      initialValue: {},
+    });
+    createImportedDocumentMock.mockRejectedValue(error);
 
     const { useImportDocumentAction } = await import('./useImportDocumentAction');
     const { importDocument } = useImportDocumentAction();
@@ -154,6 +199,58 @@ describe('useImportDocumentAction', () => {
     expect(metadata).toEqual({
       feature: 'documentImport',
       action: 'importDocumentJson',
+    });
+  });
+
+  it('requests write access after a write-required import failure and retries the repository write', async () => {
+    const requestPermissionMock = vi.fn(() => Promise.resolve<'granted'>('granted'));
+    readImportDocumentDraftMock.mockResolvedValue({
+      fileName: 'draft.json',
+      initialValue: {},
+    });
+    createImportedDocumentMock
+      .mockRejectedValueOnce(
+        new WebFileSystemAccessRequiredError({
+          mode: 'readwrite',
+          spaceName: 'Work',
+        }),
+      )
+      .mockResolvedValueOnce('document-id');
+    getDeviceDirectoryAccessRequestMock.mockResolvedValue({
+      handle: {
+        requestPermission: requestPermissionMock,
+      },
+      mode: 'readwrite',
+      spaceName: 'Work',
+    });
+    confirmMock.mockResolvedValue(true);
+    resolveDeviceDirectoryAccessRequestMock.mockResolvedValue({
+      request: undefined,
+      status: 'granted',
+    });
+
+    const { useImportDocumentAction } = await import('./useImportDocumentAction');
+    const { importDocument } = useImportDocumentAction();
+
+    await expect(importDocument('/documents')).resolves.toBe('document-id');
+    expect(confirmMock).toHaveBeenCalledWith({
+      headline: 'Grant write access',
+      supportingText:
+        'Mioframe remembers "Work", but your browser requires write access before importing a document into it.',
+      confirmLabel: 'Grant access',
+      cancelLabel: 'Not now',
+    });
+    expect(requestPermissionMock).toHaveBeenCalledWith({
+      mode: 'readwrite',
+    });
+    expect(resolveDeviceDirectoryAccessRequestMock).toHaveBeenCalledWith({
+      mode: 'readwrite',
+      permissionState: 'granted',
+      spaceName: 'Work',
+    });
+    expect(createImportedDocumentMock).toHaveBeenCalledTimes(2);
+    expect(addSnackbarMock).toHaveBeenCalledWith({
+      text: 'Document imported',
     });
   });
 });

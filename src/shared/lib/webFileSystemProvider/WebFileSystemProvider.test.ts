@@ -129,7 +129,7 @@ describe('WebFileSystemProvider', () => {
     });
   });
 
-  it('marks denied file handles as non-writable in stat capabilities', async () => {
+  it('marks denied file handles as explicitly non-writable in stat capabilities', async () => {
     const { fileHandle, rootHandle } = createRootHandle('granted');
     const provider = WebFileSystemProvider(rootHandle, {
       permissionPolicy: 'userSelectedDirectory',
@@ -219,6 +219,55 @@ describe('WebFileSystemProvider', () => {
         canDelete: false,
         canChangePath: false,
         canEditChildren: true,
+      },
+    });
+  });
+
+  it('reports unknown write capabilities when read is granted but readwrite is still prompt', async () => {
+    const { rootHandle } = createRootHandle('prompt', 'granted');
+    const provider = WebFileSystemProvider(rootHandle, {
+      permissionPolicy: 'userSelectedDirectory',
+    });
+
+    await expect(provider.stat('/')).resolves.toEqual({
+      type: FSNodeType.Directory,
+      capabilities: {
+        canDelete: false,
+        canChangePath: false,
+        canEditChildren: undefined,
+      },
+    });
+    await expect(provider.stat('/note.txt')).resolves.toMatchObject({
+      type: FSNodeType.File,
+      capabilities: {
+        canDelete: undefined,
+        canChangePath: undefined,
+      },
+    });
+  });
+
+  it('reports unknown directory write capabilities when read is granted but readwrite is still prompt', async () => {
+    const nestedDirectoryHandle = createDirectoryHandleMock({
+      name: 'child',
+      permissionState: 'prompt',
+      readPermissionState: 'granted',
+    });
+    const rootHandle = createDirectoryHandleMock({
+      entries: [nestedDirectoryHandle],
+      name: '',
+      permissionState: 'prompt',
+      readPermissionState: 'granted',
+    });
+    const provider = WebFileSystemProvider(rootHandle, {
+      permissionPolicy: 'userSelectedDirectory',
+    });
+
+    await expect(provider.stat('/child')).resolves.toEqual({
+      type: FSNodeType.Directory,
+      capabilities: {
+        canDelete: undefined,
+        canChangePath: undefined,
+        canEditChildren: undefined,
       },
     });
   });

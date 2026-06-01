@@ -847,7 +847,7 @@ describe('useFileSystemService', () => {
     ).resolves.toBeUndefined();
   });
 
-  it('emits a VFS invalidation event for the space path after permission is granted', async () => {
+  it('emits a provider refresh event through VFS watch integration after permission is granted', async () => {
     const promptHandle = createDirectoryHandleMock({
       name: 'Work',
       permissionState: 'prompt',
@@ -871,7 +871,7 @@ describe('useFileSystemService', () => {
 
     const watchedEvents: string[] = [];
     const unwatch = service.vfs.watch('/Device Files/Work', () => {
-      watchedEvents.push('invalidated');
+      watchedEvents.push('refetched');
     });
 
     await service.resolveDeviceDirectoryAccessRequest({
@@ -881,7 +881,7 @@ describe('useFileSystemService', () => {
     });
 
     unwatch();
-    expect(watchedEvents).toEqual(['invalidated']);
+    expect(watchedEvents).toEqual(['refetched']);
   });
 
   it('keeps read and readwrite pending requests separate for the same remembered space', async () => {
@@ -1044,7 +1044,7 @@ describe('useFileSystemService', () => {
       expect(results).toContainEqual(
         expect.objectContaining({
           capabilities: expect.objectContaining({
-            canEditChildren: false,
+            canEditChildren: undefined,
           }),
           type: FSNodeType.Directory,
         }),

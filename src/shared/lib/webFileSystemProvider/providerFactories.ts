@@ -16,6 +16,9 @@ type AccessRequiredHandler = (
   context: WebFileSystemProviderAccessRequiredContext,
 ) => WebFileSystemAccessRequiredDetails;
 
+/** Mounted provider kind used by the provider-boundary factory mapping. */
+export type MountedWebFileSystemKind = 'browserStorage' | 'localDirectory';
+
 const createProvider = (
   rootHandle: FileSystemDirectoryHandle,
   options: WebFileSystemProviderOptions,
@@ -47,3 +50,25 @@ export const createOriginPrivateStorageProvider = (
   createProvider(rootHandle, {
     permissionPolicy: 'originPrivateStorage',
   });
+
+/**
+ * Creates a mounted browser file-system provider using the provider-boundary kind mapping.
+ * @param options - Mounted provider kind, root handle, and optional access-recovery callback.
+ * @returns Refreshable provider instance for the mounted handle.
+ */
+export const createMountedWebFileSystemProvider = ({
+  kind,
+  onAccessRequired,
+  rootHandle,
+}: {
+  kind: MountedWebFileSystemKind;
+  onAccessRequired?: AccessRequiredHandler | undefined;
+  rootHandle: FileSystemDirectoryHandle;
+}): RefreshableWebFileSystemProvider =>
+  kind === 'localDirectory' && onAccessRequired
+    ? createUserSelectedDirectoryProvider(rootHandle, onAccessRequired)
+    : kind === 'localDirectory'
+      ? createProvider(rootHandle, {
+          permissionPolicy: 'userSelectedDirectory',
+        })
+      : createOriginPrivateStorageProvider(rootHandle);

@@ -16,7 +16,7 @@ import {
   VirtualFileSystem,
   VfsEventType,
 } from '../virtualFileSystem';
-import { WebFileSystemProvider } from '../webFileSystemProvider';
+import { createMountedWebFileSystemProvider } from '../webFileSystemProvider';
 
 export const DEVICE_FILES_ROOT_NAME = 'Device Files';
 
@@ -127,9 +127,9 @@ export const DeviceFileSystemProvider = (
 ): DeviceFileSystemProvider => {
   const {
     createProvider = ({ handle, kind }) =>
-      WebFileSystemProvider(handle, {
-        permissionPolicy:
-          kind === 'localDirectory' ? 'userSelectedDirectory' : 'originPrivateStorage',
+      createMountedWebFileSystemProvider({
+        kind,
+        rootHandle: handle,
       }),
   } = providerOptions;
   const vfs = new VirtualFileSystem();

@@ -57,6 +57,24 @@ export const WebFileSystemProvider = (
   const { onAccessRequired, permissionPolicy } = options;
   const events = new EventEmitter();
 
+  const getWriteCapability = (
+    permissionState: PermissionState | undefined,
+  ): boolean | undefined => {
+    if (permissionPolicy === 'originPrivateStorage') {
+      return true;
+    }
+
+    if (permissionState === 'granted') {
+      return true;
+    }
+
+    if (permissionState === 'denied') {
+      return false;
+    }
+
+    return undefined;
+  };
+
   const queryModePermission = async (
     handle: FileSystemFileHandle | FileSystemDirectoryHandle,
     mode: WebFileSystemAccessMode,
@@ -166,9 +184,7 @@ export const WebFileSystemProvider = (
   const fileHandleStat = async (
     handle: FileSystemFileHandle | FileSystemDirectoryHandle,
   ): Promise<FSNodeStat> => {
-    const canWrite =
-      permissionPolicy === 'originPrivateStorage' ||
-      (await queryWritePermission(handle)) === 'granted';
+    const canWrite = getWriteCapability(await queryWritePermission(handle));
 
     if (handle.kind === 'file') {
       const file = await handle.getFile();
@@ -200,9 +216,7 @@ export const WebFileSystemProvider = (
   ): Promise<{ handle: FileSystemFileHandle | FileSystemDirectoryHandle; stat: FSNodeStat }> => {
     const normalized = PathUtils.normalize(path);
     if (normalized === '/') {
-      const canWriteRoot =
-        permissionPolicy === 'originPrivateStorage' ||
-        (await queryWritePermission(rootHandle)) === 'granted';
+      const canWriteRoot = getWriteCapability(await queryWritePermission(rootHandle));
 
       return {
         handle: rootHandle,

@@ -75,6 +75,7 @@ export default {
   ignorePatterns: [
     '.agents/**',
     '.claude',
+    '.claude/skills',
     '.claude/**',
     '**/AGENTS.md',
     '**/CLAUDE.md',

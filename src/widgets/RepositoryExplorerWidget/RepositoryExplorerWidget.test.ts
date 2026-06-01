@@ -261,11 +261,11 @@ const mountWidget = async () => {
       directoryPath: '/Device Files/Work',
     },
     slots: {
-      after: ({ canEditDirectoryContents }: { canEditDirectoryContents: boolean }) =>
+      after: ({ canEditDirectoryContents }: { canEditDirectoryContents: boolean | undefined }) =>
         h(
           'div',
           { 'data-testid': 'after-slot' },
-          canEditDirectoryContents ? 'editable' : 'readonly',
+          canEditDirectoryContents === false ? 'blocked' : 'reachable',
         ),
     },
   });
@@ -279,11 +279,11 @@ const mountGoogleDriveWidget = async () => {
       directoryPath: '/Google Drive/work@example.com/My Drive',
     },
     slots: {
-      after: ({ canEditDirectoryContents }: { canEditDirectoryContents: boolean }) =>
+      after: ({ canEditDirectoryContents }: { canEditDirectoryContents: boolean | undefined }) =>
         h(
           'div',
           { 'data-testid': 'after-slot' },
-          canEditDirectoryContents ? 'editable' : 'readonly',
+          canEditDirectoryContents === false ? 'blocked' : 'reachable',
         ),
     },
   });
@@ -322,7 +322,7 @@ describe('RepositoryExplorerWidget', () => {
     expect(wrapper.emitted('clickPath')).toEqual([['/parent'], ['/child']]);
     expect(wrapper.emitted('clickReturnHome')).toEqual([[]]);
     expect(wrapper.emitted('clickDocument')).toEqual([['document-id']]);
-    expect(wrapper.get('[data-testid="after-slot"]').text()).toBe('editable');
+    expect(wrapper.get('[data-testid="after-slot"]').text()).toBe('reachable');
   });
 
   it('loads the pending read access request before enabling grant access and does not prompt on mount', async () => {
@@ -521,12 +521,12 @@ describe('RepositoryExplorerWidget', () => {
     expect(wrapperWithoutMessage.text()).not.toContain('Retry authorization');
   });
 
-  it('treats missing edit capabilities as readonly for the after slot', async () => {
+  it('keeps missing edit capabilities reachable for the after slot contract', async () => {
     directoryStatRef.value = {};
 
     const wrapper = await mountWidget();
 
-    expect(wrapper.get('[data-testid="after-slot"]').text()).toBe('readonly');
+    expect(wrapper.get('[data-testid="after-slot"]').text()).toBe('reachable');
   });
 
   it('does not treat write access recovery as a folder-open recovery screen', async () => {

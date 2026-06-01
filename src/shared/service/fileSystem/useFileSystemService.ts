@@ -7,8 +7,8 @@ import {
 } from '@shared/lib/deviceFileSystemProvider';
 import { zodIs } from '@shared/lib/validateZodScheme';
 import {
+  createMountedWebFileSystemProvider,
   createOriginPrivateStorageProvider,
-  createUserSelectedDirectoryProvider,
   type WebFileSystemAccessMode,
 } from '@shared/lib/webFileSystemProvider';
 import type { FSNodeStat, IFileSystemProvider } from '@shared/lib/virtualFileSystem';
@@ -106,9 +106,10 @@ const setupFileSystemService = () => {
     createProvider: (record) =>
       record.kind === 'localDirectory'
         ? (() => {
-            const provider = createUserSelectedDirectoryProvider(
-              record.handle,
-              ({ handle, mode }) => {
+            const provider = createMountedWebFileSystemProvider({
+              kind: record.kind,
+              rootHandle: record.handle,
+              onAccessRequired: ({ handle, mode }) => {
                 const request = upsertPendingDeviceDirectoryAccessRequest({
                   spaceName: record.name,
                   handle,
@@ -123,7 +124,7 @@ const setupFileSystemService = () => {
                   spaceName: request.spaceName,
                 };
               },
-            );
+            });
 
             return provider;
           })()

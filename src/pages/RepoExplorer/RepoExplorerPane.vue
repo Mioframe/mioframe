@@ -115,7 +115,7 @@ const onClickReturnHome = async () => {
       @click-return-home="onClickReturnHome"
     >
       <template #after="{ canEditDirectoryContents }">
-        <MDFabContainer v-if="canEditDirectoryContents" auto-hide>
+        <MDFabContainer v-if="canEditDirectoryContents !== false" auto-hide>
           <MDExtendedFab label="Add" md-symbol="add" @click="onClickAdd" />
         </MDFabContainer>
       </template>

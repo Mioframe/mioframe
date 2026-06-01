@@ -6,6 +6,16 @@ import { zodCFRDocumentContent } from '@shared/lib/cfrDocument';
 import { ImportDocumentErrorCode } from './importDocumentErrorCode';
 
 /**
+ * Parsed import payload ready for repository creation.
+ */
+export interface ImportedDocumentDraft {
+  /** Selected file name retained within the feature boundary for retry flows. */
+  fileName: string;
+  /** Parsed Mioframe document content ready for repository creation. */
+  initialValue: ReturnType<typeof zodCFRDocumentContent.parse>;
+}
+
+/**
  * Creates JSON document import actions for a target directory.
  * @returns Import actions for Mioframe JSON documents.
  */
@@ -15,11 +25,10 @@ export const useImportDocument = () => {
   } = useMainServiceClient();
 
   /**
-   * Imports a Mioframe document from a selected JSON file into the target directory.
-   * @param path - The directory path where the imported document should be created.
-   * @returns The created document id, or `undefined` when the user cancels file selection.
+   * Reads and validates a selected Mioframe JSON document before repository creation.
+   * @returns The parsed draft, or `undefined` when the user cancels file selection.
    */
-  const importJsonFile = async (path: string) => {
+  const readImportDocumentDraft = async (): Promise<ImportedDocumentDraft | undefined> => {
     let file: File;
 
     try {
@@ -30,7 +39,7 @@ export const useImportDocument = () => {
       });
     } catch (error) {
       if (isUserFileSelectionCancel(error)) {
-        return;
+        return undefined;
       }
 
       if (error instanceof DomainError) {
@@ -76,8 +85,44 @@ export const useImportDocument = () => {
       });
     }
 
+    return {
+      fileName: file.name,
+      initialValue,
+    };
+  };
+
+  /**
+   * Creates an imported document in the target directory from a validated draft payload.
+   * @param path - The directory path where the imported document should be created.
+   * @param draft - Parsed import payload selected by the user.
+   * @returns The created document id.
+   */
+  const createImportedDocument = async (path: string, draft: ImportedDocumentDraft) => {
     try {
-      const documentId = await createDocument(path, initialValue);
+      const documentId = await createDocument(path, draft.initialValue);
+
+      return documentId;
+    } catch (error) {
+      if (error instanceof DomainError) {
+        throw error;
+      }
+
+      throw new DomainError('Could not import the document', {
+        cause: createSafeErrorCause('Document repository write operation failed'),
+        code: ImportDocumentErrorCode.documentImportFailed,
+      });
+    }
+  };
+
+  const importJsonFile = async (path: string) => {
+    const draft = await readImportDocumentDraft();
+
+    if (!draft) {
+      return undefined;
+    }
+
+    try {
+      const documentId = await createImportedDocument(path, draft);
 
       return documentId;
     } catch (error) {
@@ -93,6 +138,8 @@ export const useImportDocument = () => {
   };
 
   return {
+    createImportedDocument,
     importJsonFile,
+    readImportDocumentDraft,
   };
 };
