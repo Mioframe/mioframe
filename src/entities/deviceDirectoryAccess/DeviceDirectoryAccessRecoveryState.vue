@@ -20,21 +20,19 @@ const supportingText = computed(
 </script>
 
 <template>
-  <div class="device-directory-access-recovery-state">
-    <MDEmptyState
-      class="device-directory-access-recovery-state__content"
-      headline="Permission required"
-      :supporting-text="supportingText"
-    >
-      <template #icon>
-        <MDSymbol name="folder_managed" class="device-directory-access-recovery-state__icon" />
-      </template>
+  <MDEmptyState
+    class="device-directory-access-recovery-state"
+    headline="Permission required"
+    :supporting-text="supportingText"
+  >
+    <template #icon>
+      <MDSymbol name="folder_managed" class="device-directory-access-recovery-state__icon" />
+    </template>
 
-      <template #actions>
-        <slot name="actions" />
-      </template>
-    </MDEmptyState>
-  </div>
+    <template #actions>
+      <slot name="actions" />
+    </template>
+  </MDEmptyState>
 </template>
 
 <style scoped>
