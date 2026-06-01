@@ -610,7 +610,6 @@ describe('useFileSystemService', () => {
     ).resolves.toEqual({
       mode: 'read',
       spaceName: 'Work',
-      handle: promptHandle,
     });
     expect(promptHandle.requestPermissionMock).not.toHaveBeenCalled();
   });
@@ -656,11 +655,6 @@ describe('useFileSystemService', () => {
         spaceName: error.spaceName,
       }),
     ).resolves.toEqual({
-      request: {
-        mode: 'read',
-        spaceName: 'Work',
-        handle: deniedHandle,
-      },
       status: 'denied',
     });
 
@@ -672,7 +666,6 @@ describe('useFileSystemService', () => {
     ).resolves.toEqual({
       mode: 'read',
       spaceName: 'Work',
-      handle: deniedHandle,
     });
     await expect(service.deviceFiles.fetch()).resolves.toEqual([
       {
@@ -715,11 +708,6 @@ describe('useFileSystemService', () => {
         spaceName: error.spaceName,
       }),
     ).resolves.toEqual({
-      request: {
-        mode: 'read',
-        spaceName: 'Work',
-        handle: promptHandle,
-      },
       status: 'cancelled',
     });
 
@@ -731,7 +719,6 @@ describe('useFileSystemService', () => {
     ).resolves.toEqual({
       mode: 'read',
       spaceName: 'Work',
-      handle: promptHandle,
     });
   });
 
@@ -784,7 +771,6 @@ describe('useFileSystemService', () => {
     ).resolves.toEqual({
       mode: 'read',
       spaceName: 'Work',
-      handle: secondHandle,
     });
   });
 
@@ -818,11 +804,6 @@ describe('useFileSystemService', () => {
         spaceName: firstError.spaceName,
       }),
     ).resolves.toEqual({
-      request: {
-        mode: 'read',
-        spaceName: 'Work',
-        handle: grantedHandle,
-      },
       status: 'granted',
     });
     await expect(
@@ -884,6 +865,130 @@ describe('useFileSystemService', () => {
     expect(watchedEvents).toEqual(['refetched']);
   });
 
+  it('requestDeviceDirectoryAccessPermission returns granted and triggers provider refresh', async () => {
+    const promptHandle = createDirectoryHandleMock({
+      name: 'Work',
+      permissionState: 'prompt',
+      sameEntryKey: 'work',
+    });
+    getRecordListMock.mockResolvedValue([{ name: 'Work', handle: promptHandle }]);
+
+    const service = await createService();
+
+    await vi.waitFor(async () => {
+      await expect(service.deviceFiles.fetch()).resolves.toEqual([
+        { canDisconnect: true, name: 'Work' },
+      ]);
+    });
+
+    const error = await service.directoryContent.fetch({ path: '/Device Files/Work' });
+
+    if (!isAccessErrorWithRecoveryKey(error)) {
+      throw new Error('Expected access error');
+    }
+
+    promptHandle.requestPermissionMock.mockResolvedValue('granted');
+    promptHandle.queryPermissionMock?.mockResolvedValue('granted');
+
+    const watchedEvents: string[] = [];
+    const unwatch = service.vfs.watch('/Device Files/Work', () => {
+      watchedEvents.push('refetched');
+    });
+
+    await expect(
+      service.requestDeviceDirectoryAccessPermission({
+        mode: error.mode,
+        spaceName: error.spaceName,
+      }),
+    ).resolves.toEqual({ status: 'granted' });
+
+    unwatch();
+    expect(promptHandle.requestPermissionMock).toHaveBeenCalledWith({ mode: 'read' });
+    expect(watchedEvents).toEqual(['refetched']);
+  });
+
+  it('requestDeviceDirectoryAccessPermission returns denied when browser denies', async () => {
+    const deniedHandle = createDirectoryHandleMock({
+      name: 'Work',
+      permissionState: 'denied',
+      sameEntryKey: 'work',
+    });
+    getRecordListMock.mockResolvedValue([{ name: 'Work', handle: deniedHandle }]);
+
+    const service = await createService();
+
+    await vi.waitFor(async () => {
+      await expect(service.deviceFiles.fetch()).resolves.toEqual([
+        { canDisconnect: true, name: 'Work' },
+      ]);
+    });
+
+    const error = await service.directoryContent.fetch({ path: '/Device Files/Work' });
+
+    if (!isAccessErrorWithRecoveryKey(error)) {
+      throw new Error('Expected access error');
+    }
+
+    await expect(
+      service.requestDeviceDirectoryAccessPermission({
+        mode: error.mode,
+        spaceName: error.spaceName,
+      }),
+    ).resolves.toEqual({ status: 'denied' });
+  });
+
+  it('requestDeviceDirectoryAccessPermission returns error when requestPermission rejects', async () => {
+    const promptHandle = createDirectoryHandleMock({
+      name: 'Work',
+      permissionState: 'prompt',
+      sameEntryKey: 'work',
+    });
+    getRecordListMock.mockResolvedValue([{ name: 'Work', handle: promptHandle }]);
+
+    const service = await createService();
+
+    await vi.waitFor(async () => {
+      await expect(service.deviceFiles.fetch()).resolves.toEqual([
+        { canDisconnect: true, name: 'Work' },
+      ]);
+    });
+
+    const error = await service.directoryContent.fetch({ path: '/Device Files/Work' });
+
+    if (!isAccessErrorWithRecoveryKey(error)) {
+      throw new Error('Expected access error');
+    }
+
+    promptHandle.requestPermissionMock.mockRejectedValue(
+      new DOMException('User activation required'),
+    );
+
+    await expect(
+      service.requestDeviceDirectoryAccessPermission({
+        mode: error.mode,
+        spaceName: error.spaceName,
+      }),
+    ).resolves.toEqual({ status: 'error' });
+
+    await expect(
+      service.getDeviceDirectoryAccessRequest({
+        mode: error.mode,
+        spaceName: error.spaceName,
+      }),
+    ).resolves.toEqual({ mode: 'read', spaceName: 'Work' });
+  });
+
+  it('requestDeviceDirectoryAccessPermission returns error for unknown key', async () => {
+    const service = await createService();
+
+    await expect(
+      service.requestDeviceDirectoryAccessPermission({
+        mode: 'readwrite',
+        spaceName: 'Missing',
+      }),
+    ).resolves.toEqual({ status: 'error' });
+  });
+
   it('keeps read and readwrite pending requests separate for the same remembered space', async () => {
     const promptHandle = createDirectoryHandleMock({
       name: 'Work',
@@ -919,7 +1024,6 @@ describe('useFileSystemService', () => {
         spaceName: 'Work',
       }),
     ).resolves.toEqual({
-      handle: promptHandle,
       mode: 'readwrite',
       spaceName: 'Work',
     });
@@ -1104,7 +1208,6 @@ describe('useFileSystemService', () => {
     ).resolves.toEqual({
       mode: 'read',
       spaceName: 'Work',
-      handle: promptHandle,
     });
   });
 
@@ -1157,7 +1260,6 @@ describe('useFileSystemService', () => {
     ).resolves.toEqual({
       mode: 'read',
       spaceName: 'Archive',
-      handle: archiveHandle,
     });
   });
 
@@ -1171,7 +1273,6 @@ describe('useFileSystemService', () => {
         spaceName: 'Missing',
       }),
     ).resolves.toEqual({
-      request: undefined,
       status: 'missing',
     });
     await expect(

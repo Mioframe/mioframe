@@ -46,7 +46,8 @@ type DeviceDirectoryAccessRequest = {
 
 type DeviceDirectoryAccessRequestKey = Pick<DeviceDirectoryAccessRequest, 'spaceName' | 'mode'>;
 
-type DeviceDirectoryAccessRequestResult = DeviceDirectoryAccessRequestKey & {
+/** Service-internal result used when resolving a pending request with a known permissionState. */
+type DeviceDirectoryAccessRequestResolveResult = DeviceDirectoryAccessRequestKey & {
   handle: FileSystemDirectoryHandle;
 };
 
@@ -74,7 +75,7 @@ const setupFileSystemService = () => {
     mode,
     refreshProvider,
     spaceName,
-  }: DeviceDirectoryAccessRequestResult &
+  }: DeviceDirectoryAccessRequestResolveResult &
     Pick<DeviceDirectoryAccessRequest, 'refreshProvider'>) => {
     const key = getPendingRequestKey({
       mode,
@@ -103,32 +104,40 @@ const setupFileSystemService = () => {
     }
   };
   const deviceFileSystemProvider = DeviceFileSystemProvider({
-    createProvider: (record) =>
-      record.kind === 'localDirectory'
-        ? (() => {
-            const provider = createMountedWebFileSystemProvider({
-              kind: record.kind,
-              rootHandle: record.handle,
-              onAccessRequired: ({ handle, mode }) => {
-                const request = upsertPendingDeviceDirectoryAccessRequest({
-                  spaceName: record.name,
-                  handle,
-                  mode,
-                  refreshProvider: () => {
-                    provider.notifyAccessChanged();
-                  },
-                });
+    createProvider: (record) => {
+      if (record.kind !== 'localDirectory') {
+        return createOriginPrivateStorageProvider(record.handle);
+      }
 
-                return {
-                  mode: request.mode,
-                  spaceName: request.spaceName,
-                };
-              },
-            });
+      // Use a holder so the refresh callback does not capture the provider variable
+      // from the same expression that assigns it.
+      const notifyHolder: { fn: () => void } = { fn: () => undefined };
+      const provider = createMountedWebFileSystemProvider({
+        kind: record.kind,
+        rootHandle: record.handle,
+        onAccessRequired: ({ handle, mode }) => {
+          const request = upsertPendingDeviceDirectoryAccessRequest({
+            spaceName: record.name,
+            handle,
+            mode,
+            refreshProvider: () => {
+              notifyHolder.fn();
+            },
+          });
 
-            return provider;
-          })()
-        : createOriginPrivateStorageProvider(record.handle),
+          return {
+            mode: request.mode,
+            spaceName: request.spaceName,
+          };
+        },
+      });
+
+      notifyHolder.fn = () => {
+        provider.notifyAccessChanged();
+      };
+
+      return provider;
+    },
   });
   const { getRecordList, updateRecordList } = useFileSystemDirectoryHandleService();
   const activeDeviceFiles$ = new BehaviorSubject<DeviceFileDisplayRecord[]>([]);
@@ -371,7 +380,7 @@ const setupFileSystemService = () => {
   const getDeviceDirectoryAccessRequest = ({
     mode,
     spaceName,
-  }: DeviceDirectoryAccessRequestKey): Promise<DeviceDirectoryAccessRequestResult | undefined> =>
+  }: DeviceDirectoryAccessRequestKey): Promise<DeviceDirectoryAccessRequestKey | undefined> =>
     Promise.resolve(
       pendingDeviceDirectoryAccessRequests.get(
         getPendingRequestKey({
@@ -382,7 +391,6 @@ const setupFileSystemService = () => {
     ).then((request) =>
       request
         ? {
-            handle: request.handle,
             mode: request.mode,
             spaceName: request.spaceName,
           }
@@ -406,7 +414,6 @@ const setupFileSystemService = () => {
 
     if (!request) {
       return Promise.resolve({
-        request: undefined,
         status: 'missing' as const,
       });
     }
@@ -416,23 +423,42 @@ const setupFileSystemService = () => {
       request.refreshProvider();
 
       return Promise.resolve({
-        request: {
-          handle: request.handle,
-          mode: request.mode,
-          spaceName: request.spaceName,
-        },
         status: 'granted' as const,
       });
     }
 
     return Promise.resolve({
-      request: {
-        handle: request.handle,
-        mode: request.mode,
-        spaceName: request.spaceName,
-      },
       status: permissionState === 'denied' ? ('denied' as const) : ('cancelled' as const),
     });
+  };
+
+  const requestDeviceDirectoryAccessPermission = async ({
+    mode,
+    spaceName,
+  }: DeviceDirectoryAccessRequestKey): Promise<{
+    status: 'granted' | 'denied' | 'cancelled' | 'error';
+  }> => {
+    const request = pendingDeviceDirectoryAccessRequests.get(
+      getPendingRequestKey({ mode, spaceName }),
+    );
+
+    if (!request) {
+      return { status: 'error' };
+    }
+
+    let permissionState: PermissionState;
+
+    try {
+      permissionState = await request.handle.requestPermission({ mode });
+    } catch {
+      return { status: 'error' };
+    }
+
+    const result = await resolveDeviceDirectoryAccessRequest({ mode, permissionState, spaceName });
+
+    return {
+      status: result.status === 'missing' ? 'error' : result.status,
+    };
   };
 
   const cancelDeviceDirectoryAccessRequest = (key: DeviceDirectoryAccessRequestKey) =>
@@ -454,6 +480,7 @@ const setupFileSystemService = () => {
     addDeviceDirectory,
     removeDeviceDirectory,
     getDeviceDirectoryAccessRequest,
+    requestDeviceDirectoryAccessPermission,
     resolveDeviceDirectoryAccessRequest,
     cancelDeviceDirectoryAccessRequest,
     deviceFiles: fromObservable(activeDeviceFiles$),

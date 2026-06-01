@@ -24,50 +24,8 @@ const regularFileEntriesRef = ref<unknown[] | undefined>([]);
 const repositoryRecoveryErrorsRef = ref<unknown[]>([]);
 const cancelDeviceDirectoryAccessRequestMock = vi.fn();
 const getDeviceDirectoryAccessRequestMock = vi.fn();
-const resolveDeviceDirectoryAccessRequestMock = vi.fn();
+const requestDeviceDirectoryAccessPermissionMock = vi.fn();
 const requestTokenMock = vi.fn();
-
-type MockPermissionDirectoryHandle = FileSystemDirectoryHandle & {
-  requestPermissionMock: ReturnType<
-    typeof vi.fn<(descriptor?: FileSystemHandlePermissionDescriptor) => Promise<PermissionState>>
-  >;
-};
-
-const createPermissionHandle = (
-  permissionState: PermissionState,
-): MockPermissionDirectoryHandle => {
-  const requestPermissionMock = vi.fn(() => Promise.resolve(permissionState));
-
-  return {
-    kind: 'directory',
-    name: 'Work',
-    isSameEntry: vi.fn(() => Promise.resolve(false)),
-    requestPermission: requestPermissionMock,
-    requestPermissionMock,
-    queryPermission: vi.fn(() => Promise.resolve(permissionState)),
-    isFile: false,
-    isDirectory: true,
-    entries: vi.fn(),
-    keys: vi.fn(),
-    values: vi.fn(),
-    getDirectoryHandle: vi.fn(),
-    getFileHandle: vi.fn(),
-    removeEntry: vi.fn(),
-    resolve: vi.fn(),
-    getFile(fileName: string, options?: FileSystemGetFileOptions) {
-      return this.getFileHandle(fileName, options);
-    },
-    getDirectory(directoryName: string, options?: FileSystemGetDirectoryOptions) {
-      return this.getDirectoryHandle(directoryName, options);
-    },
-    getEntries() {
-      return this.values();
-    },
-    [Symbol.asyncIterator]() {
-      return this.entries();
-    },
-  };
-};
 
 vi.mock('@entity/fsEntry', () => ({
   useFSNodeStat: () => ({
@@ -81,7 +39,7 @@ vi.mock('@shared/service', () => ({
     fileSystem: {
       cancelDeviceDirectoryAccessRequest: cancelDeviceDirectoryAccessRequestMock,
       getDeviceDirectoryAccessRequest: getDeviceDirectoryAccessRequestMock,
-      resolveDeviceDirectoryAccessRequest: resolveDeviceDirectoryAccessRequestMock,
+      requestDeviceDirectoryAccessPermission: requestDeviceDirectoryAccessPermissionMock,
     },
     google: {
       requestToken: requestTokenMock,
@@ -306,7 +264,7 @@ describe('RepositoryExplorerWidget', () => {
     repositoryRecoveryErrorsRef.value = [];
     cancelDeviceDirectoryAccessRequestMock.mockReset();
     getDeviceDirectoryAccessRequestMock.mockReset();
-    resolveDeviceDirectoryAccessRequestMock.mockReset();
+    requestDeviceDirectoryAccessPermissionMock.mockReset();
     requestTokenMock.mockReset();
     document.body.innerHTML = '';
   });
@@ -326,7 +284,6 @@ describe('RepositoryExplorerWidget', () => {
   });
 
   it('loads the pending read access request before enabling grant access and does not prompt on mount', async () => {
-    const handle = createPermissionHandle('granted');
     repositoryRecoveryErrorsRef.value = [
       new WebFileSystemAccessRequiredError({
         spaceName: 'Work',
@@ -360,13 +317,9 @@ describe('RepositoryExplorerWidget', () => {
     }
 
     expect(grantButtonBeforeLoad.attributes('disabled')).toBeDefined();
-    expect(handle.requestPermissionMock).not.toHaveBeenCalled();
+    expect(requestDeviceDirectoryAccessPermissionMock).not.toHaveBeenCalled();
 
-    resolveRequest({
-      spaceName: 'Work',
-      handle,
-      mode: 'read',
-    });
+    resolveRequest({ spaceName: 'Work', mode: 'read' });
 
     await vi.waitFor(() => {
       const grantButton = wrapper
@@ -375,11 +328,10 @@ describe('RepositoryExplorerWidget', () => {
 
       expect(grantButton?.attributes('disabled')).toBeUndefined();
     });
-    expect(handle.requestPermissionMock).not.toHaveBeenCalled();
+    expect(requestDeviceDirectoryAccessPermissionMock).not.toHaveBeenCalled();
   });
 
-  it('requests permission from the loaded handle without retrying the route after grant', async () => {
-    const handle = createPermissionHandle('granted');
+  it('calls requestDeviceDirectoryAccessPermission without retrying the route after grant', async () => {
     repositoryRecoveryErrorsRef.value = [
       new WebFileSystemAccessRequiredError({
         spaceName: 'Work',
@@ -388,17 +340,9 @@ describe('RepositoryExplorerWidget', () => {
     ];
     getDeviceDirectoryAccessRequestMock.mockResolvedValue({
       spaceName: 'Work',
-      handle,
       mode: 'read',
     });
-    resolveDeviceDirectoryAccessRequestMock.mockResolvedValue({
-      request: {
-        spaceName: 'Work',
-        handle,
-        mode: 'read',
-      },
-      status: 'granted',
-    });
+    requestDeviceDirectoryAccessPermissionMock.mockResolvedValue({ status: 'granted' });
 
     const wrapper = await mountWidget();
 
@@ -419,19 +363,14 @@ describe('RepositoryExplorerWidget', () => {
 
     await grantButton.trigger('click');
 
-    expect(handle.requestPermissionMock).toHaveBeenCalledWith({
+    expect(requestDeviceDirectoryAccessPermissionMock).toHaveBeenCalledWith({
       mode: 'read',
-    });
-    expect(resolveDeviceDirectoryAccessRequestMock).toHaveBeenCalledWith({
-      mode: 'read',
-      permissionState: 'granted',
       spaceName: 'Work',
     });
     expect(wrapper.emitted('retryCurrentPath')).toBeUndefined();
   });
 
   it('keeps the recovery state and safe message after denial without retrying the route', async () => {
-    const handle = createPermissionHandle('denied');
     repositoryRecoveryErrorsRef.value = [
       new WebFileSystemAccessRequiredError({
         spaceName: 'Work',
@@ -440,17 +379,9 @@ describe('RepositoryExplorerWidget', () => {
     ];
     getDeviceDirectoryAccessRequestMock.mockResolvedValue({
       spaceName: 'Work',
-      handle,
       mode: 'read',
     });
-    resolveDeviceDirectoryAccessRequestMock.mockResolvedValue({
-      request: {
-        spaceName: 'Work',
-        handle,
-        mode: 'read',
-      },
-      status: 'denied',
-    });
+    requestDeviceDirectoryAccessPermissionMock.mockResolvedValue({ status: 'denied' });
 
     const wrapper = await mountWidget();
 
@@ -471,9 +402,8 @@ describe('RepositoryExplorerWidget', () => {
 
     await grantButton.trigger('click');
 
-    expect(resolveDeviceDirectoryAccessRequestMock).toHaveBeenCalledWith({
+    expect(requestDeviceDirectoryAccessPermissionMock).toHaveBeenCalledWith({
       mode: 'read',
-      permissionState: 'denied',
       spaceName: 'Work',
     });
     expect(wrapper.emitted('retryCurrentPath')).toBeUndefined();

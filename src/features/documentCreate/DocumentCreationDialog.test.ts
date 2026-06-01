@@ -15,7 +15,7 @@ const directoryStatRef = ref<{
   },
 });
 const getDeviceDirectoryAccessRequestMock = vi.fn();
-const resolveDeviceDirectoryAccessRequestMock = vi.fn();
+const requestDeviceDirectoryAccessPermissionMock = vi.fn();
 const cancelDeviceDirectoryAccessRequestMock = vi.fn();
 
 vi.mock('@entity/fsEntry', () => ({
@@ -34,7 +34,7 @@ vi.mock('@shared/service', () => ({
   useMainServiceClient: () => ({
     fileSystem: {
       getDeviceDirectoryAccessRequest: getDeviceDirectoryAccessRequestMock,
-      resolveDeviceDirectoryAccessRequest: resolveDeviceDirectoryAccessRequestMock,
+      requestDeviceDirectoryAccessPermission: requestDeviceDirectoryAccessPermissionMock,
       cancelDeviceDirectoryAccessRequest: cancelDeviceDirectoryAccessRequestMock,
     },
   }),
@@ -144,7 +144,7 @@ describe('DocumentCreationDialog', () => {
   beforeEach(() => {
     createDocumentMock.mockReset();
     getDeviceDirectoryAccessRequestMock.mockReset();
-    resolveDeviceDirectoryAccessRequestMock.mockReset();
+    requestDeviceDirectoryAccessPermissionMock.mockReset();
     cancelDeviceDirectoryAccessRequestMock.mockReset();
     directoryStatRef.value = {
       capabilities: {
@@ -154,7 +154,6 @@ describe('DocumentCreationDialog', () => {
   });
 
   it('drives full write recovery flow when edit capability is unknown', async () => {
-    const requestPermissionMock = vi.fn(() => Promise.resolve<PermissionState>('granted'));
     createDocumentMock
       .mockRejectedValueOnce(
         new WebFileSystemAccessRequiredError({
@@ -164,14 +163,10 @@ describe('DocumentCreationDialog', () => {
       )
       .mockResolvedValueOnce(undefined);
     getDeviceDirectoryAccessRequestMock.mockResolvedValue({
-      handle: { requestPermission: requestPermissionMock },
       mode: 'readwrite',
       spaceName: 'Work',
     });
-    resolveDeviceDirectoryAccessRequestMock.mockResolvedValue({
-      request: undefined,
-      status: 'granted',
-    });
+    requestDeviceDirectoryAccessPermissionMock.mockResolvedValue({ status: 'granted' });
 
     const wrapper = await mountDialog();
 
@@ -202,15 +197,34 @@ describe('DocumentCreationDialog', () => {
     await grantButton.trigger('click');
     await flushPromises();
 
-    expect(requestPermissionMock).toHaveBeenCalledWith({ mode: 'readwrite' });
-    expect(resolveDeviceDirectoryAccessRequestMock).toHaveBeenCalledWith({
+    expect(requestDeviceDirectoryAccessPermissionMock).toHaveBeenCalledWith({
       mode: 'readwrite',
-      permissionState: 'granted',
       spaceName: 'Work',
     });
 
     expect(createDocumentMock).toHaveBeenCalledTimes(2);
     expect(wrapper.emitted('created')).toBeDefined();
+  });
+
+  it('blocks create before write when edit capability is explicitly denied', async () => {
+    directoryStatRef.value = {
+      capabilities: {
+        canEditChildren: false,
+      },
+    };
+
+    const wrapper = await mountDialog();
+
+    await wrapper.get('input').setValue('My document');
+    const applyButton = wrapper.findAll('button').find((b) => b.text() === 'Create');
+
+    if (!applyButton) throw new Error('Expected Create button');
+
+    await applyButton.trigger('click');
+    await flushPromises();
+
+    expect(createDocumentMock).not.toHaveBeenCalled();
+    expect(wrapper.text()).toContain('Creating entries is not allowed in this directory');
   });
 });
 /* eslint-enable vue/one-component-per-file -- Re-enable after inline stubs. */

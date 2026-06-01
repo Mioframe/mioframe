@@ -376,4 +376,27 @@ describe('DeviceFileSystemProvider', () => {
       ]),
     );
   });
+
+  it('forwards nested provider events through the global watch subscription without a path argument', async () => {
+    const innerFileSystem = new MemoryFileSystem();
+    const localProvider = DeviceFileSystemProvider({
+      createProvider: () => innerFileSystem,
+    });
+    const events: Array<{ path: string; type: string }> = [];
+
+    localProvider.watch((event) => {
+      events.push({ path: event.path, type: event.type });
+    });
+
+    localProvider.upsertRecord({
+      name: 'Projects',
+      kind: 'localDirectory',
+      handle: createHandle('Projects'),
+    });
+
+    await localProvider.createDirectory('/Projects/sub-folder');
+
+    expect(events).toContainEqual({ path: '/Projects', type: 'create' });
+    expect(events).toContainEqual({ path: '/Projects/sub-folder', type: 'create' });
+  });
 });

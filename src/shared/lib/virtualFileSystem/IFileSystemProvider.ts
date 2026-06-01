@@ -146,3 +146,27 @@ export interface IFileSystemProvider {
    */
   watch?(callback: (event: VfsEvent) => void): (() => void) | undefined;
 }
+
+/**
+ * Returns `true` when the capability is explicitly allowed right now.
+ * Destructive UI (delete, rename, move) should gate on `isCapabilityAllowed` before proceeding.
+ * @param capability
+ */
+export const isCapabilityAllowed = (capability: boolean | undefined): capability is true =>
+  capability === true;
+
+/**
+ * Returns `true` when the capability is explicitly denied right now.
+ * Create/import intent may remain visible to the user unless denied.
+ * @param capability
+ */
+export const isCapabilityDenied = (capability: boolean | undefined): capability is false =>
+  capability === false;
+
+/**
+ * Returns `true` when the capability state is unknown — not yet guaranteed by the provider.
+ * Provider runtime operations block only when denied, not when unknown.
+ * @param capability
+ */
+export const isCapabilityUnknown = (capability: boolean | undefined): capability is undefined =>
+  capability === undefined;

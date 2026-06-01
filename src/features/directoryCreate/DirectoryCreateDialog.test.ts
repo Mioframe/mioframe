@@ -15,7 +15,7 @@ const directoryStatRef = ref<{
   },
 });
 const getDeviceDirectoryAccessRequestMock = vi.fn();
-const resolveDeviceDirectoryAccessRequestMock = vi.fn();
+const requestDeviceDirectoryAccessPermissionMock = vi.fn();
 const cancelDeviceDirectoryAccessRequestMock = vi.fn();
 
 vi.mock('@entity/fsEntry', () => ({
@@ -34,7 +34,7 @@ vi.mock('@shared/service', () => ({
   useMainServiceClient: () => ({
     fileSystem: {
       getDeviceDirectoryAccessRequest: getDeviceDirectoryAccessRequestMock,
-      resolveDeviceDirectoryAccessRequest: resolveDeviceDirectoryAccessRequestMock,
+      requestDeviceDirectoryAccessPermission: requestDeviceDirectoryAccessPermissionMock,
       cancelDeviceDirectoryAccessRequest: cancelDeviceDirectoryAccessRequestMock,
     },
   }),
@@ -142,7 +142,7 @@ describe('DirectoryCreateDialog', () => {
   beforeEach(() => {
     createDirectoryMock.mockReset();
     getDeviceDirectoryAccessRequestMock.mockReset();
-    resolveDeviceDirectoryAccessRequestMock.mockReset();
+    requestDeviceDirectoryAccessPermissionMock.mockReset();
     cancelDeviceDirectoryAccessRequestMock.mockReset();
     directoryStatRef.value = {
       capabilities: {
@@ -152,7 +152,6 @@ describe('DirectoryCreateDialog', () => {
   });
 
   it('drives full write recovery flow when edit capability is unknown', async () => {
-    const requestPermissionMock = vi.fn(() => Promise.resolve<PermissionState>('granted'));
     createDirectoryMock
       .mockRejectedValueOnce(
         new WebFileSystemAccessRequiredError({
@@ -162,14 +161,10 @@ describe('DirectoryCreateDialog', () => {
       )
       .mockResolvedValueOnce(undefined);
     getDeviceDirectoryAccessRequestMock.mockResolvedValue({
-      handle: { requestPermission: requestPermissionMock },
       mode: 'readwrite',
       spaceName: 'Work',
     });
-    resolveDeviceDirectoryAccessRequestMock.mockResolvedValue({
-      request: undefined,
-      status: 'granted',
-    });
+    requestDeviceDirectoryAccessPermissionMock.mockResolvedValue({ status: 'granted' });
 
     const wrapper = await mountDialog();
 
@@ -202,10 +197,8 @@ describe('DirectoryCreateDialog', () => {
     await grantButton.trigger('click');
     await flushPromises();
 
-    expect(requestPermissionMock).toHaveBeenCalledWith({ mode: 'readwrite' });
-    expect(resolveDeviceDirectoryAccessRequestMock).toHaveBeenCalledWith({
+    expect(requestDeviceDirectoryAccessPermissionMock).toHaveBeenCalledWith({
       mode: 'readwrite',
-      permissionState: 'granted',
       spaceName: 'Work',
     });
 

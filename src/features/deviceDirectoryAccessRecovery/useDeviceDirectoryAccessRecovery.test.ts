@@ -4,54 +4,14 @@ import { WebFileSystemAccessRequiredError } from '@shared/lib/webFileSystemProvi
 
 const cancelDeviceDirectoryAccessRequestMock = vi.fn();
 const getDeviceDirectoryAccessRequestMock = vi.fn();
-const resolveDeviceDirectoryAccessRequestMock = vi.fn();
-
-type MockDirectoryHandle = FileSystemDirectoryHandle & {
-  requestPermissionMock: ReturnType<
-    typeof vi.fn<(descriptor?: FileSystemHandlePermissionDescriptor) => Promise<PermissionState>>
-  >;
-};
-
-const createHandle = (permissionState: PermissionState): MockDirectoryHandle => {
-  const requestPermissionMock = vi.fn(() => Promise.resolve(permissionState));
-
-  return {
-    kind: 'directory',
-    name: 'Work',
-    isSameEntry: vi.fn(() => Promise.resolve(false)),
-    requestPermission: requestPermissionMock,
-    requestPermissionMock,
-    queryPermission: vi.fn(() => Promise.resolve(permissionState)),
-    isFile: false,
-    isDirectory: true,
-    entries: vi.fn(),
-    keys: vi.fn(),
-    values: vi.fn(),
-    getDirectoryHandle: vi.fn(),
-    getFileHandle: vi.fn(),
-    removeEntry: vi.fn(),
-    resolve: vi.fn(),
-    getFile(fileName: string, options?: FileSystemGetFileOptions) {
-      return this.getFileHandle(fileName, options);
-    },
-    getDirectory(directoryName: string, options?: FileSystemGetDirectoryOptions) {
-      return this.getDirectoryHandle(directoryName, options);
-    },
-    getEntries() {
-      return this.values();
-    },
-    [Symbol.asyncIterator]() {
-      return this.entries();
-    },
-  };
-};
+const requestDeviceDirectoryAccessPermissionMock = vi.fn();
 
 vi.mock('@shared/service', () => ({
   useMainServiceClient: () => ({
     fileSystem: {
       cancelDeviceDirectoryAccessRequest: cancelDeviceDirectoryAccessRequestMock,
       getDeviceDirectoryAccessRequest: getDeviceDirectoryAccessRequestMock,
-      resolveDeviceDirectoryAccessRequest: resolveDeviceDirectoryAccessRequestMock,
+      requestDeviceDirectoryAccessPermission: requestDeviceDirectoryAccessPermissionMock,
     },
   }),
 }));
@@ -85,11 +45,10 @@ describe('useDeviceDirectoryAccessRecovery', () => {
   afterEach(() => {
     cancelDeviceDirectoryAccessRequestMock.mockReset();
     getDeviceDirectoryAccessRequestMock.mockReset();
-    resolveDeviceDirectoryAccessRequestMock.mockReset();
+    requestDeviceDirectoryAccessPermissionMock.mockReset();
   });
 
-  it('loads the pending request by stable access key', async () => {
-    const handle = createHandle('granted');
+  it('loads the pending request by stable access key without handle', async () => {
     const errors = ref<unknown[]>([
       new WebFileSystemAccessRequiredError({
         spaceName: 'Work',
@@ -98,7 +57,6 @@ describe('useDeviceDirectoryAccessRecovery', () => {
     ]);
     getDeviceDirectoryAccessRequestMock.mockResolvedValue({
       spaceName: 'Work',
-      handle,
       mode: 'readwrite',
     });
 
@@ -111,7 +69,6 @@ describe('useDeviceDirectoryAccessRecovery', () => {
       });
       expect(recovery.pendingRequest.value).toEqual({
         spaceName: 'Work',
-        handle,
         mode: 'readwrite',
       });
     });
@@ -132,7 +89,7 @@ describe('useDeviceDirectoryAccessRecovery', () => {
     await expect(recovery.cancelAccess()).resolves.toBe(false);
     expect(getDeviceDirectoryAccessRequestMock).not.toHaveBeenCalled();
     expect(cancelDeviceDirectoryAccessRequestMock).not.toHaveBeenCalled();
-    expect(resolveDeviceDirectoryAccessRequestMock).not.toHaveBeenCalled();
+    expect(requestDeviceDirectoryAccessPermissionMock).not.toHaveBeenCalled();
 
     scope.stop();
   });
@@ -140,7 +97,6 @@ describe('useDeviceDirectoryAccessRecovery', () => {
   it('ignores stale async request loads when the active recovery key changes', async () => {
     let resolveWork: ((value: unknown) => void) | undefined;
     let resolveArchive: ((value: unknown) => void) | undefined;
-    const archiveHandle = createHandle('granted');
     const errors = ref<unknown[]>([
       new WebFileSystemAccessRequiredError({
         spaceName: 'Work',
@@ -169,21 +125,12 @@ describe('useDeviceDirectoryAccessRecovery', () => {
     ];
     await Promise.resolve();
 
-    resolveWork?.({
-      spaceName: 'Work',
-      handle: createHandle('granted'),
-      mode: 'readwrite',
-    });
-    resolveArchive?.({
-      spaceName: 'Archive',
-      handle: archiveHandle,
-      mode: 'readwrite',
-    });
+    resolveWork?.({ spaceName: 'Work', mode: 'readwrite' });
+    resolveArchive?.({ spaceName: 'Archive', mode: 'readwrite' });
 
     await vi.waitFor(() => {
       expect(recovery.pendingRequest.value).toEqual({
         spaceName: 'Archive',
-        handle: archiveHandle,
         mode: 'readwrite',
       });
     });
@@ -211,11 +158,7 @@ describe('useDeviceDirectoryAccessRecovery', () => {
     errors.value = [];
     await Promise.resolve();
 
-    resolveWork?.({
-      spaceName: 'Work',
-      handle: createHandle('granted'),
-      mode: 'readwrite',
-    });
+    resolveWork?.({ spaceName: 'Work', mode: 'readwrite' });
     await Promise.resolve();
 
     expect(recovery.pendingRequest.value).toBeUndefined();
@@ -223,8 +166,7 @@ describe('useDeviceDirectoryAccessRecovery', () => {
     scope.stop();
   });
 
-  it('requests permission on the loaded handle and resolves granted access', async () => {
-    const handle = createHandle('granted');
+  it('calls requestDeviceDirectoryAccessPermission and resolves granted access', async () => {
     const errors = ref<unknown[]>([
       new WebFileSystemAccessRequiredError({
         spaceName: 'Work',
@@ -233,17 +175,9 @@ describe('useDeviceDirectoryAccessRecovery', () => {
     ]);
     getDeviceDirectoryAccessRequestMock.mockResolvedValue({
       spaceName: 'Work',
-      handle,
       mode: 'readwrite',
     });
-    resolveDeviceDirectoryAccessRequestMock.mockResolvedValue({
-      request: {
-        spaceName: 'Work',
-        handle,
-        mode: 'readwrite',
-      },
-      status: 'granted',
-    });
+    requestDeviceDirectoryAccessPermissionMock.mockResolvedValue({ status: 'granted' });
 
     const { recovery, scope } = await mountRecovery(errors);
 
@@ -251,28 +185,17 @@ describe('useDeviceDirectoryAccessRecovery', () => {
       expect(recovery.grantDisabled.value).toBe(false);
     });
 
-    await expect(recovery.grantAccess()).resolves.toEqual({
-      request: {
-        spaceName: 'Work',
-        handle,
-        mode: 'readwrite',
-      },
-      status: 'granted',
-    });
-    expect(handle.requestPermissionMock).toHaveBeenCalledWith({
+    await expect(recovery.grantAccess()).resolves.toEqual({ status: 'granted' });
+    expect(requestDeviceDirectoryAccessPermissionMock).toHaveBeenCalledWith({
       mode: 'readwrite',
-    });
-    expect(resolveDeviceDirectoryAccessRequestMock).toHaveBeenCalledWith({
-      mode: 'readwrite',
-      permissionState: 'granted',
       spaceName: 'Work',
     });
+    expect(recovery.message.value).toBeUndefined();
 
     scope.stop();
   });
 
   it('keeps recovery active after denial and exposes a safe message', async () => {
-    const handle = createHandle('denied');
     const errors = ref<unknown[]>([
       new WebFileSystemAccessRequiredError({
         spaceName: 'Work',
@@ -281,17 +204,9 @@ describe('useDeviceDirectoryAccessRecovery', () => {
     ]);
     getDeviceDirectoryAccessRequestMock.mockResolvedValue({
       spaceName: 'Work',
-      handle,
       mode: 'readwrite',
     });
-    resolveDeviceDirectoryAccessRequestMock.mockResolvedValue({
-      request: {
-        spaceName: 'Work',
-        handle,
-        mode: 'readwrite',
-      },
-      status: 'denied',
-    });
+    requestDeviceDirectoryAccessPermissionMock.mockResolvedValue({ status: 'denied' });
 
     const { recovery, scope } = await mountRecovery(errors);
 
@@ -299,9 +214,7 @@ describe('useDeviceDirectoryAccessRecovery', () => {
       expect(recovery.grantDisabled.value).toBe(false);
     });
 
-    await expect(recovery.grantAccess()).resolves.toMatchObject({
-      status: 'denied',
-    });
+    await expect(recovery.grantAccess()).resolves.toMatchObject({ status: 'denied' });
     expect(recovery.message.value).toBe(
       'Mioframe still cannot open this space because your browser did not grant permission.',
     );
@@ -313,8 +226,7 @@ describe('useDeviceDirectoryAccessRecovery', () => {
     scope.stop();
   });
 
-  it('keeps the loaded request when denial returns no replacement request', async () => {
-    const handle = createHandle('denied');
+  it('shows safe error message and keeps pending request when permission request returns error', async () => {
     const errors = ref<unknown[]>([
       new WebFileSystemAccessRequiredError({
         spaceName: 'Work',
@@ -323,27 +235,47 @@ describe('useDeviceDirectoryAccessRecovery', () => {
     ]);
     getDeviceDirectoryAccessRequestMock.mockResolvedValue({
       spaceName: 'Work',
-      handle,
       mode: 'readwrite',
     });
-    resolveDeviceDirectoryAccessRequestMock.mockResolvedValue({
-      request: undefined,
-      status: 'denied',
-    });
+    requestDeviceDirectoryAccessPermissionMock.mockResolvedValue({ status: 'error' });
 
     const { recovery, scope } = await mountRecovery(errors);
 
     await vi.waitFor(() => {
-      expect(recovery.pendingRequest.value?.spaceName).toBe('Work');
+      expect(recovery.grantDisabled.value).toBe(false);
+    });
+
+    await expect(recovery.grantAccess()).resolves.toEqual({ status: 'error' });
+    expect(recovery.message.value).toBe(
+      'Could not request browser permission. Try again from this action.',
+    );
+    expect(recovery.pendingRequest.value).toEqual({ spaceName: 'Work', mode: 'readwrite' });
+
+    scope.stop();
+  });
+
+  it('resets loading state after permission request returns error', async () => {
+    const errors = ref<unknown[]>([
+      new WebFileSystemAccessRequiredError({
+        spaceName: 'Work',
+        mode: 'readwrite',
+      }),
+    ]);
+    getDeviceDirectoryAccessRequestMock.mockResolvedValue({
+      spaceName: 'Work',
+      mode: 'readwrite',
+    });
+    requestDeviceDirectoryAccessPermissionMock.mockResolvedValue({ status: 'error' });
+
+    const { recovery, scope } = await mountRecovery(errors);
+
+    await vi.waitFor(() => {
+      expect(recovery.grantDisabled.value).toBe(false);
     });
 
     await recovery.grantAccess();
 
-    expect(recovery.pendingRequest.value).toEqual({
-      spaceName: 'Work',
-      handle,
-      mode: 'readwrite',
-    });
+    expect(recovery.isGrantLoading.value).toBe(false);
 
     scope.stop();
   });

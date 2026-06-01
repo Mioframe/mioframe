@@ -1,4 +1,3 @@
-export { WebFileSystemProvider } from './WebFileSystemProvider';
 export {
   createMountedWebFileSystemProvider,
   createOriginPrivateStorageProvider,

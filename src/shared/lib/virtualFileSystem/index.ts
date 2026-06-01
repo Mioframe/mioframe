@@ -7,6 +7,9 @@ export {
   FSNodeType,
   type WriteFileResult,
   type WriteOptions,
+  isCapabilityAllowed,
+  isCapabilityDenied,
+  isCapabilityUnknown,
 } from './IFileSystemProvider';
 export { EventEmitter, VfsEventSource, VfsEventType, type VfsEvent } from './EventEmitter';
 export { PathUtils } from './PathUtils';

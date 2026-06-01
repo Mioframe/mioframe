@@ -6,17 +6,15 @@ const {
   readImportDocumentDraftMock,
   addSnackbarMock,
   confirmMock,
-  getDeviceDirectoryAccessRequestMock,
+  requestDeviceDirectoryAccessPermissionMock,
   reportHandledErrorMock,
-  resolveDeviceDirectoryAccessRequestMock,
 } = vi.hoisted(() => ({
   createImportedDocumentMock: vi.fn(),
   readImportDocumentDraftMock: vi.fn(),
   addSnackbarMock: vi.fn(),
   confirmMock: vi.fn(),
-  getDeviceDirectoryAccessRequestMock: vi.fn(),
+  requestDeviceDirectoryAccessPermissionMock: vi.fn(),
   reportHandledErrorMock: vi.fn(),
-  resolveDeviceDirectoryAccessRequestMock: vi.fn(),
 }));
 
 vi.mock('./useImportDocument', () => ({
@@ -45,8 +43,7 @@ vi.mock('@shared/ui/Dialog', () => ({
 vi.mock('@shared/service', () => ({
   useMainServiceClient: () => ({
     fileSystem: {
-      getDeviceDirectoryAccessRequest: getDeviceDirectoryAccessRequestMock,
-      resolveDeviceDirectoryAccessRequest: resolveDeviceDirectoryAccessRequestMock,
+      requestDeviceDirectoryAccessPermission: requestDeviceDirectoryAccessPermissionMock,
     },
   }),
 }));
@@ -57,9 +54,8 @@ describe('useImportDocumentAction', () => {
     readImportDocumentDraftMock.mockReset();
     addSnackbarMock.mockReset();
     confirmMock.mockReset();
-    getDeviceDirectoryAccessRequestMock.mockReset();
+    requestDeviceDirectoryAccessPermissionMock.mockReset();
     reportHandledErrorMock.mockReset();
-    resolveDeviceDirectoryAccessRequestMock.mockReset();
   });
 
   it('silently ignores file picker cancellation', async () => {
@@ -202,8 +198,7 @@ describe('useImportDocumentAction', () => {
     });
   });
 
-  it('does not call requestPermission and shows recovery message when user cancels the grant dialog', async () => {
-    const requestPermissionMock = vi.fn();
+  it('does not request permission and shows recovery message when user cancels the grant dialog', async () => {
     readImportDocumentDraftMock.mockResolvedValue({
       fileName: 'draft.json',
       initialValue: {},
@@ -214,26 +209,20 @@ describe('useImportDocumentAction', () => {
         spaceName: 'Work',
       }),
     );
-    getDeviceDirectoryAccessRequestMock.mockResolvedValue({
-      handle: { requestPermission: requestPermissionMock },
-      mode: 'readwrite',
-      spaceName: 'Work',
-    });
     confirmMock.mockResolvedValue(false);
 
     const { useImportDocumentAction } = await import('./useImportDocumentAction');
     const { importDocument } = useImportDocumentAction();
 
     await expect(importDocument('/documents')).resolves.toBeUndefined();
-    expect(requestPermissionMock).not.toHaveBeenCalled();
+    expect(requestDeviceDirectoryAccessPermissionMock).not.toHaveBeenCalled();
     expect(addSnackbarMock).toHaveBeenCalledWith({
       text: 'Grant write access to edit this remembered space.',
     });
     expect(createImportedDocumentMock).toHaveBeenCalledTimes(1);
   });
 
-  it('does not call requestPermission and shows recovery message when the pending access request is missing', async () => {
-    const requestPermissionMock = vi.fn();
+  it('shows denied write-access message when service returns denied', async () => {
     readImportDocumentDraftMock.mockResolvedValue({
       fileName: 'draft.json',
       initialValue: {},
@@ -244,47 +233,17 @@ describe('useImportDocumentAction', () => {
         spaceName: 'Work',
       }),
     );
-    getDeviceDirectoryAccessRequestMock.mockResolvedValue(undefined);
     confirmMock.mockResolvedValue(true);
+    requestDeviceDirectoryAccessPermissionMock.mockResolvedValue({ status: 'denied' });
 
     const { useImportDocumentAction } = await import('./useImportDocumentAction');
     const { importDocument } = useImportDocumentAction();
 
     await expect(importDocument('/documents')).resolves.toBeUndefined();
-    expect(requestPermissionMock).not.toHaveBeenCalled();
-    expect(addSnackbarMock).toHaveBeenCalledWith({
-      text: 'Grant write access to edit this remembered space.',
-    });
-    expect(createImportedDocumentMock).toHaveBeenCalledTimes(1);
-  });
-
-  it('shows denied write-access message when requestPermission returns denied', async () => {
-    const requestPermissionMock = vi.fn(() => Promise.resolve<PermissionState>('denied'));
-    readImportDocumentDraftMock.mockResolvedValue({
-      fileName: 'draft.json',
-      initialValue: {},
-    });
-    createImportedDocumentMock.mockRejectedValueOnce(
-      new WebFileSystemAccessRequiredError({
-        mode: 'readwrite',
-        spaceName: 'Work',
-      }),
-    );
-    getDeviceDirectoryAccessRequestMock.mockResolvedValue({
-      handle: { requestPermission: requestPermissionMock },
+    expect(requestDeviceDirectoryAccessPermissionMock).toHaveBeenCalledWith({
       mode: 'readwrite',
       spaceName: 'Work',
     });
-    confirmMock.mockResolvedValue(true);
-    resolveDeviceDirectoryAccessRequestMock.mockResolvedValue({
-      request: undefined,
-      status: 'denied',
-    });
-
-    const { useImportDocumentAction } = await import('./useImportDocumentAction');
-    const { importDocument } = useImportDocumentAction();
-
-    await expect(importDocument('/documents')).resolves.toBeUndefined();
     expect(addSnackbarMock).toHaveBeenCalledWith({
       text: 'Editing is not allowed in this remembered space because your browser denied write access.',
     });
@@ -292,8 +251,7 @@ describe('useImportDocumentAction', () => {
     expect(reportHandledErrorMock).not.toHaveBeenCalled();
   });
 
-  it('shows recovery message when service resolution returns a non-granted status', async () => {
-    const requestPermissionMock = vi.fn(() => Promise.resolve<PermissionState>('prompt'));
+  it('shows recovery message when service returns a non-granted status', async () => {
     readImportDocumentDraftMock.mockResolvedValue({
       fileName: 'draft.json',
       initialValue: {},
@@ -304,16 +262,8 @@ describe('useImportDocumentAction', () => {
         spaceName: 'Work',
       }),
     );
-    getDeviceDirectoryAccessRequestMock.mockResolvedValue({
-      handle: { requestPermission: requestPermissionMock },
-      mode: 'readwrite',
-      spaceName: 'Work',
-    });
     confirmMock.mockResolvedValue(true);
-    resolveDeviceDirectoryAccessRequestMock.mockResolvedValue({
-      request: undefined,
-      status: 'prompt',
-    });
+    requestDeviceDirectoryAccessPermissionMock.mockResolvedValue({ status: 'cancelled' });
 
     const { useImportDocumentAction } = await import('./useImportDocumentAction');
     const { importDocument } = useImportDocumentAction();
@@ -327,7 +277,6 @@ describe('useImportDocumentAction', () => {
   });
 
   it('reports retry failure through safe import error path without re-requesting the file', async () => {
-    const requestPermissionMock = vi.fn(() => Promise.resolve<PermissionState>('granted'));
     readImportDocumentDraftMock.mockResolvedValue({
       fileName: 'draft.json',
       initialValue: {},
@@ -340,16 +289,8 @@ describe('useImportDocumentAction', () => {
         }),
       )
       .mockRejectedValueOnce(new Error('disk full'));
-    getDeviceDirectoryAccessRequestMock.mockResolvedValue({
-      handle: { requestPermission: requestPermissionMock },
-      mode: 'readwrite',
-      spaceName: 'Work',
-    });
     confirmMock.mockResolvedValue(true);
-    resolveDeviceDirectoryAccessRequestMock.mockResolvedValue({
-      request: undefined,
-      status: 'granted',
-    });
+    requestDeviceDirectoryAccessPermissionMock.mockResolvedValue({ status: 'granted' });
 
     const { useImportDocumentAction } = await import('./useImportDocumentAction');
     const { importDocument } = useImportDocumentAction();
@@ -373,7 +314,6 @@ describe('useImportDocumentAction', () => {
   });
 
   it('requests write access after a write-required import failure and retries the repository write', async () => {
-    const requestPermissionMock = vi.fn(() => Promise.resolve<'granted'>('granted'));
     readImportDocumentDraftMock.mockResolvedValue({
       fileName: 'draft.json',
       initialValue: {},
@@ -386,18 +326,8 @@ describe('useImportDocumentAction', () => {
         }),
       )
       .mockResolvedValueOnce('document-id');
-    getDeviceDirectoryAccessRequestMock.mockResolvedValue({
-      handle: {
-        requestPermission: requestPermissionMock,
-      },
-      mode: 'readwrite',
-      spaceName: 'Work',
-    });
     confirmMock.mockResolvedValue(true);
-    resolveDeviceDirectoryAccessRequestMock.mockResolvedValue({
-      request: undefined,
-      status: 'granted',
-    });
+    requestDeviceDirectoryAccessPermissionMock.mockResolvedValue({ status: 'granted' });
 
     const { useImportDocumentAction } = await import('./useImportDocumentAction');
     const { importDocument } = useImportDocumentAction();
@@ -410,12 +340,8 @@ describe('useImportDocumentAction', () => {
       confirmLabel: 'Grant access',
       cancelLabel: 'Not now',
     });
-    expect(requestPermissionMock).toHaveBeenCalledWith({
+    expect(requestDeviceDirectoryAccessPermissionMock).toHaveBeenCalledWith({
       mode: 'readwrite',
-    });
-    expect(resolveDeviceDirectoryAccessRequestMock).toHaveBeenCalledWith({
-      mode: 'readwrite',
-      permissionState: 'granted',
       spaceName: 'Work',
     });
     expect(createImportedDocumentMock).toHaveBeenCalledTimes(2);

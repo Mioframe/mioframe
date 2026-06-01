@@ -26,7 +26,7 @@ export const useDeviceDirectoryAccessRecovery = ({
     fileSystem: {
       cancelDeviceDirectoryAccessRequest,
       getDeviceDirectoryAccessRequest,
-      resolveDeviceDirectoryAccessRequest,
+      requestDeviceDirectoryAccessPermission,
     },
   } = useMainServiceClient();
 
@@ -36,7 +36,6 @@ export const useDeviceDirectoryAccessRecovery = ({
   const pendingRequest = ref<
     | {
         spaceName: string;
-        handle: FileSystemDirectoryHandle;
         mode: WebFileSystemAccessMode;
       }
     | undefined
@@ -96,13 +95,9 @@ export const useDeviceDirectoryAccessRecovery = ({
     isGrantLoading.value = true;
 
     try {
-      const permissionState = await request.handle.requestPermission({
-        mode: request.mode,
-      });
-      const result = await resolveDeviceDirectoryAccessRequest({
-        mode: request.mode,
-        permissionState,
+      const result = await requestDeviceDirectoryAccessPermission({
         spaceName: request.spaceName,
+        mode: request.mode,
       });
 
       if (result.status === 'granted') {
@@ -110,10 +105,14 @@ export const useDeviceDirectoryAccessRecovery = ({
         return result;
       }
 
+      if (result.status === 'error') {
+        message.value = 'Could not request browser permission. Try again from this action.';
+        return result;
+      }
+
       message.value =
         deniedMessage ??
         'Mioframe still cannot open this space because your browser did not grant permission.';
-      pendingRequest.value = result.request ?? request;
 
       return result;
     } finally {

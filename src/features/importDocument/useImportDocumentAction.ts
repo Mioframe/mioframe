@@ -30,7 +30,7 @@ export const useImportDocumentAction = () => {
   const { addSnackbar } = useSnackbar();
   const { confirm } = useDialog();
   const {
-    fileSystem: { getDeviceDirectoryAccessRequest, resolveDeviceDirectoryAccessRequest },
+    fileSystem: { requestDeviceDirectoryAccessPermission },
   } = useMainServiceClient();
 
   const importDocument = async (path: string) => {
@@ -50,10 +50,6 @@ export const useImportDocumentAction = () => {
           throw error;
         }
 
-        const request = await getDeviceDirectoryAccessRequest({
-          mode: error.mode,
-          spaceName: error.spaceName,
-        });
         const shouldGrantAccess = await confirm({
           headline: 'Grant write access',
           supportingText: `Mioframe remembers "${error.spaceName}", but your browser requires write access before importing a document into it.`,
@@ -61,20 +57,16 @@ export const useImportDocumentAction = () => {
           cancelLabel: 'Not now',
         });
 
-        if (!shouldGrantAccess || !request) {
+        if (!shouldGrantAccess) {
           addSnackbar({
             text: 'Grant write access to edit this remembered space.',
           });
           return undefined;
         }
 
-        const permissionState = await request.handle.requestPermission({
-          mode: request.mode,
-        });
-        const result = await resolveDeviceDirectoryAccessRequest({
-          mode: request.mode,
-          permissionState,
-          spaceName: request.spaceName,
+        const result = await requestDeviceDirectoryAccessPermission({
+          mode: error.mode,
+          spaceName: error.spaceName,
         });
 
         if (result.status !== 'granted') {
