@@ -125,7 +125,13 @@ const resolveRecordForWrite = (path: string, records: Map<string, ActiveDeviceFi
 export const DeviceFileSystemProvider = (
   providerOptions: DeviceFileSystemProviderOptions = {},
 ): DeviceFileSystemProvider => {
-  const { createProvider = ({ handle }) => WebFileSystemProvider(handle) } = providerOptions;
+  const {
+    createProvider = ({ handle, kind }) =>
+      WebFileSystemProvider(handle, {
+        permissionPolicy:
+          kind === 'localDirectory' ? 'userSelectedDirectory' : 'originPrivateStorage',
+      }),
+  } = providerOptions;
   const vfs = new VirtualFileSystem();
   const events = new EventEmitter();
   const records = new Map<string, ActiveDeviceFileRecord>();

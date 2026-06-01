@@ -1,88 +1,23 @@
 import { describe, expect, it, vi } from 'vitest';
+import {
+  createDirectoryHandleMock,
+  createFileHandleMock,
+} from './testUtils/fileSystemHandleFixtures';
 import { FSNodeType } from '../virtualFileSystem';
 import { WebFileSystemProvider } from './WebFileSystemProvider';
 import { WEB_FILE_SYSTEM_ACCESS_REQUIRED_CODE, WebFileSystemAccessRequiredError } from '.';
 
-type MockRootDirectoryHandle = FileSystemDirectoryHandle & {
-  requestPermissionMock: ReturnType<
-    typeof vi.fn<(descriptor?: FileSystemHandlePermissionDescriptor) => Promise<PermissionState>>
-  >;
-};
-
 const createRootHandle = (permissionState: PermissionState = 'granted') => {
-  const writable: FileSystemWritableFileStream = {
-    locked: false,
-    abort: () => Promise.resolve(),
-    close: vi.fn(() => Promise.resolve(undefined)),
-    getWriter: () => new WritableStream().getWriter(),
-    seek: () => Promise.resolve(undefined),
-    truncate: () => Promise.resolve(undefined),
-    write: vi.fn(() => Promise.resolve(undefined)),
-  };
-  const file = new File(['hello'], 'note.txt', {
-    lastModified: 123,
-  });
-  const fileHandle: FileSystemFileHandle = {
-    kind: 'file',
+  const fileHandle = createFileHandleMock({
+    fileContent: ['hello'],
     name: 'note.txt',
-    isSameEntry: () => Promise.resolve(true),
-    queryPermission: () => Promise.resolve(permissionState),
-    requestPermission: () => Promise.resolve(permissionState),
-    createWritable: () => Promise.resolve(writable),
-    getFile: () => Promise.resolve(file),
-    createSyncAccessHandle: () => Promise.reject(new Error('Method not implemented.')),
-    isFile: true,
-    isDirectory: false,
-  };
-  const requestPermissionMock = vi.fn(() => Promise.resolve(permissionState));
-  const rootHandle: MockRootDirectoryHandle = {
-    kind: 'directory',
+    permissionState,
+  });
+  const rootHandle = createDirectoryHandleMock({
+    entries: [fileHandle],
     name: '',
-    isSameEntry: () => Promise.resolve(true),
-    queryPermission: vi.fn(() => Promise.resolve(permissionState)),
-    requestPermission: requestPermissionMock,
-    requestPermissionMock,
-    entries: () =>
-      (async function* () {
-        await Promise.resolve();
-        const entry: [string, FileSystemFileHandle] = ['note.txt', fileHandle];
-        yield entry;
-      })(),
-    keys: () =>
-      (async function* () {
-        await Promise.resolve();
-        yield 'note.txt';
-      })(),
-    values: () =>
-      (async function* () {
-        await Promise.resolve();
-        yield fileHandle;
-      })(),
-    [Symbol.asyncIterator]() {
-      return rootHandle.entries();
-    },
-    getDirectoryHandle: () => Promise.resolve(rootHandle),
-    getFileHandle: () => Promise.resolve(fileHandle),
-    removeEntry: () => Promise.resolve(undefined),
-    resolve: () => Promise.resolve([]),
-    isFile: false,
-    isDirectory: true,
-    getFile: (
-      fileName: string,
-      options?: FileSystemGetFileOptions,
-    ): Promise<FileSystemFileHandle> => {
-      return rootHandle.getFileHandle(fileName, options);
-    },
-    getDirectory: (
-      directoryName: string,
-      options?: FileSystemGetDirectoryOptions,
-    ): Promise<FileSystemDirectoryHandle> => {
-      return rootHandle.getDirectoryHandle(directoryName, options);
-    },
-    getEntries: (): AsyncIterableIterator<FileSystemFileHandle | FileSystemDirectoryHandle> => {
-      return rootHandle.values();
-    },
-  };
+    permissionState,
+  });
 
   return {
     fileHandle,
@@ -93,7 +28,9 @@ const createRootHandle = (permissionState: PermissionState = 'granted') => {
 describe('WebFileSystemProvider', () => {
   it('returns written file stat from writeFile', async () => {
     const { rootHandle } = createRootHandle('granted');
-    const provider = WebFileSystemProvider(rootHandle);
+    const provider = WebFileSystemProvider(rootHandle, {
+      permissionPolicy: 'userSelectedDirectory',
+    });
 
     await expect(
       provider.writeFile('/note.txt', 'hello', {
@@ -117,7 +54,7 @@ describe('WebFileSystemProvider', () => {
   it('throws a typed access-required DomainError when read permission is missing', async () => {
     const { rootHandle } = createRootHandle('prompt');
     const provider = WebFileSystemProvider(rootHandle, {
-      accessPolicy: 'userDirectory',
+      permissionPolicy: 'userSelectedDirectory',
       onAccessRequired: ({ mode }) => {
         return {
           spaceName: 'Work',
@@ -138,7 +75,7 @@ describe('WebFileSystemProvider', () => {
   it('throws the same typed access-required DomainError when permission is denied', async () => {
     const { rootHandle } = createRootHandle('denied');
     const provider = WebFileSystemProvider(rootHandle, {
-      accessPolicy: 'userDirectory',
+      permissionPolicy: 'userSelectedDirectory',
       onAccessRequired: ({ mode }) => {
         return {
           spaceName: 'Work',
@@ -157,7 +94,9 @@ describe('WebFileSystemProvider', () => {
 
   it('falls back to a VfsError when no access-recovery callback is configured', async () => {
     const { rootHandle } = createRootHandle('prompt');
-    const provider = WebFileSystemProvider(rootHandle);
+    const provider = WebFileSystemProvider(rootHandle, {
+      permissionPolicy: 'userSelectedDirectory',
+    });
 
     await expect(provider.readDirectory('/')).rejects.toMatchObject({
       code: 'EACCES',
@@ -167,7 +106,9 @@ describe('WebFileSystemProvider', () => {
 
   it('marks denied file handles as non-writable in stat capabilities', async () => {
     const { fileHandle, rootHandle } = createRootHandle('granted');
-    const provider = WebFileSystemProvider(rootHandle);
+    const provider = WebFileSystemProvider(rootHandle, {
+      permissionPolicy: 'userSelectedDirectory',
+    });
 
     fileHandle.queryPermission = () => Promise.resolve('denied');
 
@@ -192,7 +133,9 @@ describe('WebFileSystemProvider', () => {
       configurable: true,
       value: queryPermissionMock,
     });
-    const provider = WebFileSystemProvider(rootHandle);
+    const provider = WebFileSystemProvider(rootHandle, {
+      permissionPolicy: 'userSelectedDirectory',
+    });
 
     await expect(provider.readDirectory('/')).resolves.toEqual([
       [
@@ -217,7 +160,9 @@ describe('WebFileSystemProvider', () => {
 
   it('returns root directory stat without looking up child handles', async () => {
     const { rootHandle } = createRootHandle('granted');
-    const provider = WebFileSystemProvider(rootHandle);
+    const provider = WebFileSystemProvider(rootHandle, {
+      permissionPolicy: 'userSelectedDirectory',
+    });
 
     await expect(provider.stat('/')).resolves.toEqual({
       type: FSNodeType.Directory,
@@ -230,60 +175,26 @@ describe('WebFileSystemProvider', () => {
   });
 
   it('normalizes nested paths before traversing directory handles', async () => {
-    const writable: FileSystemWritableFileStream = {
-      locked: false,
-      abort: () => Promise.resolve(),
-      close: vi.fn(() => Promise.resolve(undefined)),
-      getWriter: () => new WritableStream().getWriter(),
-      seek: () => Promise.resolve(undefined),
-      truncate: () => Promise.resolve(undefined),
-      write: vi.fn(() => Promise.resolve(undefined)),
-    };
-    const nestedFileHandle: FileSystemFileHandle = {
-      kind: 'file',
+    const nestedFileHandle = createFileHandleMock({
+      fileContent: ['nested'],
+      lastModified: 321,
       name: 'note.txt',
-      isSameEntry: () => Promise.resolve(true),
-      queryPermission: () => Promise.resolve('granted'),
-      requestPermission: () => Promise.resolve('granted'),
-      createWritable: () => Promise.resolve(writable),
-      getFile: () => Promise.resolve(new File(['nested'], 'note.txt', { lastModified: 321 })),
-      createSyncAccessHandle: () => Promise.reject(new Error('Method not implemented.')),
-      isFile: true,
-      isDirectory: false,
-    };
-    const { rootHandle: baseRootHandle } = createRootHandle('granted');
-    const nestedDirectoryHandle: FileSystemDirectoryHandle = {
-      kind: baseRootHandle.kind,
+    });
+    const nestedDirectoryHandle = createDirectoryHandleMock({
+      entries: [nestedFileHandle],
       name: 'child',
-      isSameEntry: (...args) => baseRootHandle.isSameEntry(...args),
-      queryPermission: (...args) =>
-        baseRootHandle.queryPermission?.(...args) ?? Promise.resolve('granted'),
-      requestPermission: (...args) => baseRootHandle.requestPermission(...args),
-      entries: () => baseRootHandle.entries(),
-      keys: () => baseRootHandle.keys(),
-      values: () => baseRootHandle.values(),
-      [Symbol.asyncIterator]: () => baseRootHandle[Symbol.asyncIterator](),
-      getDirectoryHandle: vi.fn(() => Promise.reject(new Error('Method not implemented.'))),
-      getFileHandle: vi.fn(() => Promise.resolve(nestedFileHandle)),
-      removeEntry: (...args) => baseRootHandle.removeEntry(...args),
-      resolve: (...args) => baseRootHandle.resolve(...args),
-      // eslint-disable-next-line @typescript-eslint/no-deprecated -- test fixture mirrors browser handle shape
-      isFile: baseRootHandle.isFile,
-      // eslint-disable-next-line @typescript-eslint/no-deprecated -- test fixture mirrors browser handle shape
-      isDirectory: baseRootHandle.isDirectory,
-      // eslint-disable-next-line @typescript-eslint/no-deprecated -- test fixture mirrors browser handle shape
-      getFile: (...args) => baseRootHandle.getFile(...args),
-      // eslint-disable-next-line @typescript-eslint/no-deprecated -- test fixture mirrors browser handle shape
-      getDirectory: (...args) => baseRootHandle.getDirectory(...args),
-      // eslint-disable-next-line @typescript-eslint/no-deprecated -- test fixture mirrors browser handle shape
-      getEntries: () => baseRootHandle.getEntries(),
-    };
+    });
     const { rootHandle } = createRootHandle('granted');
     const getDirectoryHandleMock = vi.fn(() => Promise.resolve(nestedDirectoryHandle));
-    const getFileHandleMock = vi.fn(() => Promise.resolve(nestedFileHandle));
+    const originalGetFileHandle = nestedDirectoryHandle.getFileHandle.bind(nestedDirectoryHandle);
+    const getFileHandleMock = vi.fn((fileName: string, options?: FileSystemGetFileOptions) =>
+      originalGetFileHandle(fileName, options),
+    );
     rootHandle.getDirectoryHandle = getDirectoryHandleMock;
     nestedDirectoryHandle.getFileHandle = getFileHandleMock;
-    const provider = WebFileSystemProvider(rootHandle);
+    const provider = WebFileSystemProvider(rootHandle, {
+      permissionPolicy: 'userSelectedDirectory',
+    });
 
     await expect(provider.readFile('//child///note.txt')).resolves.toBeInstanceOf(File);
     expect(getDirectoryHandleMock).toHaveBeenCalledWith('child', {
@@ -297,7 +208,7 @@ describe('WebFileSystemProvider', () => {
   it('serializes only safe metadata for worker transfer', async () => {
     const { rootHandle } = createRootHandle('prompt');
     const provider = WebFileSystemProvider(rootHandle, {
-      accessPolicy: 'userDirectory',
+      permissionPolicy: 'userSelectedDirectory',
       onAccessRequired: ({ mode }) => ({
         spaceName: 'Work',
         mode,
@@ -330,7 +241,7 @@ describe('WebFileSystemProvider', () => {
       mode: 'readwrite' as const,
     }));
     const provider = WebFileSystemProvider(rootHandle, {
-      accessPolicy: 'browserStorage',
+      permissionPolicy: 'originPrivateStorage',
       onAccessRequired,
     });
 
@@ -351,5 +262,62 @@ describe('WebFileSystemProvider', () => {
     ]);
     expect(onAccessRequired).not.toHaveBeenCalled();
     expect(rootHandle.requestPermissionMock).not.toHaveBeenCalled();
+  });
+
+  it('preserves access-required errors from source lookup during move', async () => {
+    const destinationDirectory = createDirectoryHandleMock({
+      name: 'Archive',
+      permissionState: 'granted',
+    });
+    const rootHandle = createDirectoryHandleMock({
+      entries: [destinationDirectory],
+      name: '',
+      permissionState: 'granted',
+    });
+    rootHandle.getDirectoryHandle = vi.fn((directoryName: string) => {
+      if (directoryName === 'Work') {
+        return Promise.reject(
+          new WebFileSystemAccessRequiredError({
+            mode: 'readwrite',
+            spaceName: 'Work',
+          }),
+        );
+      }
+
+      return Promise.resolve(destinationDirectory);
+    });
+    const provider = WebFileSystemProvider(rootHandle, {
+      permissionPolicy: 'userSelectedDirectory',
+      onAccessRequired: ({ mode }) => ({
+        mode,
+        spaceName: 'Work',
+      }),
+    });
+
+    await expect(provider.move('/Work/note.txt', '/Archive/note.txt')).rejects.toMatchObject({
+      code: WEB_FILE_SYSTEM_ACCESS_REQUIRED_CODE,
+      name: 'WebFileSystemAccessRequiredError',
+      spaceName: 'Work',
+    });
+  });
+
+  it('keeps not-found behavior for a missing move source path', async () => {
+    const destinationDirectory = createDirectoryHandleMock({
+      name: 'Archive',
+      permissionState: 'granted',
+    });
+    const rootHandle = createDirectoryHandleMock({
+      entries: [destinationDirectory],
+      name: '',
+      permissionState: 'granted',
+    });
+    const provider = WebFileSystemProvider(rootHandle, {
+      permissionPolicy: 'userSelectedDirectory',
+    });
+
+    await expect(provider.move('/missing.txt', '/Archive/missing.txt')).rejects.toMatchObject({
+      code: 'ENOENT',
+      name: 'VfsError',
+    });
   });
 });

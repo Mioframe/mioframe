@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Repo } from '@automerge/automerge-repo';
 import { partialKeyToFileName, storageAdapterMarkerFileName } from '@shared/lib/automergeAdapter';
 import { WEB_FILE_SYSTEM_ACCESS_REQUIRED_CODE } from '@shared/lib/webFileSystemProvider';
+import { createDirectoryHandleMock } from '@shared/lib/webFileSystemProvider/testUtils/fileSystemHandleFixtures';
 import type { FSNodeStat, IFileSystemProvider, VfsEvent } from '@shared/lib/virtualFileSystem';
 import { FSNodeType, VfsEventSource } from '@shared/lib/virtualFileSystem';
 import { OPFSName } from '../directories';
@@ -44,86 +45,6 @@ const createDocumentStorageFileName = () => {
   }
 
   return fileName;
-};
-
-type MockDirectoryHandle = FileSystemDirectoryHandle & {
-  __sameEntryKey: string;
-  queryPermissionMock?: ReturnType<
-    typeof vi.fn<(descriptor?: FileSystemHandlePermissionDescriptor) => Promise<PermissionState>>
-  >;
-  requestPermissionMock: ReturnType<
-    typeof vi.fn<(descriptor?: FileSystemHandlePermissionDescriptor) => Promise<PermissionState>>
-  >;
-  isSameEntryMock: ReturnType<
-    typeof vi.fn<(other: { __sameEntryKey?: string; name?: string }) => Promise<boolean>>
-  >;
-};
-
-const createDirectoryHandleMock = ({
-  name,
-  permissionState = 'granted',
-  sameEntryKey = name,
-  withQueryPermission = true,
-}: {
-  name: string;
-  permissionState?: PermissionState;
-  sameEntryKey?: string;
-  withQueryPermission?: boolean;
-}) => {
-  const queryPermissionMock = withQueryPermission
-    ? vi.fn(() => Promise.resolve(permissionState))
-    : undefined;
-  const requestPermissionMock = vi.fn(() => Promise.resolve(permissionState));
-  const isSameEntryMock = vi.fn<
-    (other: { __sameEntryKey?: string; name?: string }) => Promise<boolean>
-  >((other) => Promise.resolve((other.__sameEntryKey ?? other.name) === sameEntryKey));
-
-  const handle: MockDirectoryHandle = {
-    kind: 'directory',
-    name,
-    ...(queryPermissionMock === undefined ? {} : { queryPermission: queryPermissionMock }),
-    ...(queryPermissionMock === undefined ? {} : { queryPermissionMock }),
-    requestPermission: requestPermissionMock,
-    requestPermissionMock,
-    isSameEntry: isSameEntryMock,
-    isSameEntryMock,
-    __sameEntryKey: sameEntryKey,
-    isFile: false,
-    isDirectory: true,
-    entries: () =>
-      (async function* () {
-        await Promise.resolve();
-        yield* [];
-      })(),
-    keys: () =>
-      (async function* () {
-        await Promise.resolve();
-        yield* [];
-      })(),
-    values: () =>
-      (async function* () {
-        await Promise.resolve();
-        yield* [];
-      })(),
-    [Symbol.asyncIterator]() {
-      return this.entries();
-    },
-    getDirectoryHandle: () => Promise.reject(new Error('Method not implemented.')),
-    getFileHandle: () => Promise.reject(new Error('Method not implemented.')),
-    removeEntry: () => Promise.reject(new Error('Method not implemented.')),
-    resolve: () => Promise.reject(new Error('Method not implemented.')),
-    getFile(fileName, options) {
-      return this.getFileHandle(fileName, options);
-    },
-    getDirectory(directoryName, options) {
-      return this.getDirectoryHandle(directoryName, options);
-    },
-    getEntries() {
-      return this.values();
-    },
-  };
-
-  return handle;
 };
 
 const createDiagnosticProvider = ({

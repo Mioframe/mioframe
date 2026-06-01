@@ -28,7 +28,7 @@ export interface WebFileSystemProviderAccessRequiredContext {
  */
 export interface WebFileSystemProviderOptions {
   /** Access policy for the mounted root. */
-  accessPolicy?: 'browserStorage' | 'userDirectory';
+  permissionPolicy: 'originPrivateStorage' | 'userSelectedDirectory';
   /** Called when the provider needs browser permission before continuing. */
   onAccessRequired?: (
     context: WebFileSystemProviderAccessRequiredContext,
@@ -43,9 +43,9 @@ export interface WebFileSystemProviderOptions {
  */
 export const WebFileSystemProvider = (
   rootHandle: FileSystemDirectoryHandle,
-  options: WebFileSystemProviderOptions = {},
+  options: WebFileSystemProviderOptions,
 ): IFileSystemProvider => {
-  const { accessPolicy = 'userDirectory', onAccessRequired } = options;
+  const { onAccessRequired, permissionPolicy } = options;
   const queryWritePermission = async (handle: FileSystemFileHandle | FileSystemDirectoryHandle) => {
     return (
       (await handle.queryPermission?.({ mode: 'readwrite' })) ?? (await handle.queryPermission?.())
@@ -53,7 +53,7 @@ export const WebFileSystemProvider = (
   };
 
   const ensureAccess = async (): Promise<void> => {
-    if (accessPolicy === 'browserStorage') {
+    if (permissionPolicy === 'originPrivateStorage') {
       return;
     }
 
@@ -72,6 +72,13 @@ export const WebFileSystemProvider = (
       throw new VfsError(FileSystemError.NoPermissions, 'Permission required');
     }
   };
+
+  const isLookupMiss = (
+    error: unknown,
+    expectedCode: FileSystemError.FileIsADirectory | FileSystemError.FileNotADirectory,
+  ): error is VfsError =>
+    error instanceof VfsError &&
+    (error.code === FileSystemError.FileNotFound || error.code === expectedCode);
 
   async function getHandle(
     path: string,
@@ -171,33 +178,54 @@ export const WebFileSystemProvider = (
     };
   };
 
-  const stat = async (path: string): Promise<FSNodeStat> => {
-    await ensureAccess();
-
+  const lookupPath = async (
+    path: string,
+  ): Promise<{ handle: FileSystemFileHandle | FileSystemDirectoryHandle; stat: FSNodeStat }> => {
     const normalized = PathUtils.normalize(path);
     if (normalized === '/') {
       return {
-        type: FSNodeType.Directory,
-        capabilities: {
-          canDelete: false,
-          canChangePath: false,
-          canEditChildren: true,
+        handle: rootHandle,
+        stat: {
+          type: FSNodeType.Directory,
+          capabilities: {
+            canDelete: false,
+            canChangePath: false,
+            canEditChildren: true,
+          },
         },
       };
     }
 
-    let handle: FileSystemFileHandle | FileSystemDirectoryHandle | undefined;
     try {
-      handle = await getHandle(path, false, 'file');
-    } catch {
+      const handle = await getHandle(path, false, 'file');
+      return {
+        handle,
+        stat: await fileHandleStat(handle),
+      };
+    } catch (error) {
+      if (!isLookupMiss(error, FileSystemError.FileIsADirectory)) {
+        throw error;
+      }
+
       try {
-        handle = await getHandle(path, false, 'directory');
-      } catch {
-        throw new VfsError(FileSystemError.FileNotFound, `Path not found: ${path}`);
+        const handle = await getHandle(path, false, 'directory');
+        return {
+          handle,
+          stat: await fileHandleStat(handle),
+        };
+      } catch (directoryError) {
+        if (isLookupMiss(directoryError, FileSystemError.FileNotADirectory)) {
+          throw new VfsError(FileSystemError.FileNotFound, `Path not found: ${path}`);
+        }
+        throw directoryError;
       }
     }
+  };
 
-    return fileHandleStat(handle);
+  const stat = async (path: string): Promise<FSNodeStat> => {
+    await ensureAccess();
+    const { stat: nodeStat } = await lookupPath(path);
+    return nodeStat;
   };
 
   const readFile = async (path: string): Promise<File> => {
@@ -268,7 +296,7 @@ export const WebFileSystemProvider = (
   const remove = async (path: string, recursive: boolean): Promise<void> => {
     await ensureAccess();
     const normalized = PathUtils.normalize(path);
-    const nodeStat = await stat(normalized);
+    const { stat: nodeStat } = await lookupPath(normalized);
 
     if (nodeStat.capabilities?.canDelete !== true) {
       throw new VfsError(
@@ -315,26 +343,27 @@ export const WebFileSystemProvider = (
     }
 
     let sourceHandle: FileSystemFileHandle | FileSystemDirectoryHandle;
+    let sourceStat: FSNodeStat;
     try {
-      const sourceStat = await stat(normalizedOld);
-      if (sourceStat.capabilities?.canChangePath !== true) {
-        throw new VfsError(
-          FileSystemError.NoPermissions,
-          `Path change is not allowed for path: ${oldPath}`,
-        );
+      ({ handle: sourceHandle, stat: sourceStat } = await lookupPath(normalizedOld));
+    } catch (error) {
+      if (error instanceof VfsError && error.code === FileSystemError.FileNotFound) {
+        throw new VfsError(FileSystemError.FileNotFound, `Source not found: ${oldPath}`);
       }
-      sourceHandle =
-        sourceStat.type === FSNodeType.File
-          ? await getHandle(normalizedOld, false, 'file')
-          : await getHandle(normalizedOld, false, 'directory');
-    } catch {
-      throw new VfsError(FileSystemError.FileNotFound, `Source not found: ${oldPath}`);
+      throw error;
+    }
+
+    if (sourceStat.capabilities?.canChangePath !== true) {
+      throw new VfsError(
+        FileSystemError.NoPermissions,
+        `Path change is not allowed for path: ${oldPath}`,
+      );
     }
 
     const newName = PathUtils.basename(normalizedNew);
     const newDirName = PathUtils.dirname(normalizedNew);
     const destinationDirHandle = await getHandle(newDirName, false, 'directory');
-    const destinationStat = await stat(newDirName);
+    const { stat: destinationStat } = await lookupPath(newDirName);
 
     if (destinationStat.capabilities?.canEditChildren !== true) {
       throw new VfsError(

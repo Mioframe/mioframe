@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, toRefs } from 'vue';
+import { isNotNil } from 'es-toolkit';
 import { useDeviceDirectoryAccessRecovery } from '@feature/deviceDirectoryAccessRecovery';
 import { useGoogleDriveRecovery } from '@feature/googleDriveRecovery';
 import { useFSNodeStat } from '@entity/fsEntry';
@@ -33,8 +34,6 @@ defineSlots<{
   after: (props: { canEditDirectoryContents: boolean }) => unknown;
 }>();
 
-const isDefined = <T>(value: T | undefined): value is T => value !== undefined;
-
 const { directoryPath } = toRefs(props);
 const { data: directoryStat, error: directoryStatError } = useFSNodeStat(directoryPath);
 const repositoryExplorerDirectoryState = useRepositoryExplorerDirectoryState(directoryPath);
@@ -48,7 +47,7 @@ const {
   regularFileEntries,
 } = repositoryExplorerDirectoryState;
 const recoveryErrors = computed(() =>
-  [...repositoryRecoveryErrors.value, directoryStatError.value].filter(isDefined),
+  [...repositoryRecoveryErrors.value, directoryStatError.value].filter(isNotNil),
 );
 const {
   cancelAccess,
