@@ -35,8 +35,8 @@ test-results/
 # Ignore local Claude state but allow project-level compatibility files.
 .claude/*
 !.claude/skills
+!.claude/skills/**
 !.claude/README.md
-!.claude/agents
 .claude/settings.local.json
 tsconfig.tsbuildinfo
 .eslintcache
