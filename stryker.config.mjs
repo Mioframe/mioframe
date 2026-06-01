@@ -73,6 +73,11 @@ export default {
   },
   mutate,
   ignorePatterns: [
+    '.agents/**',
+    '.claude',
+    '.claude/**',
+    '**/AGENTS.md',
+    '**/CLAUDE.md',
     'tests/e2e/**',
     'src/**/__mocks__/**',
     'playwright.config.ts',
