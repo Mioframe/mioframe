@@ -14,7 +14,10 @@ Inherits the rules from `src/shared/lib/AGENTS.md`. Applies to the browser File 
 - The provider may call `queryPermission()` to decide whether an operation can continue.
 - The provider must not call `requestPermission()`. Browser permission prompts belong to an explicit user-action flow above the provider.
 - Keep provider contracts independent from service modules. Services may supply callbacks, registries, or context, but this provider must not import from `shared/service`.
-- Keep error payloads transfer-safe and privacy-safe. Handles, paths, names, and raw browser errors must not appear in reportable messages, causes, serialized errors, or diagnostics.
+- Keep error payloads transfer-safe and privacy-safe. Do not serialize handles, raw paths, raw browser errors, provider objects, service objects, or raw capability details in reportable messages, causes, serialized errors, or diagnostics.
+- Do not put raw user file-system paths into reportable error payloads.
+- A safe mounted root display name is allowed only for controlled access-recovery errors when UI and service recovery need a stable lookup key.
+- `spaceName` is allowed in `WebFileSystemAccessRequiredError` because it is the mounted root display key used by recovery UI and pending request lookup. Do not treat it as a raw path or a browser handle.
 
 ## Anti-patterns
 

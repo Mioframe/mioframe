@@ -7,11 +7,11 @@ import type {
 } from '../virtualFileSystem';
 import { FileSystemError, FSNodeType, PathUtils, VfsError } from '../virtualFileSystem';
 import type { WriteOptions } from '../virtualFileSystem/IFileSystemProvider';
-import { createWebFileSystemAccessRequiredError } from './createWebFileSystemAccessRequiredError';
 import type {
   WebFileSystemAccessMode,
   WebFileSystemAccessRequiredDetails,
 } from './WebFileSystemAccessRequiredError';
+import { WebFileSystemAccessRequiredError } from './WebFileSystemAccessRequiredError';
 
 /**
  * Access request context passed back to the owning service when provider permission is missing.
@@ -27,8 +27,8 @@ export interface WebFileSystemProviderAccessRequiredContext {
  * Optional hooks for service-owned access recovery.
  */
 export interface WebFileSystemProviderOptions {
-  /** Disables user-directory recovery semantics for handles that should behave like internal storage. */
-  bypassAccessRequiredRecovery?: boolean;
+  /** Access policy for the mounted root. */
+  accessPolicy?: 'browserStorage' | 'userDirectory';
   /** Called when the provider needs browser permission before continuing. */
   onAccessRequired?: (
     context: WebFileSystemProviderAccessRequiredContext,
@@ -45,7 +45,7 @@ export const WebFileSystemProvider = (
   rootHandle: FileSystemDirectoryHandle,
   options: WebFileSystemProviderOptions = {},
 ): IFileSystemProvider => {
-  const { bypassAccessRequiredRecovery = false, onAccessRequired } = options;
+  const { accessPolicy = 'userDirectory', onAccessRequired } = options;
   const queryWritePermission = async (handle: FileSystemFileHandle | FileSystemDirectoryHandle) => {
     return (
       (await handle.queryPermission?.({ mode: 'readwrite' })) ?? (await handle.queryPermission?.())
@@ -53,20 +53,20 @@ export const WebFileSystemProvider = (
   };
 
   const ensureAccess = async (): Promise<void> => {
+    if (accessPolicy === 'browserStorage') {
+      return;
+    }
+
     const permissionState = await queryWritePermission(rootHandle);
 
     if (permissionState !== 'granted') {
-      if (bypassAccessRequiredRecovery) {
-        throw new VfsError(FileSystemError.NoPermissions, 'Permission required');
-      }
-
       const accessRequiredDetails = onAccessRequired?.({
         handle: rootHandle,
         mode: 'readwrite',
       });
 
       if (accessRequiredDetails) {
-        throw createWebFileSystemAccessRequiredError(accessRequiredDetails);
+        throw new WebFileSystemAccessRequiredError(accessRequiredDetails);
       }
 
       throw new VfsError(FileSystemError.NoPermissions, 'Permission required');

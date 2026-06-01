@@ -3,6 +3,8 @@ import { useRepository } from '@entity/repository';
 import { resolveSafeErrorMessage } from '@shared/lib/error';
 import { computed, type Ref } from 'vue';
 
+const isDefined = <T>(value: T | undefined): value is T => value !== undefined;
+
 /**
  * Reads directory entries and repository facts for Repository Explorer composition.
  * @param directoryPath - Absolute path of the opened folder.
@@ -31,7 +33,9 @@ export const useRepositoryExplorerDirectoryState = (directoryPath: Ref<string>) 
   const directoryErrorMessage = computed(() =>
     resolveSafeErrorMessage(directoryError.value, 'Could not read this folder'),
   );
-  const recoveryErrors = computed(() => [directoryError.value, repositoryError.value]);
+  const recoveryErrors = computed(() =>
+    [directoryError.value, repositoryError.value].filter(isDefined),
+  );
 
   const errorMessage = computed(() => directoryErrorMessage.value ?? repositoryErrorMessage.value);
   const isLoading = computed(

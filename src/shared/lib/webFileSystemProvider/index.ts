@@ -6,4 +6,3 @@ export {
   type WebFileSystemAccessMode,
   type WebFileSystemAccessRequiredDetails,
 } from './WebFileSystemAccessRequiredError';
-export { createWebFileSystemAccessRequiredError } from './createWebFileSystemAccessRequiredError';

@@ -117,6 +117,7 @@ describe('WebFileSystemProvider', () => {
   it('throws a typed access-required DomainError when read permission is missing', async () => {
     const { rootHandle } = createRootHandle('prompt');
     const provider = WebFileSystemProvider(rootHandle, {
+      accessPolicy: 'userDirectory',
       onAccessRequired: ({ mode }) => {
         return {
           spaceName: 'Work',
@@ -137,6 +138,7 @@ describe('WebFileSystemProvider', () => {
   it('throws the same typed access-required DomainError when permission is denied', async () => {
     const { rootHandle } = createRootHandle('denied');
     const provider = WebFileSystemProvider(rootHandle, {
+      accessPolicy: 'userDirectory',
       onAccessRequired: ({ mode }) => {
         return {
           spaceName: 'Work',
@@ -295,6 +297,7 @@ describe('WebFileSystemProvider', () => {
   it('serializes only safe metadata for worker transfer', async () => {
     const { rootHandle } = createRootHandle('prompt');
     const provider = WebFileSystemProvider(rootHandle, {
+      accessPolicy: 'userDirectory',
       onAccessRequired: ({ mode }) => ({
         spaceName: 'Work',
         mode,
@@ -320,19 +323,33 @@ describe('WebFileSystemProvider', () => {
     expect(JSON.stringify(thrownError.toJSON())).not.toContain('FileSystemDirectoryHandle');
   });
 
-  it('can bypass local access recovery for Browser Storage style providers', async () => {
+  it('does not route Browser Storage providers through local access recovery', async () => {
     const { rootHandle } = createRootHandle('prompt');
+    const onAccessRequired = vi.fn(() => ({
+      spaceName: 'Work',
+      mode: 'readwrite' as const,
+    }));
     const provider = WebFileSystemProvider(rootHandle, {
-      bypassAccessRequiredRecovery: true,
-      onAccessRequired: () => ({
-        spaceName: 'Work',
-        mode: 'readwrite',
-      }),
+      accessPolicy: 'browserStorage',
+      onAccessRequired,
     });
 
-    await expect(provider.readDirectory('/')).rejects.toMatchObject({
-      code: 'EACCES',
-      name: 'VfsError',
-    });
+    await expect(provider.readDirectory('/')).resolves.toEqual([
+      [
+        'note.txt',
+        {
+          capabilities: {
+            canChangePath: true,
+            canDelete: true,
+          },
+          creationTime: 123,
+          modificationTime: 123,
+          size: 5,
+          type: FSNodeType.File,
+        },
+      ],
+    ]);
+    expect(onAccessRequired).not.toHaveBeenCalled();
+    expect(rootHandle.requestPermissionMock).not.toHaveBeenCalled();
   });
 });

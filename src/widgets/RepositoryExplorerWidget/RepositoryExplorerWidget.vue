@@ -33,6 +33,8 @@ defineSlots<{
   after: (props: { canEditDirectoryContents: boolean }) => unknown;
 }>();
 
+const isDefined = <T>(value: T | undefined): value is T => value !== undefined;
+
 const { directoryPath } = toRefs(props);
 const { data: directoryStat, error: directoryStatError } = useFSNodeStat(directoryPath);
 const repositoryExplorerDirectoryState = useRepositoryExplorerDirectoryState(directoryPath);
@@ -45,10 +47,9 @@ const {
   recoveryErrors: repositoryRecoveryErrors,
   regularFileEntries,
 } = repositoryExplorerDirectoryState;
-const recoveryErrors = computed(() => [
-  ...repositoryRecoveryErrors.value,
-  directoryStatError.value,
-]);
+const recoveryErrors = computed(() =>
+  [...repositoryRecoveryErrors.value, directoryStatError.value].filter(isDefined),
+);
 const {
   cancelAccess,
   grantAccess,

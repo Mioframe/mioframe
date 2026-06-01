@@ -196,7 +196,7 @@ describe('useRepositoryExplorerDirectoryState', () => {
 
     const { scope, state } = await mountUseRepositoryExplorerDirectoryState();
 
-    expect(state.recoveryErrors.value).toEqual([accessError, undefined]);
+    expect(state.recoveryErrors.value).toEqual([accessError]);
 
     scope.stop();
   });

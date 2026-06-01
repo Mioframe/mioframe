@@ -921,17 +921,14 @@ describe('useFileSystemService', () => {
       path: `/Device Files/${OPFSName}`,
     });
 
-    expect(result).toBeInstanceOf(Error);
-    expect(result).toMatchObject({
-      code: 'EACCES',
-      name: 'VfsError',
-    });
+    expect(result).toEqual([]);
     await expect(
       service.getDeviceDirectoryAccessRequest({
         mode: 'readwrite',
         spaceName: OPFSName,
       }),
     ).resolves.toBeUndefined();
+    expect(opfsHandle.requestPermissionMock).not.toHaveBeenCalled();
   });
 
   it('re-reads directoryContent$ and emits an updated payload after createDirectory', async () => {

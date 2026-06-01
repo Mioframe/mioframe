@@ -3,11 +3,15 @@ import { createGlobalState } from '@vueuse/core';
 import { distinctUntilChanged, filter, firstValueFrom, map, type Observable } from 'rxjs';
 import { isEqual } from 'es-toolkit';
 import { array, catch as zCatch, custom, object, optional, string } from 'zod/v4-mini';
-import type { MountedDeviceFileRecord } from '@shared/lib/deviceFileSystemProvider';
 import { isFileSystemDirectoryHandle } from '@shared/lib/typeGuards';
 
 /** Normalized persisted mounted-directory record stored at the IndexedDB boundary. */
-export type PersistedDeviceDirectoryRecord = Pick<MountedDeviceFileRecord, 'handle' | 'name'>;
+export interface PersistedDeviceDirectoryRecord {
+  /** Persisted directory handle for the remembered local space. */
+  handle: FileSystemDirectoryHandle;
+  /** Stable mounted display name for the remembered local space. */
+  name: string;
+}
 
 const KEY = 'device-directory-handles';
 

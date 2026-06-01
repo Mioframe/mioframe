@@ -101,6 +101,7 @@ const setupFileSystemService = () => {
     createProvider: (record) =>
       record.kind === 'localDirectory'
         ? WebFileSystemProvider(record.handle, {
+            accessPolicy: 'userDirectory',
             onAccessRequired: ({ handle, mode }) => {
               const request = upsertPendingDeviceDirectoryAccessRequest({
                 spaceName: record.name,
@@ -115,7 +116,7 @@ const setupFileSystemService = () => {
             },
           })
         : WebFileSystemProvider(record.handle, {
-            bypassAccessRequiredRecovery: true,
+            accessPolicy: 'browserStorage',
           }),
   });
   const { getRecordList, updateRecordList } = useFileSystemDirectoryHandleService();
