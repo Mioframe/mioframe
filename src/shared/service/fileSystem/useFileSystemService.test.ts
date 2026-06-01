@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Repo } from '@automerge/automerge-repo';
 import { partialKeyToFileName, storageAdapterMarkerFileName } from '@shared/lib/automergeAdapter';
 import { WEB_FILE_SYSTEM_ACCESS_REQUIRED_CODE } from '@shared/lib/webFileSystemProvider';
-import { createDirectoryHandleMock } from '@shared/lib/webFileSystemProvider/testUtils/fileSystemHandleFixtures';
+import { createDirectoryHandleMock } from '@shared/lib/webFileSystemProvider/WebFileSystemProvider.testUtils';
 import type { FSNodeStat, IFileSystemProvider, VfsEvent } from '@shared/lib/virtualFileSystem';
 import { FSNodeType, VfsEventSource } from '@shared/lib/virtualFileSystem';
 import { OPFSName } from '../directories';
@@ -286,6 +286,28 @@ describe('useFileSystemService', () => {
     );
   });
 
+  it('appends a new distinct handle without replacing unrelated persisted records', async () => {
+    const existingHandle = createDirectoryHandleMock({
+      name: 'Archive',
+      sameEntryKey: 'archive',
+    });
+    const addedHandle = createDirectoryHandleMock({
+      name: 'Work',
+      sameEntryKey: 'work',
+    });
+    getRecordListMock.mockResolvedValue([{ name: 'Archive', handle: existingHandle }]);
+
+    const service = await createService();
+
+    await expect(service.addDeviceDirectory(addedHandle)).resolves.toEqual({
+      name: 'Work',
+    });
+    expect(updateRecordListMock).toHaveBeenCalledWith([
+      { name: 'Archive', handle: existingHandle },
+      { name: 'Work', handle: addedHandle },
+    ]);
+  });
+
   it('persists duplicate-name and reserved-name migrations without display copy', async () => {
     const opfsHandle = createDirectoryHandleMock({
       name: OPFSName,
@@ -363,6 +385,35 @@ describe('useFileSystemService', () => {
     expect(updateRecordListMock).toHaveBeenCalledWith([{ name: 'Archive', handle: renamedHandle }]);
   });
 
+  it('replaces only the matching persisted record when a remembered handle is renamed', async () => {
+    const workHandle = createDirectoryHandleMock({
+      name: 'Projects',
+      sameEntryKey: 'shared-handle',
+    });
+    const renamedHandle = createDirectoryHandleMock({
+      name: 'Archive',
+      sameEntryKey: 'shared-handle',
+    });
+    const untouchedHandle = createDirectoryHandleMock({
+      name: 'Reference',
+      sameEntryKey: 'reference',
+    });
+    getRecordListMock.mockResolvedValue([
+      { name: 'Projects', handle: workHandle },
+      { name: 'Reference', handle: untouchedHandle },
+    ]);
+
+    const service = await createService();
+
+    await expect(service.addDeviceDirectory(renamedHandle)).resolves.toEqual({
+      name: 'Archive',
+    });
+    expect(updateRecordListMock).toHaveBeenCalledWith([
+      { name: 'Archive', handle: renamedHandle },
+      { name: 'Reference', handle: untouchedHandle },
+    ]);
+  });
+
   it('keeps the previous mounted name when re-adding the same handle name', async () => {
     const oldHandle = createDirectoryHandleMock({
       name: 'Projects',
@@ -388,6 +439,46 @@ describe('useFileSystemService', () => {
         name: 'Projects',
       },
     ]);
+  });
+
+  it('does not emit provider delete or create events when re-adding the same remembered name', async () => {
+    const oldHandle = createDirectoryHandleMock({
+      name: 'Projects',
+      sameEntryKey: 'shared-handle',
+    });
+    const sameHandle = createDirectoryHandleMock({
+      name: 'Projects',
+      sameEntryKey: 'shared-handle',
+    });
+
+    getRecordListMock
+      .mockResolvedValueOnce([{ name: 'Projects', handle: oldHandle }])
+      .mockResolvedValueOnce([{ name: 'Projects', handle: oldHandle }]);
+
+    const service = await createService();
+    const events: Array<{ source: string; type: string }> = [];
+    const unsubscribe = service.vfs.watch('/Device Files/Projects', (event) => {
+      events.push({
+        source: event.source,
+        type: event.type,
+      });
+    });
+
+    await service.addDeviceDirectory(sameHandle);
+    unsubscribe();
+
+    expect(events).not.toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          source: 'provider',
+          type: 'delete',
+        }),
+        expect.objectContaining({
+          source: 'provider',
+          type: 'create',
+        }),
+      ]),
+    );
   });
 
   it('removes matching device directory names from persistence and active state', async () => {
@@ -439,6 +530,15 @@ describe('useFileSystemService', () => {
     await service.removeDeviceDirectory(OPFSName);
     await service.removeDeviceDirectory('Missing');
 
+    expect(updateRecordListMock).not.toHaveBeenCalled();
+  });
+
+  it('returns early when removing OPFS without loading persisted records', async () => {
+    const service = await createService();
+
+    await service.removeDeviceDirectory(OPFSName);
+
+    expect(getRecordListMock).not.toHaveBeenCalled();
     expect(updateRecordListMock).not.toHaveBeenCalled();
   });
 
@@ -577,6 +677,59 @@ describe('useFileSystemService', () => {
         name: 'Work',
       },
     ]);
+  });
+
+  it('returns cancelled for unresolved prompt permission and keeps the pending request', async () => {
+    const promptHandle = createDirectoryHandleMock({
+      name: 'Work',
+      permissionState: 'prompt',
+      sameEntryKey: 'work',
+    });
+    getRecordListMock.mockResolvedValue([{ name: 'Work', handle: promptHandle }]);
+
+    const service = await createService();
+    await vi.waitFor(async () => {
+      await expect(service.deviceFiles.fetch()).resolves.toEqual([
+        {
+          canDisconnect: true,
+          name: 'Work',
+        },
+      ]);
+    });
+
+    const error = await service.directoryContent.fetch({
+      path: '/Device Files/Work',
+    });
+
+    if (!isAccessErrorWithRecoveryKey(error)) {
+      throw new Error('Expected DeviceDirectoryAccessRequiredError');
+    }
+
+    await expect(
+      service.resolveDeviceDirectoryAccessRequest({
+        mode: error.mode,
+        permissionState: 'prompt',
+        spaceName: error.spaceName,
+      }),
+    ).resolves.toEqual({
+      request: {
+        mode: 'readwrite',
+        spaceName: 'Work',
+        handle: promptHandle,
+      },
+      status: 'cancelled',
+    });
+
+    await expect(
+      service.getDeviceDirectoryAccessRequest({
+        mode: error.mode,
+        spaceName: error.spaceName,
+      }),
+    ).resolves.toEqual({
+      mode: 'readwrite',
+      spaceName: 'Work',
+      handle: promptHandle,
+    });
   });
 
   it('deduplicates pending requests for the same remembered space and mode', async () => {

@@ -20,8 +20,24 @@ type MockFileSystemFileHandle = FileSystemFileHandle & {
 
 type MockFileSystemDirectoryHandle = FileSystemDirectoryHandle & {
   __sameEntryKey: string;
+  getDirectoryHandleMock: ReturnType<
+    typeof vi.fn<
+      (
+        directoryName: string,
+        options?: FileSystemGetDirectoryOptions,
+      ) => Promise<FileSystemDirectoryHandle>
+    >
+  >;
+  getFileHandleMock: ReturnType<
+    typeof vi.fn<
+      (fileName: string, options?: FileSystemGetFileOptions) => Promise<FileSystemFileHandle>
+    >
+  >;
   queryPermissionMock?: ReturnType<
     typeof vi.fn<(descriptor?: FileSystemHandlePermissionDescriptor) => Promise<PermissionState>>
+  >;
+  removeEntryMock: ReturnType<
+    typeof vi.fn<(entryName: string, options?: FileSystemRemoveOptions) => Promise<void>>
   >;
   requestPermissionMock: ReturnType<
     typeof vi.fn<(descriptor?: FileSystemHandlePermissionDescriptor) => Promise<PermissionState>>
@@ -125,13 +141,65 @@ export const createDirectoryHandleMock = ({
     (other: { __sameEntryKey?: string; name?: string }) => Promise<boolean>
   >((other) => Promise.resolve((other.__sameEntryKey ?? other.name) === sameEntryKey));
   const entryMap = new Map(entries.map((entry) => [entry.name, entry]));
+  const getDirectoryHandleMock = vi.fn(
+    (directoryName: string, options?: FileSystemGetDirectoryOptions) => {
+      const existing = entryMap.get(directoryName);
+      if (existing?.kind === 'directory') {
+        return Promise.resolve(existing);
+      }
+      if (existing) {
+        return Promise.reject(new DOMException('Type mismatch', 'TypeMismatchError'));
+      }
+      if (options?.create) {
+        const nextDirectory = createDirectoryHandleMock({
+          name: directoryName,
+          permissionState,
+        });
+        entryMap.set(directoryName, nextDirectory);
+        return Promise.resolve(nextDirectory);
+      }
+      return Promise.reject(new DOMException('Not found', 'NotFoundError'));
+    },
+  );
+  const getFileHandleMock = vi.fn((fileName: string, options?: FileSystemGetFileOptions) => {
+    const existing = entryMap.get(fileName);
+    if (existing?.kind === 'file') {
+      return Promise.resolve(existing);
+    }
+    if (existing) {
+      return Promise.reject(new DOMException('Type mismatch', 'TypeMismatchError'));
+    }
+    if (options?.create) {
+      const nextFile = createFileHandleMock({
+        name: fileName,
+        permissionState,
+      });
+      entryMap.set(fileName, nextFile);
+      return Promise.resolve(nextFile);
+    }
+    return Promise.reject(new DOMException('Not found', 'NotFoundError'));
+  });
+  const removeEntryMock = vi.fn((entryName: string, options?: FileSystemRemoveOptions) => {
+    const existing = entryMap.get(entryName);
+    if (!existing) {
+      return Promise.reject(new DOMException('Not found', 'NotFoundError'));
+    }
+    if (existing.kind === 'directory' && !options?.recursive) {
+      return Promise.reject(new DOMException('Directory not empty', 'InvalidModificationError'));
+    }
+    entryMap.delete(entryName);
+    return Promise.resolve(undefined);
+  });
 
   const handle: MockFileSystemDirectoryHandle = {
     kind: 'directory',
     name,
     __sameEntryKey: sameEntryKey,
+    getDirectoryHandleMock,
+    getFileHandleMock,
     ...(queryPermissionMock === undefined ? {} : { queryPermission: queryPermissionMock }),
     ...(queryPermissionMock === undefined ? {} : { queryPermissionMock }),
+    removeEntryMock,
     requestPermission: requestPermissionMock,
     requestPermissionMock,
     isSameEntry: isSameEntryMock,
@@ -162,53 +230,9 @@ export const createDirectoryHandleMock = ({
     [Symbol.asyncIterator]() {
       return handle.entries();
     },
-    getDirectoryHandle: vi.fn((directoryName: string, options?: FileSystemGetDirectoryOptions) => {
-      const existing = entryMap.get(directoryName);
-      if (existing?.kind === 'directory') {
-        return Promise.resolve(existing);
-      }
-      if (existing) {
-        return Promise.reject(new DOMException('Type mismatch', 'TypeMismatchError'));
-      }
-      if (options?.create) {
-        const nextDirectory = createDirectoryHandleMock({
-          name: directoryName,
-          permissionState,
-        });
-        entryMap.set(directoryName, nextDirectory);
-        return Promise.resolve(nextDirectory);
-      }
-      return Promise.reject(new DOMException('Not found', 'NotFoundError'));
-    }),
-    getFileHandle: vi.fn((fileName: string, options?: FileSystemGetFileOptions) => {
-      const existing = entryMap.get(fileName);
-      if (existing?.kind === 'file') {
-        return Promise.resolve(existing);
-      }
-      if (existing) {
-        return Promise.reject(new DOMException('Type mismatch', 'TypeMismatchError'));
-      }
-      if (options?.create) {
-        const nextFile = createFileHandleMock({
-          name: fileName,
-          permissionState,
-        });
-        entryMap.set(fileName, nextFile);
-        return Promise.resolve(nextFile);
-      }
-      return Promise.reject(new DOMException('Not found', 'NotFoundError'));
-    }),
-    removeEntry: vi.fn((entryName: string, options?: FileSystemRemoveOptions) => {
-      const existing = entryMap.get(entryName);
-      if (!existing) {
-        return Promise.reject(new DOMException('Not found', 'NotFoundError'));
-      }
-      if (existing.kind === 'directory' && !options?.recursive) {
-        return Promise.reject(new DOMException('Directory not empty', 'InvalidModificationError'));
-      }
-      entryMap.delete(entryName);
-      return Promise.resolve(undefined);
-    }),
+    getDirectoryHandle: getDirectoryHandleMock,
+    getFileHandle: getFileHandleMock,
+    removeEntry: removeEntryMock,
     resolve: vi.fn(() => Promise.resolve([])),
     getFile(fileName, options) {
       return this.getFileHandle(fileName, options);

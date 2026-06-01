@@ -1,8 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import {
-  createDirectoryHandleMock,
-  createFileHandleMock,
-} from './testUtils/fileSystemHandleFixtures';
+import { createDirectoryHandleMock, createFileHandleMock } from './WebFileSystemProvider.testUtils';
 import { FSNodeType } from '../virtualFileSystem';
 import { WebFileSystemProvider } from './WebFileSystemProvider';
 import { WEB_FILE_SYSTEM_ACCESS_REQUIRED_CODE, WebFileSystemAccessRequiredError } from '.';
@@ -121,6 +118,30 @@ describe('WebFileSystemProvider', () => {
     });
   });
 
+  it('returns directory stat for nested directories instead of treating them as files', async () => {
+    const nestedDirectoryHandle = createDirectoryHandleMock({
+      name: 'child',
+      permissionState: 'granted',
+    });
+    const rootHandle = createDirectoryHandleMock({
+      entries: [nestedDirectoryHandle],
+      name: '',
+      permissionState: 'granted',
+    });
+    const provider = WebFileSystemProvider(rootHandle, {
+      permissionPolicy: 'userSelectedDirectory',
+    });
+
+    await expect(provider.stat('/child')).resolves.toEqual({
+      type: FSNodeType.Directory,
+      capabilities: {
+        canDelete: true,
+        canChangePath: true,
+        canEditChildren: true,
+      },
+    });
+  });
+
   it('falls back to generic queryPermission when the readwrite descriptor is unsupported', async () => {
     const { rootHandle } = createRootHandle('granted');
     const queryPermissionMock = vi
@@ -172,6 +193,27 @@ describe('WebFileSystemProvider', () => {
         canEditChildren: true,
       },
     });
+  });
+
+  it('rejects writeFile when the target already exists and overwrite is false', async () => {
+    const { fileHandle, rootHandle } = createRootHandle('granted');
+    const provider = WebFileSystemProvider(rootHandle, {
+      permissionPolicy: 'userSelectedDirectory',
+    });
+
+    await expect(
+      provider.writeFile('/note.txt', 'next', {
+        create: true,
+        overwrite: false,
+      }),
+    ).rejects.toMatchObject({
+      code: 'EEXIST',
+      name: 'VfsError',
+    });
+    expect(rootHandle.getFileHandleMock).toHaveBeenCalledWith('note.txt', {
+      create: false,
+    });
+    expect(fileHandle.__writtenContent).toEqual(['hello']);
   });
 
   it('normalizes nested paths before traversing directory handles', async () => {
@@ -317,7 +359,20 @@ describe('WebFileSystemProvider', () => {
 
     await expect(provider.move('/missing.txt', '/Archive/missing.txt')).rejects.toMatchObject({
       code: 'ENOENT',
+      message: 'Source not found: /missing.txt',
       name: 'VfsError',
     });
+  });
+
+  it('treats moving a path onto itself as a no-op', async () => {
+    const { fileHandle, rootHandle } = createRootHandle('granted');
+    const provider = WebFileSystemProvider(rootHandle, {
+      permissionPolicy: 'userSelectedDirectory',
+    });
+
+    await expect(provider.move('/note.txt', '/note.txt')).resolves.toBeUndefined();
+    expect(rootHandle.getFileHandleMock).not.toHaveBeenCalled();
+    expect(rootHandle.removeEntryMock).not.toHaveBeenCalled();
+    expect(fileHandle.__writtenContent).toEqual(['hello']);
   });
 });

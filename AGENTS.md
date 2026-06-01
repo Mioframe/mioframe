@@ -141,6 +141,7 @@ reason:
 - Prefer assertions against emitted events, props passed to stubs, slot content, and stable accessible text or labels when they are part of the component contract.
 - Avoid adding `data-testid` only for unit tests unless there is no stable user-visible or component-level contract to assert.
 - Move reusable UI state transitions and business rules into composables or pure helpers, and cover those with focused unit tests.
+- Colocate test helpers as `*.testUtils.ts` next to the tested module or test files. Do not export test helpers from production barrels. Helpers that import `vitest` must stay test-only and must never be imported by production code. Create global shared test utilities only after the same helper is needed by several unrelated modules. Do not create ad hoc `testUtils/` folders unless the package already uses that convention or multiple helper files justify a folder.
 - Unit tests remain the preferred verification method for composables, pure helpers, schemas, migrations, services, storage helpers, CRDT write helpers, state transitions, validation, normalization, and pure transformations.
 - The absence or removal of a Vue component unit test is not a regression by itself when the behavior is covered by Playwright/e2e, a reproducible browser smoke check, or focused tests for extracted composable or helper logic.
 
