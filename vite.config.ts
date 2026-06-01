@@ -50,7 +50,15 @@ export default defineConfig(({ mode, isPreview }) => {
     server: {
       host: true,
       watch: {
-        ignored: ['**/.stryker-tmp/**'],
+        ignored: [
+          '**/.git/**',
+          '**/.stryker-tmp/**',
+          '**/coverage/**',
+          '**/dist/**',
+          '**/storybook-static/**',
+          '**/playwright-report/**',
+          '**/test-results/**',
+        ],
       },
       headers: {
         'Cross-Origin-Opener-Policy': 'same-origin-allow-popups',
