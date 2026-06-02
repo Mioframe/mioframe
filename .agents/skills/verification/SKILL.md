@@ -42,6 +42,18 @@ Use the narrowest useful check for the current change:
 
 Prefer the project `pnpm verify` script when it can infer the changed-file scope. It already runs changed-file formatting, lint, type-check, focused Vitest, changed Playwright specs, and narrow Stryker scope when applicable.
 
+Do not treat skipped e2e from `pnpm verify` as sufficient when the change can affect user-visible behavior. Changed component or application code can break browser behavior even when no e2e spec file changed, and `pnpm verify` may not infer that scope automatically.
+
+Run the relevant focused Playwright spec when changing behavior that affects navigation, focus or keyboard interaction, clickable targets, disabled or readonly states, ripples, permissions, persistence, provider integration, import/export, authentication, or any complete user scenario. If no focused spec exists, say so and run the nearest available coverage instead of treating the skipped e2e check as proof that e2e is unnecessary.
+
+When a user-flow change needs e2e coverage but `pnpm verify` cannot infer it, pass the spec explicitly:
+
+```bash
+pnpm verify --only e2e --files tests/e2e/relevant-flow.spec.ts
+```
+
+`pnpm verify --only e2e` alone is not a forced e2e run when the inferred e2e scope is empty.
+
 `pnpm verify` uses summary-first terminal output by default:
 
 - passed checks print concise status lines;
