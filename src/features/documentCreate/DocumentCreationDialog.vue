@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { useFSNodeStat } from '@entity/fsEntry';
 import { computed, ref, toRefs } from 'vue';
-import { DATABASE_DOCUMENT_TYPE } from '../../shared/lib/databaseDocument';
+import { DATABASE_DOCUMENT_TYPE } from '@shared/lib/databaseDocument';
 import { getFileSystemAccessRecovery, type FileSystemAccessRecovery } from '@shared/lib/fileSystem';
 import { useFileSystemAccessPermissionBroker } from '@shared/service/fileSystemClient';
 import { MDDialog } from '@shared/ui/Dialog';

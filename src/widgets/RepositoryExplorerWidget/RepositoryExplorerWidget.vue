@@ -1,13 +1,12 @@
 <script setup lang="ts">
 import { computed, toRefs } from 'vue';
 import { useFSNodeStat } from '@entity/fsEntry';
-import { DeviceDirectoryAccessRecoveryState } from '@entity/deviceDirectoryAccess';
 import { GoogleDriveAccessRecoveryState } from '@entity/googleDriveAccess';
 import { MDButton } from '@shared/ui/Button';
+import { MDEmptyState } from '@shared/ui/EmptyState';
 import { MDSymbol } from '@shared/ui/Icon';
 import { MDNavigationPath } from '@shared/ui/NavigationPath';
 import type { AMDocumentId } from '@shared/lib/automerge/automergeTypes';
-import { MDEmptyState } from '@shared/ui/EmptyState';
 import { MDCircularProgressIndicator } from '@shared/ui/ProgressIndicators';
 import RepositoryExplorerDocumentsSection from './RepositoryExplorerDocumentsSection.vue';
 import RepositoryExplorerFilesSection from './RepositoryExplorerFilesSection.vue';
@@ -41,20 +40,20 @@ const {
   recoveryErrors: repositoryRecoveryErrors,
   regularFileEntries,
 } = repositoryExplorerDirectoryState;
-const { deviceDirectoryAccess, googleDriveRecovery, hasGoogleDriveRecovery } =
-  useRepositoryExplorerRecovery({
-    directoryPath,
-    directoryStatError,
-    errorMessage,
-    repositoryRecoveryErrors,
-  });
 const {
-  grantAccess,
-  grantDisabled,
-  isGrantLoading,
-  recoveryMessage: deviceDirectoryAccessMessage,
-  recoveryState: deviceDirectoryAccessRecovery,
-} = deviceDirectoryAccess;
+  googleDriveRecovery,
+  grantLocalDirectoryAccess,
+  hasGoogleDriveRecovery,
+  hasLocalDirectoryRecovery,
+  isGrantLocalDirectoryAccessDisabled,
+  isGrantLocalDirectoryAccessLoading,
+  localDirectoryRecoveryMessage,
+} = useRepositoryExplorerRecovery({
+  directoryPath,
+  directoryStatError,
+  errorMessage,
+  repositoryRecoveryErrors,
+});
 const { isRetryAuthorizationLoading, onRetryAuthorization } = googleDriveRecovery;
 const canEditDirectoryContents = computed(() => directoryStat.value?.capabilities?.canEditChildren);
 
@@ -82,21 +81,28 @@ const onReturnHomeClick = () => {
     />
 
     <div class="repository-explorer-widget__scrollable-content">
-      <DeviceDirectoryAccessRecoveryState
-        v-if="deviceDirectoryAccessRecovery"
+      <MDEmptyState
+        v-if="hasLocalDirectoryRecovery"
         class="repository-explorer-widget__recovery"
-        :message="deviceDirectoryAccessMessage"
-        :space-name="deviceDirectoryAccessRecovery.spaceName"
+        headline="Permission required"
+        :supporting-text="localDirectoryRecoveryMessage"
       >
+        <template #icon>
+          <MDSymbol
+            name="folder_managed"
+            class="repository-explorer-widget__local-directory-recovery-icon"
+          />
+        </template>
+
         <template #actions>
           <MDButton
             label="Grant access"
-            :disabled="grantDisabled"
-            :loading="isGrantLoading"
-            @click="grantAccess"
+            :disabled="isGrantLocalDirectoryAccessDisabled"
+            :loading="isGrantLocalDirectoryAccessLoading"
+            @click="grantLocalDirectoryAccess"
           />
         </template>
-      </DeviceDirectoryAccessRecoveryState>
+      </MDEmptyState>
 
       <GoogleDriveAccessRecoveryState
         v-else-if="hasGoogleDriveRecovery"
@@ -182,6 +188,10 @@ const onReturnHomeClick = () => {
 
   &__error-icon {
     --md-content-color: var(--md-sys-color-error);
+  }
+
+  &__local-directory-recovery-icon {
+    --md-content-color: var(--md-sys-color-primary);
   }
 
   &__loading {

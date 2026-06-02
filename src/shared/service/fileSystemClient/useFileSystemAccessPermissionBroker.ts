@@ -14,6 +14,7 @@ const operationToMode = (
  * Main-thread-only permission broker for remembered local spaces.
  * `requestPermission()` requires transient user activation, so the handle is
  * fetched from the service only for one explicit user action.
+ * @returns One-shot access broker with no prepared-handle state.
  */
 export const useFileSystemAccessPermissionBroker = () => {
   const {

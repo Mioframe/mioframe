@@ -1,6 +1,7 @@
-import { computed, type Ref } from 'vue';
+import { computed, ref, watch, type Ref } from 'vue';
 import { isNotNil } from 'es-toolkit';
-import { useDeviceDirectoryAccessRecovery } from '@feature/deviceDirectoryAccessRecovery';
+import { getFileSystemAccessRecovery } from '@shared/lib/fileSystem';
+import { useFileSystemAccessPermissionBroker } from '@shared/service/fileSystemClient';
 import { useGoogleDriveRecovery } from '@feature/googleDriveRecovery';
 import { getGoogleDriveAccessRecoveryError } from '@entity/googleDriveAccess';
 
@@ -20,13 +21,32 @@ export const useRepositoryExplorerRecovery = ({
   errorMessage: Ref<string | undefined>;
   repositoryRecoveryErrors: Ref<unknown[]>;
 }) => {
+  const { requestAccess } = useFileSystemAccessPermissionBroker();
   const recoveryErrors = computed(() =>
     [...repositoryRecoveryErrors.value, directoryStatError.value].filter(isNotNil),
   );
-  const deviceDirectoryAccess = useDeviceDirectoryAccessRecovery({
-    errors: recoveryErrors,
-    operation: 'read',
+  const localDirectoryRecovery = computed(() => {
+    for (const error of recoveryErrors.value) {
+      const recovery = getFileSystemAccessRecovery(error, { operation: 'read' });
+
+      if (recovery) {
+        return recovery;
+      }
+    }
+
+    return undefined;
   });
+  const isGrantLoading = ref(false);
+  const localDirectoryRecoveryMessage = ref<string>();
+
+  watch(
+    () => localDirectoryRecovery.value,
+    () => {
+      localDirectoryRecoveryMessage.value = undefined;
+    },
+    { immediate: true },
+  );
+
   const hasGoogleDriveRecovery = computed(
     () =>
       !!errorMessage.value &&
@@ -36,10 +56,51 @@ export const useRepositoryExplorerRecovery = ({
     path: directoryPath,
   });
 
+  const grantLocalDirectoryAccess = async () => {
+    const recovery = localDirectoryRecovery.value;
+
+    if (!recovery || isGrantLoading.value) {
+      return { status: 'missing' as const };
+    }
+
+    isGrantLoading.value = true;
+
+    try {
+      const result = await requestAccess(recovery);
+
+      if (result.status === 'granted') {
+        localDirectoryRecoveryMessage.value = undefined;
+        return result;
+      }
+
+      localDirectoryRecoveryMessage.value =
+        result.status === 'error'
+          ? 'Could not request browser permission. Try again from this action.'
+          : 'Mioframe still cannot open this space because your browser did not grant permission.';
+
+      return result;
+    } finally {
+      isGrantLoading.value = false;
+    }
+  };
+
   return {
-    deviceDirectoryAccess,
+    grantLocalDirectoryAccess,
+    hasLocalDirectoryRecovery: computed(() => !!localDirectoryRecovery.value),
     googleDriveRecovery,
     hasGoogleDriveRecovery,
+    isGrantLocalDirectoryAccessDisabled: computed(
+      () => !localDirectoryRecovery.value || isGrantLoading.value,
+    ),
+    isGrantLocalDirectoryAccessLoading: isGrantLoading,
+    localDirectoryRecovery,
+    localDirectoryRecoveryMessage: computed(
+      () =>
+        localDirectoryRecoveryMessage.value ??
+        (localDirectoryRecovery.value
+          ? `Mioframe remembers "${localDirectoryRecovery.value.spaceName}", but your browser requires permission before opening it.`
+          : ''),
+    ),
     recoveryErrors,
   };
 };

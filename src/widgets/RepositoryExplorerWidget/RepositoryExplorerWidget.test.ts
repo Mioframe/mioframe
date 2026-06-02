@@ -316,6 +316,23 @@ describe('RepositoryExplorerWidget', () => {
     expect(requestAccessMock).not.toHaveBeenCalled();
   });
 
+  it('detects read recovery from the directory stat error through the generic parser', async () => {
+    directoryStatErrorRef.value = createSerializedRecoveryError({
+      spaceName: 'Archive',
+      mode: 'read',
+    });
+
+    const wrapper = await mountWidget();
+
+    expect(wrapper.text()).toContain('Permission required');
+    expect(wrapper.text()).toContain(
+      'Mioframe remembers "Archive", but your browser requires permission before opening it.',
+    );
+    expect(
+      wrapper.findAll('button').filter((button) => button.text() === 'Grant access'),
+    ).toHaveLength(1);
+  });
+
   it('calls the main-thread permission broker without retrying the route after grant', async () => {
     repositoryRecoveryErrorsRef.value = [
       createSerializedRecoveryError({
@@ -372,6 +389,66 @@ describe('RepositoryExplorerWidget', () => {
     expect(wrapper.emitted('retryCurrentPath')).toBeUndefined();
     expect(wrapper.text()).toContain(
       'Mioframe still cannot open this space because your browser did not grant permission.',
+    );
+  });
+
+  it('keeps the recovery state and safe message after cancellation without retrying the route', async () => {
+    repositoryRecoveryErrorsRef.value = [
+      createSerializedRecoveryError({
+        spaceName: 'Work',
+        mode: 'read',
+      }),
+    ];
+    requestAccessMock.mockResolvedValue({ status: 'cancelled' });
+
+    const wrapper = await mountWidget();
+
+    const grantButton = wrapper
+      .findAll('button')
+      .find((button) => button.text() === 'Grant access');
+
+    if (!grantButton) {
+      throw new Error('Expected Grant access button');
+    }
+
+    await grantButton.trigger('click');
+
+    expect(requestAccessMock).toHaveBeenCalledWith({
+      operation: 'read',
+      spaceName: 'Work',
+    });
+    expect(wrapper.text()).toContain(
+      'Mioframe still cannot open this space because your browser did not grant permission.',
+    );
+  });
+
+  it('shows a safe error message when browser prompting fails', async () => {
+    repositoryRecoveryErrorsRef.value = [
+      createSerializedRecoveryError({
+        spaceName: 'Work',
+        mode: 'read',
+      }),
+    ];
+    requestAccessMock.mockResolvedValue({ status: 'error' });
+
+    const wrapper = await mountWidget();
+
+    const grantButton = wrapper
+      .findAll('button')
+      .find((button) => button.text() === 'Grant access');
+
+    if (!grantButton) {
+      throw new Error('Expected Grant access button');
+    }
+
+    await grantButton.trigger('click');
+
+    expect(requestAccessMock).toHaveBeenCalledWith({
+      operation: 'read',
+      spaceName: 'Work',
+    });
+    expect(wrapper.text()).toContain(
+      'Could not request browser permission. Try again from this action.',
     );
   });
 
