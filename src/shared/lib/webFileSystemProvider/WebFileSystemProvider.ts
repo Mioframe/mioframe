@@ -127,30 +127,28 @@ export const WebFileSystemProvider = (
     pendingWriteBytes -= existingEntry.byteLength;
   };
 
-  const trimPendingWriteBuffer = () => {
-    let oldestPendingPath = pendingWriteBuffer.keys().next().value;
-
-    while (oldestPendingPath !== undefined) {
-      if (
-        pendingWriteBuffer.size <= maxPendingWriteEntries &&
-        pendingWriteBytes <= maxPendingWriteBytes
-      ) {
-        return;
-      }
-
-      deleteBufferedWrite(oldestPendingPath);
-
-      oldestPendingPath = pendingWriteBuffer.keys().next().value;
-    }
-  };
-
   const bufferWrite = (path: string, content: FileContent, writeOptions: WriteOptions) => {
     const normalizedPath = PathUtils.normalize(path);
     const byteLength = getFileContentByteLength(content);
     const existingEntry = pendingWriteBuffer.get(normalizedPath);
+    const nextPendingWriteBytes = pendingWriteBytes - (existingEntry?.byteLength ?? 0) + byteLength;
+
+    if (byteLength > maxPendingWriteBytes) {
+      return;
+    }
 
     if (existingEntry) {
-      pendingWriteBytes -= existingEntry.byteLength;
+      if (nextPendingWriteBytes > maxPendingWriteBytes) {
+        return;
+      }
+    } else {
+      if (pendingWriteBuffer.size >= maxPendingWriteEntries) {
+        return;
+      }
+
+      if (nextPendingWriteBytes > maxPendingWriteBytes) {
+        return;
+      }
     }
 
     pendingWriteBuffer.set(normalizedPath, {
@@ -159,8 +157,7 @@ export const WebFileSystemProvider = (
       options: writeOptions,
       path: normalizedPath,
     });
-    pendingWriteBytes += byteLength;
-    trimPendingWriteBuffer();
+    pendingWriteBytes = nextPendingWriteBytes;
   };
 
   const isBufferedWriteAccessRequiredError = (

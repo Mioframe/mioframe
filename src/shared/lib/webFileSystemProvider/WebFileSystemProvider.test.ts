@@ -562,6 +562,33 @@ describe('WebFileSystemProvider', () => {
     });
   });
 
+  it('keeps the previous same-path buffered write when the replacement exceeds the byte limit', async () => {
+    const { fileHandle, rootHandle } = createRootHandle('granted', 'granted');
+    const permissionDriver = createPermissionStateDriver('prompt', 'granted');
+    rootHandle.queryPermission = permissionDriver.queryPermission;
+    const provider = WebFileSystemProvider(rootHandle, {
+      permissionPolicy: 'userSelectedDirectory',
+      onAccessRequired: ({ mode }) => ({ spaceName: 'Work', mode }),
+    });
+
+    await expect(
+      provider.writeFile('/note.txt', 'fits', { create: true, overwrite: true }),
+    ).rejects.toBeInstanceOf(WebFileSystemAccessRequiredError);
+    await expect(
+      provider.writeFile('/note.txt', new Uint8Array(33 * 1024 * 1024), {
+        create: true,
+        overwrite: true,
+      }),
+    ).rejects.toBeInstanceOf(WebFileSystemAccessRequiredError);
+
+    permissionDriver.setReadwritePermission('granted');
+    provider.notifyAccessChanged();
+
+    await vi.waitFor(() => {
+      expect(fileHandle.__writtenContent).toEqual(['fits']);
+    });
+  });
+
   it('flushes different buffered paths in insertion order', async () => {
     const alphaFileHandle = createFileHandleMock({
       fileContent: ['alpha-original'],
@@ -630,7 +657,7 @@ describe('WebFileSystemProvider', () => {
     });
   });
 
-  it('keeps only the latest 64 buffered paths', async () => {
+  it('does not buffer a new path after 64 buffered paths and keeps existing entries', async () => {
     const fileHandles = Array.from({ length: 65 }, (_, index) =>
       createFileHandleMock({
         fileContent: [`original-${index}`],
@@ -668,13 +695,36 @@ describe('WebFileSystemProvider', () => {
     provider.notifyAccessChanged();
 
     await vi.waitFor(() => {
-      expect(fileHandles[0]?.__writtenContent).toEqual(['original-0']);
-      expect(fileHandles[1]?.__writtenContent).toEqual(['next-1']);
-      expect(fileHandles[64]?.__writtenContent).toEqual(['next-64']);
+      expect(fileHandles[0]?.__writtenContent).toEqual(['next-0']);
+      expect(fileHandles[63]?.__writtenContent).toEqual(['next-63']);
+      expect(fileHandles[64]?.__writtenContent).toEqual(['original-64']);
     });
   });
 
-  it('keeps buffered writes within the 32 MiB byte limit', async () => {
+  it('does not buffer a write exceeding the 32 MiB byte limit', async () => {
+    const { fileHandle, rootHandle } = createRootHandle('granted', 'granted');
+    const permissionDriver = createPermissionStateDriver('prompt', 'granted');
+    rootHandle.queryPermission = permissionDriver.queryPermission;
+    const provider = WebFileSystemProvider(rootHandle, {
+      permissionPolicy: 'userSelectedDirectory',
+      onAccessRequired: ({ mode }) => ({ spaceName: 'Work', mode }),
+    });
+
+    await expect(
+      provider.writeFile('/note.txt', new Uint8Array(33 * 1024 * 1024), {
+        create: true,
+        overwrite: true,
+      }),
+    ).rejects.toBeInstanceOf(WebFileSystemAccessRequiredError);
+
+    permissionDriver.setReadwritePermission('granted');
+    provider.notifyAccessChanged();
+
+    await Promise.resolve();
+    expect(fileHandle.__writtenContent).toEqual(['hello']);
+  });
+
+  it('does not buffer a new write exceeding the remaining 32 MiB byte budget and keeps existing entries', async () => {
     const alphaFileHandle = createFileHandleMock({
       fileContent: ['alpha-original'],
       name: 'alpha.bin',
@@ -716,8 +766,8 @@ describe('WebFileSystemProvider', () => {
     provider.notifyAccessChanged();
 
     await vi.waitFor(() => {
-      expect(alphaFileHandle.__writtenContent).toEqual(['alpha-original']);
-      expect(betaFileHandle.__writtenContent).toEqual([expect.any(Uint8Array)]);
+      expect(alphaFileHandle.__writtenContent).toEqual([expect.any(Uint8Array)]);
+      expect(betaFileHandle.__writtenContent).toEqual(['beta-original']);
     });
   });
 
