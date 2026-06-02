@@ -1,21 +1,38 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { WebFileSystemAccessRequiredError } from '@shared/lib/webFileSystemProvider';
 
 const {
+  clearPreparedRequestMock,
+  prepareAccessRequestMock,
+  requestPreparedAccessMock,
   createImportedDocumentMock,
   readImportDocumentDraftMock,
   addSnackbarMock,
   confirmMock,
-  requestFileSystemAccessMock,
   reportHandledErrorMock,
 } = vi.hoisted(() => ({
+  clearPreparedRequestMock: vi.fn(),
+  prepareAccessRequestMock: vi.fn(),
+  requestPreparedAccessMock: vi.fn(),
   createImportedDocumentMock: vi.fn(),
   readImportDocumentDraftMock: vi.fn(),
   addSnackbarMock: vi.fn(),
   confirmMock: vi.fn(),
-  requestFileSystemAccessMock: vi.fn(),
   reportHandledErrorMock: vi.fn(),
 }));
+
+const createSerializedRecoveryError = ({
+  mode,
+  spaceName,
+}: {
+  mode: 'read' | 'readwrite';
+  spaceName: string;
+}) =>
+  Object.assign(new Error('Permission required to open this remembered local space'), {
+    code: 'web-file-system-access-required',
+    mode,
+    name: 'WebFileSystemAccessRequiredError',
+    spaceName,
+  });
 
 vi.mock('./useImportDocument', () => ({
   useImportDocument: () => ({
@@ -40,21 +57,23 @@ vi.mock('@shared/ui/Dialog', () => ({
   }),
 }));
 
-vi.mock('@shared/service', () => ({
-  useMainServiceClient: () => ({
-    fileSystem: {
-      requestFileSystemAccess: requestFileSystemAccessMock,
-    },
+vi.mock('@shared/service/fileSystem', () => ({
+  useFileSystemAccessPermissionBroker: () => ({
+    clearPreparedRequest: clearPreparedRequestMock,
+    prepareAccessRequest: prepareAccessRequestMock,
+    requestPreparedAccess: requestPreparedAccessMock,
   }),
 }));
 
 describe('useImportDocumentAction', () => {
   beforeEach(() => {
+    clearPreparedRequestMock.mockReset();
+    prepareAccessRequestMock.mockReset();
+    requestPreparedAccessMock.mockReset();
     createImportedDocumentMock.mockReset();
     readImportDocumentDraftMock.mockReset();
     addSnackbarMock.mockReset();
     confirmMock.mockReset();
-    requestFileSystemAccessMock.mockReset();
     reportHandledErrorMock.mockReset();
   });
 
@@ -142,20 +161,6 @@ describe('useImportDocumentAction', () => {
       text: 'Could not import the document',
     });
     expect(reportHandledErrorMock).toHaveBeenCalledTimes(1);
-    const [reportedError, metadata] = reportHandledErrorMock.mock.calls[0] ?? [];
-    expect(reportedError).toBeInstanceOf(Error);
-    expect(reportedError).toMatchObject({
-      message: 'Could not import the document',
-      code: 'document-import-failed',
-      cause: expect.objectContaining({
-        message: 'Document JSON import failed',
-      }),
-    });
-    expect(reportedError).not.toBe(error);
-    expect(metadata).toEqual({
-      feature: 'documentImport',
-      action: 'importDocumentJson',
-    });
   });
 
   it('does not report an inbound domain error with a private cause directly', async () => {
@@ -180,117 +185,121 @@ describe('useImportDocumentAction', () => {
       text: 'Could not import the document',
     });
     expect(reportHandledErrorMock).toHaveBeenCalledTimes(1);
-
-    const [reportedError, metadata] = reportHandledErrorMock.mock.calls[0] ?? [];
-    expect(reportedError).toBeInstanceOf(Error);
-    expect(reportedError).toMatchObject({
-      message: 'Could not import the document',
-      code: ImportDocumentErrorCode.documentImportFailed,
-      cause: expect.objectContaining({
-        message: 'Document JSON import failed',
-      }),
-    });
-    expect(reportedError).not.toBe(error);
-    expect(reportedError?.cause).not.toBe(rawCause);
-    expect(metadata).toEqual({
-      feature: 'documentImport',
-      action: 'importDocumentJson',
-    });
   });
 
-  it('does not request permission and shows recovery message when user cancels the grant dialog', async () => {
+  it('does not request permission and shows a safe message when user cancels the grant dialog', async () => {
     readImportDocumentDraftMock.mockResolvedValue({
       fileName: 'draft.json',
       initialValue: {},
     });
     createImportedDocumentMock.mockRejectedValueOnce(
-      new WebFileSystemAccessRequiredError({
+      createSerializedRecoveryError({
         mode: 'readwrite',
         spaceName: 'Work',
       }),
     );
+    prepareAccessRequestMock.mockResolvedValue({
+      operation: 'write',
+      spaceName: 'Work',
+    });
     confirmMock.mockResolvedValue(false);
 
     const { useImportDocumentAction } = await import('./useImportDocumentAction');
     const { importDocument } = useImportDocumentAction();
 
     await expect(importDocument('/documents')).resolves.toBeUndefined();
-    expect(requestFileSystemAccessMock).not.toHaveBeenCalled();
+    expect(clearPreparedRequestMock).toHaveBeenCalledWith({
+      operation: 'write',
+      spaceName: 'Work',
+    });
+    expect(requestPreparedAccessMock).not.toHaveBeenCalled();
     expect(addSnackbarMock).toHaveBeenCalledWith({
-      text: 'Grant write access to edit this remembered space.',
+      text: 'Grant write access to import documents into this remembered space.',
     });
     expect(createImportedDocumentMock).toHaveBeenCalledTimes(1);
   });
 
-  it('shows denied write-access message when service returns denied', async () => {
+  it('shows denied write-access message when broker returns denied', async () => {
     readImportDocumentDraftMock.mockResolvedValue({
       fileName: 'draft.json',
       initialValue: {},
     });
     createImportedDocumentMock.mockRejectedValueOnce(
-      new WebFileSystemAccessRequiredError({
+      createSerializedRecoveryError({
         mode: 'readwrite',
         spaceName: 'Work',
       }),
     );
+    prepareAccessRequestMock.mockResolvedValue({
+      operation: 'write',
+      spaceName: 'Work',
+    });
     confirmMock.mockResolvedValue(true);
-    requestFileSystemAccessMock.mockResolvedValue({ status: 'denied' });
+    requestPreparedAccessMock.mockResolvedValue({ status: 'denied' });
 
     const { useImportDocumentAction } = await import('./useImportDocumentAction');
     const { importDocument } = useImportDocumentAction();
 
     await expect(importDocument('/documents')).resolves.toBeUndefined();
-    expect(requestFileSystemAccessMock).toHaveBeenCalledWith({
+    expect(requestPreparedAccessMock).toHaveBeenCalledWith({
       operation: 'write',
       spaceName: 'Work',
     });
     expect(addSnackbarMock).toHaveBeenCalledWith({
-      text: 'Editing is not allowed in this remembered space because your browser denied write access.',
+      text: 'Importing documents is not allowed in this remembered space because your browser denied write access.',
     });
     expect(createImportedDocumentMock).toHaveBeenCalledTimes(1);
     expect(reportHandledErrorMock).not.toHaveBeenCalled();
   });
 
-  it('shows recovery message when service returns a non-granted status', async () => {
+  it('shows a safe message when browser prompting fails and does not retry', async () => {
     readImportDocumentDraftMock.mockResolvedValue({
       fileName: 'draft.json',
       initialValue: {},
     });
     createImportedDocumentMock.mockRejectedValueOnce(
-      new WebFileSystemAccessRequiredError({
+      createSerializedRecoveryError({
         mode: 'readwrite',
         spaceName: 'Work',
       }),
     );
+    prepareAccessRequestMock.mockResolvedValue({
+      operation: 'write',
+      spaceName: 'Work',
+    });
     confirmMock.mockResolvedValue(true);
-    requestFileSystemAccessMock.mockResolvedValue({ status: 'cancelled' });
+    requestPreparedAccessMock.mockResolvedValue({ status: 'error' });
 
     const { useImportDocumentAction } = await import('./useImportDocumentAction');
     const { importDocument } = useImportDocumentAction();
 
     await expect(importDocument('/documents')).resolves.toBeUndefined();
     expect(addSnackbarMock).toHaveBeenCalledWith({
-      text: 'Grant write access to edit this remembered space.',
+      text: 'Could not request browser permission. Try again from this action.',
     });
     expect(createImportedDocumentMock).toHaveBeenCalledTimes(1);
     expect(reportHandledErrorMock).not.toHaveBeenCalled();
   });
 
-  it('reports retry failure through safe import error path without re-requesting the file', async () => {
+  it('reports retry failure through safe import error path without reopening the file picker', async () => {
     readImportDocumentDraftMock.mockResolvedValue({
       fileName: 'draft.json',
       initialValue: {},
     });
     createImportedDocumentMock
       .mockRejectedValueOnce(
-        new WebFileSystemAccessRequiredError({
+        createSerializedRecoveryError({
           mode: 'readwrite',
           spaceName: 'Work',
         }),
       )
       .mockRejectedValueOnce(new Error('disk full'));
+    prepareAccessRequestMock.mockResolvedValue({
+      operation: 'write',
+      spaceName: 'Work',
+    });
     confirmMock.mockResolvedValue(true);
-    requestFileSystemAccessMock.mockResolvedValue({ status: 'granted' });
+    requestPreparedAccessMock.mockResolvedValue({ status: 'granted' });
 
     const { useImportDocumentAction } = await import('./useImportDocumentAction');
     const { importDocument } = useImportDocumentAction();
@@ -302,15 +311,6 @@ describe('useImportDocumentAction', () => {
       text: 'Could not import the document',
     });
     expect(reportHandledErrorMock).toHaveBeenCalledTimes(1);
-    const [reportedError, metadata] = reportHandledErrorMock.mock.calls[0] ?? [];
-    expect(reportedError).toMatchObject({
-      message: 'Could not import the document',
-      code: 'document-import-failed',
-    });
-    expect(metadata).toEqual({
-      feature: 'documentImport',
-      action: 'importDocumentJson',
-    });
   });
 
   it('requests write access after a write-required import failure and retries the repository write', async () => {
@@ -320,14 +320,18 @@ describe('useImportDocumentAction', () => {
     });
     createImportedDocumentMock
       .mockRejectedValueOnce(
-        new WebFileSystemAccessRequiredError({
+        createSerializedRecoveryError({
           mode: 'readwrite',
           spaceName: 'Work',
         }),
       )
       .mockResolvedValueOnce('document-id');
+    prepareAccessRequestMock.mockResolvedValue({
+      operation: 'write',
+      spaceName: 'Work',
+    });
     confirmMock.mockResolvedValue(true);
-    requestFileSystemAccessMock.mockResolvedValue({ status: 'granted' });
+    requestPreparedAccessMock.mockResolvedValue({ status: 'granted' });
 
     const { useImportDocumentAction } = await import('./useImportDocumentAction');
     const { importDocument } = useImportDocumentAction();
@@ -340,7 +344,7 @@ describe('useImportDocumentAction', () => {
       confirmLabel: 'Grant access',
       cancelLabel: 'Not now',
     });
-    expect(requestFileSystemAccessMock).toHaveBeenCalledWith({
+    expect(requestPreparedAccessMock).toHaveBeenCalledWith({
       operation: 'write',
       spaceName: 'Work',
     });

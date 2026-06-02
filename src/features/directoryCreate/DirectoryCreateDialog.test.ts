@@ -2,7 +2,6 @@
 import { flushPromises, mount } from '@vue/test-utils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { defineComponent, h, ref } from 'vue';
-import { WebFileSystemAccessRequiredError } from '@shared/lib/webFileSystemProvider';
 
 const createDirectoryMock = vi.fn();
 const directoryStatRef = ref<{
@@ -14,7 +13,24 @@ const directoryStatRef = ref<{
     canEditChildren: undefined,
   },
 });
-const requestFileSystemAccessMock = vi.fn();
+const clearPreparedRequestMock = vi.fn();
+const prepareAccessRequestMock = vi.fn();
+const requestPreparedAccessMock = vi.fn();
+const confirmMock = vi.fn();
+
+const createSerializedRecoveryError = ({
+  mode,
+  spaceName,
+}: {
+  mode: 'read' | 'readwrite';
+  spaceName: string;
+}) =>
+  Object.assign(new Error('Permission required to open this remembered local space'), {
+    code: 'web-file-system-access-required',
+    mode,
+    name: 'WebFileSystemAccessRequiredError',
+    spaceName,
+  });
 
 vi.mock('@entity/fsEntry', () => ({
   useFSNodeStat: () => ({
@@ -28,11 +44,11 @@ vi.mock('@entity/mountedDirectories', () => ({
   }),
 }));
 
-vi.mock('@shared/service', () => ({
-  useMainServiceClient: () => ({
-    fileSystem: {
-      requestFileSystemAccess: requestFileSystemAccessMock,
-    },
+vi.mock('@shared/service/fileSystem', () => ({
+  useFileSystemAccessPermissionBroker: () => ({
+    clearPreparedRequest: clearPreparedRequestMock,
+    prepareAccessRequest: prepareAccessRequestMock,
+    requestPreparedAccess: requestPreparedAccessMock,
   }),
 }));
 
@@ -73,6 +89,9 @@ vi.mock('@shared/ui/Dialog', () => ({
         ]);
     },
   }),
+  useDialog: () => ({
+    confirm: confirmMock,
+  }),
 }));
 
 vi.mock('@shared/ui/TextField', () => ({
@@ -100,30 +119,6 @@ vi.mock('@shared/ui/TextField', () => ({
   }),
 }));
 
-vi.mock('@shared/ui/Button', () => ({
-  MDButton: defineComponent({
-    name: 'MDButtonStub',
-    props: {
-      label: { type: String, required: true },
-      disabled: { type: Boolean, default: false },
-    },
-    emits: ['click'],
-    setup(props, { emit }) {
-      return () =>
-        h(
-          'button',
-          {
-            disabled: props.disabled,
-            onClick: () => {
-              emit('click');
-            },
-          },
-          props.label,
-        );
-    },
-  }),
-}));
-
 const mountDialog = async () => {
   const { default: DirectoryCreateDialog } = await import('./DirectoryCreateDialog.vue');
 
@@ -137,7 +132,10 @@ const mountDialog = async () => {
 describe('DirectoryCreateDialog', () => {
   beforeEach(() => {
     createDirectoryMock.mockReset();
-    requestFileSystemAccessMock.mockReset();
+    clearPreparedRequestMock.mockReset();
+    prepareAccessRequestMock.mockReset();
+    requestPreparedAccessMock.mockReset();
+    confirmMock.mockReset();
     directoryStatRef.value = {
       capabilities: {
         canEditChildren: undefined,
@@ -145,16 +143,21 @@ describe('DirectoryCreateDialog', () => {
     };
   });
 
-  it('drives full write recovery flow when edit capability is unknown', async () => {
+  it('opens a separate permission dialog and retries create after grant', async () => {
     createDirectoryMock
       .mockRejectedValueOnce(
-        new WebFileSystemAccessRequiredError({
+        createSerializedRecoveryError({
           mode: 'readwrite',
           spaceName: 'Work',
         }),
       )
       .mockResolvedValueOnce(undefined);
-    requestFileSystemAccessMock.mockResolvedValue({ status: 'granted' });
+    prepareAccessRequestMock.mockResolvedValue({
+      operation: 'write',
+      spaceName: 'Work',
+    });
+    confirmMock.mockResolvedValue(true);
+    requestPreparedAccessMock.mockResolvedValue({ status: 'granted' });
 
     const wrapper = await mountDialog();
 
@@ -168,33 +171,38 @@ describe('DirectoryCreateDialog', () => {
     await applyButton.trigger('click');
     await flushPromises();
 
-    expect(createDirectoryMock).toHaveBeenCalledWith('/Device Files/Work/next-folder');
-
-    const grantButton = wrapper.findAll('button').find((b) => b.text() === 'Grant write access');
-    expect(grantButton).toBeDefined();
-
-    if (!grantButton) throw new Error('Expected Grant write access button');
-
-    await grantButton.trigger('click');
-    await flushPromises();
-
-    expect(requestFileSystemAccessMock).toHaveBeenCalledWith({
+    expect(prepareAccessRequestMock).toHaveBeenCalledWith({
       operation: 'write',
       spaceName: 'Work',
     });
-
+    expect(confirmMock).toHaveBeenCalledWith({
+      headline: 'Grant write access',
+      supportingText:
+        'Mioframe remembers "Work", but your browser requires write access before creating a folder in it.',
+      confirmLabel: 'Grant access',
+      cancelLabel: 'Not now',
+    });
+    expect(requestPreparedAccessMock).toHaveBeenCalledWith({
+      operation: 'write',
+      spaceName: 'Work',
+    });
     expect(createDirectoryMock).toHaveBeenCalledTimes(2);
     expect(wrapper.emitted('created')).toBeDefined();
   });
 
-  it('shows denied message when browser denies write access', async () => {
+  it('shows denied message and does not retry when browser denies write access', async () => {
     createDirectoryMock.mockRejectedValueOnce(
-      new WebFileSystemAccessRequiredError({
+      createSerializedRecoveryError({
         mode: 'readwrite',
         spaceName: 'Work',
       }),
     );
-    requestFileSystemAccessMock.mockResolvedValue({ status: 'denied' });
+    prepareAccessRequestMock.mockResolvedValue({
+      operation: 'write',
+      spaceName: 'Work',
+    });
+    confirmMock.mockResolvedValue(true);
+    requestPreparedAccessMock.mockResolvedValue({ status: 'denied' });
 
     const wrapper = await mountDialog();
 
@@ -205,14 +213,40 @@ describe('DirectoryCreateDialog', () => {
     await applyButton.trigger('click');
     await flushPromises();
 
-    const grantButton = wrapper.findAll('button').find((b) => b.text() === 'Grant write access');
-    if (!grantButton) throw new Error('Expected Grant write access button');
+    expect(wrapper.text()).toContain(
+      'Creating entries is not allowed in this remembered space because your browser denied write access.',
+    );
+    expect(createDirectoryMock).toHaveBeenCalledTimes(1);
+  });
 
-    await grantButton.trigger('click');
+  it('shows a safe message and does not retry when the user declines the grant dialog', async () => {
+    createDirectoryMock.mockRejectedValueOnce(
+      createSerializedRecoveryError({
+        mode: 'readwrite',
+        spaceName: 'Work',
+      }),
+    );
+    prepareAccessRequestMock.mockResolvedValue({
+      operation: 'write',
+      spaceName: 'Work',
+    });
+    confirmMock.mockResolvedValue(false);
+
+    const wrapper = await mountDialog();
+
+    await wrapper.get('input').setValue('next-folder');
+    const applyButton = wrapper.findAll('button').find((b) => b.text() === 'Create');
+    if (!applyButton) throw new Error('Expected Create button');
+
+    await applyButton.trigger('click');
     await flushPromises();
 
+    expect(clearPreparedRequestMock).toHaveBeenCalledWith({
+      operation: 'write',
+      spaceName: 'Work',
+    });
     expect(wrapper.text()).toContain(
-      'Editing is not allowed in this remembered space because your browser denied write access.',
+      'Grant write access to create entries in this remembered space.',
     );
     expect(createDirectoryMock).toHaveBeenCalledTimes(1);
   });

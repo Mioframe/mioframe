@@ -558,6 +558,40 @@ describe('useFileSystemService', () => {
     ).resolves.toBeUndefined();
   });
 
+  it('prepares a temporary handle for a pending file-system access request', async () => {
+    const promptHandle = createDirectoryHandleMock({
+      name: 'Work',
+      permissionState: 'prompt',
+      sameEntryKey: 'work',
+    });
+    getRecordListMock.mockResolvedValue([{ name: 'Work', handle: promptHandle }]);
+
+    const service = await createService();
+    await vi.waitFor(async () => {
+      await expect(service.deviceFiles.fetch()).resolves.toEqual([
+        {
+          canDisconnect: true,
+          name: 'Work',
+        },
+      ]);
+    });
+
+    await service.directoryContent.fetch({
+      path: '/Device Files/Work',
+    });
+
+    await expect(
+      service.prepareFileSystemAccessRequest({
+        operation: 'read',
+        spaceName: 'Work',
+      }),
+    ).resolves.toMatchObject({
+      handle: promptHandle,
+      operation: 'read',
+      spaceName: 'Work',
+    });
+  });
+
   it('keeps remembered spaces mounted and exposes a pending access request when provider access is missing', async () => {
     const promptHandle = createDirectoryHandleMock({
       name: 'Work',
@@ -651,8 +685,9 @@ describe('useFileSystemService', () => {
     }
 
     await expect(
-      service.requestFileSystemAccess({
+      service.resolveFileSystemAccessRequest({
         operation: 'read',
+        permissionState: 'denied',
         spaceName: error.spaceName,
       }),
     ).resolves.toEqual({
@@ -676,7 +711,7 @@ describe('useFileSystemService', () => {
     ]);
   });
 
-  it('returns cancelled when browser returns prompt state on requestPermission', async () => {
+  it('returns cancelled when the browser still reports prompt state after a recovery attempt', async () => {
     const promptHandle = createDirectoryHandleMock({
       name: 'Work',
       permissionState: 'prompt',
@@ -703,8 +738,9 @@ describe('useFileSystemService', () => {
     }
 
     await expect(
-      service.requestFileSystemAccess({
+      service.resolveFileSystemAccessRequest({
         operation: 'read',
+        permissionState: 'prompt',
         spaceName: error.spaceName,
       }),
     ).resolves.toEqual({
@@ -794,11 +830,14 @@ describe('useFileSystemService', () => {
       throw new Error('Expected access error');
     }
 
-    grantedHandle.requestPermissionMock.mockResolvedValue('granted');
     grantedHandle.queryPermissionMock?.mockResolvedValue('granted');
 
     await expect(
-      service.requestFileSystemAccess({ operation: 'read', spaceName: error.spaceName }),
+      service.resolveFileSystemAccessRequest({
+        operation: 'read',
+        permissionState: 'granted',
+        spaceName: error.spaceName,
+      }),
     ).resolves.toEqual({ status: 'granted' });
 
     await expect(
@@ -864,11 +903,11 @@ describe('useFileSystemService', () => {
       watchedEvents.push('refetched');
     });
 
-    promptHandle.requestPermissionMock.mockResolvedValue('granted');
     promptHandle.queryPermissionMock?.mockResolvedValue('granted');
 
-    await service.requestFileSystemAccess({
+    await service.resolveFileSystemAccessRequest({
       operation: 'read',
+      permissionState: 'granted',
       spaceName: error.spaceName,
     });
 
@@ -876,7 +915,7 @@ describe('useFileSystemService', () => {
     expect(watchedEvents).toEqual(['refetched']);
   });
 
-  it('requestFileSystemAccess returns granted and triggers provider refresh', async () => {
+  it('resolveFileSystemAccessRequest returns granted and triggers provider refresh', async () => {
     const promptHandle = createDirectoryHandleMock({
       name: 'Work',
       permissionState: 'prompt',
@@ -898,7 +937,6 @@ describe('useFileSystemService', () => {
       throw new Error('Expected access error');
     }
 
-    promptHandle.requestPermissionMock.mockResolvedValue('granted');
     promptHandle.queryPermissionMock?.mockResolvedValue('granted');
 
     const watchedEvents: string[] = [];
@@ -907,18 +945,18 @@ describe('useFileSystemService', () => {
     });
 
     await expect(
-      service.requestFileSystemAccess({
+      service.resolveFileSystemAccessRequest({
         operation: 'read',
+        permissionState: 'granted',
         spaceName: error.spaceName,
       }),
     ).resolves.toEqual({ status: 'granted' });
 
     unwatch();
-    expect(promptHandle.requestPermissionMock).toHaveBeenCalledWith({ mode: 'read' });
     expect(watchedEvents).toEqual(['refetched']);
   });
 
-  it('requestFileSystemAccess returns denied when browser denies', async () => {
+  it('resolveFileSystemAccessRequest returns denied when browser denies', async () => {
     const deniedHandle = createDirectoryHandleMock({
       name: 'Work',
       permissionState: 'denied',
@@ -941,63 +979,35 @@ describe('useFileSystemService', () => {
     }
 
     await expect(
-      service.requestFileSystemAccess({
+      service.resolveFileSystemAccessRequest({
         operation: 'read',
+        permissionState: 'denied',
         spaceName: error.spaceName,
       }),
     ).resolves.toEqual({ status: 'denied' });
   });
 
-  it('requestFileSystemAccess returns error when requestPermission rejects', async () => {
-    const promptHandle = createDirectoryHandleMock({
-      name: 'Work',
-      permissionState: 'prompt',
-      sameEntryKey: 'work',
-    });
-    getRecordListMock.mockResolvedValue([{ name: 'Work', handle: promptHandle }]);
-
+  it('resolveFileSystemAccessRequest returns missing for an unknown key', async () => {
     const service = await createService();
 
-    await vi.waitFor(async () => {
-      await expect(service.deviceFiles.fetch()).resolves.toEqual([
-        { canDisconnect: true, name: 'Work' },
-      ]);
-    });
-
-    const error = await service.directoryContent.fetch({ path: '/Device Files/Work' });
-
-    if (!isAccessErrorWithRecoveryKey(error)) {
-      throw new Error('Expected access error');
-    }
-
-    promptHandle.requestPermissionMock.mockRejectedValue(
-      new DOMException('User activation required'),
-    );
-
     await expect(
-      service.requestFileSystemAccess({
+      service.resolveFileSystemAccessRequest({
         operation: 'read',
-        spaceName: error.spaceName,
+        permissionState: 'granted',
+        spaceName: 'Missing',
       }),
-    ).resolves.toEqual({ status: 'error' });
-
-    await expect(
-      service.getFileSystemAccessRequest({
-        operation: 'read',
-        spaceName: error.spaceName,
-      }),
-    ).resolves.toEqual({ operation: 'read', spaceName: 'Work' });
+    ).resolves.toEqual({ status: 'missing' });
   });
 
-  it('requestFileSystemAccess returns error for unknown key', async () => {
+  it('prepareFileSystemAccessRequest returns undefined for an unknown key', async () => {
     const service = await createService();
 
     await expect(
-      service.requestFileSystemAccess({
+      service.prepareFileSystemAccessRequest({
         operation: 'write',
         spaceName: 'Missing',
       }),
-    ).resolves.toEqual({ status: 'error' });
+    ).resolves.toBeUndefined();
   });
 
   it('cancelFileSystemAccessRequest returns false for unknown key', async () => {
@@ -1100,10 +1110,9 @@ describe('useFileSystemService', () => {
     noteHandle.queryPermissionMock?.mockImplementation((descriptor) =>
       Promise.resolve(descriptor?.mode === 'read' ? 'granted' : 'prompt'),
     );
-    promptHandle.requestPermissionMock.mockResolvedValue('granted');
-
-    await service.requestFileSystemAccess({
+    await service.resolveFileSystemAccessRequest({
       operation: 'read',
+      permissionState: 'granted',
       spaceName: 'Work',
     });
 
@@ -1159,10 +1168,9 @@ describe('useFileSystemService', () => {
     promptHandle.queryPermissionMock?.mockImplementation((descriptor) =>
       Promise.resolve(descriptor?.mode === 'read' ? 'granted' : 'prompt'),
     );
-    promptHandle.requestPermissionMock.mockResolvedValue('granted');
-
-    await service.requestFileSystemAccess({
+    await service.resolveFileSystemAccessRequest({
       operation: 'read',
+      permissionState: 'granted',
       spaceName: 'Work',
     });
 

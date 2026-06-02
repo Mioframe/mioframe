@@ -1,11 +1,24 @@
 import { describe, expect, it } from 'vitest';
 import { ref } from 'vue';
-import { WebFileSystemAccessRequiredError } from '@shared/lib/webFileSystemProvider';
 import { useDeviceDirectoryAccessRecoveryState } from './useDeviceDirectoryAccessRecoveryState';
+
+const createSerializedRecoveryError = ({
+  mode,
+  spaceName,
+}: {
+  mode: 'read' | 'readwrite';
+  spaceName: string;
+}) =>
+  Object.assign(new Error('Permission required to open this remembered local space'), {
+    code: 'web-file-system-access-required',
+    mode,
+    name: 'WebFileSystemAccessRequiredError',
+    spaceName,
+  });
 
 describe('useDeviceDirectoryAccessRecoveryState', () => {
   it('derives the stable access key from provider-owned readwrite access errors', () => {
-    const error = new WebFileSystemAccessRequiredError({
+    const error = createSerializedRecoveryError({
       spaceName: 'Work',
       mode: 'readwrite',
     });
@@ -20,7 +33,7 @@ describe('useDeviceDirectoryAccessRecoveryState', () => {
   });
 
   it('derives the stable access key from provider-owned read access errors', () => {
-    const error = new WebFileSystemAccessRequiredError({
+    const error = createSerializedRecoveryError({
       spaceName: 'Archive',
       mode: 'read',
     });
@@ -43,15 +56,10 @@ describe('useDeviceDirectoryAccessRecoveryState', () => {
   });
 
   it('accepts the transfer-safe plain-object access error shape', () => {
-    const plainError = Object.assign(
-      new Error('Permission required to open this remembered local space'),
-      {
-        code: 'web-file-system-access-required',
-        mode: 'readwrite',
-        name: 'WebFileSystemAccessRequiredError',
-        spaceName: 'Archive',
-      },
-    );
+    const plainError = createSerializedRecoveryError({
+      mode: 'readwrite',
+      spaceName: 'Archive',
+    });
     const { state } = useDeviceDirectoryAccessRecoveryState({
       errors: ref<unknown[]>([plainError]),
     });
@@ -60,15 +68,10 @@ describe('useDeviceDirectoryAccessRecoveryState', () => {
   });
 
   it('accepts plain-object recovery payload with mode:read', () => {
-    const plainError = Object.assign(
-      new Error('Permission required to open this remembered local space'),
-      {
-        code: 'web-file-system-access-required',
-        mode: 'read',
-        name: 'WebFileSystemAccessRequiredError',
-        spaceName: 'Archive',
-      },
-    );
+    const plainError = createSerializedRecoveryError({
+      mode: 'read',
+      spaceName: 'Archive',
+    });
     const { state } = useDeviceDirectoryAccessRecoveryState({
       errors: ref<unknown[]>([plainError]),
     });
@@ -107,7 +110,7 @@ describe('useDeviceDirectoryAccessRecoveryState', () => {
   });
 
   it('filters by operation when specified', () => {
-    const writeError = new WebFileSystemAccessRequiredError({
+    const writeError = createSerializedRecoveryError({
       spaceName: 'Work',
       mode: 'readwrite',
     });

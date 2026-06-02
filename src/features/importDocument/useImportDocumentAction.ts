@@ -2,7 +2,7 @@ import { createSafeErrorCause, DomainError } from '@shared/lib/error';
 import { isUserFileSelectionCancel } from '@shared/lib/fileSystem';
 import { getFileSystemAccessRecovery } from '@shared/lib/fileSystem';
 import { reportHandledError } from '@shared/lib/reportHandledError';
-import { useMainServiceClient } from '@shared/service';
+import { useFileSystemAccessPermissionBroker } from '@shared/service/fileSystem';
 import { useDialog } from '@shared/ui/Dialog';
 import { useSnackbar } from '@shared/ui/Snackbar';
 import { ImportDocumentErrorCode } from './importDocumentErrorCode';
@@ -29,9 +29,8 @@ export const useImportDocumentAction = () => {
   const { createImportedDocument, readImportDocumentDraft } = useImportDocument();
   const { addSnackbar } = useSnackbar();
   const { confirm } = useDialog();
-  const {
-    fileSystem: { requestFileSystemAccess },
-  } = useMainServiceClient();
+  const { clearPreparedRequest, prepareAccessRequest, requestPreparedAccess } =
+    useFileSystemAccessPermissionBroker();
 
   const importDocument = async (path: string) => {
     try {
@@ -52,6 +51,8 @@ export const useImportDocumentAction = () => {
           throw error;
         }
 
+        await prepareAccessRequest(recovery);
+
         const shouldGrantAccess = await confirm({
           headline: 'Grant write access',
           supportingText: `Mioframe remembers "${recovery.spaceName}", but your browser requires write access before importing a document into it.`,
@@ -60,20 +61,22 @@ export const useImportDocumentAction = () => {
         });
 
         if (!shouldGrantAccess) {
+          clearPreparedRequest(recovery);
           addSnackbar({
-            text: 'Grant write access to edit this remembered space.',
+            text: 'Grant write access to import documents into this remembered space.',
           });
           return undefined;
         }
 
-        const result = await requestFileSystemAccess(recovery);
+        const result = await requestPreparedAccess(recovery);
 
         if (result.status !== 'granted') {
+          void prepareAccessRequest(recovery);
           addSnackbar({
             text:
               result.status === 'denied'
-                ? 'Editing is not allowed in this remembered space because your browser denied write access.'
-                : 'Grant write access to edit this remembered space.',
+                ? 'Importing documents is not allowed in this remembered space because your browser denied write access.'
+                : 'Could not request browser permission. Try again from this action.',
           });
           return undefined;
         }
@@ -93,7 +96,7 @@ export const useImportDocumentAction = () => {
 
       addSnackbar({
         text: recovery
-          ? 'Grant write access to edit this remembered space.'
+          ? 'Grant write access to import documents into this remembered space.'
           : error instanceof DomainError
             ? error.message
             : 'Could not import the document',

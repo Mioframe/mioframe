@@ -3,13 +3,13 @@ import { useFSNodeStat } from '@entity/fsEntry';
 import { computed, ref, toRefs } from 'vue';
 import { DATABASE_DOCUMENT_TYPE } from '../../shared/lib/databaseDocument';
 import { getFileSystemAccessRecovery, type FileSystemAccessRecovery } from '@shared/lib/fileSystem';
-import { MDButton } from '@shared/ui/Button';
+import { useFileSystemAccessPermissionBroker } from '@shared/service/fileSystem';
 import { MDDialog } from '@shared/ui/Dialog';
 import { MDTextField } from '@shared/ui/TextField';
 import { MDSelectBase, MDSelectOption } from '@shared/ui/Select';
 import { useRepository } from '@entity/repository';
 import { strictRecordGet } from '@shared/lib/strictRecord';
-import { useMainServiceClient } from '@shared/service';
+import { useDialog } from '@shared/ui/Dialog';
 
 const props = defineProps<{
   path: string;
@@ -25,16 +25,63 @@ const { path } = toRefs(props);
 const stateName = ref<string>();
 const errorText = ref<string>();
 const loading = ref(false);
-const isGrantLoading = ref(false);
-const writeAccessRecovery = ref<FileSystemAccessRecovery | undefined>();
 
 const { createDocument } = useRepository(path);
 const { data: directoryStat } = useFSNodeStat(path);
-const {
-  fileSystem: { requestFileSystemAccess },
-} = useMainServiceClient();
+const { confirm } = useDialog();
+const { clearPreparedRequest, prepareAccessRequest, requestPreparedAccess } =
+  useFileSystemAccessPermissionBroker();
 
 const canEditDirectoryContents = computed(() => directoryStat.value?.capabilities?.canEditChildren);
+
+const createRepositoryDocument = async () => {
+  if (!stateName.value?.length) {
+    throw new Error('name is undefined');
+  }
+
+  if (!selectedDocumentType.value) {
+    return;
+  }
+
+  await createDocument({
+    name: stateName.value.trim(),
+    type: selectedDocumentType.value,
+    version: 1,
+    body: {},
+  });
+};
+
+const requestWriteAccess = async (recovery: FileSystemAccessRecovery) => {
+  await prepareAccessRequest(recovery);
+
+  const shouldGrantAccess = await confirm({
+    headline: 'Grant write access',
+    supportingText: `Mioframe remembers "${recovery.spaceName}", but your browser requires write access before creating a document in it.`,
+    confirmLabel: 'Grant access',
+    cancelLabel: 'Not now',
+  });
+
+  if (!shouldGrantAccess) {
+    errorText.value = 'Grant write access to create entries in this remembered space.';
+    clearPreparedRequest(recovery);
+    return false;
+  }
+
+  const result = await requestPreparedAccess(recovery);
+
+  if (result.status === 'granted') {
+    errorText.value = undefined;
+    return true;
+  }
+
+  errorText.value =
+    result.status === 'denied'
+      ? 'Creating entries is not allowed in this remembered space because your browser denied write access.'
+      : 'Could not request browser permission. Try again from this action.';
+  void prepareAccessRequest(recovery);
+
+  return false;
+};
 
 const onCreate = async () => {
   if (!stateName.value?.length) {
@@ -42,7 +89,6 @@ const onCreate = async () => {
   }
 
   errorText.value = undefined;
-  writeAccessRecovery.value = undefined;
 
   if (canEditDirectoryContents.value === false) {
     errorText.value = 'Creating entries is not allowed in this directory';
@@ -52,17 +98,14 @@ const onCreate = async () => {
   if (selectedDocumentType.value) {
     try {
       loading.value = true;
-      await createDocument({
-        name: stateName.value.trim(),
-        type: selectedDocumentType.value,
-        version: 1,
-        body: {},
-      });
+      await createRepositoryDocument();
     } catch (error) {
       const recovery = getFileSystemAccessRecovery(error, { operation: 'write' });
       if (recovery) {
-        writeAccessRecovery.value = recovery;
-        errorText.value = `Mioframe needs write access to "${recovery.spaceName}" to create this document.`;
+        if (await requestWriteAccess(recovery)) {
+          await createRepositoryDocument();
+          emit('created');
+        }
       } else {
         errorText.value = error instanceof Error ? error.message : 'unknown error';
       }
@@ -75,38 +118,9 @@ const onCreate = async () => {
   }
 };
 
-const onGrantWriteAccess = async () => {
-  const recovery = writeAccessRecovery.value;
-
-  if (!recovery || isGrantLoading.value) {
-    return;
-  }
-
-  isGrantLoading.value = true;
-
-  try {
-    const result = await requestFileSystemAccess(recovery);
-
-    if (result.status === 'granted') {
-      writeAccessRecovery.value = undefined;
-      errorText.value = undefined;
-      await onCreate();
-      return;
-    }
-
-    errorText.value =
-      result.status === 'denied'
-        ? 'Editing is not allowed in this remembered space because your browser denied write access.'
-        : 'Could not grant write access. Try again from this action.';
-  } finally {
-    isGrantLoading.value = false;
-  }
-};
-
 const onCancel = () => {
   stateName.value = undefined;
   errorText.value = undefined;
-  writeAccessRecovery.value = undefined;
   emit('cancel');
 };
 
@@ -145,14 +159,6 @@ const selectedDocumentTypeLabel = computed((): string | undefined => {
       :error="!!errorText"
       :supporting-text="errorText"
       autofocus
-    />
-
-    <MDButton
-      v-if="writeAccessRecovery"
-      label="Grant write access"
-      color="text"
-      :loading="isGrantLoading"
-      @click="onGrantWriteAccess"
     />
 
     <MDSelectBase v-model:model-value="selectedDocumentTypes" label-text="Document type">

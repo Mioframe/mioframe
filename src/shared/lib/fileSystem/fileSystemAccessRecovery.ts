@@ -1,4 +1,7 @@
 import { WEB_FILE_SYSTEM_ACCESS_REQUIRED_CODE } from '@shared/lib/webFileSystemProvider';
+import type { output } from 'zod/v4-mini';
+import { literal, object, string, union } from 'zod/v4-mini';
+import { zodSafeCheck } from '@shared/lib/validateZodScheme';
 
 /**
  * Generic operation type for file-system access recovery flows.
@@ -18,6 +21,43 @@ export interface FileSystemAccessRecovery {
   spaceName: string;
 }
 
+const zodWebFileSystemAccessMode = union([literal('read'), literal('readwrite')]);
+
+const zodSerializedFileSystemAccessRecoveryPayload = object({
+  code: literal(WEB_FILE_SYSTEM_ACCESS_REQUIRED_CODE),
+  mode: zodWebFileSystemAccessMode,
+  spaceName: string(),
+});
+
+type SerializedFileSystemAccessRecoveryPayload = output<
+  typeof zodSerializedFileSystemAccessRecoveryPayload
+>;
+
+const toFileSystemAccessRecovery = ({
+  mode,
+  spaceName,
+}: SerializedFileSystemAccessRecoveryPayload): FileSystemAccessRecovery => ({
+  operation: mode === 'readwrite' ? 'write' : 'read',
+  spaceName,
+});
+
+/**
+ * Parses a transfer-safe file-system access recovery payload from an unknown error shape.
+ * @param error - Unknown error candidate emitted by a file-system operation.
+ * @returns Generic recovery state when the payload is valid, otherwise undefined.
+ */
+export const parseFileSystemAccessRecovery = (
+  error: unknown,
+): FileSystemAccessRecovery | undefined => {
+  const result = zodSafeCheck(zodSerializedFileSystemAccessRecoveryPayload, error);
+
+  if ('error' in result) {
+    return undefined;
+  }
+
+  return toFileSystemAccessRecovery(result.data);
+};
+
 /**
  * Returns generic recovery state when the error signals missing browser file-system permission.
  * @param error - Unknown error caught from a file-system operation.
@@ -28,17 +68,15 @@ export const getFileSystemAccessRecovery = (
   error: unknown,
   options?: { operation?: FileSystemAccessOperation },
 ): FileSystemAccessRecovery | undefined => {
-  if (!(error instanceof Error)) return undefined;
-  if (!('code' in error) || error.code !== WEB_FILE_SYSTEM_ACCESS_REQUIRED_CODE) return undefined;
-  if (!('spaceName' in error) || typeof error.spaceName !== 'string') return undefined;
-  if (!('mode' in error)) return undefined;
+  const recovery = parseFileSystemAccessRecovery(error);
 
-  const operation: FileSystemAccessOperation | undefined =
-    error.mode === 'read' ? 'read' : error.mode === 'readwrite' ? 'write' : undefined;
+  if (!recovery) {
+    return undefined;
+  }
 
-  if (operation === undefined) return undefined;
+  if (options?.operation !== undefined && options.operation !== recovery.operation) {
+    return undefined;
+  }
 
-  if (options?.operation !== undefined && options.operation !== operation) return undefined;
-
-  return { operation, spaceName: error.spaceName };
+  return recovery;
 };

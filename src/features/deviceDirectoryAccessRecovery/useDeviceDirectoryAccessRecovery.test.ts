@@ -1,20 +1,33 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { effectScope, ref, type Ref } from 'vue';
-import { WebFileSystemAccessRequiredError } from '@shared/lib/webFileSystemProvider';
 
-const cancelFileSystemAccessRequestMock = vi.fn();
-const getFileSystemAccessRequestMock = vi.fn();
-const requestFileSystemAccessMock = vi.fn();
+const clearPreparedRequestMock = vi.fn();
+const prepareAccessRequestMock = vi.fn();
+const requestPreparedAccessMock = vi.fn();
+const hasPreparedRequestRef = ref(false);
 
-vi.mock('@shared/service', () => ({
-  useMainServiceClient: () => ({
-    fileSystem: {
-      cancelFileSystemAccessRequest: cancelFileSystemAccessRequestMock,
-      getFileSystemAccessRequest: getFileSystemAccessRequestMock,
-      requestFileSystemAccess: requestFileSystemAccessMock,
-    },
+vi.mock('@shared/service/fileSystem', () => ({
+  useFileSystemAccessPermissionBroker: () => ({
+    clearPreparedRequest: clearPreparedRequestMock,
+    hasPreparedRequest: hasPreparedRequestRef,
+    prepareAccessRequest: prepareAccessRequestMock,
+    requestPreparedAccess: requestPreparedAccessMock,
   }),
 }));
+
+const createSerializedRecoveryError = ({
+  mode,
+  spaceName,
+}: {
+  mode: 'read' | 'readwrite';
+  spaceName: string;
+}) =>
+  Object.assign(new Error('Permission required to open this remembered local space'), {
+    code: 'web-file-system-access-required',
+    mode,
+    name: 'WebFileSystemAccessRequiredError',
+    spaceName,
+  });
 
 const mountRecovery = async (errors: Ref<unknown[]>) => {
   const scope = effectScope();
@@ -43,40 +56,39 @@ const mountRecovery = async (errors: Ref<unknown[]>) => {
 
 describe('useDeviceDirectoryAccessRecovery', () => {
   afterEach(() => {
-    cancelFileSystemAccessRequestMock.mockReset();
-    getFileSystemAccessRequestMock.mockReset();
-    requestFileSystemAccessMock.mockReset();
+    clearPreparedRequestMock.mockReset();
+    prepareAccessRequestMock.mockReset();
+    requestPreparedAccessMock.mockReset();
+    hasPreparedRequestRef.value = false;
   });
 
-  it('loads the pending request by stable access key without handle', async () => {
+  it('prepares the pending request through the main-thread broker', async () => {
     const errors = ref<unknown[]>([
-      new WebFileSystemAccessRequiredError({
+      createSerializedRecoveryError({
         spaceName: 'Work',
         mode: 'readwrite',
       }),
     ]);
-    getFileSystemAccessRequestMock.mockResolvedValue({
-      spaceName: 'Work',
+    prepareAccessRequestMock.mockResolvedValue({
       operation: 'write',
+      spaceName: 'Work',
     });
+    hasPreparedRequestRef.value = true;
 
     const { recovery, scope } = await mountRecovery(errors);
 
     await vi.waitFor(() => {
-      expect(getFileSystemAccessRequestMock).toHaveBeenCalledWith({
+      expect(prepareAccessRequestMock).toHaveBeenCalledWith({
         operation: 'write',
         spaceName: 'Work',
       });
-      expect(recovery.pendingRequest.value).toEqual({
-        spaceName: 'Work',
-        operation: 'write',
-      });
+      expect(recovery.grantDisabled.value).toBe(false);
     });
 
     scope.stop();
   });
 
-  it('does not load or cancel anything when there is no recovery state', async () => {
+  it('does not prepare anything when there is no recovery state', async () => {
     const errors = ref<unknown[]>([]);
 
     const { recovery, scope } = await mountRecovery(errors);
@@ -86,24 +98,22 @@ describe('useDeviceDirectoryAccessRecovery', () => {
     await expect(recovery.grantAccess()).resolves.toEqual({
       status: 'missing',
     });
-    await expect(recovery.cancelAccess()).resolves.toBe(false);
-    expect(getFileSystemAccessRequestMock).not.toHaveBeenCalled();
-    expect(cancelFileSystemAccessRequestMock).not.toHaveBeenCalled();
-    expect(requestFileSystemAccessMock).not.toHaveBeenCalled();
+    expect(prepareAccessRequestMock).not.toHaveBeenCalled();
+    expect(requestPreparedAccessMock).not.toHaveBeenCalled();
 
     scope.stop();
   });
 
-  it('ignores stale async request loads when the active recovery key changes', async () => {
+  it('ignores stale async prepare results when the recovery key changes', async () => {
     let resolveWork: ((value: unknown) => void) | undefined;
     let resolveArchive: ((value: unknown) => void) | undefined;
     const errors = ref<unknown[]>([
-      new WebFileSystemAccessRequiredError({
+      createSerializedRecoveryError({
         spaceName: 'Work',
         mode: 'readwrite',
       }),
     ]);
-    getFileSystemAccessRequestMock.mockImplementation(
+    prepareAccessRequestMock.mockImplementation(
       ({ spaceName }: { spaceName: string }) =>
         new Promise((resolve) => {
           if (spaceName === 'Work') {
@@ -118,66 +128,44 @@ describe('useDeviceDirectoryAccessRecovery', () => {
     const { recovery, scope } = await mountRecovery(errors);
 
     errors.value = [
-      new WebFileSystemAccessRequiredError({
+      createSerializedRecoveryError({
         spaceName: 'Archive',
         mode: 'readwrite',
       }),
     ];
     await Promise.resolve();
 
-    resolveWork?.({ spaceName: 'Work', operation: 'write' });
-    resolveArchive?.({ spaceName: 'Archive', operation: 'write' });
+    hasPreparedRequestRef.value = true;
+    resolveWork?.({ operation: 'write', spaceName: 'Work' });
+    resolveArchive?.({ operation: 'write', spaceName: 'Archive' });
 
     await vi.waitFor(() => {
-      expect(recovery.pendingRequest.value).toEqual({
-        spaceName: 'Archive',
+      expect(prepareAccessRequestMock).toHaveBeenCalledWith({
         operation: 'write',
+        spaceName: 'Archive',
+      });
+      expect(recovery.recoveryState.value).toEqual({
+        operation: 'write',
+        spaceName: 'Archive',
       });
     });
 
     scope.stop();
   });
 
-  it('ignores late request loads after the watcher cleanup runs', async () => {
-    let resolveWork: ((value: unknown) => void) | undefined;
+  it('calls requestPreparedAccess and resolves granted access', async () => {
     const errors = ref<unknown[]>([
-      new WebFileSystemAccessRequiredError({
+      createSerializedRecoveryError({
         spaceName: 'Work',
         mode: 'readwrite',
       }),
     ]);
-    getFileSystemAccessRequestMock.mockImplementation(
-      () =>
-        new Promise((resolve) => {
-          resolveWork = resolve;
-        }),
-    );
-
-    const { recovery, scope } = await mountRecovery(errors);
-
-    errors.value = [];
-    await Promise.resolve();
-
-    resolveWork?.({ spaceName: 'Work', operation: 'write' });
-    await Promise.resolve();
-
-    expect(recovery.pendingRequest.value).toBeUndefined();
-
-    scope.stop();
-  });
-
-  it('calls requestFileSystemAccess and resolves granted access', async () => {
-    const errors = ref<unknown[]>([
-      new WebFileSystemAccessRequiredError({
-        spaceName: 'Work',
-        mode: 'readwrite',
-      }),
-    ]);
-    getFileSystemAccessRequestMock.mockResolvedValue({
-      spaceName: 'Work',
+    prepareAccessRequestMock.mockResolvedValue({
       operation: 'write',
+      spaceName: 'Work',
     });
-    requestFileSystemAccessMock.mockResolvedValue({ status: 'granted' });
+    requestPreparedAccessMock.mockResolvedValue({ status: 'granted' });
+    hasPreparedRequestRef.value = true;
 
     const { recovery, scope } = await mountRecovery(errors);
 
@@ -186,7 +174,7 @@ describe('useDeviceDirectoryAccessRecovery', () => {
     });
 
     await expect(recovery.grantAccess()).resolves.toEqual({ status: 'granted' });
-    expect(requestFileSystemAccessMock).toHaveBeenCalledWith({
+    expect(requestPreparedAccessMock).toHaveBeenCalledWith({
       operation: 'write',
       spaceName: 'Work',
     });
@@ -197,16 +185,17 @@ describe('useDeviceDirectoryAccessRecovery', () => {
 
   it('keeps recovery active after denial and exposes a safe message', async () => {
     const errors = ref<unknown[]>([
-      new WebFileSystemAccessRequiredError({
+      createSerializedRecoveryError({
         spaceName: 'Work',
         mode: 'readwrite',
       }),
     ]);
-    getFileSystemAccessRequestMock.mockResolvedValue({
-      spaceName: 'Work',
+    prepareAccessRequestMock.mockResolvedValue({
       operation: 'write',
+      spaceName: 'Work',
     });
-    requestFileSystemAccessMock.mockResolvedValue({ status: 'denied' });
+    requestPreparedAccessMock.mockResolvedValue({ status: 'denied' });
+    hasPreparedRequestRef.value = true;
 
     const { recovery, scope } = await mountRecovery(errors);
 
@@ -218,26 +207,24 @@ describe('useDeviceDirectoryAccessRecovery', () => {
     expect(recovery.message.value).toBe(
       'Mioframe still cannot open this space because your browser did not grant permission.',
     );
-    expect(recovery.recoveryState.value).toEqual({
-      operation: 'write',
-      spaceName: 'Work',
-    });
+    expect(prepareAccessRequestMock).toHaveBeenCalledTimes(2);
 
     scope.stop();
   });
 
-  it('shows safe error message and keeps pending request when permission request returns error', async () => {
+  it('shows safe error message and re-primes the request when browser prompting fails', async () => {
     const errors = ref<unknown[]>([
-      new WebFileSystemAccessRequiredError({
+      createSerializedRecoveryError({
         spaceName: 'Work',
         mode: 'readwrite',
       }),
     ]);
-    getFileSystemAccessRequestMock.mockResolvedValue({
-      spaceName: 'Work',
+    prepareAccessRequestMock.mockResolvedValue({
       operation: 'write',
+      spaceName: 'Work',
     });
-    requestFileSystemAccessMock.mockResolvedValue({ status: 'error' });
+    requestPreparedAccessMock.mockResolvedValue({ status: 'error' });
+    hasPreparedRequestRef.value = true;
 
     const { recovery, scope } = await mountRecovery(errors);
 
@@ -249,54 +236,7 @@ describe('useDeviceDirectoryAccessRecovery', () => {
     expect(recovery.message.value).toBe(
       'Could not request browser permission. Try again from this action.',
     );
-    expect(recovery.pendingRequest.value).toEqual({ spaceName: 'Work', operation: 'write' });
-
-    scope.stop();
-  });
-
-  it('resets loading state after permission request returns error', async () => {
-    const errors = ref<unknown[]>([
-      new WebFileSystemAccessRequiredError({
-        spaceName: 'Work',
-        mode: 'readwrite',
-      }),
-    ]);
-    getFileSystemAccessRequestMock.mockResolvedValue({
-      spaceName: 'Work',
-      operation: 'write',
-    });
-    requestFileSystemAccessMock.mockResolvedValue({ status: 'error' });
-
-    const { recovery, scope } = await mountRecovery(errors);
-
-    await vi.waitFor(() => {
-      expect(recovery.grantDisabled.value).toBe(false);
-    });
-
-    await recovery.grantAccess();
-
-    expect(recovery.isGrantLoading.value).toBe(false);
-
-    scope.stop();
-  });
-
-  it('cancels the pending request with the stable access key', async () => {
-    const errors = ref<unknown[]>([
-      new WebFileSystemAccessRequiredError({
-        spaceName: 'Work',
-        mode: 'readwrite',
-      }),
-    ]);
-    cancelFileSystemAccessRequestMock.mockResolvedValue(true);
-    getFileSystemAccessRequestMock.mockResolvedValue(undefined);
-
-    const { recovery, scope } = await mountRecovery(errors);
-
-    await expect(recovery.cancelAccess()).resolves.toBe(true);
-    expect(cancelFileSystemAccessRequestMock).toHaveBeenCalledWith({
-      operation: 'write',
-      spaceName: 'Work',
-    });
+    expect(prepareAccessRequestMock).toHaveBeenCalledTimes(2);
 
     scope.stop();
   });

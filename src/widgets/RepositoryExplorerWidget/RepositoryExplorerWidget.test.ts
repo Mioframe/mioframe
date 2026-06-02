@@ -3,7 +3,6 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { computed, defineComponent, h, ref } from 'vue';
 import { mount } from '@vue/test-utils';
 import { GoogleAuthError, GoogleAuthErrorCode } from '@shared/service/google';
-import { WebFileSystemAccessRequiredError } from '@shared/lib/webFileSystemProvider';
 
 const directoryStatRef = ref<{
   capabilities?: {
@@ -22,10 +21,25 @@ const isLoadingRef = ref(false);
 const isRepositoryInitializedRef = ref(false);
 const regularFileEntriesRef = ref<unknown[] | undefined>([]);
 const repositoryRecoveryErrorsRef = ref<unknown[]>([]);
-const cancelFileSystemAccessRequestMock = vi.fn();
-const getFileSystemAccessRequestMock = vi.fn();
-const requestFileSystemAccessMock = vi.fn();
+const clearPreparedRequestMock = vi.fn();
+const prepareAccessRequestMock = vi.fn();
+const requestPreparedAccessMock = vi.fn();
+const hasPreparedRequestRef = ref(false);
 const requestTokenMock = vi.fn();
+
+const createSerializedRecoveryError = ({
+  mode,
+  spaceName,
+}: {
+  mode: 'read' | 'readwrite';
+  spaceName: string;
+}) =>
+  Object.assign(new Error('Permission required to open this remembered local space'), {
+    code: 'web-file-system-access-required',
+    mode,
+    name: 'WebFileSystemAccessRequiredError',
+    spaceName,
+  });
 
 vi.mock('@entity/fsEntry', () => ({
   useFSNodeStat: () => ({
@@ -34,13 +48,17 @@ vi.mock('@entity/fsEntry', () => ({
   }),
 }));
 
+vi.mock('@shared/service/fileSystem', () => ({
+  useFileSystemAccessPermissionBroker: () => ({
+    clearPreparedRequest: clearPreparedRequestMock,
+    hasPreparedRequest: hasPreparedRequestRef,
+    prepareAccessRequest: prepareAccessRequestMock,
+    requestPreparedAccess: requestPreparedAccessMock,
+  }),
+}));
+
 vi.mock('@shared/service', () => ({
   useMainServiceClient: () => ({
-    fileSystem: {
-      cancelFileSystemAccessRequest: cancelFileSystemAccessRequestMock,
-      getFileSystemAccessRequest: getFileSystemAccessRequestMock,
-      requestFileSystemAccess: requestFileSystemAccessMock,
-    },
     google: {
       requestToken: requestTokenMock,
     },
@@ -262,9 +280,10 @@ describe('RepositoryExplorerWidget', () => {
     isRepositoryInitializedRef.value = false;
     regularFileEntriesRef.value = [];
     repositoryRecoveryErrorsRef.value = [];
-    cancelFileSystemAccessRequestMock.mockReset();
-    getFileSystemAccessRequestMock.mockReset();
-    requestFileSystemAccessMock.mockReset();
+    clearPreparedRequestMock.mockReset();
+    prepareAccessRequestMock.mockReset();
+    requestPreparedAccessMock.mockReset();
+    hasPreparedRequestRef.value = false;
     requestTokenMock.mockReset();
     document.body.innerHTML = '';
   });
@@ -285,14 +304,14 @@ describe('RepositoryExplorerWidget', () => {
 
   it('loads the pending read access request before enabling grant access and does not prompt on mount', async () => {
     repositoryRecoveryErrorsRef.value = [
-      new WebFileSystemAccessRequiredError({
+      createSerializedRecoveryError({
         spaceName: 'Work',
         mode: 'read',
       }),
     ];
 
     let resolveRequest: ((value: unknown) => void) | undefined;
-    getFileSystemAccessRequestMock.mockImplementation(
+    prepareAccessRequestMock.mockImplementation(
       () =>
         new Promise((resolve) => {
           resolveRequest = resolve;
@@ -302,7 +321,7 @@ describe('RepositoryExplorerWidget', () => {
     const wrapper = await mountWidget();
 
     await vi.waitFor(() => {
-      expect(getFileSystemAccessRequestMock).toHaveBeenCalledWith({
+      expect(prepareAccessRequestMock).toHaveBeenCalledWith({
         operation: 'read',
         spaceName: 'Work',
       });
@@ -317,9 +336,11 @@ describe('RepositoryExplorerWidget', () => {
     }
 
     expect(grantButtonBeforeLoad.attributes('disabled')).toBeDefined();
-    expect(requestFileSystemAccessMock).not.toHaveBeenCalled();
+    expect(wrapper.text()).not.toContain('Cancel');
+    expect(requestPreparedAccessMock).not.toHaveBeenCalled();
 
-    resolveRequest({ spaceName: 'Work', operation: 'read' });
+    hasPreparedRequestRef.value = true;
+    resolveRequest({ operation: 'read', spaceName: 'Work' });
 
     await vi.waitFor(() => {
       const grantButton = wrapper
@@ -328,26 +349,27 @@ describe('RepositoryExplorerWidget', () => {
 
       expect(grantButton?.attributes('disabled')).toBeUndefined();
     });
-    expect(requestFileSystemAccessMock).not.toHaveBeenCalled();
+    expect(requestPreparedAccessMock).not.toHaveBeenCalled();
   });
 
-  it('calls requestDeviceDirectoryAccessPermission without retrying the route after grant', async () => {
+  it('calls the main-thread permission broker without retrying the route after grant', async () => {
     repositoryRecoveryErrorsRef.value = [
-      new WebFileSystemAccessRequiredError({
+      createSerializedRecoveryError({
         spaceName: 'Work',
         mode: 'read',
       }),
     ];
-    getFileSystemAccessRequestMock.mockResolvedValue({
+    prepareAccessRequestMock.mockResolvedValue({
       spaceName: 'Work',
       operation: 'read',
     });
-    requestFileSystemAccessMock.mockResolvedValue({ status: 'granted' });
+    requestPreparedAccessMock.mockResolvedValue({ status: 'granted' });
+    hasPreparedRequestRef.value = true;
 
     const wrapper = await mountWidget();
 
     await vi.waitFor(() => {
-      expect(getFileSystemAccessRequestMock).toHaveBeenCalledWith({
+      expect(prepareAccessRequestMock).toHaveBeenCalledWith({
         operation: 'read',
         spaceName: 'Work',
       });
@@ -363,7 +385,7 @@ describe('RepositoryExplorerWidget', () => {
 
     await grantButton.trigger('click');
 
-    expect(requestFileSystemAccessMock).toHaveBeenCalledWith({
+    expect(requestPreparedAccessMock).toHaveBeenCalledWith({
       operation: 'read',
       spaceName: 'Work',
     });
@@ -372,21 +394,22 @@ describe('RepositoryExplorerWidget', () => {
 
   it('keeps the recovery state and safe message after denial without retrying the route', async () => {
     repositoryRecoveryErrorsRef.value = [
-      new WebFileSystemAccessRequiredError({
+      createSerializedRecoveryError({
         spaceName: 'Work',
         mode: 'read',
       }),
     ];
-    getFileSystemAccessRequestMock.mockResolvedValue({
+    prepareAccessRequestMock.mockResolvedValue({
       spaceName: 'Work',
       operation: 'read',
     });
-    requestFileSystemAccessMock.mockResolvedValue({ status: 'denied' });
+    requestPreparedAccessMock.mockResolvedValue({ status: 'denied' });
+    hasPreparedRequestRef.value = true;
 
     const wrapper = await mountWidget();
 
     await vi.waitFor(() => {
-      expect(getFileSystemAccessRequestMock).toHaveBeenCalledWith({
+      expect(prepareAccessRequestMock).toHaveBeenCalledWith({
         operation: 'read',
         spaceName: 'Work',
       });
@@ -402,7 +425,7 @@ describe('RepositoryExplorerWidget', () => {
 
     await grantButton.trigger('click');
 
-    expect(requestFileSystemAccessMock).toHaveBeenCalledWith({
+    expect(requestPreparedAccessMock).toHaveBeenCalledWith({
       operation: 'read',
       spaceName: 'Work',
     });
@@ -410,33 +433,6 @@ describe('RepositoryExplorerWidget', () => {
     expect(wrapper.text()).toContain(
       'Mioframe still cannot open this space because your browser did not grant permission.',
     );
-  });
-
-  it('cancels the pending request before returning home', async () => {
-    repositoryRecoveryErrorsRef.value = [
-      new WebFileSystemAccessRequiredError({
-        spaceName: 'Work',
-        mode: 'read',
-      }),
-    ];
-    getFileSystemAccessRequestMock.mockResolvedValue(undefined);
-    cancelFileSystemAccessRequestMock.mockResolvedValue(true);
-
-    const wrapper = await mountWidget();
-
-    const cancelButton = wrapper.findAll('button').find((button) => button.text() === 'Cancel');
-
-    if (!cancelButton) {
-      throw new Error('Expected Cancel button');
-    }
-
-    await cancelButton.trigger('click');
-
-    expect(cancelFileSystemAccessRequestMock).toHaveBeenCalledWith({
-      operation: 'read',
-      spaceName: 'Work',
-    });
-    expect(wrapper.emitted('clickReturnHome')).toEqual([[]]);
   });
 
   it('does not show Google Drive recovery when the widget has no error message', async () => {
@@ -461,7 +457,7 @@ describe('RepositoryExplorerWidget', () => {
 
   it('does not treat write access recovery as a folder-open recovery screen', async () => {
     repositoryRecoveryErrorsRef.value = [
-      new WebFileSystemAccessRequiredError({
+      createSerializedRecoveryError({
         spaceName: 'Work',
         mode: 'readwrite',
       }),
@@ -469,7 +465,7 @@ describe('RepositoryExplorerWidget', () => {
 
     const wrapper = await mountWidget();
 
-    expect(getFileSystemAccessRequestMock).not.toHaveBeenCalled();
+    expect(prepareAccessRequestMock).not.toHaveBeenCalled();
     expect(wrapper.text()).not.toContain('Grant access');
     expect(wrapper.text()).not.toContain('Permission required');
   });

@@ -1,6 +1,6 @@
 import { useDeviceDirectoryAccessRecoveryState } from '@entity/deviceDirectoryAccess';
-import { useMainServiceClient } from '@shared/service';
 import { type FileSystemAccessOperation } from '@shared/lib/fileSystem';
+import { useFileSystemAccessPermissionBroker } from '@shared/service/fileSystem';
 import { computed, ref, toValue, watch, type MaybeRefOrGetter } from 'vue';
 
 /**
@@ -22,58 +22,54 @@ export const useDeviceDirectoryAccessRecovery = ({
     | undefined;
 }) => {
   const { state } = useDeviceDirectoryAccessRecoveryState({ errors, operation });
-  const {
-    fileSystem: {
-      cancelFileSystemAccessRequest,
-      getFileSystemAccessRequest,
-      requestFileSystemAccess,
-    },
-  } = useMainServiceClient();
+  const { clearPreparedRequest, hasPreparedRequest, prepareAccessRequest, requestPreparedAccess } =
+    useFileSystemAccessPermissionBroker();
 
   const isGrantLoading = ref(false);
   const message = ref<string>();
   let pendingRequestLoadVersion = 0;
-  const pendingRequest = ref<
-    | {
-        spaceName: string;
-        operation: FileSystemAccessOperation;
-      }
-    | undefined
-  >();
+  const recoveryState = computed(() => toValue(state));
 
   watch(
-    () => state.value,
+    () => recoveryState.value,
     async (nextState, _previousState, onCleanup) => {
       const currentLoadVersion = ++pendingRequestLoadVersion;
+
       onCleanup(() => {
         pendingRequestLoadVersion += 1;
+        clearPreparedRequest(nextState);
       });
 
-      pendingRequest.value = undefined;
       message.value = undefined;
+      clearPreparedRequest(nextState);
 
       if (!nextState) {
         return;
       }
 
-      const request = await getFileSystemAccessRequest(nextState);
+      const request = await prepareAccessRequest(nextState);
 
       if (currentLoadVersion !== pendingRequestLoadVersion) {
+        clearPreparedRequest(nextState);
         return;
       }
 
-      pendingRequest.value = request;
+      if (!request) {
+        message.value = 'Could not prepare browser permission. Try again from this action.';
+      }
     },
     { immediate: true },
   );
 
-  const grantDisabled = computed(() => !pendingRequest.value || isGrantLoading.value);
+  const grantDisabled = computed(
+    () => !recoveryState.value || !hasPreparedRequest.value || isGrantLoading.value,
+  );
   const recoveryMessage = computed(() => {
     if (message.value) {
       return message.value;
     }
 
-    const currentState = state.value;
+    const currentState = recoveryState.value;
 
     if (!currentState) {
       return '';
@@ -86,7 +82,7 @@ export const useDeviceDirectoryAccessRecovery = ({
   });
 
   const grantAccess = async () => {
-    const request = pendingRequest.value;
+    const request = recoveryState.value;
 
     if (!request || isGrantLoading.value) {
       return { status: 'missing' as const };
@@ -95,10 +91,7 @@ export const useDeviceDirectoryAccessRecovery = ({
     isGrantLoading.value = true;
 
     try {
-      const result = await requestFileSystemAccess({
-        operation: request.operation,
-        spaceName: request.spaceName,
-      });
+      const result = await requestPreparedAccess(request);
 
       if (result.status === 'granted') {
         message.value = undefined;
@@ -107,12 +100,14 @@ export const useDeviceDirectoryAccessRecovery = ({
 
       if (result.status === 'error') {
         message.value = 'Could not request browser permission. Try again from this action.';
+        void prepareAccessRequest(request);
         return result;
       }
 
       message.value =
         deniedMessage ??
         'Mioframe still cannot open this space because your browser did not grant permission.';
+      void prepareAccessRequest(request);
 
       return result;
     } finally {
@@ -120,28 +115,12 @@ export const useDeviceDirectoryAccessRecovery = ({
     }
   };
 
-  const cancelAccess = async () => {
-    const currentState = state.value;
-
-    if (!currentState) {
-      return false;
-    }
-
-    await cancelFileSystemAccessRequest(currentState);
-    pendingRequest.value = undefined;
-    message.value = undefined;
-
-    return true;
-  };
-
   return {
-    cancelAccess,
     grantAccess,
     grantDisabled,
     isGrantLoading,
     message,
-    pendingRequest,
-    recoveryState: computed(() => toValue(state)),
+    recoveryState,
     recoveryMessage,
   };
 };

@@ -47,6 +47,11 @@ type DeviceDirectoryAccessRequest = {
 
 type DeviceDirectoryAccessRequestKey = Pick<DeviceDirectoryAccessRequest, 'spaceName' | 'mode'>;
 
+type FileSystemAccessRequestKey = {
+  operation: FileSystemAccessOperation;
+  spaceName: string;
+};
+
 /** Service-internal result used when resolving a pending request with a known permissionState. */
 type DeviceDirectoryAccessRequestResolveResult = DeviceDirectoryAccessRequestKey & {
   handle: FileSystemDirectoryHandle;
@@ -398,6 +403,32 @@ const setupFileSystemService = () => {
         : undefined,
     );
 
+  const prepareDeviceDirectoryAccessRequest = ({
+    mode,
+    spaceName,
+  }: DeviceDirectoryAccessRequestKey): Promise<
+    | (DeviceDirectoryAccessRequestKey & {
+        handle: FileSystemDirectoryHandle;
+      })
+    | undefined
+  > =>
+    Promise.resolve(
+      pendingDeviceDirectoryAccessRequests.get(
+        getPendingRequestKey({
+          mode,
+          spaceName,
+        }),
+      ),
+    ).then((request) =>
+      request
+        ? {
+            handle: request.handle,
+            mode: request.mode,
+            spaceName: request.spaceName,
+          }
+        : undefined,
+    );
+
   const resolveDeviceDirectoryAccessRequest = ({
     mode,
     permissionState,
@@ -433,32 +464,35 @@ const setupFileSystemService = () => {
     });
   };
 
-  const requestDeviceDirectoryAccessPermission = async ({
-    mode,
-    spaceName,
-  }: DeviceDirectoryAccessRequestKey): Promise<{
-    status: 'granted' | 'denied' | 'cancelled' | 'error';
-  }> => {
-    const request = pendingDeviceDirectoryAccessRequests.get(
-      getPendingRequestKey({ mode, spaceName }),
+  const prepareFileSystemAccessRequest = (key: FileSystemAccessRequestKey) =>
+    prepareDeviceDirectoryAccessRequest({
+      mode: operationToMode(key.operation),
+      spaceName: key.spaceName,
+    }).then((request) =>
+      request
+        ? {
+            handle: request.handle,
+            operation: key.operation,
+            spaceName: request.spaceName,
+          }
+        : undefined,
     );
 
-    if (!request) {
-      return { status: 'error' };
-    }
-
-    let permissionState: PermissionState;
-
-    try {
-      permissionState = await request.handle.requestPermission({ mode });
-    } catch {
-      return { status: 'error' };
-    }
-
-    const result = await resolveDeviceDirectoryAccessRequest({ mode, permissionState, spaceName });
+  const resolveFileSystemAccessRequest = async ({
+    operation,
+    permissionState,
+    spaceName,
+  }: FileSystemAccessRequestKey & {
+    permissionState: PermissionState;
+  }) => {
+    const result = await resolveDeviceDirectoryAccessRequest({
+      mode: operationToMode(operation),
+      permissionState,
+      spaceName,
+    });
 
     return {
-      status: result.status === 'missing' ? 'error' : result.status,
+      status: result.status,
     };
   };
 
@@ -468,10 +502,7 @@ const setupFileSystemService = () => {
   const operationToMode = (operation: FileSystemAccessOperation): WebFileSystemAccessMode =>
     operation === 'write' ? 'readwrite' : 'read';
 
-  const getFileSystemAccessRequest = (key: {
-    operation: FileSystemAccessOperation;
-    spaceName: string;
-  }) =>
+  const getFileSystemAccessRequest = (key: FileSystemAccessRequestKey) =>
     getDeviceDirectoryAccessRequest({
       mode: operationToMode(key.operation),
       spaceName: key.spaceName,
@@ -479,19 +510,7 @@ const setupFileSystemService = () => {
       request ? { operation: key.operation, spaceName: request.spaceName } : undefined,
     );
 
-  const requestFileSystemAccess = (key: {
-    operation: FileSystemAccessOperation;
-    spaceName: string;
-  }) =>
-    requestDeviceDirectoryAccessPermission({
-      mode: operationToMode(key.operation),
-      spaceName: key.spaceName,
-    });
-
-  const cancelFileSystemAccessRequest = (key: {
-    operation: FileSystemAccessOperation;
-    spaceName: string;
-  }) =>
+  const cancelFileSystemAccessRequest = (key: FileSystemAccessRequestKey) =>
     cancelDeviceDirectoryAccessRequest({
       mode: operationToMode(key.operation),
       spaceName: key.spaceName,
@@ -513,7 +532,8 @@ const setupFileSystemService = () => {
     addDeviceDirectory,
     removeDeviceDirectory,
     getFileSystemAccessRequest,
-    requestFileSystemAccess,
+    prepareFileSystemAccessRequest,
+    resolveFileSystemAccessRequest,
     cancelFileSystemAccessRequest,
     deviceFiles: fromObservable(activeDeviceFiles$),
   };

@@ -49,7 +49,6 @@ const { deviceDirectoryAccess, googleDriveRecovery, hasGoogleDriveRecovery } =
     repositoryRecoveryErrors,
   });
 const {
-  cancelAccess,
   grantAccess,
   grantDisabled,
   isGrantLoading,
@@ -68,11 +67,6 @@ const onClickDocument = (documentId: AMDocumentId) => {
 };
 
 const onReturnHomeClick = () => {
-  emit('clickReturnHome');
-};
-
-const onCancelDeviceDirectoryAccess = async () => {
-  await cancelAccess();
   emit('clickReturnHome');
 };
 </script>
@@ -101,8 +95,6 @@ const onCancelDeviceDirectoryAccess = async () => {
             :loading="isGrantLoading"
             @click="grantAccess"
           />
-
-          <MDButton label="Cancel" color="text" @click="onCancelDeviceDirectoryAccess" />
         </template>
       </DeviceDirectoryAccessRecoveryState>
 

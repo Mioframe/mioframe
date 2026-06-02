@@ -22,6 +22,7 @@ export {
 export { directoryFSEntryPool, useDirectoryFSEntryPool } from './directoryFSEntryPool';
 export {
   getFileSystemAccessRecovery,
+  parseFileSystemAccessRecovery,
   type FileSystemAccessOperation,
   type FileSystemAccessRecovery,
 } from './fileSystemAccessRecovery';
