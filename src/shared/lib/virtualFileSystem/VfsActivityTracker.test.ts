@@ -91,6 +91,7 @@ describe('VfsActivityTracker', () => {
         path: '/file.txt',
         message: 'disk full',
         acknowledged: false,
+        cause: error,
       },
     });
   });
