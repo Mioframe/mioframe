@@ -22,9 +22,9 @@ const isLoadingRef = ref(false);
 const isRepositoryInitializedRef = ref(false);
 const regularFileEntriesRef = ref<unknown[] | undefined>([]);
 const repositoryRecoveryErrorsRef = ref<unknown[]>([]);
-const cancelDeviceDirectoryAccessRequestMock = vi.fn();
-const getDeviceDirectoryAccessRequestMock = vi.fn();
-const requestDeviceDirectoryAccessPermissionMock = vi.fn();
+const cancelFileSystemAccessRequestMock = vi.fn();
+const getFileSystemAccessRequestMock = vi.fn();
+const requestFileSystemAccessMock = vi.fn();
 const requestTokenMock = vi.fn();
 
 vi.mock('@entity/fsEntry', () => ({
@@ -37,9 +37,9 @@ vi.mock('@entity/fsEntry', () => ({
 vi.mock('@shared/service', () => ({
   useMainServiceClient: () => ({
     fileSystem: {
-      cancelDeviceDirectoryAccessRequest: cancelDeviceDirectoryAccessRequestMock,
-      getDeviceDirectoryAccessRequest: getDeviceDirectoryAccessRequestMock,
-      requestDeviceDirectoryAccessPermission: requestDeviceDirectoryAccessPermissionMock,
+      cancelFileSystemAccessRequest: cancelFileSystemAccessRequestMock,
+      getFileSystemAccessRequest: getFileSystemAccessRequestMock,
+      requestFileSystemAccess: requestFileSystemAccessMock,
     },
     google: {
       requestToken: requestTokenMock,
@@ -262,9 +262,9 @@ describe('RepositoryExplorerWidget', () => {
     isRepositoryInitializedRef.value = false;
     regularFileEntriesRef.value = [];
     repositoryRecoveryErrorsRef.value = [];
-    cancelDeviceDirectoryAccessRequestMock.mockReset();
-    getDeviceDirectoryAccessRequestMock.mockReset();
-    requestDeviceDirectoryAccessPermissionMock.mockReset();
+    cancelFileSystemAccessRequestMock.mockReset();
+    getFileSystemAccessRequestMock.mockReset();
+    requestFileSystemAccessMock.mockReset();
     requestTokenMock.mockReset();
     document.body.innerHTML = '';
   });
@@ -292,7 +292,7 @@ describe('RepositoryExplorerWidget', () => {
     ];
 
     let resolveRequest: ((value: unknown) => void) | undefined;
-    getDeviceDirectoryAccessRequestMock.mockImplementation(
+    getFileSystemAccessRequestMock.mockImplementation(
       () =>
         new Promise((resolve) => {
           resolveRequest = resolve;
@@ -302,8 +302,8 @@ describe('RepositoryExplorerWidget', () => {
     const wrapper = await mountWidget();
 
     await vi.waitFor(() => {
-      expect(getDeviceDirectoryAccessRequestMock).toHaveBeenCalledWith({
-        mode: 'read',
+      expect(getFileSystemAccessRequestMock).toHaveBeenCalledWith({
+        operation: 'read',
         spaceName: 'Work',
       });
     });
@@ -317,9 +317,9 @@ describe('RepositoryExplorerWidget', () => {
     }
 
     expect(grantButtonBeforeLoad.attributes('disabled')).toBeDefined();
-    expect(requestDeviceDirectoryAccessPermissionMock).not.toHaveBeenCalled();
+    expect(requestFileSystemAccessMock).not.toHaveBeenCalled();
 
-    resolveRequest({ spaceName: 'Work', mode: 'read' });
+    resolveRequest({ spaceName: 'Work', operation: 'read' });
 
     await vi.waitFor(() => {
       const grantButton = wrapper
@@ -328,7 +328,7 @@ describe('RepositoryExplorerWidget', () => {
 
       expect(grantButton?.attributes('disabled')).toBeUndefined();
     });
-    expect(requestDeviceDirectoryAccessPermissionMock).not.toHaveBeenCalled();
+    expect(requestFileSystemAccessMock).not.toHaveBeenCalled();
   });
 
   it('calls requestDeviceDirectoryAccessPermission without retrying the route after grant', async () => {
@@ -338,17 +338,17 @@ describe('RepositoryExplorerWidget', () => {
         mode: 'read',
       }),
     ];
-    getDeviceDirectoryAccessRequestMock.mockResolvedValue({
+    getFileSystemAccessRequestMock.mockResolvedValue({
       spaceName: 'Work',
-      mode: 'read',
+      operation: 'read',
     });
-    requestDeviceDirectoryAccessPermissionMock.mockResolvedValue({ status: 'granted' });
+    requestFileSystemAccessMock.mockResolvedValue({ status: 'granted' });
 
     const wrapper = await mountWidget();
 
     await vi.waitFor(() => {
-      expect(getDeviceDirectoryAccessRequestMock).toHaveBeenCalledWith({
-        mode: 'read',
+      expect(getFileSystemAccessRequestMock).toHaveBeenCalledWith({
+        operation: 'read',
         spaceName: 'Work',
       });
     });
@@ -363,8 +363,8 @@ describe('RepositoryExplorerWidget', () => {
 
     await grantButton.trigger('click');
 
-    expect(requestDeviceDirectoryAccessPermissionMock).toHaveBeenCalledWith({
-      mode: 'read',
+    expect(requestFileSystemAccessMock).toHaveBeenCalledWith({
+      operation: 'read',
       spaceName: 'Work',
     });
     expect(wrapper.emitted('retryCurrentPath')).toBeUndefined();
@@ -377,17 +377,17 @@ describe('RepositoryExplorerWidget', () => {
         mode: 'read',
       }),
     ];
-    getDeviceDirectoryAccessRequestMock.mockResolvedValue({
+    getFileSystemAccessRequestMock.mockResolvedValue({
       spaceName: 'Work',
-      mode: 'read',
+      operation: 'read',
     });
-    requestDeviceDirectoryAccessPermissionMock.mockResolvedValue({ status: 'denied' });
+    requestFileSystemAccessMock.mockResolvedValue({ status: 'denied' });
 
     const wrapper = await mountWidget();
 
     await vi.waitFor(() => {
-      expect(getDeviceDirectoryAccessRequestMock).toHaveBeenCalledWith({
-        mode: 'read',
+      expect(getFileSystemAccessRequestMock).toHaveBeenCalledWith({
+        operation: 'read',
         spaceName: 'Work',
       });
     });
@@ -402,8 +402,8 @@ describe('RepositoryExplorerWidget', () => {
 
     await grantButton.trigger('click');
 
-    expect(requestDeviceDirectoryAccessPermissionMock).toHaveBeenCalledWith({
-      mode: 'read',
+    expect(requestFileSystemAccessMock).toHaveBeenCalledWith({
+      operation: 'read',
       spaceName: 'Work',
     });
     expect(wrapper.emitted('retryCurrentPath')).toBeUndefined();
@@ -419,8 +419,8 @@ describe('RepositoryExplorerWidget', () => {
         mode: 'read',
       }),
     ];
-    getDeviceDirectoryAccessRequestMock.mockResolvedValue(undefined);
-    cancelDeviceDirectoryAccessRequestMock.mockResolvedValue(true);
+    getFileSystemAccessRequestMock.mockResolvedValue(undefined);
+    cancelFileSystemAccessRequestMock.mockResolvedValue(true);
 
     const wrapper = await mountWidget();
 
@@ -432,8 +432,8 @@ describe('RepositoryExplorerWidget', () => {
 
     await cancelButton.trigger('click');
 
-    expect(cancelDeviceDirectoryAccessRequestMock).toHaveBeenCalledWith({
-      mode: 'read',
+    expect(cancelFileSystemAccessRequestMock).toHaveBeenCalledWith({
+      operation: 'read',
       spaceName: 'Work',
     });
     expect(wrapper.emitted('clickReturnHome')).toEqual([[]]);
@@ -469,7 +469,7 @@ describe('RepositoryExplorerWidget', () => {
 
     const wrapper = await mountWidget();
 
-    expect(getDeviceDirectoryAccessRequestMock).not.toHaveBeenCalled();
+    expect(getFileSystemAccessRequestMock).not.toHaveBeenCalled();
     expect(wrapper.text()).not.toContain('Grant access');
     expect(wrapper.text()).not.toContain('Permission required');
   });

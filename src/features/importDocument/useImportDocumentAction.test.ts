@@ -6,14 +6,14 @@ const {
   readImportDocumentDraftMock,
   addSnackbarMock,
   confirmMock,
-  requestDeviceDirectoryAccessPermissionMock,
+  requestFileSystemAccessMock,
   reportHandledErrorMock,
 } = vi.hoisted(() => ({
   createImportedDocumentMock: vi.fn(),
   readImportDocumentDraftMock: vi.fn(),
   addSnackbarMock: vi.fn(),
   confirmMock: vi.fn(),
-  requestDeviceDirectoryAccessPermissionMock: vi.fn(),
+  requestFileSystemAccessMock: vi.fn(),
   reportHandledErrorMock: vi.fn(),
 }));
 
@@ -43,7 +43,7 @@ vi.mock('@shared/ui/Dialog', () => ({
 vi.mock('@shared/service', () => ({
   useMainServiceClient: () => ({
     fileSystem: {
-      requestDeviceDirectoryAccessPermission: requestDeviceDirectoryAccessPermissionMock,
+      requestFileSystemAccess: requestFileSystemAccessMock,
     },
   }),
 }));
@@ -54,7 +54,7 @@ describe('useImportDocumentAction', () => {
     readImportDocumentDraftMock.mockReset();
     addSnackbarMock.mockReset();
     confirmMock.mockReset();
-    requestDeviceDirectoryAccessPermissionMock.mockReset();
+    requestFileSystemAccessMock.mockReset();
     reportHandledErrorMock.mockReset();
   });
 
@@ -215,7 +215,7 @@ describe('useImportDocumentAction', () => {
     const { importDocument } = useImportDocumentAction();
 
     await expect(importDocument('/documents')).resolves.toBeUndefined();
-    expect(requestDeviceDirectoryAccessPermissionMock).not.toHaveBeenCalled();
+    expect(requestFileSystemAccessMock).not.toHaveBeenCalled();
     expect(addSnackbarMock).toHaveBeenCalledWith({
       text: 'Grant write access to edit this remembered space.',
     });
@@ -234,14 +234,14 @@ describe('useImportDocumentAction', () => {
       }),
     );
     confirmMock.mockResolvedValue(true);
-    requestDeviceDirectoryAccessPermissionMock.mockResolvedValue({ status: 'denied' });
+    requestFileSystemAccessMock.mockResolvedValue({ status: 'denied' });
 
     const { useImportDocumentAction } = await import('./useImportDocumentAction');
     const { importDocument } = useImportDocumentAction();
 
     await expect(importDocument('/documents')).resolves.toBeUndefined();
-    expect(requestDeviceDirectoryAccessPermissionMock).toHaveBeenCalledWith({
-      mode: 'readwrite',
+    expect(requestFileSystemAccessMock).toHaveBeenCalledWith({
+      operation: 'write',
       spaceName: 'Work',
     });
     expect(addSnackbarMock).toHaveBeenCalledWith({
@@ -263,7 +263,7 @@ describe('useImportDocumentAction', () => {
       }),
     );
     confirmMock.mockResolvedValue(true);
-    requestDeviceDirectoryAccessPermissionMock.mockResolvedValue({ status: 'cancelled' });
+    requestFileSystemAccessMock.mockResolvedValue({ status: 'cancelled' });
 
     const { useImportDocumentAction } = await import('./useImportDocumentAction');
     const { importDocument } = useImportDocumentAction();
@@ -290,7 +290,7 @@ describe('useImportDocumentAction', () => {
       )
       .mockRejectedValueOnce(new Error('disk full'));
     confirmMock.mockResolvedValue(true);
-    requestDeviceDirectoryAccessPermissionMock.mockResolvedValue({ status: 'granted' });
+    requestFileSystemAccessMock.mockResolvedValue({ status: 'granted' });
 
     const { useImportDocumentAction } = await import('./useImportDocumentAction');
     const { importDocument } = useImportDocumentAction();
@@ -327,7 +327,7 @@ describe('useImportDocumentAction', () => {
       )
       .mockResolvedValueOnce('document-id');
     confirmMock.mockResolvedValue(true);
-    requestDeviceDirectoryAccessPermissionMock.mockResolvedValue({ status: 'granted' });
+    requestFileSystemAccessMock.mockResolvedValue({ status: 'granted' });
 
     const { useImportDocumentAction } = await import('./useImportDocumentAction');
     const { importDocument } = useImportDocumentAction();
@@ -340,8 +340,8 @@ describe('useImportDocumentAction', () => {
       confirmLabel: 'Grant access',
       cancelLabel: 'Not now',
     });
-    expect(requestDeviceDirectoryAccessPermissionMock).toHaveBeenCalledWith({
-      mode: 'readwrite',
+    expect(requestFileSystemAccessMock).toHaveBeenCalledWith({
+      operation: 'write',
       spaceName: 'Work',
     });
     expect(createImportedDocumentMock).toHaveBeenCalledTimes(2);

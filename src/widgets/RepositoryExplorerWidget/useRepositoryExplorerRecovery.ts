@@ -25,7 +25,7 @@ export const useRepositoryExplorerRecovery = ({
   );
   const deviceDirectoryAccess = useDeviceDirectoryAccessRecovery({
     errors: recoveryErrors,
-    mode: 'read',
+    operation: 'read',
   });
   const hasGoogleDriveRecovery = computed(
     () =>

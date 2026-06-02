@@ -20,3 +20,8 @@ export {
   type ReadonlyDirectoryFSEntryState,
 } from './directoryFSEntryState';
 export { directoryFSEntryPool, useDirectoryFSEntryPool } from './directoryFSEntryPool';
+export {
+  getFileSystemAccessRecovery,
+  type FileSystemAccessOperation,
+  type FileSystemAccessRecovery,
+} from './fileSystemAccessRecovery';

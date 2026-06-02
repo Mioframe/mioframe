@@ -1,10 +1,10 @@
 import { createSafeErrorCause, DomainError } from '@shared/lib/error';
 import { isUserFileSelectionCancel } from '@shared/lib/fileSystem';
+import { getFileSystemAccessRecovery } from '@shared/lib/fileSystem';
 import { reportHandledError } from '@shared/lib/reportHandledError';
 import { useMainServiceClient } from '@shared/service';
 import { useDialog } from '@shared/ui/Dialog';
 import { useSnackbar } from '@shared/ui/Snackbar';
-import { WebFileSystemAccessRequiredError } from '@shared/lib/webFileSystemProvider';
 import { ImportDocumentErrorCode } from './importDocumentErrorCode';
 import { useImportDocument } from './useImportDocument';
 
@@ -30,7 +30,7 @@ export const useImportDocumentAction = () => {
   const { addSnackbar } = useSnackbar();
   const { confirm } = useDialog();
   const {
-    fileSystem: { requestDeviceDirectoryAccessPermission },
+    fileSystem: { requestFileSystemAccess },
   } = useMainServiceClient();
 
   const importDocument = async (path: string) => {
@@ -46,13 +46,15 @@ export const useImportDocumentAction = () => {
       try {
         documentId = await createImportedDocument(path, draft);
       } catch (error) {
-        if (!(error instanceof WebFileSystemAccessRequiredError) || error.mode !== 'readwrite') {
+        const recovery = getFileSystemAccessRecovery(error, { operation: 'write' });
+
+        if (!recovery) {
           throw error;
         }
 
         const shouldGrantAccess = await confirm({
           headline: 'Grant write access',
-          supportingText: `Mioframe remembers "${error.spaceName}", but your browser requires write access before importing a document into it.`,
+          supportingText: `Mioframe remembers "${recovery.spaceName}", but your browser requires write access before importing a document into it.`,
           confirmLabel: 'Grant access',
           cancelLabel: 'Not now',
         });
@@ -64,10 +66,7 @@ export const useImportDocumentAction = () => {
           return undefined;
         }
 
-        const result = await requestDeviceDirectoryAccessPermission({
-          mode: error.mode,
-          spaceName: error.spaceName,
-        });
+        const result = await requestFileSystemAccess(recovery);
 
         if (result.status !== 'granted') {
           addSnackbar({
@@ -90,13 +89,14 @@ export const useImportDocumentAction = () => {
 
       return documentId;
     } catch (error) {
+      const recovery = getFileSystemAccessRecovery(error, { operation: 'write' });
+
       addSnackbar({
-        text:
-          error instanceof WebFileSystemAccessRequiredError && error.mode === 'readwrite'
-            ? 'Grant write access to edit this remembered space.'
-            : error instanceof DomainError
-              ? error.message
-              : 'Could not import the document',
+        text: recovery
+          ? 'Grant write access to edit this remembered space.'
+          : error instanceof DomainError
+            ? error.message
+            : 'Could not import the document',
       });
 
       if (!shouldSkipImportErrorReport(error)) {

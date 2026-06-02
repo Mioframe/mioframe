@@ -2,20 +2,17 @@ import { computed, toValue, type MaybeRefOrGetter } from 'vue';
 import {
   WEB_FILE_SYSTEM_ACCESS_REQUIRED_CODE,
   WebFileSystemAccessRequiredError,
-  type WebFileSystemAccessMode,
 } from '@shared/lib/webFileSystemProvider';
+import { type FileSystemAccessOperation } from '@shared/lib/fileSystem';
 
-const isWebFileSystemAccessMode = (value: unknown): value is WebFileSystemAccessMode =>
-  value === 'read' || value === 'readwrite';
-
-/**
- * Transport-safe access-required error shape used by the repo path recovery UI.
- */
 type DeviceDirectoryAccessRecoveryErrorLike = Error & {
   code: typeof WEB_FILE_SYSTEM_ACCESS_REQUIRED_CODE;
-  mode: WebFileSystemAccessMode;
+  mode: 'read' | 'readwrite';
   spaceName: string;
 };
+
+const isWebFileSystemAccessMode = (value: unknown): value is 'read' | 'readwrite' =>
+  value === 'read' || value === 'readwrite';
 
 /**
  * Returns whether the error payload matches the local-space access-recovery contract.
@@ -38,7 +35,7 @@ const isDeviceDirectoryAccessRecoveryError = (
  * @param errors - Query errors collected for the current repo path.
  * @returns The first matching access-required error, if present.
  */
-export const getDeviceDirectoryAccessRecoveryError = (errors: unknown[]) => {
+const getDeviceDirectoryAccessRecoveryError = (errors: unknown[]) => {
   for (const error of errors) {
     if (
       error instanceof WebFileSystemAccessRequiredError ||
@@ -51,6 +48,9 @@ export const getDeviceDirectoryAccessRecoveryError = (errors: unknown[]) => {
   return undefined;
 };
 
+const modeToOperation = (mode: 'read' | 'readwrite'): FileSystemAccessOperation =>
+  mode === 'readwrite' ? 'write' : 'read';
+
 /**
  * Derives typed recovery state for remembered local-space permission prompts.
  * @param options - Reactive error sources for the current repo path.
@@ -58,10 +58,10 @@ export const getDeviceDirectoryAccessRecoveryError = (errors: unknown[]) => {
  */
 export const useDeviceDirectoryAccessRecoveryState = ({
   errors,
-  mode,
+  operation,
 }: {
   errors: MaybeRefOrGetter<unknown[]>;
-  mode?: MaybeRefOrGetter<WebFileSystemAccessMode | undefined>;
+  operation?: MaybeRefOrGetter<FileSystemAccessOperation | undefined>;
 }) => {
   /**
    * Current recovery payload for the active repo path, if one exists.
@@ -73,14 +73,15 @@ export const useDeviceDirectoryAccessRecoveryState = ({
       return undefined;
     }
 
-    const requiredMode = toValue(mode);
+    const errorOperation = modeToOperation(error.mode);
+    const requiredOperation = toValue(operation);
 
-    if (requiredMode !== undefined && error.mode !== requiredMode) {
+    if (requiredOperation !== undefined && errorOperation !== requiredOperation) {
       return undefined;
     }
 
     return {
-      mode: error.mode,
+      operation: errorOperation,
       spaceName: error.spaceName,
     };
   });

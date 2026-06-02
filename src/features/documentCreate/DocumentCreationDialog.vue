@@ -1,15 +1,15 @@
 <script setup lang="ts">
 import { useFSNodeStat } from '@entity/fsEntry';
-import { useDeviceDirectoryAccessRecovery } from '@feature/deviceDirectoryAccessRecovery';
 import { computed, ref, toRefs } from 'vue';
 import { DATABASE_DOCUMENT_TYPE } from '../../shared/lib/databaseDocument';
+import { getFileSystemAccessRecovery, type FileSystemAccessRecovery } from '@shared/lib/fileSystem';
 import { MDButton } from '@shared/ui/Button';
 import { MDDialog } from '@shared/ui/Dialog';
 import { MDTextField } from '@shared/ui/TextField';
 import { MDSelectBase, MDSelectOption } from '@shared/ui/Select';
 import { useRepository } from '@entity/repository';
 import { strictRecordGet } from '@shared/lib/strictRecord';
-import { WebFileSystemAccessRequiredError } from '@shared/lib/webFileSystemProvider';
+import { useMainServiceClient } from '@shared/service';
 
 const props = defineProps<{
   path: string;
@@ -25,25 +25,16 @@ const { path } = toRefs(props);
 const stateName = ref<string>();
 const errorText = ref<string>();
 const loading = ref(false);
-const recoveryErrors = ref<unknown[]>([]);
+const isGrantLoading = ref(false);
+const writeAccessRecovery = ref<FileSystemAccessRecovery | undefined>();
 
 const { createDocument } = useRepository(path);
 const { data: directoryStat } = useFSNodeStat(path);
+const {
+  fileSystem: { requestFileSystemAccess },
+} = useMainServiceClient();
 
 const canEditDirectoryContents = computed(() => directoryStat.value?.capabilities?.canEditChildren);
-const { grantAccess, grantDisabled, isGrantLoading, recoveryState, recoveryMessage } =
-  useDeviceDirectoryAccessRecovery({
-    errors: recoveryErrors,
-    mode: 'readwrite',
-    deniedMessage:
-      'Editing is not allowed in this remembered space because your browser denied write access.',
-    defaultRecoveryMessage: ({ spaceName }) =>
-      `Mioframe remembers "${spaceName}", but your browser requires write access before editing it.`,
-  });
-
-const clearRecovery = () => {
-  recoveryErrors.value = [];
-};
 
 const onCreate = async () => {
   if (!stateName.value?.length) {
@@ -51,7 +42,7 @@ const onCreate = async () => {
   }
 
   errorText.value = undefined;
-  clearRecovery();
+  writeAccessRecovery.value = undefined;
 
   if (canEditDirectoryContents.value === false) {
     errorText.value = 'Creating entries is not allowed in this directory';
@@ -68,9 +59,10 @@ const onCreate = async () => {
         body: {},
       });
     } catch (error) {
-      if (error instanceof WebFileSystemAccessRequiredError && error.mode === 'readwrite') {
-        recoveryErrors.value = [error];
-        errorText.value = recoveryMessage.value;
+      const recovery = getFileSystemAccessRecovery(error, { operation: 'write' });
+      if (recovery) {
+        writeAccessRecovery.value = recovery;
+        errorText.value = `Mioframe needs write access to "${recovery.spaceName}" to create this document.`;
       } else {
         errorText.value = error instanceof Error ? error.message : 'unknown error';
       }
@@ -84,22 +76,37 @@ const onCreate = async () => {
 };
 
 const onGrantWriteAccess = async () => {
-  const result = await grantAccess();
+  const recovery = writeAccessRecovery.value;
 
-  if (result.status === 'granted') {
-    errorText.value = undefined;
-    clearRecovery();
-    await onCreate();
+  if (!recovery || isGrantLoading.value) {
     return;
   }
 
-  errorText.value = recoveryMessage.value;
+  isGrantLoading.value = true;
+
+  try {
+    const result = await requestFileSystemAccess(recovery);
+
+    if (result.status === 'granted') {
+      writeAccessRecovery.value = undefined;
+      errorText.value = undefined;
+      await onCreate();
+      return;
+    }
+
+    errorText.value =
+      result.status === 'denied'
+        ? 'Editing is not allowed in this remembered space because your browser denied write access.'
+        : 'Could not grant write access. Try again from this action.';
+  } finally {
+    isGrantLoading.value = false;
+  }
 };
 
 const onCancel = () => {
   stateName.value = undefined;
   errorText.value = undefined;
-  clearRecovery();
+  writeAccessRecovery.value = undefined;
   emit('cancel');
 };
 
@@ -141,10 +148,9 @@ const selectedDocumentTypeLabel = computed((): string | undefined => {
     />
 
     <MDButton
-      v-if="recoveryState"
+      v-if="writeAccessRecovery"
       label="Grant write access"
       color="text"
-      :disabled="grantDisabled"
       :loading="isGrantLoading"
       @click="onGrantWriteAccess"
     />

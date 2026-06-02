@@ -1,6 +1,6 @@
 import { useDeviceDirectoryAccessRecoveryState } from '@entity/deviceDirectoryAccess';
 import { useMainServiceClient } from '@shared/service';
-import type { WebFileSystemAccessMode } from '@shared/lib/webFileSystemProvider';
+import { type FileSystemAccessOperation } from '@shared/lib/fileSystem';
 import { computed, ref, toValue, watch, type MaybeRefOrGetter } from 'vue';
 
 /**
@@ -10,23 +10,23 @@ import { computed, ref, toValue, watch, type MaybeRefOrGetter } from 'vue';
  */
 export const useDeviceDirectoryAccessRecovery = ({
   errors,
-  mode,
+  operation,
   deniedMessage,
   defaultRecoveryMessage,
 }: {
   errors: MaybeRefOrGetter<unknown[]>;
-  mode?: MaybeRefOrGetter<WebFileSystemAccessMode | undefined>;
+  operation?: MaybeRefOrGetter<FileSystemAccessOperation | undefined>;
   deniedMessage?: string | undefined;
   defaultRecoveryMessage?:
-    | ((state: { mode: WebFileSystemAccessMode; spaceName: string }) => string)
+    | ((state: { operation: FileSystemAccessOperation; spaceName: string }) => string)
     | undefined;
 }) => {
-  const { state } = useDeviceDirectoryAccessRecoveryState({ errors, mode });
+  const { state } = useDeviceDirectoryAccessRecoveryState({ errors, operation });
   const {
     fileSystem: {
-      cancelDeviceDirectoryAccessRequest,
-      getDeviceDirectoryAccessRequest,
-      requestDeviceDirectoryAccessPermission,
+      cancelFileSystemAccessRequest,
+      getFileSystemAccessRequest,
+      requestFileSystemAccess,
     },
   } = useMainServiceClient();
 
@@ -36,7 +36,7 @@ export const useDeviceDirectoryAccessRecovery = ({
   const pendingRequest = ref<
     | {
         spaceName: string;
-        mode: WebFileSystemAccessMode;
+        operation: FileSystemAccessOperation;
       }
     | undefined
   >();
@@ -56,7 +56,7 @@ export const useDeviceDirectoryAccessRecovery = ({
         return;
       }
 
-      const request = await getDeviceDirectoryAccessRequest(nextState);
+      const request = await getFileSystemAccessRequest(nextState);
 
       if (currentLoadVersion !== pendingRequestLoadVersion) {
         return;
@@ -95,9 +95,9 @@ export const useDeviceDirectoryAccessRecovery = ({
     isGrantLoading.value = true;
 
     try {
-      const result = await requestDeviceDirectoryAccessPermission({
+      const result = await requestFileSystemAccess({
+        operation: request.operation,
         spaceName: request.spaceName,
-        mode: request.mode,
       });
 
       if (result.status === 'granted') {
@@ -127,7 +127,7 @@ export const useDeviceDirectoryAccessRecovery = ({
       return false;
     }
 
-    await cancelDeviceDirectoryAccessRequest(currentState);
+    await cancelFileSystemAccessRequest(currentState);
     pendingRequest.value = undefined;
     message.value = undefined;
 

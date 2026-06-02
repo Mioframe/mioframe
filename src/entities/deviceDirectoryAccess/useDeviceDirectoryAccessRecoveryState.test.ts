@@ -1,10 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { ref } from 'vue';
 import { WebFileSystemAccessRequiredError } from '@shared/lib/webFileSystemProvider';
-import {
-  getDeviceDirectoryAccessRecoveryError,
-  useDeviceDirectoryAccessRecoveryState,
-} from './useDeviceDirectoryAccessRecoveryState';
+import { useDeviceDirectoryAccessRecoveryState } from './useDeviceDirectoryAccessRecoveryState';
 
 describe('useDeviceDirectoryAccessRecoveryState', () => {
   it('derives the stable access key from provider-owned readwrite access errors', () => {
@@ -12,16 +9,12 @@ describe('useDeviceDirectoryAccessRecoveryState', () => {
       spaceName: 'Work',
       mode: 'readwrite',
     });
-    const errorList = [error];
-    const errors = ref<unknown[]>(errorList);
+    const errors = ref<unknown[]>([error]);
 
-    const { state } = useDeviceDirectoryAccessRecoveryState({
-      errors,
-    });
+    const { state } = useDeviceDirectoryAccessRecoveryState({ errors });
 
-    expect(getDeviceDirectoryAccessRecoveryError(errorList)).toBe(error);
     expect(state.value).toEqual({
-      mode: 'readwrite',
+      operation: 'write',
       spaceName: 'Work',
     });
   });
@@ -31,16 +24,12 @@ describe('useDeviceDirectoryAccessRecoveryState', () => {
       spaceName: 'Archive',
       mode: 'read',
     });
-    const errorList = [error];
-    const errors = ref<unknown[]>(errorList);
+    const errors = ref<unknown[]>([error]);
 
-    const { state } = useDeviceDirectoryAccessRecoveryState({
-      errors,
-    });
+    const { state } = useDeviceDirectoryAccessRecoveryState({ errors });
 
-    expect(getDeviceDirectoryAccessRecoveryError(errorList)).toBe(error);
     expect(state.value).toEqual({
-      mode: 'read',
+      operation: 'read',
       spaceName: 'Archive',
     });
   });
@@ -63,8 +52,11 @@ describe('useDeviceDirectoryAccessRecoveryState', () => {
         spaceName: 'Archive',
       },
     );
+    const { state } = useDeviceDirectoryAccessRecoveryState({
+      errors: ref<unknown[]>([plainError]),
+    });
 
-    expect(getDeviceDirectoryAccessRecoveryError([plainError])).toBe(plainError);
+    expect(state.value).toEqual({ operation: 'write', spaceName: 'Archive' });
   });
 
   it('accepts plain-object recovery payload with mode:read', () => {
@@ -77,32 +69,60 @@ describe('useDeviceDirectoryAccessRecoveryState', () => {
         spaceName: 'Archive',
       },
     );
+    const { state } = useDeviceDirectoryAccessRecoveryState({
+      errors: ref<unknown[]>([plainError]),
+    });
 
-    expect(getDeviceDirectoryAccessRecoveryError([plainError])).toBe(plainError);
+    expect(state.value).toEqual({ operation: 'read', spaceName: 'Archive' });
   });
 
   it('rejects malformed plain-object recovery payloads', () => {
-    expect(
-      getDeviceDirectoryAccessRecoveryError([
-        {
-          code: 'web-file-system-access-required',
-          message: 'Permission required to open this remembered local space',
-          mode: 'write',
-          name: 'WebFileSystemAccessRequiredError',
-          spaceName: 'Archive',
-        },
-      ]),
-    ).toBeUndefined();
-    expect(
-      getDeviceDirectoryAccessRecoveryError([
-        {
-          code: 'web-file-system-access-required',
-          message: 'Permission required to open this remembered local space',
-          mode: 'readwrite',
-          name: 'WebFileSystemAccessRequiredError',
-          spaceName: 123,
-        },
-      ]),
-    ).toBeUndefined();
+    const malformedMode = Object.assign(
+      new Error('Permission required to open this remembered local space'),
+      {
+        code: 'web-file-system-access-required',
+        mode: 'write',
+        name: 'WebFileSystemAccessRequiredError',
+        spaceName: 'Archive',
+      },
+    );
+    const { state: stateWithMalformedMode } = useDeviceDirectoryAccessRecoveryState({
+      errors: ref<unknown[]>([malformedMode]),
+    });
+    expect(stateWithMalformedMode.value).toBeUndefined();
+
+    const malformedSpaceName = Object.assign(
+      new Error('Permission required to open this remembered local space'),
+      {
+        code: 'web-file-system-access-required',
+        mode: 'readwrite',
+        name: 'WebFileSystemAccessRequiredError',
+        spaceName: 123,
+      },
+    );
+    const { state: stateWithMalformedSpaceName } = useDeviceDirectoryAccessRecoveryState({
+      errors: ref<unknown[]>([malformedSpaceName]),
+    });
+    expect(stateWithMalformedSpaceName.value).toBeUndefined();
+  });
+
+  it('filters by operation when specified', () => {
+    const writeError = new WebFileSystemAccessRequiredError({
+      spaceName: 'Work',
+      mode: 'readwrite',
+    });
+    const errors = ref<unknown[]>([writeError]);
+
+    const { state: readState } = useDeviceDirectoryAccessRecoveryState({
+      errors,
+      operation: ref<'read' | 'write' | undefined>('read'),
+    });
+    expect(readState.value).toBeUndefined();
+
+    const { state: writeState } = useDeviceDirectoryAccessRecoveryState({
+      errors,
+      operation: ref<'read' | 'write' | undefined>('write'),
+    });
+    expect(writeState.value).toEqual({ operation: 'write', spaceName: 'Work' });
   });
 });

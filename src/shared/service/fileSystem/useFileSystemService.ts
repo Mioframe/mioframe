@@ -11,6 +11,7 @@ import {
   createOriginPrivateStorageProvider,
   type WebFileSystemAccessMode,
 } from '@shared/lib/webFileSystemProvider';
+import { type FileSystemAccessOperation } from '@shared/lib/fileSystem';
 import type { FSNodeStat, IFileSystemProvider } from '@shared/lib/virtualFileSystem';
 import { VirtualFileSystem, PathUtils } from '@shared/lib/virtualFileSystem';
 import { MemoryFileSystem } from '@shared/lib/virtualFileSystem/MemoryFileSystem';
@@ -464,6 +465,38 @@ const setupFileSystemService = () => {
   const cancelDeviceDirectoryAccessRequest = (key: DeviceDirectoryAccessRequestKey) =>
     Promise.resolve(deletePendingDeviceDirectoryAccessRequest(key));
 
+  const operationToMode = (operation: FileSystemAccessOperation): WebFileSystemAccessMode =>
+    operation === 'write' ? 'readwrite' : 'read';
+
+  const getFileSystemAccessRequest = (key: {
+    operation: FileSystemAccessOperation;
+    spaceName: string;
+  }) =>
+    getDeviceDirectoryAccessRequest({
+      mode: operationToMode(key.operation),
+      spaceName: key.spaceName,
+    }).then((request) =>
+      request ? { operation: key.operation, spaceName: request.spaceName } : undefined,
+    );
+
+  const requestFileSystemAccess = (key: {
+    operation: FileSystemAccessOperation;
+    spaceName: string;
+  }) =>
+    requestDeviceDirectoryAccessPermission({
+      mode: operationToMode(key.operation),
+      spaceName: key.spaceName,
+    });
+
+  const cancelFileSystemAccessRequest = (key: {
+    operation: FileSystemAccessOperation;
+    spaceName: string;
+  }) =>
+    cancelDeviceDirectoryAccessRequest({
+      mode: operationToMode(key.operation),
+      spaceName: key.spaceName,
+    });
+
   return {
     vfs,
 
@@ -479,10 +512,9 @@ const setupFileSystemService = () => {
     remove,
     addDeviceDirectory,
     removeDeviceDirectory,
-    getDeviceDirectoryAccessRequest,
-    requestDeviceDirectoryAccessPermission,
-    resolveDeviceDirectoryAccessRequest,
-    cancelDeviceDirectoryAccessRequest,
+    getFileSystemAccessRequest,
+    requestFileSystemAccess,
+    cancelFileSystemAccessRequest,
     deviceFiles: fromObservable(activeDeviceFiles$),
   };
 };

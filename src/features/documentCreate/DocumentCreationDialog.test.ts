@@ -14,9 +14,7 @@ const directoryStatRef = ref<{
     canEditChildren: undefined,
   },
 });
-const getDeviceDirectoryAccessRequestMock = vi.fn();
-const requestDeviceDirectoryAccessPermissionMock = vi.fn();
-const cancelDeviceDirectoryAccessRequestMock = vi.fn();
+const requestFileSystemAccessMock = vi.fn();
 
 vi.mock('@entity/fsEntry', () => ({
   useFSNodeStat: () => ({
@@ -33,9 +31,7 @@ vi.mock('@entity/repository', () => ({
 vi.mock('@shared/service', () => ({
   useMainServiceClient: () => ({
     fileSystem: {
-      getDeviceDirectoryAccessRequest: getDeviceDirectoryAccessRequestMock,
-      requestDeviceDirectoryAccessPermission: requestDeviceDirectoryAccessPermissionMock,
-      cancelDeviceDirectoryAccessRequest: cancelDeviceDirectoryAccessRequestMock,
+      requestFileSystemAccess: requestFileSystemAccessMock,
     },
   }),
 }));
@@ -143,9 +139,7 @@ const mountDialog = async () => {
 describe('DocumentCreationDialog', () => {
   beforeEach(() => {
     createDocumentMock.mockReset();
-    getDeviceDirectoryAccessRequestMock.mockReset();
-    requestDeviceDirectoryAccessPermissionMock.mockReset();
-    cancelDeviceDirectoryAccessRequestMock.mockReset();
+    requestFileSystemAccessMock.mockReset();
     directoryStatRef.value = {
       capabilities: {
         canEditChildren: undefined,
@@ -162,11 +156,7 @@ describe('DocumentCreationDialog', () => {
         }),
       )
       .mockResolvedValueOnce(undefined);
-    getDeviceDirectoryAccessRequestMock.mockResolvedValue({
-      mode: 'readwrite',
-      spaceName: 'Work',
-    });
-    requestDeviceDirectoryAccessPermissionMock.mockResolvedValue({ status: 'granted' });
+    requestFileSystemAccessMock.mockResolvedValue({ status: 'granted' });
 
     const wrapper = await mountDialog();
 
@@ -181,29 +171,52 @@ describe('DocumentCreationDialog', () => {
     await flushPromises();
 
     expect(createDocumentMock).toHaveBeenCalledTimes(1);
-    expect(getDeviceDirectoryAccessRequestMock).toHaveBeenCalledWith({
-      mode: 'readwrite',
-      spaceName: 'Work',
-    });
-
-    await flushPromises();
 
     const grantButton = wrapper.findAll('button').find((b) => b.text() === 'Grant write access');
     expect(grantButton).toBeDefined();
-    expect(grantButton?.attributes('disabled')).toBeUndefined();
 
     if (!grantButton) throw new Error('Expected Grant write access button');
 
     await grantButton.trigger('click');
     await flushPromises();
 
-    expect(requestDeviceDirectoryAccessPermissionMock).toHaveBeenCalledWith({
-      mode: 'readwrite',
+    expect(requestFileSystemAccessMock).toHaveBeenCalledWith({
+      operation: 'write',
       spaceName: 'Work',
     });
 
     expect(createDocumentMock).toHaveBeenCalledTimes(2);
     expect(wrapper.emitted('created')).toBeDefined();
+  });
+
+  it('shows denied message when browser denies write access', async () => {
+    createDocumentMock.mockRejectedValueOnce(
+      new WebFileSystemAccessRequiredError({
+        mode: 'readwrite',
+        spaceName: 'Work',
+      }),
+    );
+    requestFileSystemAccessMock.mockResolvedValue({ status: 'denied' });
+
+    const wrapper = await mountDialog();
+
+    await wrapper.get('input').setValue('My document');
+    const applyButton = wrapper.findAll('button').find((b) => b.text() === 'Create');
+    if (!applyButton) throw new Error('Expected Create button');
+
+    await applyButton.trigger('click');
+    await flushPromises();
+
+    const grantButton = wrapper.findAll('button').find((b) => b.text() === 'Grant write access');
+    if (!grantButton) throw new Error('Expected Grant write access button');
+
+    await grantButton.trigger('click');
+    await flushPromises();
+
+    expect(wrapper.text()).toContain(
+      'Editing is not allowed in this remembered space because your browser denied write access.',
+    );
+    expect(createDocumentMock).toHaveBeenCalledTimes(1);
   });
 
   it('blocks create before write when edit capability is explicitly denied', async () => {
