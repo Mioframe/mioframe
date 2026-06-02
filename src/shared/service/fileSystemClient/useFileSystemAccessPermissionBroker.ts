@@ -24,34 +24,35 @@ export const useFileSystemAccessPermissionBroker = () => {
   const requestAccess = async (
     key: FileSystemAccessRequestKey,
   ): Promise<{ status: 'granted' | 'denied' | 'cancelled' | 'error' }> => {
-    const request = await getTemporaryFileSystemAccessHandle(key);
-
-    if (!request) {
-      return { status: 'error' };
-    }
-
-    let handle: FileSystemDirectoryHandle | undefined = request.handle;
-    let permissionState: PermissionState;
-
     try {
-      permissionState = await handle.requestPermission({
-        mode: operationToMode(request.operation),
-      });
+      const request = await getTemporaryFileSystemAccessHandle(key);
+
+      if (!request) {
+        return { status: 'error' };
+      }
+
+      let handle: FileSystemDirectoryHandle | undefined = request.handle;
+
+      try {
+        const permissionState = await handle.requestPermission({
+          mode: operationToMode(request.operation),
+        });
+
+        const result = await resolveFileSystemAccessRequest({
+          operation: request.operation,
+          permissionState,
+          spaceName: request.spaceName,
+        });
+
+        return {
+          status: result.status === 'missing' ? 'error' : result.status,
+        };
+      } finally {
+        handle = undefined;
+      }
     } catch {
       return { status: 'error' };
-    } finally {
-      handle = undefined;
     }
-
-    const result = await resolveFileSystemAccessRequest({
-      operation: request.operation,
-      permissionState,
-      spaceName: request.spaceName,
-    });
-
-    return {
-      status: result.status === 'missing' ? 'error' : result.status,
-    };
   };
 
   return {

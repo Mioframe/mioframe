@@ -190,4 +190,50 @@ describe('useFileSystemAccessPermissionBroker', () => {
 
     scope.stop();
   });
+
+  it('returns error when getting the temporary handle rejects', async () => {
+    getTemporaryFileSystemAccessHandleMock.mockRejectedValue(new Error('service failed'));
+
+    const { broker, scope } = await mountBroker();
+
+    await expect(
+      broker.requestAccess({
+        operation: 'read',
+        spaceName: 'Work',
+      }),
+    ).resolves.toEqual({
+      status: 'error',
+    });
+    expect(resolveFileSystemAccessRequestMock).not.toHaveBeenCalled();
+
+    scope.stop();
+  });
+
+  it('returns error when resolving the access request rejects', async () => {
+    const handle = createDirectoryHandleMock({
+      name: 'Work',
+      permissionState: 'prompt',
+      sameEntryKey: 'work',
+    });
+    handle.requestPermissionMock.mockResolvedValue('granted');
+    getTemporaryFileSystemAccessHandleMock.mockResolvedValue({
+      handle,
+      operation: 'read',
+      spaceName: 'Work',
+    });
+    resolveFileSystemAccessRequestMock.mockRejectedValue(new Error('resolve failed'));
+
+    const { broker, scope } = await mountBroker();
+
+    await expect(
+      broker.requestAccess({
+        operation: 'read',
+        spaceName: 'Work',
+      }),
+    ).resolves.toEqual({
+      status: 'error',
+    });
+
+    scope.stop();
+  });
 });

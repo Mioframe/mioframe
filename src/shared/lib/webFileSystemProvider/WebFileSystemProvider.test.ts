@@ -28,6 +28,26 @@ const createRootHandle = (
   };
 };
 
+const createPermissionStateDriver = (
+  initialReadWritePermission: PermissionState,
+  initialReadPermission: PermissionState = initialReadWritePermission,
+) => {
+  let readwritePermission = initialReadWritePermission;
+  let readPermission = initialReadPermission;
+
+  return {
+    setReadPermission(nextPermission: PermissionState) {
+      readPermission = nextPermission;
+    },
+    setReadwritePermission(nextPermission: PermissionState) {
+      readwritePermission = nextPermission;
+    },
+    queryPermission: vi.fn((descriptor?: FileSystemHandlePermissionDescriptor) =>
+      Promise.resolve(descriptor?.mode === 'read' ? readPermission : readwritePermission),
+    ),
+  };
+};
+
 describe('WebFileSystemProvider', () => {
   it('returns written file stat from writeFile', async () => {
     const { rootHandle } = createRootHandle('granted');
@@ -491,6 +511,289 @@ describe('WebFileSystemProvider', () => {
       code: WEB_FILE_SYSTEM_ACCESS_REQUIRED_CODE,
       mode: 'readwrite',
     });
+  });
+
+  it('buffers blocked writeFile payloads and still throws until a later granted flush succeeds', async () => {
+    const { fileHandle, rootHandle } = createRootHandle('granted', 'granted');
+    const permissionDriver = createPermissionStateDriver('prompt', 'granted');
+    rootHandle.queryPermission = permissionDriver.queryPermission;
+    const provider = WebFileSystemProvider(rootHandle, {
+      permissionPolicy: 'userSelectedDirectory',
+      onAccessRequired: ({ mode }) => ({ spaceName: 'Work', mode }),
+    });
+
+    await expect(
+      provider.writeFile('/note.txt', 'blocked-write', { create: true, overwrite: true }),
+    ).rejects.toMatchObject({
+      code: WEB_FILE_SYSTEM_ACCESS_REQUIRED_CODE,
+      mode: 'readwrite',
+    });
+    expect(fileHandle.__writtenContent).toEqual(['hello']);
+
+    permissionDriver.setReadwritePermission('granted');
+    provider.notifyAccessChanged();
+
+    await vi.waitFor(() => {
+      expect(fileHandle.__writtenContent).toEqual(['blocked-write']);
+    });
+  });
+
+  it('replaces same-path buffered writes with the latest payload', async () => {
+    const { fileHandle, rootHandle } = createRootHandle('granted', 'granted');
+    const permissionDriver = createPermissionStateDriver('prompt', 'granted');
+    rootHandle.queryPermission = permissionDriver.queryPermission;
+    const provider = WebFileSystemProvider(rootHandle, {
+      permissionPolicy: 'userSelectedDirectory',
+      onAccessRequired: ({ mode }) => ({ spaceName: 'Work', mode }),
+    });
+
+    await expect(
+      provider.writeFile('/note.txt', 'first', { create: true, overwrite: true }),
+    ).rejects.toBeInstanceOf(WebFileSystemAccessRequiredError);
+    await expect(
+      provider.writeFile('//note.txt', 'second', { create: true, overwrite: true }),
+    ).rejects.toBeInstanceOf(WebFileSystemAccessRequiredError);
+
+    permissionDriver.setReadwritePermission('granted');
+    provider.notifyAccessChanged();
+
+    await vi.waitFor(() => {
+      expect(fileHandle.__writtenContent).toEqual(['second']);
+    });
+  });
+
+  it('flushes different buffered paths in insertion order', async () => {
+    const alphaFileHandle = createFileHandleMock({
+      fileContent: ['alpha-original'],
+      name: 'alpha.txt',
+      permissionState: 'granted',
+    });
+    const betaFileHandle = createFileHandleMock({
+      fileContent: ['beta-original'],
+      name: 'beta.txt',
+      permissionState: 'granted',
+    });
+    const rootHandle = createDirectoryHandleMock({
+      entries: [alphaFileHandle, betaFileHandle],
+      name: '',
+      permissionState: 'granted',
+      readPermissionState: 'granted',
+    });
+    const permissionDriver = createPermissionStateDriver('prompt', 'granted');
+    rootHandle.queryPermission = permissionDriver.queryPermission;
+    const writeOrder: string[] = [];
+    alphaFileHandle.createWritable = vi.fn(() =>
+      Promise.resolve({
+        abort: vi.fn(),
+        close: vi.fn(() => Promise.resolve(undefined)),
+        getWriter: () => new WritableStream().getWriter(),
+        locked: false,
+        seek: vi.fn(),
+        truncate: vi.fn(),
+        write: vi.fn(() => {
+          writeOrder.push('alpha');
+          return Promise.resolve(undefined);
+        }),
+      }),
+    );
+    betaFileHandle.createWritable = vi.fn(() =>
+      Promise.resolve({
+        abort: vi.fn(),
+        close: vi.fn(() => Promise.resolve(undefined)),
+        getWriter: () => new WritableStream().getWriter(),
+        locked: false,
+        seek: vi.fn(),
+        truncate: vi.fn(),
+        write: vi.fn(() => {
+          writeOrder.push('beta');
+          return Promise.resolve(undefined);
+        }),
+      }),
+    );
+    const provider = WebFileSystemProvider(rootHandle, {
+      permissionPolicy: 'userSelectedDirectory',
+      onAccessRequired: ({ mode }) => ({ spaceName: 'Work', mode }),
+    });
+
+    await expect(
+      provider.writeFile('/alpha.txt', 'alpha-next', { create: true, overwrite: true }),
+    ).rejects.toBeInstanceOf(WebFileSystemAccessRequiredError);
+    await expect(
+      provider.writeFile('/beta.txt', 'beta-next', { create: true, overwrite: true }),
+    ).rejects.toBeInstanceOf(WebFileSystemAccessRequiredError);
+
+    permissionDriver.setReadwritePermission('granted');
+    provider.notifyAccessChanged();
+
+    await vi.waitFor(() => {
+      expect(writeOrder).toEqual(['alpha', 'beta']);
+    });
+  });
+
+  it('keeps only the latest 64 buffered paths', async () => {
+    const fileHandles = Array.from({ length: 65 }, (_, index) =>
+      createFileHandleMock({
+        fileContent: [`original-${index}`],
+        name: `note-${index}.txt`,
+        permissionState: 'granted',
+      }),
+    );
+    const rootHandle = createDirectoryHandleMock({
+      entries: fileHandles,
+      name: '',
+      permissionState: 'granted',
+      readPermissionState: 'granted',
+    });
+    const permissionDriver = createPermissionStateDriver('prompt', 'granted');
+    rootHandle.queryPermission = permissionDriver.queryPermission;
+    const provider = WebFileSystemProvider(rootHandle, {
+      permissionPolicy: 'userSelectedDirectory',
+      onAccessRequired: ({ mode }) => ({ spaceName: 'Work', mode }),
+    });
+
+    await Array.from({ length: 65 }, (_, index) => index).reduce<Promise<void>>(
+      async (previousWrite, index) => {
+        await previousWrite;
+        await expect(
+          provider.writeFile(`/note-${index}.txt`, `next-${index}`, {
+            create: true,
+            overwrite: true,
+          }),
+        ).rejects.toBeInstanceOf(WebFileSystemAccessRequiredError);
+      },
+      Promise.resolve(),
+    );
+
+    permissionDriver.setReadwritePermission('granted');
+    provider.notifyAccessChanged();
+
+    await vi.waitFor(() => {
+      expect(fileHandles[0]?.__writtenContent).toEqual(['original-0']);
+      expect(fileHandles[1]?.__writtenContent).toEqual(['next-1']);
+      expect(fileHandles[64]?.__writtenContent).toEqual(['next-64']);
+    });
+  });
+
+  it('keeps buffered writes within the 32 MiB byte limit', async () => {
+    const alphaFileHandle = createFileHandleMock({
+      fileContent: ['alpha-original'],
+      name: 'alpha.bin',
+      permissionState: 'granted',
+    });
+    const betaFileHandle = createFileHandleMock({
+      fileContent: ['beta-original'],
+      name: 'beta.bin',
+      permissionState: 'granted',
+    });
+    const rootHandle = createDirectoryHandleMock({
+      entries: [alphaFileHandle, betaFileHandle],
+      name: '',
+      permissionState: 'granted',
+      readPermissionState: 'granted',
+    });
+    const permissionDriver = createPermissionStateDriver('prompt', 'granted');
+    rootHandle.queryPermission = permissionDriver.queryPermission;
+    const provider = WebFileSystemProvider(rootHandle, {
+      permissionPolicy: 'userSelectedDirectory',
+      onAccessRequired: ({ mode }) => ({ spaceName: 'Work', mode }),
+    });
+    const twentyMiB = 20 * 1024 * 1024;
+
+    await expect(
+      provider.writeFile('/alpha.bin', new Uint8Array(twentyMiB), {
+        create: true,
+        overwrite: true,
+      }),
+    ).rejects.toBeInstanceOf(WebFileSystemAccessRequiredError);
+    await expect(
+      provider.writeFile('/beta.bin', new Uint8Array(twentyMiB), {
+        create: true,
+        overwrite: true,
+      }),
+    ).rejects.toBeInstanceOf(WebFileSystemAccessRequiredError);
+
+    permissionDriver.setReadwritePermission('granted');
+    provider.notifyAccessChanged();
+
+    await vi.waitFor(() => {
+      expect(alphaFileHandle.__writtenContent).toEqual(['alpha-original']);
+      expect(betaFileHandle.__writtenContent).toEqual([expect.any(Uint8Array)]);
+    });
+  });
+
+  it('keeps permission-blocked buffered writes for a later grant', async () => {
+    const { fileHandle, rootHandle } = createRootHandle('granted', 'granted');
+    const permissionDriver = createPermissionStateDriver('prompt', 'granted');
+    rootHandle.queryPermission = permissionDriver.queryPermission;
+    const provider = WebFileSystemProvider(rootHandle, {
+      permissionPolicy: 'userSelectedDirectory',
+      onAccessRequired: ({ mode }) => ({ spaceName: 'Work', mode }),
+    });
+
+    await expect(
+      provider.writeFile('/note.txt', 'retry-me', { create: true, overwrite: true }),
+    ).rejects.toBeInstanceOf(WebFileSystemAccessRequiredError);
+
+    provider.notifyAccessChanged();
+    await Promise.resolve();
+    expect(fileHandle.__writtenContent).toEqual(['hello']);
+
+    permissionDriver.setReadwritePermission('granted');
+    provider.notifyAccessChanged();
+
+    await vi.waitFor(() => {
+      expect(fileHandle.__writtenContent).toEqual(['retry-me']);
+    });
+  });
+
+  it('does not buffer non-write operations after permission recovery', async () => {
+    const rootHandle = createDirectoryHandleMock({
+      name: '',
+      permissionState: 'granted',
+      readPermissionState: 'granted',
+    });
+    const permissionDriver = createPermissionStateDriver('prompt', 'granted');
+    rootHandle.queryPermission = permissionDriver.queryPermission;
+    const provider = WebFileSystemProvider(rootHandle, {
+      permissionPolicy: 'userSelectedDirectory',
+      onAccessRequired: ({ mode }) => ({ spaceName: 'Work', mode }),
+    });
+
+    await expect(provider.createDirectory('/new')).rejects.toMatchObject({
+      code: WEB_FILE_SYSTEM_ACCESS_REQUIRED_CODE,
+      mode: 'readwrite',
+    });
+
+    permissionDriver.setReadwritePermission('granted');
+    provider.notifyAccessChanged();
+    await Promise.resolve();
+
+    expect(rootHandle.getDirectoryHandleMock).not.toHaveBeenCalledWith('new', { create: true });
+  });
+
+  it('does not buffer originPrivateStorage writeFile calls', async () => {
+    const { fileHandle, rootHandle } = createRootHandle('prompt', 'granted');
+    const onAccessRequired = vi.fn(({ mode }: { mode: 'read' | 'readwrite' }) => ({
+      spaceName: 'Work',
+      mode,
+    }));
+    const provider = WebFileSystemProvider(rootHandle, {
+      permissionPolicy: 'originPrivateStorage',
+      onAccessRequired,
+    });
+
+    await expect(
+      provider.writeFile('/note.txt', 'opfs-write', { create: true, overwrite: true }),
+    ).resolves.toMatchObject({
+      stat: {
+        type: FSNodeType.File,
+      },
+    });
+    provider.notifyAccessChanged();
+
+    await Promise.resolve();
+    expect(fileHandle.__writtenContent).toEqual(['opfs-write']);
+    expect(onAccessRequired).not.toHaveBeenCalled();
   });
 
   it('treats moving a path onto itself as a no-op', async () => {

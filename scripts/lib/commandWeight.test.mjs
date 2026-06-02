@@ -33,4 +33,13 @@ describe('resolveEslintConcurrency', () => {
     vi.stubEnv('MIOFRAME_ESLINT_CONCURRENCY', '7');
     expect(resolveEslintConcurrency()).toBe('7');
   });
+
+  it('disables local eslint worker concurrency by default', () => {
+    delete process.env.MIOFRAME_ESLINT_CONCURRENCY;
+    delete process.env.ESLINT_CONCURRENCY;
+    delete process.env.CI;
+    delete process.env.GITHUB_ACTIONS;
+
+    expect(resolveEslintConcurrency()).toBe('off');
+  });
 });
