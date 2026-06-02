@@ -14,6 +14,7 @@ import { formatSaveStatusErrorDetails, STATUS_LABELS } from './saveStatusText';
 
 const triggerRef = useTemplateRef<ComponentPublicInstance>('triggerRef');
 const showErrorDetails = ref(false);
+const isGrantWriteAccessLoading = ref(false);
 const { addSnackbar } = useSnackbar();
 const {
   fileSystem: { acknowledgeVfsActivityError: dismissSaveStatusError },
@@ -79,27 +80,41 @@ const onClickCopyDetails = async () => {
 };
 
 const onClickGrantWriteAccess = async () => {
+  if (isGrantWriteAccessLoading.value) {
+    return;
+  }
+
   const recovery = writeAccessRecovery.value;
 
   if (!recovery) {
     return;
   }
 
-  const result = await requestAccess(recovery);
+  isGrantWriteAccessLoading.value = true;
 
-  if (result.status === 'granted') {
-    dismissSaveStatusError();
-    showErrorDetails.value = false;
-    addSnackbar({ text: 'Write access granted. Future saves can continue.' });
-    return;
+  try {
+    const result = await requestAccess(recovery);
+
+    if (result.status === 'granted') {
+      dismissSaveStatusError();
+      showErrorDetails.value = false;
+      addSnackbar({ text: 'Write access granted. Future saves can continue.' });
+      return;
+    }
+
+    addSnackbar({
+      text:
+        result.status === 'error'
+          ? 'Could not request browser write access. Try again from this action.'
+          : 'Browser write access was not granted. Saving remains blocked.',
+    });
+  } catch {
+    addSnackbar({
+      text: 'Could not request browser write access. Try again from this action.',
+    });
+  } finally {
+    isGrantWriteAccessLoading.value = false;
   }
-
-  addSnackbar({
-    text:
-      result.status === 'error'
-        ? 'Could not request browser write access. Try again from this action.'
-        : 'Browser write access was not granted. Saving remains blocked.',
-  });
 };
 
 const onInteractionOutside = () => {
@@ -152,7 +167,9 @@ const onInteractionOutside = () => {
       <MDButton
         v-if="hasWriteAccessRecovery"
         color="text"
+        :disabled="isGrantWriteAccessLoading"
         label="Grant write access"
+        :loading="isGrantWriteAccessLoading"
         @click="onClickGrantWriteAccess"
       />
       <MDButton v-if="isError" color="text" label="Dismiss" @click="onClickDismissError" />

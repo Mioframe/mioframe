@@ -67,6 +67,10 @@ vi.mock('@shared/ui/Button', () => ({
     props: {
       label: { type: String, required: true },
       disabled: { type: Boolean, default: false },
+      loading: {
+        type: [Boolean, Number],
+        default: undefined,
+      },
     },
     emits: ['click'],
     setup(props, { emit }) {
@@ -76,7 +80,12 @@ vi.mock('@shared/ui/Button', () => ({
           {
             type: 'button',
             disabled: props.disabled,
+            'data-loading':
+              props.loading !== undefined && props.loading !== false ? String(props.loading) : '',
             onClick: () => {
+              if (props.disabled) {
+                return;
+              }
               emit('click');
             },
           },
@@ -336,6 +345,48 @@ describe('VfsActivityStatusChip', () => {
     });
   });
 
+  it('disables the grant action and ignores repeated clicks while permission is pending', async () => {
+    let resolveRequest: ((result: { status: 'granted' }) => void) | undefined;
+    requestAccessMock.mockImplementation(
+      () =>
+        new Promise<{ status: 'granted' }>((resolve) => {
+          resolveRequest = resolve;
+        }),
+    );
+    vfsState.value = createErrorState(
+      createWriteError({
+        cause: new WebFileSystemAccessRequiredError({
+          mode: 'readwrite',
+          spaceName: 'Work',
+        }),
+      }),
+    );
+
+    const wrapper = await mountVfsActivityStatusChip();
+
+    await wrapper.get('button').trigger('click');
+
+    const grantButton = wrapper
+      .findAll('button')
+      .find((button) => button.text() === 'Grant write access');
+
+    expect(grantButton).toBeDefined();
+    await grantButton?.trigger('click');
+    await grantButton?.trigger('click');
+
+    expect(requestAccessMock).toHaveBeenCalledTimes(1);
+    expect(grantButton?.attributes('disabled')).toBeDefined();
+    expect(grantButton?.attributes('data-loading')).toBe('true');
+
+    resolveRequest?.({ status: 'granted' });
+    await vi.dynamicImportSettled();
+
+    expect(dismissSaveStatusErrorMock).toHaveBeenCalledOnce();
+    expect(
+      wrapper.findAll('button').find((button) => button.text() === 'Grant write access'),
+    ).toBeUndefined();
+  });
+
   it.each([
     ['denied', 'Browser write access was not granted. Saving remains blocked.'],
     ['cancelled', 'Browser write access was not granted. Saving remains blocked.'],
@@ -363,5 +414,30 @@ describe('VfsActivityStatusChip', () => {
       expect(wrapper.text()).toContain('Grant write access');
     },
   );
+
+  it('keeps the error visible and shows a safe message when the broker rejects unexpectedly', async () => {
+    requestAccessMock.mockRejectedValue(new Error('raw broker failure'));
+    vfsState.value = createErrorState(
+      createWriteError({
+        cause: new WebFileSystemAccessRequiredError({
+          mode: 'readwrite',
+          spaceName: 'Work',
+        }),
+      }),
+    );
+
+    const wrapper = await mountVfsActivityStatusChip();
+
+    await wrapper.get('button').trigger('click');
+    await clickButtonByLabel(wrapper, 'Grant write access');
+
+    expect(dismissSaveStatusErrorMock).not.toHaveBeenCalled();
+    expect(addSnackbarMock).toHaveBeenCalledWith({
+      text: 'Could not request browser write access. Try again from this action.',
+    });
+    expect(wrapper.text()).toContain('Grant write access');
+    expect(wrapper.text()).not.toContain('raw broker failure');
+    expect(wrapper.text()).not.toContain('Work');
+  });
 });
 /* eslint-enable vue/one-component-per-file -- Re-enable after focused inline stubs. */

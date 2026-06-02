@@ -6,6 +6,7 @@ import {
   WebFileSystemAccessRequiredError,
 } from '@shared/lib/webFileSystemProvider';
 import { getFileSystemAccessRecovery } from '@shared/lib/fileSystem';
+import type { VfsActivityState } from '@shared/lib/virtualFileSystem';
 import { transformers } from './workerTransformerMap';
 
 class MockProvider {
@@ -95,5 +96,53 @@ describe('workerTransformerMap', () => {
       });
       return true;
     });
+  });
+
+  it('preserves nested VfsActivityState.lastError.cause recovery data across the service boundary', async () => {
+    const serviceId = uid();
+    const clientId = uid();
+    const { clientProvider, serviceProvider } = createChannel(clientId, serviceId);
+
+    createService(serviceProvider, serviceId, transformers, () => ({
+      getState: () =>
+        ({
+          status: 'error',
+          activeCount: 0,
+          lastError: {
+            operationType: 'writeFile',
+            path: '/private.txt',
+            message: 'write failed',
+            occurredAt: 1,
+            acknowledged: false,
+            cause: new WebFileSystemAccessRequiredError({
+              mode: 'readwrite',
+              spaceName: 'Work',
+            }),
+          },
+        }) satisfies VfsActivityState,
+    }));
+
+    const client = createClient<{ getState: () => Promise<VfsActivityState> }>(
+      clientProvider,
+      clientId,
+      transformers,
+    );
+
+    const state = await client.getState();
+
+    expect(state.status).toBe('error');
+    expect(state.lastError?.cause).toBeInstanceOf(WebFileSystemAccessRequiredError);
+    expect(state.lastError?.cause).toMatchObject({
+      code: WEB_FILE_SYSTEM_ACCESS_REQUIRED_CODE,
+      mode: 'readwrite',
+      name: 'WebFileSystemAccessRequiredError',
+      spaceName: 'Work',
+    });
+    expect(getFileSystemAccessRecovery(state.lastError?.cause, { operation: 'write' })).toEqual({
+      operation: 'write',
+      spaceName: 'Work',
+    });
+    expect(state.lastError?.cause).not.toHaveProperty('handle');
+    expect(state.lastError?.cause).not.toHaveProperty('provider');
   });
 });
