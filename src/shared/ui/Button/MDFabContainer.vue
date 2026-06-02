@@ -50,6 +50,7 @@ const show = computed(
 
 const overlayContainerEl = useOverlayContainer();
 
+// fixme: fabContainerEl не перемещается за placeholderEl, когда placeholderEl сдвинут контентом выше.
 const { floatingStyles } = useFloating(placeholderEl, fabContainerEl, {
   placement: 'top-end',
   strategy: 'fixed',
