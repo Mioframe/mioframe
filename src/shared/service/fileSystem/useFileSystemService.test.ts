@@ -558,7 +558,7 @@ describe('useFileSystemService', () => {
     ).resolves.toBeUndefined();
   });
 
-  it('prepares a temporary handle for a pending file-system access request', async () => {
+  it('returns a temporary handle for the broker when a file-system access request is pending', async () => {
     const promptHandle = createDirectoryHandleMock({
       name: 'Work',
       permissionState: 'prompt',
@@ -581,7 +581,7 @@ describe('useFileSystemService', () => {
     });
 
     await expect(
-      service.prepareFileSystemAccessRequest({
+      service.getTemporaryFileSystemAccessHandle({
         operation: 'read',
         spaceName: 'Work',
       }),
@@ -999,11 +999,11 @@ describe('useFileSystemService', () => {
     ).resolves.toEqual({ status: 'missing' });
   });
 
-  it('prepareFileSystemAccessRequest returns undefined for an unknown key', async () => {
+  it('getTemporaryFileSystemAccessHandle returns undefined for an unknown key', async () => {
     const service = await createService();
 
     await expect(
-      service.prepareFileSystemAccessRequest({
+      service.getTemporaryFileSystemAccessHandle({
         operation: 'write',
         spaceName: 'Missing',
       }),

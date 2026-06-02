@@ -40,4 +40,23 @@ describe('feature file-system recovery boundaries', () => {
 
     expect(violations).toEqual([]);
   });
+
+  it('keeps the permission broker out of the background file-system service barrel', async () => {
+    const files = await collectFeatureFiles(featureRoot);
+    const fileChecks = await Promise.all(
+      files.map(async (filePath) => ({
+        filePath,
+        source: await readFile(filePath, 'utf8'),
+      })),
+    );
+    const violations = fileChecks
+      .filter(
+        ({ source }) =>
+          /useFileSystemAccessPermissionBroker/.test(source) &&
+          /@shared\/service\/fileSystem['"]/.test(source),
+      )
+      .map(({ filePath }) => filePath.replace(`${process.cwd()}/`, ''));
+
+    expect(violations).toEqual([]);
+  });
 });

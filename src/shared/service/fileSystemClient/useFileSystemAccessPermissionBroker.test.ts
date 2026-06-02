@@ -2,13 +2,13 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { effectScope } from 'vue';
 import { createDirectoryHandleMock } from '@shared/lib/webFileSystemProvider/WebFileSystemProvider.testUtils';
 
-const prepareFileSystemAccessRequestMock = vi.fn();
+const getTemporaryFileSystemAccessHandleMock = vi.fn();
 const resolveFileSystemAccessRequestMock = vi.fn();
 
 vi.mock('@shared/service', () => ({
   useMainServiceClient: () => ({
     fileSystem: {
-      prepareFileSystemAccessRequest: prepareFileSystemAccessRequestMock,
+      getTemporaryFileSystemAccessHandle: getTemporaryFileSystemAccessHandleMock,
       resolveFileSystemAccessRequest: resolveFileSystemAccessRequestMock,
     },
   }),
@@ -40,46 +40,26 @@ const mountBroker = async () => {
 
 describe('useFileSystemAccessPermissionBroker', () => {
   afterEach(() => {
-    prepareFileSystemAccessRequestMock.mockReset();
+    getTemporaryFileSystemAccessHandleMock.mockReset();
     resolveFileSystemAccessRequestMock.mockReset();
   });
 
-  it('prepares a temporary handle without exposing it through the public state', async () => {
-    const handle = createDirectoryHandleMock({
-      name: 'Work',
-      permissionState: 'prompt',
-      sameEntryKey: 'work',
-    });
-    prepareFileSystemAccessRequestMock.mockResolvedValue({
-      handle,
-      operation: 'read',
-      spaceName: 'Work',
-    });
-
+  it('exposes only the one-shot request command and keeps handle state internal', async () => {
     const { broker, scope } = await mountBroker();
 
-    await expect(
-      broker.prepareAccessRequest({
-        operation: 'read',
-        spaceName: 'Work',
-      }),
-    ).resolves.toMatchObject({
-      operation: 'read',
-      spaceName: 'Work',
-    });
-    expect(broker.hasPreparedRequest.value).toBe(true);
+    expect(Object.keys(broker)).toEqual(['requestAccess']);
 
     scope.stop();
   });
 
-  it('requests permission on the main thread and clears the prepared handle after grant', async () => {
+  it('requests permission on the main thread and resolves granted access', async () => {
     const handle = createDirectoryHandleMock({
       name: 'Work',
       permissionState: 'prompt',
       sameEntryKey: 'work',
     });
     handle.requestPermissionMock.mockResolvedValue('granted');
-    prepareFileSystemAccessRequestMock.mockResolvedValue({
+    getTemporaryFileSystemAccessHandleMock.mockResolvedValue({
       handle,
       operation: 'read',
       spaceName: 'Work',
@@ -90,13 +70,8 @@ describe('useFileSystemAccessPermissionBroker', () => {
 
     const { broker, scope } = await mountBroker();
 
-    await broker.prepareAccessRequest({
-      operation: 'read',
-      spaceName: 'Work',
-    });
-
     await expect(
-      broker.requestPreparedAccess({
+      broker.requestAccess({
         operation: 'read',
         spaceName: 'Work',
       }),
@@ -109,19 +84,18 @@ describe('useFileSystemAccessPermissionBroker', () => {
       permissionState: 'granted',
       spaceName: 'Work',
     });
-    expect(broker.hasPreparedRequest.value).toBe(false);
 
     scope.stop();
   });
 
-  it('uses readwrite mode for write recovery and still clears the handle after denial', async () => {
+  it('uses readwrite mode for write recovery', async () => {
     const handle = createDirectoryHandleMock({
       name: 'Work',
       permissionState: 'denied',
       sameEntryKey: 'work',
     });
     handle.requestPermissionMock.mockResolvedValue('denied');
-    prepareFileSystemAccessRequestMock.mockResolvedValue({
+    getTemporaryFileSystemAccessHandleMock.mockResolvedValue({
       handle,
       operation: 'write',
       spaceName: 'Work',
@@ -132,13 +106,8 @@ describe('useFileSystemAccessPermissionBroker', () => {
 
     const { broker, scope } = await mountBroker();
 
-    await broker.prepareAccessRequest({
-      operation: 'write',
-      spaceName: 'Work',
-    });
-
     await expect(
-      broker.requestPreparedAccess({
+      broker.requestAccess({
         operation: 'write',
         spaceName: 'Work',
       }),
@@ -146,33 +115,17 @@ describe('useFileSystemAccessPermissionBroker', () => {
       status: 'denied',
     });
     expect(handle.requestPermissionMock).toHaveBeenCalledWith({ mode: 'readwrite' });
-    expect(broker.hasPreparedRequest.value).toBe(false);
 
     scope.stop();
   });
 
-  it('returns error and clears the prepared handle when requestPermission rejects', async () => {
-    const handle = createDirectoryHandleMock({
-      name: 'Work',
-      permissionState: 'prompt',
-      sameEntryKey: 'work',
-    });
-    handle.requestPermissionMock.mockRejectedValue(new DOMException('User activation required'));
-    prepareFileSystemAccessRequestMock.mockResolvedValue({
-      handle,
-      operation: 'read',
-      spaceName: 'Work',
-    });
+  it('returns error when the service cannot supply a temporary handle', async () => {
+    getTemporaryFileSystemAccessHandleMock.mockResolvedValue(undefined);
 
     const { broker, scope } = await mountBroker();
 
-    await broker.prepareAccessRequest({
-      operation: 'read',
-      spaceName: 'Work',
-    });
-
     await expect(
-      broker.requestPreparedAccess({
+      broker.requestAccess({
         operation: 'read',
         spaceName: 'Work',
       }),
@@ -180,7 +133,60 @@ describe('useFileSystemAccessPermissionBroker', () => {
       status: 'error',
     });
     expect(resolveFileSystemAccessRequestMock).not.toHaveBeenCalled();
-    expect(broker.hasPreparedRequest.value).toBe(false);
+
+    scope.stop();
+  });
+
+  it('returns error when requestPermission rejects and refetches the handle on the next call', async () => {
+    const rejectedHandle = createDirectoryHandleMock({
+      name: 'Work',
+      permissionState: 'prompt',
+      sameEntryKey: 'work-rejected',
+    });
+    const grantedHandle = createDirectoryHandleMock({
+      name: 'Work',
+      permissionState: 'prompt',
+      sameEntryKey: 'work-granted',
+    });
+    rejectedHandle.requestPermissionMock.mockRejectedValue(
+      new DOMException('User activation required'),
+    );
+    grantedHandle.requestPermissionMock.mockResolvedValue('granted');
+    getTemporaryFileSystemAccessHandleMock
+      .mockResolvedValueOnce({
+        handle: rejectedHandle,
+        operation: 'read',
+        spaceName: 'Work',
+      })
+      .mockResolvedValueOnce({
+        handle: grantedHandle,
+        operation: 'read',
+        spaceName: 'Work',
+      });
+    resolveFileSystemAccessRequestMock.mockResolvedValue({
+      status: 'granted',
+    });
+
+    const { broker, scope } = await mountBroker();
+
+    await expect(
+      broker.requestAccess({
+        operation: 'read',
+        spaceName: 'Work',
+      }),
+    ).resolves.toEqual({
+      status: 'error',
+    });
+    await expect(
+      broker.requestAccess({
+        operation: 'read',
+        spaceName: 'Work',
+      }),
+    ).resolves.toEqual({
+      status: 'granted',
+    });
+    expect(getTemporaryFileSystemAccessHandleMock).toHaveBeenCalledTimes(2);
+    expect(resolveFileSystemAccessRequestMock).toHaveBeenCalledTimes(1);
 
     scope.stop();
   });

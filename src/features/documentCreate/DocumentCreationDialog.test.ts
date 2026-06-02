@@ -13,9 +13,7 @@ const directoryStatRef = ref<{
     canEditChildren: undefined,
   },
 });
-const clearPreparedRequestMock = vi.fn();
-const prepareAccessRequestMock = vi.fn();
-const requestPreparedAccessMock = vi.fn();
+const requestAccessMock = vi.fn();
 const confirmMock = vi.fn();
 
 const createSerializedRecoveryError = ({
@@ -44,11 +42,9 @@ vi.mock('@entity/repository', () => ({
   }),
 }));
 
-vi.mock('@shared/service/fileSystem', () => ({
+vi.mock('@shared/service/fileSystemClient', () => ({
   useFileSystemAccessPermissionBroker: () => ({
-    clearPreparedRequest: clearPreparedRequestMock,
-    prepareAccessRequest: prepareAccessRequestMock,
-    requestPreparedAccess: requestPreparedAccessMock,
+    requestAccess: requestAccessMock,
   }),
 }));
 
@@ -134,9 +130,7 @@ const mountDialog = async () => {
 describe('DocumentCreationDialog', () => {
   beforeEach(() => {
     createDocumentMock.mockReset();
-    clearPreparedRequestMock.mockReset();
-    prepareAccessRequestMock.mockReset();
-    requestPreparedAccessMock.mockReset();
+    requestAccessMock.mockReset();
     confirmMock.mockReset();
     directoryStatRef.value = {
       capabilities: {
@@ -154,12 +148,8 @@ describe('DocumentCreationDialog', () => {
         }),
       )
       .mockResolvedValueOnce(undefined);
-    prepareAccessRequestMock.mockResolvedValue({
-      operation: 'write',
-      spaceName: 'Work',
-    });
     confirmMock.mockResolvedValue(true);
-    requestPreparedAccessMock.mockResolvedValue({ status: 'granted' });
+    requestAccessMock.mockResolvedValue({ status: 'granted' });
 
     const wrapper = await mountDialog();
 
@@ -180,7 +170,7 @@ describe('DocumentCreationDialog', () => {
       confirmLabel: 'Grant access',
       cancelLabel: 'Not now',
     });
-    expect(requestPreparedAccessMock).toHaveBeenCalledWith({
+    expect(requestAccessMock).toHaveBeenCalledWith({
       operation: 'write',
       spaceName: 'Work',
     });
@@ -195,12 +185,8 @@ describe('DocumentCreationDialog', () => {
         spaceName: 'Work',
       }),
     );
-    prepareAccessRequestMock.mockResolvedValue({
-      operation: 'write',
-      spaceName: 'Work',
-    });
     confirmMock.mockResolvedValue(true);
-    requestPreparedAccessMock.mockResolvedValue({ status: 'denied' });
+    requestAccessMock.mockResolvedValue({ status: 'denied' });
 
     const wrapper = await mountDialog();
 
@@ -224,10 +210,6 @@ describe('DocumentCreationDialog', () => {
         spaceName: 'Work',
       }),
     );
-    prepareAccessRequestMock.mockResolvedValue({
-      operation: 'write',
-      spaceName: 'Work',
-    });
     confirmMock.mockResolvedValue(false);
 
     const wrapper = await mountDialog();
@@ -239,10 +221,7 @@ describe('DocumentCreationDialog', () => {
     await applyButton.trigger('click');
     await flushPromises();
 
-    expect(clearPreparedRequestMock).toHaveBeenCalledWith({
-      operation: 'write',
-      spaceName: 'Work',
-    });
+    expect(requestAccessMock).not.toHaveBeenCalled();
     expect(wrapper.text()).toContain(
       'Grant write access to create entries in this remembered space.',
     );

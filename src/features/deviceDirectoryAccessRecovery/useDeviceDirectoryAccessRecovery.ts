@@ -1,6 +1,6 @@
 import { useDeviceDirectoryAccessRecoveryState } from '@entity/deviceDirectoryAccess';
 import { type FileSystemAccessOperation } from '@shared/lib/fileSystem';
-import { useFileSystemAccessPermissionBroker } from '@shared/service/fileSystem';
+import { useFileSystemAccessPermissionBroker } from '@shared/service/fileSystemClient';
 import { computed, ref, toValue, watch, type MaybeRefOrGetter } from 'vue';
 
 /**
@@ -22,48 +22,21 @@ export const useDeviceDirectoryAccessRecovery = ({
     | undefined;
 }) => {
   const { state } = useDeviceDirectoryAccessRecoveryState({ errors, operation });
-  const { clearPreparedRequest, hasPreparedRequest, prepareAccessRequest, requestPreparedAccess } =
-    useFileSystemAccessPermissionBroker();
+  const { requestAccess } = useFileSystemAccessPermissionBroker();
 
   const isGrantLoading = ref(false);
   const message = ref<string>();
-  let pendingRequestLoadVersion = 0;
   const recoveryState = computed(() => toValue(state));
 
   watch(
     () => recoveryState.value,
-    async (nextState, _previousState, onCleanup) => {
-      const currentLoadVersion = ++pendingRequestLoadVersion;
-
-      onCleanup(() => {
-        pendingRequestLoadVersion += 1;
-        clearPreparedRequest(nextState);
-      });
-
+    () => {
       message.value = undefined;
-      clearPreparedRequest(nextState);
-
-      if (!nextState) {
-        return;
-      }
-
-      const request = await prepareAccessRequest(nextState);
-
-      if (currentLoadVersion !== pendingRequestLoadVersion) {
-        clearPreparedRequest(nextState);
-        return;
-      }
-
-      if (!request) {
-        message.value = 'Could not prepare browser permission. Try again from this action.';
-      }
     },
     { immediate: true },
   );
 
-  const grantDisabled = computed(
-    () => !recoveryState.value || !hasPreparedRequest.value || isGrantLoading.value,
-  );
+  const grantDisabled = computed(() => !recoveryState.value || isGrantLoading.value);
   const recoveryMessage = computed(() => {
     if (message.value) {
       return message.value;
@@ -91,7 +64,7 @@ export const useDeviceDirectoryAccessRecovery = ({
     isGrantLoading.value = true;
 
     try {
-      const result = await requestPreparedAccess(request);
+      const result = await requestAccess(request);
 
       if (result.status === 'granted') {
         message.value = undefined;
@@ -100,14 +73,12 @@ export const useDeviceDirectoryAccessRecovery = ({
 
       if (result.status === 'error') {
         message.value = 'Could not request browser permission. Try again from this action.';
-        void prepareAccessRequest(request);
         return result;
       }
 
       message.value =
         deniedMessage ??
         'Mioframe still cannot open this space because your browser did not grant permission.';
-      void prepareAccessRequest(request);
 
       return result;
     } finally {

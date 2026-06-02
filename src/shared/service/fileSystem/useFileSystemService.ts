@@ -464,7 +464,7 @@ const setupFileSystemService = () => {
     });
   };
 
-  const prepareFileSystemAccessRequest = (key: FileSystemAccessRequestKey) =>
+  const getTemporaryFileSystemAccessHandle = (key: FileSystemAccessRequestKey) =>
     prepareDeviceDirectoryAccessRequest({
       mode: operationToMode(key.operation),
       spaceName: key.spaceName,
@@ -532,7 +532,7 @@ const setupFileSystemService = () => {
     addDeviceDirectory,
     removeDeviceDirectory,
     getFileSystemAccessRequest,
-    prepareFileSystemAccessRequest,
+    getTemporaryFileSystemAccessHandle,
     resolveFileSystemAccessRequest,
     cancelFileSystemAccessRequest,
     deviceFiles: fromObservable(activeDeviceFiles$),

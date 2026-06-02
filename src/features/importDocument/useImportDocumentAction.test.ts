@@ -1,18 +1,14 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const {
-  clearPreparedRequestMock,
-  prepareAccessRequestMock,
-  requestPreparedAccessMock,
+  requestAccessMock,
   createImportedDocumentMock,
   readImportDocumentDraftMock,
   addSnackbarMock,
   confirmMock,
   reportHandledErrorMock,
 } = vi.hoisted(() => ({
-  clearPreparedRequestMock: vi.fn(),
-  prepareAccessRequestMock: vi.fn(),
-  requestPreparedAccessMock: vi.fn(),
+  requestAccessMock: vi.fn(),
   createImportedDocumentMock: vi.fn(),
   readImportDocumentDraftMock: vi.fn(),
   addSnackbarMock: vi.fn(),
@@ -57,19 +53,15 @@ vi.mock('@shared/ui/Dialog', () => ({
   }),
 }));
 
-vi.mock('@shared/service/fileSystem', () => ({
+vi.mock('@shared/service/fileSystemClient', () => ({
   useFileSystemAccessPermissionBroker: () => ({
-    clearPreparedRequest: clearPreparedRequestMock,
-    prepareAccessRequest: prepareAccessRequestMock,
-    requestPreparedAccess: requestPreparedAccessMock,
+    requestAccess: requestAccessMock,
   }),
 }));
 
 describe('useImportDocumentAction', () => {
   beforeEach(() => {
-    clearPreparedRequestMock.mockReset();
-    prepareAccessRequestMock.mockReset();
-    requestPreparedAccessMock.mockReset();
+    requestAccessMock.mockReset();
     createImportedDocumentMock.mockReset();
     readImportDocumentDraftMock.mockReset();
     addSnackbarMock.mockReset();
@@ -198,21 +190,13 @@ describe('useImportDocumentAction', () => {
         spaceName: 'Work',
       }),
     );
-    prepareAccessRequestMock.mockResolvedValue({
-      operation: 'write',
-      spaceName: 'Work',
-    });
     confirmMock.mockResolvedValue(false);
 
     const { useImportDocumentAction } = await import('./useImportDocumentAction');
     const { importDocument } = useImportDocumentAction();
 
     await expect(importDocument('/documents')).resolves.toBeUndefined();
-    expect(clearPreparedRequestMock).toHaveBeenCalledWith({
-      operation: 'write',
-      spaceName: 'Work',
-    });
-    expect(requestPreparedAccessMock).not.toHaveBeenCalled();
+    expect(requestAccessMock).not.toHaveBeenCalled();
     expect(addSnackbarMock).toHaveBeenCalledWith({
       text: 'Grant write access to import documents into this remembered space.',
     });
@@ -230,18 +214,14 @@ describe('useImportDocumentAction', () => {
         spaceName: 'Work',
       }),
     );
-    prepareAccessRequestMock.mockResolvedValue({
-      operation: 'write',
-      spaceName: 'Work',
-    });
     confirmMock.mockResolvedValue(true);
-    requestPreparedAccessMock.mockResolvedValue({ status: 'denied' });
+    requestAccessMock.mockResolvedValue({ status: 'denied' });
 
     const { useImportDocumentAction } = await import('./useImportDocumentAction');
     const { importDocument } = useImportDocumentAction();
 
     await expect(importDocument('/documents')).resolves.toBeUndefined();
-    expect(requestPreparedAccessMock).toHaveBeenCalledWith({
+    expect(requestAccessMock).toHaveBeenCalledWith({
       operation: 'write',
       spaceName: 'Work',
     });
@@ -263,12 +243,8 @@ describe('useImportDocumentAction', () => {
         spaceName: 'Work',
       }),
     );
-    prepareAccessRequestMock.mockResolvedValue({
-      operation: 'write',
-      spaceName: 'Work',
-    });
     confirmMock.mockResolvedValue(true);
-    requestPreparedAccessMock.mockResolvedValue({ status: 'error' });
+    requestAccessMock.mockResolvedValue({ status: 'error' });
 
     const { useImportDocumentAction } = await import('./useImportDocumentAction');
     const { importDocument } = useImportDocumentAction();
@@ -294,12 +270,8 @@ describe('useImportDocumentAction', () => {
         }),
       )
       .mockRejectedValueOnce(new Error('disk full'));
-    prepareAccessRequestMock.mockResolvedValue({
-      operation: 'write',
-      spaceName: 'Work',
-    });
     confirmMock.mockResolvedValue(true);
-    requestPreparedAccessMock.mockResolvedValue({ status: 'granted' });
+    requestAccessMock.mockResolvedValue({ status: 'granted' });
 
     const { useImportDocumentAction } = await import('./useImportDocumentAction');
     const { importDocument } = useImportDocumentAction();
@@ -326,12 +298,8 @@ describe('useImportDocumentAction', () => {
         }),
       )
       .mockResolvedValueOnce('document-id');
-    prepareAccessRequestMock.mockResolvedValue({
-      operation: 'write',
-      spaceName: 'Work',
-    });
     confirmMock.mockResolvedValue(true);
-    requestPreparedAccessMock.mockResolvedValue({ status: 'granted' });
+    requestAccessMock.mockResolvedValue({ status: 'granted' });
 
     const { useImportDocumentAction } = await import('./useImportDocumentAction');
     const { importDocument } = useImportDocumentAction();
@@ -344,7 +312,7 @@ describe('useImportDocumentAction', () => {
       confirmLabel: 'Grant access',
       cancelLabel: 'Not now',
     });
-    expect(requestPreparedAccessMock).toHaveBeenCalledWith({
+    expect(requestAccessMock).toHaveBeenCalledWith({
       operation: 'write',
       spaceName: 'Work',
     });

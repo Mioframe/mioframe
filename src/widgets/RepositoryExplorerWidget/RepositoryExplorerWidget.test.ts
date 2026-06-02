@@ -21,10 +21,7 @@ const isLoadingRef = ref(false);
 const isRepositoryInitializedRef = ref(false);
 const regularFileEntriesRef = ref<unknown[] | undefined>([]);
 const repositoryRecoveryErrorsRef = ref<unknown[]>([]);
-const clearPreparedRequestMock = vi.fn();
-const prepareAccessRequestMock = vi.fn();
-const requestPreparedAccessMock = vi.fn();
-const hasPreparedRequestRef = ref(false);
+const requestAccessMock = vi.fn();
 const requestTokenMock = vi.fn();
 
 const createSerializedRecoveryError = ({
@@ -48,12 +45,9 @@ vi.mock('@entity/fsEntry', () => ({
   }),
 }));
 
-vi.mock('@shared/service/fileSystem', () => ({
+vi.mock('@shared/service/fileSystemClient', () => ({
   useFileSystemAccessPermissionBroker: () => ({
-    clearPreparedRequest: clearPreparedRequestMock,
-    hasPreparedRequest: hasPreparedRequestRef,
-    prepareAccessRequest: prepareAccessRequestMock,
-    requestPreparedAccess: requestPreparedAccessMock,
+    requestAccess: requestAccessMock,
   }),
 }));
 
@@ -280,10 +274,7 @@ describe('RepositoryExplorerWidget', () => {
     isRepositoryInitializedRef.value = false;
     regularFileEntriesRef.value = [];
     repositoryRecoveryErrorsRef.value = [];
-    clearPreparedRequestMock.mockReset();
-    prepareAccessRequestMock.mockReset();
-    requestPreparedAccessMock.mockReset();
-    hasPreparedRequestRef.value = false;
+    requestAccessMock.mockReset();
     requestTokenMock.mockReset();
     document.body.innerHTML = '';
   });
@@ -302,7 +293,7 @@ describe('RepositoryExplorerWidget', () => {
     expect(wrapper.get('[data-testid="after-slot"]').text()).toBe('reachable');
   });
 
-  it('loads the pending read access request before enabling grant access and does not prompt on mount', async () => {
+  it('shows read recovery without requesting permission before click', async () => {
     repositoryRecoveryErrorsRef.value = [
       createSerializedRecoveryError({
         spaceName: 'Work',
@@ -310,46 +301,19 @@ describe('RepositoryExplorerWidget', () => {
       }),
     ];
 
-    let resolveRequest: ((value: unknown) => void) | undefined;
-    prepareAccessRequestMock.mockImplementation(
-      () =>
-        new Promise((resolve) => {
-          resolveRequest = resolve;
-        }),
-    );
-
     const wrapper = await mountWidget();
-
-    await vi.waitFor(() => {
-      expect(prepareAccessRequestMock).toHaveBeenCalledWith({
-        operation: 'read',
-        spaceName: 'Work',
-      });
-    });
 
     const grantButtonBeforeLoad = wrapper
       .findAll('button')
       .find((button) => button.text() === 'Grant access');
 
-    if (!grantButtonBeforeLoad || !resolveRequest) {
-      throw new Error('Expected Grant access button and pending request resolver');
+    if (!grantButtonBeforeLoad) {
+      throw new Error('Expected Grant access button');
     }
 
-    expect(grantButtonBeforeLoad.attributes('disabled')).toBeDefined();
+    expect(grantButtonBeforeLoad.attributes('disabled')).toBeUndefined();
     expect(wrapper.text()).not.toContain('Cancel');
-    expect(requestPreparedAccessMock).not.toHaveBeenCalled();
-
-    hasPreparedRequestRef.value = true;
-    resolveRequest({ operation: 'read', spaceName: 'Work' });
-
-    await vi.waitFor(() => {
-      const grantButton = wrapper
-        .findAll('button')
-        .find((button) => button.text() === 'Grant access');
-
-      expect(grantButton?.attributes('disabled')).toBeUndefined();
-    });
-    expect(requestPreparedAccessMock).not.toHaveBeenCalled();
+    expect(requestAccessMock).not.toHaveBeenCalled();
   });
 
   it('calls the main-thread permission broker without retrying the route after grant', async () => {
@@ -359,21 +323,9 @@ describe('RepositoryExplorerWidget', () => {
         mode: 'read',
       }),
     ];
-    prepareAccessRequestMock.mockResolvedValue({
-      spaceName: 'Work',
-      operation: 'read',
-    });
-    requestPreparedAccessMock.mockResolvedValue({ status: 'granted' });
-    hasPreparedRequestRef.value = true;
+    requestAccessMock.mockResolvedValue({ status: 'granted' });
 
     const wrapper = await mountWidget();
-
-    await vi.waitFor(() => {
-      expect(prepareAccessRequestMock).toHaveBeenCalledWith({
-        operation: 'read',
-        spaceName: 'Work',
-      });
-    });
 
     const grantButton = wrapper
       .findAll('button')
@@ -385,7 +337,7 @@ describe('RepositoryExplorerWidget', () => {
 
     await grantButton.trigger('click');
 
-    expect(requestPreparedAccessMock).toHaveBeenCalledWith({
+    expect(requestAccessMock).toHaveBeenCalledWith({
       operation: 'read',
       spaceName: 'Work',
     });
@@ -399,21 +351,9 @@ describe('RepositoryExplorerWidget', () => {
         mode: 'read',
       }),
     ];
-    prepareAccessRequestMock.mockResolvedValue({
-      spaceName: 'Work',
-      operation: 'read',
-    });
-    requestPreparedAccessMock.mockResolvedValue({ status: 'denied' });
-    hasPreparedRequestRef.value = true;
+    requestAccessMock.mockResolvedValue({ status: 'denied' });
 
     const wrapper = await mountWidget();
-
-    await vi.waitFor(() => {
-      expect(prepareAccessRequestMock).toHaveBeenCalledWith({
-        operation: 'read',
-        spaceName: 'Work',
-      });
-    });
 
     const grantButton = wrapper
       .findAll('button')
@@ -425,7 +365,7 @@ describe('RepositoryExplorerWidget', () => {
 
     await grantButton.trigger('click');
 
-    expect(requestPreparedAccessMock).toHaveBeenCalledWith({
+    expect(requestAccessMock).toHaveBeenCalledWith({
       operation: 'read',
       spaceName: 'Work',
     });
@@ -465,7 +405,7 @@ describe('RepositoryExplorerWidget', () => {
 
     const wrapper = await mountWidget();
 
-    expect(prepareAccessRequestMock).not.toHaveBeenCalled();
+    expect(requestAccessMock).not.toHaveBeenCalled();
     expect(wrapper.text()).not.toContain('Grant access');
     expect(wrapper.text()).not.toContain('Permission required');
   });

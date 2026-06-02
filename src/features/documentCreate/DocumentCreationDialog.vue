@@ -3,7 +3,7 @@ import { useFSNodeStat } from '@entity/fsEntry';
 import { computed, ref, toRefs } from 'vue';
 import { DATABASE_DOCUMENT_TYPE } from '../../shared/lib/databaseDocument';
 import { getFileSystemAccessRecovery, type FileSystemAccessRecovery } from '@shared/lib/fileSystem';
-import { useFileSystemAccessPermissionBroker } from '@shared/service/fileSystem';
+import { useFileSystemAccessPermissionBroker } from '@shared/service/fileSystemClient';
 import { MDDialog } from '@shared/ui/Dialog';
 import { MDTextField } from '@shared/ui/TextField';
 import { MDSelectBase, MDSelectOption } from '@shared/ui/Select';
@@ -29,8 +29,7 @@ const loading = ref(false);
 const { createDocument } = useRepository(path);
 const { data: directoryStat } = useFSNodeStat(path);
 const { confirm } = useDialog();
-const { clearPreparedRequest, prepareAccessRequest, requestPreparedAccess } =
-  useFileSystemAccessPermissionBroker();
+const { requestAccess } = useFileSystemAccessPermissionBroker();
 
 const canEditDirectoryContents = computed(() => directoryStat.value?.capabilities?.canEditChildren);
 
@@ -52,8 +51,6 @@ const createRepositoryDocument = async () => {
 };
 
 const requestWriteAccess = async (recovery: FileSystemAccessRecovery) => {
-  await prepareAccessRequest(recovery);
-
   const shouldGrantAccess = await confirm({
     headline: 'Grant write access',
     supportingText: `Mioframe remembers "${recovery.spaceName}", but your browser requires write access before creating a document in it.`,
@@ -63,11 +60,10 @@ const requestWriteAccess = async (recovery: FileSystemAccessRecovery) => {
 
   if (!shouldGrantAccess) {
     errorText.value = 'Grant write access to create entries in this remembered space.';
-    clearPreparedRequest(recovery);
     return false;
   }
 
-  const result = await requestPreparedAccess(recovery);
+  const result = await requestAccess(recovery);
 
   if (result.status === 'granted') {
     errorText.value = undefined;
@@ -78,7 +74,6 @@ const requestWriteAccess = async (recovery: FileSystemAccessRecovery) => {
     result.status === 'denied'
       ? 'Creating entries is not allowed in this remembered space because your browser denied write access.'
       : 'Could not request browser permission. Try again from this action.';
-  void prepareAccessRequest(recovery);
 
   return false;
 };

@@ -2,7 +2,7 @@ import { createSafeErrorCause, DomainError } from '@shared/lib/error';
 import { isUserFileSelectionCancel } from '@shared/lib/fileSystem';
 import { getFileSystemAccessRecovery } from '@shared/lib/fileSystem';
 import { reportHandledError } from '@shared/lib/reportHandledError';
-import { useFileSystemAccessPermissionBroker } from '@shared/service/fileSystem';
+import { useFileSystemAccessPermissionBroker } from '@shared/service/fileSystemClient';
 import { useDialog } from '@shared/ui/Dialog';
 import { useSnackbar } from '@shared/ui/Snackbar';
 import { ImportDocumentErrorCode } from './importDocumentErrorCode';
@@ -29,8 +29,7 @@ export const useImportDocumentAction = () => {
   const { createImportedDocument, readImportDocumentDraft } = useImportDocument();
   const { addSnackbar } = useSnackbar();
   const { confirm } = useDialog();
-  const { clearPreparedRequest, prepareAccessRequest, requestPreparedAccess } =
-    useFileSystemAccessPermissionBroker();
+  const { requestAccess } = useFileSystemAccessPermissionBroker();
 
   const importDocument = async (path: string) => {
     try {
@@ -51,8 +50,6 @@ export const useImportDocumentAction = () => {
           throw error;
         }
 
-        await prepareAccessRequest(recovery);
-
         const shouldGrantAccess = await confirm({
           headline: 'Grant write access',
           supportingText: `Mioframe remembers "${recovery.spaceName}", but your browser requires write access before importing a document into it.`,
@@ -61,17 +58,15 @@ export const useImportDocumentAction = () => {
         });
 
         if (!shouldGrantAccess) {
-          clearPreparedRequest(recovery);
           addSnackbar({
             text: 'Grant write access to import documents into this remembered space.',
           });
           return undefined;
         }
 
-        const result = await requestPreparedAccess(recovery);
+        const result = await requestAccess(recovery);
 
         if (result.status !== 'granted') {
-          void prepareAccessRequest(recovery);
           addSnackbar({
             text:
               result.status === 'denied'

@@ -4,4 +4,3 @@ export {
   type DeviceFileDisplayRecord,
   type ReadDirectoryOptions,
 } from './useFileSystemService';
-export { useFileSystemAccessPermissionBroker } from './useFileSystemAccessPermissionBroker';
