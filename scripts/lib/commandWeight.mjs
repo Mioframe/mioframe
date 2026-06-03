@@ -1,9 +1,6 @@
-import { availableParallelism } from 'node:os';
-
 import toolingConfig from '../../config/tooling.json' with { type: 'json' };
 
 const commandWeightConfig = toolingConfig.verification.commandWeight;
-const eslintConfig = toolingConfig.verification.eslint;
 
 /**
  * Classify a verification command by the expected local resource cost.
@@ -52,11 +49,9 @@ export function resolveEslintConcurrency() {
     return 'auto';
   }
 
-  const parallelism = availableParallelism();
-  const reservedForSystem = Math.max(1, parallelism - 1);
-  const bounded = Math.min(eslintConfig.maxLocalConcurrency, reservedForSystem);
-
-  return String(Math.max(1, bounded));
+  // Keep local verify warning-free; forced worker concurrency can emit
+  // ESLintPoorConcurrencyWarning even when lint itself succeeds.
+  return 'off';
 }
 
 function classifyFileScopedWeight(config, fileCount, isFullRepo) {

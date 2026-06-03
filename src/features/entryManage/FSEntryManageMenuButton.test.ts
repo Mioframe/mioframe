@@ -61,25 +61,30 @@ describe('FSEntryManageMenuButton', () => {
     renderedLabels.value = [];
   });
 
-  const mountButton = async (
-    props?: Partial<{
-      canChangePath: boolean;
-      canDelete: boolean;
-      canEditChildren: boolean;
-      entryType: FSNodeType;
-      showDocumentActions: boolean;
-    }>,
-  ) => {
+  type MountButtonProps = {
+    canChangePath?: boolean | undefined;
+    canDelete?: boolean | undefined;
+    canEditChildren?: boolean | undefined;
+    entryType?: FSNodeType | undefined;
+    showDocumentActions?: boolean | undefined;
+  };
+
+  const mountButton = async (props?: MountButtonProps) => {
     const { default: FSEntryManageMenuButton } = await import('./FSEntryManageMenuButton.vue');
+    const resolvedProps: MountButtonProps = props ?? {};
 
     return mount(FSEntryManageMenuButton, {
       props: {
         path: '/target',
-        entryType: FSNodeType.Directory,
-        canEditChildren: true,
-        canChangePath: true,
-        canDelete: true,
-        ...props,
+        entryType: resolvedProps.entryType ?? FSNodeType.Directory,
+        canChangePath: resolvedProps.canChangePath ?? true,
+        canDelete: resolvedProps.canDelete ?? true,
+        ...(Object.hasOwn(resolvedProps, 'canEditChildren')
+          ? { canEditChildren: resolvedProps.canEditChildren }
+          : { canEditChildren: true }),
+        ...(resolvedProps.showDocumentActions === undefined
+          ? {}
+          : { showDocumentActions: resolvedProps.showDocumentActions }),
       },
     });
   };
@@ -117,6 +122,17 @@ describe('FSEntryManageMenuButton', () => {
     });
 
     expect(renderedLabels.value).toEqual([]);
+  });
+
+  it('keeps create and import actions reachable when edit capability is unknown', async () => {
+    await mountButton({
+      canEditChildren: undefined,
+      canChangePath: false,
+      canDelete: false,
+      showDocumentActions: true,
+    });
+
+    expect(renderedLabels.value).toEqual(['Create directory', 'Create document', 'Import JSON']);
   });
 
   it('exposes the entry-specific menu tooltip', async () => {

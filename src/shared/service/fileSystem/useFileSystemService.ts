@@ -2,9 +2,14 @@ import { zodAutomergeFileName } from '@shared/lib/automergeAdapter';
 import {
   DEVICE_FILES_ROOT_NAME,
   DeviceFileSystemProvider,
-  type DeviceFileRecord,
+  type DeviceFileDisplayRecord,
+  type MountedDeviceFileRecord,
 } from '@shared/lib/deviceFileSystemProvider';
 import { zodIs } from '@shared/lib/validateZodScheme';
+import {
+  createMountedWebFileSystemProvider,
+  createOriginPrivateStorageProvider,
+} from '@shared/lib/webFileSystemProvider';
 import type { FSNodeStat, IFileSystemProvider } from '@shared/lib/virtualFileSystem';
 import { VirtualFileSystem, PathUtils } from '@shared/lib/virtualFileSystem';
 import { MemoryFileSystem } from '@shared/lib/virtualFileSystem/MemoryFileSystem';
@@ -19,6 +24,10 @@ import {
   type PersistedDeviceDirectoryRecord,
   useFileSystemDirectoryHandleService,
 } from './setupFileSystemDirectoryHandleService';
+import {
+  createFileSystemAccessRequestRegistry,
+  type WriteAccessRecoveryHandler,
+} from './fileSystemAccessRequestRegistry';
 
 /**
  * UI-facing options for reading directory content through the shared file-system service.
@@ -29,7 +38,7 @@ export interface ReadDirectoryOptions {
 }
 
 export { DEVICE_FILES_ROOT_NAME };
-export type { DeviceFileRecord };
+export type { DeviceFileDisplayRecord, WriteAccessRecoveryHandler };
 
 const didPersistedDeviceDirectoryRecordsChange = (
   nextRecords: PersistedDeviceDirectoryRecord[],
@@ -47,13 +56,41 @@ const didPersistedDeviceDirectoryRecordsChange = (
 
 const setupFileSystemService = () => {
   const vfs = new VirtualFileSystem();
-  const deviceFileSystemProvider = DeviceFileSystemProvider();
-  const { getRecordList, updateRecordList } = useFileSystemDirectoryHandleService();
-  const activeDeviceFiles$ = new BehaviorSubject<DeviceFileRecord[]>([]);
   const deviceFilesPath = PathUtils.join('/', DEVICE_FILES_ROOT_NAME);
+  const registry = createFileSystemAccessRequestRegistry({ deviceFilesPath });
+  const deviceFileSystemProvider = DeviceFileSystemProvider({
+    createProvider: (record) => {
+      if (record.kind !== 'localDirectory') {
+        return createOriginPrivateStorageProvider(record.handle);
+      }
+
+      // Use a holder so the refresh callback does not capture the provider variable
+      // from the same expression that assigns it.
+      const notifyHolder: { fn: () => Promise<void> } = {
+        fn: () => Promise.resolve(),
+      };
+      const provider = createMountedWebFileSystemProvider({
+        kind: record.kind,
+        rootHandle: record.handle,
+        onAccessRequired: ({ handle, mode }) =>
+          registry.upsertRequest({
+            spaceName: record.name,
+            handle,
+            mode,
+            refreshProvider: () => notifyHolder.fn(),
+          }),
+      });
+
+      notifyHolder.fn = () => provider.notifyAccessChanged();
+
+      return provider;
+    },
+  });
+  const { getRecordList, updateRecordList } = useFileSystemDirectoryHandleService();
+  const activeDeviceFiles$ = new BehaviorSubject<DeviceFileDisplayRecord[]>([]);
 
   const syncActiveDeviceFiles = () => {
-    activeDeviceFiles$.next(deviceFileSystemProvider.listRecords());
+    activeDeviceFiles$.next(deviceFileSystemProvider.listDisplayRecords());
   };
 
   const mountProvider = async (path: string, provider: IFileSystemProvider) => {
@@ -155,19 +192,11 @@ const setupFileSystemService = () => {
         name: nextName,
       });
     });
-    const permissionStates = await Promise.all(
-      normalizedRecords.map(async (record) => ({
-        permissionState: await record.handle.queryPermission?.({
-          mode: 'readwrite',
-        }),
-        record,
-      })),
-    );
-
-    permissionStates.forEach(({ permissionState, record }) => {
-      if (permissionState === 'granted') {
-        deviceFileSystemProvider.upsertRecord(record);
-      }
+    normalizedRecords.forEach((record) => {
+      deviceFileSystemProvider.upsertRecord({
+        ...record,
+        kind: 'localDirectory',
+      });
     });
 
     if (didPersistedDeviceDirectoryRecordsChange(normalizedRecords, records)) {
@@ -182,6 +211,7 @@ const setupFileSystemService = () => {
     if (fileSystemDirectoryHandle) {
       deviceFileSystemProvider.upsertRecord({
         name: OPFSName,
+        kind: 'browserStorage',
         handle: fileSystemDirectoryHandle,
       });
     }
@@ -240,15 +270,16 @@ const setupFileSystemService = () => {
 
   const addDeviceDirectory = async (
     handle: FileSystemDirectoryHandle,
-  ): Promise<DeviceFileRecord> => {
+  ): Promise<{ name: string }> => {
     await deviceFilesReady;
 
     const records = await getRecordList();
     const existingRecord = await findRecordByHandle(records, handle);
     const nextRecord = {
       name: getUniqueDeviceDirectoryName(handle.name, records, existingRecord),
+      kind: 'localDirectory',
       handle,
-    } satisfies DeviceFileRecord;
+    } satisfies MountedDeviceFileRecord;
     const nextPersistedRecord = {
       name: nextRecord.name,
       handle: nextRecord.handle,
@@ -267,7 +298,9 @@ const setupFileSystemService = () => {
     deviceFileSystemProvider.upsertRecord(nextRecord);
     syncActiveDeviceFiles();
 
-    return nextRecord;
+    return {
+      name: nextRecord.name,
+    };
   };
 
   const removeDeviceDirectory = async (name: string): Promise<void> => {
@@ -286,6 +319,7 @@ const setupFileSystemService = () => {
 
     await updateRecordList(nextRecords);
     deviceFileSystemProvider.removeRecord(name);
+    registry.clearForSpace(name);
     syncActiveDeviceFiles();
   };
 
@@ -304,6 +338,11 @@ const setupFileSystemService = () => {
     remove,
     addDeviceDirectory,
     removeDeviceDirectory,
+    getFileSystemAccessRequest: registry.getRequest,
+    getTemporaryFileSystemAccessHandle: registry.prepareHandle,
+    registerWriteAccessRecoveryHandler: registry.registerWriteRecoveryHandler,
+    resolveFileSystemAccessRequest: registry.resolve,
+    cancelFileSystemAccessRequest: registry.cancel,
     deviceFiles: fromObservable(activeDeviceFiles$),
   };
 };

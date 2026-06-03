@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { MemoryFileSystem } from '../virtualFileSystem/MemoryFileSystem';
 import { FileSystemError, FSNodeType, VirtualFileSystem, VfsError } from '../virtualFileSystem';
 import {
-  type DeviceFileRecord,
+  type MountedDeviceFileRecord,
   type DeviceFileSystemProvider as DeviceFileSystemProviderType,
   DeviceFileSystemProvider,
 } from './DeviceFileSystemProvider';
@@ -74,7 +74,7 @@ describe('DeviceFileSystemProvider', () => {
   beforeEach(() => {
     fileSystems = new Map();
     provider = DeviceFileSystemProvider({
-      createProvider: (handle) => {
+      createProvider: ({ handle }) => {
         const fileSystem = fileSystems.get(handle);
 
         if (!fileSystem) {
@@ -91,9 +91,10 @@ describe('DeviceFileSystemProvider', () => {
     const fileSystem = new MemoryFileSystem();
     const record = {
       name,
+      kind: name === 'Browser Storage' ? 'browserStorage' : 'localDirectory',
       handle,
       ...(description === undefined ? {} : { description }),
-    } satisfies DeviceFileRecord;
+    } satisfies MountedDeviceFileRecord;
 
     fileSystems.set(handle, fileSystem);
     provider.upsertRecord(record);
@@ -124,6 +125,23 @@ describe('DeviceFileSystemProvider', () => {
         );
       }),
     ).toBe(true);
+  });
+
+  it('should expose safe display records without handles', () => {
+    mountRecord('Browser Storage');
+    mountRecord('Projects');
+
+    expect(provider.listDisplayRecords()).toEqual([
+      {
+        canDisconnect: false,
+        name: 'Browser Storage',
+      },
+      {
+        canDisconnect: true,
+        name: 'Projects',
+      },
+    ]);
+    expect(JSON.stringify(provider.listDisplayRecords())).not.toContain('isSameEntry');
   });
 
   it('should expose root directory capabilities and description exactly', async () => {
@@ -306,17 +324,16 @@ describe('DeviceFileSystemProvider', () => {
   });
 
   it('should reuse the existing provider for the same mounted name and handle without emitting create twice', async () => {
-    const createProvider = (handle: FileSystemDirectoryHandle) => {
-      const fileSystem = fileSystems.get(handle);
-
-      if (!fileSystem) {
-        throw new Error(`Missing file system for ${handle.name}`);
-      }
-
-      return fileSystem;
-    };
     const localProvider = DeviceFileSystemProvider({
-      createProvider,
+      createProvider: ({ handle }) => {
+        const fileSystem = fileSystems.get(handle);
+
+        if (!fileSystem) {
+          throw new Error(`Missing file system for ${handle.name}`);
+        }
+
+        return fileSystem;
+      },
     });
     const handle = createHandle('Projects');
     const fileSystem = new MemoryFileSystem();
@@ -330,6 +347,7 @@ describe('DeviceFileSystemProvider', () => {
     localProvider.upsertRecord({
       name: 'Projects',
       description: 'Directory on this device',
+      kind: 'localDirectory',
       handle,
     });
     await localProvider.writeFile('/Projects/first.txt', 'first', {
@@ -340,6 +358,7 @@ describe('DeviceFileSystemProvider', () => {
     localProvider.upsertRecord({
       name: 'Projects',
       description: 'Directory on this device',
+      kind: 'localDirectory',
       handle,
     });
     await localProvider.writeFile('/Projects/second.txt', 'second', {
@@ -356,5 +375,28 @@ describe('DeviceFileSystemProvider', () => {
         ['second.txt', expect.objectContaining({ type: FSNodeType.File })],
       ]),
     );
+  });
+
+  it('forwards nested provider events through the global watch subscription without a path argument', async () => {
+    const innerFileSystem = new MemoryFileSystem();
+    const localProvider = DeviceFileSystemProvider({
+      createProvider: () => innerFileSystem,
+    });
+    const events: Array<{ path: string; type: string }> = [];
+
+    localProvider.watch((event) => {
+      events.push({ path: event.path, type: event.type });
+    });
+
+    localProvider.upsertRecord({
+      name: 'Projects',
+      kind: 'localDirectory',
+      handle: createHandle('Projects'),
+    });
+
+    await localProvider.createDirectory('/Projects/sub-folder');
+
+    expect(events).toContainEqual({ path: '/Projects', type: 'create' });
+    expect(events).toContainEqual({ path: '/Projects/sub-folder', type: 'create' });
   });
 });

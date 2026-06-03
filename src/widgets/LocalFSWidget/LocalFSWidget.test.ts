@@ -170,6 +170,8 @@ describe('LocalFSWidget', () => {
     expect(wrapper.text()).toContain('My Space');
     expect(wrapper.text()).toContain('Mioframe space on this device');
     expect(wrapper.text()).toContain('Disconnect Mioframe space');
+    expect(wrapper.text()).not.toContain('Reconnect');
+    expect(wrapper.text()).not.toContain('Grant access');
   });
 
   it('keeps the browser-saved space description for the built-in browser entry', async () => {

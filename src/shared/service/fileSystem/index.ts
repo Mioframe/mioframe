@@ -1,6 +1,6 @@
 export {
   useFileSystemService,
   DEVICE_FILES_ROOT_NAME,
-  type DeviceFileRecord,
+  type DeviceFileDisplayRecord,
   type ReadDirectoryOptions,
 } from './useFileSystemService';

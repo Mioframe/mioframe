@@ -3,6 +3,11 @@ import { useMainServiceClient } from '@shared/service/useService';
 import { isUndefined } from 'es-toolkit';
 import { computed, toValue, type Ref } from 'vue';
 
+/**
+ * Reads the VFS stat for a path and exposes the latest value as query state.
+ * @param path - Absolute VFS path to stat.
+ * @returns Reactive stat value, raw error, safe message, and loading state.
+ */
 export const useFSNodeStat = (path: Ref<string>) => {
   const {
     fileSystem: { fsNodeStat },
@@ -29,6 +34,7 @@ export const useFSNodeStat = (path: Ref<string>) => {
 
   return {
     data,
+    error,
     errorMessage,
     isLoading,
   };

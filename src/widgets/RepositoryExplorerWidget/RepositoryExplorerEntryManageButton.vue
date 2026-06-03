@@ -29,9 +29,9 @@ const showCreateDirectoryDialog = ref(false);
 const showCreateDocumentDialog = ref(false);
 const showRenameDialog = ref(false);
 
-const canEditChildren = computed(() => fsEntryStat.value?.capabilities?.canEditChildren === true);
-const canChangePath = computed(() => fsEntryStat.value?.capabilities?.canChangePath === true);
-const canDelete = computed(() => fsEntryStat.value?.capabilities?.canDelete === true);
+const canEditChildren = computed(() => fsEntryStat.value?.capabilities?.canEditChildren);
+const canChangePath = computed(() => fsEntryStat.value?.capabilities?.canChangePath);
+const canDelete = computed(() => fsEntryStat.value?.capabilities?.canDelete);
 
 const onCloseCreateDirectoryDialog = () => {
   showCreateDirectoryDialog.value = false;

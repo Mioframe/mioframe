@@ -3,21 +3,9 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { defineComponent, h, ref } from 'vue';
 import { mount } from '@vue/test-utils';
 
-const canEditChildren = ref(true);
-const { openMock, importDocumentMock } = vi.hoisted(() => ({
-  openMock: vi.fn(),
-  importDocumentMock: vi.fn(),
-}));
-
-vi.mock('@entity/fsEntry', () => ({
-  useFSNodeStat: () => ({
-    data: ref({
-      capabilities: {
-        canEditChildren: canEditChildren.value,
-      },
-    }),
-  }),
-}));
+const canEditDirectoryContents = ref<boolean | undefined>(true);
+const openMock = vi.fn();
+const importDocumentMock = vi.fn();
 
 vi.mock('@page/routes', () => ({
   useStackNavigation: () => ({
@@ -97,16 +85,6 @@ vi.mock('@feature/importDocument', () => ({
   }),
 }));
 
-vi.mock('@shared/ui/Snackbar', () => ({
-  useSnackbar: () => ({
-    addSnackbar: vi.fn(),
-  }),
-}));
-
-vi.mock('@shared/lib/reportHandledError', () => ({
-  reportHandledError: vi.fn(),
-}));
-
 vi.mock('@shared/ui/Layout', () => ({
   MDPane: defineComponent({
     name: 'MDPaneStub',
@@ -127,7 +105,7 @@ vi.mock('@shared/ui/AppBar', () => ({
     },
     setup(props, { slots }) {
       return () =>
-        h('header', [h('h1', props.headline), slots.trailingElements?.(), slots.default?.()]);
+        h('header', [h('h1', props.headline), slots.leadingButton?.(), slots.trailingElements?.()]);
     },
   }),
 }));
@@ -136,10 +114,6 @@ vi.mock('@shared/ui/Button', () => ({
   MDExtendedFab: defineComponent({
     name: 'MDExtendedFabStub',
     props: {
-      tooltip: {
-        type: String,
-        default: undefined,
-      },
       label: {
         type: String,
         required: true,
@@ -152,7 +126,7 @@ vi.mock('@shared/ui/Button', () => ({
           'button',
           {
             type: 'button',
-            'aria-label': props.tooltip ?? props.label,
+            'aria-label': props.label,
             onClick: () => {
               emit('click', new MouseEvent('click'));
             },
@@ -169,47 +143,17 @@ vi.mock('@shared/ui/Button', () => ({
   }),
 }));
 
-vi.mock('@shared/ui/Icon', () => ({
-  MDSymbol: defineComponent({
-    name: 'MDSymbolStub',
-    props: {
-      name: {
-        type: String,
-        required: true,
-      },
-    },
-    setup(props) {
-      return () => h('span', props.name);
-    },
-  }),
-}));
-
 vi.mock('@widget/RepositoryExplorerWidget', () => ({
   RepositoryExplorerEntryManageButton: defineComponent({
     name: 'RepositoryExplorerEntryManageButtonStub',
-    props: {
-      showDocumentActions: {
-        type: Boolean,
-        default: false,
-      },
-    },
-    setup(props) {
-      return () =>
-        h(
-          'button',
-          {
-            type: 'button',
-          },
-          props.showDocumentActions
-            ? 'Nested directory actions'
-            : 'Current directory actions: Create directory',
-        );
+    setup() {
+      return () => h('button', { type: 'button' }, 'Current directory actions: Create directory');
     },
   }),
   RepositoryExplorerWidget: defineComponent({
     name: 'RepositoryExplorerWidgetStub',
     emits: ['clickPath', 'clickReturnHome', 'clickDocument'],
-    setup(_props, { slots, emit }) {
+    setup(_props, { emit, slots }) {
       return () =>
         h('main', [
           h(
@@ -239,7 +183,9 @@ vi.mock('@widget/RepositoryExplorerWidget', () => ({
             },
             'Document',
           ),
-          slots.after?.(),
+          slots.after?.({
+            canEditDirectoryContents: canEditDirectoryContents.value,
+          }),
         ]);
     },
   }),
@@ -261,7 +207,7 @@ const mountPane = async () => {
 
 describe('RepoExplorerPane', () => {
   afterEach(() => {
-    canEditChildren.value = true;
+    canEditDirectoryContents.value = true;
     openMock.mockReset();
     importDocumentMock.mockReset();
     document.body.innerHTML = '';
@@ -271,9 +217,7 @@ describe('RepoExplorerPane', () => {
     const wrapper = await mountPane();
 
     expect(wrapper.text()).toContain('Current directory actions: Create directory');
-    expect(wrapper.text()).toContain('Add');
     expect(wrapper.findAll('button[aria-label="Add"]')).toHaveLength(1);
-    expect(wrapper.find('button[aria-label="Create directory"]').exists()).toBe(false);
 
     await wrapper.get('button[aria-label="Add"]').trigger('click');
 
@@ -281,13 +225,20 @@ describe('RepoExplorerPane', () => {
     expect(wrapper.find('[data-testid="directory-create-dialog"]').exists()).toBe(false);
   });
 
-  it('shows the create-folder FAB only when the directory allows editing children', async () => {
-    canEditChildren.value = false;
+  it('hides the Add FAB only when the widget explicitly reports non-editable directory contents', async () => {
+    canEditDirectoryContents.value = false;
 
     const wrapper = await mountPane();
 
     expect(wrapper.find('button[aria-label="Add"]').exists()).toBe(false);
-    expect(wrapper.find('button[aria-label="Create directory"]').exists()).toBe(false);
+  });
+
+  it('keeps the Add FAB visible when the widget cannot guarantee editability yet', async () => {
+    canEditDirectoryContents.value = undefined;
+
+    const wrapper = await mountPane();
+
+    expect(wrapper.find('button[aria-label="Add"]').exists()).toBe(true);
   });
 
   it('renders the current folder title and keeps dialogs hidden by default', async () => {
@@ -326,7 +277,7 @@ describe('RepoExplorerPane', () => {
     expect(importDocumentMock).toHaveBeenCalledWith('/Google Drive/My Drive/Mioframe');
   });
 
-  it('routes breadcrumb, home, and document selections through stack navigation', async () => {
+  it('routes breadcrumb, home, and document selection through stack navigation', async () => {
     const wrapper = await mountPane();
     const buttons = wrapper.findAll('button');
     const pathButton = buttons.find((button) => button.text() === 'Path');
@@ -341,11 +292,20 @@ describe('RepoExplorerPane', () => {
     await homeButton.trigger('click');
     await documentButton.trigger('click');
 
-    expect(openMock).toHaveBeenCalledWith('repo', {
+    expect(openMock).toHaveBeenNthCalledWith(1, 'repo', {
       repoPath: '/Google Drive/My Drive',
     });
-    expect(openMock).toHaveBeenCalledWith('home', {}, { additionalPanes: 0, replace: true });
-    expect(openMock).toHaveBeenCalledWith(
+    expect(openMock).toHaveBeenNthCalledWith(
+      2,
+      'home',
+      {},
+      {
+        additionalPanes: 0,
+        replace: true,
+      },
+    );
+    expect(openMock).toHaveBeenNthCalledWith(
+      3,
       'document',
       {
         documentDirectory: '/Google Drive/My Drive/Mioframe',
