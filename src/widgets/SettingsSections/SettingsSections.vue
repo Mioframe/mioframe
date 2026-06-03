@@ -1,11 +1,10 @@
 <script setup lang="ts">
 import { useDiagnosticsSettings, useLocalSettings } from '@entity/localSettings';
-import { useBrowserStoragePersistence } from '@entity/browserStoragePersistence';
-import { useBrowserStoragePersistenceEnable } from '@feature/browserStoragePersistenceEnable';
 import { GOOGLE_DRIVE_INTEGRATION_AVAILABLE, SENTRY_DIAGNOSTICS_AVAILABLE } from '@shared/config';
 import { MDListContainer, MDListItem } from '@shared/ui/Lists';
 import SettingsSection from './SettingsSection.vue';
 import SettingsCheckboxListItem from './SettingsCheckboxListItem.vue';
+import StorageSettingsSection from './StorageSettingsSection.vue';
 
 const emit = defineEmits<{
   selectPrivacyPolicy: [];
@@ -48,57 +47,11 @@ const onClickHelp = () => {
 const onClickAboutMioframe = () => {
   emit('selectAboutMioframe');
 };
-
-const { status: browserStorageStatus } = useBrowserStoragePersistence();
-const { enableStorage, isRequesting: isEnablingStorage } = useBrowserStoragePersistenceEnable();
-
-const onEnableStorage = () => {
-  void enableStorage();
-};
 </script>
 
 <template>
   <div class="settings-sections">
-    <SettingsSection title="Storage">
-      <MDListContainer is="div">
-        <MDListItem
-          is="button"
-          v-if="browserStorageStatus === 'ordinary'"
-          type="button"
-          headline="Enable more reliable storage"
-          :disabled="isEnablingStorage"
-          @click="onEnableStorage"
-        >
-          <template #supportingText>
-            Standard browser storage is fine for trying Mioframe, but the browser may clear local
-            data under storage pressure. More reliable storage reduces that risk and does not
-            replace backups.
-          </template>
-        </MDListItem>
-
-        <MDListItem
-          is="div"
-          v-else-if="browserStorageStatus === 'persistent'"
-          headline="More reliable storage enabled"
-        >
-          <template #supportingText>
-            More reliable browser storage is enabled. This reduces the risk of automatic browser
-            cleanup, but it does not replace backups.
-          </template>
-        </MDListItem>
-
-        <MDListItem
-          is="div"
-          v-else-if="browserStorageStatus === 'unsupported'"
-          headline="More reliable storage unavailable"
-        >
-          <template #supportingText>
-            This browser cannot enable more reliable storage here. You can continue, but keep
-            backups for important data.
-          </template>
-        </MDListItem>
-      </MDListContainer>
-    </SettingsSection>
+    <StorageSettingsSection />
 
     <SettingsSection title="Privacy & diagnostics">
       <MDListContainer is="div">

@@ -35,13 +35,6 @@ vi.mock('@feature/deviceDirectoryDisconnect', () => ({
   }),
 }));
 
-vi.mock('@feature/browserStoragePersistenceEnable', () => ({
-  useBrowserStoragePersistenceEnable: () => ({
-    enableStorage: enableStorageMock,
-    isRequesting,
-  }),
-}));
-
 vi.mock('@feature/mioframeSpacePick', () => ({
   MioframeSpaceCreateListItem: defineComponent({
     name: 'MioframeSpaceCreateListItemStub',
@@ -260,7 +253,7 @@ describe('LocalFSWidget', () => {
     expect(wrapper.emitted('clickPath')).toBeUndefined();
   });
 
-  it('shows "Enable more reliable storage" action for the browser entry in ordinary state', async () => {
+  it('shows "Enable more reliable storage" action above Browser Storage nav in ordinary state', async () => {
     persistenceStatus.value = 'ordinary';
     deviceFiles.value = [
       {
@@ -273,9 +266,18 @@ describe('LocalFSWidget', () => {
     const wrapper = await mountLocalFSWidget();
 
     const enableButton = wrapper.find('[data-headline="Enable more reliable storage"]');
+    const browserStorageNav = wrapper.find('[data-headline="Browser Storage"]');
+
     expect(enableButton.exists()).toBe(true);
     expect(enableButton.element.tagName).toBe('BUTTON');
-    expect(wrapper.text()).toContain('Enable more reliable storage');
+    expect(browserStorageNav.exists()).toBe(true);
+
+    // Action must appear before the nav item in the DOM (DOCUMENT_POSITION_FOLLOWING = 4).
+    const enableBeforeNav = !!(
+      enableButton.element.compareDocumentPosition(browserStorageNav.element) &
+      Node.DOCUMENT_POSITION_FOLLOWING
+    );
+    expect(enableBeforeNav).toBe(true);
   });
 
   it('does not emit clickPath when the enable storage action is clicked', async () => {
@@ -297,7 +299,7 @@ describe('LocalFSWidget', () => {
     expect(wrapper.emitted('clickPath')).toBeUndefined();
   });
 
-  it('shows "More reliable storage enabled" info item for the browser entry in persistent state', async () => {
+  it('shows no extra item for the browser entry in persistent state, Browser Storage nav remains', async () => {
     persistenceStatus.value = 'persistent';
     deviceFiles.value = [
       {
@@ -309,11 +311,12 @@ describe('LocalFSWidget', () => {
 
     const wrapper = await mountLocalFSWidget();
 
-    expect(wrapper.text()).toContain('More reliable storage enabled');
     expect(wrapper.find('[data-headline="Enable more reliable storage"]').exists()).toBe(false);
+    expect(wrapper.find('[data-headline="More reliable storage enabled"]').exists()).toBe(false);
+    expect(wrapper.find('[data-headline="Browser Storage"]').exists()).toBe(true);
   });
 
-  it('shows "More reliable storage unavailable" info item for the browser entry in unsupported state', async () => {
+  it('shows "More reliable storage unavailable" warning above Browser Storage nav in unsupported state', async () => {
     persistenceStatus.value = 'unsupported';
     deviceFiles.value = [
       {
@@ -325,11 +328,21 @@ describe('LocalFSWidget', () => {
 
     const wrapper = await mountLocalFSWidget();
 
-    expect(wrapper.text()).toContain('More reliable storage unavailable');
-    expect(wrapper.find('[data-headline="Enable more reliable storage"]').exists()).toBe(false);
+    const warningItem = wrapper.find('[data-headline="More reliable storage unavailable"]');
+    const browserStorageNav = wrapper.find('[data-headline="Browser Storage"]');
+
+    expect(warningItem.exists()).toBe(true);
+    expect(browserStorageNav.exists()).toBe(true);
+
+    // Warning must appear before the nav item in the DOM (DOCUMENT_POSITION_FOLLOWING = 4).
+    const warningBeforeNav = !!(
+      warningItem.element.compareDocumentPosition(browserStorageNav.element) &
+      Node.DOCUMENT_POSITION_FOLLOWING
+    );
+    expect(warningBeforeNav).toBe(true);
   });
 
-  it('shows no persistence status item while checking', async () => {
+  it('shows no persistence status item while checking, Browser Storage nav remains', async () => {
     persistenceStatus.value = 'checking';
     deviceFiles.value = [
       {
@@ -346,6 +359,7 @@ describe('LocalFSWidget', () => {
     expect(wrapper.find('[data-headline="More reliable storage unavailable"]').exists()).toBe(
       false,
     );
+    expect(wrapper.find('[data-headline="Browser Storage"]').exists()).toBe(true);
   });
 });
 /* eslint-enable vue/one-component-per-file -- Re-enable the rule after the inline component stubs used in this file. */

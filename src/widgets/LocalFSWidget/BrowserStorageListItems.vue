@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { useBrowserStoragePersistence } from '@entity/browserStoragePersistence';
-import { useBrowserStoragePersistenceEnable } from '@feature/browserStoragePersistenceEnable';
 import { MDListItem } from '@shared/ui/Lists';
 import { MDSymbol } from '@shared/ui/Icon';
 import LocalFSDeviceFileListItem from './LocalFSDeviceFileListItem.vue';
@@ -14,21 +13,18 @@ const emit = defineEmits<{
   clickPath: [name: string];
 }>();
 
-const { status } = useBrowserStoragePersistence();
-const { enableStorage, isRequesting } = useBrowserStoragePersistenceEnable();
+const { status, isRequesting, requestPersistence } = useBrowserStoragePersistence();
 
 const onClickNav = () => {
   emit('clickPath', props.name);
 };
 
 const onEnableStorage = () => {
-  void enableStorage();
+  void requestPersistence();
 };
 </script>
 
 <template>
-  <LocalFSDeviceFileListItem :name="name" :description="description" @click-path="onClickNav" />
-
   <MDListItem
     is="button"
     v-if="status === 'ordinary'"
@@ -46,16 +42,6 @@ const onEnableStorage = () => {
     </template>
   </MDListItem>
 
-  <MDListItem is="div" v-else-if="status === 'persistent'" headline="More reliable storage enabled">
-    <template #leadingIcon>
-      <MDSymbol name="shield" />
-    </template>
-    <template #supportingText>
-      More reliable browser storage is enabled. This reduces the risk of automatic browser cleanup,
-      but it does not replace backups.
-    </template>
-  </MDListItem>
-
   <MDListItem
     is="div"
     v-else-if="status === 'unsupported'"
@@ -69,4 +55,6 @@ const onEnableStorage = () => {
       important data.
     </template>
   </MDListItem>
+
+  <LocalFSDeviceFileListItem :name="name" :description="description" @click-path="onClickNav" />
 </template>

@@ -36,19 +36,13 @@ test('home screen shows browser storage reliability status', async ({ page }) =>
   ).toBeVisible();
 });
 
-test('settings contains a storage section', async ({ page }) => {
+test('settings contains a storage section with a checkbox-style item', async ({ page }) => {
   await launchApp(page);
 
   await page.getByRole('button', { name: /^settings$/i }).click();
 
   await expect(page.getByText(/^storage$/i)).toBeVisible();
-  await expect(
-    page
-      .getByText(
-        /standard browser storage|enable more reliable storage|more reliable storage enabled|more reliable storage unavailable/i,
-      )
-      .first(),
-  ).toBeVisible();
+  await expect(page.getByText(/more reliable browser storage/i).first()).toBeVisible();
 });
 
 test('denial keeps the app usable and browser storage visible', async ({ page }) => {

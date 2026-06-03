@@ -44,13 +44,6 @@ vi.mock('@entity/browserStoragePersistence', () => ({
   }),
 }));
 
-vi.mock('@feature/browserStoragePersistenceEnable', () => ({
-  useBrowserStoragePersistenceEnable: () => ({
-    enableStorage: enableStorageMock,
-    isRequesting: isEnablingStorage,
-  }),
-}));
-
 vi.mock('@shared/config', () => ({
   get GOOGLE_DRIVE_INTEGRATION_AVAILABLE() {
     return googleDriveIntegrationAvailable;
@@ -417,17 +410,19 @@ describe('SettingsSections', () => {
     unmount();
   });
 
-  it('renders enable storage button in ordinary state', async () => {
+  it('renders storage as checkbox-style item in ordinary state, unchecked and clickable', async () => {
     browserStorageStatus.value = 'ordinary';
     enableStorageMock.mockResolvedValue(undefined);
 
     const { root, unmount } = await mountSettingsSections();
 
-    const enableButton = getButtonByText(root, 'Enable more reliable storage');
-    expect(enableButton).not.toBeNull();
-    expect(root.textContent).toContain('Standard browser storage is fine for trying Mioframe');
+    const storageRow = getCheckboxRow(root, 'More reliable browser storage');
+    expect(storageRow).not.toBeNull();
+    expect(storageRow?.getAttribute('aria-checked')).toBe('false');
+    expect(root.textContent).toContain('Ask the browser to reduce the risk');
 
-    enableButton?.click();
+    const storageButton = getButtonByText(root, 'More reliable browser storage');
+    storageButton?.click();
     await nextTick();
 
     expect(enableStorageMock).toHaveBeenCalledTimes(1);
@@ -435,38 +430,60 @@ describe('SettingsSections', () => {
     unmount();
   });
 
-  it('renders persistent info item and no enable button in persistent state', async () => {
+  it('renders storage as checkbox-style item in persistent state, checked and not triggering disable', async () => {
     browserStorageStatus.value = 'persistent';
 
     const { root, unmount } = await mountSettingsSections();
 
-    expect(root.textContent).toContain('More reliable storage enabled');
+    const storageRow = getCheckboxRow(root, 'More reliable browser storage');
+    expect(storageRow).not.toBeNull();
+    expect(storageRow?.getAttribute('aria-checked')).toBe('true');
     expect(root.textContent).toContain('does not replace backups');
-    expect(getButtonByText(root, 'Enable more reliable storage')).toBeNull();
+    expect(root.textContent).not.toContain('More reliable storage enabled');
 
     unmount();
   });
 
-  it('renders unsupported info item and no enable button in unsupported state', async () => {
+  it('renders storage as disabled checkbox in unsupported state', async () => {
     browserStorageStatus.value = 'unsupported';
 
     const { root, unmount } = await mountSettingsSections();
 
-    expect(root.textContent).toContain('More reliable storage unavailable');
+    const storageRow = getCheckboxRow(root, 'More reliable browser storage');
+    expect(storageRow).not.toBeNull();
+    expect(storageRow?.getAttribute('aria-disabled')).toBe('true');
     expect(root.textContent).toContain('keep backups for important data');
-    expect(getButtonByText(root, 'Enable more reliable storage')).toBeNull();
+
+    const storageButton = getButtonByText(root, 'More reliable browser storage');
+    storageButton?.click();
+    await nextTick();
+
+    expect(enableStorageMock).not.toHaveBeenCalled();
 
     unmount();
   });
 
-  it('shows no storage status item while checking', async () => {
+  it('renders storage as disabled checkbox while checking', async () => {
     browserStorageStatus.value = 'checking';
 
     const { root, unmount } = await mountSettingsSections();
 
-    expect(getButtonByText(root, 'Enable more reliable storage')).toBeNull();
-    expect(root.textContent).not.toContain('More reliable storage enabled');
-    expect(root.textContent).not.toContain('More reliable storage unavailable');
+    const storageRow = getCheckboxRow(root, 'More reliable browser storage');
+    expect(storageRow).not.toBeNull();
+    expect(storageRow?.getAttribute('aria-disabled')).toBe('true');
+
+    unmount();
+  });
+
+  it('renders storage as disabled checkbox while request is in progress', async () => {
+    browserStorageStatus.value = 'ordinary';
+    isEnablingStorage.value = true;
+
+    const { root, unmount } = await mountSettingsSections();
+
+    const storageRow = getCheckboxRow(root, 'More reliable browser storage');
+    expect(storageRow).not.toBeNull();
+    expect(storageRow?.getAttribute('aria-disabled')).toBe('true');
 
     unmount();
   });
