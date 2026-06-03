@@ -3,7 +3,7 @@ import { useFSNodeStat } from '@entity/fsEntry';
 import { useFileSystem } from '@entity/mountedDirectories';
 import { getFileSystemAccessRecovery, type FileSystemAccessRecovery } from '@shared/lib/fileSystem';
 import { PathUtils } from '@shared/lib/virtualFileSystem';
-import { useFileSystemAccessPermissionBroker } from '@shared/service/fileSystemClient';
+import { useFileSystemAccessPermissionBroker } from '@shared/serviceClient/fileSystem';
 import { MDDialog } from '@shared/ui/Dialog';
 import { MDTextField } from '@shared/ui/TextField';
 import { useDialog } from '@shared/ui/Dialog';
@@ -54,7 +54,7 @@ const requestWriteAccess = async (recovery: FileSystemAccessRecovery) => {
 
   const result = await requestAccess(recovery);
 
-  if (result.status === 'granted') {
+  if (result.status === 'granted' || result.status === 'grantedWithReplayFailures') {
     errorText.value = undefined;
     return true;
   }

@@ -302,7 +302,7 @@ describe('WebFileSystemProvider', () => {
       events.push(event);
     });
 
-    provider.notifyAccessChanged();
+    void provider.notifyAccessChanged();
     unsubscribe?.();
 
     expect(events).toContainEqual({
@@ -531,11 +531,105 @@ describe('WebFileSystemProvider', () => {
     expect(fileHandle.__writtenContent).toEqual(['hello']);
 
     permissionDriver.setReadwritePermission('granted');
-    provider.notifyAccessChanged();
+    void provider.notifyAccessChanged();
 
     await vi.waitFor(() => {
       expect(fileHandle.__writtenContent).toEqual(['blocked-write']);
     });
+  });
+
+  it('drops a stale failed replay entry and continues replaying later buffered writes', async () => {
+    const firstFileHandle = createFileHandleMock({
+      fileContent: ['first'],
+      name: 'first.txt',
+      permissionState: 'granted',
+    });
+    const secondFileHandle = createFileHandleMock({
+      fileContent: ['second'],
+      name: 'second.txt',
+      permissionState: 'granted',
+    });
+    const rootHandle = createDirectoryHandleMock({
+      entries: [firstFileHandle, secondFileHandle],
+      name: '',
+      permissionState: 'granted',
+      readPermissionState: 'granted',
+    });
+    const permissionDriver = createPermissionStateDriver('prompt', 'granted');
+    rootHandle.queryPermission = permissionDriver.queryPermission;
+    const provider = WebFileSystemProvider(rootHandle, {
+      permissionPolicy: 'userSelectedDirectory',
+      onAccessRequired: ({ mode }) => ({ spaceName: 'Work', mode }),
+    });
+    firstFileHandle.createWritable = vi
+      .fn<typeof firstFileHandle.createWritable>()
+      .mockRejectedValueOnce(new Error('stale browser writer failed'))
+      .mockImplementation(() =>
+        Promise.reject(new Error('first replay should be removed after the initial failure')),
+      );
+
+    await expect(
+      provider.writeFile('/first.txt', 'queued-first', { create: true, overwrite: true }),
+    ).rejects.toBeInstanceOf(WebFileSystemAccessRequiredError);
+    await expect(
+      provider.writeFile('/second.txt', 'queued-second', { create: true, overwrite: true }),
+    ).rejects.toBeInstanceOf(WebFileSystemAccessRequiredError);
+
+    permissionDriver.setReadwritePermission('granted');
+
+    await expect(provider.notifyAccessChanged()).resolves.toMatchObject({
+      failedCount: 1,
+      replayedCount: 1,
+      status: 'partialFailure',
+    });
+    expect(secondFileHandle.__writtenContent).toEqual(['queued-second']);
+
+    await expect(provider.notifyAccessChanged()).resolves.toMatchObject({
+      failedCount: 0,
+      replayedCount: 0,
+      status: 'complete',
+    });
+    expect(secondFileHandle.__writtenContent).toEqual(['queued-second']);
+  });
+
+  it('keeps permission-required replay entries retryable', async () => {
+    const { fileHandle, rootHandle } = createRootHandle('granted', 'granted');
+    const permissionDriver = createPermissionStateDriver('prompt', 'granted');
+    rootHandle.queryPermission = permissionDriver.queryPermission;
+    const provider = WebFileSystemProvider(rootHandle, {
+      permissionPolicy: 'userSelectedDirectory',
+      onAccessRequired: ({ mode }) => ({ spaceName: 'Work', mode }),
+    });
+    const originalWritable = await fileHandle.createWritable();
+    fileHandle.createWritable = vi
+      .fn<typeof fileHandle.createWritable>()
+      .mockRejectedValueOnce(
+        new WebFileSystemAccessRequiredError({
+          mode: 'readwrite',
+          spaceName: 'Work',
+        }),
+      )
+      .mockResolvedValueOnce(originalWritable);
+
+    await expect(
+      provider.writeFile('/note.txt', 'queued-write', { create: true, overwrite: true }),
+    ).rejects.toBeInstanceOf(WebFileSystemAccessRequiredError);
+
+    permissionDriver.setReadwritePermission('granted');
+
+    await expect(provider.notifyAccessChanged()).resolves.toMatchObject({
+      failedCount: 0,
+      replayedCount: 0,
+      status: 'permissionRequired',
+    });
+    expect(fileHandle.__writtenContent).toEqual(['hello']);
+
+    await expect(provider.notifyAccessChanged()).resolves.toMatchObject({
+      failedCount: 0,
+      replayedCount: 1,
+      status: 'complete',
+    });
+    expect(fileHandle.__writtenContent).toEqual(['queued-write']);
   });
 
   it('replaces same-path buffered writes with the latest payload', async () => {
@@ -555,7 +649,7 @@ describe('WebFileSystemProvider', () => {
     ).rejects.toBeInstanceOf(WebFileSystemAccessRequiredError);
 
     permissionDriver.setReadwritePermission('granted');
-    provider.notifyAccessChanged();
+    void provider.notifyAccessChanged();
 
     await vi.waitFor(() => {
       expect(fileHandle.__writtenContent).toEqual(['second']);
@@ -582,7 +676,7 @@ describe('WebFileSystemProvider', () => {
     ).rejects.toBeInstanceOf(WebFileSystemAccessRequiredError);
 
     permissionDriver.setReadwritePermission('granted');
-    provider.notifyAccessChanged();
+    void provider.notifyAccessChanged();
 
     await vi.waitFor(() => {
       expect(fileHandle.__writtenContent).toEqual(['fits']);
@@ -650,7 +744,7 @@ describe('WebFileSystemProvider', () => {
     ).rejects.toBeInstanceOf(WebFileSystemAccessRequiredError);
 
     permissionDriver.setReadwritePermission('granted');
-    provider.notifyAccessChanged();
+    void provider.notifyAccessChanged();
 
     await vi.waitFor(() => {
       expect(writeOrder).toEqual(['alpha', 'beta']);
@@ -692,7 +786,7 @@ describe('WebFileSystemProvider', () => {
     );
 
     permissionDriver.setReadwritePermission('granted');
-    provider.notifyAccessChanged();
+    void provider.notifyAccessChanged();
 
     await vi.waitFor(() => {
       expect(fileHandles[0]?.__writtenContent).toEqual(['next-0']);
@@ -718,7 +812,7 @@ describe('WebFileSystemProvider', () => {
     ).rejects.toBeInstanceOf(WebFileSystemAccessRequiredError);
 
     permissionDriver.setReadwritePermission('granted');
-    provider.notifyAccessChanged();
+    void provider.notifyAccessChanged();
 
     await Promise.resolve();
     expect(fileHandle.__writtenContent).toEqual(['hello']);
@@ -763,7 +857,7 @@ describe('WebFileSystemProvider', () => {
     ).rejects.toBeInstanceOf(WebFileSystemAccessRequiredError);
 
     permissionDriver.setReadwritePermission('granted');
-    provider.notifyAccessChanged();
+    void provider.notifyAccessChanged();
 
     await vi.waitFor(() => {
       expect(alphaFileHandle.__writtenContent).toEqual([expect.any(Uint8Array)]);
@@ -784,12 +878,12 @@ describe('WebFileSystemProvider', () => {
       provider.writeFile('/note.txt', 'retry-me', { create: true, overwrite: true }),
     ).rejects.toBeInstanceOf(WebFileSystemAccessRequiredError);
 
-    provider.notifyAccessChanged();
+    void provider.notifyAccessChanged();
     await Promise.resolve();
     expect(fileHandle.__writtenContent).toEqual(['hello']);
 
     permissionDriver.setReadwritePermission('granted');
-    provider.notifyAccessChanged();
+    void provider.notifyAccessChanged();
 
     await vi.waitFor(() => {
       expect(fileHandle.__writtenContent).toEqual(['retry-me']);
@@ -815,7 +909,7 @@ describe('WebFileSystemProvider', () => {
     });
 
     permissionDriver.setReadwritePermission('granted');
-    provider.notifyAccessChanged();
+    void provider.notifyAccessChanged();
     await Promise.resolve();
 
     expect(rootHandle.getDirectoryHandleMock).not.toHaveBeenCalledWith('new', { create: true });
@@ -839,7 +933,7 @@ describe('WebFileSystemProvider', () => {
         type: FSNodeType.File,
       },
     });
-    provider.notifyAccessChanged();
+    void provider.notifyAccessChanged();
 
     await Promise.resolve();
     expect(fileHandle.__writtenContent).toEqual(['opfs-write']);

@@ -236,4 +236,34 @@ describe('useFileSystemAccessPermissionBroker', () => {
 
     scope.stop();
   });
+
+  it('returns grantedWithReplayFailures when permission is granted but stale buffered writes could not fully replay', async () => {
+    const handle = createDirectoryHandleMock({
+      name: 'Work',
+      permissionState: 'prompt',
+      sameEntryKey: 'work',
+    });
+    handle.requestPermissionMock.mockResolvedValue('granted');
+    getTemporaryFileSystemAccessHandleMock.mockResolvedValue({
+      handle,
+      operation: 'write',
+      spaceName: 'Work',
+    });
+    resolveFileSystemAccessRequestMock.mockResolvedValue({
+      status: 'grantedWithReplayFailures',
+    });
+
+    const { broker, scope } = await mountBroker();
+
+    await expect(
+      broker.requestAccess({
+        operation: 'write',
+        spaceName: 'Work',
+      }),
+    ).resolves.toEqual({
+      status: 'grantedWithReplayFailures',
+    });
+
+    scope.stop();
+  });
 });

@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
-vi.mock('./fileSystemClient/useFileSystemAccessPermissionBroker', () => {
+vi.mock('../serviceClient/fileSystem/useFileSystemAccessPermissionBroker', () => {
   throw new Error('setupMainService must not import the main-thread permission broker');
 });
 

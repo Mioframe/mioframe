@@ -28,7 +28,7 @@ vi.mock('@shared/service', () => ({
   }),
 }));
 
-vi.mock('@shared/service/fileSystemClient', () => ({
+vi.mock('@shared/serviceClient/fileSystem', () => ({
   useFileSystemAccessPermissionBroker: () => ({
     requestAccess: requestAccessMock,
   }),
@@ -414,6 +414,29 @@ describe('VfsActivityStatusChip', () => {
       expect(wrapper.text()).toContain('Grant write access');
     },
   );
+
+  it('keeps the error visible when access is granted but some queued saves could not replay', async () => {
+    requestAccessMock.mockResolvedValue({ status: 'grantedWithReplayFailures' });
+    vfsState.value = createErrorState(
+      createWriteError({
+        cause: new WebFileSystemAccessRequiredError({
+          mode: 'readwrite',
+          spaceName: 'Work',
+        }),
+      }),
+    );
+
+    const wrapper = await mountVfsActivityStatusChip();
+
+    await wrapper.get('button').trigger('click');
+    await clickButtonByLabel(wrapper, 'Grant write access');
+
+    expect(dismissSaveStatusErrorMock).not.toHaveBeenCalled();
+    expect(addSnackbarMock).toHaveBeenCalledWith({
+      text: 'Write access was granted, but some earlier queued saves could not be replayed.',
+    });
+    expect(wrapper.text()).toContain('Grant write access');
+  });
 
   it('keeps the error visible and shows a safe message when the broker rejects unexpectedly', async () => {
     requestAccessMock.mockRejectedValue(new Error('raw broker failure'));

@@ -44,6 +44,16 @@ export interface WebFileSystemProviderOptions {
   ) => WebFileSystemAccessRequiredDetails;
 }
 
+/** Result of replaying buffered writes after access changes. */
+export interface PendingWriteReplayResult {
+  /** Aggregate replay outcome for the current flush attempt. */
+  status: 'complete' | 'partialFailure' | 'permissionRequired';
+  /** Number of buffered writes replayed successfully. */
+  replayedCount: number;
+  /** Number of stale buffered writes dropped after a non-permission failure. */
+  failedCount: number;
+}
+
 /**
  * Creates a VFS provider backed by the browser File System Access API.
  * @param rootHandle - Root directory handle for the mounted provider.
@@ -53,7 +63,7 @@ export interface WebFileSystemProviderOptions {
 export const WebFileSystemProvider = (
   rootHandle: FileSystemDirectoryHandle,
   options: WebFileSystemProviderOptions,
-): IFileSystemProvider & { notifyAccessChanged(): void } => {
+): IFileSystemProvider & { notifyAccessChanged(): Promise<PendingWriteReplayResult> } => {
   const { onAccessRequired, permissionPolicy } = options;
   const events = new EventEmitter();
   const pendingWriteBuffer = new Map<
@@ -68,7 +78,7 @@ export const WebFileSystemProvider = (
   const maxPendingWriteEntries = 64;
   const maxPendingWriteBytes = 32 * 1024 * 1024;
   let pendingWriteBytes = 0;
-  let flushPendingWritesPromise: Promise<void> | undefined;
+  let flushPendingWritesPromise: Promise<PendingWriteReplayResult> | undefined;
   let flushPendingWritesQueued = false;
 
   const getWriteCapability = (
@@ -381,45 +391,71 @@ export const WebFileSystemProvider = (
     };
   };
 
-  const flushPendingWrites = async (): Promise<void> => {
+  const flushPendingWrites = async (): Promise<PendingWriteReplayResult> => {
     if (permissionPolicy !== 'userSelectedDirectory' || pendingWriteBuffer.size === 0) {
-      return;
+      return {
+        status: 'complete',
+        replayedCount: 0,
+        failedCount: 0,
+      };
     }
 
     const permissionState = await queryWritePermission(rootHandle);
 
     if (permissionState !== 'granted') {
-      return;
+      return {
+        status: 'permissionRequired',
+        replayedCount: 0,
+        failedCount: 0,
+      };
     }
+
+    let replayedCount = 0;
+    let failedCount = 0;
 
     for (const [path, entry] of pendingWriteBuffer.entries()) {
       try {
         // eslint-disable-next-line no-await-in-loop -- buffered writes must replay sequentially to preserve distinct-path insertion order
         await writeFileImpl(path, entry.content, entry.options);
         deleteBufferedWrite(path);
+        replayedCount += 1;
       } catch (error) {
         if (isBufferedWriteAccessRequiredError(error)) {
-          return;
+          return {
+            status: 'permissionRequired',
+            replayedCount,
+            failedCount,
+          };
         }
 
-        return;
+        deleteBufferedWrite(path);
+        failedCount += 1;
       }
     }
+
+    return {
+      status: failedCount > 0 ? 'partialFailure' : 'complete',
+      replayedCount,
+      failedCount,
+    };
   };
 
   const startPendingWriteFlush = () => {
-    flushPendingWritesPromise = flushPendingWrites()
-      .finally(() => {
-        flushPendingWritesPromise = undefined;
-      })
-      .then(() => {
-        if (!flushPendingWritesQueued || pendingWriteBuffer.size === 0) {
-          return;
-        }
+    const flushPromise = flushPendingWrites().then((result) => {
+      if (!flushPendingWritesQueued || pendingWriteBuffer.size === 0) {
+        return result;
+      }
 
-        flushPendingWritesQueued = false;
-        startPendingWriteFlush();
-      });
+      flushPendingWritesQueued = false;
+      startPendingWriteFlush();
+      return result;
+    });
+    const trackedPromise = flushPromise.finally(() => {
+      if (flushPendingWritesPromise === trackedPromise) {
+        flushPendingWritesPromise = undefined;
+      }
+    });
+    flushPendingWritesPromise = trackedPromise;
     void flushPendingWritesPromise.catch(() => undefined);
   };
 
@@ -610,6 +646,15 @@ export const WebFileSystemProvider = (
       type: VfsEventType.UPDATE,
       path: '/',
     });
+
+    return (
+      flushPendingWritesPromise ??
+      Promise.resolve({
+        status: 'complete' as const,
+        replayedCount: 0,
+        failedCount: 0,
+      })
+    );
   };
 
   const watch = (callback: (event: VfsEvent) => void) => events.subscribe(callback);

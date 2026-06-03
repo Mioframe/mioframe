@@ -1,6 +1,7 @@
 import type { IFileSystemProvider } from '../virtualFileSystem';
 import {
   WebFileSystemProvider,
+  type PendingWriteReplayResult,
   type WebFileSystemProviderAccessRequiredContext,
   type WebFileSystemProviderOptions,
 } from './WebFileSystemProvider';
@@ -9,7 +10,7 @@ import type { WebFileSystemAccessRequiredDetails } from './WebFileSystemAccessRe
 /** Provider instance with an internal access-refresh hook owned below the service boundary. */
 export interface RefreshableWebFileSystemProvider extends IFileSystemProvider {
   /** Emits a provider-owned refresh event after access state changes for the mounted root. */
-  notifyAccessChanged(): void;
+  notifyAccessChanged(): Promise<PendingWriteReplayResult>;
 }
 
 type AccessRequiredHandler = (

@@ -42,7 +42,7 @@ vi.mock('@entity/repository', () => ({
   }),
 }));
 
-vi.mock('@shared/service/fileSystemClient', () => ({
+vi.mock('@shared/serviceClient/fileSystem', () => ({
   useFileSystemAccessPermissionBroker: () => ({
     requestAccess: requestAccessMock,
   }),

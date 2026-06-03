@@ -9,6 +9,7 @@ import { zodIs } from '@shared/lib/validateZodScheme';
 import {
   createMountedWebFileSystemProvider,
   createOriginPrivateStorageProvider,
+  type PendingWriteReplayResult,
   type WebFileSystemAccessMode,
 } from '@shared/lib/webFileSystemProvider';
 import { type FileSystemAccessOperation } from '@shared/lib/fileSystem';
@@ -42,7 +43,7 @@ type DeviceDirectoryAccessRequest = {
   spaceName: string;
   handle: FileSystemDirectoryHandle;
   mode: WebFileSystemAccessMode;
-  refreshProvider: () => void;
+  refreshProvider: () => Promise<PendingWriteReplayResult>;
 };
 
 type DeviceDirectoryAccessRequestKey = Pick<DeviceDirectoryAccessRequest, 'spaceName' | 'mode'>;
@@ -117,7 +118,14 @@ const setupFileSystemService = () => {
 
       // Use a holder so the refresh callback does not capture the provider variable
       // from the same expression that assigns it.
-      const notifyHolder: { fn: () => void } = { fn: () => undefined };
+      const notifyHolder: { fn: () => Promise<PendingWriteReplayResult> } = {
+        fn: () =>
+          Promise.resolve({
+            status: 'complete',
+            replayedCount: 0,
+            failedCount: 0,
+          }),
+      };
       const provider = createMountedWebFileSystemProvider({
         kind: record.kind,
         rootHandle: record.handle,
@@ -126,9 +134,7 @@ const setupFileSystemService = () => {
             spaceName: record.name,
             handle,
             mode,
-            refreshProvider: () => {
-              notifyHolder.fn();
-            },
+            refreshProvider: () => notifyHolder.fn(),
           });
 
           return {
@@ -138,9 +144,7 @@ const setupFileSystemService = () => {
         },
       });
 
-      notifyHolder.fn = () => {
-        provider.notifyAccessChanged();
-      };
+      notifyHolder.fn = () => provider.notifyAccessChanged();
 
       return provider;
     },
@@ -452,11 +456,12 @@ const setupFileSystemService = () => {
 
     if (permissionState === 'granted') {
       deletePendingDeviceDirectoryAccessRequest(key);
-      request.refreshProvider();
-
-      return Promise.resolve({
-        status: 'granted' as const,
-      });
+      return request.refreshProvider().then((refreshResult) => ({
+        status:
+          refreshResult.status === 'partialFailure'
+            ? ('grantedWithReplayFailures' as const)
+            : ('granted' as const),
+      }));
     }
 
     return Promise.resolve({

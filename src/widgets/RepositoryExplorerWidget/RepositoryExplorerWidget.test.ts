@@ -45,7 +45,7 @@ vi.mock('@entity/fsEntry', () => ({
   }),
 }));
 
-vi.mock('@shared/service/fileSystemClient', () => ({
+vi.mock('@shared/serviceClient/fileSystem', () => ({
   useFileSystemAccessPermissionBroker: () => ({
     requestAccess: requestAccessMock,
   }),

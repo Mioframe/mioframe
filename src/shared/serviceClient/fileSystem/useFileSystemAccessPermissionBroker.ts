@@ -12,8 +12,9 @@ const operationToMode = (
 
 /**
  * Main-thread-only permission broker for remembered local spaces.
- * `requestPermission()` requires transient user activation, so the handle is
- * fetched from the service only for one explicit user action.
+ * `requestPermission(descriptor?)` and `queryPermission(descriptor?)` accept an optional
+ * descriptor whose `mode` is `'read'` or `'readwrite'`; the permission prompt still must run
+ * inside the explicit user action that requested recovery.
  * @returns One-shot access broker with no prepared-handle state.
  */
 export const useFileSystemAccessPermissionBroker = () => {
@@ -23,7 +24,9 @@ export const useFileSystemAccessPermissionBroker = () => {
 
   const requestAccess = async (
     key: FileSystemAccessRequestKey,
-  ): Promise<{ status: 'granted' | 'denied' | 'cancelled' | 'error' }> => {
+  ): Promise<{
+    status: 'granted' | 'grantedWithReplayFailures' | 'denied' | 'cancelled' | 'error';
+  }> => {
     try {
       const request = await getTemporaryFileSystemAccessHandle(key);
 

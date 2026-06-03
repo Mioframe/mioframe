@@ -1,7 +1,7 @@
 import { computed, ref, watch, type Ref } from 'vue';
 import { isNotNil } from 'es-toolkit';
 import { getFileSystemAccessRecovery } from '@shared/lib/fileSystem';
-import { useFileSystemAccessPermissionBroker } from '@shared/service/fileSystemClient';
+import { useFileSystemAccessPermissionBroker } from '@shared/serviceClient/fileSystem';
 import { useGoogleDriveRecovery } from '@feature/googleDriveRecovery';
 import { getGoogleDriveAccessRecoveryError } from '@entity/googleDriveAccess';
 
@@ -68,7 +68,7 @@ export const useRepositoryExplorerRecovery = ({
     try {
       const result = await requestAccess(recovery);
 
-      if (result.status === 'granted') {
+      if (result.status === 'granted' || result.status === 'grantedWithReplayFailures') {
         localDirectoryRecoveryMessage.value = undefined;
         return result;
       }

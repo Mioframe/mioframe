@@ -2,7 +2,7 @@
 import { useVfsActivity } from '@entity/vfsActivity';
 import { getFileSystemAccessRecovery } from '@shared/lib/fileSystem';
 import { useMainServiceClient } from '@shared/service';
-import { useFileSystemAccessPermissionBroker } from '@shared/service/fileSystemClient';
+import { useFileSystemAccessPermissionBroker } from '@shared/serviceClient/fileSystem';
 import { MDButton } from '@shared/ui/Button';
 import { MDAssistChip } from '@shared/ui/Chips';
 import { MDSymbol } from '@shared/ui/Icon';
@@ -99,6 +99,13 @@ const onClickGrantWriteAccess = async () => {
       dismissSaveStatusError();
       showErrorDetails.value = false;
       addSnackbar({ text: 'Write access granted. Future saves can continue.' });
+      return;
+    }
+
+    if (result.status === 'grantedWithReplayFailures') {
+      addSnackbar({
+        text: 'Write access was granted, but some earlier queued saves could not be replayed.',
+      });
       return;
     }
 

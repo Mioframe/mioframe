@@ -2,7 +2,7 @@ import { createSafeErrorCause, DomainError } from '@shared/lib/error';
 import { isUserFileSelectionCancel } from '@shared/lib/fileSystem';
 import { getFileSystemAccessRecovery } from '@shared/lib/fileSystem';
 import { reportHandledError } from '@shared/lib/reportHandledError';
-import { useFileSystemAccessPermissionBroker } from '@shared/service/fileSystemClient';
+import { useFileSystemAccessPermissionBroker } from '@shared/serviceClient/fileSystem';
 import { useDialog } from '@shared/ui/Dialog';
 import { useSnackbar } from '@shared/ui/Snackbar';
 import { ImportDocumentErrorCode } from './importDocumentErrorCode';
@@ -66,7 +66,7 @@ export const useImportDocumentAction = () => {
 
         const result = await requestAccess(recovery);
 
-        if (result.status !== 'granted') {
+        if (result.status !== 'granted' && result.status !== 'grantedWithReplayFailures') {
           addSnackbar({
             text:
               result.status === 'denied'
