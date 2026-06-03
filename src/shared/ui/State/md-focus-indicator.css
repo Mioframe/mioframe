@@ -18,3 +18,7 @@
   --md-focus-indicator-thickness: var(--md-sys-state-focus-indicator-thickness, 3px);
   --md-focus-indicator-offset: var(--md-sys-state-focus-indicator-outer-offset, 2px);
 }
+
+*:focus-visible {
+  outline: none;
+}
