@@ -49,6 +49,7 @@ const makeRequestKey = ({ mode, spaceName }: DeviceDirectoryAccessRequestKey) =>
 /**
  * Creates a service-internal registry for pending device directory access requests
  * and write access recovery handlers.
+ * @param root0
  */
 export const createFileSystemAccessRequestRegistry = ({
   deviceFilesPath,
