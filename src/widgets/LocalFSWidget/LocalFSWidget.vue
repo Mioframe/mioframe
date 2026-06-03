@@ -4,7 +4,9 @@ import { useDisconnectDeviceDirectory } from '@feature/deviceDirectoryDisconnect
 import { MioframeSpaceCreateListItem, MioframeSpaceOpenListItem } from '@feature/mioframeSpacePick';
 import { MDListContainer } from '@shared/ui/Lists';
 import { PathUtils } from '@shared/lib/virtualFileSystem';
+import { OPFSName } from '@shared/service/directories';
 import LocalFSDeviceFileListItem from './LocalFSDeviceFileListItem.vue';
+import BrowserStorageListItems from './BrowserStorageListItems.vue';
 
 const emit = defineEmits<{
   clickPath: [path: string];
@@ -24,15 +26,22 @@ const onDisconnectDeviceFile = (name: string) => {
 
 <template>
   <MDListContainer is="div">
-    <LocalFSDeviceFileListItem
-      v-for="deviceFile in deviceFiles ?? []"
-      :key="deviceFile.name"
-      :name="deviceFile.name"
-      :description="deviceFile.description"
-      :can-disconnect="deviceFile.canDisconnect"
-      @click-path="onClickDeviceFile"
-      @disconnect="onDisconnectDeviceFile"
-    />
+    <template v-for="deviceFile in deviceFiles ?? []" :key="deviceFile.name">
+      <BrowserStorageListItems
+        v-if="deviceFile.name === OPFSName"
+        :name="deviceFile.name"
+        :description="deviceFile.description"
+        @click-path="onClickDeviceFile"
+      />
+      <LocalFSDeviceFileListItem
+        v-else
+        :name="deviceFile.name"
+        :description="deviceFile.description"
+        :can-disconnect="deviceFile.canDisconnect"
+        @click-path="onClickDeviceFile"
+        @disconnect="onDisconnectDeviceFile"
+      />
+    </template>
 
     <MioframeSpaceCreateListItem />
     <MioframeSpaceOpenListItem />

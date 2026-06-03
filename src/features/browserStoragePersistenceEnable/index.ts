@@ -1,0 +1,1 @@
+export { useBrowserStoragePersistenceEnable } from './useBrowserStoragePersistenceEnable';

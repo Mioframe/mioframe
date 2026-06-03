@@ -14,6 +14,11 @@ const setDiagnosticsEnabledByUserMock = vi.fn((enabled: boolean) => {
   settings.value.diagnosticsEnabled = enabled;
   settings.value.diagnosticsConsentRequested = true;
 });
+const browserStorageStatus = ref<'checking' | 'ordinary' | 'persistent' | 'unsupported'>(
+  'checking',
+);
+const enableStorageMock = vi.fn();
+const isEnablingStorage = ref(false);
 
 vi.mock('@entity/localSettings', () => ({
   useLocalSettings: () => ({
@@ -27,6 +32,22 @@ vi.mock('@entity/localSettings', () => ({
     acceptDiagnosticsConsent: vi.fn(),
     rejectDiagnosticsConsent: vi.fn(),
     setDiagnosticsEnabledByUser: setDiagnosticsEnabledByUserMock,
+  }),
+}));
+
+vi.mock('@entity/browserStoragePersistence', () => ({
+  useBrowserStoragePersistence: () => ({
+    status: browserStorageStatus,
+    isRequesting: isEnablingStorage,
+    requestPersistence: enableStorageMock,
+    refresh: vi.fn(),
+  }),
+}));
+
+vi.mock('@feature/browserStoragePersistenceEnable', () => ({
+  useBrowserStoragePersistenceEnable: () => ({
+    enableStorage: enableStorageMock,
+    isRequesting: isEnablingStorage,
   }),
 }));
 
@@ -213,11 +234,14 @@ describe('SettingsSections', () => {
     googleDriveIntegrationAvailable = true;
     sentryDiagnosticsAvailable = true;
     settings.value = {};
+    browserStorageStatus.value = 'checking';
+    isEnablingStorage.value = false;
     setDiagnosticsEnabledByUserMock.mockClear();
+    enableStorageMock.mockClear();
     document.body.innerHTML = '';
   });
 
-  it('renders the four release settings sections and opens Help entries', async () => {
+  it('renders all settings sections including Storage and opens Help entries', async () => {
     const onSelectPrivacyPolicy = vi.fn();
     const onSelectHelp = vi.fn();
     const onSelectAboutMioframe = vi.fn();
@@ -227,6 +251,7 @@ describe('SettingsSections', () => {
       onSelectAboutMioframe,
     });
 
+    expect(root.textContent).toContain('Storage');
     expect(root.textContent).toContain('Privacy & diagnostics');
     expect(root.textContent).toContain('Integrations');
     expect(root.textContent).toContain('Home screen');
@@ -388,6 +413,60 @@ describe('SettingsSections', () => {
 
     expect(settings.value.hideStarterWidget).toBeUndefined();
     expect(starterExamplesRow?.getAttribute('aria-checked')).toBe('true');
+
+    unmount();
+  });
+
+  it('renders enable storage button in ordinary state', async () => {
+    browserStorageStatus.value = 'ordinary';
+    enableStorageMock.mockResolvedValue(undefined);
+
+    const { root, unmount } = await mountSettingsSections();
+
+    const enableButton = getButtonByText(root, 'Enable more reliable storage');
+    expect(enableButton).not.toBeNull();
+    expect(root.textContent).toContain('Standard browser storage is fine for trying Mioframe');
+
+    enableButton?.click();
+    await nextTick();
+
+    expect(enableStorageMock).toHaveBeenCalledTimes(1);
+
+    unmount();
+  });
+
+  it('renders persistent info item and no enable button in persistent state', async () => {
+    browserStorageStatus.value = 'persistent';
+
+    const { root, unmount } = await mountSettingsSections();
+
+    expect(root.textContent).toContain('More reliable storage enabled');
+    expect(root.textContent).toContain('does not replace backups');
+    expect(getButtonByText(root, 'Enable more reliable storage')).toBeNull();
+
+    unmount();
+  });
+
+  it('renders unsupported info item and no enable button in unsupported state', async () => {
+    browserStorageStatus.value = 'unsupported';
+
+    const { root, unmount } = await mountSettingsSections();
+
+    expect(root.textContent).toContain('More reliable storage unavailable');
+    expect(root.textContent).toContain('keep backups for important data');
+    expect(getButtonByText(root, 'Enable more reliable storage')).toBeNull();
+
+    unmount();
+  });
+
+  it('shows no storage status item while checking', async () => {
+    browserStorageStatus.value = 'checking';
+
+    const { root, unmount } = await mountSettingsSections();
+
+    expect(getButtonByText(root, 'Enable more reliable storage')).toBeNull();
+    expect(root.textContent).not.toContain('More reliable storage enabled');
+    expect(root.textContent).not.toContain('More reliable storage unavailable');
 
     unmount();
   });

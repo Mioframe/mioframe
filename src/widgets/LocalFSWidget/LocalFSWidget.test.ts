@@ -5,6 +5,13 @@ import { mount } from '@vue/test-utils';
 
 const deviceFiles = ref<Array<{ name: string; description?: string; canDisconnect: boolean }>>([]);
 const disconnectDeviceDirectoryMock = vi.fn();
+const enableStorageMock = vi.fn();
+const persistenceStatus = ref<'checking' | 'ordinary' | 'persistent' | 'unsupported'>('checking');
+const isRequesting = ref(false);
+
+vi.mock('@shared/service/directories', () => ({
+  OPFSName: 'Browser Storage',
+}));
 
 vi.mock('@entity/mountedDirectories', () => ({
   DEVICE_FILES: 'Device files',
@@ -13,9 +20,25 @@ vi.mock('@entity/mountedDirectories', () => ({
   }),
 }));
 
+vi.mock('@entity/browserStoragePersistence', () => ({
+  useBrowserStoragePersistence: () => ({
+    status: persistenceStatus,
+    isRequesting,
+    requestPersistence: enableStorageMock,
+    refresh: vi.fn(),
+  }),
+}));
+
 vi.mock('@feature/deviceDirectoryDisconnect', () => ({
   useDisconnectDeviceDirectory: () => ({
     disconnectDeviceDirectory: disconnectDeviceDirectoryMock,
+  }),
+}));
+
+vi.mock('@feature/browserStoragePersistenceEnable', () => ({
+  useBrowserStoragePersistenceEnable: () => ({
+    enableStorage: enableStorageMock,
+    isRequesting,
   }),
 }));
 
@@ -99,6 +122,10 @@ vi.mock('@shared/ui/Lists', () => ({
         type: String,
         default: undefined,
       },
+      disabled: {
+        type: Boolean,
+        default: false,
+      },
     },
     emits: ['click'],
     setup(props, { emit, slots }) {
@@ -106,6 +133,8 @@ vi.mock('@shared/ui/Lists', () => ({
         h(
           props.is === 'button' ? 'button' : 'div',
           {
+            'data-headline': props.headline,
+            disabled: props.disabled || undefined,
             onClick: () => {
               emit('click');
             },
@@ -114,6 +143,7 @@ vi.mock('@shared/ui/Lists', () => ({
             h('span', props.headline),
             props.supportingText ? h('span', props.supportingText) : null,
             slots.leadingIcon?.(),
+            slots.supportingText?.(),
             slots.trailingIcon?.(),
           ],
         );
@@ -130,7 +160,10 @@ describe('LocalFSWidget', () => {
   afterEach(() => {
     vi.resetModules();
     deviceFiles.value = [];
+    persistenceStatus.value = 'checking';
+    isRequesting.value = false;
     disconnectDeviceDirectoryMock.mockReset();
+    enableStorageMock.mockReset();
     document.body.innerHTML = '';
   });
 
@@ -225,6 +258,94 @@ describe('LocalFSWidget', () => {
 
     expect(disconnectDeviceDirectoryMock).toHaveBeenCalledWith('My Space');
     expect(wrapper.emitted('clickPath')).toBeUndefined();
+  });
+
+  it('shows "Enable more reliable storage" action for the browser entry in ordinary state', async () => {
+    persistenceStatus.value = 'ordinary';
+    deviceFiles.value = [
+      {
+        name: 'Browser Storage',
+        description: 'Saved directly in your browser on this device',
+        canDisconnect: false,
+      },
+    ];
+
+    const wrapper = await mountLocalFSWidget();
+
+    const enableButton = wrapper.find('[data-headline="Enable more reliable storage"]');
+    expect(enableButton.exists()).toBe(true);
+    expect(enableButton.element.tagName).toBe('BUTTON');
+    expect(wrapper.text()).toContain('Enable more reliable storage');
+  });
+
+  it('does not emit clickPath when the enable storage action is clicked', async () => {
+    persistenceStatus.value = 'ordinary';
+    enableStorageMock.mockResolvedValue(undefined);
+    deviceFiles.value = [
+      {
+        name: 'Browser Storage',
+        description: 'Saved directly in your browser on this device',
+        canDisconnect: false,
+      },
+    ];
+
+    const wrapper = await mountLocalFSWidget();
+
+    await wrapper.find('[data-headline="Enable more reliable storage"]').trigger('click');
+
+    expect(enableStorageMock).toHaveBeenCalledTimes(1);
+    expect(wrapper.emitted('clickPath')).toBeUndefined();
+  });
+
+  it('shows "More reliable storage enabled" info item for the browser entry in persistent state', async () => {
+    persistenceStatus.value = 'persistent';
+    deviceFiles.value = [
+      {
+        name: 'Browser Storage',
+        description: 'Saved directly in your browser on this device',
+        canDisconnect: false,
+      },
+    ];
+
+    const wrapper = await mountLocalFSWidget();
+
+    expect(wrapper.text()).toContain('More reliable storage enabled');
+    expect(wrapper.find('[data-headline="Enable more reliable storage"]').exists()).toBe(false);
+  });
+
+  it('shows "More reliable storage unavailable" info item for the browser entry in unsupported state', async () => {
+    persistenceStatus.value = 'unsupported';
+    deviceFiles.value = [
+      {
+        name: 'Browser Storage',
+        description: 'Saved directly in your browser on this device',
+        canDisconnect: false,
+      },
+    ];
+
+    const wrapper = await mountLocalFSWidget();
+
+    expect(wrapper.text()).toContain('More reliable storage unavailable');
+    expect(wrapper.find('[data-headline="Enable more reliable storage"]').exists()).toBe(false);
+  });
+
+  it('shows no persistence status item while checking', async () => {
+    persistenceStatus.value = 'checking';
+    deviceFiles.value = [
+      {
+        name: 'Browser Storage',
+        description: 'Saved directly in your browser on this device',
+        canDisconnect: false,
+      },
+    ];
+
+    const wrapper = await mountLocalFSWidget();
+
+    expect(wrapper.find('[data-headline="Enable more reliable storage"]').exists()).toBe(false);
+    expect(wrapper.find('[data-headline="More reliable storage enabled"]').exists()).toBe(false);
+    expect(wrapper.find('[data-headline="More reliable storage unavailable"]').exists()).toBe(
+      false,
+    );
   });
 });
 /* eslint-enable vue/one-component-per-file -- Re-enable the rule after the inline component stubs used in this file. */
