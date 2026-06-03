@@ -308,7 +308,11 @@ export function checkSkillsSymlink(root, fix) {
   if (stat === null) {
     if (fix) {
       fs.mkdirSync(path.join(root, '.claude'), { recursive: true });
-      fs.symlinkSync(expectedLinkTarget, claudeSkillsAbs);
+      fs.symlinkSync(
+        expectedLinkTarget,
+        claudeSkillsAbs,
+        getDirectorySymlinkType(process.platform),
+      );
       fixes.push(`created .claude/skills -> ${expectedLinkTarget}`);
     } else {
       errors.push(
@@ -337,6 +341,16 @@ export function checkSkillsSymlink(root, fix) {
   }
 
   return { errors, fixes };
+}
+
+/**
+ * Select the symlink type for directory links on the current platform.
+ * Windows directory symlinks should use `junction` for broad compatibility.
+ * @param platform Node platform identifier.
+ * @returns Symlink type to pass to fs.symlinkSync.
+ */
+export function getDirectorySymlinkType(platform) {
+  return platform === 'win32' ? 'junction' : undefined;
 }
 
 /**

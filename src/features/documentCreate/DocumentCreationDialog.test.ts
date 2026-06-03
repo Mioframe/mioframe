@@ -203,6 +203,32 @@ describe('DocumentCreationDialog', () => {
     expect(createDocumentMock).toHaveBeenCalledTimes(1);
   });
 
+  it('shows a safe error when the retry after grant fails', async () => {
+    createDocumentMock
+      .mockRejectedValueOnce(
+        createSerializedRecoveryError({
+          mode: 'readwrite',
+          spaceName: 'Work',
+        }),
+      )
+      .mockRejectedValueOnce(new Error('Document already exists'));
+    confirmMock.mockResolvedValue(true);
+    requestAccessMock.mockResolvedValue({ status: 'granted' });
+
+    const wrapper = await mountDialog();
+
+    await wrapper.get('input').setValue('My document');
+    const applyButton = wrapper.findAll('button').find((b) => b.text() === 'Create');
+    if (!applyButton) throw new Error('Expected Create button');
+
+    await applyButton.trigger('click');
+    await flushPromises();
+
+    expect(createDocumentMock).toHaveBeenCalledTimes(2);
+    expect(wrapper.text()).toContain('Could not create the document. Try again.');
+    expect(wrapper.emitted('created')).toBeUndefined();
+  });
+
   it('shows a safe message and does not retry when the user declines the grant dialog', async () => {
     createDocumentMock.mockRejectedValueOnce(
       createSerializedRecoveryError({

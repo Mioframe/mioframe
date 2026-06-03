@@ -68,6 +68,7 @@ export const useRepositoryExplorerRecovery = ({
     try {
       const result = await requestAccess(recovery);
 
+      // Read recovery resolves to `granted` before any write-only replay/storage handlers can run.
       if (result.status === 'granted' || result.status === 'grantedWithReplayFailures') {
         localDirectoryRecoveryMessage.value = undefined;
         return result;

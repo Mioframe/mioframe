@@ -25,6 +25,7 @@ const { path } = toRefs(props);
 const stateName = ref<string>();
 const errorText = ref<string>();
 const loading = ref(false);
+const retryCreateDocumentErrorText = 'Could not create the document. Try again.';
 
 const { createDocument } = useRepository(path);
 const { data: directoryStat } = useFSNodeStat(path);
@@ -102,8 +103,12 @@ const onCreate = async () => {
       const recovery = getFileSystemAccessRecovery(error, { operation: 'write' });
       if (recovery) {
         if (await requestWriteAccess(recovery)) {
-          await createRepositoryDocument();
-          emit('created');
+          try {
+            await createRepositoryDocument();
+            emit('created');
+          } catch {
+            errorText.value = retryCreateDocumentErrorText;
+          }
         }
       } else {
         errorText.value = error instanceof Error ? error.message : 'unknown error';

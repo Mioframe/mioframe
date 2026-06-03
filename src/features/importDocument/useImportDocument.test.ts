@@ -19,6 +19,13 @@ vi.mock('browser-fs-access', () => ({
   fileOpen: fileOpenMock,
 }));
 
+const validDocument = {
+  body: {},
+  name: 'Doc',
+  type: 'note',
+  version: 1,
+} as const;
+
 describe('useImportDocument', () => {
   beforeEach(() => {
     createDocumentMock.mockReset();
@@ -26,14 +33,19 @@ describe('useImportDocument', () => {
     createDocumentMock.mockResolvedValue('document-id');
   });
 
+  it('does not expose the obsolete importJsonFile helper', () => {
+    expect(useImportDocument()).not.toHaveProperty('importJsonFile');
+  });
+
   it('wraps invalid JSON with a user-facing DomainError', async () => {
     fileOpenMock.mockResolvedValue({
       text: vi.fn().mockResolvedValue('{'),
+      name: 'Doc.json',
     });
 
-    const { importJsonFile } = useImportDocument();
+    const { readImportDocumentDraft } = useImportDocument();
 
-    const error = await importJsonFile('/documents').catch((caughtError: unknown) => caughtError);
+    const error = await readImportDocumentDraft().catch((caughtError: unknown) => caughtError);
 
     expect(error).toBeInstanceOf(DomainError);
     expect(error).toMatchObject({
@@ -51,11 +63,12 @@ describe('useImportDocument', () => {
   it('wraps non-Mioframe JSON with a user-facing DomainError', async () => {
     fileOpenMock.mockResolvedValue({
       text: vi.fn().mockResolvedValue(JSON.stringify({ name: 'Doc' })),
+      name: 'Doc.json',
     });
 
-    const { importJsonFile } = useImportDocument();
+    const { readImportDocumentDraft } = useImportDocument();
 
-    const error = await importJsonFile('/documents').catch((caughtError: unknown) => caughtError);
+    const error = await readImportDocumentDraft().catch((caughtError: unknown) => caughtError);
 
     expect(error).toBeInstanceOf(DomainError);
     expect(error).toMatchObject({
@@ -65,33 +78,35 @@ describe('useImportDocument', () => {
     expect(createDocumentMock).not.toHaveBeenCalled();
   });
 
-  it('replaces raw repository failure details with a safe cause when document creation fails', async () => {
+  it('reads a valid Mioframe JSON draft', async () => {
     fileOpenMock.mockResolvedValue({
-      text: vi.fn().mockResolvedValue(
-        JSON.stringify({
-          body: {},
-          name: 'Doc',
-          type: 'note',
-          version: 1,
-        }),
-      ),
+      text: vi.fn().mockResolvedValue(JSON.stringify(validDocument)),
+      name: 'Doc.json',
     });
 
+    const { readImportDocumentDraft } = useImportDocument();
+
+    await expect(readImportDocumentDraft()).resolves.toEqual({
+      fileName: 'Doc.json',
+      initialValue: validDocument,
+    });
+    expect(createDocumentMock).not.toHaveBeenCalled();
+  });
+
+  it('replaces raw repository failure details with a safe cause when document creation fails', async () => {
     const rawCause = new Error(
       'Failed to write /Device files/Private/Tax 2025/document.json for file-id gd-123',
     );
     createDocumentMock.mockRejectedValueOnce(rawCause);
 
-    const { importJsonFile } = useImportDocument();
+    const { createImportedDocument } = useImportDocument();
 
-    const error = await importJsonFile('/documents').catch((caughtError: unknown) => caughtError);
+    const error = await createImportedDocument('/documents', {
+      fileName: 'Doc.json',
+      initialValue: validDocument,
+    }).catch((caughtError: unknown) => caughtError);
 
-    expect(createDocumentMock).toHaveBeenCalledWith('/documents', {
-      body: {},
-      name: 'Doc',
-      type: 'note',
-      version: 1,
-    });
+    expect(createDocumentMock).toHaveBeenCalledWith('/documents', validDocument);
     expect(error).toBeInstanceOf(DomainError);
     expect(error).toMatchObject({
       message: 'Could not import the document',
@@ -103,58 +118,42 @@ describe('useImportDocument', () => {
     expect(error).not.toHaveProperty('cause.message', rawCause.message);
   });
 
-  it('creates a document from valid Mioframe JSON and returns its id', async () => {
-    fileOpenMock.mockResolvedValue({
-      text: vi.fn().mockResolvedValue(
-        JSON.stringify({
-          body: {},
-          name: 'Doc',
-          type: 'note',
-          version: 1,
-        }),
-      ),
-    });
+  it('creates a document from a validated draft and returns its id', async () => {
+    const { createImportedDocument } = useImportDocument();
 
-    const { importJsonFile } = useImportDocument();
-
-    await expect(importJsonFile('/documents')).resolves.toBe('document-id');
-    expect(createDocumentMock).toHaveBeenCalledWith('/documents', {
-      body: {},
-      name: 'Doc',
-      type: 'note',
-      version: 1,
-    });
+    await expect(
+      createImportedDocument('/documents', {
+        fileName: 'Doc.json',
+        initialValue: validDocument,
+      }),
+    ).resolves.toBe('document-id');
+    expect(createDocumentMock).toHaveBeenCalledWith('/documents', validDocument);
   });
 
   it('preserves an existing DomainError when document creation fails', async () => {
-    fileOpenMock.mockResolvedValue({
-      text: vi.fn().mockResolvedValue(
-        JSON.stringify({
-          body: {},
-          name: 'Doc',
-          type: 'note',
-          version: 1,
-        }),
-      ),
-    });
-
     const cause = new DomainError('The selected JSON file is not a Mioframe document');
     createDocumentMock.mockRejectedValueOnce(cause);
 
-    const { importJsonFile } = useImportDocument();
+    const { createImportedDocument } = useImportDocument();
 
-    await expect(importJsonFile('/documents')).rejects.toBe(cause);
+    await expect(
+      createImportedDocument('/documents', {
+        fileName: 'Doc.json',
+        initialValue: validDocument,
+      }),
+    ).rejects.toBe(cause);
   });
 
   it('wraps file read errors with a privacy-safe technical cause', async () => {
     const rawCause = new Error('Could not read /Device files/Private/Tax 2025/document.json');
     fileOpenMock.mockResolvedValue({
       text: vi.fn().mockRejectedValue(rawCause),
+      name: 'Doc.json',
     });
 
-    const { importJsonFile } = useImportDocument();
+    const { readImportDocumentDraft } = useImportDocument();
 
-    const error = await importJsonFile('/documents').catch((caughtError: unknown) => caughtError);
+    const error = await readImportDocumentDraft().catch((caughtError: unknown) => caughtError);
 
     expect(error).toBeInstanceOf(DomainError);
     expect(error).toMatchObject({
@@ -171,9 +170,9 @@ describe('useImportDocument', () => {
   it('returns undefined when the user cancels file selection', async () => {
     fileOpenMock.mockRejectedValueOnce(new DOMException('User cancelled', 'AbortError'));
 
-    const { importJsonFile } = useImportDocument();
+    const { readImportDocumentDraft } = useImportDocument();
 
-    await expect(importJsonFile('/documents')).resolves.toBeUndefined();
+    await expect(readImportDocumentDraft()).resolves.toBeUndefined();
     expect(createDocumentMock).not.toHaveBeenCalled();
   });
 
@@ -184,9 +183,9 @@ describe('useImportDocument', () => {
     );
     fileOpenMock.mockRejectedValueOnce(rawCause);
 
-    const { importJsonFile } = useImportDocument();
+    const { readImportDocumentDraft } = useImportDocument();
 
-    const error = await importJsonFile('/documents').catch((caughtError: unknown) => caughtError);
+    const error = await readImportDocumentDraft().catch((caughtError: unknown) => caughtError);
 
     expect(error).toBeInstanceOf(DomainError);
     expect(error).toMatchObject({
@@ -201,23 +200,15 @@ describe('useImportDocument', () => {
   });
 
   it('preserves a safe cause message for reporting when document creation fails', async () => {
-    fileOpenMock.mockResolvedValue({
-      text: vi.fn().mockResolvedValue(
-        JSON.stringify({
-          body: {},
-          name: 'Doc',
-          type: 'note',
-          version: 1,
-        }),
-      ),
-    });
-
     const cause = new Error('Could not write the imported document');
     createDocumentMock.mockRejectedValueOnce(cause);
 
-    const { importJsonFile } = useImportDocument();
+    const { createImportedDocument } = useImportDocument();
 
-    const error = await importJsonFile('/documents').catch((caughtError: unknown) => caughtError);
+    const error = await createImportedDocument('/documents', {
+      fileName: 'Doc.json',
+      initialValue: validDocument,
+    }).catch((caughtError: unknown) => caughtError);
 
     expect(error).toBeInstanceOf(DomainError);
     expect(error).toMatchObject({

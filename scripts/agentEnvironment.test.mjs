@@ -5,7 +5,7 @@ import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
-import { checkAgentEnvironment } from './agentEnvironment.mjs';
+import { checkAgentEnvironment, getDirectorySymlinkType } from './agentEnvironment.mjs';
 
 const VALID_GITIGNORE =
   '.claude/*\n!.claude/skills\n!.claude/skills/**\n.claude/settings.local.json\n';
@@ -325,6 +325,16 @@ describe('.gitignore validation', () => {
     expect(result.errors).toContainEqual(
       expect.stringContaining('.claude/settings.local.json must remain ignored'),
     );
+  });
+});
+
+describe('directory symlink type', () => {
+  it('uses junction for Windows directory symlinks', () => {
+    expect(getDirectorySymlinkType('win32')).toBe('junction');
+  });
+
+  it('leaves the symlink type unspecified outside Windows', () => {
+    expect(getDirectorySymlinkType('linux')).toBeUndefined();
   });
 });
 

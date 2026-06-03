@@ -114,32 +114,8 @@ export const useImportDocument = () => {
     }
   };
 
-  const importJsonFile = async (path: string) => {
-    const draft = await readImportDocumentDraft();
-
-    if (!draft) {
-      return undefined;
-    }
-
-    try {
-      const documentId = await createImportedDocument(path, draft);
-
-      return documentId;
-    } catch (error) {
-      if (error instanceof DomainError) {
-        throw error;
-      }
-
-      throw new DomainError('Could not import the document', {
-        cause: createSafeErrorCause('Document repository write operation failed'),
-        code: ImportDocumentErrorCode.documentImportFailed,
-      });
-    }
-  };
-
   return {
     createImportedDocument,
-    importJsonFile,
     readImportDocumentDraft,
   };
 };

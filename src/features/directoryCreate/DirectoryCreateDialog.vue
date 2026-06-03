@@ -30,6 +30,7 @@ const { confirm } = useDialog();
 const { requestAccess } = useFileSystemAccessPermissionBroker();
 
 const loading = ref(false);
+const retryCreateDirectoryErrorText = 'Could not create the folder. Try again.';
 
 const createDirectoryEntry = async () => {
   if (!directoryName.value) {
@@ -91,9 +92,13 @@ const onApply = async () => {
     const recovery = getFileSystemAccessRecovery(error, { operation: 'write' });
     if (recovery) {
       if (await requestWriteAccess(recovery)) {
-        await createDirectoryEntry();
-        if (directoryName.value) {
-          emit('created', directoryName.value);
+        try {
+          await createDirectoryEntry();
+          if (directoryName.value) {
+            emit('created', directoryName.value);
+          }
+        } catch {
+          errorText.value = retryCreateDirectoryErrorText;
         }
       }
     } else {
