@@ -438,6 +438,29 @@ describe('VfsActivityStatusChip', () => {
     expect(wrapper.text()).toContain('Grant write access');
   });
 
+  it('keeps the error visible with a non-permission replay failure message after access is granted', async () => {
+    requestAccessMock.mockResolvedValue({ status: 'grantedWithStorageFailures' });
+    vfsState.value = createErrorState(
+      createWriteError({
+        cause: new WebFileSystemAccessRequiredError({
+          mode: 'readwrite',
+          spaceName: 'Work',
+        }),
+      }),
+    );
+
+    const wrapper = await mountVfsActivityStatusChip();
+
+    await wrapper.get('button').trigger('click');
+    await clickButtonByLabel(wrapper, 'Grant write access');
+
+    expect(dismissSaveStatusErrorMock).not.toHaveBeenCalled();
+    expect(addSnackbarMock).toHaveBeenCalledWith({
+      text: 'Write access was granted, but replaying earlier unsaved repository changes hit another storage failure.',
+    });
+    expect(wrapper.text()).toContain('Grant write access');
+  });
+
   it('keeps the error visible and shows a safe message when the broker rejects unexpectedly', async () => {
     requestAccessMock.mockRejectedValue(new Error('raw broker failure'));
     vfsState.value = createErrorState(

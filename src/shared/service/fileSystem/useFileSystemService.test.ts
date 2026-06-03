@@ -1000,7 +1000,46 @@ describe('useFileSystemService', () => {
     unregister();
   });
 
-  it('write access grant returns grantedWithReplayFailures when a recovery handler reports failure', async () => {
+  it('write access grant returns grantedWithReplayFailures when a recovery handler remains permission-blocked', async () => {
+    const promptHandle = createDirectoryHandleMock({
+      name: 'Work',
+      permissionState: 'prompt',
+      readPermissionState: 'granted',
+      sameEntryKey: 'work',
+    });
+    getRecordListMock.mockResolvedValue([{ name: 'Work', handle: promptHandle }]);
+
+    const service = await createService();
+
+    await vi.waitFor(async () => {
+      await expect(service.deviceFiles.fetch()).resolves.toEqual([
+        { canDisconnect: true, name: 'Work' },
+      ]);
+    });
+
+    const createError = await service
+      .createDirectory('/Device Files/Work/new-directory')
+      .catch((error: unknown) => error);
+
+    if (!isAccessErrorWithRecoveryKey(createError)) {
+      throw new Error('Expected access error');
+    }
+
+    const handler = vi.fn().mockResolvedValue({ status: 'stillBlocked' as const });
+    const unregister = service.registerWriteAccessRecoveryHandler(handler);
+
+    await expect(
+      service.resolveFileSystemAccessRequest({
+        operation: 'write',
+        permissionState: 'granted',
+        spaceName: createError.spaceName,
+      }),
+    ).resolves.toEqual({ status: 'grantedWithReplayFailures' });
+
+    unregister();
+  });
+
+  it('write access grant returns grantedWithStorageFailures when a recovery handler reports a non-retryable failure', async () => {
     const promptHandle = createDirectoryHandleMock({
       name: 'Work',
       permissionState: 'prompt',
@@ -1034,7 +1073,7 @@ describe('useFileSystemService', () => {
         permissionState: 'granted',
         spaceName: createError.spaceName,
       }),
-    ).resolves.toEqual({ status: 'grantedWithReplayFailures' });
+    ).resolves.toEqual({ status: 'grantedWithStorageFailures' });
 
     unregister();
   });

@@ -109,6 +109,75 @@ describe('createRetryingStorageAdapter', () => {
     expect(wrapped.hasPendingSaves()).toBe(true);
   });
 
+  it('removes a pending save when remove deletes the same storage key', async () => {
+    const error = new Error('permission blocked');
+    const key = ['doc-id', 'snapshot', 'hash-a'] as const;
+    const adapter = {
+      load: vi.fn(),
+      loadRange: vi.fn(),
+      remove: vi.fn().mockResolvedValue(undefined),
+      removeRange: vi.fn(),
+      save: vi.fn<StorageAdapterInterface['save']>().mockRejectedValueOnce(error),
+    } satisfies StorageAdapterInterface;
+    const wrapped = createRetryingStorageAdapter(adapter, {
+      shouldQueueFailedSave: (candidate) => candidate === error,
+    });
+
+    await expect(wrapped.save([...key], new Uint8Array([1, 2, 3]))).rejects.toBe(error);
+    expect(wrapped.hasPendingSaves()).toBe(true);
+
+    await expect(wrapped.remove([...key])).resolves.toBeUndefined();
+
+    expect(adapter.remove).toHaveBeenCalledWith(key);
+    expect(wrapped.hasPendingSaves()).toBe(false);
+    await expect(wrapped.flushPendingSaves()).resolves.toEqual({
+      flushedCount: 0,
+      pendingCount: 0,
+      status: 'flushed',
+    });
+    expect(adapter.save).toHaveBeenCalledTimes(1);
+  });
+
+  it('removes only prefix-matching pending saves when removeRange deletes a storage range', async () => {
+    const error = new Error('permission blocked');
+    const matchingSnapshotKey = ['doc-id', 'snapshot', 'hash-a'] as const;
+    const matchingIncrementalKey = ['doc-id', 'incremental', 'hash-b'] as const;
+    const otherDocumentKey = ['other-doc', 'snapshot', 'hash-c'] as const;
+    const adapter = {
+      load: vi.fn(),
+      loadRange: vi.fn(),
+      remove: vi.fn(),
+      removeRange: vi.fn().mockResolvedValue(undefined),
+      save: vi
+        .fn<StorageAdapterInterface['save']>()
+        .mockRejectedValueOnce(error)
+        .mockRejectedValueOnce(error)
+        .mockRejectedValueOnce(error)
+        .mockResolvedValueOnce(undefined),
+    } satisfies StorageAdapterInterface;
+    const wrapped = createRetryingStorageAdapter(adapter, {
+      shouldQueueFailedSave: (candidate) => candidate === error,
+    });
+
+    await expect(wrapped.save([...matchingSnapshotKey], new Uint8Array([1]))).rejects.toBe(error);
+    await expect(wrapped.save([...matchingIncrementalKey], new Uint8Array([2]))).rejects.toBe(
+      error,
+    );
+    await expect(wrapped.save([...otherDocumentKey], new Uint8Array([3]))).rejects.toBe(error);
+
+    await expect(wrapped.removeRange(['doc-id'])).resolves.toBeUndefined();
+
+    expect(adapter.removeRange).toHaveBeenCalledWith(['doc-id']);
+    expect(wrapped.hasPendingSaves()).toBe(true);
+    await expect(wrapped.flushPendingSaves()).resolves.toEqual({
+      flushedCount: 1,
+      pendingCount: 0,
+      status: 'flushed',
+    });
+    expect(adapter.save).toHaveBeenLastCalledWith(otherDocumentKey, new Uint8Array([3]));
+    expect(adapter.save).toHaveBeenCalledTimes(4);
+  });
+
   it('delegates non-save operations to the wrapped adapter', async () => {
     const loaded = new Uint8Array([1, 2]);
     const range = [{ data: clone(loaded), key: ['doc-id', 'snapshot', 'hash-a'] }];

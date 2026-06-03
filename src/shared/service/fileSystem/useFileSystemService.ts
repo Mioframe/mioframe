@@ -482,9 +482,15 @@ const setupFileSystemService = () => {
             spaceName: request.spaceName,
           });
 
-          if (result.status !== 'flushed') {
+          if (result.status === 'stillBlocked') {
             return {
               status: 'grantedWithReplayFailures' as const,
+            };
+          }
+
+          if (result.status === 'failed') {
+            return {
+              status: 'grantedWithStorageFailures' as const,
             };
           }
         }

@@ -66,7 +66,11 @@ export const useImportDocumentAction = () => {
 
         const result = await requestAccess(recovery);
 
-        if (result.status !== 'granted' && result.status !== 'grantedWithReplayFailures') {
+        if (
+          result.status !== 'granted' &&
+          result.status !== 'grantedWithReplayFailures' &&
+          result.status !== 'grantedWithStorageFailures'
+        ) {
           addSnackbar({
             text:
               result.status === 'denied'

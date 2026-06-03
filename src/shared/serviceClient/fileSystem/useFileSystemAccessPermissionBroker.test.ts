@@ -266,4 +266,34 @@ describe('useFileSystemAccessPermissionBroker', () => {
 
     scope.stop();
   });
+
+  it('returns grantedWithStorageFailures when permission is granted but replay hits another storage failure', async () => {
+    const handle = createDirectoryHandleMock({
+      name: 'Work',
+      permissionState: 'prompt',
+      sameEntryKey: 'work',
+    });
+    handle.requestPermissionMock.mockResolvedValue('granted');
+    getTemporaryFileSystemAccessHandleMock.mockResolvedValue({
+      handle,
+      operation: 'write',
+      spaceName: 'Work',
+    });
+    resolveFileSystemAccessRequestMock.mockResolvedValue({
+      status: 'grantedWithStorageFailures',
+    });
+
+    const { broker, scope } = await mountBroker();
+
+    await expect(
+      broker.requestAccess({
+        operation: 'write',
+        spaceName: 'Work',
+      }),
+    ).resolves.toEqual({
+      status: 'grantedWithStorageFailures',
+    });
+
+    scope.stop();
+  });
 });

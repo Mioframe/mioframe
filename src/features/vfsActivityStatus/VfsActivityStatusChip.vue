@@ -109,6 +109,13 @@ const onClickGrantWriteAccess = async () => {
       return;
     }
 
+    if (result.status === 'grantedWithStorageFailures') {
+      addSnackbar({
+        text: 'Write access was granted, but replaying earlier unsaved repository changes hit another storage failure.',
+      });
+      return;
+    }
+
     addSnackbar({
       text:
         result.status === 'error'

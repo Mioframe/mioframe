@@ -32,6 +32,8 @@ type PendingSave = {
 const cloneKey = (key: StorageKey): StorageKey => [...key];
 const cloneBytes = (data: Uint8Array) => new Uint8Array(data);
 const getPendingKey = (key: StorageKey) => JSON.stringify(key);
+const keyStartsWith = (key: StorageKey, prefix: StorageKey) =>
+  prefix.length <= key.length && prefix.every((segment, index) => key[index] === segment);
 
 /**
  * Wraps an Automerge storage adapter with retryable failed-save buffering by storage key.
@@ -52,14 +54,32 @@ export const createRetryingStorageAdapter = (
     });
   };
 
+  const deletePendingSave = (key: StorageKey) => {
+    pendingSaves.delete(getPendingKey(key));
+  };
+
+  const deletePendingSaveRange = (keyPrefix: StorageKey) => {
+    for (const [pendingKey, pendingSave] of pendingSaves.entries()) {
+      if (keyStartsWith(pendingSave.key, keyPrefix)) {
+        pendingSaves.delete(pendingKey);
+      }
+    }
+  };
+
   const wrapped: StorageAdapterInterface & {
     flushPendingSaves(): Promise<RetryingStorageAdapterFlushResult>;
     hasPendingSaves(): boolean;
   } = {
     load: (key) => adapter.load(key),
     loadRange: (keyPrefix) => adapter.loadRange(keyPrefix),
-    remove: (key) => adapter.remove(key),
-    removeRange: (keyPrefix) => adapter.removeRange(keyPrefix),
+    remove: (key) => {
+      deletePendingSave(key);
+      return adapter.remove(key);
+    },
+    removeRange: (keyPrefix) => {
+      deletePendingSaveRange(keyPrefix);
+      return adapter.removeRange(keyPrefix);
+    },
     async save(key, data) {
       try {
         await adapter.save(key, data);

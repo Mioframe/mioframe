@@ -25,7 +25,13 @@ export const useFileSystemAccessPermissionBroker = () => {
   const requestAccess = async (
     key: FileSystemAccessRequestKey,
   ): Promise<{
-    status: 'granted' | 'grantedWithReplayFailures' | 'denied' | 'cancelled' | 'error';
+    status:
+      | 'granted'
+      | 'grantedWithReplayFailures'
+      | 'grantedWithStorageFailures'
+      | 'denied'
+      | 'cancelled'
+      | 'error';
   }> => {
     try {
       const request = await getTemporaryFileSystemAccessHandle(key);

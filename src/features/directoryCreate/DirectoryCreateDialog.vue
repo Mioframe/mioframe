@@ -54,7 +54,11 @@ const requestWriteAccess = async (recovery: FileSystemAccessRecovery) => {
 
   const result = await requestAccess(recovery);
 
-  if (result.status === 'granted' || result.status === 'grantedWithReplayFailures') {
+  if (
+    result.status === 'granted' ||
+    result.status === 'grantedWithReplayFailures' ||
+    result.status === 'grantedWithStorageFailures'
+  ) {
     errorText.value = undefined;
     return true;
   }
