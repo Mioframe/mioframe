@@ -1,4 +1,9 @@
 export { createVFSAdapter } from './createVFSAdapter';
+export {
+  createRetryingStorageAdapter,
+  type RetryingStorageAdapterFlushResult,
+  type RetryingStorageAdapterOptions,
+} from './createRetryingStorageAdapter';
 export { createFSStorageAdapter } from './createFSStorageAdapter';
 export {
   zodAutomergeFileName,

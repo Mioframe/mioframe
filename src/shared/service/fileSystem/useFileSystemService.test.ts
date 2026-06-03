@@ -1,6 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Repo } from '@automerge/automerge-repo';
 import { partialKeyToFileName, storageAdapterMarkerFileName } from '@shared/lib/automergeAdapter';
+import { WEB_FILE_SYSTEM_ACCESS_REQUIRED_CODE } from '@shared/lib/webFileSystemProvider';
+import {
+  createDirectoryHandleMock,
+  createFileHandleMock,
+} from '@shared/lib/webFileSystemProvider/WebFileSystemProvider.testUtils';
 import type { FSNodeStat, IFileSystemProvider, VfsEvent } from '@shared/lib/virtualFileSystem';
 import { FSNodeType, VfsEventSource } from '@shared/lib/virtualFileSystem';
 import { OPFSName } from '../directories';
@@ -43,81 +48,6 @@ const createDocumentStorageFileName = () => {
   }
 
   return fileName;
-};
-
-type MockDirectoryHandle = FileSystemDirectoryHandle & {
-  __sameEntryKey: string;
-  queryPermissionMock?: ReturnType<
-    typeof vi.fn<(descriptor?: FileSystemHandlePermissionDescriptor) => Promise<PermissionState>>
-  >;
-  isSameEntryMock: ReturnType<
-    typeof vi.fn<(other: { __sameEntryKey?: string; name?: string }) => Promise<boolean>>
-  >;
-};
-
-const createDirectoryHandleMock = ({
-  name,
-  permissionState = 'granted',
-  sameEntryKey = name,
-  withQueryPermission = true,
-}: {
-  name: string;
-  permissionState?: PermissionState;
-  sameEntryKey?: string;
-  withQueryPermission?: boolean;
-}) => {
-  const queryPermissionMock = withQueryPermission
-    ? vi.fn(() => Promise.resolve(permissionState))
-    : undefined;
-  const isSameEntryMock = vi.fn<
-    (other: { __sameEntryKey?: string; name?: string }) => Promise<boolean>
-  >((other) => Promise.resolve((other.__sameEntryKey ?? other.name) === sameEntryKey));
-
-  const handle: MockDirectoryHandle = {
-    kind: 'directory',
-    name,
-    ...(queryPermissionMock === undefined ? {} : { queryPermission: queryPermissionMock }),
-    ...(queryPermissionMock === undefined ? {} : { queryPermissionMock }),
-    requestPermission: vi.fn(() => Promise.resolve(permissionState)),
-    isSameEntry: isSameEntryMock,
-    isSameEntryMock,
-    __sameEntryKey: sameEntryKey,
-    isFile: false,
-    isDirectory: true,
-    entries: () =>
-      (async function* () {
-        await Promise.resolve();
-        yield* [];
-      })(),
-    keys: () =>
-      (async function* () {
-        await Promise.resolve();
-        yield* [];
-      })(),
-    values: () =>
-      (async function* () {
-        await Promise.resolve();
-        yield* [];
-      })(),
-    [Symbol.asyncIterator]() {
-      return this.entries();
-    },
-    getDirectoryHandle: () => Promise.reject(new Error('Method not implemented.')),
-    getFileHandle: () => Promise.reject(new Error('Method not implemented.')),
-    removeEntry: () => Promise.reject(new Error('Method not implemented.')),
-    resolve: () => Promise.reject(new Error('Method not implemented.')),
-    getFile(fileName, options) {
-      return this.getFileHandle(fileName, options);
-    },
-    getDirectory(directoryName, options) {
-      return this.getDirectoryHandle(directoryName, options);
-    },
-    getEntries() {
-      return this.values();
-    },
-  };
-
-  return handle;
 };
 
 const createDiagnosticProvider = ({
@@ -166,6 +96,21 @@ const createDiagnosticProvider = ({
   };
 };
 
+const isAccessErrorWithRecoveryKey = (
+  error: unknown,
+): error is Error & {
+  mode: 'read' | 'readwrite';
+  spaceName: string;
+  toJSON: () => Record<string, unknown>;
+} =>
+  error instanceof Error &&
+  'spaceName' in error &&
+  typeof error.spaceName === 'string' &&
+  'mode' in error &&
+  (error.mode === 'read' || error.mode === 'readwrite') &&
+  'toJSON' in error &&
+  typeof error.toJSON === 'function';
+
 describe('useFileSystemService', () => {
   beforeEach(() => {
     vi.resetModules();
@@ -193,7 +138,7 @@ describe('useFileSystemService', () => {
     return useFileSystemService();
   };
 
-  it('hydrates only granted device directories and includes OPFS when available', async () => {
+  it('hydrates remembered device directories even when permission is not currently granted', async () => {
     const grantedHandle = createDirectoryHandleMock({
       name: 'Work',
       permissionState: 'granted',
@@ -218,19 +163,23 @@ describe('useFileSystemService', () => {
     const service = await createService();
 
     await vi.waitFor(async () => {
-      expect(grantedHandle.queryPermissionMock).toHaveBeenCalledWith({ mode: 'readwrite' });
-      expect(deniedHandle.queryPermissionMock).toHaveBeenCalledWith({ mode: 'readwrite' });
       await expect(service.deviceFiles.fetch()).resolves.toEqual([
         {
+          canDisconnect: false,
           name: OPFSName,
-          handle: opfsHandle,
         },
         {
+          canDisconnect: true,
           name: 'Work',
-          handle: grantedHandle,
+        },
+        {
+          canDisconnect: true,
+          name: 'Private',
         },
       ]);
     });
+    expect(grantedHandle.requestPermissionMock).not.toHaveBeenCalled();
+    expect(deniedHandle.requestPermissionMock).not.toHaveBeenCalled();
   });
 
   it('hydrates normalized persisted records without rewriting them', async () => {
@@ -251,15 +200,15 @@ describe('useFileSystemService', () => {
     await vi.waitFor(async () => {
       await expect(service.deviceFiles.fetch()).resolves.toEqual([
         {
+          canDisconnect: true,
           name: 'Archive',
-          handle: legacyHandle,
         },
       ]);
     });
     expect(updateRecordListMock).not.toHaveBeenCalled();
   });
 
-  it('adds unique device directory names and reuses existing handles without display copy', async () => {
+  it('adds unique device directory names and reuses existing handles without returning handles', async () => {
     const firstHandle = createDirectoryHandleMock({
       name: 'Work',
       sameEntryKey: 'work',
@@ -283,15 +232,12 @@ describe('useFileSystemService', () => {
 
     await expect(service.addDeviceDirectory(firstHandle)).resolves.toEqual({
       name: 'Work',
-      handle: firstHandle,
     });
     await expect(service.addDeviceDirectory(duplicateHandle)).resolves.toEqual({
       name: 'Work',
-      handle: duplicateHandle,
     });
     await expect(service.addDeviceDirectory(secondHandle)).resolves.toEqual({
       name: 'Work (2)',
-      handle: secondHandle,
     });
 
     expect(updateRecordListMock).toHaveBeenNthCalledWith(1, [
@@ -330,20 +276,41 @@ describe('useFileSystemService', () => {
 
     await expect(service.addDeviceDirectory(conflictingHandle)).resolves.toEqual({
       name: `${OPFSName} (2)`,
-      handle: conflictingHandle,
     });
     await expect(service.deviceFiles.fetch()).resolves.toEqual(
       expect.arrayContaining([
         {
+          canDisconnect: false,
           name: OPFSName,
-          handle: expect.objectContaining({ name: OPFSName }),
         },
         {
+          canDisconnect: true,
           name: `${OPFSName} (2)`,
-          handle: conflictingHandle,
         },
       ]),
     );
+  });
+
+  it('appends a new distinct handle without replacing unrelated persisted records', async () => {
+    const existingHandle = createDirectoryHandleMock({
+      name: 'Archive',
+      sameEntryKey: 'archive',
+    });
+    const addedHandle = createDirectoryHandleMock({
+      name: 'Work',
+      sameEntryKey: 'work',
+    });
+    getRecordListMock.mockResolvedValue([{ name: 'Archive', handle: existingHandle }]);
+
+    const service = await createService();
+
+    await expect(service.addDeviceDirectory(addedHandle)).resolves.toEqual({
+      name: 'Work',
+    });
+    expect(updateRecordListMock).toHaveBeenCalledWith([
+      { name: 'Archive', handle: existingHandle },
+      { name: 'Work', handle: addedHandle },
+    ]);
   });
 
   it('persists duplicate-name and reserved-name migrations without display copy', async () => {
@@ -370,16 +337,16 @@ describe('useFileSystemService', () => {
     await vi.waitFor(async () => {
       await expect(service.deviceFiles.fetch()).resolves.toEqual([
         {
+          canDisconnect: false,
           name: OPFSName,
-          handle: opfsHandle,
         },
         {
+          canDisconnect: true,
           name: `${OPFSName} (2)`,
-          handle: firstHandle,
         },
         {
+          canDisconnect: true,
           name: 'Archive',
-          handle: secondHandle,
         },
       ]);
     });
@@ -413,15 +380,110 @@ describe('useFileSystemService', () => {
 
     await expect(service.addDeviceDirectory(renamedHandle)).resolves.toEqual({
       name: 'Archive',
-      handle: renamedHandle,
     });
     await expect(service.deviceFiles.fetch()).resolves.toEqual([
       {
+        canDisconnect: true,
         name: 'Archive',
-        handle: renamedHandle,
       },
     ]);
     expect(updateRecordListMock).toHaveBeenCalledWith([{ name: 'Archive', handle: renamedHandle }]);
+  });
+
+  it('replaces only the matching persisted record when a remembered handle is renamed', async () => {
+    const workHandle = createDirectoryHandleMock({
+      name: 'Projects',
+      sameEntryKey: 'shared-handle',
+    });
+    const renamedHandle = createDirectoryHandleMock({
+      name: 'Archive',
+      sameEntryKey: 'shared-handle',
+    });
+    const untouchedHandle = createDirectoryHandleMock({
+      name: 'Reference',
+      sameEntryKey: 'reference',
+    });
+    getRecordListMock.mockResolvedValue([
+      { name: 'Projects', handle: workHandle },
+      { name: 'Reference', handle: untouchedHandle },
+    ]);
+
+    const service = await createService();
+
+    await expect(service.addDeviceDirectory(renamedHandle)).resolves.toEqual({
+      name: 'Archive',
+    });
+    expect(updateRecordListMock).toHaveBeenCalledWith([
+      { name: 'Archive', handle: renamedHandle },
+      { name: 'Reference', handle: untouchedHandle },
+    ]);
+  });
+
+  it('keeps the previous mounted name when re-adding the same handle name', async () => {
+    const oldHandle = createDirectoryHandleMock({
+      name: 'Projects',
+      sameEntryKey: 'shared-handle',
+    });
+    const sameHandle = createDirectoryHandleMock({
+      name: 'Projects',
+      sameEntryKey: 'shared-handle',
+    });
+
+    getRecordListMock
+      .mockResolvedValueOnce([{ name: 'Projects', handle: oldHandle }])
+      .mockResolvedValueOnce([{ name: 'Projects', handle: oldHandle }]);
+
+    const service = await createService();
+
+    await expect(service.addDeviceDirectory(sameHandle)).resolves.toEqual({
+      name: 'Projects',
+    });
+    await expect(service.deviceFiles.fetch()).resolves.toEqual([
+      {
+        canDisconnect: true,
+        name: 'Projects',
+      },
+    ]);
+  });
+
+  it('does not emit provider delete or create events when re-adding the same remembered name', async () => {
+    const oldHandle = createDirectoryHandleMock({
+      name: 'Projects',
+      sameEntryKey: 'shared-handle',
+    });
+    const sameHandle = createDirectoryHandleMock({
+      name: 'Projects',
+      sameEntryKey: 'shared-handle',
+    });
+
+    getRecordListMock
+      .mockResolvedValueOnce([{ name: 'Projects', handle: oldHandle }])
+      .mockResolvedValueOnce([{ name: 'Projects', handle: oldHandle }]);
+
+    const service = await createService();
+    const events: Array<{ source: string; type: string }> = [];
+    const unsubscribe = service.vfs.watch('/Device Files/Projects', (event) => {
+      events.push({
+        source: event.source,
+        type: event.type,
+      });
+    });
+
+    await service.addDeviceDirectory(sameHandle);
+    unsubscribe();
+
+    expect(events).not.toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          source: 'provider',
+          type: 'delete',
+        }),
+        expect.objectContaining({
+          source: 'provider',
+          type: 'create',
+        }),
+      ]),
+    );
   });
 
   it('removes matching device directory names from persistence and active state', async () => {
@@ -440,6 +502,33 @@ describe('useFileSystemService', () => {
     expect(updateRecordListMock).toHaveBeenCalledWith([]);
   });
 
+  it('removes only the matching device directory when other remembered spaces remain', async () => {
+    const workHandle = createDirectoryHandleMock({
+      name: 'Work',
+      sameEntryKey: 'work',
+    });
+    const archiveHandle = createDirectoryHandleMock({
+      name: 'Archive',
+      sameEntryKey: 'archive',
+    });
+    getRecordListMock.mockResolvedValue([
+      { name: 'Work', handle: workHandle },
+      { name: 'Archive', handle: archiveHandle },
+    ]);
+
+    const service = await createService();
+
+    await service.removeDeviceDirectory('Work');
+
+    await expect(service.deviceFiles.fetch()).resolves.toEqual([
+      {
+        canDisconnect: true,
+        name: 'Archive',
+      },
+    ]);
+    expect(updateRecordListMock).toHaveBeenCalledWith([{ name: 'Archive', handle: archiveHandle }]);
+  });
+
   it('does not touch persisted records when removing OPFS or an unknown name', async () => {
     const service = await createService();
 
@@ -447,6 +536,916 @@ describe('useFileSystemService', () => {
     await service.removeDeviceDirectory('Missing');
 
     expect(updateRecordListMock).not.toHaveBeenCalled();
+  });
+
+  it('returns early when removing OPFS without loading persisted records', async () => {
+    const service = await createService();
+
+    await service.removeDeviceDirectory(OPFSName);
+
+    expect(getRecordListMock).not.toHaveBeenCalled();
+    expect(updateRecordListMock).not.toHaveBeenCalled();
+  });
+
+  it('returns undefined for an unknown file-system access request key', async () => {
+    const service = await createService();
+
+    await expect(
+      service.getFileSystemAccessRequest({
+        operation: 'write',
+        spaceName: 'Missing',
+      }),
+    ).resolves.toBeUndefined();
+  });
+
+  it('returns a temporary handle for the broker when a file-system access request is pending', async () => {
+    const promptHandle = createDirectoryHandleMock({
+      name: 'Work',
+      permissionState: 'prompt',
+      sameEntryKey: 'work',
+    });
+    getRecordListMock.mockResolvedValue([{ name: 'Work', handle: promptHandle }]);
+
+    const service = await createService();
+    await vi.waitFor(async () => {
+      await expect(service.deviceFiles.fetch()).resolves.toEqual([
+        {
+          canDisconnect: true,
+          name: 'Work',
+        },
+      ]);
+    });
+
+    await service.directoryContent.fetch({
+      path: '/Device Files/Work',
+    });
+
+    await expect(
+      service.getTemporaryFileSystemAccessHandle({
+        operation: 'read',
+        spaceName: 'Work',
+      }),
+    ).resolves.toMatchObject({
+      handle: promptHandle,
+      operation: 'read',
+      spaceName: 'Work',
+    });
+  });
+
+  it('keeps remembered spaces mounted and exposes a pending access request when provider access is missing', async () => {
+    const promptHandle = createDirectoryHandleMock({
+      name: 'Work',
+      permissionState: 'prompt',
+      sameEntryKey: 'work',
+    });
+    getRecordListMock.mockResolvedValue([{ name: 'Work', handle: promptHandle }]);
+
+    const service = await createService();
+
+    await vi.waitFor(async () => {
+      await expect(service.deviceFiles.fetch()).resolves.toEqual([
+        {
+          canDisconnect: true,
+          name: 'Work',
+        },
+      ]);
+    });
+
+    const error = await service.directoryContent.fetch({
+      path: '/Device Files/Work',
+    });
+
+    expect(error).toBeInstanceOf(Error);
+    expect(error).toMatchObject({
+      code: WEB_FILE_SYSTEM_ACCESS_REQUIRED_CODE,
+      mode: 'read',
+      name: 'WebFileSystemAccessRequiredError',
+      spaceName: 'Work',
+    });
+
+    if (!isAccessErrorWithRecoveryKey(error)) {
+      throw new Error('Expected DeviceDirectoryAccessRequiredError');
+    }
+
+    const serialized = error.toJSON();
+
+    expect(serialized).toMatchObject({
+      code: WEB_FILE_SYSTEM_ACCESS_REQUIRED_CODE,
+      message: 'Permission required to open this remembered local space',
+      mode: 'read',
+      spaceName: 'Work',
+    });
+    expect(serialized).not.toHaveProperty('cause');
+    expect(JSON.stringify(serialized)).not.toContain('__sameEntryKey');
+
+    await expect(
+      service.getFileSystemAccessRequest({
+        operation: 'read',
+        spaceName: error.spaceName,
+      }),
+    ).resolves.toEqual({
+      operation: 'read',
+      spaceName: 'Work',
+    });
+    expect(promptHandle.requestPermissionMock).not.toHaveBeenCalled();
+  });
+
+  it('clears pending access requests on grant and keeps remembered spaces after denial', async () => {
+    const deniedHandle = createDirectoryHandleMock({
+      name: 'Work',
+      permissionState: 'denied',
+      sameEntryKey: 'work',
+    });
+    getRecordListMock.mockResolvedValue([{ name: 'Work', handle: deniedHandle }]);
+
+    const service = await createService();
+    await vi.waitFor(async () => {
+      await expect(service.deviceFiles.fetch()).resolves.toEqual([
+        {
+          canDisconnect: true,
+          name: 'Work',
+        },
+      ]);
+    });
+
+    const error = await service.directoryContent.fetch({
+      path: '/Device Files/Work',
+    });
+
+    expect(error).toBeInstanceOf(Error);
+    expect(error).toMatchObject({
+      code: WEB_FILE_SYSTEM_ACCESS_REQUIRED_CODE,
+      mode: 'read',
+      name: 'WebFileSystemAccessRequiredError',
+      spaceName: 'Work',
+    });
+
+    if (!isAccessErrorWithRecoveryKey(error)) {
+      throw new Error('Expected DeviceDirectoryAccessRequiredError');
+    }
+
+    await expect(
+      service.resolveFileSystemAccessRequest({
+        operation: 'read',
+        permissionState: 'denied',
+        spaceName: error.spaceName,
+      }),
+    ).resolves.toEqual({
+      status: 'denied',
+    });
+
+    await expect(
+      service.getFileSystemAccessRequest({
+        operation: 'read',
+        spaceName: error.spaceName,
+      }),
+    ).resolves.toEqual({
+      operation: 'read',
+      spaceName: 'Work',
+    });
+    await expect(service.deviceFiles.fetch()).resolves.toEqual([
+      {
+        canDisconnect: true,
+        name: 'Work',
+      },
+    ]);
+  });
+
+  it('returns cancelled when the browser still reports prompt state after a recovery attempt', async () => {
+    const promptHandle = createDirectoryHandleMock({
+      name: 'Work',
+      permissionState: 'prompt',
+      sameEntryKey: 'work',
+    });
+    getRecordListMock.mockResolvedValue([{ name: 'Work', handle: promptHandle }]);
+
+    const service = await createService();
+    await vi.waitFor(async () => {
+      await expect(service.deviceFiles.fetch()).resolves.toEqual([
+        {
+          canDisconnect: true,
+          name: 'Work',
+        },
+      ]);
+    });
+
+    const error = await service.directoryContent.fetch({
+      path: '/Device Files/Work',
+    });
+
+    if (!isAccessErrorWithRecoveryKey(error)) {
+      throw new Error('Expected DeviceDirectoryAccessRequiredError');
+    }
+
+    await expect(
+      service.resolveFileSystemAccessRequest({
+        operation: 'read',
+        permissionState: 'prompt',
+        spaceName: error.spaceName,
+      }),
+    ).resolves.toEqual({
+      status: 'cancelled',
+    });
+
+    await expect(
+      service.getFileSystemAccessRequest({
+        operation: 'read',
+        spaceName: error.spaceName,
+      }),
+    ).resolves.toEqual({
+      operation: 'read',
+      spaceName: 'Work',
+    });
+  });
+
+  it('deduplicates pending requests for the same remembered space and mode', async () => {
+    const firstHandle = createDirectoryHandleMock({
+      name: 'Work',
+      permissionState: 'prompt',
+      sameEntryKey: 'work',
+    });
+    const secondHandle = createDirectoryHandleMock({
+      name: 'Work',
+      permissionState: 'prompt',
+      sameEntryKey: 'work',
+    });
+    getRecordListMock.mockResolvedValue([{ name: 'Work', handle: firstHandle }]);
+
+    const service = await createService();
+    await vi.waitFor(async () => {
+      await expect(service.deviceFiles.fetch()).resolves.toEqual([
+        {
+          canDisconnect: true,
+          name: 'Work',
+        },
+      ]);
+    });
+
+    await service.directoryContent.fetch({ path: '/Device Files/Work' });
+    const firstError = await service.fsNodeStat.fetch({ path: '/Device Files/Work/file.txt' });
+
+    expect(firstError).toBeInstanceOf(Error);
+    if (!isAccessErrorWithRecoveryKey(firstError)) {
+      throw new Error('Expected first access error');
+    }
+
+    await service.addDeviceDirectory(secondHandle);
+    const secondError = await service.directoryContent.fetch({ path: '/Device Files/Work' });
+
+    expect(secondError).toBeInstanceOf(Error);
+    if (!isAccessErrorWithRecoveryKey(secondError)) {
+      throw new Error('Expected second access error');
+    }
+
+    expect(secondError.spaceName).toBe(firstError.spaceName);
+    expect(secondError.mode).toBe(firstError.mode);
+    await expect(
+      service.getFileSystemAccessRequest({
+        operation: 'read',
+        spaceName: firstError.spaceName,
+      }),
+    ).resolves.toEqual({
+      operation: 'read',
+      spaceName: 'Work',
+    });
+  });
+
+  it('clears the pending request after permission is granted', async () => {
+    const grantedHandle = createDirectoryHandleMock({
+      name: 'Work',
+      permissionState: 'prompt',
+      sameEntryKey: 'work',
+    });
+    getRecordListMock.mockResolvedValue([{ name: 'Work', handle: grantedHandle }]);
+
+    const service = await createService();
+    await vi.waitFor(async () => {
+      await expect(service.deviceFiles.fetch()).resolves.toEqual([
+        { canDisconnect: true, name: 'Work' },
+      ]);
+    });
+    const error = await service.directoryContent.fetch({ path: '/Device Files/Work' });
+
+    if (!isAccessErrorWithRecoveryKey(error)) {
+      throw new Error('Expected access error');
+    }
+
+    grantedHandle.queryPermissionMock?.mockResolvedValue('granted');
+
+    await expect(
+      service.resolveFileSystemAccessRequest({
+        operation: 'read',
+        permissionState: 'granted',
+        spaceName: error.spaceName,
+      }),
+    ).resolves.toEqual({ status: 'granted' });
+
+    await expect(
+      service.getFileSystemAccessRequest({ operation: 'read', spaceName: error.spaceName }),
+    ).resolves.toBeUndefined();
+  });
+
+  it('clears only pending requests for the space when that directory is removed', async () => {
+    const promptHandle = createDirectoryHandleMock({
+      name: 'Work',
+      permissionState: 'prompt',
+      sameEntryKey: 'work',
+    });
+    getRecordListMock.mockResolvedValue([{ name: 'Work', handle: promptHandle }]);
+
+    const service = await createService();
+    await vi.waitFor(async () => {
+      await expect(service.deviceFiles.fetch()).resolves.toEqual([
+        { canDisconnect: true, name: 'Work' },
+      ]);
+    });
+    const error = await service.directoryContent.fetch({ path: '/Device Files/Work' });
+
+    if (!isAccessErrorWithRecoveryKey(error)) {
+      throw new Error('Expected access error');
+    }
+
+    await expect(
+      service.getFileSystemAccessRequest({ operation: 'read', spaceName: error.spaceName }),
+    ).resolves.toEqual({ operation: 'read', spaceName: 'Work' });
+
+    await service.removeDeviceDirectory('Work');
+
+    await expect(
+      service.getFileSystemAccessRequest({ operation: 'read', spaceName: error.spaceName }),
+    ).resolves.toBeUndefined();
+  });
+
+  it('emits a provider refresh event through VFS watch integration after permission is granted', async () => {
+    const promptHandle = createDirectoryHandleMock({
+      name: 'Work',
+      permissionState: 'prompt',
+      sameEntryKey: 'work',
+    });
+    getRecordListMock.mockResolvedValue([{ name: 'Work', handle: promptHandle }]);
+
+    const service = await createService();
+
+    await vi.waitFor(async () => {
+      await expect(service.deviceFiles.fetch()).resolves.toEqual([
+        { canDisconnect: true, name: 'Work' },
+      ]);
+    });
+
+    const error = await service.directoryContent.fetch({ path: '/Device Files/Work' });
+
+    if (!isAccessErrorWithRecoveryKey(error)) {
+      throw new Error('Expected access error');
+    }
+
+    const watchedEvents: string[] = [];
+    const unwatch = service.vfs.watch('/Device Files/Work', () => {
+      watchedEvents.push('refetched');
+    });
+
+    promptHandle.queryPermissionMock?.mockResolvedValue('granted');
+
+    await service.resolveFileSystemAccessRequest({
+      operation: 'read',
+      permissionState: 'granted',
+      spaceName: error.spaceName,
+    });
+
+    unwatch();
+    expect(watchedEvents).toEqual(['refetched']);
+  });
+
+  it('resolveFileSystemAccessRequest returns granted and triggers provider refresh', async () => {
+    const promptHandle = createDirectoryHandleMock({
+      name: 'Work',
+      permissionState: 'prompt',
+      sameEntryKey: 'work',
+    });
+    getRecordListMock.mockResolvedValue([{ name: 'Work', handle: promptHandle }]);
+
+    const service = await createService();
+
+    await vi.waitFor(async () => {
+      await expect(service.deviceFiles.fetch()).resolves.toEqual([
+        { canDisconnect: true, name: 'Work' },
+      ]);
+    });
+
+    const error = await service.directoryContent.fetch({ path: '/Device Files/Work' });
+
+    if (!isAccessErrorWithRecoveryKey(error)) {
+      throw new Error('Expected access error');
+    }
+
+    promptHandle.queryPermissionMock?.mockResolvedValue('granted');
+
+    const watchedEvents: string[] = [];
+    const unwatch = service.vfs.watch('/Device Files/Work', () => {
+      watchedEvents.push('refetched');
+    });
+
+    await expect(
+      service.resolveFileSystemAccessRequest({
+        operation: 'read',
+        permissionState: 'granted',
+        spaceName: error.spaceName,
+      }),
+    ).resolves.toEqual({ status: 'granted' });
+
+    unwatch();
+    expect(watchedEvents).toEqual(['refetched']);
+  });
+
+  it('write access grant waits for registered recovery handlers before returning granted', async () => {
+    const promptHandle = createDirectoryHandleMock({
+      name: 'Work',
+      permissionState: 'prompt',
+      readPermissionState: 'granted',
+      sameEntryKey: 'work',
+    });
+    getRecordListMock.mockResolvedValue([{ name: 'Work', handle: promptHandle }]);
+
+    const service = await createService();
+
+    await vi.waitFor(async () => {
+      await expect(service.deviceFiles.fetch()).resolves.toEqual([
+        { canDisconnect: true, name: 'Work' },
+      ]);
+    });
+
+    const createError = await service
+      .createDirectory('/Device Files/Work/new-directory')
+      .catch((error: unknown) => error);
+
+    if (!isAccessErrorWithRecoveryKey(createError)) {
+      throw new Error('Expected access error');
+    }
+
+    const handler = vi.fn().mockResolvedValue({ status: 'flushed' as const });
+    const unregister = service.registerWriteAccessRecoveryHandler(handler);
+
+    await expect(
+      service.resolveFileSystemAccessRequest({
+        operation: 'write',
+        permissionState: 'granted',
+        spaceName: createError.spaceName,
+      }),
+    ).resolves.toEqual({ status: 'granted' });
+    expect(handler).toHaveBeenCalledWith({
+      mountPath: '/Device Files/Work',
+      operation: 'write',
+      spaceName: 'Work',
+    });
+
+    unregister();
+  });
+
+  it('write access grant returns grantedWithReplayFailures when a recovery handler remains permission-blocked', async () => {
+    const promptHandle = createDirectoryHandleMock({
+      name: 'Work',
+      permissionState: 'prompt',
+      readPermissionState: 'granted',
+      sameEntryKey: 'work',
+    });
+    getRecordListMock.mockResolvedValue([{ name: 'Work', handle: promptHandle }]);
+
+    const service = await createService();
+
+    await vi.waitFor(async () => {
+      await expect(service.deviceFiles.fetch()).resolves.toEqual([
+        { canDisconnect: true, name: 'Work' },
+      ]);
+    });
+
+    const createError = await service
+      .createDirectory('/Device Files/Work/new-directory')
+      .catch((error: unknown) => error);
+
+    if (!isAccessErrorWithRecoveryKey(createError)) {
+      throw new Error('Expected access error');
+    }
+
+    const handler = vi.fn().mockResolvedValue({ status: 'stillBlocked' as const });
+    const unregister = service.registerWriteAccessRecoveryHandler(handler);
+
+    await expect(
+      service.resolveFileSystemAccessRequest({
+        operation: 'write',
+        permissionState: 'granted',
+        spaceName: createError.spaceName,
+      }),
+    ).resolves.toEqual({ status: 'grantedWithReplayFailures' });
+
+    unregister();
+  });
+
+  it('write access grant returns grantedWithStorageFailures when a recovery handler reports a non-retryable failure', async () => {
+    const promptHandle = createDirectoryHandleMock({
+      name: 'Work',
+      permissionState: 'prompt',
+      readPermissionState: 'granted',
+      sameEntryKey: 'work',
+    });
+    getRecordListMock.mockResolvedValue([{ name: 'Work', handle: promptHandle }]);
+
+    const service = await createService();
+
+    await vi.waitFor(async () => {
+      await expect(service.deviceFiles.fetch()).resolves.toEqual([
+        { canDisconnect: true, name: 'Work' },
+      ]);
+    });
+
+    const createError = await service
+      .createDirectory('/Device Files/Work/new-directory')
+      .catch((error: unknown) => error);
+
+    if (!isAccessErrorWithRecoveryKey(createError)) {
+      throw new Error('Expected access error');
+    }
+
+    const handler = vi.fn().mockResolvedValue({ status: 'failed' as const });
+    const unregister = service.registerWriteAccessRecoveryHandler(handler);
+
+    await expect(
+      service.resolveFileSystemAccessRequest({
+        operation: 'write',
+        permissionState: 'granted',
+        spaceName: createError.spaceName,
+      }),
+    ).resolves.toEqual({ status: 'grantedWithStorageFailures' });
+
+    unregister();
+  });
+
+  it('resolveFileSystemAccessRequest returns denied when browser denies', async () => {
+    const deniedHandle = createDirectoryHandleMock({
+      name: 'Work',
+      permissionState: 'denied',
+      sameEntryKey: 'work',
+    });
+    getRecordListMock.mockResolvedValue([{ name: 'Work', handle: deniedHandle }]);
+
+    const service = await createService();
+
+    await vi.waitFor(async () => {
+      await expect(service.deviceFiles.fetch()).resolves.toEqual([
+        { canDisconnect: true, name: 'Work' },
+      ]);
+    });
+
+    const error = await service.directoryContent.fetch({ path: '/Device Files/Work' });
+
+    if (!isAccessErrorWithRecoveryKey(error)) {
+      throw new Error('Expected access error');
+    }
+
+    await expect(
+      service.resolveFileSystemAccessRequest({
+        operation: 'read',
+        permissionState: 'denied',
+        spaceName: error.spaceName,
+      }),
+    ).resolves.toEqual({ status: 'denied' });
+  });
+
+  it('resolveFileSystemAccessRequest returns missing for an unknown key', async () => {
+    const service = await createService();
+
+    await expect(
+      service.resolveFileSystemAccessRequest({
+        operation: 'read',
+        permissionState: 'granted',
+        spaceName: 'Missing',
+      }),
+    ).resolves.toEqual({ status: 'missing' });
+  });
+
+  it('getTemporaryFileSystemAccessHandle returns undefined for an unknown key', async () => {
+    const service = await createService();
+
+    await expect(
+      service.getTemporaryFileSystemAccessHandle({
+        operation: 'write',
+        spaceName: 'Missing',
+      }),
+    ).resolves.toBeUndefined();
+  });
+
+  it('cancelFileSystemAccessRequest returns false for unknown key', async () => {
+    const service = await createService();
+
+    await expect(
+      service.cancelFileSystemAccessRequest({
+        operation: 'write',
+        spaceName: 'Missing',
+      }),
+    ).resolves.toBe(false);
+  });
+
+  it('keeps read and write pending requests separate for the same remembered space', async () => {
+    const promptHandle = createDirectoryHandleMock({
+      name: 'Work',
+      permissionState: 'prompt',
+      readPermissionState: 'granted',
+      sameEntryKey: 'work',
+    });
+    getRecordListMock.mockResolvedValue([{ name: 'Work', handle: promptHandle }]);
+
+    const service = await createService();
+
+    await vi.waitFor(async () => {
+      await expect(service.deviceFiles.fetch()).resolves.toEqual([
+        { canDisconnect: true, name: 'Work' },
+      ]);
+    });
+
+    const readResult = await service.directoryContent.fetch({ path: '/Device Files/Work' });
+
+    expect(readResult).toEqual([]);
+
+    const writeError = await service
+      .createDirectory('/Device Files/Work/next-folder')
+      .catch((caughtError: unknown) => caughtError);
+
+    expect(writeError).toMatchObject({
+      mode: 'readwrite',
+      spaceName: 'Work',
+    });
+    await expect(
+      service.getFileSystemAccessRequest({
+        operation: 'write',
+        spaceName: 'Work',
+      }),
+    ).resolves.toEqual({
+      operation: 'write',
+      spaceName: 'Work',
+    });
+    await expect(
+      service.getFileSystemAccessRequest({
+        operation: 'read',
+        spaceName: 'Work',
+      }),
+    ).resolves.toBeUndefined();
+  });
+
+  it('reactively refreshes directoryContent$ after permission is granted without a route retry', async () => {
+    const noteHandle = createFileHandleMock({
+      name: 'note.txt',
+      permissionState: 'prompt',
+      readPermissionState: 'granted',
+    });
+    const promptHandle = createDirectoryHandleMock({
+      entries: [noteHandle],
+      name: 'Work',
+      permissionState: 'prompt',
+      readPermissionState: 'prompt',
+      sameEntryKey: 'work',
+    });
+    getRecordListMock.mockResolvedValue([{ name: 'Work', handle: promptHandle }]);
+
+    const service = await createService();
+    await vi.waitFor(async () => {
+      await expect(service.deviceFiles.fetch()).resolves.toEqual([
+        { canDisconnect: true, name: 'Work' },
+      ]);
+    });
+    const results: Array<[string, FSNodeStat][] | Error> = [];
+    const subscription = service
+      .directoryContent$({ path: '/Device Files/Work' })
+      .subscribe((value) => {
+        results.push(value);
+      });
+
+    await vi.waitFor(() => {
+      expect(results).toContainEqual(
+        expect.objectContaining({
+          mode: 'read',
+          spaceName: 'Work',
+        }),
+      );
+    });
+
+    promptHandle.queryPermissionMock?.mockImplementation((descriptor) =>
+      Promise.resolve(descriptor?.mode === 'read' ? 'granted' : 'prompt'),
+    );
+    noteHandle.queryPermissionMock?.mockImplementation((descriptor) =>
+      Promise.resolve(descriptor?.mode === 'read' ? 'granted' : 'prompt'),
+    );
+    await service.resolveFileSystemAccessRequest({
+      operation: 'read',
+      permissionState: 'granted',
+      spaceName: 'Work',
+    });
+
+    await vi.waitFor(() => {
+      expect(results).toContainEqual([
+        [
+          'note.txt',
+          expect.objectContaining({
+            type: FSNodeType.File,
+          }),
+        ],
+      ]);
+    });
+
+    subscription.unsubscribe();
+  });
+
+  it('reactively refreshes fsNodeStat$ after permission is granted without remounting the route', async () => {
+    const noteHandle = createFileHandleMock({
+      name: 'note.txt',
+      permissionState: 'prompt',
+      readPermissionState: 'granted',
+    });
+    const promptHandle = createDirectoryHandleMock({
+      entries: [noteHandle],
+      name: 'Work',
+      permissionState: 'prompt',
+      readPermissionState: 'prompt',
+      sameEntryKey: 'work',
+    });
+    getRecordListMock.mockResolvedValue([{ name: 'Work', handle: promptHandle }]);
+
+    const service = await createService();
+    await vi.waitFor(async () => {
+      await expect(service.deviceFiles.fetch()).resolves.toEqual([
+        { canDisconnect: true, name: 'Work' },
+      ]);
+    });
+    const results: Array<FSNodeStat | Error> = [];
+    const subscription = service.fsNodeStat$({ path: '/Device Files/Work' }).subscribe((value) => {
+      results.push(value);
+    });
+
+    await vi.waitFor(() => {
+      expect(results).toContainEqual(
+        expect.objectContaining({
+          mode: 'read',
+          spaceName: 'Work',
+        }),
+      );
+    });
+
+    promptHandle.queryPermissionMock?.mockImplementation((descriptor) =>
+      Promise.resolve(descriptor?.mode === 'read' ? 'granted' : 'prompt'),
+    );
+    await service.resolveFileSystemAccessRequest({
+      operation: 'read',
+      permissionState: 'granted',
+      spaceName: 'Work',
+    });
+
+    await vi.waitFor(() => {
+      expect(results).toContainEqual(
+        expect.objectContaining({
+          capabilities: expect.objectContaining({
+            canEditChildren: undefined,
+          }),
+          type: FSNodeType.Directory,
+        }),
+      );
+    });
+
+    subscription.unsubscribe();
+  });
+
+  it('cancels pending requests explicitly and recreates them on a later access attempt', async () => {
+    const promptHandle = createDirectoryHandleMock({
+      name: 'Work',
+      permissionState: 'prompt',
+      sameEntryKey: 'work',
+    });
+    getRecordListMock.mockResolvedValue([{ name: 'Work', handle: promptHandle }]);
+
+    const service = await createService();
+    await vi.waitFor(async () => {
+      await expect(service.deviceFiles.fetch()).resolves.toEqual([
+        {
+          canDisconnect: true,
+          name: 'Work',
+        },
+      ]);
+    });
+    const error = await service.directoryContent.fetch({ path: '/Device Files/Work' });
+
+    if (!isAccessErrorWithRecoveryKey(error)) {
+      throw new Error('Expected access error');
+    }
+
+    await expect(
+      service.cancelFileSystemAccessRequest({
+        operation: 'read',
+        spaceName: error.spaceName,
+      }),
+    ).resolves.toBe(true);
+    await expect(
+      service.getFileSystemAccessRequest({
+        operation: 'read',
+        spaceName: error.spaceName,
+      }),
+    ).resolves.toBeUndefined();
+
+    const nextError = await service.directoryContent.fetch({ path: '/Device Files/Work' });
+
+    expect(nextError).toMatchObject({
+      mode: 'read',
+      spaceName: 'Work',
+    });
+    await expect(
+      service.getFileSystemAccessRequest({
+        operation: 'read',
+        spaceName: 'Work',
+      }),
+    ).resolves.toEqual({
+      operation: 'read',
+      spaceName: 'Work',
+    });
+  });
+
+  it('clears only pending requests for the removed remembered space', async () => {
+    const workHandle = createDirectoryHandleMock({
+      name: 'Work',
+      permissionState: 'prompt',
+      sameEntryKey: 'work',
+    });
+    const archiveHandle = createDirectoryHandleMock({
+      name: 'Archive',
+      permissionState: 'prompt',
+      sameEntryKey: 'archive',
+    });
+    getRecordListMock.mockResolvedValue([
+      { name: 'Work', handle: workHandle },
+      { name: 'Archive', handle: archiveHandle },
+    ]);
+
+    const service = await createService();
+
+    await vi.waitFor(async () => {
+      await expect(service.deviceFiles.fetch()).resolves.toEqual([
+        {
+          canDisconnect: true,
+          name: 'Work',
+        },
+        {
+          canDisconnect: true,
+          name: 'Archive',
+        },
+      ]);
+    });
+    await service.directoryContent.fetch({ path: '/Device Files/Work' });
+    await service.directoryContent.fetch({ path: '/Device Files/Archive' });
+
+    await service.removeDeviceDirectory('Work');
+
+    await expect(
+      service.getFileSystemAccessRequest({
+        operation: 'read',
+        spaceName: 'Work',
+      }),
+    ).resolves.toBeUndefined();
+    await expect(
+      service.getFileSystemAccessRequest({
+        operation: 'read',
+        spaceName: 'Archive',
+      }),
+    ).resolves.toEqual({
+      operation: 'read',
+      spaceName: 'Archive',
+    });
+  });
+
+  it('keeps Browser Storage mounted without routing OPFS through local access recovery', async () => {
+    const opfsHandle = createDirectoryHandleMock({
+      name: OPFSName,
+      permissionState: 'prompt',
+      sameEntryKey: 'opfs',
+    });
+    getDirectoryMock.mockResolvedValue(opfsHandle);
+
+    const service = await createService();
+
+    await vi.waitFor(async () => {
+      await expect(service.deviceFiles.fetch()).resolves.toEqual([
+        {
+          canDisconnect: false,
+          name: OPFSName,
+        },
+      ]);
+    });
+
+    const result = await service.directoryContent.fetch({
+      path: `/Device Files/${OPFSName}`,
+    });
+
+    expect(result).toEqual([]);
+    await expect(
+      service.getFileSystemAccessRequest({
+        operation: 'write',
+        spaceName: OPFSName,
+      }),
+    ).resolves.toBeUndefined();
+    expect(opfsHandle.requestPermissionMock).not.toHaveBeenCalled();
   });
 
   it('re-reads directoryContent$ and emits an updated payload after createDirectory', async () => {

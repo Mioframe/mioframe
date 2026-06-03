@@ -26,7 +26,7 @@ If `pnpm verify` fails, fix failures caused by the change. Otherwise report the 
 
 For local verification safety, agents may run focused checks for limited files, but must not start multiple expensive checks in parallel. Use `pnpm verify --only <label> --files ...` for focused local feedback, keep full `pnpm verify` as the completion gate, and if an expensive command is already running, inspect its logs or wait instead of starting another heavy command.
 
-Before the final response after non-trivial implementation, use the `byterover` skill end-of-task capture gate to decide whether durable project knowledge should be curated.
+Before the final response after non-trivial implementation, use the `byterover` skill end-of-task capture gate to decide whether durable project knowledge should be curated. For trivial or documentation-only changes that create no reusable project knowledge, report `BRV RESULT: skipped` without running `brv`.
 
 Final response must include:
 
@@ -54,10 +54,15 @@ reason:
 
 - Prefer plan-first implementation over broad discovery.
 - Before broad repository exploration, use ByteRover local search to recall prior project decisions; use synthesized queries only when search results are insufficient.
-- Use the `implementation-preflight` skill before non-trivial implementation work to identify the owner layer, reuse opportunities, acceptance matrix, risk matrix, and focused verification before the first production edit.
+- Use the `implementation-preflight` skill before non-trivial implementation work to identify owner boundaries, reuse opportunities, acceptance matrix, risk matrix, and focused verification before the first production edit.
 - Before editing, identify the smallest affected FSD owner layer and read only task-relevant files plus direct imports unless the task proves wider impact.
+- For cross-layer changes, write a compact owner map before production edits: source of truth, runtime owner, user-action owner, UI composition owner, error owner, retry/navigation owner, and verification owner. If any owner is unclear, stop and resolve the architecture before editing.
 - Split cross-layer work into separate schema/service, entity, feature, widget, and verification passes.
 - Keep changes in the layer that owns the behavior, and import through `index.ts` when a public entry point exists.
+- Pages may compose panes and own route navigation state, but must not orchestrate provider/service recovery flows, permission or auth prompts, pending request registries, or duplicate entity data reads. Put provider recovery state and user actions in entities/features/widgets.
+- Errors must be defined next to the boundary that owns and detects the failure. Provider failures belong next to the provider; service failures belong next to the service. Do not define a provider error in a service module only because the service supplies surrounding context.
+- UI-facing display records must not expose capabilities, credentials, clients, adapters, provider instances, callbacks, or service bags. Expose these only through explicit action or recovery APIs.
+- Any `DomainError` crossing a worker or service boundary must use the project service-transfer-safe constructor or transformer pattern and contain only safe serializable metadata. Do not place capabilities, clients, callbacks, provider objects, or raw external errors in `message`, `cause`, `toJSON`, diagnostics, or user-facing payloads.
 - Keep files small enough for agents to reason about locally. Prefer 100-300 lines for new production implementation files, treat 300-500 lines as acceptable only when the file is cohesive, and avoid growing ordinary implementation files beyond 500 lines without a clear reason.
 - Treat 500+ line implementation files as an extraction review trigger, not an automatic rewrite trigger. Before adding logic to such a file, identify its current responsibilities and extract the smallest stable unit that matches the change.
 - Avoid keeping 700+ line implementation files unless they are linear, generated-like, schema-heavy, registry-like, or mostly repetitive config/test data.
@@ -85,6 +90,7 @@ reason:
 - Use the `crdt-storage` skill for Automerge/CRDT changes, repo or document handle lifecycle, storage helpers, VFS behavior, subscriptions, listeners, workers, timers, caches, file handles, or blob URLs.
 - Verify third-party semantics from official docs or installed source before relying on ambiguous helpers, options, or return values. If the behavior is still unverified, say so.
 - Keep the UI aligned with Material 3 expectations and optimize for mobile browsers first. Assume large datasets and low-end devices, and keep main-thread work bounded.
+- Keep provider adapters focused on storage operations and typed access failures. Delayed Automerge save replay belongs to Automerge persistence and repository-service coordination, while `serviceClient` keeps browser user-activation permission prompts on the main thread.
 - Keep component and composable contracts narrow. Prefer IDs, primitive values, small display records, and explicit emits or slots over service bags, deeply nested configs, or mixed read/write models.
 - Keep TSDoc on every public API accurate and complete. If you touch a public export that is missing TSDoc or has stale TSDoc, update it as part of the same change.
 - Prefer explicit component props and named handlers over object-literal `v-bind` bags and inline template callbacks. Keep template contracts readable and mechanically checkable.
@@ -93,11 +99,13 @@ reason:
 - Prefer typed collection helpers over raw `Object.keys`, `Object.values`, and `Object.entries` when iterating typed records. Do not add local type assertions just to paper over iteration typing outside rare boundary adapters.
 - When progress is knowable, surface progress instead of falling back to an indeterminate spinner.
 - Keep unit tests colocated with the source file they verify, using sibling `*.test.ts` files. Do not introduce `__tests__` directories.
+- Keep test helpers colocated with the source or tests they support, using sibling `*.testUtils.ts` files. Do not export test helpers from production barrels. Helpers that import `vitest` must stay test-only and must never be imported by production code. Create global shared test utilities only after the same helper is needed by several unrelated modules. Do not introduce ad hoc `testUtils/` folders unless the package already uses that convention or multiple helper files justify a folder.
 
 ## Styling
 
 - Use component-scoped styles for Vue component implementation styles. Put global CSS only in app-level style modules or explicitly documented design-token/theme files.
 - The root class of a Vue component must match the component name in kebab-case, for example `MDFab` -> `md-fab` and `RepositoryExplorerWidget` -> `repository-explorer-widget`.
+- New Vue components must render one stable root DOM element with the component block class. Do not use a child component as the only conditional root, and do not render an empty `<template>` branch as a component root. Parent components own conditional rendering.
 - When a component renders a placeholder plus teleported or floating content, keep the root class on the root DOM element and model the teleported/floating surface as a BEM element, for example `md-fab-container` with `md-fab-container__surface`.
 - Use classic BEM syntax: block `block`, element `block__element`, boolean modifier `block_modifier`, key-value modifier `block_modifier_value`, element modifier `block__element_modifier`, and element key-value modifier `block__element_modifier_value`.
 - Do not introduce `block--modifier` or `block__element--modifier` naming unless a local legacy component already uses that style and the task is only preserving untouched code.
@@ -111,6 +119,7 @@ reason:
 ## Implementation quality gates
 
 - Treat implementation preflight as a contract, not a planning note. Before final verification, compare the resulting diff against the preflight owner-layer plan, acceptance matrix, and risk matrix. If the diff violates the plan, either refactor it or explicitly report the remaining risk instead of claiming completion.
+- For cross-layer changes, final handoff must include a short architecture check: owner map respected, dependency direction respected, no page-owned domain flow, no capability leak in UI records, errors defined at the detecting boundary, and no duplicate data reads for the same state.
 - Preserve existing user scenarios unless the task explicitly removes them. When replacing a menu, navigation control, status indicator, or shared surface, list the old user actions it provided and ensure they are still reachable or intentionally removed by the task.
 - Do not treat a green `pnpm verify` as architectural approval. Verification proves that automated checks passed; it does not prove FSD ownership, Material correctness, browser behavior, accessibility, or UX acceptance unless those checks were actually covered.
 - Treat a failed final `pnpm verify` as a blocker. Do not present the task as complete, ready for merge, or acceptable when the final read-only verification failed, unless the user explicitly asked for a partial result.
@@ -134,6 +143,7 @@ reason:
 - Prefer assertions against emitted events, props passed to stubs, slot content, and stable accessible text or labels when they are part of the component contract.
 - Avoid adding `data-testid` only for unit tests unless there is no stable user-visible or component-level contract to assert.
 - Move reusable UI state transitions and business rules into composables or pure helpers, and cover those with focused unit tests.
+- Colocate test helpers as `*.testUtils.ts` next to the tested module or test files. Do not export test helpers from production barrels. Helpers that import `vitest` must stay test-only and must never be imported by production code. Create global shared test utilities only after the same helper is needed by several unrelated modules. Do not create ad hoc `testUtils/` folders unless the package already uses that convention or multiple helper files justify a folder.
 - Unit tests remain the preferred verification method for composables, pure helpers, schemas, migrations, services, storage helpers, CRDT write helpers, state transitions, validation, normalization, and pure transformations.
 - The absence or removal of a Vue component unit test is not a regression by itself when the behavior is covered by Playwright/e2e, a reproducible browser smoke check, or focused tests for extracted composable or helper logic.
 
@@ -203,3 +213,11 @@ reason:
 - Add a child `AGENTS.md` only when a directory has local invariants, blast-radius rules, or reproducible verification guidance that the parent cannot express cleanly.
 - Child `AGENTS.md` files should refine the parent rather than repeat it, and their `Contains` sections should describe stable responsibilities instead of the current file list.
 - Update the `AGENTS.md` tree together with ownership, public API, dependency, or verification-boundary changes.
+
+## Agent environment compatibility
+
+`AGENTS.md` files and `.agents/skills/*/SKILL.md` are the canonical source of truth for agent instructions and project skills. Claude Code reads `CLAUDE.md` and `.claude/skills` instead; these are managed compatibility files generated from the canonical sources.
+
+- Do not duplicate project rules into `CLAUDE.md` files. Edit `AGENTS.md` or a skill `SKILL.md` instead.
+- Run `pnpm verify --fix` after adding, moving, or removing an `AGENTS.md` file or a skill to regenerate the compatibility layer.
+- `pnpm verify` fails when the compatibility layer is missing or stale.

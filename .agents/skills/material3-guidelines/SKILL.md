@@ -5,11 +5,11 @@ description: 'Use this skill before planning or implementing UI/UX changes to ve
 
 # Material 3 guidelines
 
-Use this skill before planning or implementing any user-visible UI or UX change.
+Use this skill before planning or implementing user-visible UI or UX changes that may affect component choice, layout, interaction behavior, accessibility, visual states, tokens, or public UI APIs.
 
 ## Activation check
 
-Use this skill when a task adds, removes, repositions, restyles, or changes the behavior of:
+Use this workflow when a task adds, removes, repositions, restyles, or changes the behavior of:
 
 - UI components, shared UI primitives, or Material-style wrappers;
 - navigation, panes, dialogs, sheets, menus, forms, buttons, lists, cards, tabs, or toolbars;
@@ -19,6 +19,8 @@ Use this skill when a task adds, removes, repositions, restyles, or changes the 
 - Material tokens, Material authoring units, component tokens, or public `MD*` component API names.
 
 Do not use this skill for non-UI-only changes, type-only edits, internal storage/service logic, formatting, comments, or mechanical renames unless they affect rendered behavior or public UI contracts.
+
+For copy-only, wiring-only, test-only, or component-internal cleanup that preserves the existing component, layout, interaction model, tokens, and public UI API, use the fast path: record `Material impact: none; existing Material surface unchanged` and do not perform an MCP/fallback lookup.
 
 ## Project policies
 
@@ -87,6 +89,8 @@ Keep the Material 3 note short. A useful note usually has:
 - verification surface.
 
 For PR summaries or task handoff, name the checked Material 3 pages, components, foundations, or patterns. If no relevant guidance was found in MCP or fallback cache, state that explicitly.
+
+For the fast path, include only the `Material impact: none; existing Material surface unchanged` note.
 
 ## Anti-patterns
 

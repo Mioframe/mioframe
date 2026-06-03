@@ -29,7 +29,7 @@ const isDirectory = computed(() => props.entryType === FSNodeType.Directory);
 const actionButtons = computed(() => {
   const buttons: Array<{ key: string; label: string; symbolName: string }> = [];
 
-  if (isDirectory.value && props.canEditChildren === true && props.showDocumentActions === true) {
+  if (isDirectory.value && props.canEditChildren !== false && props.showDocumentActions === true) {
     buttons.push({
       key: 'createDirectory',
       label: 'Create directory',
@@ -40,7 +40,7 @@ const actionButtons = computed(() => {
       label: 'Create document',
       symbolName: 'edit_document',
     });
-  } else if (isDirectory.value && props.canEditChildren === true) {
+  } else if (isDirectory.value && props.canEditChildren !== false) {
     buttons.push({
       key: 'createDirectory',
       label: 'Create directory',
@@ -56,7 +56,7 @@ const actionButtons = computed(() => {
     });
   }
 
-  if (isDirectory.value && props.canEditChildren === true && props.showDocumentActions === true) {
+  if (isDirectory.value && props.canEditChildren !== false && props.showDocumentActions === true) {
     buttons.push({
       key: 'importJson',
       label: 'Import JSON',

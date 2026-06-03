@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { getCliFilesOverride, getAllSiblingTestFiles } from './verify.mjs';
+import { getCliFilesOverride, getAllSiblingTestFiles, getVerifyBaseRef } from './verify.mjs';
 
 describe('getAllSiblingTestFiles', () => {
   it('maps scripts production .mjs files to sibling .test.mjs', () => {
@@ -60,5 +60,11 @@ describe('getCliFilesOverride', () => {
     expect(
       getCliFilesOverride(['--files=scripts/verify.mjs,scripts/playwrightContainer.mjs']),
     ).toEqual(['scripts/playwrightContainer.mjs', 'scripts/verify.mjs']);
+  });
+});
+
+describe('getVerifyBaseRef', () => {
+  it('reads VERIFY_BASE from process env', () => {
+    expect(getVerifyBaseRef({ VERIFY_BASE: 'origin/develop' })).toBe('origin/develop');
   });
 });

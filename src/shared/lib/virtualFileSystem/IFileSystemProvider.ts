@@ -22,11 +22,26 @@ export enum FSNodeType {
  * Provider-reported capabilities for a file system node.
  */
 export interface FSNodeCapabilities {
-  /** Flag that explicitly allows deletion from the file system */
+  /**
+   * Whether deletion is allowed right now.
+   * `true` means the provider explicitly allows deletion without additional recovery.
+   * `false` means the provider explicitly denies deletion.
+   * `undefined` means deletion is not guaranteed; callers may attempt it and must handle runtime errors.
+   */
   canDelete?: boolean | undefined;
-  /** Flag that explicitly allows renaming or moving the entry */
+  /**
+   * Whether renaming or moving the entry is allowed right now.
+   * `true` means the provider explicitly allows the operation without additional recovery.
+   * `false` means the provider explicitly denies the operation.
+   * `undefined` means the operation is not guaranteed; callers may attempt it and must handle runtime errors.
+   */
   canChangePath?: boolean | undefined;
-  /** Flag that explicitly allows mutating directory contents */
+  /**
+   * Whether mutating directory contents is allowed right now.
+   * `true` means the provider explicitly allows mutations without additional recovery.
+   * `false` means the provider explicitly denies mutations.
+   * `undefined` means mutations are not guaranteed; callers may attempt them and must handle runtime errors.
+   */
   canEditChildren?: boolean | undefined;
 }
 
@@ -131,3 +146,30 @@ export interface IFileSystemProvider {
    */
   watch?(callback: (event: VfsEvent) => void): (() => void) | undefined;
 }
+
+/**
+ * Returns `true` when the capability is explicitly allowed right now.
+ * Destructive UI (delete, rename, move) should gate on `isCapabilityAllowed` before proceeding.
+ * @param capability - The capability value from a provider-returned stat.
+ * @returns Whether the capability is explicitly `true`.
+ */
+export const isCapabilityAllowed = (capability: boolean | undefined): capability is true =>
+  capability === true;
+
+/**
+ * Returns `true` when the capability is explicitly denied right now.
+ * Create/import intent may remain visible to the user unless denied.
+ * @param capability - The capability value from a provider-returned stat.
+ * @returns Whether the capability is explicitly `false`.
+ */
+export const isCapabilityDenied = (capability: boolean | undefined): capability is false =>
+  capability === false;
+
+/**
+ * Returns `true` when the capability state is unknown — not yet guaranteed by the provider.
+ * Provider runtime operations block only when denied, not when unknown.
+ * @param capability - The capability value from a provider-returned stat.
+ * @returns Whether the capability is `undefined`.
+ */
+export const isCapabilityUnknown = (capability: boolean | undefined): capability is undefined =>
+  capability === undefined;

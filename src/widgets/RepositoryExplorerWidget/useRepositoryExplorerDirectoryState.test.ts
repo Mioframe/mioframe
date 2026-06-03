@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { DomainError } from '@shared/lib/error';
 import { FSNodeType } from '@shared/lib/virtualFileSystem';
+import { WebFileSystemAccessRequiredError } from '@shared/lib/webFileSystemProvider';
 import { effectScope, ref } from 'vue';
 
 const useRepositoryMock = vi.fn();
@@ -113,6 +114,10 @@ describe('useRepositoryExplorerDirectoryState', () => {
     expect(state.repositoryError.value).toBe(repositoryFactsError);
     expect(state.directoryErrorMessage.value).toBe('Could not read this folder');
     expect(state.errorMessage.value).toBe('Could not read this folder');
+    expect(state.recoveryErrors.value).toEqual([
+      repositoryVisibleEntriesError,
+      repositoryFactsError,
+    ]);
 
     scope.stop();
   });
@@ -133,6 +138,65 @@ describe('useRepositoryExplorerDirectoryState', () => {
     const { scope, state } = await mountUseRepositoryExplorerDirectoryState();
 
     expect(state.isLoading.value).toBe(true);
+
+    scope.stop();
+  });
+
+  it('stays loading while visible entries are missing even after document ids arrive', async () => {
+    useRepositoryMock.mockReturnValue({
+      documentIds: ref(['doc-1']),
+      isInitialized: ref(false),
+      repositoryVisibleEntries: ref(undefined),
+      repositoryFactsError: ref(undefined),
+      repositoryVisibleEntriesError: ref(undefined),
+      errorMessage: ref(undefined),
+      isLoading: ref(false),
+    });
+
+    const { scope, state } = await mountUseRepositoryExplorerDirectoryState();
+
+    expect(state.isLoading.value).toBe(true);
+
+    scope.stop();
+  });
+
+  it('stops loading only after both entries and document ids are available', async () => {
+    useRepositoryMock.mockReturnValue({
+      documentIds: ref([]),
+      isInitialized: ref(false),
+      repositoryVisibleEntries: ref([]),
+      repositoryFactsError: ref(undefined),
+      repositoryVisibleEntriesError: ref(undefined),
+      errorMessage: ref(undefined),
+      isLoading: ref(false),
+    });
+
+    const { scope, state } = await mountUseRepositoryExplorerDirectoryState();
+
+    expect(state.isLoading.value).toBe(false);
+
+    scope.stop();
+  });
+
+  it('keeps provider access errors available for higher-level recovery flows', async () => {
+    const accessError = new WebFileSystemAccessRequiredError({
+      spaceName: 'Work',
+      mode: 'readwrite',
+    });
+
+    useRepositoryMock.mockReturnValue({
+      documentIds: ref(undefined),
+      isInitialized: ref(false),
+      repositoryVisibleEntries: ref(undefined),
+      repositoryFactsError: ref(undefined),
+      repositoryVisibleEntriesError: ref(accessError),
+      errorMessage: ref(undefined),
+      isLoading: ref(false),
+    });
+
+    const { scope, state } = await mountUseRepositoryExplorerDirectoryState();
+
+    expect(state.recoveryErrors.value).toEqual([accessError]);
 
     scope.stop();
   });

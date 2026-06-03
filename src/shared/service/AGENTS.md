@@ -4,12 +4,13 @@ Inherits the rules from `src/shared/AGENTS.md`. Applies to `src/shared/service` 
 
 ## Contains
 
-- Background-side service contracts, worker wiring, cache-aware queries, mutations, and UI-facing service clients.
+- Background-side service contracts, worker wiring, cache-aware queries, mutations, and service proxy implementation.
 
 ## Patterns
 
 - Services expose infrastructural capabilities and contracts, not screen-specific UI logic.
 - Keep `*Service` modules free of DOM APIs, layout, focus, and other main-thread-only behavior.
+- Browser-only user-activation adapters belong in `src/shared/serviceClient/**`, not in this tree.
 - Treat a direct `*Service` import as service-layer membership unless the module crosses the boundary through an approved proxy client.
 - Keep query and mutation contracts deterministic about parameters, invalidation, and missing-data behavior.
 - Normalize errors and other side effects here so upper layers see a stable contract.

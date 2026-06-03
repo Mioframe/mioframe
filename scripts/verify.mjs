@@ -3,10 +3,13 @@ import path from 'node:path';
 import { spawn, spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import toolingConfig from '../config/tooling.json' with { type: 'json' };
+import { applyProjectEnv } from './lib/projectEnv.mjs';
 import { withExpensiveCommandLock } from './lib/commandLock.mjs';
 import { applyProcessResult } from './lib/processResult.mjs';
 import { classifyCommandWeight, resolveEslintConcurrency } from './lib/commandWeight.mjs';
 import { createChildSignalForwarder } from './lib/signalForward.mjs';
+
+applyProjectEnv();
 
 const cliArgs = process.argv.slice(2);
 const isHelpMode = process.argv.includes('--help') || cliArgs.includes('help');
@@ -17,6 +20,7 @@ const isCi = process.env.CI === 'true' || process.env.GITHUB_ACTIONS === 'true';
 const shouldApplyFixers = isFixMode || isFixOnlyMode;
 const cliFilesOverride = isHelpMode ? null : getCliFilesOverride(cliArgs);
 const VERIFY_LABELS = [
+  'agent-environment',
   'format',
   'oxlint',
   'eslint',
@@ -323,7 +327,7 @@ function getChangedFiles() {
   }
 
   const githubBaseRef = process.env.GITHUB_BASE_REF;
-  const envBaseRef = process.env.VERIFY_BASE;
+  const envBaseRef = getVerifyBaseRef();
   let changedFiles = [];
   let scope = 'local-changes';
 
@@ -378,6 +382,15 @@ function getChangedFiles() {
     ),
     scope,
   };
+}
+
+/**
+ * Read the verify base ref from the current process environment.
+ * @param processEnv Environment object to read from.
+ * @returns Base ref value, or null when VERIFY_BASE is unset.
+ */
+export function getVerifyBaseRef(processEnv = process.env) {
+  return processEnv.VERIFY_BASE ?? null;
 }
 
 function isTypeCheckTarget(filePath) {
@@ -740,6 +753,7 @@ function printHelp() {
   console.log('  --fix               Apply supported format/lint fixes, then run verification.');
   console.log('  --fix-only          Apply supported format/lint fixes only.');
   console.log('  --base <ref>        Verify changes against a local base ref.');
+  console.log('                      Local-only default: set VERIFY_BASE in .env.local.');
   console.log('  --only <label>      Run one focused verification check.');
   console.log('  --files <paths...>  Override changed-file detection with an explicit file list.');
   console.log('');
@@ -754,6 +768,7 @@ function printHelp() {
   console.log('  pnpm verify');
   console.log('  pnpm verify --verbose');
   console.log('  pnpm verify --base origin/develop');
+  console.log('  .env.local: VERIFY_BASE=origin/develop');
   console.log('  pnpm verify --verbose --only type-check');
   console.log('  pnpm verify --only eslint --files src/foo.ts src/bar.vue');
   console.log('  pnpm verify --fix');
@@ -1063,6 +1078,13 @@ function buildCommands(changedFiles) {
   const mutationScope = getMutationScope(changedFiles);
   const commands = [];
   const eslintConcurrency = resolveEslintConcurrency();
+
+  commands.push({
+    kind: 'run',
+    label: 'agent-environment',
+    command: 'node',
+    args: ['scripts/agentEnvironment.mjs', shouldApplyFixers ? '--fix' : '--check'],
+  });
 
   if (formattableFiles.length > 0) {
     commands.push({

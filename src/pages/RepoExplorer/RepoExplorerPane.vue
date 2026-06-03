@@ -4,7 +4,6 @@ import { DirectoryCreateDialog } from '@feature/directoryCreate';
 import { DocumentCreationDialog } from '@feature/documentCreate';
 import { EntryAddSheet } from '@feature/entryAdd';
 import { MDExtendedFab, MDFabContainer } from '@shared/ui/Button';
-import { useFSNodeStat } from '@entity/fsEntry';
 import { MDPane } from '@shared/ui/Layout';
 import { MDAppBar } from '@shared/ui/AppBar';
 import type { AMDocumentId } from '@shared/lib/automerge/automergeTypes';
@@ -27,8 +26,6 @@ defineSlots<{
 }>();
 
 const { repoPath: directoryPath } = toRefs(props);
-
-const { data: directoryStat } = useFSNodeStat(directoryPath);
 
 const { open } = useStackNavigation();
 
@@ -89,10 +86,6 @@ const onClickDocument = async (documentId: AMDocumentId) => {
 
 const title = computed(() => PathUtils.basename(directoryPath.value) || 'root');
 
-const canEditDirectoryContents = computed(
-  () => directoryStat.value?.capabilities?.canEditChildren === true,
-);
-
 const onClickReturnHome = async () => {
   await open('home', {}, { additionalPanes: 0, replace: true });
 };
@@ -121,8 +114,8 @@ const onClickReturnHome = async () => {
       @click-document="onClickDocument"
       @click-return-home="onClickReturnHome"
     >
-      <template v-if="canEditDirectoryContents" #after>
-        <MDFabContainer auto-hide>
+      <template #after="{ canEditDirectoryContents }">
+        <MDFabContainer v-if="canEditDirectoryContents !== false" auto-hide>
           <MDExtendedFab label="Add" md-symbol="add" @click="onClickAdd" />
         </MDFabContainer>
       </template>

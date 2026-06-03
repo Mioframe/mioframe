@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { useVfsActivity } from '@entity/vfsActivity';
+import { getFileSystemAccessRecovery } from '@shared/lib/fileSystem';
 import { useMainServiceClient } from '@shared/service';
+import { useFileSystemAccessPermissionBroker } from '@shared/serviceClient/fileSystem';
 import { MDButton } from '@shared/ui/Button';
 import { MDAssistChip } from '@shared/ui/Chips';
 import { MDSymbol } from '@shared/ui/Icon';
@@ -12,14 +14,20 @@ import { formatSaveStatusErrorDetails, STATUS_LABELS } from './saveStatusText';
 
 const triggerRef = useTemplateRef<ComponentPublicInstance>('triggerRef');
 const showErrorDetails = ref(false);
+const isGrantWriteAccessLoading = ref(false);
 const { addSnackbar } = useSnackbar();
 const {
   fileSystem: { acknowledgeVfsActivityError: dismissSaveStatusError },
 } = useMainServiceClient();
+const { requestAccess } = useFileSystemAccessPermissionBroker();
 const { hasUnacknowledgedError, state } = useVfsActivity();
 
 const isError = computed(() => state.value.status === 'error');
 const isActive = computed(() => state.value.status === 'active');
+const writeAccessRecovery = computed(() =>
+  getFileSystemAccessRecovery(state.value.lastError?.cause, { operation: 'write' }),
+);
+const hasWriteAccessRecovery = computed(() => !!writeAccessRecovery.value);
 const label = computed(() =>
   state.value.status === 'idle' ? undefined : STATUS_LABELS[state.value.status],
 );
@@ -40,17 +48,6 @@ const onClickDismissError = () => {
 
 const onClickCloseDetails = () => {
   showErrorDetails.value = false;
-};
-
-const detailActionLabel = computed(() => (isError.value ? 'Dismiss' : 'Close'));
-
-const onClickDetailAction = () => {
-  if (isError.value) {
-    onClickDismissError();
-    return;
-  }
-
-  onClickCloseDetails();
 };
 
 const isClipboardWithWriteText = (value: unknown): value is Pick<Clipboard, 'writeText'> => {
@@ -79,6 +76,58 @@ const onClickCopyDetails = async () => {
     addSnackbar({ text: 'Save error details copied' });
   } catch {
     addSnackbar({ text: 'Could not copy save error details' });
+  }
+};
+
+const onClickGrantWriteAccess = async () => {
+  if (isGrantWriteAccessLoading.value) {
+    return;
+  }
+
+  const recovery = writeAccessRecovery.value;
+
+  if (!recovery) {
+    return;
+  }
+
+  isGrantWriteAccessLoading.value = true;
+
+  try {
+    const result = await requestAccess(recovery);
+
+    if (result.status === 'granted') {
+      dismissSaveStatusError();
+      showErrorDetails.value = false;
+      addSnackbar({ text: 'Write access granted. Future saves can continue.' });
+      return;
+    }
+
+    if (result.status === 'grantedWithReplayFailures') {
+      addSnackbar({
+        text: 'Write access was granted, but some unsaved repository changes still could not be stored.',
+      });
+      return;
+    }
+
+    if (result.status === 'grantedWithStorageFailures') {
+      addSnackbar({
+        text: 'Write access was granted, but replaying earlier unsaved repository changes hit another storage failure.',
+      });
+      return;
+    }
+
+    addSnackbar({
+      text:
+        result.status === 'error'
+          ? 'Could not request browser write access. Try again from this action.'
+          : 'Browser write access was not granted. Saving remains blocked.',
+    });
+  } catch {
+    addSnackbar({
+      text: 'Could not request browser write access. Try again from this action.',
+    });
+  } finally {
+    isGrantWriteAccessLoading.value = false;
   }
 };
 
@@ -116,13 +165,29 @@ const onInteractionOutside = () => {
       </template>
 
       <template v-else>
-        <p>Could not confirm the last save.</p>
-        <p>Check this folder and retry if data should have changed.</p>
+        <template v-if="hasWriteAccessRecovery">
+          <p>Browser write access is required to save changes in this remembered local space.</p>
+          <p>Grant access to allow future saves.</p>
+        </template>
+
+        <template v-else>
+          <p>Could not confirm the last save.</p>
+          <p>Check this folder and retry if data should have changed.</p>
+        </template>
       </template>
     </div>
 
     <div class="vfs-activity-status-chip__actions">
-      <MDButton color="text" :label="detailActionLabel" @click="onClickDetailAction" />
+      <MDButton
+        v-if="hasWriteAccessRecovery"
+        color="text"
+        :disabled="isGrantWriteAccessLoading"
+        label="Grant write access"
+        :loading="isGrantWriteAccessLoading"
+        @click="onClickGrantWriteAccess"
+      />
+      <MDButton v-if="isError" color="text" label="Dismiss" @click="onClickDismissError" />
+      <MDButton v-else color="text" label="Close" @click="onClickCloseDetails" />
       <MDButton
         v-if="isError"
         color="text"

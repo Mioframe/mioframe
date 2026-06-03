@@ -12,7 +12,9 @@ export type VfsActivityStatus = 'idle' | 'active' | 'error';
 export type VfsMutationOperationType = 'writeFile' | 'createDirectory' | 'delete' | 'move';
 
 /**
- * Serializable description of the last failed VFS mutation.
+ * Snapshot of the last failed VFS mutation exposed to UI-facing consumers.
+ * The optional `cause` is preserved for in-app recovery detection across service boundaries,
+ * but must not be displayed directly or copied into user-facing diagnostics.
  */
 export interface VfsActivityError {
   /** Mutation kind that failed. */
@@ -23,6 +25,8 @@ export interface VfsActivityError {
   newPath?: string;
   /** User-displayable failure message. */
   message: string;
+  /** Optional transported cause retained for internal recovery parsing. */
+  cause?: unknown;
   /** Failure timestamp in Unix milliseconds. */
   occurredAt: number;
   /** Whether the UI has dismissed the latest failure. */
@@ -149,6 +153,7 @@ export const createVfsActivityTracker = (): VfsActivityTracker => {
             path: operation.path,
             ...(operation.newPath ? { newPath: operation.newPath } : {}),
             message: error instanceof Error ? error.message : String(error),
+            cause: error,
             occurredAt: Date.now(),
             acknowledged: false,
           },

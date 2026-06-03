@@ -1,19 +1,17 @@
 <script setup lang="ts">
 import { computed, toRefs } from 'vue';
-import { useGoogleDriveRecovery } from '@feature/googleDriveRecovery';
+import { useFSNodeStat } from '@entity/fsEntry';
+import { GoogleDriveAccessRecoveryState } from '@entity/googleDriveAccess';
 import { MDButton } from '@shared/ui/Button';
+import { MDEmptyState } from '@shared/ui/EmptyState';
 import { MDSymbol } from '@shared/ui/Icon';
 import { MDNavigationPath } from '@shared/ui/NavigationPath';
-import {
-  getGoogleDriveAccessRecoveryError,
-  GoogleDriveAccessRecoveryState,
-} from '@entity/googleDriveAccess';
 import type { AMDocumentId } from '@shared/lib/automerge/automergeTypes';
-import { MDEmptyState } from '@shared/ui/EmptyState';
 import { MDCircularProgressIndicator } from '@shared/ui/ProgressIndicators';
 import RepositoryExplorerDocumentsSection from './RepositoryExplorerDocumentsSection.vue';
 import RepositoryExplorerFilesSection from './RepositoryExplorerFilesSection.vue';
 import { useRepositoryExplorerDirectoryState } from './useRepositoryExplorerDirectoryState';
+import { useRepositoryExplorerRecovery } from './useRepositoryExplorerRecovery';
 
 const props = defineProps<{
   directoryPath: string;
@@ -26,21 +24,38 @@ const emit = defineEmits<{
 }>();
 
 defineSlots<{
-  after: () => unknown;
+  after: (props: { canEditDirectoryContents: boolean | undefined }) => unknown;
 }>();
 
 const { directoryPath } = toRefs(props);
-
+const { data: directoryStat, error: directoryStatError } = useFSNodeStat(directoryPath);
+const repositoryExplorerDirectoryState = useRepositoryExplorerDirectoryState(directoryPath);
 const {
-  directoryError,
   documentIds,
   errorMessage,
   hideAutomergeFiles,
   isLoading,
   isRepositoryInitialized,
+  recoveryErrors,
+  recoveryErrors: repositoryRecoveryErrors,
   regularFileEntries,
-  repositoryError,
-} = useRepositoryExplorerDirectoryState(directoryPath);
+} = repositoryExplorerDirectoryState;
+const {
+  googleDriveRecovery,
+  grantLocalDirectoryAccess,
+  hasGoogleDriveRecovery,
+  hasLocalDirectoryRecovery,
+  isGrantLocalDirectoryAccessDisabled,
+  isGrantLocalDirectoryAccessLoading,
+  localDirectoryRecoveryMessage,
+} = useRepositoryExplorerRecovery({
+  directoryPath,
+  directoryStatError,
+  errorMessage,
+  repositoryRecoveryErrors,
+});
+const { isRetryAuthorizationLoading, onRetryAuthorization } = googleDriveRecovery;
+const canEditDirectoryContents = computed(() => directoryStat.value?.capabilities?.canEditChildren);
 
 const onClickPath = (path: string) => {
   emit('clickPath', path);
@@ -49,20 +64,6 @@ const onClickPath = (path: string) => {
 const onClickDocument = (documentId: AMDocumentId) => {
   emit('clickDocument', documentId);
 };
-
-const hasGoogleDriveRecovery = computed(
-  () =>
-    !!errorMessage.value &&
-    !!getGoogleDriveAccessRecoveryError(directoryPath.value, [
-      directoryError.value,
-      repositoryError.value,
-    ]),
-);
-const recoveryErrors = computed(() => [directoryError.value, repositoryError.value]);
-
-const { isRetryAuthorizationLoading, onRetryAuthorization } = useGoogleDriveRecovery({
-  path: directoryPath,
-});
 
 const onReturnHomeClick = () => {
   emit('clickReturnHome');
@@ -80,8 +81,32 @@ const onReturnHomeClick = () => {
     />
 
     <div class="repository-explorer-widget__scrollable-content">
+      <MDEmptyState
+        v-if="hasLocalDirectoryRecovery"
+        class="repository-explorer-widget__recovery"
+        headline="Permission required"
+        :supporting-text="localDirectoryRecoveryMessage"
+      >
+        <template #icon>
+          <MDSymbol
+            name="folder_managed"
+            class="repository-explorer-widget__local-directory-recovery-icon"
+          />
+        </template>
+
+        <template #actions>
+          <MDButton
+            label="Grant access"
+            :disabled="isGrantLocalDirectoryAccessDisabled"
+            :loading="isGrantLocalDirectoryAccessLoading"
+            @click="grantLocalDirectoryAccess"
+          />
+        </template>
+      </MDEmptyState>
+
       <GoogleDriveAccessRecoveryState
-        v-if="hasGoogleDriveRecovery"
+        v-else-if="hasGoogleDriveRecovery"
+        class="repository-explorer-widget__recovery"
         :path="directoryPath"
         :errors="recoveryErrors"
       >
@@ -122,12 +147,12 @@ const onReturnHomeClick = () => {
         <RepositoryExplorerFilesSection
           :directory-path="directoryPath"
           :hide-automerge-files="hideAutomergeFiles"
-          :regular-file-entries="regularFileEntries"
+          :regular-file-entries="regularFileEntries ?? []"
           @select-path="onClickPath"
         />
       </div>
 
-      <slot name="after" />
+      <slot name="after" :can-edit-directory-contents="canEditDirectoryContents" />
     </div>
   </div>
 </template>
@@ -163,6 +188,10 @@ const onReturnHomeClick = () => {
 
   &__error-icon {
     --md-content-color: var(--md-sys-color-error);
+  }
+
+  &__local-directory-recovery-icon {
+    --md-content-color: var(--md-sys-color-primary);
   }
 
   &__loading {

@@ -2,6 +2,7 @@ import { useLocalSettings } from '@entity/localSettings';
 import { useRepository } from '@entity/repository';
 import { resolveSafeErrorMessage } from '@shared/lib/error';
 import { computed, type Ref } from 'vue';
+import { isNotNil } from 'es-toolkit';
 
 /**
  * Reads directory entries and repository facts for Repository Explorer composition.
@@ -31,6 +32,9 @@ export const useRepositoryExplorerDirectoryState = (directoryPath: Ref<string>) 
   const directoryErrorMessage = computed(() =>
     resolveSafeErrorMessage(directoryError.value, 'Could not read this folder'),
   );
+  const recoveryErrors = computed(() =>
+    [directoryError.value, repositoryError.value].filter(isNotNil),
+  );
 
   const errorMessage = computed(() => directoryErrorMessage.value ?? repositoryErrorMessage.value);
   const isLoading = computed(
@@ -47,6 +51,7 @@ export const useRepositoryExplorerDirectoryState = (directoryPath: Ref<string>) 
     isLoading,
     isRepositoryInitialized,
     regularFileEntries,
+    recoveryErrors,
     repositoryError,
     repositoryErrorMessage,
   };

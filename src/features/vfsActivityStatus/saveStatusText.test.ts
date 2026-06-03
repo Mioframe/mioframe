@@ -58,4 +58,24 @@ describe('saveStatusText', () => {
       ].join('\n'),
     );
   });
+
+  it('never copies raw cause details from replay failures', () => {
+    const copied = formatSaveStatusErrorDetails({
+      operationType: 'writeFile',
+      path: '/private/project/secret.txt',
+      message: 'safe message only',
+      cause: new Error(
+        'raw stale replay failed for /private/project/secret.txt document Alpha id doc-123',
+      ),
+      occurredAt: 1_700_000_000_002,
+      acknowledged: false,
+    });
+
+    expect(copied).toContain('Could not save changes');
+    expect(copied).toContain('Operation: write file');
+    expect(copied).not.toContain('/private/project/secret.txt');
+    expect(copied).not.toContain('document Alpha');
+    expect(copied).not.toContain('doc-123');
+    expect(copied).not.toContain('raw stale replay failed');
+  });
 });

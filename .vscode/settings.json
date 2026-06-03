@@ -96,5 +96,6 @@
     {
       "file": ".agents/skills/commit-message/SKILL.md"
     }
-  ]
+  ],
+  "better-todo-tree.regex.regexCaseSensitive": false
 }

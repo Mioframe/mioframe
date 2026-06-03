@@ -3,7 +3,7 @@ import { useMainServiceClient } from '@shared/service';
 import { computed, toValue } from 'vue';
 import { isUndefined } from 'es-toolkit';
 import { useObservableQuery } from '@shared/lib/useObservableQuery';
-import { DEVICE_FILES_ROOT_NAME, type DeviceFileRecord } from '@shared/service/fileSystem';
+import { DEVICE_FILES_ROOT_NAME, type DeviceFileDisplayRecord } from '@shared/service/fileSystem';
 import { useObservable } from '@shared/lib/useObservable';
 import { OPFSName } from '@shared/service/directories';
 
@@ -11,9 +11,8 @@ import { OPFSName } from '@shared/service/directories';
 export const DEVICE_FILES = DEVICE_FILES_ROOT_NAME;
 
 /** UI-facing mounted-directory record enriched with local presentation fields. */
-export type MountedDirectoryDisplayRecord = DeviceFileRecord & {
+export type MountedDirectoryDisplayRecord = DeviceFileDisplayRecord & {
   description: string;
-  canDisconnect: boolean;
 };
 
 const LOCAL_MIOFRAME_SPACE_DESCRIPTION = 'Mioframe space on this device';
@@ -25,10 +24,9 @@ const BROWSER_STORAGE_DESCRIPTION = 'Saved directly in your browser on this devi
  * @returns Display-ready mounted directory record for the Local FS UI.
  */
 const toMountedDirectoryDisplayRecord = (
-  record: DeviceFileRecord,
+  record: DeviceFileDisplayRecord,
 ): MountedDirectoryDisplayRecord => ({
   ...record,
-  canDisconnect: record.name !== OPFSName,
   description:
     record.name === OPFSName ? BROWSER_STORAGE_DESCRIPTION : LOCAL_MIOFRAME_SPACE_DESCRIPTION,
 });
@@ -78,7 +76,9 @@ const setupFileSystem = () => {
     activeDeviceFiles.value?.map(toMountedDirectoryDisplayRecord),
   );
 
-  const disconnectDeviceFile = async (deviceFile: Pick<DeviceFileRecord, 'name'> | string) => {
+  const disconnectDeviceFile = async (
+    deviceFile: Pick<DeviceFileDisplayRecord, 'name'> | string,
+  ) => {
     await removeDeviceDirectory(typeof deviceFile === 'string' ? deviceFile : deviceFile.name);
   };
 
