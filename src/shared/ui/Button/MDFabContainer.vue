@@ -7,6 +7,7 @@ import { useOverlayContainer } from '../Overlay';
 import { TeleportContainer } from '@shared/lib/teleportContainer';
 import { autoUpdate, offset, shift, useFloating } from '@floating-ui/vue';
 import { useMainContentAriaHidden } from '../AriaHidden';
+import { usePaneContainer } from '../Layout/useMDContainer';
 
 const props = defineProps<{
   /** Hides the floating action while scrolling down and restores it on upward scroll or focus. */
@@ -21,8 +22,6 @@ defineSlots<{
 const { autoHide } = toRefs(props);
 
 const fabContainerEl = useTemplateRef('fabContainer');
-
-const placeholderEl = useTemplateRef('placeholderEl');
 
 const parentEl = useParentElement();
 
@@ -50,20 +49,16 @@ const show = computed(
 
 const overlayContainerEl = useOverlayContainer();
 
-const { floatingStyles } = useFloating(placeholderEl, fabContainerEl, {
-  placement: 'top-end',
+const paneContainerEl = usePaneContainer();
+
+const { floatingStyles } = useFloating(paneContainerEl, fabContainerEl, {
+  placement: 'bottom-end',
   strategy: 'fixed',
   transform: false,
   middleware: [
-    offset(
-      ({
-        rects: {
-          reference: { height },
-        },
-      }) => ({
-        mainAxis: -height,
-      }),
-    ),
+    offset(({ rects: { floating } }) => ({
+      mainAxis: -floating.height,
+    })),
     shift({ padding: 16 }),
   ],
   whileElementsMounted: autoUpdate,
@@ -85,11 +80,7 @@ const ariaHidden = useMainContentAriaHidden();
 </script>
 
 <template>
-  <div
-    ref="placeholderEl"
-    class="md-fab-container md-fab-container__placeholder"
-    :style="placeholderStyles"
-  >
+  <div class="md-fab-container md-fab-container__placeholder" :style="placeholderStyles">
     <TeleportContainer :container="fabContainerEl" :to="overlayContainerEl">
       <div
         ref="fabContainer"
@@ -133,7 +124,7 @@ const ariaHidden = useMainContentAriaHidden();
   margin-left: auto;
   padding-bottom: 16px;
   width: min-content;
-  padding-right: calc(16px - var(--md-pane-margin-x) - var(--md-pane-padding-x));
+  padding-right: 16px;
   transition-timing-function: var(--md-sys-motion-easing-emphasized-decelerate);
   transition-duration: var(--md-sys-motion-duration-long2);
   transition-property: transform, opacity;
