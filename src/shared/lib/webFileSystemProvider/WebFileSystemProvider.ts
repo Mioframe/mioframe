@@ -403,8 +403,14 @@ export const WebFileSystemProvider = (
 
     const newName = PathUtils.basename(normalizedNew);
     const newDirName = PathUtils.dirname(normalizedNew);
-    const destinationDirHandle = await getHandle(newDirName, false, 'directory');
-    const { stat: destinationStat } = await lookupPath(newDirName);
+    const { handle: destinationHandle, stat: destinationStat } = await lookupPath(newDirName);
+
+    if (destinationHandle.kind !== 'directory') {
+      throw new VfsError(
+        FileSystemError.FileNotADirectory,
+        `Type mismatch for: ${PathUtils.basename(newDirName)}`,
+      );
+    }
 
     if (destinationStat.capabilities?.canEditChildren === false) {
       throw new VfsError(
@@ -412,6 +418,8 @@ export const WebFileSystemProvider = (
         `Path change is not allowed inside directory: ${newDirName}`,
       );
     }
+
+    const destinationDirHandle = destinationHandle;
 
     if (sourceHandle.move) {
       await sourceHandle.move(destinationDirHandle, newName);

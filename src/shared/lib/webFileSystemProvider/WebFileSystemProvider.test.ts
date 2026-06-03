@@ -589,6 +589,57 @@ describe('WebFileSystemProvider', () => {
     await expect(provider.move('/note.txt', '/Archive/note.txt')).resolves.toBeUndefined();
   });
 
+  it('resolves the destination parent path once and reuses that lookup for handle and stat', async () => {
+    const sourceFile = createFileHandleMock({
+      name: 'note.txt',
+      permissionState: 'granted',
+    });
+    const destinationDirectory = createDirectoryHandleMock({
+      name: 'Archive',
+      permissionState: 'granted',
+    });
+    const rootHandle = createDirectoryHandleMock({
+      entries: [sourceFile, destinationDirectory],
+      name: '',
+      permissionState: 'granted',
+    });
+    const provider = WebFileSystemProvider(rootHandle, {
+      permissionPolicy: 'userSelectedDirectory',
+    });
+
+    await expect(provider.move('/note.txt', '/Archive/note.txt')).resolves.toBeUndefined();
+
+    expect(
+      rootHandle.getDirectoryHandleMock.mock.calls.filter(
+        ([directoryName]) => directoryName === 'Archive',
+      ),
+    ).toHaveLength(1);
+  });
+
+  it('keeps the destination parent path error when the destination parent resolves to a file', async () => {
+    const sourceFile = createFileHandleMock({
+      name: 'note.txt',
+      permissionState: 'granted',
+    });
+    const destinationParentFile = createFileHandleMock({
+      name: 'Archive',
+      permissionState: 'granted',
+    });
+    const rootHandle = createDirectoryHandleMock({
+      entries: [sourceFile, destinationParentFile],
+      name: '',
+      permissionState: 'granted',
+    });
+    const provider = WebFileSystemProvider(rootHandle, {
+      permissionPolicy: 'userSelectedDirectory',
+    });
+
+    await expect(provider.move('/note.txt', '/Archive/note.txt')).rejects.toMatchObject({
+      code: 'ENOTDIR',
+      name: 'VfsError',
+    });
+  });
+
   it('blocks move immediately when source canChangePath capability is explicitly false', async () => {
     const sourceFile = createFileHandleMock({
       name: 'note.txt',
