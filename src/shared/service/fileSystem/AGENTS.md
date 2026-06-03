@@ -10,6 +10,7 @@ Inherits the rules from `src/shared/service/AGENTS.md`. Applies to `src/shared/s
 
 - The file-system service owns VFS runtime state, provider registration, mount/unmount, persisted local directory handle records, mounted-directory refresh, and service query invalidation.
 - Main-thread permission prompts and browser user-activation calls belong in `src/shared/serviceClient/fileSystem`, while this service keeps the pending-request registry and refresh wiring.
+- This service may coordinate post-grant retry hooks, but Automerge-specific pending-save storage stays owned by repository persistence and repo-cache services rather than by provider adapters.
 - Re-read mounted directory contents by path after create or provider update events. Do not synthesize final directory listings from watch payloads or provider create success alone.
 - Treat persisted `FileSystemDirectoryHandle` values as runtime-validated boundary data, not as type-only guarantees.
 - Keep provider, VFS, and mounted-directory flows aligned on refresh and hydration behavior.

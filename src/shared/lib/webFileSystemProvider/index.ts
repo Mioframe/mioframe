@@ -12,4 +12,3 @@ export {
   type WebFileSystemAccessMode,
   type WebFileSystemAccessRequiredDetails,
 } from './WebFileSystemAccessRequiredError';
-export type { PendingWriteReplayResult } from './WebFileSystemProvider';

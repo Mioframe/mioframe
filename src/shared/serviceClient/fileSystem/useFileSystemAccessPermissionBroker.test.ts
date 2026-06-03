@@ -237,7 +237,7 @@ describe('useFileSystemAccessPermissionBroker', () => {
     scope.stop();
   });
 
-  it('returns grantedWithReplayFailures when permission is granted but stale buffered writes could not fully replay', async () => {
+  it('returns grantedWithReplayFailures when permission is granted but pending repository saves still need attention', async () => {
     const handle = createDirectoryHandleMock({
       name: 'Work',
       permissionState: 'prompt',

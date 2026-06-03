@@ -1,9 +1,15 @@
 import type { AMDocumentId } from '@shared/lib/automerge';
 import { useFileSystemService } from '../fileSystem';
 import { Repo } from '@automerge/automerge-repo';
+import { PathUtils } from '@shared/lib/virtualFileSystem';
 import { createVFSAdapter } from '@shared/lib/automergeAdapter/createVFSAdapter';
+import {
+  createRetryingStorageAdapter,
+  type RetryingStorageAdapterFlushResult,
+} from '@shared/lib/automergeAdapter';
 import { createGlobalState } from '@vueuse/core';
 import type { CFRDocumentContent } from '@shared/lib/cfrDocument';
+import { getFileSystemAccessRecovery } from '@shared/lib/fileSystem';
 import {
   concat,
   defer,
@@ -31,8 +37,23 @@ import {
 export const REPO_IDLE_TIMEOUT_MS = 60_000;
 
 const setupRepositoriesService = () => {
-  const { directoryContent$, vfs } = useFileSystemService();
-  const repoObservableCache = new Map<string, Observable<Repo>>();
+  const { directoryContent$, registerWriteAccessRecoveryHandler, vfs } = useFileSystemService();
+  const repoObservableCache = new Map<string, Observable<RepositoryCacheEntry>>();
+
+  const shouldQueueFailedSave = (error: unknown) =>
+    !!getFileSystemAccessRecovery(error, {
+      operation: 'write',
+    });
+
+  type RepositoryStorageRecovery = Pick<
+    ReturnType<typeof createRetryingStorageAdapter>,
+    'flushPendingSaves' | 'hasPendingSaves'
+  >;
+
+  type RepositoryCacheEntry = {
+    repo: Repo;
+    storageRecovery: RepositoryStorageRecovery;
+  };
 
   /**
    * Observes canonical repository facts derived from repository storage files in a directory.
@@ -117,21 +138,29 @@ const setupRepositoriesService = () => {
   );
 
   const createRepoObservable = (path: string) => {
-    let repo: Repo | undefined;
+    let repoEntry: RepositoryCacheEntry | undefined;
 
     return defer(() => {
-      repo ??= new Repo({
-        storage: createVFSAdapter(vfs, path),
-      });
+      if (!repoEntry) {
+        const storageRecovery = createRetryingStorageAdapter(createVFSAdapter(vfs, path), {
+          shouldQueueFailedSave,
+        });
+        repoEntry = {
+          repo: new Repo({
+            storage: storageRecovery,
+          }),
+          storageRecovery,
+        };
+      }
 
-      return concat(of(repo), NEVER);
+      return concat(of(repoEntry), NEVER);
     }).pipe(
       finalize(() => {
-        repo = undefined;
+        repoEntry = undefined;
         repoObservableCache.delete(path);
       }),
       share({
-        connector: () => new ReplaySubject<Repo>(1),
+        connector: () => new ReplaySubject<RepositoryCacheEntry>(1),
         resetOnError: true,
         resetOnComplete: false,
         resetOnRefCountZero: () => timer(REPO_IDLE_TIMEOUT_MS),
@@ -152,7 +181,7 @@ const setupRepositoriesService = () => {
 
   const repo$ = (path: string, initial = false) => {
     if (initial) {
-      return repoByPath$(path);
+      return repoByPath$(path).pipe(map(({ repo }) => repo));
     }
 
     return getDocumentIdList$({ path }).pipe(
@@ -165,7 +194,7 @@ const setupRepositoriesService = () => {
           return NEVER;
         }
 
-        return repoByPath$(path);
+        return repoByPath$(path).pipe(map(({ repo }) => repo));
       }),
     );
   };
@@ -187,8 +216,56 @@ const setupRepositoriesService = () => {
       return undefined;
     }
 
-    return firstValueFrom(repoByPath$(path).pipe(take(1)));
+    return firstValueFrom(
+      repoByPath$(path).pipe(
+        take(1),
+        map(({ repo }) => repo),
+      ),
+    );
   }
+
+  const flushPendingRepositoryStorageSaves = async (
+    mountPath: string,
+  ): Promise<RetryingStorageAdapterFlushResult> => {
+    let flushedCount = 0;
+    let pendingCount = 0;
+
+    for (const [repoPath, cachedRepoEntry$] of repoObservableCache.entries()) {
+      if (!PathUtils.isSameOrDescendantOf(repoPath, mountPath)) {
+        continue;
+      }
+
+      // eslint-disable-next-line no-await-in-loop -- cached repo recovery must resolve before deciding whether later repos should run
+      const { storageRecovery } = await firstValueFrom(cachedRepoEntry$.pipe(take(1)));
+
+      if (!storageRecovery.hasPendingSaves()) {
+        continue;
+      }
+
+      // eslint-disable-next-line no-await-in-loop -- preserve stable service-layer retry ordering
+      const result = await storageRecovery.flushPendingSaves();
+      flushedCount += result.flushedCount;
+      pendingCount += result.pendingCount;
+
+      if (result.status !== 'flushed') {
+        return {
+          status: result.status,
+          flushedCount,
+          pendingCount,
+        };
+      }
+    }
+
+    return {
+      status: 'flushed',
+      flushedCount,
+      pendingCount,
+    };
+  };
+
+  registerWriteAccessRecoveryHandler(async ({ mountPath }) => {
+    return flushPendingRepositoryStorageSaves(mountPath);
+  });
 
   const deleteDocument = async (path: string, id: AMDocumentId) => {
     const documentStorageFiles = await getDocumentStorageFiles(vfs, path, id);
@@ -238,6 +315,7 @@ const setupRepositoriesService = () => {
     /** Low-level observable for repository-aware visible directory entries. */
     getRepositoryVisibleEntries$,
     getRepo$: repo$,
+    flushPendingRepositoryStorageSaves,
     /**
      * Creates a document in the repository.
      * @param path - Absolute path to the repository.

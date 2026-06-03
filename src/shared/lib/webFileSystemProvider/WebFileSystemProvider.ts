@@ -44,16 +44,6 @@ export interface WebFileSystemProviderOptions {
   ) => WebFileSystemAccessRequiredDetails;
 }
 
-/** Result of replaying buffered writes after access changes. */
-export interface PendingWriteReplayResult {
-  /** Aggregate replay outcome for the current flush attempt. */
-  status: 'complete' | 'partialFailure' | 'permissionRequired';
-  /** Number of buffered writes replayed successfully. */
-  replayedCount: number;
-  /** Number of stale buffered writes dropped after a non-permission failure. */
-  failedCount: number;
-}
-
 /**
  * Creates a VFS provider backed by the browser File System Access API.
  * @param rootHandle - Root directory handle for the mounted provider.
@@ -63,23 +53,9 @@ export interface PendingWriteReplayResult {
 export const WebFileSystemProvider = (
   rootHandle: FileSystemDirectoryHandle,
   options: WebFileSystemProviderOptions,
-): IFileSystemProvider & { notifyAccessChanged(): Promise<PendingWriteReplayResult> } => {
+): IFileSystemProvider & { notifyAccessChanged(): Promise<void> } => {
   const { onAccessRequired, permissionPolicy } = options;
   const events = new EventEmitter();
-  const pendingWriteBuffer = new Map<
-    string,
-    {
-      byteLength: number;
-      content: FileContent;
-      options: WriteOptions;
-      path: string;
-    }
-  >();
-  const maxPendingWriteEntries = 64;
-  const maxPendingWriteBytes = 32 * 1024 * 1024;
-  let pendingWriteBytes = 0;
-  let flushPendingWritesPromise: Promise<PendingWriteReplayResult> | undefined;
-  let flushPendingWritesQueued = false;
 
   const getWriteCapability = (
     permissionState: PermissionState | undefined,
@@ -109,71 +85,6 @@ export const WebFileSystemProvider = (
   const queryWritePermission = async (handle: FileSystemFileHandle | FileSystemDirectoryHandle) => {
     return queryModePermission(handle, 'readwrite');
   };
-
-  const getFileContentByteLength = (content: FileContent): number => {
-    if (typeof content === 'string') {
-      return new TextEncoder().encode(content).byteLength;
-    }
-
-    if (content instanceof Blob) {
-      return content.size;
-    }
-
-    if (ArrayBuffer.isView(content)) {
-      return content.byteLength;
-    }
-
-    return content.byteLength;
-  };
-
-  const deleteBufferedWrite = (path: string) => {
-    const existingEntry = pendingWriteBuffer.get(path);
-
-    if (!existingEntry) {
-      return;
-    }
-
-    pendingWriteBuffer.delete(path);
-    pendingWriteBytes -= existingEntry.byteLength;
-  };
-
-  const bufferWrite = (path: string, content: FileContent, writeOptions: WriteOptions) => {
-    const normalizedPath = PathUtils.normalize(path);
-    const byteLength = getFileContentByteLength(content);
-    const existingEntry = pendingWriteBuffer.get(normalizedPath);
-    const nextPendingWriteBytes = pendingWriteBytes - (existingEntry?.byteLength ?? 0) + byteLength;
-
-    if (byteLength > maxPendingWriteBytes) {
-      return;
-    }
-
-    if (existingEntry) {
-      if (nextPendingWriteBytes > maxPendingWriteBytes) {
-        return;
-      }
-    } else {
-      if (pendingWriteBuffer.size >= maxPendingWriteEntries) {
-        return;
-      }
-
-      if (nextPendingWriteBytes > maxPendingWriteBytes) {
-        return;
-      }
-    }
-
-    pendingWriteBuffer.set(normalizedPath, {
-      byteLength,
-      content,
-      options: writeOptions,
-      path: normalizedPath,
-    });
-    pendingWriteBytes = nextPendingWriteBytes;
-  };
-
-  const isBufferedWriteAccessRequiredError = (
-    error: unknown,
-  ): error is WebFileSystemAccessRequiredError =>
-    error instanceof WebFileSystemAccessRequiredError && error.mode === 'readwrite';
 
   const ensureAccess = async (mode: WebFileSystemAccessMode): Promise<void> => {
     if (permissionPolicy === 'originPrivateStorage') {
@@ -391,92 +302,11 @@ export const WebFileSystemProvider = (
     };
   };
 
-  const flushPendingWrites = async (): Promise<PendingWriteReplayResult> => {
-    if (permissionPolicy !== 'userSelectedDirectory' || pendingWriteBuffer.size === 0) {
-      return {
-        status: 'complete',
-        replayedCount: 0,
-        failedCount: 0,
-      };
-    }
-
-    const permissionState = await queryWritePermission(rootHandle);
-
-    if (permissionState !== 'granted') {
-      return {
-        status: 'permissionRequired',
-        replayedCount: 0,
-        failedCount: 0,
-      };
-    }
-
-    let replayedCount = 0;
-    let failedCount = 0;
-
-    for (const [path, entry] of pendingWriteBuffer.entries()) {
-      try {
-        // eslint-disable-next-line no-await-in-loop -- buffered writes must replay sequentially to preserve distinct-path insertion order
-        await writeFileImpl(path, entry.content, entry.options);
-        deleteBufferedWrite(path);
-        replayedCount += 1;
-      } catch (error) {
-        if (isBufferedWriteAccessRequiredError(error)) {
-          return {
-            status: 'permissionRequired',
-            replayedCount,
-            failedCount,
-          };
-        }
-
-        deleteBufferedWrite(path);
-        failedCount += 1;
-      }
-    }
-
-    return {
-      status: failedCount > 0 ? 'partialFailure' : 'complete',
-      replayedCount,
-      failedCount,
-    };
-  };
-
-  const startPendingWriteFlush = () => {
-    const flushPromise = flushPendingWrites().then((result) => {
-      if (!flushPendingWritesQueued || pendingWriteBuffer.size === 0) {
-        return result;
-      }
-
-      flushPendingWritesQueued = false;
-      startPendingWriteFlush();
-      return result;
-    });
-    const trackedPromise = flushPromise.finally(() => {
-      if (flushPendingWritesPromise === trackedPromise) {
-        flushPendingWritesPromise = undefined;
-      }
-    });
-    flushPendingWritesPromise = trackedPromise;
-    void flushPendingWritesPromise.catch(() => undefined);
-  };
-
   const writeFile = async (
     path: string,
     content: FileContent,
     writeOptions: WriteOptions,
-  ): Promise<WriteFileResult> => {
-    try {
-      return await writeFileImpl(path, content, writeOptions);
-    } catch (error) {
-      if (
-        permissionPolicy === 'userSelectedDirectory' &&
-        isBufferedWriteAccessRequiredError(error)
-      ) {
-        bufferWrite(path, content, writeOptions);
-      }
-
-      throw error;
-    }
-  };
+  ): Promise<WriteFileResult> => writeFileImpl(path, content, writeOptions);
 
   const readDirectory = async (path: string): Promise<[string, FSNodeStat][]> => {
     await ensureAccess('read');
@@ -633,28 +463,13 @@ export const WebFileSystemProvider = (
   };
 
   const notifyAccessChanged = () => {
-    if (permissionPolicy === 'userSelectedDirectory' && pendingWriteBuffer.size > 0) {
-      if (flushPendingWritesPromise) {
-        flushPendingWritesQueued = true;
-      } else {
-        startPendingWriteFlush();
-      }
-    }
-
     events.emit({
       source: VfsEventSource.PROVIDER,
       type: VfsEventType.UPDATE,
       path: '/',
     });
 
-    return (
-      flushPendingWritesPromise ??
-      Promise.resolve({
-        status: 'complete' as const,
-        replayedCount: 0,
-        failedCount: 0,
-      })
-    );
+    return Promise.resolve();
   };
 
   const watch = (callback: (event: VfsEvent) => void) => events.subscribe(callback);

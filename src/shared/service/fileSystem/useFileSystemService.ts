@@ -9,7 +9,6 @@ import { zodIs } from '@shared/lib/validateZodScheme';
 import {
   createMountedWebFileSystemProvider,
   createOriginPrivateStorageProvider,
-  type PendingWriteReplayResult,
   type WebFileSystemAccessMode,
 } from '@shared/lib/webFileSystemProvider';
 import { type FileSystemAccessOperation } from '@shared/lib/fileSystem';
@@ -43,7 +42,7 @@ type DeviceDirectoryAccessRequest = {
   spaceName: string;
   handle: FileSystemDirectoryHandle;
   mode: WebFileSystemAccessMode;
-  refreshProvider: () => Promise<PendingWriteReplayResult>;
+  refreshProvider: () => Promise<void>;
 };
 
 type DeviceDirectoryAccessRequestKey = Pick<DeviceDirectoryAccessRequest, 'spaceName' | 'mode'>;
@@ -52,6 +51,20 @@ type FileSystemAccessRequestKey = {
   operation: FileSystemAccessOperation;
   spaceName: string;
 };
+
+type WriteAccessRecoveryResult = {
+  status: 'failed' | 'flushed' | 'stillBlocked';
+};
+
+type WriteAccessRecoveryContext = {
+  mountPath: string;
+  operation: 'write';
+  spaceName: string;
+};
+
+type WriteAccessRecoveryHandler = (
+  context: WriteAccessRecoveryContext,
+) => Promise<WriteAccessRecoveryResult>;
 
 /** Service-internal result used when resolving a pending request with a known permissionState. */
 type DeviceDirectoryAccessRequestResolveResult = DeviceDirectoryAccessRequestKey & {
@@ -75,6 +88,7 @@ const didPersistedDeviceDirectoryRecordsChange = (
 const setupFileSystemService = () => {
   const vfs = new VirtualFileSystem();
   const pendingDeviceDirectoryAccessRequests = new Map<string, DeviceDirectoryAccessRequest>();
+  const writeAccessRecoveryHandlers = new Set<WriteAccessRecoveryHandler>();
   const getPendingRequestKey = ({ mode, spaceName }: DeviceDirectoryAccessRequestKey) =>
     `${spaceName}:${mode}`;
   const upsertPendingDeviceDirectoryAccessRequest = ({
@@ -118,13 +132,8 @@ const setupFileSystemService = () => {
 
       // Use a holder so the refresh callback does not capture the provider variable
       // from the same expression that assigns it.
-      const notifyHolder: { fn: () => Promise<PendingWriteReplayResult> } = {
-        fn: () =>
-          Promise.resolve({
-            status: 'complete',
-            replayedCount: 0,
-            failedCount: 0,
-          }),
+      const notifyHolder: { fn: () => Promise<void> } = {
+        fn: () => Promise.resolve(),
       };
       const provider = createMountedWebFileSystemProvider({
         kind: record.kind,
@@ -456,12 +465,34 @@ const setupFileSystemService = () => {
 
     if (permissionState === 'granted') {
       deletePendingDeviceDirectoryAccessRequest(key);
-      return request.refreshProvider().then((refreshResult) => ({
-        status:
-          refreshResult.status === 'partialFailure'
-            ? ('grantedWithReplayFailures' as const)
-            : ('granted' as const),
-      }));
+      return request.refreshProvider().then(async () => {
+        if (mode !== 'readwrite') {
+          return {
+            status: 'granted' as const,
+          };
+        }
+
+        const mountPath = PathUtils.join(deviceFilesPath, request.spaceName);
+
+        for (const handler of writeAccessRecoveryHandlers) {
+          // eslint-disable-next-line no-await-in-loop -- retry handlers may depend on prior flush attempts
+          const result = await handler({
+            mountPath,
+            operation: 'write',
+            spaceName: request.spaceName,
+          });
+
+          if (result.status !== 'flushed') {
+            return {
+              status: 'grantedWithReplayFailures' as const,
+            };
+          }
+        }
+
+        return {
+          status: 'granted' as const,
+        };
+      });
     }
 
     return Promise.resolve({
@@ -521,6 +552,14 @@ const setupFileSystemService = () => {
       spaceName: key.spaceName,
     });
 
+  const registerWriteAccessRecoveryHandler = (handler: WriteAccessRecoveryHandler) => {
+    writeAccessRecoveryHandlers.add(handler);
+
+    return () => {
+      writeAccessRecoveryHandlers.delete(handler);
+    };
+  };
+
   return {
     vfs,
 
@@ -538,6 +577,7 @@ const setupFileSystemService = () => {
     removeDeviceDirectory,
     getFileSystemAccessRequest,
     getTemporaryFileSystemAccessHandle,
+    registerWriteAccessRecoveryHandler,
     resolveFileSystemAccessRequest,
     cancelFileSystemAccessRequest,
     deviceFiles: fromObservable(activeDeviceFiles$),

@@ -19,6 +19,25 @@ const directoryContentByPath = vi.hoisted(
   () => new Map<string, BehaviorSubject<[string, FSNodeStat][] | Error>>(),
 );
 const repoInstances = vi.hoisted(() => new Map<string, MockRepoInstance[]>());
+const registerWriteAccessRecoveryHandlerMock = vi.hoisted(() => vi.fn());
+const getMockAdapterPath = (adapter: unknown) =>
+  typeof adapter === 'object' &&
+  adapter !== null &&
+  'path' in adapter &&
+  typeof adapter.path === 'string'
+    ? adapter.path
+    : undefined;
+const createRetryingStorageAdapterMock = vi.hoisted(() =>
+  vi.fn((adapter: unknown) => ({
+    ...(typeof adapter === 'object' && adapter !== null ? adapter : {}),
+    flushPendingSaves: vi.fn().mockResolvedValue({
+      flushedCount: 0,
+      pendingCount: 0,
+      status: 'flushed' as const,
+    }),
+    hasPendingSaves: vi.fn().mockReturnValue(false),
+  })),
+);
 const vfsReadDirectory = vi.hoisted(() =>
   vi.fn((path: string) => {
     const subject = directoryContentByPath.get(path);
@@ -109,12 +128,22 @@ vi.mock('../fileSystem', () => ({
       readDirectory: vfsReadDirectory,
       delete: vfsDelete,
     },
+    registerWriteAccessRecoveryHandler: registerWriteAccessRecoveryHandlerMock,
   }),
 }));
 
 vi.mock('@shared/lib/automergeAdapter/createVFSAdapter', () => ({
   createVFSAdapter: (vfs: unknown, path: string) => ({ path, vfs }),
 }));
+
+vi.mock('@shared/lib/automergeAdapter', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@shared/lib/automergeAdapter')>();
+
+  return {
+    ...actual,
+    createRetryingStorageAdapter: createRetryingStorageAdapterMock,
+  };
+});
 
 vi.mock('@automerge/automerge-repo', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@automerge/automerge-repo')>();
@@ -149,6 +178,9 @@ describe('useRepositoriesService', () => {
     vi.resetModules();
     directoryContentByPath.clear();
     repoInstances.clear();
+    registerWriteAccessRecoveryHandlerMock.mockReset();
+    registerWriteAccessRecoveryHandlerMock.mockReturnValue(() => undefined);
+    createRetryingStorageAdapterMock.mockClear();
     vfsReadDirectory.mockClear();
     vfsDelete.mockClear();
   });
@@ -266,6 +298,97 @@ describe('useRepositoriesService', () => {
 
     expect(reopenedRepo).toBe(initializedRepo);
     expect(repoInstances.get(path)).toHaveLength(1);
+  });
+
+  it('registers one write-access recovery handler with the file-system service', async () => {
+    createDirectoryContentSubject('/repo', []);
+    const { useRepositoriesService } = await import('./repositoriesService');
+
+    useRepositoriesService();
+
+    expect(registerWriteAccessRecoveryHandlerMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('flushes pending saves only for cached repos inside the granted mount path', async () => {
+    const matchingFlushPendingSaves = vi.fn().mockResolvedValue({
+      flushedCount: 1,
+      pendingCount: 0,
+      status: 'flushed' as const,
+    });
+    const nonMatchingFlushPendingSaves = vi.fn().mockResolvedValue({
+      flushedCount: 1,
+      pendingCount: 0,
+      status: 'flushed' as const,
+    });
+
+    createRetryingStorageAdapterMock.mockImplementation((adapter: unknown) => {
+      const path = getMockAdapterPath(adapter);
+
+      return {
+        ...(typeof adapter === 'object' && adapter !== null ? adapter : {}),
+        flushPendingSaves:
+          path === '/Device Files/Work/repo-a'
+            ? matchingFlushPendingSaves
+            : nonMatchingFlushPendingSaves,
+        hasPendingSaves: vi.fn(
+          () => path === '/Device Files/Work/repo-a' || path === '/Device Files/Elsewhere/repo-b',
+        ),
+      };
+    });
+
+    createDirectoryContentSubject('/Device Files/Work/repo-a', []);
+    createDirectoryContentSubject('/Device Files/Elsewhere/repo-b', []);
+    const { useRepositoriesService } = await import('./repositoriesService');
+    const service = useRepositoriesService();
+
+    await service.initializeRepository('/Device Files/Work/repo-a');
+    await service.initializeRepository('/Device Files/Elsewhere/repo-b');
+
+    const [handler] = registerWriteAccessRecoveryHandlerMock.mock.calls[0] ?? [];
+
+    await expect(
+      handler({ mountPath: '/Device Files/Work', operation: 'write', spaceName: 'Work' }),
+    ).resolves.toEqual({
+      flushedCount: 1,
+      pendingCount: 0,
+      status: 'flushed',
+    });
+    expect(matchingFlushPendingSaves).toHaveBeenCalledTimes(1);
+    expect(nonMatchingFlushPendingSaves).not.toHaveBeenCalled();
+  });
+
+  it('returns the first non-flushed repo recovery result for the granted mount path', async () => {
+    const flushPendingSaves = vi.fn().mockResolvedValue({
+      flushedCount: 0,
+      pendingCount: 1,
+      status: 'failed' as const,
+    });
+
+    createRetryingStorageAdapterMock.mockImplementation((adapter: unknown) => {
+      const path = getMockAdapterPath(adapter);
+
+      return {
+        ...(typeof adapter === 'object' && adapter !== null ? adapter : {}),
+        flushPendingSaves,
+        hasPendingSaves: vi.fn(() => path === '/Device Files/Work/repo-a'),
+      };
+    });
+
+    createDirectoryContentSubject('/Device Files/Work/repo-a', []);
+    const { useRepositoriesService } = await import('./repositoriesService');
+    const service = useRepositoriesService();
+
+    await service.initializeRepository('/Device Files/Work/repo-a');
+
+    const [handler] = registerWriteAccessRecoveryHandlerMock.mock.calls[0] ?? [];
+
+    await expect(
+      handler({ mountPath: '/Device Files/Work', operation: 'write', spaceName: 'Work' }),
+    ).resolves.toEqual({
+      flushedCount: 0,
+      pendingCount: 1,
+      status: 'failed',
+    });
   });
 
   it('deleteDocument removes all automerge files for target document id', async () => {

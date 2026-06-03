@@ -433,7 +433,7 @@ describe('VfsActivityStatusChip', () => {
 
     expect(dismissSaveStatusErrorMock).not.toHaveBeenCalled();
     expect(addSnackbarMock).toHaveBeenCalledWith({
-      text: 'Write access was granted, but some earlier queued saves could not be replayed.',
+      text: 'Write access was granted, but some unsaved repository changes still could not be stored.',
     });
     expect(wrapper.text()).toContain('Grant write access');
   });

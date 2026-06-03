@@ -104,7 +104,7 @@ const onClickGrantWriteAccess = async () => {
 
     if (result.status === 'grantedWithReplayFailures') {
       addSnackbar({
-        text: 'Write access was granted, but some earlier queued saves could not be replayed.',
+        text: 'Write access was granted, but some unsaved repository changes still could not be stored.',
       });
       return;
     }

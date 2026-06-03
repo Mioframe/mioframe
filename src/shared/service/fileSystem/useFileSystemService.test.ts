@@ -956,6 +956,89 @@ describe('useFileSystemService', () => {
     expect(watchedEvents).toEqual(['refetched']);
   });
 
+  it('write access grant waits for registered recovery handlers before returning granted', async () => {
+    const promptHandle = createDirectoryHandleMock({
+      name: 'Work',
+      permissionState: 'prompt',
+      readPermissionState: 'granted',
+      sameEntryKey: 'work',
+    });
+    getRecordListMock.mockResolvedValue([{ name: 'Work', handle: promptHandle }]);
+
+    const service = await createService();
+
+    await vi.waitFor(async () => {
+      await expect(service.deviceFiles.fetch()).resolves.toEqual([
+        { canDisconnect: true, name: 'Work' },
+      ]);
+    });
+
+    const createError = await service
+      .createDirectory('/Device Files/Work/new-directory')
+      .catch((error: unknown) => error);
+
+    if (!isAccessErrorWithRecoveryKey(createError)) {
+      throw new Error('Expected access error');
+    }
+
+    const handler = vi.fn().mockResolvedValue({ status: 'flushed' as const });
+    const unregister = service.registerWriteAccessRecoveryHandler(handler);
+
+    await expect(
+      service.resolveFileSystemAccessRequest({
+        operation: 'write',
+        permissionState: 'granted',
+        spaceName: createError.spaceName,
+      }),
+    ).resolves.toEqual({ status: 'granted' });
+    expect(handler).toHaveBeenCalledWith({
+      mountPath: '/Device Files/Work',
+      operation: 'write',
+      spaceName: 'Work',
+    });
+
+    unregister();
+  });
+
+  it('write access grant returns grantedWithReplayFailures when a recovery handler reports failure', async () => {
+    const promptHandle = createDirectoryHandleMock({
+      name: 'Work',
+      permissionState: 'prompt',
+      readPermissionState: 'granted',
+      sameEntryKey: 'work',
+    });
+    getRecordListMock.mockResolvedValue([{ name: 'Work', handle: promptHandle }]);
+
+    const service = await createService();
+
+    await vi.waitFor(async () => {
+      await expect(service.deviceFiles.fetch()).resolves.toEqual([
+        { canDisconnect: true, name: 'Work' },
+      ]);
+    });
+
+    const createError = await service
+      .createDirectory('/Device Files/Work/new-directory')
+      .catch((error: unknown) => error);
+
+    if (!isAccessErrorWithRecoveryKey(createError)) {
+      throw new Error('Expected access error');
+    }
+
+    const handler = vi.fn().mockResolvedValue({ status: 'failed' as const });
+    const unregister = service.registerWriteAccessRecoveryHandler(handler);
+
+    await expect(
+      service.resolveFileSystemAccessRequest({
+        operation: 'write',
+        permissionState: 'granted',
+        spaceName: createError.spaceName,
+      }),
+    ).resolves.toEqual({ status: 'grantedWithReplayFailures' });
+
+    unregister();
+  });
+
   it('resolveFileSystemAccessRequest returns denied when browser denies', async () => {
     const deniedHandle = createDirectoryHandleMock({
       name: 'Work',

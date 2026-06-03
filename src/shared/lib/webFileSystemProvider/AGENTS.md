@@ -13,6 +13,7 @@ Inherits the rules from `src/shared/lib/AGENTS.md`. Applies to the browser File 
 - Missing browser access for an existing handle is an access-required provider failure, not not-found and not a reason to unmount the provider.
 - The provider may call `queryPermission()` to decide whether an operation can continue.
 - The provider must not call `requestPermission()`. Browser permission prompts belong to an explicit user-action flow above the provider.
+- Delayed Automerge save retry does not belong here. Provider writes should fail fast with the original access-required error and leave any later retry policy to repository persistence owners above this boundary.
 - Keep provider contracts independent from service modules. Services may supply callbacks, registries, or context, but this provider must not import from `shared/service`.
 - Keep error payloads transfer-safe and privacy-safe. Do not serialize handles, raw paths, raw browser errors, provider objects, service objects, or raw capability details in reportable messages, causes, serialized errors, or diagnostics.
 - Do not put raw user file-system paths into reportable error payloads.
