@@ -109,3 +109,58 @@ export const PaneAnchoringLoadingTransition: Story = {
     `,
   }),
 };
+
+/**
+ * Verifies that MDFabContainer anchors to its own pane when two independent
+ * pane containers are present side by side. The FAB belongs to the right pane
+ * and must remain positioned relative to that pane, not the left pane, the
+ * viewport, or the document body.
+ *
+ * Click "Load content" to simulate an async content change inside the right
+ * pane. The FAB must stay anchored to the right pane bottom after the shift.
+ */
+export const TwoPaneLayout: Story = {
+  render: () => ({
+    components: { MDFabContainer, MDExtendedFab, StoryPaneHost },
+    setup() {
+      const isLoading = ref(true);
+      const loadContent = () => {
+        isLoading.value = false;
+      };
+      return { isLoading, loadContent };
+    },
+    template: `
+      <div style="display: flex; flex-direction: column; gap: 8px;">
+        <div id="fab-two-pane-host" style="display: flex; gap: 8px;">
+          <StoryPaneHost id="fab-pane-left" width="300px" height="400px">
+            <div
+              v-for="i in 4"
+              :key="i"
+              style="height: 48px; display: flex; align-items: center; padding: 0 16px;"
+            >
+              Left item {{ i }}
+            </div>
+          </StoryPaneHost>
+          <StoryPaneHost id="fab-pane-right" width="300px" height="400px">
+            <div v-if="isLoading" style="height: 80px; display: flex; align-items: center; padding: 16px;">
+              Loading...
+            </div>
+            <template v-else>
+              <div
+                v-for="i in 4"
+                :key="i"
+                style="height: 48px; display: flex; align-items: center; padding: 0 16px;"
+              >
+                Right item {{ i }}
+              </div>
+            </template>
+            <MDFabContainer>
+              <MDExtendedFab label="Add" md-symbol="add" />
+            </MDFabContainer>
+          </StoryPaneHost>
+        </div>
+        <button id="fab-two-pane-load-content" type="button" @click="loadContent">Load content</button>
+      </div>
+    `,
+  }),
+};

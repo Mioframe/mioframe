@@ -34,8 +34,17 @@ test('MDFabContainer FAB stays anchored to pane bottom after async content loads
   // Trigger content load: placeholder jumps from 80px loading height to 6 * 48px content height
   await page.click('#fab-load-content');
 
-  // Wait for Floating UI autoUpdate to settle after the layout shift
-  await page.waitForTimeout(200);
+  // Retry until Floating UI autoUpdate has re-anchored the FAB after the layout shift
+  await expect(async () => {
+    const paneBox = await pane.boundingBox();
+    const fabBox = await fabSurface.boundingBox();
+    expect(paneBox).not.toBeNull();
+    expect(fabBox).not.toBeNull();
+    if (!paneBox || !fabBox) return;
+    expect(Math.abs(fabBox.y + fabBox.height - (paneBox.y + paneBox.height))).toBeLessThanOrEqual(
+      1,
+    );
+  }).toPass({ timeout: 2000 });
 
   const paneBoxAfter = await pane.boundingBox();
   const fabBoxAfter = await fabSurface.boundingBox();
@@ -67,5 +76,70 @@ test('MDFabContainer FAB stays anchored to pane bottom after async content loads
   expect(fabButtonBox.y).toBeGreaterThan(paneBoxAfter.y);
   expect(fabButtonBox.y + fabButtonBox.height).toBeLessThanOrEqual(
     paneBoxAfter.y + paneBoxAfter.height + 1,
+  );
+});
+
+test('MDFabContainer FAB is anchored to its own pane, not the adjacent pane or viewport', async ({
+  page,
+}) => {
+  await openStory(page, 'shared-ui-mdfabcontainer--two-pane-layout');
+
+  const leftPane = page.locator('#fab-pane-left');
+  const rightPane = page.locator('#fab-pane-right');
+  const fabSurface = page.locator('.md-fab-container__surface');
+
+  await fabSurface.waitFor({ state: 'attached' });
+
+  const leftPaneBox = await leftPane.boundingBox();
+  const rightPaneBox = await rightPane.boundingBox();
+  const fabBox = await fabSurface.boundingBox();
+
+  expect(leftPaneBox).not.toBeNull();
+  expect(rightPaneBox).not.toBeNull();
+  expect(fabBox).not.toBeNull();
+
+  if (!leftPaneBox || !rightPaneBox || !fabBox) {
+    throw new Error('Missing bounding boxes for FAB two-pane anchoring test.');
+  }
+
+  // FAB surface bottom must align with the right pane bottom (the pane that owns the FAB)
+  expect(fabBox.y + fabBox.height).toBeCloseTo(rightPaneBox.y + rightPaneBox.height, 0);
+
+  // FAB must be positioned inside the right pane's horizontal bounds
+  expect(fabBox.x).toBeGreaterThanOrEqual(rightPaneBox.x);
+  expect(fabBox.x + fabBox.width).toBeLessThanOrEqual(rightPaneBox.x + rightPaneBox.width + 1);
+
+  // FAB must not overlap the left pane
+  expect(fabBox.x).toBeGreaterThan(leftPaneBox.x + leftPaneBox.width - 1);
+
+  // Trigger async content change in right pane and verify FAB remains anchored
+  await page.click('#fab-two-pane-load-content');
+
+  await expect(async () => {
+    const rightBox = await rightPane.boundingBox();
+    const fabBox2 = await fabSurface.boundingBox();
+    expect(rightBox).not.toBeNull();
+    expect(fabBox2).not.toBeNull();
+    if (!rightBox || !fabBox2) return;
+    expect(
+      Math.abs(fabBox2.y + fabBox2.height - (rightBox.y + rightBox.height)),
+    ).toBeLessThanOrEqual(1);
+  }).toPass({ timeout: 2000 });
+
+  // FAB button must remain visible inside right pane bounds after content change
+  const fabButton = page.getByRole('button', { name: 'Add', exact: true });
+  const fabButtonBox = await fabButton.boundingBox();
+  const rightPaneBoxAfter = await rightPane.boundingBox();
+
+  expect(fabButtonBox).not.toBeNull();
+  expect(rightPaneBoxAfter).not.toBeNull();
+
+  if (!fabButtonBox || !rightPaneBoxAfter) {
+    throw new Error('FAB button or right pane not visible after two-pane content change.');
+  }
+
+  expect(fabButtonBox.x).toBeGreaterThanOrEqual(rightPaneBoxAfter.x);
+  expect(fabButtonBox.y + fabButtonBox.height).toBeLessThanOrEqual(
+    rightPaneBoxAfter.y + rightPaneBoxAfter.height + 1,
   );
 });
