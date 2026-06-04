@@ -258,20 +258,20 @@ const setupRepositoriesService = () => {
 
       if (result.status !== 'flushed') {
         reportDiagnosticEvent({
-          severity: DiagnosticSeverity.error,
-          feature: DiagnosticFeature.writeAccessRecovery,
-          operation: DiagnosticOperation.flushPendingSaves,
-          stage: DiagnosticStage.pendingSaveReplay,
+          severity: DiagnosticSeverity.Error,
+          feature: DiagnosticFeature.WriteAccessRecovery,
+          operation: DiagnosticOperation.FlushPendingSaves,
+          stage: DiagnosticStage.PendingSaveReplay,
           result:
             result.status === 'stillBlocked'
-              ? DiagnosticResult.stillBlocked
-              : DiagnosticResult.storageFailure,
+              ? DiagnosticResult.StillBlocked
+              : DiagnosticResult.StorageFailure,
           classification:
             result.failureClassification === 'accessRequired'
-              ? DiagnosticClassification.accessBlocked
+              ? DiagnosticClassification.AccessBlocked
               : result.failureClassification === 'storageFailure'
-                ? DiagnosticClassification.storageFailure
-                : DiagnosticClassification.unknown,
+                ? DiagnosticClassification.StorageFailure
+                : DiagnosticClassification.Unknown,
           counters: {
             flushedCount,
             pendingCount: result.pendingCount,

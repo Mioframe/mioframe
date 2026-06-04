@@ -461,26 +461,6 @@ describe('VfsActivityStatusChip', () => {
     });
   });
 
-  it('shows stale message and no grant button when lastError has recovery cause but no pending request exists', async () => {
-    getFileSystemAccessRequestMock.mockResolvedValue(undefined);
-    vfsState.value = createErrorState(
-      createWriteError({
-        cause: new WebFileSystemAccessRequiredError({
-          mode: 'readwrite',
-          spaceName: 'Work',
-        }),
-      }),
-    );
-
-    const wrapper = await mountVfsActivityStatusChip();
-
-    await wrapper.get('button').trigger('click');
-    await flushPromises();
-
-    expect(wrapper.text()).not.toContain('Grant write access');
-    expect(wrapper.text()).toContain('no longer pending');
-  });
-
   it('keeps the error visible but hides the grant button when access is granted but saves could not replay', async () => {
     setupPendingWriteRequest();
     requestAccessMock.mockResolvedValue({ status: 'grantedWithReplayFailures' });

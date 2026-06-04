@@ -4,14 +4,6 @@ import { ensureSentry, getSentryReportingState, isSentryConfigured } from './set
 type ReportHandledErrorOptions = {
   feature: string;
   action: string;
-  /**
-   * Optional safe key-value metadata merged into Sentry extras for unexpected exception context.
-   * Must not include paths, ids, names, content, handles, or any user-controlled values.
-   *
-   * This is for ordinary handled-exception context only.
-   * For structured async/status/recovery observations, use `reportDiagnosticEvent` instead.
-   */
-  metadata?: Record<string, string | number | boolean>;
 };
 
 const HANDLED_NON_ERROR_MESSAGE = 'Handled non-error exception';
@@ -118,7 +110,7 @@ export const flushQueuedHandledReports = () => {
  */
 export const reportHandledError = (error: unknown, options: ReportHandledErrorOptions) => {
   let reportedError: Error;
-  const extras: Record<string, unknown> = { ...options.metadata };
+  const extras: Record<string, unknown> = {};
 
   if (error instanceof DomainError && error.cause instanceof Error) {
     reportedError = error.cause;

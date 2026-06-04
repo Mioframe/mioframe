@@ -2,7 +2,9 @@ import {
   DiagnosticClassification,
   DiagnosticFeature,
   DiagnosticOperation,
+  DiagnosticProviderKind,
   DiagnosticResult,
+  DiagnosticSeverity,
   DiagnosticStage,
   type DiagnosticEvent,
   setDiagnosticEventSink,
@@ -315,7 +317,7 @@ describe('useFileSystemAccessPermissionBroker', () => {
   });
 
   describe('diagnostic events', () => {
-    it('emits a staleRequest diagnostic event when no temporary handle is available', async () => {
+    it('emits a staleRequest diagnostic event with providerKind when no temporary handle is available', async () => {
       getTemporaryFileSystemAccessHandleMock.mockResolvedValue(undefined);
 
       const { broker, scope } = await mountBroker();
@@ -324,18 +326,19 @@ describe('useFileSystemAccessPermissionBroker', () => {
 
       expect(diagnosticSink).toHaveLength(1);
       expect(diagnosticSink[0]).toMatchObject({
-        feature: DiagnosticFeature.writeAccessRecovery,
-        operation: DiagnosticOperation.requestAccess,
-        stage: DiagnosticStage.accessRequestPrepare,
-        result: DiagnosticResult.staleRequest,
-        classification: DiagnosticClassification.staleRequest,
+        feature: DiagnosticFeature.WriteAccessRecovery,
+        operation: DiagnosticOperation.RequestAccess,
+        stage: DiagnosticStage.AccessRequestPrepare,
+        result: DiagnosticResult.StaleRequest,
+        classification: DiagnosticClassification.StaleRequest,
+        providerKind: DiagnosticProviderKind.WebFileSystem,
       });
       expect(JSON.stringify(diagnosticSink[0])).not.toContain('Work');
 
       scope.stop();
     });
 
-    it('emits a staleRequest diagnostic event when the resolve result is missing', async () => {
+    it('emits a staleRequest diagnostic event with providerKind when the resolve result is missing', async () => {
       const handle = createDirectoryHandleMock({
         name: 'Work',
         permissionState: 'prompt',
@@ -355,18 +358,19 @@ describe('useFileSystemAccessPermissionBroker', () => {
 
       expect(diagnosticSink).toHaveLength(1);
       expect(diagnosticSink[0]).toMatchObject({
-        feature: DiagnosticFeature.writeAccessRecovery,
-        operation: DiagnosticOperation.resolveAccessRequest,
-        stage: DiagnosticStage.accessRequestResolved,
-        result: DiagnosticResult.staleRequest,
-        classification: DiagnosticClassification.staleRequest,
+        feature: DiagnosticFeature.WriteAccessRecovery,
+        operation: DiagnosticOperation.ResolveAccessRequest,
+        stage: DiagnosticStage.AccessRequestResolved,
+        result: DiagnosticResult.StaleRequest,
+        classification: DiagnosticClassification.StaleRequest,
+        providerKind: DiagnosticProviderKind.WebFileSystem,
       });
       expect(JSON.stringify(diagnosticSink[0])).not.toContain('Work');
 
       scope.stop();
     });
 
-    it('emits a replayFailure diagnostic event when grantedWithReplayFailures', async () => {
+    it('emits a replayFailure diagnostic event with providerKind when grantedWithReplayFailures', async () => {
       const handle = createDirectoryHandleMock({
         name: 'Work',
         permissionState: 'prompt',
@@ -386,18 +390,19 @@ describe('useFileSystemAccessPermissionBroker', () => {
 
       expect(diagnosticSink).toHaveLength(1);
       expect(diagnosticSink[0]).toMatchObject({
-        feature: DiagnosticFeature.writeAccessRecovery,
-        operation: DiagnosticOperation.resolveAccessRequest,
-        stage: DiagnosticStage.accessRequestResolved,
-        result: DiagnosticResult.replayFailure,
-        classification: DiagnosticClassification.storageFailure,
+        feature: DiagnosticFeature.WriteAccessRecovery,
+        operation: DiagnosticOperation.ResolveAccessRequest,
+        stage: DiagnosticStage.AccessRequestResolved,
+        result: DiagnosticResult.ReplayFailure,
+        classification: DiagnosticClassification.StorageFailure,
+        providerKind: DiagnosticProviderKind.WebFileSystem,
       });
       expect(JSON.stringify(diagnosticSink[0])).not.toContain('Work');
 
       scope.stop();
     });
 
-    it('emits a storageFailure diagnostic event when grantedWithStorageFailures', async () => {
+    it('emits a storageFailure diagnostic event with providerKind when grantedWithStorageFailures', async () => {
       const handle = createDirectoryHandleMock({
         name: 'Work',
         permissionState: 'prompt',
@@ -419,13 +424,70 @@ describe('useFileSystemAccessPermissionBroker', () => {
 
       expect(diagnosticSink).toHaveLength(1);
       expect(diagnosticSink[0]).toMatchObject({
-        feature: DiagnosticFeature.writeAccessRecovery,
-        operation: DiagnosticOperation.resolveAccessRequest,
-        stage: DiagnosticStage.accessRequestResolved,
-        result: DiagnosticResult.storageFailure,
-        classification: DiagnosticClassification.storageFailure,
+        feature: DiagnosticFeature.WriteAccessRecovery,
+        operation: DiagnosticOperation.ResolveAccessRequest,
+        stage: DiagnosticStage.AccessRequestResolved,
+        result: DiagnosticResult.StorageFailure,
+        classification: DiagnosticClassification.StorageFailure,
+        providerKind: DiagnosticProviderKind.WebFileSystem,
       });
       expect(JSON.stringify(diagnosticSink[0])).not.toContain('Work');
+
+      scope.stop();
+    });
+
+    it('emits a permissionDenied diagnostic event when write access is denied', async () => {
+      const handle = createDirectoryHandleMock({
+        name: 'Work',
+        permissionState: 'prompt',
+        sameEntryKey: 'work',
+      });
+      handle.requestPermissionMock.mockResolvedValue('denied');
+      getTemporaryFileSystemAccessHandleMock.mockResolvedValue({
+        handle,
+        operation: 'write',
+        spaceName: 'Work',
+      });
+      resolveFileSystemAccessRequestMock.mockResolvedValue({ status: 'denied' });
+
+      const { broker, scope } = await mountBroker();
+
+      await broker.requestAccess({ operation: 'write', spaceName: 'Work' });
+
+      expect(diagnosticSink).toHaveLength(1);
+      expect(diagnosticSink[0]).toMatchObject({
+        severity: DiagnosticSeverity.Warning,
+        feature: DiagnosticFeature.WriteAccessRecovery,
+        operation: DiagnosticOperation.ResolveAccessRequest,
+        stage: DiagnosticStage.AccessRequestResolved,
+        result: DiagnosticResult.PermissionDenied,
+        classification: DiagnosticClassification.AccessDenied,
+        providerKind: DiagnosticProviderKind.WebFileSystem,
+      });
+      expect(JSON.stringify(diagnosticSink[0])).not.toContain('Work');
+
+      scope.stop();
+    });
+
+    it('does not emit a permissionDenied event when cancelled (expected user outcome)', async () => {
+      const handle = createDirectoryHandleMock({
+        name: 'Work',
+        permissionState: 'prompt',
+        sameEntryKey: 'work',
+      });
+      handle.requestPermissionMock.mockResolvedValue('prompt');
+      getTemporaryFileSystemAccessHandleMock.mockResolvedValue({
+        handle,
+        operation: 'write',
+        spaceName: 'Work',
+      });
+      resolveFileSystemAccessRequestMock.mockResolvedValue({ status: 'cancelled' });
+
+      const { broker, scope } = await mountBroker();
+
+      await broker.requestAccess({ operation: 'write', spaceName: 'Work' });
+
+      expect(diagnosticSink).toHaveLength(0);
 
       scope.stop();
     });
@@ -449,6 +511,125 @@ describe('useFileSystemAccessPermissionBroker', () => {
       await broker.requestAccess({ operation: 'write', spaceName: 'Work' });
 
       expect(diagnosticSink).toHaveLength(0);
+
+      scope.stop();
+    });
+
+    it('emits a providerFailure diagnostic event with sanitized error when the outer catch fires', async () => {
+      getTemporaryFileSystemAccessHandleMock.mockRejectedValue(
+        new DOMException('Permission denied', 'NotAllowedError'),
+      );
+
+      const { broker, scope } = await mountBroker();
+
+      await broker.requestAccess({ operation: 'write', spaceName: 'Work' });
+
+      expect(diagnosticSink).toHaveLength(1);
+      expect(diagnosticSink[0]).toMatchObject({
+        severity: DiagnosticSeverity.Error,
+        feature: DiagnosticFeature.WriteAccessRecovery,
+        operation: DiagnosticOperation.RequestAccess,
+        stage: DiagnosticStage.AccessRequestPrepare,
+        result: DiagnosticResult.ProviderFailure,
+        classification: DiagnosticClassification.ProviderFailure,
+        providerKind: DiagnosticProviderKind.WebFileSystem,
+        error: {
+          errorClass: 'DOMException',
+          domExceptionName: 'NotAllowedError',
+          errorClassification: 'accessDenied',
+        },
+      });
+      expect(JSON.stringify(diagnosticSink[0])).not.toContain('Work');
+      expect(JSON.stringify(diagnosticSink[0])).not.toContain('Permission denied');
+
+      scope.stop();
+    });
+
+    it('emits a providerFailure diagnostic event when requestPermission rejects unexpectedly', async () => {
+      const handle = createDirectoryHandleMock({
+        name: 'Work',
+        permissionState: 'prompt',
+        sameEntryKey: 'work',
+      });
+      handle.requestPermissionMock.mockRejectedValue(new Error('Unexpected internal error'));
+      getTemporaryFileSystemAccessHandleMock.mockResolvedValue({
+        handle,
+        operation: 'write',
+        spaceName: 'Work',
+      });
+
+      const { broker, scope } = await mountBroker();
+
+      const result = await broker.requestAccess({ operation: 'write', spaceName: 'Work' });
+
+      expect(result).toEqual({ status: 'error' });
+      expect(diagnosticSink).toHaveLength(1);
+      expect(diagnosticSink[0]).toMatchObject({
+        result: DiagnosticResult.ProviderFailure,
+        classification: DiagnosticClassification.ProviderFailure,
+        providerKind: DiagnosticProviderKind.WebFileSystem,
+        error: { errorClass: 'Error', errorClassification: 'unknown' },
+      });
+      expect(JSON.stringify(diagnosticSink[0])).not.toContain('Unexpected internal error');
+      expect(JSON.stringify(diagnosticSink[0])).not.toContain('Work');
+
+      scope.stop();
+    });
+
+    it('all events within one requestAccess call share the same attemptId', async () => {
+      const handle = createDirectoryHandleMock({
+        name: 'Work',
+        permissionState: 'prompt',
+        sameEntryKey: 'work',
+      });
+      handle.requestPermissionMock.mockResolvedValue('granted');
+      getTemporaryFileSystemAccessHandleMock.mockResolvedValue({
+        handle,
+        operation: 'write',
+        spaceName: 'Work',
+      });
+      resolveFileSystemAccessRequestMock.mockResolvedValue({
+        status: 'grantedWithReplayFailures',
+      });
+
+      const { broker, scope } = await mountBroker();
+
+      await broker.requestAccess({ operation: 'write', spaceName: 'Work' });
+
+      expect(diagnosticSink).toHaveLength(1);
+      expect(typeof diagnosticSink[0]?.attemptId).toBe('string');
+      expect(diagnosticSink[0]?.attemptId).toMatch(
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/,
+      );
+
+      scope.stop();
+    });
+
+    it('different requestAccess calls produce different attemptIds', async () => {
+      getTemporaryFileSystemAccessHandleMock.mockResolvedValue(undefined);
+
+      const { broker, scope } = await mountBroker();
+
+      await broker.requestAccess({ operation: 'write', spaceName: 'Work' });
+      await broker.requestAccess({ operation: 'write', spaceName: 'Work' });
+
+      expect(diagnosticSink).toHaveLength(2);
+      expect(diagnosticSink[0]?.attemptId).toBeDefined();
+      expect(diagnosticSink[1]?.attemptId).toBeDefined();
+      expect(diagnosticSink[0]?.attemptId).not.toBe(diagnosticSink[1]?.attemptId);
+
+      scope.stop();
+    });
+
+    it('attemptId is never derived from space name or path', async () => {
+      getTemporaryFileSystemAccessHandleMock.mockResolvedValue(undefined);
+
+      const { broker, scope } = await mountBroker();
+
+      await broker.requestAccess({ operation: 'write', spaceName: 'SuperSecretWork' });
+
+      expect(diagnosticSink).toHaveLength(1);
+      expect(JSON.stringify(diagnosticSink[0])).not.toContain('SuperSecretWork');
 
       scope.stop();
     });

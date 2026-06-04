@@ -13,6 +13,8 @@ const SAFE_EVENT_EXTRA_KEYS = [
   'domExceptionName',
   'vfsErrorCode',
   'errorClassification',
+  // Diagnostic correlation — project-generated random UUID, never derived from user data.
+  'attemptId',
 ] as const;
 const SAFE_EVENT_TAG_KEYS = [
   'handled',
@@ -25,6 +27,7 @@ const SAFE_EVENT_TAG_KEYS = [
   'stage',
   'result',
   'classification',
+  'providerKind',
 ] as const;
 type SentryTagValue = boolean | number | string | null | undefined;
 

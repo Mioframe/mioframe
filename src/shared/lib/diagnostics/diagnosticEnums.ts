@@ -1,96 +1,73 @@
 /**
  * Severity levels for structured diagnostic events.
- * Use `info` for normal-path observations, `warning` for degraded states, `error` for failures,
- * and `fatal` for data-loss-risk or unrecoverable failures.
+ * Use `Info` for normal-path observations, `Warning` for degraded states, `Error` for failures,
+ * and `Fatal` for data-loss-risk or unrecoverable failures.
  */
-export const DiagnosticSeverity = {
-  info: 'info',
-  warning: 'warning',
-  error: 'error',
-  fatal: 'fatal',
-} as const;
-
-/** Union of allowed `DiagnosticSeverity` values. */
-export type DiagnosticSeverity = (typeof DiagnosticSeverity)[keyof typeof DiagnosticSeverity];
+export enum DiagnosticSeverity {
+  Info = 'info',
+  Warning = 'warning',
+  Error = 'error',
+  Fatal = 'fatal',
+}
 
 /**
  * Feature areas that may emit diagnostic events.
  * Extend this enum when a new feature requires instrumentation.
  */
-export const DiagnosticFeature = {
-  writeAccessRecovery: 'writeAccessRecovery',
-} as const;
-
-/** Union of allowed `DiagnosticFeature` values. */
-export type DiagnosticFeature = (typeof DiagnosticFeature)[keyof typeof DiagnosticFeature];
+export enum DiagnosticFeature {
+  WriteAccessRecovery = 'writeAccessRecovery',
+}
 
 /**
  * Named operations within a feature that can emit diagnostic events.
  */
-export const DiagnosticOperation = {
-  requestAccess: 'requestAccess',
-  resolveAccessRequest: 'resolveAccessRequest',
-  flushPendingSaves: 'flushPendingSaves',
-} as const;
-
-/** Union of allowed `DiagnosticOperation` values. */
-export type DiagnosticOperation = (typeof DiagnosticOperation)[keyof typeof DiagnosticOperation];
+export enum DiagnosticOperation {
+  RequestAccess = 'requestAccess',
+  ResolveAccessRequest = 'resolveAccessRequest',
+  FlushPendingSaves = 'flushPendingSaves',
+}
 
 /**
  * Stage within an operation where the diagnostic event was emitted.
  */
-export const DiagnosticStage = {
-  accessRequestPrepare: 'accessRequestPrepare',
-  accessRequestResolved: 'accessRequestResolved',
-  pendingSaveReplay: 'pendingSaveReplay',
-} as const;
-
-/** Union of allowed `DiagnosticStage` values. */
-export type DiagnosticStage = (typeof DiagnosticStage)[keyof typeof DiagnosticStage];
+export enum DiagnosticStage {
+  AccessRequestPrepare = 'accessRequestPrepare',
+  AccessRequestResolved = 'accessRequestResolved',
+  PendingSaveReplay = 'pendingSaveReplay',
+}
 
 /**
  * Observed outcome at the emitting stage.
  */
-export const DiagnosticResult = {
-  staleRequest: 'staleRequest',
-  permissionDenied: 'permissionDenied',
-  permissionGranted: 'permissionGranted',
-  stillBlocked: 'stillBlocked',
-  storageFailure: 'storageFailure',
-  replayFailure: 'replayFailure',
-  providerFailure: 'providerFailure',
-  unknown: 'unknown',
-} as const;
-
-/** Union of allowed `DiagnosticResult` values. */
-export type DiagnosticResult = (typeof DiagnosticResult)[keyof typeof DiagnosticResult];
+export enum DiagnosticResult {
+  StaleRequest = 'staleRequest',
+  PermissionDenied = 'permissionDenied',
+  PermissionGranted = 'permissionGranted',
+  StillBlocked = 'stillBlocked',
+  StorageFailure = 'storageFailure',
+  ReplayFailure = 'replayFailure',
+  ProviderFailure = 'providerFailure',
+  Unknown = 'unknown',
+}
 
 /**
  * Safe classification of the root cause.
  * Used to identify whether the failure stems from access policy, storage, or an unknown cause.
  */
-export const DiagnosticClassification = {
-  staleRequest: 'staleRequest',
-  accessDenied: 'accessDenied',
-  accessBlocked: 'accessBlocked',
-  storageFailure: 'storageFailure',
-  providerFailure: 'providerFailure',
-  unknown: 'unknown',
-} as const;
-
-/** Union of allowed `DiagnosticClassification` values. */
-export type DiagnosticClassification =
-  (typeof DiagnosticClassification)[keyof typeof DiagnosticClassification];
+export enum DiagnosticClassification {
+  StaleRequest = 'staleRequest',
+  AccessDenied = 'accessDenied',
+  AccessBlocked = 'accessBlocked',
+  StorageFailure = 'storageFailure',
+  ProviderFailure = 'providerFailure',
+  Unknown = 'unknown',
+}
 
 /**
  * Provider kinds that may be attached to a diagnostic event.
  * Extend this enum when a new provider requires instrumentation.
  * Do not use free-form strings — all values must be project-controlled.
  */
-export const DiagnosticProviderKind = {
-  webFileSystem: 'webFileSystem',
-} as const;
-
-/** Union of allowed `DiagnosticProviderKind` values. */
-export type DiagnosticProviderKind =
-  (typeof DiagnosticProviderKind)[keyof typeof DiagnosticProviderKind];
+export enum DiagnosticProviderKind {
+  WebFileSystem = 'webFileSystem',
+}

@@ -15,7 +15,9 @@ This document describes when to emit diagnostic events, how to use the project d
 | **Handled exception** | Unexpected internal failure reported to Sentry | `reportHandledError`                 |
 | **Diagnostic event**  | Structured async/status/recovery observation   | `reportDiagnosticEvent`              |
 
-Use `reportDiagnosticEvent` for structured async, status, or recovery flows where a typed observation is needed without an exception. Use `reportHandledError` for ordinary unexpected exceptions. Do not pass structured recovery metadata to `reportHandledError`; add enum values to `diagnosticEnums.ts` and call `reportDiagnosticEvent` instead.
+Use `reportDiagnosticEvent` for structured async, status, or recovery flows where a typed observation is needed without an exception. Use `reportHandledError` for ordinary unexpected exceptions only. Do not pass structured recovery metadata to `reportHandledError`; add enum values to `diagnosticEnums.ts` and call `reportDiagnosticEvent` instead.
+
+`reportHandledError` accepts only `{ feature, action }` — there is no generic `metadata` field. This is intentional: ad-hoc metadata belongs in structured diagnostic events.
 
 ---
 
@@ -55,6 +57,7 @@ The only project-level API for structured diagnostic events.
 - Respects Sentry consent state (`unknown`, `enabled`, `disabled`).
 - Writes to an optional in-memory test sink set via `setDiagnosticEventSink`.
 - Uses Sentry as the transport backend. Feature, service, provider, and UI code must not call Sentry directly.
+- Sets the Sentry event level from `DiagnosticSeverity` so events appear at the correct severity in Sentry.
 
 ```ts
 import {
@@ -68,12 +71,12 @@ import {
 } from '@shared/lib/diagnostics';
 
 reportDiagnosticEvent({
-  severity: DiagnosticSeverity.error,
-  feature: DiagnosticFeature.writeAccessRecovery,
-  operation: DiagnosticOperation.requestAccess,
-  stage: DiagnosticStage.accessRequestPrepare,
-  result: DiagnosticResult.staleRequest,
-  classification: DiagnosticClassification.staleRequest,
+  severity: DiagnosticSeverity.Error,
+  feature: DiagnosticFeature.WriteAccessRecovery,
+  operation: DiagnosticOperation.RequestAccess,
+  stage: DiagnosticStage.AccessRequestPrepare,
+  result: DiagnosticResult.StaleRequest,
+  classification: DiagnosticClassification.StaleRequest,
 });
 ```
 
@@ -103,24 +106,47 @@ setDiagnosticEventSink(sink);
 setDiagnosticEventSink(undefined);
 ```
 
+### `flushQueuedDiagnosticEvents()`
+
+Exported for use by `useDiagnosticsReporting` when consent is granted. Do not call from product code.
+
+### `clearQueuedDiagnosticEvents()`
+
+Exported for use by `useDiagnosticsReporting` when consent is revoked or Sentry is unconfigured. Do not call from product code.
+
 ---
 
 ## Event contract fields
 
 All fields are project-controlled enum values. No open-ended string or record metadata.
 
-| Field            | Type                       | Required | Description                                                           |
-| ---------------- | -------------------------- | -------- | --------------------------------------------------------------------- |
-| `severity`       | `DiagnosticSeverity`       | Yes      | `info`, `warning`, `error`, or `fatal`                                |
-| `feature`        | `DiagnosticFeature`        | Yes      | Feature area (e.g. `writeAccessRecovery`)                             |
-| `operation`      | `DiagnosticOperation`      | Yes      | Named operation within the feature                                    |
-| `stage`          | `DiagnosticStage`          | Yes      | Stage within the operation                                            |
-| `result`         | `DiagnosticResult`         | Yes      | Observed outcome                                                      |
-| `classification` | `DiagnosticClassification` | Yes      | Root-cause classification                                             |
-| `counters`       | `DiagnosticCounters`       | No       | Safe numeric counters (`pendingCount`, `failedCount`, `flushedCount`) |
-| `error`          | `SanitizedDiagnosticError` | No       | Output of `sanitizeDiagnosticError`                                   |
-| `providerKind`   | `DiagnosticProviderKind`   | No       | Provider kind for provider-specific paths; must be an enum value      |
-| `attemptId`      | `string`                   | No       | Project-generated id only                                             |
+| Field            | Type                       | Required | Description                                                               |
+| ---------------- | -------------------------- | -------- | ------------------------------------------------------------------------- |
+| `severity`       | `DiagnosticSeverity`       | Yes      | `Info`, `Warning`, `Error`, or `Fatal`                                    |
+| `feature`        | `DiagnosticFeature`        | Yes      | Feature area (e.g. `WriteAccessRecovery`)                                 |
+| `operation`      | `DiagnosticOperation`      | Yes      | Named operation within the feature                                        |
+| `stage`          | `DiagnosticStage`          | Yes      | Stage within the operation                                                |
+| `result`         | `DiagnosticResult`         | Yes      | Observed outcome                                                          |
+| `classification` | `DiagnosticClassification` | Yes      | Root-cause classification                                                 |
+| `counters`       | `DiagnosticCounters`       | No       | Safe numeric counters (`pendingCount`, `failedCount`, `flushedCount`)     |
+| `error`          | `SanitizedDiagnosticError` | No       | Output of `sanitizeDiagnosticError`                                       |
+| `providerKind`   | `DiagnosticProviderKind`   | No       | Provider kind for provider-specific paths; must be an enum value          |
+| `attemptId`      | `string`                   | No       | Project-generated UUID only — never derived from user data, paths, or ids |
+
+### Enum values use PascalCase members
+
+All diagnostic enums are TypeScript string enums with PascalCase members and stable lowercase wire values:
+
+```ts
+enum DiagnosticSeverity {
+  Info = 'info',
+  Warning = 'warning',
+  Error = 'error',
+  Fatal = 'fatal',
+}
+```
+
+Use `DiagnosticSeverity.Error`, `DiagnosticFeature.WriteAccessRecovery`, etc. in product code.
 
 ### Allowed counters
 
@@ -131,6 +157,31 @@ All fields are project-controlled enum values. No open-ended string or record me
 ### Forbidden counter values
 
 Do not include storage keys, document ids, file sizes, byte counts, paths, names, or any value derived from user data.
+
+### Provider kind
+
+Attach `providerKind` to events when the recovery or failure path is specific to a provider:
+
+```ts
+providerKind: DiagnosticProviderKind.WebFileSystem,
+```
+
+Do not infer provider kind from path or storage key heuristics. Only attach explicitly for currently instrumented flows.
+
+### Attempt ID
+
+Use `attemptId` to correlate related events from the same recovery attempt:
+
+```ts
+const attemptId = crypto.randomUUID();
+// Pass the same attemptId to all events within one requestAccess/recovery call.
+```
+
+Rules:
+
+- Must be project-generated (e.g. `crypto.randomUUID()`).
+- Must never be derived from path, space name, document id, storage key, handle, or any user data.
+- Scope it locally to one operation call; do not use a global trace ID.
 
 ---
 
@@ -177,11 +228,22 @@ It never copies `error.message` from external boundary errors.
 
 ---
 
+## Consent lifecycle integration
+
+`useDiagnosticsReporting` (in `src/features/diagnosticsReporting`) manages both the handled-error queue and the diagnostic event queue:
+
+- When reporting becomes **enabled**: flushes both queues via `flushQueuedHandledReports()` and `flushQueuedDiagnosticEvents()`.
+- When reporting becomes **disabled** or Sentry is **unconfigured**: clears both queues via `clearQueuedHandledReports()` and `clearQueuedDiagnosticEvents()`.
+
+The diagnostic queue is safe: it never produces unhandled promise rejections even if Sentry initialization fails.
+
+---
+
 ## Adding new enums
 
 When a new feature, operation, stage, result, classification, or provider kind is needed:
 
-1. Add the value to the relevant enum in `src/shared/lib/diagnostics/diagnosticEnums.ts`.
+1. Add the value to the relevant enum in `src/shared/lib/diagnostics/diagnosticEnums.ts` with PascalCase member and a stable lowercase wire value.
 2. Re-export from `src/shared/lib/diagnostics/index.ts`.
 3. Add a focused test that covers the new diagnostic event emission.
 4. Update this document's event contract table.
@@ -195,6 +257,8 @@ Every diagnostic event emission must be covered by a focused unit test that:
 
 - Uses `setDiagnosticEventSink` to capture events without mocking Sentry.
 - Asserts that the event has the expected `feature`, `operation`, `stage`, `result`, and `classification`.
+- Asserts `providerKind` is set for provider-specific flows.
+- Asserts `attemptId` is a UUID string for correlated events, and never contains user data.
 - Asserts that no path, id, file name, key, or raw external message appears in the event or its counters.
 
 See `src/shared/lib/diagnostics/reportDiagnosticEvent.test.ts` and `src/shared/lib/diagnostics/sanitizeDiagnosticError.test.ts` for the reference patterns.

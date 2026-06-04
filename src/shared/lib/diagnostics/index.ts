@@ -3,8 +3,6 @@ export type {
   DiagnosticEvent,
   SanitizedDiagnosticError,
 } from './DiagnosticEvent';
-// Value exports carry both the runtime object and the type alias for callers that use
-// `import type { DiagnosticSeverity }` — TypeScript re-exports the merged declaration.
 export {
   DiagnosticClassification,
   DiagnosticFeature,
@@ -16,6 +14,7 @@ export {
 } from './diagnosticEnums';
 export {
   clearQueuedDiagnosticEvents,
+  flushQueuedDiagnosticEvents,
   reportDiagnosticEvent,
   setDiagnosticEventSink,
 } from './reportDiagnosticEvent';

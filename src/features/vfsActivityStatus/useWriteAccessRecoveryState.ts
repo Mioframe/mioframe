@@ -23,6 +23,7 @@ export const useWriteAccessRecoveryState = (state: ComputedRef<VfsActivityState>
 
   const pendingRequestExists = ref<boolean | null>(null);
   const storageFailureAfterGrant = ref(false);
+  let checkSequence = 0;
 
   const writeAccessRecovery = computed(() =>
     getFileSystemAccessRecovery(state.value.lastError?.cause, { operation: 'write' }),
@@ -52,10 +53,15 @@ export const useWriteAccessRecoveryState = (state: ComputedRef<VfsActivityState>
       return;
     }
 
+    const sequence = ++checkSequence;
+
     const result = await getFileSystemAccessRequest({
       operation: recovery.operation,
       spaceName: recovery.spaceName,
     });
+
+    if (sequence !== checkSequence) return;
+
     pendingRequestExists.value = !!result;
   };
 

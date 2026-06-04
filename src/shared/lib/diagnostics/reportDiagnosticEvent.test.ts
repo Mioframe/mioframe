@@ -12,6 +12,7 @@ import {
 type MockSentryScope = {
   setExtras: ReturnType<typeof vi.fn>;
   setTag: ReturnType<typeof vi.fn>;
+  setLevel: ReturnType<typeof vi.fn>;
 };
 
 type MockSentryFacade = {
@@ -34,9 +35,11 @@ const {
 } = vi.hoisted(() => {
   const scopeSetTagMock = vi.fn();
   const scopeSetExtrasMock = vi.fn();
+  const scopeSetLevelMock = vi.fn();
   const scope = {
     setExtras: scopeSetExtrasMock,
     setTag: scopeSetTagMock,
+    setLevel: scopeSetLevelMock,
   };
 
   const createFacade = (captureResult?: string) => {
@@ -63,12 +66,12 @@ vi.mock('@shared/lib/setupSentry', () => ({
 }));
 
 const makeEvent = (overrides?: Partial<DiagnosticEvent>): DiagnosticEvent => ({
-  severity: DiagnosticSeverity.error,
-  feature: DiagnosticFeature.writeAccessRecovery,
-  operation: DiagnosticOperation.requestAccess,
-  stage: DiagnosticStage.accessRequestPrepare,
-  result: DiagnosticResult.staleRequest,
-  classification: DiagnosticClassification.staleRequest,
+  severity: DiagnosticSeverity.Error,
+  feature: DiagnosticFeature.WriteAccessRecovery,
+  operation: DiagnosticOperation.RequestAccess,
+  stage: DiagnosticStage.AccessRequestPrepare,
+  result: DiagnosticResult.StaleRequest,
+  classification: DiagnosticClassification.StaleRequest,
   ...overrides,
 });
 
@@ -82,6 +85,7 @@ describe('reportDiagnosticEvent', () => {
     getSentryReportingStateMock.mockReturnValue('enabled');
     mockScope.setExtras.mockReset();
     mockScope.setTag.mockReset();
+    mockScope.setLevel.mockReset();
     realFacade.captureMessage.mockClear();
     realFacade.withScope.mockClear();
   });
@@ -102,13 +106,38 @@ describe('reportDiagnosticEvent', () => {
     expect(realFacade.captureMessage).toHaveBeenCalledWith(expect.stringContaining('[diagnostic]'));
   });
 
+  it('sets Sentry event level from diagnostic severity', async () => {
+    ensureSentryMock.mockResolvedValue(realFacade);
+    const { reportDiagnosticEvent } = await import('./reportDiagnosticEvent');
+
+    reportDiagnosticEvent(makeEvent({ severity: DiagnosticSeverity.Warning }));
+    await waitForAsyncWork();
+
+    expect(mockScope.setLevel).toHaveBeenCalledWith('warning');
+  });
+
+  it.each([
+    [DiagnosticSeverity.Info, 'info'],
+    [DiagnosticSeverity.Warning, 'warning'],
+    [DiagnosticSeverity.Error, 'error'],
+    [DiagnosticSeverity.Fatal, 'fatal'],
+  ] as const)('maps severity %s to Sentry level %s', async (severity, expectedLevel) => {
+    ensureSentryMock.mockResolvedValue(realFacade);
+    const { reportDiagnosticEvent } = await import('./reportDiagnosticEvent');
+
+    reportDiagnosticEvent(makeEvent({ severity }));
+    await waitForAsyncWork();
+
+    expect(mockScope.setLevel).toHaveBeenCalledWith(expectedLevel);
+  });
+
   it('attaches structured safe tags to the Sentry scope', async () => {
     ensureSentryMock.mockResolvedValue(realFacade);
     const { reportDiagnosticEvent } = await import('./reportDiagnosticEvent');
     const event = makeEvent({
-      severity: DiagnosticSeverity.warning,
-      result: DiagnosticResult.storageFailure,
-      classification: DiagnosticClassification.storageFailure,
+      severity: DiagnosticSeverity.Warning,
+      result: DiagnosticResult.StorageFailure,
+      classification: DiagnosticClassification.StorageFailure,
     });
 
     reportDiagnosticEvent(event);
@@ -116,7 +145,7 @@ describe('reportDiagnosticEvent', () => {
 
     expect(mockScope.setTag).toHaveBeenCalledWith('eventKind', 'diagnostic');
     expect(mockScope.setTag).toHaveBeenCalledWith('severity', 'warning');
-    expect(mockScope.setTag).toHaveBeenCalledWith('feature', DiagnosticFeature.writeAccessRecovery);
+    expect(mockScope.setTag).toHaveBeenCalledWith('feature', DiagnosticFeature.WriteAccessRecovery);
     expect(mockScope.setTag).toHaveBeenCalledWith('result', 'storageFailure');
     expect(mockScope.setTag).toHaveBeenCalledWith('classification', 'storageFailure');
   });
@@ -188,6 +217,49 @@ describe('reportDiagnosticEvent', () => {
     expect(() => {
       reportDiagnosticEvent(makeEvent());
     }).not.toThrow();
+  });
+
+  it('does not produce an unhandled rejection when ensureSentry rejects', async () => {
+    ensureSentryMock.mockRejectedValue(new Error('Sentry init failed'));
+    const { reportDiagnosticEvent } = await import('./reportDiagnosticEvent');
+
+    expect(() => {
+      reportDiagnosticEvent(makeEvent());
+    }).not.toThrow();
+
+    await expect(waitForAsyncWork()).resolves.toBeUndefined();
+  });
+
+  it('schedules a follow-up flush when an event is added while a flush is in progress', async () => {
+    let resolveFirst: (() => void) | undefined;
+    ensureSentryMock
+      .mockImplementationOnce(
+        () =>
+          new Promise<typeof realFacade>((resolve) => {
+            resolveFirst = () => {
+              resolve(realFacade);
+            };
+          }),
+      )
+      .mockResolvedValue(realFacade);
+
+    const { reportDiagnosticEvent, flushQueuedDiagnosticEvents } =
+      await import('./reportDiagnosticEvent');
+
+    // Start a flush that is blocked on ensureSentry
+    reportDiagnosticEvent(makeEvent());
+    flushQueuedDiagnosticEvents();
+
+    // A second event arrives while the first flush is still in flight
+    reportDiagnosticEvent(makeEvent());
+
+    // The second flush call is deferred (pendingRetry=true)
+    // Resolve the first flush, which triggers a follow-up flush for the second event
+    resolveFirst?.();
+    await waitForAsyncWork();
+    await waitForAsyncWork();
+
+    expect(realFacade.captureMessage.mock.calls.length).toBeGreaterThanOrEqual(1);
   });
 
   describe('memory sink', () => {

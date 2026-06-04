@@ -1,5 +1,6 @@
 import { ensureSentry, getSentryReportingState, isSentryConfigured } from '@shared/lib/setupSentry';
 import type { DiagnosticEvent } from './DiagnosticEvent';
+import { DiagnosticSeverity } from './diagnosticEnums';
 
 const DIAGNOSTIC_QUEUE_LIMIT = 50;
 const diagnosticQueue: DiagnosticEvent[] = [];
@@ -30,12 +31,28 @@ const trimQueue = () => {
   }
 };
 
+const severityToSentryLevel = (
+  severity: DiagnosticSeverity,
+): 'info' | 'warning' | 'error' | 'fatal' => {
+  switch (severity) {
+    case DiagnosticSeverity.Info:
+      return 'info';
+    case DiagnosticSeverity.Warning:
+      return 'warning';
+    case DiagnosticSeverity.Error:
+      return 'error';
+    case DiagnosticSeverity.Fatal:
+      return 'fatal';
+  }
+};
+
 const sendEntry = (
   entry: DiagnosticEvent,
   sentry: Awaited<ReturnType<typeof ensureSentry>>,
 ): boolean => {
   try {
     const eventId = sentry.withScope((scope) => {
+      scope.setLevel(severityToSentryLevel(entry.severity));
       scope.setTag('eventKind', 'diagnostic');
       scope.setTag('severity', entry.severity);
       scope.setTag('feature', entry.feature);
@@ -44,7 +61,15 @@ const sendEntry = (
       scope.setTag('result', entry.result);
       scope.setTag('classification', entry.classification);
 
+      if (entry.providerKind !== undefined) {
+        scope.setTag('providerKind', entry.providerKind);
+      }
+
       const extras: Record<string, unknown> = {};
+
+      if (entry.attemptId !== undefined) {
+        extras.attemptId = entry.attemptId;
+      }
 
       if (entry.counters) {
         const { pendingCount, failedCount, flushedCount } = entry.counters;
@@ -104,10 +129,32 @@ const flushOnce = async (): Promise<void> => {
   }
 };
 
-const flushQueuedDiagnosticEvents = (): void => {
-  flushPromise ??= flushOnce().finally(() => {
-    flushPromise = undefined;
-  });
+let pendingRetry = false;
+
+/**
+ * Flushes queued diagnostic events when reporting is currently allowed.
+ * Fire-and-forget: never throws into product code and never creates unhandled promise rejections.
+ * Parallel flush cycles are collapsed into the active in-flight run. If a new event is added
+ * while a flush is running, `pendingRetry` is set so one follow-up flush runs after completion.
+ */
+export const flushQueuedDiagnosticEvents = (): void => {
+  if (flushPromise) {
+    pendingRetry = true;
+    return;
+  }
+
+  pendingRetry = false;
+
+  flushPromise = flushOnce()
+    .catch(() => {
+      // Fire-and-forget: swallow errors to prevent unhandled rejections.
+    })
+    .finally(() => {
+      flushPromise = undefined;
+      if (pendingRetry && isSentryConfigured() && getSentryReportingState() === 'enabled') {
+        flushQueuedDiagnosticEvents();
+      }
+    });
 };
 
 /**

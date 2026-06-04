@@ -3,6 +3,7 @@ import {
   clearQueuedHandledReports,
   flushQueuedHandledReports,
 } from '@shared/lib/reportHandledError';
+import { clearQueuedDiagnosticEvents, flushQueuedDiagnosticEvents } from '@shared/lib/diagnostics';
 import { ensureSentry, isSentryConfigured, setSentryReportingState } from '@shared/lib/setupSentry';
 import { watch } from 'vue';
 
@@ -29,6 +30,7 @@ export const useDiagnosticsReporting = () => {
       if (!isSentryConfigured()) {
         setSentryReportingState('disabled');
         clearQueuedHandledReports();
+        clearQueuedDiagnosticEvents();
         return;
       }
 
@@ -41,6 +43,7 @@ export const useDiagnosticsReporting = () => {
         }
 
         flushQueuedHandledReports();
+        flushQueuedDiagnosticEvents();
         return;
       }
 
@@ -48,6 +51,7 @@ export const useDiagnosticsReporting = () => {
       if (diagnosticsConsentRequested === true) {
         setSentryReportingState('disabled');
         clearQueuedHandledReports();
+        clearQueuedDiagnosticEvents();
         return;
       }
 
