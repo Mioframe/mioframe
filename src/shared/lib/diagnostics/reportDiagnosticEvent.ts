@@ -16,7 +16,7 @@ const buildDedupeKey = (event: DiagnosticEvent): string => {
   const errKey = event.error
     ? `${event.error.errorClass}|${event.error.errorClassification}|${event.error.domExceptionName ?? ''}|${event.error.vfsErrorCode ?? ''}|${event.error.domainErrorCode ?? ''}`
     : '';
-  return `${event.name}|${event.result}|${event.classification}|${tagsKey}|${errKey}`;
+  return `${event.name}|${event.severity}|${event.result}|${event.classification}|${tagsKey}|${errKey}`;
 };
 
 const isRecentDuplicate = (key: string): boolean => {
@@ -62,6 +62,7 @@ export const setDiagnosticEventSink = (sink: DiagnosticEvent[] | undefined): voi
  */
 export const clearQueuedDiagnosticEvents = (): void => {
   diagnosticQueue.length = 0;
+  dedupeMap.clear();
 };
 
 const trimQueue = () => {

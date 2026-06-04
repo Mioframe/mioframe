@@ -497,6 +497,17 @@ describe('reportDiagnosticEvent', () => {
       expect(realFacade.captureMessage).toHaveBeenCalledTimes(2);
     });
 
+    it('events with different severity are not deduped', async () => {
+      ensureSentryMock.mockResolvedValue(realFacade);
+      const { reportDiagnosticEvent } = await import('./reportDiagnosticEvent');
+
+      reportDiagnosticEvent(makeEvent({ severity: DiagnosticSeverity.Warning }));
+      reportDiagnosticEvent(makeEvent({ severity: DiagnosticSeverity.Error }));
+      await waitForAsyncWork();
+
+      expect(realFacade.captureMessage).toHaveBeenCalledTimes(2);
+    });
+
     it('events with different safeTags are not deduped', async () => {
       ensureSentryMock.mockResolvedValue(realFacade);
       const { reportDiagnosticEvent } = await import('./reportDiagnosticEvent');
@@ -591,6 +602,42 @@ describe('reportDiagnosticEvent', () => {
       expect(realFacade.captureMessage).toHaveBeenCalledTimes(2);
 
       vi.useRealTimers();
+    });
+
+    it('clearQueuedDiagnosticEvents resets dedupe state so the same event can be sent again within the prior TTL', async () => {
+      vi.useFakeTimers();
+      ensureSentryMock.mockResolvedValue(realFacade);
+      const { reportDiagnosticEvent, clearQueuedDiagnosticEvents } =
+        await import('./reportDiagnosticEvent');
+
+      reportDiagnosticEvent(makeEvent());
+      await vi.runAllTimersAsync();
+      expect(realFacade.captureMessage).toHaveBeenCalledTimes(1);
+
+      clearQueuedDiagnosticEvents();
+
+      reportDiagnosticEvent(makeEvent());
+      await vi.runAllTimersAsync();
+
+      expect(realFacade.captureMessage).toHaveBeenCalledTimes(2);
+
+      vi.useRealTimers();
+    });
+
+    it('clearing queued diagnostic events does not change memory sink behavior', async () => {
+      getSentryReportingStateMock.mockReturnValue('disabled');
+      const { reportDiagnosticEvent, clearQueuedDiagnosticEvents, setDiagnosticEventSink } =
+        await import('./reportDiagnosticEvent');
+      const sink: DiagnosticEvent[] = [];
+      setDiagnosticEventSink(sink);
+
+      reportDiagnosticEvent(makeEvent());
+      clearQueuedDiagnosticEvents();
+      reportDiagnosticEvent(makeEvent());
+
+      expect(sink).toHaveLength(2);
+
+      setDiagnosticEventSink(undefined);
     });
   });
 });
