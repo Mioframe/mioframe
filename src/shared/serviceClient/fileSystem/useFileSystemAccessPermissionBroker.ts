@@ -1,4 +1,5 @@
 import { type FileSystemAccessOperation } from '@shared/lib/fileSystem';
+import { reportHandledError } from '@shared/lib/reportHandledError';
 import { useMainServiceClient } from '@shared/service';
 
 type FileSystemAccessRequestKey = {
@@ -37,6 +38,15 @@ export const useFileSystemAccessPermissionBroker = () => {
       const request = await getTemporaryFileSystemAccessHandle(key);
 
       if (!request) {
+        reportHandledError(new Error('File system access request missing or already resolved'), {
+          feature: 'writeAccessRecovery',
+          action: 'requestAccess',
+          metadata: {
+            recoveryStage: 'accessRequestPrepare',
+            classification: 'staleRequest',
+            operation: key.operation,
+          },
+        });
         return { status: 'error' };
       }
 
@@ -53,9 +63,39 @@ export const useFileSystemAccessPermissionBroker = () => {
           spaceName: request.spaceName,
         });
 
-        return {
-          status: result.status === 'missing' ? 'error' : result.status,
-        };
+        const resolvedStatus = result.status === 'missing' ? 'error' : result.status;
+
+        if (result.status === 'missing') {
+          reportHandledError(
+            new Error('File system access request resolved as missing after permission prompt'),
+            {
+              feature: 'writeAccessRecovery',
+              action: 'resolveAccessRequest',
+              metadata: {
+                recoveryStage: 'accessRequestResolved',
+                classification: 'staleRequest',
+                operation: key.operation,
+                permissionState,
+              },
+            },
+          );
+        } else if (result.status === 'grantedWithStorageFailures') {
+          reportHandledError(
+            new Error('Write access granted but pending save replay hit a storage failure'),
+            {
+              feature: 'writeAccessRecovery',
+              action: 'resolveAccessRequest',
+              metadata: {
+                recoveryStage: 'accessRequestResolved',
+                classification: 'storageFailure',
+                operation: key.operation,
+                resultStatus: result.status,
+              },
+            },
+          );
+        }
+
+        return { status: resolvedStatus };
       } finally {
         handle = undefined;
       }

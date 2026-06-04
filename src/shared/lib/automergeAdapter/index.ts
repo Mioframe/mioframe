@@ -1,6 +1,7 @@
 export { createVFSAdapter } from './createVFSAdapter';
 export {
   createRetryingStorageAdapter,
+  type RetryingStorageAdapterFailureClassification,
   type RetryingStorageAdapterFlushResult,
   type RetryingStorageAdapterOptions,
 } from './createRetryingStorageAdapter';

@@ -1,6 +1,18 @@
 import type { StorageAdapterInterface, StorageKey } from '@automerge/automerge-repo';
 
 /**
+ * Safe classification of a flush failure exposed to service-layer recovery.
+ * Never includes storage keys, document ids, paths, file names, or bytes.
+ * - `accessRequired` – the provider still requires browser permission (write-access blocked).
+ * - `storageFailure` – write access was available but the underlying adapter reported an error.
+ * - `unknown` – the failure could not be classified against known patterns.
+ */
+export type RetryingStorageAdapterFailureClassification =
+  | 'accessRequired'
+  | 'storageFailure'
+  | 'unknown';
+
+/**
  * Safe flush summary exposed to service-layer recovery flows.
  */
 export interface RetryingStorageAdapterFlushResult {
@@ -10,6 +22,11 @@ export interface RetryingStorageAdapterFlushResult {
   flushedCount: number;
   /** Number of saves that remain queued after the flush attempt. */
   pendingCount: number;
+  /**
+   * Safe classification of the first failure encountered during this flush attempt.
+   * Present only when `status` is `'failed'` or `'stillBlocked'`.
+   */
+  failureClassification?: RetryingStorageAdapterFailureClassification;
 }
 
 /**
@@ -107,6 +124,7 @@ export const createRetryingStorageAdapter = (
               status: 'stillBlocked',
               flushedCount,
               pendingCount: pendingSaves.size,
+              failureClassification: 'accessRequired',
             };
           }
 
@@ -114,6 +132,7 @@ export const createRetryingStorageAdapter = (
             status: 'failed',
             flushedCount,
             pendingCount: pendingSaves.size,
+            failureClassification: 'storageFailure',
           };
         }
       }
