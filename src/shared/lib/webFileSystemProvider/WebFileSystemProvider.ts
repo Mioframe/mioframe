@@ -314,7 +314,10 @@ export const WebFileSystemProvider = (
     const entries: [string, FSNodeStat][] = [];
 
     for await (const [name, childHandle] of directoryHandle.entries()) {
-      entries.push([name, await fileHandleStat(childHandle)]);
+      entries.push([
+        name,
+        { type: childHandle.kind === 'file' ? FSNodeType.File : FSNodeType.Directory },
+      ]);
     }
 
     return entries;
