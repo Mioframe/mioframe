@@ -1,11 +1,13 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { useBrowserStoragePersistence } from '@entity/browserStoragePersistence';
+import { useBrowserStoragePersistenceFeedback } from '@feature/browserStoragePersistenceEnable';
 import { MDListContainer } from '@shared/ui/Lists';
 import SettingsSection from './SettingsSection.vue';
 import SettingsCheckboxListItem from './SettingsCheckboxListItem.vue';
 
 const { status, isRequesting, requestPersistence } = useBrowserStoragePersistence();
+const { showFeedback } = useBrowserStoragePersistenceFeedback();
 
 const isChecked = computed(() => status.value === 'persistent');
 
@@ -23,12 +25,13 @@ const supportingText = computed(() => {
   if (status.value === 'unsupported') {
     return 'This browser cannot enable more reliable storage here. You can continue, but keep backups for important data.';
   }
-  return 'Ask the browser to reduce the risk of automatic cleanup for local Mioframe data. This does not replace backups.';
+  return 'Ask the browser to reduce automatic cleanup risk for local Mioframe data. This does not replace backups.';
 });
 
-const onChange = () => {
+const onChange = async () => {
   if (status.value === 'ordinary' && !isRequesting.value) {
-    void requestPersistence();
+    const outcome = await requestPersistence();
+    showFeedback(outcome);
   }
 };
 </script>

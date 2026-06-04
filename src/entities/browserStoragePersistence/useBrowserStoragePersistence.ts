@@ -8,13 +8,13 @@ export type BrowserStoragePersistenceStatus =
   | 'persistent'
   | 'unsupported';
 
-/** Outcome of the last requestPersistence() call. */
+/** Outcome returned by requestPersistence(). */
 export type BrowserStoragePersistenceRequestOutcome =
-  | 'none'
   | 'enabled'
   | 'not-enabled'
   | 'failed'
-  | 'unsupported';
+  | 'unsupported'
+  | 'ignored';
 
 const getStorageManager = (): Pick<StorageManager, 'persisted' | 'persist'> | undefined => {
   if (typeof navigator === 'undefined') return undefined;
@@ -28,7 +28,6 @@ const getStorageManager = (): Pick<StorageManager, 'persisted' | 'persist'> | un
 const setupBrowserStoragePersistence = () => {
   const status = ref<BrowserStoragePersistenceStatus>('checking');
   const isRequesting = ref(false);
-  const lastRequestOutcome = ref<BrowserStoragePersistenceRequestOutcome>('none');
 
   const refresh = async () => {
     const manager = getStorageManager();
@@ -45,29 +44,26 @@ const setupBrowserStoragePersistence = () => {
     }
   };
 
-  const requestPersistence = async () => {
+  const requestPersistence = async (): Promise<BrowserStoragePersistenceRequestOutcome> => {
     if (status.value !== 'ordinary' || isRequesting.value) {
-      return;
+      return 'ignored';
     }
     const manager = getStorageManager();
     if (!manager) {
-      lastRequestOutcome.value = 'unsupported';
       status.value = 'unsupported';
-      return;
+      return 'unsupported';
     }
     isRequesting.value = true;
-    lastRequestOutcome.value = 'none';
     try {
       const result = await manager.persist();
       if (result) {
         status.value = 'persistent';
-        lastRequestOutcome.value = 'enabled';
-      } else {
-        lastRequestOutcome.value = 'not-enabled';
+        return 'enabled';
       }
+      return 'not-enabled';
     } catch {
-      lastRequestOutcome.value = 'failed';
       await refresh();
+      return 'failed';
     } finally {
       isRequesting.value = false;
     }
@@ -99,7 +95,7 @@ const setupBrowserStoragePersistence = () => {
     }
   });
 
-  return { status, isRequesting, lastRequestOutcome, requestPersistence, refresh };
+  return { status, isRequesting, requestPersistence, refresh };
 };
 
 /** Returns the shared browser-storage persistence state and request action. */

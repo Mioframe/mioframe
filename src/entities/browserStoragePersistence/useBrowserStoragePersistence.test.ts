@@ -129,90 +129,120 @@ describe('useBrowserStoragePersistence', () => {
     expect(status.value).toBe('ordinary');
   });
 
-  it('transitions to persistent and sets enabled outcome when requestPersistence resolves true', async () => {
+  it('does not expose lastRequestOutcome', async () => {
+    setupNavigatorStorage();
+    mockPersisted.mockResolvedValue(false);
+
+    const { useBrowserStoragePersistence } = await import('./useBrowserStoragePersistence');
+    const result = useBrowserStoragePersistence();
+
+    expect('lastRequestOutcome' in result).toBe(false);
+  });
+
+  it('returns enabled and transitions to persistent when requestPersistence resolves true', async () => {
     setupNavigatorStorage();
     mockPersisted.mockResolvedValue(false);
     mockPersist.mockResolvedValue(true);
 
     const { useBrowserStoragePersistence } = await import('./useBrowserStoragePersistence');
-    const { status, lastRequestOutcome, requestPersistence } = useBrowserStoragePersistence();
+    const { status, requestPersistence } = useBrowserStoragePersistence();
 
     await vi.waitUntil(() => status.value === 'ordinary');
-    await requestPersistence();
+    const outcome = await requestPersistence();
 
+    expect(outcome).toBe('enabled');
     expect(status.value).toBe('persistent');
-    expect(lastRequestOutcome.value).toBe('enabled');
     expect(mockPersist).toHaveBeenCalledTimes(1);
   });
 
-  it('stays ordinary and sets not-enabled outcome when requestPersistence resolves false (browser denial)', async () => {
+  it('returns not-enabled and stays ordinary when requestPersistence resolves false (browser denial)', async () => {
     setupNavigatorStorage();
     mockPersisted.mockResolvedValue(false);
     mockPersist.mockResolvedValue(false);
 
     const { useBrowserStoragePersistence } = await import('./useBrowserStoragePersistence');
-    const { status, lastRequestOutcome, requestPersistence } = useBrowserStoragePersistence();
+    const { status, requestPersistence } = useBrowserStoragePersistence();
 
     await vi.waitUntil(() => status.value === 'ordinary');
-    await requestPersistence();
+    const outcome = await requestPersistence();
 
+    expect(outcome).toBe('not-enabled');
     expect(status.value).toBe('ordinary');
-    expect(lastRequestOutcome.value).toBe('not-enabled');
     expect(mockPersist).toHaveBeenCalledTimes(1);
   });
 
-  it('sets failed outcome and refreshes when requestPersistence throws', async () => {
+  it('returns failed and refreshes when requestPersistence throws', async () => {
     setupNavigatorStorage();
     mockPersisted.mockResolvedValue(false);
     mockPersist.mockRejectedValue(new Error('Browser rejected with internal path /private/data'));
 
     const { useBrowserStoragePersistence } = await import('./useBrowserStoragePersistence');
-    const { status, lastRequestOutcome, requestPersistence, isRequesting } =
-      useBrowserStoragePersistence();
+    const { status, requestPersistence, isRequesting } = useBrowserStoragePersistence();
 
     await vi.waitUntil(() => status.value === 'ordinary');
 
-    await expect(requestPersistence()).resolves.toBeUndefined();
+    const outcome = await requestPersistence();
 
     // After catch, refresh() is called which reads persisted() = false → ordinary.
+    expect(outcome).toBe('failed');
     expect(status.value).toBe('ordinary');
-    expect(lastRequestOutcome.value).toBe('failed');
     expect(isRequesting.value).toBe(false);
   });
 
-  it('sets unsupported outcome when storage manager is unavailable during request', async () => {
+  it('returns unsupported when storage manager is unavailable during request', async () => {
     setupNavigatorStorage();
     mockPersisted.mockResolvedValue(false);
 
     const { useBrowserStoragePersistence } = await import('./useBrowserStoragePersistence');
-    const { status, lastRequestOutcome, requestPersistence } = useBrowserStoragePersistence();
+    const { status, requestPersistence } = useBrowserStoragePersistence();
 
     await vi.waitUntil(() => status.value === 'ordinary');
 
     // Simulate storage becoming unavailable before the request
     removeNavigatorStorage();
 
-    await requestPersistence();
+    const outcome = await requestPersistence();
 
-    expect(lastRequestOutcome.value).toBe('unsupported');
+    expect(outcome).toBe('unsupported');
     expect(status.value).toBe('unsupported');
   });
 
-  it('resets lastRequestOutcome to none before each new request', async () => {
+  it('returns ignored when status is not ordinary', async () => {
     setupNavigatorStorage();
-    mockPersisted.mockResolvedValue(false);
-    mockPersist.mockResolvedValueOnce(false).mockResolvedValueOnce(true);
+    mockPersisted.mockResolvedValue(true);
 
     const { useBrowserStoragePersistence } = await import('./useBrowserStoragePersistence');
-    const { status, lastRequestOutcome, requestPersistence } = useBrowserStoragePersistence();
+    const { status, requestPersistence } = useBrowserStoragePersistence();
+
+    await vi.waitUntil(() => status.value === 'persistent');
+    const outcome = await requestPersistence();
+
+    expect(outcome).toBe('ignored');
+    expect(mockPersist).not.toHaveBeenCalled();
+  });
+
+  it('returns ignored when a request is already in progress', async () => {
+    setupNavigatorStorage();
+    mockPersisted.mockResolvedValue(false);
+    // slow persist so the second call arrives while first is still running
+    mockPersist.mockImplementation(
+      () =>
+        new Promise((resolve) =>
+          setTimeout(() => {
+            resolve(false);
+          }, 50),
+        ),
+    );
+
+    const { useBrowserStoragePersistence } = await import('./useBrowserStoragePersistence');
+    const { status, requestPersistence } = useBrowserStoragePersistence();
 
     await vi.waitUntil(() => status.value === 'ordinary');
-    await requestPersistence();
-    expect(lastRequestOutcome.value).toBe('not-enabled');
 
-    // Second request: outcome resets before resolving
-    await requestPersistence();
-    expect(lastRequestOutcome.value).toBe('enabled');
+    const [first, second] = await Promise.all([requestPersistence(), requestPersistence()]);
+
+    expect(first).toBe('not-enabled');
+    expect(second).toBe('ignored');
   });
 
   it('does not crash when window is undefined', async () => {

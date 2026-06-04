@@ -35,6 +35,12 @@ vi.mock('@entity/localSettings', () => ({
   }),
 }));
 
+vi.mock('@feature/browserStoragePersistenceEnable', () => ({
+  useBrowserStoragePersistenceFeedback: () => ({
+    showFeedback: vi.fn(),
+  }),
+}));
+
 vi.mock('@entity/browserStoragePersistence', () => ({
   useBrowserStoragePersistence: () => ({
     status: browserStorageStatus,
@@ -412,14 +418,14 @@ describe('SettingsSections', () => {
 
   it('renders storage as checkbox-style item in ordinary state, unchecked and clickable', async () => {
     browserStorageStatus.value = 'ordinary';
-    enableStorageMock.mockResolvedValue(undefined);
+    enableStorageMock.mockResolvedValue('not-enabled');
 
     const { root, unmount } = await mountSettingsSections();
 
     const storageRow = getCheckboxRow(root, 'More reliable browser storage');
     expect(storageRow).not.toBeNull();
     expect(storageRow?.getAttribute('aria-checked')).toBe('false');
-    expect(root.textContent).toContain('Ask the browser to reduce the risk');
+    expect(root.textContent).toContain('Ask the browser to reduce automatic cleanup risk');
 
     const storageButton = getButtonByText(root, 'More reliable browser storage');
     storageButton?.click();

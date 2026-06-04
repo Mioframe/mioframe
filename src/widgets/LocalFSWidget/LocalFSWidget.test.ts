@@ -29,6 +29,12 @@ vi.mock('@entity/browserStoragePersistence', () => ({
   }),
 }));
 
+vi.mock('@feature/browserStoragePersistenceEnable', () => ({
+  useBrowserStoragePersistenceFeedback: () => ({
+    showFeedback: vi.fn(),
+  }),
+}));
+
 vi.mock('@feature/deviceDirectoryDisconnect', () => ({
   useDisconnectDeviceDirectory: () => ({
     disconnectDeviceDirectory: disconnectDeviceDirectoryMock,
@@ -282,7 +288,7 @@ describe('LocalFSWidget', () => {
 
   it('does not emit clickPath when the enable storage action is clicked', async () => {
     persistenceStatus.value = 'ordinary';
-    enableStorageMock.mockResolvedValue(undefined);
+    enableStorageMock.mockResolvedValue('not-enabled');
     deviceFiles.value = [
       {
         name: 'Browser Storage',
