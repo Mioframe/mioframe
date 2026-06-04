@@ -3,7 +3,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { release } from 'node:os';
 import { join } from 'node:path';
 import toolingConfig from '../config/tooling.json' with { type: 'json' };
-import { withExpensiveCommandLock } from './lib/commandLock.mjs';
+import { runGuardedExpensiveLocalCommand } from './lib/localCommandGuard.mjs';
 import { applyProcessResult } from './lib/processResult.mjs';
 import { runLocalCommand } from './lib/runLocalCommand.mjs';
 
@@ -17,7 +17,7 @@ const GENERIC_MEMORY_SWAP_ENV = 'PLAYWRIGHT_CONTAINER_MEMORY_SWAP';
 const GENERIC_PIDS_LIMIT_ENV = 'PLAYWRIGHT_CONTAINER_PIDS_LIMIT';
 const GENERIC_TIMEOUT_ENV = 'PLAYWRIGHT_CONTAINER_TIMEOUT';
 const GENERIC_WORKERS_ENV = 'PLAYWRIGHT_CONTAINER_WORKERS';
-const containerDefaults = toolingConfig.verification.playwrightContainer;
+const containerProfiles = toolingConfig.verification.playwrightContainer;
 const PLAYWRIGHT_CONTAINER_LIMITS = [
   {
     envName: GENERIC_CPUS_ENV,
@@ -58,9 +58,9 @@ const defaultDeps = {
   ensureLocalPlaywrightBinary,
   ensurePodmanAvailable,
   getInstalledPlaywrightVersion,
+  runGuardedExpensiveLocalCommand,
   runLocalCommand,
   spawnSync,
-  withExpensiveCommandLock,
 };
 
 /**
@@ -99,100 +99,115 @@ export async function runPlaywrightInContainer(
   deps = defaultDeps,
 ) {
   const repositoryPath = process.cwd();
-
-  deps.ensurePodmanAvailable(missingPodmanMessage, podmanFailureMessage);
-  deps.ensureLocalPlaywrightBinary(repositoryPath, missingBinaryMessage);
-
-  const image =
-    getFirstDefinedEnvValue([...imageEnvAliases, GENERIC_IMAGE_ENV]) ||
-    `mcr.microsoft.com/playwright:v${deps.getInstalledPlaywrightVersion(repositoryPath, missingMetadataMessage)}-noble`;
-  const resourceLimits = getPlaywrightContainerResourceLimits();
-  const run = async (lockEnv) => {
-    const podmanArgs = [
-      'run',
-      '--rm',
-      '--init',
-      '--ipc=host',
-      '--workdir',
-      CONTAINER_WORKDIR,
-      '--env',
-      'CI=1',
-    ];
-
-    for (const limit of PLAYWRIGHT_CONTAINER_LIMITS) {
-      if (limit.podmanFlag === '--workers') {
-        continue;
-      }
-
-      podmanArgs.push(limit.podmanFlag, resourceLimits[limit.key]);
-    }
-
-    for (const [key, value] of Object.entries({ ...extraEnv, ...lockEnv })) {
-      podmanArgs.push('--env', `${key}=${String(value)}`);
-    }
-
-    podmanArgs.push(
-      '--volume',
-      `${repositoryPath}:${CONTAINER_WORKDIR}${getVolumeLabelSuffix(volumeLabelEnvAliases)}`,
-    );
-
-    const usernsMode =
-      getFirstDefinedEnvValue([...podmanUsernsEnvAliases, GENERIC_PODMAN_USERNS_ENV]) || 'keep-id';
-
-    if (usernsMode !== 'off') {
-      podmanArgs.push('--userns', usernsMode);
-    }
-
-    podmanArgs.push(image, './node_modules/.bin/playwright', 'test', '--config', config);
-
-    if (updateSnapshots) {
-      podmanArgs.push('--update-snapshots');
-    }
-
-    if (!extraArgs.some((arg) => arg === '--workers' || arg.startsWith('--workers='))) {
-      podmanArgs.push('--workers', resourceLimits.workers);
-    }
-
-    podmanArgs.push(...extraArgs);
-
-    let child;
-    try {
-      child = await deps.runLocalCommand({
-        args: podmanArgs,
-        command: 'podman',
-        env: process.env,
-      });
-    } catch (error) {
-      console.error('Failed to start Podman for Playwright container tests.');
-      console.error(error instanceof Error ? error.message : String(error));
-      return {
-        signal: null,
-        status: 1,
-      };
-    }
-
-    if (child.status !== 0 || child.signal) {
-      printPlaywrightContainerFailureDiagnostic({
-        config,
-        label,
-        resourceLimits,
-        signal: child.signal ?? null,
-        status: child.status ?? 1,
-      });
-    }
-
-    return {
-      signal: child.signal ?? null,
-      status: child.status ?? 1,
-    };
-  };
-
-  const result = await deps.withExpensiveCommandLock(
+  const result = await deps.runGuardedExpensiveLocalCommand(
     {
       label,
       command: `podman run playwright test --config ${config}`,
+      run: async (lockEnv) => {
+        let image;
+
+        try {
+          deps.ensurePodmanAvailable(missingPodmanMessage, podmanFailureMessage);
+          deps.ensureLocalPlaywrightBinary(repositoryPath, missingBinaryMessage);
+          image =
+            getFirstDefinedEnvValue([...imageEnvAliases, GENERIC_IMAGE_ENV], process.env) ||
+            `mcr.microsoft.com/playwright:v${deps.getInstalledPlaywrightVersion(repositoryPath, missingMetadataMessage)}-noble`;
+        } catch (setupError) {
+          console.error(setupError instanceof Error ? setupError.message : String(setupError));
+          return { signal: null, status: 1 };
+        }
+
+        const resourceLimits = resolvePlaywrightContainerProfile();
+
+        printPlaywrightContainerProfile({
+          config,
+          label,
+          resourceLimits,
+        });
+
+        const podmanArgs = [
+          'run',
+          '--rm',
+          '--init',
+          '--ipc=host',
+          '--workdir',
+          CONTAINER_WORKDIR,
+          '--env',
+          'CI=1',
+        ];
+
+        for (const limit of PLAYWRIGHT_CONTAINER_LIMITS) {
+          if (limit.podmanFlag === '--workers') {
+            continue;
+          }
+
+          podmanArgs.push(limit.podmanFlag, resourceLimits[limit.key]);
+        }
+
+        for (const [key, value] of Object.entries({ ...extraEnv, ...lockEnv })) {
+          podmanArgs.push('--env', `${key}=${String(value)}`);
+        }
+
+        podmanArgs.push(
+          '--volume',
+          `${repositoryPath}:${CONTAINER_WORKDIR}${getVolumeLabelSuffix(volumeLabelEnvAliases)}`,
+        );
+
+        const usernsMode =
+          getFirstDefinedEnvValue(
+            [...podmanUsernsEnvAliases, GENERIC_PODMAN_USERNS_ENV],
+            process.env,
+          ) || 'keep-id';
+
+        if (usernsMode !== 'off') {
+          podmanArgs.push('--userns', usernsMode);
+        }
+
+        podmanArgs.push(image, './node_modules/.bin/playwright', 'test', '--config', config);
+
+        if (updateSnapshots) {
+          podmanArgs.push('--update-snapshots');
+        }
+
+        if (!extraArgs.some((arg) => arg === '--workers' || arg.startsWith('--workers='))) {
+          podmanArgs.push('--workers', resourceLimits.workers);
+        }
+
+        podmanArgs.push(...extraArgs);
+
+        let child;
+        try {
+          child = await deps.runLocalCommand({
+            args: podmanArgs,
+            command: 'podman',
+            env: process.env,
+          });
+        } catch (error) {
+          console.error('Failed to start Podman for Playwright container tests.');
+          console.error(error instanceof Error ? error.message : String(error));
+          return {
+            signal: null,
+            status: 1,
+          };
+        }
+
+        if (child.status !== 0 || child.signal) {
+          printPlaywrightContainerFailureDiagnostic({
+            config,
+            label,
+            resourceLimits,
+            signal: child.signal ?? null,
+            status: child.status ?? 1,
+          });
+        }
+
+        return {
+          signal: child.signal ?? null,
+          status: child.status ?? 1,
+        };
+      },
     },
-    run,
+    deps,
   );
 
   deps.applyProcessResult(result);
@@ -228,33 +243,24 @@ function ensurePodmanAvailable(missingPodmanMessage, podmanFailureMessage) {
 
   if (podmanCheck.error) {
     if (podmanCheck.error.code === 'ENOENT') {
-      console.error(missingPodmanMessage);
-      process.exit(1);
+      throw new Error(missingPodmanMessage);
     }
 
-    console.error('Failed to check Podman availability.');
-    console.error(podmanCheck.error.message);
-    process.exit(1);
+    throw new Error(`Failed to check Podman availability.\n${podmanCheck.error.message}`);
   }
 
   if (podmanCheck.status !== 0) {
-    console.error(podmanFailureMessage);
-    if (podmanCheck.stderr.trim()) {
-      console.error(podmanCheck.stderr.trim());
-    }
-    process.exit(podmanCheck.status ?? 1);
+    const extra = podmanCheck.stderr.trim();
+    throw new Error(extra ? `${podmanFailureMessage}\n${extra}` : podmanFailureMessage);
   }
 }
 
 function ensureLocalPlaywrightBinary(repositoryPath, missingBinaryMessage) {
   const localPlaywrightBin = join(repositoryPath, 'node_modules', '.bin', 'playwright');
 
-  if (existsSync(localPlaywrightBin)) {
-    return;
+  if (!existsSync(localPlaywrightBin)) {
+    throw new Error(missingBinaryMessage);
   }
-
-  console.error(missingBinaryMessage);
-  process.exit(1);
 }
 
 function getInstalledPlaywrightVersion(repositoryRoot, missingMetadataMessage) {
@@ -267,35 +273,44 @@ function getInstalledPlaywrightVersion(repositoryRoot, missingMetadataMessage) {
   );
 
   if (!existsSync(playwrightPackageJsonPath)) {
-    console.error(missingMetadataMessage);
-    process.exit(1);
+    throw new Error(missingMetadataMessage);
   }
 
   let packageJson;
 
   try {
     packageJson = JSON.parse(readFileSync(playwrightPackageJsonPath, 'utf8'));
-  } catch (error) {
-    console.error(missingMetadataMessage);
-    console.error(error instanceof Error ? error.message : String(error));
-    process.exit(1);
+  } catch (parseError) {
+    throw new Error(
+      `${missingMetadataMessage}\n${parseError instanceof Error ? parseError.message : String(parseError)}`,
+      { cause: parseError },
+    );
   }
 
   if (typeof packageJson.version !== 'string' || packageJson.version.trim() === '') {
-    console.error(missingMetadataMessage);
-    process.exit(1);
+    throw new Error(missingMetadataMessage);
   }
 
   return packageJson.version;
 }
 
-function getPlaywrightContainerResourceLimits() {
-  return Object.fromEntries(
-    PLAYWRIGHT_CONTAINER_LIMITS.map(({ envName, key }) => [
+/**
+ * Resolve the effective Playwright container profile for the current environment.
+ * @param [processEnv] Environment object used for profile and override resolution.
+ * @returns Effective profile name and resource limits.
+ */
+export function resolvePlaywrightContainerProfile(processEnv = process.env) {
+  const profileName = processEnv.GITHUB_ACTIONS === 'true' ? 'github-actions' : 'local';
+  const profileDefaults =
+    profileName === 'github-actions' ? containerProfiles.githubActions : containerProfiles.local;
+
+  return Object.fromEntries([
+    ['name', profileName],
+    ...PLAYWRIGHT_CONTAINER_LIMITS.map(({ envName, key }) => [
       key,
-      getFirstDefinedEnvValue([envName]) ?? String(containerDefaults[key]),
+      getFirstDefinedEnvValue([envName], processEnv) ?? String(profileDefaults[key]),
     ]),
-  );
+  ]);
 }
 
 function printPlaywrightContainerFailureDiagnostic({
@@ -307,6 +322,7 @@ function printPlaywrightContainerFailureDiagnostic({
 }) {
   console.error('Playwright container command failed.');
   console.error(`label: ${label}`);
+  console.error(`profile: ${resourceLimits.name}`);
   console.error(`operation: Playwright tests in a Podman container`);
   if (signal) {
     console.error(`signal: ${signal}`);
@@ -327,8 +343,23 @@ function printPlaywrightContainerFailureDiagnostic({
   console.error('Raw Podman output is printed above.');
 }
 
+function printPlaywrightContainerProfile({ config, label, resourceLimits }) {
+  console.log('Playwright container limits:');
+  console.log(`label: ${label}`);
+  console.log(`config: ${config}`);
+  console.log(`profile: ${resourceLimits.name}`);
+
+  for (const limit of PLAYWRIGHT_CONTAINER_LIMITS) {
+    const limitLabel = limit.label ?? limit.key;
+    console.log(`  ${limitLabel}: ${resourceLimits[limit.key]}  override: ${limit.envName}`);
+  }
+}
+
 function getVolumeLabelSuffix(volumeLabelEnvAliases) {
-  const configured = getFirstDefinedEnvValue([...volumeLabelEnvAliases, GENERIC_VOLUME_LABEL_ENV]);
+  const configured = getFirstDefinedEnvValue(
+    [...volumeLabelEnvAliases, GENERIC_VOLUME_LABEL_ENV],
+    process.env,
+  );
 
   if (configured === 'none') {
     return '';
@@ -357,9 +388,9 @@ function isWsl() {
   return Boolean(process.env.WSL_DISTRO_NAME) || release().toLowerCase().includes('microsoft');
 }
 
-function getFirstDefinedEnvValue(names) {
+function getFirstDefinedEnvValue(names, processEnv) {
   for (const name of names) {
-    const value = process.env[name];
+    const value = processEnv[name];
 
     if (value !== undefined && value !== '') {
       return value;

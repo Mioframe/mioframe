@@ -11,15 +11,15 @@ const defaultDeps = {
 };
 
 /**
- * Run the mutation command under the expensive-command lock and apply its result after cleanup.
- * @param [argv] Raw CLI arguments to forward to Stryker.
- * @param [deps] Test seams for command execution and result application.
+ * Run host Playwright for explicit local development modes while respecting verify coordination.
+ * @param [argv] Raw Playwright args to forward.
+ * @param [deps] Test seams for locking and command execution.
  */
-export async function runMutation(argv = process.argv.slice(2), deps = defaultDeps) {
-  const args = ['exec', 'stryker', 'run', ...argv];
+export async function runE2eHost(argv = process.argv.slice(2), deps = defaultDeps) {
+  const args = ['exec', 'playwright', 'test', ...argv];
   const result = await deps.runGuardedExpensiveLocalCommand(
     {
-      label: 'mutation',
+      label: getE2eHostLabel(argv),
       command: `pnpm ${args.join(' ')}`,
       executable: 'pnpm',
       args,
@@ -37,9 +37,21 @@ export async function runMutation(argv = process.argv.slice(2), deps = defaultDe
   deps.applyProcessResult(result);
 }
 
+function getE2eHostLabel(argv) {
+  if (argv.includes('--ui')) {
+    return 'e2e:ui';
+  }
+
+  if (argv.includes('--headed')) {
+    return 'e2e:headed';
+  }
+
+  return 'e2e:host';
+}
+
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   try {
-    await runMutation();
+    await runE2eHost();
   } catch (error) {
     console.error(error instanceof Error ? error.message : String(error));
     process.exitCode = 1;
