@@ -1,16 +1,20 @@
 import { pathToFileURL } from 'node:url';
 
 import { classifyCommandWeight, resolveEslintConcurrency } from './lib/commandWeight.mjs';
-import { withExpensiveCommandLock } from './lib/commandLock.mjs';
+import {
+  runGuardedExpensiveLocalCommand,
+  runGuardedLocalCommand,
+} from './lib/localCommandGuard.mjs';
 import { applyProcessResult } from './lib/processResult.mjs';
 import { runLocalCommand } from './lib/runLocalCommand.mjs';
 
 const defaultDeps = {
   applyProcessResult,
   classifyCommandWeight,
+  runGuardedExpensiveLocalCommand,
+  runGuardedLocalCommand,
   resolveEslintConcurrency,
   runLocalCommand,
-  withExpensiveCommandLock,
 };
 
 /**
@@ -31,23 +35,41 @@ export async function runLintEslint(deps = defaultDeps) {
 
   const result =
     weight === 'expensive'
-      ? await deps.withExpensiveCommandLock(
+      ? await deps.runGuardedExpensiveLocalCommand(
           {
             label: 'eslint',
             command,
+            executable: 'pnpm',
+            args,
+            env: process.env,
+            run: (lockEnv) =>
+              deps.runLocalCommand({
+                command: 'pnpm',
+                args,
+                env: { ...process.env, ...lockEnv },
+              }),
           },
-          (lockEnv) =>
-            deps.runLocalCommand({
-              command: 'pnpm',
-              args,
-              env: { ...process.env, ...lockEnv },
-            }),
+          deps,
         )
-      : await deps.runLocalCommand({ command: 'pnpm', args });
+      : await deps.runGuardedLocalCommand(
+          {
+            label: 'eslint',
+            command,
+            executable: 'pnpm',
+            args,
+            env: process.env,
+          },
+          deps,
+        );
 
   deps.applyProcessResult(result);
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
-  await runLintEslint();
+  try {
+    await runLintEslint();
+  } catch (error) {
+    console.error(error instanceof Error ? error.message : String(error));
+    process.exitCode = 1;
+  }
 }

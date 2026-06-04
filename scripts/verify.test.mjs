@@ -1,6 +1,11 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
-import { getCliFilesOverride, getAllSiblingTestFiles, getVerifyBaseRef } from './verify.mjs';
+import {
+  getCliFilesOverride,
+  getAllSiblingTestFiles,
+  getVerifyBaseRef,
+  runVerifyCli,
+} from './verify.mjs';
 
 describe('getAllSiblingTestFiles', () => {
   it('maps scripts production .mjs files to sibling .test.mjs', () => {
@@ -66,5 +71,22 @@ describe('getCliFilesOverride', () => {
 describe('getVerifyBaseRef', () => {
   it('reads VERIFY_BASE from process env', () => {
     expect(getVerifyBaseRef({ VERIFY_BASE: 'origin/develop' })).toBe('origin/develop');
+  });
+});
+
+describe('runVerifyCli', () => {
+  it('fails before running checks when verify lock acquisition is blocked', async () => {
+    const runMain = vi.fn();
+
+    await expect(
+      runVerifyCli({
+        runMain,
+        withVerifyLock: vi.fn(async () => {
+          throw new Error('Another local pnpm verify is already running.');
+        }),
+      }),
+    ).rejects.toThrow('Another local pnpm verify is already running.');
+
+    expect(runMain).not.toHaveBeenCalled();
   });
 });

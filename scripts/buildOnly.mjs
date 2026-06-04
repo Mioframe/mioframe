@@ -11,25 +11,17 @@ const defaultDeps = {
 };
 
 /**
- * Run the mutation command under the expensive-command lock and apply its result after cleanup.
- * @param [argv] Raw CLI arguments to forward to Stryker.
- * @param [deps] Test seams for command execution and result application.
+ * Run the production Vite build under the unified local safety guard.
+ * @param [deps] Test seams for guarded execution and result handling.
  */
-export async function runMutation(argv = process.argv.slice(2), deps = defaultDeps) {
-  const args = ['exec', 'stryker', 'run', ...argv];
+export async function runBuildOnly(deps = defaultDeps) {
   const result = await deps.runGuardedExpensiveLocalCommand(
     {
-      label: 'mutation',
-      command: `pnpm ${args.join(' ')}`,
+      command: 'pnpm exec vite build',
       executable: 'pnpm',
-      args,
+      args: ['exec', 'vite', 'build'],
       env: process.env,
-      run: (lockEnv) =>
-        deps.runLocalCommand({
-          command: 'pnpm',
-          args,
-          env: { ...process.env, ...lockEnv },
-        }),
+      label: 'build-only',
     },
     deps,
   );
@@ -39,7 +31,7 @@ export async function runMutation(argv = process.argv.slice(2), deps = defaultDe
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   try {
-    await runMutation();
+    await runBuildOnly();
   } catch (error) {
     console.error(error instanceof Error ? error.message : String(error));
     process.exitCode = 1;
