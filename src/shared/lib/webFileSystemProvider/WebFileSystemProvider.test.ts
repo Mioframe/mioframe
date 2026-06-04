@@ -760,6 +760,97 @@ describe('WebFileSystemProvider', () => {
     });
   });
 
+  it('converts a new-file getFileHandle failure to WebFileSystemAccessRequiredError when readwrite is no longer granted', async () => {
+    const rootHandle = createDirectoryHandleMock({
+      entries: [],
+      name: '',
+      permissionState: 'granted',
+    });
+    const queryPermissionMock = vi
+      .fn<(descriptor?: FileSystemHandlePermissionDescriptor) => Promise<PermissionState>>()
+      .mockResolvedValueOnce('granted')
+      .mockResolvedValueOnce('prompt');
+    Object.defineProperty(rootHandle, 'queryPermission', {
+      configurable: true,
+      value: queryPermissionMock,
+    });
+    rootHandle.getFileHandleMock.mockImplementation((_name, options) => {
+      if (options?.create) {
+        return Promise.reject(new DOMException('Not allowed', 'NotAllowedError'));
+      }
+      return Promise.reject(new DOMException('Not found', 'NotFoundError'));
+    });
+    const provider = WebFileSystemProvider(rootHandle, {
+      permissionPolicy: 'userSelectedDirectory',
+      onAccessRequired: ({ mode }) => ({ spaceName: 'Work', mode }),
+    });
+
+    await expect(
+      provider.writeFile('/new.txt', 'x', { create: true, overwrite: false }),
+    ).rejects.toMatchObject({
+      code: WEB_FILE_SYSTEM_ACCESS_REQUIRED_CODE,
+      mode: 'readwrite',
+      name: 'WebFileSystemAccessRequiredError',
+      spaceName: 'Work',
+    });
+  });
+
+  it('converts a createDirectory getDirectoryHandle failure to WebFileSystemAccessRequiredError when readwrite is no longer granted', async () => {
+    const rootHandle = createDirectoryHandleMock({
+      entries: [],
+      name: '',
+      permissionState: 'granted',
+    });
+    const queryPermissionMock = vi
+      .fn<(descriptor?: FileSystemHandlePermissionDescriptor) => Promise<PermissionState>>()
+      .mockResolvedValueOnce('granted')
+      .mockResolvedValueOnce('prompt');
+    Object.defineProperty(rootHandle, 'queryPermission', {
+      configurable: true,
+      value: queryPermissionMock,
+    });
+    rootHandle.getDirectoryHandleMock.mockImplementation((_name, options) => {
+      if (options?.create) {
+        return Promise.reject(new DOMException('Not allowed', 'NotAllowedError'));
+      }
+      return Promise.reject(new DOMException('Not found', 'NotFoundError'));
+    });
+    const provider = WebFileSystemProvider(rootHandle, {
+      permissionPolicy: 'userSelectedDirectory',
+      onAccessRequired: ({ mode }) => ({ spaceName: 'Work', mode }),
+    });
+
+    await expect(provider.createDirectory('/newdir')).rejects.toMatchObject({
+      code: WEB_FILE_SYSTEM_ACCESS_REQUIRED_CODE,
+      mode: 'readwrite',
+      name: 'WebFileSystemAccessRequiredError',
+      spaceName: 'Work',
+    });
+  });
+
+  it('rethrows original error from new-file getFileHandle failure when readwrite is still granted', async () => {
+    const rootHandle = createDirectoryHandleMock({
+      entries: [],
+      name: '',
+      permissionState: 'granted',
+    });
+    const storageError = new DOMException('Quota exceeded', 'QuotaExceededError');
+    rootHandle.getFileHandleMock.mockImplementation((_name, options) => {
+      if (options?.create) {
+        return Promise.reject(storageError);
+      }
+      return Promise.reject(new DOMException('Not found', 'NotFoundError'));
+    });
+    const provider = WebFileSystemProvider(rootHandle, {
+      permissionPolicy: 'userSelectedDirectory',
+      onAccessRequired: ({ mode }) => ({ spaceName: 'Work', mode }),
+    });
+
+    await expect(
+      provider.writeFile('/new.txt', 'x', { create: true, overwrite: false }),
+    ).rejects.toThrow(storageError);
+  });
+
   it('blocks move immediately when destination canEditChildren capability is explicitly false', async () => {
     const sourceFile = createFileHandleMock({
       name: 'note.txt',

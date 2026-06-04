@@ -142,6 +142,46 @@ export const WebFileSystemProvider = (
     }
   };
 
+  /**
+   * Creates a new file handle inside `parent` with write access recovery.
+   * @param parent - Parent directory handle.
+   * @param name - Name of the new file.
+   * @returns Resolved file handle for the newly created file.
+   */
+  const createFileHandleWithWriteRecovery = (
+    parent: FileSystemDirectoryHandle,
+    name: string,
+  ): Promise<FileSystemFileHandle> =>
+    withWriteAccessRecovery(() => parent.getFileHandle(name, { create: true }));
+
+  /**
+   * Creates a new directory handle inside `parent` with write access recovery.
+   * @param parent - Parent directory handle.
+   * @param name - Name of the new directory.
+   * @returns Resolved directory handle for the newly created directory.
+   */
+  const createDirectoryHandleWithWriteRecovery = (
+    parent: FileSystemDirectoryHandle,
+    name: string,
+  ): Promise<FileSystemDirectoryHandle> =>
+    withWriteAccessRecovery(() => parent.getDirectoryHandle(name, { create: true }));
+
+  /**
+   * Writes `content` to `handle` via createWritable, applying write access recovery once.
+   * @param handle - File handle to write to.
+   * @param content - Content to write.
+   * @returns Promise that resolves when the write is complete.
+   */
+  const writeFileHandleContent = (
+    handle: FileSystemFileHandle,
+    content: FileContent,
+  ): Promise<void> =>
+    withWriteAccessRecovery(async () => {
+      const writable = await handle.createWritable();
+      await writable.write(content);
+      await writable.close();
+    });
+
   const isLookupMiss = (
     error: unknown,
     expectedCode: FileSystemError.FileIsADirectory | FileSystemError.FileNotADirectory,
@@ -311,33 +351,30 @@ export const WebFileSystemProvider = (
   ): Promise<WriteFileResult> => {
     await ensureAccess('readwrite');
 
-    const resolvedHandle = await (async () => {
-      try {
-        const handle = await getHandle(path, false, 'file');
-        if (!overwrite) {
-          throw new VfsError(FileSystemError.FileExists, `File exists: ${path}`);
-        }
-        return handle;
-      } catch (error) {
-        if (error instanceof VfsError && error.code === FileSystemError.FileNotFound) {
-          if (!create) {
-            throw error;
-          }
-          return getHandle(path, true, 'file');
-        }
-        throw error;
+    let resolvedHandle: FileSystemFileHandle;
+    try {
+      resolvedHandle = await getHandle(path, false, 'file');
+      if (!overwrite) {
+        throw new VfsError(FileSystemError.FileExists, `File exists: ${path}`);
       }
-    })();
+    } catch (lookupError) {
+      if (!(lookupError instanceof VfsError && lookupError.code === FileSystemError.FileNotFound)) {
+        throw lookupError;
+      }
+      if (!create) {
+        throw lookupError;
+      }
+      const normalized = PathUtils.normalize(path);
+      const parentDir = await getHandle(PathUtils.dirname(normalized), false, 'directory');
+      resolvedHandle = await createFileHandleWithWriteRecovery(
+        parentDir,
+        PathUtils.basename(normalized),
+      );
+    }
 
-    await withWriteAccessRecovery(async () => {
-      const writable = await resolvedHandle.createWritable();
-      await writable.write(content);
-      await writable.close();
-    });
+    await writeFileHandleContent(resolvedHandle, content);
 
-    return {
-      stat: await fileHandleStat(resolvedHandle),
-    };
+    return { stat: await fileHandleStat(resolvedHandle) };
   };
 
   const writeFile = async (
@@ -367,11 +404,12 @@ export const WebFileSystemProvider = (
       await getHandle(path, false, 'directory');
       throw new VfsError(FileSystemError.FileExists, `Directory already exists: ${path}`);
     } catch (error) {
-      if (error instanceof VfsError && error.code === FileSystemError.FileNotFound) {
-        await getHandle(path, true, 'directory');
-        return;
+      if (!(error instanceof VfsError && error.code === FileSystemError.FileNotFound)) {
+        throw error;
       }
-      throw error;
+      const normalized = PathUtils.normalize(path);
+      const parentDir = await getHandle(PathUtils.dirname(normalized), false, 'directory');
+      await createDirectoryHandleWithWriteRecovery(parentDir, PathUtils.basename(normalized));
     }
   };
 
@@ -471,22 +509,16 @@ export const WebFileSystemProvider = (
 
     if (sourceHandle.kind === 'file') {
       const file = await sourceHandle.getFile();
-      const newFileHandle = await destinationDirHandle.getFileHandle(newName, {
-        create: true,
-      });
-      await withWriteAccessRecovery(async () => {
-        const writable = await newFileHandle.createWritable();
-        await writable.write(file);
-        await writable.close();
-      });
-
+      const newFileHandle = await createFileHandleWithWriteRecovery(destinationDirHandle, newName);
+      await writeFileHandleContent(newFileHandle, file);
       await remove(normalizedOld, false);
       return;
     }
 
-    const newDirHandle = await destinationDirHandle.getDirectoryHandle(newName, {
-      create: true,
-    });
+    const newDirHandle = await createDirectoryHandleWithWriteRecovery(
+      destinationDirHandle,
+      newName,
+    );
 
     const copyDirectoryContents = async (
       sourceDir: FileSystemDirectoryHandle,
@@ -495,20 +527,12 @@ export const WebFileSystemProvider = (
       for await (const entry of sourceDir.values()) {
         if (entry.kind === 'file') {
           const file = await entry.getFile();
-          const newFileHandle = await destDir.getFileHandle(entry.name, {
-            create: true,
-          });
-          await withWriteAccessRecovery(async () => {
-            const writable = await newFileHandle.createWritable();
-            await writable.write(file);
-            await writable.close();
-          });
+          const newFileHandle = await createFileHandleWithWriteRecovery(destDir, entry.name);
+          await writeFileHandleContent(newFileHandle, file);
           continue;
         }
 
-        const newSubDir = await destDir.getDirectoryHandle(entry.name, {
-          create: true,
-        });
+        const newSubDir = await createDirectoryHandleWithWriteRecovery(destDir, entry.name);
         await copyDirectoryContents(entry, newSubDir);
       }
     };
