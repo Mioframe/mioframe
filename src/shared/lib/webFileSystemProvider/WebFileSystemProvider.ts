@@ -107,6 +107,41 @@ export const WebFileSystemProvider = (
     }
   };
 
+  /**
+   * Runs a write-side browser operation and, on failure, re-checks the root handle readwrite
+   * permission. If readwrite is no longer granted, triggers the onAccessRequired flow and throws
+   * WebFileSystemAccessRequiredError. If readwrite is still granted, rethrows the original error.
+   * No-op for originPrivateStorage providers.
+   * @param fn - Write-side browser operation to run with recovery on permission loss.
+   * @returns The resolved value of the operation.
+   */
+  const withWriteAccessRecovery = async <T>(fn: () => Promise<T>): Promise<T> => {
+    if (permissionPolicy === 'originPrivateStorage') {
+      return fn();
+    }
+
+    try {
+      return await fn();
+    } catch (error) {
+      const permissionState = await queryModePermission(rootHandle, 'readwrite');
+
+      if (permissionState !== 'granted') {
+        const accessRequiredDetails = onAccessRequired?.({
+          handle: rootHandle,
+          mode: 'readwrite',
+        });
+
+        if (accessRequiredDetails) {
+          throw new WebFileSystemAccessRequiredError(accessRequiredDetails);
+        }
+
+        throw new VfsError(FileSystemError.NoPermissions, 'Permission required');
+      }
+
+      throw error;
+    }
+  };
+
   const isLookupMiss = (
     error: unknown,
     expectedCode: FileSystemError.FileIsADirectory | FileSystemError.FileNotADirectory,
@@ -275,30 +310,33 @@ export const WebFileSystemProvider = (
     { create, overwrite }: WriteOptions,
   ): Promise<WriteFileResult> => {
     await ensureAccess('readwrite');
-    let handle: FileSystemFileHandle | undefined;
 
-    try {
-      handle = await getHandle(path, false, 'file');
-      if (!overwrite) {
-        throw new VfsError(FileSystemError.FileExists, `File exists: ${path}`);
-      }
-    } catch (error) {
-      if (error instanceof VfsError && error.code === FileSystemError.FileNotFound) {
-        if (!create) {
-          throw error;
+    const resolvedHandle = await (async () => {
+      try {
+        const handle = await getHandle(path, false, 'file');
+        if (!overwrite) {
+          throw new VfsError(FileSystemError.FileExists, `File exists: ${path}`);
         }
-        handle = await getHandle(path, true, 'file');
-      } else {
+        return handle;
+      } catch (error) {
+        if (error instanceof VfsError && error.code === FileSystemError.FileNotFound) {
+          if (!create) {
+            throw error;
+          }
+          return getHandle(path, true, 'file');
+        }
         throw error;
       }
-    }
+    })();
 
-    const writable = await handle.createWritable();
-    await writable.write(content);
-    await writable.close();
+    await withWriteAccessRecovery(async () => {
+      const writable = await resolvedHandle.createWritable();
+      await writable.write(content);
+      await writable.close();
+    });
 
     return {
-      stat: await fileHandleStat(handle),
+      stat: await fileHandleStat(resolvedHandle),
     };
   };
 
@@ -360,7 +398,7 @@ export const WebFileSystemProvider = (
     const parentHandle = await getHandle(parentPath, false, 'directory');
 
     try {
-      await parentHandle.removeEntry(name, { recursive });
+      await withWriteAccessRecovery(() => parentHandle.removeEntry(name, { recursive }));
     } catch (error) {
       if (error instanceof DOMException) {
         if (error.name === 'NotFoundError') {
@@ -425,7 +463,9 @@ export const WebFileSystemProvider = (
     const destinationDirHandle = destinationHandle;
 
     if (sourceHandle.move) {
-      await sourceHandle.move(destinationDirHandle, newName);
+      await withWriteAccessRecovery(
+        () => sourceHandle.move?.(destinationDirHandle, newName) ?? Promise.resolve(),
+      );
       return;
     }
 
@@ -434,9 +474,11 @@ export const WebFileSystemProvider = (
       const newFileHandle = await destinationDirHandle.getFileHandle(newName, {
         create: true,
       });
-      const writable = await newFileHandle.createWritable();
-      await writable.write(file);
-      await writable.close();
+      await withWriteAccessRecovery(async () => {
+        const writable = await newFileHandle.createWritable();
+        await writable.write(file);
+        await writable.close();
+      });
 
       await remove(normalizedOld, false);
       return;
@@ -456,9 +498,11 @@ export const WebFileSystemProvider = (
           const newFileHandle = await destDir.getFileHandle(entry.name, {
             create: true,
           });
-          const writable = await newFileHandle.createWritable();
-          await writable.write(file);
-          await writable.close();
+          await withWriteAccessRecovery(async () => {
+            const writable = await newFileHandle.createWritable();
+            await writable.write(file);
+            await writable.close();
+          });
           continue;
         }
 
