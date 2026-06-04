@@ -374,7 +374,11 @@ export const WebFileSystemProvider = (
 
     await writeFileHandleContent(resolvedHandle, content);
 
-    return { stat: await fileHandleStat(resolvedHandle) };
+    try {
+      return { stat: await fileHandleStat(resolvedHandle) };
+    } catch {
+      return { stat: { type: FSNodeType.File } };
+    }
   };
 
   const writeFile = async (
