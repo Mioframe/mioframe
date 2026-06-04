@@ -10,11 +10,9 @@ import {
 import { createGlobalState } from '@vueuse/core';
 import type { CFRDocumentContent } from '@shared/lib/cfrDocument';
 import {
-  DiagnosticClassification,
-  DiagnosticResult,
-  DiagnosticSeverity,
-  reportDiagnosticEvent,
-} from '@shared/lib/diagnostics';
+  reportWriteAccessReplayStillBlocked,
+  reportWriteAccessReplayStorageFailure,
+} from './repositoriesDiagnostics';
 import { getFileSystemAccessRecovery } from '@shared/lib/fileSystem';
 import {
   concat,
@@ -254,26 +252,15 @@ const setupRepositoriesService = () => {
       pendingCount += result.pendingCount;
 
       if (result.status !== 'flushed') {
-        reportDiagnosticEvent({
-          name:
-            result.status === 'stillBlocked'
-              ? 'writeAccessRecovery.replayStillBlocked'
-              : 'writeAccessRecovery.replayStorageFailure',
-          severity: DiagnosticSeverity.Error,
-          result:
-            result.status === 'stillBlocked' ? DiagnosticResult.Blocked : DiagnosticResult.Failed,
-          classification:
-            result.failureClassification === 'accessRequired'
-              ? DiagnosticClassification.Access
-              : result.failureClassification === 'storageFailure'
-                ? DiagnosticClassification.Storage
-                : DiagnosticClassification.Unknown,
-          counters: {
+        if (result.status === 'stillBlocked') {
+          reportWriteAccessReplayStillBlocked({ flushedCount, pendingCount: result.pendingCount });
+        } else {
+          reportWriteAccessReplayStorageFailure({
             flushedCount,
             pendingCount: result.pendingCount,
-          },
-          safeTags: { operation: 'flushPendingSaves' },
-        });
+            failureClassification: result.failureClassification,
+          });
+        }
         return {
           status: result.status,
           flushedCount,

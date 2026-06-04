@@ -31,7 +31,7 @@ export const reportWriteAccessMissingRequest = ({ attemptId }: { attemptId: stri
  */
 export const reportWriteAccessStaleResolve = ({ attemptId }: { attemptId: string }): void => {
   reportDiagnosticEvent({
-    name: 'writeAccessRecovery.missingRequest',
+    name: 'writeAccessRecovery.staleResolve',
     severity: DiagnosticSeverity.Warning,
     result: DiagnosticResult.Stale,
     classification: DiagnosticClassification.Access,

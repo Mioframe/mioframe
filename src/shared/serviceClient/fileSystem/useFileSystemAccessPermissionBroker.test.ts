@@ -333,7 +333,7 @@ describe('useFileSystemAccessPermissionBroker', () => {
       scope.stop();
     });
 
-    it('emits a missingRequest diagnostic event when the resolve result is missing', async () => {
+    it('emits a staleResolve diagnostic event when the resolve result is missing', async () => {
       const handle = createDirectoryHandleMock({
         name: 'Work',
         permissionState: 'prompt',
@@ -353,7 +353,7 @@ describe('useFileSystemAccessPermissionBroker', () => {
 
       expect(diagnosticSink).toHaveLength(1);
       expect(diagnosticSink[0]).toMatchObject({
-        name: 'writeAccessRecovery.missingRequest',
+        name: 'writeAccessRecovery.staleResolve',
         severity: DiagnosticSeverity.Warning,
         result: DiagnosticResult.Stale,
         classification: DiagnosticClassification.Access,

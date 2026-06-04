@@ -128,13 +128,7 @@ const flushOnce = async (): Promise<void> => {
 
 let pendingRetry = false;
 
-/**
- * Flushes queued diagnostic events when reporting is currently allowed.
- * Fire-and-forget: never throws into product code and never creates unhandled promise rejections.
- * Parallel flush cycles are collapsed into the active in-flight run. If a new event is added
- * while a flush is running, `pendingRetry` is set so one follow-up flush runs after completion.
- */
-export const flushQueuedDiagnosticEvents = (): void => {
+const doFlush = (isAutoRetry: boolean): void => {
   if (flushPromise) {
     pendingRetry = true;
     return;
@@ -148,10 +142,29 @@ export const flushQueuedDiagnosticEvents = (): void => {
     })
     .finally(() => {
       flushPromise = undefined;
-      if (pendingRetry && isSentryConfigured() && getSentryReportingState() === 'enabled') {
-        flushQueuedDiagnosticEvents();
+      if (!isSentryConfigured() || getSentryReportingState() !== 'enabled') return;
+      if (pendingRetry) {
+        // A new event arrived during this flush — start one more cycle.
+        doFlush(true);
+      } else if (!isAutoRetry && diagnosticQueue.length > 0) {
+        // First retry after a failed flush with remaining items (e.g. ensureSentry rejection).
+        // Prevents a tight infinite loop: a second auto-retry only runs if a new event
+        // sets pendingRetry during this retry cycle.
+        doFlush(true);
       }
     });
+};
+
+/**
+ * Flushes queued diagnostic events when reporting is currently allowed.
+ * Fire-and-forget: never throws into product code and never creates unhandled promise rejections.
+ * Parallel flush cycles are collapsed into the active in-flight run. If a new event is added
+ * while a flush is running, `pendingRetry` is set so one follow-up flush runs after completion.
+ * After a failed flush attempt (e.g. Sentry init rejection), one automatic retry is scheduled
+ * when the queue is non-empty; further retries require a new event or an explicit call.
+ */
+export const flushQueuedDiagnosticEvents = (): void => {
+  doFlush(false);
 };
 
 /**

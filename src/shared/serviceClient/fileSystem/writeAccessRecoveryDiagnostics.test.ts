@@ -57,7 +57,7 @@ describe('writeAccessRecoveryDiagnostics', () => {
 
       expect(sink).toHaveLength(1);
       expect(sink[0]).toMatchObject({
-        name: 'writeAccessRecovery.missingRequest',
+        name: 'writeAccessRecovery.staleResolve',
         severity: DiagnosticSeverity.Warning,
         result: DiagnosticResult.Stale,
         classification: DiagnosticClassification.Access,

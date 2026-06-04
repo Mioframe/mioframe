@@ -291,6 +291,109 @@ describe('reportDiagnosticEvent', () => {
     expect(realFacade.captureMessage.mock.calls.length).toBeGreaterThanOrEqual(1);
   });
 
+  describe('queue retry on failed flush', () => {
+    it('performs exactly one auto-retry when ensureSentry rejects and queue is non-empty', async () => {
+      let callCount = 0;
+      ensureSentryMock.mockImplementation(() => {
+        callCount++;
+        return Promise.reject(new Error('Sentry init failed'));
+      });
+
+      const { reportDiagnosticEvent } = await import('./reportDiagnosticEvent');
+
+      reportDiagnosticEvent(makeEvent());
+
+      // Allow initial flush + one auto-retry to complete.
+      await waitForAsyncWork();
+      await waitForAsyncWork();
+      await waitForAsyncWork();
+
+      // Initial call + exactly one auto-retry = 2 attempts total (no tight loop).
+      expect(callCount).toBe(2);
+    });
+
+    it('retains queued events after a failed Sentry initialization', async () => {
+      ensureSentryMock
+        .mockRejectedValueOnce(new Error('Sentry init failed'))
+        .mockRejectedValueOnce(new Error('Sentry init failed'));
+
+      const { reportDiagnosticEvent, setDiagnosticEventSink } =
+        await import('./reportDiagnosticEvent');
+
+      const sink: DiagnosticEvent[] = [];
+      setDiagnosticEventSink(sink);
+
+      reportDiagnosticEvent(makeEvent());
+
+      await waitForAsyncWork();
+      await waitForAsyncWork();
+      await waitForAsyncWork();
+
+      // Sentry did not receive the event.
+      expect(realFacade.captureMessage).not.toHaveBeenCalled();
+      // The event was captured by the in-memory sink (not dropped).
+      expect(sink).toHaveLength(1);
+
+      setDiagnosticEventSink(undefined);
+    });
+
+    it('sends queued events on a later explicit flush after failed initialization', async () => {
+      ensureSentryMock
+        .mockRejectedValueOnce(new Error('Sentry init failed'))
+        .mockRejectedValueOnce(new Error('Sentry init failed'))
+        .mockResolvedValue(realFacade);
+
+      const { reportDiagnosticEvent, flushQueuedDiagnosticEvents } =
+        await import('./reportDiagnosticEvent');
+
+      reportDiagnosticEvent(makeEvent());
+
+      // Let initial flush and its one auto-retry both fail.
+      await waitForAsyncWork();
+      await waitForAsyncWork();
+      await waitForAsyncWork();
+
+      expect(realFacade.captureMessage).not.toHaveBeenCalled();
+
+      // Explicit retry after Sentry becomes available.
+      flushQueuedDiagnosticEvents();
+      await waitForAsyncWork();
+
+      expect(realFacade.captureMessage).toHaveBeenCalledOnce();
+    });
+
+    it('events queued during an active flush are not lost when the flush fails', async () => {
+      let resolveFirst: (() => void) | undefined;
+      ensureSentryMock
+        .mockImplementationOnce(
+          () =>
+            new Promise<typeof realFacade>((resolve) => {
+              resolveFirst = () => {
+                resolve(realFacade);
+              };
+            }),
+        )
+        .mockResolvedValue(realFacade);
+
+      const { reportDiagnosticEvent } = await import('./reportDiagnosticEvent');
+
+      // Start a slow flush.
+      reportDiagnosticEvent(makeEvent());
+
+      // Queue a second event while the first flush is in progress.
+      reportDiagnosticEvent(makeEvent());
+
+      // Resolve the first flush — the second event should trigger a follow-up flush.
+      resolveFirst?.();
+      await waitForAsyncWork();
+      await waitForAsyncWork();
+      await waitForAsyncWork();
+
+      // Both events must have been sent.
+      expect(realFacade.captureMessage.mock.calls.length).toBeGreaterThanOrEqual(2);
+    });
+  });
+
   describe('memory sink', () => {
     it('writes events to the in-memory sink regardless of reporting state', async () => {
       getSentryReportingStateMock.mockReturnValue('disabled');
