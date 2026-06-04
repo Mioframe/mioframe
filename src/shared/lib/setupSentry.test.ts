@@ -771,4 +771,164 @@ describe('setupSentry', () => {
 
     expect(getSentryReportingState()).toBe('enabled');
   });
+
+  describe('beforeSend diagnostic tag filtering', () => {
+    const setupBeforeSend = async () => {
+      const { initMock } = setupSentryMocks();
+      const { registerSentryConfig, ensureSentry, setSentryReportingEnabled } =
+        await import('./setupSentry');
+
+      registerSentryConfig({
+        dsn: 'https://example@sentry.io/123',
+        enabled: true,
+      });
+      setSentryReportingEnabled(true);
+      await ensureSentry();
+
+      const initOptions = initMock.mock.calls[0]?.[0];
+      return initOptions?.beforeSend;
+    };
+
+    it('provider tag survives beforeSend', async () => {
+      const beforeSend = await setupBeforeSend();
+      const event = {
+        message: '[diagnostic] writeAccessRecovery.permissionDenied',
+        tags: { provider: 'webFileSystem', eventKind: 'diagnostic' },
+      };
+
+      expect(beforeSend).toEqual(expect.any(Function));
+      if (beforeSend instanceof Function) {
+        expect(beforeSend(event)).toEqual({
+          message: '[diagnostic] writeAccessRecovery.permissionDenied',
+          tags: { provider: 'webFileSystem', eventKind: 'diagnostic' },
+        });
+      }
+    });
+
+    it('operation tag survives beforeSend', async () => {
+      const beforeSend = await setupBeforeSend();
+      const event = {
+        message: '[diagnostic] writeAccessRecovery.requestAccess',
+        tags: { operation: 'requestAccess', result: 'failed' },
+      };
+
+      expect(beforeSend).toEqual(expect.any(Function));
+      if (beforeSend instanceof Function) {
+        expect(beforeSend(event)).toEqual({
+          message: '[diagnostic] writeAccessRecovery.requestAccess',
+          tags: { operation: 'requestAccess', result: 'failed' },
+        });
+      }
+    });
+
+    it('all expected diagnostic tags survive beforeSend', async () => {
+      const beforeSend = await setupBeforeSend();
+      const event = {
+        message: '[diagnostic] test.event',
+        tags: {
+          eventKind: 'diagnostic',
+          severity: 'error',
+          result: 'failed',
+          classification: 'access',
+          provider: 'webFileSystem',
+          operation: 'flushPendingSaves',
+        },
+      };
+
+      expect(beforeSend).toEqual(expect.any(Function));
+      if (beforeSend instanceof Function) {
+        expect(beforeSend(event)).toEqual({
+          message: '[diagnostic] test.event',
+          tags: {
+            eventKind: 'diagnostic',
+            severity: 'error',
+            result: 'failed',
+            classification: 'access',
+            provider: 'webFileSystem',
+            operation: 'flushPendingSaves',
+          },
+        });
+      }
+    });
+
+    it('unknown tags are removed by beforeSend', async () => {
+      const beforeSend = await setupBeforeSend();
+      const event = {
+        message: 'test',
+        tags: {
+          eventKind: 'diagnostic',
+          customMetadata: 'some-value',
+          internalFlag: 'true',
+        },
+      };
+
+      expect(beforeSend).toEqual(expect.any(Function));
+      if (beforeSend instanceof Function) {
+        expect(beforeSend(event)).toEqual({
+          message: 'test',
+          tags: { eventKind: 'diagnostic' },
+        });
+      }
+    });
+
+    it('private-looking tags are removed by beforeSend', async () => {
+      const beforeSend = await setupBeforeSend();
+      const event = {
+        message: 'test',
+        tags: {
+          path: '/user/private/doc',
+          fileName: 'secret.md',
+          documentId: 'abc-123',
+          storageKey: 'opfs://key',
+          url: 'https://app/doc/id',
+        },
+      };
+
+      expect(beforeSend).toEqual(expect.any(Function));
+      if (beforeSend instanceof Function) {
+        expect(beforeSend(event)).toEqual({ message: 'test' });
+      }
+    });
+
+    it('stage and providerKind tags are removed by beforeSend', async () => {
+      const beforeSend = await setupBeforeSend();
+      const event = {
+        message: 'test',
+        tags: {
+          stage: 'flush',
+          providerKind: 'webFileSystem',
+          result: 'failed',
+        },
+      };
+
+      expect(beforeSend).toEqual(expect.any(Function));
+      if (beforeSend instanceof Function) {
+        expect(beforeSend(event)).toEqual({
+          message: 'test',
+          tags: { result: 'failed' },
+        });
+      }
+    });
+
+    it('raw paths, file names, document ids, and storage keys do not survive as extras', async () => {
+      const beforeSend = await setupBeforeSend();
+      const event = {
+        message: 'test',
+        extra: {
+          filePath: '/user/documents/secret.md',
+          documentId: 'doc-abc-123',
+          storageKey: 'opfs://repo/key',
+          userMessage: 'Could not save',
+        },
+      };
+
+      expect(beforeSend).toEqual(expect.any(Function));
+      if (beforeSend instanceof Function) {
+        expect(beforeSend(event)).toEqual({
+          message: 'test',
+          extra: { userMessage: 'Could not save' },
+        });
+      }
+    });
+  });
 });

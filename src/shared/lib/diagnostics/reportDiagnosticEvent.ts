@@ -4,6 +4,37 @@ import { DiagnosticSeverity } from './diagnosticEnums';
 
 const DIAGNOSTIC_QUEUE_LIMIT = 50;
 const diagnosticQueue: DiagnosticEvent[] = [];
+
+const DEDUPE_TTL_MS = 30_000;
+const DEDUPE_MAP_MAX_SIZE = 200;
+const dedupeMap = new Map<string, number>();
+
+const buildDedupeKey = (event: DiagnosticEvent): string => {
+  const tagsKey = event.safeTags
+    ? JSON.stringify(Object.entries(event.safeTags).sort(([a], [b]) => a.localeCompare(b)))
+    : '';
+  const errKey = event.error
+    ? `${event.error.errorClass}|${event.error.errorClassification}|${event.error.domExceptionName ?? ''}|${event.error.vfsErrorCode ?? ''}|${event.error.domainErrorCode ?? ''}`
+    : '';
+  return `${event.name}|${event.result}|${event.classification}|${tagsKey}|${errKey}`;
+};
+
+const isRecentDuplicate = (key: string): boolean => {
+  const now = Date.now();
+  if (dedupeMap.size >= DEDUPE_MAP_MAX_SIZE) {
+    for (const [k, ts] of dedupeMap) {
+      if (now - ts > DEDUPE_TTL_MS) {
+        dedupeMap.delete(k);
+      }
+    }
+  }
+  const lastSeen = dedupeMap.get(key);
+  if (lastSeen !== undefined && now - lastSeen < DEDUPE_TTL_MS) {
+    return true;
+  }
+  dedupeMap.set(key, now);
+  return false;
+};
 let flushPromise: Promise<void> | undefined;
 let memorySink: DiagnosticEvent[] | undefined;
 
@@ -191,6 +222,8 @@ export const reportDiagnosticEvent = (event: DiagnosticEvent): void => {
     const state = getSentryReportingState();
 
     if (state === 'disabled') return;
+
+    if (isRecentDuplicate(buildDedupeKey(event))) return;
 
     diagnosticQueue.push(event);
     trimQueue();

@@ -23,11 +23,12 @@ const SAFE_EVENT_TAG_KEYS = [
   // Structured diagnostic event fields — project-controlled enum values only.
   'eventKind',
   'severity',
-  'operation',
-  'stage',
   'result',
   'classification',
-  'providerKind',
+  // Flow-specific safe tags from diagnostic wrappers — project-controlled values only.
+  // New safe tag keys must also be added here and covered by beforeSend tests.
+  'provider',
+  'operation',
 ] as const;
 type SentryTagValue = boolean | number | string | null | undefined;
 

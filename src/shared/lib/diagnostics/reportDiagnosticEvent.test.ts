@@ -377,11 +377,11 @@ describe('reportDiagnosticEvent', () => {
 
       const { reportDiagnosticEvent } = await import('./reportDiagnosticEvent');
 
-      // Start a slow flush.
-      reportDiagnosticEvent(makeEvent());
+      // Start a slow flush. Use distinct names so events are not deduped.
+      reportDiagnosticEvent(makeEvent({ name: 'queue.eventA' }));
 
-      // Queue a second event while the first flush is in progress.
-      reportDiagnosticEvent(makeEvent());
+      // Queue a second distinct event while the first flush is in progress.
+      reportDiagnosticEvent(makeEvent({ name: 'queue.eventB' }));
 
       // Resolve the first flush — the second event should trigger a follow-up flush.
       resolveFirst?.();
@@ -434,6 +434,115 @@ describe('reportDiagnosticEvent', () => {
 
       expect(sink).toHaveLength(1);
       setDiagnosticEventSink(undefined);
+    });
+  });
+
+  describe('dedupe/rate-limit', () => {
+    it('back-to-back identical events result in one Sentry send', async () => {
+      ensureSentryMock.mockResolvedValue(realFacade);
+      const { reportDiagnosticEvent } = await import('./reportDiagnosticEvent');
+
+      reportDiagnosticEvent(makeEvent());
+      reportDiagnosticEvent(makeEvent());
+      await waitForAsyncWork();
+
+      expect(realFacade.captureMessage).toHaveBeenCalledOnce();
+    });
+
+    it('identical events both reach the memory sink', async () => {
+      ensureSentryMock.mockResolvedValue(realFacade);
+      const { reportDiagnosticEvent, setDiagnosticEventSink } =
+        await import('./reportDiagnosticEvent');
+      const sink: DiagnosticEvent[] = [];
+      setDiagnosticEventSink(sink);
+
+      reportDiagnosticEvent(makeEvent());
+      reportDiagnosticEvent(makeEvent());
+      await waitForAsyncWork();
+
+      expect(sink).toHaveLength(2);
+      setDiagnosticEventSink(undefined);
+    });
+
+    it('events with different name are not deduped', async () => {
+      ensureSentryMock.mockResolvedValue(realFacade);
+      const { reportDiagnosticEvent } = await import('./reportDiagnosticEvent');
+
+      reportDiagnosticEvent(makeEvent({ name: 'flow.eventA' }));
+      reportDiagnosticEvent(makeEvent({ name: 'flow.eventB' }));
+      await waitForAsyncWork();
+
+      expect(realFacade.captureMessage).toHaveBeenCalledTimes(2);
+    });
+
+    it('events with different result are not deduped', async () => {
+      ensureSentryMock.mockResolvedValue(realFacade);
+      const { reportDiagnosticEvent } = await import('./reportDiagnosticEvent');
+
+      reportDiagnosticEvent(makeEvent({ result: DiagnosticResult.Failed }));
+      reportDiagnosticEvent(makeEvent({ result: DiagnosticResult.Blocked }));
+      await waitForAsyncWork();
+
+      expect(realFacade.captureMessage).toHaveBeenCalledTimes(2);
+    });
+
+    it('events with different classification are not deduped', async () => {
+      ensureSentryMock.mockResolvedValue(realFacade);
+      const { reportDiagnosticEvent } = await import('./reportDiagnosticEvent');
+
+      reportDiagnosticEvent(makeEvent({ classification: DiagnosticClassification.Access }));
+      reportDiagnosticEvent(makeEvent({ classification: DiagnosticClassification.Storage }));
+      await waitForAsyncWork();
+
+      expect(realFacade.captureMessage).toHaveBeenCalledTimes(2);
+    });
+
+    it('events with different safeTags are not deduped', async () => {
+      ensureSentryMock.mockResolvedValue(realFacade);
+      const { reportDiagnosticEvent } = await import('./reportDiagnosticEvent');
+
+      reportDiagnosticEvent(makeEvent({ safeTags: { operation: 'requestAccess' } }));
+      reportDiagnosticEvent(makeEvent({ safeTags: { operation: 'flushPendingSaves' } }));
+      await waitForAsyncWork();
+
+      expect(realFacade.captureMessage).toHaveBeenCalledTimes(2);
+    });
+
+    it('attemptId does not defeat dedupe — identical events with different attemptId are still deduped', async () => {
+      ensureSentryMock.mockResolvedValue(realFacade);
+      const { reportDiagnosticEvent } = await import('./reportDiagnosticEvent');
+
+      reportDiagnosticEvent(makeEvent({ attemptId: 'attempt-1' }));
+      reportDiagnosticEvent(makeEvent({ attemptId: 'attempt-2' }));
+      await waitForAsyncWork();
+
+      expect(realFacade.captureMessage).toHaveBeenCalledOnce();
+    });
+
+    it('after TTL expires the same event can be sent again', async () => {
+      vi.useFakeTimers();
+      ensureSentryMock.mockResolvedValue(realFacade);
+      const { reportDiagnosticEvent } = await import('./reportDiagnosticEvent');
+
+      reportDiagnosticEvent(makeEvent());
+      await vi.runAllTimersAsync();
+
+      // Identical event within TTL — deduped
+      reportDiagnosticEvent(makeEvent());
+      await vi.runAllTimersAsync();
+
+      expect(realFacade.captureMessage).toHaveBeenCalledOnce();
+
+      // Advance past 30-second TTL
+      vi.advanceTimersByTime(31_000);
+
+      // Same event after TTL — should be sent
+      reportDiagnosticEvent(makeEvent());
+      await vi.runAllTimersAsync();
+
+      expect(realFacade.captureMessage).toHaveBeenCalledTimes(2);
+
+      vi.useRealTimers();
     });
   });
 });

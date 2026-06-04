@@ -85,7 +85,17 @@ The `name` field replaces the old `feature/operation/stage` triplet. Flow-specif
 3. Expose short named functions, e.g. `reportFlowNameFailure({ attemptId, error })`.
 4. Map flow outcomes to generic `DiagnosticResult` and `DiagnosticClassification`.
 5. Add `safeTags` with project-controlled values for flow context (provider, operation, etc.).
-6. Add a sibling `<flow>Diagnostics.test.ts` with full coverage.
+6. **For any new `safeTags` key used:** also add that key to `SAFE_EVENT_TAG_KEYS` in `src/shared/lib/setupSentry.ts` and add a `beforeSend` survival test in `setupSentry.test.ts`. Tags not in the whitelist are silently dropped by Sentry's `beforeSend`.
+7. Add a sibling `<flow>Diagnostics.test.ts` with full coverage.
+
+## Dedupe/rate-limit
+
+`reportDiagnosticEvent` deduplicates delivery to Sentry: identical events (matching `name`, `result`, `classification`, `safeTags`, and error summary) are sent at most once per 30 seconds.
+
+- `attemptId` is excluded from the dedupe key — loop failures with different attempt IDs are still correctly deduplicated.
+- The memory sink (`setDiagnosticEventSink`) receives every event regardless of dedupe state.
+- Dedupe is session-local and in-memory; it resets on page reload.
+- Emit diagnostic events only at terminal/abnormal states, not as progress logs. The dedupe window protects against retry loops but is not a substitute for emitting at the right moment.
 
 Example (from write-access recovery wrapper):
 

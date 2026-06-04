@@ -76,6 +76,7 @@ Do **not** emit a diagnostic event for:
 - Ordinary validation errors caught and shown by form or input UI.
 - Unsupported user input handled by standard UX copy.
 - Expected transient states that are already tracked in entity/service state.
+- Progress steps or intermediate states within a single operation — only emit at the terminal outcome.
 
 ---
 
@@ -89,10 +90,11 @@ The only project-level API for structured diagnostic events. Call only from wrap
 
 - Fire-and-forget, never throws into product code.
 - Respects Sentry consent state (`unknown`, `enabled`, `disabled`).
-- Writes to an optional in-memory test sink set via `setDiagnosticEventSink`.
+- Writes to an optional in-memory test sink set via `setDiagnosticEventSink`. The memory sink receives every event regardless of dedupe or consent state.
 - Uses Sentry as the transport backend. Feature, service, provider, and UI code must not call Sentry directly.
 - Sets the Sentry event level from `DiagnosticSeverity` so events appear at the correct severity in Sentry.
 - Forwards `safeTags` entries as individual Sentry tags.
+- **Dedupe/rate-limit:** repeated identical events (same `name`, `result`, `classification`, `safeTags`, and error summary) are sent to Sentry at most once per 30 seconds. The `attemptId` field is excluded from the dedupe key so that loop failures with different attempt IDs are still deduplicated. The memory sink is never affected by dedupe.
 
 ### `sanitizeDiagnosticError(error: unknown): SanitizedDiagnosticError`
 
@@ -185,6 +187,8 @@ Example from write-access recovery wrapper:
 ```ts
 safeTags: { provider: 'webFileSystem', operation: 'requestAccess' }
 ```
+
+**Adding a new safe tag key:** the key must also be added to `SAFE_EVENT_TAG_KEYS` in `src/shared/lib/setupSentry.ts` and covered by a `beforeSend` test in `setupSentry.test.ts`. Tags not in the whitelist are dropped before the event reaches Sentry.
 
 ### Allowed counters
 
