@@ -9,15 +9,22 @@ import { MDSymbol } from '@shared/ui/Icon';
 import { useSnackbar } from '@shared/ui/Snackbar';
 import { MDOverlayTooltip } from '@shared/ui/Tooltips';
 import type { ComponentPublicInstance } from 'vue';
-import { computed, ref, useTemplateRef } from 'vue';
+import { computed, ref, useTemplateRef, watch } from 'vue';
 import { formatSaveStatusErrorDetails, STATUS_LABELS } from './saveStatusText';
 
 const triggerRef = useTemplateRef<ComponentPublicInstance>('triggerRef');
 const showErrorDetails = ref(false);
 const isGrantWriteAccessLoading = ref(false);
+/** Tracks whether the access-required error became a non-retriable storage failure after a grant. */
+const storageFailureAfterGrant = ref(false);
+/**
+ * Tri-state: `null` = check not yet performed, `true` = pending request confirmed,
+ * `false` = no pending request (stale or already consumed).
+ */
+const pendingRequestExists = ref<boolean | null>(null);
 const { addSnackbar } = useSnackbar();
 const {
-  fileSystem: { acknowledgeVfsActivityError: dismissSaveStatusError },
+  fileSystem: { acknowledgeVfsActivityError: dismissSaveStatusError, getFileSystemAccessRequest },
 } = useMainServiceClient();
 const { requestAccess } = useFileSystemAccessPermissionBroker();
 const { hasUnacknowledgedError, state } = useVfsActivity();
@@ -27,11 +34,53 @@ const isActive = computed(() => state.value.status === 'active');
 const writeAccessRecovery = computed(() =>
   getFileSystemAccessRecovery(state.value.lastError?.cause, { operation: 'write' }),
 );
-const hasWriteAccessRecovery = computed(() => !!writeAccessRecovery.value);
+
+/** True only when the recovery payload exists AND a matching pending request is confirmed. */
+const hasWriteAccessRecovery = computed(
+  () =>
+    !!writeAccessRecovery.value &&
+    pendingRequestExists.value === true &&
+    !storageFailureAfterGrant.value,
+);
+
+/** True when the recovery cause is present but the request has already been consumed. */
+const isStaleWriteAccessRequest = computed(
+  () =>
+    !!writeAccessRecovery.value &&
+    pendingRequestExists.value === false &&
+    !storageFailureAfterGrant.value,
+);
+
 const label = computed(() =>
   state.value.status === 'idle' ? undefined : STATUS_LABELS[state.value.status],
 );
 const errorDetails = computed(() => formatSaveStatusErrorDetails(state.value.lastError));
+
+const checkPendingRequest = async () => {
+  const recovery = writeAccessRecovery.value;
+  if (!recovery) {
+    pendingRequestExists.value = null;
+    return;
+  }
+  const result = await getFileSystemAccessRequest({
+    operation: recovery.operation,
+    spaceName: recovery.spaceName,
+  });
+  pendingRequestExists.value = !!result;
+};
+
+watch(
+  writeAccessRecovery,
+  (recovery) => {
+    if (!recovery) {
+      pendingRequestExists.value = null;
+      storageFailureAfterGrant.value = false;
+    } else {
+      void checkPendingRequest();
+    }
+  },
+  { immediate: true },
+);
 
 const onClickTrigger = () => {
   if (state.value.status === 'idle') {
@@ -39,6 +88,7 @@ const onClickTrigger = () => {
   }
 
   showErrorDetails.value = true;
+  void checkPendingRequest();
 };
 
 const onClickDismissError = () => {
@@ -103,6 +153,7 @@ const onClickGrantWriteAccess = async () => {
     }
 
     if (result.status === 'grantedWithReplayFailures') {
+      await checkPendingRequest();
       addSnackbar({
         text: 'Write access was granted, but some unsaved repository changes still could not be stored.',
       });
@@ -110,12 +161,15 @@ const onClickGrantWriteAccess = async () => {
     }
 
     if (result.status === 'grantedWithStorageFailures') {
+      storageFailureAfterGrant.value = true;
+      dismissSaveStatusError();
       addSnackbar({
         text: 'Write access was granted, but replaying earlier unsaved repository changes hit another storage failure.',
       });
       return;
     }
 
+    await checkPendingRequest();
     addSnackbar({
       text:
         result.status === 'error'
@@ -165,9 +219,22 @@ const onInteractionOutside = () => {
       </template>
 
       <template v-else>
-        <template v-if="hasWriteAccessRecovery">
+        <template v-if="storageFailureAfterGrant">
+          <p>Could not confirm the last save.</p>
+          <p>Write access was granted but a storage failure prevented the save from completing.</p>
+        </template>
+
+        <template v-else-if="hasWriteAccessRecovery">
           <p>Browser write access is required to save changes in this remembered local space.</p>
           <p>Grant access to allow future saves.</p>
+        </template>
+
+        <template v-else-if="isStaleWriteAccessRequest">
+          <p>Could not confirm the last save.</p>
+          <p>
+            The write access request is no longer pending. Dismiss this error and retry the
+            operation.
+          </p>
         </template>
 
         <template v-else>

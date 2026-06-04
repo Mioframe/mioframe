@@ -10,6 +10,7 @@ import {
 import { createGlobalState } from '@vueuse/core';
 import type { CFRDocumentContent } from '@shared/lib/cfrDocument';
 import { getFileSystemAccessRecovery } from '@shared/lib/fileSystem';
+import { reportHandledError } from '@shared/lib/reportHandledError';
 import {
   concat,
   defer,
@@ -248,10 +249,30 @@ const setupRepositoriesService = () => {
       pendingCount += result.pendingCount;
 
       if (result.status !== 'flushed') {
+        const classification = result.failureClassification ?? 'unknown';
+        reportHandledError(
+          new Error(
+            result.status === 'stillBlocked'
+              ? 'Pending repository save replay still blocked'
+              : 'Pending repository save replay failed',
+          ),
+          {
+            feature: 'writeAccessRecovery',
+            action: 'flushPendingSaves',
+            metadata: {
+              recoveryStage: 'pendingSaveReplay',
+              resultStatus: result.status,
+              failureClassification: classification,
+            },
+          },
+        );
         return {
           status: result.status,
           flushedCount,
           pendingCount,
+          ...(result.failureClassification !== undefined
+            ? { failureClassification: result.failureClassification }
+            : {}),
         };
       }
     }
@@ -263,9 +284,9 @@ const setupRepositoriesService = () => {
     };
   };
 
-  registerWriteAccessRecoveryHandler(async ({ mountPath }) => {
-    return flushPendingRepositoryStorageSaves(mountPath);
-  });
+  registerWriteAccessRecoveryHandler(({ mountPath }) =>
+    flushPendingRepositoryStorageSaves(mountPath),
+  );
 
   const deleteDocument = async (path: string, id: AMDocumentId) => {
     const documentStorageFiles = await getDocumentStorageFiles(vfs, path, id);
