@@ -26,7 +26,7 @@ If `pnpm verify` fails, fix failures caused by the change. Otherwise report the 
 
 For local verification safety, agents may run focused checks for limited files, but must not start multiple expensive checks in parallel. Use `pnpm verify --only <label> --files ...` for focused local feedback, keep full `pnpm verify` as the completion gate, and if an expensive command is already running, inspect its logs or wait instead of starting another heavy command.
 
-If `pnpm verify` exits because another local verification is active, do not rerun `pnpm verify` immediately. Run `pnpm verify:status`, inspect `.verify/logs`, and report `VERIFY RESULT: blocked by active local verification` when the final read-only gate could not start.
+If `pnpm verify` exits because another local verification or a standalone expensive command is already active, do not rerun `pnpm verify` immediately. Run `pnpm verify:status`, inspect `.verify/logs`, and report `VERIFY RESULT: blocked by active local verification` when the final read-only gate could not start. `pnpm verify:status` reports both the verify lock and the expensive-command lock so agents can distinguish which lock is blocking.
 
 Do not start manual e2e, visual, mutation, full lint, or full type-check commands while the local verify lock is active. `CI=true` in a local shell or container does not bypass local verification safety; only `GITHUB_ACTIONS=true` counts as GitHub Actions.
 

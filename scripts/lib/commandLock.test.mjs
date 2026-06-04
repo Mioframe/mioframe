@@ -4,6 +4,7 @@ import path from 'node:path';
 import os from 'node:os';
 
 import {
+  getExpensiveLockStatus,
   getVerifyLockStatus,
   releaseOwnedLock,
   withExpensiveCommandLock,
@@ -471,5 +472,231 @@ describe('withExpensiveCommandLock verify coordination', () => {
         ).rejects.toThrow('Another local pnpm verify is already running.');
       },
     );
+  });
+});
+
+describe('withVerifyCommandLock expensive coordination', () => {
+  it('blocks top-level verify while an expensive command is active', async () => {
+    const baseDir = fs.mkdtempSync(path.join(os.tmpdir(), 'verify-blocked-by-expensive-'));
+    tempDirs.push(baseDir);
+    const expensiveLockDir = path.join(baseDir, 'expensive.lock');
+    fs.mkdirSync(expensiveLockDir, { recursive: true });
+    writeTestMetadata(expensiveLockDir, {
+      command: 'pnpm test:visual',
+      cwd: '/repo',
+      heartbeatAt: new Date().toISOString(),
+      hostname: os.hostname(),
+      label: 'visual',
+      lockPath: expensiveLockDir,
+      logPath: '.verify/logs',
+      ownerToken: 'owner',
+      pid: process.pid,
+      startedAt: new Date().toISOString(),
+    });
+
+    await withProcessEnv(
+      {
+        GITHUB_ACTIONS: 'false',
+        MIOFRAME_VERIFY_LOCK_HELD: undefined,
+      },
+      async () => {
+        await expect(
+          withVerifyCommandLock(
+            { command: 'pnpm verify', label: 'verify', logPath: '.verify/logs' },
+            async () => {},
+            {
+              expensiveLockDirectoryPath: expensiveLockDir,
+              lockDirectoryPath: path.join(baseDir, 'verify.lock'),
+              staleAfterMs: 50_000,
+            },
+          ),
+        ).rejects.toThrow('Another expensive local verification command is already running.');
+      },
+    );
+  });
+
+  it('does not block verify when the expensive lock is stale', async () => {
+    const baseDir = fs.mkdtempSync(path.join(os.tmpdir(), 'verify-stale-expensive-'));
+    tempDirs.push(baseDir);
+    const expensiveLockDir = path.join(baseDir, 'expensive.lock');
+    fs.mkdirSync(expensiveLockDir, { recursive: true });
+    writeTestMetadata(expensiveLockDir, {
+      command: 'pnpm test:visual',
+      heartbeatAt: new Date(Date.now() - 60_000).toISOString(),
+      hostname: os.hostname(),
+      ownerToken: 'stale-owner',
+      pid: 9_999_999,
+      startedAt: new Date(Date.now() - 60_000).toISOString(),
+    });
+
+    await withProcessEnv(
+      {
+        GITHUB_ACTIONS: 'false',
+        MIOFRAME_VERIFY_LOCK_HELD: undefined,
+      },
+      async () => {
+        let callbackRan = false;
+
+        await withVerifyCommandLock(
+          { command: 'pnpm verify', label: 'verify', logPath: '.verify/logs' },
+          async () => {
+            callbackRan = true;
+          },
+          {
+            expensiveLockDirectoryPath: expensiveLockDir,
+            lockDirectoryPath: path.join(baseDir, 'verify.lock'),
+            staleAfterMs: 50,
+          },
+        );
+
+        expect(callbackRan).toBe(true);
+      },
+    );
+  });
+
+  it('does not bypass the expensive-lock block when CI=true outside GitHub Actions', async () => {
+    const baseDir = fs.mkdtempSync(path.join(os.tmpdir(), 'verify-ci-true-'));
+    tempDirs.push(baseDir);
+    const expensiveLockDir = path.join(baseDir, 'expensive.lock');
+    fs.mkdirSync(expensiveLockDir, { recursive: true });
+    writeTestMetadata(expensiveLockDir, {
+      command: 'pnpm test:visual',
+      cwd: '/repo',
+      heartbeatAt: new Date().toISOString(),
+      hostname: os.hostname(),
+      label: 'visual',
+      lockPath: expensiveLockDir,
+      logPath: '.verify/logs',
+      ownerToken: 'owner',
+      pid: process.pid,
+      startedAt: new Date().toISOString(),
+    });
+
+    await withProcessEnv(
+      {
+        CI: 'true',
+        GITHUB_ACTIONS: 'false',
+        MIOFRAME_VERIFY_LOCK_HELD: undefined,
+      },
+      async () => {
+        await expect(
+          withVerifyCommandLock(
+            { command: 'pnpm verify', label: 'verify', logPath: '.verify/logs' },
+            async () => {},
+            {
+              expensiveLockDirectoryPath: expensiveLockDir,
+              lockDirectoryPath: path.join(baseDir, 'verify.lock'),
+              staleAfterMs: 50_000,
+            },
+          ),
+        ).rejects.toThrow('Another expensive local verification command is already running.');
+      },
+    );
+  });
+
+  it('skips the expensive-lock check when GITHUB_ACTIONS=true', async () => {
+    const baseDir = fs.mkdtempSync(path.join(os.tmpdir(), 'verify-gha-expensive-'));
+    tempDirs.push(baseDir);
+    const expensiveLockDir = path.join(baseDir, 'expensive.lock');
+    fs.mkdirSync(expensiveLockDir, { recursive: true });
+    writeTestMetadata(expensiveLockDir, {
+      command: 'pnpm test:visual',
+      cwd: '/repo',
+      heartbeatAt: new Date().toISOString(),
+      hostname: os.hostname(),
+      label: 'visual',
+      lockPath: expensiveLockDir,
+      logPath: '.verify/logs',
+      ownerToken: 'owner',
+      pid: process.pid,
+      startedAt: new Date().toISOString(),
+    });
+
+    await withProcessEnv({ GITHUB_ACTIONS: 'true' }, async () => {
+      let callbackRan = false;
+
+      await withVerifyCommandLock(
+        { command: 'pnpm verify', label: 'verify', logPath: '.verify/logs' },
+        async () => {
+          callbackRan = true;
+        },
+        {
+          expensiveLockDirectoryPath: expensiveLockDir,
+          lockDirectoryPath: path.join(baseDir, 'verify.lock'),
+          staleAfterMs: 50_000,
+        },
+      );
+
+      expect(callbackRan).toBe(true);
+    });
+  });
+
+  it('verify-child expensive commands do not deadlock when MIOFRAME_VERIFY_LOCK_HELD=1', async () => {
+    const baseDir = fs.mkdtempSync(path.join(os.tmpdir(), 'verify-child-no-deadlock-'));
+    tempDirs.push(baseDir);
+    const expensiveLockDir = path.join(baseDir, 'expensive.lock');
+
+    await withProcessEnv(
+      {
+        GITHUB_ACTIONS: 'false',
+        MIOFRAME_VERIFY_LOCK_HELD: '1',
+      },
+      async () => {
+        let callbackRan = false;
+
+        await withExpensiveCommandLock(
+          { label: 'visual', command: 'pnpm test:visual' },
+          async () => {
+            callbackRan = true;
+          },
+          {
+            lockDirectoryPath: expensiveLockDir,
+            staleAfterMs: 50_000,
+          },
+        );
+
+        expect(callbackRan).toBe(true);
+      },
+    );
+  });
+});
+
+describe('getExpensiveLockStatus', () => {
+  it('reports an active expensive lock with metadata', () => {
+    const baseDir = fs.mkdtempSync(path.join(os.tmpdir(), 'expensive-status-active-'));
+    tempDirs.push(baseDir);
+    const lockDir = path.join(baseDir, 'expensive.lock');
+    fs.mkdirSync(lockDir, { recursive: true });
+    writeTestMetadata(lockDir, {
+      command: 'pnpm test:visual',
+      cwd: '/repo',
+      heartbeatAt: new Date().toISOString(),
+      hostname: os.hostname(),
+      label: 'visual',
+      lockPath: lockDir,
+      logPath: '.verify/logs',
+      ownerToken: 'owner',
+      pid: process.pid,
+      startedAt: new Date().toISOString(),
+    });
+
+    const status = getExpensiveLockStatus({
+      lockDirectoryPath: lockDir,
+      staleAfterMs: 50_000,
+    });
+
+    expect(status.state).toBe('active');
+    expect(status.metadata?.command).toBe('pnpm test:visual');
+    expect(status.lockPath).toBe(lockDir);
+  });
+
+  it('reports missing when no expensive lock exists', () => {
+    const baseDir = fs.mkdtempSync(path.join(os.tmpdir(), 'expensive-status-missing-'));
+    tempDirs.push(baseDir);
+    const lockDir = path.join(baseDir, 'expensive.lock');
+
+    const status = getExpensiveLockStatus({ lockDirectoryPath: lockDir });
+
+    expect(status.state).toBe('missing');
   });
 });

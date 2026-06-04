@@ -1,63 +1,84 @@
 import { pathToFileURL } from 'node:url';
 
-import { getVerifyLockStatus } from './lib/commandLock.mjs';
+import { getExpensiveLockStatus, getVerifyLockStatus } from './lib/commandLock.mjs';
 
 /**
- * Format the current verify lock status for CLI output.
- * @param status Structured verify lock status.
- * @returns Rendered output and process exit code.
+ * Format a single lock status block for CLI output.
+ * @param kind Lock kind label used in headings.
+ * @param status Structured lock status.
+ * @returns Formatted status lines as a string.
  */
-export function formatVerifyStatusReport(status) {
+function formatLockBlock(kind, status) {
+  const isVerify = kind === 'verify';
+  const label = isVerify ? 'verify' : 'expensive-command';
+
   if (status.state === 'missing') {
-    return {
-      exitCode: 0,
-      output: ['No active local verification.', `lockPath: ${status.lockPath}`].join('\n'),
-    };
+    return `${label}: no active lock\n  lockPath: ${status.lockPath}`;
   }
 
   if (status.state === 'active') {
-    return {
-      exitCode: 0,
-      output: [
-        'Active local verification:',
-        `command: ${status.metadata?.activeCommand ?? status.metadata?.command ?? 'unknown'}`,
-        `pid: ${status.metadata?.pid ?? 'unknown'}`,
-        `hostname: ${status.metadata?.hostname ?? 'unknown'}`,
-        `cwd: ${status.metadata?.cwd ?? 'unknown'}`,
-        `startedAt: ${status.metadata?.startedAt ?? 'unknown'}`,
-        `heartbeatAt: ${status.metadata?.heartbeatAt ?? 'unknown'}`,
-        `lockPath: ${status.lockPath}`,
-        `logPath: ${status.metadata?.logPath ?? '.verify/logs'}`,
-        'Do not start another verify.',
-        'Inspect `.verify/logs` or rerun `pnpm verify:status` for the latest heartbeat.',
-      ].join('\n'),
-    };
+    const lines = [
+      `${label}: ACTIVE`,
+      `  command: ${status.metadata?.activeCommand ?? status.metadata?.command ?? 'unknown'}`,
+      `  pid: ${status.metadata?.pid ?? 'unknown'}`,
+      `  hostname: ${status.metadata?.hostname ?? 'unknown'}`,
+      `  cwd: ${status.metadata?.cwd ?? 'unknown'}`,
+      `  startedAt: ${status.metadata?.startedAt ?? 'unknown'}`,
+      `  heartbeatAt: ${status.metadata?.heartbeatAt ?? 'unknown'}`,
+      `  lockPath: ${status.lockPath}`,
+      `  logPath: ${status.metadata?.logPath ?? '.verify/logs'}`,
+    ];
+
+    if (isVerify) {
+      lines.push('  Do not start another verify.');
+    } else {
+      lines.push('  Do not start another expensive verification command.');
+    }
+
+    return lines.join('\n');
   }
 
   const title =
-    status.state === 'stale'
-      ? 'Stale local verification lock detected.'
-      : 'Corrupt local verification lock detected.';
+    status.state === 'stale' ? `${label}: stale lock detected` : `${label}: corrupt lock detected`;
 
-  return {
-    exitCode: 1,
-    output: [
-      title,
-      `lockPath: ${status.lockPath}`,
-      `statusReason: ${status.statusReason ?? 'unknown'}`,
-      `heartbeatAt: ${status.metadata?.heartbeatAt ?? 'unknown'}`,
-      'Inspect `.verify/logs` before removing the stale lock.',
-      'If no verify process is still active, remove the lock directory and rerun `pnpm verify`.',
-    ].join('\n'),
-  };
+  return [
+    title,
+    `  lockPath: ${status.lockPath}`,
+    `  statusReason: ${status.statusReason ?? 'unknown'}`,
+    `  heartbeatAt: ${status.metadata?.heartbeatAt ?? 'unknown'}`,
+    '  Inspect `.verify/logs` before removing the stale lock.',
+    '  If no process is still active, remove the lock directory and retry.',
+  ].join('\n');
 }
 
 /**
- * Print the current verify lock status for local agents.
+ * Format both verify and expensive-command lock statuses for CLI output.
+ * @param verifyStatus Structured verify lock status.
+ * @param expensiveStatus Structured expensive-command lock status.
+ * @returns Rendered output and process exit code.
+ */
+export function formatVerifyStatusReport(verifyStatus, expensiveStatus) {
+  const verifyBlock = formatLockBlock('verify', verifyStatus);
+  const expensiveBlock = formatLockBlock('expensive', expensiveStatus);
+  const output = [verifyBlock, '', expensiveBlock].join('\n');
+
+  const hasStaleOrCorrupt =
+    verifyStatus.state === 'stale' ||
+    verifyStatus.state === 'corrupt' ||
+    expensiveStatus.state === 'stale' ||
+    expensiveStatus.state === 'corrupt';
+
+  const exitCode = hasStaleOrCorrupt ? 1 : 0;
+
+  return { exitCode, output };
+}
+
+/**
+ * Print the current verify and expensive-command lock status for local agents.
  * @returns Exit code for the status command.
  */
 export function printVerifyStatus() {
-  const report = formatVerifyStatusReport(getVerifyLockStatus());
+  const report = formatVerifyStatusReport(getVerifyLockStatus(), getExpensiveLockStatus());
   console.log(report.output);
   process.exitCode = report.exitCode;
   return report.exitCode;

@@ -74,6 +74,7 @@ function shouldSkipLock(kind, processEnv = process.env) {
 async function withCommandLock(kind, input, run, options = {}) {
   const lockKind = LOCK_KINDS[kind];
   const {
+    expensiveLockDirectoryPath,
     forceLock = false,
     heartbeatIntervalMs: customHeartbeatMs,
     lockDirectoryPath: customLockDir,
@@ -99,6 +100,20 @@ async function withCommandLock(kind, input, run, options = {}) {
       throw new Error(
         formatLockBusyMessage('verify', blockingVerifyStatus.metadata, {
           lockDirectoryPath: blockingVerifyStatus.lockPath,
+        }),
+      );
+    }
+  }
+
+  if (!forceLock && kind === 'verify') {
+    const blockingExpensiveStatus = getExpensiveLockStatus({
+      lockDirectoryPath: expensiveLockDirectoryPath,
+    });
+
+    if (blockingExpensiveStatus.state === 'active') {
+      throw new Error(
+        formatLockBusyMessage('expensive', blockingExpensiveStatus.metadata, {
+          lockDirectoryPath: blockingExpensiveStatus.lockPath,
         }),
       );
     }
@@ -418,6 +433,17 @@ export function formatLockBusyMessage(kind, metadata, { lockDirectoryPath, stale
  */
 export function getVerifyLockStatus(options = {}) {
   return getLockStatus('verify', options);
+}
+
+/**
+ * Inspect the current expensive-command lock state without starting any command.
+ * @param [options] Optional testing overrides.
+ * @param [options.lockDirectoryPath] Override the expensive lock path.
+ * @param [options.staleAfterMs] Override the stale threshold.
+ * @returns Structured expensive-command lock status.
+ */
+export function getExpensiveLockStatus(options = {}) {
+  return getLockStatus('expensive', options);
 }
 
 function getLockStatus(kind, options = {}) {
