@@ -30,7 +30,7 @@
     "e2e:container": "node scripts/e2eContainer.mjs",
     "e2e:host": "node scripts/e2eHost.mjs",
     "e2e:headed": "node scripts/e2eHost.mjs --headed",
-    "e2e:install": "playwright install --with-deps chromium",
+    "e2e:host:install": "playwright install --with-deps chromium",
     "e2e:ui": "node scripts/e2eHost.mjs --ui",
     "test:visual": "node scripts/visual.mjs test",
     "test:visual:update": "node scripts/visual.mjs update",

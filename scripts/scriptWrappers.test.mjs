@@ -391,4 +391,9 @@ describe('package scripts', () => {
     expect(packageJson.scripts['e2e:headed']).toBe('node scripts/e2eHost.mjs --headed');
     expect(packageJson.scripts['e2e:ui']).toBe('node scripts/e2eHost.mjs --ui');
   });
+
+  it('keeps Playwright browser install under an explicit host-only manual command', () => {
+    expect(packageJson.scripts['e2e:install']).toBeUndefined();
+    expect(packageJson.scripts['e2e:host:install']).toBe('playwright install --with-deps chromium');
+  });
 });

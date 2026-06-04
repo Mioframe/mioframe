@@ -1027,7 +1027,7 @@ function createE2EInstallCommand(reason) {
   return {
     kind: 'skipped',
     label: 'e2e-install',
-    command: 'pnpm e2e:install',
+    command: 'pnpm e2e:host:install',
     reason: reason ?? 'browser install is not required; Playwright container provides browsers',
   };
 }
