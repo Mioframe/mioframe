@@ -110,4 +110,28 @@ describe('repositoryStorageFiles integration', () => {
 
     await expect(getDocumentStorageFiles(vfs, path, documentId)).resolves.toEqual([]);
   });
+
+  it('reloads a document created via browser-backed provider and reads the original content', async () => {
+    const path = '/repo';
+    const vfs = new VirtualFileSystem();
+
+    vfs.mount('/', createAndroidLikeProvider(new MemoryFileSystem()));
+    await vfs.createDirectory(path);
+
+    const originalContent = { name: 'Reload test', type: 'note', version: 2, body: ['hello'] };
+
+    const repo1 = new Repo({ storage: createVFSAdapter(vfs, path) });
+    const documentId = repo1.create(originalContent).documentId;
+
+    await waitForDocumentStorageFiles(vfs, path, documentId);
+    await repo1.shutdown();
+
+    const repo2 = new Repo({ storage: createVFSAdapter(vfs, path) });
+    const handle = await repo2.find<typeof originalContent>(documentId);
+    await handle.whenReady();
+
+    expect(handle.doc()).toMatchObject(originalContent);
+
+    await repo2.shutdown();
+  });
 });
