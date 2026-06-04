@@ -14,6 +14,8 @@ const VERIFY_LOCK_ENV_FLAG = 'MIOFRAME_VERIFY_LOCK_HELD';
 const LOCK_KINDS = {
   expensive: {
     busyMessage: 'Another expensive local verification command is already running.',
+    verifyBlockedMessage:
+      'Cannot start pnpm verify while an expensive local verification command is already running.',
     config: expensiveLockConfig,
     envFlag: EXPENSIVE_LOCK_ENV_FLAG,
     label: 'expensive-command',
@@ -114,6 +116,7 @@ async function withCommandLock(kind, input, run, options = {}) {
       throw new Error(
         formatLockBusyMessage('expensive', blockingExpensiveStatus.metadata, {
           lockDirectoryPath: blockingExpensiveStatus.lockPath,
+          busyMessageOverride: LOCK_KINDS.expensive.verifyBlockedMessage,
         }),
       );
     }
@@ -390,8 +393,12 @@ function readMetadata(metadataPath) {
  * @param [options.staleAfterMs] Stale threshold override used in the diagnostic.
  * @returns Human-readable lock-busy message.
  */
-export function formatLockBusyMessage(kind, metadata, { lockDirectoryPath, staleAfterMs } = {}) {
-  const busyMessage = LOCK_KINDS[kind].busyMessage;
+export function formatLockBusyMessage(
+  kind,
+  metadata,
+  { lockDirectoryPath, staleAfterMs, busyMessageOverride } = {},
+) {
+  const busyMessage = busyMessageOverride ?? LOCK_KINDS[kind].busyMessage;
   const staleAfterSeconds = Math.floor(
     (staleAfterMs ?? LOCK_KINDS[kind].config.staleAfterMs) / 1000,
   );

@@ -510,7 +510,9 @@ describe('withVerifyCommandLock expensive coordination', () => {
               staleAfterMs: 50_000,
             },
           ),
-        ).rejects.toThrow('Another expensive local verification command is already running.');
+        ).rejects.toThrow(
+          'Cannot start pnpm verify while an expensive local verification command is already running.',
+        );
       },
     );
   });
@@ -589,7 +591,9 @@ describe('withVerifyCommandLock expensive coordination', () => {
               staleAfterMs: 50_000,
             },
           ),
-        ).rejects.toThrow('Another expensive local verification command is already running.');
+        ).rejects.toThrow(
+          'Cannot start pnpm verify while an expensive local verification command is already running.',
+        );
       },
     );
   });
