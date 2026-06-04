@@ -2,11 +2,14 @@
 import { MDCheckbox } from '@shared/ui/Checkbox';
 import { MDListItem } from '@shared/ui/Lists';
 
-const { headline, supportingText, checked, disabled } = defineProps<{
+const { headline, supportingText, checked, disabled, readonly, lines } = defineProps<{
   headline: string;
   supportingText: string;
   checked: boolean;
   disabled?: boolean | undefined;
+  /** When true, renders as non-interactive: visually checked, no button/ripple, aria-readonly. */
+  readonly?: boolean | undefined;
+  lines?: 1 | 2 | 3 | undefined;
 }>();
 
 const emit = defineEmits<{
@@ -14,7 +17,7 @@ const emit = defineEmits<{
 }>();
 
 const onChange = () => {
-  if (disabled) {
+  if (disabled || readonly) {
     return;
   }
 
@@ -22,7 +25,7 @@ const onChange = () => {
 };
 
 const onKeydown = (event: KeyboardEvent) => {
-  if (disabled || !['Enter', ' '].includes(event.key)) {
+  if (disabled || readonly || !['Enter', ' '].includes(event.key)) {
     return;
   }
 
@@ -33,13 +36,15 @@ const onKeydown = (event: KeyboardEvent) => {
 
 <template>
   <MDListItem
-    :is="disabled ? 'div' : 'button'"
-    :type="disabled ? false : 'button'"
+    :is="disabled || readonly ? 'div' : 'button'"
+    :type="disabled || readonly ? false : 'button'"
     item-role="checkbox"
     :headline="headline"
     :disabled="disabled"
+    :lines="lines"
     :aria-checked="checked"
     :aria-disabled="disabled ? 'true' : undefined"
+    :aria-readonly="readonly ? 'true' : undefined"
     @click="onChange"
     @keydown="onKeydown"
   >

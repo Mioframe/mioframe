@@ -9,10 +9,12 @@ vi.mock('@shared/ui/State/useRipple', () => ({
 const mountSettingsCheckboxListItem = async ({
   checked = false,
   disabled = false,
+  readonly = false,
   onChange,
 }: {
   checked?: boolean | undefined;
   disabled?: boolean | undefined;
+  readonly?: boolean | undefined;
   onChange?: (() => void) | undefined;
 } = {}) => {
   const root = document.createElement('div');
@@ -22,6 +24,7 @@ const mountSettingsCheckboxListItem = async ({
     supportingText: 'Connect Google Drive accounts to open files you choose.',
     checked,
     disabled,
+    readonly,
     onChange,
   });
 
@@ -96,6 +99,32 @@ describe('SettingsCheckboxListItem', () => {
     expect(row?.getAttribute('aria-checked')).toBe('true');
     expect(row?.getAttribute('aria-disabled')).toBe('true');
     expect(row?.hasAttribute('tabindex')).toBe(false);
+
+    row?.click();
+    row?.dispatchEvent(new KeyboardEvent('keydown', { key: ' ', bubbles: true }));
+    row?.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+    await nextTick();
+
+    expect(onChange).not.toHaveBeenCalled();
+
+    unmount();
+  });
+
+  it('renders a readonly checkbox row as checked, non-interactive, with aria-readonly', async () => {
+    const onChange = vi.fn();
+    const { root, unmount } = await mountSettingsCheckboxListItem({
+      checked: true,
+      readonly: true,
+      onChange,
+    });
+
+    const row = getCheckboxRow(root);
+
+    expect(row?.tagName).toBe('DIV');
+    expect(row?.getAttribute('aria-checked')).toBe('true');
+    expect(row?.getAttribute('aria-readonly')).toBe('true');
+    // readonly is not disabled: no aria-disabled
+    expect(row?.getAttribute('aria-disabled')).toBeNull();
 
     row?.click();
     row?.dispatchEvent(new KeyboardEvent('keydown', { key: ' ', bubbles: true }));

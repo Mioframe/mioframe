@@ -1,7 +1,9 @@
 <script setup lang="ts">
+import { watch } from 'vue';
 import { useBrowserStoragePersistence } from '@entity/browserStoragePersistence';
 import { MDListItem } from '@shared/ui/Lists';
 import { MDSymbol } from '@shared/ui/Icon';
+import { useSnackbar } from '@shared/ui/Snackbar';
 import LocalFSDeviceFileListItem from './LocalFSDeviceFileListItem.vue';
 
 const props = defineProps<{
@@ -13,7 +15,9 @@ const emit = defineEmits<{
   clickPath: [name: string];
 }>();
 
-const { status, isRequesting, requestPersistence } = useBrowserStoragePersistence();
+const { status, isRequesting, lastRequestOutcome, requestPersistence } =
+  useBrowserStoragePersistence();
+const { addSnackbar } = useSnackbar();
 
 const onClickNav = () => {
   emit('clickPath', props.name);
@@ -22,6 +26,20 @@ const onClickNav = () => {
 const onEnableStorage = () => {
   void requestPersistence();
 };
+
+watch(lastRequestOutcome, (outcome) => {
+  if (outcome === 'enabled') {
+    addSnackbar({ text: 'More reliable browser storage enabled.' });
+  } else if (outcome === 'not-enabled') {
+    addSnackbar({
+      text: 'The browser did not enable more reliable storage. You can continue using standard browser storage, but keep backups.',
+    });
+  } else if (outcome === 'failed') {
+    addSnackbar({
+      text: 'More reliable storage could not be enabled in this browser. You can continue using standard browser storage, but keep backups.',
+    });
+  }
+});
 </script>
 
 <template>
@@ -31,6 +49,7 @@ const onEnableStorage = () => {
     type="button"
     headline="Enable more reliable storage"
     :disabled="isRequesting"
+    :lines="2"
     @click="onEnableStorage"
   >
     <template #leadingIcon>
@@ -46,6 +65,7 @@ const onEnableStorage = () => {
     is="div"
     v-else-if="status === 'unsupported'"
     headline="More reliable storage unavailable"
+    :lines="2"
   >
     <template #leadingIcon>
       <MDSymbol name="shield" />

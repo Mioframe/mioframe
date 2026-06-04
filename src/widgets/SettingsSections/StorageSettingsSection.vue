@@ -9,6 +9,9 @@ const { status, isRequesting, requestPersistence } = useBrowserStoragePersistenc
 
 const isChecked = computed(() => status.value === 'persistent');
 
+// Persistent state is readonly (one-way capability), not disabled.
+const isReadonly = computed(() => status.value === 'persistent');
+
 const isDisabled = computed(
   () => status.value === 'unsupported' || status.value === 'checking' || isRequesting.value,
 );
@@ -38,6 +41,8 @@ const onChange = () => {
         :supporting-text="supportingText"
         :checked="isChecked"
         :disabled="isDisabled"
+        :readonly="isReadonly"
+        :lines="2"
         @change="onChange"
       />
     </MDListContainer>

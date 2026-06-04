@@ -34,6 +34,42 @@ const removeNavigator = () => {
   });
 };
 
+const withWindowRemoved = async (fn: () => Promise<void>) => {
+  const original = globalThis.window;
+  Object.defineProperty(globalThis, 'window', {
+    value: undefined,
+    configurable: true,
+    writable: true,
+  });
+  try {
+    await fn();
+  } finally {
+    Object.defineProperty(globalThis, 'window', {
+      value: original,
+      configurable: true,
+      writable: true,
+    });
+  }
+};
+
+const withDocumentRemoved = async (fn: () => Promise<void>) => {
+  const original = globalThis.document;
+  Object.defineProperty(globalThis, 'document', {
+    value: undefined,
+    configurable: true,
+    writable: true,
+  });
+  try {
+    await fn();
+  } finally {
+    Object.defineProperty(globalThis, 'document', {
+      value: original,
+      configurable: true,
+      writable: true,
+    });
+  }
+};
+
 describe('useBrowserStoragePersistence', () => {
   afterEach(() => {
     vi.resetModules();
@@ -93,51 +129,116 @@ describe('useBrowserStoragePersistence', () => {
     expect(status.value).toBe('ordinary');
   });
 
-  it('transitions to persistent when requestPersistence resolves true', async () => {
+  it('transitions to persistent and sets enabled outcome when requestPersistence resolves true', async () => {
     setupNavigatorStorage();
     mockPersisted.mockResolvedValue(false);
     mockPersist.mockResolvedValue(true);
 
     const { useBrowserStoragePersistence } = await import('./useBrowserStoragePersistence');
-    const { status, requestPersistence } = useBrowserStoragePersistence();
+    const { status, lastRequestOutcome, requestPersistence } = useBrowserStoragePersistence();
 
     await vi.waitUntil(() => status.value === 'ordinary');
     await requestPersistence();
 
     expect(status.value).toBe('persistent');
+    expect(lastRequestOutcome.value).toBe('enabled');
     expect(mockPersist).toHaveBeenCalledTimes(1);
   });
 
-  it('stays ordinary when requestPersistence resolves false (browser denial)', async () => {
+  it('stays ordinary and sets not-enabled outcome when requestPersistence resolves false (browser denial)', async () => {
     setupNavigatorStorage();
     mockPersisted.mockResolvedValue(false);
     mockPersist.mockResolvedValue(false);
 
     const { useBrowserStoragePersistence } = await import('./useBrowserStoragePersistence');
-    const { status, requestPersistence } = useBrowserStoragePersistence();
+    const { status, lastRequestOutcome, requestPersistence } = useBrowserStoragePersistence();
 
     await vi.waitUntil(() => status.value === 'ordinary');
     await requestPersistence();
 
     expect(status.value).toBe('ordinary');
+    expect(lastRequestOutcome.value).toBe('not-enabled');
     expect(mockPersist).toHaveBeenCalledTimes(1);
   });
 
-  it('refreshes and does not leave stale state when requestPersistence throws', async () => {
+  it('sets failed outcome and refreshes when requestPersistence throws', async () => {
     setupNavigatorStorage();
     mockPersisted.mockResolvedValue(false);
     mockPersist.mockRejectedValue(new Error('Browser rejected with internal path /private/data'));
 
     const { useBrowserStoragePersistence } = await import('./useBrowserStoragePersistence');
-    const { status, requestPersistence, isRequesting } = useBrowserStoragePersistence();
+    const { status, lastRequestOutcome, requestPersistence, isRequesting } =
+      useBrowserStoragePersistence();
 
     await vi.waitUntil(() => status.value === 'ordinary');
 
     await expect(requestPersistence()).resolves.toBeUndefined();
 
-    // After the catch, refresh() is called which reads persisted() = false → ordinary.
+    // After catch, refresh() is called which reads persisted() = false → ordinary.
     expect(status.value).toBe('ordinary');
+    expect(lastRequestOutcome.value).toBe('failed');
     expect(isRequesting.value).toBe(false);
+  });
+
+  it('sets unsupported outcome when storage manager is unavailable during request', async () => {
+    setupNavigatorStorage();
+    mockPersisted.mockResolvedValue(false);
+
+    const { useBrowserStoragePersistence } = await import('./useBrowserStoragePersistence');
+    const { status, lastRequestOutcome, requestPersistence } = useBrowserStoragePersistence();
+
+    await vi.waitUntil(() => status.value === 'ordinary');
+
+    // Simulate storage becoming unavailable before the request
+    removeNavigatorStorage();
+
+    await requestPersistence();
+
+    expect(lastRequestOutcome.value).toBe('unsupported');
+    expect(status.value).toBe('unsupported');
+  });
+
+  it('resets lastRequestOutcome to none before each new request', async () => {
+    setupNavigatorStorage();
+    mockPersisted.mockResolvedValue(false);
+    mockPersist.mockResolvedValueOnce(false).mockResolvedValueOnce(true);
+
+    const { useBrowserStoragePersistence } = await import('./useBrowserStoragePersistence');
+    const { status, lastRequestOutcome, requestPersistence } = useBrowserStoragePersistence();
+
+    await vi.waitUntil(() => status.value === 'ordinary');
+    await requestPersistence();
+    expect(lastRequestOutcome.value).toBe('not-enabled');
+
+    // Second request: outcome resets before resolving
+    await requestPersistence();
+    expect(lastRequestOutcome.value).toBe('enabled');
+  });
+
+  it('does not crash when window is undefined', async () => {
+    setupNavigatorStorage();
+    mockPersisted.mockResolvedValue(false);
+
+    await withWindowRemoved(async () => {
+      await expect(
+        import('./useBrowserStoragePersistence').then(({ useBrowserStoragePersistence }) => {
+          useBrowserStoragePersistence();
+        }),
+      ).resolves.toBeUndefined();
+    });
+  });
+
+  it('does not crash when document is undefined', async () => {
+    setupNavigatorStorage();
+    mockPersisted.mockResolvedValue(false);
+
+    await withDocumentRemoved(async () => {
+      await expect(
+        import('./useBrowserStoragePersistence').then(({ useBrowserStoragePersistence }) => {
+          useBrowserStoragePersistence();
+        }),
+      ).resolves.toBeUndefined();
+    });
   });
 
   it('refreshes status on window focus event', async () => {
@@ -214,7 +315,7 @@ describe('useBrowserStoragePersistence', () => {
     expect(status.value).toBe('persistent');
   });
 
-  it('registers focus, pageshow, and visibilitychange listeners on setup', async () => {
+  it('registers focus, pageshow, and visibilitychange listeners on setup when globals exist', async () => {
     setupNavigatorStorage();
     mockPersisted.mockResolvedValue(false);
 

@@ -8,6 +8,14 @@ export type BrowserStoragePersistenceStatus =
   | 'persistent'
   | 'unsupported';
 
+/** Outcome of the last requestPersistence() call. */
+export type BrowserStoragePersistenceRequestOutcome =
+  | 'none'
+  | 'enabled'
+  | 'not-enabled'
+  | 'failed'
+  | 'unsupported';
+
 const getStorageManager = (): Pick<StorageManager, 'persisted' | 'persist'> | undefined => {
   if (typeof navigator === 'undefined') return undefined;
   const { storage } = navigator;
@@ -20,6 +28,7 @@ const getStorageManager = (): Pick<StorageManager, 'persisted' | 'persist'> | un
 const setupBrowserStoragePersistence = () => {
   const status = ref<BrowserStoragePersistenceStatus>('checking');
   const isRequesting = ref(false);
+  const lastRequestOutcome = ref<BrowserStoragePersistenceRequestOutcome>('none');
 
   const refresh = async () => {
     const manager = getStorageManager();
@@ -42,14 +51,22 @@ const setupBrowserStoragePersistence = () => {
     }
     const manager = getStorageManager();
     if (!manager) {
+      lastRequestOutcome.value = 'unsupported';
+      status.value = 'unsupported';
       return;
     }
     isRequesting.value = true;
+    lastRequestOutcome.value = 'none';
     try {
       const result = await manager.persist();
-      status.value = result ? 'persistent' : 'ordinary';
+      if (result) {
+        status.value = 'persistent';
+        lastRequestOutcome.value = 'enabled';
+      } else {
+        lastRequestOutcome.value = 'not-enabled';
+      }
     } catch {
-      // Expected outcome (e.g. user gesture required, API unavailable): refresh to get real state.
+      lastRequestOutcome.value = 'failed';
       await refresh();
     } finally {
       isRequesting.value = false;
@@ -60,21 +77,29 @@ const setupBrowserStoragePersistence = () => {
 
   const onFocus = () => void refresh();
   const onVisibilityChange = () => {
-    if (document.visibilityState === 'visible') void refresh();
+    if (typeof document !== 'undefined' && document.visibilityState === 'visible') void refresh();
   };
   const onPageShow = () => void refresh();
 
-  window.addEventListener('focus', onFocus);
-  document.addEventListener('visibilitychange', onVisibilityChange);
-  window.addEventListener('pageshow', onPageShow);
+  if (typeof window !== 'undefined') {
+    window.addEventListener('focus', onFocus);
+    window.addEventListener('pageshow', onPageShow);
+  }
+  if (typeof document !== 'undefined') {
+    document.addEventListener('visibilitychange', onVisibilityChange);
+  }
 
   tryOnScopeDispose(() => {
-    window.removeEventListener('focus', onFocus);
-    document.removeEventListener('visibilitychange', onVisibilityChange);
-    window.removeEventListener('pageshow', onPageShow);
+    if (typeof window !== 'undefined') {
+      window.removeEventListener('focus', onFocus);
+      window.removeEventListener('pageshow', onPageShow);
+    }
+    if (typeof document !== 'undefined') {
+      document.removeEventListener('visibilitychange', onVisibilityChange);
+    }
   });
 
-  return { status, isRequesting, requestPersistence, refresh };
+  return { status, isRequesting, lastRequestOutcome, requestPersistence, refresh };
 };
 
 /** Returns the shared browser-storage persistence state and request action. */
