@@ -6,6 +6,7 @@ import { mount } from '@vue/test-utils';
 const deviceFiles = ref<Array<{ name: string; description?: string; canDisconnect: boolean }>>([]);
 const disconnectDeviceDirectoryMock = vi.fn();
 const enableStorageMock = vi.fn();
+const showFeedbackMock = vi.fn();
 const persistenceStatus = ref<'checking' | 'ordinary' | 'persistent' | 'unsupported'>('checking');
 const isRequesting = ref(false);
 
@@ -31,7 +32,7 @@ vi.mock('@entity/browserStoragePersistence', () => ({
 
 vi.mock('@feature/browserStoragePersistenceEnable', () => ({
   useBrowserStoragePersistenceFeedback: () => ({
-    showFeedback: vi.fn(),
+    showFeedback: showFeedbackMock,
   }),
 }));
 
@@ -163,6 +164,7 @@ describe('LocalFSWidget', () => {
     isRequesting.value = false;
     disconnectDeviceDirectoryMock.mockReset();
     enableStorageMock.mockReset();
+    showFeedbackMock.mockReset();
     document.body.innerHTML = '';
   });
 
@@ -286,7 +288,7 @@ describe('LocalFSWidget', () => {
     expect(enableBeforeNav).toBe(true);
   });
 
-  it('does not emit clickPath when the enable storage action is clicked', async () => {
+  it('calls requestPersistence and passes its outcome to showFeedback, does not emit clickPath', async () => {
     persistenceStatus.value = 'ordinary';
     enableStorageMock.mockResolvedValue('not-enabled');
     deviceFiles.value = [
@@ -302,6 +304,8 @@ describe('LocalFSWidget', () => {
     await wrapper.find('[data-headline="Enable more reliable storage"]').trigger('click');
 
     expect(enableStorageMock).toHaveBeenCalledTimes(1);
+    expect(showFeedbackMock).toHaveBeenCalledOnce();
+    expect(showFeedbackMock).toHaveBeenCalledWith('not-enabled');
     expect(wrapper.emitted('clickPath')).toBeUndefined();
   });
 

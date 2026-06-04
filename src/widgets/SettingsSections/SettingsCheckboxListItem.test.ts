@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { createApp, nextTick } from 'vue';
+import { createApp, h, nextTick } from 'vue';
 import SettingsCheckboxListItem from './SettingsCheckboxListItem.vue';
 
 vi.mock('@shared/ui/State/useRipple', () => ({
@@ -14,15 +14,70 @@ vi.mock('@shared/ui/ProgressIndicators', () => ({
   },
 }));
 
+vi.mock('@shared/ui/Lists', () => ({
+  MDListItem: {
+    name: 'MDListItemStub',
+    inheritAttrs: false,
+    props: {
+      headline: { type: String, required: true },
+      is: { type: String, default: 'div' },
+      type: { default: undefined },
+      itemRole: { type: String, default: undefined },
+      disabled: { type: Boolean, default: false },
+      lines: { type: Number, default: undefined },
+    },
+    emits: ['click', 'keydown'],
+    setup(
+      props: {
+        headline: string;
+        is: string;
+        type: unknown;
+        itemRole?: string;
+        disabled?: boolean;
+        lines?: number;
+      },
+      {
+        attrs,
+        emit,
+        slots,
+      }: {
+        attrs: Record<string, unknown>;
+        emit: (event: string, ...args: unknown[]) => void;
+        slots: Record<string, (() => ReturnType<typeof h>) | undefined>;
+      },
+    ) {
+      return () =>
+        h(
+          props.is,
+          {
+            ...attrs,
+            role: props.itemRole ?? undefined,
+            type: typeof props.type === 'string' ? props.type : undefined,
+            'data-lines': props.lines,
+            onClick: (e: MouseEvent) => {
+              if (!props.disabled) emit('click', e);
+            },
+            onKeydown: (e: KeyboardEvent) => {
+              if (!props.disabled) emit('keydown', e);
+            },
+          },
+          [slots['supportingText']?.(), slots['trailingIcon']?.()],
+        );
+    },
+  },
+}));
+
 const mountSettingsCheckboxListItem = async ({
   checked = false,
   disabled = false,
   loading = false,
+  lines,
   onChange,
 }: {
   checked?: boolean | undefined;
   disabled?: boolean | undefined;
   loading?: boolean | undefined;
+  lines?: 1 | 2 | 3 | undefined;
   onChange?: (() => void) | undefined;
 } = {}) => {
   const root = document.createElement('div');
@@ -33,6 +88,7 @@ const mountSettingsCheckboxListItem = async ({
     checked,
     disabled,
     loading,
+    lines,
     onChange,
   });
 
@@ -145,11 +201,11 @@ describe('SettingsCheckboxListItem', () => {
     unmount();
   });
 
-  it('forwards lines prop correctly', async () => {
-    const { root, unmount } = await mountSettingsCheckboxListItem();
+  it('forwards lines prop to MDListItem', async () => {
+    const { root, unmount } = await mountSettingsCheckboxListItem({ lines: 2 });
 
-    // lines is passed through to MDListItem — we just check the component mounts without error
-    expect(root.querySelector('[role="checkbox"]')).not.toBeNull();
+    const row = root.querySelector<HTMLElement>('[role="checkbox"]');
+    expect(row?.getAttribute('data-lines')).toBe('2');
 
     unmount();
   });

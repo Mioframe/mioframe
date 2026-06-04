@@ -18,6 +18,7 @@ const browserStorageStatus = ref<'checking' | 'ordinary' | 'persistent' | 'unsup
   'checking',
 );
 const enableStorageMock = vi.fn();
+const showFeedbackMock = vi.fn();
 const isEnablingStorage = ref(false);
 
 vi.mock('@entity/localSettings', () => ({
@@ -37,7 +38,7 @@ vi.mock('@entity/localSettings', () => ({
 
 vi.mock('@feature/browserStoragePersistenceEnable', () => ({
   useBrowserStoragePersistenceFeedback: () => ({
-    showFeedback: vi.fn(),
+    showFeedback: showFeedbackMock,
   }),
 }));
 
@@ -250,6 +251,7 @@ describe('SettingsSections', () => {
     isEnablingStorage.value = false;
     setDiagnosticsEnabledByUserMock.mockClear();
     enableStorageMock.mockClear();
+    showFeedbackMock.mockClear();
     document.body.innerHTML = '';
   });
 
@@ -445,6 +447,8 @@ describe('SettingsSections', () => {
     await nextTick();
 
     expect(enableStorageMock).toHaveBeenCalledTimes(1);
+    expect(showFeedbackMock).toHaveBeenCalledOnce();
+    expect(showFeedbackMock).toHaveBeenCalledWith('not-enabled');
 
     unmount();
   });
