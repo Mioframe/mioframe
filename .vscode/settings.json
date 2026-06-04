@@ -13,8 +13,13 @@
   },
   "files.watcherExclude": {
     "**/.stryker-tmp/**": true,
+    "**/dist/**": true,
+    "**/node_modules/**": true,
+    "**/temp/**": true,
     "**/tmp/**": true,
-    "**/temp/**": true
+    "**/.brv/*": true,
+    "**/storybook-static/**": true,
+    "**/test-results/**": true
   },
   "search.exclude": {
     "**/.stryker-tmp": true,
