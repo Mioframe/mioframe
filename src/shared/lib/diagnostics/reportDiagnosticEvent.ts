@@ -21,17 +21,25 @@ const buildDedupeKey = (event: DiagnosticEvent): string => {
 
 const isRecentDuplicate = (key: string): boolean => {
   const now = Date.now();
-  if (dedupeMap.size >= DEDUPE_MAP_MAX_SIZE) {
-    for (const [k, ts] of dedupeMap) {
-      if (now - ts > DEDUPE_TTL_MS) {
-        dedupeMap.delete(k);
-      }
+
+  // Always remove expired entries so fresh events can take their place.
+  for (const [k, ts] of dedupeMap) {
+    if (now - ts > DEDUPE_TTL_MS) {
+      dedupeMap.delete(k);
     }
   }
+
   const lastSeen = dedupeMap.get(key);
   if (lastSeen !== undefined && now - lastSeen < DEDUPE_TTL_MS) {
     return true;
   }
+
+  // Evict the oldest entry when the map is at capacity so the size stays bounded.
+  if (dedupeMap.size >= DEDUPE_MAP_MAX_SIZE) {
+    const oldestKey = dedupeMap.keys().next().value;
+    if (oldestKey !== undefined) dedupeMap.delete(oldestKey);
+  }
+
   dedupeMap.set(key, now);
   return false;
 };

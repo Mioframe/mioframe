@@ -21,7 +21,7 @@ export const reportWriteAccessReplayStillBlocked = ({
   pendingCount: number;
 }): void => {
   reportDiagnosticEvent({
-    name: 'writeAccessRecovery.replayStillBlocked',
+    name: 'writeAccessRecovery.repositoryReplayStillBlocked',
     severity: DiagnosticSeverity.Error,
     result: DiagnosticResult.Blocked,
     classification: DiagnosticClassification.Access,
@@ -45,7 +45,7 @@ export const reportWriteAccessReplayStorageFailure = ({
   failureClassification?: RetryingStorageAdapterFailureClassification | undefined;
 }): void => {
   reportDiagnosticEvent({
-    name: 'writeAccessRecovery.replayStorageFailure',
+    name: 'writeAccessRecovery.repositoryReplayStorageFailure',
     severity: DiagnosticSeverity.Error,
     result: DiagnosticResult.Failed,
     classification:

@@ -519,6 +519,54 @@ describe('reportDiagnosticEvent', () => {
       expect(realFacade.captureMessage).toHaveBeenCalledOnce();
     });
 
+    it('reporting more than DEDUPE_MAP_MAX_SIZE unique events does not break reporting', async () => {
+      ensureSentryMock.mockResolvedValue(realFacade);
+      const { reportDiagnosticEvent } = await import('./reportDiagnosticEvent');
+
+      // 201 unique events exceeds the internal dedupe cap of 200 — must not throw or corrupt state
+      expect(() => {
+        for (let i = 0; i <= 200; i++) {
+          reportDiagnosticEvent(makeEvent({ name: `flow.bounded${i}` }));
+        }
+      }).not.toThrow();
+
+      await waitForAsyncWork();
+
+      // Some events reach Sentry; exact count depends on the internal queue limit, not dedupe cap
+      expect(realFacade.captureMessage.mock.calls.length).toBeGreaterThan(0);
+    });
+
+    it('oldest dedupe key is evicted when the map is full so the size stays bounded', async () => {
+      vi.useFakeTimers();
+      ensureSentryMock.mockResolvedValue(realFacade);
+      const { reportDiagnosticEvent } = await import('./reportDiagnosticEvent');
+
+      // Fill the map with 200 unique events (all fresh — TTL not expired)
+      for (let i = 0; i < 200; i++) {
+        reportDiagnosticEvent(makeEvent({ name: `flow.evictTest${i}` }));
+      }
+      await vi.runAllTimersAsync();
+
+      // event0 is the oldest entry; it should still be deduped (within TTL)
+      realFacade.captureMessage.mockClear();
+      reportDiagnosticEvent(makeEvent({ name: 'flow.evictTest0' }));
+      await vi.runAllTimersAsync();
+      expect(realFacade.captureMessage).not.toHaveBeenCalled();
+
+      // Sending a 201st unique event must evict the oldest (event0) to stay bounded
+      reportDiagnosticEvent(makeEvent({ name: 'flow.evictTest200' }));
+      await vi.runAllTimersAsync();
+
+      // event0 was evicted — it can now be sent again as a new event
+      reportDiagnosticEvent(makeEvent({ name: 'flow.evictTest0' }));
+      await vi.runAllTimersAsync();
+
+      // event200 + event0 (re-sent after eviction) = 2 sends
+      expect(realFacade.captureMessage).toHaveBeenCalledTimes(2);
+
+      vi.useRealTimers();
+    });
+
     it('after TTL expires the same event can be sent again', async () => {
       vi.useFakeTimers();
       ensureSentryMock.mockResolvedValue(realFacade);

@@ -29,7 +29,7 @@ describe('repositoriesDiagnostics', () => {
 
       expect(sink).toHaveLength(1);
       expect(sink[0]).toMatchObject({
-        name: 'writeAccessRecovery.replayStillBlocked',
+        name: 'writeAccessRecovery.repositoryReplayStillBlocked',
         severity: DiagnosticSeverity.Error,
         result: DiagnosticResult.Blocked,
         classification: DiagnosticClassification.Access,
@@ -56,7 +56,7 @@ describe('repositoriesDiagnostics', () => {
 
       expect(sink).toHaveLength(1);
       expect(sink[0]).toMatchObject({
-        name: 'writeAccessRecovery.replayStorageFailure',
+        name: 'writeAccessRecovery.repositoryReplayStorageFailure',
         severity: DiagnosticSeverity.Error,
         result: DiagnosticResult.Failed,
         classification: DiagnosticClassification.Storage,

@@ -364,7 +364,7 @@ describe('useFileSystemAccessPermissionBroker', () => {
       scope.stop();
     });
 
-    it('emits a replayStillBlocked diagnostic event when grantedWithReplayFailures', async () => {
+    it('emits a grantReplayStillBlocked diagnostic event when grantedWithReplayFailures', async () => {
       const handle = createDirectoryHandleMock({
         name: 'Work',
         permissionState: 'prompt',
@@ -384,7 +384,7 @@ describe('useFileSystemAccessPermissionBroker', () => {
 
       expect(diagnosticSink).toHaveLength(1);
       expect(diagnosticSink[0]).toMatchObject({
-        name: 'writeAccessRecovery.replayStillBlocked',
+        name: 'writeAccessRecovery.grantReplayStillBlocked',
         severity: DiagnosticSeverity.Error,
         result: DiagnosticResult.Failed,
         classification: DiagnosticClassification.Storage,
@@ -395,7 +395,7 @@ describe('useFileSystemAccessPermissionBroker', () => {
       scope.stop();
     });
 
-    it('emits a replayStorageFailure diagnostic event when grantedWithStorageFailures', async () => {
+    it('emits a grantReplayStorageFailure diagnostic event when grantedWithStorageFailures', async () => {
       const handle = createDirectoryHandleMock({
         name: 'Work',
         permissionState: 'prompt',
@@ -417,7 +417,7 @@ describe('useFileSystemAccessPermissionBroker', () => {
 
       expect(diagnosticSink).toHaveLength(1);
       expect(diagnosticSink[0]).toMatchObject({
-        name: 'writeAccessRecovery.replayStorageFailure',
+        name: 'writeAccessRecovery.grantReplayStorageFailure',
         severity: DiagnosticSeverity.Error,
         result: DiagnosticResult.Failed,
         classification: DiagnosticClassification.Storage,

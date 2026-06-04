@@ -5,8 +5,18 @@ import {
   DiagnosticSeverity,
   reportDiagnosticEvent,
 } from '@shared/lib/diagnostics';
+import type { DiagnosticEvent } from '@shared/lib/diagnostics';
 
-const PROVIDER_TAGS = { provider: 'webFileSystem' } as const;
+const PROVIDER = 'webFileSystem' as const;
+
+type WebFsEventParams = Omit<DiagnosticEvent, 'safeTags'> & { operation: string };
+
+const reportWebFsEvent = ({ operation, ...rest }: WebFsEventParams): void => {
+  reportDiagnosticEvent({
+    ...rest,
+    safeTags: { provider: PROVIDER, operation },
+  });
+};
 
 /**
  * Emits a diagnostic event when a write-access recovery attempt finds no pending request.
@@ -14,13 +24,13 @@ const PROVIDER_TAGS = { provider: 'webFileSystem' } as const;
  * @param root0 - Event options (attemptId).
  */
 export const reportWriteAccessMissingRequest = ({ attemptId }: { attemptId: string }): void => {
-  reportDiagnosticEvent({
+  reportWebFsEvent({
     name: 'writeAccessRecovery.missingRequest',
     severity: DiagnosticSeverity.Warning,
     result: DiagnosticResult.Stale,
     classification: DiagnosticClassification.Access,
     attemptId,
-    safeTags: { ...PROVIDER_TAGS, operation: 'requestAccess' },
+    operation: 'requestAccess',
   });
 };
 
@@ -30,13 +40,13 @@ export const reportWriteAccessMissingRequest = ({ attemptId }: { attemptId: stri
  * @param root0 - Event options (attemptId).
  */
 export const reportWriteAccessStaleResolve = ({ attemptId }: { attemptId: string }): void => {
-  reportDiagnosticEvent({
+  reportWebFsEvent({
     name: 'writeAccessRecovery.staleResolve',
     severity: DiagnosticSeverity.Warning,
     result: DiagnosticResult.Stale,
     classification: DiagnosticClassification.Access,
     attemptId,
-    safeTags: { ...PROVIDER_TAGS, operation: 'resolveAccessRequest' },
+    operation: 'resolveAccessRequest',
   });
 };
 
@@ -45,13 +55,13 @@ export const reportWriteAccessStaleResolve = ({ attemptId }: { attemptId: string
  * @param root0 - Event options (attemptId).
  */
 export const reportWriteAccessPermissionDenied = ({ attemptId }: { attemptId: string }): void => {
-  reportDiagnosticEvent({
+  reportWebFsEvent({
     name: 'writeAccessRecovery.permissionDenied',
     severity: DiagnosticSeverity.Warning,
     result: DiagnosticResult.Denied,
     classification: DiagnosticClassification.Access,
     attemptId,
-    safeTags: { ...PROVIDER_TAGS, operation: 'resolveAccessRequest' },
+    operation: 'resolveAccessRequest',
   });
 };
 
@@ -67,45 +77,45 @@ export const reportWriteAccessProviderFailure = ({
   attemptId: string;
   error: SanitizedDiagnosticError;
 }): void => {
-  reportDiagnosticEvent({
+  reportWebFsEvent({
     name: 'writeAccessRecovery.providerFailure',
     severity: DiagnosticSeverity.Error,
     result: DiagnosticResult.Failed,
     classification: DiagnosticClassification.Provider,
     attemptId,
     error,
-    safeTags: { ...PROVIDER_TAGS, operation: 'requestAccess' },
+    operation: 'requestAccess',
   });
 };
 
 /**
  * Emits a diagnostic event when write access was granted but pending saves could not be
- * replayed — the replay reported still-blocked or partial failures.
+ * replayed — the replay reported still-blocked or partial failures (service-client side).
  * @param root0 - Event options (attemptId).
  */
 export const reportWriteAccessReplayFailure = ({ attemptId }: { attemptId: string }): void => {
-  reportDiagnosticEvent({
-    name: 'writeAccessRecovery.replayStillBlocked',
+  reportWebFsEvent({
+    name: 'writeAccessRecovery.grantReplayStillBlocked',
     severity: DiagnosticSeverity.Error,
     result: DiagnosticResult.Failed,
     classification: DiagnosticClassification.Storage,
     attemptId,
-    safeTags: { ...PROVIDER_TAGS, operation: 'resolveAccessRequest' },
+    operation: 'resolveAccessRequest',
   });
 };
 
 /**
  * Emits a diagnostic event when write access was granted but replay hit a storage failure
- * (the underlying store returned an error, not just a blocked state).
+ * (the underlying store returned an error, not just a blocked state) — service-client side.
  * @param root0 - Event options (attemptId).
  */
 export const reportWriteAccessStorageFailure = ({ attemptId }: { attemptId: string }): void => {
-  reportDiagnosticEvent({
-    name: 'writeAccessRecovery.replayStorageFailure',
+  reportWebFsEvent({
+    name: 'writeAccessRecovery.grantReplayStorageFailure',
     severity: DiagnosticSeverity.Error,
     result: DiagnosticResult.Failed,
     classification: DiagnosticClassification.Storage,
     attemptId,
-    safeTags: { ...PROVIDER_TAGS, operation: 'resolveAccessRequest' },
+    operation: 'resolveAccessRequest',
   });
 };
