@@ -69,6 +69,8 @@ export const useWriteAccessRecoveryState = (state: ComputedRef<VfsActivityState>
     writeAccessRecovery,
     (recovery) => {
       if (!recovery) {
+        // Invalidate any in-flight check so its result cannot overwrite the cleared state.
+        checkSequence++;
         pendingRequestExists.value = null;
         storageFailureAfterGrant.value = false;
       } else {

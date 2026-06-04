@@ -4,6 +4,40 @@ This document describes when to emit diagnostic events, how to use the project d
 
 ---
 
+## Two-layer model
+
+The diagnostics system uses two layers.
+
+### 1. Generic diagnostics core
+
+`src/shared/lib/diagnostics` provides reusable infrastructure only:
+
+- `reportDiagnosticEvent` and the async queue/flush mechanism;
+- `sanitizeDiagnosticError`;
+- in-memory test sink (`setDiagnosticEventSink`);
+- generic event model (`DiagnosticEvent`);
+- generic enums (`DiagnosticSeverity`, `DiagnosticResult`, `DiagnosticClassification`);
+- safe tag and counter types.
+
+The core must not know about specific flows (write-access recovery, pending saves, provider kinds, repository replay, etc.).
+
+### 2. Flow-specific diagnostic wrappers
+
+Each instrumented flow defines its own local wrapper module near the flow:
+
+- `src/shared/serviceClient/fileSystem/writeAccessRecoveryDiagnostics.ts` — browser write-access recovery flow.
+
+A wrapper:
+
+- defines project-controlled event names (e.g. `'writeAccessRecovery.permissionDenied'`);
+- maps flow outcomes to the generic `result` and `classification` enums;
+- attaches flow-specific `safeTags` such as `provider` and `operation`;
+- exposes short named functions so call sites do not manually assemble the full event.
+
+**Rule: do not add flow-specific feature/operation/stage/provider values to the shared core. Create a local `*Diagnostics.ts` module near the flow instead.**
+
+---
+
 ## Concepts
 
 ### Four distinct categories
@@ -15,9 +49,9 @@ This document describes when to emit diagnostic events, how to use the project d
 | **Handled exception** | Unexpected internal failure reported to Sentry | `reportHandledError`                 |
 | **Diagnostic event**  | Structured async/status/recovery observation   | `reportDiagnosticEvent`              |
 
-Use `reportDiagnosticEvent` for structured async, status, or recovery flows where a typed observation is needed without an exception. Use `reportHandledError` for ordinary unexpected exceptions only. Do not pass structured recovery metadata to `reportHandledError`; add enum values to `diagnosticEnums.ts` and call `reportDiagnosticEvent` instead.
+Use `reportDiagnosticEvent` for structured async, status, or recovery flows where a typed observation is needed without an exception. Use `reportHandledError` for ordinary unexpected exceptions only. Do not pass structured recovery metadata to `reportHandledError`; use `reportDiagnosticEvent` through a wrapper instead.
 
-`reportHandledError` accepts only `{ feature, action }` — there is no generic `metadata` field. This is intentional: ad-hoc metadata belongs in structured diagnostic events.
+`reportHandledError` accepts only `{ feature, action }` — there is no generic `metadata` field. This is intentional.
 
 ---
 
@@ -47,38 +81,18 @@ Do **not** emit a diagnostic event for:
 
 ## API
 
-All diagnostics are in `src/shared/lib/diagnostics`.
+All generic diagnostics infrastructure is in `src/shared/lib/diagnostics`.
 
 ### `reportDiagnosticEvent(event: DiagnosticEvent)`
 
-The only project-level API for structured diagnostic events.
+The only project-level API for structured diagnostic events. Call only from wrapper modules or service boundaries — never directly from features, entities, widgets, pages, or low-level providers.
 
 - Fire-and-forget, never throws into product code.
 - Respects Sentry consent state (`unknown`, `enabled`, `disabled`).
 - Writes to an optional in-memory test sink set via `setDiagnosticEventSink`.
 - Uses Sentry as the transport backend. Feature, service, provider, and UI code must not call Sentry directly.
 - Sets the Sentry event level from `DiagnosticSeverity` so events appear at the correct severity in Sentry.
-
-```ts
-import {
-  DiagnosticClassification,
-  DiagnosticFeature,
-  DiagnosticOperation,
-  DiagnosticResult,
-  DiagnosticSeverity,
-  DiagnosticStage,
-  reportDiagnosticEvent,
-} from '@shared/lib/diagnostics';
-
-reportDiagnosticEvent({
-  severity: DiagnosticSeverity.Error,
-  feature: DiagnosticFeature.WriteAccessRecovery,
-  operation: DiagnosticOperation.RequestAccess,
-  stage: DiagnosticStage.AccessRequestPrepare,
-  result: DiagnosticResult.StaleRequest,
-  classification: DiagnosticClassification.StaleRequest,
-});
-```
+- Forwards `safeTags` entries as individual Sentry tags.
 
 ### `sanitizeDiagnosticError(error: unknown): SanitizedDiagnosticError`
 
@@ -116,26 +130,22 @@ Exported for use by `useDiagnosticsReporting` when consent is revoked or Sentry 
 
 ---
 
-## Event contract fields
+## Generic event contract fields
 
-All fields are project-controlled enum values. No open-ended string or record metadata.
+All fields are project-controlled. No open-ended string or record metadata.
 
-| Field            | Type                       | Required | Description                                                               |
-| ---------------- | -------------------------- | -------- | ------------------------------------------------------------------------- |
-| `severity`       | `DiagnosticSeverity`       | Yes      | `Info`, `Warning`, `Error`, or `Fatal`                                    |
-| `feature`        | `DiagnosticFeature`        | Yes      | Feature area (e.g. `WriteAccessRecovery`)                                 |
-| `operation`      | `DiagnosticOperation`      | Yes      | Named operation within the feature                                        |
-| `stage`          | `DiagnosticStage`          | Yes      | Stage within the operation                                                |
-| `result`         | `DiagnosticResult`         | Yes      | Observed outcome                                                          |
-| `classification` | `DiagnosticClassification` | Yes      | Root-cause classification                                                 |
-| `counters`       | `DiagnosticCounters`       | No       | Safe numeric counters (`pendingCount`, `failedCount`, `flushedCount`)     |
-| `error`          | `SanitizedDiagnosticError` | No       | Output of `sanitizeDiagnosticError`                                       |
-| `providerKind`   | `DiagnosticProviderKind`   | No       | Provider kind for provider-specific paths; must be an enum value          |
-| `attemptId`      | `string`                   | No       | Project-generated UUID only — never derived from user data, paths, or ids |
+| Field            | Type                       | Required | Description                                                                                |
+| ---------------- | -------------------------- | -------- | ------------------------------------------------------------------------------------------ |
+| `name`           | `string`                   | Yes      | Project-controlled dot-separated event name, e.g. `'writeAccessRecovery.permissionDenied'` |
+| `severity`       | `DiagnosticSeverity`       | Yes      | `Info`, `Warning`, `Error`, or `Fatal`                                                     |
+| `result`         | `DiagnosticResult`         | Yes      | `Success`, `Failed`, `Blocked`, `Denied`, `Stale`, or `Unknown`                            |
+| `classification` | `DiagnosticClassification` | Yes      | `Access`, `Storage`, `Provider`, `Consistency`, `Unexpected`, or `Unknown`                 |
+| `attemptId`      | `string`                   | No       | Project-generated UUID only — never derived from user data, paths, or ids                  |
+| `counters`       | `DiagnosticCounters`       | No       | Safe numeric counters (`pendingCount`, `failedCount`, `flushedCount`)                      |
+| `error`          | `SanitizedDiagnosticError` | No       | Output of `sanitizeDiagnosticError`                                                        |
+| `safeTags`       | `DiagnosticSafeTags`       | No       | Project-controlled primitive string tags for flow context; no user data                    |
 
-### Enum values use PascalCase members
-
-All diagnostic enums are TypeScript string enums with PascalCase members and stable lowercase wire values:
+### Generic enum values
 
 ```ts
 enum DiagnosticSeverity {
@@ -144,9 +154,37 @@ enum DiagnosticSeverity {
   Error = 'error',
   Fatal = 'fatal',
 }
+
+enum DiagnosticResult {
+  Success = 'success',
+  Failed = 'failed',
+  Blocked = 'blocked',
+  Denied = 'denied',
+  Stale = 'stale',
+  Unknown = 'unknown',
+}
+
+enum DiagnosticClassification {
+  Access = 'access',
+  Storage = 'storage',
+  Provider = 'provider',
+  Consistency = 'consistency',
+  Unexpected = 'unexpected',
+  Unknown = 'unknown',
+}
 ```
 
-Use `DiagnosticSeverity.Error`, `DiagnosticFeature.WriteAccessRecovery`, etc. in product code.
+Use PascalCase members in product code: `DiagnosticSeverity.Error`, `DiagnosticResult.Stale`, etc.
+
+### Safe tags
+
+`safeTags` is a `Record<string, string>` for flow-specific context. All keys and values must be project-controlled stable strings — no paths, ids, names, URLs, or user data.
+
+Example from write-access recovery wrapper:
+
+```ts
+safeTags: { provider: 'webFileSystem', operation: 'requestAccess' }
+```
 
 ### Allowed counters
 
@@ -157,16 +195,6 @@ Use `DiagnosticSeverity.Error`, `DiagnosticFeature.WriteAccessRecovery`, etc. in
 ### Forbidden counter values
 
 Do not include storage keys, document ids, file sizes, byte counts, paths, names, or any value derived from user data.
-
-### Provider kind
-
-Attach `providerKind` to events when the recovery or failure path is specific to a provider:
-
-```ts
-providerKind: DiagnosticProviderKind.WebFileSystem,
-```
-
-Do not infer provider kind from path or storage key heuristics. Only attach explicitly for currently instrumented flows.
 
 ### Attempt ID
 
@@ -215,16 +243,30 @@ It never copies `error.message` from external boundary errors.
 
 ## Reporting layer policy
 
-| Layer                                      | May call `reportDiagnosticEvent`?           |
-| ------------------------------------------ | ------------------------------------------- |
-| `src/shared/service/**`                    | Yes                                         |
-| `src/shared/serviceClient/**`              | Yes (main-thread boundary only)             |
-| `src/entities/**`                          | No — expose results to upper layers instead |
-| `src/features/**`                          | No — use service client results             |
-| `src/widgets/**`                           | No                                          |
-| `src/pages/**`                             | No                                          |
-| `src/shared/lib/**` adapters and providers | No — return structured results instead      |
-| Sentry directly                            | Forbidden in all product code               |
+| Layer                                      | May call `reportDiagnosticEvent`?                                     |
+| ------------------------------------------ | --------------------------------------------------------------------- |
+| `src/shared/service/**`                    | Yes — at service boundary only; use wrapper functions where available |
+| `src/shared/serviceClient/**`              | Yes — through flow-specific wrappers only                             |
+| `src/entities/**`                          | No — expose results to upper layers instead                           |
+| `src/features/**`                          | No — use service client results                                       |
+| `src/widgets/**`                           | No                                                                    |
+| `src/pages/**`                             | No                                                                    |
+| `src/shared/lib/**` adapters and providers | No — return structured results instead                                |
+| Sentry directly                            | Forbidden in all product code                                         |
+
+---
+
+## Adding a new instrumented flow
+
+1. Create a `*Diagnostics.ts` module next to the flow (e.g. `src/shared/serviceClient/foo/fooFlowDiagnostics.ts`).
+2. Define event names as project-controlled string constants using dot-separated namespacing.
+3. Expose short named functions for each event so call sites stay short.
+4. Map flow outcomes to generic `DiagnosticResult` and `DiagnosticClassification` values.
+5. Attach flow-specific context via `safeTags` — no open-ended metadata.
+6. Add a focused test file for the wrapper.
+7. Update this document and the `diagnostic-events` skill.
+
+**Do not add new values to `DiagnosticResult`, `DiagnosticClassification`, or `DiagnosticSeverity` for flow-specific outcomes.** The generic enums are intentionally small. Flow-specific context belongs in `name` and `safeTags`.
 
 ---
 
@@ -239,26 +281,25 @@ The diagnostic queue is safe: it never produces unhandled promise rejections eve
 
 ---
 
-## Adding new enums
+## Tests
 
-When a new feature, operation, stage, result, classification, or provider kind is needed:
+Every diagnostic wrapper and every new `reportDiagnosticEvent` call must be covered by a focused unit test that:
 
-1. Add the value to the relevant enum in `src/shared/lib/diagnostics/diagnosticEnums.ts` with PascalCase member and a stable lowercase wire value.
-2. Re-export from `src/shared/lib/diagnostics/index.ts`.
-3. Add a focused test that covers the new diagnostic event emission.
-4. Update this document's event contract table.
-5. Update the `diagnostic-events` skill if the new enum changes agent guidance.
+- Uses `setDiagnosticEventSink` to capture events without mocking Sentry.
+- Asserts the event `name`, `result`, and `classification`.
+- Asserts `safeTags` contains only project-controlled values.
+- Asserts `attemptId` is a UUID string for correlated events, and never contains user data.
+- Asserts that no path, id, file name, key, or raw external message appears in the event or its fields.
+
+See the reference files below for patterns.
 
 ---
 
-## Tests
+## Reference files
 
-Every diagnostic event emission must be covered by a focused unit test that:
-
-- Uses `setDiagnosticEventSink` to capture events without mocking Sentry.
-- Asserts that the event has the expected `feature`, `operation`, `stage`, `result`, and `classification`.
-- Asserts `providerKind` is set for provider-specific flows.
-- Asserts `attemptId` is a UUID string for correlated events, and never contains user data.
-- Asserts that no path, id, file name, key, or raw external message appears in the event or its counters.
-
-See `src/shared/lib/diagnostics/reportDiagnosticEvent.test.ts` and `src/shared/lib/diagnostics/sanitizeDiagnosticError.test.ts` for the reference patterns.
+- Generic core: `src/shared/lib/diagnostics/`
+- Generic core tests: `src/shared/lib/diagnostics/reportDiagnosticEvent.test.ts`, `sanitizeDiagnosticError.test.ts`
+- Write-access recovery wrapper: `src/shared/serviceClient/fileSystem/writeAccessRecoveryDiagnostics.ts`
+- Wrapper tests: `src/shared/serviceClient/fileSystem/writeAccessRecoveryDiagnostics.test.ts`
+- Broker call sites: `src/shared/serviceClient/fileSystem/useFileSystemAccessPermissionBroker.ts`
+- Service boundary call: `src/shared/service/repositories/repositoriesService.ts`

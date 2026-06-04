@@ -1,13 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { DiagnosticEvent } from './DiagnosticEvent';
-import {
-  DiagnosticClassification,
-  DiagnosticFeature,
-  DiagnosticOperation,
-  DiagnosticResult,
-  DiagnosticSeverity,
-  DiagnosticStage,
-} from './diagnosticEnums';
+import { DiagnosticClassification, DiagnosticResult, DiagnosticSeverity } from './diagnosticEnums';
 
 type MockSentryScope = {
   setExtras: ReturnType<typeof vi.fn>;
@@ -66,12 +59,10 @@ vi.mock('@shared/lib/setupSentry', () => ({
 }));
 
 const makeEvent = (overrides?: Partial<DiagnosticEvent>): DiagnosticEvent => ({
+  name: 'test.event',
   severity: DiagnosticSeverity.Error,
-  feature: DiagnosticFeature.WriteAccessRecovery,
-  operation: DiagnosticOperation.RequestAccess,
-  stage: DiagnosticStage.AccessRequestPrepare,
-  result: DiagnosticResult.StaleRequest,
-  classification: DiagnosticClassification.StaleRequest,
+  result: DiagnosticResult.Failed,
+  classification: DiagnosticClassification.Unexpected,
   ...overrides,
 });
 
@@ -106,6 +97,18 @@ describe('reportDiagnosticEvent', () => {
     expect(realFacade.captureMessage).toHaveBeenCalledWith(expect.stringContaining('[diagnostic]'));
   });
 
+  it('includes the event name in the Sentry captureMessage call', async () => {
+    ensureSentryMock.mockResolvedValue(realFacade);
+    const { reportDiagnosticEvent } = await import('./reportDiagnosticEvent');
+
+    reportDiagnosticEvent(makeEvent({ name: 'writeAccessRecovery.permissionDenied' }));
+    await waitForAsyncWork();
+
+    expect(realFacade.captureMessage).toHaveBeenCalledWith(
+      '[diagnostic] writeAccessRecovery.permissionDenied',
+    );
+  });
+
   it('sets Sentry event level from diagnostic severity', async () => {
     ensureSentryMock.mockResolvedValue(realFacade);
     const { reportDiagnosticEvent } = await import('./reportDiagnosticEvent');
@@ -131,13 +134,13 @@ describe('reportDiagnosticEvent', () => {
     expect(mockScope.setLevel).toHaveBeenCalledWith(expectedLevel);
   });
 
-  it('attaches structured safe tags to the Sentry scope', async () => {
+  it('attaches result and classification as safe tags to the Sentry scope', async () => {
     ensureSentryMock.mockResolvedValue(realFacade);
     const { reportDiagnosticEvent } = await import('./reportDiagnosticEvent');
     const event = makeEvent({
       severity: DiagnosticSeverity.Warning,
-      result: DiagnosticResult.StorageFailure,
-      classification: DiagnosticClassification.StorageFailure,
+      result: DiagnosticResult.Stale,
+      classification: DiagnosticClassification.Access,
     });
 
     reportDiagnosticEvent(event);
@@ -145,9 +148,35 @@ describe('reportDiagnosticEvent', () => {
 
     expect(mockScope.setTag).toHaveBeenCalledWith('eventKind', 'diagnostic');
     expect(mockScope.setTag).toHaveBeenCalledWith('severity', 'warning');
-    expect(mockScope.setTag).toHaveBeenCalledWith('feature', DiagnosticFeature.WriteAccessRecovery);
-    expect(mockScope.setTag).toHaveBeenCalledWith('result', 'storageFailure');
-    expect(mockScope.setTag).toHaveBeenCalledWith('classification', 'storageFailure');
+    expect(mockScope.setTag).toHaveBeenCalledWith('result', 'stale');
+    expect(mockScope.setTag).toHaveBeenCalledWith('classification', 'access');
+  });
+
+  it('does not set flow-specific tags (feature, operation, stage, providerKind) on Sentry scope', async () => {
+    ensureSentryMock.mockResolvedValue(realFacade);
+    const { reportDiagnosticEvent } = await import('./reportDiagnosticEvent');
+
+    reportDiagnosticEvent(makeEvent());
+    await waitForAsyncWork();
+
+    const tagCalls = mockScope.setTag.mock.calls.map((args: unknown[]) => String(args[0]));
+    expect(tagCalls).not.toContain('feature');
+    expect(tagCalls).not.toContain('operation');
+    expect(tagCalls).not.toContain('stage');
+    expect(tagCalls).not.toContain('providerKind');
+  });
+
+  it('forwards safeTags as individual Sentry tags', async () => {
+    ensureSentryMock.mockResolvedValue(realFacade);
+    const { reportDiagnosticEvent } = await import('./reportDiagnosticEvent');
+
+    reportDiagnosticEvent(
+      makeEvent({ safeTags: { provider: 'webFileSystem', operation: 'requestAccess' } }),
+    );
+    await waitForAsyncWork();
+
+    expect(mockScope.setTag).toHaveBeenCalledWith('provider', 'webFileSystem');
+    expect(mockScope.setTag).toHaveBeenCalledWith('operation', 'requestAccess');
   });
 
   it('attaches safe counters as extras when provided', async () => {

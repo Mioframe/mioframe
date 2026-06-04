@@ -11,11 +11,8 @@ import { createGlobalState } from '@vueuse/core';
 import type { CFRDocumentContent } from '@shared/lib/cfrDocument';
 import {
   DiagnosticClassification,
-  DiagnosticFeature,
-  DiagnosticOperation,
   DiagnosticResult,
   DiagnosticSeverity,
-  DiagnosticStage,
   reportDiagnosticEvent,
 } from '@shared/lib/diagnostics';
 import { getFileSystemAccessRecovery } from '@shared/lib/fileSystem';
@@ -258,24 +255,24 @@ const setupRepositoriesService = () => {
 
       if (result.status !== 'flushed') {
         reportDiagnosticEvent({
-          severity: DiagnosticSeverity.Error,
-          feature: DiagnosticFeature.WriteAccessRecovery,
-          operation: DiagnosticOperation.FlushPendingSaves,
-          stage: DiagnosticStage.PendingSaveReplay,
-          result:
+          name:
             result.status === 'stillBlocked'
-              ? DiagnosticResult.StillBlocked
-              : DiagnosticResult.StorageFailure,
+              ? 'writeAccessRecovery.replayStillBlocked'
+              : 'writeAccessRecovery.replayStorageFailure',
+          severity: DiagnosticSeverity.Error,
+          result:
+            result.status === 'stillBlocked' ? DiagnosticResult.Blocked : DiagnosticResult.Failed,
           classification:
             result.failureClassification === 'accessRequired'
-              ? DiagnosticClassification.AccessBlocked
+              ? DiagnosticClassification.Access
               : result.failureClassification === 'storageFailure'
-                ? DiagnosticClassification.StorageFailure
+                ? DiagnosticClassification.Storage
                 : DiagnosticClassification.Unknown,
           counters: {
             flushedCount,
             pendingCount: result.pendingCount,
           },
+          safeTags: { operation: 'flushPendingSaves' },
         });
         return {
           status: result.status,

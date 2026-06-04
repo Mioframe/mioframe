@@ -1,16 +1,14 @@
 import { type FileSystemAccessOperation } from '@shared/lib/fileSystem';
-import {
-  DiagnosticClassification,
-  DiagnosticFeature,
-  DiagnosticOperation,
-  DiagnosticProviderKind,
-  DiagnosticResult,
-  DiagnosticSeverity,
-  DiagnosticStage,
-  reportDiagnosticEvent,
-  sanitizeDiagnosticError,
-} from '@shared/lib/diagnostics';
+import { sanitizeDiagnosticError } from '@shared/lib/diagnostics';
 import { useMainServiceClient } from '@shared/service';
+import {
+  reportWriteAccessMissingRequest,
+  reportWriteAccessPermissionDenied,
+  reportWriteAccessProviderFailure,
+  reportWriteAccessReplayFailure,
+  reportWriteAccessStaleResolve,
+  reportWriteAccessStorageFailure,
+} from './writeAccessRecoveryDiagnostics';
 
 type FileSystemAccessRequestKey = {
   operation: FileSystemAccessOperation;
@@ -50,16 +48,7 @@ export const useFileSystemAccessPermissionBroker = () => {
       const request = await getTemporaryFileSystemAccessHandle(key);
 
       if (!request) {
-        reportDiagnosticEvent({
-          severity: DiagnosticSeverity.Warning,
-          feature: DiagnosticFeature.WriteAccessRecovery,
-          operation: DiagnosticOperation.RequestAccess,
-          stage: DiagnosticStage.AccessRequestPrepare,
-          result: DiagnosticResult.StaleRequest,
-          classification: DiagnosticClassification.StaleRequest,
-          providerKind: DiagnosticProviderKind.WebFileSystem,
-          attemptId,
-        });
+        reportWriteAccessMissingRequest({ attemptId });
         return { status: 'error' };
       }
 
@@ -77,56 +66,20 @@ export const useFileSystemAccessPermissionBroker = () => {
         });
 
         if (result.status === 'missing') {
-          reportDiagnosticEvent({
-            severity: DiagnosticSeverity.Warning,
-            feature: DiagnosticFeature.WriteAccessRecovery,
-            operation: DiagnosticOperation.ResolveAccessRequest,
-            stage: DiagnosticStage.AccessRequestResolved,
-            result: DiagnosticResult.StaleRequest,
-            classification: DiagnosticClassification.StaleRequest,
-            providerKind: DiagnosticProviderKind.WebFileSystem,
-            attemptId,
-          });
+          reportWriteAccessStaleResolve({ attemptId });
           return { status: 'error' };
         }
 
         if (result.status === 'grantedWithReplayFailures') {
-          reportDiagnosticEvent({
-            severity: DiagnosticSeverity.Error,
-            feature: DiagnosticFeature.WriteAccessRecovery,
-            operation: DiagnosticOperation.ResolveAccessRequest,
-            stage: DiagnosticStage.AccessRequestResolved,
-            result: DiagnosticResult.ReplayFailure,
-            classification: DiagnosticClassification.StorageFailure,
-            providerKind: DiagnosticProviderKind.WebFileSystem,
-            attemptId,
-          });
+          reportWriteAccessReplayFailure({ attemptId });
         }
 
         if (result.status === 'grantedWithStorageFailures') {
-          reportDiagnosticEvent({
-            severity: DiagnosticSeverity.Error,
-            feature: DiagnosticFeature.WriteAccessRecovery,
-            operation: DiagnosticOperation.ResolveAccessRequest,
-            stage: DiagnosticStage.AccessRequestResolved,
-            result: DiagnosticResult.StorageFailure,
-            classification: DiagnosticClassification.StorageFailure,
-            providerKind: DiagnosticProviderKind.WebFileSystem,
-            attemptId,
-          });
+          reportWriteAccessStorageFailure({ attemptId });
         }
 
         if (result.status === 'denied' && key.operation === 'write') {
-          reportDiagnosticEvent({
-            severity: DiagnosticSeverity.Warning,
-            feature: DiagnosticFeature.WriteAccessRecovery,
-            operation: DiagnosticOperation.ResolveAccessRequest,
-            stage: DiagnosticStage.AccessRequestResolved,
-            result: DiagnosticResult.PermissionDenied,
-            classification: DiagnosticClassification.AccessDenied,
-            providerKind: DiagnosticProviderKind.WebFileSystem,
-            attemptId,
-          });
+          reportWriteAccessPermissionDenied({ attemptId });
         }
 
         return { status: result.status };
@@ -134,17 +87,7 @@ export const useFileSystemAccessPermissionBroker = () => {
         handle = undefined;
       }
     } catch (error) {
-      reportDiagnosticEvent({
-        severity: DiagnosticSeverity.Error,
-        feature: DiagnosticFeature.WriteAccessRecovery,
-        operation: DiagnosticOperation.RequestAccess,
-        stage: DiagnosticStage.AccessRequestPrepare,
-        result: DiagnosticResult.ProviderFailure,
-        classification: DiagnosticClassification.ProviderFailure,
-        providerKind: DiagnosticProviderKind.WebFileSystem,
-        attemptId,
-        error: sanitizeDiagnosticError(error),
-      });
+      reportWriteAccessProviderFailure({ attemptId, error: sanitizeDiagnosticError(error) });
       return { status: 'error' };
     }
   };

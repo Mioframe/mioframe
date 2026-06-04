@@ -1,12 +1,8 @@
+import type { DiagnosticEvent } from '@shared/lib/diagnostics';
 import {
   DiagnosticClassification,
-  DiagnosticFeature,
-  DiagnosticOperation,
-  DiagnosticProviderKind,
   DiagnosticResult,
   DiagnosticSeverity,
-  DiagnosticStage,
-  type DiagnosticEvent,
   setDiagnosticEventSink,
 } from '@shared/lib/diagnostics';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -317,7 +313,7 @@ describe('useFileSystemAccessPermissionBroker', () => {
   });
 
   describe('diagnostic events', () => {
-    it('emits a staleRequest diagnostic event with providerKind when no temporary handle is available', async () => {
+    it('emits a missingRequest diagnostic event when no temporary handle is available', async () => {
       getTemporaryFileSystemAccessHandleMock.mockResolvedValue(undefined);
 
       const { broker, scope } = await mountBroker();
@@ -326,19 +322,18 @@ describe('useFileSystemAccessPermissionBroker', () => {
 
       expect(diagnosticSink).toHaveLength(1);
       expect(diagnosticSink[0]).toMatchObject({
-        feature: DiagnosticFeature.WriteAccessRecovery,
-        operation: DiagnosticOperation.RequestAccess,
-        stage: DiagnosticStage.AccessRequestPrepare,
-        result: DiagnosticResult.StaleRequest,
-        classification: DiagnosticClassification.StaleRequest,
-        providerKind: DiagnosticProviderKind.WebFileSystem,
+        name: 'writeAccessRecovery.missingRequest',
+        severity: DiagnosticSeverity.Warning,
+        result: DiagnosticResult.Stale,
+        classification: DiagnosticClassification.Access,
+        safeTags: { provider: 'webFileSystem', operation: 'requestAccess' },
       });
       expect(JSON.stringify(diagnosticSink[0])).not.toContain('Work');
 
       scope.stop();
     });
 
-    it('emits a staleRequest diagnostic event with providerKind when the resolve result is missing', async () => {
+    it('emits a missingRequest diagnostic event when the resolve result is missing', async () => {
       const handle = createDirectoryHandleMock({
         name: 'Work',
         permissionState: 'prompt',
@@ -358,19 +353,18 @@ describe('useFileSystemAccessPermissionBroker', () => {
 
       expect(diagnosticSink).toHaveLength(1);
       expect(diagnosticSink[0]).toMatchObject({
-        feature: DiagnosticFeature.WriteAccessRecovery,
-        operation: DiagnosticOperation.ResolveAccessRequest,
-        stage: DiagnosticStage.AccessRequestResolved,
-        result: DiagnosticResult.StaleRequest,
-        classification: DiagnosticClassification.StaleRequest,
-        providerKind: DiagnosticProviderKind.WebFileSystem,
+        name: 'writeAccessRecovery.missingRequest',
+        severity: DiagnosticSeverity.Warning,
+        result: DiagnosticResult.Stale,
+        classification: DiagnosticClassification.Access,
+        safeTags: { provider: 'webFileSystem', operation: 'resolveAccessRequest' },
       });
       expect(JSON.stringify(diagnosticSink[0])).not.toContain('Work');
 
       scope.stop();
     });
 
-    it('emits a replayFailure diagnostic event with providerKind when grantedWithReplayFailures', async () => {
+    it('emits a replayStillBlocked diagnostic event when grantedWithReplayFailures', async () => {
       const handle = createDirectoryHandleMock({
         name: 'Work',
         permissionState: 'prompt',
@@ -390,19 +384,18 @@ describe('useFileSystemAccessPermissionBroker', () => {
 
       expect(diagnosticSink).toHaveLength(1);
       expect(diagnosticSink[0]).toMatchObject({
-        feature: DiagnosticFeature.WriteAccessRecovery,
-        operation: DiagnosticOperation.ResolveAccessRequest,
-        stage: DiagnosticStage.AccessRequestResolved,
-        result: DiagnosticResult.ReplayFailure,
-        classification: DiagnosticClassification.StorageFailure,
-        providerKind: DiagnosticProviderKind.WebFileSystem,
+        name: 'writeAccessRecovery.replayStillBlocked',
+        severity: DiagnosticSeverity.Error,
+        result: DiagnosticResult.Failed,
+        classification: DiagnosticClassification.Storage,
+        safeTags: { provider: 'webFileSystem', operation: 'resolveAccessRequest' },
       });
       expect(JSON.stringify(diagnosticSink[0])).not.toContain('Work');
 
       scope.stop();
     });
 
-    it('emits a storageFailure diagnostic event with providerKind when grantedWithStorageFailures', async () => {
+    it('emits a replayStorageFailure diagnostic event when grantedWithStorageFailures', async () => {
       const handle = createDirectoryHandleMock({
         name: 'Work',
         permissionState: 'prompt',
@@ -424,12 +417,11 @@ describe('useFileSystemAccessPermissionBroker', () => {
 
       expect(diagnosticSink).toHaveLength(1);
       expect(diagnosticSink[0]).toMatchObject({
-        feature: DiagnosticFeature.WriteAccessRecovery,
-        operation: DiagnosticOperation.ResolveAccessRequest,
-        stage: DiagnosticStage.AccessRequestResolved,
-        result: DiagnosticResult.StorageFailure,
-        classification: DiagnosticClassification.StorageFailure,
-        providerKind: DiagnosticProviderKind.WebFileSystem,
+        name: 'writeAccessRecovery.replayStorageFailure',
+        severity: DiagnosticSeverity.Error,
+        result: DiagnosticResult.Failed,
+        classification: DiagnosticClassification.Storage,
+        safeTags: { provider: 'webFileSystem', operation: 'resolveAccessRequest' },
       });
       expect(JSON.stringify(diagnosticSink[0])).not.toContain('Work');
 
@@ -456,13 +448,11 @@ describe('useFileSystemAccessPermissionBroker', () => {
 
       expect(diagnosticSink).toHaveLength(1);
       expect(diagnosticSink[0]).toMatchObject({
+        name: 'writeAccessRecovery.permissionDenied',
         severity: DiagnosticSeverity.Warning,
-        feature: DiagnosticFeature.WriteAccessRecovery,
-        operation: DiagnosticOperation.ResolveAccessRequest,
-        stage: DiagnosticStage.AccessRequestResolved,
-        result: DiagnosticResult.PermissionDenied,
-        classification: DiagnosticClassification.AccessDenied,
-        providerKind: DiagnosticProviderKind.WebFileSystem,
+        result: DiagnosticResult.Denied,
+        classification: DiagnosticClassification.Access,
+        safeTags: { provider: 'webFileSystem', operation: 'resolveAccessRequest' },
       });
       expect(JSON.stringify(diagnosticSink[0])).not.toContain('Work');
 
@@ -526,13 +516,11 @@ describe('useFileSystemAccessPermissionBroker', () => {
 
       expect(diagnosticSink).toHaveLength(1);
       expect(diagnosticSink[0]).toMatchObject({
+        name: 'writeAccessRecovery.providerFailure',
         severity: DiagnosticSeverity.Error,
-        feature: DiagnosticFeature.WriteAccessRecovery,
-        operation: DiagnosticOperation.RequestAccess,
-        stage: DiagnosticStage.AccessRequestPrepare,
-        result: DiagnosticResult.ProviderFailure,
-        classification: DiagnosticClassification.ProviderFailure,
-        providerKind: DiagnosticProviderKind.WebFileSystem,
+        result: DiagnosticResult.Failed,
+        classification: DiagnosticClassification.Provider,
+        safeTags: { provider: 'webFileSystem', operation: 'requestAccess' },
         error: {
           errorClass: 'DOMException',
           domExceptionName: 'NotAllowedError',
@@ -565,9 +553,10 @@ describe('useFileSystemAccessPermissionBroker', () => {
       expect(result).toEqual({ status: 'error' });
       expect(diagnosticSink).toHaveLength(1);
       expect(diagnosticSink[0]).toMatchObject({
-        result: DiagnosticResult.ProviderFailure,
-        classification: DiagnosticClassification.ProviderFailure,
-        providerKind: DiagnosticProviderKind.WebFileSystem,
+        name: 'writeAccessRecovery.providerFailure',
+        result: DiagnosticResult.Failed,
+        classification: DiagnosticClassification.Provider,
+        safeTags: { provider: 'webFileSystem' },
         error: { errorClass: 'Error', errorClassification: 'unknown' },
       });
       expect(JSON.stringify(diagnosticSink[0])).not.toContain('Unexpected internal error');

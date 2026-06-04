@@ -55,14 +55,13 @@ const sendEntry = (
       scope.setLevel(severityToSentryLevel(entry.severity));
       scope.setTag('eventKind', 'diagnostic');
       scope.setTag('severity', entry.severity);
-      scope.setTag('feature', entry.feature);
-      scope.setTag('operation', entry.operation);
-      scope.setTag('stage', entry.stage);
       scope.setTag('result', entry.result);
       scope.setTag('classification', entry.classification);
 
-      if (entry.providerKind !== undefined) {
-        scope.setTag('providerKind', entry.providerKind);
+      if (entry.safeTags) {
+        for (const [key, value] of Object.entries(entry.safeTags)) {
+          scope.setTag(key, value);
+        }
       }
 
       const extras: Record<string, unknown> = {};
@@ -92,9 +91,7 @@ const sendEntry = (
         scope.setExtras(extras);
       }
 
-      return sentry.captureMessage(
-        `[diagnostic] ${entry.feature}/${entry.operation}/${entry.stage}`,
-      );
+      return sentry.captureMessage(`[diagnostic] ${entry.name}`);
     });
 
     return eventId !== undefined;

@@ -129,6 +129,46 @@ describe('useWriteAccessRecoveryState', () => {
     scope.stop();
   });
 
+  it('does not apply old check result when recovery cause disappears while check is in flight', async () => {
+    let resolveOldCheck: ((value: undefined) => void) | undefined;
+
+    getFileSystemAccessRequestMock.mockImplementationOnce(
+      () =>
+        new Promise<undefined>((resolve) => {
+          resolveOldCheck = resolve;
+        }),
+    );
+
+    const { useWriteAccessRecoveryState } = await import('./useWriteAccessRecoveryState');
+    const scope = effectScope();
+    const state = ref(makeState(makeWriteError()));
+
+    let result: ReturnType<typeof useWriteAccessRecoveryState> | undefined;
+    scope.run(() => {
+      result = useWriteAccessRecoveryState(computed(() => state.value));
+    });
+
+    // Yield so the watch's immediate call (old check) starts
+    await Promise.resolve();
+
+    // Recovery cause disappears — clears state and invalidates the in-flight check
+    state.value = makeState();
+    await flushMicrotasks();
+
+    expect(result?.hasWriteAccessRecovery.value).toBe(false);
+    expect(result?.isStaleWriteAccessRequest.value).toBe(false);
+
+    // Resolve the old in-flight check — result says no request
+    resolveOldCheck?.(undefined);
+    await flushMicrotasks();
+
+    // The stale result must NOT restore isStaleWriteAccessRequest
+    expect(result?.isStaleWriteAccessRequest.value).toBe(false);
+    expect(result?.hasWriteAccessRecovery.value).toBe(false);
+
+    scope.stop();
+  });
+
   it('applies the latest result when checks resolve in order', async () => {
     getFileSystemAccessRequestMock
       .mockResolvedValueOnce({ operation: 'write', spaceName: 'Work' })
