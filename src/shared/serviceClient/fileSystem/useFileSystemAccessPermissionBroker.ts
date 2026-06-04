@@ -1,5 +1,13 @@
 import { type FileSystemAccessOperation } from '@shared/lib/fileSystem';
-import { reportHandledError } from '@shared/lib/reportHandledError';
+import {
+  DiagnosticClassification,
+  DiagnosticFeature,
+  DiagnosticOperation,
+  DiagnosticResult,
+  DiagnosticSeverity,
+  DiagnosticStage,
+  reportDiagnosticEvent,
+} from '@shared/lib/diagnostics';
 import { useMainServiceClient } from '@shared/service';
 
 type FileSystemAccessRequestKey = {
@@ -38,14 +46,13 @@ export const useFileSystemAccessPermissionBroker = () => {
       const request = await getTemporaryFileSystemAccessHandle(key);
 
       if (!request) {
-        reportHandledError(new Error('File system access request missing or already resolved'), {
-          feature: 'writeAccessRecovery',
-          action: 'requestAccess',
-          metadata: {
-            recoveryStage: 'accessRequestPrepare',
-            classification: 'staleRequest',
-            operation: key.operation,
-          },
+        reportDiagnosticEvent({
+          severity: DiagnosticSeverity.warning,
+          feature: DiagnosticFeature.writeAccessRecovery,
+          operation: DiagnosticOperation.requestAccess,
+          stage: DiagnosticStage.accessRequestPrepare,
+          result: DiagnosticResult.staleRequest,
+          classification: DiagnosticClassification.staleRequest,
         });
         return { status: 'error' };
       }
@@ -63,39 +70,30 @@ export const useFileSystemAccessPermissionBroker = () => {
           spaceName: request.spaceName,
         });
 
-        const resolvedStatus = result.status === 'missing' ? 'error' : result.status;
-
         if (result.status === 'missing') {
-          reportHandledError(
-            new Error('File system access request resolved as missing after permission prompt'),
-            {
-              feature: 'writeAccessRecovery',
-              action: 'resolveAccessRequest',
-              metadata: {
-                recoveryStage: 'accessRequestResolved',
-                classification: 'staleRequest',
-                operation: key.operation,
-                permissionState,
-              },
-            },
-          );
-        } else if (result.status === 'grantedWithStorageFailures') {
-          reportHandledError(
-            new Error('Write access granted but pending save replay hit a storage failure'),
-            {
-              feature: 'writeAccessRecovery',
-              action: 'resolveAccessRequest',
-              metadata: {
-                recoveryStage: 'accessRequestResolved',
-                classification: 'storageFailure',
-                operation: key.operation,
-                resultStatus: result.status,
-              },
-            },
-          );
+          reportDiagnosticEvent({
+            severity: DiagnosticSeverity.warning,
+            feature: DiagnosticFeature.writeAccessRecovery,
+            operation: DiagnosticOperation.resolveAccessRequest,
+            stage: DiagnosticStage.accessRequestResolved,
+            result: DiagnosticResult.staleRequest,
+            classification: DiagnosticClassification.staleRequest,
+          });
+          return { status: 'error' };
         }
 
-        return { status: resolvedStatus };
+        if (result.status === 'grantedWithStorageFailures') {
+          reportDiagnosticEvent({
+            severity: DiagnosticSeverity.error,
+            feature: DiagnosticFeature.writeAccessRecovery,
+            operation: DiagnosticOperation.resolveAccessRequest,
+            stage: DiagnosticStage.accessRequestResolved,
+            result: DiagnosticResult.storageFailure,
+            classification: DiagnosticClassification.storageFailure,
+          });
+        }
+
+        return { status: result.status };
       } finally {
         handle = undefined;
       }

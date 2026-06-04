@@ -9,8 +9,16 @@ import {
 } from '@shared/lib/automergeAdapter';
 import { createGlobalState } from '@vueuse/core';
 import type { CFRDocumentContent } from '@shared/lib/cfrDocument';
+import {
+  DiagnosticClassification,
+  DiagnosticFeature,
+  DiagnosticOperation,
+  DiagnosticResult,
+  DiagnosticSeverity,
+  DiagnosticStage,
+  reportDiagnosticEvent,
+} from '@shared/lib/diagnostics';
 import { getFileSystemAccessRecovery } from '@shared/lib/fileSystem';
-import { reportHandledError } from '@shared/lib/reportHandledError';
 import {
   concat,
   defer,
@@ -249,23 +257,26 @@ const setupRepositoriesService = () => {
       pendingCount += result.pendingCount;
 
       if (result.status !== 'flushed') {
-        const classification = result.failureClassification ?? 'unknown';
-        reportHandledError(
-          new Error(
+        reportDiagnosticEvent({
+          severity: DiagnosticSeverity.error,
+          feature: DiagnosticFeature.writeAccessRecovery,
+          operation: DiagnosticOperation.flushPendingSaves,
+          stage: DiagnosticStage.pendingSaveReplay,
+          result:
             result.status === 'stillBlocked'
-              ? 'Pending repository save replay still blocked'
-              : 'Pending repository save replay failed',
-          ),
-          {
-            feature: 'writeAccessRecovery',
-            action: 'flushPendingSaves',
-            metadata: {
-              recoveryStage: 'pendingSaveReplay',
-              resultStatus: result.status,
-              failureClassification: classification,
-            },
+              ? DiagnosticResult.stillBlocked
+              : DiagnosticResult.storageFailure,
+          classification:
+            result.failureClassification === 'accessRequired'
+              ? DiagnosticClassification.accessBlocked
+              : result.failureClassification === 'storageFailure'
+                ? DiagnosticClassification.storageFailure
+                : DiagnosticClassification.unknown,
+          counters: {
+            flushedCount,
+            pendingCount: result.pendingCount,
           },
-        );
+        });
         return {
           status: result.status,
           flushedCount,

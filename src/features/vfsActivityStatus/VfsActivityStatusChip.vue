@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { useVfsActivity } from '@entity/vfsActivity';
-import { getFileSystemAccessRecovery } from '@shared/lib/fileSystem';
 import { useMainServiceClient } from '@shared/service';
 import { useFileSystemAccessPermissionBroker } from '@shared/serviceClient/fileSystem';
 import { MDButton } from '@shared/ui/Button';
@@ -9,78 +8,35 @@ import { MDSymbol } from '@shared/ui/Icon';
 import { useSnackbar } from '@shared/ui/Snackbar';
 import { MDOverlayTooltip } from '@shared/ui/Tooltips';
 import type { ComponentPublicInstance } from 'vue';
-import { computed, ref, useTemplateRef, watch } from 'vue';
+import { computed, ref, useTemplateRef } from 'vue';
 import { formatSaveStatusErrorDetails, STATUS_LABELS } from './saveStatusText';
+import { useWriteAccessRecoveryState } from './useWriteAccessRecoveryState';
 
 const triggerRef = useTemplateRef<ComponentPublicInstance>('triggerRef');
 const showErrorDetails = ref(false);
 const isGrantWriteAccessLoading = ref(false);
-/** Tracks whether the access-required error became a non-retriable storage failure after a grant. */
-const storageFailureAfterGrant = ref(false);
-/**
- * Tri-state: `null` = check not yet performed, `true` = pending request confirmed,
- * `false` = no pending request (stale or already consumed).
- */
-const pendingRequestExists = ref<boolean | null>(null);
 const { addSnackbar } = useSnackbar();
 const {
-  fileSystem: { acknowledgeVfsActivityError: dismissSaveStatusError, getFileSystemAccessRequest },
+  fileSystem: { acknowledgeVfsActivityError: dismissSaveStatusError },
 } = useMainServiceClient();
 const { requestAccess } = useFileSystemAccessPermissionBroker();
 const { hasUnacknowledgedError, state } = useVfsActivity();
 
+const {
+  writeAccessRecovery,
+  hasWriteAccessRecovery,
+  isStaleWriteAccessRequest,
+  storageFailureAfterGrant,
+  checkPendingRequest,
+  markStorageFailureAfterGrant,
+} = useWriteAccessRecoveryState(state);
+
 const isError = computed(() => state.value.status === 'error');
 const isActive = computed(() => state.value.status === 'active');
-const writeAccessRecovery = computed(() =>
-  getFileSystemAccessRecovery(state.value.lastError?.cause, { operation: 'write' }),
-);
-
-/** True only when the recovery payload exists AND a matching pending request is confirmed. */
-const hasWriteAccessRecovery = computed(
-  () =>
-    !!writeAccessRecovery.value &&
-    pendingRequestExists.value === true &&
-    !storageFailureAfterGrant.value,
-);
-
-/** True when the recovery cause is present but the request has already been consumed. */
-const isStaleWriteAccessRequest = computed(
-  () =>
-    !!writeAccessRecovery.value &&
-    pendingRequestExists.value === false &&
-    !storageFailureAfterGrant.value,
-);
-
 const label = computed(() =>
   state.value.status === 'idle' ? undefined : STATUS_LABELS[state.value.status],
 );
 const errorDetails = computed(() => formatSaveStatusErrorDetails(state.value.lastError));
-
-const checkPendingRequest = async () => {
-  const recovery = writeAccessRecovery.value;
-  if (!recovery) {
-    pendingRequestExists.value = null;
-    return;
-  }
-  const result = await getFileSystemAccessRequest({
-    operation: recovery.operation,
-    spaceName: recovery.spaceName,
-  });
-  pendingRequestExists.value = !!result;
-};
-
-watch(
-  writeAccessRecovery,
-  (recovery) => {
-    if (!recovery) {
-      pendingRequestExists.value = null;
-      storageFailureAfterGrant.value = false;
-    } else {
-      void checkPendingRequest();
-    }
-  },
-  { immediate: true },
-);
 
 const onClickTrigger = () => {
   if (state.value.status === 'idle') {
@@ -161,7 +117,7 @@ const onClickGrantWriteAccess = async () => {
     }
 
     if (result.status === 'grantedWithStorageFailures') {
-      storageFailureAfterGrant.value = true;
+      markStorageFailureAfterGrant();
       dismissSaveStatusError();
       addSnackbar({
         text: 'Write access was granted, but replaying earlier unsaved repository changes hit another storage failure.',
