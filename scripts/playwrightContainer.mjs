@@ -104,12 +104,19 @@ export async function runPlaywrightInContainer(
       label,
       command: `podman run playwright test --config ${config}`,
       run: async (lockEnv) => {
-        deps.ensurePodmanAvailable(missingPodmanMessage, podmanFailureMessage);
-        deps.ensureLocalPlaywrightBinary(repositoryPath, missingBinaryMessage);
+        let image;
 
-        const image =
-          getFirstDefinedEnvValue([...imageEnvAliases, GENERIC_IMAGE_ENV], process.env) ||
-          `mcr.microsoft.com/playwright:v${deps.getInstalledPlaywrightVersion(repositoryPath, missingMetadataMessage)}-noble`;
+        try {
+          deps.ensurePodmanAvailable(missingPodmanMessage, podmanFailureMessage);
+          deps.ensureLocalPlaywrightBinary(repositoryPath, missingBinaryMessage);
+          image =
+            getFirstDefinedEnvValue([...imageEnvAliases, GENERIC_IMAGE_ENV], process.env) ||
+            `mcr.microsoft.com/playwright:v${deps.getInstalledPlaywrightVersion(repositoryPath, missingMetadataMessage)}-noble`;
+        } catch (setupError) {
+          console.error(setupError instanceof Error ? setupError.message : String(setupError));
+          return { signal: null, status: 1 };
+        }
+
         const resourceLimits = resolvePlaywrightContainerProfile();
 
         printPlaywrightContainerProfile({
@@ -236,33 +243,24 @@ function ensurePodmanAvailable(missingPodmanMessage, podmanFailureMessage) {
 
   if (podmanCheck.error) {
     if (podmanCheck.error.code === 'ENOENT') {
-      console.error(missingPodmanMessage);
-      process.exit(1);
+      throw new Error(missingPodmanMessage);
     }
 
-    console.error('Failed to check Podman availability.');
-    console.error(podmanCheck.error.message);
-    process.exit(1);
+    throw new Error(`Failed to check Podman availability.\n${podmanCheck.error.message}`);
   }
 
   if (podmanCheck.status !== 0) {
-    console.error(podmanFailureMessage);
-    if (podmanCheck.stderr.trim()) {
-      console.error(podmanCheck.stderr.trim());
-    }
-    process.exit(podmanCheck.status ?? 1);
+    const extra = podmanCheck.stderr.trim();
+    throw new Error(extra ? `${podmanFailureMessage}\n${extra}` : podmanFailureMessage);
   }
 }
 
 function ensureLocalPlaywrightBinary(repositoryPath, missingBinaryMessage) {
   const localPlaywrightBin = join(repositoryPath, 'node_modules', '.bin', 'playwright');
 
-  if (existsSync(localPlaywrightBin)) {
-    return;
+  if (!existsSync(localPlaywrightBin)) {
+    throw new Error(missingBinaryMessage);
   }
-
-  console.error(missingBinaryMessage);
-  process.exit(1);
 }
 
 function getInstalledPlaywrightVersion(repositoryRoot, missingMetadataMessage) {
@@ -275,23 +273,22 @@ function getInstalledPlaywrightVersion(repositoryRoot, missingMetadataMessage) {
   );
 
   if (!existsSync(playwrightPackageJsonPath)) {
-    console.error(missingMetadataMessage);
-    process.exit(1);
+    throw new Error(missingMetadataMessage);
   }
 
   let packageJson;
 
   try {
     packageJson = JSON.parse(readFileSync(playwrightPackageJsonPath, 'utf8'));
-  } catch (error) {
-    console.error(missingMetadataMessage);
-    console.error(error instanceof Error ? error.message : String(error));
-    process.exit(1);
+  } catch (parseError) {
+    throw new Error(
+      `${missingMetadataMessage}\n${parseError instanceof Error ? parseError.message : String(parseError)}`,
+      { cause: parseError },
+    );
   }
 
   if (typeof packageJson.version !== 'string' || packageJson.version.trim() === '') {
-    console.error(missingMetadataMessage);
-    process.exit(1);
+    throw new Error(missingMetadataMessage);
   }
 
   return packageJson.version;
