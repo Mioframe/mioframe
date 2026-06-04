@@ -81,3 +81,16 @@ export const DiagnosticClassification = {
 /** Union of allowed `DiagnosticClassification` values. */
 export type DiagnosticClassification =
   (typeof DiagnosticClassification)[keyof typeof DiagnosticClassification];
+
+/**
+ * Provider kinds that may be attached to a diagnostic event.
+ * Extend this enum when a new provider requires instrumentation.
+ * Do not use free-form strings — all values must be project-controlled.
+ */
+export const DiagnosticProviderKind = {
+  webFileSystem: 'webFileSystem',
+} as const;
+
+/** Union of allowed `DiagnosticProviderKind` values. */
+export type DiagnosticProviderKind =
+  (typeof DiagnosticProviderKind)[keyof typeof DiagnosticProviderKind];

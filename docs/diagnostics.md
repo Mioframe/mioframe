@@ -15,7 +15,7 @@ This document describes when to emit diagnostic events, how to use the project d
 | **Handled exception** | Unexpected internal failure reported to Sentry | `reportHandledError`                 |
 | **Diagnostic event**  | Structured async/status/recovery observation   | `reportDiagnosticEvent`              |
 
-Use `reportDiagnosticEvent` for structured async, status, or recovery flows where a typed observation is needed without an exception. Use `reportHandledError` for ordinary unexpected exceptions.
+Use `reportDiagnosticEvent` for structured async, status, or recovery flows where a typed observation is needed without an exception. Use `reportHandledError` for ordinary unexpected exceptions. Do not pass structured recovery metadata to `reportHandledError`; add enum values to `diagnosticEnums.ts` and call `reportDiagnosticEvent` instead.
 
 ---
 
@@ -119,7 +119,7 @@ All fields are project-controlled enum values. No open-ended string or record me
 | `classification` | `DiagnosticClassification` | Yes      | Root-cause classification                                             |
 | `counters`       | `DiagnosticCounters`       | No       | Safe numeric counters (`pendingCount`, `failedCount`, `flushedCount`) |
 | `error`          | `SanitizedDiagnosticError` | No       | Output of `sanitizeDiagnosticError`                                   |
-| `providerKind`   | `string`                   | No       | Provider kind when useful (no user data)                              |
+| `providerKind`   | `DiagnosticProviderKind`   | No       | Provider kind for provider-specific paths; must be an enum value      |
 | `attemptId`      | `string`                   | No       | Project-generated id only                                             |
 
 ### Allowed counters
@@ -179,7 +179,7 @@ It never copies `error.message` from external boundary errors.
 
 ## Adding new enums
 
-When a new feature, operation, stage, result, or classification is needed:
+When a new feature, operation, stage, result, classification, or provider kind is needed:
 
 1. Add the value to the relevant enum in `src/shared/lib/diagnostics/diagnosticEnums.ts`.
 2. Re-export from `src/shared/lib/diagnostics/index.ts`.

@@ -82,6 +82,17 @@ export const useFileSystemAccessPermissionBroker = () => {
           return { status: 'error' };
         }
 
+        if (result.status === 'grantedWithReplayFailures') {
+          reportDiagnosticEvent({
+            severity: DiagnosticSeverity.error,
+            feature: DiagnosticFeature.writeAccessRecovery,
+            operation: DiagnosticOperation.resolveAccessRequest,
+            stage: DiagnosticStage.accessRequestResolved,
+            result: DiagnosticResult.replayFailure,
+            classification: DiagnosticClassification.storageFailure,
+          });
+        }
+
         if (result.status === 'grantedWithStorageFailures') {
           reportDiagnosticEvent({
             severity: DiagnosticSeverity.error,

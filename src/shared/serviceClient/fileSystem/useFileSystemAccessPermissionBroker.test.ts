@@ -1,4 +1,13 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import {
+  DiagnosticClassification,
+  DiagnosticFeature,
+  DiagnosticOperation,
+  DiagnosticResult,
+  DiagnosticStage,
+  type DiagnosticEvent,
+  setDiagnosticEventSink,
+} from '@shared/lib/diagnostics';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { effectScope } from 'vue';
 import { createDirectoryHandleMock } from '@shared/lib/webFileSystemProvider/WebFileSystemProvider.testUtils';
 
@@ -39,7 +48,15 @@ const mountBroker = async () => {
 };
 
 describe('useFileSystemAccessPermissionBroker', () => {
+  let diagnosticSink: DiagnosticEvent[];
+
+  beforeEach(() => {
+    diagnosticSink = [];
+    setDiagnosticEventSink(diagnosticSink);
+  });
+
   afterEach(() => {
+    setDiagnosticEventSink(undefined);
     getTemporaryFileSystemAccessHandleMock.mockReset();
     resolveFileSystemAccessRequestMock.mockReset();
   });
@@ -295,5 +312,145 @@ describe('useFileSystemAccessPermissionBroker', () => {
     });
 
     scope.stop();
+  });
+
+  describe('diagnostic events', () => {
+    it('emits a staleRequest diagnostic event when no temporary handle is available', async () => {
+      getTemporaryFileSystemAccessHandleMock.mockResolvedValue(undefined);
+
+      const { broker, scope } = await mountBroker();
+
+      await broker.requestAccess({ operation: 'write', spaceName: 'Work' });
+
+      expect(diagnosticSink).toHaveLength(1);
+      expect(diagnosticSink[0]).toMatchObject({
+        feature: DiagnosticFeature.writeAccessRecovery,
+        operation: DiagnosticOperation.requestAccess,
+        stage: DiagnosticStage.accessRequestPrepare,
+        result: DiagnosticResult.staleRequest,
+        classification: DiagnosticClassification.staleRequest,
+      });
+      expect(JSON.stringify(diagnosticSink[0])).not.toContain('Work');
+
+      scope.stop();
+    });
+
+    it('emits a staleRequest diagnostic event when the resolve result is missing', async () => {
+      const handle = createDirectoryHandleMock({
+        name: 'Work',
+        permissionState: 'prompt',
+        sameEntryKey: 'work',
+      });
+      handle.requestPermissionMock.mockResolvedValue('granted');
+      getTemporaryFileSystemAccessHandleMock.mockResolvedValue({
+        handle,
+        operation: 'write',
+        spaceName: 'Work',
+      });
+      resolveFileSystemAccessRequestMock.mockResolvedValue({ status: 'missing' });
+
+      const { broker, scope } = await mountBroker();
+
+      await broker.requestAccess({ operation: 'write', spaceName: 'Work' });
+
+      expect(diagnosticSink).toHaveLength(1);
+      expect(diagnosticSink[0]).toMatchObject({
+        feature: DiagnosticFeature.writeAccessRecovery,
+        operation: DiagnosticOperation.resolveAccessRequest,
+        stage: DiagnosticStage.accessRequestResolved,
+        result: DiagnosticResult.staleRequest,
+        classification: DiagnosticClassification.staleRequest,
+      });
+      expect(JSON.stringify(diagnosticSink[0])).not.toContain('Work');
+
+      scope.stop();
+    });
+
+    it('emits a replayFailure diagnostic event when grantedWithReplayFailures', async () => {
+      const handle = createDirectoryHandleMock({
+        name: 'Work',
+        permissionState: 'prompt',
+        sameEntryKey: 'work',
+      });
+      handle.requestPermissionMock.mockResolvedValue('granted');
+      getTemporaryFileSystemAccessHandleMock.mockResolvedValue({
+        handle,
+        operation: 'write',
+        spaceName: 'Work',
+      });
+      resolveFileSystemAccessRequestMock.mockResolvedValue({ status: 'grantedWithReplayFailures' });
+
+      const { broker, scope } = await mountBroker();
+
+      await broker.requestAccess({ operation: 'write', spaceName: 'Work' });
+
+      expect(diagnosticSink).toHaveLength(1);
+      expect(diagnosticSink[0]).toMatchObject({
+        feature: DiagnosticFeature.writeAccessRecovery,
+        operation: DiagnosticOperation.resolveAccessRequest,
+        stage: DiagnosticStage.accessRequestResolved,
+        result: DiagnosticResult.replayFailure,
+        classification: DiagnosticClassification.storageFailure,
+      });
+      expect(JSON.stringify(diagnosticSink[0])).not.toContain('Work');
+
+      scope.stop();
+    });
+
+    it('emits a storageFailure diagnostic event when grantedWithStorageFailures', async () => {
+      const handle = createDirectoryHandleMock({
+        name: 'Work',
+        permissionState: 'prompt',
+        sameEntryKey: 'work',
+      });
+      handle.requestPermissionMock.mockResolvedValue('granted');
+      getTemporaryFileSystemAccessHandleMock.mockResolvedValue({
+        handle,
+        operation: 'write',
+        spaceName: 'Work',
+      });
+      resolveFileSystemAccessRequestMock.mockResolvedValue({
+        status: 'grantedWithStorageFailures',
+      });
+
+      const { broker, scope } = await mountBroker();
+
+      await broker.requestAccess({ operation: 'write', spaceName: 'Work' });
+
+      expect(diagnosticSink).toHaveLength(1);
+      expect(diagnosticSink[0]).toMatchObject({
+        feature: DiagnosticFeature.writeAccessRecovery,
+        operation: DiagnosticOperation.resolveAccessRequest,
+        stage: DiagnosticStage.accessRequestResolved,
+        result: DiagnosticResult.storageFailure,
+        classification: DiagnosticClassification.storageFailure,
+      });
+      expect(JSON.stringify(diagnosticSink[0])).not.toContain('Work');
+
+      scope.stop();
+    });
+
+    it('does not emit a diagnostic event for a clean grant', async () => {
+      const handle = createDirectoryHandleMock({
+        name: 'Work',
+        permissionState: 'prompt',
+        sameEntryKey: 'work',
+      });
+      handle.requestPermissionMock.mockResolvedValue('granted');
+      getTemporaryFileSystemAccessHandleMock.mockResolvedValue({
+        handle,
+        operation: 'write',
+        spaceName: 'Work',
+      });
+      resolveFileSystemAccessRequestMock.mockResolvedValue({ status: 'granted' });
+
+      const { broker, scope } = await mountBroker();
+
+      await broker.requestAccess({ operation: 'write', spaceName: 'Work' });
+
+      expect(diagnosticSink).toHaveLength(0);
+
+      scope.stop();
+    });
   });
 });

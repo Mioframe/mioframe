@@ -9,6 +9,7 @@ export {
   DiagnosticClassification,
   DiagnosticFeature,
   DiagnosticOperation,
+  DiagnosticProviderKind,
   DiagnosticResult,
   DiagnosticSeverity,
   DiagnosticStage,

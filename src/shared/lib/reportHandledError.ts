@@ -5,8 +5,11 @@ type ReportHandledErrorOptions = {
   feature: string;
   action: string;
   /**
-   * Optional safe key-value metadata merged into Sentry extras.
+   * Optional safe key-value metadata merged into Sentry extras for unexpected exception context.
    * Must not include paths, ids, names, content, handles, or any user-controlled values.
+   *
+   * This is for ordinary handled-exception context only.
+   * For structured async/status/recovery observations, use `reportDiagnosticEvent` instead.
    */
   metadata?: Record<string, string | number | boolean>;
 };

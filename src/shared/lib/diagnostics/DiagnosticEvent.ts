@@ -2,6 +2,7 @@ import type {
   DiagnosticClassification,
   DiagnosticFeature,
   DiagnosticOperation,
+  DiagnosticProviderKind,
   DiagnosticResult,
   DiagnosticSeverity,
   DiagnosticStage,
@@ -64,7 +65,7 @@ export interface DiagnosticEvent {
   /** Safe classification of the root cause. */
   classification: DiagnosticClassification;
   /** Optional provider kind for provider-specific recovery paths. */
-  providerKind?: string;
+  providerKind?: DiagnosticProviderKind;
   /** Optional attempt or request id — must be project-generated, never derived from user data. */
   attemptId?: string;
   /** Optional safe numeric counters. */
