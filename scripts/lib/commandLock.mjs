@@ -6,23 +6,24 @@ import crypto from 'node:crypto';
 
 import toolingConfig from '../../config/tooling.json' with { type: 'json' };
 
-const expensiveLockConfig = toolingConfig.verification.expensiveLock;
-const verifyLockConfig = toolingConfig.verification.verifyLock;
+const machineLockConfig = toolingConfig.verification.machineLock;
 const LOCK_METADATA_FILE = 'metadata.json';
 const EXPENSIVE_LOCK_ENV_FLAG = 'MIOFRAME_EXPENSIVE_COMMAND_LOCK_HELD';
 const VERIFY_LOCK_ENV_FLAG = 'MIOFRAME_VERIFY_LOCK_HELD';
+const MACHINE_LOCK_ENV_FLAG = 'MIOFRAME_MACHINE_LOCK_HELD';
+
+/**
+ * Lock kinds used for env-flag propagation and error message derivation.
+ * The `machine` kind is used internally when acquiring the shared machine lock;
+ * `verify` and `expensive` drive message selection based on the stored `kind`
+ * field in the machine lock metadata.
+ */
 const LOCK_KINDS = {
   expensive: {
-    busyMessage: 'Another expensive local verification command is already running.',
-    verifyBlockedMessage:
-      'Cannot start pnpm verify while an expensive local verification command is already running.',
-    config: expensiveLockConfig,
     envFlag: EXPENSIVE_LOCK_ENV_FLAG,
     label: 'expensive-command',
   },
   verify: {
-    busyMessage: 'Another local pnpm verify is already running.',
-    config: verifyLockConfig,
     envFlag: VERIFY_LOCK_ENV_FLAG,
     label: 'verify',
   },
@@ -40,7 +41,7 @@ function isGitHubActions(processEnv = process.env) {
  * @param [input.logPath] Associated log file or directory for diagnostics.
  * @param run Callback that runs the guarded command.
  * @param [options] Optional overrides (used in testing).
- * @param [options.lockDirectoryPath] Override the lock directory path.
+ * @param [options.machineLockDirectoryPath] Override the machine lock directory path.
  * @param [options.staleAfterMs] Override the stale threshold in ms.
  * @param [options.heartbeatIntervalMs] Override the heartbeat interval in ms.
  * @param [options.forceLock] When true, bypass the shouldSkipLock check.
@@ -51,7 +52,7 @@ export async function withExpensiveCommandLock(input, run, options = {}) {
 }
 
 /**
- * Run the full local verify CLI under a repository-local top-level lock.
+ * Run the full local verify CLI under the shared machine lock.
  * @param input Lock metadata to persist while verify is active.
  * @param run Callback that runs the guarded verify process.
  * @param [options] Optional overrides (used in testing).
@@ -66,64 +67,39 @@ function shouldSkipLock(kind, processEnv = process.env) {
     return true;
   }
 
+  // Children of any held machine lock skip reacquisition to avoid deadlock.
+  if (processEnv[MACHINE_LOCK_ENV_FLAG] === '1') {
+    return true;
+  }
+
+  // Legacy: verify children also carry VERIFY_LOCK_HELD; keep skipping expensive.
   if (kind === 'expensive' && processEnv[VERIFY_LOCK_ENV_FLAG] === '1') {
     return true;
   }
 
-  return processEnv[LOCK_KINDS[kind].envFlag] === '1';
+  return false;
 }
 
 async function withCommandLock(kind, input, run, options = {}) {
-  const lockKind = LOCK_KINDS[kind];
   const {
-    expensiveLockDirectoryPath,
     forceLock = false,
     heartbeatIntervalMs: customHeartbeatMs,
-    lockDirectoryPath: customLockDir,
+    machineLockDirectoryPath,
     staleAfterMs: customStaleAfterMs,
-    verifyLockDirectoryPath,
   } = options ?? {};
 
   if (!forceLock && shouldSkipLock(kind)) {
     return withHeldLockEnv(kind, () => run(getHeldLockEnv(kind)));
   }
 
-  const lockDirectoryPath = path.resolve(customLockDir ?? lockKind.config.directory);
+  const lockDirectoryPath = path.resolve(machineLockDirectoryPath ?? machineLockConfig.directory);
   const metadataPath = path.join(lockDirectoryPath, LOCK_METADATA_FILE);
-  const heartbeatIntervalMs = customHeartbeatMs ?? lockKind.config.heartbeatIntervalMs;
-  const staleAfterMs = customStaleAfterMs ?? lockKind.config.staleAfterMs;
-
-  if (!forceLock && kind === 'expensive') {
-    const blockingVerifyStatus = getVerifyLockStatus({
-      lockDirectoryPath: verifyLockDirectoryPath,
-    });
-
-    if (blockingVerifyStatus.state === 'active') {
-      throw new Error(
-        formatLockBusyMessage('verify', blockingVerifyStatus.metadata, {
-          lockDirectoryPath: blockingVerifyStatus.lockPath,
-        }),
-      );
-    }
-  }
-
-  if (!forceLock && kind === 'verify') {
-    const blockingExpensiveStatus = getExpensiveLockStatus({
-      lockDirectoryPath: expensiveLockDirectoryPath,
-    });
-
-    if (blockingExpensiveStatus.state === 'active') {
-      throw new Error(
-        formatLockBusyMessage('expensive', blockingExpensiveStatus.metadata, {
-          lockDirectoryPath: blockingExpensiveStatus.lockPath,
-          busyMessageOverride: LOCK_KINDS.expensive.verifyBlockedMessage,
-        }),
-      );
-    }
-  }
+  const heartbeatIntervalMs = customHeartbeatMs ?? machineLockConfig.heartbeatIntervalMs;
+  const staleAfterMs = customStaleAfterMs ?? machineLockConfig.staleAfterMs;
 
   const ownerToken = crypto.randomUUID();
   const baseMetadata = {
+    kind,
     label: input.label,
     command: input.command,
     pid: process.pid,
@@ -137,10 +113,11 @@ async function withCommandLock(kind, input, run, options = {}) {
   };
   let currentMetadata = baseMetadata;
 
-  acquireLock(kind, {
+  acquireLock({
     lockDirectoryPath,
     metadataPath,
     metadata: currentMetadata,
+    requestKind: kind,
     staleAfterMs,
   });
 
@@ -159,7 +136,7 @@ async function withCommandLock(kind, input, run, options = {}) {
       updateMetadata();
     } catch (heartbeatError) {
       console.error(
-        `[${kind === 'expensive' ? 'expensive-lock' : 'verify-lock'}] heartbeat write failed for \`${input.label}\` at ${metadataPath}: ` +
+        `[machine-lock] heartbeat write failed for \`${input.label}\` at ${metadataPath}: ` +
           `${heartbeatError?.message ?? heartbeatError}`,
       );
     }
@@ -185,6 +162,8 @@ async function withCommandLock(kind, input, run, options = {}) {
 function getHeldLockEnv(kind) {
   const env = {};
 
+  env[MACHINE_LOCK_ENV_FLAG] = '1';
+
   if (process.env[VERIFY_LOCK_ENV_FLAG] === '1' || kind === 'verify') {
     env[VERIFY_LOCK_ENV_FLAG] = '1';
   }
@@ -197,22 +176,27 @@ function getHeldLockEnv(kind) {
 }
 
 async function withHeldLockEnv(kind, run) {
-  const envFlag = LOCK_KINDS[kind].envFlag;
-  const previousValue = process.env[envFlag];
-  process.env[envFlag] = '1';
+  const flags = [LOCK_KINDS[kind].envFlag, MACHINE_LOCK_ENV_FLAG];
+  const previousValues = Object.fromEntries(flags.map((f) => [f, process.env[f]]));
+
+  for (const flag of flags) {
+    process.env[flag] = '1';
+  }
 
   try {
     return await run();
   } finally {
-    if (previousValue === undefined) {
-      Reflect.deleteProperty(process.env, envFlag);
-    } else {
-      process.env[envFlag] = previousValue;
+    for (const [flag, prev] of Object.entries(previousValues)) {
+      if (prev === undefined) {
+        Reflect.deleteProperty(process.env, flag);
+      } else {
+        process.env[flag] = prev;
+      }
     }
   }
 }
 
-function acquireLock(kind, { lockDirectoryPath, metadataPath, metadata, staleAfterMs }) {
+function acquireLock({ lockDirectoryPath, metadataPath, metadata, requestKind, staleAfterMs }) {
   fs.mkdirSync(path.dirname(lockDirectoryPath), { recursive: true });
 
   try {
@@ -231,7 +215,7 @@ function acquireLock(kind, { lockDirectoryPath, metadataPath, metadata, staleAft
     const removed = releaseOwnedLock(lockDirectoryPath, metadataPath, existingMetadata.ownerToken);
 
     if (removed) {
-      return acquireLock(kind, { lockDirectoryPath, metadataPath, metadata, staleAfterMs });
+      return acquireLock({ lockDirectoryPath, metadataPath, metadata, requestKind, staleAfterMs });
     }
   }
 
@@ -239,12 +223,17 @@ function acquireLock(kind, { lockDirectoryPath, metadataPath, metadata, staleAft
     const removed = releaseStaleLockDirectory(lockDirectoryPath);
 
     if (removed) {
-      return acquireLock(kind, { lockDirectoryPath, metadataPath, metadata, staleAfterMs });
+      return acquireLock({ lockDirectoryPath, metadataPath, metadata, requestKind, staleAfterMs });
     }
   }
 
+  const existingKind = existingMetadata?.kind ?? requestKind;
   throw new Error(
-    formatLockBusyMessage(kind, existingMetadata, { lockDirectoryPath, staleAfterMs }),
+    formatLockBusyMessage(existingKind, existingMetadata, {
+      lockDirectoryPath,
+      staleAfterMs,
+      requestKind,
+    }),
   );
 }
 
@@ -385,32 +374,34 @@ function readMetadata(metadataPath) {
 }
 
 /**
- * Format a consistent busy-lock diagnostic for local verify and expensive-command coordination.
- * @param kind Lock kind.
- * @param metadata Current lock metadata, if available.
+ * Derive a human-readable busy message from the existing lock kind and the
+ * command that is being blocked.
+ *
+ * `existingKind` is the kind stored in the machine lock that is currently
+ * blocking the caller. `requestKind` is what the caller is trying to start;
+ * when omitted the message is generic for the existing kind.
+ * @param existingKind Kind of the currently-held machine lock (`verify` or `expensive`).
+ * @param metadata Current machine lock metadata, if available.
  * @param [options] Formatting overrides.
  * @param [options.lockDirectoryPath] Lock path override used in the diagnostic.
  * @param [options.staleAfterMs] Stale threshold override used in the diagnostic.
+ * @param [options.requestKind] Kind of the command that failed to acquire the lock.
  * @returns Human-readable lock-busy message.
  */
 export function formatLockBusyMessage(
-  kind,
+  existingKind,
   metadata,
-  { lockDirectoryPath, staleAfterMs, busyMessageOverride } = {},
+  { lockDirectoryPath, staleAfterMs, requestKind } = {},
 ) {
-  const busyMessage = busyMessageOverride ?? LOCK_KINDS[kind].busyMessage;
-  const staleAfterSeconds = Math.floor(
-    (staleAfterMs ?? LOCK_KINDS[kind].config.staleAfterMs) / 1000,
-  );
+  const busyMessage = deriveBusyMessage(existingKind, requestKind);
+  const staleAfterSeconds = Math.floor((staleAfterMs ?? machineLockConfig.staleAfterMs) / 1000);
 
-  if (metadata === null) {
+  if (metadata === null || metadata === undefined) {
     return [
       busyMessage,
-      `lockPath: ${lockDirectoryPath ?? LOCK_KINDS[kind].config.directory}`,
+      `lockPath: ${lockDirectoryPath ?? machineLockConfig.directory}`,
       'Run `pnpm verify:status` and inspect `.verify/logs`.',
-      kind === 'verify'
-        ? 'Do not start another verify while the current run is still active.'
-        : 'Do not start another expensive verification command while the current run is still active.',
+      'Do not start another heavy local verification command while the current run is still active.',
     ].join('\n');
   }
 
@@ -422,42 +413,89 @@ export function formatLockBusyMessage(
     `cwd: ${metadata.cwd ?? 'unknown'}`,
     `startedAt: ${metadata.startedAt ?? 'unknown'}`,
     `heartbeatAt: ${metadata.heartbeatAt ?? 'unknown'}`,
-    `lockPath: ${metadata.lockPath ?? lockDirectoryPath ?? LOCK_KINDS[kind].config.directory}`,
+    `lockPath: ${metadata.lockPath ?? lockDirectoryPath ?? machineLockConfig.directory}`,
     `logPath: ${metadata.logPath ?? '.verify/logs'}`,
     `If this lock is stale, wait at least ${staleAfterSeconds}s after the last heartbeat before retrying.`,
-    kind === 'verify'
-      ? 'Do not start another verify while the current run is still active.'
-      : 'Do not start another expensive verification command while the current run is still active.',
+    'Do not start another heavy local verification command while the current run is still active.',
   ].join('\n');
 }
 
+function deriveBusyMessage(existingKind, requestKind) {
+  if (existingKind === 'verify' && requestKind === 'expensive') {
+    return 'Cannot start expensive local verification command while pnpm verify is already running.';
+  }
+
+  if (existingKind === 'expensive' && requestKind === 'verify') {
+    return 'Cannot start pnpm verify while an expensive local verification command is already running.';
+  }
+
+  if (existingKind === 'verify') {
+    return 'Another local pnpm verify is already running.';
+  }
+
+  if (existingKind === 'expensive') {
+    return 'Another expensive local verification command is already running.';
+  }
+
+  return 'Another heavy local verification command is already running.';
+}
+
 /**
- * Inspect the current top-level verify lock state without starting verification.
+ * Inspect the current machine lock state without starting verification.
  * @param [options] Optional testing overrides.
- * @param [options.lockDirectoryPath] Override the verify lock path.
+ * @param [options.lockDirectoryPath] Override the machine lock path.
  * @param [options.staleAfterMs] Override the stale threshold.
- * @returns Structured verify lock status.
+ * @returns Structured machine lock status.
+ */
+export function getMachineLockStatus(options = {}) {
+  return getLockStatus(options);
+}
+
+/**
+ * Inspect the current machine lock state as seen by a verify caller.
+ * Returns `active` only when the machine lock is held by a `verify` command.
+ * @param [options] Optional testing overrides.
+ * @param [options.lockDirectoryPath] Override the machine lock path.
+ * @param [options.staleAfterMs] Override the stale threshold.
+ * @returns Structured lock status from the verify perspective.
  */
 export function getVerifyLockStatus(options = {}) {
-  return getLockStatus('verify', options);
+  return getMachineLockStatusForKind('verify', options);
 }
 
 /**
- * Inspect the current expensive-command lock state without starting any command.
+ * Inspect the current machine lock state as seen by an expensive-command caller.
+ * Returns `active` only when the machine lock is held by an `expensive` command.
  * @param [options] Optional testing overrides.
- * @param [options.lockDirectoryPath] Override the expensive lock path.
+ * @param [options.lockDirectoryPath] Override the machine lock path.
  * @param [options.staleAfterMs] Override the stale threshold.
- * @returns Structured expensive-command lock status.
+ * @returns Structured lock status from the expensive-command perspective.
  */
 export function getExpensiveLockStatus(options = {}) {
-  return getLockStatus('expensive', options);
+  return getMachineLockStatusForKind('expensive', options);
 }
 
-function getLockStatus(kind, options = {}) {
-  const lockKind = LOCK_KINDS[kind];
-  const lockPath = path.resolve(options.lockDirectoryPath ?? lockKind.config.directory);
+function getMachineLockStatusForKind(kind, options = {}) {
+  const status = getLockStatus(options);
+
+  if (status.state === 'active' && status.metadata?.kind !== kind) {
+    // Machine is active but held by a different command kind — not our kind.
+    return {
+      lockPath: status.lockPath,
+      metadata: null,
+      metadataPath: status.metadataPath,
+      state: 'missing',
+      statusReason: null,
+    };
+  }
+
+  return status;
+}
+
+function getLockStatus(options = {}) {
+  const lockPath = path.resolve(options.lockDirectoryPath ?? machineLockConfig.directory);
   const metadataPath = path.join(lockPath, LOCK_METADATA_FILE);
-  const staleAfterMs = options.staleAfterMs ?? lockKind.config.staleAfterMs;
+  const staleAfterMs = options.staleAfterMs ?? machineLockConfig.staleAfterMs;
 
   if (!fs.existsSync(lockPath)) {
     return {

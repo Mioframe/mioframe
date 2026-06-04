@@ -1,24 +1,28 @@
 import { pathToFileURL } from 'node:url';
 
-import { getExpensiveLockStatus, getVerifyLockStatus } from './lib/commandLock.mjs';
+import { getMachineLockStatus } from './lib/commandLock.mjs';
 
 /**
- * Format a single lock status block for CLI output.
- * @param kind Lock kind label used in headings.
- * @param status Structured lock status.
+ * Format the machine lock status block for CLI output.
+ * @param status Structured machine lock status.
  * @returns Formatted status lines as a string.
  */
-function formatLockBlock(kind, status) {
-  const isVerify = kind === 'verify';
-  const label = isVerify ? 'verify' : 'expensive-command';
-
+function formatMachineLockBlock(status) {
   if (status.state === 'missing') {
-    return `${label}: no active lock\n  lockPath: ${status.lockPath}`;
+    return `machine: no active local verification\n  lockPath: ${status.lockPath}`;
   }
 
   if (status.state === 'active') {
+    const kind = status.metadata?.kind ?? 'unknown';
+    const kindLabel =
+      kind === 'verify'
+        ? 'pnpm verify'
+        : kind === 'expensive'
+          ? 'expensive command'
+          : 'unknown command';
     const lines = [
-      `${label}: ACTIVE`,
+      `machine: ACTIVE (${kindLabel})`,
+      `  kind: ${kind}`,
       `  command: ${status.metadata?.activeCommand ?? status.metadata?.command ?? 'unknown'}`,
       `  pid: ${status.metadata?.pid ?? 'unknown'}`,
       `  hostname: ${status.metadata?.hostname ?? 'unknown'}`,
@@ -27,19 +31,14 @@ function formatLockBlock(kind, status) {
       `  heartbeatAt: ${status.metadata?.heartbeatAt ?? 'unknown'}`,
       `  lockPath: ${status.lockPath}`,
       `  logPath: ${status.metadata?.logPath ?? '.verify/logs'}`,
+      '  Do not start another heavy local verification command while this is active.',
     ];
-
-    if (isVerify) {
-      lines.push('  Do not start another verify.');
-    } else {
-      lines.push('  Do not start another expensive verification command.');
-    }
 
     return lines.join('\n');
   }
 
   const title =
-    status.state === 'stale' ? `${label}: stale lock detected` : `${label}: corrupt lock detected`;
+    status.state === 'stale' ? 'machine: stale lock detected' : 'machine: corrupt lock detected';
 
   return [
     title,
@@ -52,21 +51,14 @@ function formatLockBlock(kind, status) {
 }
 
 /**
- * Format both verify and expensive-command lock statuses for CLI output.
- * @param verifyStatus Structured verify lock status.
- * @param expensiveStatus Structured expensive-command lock status.
+ * Format the machine lock status for CLI output.
+ * @param machineStatus Structured machine lock status.
  * @returns Rendered output and process exit code.
  */
-export function formatVerifyStatusReport(verifyStatus, expensiveStatus) {
-  const verifyBlock = formatLockBlock('verify', verifyStatus);
-  const expensiveBlock = formatLockBlock('expensive', expensiveStatus);
-  const output = [verifyBlock, '', expensiveBlock].join('\n');
+export function formatVerifyStatusReport(machineStatus) {
+  const output = formatMachineLockBlock(machineStatus);
 
-  const hasStaleOrCorrupt =
-    verifyStatus.state === 'stale' ||
-    verifyStatus.state === 'corrupt' ||
-    expensiveStatus.state === 'stale' ||
-    expensiveStatus.state === 'corrupt';
+  const hasStaleOrCorrupt = machineStatus.state === 'stale' || machineStatus.state === 'corrupt';
 
   const exitCode = hasStaleOrCorrupt ? 1 : 0;
 
@@ -74,11 +66,11 @@ export function formatVerifyStatusReport(verifyStatus, expensiveStatus) {
 }
 
 /**
- * Print the current verify and expensive-command lock status for local agents.
+ * Print the current machine lock status for local agents.
  * @returns Exit code for the status command.
  */
 export function printVerifyStatus() {
-  const report = formatVerifyStatusReport(getVerifyLockStatus(), getExpensiveLockStatus());
+  const report = formatVerifyStatusReport(getMachineLockStatus());
   console.log(report.output);
   process.exitCode = report.exitCode;
   return report.exitCode;

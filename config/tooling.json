@@ -30,13 +30,8 @@
         "mediumMaxFiles": 24
       }
     },
-    "expensiveLock": {
-      "directory": ".verify/locks/expensive-command.lock",
-      "heartbeatIntervalMs": 5000,
-      "staleAfterMs": 30000
-    },
-    "verifyLock": {
-      "directory": ".verify/locks/verify.lock",
+    "machineLock": {
+      "directory": ".verify/locks/machine.lock",
       "heartbeatIntervalMs": 5000,
       "staleAfterMs": 30000
     },
