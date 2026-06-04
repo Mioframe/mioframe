@@ -1,12 +1,12 @@
 import { pathToFileURL } from 'node:url';
 
-import { assertNoActiveVerifyLock } from './lib/commandLock.mjs';
+import { runGuardedLocalCommand } from './lib/localCommandGuard.mjs';
 import { applyProcessResult } from './lib/processResult.mjs';
 import { runLocalCommand } from './lib/runLocalCommand.mjs';
 
 const defaultDeps = {
   applyProcessResult,
-  assertNoActiveVerifyLock,
+  runGuardedLocalCommand,
   runLocalCommand,
 };
 
@@ -15,12 +15,16 @@ const defaultDeps = {
  * @param [deps] Test seams for verify guard and command execution.
  */
 export async function runLintOxlint(deps = defaultDeps) {
-  deps.assertNoActiveVerifyLock();
-
-  const result = await deps.runLocalCommand({
-    command: 'pnpm',
-    args: ['exec', 'oxlint', '.', '--fix'],
-  });
+  const result = await deps.runGuardedLocalCommand(
+    {
+      command: 'pnpm exec oxlint . --fix',
+      executable: 'pnpm',
+      args: ['exec', 'oxlint', '.', '--fix'],
+      env: process.env,
+      label: 'lint:oxlint',
+    },
+    deps,
+  );
 
   deps.applyProcessResult(result);
 }

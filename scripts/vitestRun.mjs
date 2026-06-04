@@ -11,25 +11,19 @@ const defaultDeps = {
 };
 
 /**
- * Run the mutation command under the expensive-command lock and apply its result after cleanup.
- * @param [argv] Raw CLI arguments to forward to Stryker.
- * @param [deps] Test seams for command execution and result application.
+ * Run Vitest under the unified local safety guard.
+ * @param [argv] Raw CLI arguments to forward to `vitest run`.
+ * @param [deps] Test seams for guarded execution and result handling.
  */
-export async function runMutation(argv = process.argv.slice(2), deps = defaultDeps) {
-  const args = ['exec', 'stryker', 'run', ...argv];
+export async function runVitest(argv = process.argv.slice(2), deps = defaultDeps) {
+  const args = ['exec', 'vitest', 'run', ...argv];
   const result = await deps.runGuardedExpensiveLocalCommand(
     {
-      label: 'mutation',
       command: `pnpm ${args.join(' ')}`,
       executable: 'pnpm',
       args,
       env: process.env,
-      run: (lockEnv) =>
-        deps.runLocalCommand({
-          command: 'pnpm',
-          args,
-          env: { ...process.env, ...lockEnv },
-        }),
+      label: argv.includes('--coverage') ? 'test:coverage' : 'test:run',
     },
     deps,
   );
@@ -38,5 +32,5 @@ export async function runMutation(argv = process.argv.slice(2), deps = defaultDe
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
-  await runMutation();
+  await runVitest();
 }

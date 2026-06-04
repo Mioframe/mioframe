@@ -10,8 +10,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "run-p type-check \"build-only {@}\" --",
-    "build-only": "vite build",
+    "build": "node scripts/build.mjs",
+    "build-only": "node scripts/buildOnly.mjs",
     "preview": "vite preview",
     "storybook": "node scripts/storybook.mjs dev",
     "storybook:build": "node scripts/storybook.mjs build",
@@ -35,8 +35,8 @@
     "test:visual": "node scripts/visual.mjs test",
     "test:visual:update": "node scripts/visual.mjs update",
     "test": "vitest",
-    "test:run": "vitest run",
-    "test:coverage": "vitest run --coverage",
+    "test:run": "node scripts/vitestRun.mjs",
+    "test:coverage": "node scripts/vitestRun.mjs --coverage",
     "test:mutate": "node scripts/mutate.mjs"
   },
   "dependencies": {

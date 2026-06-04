@@ -3,7 +3,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { release } from 'node:os';
 import { join } from 'node:path';
 import toolingConfig from '../config/tooling.json' with { type: 'json' };
-import { withExpensiveCommandLock } from './lib/commandLock.mjs';
+import { runGuardedExpensiveLocalCommand } from './lib/localCommandGuard.mjs';
 import { applyProcessResult } from './lib/processResult.mjs';
 import { runLocalCommand } from './lib/runLocalCommand.mjs';
 
@@ -58,9 +58,9 @@ const defaultDeps = {
   ensureLocalPlaywrightBinary,
   ensurePodmanAvailable,
   getInstalledPlaywrightVersion,
+  runGuardedExpensiveLocalCommand,
   runLocalCommand,
   spawnSync,
-  withExpensiveCommandLock,
 };
 
 /**
@@ -99,109 +99,108 @@ export async function runPlaywrightInContainer(
   deps = defaultDeps,
 ) {
   const repositoryPath = process.cwd();
-
-  deps.ensurePodmanAvailable(missingPodmanMessage, podmanFailureMessage);
-  deps.ensureLocalPlaywrightBinary(repositoryPath, missingBinaryMessage);
-
-  const image =
-    getFirstDefinedEnvValue([...imageEnvAliases, GENERIC_IMAGE_ENV], process.env) ||
-    `mcr.microsoft.com/playwright:v${deps.getInstalledPlaywrightVersion(repositoryPath, missingMetadataMessage)}-noble`;
-  const resourceLimits = resolvePlaywrightContainerProfile();
-  const run = async (lockEnv) => {
-    printPlaywrightContainerProfile({
-      config,
-      label,
-      resourceLimits,
-    });
-
-    const podmanArgs = [
-      'run',
-      '--rm',
-      '--init',
-      '--ipc=host',
-      '--workdir',
-      CONTAINER_WORKDIR,
-      '--env',
-      'CI=1',
-    ];
-
-    for (const limit of PLAYWRIGHT_CONTAINER_LIMITS) {
-      if (limit.podmanFlag === '--workers') {
-        continue;
-      }
-
-      podmanArgs.push(limit.podmanFlag, resourceLimits[limit.key]);
-    }
-
-    for (const [key, value] of Object.entries({ ...extraEnv, ...lockEnv })) {
-      podmanArgs.push('--env', `${key}=${String(value)}`);
-    }
-
-    podmanArgs.push(
-      '--volume',
-      `${repositoryPath}:${CONTAINER_WORKDIR}${getVolumeLabelSuffix(volumeLabelEnvAliases)}`,
-    );
-
-    const usernsMode =
-      getFirstDefinedEnvValue(
-        [...podmanUsernsEnvAliases, GENERIC_PODMAN_USERNS_ENV],
-        process.env,
-      ) || 'keep-id';
-
-    if (usernsMode !== 'off') {
-      podmanArgs.push('--userns', usernsMode);
-    }
-
-    podmanArgs.push(image, './node_modules/.bin/playwright', 'test', '--config', config);
-
-    if (updateSnapshots) {
-      podmanArgs.push('--update-snapshots');
-    }
-
-    if (!extraArgs.some((arg) => arg === '--workers' || arg.startsWith('--workers='))) {
-      podmanArgs.push('--workers', resourceLimits.workers);
-    }
-
-    podmanArgs.push(...extraArgs);
-
-    let child;
-    try {
-      child = await deps.runLocalCommand({
-        args: podmanArgs,
-        command: 'podman',
-        env: process.env,
-      });
-    } catch (error) {
-      console.error('Failed to start Podman for Playwright container tests.');
-      console.error(error instanceof Error ? error.message : String(error));
-      return {
-        signal: null,
-        status: 1,
-      };
-    }
-
-    if (child.status !== 0 || child.signal) {
-      printPlaywrightContainerFailureDiagnostic({
-        config,
-        label,
-        resourceLimits,
-        signal: child.signal ?? null,
-        status: child.status ?? 1,
-      });
-    }
-
-    return {
-      signal: child.signal ?? null,
-      status: child.status ?? 1,
-    };
-  };
-
-  const result = await deps.withExpensiveCommandLock(
+  const result = await deps.runGuardedExpensiveLocalCommand(
     {
       label,
       command: `podman run playwright test --config ${config}`,
+      run: async (lockEnv) => {
+        deps.ensurePodmanAvailable(missingPodmanMessage, podmanFailureMessage);
+        deps.ensureLocalPlaywrightBinary(repositoryPath, missingBinaryMessage);
+
+        const image =
+          getFirstDefinedEnvValue([...imageEnvAliases, GENERIC_IMAGE_ENV], process.env) ||
+          `mcr.microsoft.com/playwright:v${deps.getInstalledPlaywrightVersion(repositoryPath, missingMetadataMessage)}-noble`;
+        const resourceLimits = resolvePlaywrightContainerProfile();
+
+        printPlaywrightContainerProfile({
+          config,
+          label,
+          resourceLimits,
+        });
+
+        const podmanArgs = [
+          'run',
+          '--rm',
+          '--init',
+          '--ipc=host',
+          '--workdir',
+          CONTAINER_WORKDIR,
+          '--env',
+          'CI=1',
+        ];
+
+        for (const limit of PLAYWRIGHT_CONTAINER_LIMITS) {
+          if (limit.podmanFlag === '--workers') {
+            continue;
+          }
+
+          podmanArgs.push(limit.podmanFlag, resourceLimits[limit.key]);
+        }
+
+        for (const [key, value] of Object.entries({ ...extraEnv, ...lockEnv })) {
+          podmanArgs.push('--env', `${key}=${String(value)}`);
+        }
+
+        podmanArgs.push(
+          '--volume',
+          `${repositoryPath}:${CONTAINER_WORKDIR}${getVolumeLabelSuffix(volumeLabelEnvAliases)}`,
+        );
+
+        const usernsMode =
+          getFirstDefinedEnvValue(
+            [...podmanUsernsEnvAliases, GENERIC_PODMAN_USERNS_ENV],
+            process.env,
+          ) || 'keep-id';
+
+        if (usernsMode !== 'off') {
+          podmanArgs.push('--userns', usernsMode);
+        }
+
+        podmanArgs.push(image, './node_modules/.bin/playwright', 'test', '--config', config);
+
+        if (updateSnapshots) {
+          podmanArgs.push('--update-snapshots');
+        }
+
+        if (!extraArgs.some((arg) => arg === '--workers' || arg.startsWith('--workers='))) {
+          podmanArgs.push('--workers', resourceLimits.workers);
+        }
+
+        podmanArgs.push(...extraArgs);
+
+        let child;
+        try {
+          child = await deps.runLocalCommand({
+            args: podmanArgs,
+            command: 'podman',
+            env: process.env,
+          });
+        } catch (error) {
+          console.error('Failed to start Podman for Playwright container tests.');
+          console.error(error instanceof Error ? error.message : String(error));
+          return {
+            signal: null,
+            status: 1,
+          };
+        }
+
+        if (child.status !== 0 || child.signal) {
+          printPlaywrightContainerFailureDiagnostic({
+            config,
+            label,
+            resourceLimits,
+            signal: child.signal ?? null,
+            status: child.status ?? 1,
+          });
+        }
+
+        return {
+          signal: child.signal ?? null,
+          status: child.status ?? 1,
+        };
+      },
     },
-    run,
+    deps,
   );
 
   deps.applyProcessResult(result);

@@ -1,13 +1,13 @@
 import { pathToFileURL } from 'node:url';
 
-import { withExpensiveCommandLock } from './lib/commandLock.mjs';
+import { runGuardedExpensiveLocalCommand } from './lib/localCommandGuard.mjs';
 import { applyProcessResult } from './lib/processResult.mjs';
 import { runLocalCommand } from './lib/runLocalCommand.mjs';
 
 const defaultDeps = {
   applyProcessResult,
+  runGuardedExpensiveLocalCommand,
   runLocalCommand,
-  withExpensiveCommandLock,
 };
 
 /**
@@ -17,17 +17,21 @@ const defaultDeps = {
  */
 export async function runE2eHost(argv = process.argv.slice(2), deps = defaultDeps) {
   const args = ['exec', 'playwright', 'test', ...argv];
-  const result = await deps.withExpensiveCommandLock(
+  const result = await deps.runGuardedExpensiveLocalCommand(
     {
       label: getE2eHostLabel(argv),
       command: `pnpm ${args.join(' ')}`,
+      executable: 'pnpm',
+      args,
+      env: process.env,
+      run: (lockEnv) =>
+        deps.runLocalCommand({
+          command: 'pnpm',
+          args,
+          env: { ...process.env, ...lockEnv },
+        }),
     },
-    (lockEnv) =>
-      deps.runLocalCommand({
-        command: 'pnpm',
-        args,
-        env: { ...process.env, ...lockEnv },
-      }),
+    deps,
   );
 
   deps.applyProcessResult(result);
