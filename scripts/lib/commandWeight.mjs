@@ -71,5 +71,5 @@ function classifyFileScopedWeight(config, fileCount, isFullRepo) {
 }
 
 function isCi() {
-  return process.env.CI === 'true' || process.env.GITHUB_ACTIONS === 'true';
+  return process.env.GITHUB_ACTIONS === 'true';
 }

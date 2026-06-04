@@ -313,10 +313,10 @@ pnpm exec stryker run -m "src/shared/lib/**/*.ts"
 **Scope**: browser smoke and end-to-end flows through the UI.
 
 ```bash
-# Install browsers
-pnpm e2e:install
+# Manual host-only browser install
+pnpm e2e:host:install
 
-# Headless
+# Container-backed verification path
 pnpm e2e
 
 # With UI runner
@@ -327,6 +327,8 @@ pnpm e2e:headed
 ```
 
 **Configuration**: [`playwright.config.ts`](./playwright.config.ts)
+
+`pnpm e2e` runs through the container harness used for verification. `pnpm e2e:host:install` is only for manual host-side Playwright development when using `pnpm e2e:host`, `pnpm e2e:ui`, or `pnpm e2e:headed`.
 
 **Test Configuration**:
 
