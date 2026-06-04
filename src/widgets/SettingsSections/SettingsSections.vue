@@ -4,6 +4,7 @@ import { GOOGLE_DRIVE_INTEGRATION_AVAILABLE, SENTRY_DIAGNOSTICS_AVAILABLE } from
 import { MDListContainer, MDListItem } from '@shared/ui/Lists';
 import SettingsSection from './SettingsSection.vue';
 import SettingsCheckboxListItem from './SettingsCheckboxListItem.vue';
+import StorageSettingsSection from './StorageSettingsSection.vue';
 
 const emit = defineEmits<{
   selectPrivacyPolicy: [];
@@ -50,6 +51,8 @@ const onClickAboutMioframe = () => {
 
 <template>
   <div class="settings-sections">
+    <StorageSettingsSection />
+
     <SettingsSection title="Privacy & diagnostics">
       <MDListContainer is="div">
         <SettingsCheckboxListItem

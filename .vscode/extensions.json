@@ -2,11 +2,11 @@
   "recommendations": [
     "streetsidesoftware.code-spell-checker-russian",
     "yoavbls.pretty-ts-errors",
-    "gruntfuggly.todo-tree",
     "dbaeumer.vscode-eslint",
     "vue.volar",
     "csstools.postcss",
     "vitest.explorer",
-    "oxc.oxc-vscode"
+    "oxc.oxc-vscode",
+    "fanaticpythoner.better-todo-tree"
   ]
 }
