@@ -4,6 +4,10 @@ import packageJson from '../package.json' with { type: 'json' };
 import { runBuild } from './build.mjs';
 import { runBuildOnly } from './buildOnly.mjs';
 import { runE2eHost } from './e2eHost.mjs';
+import {
+  runGuardedExpensiveLocalCommand,
+  runGuardedLocalCommand,
+} from './lib/localCommandGuard.mjs';
 import { runLintEslint } from './lintEslint.mjs';
 import { runLintOxlint } from './lintOxlint.mjs';
 import { runMutation } from './mutate.mjs';
@@ -94,6 +98,22 @@ describe('runMutation', () => {
     expect(events).toEqual(['lock-acquired', 'callback-returned', 'lock-released', 'apply-result']);
     expect(applyProcessResult).toHaveBeenCalledWith({ signal: null, status: 3 });
   });
+
+  it('works with the real expensive guard using the wrapper default dependency shape', async () => {
+    const applyProcessResult = vi.fn();
+    const runLocalCommand = vi.fn(async () => ({ signal: null, status: 0 }));
+
+    await expect(
+      runMutation(['--mutate', 'src/foo.ts'], {
+        applyProcessResult,
+        runGuardedExpensiveLocalCommand,
+        runLocalCommand,
+      }),
+    ).resolves.toBeUndefined();
+
+    expect(runLocalCommand).toHaveBeenCalledOnce();
+    expect(applyProcessResult).toHaveBeenCalledWith({ signal: null, status: 0 });
+  });
 });
 
 describe('runTypeCheck', () => {
@@ -132,6 +152,22 @@ describe('runTypeCheck', () => {
 
     expect(runLocalCommand).not.toHaveBeenCalled();
   });
+
+  it('works with the real guard using the wrapper default dependency shape', async () => {
+    const applyProcessResult = vi.fn();
+    const runLocalCommand = vi.fn(async () => ({ signal: null, status: 0 }));
+
+    await expect(
+      runTypeCheck({
+        applyProcessResult,
+        runGuardedLocalCommand,
+        runLocalCommand,
+      }),
+    ).resolves.toBeUndefined();
+
+    expect(runLocalCommand).toHaveBeenCalledOnce();
+    expect(applyProcessResult).toHaveBeenCalledWith({ signal: null, status: 0 });
+  });
 });
 
 describe('runBuildOnly', () => {
@@ -150,6 +186,22 @@ describe('runBuildOnly', () => {
 
     expect(runLocalCommand).not.toHaveBeenCalled();
   });
+
+  it('works with the real guard using the wrapper default dependency shape', async () => {
+    const applyProcessResult = vi.fn();
+    const runLocalCommand = vi.fn(async () => ({ signal: null, status: 0 }));
+
+    await expect(
+      runBuildOnly({
+        applyProcessResult,
+        runGuardedExpensiveLocalCommand,
+        runLocalCommand,
+      }),
+    ).resolves.toBeUndefined();
+
+    expect(runLocalCommand).toHaveBeenCalledOnce();
+    expect(applyProcessResult).toHaveBeenCalledWith({ signal: null, status: 0 });
+  });
 });
 
 describe('runBuild', () => {
@@ -159,24 +211,24 @@ describe('runBuild', () => {
       .fn()
       .mockResolvedValueOnce({ signal: null, status: 0 })
       .mockResolvedValueOnce({ signal: null, status: 0 });
-    const runGuardedLocalCommand = vi.fn(async ({ command, executable, args, env }) =>
+    const runTypeCheckGuard = vi.fn(async ({ command, executable, args, env }) =>
       runLocalCommand({ command: executable ?? command, args, env }),
     );
-    const runGuardedExpensiveLocalCommand = vi.fn(async () => {
+    const runBuildGuard = vi.fn(async () => {
       throw new Error('Another local pnpm verify is already running.');
     });
 
     await expect(
       runBuild({
         applyProcessResult,
-        runGuardedExpensiveLocalCommand,
-        runGuardedLocalCommand,
+        runGuardedExpensiveLocalCommand: runBuildGuard,
+        runGuardedLocalCommand: runTypeCheckGuard,
         runLocalCommand,
       }),
     ).rejects.toThrow('Another local pnpm verify is already running.');
 
-    expect(runGuardedLocalCommand).toHaveBeenCalledOnce();
-    expect(runGuardedExpensiveLocalCommand).toHaveBeenCalledOnce();
+    expect(runTypeCheckGuard).toHaveBeenCalledOnce();
+    expect(runBuildGuard).toHaveBeenCalledOnce();
     expect(runLocalCommand).toHaveBeenCalledOnce();
     expect(runLocalCommand).toHaveBeenCalledWith({
       args: ['exec', 'vue-tsc', '--build'],
@@ -302,6 +354,22 @@ describe('runVitest', () => {
     ).rejects.toThrow('Another local pnpm verify is already running.');
 
     expect(runLocalCommand).not.toHaveBeenCalled();
+  });
+
+  it('works with the real expensive guard using the wrapper default dependency shape', async () => {
+    const applyProcessResult = vi.fn();
+    const runLocalCommand = vi.fn(async () => ({ signal: null, status: 0 }));
+
+    await expect(
+      runVitest([], {
+        applyProcessResult,
+        runGuardedExpensiveLocalCommand,
+        runLocalCommand,
+      }),
+    ).resolves.toBeUndefined();
+
+    expect(runLocalCommand).toHaveBeenCalledOnce();
+    expect(applyProcessResult).toHaveBeenCalledWith({ signal: null, status: 0 });
   });
 });
 

@@ -4,6 +4,7 @@ import {
   resolvePlaywrightContainerProfile,
   runPlaywrightInContainer,
 } from './playwrightContainer.mjs';
+import { runGuardedExpensiveLocalCommand } from './lib/localCommandGuard.mjs';
 import { applyProcessResult } from './lib/processResult.mjs';
 
 const baseOptions = {
@@ -126,6 +127,31 @@ describe('runPlaywrightInContainer', () => {
       }),
     ).rejects.toThrow('Another local pnpm verify is already running.');
 
+    expect(ensurePodmanAvailable).not.toHaveBeenCalled();
+    expect(ensureLocalPlaywrightBinary).not.toHaveBeenCalled();
+  });
+
+  it('blocks through the real guard before Podman and Playwright setup when verify is active', async () => {
+    const assertNoActiveVerifyLock = vi.fn(() => {
+      throw new Error('Another local pnpm verify is already running.');
+    });
+    const ensureLocalPlaywrightBinary = vi.fn();
+    const ensurePodmanAvailable = vi.fn();
+
+    await expect(
+      runPlaywrightInContainer(baseOptions, {
+        applyProcessResult: vi.fn(),
+        assertNoActiveVerifyLock,
+        ensureLocalPlaywrightBinary,
+        ensurePodmanAvailable,
+        getInstalledPlaywrightVersion: vi.fn(() => '1.59.1'),
+        runGuardedExpensiveLocalCommand,
+        runLocalCommand: vi.fn(),
+        spawnSync: vi.fn(),
+      }),
+    ).rejects.toThrow('Another local pnpm verify is already running.');
+
+    expect(assertNoActiveVerifyLock).toHaveBeenCalledOnce();
     expect(ensurePodmanAvailable).not.toHaveBeenCalled();
     expect(ensureLocalPlaywrightBinary).not.toHaveBeenCalled();
   });

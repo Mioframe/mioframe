@@ -86,6 +86,75 @@ describe('runGuardedLocalCommand', () => {
 
     expect(run).not.toHaveBeenCalled();
   });
+
+  it('works with partial deps when only the local runner is injected', async () => {
+    const runLocalCommand = vi.fn(async () => ({ signal: null, status: 0 }));
+
+    const result = await runGuardedLocalCommand(
+      {
+        command: 'pnpm exec vue-tsc --build',
+        executable: 'pnpm',
+        args: ['exec', 'vue-tsc', '--build'],
+        label: 'type-check',
+      },
+      {
+        processEnv: {
+          ...process.env,
+          GITHUB_ACTIONS: 'false',
+          MIOFRAME_VERIFY_LOCK_HELD: '1',
+        },
+        runLocalCommand,
+      },
+    );
+
+    expect(result).toEqual({ signal: null, status: 0 });
+    expect(runLocalCommand).toHaveBeenCalledWith({
+      args: ['exec', 'vue-tsc', '--build'],
+      command: 'pnpm',
+      env: process.env,
+    });
+  });
+
+  it('uses the default verify-lock status dependency when partial deps omit guard internals', async () => {
+    const runLocalCommand = vi.fn(async () => ({ signal: null, status: 0 }));
+
+    await expect(
+      runGuardedLocalCommand(
+        {
+          command: 'pnpm exec vue-tsc --build',
+          executable: 'pnpm',
+          args: ['exec', 'vue-tsc', '--build'],
+          label: 'type-check',
+        },
+        {
+          runLocalCommand,
+        },
+      ),
+    ).resolves.toEqual({ signal: null, status: 0 });
+
+    expect(runLocalCommand).toHaveBeenCalledOnce();
+  });
+
+  it('still honors an injected verify-lock assertion override', async () => {
+    const assertVerifyLockOverride = vi.fn();
+    const runLocalCommand = vi.fn(async () => ({ signal: null, status: 0 }));
+
+    await runGuardedLocalCommand(
+      {
+        command: 'pnpm exec vue-tsc --build',
+        executable: 'pnpm',
+        args: ['exec', 'vue-tsc', '--build'],
+        label: 'type-check',
+      },
+      {
+        assertNoActiveVerifyLock: assertVerifyLockOverride,
+        runLocalCommand,
+      },
+    );
+
+    expect(assertVerifyLockOverride).toHaveBeenCalledOnce();
+    expect(runLocalCommand).toHaveBeenCalledOnce();
+  });
 });
 
 describe('runGuardedExpensiveLocalCommand', () => {
@@ -111,6 +180,91 @@ describe('runGuardedExpensiveLocalCommand', () => {
 
     expect(withExpensiveCommandLock).not.toHaveBeenCalled();
     expect(run).not.toHaveBeenCalled();
+  });
+
+  it('works with partial deps when only the local runner is injected', async () => {
+    const runLocalCommand = vi.fn(async () => ({ signal: null, status: 0 }));
+
+    const result = await runGuardedExpensiveLocalCommand(
+      {
+        command: 'pnpm exec vitest run',
+        executable: 'pnpm',
+        args: ['exec', 'vitest', 'run'],
+        label: 'test:run',
+      },
+      {
+        processEnv: {
+          ...process.env,
+          GITHUB_ACTIONS: 'false',
+          MIOFRAME_VERIFY_LOCK_HELD: '1',
+        },
+        runLocalCommand,
+      },
+    );
+
+    expect(result).toEqual({ signal: null, status: 0 });
+    expect(runLocalCommand).toHaveBeenCalledWith({
+      args: ['exec', 'vitest', 'run'],
+      command: 'pnpm',
+      env: {
+        ...process.env,
+        MIOFRAME_EXPENSIVE_COMMAND_LOCK_HELD: '1',
+        MIOFRAME_VERIFY_LOCK_HELD: '1',
+      },
+    });
+  });
+
+  it('uses the default expensive lock when partial deps omit withExpensiveCommandLock', async () => {
+    const runLocalCommand = vi.fn(async () => ({ signal: null, status: 0 }));
+
+    await expect(
+      runGuardedExpensiveLocalCommand(
+        {
+          command: 'pnpm exec vitest run',
+          executable: 'pnpm',
+          args: ['exec', 'vitest', 'run'],
+          label: 'test:run',
+        },
+        {
+          processEnv: {
+            ...process.env,
+            GITHUB_ACTIONS: 'false',
+            MIOFRAME_VERIFY_LOCK_HELD: '1',
+          },
+          runLocalCommand,
+        },
+      ),
+    ).resolves.toEqual({ signal: null, status: 0 });
+
+    expect(runLocalCommand).toHaveBeenCalledOnce();
+  });
+
+  it('still honors an injected expensive-lock override', async () => {
+    const runLocalCommand = vi.fn(async () => ({ signal: null, status: 0 }));
+    const withExpensiveCommandLock = vi.fn(async (_input, run) =>
+      run({ MIOFRAME_EXPENSIVE_COMMAND_LOCK_HELD: '1' }),
+    );
+
+    await runGuardedExpensiveLocalCommand(
+      {
+        command: 'pnpm exec vitest run',
+        executable: 'pnpm',
+        args: ['exec', 'vitest', 'run'],
+        label: 'test:run',
+      },
+      {
+        processEnv: {
+          ...process.env,
+          GITHUB_ACTIONS: 'false',
+          MIOFRAME_VERIFY_LOCK_HELD: '1',
+        },
+        runLocalCommand,
+        withExpensiveCommandLock,
+      },
+    );
+
+    expect(withExpensiveCommandLock).toHaveBeenCalledOnce();
+    expect(runLocalCommand).toHaveBeenCalledOnce();
   });
 
   it('lets verify-child commands proceed without deadlock', async () => {

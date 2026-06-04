@@ -15,6 +15,13 @@ const defaultDeps = {
   withExpensiveCommandLock,
 };
 
+function resolveDeps(deps = {}) {
+  return {
+    ...defaultDeps,
+    ...deps,
+  };
+}
+
 function isGitHubActions(processEnv = process.env) {
   return processEnv.GITHUB_ACTIONS === 'true';
 }
@@ -33,13 +40,14 @@ function shouldBypassVerifyGuard(processEnv = process.env) {
  * @param [deps] Dependency overrides for tests.
  */
 export function assertNoActiveVerifyLock(options = {}, deps = defaultDeps) {
+  const resolvedDeps = resolveDeps(deps);
   const { processEnv = process.env, ...lockStatusOptions } = options;
 
   if (shouldBypassVerifyGuard(processEnv)) {
     return;
   }
 
-  const status = deps.getVerifyLockStatus(lockStatusOptions);
+  const status = resolvedDeps.getVerifyLockStatus(lockStatusOptions);
 
   if (status.state !== 'active') {
     return;
@@ -69,9 +77,10 @@ export function assertNoActiveVerifyLock(options = {}, deps = defaultDeps) {
  * @returns Normalized child-process result.
  */
 export async function runGuardedLocalCommand(input, deps = defaultDeps) {
-  const assertVerifyLock = deps.assertNoActiveVerifyLock ?? assertNoActiveVerifyLock;
-  const runCommand = deps.runLocalCommand ?? runLocalCommand;
-  assertVerifyLock({ processEnv: deps.processEnv }, deps);
+  const resolvedDeps = resolveDeps(deps);
+  const assertVerifyLock = resolvedDeps.assertNoActiveVerifyLock ?? assertNoActiveVerifyLock;
+  const runCommand = resolvedDeps.runLocalCommand;
+  assertVerifyLock({ processEnv: resolvedDeps.processEnv }, resolvedDeps);
 
   if (input.run) {
     return input.run({}, undefined);
@@ -103,10 +112,11 @@ export async function runGuardedLocalCommand(input, deps = defaultDeps) {
  * @returns Normalized child-process result.
  */
 export async function runGuardedExpensiveLocalCommand(input, deps = defaultDeps) {
-  const assertVerifyLock = deps.assertNoActiveVerifyLock ?? assertNoActiveVerifyLock;
-  const runCommand = deps.runLocalCommand ?? runLocalCommand;
-  const withLock = deps.withExpensiveCommandLock ?? withExpensiveCommandLock;
-  assertVerifyLock({ processEnv: deps.processEnv }, deps);
+  const resolvedDeps = resolveDeps(deps);
+  const assertVerifyLock = resolvedDeps.assertNoActiveVerifyLock ?? assertNoActiveVerifyLock;
+  const runCommand = resolvedDeps.runLocalCommand;
+  const withLock = resolvedDeps.withExpensiveCommandLock;
+  assertVerifyLock({ processEnv: resolvedDeps.processEnv }, resolvedDeps);
 
   return withLock(
     {
