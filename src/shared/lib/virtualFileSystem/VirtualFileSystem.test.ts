@@ -572,6 +572,15 @@ describe('VirtualFileSystem', () => {
       await expect(vfs.delete('/mnt/test/nonexistent.txt')).rejects.toThrow();
     });
 
+    it('attempts provider delete when stat capabilities are undefined', async () => {
+      await memoryFS.writeFile('/test.txt', 'content', { create: true, overwrite: true });
+      vfs.mount(
+        '/mnt/test',
+        createCapabilityProvider((_path, stat) => ({ type: stat.type, size: stat.size })),
+      );
+      await expect(vfs.delete('/mnt/test/test.txt')).resolves.toBeUndefined();
+    });
+
     it('should block deletion when capabilities.canDelete is false', async () => {
       await memoryFS.writeFile('/locked.txt', 'content', {
         overwrite: true,
@@ -680,6 +689,31 @@ describe('VirtualFileSystem', () => {
       // Moving to the same path should not throw - it just returns silently
       await expect(
         vfs.move('/mnt/test/source.txt', '/mnt/test/source.txt'),
+      ).resolves.toBeUndefined();
+    });
+
+    it('attempts provider move when source canChangePath capability is undefined', async () => {
+      await memoryFS.writeFile('/source.txt', 'content', { create: true, overwrite: true });
+      vfs.mount(
+        '/mnt/test',
+        createCapabilityProvider((path, stat) =>
+          path === '/source.txt' ? { ...stat, capabilities: { canChangePath: undefined } } : stat,
+        ),
+      );
+      await expect(vfs.move('/mnt/test/source.txt', '/mnt/test/dest.txt')).resolves.toBeUndefined();
+    });
+
+    it('attempts provider move when target parent canEditChildren capability is undefined', async () => {
+      await memoryFS.writeFile('/source.txt', 'content', { create: true, overwrite: true });
+      await memoryFS.createDirectory('/dest-dir');
+      vfs.mount(
+        '/mnt/test',
+        createCapabilityProvider((path, stat) =>
+          path === '/dest-dir' ? { ...stat, capabilities: { canEditChildren: undefined } } : stat,
+        ),
+      );
+      await expect(
+        vfs.move('/mnt/test/source.txt', '/mnt/test/dest-dir/source.txt'),
       ).resolves.toBeUndefined();
     });
 

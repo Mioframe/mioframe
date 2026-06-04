@@ -851,6 +851,48 @@ describe('WebFileSystemProvider', () => {
     ).rejects.toThrow(storageError);
   });
 
+  it('resolves successfully when post-write getFile metadata fails after the write stream closes', async () => {
+    const fileHandle = createFileHandleMock({
+      fileContent: ['hello'],
+      name: 'note.txt',
+      permissionState: 'granted',
+    });
+    const metadataError = new DOMException('Not allowed', 'NotAllowedError');
+    fileHandle.getFile = vi.fn(() => Promise.reject(metadataError));
+    const rootHandle = createDirectoryHandleMock({
+      entries: [fileHandle],
+      name: '',
+      permissionState: 'granted',
+    });
+    const provider = WebFileSystemProvider(rootHandle, {
+      permissionPolicy: 'userSelectedDirectory',
+    });
+
+    await expect(
+      provider.writeFile('/note.txt', 'world', { create: true, overwrite: true }),
+    ).resolves.toMatchObject({ stat: { type: FSNodeType.File } });
+  });
+
+  it('stat still fails precisely when getFile fails even after a successful write', async () => {
+    const fileHandle = createFileHandleMock({
+      fileContent: ['hello'],
+      name: 'note.txt',
+      permissionState: 'granted',
+    });
+    const metadataError = new DOMException('Not allowed', 'NotAllowedError');
+    fileHandle.getFile = vi.fn(() => Promise.reject(metadataError));
+    const rootHandle = createDirectoryHandleMock({
+      entries: [fileHandle],
+      name: '',
+      permissionState: 'granted',
+    });
+    const provider = WebFileSystemProvider(rootHandle, {
+      permissionPolicy: 'userSelectedDirectory',
+    });
+
+    await expect(provider.stat('/note.txt')).rejects.toThrow(metadataError);
+  });
+
   it('blocks move immediately when destination canEditChildren capability is explicitly false', async () => {
     const sourceFile = createFileHandleMock({
       name: 'note.txt',

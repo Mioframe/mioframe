@@ -374,7 +374,7 @@ export class VirtualFileSystem {
 
     // Check delete capability before deletion
     const stat = await provider.stat(relativePath);
-    if (stat.capabilities?.canDelete !== true) {
+    if (stat.capabilities?.canDelete === false) {
       throw new VfsError(
         FileSystemError.NoPermissions,
         'File system delete operation is not allowed',
@@ -442,13 +442,13 @@ export class VirtualFileSystem {
     const stat = await this.stat(oldPath);
     const targetParentStat = await this.stat(PathUtils.dirname(newPath));
 
-    if (stat.capabilities?.canChangePath !== true) {
+    if (stat.capabilities?.canChangePath === false) {
       throw new VfsError(
         FileSystemError.NoPermissions,
         'The selected item does not support moving',
       );
     }
-    if (targetParentStat.capabilities?.canEditChildren !== true) {
+    if (targetParentStat.capabilities?.canEditChildren === false) {
       throw new VfsError(
         FileSystemError.NoPermissions,
         'The destination directory is not writable',
