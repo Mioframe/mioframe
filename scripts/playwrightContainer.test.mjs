@@ -1,6 +1,9 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { runPlaywrightInContainer } from './playwrightContainer.mjs';
+import {
+  resolvePlaywrightContainerProfile,
+  runPlaywrightInContainer,
+} from './playwrightContainer.mjs';
 import { applyProcessResult } from './lib/processResult.mjs';
 
 const baseOptions = {
@@ -40,6 +43,31 @@ describe('applyProcessResult', () => {
 });
 
 describe('runPlaywrightInContainer', () => {
+  it('resolves conservative local resource limits outside GitHub Actions', () => {
+    const profile = resolvePlaywrightContainerProfile({
+      GITHUB_ACTIONS: 'false',
+    });
+
+    expect(profile.name).toBe('local');
+    expect(profile.cpus).toBe('2');
+    expect(profile.memory).toBe('4g');
+    expect(profile.memorySwap).toBe('4g');
+    expect(profile.pidsLimit).toBe('384');
+    expect(profile.workers).toBe('1');
+  });
+
+  it('resolves the GitHub Actions profile when GITHUB_ACTIONS=true', () => {
+    const profile = resolvePlaywrightContainerProfile({
+      GITHUB_ACTIONS: 'true',
+    });
+
+    expect(profile.name).toBe('github-actions');
+    expect(profile.memory).toBe('6g');
+    expect(profile.memorySwap).toBe('8g');
+    expect(profile.pidsLimit).toBe('512');
+    expect(profile.workers).toBe('2');
+  });
+
   it('applies the final process result only after the lock callback returns', async () => {
     const events = [];
 
@@ -100,10 +128,24 @@ describe('runPlaywrightInContainer', () => {
     });
 
     expect(runLocalCommand).toHaveBeenCalledWith({
-      args: expect.arrayContaining(['run', '--rm', '--init']),
+      args: expect.arrayContaining([
+        'run',
+        '--rm',
+        '--init',
+        '--cpus',
+        '2',
+        '--memory',
+        '4g',
+        '--memory-swap',
+        '4g',
+        '--pids-limit',
+        '384',
+      ]),
       command: 'podman',
       env: process.env,
     });
+    expect(runLocalCommand.mock.calls[0][0].args).toContain('--workers');
+    expect(runLocalCommand.mock.calls[0][0].args).toContain('1');
     expect(spawnSync).not.toHaveBeenCalled();
   });
 
@@ -140,11 +182,12 @@ describe('runPlaywrightInContainer', () => {
       expect(output).toContain('exit status: 125');
       expect(output).toContain('config: playwright.visual.config.ts');
       expect(output).toContain('  cpus: 2  override: PLAYWRIGHT_CONTAINER_CPUS');
-      expect(output).toContain('  memory: 6g  override: PLAYWRIGHT_CONTAINER_MEMORY');
-      expect(output).toContain('  memory-swap: 8g  override: PLAYWRIGHT_CONTAINER_MEMORY_SWAP');
-      expect(output).toContain('  pids-limit: 512  override: PLAYWRIGHT_CONTAINER_PIDS_LIMIT');
+      expect(output).toContain('profile: local');
+      expect(output).toContain('  memory: 4g  override: PLAYWRIGHT_CONTAINER_MEMORY');
+      expect(output).toContain('  memory-swap: 4g  override: PLAYWRIGHT_CONTAINER_MEMORY_SWAP');
+      expect(output).toContain('  pids-limit: 384  override: PLAYWRIGHT_CONTAINER_PIDS_LIMIT');
       expect(output).toContain('  timeout: 900  override: PLAYWRIGHT_CONTAINER_TIMEOUT');
-      expect(output).toContain('  workers: 2  override: PLAYWRIGHT_CONTAINER_WORKERS');
+      expect(output).toContain('  workers: 1  override: PLAYWRIGHT_CONTAINER_WORKERS');
       expect(output).toContain(
         'If Podman reports an unsupported resource option, rerun with the matching override or adjust config/tooling.json.',
       );

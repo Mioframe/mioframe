@@ -17,7 +17,7 @@ const GENERIC_MEMORY_SWAP_ENV = 'PLAYWRIGHT_CONTAINER_MEMORY_SWAP';
 const GENERIC_PIDS_LIMIT_ENV = 'PLAYWRIGHT_CONTAINER_PIDS_LIMIT';
 const GENERIC_TIMEOUT_ENV = 'PLAYWRIGHT_CONTAINER_TIMEOUT';
 const GENERIC_WORKERS_ENV = 'PLAYWRIGHT_CONTAINER_WORKERS';
-const containerDefaults = toolingConfig.verification.playwrightContainer;
+const containerProfiles = toolingConfig.verification.playwrightContainer;
 const PLAYWRIGHT_CONTAINER_LIMITS = [
   {
     envName: GENERIC_CPUS_ENV,
@@ -104,10 +104,16 @@ export async function runPlaywrightInContainer(
   deps.ensureLocalPlaywrightBinary(repositoryPath, missingBinaryMessage);
 
   const image =
-    getFirstDefinedEnvValue([...imageEnvAliases, GENERIC_IMAGE_ENV]) ||
+    getFirstDefinedEnvValue([...imageEnvAliases, GENERIC_IMAGE_ENV], process.env) ||
     `mcr.microsoft.com/playwright:v${deps.getInstalledPlaywrightVersion(repositoryPath, missingMetadataMessage)}-noble`;
-  const resourceLimits = getPlaywrightContainerResourceLimits();
+  const resourceLimits = resolvePlaywrightContainerProfile();
   const run = async (lockEnv) => {
+    printPlaywrightContainerProfile({
+      config,
+      label,
+      resourceLimits,
+    });
+
     const podmanArgs = [
       'run',
       '--rm',
@@ -137,7 +143,10 @@ export async function runPlaywrightInContainer(
     );
 
     const usernsMode =
-      getFirstDefinedEnvValue([...podmanUsernsEnvAliases, GENERIC_PODMAN_USERNS_ENV]) || 'keep-id';
+      getFirstDefinedEnvValue(
+        [...podmanUsernsEnvAliases, GENERIC_PODMAN_USERNS_ENV],
+        process.env,
+      ) || 'keep-id';
 
     if (usernsMode !== 'off') {
       podmanArgs.push('--userns', usernsMode);
@@ -289,13 +298,23 @@ function getInstalledPlaywrightVersion(repositoryRoot, missingMetadataMessage) {
   return packageJson.version;
 }
 
-function getPlaywrightContainerResourceLimits() {
-  return Object.fromEntries(
-    PLAYWRIGHT_CONTAINER_LIMITS.map(({ envName, key }) => [
+/**
+ * Resolve the effective Playwright container profile for the current environment.
+ * @param [processEnv] Environment object used for profile and override resolution.
+ * @returns Effective profile name and resource limits.
+ */
+export function resolvePlaywrightContainerProfile(processEnv = process.env) {
+  const profileName = processEnv.GITHUB_ACTIONS === 'true' ? 'github-actions' : 'local';
+  const profileDefaults =
+    profileName === 'github-actions' ? containerProfiles.githubActions : containerProfiles.local;
+
+  return Object.fromEntries([
+    ['name', profileName],
+    ...PLAYWRIGHT_CONTAINER_LIMITS.map(({ envName, key }) => [
       key,
-      getFirstDefinedEnvValue([envName]) ?? String(containerDefaults[key]),
+      getFirstDefinedEnvValue([envName], processEnv) ?? String(profileDefaults[key]),
     ]),
-  );
+  ]);
 }
 
 function printPlaywrightContainerFailureDiagnostic({
@@ -307,6 +326,7 @@ function printPlaywrightContainerFailureDiagnostic({
 }) {
   console.error('Playwright container command failed.');
   console.error(`label: ${label}`);
+  console.error(`profile: ${resourceLimits.name}`);
   console.error(`operation: Playwright tests in a Podman container`);
   if (signal) {
     console.error(`signal: ${signal}`);
@@ -327,8 +347,23 @@ function printPlaywrightContainerFailureDiagnostic({
   console.error('Raw Podman output is printed above.');
 }
 
+function printPlaywrightContainerProfile({ config, label, resourceLimits }) {
+  console.log('Playwright container limits:');
+  console.log(`label: ${label}`);
+  console.log(`config: ${config}`);
+  console.log(`profile: ${resourceLimits.name}`);
+
+  for (const limit of PLAYWRIGHT_CONTAINER_LIMITS) {
+    const limitLabel = limit.label ?? limit.key;
+    console.log(`  ${limitLabel}: ${resourceLimits[limit.key]}  override: ${limit.envName}`);
+  }
+}
+
 function getVolumeLabelSuffix(volumeLabelEnvAliases) {
-  const configured = getFirstDefinedEnvValue([...volumeLabelEnvAliases, GENERIC_VOLUME_LABEL_ENV]);
+  const configured = getFirstDefinedEnvValue(
+    [...volumeLabelEnvAliases, GENERIC_VOLUME_LABEL_ENV],
+    process.env,
+  );
 
   if (configured === 'none') {
     return '';
@@ -357,9 +392,9 @@ function isWsl() {
   return Boolean(process.env.WSL_DISTRO_NAME) || release().toLowerCase().includes('microsoft');
 }
 
-function getFirstDefinedEnvValue(names) {
+function getFirstDefinedEnvValue(names, processEnv) {
   for (const name of names) {
-    const value = process.env[name];
+    const value = processEnv[name];
 
     if (value !== undefined && value !== '') {
       return value;
