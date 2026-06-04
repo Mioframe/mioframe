@@ -1,18 +1,17 @@
 import { expect, test } from '@playwright/test';
-import { dismissStorageOnboarding, launchApp, openOpfs } from './helpers';
+import { launchApp, openOpfs } from './helpers';
 
-test('loads the app, dismisses storage onboarding, and opens the OPFS root', async ({ page }) => {
+test('loads the app and opens the OPFS root without any startup dialog', async ({ page }) => {
   await launchApp(page);
 
-  await dismissStorageOnboarding(page);
   await expect(page.getByText(/^browser storage$/i)).toBeVisible();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
 
   await openOpfs(page);
 });
 
 test('toggles Starter examples in Settings with Space and Enter', async ({ page }) => {
   await launchApp(page);
-  await dismissStorageOnboarding(page);
 
   await page.getByRole('button', { name: /^settings$/i }).click();
 
@@ -32,7 +31,6 @@ test('toggles Error diagnostics in Settings with Space and Enter when available'
   page,
 }) => {
   await launchApp(page);
-  await dismissStorageOnboarding(page);
 
   await page.getByRole('button', { name: /^settings$/i }).click();
 

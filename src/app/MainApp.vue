@@ -4,7 +4,6 @@ import { onErrorCaptured, useTemplateRef } from 'vue';
 import DialogContainer from '@shared/ui/Dialog/Alert/DialogContainer.vue';
 import { RouterView } from 'vue-router';
 import { PerformanceOverlay } from '@shared/ui/performance';
-import { usePermanentStorageRequest } from '@feature/permanentStorageRequest';
 import { useLocalSettings } from '@entity/localSettings';
 import { provideOverlayContainer } from '@shared/ui/Overlay';
 import { useMainContentAriaHidden } from '@shared/ui/AriaHidden';
@@ -26,9 +25,6 @@ onErrorCaptured((error) => {
 const overlayContainerEl = useTemplateRef('overlayContainerEl');
 
 provideOverlayContainer(overlayContainerEl);
-
-const { permanentStorageRequest } = usePermanentStorageRequest();
-void permanentStorageRequest();
 
 const { settings } = useLocalSettings();
 

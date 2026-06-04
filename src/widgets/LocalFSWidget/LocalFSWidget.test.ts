@@ -5,11 +5,34 @@ import { mount } from '@vue/test-utils';
 
 const deviceFiles = ref<Array<{ name: string; description?: string; canDisconnect: boolean }>>([]);
 const disconnectDeviceDirectoryMock = vi.fn();
+const enableStorageMock = vi.fn();
+const showFeedbackMock = vi.fn();
+const persistenceStatus = ref<'checking' | 'ordinary' | 'persistent' | 'unsupported'>('checking');
+const isRequesting = ref(false);
+
+vi.mock('@shared/service/directories', () => ({
+  OPFSName: 'Browser Storage',
+}));
 
 vi.mock('@entity/mountedDirectories', () => ({
   DEVICE_FILES: 'Device files',
   useFileSystem: () => ({
     deviceFiles,
+  }),
+}));
+
+vi.mock('@entity/browserStoragePersistence', () => ({
+  useBrowserStoragePersistence: () => ({
+    status: persistenceStatus,
+    isRequesting,
+    requestPersistence: enableStorageMock,
+    refresh: vi.fn(),
+  }),
+}));
+
+vi.mock('@feature/browserStoragePersistenceEnable', () => ({
+  useBrowserStoragePersistenceFeedback: () => ({
+    showFeedback: showFeedbackMock,
   }),
 }));
 
@@ -99,6 +122,10 @@ vi.mock('@shared/ui/Lists', () => ({
         type: String,
         default: undefined,
       },
+      disabled: {
+        type: Boolean,
+        default: false,
+      },
     },
     emits: ['click'],
     setup(props, { emit, slots }) {
@@ -106,6 +133,8 @@ vi.mock('@shared/ui/Lists', () => ({
         h(
           props.is === 'button' ? 'button' : 'div',
           {
+            'data-headline': props.headline,
+            disabled: props.disabled || undefined,
             onClick: () => {
               emit('click');
             },
@@ -114,6 +143,7 @@ vi.mock('@shared/ui/Lists', () => ({
             h('span', props.headline),
             props.supportingText ? h('span', props.supportingText) : null,
             slots.leadingIcon?.(),
+            slots.supportingText?.(),
             slots.trailingIcon?.(),
           ],
         );
@@ -130,7 +160,11 @@ describe('LocalFSWidget', () => {
   afterEach(() => {
     vi.resetModules();
     deviceFiles.value = [];
+    persistenceStatus.value = 'checking';
+    isRequesting.value = false;
     disconnectDeviceDirectoryMock.mockReset();
+    enableStorageMock.mockReset();
+    showFeedbackMock.mockReset();
     document.body.innerHTML = '';
   });
 
@@ -225,6 +259,117 @@ describe('LocalFSWidget', () => {
 
     expect(disconnectDeviceDirectoryMock).toHaveBeenCalledWith('My Space');
     expect(wrapper.emitted('clickPath')).toBeUndefined();
+  });
+
+  it('shows "Enable more reliable storage" action above Browser Storage nav in ordinary state', async () => {
+    persistenceStatus.value = 'ordinary';
+    deviceFiles.value = [
+      {
+        name: 'Browser Storage',
+        description: 'Saved directly in your browser on this device',
+        canDisconnect: false,
+      },
+    ];
+
+    const wrapper = await mountLocalFSWidget();
+
+    const enableButton = wrapper.find('[data-headline="Enable more reliable storage"]');
+    const browserStorageNav = wrapper.find('[data-headline="Browser Storage"]');
+
+    expect(enableButton.exists()).toBe(true);
+    expect(enableButton.element.tagName).toBe('BUTTON');
+    expect(browserStorageNav.exists()).toBe(true);
+
+    // Action must appear before the nav item in the DOM (DOCUMENT_POSITION_FOLLOWING = 4).
+    const enableBeforeNav = !!(
+      enableButton.element.compareDocumentPosition(browserStorageNav.element) &
+      Node.DOCUMENT_POSITION_FOLLOWING
+    );
+    expect(enableBeforeNav).toBe(true);
+  });
+
+  it('calls requestPersistence and passes its outcome to showFeedback, does not emit clickPath', async () => {
+    persistenceStatus.value = 'ordinary';
+    enableStorageMock.mockResolvedValue('not-enabled');
+    deviceFiles.value = [
+      {
+        name: 'Browser Storage',
+        description: 'Saved directly in your browser on this device',
+        canDisconnect: false,
+      },
+    ];
+
+    const wrapper = await mountLocalFSWidget();
+
+    await wrapper.find('[data-headline="Enable more reliable storage"]').trigger('click');
+
+    expect(enableStorageMock).toHaveBeenCalledTimes(1);
+    expect(showFeedbackMock).toHaveBeenCalledOnce();
+    expect(showFeedbackMock).toHaveBeenCalledWith('not-enabled');
+    expect(wrapper.emitted('clickPath')).toBeUndefined();
+  });
+
+  it('shows no extra item for the browser entry in persistent state, Browser Storage nav remains', async () => {
+    persistenceStatus.value = 'persistent';
+    deviceFiles.value = [
+      {
+        name: 'Browser Storage',
+        description: 'Saved directly in your browser on this device',
+        canDisconnect: false,
+      },
+    ];
+
+    const wrapper = await mountLocalFSWidget();
+
+    expect(wrapper.find('[data-headline="Enable more reliable storage"]').exists()).toBe(false);
+    expect(wrapper.find('[data-headline="More reliable storage enabled"]').exists()).toBe(false);
+    expect(wrapper.find('[data-headline="Browser Storage"]').exists()).toBe(true);
+  });
+
+  it('shows "More reliable storage unavailable" warning above Browser Storage nav in unsupported state', async () => {
+    persistenceStatus.value = 'unsupported';
+    deviceFiles.value = [
+      {
+        name: 'Browser Storage',
+        description: 'Saved directly in your browser on this device',
+        canDisconnect: false,
+      },
+    ];
+
+    const wrapper = await mountLocalFSWidget();
+
+    const warningItem = wrapper.find('[data-headline="More reliable storage unavailable"]');
+    const browserStorageNav = wrapper.find('[data-headline="Browser Storage"]');
+
+    expect(warningItem.exists()).toBe(true);
+    expect(browserStorageNav.exists()).toBe(true);
+
+    // Warning must appear before the nav item in the DOM (DOCUMENT_POSITION_FOLLOWING = 4).
+    const warningBeforeNav = !!(
+      warningItem.element.compareDocumentPosition(browserStorageNav.element) &
+      Node.DOCUMENT_POSITION_FOLLOWING
+    );
+    expect(warningBeforeNav).toBe(true);
+  });
+
+  it('shows no persistence status item while checking, Browser Storage nav remains', async () => {
+    persistenceStatus.value = 'checking';
+    deviceFiles.value = [
+      {
+        name: 'Browser Storage',
+        description: 'Saved directly in your browser on this device',
+        canDisconnect: false,
+      },
+    ];
+
+    const wrapper = await mountLocalFSWidget();
+
+    expect(wrapper.find('[data-headline="Enable more reliable storage"]').exists()).toBe(false);
+    expect(wrapper.find('[data-headline="More reliable storage enabled"]').exists()).toBe(false);
+    expect(wrapper.find('[data-headline="More reliable storage unavailable"]').exists()).toBe(
+      false,
+    );
+    expect(wrapper.find('[data-headline="Browser Storage"]').exists()).toBe(true);
   });
 });
 /* eslint-enable vue/one-component-per-file -- Re-enable the rule after the inline component stubs used in this file. */

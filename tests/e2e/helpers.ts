@@ -30,34 +30,16 @@ const getBaseURL = () => {
 
 export const launchApp = async (page: Page) => {
   await page.goto(getBaseURL());
-  await Promise.race([
-    page.getByRole('button', { name: /^ok$/i }).first().waitFor({ state: 'visible' }),
-    page.getByText(browserStorageLabel).first().waitFor({ state: 'visible' }),
-  ]).catch(() => undefined);
+  await page.getByText(browserStorageLabel).first().waitFor({ state: 'visible' });
   await expect(page.getByText(browserStorageLabel)).toBeVisible();
 };
 
-export const dismissStorageOnboarding = async (page: Page) => {
-  for (let step = 0; step < 6; step += 1) {
-    const onboardingDialog = page
-      .getByRole('dialog')
-      .filter({ hasText: /temporary|stored files|deletion|protect/i })
-      .first();
-    // The onboarding can only advance one dialog at a time after the previous click settles.
-    // eslint-disable-next-line no-await-in-loop
-    const isVisible = await onboardingDialog
-      .waitFor({ state: 'visible', timeout: step === 0 ? 1500 : 300 })
-      .then(() => true)
-      .catch(() => false);
-    if (!isVisible) {
-      return;
-    }
-
-    const okButton = onboardingDialog.getByRole('button', { name: /^ok$/i });
-    // Each confirmation reveals the next onboarding step, so this click must remain sequential.
-    // eslint-disable-next-line no-await-in-loop
-    await okButton.click();
-  }
+/**
+ * No-op kept for backwards compatibility; the storage onboarding dialog was removed.
+ * @param _page - Ignored; storage permission is no longer requested at startup.
+ */
+export const dismissStorageOnboarding = async (_page: Page) => {
+  // Storage permission is no longer requested at startup.
 };
 
 export const openOpfs = async (page: Page) => {
