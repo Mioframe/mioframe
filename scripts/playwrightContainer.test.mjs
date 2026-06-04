@@ -78,15 +78,7 @@ describe('runPlaywrightInContainer', () => {
       ensureLocalPlaywrightBinary: vi.fn(),
       ensurePodmanAvailable: vi.fn(),
       getInstalledPlaywrightVersion: vi.fn(() => '1.59.1'),
-      runLocalCommand: vi.fn(async () => {
-        events.push('command-finished');
-        return {
-          signal: null,
-          status: 0,
-        };
-      }),
-      spawnSync: vi.fn(),
-      withExpensiveCommandLock: vi.fn(async (_input, run) => {
+      runGuardedExpensiveLocalCommand: vi.fn(async ({ run }) => {
         events.push('lock-acquired');
 
         try {
@@ -97,6 +89,14 @@ describe('runPlaywrightInContainer', () => {
           events.push('lock-released');
         }
       }),
+      runLocalCommand: vi.fn(async () => {
+        events.push('command-finished');
+        return {
+          signal: null,
+          status: 0,
+        };
+      }),
+      spawnSync: vi.fn(),
     });
 
     expect(events).toEqual([
@@ -106,6 +106,28 @@ describe('runPlaywrightInContainer', () => {
       'lock-released',
       'apply-result',
     ]);
+  });
+
+  it('checks the active verify lock before Podman and Playwright setup', async () => {
+    const ensureLocalPlaywrightBinary = vi.fn();
+    const ensurePodmanAvailable = vi.fn();
+
+    await expect(
+      runPlaywrightInContainer(baseOptions, {
+        applyProcessResult: vi.fn(),
+        ensureLocalPlaywrightBinary,
+        ensurePodmanAvailable,
+        getInstalledPlaywrightVersion: vi.fn(() => '1.59.1'),
+        runGuardedExpensiveLocalCommand: vi.fn(async () => {
+          throw new Error('Another local pnpm verify is already running.');
+        }),
+        runLocalCommand: vi.fn(),
+        spawnSync: vi.fn(),
+      }),
+    ).rejects.toThrow('Another local pnpm verify is already running.');
+
+    expect(ensurePodmanAvailable).not.toHaveBeenCalled();
+    expect(ensureLocalPlaywrightBinary).not.toHaveBeenCalled();
   });
 
   it('runs the long podman command through the async runner instead of spawnSync', async () => {
@@ -120,11 +142,11 @@ describe('runPlaywrightInContainer', () => {
       ensureLocalPlaywrightBinary: vi.fn(),
       ensurePodmanAvailable: vi.fn(),
       getInstalledPlaywrightVersion: vi.fn(() => '1.59.1'),
-      runLocalCommand,
-      spawnSync,
-      withExpensiveCommandLock: vi.fn(async (_input, run) =>
+      runGuardedExpensiveLocalCommand: vi.fn(async ({ run }) =>
         run({ MIOFRAME_EXPENSIVE_COMMAND_LOCK_HELD: '1' }),
       ),
+      runLocalCommand,
+      spawnSync,
     });
 
     expect(runLocalCommand).toHaveBeenCalledWith({
@@ -164,14 +186,14 @@ describe('runPlaywrightInContainer', () => {
           ensureLocalPlaywrightBinary: vi.fn(),
           ensurePodmanAvailable: vi.fn(),
           getInstalledPlaywrightVersion: vi.fn(() => '1.59.1'),
+          runGuardedExpensiveLocalCommand: vi.fn(async ({ run }) =>
+            run({ MIOFRAME_EXPENSIVE_COMMAND_LOCK_HELD: '1' }),
+          ),
           runLocalCommand: vi.fn(async () => ({
             signal: null,
             status: 125,
           })),
           spawnSync: vi.fn(),
-          withExpensiveCommandLock: vi.fn(async (_input, run) =>
-            run({ MIOFRAME_EXPENSIVE_COMMAND_LOCK_HELD: '1' }),
-          ),
         },
       );
 
@@ -206,13 +228,13 @@ describe('runPlaywrightInContainer', () => {
         ensureLocalPlaywrightBinary: vi.fn(),
         ensurePodmanAvailable: vi.fn(),
         getInstalledPlaywrightVersion: vi.fn(() => '1.59.1'),
+        runGuardedExpensiveLocalCommand: vi.fn(async ({ run }) =>
+          run({ MIOFRAME_EXPENSIVE_COMMAND_LOCK_HELD: '1' }),
+        ),
         runLocalCommand: vi.fn(async () => {
           throw new Error('spawn failed');
         }),
         spawnSync: vi.fn(),
-        withExpensiveCommandLock: vi.fn(async (_input, run) =>
-          run({ MIOFRAME_EXPENSIVE_COMMAND_LOCK_HELD: '1' }),
-        ),
       });
 
       const output = errorSpy.mock.calls.map(([line]) => String(line)).join('\n');

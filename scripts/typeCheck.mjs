@@ -1,12 +1,12 @@
 import { pathToFileURL } from 'node:url';
 
-import { assertNoActiveVerifyLock } from './lib/commandLock.mjs';
+import { runGuardedLocalCommand } from './lib/localCommandGuard.mjs';
 import { applyProcessResult } from './lib/processResult.mjs';
 import { runLocalCommand } from './lib/runLocalCommand.mjs';
 
 const defaultDeps = {
   applyProcessResult,
-  assertNoActiveVerifyLock,
+  runGuardedLocalCommand,
   runLocalCommand,
 };
 
@@ -15,12 +15,16 @@ const defaultDeps = {
  * @param [deps] Test seams for verify guard and command execution.
  */
 export async function runTypeCheck(deps = defaultDeps) {
-  deps.assertNoActiveVerifyLock();
-
-  const result = await deps.runLocalCommand({
-    command: 'pnpm',
-    args: ['exec', 'vue-tsc', '--build'],
-  });
+  const result = await deps.runGuardedLocalCommand(
+    {
+      command: 'pnpm exec vue-tsc --build',
+      executable: 'pnpm',
+      args: ['exec', 'vue-tsc', '--build'],
+      env: process.env,
+      label: 'type-check',
+    },
+    deps,
+  );
 
   deps.applyProcessResult(result);
 }

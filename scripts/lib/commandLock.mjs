@@ -59,35 +59,6 @@ export async function withVerifyCommandLock(input, run, options = {}) {
   return withCommandLock('verify', input, run, options);
 }
 
-/**
- * Fail fast when a standalone local command is started while pnpm verify owns the top-level lock.
- * Commands launched from inside `pnpm verify` and GitHub Actions intentionally skip this guard.
- * @param [options] Optional testing overrides.
- * @param [options.lockDirectoryPath] Override the verify lock path.
- * @param [options.processEnv] Environment variables to inspect for skip behavior.
- * @param [options.staleAfterMs] Override the verify stale threshold.
- */
-export function assertNoActiveVerifyLock(options = {}) {
-  const { processEnv = process.env, ...lockStatusOptions } = options;
-
-  if (isGitHubActions(processEnv) || processEnv[VERIFY_LOCK_ENV_FLAG] === '1') {
-    return;
-  }
-
-  const status = getVerifyLockStatus(lockStatusOptions);
-
-  if (status.state !== 'active') {
-    return;
-  }
-
-  throw new Error(
-    formatLockBusyMessage('verify', status.metadata, {
-      lockDirectoryPath: status.lockPath,
-      staleAfterMs: lockStatusOptions.staleAfterMs,
-    }),
-  );
-}
-
 function shouldSkipLock(kind, processEnv = process.env) {
   if (isGitHubActions(processEnv)) {
     return true;
@@ -395,7 +366,16 @@ function readMetadata(metadataPath) {
   }
 }
 
-function formatLockBusyMessage(kind, metadata, { lockDirectoryPath, staleAfterMs } = {}) {
+/**
+ * Format a consistent busy-lock diagnostic for local verify and expensive-command coordination.
+ * @param kind Lock kind.
+ * @param metadata Current lock metadata, if available.
+ * @param [options] Formatting overrides.
+ * @param [options.lockDirectoryPath] Lock path override used in the diagnostic.
+ * @param [options.staleAfterMs] Stale threshold override used in the diagnostic.
+ * @returns Human-readable lock-busy message.
+ */
+export function formatLockBusyMessage(kind, metadata, { lockDirectoryPath, staleAfterMs } = {}) {
   const busyMessage = LOCK_KINDS[kind].busyMessage;
   const staleAfterSeconds = Math.floor(
     (staleAfterMs ?? LOCK_KINDS[kind].config.staleAfterMs) / 1000,
