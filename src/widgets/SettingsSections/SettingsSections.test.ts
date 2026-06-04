@@ -119,6 +119,14 @@ vi.mock('@shared/ui/Lists', () => ({
   }),
 }));
 
+vi.mock('@shared/ui/ProgressIndicators', () => ({
+  MDCircularProgressIndicator: defineComponent({
+    name: 'MDCircularProgressIndicatorStub',
+    props: { size: { type: Number, default: 40 } },
+    template: '<div data-testid="loading-indicator" />',
+  }),
+}));
+
 vi.mock('@shared/ui/Checkbox', () => ({
   MDCheckbox: defineComponent({
     name: 'MDCheckboxStub',
@@ -226,6 +234,11 @@ const getVisualCheckbox = (root: HTMLElement, label: string) =>
 const getStaticRowByText = (root: HTMLElement, text: string) =>
   Array.from(root.querySelectorAll('div')).find((element) => element.textContent.includes(text)) ??
   null;
+
+const getLoadingIndicator = (root: HTMLElement, label: string) =>
+  Array.from(root.querySelectorAll<HTMLElement>('[data-testid="loading-indicator"]')).find((el) =>
+    (el.closest('[role="checkbox"]')?.textContent ?? '').includes(label),
+  ) ?? null;
 
 describe('SettingsSections', () => {
   afterEach(() => {
@@ -436,7 +449,7 @@ describe('SettingsSections', () => {
     unmount();
   });
 
-  it('renders storage as checkbox-style item in persistent state, checked and not triggering disable', async () => {
+  it('renders storage as checked, disabled, non-loading row in persistent state', async () => {
     browserStorageStatus.value = 'persistent';
 
     const { root, unmount } = await mountSettingsSections();
@@ -444,44 +457,59 @@ describe('SettingsSections', () => {
     const storageRow = getCheckboxRow(root, 'More reliable browser storage');
     expect(storageRow).not.toBeNull();
     expect(storageRow?.getAttribute('aria-checked')).toBe('true');
+    expect(storageRow?.getAttribute('aria-disabled')).toBe('true');
+    expect(storageRow?.getAttribute('aria-busy')).toBeNull();
+    expect(getVisualCheckbox(root, 'More reliable browser storage')).not.toBeNull();
+    expect(getLoadingIndicator(root, 'More reliable browser storage')).toBeNull();
     expect(root.textContent).toContain('does not replace backups');
-    expect(root.textContent).not.toContain('More reliable storage enabled');
+
+    // clicking does not trigger a request
+    const storageButton = getButtonByText(root, 'More reliable browser storage');
+    expect(storageButton).toBeNull();
+    await nextTick();
+    expect(enableStorageMock).not.toHaveBeenCalled();
 
     unmount();
   });
 
-  it('renders storage as disabled checkbox in unsupported state', async () => {
+  it('renders storage as unchecked, disabled, non-loading row in unsupported state', async () => {
     browserStorageStatus.value = 'unsupported';
 
     const { root, unmount } = await mountSettingsSections();
 
     const storageRow = getCheckboxRow(root, 'More reliable browser storage');
     expect(storageRow).not.toBeNull();
+    expect(storageRow?.getAttribute('aria-checked')).toBe('false');
     expect(storageRow?.getAttribute('aria-disabled')).toBe('true');
-    expect(root.textContent).toContain('keep backups for important data');
+    expect(storageRow?.getAttribute('aria-busy')).toBeNull();
+    expect(getLoadingIndicator(root, 'More reliable browser storage')).toBeNull();
+    expect(root.textContent).toContain('keep backups');
 
     const storageButton = getButtonByText(root, 'More reliable browser storage');
-    storageButton?.click();
-    await nextTick();
-
+    expect(storageButton).toBeNull();
     expect(enableStorageMock).not.toHaveBeenCalled();
 
     unmount();
   });
 
-  it('renders storage as disabled checkbox while checking', async () => {
+  it('renders storage as loading, disabled, unchecked row while checking', async () => {
     browserStorageStatus.value = 'checking';
 
     const { root, unmount } = await mountSettingsSections();
 
     const storageRow = getCheckboxRow(root, 'More reliable browser storage');
     expect(storageRow).not.toBeNull();
+    expect(storageRow?.getAttribute('aria-checked')).toBe('false');
     expect(storageRow?.getAttribute('aria-disabled')).toBe('true');
+    expect(storageRow?.getAttribute('aria-busy')).toBe('true');
+    expect(getLoadingIndicator(root, 'More reliable browser storage')).not.toBeNull();
+    expect(getVisualCheckbox(root, 'More reliable browser storage')).toBeNull();
+    expect(root.textContent).toContain('Checking browser storage reliability');
 
     unmount();
   });
 
-  it('renders storage as disabled checkbox while request is in progress', async () => {
+  it('renders storage as loading, disabled, unchecked row while request is in progress', async () => {
     browserStorageStatus.value = 'ordinary';
     isEnablingStorage.value = true;
 
@@ -489,7 +517,12 @@ describe('SettingsSections', () => {
 
     const storageRow = getCheckboxRow(root, 'More reliable browser storage');
     expect(storageRow).not.toBeNull();
+    expect(storageRow?.getAttribute('aria-checked')).toBe('false');
     expect(storageRow?.getAttribute('aria-disabled')).toBe('true');
+    expect(storageRow?.getAttribute('aria-busy')).toBe('true');
+    expect(getLoadingIndicator(root, 'More reliable browser storage')).not.toBeNull();
+    expect(getVisualCheckbox(root, 'More reliable browser storage')).toBeNull();
+    expect(root.textContent).toContain('Requesting more reliable browser storage');
 
     unmount();
   });
