@@ -114,15 +114,15 @@ describe('writeAccessRecoveryDiagnostics', () => {
   });
 
   describe('reportWriteAccessReplayFailure', () => {
-    it('emits an error with Failed result, Storage classification, and grantReplayStillBlocked name', () => {
+    it('emits an error with Blocked result, Access classification, and grantReplayStillBlocked name', () => {
       reportWriteAccessReplayFailure({ attemptId: TEST_ATTEMPT_ID });
 
       expect(sink).toHaveLength(1);
       expect(sink[0]).toMatchObject({
         name: 'writeAccessRecovery.grantReplayStillBlocked',
         severity: DiagnosticSeverity.Error,
-        result: DiagnosticResult.Failed,
-        classification: DiagnosticClassification.Storage,
+        result: DiagnosticResult.Blocked,
+        classification: DiagnosticClassification.Access,
         attemptId: TEST_ATTEMPT_ID,
         safeTags: { provider: 'webFileSystem', operation: 'resolveAccessRequest' },
       });

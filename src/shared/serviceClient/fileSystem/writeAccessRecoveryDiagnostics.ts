@@ -97,8 +97,8 @@ export const reportWriteAccessReplayFailure = ({ attemptId }: { attemptId: strin
   reportWebFsEvent({
     name: 'writeAccessRecovery.grantReplayStillBlocked',
     severity: DiagnosticSeverity.Error,
-    result: DiagnosticResult.Failed,
-    classification: DiagnosticClassification.Storage,
+    result: DiagnosticResult.Blocked,
+    classification: DiagnosticClassification.Access,
     attemptId,
     operation: 'resolveAccessRequest',
   });

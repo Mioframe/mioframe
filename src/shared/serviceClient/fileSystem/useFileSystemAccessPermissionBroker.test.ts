@@ -386,8 +386,8 @@ describe('useFileSystemAccessPermissionBroker', () => {
       expect(diagnosticSink[0]).toMatchObject({
         name: 'writeAccessRecovery.grantReplayStillBlocked',
         severity: DiagnosticSeverity.Error,
-        result: DiagnosticResult.Failed,
-        classification: DiagnosticClassification.Storage,
+        result: DiagnosticResult.Blocked,
+        classification: DiagnosticClassification.Access,
         safeTags: { provider: 'webFileSystem', operation: 'resolveAccessRequest' },
       });
       expect(JSON.stringify(diagnosticSink[0])).not.toContain('Work');
