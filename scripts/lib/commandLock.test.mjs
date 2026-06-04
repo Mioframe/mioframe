@@ -665,6 +665,50 @@ describe('withVerifyCommandLock expensive coordination', () => {
   });
 });
 
+describe('withHeldLockEnv (via skip-lock path)', () => {
+  it('sets the env flag during the callback and restores it after success', async () => {
+    await withProcessEnv(
+      { GITHUB_ACTIONS: 'true', MIOFRAME_EXPENSIVE_COMMAND_LOCK_HELD: undefined },
+      async () => {
+        let flagDuringCallback;
+
+        await withExpensiveCommandLock({ label: 'test', command: 'pnpm test' }, async () => {
+          flagDuringCallback = process.env.MIOFRAME_EXPENSIVE_COMMAND_LOCK_HELD;
+        });
+
+        expect(flagDuringCallback).toBe('1');
+        expect(process.env.MIOFRAME_EXPENSIVE_COMMAND_LOCK_HELD).toBeUndefined();
+      },
+    );
+  });
+
+  it('restores the previous env value after success when flag was already set', async () => {
+    await withProcessEnv(
+      { GITHUB_ACTIONS: 'true', MIOFRAME_EXPENSIVE_COMMAND_LOCK_HELD: 'previous' },
+      async () => {
+        await withExpensiveCommandLock({ label: 'test', command: 'pnpm test' }, async () => {});
+
+        expect(process.env.MIOFRAME_EXPENSIVE_COMMAND_LOCK_HELD).toBe('previous');
+      },
+    );
+  });
+
+  it('restores the env flag after the callback throws', async () => {
+    await withProcessEnv(
+      { GITHUB_ACTIONS: 'true', MIOFRAME_EXPENSIVE_COMMAND_LOCK_HELD: undefined },
+      async () => {
+        await expect(
+          withExpensiveCommandLock({ label: 'test', command: 'pnpm test' }, async () => {
+            throw new Error('callback failure');
+          }),
+        ).rejects.toThrow('callback failure');
+
+        expect(process.env.MIOFRAME_EXPENSIVE_COMMAND_LOCK_HELD).toBeUndefined();
+      },
+    );
+  });
+});
+
 describe('getExpensiveLockStatus', () => {
   it('reports an active expensive lock with metadata', () => {
     const baseDir = fs.mkdtempSync(path.join(os.tmpdir(), 'expensive-status-active-'));

@@ -196,20 +196,20 @@ function getHeldLockEnv(kind) {
   return env;
 }
 
-function withHeldLockEnv(kind, run) {
+async function withHeldLockEnv(kind, run) {
   const envFlag = LOCK_KINDS[kind].envFlag;
   const previousValue = process.env[envFlag];
   process.env[envFlag] = '1';
 
-  return Promise.resolve()
-    .then(run)
-    .finally(() => {
-      if (previousValue === undefined) {
-        Reflect.deleteProperty(process.env, envFlag);
-      } else {
-        process.env[envFlag] = previousValue;
-      }
-    });
+  try {
+    return await run();
+  } finally {
+    if (previousValue === undefined) {
+      Reflect.deleteProperty(process.env, envFlag);
+    } else {
+      process.env[envFlag] = previousValue;
+    }
+  }
 }
 
 function acquireLock(kind, { lockDirectoryPath, metadataPath, metadata, staleAfterMs }) {

@@ -76,5 +76,10 @@ function getStorybookCommand(mode) {
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
-  await runStorybook();
+  try {
+    await runStorybook();
+  } catch (error) {
+    console.error(error instanceof Error ? error.message : String(error));
+    process.exitCode = 1;
+  }
 }

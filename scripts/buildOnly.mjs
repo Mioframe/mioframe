@@ -30,5 +30,10 @@ export async function runBuildOnly(deps = defaultDeps) {
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
-  await runBuildOnly();
+  try {
+    await runBuildOnly();
+  } catch (error) {
+    console.error(error instanceof Error ? error.message : String(error));
+    process.exitCode = 1;
+  }
 }

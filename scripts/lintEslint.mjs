@@ -66,5 +66,10 @@ export async function runLintEslint(deps = defaultDeps) {
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
-  await runLintEslint();
+  try {
+    await runLintEslint();
+  } catch (error) {
+    console.error(error instanceof Error ? error.message : String(error));
+    process.exitCode = 1;
+  }
 }

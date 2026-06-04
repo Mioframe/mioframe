@@ -38,5 +38,10 @@ export async function runMutation(argv = process.argv.slice(2), deps = defaultDe
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
-  await runMutation();
+  try {
+    await runMutation();
+  } catch (error) {
+    console.error(error instanceof Error ? error.message : String(error));
+    process.exitCode = 1;
+  }
 }

@@ -50,5 +50,10 @@ function getE2eHostLabel(argv) {
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
-  await runE2eHost();
+  try {
+    await runE2eHost();
+  } catch (error) {
+    console.error(error instanceof Error ? error.message : String(error));
+    process.exitCode = 1;
+  }
 }

@@ -30,5 +30,10 @@ export async function runTypeCheck(deps = defaultDeps) {
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
-  await runTypeCheck();
+  try {
+    await runTypeCheck();
+  } catch (error) {
+    console.error(error instanceof Error ? error.message : String(error));
+    process.exitCode = 1;
+  }
 }
