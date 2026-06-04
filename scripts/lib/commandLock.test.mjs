@@ -12,6 +12,32 @@ import {
 
 const tempDirs = [];
 
+async function withProcessEnv(overrides, run) {
+  const previousEntries = Object.fromEntries(
+    Object.keys(overrides).map((key) => [key, process.env[key]]),
+  );
+
+  for (const [key, value] of Object.entries(overrides)) {
+    if (value === undefined) {
+      Reflect.deleteProperty(process.env, key);
+    } else {
+      process.env[key] = value;
+    }
+  }
+
+  try {
+    return await run();
+  } finally {
+    for (const [key, value] of Object.entries(previousEntries)) {
+      if (value === undefined) {
+        Reflect.deleteProperty(process.env, key);
+      } else {
+        process.env[key] = value;
+      }
+    }
+  }
+}
+
 function createTempLockDir() {
   const baseDir = fs.mkdtempSync(path.join(os.tmpdir(), 'commandlock-test-'));
   const lockDir = path.join(baseDir, 'lock');
@@ -257,8 +283,6 @@ describe('withVerifyCommandLock', () => {
     const baseDir = fs.mkdtempSync(path.join(os.tmpdir(), 'verifylock-dup-'));
     tempDirs.push(baseDir);
     const lockDir = path.join(baseDir, 'verify.lock');
-    const originalVerifyLockEnv = process.env.MIOFRAME_VERIFY_LOCK_HELD;
-    delete process.env.MIOFRAME_VERIFY_LOCK_HELD;
     fs.mkdirSync(lockDir, { recursive: true });
     writeTestMetadata(lockDir, {
       command: 'pnpm verify',
@@ -273,89 +297,69 @@ describe('withVerifyCommandLock', () => {
       startedAt: new Date().toISOString(),
     });
 
-    try {
-      await expect(
-        withVerifyCommandLock(
-          {
-            command: 'pnpm verify --only type-check',
-            label: 'verify',
-            logPath: '.verify/logs',
-          },
-          async () => {},
-          {
-            lockDirectoryPath: lockDir,
-            staleAfterMs: 50_000,
-          },
-        ),
-      ).rejects.toThrow('Another local pnpm verify is already running.');
-    } finally {
-      if (originalVerifyLockEnv === undefined) {
-        delete process.env.MIOFRAME_VERIFY_LOCK_HELD;
-      } else {
-        process.env.MIOFRAME_VERIFY_LOCK_HELD = originalVerifyLockEnv;
-      }
-    }
+    await withProcessEnv(
+      {
+        GITHUB_ACTIONS: 'false',
+        MIOFRAME_VERIFY_LOCK_HELD: undefined,
+      },
+      async () => {
+        await expect(
+          withVerifyCommandLock(
+            {
+              command: 'pnpm verify --only type-check',
+              label: 'verify',
+              logPath: '.verify/logs',
+            },
+            async () => {},
+            {
+              forceLock: true,
+              lockDirectoryPath: lockDir,
+              staleAfterMs: 50_000,
+            },
+          ),
+        ).rejects.toThrow('Another local pnpm verify is already running.');
+      },
+    );
   });
 
   it('does not skip local verify locking when CI=true outside GitHub Actions', async () => {
     const baseDir = fs.mkdtempSync(path.join(os.tmpdir(), 'verifylock-local-ci-'));
     tempDirs.push(baseDir);
     const lockDir = path.join(baseDir, 'verify.lock');
-    const originalCi = process.env.CI;
-    const originalGithubActions = process.env.GITHUB_ACTIONS;
-    const originalVerifyLockEnv = process.env.MIOFRAME_VERIFY_LOCK_HELD;
-    process.env.CI = 'true';
-    delete process.env.GITHUB_ACTIONS;
-    delete process.env.MIOFRAME_VERIFY_LOCK_HELD;
+    await withProcessEnv(
+      {
+        CI: 'true',
+        GITHUB_ACTIONS: 'false',
+        MIOFRAME_VERIFY_LOCK_HELD: undefined,
+      },
+      async () => {
+        let lockExistsDuringCallback = false;
 
-    try {
-      let lockExistsDuringCallback = false;
+        await withVerifyCommandLock(
+          {
+            command: 'pnpm verify',
+            label: 'verify',
+            logPath: '.verify/logs',
+          },
+          async () => {
+            lockExistsDuringCallback = fs.existsSync(lockDir);
+          },
+          {
+            lockDirectoryPath: lockDir,
+            staleAfterMs: 50_000,
+          },
+        );
 
-      await withVerifyCommandLock(
-        {
-          command: 'pnpm verify',
-          label: 'verify',
-          logPath: '.verify/logs',
-        },
-        async () => {
-          lockExistsDuringCallback = fs.existsSync(lockDir);
-        },
-        {
-          lockDirectoryPath: lockDir,
-          staleAfterMs: 50_000,
-        },
-      );
-
-      expect(lockExistsDuringCallback).toBe(true);
-    } finally {
-      if (originalCi === undefined) {
-        delete process.env.CI;
-      } else {
-        process.env.CI = originalCi;
-      }
-
-      if (originalGithubActions === undefined) {
-        delete process.env.GITHUB_ACTIONS;
-      } else {
-        process.env.GITHUB_ACTIONS = originalGithubActions;
-      }
-
-      if (originalVerifyLockEnv === undefined) {
-        delete process.env.MIOFRAME_VERIFY_LOCK_HELD;
-      } else {
-        process.env.MIOFRAME_VERIFY_LOCK_HELD = originalVerifyLockEnv;
-      }
-    }
+        expect(lockExistsDuringCallback).toBe(true);
+      },
+    );
   });
 
   it('skips local verify locking in GitHub Actions', async () => {
     const baseDir = fs.mkdtempSync(path.join(os.tmpdir(), 'verifylock-gha-'));
     tempDirs.push(baseDir);
     const lockDir = path.join(baseDir, 'verify.lock');
-    const originalGithubActions = process.env.GITHUB_ACTIONS;
-    process.env.GITHUB_ACTIONS = 'true';
-
-    try {
+    await withProcessEnv({ GITHUB_ACTIONS: 'true' }, async () => {
       let lockExistsDuringCallback = false;
 
       await withVerifyCommandLock(
@@ -374,13 +378,7 @@ describe('withVerifyCommandLock', () => {
       );
 
       expect(lockExistsDuringCallback).toBe(false);
-    } finally {
-      if (originalGithubActions === undefined) {
-        delete process.env.GITHUB_ACTIONS;
-      } else {
-        process.env.GITHUB_ACTIONS = originalGithubActions;
-      }
-    }
+    });
   });
 });
 
@@ -454,27 +452,24 @@ describe('withExpensiveCommandLock verify coordination', () => {
       pid: process.pid,
       startedAt: new Date().toISOString(),
     });
-    const originalVerifyLockEnv = process.env.MIOFRAME_VERIFY_LOCK_HELD;
-    delete process.env.MIOFRAME_VERIFY_LOCK_HELD;
-
-    try {
-      await expect(
-        withExpensiveCommandLock(
-          { label: 'visual', command: 'pnpm test:visual' },
-          async () => 'done',
-          {
-            lockDirectoryPath: path.join(baseDir, 'expensive.lock'),
-            staleAfterMs: 50_000,
-            verifyLockDirectoryPath: verifyLockDir,
-          },
-        ),
-      ).rejects.toThrow('Another local pnpm verify is already running.');
-    } finally {
-      if (originalVerifyLockEnv === undefined) {
-        delete process.env.MIOFRAME_VERIFY_LOCK_HELD;
-      } else {
-        process.env.MIOFRAME_VERIFY_LOCK_HELD = originalVerifyLockEnv;
-      }
-    }
+    await withProcessEnv(
+      {
+        GITHUB_ACTIONS: 'false',
+        MIOFRAME_VERIFY_LOCK_HELD: undefined,
+      },
+      async () => {
+        await expect(
+          withExpensiveCommandLock(
+            { label: 'visual', command: 'pnpm test:visual' },
+            async () => 'done',
+            {
+              lockDirectoryPath: path.join(baseDir, 'expensive.lock'),
+              staleAfterMs: 50_000,
+              verifyLockDirectoryPath: verifyLockDir,
+            },
+          ),
+        ).rejects.toThrow('Another local pnpm verify is already running.');
+      },
+    );
   });
 });

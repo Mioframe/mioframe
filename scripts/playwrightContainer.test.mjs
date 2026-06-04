@@ -1,3 +1,4 @@
+import process from 'node:process';
 import { describe, expect, it, vi } from 'vitest';
 
 import {
@@ -14,6 +15,32 @@ const baseOptions = {
   missingPodmanMessage: 'missing podman',
   podmanFailureMessage: 'podman failed',
 };
+
+async function withProcessEnv(overrides, run) {
+  const previousEntries = Object.fromEntries(
+    Object.keys(overrides).map((key) => [key, process.env[key]]),
+  );
+
+  for (const [key, value] of Object.entries(overrides)) {
+    if (value === undefined) {
+      Reflect.deleteProperty(process.env, key);
+    } else {
+      process.env[key] = value;
+    }
+  }
+
+  try {
+    return await run();
+  } finally {
+    for (const [key, value] of Object.entries(previousEntries)) {
+      if (value === undefined) {
+        Reflect.deleteProperty(process.env, key);
+      } else {
+        process.env[key] = value;
+      }
+    }
+  }
+}
 
 describe('applyProcessResult', () => {
   it('sets process.exitCode for status exits', () => {
@@ -72,32 +99,34 @@ describe('runPlaywrightInContainer', () => {
   it('applies the final process result only after the lock callback returns', async () => {
     const events = [];
 
-    await runPlaywrightInContainer(baseOptions, {
-      applyProcessResult: vi.fn(() => {
-        events.push('apply-result');
-      }),
-      ensureLocalPlaywrightBinary: vi.fn(),
-      ensurePodmanAvailable: vi.fn(),
-      getInstalledPlaywrightVersion: vi.fn(() => '1.59.1'),
-      runGuardedExpensiveLocalCommand: vi.fn(async ({ run }) => {
-        events.push('lock-acquired');
+    await withProcessEnv({ GITHUB_ACTIONS: 'false' }, async () => {
+      await runPlaywrightInContainer(baseOptions, {
+        applyProcessResult: vi.fn(() => {
+          events.push('apply-result');
+        }),
+        ensureLocalPlaywrightBinary: vi.fn(),
+        ensurePodmanAvailable: vi.fn(),
+        getInstalledPlaywrightVersion: vi.fn(() => '1.59.1'),
+        runGuardedExpensiveLocalCommand: vi.fn(async ({ run }) => {
+          events.push('lock-acquired');
 
-        try {
-          const result = await run({ MIOFRAME_EXPENSIVE_COMMAND_LOCK_HELD: '1' });
-          events.push('callback-returned');
-          return result;
-        } finally {
-          events.push('lock-released');
-        }
-      }),
-      runLocalCommand: vi.fn(async () => {
-        events.push('command-finished');
-        return {
-          signal: null,
-          status: 0,
-        };
-      }),
-      spawnSync: vi.fn(),
+          try {
+            const result = await run({ MIOFRAME_EXPENSIVE_COMMAND_LOCK_HELD: '1' });
+            events.push('callback-returned');
+            return result;
+          } finally {
+            events.push('lock-released');
+          }
+        }),
+        runLocalCommand: vi.fn(async () => {
+          events.push('command-finished');
+          return {
+            signal: null,
+            status: 0,
+          };
+        }),
+        spawnSync: vi.fn(),
+      });
     });
 
     expect(events).toEqual([
@@ -163,16 +192,18 @@ describe('runPlaywrightInContainer', () => {
     }));
     const spawnSync = vi.fn();
 
-    await runPlaywrightInContainer(baseOptions, {
-      applyProcessResult: vi.fn(),
-      ensureLocalPlaywrightBinary: vi.fn(),
-      ensurePodmanAvailable: vi.fn(),
-      getInstalledPlaywrightVersion: vi.fn(() => '1.59.1'),
-      runGuardedExpensiveLocalCommand: vi.fn(async ({ run }) =>
-        run({ MIOFRAME_EXPENSIVE_COMMAND_LOCK_HELD: '1' }),
-      ),
-      runLocalCommand,
-      spawnSync,
+    await withProcessEnv({ GITHUB_ACTIONS: 'false' }, async () => {
+      await runPlaywrightInContainer(baseOptions, {
+        applyProcessResult: vi.fn(),
+        ensureLocalPlaywrightBinary: vi.fn(),
+        ensurePodmanAvailable: vi.fn(),
+        getInstalledPlaywrightVersion: vi.fn(() => '1.59.1'),
+        runGuardedExpensiveLocalCommand: vi.fn(async ({ run }) =>
+          run({ MIOFRAME_EXPENSIVE_COMMAND_LOCK_HELD: '1' }),
+        ),
+        runLocalCommand,
+        spawnSync,
+      });
     });
 
     expect(runLocalCommand).toHaveBeenCalledWith({
@@ -201,27 +232,29 @@ describe('runPlaywrightInContainer', () => {
     const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
     try {
-      await runPlaywrightInContainer(
-        {
-          ...baseOptions,
-          config: 'playwright.visual.config.ts',
-          label: 'visual',
-        },
-        {
-          applyProcessResult: vi.fn(),
-          ensureLocalPlaywrightBinary: vi.fn(),
-          ensurePodmanAvailable: vi.fn(),
-          getInstalledPlaywrightVersion: vi.fn(() => '1.59.1'),
-          runGuardedExpensiveLocalCommand: vi.fn(async ({ run }) =>
-            run({ MIOFRAME_EXPENSIVE_COMMAND_LOCK_HELD: '1' }),
-          ),
-          runLocalCommand: vi.fn(async () => ({
-            signal: null,
-            status: 125,
-          })),
-          spawnSync: vi.fn(),
-        },
-      );
+      await withProcessEnv({ GITHUB_ACTIONS: 'false' }, async () => {
+        await runPlaywrightInContainer(
+          {
+            ...baseOptions,
+            config: 'playwright.visual.config.ts',
+            label: 'visual',
+          },
+          {
+            applyProcessResult: vi.fn(),
+            ensureLocalPlaywrightBinary: vi.fn(),
+            ensurePodmanAvailable: vi.fn(),
+            getInstalledPlaywrightVersion: vi.fn(() => '1.59.1'),
+            runGuardedExpensiveLocalCommand: vi.fn(async ({ run }) =>
+              run({ MIOFRAME_EXPENSIVE_COMMAND_LOCK_HELD: '1' }),
+            ),
+            runLocalCommand: vi.fn(async () => ({
+              signal: null,
+              status: 125,
+            })),
+            spawnSync: vi.fn(),
+          },
+        );
+      });
 
       const output = errorSpy.mock.calls.map(([line]) => String(line)).join('\n');
       expect(output).toContain('Playwright container command failed.');
@@ -249,18 +282,20 @@ describe('runPlaywrightInContainer', () => {
     const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
     try {
-      await runPlaywrightInContainer(baseOptions, {
-        applyProcessResult: vi.fn(),
-        ensureLocalPlaywrightBinary: vi.fn(),
-        ensurePodmanAvailable: vi.fn(),
-        getInstalledPlaywrightVersion: vi.fn(() => '1.59.1'),
-        runGuardedExpensiveLocalCommand: vi.fn(async ({ run }) =>
-          run({ MIOFRAME_EXPENSIVE_COMMAND_LOCK_HELD: '1' }),
-        ),
-        runLocalCommand: vi.fn(async () => {
-          throw new Error('spawn failed');
-        }),
-        spawnSync: vi.fn(),
+      await withProcessEnv({ GITHUB_ACTIONS: 'false' }, async () => {
+        await runPlaywrightInContainer(baseOptions, {
+          applyProcessResult: vi.fn(),
+          ensureLocalPlaywrightBinary: vi.fn(),
+          ensurePodmanAvailable: vi.fn(),
+          getInstalledPlaywrightVersion: vi.fn(() => '1.59.1'),
+          runGuardedExpensiveLocalCommand: vi.fn(async ({ run }) =>
+            run({ MIOFRAME_EXPENSIVE_COMMAND_LOCK_HELD: '1' }),
+          ),
+          runLocalCommand: vi.fn(async () => {
+            throw new Error('spawn failed');
+          }),
+          spawnSync: vi.fn(),
+        });
       });
 
       const output = errorSpy.mock.calls.map(([line]) => String(line)).join('\n');
