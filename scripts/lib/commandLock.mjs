@@ -67,12 +67,16 @@ function shouldSkipLock(kind, processEnv = process.env) {
     return true;
   }
 
-  // Children of any held machine lock skip reacquisition to avoid deadlock.
-  if (processEnv[MACHINE_LOCK_ENV_FLAG] === '1') {
+  // Children of pnpm verify skip reacquisition to avoid deadlock.
+  // Both flags must be present: MACHINE_LOCK_HELD proves the machine lock is owned,
+  // VERIFY_LOCK_HELD proves the owner is a verify run (not a standalone expensive command).
+  // A standalone expensive command also sets MACHINE_LOCK_HELD but not VERIFY_LOCK_HELD,
+  // so its children must not bypass the lock.
+  if (processEnv[MACHINE_LOCK_ENV_FLAG] === '1' && processEnv[VERIFY_LOCK_ENV_FLAG] === '1') {
     return true;
   }
 
-  // Legacy: verify children also carry VERIFY_LOCK_HELD; keep skipping expensive.
+  // Legacy: verify children may carry only VERIFY_LOCK_HELD without MACHINE_LOCK_HELD.
   if (kind === 'expensive' && processEnv[VERIFY_LOCK_ENV_FLAG] === '1') {
     return true;
   }

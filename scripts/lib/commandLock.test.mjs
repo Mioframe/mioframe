@@ -659,6 +659,217 @@ describe('machine lock: expensive command blocks verify', () => {
 });
 
 // ---------------------------------------------------------------------------
+// Narrowed bypass: standalone expensive child must not bypass machine lock
+// ---------------------------------------------------------------------------
+describe('machine lock bypass: standalone expensive child cannot bypass', () => {
+  it('MIOFRAME_MACHINE_LOCK_HELD=1 alone does not bypass local machine lock', async () => {
+    const baseDir = fs.mkdtempSync(path.join(os.tmpdir(), 'machine-held-alone-'));
+    tempDirs.push(baseDir);
+    const machineLockDir = path.join(baseDir, 'machine.lock');
+    fs.mkdirSync(machineLockDir, { recursive: true });
+    writeTestMetadata(machineLockDir, {
+      kind: 'expensive',
+      command: 'pnpm test:visual',
+      cwd: '/repo',
+      heartbeatAt: new Date().toISOString(),
+      hostname: os.hostname(),
+      label: 'visual',
+      lockPath: machineLockDir,
+      logPath: '.verify/logs',
+      ownerToken: 'owner',
+      pid: process.pid,
+      startedAt: new Date().toISOString(),
+    });
+
+    await withProcessEnv(
+      {
+        GITHUB_ACTIONS: 'false',
+        MIOFRAME_MACHINE_LOCK_HELD: '1',
+        MIOFRAME_EXPENSIVE_COMMAND_LOCK_HELD: undefined,
+        MIOFRAME_VERIFY_LOCK_HELD: undefined,
+      },
+      async () => {
+        await expect(
+          withExpensiveCommandLock(
+            { label: 'child', command: 'pnpm test:visual' },
+            async () => 'done',
+            { machineLockDirectoryPath: machineLockDir, staleAfterMs: 50_000 },
+          ),
+        ).rejects.toThrow('already running');
+      },
+    );
+  });
+
+  it('MIOFRAME_MACHINE_LOCK_HELD=1 + MIOFRAME_EXPENSIVE_COMMAND_LOCK_HELD=1 does not bypass', async () => {
+    const baseDir = fs.mkdtempSync(path.join(os.tmpdir(), 'machine-held-expensive-'));
+    tempDirs.push(baseDir);
+    const machineLockDir = path.join(baseDir, 'machine.lock');
+    fs.mkdirSync(machineLockDir, { recursive: true });
+    writeTestMetadata(machineLockDir, {
+      kind: 'expensive',
+      command: 'pnpm test:visual',
+      cwd: '/repo',
+      heartbeatAt: new Date().toISOString(),
+      hostname: os.hostname(),
+      label: 'visual',
+      lockPath: machineLockDir,
+      logPath: '.verify/logs',
+      ownerToken: 'owner',
+      pid: process.pid,
+      startedAt: new Date().toISOString(),
+    });
+
+    await withProcessEnv(
+      {
+        GITHUB_ACTIONS: 'false',
+        MIOFRAME_MACHINE_LOCK_HELD: '1',
+        MIOFRAME_EXPENSIVE_COMMAND_LOCK_HELD: '1',
+        MIOFRAME_VERIFY_LOCK_HELD: undefined,
+      },
+      async () => {
+        await expect(
+          withExpensiveCommandLock(
+            { label: 'child', command: 'pnpm test:visual' },
+            async () => 'done',
+            { machineLockDirectoryPath: machineLockDir, staleAfterMs: 50_000 },
+          ),
+        ).rejects.toThrow('already running');
+      },
+    );
+  });
+
+  it('MIOFRAME_MACHINE_LOCK_HELD=1 + MIOFRAME_VERIFY_LOCK_HELD=1 still bypasses for verify children', async () => {
+    const baseDir = fs.mkdtempSync(path.join(os.tmpdir(), 'machine-held-verify-child-'));
+    tempDirs.push(baseDir);
+    const machineLockDir = path.join(baseDir, 'machine.lock');
+
+    await withProcessEnv(
+      {
+        GITHUB_ACTIONS: 'false',
+        MIOFRAME_MACHINE_LOCK_HELD: '1',
+        MIOFRAME_VERIFY_LOCK_HELD: '1',
+        MIOFRAME_EXPENSIVE_COMMAND_LOCK_HELD: undefined,
+      },
+      async () => {
+        let callbackRan = false;
+
+        await withExpensiveCommandLock(
+          { label: 'visual', command: 'pnpm test:visual' },
+          async () => {
+            callbackRan = true;
+          },
+          { machineLockDirectoryPath: machineLockDir, staleAfterMs: 50_000 },
+        );
+
+        expect(callbackRan).toBe(true);
+      },
+    );
+  });
+
+  it('MIOFRAME_VERIFY_LOCK_HELD=1 alone (legacy) still bypasses expensive verify children', async () => {
+    const baseDir = fs.mkdtempSync(path.join(os.tmpdir(), 'machine-verify-legacy-'));
+    tempDirs.push(baseDir);
+    const machineLockDir = path.join(baseDir, 'machine.lock');
+
+    await withProcessEnv(
+      {
+        GITHUB_ACTIONS: 'false',
+        MIOFRAME_MACHINE_LOCK_HELD: undefined,
+        MIOFRAME_VERIFY_LOCK_HELD: '1',
+        MIOFRAME_EXPENSIVE_COMMAND_LOCK_HELD: undefined,
+      },
+      async () => {
+        let callbackRan = false;
+
+        await withExpensiveCommandLock(
+          { label: 'visual', command: 'pnpm test:visual' },
+          async () => {
+            callbackRan = true;
+          },
+          { machineLockDirectoryPath: machineLockDir, staleAfterMs: 50_000 },
+        );
+
+        expect(callbackRan).toBe(true);
+      },
+    );
+  });
+
+  it('GITHUB_ACTIONS=true still bypasses the machine lock', async () => {
+    const baseDir = fs.mkdtempSync(path.join(os.tmpdir(), 'machine-gha-bypass-'));
+    tempDirs.push(baseDir);
+    const machineLockDir = path.join(baseDir, 'machine.lock');
+    fs.mkdirSync(machineLockDir, { recursive: true });
+    writeTestMetadata(machineLockDir, {
+      kind: 'expensive',
+      command: 'pnpm test:visual',
+      heartbeatAt: new Date().toISOString(),
+      hostname: os.hostname(),
+      ownerToken: 'owner',
+      pid: process.pid,
+    });
+
+    await withProcessEnv(
+      {
+        GITHUB_ACTIONS: 'true',
+        MIOFRAME_MACHINE_LOCK_HELD: undefined,
+        MIOFRAME_VERIFY_LOCK_HELD: undefined,
+      },
+      async () => {
+        let callbackRan = false;
+
+        await withExpensiveCommandLock(
+          { label: 'child', command: 'pnpm test:visual' },
+          async () => {
+            callbackRan = true;
+          },
+          { machineLockDirectoryPath: machineLockDir, staleAfterMs: 50_000 },
+        );
+
+        expect(callbackRan).toBe(true);
+      },
+    );
+  });
+
+  it('local CI=true does not bypass the machine lock', async () => {
+    const baseDir = fs.mkdtempSync(path.join(os.tmpdir(), 'machine-ci-no-bypass-'));
+    tempDirs.push(baseDir);
+    const machineLockDir = path.join(baseDir, 'machine.lock');
+    fs.mkdirSync(machineLockDir, { recursive: true });
+    writeTestMetadata(machineLockDir, {
+      kind: 'expensive',
+      command: 'pnpm test:visual',
+      cwd: '/repo',
+      heartbeatAt: new Date().toISOString(),
+      hostname: os.hostname(),
+      label: 'visual',
+      lockPath: machineLockDir,
+      logPath: '.verify/logs',
+      ownerToken: 'owner',
+      pid: process.pid,
+      startedAt: new Date().toISOString(),
+    });
+
+    await withProcessEnv(
+      {
+        CI: 'true',
+        GITHUB_ACTIONS: 'false',
+        MIOFRAME_MACHINE_LOCK_HELD: undefined,
+        MIOFRAME_VERIFY_LOCK_HELD: undefined,
+      },
+      async () => {
+        await expect(
+          withExpensiveCommandLock(
+            { label: 'child', command: 'pnpm test:visual' },
+            async () => 'done',
+            { machineLockDirectoryPath: machineLockDir, staleAfterMs: 50_000 },
+          ),
+        ).rejects.toThrow('already running');
+      },
+    );
+  });
+});
+
+// ---------------------------------------------------------------------------
 // Atomic race: two independent locks cannot pass the race window
 // ---------------------------------------------------------------------------
 describe('machine lock atomic race prevention', () => {
