@@ -15,6 +15,7 @@ type BaseHandleOptions = {
 type MockFileSystemFileHandle = FileSystemFileHandle & {
   __sameEntryKey: string;
   __writtenContent: BlobPart[];
+  getFileMock: ReturnType<typeof vi.fn<() => Promise<File>>>;
   queryPermissionMock?: ReturnType<
     typeof vi.fn<(descriptor?: FileSystemHandlePermissionDescriptor) => Promise<PermissionState>>
   >;
@@ -116,11 +117,16 @@ export const createFileHandleMock = ({
     }),
   } satisfies FileSystemWritableFileStream;
 
+  const getFileMock = vi.fn(() =>
+    Promise.resolve(new File(writtenContent, name, { lastModified })),
+  );
+
   const handle: MockFileSystemFileHandle = {
     kind: 'file',
     name,
     __sameEntryKey: sameEntryKey,
     __writtenContent: writtenContent,
+    getFileMock,
     ...(queryPermissionMock === undefined ? {} : { queryPermission: queryPermissionMock }),
     ...(queryPermissionMock === undefined ? {} : { queryPermissionMock }),
     requestPermission: requestPermissionMock,
@@ -129,7 +135,7 @@ export const createFileHandleMock = ({
       Promise.resolve((other.__sameEntryKey ?? other.name) === sameEntryKey),
     ),
     createWritable: vi.fn(() => Promise.resolve(writable)),
-    getFile: vi.fn(() => Promise.resolve(new File(writtenContent, name, { lastModified }))),
+    getFile: getFileMock,
     createSyncAccessHandle: vi.fn(() => Promise.reject(new Error('Method not implemented.'))),
     isFile: true,
     isDirectory: false,

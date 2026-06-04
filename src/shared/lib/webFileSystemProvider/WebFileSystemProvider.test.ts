@@ -187,19 +187,7 @@ describe('WebFileSystemProvider', () => {
     });
 
     await expect(provider.readDirectory('/')).resolves.toEqual([
-      [
-        'note.txt',
-        {
-          capabilities: {
-            canChangePath: true,
-            canDelete: true,
-          },
-          creationTime: 123,
-          modificationTime: 123,
-          size: 5,
-          type: FSNodeType.File,
-        },
-      ],
+      ['note.txt', { type: FSNodeType.File }],
     ]);
     expect(queryPermissionMock).toHaveBeenNthCalledWith(1, {
       mode: 'read',
@@ -291,6 +279,59 @@ describe('WebFileSystemProvider', () => {
       path: '/',
     });
     expect(rootHandle.requestPermissionMock).not.toHaveBeenCalled();
+  });
+
+  it('does not call getFile for file entries during readDirectory', async () => {
+    const fileHandle = createFileHandleMock({ name: 'note.txt', permissionState: 'granted' });
+    const rootHandle = createDirectoryHandleMock({
+      entries: [fileHandle],
+      name: '',
+      permissionState: 'granted',
+    });
+    const provider = WebFileSystemProvider(rootHandle, {
+      permissionPolicy: 'userSelectedDirectory',
+    });
+
+    await expect(provider.readDirectory('/')).resolves.toEqual([
+      ['note.txt', { type: FSNodeType.File }],
+    ]);
+    expect(fileHandle.getFileMock).not.toHaveBeenCalled();
+  });
+
+  it('does not query permission for child entries during readDirectory', async () => {
+    const childDir = createDirectoryHandleMock({ name: 'sub', permissionState: 'granted' });
+    const rootHandle = createDirectoryHandleMock({
+      entries: [childDir],
+      name: '',
+      permissionState: 'granted',
+    });
+    const provider = WebFileSystemProvider(rootHandle, {
+      permissionPolicy: 'userSelectedDirectory',
+    });
+
+    await expect(provider.readDirectory('/')).resolves.toEqual([
+      ['sub', { type: FSNodeType.Directory }],
+    ]);
+    expect(childDir.queryPermissionMock).not.toHaveBeenCalled();
+  });
+
+  it('stat still returns precise file metadata after readDirectory skips eager stats', async () => {
+    const { fileHandle, rootHandle } = createRootHandle('granted');
+    const provider = WebFileSystemProvider(rootHandle, {
+      permissionPolicy: 'userSelectedDirectory',
+    });
+
+    await provider.readDirectory('/');
+    expect(fileHandle.getFileMock).not.toHaveBeenCalled();
+
+    await expect(provider.stat('/note.txt')).resolves.toEqual({
+      type: FSNodeType.File,
+      size: 5,
+      creationTime: 123,
+      modificationTime: 123,
+      capabilities: { canDelete: true, canChangePath: true },
+    });
+    expect(fileHandle.getFileMock).toHaveBeenCalledTimes(1);
   });
 
   it('rejects writeFile when the target already exists and overwrite is false', async () => {
@@ -386,19 +427,7 @@ describe('WebFileSystemProvider', () => {
     });
 
     await expect(provider.readDirectory('/')).resolves.toEqual([
-      [
-        'note.txt',
-        {
-          capabilities: {
-            canChangePath: true,
-            canDelete: true,
-          },
-          creationTime: 123,
-          modificationTime: 123,
-          size: 5,
-          type: FSNodeType.File,
-        },
-      ],
+      ['note.txt', { type: FSNodeType.File }],
     ]);
     expect(onAccessRequired).not.toHaveBeenCalled();
     expect(rootHandle.requestPermissionMock).not.toHaveBeenCalled();
