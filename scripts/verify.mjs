@@ -4,7 +4,7 @@ import { spawn, spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import toolingConfig from '../config/tooling.json' with { type: 'json' };
 import { applyProjectEnv } from './lib/projectEnv.mjs';
-import { withExpensiveCommandLock } from './lib/commandLock.mjs';
+import { withExpensiveCommandLock, withVerifyCommandLock } from './lib/commandLock.mjs';
 import { applyProcessResult } from './lib/processResult.mjs';
 import { classifyCommandWeight, resolveEslintConcurrency } from './lib/commandWeight.mjs';
 import { createChildSignalForwarder } from './lib/signalForward.mjs';
@@ -16,7 +16,6 @@ const isHelpMode = process.argv.includes('--help') || cliArgs.includes('help');
 const isFixMode = process.argv.includes('--fix');
 const isFixOnlyMode = process.argv.includes('--fix-only');
 const isVerboseMode = process.argv.includes('--verbose');
-const isCi = process.env.CI === 'true' || process.env.GITHUB_ACTIONS === 'true';
 const shouldApplyFixers = isFixMode || isFixOnlyMode;
 const cliFilesOverride = isHelpMode ? null : getCliFilesOverride(cliArgs);
 const VERIFY_LABELS = [
@@ -775,7 +774,7 @@ function printHelp() {
   console.log('  pnpm verify --fix-only');
   console.log('');
   console.log('Notes:');
-  console.log('  - In CI, verify scope is based on GITHUB_BASE_REF.');
+  console.log('  - In GitHub Actions, verify scope is based on GITHUB_BASE_REF.');
   console.log('  - Focused --only runs preserve logs from other focused steps.');
   console.log(`  - Logs are written to ${VERIFY_LOG_DIR}/.`);
   console.log('  - Expensive checks have internal heartbeat/timeouts:');
@@ -1034,21 +1033,11 @@ function createE2EInstallCommand(reason) {
 }
 
 function createE2ECommand(extraArgs = []) {
-  if (isCi) {
-    return {
-      kind: 'run',
-      label: 'e2e',
-      command: 'pnpm',
-      args: ['e2e:container', ...extraArgs],
-      weight: classifyCommandWeight({ label: 'e2e' }),
-    };
-  }
-
   return {
     kind: 'run',
     label: 'e2e',
     command: 'pnpm',
-    args: ['exec', 'playwright', 'test', ...extraArgs],
+    args: ['e2e:container', ...extraArgs],
     weight: classifyCommandWeight({ label: 'e2e' }),
   };
 }
@@ -1186,7 +1175,7 @@ function buildCommands(changedFiles) {
     commands.push({
       kind: 'skipped',
       label: 'e2e',
-      command: isCi ? 'pnpm e2e:container' : 'pnpm exec playwright test',
+      command: 'pnpm e2e:container',
       reason: 'empty e2e scope',
     });
   }
@@ -1312,7 +1301,7 @@ function printSummary(changedFiles, scope, results) {
   };
 }
 
-async function main() {
+async function main(verifyLockEnv = {}, verifyLockController = { updateMetadata: () => {} }) {
   if (isFixMode && isFixOnlyMode) {
     throw new Error('Use either --fix or --fix-only, not both.');
   }
@@ -1344,6 +1333,13 @@ async function main() {
     } else {
       console.log(`[verify] focused check: ${entry.label}`);
     }
+    verifyLockController.updateMetadata({
+      activeCommand:
+        entry.kind === 'run'
+          ? summarizeCommandForDisplay(entry.command, entry.args)
+          : entry.command,
+      activeLabel: entry.label,
+    });
 
     // oxlint-disable-next-line no-await-in-loop -- verify checks run sequentially for deterministic logs and fail-fast expensive gates.
     let result;
@@ -1355,7 +1351,8 @@ async function main() {
           label: entry.label,
           command: formatCommand(entry.command, entry.args),
         },
-        async (lockEnv) => runCommand(entry.label, entry.command, entry.args, lockEnv),
+        async (lockEnv) =>
+          runCommand(entry.label, entry.command, entry.args, { ...verifyLockEnv, ...lockEnv }),
       );
 
       // Signal propagation must happen after withExpensiveCommandLock cleanup,
@@ -1366,7 +1363,7 @@ async function main() {
       }
     } else {
       // oxlint-disable-next-line no-await-in-loop -- verify checks run sequentially for deterministic logs and fail-fast expensive gates.
-      result = await runCommand(entry.label, entry.command, entry.args);
+      result = await runCommand(entry.label, entry.command, entry.args, verifyLockEnv);
 
       if (result.terminatedBySignal) {
         applyProcessResult({ signal: result.terminatedBySignal });
@@ -1386,9 +1383,14 @@ async function main() {
 
 /**
  * Run the verify CLI when the module is executed directly.
+ * @param [deps] Test seams for top-level verify execution.
+ * @param [deps.runMain] Override for the main verify implementation.
+ * @param [deps.withVerifyLock] Override for top-level verify locking.
  * @returns Process exit code that should be reported to the shell.
  */
-export async function runVerifyCli() {
+export async function runVerifyCli(deps = {}) {
+  const { runMain = main, withVerifyLock = withVerifyCommandLock } = deps;
+
   if (isHelpMode) {
     printHelp();
     return 0;
@@ -1398,14 +1400,26 @@ export async function runVerifyCli() {
     throw new Error('Repository root is required to run verify.');
   }
 
-  await main();
+  await withVerifyLock(
+    {
+      command: ['pnpm', 'verify', ...cliArgs].join(' ').trim(),
+      label: 'verify',
+      logPath: VERIFY_LOG_DIR,
+    },
+    (verifyLockEnv, verifyLockController) => runMain(verifyLockEnv, verifyLockController),
+  );
   return process.exitCode ?? 0;
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
-  const exitCode = await runVerifyCli();
+  try {
+    const exitCode = await runVerifyCli();
 
-  if (isHelpMode) {
-    process.exit(exitCode);
+    if (isHelpMode) {
+      process.exit(exitCode);
+    }
+  } catch (error) {
+    console.error(error instanceof Error ? error.message : String(error));
+    process.exitCode = 1;
   }
 }
