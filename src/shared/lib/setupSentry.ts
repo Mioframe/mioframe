@@ -29,6 +29,7 @@ const SAFE_EVENT_TAG_KEYS = [
   // New safe tag keys must also be added here and covered by beforeSend tests.
   'provider',
   'operation',
+  'failureClassification',
 ] as const;
 type SentryTagValue = boolean | number | string | null | undefined;
 

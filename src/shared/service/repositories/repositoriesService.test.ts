@@ -895,7 +895,7 @@ describe('useRepositoriesService', () => {
     expect(recreatedRepo).not.toBe(firstRepo);
   });
 
-  it('wires onSaveQueued callback to emit repositoryStorage.saveQueued diagnostic event', async () => {
+  it('wires onSaveFailure callback to emit repositoryStorage.saveQueued for queued failures', async () => {
     let capturedOptions: RetryingStorageAdapterOptions | undefined;
     createRetryingStorageAdapterMock.mockImplementationOnce(
       (adapter: unknown, options?: RetryingStorageAdapterOptions) => {
@@ -920,12 +920,56 @@ describe('useRepositoriesService', () => {
       const service = useRepositoriesService();
       await service.initializeRepository('/repo');
 
-      capturedOptions?.onSaveQueued?.({ pendingCount: 2 });
+      capturedOptions?.onSaveFailure?.({
+        queued: true,
+        failureClassification: 'accessRequired',
+        pendingCount: 2,
+      });
 
       expect(sink).toHaveLength(1);
       expect(sink[0]).toMatchObject({
         name: 'repositoryStorage.saveQueued',
         counters: { pendingCount: 2 },
+        safeTags: { provider: 'webFileSystem', operation: 'repositorySave' },
+      });
+    } finally {
+      setDiagnosticEventSink(undefined);
+    }
+  });
+
+  it('wires onSaveFailure callback to emit repositoryStorage.saveFailed for non-queued failures', async () => {
+    let capturedOptions: RetryingStorageAdapterOptions | undefined;
+    createRetryingStorageAdapterMock.mockImplementationOnce(
+      (adapter: unknown, options?: RetryingStorageAdapterOptions) => {
+        capturedOptions = options;
+        return {
+          ...(typeof adapter === 'object' && adapter !== null ? adapter : {}),
+          flushPendingSaves: vi.fn().mockResolvedValue({ status: 'flushed' as const }),
+          hasPendingSaves: vi.fn().mockReturnValue(false),
+        };
+      },
+    );
+
+    createDirectoryContentSubject('/repo', []);
+    const { useRepositoriesService } = await import('./repositoriesService');
+    const { setDiagnosticEventSink } = await import('@shared/lib/diagnostics');
+    const sink: DiagnosticEvent[] = [];
+    setDiagnosticEventSink(sink);
+
+    try {
+      const service = useRepositoriesService();
+      await service.initializeRepository('/repo');
+
+      capturedOptions?.onSaveFailure?.({
+        queued: false,
+        failureClassification: 'storageFailure',
+        pendingCount: 0,
+      });
+
+      expect(sink).toHaveLength(1);
+      expect(sink[0]).toMatchObject({
+        name: 'repositoryStorage.saveFailed',
+        counters: { pendingCount: 0 },
         safeTags: { provider: 'webFileSystem', operation: 'repositorySave' },
       });
     } finally {

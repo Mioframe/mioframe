@@ -27,7 +27,7 @@ export const reportWriteAccessReplayStillBlocked = ({
     result: DiagnosticResult.Blocked,
     classification: DiagnosticClassification.Access,
     counters: { flushedCount, pendingCount },
-    safeTags: REPLAY_TAGS,
+    safeTags: { ...REPLAY_TAGS, failureClassification: 'accessRequired' },
   });
 };
 
@@ -45,18 +45,20 @@ export const reportWriteAccessReplayStorageFailure = ({
   pendingCount: number;
   failureClassification?: RetryingStorageAdapterFailureClassification | undefined;
 }): void => {
+  const safeClassification: RetryingStorageAdapterFailureClassification =
+    failureClassification ?? 'unknown';
   reportDiagnosticEvent({
     name: 'writeAccessRecovery.repositoryReplayStorageFailure',
     severity: DiagnosticSeverity.Error,
     result: DiagnosticResult.Failed,
     classification:
-      failureClassification === 'accessRequired'
+      safeClassification === 'accessRequired'
         ? DiagnosticClassification.Access
-        : failureClassification === 'storageFailure'
+        : safeClassification === 'storageFailure'
           ? DiagnosticClassification.Storage
           : DiagnosticClassification.Unknown,
     counters: { flushedCount, pendingCount },
-    safeTags: REPLAY_TAGS,
+    safeTags: { ...REPLAY_TAGS, failureClassification: safeClassification },
   });
 };
 
@@ -73,6 +75,23 @@ export const reportRepositorySaveQueued = ({ pendingCount }: { pendingCount: num
     result: DiagnosticResult.Blocked,
     classification: DiagnosticClassification.Access,
     counters: { pendingCount },
-    safeTags: SAVE_TAGS,
+    safeTags: { ...SAVE_TAGS, failureClassification: 'accessRequired' },
+  });
+};
+
+/**
+ * Emits a diagnostic event when a primary repository save fails and is NOT queued for retry.
+ * This event fires at the repository service boundary when the retrying storage adapter
+ * discards a failed save because the failure is not a recoverable access error.
+ * @param root0 - Event options (pendingCount).
+ */
+export const reportRepositorySaveFailed = ({ pendingCount }: { pendingCount: number }): void => {
+  reportDiagnosticEvent({
+    name: 'repositoryStorage.saveFailed',
+    severity: DiagnosticSeverity.Error,
+    result: DiagnosticResult.Failed,
+    classification: DiagnosticClassification.Storage,
+    counters: { pendingCount },
+    safeTags: { ...SAVE_TAGS, failureClassification: 'storageFailure' },
   });
 };

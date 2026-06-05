@@ -10,6 +10,7 @@ import {
   reportWriteAccessReplayStillBlocked,
   reportWriteAccessReplayStorageFailure,
   reportRepositorySaveQueued,
+  reportRepositorySaveFailed,
 } from './repositoriesDiagnostics';
 
 describe('repositoriesDiagnostics', () => {
@@ -37,6 +38,12 @@ describe('repositoriesDiagnostics', () => {
         counters: { flushedCount: 2, pendingCount: 3 },
         safeTags: { provider: 'webFileSystem', operation: 'flushPendingSaves' },
       });
+    });
+
+    it('includes failureClassification: accessRequired in safeTags', () => {
+      reportWriteAccessReplayStillBlocked({ flushedCount: 0, pendingCount: 1 });
+
+      expect(sink[0]?.safeTags?.failureClassification).toBe('accessRequired');
     });
 
     it('does not include user-controlled values', () => {
@@ -92,6 +99,22 @@ describe('repositoriesDiagnostics', () => {
       expect(sink[0]).toMatchObject({ classification: DiagnosticClassification.Unknown });
     });
 
+    it('includes exact failureClassification in safeTags', () => {
+      reportWriteAccessReplayStorageFailure({
+        flushedCount: 0,
+        pendingCount: 1,
+        failureClassification: 'storageFailure',
+      });
+
+      expect(sink[0]?.safeTags?.failureClassification).toBe('storageFailure');
+    });
+
+    it('includes unknown failureClassification in safeTags when undefined', () => {
+      reportWriteAccessReplayStorageFailure({ flushedCount: 0, pendingCount: 1 });
+
+      expect(sink[0]?.safeTags?.failureClassification).toBe('unknown');
+    });
+
     it('does not include user-controlled values', () => {
       reportWriteAccessReplayStorageFailure({
         flushedCount: 0,
@@ -119,8 +142,44 @@ describe('repositoriesDiagnostics', () => {
       });
     });
 
+    it('includes failureClassification: accessRequired in safeTags', () => {
+      reportRepositorySaveQueued({ pendingCount: 1 });
+
+      expect(sink[0]?.safeTags?.failureClassification).toBe('accessRequired');
+    });
+
     it('does not include user-controlled values', () => {
       reportRepositorySaveQueued({ pendingCount: 1 });
+      const serialized = JSON.stringify(sink[0]);
+      expect(serialized).not.toContain('path');
+      expect(serialized).not.toContain('Work');
+      expect(serialized).not.toContain('docId');
+    });
+  });
+
+  describe('reportRepositorySaveFailed', () => {
+    it('emits saveFailed with Error severity, Failed result, and Storage classification', () => {
+      reportRepositorySaveFailed({ pendingCount: 0 });
+
+      expect(sink).toHaveLength(1);
+      expect(sink[0]).toMatchObject({
+        name: 'repositoryStorage.saveFailed',
+        severity: DiagnosticSeverity.Error,
+        result: DiagnosticResult.Failed,
+        classification: DiagnosticClassification.Storage,
+        counters: { pendingCount: 0 },
+        safeTags: { provider: 'webFileSystem', operation: 'repositorySave' },
+      });
+    });
+
+    it('includes failureClassification: storageFailure in safeTags', () => {
+      reportRepositorySaveFailed({ pendingCount: 0 });
+
+      expect(sink[0]?.safeTags?.failureClassification).toBe('storageFailure');
+    });
+
+    it('does not include user-controlled values', () => {
+      reportRepositorySaveFailed({ pendingCount: 0 });
       const serialized = JSON.stringify(sink[0]);
       expect(serialized).not.toContain('path');
       expect(serialized).not.toContain('Work');
@@ -132,10 +191,12 @@ describe('repositoriesDiagnostics', () => {
     reportWriteAccessReplayStillBlocked({ flushedCount: 0, pendingCount: 1 });
     reportWriteAccessReplayStorageFailure({ flushedCount: 1, pendingCount: 0 });
     reportRepositorySaveQueued({ pendingCount: 1 });
+    reportRepositorySaveFailed({ pendingCount: 0 });
 
     for (const event of sink) {
       expect(event.safeTags?.provider).toBe('webFileSystem');
       expect(event.safeTags?.operation).toBeDefined();
+      expect(event.safeTags?.failureClassification).toBeDefined();
       const serialized = JSON.stringify(event.safeTags);
       expect(serialized).not.toContain('Work');
       expect(serialized).not.toContain('path');

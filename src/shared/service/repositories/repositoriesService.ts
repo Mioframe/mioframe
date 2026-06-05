@@ -11,6 +11,7 @@ import {
   reportWriteAccessReplayStillBlocked,
   reportWriteAccessReplayStorageFailure,
   reportRepositorySaveQueued,
+  reportRepositorySaveFailed,
 } from './repositoriesDiagnostics';
 import { getFileSystemAccessRecovery } from '@shared/lib/fileSystem';
 import {
@@ -147,8 +148,12 @@ const setupRepositoriesService = () => {
       if (!repoEntry) {
         const storageRecovery = createRetryingStorageAdapter(createVFSAdapter(vfs, path), {
           shouldQueueFailedSave,
-          onSaveQueued: ({ pendingCount }) => {
-            reportRepositorySaveQueued({ pendingCount });
+          onSaveFailure: ({ queued, pendingCount }) => {
+            if (queued) {
+              reportRepositorySaveQueued({ pendingCount });
+            } else {
+              reportRepositorySaveFailed({ pendingCount });
+            }
           },
         });
         repoEntry = {

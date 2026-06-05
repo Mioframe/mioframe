@@ -30,11 +30,19 @@ export interface RetryingStorageAdapterFlushResult {
 }
 
 /**
- * Safe summary passed to the {@link RetryingStorageAdapterOptions.onSaveQueued} callback.
- * Contains only project-controlled numeric counters — no storage keys, document ids, or bytes.
+ * Safe summary passed to the {@link RetryingStorageAdapterOptions.onSaveFailure} callback.
+ * Contains only project-controlled values — no storage keys, document ids, bytes, or raw errors.
  */
-export interface RetryingStorageAdapterSaveQueuedInfo {
-  /** Number of saves currently queued (including the one just added). */
+export interface RetryingStorageAdapterSaveFailureInfo {
+  /** Whether the failed save was queued for a later retry. */
+  queued: boolean;
+  /**
+   * Safe classification of the failure.
+   * - `accessRequired` – save was queued because write access was blocked.
+   * - `storageFailure` – save was not queued because the underlying adapter reported a hard error.
+   */
+  failureClassification: 'accessRequired' | 'storageFailure';
+  /** Number of saves currently queued after this failure. */
   pendingCount: number;
 }
 
@@ -49,11 +57,12 @@ export interface RetryingStorageAdapterOptions {
    */
   shouldQueueFailedSave: (error: unknown) => boolean;
   /**
-   * Optional callback invoked when a failed save is queued for a later retry.
-   * Receives only safe project-controlled counter data — no storage keys, bytes, or errors.
-   * @param info - Safe summary with the current pending save count.
+   * Optional callback invoked on every primary save failure — both queued and non-queued.
+   * Receives only safe project-controlled data — no storage keys, bytes, or raw errors.
+   * Throwing inside this callback does not affect save or queue semantics.
+   * @param info - Safe summary with queued status, classification, and pending count.
    */
-  onSaveQueued?: ((info: RetryingStorageAdapterSaveQueuedInfo) => void) | undefined;
+  onSaveFailure?: ((info: RetryingStorageAdapterSaveFailureInfo) => void) | undefined;
 }
 
 type PendingSave = {
@@ -75,7 +84,7 @@ const keyStartsWith = (key: StorageKey, prefix: StorageKey) =>
  */
 export const createRetryingStorageAdapter = (
   adapter: StorageAdapterInterface,
-  { shouldQueueFailedSave, onSaveQueued }: RetryingStorageAdapterOptions,
+  { shouldQueueFailedSave, onSaveFailure }: RetryingStorageAdapterOptions,
 ) => {
   const pendingSaves = new Map<string, PendingSave>();
 
@@ -116,11 +125,19 @@ export const createRetryingStorageAdapter = (
       try {
         await adapter.save(key, data);
       } catch (error) {
-        if (shouldQueueFailedSave(error)) {
+        const shouldQueue = shouldQueueFailedSave(error);
+        if (shouldQueue) {
           queuePendingSave(key, data);
-          onSaveQueued?.({ pendingCount: pendingSaves.size });
         }
-
+        try {
+          onSaveFailure?.({
+            queued: shouldQueue,
+            failureClassification: shouldQueue ? 'accessRequired' : 'storageFailure',
+            pendingCount: pendingSaves.size,
+          });
+        } catch {
+          // diagnostic callbacks must not affect adapter behavior
+        }
         throw error;
       }
     },

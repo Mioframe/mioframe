@@ -22,12 +22,15 @@ export interface BrokerReplaySummary {
 
 const PROVIDER = 'webFileSystem' as const;
 
-type WebFsEventParams = Omit<DiagnosticEvent, 'safeTags'> & { operation: string };
+type WebFsEventParams = Omit<DiagnosticEvent, 'safeTags'> & {
+  operation: string;
+  safeTags?: Record<string, string> | undefined;
+};
 
-const reportWebFsEvent = ({ operation, ...rest }: WebFsEventParams): void => {
+const reportWebFsEvent = ({ operation, safeTags, ...rest }: WebFsEventParams): void => {
   reportDiagnosticEvent({
     ...rest,
-    safeTags: { provider: PROVIDER, operation },
+    safeTags: { provider: PROVIDER, operation, ...safeTags },
   });
 };
 
@@ -113,6 +116,7 @@ export const reportWriteAccessReplayFailure = ({
   attemptId: string;
   replay?: BrokerReplaySummary | undefined;
 }): void => {
+  const failureClassification = replay?.failureClassification ?? 'unknown';
   reportWebFsEvent({
     name: 'writeAccessRecovery.grantReplayStillBlocked',
     severity: DiagnosticSeverity.Error,
@@ -120,6 +124,7 @@ export const reportWriteAccessReplayFailure = ({
     classification: DiagnosticClassification.Access,
     attemptId,
     operation: 'resolveAccessRequest',
+    safeTags: { failureClassification },
     ...(replay !== undefined
       ? { counters: { flushedCount: replay.flushedCount, pendingCount: replay.pendingCount } }
       : {}),
@@ -138,14 +143,13 @@ export const reportWriteAccessStorageFailure = ({
   attemptId: string;
   replay?: BrokerReplaySummary | undefined;
 }): void => {
+  const failureClassification = replay?.failureClassification ?? 'unknown';
   const classification =
     replay?.failureClassification === 'accessRequired'
       ? DiagnosticClassification.Access
       : replay?.failureClassification === 'unknown'
         ? DiagnosticClassification.Unknown
-        : replay?.failureClassification === 'storageFailure'
-          ? DiagnosticClassification.Storage
-          : DiagnosticClassification.Storage;
+        : DiagnosticClassification.Storage;
 
   reportWebFsEvent({
     name: 'writeAccessRecovery.grantReplayStorageFailure',
@@ -154,6 +158,7 @@ export const reportWriteAccessStorageFailure = ({
     classification,
     attemptId,
     operation: 'resolveAccessRequest',
+    safeTags: { failureClassification },
     ...(replay !== undefined
       ? { counters: { flushedCount: replay.flushedCount, pendingCount: replay.pendingCount } }
       : {}),

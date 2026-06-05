@@ -931,4 +931,103 @@ describe('setupSentry', () => {
       }
     });
   });
+
+  it('beforeSend keeps failureClassification tag when present', async () => {
+    const { initMock } = setupSentryMocks();
+    const { registerSentryConfig, ensureSentry, setSentryReportingEnabled } =
+      await import('./setupSentry');
+
+    registerSentryConfig({
+      dsn: 'https://example@sentry.io/123',
+      enabled: true,
+    });
+    setSentryReportingEnabled(true);
+
+    await ensureSentry();
+
+    const initOptions = initMock.mock.calls[0]?.[0];
+    const beforeSend = initOptions?.beforeSend;
+    const event = {
+      message: 'diagnostic-event',
+      tags: {
+        provider: 'webFileSystem',
+        operation: 'repositorySave',
+        failureClassification: 'accessRequired',
+      },
+    };
+
+    expect(beforeSend).toEqual(expect.any(Function));
+    if (beforeSend instanceof Function) {
+      expect(beforeSend(event)).toEqual({
+        message: 'diagnostic-event',
+        tags: {
+          provider: 'webFileSystem',
+          operation: 'repositorySave',
+          failureClassification: 'accessRequired',
+        },
+      });
+    }
+  });
+
+  it('beforeSend keeps storageFailure and unknown failureClassification values', async () => {
+    const { initMock } = setupSentryMocks();
+    const { registerSentryConfig, ensureSentry, setSentryReportingEnabled } =
+      await import('./setupSentry');
+
+    registerSentryConfig({
+      dsn: 'https://example@sentry.io/123',
+      enabled: true,
+    });
+    setSentryReportingEnabled(true);
+
+    await ensureSentry();
+
+    const initOptions = initMock.mock.calls[0]?.[0];
+    const beforeSend = initOptions?.beforeSend;
+
+    expect(beforeSend).toEqual(expect.any(Function));
+    if (beforeSend instanceof Function) {
+      expect(
+        beforeSend({ message: 'e', tags: { failureClassification: 'storageFailure' } }),
+      ).toEqual({ message: 'e', tags: { failureClassification: 'storageFailure' } });
+
+      expect(beforeSend({ message: 'e', tags: { failureClassification: 'unknown' } })).toEqual({
+        message: 'e',
+        tags: { failureClassification: 'unknown' },
+      });
+    }
+  });
+
+  it('beforeSend strips unknown private tags even when failureClassification is present', async () => {
+    const { initMock } = setupSentryMocks();
+    const { registerSentryConfig, ensureSentry, setSentryReportingEnabled } =
+      await import('./setupSentry');
+
+    registerSentryConfig({
+      dsn: 'https://example@sentry.io/123',
+      enabled: true,
+    });
+    setSentryReportingEnabled(true);
+
+    await ensureSentry();
+
+    const initOptions = initMock.mock.calls[0]?.[0];
+    const beforeSend = initOptions?.beforeSend;
+    const event = {
+      message: 'diagnostic-event',
+      tags: {
+        failureClassification: 'storageFailure',
+        spaceName: 'My Workspace',
+        documentPath: '/private/doc',
+      },
+    };
+
+    expect(beforeSend).toEqual(expect.any(Function));
+    if (beforeSend instanceof Function) {
+      expect(beforeSend(event)).toEqual({
+        message: 'diagnostic-event',
+        tags: { failureClassification: 'storageFailure' },
+      });
+    }
+  });
 });

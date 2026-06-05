@@ -146,6 +146,21 @@ describe('writeAccessRecoveryDiagnostics', () => {
       expect(sink[0]?.counters).toBeUndefined();
     });
 
+    it('includes exact failureClassification in safeTags when replay is provided', () => {
+      reportWriteAccessReplayFailure({
+        attemptId: TEST_ATTEMPT_ID,
+        replay: { flushedCount: 2, pendingCount: 3, failureClassification: 'accessRequired' },
+      });
+
+      expect(sink[0]?.safeTags?.failureClassification).toBe('accessRequired');
+    });
+
+    it('includes unknown failureClassification in safeTags when no replay is provided', () => {
+      reportWriteAccessReplayFailure({ attemptId: TEST_ATTEMPT_ID });
+
+      expect(sink[0]?.safeTags?.failureClassification).toBe('unknown');
+    });
+
     it('does not include space name, path, or raw error in counters', () => {
       reportWriteAccessReplayFailure({
         attemptId: TEST_ATTEMPT_ID,
@@ -214,6 +229,21 @@ describe('writeAccessRecoveryDiagnostics', () => {
       reportWriteAccessStorageFailure({ attemptId: TEST_ATTEMPT_ID });
 
       expect(sink[0]?.counters).toBeUndefined();
+    });
+
+    it('includes exact failureClassification in safeTags when replay is provided', () => {
+      reportWriteAccessStorageFailure({
+        attemptId: TEST_ATTEMPT_ID,
+        replay: { flushedCount: 0, pendingCount: 1, failureClassification: 'storageFailure' },
+      });
+
+      expect(sink[0]?.safeTags?.failureClassification).toBe('storageFailure');
+    });
+
+    it('includes unknown failureClassification in safeTags when no replay is provided', () => {
+      reportWriteAccessStorageFailure({ attemptId: TEST_ATTEMPT_ID });
+
+      expect(sink[0]?.safeTags?.failureClassification).toBe('unknown');
     });
   });
 
