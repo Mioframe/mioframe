@@ -11,10 +11,29 @@ type GetPwaPluginsParams = {
 const daysToSeconds = (days: number) => 24 * 60 * 60 * days;
 
 /**
+ * Returns true when `pathname` is a PR preview path under the given Vite base.
+ *
+ * Matches `<base>pr-<number>`, `<base>pr-<number>/`, and
+ * `<base>pr-<number>/anything` so both the navigation fallback denylist and
+ * the runtime cache catch-all can exclude PR preview URLs reliably.
+ *
+ * Must be called with `url.pathname` (not a full URL string) so that the
+ * check works even when Workbox passes a full URL object to the route matcher.
+ * @param pathname - The URL pathname to test, e.g. `/mioframe/pr-86/assets/app.js`.
+ * @param base - The Vite `base` URL, e.g. `/mioframe/`.
+ * @returns `true` when the pathname belongs to a PR preview deployment.
+ */
+export function isPrPreviewPath(pathname: string, base: string): boolean {
+  if (!pathname.startsWith(base)) return false;
+  const rest = pathname.slice(base.length);
+  return /^pr-\d+(?:\/|$)/.test(rest);
+}
+
+/**
  * Builds a RegExp that matches PR preview paths under the given Vite base path.
  *
- * Matches `<base>pr-<number>/` and `<base>pr-<number>/**` so the stable
- * service worker can exclude them from navigation fallback and runtime caching,
+ * Matches `<base>pr-<number>`, `<base>pr-<number>/`, and `<base>pr-<number>/**`
+ * so the stable service worker can exclude them from navigation fallback,
  * preventing it from serving the cached stable app for PR preview URLs such as
  * `/mioframe/pr-86/`.
  * @param base - The Vite `base` URL, e.g. `/mioframe/`.
@@ -22,12 +41,7 @@ const daysToSeconds = (days: number) => 24 * 60 * 60 * days;
  */
 export function buildPrPreviewDenylistPattern(base: string): RegExp {
   const escapedBase = base.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  return new RegExp(`^${escapedBase}pr-\\d+\\/`);
-}
-
-function buildCatchAllPattern(base: string): RegExp {
-  const escapedBase = base.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  return new RegExp(`^(?!${escapedBase}pr-\\d+\\/)`);
+  return new RegExp(`^${escapedBase}pr-\\d+(?:\\/|$)`);
 }
 
 /**
@@ -52,7 +66,6 @@ export const getPwaPlugins = ({
   }
 
   const prPreviewPattern = buildPrPreviewDenylistPattern(base);
-  const catchAllPattern = buildCatchAllPattern(base);
 
   return [
     VitePWA({
@@ -124,7 +137,7 @@ export const getPwaPlugins = ({
             },
           },
           {
-            urlPattern: catchAllPattern,
+            urlPattern: ({ url }: { url: URL }) => !isPrPreviewPath(url.pathname, base),
             handler: 'NetworkFirst',
             options: {
               cacheName: 'others',

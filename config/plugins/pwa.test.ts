@@ -1,10 +1,75 @@
 import { describe, expect, it } from 'vitest';
 
-import { buildPrPreviewDenylistPattern, getPwaPlugins } from './pwa.ts';
+import { buildPrPreviewDenylistPattern, getPwaPlugins, isPrPreviewPath } from './pwa.ts';
+
+describe('isPrPreviewPath', () => {
+  describe('PR preview paths return true', () => {
+    it('matches root PR preview path without trailing slash', () => {
+      expect(isPrPreviewPath('/mioframe/pr-86', '/mioframe/')).toBe(true);
+    });
+
+    it('matches root PR preview path with trailing slash', () => {
+      expect(isPrPreviewPath('/mioframe/pr-86/', '/mioframe/')).toBe(true);
+    });
+
+    it('matches nested assets under a PR preview', () => {
+      expect(isPrPreviewPath('/mioframe/pr-86/assets/app.js', '/mioframe/')).toBe(true);
+    });
+
+    it('matches arbitrary PR numbers', () => {
+      expect(isPrPreviewPath('/mioframe/pr-1/', '/mioframe/')).toBe(true);
+      expect(isPrPreviewPath('/mioframe/pr-999/', '/mioframe/')).toBe(true);
+    });
+
+    it('matches under a different base path', () => {
+      expect(isPrPreviewPath('/other-repo/pr-42/', '/other-repo/')).toBe(true);
+      expect(isPrPreviewPath('/other-repo/pr-42/assets/main.css', '/other-repo/')).toBe(true);
+    });
+  });
+
+  describe('stable paths return false', () => {
+    it('does not match the stable root path', () => {
+      expect(isPrPreviewPath('/mioframe/', '/mioframe/')).toBe(false);
+    });
+
+    it('does not match stable asset paths', () => {
+      expect(isPrPreviewPath('/mioframe/assets/app.js', '/mioframe/')).toBe(false);
+    });
+
+    it('does not match a path that starts with pr- but has no digits', () => {
+      expect(isPrPreviewPath('/mioframe/pr-preview/', '/mioframe/')).toBe(false);
+    });
+
+    it('does not match paths outside the configured base', () => {
+      expect(isPrPreviewPath('/other/pr-86/', '/mioframe/')).toBe(false);
+    });
+
+    it('does not match the stable index.html', () => {
+      expect(isPrPreviewPath('/mioframe/index.html', '/mioframe/')).toBe(false);
+    });
+  });
+
+  describe('full URL scenario via url.pathname', () => {
+    it('correctly excludes PR preview when called with url.pathname from a full URL', () => {
+      const url = new URL('https://vyachean.github.io/mioframe/pr-86/assets/app.js');
+      expect(isPrPreviewPath(url.pathname, '/mioframe/')).toBe(true);
+    });
+
+    it('does not exclude stable paths when called with url.pathname from a full URL', () => {
+      const url = new URL('https://vyachean.github.io/mioframe/assets/app.js');
+      expect(isPrPreviewPath(url.pathname, '/mioframe/')).toBe(false);
+    });
+  });
+});
 
 describe('buildPrPreviewDenylistPattern', () => {
   describe('PR preview paths are matched (should be denied)', () => {
-    it('matches a root PR preview path', () => {
+    it('matches a root PR preview path without trailing slash', () => {
+      const pattern = buildPrPreviewDenylistPattern('/mioframe/');
+      expect(pattern.test('/mioframe/pr-86')).toBe(true);
+    });
+
+    it('matches a root PR preview path with trailing slash', () => {
       const pattern = buildPrPreviewDenylistPattern('/mioframe/');
       expect(pattern.test('/mioframe/pr-86/')).toBe(true);
     });
