@@ -1,22 +1,24 @@
 /**
- * Remove the pr-<PR_NUMBER>/ slot from the gh-pages branch after a PR is closed.
+ * Remove the pr-<PR_NUMBER>/ slot from the gh-pages staging branch after a PR is closed.
  *
  * Stable files and other pr-* directories are not touched.
  * If the slot does not exist, the script exits cleanly without committing.
  *
+ * When --output-dir is provided, the final staging content is also copied
+ * there so the caller can upload it as a GitHub Pages artifact.
+ *
  * Usage:
- *   node scripts/pages/cleanupPreview.mjs --pr 42
+ *   node scripts/pages/cleanupPreview.mjs --pr 42 [--output-dir ./pages-staging]
  *
  * Required env:
  *   GITHUB_TOKEN      - token with contents:write
  *   GITHUB_REPOSITORY - OWNER/REPO
  */
 
-import { existsSync, rmSync } from 'node:fs';
-import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 import { withGhPagesBranch } from './lib/ghPagesBranch.mjs';
+import { applyPreviewCleanup, validatePrNumber } from './lib/pagesFs.mjs';
 
 /**
  * @param argv Process arguments (process.argv.slice(2)).
@@ -28,28 +30,25 @@ export async function cleanupPreview(argv = process.argv.slice(2), env = process
     throw new Error('Usage: cleanupPreview.mjs --pr <number>');
   }
 
-  const prNumber = argv[prIndex + 1];
-  if (!/^\d+$/.test(prNumber)) {
-    throw new Error(`Invalid PR number: ${prNumber}`);
-  }
+  const prNumber = validatePrNumber(argv[prIndex + 1]);
+
+  const outputIndex = argv.indexOf('--output-dir');
+  const outputDir = outputIndex !== -1 ? argv[outputIndex + 1] : undefined;
 
   const { GITHUB_TOKEN, GITHUB_REPOSITORY } = env;
   if (!GITHUB_TOKEN) throw new Error('GITHUB_TOKEN is required');
   if (!GITHUB_REPOSITORY) throw new Error('GITHUB_REPOSITORY is required');
 
-  const previewSlot = `pr-${prNumber}`;
-
   await withGhPagesBranch({
     token: GITHUB_TOKEN,
     repository: GITHUB_REPOSITORY,
     commitMessage: `chore(pages): remove preview for PR #${prNumber}`,
+    outputDir,
     fn(workDir) {
-      const slotDir = join(workDir, previewSlot);
-      if (!existsSync(slotDir)) {
-        console.log(`Preview slot ${previewSlot}/ not found, nothing to remove.`);
-        return;
+      const removed = applyPreviewCleanup(workDir, prNumber);
+      if (!removed) {
+        console.log(`Preview slot pr-${prNumber}/ not found, nothing to remove.`);
       }
-      rmSync(slotDir, { recursive: true, force: true });
     },
   });
 

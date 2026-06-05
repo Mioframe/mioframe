@@ -1,23 +1,25 @@
 /**
- * Publish a production build to the root of the gh-pages branch.
+ * Publish a production build to the root of the gh-pages staging branch.
  *
  * Removes all root-level files and directories except pr-* preview slots,
  * then copies the dist contents in. Existing PR preview directories are
  * preserved so stable publishes never evict active previews.
  *
+ * When --output-dir is provided, the final staging content is also copied
+ * there so the caller can upload it as a GitHub Pages artifact.
+ *
  * Usage:
- *   node scripts/pages/publishStable.mjs --dist ./dist
+ *   node scripts/pages/publishStable.mjs --dist ./dist [--output-dir ./pages-staging]
  *
  * Required env:
  *   GITHUB_TOKEN      - token with contents:write
  *   GITHUB_REPOSITORY - OWNER/REPO
  */
 
-import { cpSync, readdirSync, rmSync } from 'node:fs';
-import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 import { withGhPagesBranch } from './lib/ghPagesBranch.mjs';
+import { applyStablePublish } from './lib/pagesFs.mjs';
 
 /**
  * @param argv Process arguments (process.argv.slice(2)).
@@ -30,6 +32,9 @@ export async function publishStable(argv = process.argv.slice(2), env = process.
   }
   const distDir = argv[distIndex + 1];
 
+  const outputIndex = argv.indexOf('--output-dir');
+  const outputDir = outputIndex !== -1 ? argv[outputIndex + 1] : undefined;
+
   const { GITHUB_TOKEN, GITHUB_REPOSITORY } = env;
   if (!GITHUB_TOKEN) throw new Error('GITHUB_TOKEN is required');
   if (!GITHUB_REPOSITORY) throw new Error('GITHUB_REPOSITORY is required');
@@ -38,16 +43,9 @@ export async function publishStable(argv = process.argv.slice(2), env = process.
     token: GITHUB_TOKEN,
     repository: GITHUB_REPOSITORY,
     commitMessage: 'chore(pages): deploy stable build',
+    outputDir,
     fn(workDir) {
-      // Remove everything at the root except pr-* directories.
-      for (const entry of readdirSync(workDir, { withFileTypes: true })) {
-        if (entry.name === '.git') continue;
-        if (entry.isDirectory() && entry.name.startsWith('pr-')) continue;
-        rmSync(join(workDir, entry.name), { recursive: true, force: true });
-      }
-
-      // Copy dist contents to the root.
-      cpSync(distDir, workDir, { recursive: true });
+      applyStablePublish(workDir, distDir);
     },
   });
 

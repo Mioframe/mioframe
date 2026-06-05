@@ -8,12 +8,18 @@ jobs:
   cleanup:
     # Skip fork PRs — they have no write access to publish.
     if: github.event.pull_request.head.repo.full_name == github.repository
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
     permissions:
       contents: write
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
     concurrency:
       group: pages-publish
       cancel-in-progress: false
+
     steps:
       - uses: actions/checkout@v4
 
@@ -23,11 +29,25 @@ jobs:
         with:
           node-version: lts/*
           cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
 
       - run: pnpm install --frozen-lockfile
 
-      - name: Remove PR preview
+      - name: Remove PR preview from staging
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_REPOSITORY: ${{ github.repository }}
-        run: node scripts/pages/cleanupPreview.mjs --pr ${{ github.event.number }}
+        run: >-
+          node scripts/pages/cleanupPreview.mjs
+          --pr ${{ github.event.number }}
+          --output-dir pages-staging
+
+      - uses: actions/configure-pages@v4
+        with:
+          enablement: true
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: ./pages-staging/
+
+      - uses: actions/deploy-pages@v4
