@@ -1,6 +1,6 @@
 ---
 name: byterover
-description: 'Use this skill before broad repository exploration to recall project knowledge with brv search, and before the final response after non-trivial implementation to decide whether durable knowledge must be captured with brv curate. Prefer brv search before brv query. Curate reusable lessons, pitfalls, decisions, and corrected mistakes, not transient task details.'
+description: 'Use this skill before broad repository exploration to recall project knowledge with brv search, and before the final response after non-trivial implementation to decide whether durable knowledge must be captured. Prefer brv search before brv query. Treat brv curate as bounded best-effort because it depends on an external provider. Curate reusable lessons, pitfalls, decisions, and corrected mistakes, not transient task details.'
 ---
 
 # ByteRover knowledge workflow
@@ -41,6 +41,16 @@ Prefer reading the matched `.brv/context-tree` files directly when `brv search` 
 ## End-of-task capture gate
 
 Before the final response after non-trivial implementation, explicitly decide whether the task produced durable project knowledge.
+
+`brv curate` is a bounded best-effort knowledge capture step, not a completion gate. It depends on an external provider and must not delay the final handoff indefinitely.
+
+Prepare a concise reusable lesson before invoking `brv curate`. If curation is needed, run it with a short timeout such as:
+
+```bash
+timeout 60s brv curate "<lesson content>" -f src/example/file.ts
+```
+
+Use the environment's equivalent timeout mechanism if `timeout` is unavailable. Do not use an unbounded `brv curate` call, and do not leave a fire-and-forget background curation process running.
 
 Run `brv curate` when the task produced any of these:
 
@@ -128,7 +138,7 @@ Vue components in pages, widgets, features, entities UI, and shared UI.
 Curate the lesson content, optionally with source files when they add important context. Include at most five project-scoped files:
 
 ```bash
-brv curate "<lesson content>" -f src/example/file.ts
+timeout 60s brv curate "<lesson content>" -f src/example/file.ts
 ```
 
 ## Capture quality
@@ -164,14 +174,22 @@ reason:
 
 Use:
 
-- `curated` when `brv curate` saved or proposed durable knowledge;
+- `curated` when `brv curate` saved or proposed durable knowledge within the bounded wait;
 - `skipped` when you intentionally decided no durable knowledge was produced;
-- `failed` when `brv` should have been used but failed;
+- `failed` when `brv` should have been used but failed or timed out;
 - `not available` when `brv` is not installed, not authenticated, unavailable in the environment, or cannot run outside the sandbox.
+
+For a timeout, report the prepared lesson was not saved and do not block completion:
+
+```text
+BRV RESULT
+status: failed
+reason: curation timed out; durable lesson candidate was prepared but not saved
+```
 
 ## Review pending changes
 
-If `brv curate` reports pending review operations, inspect them before final response:
+If `brv curate` finishes within the bounded wait and reports pending review operations, inspect them before final response:
 
 ```bash
 brv review pending
@@ -190,7 +208,8 @@ If `brv` fails:
 - `Not authenticated` or `Token has expired`: report that authentication is required.
 - `No provider connected`: run `brv providers` if available and report the missing provider.
 - `Connection failed` or daemon crash: report that the user should stop the stale `brv` process.
+- Timeout: stop waiting, report the unsaved lesson candidate in `BRV RESULT`, and continue the final handoff.
 - Missing arguments: run `brv <command> --help` and retry with corrected arguments.
 - File errors: use project-relative paths and include no more than five files.
 
-Do not block task completion solely because optional curation failed, but report the failure in `BRV RESULT`.
+Do not block task completion solely because optional curation failed or timed out, but report the failure in `BRV RESULT`.
