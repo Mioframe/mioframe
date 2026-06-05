@@ -45,6 +45,25 @@ export function buildPrPreviewDenylistPattern(base: string): RegExp {
 }
 
 /**
+ * Builds a Workbox `urlPattern` function that matches `url.pathname` against
+ * `pattern` and additionally excludes PR preview paths.
+ *
+ * Apply to every same-origin runtime caching rule (fonts, images, data, API,
+ * catch-all) so that PR preview assets are never cached by the stable service
+ * worker.  External-origin rules (Google Fonts) do not need this wrapper.
+ * @param pattern - RegExp tested against `url.pathname`.
+ * @param base - The Vite `base` URL, e.g. `/mioframe/`.
+ * @returns A Workbox `urlPattern` function.
+ */
+export function buildSameOriginMatcher(
+  pattern: RegExp,
+  base: string,
+): (context: { url: URL }) => boolean {
+  return ({ url }: { url: URL }) =>
+    pattern.test(url.pathname) && !isPrPreviewPath(url.pathname, base);
+}
+
+/**
  * Returns the Vite PWA plugin array for the given build parameters.
  *
  * Returns an empty array when PWA is disabled or the mode is not production
@@ -91,7 +110,7 @@ export const getPwaPlugins = ({
             },
           },
           {
-            urlPattern: /\.(?:eot|otf|ttc|ttf|woff|woff2|font.css)$/i,
+            urlPattern: buildSameOriginMatcher(/\.(?:eot|otf|ttc|ttf|woff|woff2|font.css)$/i, base),
             handler: 'StaleWhileRevalidate',
             options: {
               cacheName: 'static-font-assets',
@@ -102,7 +121,7 @@ export const getPwaPlugins = ({
             },
           },
           {
-            urlPattern: /\.(?:jpg|jpeg|gif|png|svg|ico|webp)$/i,
+            urlPattern: buildSameOriginMatcher(/\.(?:jpg|jpeg|gif|png|svg|ico|webp)$/i, base),
             handler: 'StaleWhileRevalidate',
             options: {
               cacheName: 'static-image-assets',
@@ -113,7 +132,7 @@ export const getPwaPlugins = ({
             },
           },
           {
-            urlPattern: /\.(?:json|xml|csv)$/i,
+            urlPattern: buildSameOriginMatcher(/\.(?:json|xml|csv)$/i, base),
             handler: 'NetworkFirst',
             options: {
               cacheName: 'static-data-assets',
@@ -124,7 +143,7 @@ export const getPwaPlugins = ({
             },
           },
           {
-            urlPattern: /\/api\/.*$/i,
+            urlPattern: buildSameOriginMatcher(/\/api\/.*$/i, base),
             handler: 'NetworkFirst',
             method: 'GET',
             options: {

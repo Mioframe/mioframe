@@ -98,7 +98,7 @@ export async function upsertPreviewComment(argv = process.argv.slice(2), env = p
   });
 
   const existing = comments.find(
-    (c) => c.user?.login === BOT_LOGIN && c.body.includes(COMMENT_MARKER),
+    (c) => c.user?.login === BOT_LOGIN && c.body?.includes(COMMENT_MARKER),
   );
 
   if (existing) {

@@ -9,6 +9,15 @@
 
   <body>
     <div id="app"></div>
+    <script>
+      (function () {
+        var r = sessionStorage.getItem('ghPagesSpaFallback');
+        if (r) {
+          sessionStorage.removeItem('ghPagesSpaFallback');
+          history.replaceState(null, '', r);
+        }
+      })();
+    </script>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

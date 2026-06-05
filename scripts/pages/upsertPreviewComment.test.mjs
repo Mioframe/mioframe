@@ -51,6 +51,16 @@ describe('upsertPreviewComment', () => {
     ).resolves.toBeUndefined();
   });
 
+  it('does not throw when a comment has the bot user but no body', async () => {
+    const comments = [{ id: 3, user: { login: 'github-actions[bot]' } }];
+    vi.stubGlobal('fetch', makeFetchMock(comments));
+
+    // body is absent — would throw without optional chaining on c.body
+    await expect(
+      upsertPreviewComment(['--pr', '42', '--url', 'https://example.com/pr-42/'], ENV),
+    ).resolves.toBeUndefined();
+  });
+
   it('updates the existing bot comment when found', async () => {
     const comments = [
       {

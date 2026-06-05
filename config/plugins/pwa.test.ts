@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
-import { buildPrPreviewDenylistPattern, getPwaPlugins, isPrPreviewPath } from './pwa.ts';
+import {
+  buildPrPreviewDenylistPattern,
+  buildSameOriginMatcher,
+  getPwaPlugins,
+  isPrPreviewPath,
+} from './pwa.ts';
 
 describe('isPrPreviewPath', () => {
   describe('PR preview paths return true', () => {
@@ -121,6 +126,81 @@ describe('buildPrPreviewDenylistPattern', () => {
     it('does not match paths outside the base', () => {
       const pattern = buildPrPreviewDenylistPattern('/mioframe/');
       expect(pattern.test('/other/pr-86/')).toBe(false);
+    });
+  });
+});
+
+describe('buildSameOriginMatcher', () => {
+  const base = '/mioframe/';
+
+  it('matches a stable path whose extension satisfies the pattern', () => {
+    const matcher = buildSameOriginMatcher(/\.woff2$/i, base);
+    expect(matcher({ url: new URL('https://example.com/mioframe/assets/font.woff2') })).toBe(true);
+  });
+
+  it('excludes a PR preview path even when the extension matches', () => {
+    const matcher = buildSameOriginMatcher(/\.woff2$/i, base);
+    expect(matcher({ url: new URL('https://example.com/mioframe/pr-86/assets/font.woff2') })).toBe(
+      false,
+    );
+  });
+
+  it('excludes a path that does not match the pattern', () => {
+    const matcher = buildSameOriginMatcher(/\.woff2$/i, base);
+    expect(matcher({ url: new URL('https://example.com/mioframe/assets/app.js') })).toBe(false);
+  });
+
+  describe('font asset rule (eot|otf|ttc|ttf|woff|woff2|font.css)', () => {
+    const matcher = buildSameOriginMatcher(/\.(?:eot|otf|ttc|ttf|woff|woff2|font.css)$/i, base);
+
+    it('matches stable font assets', () => {
+      expect(matcher({ url: new URL('https://example.com/mioframe/assets/font.woff2') })).toBe(
+        true,
+      );
+    });
+
+    it('excludes PR preview font assets', () => {
+      expect(
+        matcher({ url: new URL('https://example.com/mioframe/pr-86/assets/font.woff2') }),
+      ).toBe(false);
+    });
+  });
+
+  describe('image asset rule (jpg|jpeg|gif|png|svg|ico|webp)', () => {
+    const matcher = buildSameOriginMatcher(/\.(?:jpg|jpeg|gif|png|svg|ico|webp)$/i, base);
+
+    it('matches stable image assets', () => {
+      expect(matcher({ url: new URL('https://example.com/mioframe/assets/icon.svg') })).toBe(true);
+    });
+
+    it('excludes PR preview image assets', () => {
+      expect(matcher({ url: new URL('https://example.com/mioframe/pr-86/assets/icon.svg') })).toBe(
+        false,
+      );
+    });
+  });
+
+  describe('data asset rule (json|xml|csv)', () => {
+    const matcher = buildSameOriginMatcher(/\.(?:json|xml|csv)$/i, base);
+
+    it('matches stable data assets', () => {
+      expect(matcher({ url: new URL('https://example.com/mioframe/some.json') })).toBe(true);
+    });
+
+    it('excludes PR preview data assets', () => {
+      expect(matcher({ url: new URL('https://example.com/mioframe/pr-86/some.json') })).toBe(false);
+    });
+  });
+
+  describe('API route rule (/api/)', () => {
+    const matcher = buildSameOriginMatcher(/\/api\/.*$/i, base);
+
+    it('matches stable API routes', () => {
+      expect(matcher({ url: new URL('https://example.com/mioframe/api/data') })).toBe(true);
+    });
+
+    it('excludes PR preview API routes', () => {
+      expect(matcher({ url: new URL('https://example.com/mioframe/pr-86/api/data') })).toBe(false);
     });
   });
 });
