@@ -4,12 +4,17 @@ import { VitePWA } from 'vite-plugin-pwa';
 type GetPwaPluginsParams = {
   isPreview: boolean;
   mode: string;
+  disablePwa?: boolean;
 };
 
 const daysToSeconds = (days: number) => 24 * 60 * 60 * days;
 
-export const getPwaPlugins = ({ isPreview, mode }: GetPwaPluginsParams): PluginOption[] =>
-  mode === 'production' || isPreview
+export const getPwaPlugins = ({
+  isPreview,
+  mode,
+  disablePwa,
+}: GetPwaPluginsParams): PluginOption[] =>
+  !disablePwa && (mode === 'production' || isPreview)
     ? [
         VitePWA({
           manifest: {

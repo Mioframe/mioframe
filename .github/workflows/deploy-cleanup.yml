@@ -1,0 +1,33 @@
+name: Clean up PR preview from GitHub Pages
+
+on:
+  pull_request:
+    types: [closed]
+
+jobs:
+  cleanup:
+    # Skip fork PRs — they have no write access to publish.
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    concurrency:
+      group: pages-publish
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Remove PR preview
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+        run: node scripts/pages/cleanupPreview.mjs --pr ${{ github.event.number }}

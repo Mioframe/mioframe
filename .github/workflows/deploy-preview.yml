@@ -1,0 +1,89 @@
+name: Deploy PR preview to GitHub Pages
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+# Cancel stale builds for the same PR; publishing is still serialized at job level.
+concurrency:
+  group: pr-preview-${{ github.event.number }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    # Skip fork PRs — they have no write access to publish.
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Build PR preview
+        env:
+          BASE_URL: /${{ github.event.repository.name }}/pr-${{ github.event.number }}/
+          VITE_DISABLE_PWA: '1'
+          VITE_GOOGLE_CLIENT_ID: ${{ secrets.VITE_GOOGLE_CLIENT_ID }}
+          VITE_SENTRY_DSN: ${{ secrets.VITE_SENTRY_DSN }}
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+        run: pnpm run build
+
+      - name: Fix 404 for SPA
+        run: cp ./dist/index.html ./dist/404.html
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: preview-dist-${{ github.event.number }}
+          path: dist/
+          retention-days: 1
+
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    # Serialize all gh-pages publishes regardless of which workflow they come from.
+    concurrency:
+      group: pages-publish
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: preview-dist-${{ github.event.number }}
+          path: dist/
+
+      - name: Publish PR preview
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+        run: node scripts/pages/publishPreview.mjs --dist dist --pr ${{ github.event.number }}
+
+      - name: Post or update preview comment
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+        run: |
+          node scripts/pages/upsertPreviewComment.mjs \
+            --pr ${{ github.event.number }} \
+            --url "https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/pr-${{ github.event.number }}/"
