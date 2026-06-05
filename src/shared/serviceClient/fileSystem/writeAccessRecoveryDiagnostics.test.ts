@@ -127,6 +127,36 @@ describe('writeAccessRecoveryDiagnostics', () => {
         safeTags: { provider: 'webFileSystem', operation: 'resolveAccessRequest' },
       });
     });
+
+    it('includes replay counters when a replay summary is provided', () => {
+      reportWriteAccessReplayFailure({
+        attemptId: TEST_ATTEMPT_ID,
+        replay: { flushedCount: 2, pendingCount: 3, failureClassification: 'accessRequired' },
+      });
+
+      expect(sink[0]).toMatchObject({
+        name: 'writeAccessRecovery.grantReplayStillBlocked',
+        counters: { flushedCount: 2, pendingCount: 3 },
+      });
+    });
+
+    it('emits without counters when no replay summary is provided', () => {
+      reportWriteAccessReplayFailure({ attemptId: TEST_ATTEMPT_ID });
+
+      expect(sink[0]?.counters).toBeUndefined();
+    });
+
+    it('does not include space name, path, or raw error in counters', () => {
+      reportWriteAccessReplayFailure({
+        attemptId: TEST_ATTEMPT_ID,
+        replay: { flushedCount: 1, pendingCount: 2, failureClassification: 'accessRequired' },
+      });
+
+      const serialized = JSON.stringify(sink[0]);
+      expect(serialized).not.toContain('Work');
+      expect(serialized).not.toContain('path');
+      expect(serialized).not.toContain('spaceName');
+    });
   });
 
   describe('reportWriteAccessStorageFailure', () => {
@@ -142,6 +172,48 @@ describe('writeAccessRecoveryDiagnostics', () => {
         attemptId: TEST_ATTEMPT_ID,
         safeTags: { provider: 'webFileSystem', operation: 'resolveAccessRequest' },
       });
+    });
+
+    it('includes replay counters when a replay summary is provided', () => {
+      reportWriteAccessStorageFailure({
+        attemptId: TEST_ATTEMPT_ID,
+        replay: { flushedCount: 0, pendingCount: 1, failureClassification: 'storageFailure' },
+      });
+
+      expect(sink[0]).toMatchObject({
+        name: 'writeAccessRecovery.grantReplayStorageFailure',
+        counters: { flushedCount: 0, pendingCount: 1 },
+      });
+    });
+
+    it('maps accessRequired classification to Access classification in Sentry event', () => {
+      reportWriteAccessStorageFailure({
+        attemptId: TEST_ATTEMPT_ID,
+        replay: { flushedCount: 0, pendingCount: 1, failureClassification: 'accessRequired' },
+      });
+
+      expect(sink[0]).toMatchObject({ classification: DiagnosticClassification.Access });
+    });
+
+    it('maps unknown classification to Unknown classification in Sentry event', () => {
+      reportWriteAccessStorageFailure({
+        attemptId: TEST_ATTEMPT_ID,
+        replay: { flushedCount: 0, pendingCount: 1, failureClassification: 'unknown' },
+      });
+
+      expect(sink[0]).toMatchObject({ classification: DiagnosticClassification.Unknown });
+    });
+
+    it('defaults to Storage classification when no replay summary provided', () => {
+      reportWriteAccessStorageFailure({ attemptId: TEST_ATTEMPT_ID });
+
+      expect(sink[0]).toMatchObject({ classification: DiagnosticClassification.Storage });
+    });
+
+    it('emits without counters when no replay summary is provided', () => {
+      reportWriteAccessStorageFailure({ attemptId: TEST_ATTEMPT_ID });
+
+      expect(sink[0]?.counters).toBeUndefined();
     });
   });
 

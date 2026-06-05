@@ -9,6 +9,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import {
   reportWriteAccessReplayStillBlocked,
   reportWriteAccessReplayStorageFailure,
+  reportRepositorySaveQueued,
 } from './repositoriesDiagnostics';
 
 describe('repositoriesDiagnostics', () => {
@@ -103,13 +104,38 @@ describe('repositoriesDiagnostics', () => {
     });
   });
 
-  it('both helpers attach only project-controlled safe tags', () => {
+  describe('reportRepositorySaveQueued', () => {
+    it('emits saveQueued with Warning severity, Blocked result, and Access classification', () => {
+      reportRepositorySaveQueued({ pendingCount: 2 });
+
+      expect(sink).toHaveLength(1);
+      expect(sink[0]).toMatchObject({
+        name: 'repositoryStorage.saveQueued',
+        severity: DiagnosticSeverity.Warning,
+        result: DiagnosticResult.Blocked,
+        classification: DiagnosticClassification.Access,
+        counters: { pendingCount: 2 },
+        safeTags: { provider: 'webFileSystem', operation: 'repositorySave' },
+      });
+    });
+
+    it('does not include user-controlled values', () => {
+      reportRepositorySaveQueued({ pendingCount: 1 });
+      const serialized = JSON.stringify(sink[0]);
+      expect(serialized).not.toContain('path');
+      expect(serialized).not.toContain('Work');
+      expect(serialized).not.toContain('docId');
+    });
+  });
+
+  it('all helpers attach only project-controlled safe tags', () => {
     reportWriteAccessReplayStillBlocked({ flushedCount: 0, pendingCount: 1 });
     reportWriteAccessReplayStorageFailure({ flushedCount: 1, pendingCount: 0 });
+    reportRepositorySaveQueued({ pendingCount: 1 });
 
     for (const event of sink) {
       expect(event.safeTags?.provider).toBe('webFileSystem');
-      expect(event.safeTags?.operation).toBe('flushPendingSaves');
+      expect(event.safeTags?.operation).toBeDefined();
       const serialized = JSON.stringify(event.safeTags);
       expect(serialized).not.toContain('Work');
       expect(serialized).not.toContain('path');

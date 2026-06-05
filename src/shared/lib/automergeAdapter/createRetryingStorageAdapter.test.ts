@@ -234,6 +234,94 @@ describe('createRetryingStorageAdapter', () => {
     expect(result.failureClassification).toBe('storageFailure');
   });
 
+  it('calls onSaveQueued callback with pendingCount when a save is queued', async () => {
+    const error = new Error('permission blocked');
+    const adapter = {
+      load: vi.fn(),
+      loadRange: vi.fn(),
+      remove: vi.fn(),
+      removeRange: vi.fn(),
+      save: vi.fn<StorageAdapterInterface['save']>().mockRejectedValueOnce(error),
+    } satisfies StorageAdapterInterface;
+    const onSaveQueued = vi.fn();
+    const wrapped = createRetryingStorageAdapter(adapter, {
+      shouldQueueFailedSave: (candidate) => candidate === error,
+      onSaveQueued,
+    });
+
+    await expect(wrapped.save(['doc-id', 'snapshot', 'hash-a'], new Uint8Array([1]))).rejects.toBe(
+      error,
+    );
+
+    expect(onSaveQueued).toHaveBeenCalledTimes(1);
+    expect(onSaveQueued).toHaveBeenCalledWith({ pendingCount: 1 });
+  });
+
+  it('does not call onSaveQueued when a save fails but is not queued', async () => {
+    const error = new Error('disk full');
+    const adapter = {
+      load: vi.fn(),
+      loadRange: vi.fn(),
+      remove: vi.fn(),
+      removeRange: vi.fn(),
+      save: vi.fn<StorageAdapterInterface['save']>().mockRejectedValueOnce(error),
+    } satisfies StorageAdapterInterface;
+    const onSaveQueued = vi.fn();
+    const wrapped = createRetryingStorageAdapter(adapter, {
+      shouldQueueFailedSave: () => false,
+      onSaveQueued,
+    });
+
+    await expect(wrapped.save(['doc-id', 'snapshot', 'hash-a'], new Uint8Array([1]))).rejects.toBe(
+      error,
+    );
+
+    expect(onSaveQueued).not.toHaveBeenCalled();
+  });
+
+  it('still queues the save correctly when no onSaveQueued callback is registered', async () => {
+    const error = new Error('permission blocked');
+    const adapter = {
+      load: vi.fn(),
+      loadRange: vi.fn(),
+      remove: vi.fn(),
+      removeRange: vi.fn(),
+      save: vi.fn<StorageAdapterInterface['save']>().mockRejectedValueOnce(error),
+    } satisfies StorageAdapterInterface;
+    const wrapped = createRetryingStorageAdapter(adapter, {
+      shouldQueueFailedSave: (candidate) => candidate === error,
+    });
+
+    await expect(wrapped.save(['doc-id', 'snapshot', 'hash-a'], new Uint8Array([1]))).rejects.toBe(
+      error,
+    );
+
+    expect(wrapped.hasPendingSaves()).toBe(true);
+  });
+
+  it('onSaveQueued payload does not contain storage key, document id, or bytes', async () => {
+    const error = new Error('permission blocked');
+    const adapter = {
+      load: vi.fn(),
+      loadRange: vi.fn(),
+      remove: vi.fn(),
+      removeRange: vi.fn(),
+      save: vi.fn<StorageAdapterInterface['save']>().mockRejectedValueOnce(error),
+    } satisfies StorageAdapterInterface;
+    const onSaveQueued = vi.fn();
+    const wrapped = createRetryingStorageAdapter(adapter, {
+      shouldQueueFailedSave: (candidate) => candidate === error,
+      onSaveQueued,
+    });
+
+    await expect(wrapped.save(['doc-id', 'snapshot', 'hash-a'], new Uint8Array([1]))).rejects.toBe(
+      error,
+    );
+
+    const payload = onSaveQueued.mock.calls[0]?.[0];
+    expect(Object.keys(payload ?? {})).toEqual(['pendingCount']);
+  });
+
   it('delegates non-save operations to the wrapped adapter', async () => {
     const loaded = new Uint8Array([1, 2]);
     const range = [{ data: clone(loaded), key: ['doc-id', 'snapshot', 'hash-a'] }];

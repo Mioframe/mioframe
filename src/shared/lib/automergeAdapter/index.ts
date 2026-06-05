@@ -4,6 +4,7 @@ export {
   type RetryingStorageAdapterFailureClassification,
   type RetryingStorageAdapterFlushResult,
   type RetryingStorageAdapterOptions,
+  type RetryingStorageAdapterSaveQueuedInfo,
 } from './createRetryingStorageAdapter';
 export { createFSStorageAdapter } from './createFSStorageAdapter';
 export {

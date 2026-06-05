@@ -7,6 +7,19 @@ import {
 } from '@shared/lib/diagnostics';
 import type { DiagnosticEvent } from '@shared/lib/diagnostics';
 
+/**
+ * Safe replay summary forwarded from a write recovery handler to broker-side diagnostics.
+ * Only safe project-controlled counters and a classification enum — no paths, ids, or errors.
+ */
+export interface BrokerReplaySummary {
+  /** Number of saves successfully written during the replay attempt. */
+  flushedCount: number;
+  /** Number of saves still queued after the replay attempt. */
+  pendingCount: number;
+  /** Safe classification of the first failure, when available. */
+  failureClassification?: 'accessRequired' | 'storageFailure' | 'unknown' | undefined;
+}
+
 const PROVIDER = 'webFileSystem' as const;
 
 type WebFsEventParams = Omit<DiagnosticEvent, 'safeTags'> & { operation: string };
@@ -91,9 +104,15 @@ export const reportWriteAccessProviderFailure = ({
 /**
  * Emits a diagnostic event when write access was granted but pending saves could not be
  * replayed — the replay reported still-blocked or partial failures (service-client side).
- * @param root0 - Event options (attemptId).
+ * @param root0 - Event options (attemptId, replay).
  */
-export const reportWriteAccessReplayFailure = ({ attemptId }: { attemptId: string }): void => {
+export const reportWriteAccessReplayFailure = ({
+  attemptId,
+  replay,
+}: {
+  attemptId: string;
+  replay?: BrokerReplaySummary | undefined;
+}): void => {
   reportWebFsEvent({
     name: 'writeAccessRecovery.grantReplayStillBlocked',
     severity: DiagnosticSeverity.Error,
@@ -101,21 +120,42 @@ export const reportWriteAccessReplayFailure = ({ attemptId }: { attemptId: strin
     classification: DiagnosticClassification.Access,
     attemptId,
     operation: 'resolveAccessRequest',
+    ...(replay !== undefined
+      ? { counters: { flushedCount: replay.flushedCount, pendingCount: replay.pendingCount } }
+      : {}),
   });
 };
 
 /**
  * Emits a diagnostic event when write access was granted but replay hit a storage failure
  * (the underlying store returned an error, not just a blocked state) — service-client side.
- * @param root0 - Event options (attemptId).
+ * @param root0 - Event options (attemptId, replay).
  */
-export const reportWriteAccessStorageFailure = ({ attemptId }: { attemptId: string }): void => {
+export const reportWriteAccessStorageFailure = ({
+  attemptId,
+  replay,
+}: {
+  attemptId: string;
+  replay?: BrokerReplaySummary | undefined;
+}): void => {
+  const classification =
+    replay?.failureClassification === 'accessRequired'
+      ? DiagnosticClassification.Access
+      : replay?.failureClassification === 'unknown'
+        ? DiagnosticClassification.Unknown
+        : replay?.failureClassification === 'storageFailure'
+          ? DiagnosticClassification.Storage
+          : DiagnosticClassification.Storage;
+
   reportWebFsEvent({
     name: 'writeAccessRecovery.grantReplayStorageFailure',
     severity: DiagnosticSeverity.Error,
     result: DiagnosticResult.Failed,
-    classification: DiagnosticClassification.Storage,
+    classification,
     attemptId,
     operation: 'resolveAccessRequest',
+    ...(replay !== undefined
+      ? { counters: { flushedCount: replay.flushedCount, pendingCount: replay.pendingCount } }
+      : {}),
   });
 };

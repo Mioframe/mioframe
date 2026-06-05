@@ -7,6 +7,7 @@ import {
 import type { RetryingStorageAdapterFailureClassification } from '@shared/lib/automergeAdapter';
 
 const REPLAY_TAGS = { provider: 'webFileSystem', operation: 'flushPendingSaves' } as const;
+const SAVE_TAGS = { provider: 'webFileSystem', operation: 'repositorySave' } as const;
 
 /**
  * Emits a diagnostic event when pending repository saves remain blocked after a write-access
@@ -56,5 +57,22 @@ export const reportWriteAccessReplayStorageFailure = ({
           : DiagnosticClassification.Unknown,
     counters: { flushedCount, pendingCount },
     safeTags: REPLAY_TAGS,
+  });
+};
+
+/**
+ * Emits a diagnostic event when a primary repository save fails and is queued for retry.
+ * This event fires at the repository service boundary when the retrying storage adapter
+ * queues a failed save due to a missing write-access permission.
+ * @param root0 - Event options (pendingCount).
+ */
+export const reportRepositorySaveQueued = ({ pendingCount }: { pendingCount: number }): void => {
+  reportDiagnosticEvent({
+    name: 'repositoryStorage.saveQueued',
+    severity: DiagnosticSeverity.Warning,
+    result: DiagnosticResult.Blocked,
+    classification: DiagnosticClassification.Access,
+    counters: { pendingCount },
+    safeTags: SAVE_TAGS,
   });
 };

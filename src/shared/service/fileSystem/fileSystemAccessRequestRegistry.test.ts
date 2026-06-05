@@ -154,7 +154,54 @@ describe('fileSystemAccessRequestRegistry', () => {
 
     await expect(
       registry.resolve({ operation: 'write', spaceName: 'Work', permissionState: 'granted' }),
-    ).resolves.toEqual({ status: 'grantedWithReplayFailures' });
+    ).resolves.toMatchObject({ status: 'grantedWithReplayFailures' });
+  });
+
+  it('stillBlocked handler with replay summary forwards replay counters and classification', async () => {
+    const registry = createRegistry();
+    const handle = createHandleMock();
+    const refreshProvider = vi.fn().mockResolvedValue(undefined);
+    const writeHandler = vi.fn().mockResolvedValue({
+      status: 'stillBlocked' as const,
+      replay: {
+        flushedCount: 2,
+        pendingCount: 3,
+        failureClassification: 'accessRequired' as const,
+      },
+    });
+
+    registry.upsertRequest({ spaceName: 'Work', handle, mode: 'readwrite', refreshProvider });
+    registry.registerWriteRecoveryHandler(writeHandler);
+
+    const result = await registry.resolve({
+      operation: 'write',
+      spaceName: 'Work',
+      permissionState: 'granted',
+    });
+
+    expect(result).toMatchObject({
+      status: 'grantedWithReplayFailures',
+      replay: { flushedCount: 2, pendingCount: 3, failureClassification: 'accessRequired' },
+    });
+  });
+
+  it('stillBlocked handler without replay summary forwards result without replay', async () => {
+    const registry = createRegistry();
+    const handle = createHandleMock();
+    const refreshProvider = vi.fn().mockResolvedValue(undefined);
+    const writeHandler = vi.fn().mockResolvedValue({ status: 'stillBlocked' as const });
+
+    registry.upsertRequest({ spaceName: 'Work', handle, mode: 'readwrite', refreshProvider });
+    registry.registerWriteRecoveryHandler(writeHandler);
+
+    const result = await registry.resolve({
+      operation: 'write',
+      spaceName: 'Work',
+      permissionState: 'granted',
+    });
+
+    expect(result).toMatchObject({ status: 'grantedWithReplayFailures' });
+    expect('replay' in result && result.replay).toBeUndefined();
   });
 
   it('failed handler result maps to grantedWithStorageFailures', async () => {
@@ -168,7 +215,63 @@ describe('fileSystemAccessRequestRegistry', () => {
 
     await expect(
       registry.resolve({ operation: 'write', spaceName: 'Work', permissionState: 'granted' }),
-    ).resolves.toEqual({ status: 'grantedWithStorageFailures' });
+    ).resolves.toMatchObject({ status: 'grantedWithStorageFailures' });
+  });
+
+  it('failed handler with replay summary forwards replay counters and classification', async () => {
+    const registry = createRegistry();
+    const handle = createHandleMock();
+    const refreshProvider = vi.fn().mockResolvedValue(undefined);
+    const writeHandler = vi.fn().mockResolvedValue({
+      status: 'failed' as const,
+      replay: {
+        flushedCount: 0,
+        pendingCount: 1,
+        failureClassification: 'storageFailure' as const,
+      },
+    });
+
+    registry.upsertRequest({ spaceName: 'Work', handle, mode: 'readwrite', refreshProvider });
+    registry.registerWriteRecoveryHandler(writeHandler);
+
+    const result = await registry.resolve({
+      operation: 'write',
+      spaceName: 'Work',
+      permissionState: 'granted',
+    });
+
+    expect(result).toMatchObject({
+      status: 'grantedWithStorageFailures',
+      replay: { flushedCount: 0, pendingCount: 1, failureClassification: 'storageFailure' },
+    });
+  });
+
+  it('resolve result does not contain space name, path, or document id', async () => {
+    const registry = createRegistry();
+    const handle = createHandleMock();
+    const refreshProvider = vi.fn().mockResolvedValue(undefined);
+    const writeHandler = vi.fn().mockResolvedValue({
+      status: 'stillBlocked' as const,
+      replay: {
+        flushedCount: 1,
+        pendingCount: 2,
+        failureClassification: 'accessRequired' as const,
+      },
+    });
+
+    registry.upsertRequest({ spaceName: 'Work', handle, mode: 'readwrite', refreshProvider });
+    registry.registerWriteRecoveryHandler(writeHandler);
+
+    const result = await registry.resolve({
+      operation: 'write',
+      spaceName: 'Work',
+      permissionState: 'granted',
+    });
+
+    const serialized = JSON.stringify(result);
+    expect(serialized).not.toContain('Work');
+    expect(serialized).not.toContain('path');
+    expect(serialized).not.toContain('spaceName');
   });
 
   it('clearing by space name removes all pending requests for that space', async () => {

@@ -30,6 +30,15 @@ export interface RetryingStorageAdapterFlushResult {
 }
 
 /**
+ * Safe summary passed to the {@link RetryingStorageAdapterOptions.onSaveQueued} callback.
+ * Contains only project-controlled numeric counters — no storage keys, document ids, or bytes.
+ */
+export interface RetryingStorageAdapterSaveQueuedInfo {
+  /** Number of saves currently queued (including the one just added). */
+  pendingCount: number;
+}
+
+/**
  * External retry classifier used to keep this wrapper independent from provider-specific errors.
  */
 export interface RetryingStorageAdapterOptions {
@@ -39,6 +48,12 @@ export interface RetryingStorageAdapterOptions {
    * @returns Whether the failed save should be queued.
    */
   shouldQueueFailedSave: (error: unknown) => boolean;
+  /**
+   * Optional callback invoked when a failed save is queued for a later retry.
+   * Receives only safe project-controlled counter data — no storage keys, bytes, or errors.
+   * @param info - Safe summary with the current pending save count.
+   */
+  onSaveQueued?: ((info: RetryingStorageAdapterSaveQueuedInfo) => void) | undefined;
 }
 
 type PendingSave = {
@@ -60,7 +75,7 @@ const keyStartsWith = (key: StorageKey, prefix: StorageKey) =>
  */
 export const createRetryingStorageAdapter = (
   adapter: StorageAdapterInterface,
-  options: RetryingStorageAdapterOptions,
+  { shouldQueueFailedSave, onSaveQueued }: RetryingStorageAdapterOptions,
 ) => {
   const pendingSaves = new Map<string, PendingSave>();
 
@@ -101,8 +116,9 @@ export const createRetryingStorageAdapter = (
       try {
         await adapter.save(key, data);
       } catch (error) {
-        if (options.shouldQueueFailedSave(error)) {
+        if (shouldQueueFailedSave(error)) {
           queuePendingSave(key, data);
+          onSaveQueued?.({ pendingCount: pendingSaves.size });
         }
 
         throw error;
@@ -119,7 +135,7 @@ export const createRetryingStorageAdapter = (
           pendingSaves.delete(pendingKey);
           flushedCount += 1;
         } catch (error) {
-          if (options.shouldQueueFailedSave(error)) {
+          if (shouldQueueFailedSave(error)) {
             return {
               status: 'stillBlocked',
               flushedCount,

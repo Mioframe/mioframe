@@ -71,11 +71,11 @@ export const useFileSystemAccessPermissionBroker = () => {
         }
 
         if (result.status === 'grantedWithReplayFailures') {
-          reportWriteAccessReplayFailure({ attemptId });
+          reportWriteAccessReplayFailure({ attemptId, replay: result.replay });
         }
 
         if (result.status === 'grantedWithStorageFailures') {
-          reportWriteAccessStorageFailure({ attemptId });
+          reportWriteAccessStorageFailure({ attemptId, replay: result.replay });
         }
 
         if (result.status === 'denied' && key.operation === 'write') {

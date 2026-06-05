@@ -7,8 +7,10 @@ import { BehaviorSubject, firstValueFrom, Subscription } from 'rxjs';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { AMDocumentId } from '@shared/lib/automerge';
 import { partialKeyToFileName } from '@shared/lib/automergeAdapter';
+import type { RetryingStorageAdapterOptions } from '@shared/lib/automergeAdapter';
 import { FSNodeType, type FSNodeStat } from '@shared/lib/virtualFileSystem';
 import type { CFRDocumentContent } from '@shared/lib/cfrDocument';
+import type { DiagnosticEvent } from '@shared/lib/diagnostics';
 
 type MockRepoInstance = {
   create: ReturnType<typeof vi.fn<(initialValue: CFRDocumentContent) => { documentId: string }>>;
@@ -28,7 +30,7 @@ const getMockAdapterPath = (adapter: unknown) =>
     ? adapter.path
     : undefined;
 const createRetryingStorageAdapterMock = vi.hoisted(() =>
-  vi.fn((adapter: unknown) => ({
+  vi.fn((adapter: unknown, _options?: RetryingStorageAdapterOptions) => ({
     ...(typeof adapter === 'object' && adapter !== null ? adapter : {}),
     flushPendingSaves: vi.fn().mockResolvedValue({
       flushedCount: 0,
@@ -348,11 +350,7 @@ describe('useRepositoriesService', () => {
 
     await expect(
       handler({ mountPath: '/Device Files/Work', operation: 'write', spaceName: 'Work' }),
-    ).resolves.toEqual({
-      flushedCount: 1,
-      pendingCount: 0,
-      status: 'flushed',
-    });
+    ).resolves.toEqual({ status: 'flushed' });
     expect(matchingFlushPendingSaves).toHaveBeenCalledTimes(1);
     expect(nonMatchingFlushPendingSaves).not.toHaveBeenCalled();
   });
@@ -385,9 +383,8 @@ describe('useRepositoriesService', () => {
     await expect(
       handler({ mountPath: '/Device Files/Work', operation: 'write', spaceName: 'Work' }),
     ).resolves.toEqual({
-      flushedCount: 0,
-      pendingCount: 1,
       status: 'failed',
+      replay: { flushedCount: 0, pendingCount: 1 },
     });
   });
 
@@ -896,5 +893,43 @@ describe('useRepositoriesService', () => {
 
     expect(repoInstances.get(path)).toHaveLength(2);
     expect(recreatedRepo).not.toBe(firstRepo);
+  });
+
+  it('wires onSaveQueued callback to emit repositoryStorage.saveQueued diagnostic event', async () => {
+    let capturedOptions: RetryingStorageAdapterOptions | undefined;
+    createRetryingStorageAdapterMock.mockImplementationOnce(
+      (adapter: unknown, options?: RetryingStorageAdapterOptions) => {
+        capturedOptions = options;
+        return {
+          ...(typeof adapter === 'object' && adapter !== null ? adapter : {}),
+          flushPendingSaves: vi.fn().mockResolvedValue({ status: 'flushed' as const }),
+          hasPendingSaves: vi.fn().mockReturnValue(false),
+        };
+      },
+    );
+
+    createDirectoryContentSubject('/repo', []);
+    const { useRepositoriesService } = await import('./repositoriesService');
+    // Import diagnostics from the same fresh module graph so setDiagnosticEventSink
+    // targets the same instance that the service's diagnostics wrappers use.
+    const { setDiagnosticEventSink } = await import('@shared/lib/diagnostics');
+    const sink: DiagnosticEvent[] = [];
+    setDiagnosticEventSink(sink);
+
+    try {
+      const service = useRepositoriesService();
+      await service.initializeRepository('/repo');
+
+      capturedOptions?.onSaveQueued?.({ pendingCount: 2 });
+
+      expect(sink).toHaveLength(1);
+      expect(sink[0]).toMatchObject({
+        name: 'repositoryStorage.saveQueued',
+        counters: { pendingCount: 2 },
+        safeTags: { provider: 'webFileSystem', operation: 'repositorySave' },
+      });
+    } finally {
+      setDiagnosticEventSink(undefined);
+    }
   });
 });
