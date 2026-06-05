@@ -572,7 +572,7 @@ describe('setupSentry', () => {
     }
   });
 
-  it('beforeSend removes request, contexts, breadcrumbs, and user entirely', async () => {
+  it('beforeSend removes request, contexts, unsafe breadcrumbs, and user entirely', async () => {
     const { initMock } = setupSentryMocks();
     const { registerSentryConfig, ensureSentry, setSentryReportingEnabled } =
       await import('./setupSentry');
@@ -1029,5 +1029,216 @@ describe('setupSentry', () => {
         tags: { failureClassification: 'storageFailure' },
       });
     }
+  });
+
+  describe('breadcrumb sanitization', () => {
+    const setupHooks = async () => {
+      const { initMock } = setupSentryMocks();
+      const { registerSentryConfig, ensureSentry, setSentryReportingEnabled } =
+        await import('./setupSentry');
+
+      registerSentryConfig({ dsn: 'https://example@sentry.io/123', enabled: true });
+      setSentryReportingEnabled(true);
+      await ensureSentry();
+
+      const initOptions = initMock.mock.calls[0]?.[0];
+      return {
+        beforeBreadcrumb: initOptions?.beforeBreadcrumb,
+        beforeSend: initOptions?.beforeSend,
+      };
+    };
+
+    it('registers beforeBreadcrumb during Sentry init', async () => {
+      const { beforeBreadcrumb } = await setupHooks();
+      expect(beforeBreadcrumb).toEqual(expect.any(Function));
+    });
+
+    it('safe technical breadcrumb with allowed category survives beforeBreadcrumb', async () => {
+      const { beforeBreadcrumb } = await setupHooks();
+      const breadcrumb = {
+        category: 'repository.storage',
+        message: 'repository save failed',
+        level: 'error',
+        data: { provider: 'webFileSystem', operation: 'repositorySave', pendingCount: 1 },
+      };
+
+      if (beforeBreadcrumb instanceof Function) {
+        const result = beforeBreadcrumb(breadcrumb);
+        expect(result).not.toBeNull();
+        expect(result?.category).toBe('repository.storage');
+        expect(result?.message).toBe('repository save failed');
+      }
+    });
+
+    it('writeAccessRecovery category survives beforeBreadcrumb', async () => {
+      const { beforeBreadcrumb } = await setupHooks();
+      const breadcrumb = {
+        category: 'writeAccessRecovery',
+        message: 'write access recovery resolved — replay still blocked',
+        level: 'error',
+        data: { operation: 'resolveAccessRequest', failureClassification: 'accessRequired' },
+      };
+
+      if (beforeBreadcrumb instanceof Function) {
+        expect(beforeBreadcrumb(breadcrumb)).not.toBeNull();
+      }
+    });
+
+    it('diagnostics.forwarding category survives beforeBreadcrumb', async () => {
+      const { beforeBreadcrumb } = await setupHooks();
+      const breadcrumb = {
+        category: 'diagnostics.forwarding',
+        message: 'diagnostic event forwarded',
+        level: 'debug',
+      };
+
+      if (beforeBreadcrumb instanceof Function) {
+        expect(beforeBreadcrumb(breadcrumb)).not.toBeNull();
+      }
+    });
+
+    it('unknown category is stripped by beforeBreadcrumb', async () => {
+      const { beforeBreadcrumb } = await setupHooks();
+      const breadcrumb = { category: 'ui.click', message: 'button clicked' };
+
+      if (beforeBreadcrumb instanceof Function) {
+        expect(beforeBreadcrumb(breadcrumb)).toBeNull();
+      }
+    });
+
+    it('automatic Sentry navigation category is stripped by beforeBreadcrumb', async () => {
+      const { beforeBreadcrumb } = await setupHooks();
+      const breadcrumb = { category: 'navigation', message: 'from /home to /dashboard' };
+
+      if (beforeBreadcrumb instanceof Function) {
+        expect(beforeBreadcrumb(breadcrumb)).toBeNull();
+      }
+    });
+
+    it('breadcrumb without category is stripped by beforeBreadcrumb', async () => {
+      const { beforeBreadcrumb } = await setupHooks();
+      const breadcrumb = { message: 'user breadcrumb', level: 'info' };
+
+      if (beforeBreadcrumb instanceof Function) {
+        expect(beforeBreadcrumb(breadcrumb)).toBeNull();
+      }
+    });
+
+    it('beforeBreadcrumb strips private data keys from safe category breadcrumbs', async () => {
+      const { beforeBreadcrumb } = await setupHooks();
+      const breadcrumb = {
+        category: 'repository.storage',
+        message: 'repository save failed',
+        data: {
+          provider: 'webFileSystem',
+          operation: 'repositorySave',
+          path: '/private/doc.md',
+          fileName: 'secret.md',
+          documentId: 'doc-abc',
+          storageKey: 'opfs://key',
+        },
+      };
+
+      if (beforeBreadcrumb instanceof Function) {
+        const result = beforeBreadcrumb(breadcrumb);
+        expect(result).not.toBeNull();
+        // result is any — property access is safe without assertions
+        expect(result?.data?.provider).toBe('webFileSystem');
+        expect(result?.data?.operation).toBe('repositorySave');
+        expect(result?.data?.path).toBeUndefined();
+        expect(result?.data?.fileName).toBeUndefined();
+        expect(result?.data?.documentId).toBeUndefined();
+        expect(result?.data?.storageKey).toBeUndefined();
+      }
+    });
+
+    it('beforeBreadcrumb strips data values that are not strings or numbers', async () => {
+      const { beforeBreadcrumb } = await setupHooks();
+      const breadcrumb = {
+        category: 'repository.storage',
+        message: 'test',
+        data: {
+          provider: 'webFileSystem',
+          operation: { nested: 'object' },
+          pendingCount: null,
+        },
+      };
+
+      if (beforeBreadcrumb instanceof Function) {
+        const result = beforeBreadcrumb(breadcrumb);
+        // result is any — property access is safe without assertions
+        expect(result?.data?.provider).toBe('webFileSystem');
+        expect(result?.data?.operation).toBeUndefined();
+        expect(result?.data?.pendingCount).toBeUndefined();
+      }
+    });
+
+    it('beforeSend defense-in-depth keeps safe technical breadcrumbs', async () => {
+      const { beforeSend } = await setupHooks();
+      const event = {
+        message: '[diagnostic] repositoryStorage.saveFailed',
+        breadcrumbs: [
+          {
+            category: 'repository.storage',
+            message: 'repository save failed',
+            level: 'error',
+            data: { provider: 'webFileSystem', operation: 'repositorySave', pendingCount: 1 },
+          },
+        ],
+      };
+
+      if (beforeSend instanceof Function) {
+        const result = beforeSend(event);
+        expect(result).not.toBeNull();
+        // result is any — property access is safe without assertions
+        expect(Array.isArray(result?.breadcrumbs)).toBe(true);
+        expect(result?.breadcrumbs).toHaveLength(1);
+      }
+    });
+
+    it('beforeSend defense-in-depth strips unknown category breadcrumbs', async () => {
+      const { beforeSend } = await setupHooks();
+      const event = {
+        message: 'test',
+        breadcrumbs: [
+          { category: 'ui.click', message: 'button pressed' },
+          { category: 'navigation', message: 'page changed' },
+          { message: 'no category' },
+        ],
+      };
+
+      if (beforeSend instanceof Function) {
+        const result = beforeSend(event);
+        expect(result?.breadcrumbs).toBeUndefined();
+      }
+    });
+
+    it('beforeSend defense-in-depth strips private data from surviving breadcrumbs', async () => {
+      const { beforeSend } = await setupHooks();
+      const event = {
+        message: 'test',
+        breadcrumbs: [
+          {
+            category: 'repository.storage',
+            message: 'repository save failed',
+            data: {
+              provider: 'webFileSystem',
+              documentId: 'private-id',
+              fileName: 'secret.md',
+              pendingCount: 2,
+            },
+          },
+        ],
+      };
+
+      if (beforeSend instanceof Function) {
+        const result = beforeSend(event);
+        // result is any — property access is safe without assertions
+        expect(result?.breadcrumbs[0]?.data?.provider).toBe('webFileSystem');
+        expect(result?.breadcrumbs[0]?.data?.pendingCount).toBe(2);
+        expect(result?.breadcrumbs[0]?.data?.documentId).toBeUndefined();
+        expect(result?.breadcrumbs[0]?.data?.fileName).toBeUndefined();
+      }
+    });
   });
 });

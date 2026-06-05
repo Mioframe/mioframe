@@ -2,6 +2,7 @@ import {
   DiagnosticClassification,
   DiagnosticResult,
   DiagnosticSeverity,
+  addDiagnosticBreadcrumb,
   reportDiagnosticEvent,
 } from '@shared/lib/diagnostics';
 import type { RetryingStorageAdapterFailureClassification } from '@shared/lib/automergeAdapter';
@@ -21,6 +22,12 @@ export const reportWriteAccessReplayStillBlocked = ({
   flushedCount: number;
   pendingCount: number;
 }): void => {
+  addDiagnosticBreadcrumb({
+    category: 'writeAccessRecovery',
+    message: 'pending saves replay still blocked',
+    level: 'error',
+    data: { ...REPLAY_TAGS, failureClassification: 'accessRequired', flushedCount, pendingCount },
+  });
   reportDiagnosticEvent({
     name: 'writeAccessRecovery.repositoryReplayStillBlocked',
     severity: DiagnosticSeverity.Error,
@@ -47,6 +54,12 @@ export const reportWriteAccessReplayStorageFailure = ({
 }): void => {
   const safeClassification: RetryingStorageAdapterFailureClassification =
     failureClassification ?? 'unknown';
+  addDiagnosticBreadcrumb({
+    category: 'writeAccessRecovery',
+    message: 'pending saves replay storage failure',
+    level: 'error',
+    data: { ...REPLAY_TAGS, failureClassification: safeClassification, flushedCount, pendingCount },
+  });
   reportDiagnosticEvent({
     name: 'writeAccessRecovery.repositoryReplayStorageFailure',
     severity: DiagnosticSeverity.Error,
@@ -69,6 +82,12 @@ export const reportWriteAccessReplayStorageFailure = ({
  * @param root0 - Event options (pendingCount).
  */
 export const reportRepositorySaveQueued = ({ pendingCount }: { pendingCount: number }): void => {
+  addDiagnosticBreadcrumb({
+    category: 'repository.storage',
+    message: 'repository save queued',
+    level: 'warning',
+    data: { ...SAVE_TAGS, failureClassification: 'accessRequired', pendingCount },
+  });
   reportDiagnosticEvent({
     name: 'repositoryStorage.saveQueued',
     severity: DiagnosticSeverity.Warning,
@@ -86,6 +105,12 @@ export const reportRepositorySaveQueued = ({ pendingCount }: { pendingCount: num
  * @param root0 - Event options (pendingCount).
  */
 export const reportRepositorySaveFailed = ({ pendingCount }: { pendingCount: number }): void => {
+  addDiagnosticBreadcrumb({
+    category: 'repository.storage',
+    message: 'repository save failed',
+    level: 'error',
+    data: { ...SAVE_TAGS, failureClassification: 'storageFailure', pendingCount },
+  });
   reportDiagnosticEvent({
     name: 'repositoryStorage.saveFailed',
     severity: DiagnosticSeverity.Error,

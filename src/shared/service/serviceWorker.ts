@@ -2,12 +2,10 @@
 
 import { setupMainService, serviceId } from './setupMainService';
 import { defineWorkerService } from '@shared/lib/wrapWorker/defineWorkerService';
-import { setDiagnosticEventForwarder } from '@shared/lib/diagnostics';
+import { setupWorkerDiagnosticsForwarder } from './diagnosticsService';
 
 declare const self: DedicatedWorkerGlobalScope;
 
-setDiagnosticEventForwarder((event) => {
-  self.postMessage({ type: 'diagnosticForward', event });
-});
+setupWorkerDiagnosticsForwarder(self);
 
 defineWorkerService(serviceId, setupMainService);

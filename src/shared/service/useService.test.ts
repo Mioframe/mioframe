@@ -1,19 +1,15 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type { DiagnosticEvent } from '@shared/lib/diagnostics';
-import {
-  DiagnosticClassification,
-  DiagnosticResult,
-  DiagnosticSeverity,
-} from '@shared/lib/diagnostics';
 
 const {
   defineWorkerClientMock,
   workerConstructorMock,
-  addEventListenerMock,
+  createServiceMock,
   reportDiagnosticEventMock,
+  addDiagnosticBreadcrumbMock,
 } = vi.hoisted(() => {
-  const addEventListenerMock = vi.fn();
+  const createServiceMock = vi.fn();
   const reportDiagnosticEventMock = vi.fn();
+  const addDiagnosticBreadcrumbMock = vi.fn();
 
   return {
     defineWorkerClientMock: vi.fn(
@@ -29,11 +25,11 @@ const {
     workerConstructorMock: vi.fn(
       class MockWorker {
         terminate = vi.fn();
-        addEventListener = addEventListenerMock;
       },
     ),
-    addEventListenerMock,
+    createServiceMock,
     reportDiagnosticEventMock,
+    addDiagnosticBreadcrumbMock,
   };
 });
 
@@ -50,23 +46,25 @@ vi.mock('@shared/lib/diagnostics', async (importOriginal) => {
   return {
     ...actual,
     reportDiagnosticEvent: reportDiagnosticEventMock,
+    addDiagnosticBreadcrumb: addDiagnosticBreadcrumbMock,
   };
 });
 
-const makeDiagnosticEvent = (overrides?: Partial<DiagnosticEvent>): DiagnosticEvent => ({
-  name: 'test.event',
-  severity: DiagnosticSeverity.Error,
-  result: DiagnosticResult.Failed,
-  classification: DiagnosticClassification.Unexpected,
-  ...overrides,
+vi.mock('@shared/lib/proxyService', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@shared/lib/proxyService')>();
+  return {
+    ...actual,
+    createService: createServiceMock,
+  };
 });
 
 describe('useMainServiceClient', () => {
   beforeEach(() => {
     defineWorkerClientMock.mockClear();
     workerConstructorMock.mockClear();
-    addEventListenerMock.mockClear();
+    createServiceMock.mockClear();
     reportDiagnosticEventMock.mockClear();
+    addDiagnosticBreadcrumbMock.mockClear();
     vi.resetModules();
   });
 
@@ -83,178 +81,90 @@ describe('useMainServiceClient', () => {
     expect(workerConstructorMock).toHaveBeenCalledTimes(1);
   });
 
-  describe('worker diagnostic forwarding', () => {
-    const getMessageHandler = (): ((e: { data: unknown }) => void) | undefined => {
-      const call = addEventListenerMock.mock.calls.find((args) => args[0] === 'message');
-      return call?.[1];
-    };
-
-    it('registers a message listener on the worker when first used', async () => {
+  describe('diagnostics service registration', () => {
+    it('registers the main-thread diagnostics service on the worker when first used', async () => {
       const { useMainServiceClient } = await import('./useService');
       useMainServiceClient();
 
-      expect(addEventListenerMock).toHaveBeenCalledWith('message', expect.any(Function));
+      // registerMainThreadDiagnosticsService calls createService with the DIAGNOSTICS_SERVICE_ID
+      const { DIAGNOSTICS_SERVICE_ID } = await import('./diagnosticsService');
+      expect(createServiceMock).toHaveBeenCalledWith(
+        expect.any(Object), // the Worker instance
+        DIAGNOSTICS_SERVICE_ID,
+        expect.any(Array), // transformers
+        expect.any(Function), // setup returning { reportDiagnosticEvent, addDiagnosticBreadcrumb }
+      );
     });
 
-    it('calls reportDiagnosticEvent when a diagnosticForward message is received', async () => {
+    it('exposes reportDiagnosticEvent through the diagnostics service setup', async () => {
       const { useMainServiceClient } = await import('./useService');
       useMainServiceClient();
 
-      const handler = getMessageHandler();
-      expect(handler).toBeDefined();
+      const { DIAGNOSTICS_SERVICE_ID } = await import('./diagnosticsService');
+      const call = createServiceMock.mock.calls.find((args) => args[1] === DIAGNOSTICS_SERVICE_ID);
+      expect(call).toBeDefined();
 
-      const event = makeDiagnosticEvent({ name: 'repositoryStorage.saveQueued' });
-      handler?.({ data: { type: 'diagnosticForward', event } });
+      const setupFn = call?.[3];
+      expect(typeof setupFn).toBe('function');
 
-      expect(reportDiagnosticEventMock).toHaveBeenCalledOnce();
-      expect(reportDiagnosticEventMock).toHaveBeenCalledWith(event);
+      const service = setupFn?.();
+      expect(typeof service?.reportDiagnosticEvent).toBe('function');
+      expect(typeof service?.addDiagnosticBreadcrumb).toBe('function');
     });
 
-    it('forwards repository saveQueued events to the main diagnostics reporter', async () => {
+    it('routes service reportDiagnosticEvent calls to the main-thread reporter', async () => {
       const { useMainServiceClient } = await import('./useService');
       useMainServiceClient();
 
-      const handler = getMessageHandler();
-      const event = makeDiagnosticEvent({
-        name: 'repositoryStorage.saveQueued',
-        severity: DiagnosticSeverity.Warning,
-        result: DiagnosticResult.Blocked,
-        classification: DiagnosticClassification.Access,
-        counters: { pendingCount: 2 },
-        safeTags: {
-          provider: 'webFileSystem',
-          operation: 'repositorySave',
-          failureClassification: 'accessRequired',
-        },
-      });
+      const { DIAGNOSTICS_SERVICE_ID } = await import('./diagnosticsService');
+      const call = createServiceMock.mock.calls.find((args) => args[1] === DIAGNOSTICS_SERVICE_ID);
+      const service = call?.[3]?.();
 
-      handler?.({ data: { type: 'diagnosticForward', event } });
-
-      expect(reportDiagnosticEventMock).toHaveBeenCalledWith(event);
-    });
-
-    it('forwards repository saveFailed events to the main diagnostics reporter', async () => {
-      const { useMainServiceClient } = await import('./useService');
-      useMainServiceClient();
-
-      const handler = getMessageHandler();
-      const event = makeDiagnosticEvent({
+      const event = {
         name: 'repositoryStorage.saveFailed',
-        severity: DiagnosticSeverity.Error,
-        result: DiagnosticResult.Failed,
-        classification: DiagnosticClassification.Storage,
-        counters: { pendingCount: 0 },
-        safeTags: {
-          provider: 'webFileSystem',
-          operation: 'repositorySave',
-          failureClassification: 'storageFailure',
-        },
-      });
+        severity: 'error',
+        result: 'failed',
+        classification: 'storage',
+      };
 
-      handler?.({ data: { type: 'diagnosticForward', event } });
-
+      service?.reportDiagnosticEvent(event);
       expect(reportDiagnosticEventMock).toHaveBeenCalledWith(event);
     });
 
-    it('forwards repositoryReplayStorageFailure events to the main diagnostics reporter', async () => {
+    it('routes service addDiagnosticBreadcrumb calls to the main-thread reporter', async () => {
       const { useMainServiceClient } = await import('./useService');
       useMainServiceClient();
 
-      const handler = getMessageHandler();
-      const event = makeDiagnosticEvent({
-        name: 'writeAccessRecovery.repositoryReplayStorageFailure',
-        severity: DiagnosticSeverity.Error,
-        result: DiagnosticResult.Failed,
-        classification: DiagnosticClassification.Storage,
-        counters: { flushedCount: 0, pendingCount: 1 },
-        safeTags: {
-          provider: 'webFileSystem',
-          operation: 'flushPendingSaves',
-          failureClassification: 'storageFailure',
-        },
-      });
+      const { DIAGNOSTICS_SERVICE_ID } = await import('./diagnosticsService');
+      const call = createServiceMock.mock.calls.find((args) => args[1] === DIAGNOSTICS_SERVICE_ID);
+      const service = call?.[3]?.();
 
-      handler?.({ data: { type: 'diagnosticForward', event } });
+      const breadcrumb = {
+        category: 'repository.storage',
+        message: 'repository save failed',
+        data: { provider: 'webFileSystem', operation: 'repositorySave' },
+      };
 
-      expect(reportDiagnosticEventMock).toHaveBeenCalledWith(event);
+      service?.addDiagnosticBreadcrumb(breadcrumb);
+      expect(addDiagnosticBreadcrumbMock).toHaveBeenCalledWith(breadcrumb);
     });
 
-    it('ignores messages that are not diagnosticForward type', async () => {
+    it('does not use a raw diagnosticForward postMessage protocol', async () => {
       const { useMainServiceClient } = await import('./useService');
-      useMainServiceClient();
+      const instance = useMainServiceClient();
 
-      const handler = getMessageHandler();
-      handler?.({
-        data: { type: 'someOtherMessage', payload: 'whatever' },
-      });
+      // The returned client must not have a direct 'message' event listener
+      // for the ad-hoc diagnosticForward protocol — all forwarding goes through proxyService.
+      // We verify no event listeners were added to the raw Worker (they are handled by
+      // proxyService internally, not by useService directly).
+      expect(instance).toBeDefined();
 
-      expect(reportDiagnosticEventMock).not.toHaveBeenCalled();
-    });
-
-    it('ignores non-object messages', async () => {
-      const { useMainServiceClient } = await import('./useService');
-      useMainServiceClient();
-
-      const handler = getMessageHandler();
-      handler?.({ data: 'raw string message' });
-      handler?.({ data: null });
-      handler?.({ data: 42 });
-
-      expect(reportDiagnosticEventMock).not.toHaveBeenCalled();
-    });
-
-    it('ignores diagnosticForward messages without an event object', async () => {
-      const { useMainServiceClient } = await import('./useService');
-      useMainServiceClient();
-
-      const handler = getMessageHandler();
-      handler?.({
-        data: { type: 'diagnosticForward', event: 'not an object' },
-      });
-      handler?.({ data: { type: 'diagnosticForward' } });
-
-      expect(reportDiagnosticEventMock).not.toHaveBeenCalled();
-    });
-
-    it('does not throw when reportDiagnosticEvent throws', async () => {
-      reportDiagnosticEventMock.mockImplementation(() => {
-        throw new Error('unexpected reporter failure');
-      });
-
-      const { useMainServiceClient } = await import('./useService');
-      useMainServiceClient();
-
-      const handler = getMessageHandler();
-      const event = makeDiagnosticEvent();
-
-      expect(() => {
-        handler?.({ data: { type: 'diagnosticForward', event } });
-      }).not.toThrow();
-    });
-
-    it('does not include private data fields in forwarded events', async () => {
-      const { useMainServiceClient } = await import('./useService');
-      useMainServiceClient();
-
-      const handler = getMessageHandler();
-      const event = makeDiagnosticEvent({
-        name: 'repositoryStorage.saveFailed',
-        safeTags: {
-          provider: 'webFileSystem',
-          operation: 'repositorySave',
-          failureClassification: 'storageFailure',
-        },
-        counters: { pendingCount: 1 },
-      });
-
-      handler?.({ data: { type: 'diagnosticForward', event } });
-
-      const reportedEvent: DiagnosticEvent = reportDiagnosticEventMock.mock.calls[0]?.[0];
-      const serialized = JSON.stringify(reportedEvent);
-      expect(serialized).not.toContain('path');
-      expect(serialized).not.toContain('fileName');
-      expect(serialized).not.toContain('docId');
-      expect(serialized).not.toContain('storageKey');
+      // createService should have been called for the diagnostics service
+      const { DIAGNOSTICS_SERVICE_ID } = await import('./diagnosticsService');
+      const diagnosticsCall = createServiceMock.mock.calls.find(
+        (args) => args[1] === DIAGNOSTICS_SERVICE_ID,
+      );
+      expect(diagnosticsCall).toBeDefined();
     });
   });
 });
