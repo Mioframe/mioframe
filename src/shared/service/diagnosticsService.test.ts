@@ -15,12 +15,10 @@ import {
   DiagnosticResult,
   DiagnosticSeverity,
   reportDiagnosticEvent,
-  addDiagnosticBreadcrumb,
   setDiagnosticEventForwarder,
-  setBreadcrumbForwarder,
   setDiagnosticEventSink,
 } from '@shared/lib/diagnostics';
-import type { DiagnosticEvent, DiagnosticBreadcrumb } from '@shared/lib/diagnostics';
+import type { DiagnosticEvent } from '@shared/lib/diagnostics';
 import { transformers } from '@shared/lib/wrapWorker/workerTransformerMap';
 import { DIAGNOSTICS_SERVICE_ID, registerMainThreadDiagnosticsService } from './diagnosticsService';
 
@@ -75,7 +73,6 @@ const createDiagnosticsChannel = (clientReturnId: string) => {
 
 type DiagnosticsApi = {
   reportDiagnosticEvent: (event: DiagnosticEvent) => void;
-  addDiagnosticBreadcrumb: (breadcrumb: DiagnosticBreadcrumb) => void;
 };
 
 describe('diagnosticsService — proxyService roundtrip', () => {
@@ -133,26 +130,11 @@ describe('diagnosticsService — proxyService roundtrip', () => {
       classification: DiagnosticClassification.Unknown,
     });
   });
-
-  it('addDiagnosticBreadcrumb through the proxyService channel completes without error', async () => {
-    await vi.runAllTimersAsync();
-
-    // Fire-and-forget: start the call, flush timers, then confirm it resolved.
-    const promise = client.addDiagnosticBreadcrumb({
-      category: 'writeAccessRecovery',
-      message: 'write access recovery started',
-      level: 'info',
-    });
-
-    await vi.runAllTimersAsync();
-    await expect(promise).resolves.toBeUndefined();
-  });
 });
 
 describe('diagnosticsService — forwarder hook scope', () => {
   afterEach(() => {
     setDiagnosticEventForwarder(undefined);
-    setBreadcrumbForwarder(undefined);
     setDiagnosticEventSink(undefined);
   });
 
@@ -182,34 +164,6 @@ describe('diagnosticsService — forwarder hook scope', () => {
         severity: DiagnosticSeverity.Error,
         result: DiagnosticResult.Failed,
         classification: DiagnosticClassification.Unexpected,
-      });
-    }).not.toThrow();
-  });
-
-  it('setBreadcrumbForwarder intercepts addDiagnosticBreadcrumb and bypasses Sentry', () => {
-    const captured: DiagnosticBreadcrumb[] = [];
-    setBreadcrumbForwarder((bc) => captured.push(bc));
-
-    addDiagnosticBreadcrumb({
-      category: 'writeAccessRecovery',
-      message: 'write access recovery started',
-      level: 'info',
-    });
-
-    expect(captured).toHaveLength(1);
-    expect(captured[0]?.category).toBe('writeAccessRecovery');
-    expect(captured[0]?.message).toBe('write access recovery started');
-  });
-
-  it('setBreadcrumbForwarder does not leak errors into product code', () => {
-    setBreadcrumbForwarder(() => {
-      throw new Error('breadcrumb forwarding failure');
-    });
-
-    expect(() => {
-      addDiagnosticBreadcrumb({
-        category: 'writeAccessRecovery',
-        message: 'write access recovery started',
       });
     }).not.toThrow();
   });

@@ -1,11 +1,5 @@
-import {
-  ensureSentry,
-  getSentryReportingState,
-  isSentryConfigured,
-  useSentry,
-} from '@shared/lib/setupSentry';
+import { ensureSentry, getSentryReportingState, isSentryConfigured } from '@shared/lib/setupSentry';
 import type { DiagnosticEvent } from './DiagnosticEvent';
-import type { DiagnosticBreadcrumb } from './DiagnosticBreadcrumb';
 import { DiagnosticSeverity } from './diagnosticEnums';
 
 const DIAGNOSTIC_QUEUE_LIMIT = 50;
@@ -52,7 +46,6 @@ const isRecentDuplicate = (key: string): boolean => {
 let flushPromise: Promise<void> | undefined;
 let memorySink: DiagnosticEvent[] | undefined;
 let eventForwarder: ((event: DiagnosticEvent) => void) | undefined;
-let breadcrumbForwarder: ((breadcrumb: DiagnosticBreadcrumb) => void) | undefined;
 
 /**
  * Sets an in-memory sink that receives every `reportDiagnosticEvent` call.
@@ -72,64 +65,20 @@ export const setDiagnosticEventSink = (sink: DiagnosticEvent[] | undefined): voi
  * local Sentry delivery path. This is the mechanism worker contexts use to relay events
  * to the main-thread diagnostics reporter, which owns Sentry delivery.
  *
+ * **Worker bootstrap only.** Must be called once at the worker entry point before any
+ * diagnostic calls are made. Must not be called from:
+ * - main-thread product code;
+ * - UI layers (pages, widgets, features, entities);
+ * - low-level adapters or VFS providers;
+ * - flow-specific diagnostics wrappers (call `reportDiagnosticEvent` instead).
+ *
  * Pass `undefined` to remove the forwarder and restore local Sentry delivery.
- * Must not be called from main-thread product code — use only at worker entry points.
  * @param forwarder - The function to receive forwarded events, or `undefined` to clear it.
  */
 export const setDiagnosticEventForwarder = (
   forwarder: ((event: DiagnosticEvent) => void) | undefined,
 ): void => {
   eventForwarder = forwarder;
-};
-
-/**
- * Registers a fire-and-forget forwarder for diagnostic breadcrumbs.
- *
- * When set, `addDiagnosticBreadcrumb` forwards every breadcrumb to the forwarder and skips
- * local Sentry delivery. Used in worker contexts to relay breadcrumbs to the main-thread
- * diagnostics service.
- *
- * Pass `undefined` to remove the forwarder and restore local Sentry delivery.
- * Must not be called from main-thread product code — use only at worker entry points.
- * @param forwarder - The function to receive forwarded breadcrumbs, or `undefined` to clear it.
- */
-export const setBreadcrumbForwarder = (
-  forwarder: ((breadcrumb: DiagnosticBreadcrumb) => void) | undefined,
-): void => {
-  breadcrumbForwarder = forwarder;
-};
-
-/**
- * Adds a safe technical diagnostic breadcrumb.
- *
- * - In worker contexts, forwards to the main-thread diagnostics service via the forwarder
- *   set by `setBreadcrumbForwarder`.
- * - On the main thread, adds the breadcrumb to Sentry directly.
- * - Fire-and-forget: does not throw into product code.
- * - Breadcrumbs must use allowed categories and data keys only; sanitization is enforced
- *   at the Sentry layer via `beforeBreadcrumb`.
- * @param breadcrumb - The safe technical breadcrumb to add.
- */
-export const addDiagnosticBreadcrumb = (breadcrumb: DiagnosticBreadcrumb): void => {
-  if (breadcrumbForwarder) {
-    try {
-      breadcrumbForwarder(breadcrumb);
-    } catch {
-      // Fire-and-forget: forwarding failures must never propagate into product code.
-    }
-    return;
-  }
-
-  try {
-    useSentry().addBreadcrumb({
-      category: breadcrumb.category,
-      message: breadcrumb.message,
-      level: breadcrumb.level ?? 'info',
-      ...(breadcrumb.data !== undefined ? { data: breadcrumb.data } : {}),
-    });
-  } catch {
-    // Fire-and-forget: must not propagate into product call stacks.
-  }
 };
 
 /**

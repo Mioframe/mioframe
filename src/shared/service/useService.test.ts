@@ -5,11 +5,9 @@ const {
   workerConstructorMock,
   createServiceMock,
   reportDiagnosticEventMock,
-  addDiagnosticBreadcrumbMock,
 } = vi.hoisted(() => {
   const createServiceMock = vi.fn();
   const reportDiagnosticEventMock = vi.fn();
-  const addDiagnosticBreadcrumbMock = vi.fn();
 
   return {
     defineWorkerClientMock: vi.fn(
@@ -29,7 +27,6 @@ const {
     ),
     createServiceMock,
     reportDiagnosticEventMock,
-    addDiagnosticBreadcrumbMock,
   };
 });
 
@@ -46,7 +43,6 @@ vi.mock('@shared/lib/diagnostics', async (importOriginal) => {
   return {
     ...actual,
     reportDiagnosticEvent: reportDiagnosticEventMock,
-    addDiagnosticBreadcrumb: addDiagnosticBreadcrumbMock,
   };
 });
 
@@ -64,7 +60,6 @@ describe('useMainServiceClient', () => {
     workerConstructorMock.mockClear();
     createServiceMock.mockClear();
     reportDiagnosticEventMock.mockClear();
-    addDiagnosticBreadcrumbMock.mockClear();
     vi.resetModules();
   });
 
@@ -92,7 +87,7 @@ describe('useMainServiceClient', () => {
         expect.any(Object), // the Worker instance
         DIAGNOSTICS_SERVICE_ID,
         expect.any(Array), // transformers
-        expect.any(Function), // setup returning { reportDiagnosticEvent, addDiagnosticBreadcrumb }
+        expect.any(Function), // setup returning { reportDiagnosticEvent }
       );
     });
 
@@ -109,7 +104,6 @@ describe('useMainServiceClient', () => {
 
       const service = setupFn?.();
       expect(typeof service?.reportDiagnosticEvent).toBe('function');
-      expect(typeof service?.addDiagnosticBreadcrumb).toBe('function');
     });
 
     it('routes service reportDiagnosticEvent calls to the main-thread reporter', async () => {
@@ -129,24 +123,6 @@ describe('useMainServiceClient', () => {
 
       service?.reportDiagnosticEvent(event);
       expect(reportDiagnosticEventMock).toHaveBeenCalledWith(event);
-    });
-
-    it('routes service addDiagnosticBreadcrumb calls to the main-thread reporter', async () => {
-      const { useMainServiceClient } = await import('./useService');
-      useMainServiceClient();
-
-      const { DIAGNOSTICS_SERVICE_ID } = await import('./diagnosticsService');
-      const call = createServiceMock.mock.calls.find((args) => args[1] === DIAGNOSTICS_SERVICE_ID);
-      const service = call?.[3]?.();
-
-      const breadcrumb = {
-        category: 'repository.storage',
-        message: 'repository save failed',
-        data: { provider: 'webFileSystem', operation: 'repositorySave' },
-      };
-
-      service?.addDiagnosticBreadcrumb(breadcrumb);
-      expect(addDiagnosticBreadcrumbMock).toHaveBeenCalledWith(breadcrumb);
     });
 
     it('does not use a raw diagnosticForward postMessage protocol', async () => {

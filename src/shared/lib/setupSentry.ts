@@ -1,45 +1,4 @@
-import type { Breadcrumb as SentryBreadcrumb } from '@sentry/vue';
 import type { App, Plugin } from 'vue';
-import type {
-  DiagnosticBreadcrumbCategory,
-  DiagnosticBreadcrumbDataKey,
-  DiagnosticBreadcrumbMessage,
-} from './diagnostics/DiagnosticBreadcrumb';
-
-/**
- * Allowed diagnostic breadcrumb categories that may survive `beforeBreadcrumb` and `beforeSend`.
- * Automatic Sentry and browser-generated categories are stripped.
- */
-const SAFE_BREADCRUMB_CATEGORIES = new Set<string>([
-  'repository.storage',
-  'writeAccessRecovery',
-] satisfies DiagnosticBreadcrumbCategory[]);
-
-/**
- * Allowed diagnostic breadcrumb messages that may survive `beforeBreadcrumb` and `beforeSend`.
- * Restricted to project-controlled milestone phrases. Unknown strings are stripped.
- */
-const SAFE_BREADCRUMB_MESSAGES = new Set<string>([
-  'write access recovery started',
-  'write access recovery permission granted',
-  'pending saves replay started',
-  'repository save retry queued',
-] satisfies DiagnosticBreadcrumbMessage[]);
-
-/**
- * Allowed keys in breadcrumb `data`. Values must be enum-like strings or numbers.
- * Unknown keys are stripped.
- */
-const SAFE_BREADCRUMB_DATA_KEYS = new Set<DiagnosticBreadcrumbDataKey>([
-  'provider',
-  'operation',
-  'result',
-  'classification',
-  'failureClassification',
-  'pendingCount',
-  'flushedCount',
-  'failedCount',
-]);
 
 const SAFE_EVENT_EXTRA_KEYS = [
   'userMessage',
@@ -113,44 +72,6 @@ const pickEventTags = (source: Record<string, unknown> | undefined, keys: readon
   }
 
   return result;
-};
-
-/**
- * Sanitizes a single breadcrumb so only safe project-controlled technical breadcrumbs survive.
- * Returns `null` to drop the breadcrumb, or a cleaned copy to keep it.
- *
- * Rules:
- * - Category must be in `SAFE_BREADCRUMB_CATEGORIES`.
- * - Message must be in `SAFE_BREADCRUMB_MESSAGES`.
- * - Data keys must be in `SAFE_BREADCRUMB_DATA_KEYS`.
- * - Data values must be enum-like strings or numbers only.
- * - All other breadcrumb fields pass through as-is (Sentry-controlled metadata).
- * @param breadcrumb - The Sentry breadcrumb to sanitize.
- * @returns A sanitized breadcrumb copy, or `null` to drop it.
- */
-const sanitizeBreadcrumb = (breadcrumb: SentryBreadcrumb): SentryBreadcrumb | null => {
-  if (!breadcrumb.category || !SAFE_BREADCRUMB_CATEGORIES.has(breadcrumb.category)) {
-    return null;
-  }
-
-  if (!breadcrumb.message || !SAFE_BREADCRUMB_MESSAGES.has(breadcrumb.message)) {
-    return null;
-  }
-
-  const { data: rawData, ...rest } = breadcrumb;
-  if (!rawData || typeof rawData !== 'object') {
-    return rest;
-  }
-
-  const safeData: Record<string, string | number> = {};
-  for (const key of SAFE_BREADCRUMB_DATA_KEYS) {
-    const value: unknown = rawData[key];
-    if (typeof value === 'string' || typeof value === 'number') {
-      safeData[key] = value;
-    }
-  }
-
-  return Object.keys(safeData).length > 0 ? { ...rest, data: safeData } : rest;
 };
 
 /**
@@ -401,14 +322,13 @@ export const ensureSentry = async (app?: App): Promise<SentryFacade> => {
       dsn,
       ...(appRef ? { app: appRef } : {}),
       tracesSampleRate: 0,
-      beforeBreadcrumb: (breadcrumb) => sanitizeBreadcrumb(breadcrumb),
       beforeSend: (event) => {
         if (getSentryReportingState() !== 'enabled') {
           return null;
         }
 
         const {
-          breadcrumbs,
+          breadcrumbs: _breadcrumbs,
           contexts: _contexts,
           extra,
           request: _request,
@@ -419,19 +339,10 @@ export const ensureSentry = async (app?: App): Promise<SentryFacade> => {
         const safeTags = pickEventTags(tags, SAFE_EVENT_TAG_KEYS);
         const safeExtra = pickEventFields(extra, SAFE_EVENT_EXTRA_KEYS);
 
-        // Defense-in-depth: re-sanitize breadcrumbs that bypassed beforeBreadcrumb
-        // (e.g. added before SDK initialization or by third-party integrations).
-        const safeBreadcrumbs = Array.isArray(breadcrumbs)
-          ? breadcrumbs.map(sanitizeBreadcrumb).filter((b): b is SentryBreadcrumb => b !== null)
-          : undefined;
-
         return {
           ...safeEvent,
           ...(Object.keys(safeExtra).length > 0 ? { extra: safeExtra } : {}),
           ...(Object.keys(safeTags).length > 0 ? { tags: safeTags } : {}),
-          ...(safeBreadcrumbs && safeBreadcrumbs.length > 0
-            ? { breadcrumbs: safeBreadcrumbs }
-            : {}),
         };
       },
     });
