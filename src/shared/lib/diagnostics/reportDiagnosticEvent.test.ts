@@ -437,6 +437,101 @@ describe('reportDiagnosticEvent', () => {
     });
   });
 
+  describe('setDiagnosticEventForwarder', () => {
+    it('calls the forwarder with the event when set', async () => {
+      const forwarder = vi.fn();
+      const { reportDiagnosticEvent, setDiagnosticEventForwarder } =
+        await import('./reportDiagnosticEvent');
+
+      setDiagnosticEventForwarder(forwarder);
+      const event = makeEvent({ name: 'test.forwarded' });
+      reportDiagnosticEvent(event);
+
+      expect(forwarder).toHaveBeenCalledOnce();
+      expect(forwarder).toHaveBeenCalledWith(event);
+
+      setDiagnosticEventForwarder(undefined);
+    });
+
+    it('does not call Sentry when forwarder is set', async () => {
+      ensureSentryMock.mockResolvedValue(realFacade);
+      const forwarder = vi.fn();
+      const { reportDiagnosticEvent, setDiagnosticEventForwarder } =
+        await import('./reportDiagnosticEvent');
+
+      setDiagnosticEventForwarder(forwarder);
+      reportDiagnosticEvent(makeEvent());
+      await waitForAsyncWork();
+
+      expect(realFacade.captureMessage).not.toHaveBeenCalled();
+
+      setDiagnosticEventForwarder(undefined);
+    });
+
+    it('does not throw when the forwarder throws', async () => {
+      const throwingForwarder = vi.fn(() => {
+        throw new Error('forwarding failed');
+      });
+      const { reportDiagnosticEvent, setDiagnosticEventForwarder } =
+        await import('./reportDiagnosticEvent');
+
+      setDiagnosticEventForwarder(throwingForwarder);
+
+      expect(() => {
+        reportDiagnosticEvent(makeEvent());
+      }).not.toThrow();
+
+      setDiagnosticEventForwarder(undefined);
+    });
+
+    it('memorySink still receives the event when forwarder is set', async () => {
+      const forwarder = vi.fn();
+      const { reportDiagnosticEvent, setDiagnosticEventForwarder, setDiagnosticEventSink } =
+        await import('./reportDiagnosticEvent');
+      const sink: DiagnosticEvent[] = [];
+      setDiagnosticEventSink(sink);
+      setDiagnosticEventForwarder(forwarder);
+
+      const event = makeEvent({ name: 'test.sinkAndForward' });
+      reportDiagnosticEvent(event);
+
+      expect(sink).toHaveLength(1);
+      expect(sink[0]).toBe(event);
+
+      setDiagnosticEventForwarder(undefined);
+      setDiagnosticEventSink(undefined);
+    });
+
+    it('resumes Sentry delivery after forwarder is removed', async () => {
+      ensureSentryMock.mockResolvedValue(realFacade);
+      const forwarder = vi.fn();
+      const { reportDiagnosticEvent, setDiagnosticEventForwarder } =
+        await import('./reportDiagnosticEvent');
+
+      setDiagnosticEventForwarder(forwarder);
+      reportDiagnosticEvent(makeEvent({ name: 'test.whileForwarded' }));
+      await waitForAsyncWork();
+      expect(realFacade.captureMessage).not.toHaveBeenCalled();
+
+      setDiagnosticEventForwarder(undefined);
+      reportDiagnosticEvent(makeEvent({ name: 'test.afterForwarderRemoved' }));
+      await waitForAsyncWork();
+      expect(realFacade.captureMessage).toHaveBeenCalledOnce();
+    });
+
+    it('does not call the forwarder after it is removed', async () => {
+      const forwarder = vi.fn();
+      const { reportDiagnosticEvent, setDiagnosticEventForwarder } =
+        await import('./reportDiagnosticEvent');
+
+      setDiagnosticEventForwarder(forwarder);
+      setDiagnosticEventForwarder(undefined);
+      reportDiagnosticEvent(makeEvent());
+
+      expect(forwarder).not.toHaveBeenCalled();
+    });
+  });
+
   describe('dedupe/rate-limit', () => {
     it('back-to-back identical events result in one Sentry send', async () => {
       ensureSentryMock.mockResolvedValue(realFacade);

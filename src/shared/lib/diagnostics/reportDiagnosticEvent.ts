@@ -45,6 +45,7 @@ const isRecentDuplicate = (key: string): boolean => {
 };
 let flushPromise: Promise<void> | undefined;
 let memorySink: DiagnosticEvent[] | undefined;
+let eventForwarder: ((event: DiagnosticEvent) => void) | undefined;
 
 /**
  * Sets an in-memory sink that receives every `reportDiagnosticEvent` call.
@@ -55,6 +56,23 @@ let memorySink: DiagnosticEvent[] | undefined;
  */
 export const setDiagnosticEventSink = (sink: DiagnosticEvent[] | undefined): void => {
   memorySink = sink;
+};
+
+/**
+ * Registers a fire-and-forget forwarder for diagnostic events.
+ *
+ * When set, `reportDiagnosticEvent` forwards every event to the forwarder and skips the
+ * local Sentry delivery path. This is the mechanism worker contexts use to relay events
+ * to the main-thread diagnostics reporter, which owns Sentry delivery.
+ *
+ * Pass `undefined` to remove the forwarder and restore local Sentry delivery.
+ * Must not be called from main-thread product code — use only at worker entry points.
+ * @param forwarder - The function to receive forwarded events, or `undefined` to clear it.
+ */
+export const setDiagnosticEventForwarder = (
+  forwarder: ((event: DiagnosticEvent) => void) | undefined,
+): void => {
+  eventForwarder = forwarder;
 };
 
 /**
@@ -214,6 +232,8 @@ export const flushQueuedDiagnosticEvents = (): void => {
  * - Fire-and-forget: does not throw into product code.
  * - Writes to an optional in-memory test sink set by `setDiagnosticEventSink`.
  * - Uses Sentry as the transport backend; callers must not import Sentry directly.
+ * - In worker contexts, delegates to the forwarder set by `setDiagnosticEventForwarder`
+ *   so the main-thread diagnostics reporter owns Sentry delivery.
  *
  * Must only be called from service, repository-service, or service-client layers.
  * Do not call from VFS providers or low-level storage adapters.
@@ -221,6 +241,15 @@ export const flushQueuedDiagnosticEvents = (): void => {
  */
 export const reportDiagnosticEvent = (event: DiagnosticEvent): void => {
   memorySink?.push(event);
+
+  if (eventForwarder) {
+    try {
+      eventForwarder(event);
+    } catch {
+      // Fire-and-forget: forwarding failures must never propagate into product code.
+    }
+    return;
+  }
 
   try {
     if (!isSentryConfigured()) {
