@@ -3,7 +3,6 @@ import {
   DiagnosticClassification,
   DiagnosticResult,
   DiagnosticSeverity,
-  addDiagnosticBreadcrumb,
   reportDiagnosticEvent,
 } from '@shared/lib/diagnostics';
 import type { DiagnosticEvent } from '@shared/lib/diagnostics';
@@ -118,18 +117,6 @@ export const reportWriteAccessReplayFailure = ({
   replay?: BrokerReplaySummary | undefined;
 }): void => {
   const failureClassification = replay?.failureClassification ?? 'unknown';
-  addDiagnosticBreadcrumb({
-    category: 'writeAccessRecovery',
-    message: 'write access recovery resolved — replay still blocked',
-    level: 'error',
-    data: {
-      operation: 'resolveAccessRequest',
-      failureClassification,
-      ...(replay !== undefined
-        ? { flushedCount: replay.flushedCount, pendingCount: replay.pendingCount }
-        : {}),
-    },
-  });
   reportWebFsEvent({
     name: 'writeAccessRecovery.grantReplayStillBlocked',
     severity: DiagnosticSeverity.Error,
@@ -157,18 +144,6 @@ export const reportWriteAccessStorageFailure = ({
   replay?: BrokerReplaySummary | undefined;
 }): void => {
   const failureClassification = replay?.failureClassification ?? 'unknown';
-  addDiagnosticBreadcrumb({
-    category: 'writeAccessRecovery',
-    message: 'write access recovery resolved — replay storage failure',
-    level: 'error',
-    data: {
-      operation: 'resolveAccessRequest',
-      failureClassification,
-      ...(replay !== undefined
-        ? { flushedCount: replay.flushedCount, pendingCount: replay.pendingCount }
-        : {}),
-    },
-  });
   const classification =
     replay?.failureClassification === 'accessRequired'
       ? DiagnosticClassification.Access

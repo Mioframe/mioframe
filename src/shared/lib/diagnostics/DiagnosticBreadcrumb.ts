@@ -2,10 +2,18 @@
  * Allowed categories for safe technical diagnostic breadcrumbs.
  * These are project-controlled; automatic browser/Sentry categories are stripped.
  */
-export type DiagnosticBreadcrumbCategory =
-  | 'repository.storage'
-  | 'writeAccessRecovery'
-  | 'diagnostics.forwarding';
+export type DiagnosticBreadcrumbCategory = 'repository.storage' | 'writeAccessRecovery';
+
+/**
+ * Allowed message strings for safe technical diagnostic breadcrumbs.
+ * Restricted to project-controlled constants describing earlier technical milestones,
+ * not terminal failure states (which belong to diagnostic events).
+ */
+export type DiagnosticBreadcrumbMessage =
+  | 'write access recovery started'
+  | 'write access recovery permission granted'
+  | 'pending saves replay started'
+  | 'repository save retry queued';
 
 /**
  * Allowed keys in `DiagnosticBreadcrumb.data`.
@@ -36,8 +44,8 @@ export type DiagnosticBreadcrumbDataKey =
 export interface DiagnosticBreadcrumb {
   /** Project-controlled category from the allowed set. */
   category: DiagnosticBreadcrumbCategory;
-  /** Stable project-controlled human-readable description. */
-  message: string;
+  /** Stable project-controlled constant from `DiagnosticBreadcrumbMessage`. */
+  message: DiagnosticBreadcrumbMessage;
   /** Optional Sentry level for this breadcrumb. */
   level?: 'debug' | 'info' | 'warning' | 'error';
   /** Optional safe numeric or enum-like string context. */

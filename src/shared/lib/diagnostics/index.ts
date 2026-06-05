@@ -8,6 +8,7 @@ export type {
   DiagnosticBreadcrumb,
   DiagnosticBreadcrumbCategory,
   DiagnosticBreadcrumbDataKey,
+  DiagnosticBreadcrumbMessage,
 } from './DiagnosticBreadcrumb';
 export { DiagnosticClassification, DiagnosticResult, DiagnosticSeverity } from './diagnosticEnums';
 export {

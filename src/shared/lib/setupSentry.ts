@@ -1,7 +1,9 @@
+import type { Breadcrumb as SentryBreadcrumb } from '@sentry/vue';
 import type { App, Plugin } from 'vue';
 import type {
   DiagnosticBreadcrumbCategory,
   DiagnosticBreadcrumbDataKey,
+  DiagnosticBreadcrumbMessage,
 } from './diagnostics/DiagnosticBreadcrumb';
 
 /**
@@ -11,8 +13,18 @@ import type {
 const SAFE_BREADCRUMB_CATEGORIES = new Set<string>([
   'repository.storage',
   'writeAccessRecovery',
-  'diagnostics.forwarding',
 ] satisfies DiagnosticBreadcrumbCategory[]);
+
+/**
+ * Allowed diagnostic breadcrumb messages that may survive `beforeBreadcrumb` and `beforeSend`.
+ * Restricted to project-controlled milestone phrases. Unknown strings are stripped.
+ */
+const SAFE_BREADCRUMB_MESSAGES = new Set<string>([
+  'write access recovery started',
+  'write access recovery permission granted',
+  'pending saves replay started',
+  'repository save retry queued',
+] satisfies DiagnosticBreadcrumbMessage[]);
 
 /**
  * Allowed keys in breadcrumb `data`. Values must be enum-like strings or numbers.
@@ -103,14 +115,13 @@ const pickEventTags = (source: Record<string, unknown> | undefined, keys: readon
   return result;
 };
 
-type SentryBreadcrumb = import('@sentry/vue').Breadcrumb;
-
 /**
  * Sanitizes a single breadcrumb so only safe project-controlled technical breadcrumbs survive.
  * Returns `null` to drop the breadcrumb, or a cleaned copy to keep it.
  *
  * Rules:
  * - Category must be in `SAFE_BREADCRUMB_CATEGORIES`.
+ * - Message must be in `SAFE_BREADCRUMB_MESSAGES`.
  * - Data keys must be in `SAFE_BREADCRUMB_DATA_KEYS`.
  * - Data values must be enum-like strings or numbers only.
  * - All other breadcrumb fields pass through as-is (Sentry-controlled metadata).
@@ -119,6 +130,10 @@ type SentryBreadcrumb = import('@sentry/vue').Breadcrumb;
  */
 const sanitizeBreadcrumb = (breadcrumb: SentryBreadcrumb): SentryBreadcrumb | null => {
   if (!breadcrumb.category || !SAFE_BREADCRUMB_CATEGORIES.has(breadcrumb.category)) {
+    return null;
+  }
+
+  if (!breadcrumb.message || !SAFE_BREADCRUMB_MESSAGES.has(breadcrumb.message)) {
     return null;
   }
 

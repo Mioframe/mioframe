@@ -1053,12 +1053,12 @@ describe('setupSentry', () => {
       expect(beforeBreadcrumb).toEqual(expect.any(Function));
     });
 
-    it('safe technical breadcrumb with allowed category survives beforeBreadcrumb', async () => {
+    it('safe technical breadcrumb with allowed category and allowed message survives beforeBreadcrumb', async () => {
       const { beforeBreadcrumb } = await setupHooks();
       const breadcrumb = {
         category: 'repository.storage',
-        message: 'repository save failed',
-        level: 'error',
+        message: 'repository save retry queued',
+        level: 'warning',
         data: { provider: 'webFileSystem', operation: 'repositorySave', pendingCount: 1 },
       };
 
@@ -1066,30 +1066,62 @@ describe('setupSentry', () => {
         const result = beforeBreadcrumb(breadcrumb);
         expect(result).not.toBeNull();
         expect(result?.category).toBe('repository.storage');
-        expect(result?.message).toBe('repository save failed');
+        expect(result?.message).toBe('repository save retry queued');
       }
     });
 
-    it('writeAccessRecovery category survives beforeBreadcrumb', async () => {
+    it('allowed category + unknown message is stripped by beforeBreadcrumb', async () => {
       const { beforeBreadcrumb } = await setupHooks();
       const breadcrumb = {
-        category: 'writeAccessRecovery',
-        message: 'write access recovery resolved — replay still blocked',
-        level: 'error',
-        data: { operation: 'resolveAccessRequest', failureClassification: 'accessRequired' },
+        category: 'repository.storage',
+        message: 'repository save failed',
       };
 
       if (beforeBreadcrumb instanceof Function) {
-        expect(beforeBreadcrumb(breadcrumb)).not.toBeNull();
+        expect(beforeBreadcrumb(breadcrumb)).toBeNull();
       }
     });
 
-    it('diagnostics.forwarding category survives beforeBreadcrumb', async () => {
+    it('unknown category + allowed message is stripped by beforeBreadcrumb', async () => {
       const { beforeBreadcrumb } = await setupHooks();
       const breadcrumb = {
-        category: 'diagnostics.forwarding',
-        message: 'diagnostic event forwarded',
-        level: 'debug',
+        category: 'ui.click',
+        message: 'repository save retry queued',
+      };
+
+      if (beforeBreadcrumb instanceof Function) {
+        expect(beforeBreadcrumb(breadcrumb)).toBeNull();
+      }
+    });
+
+    it('allowed category + allowed message with private data: private data is still stripped', async () => {
+      const { beforeBreadcrumb } = await setupHooks();
+      const breadcrumb = {
+        category: 'writeAccessRecovery',
+        message: 'pending saves replay started',
+        data: {
+          provider: 'webFileSystem',
+          path: '/private/doc.md',
+          documentId: 'doc-abc',
+        },
+      };
+
+      if (beforeBreadcrumb instanceof Function) {
+        const result = beforeBreadcrumb(breadcrumb);
+        expect(result).not.toBeNull();
+        expect(result?.data?.provider).toBe('webFileSystem');
+        expect(result?.data?.path).toBeUndefined();
+        expect(result?.data?.documentId).toBeUndefined();
+      }
+    });
+
+    it('writeAccessRecovery category with allowed message survives beforeBreadcrumb', async () => {
+      const { beforeBreadcrumb } = await setupHooks();
+      const breadcrumb = {
+        category: 'writeAccessRecovery',
+        message: 'write access recovery started',
+        level: 'info',
+        data: { operation: 'requestAccess' },
       };
 
       if (beforeBreadcrumb instanceof Function) {
@@ -1128,7 +1160,7 @@ describe('setupSentry', () => {
       const { beforeBreadcrumb } = await setupHooks();
       const breadcrumb = {
         category: 'repository.storage',
-        message: 'repository save failed',
+        message: 'repository save retry queued',
         data: {
           provider: 'webFileSystem',
           operation: 'repositorySave',
@@ -1156,7 +1188,7 @@ describe('setupSentry', () => {
       const { beforeBreadcrumb } = await setupHooks();
       const breadcrumb = {
         category: 'repository.storage',
-        message: 'test',
+        message: 'repository save retry queued',
         data: {
           provider: 'webFileSystem',
           operation: { nested: 'object' },
@@ -1176,12 +1208,12 @@ describe('setupSentry', () => {
     it('beforeSend defense-in-depth keeps safe technical breadcrumbs', async () => {
       const { beforeSend } = await setupHooks();
       const event = {
-        message: '[diagnostic] repositoryStorage.saveFailed',
+        message: '[diagnostic] repositoryStorage.saveQueued',
         breadcrumbs: [
           {
             category: 'repository.storage',
-            message: 'repository save failed',
-            level: 'error',
+            message: 'repository save retry queued',
+            level: 'warning',
             data: { provider: 'webFileSystem', operation: 'repositorySave', pendingCount: 1 },
           },
         ],
@@ -1220,7 +1252,7 @@ describe('setupSentry', () => {
         breadcrumbs: [
           {
             category: 'repository.storage',
-            message: 'repository save failed',
+            message: 'repository save retry queued',
             data: {
               provider: 'webFileSystem',
               documentId: 'private-id',
