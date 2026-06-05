@@ -9,6 +9,10 @@ import {
 } from '@shared/lib/automergeAdapter';
 import { createGlobalState } from '@vueuse/core';
 import type { CFRDocumentContent } from '@shared/lib/cfrDocument';
+import {
+  reportWriteAccessReplayStillBlocked,
+  reportWriteAccessReplayStorageFailure,
+} from './repositoriesDiagnostics';
 import { getFileSystemAccessRecovery } from '@shared/lib/fileSystem';
 import {
   concat,
@@ -248,10 +252,22 @@ const setupRepositoriesService = () => {
       pendingCount += result.pendingCount;
 
       if (result.status !== 'flushed') {
+        if (result.status === 'stillBlocked') {
+          reportWriteAccessReplayStillBlocked({ flushedCount, pendingCount: result.pendingCount });
+        } else {
+          reportWriteAccessReplayStorageFailure({
+            flushedCount,
+            pendingCount: result.pendingCount,
+            failureClassification: result.failureClassification,
+          });
+        }
         return {
           status: result.status,
           flushedCount,
           pendingCount,
+          ...(result.failureClassification !== undefined
+            ? { failureClassification: result.failureClassification }
+            : {}),
         };
       }
     }
@@ -263,9 +279,9 @@ const setupRepositoriesService = () => {
     };
   };
 
-  registerWriteAccessRecoveryHandler(async ({ mountPath }) => {
-    return flushPendingRepositoryStorageSaves(mountPath);
-  });
+  registerWriteAccessRecoveryHandler(({ mountPath }) =>
+    flushPendingRepositoryStorageSaves(mountPath),
+  );
 
   const deleteDocument = async (path: string, id: AMDocumentId) => {
     const documentStorageFiles = await getDocumentStorageFiles(vfs, path, id);

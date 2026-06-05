@@ -1,5 +1,14 @@
 import { type FileSystemAccessOperation } from '@shared/lib/fileSystem';
+import { sanitizeDiagnosticError } from '@shared/lib/diagnostics';
 import { useMainServiceClient } from '@shared/service';
+import {
+  reportWriteAccessMissingRequest,
+  reportWriteAccessPermissionDenied,
+  reportWriteAccessProviderFailure,
+  reportWriteAccessReplayFailure,
+  reportWriteAccessStaleResolve,
+  reportWriteAccessStorageFailure,
+} from './writeAccessRecoveryDiagnostics';
 
 type FileSystemAccessRequestKey = {
   operation: FileSystemAccessOperation;
@@ -33,10 +42,13 @@ export const useFileSystemAccessPermissionBroker = () => {
       | 'cancelled'
       | 'error';
   }> => {
+    const attemptId = crypto.randomUUID();
+
     try {
       const request = await getTemporaryFileSystemAccessHandle(key);
 
       if (!request) {
+        reportWriteAccessMissingRequest({ attemptId });
         return { status: 'error' };
       }
 
@@ -53,13 +65,29 @@ export const useFileSystemAccessPermissionBroker = () => {
           spaceName: request.spaceName,
         });
 
-        return {
-          status: result.status === 'missing' ? 'error' : result.status,
-        };
+        if (result.status === 'missing') {
+          reportWriteAccessStaleResolve({ attemptId });
+          return { status: 'error' };
+        }
+
+        if (result.status === 'grantedWithReplayFailures') {
+          reportWriteAccessReplayFailure({ attemptId });
+        }
+
+        if (result.status === 'grantedWithStorageFailures') {
+          reportWriteAccessStorageFailure({ attemptId });
+        }
+
+        if (result.status === 'denied' && key.operation === 'write') {
+          reportWriteAccessPermissionDenied({ attemptId });
+        }
+
+        return { status: result.status };
       } finally {
         handle = undefined;
       }
-    } catch {
+    } catch (error) {
+      reportWriteAccessProviderFailure({ attemptId, error: sanitizeDiagnosticError(error) });
       return { status: 'error' };
     }
   };

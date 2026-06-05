@@ -92,6 +92,7 @@ reason:
 - Use Storybook as the preferred component playground and visual state harness.
 - Do not use Vitest, happy-dom, or Vue Test Utils for visual appearance; use Playwright screenshots against Storybook stories.
 - Use the `crdt-storage` skill for Automerge/CRDT changes, repo or document handle lifecycle, storage helpers, VFS behavior, subscriptions, listeners, workers, timers, caches, file handles, or blob URLs.
+- Use the `diagnostic-events` skill when adding, reviewing, or testing structured diagnostic events via `reportDiagnosticEvent`, adding enum values to `diagnosticEnums.ts`, using `sanitizeDiagnosticError`, or deciding whether `reportHandledError` or `reportDiagnosticEvent` is the right API. See also `docs/diagnostics.md`.
 - Verify third-party semantics from official docs or installed source before relying on ambiguous helpers, options, or return values. If the behavior is still unverified, say so.
 - Keep the UI aligned with Material 3 expectations and optimize for mobile browsers first. Assume large datasets and low-end devices, and keep main-thread work bounded.
 - Keep provider adapters focused on storage operations and typed access failures. Delayed Automerge save replay belongs to Automerge persistence and repository-service coordination, while `serviceClient` keeps browser user-activation permission prompts on the main thread.
