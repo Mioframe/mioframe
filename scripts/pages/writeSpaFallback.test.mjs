@@ -68,6 +68,11 @@ describe('buildSpaFallbackHtml', () => {
     expect(html).toContain("sessionStorage.setItem('ghPagesSpaFallback'");
   });
 
+  it('stores the hash with the original path when one is present', () => {
+    const html = buildSpaFallbackHtml('/mioframe/');
+    expect(html).toContain('window.location.hash');
+  });
+
   it('redirects to PR preview root when path matches pr-N pattern', () => {
     const html = buildSpaFallbackHtml('/mioframe/');
     expect(html).toContain("base + prMatch[1] + '/'");

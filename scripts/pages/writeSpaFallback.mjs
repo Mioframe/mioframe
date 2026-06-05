@@ -60,7 +60,7 @@ export function buildSpaFallbackHtml(base) {
       var prMatch = rest.match(/^(pr-\\d+)(?:\\/|$)/);
       var targetRoot = prMatch ? base + prMatch[1] + '/' : base;
 
-      sessionStorage.setItem('ghPagesSpaFallback', path + window.location.search);
+      sessionStorage.setItem('ghPagesSpaFallback', path + window.location.search + window.location.hash);
       window.location.replace(targetRoot);
     })();
   </script>
