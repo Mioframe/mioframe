@@ -11,7 +11,12 @@ export default defineConfig({
     environment: 'happy-dom',
     setupFiles: ['./src/setupVitest.ts'],
     globals: true,
-    include: ['src/**/*.test.ts', 'scripts/**/*.test.ts', 'scripts/**/*.test.mjs'],
+    include: [
+      'src/**/*.test.ts',
+      'config/**/*.test.ts',
+      'scripts/**/*.test.ts',
+      'scripts/**/*.test.mjs',
+    ],
     exclude: ['tests/e2e/**', 'node_modules/**', '.*/**'],
     coverage: {
       provider: 'v8',

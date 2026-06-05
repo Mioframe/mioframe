@@ -21,7 +21,12 @@ export default defineConfig(({ mode, isPreview }) => {
   const sslPlugins = isStorybookBuild ? [] : getSslPlugins({ mode, isPreview: isPreviewBuild });
   const pwaPlugins = isStorybookBuild
     ? []
-    : getPwaPlugins({ mode, isPreview: isPreviewBuild, disablePwa: isDisablePwa });
+    : getPwaPlugins({
+        base: env.BASE_URL,
+        mode,
+        isPreview: isPreviewBuild,
+        disablePwa: isDisablePwa,
+      });
   const sentryPlugins = isStorybookBuild
     ? []
     : getSentryPlugins({
