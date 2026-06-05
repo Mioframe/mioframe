@@ -16,6 +16,7 @@
  *   GITHUB_REPOSITORY - OWNER/REPO
  */
 
+import { existsSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 
 import { withGhPagesBranch } from './lib/ghPagesBranch.mjs';
@@ -31,6 +32,9 @@ export async function publishStable(argv = process.argv.slice(2), env = process.
     throw new Error('Usage: publishStable.mjs --dist <dist-dir>');
   }
   const distDir = argv[distIndex + 1];
+  if (!existsSync(distDir)) {
+    throw new Error(`dist directory does not exist: ${distDir}`);
+  }
 
   const outputIndex = argv.indexOf('--output-dir');
   const outputDir = outputIndex !== -1 ? argv[outputIndex + 1] : undefined;

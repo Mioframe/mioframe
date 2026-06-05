@@ -1,4 +1,5 @@
-import { cpSync, execSync, mkdirSync, mkdtempSync, rmSync } from 'node:fs';
+import { execSync } from 'node:child_process';
+import { cpSync, mkdirSync, mkdtempSync, rmSync } from 'node:fs';
 import { basename, join } from 'node:path';
 import { tmpdir } from 'node:os';
 
@@ -30,6 +31,30 @@ function buildAuthUrl(token, repository) {
 }
 
 /**
+ * Fetch and rebase against `origin/BRANCH`, running `git rebase --abort` on
+ * conflict so the working tree is left in a clean state before re-throwing.
+ *
+ * Exported for unit testing; production callers use the default `exec`.
+ * @param cwd Working directory.
+ * @param attempt Current push attempt number (used in error message).
+ * @param exec Command runner — defaults to `execSync`.
+ */
+export function rebaseWithAbort(cwd, attempt, exec = execSync) {
+  try {
+    exec(`git rebase origin/${BRANCH}`, { cwd, stdio: 'inherit' });
+  } catch {
+    try {
+      exec('git rebase --abort', { cwd, stdio: 'inherit' });
+    } catch {
+      // ignore --abort failure; git will clean up on next clone
+    }
+    throw new Error(
+      `Rebase failed during push retry on attempt ${attempt}; staging checkout aborted`,
+    );
+  }
+}
+
+/**
  * Push to the gh-pages branch, rebasing on conflict and retrying.
  * @param cwd Working directory.
  */
@@ -44,7 +69,7 @@ function pushWithRetry(cwd) {
       }
       console.log(`Push failed (attempt ${attempt}), rebasing and retrying...`);
       execSync(`git fetch origin ${BRANCH}`, { cwd, stdio: 'inherit' });
-      execSync(`git rebase origin/${BRANCH}`, { cwd, stdio: 'inherit' });
+      rebaseWithAbort(cwd, attempt);
     }
   }
 }

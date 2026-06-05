@@ -20,12 +20,12 @@ const COMMENT_MARKER = '<!-- gh-pages-preview -->';
 const BOT_LOGIN = 'github-actions[bot]';
 
 /**
- * @param url
- * @param options
- * @param options.token
- * @param [options.method]
- * @param [options.body]
- * @returns
+ * @param url GitHub API URL.
+ * @param options Request options.
+ * @param options.token Bearer token for authentication.
+ * @param [options.method] HTTP method (default: GET).
+ * @param [options.body] JSON request body.
+ * @returns Parsed JSON response or null for 204 responses.
  */
 async function githubFetch(url, { token, method = 'GET', body } = {}) {
   const response = await fetch(url, {
@@ -49,8 +49,8 @@ async function githubFetch(url, { token, method = 'GET', body } = {}) {
 
 /**
  * Build the comment body for the given preview URL.
- * @param previewUrl
- * @returns
+ * @param previewUrl URL to the deployed preview.
+ * @returns Markdown comment body including the sticky marker.
  */
 function buildCommentBody(previewUrl) {
   return [
@@ -98,7 +98,7 @@ export async function upsertPreviewComment(argv = process.argv.slice(2), env = p
   });
 
   const existing = comments.find(
-    (c) => c.user.login === BOT_LOGIN && c.body.includes(COMMENT_MARKER),
+    (c) => c.user?.login === BOT_LOGIN && c.body.includes(COMMENT_MARKER),
   );
 
   if (existing) {

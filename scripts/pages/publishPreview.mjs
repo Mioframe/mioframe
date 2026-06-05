@@ -15,6 +15,7 @@
  *   GITHUB_REPOSITORY - OWNER/REPO
  */
 
+import { existsSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 
 import { withGhPagesBranch } from './lib/ghPagesBranch.mjs';
@@ -36,6 +37,9 @@ export async function publishPreview(argv = process.argv.slice(2), env = process
   }
 
   const distDir = argv[distIndex + 1];
+  if (!existsSync(distDir)) {
+    throw new Error(`dist directory does not exist: ${distDir}`);
+  }
   const prNumber = validatePrNumber(argv[prIndex + 1]);
 
   const outputIndex = argv.indexOf('--output-dir');
