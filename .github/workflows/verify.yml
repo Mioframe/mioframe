@@ -5,6 +5,7 @@ on:
   push:
     branches:
       - main
+      - develop
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
@@ -44,7 +45,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 24
+          node-version: lts/*
           cache: pnpm
           cache-dependency-path: pnpm-lock.yaml
 
@@ -119,7 +120,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 24
+          node-version: lts/*
           cache: pnpm
           cache-dependency-path: pnpm-lock.yaml
 
@@ -157,3 +158,157 @@ jobs:
           path: .verify/logs/
           if-no-files-found: ignore
           retention-days: 7
+
+  deploy-preview:
+    needs: [verify]
+    if: >-
+      !cancelled() &&
+      needs.verify.result == 'success' &&
+      github.event_name == 'pull_request' &&
+      github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: write
+      pages: write
+      id-token: write
+      pull-requests: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    concurrency:
+      group: pages-publish
+      cancel-in-progress: false
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Build PR preview
+        env:
+          BASE_URL: /${{ github.event.repository.name }}/pr-${{ github.event.number }}/
+          VITE_DISABLE_PWA: '1'
+          VITE_GOOGLE_CLIENT_ID: ${{ secrets.VITE_GOOGLE_CLIENT_ID }}
+          VITE_SENTRY_DSN: ${{ secrets.VITE_SENTRY_DSN }}
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+        run: pnpm run build
+
+      - name: Fix 404 for SPA
+        run: cp ./dist/index.html ./dist/404.html
+
+      - name: Publish PR preview to staging
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+        run: >-
+          node scripts/pages/publishPreview.mjs
+          --dist dist
+          --pr ${{ github.event.number }}
+          --output-dir pages-staging
+
+      - name: Write root SPA fallback
+        run: >-
+          node scripts/pages/writeSpaFallback.mjs
+          --base /${{ github.event.repository.name }}/
+          --output-dir pages-staging
+
+      - uses: actions/configure-pages@v4
+        with:
+          enablement: true
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: ./pages-staging/
+
+      - uses: actions/deploy-pages@v4
+        id: deploy
+
+      - name: Post or update preview comment
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+        run: >-
+          node scripts/pages/upsertPreviewComment.mjs
+          --pr ${{ github.event.number }}
+          --url "https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/pr-${{ github.event.number }}/"
+
+  deploy-stable:
+    needs: [verify]
+    if: >-
+      !cancelled() &&
+      needs.verify.result == 'success' &&
+      github.event_name == 'push' &&
+      github.ref == 'refs/heads/develop'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: write
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    concurrency:
+      group: pages-publish
+      cancel-in-progress: false
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Build
+        env:
+          BASE_URL: /${{ github.event.repository.name }}/
+          VITE_GOOGLE_CLIENT_ID: ${{ secrets.VITE_GOOGLE_CLIENT_ID }}
+          VITE_SENTRY_DSN: ${{ secrets.VITE_SENTRY_DSN }}
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+        run: pnpm run build
+
+      - name: Fix 404 for SPA
+        run: cp ./dist/index.html ./dist/404.html
+
+      - name: Publish stable build to staging
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+        run: >-
+          node scripts/pages/publishStable.mjs
+          --dist dist
+          --output-dir pages-staging
+
+      - name: Write root SPA fallback
+        run: >-
+          node scripts/pages/writeSpaFallback.mjs
+          --base /${{ github.event.repository.name }}/
+          --output-dir pages-staging
+
+      - uses: actions/configure-pages@v4
+        with:
+          enablement: true
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: ./pages-staging/
+
+      - uses: actions/deploy-pages@v4
+        id: deploy
