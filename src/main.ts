@@ -1,4 +1,4 @@
-import { setupApp } from './app/setupApp';
+import { restoreGhPagesSpaFallbackPath } from './app/ghPagesSpaFallback';
 
 console.info('Application build date', new Date(__BUILD_DATE__).toLocaleString());
 
@@ -13,6 +13,8 @@ if (import.meta.env.DEV) {
 const rootMountElement = document.getElementById('app');
 
 if (rootMountElement) {
+  restoreGhPagesSpaFallbackPath(import.meta.env.BASE_URL);
+  const { setupApp } = await import('./app/setupApp');
   const app = await setupApp();
   app.mount(rootMountElement);
 }

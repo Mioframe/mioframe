@@ -16,9 +16,17 @@ export default defineConfig(({ mode, isPreview }) => {
   const env = loadEnv(mode, process.cwd(), '');
   const isPreviewBuild = !!isPreview;
   const isStorybookBuild = process.env.APP_STORYBOOK === '1';
+  const isDisablePwa = env.VITE_DISABLE_PWA === '1' || process.env.VITE_DISABLE_PWA === '1';
 
   const sslPlugins = isStorybookBuild ? [] : getSslPlugins({ mode, isPreview: isPreviewBuild });
-  const pwaPlugins = isStorybookBuild ? [] : getPwaPlugins({ mode, isPreview: isPreviewBuild });
+  const pwaPlugins = isStorybookBuild
+    ? []
+    : getPwaPlugins({
+        base: env.BASE_URL,
+        mode,
+        isPreview: isPreviewBuild,
+        disablePwa: isDisablePwa,
+      });
   const sentryPlugins = isStorybookBuild
     ? []
     : getSentryPlugins({
