@@ -1068,4 +1068,155 @@ describe('setupSentry', () => {
       ).toEqual({ message: '[diagnostic] repositoryStorage.saveQueued' });
     }
   });
+
+  describe('beforeSend extra value filtering', () => {
+    const setupBeforeSend = async () => {
+      const { initMock } = setupSentryMocks();
+      const { registerSentryConfig, ensureSentry, setSentryReportingEnabled } =
+        await import('./setupSentry');
+
+      registerSentryConfig({
+        dsn: 'https://example@sentry.io/123',
+        enabled: true,
+      });
+      setSentryReportingEnabled(true);
+      await ensureSentry();
+
+      const initOptions = initMock.mock.calls[0]?.[0];
+      return initOptions?.beforeSend;
+    };
+
+    it('keeps valid finite numeric counter extras', async () => {
+      const beforeSend = await setupBeforeSend();
+      const event = {
+        message: 'test',
+        extra: { pendingCount: 3, failedCount: 0, flushedCount: 5 },
+      };
+
+      expect(beforeSend).toEqual(expect.any(Function));
+      if (beforeSend instanceof Function) {
+        expect(beforeSend(event)).toEqual({
+          message: 'test',
+          extra: { pendingCount: 3, failedCount: 0, flushedCount: 5 },
+        });
+      }
+    });
+
+    it('strips Infinity and NaN from numeric counter extras', async () => {
+      const beforeSend = await setupBeforeSend();
+      const event = {
+        message: 'test',
+        extra: { pendingCount: Infinity, failedCount: NaN, flushedCount: 3 },
+      };
+
+      expect(beforeSend).toEqual(expect.any(Function));
+      if (beforeSend instanceof Function) {
+        expect(beforeSend(event)).toEqual({
+          message: 'test',
+          extra: { flushedCount: 3 },
+        });
+      }
+    });
+
+    it('keeps valid string error summary and correlation extras', async () => {
+      const beforeSend = await setupBeforeSend();
+      const event = {
+        message: 'test',
+        extra: {
+          errorClass: 'DOMException',
+          domExceptionName: 'NotAllowedError',
+          errorClassification: 'access',
+          attemptId: 'abc-def-123',
+        },
+      };
+
+      expect(beforeSend).toEqual(expect.any(Function));
+      if (beforeSend instanceof Function) {
+        expect(beforeSend(event)).toEqual({
+          message: 'test',
+          extra: {
+            errorClass: 'DOMException',
+            domExceptionName: 'NotAllowedError',
+            errorClassification: 'access',
+            attemptId: 'abc-def-123',
+          },
+        });
+      }
+    });
+
+    it('strips object and array values even under allowed extra keys', async () => {
+      const beforeSend = await setupBeforeSend();
+      const event = {
+        message: 'test',
+        extra: {
+          pendingCount: { count: 3 },
+          errorClass: ['DOMException'],
+          flushedCount: 2,
+        },
+      };
+
+      expect(beforeSend).toEqual(expect.any(Function));
+      if (beforeSend instanceof Function) {
+        expect(beforeSend(event)).toEqual({
+          message: 'test',
+          extra: { flushedCount: 2 },
+        });
+      }
+    });
+
+    it('strips function values under allowed extra keys', async () => {
+      const beforeSend = await setupBeforeSend();
+      const event = {
+        message: 'test',
+        // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- intentional bad value for test
+        extra: { attemptId: (() => 'uuid') as unknown as string, errorClass: 'DOMException' },
+      };
+
+      expect(beforeSend).toEqual(expect.any(Function));
+      if (beforeSend instanceof Function) {
+        expect(beforeSend(event)).toEqual({
+          message: 'test',
+          extra: { errorClass: 'DOMException' },
+        });
+      }
+    });
+
+    it('strips string extras exceeding the maximum allowed length', async () => {
+      const beforeSend = await setupBeforeSend();
+      const longString = 'a'.repeat(201);
+      const event = {
+        message: 'test',
+        extra: { errorClass: longString, attemptId: 'valid-short-id' },
+      };
+
+      expect(beforeSend).toEqual(expect.any(Function));
+      if (beforeSend instanceof Function) {
+        expect(beforeSend(event)).toEqual({
+          message: 'test',
+          extra: { attemptId: 'valid-short-id' },
+        });
+      }
+    });
+
+    it('strips unknown extra keys regardless of value type', async () => {
+      const beforeSend = await setupBeforeSend();
+      const event = {
+        message: 'test',
+        extra: {
+          pendingCount: 1,
+          secretKey: 'value',
+          filePath: '/user/docs/secret.md',
+          documentId: 'doc-abc',
+        },
+      };
+
+      expect(beforeSend).toEqual(expect.any(Function));
+      if (beforeSend instanceof Function) {
+        expect(beforeSend(event)).toEqual({
+          message: 'test',
+          extra: { pendingCount: 1 },
+        });
+      }
+    });
+  });
 });

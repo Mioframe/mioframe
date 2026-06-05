@@ -89,12 +89,14 @@ describe('diagnosticsService — proxyService roundtrip', () => {
   });
 
   beforeEach(() => {
+    setDiagnosticEventForwarder(undefined);
     sink = [];
     setDiagnosticEventSink(sink);
   });
 
   afterEach(() => {
     setDiagnosticEventSink(undefined);
+    setDiagnosticEventForwarder(undefined);
   });
 
   afterAll(() => {
@@ -106,7 +108,7 @@ describe('diagnosticsService — proxyService roundtrip', () => {
     await vi.runAllTimersAsync();
 
     // Send an event through the real proxyService serialization and message routing.
-    void client.reportDiagnosticEvent({
+    const callPromise = client.reportDiagnosticEvent({
       name: 'test.proxyRoundtrip',
       severity: DiagnosticSeverity.Info,
       result: DiagnosticResult.Success,
@@ -115,6 +117,9 @@ describe('diagnosticsService — proxyService roundtrip', () => {
 
     // Flush the async call message and the result back.
     await vi.runAllTimersAsync();
+
+    // The proxy call must have resolved without error.
+    await expect(callPromise).resolves.toBeUndefined();
 
     expect(sink).toHaveLength(1);
     expect(sink[0]).toMatchObject({

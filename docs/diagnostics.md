@@ -94,7 +94,7 @@ The only project-level API for structured diagnostic events. Call only from wrap
 - Uses Sentry as the transport backend. Feature, service, provider, and UI code must not call Sentry directly.
 - Sets the Sentry event level from `DiagnosticSeverity` so events appear at the correct severity in Sentry.
 - Forwards `safeTags` entries as individual Sentry tags.
-- **Dedupe/rate-limit:** repeated identical events (same `name`, `result`, `classification`, `safeTags`, and error summary) are sent to Sentry at most once per 30 seconds. The `attemptId` field is excluded from the dedupe key so that loop failures with different attempt IDs are still deduplicated. The memory sink is never affected by dedupe.
+- **Dedupe/rate-limit:** repeated identical events (same `name`, `severity`, `result`, `classification`, `safeTags`, and error summary) are sent to Sentry at most once per 30 seconds. The `attemptId` field is excluded from the dedupe key so that loop failures with different attempt IDs are still deduplicated. The memory sink is never affected by dedupe.
 
 ### `sanitizeDiagnosticError(error: unknown): SanitizedDiagnosticError`
 
@@ -121,6 +121,21 @@ setDiagnosticEventSink(sink);
 // In afterEach:
 setDiagnosticEventSink(undefined);
 ```
+
+### `setDiagnosticEventForwarder(forwarder)`
+
+**Worker/service bootstrap only.** Registers a fire-and-forget forwarder that intercepts every `reportDiagnosticEvent` call and relays it to the main-thread diagnostics reporter (e.g. via the proxyService diagnostics channel). When a forwarder is set, the local Sentry delivery path is bypassed entirely.
+
+Must be called **once** at the worker entry point before any diagnostic calls are made. See `setupWorkerDiagnosticsForwarder` in `src/shared/service/diagnosticsService.ts` for the canonical usage.
+
+Must **not** be called from:
+
+- main-thread product code;
+- UI layers (`pages`, `widgets`, `features`, `entities`);
+- low-level adapters or VFS providers;
+- flow-specific `*Diagnostics.ts` wrapper functions — call `reportDiagnosticEvent` instead.
+
+Pass `undefined` to remove the forwarder and restore local Sentry delivery.
 
 ### `flushQueuedDiagnosticEvents()`
 
@@ -302,8 +317,12 @@ See the reference files below for patterns.
 ## Reference files
 
 - Generic core: `src/shared/lib/diagnostics/`
+- Core implementation: `src/shared/lib/diagnostics/reportDiagnosticEvent.ts`
 - Generic core tests: `src/shared/lib/diagnostics/reportDiagnosticEvent.test.ts`, `sanitizeDiagnosticError.test.ts`
+- Worker-to-main-thread forwarder: `src/shared/service/diagnosticsService.ts`
+- Forwarder tests: `src/shared/service/diagnosticsService.test.ts`
 - Write-access recovery wrapper: `src/shared/serviceClient/fileSystem/writeAccessRecoveryDiagnostics.ts`
 - Wrapper tests: `src/shared/serviceClient/fileSystem/writeAccessRecoveryDiagnostics.test.ts`
 - Broker call sites: `src/shared/serviceClient/fileSystem/useFileSystemAccessPermissionBroker.ts`
-- Service boundary call: `src/shared/service/repositories/repositoriesService.ts`
+- Service boundary calls: `src/shared/service/repositories/repositoriesService.ts`, `src/shared/service/repositories/repositoriesDiagnostics.ts`
+- Sentry privacy boundary: `src/shared/lib/setupSentry.ts`

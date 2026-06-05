@@ -1,22 +1,21 @@
 import type { App, Plugin } from 'vue';
 import type { Scope as SentryScope } from '@sentry/vue';
 
-const SAFE_EVENT_EXTRA_KEYS = [
+// Numeric extras: must be a finite number (counters from DiagnosticCounters).
+const SAFE_NUMERIC_EXTRA_KEYS = ['pendingCount', 'failedCount', 'flushedCount'] as const;
+// String extras: must be a string within the length cap (error summary, correlation, user message).
+const SAFE_STRING_EXTRA_KEYS = [
   'userMessage',
   'domainErrorCode',
   'originalThrownType',
-  // Diagnostic event counters — project-controlled numeric values only.
-  'pendingCount',
-  'failedCount',
-  'flushedCount',
-  // Sanitized error summary from sanitizeDiagnosticError — no raw messages, paths, or ids.
   'errorClass',
   'domExceptionName',
   'vfsErrorCode',
   'errorClassification',
-  // Diagnostic correlation — project-generated random UUID, never derived from user data.
   'attemptId',
 ] as const;
+const SAFE_EXTRA_STRING_MAX_LENGTH = 200;
+
 const SAFE_EVENT_TAG_KEYS = [
   'handled',
   'feature',
@@ -34,16 +33,26 @@ const SAFE_EVENT_TAG_KEYS = [
 ] as const;
 type SentryTagValue = boolean | number | string | null | undefined;
 
-const pickEventFields = (source: Record<string, unknown> | undefined, keys: readonly string[]) => {
+const pickSafeEventExtras = (
+  source: Record<string, unknown> | undefined,
+): Record<string, unknown> => {
   const result: Record<string, unknown> = {};
 
   if (!source) {
     return result;
   }
 
-  for (const key of keys) {
-    if (key in source) {
-      result[key] = source[key];
+  for (const key of SAFE_NUMERIC_EXTRA_KEYS) {
+    const value = source[key];
+    if (typeof value === 'number' && isFinite(value)) {
+      result[key] = value;
+    }
+  }
+
+  for (const key of SAFE_STRING_EXTRA_KEYS) {
+    const value = source[key];
+    if (typeof value === 'string' && value.length <= SAFE_EXTRA_STRING_MAX_LENGTH) {
+      result[key] = value;
     }
   }
 
@@ -337,7 +346,7 @@ export const ensureSentry = async (app?: App): Promise<SentryFacade> => {
           ...safeEvent
         } = event;
         const safeTags = pickEventTags(tags, SAFE_EVENT_TAG_KEYS);
-        const safeExtra = pickEventFields(extra, SAFE_EVENT_EXTRA_KEYS);
+        const safeExtra = pickSafeEventExtras(extra);
 
         return {
           ...safeEvent,

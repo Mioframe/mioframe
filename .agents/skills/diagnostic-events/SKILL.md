@@ -34,6 +34,21 @@ Use this skill when:
 
 **Rule**: Do NOT add flow-specific feature/operation/stage/provider enum values to the shared core. Create a local `*Diagnostics.ts` module near the flow instead. The wrapper calls `reportDiagnosticEvent` internally and exposes short named functions.
 
+## setDiagnosticEventForwarder — worker bootstrap only
+
+`setDiagnosticEventForwarder` is the mechanism worker contexts use to relay diagnostic events to the main-thread Sentry reporter via the proxyService diagnostics channel. It is **not** a general-purpose API.
+
+Allowed only in worker or service bootstrap code — see `setupWorkerDiagnosticsForwarder` in `src/shared/service/diagnosticsService.ts`.
+
+Must **not** be called from:
+
+- main-thread product code;
+- UI layers (`pages`, `widgets`, `features`, `entities`);
+- low-level adapters or VFS providers;
+- flow-specific `*Diagnostics.ts` wrapper functions.
+
+Normal diagnostics code must call `reportDiagnosticEvent` instead.
+
 ## Key rule: which API to use
 
 | Situation                                                   | Correct API             |
@@ -90,7 +105,7 @@ The `name` field replaces the old `feature/operation/stage` triplet. Flow-specif
 
 ## Dedupe/rate-limit
 
-`reportDiagnosticEvent` deduplicates delivery to Sentry: identical events (matching `name`, `result`, `classification`, `safeTags`, and error summary) are sent at most once per 30 seconds.
+`reportDiagnosticEvent` deduplicates delivery to Sentry: identical events (matching `name`, `severity`, `result`, `classification`, `safeTags`, and error summary) are sent at most once per 30 seconds.
 
 - `attemptId` is excluded from the dedupe key — loop failures with different attempt IDs are still correctly deduplicated.
 - The memory sink (`setDiagnosticEventSink`) receives every event regardless of dedupe state.
@@ -224,9 +239,13 @@ expect(JSON.stringify(sink[0])).not.toContain('Work');
 ## Reference files
 
 - Generic core: `src/shared/lib/diagnostics/`
+- Core implementation: `src/shared/lib/diagnostics/reportDiagnosticEvent.ts`
 - Core tests: `src/shared/lib/diagnostics/reportDiagnosticEvent.test.ts`, `sanitizeDiagnosticError.test.ts`
+- Worker-to-main-thread forwarder: `src/shared/service/diagnosticsService.ts`
+- Forwarder tests: `src/shared/service/diagnosticsService.test.ts`
 - Write-access recovery wrapper: `src/shared/serviceClient/fileSystem/writeAccessRecoveryDiagnostics.ts`
 - Wrapper tests: `src/shared/serviceClient/fileSystem/writeAccessRecoveryDiagnostics.test.ts`
 - Broker call sites: `src/shared/serviceClient/fileSystem/useFileSystemAccessPermissionBroker.ts`
-- Service boundary call: `src/shared/service/repositories/repositoriesService.ts`
+- Service boundary calls: `src/shared/service/repositories/repositoriesService.ts`, `src/shared/service/repositories/repositoriesDiagnostics.ts`
+- Sentry privacy boundary: `src/shared/lib/setupSentry.ts`
 - Policy doc: `docs/diagnostics.md`
