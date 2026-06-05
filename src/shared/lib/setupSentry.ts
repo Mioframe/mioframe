@@ -1,7 +1,35 @@
 import type { App, Plugin } from 'vue';
 
-const SAFE_EVENT_EXTRA_KEYS = ['userMessage', 'domainErrorCode', 'originalThrownType'] as const;
-const SAFE_EVENT_TAG_KEYS = ['handled', 'feature', 'action'] as const;
+const SAFE_EVENT_EXTRA_KEYS = [
+  'userMessage',
+  'domainErrorCode',
+  'originalThrownType',
+  // Diagnostic event counters — project-controlled numeric values only.
+  'pendingCount',
+  'failedCount',
+  'flushedCount',
+  // Sanitized error summary from sanitizeDiagnosticError — no raw messages, paths, or ids.
+  'errorClass',
+  'domExceptionName',
+  'vfsErrorCode',
+  'errorClassification',
+  // Diagnostic correlation — project-generated random UUID, never derived from user data.
+  'attemptId',
+] as const;
+const SAFE_EVENT_TAG_KEYS = [
+  'handled',
+  'feature',
+  'action',
+  // Structured diagnostic event fields — project-controlled enum values only.
+  'eventKind',
+  'severity',
+  'result',
+  'classification',
+  // Flow-specific safe tags from diagnostic wrappers — project-controlled values only.
+  // New safe tag keys must also be added here and covered by beforeSend tests.
+  'provider',
+  'operation',
+] as const;
 type SentryTagValue = boolean | number | string | null | undefined;
 
 const pickEventFields = (source: Record<string, unknown> | undefined, keys: readonly string[]) => {

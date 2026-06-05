@@ -66,6 +66,7 @@ describe('createRetryingStorageAdapter', () => {
       flushedCount: 0,
       pendingCount: 1,
       status: 'stillBlocked',
+      failureClassification: 'accessRequired',
     });
     expect(wrapped.hasPendingSaves()).toBe(true);
 
@@ -104,8 +105,14 @@ describe('createRetryingStorageAdapter', () => {
       flushedCount: 0,
       pendingCount: 1,
       status: 'failed',
+      failureClassification: 'storageFailure',
     });
-    expect(Object.keys(result)).toEqual(['status', 'flushedCount', 'pendingCount']);
+    expect(Object.keys(result)).toEqual([
+      'status',
+      'flushedCount',
+      'pendingCount',
+      'failureClassification',
+    ]);
     expect(wrapped.hasPendingSaves()).toBe(true);
   });
 
@@ -176,6 +183,55 @@ describe('createRetryingStorageAdapter', () => {
     });
     expect(adapter.save).toHaveBeenLastCalledWith(otherDocumentKey, new Uint8Array([3]));
     expect(adapter.save).toHaveBeenCalledTimes(4);
+  });
+
+  it('sets failureClassification to accessRequired when flush is still blocked', async () => {
+    const blockedError = new Error('permission blocked');
+    const adapter = {
+      load: vi.fn(),
+      loadRange: vi.fn(),
+      remove: vi.fn(),
+      removeRange: vi.fn(),
+      save: vi
+        .fn<StorageAdapterInterface['save']>()
+        .mockRejectedValueOnce(blockedError)
+        .mockRejectedValueOnce(blockedError),
+    } satisfies StorageAdapterInterface;
+    const wrapped = createRetryingStorageAdapter(adapter, {
+      shouldQueueFailedSave: (candidate) => candidate === blockedError,
+    });
+
+    await expect(wrapped.save(['key'], new Uint8Array([1]))).rejects.toBe(blockedError);
+
+    const result = await wrapped.flushPendingSaves();
+
+    expect(result.status).toBe('stillBlocked');
+    expect(result.failureClassification).toBe('accessRequired');
+  });
+
+  it('sets failureClassification to storageFailure when flush fails for a non-retryable error', async () => {
+    const queuedError = new Error('permission blocked');
+    const storageError = new Error('disk write error');
+    const adapter = {
+      load: vi.fn(),
+      loadRange: vi.fn(),
+      remove: vi.fn(),
+      removeRange: vi.fn(),
+      save: vi
+        .fn<StorageAdapterInterface['save']>()
+        .mockRejectedValueOnce(queuedError)
+        .mockRejectedValueOnce(storageError),
+    } satisfies StorageAdapterInterface;
+    const wrapped = createRetryingStorageAdapter(adapter, {
+      shouldQueueFailedSave: (candidate) => candidate === queuedError,
+    });
+
+    await expect(wrapped.save(['key'], new Uint8Array([1]))).rejects.toBe(queuedError);
+
+    const result = await wrapped.flushPendingSaves();
+
+    expect(result.status).toBe('failed');
+    expect(result.failureClassification).toBe('storageFailure');
   });
 
   it('delegates non-save operations to the wrapped adapter', async () => {

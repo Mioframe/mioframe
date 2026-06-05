@@ -1,5 +1,5 @@
 /* eslint-disable vue/one-component-per-file -- Focused shared status contract test with inline stubs. */
-import { mount } from '@vue/test-utils';
+import { flushPromises, mount } from '@vue/test-utils';
 import type { VfsActivityState } from '@shared/lib/virtualFileSystem';
 import { WebFileSystemAccessRequiredError } from '@shared/lib/webFileSystemProvider';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -10,6 +10,7 @@ const dismissSaveStatusErrorMock = vi.fn();
 const addSnackbarMock = vi.fn();
 const writeClipboardMock = vi.fn();
 const requestAccessMock = vi.fn();
+const getFileSystemAccessRequestMock = vi.fn();
 
 vi.mock('@entity/vfsActivity', () => ({
   useVfsActivity: () => ({
@@ -24,6 +25,7 @@ vi.mock('@shared/service', () => ({
   useMainServiceClient: () => ({
     fileSystem: {
       acknowledgeVfsActivityError: dismissSaveStatusErrorMock,
+      getFileSystemAccessRequest: getFileSystemAccessRequestMock,
     },
   }),
 }));
@@ -123,7 +125,14 @@ vi.mock('@shared/ui/Tooltips', () => ({
 const mountVfsActivityStatusChip = async () => {
   const { default: VfsActivityStatusChip } = await import('./VfsActivityStatusChip.vue');
 
-  return mount(VfsActivityStatusChip);
+  const wrapper = mount(VfsActivityStatusChip);
+  // Flush the initial watch(immediate) checkPendingRequest call.
+  await flushPromises();
+  return wrapper;
+};
+
+const setupPendingWriteRequest = (spaceName = 'Work') => {
+  getFileSystemAccessRequestMock.mockResolvedValue({ operation: 'write', spaceName });
 };
 
 const createErrorState = (
@@ -153,6 +162,8 @@ const clickButtonByLabel = async (
     .findAll('button')
     .find((button) => button.text() === label)
     ?.trigger('click');
+  // Flush any async operations started by the click handler (e.g. checkPendingRequest).
+  await flushPromises();
 };
 
 describe('VfsActivityStatusChip', () => {
@@ -161,6 +172,7 @@ describe('VfsActivityStatusChip', () => {
     addSnackbarMock.mockReset();
     requestAccessMock.mockReset();
     writeClipboardMock.mockReset();
+    getFileSystemAccessRequestMock.mockReset();
     vfsState.value = { status: 'idle', activeCount: 0 };
     Object.defineProperty(globalThis.navigator, 'clipboard', {
       configurable: true,
@@ -272,6 +284,7 @@ describe('VfsActivityStatusChip', () => {
   });
 
   it('shows grant write access for recoverable transferred write errors', async () => {
+    setupPendingWriteRequest();
     vfsState.value = createErrorState(
       createWriteError({
         cause: new WebFileSystemAccessRequiredError({
@@ -284,6 +297,7 @@ describe('VfsActivityStatusChip', () => {
     const wrapper = await mountVfsActivityStatusChip();
 
     await wrapper.get('button').trigger('click');
+    await flushPromises();
 
     expect(wrapper.text()).toContain('Grant write access');
     expect(wrapper.text()).toContain(
@@ -303,6 +317,7 @@ describe('VfsActivityStatusChip', () => {
   });
 
   it('does not show grant write access for read recovery causes', async () => {
+    getFileSystemAccessRequestMock.mockResolvedValue({ operation: 'read', spaceName: 'Work' });
     vfsState.value = createErrorState(
       createWriteError({
         cause: new WebFileSystemAccessRequiredError({
@@ -315,11 +330,13 @@ describe('VfsActivityStatusChip', () => {
     const wrapper = await mountVfsActivityStatusChip();
 
     await wrapper.get('button').trigger('click');
+    await flushPromises();
 
     expect(wrapper.text()).not.toContain('Grant write access');
   });
 
   it('requests write access through the one-shot broker and dismisses on granted', async () => {
+    setupPendingWriteRequest();
     requestAccessMock.mockResolvedValue({ status: 'granted' });
     vfsState.value = createErrorState(
       createWriteError({
@@ -333,6 +350,7 @@ describe('VfsActivityStatusChip', () => {
     const wrapper = await mountVfsActivityStatusChip();
 
     await wrapper.get('button').trigger('click');
+    await flushPromises();
     await clickButtonByLabel(wrapper, 'Grant write access');
 
     expect(requestAccessMock).toHaveBeenCalledWith({
@@ -346,6 +364,7 @@ describe('VfsActivityStatusChip', () => {
   });
 
   it('disables the grant action and ignores repeated clicks while permission is pending', async () => {
+    setupPendingWriteRequest();
     let resolveRequest: ((result: { status: 'granted' }) => void) | undefined;
     requestAccessMock.mockImplementation(
       () =>
@@ -365,6 +384,7 @@ describe('VfsActivityStatusChip', () => {
     const wrapper = await mountVfsActivityStatusChip();
 
     await wrapper.get('button').trigger('click');
+    await flushPromises();
 
     const grantButton = wrapper
       .findAll('button')
@@ -390,10 +410,11 @@ describe('VfsActivityStatusChip', () => {
   it.each([
     ['denied', 'Browser write access was not granted. Saving remains blocked.'],
     ['cancelled', 'Browser write access was not granted. Saving remains blocked.'],
-    ['error', 'Could not request browser write access. Try again from this action.'],
   ] as const)(
-    'keeps the error visible and shows a safe message when access result is %s',
+    'keeps the error and grant button visible when access result is %s (request remains in registry)',
     async (status, message) => {
+      // For denied/cancelled the registry keeps the request so re-check returns it.
+      setupPendingWriteRequest();
       requestAccessMock.mockResolvedValue({ status });
       vfsState.value = createErrorState(
         createWriteError({
@@ -407,6 +428,7 @@ describe('VfsActivityStatusChip', () => {
       const wrapper = await mountVfsActivityStatusChip();
 
       await wrapper.get('button').trigger('click');
+      await flushPromises();
       await clickButtonByLabel(wrapper, 'Grant write access');
 
       expect(dismissSaveStatusErrorMock).not.toHaveBeenCalled();
@@ -415,7 +437,32 @@ describe('VfsActivityStatusChip', () => {
     },
   );
 
-  it('keeps the error visible when access is granted but some queued saves could not replay', async () => {
+  it('shows safe snackbar message when access result is error and does not dismiss the error', async () => {
+    setupPendingWriteRequest();
+    requestAccessMock.mockResolvedValue({ status: 'error' });
+    vfsState.value = createErrorState(
+      createWriteError({
+        cause: new WebFileSystemAccessRequiredError({
+          mode: 'readwrite',
+          spaceName: 'Work',
+        }),
+      }),
+    );
+
+    const wrapper = await mountVfsActivityStatusChip();
+
+    await wrapper.get('button').trigger('click');
+    await flushPromises();
+    await clickButtonByLabel(wrapper, 'Grant write access');
+
+    expect(dismissSaveStatusErrorMock).not.toHaveBeenCalled();
+    expect(addSnackbarMock).toHaveBeenCalledWith({
+      text: 'Could not request browser write access. Try again from this action.',
+    });
+  });
+
+  it('keeps the error visible but hides the grant button when access is granted but saves could not replay', async () => {
+    setupPendingWriteRequest();
     requestAccessMock.mockResolvedValue({ status: 'grantedWithReplayFailures' });
     vfsState.value = createErrorState(
       createWriteError({
@@ -429,16 +476,18 @@ describe('VfsActivityStatusChip', () => {
     const wrapper = await mountVfsActivityStatusChip();
 
     await wrapper.get('button').trigger('click');
+    await flushPromises();
     await clickButtonByLabel(wrapper, 'Grant write access');
 
     expect(dismissSaveStatusErrorMock).not.toHaveBeenCalled();
     expect(addSnackbarMock).toHaveBeenCalledWith({
       text: 'Write access was granted, but some unsaved repository changes still could not be stored.',
     });
-    expect(wrapper.text()).toContain('Grant write access');
   });
 
-  it('keeps the error visible with a non-permission replay failure message after access is granted', async () => {
+  it('dismisses the access error and shows storage failure state after grantedWithStorageFailures', async () => {
+    // The button hides because storageFailureAfterGrant is set, not because of a stale request check.
+    setupPendingWriteRequest();
     requestAccessMock.mockResolvedValue({ status: 'grantedWithStorageFailures' });
     vfsState.value = createErrorState(
       createWriteError({
@@ -452,16 +501,19 @@ describe('VfsActivityStatusChip', () => {
     const wrapper = await mountVfsActivityStatusChip();
 
     await wrapper.get('button').trigger('click');
+    await flushPromises();
     await clickButtonByLabel(wrapper, 'Grant write access');
 
-    expect(dismissSaveStatusErrorMock).not.toHaveBeenCalled();
+    expect(dismissSaveStatusErrorMock).toHaveBeenCalledOnce();
     expect(addSnackbarMock).toHaveBeenCalledWith({
       text: 'Write access was granted, but replaying earlier unsaved repository changes hit another storage failure.',
     });
-    expect(wrapper.text()).toContain('Grant write access');
+    expect(wrapper.text()).not.toContain('Grant write access');
+    expect(wrapper.text()).toContain('storage failure');
   });
 
   it('keeps the error visible and shows a safe message when the broker rejects unexpectedly', async () => {
+    setupPendingWriteRequest();
     requestAccessMock.mockRejectedValue(new Error('raw broker failure'));
     vfsState.value = createErrorState(
       createWriteError({
@@ -475,6 +527,7 @@ describe('VfsActivityStatusChip', () => {
     const wrapper = await mountVfsActivityStatusChip();
 
     await wrapper.get('button').trigger('click');
+    await flushPromises();
     await clickButtonByLabel(wrapper, 'Grant write access');
 
     expect(dismissSaveStatusErrorMock).not.toHaveBeenCalled();
@@ -485,5 +538,52 @@ describe('VfsActivityStatusChip', () => {
     expect(wrapper.text()).not.toContain('raw broker failure');
     expect(wrapper.text()).not.toContain('Work');
   });
+
+  it('shows stale message and hides grant button when lastError has recovery cause but no pending request exists', async () => {
+    getFileSystemAccessRequestMock.mockResolvedValue(undefined);
+    vfsState.value = createErrorState(
+      createWriteError({
+        cause: new WebFileSystemAccessRequiredError({
+          mode: 'readwrite',
+          spaceName: 'Work',
+        }),
+      }),
+    );
+
+    const wrapper = await mountVfsActivityStatusChip();
+
+    await wrapper.get('button').trigger('click');
+    await flushPromises();
+
+    expect(wrapper.text()).not.toContain('Grant write access');
+    expect(wrapper.text()).toContain('no longer pending');
+  });
+
+  it('shows grant button when pending request is confirmed, hides it when request disappears after successful grant', async () => {
+    // watch and onClickTrigger each call checkPendingRequest; after granted, tooltip closes so no re-check.
+    setupPendingWriteRequest();
+    requestAccessMock.mockResolvedValue({ status: 'granted' });
+    vfsState.value = createErrorState(
+      createWriteError({
+        cause: new WebFileSystemAccessRequiredError({
+          mode: 'readwrite',
+          spaceName: 'Work',
+        }),
+      }),
+    );
+
+    const wrapper = await mountVfsActivityStatusChip();
+
+    await wrapper.get('button').trigger('click');
+    await flushPromises();
+
+    expect(wrapper.text()).toContain('Grant write access');
+
+    await clickButtonByLabel(wrapper, 'Grant write access');
+
+    expect(dismissSaveStatusErrorMock).toHaveBeenCalledOnce();
+    expect(wrapper.text()).not.toContain('Grant write access');
+  });
 });
+
 /* eslint-enable vue/one-component-per-file -- Re-enable after focused inline stubs. */
