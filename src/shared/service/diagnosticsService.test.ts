@@ -8,7 +8,7 @@
  * guard that proxyService enforces across real execution contexts.
  */
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { Provider } from '@shared/lib/proxyService';
+import type { ClientObject, Provider } from '@shared/lib/proxyService';
 import { createClient } from '@shared/lib/proxyService';
 import {
   DiagnosticClassification,
@@ -77,9 +77,15 @@ type DiagnosticsApi = {
 
 describe('diagnosticsService — proxyService roundtrip', () => {
   let sink: DiagnosticEvent[];
+  let client: ClientObject<DiagnosticsApi>;
 
   beforeAll(() => {
     vi.useFakeTimers();
+    // proxyService uses module-level registries that persist for the module lifetime,
+    // so the service is registered once per suite and reused across tests.
+    const { mainSide, clientSide } = createDiagnosticsChannel('test-client-return');
+    registerMainThreadDiagnosticsService(mainSide);
+    client = createClient<DiagnosticsApi>(clientSide, 'test-client-return', transformers);
   });
 
   beforeEach(() => {
@@ -94,18 +100,6 @@ describe('diagnosticsService — proxyService roundtrip', () => {
   afterAll(() => {
     vi.useRealTimers();
   });
-
-  /**
-   * Single channel setup shared across roundtrip tests. proxyService uses module-level
-   * registries (serviceRegister, serviceReadyRegister) that persist for the lifetime of
-   * the module in this test context, so the service is registered once and reused.
-   * In production, main thread and worker run in separate JS contexts with independent
-   * registries.
-   */
-  const { mainSide, clientSide } = createDiagnosticsChannel('test-client-return');
-  // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- Worker constructor unavailable in tests; Provider is the required interface
-  registerMainThreadDiagnosticsService(mainSide as unknown as Worker);
-  const client = createClient<DiagnosticsApi>(clientSide, 'test-client-return', transformers);
 
   it('reportDiagnosticEvent reaches the main-thread in-memory sink via the proxyService channel', async () => {
     // Flush the proxyService handshake (ready / areYouReady exchange).

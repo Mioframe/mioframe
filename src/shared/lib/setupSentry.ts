@@ -1,4 +1,5 @@
 import type { App, Plugin } from 'vue';
+import type { Scope as SentryScope } from '@sentry/vue';
 
 const SAFE_EVENT_EXTRA_KEYS = [
   'userMessage',
@@ -95,7 +96,6 @@ type OptionalCallableExport<T> = T extends (...args: infer Args) => infer Return
 type ProxySentryFacade = {
   [K in keyof CallableSentryExports]: OptionalCallableExport<CallableSentryExports[K]>;
 };
-type SentryScope = import('@sentry/vue').Scope;
 type StartSpanParameters = Parameters<SentryModule['startSpan']>;
 type StartSpanManualParameters = Parameters<SentryModule['startSpanManual']>;
 

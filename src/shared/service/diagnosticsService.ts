@@ -11,15 +11,15 @@ type DiagnosticsServiceApi = {
 };
 
 /**
- * Registers a main-thread diagnostics service on the given worker.
+ * Registers a main-thread diagnostics service on the given provider.
  * The worker can call `reportDiagnosticEvent` through this service, keeping
  * Sentry delivery centralised on the main thread.
  * Call immediately after constructing the worker so it is ready before the
  * worker's first diagnostic call.
- * @param worker - The Worker instance to register the diagnostics service on.
+ * @param provider - The provider (e.g. Worker) to register the diagnostics service on.
  */
-export const registerMainThreadDiagnosticsService = (worker: Worker): void => {
-  createService(worker, DIAGNOSTICS_SERVICE_ID, transformers, () => ({
+export const registerMainThreadDiagnosticsService = (provider: Provider): void => {
+  createService(provider, DIAGNOSTICS_SERVICE_ID, transformers, () => ({
     reportDiagnosticEvent,
   }));
 };
