@@ -1,5 +1,7 @@
 import type { App, Plugin } from 'vue';
-import type { Scope as SentryScope } from '@sentry/vue';
+import type { CaptureContext } from '@sentry/vue';
+import { clearQueuedDiagnosticEvents, flushQueuedDiagnosticEvents } from './diagnostics';
+import { clearQueuedHandledReports, flushQueuedHandledReports } from './reportHandledError';
 import type { SentryReportingState, SentryRuntimeState } from './sentry/sentryRuntimeState';
 import { createSentryOptions, getOrCreateSentrySessionId } from './sentry';
 
@@ -15,36 +17,34 @@ export type SentryConfig = {
   enabled?: boolean;
   /** Release string matched to uploaded source map artifacts. */
   release?: string | undefined;
-  /**
-   * Pass `false` to disable all default Sentry integrations.
-   * Required for worker contexts where DOM integrations would throw.
-   */
-  defaultIntegrations?: false;
 };
 
 /**
  * Minimal project-owned facade over `@sentry/vue`.
  *
- * Exposes only the three calls actually used by project diagnostic wrappers.
- * Before Sentry finishes initializing, all methods return `undefined` without throwing.
+ * Exposes only the calls used by project diagnostic wrappers.
+ * Before Sentry finishes initializing, all methods are safe no-ops.
  * Product code must not import `@sentry/vue` directly — use this facade instead.
  */
 export type SentryFacade = {
   /**
-   * Runs `callback` with an isolated Sentry scope and returns its return value.
-   * Returns `undefined` when Sentry is not yet initialized.
-   */
-  withScope<T>(callback: (scope: SentryScope) => T): T | undefined;
-  /**
    * Captures a caught Error as a Sentry exception.
+   * Pass `captureContext` to attach tags, contexts, extra, and level without a scope callback.
    * Returns the event id string, or `undefined` when Sentry is not yet initialized.
    */
-  captureException(exception: unknown): string | undefined;
+  captureException(exception: unknown, captureContext?: CaptureContext): string | undefined;
   /**
    * Captures a message-level event.
+   * Pass `captureContext` to attach tags, contexts, extra, and level without a scope callback.
    * Returns the event id string, or `undefined` when Sentry is not yet initialized.
    */
-  captureMessage(message: string): string | undefined;
+  captureMessage(message: string, captureContext?: CaptureContext): string | undefined;
+  /**
+   * Sets or clears the Sentry user identity.
+   * Only accepts a session-scoped `{ id: string }` — never real user identifiers.
+   * No-op when Sentry is not yet initialized.
+   */
+  setUser(userOrNull: { id: string } | null): void;
 };
 
 type SentryModule = typeof import('@sentry/vue');
@@ -129,14 +129,8 @@ export const setSentryReportingEnabled = (enabled: boolean) => {
  * Applies dynamic runtime state (reporting consent + session ID) received from
  * the main thread or set locally when consent changes.
  *
- * Works identically in both the main-thread and worker runtimes:
- * - When `enabled`: stores the session ID and calls `setUser` if the SDK is already loaded.
- *   If the SDK is still loading, the session ID is applied when `ensureSentry` completes.
- * - When `disabled`: clears the pending session ID and calls `setUser(null)`.
- * - When `unknown`: updates the reporting state only (events remain queued).
- *
- * Queue flush and clear must be triggered separately by the caller (e.g.
- * `useDiagnosticsReporting` on main or `sentryWorkerSync` on worker).
+ * Works identically in both the main-thread and worker runtimes and owns the
+ * runtime-local queue side effects for diagnostic delivery.
  * @param state - Dynamic runtime state to apply.
  */
 export const setDiagnosticsRuntimeState = (state: SentryRuntimeState): void => {
@@ -144,12 +138,17 @@ export const setDiagnosticsRuntimeState = (state: SentryRuntimeState): void => {
 
   if (state.reportingState === 'enabled') {
     pendingSessionId = state.sessionId;
-    loadedSentryModule?.setUser({ id: state.sessionId });
+    sentryFacade.setUser({ id: state.sessionId });
+    flushQueuedHandledReports();
+    flushQueuedDiagnosticEvents();
   } else if (state.reportingState === 'disabled') {
     pendingSessionId = undefined;
-    loadedSentryModule?.setUser(null);
+    sentryFacade.setUser(null);
+    clearQueuedHandledReports();
+    clearQueuedDiagnosticEvents();
+  } else {
+    pendingSessionId = state.sessionId;
   }
-  // 'unknown': no user change — events remain queued until state is resolved.
 };
 
 /**
@@ -157,26 +156,22 @@ export const setDiagnosticsRuntimeState = (state: SentryRuntimeState): void => {
  * Methods are safe no-ops before the SDK loads; they call the real SDK after.
  */
 export const sentryFacade: SentryFacade = {
-  withScope<T>(callback: (scope: SentryScope) => T): T | undefined {
+  captureException(exception: unknown, captureContext?: CaptureContext): string | undefined {
     if (!loadedSentryModule) {
       if (!isSentryConfigured()) warnMissingConfigOnce();
       return undefined;
     }
-    return loadedSentryModule.withScope(callback);
+    return loadedSentryModule.captureException(exception, captureContext);
   },
-  captureException(exception: unknown): string | undefined {
+  captureMessage(message: string, captureContext?: CaptureContext): string | undefined {
     if (!loadedSentryModule) {
       if (!isSentryConfigured()) warnMissingConfigOnce();
       return undefined;
     }
-    return loadedSentryModule.captureException(exception);
+    return loadedSentryModule.captureMessage(message, captureContext);
   },
-  captureMessage(message: string): string | undefined {
-    if (!loadedSentryModule) {
-      if (!isSentryConfigured()) warnMissingConfigOnce();
-      return undefined;
-    }
-    return loadedSentryModule.captureMessage(message);
+  setUser(userOrNull: { id: string } | null): void {
+    loadedSentryModule?.setUser(userOrNull);
   },
 };
 
@@ -225,7 +220,6 @@ export const ensureSentry = async (app?: App): Promise<SentryFacade> => {
       dsn,
       release: config.release,
       getReportingState: getSentryReportingState,
-      ...(config.defaultIntegrations === false ? { defaultIntegrations: false as const } : {}),
     });
 
     sentry.init({
@@ -235,9 +229,11 @@ export const ensureSentry = async (app?: App): Promise<SentryFacade> => {
 
     loadedSentryModule = sentry;
 
-    // Apply session identity: use the ID set by setDiagnosticsRuntimeState, or
-    // auto-generate one when no external state sync has arrived (main thread default).
-    sentry.setUser({ id: pendingSessionId ?? getOrCreateSentrySessionId() });
+    if (reportingState === 'enabled') {
+      sentry.setUser({ id: pendingSessionId ?? getOrCreateSentrySessionId() });
+    } else {
+      sentry.setUser(null);
+    }
 
     return sentryFacade;
   })();

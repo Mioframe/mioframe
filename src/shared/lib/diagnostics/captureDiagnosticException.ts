@@ -27,7 +27,7 @@ export interface DiagnosticExceptionContext {
  * Use this when a real `Error` object is available and the stack is useful for diagnosis.
  * For structured state observations without an Error, use `reportDiagnosticEvent` instead.
  *
- * The context is set via Sentry scope and sanitized by `beforeSend`. Never pass paths,
+ * The context is attached via Sentry capture context and sanitized by `beforeSend`. Never pass paths,
  * document ids, file names, storage keys, raw error messages, or user-controlled values.
  *
  * Product code must not import `@sentry/vue` directly. Use this wrapper instead.
@@ -42,34 +42,30 @@ export const captureDiagnosticException = (
 ): void => {
   try {
     const sentry = useSentry();
+    const diagnosticCtx: Record<string, unknown> = {};
+    if (context.operation !== undefined) diagnosticCtx.operation = context.operation;
+    if (context.errorClass !== undefined) diagnosticCtx.errorClass = context.errorClass;
+    if (context.domExceptionName !== undefined)
+      diagnosticCtx.domExceptionName = context.domExceptionName;
+    if (context.vfsErrorCode !== undefined) diagnosticCtx.vfsErrorCode = context.vfsErrorCode;
+    if (context.domainErrorCode !== undefined)
+      diagnosticCtx.domainErrorCode = context.domainErrorCode;
+    if (context.errorClassification !== undefined)
+      diagnosticCtx.errorClassification = context.errorClassification;
+    if (context.runtime !== undefined) diagnosticCtx.runtime = context.runtime;
 
-    sentry.withScope((scope) => {
-      scope.setTag('handled', 'true');
-
-      if (scopeTags) {
-        for (const [key, value] of Object.entries(scopeTags)) {
-          scope.setTag(key, value);
-        }
-      }
-
-      // Set as a `diagnostic` context — sanitized by `beforeSend` to keep only safe fields.
-      const diagnosticCtx: Record<string, unknown> = {};
-      if (context.operation !== undefined) diagnosticCtx.operation = context.operation;
-      if (context.errorClass !== undefined) diagnosticCtx.errorClass = context.errorClass;
-      if (context.domExceptionName !== undefined)
-        diagnosticCtx.domExceptionName = context.domExceptionName;
-      if (context.vfsErrorCode !== undefined) diagnosticCtx.vfsErrorCode = context.vfsErrorCode;
-      if (context.domainErrorCode !== undefined)
-        diagnosticCtx.domainErrorCode = context.domainErrorCode;
-      if (context.errorClassification !== undefined)
-        diagnosticCtx.errorClassification = context.errorClassification;
-      if (context.runtime !== undefined) diagnosticCtx.runtime = context.runtime;
-
-      if (Object.keys(diagnosticCtx).length > 0) {
-        scope.setContext('diagnostic', diagnosticCtx);
-      }
-
-      sentry.captureException(error);
+    sentry.captureException(error, {
+      tags: {
+        handled: 'true',
+        ...scopeTags,
+      },
+      ...(Object.keys(diagnosticCtx).length > 0
+        ? {
+            contexts: {
+              diagnostic: diagnosticCtx,
+            },
+          }
+        : {}),
     });
   } catch {
     // Fire-and-forget: must not propagate into product call stacks.

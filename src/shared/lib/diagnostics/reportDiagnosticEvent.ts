@@ -91,47 +91,39 @@ const sendEntry = (
   sentry: Awaited<ReturnType<typeof ensureSentry>>,
 ): boolean => {
   try {
-    const eventId = sentry.withScope((scope) => {
-      scope.setLevel(severityToSentryLevel(entry.severity));
-      scope.setTag('eventKind', 'diagnostic');
-      scope.setTag('severity', entry.severity);
-      scope.setTag('result', entry.result);
-      scope.setTag('classification', entry.classification);
+    const extras: Record<string, unknown> = {};
 
-      if (entry.safeTags) {
-        for (const [key, value] of Object.entries(entry.safeTags)) {
-          scope.setTag(key, value);
-        }
-      }
+    if (entry.attemptId !== undefined) {
+      extras.attemptId = entry.attemptId;
+    }
 
-      const extras: Record<string, unknown> = {};
+    if (entry.counters) {
+      const { pendingCount, failedCount, flushedCount } = entry.counters;
+      if (pendingCount !== undefined) extras.pendingCount = pendingCount;
+      if (failedCount !== undefined) extras.failedCount = failedCount;
+      if (flushedCount !== undefined) extras.flushedCount = flushedCount;
+    }
 
-      if (entry.attemptId !== undefined) {
-        extras.attemptId = entry.attemptId;
-      }
+    if (entry.error) {
+      extras.errorClass = entry.error.errorClass;
+      if (entry.error.domExceptionName !== undefined)
+        extras.domExceptionName = entry.error.domExceptionName;
+      if (entry.error.vfsErrorCode !== undefined) extras.vfsErrorCode = entry.error.vfsErrorCode;
+      if (entry.error.domainErrorCode !== undefined)
+        extras.domainErrorCode = entry.error.domainErrorCode;
+      extras.errorClassification = entry.error.errorClassification;
+    }
 
-      if (entry.counters) {
-        const { pendingCount, failedCount, flushedCount } = entry.counters;
-        if (pendingCount !== undefined) extras.pendingCount = pendingCount;
-        if (failedCount !== undefined) extras.failedCount = failedCount;
-        if (flushedCount !== undefined) extras.flushedCount = flushedCount;
-      }
-
-      if (entry.error) {
-        extras.errorClass = entry.error.errorClass;
-        if (entry.error.domExceptionName !== undefined)
-          extras.domExceptionName = entry.error.domExceptionName;
-        if (entry.error.vfsErrorCode !== undefined) extras.vfsErrorCode = entry.error.vfsErrorCode;
-        if (entry.error.domainErrorCode !== undefined)
-          extras.domainErrorCode = entry.error.domainErrorCode;
-        extras.errorClassification = entry.error.errorClassification;
-      }
-
-      if (Object.keys(extras).length > 0) {
-        scope.setExtras(extras);
-      }
-
-      return sentry.captureMessage(`[diagnostic] ${entry.name}`);
+    const eventId = sentry.captureMessage(`[diagnostic] ${entry.name}`, {
+      level: severityToSentryLevel(entry.severity),
+      tags: {
+        eventKind: 'diagnostic',
+        severity: entry.severity,
+        result: entry.result,
+        classification: entry.classification,
+        ...entry.safeTags,
+      },
+      ...(Object.keys(extras).length > 0 ? { extra: extras } : {}),
     });
 
     return eventId !== undefined;

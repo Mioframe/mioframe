@@ -5,6 +5,37 @@ const TestAppRoot = {
   template: '<div />',
 };
 
+const {
+  clearQueuedDiagnosticEventsMock,
+  flushQueuedDiagnosticEventsMock,
+  clearQueuedHandledReportsMock,
+  flushQueuedHandledReportsMock,
+} = vi.hoisted(() => ({
+  clearQueuedDiagnosticEventsMock: vi.fn(),
+  flushQueuedDiagnosticEventsMock: vi.fn(),
+  clearQueuedHandledReportsMock: vi.fn(),
+  flushQueuedHandledReportsMock: vi.fn(),
+}));
+
+vi.mock('./diagnostics', async () => {
+  const actual = await vi.importActual<typeof import('./diagnostics')>('./diagnostics');
+  return {
+    ...actual,
+    clearQueuedDiagnosticEvents: clearQueuedDiagnosticEventsMock,
+    flushQueuedDiagnosticEvents: flushQueuedDiagnosticEventsMock,
+  };
+});
+
+vi.mock('./reportHandledError', async () => {
+  const actual =
+    await vi.importActual<typeof import('./reportHandledError')>('./reportHandledError');
+  return {
+    ...actual,
+    clearQueuedHandledReports: clearQueuedHandledReportsMock,
+    flushQueuedHandledReports: flushQueuedHandledReportsMock,
+  };
+});
+
 const setupSentryMocks = (options?: { importErrorOnce?: unknown }) => {
   let importAttempts = 0;
   const shouldRejectImportOnce = options ? 'importErrorOnce' in options : false;
@@ -12,14 +43,12 @@ const setupSentryMocks = (options?: { importErrorOnce?: unknown }) => {
   const initMock = vi.fn();
   const captureExceptionMock = vi.fn(() => 'exception-id');
   const captureMessageMock = vi.fn(() => 'message-id');
-  const withScopeMock = vi.fn((callback: (scope: object) => unknown) => callback({}));
   const setUserMock = vi.fn();
 
   const sentryModule = {
     init: initMock,
     captureException: captureExceptionMock,
     captureMessage: captureMessageMock,
-    withScope: withScopeMock,
     setUser: setUserMock,
   };
 
@@ -38,7 +67,6 @@ const setupSentryMocks = (options?: { importErrorOnce?: unknown }) => {
     captureMessageMock,
     captureExceptionMock,
     setUserMock,
-    withScopeMock,
     getImportAttempts: () => importAttempts,
   };
 };
@@ -47,6 +75,10 @@ describe('setupSentry', () => {
   beforeEach(() => {
     vi.resetModules();
     vi.unstubAllEnvs();
+    clearQueuedDiagnosticEventsMock.mockReset();
+    flushQueuedDiagnosticEventsMock.mockReset();
+    clearQueuedHandledReportsMock.mockReset();
+    flushQueuedHandledReportsMock.mockReset();
   });
 
   afterEach(() => {
@@ -55,20 +87,17 @@ describe('setupSentry', () => {
   });
 
   it('returns a safe no-op facade before config is registered', async () => {
-    const withScopeSpy = vi.fn((_scope: unknown) => undefined);
-
     const { useSentry, ensureSentry } = await import('./setupSentry');
 
     expect(() => {
       useSentry().captureException(new Error('boom'));
       useSentry().captureMessage('hello');
-      useSentry().withScope(withScopeSpy);
+      useSentry().setUser(null);
     }).not.toThrow();
 
     expect(useSentry().captureException(new Error('boom'))).toBeUndefined();
     expect(useSentry().captureMessage('hello')).toBeUndefined();
-    useSentry().withScope(withScopeSpy);
-    expect(withScopeSpy).not.toHaveBeenCalled();
+    useSentry().setUser(null);
 
     await expect(ensureSentry()).resolves.toBe(useSentry());
   });
@@ -196,7 +225,7 @@ describe('setupSentry', () => {
   });
 
   it('delegates facade calls to the SDK after initialization', async () => {
-    const { captureMessageMock, captureExceptionMock, withScopeMock } = setupSentryMocks();
+    const { captureMessageMock, captureExceptionMock, setUserMock } = setupSentryMocks();
     const { sentryPlugin, ensureSentry, setSentryReportingEnabled, useSentry } =
       await import('./setupSentry');
     const app = createApp(TestAppRoot);
@@ -209,15 +238,15 @@ describe('setupSentry', () => {
     setSentryReportingEnabled(true);
     await ensureSentry();
 
-    const scopeCallback = vi.fn((_scope: unknown) => 'scope-result');
-    expect(useSentry().captureMessage('hello')).toBe('message-id');
-    expect(useSentry().captureException(new Error('boom'))).toBe('exception-id');
-    useSentry().withScope(scopeCallback);
+    const messageContext = { tags: { classification: 'unexpected' } };
+    const exceptionContext = { tags: { handled: 'true' } };
+    expect(useSentry().captureMessage('hello', messageContext)).toBe('message-id');
+    expect(useSentry().captureException(new Error('boom'), exceptionContext)).toBe('exception-id');
+    useSentry().setUser(null);
 
-    expect(captureMessageMock).toHaveBeenCalledWith('hello');
-    expect(captureExceptionMock).toHaveBeenCalledWith(new Error('boom'));
-    expect(withScopeMock).toHaveBeenCalledOnce();
-    expect(scopeCallback).toHaveBeenCalledOnce();
+    expect(captureMessageMock).toHaveBeenCalledWith('hello', messageContext);
+    expect(captureExceptionMock).toHaveBeenCalledWith(new Error('boom'), exceptionContext);
+    expect(setUserMock).toHaveBeenCalledWith(null);
   });
 
   it('ensureSentry imports SDK only for valid runtime config', async () => {
@@ -284,7 +313,7 @@ describe('setupSentry', () => {
     expect(getImportAttempts()).toBe(2);
     expect(initMock).toHaveBeenCalledOnce();
     expect(useSentry().captureMessage('after-retry')).toBe('message-id');
-    expect(captureMessageMock).toHaveBeenCalledWith('after-retry');
+    expect(captureMessageMock).toHaveBeenCalledWith('after-retry', undefined);
     expect(warnSpy).toHaveBeenCalledWith(
       '[sentry] Sentry failed to initialize. Calls will remain no-op until a retry succeeds.',
       expect.objectContaining({
@@ -322,7 +351,7 @@ describe('setupSentry', () => {
     expect(getImportAttempts()).toBe(1);
     expect(initMock).toHaveBeenCalledTimes(3);
     expect(useSentry().captureMessage('after-retry')).toBe('message-id');
-    expect(captureMessageMock).toHaveBeenCalledWith('after-retry');
+    expect(captureMessageMock).toHaveBeenCalledWith('after-retry', undefined);
     expect(warnSpy).toHaveBeenCalledWith(
       '[sentry] Sentry failed to initialize. Calls will remain no-op until a retry succeeds.',
       initError,
@@ -343,8 +372,8 @@ describe('setupSentry', () => {
     expect(captureMessageMock).not.toHaveBeenCalled();
   });
 
-  it('withScope delegates to the SDK callback after initialization', async () => {
-    const { withScopeMock } = setupSentryMocks();
+  it('setUser delegates to the SDK after initialization', async () => {
+    const { setUserMock } = setupSentryMocks();
     const { registerSentryConfig, ensureSentry, useSentry } = await import('./setupSentry');
 
     registerSentryConfig({
@@ -354,12 +383,11 @@ describe('setupSentry', () => {
 
     await ensureSentry();
 
-    const scopeCallback = vi.fn((_scope: unknown) => 'scope-result');
-    const result = useSentry().withScope(scopeCallback);
+    useSentry().setUser({ id: 'session:aaaabbbb-cccc-dddd-eeee-ffffaaaabbbb' });
 
-    expect(withScopeMock).toHaveBeenCalledOnce();
-    expect(scopeCallback).toHaveBeenCalledOnce();
-    expect(result).toBe('scope-result');
+    expect(setUserMock).toHaveBeenCalledWith({
+      id: 'session:aaaabbbb-cccc-dddd-eeee-ffffaaaabbbb',
+    });
   });
 
   it('beforeSend drops events while reporting is disabled', async () => {
@@ -1433,7 +1461,7 @@ describe('unified diagnostics runtime', () => {
     vi.doUnmock('@sentry/vue');
   });
 
-  it('worker-style init passes defaultIntegrations: false to Sentry.init', async () => {
+  it('worker-style init uses the shared Sentry options without worker-only overrides', async () => {
     const { initMock } = setupSentryMocks();
     const { registerSentryConfig, ensureSentry, setSentryReportingEnabled } =
       await import('./setupSentry');
@@ -1441,17 +1469,16 @@ describe('unified diagnostics runtime', () => {
     registerSentryConfig({
       dsn: 'https://example@sentry.io/123',
       enabled: true,
-      defaultIntegrations: false,
     });
     setSentryReportingEnabled(true);
     await ensureSentry();
 
     const initOptions = initMock.mock.calls[0]?.[0];
-    expect(initOptions?.defaultIntegrations).toBe(false);
     expect(initOptions?.dsn).toBe('https://example@sentry.io/123');
+    expect(initOptions).not.toHaveProperty('defaultIntegrations');
   });
 
-  it('main-thread-style init does not pass defaultIntegrations: false', async () => {
+  it('main-thread-style init also uses shared options', async () => {
     const { initMock } = setupSentryMocks();
     const { registerSentryConfig, ensureSentry, setSentryReportingEnabled } =
       await import('./setupSentry');
@@ -1489,6 +1516,8 @@ describe('unified diagnostics runtime', () => {
     expect(setUserMock).toHaveBeenCalledWith({
       id: 'session:aaaabbbb-cccc-dddd-eeee-ffffaaaabbbb',
     });
+    expect(flushQueuedHandledReportsMock).toHaveBeenCalledOnce();
+    expect(flushQueuedDiagnosticEventsMock).toHaveBeenCalledOnce();
   });
 
   it('setDiagnosticsRuntimeState enabled applies session id to already-loaded Sentry', async () => {
@@ -1514,6 +1543,8 @@ describe('unified diagnostics runtime', () => {
     expect(setUserMock).toHaveBeenCalledWith({
       id: 'session:aaaabbbb-cccc-dddd-eeee-ffffaaaabbbb',
     });
+    expect(flushQueuedHandledReportsMock).toHaveBeenCalledOnce();
+    expect(flushQueuedDiagnosticEventsMock).toHaveBeenCalledOnce();
   });
 
   it('setDiagnosticsRuntimeState disabled clears Sentry user and sets state', async () => {
@@ -1539,6 +1570,8 @@ describe('unified diagnostics runtime', () => {
 
     expect(getSentryReportingState()).toBe('disabled');
     expect(setUserMock).toHaveBeenCalledWith(null);
+    expect(clearQueuedHandledReportsMock).toHaveBeenCalledOnce();
+    expect(clearQueuedDiagnosticEventsMock).toHaveBeenCalledOnce();
   });
 
   it('setDiagnosticsRuntimeState unknown updates state without touching Sentry user', async () => {
@@ -1564,6 +1597,10 @@ describe('unified diagnostics runtime', () => {
 
     expect(getSentryReportingState()).toBe('unknown');
     expect(setUserMock).not.toHaveBeenCalled();
+    expect(flushQueuedHandledReportsMock).not.toHaveBeenCalled();
+    expect(flushQueuedDiagnosticEventsMock).not.toHaveBeenCalled();
+    expect(clearQueuedHandledReportsMock).not.toHaveBeenCalled();
+    expect(clearQueuedDiagnosticEventsMock).not.toHaveBeenCalled();
   });
 
   it('setDiagnosticsRuntimeState before init: pending session is applied when ensureSentry completes', async () => {
@@ -1586,6 +1623,8 @@ describe('unified diagnostics runtime', () => {
     expect(setUserMock).toHaveBeenCalledWith({
       id: 'session:aaaabbbb-cccc-dddd-eeee-ffffaaaabbbb',
     });
+    expect(flushQueuedHandledReportsMock).toHaveBeenCalledOnce();
+    expect(flushQueuedDiagnosticEventsMock).toHaveBeenCalledOnce();
   });
 
   it('worker init uses same shared runtime as main: same facade, same beforeSend', async () => {
@@ -1597,7 +1636,6 @@ describe('unified diagnostics runtime', () => {
     registerSentryConfig({
       dsn: 'https://example@sentry.io/123',
       enabled: true,
-      defaultIntegrations: false,
     });
     setSentryReportingEnabled(true);
 
@@ -1609,6 +1647,6 @@ describe('unified diagnostics runtime', () => {
     // beforeSend is registered (same shared sanitizer)
     const initOptions = initMock.mock.calls[0]?.[0];
     expect(initOptions?.beforeSend).toEqual(expect.any(Function));
-    expect(initOptions?.defaultIntegrations).toBe(false);
+    expect(initOptions).not.toHaveProperty('defaultIntegrations');
   });
 });

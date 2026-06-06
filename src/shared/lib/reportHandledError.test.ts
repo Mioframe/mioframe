@@ -6,14 +6,8 @@ type Deferred<T> = {
   reject: (reason?: unknown) => void;
 };
 
-type MockSentryScope = {
-  setExtras: ReturnType<typeof vi.fn>;
-  setTag: ReturnType<typeof vi.fn>;
-};
-
 type MockSentryFacade = {
   captureException: ReturnType<typeof vi.fn>;
-  withScope: ReturnType<typeof vi.fn>;
 };
 
 const getReportedErrors = (facade: MockSentryFacade) =>
@@ -47,47 +41,40 @@ const {
   ensureSentryMock,
   isSentryConfiguredMock,
   getSentryReportingStateMock,
-  mockScope,
   noopFacade,
   realFacade,
   throwingFacade,
 } = vi.hoisted(() => {
-  const scopeSetTagMock = vi.fn();
-  const scopeSetExtrasMock = vi.fn();
-  const scope = {
-    setExtras: scopeSetExtrasMock,
-    setTag: scopeSetTagMock,
-  };
-
   const createFacade = (captureResult?: string) => {
-    const captureException = vi.fn<(error: Error) => string | undefined>(() => captureResult);
-    const withScope = vi.fn((callback: (innerScope: MockSentryScope) => unknown) =>
-      callback(scope),
-    );
+    const captureException = vi.fn<
+      (error: Error, context?: Record<string, unknown>) => string | undefined
+    >(() => captureResult);
 
     return {
       captureException,
-      withScope,
     } satisfies MockSentryFacade;
   };
 
   const facadeThatThrows = {
-    captureException: vi.fn<(error: Error) => string | undefined>(() => {
+    captureException: vi.fn<
+      (error: Error, context?: Record<string, unknown>) => string | undefined
+    >(() => {
       throw new Error('capture failed');
     }),
-    withScope: vi.fn((callback: (innerScope: MockSentryScope) => unknown) => callback(scope)),
   } satisfies MockSentryFacade;
 
   return {
     ensureSentryMock: vi.fn(),
     isSentryConfiguredMock: vi.fn(() => true),
     getSentryReportingStateMock: vi.fn(() => 'enabled'),
-    mockScope: scope,
     noopFacade: createFacade(undefined),
     realFacade: createFacade('event-id'),
     throwingFacade: facadeThatThrows,
   };
 });
+
+const getLastCaptureContext = (facade: MockSentryFacade) =>
+  facade.captureException.mock.calls.at(-1)?.[1];
 
 vi.mock('./setupSentry', () => ({
   ensureSentry: ensureSentryMock,
@@ -103,14 +90,9 @@ describe('reportHandledError', () => {
     isSentryConfiguredMock.mockReturnValue(true);
     getSentryReportingStateMock.mockReset();
     getSentryReportingStateMock.mockReturnValue('enabled');
-    mockScope.setExtras.mockReset();
-    mockScope.setTag.mockReset();
     noopFacade.captureException.mockClear();
-    noopFacade.withScope.mockClear();
     realFacade.captureException.mockClear();
-    realFacade.withScope.mockClear();
     throwingFacade.captureException.mockClear();
-    throwingFacade.withScope.mockClear();
   });
 
   afterEach(async () => {
@@ -142,10 +124,10 @@ describe('reportHandledError', () => {
     gate.resolve(realFacade);
 
     await vi.waitFor(() => {
-      expect(realFacade.captureException).toHaveBeenCalledWith(cause);
+      expect(realFacade.captureException).toHaveBeenCalledWith(cause, expect.any(Object));
     });
 
-    expect(mockScope.setExtras).toHaveBeenCalledWith({
+    expect(getLastCaptureContext(realFacade)?.extra).toEqual({
       userMessage: 'Could not save',
       domainErrorCode: 'document-export-failed',
     });
@@ -163,9 +145,9 @@ describe('reportHandledError', () => {
     });
 
     await vi.waitFor(() => {
-      expect(realFacade.captureException).toHaveBeenCalledWith(error);
+      expect(realFacade.captureException).toHaveBeenCalledWith(error, expect.any(Object));
     });
-    expect(mockScope.setExtras).not.toHaveBeenCalled();
+    expect(getLastCaptureContext(realFacade)?.extra).toBeUndefined();
   });
 
   it('wraps a non-Error without preserving the original thrown value', async () => {
@@ -179,12 +161,15 @@ describe('reportHandledError', () => {
     });
 
     await vi.waitFor(() => {
-      expect(realFacade.captureException).toHaveBeenCalledWith(expect.any(Error));
+      expect(realFacade.captureException).toHaveBeenCalledWith(
+        expect.any(Error),
+        expect.any(Object),
+      );
     });
     expect(getReportedErrors(realFacade)[0]).toMatchObject({
       message: 'Handled non-error exception',
     });
-    expect(mockScope.setExtras).toHaveBeenCalledWith({
+    expect(getLastCaptureContext(realFacade)?.extra).toEqual({
       originalThrownType: 'string',
     });
   });
@@ -208,10 +193,10 @@ describe('reportHandledError', () => {
     await vi.waitFor(() => {
       expect(realFacade.captureException).toHaveBeenCalled();
     });
-    expect(mockScope.setExtras).toHaveBeenCalledWith({
+    expect(getLastCaptureContext(realFacade)?.extra).toEqual({
       userMessage: 'Could not save',
     });
-    expect(mockScope.setExtras).not.toHaveBeenCalledWith(
+    expect(getLastCaptureContext(realFacade)?.extra).not.toEqual(
       expect.objectContaining({ path: '/docs/a' }),
     );
   });
@@ -227,11 +212,18 @@ describe('reportHandledError', () => {
     });
 
     await vi.waitFor(() => {
-      expect(realFacade.captureException).toHaveBeenCalledWith(expect.any(Error));
+      expect(realFacade.captureException).toHaveBeenCalledWith(
+        expect.any(Error),
+        expect.any(Object),
+      );
     });
-    expect(mockScope.setTag).toHaveBeenCalledWith('feature', 'documents');
-    expect(mockScope.setTag).toHaveBeenCalledWith('action', 'save');
-    expect(mockScope.setExtras).not.toHaveBeenCalledWith(
+    expect(getLastCaptureContext(realFacade)?.tags).toEqual(
+      expect.objectContaining({
+        feature: 'documents',
+        action: 'save',
+      }),
+    );
+    expect(getLastCaptureContext(realFacade)?.extra).not.toEqual(
       expect.objectContaining({ path: expect.anything() }),
     );
   });
@@ -254,6 +246,7 @@ describe('reportHandledError', () => {
     await vi.waitFor(() => {
       expect(realFacade.captureException).toHaveBeenCalledWith(
         expect.objectContaining({ message: 'boom' }),
+        expect.any(Object),
       );
     });
   });
@@ -307,6 +300,7 @@ describe('reportHandledError', () => {
     await vi.waitFor(() => {
       expect(realFacade.captureException).toHaveBeenCalledWith(
         expect.objectContaining({ message: 'first' }),
+        expect.any(Object),
       );
     });
   });
@@ -347,6 +341,7 @@ describe('reportHandledError', () => {
     await vi.waitFor(() => {
       expect(realFacade.captureException).toHaveBeenCalledWith(
         expect.objectContaining({ message: 'boom' }),
+        expect.any(Object),
       );
     });
   });
@@ -455,7 +450,7 @@ describe('reportHandledError', () => {
     expect(realFacade.captureException).not.toHaveBeenCalled();
   });
 
-  it('keeps entries queued when withScope or captureException throws', async () => {
+  it('keeps entries queued when captureException throws', async () => {
     ensureSentryMock.mockResolvedValueOnce(throwingFacade).mockResolvedValue(realFacade);
 
     const { reportHandledError } = await import('./reportHandledError');

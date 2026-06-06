@@ -16,7 +16,6 @@ registerSentryConfig({
   ...(SENTRY_DSN !== undefined && { dsn: SENTRY_DSN }),
   enabled: import.meta.env.PROD,
   release: APP_BUILD_ID || APP_VERSION,
-  defaultIntegrations: false,
 });
 
 // Register the state sync service so the main thread can push session ID

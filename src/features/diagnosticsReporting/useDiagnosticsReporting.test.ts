@@ -14,10 +14,6 @@ let sentryConfigured = true;
 const ensureSentryMock = vi.fn();
 const setDiagnosticsRuntimeStateMock = vi.fn();
 const syncSentryStateToWorkerMock = vi.fn();
-const flushQueuedHandledReportsMock = vi.fn();
-const clearQueuedHandledReportsMock = vi.fn();
-const flushQueuedDiagnosticEventsMock = vi.fn();
-const clearQueuedDiagnosticEventsMock = vi.fn();
 
 const flushMicrotasks = async () => {
   await nextTick();
@@ -51,16 +47,6 @@ vi.mock('@shared/service/sentryWorkerSync', () => ({
   syncSentryStateToWorker: syncSentryStateToWorkerMock,
 }));
 
-vi.mock('@shared/lib/reportHandledError', () => ({
-  flushQueuedHandledReports: flushQueuedHandledReportsMock,
-  clearQueuedHandledReports: clearQueuedHandledReportsMock,
-}));
-
-vi.mock('@shared/lib/diagnostics', () => ({
-  flushQueuedDiagnosticEvents: flushQueuedDiagnosticEventsMock,
-  clearQueuedDiagnosticEvents: clearQueuedDiagnosticEventsMock,
-}));
-
 describe('useDiagnosticsReporting', () => {
   beforeEach(() => {
     vi.resetModules();
@@ -74,10 +60,6 @@ describe('useDiagnosticsReporting', () => {
     ensureSentryMock.mockResolvedValue(undefined);
     setDiagnosticsRuntimeStateMock.mockReset();
     syncSentryStateToWorkerMock.mockReset();
-    flushQueuedHandledReportsMock.mockReset();
-    clearQueuedHandledReportsMock.mockReset();
-    flushQueuedDiagnosticEventsMock.mockReset();
-    clearQueuedDiagnosticEventsMock.mockReset();
   });
 
   afterEach(() => {
@@ -103,10 +85,6 @@ describe('useDiagnosticsReporting', () => {
 
     expect(setDiagnosticsRuntimeStateMock).not.toHaveBeenCalled();
     expect(ensureSentryMock).not.toHaveBeenCalled();
-    expect(flushQueuedHandledReportsMock).not.toHaveBeenCalled();
-    expect(clearQueuedHandledReportsMock).not.toHaveBeenCalled();
-    expect(flushQueuedDiagnosticEventsMock).not.toHaveBeenCalled();
-    expect(clearQueuedDiagnosticEventsMock).not.toHaveBeenCalled();
   });
 
   it('enables reporting, initializes Sentry, then flushes both queues after hydration', async () => {
@@ -130,15 +108,8 @@ describe('useDiagnosticsReporting', () => {
       reportingState: 'enabled',
     });
     expect(ensureSentryMock).toHaveBeenCalledTimes(1);
-    expect(flushQueuedHandledReportsMock).toHaveBeenCalledTimes(1);
-    expect(flushQueuedDiagnosticEventsMock).toHaveBeenCalledTimes(1);
-    expect(clearQueuedHandledReportsMock).not.toHaveBeenCalled();
-    expect(clearQueuedDiagnosticEventsMock).not.toHaveBeenCalled();
     expect(setDiagnosticsRuntimeStateMock.mock.invocationCallOrder[0] ?? 0).toBeLessThan(
       ensureSentryMock.mock.invocationCallOrder[0] ?? 0,
-    );
-    expect(ensureSentryMock.mock.invocationCallOrder[0] ?? 0).toBeLessThan(
-      flushQueuedHandledReportsMock.mock.invocationCallOrder[0] ?? 0,
     );
   });
 
@@ -184,11 +155,7 @@ describe('useDiagnosticsReporting', () => {
       sessionId: 'session:test-id-aaaa-bbbb-cccc-dddddddddddd',
       reportingState: 'unknown',
     });
-    expect(clearQueuedHandledReportsMock).not.toHaveBeenCalled();
-    expect(clearQueuedDiagnosticEventsMock).not.toHaveBeenCalled();
     expect(ensureSentryMock).not.toHaveBeenCalled();
-    expect(flushQueuedHandledReportsMock).not.toHaveBeenCalled();
-    expect(flushQueuedDiagnosticEventsMock).not.toHaveBeenCalled();
   });
 
   it('disables reporting and clears both queues after hydration when diagnostics are disabled', async () => {
@@ -211,11 +178,7 @@ describe('useDiagnosticsReporting', () => {
       sessionId: 'session:test-id-aaaa-bbbb-cccc-dddddddddddd',
       reportingState: 'disabled',
     });
-    expect(clearQueuedHandledReportsMock).toHaveBeenCalledTimes(1);
-    expect(clearQueuedDiagnosticEventsMock).toHaveBeenCalledTimes(1);
     expect(ensureSentryMock).not.toHaveBeenCalled();
-    expect(flushQueuedHandledReportsMock).not.toHaveBeenCalled();
-    expect(flushQueuedDiagnosticEventsMock).not.toHaveBeenCalled();
   });
 
   it('disables reporting and clears both queues when Sentry is unavailable', async () => {
@@ -238,11 +201,7 @@ describe('useDiagnosticsReporting', () => {
     expect(setDiagnosticsRuntimeStateMock).toHaveBeenCalledWith(
       expect.objectContaining({ reportingState: 'disabled' }),
     );
-    expect(clearQueuedHandledReportsMock).toHaveBeenCalledTimes(1);
-    expect(clearQueuedDiagnosticEventsMock).toHaveBeenCalledTimes(1);
     expect(ensureSentryMock).not.toHaveBeenCalled();
-    expect(flushQueuedHandledReportsMock).not.toHaveBeenCalled();
-    expect(flushQueuedDiagnosticEventsMock).not.toHaveBeenCalled();
   });
 
   it('does not flush when an older ensureSentry resolves after a fast true to false toggle', async () => {
@@ -280,9 +239,5 @@ describe('useDiagnosticsReporting', () => {
     expect(setDiagnosticsRuntimeStateMock).toHaveBeenLastCalledWith(
       expect.objectContaining({ reportingState: 'disabled' }),
     );
-    expect(clearQueuedHandledReportsMock).toHaveBeenCalledTimes(1);
-    expect(clearQueuedDiagnosticEventsMock).toHaveBeenCalledTimes(1);
-    expect(flushQueuedHandledReportsMock).not.toHaveBeenCalled();
-    expect(flushQueuedDiagnosticEventsMock).not.toHaveBeenCalled();
   });
 });

@@ -2,7 +2,6 @@ import { createClient, createService } from '@shared/lib/proxyService';
 import type { Provider } from '@shared/lib/proxyService';
 import { transformers } from '@shared/lib/wrapWorker/workerTransformerMap';
 import { setDiagnosticsRuntimeState } from '@shared/lib/setupSentry';
-import { flushQueuedDiagnosticEvents, clearQueuedDiagnosticEvents } from '@shared/lib/diagnostics';
 import type { SentryRuntimeState } from '@shared/lib/sentry/sentryRuntimeState';
 
 export const SENTRY_SYNC_SERVICE_ID = 'sentrySyncService';
@@ -15,12 +14,6 @@ let syncClient: ReturnType<typeof createClient<SentrySyncApi>> | undefined;
 
 const applyRuntimeState = (state: SentryRuntimeState): void => {
   setDiagnosticsRuntimeState(state);
-
-  if (state.reportingState === 'enabled') {
-    flushQueuedDiagnosticEvents();
-  } else if (state.reportingState === 'disabled') {
-    clearQueuedDiagnosticEvents();
-  }
 };
 
 /**

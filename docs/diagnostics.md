@@ -24,6 +24,8 @@ Product code must never import `@sentry/vue` directly. Use project wrappers inst
 
 `reportDiagnosticEvent` uses `captureMessage`. `captureDiagnosticException` uses `captureException`. `reportHandledError` uses `captureException`.
 
+Project wrappers attach tags, extras, and `diagnostic` context through Sentry capture context instead of scope callbacks.
+
 Use `captureException` when a real Error object and stack are useful for diagnosis. Use `captureMessage` (via `reportDiagnosticEvent`) for structured state observations without an Error.
 
 ---
@@ -48,10 +50,10 @@ app.use(sentryPlugin, { dsn: SENTRY_DSN, enabled: import.meta.env.PROD, release:
 
 ```ts
 // src/shared/service/serviceWorker.ts
-registerSentryConfig({ dsn: SENTRY_DSN, enabled: import.meta.env.PROD, release: ..., defaultIntegrations: false });
+registerSentryConfig({ dsn: SENTRY_DSN, enabled: import.meta.env.PROD, release: ... });
 ```
 
-`defaultIntegrations: false` is the only allowed runtime difference — it suppresses DOM integrations that would throw in a worker context.
+The worker uses the same shared runtime config shape as the main thread. Dynamic reporting state is what differs across runtimes, not a separate worker-only Sentry init policy.
 
 ### Dynamic state (synced from main to worker)
 
@@ -293,13 +295,13 @@ Source maps are generated in the build only when the Sentry plugin is active. Wo
 
 ## Consent lifecycle
 
-`useDiagnosticsReporting` (in `src/features/diagnosticsReporting`) manages both the handled-error queue and the diagnostic event queue, and syncs state to the worker:
+`useDiagnosticsReporting` (in `src/features/diagnosticsReporting`) builds one runtime state object per branch, applies it locally, and syncs the same object to the worker:
 
-- When reporting becomes **enabled**: calls `setDiagnosticsRuntimeState({ sessionId, reportingState: 'enabled' })`, syncs state + session ID to worker, then flushes both queues.
-- When reporting becomes **disabled** or Sentry is **unconfigured**: calls `setDiagnosticsRuntimeState({ ..., reportingState: 'disabled' })`, syncs to worker, clears both queues.
+- When reporting becomes **enabled**: calls `setDiagnosticsRuntimeState({ sessionId, reportingState: 'enabled' })`, syncs state + session ID to worker, and the shared runtime flushes both queues.
+- When reporting becomes **disabled** or Sentry is **unconfigured**: calls `setDiagnosticsRuntimeState({ ..., reportingState: 'disabled' })`, syncs to worker, and the shared runtime clears both queues.
 - State `unknown`: `setDiagnosticsRuntimeState({ ..., reportingState: 'unknown' })` synced to worker so the worker also holds events.
 
-The worker's `sentryWorkerSync` service receives the state and also flushes/clears the worker's diagnostic event queue via `flushQueuedDiagnosticEvents` / `clearQueuedDiagnosticEvents` after calling `setDiagnosticsRuntimeState`.
+The worker's `sentryWorkerSync` service is only a transport. It forwards the state to `setDiagnosticsRuntimeState` and does not manage queues itself.
 
 ---
 

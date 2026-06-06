@@ -2,15 +2,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { DiagnosticEvent } from './DiagnosticEvent';
 import { DiagnosticClassification, DiagnosticResult, DiagnosticSeverity } from './diagnosticEnums';
 
-type MockSentryScope = {
-  setExtras: ReturnType<typeof vi.fn>;
-  setTag: ReturnType<typeof vi.fn>;
-  setLevel: ReturnType<typeof vi.fn>;
-};
-
 type MockSentryFacade = {
   captureMessage: ReturnType<typeof vi.fn>;
-  withScope: ReturnType<typeof vi.fn>;
 };
 
 const waitForAsyncWork = async () => {
@@ -19,38 +12,24 @@ const waitForAsyncWork = async () => {
   });
 };
 
-const {
-  ensureSentryMock,
-  isSentryConfiguredMock,
-  getSentryReportingStateMock,
-  mockScope,
-  realFacade,
-} = vi.hoisted(() => {
-  const scopeSetTagMock = vi.fn();
-  const scopeSetExtrasMock = vi.fn();
-  const scopeSetLevelMock = vi.fn();
-  const scope = {
-    setExtras: scopeSetExtrasMock,
-    setTag: scopeSetTagMock,
-    setLevel: scopeSetLevelMock,
-  };
+const { ensureSentryMock, isSentryConfiguredMock, getSentryReportingStateMock, realFacade } =
+  vi.hoisted(() => {
+    const createFacade = (captureResult?: string) => {
+      const captureMessage = vi.fn<
+        (message: string, context?: Record<string, unknown>) => string | undefined
+      >(() => captureResult);
+      return { captureMessage } satisfies MockSentryFacade;
+    };
 
-  const createFacade = (captureResult?: string) => {
-    const captureMessage = vi.fn<(message: string) => string | undefined>(() => captureResult);
-    const withScope = vi.fn((callback: (innerScope: MockSentryScope) => unknown) =>
-      callback(scope),
-    );
-    return { captureMessage, withScope } satisfies MockSentryFacade;
-  };
+    return {
+      ensureSentryMock: vi.fn(),
+      isSentryConfiguredMock: vi.fn(() => true),
+      getSentryReportingStateMock: vi.fn(() => 'enabled'),
+      realFacade: createFacade('event-id'),
+    };
+  });
 
-  return {
-    ensureSentryMock: vi.fn(),
-    isSentryConfiguredMock: vi.fn(() => true),
-    getSentryReportingStateMock: vi.fn(() => 'enabled'),
-    mockScope: scope,
-    realFacade: createFacade('event-id'),
-  };
-});
+const getLastCaptureContext = () => realFacade.captureMessage.mock.calls.at(-1)?.[1];
 
 vi.mock('@shared/lib/setupSentry', () => ({
   ensureSentry: ensureSentryMock,
@@ -74,11 +53,7 @@ describe('reportDiagnosticEvent', () => {
     isSentryConfiguredMock.mockReturnValue(true);
     getSentryReportingStateMock.mockReset();
     getSentryReportingStateMock.mockReturnValue('enabled');
-    mockScope.setExtras.mockReset();
-    mockScope.setTag.mockReset();
-    mockScope.setLevel.mockReset();
     realFacade.captureMessage.mockClear();
-    realFacade.withScope.mockClear();
   });
 
   afterEach(async () => {
@@ -94,7 +69,10 @@ describe('reportDiagnosticEvent', () => {
     await waitForAsyncWork();
 
     expect(realFacade.captureMessage).toHaveBeenCalledOnce();
-    expect(realFacade.captureMessage).toHaveBeenCalledWith(expect.stringContaining('[diagnostic]'));
+    expect(realFacade.captureMessage).toHaveBeenCalledWith(
+      expect.stringContaining('[diagnostic]'),
+      expect.any(Object),
+    );
   });
 
   it('includes the event name in the Sentry captureMessage call', async () => {
@@ -106,6 +84,7 @@ describe('reportDiagnosticEvent', () => {
 
     expect(realFacade.captureMessage).toHaveBeenCalledWith(
       '[diagnostic] writeAccessRecovery.permissionDenied',
+      expect.any(Object),
     );
   });
 
@@ -116,7 +95,7 @@ describe('reportDiagnosticEvent', () => {
     reportDiagnosticEvent(makeEvent({ severity: DiagnosticSeverity.Warning }));
     await waitForAsyncWork();
 
-    expect(mockScope.setLevel).toHaveBeenCalledWith('warning');
+    expect(getLastCaptureContext()?.level).toBe('warning');
   });
 
   it.each([
@@ -131,7 +110,7 @@ describe('reportDiagnosticEvent', () => {
     reportDiagnosticEvent(makeEvent({ severity }));
     await waitForAsyncWork();
 
-    expect(mockScope.setLevel).toHaveBeenCalledWith(expectedLevel);
+    expect(getLastCaptureContext()?.level).toBe(expectedLevel);
   });
 
   it('attaches result and classification as safe tags to the Sentry scope', async () => {
@@ -146,10 +125,14 @@ describe('reportDiagnosticEvent', () => {
     reportDiagnosticEvent(event);
     await waitForAsyncWork();
 
-    expect(mockScope.setTag).toHaveBeenCalledWith('eventKind', 'diagnostic');
-    expect(mockScope.setTag).toHaveBeenCalledWith('severity', 'warning');
-    expect(mockScope.setTag).toHaveBeenCalledWith('result', 'stale');
-    expect(mockScope.setTag).toHaveBeenCalledWith('classification', 'access');
+    expect(getLastCaptureContext()?.tags).toEqual(
+      expect.objectContaining({
+        eventKind: 'diagnostic',
+        severity: 'warning',
+        result: 'stale',
+        classification: 'access',
+      }),
+    );
   });
 
   it('does not set flow-specific tags (feature, operation, stage, providerKind) on Sentry scope', async () => {
@@ -159,11 +142,14 @@ describe('reportDiagnosticEvent', () => {
     reportDiagnosticEvent(makeEvent());
     await waitForAsyncWork();
 
-    const tagCalls = mockScope.setTag.mock.calls.map((args: unknown[]) => String(args[0]));
-    expect(tagCalls).not.toContain('feature');
-    expect(tagCalls).not.toContain('operation');
-    expect(tagCalls).not.toContain('stage');
-    expect(tagCalls).not.toContain('providerKind');
+    expect(getLastCaptureContext()?.tags).not.toEqual(
+      expect.objectContaining({
+        feature: expect.anything(),
+        operation: expect.anything(),
+        stage: expect.anything(),
+        providerKind: expect.anything(),
+      }),
+    );
   });
 
   it('forwards safeTags as individual Sentry tags', async () => {
@@ -175,8 +161,12 @@ describe('reportDiagnosticEvent', () => {
     );
     await waitForAsyncWork();
 
-    expect(mockScope.setTag).toHaveBeenCalledWith('provider', 'webFileSystem');
-    expect(mockScope.setTag).toHaveBeenCalledWith('operation', 'requestAccess');
+    expect(getLastCaptureContext()?.tags).toEqual(
+      expect.objectContaining({
+        provider: 'webFileSystem',
+        operation: 'requestAccess',
+      }),
+    );
   });
 
   it('attaches safe counters as extras when provided', async () => {
@@ -188,7 +178,7 @@ describe('reportDiagnosticEvent', () => {
     );
     await waitForAsyncWork();
 
-    expect(mockScope.setExtras).toHaveBeenCalledWith(
+    expect(getLastCaptureContext()?.extra).toEqual(
       expect.objectContaining({ pendingCount: 3, flushedCount: 1, failedCount: 0 }),
     );
   });
@@ -208,7 +198,7 @@ describe('reportDiagnosticEvent', () => {
     );
     await waitForAsyncWork();
 
-    expect(mockScope.setExtras).toHaveBeenCalledWith(
+    expect(getLastCaptureContext()?.extra).toEqual(
       expect.objectContaining({
         errorClass: 'DOMException',
         domExceptionName: 'NotAllowedError',

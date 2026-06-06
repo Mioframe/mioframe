@@ -78,7 +78,7 @@ export default defineConfig(({ mode, isPreview }) => {
       alias: getResolveAlias(),
     },
     build: {
-      sourcemap: !!sentryPlugins.length,
+      sourcemap: sentryPlugins.length ? 'hidden' : false,
       assetsDir: 'assets',
       minify: mode === 'production' || isPreviewBuild ? 'terser' : false,
       terserOptions: {

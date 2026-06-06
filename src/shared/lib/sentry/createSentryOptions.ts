@@ -5,11 +5,6 @@ type SentryOptionsParams = {
   dsn: string;
   release: string | undefined;
   getReportingState: () => SentryReportingState;
-  /**
-   * Pass `false` to disable all default integrations.
-   * Required for worker contexts where DOM integrations would throw.
-   */
-  defaultIntegrations?: false;
 };
 
 /**
@@ -18,20 +13,14 @@ type SentryOptionsParams = {
  * Dynamic reporting state is checked at event time via `getReportingState`.
  *
  * Main thread passes the optional `app` param in addition to these options.
- * Worker passes `defaultIntegrations: false` to suppress DOM-dependent integrations.
+ * Worker uses the same shared init options as the main runtime.
  * @param params - Options for building the Sentry init config.
  * @returns Sentry init options ready for `Sentry.init(...)`.
  */
-export const createSentryOptions = ({
-  dsn,
-  release,
-  getReportingState,
-  defaultIntegrations,
-}: SentryOptionsParams) => ({
+export const createSentryOptions = ({ dsn, release, getReportingState }: SentryOptionsParams) => ({
   dsn,
   ...(release ? { release } : {}),
   tracesSampleRate: 0,
   sendDefaultPii: false as const,
-  ...(defaultIntegrations === false ? { defaultIntegrations: false as const } : {}),
   beforeSend: createBeforeSend(getReportingState),
 });

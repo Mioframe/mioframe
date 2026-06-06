@@ -1,10 +1,5 @@
 import { useLocalSettings } from '@entity/localSettings';
 import {
-  clearQueuedHandledReports,
-  flushQueuedHandledReports,
-} from '@shared/lib/reportHandledError';
-import { clearQueuedDiagnosticEvents, flushQueuedDiagnosticEvents } from '@shared/lib/diagnostics';
-import {
   ensureSentry,
   isSentryConfigured,
   setDiagnosticsRuntimeState,
@@ -21,6 +16,16 @@ export const useDiagnosticsReporting = () => {
   const { settings, isFinished } = useLocalSettings();
   let sequence = 0;
 
+  const applyRuntimeState = (reportingState: 'unknown' | 'enabled' | 'disabled') => {
+    const state = {
+      sessionId: getOrCreateSentrySessionId(),
+      reportingState,
+    } as const;
+
+    setDiagnosticsRuntimeState(state);
+    syncSentryStateToWorker(state);
+  };
+
   watch(
     [
       isFinished,
@@ -35,47 +40,27 @@ export const useDiagnosticsReporting = () => {
       }
 
       if (!isSentryConfigured()) {
-        setDiagnosticsRuntimeState({
-          sessionId: getOrCreateSentrySessionId(),
-          reportingState: 'disabled',
-        });
-        syncSentryStateToWorker({
-          sessionId: getOrCreateSentrySessionId(),
-          reportingState: 'disabled',
-        });
-        clearQueuedHandledReports();
-        clearQueuedDiagnosticEvents();
+        applyRuntimeState('disabled');
         return;
       }
 
       if (diagnosticsEnabled) {
-        const sessionId = getOrCreateSentrySessionId();
-        setDiagnosticsRuntimeState({ sessionId, reportingState: 'enabled' });
-        syncSentryStateToWorker({ sessionId, reportingState: 'enabled' });
+        applyRuntimeState('enabled');
         await ensureSentry();
 
         if (currentSequence !== sequence) {
           return;
         }
-
-        flushQueuedHandledReports();
-        flushQueuedDiagnosticEvents();
         return;
       }
 
       // oxlint-disable-next-line no-unnecessary-boolean-literal-compare -- strict boolean from watcher callback
       if (diagnosticsConsentRequested === true) {
-        const sessionId = getOrCreateSentrySessionId();
-        setDiagnosticsRuntimeState({ sessionId, reportingState: 'disabled' });
-        syncSentryStateToWorker({ sessionId, reportingState: 'disabled' });
-        clearQueuedHandledReports();
-        clearQueuedDiagnosticEvents();
+        applyRuntimeState('disabled');
         return;
       }
 
-      const sessionId = getOrCreateSentrySessionId();
-      setDiagnosticsRuntimeState({ sessionId, reportingState: 'unknown' });
-      syncSentryStateToWorker({ sessionId, reportingState: 'unknown' });
+      applyRuntimeState('unknown');
     },
     { immediate: true },
   );

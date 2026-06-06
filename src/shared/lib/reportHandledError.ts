@@ -41,16 +41,17 @@ const sendHandledReport = (
   sentry: Awaited<ReturnType<typeof ensureSentry>>,
 ) => {
   try {
-    const eventId = sentry.withScope((scope) => {
-      scope.setTag('handled', 'true');
-      scope.setTag('feature', entry.options.feature);
-      scope.setTag('action', entry.options.action);
-
-      if (Object.keys(entry.extras).length > 0) {
-        scope.setExtras(entry.extras);
-      }
-
-      return sentry.captureException(entry.error);
+    const eventId = sentry.captureException(entry.error, {
+      tags: {
+        handled: 'true',
+        feature: entry.options.feature,
+        action: entry.options.action,
+      },
+      ...(Object.keys(entry.extras).length > 0
+        ? {
+            extra: entry.extras,
+          }
+        : {}),
     });
 
     return eventId !== undefined;
