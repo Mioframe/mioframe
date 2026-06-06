@@ -1,6 +1,6 @@
 import type { App, Plugin } from 'vue';
 import type { Scope as SentryScope } from '@sentry/vue';
-import type { SentryReportingState } from './sentry/sentryRuntimeState';
+import type { SentryReportingState, SentryRuntimeState } from './sentry/sentryRuntimeState';
 import {
   createSentryOptions,
   getOrCreateSentrySessionId,
@@ -11,7 +11,7 @@ import {
   sanitizeUser,
 } from './sentry';
 
-export type { SentryReportingState };
+export type { SentryReportingState, SentryRuntimeState };
 
 // Re-export for consumers that still use the old import path during migration.
 export { SAFE_EVENT_TAG_KEYS, pickEventTags, pickSafeEventExtras, sanitizeContexts, sanitizeUser };
@@ -26,6 +26,11 @@ export type SentryConfig = {
   enabled?: boolean;
   /** Release string matched to uploaded source map artifacts. */
   release?: string | undefined;
+  /**
+   * Pass `false` to disable all default Sentry integrations.
+   * Required for worker contexts where DOM integrations would throw.
+   */
+  defaultIntegrations?: false;
 };
 
 type SentryModule = typeof import('@sentry/vue');
@@ -80,6 +85,8 @@ let initPromise: Promise<SentryFacade> | undefined;
 let appRef: App | undefined;
 
 let reportingState: SentryReportingState = 'unknown';
+/** Session ID to apply to Sentry after SDK init. Set by setDiagnosticsRuntimeState. */
+let pendingSessionId: string | undefined;
 let warnedMissingConfig = false;
 let warnedInitFailure = false;
 
@@ -145,6 +152,33 @@ export const isSentryReportingEnabled = () => reportingState === 'enabled';
  */
 export const setSentryReportingEnabled = (enabled: boolean) => {
   reportingState = enabled ? 'enabled' : 'disabled';
+};
+
+/**
+ * Applies dynamic runtime state (reporting consent + session ID) received from
+ * the main thread or set locally when consent changes.
+ *
+ * Works identically in both the main-thread and worker runtimes:
+ * - When `enabled`: stores the session ID and calls `setUser` if the SDK is already loaded.
+ *   If the SDK is still loading, the session ID is applied when `ensureSentry` completes.
+ * - When `disabled`: clears the pending session ID and calls `setUser(null)`.
+ * - When `unknown`: updates the reporting state only (events remain queued).
+ *
+ * Queue flush and clear must be triggered separately by the caller (e.g.
+ * `useDiagnosticsReporting` on main or `sentryWorkerSync` on worker).
+ * @param state - Dynamic runtime state to apply.
+ */
+export const setDiagnosticsRuntimeState = (state: SentryRuntimeState): void => {
+  reportingState = state.reportingState;
+
+  if (state.reportingState === 'enabled') {
+    pendingSessionId = state.sessionId;
+    loadedSentryModule?.setUser({ id: state.sessionId });
+  } else if (state.reportingState === 'disabled') {
+    pendingSessionId = undefined;
+    loadedSentryModule?.setUser(null);
+  }
+  // 'unknown': no user change — events remain queued until state is resolved.
 };
 
 const readRuntimeConfig = () => {
@@ -253,6 +287,7 @@ export const ensureSentry = async (app?: App): Promise<SentryFacade> => {
       dsn,
       release: config.release,
       getReportingState: getSentryReportingState,
+      ...(config.defaultIntegrations === false ? { defaultIntegrations: false as const } : {}),
     });
 
     sentry.init({
@@ -260,10 +295,11 @@ export const ensureSentry = async (app?: App): Promise<SentryFacade> => {
       ...(appRef ? { app: appRef } : {}),
     });
 
-    // Set session-scoped user identity on the main thread.
-    sentry.setUser({ id: getOrCreateSentrySessionId() });
-
     loadedSentryModule = sentry;
+
+    // Apply session identity: use the ID set by setDiagnosticsRuntimeState, or
+    // auto-generate one when no external state sync has arrived (main thread default).
+    sentry.setUser({ id: pendingSessionId ?? getOrCreateSentrySessionId() });
 
     return sentryFacade;
   })();

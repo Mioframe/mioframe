@@ -8,7 +8,7 @@ This document describes when to emit diagnostic events, how to use the project d
 
 Sentry is the observability backend. The project builds a thin privacy wrapper over it — never a parallel framework.
 
-Main thread and worker each initialize their own Sentry SDK instance. Both use the same shared options builder and `beforeSend` sanitizer from `src/shared/lib/sentry/`.
+There is one shared diagnostics/Sentry runtime: `src/shared/lib/setupSentry.ts`. Both main thread and worker initialize Sentry through this same module. The worker has a thin entry-point adapter that registers static config; all SDK state (facade, reporting state, session identity, beforeSend) is shared.
 
 Product code must never import `@sentry/vue` directly. Use project wrappers instead.
 
@@ -30,19 +30,37 @@ Use `captureException` when a real Error object and stack are useful for diagnos
 
 ## Main thread and worker initialization
 
-Both runtimes initialize Sentry at startup. Only dynamic runtime state is passed from main to worker.
+Both runtimes call `registerSentryConfig` on the shared `setupSentry` module. Only dynamic runtime state is passed from main to worker.
 
-### Static config (imported directly in both runtimes)
+### Static config (imported directly in both runtimes — never passed through proxy)
 
 - `SENTRY_DSN`
 - `APP_BUILD_ID` / `APP_VERSION`
 
+### Main thread
+
+```ts
+// src/app/setupApp.ts
+app.use(sentryPlugin, { dsn: SENTRY_DSN, enabled: import.meta.env.PROD, release: ... });
+```
+
+### Worker entry point
+
+```ts
+// src/shared/service/serviceWorker.ts
+registerSentryConfig({ dsn: SENTRY_DSN, enabled: import.meta.env.PROD, release: ..., defaultIntegrations: false });
+```
+
+`defaultIntegrations: false` is the only allowed runtime difference — it suppresses DOM integrations that would throw in a worker context.
+
 ### Dynamic state (synced from main to worker)
+
+Only these two values are synced:
 
 - Session-scoped user ID
 - Reporting state: `unknown` | `enabled` | `disabled`
 
-The main thread syncs state via the `sentryWorkerSync` proxyService channel. Worker Sentry starts with reporting state `unknown` and holds events until the first sync.
+The main thread syncs state via the `sentryWorkerSync` proxyService channel, which calls `setDiagnosticsRuntimeState` on the worker's shared runtime module. Worker Sentry starts with reporting state `unknown` and queues events until the first sync.
 
 ---
 
@@ -277,9 +295,11 @@ Source maps are generated in the build only when the Sentry plugin is active. Wo
 
 `useDiagnosticsReporting` (in `src/features/diagnosticsReporting`) manages both the handled-error queue and the diagnostic event queue, and syncs state to the worker:
 
-- When reporting becomes **enabled**: sets main state to `enabled`, syncs state + session ID to worker, flushes both queues.
-- When reporting becomes **disabled** or Sentry is **unconfigured**: sets main state to `disabled`, syncs to worker, clears both queues.
-- State `unknown`: synced to worker so the worker also holds events.
+- When reporting becomes **enabled**: calls `setDiagnosticsRuntimeState({ sessionId, reportingState: 'enabled' })`, syncs state + session ID to worker, then flushes both queues.
+- When reporting becomes **disabled** or Sentry is **unconfigured**: calls `setDiagnosticsRuntimeState({ ..., reportingState: 'disabled' })`, syncs to worker, clears both queues.
+- State `unknown`: `setDiagnosticsRuntimeState({ ..., reportingState: 'unknown' })` synced to worker so the worker also holds events.
+
+The worker's `sentryWorkerSync` service receives the state and also flushes/clears the worker's diagnostic event queue via `flushQueuedDiagnosticEvents` / `clearQueuedDiagnosticEvents` after calling `setDiagnosticsRuntimeState`.
 
 ---
 
@@ -322,9 +342,13 @@ Configure these server-side settings in the Sentry project:
   - `createSentryOptions.ts` — shared init options builder
   - `sentrySession.ts` — session-scoped user ID
   - `sentryRuntimeState.ts` — shared state types
-  - `setupWorkerSentry.ts` — worker Sentry init
+- Shared diagnostics runtime (main + worker): `src/shared/lib/setupSentry.ts`
+  - `registerSentryConfig` — registers static config (both runtimes)
+  - `setDiagnosticsRuntimeState` — applies dynamic session ID + reporting state
+  - `useSentry` / `ensureSentry` — stable facade (both runtimes)
+  - `sentryPlugin` — Vue plugin for main thread
 - Worker state sync: `src/shared/service/sentryWorkerSync.ts`
-- Main thread Sentry facade: `src/shared/lib/setupSentry.ts`
+- Worker entry point: `src/shared/service/serviceWorker.ts`
 - Write-access recovery wrapper: `src/shared/serviceClient/fileSystem/writeAccessRecoveryDiagnostics.ts`
 - Repository save/remove wrapper: `src/shared/service/repositories/repositoriesDiagnostics.ts`
 - Consent lifecycle: `src/features/diagnosticsReporting/useDiagnosticsReporting.ts`

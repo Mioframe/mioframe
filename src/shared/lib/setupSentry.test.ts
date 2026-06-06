@@ -683,9 +683,13 @@ describe('setupSentry', () => {
       expect(
         beforeSend({
           message: 'test',
-          user: { id: 'session:abc-123', email: 'user@example.com', username: 'user' },
+          user: {
+            id: 'session:aaaabbbb-cccc-dddd-eeee-ffffaaaabbbb',
+            email: 'user@example.com',
+            username: 'user',
+          },
         }),
-      ).toEqual({ message: 'test', user: { id: 'session:abc-123' } });
+      ).toEqual({ message: 'test', user: { id: 'session:aaaabbbb-cccc-dddd-eeee-ffffaaaabbbb' } });
     }
   });
 
@@ -1463,5 +1467,196 @@ describe('setupSentry', () => {
         });
       }
     });
+  });
+});
+
+describe('unified diagnostics runtime', () => {
+  beforeEach(() => {
+    vi.resetModules();
+    vi.unstubAllEnvs();
+  });
+
+  afterEach(() => {
+    vi.clearAllMocks();
+    vi.doUnmock('@sentry/vue');
+  });
+
+  it('worker-style init passes defaultIntegrations: false to Sentry.init', async () => {
+    const { initMock } = setupSentryMocks();
+    const { registerSentryConfig, ensureSentry, setSentryReportingEnabled } =
+      await import('./setupSentry');
+
+    registerSentryConfig({
+      dsn: 'https://example@sentry.io/123',
+      enabled: true,
+      defaultIntegrations: false,
+    });
+    setSentryReportingEnabled(true);
+    await ensureSentry();
+
+    const initOptions = initMock.mock.calls[0]?.[0];
+    expect(initOptions?.defaultIntegrations).toBe(false);
+    expect(initOptions?.dsn).toBe('https://example@sentry.io/123');
+  });
+
+  it('main-thread-style init does not pass defaultIntegrations: false', async () => {
+    const { initMock } = setupSentryMocks();
+    const { registerSentryConfig, ensureSentry, setSentryReportingEnabled } =
+      await import('./setupSentry');
+
+    registerSentryConfig({
+      dsn: 'https://example@sentry.io/123',
+      enabled: true,
+    });
+    setSentryReportingEnabled(true);
+    await ensureSentry(createApp(TestAppRoot));
+
+    const initOptions = initMock.mock.calls[0]?.[0];
+    expect(initOptions).not.toHaveProperty('defaultIntegrations');
+  });
+
+  it('setDiagnosticsRuntimeState enabled sets reporting state and applies session user', async () => {
+    const { setUserMock } = setupSentryMocks();
+    const {
+      registerSentryConfig,
+      ensureSentry,
+      setDiagnosticsRuntimeState,
+      getSentryReportingState,
+      isSentryReportingEnabled,
+    } = await import('./setupSentry');
+
+    registerSentryConfig({ dsn: 'https://example@sentry.io/123', enabled: true });
+    setDiagnosticsRuntimeState({
+      sessionId: 'session:aaaabbbb-cccc-dddd-eeee-ffffaaaabbbb',
+      reportingState: 'enabled',
+    });
+    await ensureSentry();
+
+    expect(getSentryReportingState()).toBe('enabled');
+    expect(isSentryReportingEnabled()).toBe(true);
+    expect(setUserMock).toHaveBeenCalledWith({
+      id: 'session:aaaabbbb-cccc-dddd-eeee-ffffaaaabbbb',
+    });
+  });
+
+  it('setDiagnosticsRuntimeState enabled applies session id to already-loaded Sentry', async () => {
+    const { setUserMock } = setupSentryMocks();
+    const {
+      registerSentryConfig,
+      ensureSentry,
+      setSentryReportingEnabled,
+      setDiagnosticsRuntimeState,
+    } = await import('./setupSentry');
+
+    registerSentryConfig({ dsn: 'https://example@sentry.io/123', enabled: true });
+    setSentryReportingEnabled(true);
+    await ensureSentry(); // SDK loaded at this point
+
+    setUserMock.mockClear();
+
+    setDiagnosticsRuntimeState({
+      sessionId: 'session:aaaabbbb-cccc-dddd-eeee-ffffaaaabbbb',
+      reportingState: 'enabled',
+    });
+
+    expect(setUserMock).toHaveBeenCalledWith({
+      id: 'session:aaaabbbb-cccc-dddd-eeee-ffffaaaabbbb',
+    });
+  });
+
+  it('setDiagnosticsRuntimeState disabled clears Sentry user and sets state', async () => {
+    const { setUserMock } = setupSentryMocks();
+    const {
+      registerSentryConfig,
+      ensureSentry,
+      setSentryReportingEnabled,
+      setDiagnosticsRuntimeState,
+      getSentryReportingState,
+    } = await import('./setupSentry');
+
+    registerSentryConfig({ dsn: 'https://example@sentry.io/123', enabled: true });
+    setSentryReportingEnabled(true);
+    await ensureSentry();
+
+    setUserMock.mockClear();
+
+    setDiagnosticsRuntimeState({
+      sessionId: 'session:aaaabbbb-cccc-dddd-eeee-ffffaaaabbbb',
+      reportingState: 'disabled',
+    });
+
+    expect(getSentryReportingState()).toBe('disabled');
+    expect(setUserMock).toHaveBeenCalledWith(null);
+  });
+
+  it('setDiagnosticsRuntimeState unknown updates state without touching Sentry user', async () => {
+    const { setUserMock } = setupSentryMocks();
+    const {
+      registerSentryConfig,
+      ensureSentry,
+      setSentryReportingEnabled,
+      setDiagnosticsRuntimeState,
+      getSentryReportingState,
+    } = await import('./setupSentry');
+
+    registerSentryConfig({ dsn: 'https://example@sentry.io/123', enabled: true });
+    setSentryReportingEnabled(true);
+    await ensureSentry();
+
+    setUserMock.mockClear();
+
+    setDiagnosticsRuntimeState({
+      sessionId: 'session:aaaabbbb-cccc-dddd-eeee-ffffaaaabbbb',
+      reportingState: 'unknown',
+    });
+
+    expect(getSentryReportingState()).toBe('unknown');
+    expect(setUserMock).not.toHaveBeenCalled();
+  });
+
+  it('setDiagnosticsRuntimeState before init: pending session is applied when ensureSentry completes', async () => {
+    const { setUserMock } = setupSentryMocks();
+    const { registerSentryConfig, ensureSentry, setDiagnosticsRuntimeState } =
+      await import('./setupSentry');
+
+    registerSentryConfig({ dsn: 'https://example@sentry.io/123', enabled: true });
+    setDiagnosticsRuntimeState({
+      sessionId: 'session:aaaabbbb-cccc-dddd-eeee-ffffaaaabbbb',
+      reportingState: 'enabled',
+    });
+
+    // SDK not loaded yet — setUser not called yet
+    expect(setUserMock).not.toHaveBeenCalled();
+
+    await ensureSentry();
+
+    // Now pending session is applied
+    expect(setUserMock).toHaveBeenCalledWith({
+      id: 'session:aaaabbbb-cccc-dddd-eeee-ffffaaaabbbb',
+    });
+  });
+
+  it('worker init uses same shared runtime as main: same facade, same beforeSend', async () => {
+    const { initMock } = setupSentryMocks();
+    const { registerSentryConfig, ensureSentry, useSentry, setSentryReportingEnabled } =
+      await import('./setupSentry');
+
+    // Simulate worker-style registration
+    registerSentryConfig({
+      dsn: 'https://example@sentry.io/123',
+      enabled: true,
+      defaultIntegrations: false,
+    });
+    setSentryReportingEnabled(true);
+
+    const facade = await ensureSentry();
+
+    // Same facade accessible via useSentry
+    expect(facade).toBe(useSentry());
+
+    // beforeSend is registered (same shared sanitizer)
+    const initOptions = initMock.mock.calls[0]?.[0];
+    expect(initOptions?.beforeSend).toEqual(expect.any(Function));
+    expect(initOptions?.defaultIntegrations).toBe(false);
   });
 });

@@ -1,16 +1,23 @@
 /// <reference lib="webworker" />
 
-import { initializeWorkerSentry } from '@shared/lib/sentry/setupWorkerSentry';
+import { SENTRY_DSN, APP_BUILD_ID, APP_VERSION } from '@shared/config';
+import { registerSentryConfig } from '@shared/lib/setupSentry';
 import { setupMainService, serviceId } from './setupMainService';
 import { defineWorkerService } from '@shared/lib/wrapWorker/defineWorkerService';
 import { registerWorkerSentrySyncService } from './sentryWorkerSync';
 
 declare const self: DedicatedWorkerGlobalScope;
 
-// Initialize Sentry for the worker runtime using static config.
-// Reporting state starts as `unknown` (events held) until the main thread
-// calls applyRuntimeState via the sentryWorkerSync service.
-initializeWorkerSentry();
+// Register the shared diagnostics runtime for the worker context.
+// Static config is imported directly — the same path used by the main thread.
+// Reporting state starts as `unknown` (events queued) until the main thread
+// applies dynamic state via the sentryWorkerSync service.
+registerSentryConfig({
+  ...(SENTRY_DSN !== undefined && { dsn: SENTRY_DSN }),
+  enabled: import.meta.env.PROD,
+  release: APP_BUILD_ID || APP_VERSION,
+  defaultIntegrations: false,
+});
 
 // Register the state sync service so the main thread can push session ID
 // and reporting state changes.

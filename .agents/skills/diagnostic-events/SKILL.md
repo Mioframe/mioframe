@@ -54,11 +54,19 @@ Never import `@sentry/vue` directly in product code. Use project wrappers.
 
 **Rule**: Do NOT add flow-specific feature/operation/stage/provider enum values to the shared core. Create a local `*Diagnostics.ts` module near the flow instead. The wrapper calls `reportDiagnosticEvent` and/or `captureDiagnosticException` internally and exposes short named functions.
 
-## Worker diagnostics
+## Shared diagnostics runtime
 
-Both main thread and worker each initialize their own Sentry SDK instance. There is no event-forwarding channel from worker to main. Dynamic runtime state (session ID + reporting state) is synced from main to worker via `sentryWorkerSync`.
+There is one shared diagnostics runtime (`src/shared/lib/setupSentry.ts`) used by both main thread and worker. There is no separate worker Sentry state machine.
 
-Worker diagnostic events are delivered directly by the worker's own Sentry instance. The worker Sentry starts with reporting state `unknown` and queues events until the first sync from main.
+**Main thread**: registers config via `sentryPlugin` at app startup.
+
+**Worker entry point**: calls `registerSentryConfig({ ..., defaultIntegrations: false })` — the only allowed runtime difference is `defaultIntegrations: false` which suppresses DOM integrations.
+
+**Never do**: separate worker-local `sentryModule`, worker-local `reportingState`, or a duplicate `beforeSend` in the worker.
+
+Dynamic runtime state (session ID + reporting state) is synced from main to worker via `sentryWorkerSync`, which calls `setDiagnosticsRuntimeState` on the shared runtime. Static config (`SENTRY_DSN`, `APP_BUILD_ID`, `APP_VERSION`) is imported directly in both runtimes — never passed through proxy.
+
+Worker diagnostic events are delivered directly by the worker's shared Sentry facade. The worker starts with reporting state `unknown` and queues events until the first sync from main.
 
 There is no `setDiagnosticEventForwarder` API — it was removed. Do not reference `diagnosticsService.ts` — it was deleted. All product code calls `reportDiagnosticEvent` or `captureDiagnosticException` directly.
 
@@ -326,9 +334,11 @@ expect(JSON.stringify(ctx)).not.toContain('doc-');
 - Core implementation: `src/shared/lib/diagnostics/reportDiagnosticEvent.ts`
 - Exception wrapper: `src/shared/lib/diagnostics/captureDiagnosticException.ts`
 - Core tests: `src/shared/lib/diagnostics/reportDiagnosticEvent.test.ts`, `sanitizeDiagnosticError.test.ts`
-- Sentry shared lib: `src/shared/lib/sentry/` — `sanitizeSentryEvent.ts`, `createSentryOptions.ts`, `sentrySession.ts`, `setupWorkerSentry.ts`
+- Sentry shared lib: `src/shared/lib/sentry/` — `sanitizeSentryEvent.ts`, `createSentryOptions.ts`, `sentrySession.ts`
+- Shared diagnostics runtime (main + worker): `src/shared/lib/setupSentry.ts`
+- Shared runtime tests: `src/shared/lib/setupSentry.test.ts`, `src/shared/lib/sentry/sentrySession.test.ts`
 - Worker state sync: `src/shared/service/sentryWorkerSync.ts`
-- Main Sentry facade: `src/shared/lib/setupSentry.ts`
+- Worker entry point: `src/shared/service/serviceWorker.ts`
 - Write-access recovery wrapper: `src/shared/serviceClient/fileSystem/writeAccessRecoveryDiagnostics.ts`
 - Repository save/remove/cleanup wrapper: `src/shared/service/repositories/repositoriesDiagnostics.ts`
 - Consent lifecycle: `src/features/diagnosticsReporting/useDiagnosticsReporting.ts`

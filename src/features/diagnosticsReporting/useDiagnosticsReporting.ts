@@ -7,16 +7,15 @@ import { clearQueuedDiagnosticEvents, flushQueuedDiagnosticEvents } from '@share
 import {
   ensureSentry,
   isSentryConfigured,
-  setSentryReportingState,
-  getSentryReportingState,
+  setDiagnosticsRuntimeState,
 } from '@shared/lib/setupSentry';
 import { getOrCreateSentrySessionId } from '@shared/lib/sentry';
 import { syncSentryStateToWorker } from '@shared/service/sentryWorkerSync';
 import { watch } from 'vue';
 
 /**
- * Keeps runtime Sentry reporting aligned with the local diagnostics opt-in.
- * Also syncs reporting state and session ID to the worker Sentry instance.
+ * Keeps runtime diagnostics reporting aligned with the local diagnostics opt-in.
+ * Syncs reporting state and session ID to the worker via sentryWorkerSync.
  */
 export const useDiagnosticsReporting = () => {
   const { settings, isFinished } = useLocalSettings();
@@ -36,7 +35,10 @@ export const useDiagnosticsReporting = () => {
       }
 
       if (!isSentryConfigured()) {
-        setSentryReportingState('disabled');
+        setDiagnosticsRuntimeState({
+          sessionId: getOrCreateSentrySessionId(),
+          reportingState: 'disabled',
+        });
         syncSentryStateToWorker({
           sessionId: getOrCreateSentrySessionId(),
           reportingState: 'disabled',
@@ -47,11 +49,9 @@ export const useDiagnosticsReporting = () => {
       }
 
       if (diagnosticsEnabled) {
-        setSentryReportingState('enabled');
-        syncSentryStateToWorker({
-          sessionId: getOrCreateSentrySessionId(),
-          reportingState: 'enabled',
-        });
+        const sessionId = getOrCreateSentrySessionId();
+        setDiagnosticsRuntimeState({ sessionId, reportingState: 'enabled' });
+        syncSentryStateToWorker({ sessionId, reportingState: 'enabled' });
         await ensureSentry();
 
         if (currentSequence !== sequence) {
@@ -65,21 +65,17 @@ export const useDiagnosticsReporting = () => {
 
       // oxlint-disable-next-line no-unnecessary-boolean-literal-compare -- strict boolean from watcher callback
       if (diagnosticsConsentRequested === true) {
-        setSentryReportingState('disabled');
-        syncSentryStateToWorker({
-          sessionId: getOrCreateSentrySessionId(),
-          reportingState: 'disabled',
-        });
+        const sessionId = getOrCreateSentrySessionId();
+        setDiagnosticsRuntimeState({ sessionId, reportingState: 'disabled' });
+        syncSentryStateToWorker({ sessionId, reportingState: 'disabled' });
         clearQueuedHandledReports();
         clearQueuedDiagnosticEvents();
         return;
       }
 
-      setSentryReportingState('unknown');
-      syncSentryStateToWorker({
-        sessionId: getOrCreateSentrySessionId(),
-        reportingState: getSentryReportingState(),
-      });
+      const sessionId = getOrCreateSentrySessionId();
+      setDiagnosticsRuntimeState({ sessionId, reportingState: 'unknown' });
+      syncSentryStateToWorker({ sessionId, reportingState: 'unknown' });
     },
     { immediate: true },
   );
