@@ -17,7 +17,7 @@ const makeBreadcrumb = (overrides: Partial<Breadcrumb> = {}): Breadcrumb => ({
 
 describe('technicalBreadcrumbs', () => {
   it('beforeBreadcrumb keeps allowed technical breadcrumbs', () => {
-    const beforeBreadcrumb = createBeforeBreadcrumb('production');
+    const beforeBreadcrumb = createBeforeBreadcrumb('production', () => 'enabled');
 
     expect(beforeBreadcrumb(makeBreadcrumb())).toEqual({
       category: 'repository.storage',
@@ -30,13 +30,13 @@ describe('technicalBreadcrumbs', () => {
   });
 
   it('beforeBreadcrumb drops unknown categories', () => {
-    const beforeBreadcrumb = createBeforeBreadcrumb('production');
+    const beforeBreadcrumb = createBeforeBreadcrumb('production', () => 'enabled');
 
     expect(beforeBreadcrumb(makeBreadcrumb({ category: 'ui.click' }))).toBeNull();
   });
 
   it('beforeBreadcrumb drops automatic navigation and fetch breadcrumbs', () => {
-    const beforeBreadcrumb = createBeforeBreadcrumb('production');
+    const beforeBreadcrumb = createBeforeBreadcrumb('production', () => 'enabled');
 
     expect(beforeBreadcrumb(makeBreadcrumb({ category: 'navigation', message: 'navigated' }))).toBe(
       null,
@@ -47,7 +47,7 @@ describe('technicalBreadcrumbs', () => {
   });
 
   it('beforeBreadcrumb strips forbidden data fields', () => {
-    const beforeBreadcrumb = createBeforeBreadcrumb('production');
+    const beforeBreadcrumb = createBeforeBreadcrumb('production', () => 'enabled');
 
     expect(
       beforeBreadcrumb(
@@ -71,7 +71,7 @@ describe('technicalBreadcrumbs', () => {
   });
 
   it('beforeBreadcrumb drops empty breadcrumbs', () => {
-    const beforeBreadcrumb = createBeforeBreadcrumb('production');
+    const beforeBreadcrumb = createBeforeBreadcrumb('production', () => 'enabled');
 
     expect(
       beforeBreadcrumb(
@@ -134,5 +134,17 @@ describe('technicalBreadcrumbs', () => {
         message: 'repository save started',
       },
     ]);
+  });
+
+  it('beforeBreadcrumb drops breadcrumbs when reporting state is unknown', () => {
+    const beforeBreadcrumb = createBeforeBreadcrumb('production', () => 'unknown');
+
+    expect(beforeBreadcrumb(makeBreadcrumb())).toBeNull();
+  });
+
+  it('beforeBreadcrumb drops breadcrumbs when reporting state is disabled', () => {
+    const beforeBreadcrumb = createBeforeBreadcrumb('production', () => 'disabled');
+
+    expect(beforeBreadcrumb(makeBreadcrumb())).toBeNull();
   });
 });

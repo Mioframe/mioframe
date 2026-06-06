@@ -1,4 +1,4 @@
-import { useSentry } from '@shared/lib/setupSentry';
+import { getSentryReportingState, useSentry } from '@shared/lib/setupSentry';
 import type {
   TechnicalBreadcrumbCategory,
   TechnicalBreadcrumbData,
@@ -26,6 +26,10 @@ export type AddTechnicalBreadcrumbParams = {
  */
 export const addTechnicalBreadcrumb = (breadcrumb: AddTechnicalBreadcrumbParams): void => {
   try {
+    if (getSentryReportingState() !== 'enabled') {
+      return;
+    }
+
     useSentry().addBreadcrumb({
       category: breadcrumb.category,
       ...(breadcrumb.data !== undefined ? { data: breadcrumb.data } : {}),

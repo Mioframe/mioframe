@@ -6,7 +6,7 @@ import {
 } from './diagnosticsRuntimeEffects';
 import type { DiagnosticsMode } from '@shared/config';
 import type { SentryReportingState, SentryRuntimeState } from './sentry/sentryRuntimeState';
-import { createSentryOptions, getOrCreateSentrySessionId } from './sentry';
+import { createSentryOptions, getOrCreateSentrySessionId, isSessionSentryUserId } from './sentry';
 
 export type { SentryReportingState, SentryRuntimeState };
 
@@ -134,7 +134,7 @@ export const isSentryReportingEnabled = () => reportingState === 'enabled';
  */
 export const setDiagnosticsRuntimeState = (state: SentryRuntimeState): void => {
   sentryFacade.addBreadcrumb({
-    category: state.reportingState === 'enabled' ? 'sentry.runtime' : 'worker.runtime',
+    category: 'sentry.runtime',
     data: {
       operation: 'applyRuntimeState',
       runtime: getRuntimeLabel(),
@@ -147,9 +147,20 @@ export const setDiagnosticsRuntimeState = (state: SentryRuntimeState): void => {
   reportingState = state.reportingState;
 
   if (state.reportingState === 'enabled') {
+    if (!isSessionSentryUserId(state.sessionId)) {
+      pendingSessionId = undefined;
+      reportingState = 'disabled';
+      sentryFacade.setUser(null);
+      clearDiagnosticsRuntimeEffects();
+      return;
+    }
+
     pendingSessionId = state.sessionId;
     sentryFacade.setUser({ id: state.sessionId });
     flushDiagnosticsRuntimeEffects();
+    if (isSentryConfigured()) {
+      void ensureSentry();
+    }
   } else if (state.reportingState === 'disabled') {
     pendingSessionId = undefined;
     sentryFacade.setUser(null);

@@ -24,6 +24,7 @@ describe('captureDiagnosticException', () => {
         errorClass: 'DOMException',
         domExceptionName: 'QuotaExceededError',
         errorClassification: 'storageFailure',
+        failureClassification: 'accessRequired',
         runtime: 'worker',
       },
       {
@@ -42,6 +43,7 @@ describe('captureDiagnosticException', () => {
           errorClass: 'DOMException',
           domExceptionName: 'QuotaExceededError',
           errorClassification: 'storageFailure',
+          failureClassification: 'accessRequired',
           runtime: 'worker',
         },
       },

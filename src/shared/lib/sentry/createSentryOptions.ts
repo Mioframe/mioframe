@@ -30,6 +30,6 @@ export const createSentryOptions = ({
   tracesSampleRate: 0,
   sendDefaultPii: false as const,
   maxBreadcrumbs: diagnosticsMode === 'preview' ? 50 : 25,
-  beforeBreadcrumb: createBeforeBreadcrumb(diagnosticsMode),
+  beforeBreadcrumb: createBeforeBreadcrumb(diagnosticsMode, getReportingState),
   beforeSend: createBeforeSend({ diagnosticsMode, getState: getReportingState }),
 });

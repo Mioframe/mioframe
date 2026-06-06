@@ -87,7 +87,7 @@ A privacy-safe session ID is generated once per page load:
 - Stored in memory only — resets on page reload
 - Shared between main and worker via the runtime state sync
 
-`beforeSend` keeps only `user.id` with a valid `session:` prefix. All other user fields are stripped.
+`beforeSend` keeps only `user.id` with a valid `session:<uuid>` value. All other user fields are stripped.
 
 Forbidden user data:
 
@@ -209,11 +209,15 @@ Use `addTechnicalBreadcrumb` only for technical milestones that help explain a l
 - worker runtime state application
 - Sentry runtime initialization
 
+Breadcrumbs are accepted only while reporting state is `enabled`. Unknown or disabled state must not accumulate breadcrumbs for later delivery.
+
 Do not use breadcrumbs for:
 
 - user clicks, input, navigation, or account/session activity
 - arbitrary payload dumps or open-ended metadata
-- repeating the same terminal failure event at the same location
+- terminal replay failure details or other same-location terminal failures already captured by the diagnostic event/exception path
+
+Replay start and replay completion are good breadcrumb milestones. Replay failure details belong on the terminal diagnostic event and `captureDiagnosticException` context instead of a same-location breadcrumb.
 
 Breadcrumbs are timeline only. Keep structured detail on the terminal event via safe tags, safe extras, `contexts.diagnostic`, and `captureException` when a real `Error` exists.
 
@@ -263,6 +267,7 @@ Both hooks are shared by main thread and worker.
 
 ### What the breadcrumb sanitizer keeps
 
+- reporting-state-eligible manual project technical breadcrumbs only (`enabled` only)
 - manual project technical breadcrumbs only
 - known categories such as `repository.storage`, `writeAccessRecovery`, `worker.runtime`, `sentry.runtime`, and `webFileSystem.permission`
 - allowlisted data keys only
@@ -270,6 +275,7 @@ Both hooks are shared by main thread and worker.
 
 ### What the breadcrumb sanitizer drops
 
+- all breadcrumbs while reporting state is `unknown` or `disabled`
 - automatic UI, click, navigation, fetch, and network breadcrumbs
 - unknown categories
 - unknown data keys
@@ -367,7 +373,9 @@ Source maps are generated in the build only when the Sentry plugin is active. Wo
 
 - When reporting becomes **enabled**: calls `setDiagnosticsRuntimeState({ sessionId, reportingState: 'enabled' })`, syncs state + session ID to worker, and the shared runtime flushes both queues.
 - When reporting becomes **disabled** or Sentry is **unconfigured**: calls `setDiagnosticsRuntimeState({ ..., reportingState: 'disabled' })`, syncs to worker, and the shared runtime clears both queues.
-- State `unknown`: `setDiagnosticsRuntimeState({ ..., reportingState: 'unknown' })` synced to worker so the worker also holds events.
+- State `unknown`: `setDiagnosticsRuntimeState({ ..., reportingState: 'unknown' })` synced to worker so the worker also holds queued events, but it must not accumulate breadcrumbs.
+
+If an `enabled` runtime state arrives with an invalid session ID, the shared runtime fails closed: it does not set Sentry user identity, does not flush queues, and clears runtime delivery state instead.
 
 The worker's `sentryWorkerSync` service is only a transport. It forwards the state to `setDiagnosticsRuntimeState` and does not manage queues itself.
 

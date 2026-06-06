@@ -44,10 +44,12 @@ Use `addTechnicalBreadcrumb(...)` only for project-controlled technical timeline
 Good breadcrumb cases:
 
 - repository save start
-- pending-save replay start, completion, or failure boundary
+- pending-save replay start or completion
 - write-access recovery start and permission prompt boundaries
 - worker diagnostics state application
 - Sentry runtime initialization success
+
+Breadcrumbs are accepted only while reporting state is `enabled`. Unknown or disabled state must not accumulate breadcrumbs for later delivery.
 
 Breadcrumbs should capture earlier technical milestones that help explain a later failure.
 Do not add a breadcrumb in the same wrapper immediately before emitting a terminal
@@ -57,7 +59,7 @@ Do not use breadcrumbs for:
 
 - user clicks, input, navigation, or behavior tracking
 - arbitrary metadata or payload dumps
-- repeating the same terminal diagnostic event at the same location
+- terminal replay failure details or other same-location terminal failures already captured by the diagnostic event/exception path
 
 Keep breadcrumb data narrow and allowlisted. Reuse the existing safe vocabulary:
 

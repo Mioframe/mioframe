@@ -40,7 +40,7 @@ vi.mock('@shared/lib/setupSentry', () => ({
 }));
 
 vi.mock('@shared/lib/sentry', () => ({
-  getOrCreateSentrySessionId: () => 'session:test-id-aaaa-bbbb-cccc-dddddddddddd',
+  getOrCreateSentrySessionId: () => 'session:aaaabbbb-cccc-dddd-eeee-ffffaaaabbbb',
 }));
 
 vi.mock('@shared/service/sentryWorkerSync', () => ({
@@ -104,7 +104,7 @@ describe('useDiagnosticsReporting', () => {
     await flushMicrotasks();
 
     expect(setDiagnosticsRuntimeStateMock).toHaveBeenCalledWith({
-      sessionId: 'session:test-id-aaaa-bbbb-cccc-dddddddddddd',
+      sessionId: 'session:aaaabbbb-cccc-dddd-eeee-ffffaaaabbbb',
       reportingState: 'enabled',
     });
     expect(ensureSentryMock).toHaveBeenCalledTimes(1);
@@ -130,7 +130,7 @@ describe('useDiagnosticsReporting', () => {
     await flushMicrotasks();
 
     expect(syncSentryStateToWorkerMock).toHaveBeenCalledWith({
-      sessionId: 'session:test-id-aaaa-bbbb-cccc-dddddddddddd',
+      sessionId: 'session:aaaabbbb-cccc-dddd-eeee-ffffaaaabbbb',
       reportingState: 'enabled',
     });
   });
@@ -152,7 +152,7 @@ describe('useDiagnosticsReporting', () => {
     await flushMicrotasks();
 
     expect(setDiagnosticsRuntimeStateMock).toHaveBeenCalledWith({
-      sessionId: 'session:test-id-aaaa-bbbb-cccc-dddddddddddd',
+      sessionId: 'session:aaaabbbb-cccc-dddd-eeee-ffffaaaabbbb',
       reportingState: 'unknown',
     });
     expect(ensureSentryMock).not.toHaveBeenCalled();
@@ -175,7 +175,7 @@ describe('useDiagnosticsReporting', () => {
     await flushMicrotasks();
 
     expect(setDiagnosticsRuntimeStateMock).toHaveBeenCalledWith({
-      sessionId: 'session:test-id-aaaa-bbbb-cccc-dddddddddddd',
+      sessionId: 'session:aaaabbbb-cccc-dddd-eeee-ffffaaaabbbb',
       reportingState: 'disabled',
     });
     expect(ensureSentryMock).not.toHaveBeenCalled();

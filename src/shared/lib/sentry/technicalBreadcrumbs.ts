@@ -1,5 +1,6 @@
 import type { Breadcrumb } from '@sentry/vue';
 import type { DiagnosticsMode } from '@shared/config';
+import type { SentryReportingState } from './sentryRuntimeState';
 
 export const TECHNICAL_BREADCRUMB_CATEGORIES = [
   'repository.storage',
@@ -169,12 +170,21 @@ export const sanitizeTechnicalBreadcrumb = (
 /**
  * Builds the Sentry `beforeBreadcrumb` hook for shared technical breadcrumb filtering.
  * @param diagnosticsMode - Shared diagnostics detail mode.
+ * @param getReportingState - Current diagnostics reporting state getter.
  * @returns Hook that keeps only sanitized project technical breadcrumbs.
  */
 export const createBeforeBreadcrumb =
-  (diagnosticsMode: DiagnosticsMode) =>
-  (breadcrumb: Breadcrumb): Breadcrumb | null =>
-    sanitizeTechnicalBreadcrumb(breadcrumb, diagnosticsMode);
+  (
+    diagnosticsMode: DiagnosticsMode,
+    getReportingState: () => SentryReportingState = () => 'enabled',
+  ) =>
+  (breadcrumb: Breadcrumb): Breadcrumb | null => {
+    if (getReportingState() !== 'enabled') {
+      return null;
+    }
+
+    return sanitizeTechnicalBreadcrumb(breadcrumb, diagnosticsMode);
+  };
 
 /**
  * Sanitizes the breadcrumb array attached to a Sentry event.

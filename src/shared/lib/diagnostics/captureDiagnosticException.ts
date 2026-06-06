@@ -18,6 +18,8 @@ export interface DiagnosticExceptionContext {
   domainErrorCode?: string;
   /** Safe error classification. */
   errorClassification?: SanitizedDiagnosticError['errorClassification'];
+  /** Safe failure classification for replay or recovery failures. */
+  failureClassification?: string;
   /** Runtime context: `'main'` or `'worker'`. */
   runtime?: 'main' | 'worker';
 }
@@ -52,6 +54,8 @@ export const captureDiagnosticException = (
       diagnosticCtx.domainErrorCode = context.domainErrorCode;
     if (context.errorClassification !== undefined)
       diagnosticCtx.errorClassification = context.errorClassification;
+    if (context.failureClassification !== undefined)
+      diagnosticCtx.failureClassification = context.failureClassification;
     if (context.runtime !== undefined) diagnosticCtx.runtime = context.runtime;
 
     sentry.captureException(error, {

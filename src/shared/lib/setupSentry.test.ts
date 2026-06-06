@@ -1435,7 +1435,7 @@ describe('unified diagnostics runtime', () => {
   });
 
   it('setDiagnosticsRuntimeState enabled sets reporting state and applies session user', async () => {
-    const { setUserMock } = setupSentryMocks();
+    const { setUserMock, getImportAttempts } = setupSentryMocks();
     const {
       registerSentryConfig,
       ensureSentry,
@@ -1457,6 +1457,7 @@ describe('unified diagnostics runtime', () => {
       id: 'session:aaaabbbb-cccc-dddd-eeee-ffffaaaabbbb',
     });
     expect(flushDiagnosticsRuntimeEffectsMock).toHaveBeenCalledOnce();
+    expect(getImportAttempts()).toBe(1);
   });
 
   it('setDiagnosticsRuntimeState enabled applies session id to already-loaded Sentry', async () => {
@@ -1532,6 +1533,87 @@ describe('unified diagnostics runtime', () => {
     expect(setUserMock).not.toHaveBeenCalled();
     expect(flushDiagnosticsRuntimeEffectsMock).not.toHaveBeenCalled();
     expect(clearDiagnosticsRuntimeEffectsMock).not.toHaveBeenCalled();
+  });
+
+  it('setDiagnosticsRuntimeState enabled fails closed for an invalid session id', async () => {
+    const { setUserMock, getImportAttempts } = setupSentryMocks();
+    const {
+      registerSentryConfig,
+      ensureSentry,
+      setDiagnosticsRuntimeState,
+      getSentryReportingState,
+      isSentryReportingEnabled,
+    } = await import('./setupSentry');
+
+    registerSentryConfig({ dsn: 'https://example@sentry.io/123', enabled: true });
+    setDiagnosticsRuntimeState({ reportingState: 'enabled', sessionId: 'session:test' });
+
+    expect(getSentryReportingState()).toBe('disabled');
+    expect(isSentryReportingEnabled()).toBe(false);
+    expect(getImportAttempts()).toBe(0);
+
+    await ensureSentry();
+
+    expect(setUserMock).toHaveBeenCalledWith(null);
+    expect(setUserMock).not.toHaveBeenCalledWith({ id: 'session:test' });
+    expect(flushDiagnosticsRuntimeEffectsMock).not.toHaveBeenCalled();
+    expect(clearDiagnosticsRuntimeEffectsMock).toHaveBeenCalledOnce();
+  });
+
+  it('setDiagnosticsRuntimeState enabled does not flush or set user for an invalid session after init', async () => {
+    const { setUserMock } = setupSentryMocks();
+    const {
+      registerSentryConfig,
+      ensureSentry,
+      setDiagnosticsRuntimeState,
+      getSentryReportingState,
+    } = await import('./setupSentry');
+
+    registerSentryConfig({ dsn: 'https://example@sentry.io/123', enabled: true });
+    setDiagnosticsRuntimeState({ reportingState: 'enabled', sessionId: INITIAL_SESSION_ID });
+    await ensureSentry();
+
+    setUserMock.mockClear();
+    flushDiagnosticsRuntimeEffectsMock.mockClear();
+    clearDiagnosticsRuntimeEffectsMock.mockClear();
+
+    setDiagnosticsRuntimeState({ reportingState: 'enabled', sessionId: 'session:test' });
+
+    expect(getSentryReportingState()).toBe('disabled');
+    expect(setUserMock).toHaveBeenCalledWith(null);
+    expect(setUserMock).not.toHaveBeenCalledWith({ id: 'session:test' });
+    expect(flushDiagnosticsRuntimeEffectsMock).not.toHaveBeenCalled();
+    expect(clearDiagnosticsRuntimeEffectsMock).toHaveBeenCalledOnce();
+  });
+
+  it('setDiagnosticsRuntimeState uses sentry.runtime for non-enabled runtime-state breadcrumbs', async () => {
+    const { addBreadcrumbMock } = setupSentryMocks();
+    const { registerSentryConfig, ensureSentry, setDiagnosticsRuntimeState } =
+      await import('./setupSentry');
+
+    registerSentryConfig({ dsn: 'https://example@sentry.io/123', enabled: true });
+    setDiagnosticsRuntimeState({ reportingState: 'enabled', sessionId: TEST_SESSION_ID });
+    await ensureSentry();
+
+    addBreadcrumbMock.mockClear();
+
+    setDiagnosticsRuntimeState({ reportingState: 'unknown', sessionId: TEST_SESSION_ID });
+    setDiagnosticsRuntimeState({ reportingState: 'disabled', sessionId: TEST_SESSION_ID });
+
+    expect(addBreadcrumbMock).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        category: 'sentry.runtime',
+        data: expect.objectContaining({ runtime: expect.any(String) }),
+      }),
+    );
+    expect(addBreadcrumbMock).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        category: 'sentry.runtime',
+        data: expect.objectContaining({ runtime: expect.any(String) }),
+      }),
+    );
   });
 
   it('setDiagnosticsRuntimeState before init: pending session is applied when ensureSentry completes', async () => {
