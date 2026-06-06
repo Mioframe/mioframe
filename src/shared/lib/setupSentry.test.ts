@@ -12,39 +12,15 @@ const setupSentryMocks = (options?: { importErrorOnce?: unknown }) => {
   const initMock = vi.fn();
   const captureExceptionMock = vi.fn(() => 'exception-id');
   const captureMessageMock = vi.fn(() => 'message-id');
-  const captureEventMock = vi.fn(() => 'event-id');
-  const withScopeMock = vi.fn((callback: (scope: object) => void) => {
-    callback({});
-  });
-  const addBreadcrumbMock = vi.fn();
+  const withScopeMock = vi.fn((callback: (scope: object) => unknown) => callback({}));
   const setUserMock = vi.fn();
-  const setTagMock = vi.fn();
-  const setContextMock = vi.fn();
-  const setExtraMock = vi.fn();
-  const setExtrasMock = vi.fn();
-  const flushMock = vi.fn(() => Promise.resolve(true));
-  const startSpanMock = vi.fn((_options, callback: (span: object) => string) => callback({}));
-  const startSpanManualMock = vi.fn(
-    (_options, callback: (span: object, finish: () => void) => string) => callback({}, vi.fn()),
-  );
-  const startInactiveSpanMock = vi.fn(() => ({ span: true }));
 
   const sentryModule = {
     init: initMock,
     captureException: captureExceptionMock,
     captureMessage: captureMessageMock,
-    captureEvent: captureEventMock,
     withScope: withScopeMock,
-    addBreadcrumb: addBreadcrumbMock,
     setUser: setUserMock,
-    setTag: setTagMock,
-    setContext: setContextMock,
-    setExtra: setExtraMock,
-    setExtras: setExtrasMock,
-    flush: flushMock,
-    startSpan: startSpanMock,
-    startSpanManual: startSpanManualMock,
-    startInactiveSpan: startInactiveSpanMock,
   };
 
   vi.doMock('@sentry/vue', () => {
@@ -60,11 +36,9 @@ const setupSentryMocks = (options?: { importErrorOnce?: unknown }) => {
   return {
     initMock,
     captureMessageMock,
+    captureExceptionMock,
     setUserMock,
-    flushMock,
     withScopeMock,
-    startSpanManualMock,
-    startInactiveSpanMock,
     getImportAttempts: () => importAttempts,
   };
 };
@@ -80,27 +54,20 @@ describe('setupSentry', () => {
     vi.doUnmock('@sentry/vue');
   });
 
-  it('returns a safe no-op proxy facade before config is registered', async () => {
+  it('returns a safe no-op facade before config is registered', async () => {
     const withScopeSpy = vi.fn((_scope: unknown) => undefined);
 
     const { useSentry, ensureSentry } = await import('./setupSentry');
 
     expect(() => {
       useSentry().captureException(new Error('boom'));
+      useSentry().captureMessage('hello');
       useSentry().withScope(withScopeSpy);
     }).not.toThrow();
 
+    expect(useSentry().captureException(new Error('boom'))).toBeUndefined();
     expect(useSentry().captureMessage('hello')).toBeUndefined();
-    expect(useSentry().captureEvent({ message: 'event' })).toBeUndefined();
-    expect(useSentry().startInactiveSpan({ name: 'noop' })).toBeUndefined();
-    expect(useSentry().startSpan({ name: 'noop' }, () => 'done')).toBe('done');
-    expect(
-      useSentry().startSpanManual({ name: 'noop-manual' }, (_span, finish) => {
-        expect(finish).toEqual(expect.any(Function));
-        finish();
-        return 'manual-done';
-      }),
-    ).toBe('manual-done');
+    useSentry().withScope(withScopeSpy);
     expect(withScopeSpy).not.toHaveBeenCalled();
 
     await expect(ensureSentry()).resolves.toBe(useSentry());
@@ -138,7 +105,7 @@ describe('setupSentry', () => {
 
     useSentry().captureException(new Error('first'));
     useSentry().captureMessage('second');
-    useSentry().setTag('scope', 'value');
+    useSentry().captureException(new Error('third'));
 
     expect(warnSpy).toHaveBeenCalledTimes(1);
     expect(warnSpy).toHaveBeenCalledWith(
@@ -228,9 +195,8 @@ describe('setupSentry', () => {
     expect(initOptions).not.toHaveProperty('release');
   });
 
-  it('delegates proxied SDK calls after initialization, including non-curated methods', async () => {
-    const { captureMessageMock, setUserMock, flushMock, startInactiveSpanMock } =
-      setupSentryMocks();
+  it('delegates facade calls to the SDK after initialization', async () => {
+    const { captureMessageMock, captureExceptionMock, withScopeMock } = setupSentryMocks();
     const { sentryPlugin, ensureSentry, setSentryReportingEnabled, useSentry } =
       await import('./setupSentry');
     const app = createApp(TestAppRoot);
@@ -243,21 +209,15 @@ describe('setupSentry', () => {
     setSentryReportingEnabled(true);
     await ensureSentry();
 
+    const scopeCallback = vi.fn((_scope: unknown) => 'scope-result');
     expect(useSentry().captureMessage('hello')).toBe('message-id');
-    useSentry().setUser({
-      id: 'user-1',
-    });
-    expect(useSentry().startInactiveSpan({ name: 'fetch-data' })).toEqual({ span: true });
-    await expect(useSentry().flush()).resolves.toBe(true);
+    expect(useSentry().captureException(new Error('boom'))).toBe('exception-id');
+    useSentry().withScope(scopeCallback);
 
     expect(captureMessageMock).toHaveBeenCalledWith('hello');
-    expect(setUserMock).toHaveBeenCalledWith({
-      id: 'user-1',
-    });
-    expect(startInactiveSpanMock).toHaveBeenCalledWith({
-      name: 'fetch-data',
-    });
-    expect(flushMock).toHaveBeenCalledOnce();
+    expect(captureExceptionMock).toHaveBeenCalledWith(new Error('boom'));
+    expect(withScopeMock).toHaveBeenCalledOnce();
+    expect(scopeCallback).toHaveBeenCalledOnce();
   });
 
   it('ensureSentry imports SDK only for valid runtime config', async () => {
@@ -383,8 +343,8 @@ describe('setupSentry', () => {
     expect(captureMessageMock).not.toHaveBeenCalled();
   });
 
-  it('delegates callback-based methods after initialization', async () => {
-    const { withScopeMock, startSpanManualMock } = setupSentryMocks();
+  it('withScope delegates to the SDK callback after initialization', async () => {
+    const { withScopeMock } = setupSentryMocks();
     const { registerSentryConfig, ensureSentry, useSentry } = await import('./setupSentry');
 
     registerSentryConfig({
@@ -394,20 +354,12 @@ describe('setupSentry', () => {
 
     await ensureSentry();
 
-    const scopeCallback = vi.fn((_scope: unknown) => undefined);
-    useSentry().withScope(scopeCallback);
-
-    expect(
-      useSentry().startSpanManual({ name: 'loaded-manual' }, (_span, finish) => {
-        expect(finish).toEqual(expect.any(Function));
-        finish();
-        return 'loaded-manual-result';
-      }),
-    ).toBe('loaded-manual-result');
+    const scopeCallback = vi.fn((_scope: unknown) => 'scope-result');
+    const result = useSentry().withScope(scopeCallback);
 
     expect(withScopeMock).toHaveBeenCalledOnce();
     expect(scopeCallback).toHaveBeenCalledOnce();
-    expect(startSpanManualMock).toHaveBeenCalledOnce();
+    expect(result).toBe('scope-result');
   });
 
   it('beforeSend drops events while reporting is disabled', async () => {

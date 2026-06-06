@@ -101,15 +101,23 @@ export const reportRepositorySaveQueued = ({ pendingCount }: { pendingCount: num
 
 /**
  * Emits a diagnostic event when a primary repository save fails and is NOT queued for retry.
- * @param root0 - Event options (pendingCount).
+ * @param root0 - Event options (pendingCount, caughtError).
  */
-export const reportRepositorySaveFailed = ({ pendingCount }: { pendingCount: number }): void => {
+export const reportRepositorySaveFailed = ({
+  pendingCount,
+  caughtError,
+}: {
+  pendingCount: number;
+  caughtError: unknown;
+}): void => {
+  const error = sanitizeDiagnosticError(caughtError);
   reportDiagnosticEvent({
     name: 'repositoryStorage.saveFailed',
     severity: DiagnosticSeverity.Error,
     result: DiagnosticResult.Failed,
     classification: DiagnosticClassification.Storage,
     counters: { pendingCount },
+    error,
     safeTags: { ...SAVE_TAGS, failureClassification: 'storageFailure' },
   });
 };

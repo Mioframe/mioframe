@@ -159,7 +159,7 @@ describe('repositoriesDiagnostics', () => {
 
   describe('reportRepositorySaveFailed', () => {
     it('emits saveFailed with Error severity, Failed result, and Storage classification', () => {
-      reportRepositorySaveFailed({ pendingCount: 0 });
+      reportRepositorySaveFailed({ pendingCount: 0, caughtError: new Error('disk full') });
 
       expect(sink).toHaveLength(1);
       expect(sink[0]).toMatchObject({
@@ -173,17 +173,37 @@ describe('repositoriesDiagnostics', () => {
     });
 
     it('includes failureClassification: storageFailure in safeTags', () => {
-      reportRepositorySaveFailed({ pendingCount: 0 });
+      reportRepositorySaveFailed({ pendingCount: 0, caughtError: new Error('disk full') });
 
       expect(sink[0]?.safeTags?.failureClassification).toBe('storageFailure');
     });
 
-    it('does not include user-controlled values', () => {
-      reportRepositorySaveFailed({ pendingCount: 0 });
+    it('includes sanitized error summary in the event', () => {
+      const error = new DOMException('disk full', 'QuotaExceededError');
+      reportRepositorySaveFailed({ pendingCount: 2, caughtError: error });
+
+      expect(sink[0]?.error).toMatchObject({
+        errorClass: 'DOMException',
+        domExceptionName: 'QuotaExceededError',
+        errorClassification: expect.any(String),
+      });
+    });
+
+    it('does not include raw error message or user-controlled values in the event', () => {
+      const error = new Error('path=/user/secret/doc.md quota exceeded');
+      reportRepositorySaveFailed({ pendingCount: 0, caughtError: error });
       const serialized = JSON.stringify(sink[0]);
+      expect(serialized).not.toContain('/user/secret');
+      expect(serialized).not.toContain('quota exceeded');
       expect(serialized).not.toContain('path');
       expect(serialized).not.toContain('Work');
       expect(serialized).not.toContain('docId');
+    });
+
+    it('includes errorClass in the error summary', () => {
+      reportRepositorySaveFailed({ pendingCount: 0, caughtError: new Error('boom') });
+
+      expect(sink[0]?.error?.errorClass).toBe('Error');
     });
   });
 
@@ -191,7 +211,7 @@ describe('repositoriesDiagnostics', () => {
     reportWriteAccessReplayStillBlocked({ flushedCount: 0, pendingCount: 1 });
     reportWriteAccessReplayStorageFailure({ flushedCount: 1, pendingCount: 0 });
     reportRepositorySaveQueued({ pendingCount: 1 });
-    reportRepositorySaveFailed({ pendingCount: 0 });
+    reportRepositorySaveFailed({ pendingCount: 0, caughtError: new Error('boom') });
 
     for (const event of sink) {
       expect(event.safeTags?.provider).toBe('webFileSystem');

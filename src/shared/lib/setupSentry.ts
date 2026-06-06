@@ -1,20 +1,9 @@
 import type { App, Plugin } from 'vue';
 import type { Scope as SentryScope } from '@sentry/vue';
 import type { SentryReportingState, SentryRuntimeState } from './sentry/sentryRuntimeState';
-import {
-  createSentryOptions,
-  getOrCreateSentrySessionId,
-  SAFE_EVENT_TAG_KEYS,
-  pickEventTags,
-  pickSafeEventExtras,
-  sanitizeContexts,
-  sanitizeUser,
-} from './sentry';
+import { createSentryOptions, getOrCreateSentrySessionId } from './sentry';
 
 export type { SentryReportingState, SentryRuntimeState };
-
-// Re-export for consumers that still use the old import path during migration.
-export { SAFE_EVENT_TAG_KEYS, pickEventTags, pickSafeEventExtras, sanitizeContexts, sanitizeUser };
 
 /**
  * Runtime configuration for the optional Sentry integration.
@@ -33,50 +22,32 @@ export type SentryConfig = {
   defaultIntegrations?: false;
 };
 
-type SentryModule = typeof import('@sentry/vue');
-type CallableExportKeys<T> = {
-  [K in keyof T]-?: T[K] extends (...args: infer _Args) => infer _Return ? K : never;
-}[keyof T];
-type CallableSentryExports = Pick<SentryModule, CallableExportKeys<SentryModule>>;
-type OptionalCallableExport<T> = T extends (...args: infer Args) => infer Return
-  ? (...args: Args) => Return | undefined
-  : never;
-type ProxySentryFacade = {
-  [K in keyof CallableSentryExports]: OptionalCallableExport<CallableSentryExports[K]>;
-};
-type StartSpanParameters = Parameters<SentryModule['startSpan']>;
-type StartSpanManualParameters = Parameters<SentryModule['startSpanManual']>;
-
 /**
- * Function-only facade over `@sentry/vue`.
+ * Minimal project-owned facade over `@sentry/vue`.
  *
- * The facade intentionally exposes only callable SDK exports. When Sentry is
- * disabled or still initializing, most methods become safe no-ops and return
- * `undefined`. Callback-based span helpers remain callable so wrapped work can
- * still run without checking whether Sentry is available.
+ * Exposes only the three calls actually used by project diagnostic wrappers.
+ * Before Sentry finishes initializing, all methods return `undefined` without throwing.
+ * Product code must not import `@sentry/vue` directly — use this facade instead.
  */
-export type SentryFacade = Omit<
-  ProxySentryFacade,
-  'withScope' | 'startSpan' | 'startSpanManual'
-> & {
-  withScope: {
-    <T>(callback: (scope: SentryScope) => T): T | undefined;
-    <T>(scope: SentryScope | undefined, callback: (scope: SentryScope) => T): T | undefined;
-  };
-  startSpan: <T>(
-    options: StartSpanParameters[0],
-    callback: (span: Parameters<StartSpanParameters[1]>[0] | undefined) => T,
-  ) => T | undefined;
-  startSpanManual: <T>(
-    options: StartSpanManualParameters[0],
-    callback: (
-      span: Parameters<StartSpanManualParameters[1]>[0] | undefined,
-      finish: Parameters<StartSpanManualParameters[1]>[1],
-    ) => T,
-  ) => T | undefined;
+export type SentryFacade = {
+  /**
+   * Runs `callback` with an isolated Sentry scope and returns its return value.
+   * Returns `undefined` when Sentry is not yet initialized.
+   */
+  withScope<T>(callback: (scope: SentryScope) => T): T | undefined;
+  /**
+   * Captures a caught Error as a Sentry exception.
+   * Returns the event id string, or `undefined` when Sentry is not yet initialized.
+   */
+  captureException(exception: unknown): string | undefined;
+  /**
+   * Captures a message-level event.
+   * Returns the event id string, or `undefined` when Sentry is not yet initialized.
+   */
+  captureMessage(message: string): string | undefined;
 };
 
-const NOOP_FINISH: Parameters<StartSpanManualParameters[1]>[1] = () => undefined;
+type SentryModule = typeof import('@sentry/vue');
 
 let sentryModulePromise: Promise<SentryModule> | undefined;
 let loadedSentryModule: SentryModule | undefined;
@@ -181,70 +152,33 @@ export const setDiagnosticsRuntimeState = (state: SentryRuntimeState): void => {
   // 'unknown': no user change — events remain queued until state is resolved.
 };
 
-const readRuntimeConfig = () => {
-  if (!isSentryConfigured()) {
-    warnMissingConfigOnce();
-    return undefined;
-  }
-
-  return runtimeConfig;
-};
-const invokeNoopSentryMethod = (methodName: string, args: unknown[]) => {
-  if (!isSentryConfigured()) {
-    warnMissingConfigOnce();
-  }
-
-  if (methodName === 'startSpan') {
-    const callback = args[1];
-
-    if (typeof callback === 'function') {
-      return callback(undefined);
+/**
+ * Minimal facade instance shared across both runtimes.
+ * Methods are safe no-ops before the SDK loads; they call the real SDK after.
+ */
+export const sentryFacade: SentryFacade = {
+  withScope<T>(callback: (scope: SentryScope) => T): T | undefined {
+    if (!loadedSentryModule) {
+      if (!isSentryConfigured()) warnMissingConfigOnce();
+      return undefined;
     }
-  }
-
-  if (methodName === 'startSpanManual') {
-    const callback = args[1];
-
-    if (typeof callback === 'function') {
-      return callback(undefined, NOOP_FINISH);
+    return loadedSentryModule.withScope(callback);
+  },
+  captureException(exception: unknown): string | undefined {
+    if (!loadedSentryModule) {
+      if (!isSentryConfigured()) warnMissingConfigOnce();
+      return undefined;
     }
-  }
-
-  return undefined;
+    return loadedSentryModule.captureException(exception);
+  },
+  captureMessage(message: string): string | undefined {
+    if (!loadedSentryModule) {
+      if (!isSentryConfigured()) warnMissingConfigOnce();
+      return undefined;
+    }
+    return loadedSentryModule.captureMessage(message);
+  },
 };
-
-const invokeSentryMethod = (methodName: string, args: unknown[]) => {
-  const sentry = loadedSentryModule;
-
-  if (!sentry) {
-    return invokeNoopSentryMethod(methodName, args);
-  }
-
-  const method = Reflect.get(sentry, methodName);
-
-  if (!(method instanceof Function)) {
-    return undefined;
-  }
-
-  return Reflect.apply(method, sentry, args);
-};
-
-const createSentryFacade = (): SentryFacade => {
-  const target: object = {};
-
-  // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- Proxy keeps the facade stable while forwarding function calls lazily
-  return new Proxy(target, {
-    get: (_target, prop) => {
-      if (typeof prop !== 'string' || prop === 'then') {
-        return undefined;
-      }
-
-      return (...args: unknown[]) => invokeSentryMethod(prop, args);
-    },
-  }) as SentryFacade;
-};
-
-const sentryFacade = createSentryFacade();
 
 /**
  * Registers runtime Sentry configuration without loading the SDK.
@@ -270,7 +204,11 @@ export const ensureSentry = async (app?: App): Promise<SentryFacade> => {
     return sentryFacade;
   }
 
-  const config = readRuntimeConfig();
+  if (!isSentryConfigured()) {
+    return sentryFacade;
+  }
+
+  const config = runtimeConfig;
   if (!config) {
     return sentryFacade;
   }
@@ -335,8 +273,8 @@ export const setupSentry = async (app: App, dsn: string) => {
 /**
  * Returns the stable Sentry facade.
  * The returned object is always safe to use. Before Sentry finishes
- * initializing, methods no-op or run their callback-based fallbacks.
- * @returns Stable function-only Sentry facade.
+ * initializing, methods are safe no-ops that return `undefined`.
+ * @returns Stable Sentry facade.
  */
 export const useSentry = (): SentryFacade => sentryFacade;
 

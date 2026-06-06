@@ -924,6 +924,7 @@ describe('useRepositoriesService', () => {
         queued: true,
         failureClassification: 'accessRequired',
         pendingCount: 2,
+        caughtError: new Error('access blocked'),
       });
 
       expect(sink).toHaveLength(1);
@@ -964,6 +965,7 @@ describe('useRepositoriesService', () => {
         queued: false,
         failureClassification: 'storageFailure',
         pendingCount: 0,
+        caughtError: new Error('disk full'),
       });
 
       expect(sink).toHaveLength(1);

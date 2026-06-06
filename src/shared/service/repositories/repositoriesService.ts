@@ -150,11 +150,11 @@ const setupRepositoriesService = () => {
       if (!repoEntry) {
         const storageRecovery = createRetryingStorageAdapter(createVFSAdapter(vfs, path), {
           shouldQueueFailedSave,
-          onSaveFailure: ({ queued, pendingCount }) => {
+          onSaveFailure: ({ queued, pendingCount, caughtError }) => {
             if (queued) {
               reportRepositorySaveQueued({ pendingCount });
             } else {
-              reportRepositorySaveFailed({ pendingCount });
+              reportRepositorySaveFailed({ pendingCount, caughtError });
             }
           },
         });

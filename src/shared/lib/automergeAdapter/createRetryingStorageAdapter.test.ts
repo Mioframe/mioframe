@@ -258,6 +258,7 @@ describe('createRetryingStorageAdapter', () => {
       queued: true,
       failureClassification: 'accessRequired',
       pendingCount: 1,
+      caughtError: error,
     });
   });
 
@@ -285,6 +286,7 @@ describe('createRetryingStorageAdapter', () => {
       queued: false,
       failureClassification: 'storageFailure',
       pendingCount: 0,
+      caughtError: error,
     });
   });
 
@@ -387,7 +389,7 @@ describe('createRetryingStorageAdapter', () => {
     expect(wrapped.hasPendingSaves()).toBe(true);
   });
 
-  it('onSaveFailure payload contains only safe fields (queued, failureClassification, pendingCount)', async () => {
+  it('onSaveFailure payload contains queued, failureClassification, pendingCount, and caughtError', async () => {
     const error = new Error('permission blocked');
     const adapter = {
       load: vi.fn(),
@@ -408,8 +410,9 @@ describe('createRetryingStorageAdapter', () => {
 
     const payload = onSaveFailure.mock.calls[0]?.[0];
     expect(Object.keys(payload ?? {}).sort()).toEqual(
-      ['failureClassification', 'pendingCount', 'queued'].sort(),
+      ['caughtError', 'failureClassification', 'pendingCount', 'queued'].sort(),
     );
+    expect(payload?.caughtError).toBe(error);
   });
 
   it('delegates non-save operations to the wrapped adapter', async () => {

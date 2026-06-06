@@ -31,7 +31,10 @@ export interface RetryingStorageAdapterFlushResult {
 
 /**
  * Safe summary passed to the {@link RetryingStorageAdapterOptions.onSaveFailure} callback.
- * Contains only project-controlled values — no storage keys, document ids, bytes, or raw errors.
+ * Contains project-controlled classification values plus the raw caught error.
+ * The raw `caughtError` stays within the same runtime boundary — the receiver
+ * must sanitize it with `sanitizeDiagnosticError` before any diagnostics use.
+ * Never serialize, queue, store, or send `caughtError` directly.
  */
 export interface RetryingStorageAdapterSaveFailureInfo {
   /** Whether the failed save was queued for a later retry. */
@@ -44,6 +47,11 @@ export interface RetryingStorageAdapterSaveFailureInfo {
   failureClassification: 'accessRequired' | 'storageFailure';
   /** Number of saves currently queued after this failure. */
   pendingCount: number;
+  /**
+   * Raw error from the underlying adapter save call.
+   * Must be sanitized by the receiver before any diagnostics use.
+   */
+  caughtError: unknown;
 }
 
 /**
@@ -134,6 +142,7 @@ export const createRetryingStorageAdapter = (
             queued: shouldQueue,
             failureClassification: shouldQueue ? 'accessRequired' : 'storageFailure',
             pendingCount: pendingSaves.size,
+            caughtError: error,
           });
         } catch {
           // diagnostic callbacks must not affect adapter behavior
